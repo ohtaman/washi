@@ -6,7 +6,6 @@ import {
   LpMaximize,
   HiGHS,
   MockSolver,
-  RemoteSolver,
   registerSolver,
   listAvailableSolvers,
   getSolver,
@@ -142,7 +141,7 @@ describe("Pluggable Solvers Architecture (PuLP-like Solver Switching)", () => {
     expect(m.objectiveValue).toBe(777);
   });
 
-  it("handles RemoteSolver via HTTP fetch mocking", async () => {
+  it("connects to a custom in-house backend API using Solver interface", async () => {
     const originalFetch = globalThis.fetch;
     try {
       globalThis.fetch = vi.fn().mockResolvedValue({
@@ -151,30 +150,42 @@ describe("Pluggable Solvers Architecture (PuLP-like Solver Switching)", () => {
           status: "Optimal",
           objectiveValue: 123.45,
           values: { x: 15, y: 25 },
-          runTime: 0.25,
         }),
       } as any);
 
-      const m = new Model({ name: "RemoteModel" });
+      // A real-world custom backend solver driver
+      const backendSolver: Solver = {
+        name: "InHouseOptimizationAPI",
+        async solve(modelData, lpResult) {
+          const res = await fetch("https://internal-opt.corp/api/v1/solve", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: "Bearer secret-token" },
+            body: JSON.stringify({ lp: lpResult.lpString }),
+          });
+          const data = await res.json();
+          return {
+            status: data.status,
+            objectiveValue: data.objectiveValue,
+            values: data.values,
+          };
+        },
+      };
+
+      const m = new Model({ name: "InHouseBackendModel", solver: backendSolver });
       const x = m.addVar({ name: "x" });
       const y = m.addVar({ name: "y" });
       m.maximize(x.add(y));
 
-      const remote = new RemoteSolver({
-        url: "https://optimization-cloud.example.com/api/v1/solve",
-        headers: { Authorization: "Bearer test-token" },
-      });
-
-      const status = await m.optimize(remote);
+      const status = await m.optimize();
       expect(status).toBe("Optimal");
       expect(m.objectiveValue).toBe(123.45);
       expect(x.value).toBe(15);
       expect(y.value).toBe(25);
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        "https://optimization-cloud.example.com/api/v1/solve",
+        "https://internal-opt.corp/api/v1/solve",
         expect.objectContaining({
           method: "POST",
-          headers: expect.objectContaining({ Authorization: "Bearer test-token" }),
+          headers: expect.objectContaining({ Authorization: "Bearer secret-token" }),
         })
       );
     } finally {

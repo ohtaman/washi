@@ -150,7 +150,7 @@ export const DOCS_HTML = `
       <li><strong>標準 CPLEX LP フォーマット完全準拠</strong>: <code>m.toLpString()</code> により、HiGHS や Gurobi、CPLEX、SCIP、GLPK でそのまま扱える標準 LP 構文のテキストを生成・検査できます。</li>
       <li><strong>双対変数（シャドウプライス）と被約費用</strong>: <code>constraint.dual</code>（または <code>constraint.pi</code>）および <code>var.reducedCost</code> により、経済的評価や感度分析が可能です。</li>
       <li><strong>多次元変数マトリクス</strong>: <code>m.addVars2D(rows, cols, { type: BINARY })</code> により、配属問題や輸送問題の多次元変数を直感的に一括生成できます。</li>
-      <li><strong>PuLP / python-mip 流のソルバー切り替え（非依存性）</strong>: HiGHS への密結合ではなく、<code>prob.solve(new HiGHS())</code>、<code>RemoteSolver</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジンを共通インターフェースで自由に差し替えられます。</li>
+      <li><strong>PuLP / python-mip 流のソルバー切り替え（非依存性）</strong>: HiGHS への密結合ではなく、<code>prob.solve(new HiGHS())</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジン（自社バックエンド API 等）を共通インターフェースで自由に差し替えられます。</li>
     </ul>
   </div>
 
@@ -161,7 +161,7 @@ export const DOCS_HTML = `
     </p>
     <div class="code-card">
       <div class="code-title">ソルバーの切り替え利用例</div>
-      <pre><code>import { Model, LpProblem, HiGHS, RemoteSolver, MockSolver } from "highs-web";
+      <pre><code>import { Model, LpProblem, HiGHS, MockSolver } from "highs-web";
 
 // 1. デフォルトソルバー (HiGHS WebAssembly) で解く
 await prob.solve();
@@ -169,28 +169,28 @@ await prob.solve();
 // 2. オプションを指定した明示的な HiGHS インスタンスで解く
 await prob.solve(new HiGHS({ timeLimit: 30, mipGap: 0.01 }));
 
-// 3. リモート最適化クラウド（バックエンドの Gurobi / SCIP / CBC 等）へオフロード
-await prob.solve(new RemoteSolver({
-  url: "https://optimization-service.internal/api/solve",
-  headers: { Authorization: "Bearer &lt;TOKEN&gt;" }
-}));
-
-// 4. テスト・CI 用 Mock ソルバー（WASM を読み込まず即座に擬似解を返却）
+// 3. テスト・CI 用 Mock ソルバー（WASM を読み込まず即座に擬似解を返却）
 await prob.solve(new MockSolver({
   status: "Optimal",
   values: { x: 10, y: 20 },
   objectiveValue: 100
 }));
 
-// 5. 独自ソルバーエンジンの注入 (Solver インターフェース)
-const mySolver = {
-  name: "MyOptimizer",
+// 4. 自社バックエンドサーバーや独自エンジンの注入 (Solver インターフェース)
+const myBackendSolver = {
+  name: "CompanyOptAPI",
   async solve(modelData, lpResult) {
-    // 任意の最適化ロジックを実行
-    return { status: "Optimal", objectiveValue: 42, values: { x: 5, y: 10 } };
+    // 自社の最適化マイクロサービス (Gurobi / SCIP 等) へ LP 文字列を POST
+    const res = await fetch("/api/v1/solve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lp: lpResult.lpString }),
+    });
+    const data = await res.json();
+    return { status: data.status, objectiveValue: data.obj, values: data.solution };
   }
 };
-await prob.solve(mySolver);
+await prob.solve(myBackendSolver);
 </code></pre>
     </div>
   </div>

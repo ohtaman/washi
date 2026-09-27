@@ -6,7 +6,6 @@ import type { VarType, OptimizationSense, SolverStatus, SolveOptions } from "./t
 import {
   type Solver,
   HiGHS,
-  RemoteSolver,
   MockSolver,
   getSolver,
   listAvailableSolvers,
@@ -194,7 +193,6 @@ export class LpProblem {
 export {
   lpSum,
   HiGHS,
-  RemoteSolver,
   MockSolver,
   getSolver,
   listAvailableSolvers,
