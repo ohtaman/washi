@@ -1,225 +1,219 @@
-# HiGHS Web Modeler ⚡
+# opt-ts
 
-Edinburgh大学が開発した世界最高峰のオープンソース数理最適化ソルバー **[HiGHS](https://github.com/ERGO-Code/HiGHS)** を **WebAssembly (WASM)** でブラウザおよびNode.js上で高速動作させ、Python の **PuLP** や **python-mip** のような直感的な記法で数理モデル（LP / MIP / QP）を記述・求解できるモダンな数理最適化ライブラリ＆Webプレイグラウンドです。
+**Modern Mathematical Optimization Modeler for TypeScript & JavaScript**  
+*LP (Linear Programming) • MIP (Mixed-Integer Programming) • QP (Convex Quadratic Programming)*
 
----
+`opt-ts` is a high-level, intuitive mathematical optimization modeling library for TypeScript and JavaScript environments (Node.js, Browser, Bun, Deno, Next.js). Inspired by Python's **PuLP**, **python-mip**, and Julia's **JuMP**, it provides a fluent algebraic syntax for formulating and solving operations research problems.
 
-## 🌟 主な特徴
-
-- 🚀 **HiGHS WebAssembly (WASM) 搭載**:
-  - C++ ネイティブの HiGHS (v1.15.3) を WebAssembly にコンパイル。
-  - サーバーレス・クライアントサイド完結。ブラウザ内や Node.js で高速に求解。
-- 🔌 **PuLP 思想のソルバー切り替え（非依存性）**:
-  - 特定ソルバーに密結合せず、`prob.solve(new HiGHS())`、CI 用 `new MockSolver()`、自社バックエンド連携や独自最適化エンジンを共通 `Solver` インターフェースで自在に切り替え可能。
-- ⚡ **20,000 変数の大規模問題に対応**:
-  - サプライチェーン施設配置・全国配送問題（決定変数 20,050 個、制約 451 本）を約 15 秒で厳密最適解まで導出。数式合成は $O(N)$ 線形時間でミリ秒処理。
-- 💡 **PuLP / python-mip ライクな直感的モデラー API**:
-  - Python で親しまれている数理最適化モデラーの使い心地を JavaScript / TypeScript に完全再現。
-  - フルーエント・オブジェクト式 (`x.mul(30).add(y.mul(50))`)
-  - `sum()` / `xsum()` / `lpSum()` による直感的な総和表記
-  - 文字列数式やタグ付きテンプレート DSL (`expr\`\${x} + 2 * \${y} <= 40\``)
-  - 2次元・多次元変数の簡単生成 (`addVars2D(rows, cols, { type: "Binary" })`)
-- 🧵 **Web Worker による非ブロッキング非同期実行**:
-  - 大規模な MIP 問題もバックグラウンドの Web Worker で求解するため、ブラウザ UI が固まりません。
-- 🔄 **互換レイヤー完備**:
-  - **PuLP 互換**: `LpProblem`, `LpVariable`, `lpSum`, `LpMaximize`, `value()` 等
-  - **python-mip 互換**: `MipModel`, `xsum`, `maximize()`, `INTEGER`, `var.x` 等
-- 📜 **標準 CPLEX LP フォーマット生成**:
-  - `model.toLpString()` で CPLEX LP 形式を出力・確認・ダウンロード可能。
-- 🎨 **和風ライトテーマの Web プレイグラウンド付属**:
-  - ナーススケジューリング（10人×7日間シフト表）、サプライチェーン最適化、0-1ナップサック、N-Queens問題等の実務サンプルを即座に実行・可視化。
+Powered natively by the state-of-the-art **HiGHS** solver compiled to WebAssembly, `opt-ts` solves industrial-scale problems (20,000+ variables) with zero native C++ compile steps, while providing a pluggable interface to switch solvers seamlessly.
 
 ---
 
-## 📦 インストール
+## ✨ Features
+
+- **Intuitive Algebraic Syntax**: Express variables, linear expressions, and quadratic terms naturally (`x.mul(3).add(y)`, `x.mul(x)`).
+- **LP, MIP & Convex QP**: Solves Linear, Mixed-Integer, and Quadratic Programming problems (e.g. Markowitz portfolio optimization, least squares).
+- **Zero-Config WebAssembly Engine**: Runs out-of-the-box in Node.js and modern browsers via HiGHS WASM.
+- **Pluggable Solvers Architecture**:
+  - `HiGHS` (default, WebAssembly)
+  - `MockSolver` (for CI/CD and unit testing without WASM)
+  - Simple 1-method `Solver` interface to connect custom backends or external solvers.
+- **Framework Compatibility Layers**:
+  - `pulp-compat`: 1-to-1 drop-in syntax matching Python's `pulp` (`LpProblem`, `LpVariable`, `LpMinimize`, `prob.solve(HiGHS())`).
+  - `mip-compat`: Syntax matching `python-mip` (`MipModel`, `BINARY`, `model.optimize()`).
+- **High-Performance Large-Scale Optimization**: $O(N)$ linear-time expression builder (`sum()`, `lpSum()`) capable of constructing and solving 20,000+ variable MIPs in seconds.
+- **Strictly Typed & Zero Fluff**: Written 100% in TypeScript with comprehensive declarations and 70+ automated tests.
+
+---
+
+## 📦 Installation
 
 ```bash
-npm install highs
-# またはこのリポジトリのモデラーを使用
+npm install opt-ts
 ```
 
 ---
 
-## 🚀 クイックスタート
+## 🚀 Quick Start (Node.js / TypeScript)
 
-### 1. モダン・直感的スタイル (Fluent & `sum`)
+### 1. Mixed-Integer Linear Programming (MIP)
 
-```typescript
-import { Model, INTEGER, sum } from "./src/modeler/index.js";
+A production planning problem maximizing profit:
 
-// 1. モデル作成 (最大化問題)
+```ts
+import { Model } from "opt-ts";
+
 const m = new Model({ name: "ProductionPlanning", sense: "Maximize" });
 
-// 2. 変数定義 (下限 0 の整数変数)
+// Decision variables (Integer, non-negative)
 const chairs = m.addVar({ name: "chairs", type: "Integer", lb: 0 });
 const tables = m.addVar({ name: "tables", type: "Integer", lb: 0 });
 
-// 3. 目的関数: 利益の最大化 ($30/chair, $50/table)
+// Objective: Maximize profit ($30/chair + $50/table)
 m.maximize(chairs.mul(30).add(tables.mul(50)));
 
-// 4. 制約条件の追加
-// 木工工数: 1*chairs + 2*tables <= 40
-m.addConstraint(chairs.add(tables.mul(2)).le(40), "carpentry");
+// Constraints: Wood and Labor availability
+m.addConstraint(chairs.add(tables.mul(2)).le(40), "wood_limit");
+m.addConstraint(chairs.mul(2).add(tables).le(50), "labor_limit");
 
-// 仕上げ工数: 2*chairs + 1*tables <= 50
-m.addConstraint(chairs.mul(2).add(tables).le(50), "finishing");
+// Solve using built-in HiGHS WASM
+const status = await m.solve();
 
-// 5. HiGHS WASM で求解
-const status = await m.optimize();
-
-console.log("Status:", status);                // "Optimal"
-console.log("Profit: $" + m.objectiveValue);    // 1100
-console.log("Chairs:", chairs.value);          // 20
-console.log("Tables:", tables.value);          // 10
+console.log(`Status: ${status}`); // "Optimal"
+console.log(`Max Profit: $${m.objectiveValue}`); // $1100
+console.log(`Produce: ${chairs.value} chairs, ${tables.value} tables`); // 20 chairs, 10 tables
 ```
 
 ---
 
-### 2. Python PuLP 互換スタイル
+### 2. Convex Quadratic Programming (QP: Portfolio Optimization)
 
-PuLP を使っていた方なら、そのまま馴染みのある構文で記述できます：
+Minimize investment risk based on an asset covariance matrix while satisfying budget and return targets:
 
-```typescript
+```ts
+import { Model, QuadExpr, sum } from "opt-ts";
+
+const m = new Model({ name: "PortfolioRiskMinimization", sense: "Minimize" });
+
+const assets = ["Tech", "Bonds", "RealEstate"];
+const returns = [0.14, 0.04, 0.08];
+
+// Asset weights (0% to 100%)
+const w = assets.map((a) => m.addVar({ name: `w_${a}`, lb: 0, ub: 1 }));
+
+// 1. Budget constraint: 100% of capital allocated
+m.addConstraint(sum(w).eq(1.0), "budget");
+
+// 2. Return target: portfolio expected return >= 8.5%
+m.addConstraint(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
+
+// 3. Covariance matrix (risk & correlation)
+const cov = [
+  [0.040, 0.002, 0.015],
+  [0.002, 0.005, 0.002],
+  [0.015, 0.002, 0.025],
+];
+
+// Objective: w^T * Cov * w (Quadratic Expression)
+let variance = new QuadExpr();
+for (let i = 0; i < assets.length; i++) {
+  for (let j = 0; j < assets.length; j++) {
+    variance = variance.add(w[i].mul(w[j]).mul(cov[i][j]));
+  }
+}
+m.minimize(variance);
+
+await m.solve();
+
+console.log(`Optimal Variance: ${m.objectiveValue?.toFixed(6)}`);
+assets.forEach((name, i) => {
+  console.log(`  ${name}: ${((w[i].value || 0) * 100).toFixed(2)}%`);
+});
+```
+
+---
+
+### 3. PuLP-Compatible API (for Python PuLP Users)
+
+If you are porting existing Python PuLP code to TypeScript/JavaScript:
+
+```ts
 import {
   LpProblem,
   LpVariable,
   LpMaximize,
   LpInteger,
-  value
-} from "./src/modeler/index.js";
+  HiGHS,
+  value,
+} from "opt-ts";
 
-const prob = new LpProblem("Production", LpMaximize);
+const prob = new LpProblem("PuLPDemo", LpMaximize);
 
-const x = new LpVariable("chairs", 0, undefined, LpInteger);
-const y = new LpVariable("tables", 0, undefined, LpInteger);
+const x = new LpVariable("x", 0, undefined, LpInteger);
+const y = new LpVariable("y", 0, undefined, LpInteger);
 
-// 目的関数
-prob.setObjective(x.mul(30).add(y.mul(50)));
+// PuLP += syntax equivalent
+prob.add(x.mul(30).add(y.mul(50)));
+prob.add(x.add(y.mul(2)).le(40));
+prob.add(x.mul(2).add(y).le(50));
 
-// 制約
-prob.addConstraint(x.add(y.mul(2)).le(40));
-prob.addConstraint(x.mul(2).add(y).le(50));
+// Solve exactly like pulp.solve(HiGHS())
+await prob.solve(new HiGHS());
 
-await prob.solve();
-
-console.log("Status:", prob.status);         // Optimal
-console.log("Objective:", value(prob.objective)); // 1100
-console.log("chairs:", value(x));            // 20
-console.log("tables:", value(y));            // 10
+console.log(`Status: ${prob.status}`);
+console.log(`Objective: ${value(prob.objective)}`);
+console.log(`x = ${value(x)}, y = ${value(y)}`);
 ```
 
 ---
 
-### 3. python-mip 互換スタイル
+### 4. Pluggable Solver & Capability Enforcement
 
-python-mip スタイルの記法もサポートしています：
+`opt-ts` is solver-agnostic. Solvers declare their capabilities (`supportsMIP`, `supportsQP`), and `opt-ts` validates problem compatibility before dispatching:
 
-```typescript
-import {
-  MipModel,
-  MAXIMIZE,
-  INTEGER,
-  maximize
-} from "./src/modeler/index.js";
+```ts
+import { Model, MockSolver, HiGHS } from "opt-ts";
 
-const m = new MipModel("Production", MAXIMIZE);
+const m = new Model();
+// ... define model ...
 
-const x = m.add_var({ name: "chairs", var_type: INTEGER, lb: 0 });
-const y = m.add_var({ name: "tables", var_type: INTEGER, lb: 0 });
+// 1. Solve with HiGHS (default)
+await m.solve(HiGHS);
 
-// 目的関数
-m.objective_spec = maximize(x.mul(30).add(y.mul(50)));
+// 2. Solve with MockSolver for ultra-fast CI/CD unit tests without WASM
+const mock = new MockSolver({ values: { x: 10, y: 5 }, objectiveValue: 500 });
+await m.solve(mock);
 
-// 制約
-m.add_constr(x.add(y.mul(2)).le(40));
-m.add_constr(x.mul(2).add(y).le(50));
+// 3. Define your own custom solver (e.g., enterprise backend, cloud worker)
+const myCustomSolver = {
+  name: "InternalClusterSolver",
+  async solve(modelData, lpResult) {
+    const res = await fetch("https://internal-solver.corp/solve", {
+      method: "POST",
+      body: JSON.stringify({ lp: lpResult.lpString }),
+    });
+    return await res.json();
+  },
+};
 
-await m.optimize();
-
-console.log("Objective:", m.objective_value); // 1100
-console.log("x (chairs):", x.x);             // 20
-console.log("y (tables):", y.x);             // 10
+await m.solve(myCustomSolver);
 ```
 
 ---
 
-### 4. 文字列 / タグ付きテンプレート DSL スタイル
+## 🎨 Interactive Demo Showcase (Web UI)
 
-数式をそのまま文字列やタグ付きテンプレートリテラルで直感的に記述できます：
+This repository includes a standalone interactive demo UI built with a Zen light theme to demonstrate:
+- **Large-Scale Supply Chain Facility Location & Distribution (20,050 variables)**
+- **10-Nurse 7-Day Complex Scheduling Problem (NSP)**
+- **N-Queens Puzzle (Binary Formulation)**
+- **Markowitz Mean-Variance Portfolio Optimization (Convex QP)**
 
-```typescript
-import { Model, expr } from "./src/modeler/index.js";
-
-const m = new Model({ sense: "Maximize" });
-const chairs = m.addVar("chairs", "Integer", 0);
-const tables = m.addVar("tables", "Integer", 0);
-
-// タグ付きテンプレートリテラルで直接変数をバインド
-m.maximize(expr\`30 * \${chairs} + 50 * \${tables}\`);
-m.addConstraint(expr\`\${chairs} + 2 * \${tables} <= 40\`, "carpentry");
-
-// または変数名文字列でそのまま記述
-m.addConstraint("2 * chairs + tables <= 50", "finishing");
-
-await m.optimize();
-console.log("Optimal:", m.objectiveValue); // 1100
-```
-
----
-
-## 🎒 ナップサック問題の例 (`sum` / `xsum`)
-
-```typescript
-const m = new Model({ name: "Knapsack", sense: "Maximize" });
-
-const items = [
-  { name: "Laptop", weight: 3, value: 50 },
-  { name: "Camera", weight: 2, value: 40 },
-  { name: "Book",   weight: 1, value: 10 },
-  { name: "Water",  weight: 2, value: 25 },
-];
-const capacity = 5;
-
-// 0-1 バイナリ変数
-const x = m.addVars(items.map(it => it.name), { type: "Binary" });
-
-// 目的関数: 合計価値の最大化
-m.maximize(sum(items, it => x[it.name].mul(it.value)));
-
-// 重量制限制約
-m.addConstraint(
-  sum(items, it => x[it.name].mul(it.weight)).le(capacity),
-  "capacity_limit"
-);
-
-await m.optimize();
-console.log("Max Value:", m.objectiveValue); // 90 (Laptop + Camera)
-```
-
----
-
-## 💻 Web プレイグラウンドの起動
-
-ブラウザでコードをリアルタイムに書きながら、WASM の求解速度や結果の可視化を体験できる Web UI が付属しています。
+To launch the local demo:
 
 ```bash
-# 開発サーバー起動
+npm install
 npm run dev
-
-# ブラウザで開く
-# http://127.0.0.1:5173/
 ```
 
-- **プリセット**: 生産計画 (MIP)、0-1ナップサック、8-Queens (MIP)、食事問題 (LP)、PuLP構文、python-mip構文、テンプレートDSL
-- **可視化**: 8-Queens のチェス盤描画、ナップサックのパッキングバッジ、最適変数テーブル、CPLEX LP形式ビューア、ソルバーログ
-- **ショートカット**: `Ctrl + Enter` (または `Cmd + Enter`) で即時実行
+Then open `http://localhost:5173/` in your browser.
 
 ---
 
-## 🧪 テストの実行
+## 🧪 Testing & Verification
+
+Strict Test-Driven Development (TDD) is enforced across the entire library:
 
 ```bash
+# Run all unit, integration, QP, and solver tests
 npm test
+
+# Build library distribution (ESM bundle + TypeScript declarations)
+npm run build:lib
 ```
 
-Vitest による全テストスイート（MIP, LP, PuLP互換, python-mip互換, DSL, WASMバイナリ検証）が自動実行されます。
+---
+
+## 📄 License
+
+MIT License.

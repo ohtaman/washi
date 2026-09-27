@@ -1,6 +1,7 @@
 import { Model } from "./model.js";
 import { Var } from "./variable.js";
 import { LinExpr, sum, lpSum } from "./expression.js";
+import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import type { VarType, OptimizationSense, SolverStatus, SolveOptions } from "./types.js";
 import {
@@ -98,7 +99,7 @@ export class LpProblem {
     this.model.sense = val;
   }
 
-  get objective(): LinExpr {
+  get objective(): LinExpr | QuadExpr {
     return this.model.objective;
   }
 

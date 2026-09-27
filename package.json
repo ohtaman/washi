@@ -1,14 +1,49 @@
 {
-  "name": "highs-web",
+  "name": "opt-ts",
   "version": "1.0.0",
-  "description": "",
+  "description": "Modern Mathematical Optimization Modeler for TypeScript & JavaScript (LP, MIP, QP) powered by WebAssembly HiGHS",
   "type": "module",
+  "main": "./dist/lib/opt-ts.js",
+  "module": "./dist/lib/opt-ts.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/lib/opt-ts.js",
+      "default": "./dist/lib/opt-ts.js"
+    }
+  },
+  "files": [
+    "dist/lib",
+    "dist/types",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:demo": "vite build",
+    "build:types": "tsc -p tsconfig.lib.json",
+    "build:lib": "vite build --config vite.config.lib.ts",
+    "build": "npm run build:types && npm run build:lib && npm run build:demo",
     "preview": "vite preview",
     "test": "vitest run"
   },
+  "keywords": [
+    "optimization",
+    "mathematical-programming",
+    "linear-programming",
+    "mixed-integer-programming",
+    "quadratic-programming",
+    "lp",
+    "mip",
+    "qp",
+    "highs",
+    "pulp",
+    "wasm",
+    "webassembly",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "highs": "^1.15.3"
   },
