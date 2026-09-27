@@ -244,6 +244,8 @@ export function initApp() {
       renderNurseRoster();
     } else if (currentVisualizerType === "supply-chain") {
       renderSupplyChainSummary();
+    } else if (currentVisualizerType === "portfolio") {
+      renderPortfolioCards();
     } else {
       visualizerContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">Standard tabular representation in table below.</p>`;
     }
@@ -431,6 +433,68 @@ export function initApp() {
         </div>
       </div>
     `;
+    visualizerContainer.innerHTML = html;
+  }
+
+  function renderPortfolioCards() {
+    if (!currentModel) return;
+
+    const colors = ["#C23B22", "#1E3A5F", "#2D5A27", "#B8860B", "#583F57"];
+    const weightVars = currentModel.variables.filter((v) => v.name.startsWith("weight_"));
+    const variance = currentModel.objectiveValue ?? 0;
+    const volatility = Math.sqrt(Math.max(0, variance));
+    const totalWeight = weightVars.reduce((sum, v) => sum + (v.value || 0), 0);
+
+    let barsHtml = weightVars
+      .map((v, i) => {
+        const val = v.value || 0;
+        const pct = (val * 100).toFixed(1);
+        const assetName = v.name.replace("weight_", "");
+        const color = colors[i % colors.length];
+
+        return `
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 500;">
+              <span style="color: var(--text-sumi); display: flex; align-items: center; gap: 6px;">
+                <span style="width: 10px; height: 10px; border-radius: 2px; background: ${color}; display: inline-block;"></span>
+                ${assetName}
+              </span>
+              <span style="font-family: var(--font-mono); font-weight: 600; color: ${color};">${pct}%</span>
+            </div>
+            <div style="width: 100%; height: 10px; background: var(--border-subtle); border-radius: 5px; overflow: hidden;">
+              <div style="width: ${pct}%; height: 100%; background: ${color}; border-radius: 5px; transition: width 0.3s ease;"></div>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    let html = `
+      <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+          <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">最適ポートフォリオ分散 (Risk)</div>
+            <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--color-hi);">${variance.toFixed(6)}</div>
+          </div>
+          <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">年率ボラティリティ (Std Dev σ)</div>
+            <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--text-sumi);">${(volatility * 100).toFixed(2)}%</div>
+          </div>
+          <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
+            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">投資比率合計 (Budget)</div>
+            <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: #2D5A27;">${(totalWeight * 100).toFixed(1)}%</div>
+          </div>
+        </div>
+
+        <div style="background: var(--bg-washi); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 12px;">
+          <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-sumi);">最適資産配分比率 (Asset Weights):</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            ${barsHtml}
+          </div>
+        </div>
+      </div>
+    `;
+
     visualizerContainer.innerHTML = html;
   }
 

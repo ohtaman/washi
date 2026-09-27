@@ -218,4 +218,31 @@ await m.optimize();
 
     await page.screenshot({ path: path.join(screenshotsDir, "05_infeasible_detected.png") });
   }, 15000);
+
+  it("solves Markowitz Portfolio Optimization (Convex QP) in browser UI", async () => {
+    // Select portfolio_qp preset
+    await page.selectOption("#preset-select", "portfolio_qp");
+
+    // Click Run Optimization
+    await page.click("#run-btn");
+
+    // Wait for status to become Optimal
+    await page.waitForFunction(
+      () => document.getElementById("metric-status")?.textContent === "Optimal",
+      { timeout: 15000 }
+    );
+
+    // Verify objective value is positive
+    const objText = await page.textContent("#metric-obj");
+    const objVal = parseFloat(objText || "0");
+    expect(objVal).toBeGreaterThan(0);
+
+    // Verify portfolio cards rendered with asset weights
+    const tableText = await page.textContent("#vars-tbody");
+    expect(tableText).toContain("weight_Tech");
+    expect(tableText).toContain("weight_Bonds");
+
+    // Take screenshot of portfolio QP results
+    await page.screenshot({ path: path.join(screenshotsDir, "06_portfolio_qp_optimal.png") });
+  }, 15000);
 });

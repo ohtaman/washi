@@ -4,7 +4,7 @@ export interface ExampleModel {
   category: "MIP" | "LP" | "Combinatorial" | "QP";
   description: string;
   code: string;
-  visualizer?: "table" | "nqueens" | "knapsack" | "production" | "nurse" | "supply-chain";
+  visualizer?: "table" | "nqueens" | "knapsack" | "production" | "nurse" | "supply-chain" | "portfolio";
 }
 
 export const EXAMPLES: ExampleModel[] = [
@@ -607,7 +607,7 @@ console.log(\`Custom Engine: Obj=\${value(prob.objective)}, chairs=\${value(p_x)
     title: "Markowitz Portfolio Optimization (Convex QP)",
     category: "QP",
     description: "Convex Quadratic Programming (QP) minimizing investment risk (covariance matrix) subject to capital and target return constraints. Solved natively with HiGHS QP.",
-    visualizer: "table",
+    visualizer: "portfolio",
     code: `// --- Markowitz Mean-Variance Portfolio Optimization (QP) ---
 // Minimize portfolio variance risk subject to return & budget constraints.
 const m = new Model({ name: "PortfolioOptimization", sense: "Minimize" });
@@ -656,6 +656,64 @@ console.log(\`Portfolio Std Dev (Volatility): \${Math.sqrt(m.objectiveValue || 0
 
 assets.forEach((name, i) => {
   console.log(\`  \${name.padEnd(12)}: \${((w[i].value || 0) * 100).toFixed(2)}%\`);
+});
+`,
+  },
+  {
+    id: "least_squares_qp",
+    title: "Constrained Least Squares Regression (Convex QP)",
+    category: "QP",
+    description: "Fits a quadratic model y = a*x^2 + b*x + c to noisy data while enforcing physical convexity constraints (a >= 0.1, intercept >= 0). Solved natively with HiGHS QP.",
+    visualizer: "table",
+    code: `// --- Constrained Least Squares Curve Fitting (Convex QP) ---
+// Model: y = a*x^2 + b*x + c
+// Subject to physical constraints: a >= 0.1 (strict convexity), c >= 0 (positive baseline)
+const m = new Model({ name: "ConstrainedLeastSquares", sense: "Minimize" });
+
+// Parameters to estimate (decision variables)
+const a = m.addVar({ name: "a_curvature", lb: 0.1 });
+const b = m.addVar({ name: "b_linear", lb: -10, ub: 10 });
+const c = m.addVar({ name: "c_intercept", lb: 0 });
+
+// Noisy observation dataset: (x_i, y_i)
+const data = [
+  { x: 1.0, y: 3.2 },
+  { x: 2.0, y: 7.1 },
+  { x: 3.0, y: 13.5 },
+  { x: 4.0, y: 21.8 },
+  { x: 5.0, y: 32.9 },
+  { x: 6.0, y: 46.2 },
+];
+
+// Residual for each observation: r_i = (a*x_i^2 + b*x_i + c) - y_i
+// We minimize the sum of squared residuals: min sum(r_i^2)
+let sumOfSquares = new QuadExpr();
+
+data.forEach((pt, i) => {
+  const r = m.addVar({ name: \`residual_\${i}\`, lb: -Infinity, ub: Infinity });
+  
+  // r_i - a*x^2 - b*x - c = -y_i
+  const x2 = pt.x * pt.x;
+  const x1 = pt.x;
+  m.addConstraint(r.sub(a.mul(x2)).sub(b.mul(x1)).sub(c).eq(-pt.y), \`fit_\${i}\`);
+  
+  // Add r_i^2 to objective
+  sumOfSquares = sumOfSquares.add(r.mul(r));
+});
+
+m.minimize(sumOfSquares);
+
+console.log("Solving Constrained Least Squares QP with HiGHS WASM...");
+const status = await m.solve();
+
+console.log(\`Solve Status: \${status}\`);
+console.log(\`Sum of Squared Errors (SSE): \${m.objectiveValue?.toFixed(4)}\`);
+console.log(\`Fitted Model: y = \${a.value?.toFixed(3)} * x^2 + \${b.value?.toFixed(3)} * x + \${c.value?.toFixed(3)}\`);
+
+data.forEach((pt, i) => {
+  const pred = (a.value || 0) * pt.x * pt.x + (b.value || 0) * pt.x + (c.value || 0);
+  const diff = pred - pt.y;
+  console.log(\`  x=\${pt.x}: Actual=\${pt.y.toFixed(1)}, Predicted=\${pred.toFixed(2)}, Error=\${diff.toFixed(2)}\`);
 });
 `,
   },
