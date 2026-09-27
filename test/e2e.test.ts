@@ -269,4 +269,43 @@ await m.optimize();
     expect(await page.textContent(".toolbar-label")).toContain("Problem Model:");
     expect(await page.textContent("#tab-btn-results")).toContain("Solution & Variables");
   });
+
+  it("renders editor line numbers cleanly without wrapping or overlapping digits", async () => {
+    // Check computed styles of #line-numbers vs #code-editor
+    const lineNumbersStyle = await page.evaluate(() => {
+      const ln = document.getElementById("line-numbers");
+      const ed = document.getElementById("code-editor");
+      if (!ln || !ed) return null;
+      const lnComputed = window.getComputedStyle(ln);
+      const edComputed = window.getComputedStyle(ed);
+      return {
+        lnWhiteSpace: lnComputed.whiteSpace,
+        lnFontSize: lnComputed.fontSize,
+        edFontSize: edComputed.fontSize,
+        lnLineHeight: lnComputed.lineHeight,
+        edLineHeight: edComputed.lineHeight,
+        lnText: ln.textContent || "",
+        edValue: (ed as HTMLTextAreaElement).value || "",
+      };
+    });
+
+    expect(lineNumbersStyle).not.toBeNull();
+    // white-space must be pre or pre-line so newlines are preserved and numbers do not wrap into same line
+    expect(["pre", "pre-line", "pre-wrap"]).toContain(lineNumbersStyle!.lnWhiteSpace);
+    // font size and line height must match exactly so vertical positioning does not drift
+    expect(lineNumbersStyle!.lnFontSize).toBe(lineNumbersStyle!.edFontSize);
+    expect(lineNumbersStyle!.lnLineHeight).toBe(lineNumbersStyle!.edLineHeight);
+
+    // Number of lines in lineNumbers text must match textarea line count
+    const edLineCount = lineNumbersStyle!.edValue.split("\n").length;
+    const lnLines = lineNumbersStyle!.lnText.trim().split("\n");
+    expect(lnLines.length).toBe(edLineCount);
+
+    // Every line in lnLines must be a single number (e.g. "1", "2", ... not "1 2" or multiple digits on one line)
+    for (let i = 0; i < lnLines.length; i++) {
+      expect(lnLines[i].trim()).toBe(String(i + 1));
+    }
+
+    await page.screenshot({ path: path.join(screenshotsDir, "07_editor_line_numbers_fixed.png") });
+  });
 });

@@ -89,11 +89,7 @@ export function initApp() {
 
   function updateLineNumbers() {
     const lines = codeTextarea.value.split("\n").length;
-    let numbers = "";
-    for (let i = 1; i <= lines; i++) {
-      numbers += `${i}\n`;
-    }
-    lineNumbers.textContent = numbers;
+    lineNumbers.textContent = Array.from({ length: lines }, (_, i) => i + 1).join("\n");
   }
 
   function loadPreset(id: string) {
