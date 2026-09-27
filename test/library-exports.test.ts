@@ -7,6 +7,7 @@ import {
   Constraint,
   sum,
   HiGHS,
+  GLPKSolver,
   MockSolver,
   LpProblem,
   LpVariable,
@@ -22,6 +23,7 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect(Constraint).toBeDefined();
     expect(sum).toBeDefined();
     expect(HiGHS).toBeDefined();
+    expect(GLPKSolver).toBeDefined();
     expect(MockSolver).toBeDefined();
     expect(LpProblem).toBeDefined();
     expect(LpVariable).toBeDefined();

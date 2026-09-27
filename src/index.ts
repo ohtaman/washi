@@ -69,6 +69,7 @@ export {
   type SolverCapabilities,
   HighsSolver,
   HiGHS,
+  GLPKSolver,
   MockSolver,
   registerSolver,
   getSolver,
@@ -78,3 +79,4 @@ export {
 
 // WASM Engine Access
 export { getHighs, solveLpWithHighs, setHighsWasmUrl } from "./highs-loader.js";
+export { getGlpk } from "./glpk-loader.js";

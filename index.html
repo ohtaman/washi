@@ -30,9 +30,9 @@
           <button type="button" id="lang-btn-ja" class="lang-btn" title="日本語">JA</button>
         </div>
 
-        <div class="status-chip">
+        <div class="status-chip" id="solver-status-chip">
           <span class="status-indicator"></span>
-          <span>HiGHS v1.15.3 (WASM)</span>
+          <span id="solver-badge-text">HiGHS v1.15.3 (WASM)</span>
         </div>
         <a
           href="https://github.com/ERGO-Code/HiGHS"
@@ -55,6 +55,14 @@
             <span class="toolbar-label" data-i18n="modelSelectLabel">Problem Model:</span>
             <select id="preset-select" class="custom-select" aria-label="Problem Model Selector">
               <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <div class="solver-selector-group">
+            <span class="toolbar-label" data-i18n="solverSelectLabel">Solver:</span>
+            <select id="solver-select" class="custom-select custom-select-sm" aria-label="Solver Engine Selector">
+              <option value="highs" selected>HiGHS (WASM)</option>
+              <option value="glpk">GLPK (WASM)</option>
             </select>
           </div>
 

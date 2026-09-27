@@ -3,6 +3,7 @@ export type Locale = "en" | "ja";
 export interface TranslationDict {
   headerSubtitle: string;
   modelSelectLabel: string;
+  solverSelectLabel: string;
   resetButton: string;
   viewLpButton: string;
   runButton: string;
@@ -39,6 +40,7 @@ export const translations: Record<Locale, TranslationDict> = {
   en: {
     headerSubtitle: "Mathematical Optimization Modeler",
     modelSelectLabel: "Problem Model:",
+    solverSelectLabel: "Solver:",
     resetButton: "Reset",
     viewLpButton: "View LP",
     runButton: "Run Optimization",
@@ -71,6 +73,7 @@ export const translations: Record<Locale, TranslationDict> = {
   ja: {
     headerSubtitle: "数理最適化モデラー",
     modelSelectLabel: "問題モデル:",
+    solverSelectLabel: "ソルバー:",
     resetButton: "初期化",
     viewLpButton: "LP 構文",
     runButton: "最適化を実行",

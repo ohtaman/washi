@@ -1,5 +1,6 @@
 import type { Solver, SolverOptions } from "./types.js";
 import { HighsSolver } from "./highs.js";
+import { GLPKSolver } from "./glpk.js";
 import { MockSolver } from "./mock.js";
 
 type SolverFactory = (options?: SolverOptions) => Solver;
@@ -8,6 +9,7 @@ const solverRegistry = new Map<string, SolverFactory>();
 
 // Register default built-in solvers
 solverRegistry.set("highs", (opts) => new HighsSolver(opts));
+solverRegistry.set("glpk", (opts) => new GLPKSolver(opts));
 solverRegistry.set("mock", (opts) => new MockSolver(opts));
 
 let defaultSolverFactory: SolverFactory = (opts) => new HighsSolver(opts);

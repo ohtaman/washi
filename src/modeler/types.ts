@@ -10,6 +10,7 @@ export type ComparisonSense = "<=" | ">=" | "==";
 
 export type SolverStatus =
   | "Optimal"
+  | "Feasible"
   | "Infeasible"
   | "Unbounded"
   | "TimeLimit"

@@ -2,6 +2,7 @@ import { EXAMPLES } from "../examples/index.js";
 import { executeModelCode } from "./runner.js";
 import { DOCS_HTML } from "./docs.js";
 import type { Model } from "../modeler/model.js";
+import { setDefaultSolver } from "../modeler/solvers/registry.js";
 import {
   initLocale,
   setLocale,
@@ -104,6 +105,26 @@ export function initApp() {
     loadPreset(presetSelect.value);
   });
 
+  // Solver selector
+  const solverSelect = document.getElementById("solver-select") as HTMLSelectElement | null;
+  const solverBadgeText = document.getElementById("solver-badge-text") as HTMLSpanElement | null;
+  let currentSolver: "highs" | "glpk" = "highs";
+
+  function updateSolver(solverName: "highs" | "glpk") {
+    currentSolver = solverName;
+    setDefaultSolver(solverName);
+    if (solverBadgeText) {
+      solverBadgeText.textContent =
+        solverName === "glpk" ? "GLPK v5.0.0 (WASM)" : "HiGHS v1.15.3 (WASM)";
+    }
+  }
+
+  if (solverSelect) {
+    solverSelect.addEventListener("change", () => {
+      updateSolver(solverSelect.value as "highs" | "glpk");
+    });
+  }
+
   // Editor events
   codeTextarea.addEventListener("input", updateLineNumbers);
   codeTextarea.addEventListener("scroll", () => {
@@ -144,9 +165,12 @@ export function initApp() {
   // Run Optimization
   async function runOptimization() {
     runBtn.disabled = true;
-    runBtn.textContent = "Solving with HiGHS...";
+    const solverDisplayName = currentSolver === "glpk" ? "GLPK" : "HiGHS";
+    runBtn.textContent = `Solving with ${solverDisplayName}...`;
     metricStatus.textContent = "Solving...";
     metricStatus.className = "metric-value";
+
+    setDefaultSolver(currentSolver);
 
     try {
       const result = await executeModelCode(codeTextarea.value);
@@ -178,7 +202,7 @@ export function initApp() {
       // Render LP String (avoid freezing DOM if model has tens of thousands of variables)
       if (currentModel) {
         if (currentModel.numVars > 5000) {
-          lpOutput.textContent = `// 大規模モデル（決定変数: ${currentModel.numVars.toLocaleString()}個, 制約: ${currentModel.numConstrs.toLocaleString()}本）\n// ブラウザの描画負荷を抑えるため自動プレビューを省略しています。\n// 完全な LP 文字列は「LP 表示」ボタンまたは model.toLpString() で取得できます。`;
+          lpOutput.textContent = `// Large scale model (${currentModel.numVars.toLocaleString()} vars, ${currentModel.numConstrs.toLocaleString()} constrs)\n// Automatic preview omitted for performance.`;
         } else {
           lpOutput.textContent = currentModel.toLpString();
         }
@@ -191,7 +215,7 @@ export function initApp() {
       showTab("tab-results");
     } finally {
       runBtn.disabled = false;
-      runBtn.textContent = "▶ Run Optimization";
+      runBtn.textContent = t("runButton");
     }
   }
 

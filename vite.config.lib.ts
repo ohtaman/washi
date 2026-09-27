@@ -12,7 +12,17 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["highs", "node:fs", "node:path", "node:url", "fs", "path", "url"],
+      external: [
+        "highs",
+        "glpk.js",
+        "glpk.js/node",
+        "node:fs",
+        "node:path",
+        "node:url",
+        "fs",
+        "path",
+        "url",
+      ],
     },
   },
 });

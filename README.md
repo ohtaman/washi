@@ -157,14 +157,19 @@ import { Model, MockSolver, HiGHS } from "opt-ts";
 const m = new Model();
 // ... define model ...
 
-// 1. Solve with HiGHS (default)
-await m.solve(HiGHS);
+// 1. Solve with HiGHS (default, supports LP, MIP, and QP)
+await m.solve("highs");
 
-// 2. Solve with MockSolver for ultra-fast CI/CD unit tests without WASM
+// 2. Solve with GLPK (GNU Linear Programming Kit WASM, supports LP and MIP)
+import { GLPKSolver } from "opt-ts";
+await m.solve(new GLPKSolver());
+// or simply: await m.solve("glpk");
+
+// 3. Solve with MockSolver for ultra-fast CI/CD unit tests without WASM
 const mock = new MockSolver({ values: { x: 10, y: 5 }, objectiveValue: 500 });
 await m.solve(mock);
 
-// 3. Define your own custom solver (e.g., enterprise backend, cloud worker)
+// 4. Define your own custom solver (e.g., enterprise backend, cloud worker)
 const myCustomSolver = {
   name: "InternalClusterSolver",
   async solve(modelData, lpResult) {

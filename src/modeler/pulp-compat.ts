@@ -22,6 +22,7 @@ export const LpBinary: VarType = "Binary";
 
 export const LpStatus: Record<SolverStatus, string> = {
   Optimal: "Optimal",
+  Feasible: "Feasible",
   Infeasible: "Infeasible",
   Unbounded: "Unbounded",
   TimeLimit: "Not Solved (Time Limit)",

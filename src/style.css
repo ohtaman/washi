@@ -241,7 +241,8 @@ body {
   flex-wrap: wrap;
 }
 
-.preset-selector-group {
+.preset-selector-group,
+.solver-selector-group {
   display: flex;
   align-items: center;
   gap: 8px;

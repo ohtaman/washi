@@ -45,6 +45,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "glpk.js": "^5.0.0",
     "highs": "^1.15.3"
   },
   "devDependencies": {

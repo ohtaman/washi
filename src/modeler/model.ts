@@ -284,8 +284,13 @@ export class Model {
       activeSolver = getSolver(solverOrOptions, options);
       activeOptions = options || {};
     } else {
-      activeSolver = this.solver || getSolver();
-      activeOptions = (solverOrOptions as SolveOptions) || {};
+      activeOptions = { ...(solverOrOptions as SolveOptions) };
+      if (activeOptions.solver) {
+        activeSolver = getSolver(activeOptions.solver, activeOptions);
+        delete activeOptions.solver;
+      } else {
+        activeSolver = this.solver || getSolver();
+      }
     }
 
     // Capability check: Validate if solver supports quadratic objectives

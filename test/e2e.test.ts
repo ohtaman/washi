@@ -308,4 +308,63 @@ await m.optimize();
 
     await page.screenshot({ path: path.join(screenshotsDir, "07_editor_line_numbers_fixed.png") });
   });
+
+  it("switches solver engine to GLPK and solves Production Planning problem", async () => {
+    // Select initial production preset
+    await page.selectOption("#preset-select", "production");
+
+    // Select GLPK solver
+    await page.selectOption("#solver-select", "glpk");
+
+    // Verify header status badge updated
+    const badgeText = await page.textContent("#solver-badge-text");
+    expect(badgeText).toContain("GLPK v5.0.0 (WASM)");
+
+    // Click Run Optimization
+    await page.click("#run-btn");
+
+    // Wait for status to become Optimal
+    await page.waitForFunction(
+      () =>
+        document.getElementById("metric-status")?.textContent === "Optimal" &&
+        document.getElementById("metric-obj")?.textContent === "1100",
+      { timeout: 15000 }
+    );
+
+    // Verify chairs and tables values in table
+    const tableText = await page.textContent("#vars-tbody");
+    expect(tableText).toContain("chairs");
+    expect(tableText).toContain("20");
+    expect(tableText).toContain("tables");
+    expect(tableText).toContain("10");
+
+    await page.screenshot({ path: path.join(screenshotsDir, "08_glpk_production_optimal.png") });
+  }, 15000);
+
+  it("handles QP model with GLPK gracefully by reporting capability error", async () => {
+    // Select GLPK solver
+    await page.selectOption("#solver-select", "glpk");
+
+    // Select QP preset
+    await page.selectOption("#preset-select", "portfolio_qp");
+
+    // Click Run Optimization
+    await page.click("#run-btn");
+
+    // Wait for status to become Error
+    await page.waitForFunction(
+      () => document.getElementById("metric-status")?.textContent === "Error",
+      { timeout: 15000 }
+    );
+
+    // Verify error message in solver logs
+    const logText = await page.textContent("#log-output");
+    expect(logText).toContain("does not support quadratic objectives (QP)");
+
+    await page.screenshot({ path: path.join(screenshotsDir, "09_glpk_qp_capability_error.png") });
+
+    // Switch solver back to HiGHS
+    await page.selectOption("#solver-select", "highs");
+    expect(await page.textContent("#solver-badge-text")).toContain("HiGHS v1.15.3 (WASM)");
+  }, 15000);
 });
