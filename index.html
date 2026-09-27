@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C23B22'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='%23FFFFFF' font-family='serif'>高</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HiGHS Web Modeler — 数理最適化 WebAssembly モデラー</title>
+    <meta name="description" content="HiGHS WebAssembly ソルバーと、Python PuLP / python-mip のように直感的に扱える数理最適化モデラー。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-crest">
+          <span>高</span>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">HiGHS Web Modeler</h1>
+          <span class="brand-subtitle">数理最適化ソルバー</span>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <div class="status-chip">
+          <span class="status-indicator"></span>
+          <span>HiGHS v1.15.3 (WASM)</span>
+        </div>
+        <a
+          href="https://github.com/ERGO-Code/HiGHS"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="external-link"
+        >
+          <span>GitHub / HiGHS</span>
+          <span class="link-arrow">↗</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- App Container -->
+    <main class="app-container">
+      <!-- Left Pane: Code Editor -->
+      <section class="editor-pane" aria-label="モデリングコードエディタ">
+        <div class="editor-toolbar">
+          <div class="preset-selector-group">
+            <span class="toolbar-label">問題モデル:</span>
+            <select id="preset-select" class="custom-select" aria-label="問題モデル選択">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+
+          <div class="editor-actions">
+            <button id="reset-btn" class="btn btn-secondary" title="初期コードに復元">
+              初期化
+            </button>
+            <button id="gen-lp-btn" class="btn btn-secondary" title="CPLEX LP 形式を表示">
+              LP 表示
+            </button>
+            <button id="run-btn" class="btn btn-primary" title="HiGHS WASM で最適化を実行">
+              最適化を実行
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-wrapper">
+          <div id="line-numbers" class="line-numbers" aria-hidden="true"></div>
+          <textarea
+            id="code-editor"
+            class="code-textarea"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            aria-label="最適化モデルの JavaScript コード"
+          ></textarea>
+        </div>
+      </section>
+
+      <!-- Right Pane: Results & Inspector -->
+      <section class="results-pane" aria-label="最適化結果とダッシュボード">
+        <!-- Navigation Tabs -->
+        <nav class="tabs-header" role="tablist">
+          <button
+            class="tab-btn active"
+            data-tab="tab-results"
+            role="tab"
+            aria-selected="true"
+            id="tab-btn-results"
+          >
+            解と変数一覧
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="tab-lp"
+            role="tab"
+            aria-selected="false"
+            id="tab-btn-lp"
+          >
+            CPLEX LP 構文
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="tab-logs"
+            role="tab"
+            aria-selected="false"
+            id="tab-btn-logs"
+          >
+            ソルバーログ
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="tab-docs"
+            role="tab"
+            aria-selected="false"
+            id="tab-btn-docs"
+          >
+            PuLP / MIP 移行手引
+          </button>
+        </nav>
+
+        <!-- Tab 1: Solution Dashboard -->
+        <div id="tab-results" class="tab-content active" role="tabpanel">
+          <!-- Summary Metrics Cards -->
+          <div class="summary-grid">
+            <div class="metric-card">
+              <span class="metric-label">求解ステータス</span>
+              <span id="metric-status" class="metric-value status-optimal">準備完了</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">最適目的関数値</span>
+              <span id="metric-obj" class="metric-value">--</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">計算時間</span>
+              <span id="metric-time" class="metric-value">--</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">決定変数数</span>
+              <span id="metric-vars" class="metric-value">--</span>
+            </div>
+          </div>
+
+          <!-- Problem Visualizer Section -->
+          <div class="panel-section">
+            <div class="section-title">
+              <span>解の可視化</span>
+            </div>
+            <div id="visualizer-container" class="visualizer-box">
+              <!-- Visualized content -->
+            </div>
+          </div>
+
+          <!-- Variables Table -->
+          <div class="panel-section">
+            <div class="section-title">
+              <span>決定変数の最適値</span>
+              <label class="filter-label">
+                <input type="checkbox" id="filter-non-zero" />
+                非ゼロ変数のみ表示
+              </label>
+            </div>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>変数名</th>
+                    <th>種類</th>
+                    <th>最適値 (Primal)</th>
+                    <th>定義域 [下限, 上限]</th>
+                    <th>被約費用 (Reduced Cost)</th>
+                  </tr>
+                </thead>
+                <tbody id="vars-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: CPLEX LP Viewer -->
+        <div id="tab-lp" class="tab-content" role="tabpanel">
+          <div class="panel-section">
+            <div class="section-title">
+              <span>生成された CPLEX LP 形式</span>
+              <span class="section-subtitle">CPLEX, Gurobi, GLPK, SCIP 等と完全互換</span>
+            </div>
+            <pre id="lp-output" class="code-display">// LP 出力がここに表示されます...</pre>
+          </div>
+        </div>
+
+        <!-- Tab 3: Logs Viewer -->
+        <div id="tab-logs" class="tab-content" role="tabpanel">
+          <div class="panel-section">
+            <div class="section-title">
+              <span>ソルバーログと標準出力</span>
+            </div>
+            <pre id="log-output" class="code-display">// ログがここに表示されます...</pre>
+          </div>
+        </div>
+
+        <!-- Tab 4: Migration & Docs -->
+        <div id="tab-docs" class="tab-content" role="tabpanel">
+          <div id="docs-content">
+            <!-- Dynamically injected from docs.ts -->
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
