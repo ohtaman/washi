@@ -8,10 +8,18 @@ import {
   sum,
   HiGHS,
   GLPKSolver,
+  Z3Solver,
+  registerZ3Solver,
   MockSolver,
   LpProblem,
   LpVariable,
   MipModel,
+  BoolVar,
+  and,
+  or,
+  not,
+  implies,
+  xor,
 } from "../src/index.js";
 
 describe("opt-ts Library Entry Point Exports", () => {
@@ -24,10 +32,18 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect(sum).toBeDefined();
     expect(HiGHS).toBeDefined();
     expect(GLPKSolver).toBeDefined();
+    expect(Z3Solver).toBeDefined();
+    expect(registerZ3Solver).toBeDefined();
     expect(MockSolver).toBeDefined();
     expect(LpProblem).toBeDefined();
     expect(LpVariable).toBeDefined();
     expect(MipModel).toBeDefined();
+    expect(BoolVar).toBeDefined();
+    expect(and).toBeDefined();
+    expect(or).toBeDefined();
+    expect(not).toBeDefined();
+    expect(implies).toBeDefined();
+    expect(xor).toBeDefined();
   });
 
   it("can formulate and solve a simple MIP using only root exports", async () => {

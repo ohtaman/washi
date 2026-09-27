@@ -9,6 +9,7 @@ import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
+import { BoolVar, BoolExpr } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
@@ -23,12 +24,21 @@ export interface ModelOptions {
  * High-level intuitive mathematical programming model.
  * Inspired by PuLP (Python) and python-mip, running directly with HiGHS WASM in browser and Node.js.
  */
+export interface LogicalConstraint {
+  name: string;
+  expr: BoolExpr | Constraint;
+}
+
 export class Model {
   public name: string;
   public sense: OptimizationSense;
   public objective: LinExpr | QuadExpr;
   public variables: Var[] = [];
   public constraints: Constraint[] = [];
+  public boolVars: BoolVar[] = [];
+  public logicalConstraints: LogicalConstraint[] = [];
+  public unsatCore: string[] = [];
+  public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
   private constrMapByName = new Map<string, Constraint>();
@@ -207,9 +217,30 @@ export class Model {
   }
 
   /**
-   * Add a linear constraint to the model
+   * Add a Boolean (propositional logic) variable for SMT / SAT modeling
    */
-  addConstraint(constraint: Constraint | string, name?: string): Constraint {
+  addBoolVar(name?: string): BoolVar {
+    const bv = new BoolVar(name);
+    this.boolVars.push(bv);
+    return bv;
+  }
+
+  /**
+   * Add a linear or logical constraint to the model
+   */
+  addConstraint(constraint: Constraint | string, name?: string): Constraint;
+  addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
+  addConstraint(constraint: Constraint | BoolExpr | string, name?: string): Constraint | BoolExpr;
+  addConstraint(constraint: Constraint | BoolExpr | string, name?: string): Constraint | BoolExpr {
+    if (constraint instanceof BoolExpr) {
+      const constrName = name || `lc_${this.logicalConstraints.length + 1}`;
+      this.logicalConstraints.push({
+        name: constrName,
+        expr: constraint,
+      });
+      return constraint;
+    }
+
     let constr: Constraint;
 
     if (typeof constraint === "string") {
@@ -233,14 +264,14 @@ export class Model {
   /**
    * python-mip / Gurobi style alias for addConstraint
    */
-  addConstr(constraint: Constraint | string, name?: string): Constraint {
+  addConstr(constraint: Constraint | BoolExpr | string, name?: string): Constraint | BoolExpr {
     return this.addConstraint(constraint, name);
   }
 
   /**
    * Add multiple constraints
    */
-  addConstrs(constraints: (Constraint | string)[]): Constraint[] {
+  addConstrs(constraints: (Constraint | BoolExpr | string)[]): (Constraint | BoolExpr)[] {
     return constraints.map((c) => this.addConstraint(c));
   }
 
@@ -308,6 +339,8 @@ export class Model {
       objective: this.objective,
       constraints: this.constraints,
       variables: this.variables,
+      logicalConstraints: this.logicalConstraints,
+      boolVars: this.boolVars,
     };
 
     const lpData: LpExportResult = generateLpString(modelData);
@@ -323,9 +356,12 @@ export class Model {
     const reducedCostsRecord: Record<string, number> = {};
     const slacksRecord: Record<string, number> = {};
 
+    this.values.clear();
+
     // Map variable solutions back to Var objects
     if (result.values) {
       for (const [vName, primal] of Object.entries(result.values)) {
+        this.values.set(vName, primal);
         const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
         if (v) {
           v.value = primal;
@@ -391,5 +427,104 @@ export class Model {
     options?: SolveOptions
   ): Promise<SolverStatus> {
     return this.optimize(solverOrOptions, options);
+  }
+
+  /**
+   * Check satisfiability of the model without requiring an objective function.
+   * Can be used to verify feasibility or diagnose infeasibilities / unsat core.
+   */
+  async check(
+    solverOrOptions?: Solver | string | SolveOptions,
+    options?: SolveOptions
+  ): Promise<{
+    status: "Sat" | "Unsat" | "Unknown";
+    values: Record<string, number | boolean>;
+    unsatCore?: string[];
+    runTime?: number;
+  }> {
+    let activeSolver: Solver;
+    let activeOptions: SolveOptions;
+
+    if (
+      solverOrOptions &&
+      typeof solverOrOptions === "object" &&
+      "solve" in solverOrOptions &&
+      typeof (solverOrOptions as any).solve === "function"
+    ) {
+      activeSolver = solverOrOptions as Solver;
+      activeOptions = options || {};
+    } else if (typeof solverOrOptions === "function") {
+      activeSolver = new (solverOrOptions as any)(options);
+      activeOptions = options || {};
+    } else if (typeof solverOrOptions === "string") {
+      activeSolver = getSolver(solverOrOptions, options);
+      activeOptions = options || {};
+    } else {
+      activeOptions = { ...(solverOrOptions as SolveOptions) };
+      if (activeOptions.solver) {
+        activeSolver = getSolver(activeOptions.solver, activeOptions);
+        delete activeOptions.solver;
+      } else {
+        activeSolver = this.solver || getSolver();
+      }
+    }
+
+    // 1. Guard against logical constraints if solver lacks SMT
+    if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
+      throw new Error(
+        `Solver "${activeSolver.name}" does not support SMT / logical constraints (or, implies, not, xor). Please use an SMT-capable solver such as Z3.`
+      );
+    }
+
+    // 2. If solver implements native check() (e.g. Z3)
+    if (typeof activeSolver.check === "function") {
+      const checkResult = await activeSolver.check(
+        {
+          name: this.name,
+          variables: this.variables,
+          boolVars: this.boolVars,
+          constraints: this.constraints,
+          logicalConstraints: this.logicalConstraints,
+        },
+        activeOptions
+      );
+      this.unsatCore = checkResult.unsatCore || [];
+      if (checkResult.values) {
+        this.values.clear();
+        for (const [name, val] of Object.entries(checkResult.values)) {
+          this.values.set(name, val);
+          const v = this.getVarByName(name);
+          if (v && typeof val === "number") {
+            v.value = val;
+          }
+        }
+      }
+      return checkResult;
+    }
+
+    // 3. Fallback: Linear Feasibility check using standard solve() with 0 objective
+    const originalObjective = this.objective;
+    const originalSense = this.sense;
+    try {
+      this.objective = new LinExpr();
+      this.sense = "Minimize";
+      const status = await this.optimize(activeSolver, activeOptions);
+      const isSat = status === "Optimal" || status === "Feasible";
+      const isUnsat = status === "Infeasible";
+
+      const values: Record<string, number | boolean> = {};
+      for (const v of this.variables) {
+        values[v.name] = v.value ?? 0;
+      }
+
+      return {
+        status: isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown",
+        values,
+        runTime: this.runTime,
+      };
+    } finally {
+      this.objective = originalObjective;
+      this.sense = originalSense;
+    }
   }
 }

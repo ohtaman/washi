@@ -4,6 +4,16 @@ export { Var, type VarOptions } from "./variable.js";
 export { LinExpr, sum, xsum, lpSum } from "./expression.js";
 export { QuadExpr, type QuadTerm } from "./quad-expr.js";
 export { Constraint } from "./constraint.js";
+export {
+  BoolVar,
+  BoolExpr,
+  BoolOp,
+  and,
+  or,
+  not,
+  implies,
+  xor,
+} from "./boolean-expr.js";
 export { parseExpr, parseConstraint, expr } from "./parser.js";
 export { generateLpString, type LpModelData, type LpExportResult } from "./lp-writer.js";
 

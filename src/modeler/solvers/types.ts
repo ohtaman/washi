@@ -54,6 +54,17 @@ export interface SolverCapabilities {
   supportsQCQP?: boolean;
   /** Supports satisfiability modulo theories / logical constraints */
   supportsSMT?: boolean;
+  /** Supports extracting minimal unsatisfiable core */
+  supportsUnsatCore?: boolean;
+}
+
+export interface SolverCheckResult {
+  status: "Sat" | "Unsat" | "Unknown";
+  values: Record<string, number | boolean>;
+  unsatCore?: string[];
+  runTime?: number;
+  logs?: string[];
+  raw?: any;
 }
 
 /**
@@ -76,4 +87,11 @@ export interface Solver {
     lpResult: LpExportResult,
     options?: SolverOptions
   ): Promise<SolverResult>;
+  /**
+   * Check satisfiability of the model and logical constraints (optional)
+   */
+  check?(
+    modelData: any,
+    options?: SolverOptions
+  ): Promise<SolverCheckResult>;
 }

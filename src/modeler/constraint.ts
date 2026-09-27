@@ -1,5 +1,6 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
+import { BoolOp, type LogicElement } from "./boolean-expr.js";
 
 let constrIdCounter = 0;
 
@@ -35,6 +36,27 @@ export class Constraint {
   /** PuLP style dual price accessor */
   get pi(): number | null {
     return this.dual;
+  }
+
+  // Logical operators for SMT / SAT
+  public and(other: LogicElement): BoolOp {
+    return new BoolOp("and", [this, other]);
+  }
+
+  public or(other: LogicElement): BoolOp {
+    return new BoolOp("or", [this, other]);
+  }
+
+  public implies(consequent: LogicElement): BoolOp {
+    return new BoolOp("implies", [this, consequent]);
+  }
+
+  public xor(other: LogicElement): BoolOp {
+    return new BoolOp("xor", [this, other]);
+  }
+
+  public not(): BoolOp {
+    return new BoolOp("not", [this]);
   }
 
   toString(): string {
