@@ -245,4 +245,28 @@ await m.optimize();
     // Take screenshot of portfolio QP results
     await page.screenshot({ path: path.join(screenshotsDir, "06_portfolio_qp_optimal.png") });
   }, 15000);
+
+  it("switches language between English and Japanese dynamically", async () => {
+    // Click JA button
+    await page.click("#lang-btn-ja");
+
+    // Verify labels switched to Japanese
+    await page.waitForFunction(
+      () => document.getElementById("run-btn")?.textContent?.includes("最適化を実行"),
+      { timeout: 5000 }
+    );
+    expect(await page.textContent(".toolbar-label")).toContain("問題モデル:");
+    expect(await page.textContent("#tab-btn-results")).toContain("解と変数一覧");
+
+    // Click EN button
+    await page.click("#lang-btn-en");
+
+    // Verify labels switched back to English
+    await page.waitForFunction(
+      () => document.getElementById("run-btn")?.textContent?.includes("Run Optimization"),
+      { timeout: 5000 }
+    );
+    expect(await page.textContent(".toolbar-label")).toContain("Problem Model:");
+    expect(await page.textContent("#tab-btn-results")).toContain("Solution & Variables");
+  });
 });

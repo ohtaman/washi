@@ -154,6 +154,40 @@ body {
   background: var(--color-seiji);
 }
 
+/* Language Switcher */
+.lang-switch-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-washi);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  gap: 2px;
+}
+
+.lang-btn {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-sumi-muted);
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lang-btn:hover {
+  color: var(--text-sumi);
+}
+
+.lang-btn.active {
+  background: var(--bg-surface);
+  color: var(--color-hi);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 .external-link {
   color: var(--text-sumi-secondary);
   text-decoration: none;

@@ -2,6 +2,15 @@ import { EXAMPLES } from "../examples/index.js";
 import { executeModelCode } from "./runner.js";
 import { DOCS_HTML } from "./docs.js";
 import type { Model } from "../modeler/model.js";
+import {
+  initLocale,
+  setLocale,
+  getLocale,
+  onLocaleChange,
+  t,
+  type Locale,
+  type TranslationDict,
+} from "./i18n.js";
 
 export function initApp() {
   const codeTextarea = document.getElementById("code-editor") as HTMLTextAreaElement;
@@ -10,6 +19,10 @@ export function initApp() {
   const runBtn = document.getElementById("run-btn") as HTMLButtonElement;
   const genLpBtn = document.getElementById("gen-lp-btn") as HTMLButtonElement;
   const resetBtn = document.getElementById("reset-btn") as HTMLButtonElement;
+
+  // Language buttons
+  const langBtnEn = document.getElementById("lang-btn-en") as HTMLButtonElement | null;
+  const langBtnJa = document.getElementById("lang-btn-ja") as HTMLButtonElement | null;
 
   // Tabs
   const tabButtons = document.querySelectorAll(".tab-btn");
@@ -33,6 +46,37 @@ export function initApp() {
 
   let currentModel: Model | null = null;
   let currentVisualizerType: string = "production";
+
+  function applyLocale(locale: Locale) {
+    document.documentElement.lang = locale;
+    if (langBtnEn && langBtnJa) {
+      if (locale === "ja") {
+        langBtnJa.classList.add("active");
+        langBtnEn.classList.remove("active");
+      } else {
+        langBtnEn.classList.add("active");
+        langBtnJa.classList.remove("active");
+      }
+    }
+
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n") as keyof TranslationDict;
+      if (key) {
+        el.textContent = t(key);
+      }
+    });
+
+    renderVisualizer();
+  }
+
+  if (langBtnEn) {
+    langBtnEn.addEventListener("click", () => setLocale("en"));
+  }
+  if (langBtnJa) {
+    langBtnJa.addEventListener("click", () => setLocale("ja"));
+  }
+
+  onLocaleChange(applyLocale);
 
   // Populate presets
   presetSelect.innerHTML = "";
@@ -359,13 +403,14 @@ export function initApp() {
 
   function renderProductionCards() {
     const vars = currentModel?.variables || [];
+    const unitLabel = getLocale() === "ja" ? "個" : "units";
     let html = `<div style="display: flex; gap: 14px; flex-wrap: wrap;">`;
     for (const v of vars) {
       html += `
         <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); display: flex; flex-direction: column; gap: 4px; min-width: 140px;">
           <span style="font-size: 0.76rem; color: var(--text-sumi-muted);">${v.name}</span>
           <span style="font-family: var(--font-mono); font-size: 1.35rem; font-weight: 600; color: var(--color-hi);">
-            ${v.value !== null ? v.value : 0} 個
+            ${v.value !== null ? v.value : 0} ${unitLabel}
           </span>
         </div>
       `;
@@ -396,24 +441,25 @@ export function initApp() {
     }
 
     openedWarehouses.sort((a, b) => b.shipped - a.shipped);
+    const unitLabel = t("supplyChainWarehouseUnit");
 
     let html = `
       <div style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
         <div style="display: flex; gap: 14px; flex-wrap: wrap;">
           <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); min-width: 150px;">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">開設拠点数</div>
+            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">${t("supplyChainOpenedWarehouses")}</div>
             <div style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--color-hi);">
-              ${openedWarehouses.length} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-sumi-secondary);">/ 50 拠点</span>
+              ${openedWarehouses.length} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-sumi-secondary);">/ 50</span>
             </div>
           </div>
           <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); min-width: 150px;">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">総配送出荷量</div>
+            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">${t("supplyChainTotalShipped")}</div>
             <div style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--color-ai);">
-              ${Math.round(totalShipped).toLocaleString()} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-sumi-secondary);">個</span>
+              ${Math.round(totalShipped).toLocaleString()} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-sumi-secondary);">${unitLabel}</span>
             </div>
           </div>
           <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); min-width: 150px;">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">需要充足率</div>
+            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">Demand Coverage</div>
             <div style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--color-evergreen);">
               100.0%
             </div>
@@ -421,13 +467,13 @@ export function initApp() {
         </div>
 
         <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-sumi); margin-top: 4px;">
-          稼働物流拠点トップ 8（総出荷量順）:
+          ${t("supplyChainTopWarehouses")}
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;">
           ${openedWarehouses.slice(0, 8).map(wh => `
             <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 8px 12px; border-radius: var(--radius-sm);">
-              <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-sumi);">拠点 #${wh.id}</div>
-              <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-hi); font-weight: 600;">${wh.shipped.toLocaleString()} 個</div>
+              <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-sumi);">DC #${wh.id}</div>
+              <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-hi); font-weight: 600;">${wh.shipped.toLocaleString()} ${unitLabel}</div>
             </div>
           `).join("")}
         </div>
@@ -473,21 +519,21 @@ export function initApp() {
       <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
           <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">最適ポートフォリオ分散 (Risk)</div>
+            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">${t("portfolioRiskLabel")}</div>
             <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--color-hi);">${variance.toFixed(6)}</div>
           </div>
           <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">年率ボラティリティ (Std Dev σ)</div>
+            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">${t("portfolioVolLabel")}</div>
             <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--text-sumi);">${(volatility * 100).toFixed(2)}%</div>
           </div>
           <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">投資比率合計 (Budget)</div>
+            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">${t("portfolioBudgetLabel")}</div>
             <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: #2D5A27;">${(totalWeight * 100).toFixed(1)}%</div>
           </div>
         </div>
 
         <div style="background: var(--bg-washi); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 12px;">
-          <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-sumi);">最適資産配分比率 (Asset Weights):</div>
+          <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-sumi);">${t("portfolioWeightsTitle")}</div>
           <div style="display: flex; flex-direction: column; gap: 10px;">
             ${barsHtml}
           </div>
@@ -514,6 +560,10 @@ export function initApp() {
   resetBtn.addEventListener("click", () => {
     loadPreset(presetSelect.value);
   });
+
+  // Initialize internationalization locale
+  const initialLoc = initLocale();
+  applyLocale(initialLoc);
 
   // Initial load
   loadPreset("production");
