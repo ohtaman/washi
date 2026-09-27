@@ -1,6 +1,7 @@
 import type { VarType } from "./types.js";
 import { LinExpr } from "./expression.js";
 import { Constraint } from "./constraint.js";
+import { QuadExpr } from "./quad-expr.js";
 
 let varIdCounter = 0;
 
@@ -51,18 +52,42 @@ export class Var {
     return this.value;
   }
 
-  /** Multiply variable by a scalar coefficient */
-  mul(coeff: number): LinExpr {
-    return new LinExpr(new Map([[this, coeff]]), 0);
+  /** Multiply variable by a scalar coefficient or another variable/expression */
+  mul(coeff: number): LinExpr;
+  mul(other: Var): QuadExpr;
+  mul(other: LinExpr): QuadExpr;
+  mul(other: number | Var | LinExpr): LinExpr | QuadExpr {
+    if (typeof other === "number") {
+      return new LinExpr(new Map([[this, other]]), 0);
+    }
+    if (other instanceof Var) {
+      return QuadExpr.fromProduct(this, other, 1);
+    }
+    // LinExpr: this * (c0 + sum(ci * xi)) = c0 * this + sum(ci * this * xi)
+    let result = new QuadExpr();
+    if (Math.abs(other.constant) >= 1e-12) {
+      result.linearTerms.set(this, other.constant);
+    }
+    for (const [v, c] of other.terms) {
+      const qTerm = QuadExpr.fromProduct(this, v, c);
+      result = result.add(qTerm);
+    }
+    return result;
   }
 
-  /** Add variable with another variable, linear expression, or number */
-  add(other: Var | LinExpr | number): LinExpr {
+  /** Add variable with another variable, linear/quadratic expression, or number */
+  add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
+    if (other instanceof QuadExpr) {
+      return other.add(this);
+    }
     return new LinExpr(new Map([[this, 1]]), 0).add(other);
   }
 
-  /** Subtract another variable, linear expression, or number from this variable */
-  sub(other: Var | LinExpr | number): LinExpr {
+  /** Subtract another variable, linear/quadratic expression, or number from this variable */
+  sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
+    if (other instanceof QuadExpr) {
+      return other.neg().add(this);
+    }
     return new LinExpr(new Map([[this, 1]]), 0).sub(other);
   }
 

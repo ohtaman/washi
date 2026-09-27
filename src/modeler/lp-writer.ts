@@ -2,11 +2,12 @@ import type { Var } from "./variable.js";
 import type { LinExpr } from "./expression.js";
 import type { Constraint } from "./constraint.js";
 import type { OptimizationSense } from "./types.js";
+import { QuadExpr } from "./quad-expr.js";
 
 export interface LpModelData {
   name?: string;
   sense: OptimizationSense;
-  objective: LinExpr;
+  objective: LinExpr | QuadExpr;
   constraints: Constraint[];
   variables: Var[];
 }
@@ -38,7 +39,7 @@ export function sanitizeIdentifier(raw: string, fallbackPrefix: string, id: numb
 }
 
 /**
- * Convert a linear model to standard CPLEX LP format string
+ * Convert a linear or quadratic model to standard CPLEX LP format string
  */
 export function generateLpString(modelData: LpModelData): LpExportResult {
   const { sense, objective, constraints, variables } = modelData;
@@ -83,14 +84,52 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   const objTerms: string[] = [];
   let isFirst = true;
 
-  for (const [v, coeff] of objective.terms) {
-    if (Math.abs(coeff) < 1e-12) continue;
-    const vName = varToName.get(v)!;
-    const sign = coeff >= 0 ? (isFirst ? "" : "+ ") : "- ";
-    const absCoeff = Math.abs(coeff);
-    const coeffStr = absCoeff === 1 ? "" : `${absCoeff} `;
-    objTerms.push(`${sign}${coeffStr}${vName}`);
-    isFirst = false;
+  // Extract linear terms
+  const linTerms = objective instanceof QuadExpr ? objective.linearTerms : objective.terms;
+  if (linTerms) {
+    for (const [v, coeff] of linTerms) {
+      if (Math.abs(coeff) < 1e-12) continue;
+      const vName = varToName.get(v)!;
+      const sign = coeff >= 0 ? (isFirst ? "" : "+ ") : "- ";
+      const absCoeff = Math.abs(coeff);
+      const coeffStr = absCoeff === 1 ? "" : `${absCoeff} `;
+      objTerms.push(`${sign}${coeffStr}${vName}`);
+      isFirst = false;
+    }
+  }
+
+  // Extract quadratic terms if objective is QuadExpr
+  if (objective instanceof QuadExpr && objective.quadTerms.size > 0) {
+    const quadParts: string[] = [];
+    let isFirstQuad = true;
+
+    for (const term of objective.quadTerms.values()) {
+      if (Math.abs(term.coeff) < 1e-12) continue;
+      // In CPLEX LP format [ Q ] / 2, the expression inside bracket is multiplied by 1/2.
+      // Thus, each term x1*x2 with coefficient c is represented as (2*c) inside [ ... ] / 2.
+      const doubleCoeff = 2 * term.coeff;
+      const sign = doubleCoeff >= 0 ? (isFirstQuad ? "" : "+ ") : "- ";
+      const absCoeff = Math.abs(doubleCoeff);
+      const coeffStr = absCoeff === 1 ? "" : `${absCoeff} `;
+      const v1Name = varToName.get(term.var1)!;
+      const v2Name = varToName.get(term.var2)!;
+
+      if (term.var1 === term.var2) {
+        quadParts.push(`${sign}${coeffStr}${v1Name} ^ 2`);
+      } else {
+        quadParts.push(`${sign}${coeffStr}${v1Name} * ${v2Name}`);
+      }
+      isFirstQuad = false;
+    }
+
+    if (quadParts.length > 0) {
+      const quadString = `[ ${quadParts.join(" ")} ] / 2`;
+      if (objTerms.length > 0) {
+        objTerms.push("+", quadString);
+      } else {
+        objTerms.push(quadString);
+      }
+    }
   }
 
   const objBody = objTerms.length > 0 ? objTerms.join(" ") : "0";

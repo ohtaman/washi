@@ -1,7 +1,7 @@
 export interface ExampleModel {
   id: string;
   title: string;
-  category: "MIP" | "LP" | "Combinatorial";
+  category: "MIP" | "LP" | "Combinatorial" | "QP";
   description: string;
   code: string;
   visualizer?: "table" | "nqueens" | "knapsack" | "production" | "nurse" | "supply-chain";
@@ -600,6 +600,63 @@ const customEngine = {
 
 await prob.solve(customEngine);
 console.log(\`Custom Engine: Obj=\${value(prob.objective)}, chairs=\${value(p_x)}, tables=\${value(p_y)}\`);
+`,
+  },
+  {
+    id: "portfolio_qp",
+    title: "Markowitz Portfolio Optimization (Convex QP)",
+    category: "QP",
+    description: "Convex Quadratic Programming (QP) minimizing investment risk (covariance matrix) subject to capital and target return constraints. Solved natively with HiGHS QP.",
+    visualizer: "table",
+    code: `// --- Markowitz Mean-Variance Portfolio Optimization (QP) ---
+// Minimize portfolio variance risk subject to return & budget constraints.
+const m = new Model({ name: "PortfolioOptimization", sense: "Minimize" });
+
+// 1. Assets: US Tech, US Bonds, Global Equity, Real Estate, Gold
+const assets = ["Tech", "Bonds", "GlobalEq", "RealEstate", "Gold"];
+const expectedReturns = [0.15, 0.04, 0.10, 0.08, 0.06];
+
+// Asset weights (decision variables: 0% <= w_i <= 100%)
+const w = assets.map((name) => m.addVar({ name: \`weight_\${name}\`, lb: 0, ub: 1 }));
+
+// 2. Budget constraint: sum of weights = 1.0 (100% capital allocation)
+m.addConstraint(sum(w).eq(1.0), "budget_full_investment");
+
+// 3. Target portfolio return constraint: sum(r_i * w_i) >= 9.0%
+const portfolioReturn = sum(w.map((v, i) => v.mul(expectedReturns[i])));
+m.addConstraint(portfolioReturn.ge(0.09), "min_expected_return");
+
+// 4. Covariance Matrix (risk & correlation between assets)
+const cov = [
+  [0.040, 0.002, 0.025, 0.015, 0.005], // Tech
+  [0.002, 0.005, 0.003, 0.002, 0.001], // Bonds
+  [0.025, 0.003, 0.030, 0.018, 0.008], // GlobalEq
+  [0.015, 0.002, 0.018, 0.025, 0.004], // RealEstate
+  [0.005, 0.001, 0.008, 0.004, 0.020], // Gold
+];
+
+// Objective: Minimize portfolio variance w^T * Cov * w
+let risk = new QuadExpr();
+for (let i = 0; i < assets.length; i++) {
+  for (let j = 0; j < assets.length; j++) {
+    if (cov[i][j] !== 0) {
+      risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
+    }
+  }
+}
+
+m.minimize(risk);
+
+console.log("Optimizing convex quadratic program with HiGHS WASM...");
+const status = await m.solve();
+
+console.log(\`Solve Status: \${status}\`);
+console.log(\`Optimal Portfolio Variance (Risk): \${m.objectiveValue?.toFixed(6)}\`);
+console.log(\`Portfolio Std Dev (Volatility): \${Math.sqrt(m.objectiveValue || 0).toFixed(4)}\`);
+
+assets.forEach((name, i) => {
+  console.log(\`  \${name.padEnd(12)}: \${((w[i].value || 0) * 100).toFixed(2)}%\`);
+});
 `,
   },
 ];

@@ -1,8 +1,10 @@
-import type { Solver, SolverOptions, SolverResult } from "./types.js";
+import type { Solver, SolverOptions, SolverResult, SolverCapabilities } from "./types.js";
 import type { LpModelData, LpExportResult } from "../lp-writer.js";
 import type { SolverStatus } from "../types.js";
 
 export interface MockSolverOptions extends SolverOptions {
+  name?: string;
+  capabilities?: SolverCapabilities;
   status?: SolverStatus;
   objectiveValue?: number;
   values?: Record<string, number>;
@@ -16,10 +18,13 @@ export interface MockSolverOptions extends SolverOptions {
  * Mock / Dummy Solver for deterministic testing, CI/CD, or offline usage without WASM.
  */
 export class MockSolver implements Solver {
-  public readonly name = "MockSolver";
+  public readonly name: string;
+  public readonly capabilities: SolverCapabilities;
   public options: MockSolverOptions;
 
   constructor(options: MockSolverOptions = {}) {
+    this.name = options.name || "MockSolver";
+    this.capabilities = options.capabilities || { supportsMIP: true, supportsQP: true };
     this.options = options;
   }
 

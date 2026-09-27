@@ -1,5 +1,6 @@
 import type { Var } from "./variable.js";
 import { Constraint } from "./constraint.js";
+import { QuadExpr } from "./quad-expr.js";
 
 /**
  * Represents a linear expression: c0 + c1*x1 + c2*x2 + ...
@@ -24,7 +25,12 @@ export class LinExpr {
   /**
    * Add another expression, variable, or number
    */
-  add(other: LinExpr | Var | number): LinExpr {
+  add(other: QuadExpr): QuadExpr;
+  add(other: LinExpr | Var | number): LinExpr;
+  add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
+    if (other instanceof QuadExpr) {
+      return other.add(this);
+    }
     const result = this.clone();
     if (typeof other === "number") {
       result.constant += other;
@@ -56,7 +62,12 @@ export class LinExpr {
   /**
    * Subtract another expression, variable, or number
    */
-  sub(other: LinExpr | Var | number): LinExpr {
+  sub(other: QuadExpr): QuadExpr;
+  sub(other: LinExpr | Var | number): LinExpr;
+  sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
+    if (other instanceof QuadExpr) {
+      return other.neg().add(this);
+    }
     if (typeof other === "number") {
       return this.add(-other);
     } else if ("terms" in other) {
@@ -67,15 +78,28 @@ export class LinExpr {
   }
 
   /**
-   * Multiply this expression by a scalar coefficient
+   * Multiply this expression by a scalar coefficient or variable
    */
-  mul(scalar: number): LinExpr {
-    const result = new LinExpr(new Map(), this.constant * scalar);
-    for (const [v, c] of this.terms) {
-      const prod = c * scalar;
-      if (Math.abs(prod) >= 1e-12) {
-        result.terms.set(v, prod);
+  mul(scalar: number): LinExpr;
+  mul(v: Var): QuadExpr;
+  mul(operand: number | Var): LinExpr | QuadExpr {
+    if (typeof operand === "number") {
+      const result = new LinExpr(new Map(), this.constant * operand);
+      for (const [v, c] of this.terms) {
+        const prod = c * operand;
+        if (Math.abs(prod) >= 1e-12) {
+          result.terms.set(v, prod);
+        }
       }
+      return result;
+    }
+    // operand is Var: (c0 + sum(ci * xi)) * v = c0 * v + sum(ci * xi * v)
+    let result = new QuadExpr();
+    if (Math.abs(this.constant) >= 1e-12) {
+      result.linearTerms.set(operand, this.constant);
+    }
+    for (const [v, c] of this.terms) {
+      result = result.add(QuadExpr.fromProduct(v, operand, c));
     }
     return result;
   }

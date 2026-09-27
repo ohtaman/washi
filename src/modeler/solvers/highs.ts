@@ -8,8 +8,13 @@ import { solveLp } from "../../highs-worker-client.js";
  * High-performance simplex / interior point / branch-and-cut solver.
  */
 export class HighsSolver implements Solver {
+  public static readonly capabilities = {
+    supportsMIP: true,
+    supportsQP: true,
+  };
   public readonly name = "HiGHS";
   public readonly version = "1.15.3";
+  public readonly capabilities = HighsSolver.capabilities;
   public options: SolverOptions;
 
   constructor(options: SolverOptions = {}) {

@@ -1,0 +1,97 @@
+import { describe, it, expect } from "vitest";
+import { Var } from "../src/modeler/variable.js";
+import { LinExpr } from "../src/modeler/expression.js";
+import { QuadExpr } from "../src/modeler/quad-expr.js";
+
+describe("QuadExpr (Quadratic Expressions)", () => {
+  it("creates a QuadExpr by multiplying two variables (x * x)", () => {
+    const x = new Var({ name: "x" });
+    const expr = x.mul(x);
+
+    expect(expr).toBeInstanceOf(QuadExpr);
+    expect(expr.quadTerms.size).toBe(1);
+    expect(expr.linearTerms.size).toBe(0);
+    expect(expr.constant).toBe(0);
+  });
+
+  it("creates a QuadExpr by multiplying distinct variables (x * y)", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+    const expr = x.mul(y);
+
+    expect(expr).toBeInstanceOf(QuadExpr);
+    expect(expr.quadTerms.size).toBe(1);
+  });
+
+  it("handles symmetry: x * y and y * x combine into the same term", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+    const expr = x.mul(y).add(y.mul(x));
+
+    expect(expr).toBeInstanceOf(QuadExpr);
+    expect(expr.quadTerms.size).toBe(1);
+    // Coefficient should be 1 + 1 = 2
+    const coeff = expr.getQuadCoeff(x, y);
+    expect(coeff).toBe(2);
+  });
+
+  it("supports arithmetic with LinExpr, Var, and numbers", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+
+    // x^2 + 3x + 2y + 5
+    const q1 = x.mul(x).add(x.mul(3)).add(y.mul(2)).add(5);
+    expect(q1.constant).toBe(5);
+    expect(q1.linearTerms.get(x)).toBe(3);
+    expect(q1.linearTerms.get(y)).toBe(2);
+    expect(q1.getQuadCoeff(x, x)).toBe(1);
+
+    // Multiply LinExpr by Var: (2x + 1) * y = 2xy + y
+    const lin = x.mul(2).add(1);
+    const q2 = lin.mul(y);
+    expect(q2).toBeInstanceOf(QuadExpr);
+    expect(q2.getQuadCoeff(x, y)).toBe(2);
+    expect(q2.linearTerms.get(y)).toBe(1);
+    expect(q2.constant).toBe(0);
+  });
+
+  it("computes the numerical value correctly when variables have values", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+
+    // f(x, y) = 2*x^2 + 3*x*y + y^2 + 4*x + 10
+    const f = x.mul(x).mul(2)
+      .add(x.mul(y).mul(3))
+      .add(y.mul(y))
+      .add(x.mul(4))
+      .add(10);
+
+    expect(f.value).toBeNull();
+
+    x.value = 2;
+    y.value = 3;
+    // 2*(4) + 3*(6) + 9 + 4*(2) + 10 = 8 + 18 + 9 + 8 + 10 = 53
+    expect(f.value).toBe(53);
+  });
+
+  it("supports sub, mul(scalar), div, and neg", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+
+    const q = x.mul(x).sub(y.mul(y));
+    expect(q.getQuadCoeff(x, x)).toBe(1);
+    expect(q.getQuadCoeff(y, y)).toBe(-1);
+
+    const doubled = q.mul(2);
+    expect(doubled.getQuadCoeff(x, x)).toBe(2);
+    expect(doubled.getQuadCoeff(y, y)).toBe(-2);
+
+    const halved = doubled.div(2);
+    expect(halved.getQuadCoeff(x, x)).toBe(1);
+    expect(halved.getQuadCoeff(y, y)).toBe(-1);
+
+    const negated = q.neg();
+    expect(negated.getQuadCoeff(x, x)).toBe(-1);
+    expect(negated.getQuadCoeff(y, y)).toBe(1);
+  });
+});

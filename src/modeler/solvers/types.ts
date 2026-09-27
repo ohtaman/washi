@@ -43,6 +43,20 @@ export interface SolverOptions {
 }
 
 /**
+ * Problem classes and features supported by a solver engine
+ */
+export interface SolverCapabilities {
+  /** Supports mixed-integer programming (integer/binary variables) */
+  supportsMIP?: boolean;
+  /** Supports quadratic objectives (QP) */
+  supportsQP?: boolean;
+  /** Supports quadratic constraints (QCQP / SOCP) */
+  supportsQCQP?: boolean;
+  /** Supports satisfiability modulo theories / logical constraints */
+  supportsSMT?: boolean;
+}
+
+/**
  * Universal Solver interface.
  * Any optimization engine (HiGHS WASM, GLPK, Gurobi Remote, CBC, SCIP, custom JS)
  * implements this interface to be used interchangeably with Model and LpProblem.
@@ -52,6 +66,8 @@ export interface Solver {
   readonly name: string;
   /** Version string of the solver */
   readonly version?: string;
+  /** Feature capabilities of this solver */
+  readonly capabilities?: SolverCapabilities;
   /**
    * Solve the given mathematical programming model data
    */

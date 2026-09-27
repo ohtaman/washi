@@ -7,6 +7,7 @@ import type {
 } from "./types.js";
 import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
+import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
@@ -25,7 +26,7 @@ export interface ModelOptions {
 export class Model {
   public name: string;
   public sense: OptimizationSense;
-  public objective: LinExpr;
+  public objective: LinExpr | QuadExpr;
   public variables: Var[] = [];
   public constraints: Constraint[] = [];
 
@@ -172,7 +173,7 @@ export class Model {
   /**
    * Set the objective function
    */
-  setObjective(expr: LinExpr | Var | number | string, sense?: OptimizationSense): void {
+  setObjective(expr: LinExpr | QuadExpr | Var | number | string, sense?: OptimizationSense): void {
     if (sense) {
       this.sense = sense;
     }
@@ -181,6 +182,8 @@ export class Model {
       this.objective = parseExpr(expr, (name) => this.getVarByName(name));
     } else if (typeof expr === "number") {
       this.objective = new LinExpr(new Map(), expr);
+    } else if (expr instanceof QuadExpr) {
+      this.objective = expr.clone();
     } else if ("terms" in expr) {
       this.objective = expr.clone();
     } else {
@@ -192,14 +195,14 @@ export class Model {
   /**
    * Set objective to maximize
    */
-  maximize(expr: LinExpr | Var | number | string): void {
+  maximize(expr: LinExpr | QuadExpr | Var | number | string): void {
     this.setObjective(expr, "Maximize");
   }
 
   /**
    * Set objective to minimize
    */
-  minimize(expr: LinExpr | Var | number | string): void {
+  minimize(expr: LinExpr | QuadExpr | Var | number | string): void {
     this.setObjective(expr, "Minimize");
   }
 
@@ -274,12 +277,24 @@ export class Model {
     ) {
       activeSolver = solverOrOptions as Solver;
       activeOptions = options || {};
+    } else if (typeof solverOrOptions === "function") {
+      activeSolver = new (solverOrOptions as any)(options);
+      activeOptions = options || {};
     } else if (typeof solverOrOptions === "string") {
       activeSolver = getSolver(solverOrOptions, options);
       activeOptions = options || {};
     } else {
       activeSolver = this.solver || getSolver();
       activeOptions = (solverOrOptions as SolveOptions) || {};
+    }
+
+    // Capability check: Validate if solver supports quadratic objectives
+    const hasQuadObjective =
+      this.objective instanceof QuadExpr && this.objective.quadTerms.size > 0;
+    if (hasQuadObjective && activeSolver.capabilities?.supportsQP === false) {
+      throw new Error(
+        `Solver "${activeSolver.name}" does not support quadratic objectives (QP). Please use a QP-capable solver such as HiGHS or Clarabel.`
+      );
     }
 
     const modelData = {
