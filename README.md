@@ -1,40 +1,47 @@
-# opt-ts
+# 📜 WASHI (`@ohtaman/washi`)
 
-**Modern Mathematical Optimization Modeler for TypeScript & JavaScript**  
-*LP (Linear Programming) • MIP (Mixed-Integer Programming) • QP (Convex Quadratic Programming)*
+**WebAssembly Solver for Hybrid & Integer optimization**  
+*LP (Linear Programming) • MIP (Mixed-Integer Programming) • QP (Convex Quadratic Programming) • SMT (Logic & Conflict Diagnosis)*
 
-`opt-ts` is a high-level, intuitive mathematical optimization modeling library for TypeScript and JavaScript environments (Node.js, Browser, Bun, Deno, Next.js). Inspired by Python's **PuLP**, **python-mip**, and Julia's **JuMP**, it provides a fluent algebraic syntax for formulating and solving operations research problems.
+> **💡 The Name & Philosophy: From Pulp to Washi**  
+> Just as Python's **PuLP** cleverly plays on the word *pulp* (the raw fiber of paper), **WASHI (和紙)** embodies the finished art: **astonishingly lightweight (~7 kB core), flexible, and resilient for centuries**.  
+> It also represents its architectural identity:  
+> **W**eb**A**ssembly **S**olver for **H**ybrid & **I**nteger optimization (**WASHI**).
 
-Powered natively by the state-of-the-art **HiGHS** solver compiled to WebAssembly, `opt-ts` solves industrial-scale problems (20,000+ variables) with zero native C++ compile steps, while providing a pluggable interface to switch solvers seamlessly.
+`@ohtaman/washi` is a high-level, intuitive mathematical optimization modeling library for TypeScript and JavaScript environments (Node.js, Browser, Bun, Deno, Next.js). Inspired by Python's **PuLP**, **python-mip**, and Julia's **JuMP**, it provides a fluent algebraic syntax for formulating and solving operations research problems.
+
+Powered natively by the state-of-the-art **HiGHS** solver compiled to WebAssembly, `@ohtaman/washi` solves industrial-scale problems (20,000+ variables) with zero native C++ compile steps, while providing a pluggable interface to switch solvers seamlessly.
 
 ---
 
 ## ✨ Features
 
 - **Intuitive Algebraic Syntax**: Express variables, linear expressions, and quadratic terms naturally (`x.mul(3).add(y)`, `x.mul(x)`).
+- **Tagged Template Literal Notation**: Write constraints as natural formulas: `c`${x} + 2 * ${y} <= 10``.
 - **LP, MIP & Convex QP**: Solves Linear, Mixed-Integer, and Quadratic Programming problems (e.g. Markowitz portfolio optimization, least squares).
 - **First-Class SMT & SAT Logic**: Express propositional variables (`BoolVar`), logical connectives (`and`, `or`, `implies`, `not`, `xor`), and mixed arithmetic constraints directly.
 - **Feasibility Checking & Conflict Diagnosis**:
   - `m.check()` solves satisfiability without an objective function.
   - `unsatCore` automatically extracts minimal conflicting constraints for instant debugging.
+- **Big-M Auto-Linearization**: Add indicator / conditional activation constraints effortlessly via `m.addIndicator(z, constraint)`.
 - **Zero-Config WebAssembly Engine**: Runs out-of-the-box in Node.js and modern browsers via HiGHS WASM.
 - **Pluggable Solvers Architecture**:
   - `HiGHS` (default WASM: LP, MIP, QP)
-  - `GLPK` (WASM: LP, MIP)
+  - `GLPK` (optional plugin: LP, MIP - GPL-3.0 isolated)
   - `Z3` (optional plugin: SMT, SAT, MIP, UnsatCore)
   - `MockSolver` (for CI/CD and unit testing without WASM)
 - **Framework Compatibility Layers**:
   - `pulp-compat`: 1-to-1 drop-in syntax matching Python's `pulp` (`LpProblem`, `LpVariable`, `LpMinimize`, `prob.solve(HiGHS())`).
   - `mip-compat`: Syntax matching `python-mip` (`MipModel`, `BINARY`, `model.optimize()`).
-- **High-Performance Large-Scale Optimization**: $O(N)$ linear-time expression builder (`sum()`, `lpSum()`) capable of constructing and solving 20,000+ variable MIPs in seconds.
-- **Strictly Typed & Zero Fluff**: Written 100% in TypeScript with comprehensive declarations and 100+ automated tests.
+- **High-Performance Large-Scale Optimization**: $O(N)$ linear-time expression builder (`sum()`, `lpSum()`) capable of constructing and solving 20,050+ variable MIPs in seconds.
+- **Strictly Typed & Zero Fluff**: Written 100% in TypeScript with comprehensive declarations and 120+ automated tests.
 
 ---
 
 ## 📦 Installation
 
 ```bash
-npm install opt-ts
+npm install @ohtaman/washi
 ```
 
 ---
@@ -46,7 +53,7 @@ npm install opt-ts
 A production planning problem maximizing profit:
 
 ```ts
-import { Model } from "opt-ts";
+import { Model, c } from "@ohtaman/washi";
 
 const m = new Model({ name: "ProductionPlanning", sense: "Maximize" });
 
@@ -70,7 +77,7 @@ console.log(`Produce: ${chairs.value} chairs, ${tables.value} tables`); // 20 ch
 ```
 
 #### 🧱 Fluent Classical Builder (`m.add`)
-In addition to Tagged Template Literals, `opt-ts` supports classical object-oriented method chaining and batch addition:
+In addition to Tagged Template Literals, `washi` supports classical object-oriented method chaining and batch addition:
 
 ```ts
 // Fluent method chaining
@@ -89,7 +96,7 @@ m.add([
 You can also write mathematical expressions and constraints using natural mathematical formulas via Tagged Template Literals:
 
 ```ts
-import { Model, c, expr } from "opt-ts";
+import { Model, c, expr } from "@ohtaman/washi";
 
 const m = new Model("Factory");
 const chairs = m.addVar({ lb: 0, type: "Integer" });
@@ -135,7 +142,7 @@ m.addIndicator(activeFlag, x.ge(50), { activeValue: 1, M: 500 });
 Minimize investment risk based on an asset covariance matrix while satisfying budget and return targets:
 
 ```ts
-import { Model, QuadExpr, sum } from "opt-ts";
+import { Model, QuadExpr, sum } from "@ohtaman/washi";
 
 const m = new Model({ name: "PortfolioRiskMinimization", sense: "Minimize" });
 
@@ -189,7 +196,7 @@ import {
   LpInteger,
   HiGHS,
   value,
-} from "opt-ts";
+} from "@ohtaman/washi";
 
 const prob = new LpProblem("PuLPDemo", LpMaximize);
 
@@ -213,10 +220,10 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ### 4. SMT & Propositional Logic (SAT with Z3)
 
-`opt-ts` provides first-class support for propositional logic and SMT constraints (arithmetic + boolean logic combined) using Z3:
+`washi` provides first-class support for propositional logic and SMT constraints (arithmetic + boolean logic combined) using Z3:
 
 ```ts
-import { Model, not } from "opt-ts";
+import { Model, not } from "@ohtaman/washi";
 
 const m = new Model({ name: "LogicSecurityRules" });
 
@@ -255,7 +262,7 @@ console.log(`Door unlocked? ${m.values.get("unlocked")}`); // false
 When a system of rules or constraints is contradictory, Z3 pinpoints the **minimal conflicting subset** (`unsatCore`):
 
 ```ts
-import { Model } from "opt-ts";
+import { Model } from "@ohtaman/washi";
 
 const m = new Model({ name: "BudgetConflict" });
 const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0 });
@@ -303,10 +310,10 @@ console.log(`Optimal Profit: $${m.objectiveValue}`);
 
 ### 7. Pluggable Solver & Capability Enforcement
 
-`opt-ts` is solver-agnostic. Solvers declare their capabilities (`supportsMIP`, `supportsQP`, `supportsSMT`, `supportsUnsatCore`), and `opt-ts` validates problem compatibility before dispatching:
+`washi` is solver-agnostic. Solvers declare their capabilities (`supportsMIP`, `supportsQP`, `supportsSMT`, `supportsUnsatCore`), and `washi` validates problem compatibility before dispatching:
 
 ```ts
-import { Model, MockSolver, HiGHS, GLPKSolver, Z3Solver } from "opt-ts";
+import { Model, MockSolver, HiGHS, GLPKSolver, Z3Solver } from "@ohtaman/washi";
 
 const m = new Model();
 // ... define model ...
@@ -401,7 +408,7 @@ npm run build
 
 ## 📄 License & Compliance
 
-- **`opt-ts` Core**: **MIT License** (commercial and personal use freely allowed).
+- **`@ohtaman/washi` Core**: **MIT License** (commercial and personal use freely allowed).
 - **Default Engine (HiGHS)**: **MIT License** (shipped natively, zero GPL copyleft risk).
 - **Z3 Plugin (`z3-solver`)**: **MIT License** (optional plugin).
-- **GLPK Plugin (`glpk.js`)**: **GPL-3.0 License** (completely isolated as an optional peerDependency to keep `opt-ts` core 100% MIT-compliant).
+- **GLPK Plugin (`glpk.js`)**: **GPL-3.0 License** (completely isolated as an optional peerDependency to keep `washi` core 100% MIT-compliant).

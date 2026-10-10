@@ -1,16 +1,16 @@
 {
-  "name": "opt-ts",
+  "name": "@ohtaman/washi",
   "version": "1.0.0",
-  "description": "Modern Mathematical Optimization Modeler for TypeScript & JavaScript (LP, MIP, QP) powered by WebAssembly HiGHS",
+  "description": "WASHI: WebAssembly Solver for Hybrid & Integer optimization (LP, MIP, QP, SMT)",
   "type": "module",
-  "main": "./dist/lib/opt-ts.js",
-  "module": "./dist/lib/opt-ts.js",
+  "main": "./dist/lib/washi.js",
+  "module": "./dist/lib/washi.js",
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/lib/opt-ts.js",
-      "default": "./dist/lib/opt-ts.js"
+      "import": "./dist/lib/washi.js",
+      "default": "./dist/lib/washi.js"
     },
     "./solvers/z3": {
       "types": "./dist/types/modeler/solvers/z3.d.ts",
@@ -62,12 +62,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ohtaman/opt-ts.git"
+    "url": "git+https://github.com/ohtaman/washi.git"
   },
   "bugs": {
-    "url": "https://github.com/ohtaman/opt-ts/issues"
+    "url": "https://github.com/ohtaman/washi/issues"
   },
-  "homepage": "https://github.com/ohtaman/opt-ts#readme",
+  "homepage": "https://github.com/ohtaman/washi#readme",
   "dependencies": {
     "highs": "^1.15.3"
   },

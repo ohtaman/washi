@@ -7,7 +7,7 @@ export default defineConfig({
     emptyOutDir: false,
     lib: {
       entry: {
-        "opt-ts": resolve(import.meta.dirname, "src/index.ts"),
+        "washi": resolve(import.meta.dirname, "src/index.ts"),
         "solvers/z3": resolve(import.meta.dirname, "src/modeler/solvers/z3.ts"),
         "solvers/glpk": resolve(import.meta.dirname, "src/modeler/solvers/glpk.ts"),
       },
