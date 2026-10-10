@@ -26,7 +26,8 @@
   "files": [
     "dist/lib",
     "dist/types",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "dev": "vite",
