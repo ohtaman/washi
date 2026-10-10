@@ -36,7 +36,8 @@
     "build:lib": "vite build --config vite.config.lib.ts",
     "build": "npm run build:types && npm run build:lib && npm run build:demo",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run build:types && npm run build:lib"
   },
   "keywords": [
     "optimization",
