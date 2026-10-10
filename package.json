@@ -54,6 +54,14 @@
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ohtaman/opt-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ohtaman/opt-ts/issues"
+  },
+  "homepage": "https://github.com/ohtaman/opt-ts#readme",
   "dependencies": {
     "highs": "^1.15.3"
   },
