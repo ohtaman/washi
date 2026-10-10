@@ -488,6 +488,8 @@ export class Model {
         },
         activeOptions
       );
+      this.status = checkResult.status;
+      this.runTime = checkResult.runTime ?? 0;
       this.unsatCore = checkResult.unsatCore || [];
       if (checkResult.values) {
         this.values.clear();

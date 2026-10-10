@@ -751,7 +751,6 @@ body {
   font-size: 0.85rem;
 }
 
-/* Responsive adjustments */
 @media (max-width: 960px) {
   .app-container {
     flex-direction: column;
@@ -762,4 +761,57 @@ body {
     min-width: 100%;
     height: 550px;
   }
+}
+
+/* Unsat Core Alert Box */
+.unsat-core-box {
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.unsat-core-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unsat-core-icon {
+  font-size: 1.15rem;
+}
+
+.unsat-core-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #dc2626;
+}
+
+.unsat-core-desc {
+  font-size: 0.85rem;
+  color: var(--text-sumi);
+  line-height: 1.45;
+}
+
+.unsat-core-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.unsat-core-chip {
+  background: rgba(220, 38, 38, 0.15);
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
 }

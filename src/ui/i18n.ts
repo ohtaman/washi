@@ -34,6 +34,9 @@ export interface TranslationDict {
   supplyChainAvgCost: string;
   supplyChainTopWarehouses: string;
   supplyChainWarehouseUnit: string;
+  // Unsat Core (Conflict Diagnosis)
+  unsatCoreTitle: string;
+  unsatCoreDesc: string;
 }
 
 export const translations: Record<Locale, TranslationDict> = {
@@ -69,6 +72,8 @@ export const translations: Record<Locale, TranslationDict> = {
     supplyChainAvgCost: "Avg Unit Logistics Cost",
     supplyChainTopWarehouses: "Top 8 Active Warehouses (by shipment volume):",
     supplyChainWarehouseUnit: "units",
+    unsatCoreTitle: "Conflicting Constraints Detected (Unsat Core):",
+    unsatCoreDesc: "The model has no feasible solution. The solver identified the following minimal subset of incompatible constraints causing the conflict:",
   },
   ja: {
     headerSubtitle: "数理最適化モデラー",
@@ -102,6 +107,8 @@ export const translations: Record<Locale, TranslationDict> = {
     supplyChainAvgCost: "平均ユニット輸送コスト",
     supplyChainTopWarehouses: "稼働物流拠点トップ 8（総出荷量順）:",
     supplyChainWarehouseUnit: "個",
+    unsatCoreTitle: "矛盾制約を検出（Unsat Core）:",
+    unsatCoreDesc: "モデルに実行可能解が存在しません。ソルバーは矛盾を引き起こしている最小の制約集合を特定しました:",
   },
 };
 

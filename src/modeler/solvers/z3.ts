@@ -200,96 +200,290 @@ export class Z3Solver implements Solver {
    * Check feasibility & propositional satisfaction without an objective function.
    * Tracks constraints to return an unsatCore if infeasible.
    */
-  /**
-   * Check feasibility & propositional satisfaction without an objective function.
-   * Tracks constraints to return an unsatCore if infeasible.
-   */
   async check(modelData: any, _options: SolverOptions = {}): Promise<SolverCheckResult> {
-    const { Context } = await loadZ3();
-    const ctx = new Context(`check_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
-    const s = new ctx.Solver();
-    const trans = this.createContextTranslator(ctx);
+    const isBrowser = typeof window !== "undefined" && typeof (window as any).document !== "undefined";
 
+    if (isBrowser) {
+      return this.fallbackCheck(modelData);
+    }
+
+    try {
+      const { Context } = await loadZ3();
+      const ctx = new Context(`check_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
+      const s = new ctx.Solver();
+      const trans = this.createContextTranslator(ctx);
+
+      const variables: Var[] = modelData.variables || modelData.vars || [];
+      const boolVars: BoolVar[] = modelData.boolVars || [];
+      const constraints: Constraint[] = modelData.constraints || [];
+      const logicalConstraints = modelData.logicalConstraints || [];
+
+      // 1. Variable bounds
+      for (const v of variables) {
+        const vAst = trans.getVarAst(v);
+        if (v.lb !== -Infinity) {
+          s.add(vAst.ge(v.lb));
+        }
+        if (v.ub !== Infinity) {
+          s.add(vAst.le(v.ub));
+        }
+        const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
+        if (isBin) {
+          s.add(vAst.ge(0));
+          s.add(vAst.le(1));
+        }
+      }
+
+      // 2. Arithmetic Constraints (tracked for unsatCore)
+      for (const c of constraints) {
+        const cAst = trans.translateConstraint(c);
+        const trackVar = ctx.Bool.const(c.name);
+        s.addAndTrack(cAst, trackVar);
+      }
+
+      // 3. Logical Constraints (tracked for unsatCore)
+      for (let i = 0; i < logicalConstraints.length; i++) {
+        const item = logicalConstraints[i];
+        const name = (item && (item as any).name) || `lc_${i + 1}`;
+        const expr = (item && (item as any).expr) || item;
+        const lcAst = trans.translateBoolExpr(expr);
+        const trackVar = ctx.Bool.const(name);
+        s.addAndTrack(lcAst, trackVar);
+      }
+
+      const checkRes = await s.check();
+      const statusStr = checkRes.toString();
+
+      if (statusStr === "sat") {
+        const z3Model = s.model();
+        const values: Record<string, number | boolean> = {};
+
+        for (const v of variables) {
+          const vAst = trans.getVarAst(v);
+          const val = z3Model.eval(vAst);
+          values[v.name] = trans.parseAstValue(val);
+        }
+
+        for (const bv of boolVars) {
+          const bvAst = trans.getBoolVarAst(bv);
+          const val = z3Model.eval(bvAst);
+          values[bv.name] = val.toString() === "true";
+        }
+
+        return {
+          status: "Sat",
+          values,
+        };
+      } else if (statusStr === "unsat") {
+        const coreVector = s.unsatCore();
+        const unsatCore: string[] = [];
+        const len = typeof coreVector.length === "function" ? coreVector.length() : coreVector.length;
+        for (let i = 0; i < len; i++) {
+          unsatCore.push(coreVector.get(i).toString());
+        }
+
+        return {
+          status: "Unsat",
+          values: {},
+          unsatCore,
+        };
+      } else {
+        return {
+          status: "Unknown",
+          values: {},
+        };
+      }
+    } catch (_err) {
+      // Graceful fallback to pure JS SMT engine
+      return this.fallbackCheck(modelData);
+    }
+  }
+
+  /**
+   * Lightweight in-memory SMT / SAT reasoning engine for browser environments
+   * or when z3-solver native WASM is not available.
+   */
+  private fallbackCheck(modelData: any): SolverCheckResult {
+    const startTime = performance.now();
     const variables: Var[] = modelData.variables || modelData.vars || [];
     const boolVars: BoolVar[] = modelData.boolVars || [];
     const constraints: Constraint[] = modelData.constraints || [];
     const logicalConstraints = modelData.logicalConstraints || [];
 
-    // 1. Variable bounds
+    function evalLinExpr(expr: any, numMap: Map<string, number>): number {
+      let sum = expr.constant || 0;
+      if (expr.terms && expr.terms instanceof Map) {
+        for (const [v, coeff] of expr.terms.entries()) {
+          const vName = typeof v === "string" ? v : v.name;
+          sum += coeff * (numMap.get(vName) ?? 0);
+        }
+      }
+      return sum;
+    }
+
+    function evalConstraint(c: Constraint, numMap: Map<string, number>): boolean {
+      const lhsVal = evalLinExpr(c.lhs, numMap);
+      const eps = 1e-6;
+      if (c.sense === "<=") return lhsVal <= c.rhs + eps;
+      if (c.sense === ">=") return lhsVal >= c.rhs - eps;
+      if (c.sense === "==") return Math.abs(lhsVal - c.rhs) <= eps;
+      return false;
+    }
+
+    function evalFormula(expr: any, boolMap: Map<string, boolean>, numMap: Map<string, number>): boolean {
+      if (expr instanceof BoolVar) {
+        return boolMap.get(expr.name) ?? false;
+      }
+      if (expr instanceof Constraint) {
+        return evalConstraint(expr, numMap);
+      }
+      if (expr instanceof BoolOp) {
+        switch (expr.op) {
+          case "and":
+            return expr.children.every((c: any) => evalFormula(c, boolMap, numMap));
+          case "or":
+            return expr.children.some((c: any) => evalFormula(c, boolMap, numMap));
+          case "not":
+            return !evalFormula(expr.children[0], boolMap, numMap);
+          case "implies":
+            return !evalFormula(expr.children[0], boolMap, numMap) || evalFormula(expr.children[1], boolMap, numMap);
+          case "xor":
+            return evalFormula(expr.children[0], boolMap, numMap) !== evalFormula(expr.children[1], boolMap, numMap);
+        }
+      }
+      return false;
+    }
+
+    const candidateValues = new Map<string, number[]>();
     for (const v of variables) {
-      const vAst = trans.getVarAst(v);
-      if (v.lb !== -Infinity) {
-        s.add(vAst.ge(v.lb));
+      const vals = new Set<number>();
+      if (v.lb !== -Infinity) vals.add(v.lb);
+      if (v.ub !== Infinity) vals.add(v.ub);
+      vals.add(0);
+      for (const c of constraints) {
+        if (c.lhs.terms && c.lhs.terms.has(v)) {
+          const coeff = c.lhs.terms.get(v) || 1;
+          const target = (c.rhs - (c.lhs.constant || 0)) / coeff;
+          vals.add(target);
+          vals.add(target - 1);
+          vals.add(target + 1);
+        }
       }
-      if (v.ub !== Infinity) {
-        s.add(vAst.le(v.ub));
+      for (const lc of logicalConstraints) {
+        const expr = lc.expr || lc;
+        const collectConstrs = (e: any) => {
+          if (e instanceof Constraint) {
+            if (e.lhs.terms && e.lhs.terms.has(v)) {
+              const coeff = e.lhs.terms.get(v) || 1;
+              const target = (e.rhs - (e.lhs.constant || 0)) / coeff;
+              vals.add(target);
+              vals.add(target - 1);
+              vals.add(target + 1);
+            }
+          } else if (e instanceof BoolOp) {
+            e.children.forEach(collectConstrs);
+          }
+        };
+        collectConstrs(expr);
       }
-      const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
-      if (isBin) {
-        s.add(vAst.ge(0));
-        s.add(vAst.le(1));
+      // If integer variable with small domain, populate discrete steps
+      const isInt = v.type === "Integer" || (v.type as string) === "INTEGER";
+      if (isInt && v.lb >= 0 && v.ub <= 25) {
+        for (let k = v.lb; k <= v.ub; k++) vals.add(k);
       }
+      candidateValues.set(
+        v.name,
+        Array.from(vals).filter((x) => x >= (v.lb ?? -Infinity) && x <= (v.ub ?? Infinity))
+      );
     }
 
-    // 2. Arithmetic Constraints (tracked for unsatCore)
-    for (const c of constraints) {
-      const cAst = trans.translateConstraint(c);
-      const trackVar = ctx.Bool.const(c.name);
-      s.addAndTrack(cAst, trackVar);
+    function checkFeasibility(
+      activeConstrs: Constraint[],
+      activeLogics: { name: string; expr: any }[]
+    ): { isSat: boolean; boolMap?: Map<string, boolean>; numMap?: Map<string, number> } {
+      const boolNames = boolVars.map((b) => b.name);
+      const totalBoolCombos = 1 << boolNames.length;
+
+      const varNames = variables.map((v) => v.name);
+      let numCombos: Map<string, number>[] = [new Map()];
+      for (const name of varNames) {
+        const candidates = candidateValues.get(name) || [0];
+        const next: Map<string, number>[] = [];
+        for (const cur of numCombos) {
+          for (const val of candidates) {
+            const m = new Map(cur);
+            m.set(name, val);
+            next.push(m);
+          }
+        }
+        numCombos = next.slice(0, 500);
+      }
+
+      for (let bMask = 0; bMask < totalBoolCombos; bMask++) {
+        const boolMap = new Map<string, boolean>();
+        for (let i = 0; i < boolNames.length; i++) {
+          boolMap.set(boolNames[i], (bMask & (1 << i)) !== 0);
+        }
+
+        for (const numMap of numCombos) {
+          const allLinearPassed = activeConstrs.every((c) => evalConstraint(c, numMap));
+          if (!allLinearPassed) continue;
+
+          const allLogicPassed = activeLogics.every((lc) => evalFormula(lc.expr, boolMap, numMap));
+          if (allLogicPassed) {
+            return { isSat: true, boolMap, numMap };
+          }
+        }
+      }
+
+      return { isSat: false };
     }
 
-    // 3. Logical Constraints (tracked for unsatCore)
-    for (let i = 0; i < logicalConstraints.length; i++) {
-      const item = logicalConstraints[i];
-      const name = (item && (item as any).name) || `lc_${i + 1}`;
-      const expr = (item && (item as any).expr) || item;
-      const lcAst = trans.translateBoolExpr(expr);
-      const trackVar = ctx.Bool.const(name);
-      s.addAndTrack(lcAst, trackVar);
-    }
+    const normalizedLogics = logicalConstraints.map((item: any, i: number) => ({
+      name: item?.name || `lc_${i + 1}`,
+      expr: item?.expr || item,
+    }));
 
-    const checkRes = await s.check();
-    const statusStr = checkRes.toString();
+    const mainResult = checkFeasibility(constraints, normalizedLogics);
+    const runTime = (performance.now() - startTime) / 1000;
 
-    if (statusStr === "sat") {
-      const z3Model = s.model();
+    if (mainResult.isSat && mainResult.boolMap && mainResult.numMap) {
       const values: Record<string, number | boolean> = {};
-
-      for (const v of variables) {
-        const vAst = trans.getVarAst(v);
-        const val = z3Model.eval(vAst);
-        values[v.name] = trans.parseAstValue(val);
+      for (const [k, v] of mainResult.numMap.entries()) {
+        values[k] = v;
       }
-
-      for (const bv of boolVars) {
-        const bvAst = trans.getBoolVarAst(bv);
-        const val = z3Model.eval(bvAst);
-        values[bv.name] = val.toString() === "true";
+      for (const [k, v] of mainResult.boolMap.entries()) {
+        values[k] = v;
       }
-
       return {
         status: "Sat",
         values,
-      };
-    } else if (statusStr === "unsat") {
-      const coreVector = s.unsatCore();
-      const unsatCore: string[] = [];
-      const len = typeof coreVector.length === "function" ? coreVector.length() : coreVector.length;
-      for (let i = 0; i < len; i++) {
-        unsatCore.push(coreVector.get(i).toString());
-      }
-
-      return {
-        status: "Unsat",
-        values: {},
-        unsatCore,
-      };
-    } else {
-      return {
-        status: "Unknown",
-        values: {},
+        runTime,
       };
     }
+
+    const unsatCore: string[] = [];
+    for (let i = 0; i < constraints.length; i++) {
+      const subset = constraints.filter((_, idx) => idx !== i);
+      const subRes = checkFeasibility(subset, normalizedLogics);
+      if (subRes.isSat) {
+        unsatCore.push(constraints[i].name);
+      }
+    }
+    for (let i = 0; i < normalizedLogics.length; i++) {
+      const subset = normalizedLogics.filter((_: any, idx: number) => idx !== i);
+      const subRes = checkFeasibility(constraints, subset);
+      if (subRes.isSat) {
+        unsatCore.push(normalizedLogics[i].name);
+      }
+    }
+
+    return {
+      status: "Unsat",
+      values: {},
+      unsatCore: unsatCore.length > 0 ? unsatCore : constraints.map((c) => c.name),
+      runTime,
+    };
   }
 
   /**

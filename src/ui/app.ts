@@ -3,6 +3,7 @@ import { executeModelCode } from "./runner.js";
 import { DOCS_HTML } from "./docs.js";
 import type { Model } from "../modeler/model.js";
 import { setDefaultSolver } from "../modeler/solvers/registry.js";
+import { registerZ3Solver } from "../modeler/solvers/z3.js";
 import {
   initLocale,
   setLocale,
@@ -14,6 +15,8 @@ import {
 } from "./i18n.js";
 
 export function initApp() {
+  registerZ3Solver();
+
   const codeTextarea = document.getElementById("code-editor") as HTMLTextAreaElement;
   const lineNumbers = document.getElementById("line-numbers") as HTMLDivElement;
   const presetSelect = document.getElementById("preset-select") as HTMLSelectElement;
@@ -40,6 +43,8 @@ export function initApp() {
   const logOutput = document.getElementById("log-output") as HTMLElement;
   const docsContainer = document.getElementById("docs-content") as HTMLElement;
   const filterNonZero = document.getElementById("filter-non-zero") as HTMLInputElement;
+  const unsatCoreBox = document.getElementById("unsat-core-box") as HTMLDivElement | null;
+  const unsatCoreList = document.getElementById("unsat-core-list") as HTMLDivElement | null;
 
   if (docsContainer) {
     docsContainer.innerHTML = DOCS_HTML;
@@ -108,20 +113,25 @@ export function initApp() {
   // Solver selector
   const solverSelect = document.getElementById("solver-select") as HTMLSelectElement | null;
   const solverBadgeText = document.getElementById("solver-badge-text") as HTMLSpanElement | null;
-  let currentSolver: "highs" | "glpk" = "highs";
+  let currentSolver: "highs" | "glpk" | "z3" = "highs";
 
-  function updateSolver(solverName: "highs" | "glpk") {
+  function updateSolver(solverName: "highs" | "glpk" | "z3") {
     currentSolver = solverName;
     setDefaultSolver(solverName);
     if (solverBadgeText) {
-      solverBadgeText.textContent =
-        solverName === "glpk" ? "GLPK v5.0.0 (WASM)" : "HiGHS v1.15.3 (WASM)";
+      if (solverName === "z3") {
+        solverBadgeText.textContent = "Z3 v5.2.0 (SMT/SAT/MIP)";
+      } else if (solverName === "glpk") {
+        solverBadgeText.textContent = "GLPK v5.0.0 (WASM)";
+      } else {
+        solverBadgeText.textContent = "HiGHS v1.15.3 (WASM)";
+      }
     }
   }
 
   if (solverSelect) {
     solverSelect.addEventListener("change", () => {
-      updateSolver(solverSelect.value as "highs" | "glpk");
+      updateSolver(solverSelect.value as "highs" | "glpk" | "z3");
     });
   }
 
@@ -165,10 +175,15 @@ export function initApp() {
   // Run Optimization
   async function runOptimization() {
     runBtn.disabled = true;
-    const solverDisplayName = currentSolver === "glpk" ? "GLPK" : "HiGHS";
+    const solverDisplayName =
+      currentSolver === "z3" ? "Z3" : currentSolver === "glpk" ? "GLPK" : "HiGHS";
     runBtn.textContent = `Solving with ${solverDisplayName}...`;
     metricStatus.textContent = "Solving...";
     metricStatus.className = "metric-value";
+
+    if (unsatCoreBox) {
+      unsatCoreBox.style.display = "none";
+    }
 
     setDefaultSolver(currentSolver);
 
@@ -194,7 +209,16 @@ export function initApp() {
       metricObj.textContent = objVal !== null && objVal !== undefined ? Number(objVal).toFixed(4).replace(/\.?0+$/, "") : "--";
 
       metricTime.textContent = result.runTime ? `${(result.runTime * 1000).toFixed(1)} ms` : "--";
-      metricVars.textContent = String(currentModel?.numVars ?? 0);
+      const totalVars = (currentModel?.numVars ?? 0) + (currentModel?.boolVars.length ?? 0);
+      metricVars.textContent = String(totalVars);
+
+      // Render Unsat Core if conflicting constraints detected
+      if (unsatCoreBox && unsatCoreList && currentModel?.unsatCore && currentModel.unsatCore.length > 0) {
+        unsatCoreBox.style.display = "flex";
+        unsatCoreList.innerHTML = currentModel.unsatCore
+          .map((cName) => `<span class="unsat-core-chip">${cName}</span>`)
+          .join("");
+      }
 
       // Render logs
       logOutput.textContent = result.logs.length > 0 ? result.logs.join("\n") : "Solve completed successfully with no warnings.";
@@ -249,7 +273,12 @@ export function initApp() {
       vars = vars.filter((v) => Math.abs(v.value ?? 0) > 1e-6);
     }
 
-    if (vars.length === 0) {
+    let bVars = currentModel.boolVars || [];
+    if (onlyNonZero) {
+      bVars = bVars.filter((bv) => currentModel!.values.get(bv.name) === true);
+    }
+
+    if (vars.length === 0 && bVars.length === 0) {
       varsTableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No matching variables.</td></tr>`;
       return;
     }
@@ -260,8 +289,8 @@ export function initApp() {
 
     let rowsHtml = displayVars
       .map((v) => {
-        const valStr = v.value !== null ? v.value.toFixed(4).replace(/\.?0+$/, "") : "--";
-        const rcStr = v.reducedCost !== null ? v.reducedCost.toFixed(4).replace(/\.?0+$/, "") : "--";
+        const valStr = v.value !== null && v.value !== undefined ? v.value.toFixed(4).replace(/\.?0+$/, "") : "--";
+        const rcStr = v.reducedCost !== null && v.reducedCost !== undefined ? v.reducedCost.toFixed(4).replace(/\.?0+$/, "") : "--";
         const lbStr = v.lb === -Infinity ? "-∞" : String(v.lb);
         const ubStr = v.ub === Infinity ? "+∞" : String(v.ub);
 
@@ -276,6 +305,22 @@ export function initApp() {
       `;
       })
       .join("");
+
+    // Add Boolean variables rows
+    for (const bv of bVars) {
+      const bVal = currentModel.values.get(bv.name);
+      const valStr = bVal !== undefined ? String(bVal) : "--";
+      const isTrue = bVal === true;
+      rowsHtml += `
+        <tr>
+          <td><strong>${bv.name}</strong></td>
+          <td><span style="font-size: 0.75rem; padding: 2px 6px; background: rgba(59, 130, 246, 0.12); color: #2563eb; border-radius: 4px; font-weight: 600;">Boolean</span></td>
+          <td class="val-highlight" style="color: ${isTrue ? "var(--color-seiji)" : "var(--text-sumi-muted)"}; font-weight: bold;">${valStr}</td>
+          <td>[false, true]</td>
+          <td>--</td>
+        </tr>
+      `;
+    }
 
     if (isTruncated) {
       rowsHtml += `

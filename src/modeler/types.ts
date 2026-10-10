@@ -16,7 +16,10 @@ export type SolverStatus =
   | "TimeLimit"
   | "IterationLimit"
   | "Error"
-  | "NotSolved";
+  | "NotSolved"
+  | "Sat"
+  | "Unsat"
+  | "Unknown";
 
 export interface SolveOptions {
   timeLimit?: number; // seconds

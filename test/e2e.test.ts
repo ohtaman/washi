@@ -22,6 +22,13 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
     page = await browser.newPage();
     await page.setViewportSize({ width: 1400, height: 900 });
+
+    page.on("console", (msg) => {
+      console.log(`[PAGE ${msg.type()}]:`, msg.text());
+    });
+    page.on("pageerror", (err) => {
+      console.error("[PAGE ERROR]:", err);
+    });
   }, 20000);
 
   afterAll(async () => {
@@ -367,4 +374,67 @@ await m.optimize();
     await page.selectOption("#solver-select", "highs");
     expect(await page.textContent("#solver-badge-text")).toContain("HiGHS v1.15.3 (WASM)");
   }, 15000);
+
+  it("switches solver to Z3 and solves Smart Home Security SMT model in UI", async () => {
+    // Select Z3 solver
+    await page.selectOption("#solver-select", "z3");
+    expect(await page.textContent("#solver-badge-text")).toContain("Z3 v5.2.0 (SMT/SAT/MIP)");
+
+    // Select Smart Home SMT preset
+    await page.selectOption("#preset-select", "logic_puzzle_smt");
+
+    // Click Run Optimization
+    await page.click("#run-btn");
+
+    // Wait for solver status to become Sat or Optimal
+    await page.waitForFunction(
+      () => {
+        const s = document.getElementById("metric-status")?.textContent;
+        return s === "Optimal" || s === "Sat";
+      },
+      { timeout: 15000 }
+    );
+
+    // Verify boolean variables in table
+    const tableText = await page.textContent("#vars-tbody");
+    expect(tableText).toContain("Boolean");
+    expect(tableText).toContain("sirenActive");
+    expect(tableText).toContain("lightsOn");
+
+    await page.screenshot({ path: path.join(screenshotsDir, "10_z3_smt_security_optimal.png") });
+  }, 30000);
+
+  it("diagnoses conflicting constraints with Z3 and displays Unsat Core alert in UI", async () => {
+    // Select Z3 solver
+    await page.selectOption("#solver-select", "z3");
+
+    // Select Conflict Diagnosis preset
+    await page.selectOption("#preset-select", "conflict_diagnosis_unsat");
+
+    // Click Run Optimization
+    await page.click("#run-btn");
+
+    // Wait for solver status to become Infeasible or Unsat
+    await page.waitForFunction(
+      () => {
+        const s = document.getElementById("metric-status")?.textContent;
+        return s === "Infeasible" || s === "Unsat";
+      },
+      { timeout: 30000 }
+    );
+
+    // Verify Unsat Core alert box is displayed
+    const isUnsatCoreVisible = await page.isVisible("#unsat-core-box");
+    expect(isUnsatCoreVisible).toBe(true);
+
+    const unsatCoreText = await page.textContent("#unsat-core-list");
+    expect(unsatCoreText).toContain("strict_board_budget_cap");
+    expect(unsatCoreText).toContain("rush_staffing_rule");
+
+    await page.screenshot({ path: path.join(screenshotsDir, "11_z3_unsat_core_conflict.png") });
+
+    // Switch solver back to HiGHS
+    await page.selectOption("#solver-select", "highs");
+    expect(await page.textContent("#solver-badge-text")).toContain("HiGHS v1.15.3 (WASM)");
+  }, 30000);
 });

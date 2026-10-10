@@ -13,16 +13,21 @@ Powered natively by the state-of-the-art **HiGHS** solver compiled to WebAssembl
 
 - **Intuitive Algebraic Syntax**: Express variables, linear expressions, and quadratic terms naturally (`x.mul(3).add(y)`, `x.mul(x)`).
 - **LP, MIP & Convex QP**: Solves Linear, Mixed-Integer, and Quadratic Programming problems (e.g. Markowitz portfolio optimization, least squares).
+- **First-Class SMT & SAT Logic**: Express propositional variables (`BoolVar`), logical connectives (`and`, `or`, `implies`, `not`, `xor`), and mixed arithmetic constraints directly.
+- **Feasibility Checking & Conflict Diagnosis**:
+  - `m.check()` solves satisfiability without an objective function.
+  - `unsatCore` automatically extracts minimal conflicting constraints for instant debugging.
 - **Zero-Config WebAssembly Engine**: Runs out-of-the-box in Node.js and modern browsers via HiGHS WASM.
 - **Pluggable Solvers Architecture**:
-  - `HiGHS` (default, WebAssembly)
+  - `HiGHS` (default WASM: LP, MIP, QP)
+  - `GLPK` (WASM: LP, MIP)
+  - `Z3` (optional plugin: SMT, SAT, MIP, UnsatCore)
   - `MockSolver` (for CI/CD and unit testing without WASM)
-  - Simple 1-method `Solver` interface to connect custom backends or external solvers.
 - **Framework Compatibility Layers**:
   - `pulp-compat`: 1-to-1 drop-in syntax matching Python's `pulp` (`LpProblem`, `LpVariable`, `LpMinimize`, `prob.solve(HiGHS())`).
   - `mip-compat`: Syntax matching `python-mip` (`MipModel`, `BINARY`, `model.optimize()`).
 - **High-Performance Large-Scale Optimization**: $O(N)$ linear-time expression builder (`sum()`, `lpSum()`) capable of constructing and solving 20,000+ variable MIPs in seconds.
-- **Strictly Typed & Zero Fluff**: Written 100% in TypeScript with comprehensive declarations and 70+ automated tests.
+- **Strictly Typed & Zero Fluff**: Written 100% in TypeScript with comprehensive declarations and 100+ automated tests.
 
 ---
 
@@ -147,29 +152,121 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ---
 
-### 4. Pluggable Solver & Capability Enforcement
+### 4. SMT & Propositional Logic (SAT with Z3)
 
-`opt-ts` is solver-agnostic. Solvers declare their capabilities (`supportsMIP`, `supportsQP`), and `opt-ts` validates problem compatibility before dispatching:
+`opt-ts` provides first-class support for propositional logic and SMT constraints (arithmetic + boolean logic combined) using Z3:
 
 ```ts
-import { Model, MockSolver, HiGHS } from "opt-ts";
+import { Model, not } from "opt-ts";
+
+const m = new Model({ name: "LogicSecurityRules" });
+
+// Boolean propositional variables
+const isNight = m.addBoolVar("isNight");
+const motion = m.addBoolVar("motion");
+const alarm = m.addBoolVar("alarm");
+const siren = m.addBoolVar("siren");
+const unlocked = m.addBoolVar("unlocked");
+
+// Arithmetic sensor variable
+const lux = m.addVar({ name: "lux", type: "Integer", lb: 0 });
+
+// Mixed arithmetic & logical constraints
+m.addConstraint(lux.le(50).implies(isNight), "dark_implies_night");
+m.addConstraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
+m.addConstraint(alarm.implies(not(unlocked)), "auto_lock_rule");
+
+// Current observed sensor readings
+m.addConstraint(lux.le(10), "sensor_dark");
+m.addConstraint(motion, "sensor_motion");
+m.addConstraint(alarm, "alarm_on");
+
+// Check satisfiability and deduce state without an objective
+const res = await m.check({ solver: "z3" });
+
+console.log(`Status: ${res.status}`); // "Sat"
+console.log(`Siren active? ${m.values.get("siren")}`); // true
+console.log(`Door unlocked? ${m.values.get("unlocked")}`); // false
+```
+
+---
+
+### 5. Conflict Diagnosis with Unsat Core
+
+When a system of rules or constraints is contradictory, Z3 pinpoints the **minimal conflicting subset** (`unsatCore`):
+
+```ts
+import { Model } from "opt-ts";
+
+const m = new Model({ name: "BudgetConflict" });
+const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0 });
+const budget = m.addVar({ name: "budget", lb: 0 });
+const rush = m.addBoolVar("rush");
+
+m.addConstraint(engineers.mul(8000).le(budget), "cost_limit");
+m.addConstraint(rush, "rush_required");
+m.addConstraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.addConstraint(budget.le(50000), "board_budget_cap"); // Conflict: 8 * $8000 = $64,000 > $50,000!
+
+m.addConstraint(engineers.ge(1), "unrelated_rule"); // Harmless constraint
+
+const res = await m.check({ solver: "z3" });
+
+console.log(`Status: ${res.status}`); // "Unsat"
+console.log("Incompatible Constraints:", res.unsatCore);
+// Output: ["cost_limit", "rush_required", "rush_staffing", "board_budget_cap"]
+// Note: "unrelated_rule" is correctly excluded!
+```
+
+---
+
+### 6. Hybrid Two-Phase Pipeline: Z3 Verification ➔ HiGHS Optimization
+
+Verify logical feasibility and diagnose rule conflicts before dispatching to industrial-scale optimization:
+
+```ts
+const m = new Model("ProductionPipeline");
+// ... define variables, logical rules, and costs ...
+
+// Phase 1: Validate logical feasibility & diagnose conflicts with Z3
+const check = await m.check({ solver: "z3" });
+if (check.status === "Unsat") {
+  console.error("Conflict detected! Problematic rules:", check.unsatCore);
+  return;
+}
+
+// Phase 2: Solve large-scale MIP optimization at peak speed with HiGHS
+const status = await m.optimize({ solver: "highs" });
+console.log(`Optimal Profit: $${m.objectiveValue}`);
+```
+
+---
+
+### 7. Pluggable Solver & Capability Enforcement
+
+`opt-ts` is solver-agnostic. Solvers declare their capabilities (`supportsMIP`, `supportsQP`, `supportsSMT`, `supportsUnsatCore`), and `opt-ts` validates problem compatibility before dispatching:
+
+```ts
+import { Model, MockSolver, HiGHS, GLPKSolver, Z3Solver } from "opt-ts";
 
 const m = new Model();
 // ... define model ...
 
-// 1. Solve with HiGHS (default, supports LP, MIP, and QP)
+// 1. Solve with HiGHS (default WASM, supports LP, MIP, and QP)
 await m.solve("highs");
 
 // 2. Solve with GLPK (GNU Linear Programming Kit WASM, supports LP and MIP)
-import { GLPKSolver } from "opt-ts";
-await m.solve(new GLPKSolver());
-// or simply: await m.solve("glpk");
+await m.solve(new GLPKSolver()); // or await m.solve("glpk");
 
-// 3. Solve with MockSolver for ultra-fast CI/CD unit tests without WASM
+// 3. Solve with Z3 (supports SMT, SAT, UnsatCore, and MIP)
+await m.check({ solver: "z3" });
+// or optimize: await m.optimize({ solver: "z3" });
+
+// 4. Solve with MockSolver for ultra-fast CI/CD unit tests without WASM
 const mock = new MockSolver({ values: { x: 10, y: 5 }, objectiveValue: 500 });
 await m.solve(mock);
 
-// 4. Define your own custom solver (e.g., enterprise backend, cloud worker)
+// 5. Define your own custom solver (e.g., enterprise backend, cloud worker)
 const myCustomSolver = {
   name: "InternalClusterSolver",
   async solve(modelData, lpResult) {

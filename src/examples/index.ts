@@ -1,7 +1,7 @@
 export interface ExampleModel {
   id: string;
   title: string;
-  category: "MIP" | "LP" | "Combinatorial" | "QP";
+  category: "MIP" | "LP" | "Combinatorial" | "QP" | "SMT";
   description: string;
   code: string;
   visualizer?: "table" | "nqueens" | "knapsack" | "production" | "nurse" | "supply-chain" | "portfolio";
@@ -715,6 +715,101 @@ data.forEach((pt, i) => {
   const diff = pred - pt.y;
   console.log(\`  x=\${pt.x}: Actual=\${pt.y.toFixed(1)}, Predicted=\${pred.toFixed(2)}, Error=\${diff.toFixed(2)}\`);
 });
+`,
+  },
+  {
+    id: "logic_puzzle_smt",
+    title: "Smart Home Security & Access Control (SMT / SAT)",
+    category: "SMT",
+    description: "Propositional logic & arithmetic constraints solved via Z3 SMT engine. Evaluates alarm armed state, motion detection, and auto-lock rules using check().",
+    visualizer: "table",
+    code: `// --- Smart Home Security Rules (SMT / SAT) ---
+// Solved via Z3 SMT solver using propositional logic & check()
+const m = new Model({ name: "SmartHomeSecurity", solver: "z3" });
+
+// 1. Boolean Propositional Variables
+const isNight = m.addBoolVar("isNight");
+const motionDetected = m.addBoolVar("motionDetected");
+const alarmArmed = m.addBoolVar("alarmArmed");
+const frontDoorUnlocked = m.addBoolVar("frontDoorUnlocked");
+const lightsOn = m.addBoolVar("lightsOn");
+const sirenActive = m.addBoolVar("sirenActive");
+
+// 2. Continuous / Integer Environmental Metrics
+const luxLevel = m.addVar({ name: "luxLevel", type: "Integer", lb: 0, ub: 1000 });
+
+// Rule 1: Night condition based on sensor light level (SMT: Mixed Arithmetic & Logic)
+// (luxLevel <= 50) => isNight
+m.addConstraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+
+// Rule 2: If motion detected at night while alarm is armed, trigger siren
+// (motionDetected AND isNight AND alarmArmed) => sirenActive
+m.addConstraint(motionDetected.and(isNight).and(alarmArmed).implies(sirenActive), "intrusion_rule");
+
+// Rule 3: Front door must NOT be unlocked when alarm is armed
+// alarmArmed => NOT(frontDoorUnlocked)
+m.addConstraint(alarmArmed.implies(not(frontDoorUnlocked)), "lock_safety_rule");
+
+// Rule 4: If motion detected at night, turn lights on
+// (motionDetected AND isNight) => lightsOn
+m.addConstraint(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
+
+// 3. Observed Context for Tonight
+m.addConstraint(luxLevel.le(20), "sensor_reading_dark");
+m.addConstraint(alarmArmed, "user_armed_alarm");
+m.addConstraint(motionDetected, "sensor_motion_triggered");
+
+// 4. Check Satisfiability & Deduce State
+console.log("Checking security state satisfiability with Z3...");
+const res = await m.check({ solver: "z3" });
+
+console.log("SMT Verification Result:", res.status);
+console.log("-> Siren Active:", m.values.get("sirenActive"));
+console.log("-> Lights On   :", m.values.get("lightsOn"));
+console.log("-> Door State  :", m.values.get("frontDoorUnlocked") ? "Unlocked" : "Locked");
+`,
+  },
+  {
+    id: "conflict_diagnosis_unsat",
+    title: "Resource Allocation Conflict Diagnosis (Unsat Core)",
+    category: "SMT",
+    description: "Intentionally conflicting constraints diagnosed using Z3 unsatCore. Automatically pinpoints the exact minimal subset of incompatible rules causing infeasibility.",
+    visualizer: "table",
+    code: `// --- Conflict Diagnosis & Unsat Core Extraction ---
+// Demonstrates Z3 SMT solver's ability to isolate minimal conflicting constraints
+const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+
+// Decision Variables: Project Staffing & Budget
+const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0, ub: 20 });
+const budget = m.addVar({ name: "budget", type: "Continuous", lb: 0, ub: 100000 });
+const rushDelivery = m.addBoolVar("rushDelivery");
+
+// Constraint 1: Standard engineering cost: each engineer costs $8,000
+m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
+
+// Constraint 2: Customer requires Rush Delivery
+m.addConstraint(rushDelivery, "rush_required");
+
+// Constraint 3: Rush Delivery requires at least 8 engineers
+m.addConstraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+
+// Constraint 4: STRICT Corporate Budget Cap for this project ($50,000)
+// Notice: 8 engineers * $8,000 = $64,000 > $50,000 budget! (CONFLICT!)
+m.addConstraint(budget.le(50000), "strict_board_budget_cap");
+
+// Constraint 5: Harmless independent regulation (unrelated to conflict)
+m.addConstraint(engineers.ge(1), "minimum_one_employee");
+
+// Solve feasibility & extract conflict core
+console.log("Checking feasibility and diagnosing constraint conflicts with Z3...");
+const res = await m.check({ solver: "z3" });
+
+console.log("Check Status:", res.status); // "Unsat"
+
+if (res.status === "Unsat") {
+  console.warn("⚠️ Incompatible Constraints Detected (Unsat Core):");
+  m.unsatCore.forEach((rule) => console.warn("  • " + rule));
+}
 `,
   },
 ];

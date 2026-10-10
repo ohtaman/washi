@@ -63,6 +63,7 @@
             <select id="solver-select" class="custom-select custom-select-sm" aria-label="Solver Engine Selector">
               <option value="highs" selected>HiGHS (WASM)</option>
               <option value="glpk">GLPK (WASM)</option>
+              <option value="z3">Z3 (SMT / SAT / MIP)</option>
             </select>
           </div>
 
@@ -159,6 +160,18 @@
               <span class="metric-label" data-i18n="varsLabel">Variables</span>
               <span id="metric-vars" class="metric-value">--</span>
             </div>
+          </div>
+
+          <!-- Unsat Core Alert Box (Conflict Diagnosis) -->
+          <div id="unsat-core-box" class="unsat-core-box" style="display: none;">
+            <div class="unsat-core-header">
+              <span class="unsat-core-icon">⚠️</span>
+              <span class="unsat-core-title" data-i18n="unsatCoreTitle">Conflicting Constraints Detected (Unsat Core):</span>
+            </div>
+            <div class="unsat-core-desc" data-i18n="unsatCoreDesc">
+              The model has no feasible solution. The solver identified the following minimal subset of incompatible constraints causing the conflict:
+            </div>
+            <div id="unsat-core-list" class="unsat-core-list"></div>
           </div>
 
           <!-- Problem Visualizer Section -->

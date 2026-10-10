@@ -29,6 +29,9 @@ export const LpStatus: Record<SolverStatus, string> = {
   IterationLimit: "Not Solved (Iteration Limit)",
   Error: "Error",
   NotSolved: "Not Solved",
+  Sat: "Sat",
+  Unsat: "Unsat",
+  Unknown: "Unknown",
 };
 
 /**
