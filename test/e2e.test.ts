@@ -6,7 +6,7 @@ import fs from "node:fs";
 describe("Browser End-to-End (E2E) Tests", () => {
   let browser: Browser;
   let page: Page;
-  const devServerUrl = "http://127.0.0.1:5173";
+  const devServerUrl = "http://localhost:5173";
   const screenshotsDir = path.resolve(process.cwd(), "test/screenshots");
 
   beforeAll(async () => {

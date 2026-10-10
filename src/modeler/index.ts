@@ -14,7 +14,7 @@ export {
   implies,
   xor,
 } from "./boolean-expr.js";
-export { parseExpr, parseConstraint, expr } from "./parser.js";
+export { parseExpr, parseConstraint, expr, c } from "./parser.js";
 export { generateLpString, type LpModelData, type LpExportResult } from "./lp-writer.js";
 
 // Type definitions

@@ -29,6 +29,7 @@ export {
   parseExpr,
   parseConstraint,
   expr,
+  c,
   generateLpString,
   type LpModelData,
   type LpExportResult,

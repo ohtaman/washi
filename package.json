@@ -45,11 +45,23 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "glpk.js": "^5.0.0",
     "highs": "^1.15.3"
+  },
+  "peerDependencies": {
+    "glpk.js": "^5.0.0",
+    "z3-solver": "^5.2.0"
+  },
+  "peerDependenciesMeta": {
+    "glpk.js": {
+      "optional": true
+    },
+    "z3-solver": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
+    "glpk.js": "^5.0.0",
     "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",

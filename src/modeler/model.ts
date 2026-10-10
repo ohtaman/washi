@@ -114,29 +114,61 @@ export class Model {
    * Add multiple variables at once:
    * - by count: addVars(5) -> Var[]
    * - by key array: addVars(["apples", "oranges"]) -> Record<string, Var>
+   * - by 2D dimensions: addVars(factories, stores) -> Record<string, Record<string, Var>>
+   * - by 2D numeric grid: addVars(8, 8) -> Record<number, Record<number, Var>>
    */
   addVars(count: number, options?: VarOptions): Var[];
+  addVars<R extends string | number, C extends string | number>(
+    dim1: R[] | number,
+    dim2: C[] | number,
+    options?: VarOptions
+  ): Record<R, Record<C, Var>>;
   addVars<K extends string | number>(keys: K[], options?: VarOptions): Record<K, Var>;
-  addVars(countOrKeys: number | (string | number)[], options?: VarOptions): Var[] | Record<string, Var> {
-    if (typeof countOrKeys === "number") {
+  addVars(
+    arg1: number | (string | number)[],
+    arg2?: number | (string | number)[] | VarOptions,
+    arg3?: VarOptions
+  ): any {
+    // 2D case: arg2 is number or array
+    if (typeof arg2 === "number" || Array.isArray(arg2)) {
+      const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
+      const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
+      const opts = arg3 || {};
+      const prefix = opts.prefix || opts.name || "x";
+      const matrix: any = {};
+      for (const r of rows) {
+        matrix[r] = {};
+        for (const c of cols) {
+          matrix[r][c] = this.addVar({
+            ...opts,
+            name: `${prefix}_${r}_${c}`,
+          });
+        }
+      }
+      return matrix;
+    }
+
+    // 1D case: arg2 is VarOptions or undefined
+    const opts = (arg2 as VarOptions) || {};
+    const prefix = opts.prefix || opts.name;
+    if (typeof arg1 === "number") {
       const result: Var[] = [];
-      const prefix = options?.name || "x";
-      for (let i = 0; i < countOrKeys; i++) {
+      const p = prefix || "x";
+      for (let i = 0; i < arg1; i++) {
         result.push(
           this.addVar({
-            ...options,
-            name: `${prefix}_${i}`,
+            ...opts,
+            name: `${p}_${i}`,
           })
         );
       }
       return result;
     } else {
       const result: Record<string, Var> = {};
-      const prefix = options?.name;
-      for (const key of countOrKeys) {
+      for (const key of arg1) {
         const varName = prefix ? `${prefix}_${key}` : `${key}`;
         result[key] = this.addVar({
-          ...options,
+          ...opts,
           name: varName,
         });
       }
@@ -273,6 +305,44 @@ export class Model {
    */
   addConstrs(constraints: (Constraint | BoolExpr | string)[]): (Constraint | BoolExpr)[] {
     return constraints.map((c) => this.addConstraint(c));
+  }
+
+  /**
+   * Universal classical fluent adder for constraints, variables, or batches.
+   * Enables:
+   * - m.add(x.mul(2).add(y).le(10))
+   * - m.add(c`${x} + ${y} <= 10`)
+   * - m.add("x + y <= 10")
+   * - m.add([c1, c2, c3])
+   * - m.add(new Var(...))
+   * - m.add(c1).add(c2) (fluent chaining)
+   */
+  add(constraint: Constraint, name?: string): this;
+  add(expr: BoolExpr, name?: string): this;
+  add(strConstraint: string, name?: string): this;
+  add(variable: Var): this;
+  add(items: (Constraint | BoolExpr | string | Var)[]): this;
+  add(
+    item: Constraint | BoolExpr | string | Var | (Constraint | BoolExpr | string | Var)[],
+    name?: string
+  ): this {
+    if (Array.isArray(item)) {
+      for (const elem of item) {
+        this.add(elem as any);
+      }
+      return this;
+    }
+
+    if (item instanceof Var) {
+      if (!this.varMapByName.has(item.name)) {
+        this.variables.push(item);
+        this.varMapByName.set(item.name, item);
+      }
+      return this;
+    }
+
+    this.addConstraint(item, name);
+    return this;
   }
 
   /**

@@ -7,6 +7,7 @@ let varIdCounter = 0;
 
 export interface VarOptions {
   name?: string;
+  prefix?: string;
   type?: VarType;
   lb?: number;
   ub?: number;

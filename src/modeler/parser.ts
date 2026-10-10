@@ -266,17 +266,13 @@ export function parseConstraint(text: string, resolver: VarResolver, name?: stri
 }
 
 /**
- * Tagged template literal for intuitive mathematical expressions:
- * expr`${chairs} + 2 * ${tables} <= 40`
- * or
- * expr`30 * ${chairs} + 50 * ${tables}`
+ * Parse a template literal with Var / LinExpr / number values
  */
-export function expr(
+function parseTemplate(
   strings: TemplateStringsArray,
-  ...values: (Var | LinExpr | number)[]
-): LinExpr | Constraint {
-  const syntheticVars = new Map<string, Var>();
-  let syntheticCounter = 0;
+  values: (Var | LinExpr | number)[]
+): { fullText: string; resolver: VarResolver } {
+  const placeholderMap = new Map<string, Var>();
   let fullText = "";
 
   for (let i = 0; i < strings.length; i++) {
@@ -286,23 +282,48 @@ export function expr(
       if (typeof val === "number") {
         fullText += `(${val})`;
       } else if (val instanceof Var) {
-        fullText += val.name;
-        syntheticVars.set(val.name, val);
+        const ph = `__v_${i}__`;
+        placeholderMap.set(ph, val);
+        fullText += ph;
       } else if (val instanceof LinExpr) {
-        // Expand expression: create a synthetic variable or embed terms
-        const synthName = `__syn_${++syntheticCounter}__`;
-        // Create dummy variable with value
+        // Expand terms of LinExpr directly
+        const ph = `__expr_${i}__`;
         fullText += `(${val.toString()})`;
         for (const [v] of val.terms) {
-          syntheticVars.set(v.name, v);
+          placeholderMap.set(v.name, v);
         }
       }
     }
   }
 
-  const resolver: VarResolver = (name) => syntheticVars.get(name);
+  const resolver: VarResolver = (name) => placeholderMap.get(name);
+  return { fullText, resolver };
+}
 
-  // Check if it's a constraint or expression
+/**
+ * Tagged template literal for constraints:
+ * c`${chairs} + 2 * ${tables} <= 40`
+ * c`3 * ${x} - ${y} >= 5`
+ * c`${x} == 2 * ${y} + 4`
+ */
+export function c(
+  strings: TemplateStringsArray,
+  ...values: (Var | LinExpr | number)[]
+): Constraint {
+  const { fullText, resolver } = parseTemplate(strings, values);
+  return parseConstraint(fullText, resolver);
+}
+
+/**
+ * Tagged template literal for linear expressions or inline constraints:
+ * expr`45 * ${chairs} + 80 * ${tables}` -> LinExpr
+ * expr`${x} + 2 * ${y} <= 40` -> Constraint
+ */
+export function expr(
+  strings: TemplateStringsArray,
+  ...values: (Var | LinExpr | number)[]
+): LinExpr | Constraint {
+  const { fullText, resolver } = parseTemplate(strings, values);
   if (/(<=|>=|==|=<|=>|=)/.test(fullText)) {
     return parseConstraint(fullText, resolver);
   } else {

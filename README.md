@@ -69,6 +69,54 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1100
 console.log(`Produce: ${chairs.value} chairs, ${tables.value} tables`); // 20 chairs, 10 tables
 ```
 
+#### 🧱 Fluent Classical Builder (`m.add`)
+In addition to Tagged Template Literals, `opt-ts` supports classical object-oriented method chaining and batch addition:
+
+```ts
+// Fluent method chaining
+m.add(chairs.add(tables.mul(2)).le(40), "wood_limit")
+ .add(chairs.mul(2).add(tables).le(50), "labor_limit");
+
+// Or batch addition via array
+m.add([
+  chairs.ge(0),
+  tables.ge(0),
+  c`${chairs} + 2 * ${tables} <= 40`,
+]);
+```
+
+#### 💡 Tagged Template Literal Syntax (`c` and `expr`)
+You can also write mathematical expressions and constraints using natural mathematical formulas via Tagged Template Literals:
+
+```ts
+import { Model, c, expr } from "opt-ts";
+
+const m = new Model("Factory");
+const chairs = m.addVar({ lb: 0, type: "Integer" });
+const tables = m.addVar({ lb: 0, type: "Integer" });
+
+// Express formula naturally without nested method chains
+m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
+m.addConstraint(c`${chairs} + 2 * ${tables} <= 40`, "wood");
+m.addConstraint(c`2 * ${chairs} + ${tables} <= 50`, "labor");
+
+await m.solve();
+```
+
+#### 🗂 Multi-dimensional & Indexed Variables (`addVars`)
+Define multidimensional variable grids (similar to PuLP's `LpVariable.dicts`) in a single line:
+
+```ts
+// 1D: by keys
+const x = m.addVars(["Tokyo", "Osaka", "Nagoya"], { type: "Binary" });
+
+// 2D: by two index sets
+const routes = m.addVars(["Factory1", "Factory2"], ["StoreA", "StoreB"], { lb: 0 });
+
+// 2D: numeric grid (e.g. 8x8 chessboard)
+const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
+```
+
 ---
 
 ### 2. Convex Quadratic Programming (QP: Portfolio Optimization)
@@ -281,41 +329,68 @@ const myCustomSolver = {
 await m.solve(myCustomSolver);
 ```
 
----
+## 💻 Standalone Node.js CLI Examples
 
-## 🎨 Interactive Demo Showcase (Web UI)
-
-This repository includes a standalone interactive demo UI built with a Zen light theme to demonstrate:
-- **Large-Scale Supply Chain Facility Location & Distribution (20,050 variables)**
-- **10-Nurse 7-Day Complex Scheduling Problem (NSP)**
-- **N-Queens Puzzle (Binary Formulation)**
-- **Markowitz Mean-Variance Portfolio Optimization (Convex QP)**
-
-To launch the local demo:
+Run any of the ready-to-use examples with `npx tsx`:
 
 ```bash
-npm install
+# 1. Classical LP with Tagged Template Literals
+npx tsx examples/node/01-production-planning.ts
+
+# 2. 0-1 Knapsack Problem (MIP with classical sum() helper)
+npx tsx examples/node/02-knapsack-problem.ts
+
+# 3. Markowitz Portfolio Optimization (Convex QP)
+npx tsx examples/node/03-portfolio-qp.ts
+
+# 4. Smart Home Security Rules (Z3 SMT propositional satisfiability)
+npx tsx examples/node/04-smt-security-rules.ts
+
+# 5. Incompatible Rules Diagnosis (Z3 Unsat Core extraction)
+npx tsx examples/node/05-unsat-core-diagnosis.ts
+
+# 6. PuLP Drop-in Compatibility (LpProblem, lpSum)
+npx tsx examples/node/06-pulp-compatibility.ts
+```
+
+---
+
+## 🎨 Interactive Web Demo (Showcase)
+
+This repository includes an interactive browser-based web demonstration (`examples/web-demo`) to visualize:
+- **Large-Scale Supply Chain Facility Location (20,050 variables)**
+- **10-Nurse 7-Day Complex Shift Roster Visualizer**
+- **8-Queens Interactive Chessboard MIP Solver**
+- **Markowitz Mean-Variance Portfolio Risk Frontier (Convex QP)**
+- **Smart Home Logic & Unsat Core Conflict Diagnosis**
+
+To run the local web showcase:
+
+```bash
 npm run dev
 ```
 
-Then open `http://localhost:5173/` in your browser.
+Open `http://localhost:5173/` in your browser.
 
 ---
 
 ## 🧪 Testing & Verification
 
-Strict Test-Driven Development (TDD) is enforced across the entire library:
+Strict Test-Driven Development (TDD) is enforced across the entire library with 100+ automated tests:
 
 ```bash
-# Run all unit, integration, QP, and solver tests
+# Run all unit, integration, large-scale benchmarks, and E2E browser tests
 npm test
 
-# Build library distribution (ESM bundle + TypeScript declarations)
-npm run build:lib
+# Build production library bundle & TypeScript declarations
+npm run build
 ```
 
 ---
 
-## 📄 License
+## 📄 License & Compliance
 
-MIT License.
+- **`opt-ts` Core**: **MIT License** (commercial and personal use freely allowed).
+- **Default Engine (HiGHS)**: **MIT License** (shipped natively, zero GPL copyleft risk).
+- **Z3 Plugin (`z3-solver`)**: **MIT License** (optional plugin).
+- **GLPK Plugin (`glpk.js`)**: **GPL-3.0 License** (completely isolated as an optional peerDependency to keep `opt-ts` core 100% MIT-compliant).
