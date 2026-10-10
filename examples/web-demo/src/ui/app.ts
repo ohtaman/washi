@@ -1,9 +1,9 @@
-import { EXAMPLES } from "../examples/index.js";
+import { EXAMPLES } from "../presets/index.js";
 import { executeModelCode } from "./runner.js";
 import { DOCS_HTML } from "./docs.js";
-import type { Model } from "../modeler/model.js";
-import { setDefaultSolver } from "../modeler/solvers/registry.js";
-import { registerZ3Solver } from "../modeler/solvers/z3.js";
+import type { Model } from "../../../../src/modeler/model.js";
+import { setDefaultSolver } from "../../../../src/modeler/solvers/registry.js";
+import { registerZ3Solver } from "../../../../src/modeler/solvers/z3.js";
 import {
   initLocale,
   setLocale,

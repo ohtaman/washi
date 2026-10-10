@@ -6,7 +6,7 @@ import {
   detectInitialLocale,
   type Locale,
   translations,
-} from "../src/ui/i18n.js";
+} from "../examples/web-demo/src/ui/i18n.js";
 
 describe("i18n Internationalization System", () => {
   beforeEach(() => {

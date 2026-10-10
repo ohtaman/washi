@@ -6,9 +6,11 @@ export default defineConfig({
     outDir: "dist/lib",
     emptyOutDir: false,
     lib: {
-      entry: resolve(import.meta.dirname, "src/index.ts"),
-      name: "OptTs",
-      fileName: () => "opt-ts.js",
+      entry: {
+        "opt-ts": resolve(import.meta.dirname, "src/index.ts"),
+        "solvers/z3": resolve(import.meta.dirname, "src/modeler/solvers/z3.ts"),
+        "solvers/glpk": resolve(import.meta.dirname, "src/modeler/solvers/glpk.ts"),
+      },
       formats: ["es"],
     },
     rollupOptions: {
@@ -16,6 +18,7 @@ export default defineConfig({
         "highs",
         "glpk.js",
         "glpk.js/node",
+        "z3-solver",
         "node:fs",
         "node:path",
         "node:url",

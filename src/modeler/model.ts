@@ -20,6 +20,12 @@ export interface ModelOptions {
   solver?: Solver | string;
 }
 
+export interface IndicatorOptions {
+  activeValue?: 0 | 1;
+  M?: number;
+  name?: string;
+}
+
 /**
  * High-level intuitive mathematical programming model.
  * Inspired by PuLP (Python) and python-mip, running directly with HiGHS WASM in browser and Node.js.
@@ -343,6 +349,65 @@ export class Model {
 
     this.addConstraint(item, name);
     return this;
+  }
+
+  /**
+   * Add an indicator constraint via Big-M auto-linearization:
+   * "If binVar == activeValue, then constraint holds"
+   *
+   * Automatically handles <=, >=, and == constraints.
+   * Enables solving conditional logic in MIP solvers (HiGHS, GLPK) without requiring SMT.
+   */
+  addIndicator(
+    binVar: Var,
+    constraint: Constraint,
+    options: IndicatorOptions = {}
+  ): Constraint[] {
+    const activeVal = options.activeValue !== undefined ? options.activeValue : 1;
+    const M = options.M !== undefined ? options.M : 1e5;
+    const baseName = options.name || `ind_${binVar.name}_${constraint.name}`;
+    const addedConstrs: Constraint[] = [];
+
+    const { lhs, sense, rhs } = constraint;
+
+    if (activeVal === 1) {
+      if (sense === "<=" || sense === "==") {
+        // lhs <= rhs + M*(1 - binVar) <=> lhs + M*binVar <= rhs + M
+        const cLe = this.addConstraint(
+          lhs.add(binVar.mul(M)).le(rhs + M),
+          sense === "==" ? `${baseName}_le` : baseName
+        );
+        addedConstrs.push(cLe);
+      }
+      if (sense === ">=" || sense === "==") {
+        // lhs >= rhs - M*(1 - binVar) <=> lhs - M*binVar >= rhs - M
+        const cGe = this.addConstraint(
+          lhs.sub(binVar.mul(M)).ge(rhs - M),
+          sense === "==" ? `${baseName}_ge` : baseName
+        );
+        addedConstrs.push(cGe);
+      }
+    } else {
+      // activeVal === 0: holds when binVar == 0, relaxed by M*binVar
+      if (sense === "<=" || sense === "==") {
+        // lhs <= rhs + M*binVar <=> lhs - M*binVar <= rhs
+        const cLe = this.addConstraint(
+          lhs.sub(binVar.mul(M)).le(rhs),
+          sense === "==" ? `${baseName}_le` : baseName
+        );
+        addedConstrs.push(cLe);
+      }
+      if (sense === ">=" || sense === "==") {
+        // lhs >= rhs - M*binVar <=> lhs + M*binVar >= rhs
+        const cGe = this.addConstraint(
+          lhs.add(binVar.mul(M)).ge(rhs),
+          sense === "==" ? `${baseName}_ge` : baseName
+        );
+        addedConstrs.push(cGe);
+      }
+    }
+
+    return addedConstrs;
   }
 
   /**

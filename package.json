@@ -11,6 +11,16 @@
       "types": "./dist/types/index.d.ts",
       "import": "./dist/lib/opt-ts.js",
       "default": "./dist/lib/opt-ts.js"
+    },
+    "./solvers/z3": {
+      "types": "./dist/types/modeler/solvers/z3.d.ts",
+      "import": "./dist/lib/solvers/z3.js",
+      "default": "./dist/lib/solvers/z3.js"
+    },
+    "./solvers/glpk": {
+      "types": "./dist/types/modeler/solvers/glpk.d.ts",
+      "import": "./dist/lib/solvers/glpk.js",
+      "default": "./dist/lib/solvers/glpk.js"
     }
   },
   "files": [

@@ -1,5 +1,5 @@
 // Core classes and helpers
-export { Model, type ModelOptions } from "./model.js";
+export { Model, type ModelOptions, type IndicatorOptions } from "./model.js";
 export { Var, type VarOptions } from "./variable.js";
 export { LinExpr, sum, xsum, lpSum } from "./expression.js";
 export { QuadExpr, type QuadTerm } from "./quad-expr.js";

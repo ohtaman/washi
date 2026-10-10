@@ -1,4 +1,4 @@
-import * as Modeler from "../modeler/index.js";
+import * as Modeler from "../../../../src/index.js";
 
 export interface ExecutionResult {
   success: boolean;

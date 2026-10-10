@@ -117,6 +117,17 @@ const routes = m.addVars(["Factory1", "Factory2"], ["StoreA", "StoreB"], { lb: 0
 const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
 ```
 
+#### 🔀 Big-M Indicator Constraints (`addIndicator`)
+Model conditional logic, activation switches, and fixed charges directly in MIP solvers (HiGHS, GLPK) without manual Big-M calculations:
+
+```ts
+// "If factory is closed (open == 0), capacity x must be 0"
+m.addIndicator(openFactory, x.le(0), { activeValue: 0, M: 500 });
+
+// "If activated (active == 1), enforce minimum batch size: x >= 50"
+m.addIndicator(activeFlag, x.ge(50), { activeValue: 1, M: 500 });
+```
+
 ---
 
 ### 2. Convex Quadratic Programming (QP: Portfolio Optimization)
