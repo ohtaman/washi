@@ -7,7 +7,7 @@ import {
   not,
   implies,
 } from "../src/index.js";
-import { Z3Solver, registerZ3Solver } from "../src/modeler/solvers/z3.js";
+import { Z3Solver, registerZ3Solver, killZ3Threads } from "../src/modeler/solvers/z3.js";
 
 describe("Z3Solver (SMT & SAT & MIP)", () => {
   beforeAll(async () => {
@@ -249,5 +249,57 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
       process.off("unhandledRejection", listener);
     }
   });
+
+  it("clears BoolVar and Var values when re-running check() transitioning from Sat to Unsat", async () => {
+    const m = new Model({ solver: "z3" });
+    const b = m.addBoolVar("b");
+    const x = m.addVar({ name: "x", type: "Integer", lb: 0, ub: 10 });
+    m.addConstraint(b);
+    m.addConstraint(x.ge(5));
+
+    const res1 = await m.check();
+    expect(res1.status).toBe("Sat");
+    expect(b.value).toBe(true);
+    expect(x.value).toBe(5);
+    expect(m.values.get("b")).toBe(true);
+    expect(m.values.get("x")).toBe(5);
+
+    // Add contradicting constraint to make model Unsat
+    m.addConstraint(b.not());
+    const res2 = await m.check();
+    expect(res2.status).toBe("Unsat");
+    expect(b.value).toBe(null);
+    expect(x.value).toBe(null);
+    expect(m.values.size).toBe(0);
+
+    await killZ3Threads();
+  });
+
+  it("clears BoolVar and Var values when re-running solve() transitioning from Optimal to Infeasible", async () => {
+    const m = new Model({ solver: "z3" });
+    const b = m.addBoolVar("b");
+    const x = m.addVar({ name: "x", type: "Integer", lb: 0, ub: 10 });
+    m.addConstraint(b);
+    m.addConstraint(x.ge(5));
+    m.maximize(x);
+
+    const status1 = await m.solve();
+    expect(status1).toBe("Optimal");
+    expect(b.value).toBe(true);
+    expect(x.value).toBe(10);
+    expect(m.values.get("b")).toBe(1);
+    expect(m.values.get("x")).toBe(10);
+
+    // Add contradicting constraint to make model Infeasible
+    m.addConstraint(b.not());
+    const status2 = await m.solve();
+    expect(status2).toBe("Infeasible");
+    expect(b.value).toBe(null);
+    expect(x.value).toBe(null);
+    expect(m.values.size).toBe(0);
+
+    await killZ3Threads();
+  });
 });
+
 

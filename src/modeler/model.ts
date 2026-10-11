@@ -499,18 +499,45 @@ export class Model {
 
     this.values.clear();
 
+    // Reset previous variable and constraint solutions
+    for (const v of this.variables) {
+      v.value = null;
+      v.reducedCost = null;
+    }
+    for (const bv of this.boolVars) {
+      bv.value = null;
+    }
+    for (const c of this.constraints) {
+      c.dual = null;
+      c.slack = null;
+    }
+    if (lpData?.nameToVar) {
+      for (const v of lpData.nameToVar.values()) {
+        v.value = null;
+        v.reducedCost = null;
+      }
+    }
+    if (lpData?.nameToConstraint) {
+      for (const c of lpData.nameToConstraint.values()) {
+        c.dual = null;
+        c.slack = null;
+      }
+    }
+
     // Map variable solutions back to Var objects
-    if (result.values) {
+    if (result.values && result.status !== "Infeasible" && result.status !== "Unbounded") {
       for (const [vName, primal] of Object.entries(result.values)) {
-        this.values.set(vName, primal);
-        const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
-        if (v) {
-          v.value = primal;
-          valuesRecord[v.name] = primal;
-        }
-        const bv = this.boolVars.find((b) => b.name === vName);
-        if (bv) {
-          bv.value = Boolean(primal);
+        if (typeof primal === "number" && !Number.isNaN(primal)) {
+          this.values.set(vName, primal);
+          const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
+          if (v) {
+            v.value = primal;
+            valuesRecord[v.name] = primal;
+          }
+          const bv = this.boolVars.find((b) => b.name === vName);
+          if (bv) {
+            bv.value = Boolean(primal);
+          }
         }
       }
     }
@@ -636,8 +663,16 @@ export class Model {
       this.status = checkResult.status;
       this.runTime = checkResult.runTime ?? 0;
       this.unsatCore = checkResult.unsatCore || [];
-      if (checkResult.values) {
-        this.values.clear();
+
+      this.values.clear();
+      for (const v of this.variables) {
+        v.value = null;
+      }
+      for (const bv of this.boolVars) {
+        bv.value = null;
+      }
+
+      if (checkResult.values && checkResult.status === "Sat") {
         for (const [name, val] of Object.entries(checkResult.values)) {
           this.values.set(name, val);
           const v = this.getVarByName(name);
@@ -664,8 +699,17 @@ export class Model {
       const isUnsat = status === "Infeasible";
 
       const values: Record<string, number | boolean> = {};
-      for (const v of this.variables) {
-        values[v.name] = v.value ?? 0;
+      if (isSat) {
+        for (const v of this.variables) {
+          if (v.value !== null) {
+            values[v.name] = v.value;
+          }
+        }
+        for (const bv of this.boolVars) {
+          if (bv.value !== null) {
+            values[bv.name] = bv.value;
+          }
+        }
       }
 
       return {

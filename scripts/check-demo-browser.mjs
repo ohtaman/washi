@@ -82,7 +82,26 @@ async function runBrowserVerification() {
   const demoUrl = `http://localhost:${port}/washi/demo/`;
   console.log(`Simulated GitHub Pages server running at ${demoUrl}`);
 
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+  } catch (err) {
+    await new Promise((res) => server.close(res));
+    const isMissingBinary =
+      err.message?.includes("Executable doesn't exist") ||
+      err.message?.includes("Please run the following command to download new browsers") ||
+      err.message?.includes("playwright install");
+
+    if (isMissingBinary && !process.env.CI && process.env.RUN_DEMO_BROWSER !== "1") {
+      console.warn(
+        `\n[Notice] Playwright Chromium binary is not installed locally.\n` +
+        `Skipping demo browser verification. To run locally, install Chromium with: npx playwright install chromium\n`
+      );
+      process.exit(0);
+    }
+    throw err;
+  }
+
   try {
     const context = await browser.newContext();
     const page = await context.newPage();

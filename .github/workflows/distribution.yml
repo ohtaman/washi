@@ -23,3 +23,5 @@ jobs:
       - run: npm run test:distribution
         env:
           RUN_DISTRIBUTION_BROWSER: '1'
+      - run: npm run test:demo
+
