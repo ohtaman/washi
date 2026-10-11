@@ -398,13 +398,17 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 ```
 
 > [!NOTE]
-> **Z3 in Browser Environments**:
-> Because the Z3 WebAssembly engine uses multithreading (`SharedArrayBuffer`), the hosting web server must send Cross-Origin-Isolation delivery headers on the document response:
+> **Z3 in Browser Environments & Cross-Origin Isolation**:
+> Because the Z3 WebAssembly engine uses multithreading (`SharedArrayBuffer`), modern browsers require cross-origin isolation. The HTML document response must send:
 > ```http
 > Cross-Origin-Opener-Policy: same-origin
 > Cross-Origin-Embedder-Policy: require-corp
 > ```
-> And any cross-origin assets (e.g. from a CDN) must serve `Cross-Origin-Resource-Policy: cross-origin`.
+> And any cross-origin assets must serve `Cross-Origin-Resource-Policy: cross-origin`.
+> 
+> General static sites without custom header control (e.g. standard GitHub Pages or preview platforms) and third-party iframe embeds (e.g. CodePen / JSFiddle) do not satisfy these requirements without extra setup. Importing `@ohtaman/washi` never automatically injects or registers a Service Worker into consumer applications.
+> 
+> To enable Z3 on GitHub Pages, the official WaSHI Web Demo bundles a dedicated `coi-serviceworker.js` strictly scoped to `/washi/`. On fresh browser sessions, it registers the worker and reloads once to establish `window.crossOriginIsolated === true` before running Z3. Environments lacking Service Workers or failing isolation abort Z3 execution with a descriptive explanation rather than hanging.
 
 Complete standalone examples for ESM, script tags, and CodePen are available in `examples/distribution/`.
 

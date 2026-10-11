@@ -508,6 +508,10 @@ export class Model {
           v.value = primal;
           valuesRecord[v.name] = primal;
         }
+        const bv = this.boolVars.find((b) => b.name === vName);
+        if (bv) {
+          bv.value = Boolean(primal);
+        }
       }
     }
 
@@ -639,6 +643,10 @@ export class Model {
           const v = this.getVarByName(name);
           if (v && typeof val === "number") {
             v.value = val;
+          }
+          const bv = this.boolVars.find((b) => b.name === name);
+          if (bv) {
+            bv.value = Boolean(val);
           }
         }
       }
