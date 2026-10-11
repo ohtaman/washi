@@ -298,6 +298,44 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ---
 
+## 🌐 浏览器与 Web Worker 使用指南
+
+WaSHI 原生支持在现代网页浏览器、前端主流框架（Vite、Next.js、React、Vue、Svelte）以及 Web Worker 中运行。
+
+### 1. 零配置模式（官方 CDN 智能回退）
+在浏览器环境下，若当前域名根路径未部署 `highs.wasm`，WaSHI 会自动从官方 jsDelivr 高速 CDN 安全拉取二进制文件。您无需任何额外配置或文件复制：
+
+```typescript
+import { Model } from "@ohtaman/washi";
+
+const model = new Model();
+// ... 定义变量与约束
+await model.solve(); // 零配置即可直接运行！
+```
+
+### 2. 现代打包工具自托管（Vite / Webpack / Rollup）
+如果您希望将 `highs.wasm` 作为项目打包产物的一部分进行自托管与版本哈希管理：
+
+```typescript
+import wasmUrl from "@ohtaman/washi/highs.wasm?url";
+import { setHighsWasmUrl } from "@ohtaman/washi";
+
+// 在应用入口处配置一次
+setHighsWasmUrl(wasmUrl);
+```
+
+### 3. 企业内网与完全离线（Air-gapped）环境
+针对严禁外部 CDN 请求的企业内网或纯离线环境：
+
+```typescript
+import { setHighsWasmUrl } from "@ohtaman/washi";
+
+// 指定内部静态资源路径（将完全禁用外部 CDN 回退）
+setHighsWasmUrl("/static/highs.wasm");
+```
+
+---
+
 ## 💻 本地脚本与交互式 Web 演示
 
 在 `examples/node/` 中提供了即开即用的独立脚本：

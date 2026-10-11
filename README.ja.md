@@ -298,6 +298,44 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ---
 
+## 🌐 ブラウザ & Web Worker での利用方法
+
+WaSHI は、モダンなブラウザ、フロントエンドフレームワーク（Vite, Next.js, React, Vue, Svelte）、および Web Worker 上でゼロコンフィグで動作するように設計されています。
+
+### 1. ゼロコンフィグ動作（公式 CDN 自動フォールバック）
+ブラウザ環境において、オリジンルートに `highs.wasm` が配置されていない場合、WaSHI は自動的に公式 jsDelivr CDN から安全にバイナリを取得します。追加の設定コードやファイルコピーは一切不要です：
+
+```typescript
+import { Model } from "@ohtaman/washi";
+
+const model = new Model();
+// ... 変数・制約の定義
+await model.solve(); // 設定なしで即座に動作！
+```
+
+### 2. モダンバンドラーでの自前アセット管理（Vite / Webpack / Rollup）
+`highs.wasm` を自分のアプリケーションの静的アセット（ハッシュ付き配信）として自前ホストしたい場合：
+
+```typescript
+import wasmUrl from "@ohtaman/washi/highs.wasm?url";
+import { setHighsWasmUrl } from "@ohtaman/washi";
+
+// アプリ起動時に一度だけ設定
+setHighsWasmUrl(wasmUrl);
+```
+
+### 3. 社内イントラ・完全オフライン（Air-gapped）環境での利用
+外部 CDN への通信が禁止されている社内イントラやオフライン環境の場合：
+
+```typescript
+import { setHighsWasmUrl } from "@ohtaman/washi";
+
+// 自前の静的ファイル配信パスを指定（外部 CDN へのフォールバックは完全無効化されます）
+setHighsWasmUrl("/static/highs.wasm");
+```
+
+---
+
 ## 💻 サンプルスクリプト & インタラクティブ Web デモ
 
 `examples/node/` 配下に実行可能なスタンドアロンスクリプトを用意しています：
