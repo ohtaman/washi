@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="200" />
+  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="160" />
   <h1>WaSHI (<code>@ohtaman/washi</code>)</h1>
   <p><strong>Intuitive Mathematical Optimization &amp; Algebraic Modeler for TypeScript &amp; JavaScript</strong></p>
   <p>

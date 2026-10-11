@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="200" />
+  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="160" />
   <h1>WaSHI (<code>@ohtaman/washi</code>)</h1>
   <p><strong>面向 TypeScript 与 JavaScript 的直观数学规划与代数建模库</strong></p>
   <p>
