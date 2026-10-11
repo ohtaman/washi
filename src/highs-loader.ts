@@ -1,11 +1,14 @@
 import type { SolveOptions } from "./modeler/types.js";
 
+export const OFFICIAL_HIGHS_CDN_WASM_URL =
+  "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.wasm";
+
 type HighsInstance = any;
 
 let cachedHighsPromise: Promise<HighsInstance> | null = null;
 let customWasmUrl: string | null = null;
 
-export function setHighsWasmUrl(url: string) {
+export function setHighsWasmUrl(url: string | null) {
   customWasmUrl = url;
   // Invalidate cache if wasm url changes before load
   cachedHighsPromise = null;
@@ -13,6 +16,90 @@ export function setHighsWasmUrl(url: string) {
 
 export function getHighsWasmUrl(): string | null {
   return customWasmUrl;
+}
+
+/**
+ * Check if the given byte array begins with the standard WebAssembly magic header (\0asm).
+ */
+export function isValidWasmHeader(bytes: Uint8Array): boolean {
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0x00 &&
+    bytes[1] === 0x61 &&
+    bytes[2] === 0x73 &&
+    bytes[3] === 0x6d
+  );
+}
+
+/**
+ * Probe a URL to determine whether it serves a valid WebAssembly binary
+ * without downloading the entire file. Cancels the stream after checking the first chunk.
+ */
+export async function probeWasmUrl(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      headers: { Range: "bytes=0-3" },
+    });
+
+    if (!res.ok) {
+      return false;
+    }
+
+    const contentType = res.headers.get("content-type") || "";
+    // If the server returned an HTML page (e.g. 404 SPA fallback to index.html), it's not valid WASM
+    if (contentType.includes("text/html")) {
+      return false;
+    }
+
+    if (!res.body) {
+      return true;
+    }
+
+    const reader = res.body.getReader();
+    const { value, done } = await reader.read();
+    await reader.cancel();
+
+    if (done || !value || value.length < 4) {
+      return false;
+    }
+
+    return isValidWasmHeader(value);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve the HiGHS WASM URL for browser / worker environments.
+ * - Explicit URLs (customWasmUrl or options.wasmUrl) are strictly used (no CDN fallback).
+ * - Default resolution probes the local origin; if missing or returning HTML, falls back to the official CDN.
+ */
+export async function resolveBrowserWasmUrl(explicitUrl?: string): Promise<string> {
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+  if (customWasmUrl) {
+    return customWasmUrl;
+  }
+
+  const localUrl =
+    typeof window !== "undefined"
+      ? new URL("/highs.wasm", window.location.origin).href
+      : typeof self !== "undefined" && (self as any).location
+      ? new URL("highs.wasm", (self as any).location.href).href
+      : "/highs.wasm";
+
+  const isLocalValid = await probeWasmUrl(localUrl);
+  if (isLocalValid) {
+    return localUrl;
+  }
+
+  if (typeof console !== "undefined" && console.info) {
+    console.info(
+      `[WaSHI] Local highs.wasm not found or invalid at "${localUrl}". Automatically falling back to official CDN: ${OFFICIAL_HIGHS_CDN_WASM_URL}`
+    );
+  }
+  return OFFICIAL_HIGHS_CDN_WASM_URL;
 }
 
 /**
@@ -40,14 +127,7 @@ export async function getHighs(options: SolveOptions = {}): Promise<HighsInstanc
     }
 
     // Browser or Web Worker environment
-    const defaultWasmUrl =
-      typeof window !== "undefined"
-        ? new URL("highs.wasm", window.location.href).href
-        : typeof self !== "undefined" && (self as any).location
-        ? new URL("highs.wasm", (self as any).location.href).href
-        : "/highs.wasm";
-
-    const wasmUrl = options.wasmUrl || customWasmUrl || defaultWasmUrl;
+    const wasmUrl = await resolveBrowserWasmUrl(options.wasmUrl);
 
     const highsInstance = await loadHighs({
       locateFile: (file: string) => {

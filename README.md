@@ -298,6 +298,44 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ---
 
+## 🌐 Browser & Web Worker Usage
+
+WaSHI is engineered for seamless execution in modern browsers, frontend frameworks (Vite, Next.js, React, Vue, Svelte), and Web Workers.
+
+### 1. Zero-Config Mode (Automatic CDN Fallback)
+In browser environments, if `highs.wasm` is not found on your local origin, WaSHI automatically falls back to the official jsDelivr CDN. You can optimize without copying files or writing boilerplate:
+
+```typescript
+import { Model } from "@ohtaman/washi";
+
+const model = new Model();
+// ... define variables & constraints
+await model.solve(); // Works instantly with zero setup!
+```
+
+### 2. Bundler-Native Asset Hosting (Vite / Webpack / Rollup)
+To bundle and self-host `highs.wasm` as a versioned, hashed static asset with your application:
+
+```typescript
+import wasmUrl from "@ohtaman/washi/highs.wasm?url";
+import { setHighsWasmUrl } from "@ohtaman/washi";
+
+// Configure once at app startup
+setHighsWasmUrl(wasmUrl);
+```
+
+### 3. Air-Gapped & Enterprise Offline Environments
+In strict enterprise intranet or air-gapped environments where external CDN network access is disallowed:
+
+```typescript
+import { setHighsWasmUrl } from "@ohtaman/washi";
+
+// Point strictly to your internal assets (completely disables CDN fallback)
+setHighsWasmUrl("/static/highs.wasm");
+```
+
+---
+
 ## 💻 CLI & Interactive Demos
 
 Ready-to-run standalone examples are available in `examples/node/`:

@@ -90,5 +90,14 @@ export {
 } from "./modeler/solvers/index.js";
 
 // WASM Engine Access
-export { getHighs, solveLpWithHighs, setHighsWasmUrl, getHighsWasmUrl } from "./highs-loader.js";
+export {
+  getHighs,
+  solveLpWithHighs,
+  setHighsWasmUrl,
+  getHighsWasmUrl,
+  OFFICIAL_HIGHS_CDN_WASM_URL,
+  isValidWasmHeader,
+  probeWasmUrl,
+  resolveBrowserWasmUrl,
+} from "./highs-loader.js";
 export { getGlpk } from "./glpk-loader.js";
