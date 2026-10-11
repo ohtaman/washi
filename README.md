@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
     <img alt="WaSHI - Algebraic Modeler for TypeScript &amp; JavaScript" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>Mathematical Optimization Modeler &amp; Algebraic System for TypeScript &amp; JavaScript</strong></p>
+  <p><strong>Algebraic Modeling for TypeScript &amp; JavaScript</strong></p>
   <p>
     <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
   </p>
@@ -24,7 +24,11 @@
 
 ---
 
-**WaSHI** is a high-level mathematical optimization modeler and algebraic modeling system that brings the expressive elegance of Python's **PuLP** and Julia's **JuMP** to the modern TypeScript and JavaScript ecosystem. Formulate mathematical models using natural algebraic equations and solve them instantly across Node.js, browsers, Bun, Deno, and Next.js—powered natively by WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**) with zero native compilation steps.
+**WaSHI** is an algebraic modeler for TypeScript and JavaScript, inspired by Python's **PuLP** and Julia's **JuMP**. Define variables, objectives, and arithmetic or logical constraints in application code. WaSHI constructs the model, translates it for a solver adapter, and maps results back to your variables. **HiGHS**, **Z3**, and **GLPK** perform the optimization or satisfiability checks.
+
+HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provides Node.js and browser distributions, including WebAssembly assets. See the [browser integration guide](#-browser--web-worker-usage) for deployment requirements.
+
+[Try the browser demo](https://ohtaman.github.io/washi/demo/) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, c } from "@ohtaman/washi";
@@ -43,25 +47,25 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 ---
 
-## 🎯 Why WaSHI?
+## 🎯 What WaSHI provides
 
-1. 🌐 **100% Client-Side & Zero Server Cost**: Run industrial-grade optimization entirely inside the user's browser, edge worker, or Electron app. Zero backend server costs, offline-ready, and 100% private (confidential business data never leaves the client device).
-2. 📦 **Frictionless Zero-Dependency Distribution**: No Python runtimes, no C/C++ compilation, and no OS-dependent native solver binaries to bundle. Just `npm install @ohtaman/washi`—everything (including WebAssembly solvers) works instantly out of the box.
-3. ✍️ **Familiar Algebraic Modeling (PuLP & python-mip DX)**: Never struggle with low-level matrix indices. Formulate models naturally using tagged template literals (`c`${x} + 2 * ${y} <= 40``) or drop-in PuLP/python-mip syntax (`LpProblem`, `lpSum`).
-4. 🔄 **Pluggable Solvers & Unified API**: Formulate your mathematical model once; solve with **HiGHS** (industrial MIP/QP), **Z3** (SMT logic & Unsat Core diagnosis), or **GLPK** with a single parameter.
-5. 🔍 **Automatic Conflict Diagnosis (`unsatCore`)**: When constraints are contradictory (Infeasible), diagnose root causes by extracting a conflicting constraint subset (unsatisfiable core) via the Z3 engine.
-6. ⚡ **Industrial Scale Performance in WebAssembly**: Built with an $O(N)$ linear-time expression builder. Formulate 20,000+ variable MIPs in ~100ms and solve them in ~15 seconds right inside WebAssembly via HiGHS.
+1. **Algebraic model construction**: Use typed variables, indexed variable collections, tagged templates (`expr` and `c`), and fluent expressions. The `Model` API and PuLP-style helpers provide alternative ways to describe the same model.
+2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
+3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
+4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect an unsatisfiable core to investigate conflicting constraints. A returned core is a conflicting subset, not necessarily the smallest one.
+
+Model construction and translation are WaSHI's responsibility. Supported problem classes, numerical behavior, and solve time depend on the selected solver, its settings, and the problem. Modeling overhead and solver execution time should be measured separately; a result for one model is not a general performance guarantee.
 
 ---
 
-## ⚡ Solvers Matrix
+## ⚙️ Solver adapters and capabilities
 
-| Solver | Engine License | Problem Classes | Best For | Status in WaSHI |
+| Adapter | Engine license | Supported problem classes | Engine role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| **HiGHS** | **MIT** | **LP, MIP, Convex QP** | Industrial-scale optimization, production planning, finance | **Built-in default** (zero-config) |
-| **Z3** | **MIT** | **SMT, SAT, Logic, MIP** | Propositional logic, conflict diagnosis (`unsatCore`), rule engines | Optional plugin (`@ohtaman/washi/solvers/z3`) |
-| **GLPK** | **GPL-3.0** | **LP, MIP** | Academic benchmarks, legacy GLPK compatibility | Optional plugin (`@ohtaman/washi/solvers/glpk`) |
-| **Mock** | **MIT** | *Any* | Ultra-fast unit testing in CI without loading WebAssembly | Built-in |
+| **HiGHS** | **MIT** | **LP, MIP, convex QP** | Numerical optimization | Built-in default |
+| **Z3** | **MIT** | **SMT, SAT, logic, MIP** | Satisfiability checks, unsatisfiable cores, optimization | Optional plugin (`@ohtaman/washi/solvers/z3`) |
+| **GLPK** | **GPL-3.0** | **LP, MIP** | Linear and mixed-integer optimization | Optional plugin (`@ohtaman/washi/solvers/glpk`) |
+| **Mock** | **MIT** | — | Simulated solver responses for integration tests | Built-in; does not solve the model |
 
 ---
 
@@ -287,9 +291,9 @@ console.log(`Objective: ${m.objectiveValue}`); // 1100
 
 ---
 
-### 6. Python PuLP Compatibility Layer
+### 6. PuLP-style helpers
 
-If you have existing Python PuLP code, port it with near zero friction:
+WaSHI includes helpers such as `LpProblem`, `LpVariable`, and `lpSum` for familiar modeling in JavaScript. Porting Python code requires adapting its syntax and checking which APIs are supported:
 
 ```ts
 import {
@@ -439,33 +443,40 @@ WaSHI features a decoupled, pluggable solver architecture. You can easily build 
 
 ---
 
-## 💻 CLI & Interactive Demos
+## 💻 Examples and browser demo
 
-Ready-to-run standalone examples are available in `examples/node/`:
+Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/examples/README.md), which links to the source and explains how to run each example from a repository checkout.
+
+| Example | What it demonstrates | Solver |
+| :--- | :--- | :--- |
+| [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints | HiGHS |
+| [Portfolio allocation](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | A convex quadratic objective with allocation constraints | HiGHS |
+| [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints with satisfiability checking | Z3 |
+| [Conflict diagnosis](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | Named constraints and an unsatisfiable core | Z3 |
+
+[Open the hosted demo](https://ohtaman.github.io/washi/demo/) to edit and run models in your browser. For browser ESM, classic script tags, and CodePen, see the [distribution examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md). Z3 requires cross-origin isolation; see the browser requirements above.
+
+To run examples locally, clone the repository and install its development dependencies first:
 
 ```bash
+git clone https://github.com/ohtaman/washi.git
+cd washi
+npm ci
 npx tsx examples/node/01-production-planning.ts
-npx tsx examples/node/02-knapsack-problem.ts
-npx tsx examples/node/03-portfolio-qp.ts
-npx tsx examples/node/04-smt-security-rules.ts
-npx tsx examples/node/05-unsat-core-diagnosis.ts
-npx tsx examples/node/06-pulp-compatibility.ts
-npx tsx examples/node/08-glpk-solver-plugin.ts
-```
 
-To run the interactive browser showcase (`examples/web-demo`):
-
-```bash
+# Local browser demo: http://localhost:5173/demo/
 npm run dev
-# Documentation: http://localhost:5173/
-# Interactive Demo: http://localhost:5173/demo/
 ```
+
+The example sources import the repository's `src/` modules. In an application using the published package, import `@ohtaman/washi` and the required solver plugin instead.
+
+Ideas for expanding the gallery—such as shift scheduling, transportation, and a Vite application—are collected under [future example directions](https://github.com/ohtaman/washi/blob/main/examples/README.md#directions-for-future-examples).
 
 ---
 
 ## 🧪 Testing
 
-WaSHI is developed with strict Test-Driven Development (TDD) across 120+ unit, integration, and large-scale test cases:
+Run the repository's unit and integration tests, and build the distributions:
 
 ```bash
 # Run all unit and integration tests
