@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - 面向 TypeScript 与 JavaScript 的数学规划与代数建模库" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - 面向 TypeScript 与 JavaScript 的数理优化代数建模器 (Modeler)" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>面向 TypeScript 与 JavaScript 的直观数学规划与代数建模库</strong></p>
+  <p><strong>面向 TypeScript 与 JavaScript 的直观数理优化代数建模器（Algebraic Modeler）</strong></p>
   <p>
     <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • SMT逻辑约束与冲突诊断</em>
   </p>
@@ -14,19 +14,17 @@
     <a href="./README.zh-CN.md">简体中文</a>
   </p>
   <p>
+    <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
+    <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
     <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
-    <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
-    <a href="https://bundlephobia.com/package/@ohtaman/washi"><img src="https://img.shields.io/badge/bundle%20size-7.2%20kB%20(gzip)-blue" alt="bundle size" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
-    <img src="https://img.shields.io/badge/types-TypeScript-blue" alt="TypeScript types" />
-    <img src="https://img.shields.io/badge/tests-120%2B%20passing-brightgreen" alt="tests" />
   </p>
 </div>
 
 ---
 
-**WaSHI** 是一个高层代数建模库，将 Python **PuLP** 与 Julia **JuMP** 的优雅表现力引入现代 TypeScript / JavaScript 生态系统。你可以直接使用符合数学直觉的代数公式编写数学模型，并在 Node.js、现代浏览器、Bun、Deno 及 Next.js 中秒级求解——完全依托 WebAssembly 求解器（**HiGHS**、**Z3**、**GLPK**），无需任何本地 C++ 编译环境。
+**WaSHI** 是一个现代数理优化高层代数建模器（Algebraic Modeler），将 Python **PuLP** 与 Julia **JuMP** 的优雅表现力引入 TypeScript / JavaScript 生态系统。你可以直接使用符合数学直觉的代数公式编写数学模型，并在 Node.js、现代浏览器、Bun、Deno 及 Next.js 中秒级求解——完全依托 WebAssembly 求解器（**HiGHS**、**Z3**、**GLPK**），无需任何本地 C++ 编译环境。
 
 ```ts
 import { Model, expr, c } from "@ohtaman/washi";
