@@ -7,6 +7,60 @@ let currentZ3Instance: any = null;
 let customZ3JsUrl: string | null = null;
 let customZ3WasmUrl: string | null = null;
 const activeErrorHandlers = new Set<(err: Error) => void>();
+const activeAsyncRejects = new Set<(err: Error) => void>();
+const trackedSemaphores = new Set<any>();
+
+function hookAsyncMutex(mod: any): void {
+  const Semaphore = mod?.Semaphore || mod?.default?.Semaphore;
+  if (!Semaphore || Semaphore.__washi_hooked) return;
+  Semaphore.__washi_hooked = true;
+
+  const originalAcquire = Semaphore.prototype.acquire;
+  Semaphore.prototype.acquire = function (...args: any[]) {
+    trackedSemaphores.add(this);
+    return originalAcquire.apply(this, args);
+  };
+}
+
+// Proactively hook async-mutex if available in the current environment
+import("async-mutex").then(hookAsyncMutex).catch(() => {});
+
+export function unlockAllZ3Semaphores(error?: Error): void {
+  for (const sem of Array.from(trackedSemaphores)) {
+    try {
+      if (typeof sem.isLocked === "function" && sem.isLocked()) {
+        if (typeof sem.cancel === "function") {
+          try { sem.cancel(); } catch (_) {}
+        }
+        if (typeof sem.release === "function") {
+          try { sem.release(); } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+}
+
+function hookEmscriptenAsyncCall(em: any): void {
+  if (!em || em.__washi_async_call_hooked) return;
+  em.__washi_async_call_hooked = true;
+
+  const originalAsyncCall = em.async_call;
+  if (typeof originalAsyncCall !== "function") return;
+
+  em.async_call = function (f: any, ...args: any[]) {
+    let rejectFn!: (err: Error) => void;
+    const trackerPromise = new Promise<never>((_, reject) => {
+      rejectFn = reject;
+      activeAsyncRejects.add(reject);
+    });
+
+    const callPromise = originalAsyncCall.call(this, f, ...args);
+
+    return Promise.race([callPromise, trackerPromise]).finally(() => {
+      activeAsyncRejects.delete(rejectFn);
+    });
+  };
+}
 
 export function registerZ3ErrorHandler(handler: (err: Error) => void): () => void {
   activeErrorHandlers.add(handler);
@@ -18,14 +72,23 @@ export function notifyZ3WorkerError(err: any): void {
     ? err
     : new Error(`[WaSHI] Z3 internal worker error: ${err?.message || (typeof err === "string" ? err : "Worker failed to initialize or execute")}`);
 
-  // Terminate worker threads immediately
+  // 1. Immediately reject pending Emscripten async_call operations so low-level wrapper throws inside runExclusive
+  for (const reject of Array.from(activeAsyncRejects)) {
+    try { reject(error); } catch (_) {}
+  }
+  activeAsyncRejects.clear();
+
+  // 2. Unlock / cancel any locked async-mutex semaphores as safety net
+  unlockAllZ3Semaphores(error);
+
+  // 3. Terminate worker threads immediately
   if (currentZ3Instance?.em?.PThread?.terminateAllThreads) {
     try { currentZ3Instance.em.PThread.terminateAllThreads(); } catch (_) {}
   }
-  // Invalidate cached loader instance
+  // 4. Invalidate cached loader instance
   resetZ3LoaderCache();
 
-  // Notify and reject all active check() / solve() operations
+  // 5. Notify and reject all active check() / solve() operations
   for (const handler of Array.from(activeErrorHandlers)) {
     try { handler(error); } catch (_) {}
   }
@@ -228,8 +291,16 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
     if (isNode) {
       try {
         const z3 = await import("z3-solver");
+        try {
+          const asyncMutexMod = await import("async-mutex");
+          hookAsyncMutex(asyncMutexMod);
+        } catch (_) {}
         const instance = await z3.init();
         currentZ3Instance = instance;
+        if (instance && instance.em) {
+          attachPThreadWorkerErrorHandling(instance.em);
+          hookEmscriptenAsyncCall(instance.em);
+        }
         return instance;
       } catch (err: any) {
         throw new Error(
@@ -273,6 +344,10 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
 
     try {
       const z3 = await import("z3-solver");
+      try {
+        const asyncMutexMod = await import("async-mutex");
+        hookAsyncMutex(asyncMutexMod);
+      } catch (_) {}
       let unregister: (() => void) | undefined;
       const instance = await new Promise<any>((resolve, reject) => {
         unregister = registerZ3ErrorHandler(reject);
@@ -282,6 +357,7 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
       currentZ3Instance = instance;
       if (instance && instance.em) {
         attachPThreadWorkerErrorHandling(instance.em);
+        hookEmscriptenAsyncCall(instance.em);
       }
       return instance;
     } catch (err: any) {
@@ -308,6 +384,12 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
  */
 export async function killZ3Threads(z3Instance?: any): Promise<void> {
   const instance = z3Instance || currentZ3Instance || (z3InitPromise ? await z3InitPromise.catch(() => null) : null);
+  unlockAllZ3Semaphores();
+  for (const reject of Array.from(activeAsyncRejects)) {
+    try { reject(new Error("[WaSHI] Z3 threads terminated")); } catch (_) {}
+  }
+  activeAsyncRejects.clear();
+
   if (!instance || !instance.em) {
     resetZ3LoaderCache();
     return;

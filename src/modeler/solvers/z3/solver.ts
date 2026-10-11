@@ -11,9 +11,9 @@ import type {
   SolverCheckResult,
 } from "../types.js";
 import { registerSolver } from "../registry.js";
-import { loadZ3, resetZ3LoaderCache, killZ3Threads, registerZ3ErrorHandler } from "./loader.js";
+import { loadZ3, resetZ3LoaderCache, killZ3Threads, registerZ3ErrorHandler, unlockAllZ3Semaphores, notifyZ3WorkerError } from "./loader.js";
 
-export { resetZ3LoaderCache, killZ3Threads };
+export { resetZ3LoaderCache, killZ3Threads, unlockAllZ3Semaphores, notifyZ3WorkerError };
 
 /**
  * Z3 SMT / SAT / MIP Solver Adapter

@@ -287,8 +287,18 @@ async function testZ3WorkerErrorAndRecovery(browserRoot) {
     return true;
   });
   console.log("PASS Z3 worker error: internal Worker load error rejects check() promise promptly");
+
+  // Verify retry execution: internal asyncMutex must not remain locked.
+  // A subsequent attempt must execute and reach worker creation rather than hanging indefinitely.
+  context.setFailWorker(true, "Worker blocked by CSP on retry");
+  await assert.rejects(timeout(runCheck(), 5000), (err) => {
+    assert(err.message.includes("Worker blocked by CSP on retry"), `Expected retry worker error but got: ${err.message}`);
+    return true;
+  });
+  console.log("PASS Z3 worker error: subsequent check() retry executes without asyncMutex deadlock");
 }
 
+let failed = false;
 try {
   const pack = JSON.parse(npm(["pack", "--ignore-scripts", "--json", "--pack-destination", fixture], process.cwd()))[0];
   await writeFile(path.join(fixture, "package.json"), JSON.stringify({ private: true, type: "module" }));
@@ -511,7 +521,13 @@ try {
       await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));
     }
   } else console.log("Browser/CORS checks not run; set RUN_DISTRIBUTION_BROWSER=1 with Playwright Chromium installed.");
+} catch (error) {
+  failed = true;
+  console.error("Distribution verification failed:", error);
 } finally {
   await rm(fixture, { recursive: true, force: true });
-  process.exit(0);
+  if (failed) {
+    process.exit(1);
+  }
 }
+process.exit(0);

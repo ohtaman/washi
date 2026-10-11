@@ -184,5 +184,32 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
       resetZ3LoaderCache();
     }
   });
+
+  it("releases internal locks and recovers on subsequent check() after worker error", async () => {
+    const { loadZ3, notifyZ3WorkerError, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
+    await loadZ3();
+
+    const m1 = new Model("ErrorModel");
+    const a1 = m1.addBoolVar("a1");
+    m1.addConstraint(a1);
+
+    const checkPromise1 = m1.check({ solver: "z3" });
+    // Let solver begin execution before worker error occurs
+    await new Promise((r) => setTimeout(r, 1));
+    notifyZ3WorkerError(new Error("Simulated worker error during check"));
+
+    await expect(checkPromise1).rejects.toThrow(/Simulated worker error/);
+
+    // Verify recovery: subsequent check() must not deadlock on asyncMutex and must solve correctly
+    const m2 = new Model("RecoveryModel");
+    const a2 = m2.addBoolVar("a2");
+    m2.addConstraint(a2);
+
+    const res2 = await m2.check({ solver: "z3" });
+    expect(res2.status).toBe("Sat");
+    expect(res2.values.a2).toBe(true);
+
+    await killZ3Threads();
+  });
 });
 
