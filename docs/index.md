@@ -6,7 +6,7 @@ hero:
   text: "Mathematical Optimization for TypeScript"
   tagline: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT). Native performance across Node.js, browsers, Bun, Deno, and Next.js.
   image:
-    src: /washi-logo.svg
+    src: /washi-header.svg
     alt: WaSHI Logo
   actions:
     - theme: brand

@@ -188,7 +188,8 @@ export default defineConfig({
     },
   },
   themeConfig: {
-    logo: "/washi-logo.svg",
+    logo: "/washi-header.svg",
+    siteTitle: false,
     search: {
       provider: "local",
     },
