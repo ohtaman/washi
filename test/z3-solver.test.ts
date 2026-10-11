@@ -121,4 +121,42 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(m.values.get("x")).toBe(10);
     expect(m.values.get("y")).toBe(10);
   });
+
+  it("correctly reports Unsat when an Integer variable is constrained to a non-integer value (x == 0.5)", async () => {
+    const m = new Model("IntegerHalf");
+    const x = m.addVar({
+      name: "integer_x",
+      type: "Integer",
+      lb: 0,
+      ub: 1,
+    });
+    m.addConstraint(x.eq(0.5), "half_integer");
+
+    const result = await m.check({ solver: "z3" });
+    expect(result.status).toBe("Unsat");
+    expect(result.values).toEqual({});
+    expect(result.unsatCore).toContain("half_integer");
+  });
+
+  it("throws an explicit error instead of falling back when Z3 fails to load or in a mocked browser without Z3", async () => {
+    const { vi } = await import("vitest");
+    const { resetZ3LoaderCache } = await import("../src/modeler/solvers/z3.js");
+
+    vi.doMock("z3-solver", () => ({
+      init: vi.fn().mockRejectedValue(new Error("z3-solver unavailable")),
+    }));
+    resetZ3LoaderCache();
+
+    try {
+      const m = new Model("MissingZ3");
+      const x = m.addVar({ name: "integer_x", type: "Integer", lb: 0, ub: 1 });
+      m.addConstraint(x.eq(0.5), "half_integer");
+
+      await expect(m.check({ solver: "z3" })).rejects.toThrow(/Failed to load z3-solver/);
+    } finally {
+      vi.doUnmock("z3-solver");
+      resetZ3LoaderCache();
+    }
+  });
 });
+
