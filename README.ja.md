@@ -14,7 +14,8 @@
     <a href="./README.zh-CN.md">简体中文</a>
   </p>
   <p>
-    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/demo-online-brightgreen" alt="live demo" /></a>
+    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://bundlephobia.com/package/@ohtaman/washi"><img src="https://img.shields.io/badge/bundle%20size-7.2%20kB%20(gzip)-blue" alt="bundle size" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
@@ -314,7 +315,8 @@ npx tsx examples/node/06-pulp-compatibility.ts
 
 ```bash
 npm run dev
-# ブラウザで http://localhost:5173/ を開きます
+# ドキュメント: http://localhost:5173/
+# インタラクティブデモ: http://localhost:5173/demo/
 ```
 
 ---

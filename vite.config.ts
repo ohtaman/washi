@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "path";
 
 export default defineConfig({
   base: process.env.BASE_URL || (process.env.GITHUB_ACTIONS ? "/washi/" : "./"),
@@ -20,5 +21,11 @@ export default defineConfig({
     outDir: "../../dist/demo",
     emptyOutDir: true,
     target: "esnext",
+    rollupOptions: {
+      input: {
+        main: resolve(import.meta.dirname, "examples/web-demo/index.html"),
+        demo: resolve(import.meta.dirname, "examples/web-demo/demo/index.html"),
+      },
+    },
   },
 });
