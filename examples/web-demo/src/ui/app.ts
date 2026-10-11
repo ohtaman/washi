@@ -104,6 +104,17 @@ export function initApp() {
     codeTextarea.value = example.code;
     presetSelect.value = example.id;
     updateLineNumbers();
+
+    if (example.category === "SMT" || example.code.includes('solver: "z3"')) {
+      if (solverSelect) solverSelect.value = "z3";
+      updateSolver("z3");
+    } else if (example.id.includes("glpk") || example.code.includes('solver: "glpk"')) {
+      if (solverSelect) solverSelect.value = "glpk";
+      updateSolver("glpk");
+    } else {
+      if (solverSelect) solverSelect.value = "highs";
+      updateSolver("highs");
+    }
   }
 
   // Preset switch
@@ -121,7 +132,10 @@ export function initApp() {
     setDefaultSolver(solverName);
     if (solverBadgeText) {
       if (solverName === "z3") {
-        solverBadgeText.textContent = "Z3 v5.2.0 (SMT/SAT/MIP)";
+        const isIsolated = typeof window !== "undefined" && (window as any).crossOriginIsolated === true;
+        solverBadgeText.textContent = isIsolated
+          ? "Z3 v5.2.0 (SMT/SAT/MIP)"
+          : "Z3 v5.2.0 (COI Required)";
       } else if (solverName === "glpk") {
         solverBadgeText.textContent = "GLPK v5.0.0 (WASM)";
       } else {
@@ -175,6 +189,37 @@ export function initApp() {
 
   // Run Optimization
   async function runOptimization() {
+    if (currentSolver === "z3" && typeof window !== "undefined" && !(window as any).crossOriginIsolated) {
+      const coiStatus = (window as any).__washi_coi_status;
+      let failureReason = "Cross-origin isolation (COOP/COEP) is not established.";
+      if (coiStatus === "insecure_context") {
+        failureReason = "Page is not running in a Secure Context (HTTPS or localhost).";
+      } else if (coiStatus === "sw_unsupported") {
+        failureReason = "Service Workers are not supported or are disabled in this browser context.";
+      } else if (coiStatus === "failed_after_reload") {
+        failureReason = "Service Worker was registered, but cross-origin isolation could not be established after page reload.";
+      } else if (coiStatus === "registration_failed") {
+        failureReason = "Failed to register cross-origin isolation Service Worker.";
+      }
+
+      const msg = `[WaSHI] Z3 solver execution aborted.\n\n` +
+        `Reason: ${failureReason}\n\n` +
+        `Requirements:\n` +
+        `  The Z3 multithreaded WebAssembly engine requires SharedArrayBuffer and crossOriginIsolated === true.\n` +
+        `  Document delivery headers required:\n` +
+        `    Cross-Origin-Opener-Policy: same-origin\n` +
+        `    Cross-Origin-Embedder-Policy: require-corp\n\n` +
+        `Action:\n` +
+        `  On GitHub Pages or static hosts, ensure Service Workers are enabled and the page is loaded over HTTPS\n` +
+        `  so coi-serviceworker can establish cross-origin isolation.`;
+
+      logOutput.textContent = msg;
+      showTab("tab-logs");
+      metricStatus.textContent = "Unsupported";
+      metricStatus.className = "metric-value status-infeasible";
+      return;
+    }
+
     runBtn.disabled = true;
     const solverDisplayName =
       currentSolver === "z3" ? "Z3" : currentSolver === "glpk" ? "GLPK" : "HiGHS";

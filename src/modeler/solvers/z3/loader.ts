@@ -264,6 +264,9 @@ export function resolveZ3AssetUrls(options: { z3JsUrl?: string; z3WasmUrl?: stri
  */
 async function ensureInitZ3Loaded(jsUrl: string): Promise<any> {
   const globalObj = globalThis as any;
+  if (typeof globalObj.global === "undefined") {
+    globalObj.global = globalObj;
+  }
   if (typeof globalObj.initZ3 === "function") {
     return globalObj.initZ3;
   }

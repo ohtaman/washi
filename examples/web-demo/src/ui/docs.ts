@@ -39,6 +39,23 @@ export const DOCS_HTML = `
   </div>
 
   <div class="docs-section">
+    <h3>Z3 ソルバーとブラウザ環境の要件（Cross-Origin Isolation）</h3>
+    <p>
+      Z3 SMT / MIP ソルバーはマルチスレッド WebAssembly（<code>SharedArrayBuffer</code>）で動作します。ブラウザのセキュリティ仕様により、以下のドキュメント配信ヘッダーが必須です：
+    </p>
+    <div class="code-card">
+      <div class="code-title">必要な HTTP レスポンスヘッダー</div>
+      <pre><code>Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp</code></pre>
+    </div>
+    <p>
+      ヘッダーを独自設定できない静的ホスティング（GitHub Pages 等）や CodePen のプレビュー環境では、追加対応なしでは Z3 は動作しません。
+      本公式 Web デモ（GitHub Pages）では、<code>/washi/</code> スコープ限定の独立した <code>coi-serviceworker.js</code> を同オリジンに配置・登録し、初回アクセス時に1回だけ安全に再読み込みを行うことで <code>crossOriginIsolated</code> 環境を成立させています。
+      （※ライブラリ本体 <code>@ohtaman/washi</code> を import しただけで利用者のページに Service Worker を自動登録することはありません。）
+    </p>
+  </div>
+
+  <div class="docs-section">
     <h3>構文対照表: Python PuLP との比較</h3>
     <table class="comparison-table">
       <thead>

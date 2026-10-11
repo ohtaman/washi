@@ -164,4 +164,28 @@ describe("HiGHS Web Modeler", () => {
     expect(m.numVars).toBe(4);
     expect(m.numConstrs).toBe(4);
   });
+
+  it("clears Var values when re-running optimize() transitioning from Optimal to Infeasible", async () => {
+    const m = new Model({ name: "ReRunInfeasible" });
+    const x = m.addVar({ name: "x", type: "Continuous", lb: 0, ub: 10 });
+    m.maximize(x);
+    m.addConstraint(x.ge(5), "c1");
+
+    const status1 = await m.optimize();
+    expect(status1).toBe("Optimal");
+    expect(x.value).toBe(10);
+    expect(x.varValue).toBe(10);
+    expect(x.x).toBe(10);
+    expect(m.values.get("x")).toBe(10);
+
+    // Add impossible constraint
+    m.addConstraint(x.ge(20), "c2");
+    const status2 = await m.optimize();
+    expect(status2).toBe("Infeasible");
+    expect(x.value).toBe(null);
+    expect(x.varValue).toBe(null);
+    expect(x.x).toBe(null);
+    expect(m.values.size).toBe(0);
+  });
 });
+

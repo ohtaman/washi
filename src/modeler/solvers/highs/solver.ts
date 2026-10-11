@@ -105,6 +105,19 @@ export class HighsSolver implements Solver {
 
     const status = mapHighsStatus(result?.Status);
 
+    if (status === "Infeasible" || status === "Unbounded") {
+      return {
+        status,
+        objectiveValue: null,
+        values: {},
+        reducedCosts: {},
+        duals: {},
+        slacks: {},
+        runTime,
+        raw: result,
+      };
+    }
+
     const rawObj = result.ObjectiveValue;
     const objectiveValue =
       typeof rawObj === "number" ? rawObj + modelData.objective.constant : null;

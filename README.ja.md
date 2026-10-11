@@ -396,13 +396,17 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 ```
 
 > [!NOTE]
-> **ブラウザ環境での Z3 利用について**:
-> Z3 の WebAssembly エンジンはマルチスレッド（`SharedArrayBuffer`）を必要とするため、配信 Web サーバーがドキュメントレスポンスに以下の Cross-Origin-Isolation ヘッダーを送信する必要があります：
+> **ブラウザ環境での Z3 利用と Cross-Origin Isolation**:
+> Z3 の WebAssembly エンジンはマルチスレッド（`SharedArrayBuffer`）を必要とするため、ブラウザのセキュリティ仕様により Cross-Origin Isolation が必須となります。ドキュメントレスポンスに以下のヘッダーが必要です：
 > ```http
 > Cross-Origin-Opener-Policy: same-origin
 > Cross-Origin-Embedder-Policy: require-corp
 > ```
-> また、別オリジン（CDN など）からアセットを読み込む場合は `Cross-Origin-Resource-Policy: cross-origin` の返却が必要です。
+> また、別オリジンからアセットを読み込む場合は `Cross-Origin-Resource-Policy: cross-origin` の返却が必要です。
+> 
+> 任意のヘッダーを設定できない一般的な静的配信（GitHub Pages や CodePen 等の iframe プレビュー環境）では、追加対応なしで条件を満たすことはできません。なお、ライブラリ本体 `@ohtaman/washi` のインポートによって利用者のページに Service Worker が勝手に登録されることはありません。
+> 
+> GitHub Pages で公開している公式 Web デモでは、`/washi/` スコープ限定の独立した `coi-serviceworker.js` を同オリジンに配置・登録し、初回アクセス時に1回だけ安全に再読み込みを行って `window.crossOriginIsolated === true` を確立してから Z3 を実行します。Service Worker が利用できない環境や隔離の確立に失敗した環境では、原因を明示して安全に実行を中断します。
 
 完全なスタンドアロンサンプル（ESM、スクリプトタグ、CodePen）は `examples/distribution/` に用意されています。
 

@@ -167,6 +167,18 @@ export class GLPKSolver implements Solver {
       status = "Optimal"; // Default fallback if solve succeeded
     }
 
+    if (status === "Infeasible" || status === "Unbounded") {
+      return {
+        status,
+        objectiveValue: null,
+        values: {},
+        duals: {},
+        slacks: {},
+        runTime,
+        raw: rawResult,
+      };
+    }
+
     const rawObj = rawResult?.result?.z;
     const objectiveValue =
       typeof rawObj === "number" ? rawObj + modelData.objective.constant : null;

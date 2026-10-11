@@ -396,13 +396,17 @@ await model.solve();
 ```
 
 > [!NOTE]
-> **浏览器环境中使用 Z3 的配置要求**：
-> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，承载页面的 Web 服务器必须在文档响应头中附带以下 Cross-Origin-Isolation 标头：
+> **浏览器环境中使用 Z3 的配置要求与跨源隔离**：
+> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，现代浏览器强制要求 Cross-Origin Isolation。文档响应头必须包含：
 > ```http
 > Cross-Origin-Opener-Policy: same-origin
 > Cross-Origin-Embedder-Policy: require-corp
 > ```
-> 此外，任何跨源静态资源（如来自 CDN）都必须返回 `Cross-Origin-Resource-Policy: cross-origin` 响应头。
+> 并且跨源资源必须包含 `Cross-Origin-Resource-Policy: cross-origin` 标头。
+> 
+> 无法自定义响应标头的常见静态托管（如标准 GitHub Pages 或 CodePen 等 iframe 预览环境）在缺少额外配置时无法直接满足条件。引入 `@ohtaman/washi` 核心库绝不会自动向用户项目中注入或注册 Service Worker。
+> 
+> 在 GitHub Pages 部署的 WaSHI 官方 Web Demo 中，通过在同源独立部署作用域严格限定为 `/washi/` 的 `coi-serviceworker.js`，在首次访问时安全自动重载一次以建立 `window.crossOriginIsolated === true` 环境。在不支持 Service Worker 或隔离失败的环境中，Z3 会清晰展示诊断原因并中止执行，防止无限重载或无响应挂起。
 
 完整独立的 ESM、Script 标签与 CodePen 示例请参阅 `examples/distribution/`。
 

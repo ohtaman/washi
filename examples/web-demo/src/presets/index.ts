@@ -199,6 +199,46 @@ assets.forEach((name, i) => {
 `,
   },
   {
+    id: "smt_sat_scheduling",
+    title: "Task Scheduling & Logic Feasibility (SMT / SAT)",
+    category: "SMT",
+    description: "Satisfiability (SAT) checking with Z3. Finds a valid schedule satisfying mutual exclusion and dependency constraints.",
+    visualizer: "none",
+    code: `// --- SMT / SAT Logic Satisfiability ---
+// Demonstrates Z3 finding satisfying assignments for boolean & integer constraints
+const m = new Model({ name: "TaskScheduling", solver: "z3" });
+
+// Boolean decisions: which server executes Task A and Task B
+const taskA_s1 = m.addBoolVar("taskA_s1");
+const taskA_s2 = m.addBoolVar("taskA_s2");
+const taskB_s1 = m.addBoolVar("taskB_s1");
+const taskB_s2 = m.addBoolVar("taskB_s2");
+
+// Task A must be assigned to exactly one server
+m.addConstraint(taskA_s1.xor(taskA_s2), "taskA_assignment");
+// Task B must be assigned to exactly one server
+m.addConstraint(taskB_s1.xor(taskB_s2), "taskB_assignment");
+// Cannot run both Task A and Task B on Server 1 simultaneously
+m.addConstraint(taskA_s1.and(taskB_s1).not(), "server1_capacity");
+
+// Worker hours (integer)
+const hours = m.addVar({ name: "worker_hours", type: "Integer", lb: 1, ub: 8 });
+// If Task A is on Server 2, requires at least 4 hours
+m.addConstraint(taskA_s2.implies(hours.ge(4)), "s2_overtime_rule");
+
+console.log("Checking feasibility with Z3 SMT engine...");
+const res = await m.check({ solver: "z3" });
+
+console.log("Check Status:", res.status); // "Sat"
+console.log("Satisfying Model:");
+console.log("  taskA on S1:", taskA_s1.value);
+console.log("  taskA on S2:", taskA_s2.value);
+console.log("  taskB on S1:", taskB_s1.value);
+console.log("  taskB on S2:", taskB_s2.value);
+console.log("  worker_hours:", hours.value);
+`,
+  },
+  {
     id: "conflict_diagnosis_unsat",
     title: "Rule Conflict Diagnosis (SMT / Unsat Core)",
     category: "SMT",
