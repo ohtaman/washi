@@ -1,4 +1,4 @@
-import { solveLpWithHighs } from "./highs-loader.js";
+import { solveLpWithHighs } from "./loader.js";
 
 // Web Worker entry point for non-blocking solver execution
 self.onmessage = async (e: MessageEvent) => {

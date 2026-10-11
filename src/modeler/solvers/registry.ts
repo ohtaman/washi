@@ -1,18 +1,16 @@
 import type { Solver, SolverOptions } from "./types.js";
-import { HighsSolver } from "./highs.js";
-import { GLPKSolver } from "./glpk.js";
-import { MockSolver } from "./mock.js";
 
-type SolverFactory = (options?: SolverOptions) => Solver;
+export type SolverFactory = (options?: SolverOptions) => Solver;
 
-const solverRegistry = new Map<string, SolverFactory>();
+const REGISTRY_KEY = Symbol.for("washi.solverRegistry");
+const DEFAULT_FACTORY_KEY = Symbol.for("washi.defaultSolverFactory");
 
-// Register default built-in solvers
-solverRegistry.set("highs", (opts) => new HighsSolver(opts));
-solverRegistry.set("glpk", (opts) => new GLPKSolver(opts));
-solverRegistry.set("mock", (opts) => new MockSolver(opts));
+const globalScope = globalThis as any;
+if (!globalScope[REGISTRY_KEY]) {
+  globalScope[REGISTRY_KEY] = new Map<string, SolverFactory>();
+}
 
-let defaultSolverFactory: SolverFactory = (opts) => new HighsSolver(opts);
+const solverRegistry: Map<string, SolverFactory> = globalScope[REGISTRY_KEY];
 
 /**
  * Register a new solver factory by name
@@ -30,11 +28,11 @@ export function setDefaultSolver(solverOrName: string | SolverFactory | Solver):
     if (!factory) {
       throw new Error(`Solver '${solverOrName}' is not registered.`);
     }
-    defaultSolverFactory = factory;
+    globalScope[DEFAULT_FACTORY_KEY] = factory;
   } else if (typeof solverOrName === "function") {
-    defaultSolverFactory = solverOrName;
+    globalScope[DEFAULT_FACTORY_KEY] = solverOrName;
   } else {
-    defaultSolverFactory = () => solverOrName;
+    globalScope[DEFAULT_FACTORY_KEY] = () => solverOrName;
   }
 }
 
@@ -43,12 +41,29 @@ export function setDefaultSolver(solverOrName: string | SolverFactory | Solver):
  */
 export function getSolver(solverOrName?: string | Solver, options?: SolverOptions): Solver {
   if (!solverOrName) {
-    return defaultSolverFactory(options);
+    const defaultFactory: SolverFactory | undefined = globalScope[DEFAULT_FACTORY_KEY] || solverRegistry.get("highs");
+    if (!defaultFactory) {
+      throw new Error(`No default solver available. Available solvers: ${listAvailableSolvers().join(", ")}`);
+    }
+    return defaultFactory(options);
   }
 
   if (typeof solverOrName === "string") {
-    const factory = solverRegistry.get(solverOrName.toLowerCase());
+    const lowerName = solverOrName.toLowerCase();
+    const factory = solverRegistry.get(lowerName);
     if (!factory) {
+      if (lowerName === "glpk") {
+        throw new Error(
+          `Solver 'glpk' not found. Available solvers: ${listAvailableSolvers().join(", ")}. ` +
+          `Please import '@ohtaman/washi/solvers/glpk' before selecting this solver.`
+        );
+      }
+      if (lowerName === "z3") {
+        throw new Error(
+          `Solver 'z3' not found. Available solvers: ${listAvailableSolvers().join(", ")}. ` +
+          `Please import '@ohtaman/washi/solvers/z3' before selecting this solver.`
+        );
+      }
       throw new Error(
         `Solver '${solverOrName}' not found. Available solvers: ${listAvailableSolvers().join(", ")}`
       );

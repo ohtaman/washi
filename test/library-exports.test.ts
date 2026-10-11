@@ -7,9 +7,6 @@ import {
   Constraint,
   sum,
   HiGHS,
-  GLPKSolver,
-  Z3Solver,
-  registerZ3Solver,
   MockSolver,
   LpProblem,
   LpVariable,
@@ -20,10 +17,11 @@ import {
   not,
   implies,
   xor,
+  getSolver,
 } from "../src/index.js";
 
 describe("opt-ts Library Entry Point Exports", () => {
-  it("exports all core modeler classes and solvers from root", () => {
+  it("exports all core modeler classes and default solvers from root", () => {
     expect(Model).toBeDefined();
     expect(Var).toBeDefined();
     expect(LinExpr).toBeDefined();
@@ -31,9 +29,6 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect(Constraint).toBeDefined();
     expect(sum).toBeDefined();
     expect(HiGHS).toBeDefined();
-    expect(GLPKSolver).toBeDefined();
-    expect(Z3Solver).toBeDefined();
-    expect(registerZ3Solver).toBeDefined();
     expect(MockSolver).toBeDefined();
     expect(LpProblem).toBeDefined();
     expect(LpVariable).toBeDefined();
@@ -44,6 +39,16 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect(not).toBeDefined();
     expect(implies).toBeDefined();
     expect(xor).toBeDefined();
+  });
+
+  it("exports GLPK and Z3 solvers as separate plugins", async () => {
+    const glpkModule = await import("../src/modeler/solvers/glpk.js");
+    expect(glpkModule.GLPKSolver).toBeDefined();
+    expect(glpkModule.registerGLPKSolver).toBeDefined();
+
+    const z3Module = await import("../src/modeler/solvers/z3.js");
+    expect(z3Module.Z3Solver).toBeDefined();
+    expect(z3Module.registerZ3Solver).toBeDefined();
   });
 
   it("can formulate and solve a simple MIP using only root exports", async () => {

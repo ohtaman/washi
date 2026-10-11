@@ -177,6 +177,40 @@ try {
   assert.equal(model.objectiveValue, 30);
   console.log("PASS npm tarball: Node.js solve without optional peers");
 
+  // Verify unimported solver errors
+  await assert.rejects(async () => model.solve({ solver: "glpk" }), (err) => {
+    assert(err.message.includes("Please import '@ohtaman/washi/solvers/glpk'"));
+    return true;
+  });
+  await assert.rejects(async () => model.solve({ solver: "z3" }), (err) => {
+    assert(err.message.includes("Please import '@ohtaman/washi/solvers/z3'"));
+    return true;
+  });
+  console.log("PASS npm tarball: unimported GLPK and Z3 solvers throw helpful import errors in Node.js");
+
+  // Install optional peers in fixture to test solver plugins in Node.js
+  npm(["install", "--ignore-scripts", "glpk.js", "z3-solver"], fixture);
+
+  // Test GLPK plugin in Node.js
+  await import(new URL(`file://${packageRoot}/dist/lib/solvers/glpk.js`));
+  const glpkModel = new Model("GlpkNode", { solver: "glpk" });
+  const gx = glpkModel.addVar({ name: "gx", lb: 0, ub: 10 });
+  glpkModel.maximize(gx.mul(5));
+  assert.equal(await glpkModel.solve(), "Optimal");
+  assert.equal(glpkModel.objectiveValue, 50);
+  assert.equal(gx.value, 10);
+  console.log("PASS npm tarball: GLPK plugin solves MIP in Node.js");
+
+  // Test Z3 plugin in Node.js
+  await import(new URL(`file://${packageRoot}/dist/lib/solvers/z3.js`));
+  const z3Model = new Model("Z3Node", { solver: "z3" });
+  const za = z3Model.addBoolVar("za");
+  z3Model.addConstraint(za);
+  const z3Res = await z3Model.check();
+  assert.equal(z3Res.status, "Sat");
+  assert.equal(z3Res.values.za, true);
+  console.log("PASS npm tarball: Z3 plugin solves SMT check in Node.js");
+
   await writeFile(path.join(fixture, "index.html"), '<script type="module" src="./main.js"></script>');
   await writeFile(path.join(fixture, "main.js"), `import { Model } from '@ohtaman/washi';\n${source}`);
   const viteRoot = path.join(fixture, "vite-output");
@@ -206,9 +240,14 @@ try {
     const { chromium } = await import("playwright");
     const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
     const servers = [];
-    async function serve(root) {
+    async function serve(root, coopCoep = false) {
       const server = createServer(async (req, res) => {
         res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+        if (coopCoep) {
+          res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+          res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+        }
         const pathname = new URL(req.url, "http://localhost").pathname;
         try {
           const relative = pathname.startsWith("/factory/") ? pathname.slice("/factory/".length) : pathname.slice(1);
@@ -223,6 +262,7 @@ try {
     }
     try {
       const cdn = await serve(path.join(packageRoot, "dist/browser"));
+      const cdnIsolated = await serve(path.join(packageRoot, "dist/browser"), true);
       await mkdir(path.join(fixture, "pages"));
       const cases = [
         ["vite", viteRoot, null], ["webpack", webpackRoot, null],
@@ -250,6 +290,87 @@ try {
           console.log(`PASS Chromium: ${base}${name} (fresh context, local / cross-origin assets, external network blocked)`);
         }
       }
+
+      // Test GLPK ESM and IIFE in Chromium
+      const glpkSource = `
+        window.runGlpk = async () => {
+          const { Model } = window.Washi || await import('${cdn}/factory/washi.js');
+          const m = new Model({ solver: 'glpk' });
+          const x = m.addVar({ name: 'x', type: 'Integer', lb: 0 });
+          m.maximize(x.mul(10));
+          m.addConstraint(x.le(5));
+          const status = await m.optimize();
+          return { status, x: x.value, objective: m.objectiveValue };
+        };
+      `;
+      const glpkCases = [
+        ["glpk-esm", path.join(fixture, "pages"), `<script type="module">import '${cdn}/factory/solvers/glpk.js';${glpkSource}</script>`],
+        ["glpk-iife", path.join(fixture, "pages"), `<script src="${cdn}/factory/washi.min.js"></script><script src="${cdn}/factory/solvers/glpk.min.js"></script><script>${glpkSource}</script>`],
+      ];
+      for (const [name, root, content] of glpkCases) {
+        await writeFile(path.join(root, `${name}.html`), content);
+        const site = await serve(root);
+        const context = await browser.newContext();
+        const page = await context.newPage();
+        await page.goto(`${site}/${name}.html`);
+        await page.waitForFunction(() => typeof window.runGlpk === "function");
+        const res = await timeout(page.evaluate(() => window.runGlpk()));
+        assert.equal(res.status, "Optimal");
+        assert.equal(res.objective, 50);
+        assert.equal(res.x, 5);
+        await context.close();
+        console.log(`PASS Chromium: ${name} (GLPK plugin solve)`);
+      }
+
+      // Test Z3 browser environment requirement (throws error when crossOriginIsolated is false)
+      const z3MissingPage = `<script type="module">
+        import { Model } from '${cdn}/factory/washi.js';
+        import '${cdn}/factory/solvers/z3.js';
+        window.runZ3 = async () => {
+          const m = new Model({ solver: 'z3' });
+          return await m.check();
+        };
+      </script>`;
+      await writeFile(path.join(fixture, "pages", "z3-missing.html"), z3MissingPage);
+      const standardSite = await serve(path.join(fixture, "pages"), false);
+      const z3Ctx1 = await browser.newContext();
+      const z3Page1 = await z3Ctx1.newPage();
+      await z3Page1.goto(`${standardSite}/z3-missing.html`);
+      await z3Page1.waitForFunction(() => typeof window.runZ3 === "function");
+      const errMessage = await z3Page1.evaluate(async () => {
+        try { await window.runZ3(); return null; } catch (e) { return e.message; }
+      });
+      assert(errMessage && errMessage.includes("SharedArrayBuffer and crossOriginIsolated"), errMessage);
+      await z3Ctx1.close();
+      console.log("PASS Chromium: Z3 rejects when Cross-Origin-Isolation headers are missing");
+
+      // Test Z3 browser solve with COOP / COEP headers enabled
+      const z3IsolatedPage = `<script type="module">
+        import { Model } from '${cdnIsolated}/factory/washi.js';
+        import { setZ3Assets } from '${cdnIsolated}/factory/solvers/z3.js';
+        setZ3Assets({
+          jsUrl: '${cdnIsolated}/factory/solvers/z3-built.js',
+          wasmUrl: '${cdnIsolated}/factory/solvers/z3-built.wasm',
+        });
+        window.runZ3 = async () => {
+          const m = new Model({ solver: 'z3' });
+          const a = m.addBoolVar('a');
+          m.addConstraint(a);
+          return await m.check();
+        };
+      </script>`;
+      await writeFile(path.join(fixture, "pages", "z3-isolated.html"), z3IsolatedPage);
+      const isolatedSite = await serve(path.join(fixture, "pages"), true);
+      const z3Ctx2 = await browser.newContext();
+      const z3Page2 = await z3Ctx2.newPage();
+      await z3Page2.goto(`${isolatedSite}/z3-isolated.html`);
+      await z3Page2.waitForFunction(() => typeof window.runZ3 === "function");
+      const z3Res = await timeout(z3Page2.evaluate(() => window.runZ3()), 30_000);
+      assert.equal(z3Res.status, "Sat");
+      assert.equal(z3Res.values.a, true);
+      await z3Ctx2.close();
+      console.log("PASS Chromium: Z3 solves SMT check under Cross-Origin-Isolation");
+
     } finally {
       await browser.close();
       await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));

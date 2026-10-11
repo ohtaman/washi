@@ -241,4 +241,37 @@ if (res.status === "Unsat") {
 }
 `,
   },
+  {
+    id: "glpk_diet_problem",
+    title: "Stigler Diet Problem (GLPK Engine)",
+    category: "LP",
+    description: "Classic linear programming diet cost minimization solved using the pluggable GNU Linear Programming Kit (GLPK) WebAssembly engine.",
+    visualizer: "summary",
+    code: `// --- Diet Optimization via GLPK Solver Plugin ---
+// Switch seamlessly to GLPK solver via solver: "glpk"
+const m = new Model({ name: "DietProblem", sense: "Minimize", solver: "glpk" });
+
+// Food item decision variables (quantities >= 0)
+const bread = m.addVar({ name: "bread", lb: 0, ub: 10 });     // $2.00 / loaf
+const milk = m.addVar({ name: "milk", lb: 0, ub: 10 });       // $3.50 / bottle
+const cheese = m.addVar({ name: "cheese", lb: 0, ub: 5 });    // $5.00 / pack
+
+// Objective: Minimize total basket cost
+m.minimize(bread.mul(2.0).add(milk.mul(3.5)).add(cheese.mul(5.0)));
+
+// Nutritional requirements
+m.addConstraint(bread.mul(300).add(milk.mul(250)).add(cheese.mul(400)).ge(2000), "Calories_min");
+m.addConstraint(bread.mul(10).add(milk.mul(15)).add(cheese.mul(25)).ge(70), "Protein_min");
+m.addConstraint(bread.mul(50).add(milk.mul(300)).add(cheese.mul(500)).ge(800), "Calcium_min");
+
+console.log("Solving with GLPK plugin engine...");
+const status = await m.optimize();
+
+console.log("Status:", status);
+console.log("Optimal Cost: $" + m.objectiveValue?.toFixed(2));
+console.log("Bread loaves:", bread.value?.toFixed(2));
+console.log("Milk bottles:", milk.value?.toFixed(2));
+console.log("Cheese packs:", cheese.value?.toFixed(2));
+`,
+  },
 ];

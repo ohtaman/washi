@@ -4,6 +4,7 @@ import { DOCS_HTML } from "./docs.js";
 import type { Model } from "../../../../src/modeler/model.js";
 import { setDefaultSolver } from "../../../../src/modeler/solvers/registry.js";
 import { registerZ3Solver } from "../../../../src/modeler/solvers/z3.js";
+import { registerGLPKSolver } from "../../../../src/modeler/solvers/glpk.js";
 import {
   initLocale,
   setLocale,
@@ -16,6 +17,7 @@ import {
 
 export function initApp() {
   registerZ3Solver();
+  registerGLPKSolver();
 
   const codeTextarea = document.getElementById("code-editor") as HTMLTextAreaElement;
   const lineNumbers = document.getElementById("line-numbers") as HTMLDivElement;

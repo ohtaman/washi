@@ -56,4 +56,4 @@ export {
 export * from "./solvers/index.js";
 
 // WASM loader
-export { getHighs, solveLpWithHighs, setHighsWasmUrl, getHighsWasmUrl } from "../highs-loader.js";
+export { getHighs, solveLpWithHighs, setHighsWasmUrl, getHighsWasmUrl } from "./solvers/highs/index.js";

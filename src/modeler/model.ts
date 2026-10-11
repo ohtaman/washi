@@ -55,7 +55,13 @@ export class Model {
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
 
-  constructor(options: ModelOptions = {}) {
+  constructor(nameOrOptions: string | ModelOptions = {}, maybeOptions?: ModelOptions) {
+    let options: ModelOptions;
+    if (typeof nameOrOptions === "string") {
+      options = { ...maybeOptions, name: nameOrOptions };
+    } else {
+      options = nameOrOptions;
+    }
     this.name = options.name || "OptimizationModel";
     this.sense = options.sense || "Minimize";
     this.objective = new LinExpr();

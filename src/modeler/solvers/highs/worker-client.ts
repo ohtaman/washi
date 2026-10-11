@@ -1,10 +1,10 @@
-import type { SolveOptions } from "./modeler/types.js";
+import type { SolveOptions } from "../../types.js";
 import {
   solveLpWithHighs,
   type RawHighsSolveResult,
   resolveBrowserWasmUrl,
-} from "./highs-loader.js";
-import { createHighsWorker } from "./highs-worker-factory.js";
+} from "./loader.js";
+import { createHighsWorker } from "./worker-factory.js";
 
 let workerInstance: Worker | null = null;
 let reqIdCounter = 0;
@@ -46,12 +46,18 @@ function getWorker(): Worker | null {
         for (const pending of pendingRequests.values()) pending.reject(error);
         pendingRequests.clear();
       };
-      workerInstance.onerror = (e) => failWorker(new Error(
-        `[WaSHI] HiGHS Worker failed to load or execute. Check Worker assets, CORS and CSP. ${e.message || ""}`,
-      ));
-      workerInstance.onmessageerror = () => failWorker(new Error("[WaSHI] Could not deserialize the HiGHS Worker response."));
-    } catch (e) {
-      console.warn("Could not instantiate Web Worker, falling back to main thread:", e);
+
+      workerInstance.onerror = (e: any) =>
+        failWorker(
+          new Error(
+            `[WaSHI] HiGHS Worker failed to load or execute. Check Worker assets, CORS and CSP. ${e?.message || ""}`
+          )
+        );
+      workerInstance.onmessageerror = () =>
+        failWorker(
+          new Error("[WaSHI] Could not deserialize the HiGHS Worker response.")
+        );
+    } catch {
       workerInstance = null;
     }
   }
@@ -60,7 +66,8 @@ function getWorker(): Worker | null {
 }
 
 /**
- * Solve an LP model either in a background Web Worker or on the current thread
+ * Solve an LP model using a Web Worker if supported and requested,
+ * falling back to the main thread WASM solver otherwise.
  */
 export async function solveLp(
   lpString: string,
@@ -72,7 +79,6 @@ export async function solveLp(
   const worker = useWorker ? getWorker() : null;
 
   if (!worker) {
-    // Solve on current thread (Node.js or browser main thread)
     return solveLpWithHighs(lpString, options);
   }
 
@@ -85,7 +91,12 @@ export async function solveLp(
   return new Promise((resolve, reject) => {
     pendingRequests.set(id, { resolve, reject });
     try {
-      worker.postMessage({ type: "SOLVE", id, lpString, options: mergedOptions });
+      worker.postMessage({
+        type: "SOLVE",
+        id,
+        lpString,
+        options: mergedOptions,
+      });
     } catch (error) {
       pendingRequests.delete(id);
       reject(error);

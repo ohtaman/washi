@@ -50,3 +50,10 @@ export class MockSolver implements Solver {
     };
   }
 }
+
+import { registerSolver } from "./registry.js";
+export function registerMockSolver(): void {
+  registerSolver("mock", (opts) => new MockSolver(opts));
+}
+registerMockSolver();
+

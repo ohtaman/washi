@@ -13,6 +13,8 @@ import {
   HiGHS,
   value,
 } from "../src/index.js";
+import "../src/modeler/solvers/z3/index.js";
+import "../src/modeler/solvers/glpk/index.js";
 
 describe("README.md Code Snippets Validation", () => {
   it("executes Quick Look / 1. MIP production planning", async () => {
@@ -178,5 +180,21 @@ describe("README.md Code Snippets Validation", () => {
     expect(value(prob.objective)).toBe(1100);
     expect(value(x)).toBe(20);
     expect(value(y)).toBe(10);
+  });
+
+  it("executes 5. Solving with GLPK (GPL-3.0)", async () => {
+    const m = new Model({ sense: "Maximize", solver: "glpk" });
+    const x = m.addVar({ type: "Integer", lb: 0 });
+    const y = m.addVar({ type: "Integer", lb: 0 });
+
+    m.maximize(expr`30 * ${x} + 50 * ${y}`);
+    m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+    m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+
+    const status = await m.solve();
+    expect(status).toBe("Optimal");
+    expect(m.objectiveValue).toBe(1100);
+    expect(x.value).toBe(20);
+    expect(y.value).toBe(10);
   });
 });

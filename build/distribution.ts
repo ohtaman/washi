@@ -4,6 +4,8 @@ import type { Plugin } from "vite";
 
 const wasm = () => readFileSync(fileURLToPath(import.meta.resolve("highs/runtime")));
 const license = () => readFileSync(new URL("../public/highs.wasm.LICENSE", import.meta.url));
+const z3Js = () => readFileSync(new URL("./z3-built.js", import.meta.resolve("z3-solver")));
+const z3Wasm = () => readFileSync(new URL("./z3-built.wasm", import.meta.resolve("z3-solver")));
 
 /** Keep these small modules unbundled so the consumer can discover the asset URLs. */
 export function packageAssets(): Plugin {
@@ -14,6 +16,10 @@ export function packageAssets(): Plugin {
       if (["./highs-assets.js", "./highs-worker-factory.js", "./highs-browser-runtime.js", "./highs-node-runtime.js"].includes(id)) {
         return { id, external: true };
       }
+      if (id === "./assets.js") return { id: "./highs-assets.js", external: true };
+      if (id === "./worker-factory.js") return { id: "./highs-worker-factory.js", external: true };
+      if (id === "./node-runtime.js") return { id: "./highs-node-runtime.js", external: true };
+      if (id === "./browser-runtime.js") return { id: "./highs-browser-runtime.js", external: true };
     },
     generateBundle() {
       this.emitFile({ type: "asset", fileName: "highs-assets.js", source:
@@ -24,12 +30,14 @@ export function packageAssets(): Plugin {
         'export async function loadNodeHighs() { return (await import(/* webpackIgnore: true */ /* @vite-ignore */ "highs")).default; }\n' });
       this.emitFile({ type: "asset", fileName: "highs.wasm", source: wasm() });
       this.emitFile({ type: "asset", fileName: "highs.wasm.LICENSE", source: license() });
+      this.emitFile({ type: "asset", fileName: "solvers/z3-built.js", source: z3Js() });
+      this.emitFile({ type: "asset", fileName: "solvers/z3-built.wasm", source: z3Wasm() });
     },
   };
 }
 
-/** Browser distributions contain all HiGHS JS, but no optional solver engines. */
-export function browserAssets(format: "es" | "iife"): Plugin {
+/** Browser distributions contain all HiGHS JS, but no optional solver engines in core. */
+export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "z3" = "core"): Plugin {
   const assetsId = "\0washi-browser-assets";
   const factoryId = "\0washi-browser-worker-factory";
   const optionalId = "\0washi-optional-engine";
@@ -43,10 +51,25 @@ export function browserAssets(format: "es" | "iife"): Plugin {
     enforce: "pre",
     resolveId(id) {
       if ([assetsId, factoryId, optionalId, nodeId].includes(id)) return id;
-      if (id === "./highs-assets.js") return assetsId;
-      if (id === "./highs-worker-factory.js") return factoryId;
-      if (id === "./highs-node-runtime.js") return "\0washi-node-runtime";
+      if (id === "./highs-assets.js" || id === "./assets.js" || id.endsWith("/highs/assets.js")) return assetsId;
+      if (id === "./highs-worker-factory.js" || id === "./worker-factory.js" || id.endsWith("/highs/worker-factory.js")) return factoryId;
+      if (id === "./highs-node-runtime.js" || id === "./node-runtime.js" || id.endsWith("/highs/node-runtime.js")) return "\0washi-node-runtime";
       if (id === "\0washi-node-runtime") return id;
+
+      if (target === "glpk") {
+        if (id === "glpk.js/node") return nodeId;
+        if (id === "z3-solver") return optionalId;
+        if (id.startsWith("node:") || ["fs", "path", "url"].includes(id)) return nodeId;
+        return;
+      }
+
+      if (target === "z3") {
+        if (["glpk.js", "glpk.js/node"].includes(id)) return optionalId;
+        if (id.startsWith("node:") || ["fs", "path", "url"].includes(id)) return nodeId;
+        return;
+      }
+
+      // target === "core"
       if (["glpk.js", "glpk.js/node", "z3-solver"].includes(id)) return optionalId;
       if (id.startsWith("node:") || ["fs", "path", "url"].includes(id)) return nodeId;
     },
@@ -70,14 +93,18 @@ export function browserAssets(format: "es" | "iife"): Plugin {
             return worker;
           } catch (error) { URL.revokeObjectURL(bootstrap); throw error; }
         }`;
-      if (id === optionalId) return `export default function unavailable() { throw new Error("[WaSHI] Optional GLPK/Z3 engines are not included in the browser bundle. Use the npm package with the optional dependency installed."); }
+      if (id === optionalId) return `export default function unavailable() { throw new Error("[WaSHI] Optional GLPK/Z3 engines are not included in the core browser bundle. Import the plugin module or include its script tag."); }
         export const init = unavailable;`;
       if (id === nodeId) return "export default {};";
       if (id === "\0washi-node-runtime") return 'export function loadNodeHighs() { throw new Error("This distribution is for browsers. Use the npm entry in Node.js."); }';
     },
     generateBundle() {
-      this.emitFile({ type: "asset", fileName: "highs.wasm", source: wasm() });
-      this.emitFile({ type: "asset", fileName: "highs.wasm.LICENSE", source: license() });
+      if (target === "core") {
+        this.emitFile({ type: "asset", fileName: "highs.wasm", source: wasm() });
+        this.emitFile({ type: "asset", fileName: "highs.wasm.LICENSE", source: license() });
+        this.emitFile({ type: "asset", fileName: "solvers/z3-built.js", source: z3Js() });
+        this.emitFile({ type: "asset", fileName: "solvers/z3-built.wasm", source: z3Wasm() });
+      }
     },
   };
 }

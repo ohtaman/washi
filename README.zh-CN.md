@@ -200,6 +200,7 @@ assets.forEach((name, i) => {
 
 ```ts
 import { Model, not } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
 
@@ -265,7 +266,30 @@ console.log("冲突约束子集:", res.unsatCore);
 
 ---
 
-### 5. Python PuLP 兼容层
+### 5. 使用 GLPK 求解器 (GPL-3.0)
+
+使用 GNU Linear Programming Kit (GLPK) 求解器插件：
+
+```ts
+import { Model, expr, c } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/glpk";
+
+const m = new Model({ sense: "Maximize", solver: "glpk" });
+const x = m.addVar({ type: "Integer", lb: 0 });
+const y = m.addVar({ type: "Integer", lb: 0 });
+
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+
+const status = await m.solve();
+console.log(`求解状态: ${status}`); // "Optimal"
+console.log(`目标函数值: ${m.objectiveValue}`); // 1100
+```
+
+---
+
+### 6. Python PuLP 兼容层
 
 若你已有 Python PuLP 代码资产，可零摩擦迁移：
 
@@ -341,7 +365,48 @@ await model.solve();
 
 若通过 CDN 加载，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js`（请固定 `0.1.2` 及以上版本号）。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
 
-浏览器构建包含 HiGHS 引擎，不包含可选的 GLPK / Z3 引擎。其他引擎集成请使用 npm 包及可选依赖。完整示例位于 `examples/distribution/`。
+### 浏览器环境中的求解器插件（GLPK & Z3）
+
+浏览器发布包在 `dist/browser/solvers/` 下提供了开箱即用的独立求解器插件：
+- **GLPK**: `dist/browser/solvers/glpk.js` (ESM) 与 `dist/browser/solvers/glpk.min.js` (IIFE，挂载全局 `WashiGLPK`)
+- **Z3**: `dist/browser/solvers/z3.js` (ESM) 与 `dist/browser/solvers/z3.min.js` (IIFE，挂载全局 `WashiZ3`)，附带 `z3-built.js` 和 `z3-built.wasm`
+
+#### 浏览器 ESM 使用 GLPK
+```html
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  import "./washi/solvers/glpk.js";
+
+  const model = new Model({ solver: "glpk" });
+  const x = model.addVar({ lb: 0, ub: 10 });
+  model.maximize(x);
+  await model.solve();
+  console.log("GLPK 求解状态:", model.status);
+</script>
+```
+
+#### 原生脚本标签使用 GLPK
+```html
+<script src="./washi/washi.min.js"></script>
+<script src="./washi/solvers/glpk.min.js"></script>
+<script>
+  const model = new Washi.Model({ solver: "glpk" });
+  const x = model.addVar({ lb: 0, ub: 10 });
+  model.maximize(x);
+  model.solve().then(status => console.log("GLPK 求解状态:", status));
+</script>
+```
+
+> [!NOTE]
+> **浏览器环境中使用 Z3 的配置要求**：
+> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，承载页面的 Web 服务器必须在文档响应头中附带以下 Cross-Origin-Isolation 标头：
+> ```http
+> Cross-Origin-Opener-Policy: same-origin
+> Cross-Origin-Embedder-Policy: require-corp
+> ```
+> 此外，任何跨源静态资源（如来自 CDN）都必须返回 `Cross-Origin-Resource-Policy: cross-origin` 响应头。
+
+完整独立的 ESM、Script 标签与 CodePen 示例请参阅 `examples/distribution/`。
 
 ### 工厂内网、离线部署、Worker 与自定义 URL
 
@@ -364,6 +429,14 @@ setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
 
 ---
 
+## 🛠️ 自定义求解器开发与架构扩展
+
+WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并注册自定义求解器适配器（如云端 REST 求解服务、定制 WebAssembly 引擎或商业求解器）：
+
+- 完整开发指南、接口契约（`Solver`, `LpModelData`, `SolverResult`）与测试实践详见 [Custom Solver Developer Guide](docs/custom-solver-guide.md)。
+
+---
+
 ## 💻 本地脚本与交互式 Web 演示
 
 在 `examples/node/` 中提供了即开即用的独立脚本：
@@ -375,6 +448,7 @@ npx tsx examples/node/03-portfolio-qp.ts
 npx tsx examples/node/04-smt-security-rules.ts
 npx tsx examples/node/05-unsat-core-diagnosis.ts
 npx tsx examples/node/06-pulp-compatibility.ts
+npx tsx examples/node/08-glpk-solver-plugin.ts
 ```
 
 启动浏览器端交互式可视化演示 (`examples/web-demo`)：

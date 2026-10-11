@@ -1,0 +1,141 @@
+import { describe, it, expect, vi } from "vitest";
+import {
+  Model,
+  LpProblem,
+  LpVariable,
+  LpMaximize,
+  registerSolver,
+  listAvailableSolvers,
+  getSolver,
+  setDefaultSolver,
+  type Solver,
+  type SolverOptions,
+  type SolverResult,
+  type LpModelData,
+  type LpExportResult,
+} from "../src/index.js";
+
+describe("Custom Solver Plugin Architecture", () => {
+  it("rejects unregistered solver names with helpful instructions", async () => {
+    const model = new Model({ name: "UnregisteredGlpk" });
+    const x = model.addVar({ name: "x" });
+    model.maximize(x);
+
+    expect(() => getSolver("glpk")).toThrow(
+      "Solver 'glpk' not found. Available solvers: highs, mock. Please import '@ohtaman/washi/solvers/glpk' before selecting this solver."
+    );
+
+    expect(() => getSolver("z3")).toThrow(
+      "Solver 'z3' not found. Available solvers: highs, mock. Please import '@ohtaman/washi/solvers/z3' before selecting this solver."
+    );
+
+    expect(() => getSolver("quantum-solver")).toThrow(
+      "Solver 'quantum-solver' not found. Available solvers: highs, mock"
+    );
+  });
+
+  it("allows registering and executing a custom third-party solver plugin", async () => {
+    class DummyThirdPartySolver implements Solver {
+      public readonly name = "DummyThirdParty";
+      public readonly version = "1.0.0";
+      public readonly capabilities = { supportsMIP: true, supportsQP: false };
+      public options: SolverOptions;
+
+      constructor(options: SolverOptions = {}) {
+        this.options = options;
+      }
+
+      async solve(
+        modelData: LpModelData,
+        lpResult: LpExportResult,
+        options: SolverOptions = {}
+      ): Promise<SolverResult> {
+        expect(lpResult.lpString).toContain("Subject To");
+        return {
+          status: "Optimal",
+          objectiveValue: 1234.5,
+          values: {
+            v_a: 10,
+            v_b: 20,
+          },
+          duals: {
+            c_budget: 3.5,
+          },
+          slacks: {
+            c_budget: 0,
+          },
+          runTime: 0.042,
+          logs: ["DummyThirdParty solved successfully."],
+        };
+      }
+    }
+
+    registerSolver("dummy-3rd-party", (opts) => new DummyThirdPartySolver(opts));
+
+    expect(listAvailableSolvers()).toContain("dummy-3rd-party");
+
+    const m = new Model({ name: "ThirdPartyModel", solver: "dummy-3rd-party" });
+    const a = m.addVar({ name: "v_a" });
+    const b = m.addVar({ name: "v_b" });
+    m.maximize(a.mul(2).add(b.mul(3)));
+    const c1 = m.addConstraint(a.add(b).le(30), "c_budget");
+
+    const status = await m.optimize();
+    expect(status).toBe("Optimal");
+    expect(m.objectiveValue).toBe(1234.5);
+    expect(a.value).toBe(10);
+    expect(b.value).toBe(20);
+    expect(c1.dual).toBe(3.5);
+    expect(c1.slack).toBe(0);
+  });
+
+  it("supports passing custom solver instance directly to Model or LpProblem", async () => {
+    const inlineSolver: Solver = {
+      name: "InlineSolver",
+      async solve(modelData, lpResult) {
+        return {
+          status: "Optimal",
+          objectiveValue: 999,
+          values: { p_x: 42 },
+          runTime: 0.001,
+        };
+      },
+    };
+
+    // 1. In Model
+    const model = new Model({ solver: inlineSolver });
+    const x = model.addVar({ name: "p_x" });
+    model.maximize(x);
+    await model.optimize();
+    expect(x.value).toBe(42);
+    expect(model.objectiveValue).toBe(999);
+
+    // 2. In PuLP LpProblem
+    const prob = new LpProblem("PuLP_Custom", LpMaximize);
+    const px = new LpVariable("p_x", 0, 100);
+    prob.add(px);
+    const status = await prob.solve(inlineSolver);
+    expect(status).toBe("Optimal");
+    expect(px.value).toBe(42);
+    expect(prob.objectiveValue).toBe(999);
+  });
+
+  it("handles capability validation when solver does not support quadratic objectives", async () => {
+    const linearOnlySolver: Solver = {
+      name: "LinearOnly",
+      capabilities: { supportsMIP: true, supportsQP: false },
+      async solve() {
+        return { status: "Optimal", objectiveValue: 0, values: {} };
+      },
+    };
+
+    const model = new Model({ solver: linearOnlySolver });
+    const x = model.addVar({ name: "x" });
+    // Quadratic objective x * x
+    model.maximize(x.mul(x));
+
+    await expect(model.optimize()).rejects.toThrow(
+      'does not support quadratic objectives'
+    );
+  });
+});

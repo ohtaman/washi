@@ -1,6 +1,6 @@
-import type { SolveOptions } from "./modeler/types.js";
-import { getBundledWasmUrl } from "./highs-assets.js";
-import { loadNodeHighs } from "./highs-node-runtime.js";
+import type { SolveOptions } from "../../types.js";
+import { getBundledWasmUrl } from "./assets.js";
+import { loadNodeHighs } from "./node-runtime.js";
 
 export const OFFICIAL_HIGHS_CDN_WASM_URL =
   "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.wasm";
@@ -108,7 +108,7 @@ export async function getHighs(options: SolveOptions = {}): Promise<HighsInstanc
     // Dynamically import highs to ensure compatibility with ESM / Bundler / Node
     const loadHighs = isNode
       ? await loadNodeHighs()
-      : (await import("./highs-browser-runtime.js")).default;
+      : (await import("./browser-runtime.js")).default;
 
     if (isNode) {
       return await loadHighs();

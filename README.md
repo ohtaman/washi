@@ -200,6 +200,7 @@ Express boolean variables, propositional connectives (`and`, `or`, `implies`, `n
 
 ```ts
 import { Model, not } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
 
@@ -265,7 +266,30 @@ console.log("Conflicting constraints:", res.unsatCore);
 
 ---
 
-### 5. Python PuLP Compatibility Layer
+### 5. Solving with GLPK (GPL-3.0)
+
+To use the GNU Linear Programming Kit (GLPK) solver plugin:
+
+```ts
+import { Model, expr, c } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/glpk";
+
+const m = new Model({ sense: "Maximize", solver: "glpk" });
+const x = m.addVar({ type: "Integer", lb: 0 });
+const y = m.addVar({ type: "Integer", lb: 0 });
+
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+
+const status = await m.solve();
+console.log(`Status: ${status}`); // "Optimal"
+console.log(`Objective: ${m.objectiveValue}`); // 1100
+```
+
+---
+
+### 6. Python PuLP Compatibility Layer
 
 If you have existing Python PuLP code, port it with near zero friction:
 
@@ -341,7 +365,48 @@ The package also includes `dist/browser/washi.min.js`, which exports the `Washi`
 
 For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js` (or pin your desired release version `>= 0.1.2`). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
 
-The browser builds include the HiGHS engine, not the optional GLPK/Z3 engines. Use the npm package and optional dependencies for those integrations. `examples/distribution/` contains complete ESM and script examples.
+### Solver Plugins in the Browser (GLPK & Z3)
+
+The browser distribution includes pre-bundled, standalone solver plugins under `dist/browser/solvers/`:
+- **GLPK**: `dist/browser/solvers/glpk.js` (ESM) and `dist/browser/solvers/glpk.min.js` (IIFE, registers global `WashiGLPK`)
+- **Z3**: `dist/browser/solvers/z3.js` (ESM) and `dist/browser/solvers/z3.min.js` (IIFE, registers global `WashiZ3`), accompanied by `z3-built.js` and `z3-built.wasm`
+
+#### Browser ESM with GLPK
+```html
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  import "./washi/solvers/glpk.js";
+
+  const model = new Model({ solver: "glpk" });
+  const x = model.addVar({ lb: 0, ub: 10 });
+  model.maximize(x);
+  await model.solve();
+  console.log("GLPK status:", model.status);
+</script>
+```
+
+#### Plain Script with GLPK
+```html
+<script src="./washi/washi.min.js"></script>
+<script src="./washi/solvers/glpk.min.js"></script>
+<script>
+  const model = new Washi.Model({ solver: "glpk" });
+  const x = model.addVar({ lb: 0, ub: 10 });
+  model.maximize(x);
+  model.solve().then(status => console.log("GLPK status:", status));
+</script>
+```
+
+> [!NOTE]
+> **Z3 in Browser Environments**:
+> Because the Z3 WebAssembly engine uses multithreading (`SharedArrayBuffer`), the hosting web server must send Cross-Origin-Isolation delivery headers on the document response:
+> ```http
+> Cross-Origin-Opener-Policy: same-origin
+> Cross-Origin-Embedder-Policy: require-corp
+> ```
+> And any cross-origin assets (e.g. from a CDN) must serve `Cross-Origin-Resource-Policy: cross-origin`.
+
+Complete standalone examples for ESM, script tags, and CodePen are available in `examples/distribution/`.
 
 ### Offline distribution, Workers and custom hosting
 
@@ -364,6 +429,14 @@ Failed initialization reports the attempted URL and does not try a different hos
 
 ---
 
+## 🛠️ Custom Solvers & Extensibility
+
+WaSHI features a decoupled, pluggable solver architecture. You can easily build and register your own custom solver adapter (e.g., for cloud REST optimizers, WebAssembly engines, or proprietary solvers):
+
+- See the complete [Custom Solver Developer Guide](docs/custom-solver-guide.md) for step-by-step tutorials, complete API contracts (`Solver`, `LpModelData`, `SolverResult`), and testing best practices.
+
+---
+
 ## 💻 CLI & Interactive Demos
 
 Ready-to-run standalone examples are available in `examples/node/`:
@@ -375,6 +448,7 @@ npx tsx examples/node/03-portfolio-qp.ts
 npx tsx examples/node/04-smt-security-rules.ts
 npx tsx examples/node/05-unsat-core-diagnosis.ts
 npx tsx examples/node/06-pulp-compatibility.ts
+npx tsx examples/node/08-glpk-solver-plugin.ts
 ```
 
 To run the interactive browser showcase (`examples/web-demo`):
