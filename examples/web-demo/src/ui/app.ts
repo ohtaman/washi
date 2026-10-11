@@ -51,7 +51,6 @@ export function initApp() {
   }
 
   let currentModel: Model | null = null;
-  let currentVisualizerType: string = "production";
 
   function applyLocale(locale: Locale) {
     document.documentElement.lang = locale;
@@ -101,7 +100,7 @@ export function initApp() {
   function loadPreset(id: string) {
     const example = EXAMPLES.find((ex) => ex.id === id) || EXAMPLES[0];
     codeTextarea.value = example.code;
-    currentVisualizerType = example.visualizer || "table";
+    presetSelect.value = example.id;
     updateLineNumbers();
   }
 
@@ -178,23 +177,17 @@ export function initApp() {
     const solverDisplayName =
       currentSolver === "z3" ? "Z3" : currentSolver === "glpk" ? "GLPK" : "HiGHS";
     runBtn.textContent = `Solving with ${solverDisplayName}...`;
-    metricStatus.textContent = "Solving...";
-    metricStatus.className = "metric-value";
 
-    if (unsatCoreBox) {
-      unsatCoreBox.style.display = "none";
-    }
-
-    setDefaultSolver(currentSolver);
+    if (unsatCoreBox) unsatCoreBox.style.display = "none";
 
     try {
       const result = await executeModelCode(codeTextarea.value);
 
       if (!result.success) {
+        logOutput.textContent = `Execution Error:\n${result.error}\n\nStack:\n${result.logs.join("\n")}`;
+        showTab("tab-logs");
         metricStatus.textContent = "Error";
         metricStatus.className = "metric-value status-infeasible";
-        logOutput.textContent = `Execution Error:\n${result.error}\n\nConsole logs:\n${result.logs.join("\n")}`;
-        showTab("tab-logs");
         return;
       }
 
@@ -206,14 +199,24 @@ export function initApp() {
       metricStatus.className = `metric-value status-${status.toLowerCase()}`;
 
       const objVal = currentModel?.objectiveValue;
-      metricObj.textContent = objVal !== null && objVal !== undefined ? Number(objVal).toFixed(4).replace(/\.?0+$/, "") : "--";
+      metricObj.textContent =
+        objVal !== null && objVal !== undefined
+          ? Number(objVal).toFixed(4).replace(/\.?0+$/, "")
+          : "--";
 
-      metricTime.textContent = result.runTime ? `${(result.runTime * 1000).toFixed(1)} ms` : "--";
+      metricTime.textContent = result.runTime
+        ? `${(result.runTime * 1000).toFixed(1)} ms`
+        : "--";
       const totalVars = (currentModel?.numVars ?? 0) + (currentModel?.boolVars.length ?? 0);
       metricVars.textContent = String(totalVars);
 
       // Render Unsat Core if conflicting constraints detected
-      if (unsatCoreBox && unsatCoreList && currentModel?.unsatCore && currentModel.unsatCore.length > 0) {
+      if (
+        unsatCoreBox &&
+        unsatCoreList &&
+        currentModel?.unsatCore &&
+        currentModel.unsatCore.length > 0
+      ) {
         unsatCoreBox.style.display = "flex";
         unsatCoreList.innerHTML = currentModel.unsatCore
           .map((cName) => `<span class="unsat-core-chip">${cName}</span>`)
@@ -221,15 +224,14 @@ export function initApp() {
       }
 
       // Render logs
-      logOutput.textContent = result.logs.length > 0 ? result.logs.join("\n") : "Solve completed successfully with no warnings.";
+      logOutput.textContent =
+        result.logs.length > 0
+          ? result.logs.join("\n")
+          : "Solve completed successfully with no warnings.";
 
-      // Render LP String (avoid freezing DOM if model has tens of thousands of variables)
+      // Render LP String
       if (currentModel) {
-        if (currentModel.numVars > 5000) {
-          lpOutput.textContent = `// Large scale model (${currentModel.numVars.toLocaleString()} vars, ${currentModel.numConstrs.toLocaleString()} constrs)\n// Automatic preview omitted for performance.`;
-        } else {
-          lpOutput.textContent = currentModel.toLpString();
-        }
+        lpOutput.textContent = currentModel.toLpString();
       }
 
       // Render variables table & visualizer
@@ -289,8 +291,14 @@ export function initApp() {
 
     let rowsHtml = displayVars
       .map((v) => {
-        const valStr = v.value !== null && v.value !== undefined ? v.value.toFixed(4).replace(/\.?0+$/, "") : "--";
-        const rcStr = v.reducedCost !== null && v.reducedCost !== undefined ? v.reducedCost.toFixed(4).replace(/\.?0+$/, "") : "--";
+        const valStr =
+          v.value !== null && v.value !== undefined
+            ? v.value.toFixed(4).replace(/\.?0+$/, "")
+            : "--";
+        const rcStr =
+          v.reducedCost !== null && v.reducedCost !== undefined
+            ? v.reducedCost.toFixed(4).replace(/\.?0+$/, "")
+            : "--";
         const lbStr = v.lb === -Infinity ? "-∞" : String(v.lb);
         const ubStr = v.ub === Infinity ? "+∞" : String(v.ub);
 
@@ -298,38 +306,35 @@ export function initApp() {
         <tr>
           <td><strong>${v.name}</strong></td>
           <td>${v.type}</td>
-          <td class="val-highlight">${valStr}</td>
-          <td>[${lbStr}, ${ubStr}]</td>
-          <td>${rcStr}</td>
+          <td class="font-mono font-semibold" style="color: var(--color-hi);">${valStr}</td>
+          <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">[${lbStr}, ${ubStr}]</td>
+          <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">${rcStr}</td>
         </tr>
       `;
       })
       .join("");
 
-    // Add Boolean variables rows
-    for (const bv of bVars) {
-      const bVal = currentModel.values.get(bv.name);
-      const valStr = bVal !== undefined ? String(bVal) : "--";
-      const isTrue = bVal === true;
-      rowsHtml += `
-        <tr>
-          <td><strong>${bv.name}</strong></td>
-          <td><span style="font-size: 0.75rem; padding: 2px 6px; background: rgba(59, 130, 246, 0.12); color: #2563eb; border-radius: 4px; font-weight: 600;">Boolean</span></td>
-          <td class="val-highlight" style="color: ${isTrue ? "var(--color-seiji)" : "var(--text-sumi-muted)"}; font-weight: bold;">${valStr}</td>
-          <td>[false, true]</td>
-          <td>--</td>
-        </tr>
-      `;
+    if (bVars.length > 0) {
+      rowsHtml += bVars
+        .map((bv) => {
+          const val = currentModel!.values.get(bv.name);
+          return `
+          <tr>
+            <td><strong>${bv.name}</strong></td>
+            <td>Boolean</td>
+            <td class="font-mono font-semibold" style="color: ${val ? "var(--color-seiji)" : "var(--text-muted)"};">
+              ${val ? "true (1)" : "false (0)"}
+            </td>
+            <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">[0, 1]</td>
+            <td class="font-mono" style="color: var(--text-muted); font-size: 0.8rem;">--</td>
+          </tr>
+        `;
+        })
+        .join("");
     }
 
     if (isTruncated) {
-      rowsHtml += `
-        <tr>
-          <td colspan="5" style="text-align: center; color: var(--text-sumi-muted); font-size: 0.8rem; padding: 12px; background: var(--bg-washi);">
-            … 全 ${vars.length.toLocaleString()} 変数のうち先頭 ${MAX_DISPLAY} 件を表示中（「非ゼロ変数のみ表示」をチェックすると絞り込めます）
-          </td>
-        </tr>
-      `;
+      rowsHtml += `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); font-size: 0.8rem;">... Showing first 500 variables (${vars.length} total) ...</td></tr>`;
     }
 
     varsTableBody.innerHTML = rowsHtml;
@@ -338,275 +343,64 @@ export function initApp() {
   filterNonZero.addEventListener("change", renderVariablesTable);
 
   function renderVisualizer() {
-    if (!currentModel) {
-      visualizerContainer.innerHTML = "";
+    if (!currentModel || currentModel.status === "Infeasible" || currentModel.status === "Unsat") {
+      visualizerContainer.innerHTML = `<p style="color: var(--text-sumi-muted); font-size: 0.85rem; padding: 12px 0;">No primal feasible solution to display.</p>`;
       return;
     }
 
-    if (currentVisualizerType === "nqueens") {
-      renderNQueensBoard();
-    } else if (currentVisualizerType === "knapsack") {
-      renderKnapsackCards();
-    } else if (currentVisualizerType === "production") {
-      renderProductionCards();
-    } else if (currentVisualizerType === "nurse") {
-      renderNurseRoster();
-    } else if (currentVisualizerType === "supply-chain") {
-      renderSupplyChainSummary();
-    } else if (currentVisualizerType === "portfolio") {
-      renderPortfolioCards();
-    } else {
-      visualizerContainer.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">Standard tabular representation in table below.</p>`;
-    }
-  }
+    const vars = currentModel.variables || [];
+    const nonZeroVars = vars.filter((v) => (v.value ?? 0) > 1e-5);
 
-  function renderNurseRoster() {
-    const nurses = ["Alice", "Bob", "Charlie", "Diana", "Evan", "Fiona", "George", "Hannah", "Ian", "Julia"];
-    const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-    const shifts = ["D", "E", "N"];
-
-    let html = `
-      <div style="width: 100%; overflow-x: auto;">
-        <div style="margin-bottom: 10px; font-size: 0.76rem; display: flex; gap: 16px; color: var(--text-sumi-secondary);">
-          <span style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block;width:9px;height:9px;background:#1e3a5f;border-radius:2px;"></span>D: 日勤 (8:00-16:00)</span>
-          <span style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block;width:9px;height:9px;background:#b45309;border-radius:2px;"></span>E: 準夜勤 (16:00-0:00)</span>
-          <span style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block;width:9px;height:9px;background:#582f6e;border-radius:2px;"></span>N: 夜勤 (0:00-8:00)</span>
-          <span style="display:flex; align-items:center; gap:5px;"><span style="display:inline-block;width:9px;height:9px;background:#dcd7cd;border-radius:2px;"></span>-: 休日 (Off)</span>
-        </div>
-        <table class="nurse-roster-table" style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: center;">
-          <thead>
-            <tr style="background: var(--bg-washi); border-bottom: 1px solid var(--border-washi);">
-              <th style="padding: 7px 12px; text-align: left; font-weight:600; color:var(--text-sumi-secondary);">ナース</th>
-              ${days.map(d => `<th style="padding: 7px 8px; font-weight:600; color:var(--text-sumi-secondary);">${d}</th>`).join("")}
-              <th style="padding: 7px 8px; font-weight:600; color:var(--text-sumi-secondary);">勤務日数</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    for (const n of nurses) {
-      let count = 0;
-      const cells = days.map(d => {
-        let assigned = "-";
-        for (const s of shifts) {
-          const v = currentModel?.getVarByName(`x_${n}_${d}_${s}`);
-          if (v && Math.round(v.value ?? 0) === 1) {
-            assigned = s;
-            count++;
-            break;
-          }
-        }
-
-        let bg = "transparent";
-        let color = "var(--text-sumi-muted)";
-        if (assigned === "D") { bg = "rgba(30, 58, 95, 0.08)"; color = "var(--color-ai)"; }
-        else if (assigned === "E") { bg = "rgba(180, 83, 9, 0.1)"; color = "var(--color-amber)"; }
-        else if (assigned === "N") { bg = "rgba(88, 47, 110, 0.12)"; color = "#582f6e"; }
-
-        return `
-          <td style="padding: 6px 6px; border-bottom: 1px solid var(--border-subtle);">
-            <span style="display:inline-block; width:26px; height:24px; line-height:24px; border-radius:3px; font-weight:600; font-family:var(--font-mono); background:${bg}; color:${color};">
-              ${assigned}
-            </span>
-          </td>
-        `;
-      }).join("");
-
-      html += `
-        <tr>
-          <td style="padding: 7px 12px; text-align: left; font-weight: 500; border-bottom: 1px solid var(--border-subtle);">
-            ${n}
-          </td>
-          ${cells}
-          <td style="padding: 7px 8px; font-weight: 600; font-family:var(--font-mono); color: var(--color-hi); border-bottom: 1px solid var(--border-subtle);">
-            ${count}日
-          </td>
-        </tr>
-      `;
+    if (nonZeroVars.length === 0) {
+      visualizerContainer.innerHTML = `<p style="color: var(--text-sumi-muted); font-size: 0.85rem;">All variables evaluated to 0.</p>`;
+      return;
     }
 
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-    visualizerContainer.innerHTML = html;
-  }
+    // Determine if variables look like proportions (sum close to 1) or counts
+    const totalVal = nonZeroVars.reduce((sum, v) => sum + (v.value || 0), 0);
+    const isProportion = Math.abs(totalVal - 1.0) < 1e-3;
 
-  function renderNQueensBoard() {
-    const N = 8;
-    let html = `<div class="chessboard">`;
-    for (let r = 0; r < N; r++) {
-      for (let c = 0; c < N; c++) {
-        const isLight = (r + c) % 2 === 0;
-        const v = currentModel?.getVarByName(`q_${r}_${c}`);
-        const hasQueen = v && Math.round(v.value ?? 0) === 1;
-        html += `<div class="chess-cell ${isLight ? "light" : "dark"} ${hasQueen ? "has-queen" : ""}">
-          ${hasQueen ? "♛" : ""}
-        </div>`;
-      }
-    }
-    html += `</div>`;
-    visualizerContainer.innerHTML = html;
-  }
+    const colors = ["#C23B22", "#1E3A5F", "#237A4B", "#B45309", "#582F6E", "#0F766E"];
 
-  function renderKnapsackCards() {
-    const vars = currentModel?.variables || [];
-    let html = `<div class="knapsack-grid">`;
-    for (const v of vars) {
-      const isPacked = Math.round(v.value ?? 0) === 1;
-      html += `
-        <div class="item-badge ${isPacked ? "packed" : ""}">
-          <div class="name">${v.name}</div>
-          <div class="specs">${isPacked ? "採用 (Packed)" : "除外"}</div>
-        </div>
-      `;
-    }
-    html += `</div>`;
-    visualizerContainer.innerHTML = html;
-  }
-
-  function renderProductionCards() {
-    const vars = currentModel?.variables || [];
-    const unitLabel = getLocale() === "ja" ? "個" : "units";
-    let html = `<div style="display: flex; gap: 14px; flex-wrap: wrap;">`;
-    for (const v of vars) {
-      html += `
-        <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); display: flex; flex-direction: column; gap: 4px; min-width: 140px;">
-          <span style="font-size: 0.76rem; color: var(--text-sumi-muted);">${v.name}</span>
-          <span style="font-family: var(--font-mono); font-size: 1.35rem; font-weight: 600; color: var(--color-hi);">
-            ${v.value !== null ? v.value : 0} ${unitLabel}
-          </span>
-        </div>
-      `;
-    }
-    html += `</div>`;
-    visualizerContainer.innerHTML = html;
-  }
-
-  function renderSupplyChainSummary() {
-    if (!currentModel) return;
-    const openedWarehouses: Array<{ id: number; shipped: number }> = [];
-    let totalShipped = 0;
-
-    for (let w = 0; w < 50; w++) {
-      const yw = currentModel.getVarByName(`y_${w}`);
-      const isOpen = yw && Math.round(yw.value ?? 0) === 1;
-      let shippedFromW = 0;
-      for (let c = 0; c < 400; c++) {
-        const xwc = currentModel.getVarByName(`x_${w}_${c}`);
-        if (xwc && (xwc.value ?? 0) > 1e-4) {
-          shippedFromW += xwc.value!;
-        }
-      }
-      if (isOpen) {
-        openedWarehouses.push({ id: w, shipped: Math.round(shippedFromW) });
-        totalShipped += shippedFromW;
-      }
-    }
-
-    openedWarehouses.sort((a, b) => b.shipped - a.shipped);
-    const unitLabel = t("supplyChainWarehouseUnit");
-
-    let html = `
-      <div style="display: flex; flex-direction: column; gap: 14px; width: 100%;">
-        <div style="display: flex; gap: 14px; flex-wrap: wrap;">
-          <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); min-width: 150px;">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">${t("supplyChainOpenedWarehouses")}</div>
-            <div style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--color-hi);">
-              ${openedWarehouses.length} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-sumi-secondary);">/ 50</span>
-            </div>
-          </div>
-          <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); min-width: 150px;">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">${t("supplyChainTotalShipped")}</div>
-            <div style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--color-ai);">
-              ${Math.round(totalShipped).toLocaleString()} <span style="font-size: 0.85rem; font-weight: 400; color: var(--text-sumi-secondary);">${unitLabel}</span>
-            </div>
-          </div>
-          <div style="background: var(--bg-washi); padding: 12px 18px; border-radius: var(--radius-sm); border: 1px solid var(--border-washi); min-width: 150px;">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-muted);">Demand Coverage</div>
-            <div style="font-family: var(--font-mono); font-size: 1.4rem; font-weight: 600; color: var(--color-evergreen);">
-              100.0%
-            </div>
-          </div>
-        </div>
-
-        <div style="font-size: 0.82rem; font-weight: 600; color: var(--text-sumi); margin-top: 4px;">
-          ${t("supplyChainTopWarehouses")}
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;">
-          ${openedWarehouses.slice(0, 8).map(wh => `
-            <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 8px 12px; border-radius: var(--radius-sm);">
-              <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-sumi);">DC #${wh.id}</div>
-              <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-hi); font-weight: 600;">${wh.shipped.toLocaleString()} ${unitLabel}</div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    `;
-    visualizerContainer.innerHTML = html;
-  }
-
-  function renderPortfolioCards() {
-    if (!currentModel) return;
-
-    const colors = ["#C23B22", "#1E3A5F", "#2D5A27", "#B8860B", "#583F57"];
-    const weightVars = currentModel.variables.filter((v) => v.name.startsWith("weight_"));
-    const variance = currentModel.objectiveValue ?? 0;
-    const volatility = Math.sqrt(Math.max(0, variance));
-    const totalWeight = weightVars.reduce((sum, v) => sum + (v.value || 0), 0);
-
-    let barsHtml = weightVars
+    const cardsHtml = nonZeroVars
+      .slice(0, 12)
       .map((v, i) => {
         const val = v.value || 0;
-        const pct = (val * 100).toFixed(1);
-        const assetName = v.name.replace("weight_", "");
         const color = colors[i % colors.length];
+        const valStr = isProportion
+          ? `${(val * 100).toFixed(1)}%`
+          : Number(val.toFixed(2)).toLocaleString();
+
+        const pct = isProportion ? (val * 100).toFixed(1) : Math.min(100, Math.round((val / totalVal) * 100));
 
         return `
-          <div style="display: flex; flex-direction: column; gap: 4px;">
-            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 500;">
-              <span style="color: var(--text-sumi); display: flex; align-items: center; gap: 6px;">
-                <span style="width: 10px; height: 10px; border-radius: 2px; background: ${color}; display: inline-block;"></span>
-                ${assetName}
+          <div style="background: var(--bg-surface); border: 1px solid var(--border-washi); border-radius: var(--radius-sm); padding: 10px 14px; min-width: 140px; flex: 1 1 140px;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+              <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-sumi-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${v.name}
               </span>
-              <span style="font-family: var(--font-mono); font-weight: 600; color: ${color};">${pct}%</span>
+              <span style="font-family: var(--font-mono); font-size: 1rem; font-weight: 700; color: ${color};">
+                ${valStr}
+              </span>
             </div>
-            <div style="width: 100%; height: 10px; background: var(--border-subtle); border-radius: 5px; overflow: hidden;">
-              <div style="width: ${pct}%; height: 100%; background: ${color}; border-radius: 5px; transition: width 0.3s ease;"></div>
+            <div style="width: 100%; height: 6px; background: var(--border-subtle); border-radius: 3px; overflow: hidden;">
+              <div style="width: ${pct}%; height: 100%; background: ${color}; border-radius: 3px;"></div>
             </div>
           </div>
         `;
       })
       .join("");
 
-    let html = `
-      <div style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
-          <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">${t("portfolioRiskLabel")}</div>
-            <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--color-hi);">${variance.toFixed(6)}</div>
-          </div>
-          <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">${t("portfolioVolLabel")}</div>
-            <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: var(--text-sumi);">${(volatility * 100).toFixed(2)}%</div>
-          </div>
-          <div style="background: var(--bg-panel); border: 1px solid var(--border-subtle); padding: 12px; border-radius: var(--radius-sm);">
-            <div style="font-size: 0.76rem; color: var(--text-sumi-secondary); margin-bottom: 4px;">${t("portfolioBudgetLabel")}</div>
-            <div style="font-family: var(--font-mono); font-size: 1.15rem; font-weight: 700; color: #2D5A27;">${(totalWeight * 100).toFixed(1)}%</div>
-          </div>
+    visualizerContainer.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+        <div style="font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-sumi-muted);">
+          ${getLocale() === "ja" ? "主要決定変数の最適値サマリー" : "Optimal Decision Variables Summary"}
         </div>
-
-        <div style="background: var(--bg-washi); border: 1px solid var(--border-subtle); padding: 16px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 12px;">
-          <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-sumi);">${t("portfolioWeightsTitle")}</div>
-          <div style="display: flex; flex-direction: column; gap: 10px;">
-            ${barsHtml}
-          </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; width: 100%;">
+          ${cardsHtml}
         </div>
       </div>
     `;
-
-    visualizerContainer.innerHTML = html;
   }
 
   // Button Listeners
@@ -630,9 +424,14 @@ export function initApp() {
   const initialLoc = initLocale();
   applyLocale(initialLoc);
 
-  // Initial load
-  loadPreset("production");
-  presetSelect.value = "production";
+  // Parse preset from URL query parameter if present
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedPreset = urlParams.get("preset");
+  const targetPreset = EXAMPLES.some((e) => e.id === requestedPreset)
+    ? requestedPreset!
+    : "production";
+
+  loadPreset(targetPreset);
 
   // Auto-run first example after brief delay
   setTimeout(() => {

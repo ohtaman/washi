@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23C23B22'/><text x='50' y='68' font-size='60' text-anchor='middle' fill='%23FFFFFF' font-family='serif'>高</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WaSHI Playground — Interactive Mathematical Optimization Demo</title>
+    <meta name="description" content="Interactive demo and online playground for WaSHI: solve LP, MIP, QP, and SMT problems in the browser using WebAssembly solvers (HiGHS, Z3, GLPK)." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../src/style.css" />
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <a href="../" class="brand-crest" title="Return to Documentation Home" style="text-decoration: none;">
+          <span>高</span>
+        </a>
+        <div class="brand-text">
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+            <h1 class="brand-title">WaSHI Playground</h1>
+            <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface-elevated); color: var(--text-sumi-secondary); font-family: var(--font-mono);">Demo</span>
+          </div>
+          <span class="brand-subtitle" data-i18n="headerSubtitle">Client-Side Mathematical Optimization (WASM)</span>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <!-- Back to Project Docs -->
+        <a href="../" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+          <span>←</span>
+          <span data-i18n="backToDocs">Documentation</span>
+        </a>
+
+        <!-- Language Switcher -->
+        <div class="lang-switch-group" role="group" aria-label="Language Selector">
+          <button type="button" id="lang-btn-en" class="lang-btn active" title="English">EN</button>
+          <button type="button" id="lang-btn-ja" class="lang-btn" title="日本語">JA</button>
+        </div>
+
+        <div class="status-chip" id="solver-status-chip">
+          <span class="status-indicator"></span>
+          <span id="solver-badge-text">HiGHS v1.15.3 (WASM)</span>
+        </div>
+        <a
+          href="https://github.com/ohtaman/washi"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="external-link"
+        >
+          <span>GitHub</span>
+          <span class="link-arrow">↗</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- App Container -->
+    <main class="app-container">
+      <!-- Left Pane: Code Editor -->
+      <section class="editor-pane" aria-label="Optimization Model Code Editor">
+        <div class="editor-toolbar">
+          <div class="preset-selector-group">
+            <span class="toolbar-label" data-i18n="modelSelectLabel">Problem:</span>
+            <select id="preset-select" class="custom-select" aria-label="Problem Model Selector">
+              <!-- Dynamically populated with 5 focused presets -->
+            </select>
+          </div>
+
+          <div class="solver-selector-group">
+            <span class="toolbar-label" data-i18n="solverSelectLabel">Solver:</span>
+            <select id="solver-select" class="custom-select custom-select-sm" aria-label="Solver Engine Selector">
+              <option value="highs" selected>HiGHS (WASM)</option>
+              <option value="glpk">GLPK (WASM)</option>
+              <option value="z3">Z3 (SMT / SAT / MIP)</option>
+            </select>
+          </div>
+
+          <div class="editor-actions">
+            <button id="reset-btn" class="btn btn-secondary" title="Reset to original code" data-i18n="resetButton">
+              Reset
+            </button>
+            <button id="gen-lp-btn" class="btn btn-secondary" title="View CPLEX LP string" data-i18n="viewLpButton">
+              View LP
+            </button>
+            <button id="run-btn" class="btn btn-primary" title="Solve with HiGHS WASM" data-i18n="runButton">
+              Run Optimization
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-wrapper">
+          <div id="line-numbers" class="line-numbers" aria-hidden="true"></div>
+          <textarea
+            id="code-editor"
+            class="code-textarea"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            aria-label="JavaScript optimization model code"
+          ></textarea>
+        </div>
+      </section>
+
+      <!-- Right Pane: Results & Inspector -->
+      <section class="results-pane" aria-label="Optimization Results and Dashboard">
+        <!-- Navigation Tabs -->
+        <nav class="tabs-header" role="tablist">
+          <button
+            class="tab-btn active"
+            data-tab="tab-results"
+            role="tab"
+            aria-selected="true"
+            id="tab-btn-results"
+            data-i18n="tabSolution"
+          >
+            Solution & Variables
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="tab-lp"
+            role="tab"
+            aria-selected="false"
+            id="tab-btn-lp"
+            data-i18n="tabLp"
+          >
+            CPLEX LP Format
+          </button>
+          <button
+            class="tab-btn"
+            data-tab="tab-logs"
+            role="tab"
+            aria-selected="false"
+            id="tab-btn-logs"
+            data-i18n="tabLogs"
+          >
+            Solver Logs
+          </button>
+        </nav>
+
+        <!-- Tab 1: Solution Dashboard -->
+        <div id="tab-results" class="tab-content active" role="tabpanel">
+          <!-- Summary Metrics Cards -->
+          <div class="summary-grid">
+            <div class="metric-card">
+              <span class="metric-label" data-i18n="statusLabel">Status</span>
+              <span id="metric-status" class="metric-value status-optimal">Ready</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label" data-i18n="objectiveLabel">Objective Value</span>
+              <span id="metric-obj" class="metric-value">--</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label" data-i18n="timeLabel">Solve Time</span>
+              <span id="metric-time" class="metric-value">--</span>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label" data-i18n="varsLabel">Variables</span>
+              <span id="metric-vars" class="metric-value">--</span>
+            </div>
+          </div>
+
+          <!-- Unsat Core Alert Box (Conflict Diagnosis) -->
+          <div id="unsat-core-box" class="unsat-core-box" style="display: none;">
+            <div class="unsat-core-header">
+              <span class="unsat-core-icon">⚠️</span>
+              <span class="unsat-core-title" data-i18n="unsatCoreTitle">Conflicting Constraints Detected (Unsat Core):</span>
+            </div>
+            <div class="unsat-core-desc" data-i18n="unsatCoreDesc">
+              The model has no feasible solution. The solver identified the following minimal subset of incompatible constraints causing the conflict:
+            </div>
+            <div id="unsat-core-list" class="unsat-core-list"></div>
+          </div>
+
+          <!-- Problem Visualizer Section (Streamlined) -->
+          <div class="panel-section">
+            <div class="section-title">
+              <span data-i18n="visualizationTitle">Decision Summary</span>
+            </div>
+            <div id="visualizer-container" class="visualizer-box">
+              <!-- Universal Clean Summary View -->
+            </div>
+          </div>
+
+          <!-- Variables Table -->
+          <div class="panel-section">
+            <div class="section-title">
+              <span data-i18n="tableTitle">Optimal Variable Values</span>
+              <label class="filter-label">
+                <input type="checkbox" id="filter-non-zero" />
+                <span data-i18n="filterNonZeroLabel">Show non-zero variables only</span>
+              </label>
+            </div>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="colName">Name</th>
+                    <th data-i18n="colType">Type</th>
+                    <th data-i18n="colValue">Value (Primal)</th>
+                    <th data-i18n="colBounds">Bounds [LB, UB]</th>
+                    <th data-i18n="colReducedCost">Reduced Cost</th>
+                  </tr>
+                </thead>
+                <tbody id="vars-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: CPLEX LP Viewer -->
+        <div id="tab-lp" class="tab-content" role="tabpanel">
+          <div class="panel-section">
+            <div class="section-title">
+              <span data-i18n="tabLp">CPLEX LP Format</span>
+              <span class="section-subtitle">Fully compatible with CPLEX, Gurobi, GLPK, SCIP, etc.</span>
+            </div>
+            <pre id="lp-output" class="code-display">// LP output will appear here...</pre>
+          </div>
+        </div>
+
+        <!-- Tab 3: Logs Viewer -->
+        <div id="tab-logs" class="tab-content" role="tabpanel">
+          <div class="panel-section">
+            <div class="section-title">
+              <span data-i18n="tabLogs">Solver Logs</span>
+            </div>
+            <pre id="log-output" class="code-display">// Console logs will appear here...</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- App Scripts -->
+    <script type="module" src="../src/main.ts"></script>
+  </body>
+</html>

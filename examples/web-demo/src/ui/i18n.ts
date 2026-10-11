@@ -37,6 +37,7 @@ export interface TranslationDict {
   // Unsat Core (Conflict Diagnosis)
   unsatCoreTitle: string;
   unsatCoreDesc: string;
+  backToDocs: string;
 }
 
 export const translations: Record<Locale, TranslationDict> = {
@@ -74,6 +75,7 @@ export const translations: Record<Locale, TranslationDict> = {
     supplyChainWarehouseUnit: "units",
     unsatCoreTitle: "Conflicting Constraints Detected (Unsat Core):",
     unsatCoreDesc: "The model has no feasible solution. The solver identified the following minimal subset of incompatible constraints causing the conflict:",
+    backToDocs: "Documentation",
   },
   ja: {
     headerSubtitle: "数理最適化モデラー",
@@ -90,7 +92,7 @@ export const translations: Record<Locale, TranslationDict> = {
     objectiveLabel: "最適目的関数値",
     timeLabel: "計算時間",
     varsLabel: "決定変数",
-    visualizationTitle: "解の可視化",
+    visualizationTitle: "決定サマリー",
     tableTitle: "決定変数の最適値",
     filterNonZeroLabel: "非ゼロ変数のみ表示",
     colName: "変数名",
@@ -109,6 +111,7 @@ export const translations: Record<Locale, TranslationDict> = {
     supplyChainWarehouseUnit: "個",
     unsatCoreTitle: "矛盾制約を検出（Unsat Core）:",
     unsatCoreDesc: "モデルに実行可能解が存在しません。ソルバーは矛盾を引き起こしている最小の制約集合を特定しました:",
+    backToDocs: "ドキュメント",
   },
 };
 
