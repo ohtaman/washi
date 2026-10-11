@@ -121,4 +121,68 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(m.values.get("x")).toBe(10);
     expect(m.values.get("y")).toBe(10);
   });
+
+  it("correctly reports Unsat when an Integer variable is constrained to a non-integer value (x == 0.5)", async () => {
+    const m = new Model("IntegerHalf");
+    const x = m.addVar({
+      name: "integer_x",
+      type: "Integer",
+      lb: 0,
+      ub: 1,
+    });
+    m.addConstraint(x.eq(0.5), "half_integer");
+
+    const result = await m.check({ solver: "z3" });
+    expect(result.status).toBe("Unsat");
+    expect(result.values).toEqual({});
+    expect(result.unsatCore).toContain("half_integer");
+  });
+
+  it("handles mixed Integer and Continuous arithmetic regardless of term order and non-integer coefficients", async () => {
+    // 1. Integer x + Continuous y <= 1 (Int first, then Real)
+    const m1 = new Model("MixedIntFirst");
+    const x1 = m1.addVar({ name: "x", type: "Integer", lb: 0, ub: 1 });
+    const y1 = m1.addVar({ name: "y", type: "Continuous", lb: 0, ub: 1 });
+    m1.addConstraint(x1.add(y1).le(1), "int_plus_real");
+    const res1 = await m1.check({ solver: "z3" });
+    expect(res1.status).toBe("Sat");
+
+    // 2. Continuous y + Integer x <= 1 (Real first, then Int)
+    const m2 = new Model("MixedRealFirst");
+    const x2 = m2.addVar({ name: "x", type: "Integer", lb: 0, ub: 1 });
+    const y2 = m2.addVar({ name: "y", type: "Continuous", lb: 0, ub: 1 });
+    m2.addConstraint(y2.add(x2).le(1), "real_plus_int");
+    const res2 = await m2.check({ solver: "z3" });
+    expect(res2.status).toBe("Sat");
+
+    // 3. Non-integer coefficient on Integer variable: 0.5 * x == 0.5 -> x = 1 (Sat)
+    const m3 = new Model("FractionalCoeffOnInt");
+    const x3 = m3.addVar({ name: "x", type: "Integer", lb: 0, ub: 1 });
+    m3.addConstraint(x3.mul(0.5).eq(0.5), "half_coeff");
+    const res3 = await m3.check({ solver: "z3" });
+    expect(res3.status).toBe("Sat");
+    expect(res3.values.x).toBe(1);
+  });
+
+  it("throws an explicit error instead of falling back when Z3 fails to load or in a mocked browser without Z3", async () => {
+    const { vi } = await import("vitest");
+    const { resetZ3LoaderCache } = await import("../src/modeler/solvers/z3.js");
+
+    vi.doMock("z3-solver", () => ({
+      init: vi.fn().mockRejectedValue(new Error("z3-solver unavailable")),
+    }));
+    resetZ3LoaderCache();
+
+    try {
+      const m = new Model("MissingZ3");
+      const x = m.addVar({ name: "integer_x", type: "Integer", lb: 0, ub: 1 });
+      m.addConstraint(x.eq(0.5), "half_integer");
+
+      await expect(m.check({ solver: "z3" })).rejects.toThrow(/Failed to load z3-solver/);
+    } finally {
+      vi.doUnmock("z3-solver");
+      resetZ3LoaderCache();
+    }
+  });
 });
+
