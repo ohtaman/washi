@@ -11,7 +11,7 @@ import type {
   SolverCheckResult,
 } from "../types.js";
 import { registerSolver } from "../registry.js";
-import { loadZ3, resetZ3LoaderCache, killZ3Threads } from "./loader.js";
+import { loadZ3, resetZ3LoaderCache, killZ3Threads, registerZ3ErrorHandler } from "./loader.js";
 
 export { resetZ3LoaderCache, killZ3Threads };
 
@@ -285,7 +285,17 @@ export class Z3Solver implements Solver {
       s.addAndTrack(lcAst, trackVar);
     }
 
-    const checkRes = await s.check();
+    let unregister: (() => void) | undefined;
+    let checkRes: any;
+    try {
+      const checkPromise = s.check();
+      checkRes = await new Promise((resolve, reject) => {
+        unregister = registerZ3ErrorHandler(reject);
+        checkPromise.then(resolve, reject);
+      });
+    } finally {
+      unregister?.();
+    }
     const statusStr = checkRes.toString();
 
     if (statusStr === "sat") {
@@ -411,7 +421,17 @@ export class Z3Solver implements Solver {
       opt.minimize(objAst);
     }
 
-    const checkRes = await opt.check();
+    let unregister: (() => void) | undefined;
+    let checkRes: any;
+    try {
+      const checkPromise = opt.check();
+      checkRes = await new Promise((resolve, reject) => {
+        unregister = registerZ3ErrorHandler(reject);
+        checkPromise.then(resolve, reject);
+      });
+    } finally {
+      unregister?.();
+    }
     const statusStr = checkRes.toString();
 
     if (statusStr === "sat") {

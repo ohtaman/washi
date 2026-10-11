@@ -12,9 +12,12 @@ export function packageAssets(): Plugin {
   return {
     name: "washi-package-assets",
     enforce: "pre",
-    resolveId(id) {
-      if (["./highs-assets.js", "./highs-worker-factory.js", "./highs-browser-runtime.js", "./highs-node-runtime.js"].includes(id)) {
+    resolveId(id, importer) {
+      if (["./highs-assets.js", "./highs-worker-factory.js", "./highs-browser-runtime.js", "./highs-node-runtime.js", "./z3-assets.js"].includes(id)) {
         return { id, external: true };
+      }
+      if (importer && (importer.includes("/z3/") || importer.includes("\\z3\\") || importer.endsWith("z3.ts"))) {
+        if (id === "./assets.js" || id === "./z3-assets.js") return { id: "./z3-assets.js", external: true };
       }
       if (id === "./assets.js") return { id: "./highs-assets.js", external: true };
       if (id === "./worker-factory.js") return { id: "./highs-worker-factory.js", external: true };
@@ -28,6 +31,8 @@ export function packageAssets(): Plugin {
         'export function createHighsWorker() { return new Worker(new URL("./highs-worker.js", import.meta.url), { type: "module" }); }\n' });
       this.emitFile({ type: "asset", fileName: "highs-node-runtime.js", source:
         'export async function loadNodeHighs() { return (await import(/* webpackIgnore: true */ /* @vite-ignore */ "highs")).default; }\n' });
+      this.emitFile({ type: "asset", fileName: "solvers/z3-assets.js", source:
+        'export function getBundledZ3AssetUrls() { return { jsUrl: new URL("./z3-built.js", import.meta.url).href, wasmUrl: new URL("./z3-built.wasm", import.meta.url).href }; }\n' });
       this.emitFile({ type: "asset", fileName: "highs.wasm", source: wasm() });
       this.emitFile({ type: "asset", fileName: "highs.wasm.LICENSE", source: license() });
       this.emitFile({ type: "asset", fileName: "solvers/z3-built.js", source: z3Js() });
@@ -39,6 +44,7 @@ export function packageAssets(): Plugin {
 /** Browser distributions contain all HiGHS JS, but no optional solver engines in core. */
 export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "z3" = "core"): Plugin {
   const assetsId = "\0washi-browser-assets";
+  const z3AssetsId = "\0washi-browser-z3-assets";
   const factoryId = "\0washi-browser-worker-factory";
   const optionalId = "\0washi-optional-engine";
   const nodeId = "\0washi-node-only";
@@ -49,8 +55,11 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
   return {
     name: "washi-browser-assets",
     enforce: "pre",
-    resolveId(id) {
-      if ([assetsId, factoryId, optionalId, nodeId].includes(id)) return id;
+    resolveId(id, importer) {
+      if ([assetsId, z3AssetsId, factoryId, optionalId, nodeId].includes(id)) return id;
+      if (target === "z3" || (importer && (importer.includes("/z3/") || importer.includes("\\z3\\")))) {
+        if (id === "./z3-assets.js" || id === "./assets.js" || id.endsWith("/z3/assets.js")) return z3AssetsId;
+      }
       if (id === "./highs-assets.js" || id === "./assets.js" || id.endsWith("/highs/assets.js")) return assetsId;
       if (id === "./highs-worker-factory.js" || id === "./worker-factory.js" || id.endsWith("/highs/worker-factory.js")) return factoryId;
       if (id === "./highs-node-runtime.js" || id === "./node-runtime.js" || id.endsWith("/highs/node-runtime.js")) return "\0washi-node-runtime";
@@ -80,6 +89,17 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
           return new URL(name, assetBase).href;
         }
         export function getBundledWasmUrl() { return getAssetUrl("highs.wasm"); }`;
+      if (id === z3AssetsId) return `${base}
+        function getAssetUrl(name) {
+          if (!assetBase) throw new Error("[WaSHI] Load the browser IIFE using an external script src, or use the browser ESM build.");
+          return new URL(name, assetBase).href;
+        }
+        export function getBundledZ3AssetUrls() {
+          return {
+            jsUrl: getAssetUrl("z3-built.js"),
+            wasmUrl: getAssetUrl("z3-built.wasm"),
+          };
+        }`;
       if (id === factoryId) return `import { getAssetUrl } from ${JSON.stringify(assetsId)};
         export function createHighsWorker() {
           const url = getAssetUrl("highs-worker.js");
@@ -102,6 +122,8 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
       if (target === "core") {
         this.emitFile({ type: "asset", fileName: "highs.wasm", source: wasm() });
         this.emitFile({ type: "asset", fileName: "highs.wasm.LICENSE", source: license() });
+      }
+      if (target === "core" || target === "z3") {
         this.emitFile({ type: "asset", fileName: "solvers/z3-built.js", source: z3Js() });
         this.emitFile({ type: "asset", fileName: "solvers/z3-built.wasm", source: z3Wasm() });
       }

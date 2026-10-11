@@ -367,7 +367,7 @@ await model.solve();
 
 ### 浏览器环境中的求解器插件（GLPK & Z3）
 
-浏览器发布包在 `dist/browser/solvers/` 下提供了开箱即用的独立求解器插件：
+浏览器发布包在 `dist/browser/solvers/` 下提供了开箱即用的独立求解器插件（通过 CDN 引入时适用于 `>= 0.2.0` 或 `@latest`）：
 - **GLPK**: `dist/browser/solvers/glpk.js` (ESM) 与 `dist/browser/solvers/glpk.min.js` (IIFE，挂载全局 `WashiGLPK`)
 - **Z3**: `dist/browser/solvers/z3.js` (ESM) 与 `dist/browser/solvers/z3.min.js` (IIFE，挂载全局 `WashiZ3`)，附带 `z3-built.js` 和 `z3-built.wasm`
 

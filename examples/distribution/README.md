@@ -24,12 +24,15 @@ Keep the entire `washi/` directory (including `solvers/` subdirectory, JS, Worke
 ## CodePen & Third-Party Embeds
 
 ### 1. HiGHS Core & GLPK
-HiGHS and GLPK run smoothly in standard CodePen pens or iframes using CDN URLs:
+HiGHS and GLPK run smoothly in standard CodePen pens or iframes using CDN URLs.
 
-In **Settings → JavaScript → External Scripts**:
+> [!NOTE]
+> The modular solver plugins under `dist/browser/solvers/` (`glpk.min.js`, `z3.min.js`) are available starting from version `>= 0.2.0` (or `@latest`). Prior releases like `@0.1.2` only contained the core HiGHS bundle (`dist/browser/washi.min.js`). For local testing with files in this directory, serve `./washi/...` from a local HTTP server.
+
+In **Settings → JavaScript → External Scripts** (pin to `>= 0.2.0` or `@latest`):
 ```text
-https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js
-https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/solvers/glpk.min.js
+https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js
+https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/solvers/glpk.min.js
 ```
 
 In the JS panel:

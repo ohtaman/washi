@@ -367,7 +367,7 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 
 ### ブラウザ環境でのソルバープラグイン（GLPK & Z3）
 
-ブラウザ配布物には、`dist/browser/solvers/` 配下に事前バンドルされたスタンドアロンソルバープラグインが含まれています：
+ブラウザ配布物には、`dist/browser/solvers/` 配下に事前バンドルされたスタンドアロンソルバープラグインが含まれています（CDN 利用時は `>= 0.2.0` または `@latest` で利用可能）：
 - **GLPK**: `dist/browser/solvers/glpk.js` (ESM) および `dist/browser/solvers/glpk.min.js` (IIFE、グローバル `WashiGLPK` を登録)
 - **Z3**: `dist/browser/solvers/z3.js` (ESM) および `dist/browser/solvers/z3.min.js` (IIFE、グローバル `WashiZ3` を登録)、ならびに `z3-built.js` / `z3-built.wasm`
 

@@ -367,7 +367,7 @@ For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman
 
 ### Solver Plugins in the Browser (GLPK & Z3)
 
-The browser distribution includes pre-bundled, standalone solver plugins under `dist/browser/solvers/`:
+The browser distribution includes pre-bundled, standalone solver plugins under `dist/browser/solvers/` (available from `>= 0.2.0` or `@latest` on CDN):
 - **GLPK**: `dist/browser/solvers/glpk.js` (ESM) and `dist/browser/solvers/glpk.min.js` (IIFE, registers global `WashiGLPK`)
 - **Z3**: `dist/browser/solvers/z3.js` (ESM) and `dist/browser/solvers/z3.min.js` (IIFE, registers global `WashiZ3`), accompanied by `z3-built.js` and `z3-built.wasm`
 

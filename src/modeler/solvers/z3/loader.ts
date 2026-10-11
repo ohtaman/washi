@@ -1,22 +1,87 @@
-/**
- * Loader for Z3 SMT / SAT / MIP Solver (z3-solver WebAssembly / pthread engine).
- * 
- * In Node.js: Uses node filesystem / worker_threads via z3-solver native bindings.
- * In Browsers: Uses z3-built.js and z3-built.wasm with SharedArrayBuffer and cross-origin isolation.
- */
+import { getBundledZ3AssetUrls } from "./assets.js";
 
 type Z3Instance = any;
 
 let z3InitPromise: Promise<Z3Instance> | null = null;
+let currentZ3Instance: any = null;
 let customZ3JsUrl: string | null = null;
 let customZ3WasmUrl: string | null = null;
-let capturedPluginScriptUrl: string | null = null;
+const activeErrorHandlers = new Set<(err: Error) => void>();
 
-// Capture plugin script URL synchronously at module load time (for classic script tags)
-if (typeof document !== "undefined" && document.currentScript) {
-  const src = (document.currentScript as HTMLScriptElement).src;
-  if (src) {
-    capturedPluginScriptUrl = src;
+export function registerZ3ErrorHandler(handler: (err: Error) => void): () => void {
+  activeErrorHandlers.add(handler);
+  return () => { activeErrorHandlers.delete(handler); };
+}
+
+export function notifyZ3WorkerError(err: any): void {
+  const error = err instanceof Error
+    ? err
+    : new Error(`[WaSHI] Z3 internal worker error: ${err?.message || (typeof err === "string" ? err : "Worker failed to initialize or execute")}`);
+
+  // Terminate worker threads immediately
+  if (currentZ3Instance?.em?.PThread?.terminateAllThreads) {
+    try { currentZ3Instance.em.PThread.terminateAllThreads(); } catch (_) {}
+  }
+  // Invalidate cached loader instance
+  resetZ3LoaderCache();
+
+  // Notify and reject all active check() / solve() operations
+  for (const handler of Array.from(activeErrorHandlers)) {
+    try { handler(error); } catch (_) {}
+  }
+}
+
+function attachPThreadWorkerErrorHandling(em: any): void {
+  if (!em || !em.PThread || em.PThread.__washi_monitored) {
+    return;
+  }
+  em.PThread.__washi_monitored = true;
+
+  const hookWorker = (worker: any) => {
+    if (!worker) return;
+    worker.onerror = (e: any) => {
+      notifyZ3WorkerError(e);
+    };
+    if (typeof worker.addEventListener === "function") {
+      worker.addEventListener("error", (e: any) => {
+        notifyZ3WorkerError(e);
+        if (typeof e.preventDefault === "function") {
+          e.preventDefault();
+        }
+      });
+    }
+  };
+
+  if (Array.isArray(em.PThread.unusedWorkers)) {
+    em.PThread.unusedWorkers.forEach(hookWorker);
+  }
+  if (Array.isArray(em.PThread.runningWorkers)) {
+    em.PThread.runningWorkers.forEach(hookWorker);
+  }
+
+  const originalLoad = em.PThread.loadWasmModuleToWorker;
+  if (typeof originalLoad === "function") {
+    em.PThread.loadWasmModuleToWorker = function (worker: any) {
+      const p = originalLoad.call(this, worker);
+      // originalLoad sets worker.onerror = (e) => throw e;
+      // We override it immediately after originalLoad.call to prevent unhandled throws,
+      // notify active solve/check promises, and clean up threads:
+      worker.onerror = (e: any) => {
+        notifyZ3WorkerError(e);
+      };
+      return p;
+    };
+  }
+
+  const originalAllocate = em.PThread.allocateUnusedWorker;
+  if (typeof originalAllocate === "function") {
+    em.PThread.allocateUnusedWorker = function () {
+      originalAllocate.call(this);
+      const worker = this.unusedWorkers?.[this.unusedWorkers.length - 1];
+      if (worker) {
+        hookWorker(worker);
+      }
+    };
   }
 }
 
@@ -26,7 +91,7 @@ if (typeof document !== "undefined" && document.currentScript) {
 export function setZ3Assets(urls: { jsUrl?: string | null; wasmUrl?: string | null }): void {
   if (urls.jsUrl !== undefined) customZ3JsUrl = urls.jsUrl;
   if (urls.wasmUrl !== undefined) customZ3WasmUrl = urls.wasmUrl;
-  z3InitPromise = null;
+  resetZ3LoaderCache();
 }
 
 /**
@@ -34,6 +99,7 @@ export function setZ3Assets(urls: { jsUrl?: string | null; wasmUrl?: string | nu
  */
 export function resetZ3LoaderCache(): void {
   z3InitPromise = null;
+  currentZ3Instance = null;
 }
 
 /**
@@ -106,22 +172,11 @@ export function resolveZ3AssetUrls(options: { z3JsUrl?: string; z3WasmUrl?: stri
     };
   }
 
-  // Determine base URL
-  let base: string;
-  if (capturedPluginScriptUrl) {
-    base = new URL(".", capturedPluginScriptUrl).href;
-  } else if (typeof import.meta !== "undefined" && import.meta.url) {
-    base = new URL(".", import.meta.url).href;
-  } else if (typeof window !== "undefined" && window.location) {
-    base = window.location.href;
-  } else {
-    base = "./";
-  }
-
-  const jsUrl = options.z3JsUrl || customZ3JsUrl || new URL("./z3-built.js", base).href;
-  const wasmUrl = options.z3WasmUrl || customZ3WasmUrl || new URL("./z3-built.wasm", base).href;
-
-  return { jsUrl, wasmUrl };
+  const bundled = getBundledZ3AssetUrls();
+  return {
+    jsUrl: options.z3JsUrl || customZ3JsUrl || bundled.jsUrl,
+    wasmUrl: options.z3WasmUrl || customZ3WasmUrl || bundled.wasmUrl,
+  };
 }
 
 /**
@@ -173,7 +228,9 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
     if (isNode) {
       try {
         const z3 = await import("z3-solver");
-        return await z3.init();
+        const instance = await z3.init();
+        currentZ3Instance = instance;
+        return instance;
       } catch (err: any) {
         throw new Error(
           `[WaSHI] Failed to load z3-solver. Ensure the optional dependency is installed (npm install z3-solver) and supported in this environment. Error: ${
@@ -216,8 +273,19 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
 
     try {
       const z3 = await import("z3-solver");
-      return await z3.init(moduleOverrides);
+      let unregister: (() => void) | undefined;
+      const instance = await new Promise<any>((resolve, reject) => {
+        unregister = registerZ3ErrorHandler(reject);
+        z3.init(moduleOverrides).then(resolve, reject);
+      }).finally(() => unregister?.());
+
+      currentZ3Instance = instance;
+      if (instance && instance.em) {
+        attachPThreadWorkerErrorHandling(instance.em);
+      }
+      return instance;
     } catch (err: any) {
+      resetZ3LoaderCache();
       throw new Error(
         `[WaSHI] Failed to initialize Z3 in browser: ${err?.message || String(err)}`,
         { cause: err }
@@ -227,7 +295,7 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
 
   pending.catch(() => {
     if (z3InitPromise === pending) {
-      z3InitPromise = null;
+      resetZ3LoaderCache();
     }
   });
 
@@ -239,8 +307,9 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
  * Terminate background Z3 worker threads (Node.js and Browser).
  */
 export async function killZ3Threads(z3Instance?: any): Promise<void> {
-  const instance = z3Instance || (z3InitPromise ? await z3InitPromise.catch(() => null) : null);
+  const instance = z3Instance || currentZ3Instance || (z3InitPromise ? await z3InitPromise.catch(() => null) : null);
   if (!instance || !instance.em) {
+    resetZ3LoaderCache();
     return;
   }
 
@@ -256,6 +325,7 @@ export async function killZ3Threads(z3Instance?: any): Promise<void> {
       instance.em.PThread.terminateAllThreads();
     }
   } finally {
-    z3InitPromise = null;
+    resetZ3LoaderCache();
   }
 }
+

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdtemp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, mkdir, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import vm from "node:vm";
@@ -164,6 +164,131 @@ async function runtime(root, entry, esm, base = "/factory/") {
   }
 }
 
+async function testZ3WorkerErrorAndRecovery(browserRoot) {
+  const origin = "http://distribution.test";
+  const base = "/factory/";
+  const entryUrl = `${origin}${base}washi.js`;
+  const z3Url = `${origin}${base}solvers/z3.js`;
+  const resolveFile = (url) => {
+    const parsed = new URL(url, entryUrl);
+    assert.equal(parsed.origin, origin, `unexpected external request: ${url}`);
+    assert(parsed.pathname.startsWith(base));
+    return path.join(browserRoot, parsed.pathname.slice(base.length));
+  };
+  const makeContext = async (url, isWorker = false, deliver) => {
+    const context = vm.createContext({
+      console, WebAssembly, performance, URL, Blob, TextDecoder, TextEncoder,
+      setTimeout, clearTimeout, atob, btoa, SharedArrayBuffer,
+      fetch: async (resource) => {
+        const target = new URL(String(resource), url).href;
+        try {
+          const bytes = await readFile(resolveFile(target));
+          return new Response(bytes, { headers: { "content-type": target.endsWith(".wasm") ? "application/wasm" : "text/javascript" } });
+        } catch {
+          return new Response("missing asset", { status: 404 });
+        }
+      },
+    });
+    context.self = context;
+    context.location = new URL(url);
+    context.crossOriginIsolated = true;
+    context.isSecureContext = true;
+    if (isWorker) {
+      context.WorkerGlobalScope = class {};
+      context.importScripts = (...urls) => {
+        for (const resource of urls) vm.runInContext(readFileSync(resolveFile(new URL(resource, url).href), "utf8"), context);
+      };
+      context.postMessage = (data) => deliver({ data });
+    } else {
+      context.window = context;
+      const scripts = [];
+      context.document = {
+        baseURI: `${origin}${base}index.html`,
+        currentScript: { src: url, tagName: "SCRIPT" },
+        getElementsByTagName: () => scripts,
+        createElement: (tag) => ({
+          tagName: tag.toUpperCase(), relList: { supports: () => true },
+          setAttribute(name, value) { this[name] = value; },
+          getAttribute(name) { return this[name]; },
+        }),
+        head: { appendChild(element) {
+          scripts.push(element);
+          readFile(resolveFile(element.src), "utf8").then((code) => {
+            vm.runInContext(code, context);
+            element.onload?.({ type: "load", target: element });
+          }).catch((error) => element.onerror?.({ type: "error", target: element, error }));
+        } },
+      };
+      let shouldFail = true;
+      let failMessage = "Worker blocked by CSP (simulated error)";
+      let workerCount = 0;
+      context.setFailWorker = (fail, msg = "Worker blocked by CSP (simulated error)") => {
+        shouldFail = fail;
+        failMessage = msg;
+      };
+      context.getWorkerCount = () => workerCount;
+      context.Worker = class {
+        constructor(workerUrl) {
+          if (shouldFail) {
+            setTimeout(() => {
+              this.onerror?.({ message: failMessage });
+            }, 10);
+            return;
+          }
+          this.ready = makeContext(String(workerUrl), true, (event) => this.onmessage?.(event))
+            .then(async (workerContext) => {
+              const code = await readFile(resolveFile(workerUrl), "utf8");
+              if (/^import\s/m.test(code)) await workerContext.loadModule(String(workerUrl));
+              else vm.runInContext(code, workerContext);
+              return workerContext;
+            });
+          this.ready.catch((error) => this.onerror?.({ message: error.message }));
+        }
+        postMessage(data) {
+          this.ready?.then((workerContext) => workerContext.onmessage({ data })).catch(() => {});
+        }
+        terminate() {}
+      };
+    }
+    const modules = new Map();
+    async function getModule(moduleUrl) {
+      if (!modules.has(moduleUrl)) modules.set(moduleUrl, (async () => {
+        const mod = new vm.SourceTextModule(await readFile(resolveFile(moduleUrl), "utf8"), {
+          context, identifier: moduleUrl,
+          initializeImportMeta(meta) { meta.url = moduleUrl; },
+        });
+        await mod.link((specifier, referrer) => {
+          return getModule(new URL(specifier, referrer.identifier).href);
+        });
+        return mod;
+      })());
+      return modules.get(moduleUrl);
+    }
+    context.loadModule = async (moduleUrl) => { const mod = await getModule(moduleUrl); await mod.evaluate(); return mod.namespace; };
+    return context;
+  };
+
+  const context = await makeContext(entryUrl);
+  const washiMod = await context.loadModule(entryUrl);
+  context.Model = washiMod.Model;
+  await context.loadModule(z3Url);
+
+  const runCheck = () => vm.runInContext(`
+    (async () => {
+      const m = new Model({ solver: 'z3' });
+      const a = m.addBoolVar('a');
+      m.addConstraint(a);
+      return await m.check();
+    })()
+  `, context);
+
+  await assert.rejects(timeout(runCheck()), (err) => {
+    assert(err.message.includes("Worker blocked by CSP"), `Expected worker error but got: ${err.message}`);
+    return true;
+  });
+  console.log("PASS Z3 worker error: internal Worker load error rejects check() promise promptly");
+}
+
 try {
   const pack = JSON.parse(npm(["pack", "--ignore-scripts", "--json", "--pack-destination", fixture], process.cwd()))[0];
   await writeFile(path.join(fixture, "package.json"), JSON.stringify({ private: true, type: "module" }));
@@ -202,39 +327,53 @@ try {
   console.log("PASS npm tarball: GLPK plugin solves MIP in Node.js");
 
   // Test Z3 plugin in Node.js
-  await import(new URL(`file://${packageRoot}/dist/lib/solvers/z3.js`));
+  const { killZ3Threads } = await import(new URL(`file://${packageRoot}/dist/lib/solvers/z3.js`));
   const z3Model = new Model("Z3Node", { solver: "z3" });
   const za = z3Model.addBoolVar("za");
   z3Model.addConstraint(za);
   const z3Res = await z3Model.check();
   assert.equal(z3Res.status, "Sat");
   assert.equal(z3Res.values.za, true);
+  await killZ3Threads();
   console.log("PASS npm tarball: Z3 plugin solves SMT check in Node.js");
 
   await writeFile(path.join(fixture, "index.html"), '<script type="module" src="./main.js"></script>');
-  await writeFile(path.join(fixture, "main.js"), `import { Model } from '@ohtaman/washi';\n${source}`);
+  await writeFile(path.join(fixture, "main.js"), `import { Model } from '@ohtaman/washi';\nimport '@ohtaman/washi/solvers/glpk';\nimport '@ohtaman/washi/solvers/z3';\n${source}`);
   const viteRoot = path.join(fixture, "vite-output");
   await build({ root: fixture, configFile: false, base: "./", logLevel: "warn", build: { outDir: viteRoot } });
   const html = await readFile(path.join(viteRoot, "index.html"), "utf8");
   const viteEntry = html.match(/src="\.\/([^"]+)"/)[1];
   await runtime(viteRoot, viteEntry, true);
 
+  const viteFiles = (await readdir(viteRoot, { recursive: true })).map(String);
+  assert(viteFiles.some(f => f.includes("z3-built") && f.endsWith(".js")), "Vite output missing z3-built.js");
+  assert(viteFiles.some(f => f.includes("z3-built") && f.endsWith(".wasm")), "Vite output missing z3-built.wasm");
+  console.log("PASS consumer Vite build: discovers and emits Z3 assets");
+
   const webpackRoot = path.join(fixture, "webpack-output");
   await new Promise((resolve, reject) => webpack({
     mode: "production", target: "web", context: fixture,
     entry: path.join(fixture, "main.js"),
-    output: { path: webpackRoot, filename: "app.js" }, performance: { hints: false },
+    output: { path: webpackRoot, filename: "app.js", assetModuleFilename: "[name]-[contenthash][ext]" }, performance: { hints: false },
   }, (error, stats) => {
     if (error || stats.hasErrors()) reject(error ?? new Error(stats.toString({ all: false, errors: true })));
     else resolve();
   }));
   await runtime(webpackRoot, "app.js", false);
+
+  const webpackFiles = (await readdir(webpackRoot, { recursive: true })).map(String);
+  assert(webpackFiles.some(f => f.includes("z3-built") && f.endsWith(".js")), "Webpack output missing z3-built.js");
+  assert(webpackFiles.some(f => f.includes("z3-built") && f.endsWith(".wasm")), "Webpack output missing z3-built.wasm");
+  console.log("PASS consumer Webpack build: discovers and emits Z3 assets");
+
   await runtime(path.join(packageRoot, "dist/browser"), "washi.js", true);
   await runtime(path.join(packageRoot, "dist/browser"), "washi.min.js", false);
   await runtime(viteRoot, viteEntry, true, "/");
   await runtime(webpackRoot, "app.js", false, "/");
   await runtime(path.join(packageRoot, "dist/browser"), "washi.js", true, "/");
   await runtime(path.join(packageRoot, "dist/browser"), "washi.min.js", false, "/");
+
+  await testZ3WorkerErrorAndRecovery(path.join(packageRoot, "dist/browser"));
 
   if (process.env.RUN_DISTRIBUTION_BROWSER === "1") {
     const { chromium } = await import("playwright");
@@ -344,14 +483,10 @@ try {
       await z3Ctx1.close();
       console.log("PASS Chromium: Z3 rejects when Cross-Origin-Isolation headers are missing");
 
-      // Test Z3 browser solve with COOP / COEP headers enabled
+      // Test Z3 browser solve with COOP / COEP headers enabled (using default asset URLs)
       const z3IsolatedPage = `<script type="module">
         import { Model } from '${cdnIsolated}/factory/washi.js';
-        import { setZ3Assets } from '${cdnIsolated}/factory/solvers/z3.js';
-        setZ3Assets({
-          jsUrl: '${cdnIsolated}/factory/solvers/z3-built.js',
-          wasmUrl: '${cdnIsolated}/factory/solvers/z3-built.wasm',
-        });
+        import '${cdnIsolated}/factory/solvers/z3.js';
         window.runZ3 = async () => {
           const m = new Model({ solver: 'z3' });
           const a = m.addBoolVar('a');
@@ -378,4 +513,5 @@ try {
   } else console.log("Browser/CORS checks not run; set RUN_DISTRIBUTION_BROWSER=1 with Playwright Chromium installed.");
 } finally {
   await rm(fixture, { recursive: true, force: true });
+  process.exit(0);
 }
