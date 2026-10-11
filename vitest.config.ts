@@ -5,5 +5,6 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    exclude: ["**/node_modules/**", "**/dist/**", "test/e2e.test.ts"],
   },
 });
