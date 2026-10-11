@@ -54,7 +54,7 @@ export interface SolverCapabilities {
   supportsQCQP?: boolean;
   /** Supports satisfiability modulo theories / logical constraints */
   supportsSMT?: boolean;
-  /** Supports extracting minimal unsatisfiable core */
+  /** Supports extracting an unsatisfiable core (conflicting constraint subset; minimality is not guaranteed) */
   supportsUnsatCore?: boolean;
 }
 

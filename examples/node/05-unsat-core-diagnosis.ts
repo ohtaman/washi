@@ -3,7 +3,7 @@
  * 
  * Demonstrates:
  * - Detecting mutually incompatible constraints in business logic
- * - Extracting the minimal conflict subset (unsatCore)
+ * - Extracting a conflicting constraint subset (unsatCore)
  * 
  * Run with: npx tsx examples/node/05-unsat-core-diagnosis.ts
  */
@@ -43,7 +43,7 @@ async function main() {
   console.log(`\nStatus: ${res.status}`);
 
   if (res.status === "Unsat") {
-    console.log("\n⚠️ Incompatible Constraint Core (Minimal Conflict):");
+    console.log("\n⚠️ Conflicting Constraints (Unsat Core):");
     m.unsatCore.forEach((ruleName) => {
       console.log(`  ❌ ${ruleName}`);
     });

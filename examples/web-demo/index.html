@@ -224,10 +224,10 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
               <h4 class="feature-title lang-en">Automatic Conflict Diagnosis</h4>
               <h4 class="feature-title lang-ja" style="display: none;">矛盾原因の自動特定 (Unsat Core)</h4>
               <p class="feature-text lang-en">
-                When business rules clash and no solution exists (Infeasible), isolate the exact minimal conflicting constraint subset using Z3 SMT reasoning.
+                When business rules clash and no solution exists (Infeasible), isolate a conflicting constraint subset (unsat core) using Z3 SMT reasoning.
               </p>
               <p class="feature-text lang-ja" style="display: none;">
-                業務ルール同士が衝突して解なし（Infeasible）になった場合、衝突している制約の最小部分集合（Unsat Core）を Z3 エンジン経由で自動診断します。
+                業務ルール同士が衝突して解なし（Infeasible）になった場合、衝突している制約の部分集合（Unsat Core）を Z3 エンジン経由で自動診断します。
               </p>
             </div>
           </div>
@@ -326,10 +326,10 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
                   <h4 class="demo-card-title lang-en">Rule Conflict Diagnosis</h4>
                   <h4 class="demo-card-title lang-ja" style="display: none;">ルール矛盾診断 (Unsat Core)</h4>
                   <p class="demo-card-desc lang-en">
-                    Isolate the exact minimal subset of mutually incompatible rules causing infeasibility.
+                    Isolate a subset of mutually incompatible rules (unsat core) causing infeasibility.
                   </p>
                   <p class="demo-card-desc lang-ja" style="display: none;">
-                    予算上限と必須要件が衝突した際、矛盾原因の最小制約セットを自動特定。
+                    予算上限と必須要件が衝突した際、矛盾原因の制約サブセット（Unsat Core）を自動特定。
                   </p>
                 </div>
                 <span class="demo-card-link lang-en">Open in Demo →</span>
@@ -495,10 +495,10 @@ console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);</pre>
             </div>
             <div class="doc-card-body">
               <p class="lang-en">
-                When business rules clash, automatically isolate the minimal subset of contradictory constraints causing infeasibility:
+                When business rules clash, automatically isolate a subset of contradictory constraints (unsat core; minimality is not guaranteed) causing infeasibility:
               </p>
               <p class="lang-ja" style="display: none;">
-                業務ルール群が矛盾して実行不能になった際、矛盾の根本原因となっている制約の最小サブセット（Unsat Core）を特定してデバッグします：
+                業務ルール群が矛盾して実行不能になった際、矛盾の原因となっている制約の部分集合（Unsat Core。最小性は保証しません）を特定してデバッグします：
               </p>
               <pre class="doc-code-block">import { Model } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
