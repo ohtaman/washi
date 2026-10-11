@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaSHI GLPK Script Plugin</title>
+<h1>GLPK Solver Plugin (&lt;script&gt; IIFE)</h1>
+<p>Maximize 10x + 6y + 4z with x + y + z ≤ 100, 10x + 4y + 5z ≤ 600, 2x + 2y + 6z ≤ 300 (Integer MIP).</p>
+<button id="solve" disabled>Solve</button>
+<pre id="result">Loading washi.min.js & glpk.min.js…</pre>
+<script src="./washi/washi.min.js"></script>
+<script src="./washi/solvers/glpk.min.js"></script>
+<script>
+  const button = document.querySelector("#solve");
+  const output = document.querySelector("#result");
+  button.disabled = false;
+  button.onclick = async () => {
+    button.disabled = true;
+    output.textContent = "Solving with GLPK…";
+    try {
+      const { Model } = window.Washi;
+      const model = new Model({ name: "GLPK_Script_Knapsack", solver: "glpk" });
+      const x = model.addVar({ name: "x", type: "Integer", lb: 0 });
+      const y = model.addVar({ name: "y", type: "Integer", lb: 0 });
+      const z = model.addVar({ name: "z", type: "Integer", lb: 0 });
+
+      model.maximize(x.mul(10).add(y.mul(6)).add(z.mul(4)));
+      model.addConstraint(x.add(y).add(z).le(100));
+      model.addConstraint(x.mul(10).add(y.mul(4)).add(z.mul(5)).le(600));
+      model.addConstraint(x.mul(2).add(y.mul(2)).add(z.mul(6)).le(300));
+
+      const status = await model.optimize();
+      output.textContent = JSON.stringify({
+        solver: "GLPK",
+        status,
+        objective: model.objectiveValue,
+        x: x.value,
+        y: y.value,
+        z: z.value,
+      }, null, 2);
+    } catch (error) {
+      output.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  button.click();
+</script>
+</html>

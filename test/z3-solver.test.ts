@@ -184,5 +184,70 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
       resetZ3LoaderCache();
     }
   });
+
+  it("releases internal locks and recovers on subsequent check() after worker error", async () => {
+    const { loadZ3, notifyZ3WorkerError, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
+    await loadZ3();
+
+    const m1 = new Model("ErrorModel");
+    const a1 = m1.addBoolVar("a1");
+    m1.addConstraint(a1);
+
+    const checkPromise1 = m1.check({ solver: "z3" });
+    // Let solver begin execution before worker error occurs
+    await new Promise((r) => setTimeout(r, 1));
+    notifyZ3WorkerError(new Error("Simulated worker error during check"));
+
+    await expect(checkPromise1).rejects.toThrow(/Simulated worker error/);
+
+    // Verify recovery: subsequent check() must not deadlock on asyncMutex and must solve correctly
+    const m2 = new Model("RecoveryModel");
+    const a2 = m2.addBoolVar("a2");
+    m2.addConstraint(a2);
+
+    const res2 = await m2.check({ solver: "z3" });
+    expect(res2.status).toBe("Sat");
+    expect(res2.values.a2).toBe(true);
+
+    await killZ3Threads();
+  });
+
+  it("cleans up tracking and avoids unhandledRejection on synchronous failure and killZ3Threads", async () => {
+    const { loadZ3, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
+    const instance = await loadZ3();
+
+    const unhandled: any[] = [];
+    const listener = (reason: any) => unhandled.push(reason);
+    process.on("unhandledRejection", listener);
+
+    try {
+      // Force em.async_call to throw synchronously
+      instance.em.async_call = () => {
+        throw new Error("Synchronous worker init exception");
+      };
+
+      const m = new Model("SyncFailModel");
+      const a = m.addBoolVar("a");
+      m.addConstraint(a);
+
+      await expect(m.check({ solver: "z3" })).rejects.toThrow(/Synchronous worker init exception/);
+
+      // Subsequent killZ3Threads should complete cleanly without unhandledRejection
+      await killZ3Threads();
+      expect(unhandled).toHaveLength(0);
+
+      // Verify recovery: a fresh model solves after sync failure
+      const mRecover = new Model("SyncRecoverModel");
+      const b = mRecover.addBoolVar("b");
+      mRecover.addConstraint(b);
+      const res = await mRecover.check({ solver: "z3" });
+      expect(res.status).toBe("Sat");
+      expect(res.values.b).toBe(true);
+
+      await killZ3Threads();
+    } finally {
+      process.off("unhandledRejection", listener);
+    }
+  });
 });
 

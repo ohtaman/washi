@@ -79,9 +79,6 @@ export {
   type SolverCapabilities,
   HighsSolver,
   HiGHS,
-  GLPKSolver,
-  Z3Solver,
-  registerZ3Solver,
   MockSolver,
   registerSolver,
   getSolver,
@@ -99,5 +96,5 @@ export {
   isValidWasmHeader,
   probeWasmUrl,
   resolveBrowserWasmUrl,
-} from "./highs-loader.js";
-export { getGlpk } from "./glpk-loader.js";
+} from "./modeler/solvers/highs/index.js";
+

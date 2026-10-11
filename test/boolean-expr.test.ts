@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Model } from "../src/modeler/model.js";
 import { BoolVar, and, or, not, implies, xor } from "../src/modeler/boolean-expr.js";
+import "../src/modeler/solvers/glpk/index.js";
 
 describe("Boolean Expressions & SMT / SAT Logic AST", () => {
   it("creates BoolVar and evaluates logical connectives", () => {

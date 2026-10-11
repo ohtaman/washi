@@ -200,6 +200,7 @@ assets.forEach((name, i) => {
 
 ```ts
 import { Model, not } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
 
@@ -265,7 +266,30 @@ console.log("矛盾している制約:", res.unsatCore);
 
 ---
 
-### 5. Python PuLP 互換レイヤー
+### 5. GLPK ソルバーの利用 (GPL-3.0)
+
+GNU Linear Programming Kit (GLPK) ソルバープラグインを利用する場合：
+
+```ts
+import { Model, expr, c } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/glpk";
+
+const m = new Model({ sense: "Maximize", solver: "glpk" });
+const x = m.addVar({ type: "Integer", lb: 0 });
+const y = m.addVar({ type: "Integer", lb: 0 });
+
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+
+const status = await m.solve();
+console.log(`ステータス: ${status}`); // "Optimal"
+console.log(`目的関数値: ${m.objectiveValue}`); // 1100
+```
+
+---
+
+### 6. Python PuLP 互換レイヤー
 
 既存の Python PuLP 最適化スクリプトをスムーズに移植：
 
@@ -341,7 +365,48 @@ await model.solve();
 
 CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js`（`0.1.2` 以降のバージョンを固定）に指定できます。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
 
-ブラウザ用ビルドに含まれるエンジンは HiGHS です。GLPK / Z3 エンジンの連携には npm パッケージと任意依存を使ってください。完結した利用例は `examples/distribution/` にあります。
+### ブラウザ環境でのソルバープラグイン（GLPK & Z3）
+
+ブラウザ配布物には、`dist/browser/solvers/` 配下に事前バンドルされたスタンドアロンソルバープラグインが含まれています（CDN 利用時は `>= 0.2.0` または `@latest` で利用可能）：
+- **GLPK**: `dist/browser/solvers/glpk.js` (ESM) および `dist/browser/solvers/glpk.min.js` (IIFE、グローバル `WashiGLPK` を登録)
+- **Z3**: `dist/browser/solvers/z3.js` (ESM) および `dist/browser/solvers/z3.min.js` (IIFE、グローバル `WashiZ3` を登録)、ならびに `z3-built.js` / `z3-built.wasm`
+
+#### ブラウザ ESM での GLPK 利用
+```html
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  import "./washi/solvers/glpk.js";
+
+  const model = new Model({ solver: "glpk" });
+  const x = model.addVar({ lb: 0, ub: 10 });
+  model.maximize(x);
+  await model.solve();
+  console.log("GLPK ステータス:", model.status);
+</script>
+```
+
+#### スクリプトタグでの GLPK 利用
+```html
+<script src="./washi/washi.min.js"></script>
+<script src="./washi/solvers/glpk.min.js"></script>
+<script>
+  const model = new Washi.Model({ solver: "glpk" });
+  const x = model.addVar({ lb: 0, ub: 10 });
+  model.maximize(x);
+  model.solve().then(status => console.log("GLPK ステータス:", status));
+</script>
+```
+
+> [!NOTE]
+> **ブラウザ環境での Z3 利用について**:
+> Z3 の WebAssembly エンジンはマルチスレッド（`SharedArrayBuffer`）を必要とするため、配信 Web サーバーがドキュメントレスポンスに以下の Cross-Origin-Isolation ヘッダーを送信する必要があります：
+> ```http
+> Cross-Origin-Opener-Policy: same-origin
+> Cross-Origin-Embedder-Policy: require-corp
+> ```
+> また、別オリジン（CDN など）からアセットを読み込む場合は `Cross-Origin-Resource-Policy: cross-origin` の返却が必要です。
+
+完全なスタンドアロンサンプル（ESM、スクリプトタグ、CodePen）は `examples/distribution/` に用意されています。
 
 ### 工場内・オフライン配布、Worker、自前配信
 
@@ -364,6 +429,14 @@ setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
 
 ---
 
+## 🛠️ カスタムソルバー開発と拡張性
+
+WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャを採用しています。独自の最適化エンジン（クラウド REST ソルバー、WebAssembly エンジン、商用ソルバーアダプターなど）を容易に構築・登録できます：
+
+- 詳細な開発手順、API コントラクト仕様（`Solver`, `LpModelData`, `SolverResult`）、およびテスト手法については [Custom Solver Developer Guide](docs/custom-solver-guide.md) をご覧ください。
+
+---
+
 ## 💻 サンプルスクリプト & インタラクティブ Web デモ
 
 `examples/node/` 配下に実行可能なスタンドアロンスクリプトを用意しています：
@@ -375,6 +448,7 @@ npx tsx examples/node/03-portfolio-qp.ts
 npx tsx examples/node/04-smt-security-rules.ts
 npx tsx examples/node/05-unsat-core-diagnosis.ts
 npx tsx examples/node/06-pulp-compatibility.ts
+npx tsx examples/node/08-glpk-solver-plugin.ts
 ```
 
 ブラウザで動く Web デモ (`examples/web-demo`) を起動するには：

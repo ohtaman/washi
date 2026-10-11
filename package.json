@@ -14,12 +14,12 @@
     },
     "./highs.wasm": "./dist/lib/highs.wasm",
     "./solvers/z3": {
-      "types": "./dist/types/modeler/solvers/z3.d.ts",
+      "types": "./dist/types/modeler/solvers/z3/index.d.ts",
       "import": "./dist/lib/solvers/z3.js",
       "default": "./dist/lib/solvers/z3.js"
     },
     "./solvers/glpk": {
-      "types": "./dist/types/modeler/solvers/glpk.d.ts",
+      "types": "./dist/types/modeler/solvers/glpk/index.d.ts",
       "import": "./dist/lib/solvers/glpk.js",
       "default": "./dist/lib/solvers/glpk.js"
     },
@@ -28,7 +28,21 @@
       "import": "./dist/browser/washi.js",
       "default": "./dist/browser/washi.js"
     },
-    "./browser/washi.min.js": "./dist/browser/washi.min.js"
+    "./browser/washi.min.js": "./dist/browser/washi.min.js",
+    "./browser/solvers/glpk": {
+      "types": "./dist/types/modeler/solvers/glpk/index.d.ts",
+      "import": "./dist/browser/solvers/glpk.js",
+      "default": "./dist/browser/solvers/glpk.js"
+    },
+    "./browser/solvers/glpk.min.js": "./dist/browser/solvers/glpk.min.js",
+    "./browser/solvers/z3": {
+      "types": "./dist/types/modeler/solvers/z3/index.d.ts",
+      "import": "./dist/browser/solvers/z3.js",
+      "default": "./dist/browser/solvers/z3.js"
+    },
+    "./browser/solvers/z3.min.js": "./dist/browser/solvers/z3.min.js",
+    "./solvers/z3-built.js": "./dist/lib/solvers/z3-built.js",
+    "./solvers/z3-built.wasm": "./dist/lib/solvers/z3-built.wasm"
   },
   "files": [
     "dist/lib",
@@ -43,7 +57,7 @@
   "scripts": {
     "dev": "vite",
     "build:demo": "vite build",
-    "build:types": "tsc -p tsconfig.lib.json",
+    "build:types": "node -e \"import('node:fs').then(fs => fs.rmSync('dist/types', { recursive: true, force: true }))\" && tsc -p tsconfig.lib.json",
     "build:lib": "node scripts/build-library.mjs",
     "build": "npm run build:types && npm run build:lib && npm run build:browser && npm run build:demo",
     "preview": "vite preview",

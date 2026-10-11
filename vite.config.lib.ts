@@ -11,9 +11,9 @@ export default defineConfig({
     lib: {
       entry: {
         "washi": resolve(import.meta.dirname, "src/index.ts"),
-        "highs-worker": resolve(import.meta.dirname, "src/highs-worker.ts"),
-        "solvers/z3": resolve(import.meta.dirname, "src/modeler/solvers/z3.ts"),
-        "solvers/glpk": resolve(import.meta.dirname, "src/modeler/solvers/glpk.ts"),
+        "highs-worker": resolve(import.meta.dirname, "src/modeler/solvers/highs/worker.ts"),
+        "solvers/z3": resolve(import.meta.dirname, "src/modeler/solvers/z3/index.ts"),
+        "solvers/glpk": resolve(import.meta.dirname, "src/modeler/solvers/glpk/index.ts"),
       },
       formats: ["es"],
     },

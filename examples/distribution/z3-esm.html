@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaSHI Z3 SMT ESM Plugin</title>
+<h1>Z3 SMT Solver Plugin (ESM)</h1>
+<p>
+  Propositional SAT & SMT Rule Verification.<br>
+  <em>Note: Z3 requires a multithreaded WebAssembly environment (SharedArrayBuffer & crossOriginIsolated).
+  Serve this page with COOP (<code>same-origin</code>) and COEP (<code>require-corp</code>) headers.</em>
+</p>
+<button id="solve" disabled>Check Rules</button>
+<pre id="result">Loading WaSHI & Z3 plugin…</pre>
+<script type="module">
+  import { Model, not, and, or, implies } from "./washi/washi.js";
+  import "./washi/solvers/z3.js";
+
+  const button = document.querySelector("#solve");
+  const output = document.querySelector("#result");
+  button.disabled = false;
+
+  button.onclick = async () => {
+    button.disabled = true;
+    output.textContent = "Checking rules with Z3…";
+    try {
+      const model = new Model({ name: "FireSuppressionRules", solver: "z3" });
+
+      const smokeDetected = model.addBoolVar("smokeDetected");
+      const heatDetected = model.addBoolVar("heatDetected");
+      const alarmActive = model.addBoolVar("alarmActive");
+      const sprinklerActive = model.addBoolVar("sprinklerActive");
+
+      // Rule 1: Smoke or Heat implies Alarm
+      model.addConstraint(or(smokeDetected, heatDetected).implies(alarmActive));
+
+      // Rule 2: Both Smoke and Heat implies Sprinkler
+      model.addConstraint(and(smokeDetected, heatDetected).implies(sprinklerActive));
+
+      // Scenario: Heat is detected, but Sprinkler is not active
+      model.addConstraint(heatDetected);
+      model.addConstraint(not(sprinklerActive));
+
+      const res = await model.check({ solver: "z3" });
+      output.textContent = JSON.stringify({
+        solver: "Z3",
+        status: res.status,
+        model: res.values,
+      }, null, 2);
+    } catch (error) {
+      output.textContent = `Error: ${error.message}`;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  button.click();
+</script>
+</html>

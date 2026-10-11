@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { HighsSolver, mapHighsStatus } from "../src/modeler/solvers/highs.js";
-import * as workerClient from "../src/highs-worker-client.js";
+import * as workerClient from "../src/modeler/solvers/highs/worker-client.js";
 
 describe("HiGHS status mapping", () => {
   afterEach(() => {

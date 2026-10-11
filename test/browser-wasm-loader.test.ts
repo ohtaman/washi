@@ -6,7 +6,7 @@ import {
   resolveBrowserWasmUrl,
   OFFICIAL_HIGHS_CDN_WASM_URL,
   getHighs,
-} from "../src/highs-loader.js";
+} from "../src/modeler/solvers/highs/loader.js";
 import { Model } from "../src/index.js";
 
 describe("HiGHS WebAssembly Loader & Resolver", () => {

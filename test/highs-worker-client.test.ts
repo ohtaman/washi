@@ -21,7 +21,7 @@ describe("HiGHS worker failures", () => {
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
   it("rejects all pending requests on a load error and permits a fresh worker", async () => {
-    const { solveLp } = await import("../src/highs-worker-client.js");
+    const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
     const requests = [solveLp("first"), solveLp("second")];
     const rejected = requests.map((request) => expect(request).rejects.toThrow("Worker failed"));
     await vi.waitFor(() => expect(FakeWorker.instances[0]?.messages).toHaveLength(2));
@@ -39,7 +39,7 @@ describe("HiGHS worker failures", () => {
   });
 
   it("rejects when a response cannot be deserialized", async () => {
-    const { solveLp } = await import("../src/highs-worker-client.js");
+    const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
     const request = solveLp("model");
     const rejected = expect(request).rejects.toThrow("deserialize");
     await vi.waitFor(() => expect(FakeWorker.instances[0]?.messages).toHaveLength(1));
@@ -49,7 +49,7 @@ describe("HiGHS worker failures", () => {
 
   it("rejects a failed postMessage instead of leaving a pending promise", async () => {
     vi.spyOn(FakeWorker.prototype, "postMessage").mockImplementationOnce(() => { throw new Error("clone failed"); });
-    const { solveLp } = await import("../src/highs-worker-client.js");
+    const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
     await expect(solveLp("model")).rejects.toThrow("clone failed");
   });
 });

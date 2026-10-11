@@ -22,9 +22,6 @@
   },
   "include": [
     "src/index.ts",
-    "src/modeler/**/*",
-    "src/highs-loader.ts",
-    "src/highs-worker-client.ts",
-    "src/highs-worker.ts"
+    "src/modeler/**/*"
   ]
 }
