@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
     <img alt="WaSHI - TypeScript / JavaScript のための数理最適化・代数モデラー" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>TypeScript / JavaScript のための直感的な数理最適化・代数モデラー</strong></p>
+  <p><strong>TypeScript / JavaScript のための代数モデラー</strong></p>
   <p>
     <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • SMT論理制約 &amp; 矛盾診断</em>
   </p>
@@ -24,7 +24,11 @@
 
 ---
 
-**WaSHI** は、Python の **PuLP** や Julia の **JuMP** のような表現力豊かな代数モデリングの美しさを、モダンな TypeScript / JavaScript エコシステムにもたらす高水準モデラーライブラリです。数式そのままの自然な記法で数理最適化モデルを定式化し、Node.js、ブラウザ、Bun、Deno、Next.js 上でネイティブ C++ コンパイル不要で即座に求解できます（WebAssembly 版の **HiGHS**、**Z3**、**GLPK** ソルバーを統合サポート）。
+**WaSHI** は、Python の **PuLP** や Julia の **JuMP** に着想を得た、TypeScript / JavaScript 向けの代数モデラーです。アプリケーションのコードで変数・目的関数・数値制約や論理制約を記述できます。WaSHI はモデルの構築、ソルバー向けの変換、変数への結果の反映を担当し、最適化や充足可能性の判定は **HiGHS**・**Z3**・**GLPK** が行います。
+
+HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグインです。Node.js 用とブラウザ用の配布物に WebAssembly アセットを含みます。配信に必要な設定は[ブラウザでの利用方法](#-ブラウザ--web-worker-での利用方法)を参照してください。
+
+[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, c } from "@ohtaman/washi";
@@ -43,25 +47,25 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 ---
 
-## 🎯 なぜ WaSHI を選ぶのか？
+## 🎯 WaSHI が提供するもの
 
-1. 🌐 **完全クライアントサイド実行 & サーバーコストゼロ**: ブラウザ、エッジワーカー、Electron アプリ内で本格的な数理最適化を完結。バックエンドサーバーの運用コストがゼロになり、オフライン環境でも動作可能。社外秘データ（シフト表や原価など）が外部に送信されないため強固なプライバシーを担保します。
-2. 📦 **ゼロ依存・単一パッケージでの圧倒的な配布容易性**: Python のランタイム管理や仮想環境、OS 別の C/C++ ネイティブソルバーバイナリの同梱に悩まされることはありません。`npm install @ohtaman/washi` だけで WebAssembly ソルバーを含めて即座に動作します。
-3. ✍️ **直感的な代数モデリング DX（PuLP / python-mip 互換）**: 泥臭い行列のインデックス操作は不要。テンプレートリテラル記法（`c`${x} + 2 * ${y} <= 40``）や、Python 最適化開発者におなじみの構文（`LpProblem`, `lpSum`）で、教科書そのままの数式を記述できます。
-4. 🔄 **統一マルチソルバー API（HiGHS / Z3 / GLPK）**: 定式化したモデルコードはそのまま、産業用 MIP/QP に強い **HiGHS**、論理制約・SMT に強い **Z3**、学術用途の **GLPK** をオプション1つで柔軟に切り替え可能です。
-5. 🔍 **実行不可能（Infeasible）時の矛盾原因自動診断**: ルール同士が矛盾して解なしになった場合、衝突している制約の部分集合（Unsat Core）を Z3 エンジン経由で特定・診断します。
-6. ⚡ **WebAssembly 上での本格的な産業規模パフォーマンス**: 線形時間 $O(N)$ の高速式ビルダーにより、20,000 変数を超える大規模 MIP を約100msで定式化し、WebAssembly 版 HiGHS で約15秒で高速に求解します。
+1. **代数的なモデル記述**: 型付きの変数、添字付きの変数集合、タグ付きテンプレート（`expr`・`c`）、メソッドをつなげた式を使えます。`Model` API と PuLP 風のヘルパーから、モデルの記述方法を選べます。
+2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
+3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せず、アプリケーション内で求解できます。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
+4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に Unsat Core を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
+
+モデルの構築と変換は WaSHI が担当します。扱える問題クラス、数値計算の挙動、求解時間は、選択したソルバー・設定・問題に依存します。モデル構築のオーバーヘッドとソルバーの実行時間は分けて計測する必要があり、特定のモデルでの結果は一般的な性能保証ではありません。
 
 ---
 
-## ⚡ ソルバー対応マトリクス
+## ⚙️ ソルバーアダプターと対応範囲
 
-| ソルバー | ライセンス | 解ける問題クラス | 最適な用途 | WaSHI での提供形態 |
+| アダプター | エンジンのライセンス | 対応する問題クラス | エンジンの役割 | 提供形態 |
 | :--- | :--- | :--- | :--- | :--- |
-| **HiGHS** | **MIT** | **LP, MIP, 凸QP** | 産業規模の計画最適化、生産スケジューリング、金融ポートフォリオ | **標準ビルトイン**（ゼロ設定） |
-| **Z3** | **MIT** | **SMT, SAT, 命題論理, MIP** | 業務ルール検証、制約矛盾の診断 (`unsatCore`)、ルールエンジン | オプションプラグイン (`@ohtaman/washi/solvers/z3`) |
-| **GLPK** | **GPL-3.0** | **LP, MIP** | 学術的ベンチマーク、既存 GLPK モデル資産との照合 | オプションプラグイン (`@ohtaman/washi/solvers/glpk`) |
-| **Mock** | **MIT** | *任意* | WASM をロードしない CI/CD での高速単体テスト | 標準ビルトイン |
+| **HiGHS** | **MIT** | **LP, MIP, 凸QP** | 数値最適化 | 標準ソルバー |
+| **Z3** | **MIT** | **SMT, SAT, 命題論理, MIP** | 充足可能性の判定、Unsat Core、最適化 | オプションプラグイン (`@ohtaman/washi/solvers/z3`) |
+| **GLPK** | **GPL-3.0** | **LP, MIP** | 線形・混合整数最適化 | オプションプラグイン (`@ohtaman/washi/solvers/glpk`) |
+| **Mock** | **MIT** | — | 統合テスト用の模擬応答 | 標準搭載。モデルの求解は行わない |
 
 ---
 
@@ -287,9 +291,9 @@ console.log(`目的関数値: ${m.objectiveValue}`); // 1100
 
 ---
 
-### 6. Python PuLP 互換レイヤー
+### 6. PuLP 風のヘルパー
 
-既存の Python PuLP 最適化スクリプトをスムーズに移植：
+`LpProblem`・`LpVariable`・`lpSum` などを使って、JavaScript でなじみのある記法を利用できます。Python コードの移植には、構文の調整と対応 API の確認が必要です：
 
 ```ts
 import {
@@ -439,33 +443,40 @@ WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャ�
 
 ---
 
-## 💻 サンプルスクリプト & インタラクティブ Web デモ
+## 💻 サンプルとブラウザデモ
 
-`examples/node/` 配下に実行可能なスタンドアロンスクリプトを用意しています：
+[サンプル一覧](https://github.com/ohtaman/washi/blob/main/examples/README.md)に、各ソースへのリンクと、リポジトリを取得して実行する方法をまとめています。
+
+| サンプル | 確認できること | ソルバー |
+| :--- | :--- | :--- |
+| [生産計画](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数変数、利益の最大化、資源制約 | HiGHS |
+| [ポートフォリオ配分](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目的関数と配分の制約 | HiGHS |
+| [業務ルールの検証](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 数値・論理制約の充足可能性の確認 | Z3 |
+| [矛盾する制約の診断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 名前付き制約と Unsat Core | Z3 |
+
+[公開ブラウザデモ](https://ohtaman.github.io/washi/demo/)では、モデルを編集して実行できます。ブラウザ標準 ESM、script タグ、CodePen での使い方は[配布形式のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)を参照してください。Z3 は Cross-Origin Isolation が必要です。詳細は上記のブラウザ要件に記載しています。
+
+ローカルで実行する場合は、リポジトリを取得して開発用依存をインストールします。
 
 ```bash
+git clone https://github.com/ohtaman/washi.git
+cd washi
+npm ci
 npx tsx examples/node/01-production-planning.ts
-npx tsx examples/node/02-knapsack-problem.ts
-npx tsx examples/node/03-portfolio-qp.ts
-npx tsx examples/node/04-smt-security-rules.ts
-npx tsx examples/node/05-unsat-core-diagnosis.ts
-npx tsx examples/node/06-pulp-compatibility.ts
-npx tsx examples/node/08-glpk-solver-plugin.ts
-```
 
-ブラウザで動く Web デモ (`examples/web-demo`) を起動するには：
-
-```bash
+# ローカルのブラウザデモ: http://localhost:5173/demo/
 npm run dev
-# ドキュメント: http://localhost:5173/
-# インタラクティブデモ: http://localhost:5173/demo/
 ```
+
+サンプルはリポジトリの `src/` モジュールを import しています。公開パッケージを使うアプリでは、`@ohtaman/washi` と必要なソルバープラグインから import してください。
+
+シフト作成、輸送計画、Vite アプリなど、今後追加したい題材は[サンプル拡充の方向性](https://github.com/ohtaman/washi/blob/main/examples/README.md#directions-for-future-examples)にまとめています。
 
 ---
 
 ## 🧪 テスト & 信頼性
 
-厳格なテスト駆動開発 (TDD) により、120 以上の自動テストを実施しています：
+リポジトリのユニット・統合テストを実行し、配布物をビルドできます：
 
 ```bash
 # すべてのユニット・統合テストを実行
