@@ -17,14 +17,11 @@ let z3InitPromise: Promise<any> | null = null;
 
 async function loadZ3(): Promise<any> {
   if (!z3InitPromise) {
-    const initializing = (async () => {
+    const pending = (async () => {
       try {
         const z3 = await import("z3-solver");
         return await z3.init();
       } catch (err) {
-        if (z3InitPromise === initializing) {
-          z3InitPromise = null;
-        }
         throw new Error(
           `[WaSHI] Failed to load z3-solver. Ensure the optional dependency is installed (npm install z3-solver) and supported in this environment. Error: ${
             err instanceof Error ? err.message : String(err)
@@ -33,7 +30,12 @@ async function loadZ3(): Promise<any> {
         );
       }
     })();
-    z3InitPromise = initializing;
+    pending.catch(() => {
+      if (z3InitPromise === pending) {
+        z3InitPromise = null;
+      }
+    });
+    z3InitPromise = pending;
   }
   return z3InitPromise;
 }
@@ -89,19 +91,71 @@ export class Z3Solver implements Solver {
       return boolVarAstMap.get(bv.name);
     }
 
+    function ensureRealAst(ast: any) {
+      return typeof ctx.isInt === "function" && ctx.isInt(ast) ? ctx.ToReal(ast) : ast;
+    }
+
+    function addArithAst(a: any, b: any) {
+      const aIsInt = typeof ctx.isInt === "function" && ctx.isInt(a);
+      const bIsInt = typeof ctx.isInt === "function" && ctx.isInt(b);
+      if (aIsInt && bIsInt) {
+        return a.add(b);
+      }
+      return ensureRealAst(a).add(ensureRealAst(b));
+    }
+
+    function mulByConst(ast: any, coeff: number) {
+      const astIsInt = typeof ctx.isInt === "function" && ctx.isInt(ast);
+      if (astIsInt && Number.isInteger(coeff)) {
+        return ast.mul(ctx.Int.val(coeff));
+      }
+      return ensureRealAst(ast).mul(ctx.Real.val(coeff));
+    }
+
+    function mulArithAst(a: any, b: any) {
+      const aIsInt = typeof ctx.isInt === "function" && ctx.isInt(a);
+      const bIsInt = typeof ctx.isInt === "function" && ctx.isInt(b);
+      if (aIsInt && bIsInt) {
+        return a.mul(b);
+      }
+      return ensureRealAst(a).mul(ensureRealAst(b));
+    }
+
+    function makeConstAst(val: number, preferInt: boolean) {
+      if (preferInt && Number.isInteger(val)) {
+        return ctx.Int.val(val);
+      }
+      return ctx.Real.val(val);
+    }
+
+    function compareAstWithNumber(lhsAst: any, sense: "<=" | ">=" | "==", rhsVal: number) {
+      const lhsIsInt = typeof ctx.isInt === "function" && ctx.isInt(lhsAst);
+      const useInt = lhsIsInt && Number.isInteger(rhsVal);
+      const lhs = useInt ? lhsAst : ensureRealAst(lhsAst);
+      const rhs = useInt ? ctx.Int.val(rhsVal) : ctx.Real.val(rhsVal);
+      if (sense === "<=") {
+        return lhs.le(rhs);
+      } else if (sense === ">=") {
+        return lhs.ge(rhs);
+      } else {
+        return lhs.eq(rhs);
+      }
+    }
+
     function translateLinExpr(expr: LinExpr) {
       let result: any = null;
       if (expr && expr.terms) {
         for (const [v, coeff] of expr.terms.entries()) {
           const vAst = getVarAst(v);
-          const term = vAst.mul(coeff);
-          result = result === null ? term : result.add(term);
+          const term = mulByConst(vAst, coeff);
+          result = result === null ? term : addArithAst(result, term);
         }
       }
       const constant = expr && typeof expr.constant === "number" ? expr.constant : 0;
       if (constant !== 0 || result === null) {
-        const offsetAst = ctx.Real.val(constant);
-        result = result === null ? offsetAst : result.add(offsetAst);
+        const preferInt = result === null || (typeof ctx.isInt === "function" && ctx.isInt(result));
+        const offsetAst = makeConstAst(constant, preferInt);
+        result = result === null ? offsetAst : addArithAst(result, offsetAst);
       }
       return result;
     }
@@ -111,22 +165,24 @@ export class Z3Solver implements Solver {
       if (expr.linearTerms) {
         for (const [v, coeff] of expr.linearTerms.entries()) {
           const vAst = getVarAst(v);
-          const term = vAst.mul(coeff);
-          result = result === null ? term : result.add(term);
+          const term = mulByConst(vAst, coeff);
+          result = result === null ? term : addArithAst(result, term);
         }
       }
       if (expr.quadTerms) {
         for (const t of expr.quadTerms.values()) {
           const v1 = getVarAst(t.var1);
           const v2 = getVarAst(t.var2);
-          const term = v1.mul(v2).mul(t.coeff);
-          result = result === null ? term : result.add(term);
+          const prod = mulArithAst(v1, v2);
+          const term = mulByConst(prod, t.coeff);
+          result = result === null ? term : addArithAst(result, term);
         }
       }
       const constant = expr && typeof expr.constant === "number" ? expr.constant : 0;
       if (constant !== 0 || result === null) {
-        const cAst = ctx.Real.val(constant);
-        result = result === null ? cAst : result.add(cAst);
+        const preferInt = result === null || (typeof ctx.isInt === "function" && ctx.isInt(result));
+        const cAst = makeConstAst(constant, preferInt);
+        result = result === null ? cAst : addArithAst(result, cAst);
       }
       return result;
     }
@@ -138,13 +194,7 @@ export class Z3Solver implements Solver {
           : translateLinExpr(c.lhs);
 
       const rhsVal = typeof c.rhs === "number" ? c.rhs : 0;
-      if (c.sense === "<=") {
-        return lhsAst.le(rhsVal);
-      } else if (c.sense === ">=") {
-        return lhsAst.ge(rhsVal);
-      } else {
-        return lhsAst.eq(rhsVal);
-      }
+      return compareAstWithNumber(lhsAst, c.sense, rhsVal);
     }
 
     function translateBoolExpr(be: LogicElement): any {
@@ -198,6 +248,7 @@ export class Z3Solver implements Solver {
     return {
       getVarAst,
       getBoolVarAst,
+      compareAstWithNumber,
       translateLinExpr,
       translateQuadExpr,
       translateConstraint,
@@ -227,15 +278,15 @@ export class Z3Solver implements Solver {
     for (const v of variables) {
       const vAst = trans.getVarAst(v);
       if (v.lb !== -Infinity) {
-        s.add(vAst.ge(v.lb));
+        s.add(trans.compareAstWithNumber(vAst, ">=", v.lb));
       }
       if (v.ub !== Infinity) {
-        s.add(vAst.le(v.ub));
+        s.add(trans.compareAstWithNumber(vAst, "<=", v.ub));
       }
       const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
       if (isBin) {
-        s.add(vAst.ge(0));
-        s.add(vAst.le(1));
+        s.add(trans.compareAstWithNumber(vAst, ">=", 0));
+        s.add(trans.compareAstWithNumber(vAst, "<=", 1));
       }
     }
 
@@ -343,15 +394,15 @@ export class Z3Solver implements Solver {
     for (const v of variables) {
       const vAst = trans.getVarAst(v);
       if (v.lb !== -Infinity) {
-        opt.add(vAst.ge(v.lb));
+        opt.add(trans.compareAstWithNumber(vAst, ">=", v.lb));
       }
       if (v.ub !== Infinity) {
-        opt.add(vAst.le(v.ub));
+        opt.add(trans.compareAstWithNumber(vAst, "<=", v.ub));
       }
       const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
       if (isBin) {
-        opt.add(vAst.ge(0));
-        opt.add(vAst.le(1));
+        opt.add(trans.compareAstWithNumber(vAst, ">=", 0));
+        opt.add(trans.compareAstWithNumber(vAst, "<=", 1));
       }
     }
 
