@@ -339,7 +339,7 @@ await model.solve();
 </script>
 ```
 
-これらのファイルを含む版の npm 公開後は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js` にできます。`VERSION` は対応版に置き換えて固定してください。公開済みの 0.1.1 にはブラウザ用ビルドはありません。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
+CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js`（`0.1.2` 以降のバージョンを固定）に指定できます。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
 
 ブラウザ用ビルドに含まれるエンジンは HiGHS です。GLPK / Z3 エンジンの連携には npm パッケージと任意依存を使ってください。完結した利用例は `examples/distribution/` にあります。
 

@@ -339,7 +339,7 @@ The package also includes `dist/browser/washi.min.js`, which exports the `Washi`
 </script>
 ```
 
-After a version containing these files is published, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js`. Replace `VERSION` with that released version; the existing 0.1.1 release does not contain these browser builds. For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
+For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js` (or pin your desired release version `>= 0.1.2`). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
 
 The browser builds include the HiGHS engine, not the optional GLPK/Z3 engines. Use the npm package and optional dependencies for those integrations. `examples/distribution/` contains complete ESM and script examples.
 

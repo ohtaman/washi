@@ -1,7 +1,7 @@
 # Browser distribution examples
 
 These complete HTML files use the HiGHS engine with no WASM URL configuration.
-They require the new browser distribution; published version 0.1.1 does not contain it.
+They use the browser distribution introduced in version 0.1.2.
 
 From the repository root:
 
@@ -21,14 +21,13 @@ Use HTTP, not a `file://` URL. The copied directory is generated and gitignored.
 
 ## CodePen
 
-After publishing a release containing `dist/browser`, add this version-pinned URL
-in **Settings → JavaScript → External Scripts**:
+Add this version-pinned URL in **Settings → JavaScript → External Scripts**:
 
 ```text
-https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js
+https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js
 ```
 
-Replace `VERSION` with that release. Copy the body elements from `script.html`
+Copy the body elements from `script.html`
 into the HTML panel, and the code inside its second `<script>` into the JS panel.
 The global API is `Washi`; no npm install or import statement is needed.
 For the simplest demo, remove `checked` from the Worker checkbox to start on the

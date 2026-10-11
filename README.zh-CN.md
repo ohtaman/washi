@@ -339,7 +339,7 @@ await model.solve();
 </script>
 ```
 
-包含这些文件的版本发布后，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js`。将 `VERSION` 替换为支持该功能的固定版本；已发布的 0.1.1 不包含这些浏览器构建。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
+若通过 CDN 加载，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js`（请固定 `0.1.2` 及以上版本号）。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
 
 浏览器构建包含 HiGHS 引擎，不包含可选的 GLPK / Z3 引擎。其他引擎集成请使用 npm 包及可选依赖。完整示例位于 `examples/distribution/`。
 
