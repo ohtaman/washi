@@ -1,6 +1,9 @@
 <div align="center">
-  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="160" />
-  <h1>WaSHI (<code>@ohtaman/washi</code>)</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
+    <img alt="WaSHI - TypeScript / JavaScript のための数理最適化・代数モデラー" src="./assets/washi-header-light.png" width="420" />
+  </picture>
   <p><strong>TypeScript / JavaScript のための直感的な数理最適化・代数モデラー</strong></p>
   <p>
     <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • SMT論理制約 &amp; 矛盾診断</em>

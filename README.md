@@ -1,6 +1,9 @@
 <div align="center">
-  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="160" />
-  <h1>WaSHI (<code>@ohtaman/washi</code>)</h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
+    <img alt="WaSHI - Algebraic Modeler for TypeScript &amp; JavaScript" src="./assets/washi-header-light.png" width="420" />
+  </picture>
   <p><strong>Intuitive Mathematical Optimization &amp; Algebraic Modeler for TypeScript &amp; JavaScript</strong></p>
   <p>
     <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
