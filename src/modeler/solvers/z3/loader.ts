@@ -217,24 +217,26 @@ export function validateZ3BrowserEnvironment(): void {
 
 /**
  * Probe an asset URL to verify it returns a valid response (not 404 and not HTML SPA fallback).
+ *
+ * @internal
  */
-async function probeAssetUrl(url: string, assetName: string): Promise<void> {
+export async function probeAssetUrl(url: string, assetName: string): Promise<void> {
   try {
-    let res: Response;
+    let res: Response | null = null;
     try {
-      // Prefer HEAD method to inspect status and Content-Type without downloading body.
-      // Crucially, HEAD avoids poisoning browser HTTP cache with partial byte ranges.
-      res = await fetch(url, { method: "HEAD" });
-      if (res.status === 405 || res.status === 501) {
-        // Server does not support HEAD method; fall back to GET with cache: "no-store"
-        res = await fetch(url, {
-          method: "GET",
-          headers: { Range: "bytes=0-3" },
-          cache: "no-store",
-        });
+      // 1. Prefer lightweight HEAD method first to verify headers without downloading body
+      // and without poisoning browser HTTP cache with partial byte ranges.
+      const headRes = await fetch(url, { method: "HEAD" });
+      if (headRes.ok) {
+        res = headRes;
       }
     } catch {
-      // Fall back to GET with no-store if HEAD encounters CORS/network issues
+      // Ignore network / CORS errors on HEAD; proceed to fallback GET
+    }
+
+    // 2. If HEAD was not successful (e.g. 403 on signed URLs, 405 Method Not Allowed,
+    // CORS/network error, or other non-2xx status), fall back to GET with Range and cache: "no-store".
+    if (!res) {
       res = await fetch(url, {
         method: "GET",
         headers: { Range: "bytes=0-3" },
@@ -282,8 +284,10 @@ export function resolveZ3AssetUrls(options: { z3JsUrl?: string; z3WasmUrl?: stri
 
 /**
  * Dynamically load z3-built.js script in browser to register global initZ3
+ *
+ * @internal
  */
-async function ensureInitZ3Loaded(jsUrl: string): Promise<any> {
+export async function ensureInitZ3Loaded(jsUrl: string): Promise<any> {
   const globalObj = globalThis as any;
   if (typeof globalObj.global === "undefined") {
     globalObj.global = globalObj;
@@ -295,11 +299,32 @@ async function ensureInitZ3Loaded(jsUrl: string): Promise<any> {
   if (typeof document !== "undefined") {
     await new Promise<void>((resolve, reject) => {
       let scriptError: any = null;
+
+      const normalizeUrl = (u: string): string => {
+        try {
+          const base = typeof document !== "undefined" && document.baseURI ? document.baseURI : undefined;
+          const parsed = new URL(u, base);
+          return parsed.origin + parsed.pathname;
+        } catch {
+          return u;
+        }
+      };
+
+      const targetPath = normalizeUrl(jsUrl);
+
       const onErrorEvent = (ev: ErrorEvent) => {
-        if (ev.filename && ev.filename.includes("z3-built.js")) {
+        if (!ev.filename) return;
+        const evPath = normalizeUrl(ev.filename);
+        if (
+          evPath === targetPath ||
+          ev.filename === jsUrl ||
+          ev.filename.endsWith(targetPath) ||
+          targetPath.endsWith(ev.filename)
+        ) {
           scriptError = ev.error || ev.message;
         }
       };
+
       const hasWindowEvents = typeof window !== "undefined" && typeof window.addEventListener === "function";
       if (hasWindowEvents) {
         window.addEventListener("error", onErrorEvent);
@@ -313,11 +338,17 @@ async function ensureInitZ3Loaded(jsUrl: string): Promise<any> {
           window.removeEventListener("error", onErrorEvent);
         }
         if (typeof globalObj.initZ3 !== "function" && scriptError) {
+          const detail =
+            scriptError instanceof Error
+              ? `${scriptError.name}: ${scriptError.message}`
+              : typeof scriptError === "string"
+              ? scriptError
+              : scriptError?.message
+              ? `${scriptError.name ? scriptError.name + ": " : ""}${scriptError.message}`
+              : String(scriptError);
           reject(
             new Error(
-              `[WaSHI] Failed to evaluate Z3 runtime script from "${jsUrl}": ${
-                scriptError?.message || scriptError
-              }`
+              `[WaSHI] Failed to evaluate Z3 runtime script from "${jsUrl}": ${detail}`
             )
           );
           return;
