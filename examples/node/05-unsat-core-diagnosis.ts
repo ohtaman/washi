@@ -43,7 +43,7 @@ async function main() {
   console.log(`\nStatus: ${res.status}`);
 
   if (res.status === "Unsat") {
-    console.log("\n⚠️ Incompatible Constraint Core (Minimal Conflict):");
+    console.log("\n⚠️ Conflicting Constraints (Unsat Core):");
     m.unsatCore.forEach((ruleName) => {
       console.log(`  ❌ ${ruleName}`);
     });
