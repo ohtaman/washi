@@ -26,7 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          registry-url: "https://registry.npmjs.org"
           cache: "npm"
 
       - name: Upgrade npm CLI for OIDC Trusted Publishing (>= 11.5.1)
@@ -53,8 +52,6 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.dry_run
         run: npm publish --dry-run --access public
 
-      - name: Publish to npm
+      - name: Publish to npm (Trusted Publishing / OIDC)
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
