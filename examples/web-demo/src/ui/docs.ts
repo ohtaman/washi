@@ -12,10 +12,10 @@ export const DOCS_HTML = `
       <pre><code>npm install @ohtaman/washi</code></pre>
     </div>
     <div class="code-card">
-      <div class="code-title">ブラウザ標準 ESM (対応版の公開後、VERSION を固定して利用)</div>
+      <div class="code-title">ブラウザ標準 ESM (バージョンを固定して利用)</div>
       <pre><code>&lt;script type="module"&gt;
-  // 対応版の dist/browser 一式を CDN または社内 HTTP サーバーから配信します
-  import { Model, INTEGER, sum } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.js";
+  // dist/browser 一式を社内 HTTP サーバーまたは CDN から配信します
+  import { Model, INTEGER, sum } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.js";
 
   const m = new Model({ name: "Production", sense: "Maximize" });
   const x = m.addVar({ name: "x", type: INTEGER, lb: 0 });
@@ -35,7 +35,7 @@ export const DOCS_HTML = `
   <div class="docs-section">
     <h3>配布とオフライン利用</h3>
     <p>npm から Vite / webpack に組み込むと、同梱 WASM と Worker が配布アセットとして出力されます。外部 CDN への自動切り替えはありません。ブラウザ直接利用は dist/browser 一式を HTTP 配信してください。必要なファイルがローカルにあれば、外部ネットワークなしで計算できます。</p>
-    <p>CodePen の External Scripts には対応版の dist/browser/washi.min.js の URL を追加し、Washi.Model を使います。簡単なデモは solve({ useWorker: false }) で実行できます。公開済み 0.1.1 はこの配布形式に未対応です。CDN Worker を使う場合は CORS と CSP の対応が必要です。</p>
+    <p>CodePen の External Scripts には dist/browser/washi.min.js の URL（例: 0.1.2 固定）を追加し、Washi.Model を使います。簡単なデモは solve({ useWorker: false }) で実行できます。CDN Worker を使う場合は CORS と CSP の対応が必要です。</p>
   </div>
 
   <div class="docs-section">
