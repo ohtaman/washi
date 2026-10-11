@@ -51,7 +51,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 2. 📦 **Frictionless Zero-Dependency Distribution**: No Python runtimes, no C/C++ compilation, and no OS-dependent native solver binaries to bundle. Just `npm install @ohtaman/washi`—everything (including WebAssembly solvers) works instantly out of the box.
 3. ✍️ **Familiar Algebraic Modeling (PuLP & python-mip DX)**: Never struggle with low-level matrix indices. Formulate models naturally using tagged template literals (`c`${x} + 2 * ${y} <= 40``) or drop-in PuLP/python-mip syntax (`LpProblem`, `lpSum`).
 4. 🔄 **Pluggable Solvers & Unified API**: Formulate your mathematical model once; solve with **HiGHS** (industrial MIP/QP), **Z3** (SMT logic & Unsat Core diagnosis), or **GLPK** with a single parameter.
-5. 🔍 **Automatic Conflict Diagnosis (`unsatCore`)**: When constraints are contradictory (Infeasible), diagnose root causes instantly by extracting the minimal conflicting constraint subset via the Z3 engine.
+5. 🔍 **Automatic Conflict Diagnosis (`unsatCore`)**: When constraints are contradictory (Infeasible), diagnose root causes by extracting a conflicting constraint subset (unsatisfiable core) via the Z3 engine.
 6. ⚡ **Industrial Scale Performance in WebAssembly**: Built with an $O(N)$ linear-time expression builder. Formulate 20,000+ variable MIPs in ~100ms and solve them in ~15 seconds right inside WebAssembly via HiGHS.
 
 ---
@@ -229,7 +229,7 @@ console.log(`Siren active? ${m.values.get("siren")}`); // true
 
 ### 4. Conflict Diagnosis (`unsatCore`)
 
-When business rules or constraints contradict each other, extract the **minimal conflicting subset** for instant troubleshooting (requires Z3):
+When business rules or constraints contradict each other, extract a **conflicting constraint subset** (unsatisfiable core; minimality is not guaranteed) for troubleshooting (requires Z3):
 
 ```ts
 import { Model } from "@ohtaman/washi";

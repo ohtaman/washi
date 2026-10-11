@@ -74,7 +74,7 @@ export const translations: Record<Locale, TranslationDict> = {
     supplyChainTopWarehouses: "Top 8 Active Warehouses (by shipment volume):",
     supplyChainWarehouseUnit: "units",
     unsatCoreTitle: "Conflicting Constraints Detected (Unsat Core):",
-    unsatCoreDesc: "The model has no feasible solution. The solver identified the following minimal subset of incompatible constraints causing the conflict:",
+    unsatCoreDesc: "The model has no feasible solution. The solver identified the following subset of incompatible constraints (unsat core):",
     backToDocs: "Documentation",
   },
   ja: {
@@ -110,7 +110,7 @@ export const translations: Record<Locale, TranslationDict> = {
     supplyChainTopWarehouses: "稼働物流拠点トップ 8（総出荷量順）:",
     supplyChainWarehouseUnit: "個",
     unsatCoreTitle: "矛盾制約を検出（Unsat Core）:",
-    unsatCoreDesc: "モデルに実行可能解が存在しません。ソルバーは矛盾を引き起こしている最小の制約集合を特定しました:",
+    unsatCoreDesc: "モデルに実行可能解が存在しません。ソルバーは矛盾を引き起こしている制約の部分集合（Unsat Core）を特定しました:",
     backToDocs: "ドキュメント",
   },
 };

@@ -51,7 +51,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 2. 📦 **零依赖・单一包分发**：告别 Python 环境配置与繁重的跨平台 C/C++ 原生求解器编译绑定。只需 `npm install @ohtaman/washi`，包括 WebAssembly 求解器在内的所有组件即可开箱即用。
 3. ✍️ **极简现代代数建模 DX（兼容 PuLP / python-mip）**：无需编写晦涩低级的矩阵索引。使用直观的模板字面量（`c`${x} + 2 * ${y} <= 40``）或熟悉的 Python 风格抽象（`LpProblem`, `lpSum`），像在草稿纸上写公式一样自然。
 4. 🔄 **统一多求解器接口（HiGHS / Z3 / GLPK）**：模型代码一次编写，即可通过统一 API 自由切换：擅长工业级 MIP/QP 的 **HiGHS**、擅长逻辑求解与冲突分析的 **Z3**，以及经典学术求解器 **GLPK**。
-5. 🔍 **不可行模型（Infeasible）冲突根因诊断**：当业务规则出现矛盾导致无解时，可通过 Z3 引擎快速定位并提取冲突约束的最小子集（Unsat Core）。
+5. 🔍 **不可行模型（Infeasible）冲突根因诊断**：当业务规则出现矛盾导致无解时，可通过 Z3 引擎快速定位并提取冲突约束子集（Unsat Core）。
 6. ⚡ **WebAssembly 原生工业级大规模性能**：搭载 $O(N)$ 线性时间高速表达式构建器，仅需约 100ms 即可构建 20,000+ 变量的大规模 MIP，并在浏览器 WebAssembly 中由 HiGHS 在约 15 秒内高效求解。
 
 ---
@@ -229,7 +229,7 @@ console.log(`警报响起？ ${m.values.get("siren")}`); // true
 
 ### 4. 约束冲突根因诊断 (`unsatCore`)
 
-当规则或约束之间存在矛盾时，Z3 能够精准指出引发冲突的**最小冲突约束子集**（需使用 Z3）：
+当规则或约束之间存在矛盾时，Z3 能够提取引发冲突的**矛盾约束子集**（Unsat Core，不保证最小性；需使用 Z3）：
 
 ```ts
 import { Model } from "@ohtaman/washi";

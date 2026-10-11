@@ -202,7 +202,7 @@ assets.forEach((name, i) => {
     id: "conflict_diagnosis_unsat",
     title: "Rule Conflict Diagnosis (SMT / Unsat Core)",
     category: "SMT",
-    description: "Constraint conflict diagnosis with Z3. Automatically isolates the minimal subset of incompatible rules causing infeasibility.",
+    description: "Constraint conflict diagnosis with Z3. Automatically isolates a subset of incompatible rules (unsat core) causing infeasibility.",
     visualizer: "none",
     code: `// --- Conflict Diagnosis & Unsat Core Extraction ---
 // Demonstrates Z3 SMT engine isolating the exact contradictory rules
@@ -229,14 +229,14 @@ m.addConstraint(budget.le(50000), "strict_board_budget_cap");
 // Rule 5: Completely independent regulation (unrelated to conflict)
 m.addConstraint(engineers.ge(1), "minimum_one_employee");
 
-// Solve feasibility & extract minimal conflict core
+// Solve feasibility & extract conflict core
 console.log("Checking rule feasibility with Z3 SMT engine...");
 const res = await m.check({ solver: "z3" });
 
 console.log("Check Status:", res.status); // "Unsat"
 
 if (res.status === "Unsat") {
-  console.warn("⚠️ Minimal Incompatible Rules (Unsat Core):");
+  console.warn("⚠️ Conflicting Rules (Unsat Core):");
   m.unsatCore.forEach((rule) => console.warn("  • " + rule));
 }
 `,
