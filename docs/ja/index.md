@@ -1,0 +1,65 @@
+---
+layout: home
+
+hero:
+  name: "WaSHI"
+  text: "TypeScriptのための数理最適化モデラー"
+  tagline: WebAssembly 代数モデリングシステム（LP, MIP, QP, SMT）。Node.js、ブラウザ、Bun、Deno、Next.js でネイティブな高速最適化を実現。
+  image:
+    src: /washi-logo.svg
+    alt: WaSHI Logo
+  actions:
+    - theme: brand
+      text: はじめに
+      link: /ja/getting-started/
+    - theme: alt
+      text: Web デモを試す ↗
+      link: https://ohtaman.github.io/washi/demo/
+    - theme: alt
+      text: GitHub
+      link: https://github.com/ohtaman/washi
+
+features:
+  - icon: 🌐
+    title: 100% クライアント完結 & サーバー費用ゼロ
+    details: WebAssembly 上で工業グレードの最適化問題を全自動で求解。機密データをサーバーに送らず、オフラインでもセキュアに動作します。
+  - icon: ✍️
+    title: 直感的な代数モデリング
+    details: Python の PuLP や Julia の JuMP に匹敵する記述性を TypeScript に。タグ付きテンプレートリテラル（expr`...`, c`...`）で数式を自然に表現。
+  - icon: ⚡
+    title: 産業用マルチソルバーアーキテクチャ
+    details: 高速な HiGHS（LP/MIP/QP）を標準搭載。さらに Z3（SMT論理制約・競合診断）や GLPK をプラグインとして自由に切り替え可能。
+  - icon: 🔍
+    title: 競合制約の自動診断 (Unsat Core)
+    details: 制約同士が矛盾して実行不可能（Infeasible）になった際、Z3 エンジンが原因となっている制約の最小集合を自動特定します。
+---
+
+<div style="max-width: 800px; margin: 40px auto;">
+
+## クイックコード例
+
+```typescript
+import { Model, expr, c } from "@ohtaman/washi";
+
+// 1. モデルの作成
+const m = new Model({ sense: "Maximize" });
+
+// 2. 決定変数の定義（整数変数）
+const x = m.addVar({ type: "Integer", lb: 0, name: "机" });
+const y = m.addVar({ type: "Integer", lb: 0, name: "椅子" });
+
+// 3. 目的関数の設定（机 $30、椅子 $50 の利益最大化）
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
+
+// 4. 制約条件の追加（木材と労働力の上限）
+m.addConstraint(c`${x} + 2 * ${y} <= 40`, "木材上限");
+m.addConstraint(c`2 * ${x} + ${y} <= 50`, "労働力上限");
+
+// 5. WebAssembly (HiGHS) による求解
+await m.solve();
+
+console.log(`生産量: 机=${x.value}台, 椅子=${y.value}台`);
+console.log(`最大利益: $${m.objectiveValue}`);
+```
+
+</div>

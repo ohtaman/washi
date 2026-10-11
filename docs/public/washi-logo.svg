@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none">
+  <defs>
+    <!-- Facet 1: Crimson Red (Warm / Craft) -->
+    <linearGradient id="craneRedTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF385C" />
+      <stop offset="100%" stop-color="#E11D48" />
+    </linearGradient>
+    <linearGradient id="craneRedBottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#BE123C" />
+      <stop offset="100%" stop-color="#881337" />
+    </linearGradient>
+    <linearGradient id="craneRedNeck" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FB7185" />
+      <stop offset="100%" stop-color="#E11D48" />
+    </linearGradient>
+
+    <!-- Facet 2: Center Origami Transition (Purple / Logic) -->
+    <linearGradient id="craneBodyLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="100%" stop-color="#9333EA" />
+    </linearGradient>
+    <linearGradient id="craneBodyRight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9333EA" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+
+    <!-- Facet 3: Electric Indigo (Cool / Tech & Solver) -->
+    <linearGradient id="craneIndigoTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+    <linearGradient id="craneIndigoBottom" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4338CA" />
+      <stop offset="100%" stop-color="#312E81" />
+    </linearGradient>
+    <linearGradient id="craneIndigoTail" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#4F46E5" />
+    </linearGradient>
+  </defs>
+
+  <g id="washi-origami-symbol" stroke="#FFFFFF" stroke-opacity="0.2" stroke-width="0.8" stroke-linejoin="round">
+    <!-- 1. Left Neck & Head (Origami fold) -->
+    <polygon points="120,110 75,35 60,50 95,120" fill="url(#craneRedNeck)" />
+    <polygon points="75,35 60,50 50,42" fill="#E11D48" />
+
+    <!-- 2. Right Tail (Origami fold) -->
+    <polygon points="120,110 165,35 145,120" fill="url(#craneIndigoTail)" />
+
+    <!-- 3. Left Wing (Main Upper Facet) -->
+    <polygon points="120,110 15,55 95,145" fill="url(#craneRedTop)" />
+    <!-- Left Wing (Under Facet) -->
+    <polygon points="15,55 95,145 70,170" fill="url(#craneRedBottom)" />
+
+    <!-- 4. Right Wing (Main Upper Facet) -->
+    <polygon points="120,110 225,55 145,145" fill="url(#craneIndigoTop)" />
+    <!-- Right Wing (Under Facet) -->
+    <polygon points="225,55 145,145 170,170" fill="url(#craneIndigoBottom)" />
+
+    <!-- 5. Center Diamond Keel (Polytope Core) -->
+    <polygon points="120,110 95,145 120,195" fill="url(#craneBodyLeft)" />
+    <polygon points="120,110 145,145 120,195" fill="url(#craneBodyRight)" />
+
+    <!-- 6. Extreme Points / Optimal Mathematical Vertices -->
+    <circle cx="15" cy="55" r="4" fill="#FFFFFF" stroke="#E11D48" stroke-width="2" />
+    <circle cx="225" cy="55" r="4" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2" />
+    <circle cx="120" cy="195" r="4" fill="#FFFFFF" stroke="#9333EA" stroke-width="2" />
+    <circle cx="120" cy="110" r="3" fill="#FFFFFF" stroke="#C026D3" stroke-width="1.5" />
+  </g>
+</svg>
