@@ -220,7 +220,28 @@ export function validateZ3BrowserEnvironment(): void {
  */
 async function probeAssetUrl(url: string, assetName: string): Promise<void> {
   try {
-    const res = await fetch(url, { method: "GET", headers: { Range: "bytes=0-3" } });
+    let res: Response;
+    try {
+      // Prefer HEAD method to inspect status and Content-Type without downloading body.
+      // Crucially, HEAD avoids poisoning browser HTTP cache with partial byte ranges.
+      res = await fetch(url, { method: "HEAD" });
+      if (res.status === 405 || res.status === 501) {
+        // Server does not support HEAD method; fall back to GET with cache: "no-store"
+        res = await fetch(url, {
+          method: "GET",
+          headers: { Range: "bytes=0-3" },
+          cache: "no-store",
+        });
+      }
+    } catch {
+      // Fall back to GET with no-store if HEAD encounters CORS/network issues
+      res = await fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-3" },
+        cache: "no-store",
+      });
+    }
+
     if (!res.ok) {
       throw new Error(`server responded with HTTP status ${res.status} (${res.statusText || "Not Found"})`);
     }
@@ -273,11 +294,42 @@ async function ensureInitZ3Loaded(jsUrl: string): Promise<any> {
 
   if (typeof document !== "undefined") {
     await new Promise<void>((resolve, reject) => {
+      let scriptError: any = null;
+      const onErrorEvent = (ev: ErrorEvent) => {
+        if (ev.filename && ev.filename.includes("z3-built.js")) {
+          scriptError = ev.error || ev.message;
+        }
+      };
+      const hasWindowEvents = typeof window !== "undefined" && typeof window.addEventListener === "function";
+      if (hasWindowEvents) {
+        window.addEventListener("error", onErrorEvent);
+      }
+
       const script = document.createElement("script");
       script.src = jsUrl;
       script.crossOrigin = "anonymous";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error(`[WaSHI] Failed to load Z3 runtime script from "${jsUrl}".`));
+      script.onload = () => {
+        if (hasWindowEvents) {
+          window.removeEventListener("error", onErrorEvent);
+        }
+        if (typeof globalObj.initZ3 !== "function" && scriptError) {
+          reject(
+            new Error(
+              `[WaSHI] Failed to evaluate Z3 runtime script from "${jsUrl}": ${
+                scriptError?.message || scriptError
+              }`
+            )
+          );
+          return;
+        }
+        resolve();
+      };
+      script.onerror = () => {
+        if (hasWindowEvents) {
+          window.removeEventListener("error", onErrorEvent);
+        }
+        reject(new Error(`[WaSHI] Failed to load Z3 runtime script from "${jsUrl}".`));
+      };
       document.head.appendChild(script);
     });
   } else if (typeof (globalThis as any).importScripts === "function") {
