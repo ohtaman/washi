@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
     <img alt="WaSHI - 面向 TypeScript 与 JavaScript 的数理优化代数建模器 (Modeler)" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>面向 TypeScript 与 JavaScript 的直观数理优化代数建模器（Algebraic Modeler）</strong></p>
+  <p><strong>面向 TypeScript 与 JavaScript 的代数建模器</strong></p>
   <p>
     <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • SMT逻辑约束与冲突诊断</em>
   </p>
@@ -24,7 +24,11 @@
 
 ---
 
-**WaSHI** 是一个现代数理优化高层代数建模器（Algebraic Modeler），将 Python **PuLP** 与 Julia **JuMP** 的优雅表现力引入 TypeScript / JavaScript 生态系统。你可以直接使用符合数学直觉的代数公式编写数学模型，并在 Node.js、现代浏览器、Bun、Deno 及 Next.js 中秒级求解——完全依托 WebAssembly 求解器（**HiGHS**、**Z3**、**GLPK**），无需任何本地 C++ 编译环境。
+**WaSHI** 是面向 TypeScript / JavaScript 的代数建模器，受到 Python **PuLP** 和 Julia **JuMP** 的启发。你可以在应用代码中定义变量、目标函数、算术约束和逻辑约束。WaSHI 负责构建模型、转换为求解器输入，并将结果映射回变量；优化与可满足性检查由 **HiGHS**、**Z3** 和 **GLPK** 完成。
+
+HiGHS 是默认求解器；Z3 和 GLPK 是可选插件。软件包提供 Node.js 和浏览器分发版本，并包含 WebAssembly 资源。部署要求请参阅[浏览器使用说明](#-浏览器与-web-worker-使用指南)。
+
+[试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, c } from "@ohtaman/washi";
@@ -43,25 +47,25 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 ---
 
-## 🎯 为什么选择 WaSHI？
+## 🎯 WaSHI 提供的功能
 
-1. 🌐 **100% 客户端运行与零服务器成本**：直接在用户的浏览器、边缘节点（Edge Worker）或 Electron 桌面端运行工业级优化。后端服务器运维成本为零，支持离线运行，且机密业务数据（如排班表、成本数据）永不离开客户端。
-2. 📦 **零依赖・单一包分发**：告别 Python 环境配置与繁重的跨平台 C/C++ 原生求解器编译绑定。只需 `npm install @ohtaman/washi`，包括 WebAssembly 求解器在内的所有组件即可开箱即用。
-3. ✍️ **极简现代代数建模 DX（兼容 PuLP / python-mip）**：无需编写晦涩低级的矩阵索引。使用直观的模板字面量（`c`${x} + 2 * ${y} <= 40``）或熟悉的 Python 风格抽象（`LpProblem`, `lpSum`），像在草稿纸上写公式一样自然。
-4. 🔄 **统一多求解器接口（HiGHS / Z3 / GLPK）**：模型代码一次编写，即可通过统一 API 自由切换：擅长工业级 MIP/QP 的 **HiGHS**、擅长逻辑求解与冲突分析的 **Z3**，以及经典学术求解器 **GLPK**。
-5. 🔍 **不可行模型（Infeasible）冲突根因诊断**：当业务规则出现矛盾导致无解时，可通过 Z3 引擎快速定位并提取冲突约束子集（Unsat Core）。
-6. ⚡ **WebAssembly 原生工业级大规模性能**：搭载 $O(N)$ 线性时间高速表达式构建器，仅需约 100ms 即可构建 20,000+ 变量的大规模 MIP，并在浏览器 WebAssembly 中由 HiGHS 在约 15 秒内高效求解。
+1. **代数模型构建**：使用带类型的变量、索引变量集合、带标签的模板（`expr` 和 `c`）及链式表达式。`Model` API 与 PuLP 风格辅助函数提供不同的模型编写方式。
+2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
+3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内求解，无需单独的 Python 服务或本地 C/C++ 编译。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
+4. **命名约束与 SMT 结果**：显式使用 Z3 检查可满足性，并通过 Unsat Core 调查冲突约束。返回的是一个冲突约束子集，不一定是最小子集。
+
+模型构建与转换由 WaSHI 负责。支持的问题类型、数值行为和求解时间取决于所选求解器、配置及具体问题。建模开销与求解器执行时间应分别测量；某个模型上的结果并不构成通用性能保证。
 
 ---
 
-## ⚡ 求解器矩阵
+## ⚙️ 求解器适配器与支持范围
 
-| 求解器 | 核心许可证 | 支持的问题类型 | 最佳应用场景 | 在 WaSHI 中的提供方式 |
+| 适配器 | 引擎许可证 | 支持的问题类型 | 引擎作用 | 集成方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| **HiGHS** | **MIT** | **LP, MIP, 凸QP** | 工业级生产排程、运筹规划、金融组合优化 | **内置默认**（零配置） |
-| **Z3** | **MIT** | **SMT, SAT, 命题逻辑, MIP** | 业务规则验证、约束冲突诊断 (`unsatCore`)、规则引擎 | 可选插件 (`@ohtaman/washi/solvers/z3`) |
-| **GLPK** | **GPL-3.0** | **LP, MIP** | 学术基准测试、存量 GLPK 模型迁移 | 可选插件 (`@ohtaman/washi/solvers/glpk`) |
-| **Mock** | **MIT** | *任意* | CI/CD 环境下无需加载 WASM 的极速单元测试 | 内置 |
+| **HiGHS** | **MIT** | **LP, MIP, 凸QP** | 数值优化 | 默认内置 |
+| **Z3** | **MIT** | **SMT, SAT, 逻辑, MIP** | 可满足性检查、Unsat Core、优化 | 可选插件 (`@ohtaman/washi/solvers/z3`) |
+| **GLPK** | **GPL-3.0** | **LP, MIP** | 线性与混合整数优化 | 可选插件 (`@ohtaman/washi/solvers/glpk`) |
+| **Mock** | **MIT** | — | 为集成测试提供模拟响应 | 内置；不实际求解模型 |
 
 ---
 
@@ -287,9 +291,9 @@ console.log(`目标函数值: ${m.objectiveValue}`); // 1100
 
 ---
 
-### 6. Python PuLP 兼容层
+### 6. PuLP 风格辅助函数
 
-若你已有 Python PuLP 代码资产，可零摩擦迁移：
+使用 `LpProblem`、`LpVariable` 和 `lpSum` 等辅助函数，可在 JavaScript 中采用熟悉的建模方式。迁移 Python 代码需要调整语法并确认支持的 API：
 
 ```ts
 import {
@@ -439,33 +443,40 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 
 ---
 
-## 💻 本地脚本与交互式 Web 演示
+## 💻 示例与浏览器演示
 
-在 `examples/node/` 中提供了即开即用的独立脚本：
+[示例目录](https://github.com/ohtaman/washi/blob/main/examples/README.md)提供源码链接，以及从仓库运行各示例的方法。
+
+| 示例 | 展示内容 | 求解器 |
+| :--- | :--- | :--- |
+| [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 | HiGHS |
+| [投资组合分配](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目标函数与分配约束 | HiGHS |
+| [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束的可满足性检查 | Z3 |
+| [冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 命名约束与 Unsat Core | Z3 |
+
+在[在线浏览器演示](https://ohtaman.github.io/washi/demo/)中可以编辑并运行模型。浏览器 ESM、script 标签和 CodePen 的用法请参阅[分发示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)。Z3 需要跨源隔离；具体要求见上方浏览器说明。
+
+本地运行前，请克隆仓库并安装开发依赖：
 
 ```bash
+git clone https://github.com/ohtaman/washi.git
+cd washi
+npm ci
 npx tsx examples/node/01-production-planning.ts
-npx tsx examples/node/02-knapsack-problem.ts
-npx tsx examples/node/03-portfolio-qp.ts
-npx tsx examples/node/04-smt-security-rules.ts
-npx tsx examples/node/05-unsat-core-diagnosis.ts
-npx tsx examples/node/06-pulp-compatibility.ts
-npx tsx examples/node/08-glpk-solver-plugin.ts
-```
 
-启动浏览器端交互式可视化演示 (`examples/web-demo`)：
-
-```bash
+# 本地浏览器演示: http://localhost:5173/demo/
 npm run dev
-# 文档主页: http://localhost:5173/
-# 交互式 Demo: http://localhost:5173/demo/
 ```
+
+示例导入仓库的 `src/` 模块。使用已发布软件包的应用应改为导入 `@ohtaman/washi` 及所需的求解器插件。
+
+排班、运输计划及 Vite 应用等后续示例方向记录在[示例扩充建议](https://github.com/ohtaman/washi/blob/main/examples/README.md#directions-for-future-examples)中。
 
 ---
 
 ## 🧪 自动化测试
 
-项目全面贯彻测试驱动开发 (TDD)，涵盖 120+ 单元测试、集成测试与大规模基准测试：
+运行仓库的单元测试与集成测试，并构建分发版本：
 
 ```bash
 # 运行全部单元与集成测试
