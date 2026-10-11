@@ -1,6 +1,6 @@
 {
   "name": "@ohtaman/washi",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "WaSHI: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT)",
   "type": "module",
   "main": "./dist/lib/washi.js",
