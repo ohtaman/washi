@@ -259,7 +259,7 @@ export default withMermaid(
     ],
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Copyright © 2026 Mitsuhisa Ota & WaSHI Contributors",
+      copyright: "Copyright © 2026 ohtaman & WaSHI Contributors",
     },
   },
   vite: {
