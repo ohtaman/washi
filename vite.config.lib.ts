@@ -4,7 +4,7 @@ import { resolve } from "path";
 export default defineConfig({
   build: {
     outDir: "dist/lib",
-    emptyOutDir: false,
+    emptyOutDir: true,
     lib: {
       entry: {
         "washi": resolve(import.meta.dirname, "src/index.ts"),
