@@ -4,6 +4,74 @@ import type { SolverStatus } from "../types.js";
 import { solveLp } from "../../highs-worker-client.js";
 
 /**
+ * Map a raw HiGHS model status string to WaSHI's standardized SolverStatus.
+ * Only verified optimality maps to "Optimal"; missing or unrecognized statuses map to "Unknown".
+ */
+export function mapHighsStatus(rawStatus: unknown): SolverStatus {
+  if (typeof rawStatus !== "string") {
+    return "Unknown";
+  }
+  const normalized = rawStatus.trim();
+  if (!normalized) {
+    return "Unknown";
+  }
+
+  switch (normalized) {
+    case "Optimal":
+      return "Optimal";
+    case "Infeasible":
+      return "Infeasible";
+    case "Unbounded":
+    case "Primal infeasible or unbounded":
+      return "Unbounded";
+    case "Time limit reached":
+    case "TimeLimit":
+      return "TimeLimit";
+    case "Iteration limit reached":
+    case "IterationLimit":
+      return "IterationLimit";
+    case "Bound on objective reached":
+    case "Target for objective reached":
+    case "Feasible":
+      return "Feasible";
+    case "Not Set":
+      return "NotSolved";
+    case "Load error":
+    case "Model error":
+    case "Presolve error":
+    case "Solve error":
+    case "Postsolve error":
+    case "Error":
+      return "Error";
+    case "Empty":
+    case "Unknown":
+      return "Unknown";
+  }
+
+  const lower = normalized.toLowerCase();
+  if (lower.includes("infeasible")) {
+    return "Infeasible";
+  }
+  if (lower.includes("unbounded")) {
+    return "Unbounded";
+  }
+  if (lower.includes("time limit") || lower.includes("timelimit")) {
+    return "TimeLimit";
+  }
+  if (lower.includes("iteration limit") || lower.includes("iterationlimit")) {
+    return "IterationLimit";
+  }
+  if (lower.includes("error")) {
+    return "Error";
+  }
+  if (lower === "optimal") {
+    return "Optimal";
+  }
+
+  return "Unknown";
+}
+
+/**
  * HiGHS Solver adapter (WebAssembly in Browser / Node.js)
  * High-performance simplex / interior point / branch-and-cut solver.
  */
@@ -31,23 +99,7 @@ export class HighsSolver implements Solver {
 
     const { result, runTime } = await solveLp(lpString, mergedOptions);
 
-    // Map raw status to standard SolverStatus
-    const rawStatus = result.Status || "Unknown";
-    let status: SolverStatus;
-
-    if (rawStatus.includes("Optimal")) {
-      status = "Optimal";
-    } else if (rawStatus.includes("Infeasible")) {
-      status = "Infeasible";
-    } else if (rawStatus.includes("Unbounded")) {
-      status = "Unbounded";
-    } else if (rawStatus.includes("TimeLimit") || rawStatus.includes("Time limit")) {
-      status = "TimeLimit";
-    } else if (rawStatus.includes("IterationLimit")) {
-      status = "IterationLimit";
-    } else {
-      status = "Optimal";
-    }
+    const status = mapHighsStatus(result?.Status);
 
     const rawObj = result.ObjectiveValue;
     const objectiveValue =

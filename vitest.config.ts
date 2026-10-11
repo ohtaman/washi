@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     exclude: process.env.RUN_E2E
-      ? ["**/node_modules/**", "**/dist/**"]
-      : ["**/node_modules/**", "**/dist/**", "test/e2e.test.ts"],
+      ? ["**/node_modules/**", "**/dist/**", "**/.worktrees/**"]
+      : ["**/node_modules/**", "**/dist/**", "**/.worktrees/**", "test/e2e.test.ts"],
   },
 });
