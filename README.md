@@ -1,13 +1,15 @@
-# 📜 WASHI (`@ohtaman/washi`)
+<div align="center">
+  <img src="./assets/washi-logo.png" alt="WaSHI Logo" width="220" />
+  <h1>WaSHI (<code>@ohtaman/washi</code>)</h1>
+  <p><strong>WebAssembly Algebraic System for Hybrid &amp; Integer modeling</strong></p>
+  <p><em>LP (Linear Programming) • MIP (Mixed-Integer Programming) • QP (Convex Quadratic Programming) • SMT (Logic &amp; Conflict Diagnosis)</em></p>
+</div>
 
-**WebAssembly Algebraic System for Hybrid & Integer modeling**  
-*LP (Linear Programming) • MIP (Mixed-Integer Programming) • QP (Convex Quadratic Programming) • SMT (Logic & Conflict Diagnosis)*
-
-> **💡 The Name & Philosophy: From Pulp to Washi**  
-> Just as Python's **PuLP** cleverly plays on the word *pulp* (the raw fiber of paper), **WASHI (和紙)** embodies the finished art: **astonishingly lightweight (~7 kB core), flexible, and resilient for centuries**.  
-> While underlying solvers like HiGHS, GLPK, and Z3 serve as calculation engines, **WASHI** is the elegant canvas upon which mathematical models are drawn.  
+> **💡 The Name & Philosophy: From PuLP to WaSHI**  
+> Just as Python's **PuLP** playfully capitalized its acronym components around paper pulp, **WaSHI (和紙)** embodies the finished art: **astonishingly lightweight (~7 kB core), flexible, and resilient for centuries**.  
+> While underlying engines like HiGHS, GLPK, and Z3 serve as calculation solvers, **WaSHI** is the elegant canvas upon which mathematical models are drawn.  
 > It also represents its architectural identity:  
-> **W**ebAssembly **A**lgebraic **S**ystem for **H**ybrid & **I**nteger modeling (**WASHI**).
+> **Wa** (WebAssembly / 和) • **S**ystem for **H**ybrid & **I**nteger modeling (**WaSHI**).
 
 `@ohtaman/washi` is a high-level, intuitive mathematical optimization modeling library for TypeScript and JavaScript environments (Node.js, Browser, Bun, Deno, Next.js). Inspired by Python's **PuLP**, **python-mip**, and Julia's **JuMP**, it provides a fluent algebraic syntax for formulating operations research and constraint satisfaction models, dispatching them to best-of-breed WebAssembly solvers.
 
