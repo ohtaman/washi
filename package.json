@@ -60,6 +60,10 @@
     "build:types": "node -e \"import('node:fs').then(fs => fs.rmSync('dist/types', { recursive: true, force: true }))\" && tsc -p tsconfig.lib.json",
     "build:lib": "node scripts/build-library.mjs",
     "build": "npm run build:types && npm run build:lib && npm run build:browser && npm run build:demo",
+    "build:site": "node scripts/build-site.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "RUN_E2E=1 vitest run test/e2e.test.ts",
@@ -117,6 +121,7 @@
     "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
+    "vitepress": "^1.6.4",
     "vitest": "^5.0.2",
     "webpack": "^5.111.1",
     "z3-solver": "^5.2.0"
