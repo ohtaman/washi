@@ -1,0 +1,120 @@
+# Staff Shift Scheduling & Conflict Diagnosis (MIP + Z3)
+
+**Problem Class:** Binary MIP & SMT Unsat Core · **Solvers:** HiGHS (optimization) + Z3 (conflict diagnosis) · **APIs:** `m.addVars(staff, days)`, `sum()`, `m.check()`, `m.unsatCore`  
+**[▶ Roster Optimization in Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling)** · **[▶ Conflict Diagnosis in Playground](https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat)** · **Source:** [`examples/node/11-shift-scheduling.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts)
+
+Staff shift scheduling is a classic real-world application of Mixed-Integer Programming in SaaS and workforce management tools. However, in real applications, **staff vacation requests frequently collide with minimum daily coverage rules**, causing the solver to return `Infeasible`.
+
+This example shows how to combine WaSHI's two strengths in one workflow:
+1. **Optimize Feasible Schedules with HiGHS:** Generate a cost-minimal weekly roster respecting daily headcount, senior shift leadership, max working days, and vacation requests.
+2. **Pinpoint Conflicting Requests with Z3 (`unsatCore`):** When overlapping vacation requests make the schedule infeasible, extract a conflicting constraint subset (`unsatCore`) so your UI can tell the manager *which day's coverage rule and whose day-off requests collided*.
+
+---
+
+## Scenario & Rules
+
+We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) across **7 days** (`Mon`–`Sun`):
+
+- **Daily Headcount:** `Mon–Thu`: 3 staff, `Fri`: 4 staff, `Sat`: 3 staff, `Sun`: 2 staff.
+- **Senior Duty:** At least 1 senior staff member (`Alice` or `Bob`) must be on duty every day.
+- **Work Limit:** Each staff member works at most **5 days** per week.
+- **Weekend Premium:** Weekend shifts (`Sat`, `Sun`) incur an extra `+$30` shift premium on top of base daily wage.
+
+---
+
+## Implementation in WaSHI
+
+```typescript
+import { Model, sum } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
+
+const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+type Day = (typeof days)[number];
+
+const staffList = [
+  { name: "Alice",   isSenior: true,  dailyWage: 220, maxShifts: 5 },
+  { name: "Bob",     isSenior: true,  dailyWage: 210, maxShifts: 5 },
+  { name: "Charlie", isSenior: false, dailyWage: 160, maxShifts: 5 },
+  { name: "Diana",   isSenior: false, dailyWage: 160, maxShifts: 5 },
+  { name: "Evan",    isSenior: false, dailyWage: 150, maxShifts: 5 },
+];
+
+const requiredCoverage: Record<Day, number> = {
+  Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2,
+};
+
+function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; day: Day }>) {
+  const m = new Model({ name, sense: "Minimize" });
+
+  // 2D binary matrix: shift[staff][day] ∈ {0, 1}
+  const shift = m.addVars(
+    staffList.map((s) => s.name),
+    [...days],
+    { type: "Binary", prefix: "shift" }
+  );
+
+  // Objective: Minimize weekly payroll cost (+$30 weekend premium)
+  const costTerms = [];
+  for (const s of staffList) {
+    for (const d of days) {
+      const cost = s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0);
+      costTerms.push(shift[s.name][d].mul(cost));
+    }
+  }
+  m.minimize(sum(costTerms));
+
+  // Rule 1: Daily headcount coverage
+  for (const d of days) {
+    m.addConstraint(sum(staffList, (s) => shift[s.name][d]).ge(requiredCoverage[d]), `coverage_${d}`);
+  }
+
+  // Rule 2: At least 1 senior staff member per day
+  const seniors = staffList.filter((s) => s.isSenior);
+  for (const d of days) {
+    m.addConstraint(sum(seniors, (s) => shift[s.name][d]).ge(1), `senior_duty_${d}`);
+  }
+
+  // Rule 3: Max working days per staff member
+  for (const s of staffList) {
+    m.addConstraint(sum([...days], (d) => shift[s.name][d]).le(s.maxShifts), `max_shifts_${s.name}`);
+  }
+
+  // Rule 4: Named day-off requests (shift[staff][day] <= 0)
+  for (const req of dayOffRequests) {
+    m.addConstraint(shift[req.staff][req.day].le(0), `day_off_${req.staff}_${req.day}`);
+  }
+
+  return { model: m, shift };
+}
+```
+
+### Part 1: Solving a Feasible Schedule with HiGHS
+When day-off requests are spread across the week (`Alice: Sun`, `Bob: Mon`, `Charlie: Sat`, `Diana: Wed`), HiGHS finds the optimal weekly roster in milliseconds:
+
+```text
+Part 1: Optimizing Weekly Roster with Balanced Day-Off Requests (HiGHS)...
+Status: Optimal
+Optimal Weekly Payroll Cost: $3830
+
+Staff (Role)   |  Mon  Tue  Wed  Thu  Fri  Sat  Sun | Total
+-----------------------------------------------------------
+Alice (Sr)     |   ON    ·    ·   ON    ·    ·    · |   2/5
+Bob (Sr)       |    ·   ON   ON    ·   ON   ON   ON |   5/5
+Charlie (Jr)   |    ·   ON   ON   ON   ON    ·   ON |   5/5
+Diana (Jr)     |   ON   ON    ·    ·   ON   ON    · |   4/5
+Evan (Jr)      |   ON    ·   ON   ON   ON   ON    · |   5/5
+```
+
+### Part 2: Diagnosing Conflicting Saturday Vacation Requests with Z3
+Suppose `Alice`, `Bob`, and `Charlie` all request `Sat` off (while `Diana` requests `Wed` off). Because Saturday requires `coverage_Sat >= 3` and `senior_duty_Sat >= 1`, no valid roster exists. Running `conflictModel.check({ solver: "z3" })` isolates a conflicting constraint subset (`unsatCore`, where minimality is not guaranteed):
+
+```text
+Part 2: Diagnosing Infeasible Saturday Vacation Requests (Z3 Unsat Core)...
+Feasibility Check Status: Unsat
+⚠️ Conflicting Constraint Subset (unsatCore):
+  ❌ coverage_Sat
+  ❌ day_off_Alice_Sat
+  ❌ day_off_Bob_Sat
+  ❌ day_off_Charlie_Sat
+  (Note: unrelated constraints like 'day_off_Diana_Wed' are excluded from the core)
+```

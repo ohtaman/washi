@@ -445,14 +445,18 @@ WaSHI features a decoupled, pluggable solver architecture. You can easily build 
 
 ## 💻 Examples and browser demo
 
-Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/examples/README.md), which links to the source and explains how to run each example from a repository checkout.
+Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/examples/README.md) or the [online Example & Feature Finder](https://ohtaman.github.io/washi/examples/), which organize examples by problem category and by WaSHI API feature.
 
-| Example | What it demonstrates | Solver |
-| :--- | :--- | :--- |
-| [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints | HiGHS |
-| [Portfolio allocation](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | A convex quadratic objective with allocation constraints | HiGHS |
-| [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints with satisfiability checking | Z3 |
-| [Conflict diagnosis](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | Named constraints and an unsatisfiable core | Z3 |
+| Category | Example | What it demonstrates | Solver |
+| :--- | :--- | :--- | :--- |
+| **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`, `c`) | HiGHS |
+| **Fundamentals** | [Transportation network](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2D origin-destination variable matrix (`addVars(rows, cols)`) and flow balance | HiGHS |
+| **Fundamentals** | [Diet & sensitivity analysis](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | Shadow prices (`constr.dual`), surpluses (`constr.slack`), and reduced costs (`var.reducedCost`) | HiGHS |
+| **Practical** | [Staff shift scheduling](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | Weekly roster optimization + diagnosing conflicting Saturday vacation requests | HiGHS + Z3 |
+| **Practical** | [E-commerce coupon optimizer](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds (`addIndicator`), coupon exclusivity, and add-on recommendations | HiGHS |
+| **Practical** | [Portfolio allocation](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | A convex quadratic objective (`QuadExpr`) with allocation constraints | HiGHS |
+| **Logic / SMT** | [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints (`addBoolVar`, `implies`) with satisfiability checking | Z3 |
+| **Logic / SMT** | [Conflict diagnosis](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | Named constraints and an unsatisfiable core (`unsatCore`) | Z3 |
 
 [Open the hosted demo](https://ohtaman.github.io/washi/demo/) to edit and run models in your browser. For browser ESM, classic script tags, and CodePen, see the [distribution examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md). Z3 requires cross-origin isolation; see the browser requirements above.
 
@@ -463,14 +467,16 @@ git clone https://github.com/ohtaman/washi.git
 cd washi
 npm ci
 npx tsx examples/node/01-production-planning.ts
+npx tsx examples/node/09-transportation-problem.ts
+npx tsx examples/node/10-diet-sensitivity.ts
+npx tsx examples/node/11-shift-scheduling.ts
+npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 
 # Local browser demo: http://localhost:5173/demo/
 npm run dev
 ```
 
 The example sources import the repository's `src/` modules. In an application using the published package, import `@ohtaman/washi` and the required solver plugin instead.
-
-Ideas for expanding the gallery—such as shift scheduling, transportation, and a Vite application—are collected under [future example directions](https://github.com/ohtaman/washi/blob/main/examples/README.md#directions-for-future-examples).
 
 ---
 

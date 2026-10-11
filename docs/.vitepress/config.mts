@@ -61,14 +61,33 @@ export default withMermaid(
             ],
           },
           {
-            text: "Recipes & Examples",
+            text: "Examples & Recipes",
             items: [
-              { text: "Overview", link: "/examples/" },
-              { text: "01: Production Planning (LP)", link: "/examples/production" },
-              { text: "02: Knapsack Problem (MIP)", link: "/examples/knapsack" },
-              { text: "03: Portfolio Optimization (QP)", link: "/examples/portfolio-qp" },
-              { text: "04: SMT Security Policies", link: "/examples/smt-security" },
-              { text: "05: Conflict Diagnosis", link: "/examples/unsat-core" },
+              { text: "Overview & Feature Finder", link: "/examples/" },
+              {
+                text: "Fundamentals (Core APIs)",
+                items: [
+                  { text: "Production Planning (LP/MIP)", link: "/examples/production" },
+                  { text: "0-1 Knapsack (Binary MIP)", link: "/examples/knapsack" },
+                  { text: "Transportation Network (2D LP)", link: "/examples/transportation" },
+                  { text: "Diet & Sensitivity (Dual/Slack)", link: "/examples/diet-sensitivity" },
+                ],
+              },
+              {
+                text: "Practical Applications",
+                items: [
+                  { text: "Staff Shift Scheduling (MIP+Z3)", link: "/examples/shift-scheduling" },
+                  { text: "E-Commerce Coupon Optimizer", link: "/examples/ecommerce-coupons" },
+                  { text: "Portfolio Optimization (QP)", link: "/examples/portfolio-qp" },
+                ],
+              },
+              {
+                text: "SMT Logic & Diagnosis",
+                items: [
+                  { text: "SMT Security Policies (Z3)", link: "/examples/smt-security" },
+                  { text: "Conflict Diagnosis (Unsat Core)", link: "/examples/unsat-core" },
+                ],
+              },
             ],
           },
         ],
@@ -121,12 +140,31 @@ export default withMermaid(
           {
             text: "実践レシピ集",
             items: [
-              { text: "レシピ一覧", link: "/ja/examples/" },
-              { text: "01: 生産計画問題 (LP)", link: "/ja/examples/production" },
-              { text: "02: ナップサック問題 (MIP)", link: "/ja/examples/knapsack" },
-              { text: "03: ポートフォリオ最適化 (QP)", link: "/ja/examples/portfolio-qp" },
-              { text: "04: セキュリティポリシー検証 (SMT)", link: "/ja/examples/smt-security" },
-              { text: "05: 制約矛盾の診断", link: "/ja/examples/unsat-core" },
+              { text: "レシピ一覧・逆引き索引", link: "/ja/examples/" },
+              {
+                text: "基本モデル（APIの基礎）",
+                items: [
+                  { text: "生産計画問題 (LP/MIP)", link: "/ja/examples/production" },
+                  { text: "0-1 ナップサック問題 (MIP)", link: "/ja/examples/knapsack" },
+                  { text: "輸送・物流ネットワーク (2次元LP)", link: "/ja/examples/transportation" },
+                  { text: "栄養問題と感度分析 (Dual/Slack)", link: "/ja/examples/diet-sensitivity" },
+                ],
+              },
+              {
+                text: "実践ユースケース（応用）",
+                items: [
+                  { text: "シフト作成と希望休の競合診断", link: "/ja/examples/shift-scheduling" },
+                  { text: "ECカートのクーポン最適適用", link: "/ja/examples/ecommerce-coupons" },
+                  { text: "ポートフォリオ最適化 (QP)", link: "/ja/examples/portfolio-qp" },
+                ],
+              },
+              {
+                text: "論理検証・矛盾診断 (Z3)",
+                items: [
+                  { text: "セキュリティポリシー検証 (SMT)", link: "/ja/examples/smt-security" },
+                  { text: "制約矛盾の診断 (Unsat Core)", link: "/ja/examples/unsat-core" },
+                ],
+              },
             ],
           },
         ],
@@ -179,12 +217,31 @@ export default withMermaid(
           {
             text: "实际案例与代码示例",
             items: [
-              { text: "案例总览", link: "/zh/examples/" },
-              { text: "01: 生产计划问题 (LP)", link: "/zh/examples/production" },
-              { text: "02: 背包问题 (MIP)", link: "/zh/examples/knapsack" },
-              { text: "03: 投资组合优化 (QP)", link: "/zh/examples/portfolio-qp" },
-              { text: "04: 安全策略验证 (SMT)", link: "/zh/examples/smt-security" },
-              { text: "05: 冲突诊断实战", link: "/zh/examples/unsat-core" },
+              { text: "案例总览与 API 索引", link: "/zh/examples/" },
+              {
+                text: "基础模型（核心 API）",
+                items: [
+                  { text: "生产计划问题 (LP/MIP)", link: "/examples/production" },
+                  { text: "0-1 背包问题 (MIP)", link: "/examples/knapsack" },
+                  { text: "运输与分配网络 (2D LP)", link: "/examples/transportation" },
+                  { text: "营养问题与灵敏度分析", link: "/examples/diet-sensitivity" },
+                ],
+              },
+              {
+                text: "实战应用案例",
+                items: [
+                  { text: "员工排班与冲突诊断", link: "/examples/shift-scheduling" },
+                  { text: "购物车优惠券最优组合", link: "/examples/ecommerce-coupons" },
+                  { text: "投资组合优化 (QP)", link: "/examples/portfolio-qp" },
+                ],
+              },
+              {
+                text: "SMT 逻辑与冲突诊断",
+                items: [
+                  { text: "安全策略验证 (SMT)", link: "/examples/smt-security" },
+                  { text: "不可行冲突诊断 (Unsat Core)", link: "/examples/unsat-core" },
+                ],
+              },
             ],
           },
         ],

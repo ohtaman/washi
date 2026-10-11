@@ -445,14 +445,18 @@ WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャ�
 
 ## 💻 サンプルとブラウザデモ
 
-[サンプル一覧](https://github.com/ohtaman/washi/blob/main/examples/README.md)に、各ソースへのリンクと、リポジトリを取得して実行する方法をまとめています。
+[サンプル一覧](https://github.com/ohtaman/washi/blob/main/examples/README.md)および[オンライン実践レシピ集・API逆引き索引](https://ohtaman.github.io/washi/ja/examples/)では、目的別・WaSHI の API 機能別にサンプルを探せます。
 
-| サンプル | 確認できること | ソルバー |
-| :--- | :--- | :--- |
-| [生産計画](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数変数、利益の最大化、資源制約 | HiGHS |
-| [ポートフォリオ配分](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目的関数と配分の制約 | HiGHS |
-| [業務ルールの検証](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 数値・論理制約の充足可能性の確認 | Z3 |
-| [矛盾する制約の診断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 名前付き制約と Unsat Core | Z3 |
+| カテゴリ | サンプル | 確認できること | ソルバー |
+| :--- | :--- | :--- | :--- |
+| **基本モデル** | [生産計画](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数変数、利益の最大化、資源制約 (`expr`, `c`) | HiGHS |
+| **基本モデル** | [輸送・物流ネットワーク](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2次元マトリクス変数 (`addVars(rows, cols)`) と供給・需要バランス | HiGHS |
+| **基本モデル** | [栄養問題と感度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 潜在価格 (`constr.dual`)、余剰 (`constr.slack`)、被約費用 (`var.reducedCost`) | HiGHS |
+| **実践応用** | [スタッフのシフト作成](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 週間シフト最適化と、土曜日の希望休が衝突した際の原因特定 | HiGHS + Z3 |
+| **実践応用** | [ECカートのクーポン最適適用](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 条件付き購入金額閾値 (`addIndicator`)、併用不可ルール、追加購入提案 | HiGHS |
+| **実践応用** | [ポートフォリオ配分](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目的関数 (`QuadExpr`) と配分の制約 | HiGHS |
+| **論理 / SMT** | [業務ルールの検証](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 数値・論理制約 (`addBoolVar`, `implies`) の充足可能性の確認 | Z3 |
+| **論理 / SMT** | [矛盾する制約の診断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 名前付き制約と Unsat Core (`unsatCore`) | Z3 |
 
 [公開ブラウザデモ](https://ohtaman.github.io/washi/demo/)では、モデルを編集して実行できます。ブラウザ標準 ESM、script タグ、CodePen での使い方は[配布形式のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)を参照してください。Z3 は Cross-Origin Isolation が必要です。詳細は上記のブラウザ要件に記載しています。
 
@@ -463,14 +467,16 @@ git clone https://github.com/ohtaman/washi.git
 cd washi
 npm ci
 npx tsx examples/node/01-production-planning.ts
+npx tsx examples/node/09-transportation-problem.ts
+npx tsx examples/node/10-diet-sensitivity.ts
+npx tsx examples/node/11-shift-scheduling.ts
+npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 
 # ローカルのブラウザデモ: http://localhost:5173/demo/
 npm run dev
 ```
 
 サンプルはリポジトリの `src/` モジュールを import しています。公開パッケージを使うアプリでは、`@ohtaman/washi` と必要なソルバープラグインから import してください。
-
-シフト作成、輸送計画、Vite アプリなど、今後追加したい題材は[サンプル拡充の方向性](https://github.com/ohtaman/washi/blob/main/examples/README.md#directions-for-future-examples)にまとめています。
 
 ---
 

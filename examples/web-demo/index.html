@@ -269,41 +269,75 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
                 <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
               </a>
 
-              <!-- Case 2: Knapsack -->
-              <a href="./demo/?preset=knapsack" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-mip">Binary MIP</span>
-                  <h4 class="demo-card-title lang-en">0-1 Knapsack Selection</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">0-1 ナップサック問題</h4>
-                  <p class="demo-card-desc lang-en">
-                    Select optimal items within weight capacity to maximize total packed value.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    重量制限を守りながら価値を最大化するアイテムの取捨選択（離散最適化）。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 3: Transportation -->
+              <!-- Case 2: Transportation Network (2D Matrix) -->
               <a href="./demo/?preset=transportation" class="demo-card">
                 <div>
-                  <span class="demo-card-badge badge-lp">Linear (LP)</span>
+                  <span class="demo-card-badge badge-lp">2D Matrix LP</span>
                   <h4 class="demo-card-title lang-en">Transportation Network</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">輸送・配分問題</h4>
+                  <h4 class="demo-card-title lang-ja" style="display: none;">輸送・物流ネットワーク</h4>
                   <p class="demo-card-desc lang-en">
-                    Minimize shipping costs from 2 factories to 3 distribution stores meeting customer demand.
+                    2D variable matrices with <code>addVars(factories, stores)</code>. Minimize shipping costs across 3 factories and 4 stores.
                   </p>
                   <p class="demo-card-desc lang-ja" style="display: none;">
-                    供給能力と店舗需要を満たしながら配送コストを最小化する物流配分モデル。
+                    <code>addVars(factories, stores)</code> による2次元マトリクス変数。3工場から4店舗への輸送コストを最小化。
                   </p>
                 </div>
                 <span class="demo-card-link lang-en">Open in Demo →</span>
                 <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
               </a>
 
-              <!-- Case 4: Portfolio QP -->
+              <!-- Case 3: Diet & Sensitivity Analysis -->
+              <a href="./demo/?preset=diet_sensitivity" class="demo-card">
+                <div>
+                  <span class="demo-card-badge badge-lp">Dual &amp; Slack</span>
+                  <h4 class="demo-card-title lang-en">Diet &amp; Sensitivity Analysis</h4>
+                  <h4 class="demo-card-title lang-ja" style="display: none;">栄養問題と感度分析</h4>
+                  <p class="demo-card-desc lang-en">
+                    Inspect shadow prices (<code>constr.dual</code>), surpluses (<code>constr.slack</code>), and reduced costs to find bottlenecks.
+                  </p>
+                  <p class="demo-card-desc lang-ja" style="display: none;">
+                    どの栄養基準がコストを押し上げているか（潜在価格 <code>dual</code>・余剰 <code>slack</code>・被約費用）を分析。
+                  </p>
+                </div>
+                <span class="demo-card-link lang-en">Open in Demo →</span>
+                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
+              </a>
+
+              <!-- Case 4: Staff Shift Scheduling -->
+              <a href="./demo/?preset=shift_scheduling" class="demo-card">
+                <div>
+                  <span class="demo-card-badge badge-mip">Roster MIP</span>
+                  <h4 class="demo-card-title lang-en">Staff Shift Scheduling</h4>
+                  <h4 class="demo-card-title lang-ja" style="display: none;">スタッフのシフト作成</h4>
+                  <p class="demo-card-desc lang-en">
+                    Assign 5 staff across 7 days respecting daily headcount, senior duty, max shifts, and vacation requests.
+                  </p>
+                  <p class="demo-card-desc lang-ja" style="display: none;">
+                    日別の必要人数・リーダー配置・週5日上限・スタッフ希望休をすべて満たす週間シフト表を自動生成。
+                  </p>
+                </div>
+                <span class="demo-card-link lang-en">Open in Demo →</span>
+                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
+              </a>
+
+              <!-- Case 5: E-Commerce Cart & Coupon Optimizer -->
+              <a href="./demo/?preset=cart_coupon" class="demo-card">
+                <div>
+                  <span class="demo-card-badge badge-mip">Indicator MIP</span>
+                  <h4 class="demo-card-title lang-en">E-Commerce Coupon Optimizer</h4>
+                  <h4 class="demo-card-title lang-ja" style="display: none;">ECカートのクーポン最適適用</h4>
+                  <p class="demo-card-desc lang-en">
+                    Conditional threshold rules with <code>addIndicator()</code>, coupon exclusivity, and tier-unlocking add-on items.
+                  </p>
+                  <p class="demo-card-desc lang-ja" style="display: none;">
+                    <code>addIndicator()</code> による最低購入額条件と併用可否ルールから、支払額が最小になるクーポン構成を計算。
+                  </p>
+                </div>
+                <span class="demo-card-link lang-en">Open in Demo →</span>
+                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
+              </a>
+
+              <!-- Case 6: Portfolio QP -->
               <a href="./demo/?preset=portfolio_qp" class="demo-card">
                 <div>
                   <span class="demo-card-badge badge-qp">Convex QP</span>
@@ -320,7 +354,24 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
                 <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
               </a>
 
-              <!-- Case 5: Conflict Diagnosis -->
+              <!-- Case 7: Shift Vacation Conflict Diagnosis -->
+              <a href="./demo/?preset=shift_conflict_unsat" class="demo-card">
+                <div>
+                  <span class="demo-card-badge badge-smt">SMT / Z3</span>
+                  <h4 class="demo-card-title lang-en">Shift Conflict Diagnosis</h4>
+                  <h4 class="demo-card-title lang-ja" style="display: none;">シフト希望休の衝突診断</h4>
+                  <p class="demo-card-desc lang-en">
+                    Pinpoint which Saturday vacation requests conflict with minimum staffing rules via Z3 <code>unsatCore</code>.
+                  </p>
+                  <p class="demo-card-desc lang-ja" style="display: none;">
+                    土曜日の希望休が重なり解なしになった際、Z3 の <code>unsatCore</code> で衝突原因の制約群を特定。
+                  </p>
+                </div>
+                <span class="demo-card-link lang-en">Open in Demo →</span>
+                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
+              </a>
+
+              <!-- Case 8: Rule Conflict Diagnosis -->
               <a href="./demo/?preset=conflict_diagnosis_unsat" class="demo-card">
                 <div>
                   <span class="demo-card-badge badge-smt">SMT / Z3</span>

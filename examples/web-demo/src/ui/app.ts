@@ -1,4 +1,4 @@
-import { EXAMPLES } from "../presets/index.js";
+import { EXAMPLES, type ExampleModel, type PresetGroup } from "../presets/index.js";
 import { executeModelCode } from "./runner.js";
 import { DOCS_HTML } from "./docs.js";
 import type { Model } from "../../../../src/modeler/model.js";
@@ -15,6 +15,19 @@ import {
   type TranslationDict,
 } from "./i18n.js";
 
+const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
+  en: {
+    fundamentals: "1. Fundamentals (Core Modeling APIs)",
+    practical: "2. Practical Applications (Real-World Use Cases)",
+    logic: "3. SMT Logic & Conflict Diagnosis (Z3)",
+  },
+  ja: {
+    fundamentals: "1. 基本モデル（APIと概念の理解）",
+    practical: "2. 実践ユースケース（業務・アプリ応用）",
+    logic: "3. 論理検証・競合診断（Z3 SMT / Unsat Core）",
+  },
+};
+
 export function initApp() {
   registerZ3Solver();
   registerGLPKSolver();
@@ -25,6 +38,11 @@ export function initApp() {
   const runBtn = document.getElementById("run-btn") as HTMLButtonElement;
   const genLpBtn = document.getElementById("gen-lp-btn") as HTMLButtonElement;
   const resetBtn = document.getElementById("reset-btn") as HTMLButtonElement;
+
+  // Context bar elements
+  const presetCatBadge = document.getElementById("preset-category-badge") as HTMLSpanElement | null;
+  const presetDescText = document.getElementById("preset-desc-text") as HTMLSpanElement | null;
+  const presetApiTags = document.getElementById("preset-api-tags") as HTMLDivElement | null;
 
   // Language buttons
   const langBtnEn = document.getElementById("lang-btn-en") as HTMLButtonElement | null;
@@ -40,6 +58,8 @@ export function initApp() {
   const metricTime = document.getElementById("metric-time") as HTMLDivElement;
   const metricVars = document.getElementById("metric-vars") as HTMLDivElement;
   const varsTableBody = document.getElementById("vars-tbody") as HTMLTableSectionElement;
+  const constrsPanel = document.getElementById("constrs-panel") as HTMLDivElement | null;
+  const constrsTableBody = document.getElementById("constrs-tbody") as HTMLTableSectionElement | null;
   const visualizerContainer = document.getElementById("visualizer-container") as HTMLDivElement;
   const lpOutput = document.getElementById("lp-output") as HTMLElement;
   const logOutput = document.getElementById("log-output") as HTMLElement;
@@ -53,6 +73,49 @@ export function initApp() {
   }
 
   let currentModel: Model | null = null;
+
+  function populatePresetOptions(locale: Locale) {
+    const selectedValue = presetSelect.value;
+    presetSelect.innerHTML = "";
+
+    const groups: PresetGroup[] = ["fundamentals", "practical", "logic"];
+    for (const grp of groups) {
+      const groupItems = EXAMPLES.filter((ex) => ex.group === grp);
+      if (groupItems.length === 0) continue;
+
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = GROUP_LABELS[locale][grp];
+
+      for (const ex of groupItems) {
+        const opt = document.createElement("option");
+        opt.value = ex.id;
+        const displayTitle = locale === "ja" && ex.titleJa ? ex.titleJa : ex.title;
+        opt.textContent = `[${ex.category}] ${displayTitle}`;
+        optgroup.appendChild(opt);
+      }
+      presetSelect.appendChild(optgroup);
+    }
+
+    if (selectedValue && EXAMPLES.some((e) => e.id === selectedValue)) {
+      presetSelect.value = selectedValue;
+    }
+  }
+
+  function updatePresetContextBar(example: ExampleModel, locale: Locale) {
+    if (presetCatBadge) {
+      presetCatBadge.textContent = example.category;
+      presetCatBadge.className = `preset-cat-badge cat-${example.category.toLowerCase()}`;
+    }
+    if (presetDescText) {
+      presetDescText.textContent =
+        locale === "ja" && example.descriptionJa ? example.descriptionJa : example.description;
+    }
+    if (presetApiTags) {
+      presetApiTags.innerHTML = (example.apis || [])
+        .map((api) => `<span class="api-tag-pill">${api}</span>`)
+        .join("");
+    }
+  }
 
   function applyLocale(locale: Locale) {
     document.documentElement.lang = locale;
@@ -73,7 +136,11 @@ export function initApp() {
       }
     });
 
+    populatePresetOptions(locale);
+    const activeEx = EXAMPLES.find((e) => e.id === presetSelect.value) || EXAMPLES[0];
+    updatePresetContextBar(activeEx, locale);
     renderVisualizer();
+    renderConstraintsTable();
   }
 
   if (langBtnEn) {
@@ -85,14 +152,8 @@ export function initApp() {
 
   onLocaleChange(applyLocale);
 
-  // Populate presets
-  presetSelect.innerHTML = "";
-  EXAMPLES.forEach((ex) => {
-    const opt = document.createElement("option");
-    opt.value = ex.id;
-    opt.textContent = `[${ex.category}] ${ex.title}`;
-    presetSelect.appendChild(opt);
-  });
+  // Populate initial presets
+  populatePresetOptions(getLocale());
 
   function updateLineNumbers() {
     const lines = codeTextarea.value.split("\n").length;
@@ -104,6 +165,7 @@ export function initApp() {
     codeTextarea.value = example.code;
     presetSelect.value = example.id;
     updateLineNumbers();
+    updatePresetContextBar(example, getLocale());
 
     if (example.category === "SMT" || example.code.includes('solver: "z3"')) {
       if (solverSelect) solverSelect.value = "z3";
@@ -281,8 +343,9 @@ export function initApp() {
         lpOutput.textContent = currentModel.toLpString();
       }
 
-      // Render variables table & visualizer
+      // Render variables table, constraints table, & visualizer
       renderVariablesTable();
+      renderConstraintsTable();
       renderVisualizer();
 
       showTab("tab-results");
@@ -387,7 +450,285 @@ export function initApp() {
     varsTableBody.innerHTML = rowsHtml;
   }
 
+  function renderConstraintsTable() {
+    if (!constrsPanel || !constrsTableBody) return;
+
+    if (!currentModel || currentModel.constraints.length === 0) {
+      constrsPanel.style.display = "none";
+      return;
+    }
+
+    constrsPanel.style.display = "block";
+    const isJa = getLocale() === "ja";
+    const constrs = currentModel.constraints.slice(0, 100);
+
+    constrsTableBody.innerHTML = constrs
+      .map((c) => {
+        const hasSlack = c.slack !== null && c.slack !== undefined;
+        const absSlack = hasSlack ? Math.abs(c.slack!) : null;
+        const isBinding = absSlack !== null && absSlack < 1e-4;
+
+        const slackStr =
+          absSlack !== null ? absSlack.toFixed(4).replace(/\.?0+$/, "") : "--";
+        const dualStr =
+          c.dual !== null && c.dual !== undefined
+            ? c.dual.toFixed(4).replace(/\.?0+$/, "")
+            : "--";
+
+        const statusBadge =
+          absSlack === null
+            ? `<span style="color: var(--text-sumi-muted);">--</span>`
+            : isBinding
+            ? `<span class="status-pill binding">${isJa ? "Binding (上限/下限到達)" : "Binding"}</span>`
+            : `<span class="status-pill slack">${isJa ? "Slack (余剰あり)" : "Surplus"}</span>`;
+
+        return `
+          <tr>
+            <td><strong>${c.name}</strong></td>
+            <td class="font-mono" style="color: var(--text-sumi-secondary);">${c.sense} ${c.rhs}</td>
+            <td>${statusBadge}</td>
+            <td class="font-mono">${slackStr}</td>
+            <td class="font-mono" style="color: ${isBinding && c.dual ? "var(--color-hi)" : "var(--text-sumi-secondary)"}; font-weight: ${isBinding && c.dual ? "600" : "400"};">${dualStr}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
   filterNonZero.addEventListener("change", renderVariablesTable);
+
+  /**
+   * Detect 2D prefix_row_col variables (such as ship_Tokyo_North or shift_Alice_Mon)
+   */
+  function extract2DMatrix(prefix: string) {
+    if (!currentModel) return null;
+    const matching = currentModel.variables.filter((v) => v.name.startsWith(`${prefix}_`));
+    if (matching.length < 4) return null;
+
+    const rows: string[] = [];
+    const cols: string[] = [];
+    const cellMap = new Map<string, number>();
+
+    for (const v of matching) {
+      const rest = v.name.slice(prefix.length + 1);
+      const sepIdx = rest.indexOf("_");
+      if (sepIdx <= 0) continue;
+      const r = rest.slice(0, sepIdx);
+      const c = rest.slice(sepIdx + 1);
+      if (!rows.includes(r)) rows.push(r);
+      if (!cols.includes(c)) cols.push(c);
+      cellMap.set(`${r}__${c}`, v.value ?? 0);
+    }
+
+    if (rows.length < 2 || cols.length < 2) return null;
+    return { rows, cols, cellMap };
+  }
+
+  function renderShiftRosterVisualizer(matrix: {
+    rows: string[];
+    cols: string[];
+    cellMap: Map<string, number>;
+  }) {
+    const isJa = getLocale() === "ja";
+    const { rows: staff, cols: days, cellMap } = matrix;
+
+    const headerCols = days.map((d) => `<th>${d}</th>`).join("");
+    const bodyRows = staff
+      .map((s) => {
+        let totalShifts = 0;
+        const dayCells = days
+          .map((d) => {
+            const val = Math.round(cellMap.get(`${s}__${d}`) ?? 0);
+            if (val === 1) {
+              totalShifts++;
+              return `<td><span class="roster-badge-on">● ${isJa ? "出勤" : "ON"}</span></td>`;
+            }
+            return `<td><span class="roster-badge-off">${isJa ? "休" : "OFF"}</span></td>`;
+          })
+          .join("");
+        return `
+          <tr>
+            <td class="row-label">${s}</td>
+            ${dayCells}
+            <td class="font-mono" style="font-weight: 600; color: var(--text-sumi-secondary);">${totalShifts} ${isJa ? "日" : "d"}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const colTotals = days
+      .map((d) => {
+        const sumDay = staff.reduce((acc, s) => acc + Math.round(cellMap.get(`${s}__${d}`) ?? 0), 0);
+        return `<td>${sumDay} ${isJa ? "名" : "staff"}</td>`;
+      })
+      .join("");
+
+    const grandTotal = staff.reduce(
+      (acc, s) =>
+        acc + days.reduce((dAcc, d) => dAcc + Math.round(cellMap.get(`${s}__${d}`) ?? 0), 0),
+      0
+    );
+
+    visualizerContainer.innerHTML = `
+      <div class="viz-container-full">
+        <div class="viz-header-label">
+          <span>${isJa ? "週間シフト割り当て表 (Staff × Day)" : "Weekly Staff Shift Roster (Staff × Day)"}</span>
+          <span>${isJa ? `総シフト枠: ${grandTotal} 人日` : `Total Assigned Shifts: ${grandTotal} person-days`}</span>
+        </div>
+        <div class="viz-matrix-wrap">
+          <table class="viz-matrix-table">
+            <thead>
+              <tr>
+                <th class="row-label">${isJa ? "スタッフ" : "Staff"}</th>
+                ${headerCols}
+                <th>${isJa ? "週計" : "Total"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+              <tr class="summary-row">
+                <td class="row-label">${isJa ? "日別出勤数" : "Daily Headcount"}</td>
+                ${colTotals}
+                <td>${grandTotal}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderFlowMatrixVisualizer(matrix: {
+    rows: string[];
+    cols: string[];
+    cellMap: Map<string, number>;
+  }) {
+    const isJa = getLocale() === "ja";
+    const { rows: origins, cols: dests, cellMap } = matrix;
+
+    const headerCols = dests.map((d) => `<th>${d}</th>`).join("");
+    const bodyRows = origins
+      .map((o) => {
+        let rowSum = 0;
+        const cells = dests
+          .map((d) => {
+            const val = cellMap.get(`${o}__${d}`) ?? 0;
+            rowSum += val;
+            if (val > 1e-4) {
+              const formatted = Number(val.toFixed(1)).toLocaleString();
+              return `<td><span class="flow-cell-active">${formatted}</span></td>`;
+            }
+            return `<td><span class="flow-cell-zero">—</span></td>`;
+          })
+          .join("");
+        return `
+          <tr>
+            <td class="row-label">${o}</td>
+            ${cells}
+            <td class="font-mono" style="font-weight: 600; color: var(--text-sumi-secondary);">${Number(rowSum.toFixed(1)).toLocaleString()}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const colSums = dests
+      .map((d) => {
+        const sumCol = origins.reduce((acc, o) => acc + (cellMap.get(`${o}__${d}`) ?? 0), 0);
+        return `<td>${Number(sumCol.toFixed(1)).toLocaleString()}</td>`;
+      })
+      .join("");
+
+    const totalFlow = origins.reduce(
+      (acc, o) => acc + dests.reduce((dAcc, d) => dAcc + (cellMap.get(`${o}__${d}`) ?? 0), 0),
+      0
+    );
+
+    visualizerContainer.innerHTML = `
+      <div class="viz-container-full">
+        <div class="viz-header-label">
+          <span>${isJa ? "最適輸送フローマトリクス (発送拠点 × 配送先)" : "Optimal Shipment Flow Matrix (Origin × Destination)"}</span>
+          <span>${isJa ? `総輸送量: ${Number(totalFlow.toFixed(1)).toLocaleString()} units` : `Total Shipped: ${Number(totalFlow.toFixed(1)).toLocaleString()} units`}</span>
+        </div>
+        <div class="viz-matrix-wrap">
+          <table class="viz-matrix-table">
+            <thead>
+              <tr>
+                <th class="row-label">${isJa ? "発送拠点 \\ 配送先" : "Origin \\ Store"}</th>
+                ${headerCols}
+                <th>${isJa ? "出荷計" : "Shipped"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bodyRows}
+              <tr class="summary-row">
+                <td class="row-label">${isJa ? "入荷計 (Demand)" : "Received Total"}</td>
+                ${colSums}
+                <td>${Number(totalFlow.toFixed(1)).toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderCouponVisualizer() {
+    if (!currentModel) return;
+    const isJa = getLocale() === "ja";
+    const cpnVars = currentModel.variables.filter((v) => v.name.startsWith("cpn_"));
+    const addonVar = currentModel.variables.find((v) => v.name.startsWith("addon_"));
+
+    const addonSelected = addonVar && Math.round(addonVar.value ?? 0) === 1;
+    const netPayable = currentModel.objectiveValue ?? 0;
+
+    const couponRows = cpnVars
+      .map((v) => {
+        const code = v.name.replace(/^cpn_/, "");
+        const applied = Math.round(v.value ?? 0) === 1;
+        return `
+          <div class="coupon-row-item ${applied ? "applied" : ""}">
+            <span class="font-mono" style="font-weight: 600; color: var(--text-sumi);">${code}</span>
+            <span class="font-mono" style="font-size: 0.72rem; font-weight: 600; color: ${applied ? "var(--color-seiji)" : "var(--text-sumi-muted)"};">
+              ${applied ? (isJa ? "✓ 適用 (Applied)" : "✓ Applied") : (isJa ? "未適用" : "Skipped")}
+            </span>
+          </div>
+        `;
+      })
+      .join("");
+
+    const addonName = addonVar ? addonVar.name.replace(/^addon_/, "").replace(/_/g, " ") : "USB Cable";
+
+    visualizerContainer.innerHTML = `
+      <div class="viz-container-full">
+        <div class="viz-header-label">
+          <span>${isJa ? "クーポン適用・決済最適化サマリー" : "Checkout & Coupon Optimization Summary"}</span>
+        </div>
+        <div class="coupon-summary-layout">
+          <div class="coupon-list-box">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-sumi-secondary);">
+              ${isJa ? "プロモーション・クーポン判定" : "Coupon Selection Status"}
+            </div>
+            ${couponRows}
+          </div>
+          <div class="coupon-receipt-box">
+            <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-sumi-secondary);">
+              ${isJa ? "カート追加提案 & 最終支払額" : "Smart Add-on & Final Total"}
+            </div>
+            <div class="coupon-row-item ${addonSelected ? "addon" : ""}">
+              <span style="font-weight: 500;">${isJa ? `追加アイテム (${addonName})` : `Filler Add-on (${addonName})`}</span>
+              <span class="font-mono" style="font-weight: 600; color: ${addonSelected ? "var(--color-ai)" : "var(--text-sumi-muted)"};">
+                ${addonSelected ? (isJa ? "✓ カートに追加 (+$10)" : "✓ Added (+$10)") : (isJa ? "追加なし" : "Not Added")}
+              </span>
+            </div>
+            <div style="margin-top: auto; padding-top: 8px; border-top: 1px dashed var(--border-washi); display: flex; justify-content: space-between; align-items: baseline;">
+              <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-sumi);">${isJa ? "最適支払総額 (Net Payable)" : "Optimal Net Payable"}</span>
+              <span class="font-mono" style="font-size: 1.25rem; font-weight: 700; color: var(--color-hi);">$${netPayable.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
   function renderVisualizer() {
     if (!currentModel || currentModel.status === "Infeasible" || currentModel.status === "Unsat") {
@@ -395,6 +736,27 @@ export function initApp() {
       return;
     }
 
+    // 1. Check for 2D Shift Roster (shift_<staff>_<day>)
+    const shiftMatrix = extract2DMatrix("shift");
+    if (shiftMatrix) {
+      renderShiftRosterVisualizer(shiftMatrix);
+      return;
+    }
+
+    // 2. Check for 2D Transportation Flow Matrix (ship_<factory>_<store>)
+    const shipMatrix = extract2DMatrix("ship");
+    if (shipMatrix) {
+      renderFlowMatrixVisualizer(shipMatrix);
+      return;
+    }
+
+    // 3. Check for E-Commerce Cart & Coupon Optimizer (cpn_*)
+    if (currentModel.variables.some((v) => v.name.startsWith("cpn_"))) {
+      renderCouponVisualizer();
+      return;
+    }
+
+    // 4. Default clean Decision Variables Summary cards
     const vars = currentModel.variables || [];
     const nonZeroVars = vars.filter((v) => (v.value ?? 0) > 1e-5);
 
