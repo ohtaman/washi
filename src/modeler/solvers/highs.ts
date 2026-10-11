@@ -22,8 +22,9 @@ export function mapHighsStatus(rawStatus: unknown): SolverStatus {
     case "Infeasible":
       return "Infeasible";
     case "Unbounded":
-    case "Primal infeasible or unbounded":
       return "Unbounded";
+    case "Primal infeasible or unbounded":
+      return "Unknown";
     case "Time limit reached":
     case "TimeLimit":
       return "TimeLimit";
@@ -49,6 +50,9 @@ export function mapHighsStatus(rawStatus: unknown): SolverStatus {
   }
 
   const lower = normalized.toLowerCase();
+  if (lower.includes("infeasible") && lower.includes("unbounded")) {
+    return "Unknown";
+  }
   if (lower.includes("infeasible")) {
     return "Infeasible";
   }

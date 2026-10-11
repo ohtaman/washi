@@ -14,7 +14,7 @@ describe("HiGHS status mapping", () => {
   it("maps actual HiGHS status strings for infeasible, unbounded, limits, and feasible", () => {
     expect(mapHighsStatus("Infeasible")).toBe("Infeasible");
     expect(mapHighsStatus("Unbounded")).toBe("Unbounded");
-    expect(mapHighsStatus("Primal infeasible or unbounded")).toBe("Unbounded");
+    expect(mapHighsStatus("Primal infeasible or unbounded")).toBe("Unknown");
     expect(mapHighsStatus("Time limit reached")).toBe("TimeLimit");
     expect(mapHighsStatus("TimeLimit")).toBe("TimeLimit");
     expect(mapHighsStatus("Iteration limit reached")).toBe("IterationLimit");
