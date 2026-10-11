@@ -300,39 +300,67 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ## 🌐 Browser & Web Worker Usage
 
-WaSHI is engineered for seamless execution in modern browsers, frontend frameworks (Vite, Next.js, React, Vue, Svelte), and Web Workers.
+The default HiGHS engine uses the package's WASM asset. There is **no automatic CDN fallback**. Node.js uses the installed HiGHS runtime; Vite and webpack 5 can discover the package-relative WASM and Worker references when building a browser application.
 
-### 1. Zero-Config Mode (Automatic CDN Fallback)
-In browser environments, if `highs.wasm` is not found on your local origin, WaSHI automatically falls back to the official jsDelivr CDN. You can optimize without copying files or writing boilerplate:
+### npm with a bundler
 
 ```typescript
 import { Model } from "@ohtaman/washi";
-
 const model = new Model();
-// ... define variables & constraints
-await model.solve(); // Works instantly with zero setup!
+// Define variables, objective and constraints.
+await model.solve();
 ```
 
-### 2. Bundler-Native Asset Hosting (Vite / Webpack / Rollup)
-To bundle and self-host `highs.wasm` as a versioned, hashed static asset with your application:
+No manual WASM copy or URL configuration is needed in the tested Vite / webpack builds. Other bundlers and SSR need their own integration checks; call the browser solver on the client. Worker execution is the browser default. Use `model.solve({ useWorker: false })` for a simple main-thread demo; a long solve will block the UI.
+
+### Browser ESM without an application build
+
+Serve the **entire `dist/browser` directory**, including its JS chunks, `highs.wasm` and Worker. No import map is needed:
+
+```html
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  const model = new Model();
+  // Define variables, objective and constraints.
+  await model.solve({ useWorker: false });
+</script>
+```
+
+### Plain script / CodePen
+
+The package also includes `dist/browser/washi.min.js`, which exports the `Washi` global. Put that file's URL in CodePen's External Scripts, or use a script tag:
+
+```html
+<script src="./washi/washi.min.js"></script>
+<script>
+  const model = new Washi.Model();
+  // Define variables, objective and constraints.
+  model.solve({ useWorker: false }).then(status => console.log(status));
+</script>
+```
+
+After a version containing these files is published, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js`. Replace `VERSION` with that released version; the existing 0.1.1 release does not contain these browser builds. For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
+
+The browser builds include the HiGHS engine, not the optional GLPK/Z3 engines. Use the npm package and optional dependencies for those integrations. `examples/distribution/` contains complete ESM and script examples.
+
+### Offline distribution, Workers and custom hosting
+
+Deploy the full application build or the entire browser distribution to a local HTTP / intranet server. With all assets locally available, an empty browser cache does not require access to the internet. Saving only the HTML or the first JS file is insufficient. `file://` execution and automatic PWA caching are not supported by this distribution.
+
+ESM assets resolve relative to their module URL; the script build captures its own script URL at load time. CDN Workers use a Blob module bootstrap. The server must permit cross-origin JS / WASM loading; CSP must permit the selected script / connection origins and `worker-src blob:` for CDN Workers. If that is unavailable, use `useWorker: false`. Worker load / message failures reject pending solves rather than leaving them unresolved.
+
+For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain available. To explicitly use the existing HiGHS CDN:
 
 ```typescript
-import wasmUrl from "@ohtaman/washi/highs.wasm?url";
-import { setHighsWasmUrl } from "@ohtaman/washi";
-
-// Configure once at app startup
-setHighsWasmUrl(wasmUrl);
+import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
+setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
 ```
 
-### 3. Air-Gapped & Enterprise Offline Environments
-In strict enterprise intranet or air-gapped environments where external CDN network access is disallowed:
+Failed initialization reports the attempted URL and does not try a different host. This changes the previous local-root/CDN fallback behavior: deploy the generated assets or configure an explicit URL.
 
-```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
+### Verify the distributable
 
-// Point strictly to your internal assets (completely disables CDN fallback)
-setHighsWasmUrl("/static/highs.wasm");
-```
+`npm run test:distribution` packs and installs the actual npm tarball, builds Vite / webpack consumers without optional peers, and runs their emitted JS with real WASM in a VM. This is not a browser/CORS test. For Playwright Chromium checks, run `npx playwright install chromium` and `RUN_DISTRIBUTION_BROWSER=1 npm run test:distribution`. CI also runs that browser mode, including separate-origin browser bundles with external network requests blocked.
 
 ---
 

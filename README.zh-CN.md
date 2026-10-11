@@ -300,39 +300,67 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ## 🌐 浏览器与 Web Worker 使用指南
 
-WaSHI 原生支持在现代网页浏览器、前端主流框架（Vite、Next.js、React、Vue、Svelte）以及 Web Worker 中运行。
+HiGHS 默认使用包内的 WASM，**不会自动回退到 CDN**。Node.js 使用已安装的 HiGHS；Vite / webpack 5 可以根据包内的 WASM 和 Worker 引用生成部署文件。
 
-### 1. 零配置模式（官方 CDN 智能回退）
-在浏览器环境下，若当前域名根路径未部署 `highs.wasm`，WaSHI 会自动从官方 jsDelivr 高速 CDN 安全拉取二进制文件。您无需任何额外配置或文件复制：
+### npm 与构建工具
 
 ```typescript
 import { Model } from "@ohtaman/washi";
-
 const model = new Model();
-// ... 定义变量与约束
-await model.solve(); // 零配置即可直接运行！
+// 定义变量、目标函数和约束
+await model.solve();
 ```
 
-### 2. 现代打包工具自托管（Vite / Webpack / Rollup）
-如果您希望将 `highs.wasm` 作为项目打包产物的一部分进行自托管与版本哈希管理：
+在验证的 Vite / webpack 构建中，不需要手动复制 WASM 或配置 URL。其他构建工具及 SSR 需要单独验证；浏览器求解应在客户端执行。浏览器默认使用 Worker。简单演示可以使用 `model.solve({ useWorker: false })`，但较长的计算会阻塞 UI。
+
+### 浏览器原生 ESM（无需应用构建）
+
+通过 HTTP 提供整个 `dist/browser` 目录，包括 JS 分块、`highs.wasm` 和 Worker。不需要 Import Maps。
+
+```html
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  const model = new Model();
+  // 定义变量、目标函数和约束
+  await model.solve({ useWorker: false });
+</script>
+```
+
+### 普通 script / CodePen
+
+`dist/browser/washi.min.js` 导出全局 API `Washi`。将其 URL 添加到 CodePen 的 External Scripts，或使用：
+
+```html
+<script src="./washi/washi.min.js"></script>
+<script>
+  const model = new Washi.Model();
+  // 定义变量、目标函数和约束
+  model.solve({ useWorker: false }).then(status => console.log(status));
+</script>
+```
+
+包含这些文件的版本发布后，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js`。将 `VERSION` 替换为支持该功能的固定版本；已发布的 0.1.1 不包含这些浏览器构建。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
+
+浏览器构建包含 HiGHS 引擎，不包含可选的 GLPK / Z3 引擎。其他引擎集成请使用 npm 包及可选依赖。完整示例位于 `examples/distribution/`。
+
+### 工厂内网、离线部署、Worker 与自定义 URL
+
+将应用构建产物或整个 `dist/browser` 目录部署到本地 HTTP / 内网服务器。所有资源可在本地访问时，即使浏览器缓存为空也不需要外部网络。仅保存 HTML 或第一个 JS 文件是不够的。不保证 `file://` 执行，也不自动提供 PWA 缓存。
+
+ESM 根据模块 URL 解析资源；script 构建在加载时保存自身的 URL。CDN Worker 使用 Blob 模块启动，需要服务端的跨域资源许可及相应 CSP。CDN Worker 还需允许 `worker-src blob:`。不支持时可使用 `useWorker: false`。Worker 加载或消息处理失败会拒绝求解 Promise。
+
+自定义地址仍可通过 `setHighsWasmUrl(url)` 或 `options.wasmUrl` 指定。显式选择现有 HiGHS CDN：
 
 ```typescript
-import wasmUrl from "@ohtaman/washi/highs.wasm?url";
-import { setHighsWasmUrl } from "@ohtaman/washi";
-
-// 在应用入口处配置一次
-setHighsWasmUrl(wasmUrl);
+import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
+setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
 ```
 
-### 3. 企业内网与完全离线（Air-gapped）环境
-针对严禁外部 CDN 请求的企业内网或纯离线环境：
+初始化失败会返回包含请求地址的错误，不会尝试其他主机。依赖旧的域名根目录 / CDN 自动回退的应用需部署生成资源或显式配置 URL。
 
-```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
+### 验证发布产物
 
-// 指定内部静态资源路径（将完全禁用外部 CDN 回退）
-setHighsWasmUrl("/static/highs.wasm");
-```
+`npm run test:distribution` 安装实际 npm tarball，在没有可选依赖时构建 Vite / webpack 应用，并通过 VM 执行生成的 JS 和真实 WASM。这不等同于浏览器 / CORS 验证。安装 `npx playwright install chromium` 后，运行 `RUN_DISTRIBUTION_BROWSER=1 npm run test:distribution` 以验证 Chromium。CI 使用该模式，验证跨域部署及外部网络请求阻断。
 
 ---
 

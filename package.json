@@ -22,10 +22,17 @@
       "types": "./dist/types/modeler/solvers/glpk.d.ts",
       "import": "./dist/lib/solvers/glpk.js",
       "default": "./dist/lib/solvers/glpk.js"
-    }
+    },
+    "./browser": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/browser/washi.js",
+      "default": "./dist/browser/washi.js"
+    },
+    "./browser/washi.min.js": "./dist/browser/washi.min.js"
   },
   "files": [
     "dist/lib",
+    "dist/browser",
     "dist/types",
     "README.md",
     "README.ja.md",
@@ -37,12 +44,14 @@
     "dev": "vite",
     "build:demo": "vite build",
     "build:types": "tsc -p tsconfig.lib.json",
-    "build:lib": "vite build --config vite.config.lib.ts",
-    "build": "npm run build:types && npm run build:lib && npm run build:demo",
+    "build:lib": "node scripts/build-library.mjs",
+    "build": "npm run build:types && npm run build:lib && npm run build:browser && npm run build:demo",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "RUN_E2E=1 vitest run test/e2e.test.ts",
-    "prepublishOnly": "npm run build:types && npm run build:lib"
+    "prepublishOnly": "npm run build:types && npm run build:lib && npm run build:browser",
+    "build:browser": "node scripts/build-browser.mjs",
+    "test:distribution": "npm run build:types && npm run build:lib && npm run build:browser && node --experimental-vm-modules scripts/check-distribution.mjs"
   },
   "keywords": [
     "optimization",
@@ -95,6 +104,9 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitest": "^5.0.2",
+    "webpack": "^5.111.1",
     "z3-solver": "^5.2.0"
-  }
+  },
+  "jsdelivr": "./dist/browser/washi.min.js",
+  "unpkg": "./dist/browser/washi.min.js"
 }

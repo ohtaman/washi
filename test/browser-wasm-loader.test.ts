@@ -17,6 +17,7 @@ describe("HiGHS WebAssembly Loader & Resolver", () => {
   afterEach(() => {
     setHighsWasmUrl(null);
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe("isValidWasmHeader", () => {
@@ -61,59 +62,20 @@ describe("HiGHS WebAssembly Loader & Resolver", () => {
       expect(resolved).toBe("https://enterprise.internal/highs.wasm");
     });
 
-    it("falls back to official CDN when local probe returns 404", async () => {
-      // Mock global fetch to return 404
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 404,
-        headers: new Headers(),
-      });
+    it("resolves the bundled asset without any network probe", async () => {
+      const fetchMock = vi.fn().mockRejectedValue(new Error("network blocked"));
       vi.stubGlobal("fetch", fetchMock);
-
       const resolved = await resolveBrowserWasmUrl();
-      expect(resolved).toBe(OFFICIAL_HIGHS_CDN_WASM_URL);
-    });
-
-    it("falls back to official CDN when local probe returns HTML (SPA index.html fallback)", async () => {
-      // Mock global fetch returning HTML content
-      const headers = new Headers();
-      headers.set("content-type", "text/html; charset=utf-8");
-
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers,
-      });
-      vi.stubGlobal("fetch", fetchMock);
-
-      const resolved = await resolveBrowserWasmUrl();
-      expect(resolved).toBe(OFFICIAL_HIGHS_CDN_WASM_URL);
-    });
-
-    it("adopts local URL when local probe returns a valid WASM binary", async () => {
-      const validWasmHeader = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00]);
-      const headers = new Headers();
-      headers.set("content-type", "application/wasm");
-
-      const mockBody = {
-        getReader: () => ({
-          read: vi.fn().mockResolvedValue({ value: validWasmHeader, done: false }),
-          cancel: vi.fn().mockResolvedValue(undefined),
-        }),
-      };
-
-      const fetchMock = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        headers,
-        body: mockBody,
-      });
-      vi.stubGlobal("fetch", fetchMock);
-
-      const resolved = await resolveBrowserWasmUrl();
-      expect(resolved).toMatch(/highs\.wasm$/);
+      expect(resolved).toBe(new URL("../public/highs.wasm", import.meta.url).href);
       expect(resolved).not.toBe(OFFICIAL_HIGHS_CDN_WASM_URL);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
+
+    it("keeps CDN available only through an explicit choice", async () => {
+      setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
+      expect(await resolveBrowserWasmUrl()).toBe(OFFICIAL_HIGHS_CDN_WASM_URL);
+    });
+
   });
 
   describe("Node.js seamless operation", () => {
