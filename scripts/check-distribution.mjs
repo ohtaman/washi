@@ -219,17 +219,21 @@ async function testZ3WorkerErrorAndRecovery(browserRoot) {
           }).catch((error) => element.onerror?.({ type: "error", target: element, error }));
         } },
       };
-      let shouldFail = true;
+      let failMode = "async";
       let failMessage = "Worker blocked by CSP (simulated error)";
       let workerCount = 0;
-      context.setFailWorker = (fail, msg = "Worker blocked by CSP (simulated error)") => {
-        shouldFail = fail;
+      context.setFailWorker = (mode, msg = "Worker blocked by CSP (simulated error)") => {
+        failMode = mode === true ? "async" : mode === false ? "none" : mode;
         failMessage = msg;
       };
       context.getWorkerCount = () => workerCount;
       context.Worker = class {
         constructor(workerUrl) {
-          if (shouldFail) {
+          workerCount++;
+          if (failMode === "sync") {
+            throw new Error(failMessage);
+          }
+          if (failMode === "async") {
             setTimeout(() => {
               this.onerror?.({ message: failMessage });
             }, 10);
@@ -282,20 +286,46 @@ async function testZ3WorkerErrorAndRecovery(browserRoot) {
     })()
   `, context);
 
-  await assert.rejects(timeout(runCheck()), (err) => {
-    assert(err.message.includes("Worker blocked by CSP"), `Expected worker error but got: ${err.message}`);
-    return true;
-  });
-  console.log("PASS Z3 worker error: internal Worker load error rejects check() promise promptly");
+  const unhandled = [];
+  const onUnhandled = (reason) => unhandled.push(reason);
+  process.on("unhandledRejection", onUnhandled);
 
-  // Verify retry execution: internal asyncMutex must not remain locked.
-  // A subsequent attempt must execute and reach worker creation rather than hanging indefinitely.
-  context.setFailWorker(true, "Worker blocked by CSP on retry");
-  await assert.rejects(timeout(runCheck(), 5000), (err) => {
-    assert(err.message.includes("Worker blocked by CSP on retry"), `Expected retry worker error but got: ${err.message}`);
-    return true;
-  });
-  console.log("PASS Z3 worker error: subsequent check() retry executes without asyncMutex deadlock");
+  try {
+    // 1. Asynchronous Worker error (e.g. CSP / CORS load failure)
+    context.setFailWorker("async", "Worker blocked by CSP");
+    await assert.rejects(timeout(runCheck()), (err) => {
+      assert(err.message.includes("Worker blocked by CSP"), `Expected worker error but got: ${err.message}`);
+      return true;
+    });
+    console.log("PASS Z3 worker error: internal Worker load error rejects check() promise promptly");
+
+    // 2. Synchronous Worker constructor exception (e.g. SecurityError in browser)
+    context.setFailWorker("sync", "Worker constructor synchronous failure");
+    await assert.rejects(timeout(runCheck(), 5000), (err) => {
+      assert(err.message.includes("Worker constructor synchronous failure"), `Expected synchronous error but got: ${err.message}`);
+      return true;
+    });
+    console.log("PASS Z3 worker error: synchronous Worker constructor exception rejects check() promptly and invalidates runtime");
+
+    // 3. Verify retry execution: internal asyncMutex must not remain locked.
+    // A subsequent attempt must execute and reach worker creation rather than hanging indefinitely.
+    context.setFailWorker("async", "Worker blocked by CSP on retry");
+    await assert.rejects(timeout(runCheck(), 5000), (err) => {
+      assert(err.message.includes("Worker blocked by CSP on retry"), `Expected retry worker error but got: ${err.message}`);
+      return true;
+    });
+    console.log("PASS Z3 worker error: subsequent check() retry executes without asyncMutex deadlock");
+
+    // 4. Verify killZ3Threads cleanup does not trigger unhandled promise rejections
+    const z3Mod = await context.loadModule(z3Url);
+    if (typeof z3Mod.killZ3Threads === "function") {
+      await z3Mod.killZ3Threads();
+    }
+    assert.equal(unhandled.length, 0, `Detected unhandled promise rejections: ${unhandled.map((u) => u?.message || String(u)).join(", ")}`);
+    console.log("PASS Z3 worker error: killZ3Threads cleanup completes cleanly without unhandledRejection");
+  } finally {
+    process.off("unhandledRejection", onUnhandled);
+  }
 }
 
 let failed = false;

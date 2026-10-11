@@ -53,12 +53,19 @@ function hookEmscriptenAsyncCall(em: any): void {
       rejectFn = reject;
       activeAsyncRejects.add(reject);
     });
+    // Ensure trackerPromise never triggers unhandledRejection if rejected later
+    trackerPromise.catch(() => {});
 
-    const callPromise = originalAsyncCall.call(this, f, ...args);
-
-    return Promise.race([callPromise, trackerPromise]).finally(() => {
+    try {
+      const callPromise = originalAsyncCall.call(this, f, ...args);
+      return Promise.race([callPromise, trackerPromise]).finally(() => {
+        activeAsyncRejects.delete(rejectFn);
+      });
+    } catch (syncErr: any) {
       activeAsyncRejects.delete(rejectFn);
-    });
+      notifyZ3WorkerError(syncErr);
+      throw syncErr;
+    }
   };
 }
 
@@ -125,24 +132,34 @@ function attachPThreadWorkerErrorHandling(em: any): void {
   const originalLoad = em.PThread.loadWasmModuleToWorker;
   if (typeof originalLoad === "function") {
     em.PThread.loadWasmModuleToWorker = function (worker: any) {
-      const p = originalLoad.call(this, worker);
-      // originalLoad sets worker.onerror = (e) => throw e;
-      // We override it immediately after originalLoad.call to prevent unhandled throws,
-      // notify active solve/check promises, and clean up threads:
-      worker.onerror = (e: any) => {
+      try {
+        const p = originalLoad.call(this, worker);
+        // originalLoad sets worker.onerror = (e) => throw e;
+        // We override it immediately after originalLoad.call to prevent unhandled throws,
+        // notify active solve/check promises, and clean up threads:
+        worker.onerror = (e: any) => {
+          notifyZ3WorkerError(e);
+        };
+        return p;
+      } catch (e: any) {
         notifyZ3WorkerError(e);
-      };
-      return p;
+        throw e;
+      }
     };
   }
 
   const originalAllocate = em.PThread.allocateUnusedWorker;
   if (typeof originalAllocate === "function") {
     em.PThread.allocateUnusedWorker = function () {
-      originalAllocate.call(this);
-      const worker = this.unusedWorkers?.[this.unusedWorkers.length - 1];
-      if (worker) {
-        hookWorker(worker);
+      try {
+        originalAllocate.call(this);
+        const worker = this.unusedWorkers?.[this.unusedWorkers.length - 1];
+        if (worker) {
+          hookWorker(worker);
+        }
+      } catch (e: any) {
+        notifyZ3WorkerError(e);
+        throw e;
       }
     };
   }
