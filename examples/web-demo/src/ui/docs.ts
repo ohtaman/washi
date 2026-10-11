@@ -9,13 +9,13 @@ export const DOCS_HTML = `
     <h3>パッケージの導入と利用環境</h3>
     <div class="code-card">
       <div class="code-title">npm / pnpm / bun (パッケージ公開後の導入例)</div>
-      <pre><code>npm install highs-web # またはローカルパスから npm install ./path/to/highs-web</code></pre>
+      <pre><code>npm install @ohtaman/washi</code></pre>
     </div>
     <div class="code-card">
-      <div class="code-title">ブラウザ直接利用 (npm 公開後に esm.sh CDN から直接読み込む場合)</div>
+      <div class="code-title">ブラウザ標準 ESM (対応版の公開後、VERSION を固定して利用)</div>
       <pre><code>&lt;script type="module"&gt;
-  // ※ npm publish 後に esm.sh から即座に利用可能になります
-  import { Model, INTEGER, sum } from "https://esm.sh/highs-web";
+  // 対応版の dist/browser 一式を CDN または社内 HTTP サーバーから配信します
+  import { Model, INTEGER, sum } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.js";
 
   const m = new Model({ name: "Production", sense: "Maximize" });
   const x = m.addVar({ name: "x", type: INTEGER, lb: 0 });
@@ -25,11 +25,17 @@ export const DOCS_HTML = `
   m.addConstraint(x.add(y.mul(2)).le(40), "c1");
   m.addConstraint(x.mul(2).add(y).le(50), "c2");
 
-  const status = await m.optimize();
+  const status = await m.optimize({ useWorker: false });
   console.log("最適目的関数値:", m.objectiveValue); // 1100
   console.log("x:", x.value, "y:", y.value);     // 20, 10
 &lt;/script&gt;</code></pre>
     </div>
+  </div>
+
+  <div class="docs-section">
+    <h3>配布とオフライン利用</h3>
+    <p>npm から Vite / webpack に組み込むと、同梱 WASM と Worker が配布アセットとして出力されます。外部 CDN への自動切り替えはありません。ブラウザ直接利用は dist/browser 一式を HTTP 配信してください。必要なファイルがローカルにあれば、外部ネットワークなしで計算できます。</p>
+    <p>CodePen の External Scripts には対応版の dist/browser/washi.min.js の URL を追加し、Washi.Model を使います。簡単なデモは solve({ useWorker: false }) で実行できます。公開済み 0.1.1 はこの配布形式に未対応です。CDN Worker を使う場合は CORS と CSP の対応が必要です。</p>
   </div>
 
   <div class="docs-section">

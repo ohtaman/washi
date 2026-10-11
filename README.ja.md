@@ -300,39 +300,67 @@ console.log(`x = ${value(x)}, y = ${value(y)}`);
 
 ## 🌐 ブラウザ & Web Worker での利用方法
 
-WaSHI は、モダンなブラウザ、フロントエンドフレームワーク（Vite, Next.js, React, Vue, Svelte）、および Web Worker 上でゼロコンフィグで動作するように設計されています。
+HiGHS はデフォルトでパッケージ同梱 WASM を使います。**CDN への自動フォールバックはありません。** Node.js はインストールされた HiGHS を使い、Vite / webpack 5 はパッケージ内の WASM・Worker 参照から配布ファイルを生成します。
 
-### 1. ゼロコンフィグ動作（公式 CDN 自動フォールバック）
-ブラウザ環境において、オリジンルートに `highs.wasm` が配置されていない場合、WaSHI は自動的に公式 jsDelivr CDN から安全にバイナリを取得します。追加の設定コードやファイルコピーは一切不要です：
+### npm とバンドラー
 
 ```typescript
 import { Model } from "@ohtaman/washi";
-
 const model = new Model();
-// ... 変数・制約の定義
-await model.solve(); // 設定なしで即座に動作！
+// 変数・目的関数・制約を定義
+await model.solve();
 ```
 
-### 2. モダンバンドラーでの自前アセット管理（Vite / Webpack / Rollup）
-`highs.wasm` を自分のアプリケーションの静的アセット（ハッシュ付き配信）として自前ホストしたい場合：
+検証対象の Vite / webpack ビルドでは WASM の手動コピー・URL 指定は不要です。その他のバンドラーや SSR は個別に確認し、ブラウザの求解はクライアントで実行してください。ブラウザでは Worker をデフォルトで使用します。簡単なデモは `model.solve({ useWorker: false })` でも動きますが、長い計算中は UI が止まります。
+
+### ブラウザ標準 ESM（利用者側のビルド不要）
+
+`dist/browser` 一式（JS の分割ファイル・`highs.wasm`・Worker を含む）を HTTP 配信します。Import Maps は不要です。
+
+```html
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  const model = new Model();
+  // 変数・目的関数・制約を定義
+  await model.solve({ useWorker: false });
+</script>
+```
+
+### 通常の script / CodePen
+
+`dist/browser/washi.min.js` はグローバル API `Washi` を公開します。CodePen の External Scripts にその URL を追加するか、次のように読み込みます。
+
+```html
+<script src="./washi/washi.min.js"></script>
+<script>
+  const model = new Washi.Model();
+  // 変数・目的関数・制約を定義
+  model.solve({ useWorker: false }).then(status => console.log(status));
+</script>
+```
+
+これらのファイルを含む版の npm 公開後は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@VERSION/dist/browser/washi.min.js` にできます。`VERSION` は対応版に置き換えて固定してください。公開済みの 0.1.1 にはブラウザ用ビルドはありません。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
+
+ブラウザ用ビルドに含まれるエンジンは HiGHS です。GLPK / Z3 エンジンの連携には npm パッケージと任意依存を使ってください。完結した利用例は `examples/distribution/` にあります。
+
+### 工場内・オフライン配布、Worker、自前配信
+
+アプリのビルド出力一式、または `dist/browser` 一式をローカル HTTP サーバー・社内サーバーに配布します。必要なアセットがローカルにあれば、ブラウザのキャッシュが空でも外部ネットワークは不要です。HTML や最初の JS だけでは不足します。`file://` 実行や PWA の自動キャッシュは対象外です。
+
+ESM はモジュール URL、script 版は読み込み時に保持した script URL からアセットを解決します。CDN の Worker は Blob のモジュールから起動します。配信元の CORS と、CSP の script・通信先許可が必要です。CDN Worker では `worker-src blob:` も許可してください。使えない場合は `useWorker: false` を指定します。Worker の読み込み・メッセージ処理に失敗した場合は、求解 Promise がエラーになります。
+
+自前 URL は `setHighsWasmUrl(url)` / `options.wasmUrl` で指定できます。従来の HiGHS CDN を明示的に選ぶ場合：
 
 ```typescript
-import wasmUrl from "@ohtaman/washi/highs.wasm?url";
-import { setHighsWasmUrl } from "@ohtaman/washi";
-
-// アプリ起動時に一度だけ設定
-setHighsWasmUrl(wasmUrl);
+import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
+setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
 ```
 
-### 3. 社内イントラ・完全オフライン（Air-gapped）環境での利用
-外部 CDN への通信が禁止されている社内イントラやオフライン環境の場合：
+初期化に失敗すると取得先を含むエラーを返し、別ホストには切り替えません。従来のオリジンルート / CDN 自動フォールバックを利用していた場合は、生成アセットを配布するか URL を明示してください。
 
-```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
+### 配布物の検証
 
-// 自前の静的ファイル配信パスを指定（外部 CDN へのフォールバックは完全無効化されます）
-setHighsWasmUrl("/static/highs.wasm");
-```
+`npm run test:distribution` は実際の npm tarball をインストールし、任意依存なしの Vite / webpack アプリをビルドして、生成 JS と実 WASM を VM で実行します。ブラウザ・CORS の検証とは別です。`npx playwright install chromium` 後に `RUN_DISTRIBUTION_BROWSER=1 npm run test:distribution` で Chromium の検証も実行できます。CI はそのモードを使い、別オリジン配信と外部ネットワーク遮断も確認します。
 
 ---
 

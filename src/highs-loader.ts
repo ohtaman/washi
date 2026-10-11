@@ -1,4 +1,6 @@
 import type { SolveOptions } from "./modeler/types.js";
+import { getBundledWasmUrl } from "./highs-assets.js";
+import { loadNodeHighs } from "./highs-node-runtime.js";
 
 export const OFFICIAL_HIGHS_CDN_WASM_URL =
   "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.wasm";
@@ -6,12 +8,14 @@ export const OFFICIAL_HIGHS_CDN_WASM_URL =
 type HighsInstance = any;
 
 let cachedHighsPromise: Promise<HighsInstance> | null = null;
+let cachedWasmKey: string | null = null;
 let customWasmUrl: string | null = null;
 
 export function setHighsWasmUrl(url: string | null) {
   customWasmUrl = url;
   // Invalidate cache if wasm url changes before load
   cachedHighsPromise = null;
+  cachedWasmKey = null;
 }
 
 export function getHighsWasmUrl(): string | null {
@@ -72,7 +76,7 @@ export async function probeWasmUrl(url: string): Promise<boolean> {
 /**
  * Resolve the HiGHS WASM URL for browser / worker environments.
  * - Explicit URLs (customWasmUrl or options.wasmUrl) are strictly used (no CDN fallback).
- * - Default resolution probes the local origin; if missing or returning HTML, falls back to the official CDN.
+ * - Default resolution uses the package asset, with no probe or external fallback.
  */
 export async function resolveBrowserWasmUrl(explicitUrl?: string): Promise<string> {
   if (explicitUrl) {
@@ -82,24 +86,7 @@ export async function resolveBrowserWasmUrl(explicitUrl?: string): Promise<strin
     return customWasmUrl;
   }
 
-  const localUrl =
-    typeof window !== "undefined"
-      ? new URL("/highs.wasm", window.location.origin).href
-      : typeof self !== "undefined" && (self as any).location
-      ? new URL("highs.wasm", (self as any).location.href).href
-      : "/highs.wasm";
-
-  const isLocalValid = await probeWasmUrl(localUrl);
-  if (isLocalValid) {
-    return localUrl;
-  }
-
-  if (typeof console !== "undefined" && console.info) {
-    console.info(
-      `[WaSHI] Local highs.wasm not found or invalid at "${localUrl}". Automatically falling back to official CDN: ${OFFICIAL_HIGHS_CDN_WASM_URL}`
-    );
-  }
-  return OFFICIAL_HIGHS_CDN_WASM_URL;
+  return getBundledWasmUrl();
 }
 
 /**
@@ -107,41 +94,51 @@ export async function resolveBrowserWasmUrl(explicitUrl?: string): Promise<strin
  * Works seamlessly in Node.js, Web Browsers, and Web Workers.
  */
 export async function getHighs(options: SolveOptions = {}): Promise<HighsInstance> {
-  if (cachedHighsPromise) {
+  const isNode =
+    typeof process !== "undefined" && process.versions?.node &&
+    (process as any).type !== "renderer";
+  const wasmUrl = isNode ? null : await resolveBrowserWasmUrl(options.wasmUrl);
+  const key = wasmUrl ?? "node";
+  if (cachedHighsPromise && cachedWasmKey === key) {
     return cachedHighsPromise;
   }
 
-  cachedHighsPromise = (async () => {
+  cachedWasmKey = key;
+  const initializing: Promise<HighsInstance> = (async () => {
     // Dynamically import highs to ensure compatibility with ESM / Bundler / Node
-    const highsModule = await import("highs");
-    const loadHighs = highsModule.default || highsModule;
-
-    const isNode =
-      typeof process !== "undefined" &&
-      process.versions &&
-      process.versions.node &&
-      (process as any).type !== "renderer";
+    const loadHighs = isNode
+      ? await loadNodeHighs()
+      : (await import("./highs-browser-runtime.js")).default;
 
     if (isNode) {
       return await loadHighs();
     }
 
     // Browser or Web Worker environment
-    const wasmUrl = await resolveBrowserWasmUrl(options.wasmUrl);
-
     const highsInstance = await loadHighs({
       locateFile: (file: string) => {
         if (file.endsWith(".wasm")) {
-          return wasmUrl;
+          return wasmUrl!;
         }
         return file;
       },
     });
 
     return highsInstance;
-  })();
-
-  return cachedHighsPromise;
+  })().catch((error) => {
+    if (cachedHighsPromise === initializing) {
+      cachedHighsPromise = null;
+      cachedWasmKey = null;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `[WaSHI] Failed to initialize HiGHS${wasmUrl ? ` from "${wasmUrl}"` : ""}. ` +
+      `Deploy the package's WASM asset or explicitly set wasmUrl; no CDN fallback is attempted. ${message}`,
+      { cause: error },
+    );
+  });
+  cachedHighsPromise = initializing;
+  return initializing;
 }
 
 export interface RawHighsSolveResult {

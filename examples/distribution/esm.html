@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WaSHI production planning</title>
+<h1>Production planning</h1>
+<p>Maximize 30x + 50y with x + 2y ≤ 40 and 2x + y ≤ 50.</p>
+<label><input id="worker" type="checkbox" checked> Solve in a Worker</label>
+<button id="solve" disabled>Solve</button>
+<pre id="result">Loading WaSHI…</pre>
+<script type="module">
+  import { Model } from "./washi/washi.js";
+  const button = document.querySelector("#solve");
+  const output = document.querySelector("#result");
+  button.disabled = false;
+  button.onclick = async () => {
+    button.disabled = true;
+    output.textContent = "Solving…";
+    try {
+      const model = new Model("Production");
+      const x = model.addVar({ name: "x", type: "Integer", lb: 0 });
+      const y = model.addVar({ name: "y", type: "Integer", lb: 0 });
+      model.maximize(x.mul(30).add(y.mul(50)));
+      model.addConstraint(x.add(y.mul(2)).le(40));
+      model.addConstraint(x.mul(2).add(y).le(50));
+      const status = await model.solve({ useWorker: document.querySelector("#worker").checked });
+      output.textContent = JSON.stringify({ status, objective: model.objectiveValue, x: x.value, y: y.value }, null, 2);
+    } catch (error) {
+      output.textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  };
+  button.click();
+</script>
+</html>

@@ -19,17 +19,21 @@ export async function getGlpk(): Promise<GlpkInstance> {
       process.versions.node &&
       (process as any).type !== "renderer";
 
-    if (isNode) {
-      // In Node.js environment: load the synchronous glpk.js/node build
-      const mod = await import("glpk.js/node");
+    try {
+      if (isNode) {
+        // Do not make web consumers resolve the Node-only optional peer.
+        const mod = await import(/* webpackIgnore: true */ /* @vite-ignore */ "glpk.js/node");
+        const loadGlpk = mod.default || mod;
+        return await loadGlpk();
+      }
+
+      // Keep the optional import inside try so an absent peer is not a build error.
+      const mod = await import("glpk.js");
       const loadGlpk = mod.default || mod;
       return await loadGlpk();
+    } catch (error) {
+      throw new Error("[WaSHI] Could not load GLPK. Install the optional glpk.js dependency before selecting this solver.", { cause: error });
     }
-
-    // In Browser environment: load default glpk.js build
-    const mod = await import("glpk.js");
-    const loadGlpk = mod.default || mod;
-    return await loadGlpk();
   })();
 
   return cachedGlpkPromise;
