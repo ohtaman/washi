@@ -13,6 +13,8 @@ export default withMermaid(
     ["link", { rel: "icon", href: "/washi/washi-logo.svg", type: "image/svg+xml" }],
     ["link", { rel: "alternate icon", href: "/washi/washi-logo.png", type: "image/png" }],
     ["meta", { name: "theme-color", content: "#3b82f6" }],
+    // Service Worker を読み込み
+    ["script", { src: "/washi/coi-serviceworker.js" }],
   ],
   locales: {
     root: {
@@ -201,6 +203,14 @@ export default withMermaid(
     footer: {
       message: "Released under the MIT License.",
       copyright: "Copyright © 2026 Mitsuhisa Ota & WaSHI Contributors",
+    },
+  },
+  vite: {
+    server: {
+      headers: {
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp",
+      },
     },
   },
 })
