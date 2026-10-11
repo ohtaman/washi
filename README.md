@@ -4,7 +4,7 @@
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
     <img alt="WaSHI - Algebraic Modeler for TypeScript &amp; JavaScript" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>Intuitive Mathematical Optimization &amp; Algebraic Modeler for TypeScript &amp; JavaScript</strong></p>
+  <p><strong>Mathematical Optimization Modeler &amp; Algebraic System for TypeScript &amp; JavaScript</strong></p>
   <p>
     <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
   </p>
@@ -14,19 +14,17 @@
     <a href="./README.zh-CN.md">简体中文</a>
   </p>
   <p>
+    <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
+    <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
     <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
-    <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
-    <a href="https://bundlephobia.com/package/@ohtaman/washi"><img src="https://img.shields.io/badge/bundle%20size-7.2%20kB%20(gzip)-blue" alt="bundle size" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
-    <img src="https://img.shields.io/badge/types-TypeScript-blue" alt="TypeScript types" />
-    <img src="https://img.shields.io/badge/tests-120%2B%20passing-brightgreen" alt="tests" />
   </p>
 </div>
 
 ---
 
-**WaSHI** is a high-level algebraic modeling library that brings the expressive elegance of Python's **PuLP** and Julia's **JuMP** to the modern TypeScript and JavaScript ecosystem. Formulate mathematical models using natural algebraic equations and solve them instantly across Node.js, browsers, Bun, Deno, and Next.js—powered natively by WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**) with zero native compilation steps.
+**WaSHI** is a high-level mathematical optimization modeler and algebraic modeling system that brings the expressive elegance of Python's **PuLP** and Julia's **JuMP** to the modern TypeScript and JavaScript ecosystem. Formulate mathematical models using natural algebraic equations and solve them instantly across Node.js, browsers, Bun, Deno, and Next.js—powered natively by WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**) with zero native compilation steps.
 
 ```ts
 import { Model, expr, c } from "@ohtaman/washi";
