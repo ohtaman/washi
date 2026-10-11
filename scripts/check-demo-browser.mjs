@@ -63,8 +63,29 @@ function startStaticPagesServer(port = 0) {
 
       // IMPORTANT: Simulating GitHub Pages by NOT setting COOP/COEP headers
       res.setHeader("Content-Type", contentType);
+      res.setHeader("Accept-Ranges", "bytes");
+
+      if (req.method === "HEAD") {
+        res.statusCode = 200;
+        res.end();
+        return;
+      }
+
+      const fileContent = readFileSync(filePath);
+      const range = req.headers["range"];
+      if (range && range.startsWith("bytes=")) {
+        const parts = range.slice("bytes=".length).split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileContent.length - 1;
+        res.setHeader("Content-Range", `bytes ${start}-${end}/${fileContent.length}`);
+        res.setHeader("Content-Length", (end - start + 1));
+        res.statusCode = 206;
+        res.end(fileContent.slice(start, end + 1));
+        return;
+      }
+
       res.statusCode = 200;
-      res.end(readFileSync(filePath));
+      res.end(fileContent);
     });
 
     server.listen(port, () => {
@@ -222,7 +243,27 @@ async function runBrowserVerification() {
     }, { timeout: 20_000 });
     const intUnsatStatus = await page.evaluate(() => document.getElementById("metric-status")?.textContent?.trim());
     assert.equal(intUnsatStatus, "Unsat", "Integer x == 0.5 must be Unsat");
-    console.log("   Integer contradiction successfully yielded Unsat!");
+     // 5c. Test Z3 MIP Solver Execution
+    console.log("5c. Testing Z3 MIP solver on Production Planning problem...");
+    await page.selectOption("#preset-select", "production");
+    await page.waitForTimeout(300);
+    await page.selectOption("#solver-select", "z3");
+    await page.waitForTimeout(300);
+
+    await page.click("#run-btn");
+
+    await page.waitForFunction(() => {
+      const el = document.getElementById("metric-status");
+      return el && el.textContent?.trim() === "Optimal";
+    }, { timeout: 20_000 });
+
+    const z3MipObj = await page.evaluate(() => document.getElementById("metric-obj")?.textContent?.trim());
+    assert.equal(z3MipObj, "1100", `Z3 production planning optimal objective must be 1100, got ${z3MipObj}`);
+    console.log(`   Z3 MIP solved successfully with objective ${z3MipObj}!`);
+
+    // Reset solver select back to default for subsequent tests
+    await page.selectOption("#solver-select", "highs");
+    await page.waitForTimeout(300);
 
     // 6. Test HiGHS Default Solver Regression Check
     console.log("6. Verifying HiGHS default solver operates without regression...");
