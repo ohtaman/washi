@@ -14,6 +14,7 @@
     <a href="./README.zh-CN.md">简体中文</a>
   </p>
   <p>
+    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/demo-online-brightgreen" alt="live demo" /></a>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://bundlephobia.com/package/@ohtaman/washi"><img src="https://img.shields.io/badge/bundle%20size-7.2%20kB%20(gzip)-blue" alt="bundle size" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>

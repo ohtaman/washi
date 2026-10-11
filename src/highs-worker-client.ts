@@ -1,5 +1,5 @@
 import type { SolveOptions } from "./modeler/types.js";
-import { solveLpWithHighs, type RawHighsSolveResult } from "./highs-loader.js";
+import { solveLpWithHighs, type RawHighsSolveResult, getHighsWasmUrl } from "./highs-loader.js";
 
 let workerInstance: Worker | null = null;
 let reqIdCounter = 0;
@@ -62,6 +62,18 @@ export async function solveLp(
     return solveLpWithHighs(lpString, options);
   }
 
+  const resolvedWasmUrl =
+    options.wasmUrl ||
+    getHighsWasmUrl() ||
+    (typeof window !== "undefined"
+      ? new URL("highs.wasm", window.location.href).href
+      : undefined);
+
+  const mergedOptions = {
+    ...options,
+    ...(resolvedWasmUrl ? { wasmUrl: resolvedWasmUrl } : {}),
+  };
+
   const id = `req_${++reqIdCounter}`;
   return new Promise((resolve, reject) => {
     pendingRequests.set(id, { resolve, reject });
@@ -69,7 +81,7 @@ export async function solveLp(
       type: "SOLVE",
       id,
       lpString,
-      options,
+      options: mergedOptions,
     });
   });
 }

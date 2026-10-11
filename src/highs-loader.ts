@@ -11,6 +11,10 @@ export function setHighsWasmUrl(url: string) {
   cachedHighsPromise = null;
 }
 
+export function getHighsWasmUrl(): string | null {
+  return customWasmUrl;
+}
+
 /**
  * Get or initialize the HiGHS WebAssembly solver instance.
  * Works seamlessly in Node.js, Web Browsers, and Web Workers.
@@ -36,7 +40,14 @@ export async function getHighs(options: SolveOptions = {}): Promise<HighsInstanc
     }
 
     // Browser or Web Worker environment
-    const wasmUrl = options.wasmUrl || customWasmUrl || "/highs.wasm";
+    const defaultWasmUrl =
+      typeof window !== "undefined"
+        ? new URL("highs.wasm", window.location.href).href
+        : typeof self !== "undefined" && (self as any).location
+        ? new URL("highs.wasm", (self as any).location.href).href
+        : "/highs.wasm";
+
+    const wasmUrl = options.wasmUrl || customWasmUrl || defaultWasmUrl;
 
     const highsInstance = await loadHighs({
       locateFile: (file: string) => {
