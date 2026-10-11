@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WaSHI Zero-Config Browser Verification</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 40px;
+      line-height: 1.6;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      max-width: 600px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    h1 {
+      font-size: 20px;
+      margin-top: 0;
+      color: #38bdf8;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #334155;
+      color: #94a3b8;
+      margin-bottom: 16px;
+    }
+    .badge.optimal {
+      background: #065f46;
+      color: #34d399;
+    }
+    .badge.error {
+      background: #7f1d1d;
+      color: #f87171;
+    }
+    pre {
+      background: #0f172a;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      font-size: 14px;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>WaSHI Zero-Config Browser Verification</h1>
+    <p>This page serves <strong>NO local highs.wasm</strong> (publicDir is disabled). WaSHI must automatically detect 404 and fall back to the official jsDelivr CDN seamlessly with zero configuration.</p>
+    
+    <div>
+      <span id="status-badge" class="badge">Solving...</span>
+    </div>
+
+    <pre id="output">Initializing solver...</pre>
+  </div>
+
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>
