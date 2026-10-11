@@ -6,7 +6,7 @@ hero:
   text: "适用于 TypeScript 的现代数理优化与代数建模系统"
   tagline: WebAssembly 代数建模系统（LP, MIP, QP, SMT）。在 Node.js、浏览器、Bun、Deno 和 Next.js 中原生高速求解。
   image:
-    src: /washi-logo.svg
+    src: /washi-header.svg
     alt: WaSHI Logo
   actions:
     - theme: brand

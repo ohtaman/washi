@@ -38,10 +38,18 @@ if (existsSync(resolve(demoDist, "demo"))) {
   cpSync(resolve(demoDist, "demo"), demoTarget, { recursive: true });
 }
 
-// Copy shared public assets from demo (wasm files, workers, icons)
+// Copy demo built assets (CSS, JS, Web Workers, WASM) into site /assets/
+if (existsSync(resolve(demoDist, "assets"))) {
+  cpSync(resolve(demoDist, "assets"), resolve(siteDist, "assets"), { recursive: true });
+}
+
+// Copy shared public assets from demo (wasm files, workers, icons, header logos)
 const filesToCopy = [
   "washi-logo.svg",
   "washi-logo.png",
+  "washi-header.svg",
+  "washi-header-light.png",
+  "washi-header-dark.png",
   "coi-serviceworker.js",
   "z3-built.js",
   "z3-built.wasm",

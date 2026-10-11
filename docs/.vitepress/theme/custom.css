@@ -1,0 +1,13 @@
+/* Custom Theme Tweaks for WaSHI Documentation */
+
+.VPNavBarTitle .logo {
+  height: 36px !important;
+  max-width: 160px !important;
+  object-fit: contain;
+}
+
+.VPHero .image-src {
+  max-height: 220px !important;
+  width: auto !important;
+  filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.08));
+}

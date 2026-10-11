@@ -5,8 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/washi-logo.svg" />
     <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WaSHI Playground — Interactive Mathematical Optimization Demo</title>
-    <meta name="description" content="Interactive demo and online playground for WaSHI: solve LP, MIP, QP, and SMT problems in the browser using WebAssembly solvers (HiGHS, Z3, GLPK)." />
+    <title>WaSHI Playground — Mathematical Optimization Modeler Online Demo</title>
+    <meta name="description" content="Interactive demo and online playground for WaSHI algebraic modeler: formulate LP, MIP, QP, and SMT problems in TypeScript/JavaScript and solve natively in WebAssembly (HiGHS, Z3, GLPK)." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
@@ -16,16 +16,10 @@
     <!-- Header -->
     <header class="app-header">
       <div class="brand">
-        <a href="../" class="brand-crest" title="Return to Documentation Home" style="text-decoration: none;" aria-label="WaSHI Home">
-          <img src="/washi-logo.svg" alt="WaSHI Logo" class="brand-crest-img" />
+        <a href="../" title="Return to Documentation Home" style="text-decoration: none; display: flex; align-items: center; gap: 12px;" aria-label="WaSHI Home">
+          <img src="/washi/washi-header.svg" alt="WaSHI" style="height: 38px; width: auto;" />
+          <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--color-hi-light); color: var(--color-hi); font-family: var(--font-mono); font-weight: 600; border: 1px solid var(--color-hi-border);">Playground</span>
         </a>
-        <div class="brand-text">
-          <div style="display: flex; align-items: baseline; gap: 8px;">
-            <h1 class="brand-title">WaSHI Playground</h1>
-            <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface-elevated); color: var(--text-sumi-secondary); font-family: var(--font-mono);">Demo</span>
-          </div>
-          <span class="brand-subtitle" data-i18n="headerSubtitle">Client-Side Mathematical Optimization (WASM)</span>
-        </div>
       </div>
 
       <div class="header-status">

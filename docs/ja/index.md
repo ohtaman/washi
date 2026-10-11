@@ -6,7 +6,7 @@ hero:
   text: "TypeScriptのための数理最適化モデラー"
   tagline: WebAssembly 代数モデリングシステム（LP, MIP, QP, SMT）。Node.js、ブラウザ、Bun、Deno、Next.js でネイティブな高速最適化を実現。
   image:
-    src: /washi-logo.svg
+    src: /washi-header.svg
     alt: WaSHI Logo
   actions:
     - theme: brand

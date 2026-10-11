@@ -1,6 +1,8 @@
 import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
-export default defineConfig({
+export default withMermaid(
+  defineConfig({
   title: "WaSHI",
   description: "WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT)",
   base: "/washi/",
@@ -188,7 +190,8 @@ export default defineConfig({
     },
   },
   themeConfig: {
-    logo: "/washi-logo.svg",
+    logo: "/washi-header.svg",
+    siteTitle: false,
     search: {
       provider: "local",
     },
@@ -200,4 +203,5 @@ export default defineConfig({
       copyright: "Copyright © 2026 Mitsuhisa Ota & WaSHI Contributors",
     },
   },
-});
+})
+);

@@ -118,10 +118,12 @@
   "devDependencies": {
     "@types/node": "^26.6.3",
     "glpk.js": "^5.0.0",
+    "mermaid": "^11.17.2",
     "playwright": "^1.63.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.1",
     "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^5.0.2",
     "webpack": "^5.111.1",
     "z3-solver": "^5.2.0"
