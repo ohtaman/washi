@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: "WaSHI"
+  name: 'WaS<span class="brand-hi">HI</span>'
   text: "TypeScriptのための数理最適化モデラー"
   tagline: WebAssembly 代数モデリングシステム（LP, MIP, QP, SMT）。Node.js、ブラウザ、Bun、Deno、Next.js でネイティブな高速最適化を実現。
   image:
-    src: /washi-header.svg
-    alt: WaSHI Logo
+    src: /washi-logo.svg
+    alt: WaSHI Emblem
   actions:
     - theme: brand
       text: はじめに

@@ -7,7 +7,27 @@
 }
 
 .VPHero .image-src {
-  max-height: 220px !important;
-  width: auto !important;
-  filter: drop-shadow(0 10px 25px rgba(0, 0, 0, 0.08));
+  max-height: 280px !important;
+  max-width: 280px !important;
+  width: 100% !important;
+  height: auto !important;
+  filter: drop-shadow(0 12px 30px rgba(225, 29, 72, 0.15)) drop-shadow(0 4px 12px rgba(79, 70, 229, 0.1));
+}
+
+/* Custom Hero Brand Heading (WaS in black/white, HI in crimson red) */
+.VPHero .name.clip {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: initial !important;
+  color: #0f172a !important;
+}
+
+:root.dark .VPHero .name.clip {
+  color: #ffffff !important;
+}
+
+.VPHero .name .brand-hi {
+  color: #e11d48 !important;
+  -webkit-text-fill-color: #e11d48 !important;
 }

@@ -2,12 +2,12 @@
 layout: home
 
 hero:
-  name: "WaSHI"
+  name: 'WaS<span class="brand-hi">HI</span>'
   text: "Mathematical Optimization Modeler for TypeScript"
   tagline: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT). Bring the modeling DX of PuLP and JuMP to TypeScript with native WebAssembly solvers.
   image:
-    src: /washi-header.svg
-    alt: WaSHI Logo
+    src: /washi-logo.svg
+    alt: WaSHI Emblem
   actions:
     - theme: brand
       text: Get Started
