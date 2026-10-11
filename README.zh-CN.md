@@ -27,13 +27,13 @@
 **WaSHI** 是一个高层代数建模库，将 Python **PuLP** 与 Julia **JuMP** 的优雅表现力引入现代 TypeScript / JavaScript 生态系统。你可以直接使用符合数学直觉的代数公式编写数学模型，并在 Node.js、现代浏览器、Bun、Deno 及 Next.js 中秒级求解——完全依托 WebAssembly 求解器（**HiGHS**、**Z3**、**GLPK**），无需任何本地 C++ 编译环境。
 
 ```ts
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr, c } from "@ohtaman/washi";
 
 const m = new Model({ sense: "Maximize" });
 const x = m.addVar({ type: "Integer", lb: 0 });
 const y = m.addVar({ type: "Integer", lb: 0 });
 
-m.maximize(c`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
 m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
 m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
 
@@ -48,9 +48,9 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 1. **零配置 WebAssembly 引擎**：无需预装 C/C++ 依赖，无需操作系统二进制文件，也无需手动加载 wasm。Node.js 和现代浏览器中开箱即用。
 2. **极简现代代数建模 DX**：支持标签模板字面量（`c`${x} + 2 * ${y} <= 10``）与流畅的方法链（`x.mul(2).add(y).le(10)`），像在草稿纸上写公式一样自然。
 3. **可插拔多求解器统一接口**：只需建模一次，即可无缝切换底层求解引擎：**HiGHS**（工业级 MIP/QP）、**Z3**（SMT 逻辑与 Unsat Core 冲突诊断）、或 **GLPK**。
-4. **约束满足与冲突根因诊断**：当业务规则出现矛盾（Infeasible）时，内置 `unsatCore` 诊断可瞬时提取最小冲突约束子集。
-5. **Python PuLP / python-mip 兼容层**：提供 `LpProblem`, `lpSum`, `MipModel` 等对等 API，轻松迁移 Python 最优化代码资产。
-6. **工业级大规模性能**：采用 $O(N)$ 线性时间表达式构建器，可在数秒内构建并求解 20,000+ 变量的大规模 MIP 问题。
+4. **约束满足与冲突根因诊断**：当业务规则出现矛盾（Infeasible）时，内置 `unsatCore` 诊断可瞬时提取最小冲突约束子集（基于 Z3 插件）。
+5. **兼容 PuLP / python-mip 开发者熟悉语法**：提供 `LpProblem`, `LpVariable`, `lpSum`, `MipModel` 等熟悉抽象，轻松无缝迁移 Python 最优化代码资产。
+6. **工业级大规模性能**：采用 $O(N)$ 线性时间表达式构建器，仅需数十毫秒（约38ms）即可完成 20,000+ 变量的大规模 MIP 建模，并在 WebAssembly 中由 HiGHS 约15秒内快速求解。
 
 ---
 
@@ -139,7 +139,7 @@ const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
 
 ```ts
 // "若工厂关闭 (openCity['Tokyo'] == 0)，则产量 flow 必须为 0"
-m.addIndicator(openCity.get("Tokyo")!, flow.get("F1", "StoreA")!.le(0), {
+m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
   activeValue: 0,
   M: 1000,
 });
@@ -227,28 +227,38 @@ console.log(`警报响起？ ${m.values.get("siren")}`); // true
 
 ### 4. 约束冲突根因诊断 (`unsatCore`)
 
-当规则或约束之间存在矛盾时，Z3 能够精准指出引发冲突的**最小冲突约束子集**：
+当规则或约束之间存在矛盾时，Z3 能够精准指出引发冲突的**最小冲突约束子集**（需使用 Z3）：
 
 ```ts
 import { Model } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ name: "BudgetConflict" });
-const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0 });
-const budget = m.addVar({ name: "budget", lb: 0 });
-const rush = m.addBoolVar("rush");
+const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0, ub: 20 });
+const budget = m.addVar({ name: "budget", type: "Continuous", lb: 0, ub: 100000 });
+const rushDelivery = m.addBoolVar("rushDelivery");
 
-m.addConstraint(engineers.mul(8000).le(budget), "cost_limit");
-m.addConstraint(rush, "rush_required");
-m.addConstraint(rush.implies(engineers.ge(8)), "rush_staffing");
-m.addConstraint(budget.le(50000), "budget_cap"); // 冲突点: 8人 * $8,000 = $64,000 > 预算上限 $50,000!
-m.addConstraint(engineers.ge(1), "unrelated_rule"); // 无关规则
+// 规则 1: 每位工程师成本 $8,000
+m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
+
+// 规则 2: 客户要求加急交付
+m.addConstraint(rushDelivery, "rush_required");
+
+// 规则 3: 加急交付需至少配备 8 名工程师
+m.addConstraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+
+// 规则 4: 董事会严格预算上限 $50,000 (冲突点: 8人 * $8,000 = $64,000 > $50,000!)
+m.addConstraint(budget.le(50000), "strict_board_budget_cap");
+
+// 规则 5: 最低 1 名员工用工底线（无关规则）
+m.addConstraint(engineers.ge(1), "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
 console.log(`求解状态: ${res.status}`); // "Unsat"
 console.log("冲突约束子集:", res.unsatCore);
-// 输出: ["cost_limit", "rush_required", "rush_staffing", "budget_cap"]
-// 注：无关的 "unrelated_rule" 被准确排除在外！
+// 输出: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
+// 注：无关的 "minimum_one_employee" 被准确排除在外！
 ```
 
 ---
@@ -322,19 +332,9 @@ npm run build
 
 ---
 
-## 💡 关于项目名称 (About the Name)
+## 📄 许可证
 
-Python 著名的运筹优化库 **PuLP** 将线性规划首字母缩写巧妙地关联为英文词汇 *pulp*（纸张原料“纸浆”）。
-
-**WaSHI (和紙)** 则代表其升华后的传统艺术瑰宝——日本传统和纸：**极薄极轻（核心仅 ~7 kB）、柔韧多变、且历经千年而不腐**。
-
-反向首字母缩写：**Wa** (WebAssembly / 和) • **S**ystem for **H**ybrid & **I**nteger modeling (**WaSHI**)。
-
----
-
-## 📄 许可证与开源合规
-
-- **`@ohtaman/washi` 核心代码**：**MIT 许可证**（商业与个人均可自由使用）。
-- **HiGHS 默认求解引擎**：**MIT 许可证**（WebAssembly 编译内置，无传染风险）。
-- **Z3 引擎（可选）**：**MIT 许可证**。
-- **GLPK 插件（可选）**：**GPL-3.0 许可证**（完全隔离在独立子包中，确保 WaSHI 核心纯粹的 MIT 合规性）。
+- **`@ohtaman/washi`**: [MIT 许可证](./LICENSE)
+- **HiGHS**（默认求解器）: MIT 许可证
+- **Z3**（可选插件）: MIT 许可证
+- **GLPK**（可选插件）: GPL-3.0 许可证

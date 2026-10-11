@@ -615,3 +615,6 @@ export class Z3Solver implements Solver {
 export function registerZ3Solver(): void {
   registerSolver("z3", () => new Z3Solver());
 }
+
+// Auto-register so 'z3' is instantly available without manual registration calls
+registerZ3Solver();

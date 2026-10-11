@@ -27,13 +27,13 @@
 **WaSHI** は、Python の **PuLP** や Julia の **JuMP** のような表現力豊かな代数モデリングの美しさを、モダンな TypeScript / JavaScript エコシステムにもたらす高水準モデラーライブラリです。数式そのままの自然な記法で数理最適化モデルを定式化し、Node.js、ブラウザ、Bun、Deno、Next.js 上でネイティブ C++ コンパイル不要で即座に求解できます（WebAssembly 版の **HiGHS**、**Z3**、**GLPK** ソルバーを統合サポート）。
 
 ```ts
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr, c } from "@ohtaman/washi";
 
 const m = new Model({ sense: "Maximize" });
 const x = m.addVar({ type: "Integer", lb: 0 });
 const y = m.addVar({ type: "Integer", lb: 0 });
 
-m.maximize(c`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
 m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
 m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
 
@@ -48,9 +48,9 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 1. **ゼロ設定の WebAssembly エンジン**: C/C++ のビルド環境や OS 固有バイナリ、煩雑な WASM ファイルの読み込み設定は一切不要。Node.js や最新ブラウザで `npm install` して即使えます。
 2. **直感的な代数モデリング DX**: テンプレートリテラル記法（`c`${x} + 2 * ${y} <= 10``）やメソッドチェーン（`x.mul(2).add(y).le(10)`）により、紙に書いた数式そのままの実装が可能。
 3. **プラグイン対応の統一ソルバー API**: 一度書いたモデルコードを、産業用 MIP/QP に強い **HiGHS**、論理制約・矛盾診断に強い **Z3**、学術用途の **GLPK** などへオプション1つで切り替え可能。
-4. **制約充足 & 矛盾原因の自動診断**: ルール同士が矛盾（Infeasible）した場合に、衝突している最小の制約サブセットを自動特定する `unsatCore` 診断機能を標準搭載。
-5. **Python PuLP / python-mip 互換レイヤー**: 既存の Python 最適化資産をそのまま移植できる `LpProblem`, `lpSum`, `MipModel` 等の互換 API を提供。
-6. **産業規模のハイパフォーマンス**: $O(N)$ 線形時間の式ビルダーを採用し、20,000 変数規模の大規模 MIP も数秒で構築・求解。
+4. **制約充足 & 矛盾原因の自動診断**: ルール同士が矛盾（Infeasible）した場合に、衝突している最小の制約サブセットを自動特定する `unsatCore` 診断機能を搭載（Z3 プラグイン経由）。
+5. **PuLP / python-mip 開発者向けの馴染み深い記法**: 既存の Python 最適化コードベースから移行しやすいモデリング構文（`LpProblem`, `LpVariable`, `lpSum`, `MipModel`）を提供。
+6. **産業規模のハイパフォーマンス**: 線形時間 $O(N)$ の式ビルダーにより、20,000 変数規模の MIP を数十ミリ秒（約38ms）で定式化し、WebAssembly 上の HiGHS で約15秒で求解可能。
 
 ---
 
@@ -139,7 +139,7 @@ const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
 
 ```ts
 // 「東京工場が稼働していない (openCity['Tokyo'] == 0) なら、生産量 flow は 0」
-m.addIndicator(openCity.get("Tokyo")!, flow.get("F1", "StoreA")!.le(0), {
+m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
   activeValue: 0,
   M: 1000,
 });
@@ -227,28 +227,38 @@ console.log(`サイレン作動？ ${m.values.get("siren")}`); // true
 
 ### 4. 矛盾原因の自動特定 (`unsatCore`)
 
-業務ルールや制約群が互いに矛盾している場合、**矛盾を引き起こしている最小の制約サブセット**を特定してデバッグ：
+業務ルールや制約群が互いに矛盾している場合、**矛盾を引き起こしている最小の制約サブセット**を特定してデバッグ（Z3 が必要）：
 
 ```ts
 import { Model } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ name: "BudgetConflict" });
-const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0 });
-const budget = m.addVar({ name: "budget", lb: 0 });
-const rush = m.addBoolVar("rush");
+const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0, ub: 20 });
+const budget = m.addVar({ name: "budget", type: "Continuous", lb: 0, ub: 100000 });
+const rushDelivery = m.addBoolVar("rushDelivery");
 
-m.addConstraint(engineers.mul(8000).le(budget), "cost_limit");
-m.addConstraint(rush, "rush_required");
-m.addConstraint(rush.implies(engineers.ge(8)), "rush_staffing");
-m.addConstraint(budget.le(50000), "budget_cap"); // 矛盾: 8人 * $8,000 = $64,000 > 予算上限 $50,000!
-m.addConstraint(engineers.ge(1), "unrelated_rule"); // 無関係な制約
+// ルール 1: エンジニア1人あたり $8,000
+m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
+
+// ルール 2: 特急納品が必須
+m.addConstraint(rushDelivery, "rush_required");
+
+// ルール 3: 特急納品には最低 8 人のエンジニアが必要
+m.addConstraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+
+// ルール 4: 役員会の予算上限 $50,000 (矛盾: 8人 * $8000 = $64,000 > $50,000!)
+m.addConstraint(budget.le(50000), "strict_board_budget_cap");
+
+// ルール 5: 最低 1 人雇用の労働基準（無関係なルール）
+m.addConstraint(engineers.ge(1), "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
 console.log(`ステータス: ${res.status}`); // "Unsat"
 console.log("矛盾している制約:", res.unsatCore);
-// 出力: ["cost_limit", "rush_required", "rush_staffing", "budget_cap"]
-// ※ 無関係な "unrelated_rule" は的確に除外されます
+// 出力: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
+// ※ 無関係な "minimum_one_employee" は的確に除外されます
 ```
 
 ---
@@ -322,19 +332,9 @@ npm run build
 
 ---
 
-## 💡 名前の由来 (About the Name)
+## 📄 ライセンス
 
-Python の先駆的な最適化ライブラリ **PuLP** は、線形計画法の頭字語でありつつ、紙の原料である「パルプ (pulp)」にちなんだ名称でした。
-
-**WaSHI (和紙)** は、その完成形である伝統工芸「和紙」の特長——**驚異的な軽さ（コア ~7 kB）、しなやかさ、そして何百年も残る強靭さ**——を体現しています。
-
-頭字語：**Wa** (WebAssembly / 和) • **S**ystem for **H**ybrid & **I**nteger modeling (**WaSHI**)。
-
----
-
-## 📄 ライセンス & コンプライアンス
-
-- **`@ohtaman/washi` コア**: **MIT ライセンス** (商用・個人利用フリー)。
-- **HiGHS エンジン (標準)**: **MIT ライセンス** (WebAssembly 組み込み。コピーレフトリスクなし)。
-- **Z3 エンジン (オプション)**: **MIT ライセンス**。
-- **GLPK プラグイン (オプション)**: **GPL-3.0 ライセンス** (コアの MIT 純度を守るため、オプショナルなサブパスへ完全隔離)。
+- **`@ohtaman/washi`**: [MIT ライセンス](./LICENSE)
+- **HiGHS**（標準エンジン）: MIT ライセンス
+- **Z3**（オプション）: MIT ライセンス
+- **GLPK**（オプション）: GPL-3.0 ライセンス

@@ -27,13 +27,13 @@
 **WaSHI** is a high-level algebraic modeling library that brings the expressive elegance of Python's **PuLP** and Julia's **JuMP** to the modern TypeScript and JavaScript ecosystem. Formulate mathematical models using natural algebraic equations and solve them instantly across Node.js, browsers, Bun, Deno, and Next.js—powered natively by WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**) with zero native compilation steps.
 
 ```ts
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr, c } from "@ohtaman/washi";
 
 const m = new Model({ sense: "Maximize" });
 const x = m.addVar({ type: "Integer", lb: 0 });
 const y = m.addVar({ type: "Integer", lb: 0 });
 
-m.maximize(c`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${x} + 50 * ${y}`);
 m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
 m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
 
@@ -48,9 +48,9 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 1. **Zero-Config WebAssembly Engine**: No C/C++ compilation, no system binaries, and no boilerplate wasm-fetch glue code. Works out of the box in Node.js and modern browsers.
 2. **Modern Algebraic DX**: Write constraints as natural formulas with Tagged Template Literals (`c`${x} + 2 * ${y} <= 10``) or chainable expressions (`x.mul(2).add(y).le(10)`).
 3. **Pluggable Solvers & Unified API**: Write your mathematical formulation once; solve with **HiGHS** (industrial MIP/QP), **Z3** (SMT logic & Unsat Core diagnosis), or **GLPK** with a single parameter.
-4. **Feasibility & Conflict Diagnosis**: When a system of constraints is contradictory, diagnose root causes instantly with minimal unsatisfiable core extraction (`unsatCore`).
-5. **Drop-in PuLP & python-mip Compatibility**: Effortlessly port existing Python optimization codebases with 1-to-1 drop-in syntax (`LpProblem`, `lpSum`, `MipModel`).
-6. **Industrial Scale Performance**: Built with an $O(N)$ linear-time expression builder capable of formulating and solving 20,000+ variable MIPs in seconds.
+4. **Feasibility & Conflict Diagnosis**: When a system of constraints is contradictory, diagnose root causes instantly with minimal unsatisfiable core extraction (`unsatCore` via Z3 plugin).
+5. **Familiar PuLP & python-mip Modeling Syntax**: Effortlessly transition from Python optimization codebases with familiar modeling constructs (`LpProblem`, `LpVariable`, `lpSum`, `MipModel`).
+6. **Industrial Scale Performance**: Formulate in milliseconds (~38ms) and solve 20,000+ variable MIPs in ~15 seconds right in WebAssembly via HiGHS with linear-time $O(N)$ expression building.
 
 ---
 
@@ -139,7 +139,7 @@ Model conditional activation rules and fixed-charge economics without manual Big
 
 ```ts
 // If factory is closed (openCity['Tokyo'] == 0), its production capacity must be 0
-m.addIndicator(openCity.get("Tokyo")!, flow.get("F1", "StoreA")!.le(0), {
+m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
   activeValue: 0,
   M: 1000,
 });
@@ -227,28 +227,38 @@ console.log(`Siren active? ${m.values.get("siren")}`); // true
 
 ### 4. Conflict Diagnosis (`unsatCore`)
 
-When business rules or constraints contradict each other, extract the **minimal conflicting subset** for instant troubleshooting:
+When business rules or constraints contradict each other, extract the **minimal conflicting subset** for instant troubleshooting (requires Z3):
 
 ```ts
 import { Model } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ name: "BudgetConflict" });
-const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0 });
-const budget = m.addVar({ name: "budget", lb: 0 });
-const rush = m.addBoolVar("rush");
+const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0, ub: 20 });
+const budget = m.addVar({ name: "budget", type: "Continuous", lb: 0, ub: 100000 });
+const rushDelivery = m.addBoolVar("rushDelivery");
 
-m.addConstraint(engineers.mul(8000).le(budget), "cost_limit");
-m.addConstraint(rush, "rush_required");
-m.addConstraint(rush.implies(engineers.ge(8)), "rush_staffing");
-m.addConstraint(budget.le(50000), "budget_cap"); // Conflict: 8 * $8000 = $64,000 > $50,000!
-m.addConstraint(engineers.ge(1), "unrelated_rule"); // Harmless rule
+// Rule 1: Each engineer costs $8,000
+m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
+
+// Rule 2: Customer requires rush delivery
+m.addConstraint(rushDelivery, "rush_required");
+
+// Rule 3: Rush delivery requires at least 8 engineers
+m.addConstraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+
+// Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
+m.addConstraint(budget.le(50000), "strict_board_budget_cap");
+
+// Rule 5: Innocent bystander rule
+m.addConstraint(engineers.ge(1), "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
 console.log(`Status: ${res.status}`); // "Unsat"
 console.log("Conflicting constraints:", res.unsatCore);
-// Output: ["cost_limit", "rush_required", "rush_staffing", "budget_cap"]
-// Note: "unrelated_rule" is correctly excluded!
+// Output: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
+// Note: "minimum_one_employee" is correctly excluded!
 ```
 
 ---
@@ -322,19 +332,9 @@ npm run build
 
 ---
 
-## 💡 About the Name
+## 📄 License
 
-Python's pioneering optimization library **PuLP** derived its name as an acronym for linear programming while punning on *pulp* (the raw fiber of paper).
-
-**WaSHI (和紙)** celebrates the finished craft: Japanese traditional washi paper—**exceptionally lightweight (~7 kB core), remarkably flexible, and resilient for centuries**.
-
-Backronym: **Wa** (WebAssembly / 和) • **S**ystem for **H**ybrid & **I**nteger modeling (**WaSHI**).
-
----
-
-## 📄 License & Open-Source Compliance
-
-- **`@ohtaman/washi` Core**: **MIT License**.
-- **HiGHS Engine (default)**: **MIT License** (compiled to WebAssembly; zero copyleft risk).
-- **Z3 Engine (optional)**: **MIT License**.
-- **GLPK Plugin (optional)**: **GPL-3.0 License** (completely isolated in an optional subpath to keep the core 100% MIT-compliant).
+- **`@ohtaman/washi`**: [MIT License](./LICENSE)
+- **HiGHS** (default engine): MIT License
+- **Z3** (optional plugin): MIT License
+- **GLPK** (optional plugin): GPL-3.0 License
