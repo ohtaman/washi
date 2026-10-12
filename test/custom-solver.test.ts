@@ -1,9 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   Model,
-  LpProblem,
-  LpVariable,
-  LpMaximize,
+  expr,
   registerSolver,
   listAvailableSolvers,
   getSolver,
@@ -89,7 +87,7 @@ describe("Custom Solver Plugin Architecture", () => {
     expect(c1.slack).toBe(0);
   });
 
-  it("supports passing custom solver instance directly to Model or LpProblem", async () => {
+  it("supports passing custom solver instance directly to Model", async () => {
     const inlineSolver: Solver = {
       name: "InlineSolver",
       async solve(modelData, lpResult) {
@@ -102,22 +100,12 @@ describe("Custom Solver Plugin Architecture", () => {
       },
     };
 
-    // 1. In Model
     const model = new Model({ solver: inlineSolver });
-    const x = model.addVar({ name: "p_x" });
+    const x = model.continuous("p_x");
     model.maximize(x);
     await model.optimize();
     expect(x.value).toBe(42);
     expect(model.objectiveValue).toBe(999);
-
-    // 2. In PuLP LpProblem
-    const prob = new LpProblem("PuLP_Custom", LpMaximize);
-    const px = new LpVariable("p_x", 0, 100);
-    prob.add(px);
-    const status = await prob.solve(inlineSolver);
-    expect(status).toBe("Optimal");
-    expect(px.value).toBe(42);
-    expect(prob.objectiveValue).toBe(999);
   });
 
   it("handles capability validation when solver does not support quadratic objectives", async () => {
@@ -137,5 +125,32 @@ describe("Custom Solver Plugin Architecture", () => {
     await expect(model.optimize()).rejects.toThrow(
       'does not support quadratic objectives'
     );
+  });
+
+  it("propagates primal values and duals into WaSHI Model (guide documentation test snippet)", async () => {
+    class CloudSolver implements Solver {
+      name = "CloudSolver";
+      async solve(modelData: LpModelData, lpResult: LpExportResult): Promise<SolverResult> {
+        return {
+          status: "Optimal",
+          objectiveValue: 36,
+          values: { x: 0, y: 12 },
+          duals: { budget: 3 },
+          runTime: 0.1,
+        };
+      }
+    }
+
+    const model = new Model({ solver: new CloudSolver() });
+    const x = model.continuous("x", { lb: 0, ub: 10 });
+    const y = model.continuous("y", { lb: 0, ub: 10 });
+    model.maximize(expr`2 * ${x} + 3 * ${y}`);
+    model.constrain(expr`${x} + ${y} <= 12`, "budget");
+
+    const status = await model.optimize();
+    expect(status).toBe("Optimal");
+    expect(x.value).toBeDefined();
+    const c1 = model.getConstraintByName("budget");
+    expect(c1?.dual).toBeDefined();
   });
 });

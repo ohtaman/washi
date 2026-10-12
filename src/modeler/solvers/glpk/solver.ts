@@ -126,7 +126,10 @@ export class GLPKSolver implements Solver {
     const glpkProblem: any = {
       name: modelData.name || "GLPK_Model",
       objective: {
-        direction: modelData.sense === "Maximize" ? glpk.GLP_MAX : glpk.GLP_MIN,
+        direction:
+          modelData.sense && modelData.sense.toLowerCase() === "maximize"
+            ? glpk.GLP_MAX
+            : glpk.GLP_MIN,
         name: "obj",
         vars: objVars,
       },

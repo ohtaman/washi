@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.addVars(staff, days)`, `sum()`, `m.check()`, `m.unsatCore` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
+| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constrain()`, `expr`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
 
 Staff shift scheduling is a classic real-world application of Mixed-Integer Programming in SaaS and workforce management tools. However, in real applications, **staff vacation requests frequently collide with minimum daily coverage rules**, causing the solver to return `Infeasible`.
 
@@ -26,7 +26,7 @@ We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) acr
 <CodeRunner preset="shift_scheduling">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, sum, dot, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -45,44 +45,53 @@ const requiredCoverage: Record<Day, number> = {
 };
 
 function buildShiftModel(name, dayOffRequests) {
-  const m = new Model({ name, sense: "Minimize" });
+  const m = new Model(name);
 
   // 2D binary matrix: shift[staff][day] ∈ {0, 1}
-  const shift = m.addVars(
-    staffList.map((s) => s.name),
-    [...days],
-    { type: "Binary", prefix: "shift" }
-  );
+  const shift = m.binary(staffList.map((s) => s.name), [...days]);
 
-  // Objective: Minimize weekly payroll cost (+$30 weekend premium)
-  const costTerms = [];
-  for (const s of staffList) {
-    for (const d of days) {
-      const cost = s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0);
-      costTerms.push(shift[s.name][d].mul(cost));
-    }
-  }
-  m.minimize(sum(costTerms));
+  // Objective: Minimize weekly payroll cost via 2D dot product
+  const costMatrix = Object.fromEntries(
+    staffList.map((s) => [
+      s.name,
+      Object.fromEntries(
+        days.map((d) => [d, s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0)])
+      ),
+    ])
+  );
+  m.minimize(dot(costMatrix, shift));
 
   // Rule 1: Daily headcount coverage
   for (const d of days) {
-    m.addConstraint(sum(staffList, (s) => shift[s.name][d]).ge(requiredCoverage[d]), `coverage_${d}`);
+    m.constrain(
+      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+      `coverage_${d}`
+    );
   }
 
   // Rule 2: At least 1 senior staff member per day
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
-    m.addConstraint(sum(seniors, (s) => shift[s.name][d]).ge(1), `senior_duty_${d}`);
+    m.constrain(
+      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+      `senior_duty_${d}`
+    );
   }
 
   // Rule 3: Max working days per staff member
   for (const s of staffList) {
-    m.addConstraint(sum([...days], (d) => shift[s.name][d]).le(s.maxShifts), `max_shifts_${s.name}`);
+    m.constrain(
+      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+      `max_shifts_${s.name}`
+    );
   }
 
-  // Rule 4: Named day-off requests (shift[staff][day] <= 0)
+  // Rule 4: Named day-off requests (shift[staff][day] == 0)
   for (const req of dayOffRequests) {
-    m.addConstraint(shift[req.staff][req.day].le(0), `day_off_${req.staff}_${req.day}`);
+    m.constrain(
+      expr`${shift[req.staff][req.day]} == 0`,
+      `day_off_${req.staff}_${req.day}`
+    );
   }
 
   return { model: m, shift };
@@ -96,7 +105,7 @@ async function runShiftScheduling() {
     { staff: "Charlie", day: "Sat" },
     { staff: "Diana", day: "Wed" },
   ]);
-  const s1 = await m1.solve();
+  const s1 = await m1.optimize();
   console.log(`Part 1 (HiGHS): Status=${s1}, Optimal Weekly Payroll=$${m1.objectiveValue}`);
 
   // Part 2: Diagnosing Conflicting Saturday Vacation Requests with Z3
@@ -106,7 +115,7 @@ async function runShiftScheduling() {
     { staff: "Charlie", day: "Sat" },
     { staff: "Diana", day: "Wed" },
   ]);
-  const res2 = await m2.check("z3");
+  const res2 = await m2.check({ solver: "z3" });
   console.log(`Part 2 (Z3 Check): Status=${res2.status}`);
   console.log("Conflicting Constraint Subset (unsatCore):", m2.unsatCore);
 }

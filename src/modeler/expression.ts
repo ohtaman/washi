@@ -4,7 +4,6 @@ import { QuadExpr } from "./quad-expr.js";
 
 /**
  * Represents a linear expression: c0 + c1*x1 + c2*x2 + ...
- * Compatible with PuLP (LpAffineExpression) and python-mip (LinExpr).
  */
 export class LinExpr {
   public terms: Map<Var, number>;
@@ -136,7 +135,7 @@ export class LinExpr {
   }
 
   /**
-   * PuLP style value accessor
+   * Helper value accessor for expression
    */
   getValue(): number | null {
     return this.value;
@@ -217,33 +216,61 @@ export class LinExpr {
 }
 
 /**
- * Sum an array or iterable of variables, expressions, or numbers.
- * Also supports mapping functions: sum(items, item => expr)
- * Compatible with PuLP's lpSum and python-mip's xsum.
+ * Union expression type covering linear and quadratic expressions.
  */
+export type Expr = LinExpr | QuadExpr;
+
+/**
+ * Sum an array, iterable, or count-range of variables, expressions, or numbers.
+ * Supports:
+ * - sum([x, y, z])
+ * - sum(items, item => expr)
+ * - sum(10, i => expr) (range 0..9)
+ */
+export function sum(
+  count: number,
+  mapFn: (index: number) => LinExpr | Var | number
+): LinExpr;
 export function sum<T = any>(
   items: Iterable<T>,
   mapFn?: (item: T, index: number) => LinExpr | Var | number
+): LinExpr;
+export function sum<T = any>(
+  arg1: number | Iterable<T>,
+  arg2?: (item: any, index: number) => LinExpr | Var | number
 ): LinExpr {
   const terms = new Map<Var, number>();
   let constant = 0;
-  let index = 0;
 
-  for (const item of items) {
-    const val = mapFn ? mapFn(item, index++) : (item as unknown as LinExpr | Var | number);
+  function addVal(val: LinExpr | Var | number | undefined | null) {
+    if (val === null || val === undefined) return;
     if (typeof val === "number") {
       constant += val;
-    } else if (val && typeof val === "object" && "terms" in val) {
+    } else if (typeof val === "object" && "terms" in val) {
       const linExpr = val as LinExpr;
       for (const [v, c] of linExpr.terms) {
         const cur = terms.get(v) || 0;
         terms.set(v, cur + c);
       }
       constant += linExpr.constant;
-    } else if (val) {
+    } else {
       const v = val as Var;
       const cur = terms.get(v) || 0;
       terms.set(v, cur + 1);
+    }
+  }
+
+  if (typeof arg1 === "number") {
+    const count = arg1;
+    const mapFn = arg2!;
+    for (let i = 0; i < count; i++) {
+      addVal(mapFn(i, i));
+    }
+  } else {
+    let index = 0;
+    for (const item of arg1) {
+      const val = arg2 ? arg2(item, index++) : (item as unknown as LinExpr | Var | number);
+      addVal(val);
     }
   }
 
@@ -258,11 +285,164 @@ export function sum<T = any>(
 }
 
 /**
- * python-mip style alias for sum
+ * Compute the vector dot product (linear combination) of coefficients and variables.
+ * Works with 1D/2D arrays and records in either order:
+ * - dot(costs, vars)
+ * - dot(vars, costs)
+ * - dot(costMatrix, flowMatrix)
  */
-export const xsum = sum;
+export function dot(
+  a: Record<string, any> | any[],
+  b: Record<string, any> | any[]
+): LinExpr {
+  const terms = new Map<Var, number>();
+  let constant = 0;
 
-/**
- * PuLP style alias for sum
- */
-export const lpSum = sum;
+  function isVar(x: any): x is Var {
+    return (
+      x !== null &&
+      typeof x === "object" &&
+      typeof x.id === "number" &&
+      typeof x.name === "string" &&
+      typeof x.mul === "function" &&
+      typeof x.le === "function"
+    );
+  }
+
+  function isExprOrVar(x: any): boolean {
+    return isVar(x) || x instanceof LinExpr || x instanceof QuadExpr;
+  }
+
+  function addProduct(coeff: number, exprOrVar: Var | LinExpr | number) {
+    if (typeof exprOrVar === "number") {
+      constant += coeff * exprOrVar;
+    } else if (exprOrVar instanceof LinExpr) {
+      for (const [v, c] of exprOrVar.terms) {
+        const cur = terms.get(v) || 0;
+        terms.set(v, cur + coeff * c);
+      }
+      constant += coeff * exprOrVar.constant;
+    } else if (isVar(exprOrVar)) {
+      const v = exprOrVar as Var;
+      const cur = terms.get(v) || 0;
+      terms.set(v, cur + coeff);
+    } else {
+      throw new Error("Cannot multiply number by non-variable/expression operand in dot().");
+    }
+  }
+
+  function isPlainRecord(obj: any): boolean {
+    return (
+      typeof obj === "object" &&
+      obj !== null &&
+      !Array.isArray(obj) &&
+      !isExprOrVar(obj)
+    );
+  }
+
+  function recurse(valA: any, valB: any, path: string = "") {
+    if (valA === undefined || valB === undefined || valA === null || valB === null) {
+      throw new Error(`Nullish or undefined operand encountered in dot() at '${path || "root"}'.`);
+    }
+
+    if (typeof valA === "number") {
+      addProduct(valA, valB);
+      return;
+    }
+    if (typeof valB === "number") {
+      addProduct(valB, valA);
+      return;
+    }
+
+    if (Array.isArray(valA) || Array.isArray(valB)) {
+      if (Array.isArray(valA) && Array.isArray(valB)) {
+        if (valA.length !== valB.length) {
+          throw new Error(
+            `Array length mismatch in dot() at '${path || "root"}': received lengths ${valA.length} and ${valB.length}.`
+          );
+        }
+        for (let i = 0; i < valA.length; i++) {
+          recurse(valA[i], valB[i], path ? `${path}[${i}]` : `[${i}]`);
+        }
+        return;
+      }
+
+      const arr = Array.isArray(valA) ? valA : valB;
+      const other = Array.isArray(valA) ? valB : valA;
+
+      if (isPlainRecord(other)) {
+        const keys = Object.keys(other);
+        const allNumeric = keys.length > 0 && keys.every((k) => /^\d+$/.test(k));
+
+        if (allNumeric) {
+          if (keys.length !== arr.length) {
+            throw new Error(
+              `Array length mismatch in dot() at '${path || "root"}': array has length ${arr.length}, but object has ${keys.length} indices.`
+            );
+          }
+          const missingIndices: number[] = [];
+          for (let i = 0; i < arr.length; i++) {
+            if (!(i in other) && !(String(i) in other)) {
+              missingIndices.push(i);
+            }
+          }
+          if (missingIndices.length > 0) {
+            throw new Error(
+              `Key mismatch in dot() at '${path || "root"}': missing indices [${missingIndices.join(", ")}] in numeric record.`
+            );
+          }
+          for (let i = 0; i < arr.length; i++) {
+            const itemA = Array.isArray(valA) ? valA[i] : (valA as any)[i];
+            const itemB = Array.isArray(valB) ? valB[i] : (valB as any)[i];
+            recurse(itemA, itemB, path ? `${path}[${i}]` : `[${i}]`);
+          }
+          return;
+        }
+
+        throw new Error(
+          `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is an Object with keys [${keys.slice(0, 5).join(", ")}].`
+        );
+      }
+
+      throw new Error(
+        `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is not.`
+      );
+    }
+
+    if (isPlainRecord(valA) && isPlainRecord(valB)) {
+      const keysA = Object.keys(valA);
+      const keysB = Object.keys(valB);
+
+      const missingInB = keysA.filter((k) => !(k in valB));
+      const missingInA = keysB.filter((k) => !(k in valA));
+
+      if (missingInB.length > 0 || missingInA.length > 0) {
+        const parts: string[] = [];
+        if (missingInB.length > 0) parts.push(`missing in second operand: [${missingInB.join(", ")}]`);
+        if (missingInA.length > 0) parts.push(`missing in first operand: [${missingInA.join(", ")}]`);
+        throw new Error(
+          `Key mismatch in dot() at '${path || "root"}': ${parts.join("; ")}.`
+        );
+      }
+
+      for (const key of keysA) {
+        recurse(valA[key], valB[key], path ? `${path}.${key}` : key);
+      }
+      return;
+    }
+
+    throw new Error(`Unsupported operand types in dot() at '${path || "root"}'.`);
+  }
+
+  recurse(a, b);
+
+  for (const [v, c] of terms) {
+    if (Math.abs(c) < 1e-12) {
+      terms.delete(v);
+    }
+  }
+
+  return new LinExpr(terms, constant);
+}
+
+

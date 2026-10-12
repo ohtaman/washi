@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
+import { transpileSnippetToJs } from "../utils/transpile";
 
 const props = defineProps<{
   preset?: string;
@@ -16,31 +17,6 @@ const hasRun = ref(false);
 const runTimeMs = ref(0);
 const logs = ref<string[]>([]);
 const errorMsg = ref<string | null>(null);
-
-/**
- * Strip TypeScript-specific syntax from documentation code snippets
- * so they can be executed directly in the browser via AsyncFunction.
- */
-function transpileSnippetToJs(rawCode: string): string {
-  let code = rawCode
-    // Remove import statements
-    .replace(/^\s*import\s+[\s\S]*?from\s+["'][^"']+["']\s*;?\s*$/gm, "")
-    .replace(/^\s*import\s+["'][^"']+["']\s*;?\s*$/gm, "")
-    // Remove interface declarations
-    .replace(/^\s*interface\s+\w+\s*\{[\s\S]*?\}\s*$/gm, "")
-    // Remove type alias declarations
-    .replace(/^\s*type\s+\w+\s*=[^\n;]+;?\s*$/gm, "")
-    // Remove `export ` keywords
-    .replace(/^\s*export\s+/gm, "")
-    // Remove `as const`
-    .replace(/\bas\s+const\b/g, "")
-    // Remove variable type annotations: `const items: Item[] =` -> `const items =`
-    .replace(/\b(const|let|var)\s+([a-zA-Z_$][\w$]*)\s*:\s*[^=]+=/g, "$1 $2 =");
-
-  // Ensure a trailing top-level function call like `runKnapsack();` is awaited
-  code = code.replace(/\n([a-zA-Z_$][\w$]*)\s*\(\s*\)\s*;?\s*$/, "\nawait $1();");
-  return code;
-}
 
 async function runSlotCode() {
   if (typeof window === "undefined" || !slotEl.value) return;
@@ -102,6 +78,11 @@ async function runSlotCode() {
     const pendingPromises: Promise<unknown>[] = [];
 
     class TrackedModel extends Modeler.Model {
+      override optimize(...args: Parameters<Modeler.Model["optimize"]>) {
+        const p = super.optimize(...args);
+        pendingPromises.push(p);
+        return p;
+      }
       override solve(...args: Parameters<Modeler.Model["solve"]>) {
         const p = super.solve(...args);
         pendingPromises.push(p);

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
   text: "Mathematical Optimization Modeler for TypeScript"
-  tagline: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT). Bring the modeling DX of PuLP and JuMP to TypeScript with native WebAssembly solvers.
+  tagline: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT). Native mathematical optimization for TypeScript with high-performance WebAssembly solvers.
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem
@@ -25,7 +25,7 @@ features:
     details: Solve industrial optimization problems entirely inside WebAssembly. Private, offline-ready, with zero backend infrastructure expenses.
   - icon: ✍️
     title: Intuitive Algebraic Modeling
-    details: Bring the DX of Python's PuLP & JuMP to TypeScript. Formulate models naturally with tagged template literals (expr`...`, c`...`) or drop-in PuLP syntax.
+    details: Domain-pure variables (m.binary, m.integer, m.continuous), formula templates (expr`...`), vector aggregations (dot, sum), and first-class constraints (m.constrain).
   - icon: ⚡
     title: Industrial Multi-Solver Architecture
     details: Built-in default HiGHS solver (LP/MIP/QP) with pluggable adapters for Z3 (SMT logic & conflict diagnosis) and GLPK.
@@ -39,26 +39,26 @@ features:
 ## Quick Example
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 // 1. Create a model
-const m = new Model({ sense: "Maximize" });
+const m = new Model("WoodworkingProfit");
 
 // 2. Define decision variables
-const x = m.addVar({ type: "Integer", lb: 0, name: "desks" });
-const y = m.addVar({ type: "Integer", lb: 0, name: "chairs" });
+const desks = m.integer("desks", { lb: 0 });
+const chairs = m.integer("chairs", { lb: 0 });
 
 // 3. Set objective function ($30/desk, $50/chair)
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
 
 // 4. Add constraints (material and labor limits)
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
 
 // 5. Solve via WebAssembly (HiGHS)
-await m.solve();
+await m.optimize();
 
-console.log(`Produce: ${x.value} desks, ${y.value} chairs`);
+console.log(`Produce: ${desks.value} desks, ${chairs.value} chairs`);
 console.log(`Maximum Profit: $${m.objectiveValue}`);
 ```
 

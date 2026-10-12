@@ -31,17 +31,17 @@ HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグ�
 [ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const m = new Model({ sense: "Maximize" });
-const x = m.addVar({ type: "Integer", lb: 0 });
-const y = m.addVar({ type: "Integer", lb: 0 });
+const m = new Model("木工製品の利益最大化");
+const x = m.integer("机", { lb: 0 });
+const y = m.integer("椅子", { lb: 0 });
 
 m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${x} + 2 * ${y} <= 40`, "木材上限");
+m.constrain(expr`2 * ${x} + ${y} <= 50`, "労働力上限");
 
-await m.solve();
+await m.optimize();
 console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objectiveValue})`);
 ```
 
@@ -49,7 +49,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 ## 🎯 WaSHI が提供するもの
 
-1. **代数的なモデル記述**: 型付きの変数、添字付きの変数集合、タグ付きテンプレート（`expr`・`c`）、メソッドをつなげた式を使えます。`Model` API と PuLP 風のヘルパーから、モデルの記述方法を選べます。
+1. **代数的なモデル記述**: 直感的なドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`）、ベクトル集計関数（`dot`, `sum`）、そして第1推奨の `m.constrain()` により、数学的定義に忠実なモデルを簡潔に記述できます。
 2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せず、アプリケーション内で求解できます。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
 4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に Unsat Core を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
@@ -101,49 +101,49 @@ npm install glpk.js      # GLPK ソルバーを利用する場合 (GPL-3.0)
 リソース制約の下で利益を最大化する生産計画：
 
 ```ts
-import { Model, c, expr } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const m = new Model({ name: "FactoryPlanning", sense: "Maximize" });
+const m = new Model("FactoryPlanning");
 
 // 決定変数（整数・非負）
-const chairs = m.addVar({ name: "chairs", type: "Integer", lb: 0 });
-const tables = m.addVar({ name: "tables", type: "Integer", lb: 0 });
+const chairs = m.integer("chairs", { lb: 0 });
+const tables = m.integer("tables", { lb: 0 });
 
 // テンプレートリテラル記法による自然な目的関数と制約
 m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.addConstraint(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+m.constrain(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
 // 標準の HiGHS WASM エンジンで求解
-const status = await m.solve();
+const status = await m.optimize();
 
 console.log(`ステータス: ${status}`); // "Optimal"
 console.log(`最大利益: $${m.objectiveValue}`); // 1100
 console.log(`生産数: 椅子=${chairs.value}, 机=${tables.value}`); // 椅子 20, 机 10
 ```
 
-#### 🗂 多次元変数グリッド (`addVars`)
+#### 🗂 多次元変数グリッド
 
-キー一覧や多次元インデックスから、1 行で変数群を定義（PuLP の `LpVariable.dicts` 相当）：
+キー一覧や多次元インデックスから、1 行で変数群を定義：
 
 ```ts
 // 1次元辞書形式のバイナリ変数群
-const openCity = m.addVars(["Tokyo", "Osaka", "Nagoya"], { type: "Binary" });
+const openCity = m.binary(["Tokyo", "Osaka", "Nagoya"]);
 
 // 2次元輸送量行列: [工場] x [店舗]
-const flow = m.addVars(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
+const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
 
 // 2次元グリッド (例: 8x8 チェス盤)
-const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
+const board = m.binary(8, 8, { prefix: "queen" });
 ```
 
-#### 🔀 Big-M インジケータ制約 (`addIndicator`)
+#### 🔀 Big-M インジケータ制約 (`m.indicator`)
 
 条件分岐や固定費の発生ルールを、煩雑な手動 Big-M 計算なしに記述：
 
 ```ts
 // 「東京工場が稼働していない (openCity['Tokyo'] == 0) なら、生産量 flow は 0」
-m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
+m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
@@ -156,20 +156,21 @@ m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
 期待リターンと予算制約を満たしつつ、共分散行列に基づく投資リスクを最小化：
 
 ```ts
-import { Model, QuadExpr, sum } from "@ohtaman/washi";
+import { Model, QuadExpr, sum, dot, expr } from "@ohtaman/washi";
 
-const m = new Model({ name: "MarkowitzPortfolio", sense: "Minimize" });
+const m = new Model("MarkowitzPortfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
 const returns = [0.14, 0.04, 0.08];
 
 // 決定変数: 投資比率 (0.0 〜 1.0)
-const w = assets.map((a) => m.addVar({ name: `w_${a}`, lb: 0, ub: 1 }));
+const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 // 1. 予算制約: 合計 100%
-m.addConstraint(sum(w).eq(1.0), "budget");
+m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
 // 2. 目標リターン: 最低 8.5%
-m.addConstraint(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
+const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
+m.constrain(expr`${dot(retMap, w)} >= 0.085`, "min_return");
 
 // 3. 共分散行列 (リスク & 相関)
 const cov = [
@@ -182,15 +183,15 @@ const cov = [
 let risk = new QuadExpr();
 for (let i = 0; i < assets.length; i++) {
   for (let j = 0; j < assets.length; j++) {
-    risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
+    risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
   }
 }
 m.minimize(risk);
 
-await m.solve();
+await m.optimize();
 console.log(`最小分散: ${m.objectiveValue?.toFixed(6)}`);
-assets.forEach((name, i) => {
-  console.log(`  ${name}: ${((w[i].value || 0) * 100).toFixed(2)}%`);
+assets.forEach((name) => {
+  console.log(`  ${name}: ${((w[name].value || 0) * 100).toFixed(2)}%`);
 });
 ```
 
@@ -201,7 +202,7 @@ assets.forEach((name, i) => {
 命題変数（`BoolVar`）と論理結合子（`and`, `or`, `implies`, `not`, `xor`）、数値比較制約を混在させたルール定義：
 
 ```ts
-import { Model, not } from "@ohtaman/washi";
+import { Model, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
@@ -210,16 +211,16 @@ const isNight = m.addBoolVar("isNight");
 const motion = m.addBoolVar("motion");
 const alarm = m.addBoolVar("alarm");
 const siren = m.addBoolVar("siren");
-const lux = m.addVar({ name: "lux", type: "Integer", lb: 0 });
+const lux = m.integer("lux", { lb: 0 });
 
 // 論理ルール
-m.addConstraint(lux.le(50).implies(isNight), "dark_implies_night");
-m.addConstraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
+m.constrain(lux.le(50).implies(isNight), "dark_implies_night");
+m.constrain(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
 // 観測されたセンサー値
-m.addConstraint(lux.le(10), "sensor_dark");
-m.addConstraint(motion, "sensor_motion");
-m.addConstraint(alarm, "alarm_on");
+m.constrain(expr`${lux} <= 10`, "sensor_dark");
+m.constrain(motion, "sensor_motion");
+m.constrain(alarm, "alarm_on");
 
 // 目的関数なしで制約充足可能性（SAT）を判定
 const res = await m.check({ solver: "z3" });
@@ -235,28 +236,28 @@ console.log(`サイレン作動？ ${m.values.get("siren")}`); // true
 業務ルールや制約群が互いに矛盾している場合、**矛盾を引き起こしている制約の部分集合**（Unsat Core。最小性は保証しません）を特定してデバッグ（Z3 が必要）：
 
 ```ts
-import { Model } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
-const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0, ub: 20 });
-const budget = m.addVar({ name: "budget", type: "Continuous", lb: 0, ub: 100000 });
+const engineers = m.integer("engineers", { lb: 0, ub: 20 });
+const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.addBoolVar("rushDelivery");
 
 // ルール 1: エンジニア1人あたり $8,000
-m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
+m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
 // ルール 2: 特急納品が必須
-m.addConstraint(rushDelivery, "rush_required");
+m.constrain(rushDelivery, "rush_required");
 
 // ルール 3: 特急納品には最低 8 人のエンジニアが必要
-m.addConstraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // ルール 4: 役員会の予算上限 $50,000 (矛盾: 8人 * $8000 = $64,000 > $50,000!)
-m.addConstraint(budget.le(50000), "strict_board_budget_cap");
+m.constrain(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
 // ルール 5: 最低 1 人雇用の労働基準（無関係なルール）
-m.addConstraint(engineers.ge(1), "minimum_one_employee");
+m.constrain(expr`${engineers} >= 1`, "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
@@ -273,53 +274,49 @@ console.log("矛盾している制約:", res.unsatCore);
 GNU Linear Programming Kit (GLPK) ソルバープラグインを利用する場合：
 
 ```ts
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
-const m = new Model({ sense: "Maximize", solver: "glpk" });
-const x = m.addVar({ type: "Integer", lb: 0 });
-const y = m.addVar({ type: "Integer", lb: 0 });
+const m = new Model({ solver: "glpk" });
+const x = m.integer("x", { lb: 0 });
+const y = m.integer("y", { lb: 0 });
 
 m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-const status = await m.solve();
+const status = await m.optimize();
 console.log(`ステータス: ${status}`); // "Optimal"
 console.log(`目的関数値: ${m.objectiveValue}`); // 1100
 ```
 
 ---
 
-### 6. PuLP 風のヘルパー
+### 6. ベクトル演算と高速内積 (`dot`)
 
-`LpProblem`・`LpVariable`・`lpSum` などを使って、JavaScript でなじみのある記法を利用できます。Python コードの移植には、構文の調整と対応 API の確認が必要です：
+ネストしたループを書くことなく、1次元・2次元の線形結合を1行で記述：
 
 ```ts
-import {
-  LpProblem,
-  LpVariable,
-  LpMaximize,
-  LpInteger,
-  HiGHS,
-  value,
-} from "@ohtaman/washi";
+import { Model, dot } from "@ohtaman/washi";
 
-const prob = new LpProblem("PuLPDemo", LpMaximize);
+const m = new Model();
+const factories = ["Tokyo", "Osaka"];
+const stores = ["StoreA", "StoreB"];
 
-const x = new LpVariable("x", 0, undefined, LpInteger);
-const y = new LpVariable("y", 0, undefined, LpInteger);
+const costs = {
+  Tokyo: { StoreA: 4, StoreB: 7 },
+  Osaka: { StoreA: 8, StoreB: 3 },
+};
 
-// PuLP の += 相当
-prob.add(x.mul(30).add(y.mul(50)));
-prob.add(x.add(y.mul(2)).le(40));
-prob.add(x.mul(2).add(y).le(50));
+const ship = m.continuous(factories, stores);
 
-await prob.solve(new HiGHS());
+// 総輸送コストを1行で最小化:
+m.minimize(dot(costs, ship));
+await m.optimize();
 
-console.log(`ステータス: ${prob.status}`);
-console.log(`目的関数値: ${value(prob.objective)}`);
-console.log(`x = ${value(x)}, y = ${value(y)}`);
+// 最適解の全変数値を取得
+const solution = m.getValues(ship);
+console.log(solution);
 ```
 
 ---

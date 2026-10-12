@@ -1,4 +1,4 @@
-import { Model, sum } from "../../src/index.js";
+import { Model, expr } from "../../src/index.js";
 import { Z3Solver } from "../../src/modeler/solvers/z3.js";
 
 /**
@@ -25,16 +25,16 @@ async function run() {
   const budgetTierHigh = policyModel.addBoolVar("budgetTierHigh");
 
   // Rule 1: Europe requires GDPR compliance: deployEurope -> complianceGDPR
-  policyModel.addConstraint(deployEurope.implies(complianceGDPR), "r1_gdpr");
+  policyModel.constrain(deployEurope.implies(complianceGDPR), "r1_gdpr");
 
   // Rule 2: Multi-region deployment requires high budget tier: (deployEurope & deployUS) -> budgetTierHigh
-  policyModel.addConstraint(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
+  policyModel.constrain(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
 
   // Scenario: We want both regions deployed, but budget is high and GDPR is enabled
-  policyModel.addConstraint(deployEurope);
-  policyModel.addConstraint(deployUS);
-  policyModel.addConstraint(budgetTierHigh);
-  policyModel.addConstraint(complianceGDPR);
+  policyModel.constrain(deployEurope)
+    .constrain(deployUS)
+    .constrain(budgetTierHigh)
+    .constrain(complianceGDPR);
 
   const policyFeasible = await policyModel.check();
   console.log(`SMT Check Result: ${policyFeasible ? "SAT (Feasible & Consistent)" : "UNSAT"}`);
@@ -48,15 +48,15 @@ async function run() {
   // Step 2: High-Performance Numerical Optimization with HiGHS MIP
   // -------------------------------------------------------------
   console.log("\nStep 2: Solving resource allocation & fixed-charge MIP with HiGHS...");
-  const mip = new Model({ name: "DataCenterCapacityAllocation" });
+  const mip = new Model("DataCenterCapacityAllocation");
 
   // Continuous traffic capacity in TB/s
-  const capEU = mip.addVar({ name: "capEU", lb: 0, ub: 500 });
-  const capUS = mip.addVar({ name: "capUS", lb: 0, ub: 500 });
+  const capEU = mip.continuous("capEU", { lb: 0, ub: 500 });
+  const capUS = mip.continuous("capUS", { lb: 0, ub: 500 });
 
   // Binary activation decisions
-  const openEU = mip.addVar({ name: "openEU", type: "Binary" });
-  const openUS = mip.addVar({ name: "openUS", type: "Binary" });
+  const openEU = mip.binary("openEU");
+  const openUS = mip.binary("openUS");
 
   // Big-M Indicator Constraints:
   // If openEU == 0 -> capEU <= 0 (cannot route traffic if cluster is offline)
@@ -69,18 +69,13 @@ async function run() {
   mip.addIndicator(openUS, capUS.ge(50), { activeValue: 1, M: 500, name: "us_min_batch" });
 
   // Demand requirement: total traffic >= 450 TB/s
-  mip.add(capEU.add(capUS).ge(450), "total_demand");
+  mip.constrain(expr`${capEU} + ${capUS} >= 450`, "total_demand");
 
   // Objective: Minimize Operational Cost
   // Base fixed cost per DC ($5000), marginal cost per TB ($12 in US, $18 in EU)
-  const totalCost = openEU.mul(5000)
-    .add(openUS.mul(5000))
-    .add(capEU.mul(18))
-    .add(capUS.mul(12));
+  mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
 
-  mip.minimize(totalCost);
-
-  const status = await mip.solve();
+  const status = await mip.optimize();
 
   console.log(`HiGHS MIP Status: ${status}`);
   console.log(`Optimal Total Cost: $${mip.objectiveValue?.toLocaleString()}`);

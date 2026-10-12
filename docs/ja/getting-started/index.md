@@ -105,5 +105,5 @@ console.log(`最適解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 ## 🧭 次のステップ
 
 - [ランタイム環境設定](./runtimes.md): Node.js, ブラウザ, Next.js, CDN での動かし方
-- [モデリングガイド](../guide/expressions.md): 複雑な数式や PuLP 互換記法
+- [モデリングガイド](../guide/expressions.md): 変数・数式テンプレート・制約の記述方法
 - [ソルバー詳細](../solvers/): 各ソルバーの特性と選び方

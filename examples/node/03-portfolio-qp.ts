@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/03-portfolio-qp.ts
  */
 
-import { Model, sum, QuadExpr } from "../../src/index.js";
+import { Model, sum, dot, expr, QuadExpr } from "../../src/index.js";
 
 async function main() {
   console.log("=== Markowitz Portfolio Optimization (Convex QP) ===");
@@ -29,34 +29,34 @@ async function main() {
   ];
 
   // Allocation weights w_i in [0, 1]
-  const w = assets.map((name) => m.addVar({ name, lb: 0, ub: 1 }));
+  const w = m.continuous(assets, { lb: 0, ub: 1 });
 
   // Budget constraint: sum(w) == 1.0 (100% total capital)
-  m.addConstraint(sum(w).eq(1.0), "budget_full_allocation");
+  m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget_full_allocation");
 
   // Target expected return: sum(r_i * w_i) >= 8.5%
-  const portfolioReturn = sum(w.map((v, i) => v.mul(expectedReturns[i])));
-  m.addConstraint(portfolioReturn.ge(0.085), "min_expected_return");
+  const returns = Object.fromEntries(assets.map((name, i) => [name, expectedReturns[i]]));
+  m.constrain(expr`${dot(returns, w)} >= 0.085`, "min_expected_return");
 
   // Objective: Minimize portfolio variance w^T * Cov * w
   let risk = new QuadExpr();
   for (let i = 0; i < assets.length; i++) {
     for (let j = 0; j < assets.length; j++) {
       if (cov[i][j] !== 0) {
-        risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
+        risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
       }
     }
   }
   m.minimize(risk);
 
-  const status = await m.solve();
+  const status = await m.optimize();
 
   console.log(`\nStatus: ${status}`);
   console.log(`Optimal Variance (Risk): ${m.objectiveValue?.toFixed(6)}`);
   console.log(`Portfolio Volatility (Std Dev): ${((Math.sqrt(m.objectiveValue || 0)) * 100).toFixed(2)}%`);
   console.log("\nAsset Allocations:");
-  assets.forEach((name, i) => {
-    const pct = ((w[i].value || 0) * 100).toFixed(2);
+  assets.forEach((name) => {
+    const pct = ((w[name].value || 0) * 100).toFixed(2);
     console.log(`  ${name.padEnd(12)}: ${pct}%`);
   });
 }

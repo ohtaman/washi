@@ -6,7 +6,6 @@ let constrIdCounter = 0;
 
 /**
  * Represents a linear constraint: lhs (terms) <=, >=, or == rhs (constant)
- * Compatible with PuLP (LpConstraint) and python-mip (Constr).
  */
 export class Constraint {
   public readonly id: number;
@@ -31,11 +30,6 @@ export class Constraint {
     this.sense = sense;
     this.rhs = rhs;
     this.name = name || `c_${this.id}`;
-  }
-
-  /** PuLP style dual price accessor */
-  get pi(): number | null {
-    return this.dual;
   }
 
   // Logical operators for SMT / SAT

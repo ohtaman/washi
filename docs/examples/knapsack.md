@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| 0-1 Binary MIP | HiGHS (default) | `m.addVars(keys)`, `type: "Binary"`, `sum()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=knapsack">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">Source Code</a></li></ul> |
+| 0-1 Binary MIP | HiGHS (default) | `m.binary()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=knapsack">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">Source Code</a></li></ul> |
 
 The 0-1 Knapsack problem is an essential combinatorial optimization problem: given a set of items, each with a weight and a value, determine which items to include in a collection so that the total weight does not exceed a given limit and the total value is maximized.
 
@@ -21,7 +21,7 @@ $$\begin{aligned}
 <CodeRunner preset="knapsack">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, expr, dot } from "@ohtaman/washi";
 
 async function solveKnapsack() {
   const m = new Model("Knapsack");
@@ -35,28 +35,23 @@ async function solveKnapsack() {
   ];
   const maxCapacity = 7; // kg
 
-  // Create binary variables: x[name] = 1 (selected) or 0 (not selected)
-  const x = m.addVars(items.map((it) => it.name), { type: "Binary" });
+  // Create binary variables: x[name] (0 or 1)
+  const x = m.binary(items.map((it) => it.name));
 
-  // Maximize total value
-  m.maximize(sum(items, (it) => x[it.name].mul(it.value)));
+  const values = Object.fromEntries(items.map((it) => [it.name, it.value]));
+  const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
 
-  // Total weight constraint
-  m.addConstraint(
-    sum(items, (it) => x[it.name].mul(it.weight)).le(maxCapacity),
-    "capacity_limit"
-  );
+  // Maximize total value via dot product
+  m.maximize(dot(values, x));
 
-  const status = await m.solve();
+  // Weight capacity constraint using natural expr and constrain() syntax
+  m.constrain(expr`${dot(weights, x)} <= ${maxCapacity}`, "capacity_limit");
+
+  const status = await m.optimize();
 
   console.log(`Status: ${status}`);
   console.log(`Max Total Value: $${m.objectiveValue}`);
-  console.log("Selected Items:");
-  for (const it of items) {
-    if (Math.round(x[it.name].value ?? 0) === 1) {
-      console.log(`  - ${it.name} (${it.weight}kg, $${it.value})`);
-    }
-  }
+  console.log("Selected Items:", m.getValues(x));
 }
 
 solveKnapsack();

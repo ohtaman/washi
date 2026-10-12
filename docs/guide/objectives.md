@@ -1,41 +1,35 @@
-# Objectives & Solving
+# Objectives & Solving (`m.optimize`)
 
-The objective function defines the goal of the optimization—whether to maximize profits, minimize costs, or balance trade-offs.
+The objective function defines the goal of mathematical optimization—whether to maximize profits, minimize costs, or minimize quadratic risk variance.
 
 ---
 
 ## Setting the Objective Function
 
-You can set the objective via `model.maximize(expression)` or `model.minimize(expression)`:
+Set the objective direction and formula using `m.maximize(expression)` or `m.minimize(expression)`:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
 
-const model = new Model();
-const x = model.addVar({ lb: 0 });
-const y = model.addVar({ lb: 0 });
+const m = new Model("ProductionRevenue");
+const x = m.integer("x", { lb: 0 });
+const y = m.integer("y", { lb: 0 });
 
 // Maximize revenue: 50*x + 40*y
-model.maximize(expr`50 * ${x} + 40 * ${y}`);
+m.maximize(expr`50 * ${x} + 40 * ${y}`);
 
 // Or minimize cost:
-// model.minimize(expr`10 * ${x} + 15 * ${y}`);
-```
-
-You can also specify the optimization direction upon `Model` construction:
-
-```typescript
-const model = new Model({ sense: "Maximize" }); // or "Minimize"
+// m.minimize(expr`10 * ${x} + 15 * ${y}`);
 ```
 
 ---
 
-## 🚀 Solving the Model (`model.solve()`)
+## 🚀 Solving the Model (`m.optimize()`)
 
-Optimization is executed asynchronously by calling `await model.solve()`:
+Optimization is executed asynchronously by calling `await m.optimize()`:
 
 ```typescript
-const result = await model.solve({
+const status = await m.optimize({
   timeLimit: 10.0, // Timeout in seconds
   verbose: false,  // Enable/disable solver console logging
 });
@@ -48,25 +42,30 @@ const result = await model.solve({
 | `timeLimit` | `number` | `undefined` | Maximum solve time limit in seconds. |
 | `verbose` | `boolean` | `false` | When `true`, prints internal solver iteration logs. |
 | `mipGap` | `number` | `undefined` | Relative optimality gap tolerance for MIP (e.g. `0.01` for 1%). |
+| `solver` | `"highs"` \| `"z3"` \| `"glpk"` \| `string` | `"highs"` | Target solver plugin to use for this execution. |
 
 ---
 
 ## 📊 Reading Results & Solver Status
 
-After solving, query the status and solution properties:
+After solving, query the status and optimal values:
 
 ```typescript
-await model.solve();
+const status = await m.optimize();
 
-// Solver Status
-console.log("Status:", model.status);
+// Solver Status ("Optimal", "Infeasible", "Unbounded", "TimeLimit")
+console.log("Status:", status);
 
 // Optimal Objective Value
-console.log("Objective Value:", model.objectiveValue);
+console.log("Objective Value:", m.objectiveValue);
 
 // Individual Variable Values
 console.log("x =", x.value);
 console.log("y =", y.value);
+
+// Bulk Variable Values
+const values = m.getValues({ x, y });
+console.log(values); // { x: ..., y: ... }
 ```
 
 ### Possible Status Values

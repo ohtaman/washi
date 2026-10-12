@@ -4,8 +4,6 @@ export interface ExecutionResult {
   success: boolean;
   logs: string[];
   model?: Modeler.Model;
-  pulpProblem?: Modeler.LpProblem;
-  mipModel?: Modeler.MipModel;
   error?: string;
   runTime?: number;
 }
@@ -49,7 +47,6 @@ export async function executeModelCode(code: string): Promise<ExecutionResult> {
 
     // We detect models created inside the code
     const modelsCreated: Modeler.Model[] = [];
-    const problemsCreated: Modeler.LpProblem[] = [];
 
     // Proxy the constructors to intercept created instances
     class InterceptedModel extends Modeler.Model {
@@ -59,24 +56,7 @@ export async function executeModelCode(code: string): Promise<ExecutionResult> {
       }
     }
 
-    class InterceptedLpProblem extends Modeler.LpProblem {
-      constructor(...args: any[]) {
-        super(...args);
-        problemsCreated.push(this);
-        modelsCreated.push(this.model);
-      }
-    }
-
-    class InterceptedMipModel extends Modeler.MipModel {
-      constructor(...args: any[]) {
-        super(...args);
-        modelsCreated.push(this);
-      }
-    }
-
     context.Model = InterceptedModel;
-    context.LpProblem = InterceptedLpProblem;
-    context.MipModel = InterceptedMipModel;
 
     // Asynchronous Function wrapper
     const keys = Object.keys(context);
@@ -95,13 +75,11 @@ export async function executeModelCode(code: string): Promise<ExecutionResult> {
     const duration = (endTime - startTime) / 1000;
 
     const primaryModel = modelsCreated[modelsCreated.length - 1];
-    const primaryProblem = problemsCreated[problemsCreated.length - 1];
 
     return {
       success: true,
       logs,
       model: primaryModel,
-      pulpProblem: primaryProblem,
       runTime: duration,
     };
   } catch (err: any) {

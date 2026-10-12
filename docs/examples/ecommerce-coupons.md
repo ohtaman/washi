@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.addIndicator()`, `type: "Binary"`, `sum()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
+| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constrain()`, `m.addIndicator()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
 
 Modern e-commerce checkouts often feature complex promotional rules: minimum spend thresholds, category-specific discounts, stackable vs. mutually exclusive coupons, and maximum coupon limits per order. Running an optimizer directly in the browser (or an edge worker) lets the checkout UI automatically apply the best coupon combination—and even recommend a small "filler" item when crossing a spend threshold lowers the customer's net bill.
 
@@ -31,16 +31,16 @@ By adding the `$10` cable (`$252` gross), the customer unlocks `MEGA45_250` (`-$
 <CodeRunner preset="cart_coupon">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, sum, expr } from "@ohtaman/washi";
 
 async function optimizeCheckoutCart() {
-  const m = new Model({ name: "CartCouponOptimizer", sense: "Minimize" });
+  const m = new Model("CartCouponOptimizer");
 
   const baseCartSubtotal = 242;
   const baseTechSubtotal = 210;
 
   // Binary decision: add optional $10 USB-C cable to unlock $250 tier?
-  const addUsbCable = m.addVar({ name: "addon_USB_Cable", type: "Binary" });
+  const addUsbCable = m.binary("addon_USB_Cable");
   const usbCablePrice = 10;
 
   const coupons = [
@@ -51,7 +51,7 @@ async function optimizeCheckoutCart() {
   ];
 
   // Binary decision variables for each coupon
-  const useCoupon = m.addVars(coupons.map((c) => c.id), { type: "Binary", prefix: "cpn" });
+  const useCoupon = m.binary(coupons.map((c) => c.id));
 
   const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
   const techSpend  = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
@@ -76,16 +76,22 @@ async function optimizeCheckoutCart() {
 
   // 2. Mutual exclusion among non-stackable ("Exclusive") coupons
   const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.addConstraint(sum(exclusiveCoupons, (c) => useCoupon[c.id]).le(1), "at_most_one_exclusive");
+  m.constrain(
+    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
+    "at_most_one_exclusive"
+  );
 
   // 3. Max 2 coupons per order
-  m.addConstraint(sum(coupons, (c) => useCoupon[c.id]).le(2), "max_two_coupons");
+  m.constrain(
+    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
+    "max_two_coupons"
+  );
 
   // Objective: Minimize final net payable amount (merchSpend - totalDiscounts)
   const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
   m.minimize(merchSpend.sub(totalDiscount));
 
-  const status = await m.solve();
+  const status = await m.optimize();
   console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);
   console.log(`Recommended Add-on (+$10 USB-C Cable): ${(addUsbCable.value ?? 0) > 0.5 ? "YES" : "NO"}`);
   for (const cpn of coupons) {

@@ -1,9 +1,10 @@
-import type {
-  VarType,
-  OptimizationSense,
-  SolverStatus,
-  SolveOptions,
-  SolverSolution,
+import {
+  type VarType,
+  type OptimizationSense,
+  normalizeSense,
+  type SolverStatus,
+  type SolveOptions,
+  type SolverSolution,
 } from "./types.js";
 import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
@@ -20,6 +21,13 @@ export interface ModelOptions {
   solver?: Solver | string;
 }
 
+export interface BoundsOptions {
+  name?: string;
+  prefix?: string;
+  lb?: number;
+  ub?: number;
+}
+
 export interface IndicatorOptions {
   activeValue?: 0 | 1;
   M?: number;
@@ -27,8 +35,8 @@ export interface IndicatorOptions {
 }
 
 /**
- * High-level intuitive mathematical programming model.
- * Inspired by PuLP (Python) and python-mip, running directly with HiGHS WASM in browser and Node.js.
+ * High-level mathematical programming model for LP, MIP, QP, and SMT,
+ * running directly with WebAssembly solvers (HiGHS, Z3, GLPK) in browser and Node.js.
  */
 export interface LogicalConstraint {
   name: string;
@@ -63,7 +71,7 @@ export class Model {
       options = nameOrOptions;
     }
     this.name = options.name || "OptimizationModel";
-    this.sense = options.sense || "Minimize";
+    this.sense = normalizeSense(options.sense);
     this.objective = new LinExpr();
     if (options.solver) {
       this.solver = getSolver(options.solver);
@@ -85,6 +93,147 @@ export class Model {
   get numConstrs(): number {
     return this.constraints.length;
   }
+
+  /**
+   * Internal generator for domain-specific variables
+   */
+  private createDomainVars(
+    domainType: "Binary" | "Integer" | "Continuous",
+    arg1: any,
+    arg2?: any,
+    arg3?: any
+  ): any {
+    // 2D case: arg2 is number or array
+    if (typeof arg2 === "number" || Array.isArray(arg2)) {
+      const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
+      const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
+      const opts = arg3 || {};
+      const prefix = opts.prefix || opts.name || "x";
+      const matrix: any = {};
+      for (const r of rows) {
+        matrix[r] = {};
+        for (const c of cols) {
+          matrix[r][c] = this.addVar({
+            ...opts,
+            type: domainType,
+            name: `${prefix}_${r}_${c}`,
+          });
+        }
+      }
+      return matrix;
+    }
+
+    // 1D single variable: arg1 is string
+    if (typeof arg1 === "string") {
+      const opts = (arg2 as BoundsOptions) || {};
+      return this.addVar({
+        ...opts,
+        type: domainType,
+        name: arg1,
+      });
+    }
+
+    // 1D multiple variables: count (number) or keys (array/iterable)
+    const opts = (arg2 as BoundsOptions) || {};
+    const prefix = opts.prefix || opts.name;
+    if (typeof arg1 === "number") {
+      const result: Var[] = [];
+      const p = prefix || "x";
+      for (let i = 0; i < arg1; i++) {
+        result.push(
+          this.addVar({
+            ...opts,
+            type: domainType,
+            name: `${p}_${i}`,
+          })
+        );
+      }
+      return result;
+    } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
+      const result: Record<string, Var> = {};
+      for (const key of arg1) {
+        const varName = prefix ? `${prefix}_${key}` : `${key}`;
+        result[key] = this.addVar({
+          ...opts,
+          type: domainType,
+          name: varName,
+        });
+      }
+      return result;
+    }
+
+    throw new Error(`Invalid arguments provided for ${domainType.toLowerCase()} variable creation`);
+  }
+
+  /**
+   * Create 0-1 binary variable(s) (x in {0, 1}).
+   * Supports:
+   * - m.binary("x") -> Var
+   * - m.binary(5) -> Var[]
+   * - m.binary(["a", "b"]) -> Record<string, Var>
+   * - m.binary(rows, cols) -> Record<string, Record<string, Var>>
+   */
+  binary(name: string): Var;
+  binary(count: number, options?: { prefix?: string; name?: string }): Var[];
+  binary<K extends string | number>(
+    keys: K[] | Iterable<K>,
+    options?: { prefix?: string; name?: string }
+  ): Record<K, Var>;
+  binary<R extends string | number, C extends string | number>(
+    dim1: R[] | number,
+    dim2: C[] | number,
+    options?: { prefix?: string; name?: string }
+  ): Record<R, Record<C, Var>>;
+  binary(arg1: any, arg2?: any, arg3?: any): any {
+    return this.createDomainVars("Binary", arg1, arg2, arg3);
+  }
+
+  /**
+   * Create integer variable(s) (y in Z).
+   * Supports:
+   * - m.integer("y", { lb: 0, ub: 10 }) -> Var
+   * - m.integer(5, { lb: 0 }) -> Var[]
+   * - m.integer(["a", "b"], { lb: 0, ub: 5 }) -> Record<string, Var>
+   * - m.integer(rows, cols, options) -> Record<string, Record<string, Var>>
+   */
+  integer(name: string, options?: BoundsOptions): Var;
+  integer(count: number, options?: BoundsOptions): Var[];
+  integer<K extends string | number>(
+    keys: K[] | Iterable<K>,
+    options?: BoundsOptions
+  ): Record<K, Var>;
+  integer<R extends string | number, C extends string | number>(
+    dim1: R[] | number,
+    dim2: C[] | number,
+    options?: BoundsOptions
+  ): Record<R, Record<C, Var>>;
+  integer(arg1: any, arg2?: any, arg3?: any): any {
+    return this.createDomainVars("Integer", arg1, arg2, arg3);
+  }
+
+  /**
+   * Create continuous (real) variable(s) (z in R).
+   * Supports:
+   * - m.continuous("z", { lb: 0 }) -> Var
+   * - m.continuous(5, { lb: 0 }) -> Var[]
+   * - m.continuous(["a", "b"], { lb: 0 }) -> Record<string, Var>
+   * - m.continuous(rows, cols, options) -> Record<string, Record<string, Var>>
+   */
+  continuous(name: string, options?: BoundsOptions): Var;
+  continuous(count: number, options?: BoundsOptions): Var[];
+  continuous<K extends string | number>(
+    keys: K[] | Iterable<K>,
+    options?: BoundsOptions
+  ): Record<K, Var>;
+  continuous<R extends string | number, C extends string | number>(
+    dim1: R[] | number,
+    dim2: C[] | number,
+    options?: BoundsOptions
+  ): Record<R, Record<C, Var>>;
+  continuous(arg1: any, arg2?: any, arg3?: any): any {
+    return this.createDomainVars("Continuous", arg1, arg2, arg3);
+  }
+
 
   /**
    * Add a decision variable to the model
@@ -227,9 +376,16 @@ export class Model {
   /**
    * Set the objective function
    */
-  setObjective(expr: LinExpr | QuadExpr | Var | number | string, sense?: OptimizationSense): void {
+  setObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
+    if (expr instanceof Constraint) {
+      throw new Error(
+        "Cannot set objective to a constraint comparison (<=, >=, ==). " +
+        "Did you mean to use m.constrain(expr`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
+      );
+    }
+
     if (sense) {
-      this.sense = sense;
+      this.sense = normalizeSense(sense);
     }
 
     if (typeof expr === "string") {
@@ -249,15 +405,75 @@ export class Model {
   /**
    * Set objective to maximize
    */
-  maximize(expr: LinExpr | QuadExpr | Var | number | string): void {
+  maximize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
     this.setObjective(expr, "Maximize");
   }
 
   /**
    * Set objective to minimize
    */
-  minimize(expr: LinExpr | QuadExpr | Var | number | string): void {
+  minimize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
     this.setObjective(expr, "Minimize");
+  }
+
+  /**
+   * Constrain the model with linear, boolean, or string formula constraints (primary default API).
+   * Supports single constraint, array of constraints, and fluent chaining:
+   * - m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood")
+   * - m.constrain(items.map(i => expr`${x[i]} <= 10`))
+   * - m.constrain(c1).constrain(c2)
+   */
+  constrain(constraint: Constraint | LinExpr | BoolExpr | string, name?: string): this;
+  constrain(constraints: (Constraint | LinExpr | BoolExpr | string)[]): this;
+  constrain(
+    item: Constraint | LinExpr | BoolExpr | string | (Constraint | LinExpr | BoolExpr | string)[],
+    name?: string
+  ): this {
+    if (Array.isArray(item)) {
+      for (const elem of item) {
+        this.constrain(elem);
+      }
+      return this;
+    }
+    if (item instanceof LinExpr) {
+      throw new Error(
+        "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
+        "Use expr`... <= ...` or .le(), .ge(), .eq()."
+      );
+    }
+    this.addConstraint(item as Constraint | BoolExpr | string, name);
+    return this;
+  }
+
+  /**
+   * Extract primal solution values directly into plain primitives:
+   * - m.getValues(x) -> number | null
+   * - m.getValues([x, y]) -> (number | null)[]
+   * - m.getValues(record) -> Record<string, number | null>
+   * - m.getValues(matrix) -> Record<string, Record<string, number | null>>
+   */
+  getValues(item: Var): number | null;
+  getValues(items: Var[]): (number | null)[];
+  getValues<K extends string | number>(items: Record<K, Var>): Record<K, number | null>;
+  getValues<R extends string | number, C extends string | number>(
+    items: Record<R, Record<C, Var>>
+  ): Record<R, Record<C, number | null>>;
+  getValues(items: any): any {
+    if (items === null || items === undefined) return null;
+    if (items instanceof Var) {
+      return items.value;
+    }
+    if (Array.isArray(items)) {
+      return items.map((v) => this.getValues(v));
+    }
+    if (typeof items === "object") {
+      const res: any = {};
+      for (const [k, v] of Object.entries(items)) {
+        res[k] = this.getValues(v as any);
+      }
+      return res;
+    }
+    return null;
   }
 
   /**
@@ -272,10 +488,16 @@ export class Model {
   /**
    * Add a linear or logical constraint to the model
    */
-  addConstraint(constraint: Constraint | string, name?: string): Constraint;
+  addConstraint(constraint: Constraint | LinExpr | string, name?: string): Constraint;
   addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
-  addConstraint(constraint: Constraint | BoolExpr | string, name?: string): Constraint | BoolExpr;
-  addConstraint(constraint: Constraint | BoolExpr | string, name?: string): Constraint | BoolExpr {
+  addConstraint(constraint: Constraint | LinExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
+  addConstraint(constraint: Constraint | LinExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
+    if (constraint instanceof LinExpr) {
+      throw new Error(
+        "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
+        "Use expr`... <= ...` or .le(), .ge(), .eq()."
+      );
+    }
     if (constraint instanceof BoolExpr) {
       const constrName = name || `lc_${this.logicalConstraints.length + 1}`;
       this.logicalConstraints.push({
@@ -364,17 +586,23 @@ export class Model {
    * Automatically handles <=, >=, and == constraints.
    * Enables solving conditional logic in MIP solvers (HiGHS, GLPK) without requiring SMT.
    */
-  addIndicator(
+  indicator(
     binVar: Var,
-    constraint: Constraint,
+    constraint: Constraint | LinExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    if (!("sense" in constraint) || !("lhs" in constraint)) {
+      throw new Error(
+        "Invalid constraint expression passed to indicator(). Expression must include a comparison operator (<=, >=, ==)."
+      );
+    }
+    const resolvedConstraint = constraint as Constraint;
     const activeVal = options.activeValue !== undefined ? options.activeValue : 1;
     const M = options.M !== undefined ? options.M : 1e5;
-    const baseName = options.name || `ind_${binVar.name}_${constraint.name}`;
+    const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
     const addedConstrs: Constraint[] = [];
 
-    const { lhs, sense, rhs } = constraint;
+    const { lhs, sense, rhs } = resolvedConstraint;
 
     if (activeVal === 1) {
       if (sense === "<=" || sense === "==") {
@@ -417,6 +645,17 @@ export class Model {
   }
 
   /**
+   * @deprecated Use m.indicator(binVar, constraint, options) instead.
+   */
+  addIndicator(
+    binVar: Var,
+    constraint: Constraint | LinExpr,
+    options: IndicatorOptions = {}
+  ): Constraint[] {
+    return this.indicator(binVar, constraint, options);
+  }
+
+  /**
    * Export model to CPLEX LP format string
    */
   toLpString(): string {
@@ -432,7 +671,7 @@ export class Model {
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
-   * or a solver passed dynamically (PuLP style: prob.solve(solver))
+   * or a solver passed dynamically (e.g., await model.optimize(new HiGHS()))
    */
   async optimize(
     solverOrOptions?: Solver | string | SolveOptions,
@@ -588,7 +827,7 @@ export class Model {
   }
 
   /**
-   * PuLP style alias for optimize:
+   * Convenience alias for optimize():
    * await model.solve()
    * await model.solve(new HiGHS())
    * await model.solve(new GLPK())

@@ -70,7 +70,7 @@ export interface SolverCheckResult {
 /**
  * Universal Solver interface.
  * Any optimization engine (HiGHS WASM, GLPK, Gurobi Remote, CBC, SCIP, custom JS)
- * implements this interface to be used interchangeably with Model and LpProblem.
+ * implements this interface to be used interchangeably with Model.
  */
 export interface Solver {
   /** Identifier name of the solver engine */

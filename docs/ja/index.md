@@ -25,7 +25,7 @@ features:
     details: WebAssembly 上で工業グレードの最適化問題を全自動で求解。機密データをサーバーに送らず、オフラインでもセキュアに動作します。
   - icon: ✍️
     title: 直感的な代数モデリング
-    details: Python の PuLP や Julia の JuMP に匹敵する記述性を TypeScript に。タグ付きテンプレートリテラル（expr`...`, c`...`）で数式を自然に表現。
+    details: 直感的なドメイン変数（m.binary, m.integer, m.continuous）、数式テンプレート（expr`...`）、ベクトル集計（dot, sum）、第1推奨の m.constrain() で自然に定式化。
   - icon: ⚡
     title: 産業用マルチソルバーアーキテクチャ
     details: 高速な HiGHS（LP/MIP/QP）を標準搭載。さらに Z3（SMT論理制約・競合診断）や GLPK をプラグインとして自由に切り替え可能。
@@ -39,26 +39,26 @@ features:
 ## クイックコード例
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 // 1. モデルの作成
-const m = new Model({ sense: "Maximize" });
+const m = new Model("木工製品の利益最大化");
 
 // 2. 決定変数の定義（整数変数）
-const x = m.addVar({ type: "Integer", lb: 0, name: "机" });
-const y = m.addVar({ type: "Integer", lb: 0, name: "椅子" });
+const desks = m.integer("机", { lb: 0 });
+const chairs = m.integer("椅子", { lb: 0 });
 
 // 3. 目的関数の設定（机 $30、椅子 $50 の利益最大化）
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
 
 // 4. 制約条件の追加（木材と労働力の上限）
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "木材上限");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "労働力上限");
+m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "木材上限");
+m.constrain(expr`2 * ${desks} + ${chairs} <= 50`, "労働力上限");
 
 // 5. WebAssembly (HiGHS) による求解
-await m.solve();
+await m.optimize();
 
-console.log(`生産量: 机=${x.value}台, 椅子=${y.value}台`);
+console.log(`生産量: 机=${desks.value}台, 椅子=${chairs.value}台`);
 console.log(`最大利益: $${m.objectiveValue}`);
 ```
 

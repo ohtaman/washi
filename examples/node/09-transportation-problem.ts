@@ -10,7 +10,7 @@
  * Run with: npx tsx examples/node/09-transportation-problem.ts
  */
 
-import { Model, sum } from "../../src/index.js";
+import { Model, sum, dot, expr } from "../../src/index.js";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -39,42 +39,32 @@ async function solveTransportation(
   console.log(`\n--- ${label} ---`);
   const t0 = performance.now();
 
-  const m = new Model({ name: "TransportationNetwork", sense: "Minimize" });
+  const m = new Model("TransportationNetwork");
 
   // 2D dictionary of continuous shipment variables: ship[factory][store] >= 0
-  const ship = m.addVars(
-    [...factories],
-    [...stores],
-    { lb: 0, prefix: "ship" }
-  );
+  const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
-  // Objective: Minimize total shipping cost across all routes
-  const costTerms = [];
-  for (const f of factories) {
-    for (const s of stores) {
-      costTerms.push(ship[f][s].mul(shippingCost[f][s]));
-    }
-  }
-  m.minimize(sum(costTerms));
+  // Objective: Minimize total shipping cost across all routes via 2D dot product
+  m.minimize(dot(shippingCost, ship));
 
   // Supply constraints: Outgoing shipments from each factory <= capacity
   for (const f of factories) {
-    m.addConstraint(
-      sum(stores.map((s) => ship[f][s])).le(supplies[f]),
+    m.constrain(
+      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
       `supply_${f}`
     );
   }
 
   // Demand constraints: Incoming shipments to each store >= demand
   for (const s of stores) {
-    m.addConstraint(
-      sum(factories.map((f) => ship[f][s])).ge(storeDemands[s]),
+    m.constrain(
+      expr`${sum(factories, (f) => ship[f][s])} >= ${storeDemands[s]}`,
       `demand_${s}`
     );
   }
 
   const buildMs = performance.now() - t0;
-  const status = await m.solve();
+  const status = await m.optimize();
   const solveMs = m.runTime * 1000;
 
   console.log(`Status: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);

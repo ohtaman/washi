@@ -13,14 +13,21 @@ export interface VarOptions {
   ub?: number;
 }
 
+function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
+  if (!type) return "Continuous";
+  const lower = type.toLowerCase();
+  if (lower === "binary" || lower === "bin") return "Binary";
+  if (lower === "integer" || lower === "int") return "Integer";
+  return "Continuous";
+}
+
 /**
  * Represents a decision variable in an optimization problem.
- * Compatible with both PuLP (LpVariable) and python-mip (Var).
  */
 export class Var {
   public readonly id: number;
   public readonly name: string;
-  public type: VarType;
+  public type: "Continuous" | "Integer" | "Binary";
   public lb: number;
   public ub: number;
 
@@ -32,7 +39,7 @@ export class Var {
   constructor(options: VarOptions = {}) {
     this.id = ++varIdCounter;
     this.name = options.name || `x_${this.id}`;
-    this.type = options.type || "Continuous";
+    this.type = normalizeVarType(options.type);
 
     if (this.type === "Binary") {
       this.lb = 0;
@@ -41,16 +48,6 @@ export class Var {
       this.lb = options.lb !== undefined ? options.lb : 0;
       this.ub = options.ub !== undefined ? options.ub : Infinity;
     }
-  }
-
-  /** python-mip style value accessor */
-  get x(): number | null {
-    return this.value;
-  }
-
-  /** PuLP style value accessor */
-  get varValue(): number | null {
-    return this.value;
   }
 
   /** Multiply variable by a scalar coefficient or another variable/expression */

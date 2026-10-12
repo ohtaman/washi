@@ -1,9 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   Model,
-  LpProblem,
-  LpVariable,
-  LpMaximize,
   HiGHS,
   MockSolver,
   registerSolver,
@@ -13,7 +10,7 @@ import {
   type Solver,
 } from "../src/modeler/index.js";
 
-describe("Pluggable Solvers Architecture (PuLP-like Solver Switching)", () => {
+describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
   it("lists default available solvers", () => {
     const solvers = listAvailableSolvers();
     expect(solvers).toContain("highs");
@@ -57,19 +54,19 @@ describe("Pluggable Solvers Architecture (PuLP-like Solver Switching)", () => {
     expect(x.value).toBe(4);
   });
 
-  it("switches solver in PuLP-compatible LpProblem.solve(solver)", async () => {
-    const prob = new LpProblem("PuLP_Switching", LpMaximize);
-    const x = new LpVariable("x", 0, 100);
-    const y = new LpVariable("y", 0, 100);
+  it("switches solver in Model.solve(solver) and optimize(solver)", async () => {
+    const m = new Model("SolverSwitching");
+    const x = m.continuous("x", { lb: 0, ub: 100 });
+    const y = m.continuous("y", { lb: 0, ub: 100 });
 
-    prob.add(x.mul(10).add(y.mul(20)));
-    prob.add(x.add(y).le(50));
+    m.maximize(x.mul(10).add(y.mul(20)));
+    m.constrain(x.add(y).le(50));
 
-    // PuLP style: prob.solve(HiGHS())
-    const status = await prob.solve(new HiGHS());
+    // Passing solver instance directly: m.optimize(new HiGHS())
+    const status = await m.optimize(new HiGHS());
     expect(status).toBe("Optimal");
     expect(y.value).toBe(50);
-    expect(prob.objectiveValue).toBe(1000);
+    expect(m.objectiveValue).toBe(1000);
   });
 
   it("switches to MockSolver for deterministic testing without WASM", async () => {

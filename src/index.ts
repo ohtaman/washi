@@ -1,22 +1,23 @@
 /**
- * opt-ts: Modern Mathematical Optimization Modeler for TypeScript & JavaScript
+ * WaSHI: Modern Mathematical Optimization Modeler for TypeScript & JavaScript
  * 
- * Elegant PuLP/python-mip style modeling with WebAssembly (HiGHS) and pluggable solvers.
- * Supports LP (Linear Programming), MIP (Mixed-Integer Programming), and QP (Quadratic Programming).
+ * Domain-pure algebraic modeling with WebAssembly (HiGHS, Z3, GLPK) and pluggable solvers.
+ * Supports LP (Linear Programming), MIP (Mixed-Integer Programming), QP (Quadratic Programming), and SMT.
  */
 
 // Core Algebraic Modeler
 export {
   Model,
   type ModelOptions,
+  type BoundsOptions,
   Var,
   type VarOptions,
   LinExpr,
-  sum,
-  xsum,
-  lpSum,
   QuadExpr,
+  type Expr,
   type QuadTerm,
+  sum,
+  dot,
   Constraint,
   BoolVar,
   BoolExpr,
@@ -35,40 +36,16 @@ export {
   type LpExportResult,
 } from "./modeler/index.js";
 
-// Core Types
-export type {
-  VarType,
-  OptimizationSense,
-  ComparisonSense,
-  SolverStatus,
-  SolveOptions,
-  SolverSolution,
+export {
+  normalizeSense,
+  type VarType,
+  type OptimizationSense,
+  type ComparisonSense,
+  type SolverStatus,
+  type SolveOptions,
+  type SolverSolution,
 } from "./modeler/types.js";
 
-// PuLP-compatible API (LpProblem, LpVariable, etc.)
-export {
-  LpProblem,
-  LpVariable,
-  LpMinimize,
-  LpMaximize,
-  LpContinuous,
-  LpInteger,
-  LpBinary,
-  LpStatus,
-  value,
-} from "./modeler/pulp-compat.js";
-
-// python-mip-compatible API (MipModel, MINIMIZE, etc.)
-export {
-  MipModel,
-  MINIMIZE,
-  MAXIMIZE,
-  CONTINUOUS,
-  INTEGER,
-  BINARY,
-  maximize,
-  minimize,
-} from "./modeler/mip-compat.js";
 
 // Solvers & Extensibility Architecture
 export {

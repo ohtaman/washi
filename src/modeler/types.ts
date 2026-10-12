@@ -2,9 +2,31 @@
  * HiGHS & Model Types
  */
 
-export type VarType = "Continuous" | "Integer" | "Binary";
+export type VarType =
+  | "Continuous"
+  | "Integer"
+  | "Binary"
+  | "continuous"
+  | "integer"
+  | "binary"
+  | "cont"
+  | "int"
+  | "bin";
 
-export type OptimizationSense = "Minimize" | "Maximize";
+export type OptimizationSense =
+  | "Minimize"
+  | "Maximize"
+  | "minimize"
+  | "maximize";
+
+/**
+ * Normalizes user-facing optimization sense to internal canonical form ("Maximize" | "Minimize")
+ */
+export function normalizeSense(sense?: OptimizationSense): "Maximize" | "Minimize" {
+  if (!sense) return "Minimize";
+  return sense.toLowerCase() === "maximize" ? "Maximize" : "Minimize";
+}
+
 
 export type ComparisonSense = "<=" | ">=" | "==";
 
@@ -25,10 +47,11 @@ export interface SolveOptions {
   timeLimit?: number; // seconds
   outputFlag?: boolean;
   presolve?: "on" | "off" | "choose";
-  solver?: "choose" | "simplex" | "ipm" | "pdlp";
+  solver?: "choose" | "simplex" | "ipm" | "pdlp" | (string & {});
   relGap?: number;
   absGap?: number;
   wasmUrl?: string;
+  [key: string]: any;
 }
 
 export interface SolverSolution {

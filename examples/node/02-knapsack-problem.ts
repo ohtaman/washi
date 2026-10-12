@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/02-knapsack-problem.ts
  */
 
-import { Model, sum } from "../../src/index.js";
+import { Model, expr, dot } from "../../src/index.js";
 
 async function main() {
   console.log("=== 0-1 Knapsack Optimization (MIP) ===");
@@ -26,21 +26,18 @@ async function main() {
   const maxCapacity = 7; // kg
 
   // Binary variable: x[i] = 1 if item packed, 0 otherwise
-  const x = m.addVars(
-    items.map((it) => it.name),
-    { type: "Binary" }
-  );
+  const x = m.binary(items.map((it) => it.name));
 
-  // Objective: Maximize total value of packed items
-  m.maximize(sum(items.map((it) => x[it.name].mul(it.value))));
+  const values = Object.fromEntries(items.map((it) => [it.name, it.value]));
+  const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
 
-  // Capacity constraint: total weight <= maxCapacity
-  m.addConstraint(
-    sum(items.map((it) => x[it.name].mul(it.weight))).le(maxCapacity),
-    "capacity_limit"
-  );
+  // Objective: Maximize total value of packed items via dot product
+  m.maximize(dot(values, x));
 
-  const status = await m.solve();
+  // Capacity constraint: total weight <= maxCapacity using expr and constrain()
+  m.constrain(expr`${dot(weights, x)} <= ${maxCapacity}`, "capacity_limit");
+
+  const status = await m.optimize();
 
   console.log(`\nStatus: ${status}`);
   console.log(`Max Total Value: $${m.objectiveValue}`);
@@ -53,6 +50,7 @@ async function main() {
     }
   }
   console.log(`Total Weight: ${totalWeight}kg / ${maxCapacity}kg`);
+  console.log("All Solution Values:", m.getValues(x));
 }
 
 main().catch(console.error);

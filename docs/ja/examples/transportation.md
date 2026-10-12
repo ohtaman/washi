@@ -2,11 +2,11 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画問題 (LP) | HiGHS (標準) | `m.addVars(rows, cols)`, `sum()`, `constr.dual` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">ソースコード</a></li></ul> |
+| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">ソースコード</a></li></ul> |
 
 複数の工場（供給拠点）から複数の店舗（需要拠点）へ商品を配送する際、各工場の供給能力上限と各店舗の需要量を満たしながら、総輸送コストを最小化する定番の線形計画問題です。
 
-このサンプルでは、`m.addVars(factories, stores)` を使って **`ship[factory][store]` のような2次元インデックス変数**を1行で構築し、`sum()` で行方向・列方向の合計制約を簡潔に記述する方法を学びます。
+このサンプルでは、`m.continuous(factories, stores)` を使って **`ship[factory][store]` のような2次元インデックス変数**を1行で構築し、`dot()` による2次元コスト行列の内積や、`m.constrain(expr`...`)` での集計制約の書き方を学びます。
 
 ## 入力データ
 
@@ -24,7 +24,7 @@
 <CodeRunner preset="transportation">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, sum, dot, expr } from "@ohtaman/washi";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -39,37 +39,31 @@ const supplies = { Tokyo: 120, Nagoya: 100, Osaka: 80 };
 const demands = { North: 70, East: 90, West: 60, South: 60 };
 
 async function runTransportation() {
-  const m = new Model({ name: "TransportationNetwork", sense: "Minimize" });
+  const m = new Model("TransportationNetwork");
 
-  // 1. 2次元辞書変数の生成: ship[factory][store] >= 0
-  const ship = m.addVars([...factories], [...stores], { lb: 0, prefix: "ship" });
+  // 1. 2次元決定変数の生成: ship[factory][store] >= 0
+  const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
-  // 2. 目的関数: 全ルートの輸送コスト合計を最小化
-  const costTerms = [];
-  for (const f of factories) {
-    for (const s of stores) {
-      costTerms.push(ship[f][s].mul(shippingCost[f][s]));
-    }
-  }
-  m.minimize(sum(costTerms));
+  // 2. 目的関数: 2次元内積による総輸送コストの最小化
+  m.minimize(dot(shippingCost, ship));
 
   // 3. 供給上限（行方向の合計）: 各工場からの総出荷量 <= supplies[f]
   for (const f of factories) {
-    m.addConstraint(
-      sum(stores.map((s) => ship[f][s])).le(supplies[f]),
+    m.constrain(
+      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
       `supply_${f}`
     );
   }
 
   // 4. 需要充足（列方向の合計）: 各店舗への総入荷量 >= demands[s]
   for (const s of stores) {
-    m.addConstraint(
-      sum(factories.map((f) => ship[f][s])).ge(demands[s]),
+    m.constrain(
+      expr`${sum(factories, (f) => ship[f][s])} >= ${demands[s]}`,
       `demand_${s}`
     );
   }
 
-  const status = await m.solve();
+  const status = await m.optimize();
   console.log(`Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
   for (const f of factories) {
     const routes = stores

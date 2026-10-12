@@ -15,7 +15,7 @@
  * Run with: npx tsx examples/node/11-shift-scheduling.ts
  */
 
-import { Model, sum } from "../../src/index.js";
+import { Model, sum, dot, expr } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -50,30 +50,26 @@ function buildShiftModel(
   modelName: string,
   dayOffRequests: Array<{ staff: string; day: Day }>
 ) {
-  const m = new Model({ name: modelName, sense: "Minimize" });
+  const m = new Model(modelName);
 
   // 2D binary variables: shift[staff][day] = 1 if working, 0 if off
-  const shift = m.addVars(
-    staffList.map((s) => s.name),
-    [...days],
-    { type: "Binary", prefix: "shift" }
-  );
+  const shift = m.binary(staffList.map((s) => s.name), [...days]);
 
-  // Objective: Minimize total wage cost (with +$30 weekend shift premium)
-  const costTerms = [];
-  for (const s of staffList) {
-    for (const d of days) {
-      const isWeekend = d === "Sat" || d === "Sun";
-      const cost = s.dailyWage + (isWeekend ? 30 : 0);
-      costTerms.push(shift[s.name][d].mul(cost));
-    }
-  }
-  m.minimize(sum(costTerms));
+  // Objective: Minimize total wage cost (with +$30 weekend shift premium) via 2D dot product
+  const costMatrix = Object.fromEntries(
+    staffList.map((s) => [
+      s.name,
+      Object.fromEntries(
+        days.map((d) => [d, s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0)])
+      ),
+    ])
+  );
+  m.minimize(dot(costMatrix, shift));
 
   // Rule 1: Daily minimum headcount coverage
   for (const d of days) {
-    m.addConstraint(
-      sum(staffList, (s) => shift[s.name][d]).ge(requiredCoverage[d]),
+    m.constrain(
+      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -81,24 +77,24 @@ function buildShiftModel(
   // Rule 2: At least 1 senior staff member on duty every day
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
-    m.addConstraint(
-      sum(seniors, (s) => shift[s.name][d]).ge(1),
+    m.constrain(
+      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
       `senior_duty_${d}`
     );
   }
 
   // Rule 3: Maximum working days per week for each staff member
   for (const s of staffList) {
-    m.addConstraint(
-      sum([...days], (d) => shift[s.name][d]).le(s.maxShifts),
+    m.constrain(
+      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
 
   // Rule 4: Honored day-off requests (shift[staff][day] == 0)
   for (const req of dayOffRequests) {
-    m.addConstraint(
-      shift[req.staff][req.day].le(0),
+    m.constrain(
+      expr`${shift[req.staff][req.day]} == 0`,
       `day_off_${req.staff}_${req.day}`
     );
   }
@@ -123,7 +119,7 @@ async function main() {
   ]);
   const buildMs = performance.now() - t0;
 
-  const status = await feasibleModel.solve();
+  const status = await feasibleModel.optimize();
   console.log(`Status: ${status} (build: ${buildMs.toFixed(2)}ms, solve: ${(feasibleModel.runTime * 1000).toFixed(2)}ms)`);
   console.log(`Optimal Weekly Payroll Cost: $${feasibleModel.objectiveValue}\n`);
 

@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `.implies()`, `.and()`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `m.integer()`, `m.constrain()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 
@@ -21,7 +21,7 @@ We model a security rule system with sensor readings and logic rules:
 <CodeRunner preset="smt_sat_scheduling">
 
 ```typescript
-import { Model, not } from "@ohtaman/washi";
+import { Model, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 async function verifySecurityRules() {
@@ -36,27 +36,27 @@ async function verifySecurityRules() {
   const lightsOn = m.addBoolVar("lightsOn");
 
   // 2. Arithmetic metric (lux sensor)
-  const luxLevel = m.addVar({ name: "luxLevel", type: "Integer", lb: 0, ub: 1000 });
+  const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
   // Rule 1: luxLevel <= 50 implies isNight
-  m.addConstraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+  m.constrain(luxLevel.le(50).implies(isNight), "dark_implies_night");
 
   // Rule 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
-  m.addConstraint(
+  m.constrain(
     motionDetected.and(isNight).and(alarmArmed).implies(sirenActive),
     "intrusion_rule"
   );
 
   // Rule 3: alarmArmed => NOT(frontDoorUnlocked)
-  m.addConstraint(alarmArmed.implies(not(frontDoorUnlocked)), "lock_safety_rule");
+  m.constrain(alarmArmed.implies(not(frontDoorUnlocked)), "lock_safety_rule");
 
   // Rule 4: (motionDetected AND isNight) => lightsOn
-  m.addConstraint(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
+  m.constrain(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
 
   // 3. Observed Context
-  m.addConstraint(luxLevel.le(20), "sensor_reading_dark");
-  m.addConstraint(alarmArmed, "user_armed_alarm");
-  m.addConstraint(motionDetected, "sensor_motion_triggered");
+  m.constrain(expr`${luxLevel} <= 20`, "sensor_reading_dark");
+  m.constrain(alarmArmed, "user_armed_alarm");
+  m.constrain(motionDetected, "sensor_motion_triggered");
 
   // Check satisfiability and deduce state
   const res = await m.check({ solver: "z3" });

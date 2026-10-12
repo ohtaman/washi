@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画問題 (LP) | HiGHS (標準) | `constr.dual`, `constr.slack`, `var.reducedCost` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">ソースコード</a></li></ul> |
+| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">ソースコード</a></li></ul> |
 
 線形計画問題を解いた際、決定変数の最適値（`var.value`）だけでなく、**感度分析（Sensitivity Analysis）**の情報を取得できると実務での意思決定が格段に深まります。
 
@@ -15,7 +15,7 @@
 <CodeRunner preset="diet_sensitivity">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, expr, dot } from "@ohtaman/washi";
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -27,21 +27,27 @@ const foods = [
 ];
 
 async function runDietSensitivity() {
-  const m = new Model({ name: "DietSensitivity", sense: "Minimize" });
+  const m = new Model("DietSensitivity");
 
   // 各食品の1日あたり摂取量 (0 〜 最大 4 食分)
-  const srv = m.addVars(foods.map((f) => f.name), { lb: 0, ub: 4, prefix: "srv" });
+  const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4 });
 
-  // 目的関数: 1日の食費合計を最小化
-  m.minimize(sum(foods, (f) => srv[f.name].mul(f.cost)));
+  const costs = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
+  const cals  = Object.fromEntries(foods.map((f) => [f.name, f.calories]));
+  const prots = Object.fromEntries(foods.map((f) => [f.name, f.protein]));
+  const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
+  const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // 栄養基準の制約オブジェクトを保持し、solve() 後に .dual と .slack を参照
-  const cCal  = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.calories)).ge(2000), "min_calories");
-  const cProt = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.protein)).ge(105),   "min_protein");
-  const cCalc = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.calcium)).ge(1000),  "min_calcium");
-  const cIron = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.iron)).ge(18),       "min_iron");
+  // 目的関数: 1日の食費合計を最小化 (dot による内積)
+  m.minimize(dot(costs, srv));
 
-  const status = await m.solve();
+  // 栄養基準の制約: m.constrain と expr による数式定義
+  m.constrain(expr`${dot(cals, srv)} >= 2000`, "min_calories")
+   .constrain(expr`${dot(prots, srv)} >= 105`,  "min_protein")
+   .constrain(expr`${dot(calcs, srv)} >= 1000`, "min_calcium")
+   .constrain(expr`${dot(irons, srv)} >= 18`,   "min_iron");
+
+  const status = await m.optimize();
 
   console.log(`Status: ${status}, Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
   console.log("--- Food Servings & Reduced Costs ---");
@@ -50,8 +56,11 @@ async function runDietSensitivity() {
     console.log(`  ${f.name.padEnd(8)}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
   }
   console.log("--- Nutritional Constraints (Dual & Slack) ---");
-  for (const c of [cCal, cProt, cCalc, cIron]) {
-    console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
+  for (const name of ["min_calories", "min_protein", "min_calcium", "min_iron"]) {
+    const c = m.getConstraintByName(name);
+    if (c) {
+      console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
+    }
   }
 }
 

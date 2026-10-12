@@ -6,11 +6,9 @@ import {
   QuadExpr,
   Constraint,
   sum,
+  dot,
   HiGHS,
   MockSolver,
-  LpProblem,
-  LpVariable,
-  MipModel,
   BoolVar,
   and,
   or,
@@ -28,11 +26,9 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect(QuadExpr).toBeDefined();
     expect(Constraint).toBeDefined();
     expect(sum).toBeDefined();
+    expect(dot).toBeDefined();
     expect(HiGHS).toBeDefined();
     expect(MockSolver).toBeDefined();
-    expect(LpProblem).toBeDefined();
-    expect(LpVariable).toBeDefined();
-    expect(MipModel).toBeDefined();
     expect(BoolVar).toBeDefined();
     expect(and).toBeDefined();
     expect(or).toBeDefined();
@@ -53,13 +49,13 @@ describe("opt-ts Library Entry Point Exports", () => {
 
   it("can formulate and solve a simple MIP using only root exports", async () => {
     const m = new Model("RootExportTest");
-    const x = m.addVar({ name: "x", type: "Integer" });
-    const y = m.addVar({ name: "y", type: "Integer" });
+    const x = m.integer("x", { lb: 0 });
+    const y = m.integer("y", { lb: 0 });
 
     m.maximize(x.mul(10).add(y.mul(20)));
-    m.addConstraint(x.add(y).le(5));
+    m.constrain(x.add(y).le(5));
 
-    const status = await m.solve();
+    const status = await m.optimize();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(100);
     expect(y.value).toBe(5);
