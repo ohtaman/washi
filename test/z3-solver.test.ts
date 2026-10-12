@@ -122,6 +122,30 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(m.values.get("y")).toBe(10);
   });
 
+  it("halts hybrid pipeline when policy check() is Unsat (verifying status === 'Sat')", async () => {
+    const policy = new Model({ solver: "z3" });
+    const budgetTierHigh = policy.addBoolVar("budgetTierHigh");
+    policy.constrain(budgetTierHigh, "budget_must_be_high");
+    policy.constrain(budgetTierHigh.not(), "budget_must_be_low");
+
+    const policyCheck = await policy.check();
+    // SolverCheckResult is an object and truthy, so checking Boolean(policyCheck) would be a bug (Issue #28)
+    expect(Boolean(policyCheck)).toBe(true);
+    expect(policyCheck.status).toBe("Unsat");
+
+    let mipExecuted = false;
+    // Only proceed to HiGHS when explicitly Sat
+    if (policyCheck.status === "Sat") {
+      const mip = new Model("ShouldNotRun");
+      const x = mip.continuous("x", { lb: 0 });
+      mip.constrain(x.ge(10));
+      await mip.optimize({ solver: "highs" });
+      mipExecuted = true;
+    }
+
+    expect(mipExecuted).toBe(false);
+  });
+
   it("correctly reports Unsat when an Integer variable is constrained to a non-integer value (x == 0.5)", async () => {
     const m = new Model("IntegerHalf");
     const x = m.addVar({

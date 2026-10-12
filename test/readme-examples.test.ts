@@ -192,4 +192,59 @@ describe("README.md Code Snippets Validation", () => {
     expect(x.value).toBe(20);
     expect(y.value).toBe(10);
   });
+
+  it("executes Hybrid SMT + MIP workflow (contradictory halt & feasible solve)", async () => {
+    // Helper replicating the 07-hybrid-smt-mip pipeline logic
+    async function runHybrid(forceConflict: boolean) {
+      const policyModel = new Model({ name: "PolicyModel", solver: "z3" });
+      const deployEurope = policyModel.addBoolVar("deployEurope");
+      const deployUS = policyModel.addBoolVar("deployUS");
+      const complianceGDPR = policyModel.addBoolVar("complianceGDPR");
+      const budgetTierHigh = policyModel.addBoolVar("budgetTierHigh");
+
+      policyModel.constrain(deployEurope.implies(complianceGDPR), "r1_gdpr");
+      policyModel.constrain(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
+      policyModel.constrain(deployEurope).constrain(deployUS).constrain(complianceGDPR);
+
+      if (forceConflict) {
+        policyModel.constrain(budgetTierHigh.not(), "r3_low_budget_cap");
+      } else {
+        policyModel.constrain(budgetTierHigh, "r3_high_budget_approved");
+      }
+
+      const checkRes = await policyModel.check();
+      if (checkRes.status !== "Sat") {
+        return { halted: true, status: checkRes.status, mipStatus: null };
+      }
+
+      const mip = new Model("CapacityAllocation");
+      const capEU = mip.continuous("capEU", { lb: 0, ub: 500 });
+      const capUS = mip.continuous("capUS", { lb: 0, ub: 500 });
+      const openEU = mip.binary("openEU");
+      const openUS = mip.binary("openUS");
+
+      mip.addIndicator(openEU, capEU.le(0), { activeValue: 0, M: 500 });
+      mip.addIndicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
+      mip.addIndicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
+      mip.addIndicator(openUS, capUS.ge(50), { activeValue: 1, M: 500 });
+      mip.constrain(expr`${capEU} + ${capUS} >= 450`);
+      mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
+
+      const mipStatus = await mip.optimize();
+      return { halted: false, status: checkRes.status, mipStatus, totalCost: mip.objectiveValue };
+    }
+
+    // 1. Contradictory scenario must halt on Unsat and NOT run MIP
+    const resConflict = await runHybrid(true);
+    expect(resConflict.halted).toBe(true);
+    expect(resConflict.status).toBe("Unsat");
+    expect(resConflict.mipStatus).toBeNull();
+
+    // 2. Feasible scenario must proceed and solve MIP optimally
+    const resFeasible = await runHybrid(false);
+    expect(resFeasible.halted).toBe(false);
+    expect(resFeasible.status).toBe("Sat");
+    expect(resFeasible.mipStatus).toBe("Optimal");
+    expect(resFeasible.totalCost).toBe(10400);
+  });
 });
