@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum } from "../src/modeler/index.js";
+import { Model, sum, expr } from "../src/modeler/index.js";
 
 describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
   it("enforces constraint f(x) <= b only when indicator variable z == 1 (activeValue = 1)", async () => {
@@ -78,5 +78,35 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
     const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(x.value).toBe(42);
+  });
+
+  it("supports expr`...` tagged template literal directly without type assertions", async () => {
+    const m = new Model("IndicatorExprTest");
+    const x = m.addVar({ name: "x", lb: 0, ub: 200 });
+    const b = m.addVar({ name: "b", type: "Binary" });
+
+    // Directly pass expr`...` to m.indicator without cast
+    m.indicator(b, expr`${x} >= 100`, { activeValue: 1, M: 1000 });
+
+    // Force b = 1
+    m.addConstraint(expr`${b} == 1`);
+    m.minimize(expr`${x}`);
+
+    const status = await m.solve();
+    expect(status).toBe("Optimal");
+    expect(x.value).toBe(100);
+  });
+
+  it("rejects quadratic expressions or invalid comparisons in indicator()", () => {
+    const m = new Model();
+    const x = m.addVar({ name: "x" });
+    const b = m.addVar({ name: "b", type: "Binary" });
+
+    expect(() => m.indicator(b, expr`${x} * ${x}` as any)).toThrow(
+      /Quadratic expressions or constraints are not supported in indicator constraints/
+    );
+    expect(() => m.indicator(b, expr`2 * ${x} + 5` as any)).toThrow(
+      /Invalid constraint expression passed to indicator/
+    );
   });
 });

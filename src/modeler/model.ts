@@ -423,10 +423,10 @@ export class Model {
    * - m.constrain(items.map(i => expr`${x[i]} <= 10`))
    * - m.constrain(c1).constrain(c2)
    */
-  constrain(constraint: Constraint | LinExpr | BoolExpr | string, name?: string): this;
-  constrain(constraints: (Constraint | LinExpr | BoolExpr | string)[]): this;
+  constrain(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): this;
+  constrain(constraints: (Constraint | LinExpr | QuadExpr | BoolExpr | string)[]): this;
   constrain(
-    item: Constraint | LinExpr | BoolExpr | string | (Constraint | LinExpr | BoolExpr | string)[],
+    item: Constraint | LinExpr | QuadExpr | BoolExpr | string | (Constraint | LinExpr | QuadExpr | BoolExpr | string)[],
     name?: string
   ): this {
     if (Array.isArray(item)) {
@@ -434,6 +434,12 @@ export class Model {
         this.constrain(elem);
       }
       return this;
+    }
+    if (item instanceof QuadExpr) {
+      throw new Error(
+        "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
+        "Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)."
+      );
     }
     if (item instanceof LinExpr) {
       throw new Error(
@@ -488,10 +494,16 @@ export class Model {
   /**
    * Add a linear or logical constraint to the model
    */
-  addConstraint(constraint: Constraint | LinExpr | string, name?: string): Constraint;
+  addConstraint(constraint: Constraint | LinExpr | QuadExpr | string, name?: string): Constraint;
   addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
-  addConstraint(constraint: Constraint | LinExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
-  addConstraint(constraint: Constraint | LinExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
+  addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
+  addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
+    if (constraint instanceof QuadExpr) {
+      throw new Error(
+        "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
+        "Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)."
+      );
+    }
     if (constraint instanceof LinExpr) {
       throw new Error(
         "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
@@ -588,9 +600,14 @@ export class Model {
    */
   indicator(
     binVar: Var,
-    constraint: Constraint | LinExpr,
+    constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    if (constraint instanceof QuadExpr) {
+      throw new Error(
+        "Quadratic expressions or constraints are not supported in indicator constraints (only linear constraints are allowed)."
+      );
+    }
     if (!("sense" in constraint) || !("lhs" in constraint)) {
       throw new Error(
         "Invalid constraint expression passed to indicator(). Expression must include a comparison operator (<=, >=, ==)."
@@ -649,7 +666,7 @@ export class Model {
    */
   addIndicator(
     binVar: Var,
-    constraint: Constraint | LinExpr,
+    constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
     return this.indicator(binVar, constraint, options);

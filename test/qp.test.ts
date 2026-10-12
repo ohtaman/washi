@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model } from "../src/modeler/model.js";
+import { Model, expr, c } from "../src/index.js";
 import { generateLpString } from "../src/modeler/lp-writer.js";
 import { HiGHS } from "../src/modeler/solvers/highs.js";
 
@@ -82,5 +82,63 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     expect(achievedReturn).toBeGreaterThanOrEqual(0.1399);
     // Variance objective is positive and minimal
     expect(m.objectiveValue).toBeGreaterThan(0);
+  });
+
+  it("solves QP formulated cleanly using expr`...` syntax", async () => {
+    const m = new Model("ExprQP");
+    const x = m.addVar({ name: "x" });
+    const y = m.addVar({ name: "y" });
+
+    // min 3x + x^2 + y^2 subject to x + y >= 4, x >= 0, y >= 0
+    // Analytical optimum: x = 1.25, y = 2.75, obj = 12.875
+    m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
+    m.addConstraint(expr`${x} + ${y} >= 4`);
+
+    const status = await m.solve(HiGHS);
+
+    expect(status).toBe("Optimal");
+    expect(m.status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(1.25, 4);
+    expect(y.value).toBeCloseTo(2.75, 4);
+    expect(m.objectiveValue).toBeCloseTo(12.875, 4);
+  });
+
+  it("solves QP with implicit coefficient in objective: min 2 x^2 - 4 x", async () => {
+    const m = new Model("ImplicitCoeffQP");
+    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
+
+    // min 2 x^2 - 4 x. Optimum at x = 1, objective = -2
+    m.minimize("2 x^2 - 4 x");
+
+    const status = await m.solve(HiGHS);
+
+    expect(status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(1.0, 4);
+    expect(m.objectiveValue).toBeCloseTo(-2.0, 4);
+
+    // Also verify tagged template literal expr`2 ${x2}^2 - 4 * ${x2}`
+    const m2 = new Model("ExprImplicitCoeffQP");
+    const x2 = m2.addVar({ name: "x", lb: 0, ub: 10 });
+    m2.minimize(expr`2 ${x2}^2 - 4 * ${x2}`);
+
+    const status2 = await m2.solve(HiGHS);
+    expect(status2).toBe("Optimal");
+    expect(x2.value).toBeCloseTo(1.0, 4);
+    expect(m2.objectiveValue).toBeCloseTo(-2.0, 4);
+  });
+
+  it("solves optimization problem with chained exponentiation in objective: min x**1**2 - 4 * x", async () => {
+    const m = new Model("ChainedPowerQP");
+    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
+
+    // x**1**2 parses as x**(1**2) = x^1 = x.
+    // So obj = x - 4x = -3x.
+    // For x in [0, 10], min -3x achieves optimum at x = 10, obj = -30.
+    m.minimize(expr`${x}**1**2 - 4 * ${x}`);
+
+    const status = await m.solve(HiGHS);
+    expect(status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(10.0, 4);
+    expect(m.objectiveValue).toBeCloseTo(-30.0, 4);
   });
 });
