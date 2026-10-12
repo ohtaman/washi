@@ -16,7 +16,7 @@ import {
 describe("Custom Solver Plugin Architecture", () => {
   it("rejects unregistered solver names with helpful instructions", async () => {
     const model = new Model({ name: "UnregisteredGlpk" });
-    const x = model.addVar({ name: "x" });
+    const x = model.continuous("x");
     model.maximize(x);
 
     expect(() => getSolver("glpk")).toThrow(
@@ -73,10 +73,11 @@ describe("Custom Solver Plugin Architecture", () => {
     expect(listAvailableSolvers()).toContain("dummy-3rd-party");
 
     const m = new Model({ name: "ThirdPartyModel", solver: "dummy-3rd-party" });
-    const a = m.addVar({ name: "v_a" });
-    const b = m.addVar({ name: "v_b" });
+    const a = m.continuous("v_a");
+    const b = m.continuous("v_b");
     m.maximize(a.mul(2).add(b.mul(3)));
-    const c1 = m.addConstraint(a.add(b).le(30), "c_budget");
+    m.constrain(a.add(b).le(30), "c_budget");
+    const c1 = m.getConstraintByName("c_budget")!;
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");
@@ -118,7 +119,7 @@ describe("Custom Solver Plugin Architecture", () => {
     };
 
     const model = new Model({ solver: linearOnlySolver });
-    const x = model.addVar({ name: "x" });
+    const x = model.continuous("x");
     // Quadratic objective x * x
     model.maximize(x.mul(x));
 

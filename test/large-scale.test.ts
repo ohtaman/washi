@@ -56,13 +56,10 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
 
     // 2. Decision Variables
     // y[w]: binary variable = 1 if warehouse w is opened, 0 otherwise
-    const y = [];
-    for (let w = 0; w < numWarehouses; w++) {
-      y.push(m.addVar({ name: `y_${w}`, type: "Binary" }));
-    }
+    const y = m.binary(numWarehouses, { prefix: "y" });
 
     // x[w][c]: continuous variable = quantity shipped from warehouse w to customer c
-    const x: any[][] = [];
+    const x = m.continuous(numWarehouses, numCustomers, { lb: 0, prefix: "x" });
     const objTerms: Array<{ v: any; c: number }> = [];
 
     // Fixed cost terms in objective
@@ -71,17 +68,9 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
     }
 
     for (let w = 0; w < numWarehouses; w++) {
-      const row = [];
       for (let c = 0; c < numCustomers; c++) {
-        const v = m.addVar({
-          name: `x_${w}_${c}`,
-          type: "Continuous",
-          lb: 0,
-        });
-        row.push(v);
-        objTerms.push({ v, c: transCosts[w][c] });
+        objTerms.push({ v: x[w][c], c: transCosts[w][c] });
       }
-      x.push(row);
     }
 
     expect(m.variables.length).toBe(20050);
@@ -96,7 +85,7 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
       for (let w = 0; w < numWarehouses; w++) {
         suppliers.push(x[w][c]);
       }
-      m.addConstraint(sum(suppliers).ge(demands[c]), `demand_${c}`);
+      m.constrain(sum(suppliers).ge(demands[c]), `demand_${c}`);
     }
 
     // 3.2. Capacity & opening linking: sum_{c} x[w][c] <= capacities[w] * y[w]
@@ -106,14 +95,14 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
       for (let c = 0; c < numCustomers; c++) {
         shipments.push(x[w][c]);
       }
-      m.addConstraint(
+      m.constrain(
         sum(shipments).sub(y[w].mul(capacities[w])).le(0),
         `cap_${w}`
       );
     }
 
     // 3.3. Maximum warehouse budget: sum_{w} y[w] <= 25 (at most 25 warehouses open)
-    m.addConstraint(sum(y).le(25), "max_warehouses");
+    m.constrain(sum(y).le(25), "max_warehouses");
 
     const tBuilt = performance.now();
     console.log(`[LargeScale] Model built in ${(tBuilt - t0).toFixed(1)} ms. Total vars: ${m.variables.length}, constraints: ${m.constraints.length}`);

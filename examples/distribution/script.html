@@ -19,11 +19,11 @@
     output.textContent = "Solving…";
     try {
       const model = new Model("Production");
-      const x = model.addVar({ name: "x", type: "Integer", lb: 0 });
-      const y = model.addVar({ name: "y", type: "Integer", lb: 0 });
+      const x = model.integer("x", { lb: 0 });
+      const y = model.integer("y", { lb: 0 });
       model.maximize(x.mul(30).add(y.mul(50)));
-      model.addConstraint(x.add(y.mul(2)).le(40));
-      model.addConstraint(x.mul(2).add(y).le(50));
+      model.constrain(x.add(y.mul(2)).le(40));
+      model.constrain(x.mul(2).add(y).le(50));
       const status = await model.solve({ useWorker: document.querySelector("#worker").checked });
       output.textContent = JSON.stringify({ status, objective: model.objectiveValue, x: x.value, y: y.value }, null, 2);
     } catch (error) {

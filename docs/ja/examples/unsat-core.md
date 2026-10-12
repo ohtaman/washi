@@ -19,7 +19,7 @@ async function diagnoseConflict() {
 
   const engineers = m.integer("engineers", { lb: 0, ub: 20 });
   const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-  const rushDelivery = m.addBoolVar("rushDelivery");
+  const rushDelivery = m.bool("rushDelivery");
 
   m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
   m.constrain(rushDelivery, "rush_required");

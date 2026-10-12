@@ -21,12 +21,12 @@ async function main() {
   const m = new Model({ name: "SmartHomeSecurity", solver: "z3" });
 
   // 1. Boolean Propositional Variables
-  const isNight = m.addBoolVar("isNight");
-  const motionDetected = m.addBoolVar("motionDetected");
-  const alarmArmed = m.addBoolVar("alarmArmed");
-  const frontDoorUnlocked = m.addBoolVar("frontDoorUnlocked");
-  const sirenActive = m.addBoolVar("sirenActive");
-  const lightsOn = m.addBoolVar("lightsOn");
+  const isNight = m.bool("isNight");
+  const motionDetected = m.bool("motionDetected");
+  const alarmArmed = m.bool("alarmArmed");
+  const frontDoorUnlocked = m.bool("frontDoorUnlocked");
+  const sirenActive = m.bool("sirenActive");
+  const lightsOn = m.bool("lightsOn");
 
   // 2. Arithmetic metric (continuous sensor)
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });

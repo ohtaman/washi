@@ -128,13 +128,13 @@
 
 // 1. Create model &amp; decision variables
 const m = new Model({ sense: "Maximize" });
-const chairs = m.addVar({ type: "Integer", lb: 0 });
-const tables = m.addVar({ type: "Integer", lb: 0 });
+const chairs = m.integer("chairs", { lb: 0 });
+const tables = m.integer("tables", { lb: 0 });
 
 // 2. Natural algebraic objective &amp; constraints
 m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.addConstraint(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
-m.addConstraint(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
+m.constrain(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
+m.constrain(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
 
 // 3. Solve instantly with HiGHS WASM
 await m.solve();
@@ -276,10 +276,10 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
                   <h4 class="demo-card-title lang-en">Transportation Network</h4>
                   <h4 class="demo-card-title lang-ja" style="display: none;">輸送・物流ネットワーク</h4>
                   <p class="demo-card-desc lang-en">
-                    2D variable matrices with <code>addVars(factories, stores)</code>. Minimize shipping costs across 3 factories and 4 stores.
+                    2D variable matrices with <code>m.continuous(factories, stores)</code>. Minimize shipping costs across 3 factories and 4 stores.
                   </p>
                   <p class="demo-card-desc lang-ja" style="display: none;">
-                    <code>addVars(factories, stores)</code> による2次元マトリクス変数。3工場から4店舗への輸送コストを最小化。
+                    <code>m.continuous(factories, stores)</code> による2次元マトリクス変数。3工場から4店舗への輸送コストを最小化。
                   </p>
                 </div>
                 <span class="demo-card-link lang-en">Open in Demo →</span>
@@ -327,10 +327,10 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
                   <h4 class="demo-card-title lang-en">E-Commerce Coupon Optimizer</h4>
                   <h4 class="demo-card-title lang-ja" style="display: none;">ECカートのクーポン最適適用</h4>
                   <p class="demo-card-desc lang-en">
-                    Conditional threshold rules with <code>addIndicator()</code>, coupon exclusivity, and tier-unlocking add-on items.
+                    Conditional threshold rules with <code>m.constrain(...)</code>, coupon exclusivity, and tier-unlocking add-on items.
                   </p>
                   <p class="demo-card-desc lang-ja" style="display: none;">
-                    <code>addIndicator()</code> による最低購入額条件と併用可否ルールから、支払額が最小になるクーポン構成を計算。
+                    <code>m.constrain(...)</code> による最低購入額条件と併用可否ルールから、支払額が最小になるクーポン構成を計算。
                   </p>
                 </div>
                 <span class="demo-card-link lang-en">Open in Demo →</span>
@@ -467,13 +467,13 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
 const m = new Model({ name: "FactoryPlanning", sense: "Maximize" });
 
 // Decision variables (integer, non-negative)
-const chairs = m.addVar({ name: "chairs", type: "Integer", lb: 0 });
-const tables = m.addVar({ name: "tables", type: "Integer", lb: 0 });
+const chairs = m.integer("chairs", { lb: 0 });
+const tables = m.integer("tables", { lb: 0 });
 
 // Natural objective &amp; constraints
 m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.addConstraint(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
-m.addConstraint(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
+m.constrain(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
+m.constrain(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
 
 // Solve natively in browser WebAssembly
 const status = await m.solve();
@@ -508,13 +508,13 @@ const assets = ["Tech", "Bonds", "RealEstate"];
 const returns = [0.14, 0.04, 0.08];
 
 // Decision variables: allocation weight (0.0 - 1.0)
-const w = assets.map(a => m.addVar({ name: `w_${a}`, lb: 0, ub: 1 }));
+const w = assets.map(a => m.continuous(`w_${a}`, { lb: 0, ub: 1 }));
 
 // 1. Full budget constraint (sum of weights = 1.0)
-m.addConstraint(sum(w).eq(1.0), "budget");
+m.constrain(sum(w).eq(1.0), "budget");
 
 // 2. Minimum expected portfolio return: >= 8.5%
-m.addConstraint(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
+m.constrain(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
 
 // 3. Covariance Matrix risk objective: w^T * Cov * w
 const cov = [
@@ -556,15 +556,15 @@ console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);</pre>
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ solver: "z3" });
-const engineers = m.addVar({ type: "Integer", lb: 0 });
-const budget = m.addVar({ lb: 0 });
-const rush = m.addBoolVar("rush");
+const engineers = m.integer("engineers", { lb: 0 });
+const budget = m.continuous("budget", { lb: 0 });
+const rush = m.bool("rush");
 
 // Conflicting business rules
-m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
-m.addConstraint(rush, "rush_required");
-m.addConstraint(rush.implies(engineers.ge(8)), "rush_staffing");
-m.addConstraint(budget.le(50000), "strict_board_budget_cap"); // 8 * 8000 = 64k > 50k!
+m.constrain(engineers.mul(8000).le(budget), "budget_limit");
+m.constrain(rush, "rush_required");
+m.constrain(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constrain(budget.le(50000), "strict_board_budget_cap"); // 8 * 8000 = 64k > 50k!
 
 // Solve &amp; diagnose
 const res = await m.check({ solver: "z3" });

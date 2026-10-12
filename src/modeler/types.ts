@@ -47,7 +47,7 @@ export interface SolveOptions {
   timeLimit?: number; // seconds
   outputFlag?: boolean;
   presolve?: "on" | "off" | "choose";
-  solver?: "choose" | "simplex" | "ipm" | "pdlp" | (string & {});
+  solver?: any;
   relGap?: number;
   absGap?: number;
   wasmUrl?: string;

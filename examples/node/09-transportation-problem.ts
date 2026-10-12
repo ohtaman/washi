@@ -2,7 +2,7 @@
  * Example 9: Transportation & Allocation Problem (Linear Programming)
  *
  * Demonstrates:
- * - 2D indexed variable matrices via `m.addVars(factories, stores, ...)`
+ * - 2D indexed variable matrices via `m.continuous(factories, stores, ...)`
  * - Row and column aggregations with `sum()`
  * - Inspecting how changing a supply parameter changes the resulting flows
  *

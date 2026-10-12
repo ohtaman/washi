@@ -6,12 +6,12 @@ import { HiGHS } from "../src/modeler/solvers/highs.js";
 describe("Quadratic Programming (QP) with HiGHS", () => {
   it("generates CPLEX LP format with quadratic objective [ ... ] / 2", () => {
     const m = new Model("TestQP");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // min 3x + x^2 + y^2
     m.minimize(x.mul(3).add(x.mul(x)).add(y.mul(y)));
-    m.addConstraint(x.add(y).ge(4), "c1");
+    m.constrain(x.add(y).ge(4), "c1");
 
     const { lpString } = generateLpString({
       name: m.name,
@@ -29,13 +29,13 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
 
   it("solves a constrained convex quadratic optimization problem", async () => {
     const m = new Model("ConvexQP");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // min 3x + x^2 + y^2 subject to x + y >= 4, x >= 0, y >= 0
     // Analytical optimum: x = 1.25, y = 2.75, obj = 12.875
     m.minimize(x.mul(3).add(x.mul(x)).add(y.mul(y)));
-    m.addConstraint(x.add(y).ge(4), "sum_ge_4");
+    m.constrain(x.add(y).ge(4), "sum_ge_4");
 
     const status = await m.solve(HiGHS);
 
@@ -48,15 +48,15 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
 
   it("solves Markowitz Portfolio Optimization (2 assets with covariance)", async () => {
     const m = new Model("PortfolioQP");
-    const w1 = m.addVar({ name: "w1", lb: 0, ub: 1 });
-    const w2 = m.addVar({ name: "w2", lb: 0, ub: 1 });
+    const w1 = m.continuous("w1", { lb: 0, ub: 1 });
+    const w2 = m.continuous("w2", { lb: 0, ub: 1 });
 
     // Sum of weights = 1.0 (100% investment)
-    m.addConstraint(w1.add(w2).eq(1), "budget");
+    m.constrain(w1.add(w2).eq(1), "budget");
 
     // Target expected return >= 14%
     // Asset 1 return = 10%, Asset 2 return = 20%
-    m.addConstraint(w1.mul(0.10).add(w2.mul(0.20)).ge(0.14), "target_return");
+    m.constrain(w1.mul(0.10).add(w2.mul(0.20)).ge(0.14), "target_return");
 
     // Portfolio variance:
     // Var = sigma1^2 * w1^2 + 2 * cov12 * w1 * w2 + sigma2^2 * w2^2

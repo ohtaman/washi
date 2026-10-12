@@ -20,10 +20,10 @@ Solves continuous problems via Primal and Dual Simplex algorithms or Interior Po
 
 ```typescript
 const model = new Model({ solver: "highs" });
-const x = model.addVar({ lb: 0 });
-const y = model.addVar({ lb: 0 });
+const x = model.continuous("x", { lb: 0 });
+const y = model.continuous("y", { lb: 0 });
 model.maximize(expr`10 * ${x} + 6 * ${y}`);
-model.addConstraint(c`${x} + ${y} <= 100`);
+model.constrain(c`${x} + ${y} <= 100`);
 await model.solve();
 ```
 
@@ -31,7 +31,7 @@ await model.solve();
 Solves discrete problems using Branch-and-Bound and cutting plane techniques:
 
 ```typescript
-const count = model.addVar({ type: "Integer", lb: 0, ub: 50 });
+const count = model.integer("count", { lb: 0, ub: 50 });
 ```
 
 ### 3. Convex Quadratic Programming (QP)

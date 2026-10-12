@@ -12,7 +12,7 @@ Node.js (v18+) の標準 ESM をネイティブサポートしています。
 import { Model, expr, c } from "@ohtaman/washi";
 
 const model = new Model();
-const x = model.addVar({ lb: 0, ub: 10 });
+const x = model.continuous("x", { lb: 0, ub: 10 });
 model.maximize(x);
 
 await model.solve();
@@ -32,7 +32,7 @@ import { Model, expr, c } from "@ohtaman/washi";
 
 export async function runOptimization() {
   const model = new Model({ solver: "highs" });
-  const x = model.addVar({ lb: 0, ub: 100 });
+  const x = model.continuous("x", { lb: 0, ub: 100 });
   model.maximize(x);
   await model.solve();
   return x.value;
@@ -55,7 +55,7 @@ Next.js アプリケーションでは、サーバー側（Node.js ランタイ�
   (async () => {
     const { Model, expr, c } = Washi;
     const model = new Model({ sense: "Maximize" });
-    const x = model.addVar({ lb: 0, ub: 10 });
+    const x = model.continuous("x", { lb: 0, ub: 10 });
     model.maximize(x);
     await model.solve();
     console.log("x =", x.value);

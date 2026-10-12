@@ -255,4 +255,81 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     expect(e2Rev.terms.get(x2.terms.id)).toBe(3);
     expect(e2Rev.terms.get(x2.terms.quadTerms)).toBe(4);
   });
+
+  describe("m.bool factory (propositional boolean variables)", () => {
+    it("creates single BoolVar", () => {
+      const m = new Model();
+      const p = m.bool("p");
+      expect(p.name).toBe("p");
+      expect(p.value).toBe(null);
+      expect(m.boolVars).toContain(p);
+    });
+
+    it("creates BoolVar[] by count", () => {
+      const m = new Model();
+      const flags = m.bool(3);
+      expect(flags.length).toBe(3);
+      expect(flags[0].name).toBe("p_0");
+      expect(flags[1].name).toBe("p_1");
+      expect(flags[2].name).toBe("p_2");
+    });
+
+    it("creates Record<string, BoolVar> by keys", () => {
+      const m = new Model();
+      const perms = m.bool(["read", "write", "execute"]);
+      expect(Object.keys(perms)).toEqual(["read", "write", "execute"]);
+      expect(perms.read.name).toBe("read");
+      expect(perms.write.name).toBe("write");
+      expect(perms.execute.name).toBe("execute");
+    });
+
+    it("creates 2D Record<R, Record<C, BoolVar>> by rows and cols", () => {
+      const m = new Model();
+      const grid = m.bool(["alice", "bob"], ["admin", "viewer"]);
+      expect(grid.alice.admin.name).toBe("p_alice_admin");
+      expect(grid.alice.viewer.name).toBe("p_alice_viewer");
+      expect(grid.bob.admin.name).toBe("p_bob_admin");
+      expect(grid.bob.viewer.name).toBe("p_bob_viewer");
+    });
+
+    it("extracts boolean solution values via m.getValues()", async () => {
+      const { registerZ3Solver, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
+      registerZ3Solver();
+
+      const m = new Model({ solver: "z3" });
+      const single = m.bool("single");
+      const list = m.bool(2);
+      const dict = m.bool(["optA", "optB"]);
+      const grid = m.bool(["r1", "r2"], ["c1", "c2"]);
+
+      // single must be true
+      m.constrain(single);
+      // list[0] is true, list[1] is false
+      m.constrain(list[0]);
+      m.constrain(list[1].not());
+      // dict.optA is true, dict.optB is false
+      m.constrain(dict.optA);
+      m.constrain(dict.optB.not());
+      // grid: r1.c1 true, others false
+      m.constrain(grid.r1.c1);
+      m.constrain(grid.r1.c2.not());
+      m.constrain(grid.r2.c1.not());
+      m.constrain(grid.r2.c2.not());
+
+      const res = await m.check();
+      expect(res.status).toBe("Sat");
+
+      // Verify m.getValues
+      expect(m.getValues(single)).toBe(true);
+      expect(m.getValues(list)).toEqual([true, false]);
+      expect(m.getValues(dict)).toEqual({ optA: true, optB: false });
+      expect(m.getValues(grid)).toEqual({
+        r1: { c1: true, c2: false },
+        r2: { c1: false, c2: false },
+      });
+
+      await killZ3Threads();
+    });
+  });
 });
+

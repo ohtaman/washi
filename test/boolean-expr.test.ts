@@ -34,9 +34,9 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
 
   it("combines arithmetic constraints with logical operators", () => {
     const m = new Model("LogicModel");
-    const x = m.addVar({ name: "x", type: "Integer", lb: 0 });
-    const y = m.addVar({ name: "y", type: "Integer", lb: 0 });
-    const flag = m.addBoolVar("flag");
+    const x = m.integer("x", { lb: 0 });
+    const y = m.integer("y", { lb: 0 });
+    const flag = m.bool("flag");
 
     // (x <= 5) implies (y >= 10)
     const rule1 = x.le(5).implies(y.ge(10));
@@ -50,9 +50,9 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     const rule3 = not(flag.and(y.eq(0)));
     expect(rule3.op).toBe("not");
 
-    m.addConstraint(rule1, "rule1");
-    m.addConstraint(rule2, "rule2");
-    m.addConstraint(rule3, "rule3");
+    m.constrain(rule1, "rule1");
+    m.constrain(rule2, "rule2");
+    m.constrain(rule3, "rule3");
 
     expect(m.logicalConstraints.length).toBe(3);
   });
@@ -60,23 +60,23 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
   it("supports m.check() with linear constraints using HiGHS/GLPK", async () => {
     // Pure linear feasibility problem (satisfiability check without objective)
     const m = new Model("FeasibilityCheck");
-    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
-    const y = m.addVar({ name: "y", lb: 0, ub: 10 });
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 10 });
 
-    m.addConstraint(x.add(y).eq(15), "sum_15");
-    m.addConstraint(x.ge(6), "x_ge_6");
+    m.constrain(x.add(y).eq(15), "sum_15");
+    m.constrain(x.ge(6), "x_ge_6");
 
     // HiGHS solve feasibility
     const res = await m.check({ solver: "highs" });
     expect(res.status).toBe("Sat");
     expect(res.values["x"]).toBeGreaterThanOrEqual(6);
-    expect(res.values["x"] + res.values["y"]).toBeCloseTo(15, 4);
+    expect((res.values["x"] as number) + (res.values["y"] as number)).toBeCloseTo(15, 4);
 
     // Infeasible case
     const mInf = new Model("InfeasibleCheck");
-    const v = mInf.addVar({ name: "v" });
-    mInf.addConstraint(v.ge(10), "v_ge_10");
-    mInf.addConstraint(v.le(5), "v_le_5");
+    const v = mInf.continuous("v");
+    mInf.constrain(v.ge(10), "v_ge_10");
+    mInf.constrain(v.le(5), "v_le_5");
 
     const resInf = await mInf.check({ solver: "highs" });
     expect(resInf.status).toBe("Unsat");
@@ -84,11 +84,11 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
 
   it("guards against logical constraints when solver lacks SMT capability", async () => {
     const m = new Model("SMT_Guard");
-    const x = m.addVar({ name: "x" });
-    const p = m.addBoolVar("p");
+    const x = m.continuous("x");
+    const p = m.bool("p");
 
     // Logical constraint: p or (x >= 5)
-    m.addConstraint(p.or(x.ge(5)));
+    m.constrain(p.or(x.ge(5)));
 
     // HiGHS and GLPK do not support SMT native logic without translation
     await expect(m.check({ solver: "highs" })).rejects.toThrowError(

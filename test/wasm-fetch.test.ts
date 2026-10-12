@@ -18,16 +18,16 @@ describe("HiGHS WebAssembly Binary Verification", () => {
 
   it("solves multi-variable problem end-to-end", async () => {
     const m = new Model({ name: "EndToEndTest", sense: "Minimize" });
-    const x = m.addVars(3, { lb: 0, type: "Continuous" });
+    const x = m.continuous(3, { lb: 0 });
 
     // Minimize 2*x0 + 3*x1 + x2
     m.minimize(x[0].mul(2).add(x[1].mul(3)).add(x[2]));
 
     // Subject to:
     // x0 + x1 >= 5
-    m.addConstraint(x[0].add(x[1]).ge(5));
+    m.constrain(x[0].add(x[1]).ge(5));
     // x1 + x2 >= 8
-    m.addConstraint(x[1].add(x[2]).ge(8));
+    m.constrain(x[1].add(x[2]).ge(8));
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");

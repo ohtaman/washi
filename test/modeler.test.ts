@@ -12,17 +12,17 @@ describe("HiGHS Web Modeler", () => {
   it("solves standard MIP production planning problem (chairs and tables)", async () => {
     const m = new Model({ name: "ProductionPlanning", sense: "Maximize" });
 
-    const chairs = m.addVar({ name: "chairs", type: "Integer", lb: 0 });
-    const tables = m.addVar({ name: "tables", type: "Integer", lb: 0 });
+    const chairs = m.integer("chairs", { lb: 0 });
+    const tables = m.integer("tables", { lb: 0 });
 
     // Objective: Maximize 30 * chairs + 50 * tables
     m.maximize(chairs.mul(30).add(tables.mul(50)));
 
     // Constraints:
     // carpentry: chairs + 2 * tables <= 40
-    m.addConstraint(chairs.add(tables.mul(2)).le(40), "carpentry");
+    m.constrain(chairs.add(tables.mul(2)).le(40), "carpentry");
     // finishing: 2 * chairs + tables <= 50
-    m.addConstraint(chairs.mul(2).add(tables).le(50), "finishing");
+    m.constrain(chairs.mul(2).add(tables).le(50), "finishing");
 
     const status = await m.optimize();
 
@@ -34,12 +34,12 @@ describe("HiGHS Web Modeler", () => {
 
   it("solves using string formula constraints and objectives", async () => {
     const m = new Model({ name: "StringModel", sense: "Maximize" });
-    m.addVar("chairs", "Integer", 0);
-    m.addVar("tables", "Integer", 0);
+    m.integer("chairs", { lb: 0 });
+    m.integer("tables", { lb: 0 });
 
     m.maximize("30 * chairs + 50 * tables");
-    m.addConstraint("chairs + 2 * tables <= 40", "carpentry");
-    m.addConstraint("2 * chairs + tables <= 50", "finishing");
+    m.constrain("chairs + 2 * tables <= 40", "carpentry");
+    m.constrain("2 * chairs + tables <= 50", "finishing");
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");
@@ -50,13 +50,13 @@ describe("HiGHS Web Modeler", () => {
 
   it("supports tagged template literal DSL: expr`...`", async () => {
     const m = new Model({ name: "TemplateModel" });
-    const x = m.addVar({ name: "x", type: "Continuous", lb: 0 });
-    const y = m.addVar({ name: "y", type: "Continuous", lb: 0 });
+    const x = m.continuous("x", { lb: 0 });
+    const y = m.continuous("y", { lb: 0 });
 
     // Maximize 2*x + 3*y
     m.maximize(expr`2 * ${x} + 3 * ${y}`);
-    m.addConstraint(expr`${x} + ${y} <= 4`);
-    m.addConstraint(expr`${x} + 2 * ${y} <= 6`);
+    m.constrain(expr`${x} + ${y} <= 4`);
+    m.constrain(expr`${x} + 2 * ${y} <= 6`);
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");
@@ -76,16 +76,13 @@ describe("HiGHS Web Modeler", () => {
     ];
     const capacity = 5;
 
-    const x = m.addVars(
-      items.map((it) => it.name),
-      { type: "Binary" }
-    );
+    const x = m.binary(items.map((it) => it.name));
 
     // Objective: sum(value * x)
     m.maximize(sum(items, (it) => x[it.name].mul(it.value)));
 
     // Weight constraint: sum(weight * x) <= capacity
-    m.addConstraint(
+    m.constrain(
       sum(items, (it) => x[it.name].mul(it.weight)).le(capacity),
       "capacity_limit"
     );
@@ -117,19 +114,19 @@ describe("HiGHS Web Modeler", () => {
     expect(m.getValues([x, y])).toEqual([20, 10]);
   });
 
-  it("handles multi-dimensional variables with addVars2D", async () => {
+  it("handles multi-dimensional variables with m.binary(rows, cols)", async () => {
     const m = new Model({ name: "GridModel" });
     const rows = ["R1", "R2"];
     const cols = ["C1", "C2"];
-    const x = m.addVars2D(rows, cols, { type: "Binary" });
+    const x = m.binary(rows, cols);
 
     // Each row has exactly one 1
     for (const r of rows) {
-      m.addConstraint(sum(cols, (c) => x[r][c]).eq(1), `row_${r}`);
+      m.constrain(sum(cols, (c) => x[r][c]).eq(1), `row_${r}`);
     }
     // Each col has exactly one 1
     for (const c of cols) {
-      m.addConstraint(sum(rows, (r) => x[r][c]).eq(1), `col_${c}`);
+      m.constrain(sum(rows, (r) => x[r][c]).eq(1), `col_${c}`);
     }
 
     const status = await m.optimize();
@@ -140,9 +137,9 @@ describe("HiGHS Web Modeler", () => {
 
   it("clears Var values when re-running optimize() transitioning from Optimal to Infeasible", async () => {
     const m = new Model({ name: "ReRunInfeasible" });
-    const x = m.addVar({ name: "x", type: "Continuous", lb: 0, ub: 10 });
+    const x = m.continuous("x", { lb: 0, ub: 10 });
     m.maximize(x);
-    m.addConstraint(x.ge(5), "c1");
+    m.constrain(x.ge(5), "c1");
 
     const status1 = await m.optimize();
     expect(status1).toBe("Optimal");
@@ -150,7 +147,7 @@ describe("HiGHS Web Modeler", () => {
     expect(m.values.get("x")).toBe(10);
 
     // Add impossible constraint
-    m.addConstraint(x.ge(20), "c2");
+    m.constrain(x.ge(20), "c2");
     const status2 = await m.optimize();
     expect(status2).toBe("Infeasible");
     expect(x.value).toBe(null);

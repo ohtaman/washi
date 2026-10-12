@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `m.integer()`, `m.constrain()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constrain()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 
@@ -28,12 +28,12 @@ async function verifySecurityRules() {
   const m = new Model({ name: "SmartHomeSecurity", solver: "z3" });
 
   // 1. Boolean Propositional Variables
-  const isNight = m.addBoolVar("isNight");
-  const motionDetected = m.addBoolVar("motionDetected");
-  const alarmArmed = m.addBoolVar("alarmArmed");
-  const frontDoorUnlocked = m.addBoolVar("frontDoorUnlocked");
-  const sirenActive = m.addBoolVar("sirenActive");
-  const lightsOn = m.addBoolVar("lightsOn");
+  const isNight = m.bool("isNight");
+  const motionDetected = m.bool("motionDetected");
+  const alarmArmed = m.bool("alarmArmed");
+  const frontDoorUnlocked = m.bool("frontDoorUnlocked");
+  const sirenActive = m.bool("sirenActive");
+  const lightsOn = m.bool("lightsOn");
 
   // 2. Arithmetic metric (lux sensor)
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });

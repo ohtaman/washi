@@ -107,10 +107,10 @@ describe("README.md Code Snippets Validation", () => {
   it("executes 3. SMT Logic & Rule Engines (with Z3)", async () => {
     const m = new Model({ name: "SmartSecurityRules" });
 
-    const isNight = m.addBoolVar("isNight");
-    const motion = m.addBoolVar("motion");
-    const alarm = m.addBoolVar("alarm");
-    const siren = m.addBoolVar("siren");
+    const isNight = m.bool("isNight");
+    const motion = m.bool("motion");
+    const alarm = m.bool("alarm");
+    const siren = m.bool("siren");
     const lux = m.integer("lux", { lb: 0 });
 
     // Logical rules
@@ -133,7 +133,7 @@ describe("README.md Code Snippets Validation", () => {
 
     const engineers = m.integer("engineers", { lb: 0, ub: 20 });
     const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-    const rushDelivery = m.addBoolVar("rushDelivery");
+    const rushDelivery = m.bool("rushDelivery");
 
     // Rule 1: Each engineer costs $8,000
     m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
@@ -197,10 +197,10 @@ describe("README.md Code Snippets Validation", () => {
     // Helper replicating the 07-hybrid-smt-mip pipeline logic
     async function runHybrid(forceConflict: boolean) {
       const policyModel = new Model({ name: "PolicyModel", solver: "z3" });
-      const deployEurope = policyModel.addBoolVar("deployEurope");
-      const deployUS = policyModel.addBoolVar("deployUS");
-      const complianceGDPR = policyModel.addBoolVar("complianceGDPR");
-      const budgetTierHigh = policyModel.addBoolVar("budgetTierHigh");
+      const deployEurope = policyModel.bool("deployEurope");
+      const deployUS = policyModel.bool("deployUS");
+      const complianceGDPR = policyModel.bool("complianceGDPR");
+      const budgetTierHigh = policyModel.bool("budgetTierHigh");
 
       policyModel.constrain(deployEurope.implies(complianceGDPR), "r1_gdpr");
       policyModel.constrain(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
@@ -231,10 +231,10 @@ describe("README.md Code Snippets Validation", () => {
         mip.constrain(openUS.eq(1), "enforce_us_deployment");
       }
 
-      mip.addIndicator(openEU, capEU.le(0), { activeValue: 0, M: 500 });
-      mip.addIndicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
-      mip.addIndicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
-      mip.addIndicator(openUS, capUS.ge(50), { activeValue: 1, M: 500 });
+      mip.indicator(openEU, capEU.le(0), { activeValue: 0, M: 500 });
+      mip.indicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
+      mip.indicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
+      mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500 });
       mip.constrain(expr`${capEU} + ${capUS} >= 450`);
       mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
 

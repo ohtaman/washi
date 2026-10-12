@@ -32,11 +32,11 @@ import "@ohtaman/washi/solvers/glpk";
 
 const model = new Model({ solver: "glpk" });
 
-const x = model.addVar({ lb: 0, ub: 10 });
-const y = model.addVar({ lb: 0, ub: 20 });
+const x = model.continuous("x", { lb: 0, ub: 10 });
+const y = model.continuous("y", { lb: 0, ub: 20 });
 
 model.maximize(expr`3 * ${x} + 2 * ${y}`);
-model.addConstraint(c`${x} + ${y} <= 15`, "cap");
+model.constrain(c`${x} + ${y} <= 15`, "cap");
 
 await model.solve();
 

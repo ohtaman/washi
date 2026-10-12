@@ -81,9 +81,9 @@ describe("HiGHS WebAssembly Loader & Resolver", () => {
   describe("Node.js seamless operation", () => {
     it("solves optimization problems out-of-the-box in Node.js without any configuration", async () => {
       const model = new Model({ name: "NodeTest" });
-      const x = model.addVar({ name: "x", lb: 0, ub: 10 });
-      const y = model.addVar({ name: "y", lb: 0, ub: 10 });
-      model.addConstraint(x.add(y).le(12), "c1");
+      const x = model.continuous("x", { lb: 0, ub: 10 });
+      const y = model.continuous("y", { lb: 0, ub: 10 });
+      model.constrain(x.add(y).le(12), "c1");
       model.setObjective(x.mul(3).add(y.mul(2)), "Maximize");
 
       const status = await model.solve();

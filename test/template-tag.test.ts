@@ -1,14 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, c, expr } from "../src/index.js";
+import { Model, Var, LinExpr, c, expr } from "../src/index.js";
 
 describe("Tagged Template Literal Syntax (c and expr)", () => {
   it("parses linear expression with variables and numbers via expr`...`", () => {
     const m = new Model("TestModel");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // expr`30 * ${x} + 40 * ${y} + 15`
-    const e = expr`30 * ${x} + 40 * ${y} + 15`;
+    const e = expr`30 * ${x} + 40 * ${y} + 15` as LinExpr;
 
     expect(e.terms.get(x)).toBe(30);
     expect(e.terms.get(y)).toBe(40);
@@ -17,11 +17,11 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("handles negative terms and subtractions in expr`...`", () => {
     const m = new Model("TestModel");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // expr`${x} - 5 * ${y} - 20`
-    const e = expr`${x} - 5 * ${y} - 20`;
+    const e = expr`${x} - 5 * ${y} - 20` as LinExpr;
 
     expect(e.terms.get(x)).toBe(1);
     expect(e.terms.get(y)).toBe(-5);
@@ -30,8 +30,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("parses inequality constraints via c`... <= ...`", () => {
     const m = new Model("TestModel");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // c`${x} + 2 * ${y} <= 10`
     const constr = c`${x} + 2 * ${y} <= 10`;
@@ -44,8 +44,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("parses greater-than-or-equal constraints via c`... >= ...`", () => {
     const m = new Model("TestModel");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // c`3 * ${x} - ${y} >= 5`
     const constr = c`3 * ${x} - ${y} >= 5`;
@@ -58,8 +58,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("parses equality constraints with variables on both sides via c`... == ...`", () => {
     const m = new Model("TestModel");
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     // c`${x} == 2 * ${y} + 4` => x - 2*y == 4
     const constr = c`${x} == 2 * ${y} + 4`;
@@ -72,15 +72,15 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("solves an optimization problem formulated cleanly using c`...` and expr`...`", async () => {
     const m = new Model("ProductionPlanningTTL");
-    const chairs = m.addVar({ name: "chairs", lb: 0, type: "Integer" });
-    const tables = m.addVar({ name: "tables", lb: 0, type: "Integer" });
+    const chairs = m.integer("chairs", { lb: 0 });
+    const tables = m.integer("tables", { lb: 0 });
 
     // Objective: Maximize profit 45 * chairs + 80 * tables
     m.maximize(expr`45 * ${chairs} + 80 * ${tables}`);
 
     // Constraints via c`...`
-    m.addConstraint(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany");
-    m.addConstraint(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor");
+    m.constrain(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany");
+    m.constrain(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor");
 
     const status = await m.solve();
 
@@ -92,8 +92,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("handles decimal floating-point coefficients correctly", () => {
     const m = new Model();
-    const x = m.addVar();
-    const y = m.addVar();
+    const x = m.continuous("x");
+    const y = m.continuous("y");
 
     const constr = c`0.25 * ${x} + 1.75 * ${y} <= 12.5`;
     expect(constr.lhs.terms.get(x)).toBeCloseTo(0.25);
@@ -103,7 +103,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
   it("throws clear error on malformed constraint expressions", () => {
     const m = new Model();
-    const x = m.addVar();
+    const x = m.continuous("x");
 
     // Missing comparison operator
     expect(() => c`2 * ${x} + 5`).toThrow(/Constraint must contain a comparison operator/);

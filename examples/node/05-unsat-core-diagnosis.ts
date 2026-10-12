@@ -20,7 +20,7 @@ async function main() {
 
   const engineers = m.integer("engineers", { lb: 0, ub: 20 });
   const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-  const rushDelivery = m.addBoolVar("rushDelivery");
+  const rushDelivery = m.bool("rushDelivery");
 
   // Rule 1: Each engineer costs $8,000
   m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");

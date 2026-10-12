@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `m.integer()`, `m.constrain()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
+| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constrain()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
 
 真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`lux.le(50).implies(isNight)`)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
 
@@ -17,10 +17,10 @@ import "@ohtaman/washi/solvers/z3";
 async function verifySecurityRules() {
   const m = new Model({ name: "SmartSecurityRules", solver: "z3" });
 
-  const isNight = m.addBoolVar("isNight");
-  const motion  = m.addBoolVar("motion");
-  const alarm   = m.addBoolVar("alarm");
-  const siren   = m.addBoolVar("siren");
+  const isNight = m.bool("isNight");
+  const motion  = m.bool("motion");
+  const alarm   = m.bool("alarm");
+  const siren   = m.bool("siren");
   const lux     = m.integer("lux", { lb: 0 });
 
   // 論理ルール
