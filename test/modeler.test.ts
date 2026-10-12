@@ -4,18 +4,8 @@ import {
   Var,
   LinExpr,
   sum,
-  xsum,
+  dot,
   expr,
-  LpProblem,
-  LpVariable,
-  LpMaximize,
-  LpInteger,
-  value,
-  MipModel,
-  MAXIMIZE,
-  INTEGER,
-  BINARY,
-  maximize,
 } from "../src/modeler/index.js";
 
 describe("HiGHS Web Modeler", () => {
@@ -109,39 +99,22 @@ describe("HiGHS Web Modeler", () => {
     expect(x["water"].value).toBe(0);
   });
 
-  it("supports PuLP-compatible API layer", async () => {
-    const prob = new LpProblem("PuLP_Problem", LpMaximize);
-    const x = new LpVariable("chairs", 0, undefined, LpInteger);
-    const y = new LpVariable("tables", 0, undefined, LpInteger);
+  it("supports domain-pure integer variables and constrain() API", async () => {
+    const m = new Model("PureProblem");
+    const x = m.integer("chairs", { lb: 0 });
+    const y = m.integer("tables", { lb: 0 });
 
-    prob.setObjective(x.mul(30).add(y.mul(50)));
-    prob.addConstraint(x.add(y.mul(2)).le(40));
-    prob.addConstraint(x.mul(2).add(y).le(50));
-
-    await prob.solve();
-
-    expect(prob.status).toBe("Optimal");
-    expect(value(prob.objective)).toBe(1100);
-    expect(value(x)).toBe(20);
-    expect(value(y)).toBe(10);
-    expect(x.varValue).toBe(20);
-  });
-
-  it("supports python-mip compatible API layer", async () => {
-    const m = new MipModel("MipProblem", MAXIMIZE);
-    const x = m.add_var({ name: "x", var_type: INTEGER, lb: 0 });
-    const y = m.add_var({ name: "y", var_type: INTEGER, lb: 0 });
-
-    m.objective_spec = maximize(x.mul(30).add(y.mul(50)));
-    m.add_constr(x.add(y.mul(2)).le(40));
-    m.add_constr(x.mul(2).add(y).le(50));
+    m.maximize(x.mul(30).add(y.mul(50)));
+    m.constrain(x.add(y.mul(2)).le(40));
+    m.constrain(x.mul(2).add(y).le(50));
 
     await m.optimize();
 
     expect(m.status).toBe("Optimal");
-    expect(m.objective_value).toBe(1100);
-    expect(x.x).toBe(20);
-    expect(y.x).toBe(10);
+    expect(m.objectiveValue).toBe(1100);
+    expect(x.value).toBe(20);
+    expect(y.value).toBe(10);
+    expect(m.getValues([x, y])).toEqual([20, 10]);
   });
 
   it("handles multi-dimensional variables with addVars2D", async () => {
@@ -174,8 +147,6 @@ describe("HiGHS Web Modeler", () => {
     const status1 = await m.optimize();
     expect(status1).toBe("Optimal");
     expect(x.value).toBe(10);
-    expect(x.varValue).toBe(10);
-    expect(x.x).toBe(10);
     expect(m.values.get("x")).toBe(10);
 
     // Add impossible constraint
@@ -183,8 +154,6 @@ describe("HiGHS Web Modeler", () => {
     const status2 = await m.optimize();
     expect(status2).toBe("Infeasible");
     expect(x.value).toBe(null);
-    expect(x.varValue).toBe(null);
-    expect(x.x).toBe(null);
     expect(m.values.size).toBe(0);
   });
 });

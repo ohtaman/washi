@@ -217,33 +217,61 @@ export class LinExpr {
 }
 
 /**
- * Sum an array or iterable of variables, expressions, or numbers.
- * Also supports mapping functions: sum(items, item => expr)
- * Compatible with PuLP's lpSum and python-mip's xsum.
+ * Union expression type covering linear and quadratic expressions.
  */
+export type Expr = LinExpr | QuadExpr;
+
+/**
+ * Sum an array, iterable, or count-range of variables, expressions, or numbers.
+ * Supports:
+ * - sum([x, y, z])
+ * - sum(items, item => expr)
+ * - sum(10, i => expr) (range 0..9)
+ */
+export function sum(
+  count: number,
+  mapFn: (index: number) => LinExpr | Var | number
+): LinExpr;
 export function sum<T = any>(
   items: Iterable<T>,
   mapFn?: (item: T, index: number) => LinExpr | Var | number
+): LinExpr;
+export function sum<T = any>(
+  arg1: number | Iterable<T>,
+  arg2?: (item: any, index: number) => LinExpr | Var | number
 ): LinExpr {
   const terms = new Map<Var, number>();
   let constant = 0;
-  let index = 0;
 
-  for (const item of items) {
-    const val = mapFn ? mapFn(item, index++) : (item as unknown as LinExpr | Var | number);
+  function addVal(val: LinExpr | Var | number | undefined | null) {
+    if (val === null || val === undefined) return;
     if (typeof val === "number") {
       constant += val;
-    } else if (val && typeof val === "object" && "terms" in val) {
+    } else if (typeof val === "object" && "terms" in val) {
       const linExpr = val as LinExpr;
       for (const [v, c] of linExpr.terms) {
         const cur = terms.get(v) || 0;
         terms.set(v, cur + c);
       }
       constant += linExpr.constant;
-    } else if (val) {
+    } else {
       const v = val as Var;
       const cur = terms.get(v) || 0;
       terms.set(v, cur + 1);
+    }
+  }
+
+  if (typeof arg1 === "number") {
+    const count = arg1;
+    const mapFn = arg2!;
+    for (let i = 0; i < count; i++) {
+      addVal(mapFn(i, i));
+    }
+  } else {
+    let index = 0;
+    for (const item of arg1) {
+      const val = arg2 ? arg2(item, index++) : (item as unknown as LinExpr | Var | number);
+      addVal(val);
     }
   }
 
@@ -258,11 +286,74 @@ export function sum<T = any>(
 }
 
 /**
- * python-mip style alias for sum
+ * Compute the vector dot product (linear combination) of coefficients and variables.
+ * Works with 1D/2D arrays and records in either order:
+ * - dot(costs, vars)
+ * - dot(vars, costs)
+ * - dot(costMatrix, flowMatrix)
  */
-export const xsum = sum;
+export function dot(
+  a: Record<string, any> | any[],
+  b: Record<string, any> | any[]
+): LinExpr {
+  const terms = new Map<Var, number>();
+  let constant = 0;
 
-/**
- * PuLP style alias for sum
- */
-export const lpSum = sum;
+  function addProduct(coeff: number, exprOrVar: Var | LinExpr | number) {
+    if (typeof exprOrVar === "number") {
+      constant += coeff * exprOrVar;
+    } else if (exprOrVar && typeof exprOrVar === "object" && "terms" in exprOrVar) {
+      for (const [v, c] of (exprOrVar as LinExpr).terms) {
+        const cur = terms.get(v) || 0;
+        terms.set(v, cur + coeff * c);
+      }
+      constant += coeff * (exprOrVar as LinExpr).constant;
+    } else if (exprOrVar) {
+      const v = exprOrVar as Var;
+      const cur = terms.get(v) || 0;
+      terms.set(v, cur + coeff);
+    }
+  }
+
+  function recurse(valA: any, valB: any) {
+    if (valA === undefined || valB === undefined || valA === null || valB === null) return;
+
+    if (typeof valA === "number") {
+      addProduct(valA, valB);
+      return;
+    }
+    if (typeof valB === "number") {
+      addProduct(valB, valA);
+      return;
+    }
+
+    if (Array.isArray(valA) && Array.isArray(valB)) {
+      const minLen = Math.min(valA.length, valB.length);
+      for (let i = 0; i < minLen; i++) {
+        recurse(valA[i], valB[i]);
+      }
+      return;
+    }
+
+    if (typeof valA === "object" && typeof valB === "object") {
+      for (const key of Object.keys(valA)) {
+        if (key in valB) {
+          recurse(valA[key], valB[key]);
+        }
+      }
+      return;
+    }
+  }
+
+  recurse(a, b);
+
+  for (const [v, c] of terms) {
+    if (Math.abs(c) < 1e-12) {
+      terms.delete(v);
+    }
+  }
+
+  return new LinExpr(terms, constant);
+}
+
+

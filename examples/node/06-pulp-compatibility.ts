@@ -1,46 +1,45 @@
 /**
- * Example 6: PuLP Compatible Modeling (LpProblem, LpVariable, lpSum)
+ * Example 6: Domain-pure Modern Algebraic Modeling
  * 
  * Demonstrates:
- * - 1:1 drop-in syntax for Python PuLP users
- * - High-speed in-process WASM solving without external solver binaries
+ * - Direct mathematical modeling with Model, integer/continuous/binary
+ * - First-class constrain() method and inner product (dot)
+ * - Clean solution extraction with getValues()
  * 
  * Run with: npx tsx examples/node/06-pulp-compatibility.ts
  */
 
 import {
-  LpProblem,
-  LpVariable,
-  LpMaximize,
-  LpInteger,
-  lpSum,
-  value,
+  Model,
+  dot,
+  expr,
 } from "../../src/index.js";
 
 async function main() {
-  console.log("=== PuLP Drop-in Compatible Modeling ===");
+  console.log("=== Domain-Pure Algebraic Modeling ===");
 
-  // Create problem with PuLP syntax
-  const prob = new LpProblem("DietProblem", LpMaximize);
+  const m = new Model("DietProblem");
 
-  // Define decision variables
-  const foodA = new LpVariable("Food_A", 0, undefined, LpInteger);
-  const foodB = new LpVariable("Food_B", 0, undefined, LpInteger);
+  // Define decision variables domain-directly
+  const foodA = m.integer("Food_A", { lb: 0 });
+  const foodB = m.integer("Food_B", { lb: 0 });
 
-  // Objective: Maximize satisfaction
-  prob.setObjective(foodA.mul(2).add(foodB.mul(3)));
+  // Objective: Maximize satisfaction (2 * foodA + 3 * foodB)
+  m.maximize(expr`2 * ${foodA} + 3 * ${foodB}`);
 
-  // Add constraints
-  prob.addConstraint(foodA.mul(1).add(foodB.mul(2)).le(10), "Calories");
-  prob.addConstraint(foodA.mul(3).add(foodB.mul(1)).le(15), "Protein");
+  // Add constraints using the primary constrain() method
+  m.constrain(expr`${foodA} + 2 * ${foodB} <= 10`, "Calories")
+   .constrain(expr`3 * ${foodA} + ${foodB} <= 15`, "Protein");
 
-  console.log("Solving with PuLP-compatible API...");
-  const status = await prob.solve();
+  console.log("Optimizing with HiGHS...");
+  const status = await m.optimize();
 
   console.log(`\nStatus: ${status}`);
-  console.log(`Optimal Objective Value: ${prob.objectiveValue}`);
-  console.log(`  Food_A: ${value(foodA)}`);
-  console.log(`  Food_B: ${value(foodB)}`);
+  console.log(`Optimal Objective Value: ${m.objectiveValue}`);
+  console.log(`  Food_A: ${foodA.value}`);
+  console.log(`  Food_B: ${foodB.value}`);
+  console.log(`  Values:`, m.getValues([foodA, foodB]));
 }
 
 main().catch(console.error);
+

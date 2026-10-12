@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
-import { LinExpr, sum, xsum, lpSum } from "../src/modeler/expression.js";
+import { LinExpr, sum } from "../src/modeler/expression.js";
 
 describe("LinExpr & Arithmetic Operations", () => {
   it("creates empty expression with zero constant", () => {
@@ -65,7 +65,7 @@ describe("LinExpr & Arithmetic Operations", () => {
     expect(expr.getValue()).toBe(33);
   });
 
-  it("handles sum, xsum, and lpSum aggregation functions", () => {
+  it("handles sum aggregation function with iterables and mapping", () => {
     const x0 = new Var({ name: "x0" });
     const x1 = new Var({ name: "x1" });
     const x2 = new Var({ name: "x2" });
@@ -78,15 +78,16 @@ describe("LinExpr & Arithmetic Operations", () => {
 
     // sum with mapping function
     const weights = [10, 20, 30];
-    const s2 = xsum(vars, (v, i) => v.mul(weights[i]));
+    const s2 = sum(vars, (v, i) => v.mul(weights[i]));
     expect(s2.terms.get(x0)).toBe(10);
     expect(s2.terms.get(x1)).toBe(20);
     expect(s2.terms.get(x2)).toBe(30);
 
-    // lpSum alias
-    const s3 = lpSum([x0.mul(2), x1.mul(4)]);
+    // sum with count overload
+    const s3 = sum(3, (i) => vars[i].mul((i + 1) * 2));
     expect(s3.terms.get(x0)).toBe(2);
     expect(s3.terms.get(x1)).toBe(4);
+    expect(s3.terms.get(x2)).toBe(6);
   });
 
   it("creates comparison constraints correctly", () => {

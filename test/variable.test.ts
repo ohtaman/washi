@@ -9,8 +9,6 @@ describe("Decision Variable (Var)", () => {
     expect(v.lb).toBe(0);
     expect(v.ub).toBe(Infinity);
     expect(v.value).toBe(null);
-    expect(v.x).toBe(null);
-    expect(v.varValue).toBe(null);
   });
 
   it("initializes Binary variable with fixed bounds [0, 1]", () => {

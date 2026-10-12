@@ -9,14 +9,15 @@
 export {
   Model,
   type ModelOptions,
+  type BoundsOptions,
   Var,
   type VarOptions,
   LinExpr,
-  sum,
-  xsum,
-  lpSum,
   QuadExpr,
+  type Expr,
   type QuadTerm,
+  sum,
+  dot,
   Constraint,
   BoolVar,
   BoolExpr,
@@ -45,30 +46,6 @@ export type {
   SolverSolution,
 } from "./modeler/types.js";
 
-// PuLP-compatible API (LpProblem, LpVariable, etc.)
-export {
-  LpProblem,
-  LpVariable,
-  LpMinimize,
-  LpMaximize,
-  LpContinuous,
-  LpInteger,
-  LpBinary,
-  LpStatus,
-  value,
-} from "./modeler/pulp-compat.js";
-
-// python-mip-compatible API (MipModel, MINIMIZE, etc.)
-export {
-  MipModel,
-  MINIMIZE,
-  MAXIMIZE,
-  CONTINUOUS,
-  INTEGER,
-  BINARY,
-  maximize,
-  minimize,
-} from "./modeler/mip-compat.js";
 
 // Solvers & Extensibility Architecture
 export {

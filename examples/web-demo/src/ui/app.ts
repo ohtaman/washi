@@ -459,7 +459,7 @@ export function initApp() {
       lpOutput.textContent = result.model.toLpString();
       showTab("tab-lp");
     } else {
-      alert("Please ensure the code creates a Model or LpProblem.");
+      alert("Please ensure the code creates a Model.");
     }
   });
 

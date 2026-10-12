@@ -33,11 +33,6 @@ export class Constraint {
     this.name = name || `c_${this.id}`;
   }
 
-  /** PuLP style dual price accessor */
-  get pi(): number | null {
-    return this.dual;
-  }
-
   // Logical operators for SMT / SAT
   public and(other: LogicElement): BoolOp {
     return new BoolOp("and", [this, other]);

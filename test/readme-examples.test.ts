@@ -4,14 +4,10 @@ import {
   c,
   expr,
   sum,
+  dot,
   not,
   QuadExpr,
-  LpProblem,
-  LpVariable,
-  LpMaximize,
-  LpInteger,
   HiGHS,
-  value,
 } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
 import "../src/modeler/solvers/glpk/index.js";
@@ -164,22 +160,21 @@ describe("README.md Code Snippets Validation", () => {
     expect(res.unsatCore).not.toContain("minimum_one_employee");
   });
 
-  it("executes 5. Python PuLP Compatibility Layer", async () => {
-    const prob = new LpProblem("PuLPDemo", LpMaximize);
+  it("executes 5. Domain-Pure Algebraic Modeling", async () => {
+    const m = new Model("ProductionDemo");
 
-    const x = new LpVariable("x", 0, undefined, LpInteger);
-    const y = new LpVariable("y", 0, undefined, LpInteger);
+    const x = m.integer("x", { lb: 0 });
+    const y = m.integer("y", { lb: 0 });
 
-    // PuLP += equivalent
-    prob.add(x.mul(30).add(y.mul(50)));
-    prob.add(x.add(y.mul(2)).le(40));
-    prob.add(x.mul(2).add(y).le(50));
+    m.maximize(expr`30 * ${x} + 50 * ${y}`);
+    m.constrain(expr`${x} + 2 * ${y} <= 40`);
+    m.constrain(expr`2 * ${x} + ${y} <= 50`);
 
-    const status = await prob.solve(new HiGHS());
+    const status = await m.optimize(new HiGHS());
     expect(status).toBe("Optimal");
-    expect(value(prob.objective)).toBe(1100);
-    expect(value(x)).toBe(20);
-    expect(value(y)).toBe(10);
+    expect(m.objectiveValue).toBe(1100);
+    expect(x.value).toBe(20);
+    expect(y.value).toBe(10);
   });
 
   it("executes 5. Solving with GLPK (GPL-3.0)", async () => {

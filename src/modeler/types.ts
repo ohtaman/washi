@@ -2,9 +2,23 @@
  * HiGHS & Model Types
  */
 
-export type VarType = "Continuous" | "Integer" | "Binary";
+export type VarType =
+  | "Continuous"
+  | "Integer"
+  | "Binary"
+  | "continuous"
+  | "integer"
+  | "binary"
+  | "cont"
+  | "int"
+  | "bin";
 
-export type OptimizationSense = "Minimize" | "Maximize";
+export type OptimizationSense =
+  | "Minimize"
+  | "Maximize"
+  | "minimize"
+  | "maximize";
+
 
 export type ComparisonSense = "<=" | ">=" | "==";
 
@@ -25,10 +39,11 @@ export interface SolveOptions {
   timeLimit?: number; // seconds
   outputFlag?: boolean;
   presolve?: "on" | "off" | "choose";
-  solver?: "choose" | "simplex" | "ipm" | "pdlp";
+  solver?: "choose" | "simplex" | "ipm" | "pdlp" | (string & {});
   relGap?: number;
   absGap?: number;
   wasmUrl?: string;
+  [key: string]: any;
 }
 
 export interface SolverSolution {
