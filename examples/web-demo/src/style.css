@@ -1,40 +1,40 @@
 :root {
-  /* 和風伝統色パレット (Traditional Japanese Light Palette) */
-  --bg-washi: #f8f6f0;           /* 生成り・和紙色 */
-  --bg-surface: #ffffff;         /* 白磁 */
-  --bg-surface-elevated: #f2eee5;/* 薄鈍・淡生成り */
-  --bg-surface-hover: #eae4d8;
+  /* モダン和紙パレット (WaSHI Modern Light Palette - clean, aligned with Docs) */
+  --bg-washi: #f8fafc;           /* クリーンなオフホワイト/ライトスレート (VitePressの#f6f6f7に調和) */
+  --bg-surface: #ffffff;         /* 白磁 (純白) */
+  --bg-surface-elevated: #f1f5f9;/* カード・ヘッダーエレベーション */
+  --bg-surface-hover: #e2e8f0;
 
-  /* 墨色 (Sumi) テキスト階層 */
-  --text-sumi: #232220;          /* 濃墨 */
-  --text-sumi-secondary: #524f49;/* 墨 */
-  --text-sumi-muted: #857f74;    /* 薄墨 */
+  /* 墨色 (Sumi) テキスト階層 (視認性の高いモダンタイポグラフィ) */
+  --text-sumi: #0f172a;          /* 濃墨 / Slate-900 */
+  --text-sumi-secondary: #475569;/* 墨 / Slate-600 */
+  --text-sumi-muted: #64748b;    /* 薄墨 / Slate-500 */
 
   /* 緋色・朱 (Hi / Akane / Scarlet) プライマリアクセント */
   --color-hi: #c23b22;           /* 緋色 */
   --color-hi-dark: #9e2a15;      /* 深緋 */
-  --color-hi-light: #fdf2ef;     /* 緋の淡色 */
-  --color-hi-border: #f0c3ba;
+  --color-hi-light: #fef2f2;     /* 緋の淡色 */
+  --color-hi-border: #fecdd3;
 
   /* 藍色 (Indigo / Ai) */
   --color-ai: #1e3a5f;
-  --color-ai-light: #eef4fb;
+  --color-ai-light: #eff6ff;
 
   /* 青磁・千歳緑 (Celadon / Pine Green) - 成功・最適解 */
-  --color-seiji: #237a4b;
-  --color-seiji-light: #eaf6ee;
+  --color-seiji: #16a34a;        /* 緑 (Docsのoptimalと一致) */
+  --color-seiji-light: #f0fdf4;
 
   /* 朽葉・琥珀 (Amber / Warning) */
-  --color-amber: #b45309;
-  --color-amber-light: #fef3c7;
+  --color-amber: #d97706;
+  --color-amber-light: #fffbeb;
 
   /* 茜・紅 (Rose / Error) */
-  --color-beni: #b91c1c;
-  --color-beni-light: #fef2f2;
+  --color-beni: #e11d48;         /* 茜 (Docsのconflict/brand-hiと一致) */
+  --color-beni-light: #fff1f2;
 
   /* 境界線 (Borders) */
-  --border-washi: #e4ded2;
-  --border-subtle: rgba(35, 34, 32, 0.08);
+  --border-washi: #e2e8f0;       /* すっきりとしたボーダー */
+  --border-subtle: rgba(15, 23, 42, 0.06);
   --border-focus: #c23b22;
 
   /* タイポグラフィ */
@@ -42,14 +42,87 @@
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
   --font-mono: 'JetBrains Mono', 'Menlo', monospace;
 
-  /* 角丸と陰影 (落ち着いた紙の質感) */
-  --radius-xs: 3px;
-  --radius-sm: 5px;
+  /* 角丸と陰影 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
 
-  --shadow-subtle: 0 1px 3px rgba(35, 34, 32, 0.04), 0 4px 12px rgba(35, 34, 32, 0.02);
-  --shadow-card: 0 2px 8px rgba(35, 34, 32, 0.06);
+  --shadow-subtle: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px rgba(15, 23, 42, 0.03);
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+/* ダークモード (Dark Palette - VitePress Dark Theme と完全調和) */
+:root[data-theme="dark"] {
+  --bg-washi: #141416;           /* 深い墨色背景 (VitePress dark #1b1b1f に調和) */
+  --bg-surface: #1b1b1f;         /* サーフェス */
+  --bg-surface-elevated: #242429;/* エレベーション */
+  --bg-surface-hover: #2e2e36;
+
+  --text-sumi: #f1f5f9;          /* 明墨 / Slate-100 */
+  --text-sumi-secondary: #94a3b8;/* Slate-400 */
+  --text-sumi-muted: #64748b;    /* Slate-500 */
+
+  --color-hi: #e05338;           /* ダークでも映える鮮やかな緋色 */
+  --color-hi-dark: #c23b22;
+  --color-hi-light: rgba(224, 83, 56, 0.15);
+  --color-hi-border: rgba(224, 83, 56, 0.35);
+
+  --color-ai: #60a5fa;
+  --color-ai-light: rgba(96, 165, 250, 0.15);
+
+  --color-seiji: #22c55e;
+  --color-seiji-light: rgba(34, 197, 94, 0.15);
+
+  --color-amber: #fbbf24;
+  --color-amber-light: rgba(251, 191, 36, 0.15);
+
+  --color-beni: #fb7185;
+  --color-beni-light: rgba(251, 113, 133, 0.15);
+
+  --border-washi: #2e2e34;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: #e05338;
+
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg-washi: #141416;
+    --bg-surface: #1b1b1f;
+    --bg-surface-elevated: #242429;
+    --bg-surface-hover: #2e2e36;
+
+    --text-sumi: #f1f5f9;
+    --text-sumi-secondary: #94a3b8;
+    --text-sumi-muted: #64748b;
+
+    --color-hi: #e05338;
+    --color-hi-dark: #c23b22;
+    --color-hi-light: rgba(224, 83, 56, 0.15);
+    --color-hi-border: rgba(224, 83, 56, 0.35);
+
+    --color-ai: #60a5fa;
+    --color-ai-light: rgba(96, 165, 250, 0.15);
+
+    --color-seiji: #22c55e;
+    --color-seiji-light: rgba(34, 197, 94, 0.15);
+
+    --color-amber: #fbbf24;
+    --color-amber-light: rgba(251, 191, 36, 0.15);
+
+    --color-beni: #fb7185;
+    --color-beni-light: rgba(251, 113, 133, 0.15);
+
+    --border-washi: #2e2e34;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-focus: #e05338;
+
+    --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.5);
+  }
 }
 
 * {
@@ -68,13 +141,16 @@ body {
   overflow-x: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Header */
 .app-header {
-  height: 60px;
+  height: 64px;
   padding: 0 24px;
-  background: var(--bg-surface);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-washi);
   display: flex;
   align-items: center;
@@ -83,6 +159,19 @@ body {
   top: 0;
   z-index: 100;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+:root[data-theme="dark"] .app-header {
+  background: rgba(27, 27, 31, 0.88);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .app-header {
+    background: rgba(27, 27, 31, 0.88);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .brand {
@@ -160,6 +249,33 @@ body {
   background: var(--color-seiji);
 }
 
+/* Theme Switcher */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-washi);
+  color: var(--text-sumi);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--color-hi-border);
+  transform: translateY(-1px);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
 /* Language Switcher */
 .lang-switch-group {
   display: flex;
@@ -222,7 +338,7 @@ body {
 .app-container {
   display: flex;
   flex: 1;
-  height: calc(100vh - 60px);
+  height: calc(100vh - 64px);
   overflow: hidden;
 }
 
@@ -271,7 +387,7 @@ body {
   outline: none;
   font-family: var(--font-sans);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background-color 0.15s;
 }
 
 .custom-select:hover, .custom-select:focus {
@@ -304,7 +420,7 @@ body {
   background: var(--color-hi);
   color: #ffffff;
   border-color: var(--color-hi);
-  box-shadow: 0 1px 3px rgba(194, 59, 34, 0.2);
+  box-shadow: 0 1px 3px rgba(194, 59, 34, 0.25);
 }
 
 .btn-primary:hover {
@@ -324,16 +440,26 @@ body {
 
 .btn-secondary:hover {
   background: var(--bg-surface-elevated);
-  border-color: var(--color-sumi-muted);
+  border-color: var(--text-sumi-muted);
 }
 
-/* Editor Wrapper (万年筆と和紙のような落ち着いたエディタ) */
+/* Editor Wrapper */
 .editor-wrapper {
   flex: 1;
   position: relative;
   display: flex;
   overflow: hidden;
-  background: #faf8f5;
+  background: var(--bg-surface);
+}
+
+:root[data-theme="dark"] .editor-wrapper {
+  background: #0f1012;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .editor-wrapper {
+    background: #0f1012;
+  }
 }
 
 .line-numbers {
@@ -544,11 +670,28 @@ body {
 }
 
 .chess-cell.light {
-  background: #fdfbf7;
+  background: var(--bg-surface);
 }
 
 .chess-cell.dark {
-  background: #e8e2d5;
+  background: var(--bg-surface-elevated);
+}
+
+:root[data-theme="dark"] .chess-cell.light {
+  background: #242429;
+}
+
+:root[data-theme="dark"] .chess-cell.dark {
+  background: #18181b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chess-cell.light {
+    background: #242429;
+  }
+  :root:not([data-theme="light"]) .chess-cell.dark {
+    background: #18181b;
+  }
 }
 
 .chess-cell.has-queen {
@@ -949,7 +1092,7 @@ body {
   text-align: left;
   font-weight: 600;
   color: var(--text-sumi);
-  background: #fcfbf8;
+  background: var(--bg-surface-elevated);
   border-right: 1px solid var(--border-washi);
 }
 

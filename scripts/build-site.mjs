@@ -38,6 +38,13 @@ if (existsSync(resolve(demoDist, "demo"))) {
   cpSync(resolve(demoDist, "demo"), demoTarget, { recursive: true });
 }
 
+// Copy ai-shift directory into site /ai-shift/
+const aiShiftTarget = resolve(siteDist, "ai-shift");
+mkdirSync(aiShiftTarget, { recursive: true });
+if (existsSync(resolve(demoDist, "ai-shift"))) {
+  cpSync(resolve(demoDist, "ai-shift"), aiShiftTarget, { recursive: true });
+}
+
 // Copy demo built assets (CSS, JS, Web Workers, WASM) into site /assets/
 if (existsSync(resolve(demoDist, "assets"))) {
   cpSync(resolve(demoDist, "assets"), resolve(siteDist, "assets"), { recursive: true });
@@ -64,12 +71,16 @@ for (const file of filesToCopy) {
   }
 }
 
-// Also ensure demo has copy of shared assets if needed
+// Also ensure demo and ai-shift have copies of shared assets if needed
 for (const file of filesToCopy) {
   const src = resolve(demoDist, file);
-  const dest = resolve(demoTarget, file);
-  if (existsSync(src) && !existsSync(dest)) {
-    cpSync(src, dest, { recursive: true });
+  const destDemo = resolve(demoTarget, file);
+  const destAiShift = resolve(aiShiftTarget, file);
+  if (existsSync(src) && !existsSync(destDemo)) {
+    cpSync(src, destDemo, { recursive: true });
+  }
+  if (existsSync(src) && !existsSync(destAiShift)) {
+    cpSync(src, destAiShift, { recursive: true });
   }
 }
 

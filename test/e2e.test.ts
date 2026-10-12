@@ -18,7 +18,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
     // Start Vite dev server programmatically
     viteServer = await createServer({
-      server: { port: 5173 },
+      configFile: path.resolve(process.cwd(), "vite.config.ts"),
     });
     await viteServer.listen();
     const address = viteServer.httpServer?.address();
@@ -111,7 +111,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
     await page.waitForFunction(
       () =>
         document.getElementById("metric-status")?.textContent === "Optimal" &&
-        document.getElementById("vars-tbody")?.textContent?.includes("ship_Factory1_StoreA"),
+        document.getElementById("vars-tbody")?.textContent?.includes("ship_Tokyo"),
       { timeout: 15000 }
     );
 
@@ -119,7 +119,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
     expect(Number(objText)).toBeGreaterThan(0);
 
     const tableText = await page.textContent("#vars-tbody");
-    expect(tableText).toContain("ship_Factory1_StoreA");
+    expect(tableText).toContain("ship_Tokyo");
 
     await page.screenshot({ path: path.join(screenshotsDir, "03_transportation_solution.png") });
   }, 15000);
@@ -221,5 +221,19 @@ describe("Browser End-to-End (E2E) Tests", () => {
     );
     expect(await page.textContent(".toolbar-label")).toContain("Problem");
     expect(await page.textContent("#tab-btn-results")).toContain("Solution & Variables");
+  });
+
+  it("toggles theme between light and dark modes dynamically", async () => {
+    const initialTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme") || "light");
+
+    // Click theme toggle button
+    await page.click("#theme-toggle-btn");
+    const toggledTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+    expect(toggledTheme).toBe(initialTheme === "dark" ? "light" : "dark");
+
+    // Click again to toggle back
+    await page.click("#theme-toggle-btn");
+    const restoredTheme = await page.evaluate(() => document.documentElement.getAttribute("data-theme"));
+    expect(restoredTheme).toBe(initialTheme);
   });
 });

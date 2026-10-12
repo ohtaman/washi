@@ -11,6 +11,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../src/style.css" />
+    <script>
+      (function() {
+        try {
+          const p = new URLSearchParams(window.location.search).get('theme');
+          const saved = p || localStorage.getItem('washi-theme') || localStorage.getItem('vitepress-theme-appearance');
+          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const theme = saved === 'dark' || (saved !== 'light' && prefersDark) ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (_) {}
+      })();
+    </script>
     <script src="/coi-serviceworker.js"></script>
   </head>
   <body>
@@ -18,8 +29,9 @@
     <header class="app-header">
       <div class="brand">
         <a href="../" title="Return to Documentation Home" style="text-decoration: none; display: flex; align-items: center; gap: 12px;" aria-label="WaSHI Home">
-          <img src="/washi/washi-header.svg" alt="WaSHI" style="height: 38px; width: auto;" />
+          <img src="/washi/washi-header.svg" alt="WaSHI" style="height: 38px; width: auto;" onerror="this.onerror=null; this.src='/washi-header.svg';" />
           <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--color-hi-light); color: var(--color-hi); font-family: var(--font-mono); font-weight: 600; border: 1px solid var(--color-hi-border);">Playground</span>
+          <span class="brand-title" style="display: none;">WaSHI Playground</span>
         </a>
       </div>
 
@@ -29,6 +41,17 @@
           <span>←</span>
           <span data-i18n="backToDocs">Documentation</span>
         </a>
+
+        <!-- AI Shift Copilot Link -->
+        <a href="../ai-shift/" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; border-color: var(--color-hi-border); color: var(--color-hi);">
+          <span>🤖</span>
+          <span>AI Copilot</span>
+        </a>
+
+        <!-- Theme Toggle -->
+        <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Switch theme" title="Switch theme">
+          🌙
+        </button>
 
         <!-- Language Switcher -->
         <div class="lang-switch-group" role="group" aria-label="Language Selector">

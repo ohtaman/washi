@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/washi-logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Shift Copilot — Gemini Nano × WaSHI 数理最適化デモ</title>
+    <meta
+      name="description"
+      content="ブラウザ完結のGemini Nano (Chrome Built-in AI) と WaSHI (HiGHS / Z3 WebAssembly) が連携し、自然言語からスタッフシフトを数理最適化。制約衝突時はZ3のUnsat Core診断をもとにAIが代替案を交渉します。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function() {
+        try {
+          const p = new URLSearchParams(window.location.search).get('theme');
+          const saved = p || localStorage.getItem('washi-theme') || localStorage.getItem('vitepress-theme-appearance');
+          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const theme = saved === 'dark' || (saved !== 'light' && prefersDark) ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (_) {}
+      })();
+      const swUrl = window.location.pathname.startsWith("/washi/") ? "/washi/coi-serviceworker.js" : "/coi-serviceworker.js";
+      const s = document.createElement("script");
+      s.src = swUrl;
+      document.head.appendChild(s);
+    </script>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <a href="../" title="Documentation Home" style="text-decoration: none; display: flex; align-items: center; gap: 12px;" aria-label="WaSHI Home">
+          <img src="/washi/washi-header.svg" alt="WaSHI" style="height: 38px; width: auto;" onerror="this.onerror=null; this.src='/washi-header.svg';" />
+          <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--color-hi-light); color: var(--color-hi); font-family: var(--font-mono); font-weight: 600; border: 1px solid var(--color-hi-border);">AI Copilot</span>
+        </a>
+      </div>
+
+      <div class="header-status">
+        <a href="../demo/" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+          <span>←</span>
+          <span>Playground</span>
+        </a>
+
+        <a href="../" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+          <span>←</span>
+          <span>Docs</span>
+        </a>
+
+        <!-- Theme Toggle -->
+        <button type="button" class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Switch theme" title="Switch theme">
+          🌙
+        </button>
+
+        <!-- Gemini Nano Status -->
+        <span id="nano-status-badge" class="ai-badge simulated">
+          Checking Gemini Nano...
+        </span>
+
+        <!-- Solver Status -->
+        <div class="status-chip">
+          <span class="status-indicator"></span>
+          <span>HiGHS + Z3 (WASM)</span>
+        </div>
+
+        <a
+          href="https://github.com/ohtaman/washi"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="external-link"
+        >
+          <span>GitHub</span>
+          <span class="link-arrow">↗</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- App Layout -->
+    <main class="ai-shift-layout">
+      <!-- Left Pane: Chat Copilot -->
+      <section class="copilot-pane" aria-label="AI Shift Copilot Chat">
+        <div class="copilot-header">
+          <div class="copilot-title-group">
+            <span style="font-size: 1.2rem;">🤖</span>
+            <div class="copilot-title">AI Shift Copilot</div>
+          </div>
+          <div class="copilot-actions">
+            <button type="button" id="btn-reset-chat" class="btn-reset" title="最初からやり直す（チャットとシフトをリセット）">
+              <span>🔄 リセット</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat Scroll Container -->
+        <div id="chat-messages" class="chat-scroll-container">
+          <!-- Dynamically populated by ui.ts -->
+        </div>
+
+        <!-- Quick Prompts Toolbar -->
+        <div class="quick-prompts-bar">
+          <div class="quick-prompts-header">
+            <span class="quick-prompts-label">体験する利用シーンを選択:</span>
+          </div>
+
+          <!-- Primary Scenarios -->
+          <div class="scenario-btn-group">
+            <button
+              type="button"
+              class="scenario-action-card quick-prompt-btn"
+              id="scene-btn-peaceful"
+              data-prompt="来週のシフトを組んで。アリスは日曜、ボブは月曜、チャーリーは土曜、ダイアナは水曜休み希望です。"
+            >
+              <span class="scenario-card-icon">🟢</span>
+              <div class="scenario-card-body">
+                <div class="scenario-card-headline">① 通常のシフト自動作成</div>
+                <div class="scenario-card-sub">希望休を全員反映し、人件費が一番安くなるシフトを数理最適化（HiGHS）</div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="scenario-action-card quick-prompt-btn"
+              id="scene-btn-conflict"
+              data-prompt="アリスとボブが二人とも土曜日に休みを取りたいと言っています。チャーリーも土曜休み希望です。"
+            >
+              <span class="scenario-card-icon">⚡</span>
+              <div class="scenario-card-body">
+                <div class="scenario-card-headline">② 希望重複トラブル ＆ AI交渉</div>
+                <div class="scenario-card-sub">土曜にシニア不在で矛盾発生！Z3で原因特定し、AIが代替案を提案</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- Dynamic Negotiation Chips (Shown when conflict occurs) -->
+          <div id="negotiation-chips" class="negotiation-chips-container" style="display: none;">
+            <div class="negotiation-chips-label">💡 AIからの提案を採用して解決:</div>
+            <div class="negotiation-chips-list">
+              <button
+                type="button"
+                class="negotiation-chip-btn quick-prompt-btn"
+                data-prompt="案1で調整して。Bobさんに土曜出勤を依頼して代わりに金曜休みにして。"
+              >
+                🤝 案1: Bobに土曜出勤を依頼（金曜振替）
+              </button>
+              <button
+                type="button"
+                class="negotiation-chip-btn quick-prompt-btn"
+                data-prompt="土曜日の必要人数を2人に緩和して、シニア制限を外して再計算して。"
+              >
+                ⚙️ 案2: 土曜のシニア条件を緩和
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="copilot-input-area">
+          <div class="input-box-wrapper">
+            <textarea
+              id="chat-input"
+              class="chat-textarea"
+              rows="2"
+              placeholder="シフトの要望を入力（例: アリスは日曜休み希望、土曜の人数を調整して...）"
+            ></textarea>
+            <button type="button" id="send-btn" class="btn-send">
+              <span>送信</span>
+              <span>↑</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Pane: Shift Visualizer & Conflict Diagnostic -->
+      <section class="visualizer-pane" aria-label="Shift Schedule and Conflict Diagnostics">
+        <!-- Compact Situation & Rules Accordion -->
+        <details class="situation-card-compact">
+          <summary class="situation-summary">
+            <div class="summary-left">
+              <span>☕</span>
+              <span class="summary-title">店舗情報 ＆ 編成ルール</span>
+              <span class="rule-mini-badge">スタッフ5名</span>
+              <span class="rule-mini-badge">シニア常駐必須</span>
+              <span class="rule-mini-badge">週5日上限</span>
+            </div>
+            <span class="summary-toggle-hint">ルール詳細 ▾</span>
+          </summary>
+          <div class="situation-details-body">
+            <div class="staff-grid-compact">
+              <div class="staff-mini-card sr"><strong>Alice</strong> (シニア/店長代理) · $220/日</div>
+              <div class="staff-mini-card sr"><strong>Bob</strong> (シニア/副店長) · $210/日</div>
+              <div class="staff-mini-card jr"><strong>Charlie</strong> (一般) · $160/日</div>
+              <div class="staff-mini-card jr"><strong>Diana</strong> (一般) · $160/日</div>
+              <div class="staff-mini-card jr"><strong>Evan</strong> (一般) · $150/日</div>
+            </div>
+            <div class="rules-mini-list">
+              <span>① <strong>シニア常駐</strong>: 毎日AliceまたはBobが最低1名出勤必須</span>
+              <span>② <strong>必要人数</strong>: 月〜木 3名 / 金 4名 / 土 3名 / 日 2名</span>
+              <span>③ <strong>週末割増</strong>: 土日は日給 +$30 (人件費最小化対象)</span>
+              <span>④ <strong>休暇希望</strong>: 申請された休みは厳格に反映 (ハード制約)</span>
+            </div>
+          </div>
+        </details>
+
+        <!-- Top Metrics Cards -->
+        <div id="metrics-container" class="metrics-grid">
+          <!-- Dynamically rendered -->
+        </div>
+
+        <!-- Conflict Diagnostic Card (Shown when Infeasible) -->
+        <div id="conflict-container" class="conflict-alert" style="display: none;">
+          <!-- Dynamically rendered -->
+        </div>
+
+        <!-- Weekly Roster Table Card -->
+        <div class="roster-card">
+          <div class="roster-card-header">
+            <div class="roster-card-title">
+              <span>📋</span>
+              <span>週間勤務スケジュール (Weekly Roster)</span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--text-sumi-secondary); font-family: var(--font-mono);">
+              HiGHS MIP (Cost-Minimal)
+            </span>
+          </div>
+          <div id="roster-table-container" class="table-responsive">
+            <!-- Dynamically rendered -->
+          </div>
+        </div>
+
+        <!-- Executed WaSHI Model Code Preview -->
+        <details class="code-preview-card">
+          <summary class="code-preview-summary">
+            <span>💻 実行された WaSHI 代数モデルコードを表示</span>
+            <span style="font-size: 0.75rem; color: var(--text-sumi-muted);">TypeScript</span>
+          </summary>
+          <pre id="code-preview" class="code-preview-content">// Loading model code...</pre>
+        </details>
+      </section>
+    </main>
+
+    <script type="module" src="../src/ai-shift/main.ts"></script>
+  </body>
+</html>
