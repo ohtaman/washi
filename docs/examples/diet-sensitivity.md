@@ -1,7 +1,8 @@
 # Diet Problem & Sensitivity Analysis (LP Duals & Slacks)
 
-**Problem Class:** Linear Programming (LP) · **Solver:** HiGHS (default) · **APIs:** `constr.dual`, `constr.slack`, `var.reducedCost`  
-**[▶ Open in Interactive Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity)** · **Source:** [`examples/node/10-diet-sensitivity.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts)
+| Problem Class | Solver | Key APIs | Links |
+| :--- | :--- | :--- | :--- |
+| Linear Programming (LP) | HiGHS (default) | `constr.dual`, `constr.slack`, `var.reducedCost` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) |
 
 When solving a Linear Programming model, the optimal variable values (`var.value`) are only half the story. In practice, decision-makers need to know:
 

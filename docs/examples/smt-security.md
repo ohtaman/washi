@@ -1,5 +1,9 @@
 # 04: SMT Security Policies
 
+| Problem Class | Solver | Key APIs | Links |
+| :--- | :--- | :--- | :--- |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `.implies()`, `.and()`, `m.check()` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) |
+
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 
 This example demonstrates how to formally verify and deduce system states in an IoT home security system using WaSHI and the Z3 solver engine.

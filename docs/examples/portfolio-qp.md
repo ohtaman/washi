@@ -1,5 +1,9 @@
 # 03: Portfolio Optimization (QP)
 
+| Problem Class | Solver | Key APIs | Links |
+| :--- | :--- | :--- | :--- |
+| Convex Quadratic Programming (QP) | HiGHS (default) | `new QuadExpr()`, `v1.mul(v2)`, `sum()` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) |
+
 The Markowitz mean-variance portfolio optimization problem is the foundation of modern quantitative finance: allocate capital across risky assets to minimize overall portfolio variance (risk) subject to achieving a minimum required expected return.
 
 <PortfolioQpDemo />

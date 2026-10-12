@@ -1,7 +1,8 @@
 # 0-1 ナップサック問題 (Binary MIP)
 
-**問題クラス:** 0-1 整数計画 (Binary MIP) · **ソルバー:** HiGHS (標準) · **主な API:** `m.addVars(keys)`, `type: "Binary"`, `sum()`  
-**[`</> Playground で開く`](https://ohtaman.github.io/washi/demo/?preset=knapsack)** · **ソースコード:** [`examples/node/02-knapsack-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts)
+| 問題クラス | ソルバー | 主な API | リンク |
+| :--- | :--- | :--- | :--- |
+| 0-1 整数計画 (Binary MIP) | HiGHS (標準) | `m.addVars(keys)`, `type: "Binary"`, `sum()` | [Playground で開く](https://ohtaman.github.io/washi/demo/?preset=knapsack) · [ソースコード](https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts) |
 
 各アイテムの「重さ」と「価値」が与えられたとき、バックパックの重量上限を超えない範囲で価値の合計が最大になるアイテムの組み合わせを選ぶ離散最適化問題です。
 

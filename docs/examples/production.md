@@ -1,5 +1,9 @@
 # 01: Production Planning (LP)
 
+| Problem Class | Solver | Key APIs | Links |
+| :--- | :--- | :--- | :--- |
+| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.addVar()`, `expr`, `c` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=production) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) |
+
 Production planning is a classic Linear Programming problem: determine the optimal quantity of each product to manufacture in order to maximize total profit while respecting resource constraints (raw materials, machine time, labor hours).
 
 ---

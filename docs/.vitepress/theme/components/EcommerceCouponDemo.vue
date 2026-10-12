@@ -114,64 +114,63 @@ function markDirty() {
 }
 
 async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
-  const { Model, expr, sum } = await getWashiClient(false);
-  const m = new Model({ name: "CartCouponOptimizer", solver: "highs" });
+  const { Model, sum } = await getWashiClient(false);
+  const m = new Model({ name: "CartCouponOptimizer", sense: "Minimize" });
 
   const useCoupon = m.addVars(
     coupons.map((c) => c.id),
-    { type: "binary", name: "cpn" }
+    { type: "Binary", prefix: "cpn" }
   );
   const addFiller = m.addVars(
     fillers.map((f) => f.id),
-    { type: "binary", name: "filler" }
+    { type: "Binary", prefix: "filler" }
   );
 
   // Max 2 coupons per order
-  m.addConstr(expr`${sum(coupons.map((c) => useCoupon.get(c.id)!))} <= 2`, {
-    name: "max_two_coupons",
-  });
+  m.addConstraint(
+    sum(coupons, (c: any) => useCoupon[c.id]).le(2),
+    "max_two_coupons"
+  );
 
   if (!enableFillers) {
     for (const f of fillers) {
-      m.addConstr(expr`${addFiller.get(f.id)!} == 0`);
+      m.addConstraint(addFiller[f.id].eq(0), `disable_${f.id}`);
     }
   } else {
-    m.addConstr(expr`${sum(fillers.map((f) => addFiller.get(f.id)!))} <= 1`, {
-      name: "max_one_filler",
+    m.addConstraint(
+      sum(fillers, (f: any) => addFiller[f.id]).le(1),
+      "max_one_filler"
+    );
+  }
+
+  const tierCoupons = coupons.filter((c) => c.group === "tier");
+  m.addConstraint(
+    sum(tierCoupons, (c: any) => useCoupon[c.id]).le(1),
+    "tier_mutex"
+  );
+
+  const fillerSpend = sum(fillers, (f: any) => addFiller[f.id].mul(f.price));
+  const merchSpend = fillerSpend.add(cartVal);
+
+  for (const c of coupons) {
+    m.addIndicator(useCoupon[c.id], merchSpend.ge(c.minSpend), {
+      activeValue: 1,
+      M: 600,
+      name: `thresh_${c.id}`,
     });
   }
 
-  const tierCoupons = coupons
-    .filter((c) => c.group === "tier")
-    .map((c) => useCoupon.get(c.id)!);
-  m.addConstr(expr`${sum(tierCoupons)} <= 1`, { name: "tier_mutex" });
+  const totalDiscExpr = sum(coupons, (c: any) => useCoupon[c.id].mul(c.discount));
+  const fillerCostExpr = sum(fillers, (f: any) => addFiller[f.id].mul(f.netCost));
 
-  const fillerSpend = sum(fillers.map((f) => expr`${f.price} * ${addFiller.get(f.id)!}`));
-
-  for (const c of coupons) {
-    const shortfall = Math.max(0, c.minSpend - cartVal);
-    if (shortfall > 0) {
-      m.addIndicator(useCoupon.get(c.id)!, 1, expr`${fillerSpend} >= ${shortfall}`, {
-        name: `thresh_${c.id}`,
-      });
-    }
-  }
-
-  const totalDiscExpr = sum(
-    coupons.map((c) => expr`${c.discount} * ${useCoupon.get(c.id)!}`)
-  );
-  const fillerCostExpr = sum(
-    fillers.map((f) => expr`${f.netCost} * ${addFiller.get(f.id)!}`)
-  );
-
-  m.minimize(expr`${cartVal} + ${fillerCostExpr} - ${totalDiscExpr}`);
+  m.minimize(fillerCostExpr.sub(totalDiscExpr).add(cartVal));
   await m.solve();
 
   const activeCpns = coupons
-    .filter((c) => Math.round(useCoupon.get(c.id)!.value ?? 0) === 1)
+    .filter((c) => Math.round(useCoupon[c.id].value ?? 0) === 1)
     .map((c) => c.id);
   const activeFiller =
-    fillers.find((f) => Math.round(addFiller.get(f.id)!.value ?? 0) === 1)?.id ?? null;
+    fillers.find((f) => Math.round(addFiller[f.id].value ?? 0) === 1)?.id ?? null;
 
   const merch = cartVal + (fillers.find((f) => f.id === activeFiller)?.price ?? 0);
   const disc = coupons

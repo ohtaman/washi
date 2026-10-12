@@ -20,6 +20,14 @@ const assets = [
   { id: "Bonds", labelEn: "Gov Bonds", labelJa: "国債", ret: 0.035, color: "#64748b" },
 ];
 
+const cov = [
+  [0.045, 0.020, 0.010, -0.004, 0.002],
+  [0.020, 0.024, 0.012, -0.002, 0.002],
+  [0.010, 0.012, 0.020,  0.002, 0.002],
+  [-0.004, -0.002, 0.002, 0.016, 0.001],
+  [0.002, 0.002, 0.002,  0.001, 0.004],
+];
+
 const weights = ref<Record<string, number>>({
   Tech: 0.25,
   Global: 0.30,
@@ -37,44 +45,36 @@ async function solvePortfolio() {
   isSolving.value = true;
   try {
     const t0 = performance.now();
-    const { Model, expr, sum, QuadExpr } = await getWashiClient(false);
+    const { Model, sum, QuadExpr } = await getWashiClient(false);
 
-    const m = new Model({ name: "PortfolioQP5", solver: "highs" });
-    const w = m.addVars(
-      assets.map((a) => a.id),
-      { lb: 0, ub: 0.6, name: "w" }
-    );
+    const m = new Model({ name: "PortfolioQP5", sense: "Minimize" });
+    const w = assets.map((a) => m.addVar({ name: a.id, lb: 0, ub: 0.6 }));
 
-    m.addConstr(expr`${sum(assets.map((a) => w.get(a.id)!))} == 1`, { name: "full_invest" });
+    m.addConstraint(sum(w).eq(1.0), "full_invest");
 
     const targetRet = minReturnPct.value / 100;
-    const expectedRet = sum(assets.map((a) => expr`${a.ret} * ${w.get(a.id)!}`));
-    m.addConstr(expr`${expectedRet} >= ${targetRet}`, { name: "target_return" });
+    const expectedRet = sum(w.map((v, i) => v.mul(assets[i].ret)));
+    m.addConstraint(expectedRet.ge(targetRet), "target_return");
 
-    // Covariance matrix across 5 asset classes
-    const risk = new QuadExpr()
-      .addQuadTerm(w.get("Tech")!, w.get("Tech")!, 0.045)
-      .addQuadTerm(w.get("Global")!, w.get("Global")!, 0.022)
-      .addQuadTerm(w.get("REIT")!, w.get("REIT")!, 0.018)
-      .addQuadTerm(w.get("Gold")!, w.get("Gold")!, 0.015)
-      .addQuadTerm(w.get("Bonds")!, w.get("Bonds")!, 0.003)
-      .addQuadTerm(w.get("Tech")!, w.get("Global")!, 0.024)
-      .addQuadTerm(w.get("Tech")!, w.get("REIT")!, 0.010)
-      .addQuadTerm(w.get("Global")!, w.get("REIT")!, 0.012)
-      .addQuadTerm(w.get("Tech")!, w.get("Gold")!, -0.006)
-      .addQuadTerm(w.get("Global")!, w.get("Gold")!, -0.004)
-      .addQuadTerm(w.get("Tech")!, w.get("Bonds")!, 0.002);
+    let risk = new QuadExpr();
+    for (let i = 0; i < assets.length; i++) {
+      for (let j = 0; j < assets.length; j++) {
+        if (cov[i][j] !== 0) {
+          risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
+        }
+      }
+    }
 
     m.minimize(risk);
-    await m.solve();
+    const status = await m.solve();
     solveTimeMs.value = performance.now() - t0;
 
-    if (m.status === "Optimal") {
+    if (status === "Optimal") {
       varianceVal.value = m.objectiveValue ?? 0;
       const nextW: Record<string, number> = {};
-      for (const a of assets) {
-        nextW[a.id] = w.get(a.id)!.value ?? 0;
-      }
+      assets.forEach((a, idx) => {
+        nextW[a.id] = w[idx].value ?? 0;
+      });
       weights.value = nextW;
     }
     isDirty.value = false;
@@ -127,8 +127,8 @@ onMounted(() => {
         </span>
         <input
           type="range"
-          min="4.5"
-          max="10.2"
+          min="5.0"
+          max="9.8"
           step="0.1"
           v-model.number="minReturnPct"
           @input="markDirty"

@@ -1,7 +1,8 @@
 # 栄養問題と感度分析 (潜在価格 Dual・スラック Slack)
 
-**問題クラス:** 線形計画問題 (LP) · **ソルバー:** HiGHS (標準) · **主な API:** `constr.dual`, `constr.slack`, `var.reducedCost`  
-**[`</> Playground で開く`](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity)** · **ソースコード:** [`examples/node/10-diet-sensitivity.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts)
+| 問題クラス | ソルバー | 主な API | リンク |
+| :--- | :--- | :--- | :--- |
+| 線形計画問題 (LP) | HiGHS (標準) | `constr.dual`, `constr.slack`, `var.reducedCost` | [Playground で開く](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) · [ソースコード](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) |
 
 線形計画問題を解いた際、決定変数の最適値（`var.value`）だけでなく、**感度分析（Sensitivity Analysis）**の情報を取得できると実務での意思決定が格段に深まります。
 

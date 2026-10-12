@@ -160,41 +160,38 @@ function selectPreset(preset: "standard" | "weekend_peak" | "two_days_off" | "co
   isDirty.value = true;
 }
 
-function buildConstraints(m: any, expr: any, sum: any) {
+function buildConstraints(m: any, sum: any) {
   const shift = m.addVars(
     staffList.map((s) => s.id),
     [...days],
-    { type: "binary", name: "shift" }
+    { type: "Binary", prefix: "shift" }
   );
 
   for (const d of days) {
     const reqCount = dailyDemand.value[d] ?? 4;
-    const workingToday = sum(staffList.map((s) => shift.get(s.id, d)!));
-    m.addConstr(expr`${workingToday} >= ${reqCount}`, { name: `coverage_${d}` });
+    const workingToday = sum(staffList, (s: StaffMember) => shift[s.id][d]);
+    m.addConstraint(workingToday.ge(reqCount), `coverage_${d}`);
 
     if (minSeniorPerDay.value > 0) {
-      const seniorsToday = sum(
-        staffList.filter((s) => s.isSenior).map((s) => shift.get(s.id, d)!)
-      );
-      m.addConstr(expr`${seniorsToday} >= ${minSeniorPerDay.value}`, { name: `senior_${d}` });
+      const seniors = staffList.filter((s) => s.isSenior);
+      const seniorsToday = sum(seniors, (s: StaffMember) => shift[s.id][d]);
+      m.addConstraint(seniorsToday.ge(minSeniorPerDay.value), `senior_${d}`);
     }
   }
 
   for (const s of staffList) {
-    const weeklyShifts = sum(days.map((d) => shift.get(s.id, d)!));
-    m.addConstr(expr`${weeklyShifts} <= ${s.maxShifts}`, { name: `max_shifts_${s.id}` });
+    const weeklyShifts = sum(days, (d: string) => shift[s.id][d]);
+    m.addConstraint(weeklyShifts.le(s.maxShifts), `max_shifts_${s.id}`);
     if (minShiftsPerStaff.value > 0) {
-      m.addConstr(expr`${weeklyShifts} >= ${minShiftsPerStaff.value}`, {
-        name: `min_shifts_${s.id}`,
-      });
+      m.addConstraint(weeklyShifts.ge(minShiftsPerStaff.value), `min_shifts_${s.id}`);
     }
   }
 
   for (const req of requestedOff.value) {
     const [sId, day] = req.split("_");
-    const v = shift.get(sId, day as any);
+    const v = shift[sId]?.[day];
     if (v) {
-      m.addConstr(expr`${v} == 0`, { name: `day_off_${sId}_${day}` });
+      m.addConstraint(v.eq(0), `day_off_${sId}_${day}`);
     }
   }
 
@@ -207,31 +204,31 @@ async function solveRoster() {
 
   try {
     const t0 = performance.now();
-    const { Model, expr, sum } = await getWashiClient(false);
+    const { Model, sum } = await getWashiClient(false);
 
-    const m = new Model({ name: "ShiftRoster8x7", solver: "highs" });
-    const shift = buildConstraints(m, expr, sum);
+    const m = new Model({ name: "ShiftRoster8x7", sense: "Minimize" });
+    const shift = buildConstraints(m, sum);
 
     const costTerms: any[] = [];
     for (const s of staffList) {
       for (const d of days) {
         const weekendBonus = d === "Sat" || d === "Sun" ? 20 : 0;
-        costTerms.push(expr`${s.wage + weekendBonus} * ${shift.get(s.id, d)!}`);
+        costTerms.push(shift[s.id][d].mul(s.wage + weekendBonus));
       }
     }
     m.minimize(sum(costTerms));
-    await m.solve();
+    const solveStatus = await m.solve();
     const elapsed = performance.now() - t0;
     solveTimeMs.value = elapsed;
 
-    if (m.status === "Optimal") {
+    if (solveStatus === "Optimal") {
       status.value = "Optimal";
       totalCost.value = m.objectiveValue;
       unsatCore.value = [];
       const nextAssign: Record<string, number> = {};
       for (const s of staffList) {
         for (const d of days) {
-          nextAssign[keyOf(s.id, d)] = Math.round(shift.get(s.id, d)!.value ?? 0);
+          nextAssign[keyOf(s.id, d)] = Math.round(shift[s.id][d].value ?? 0);
         }
       }
       assignments.value = nextAssign;
@@ -242,10 +239,10 @@ async function solveRoster() {
 
       if ((window as any).crossOriginIsolated) {
         try {
-          const { Model: Z3Model, expr: z3Expr, sum: z3Sum } = await getWashiClient(true);
-          const diag = new Z3Model({ name: "ShiftConflict", solver: "z3" });
-          buildConstraints(diag, z3Expr, z3Sum);
-          await diag.check();
+          const { Model: Z3Model, sum: z3Sum } = await getWashiClient(true);
+          const diag = new Z3Model({ name: "ShiftConflict", sense: "Minimize" });
+          buildConstraints(diag, z3Sum);
+          await diag.check("z3");
           unsatCore.value =
             diag.unsatCore && diag.unsatCore.length > 0
               ? diag.unsatCore
