@@ -336,7 +336,7 @@ You can test your solver using Vitest or Jest without bundling:
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { Model, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
+import { Model, expr, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
 
 describe("Custom Solver Integration", () => {

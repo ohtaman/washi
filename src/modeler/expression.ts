@@ -314,6 +314,17 @@ export function dot(
     }
   }
 
+  function isPlainRecord(obj: any): boolean {
+    return (
+      typeof obj === "object" &&
+      obj !== null &&
+      !Array.isArray(obj) &&
+      !("terms" in obj) &&
+      !("id" in obj) &&
+      !("quadTerms" in obj)
+    );
+  }
+
   function recurse(valA: any, valB: any, path: string = "") {
     if (valA === undefined || valB === undefined || valA === null || valB === null) {
       throw new Error(`Nullish or undefined operand encountered in dot() at '${path || "root"}'.`);
@@ -329,23 +340,61 @@ export function dot(
     }
 
     if (Array.isArray(valA) || Array.isArray(valB)) {
-      if (!Array.isArray(valA) || !Array.isArray(valB)) {
+      if (Array.isArray(valA) && Array.isArray(valB)) {
+        if (valA.length !== valB.length) {
+          throw new Error(
+            `Array length mismatch in dot() at '${path || "root"}': received lengths ${valA.length} and ${valB.length}.`
+          );
+        }
+        for (let i = 0; i < valA.length; i++) {
+          recurse(valA[i], valB[i], path ? `${path}[${i}]` : `[${i}]`);
+        }
+        return;
+      }
+
+      const arr = Array.isArray(valA) ? valA : valB;
+      const other = Array.isArray(valA) ? valB : valA;
+
+      if (isPlainRecord(other)) {
+        const keys = Object.keys(other);
+        const allNumeric = keys.length > 0 && keys.every((k) => /^\d+$/.test(k));
+
+        if (allNumeric) {
+          if (keys.length !== arr.length) {
+            throw new Error(
+              `Array length mismatch in dot() at '${path || "root"}': array has length ${arr.length}, but object has ${keys.length} indices.`
+            );
+          }
+          const missingIndices: number[] = [];
+          for (let i = 0; i < arr.length; i++) {
+            if (!(i in other) && !(String(i) in other)) {
+              missingIndices.push(i);
+            }
+          }
+          if (missingIndices.length > 0) {
+            throw new Error(
+              `Key mismatch in dot() at '${path || "root"}': missing indices [${missingIndices.join(", ")}] in numeric record.`
+            );
+          }
+          for (let i = 0; i < arr.length; i++) {
+            const itemA = Array.isArray(valA) ? valA[i] : (valA as any)[i];
+            const itemB = Array.isArray(valB) ? valB[i] : (valB as any)[i];
+            recurse(itemA, itemB, path ? `${path}[${i}]` : `[${i}]`);
+          }
+          return;
+        }
+
         throw new Error(
-          `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is not.`
+          `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is an Object with keys [${keys.slice(0, 5).join(", ")}].`
         );
       }
-      if (valA.length !== valB.length) {
-        throw new Error(
-          `Array length mismatch in dot() at '${path || "root"}': received lengths ${valA.length} and ${valB.length}.`
-        );
-      }
-      for (let i = 0; i < valA.length; i++) {
-        recurse(valA[i], valB[i], path ? `${path}[${i}]` : `[${i}]`);
-      }
-      return;
+
+      throw new Error(
+        `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is not.`
+      );
     }
 
-    if (typeof valA === "object" && typeof valB === "object") {
+    if (isPlainRecord(valA) && isPlainRecord(valB)) {
       const keysA = Object.keys(valA);
       const keysB = Object.keys(valB);
 

@@ -186,4 +186,36 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       dot({ R1: { C1: 1 } }, x2D);
     }).toThrow(/Key mismatch/);
   });
+
+  it("computes dot() between 2D coefficient Arrays and numeric grid Records in both operand orders", () => {
+    const m = new Model();
+    const x = m.continuous(2, 2); // Record<number, Record<number, Var>>
+    const coeffs = [
+      [1, 2],
+      [3, 4],
+    ];
+
+    // Array x Record
+    const expr1 = dot(coeffs, x);
+    expect(expr1.terms.get(x[0][0])).toBe(1);
+    expect(expr1.terms.get(x[0][1])).toBe(2);
+    expect(expr1.terms.get(x[1][0])).toBe(3);
+    expect(expr1.terms.get(x[1][1])).toBe(4);
+
+    // Record x Array
+    const expr2 = dot(x, coeffs);
+    expect(expr2.terms.get(x[0][0])).toBe(1);
+    expect(expr2.terms.get(x[0][1])).toBe(2);
+    expect(expr2.terms.get(x[1][0])).toBe(3);
+    expect(expr2.terms.get(x[1][1])).toBe(4);
+
+    // Shape mismatch throws
+    expect(() => {
+      dot([[1, 2]], x); // 1 row vs 2 rows
+    }).toThrow(/Array length mismatch/);
+
+    expect(() => {
+      dot([[1, 2, 3], [4, 5, 6]], x); // 3 cols vs 2 cols
+    }).toThrow(/Array length mismatch/);
+  });
 });

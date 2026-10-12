@@ -15,15 +15,15 @@ export const DOCS_HTML = `
       <div class="code-title">ブラウザ標準 ESM (バージョンを固定して利用)</div>
       <pre><code>&lt;script type="module"&gt;
   // dist/browser 一式を社内 HTTP サーバーまたは CDN から配信します
-  import { Model, INTEGER, sum } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.js";
+  import { Model, expr } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.2.0/dist/browser/washi.js";
 
   const m = new Model({ name: "Production", sense: "Maximize" });
-  const x = m.addVar({ name: "x", type: INTEGER, lb: 0 });
-  const y = m.addVar({ name: "y", type: INTEGER, lb: 0 });
+  const x = m.integer("x", { lb: 0 });
+  const y = m.integer("y", { lb: 0 });
 
-  m.maximize(x.mul(30).add(y.mul(50)));
-  m.addConstraint(x.add(y.mul(2)).le(40), "c1");
-  m.addConstraint(x.mul(2).add(y).le(50), "c2");
+  m.maximize(expr\`30 * \${x} + 50 * \${y}\`);
+  m.constrain(expr\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
+  m.constrain(expr\`2 * \${x} + \${y} &lt;= 50\`, "c2");
 
   const status = await m.optimize({ useWorker: false });
   console.log("最適目的関数値:", m.objectiveValue); // 1100
@@ -127,7 +127,7 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
       <li><strong>タグ付きテンプレート DSL</strong>: <code>expr\`\${x} + 2 * \${y} &lt;= 40\`</code> のように、JavaScript の変数参照を直接式中に埋め込んで自然に制約を定義できます。</li>
       <li><strong>標準 CPLEX LP フォーマット完全準拠</strong>: <code>m.toLpString()</code> により、HiGHS や Gurobi、CPLEX、SCIP、GLPK でそのまま扱える標準 LP 構文のテキストを生成・検査できます。</li>
       <li><strong>双対変数（シャドウプライス）と被約費用</strong>: <code>constraint.dual</code> および <code>var.reducedCost</code> により、経済的評価や感度分析が可能です。</li>
-      <li><strong>多次元変数マトリクス</strong>: <code>m.addVars2D(rows, cols, { type: BINARY })</code> により、配属問題や輸送問題の多次元変数を直感的に一括生成できます。</li>
+      <li><strong>多次元変数マトリクス</strong>: <code>m.binary(rows, cols)</code> により、配属問題や輸送問題の多次元変数を直感的に一括生成できます。</li>
       <li><strong>ソルバー切り替え機能（非依存性）</strong>: HiGHS への密結合ではなく、<code>m.optimize(new HiGHS())</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジン（自社バックエンド API 等）を共通インターフェースで自由に差し替えられます。</li>
     </ul>
   </div>
