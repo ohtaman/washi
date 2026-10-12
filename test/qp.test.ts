@@ -126,4 +126,19 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     expect(x2.value).toBeCloseTo(1.0, 4);
     expect(m2.objectiveValue).toBeCloseTo(-2.0, 4);
   });
+
+  it("solves optimization problem with chained exponentiation in objective: min x**1**2 - 4 * x", async () => {
+    const m = new Model("ChainedPowerQP");
+    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
+
+    // x**1**2 parses as x**(1**2) = x^1 = x.
+    // So obj = x - 4x = -3x.
+    // For x in [0, 10], min -3x achieves optimum at x = 10, obj = -30.
+    m.minimize(expr`${x}**1**2 - 4 * ${x}`);
+
+    const status = await m.solve(HiGHS);
+    expect(status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(10.0, 4);
+    expect(m.objectiveValue).toBeCloseTo(-30.0, 4);
+  });
 });

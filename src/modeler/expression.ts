@@ -26,6 +26,7 @@ export class LinExpr {
    */
   add(other: QuadExpr): QuadExpr;
   add(other: LinExpr | Var | number): LinExpr;
+  add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr;
   add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.add(this);
@@ -63,6 +64,7 @@ export class LinExpr {
    */
   sub(other: QuadExpr): QuadExpr;
   sub(other: LinExpr | Var | number): LinExpr;
+  sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr;
   sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.neg().add(this);
@@ -83,6 +85,7 @@ export class LinExpr {
   mul(v: Var): QuadExpr;
   mul(other: LinExpr): LinExpr | QuadExpr;
   mul(other: QuadExpr): QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof operand === "number") {
       const result = new LinExpr(new Map(), this.constant * operand);

@@ -139,6 +139,48 @@ describe("Algebraic Parser & DSL", () => {
     );
   });
 
+  it("evaluates chained exponentiation with right-associativity (e.g. x**1**2 == x, x**2**0 == x, 2**1**2 == 2)", () => {
+    // x**(1**2) = x^1 = x
+    const e1 = parseExpr("x**1**2", resolver) as LinExpr;
+    expect(e1).toBeInstanceOf(LinExpr);
+    expect(e1.terms.get(x)).toBe(1);
+
+    // x**(2**0) = x^1 = x
+    const e2 = parseExpr("x**2**0", resolver) as LinExpr;
+    expect(e2).toBeInstanceOf(LinExpr);
+    expect(e2.terms.get(x)).toBe(1);
+
+    // 2**(1**2) = 2^1 = 2
+    const c1 = parseExpr("2**1**2", resolver) as LinExpr;
+    expect(c1).toBeInstanceOf(LinExpr);
+    expect(c1.terms.size).toBe(0);
+    expect(c1.constant).toBe(2);
+
+    // x**(2**1) = x^2
+    const q1 = parseExpr("x**2**1", resolver) as QuadExpr;
+    expect(q1).toBeInstanceOf(QuadExpr);
+    expect(q1.getQuadCoeff(x, x)).toBe(1);
+
+    // x**(0**2) = x^0 = 1
+    const c2 = parseExpr("x**0**2", resolver) as LinExpr;
+    expect(c2).toBeInstanceOf(LinExpr);
+    expect(c2.terms.size).toBe(0);
+    expect(c2.constant).toBe(1);
+
+    // x**(0**0) = x^1 = x
+    const e3 = parseExpr("x**0**0", resolver) as LinExpr;
+    expect(e3).toBeInstanceOf(LinExpr);
+    expect(e3.terms.get(x)).toBe(1);
+
+    // Implicit multiplication with chained power: 2 * x**(1**2) = 2x
+    const e4 = parseExpr("2x^1^2", resolver) as LinExpr;
+    expect(e4.terms.get(x)).toBe(2);
+
+    // Implicit multiplication: 2 * x**(2**1) = 2x^2
+    const q2 = parseExpr("2x^2^1", resolver) as QuadExpr;
+    expect(q2.getQuadCoeff(x, x)).toBe(2);
+  });
+
   it("throws error when trailing unparsed tokens remain after expression", () => {
     expect(() => parseExpr("x + 2 100", resolver)).toThrow(/Unexpected token '100' after expression/);
     expect(() => parseExpr("(x + 2) 100", resolver)).toThrow(/Unexpected token '100' after expression/);

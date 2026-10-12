@@ -37,4 +37,30 @@ describe("Decision Variable (Var)", () => {
     expect(added.terms.get(v)).toBe(1);
     expect(added.constant).toBe(10);
   });
+
+  it("accepts LinExpr | QuadExpr union in Var.add/sub/mul without TypeScript error", () => {
+    const x = new Var({ name: "x" });
+    // Simulate union return type from parseExpr
+    const parsedUnion: import("../src/modeler/expression.js").LinExpr | import("../src/modeler/quad-expr.js").QuadExpr =
+      x.mul(x).add(1);
+
+    const addResult = x.add(parsedUnion);
+    expect(addResult).toBeDefined();
+
+    const subResult = x.sub(parsedUnion);
+    expect(subResult).toBeDefined();
+
+    const mulResult = x.mul(x.add(1) as import("../src/modeler/expression.js").LinExpr | import("../src/modeler/quad-expr.js").QuadExpr);
+    expect(mulResult).toBeDefined();
+
+    const lin = x.add(5);
+    const linAddResult = lin.add(parsedUnion);
+    expect(linAddResult).toBeDefined();
+
+    const linSubResult = lin.sub(parsedUnion);
+    expect(linSubResult).toBeDefined();
+
+    const linMulResult = lin.mul(x.add(1) as import("../src/modeler/expression.js").LinExpr | import("../src/modeler/quad-expr.js").QuadExpr);
+    expect(linMulResult).toBeDefined();
+  });
 });

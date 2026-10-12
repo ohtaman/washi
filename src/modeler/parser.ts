@@ -313,7 +313,11 @@ class Parser {
   }
 
   private applyPower(base: LinExpr | QuadExpr): LinExpr | QuadExpr {
-    let current = base;
+    if (this.peek()?.type !== "CARET") {
+      return base;
+    }
+
+    const exponents: number[] = [];
     while (this.peek()?.type === "CARET") {
       this.consume();
       const expToken = this.peek();
@@ -325,17 +329,39 @@ class Parser {
       if (!Number.isInteger(power) || power < 0) {
         throw new Error("Exponent must be a non-negative integer");
       }
-      if (power === 0) {
-        current = new LinExpr(new Map(), 1);
-      } else if (power === 1) {
-        // current remains unchanged
-      } else if (power === 2) {
-        current = multiplyExpressions(current, current);
-      } else {
-        throw new Error(`Exponent ${power} creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)`);
-      }
+      exponents.push(power);
     }
-    return current;
+
+    // Right-associative exponentiation: a ^ b ^ c ... => a ^ (b ^ c)
+    let totalPower = exponents[exponents.length - 1];
+    for (let i = exponents.length - 2; i >= 0; i--) {
+      totalPower = Math.pow(exponents[i], totalPower);
+    }
+
+    if (!Number.isFinite(totalPower) || totalPower < 0) {
+      throw new Error("Exponent creates an invalid or out-of-range power");
+    }
+
+    const isQuad = base instanceof QuadExpr;
+    const quadTermsCount = isQuad ? base.quadTerms.size : 0;
+    const linTermsCount = isQuad ? base.linearTerms.size : base.terms.size;
+    const isPureConstant = quadTermsCount === 0 && linTermsCount === 0;
+
+    if (isPureConstant) {
+      const val = Math.pow(base.constant, totalPower);
+      return new LinExpr(new Map(), val);
+    }
+
+    if (totalPower === 0) {
+      return new LinExpr(new Map(), 1);
+    }
+    if (totalPower === 1) {
+      return base;
+    }
+    if (totalPower === 2) {
+      return multiplyExpressions(base, base);
+    }
+    throw new Error(`Exponent ${totalPower} creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)`);
   }
 
   getRemainingToken(): Token | undefined {
