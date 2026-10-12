@@ -139,16 +139,16 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
     </p>
     <div class="code-card">
       <div class="code-title">ソルバーの切り替え利用例</div>
-      <pre><code>import { Model, LpProblem, HiGHS, MockSolver } from "highs-web";
+      <pre><code>import { Model, HiGHS, MockSolver } from "@ohtaman/washi";
 
 // 1. デフォルトソルバー (HiGHS WebAssembly) で解く
-await prob.solve();
+await m.optimize();
 
 // 2. オプションを指定した明示的な HiGHS インスタンスで解く
-await prob.solve(new HiGHS({ timeLimit: 30, mipGap: 0.01 }));
+await m.optimize(new HiGHS({ timeLimit: 30, mipGap: 0.01 }));
 
 // 3. テスト・CI 用 Mock ソルバー（WASM を読み込まず即座に擬似解を返却）
-await prob.solve(new MockSolver({
+await m.optimize(new MockSolver({
   status: "Optimal",
   values: { x: 10, y: 20 },
   objectiveValue: 100

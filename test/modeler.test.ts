@@ -65,7 +65,7 @@ describe("HiGHS Web Modeler", () => {
     expect(y.value).toBeCloseTo(2, 5);
   });
 
-  it("solves 0-1 Knapsack problem using sum() / xsum()", async () => {
+  it("solves 0-1 Knapsack problem using sum()", async () => {
     const m = new Model({ name: "Knapsack", sense: "Maximize" });
 
     const items = [

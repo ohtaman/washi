@@ -2,7 +2,7 @@
 
 This guide describes how to build, test, and distribute custom solver plugins for **WaSHI** (`@ohtaman/washi`).
 
-WaSHI features a pluggable, decoupled solver architecture. Core `@ohtaman/washi` bundles only the zero-config HiGHS WASM engine and a Mock solver. Any third-party solver—whether implemented in WebAssembly, native C++, a Web Worker, or an external cloud REST/RPC backend—can be registered and used through the unified `Model` and `LpProblem` APIs.
+WaSHI features a pluggable, decoupled solver architecture. Core `@ohtaman/washi` bundles only the zero-config HiGHS WASM engine and a Mock solver. Any third-party solver—whether implemented in WebAssembly, native C++, a Web Worker, or an external cloud REST/RPC backend—can be registered and used through the unified `Model` API.
 
 ---
 
@@ -10,7 +10,7 @@ WaSHI features a pluggable, decoupled solver architecture. Core `@ohtaman/washi`
 
 ```mermaid
 graph TD
-    A[WaSHI Model / LpProblem] --> B[Solver Registry Map Symbol.for]
+    A[WaSHI Model] --> B[Solver Registry Map Symbol.for]
     B --> C[HiGHS WASM Engine Core]
     B --> D[Mock Solver Core]
     B --> E[GLPK Plugin @ohtaman/washi/solvers/glpk]
