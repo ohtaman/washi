@@ -223,6 +223,14 @@ describe("README.md Code Snippets Validation", () => {
       const openEU = mip.binary("openEU");
       const openUS = mip.binary("openUS");
 
+      // Carry over SMT-verified deployment decisions into MIP (Issue #34)
+      if (deployEurope.value ?? true) {
+        mip.constrain(openEU.eq(1), "enforce_eu_deployment");
+      }
+      if (deployUS.value ?? true) {
+        mip.constrain(openUS.eq(1), "enforce_us_deployment");
+      }
+
       mip.addIndicator(openEU, capEU.le(0), { activeValue: 0, M: 500 });
       mip.addIndicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
       mip.addIndicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
@@ -231,7 +239,14 @@ describe("README.md Code Snippets Validation", () => {
       mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
 
       const mipStatus = await mip.optimize();
-      return { halted: false, status: checkRes.status, mipStatus, totalCost: mip.objectiveValue };
+      return {
+        halted: false,
+        status: checkRes.status,
+        mipStatus,
+        openEU: openEU.value,
+        openUS: openUS.value,
+        totalCost: mip.objectiveValue,
+      };
     }
 
     // 1. Contradictory scenario must halt on Unsat and NOT run MIP
@@ -240,11 +255,13 @@ describe("README.md Code Snippets Validation", () => {
     expect(resConflict.status).toBe("Unsat");
     expect(resConflict.mipStatus).toBeNull();
 
-    // 2. Feasible scenario must proceed and solve MIP optimally
+    // 2. Feasible scenario must proceed and solve MIP optimally with both regions online
     const resFeasible = await runHybrid(false);
     expect(resFeasible.halted).toBe(false);
     expect(resFeasible.status).toBe("Sat");
     expect(resFeasible.mipStatus).toBe("Optimal");
-    expect(resFeasible.totalCost).toBe(10400);
+    expect(resFeasible.openEU).toBe(1);
+    expect(resFeasible.openUS).toBe(1);
+    expect(resFeasible.totalCost).toBe(15700);
   });
 });
