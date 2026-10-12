@@ -10,10 +10,6 @@ When solving a Linear Programming model, the optimal variable values (`var.value
 2. **Surpluses (`constr.slack`):** Which constraints have room to spare?
 3. **Reduced Costs (`var.reducedCost`):** For items not selected in the optimal plan, how much cheaper would they need to become before entering the solution?
 
-This example formulates a classic nutritional diet problem and inspects all three sensitivity metrics returned by the HiGHS LP solver.
-
----
-
 ## Problem Inputs
 
 We choose daily servings ($0 \le x_i \le 4$) among 6 food items to meet 4 daily nutritional minimums (`Calories >= 2000 kcal`, `Protein >= 105 g`, `Calcium >= 1000 mg`, `Iron >= 18 mg`) at minimum cost:
@@ -27,9 +23,9 @@ We choose daily servings ($0 \le x_i \le 4$) among 6 food items to meet 4 daily 
 | **Spinach** | $1.50 | 40 | 4 | 120 | 3.5 | 4.0 |
 | **Salmon** | $3.60 | 200 | 25 | 20 | 0.8 | 4.0 |
 
----
-
 ## Implementation in WaSHI
+
+<CodeRunner preset="diet_sensitivity">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -58,49 +54,21 @@ async function runDietSensitivity() {
   const cCalc = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.calcium)).ge(1000),  "min_calcium");
   const cIron = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.iron)).ge(18),       "min_iron");
 
-  await m.solve();
+  const status = await m.solve();
 
-  console.log(`Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
+  console.log(`Status: ${status}, Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
+  console.log("--- Food Servings & Reduced Costs ---");
   for (const f of foods) {
     const v = srv[f.name];
-    console.log(`${f.name}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
+    console.log(`  ${f.name.padEnd(8)}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
   }
+  console.log("--- Nutritional Constraints (Dual & Slack) ---");
   for (const c of [cCal, cProt, cCalc, cIron]) {
-    console.log(`${c.name}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
+    console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
   }
 }
 
 runDietSensitivity();
 ```
 
----
-
-## Expected Output & Interpretation
-
-```text
-Status: Optimal
-Minimum Daily Cost: $13.66
-
-1. Food Basket & Reduced Costs (var.value, var.reducedCost):
-Food      | Servings | Unit Cost | Reduced Cost | Interpretation
-----------+----------+-----------+--------------+-------------------------------------------
-Oats      |     4.00 |     $0.60 |     -1.3546 | At upper serving cap (4.0)
-Chicken   |     1.55 |     $2.40 |     +0.0000 | In optimal menu
-Eggs      |     4.00 |     $0.80 |     -1.0307 | At upper serving cap (4.0)
-Milk      |     4.00 |     $0.90 |     -0.2294 | At upper serving cap (4.0)
-Spinach   |     0.50 |     $1.50 |     +0.0000 | In optimal menu
-Salmon    |     0.00 |     $3.60 |     +1.5125 | Needs -$1.51 price drop to enter menu
-
-2. Nutritional Constraints & Shadow Prices (constr.dual, constr.slack):
-Requirement      | Target |  Slack (Surplus) | Shadow Price (Dual) | Status
------------------+--------+------------------+---------------------+--------------------
-Calories (kcal)  | >= 2000|             0.00 |           $0.0091 | BINDING (Bottleneck)
-Protein (g)      | >=  105|            46.46 |           $0.0000 | Non-binding (Surplus)
-Calcium (mg)     | >= 1000|           483.02 |           $0.0000 | Non-binding (Surplus)
-Iron (mg)        | >=   18|             0.00 |           $0.3241 | BINDING (Bottleneck)
-```
-
-### Key Takeaways
-- **Binding Constraints (`slack == 0`, `dual > 0`):** Only `Calories` and `Iron` are tight at the optimum. Requiring 1 additional mg of Iron increases daily food cost by **$0.3241**.
-- **Non-Binding Constraints (`slack > 0`, `dual == 0`):** The optimal menu already provides `151.46 g` of Protein (`+46.46 g` surplus over the `105 g` target) and `1483 mg` of Calcium (`+483 mg` surplus). Slightly tightening those requirements costs **$0**.
-- **Reduced Cost (`Salmon`):** Because Salmon has `reducedCost = +1.5125`, its price per serving would need to drop by at least **$1.51** (from `$3.60` down to `$2.09`) before it replaces Chicken/Spinach in the optimal diet.
+</CodeRunner>

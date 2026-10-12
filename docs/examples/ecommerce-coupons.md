@@ -10,8 +10,6 @@ This example demonstrates **`m.addIndicator(binVar, constraint, { activeValue, M
 
 <EcommerceCouponDemo />
 
----
-
 ## Scenario & Promotion Rules
 
 A customer's shopping cart currently contains **$242** of merchandise (**$210** in Tech items and **$32** in Apparel):
@@ -28,9 +26,9 @@ A customer's shopping cart currently contains **$242** of merchandise (**$210** 
 Without adding the `$10` cable, the cart (`$242`) cannot use `MEGA45_250` and pays `$242 - $30 (TECH30) - $15 (WELCOME15) = $197`.  
 By adding the `$10` cable (`$252` gross), the customer unlocks `MEGA45_250` (`-$45`) + `WELCOME15` (`-$15`) for a net total of **$192**—saving an extra **$5** while getting an extra item!
 
----
-
 ## Implementation in WaSHI
+
+<CodeRunner preset="cart_coupon">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -87,28 +85,16 @@ async function optimizeCheckoutCart() {
   const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
   m.minimize(merchSpend.sub(totalDiscount));
 
-  await m.solve();
-  console.log(`Optimal Net Payable: $${m.objectiveValue}`);
+  const status = await m.solve();
+  console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);
+  console.log(`Recommended Add-on (+$10 USB-C Cable): ${(addUsbCable.value ?? 0) > 0.5 ? "YES" : "NO"}`);
+  for (const cpn of coupons) {
+    const applied = (useCoupon[cpn.id].value ?? 0) > 0.5;
+    console.log(`  ${applied ? "✅ [APPLIED]" : "   [skipped]"} ${cpn.id.padEnd(11)} (-$${cpn.discount})`);
+  }
 }
 
 optimizeCheckoutCart();
 ```
 
----
-
-## Expected Output
-
-```text
-Status: Optimal (model build: 0.71ms, solve: 21.99ms)
-Base Cart Subtotal:    $242.00
-Recommended Add-on:    YES (+$10 Braided USB-C Cable to unlock $250 tier)
-Gross Merchandise:     $252.00
-Total Coupon Savings: -$60.00
-Final Payable Total:   $192.00 (saved $50.00 vs base cart!)
-
-Coupon Selection Breakdown:
-  ✅ [APPLIED]  WELCOME15    (-$15) — $15 off orders >= $100 (Stackable)
-     [skipped]  TECH30       (-$30) — $30 off Tech >= $200 (Exclusive)
-  ✅ [APPLIED]  MEGA45_250   (-$45) — $45 off total cart >= $250 (Exclusive)
-     [skipped]  MEMBER10     (-$10) — $10 loyalty bonus >= $150 (Stackable)
-```
+</CodeRunner>

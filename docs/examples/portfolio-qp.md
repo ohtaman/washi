@@ -8,8 +8,6 @@ The Markowitz mean-variance portfolio optimization problem is the foundation of 
 
 <PortfolioQpDemo />
 
----
-
 ## Mathematical Formulation
 
 Let $w_i \ge 0$ denote the allocation weight for asset $i$:
@@ -23,15 +21,15 @@ $$\begin{aligned}
 
 where $\boldsymbol{\Sigma}$ is the positive semi-definite asset return covariance matrix.
 
----
-
 ## Implementation in WaSHI
 
+<CodeRunner preset="portfolio_qp">
+
 ```typescript
-import { Model, quicksum, QuadExpr } from "@ohtaman/washi";
+import { Model, sum, QuadExpr } from "@ohtaman/washi";
 
 async function solvePortfolio() {
-  const model = new Model("PortfolioQP");
+  const model = new Model({ name: "PortfolioQP", sense: "Minimize" });
 
   const assets = ["Tech", "Bonds", "GlobalEq", "RealEstate", "Gold"];
   const expectedReturns = [0.12, 0.04, 0.09, 0.07, 0.05];
@@ -50,11 +48,10 @@ async function solvePortfolio() {
   const w = assets.map((name) => model.addVar({ name, lb: 0, ub: 1 }));
 
   // Budget constraint: sum(w_i) == 1.0
-  const totalBudget = quicksum(w.map((varItem) => [1.0, varItem]));
-  model.addConstraint(totalBudget.eq(1.0), "budget_limit");
+  model.addConstraint(sum(w).eq(1.0), "budget_limit");
 
   // Expected return constraint: sum(r_i * w_i) >= 8.5%
-  const returnExpr = quicksum(w.map((varItem, i) => [expectedReturns[i], varItem]));
+  const returnExpr = sum(w.map((varItem, i) => varItem.mul(expectedReturns[i])));
   model.addConstraint(returnExpr.ge(targetReturn), "target_return");
 
   // Quadratic Objective: w^T * Sigma * w
@@ -76,24 +73,11 @@ async function solvePortfolio() {
   console.log(`Volatility (Std Dev): ${((Math.sqrt(model.objectiveValue || 0)) * 100).toFixed(2)}%`);
 
   assets.forEach((name, i) => {
-    console.log(`  ${name}: ${((w[i].value || 0) * 100).toFixed(2)}%`);
+    console.log(`  ${name.padEnd(10)}: ${((w[i].value || 0) * 100).toFixed(2)}%`);
   });
 }
 
 solvePortfolio();
 ```
 
----
-
-## Output
-
-```text
-Status: Optimal
-Variance: 0.012543
-Volatility (Std Dev): 11.20%
-  Tech        : 38.45%
-  Bonds       : 22.10%
-  GlobalEq    : 25.15%
-  RealEstate  : 10.30%
-  Gold        : 4.00%
-```
+</CodeRunner>

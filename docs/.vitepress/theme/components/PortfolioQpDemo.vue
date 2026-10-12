@@ -175,7 +175,7 @@ onMounted(() => {
 
     <div class="washi-app-footer">
       <a href="/washi/demo/?preset=portfolio_qp" class="playground-link">
-        &lt;/&gt; {{ isJa ? "Playground でコードを編集する →" : "Edit Code in Playground →" }}
+        {{ isJa ? "Playground でコードを編集する →" : "Edit Code in Playground →" }}
       </a>
     </div>
   </div>

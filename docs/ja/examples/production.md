@@ -6,8 +6,6 @@
 
 限られたリソース（木材・労働時間など）の制約を守りながら、どの製品をいくつ生産すれば総利益が最大になるかを求める古典的な最適化問題です。
 
----
-
 ## 数理モデルの定式化
 
 椅子（chairs）の生産数を $x$、机（tables）の生産数を $y$ とします。
@@ -19,9 +17,9 @@ $$\begin{aligned}
 & x, y \ge 0, \quad x, y \in \mathbb{Z}
 \end{aligned}$$
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="production">
 
 ```typescript
 import { Model, expr, c } from "@ohtaman/washi";
@@ -50,12 +48,4 @@ async function runProductionOptimization() {
 runProductionOptimization();
 ```
 
----
-
-## 実行結果
-
-```text
-Status: Optimal
-Optimal Profit: $2050
-Chairs: 24, Tables: 14
-```
+</CodeRunner>

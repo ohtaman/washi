@@ -6,9 +6,9 @@
 
 真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`lux.le(50).implies(isNight)`)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="smt_sat_scheduling">
 
 ```typescript
 import { Model } from "@ohtaman/washi";
@@ -33,8 +33,11 @@ async function verifySecurityRules() {
   m.addConstraint(alarm, "alarm_on");
 
   const res = await m.check({ solver: "z3" });
-  console.log(`Status: ${res.status}, Siren active: ${siren.value}`);
+  console.log(`Status: ${res.status}`);
+  console.log(`isNight: ${isNight.value}, Siren active: ${siren.value}`);
 }
 
 verifySecurityRules();
 ```
+
+</CodeRunner>

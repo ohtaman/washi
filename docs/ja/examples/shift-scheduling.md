@@ -12,9 +12,9 @@
 
 <ShiftSchedulingDemo />
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="shift_scheduling">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -35,7 +35,7 @@ const requiredCoverage: Record<Day, number> = {
   Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2,
 };
 
-function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; day: Day }>) {
+function buildShiftModel(name, dayOffRequests) {
   const m = new Model({ name, sense: "Minimize" });
 
   // 2次元 0-1 変数: shift[staff][day] (1 = 出勤, 0 = 休日)
@@ -78,36 +78,31 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
 
   return { model: m, shift };
 }
+
+async function runShiftScheduling() {
+  // パート1: 希望休が分散している場合（HiGHS による最適シフト表生成）
+  const { model: m1 } = buildShiftModel("FeasibleRoster", [
+    { staff: "Alice", day: "Sun" },
+    { staff: "Bob", day: "Mon" },
+    { staff: "Charlie", day: "Sat" },
+    { staff: "Diana", day: "Wed" },
+  ]);
+  const s1 = await m1.solve();
+  console.log(`Part 1 (HiGHS): Status=${s1}, Optimal Weekly Payroll=$${m1.objectiveValue}`);
+
+  // パート2: 土曜日に3名の希望休が重なった場合（Z3 unsatCore による衝突診断）
+  const { model: m2 } = buildShiftModel("ConflictRoster", [
+    { staff: "Alice", day: "Sat" },
+    { staff: "Bob", day: "Sat" },
+    { staff: "Charlie", day: "Sat" },
+    { staff: "Diana", day: "Wed" },
+  ]);
+  const res2 = await m2.check("z3");
+  console.log(`Part 2 (Z3 Check): Status=${res2.status}`);
+  console.log("Conflicting Constraint Subset (unsatCore):", m2.unsatCore);
+}
+
+runShiftScheduling();
 ```
 
----
-
-## 実行結果
-
-### パート1: 希望休が分散している場合（HiGHS による最適シフト表生成）
-```text
-Part 1: Optimizing Weekly Roster with Balanced Day-Off Requests (HiGHS)...
-Status: Optimal
-Optimal Weekly Payroll Cost: $3830
-
-Staff (Role)   |  Mon  Tue  Wed  Thu  Fri  Sat  Sun | Total
------------------------------------------------------------
-Alice (Sr)     |   ON    ·    ·   ON    ·    ·    · |   2/5
-Bob (Sr)       |    ·   ON   ON    ·   ON   ON   ON |   5/5
-Charlie (Jr)   |    ·   ON   ON   ON   ON    ·   ON |   5/5
-Diana (Jr)     |   ON   ON    ·    ·   ON   ON    · |   4/5
-Evan (Jr)      |   ON    ·   ON   ON   ON   ON    · |   5/5
-```
-
-### パート2: 土曜日に3名の希望休が重なった場合（Z3 `unsatCore` による衝突診断）
-土曜日は3名必要（`coverage_Sat >= 3`）ですが、`Alice`, `Bob`, `Charlie` の3名が土曜日に希望休を出した場合、実行不能となります。Z3 で `check()` を実行すると、無関係な水曜日の希望休（`day_off_Diana_Wed`）を除外し、土曜日の衝突原因だけを抽出します（注: `unsatCore` は矛盾する部分集合を返しますが、最小性は保証されません）。
-
-```text
-Part 2: Diagnosing Infeasible Saturday Vacation Requests (Z3 Unsat Core)...
-Feasibility Check Status: Unsat
-⚠️ Conflicting Constraint Subset (unsatCore):
-  ❌ coverage_Sat
-  ❌ day_off_Alice_Sat
-  ❌ day_off_Bob_Sat
-  ❌ day_off_Charlie_Sat
-```
+</CodeRunner>

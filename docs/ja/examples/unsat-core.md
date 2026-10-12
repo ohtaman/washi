@@ -6,9 +6,9 @@
 
 複数の業務ルールや数値制約が互いに矛盾して実行可能解が存在しない（`Unsat`）場合、名前付き制約の中から矛盾を引き起こしている制約の部分集合（Unsat Core。最小性は保証されません）を Z3 で抽出します。
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="conflict_diagnosis_unsat">
 
 ```typescript
 import { Model } from "@ohtaman/washi";
@@ -28,10 +28,11 @@ async function diagnoseConflict() {
   m.addConstraint(engineers.ge(1), "minimum_one_employee");     // 矛盾とは無関係なルール
 
   const res = await m.check({ solver: "z3" });
-  console.log("Status:", res.status); // "Unsat"
-  console.log("Conflicting subset:", m.unsatCore);
-  // -> ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
+  console.log(`Status: ${res.status}`);
+  console.log("Conflicting subset (unsatCore):", m.unsatCore);
 }
 
 diagnoseConflict();
 ```
+
+</CodeRunner>

@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
+import katex from "katex";
 
 export default withMermaid(
   defineConfig({
@@ -9,6 +10,107 @@ export default withMermaid(
   cleanUrls: true,
   lastUpdated: true,
   ignoreDeadLinks: true,
+  markdown: {
+    config(md) {
+      // Block math: $$ ... $$
+      md.block.ruler.after(
+        "blockquote",
+        "math_block",
+        (state, startLine, endLine, silent) => {
+          let pos = state.bMarks[startLine] + state.tShift[startLine];
+          let max = state.eMarks[startLine];
+          if (pos + 2 > max) return false;
+          if (state.src.slice(pos, pos + 2) !== "$$") return false;
+
+          pos += 2;
+          let firstLine = state.src.slice(pos, max);
+
+          if (silent) return true;
+
+          let nextLine = startLine;
+          let haveEndMarker = false;
+
+          if (firstLine.trim().endsWith("$$")) {
+            firstLine = firstLine.trim().slice(0, -2);
+            haveEndMarker = true;
+          }
+
+          const lines: string[] = [firstLine];
+          while (!haveEndMarker) {
+            nextLine++;
+            if (nextLine >= endLine) break;
+            pos = state.bMarks[nextLine] + state.tShift[nextLine];
+            max = state.eMarks[nextLine];
+            const lineText = state.src.slice(pos, max);
+            if (lineText.trim().endsWith("$$")) {
+              lines.push(lineText.trim().slice(0, -2));
+              haveEndMarker = true;
+            } else {
+              lines.push(lineText);
+            }
+          }
+
+          state.line = nextLine + 1;
+          const token = state.push("math_block", "math", 0);
+          token.block = true;
+          token.content = lines.join("\n").trim();
+          token.map = [startLine, state.line];
+          return true;
+        },
+        { alt: ["paragraph", "reference", "blockquote", "list"] }
+      );
+
+      // Inline math: $ ... $ (ignores currency like $400 or $1,020)
+      md.inline.ruler.after("escape", "math_inline", (state, silent) => {
+        if (state.src[state.pos] !== "$") return false;
+        const start = state.pos + 1;
+        if (start >= state.posMax) return false;
+
+        const firstChar = state.src[start];
+        // Ignore currency values ($0-$9) or whitespace after opening $
+        if (!firstChar || /[\s0-9]/.test(firstChar)) return false;
+
+        let match = start;
+        while ((match = state.src.indexOf("$", match)) !== -1) {
+          let backslashes = 0;
+          let k = match - 1;
+          while (k >= start && state.src[k] === "\\") {
+            backslashes++;
+            k--;
+          }
+          if (backslashes % 2 === 0) break;
+          match++;
+        }
+
+        if (match === -1 || match === start) return false;
+        const content = state.src.slice(start, match);
+        if (/\s$/.test(content)) return false;
+
+        if (!silent) {
+          const token = state.push("math_inline", "math", 0);
+          token.content = content;
+        }
+        state.pos = match + 1;
+        return true;
+      });
+
+      md.renderer.rules.math_block = (tokens, idx) => {
+        const html = katex.renderToString(tokens[idx].content, {
+          displayMode: true,
+          throwOnError: false,
+        });
+        return `<div v-pre class="katex-block">${html}</div>\n`;
+      };
+
+      md.renderer.rules.math_inline = (tokens, idx) => {
+        const html = katex.renderToString(tokens[idx].content, {
+          displayMode: false,
+          throwOnError: false,
+        });
+        return `<span v-pre>${html}</span>`;
+      };
+    },
+  },
   head: [
     ["link", { rel: "icon", href: "/washi/washi-logo.svg", type: "image/svg+xml" }],
     ["link", { rel: "alternate icon", href: "/washi/washi-logo.png", type: "image/png" }],
@@ -61,33 +163,18 @@ export default withMermaid(
             ],
           },
           {
-            text: "Examples & Recipes",
+            text: "Examples",
             items: [
-              { text: "Overview & Feature Finder", link: "/examples/" },
-              {
-                text: "Fundamentals (Core APIs)",
-                items: [
-                  { text: "Production Planning (LP/MIP)", link: "/examples/production" },
-                  { text: "0-1 Knapsack (Binary MIP)", link: "/examples/knapsack" },
-                  { text: "Transportation Network (2D LP)", link: "/examples/transportation" },
-                  { text: "Diet & Sensitivity (Dual/Slack)", link: "/examples/diet-sensitivity" },
-                ],
-              },
-              {
-                text: "Practical Applications",
-                items: [
-                  { text: "Staff Shift Scheduling (MIP+Z3)", link: "/examples/shift-scheduling" },
-                  { text: "E-Commerce Coupon Optimizer", link: "/examples/ecommerce-coupons" },
-                  { text: "Portfolio Optimization (QP)", link: "/examples/portfolio-qp" },
-                ],
-              },
-              {
-                text: "SMT Logic & Diagnosis",
-                items: [
-                  { text: "SMT Security Policies (Z3)", link: "/examples/smt-security" },
-                  { text: "Conflict Diagnosis (Unsat Core)", link: "/examples/unsat-core" },
-                ],
-              },
+              { text: "Overview & API Finder", link: "/examples/" },
+              { text: "Production Planning (LP/MIP)", link: "/examples/production" },
+              { text: "0-1 Knapsack (Binary MIP)", link: "/examples/knapsack" },
+              { text: "Transportation Network (LP)", link: "/examples/transportation" },
+              { text: "Diet & Sensitivity (Dual/Slack)", link: "/examples/diet-sensitivity" },
+              { text: "Staff Shift Scheduling (MIP+Z3)", link: "/examples/shift-scheduling" },
+              { text: "E-Commerce Coupon Optimizer", link: "/examples/ecommerce-coupons" },
+              { text: "Portfolio Optimization (QP)", link: "/examples/portfolio-qp" },
+              { text: "SMT Security Policies (Z3)", link: "/examples/smt-security" },
+              { text: "Conflict Diagnosis (Unsat Core)", link: "/examples/unsat-core" },
             ],
           },
         ],
@@ -138,33 +225,18 @@ export default withMermaid(
             ],
           },
           {
-            text: "実践レシピ集",
+            text: "実践例・サンプル",
             items: [
-              { text: "レシピ一覧・逆引き索引", link: "/ja/examples/" },
-              {
-                text: "基本モデル（APIの基礎）",
-                items: [
-                  { text: "生産計画問題 (LP/MIP)", link: "/ja/examples/production" },
-                  { text: "0-1 ナップサック問題 (MIP)", link: "/ja/examples/knapsack" },
-                  { text: "輸送・物流ネットワーク (2次元LP)", link: "/ja/examples/transportation" },
-                  { text: "栄養問題と感度分析 (Dual/Slack)", link: "/ja/examples/diet-sensitivity" },
-                ],
-              },
-              {
-                text: "実践ユースケース（応用）",
-                items: [
-                  { text: "シフト作成と希望休の競合診断", link: "/ja/examples/shift-scheduling" },
-                  { text: "ECカートのクーポン最適適用", link: "/ja/examples/ecommerce-coupons" },
-                  { text: "ポートフォリオ最適化 (QP)", link: "/ja/examples/portfolio-qp" },
-                ],
-              },
-              {
-                text: "論理検証・矛盾診断 (Z3)",
-                items: [
-                  { text: "セキュリティポリシー検証 (SMT)", link: "/ja/examples/smt-security" },
-                  { text: "制約矛盾の診断 (Unsat Core)", link: "/ja/examples/unsat-core" },
-                ],
-              },
+              { text: "一覧・逆引きインデックス", link: "/ja/examples/" },
+              { text: "生産計画問題 (LP/MIP)", link: "/ja/examples/production" },
+              { text: "0-1 ナップサック問題 (MIP)", link: "/ja/examples/knapsack" },
+              { text: "輸送・物流ネットワーク (LP)", link: "/ja/examples/transportation" },
+              { text: "栄養問題と感度分析 (Dual/Slack)", link: "/ja/examples/diet-sensitivity" },
+              { text: "シフト作成と希望休の競合診断", link: "/ja/examples/shift-scheduling" },
+              { text: "ECカートのクーポン最適適用", link: "/ja/examples/ecommerce-coupons" },
+              { text: "ポートフォリオ最適化 (QP)", link: "/ja/examples/portfolio-qp" },
+              { text: "セキュリティポリシー検証 (SMT)", link: "/ja/examples/smt-security" },
+              { text: "制約矛盾の診断 (Unsat Core)", link: "/ja/examples/unsat-core" },
             ],
           },
         ],
@@ -218,30 +290,15 @@ export default withMermaid(
             text: "实际案例与代码示例",
             items: [
               { text: "案例总览与 API 索引", link: "/zh/examples/" },
-              {
-                text: "基础模型（核心 API）",
-                items: [
-                  { text: "生产计划问题 (LP/MIP)", link: "/examples/production" },
-                  { text: "0-1 背包问题 (MIP)", link: "/examples/knapsack" },
-                  { text: "运输与分配网络 (2D LP)", link: "/examples/transportation" },
-                  { text: "营养问题与灵敏度分析", link: "/examples/diet-sensitivity" },
-                ],
-              },
-              {
-                text: "实战应用案例",
-                items: [
-                  { text: "员工排班与冲突诊断", link: "/examples/shift-scheduling" },
-                  { text: "购物车优惠券最优组合", link: "/examples/ecommerce-coupons" },
-                  { text: "投资组合优化 (QP)", link: "/examples/portfolio-qp" },
-                ],
-              },
-              {
-                text: "SMT 逻辑与冲突诊断",
-                items: [
-                  { text: "安全策略验证 (SMT)", link: "/examples/smt-security" },
-                  { text: "不可行冲突诊断 (Unsat Core)", link: "/examples/unsat-core" },
-                ],
-              },
+              { text: "生产计划问题 (LP/MIP)", link: "/examples/production" },
+              { text: "0-1 背包问题 (MIP)", link: "/examples/knapsack" },
+              { text: "运输与分配网络 (LP)", link: "/examples/transportation" },
+              { text: "营养问题与灵敏度分析", link: "/examples/diet-sensitivity" },
+              { text: "员工排班与冲突诊断", link: "/examples/shift-scheduling" },
+              { text: "购物车优惠券最优组合", link: "/examples/ecommerce-coupons" },
+              { text: "投资组合优化 (QP)", link: "/examples/portfolio-qp" },
+              { text: "安全策略验证 (SMT)", link: "/examples/smt-security" },
+              { text: "不可行冲突诊断 (Unsat Core)", link: "/examples/unsat-core" },
             ],
           },
         ],

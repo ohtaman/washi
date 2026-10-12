@@ -12,8 +12,6 @@ This example shows how to combine WaSHI's two strengths in one workflow:
 
 <ShiftSchedulingDemo />
 
----
-
 ## Scenario & Rules
 
 We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) across **7 days** (`Mon`–`Sun`):
@@ -23,9 +21,9 @@ We schedule **5 staff members** (`Alice`, `Bob`, `Charlie`, `Diana`, `Evan`) acr
 - **Work Limit:** Each staff member works at most **5 days** per week.
 - **Weekend Premium:** Weekend shifts (`Sat`, `Sun`) incur an extra `+$30` shift premium on top of base daily wage.
 
----
-
 ## Implementation in WaSHI
+
+<CodeRunner preset="shift_scheduling">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -46,7 +44,7 @@ const requiredCoverage: Record<Day, number> = {
   Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2,
 };
 
-function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; day: Day }>) {
+function buildShiftModel(name, dayOffRequests) {
   const m = new Model({ name, sense: "Minimize" });
 
   // 2D binary matrix: shift[staff][day] ∈ {0, 1}
@@ -89,35 +87,31 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
 
   return { model: m, shift };
 }
+
+async function runShiftScheduling() {
+  // Part 1: Solving a Feasible Schedule with HiGHS
+  const { model: m1 } = buildShiftModel("FeasibleRoster", [
+    { staff: "Alice", day: "Sun" },
+    { staff: "Bob", day: "Mon" },
+    { staff: "Charlie", day: "Sat" },
+    { staff: "Diana", day: "Wed" },
+  ]);
+  const s1 = await m1.solve();
+  console.log(`Part 1 (HiGHS): Status=${s1}, Optimal Weekly Payroll=$${m1.objectiveValue}`);
+
+  // Part 2: Diagnosing Conflicting Saturday Vacation Requests with Z3
+  const { model: m2 } = buildShiftModel("ConflictRoster", [
+    { staff: "Alice", day: "Sat" },
+    { staff: "Bob", day: "Sat" },
+    { staff: "Charlie", day: "Sat" },
+    { staff: "Diana", day: "Wed" },
+  ]);
+  const res2 = await m2.check("z3");
+  console.log(`Part 2 (Z3 Check): Status=${res2.status}`);
+  console.log("Conflicting Constraint Subset (unsatCore):", m2.unsatCore);
+}
+
+runShiftScheduling();
 ```
 
-### Part 1: Solving a Feasible Schedule with HiGHS
-When day-off requests are spread across the week (`Alice: Sun`, `Bob: Mon`, `Charlie: Sat`, `Diana: Wed`), HiGHS finds the optimal weekly roster in milliseconds:
-
-```text
-Part 1: Optimizing Weekly Roster with Balanced Day-Off Requests (HiGHS)...
-Status: Optimal
-Optimal Weekly Payroll Cost: $3830
-
-Staff (Role)   |  Mon  Tue  Wed  Thu  Fri  Sat  Sun | Total
------------------------------------------------------------
-Alice (Sr)     |   ON    ·    ·   ON    ·    ·    · |   2/5
-Bob (Sr)       |    ·   ON   ON    ·   ON   ON   ON |   5/5
-Charlie (Jr)   |    ·   ON   ON   ON   ON    ·   ON |   5/5
-Diana (Jr)     |   ON   ON    ·    ·   ON   ON    · |   4/5
-Evan (Jr)      |   ON    ·   ON   ON   ON   ON    · |   5/5
-```
-
-### Part 2: Diagnosing Conflicting Saturday Vacation Requests with Z3
-Suppose `Alice`, `Bob`, and `Charlie` all request `Sat` off (while `Diana` requests `Wed` off). Because Saturday requires `coverage_Sat >= 3` and `senior_duty_Sat >= 1`, no valid roster exists. Running `conflictModel.check({ solver: "z3" })` isolates a conflicting constraint subset (`unsatCore`, where minimality is not guaranteed):
-
-```text
-Part 2: Diagnosing Infeasible Saturday Vacation Requests (Z3 Unsat Core)...
-Feasibility Check Status: Unsat
-⚠️ Conflicting Constraint Subset (unsatCore):
-  ❌ coverage_Sat
-  ❌ day_off_Alice_Sat
-  ❌ day_off_Bob_Sat
-  ❌ day_off_Charlie_Sat
-  (Note: unrelated constraints like 'day_off_Diana_Wed' are excluded from the core)
-```
+</CodeRunner>

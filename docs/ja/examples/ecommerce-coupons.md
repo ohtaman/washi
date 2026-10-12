@@ -10,8 +10,6 @@ WaSHI を使えば、サーバーに負荷をかけず**ブラウザ内（クラ
 
 <EcommerceCouponDemo />
 
----
-
 ## シナリオ設定
 
 現在のカート小計は **$242**（うち Tech カテゴリ商品が **$210**）：
@@ -25,11 +23,11 @@ WaSHI を使えば、サーバーに負荷をかけず**ブラウザ内（クラ
 | `MEGA45_250` | **-$45** | カート総額 $\ge \$250$ | **併用不可 (Exclusive)** |
 | `MEMBER10` | **-$10** | カート総額 $\ge \$150$ | **併用可 (Stackable)** |
 
----
-
 ## WaSHI による実装 (`addIndicator`)
 
 「クーポン $c$ を適用する（`useCoupon[c] == 1`）ならば、購入金額が最低条件以上である」という条件付き制約を `m.addIndicator()` で直感的に記述します。
+
+<CodeRunner preset="cart_coupon">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -85,28 +83,16 @@ async function optimizeCheckoutCart() {
   const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
   m.minimize(merchSpend.sub(totalDiscount));
 
-  await m.solve();
-  console.log(`Optimal Net Payable: $${m.objectiveValue}`);
+  const status = await m.solve();
+  console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);
+  console.log(`Recommended Add-on (+$10 USB-C Cable): ${(addUsbCable.value ?? 0) > 0.5 ? "YES" : "NO"}`);
+  for (const cpn of coupons) {
+    const applied = (useCoupon[cpn.id].value ?? 0) > 0.5;
+    console.log(`  ${applied ? "✅ [APPLIED]" : "   [skipped]"} ${cpn.id.padEnd(11)} (-$${cpn.discount})`);
+  }
 }
 
 optimizeCheckoutCart();
 ```
 
----
-
-## 実行結果
-
-```text
-Status: Optimal (model build: 0.71ms, solve: 21.99ms)
-Base Cart Subtotal:    $242.00
-Recommended Add-on:    YES (+$10 Braided USB-C Cable to unlock $250 tier)
-Gross Merchandise:     $252.00
-Total Coupon Savings: -$60.00
-Final Payable Total:   $192.00 (saved $50.00 vs base cart!)
-
-Coupon Selection Breakdown:
-  ✅ [APPLIED]  WELCOME15    (-$15) — $15 off orders >= $100 (Stackable)
-     [skipped]  TECH30       (-$30) — $30 off Tech >= $200 (Exclusive)
-  ✅ [APPLIED]  MEGA45_250   (-$45) — $45 off total cart >= $250 (Exclusive)
-     [skipped]  MEMBER10     (-$10) — $10 loyalty bonus >= $150 (Stackable)
-```
+</CodeRunner>

@@ -8,8 +8,6 @@
 
 このサンプルでは、`m.addVars(factories, stores)` を使って **`ship[factory][store]` のような2次元インデックス変数**を1行で構築し、`sum()` で行方向・列方向の合計制約を簡潔に記述する方法を学びます。
 
----
-
 ## 入力データ
 
 3つの工場（`Tokyo`, `Nagoya`, `Osaka`）から4つの店舗（`North`, `East`, `West`, `South`）へ配送します。
@@ -21,9 +19,9 @@
 | **Osaka** | $9 | $7 | $2 | $3 | **80** 個 |
 | **店舗の需要量** | **70** 個 | **90** 個 | **60** 個 | **60** 個 | 合計: 280 / 300 |
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="transportation">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -72,38 +70,16 @@ async function runTransportation() {
   }
 
   const status = await m.solve();
-  console.log(`Status: ${status}, Total Cost: $${m.objectiveValue}`);
+  console.log(`Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
+  for (const f of factories) {
+    const routes = stores
+      .map((s) => `${s}:${Math.round(ship[f][s].value ?? 0)}`)
+      .join(", ");
+    console.log(`  ${f.padEnd(7)} -> ${routes}`);
+  }
 }
 
 runTransportation();
 ```
 
----
-
-## 実行結果とパラメータ変化の影響
-
-`npx tsx examples/node/09-transportation-problem.ts` を実行すると、通常時の最適輸送計画（Scenario A）と、Tokyo 工場の供給上限が `120 -> 80` に減少した場合の代替フロー（Scenario B）を比較できます。
-
-```text
---- Scenario A: Baseline Supply Capacities ---
-Status: Optimal (model build: 0.76ms, solve: 23.80ms)
-Total Shipping Cost: $880
-
-Optimal Shipment Plan (units):
-Factory \ Store    North    East    West   South  | Used / Cap
---------------------------------------------------------------
-Tokyo                 30      90       ·       ·  | 120 / 120
-Nagoya                40       ·      40       ·  |  80 / 100
-Osaka                  ·       ·      20      60  |  80 / 80
-
---- Scenario B: Tokyo Capacity Constrained (120 -> 80) ---
-Status: Optimal (model build: 0.15ms, solve: 0.87ms)
-Total Shipping Cost: $940
-
-Optimal Shipment Plan (units):
-Factory \ Store    North    East    West   South  | Used / Cap
---------------------------------------------------------------
-Tokyo                  ·      80       ·       ·  |  80 / 80
-Nagoya                70      10      20       ·  | 100 / 120
-Osaka                  ·       ·      40      60  | 100 / 100
-```
+</CodeRunner>

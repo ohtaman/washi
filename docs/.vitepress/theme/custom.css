@@ -671,3 +671,85 @@
 .playground-link:hover {
   color: #c23b22 !important;
 }
+
+/* ==========================================================================
+   CodeRunner (Generic Slot-Based Executable Code Block)
+   ========================================================================== */
+.washi-code-runner {
+  margin: 16px 0 28px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.runner-code-slot div[class*="language-"] {
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.runner-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--vp-c-bg);
+}
+
+.runner-status-meta {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.dark .runner-status-meta {
+  color: #4ade80;
+}
+
+.runner-output-panel {
+  border-top: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-alt);
+  transition: opacity 0.15s ease;
+}
+
+.runner-output-panel.is-stale {
+  opacity: 0.55;
+}
+
+.runner-output-panel .console-header {
+  padding: 5px 16px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+  background: var(--vp-c-bg-soft);
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.runner-output-panel .console-pre {
+  margin: 0 !important;
+  padding: 12px 16px !important;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--vp-c-text-1);
+  overflow-x: auto;
+}
+
+.runner-output-panel .console-pre.error-text {
+  color: #dc2626;
+}
+
+/* Prevent double horizontal borders when Markdown has --- before ## */
+.vp-doc hr:has(+ h2) {
+  display: none;
+}
+
+.katex-block {
+  margin: 16px 0;
+  overflow-x: auto;
+}
+

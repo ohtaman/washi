@@ -8,9 +8,9 @@
 
 <PortfolioQpDemo />
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="portfolio_qp">
 
 ```typescript
 import { Model, QuadExpr, sum } from "@ohtaman/washi";
@@ -45,9 +45,14 @@ async function runPortfolioQP() {
   }
   m.minimize(risk);
 
-  await m.solve();
-  console.log(`Minimal Variance: ${m.objectiveValue?.toFixed(6)}`);
+  const status = await m.solve();
+  console.log(`Status: ${status}, Minimal Variance: ${m.objectiveValue?.toFixed(6)}`);
+  assets.forEach((name, i) => {
+    console.log(`  ${name.padEnd(10)}: ${((w[i].value ?? 0) * 100).toFixed(2)}%`);
+  });
 }
 
 runPortfolioQP();
 ```
+
+</CodeRunner>

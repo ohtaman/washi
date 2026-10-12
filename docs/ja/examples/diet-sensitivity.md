@@ -10,9 +10,9 @@
 2. **スラック (`constr.slack` / 余剰量):** どの制約条件が上限・下限に張り付いており（Binding）、どの制約に余裕（Surplus）があるか。
 3. **被約費用 (`var.reducedCost`):** 最適解で選ばれなかった選択肢（値 `0`）が、あと何ドル安くなれば最適解に採用されるか。
 
----
-
 ## WaSHI による実装
+
+<CodeRunner preset="diet_sensitivity">
 
 ```typescript
 import { Model, sum } from "@ohtaman/washi";
@@ -41,47 +41,26 @@ async function runDietSensitivity() {
   const cCalc = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.calcium)).ge(1000),  "min_calcium");
   const cIron = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.iron)).ge(18),       "min_iron");
 
-  await m.solve();
+  const status = await m.solve();
 
-  console.log(`Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
+  console.log(`Status: ${status}, Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
+  console.log("--- Food Servings & Reduced Costs ---");
   for (const f of foods) {
     const v = srv[f.name];
-    console.log(`${f.name}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
+    console.log(`  ${f.name.padEnd(8)}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
   }
+  console.log("--- Nutritional Constraints (Dual & Slack) ---");
   for (const c of [cCal, cProt, cCalc, cIron]) {
-    console.log(`${c.name}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
+    console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
   }
 }
 
 runDietSensitivity();
 ```
 
----
+</CodeRunner>
 
-## 実行結果と解釈
-
-```text
-Status: Optimal
-Minimum Daily Cost: $13.66
-
-1. Food Basket & Reduced Costs (var.value, var.reducedCost):
-Food      | Servings | Unit Cost | Reduced Cost | Interpretation
-----------+----------+-----------+--------------+-------------------------------------------
-Oats      |     4.00 |     $0.60 |     -1.3546 | At upper serving cap (4.0)
-Chicken   |     1.55 |     $2.40 |     +0.0000 | In optimal menu
-Eggs      |     4.00 |     $0.80 |     -1.0307 | At upper serving cap (4.0)
-Milk      |     4.00 |     $0.90 |     -0.2294 | At upper serving cap (4.0)
-Spinach   |     0.50 |     $1.50 |     +0.0000 | In optimal menu
-Salmon    |     0.00 |     $3.60 |     +1.5125 | Needs -$1.51 price drop to enter menu
-
-2. Nutritional Constraints & Shadow Prices (constr.dual, constr.slack):
-Requirement      | Target |  Slack (Surplus) | Shadow Price (Dual) | Status
------------------+--------+------------------+---------------------+--------------------
-Calories (kcal)  | >= 2000|             0.00 |           $0.0091 | BINDING (Bottleneck)
-Protein (g)      | >=  105|            46.46 |           $0.0000 | Non-binding (Surplus)
-Calcium (mg)     | >= 1000|           483.02 |           $0.0000 | Non-binding (Surplus)
-Iron (mg)        | >=   18|             0.00 |           $0.3241 | BINDING (Bottleneck)
-```
+## 結果の解釈
 
 - **ボトルネック制約 (`slack == 0`, `dual > 0`):** カロリー（2000kcal）と鉄分（18mg）が下限に張り付いており、鉄分の必要量を 1mg 増やすと食費が **$0.3241** 増加することが分かります。
 - **余剰のある制約 (`slack > 0`, `dual == 0`):** タンパク質（+46.46g 余剰）とカルシウム（+483.02mg 余剰）はすでに十分満たされているため、潜在価格は `$0` です。
