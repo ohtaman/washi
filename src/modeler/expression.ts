@@ -298,19 +298,36 @@ export function dot(
   const terms = new Map<Var, number>();
   let constant = 0;
 
+  function isVar(x: any): x is Var {
+    return (
+      x !== null &&
+      typeof x === "object" &&
+      typeof x.id === "number" &&
+      typeof x.name === "string" &&
+      typeof x.mul === "function" &&
+      typeof x.le === "function"
+    );
+  }
+
+  function isExprOrVar(x: any): boolean {
+    return isVar(x) || x instanceof LinExpr || x instanceof QuadExpr;
+  }
+
   function addProduct(coeff: number, exprOrVar: Var | LinExpr | number) {
     if (typeof exprOrVar === "number") {
       constant += coeff * exprOrVar;
-    } else if (exprOrVar && typeof exprOrVar === "object" && "terms" in exprOrVar) {
-      for (const [v, c] of (exprOrVar as LinExpr).terms) {
+    } else if (exprOrVar instanceof LinExpr) {
+      for (const [v, c] of exprOrVar.terms) {
         const cur = terms.get(v) || 0;
         terms.set(v, cur + coeff * c);
       }
-      constant += coeff * (exprOrVar as LinExpr).constant;
-    } else if (exprOrVar) {
+      constant += coeff * exprOrVar.constant;
+    } else if (isVar(exprOrVar)) {
       const v = exprOrVar as Var;
       const cur = terms.get(v) || 0;
       terms.set(v, cur + coeff);
+    } else {
+      throw new Error("Cannot multiply number by non-variable/expression operand in dot().");
     }
   }
 
@@ -319,9 +336,7 @@ export function dot(
       typeof obj === "object" &&
       obj !== null &&
       !Array.isArray(obj) &&
-      !("terms" in obj) &&
-      !("id" in obj) &&
-      !("quadTerms" in obj)
+      !isExprOrVar(obj)
     );
   }
 

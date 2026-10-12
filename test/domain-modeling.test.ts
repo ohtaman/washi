@@ -218,4 +218,41 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       dot([[1, 2, 3], [4, 5, 6]], x); // 3 cols vs 2 cols
     }).toThrow(/Array length mismatch/);
   });
+
+  it("handles 1D and 2D variable dictionaries with arbitrary keys like 'id', 'terms', 'quadTerms'", async () => {
+    const m = new Model();
+
+    // 1D dictionary with keys 'id', 'terms', 'quadTerms'
+    const x1 = m.binary(["id", "terms", "quadTerms"]);
+    const coeffs1 = { id: 10, terms: 20, quadTerms: 30 };
+
+    const e1 = dot(coeffs1, x1);
+    expect(e1.terms.get(x1.id)).toBe(10);
+    expect(e1.terms.get(x1.terms)).toBe(20);
+    expect(e1.terms.get(x1.quadTerms)).toBe(30);
+
+    const e1Rev = dot(x1, coeffs1);
+    expect(e1Rev.terms.get(x1.id)).toBe(10);
+    expect(e1Rev.terms.get(x1.terms)).toBe(20);
+    expect(e1Rev.terms.get(x1.quadTerms)).toBe(30);
+
+    // 2D nested dictionary with keys 'id', 'terms'
+    const x2 = m.continuous(["id", "terms"], ["id", "quadTerms"]);
+    const coeffs2 = {
+      id: { id: 1, quadTerms: 2 },
+      terms: { id: 3, quadTerms: 4 },
+    };
+
+    const e2 = dot(coeffs2, x2);
+    expect(e2.terms.get(x2.id.id)).toBe(1);
+    expect(e2.terms.get(x2.id.quadTerms)).toBe(2);
+    expect(e2.terms.get(x2.terms.id)).toBe(3);
+    expect(e2.terms.get(x2.terms.quadTerms)).toBe(4);
+
+    const e2Rev = dot(x2, coeffs2);
+    expect(e2Rev.terms.get(x2.id.id)).toBe(1);
+    expect(e2Rev.terms.get(x2.id.quadTerms)).toBe(2);
+    expect(e2Rev.terms.get(x2.terms.id)).toBe(3);
+    expect(e2Rev.terms.get(x2.terms.quadTerms)).toBe(4);
+  });
 });
