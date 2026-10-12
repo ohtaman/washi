@@ -1,7 +1,7 @@
 # セキュリティポリシーと論理検証 (Z3 SMT)
 
 **問題クラス:** 命題論理・SMT 充足性判定 · **ソルバー:** Z3 (`@ohtaman/washi/solvers/z3`) · **主な API:** `m.addBoolVar()`, `.implies()`, `.and()`, `m.check()`  
-**[▶ Web デモで開く](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling)** · **ソースコード:** [`examples/node/04-smt-security-rules.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts)
+**[`</> Playground で開く`](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling)** · **ソースコード:** [`examples/node/04-smt-security-rules.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts)
 
 真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`lux.le(50).implies(isNight)`)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
 

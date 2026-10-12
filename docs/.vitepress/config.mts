@@ -28,7 +28,7 @@ export default withMermaid(
           { text: "Solvers", link: "/solvers/" },
           { text: "Examples", link: "/examples/" },
           { text: "Custom Solvers", link: "/solvers/custom-solver" },
-          { text: "Interactive Demo ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
           {
@@ -105,7 +105,7 @@ export default withMermaid(
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
           { text: "カスタムソルバー", link: "/ja/solvers/custom-solver" },
-          { text: "Web デモを試す ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
           {
@@ -182,7 +182,7 @@ export default withMermaid(
           { text: "求解器", link: "/zh/solvers/" },
           { text: "示例", link: "/zh/examples/" },
           { text: "自定义求解器", link: "/zh/solvers/custom-solver" },
-          { text: "在线 Demo ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
           {

@@ -1,7 +1,7 @@
 # スタッフのシフト作成と希望休の競合診断 (MIP + Z3)
 
 **問題クラス:** 0-1 整数計画 (MIP) & SMT Unsat Core · **ソルバー:** HiGHS + Z3 · **主な API:** `m.addVars(staff, days)`, `sum()`, `m.check()`, `m.unsatCore`  
-**[▶ シフト最適化をデモで開く](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling)** · **[▶ 希望休の衝突診断をデモで開く](https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat)** · **ソースコード:** [`examples/node/11-shift-scheduling.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts)
+**[`</> Playground で開く (シフト最適化)`](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling)** · **[`</> Playground で開く (衝突診断)`](https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat)** · **ソースコード:** [`examples/node/11-shift-scheduling.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts)
 
 シフトスケジューリングは業務 SaaS で最も需要の高い最適化タスクの1つですが、現場で必ず発生するのが**「スタッフの希望休が重なり、必要人数を満たせず解なし（Infeasible）になる」**という問題です。
 

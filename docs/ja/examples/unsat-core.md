@@ -1,7 +1,7 @@
 # 制約矛盾の診断 (Z3 Unsat Core)
 
 **問題クラス:** 実行不能（Infeasible）診断・Unsat Core · **ソルバー:** Z3 (`@ohtaman/washi/solvers/z3`) · **主な API:** `m.check()`, `m.unsatCore`  
-**[▶ Web デモで開く](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat)** · **ソースコード:** [`examples/node/05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts)
+**[`</> Playground で開く`](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat)** · **ソースコード:** [`examples/node/05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts)
 
 複数の業務ルールや数値制約が互いに矛盾して実行可能解が存在しない（`Unsat`）場合、名前付き制約の中から矛盾を引き起こしている制約の部分集合（Unsat Core。最小性は保証されません）を Z3 で抽出します。
 

@@ -8,24 +8,24 @@ Explore runnable optimization and logic formulations built with WaSHI. Each exam
 
 Short, self-contained formulations (~30–50 lines) designed to teach one core WaSHI modeling concept at a time.
 
-| Example | Problem Class | Key WaSHI APIs | What You Will Learn | Try It |
+| Example | Problem Class | Key WaSHI APIs | What You Will Learn | Code Playground |
 | :--- | :--- | :--- | :--- | :--- |
-| **[Production Planning](./production.md)** | LP / MIP | `addVar()`, `expr`, `c` | Basic variables, tagged template literal equations, and maximizing profit under resource limits. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=production) |
-| **[0-1 Knapsack](./knapsack.md)** | Binary MIP | `addVars(keys)`, `sum()` | 1D dictionary of `Binary` variables and linear aggregation over item arrays. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
-| **[Transportation Network](./transportation.md)** | LP | `addVars(rows, cols)`, `sum()` | 2D matrix indexing (`ship[factory][store]`) and row/column flow balance constraints. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=transportation) |
-| **[Diet & Sensitivity Analysis](./diet-sensitivity.md)** | LP | `constr.dual`, `constr.slack`, `var.reducedCost` | Reading shadow prices (bottlenecks), constraint surpluses, and reduced costs after solving. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
+| **[Production Planning](./production.md)** | LP / MIP | `addVar()`, `expr`, `c` | Basic variables, tagged template literal equations, and maximizing profit under resource limits. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=production) |
+| **[0-1 Knapsack](./knapsack.md)** | Binary MIP | `addVars(keys)`, `sum()` | 1D dictionary of `Binary` variables and linear aggregation over item arrays. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
+| **[Transportation Network](./transportation.md)** | LP | `addVars(rows, cols)`, `sum()` | 2D matrix indexing (`ship[factory][store]`) and row/column flow balance constraints. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=transportation) |
+| **[Diet & Sensitivity Analysis](./diet-sensitivity.md)** | LP | `constr.dual`, `constr.slack`, `var.reducedCost` | Reading shadow prices (bottlenecks), constraint surpluses, and reduced costs after solving. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
 
 ---
 
-## 2. Practical Applications (Real-World Use Cases)
+## 2. Practical Applications (Interactive Examples in Docs)
 
-End-to-end application blueprints showing how WaSHI models business logic, conditional promotions, workforce schedules, and financial portfolios in TypeScript.
+End-to-end application blueprints with **interactive UIs embedded directly in each guide** showing how WaSHI models workforce schedules, conditional promotions, and financial portfolios in TypeScript.
 
-| Example | Problem Class | Solver | Key Highlights | Try It |
+| Example | Problem Class | Solver | Key Highlights | Code Playground |
 | :--- | :--- | :--- | :--- | :--- |
-| **[Staff Shift Scheduling](./shift-scheduling.md)** | Binary MIP + Unsat Core | HiGHS + Z3 | Weekly roster generation (coverage, senior duty, max shifts, day-off requests) + diagnosing clashing vacation requests with Z3 `unsatCore`. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
-| **[E-Commerce Coupon Optimizer](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | Client-side checkout optimizer using `addIndicator()` for minimum spend thresholds, exclusive vs. stackable rules, and smart filler add-on suggestions. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
-| **[Portfolio Optimization](./portfolio-qp.md)** | Convex QP | HiGHS | Markowitz mean-variance risk minimization (`w^T * Cov * w`) using `QuadExpr` subject to return targets. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
+| **[Staff Shift Scheduling](./shift-scheduling.md)** | Binary MIP + Unsat Core | HiGHS + Z3 | Interactive 8×7 weekly roster planner (coverage, senior duty, max shifts, day-off requests) + diagnosing clashing vacation requests with Z3 `unsatCore`. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
+| **[E-Commerce Coupon Optimizer](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | Interactive checkout simulator using `addIndicator()` for minimum spend thresholds, exclusive vs. stackable rules, and smart filler add-on suggestions. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
+| **[Portfolio Optimization](./portfolio-qp.md)** | Convex QP | HiGHS | Interactive 5-asset Markowitz mean-variance risk minimization (`w^T * Cov * w`) using `QuadExpr` subject to return targets. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
 
 ---
 
@@ -33,10 +33,10 @@ End-to-end application blueprints showing how WaSHI models business logic, condi
 
 Satisfiability checking (`m.check()`) and isolating contradictory rule subsets (`unsatCore`) using the Z3 solver plugin.
 
-| Example | Problem Class | Solver | Key Highlights | Try It |
+| Example | Problem Class | Solver | Key Highlights | Code Playground |
 | :--- | :--- | :--- | :--- | :--- |
-| **[SMT Security Policies](./smt-security.md)** | SMT Logic | Z3 | Propositional variables (`BoolVar`) and logical connectives (`implies`, `and`, `not`, `xor`) mixed with integer bounds. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
-| **[Conflict Diagnosis (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | Extracting a conflicting constraint subset (`unsatCore`) when staffing and budget rules contradict each other. | [▶ Demo](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
+| **[SMT Security Policies](./smt-security.md)** | SMT Logic | Z3 | Propositional variables (`BoolVar`) and logical connectives (`implies`, `and`, `not`, `xor`) mixed with integer bounds. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
+| **[Conflict Diagnosis (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | Extracting a conflicting constraint subset (`unsatCore`) when staffing and budget rules contradict each other. | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
 
 ---
 

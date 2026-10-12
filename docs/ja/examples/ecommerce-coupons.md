@@ -1,7 +1,7 @@
 # ECカートのクーポン・割引最適適用 (Indicator MIP)
 
 **問題クラス:** 混合整数計画問題 (MIP) · **ソルバー:** HiGHS (標準) · **主な API:** `m.addIndicator()`, `type: "Binary"`, `sum()`  
-**[▶ Web デモで開く](https://ohtaman.github.io/washi/demo/?preset=cart_coupon)** · **ソースコード:** [`examples/node/12-ecommerce-coupon-optimizer.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts)
+**[`</> Playground で開く`](https://ohtaman.github.io/washi/demo/?preset=cart_coupon)** · **ソースコード:** [`examples/node/12-ecommerce-coupon-optimizer.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts)
 
 ECサイトのカート・決済画面では、「〇〇円以上で使えるクーポン」「特定カテゴリ限定割引」「他クーポンとの併用不可（排他条件）」「最大2枚まで」といった複雑なプロモーションルールが絡み合います。
 

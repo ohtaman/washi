@@ -13,7 +13,7 @@ hero:
       text: はじめに
       link: /ja/getting-started/
     - theme: alt
-      text: Web デモを試す ↗
+      text: Playground ↗
       link: https://ohtaman.github.io/washi/demo/
     - theme: alt
       text: GitHub

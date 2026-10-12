@@ -1,7 +1,7 @@
 # 生産計画問題 (LP / MIP)
 
 **問題クラス:** 線形計画・整数計画 (LP / MIP) · **ソルバー:** HiGHS (標準) · **主な API:** `m.addVar()`, `expr`, `c`  
-**[▶ Web デモで開く](https://ohtaman.github.io/washi/demo/?preset=production)** · **ソースコード:** [`examples/node/01-production-planning.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts)
+**[`</> Playground で開く`](https://ohtaman.github.io/washi/demo/?preset=production)** · **ソースコード:** [`examples/node/01-production-planning.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts)
 
 限られたリソース（木材・労働時間など）の制約を守りながら、どの製品をいくつ生産すれば総利益が最大になるかを求める古典的な最適化問題です。
 

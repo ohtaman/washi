@@ -6,11 +6,25 @@ import { getWashiClient } from "./washiClient";
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
 
-const staffList = [
-  { id: "Alice", role: "Senior", roleJa: "シニア", wage: 140, maxShifts: 5, isSenior: true },
-  { id: "Bob", role: "Senior", roleJa: "シニア", wage: 130, maxShifts: 5, isSenior: true },
-  { id: "Charlie", role: "Junior", roleJa: "ジュニア", wage: 95, maxShifts: 5, isSenior: false },
-] as const;
+interface StaffMember {
+  id: string;
+  role: "Senior" | "Mid" | "Junior";
+  roleJa: string;
+  wage: number;
+  maxShifts: number;
+  isSenior: boolean;
+}
+
+const staffList: StaffMember[] = [
+  { id: "Alice", role: "Senior", roleJa: "シニア", wage: 160, maxShifts: 5, isSenior: true },
+  { id: "Bob", role: "Senior", roleJa: "シニア", wage: 155, maxShifts: 5, isSenior: true },
+  { id: "Claire", role: "Senior", roleJa: "シニア", wage: 150, maxShifts: 5, isSenior: true },
+  { id: "David", role: "Mid", roleJa: "中堅", wage: 125, maxShifts: 5, isSenior: false },
+  { id: "Elena", role: "Mid", roleJa: "中堅", wage: 120, maxShifts: 5, isSenior: false },
+  { id: "Frank", role: "Junior", roleJa: "ジュニア", wage: 100, maxShifts: 5, isSenior: false },
+  { id: "Grace", role: "Junior", roleJa: "ジュニア", wage: 95, maxShifts: 5, isSenior: false },
+  { id: "Hiro", role: "Junior", roleJa: "ジュニア", wage: 95, maxShifts: 5, isSenior: false },
+];
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 const daysJa: Record<string, string> = {
@@ -23,22 +37,47 @@ const daysJa: Record<string, string> = {
   Sun: "日",
 };
 
-const dailyRequired = ref(2);
-const requireSenior = ref(true);
+const activePreset = ref<"standard" | "weekend_peak" | "two_days_off" | "conflict">("standard");
+const dailyDemand = ref<Record<string, number>>({
+  Mon: 4,
+  Tue: 4,
+  Wed: 4,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+  Sun: 5,
+});
+const minSeniorPerDay = ref(1);
+const minShiftsPerStaff = ref(3);
 
 // Set of "Staff_Day" keys where staff requested a day off
-const requestedOff = ref<Set<string>>(new Set(["Alice_Mon", "Bob_Wed", "Charlie_Sat"]));
+const requestedOff = ref<Set<string>>(
+  new Set([
+    "Alice_Mon",
+    "Bob_Thu",
+    "Claire_Sun",
+    "David_Tue",
+    "Elena_Sat",
+    "Frank_Wed",
+    "Grace_Fri",
+    "Hiro_Mon",
+  ])
+);
 
 const isSolving = ref(false);
-const status = ref<"Optimal" | "Infeasible" | "Solving">("Optimal");
-const totalCost = ref<number | null>(1915);
+const isDirty = ref(false);
+const status = ref<"Optimal" | "Infeasible">("Optimal");
+const totalCost = ref<number | null>(null);
 const solveTimeMs = ref<number>(0);
 const assignments = ref<Record<string, number>>({});
 const unsatCore = ref<string[]>([]);
-const z3Note = ref<string>("");
 
 function keyOf(staffId: string, day: string) {
   return `${staffId}_${day}`;
+}
+
+function markDirty() {
+  isDirty.value = true;
 }
 
 function toggleDayOff(staffId: string, day: string) {
@@ -50,30 +89,75 @@ function toggleDayOff(staffId: string, day: string) {
     next.add(k);
   }
   requestedOff.value = next;
-  solveRoster();
+  isDirty.value = true;
 }
 
-function applyScenario(type: "feasible" | "sat_clash" | "senior_clash") {
-  if (type === "feasible") {
-    dailyRequired.value = 2;
-    requireSenior.value = true;
-    requestedOff.value = new Set(["Alice_Mon", "Bob_Wed", "Charlie_Sat"]);
-  } else if (type === "sat_clash") {
-    dailyRequired.value = 2;
-    requireSenior.value = true;
+function selectPreset(preset: "standard" | "weekend_peak" | "two_days_off" | "conflict") {
+  activePreset.value = preset;
+  if (preset === "standard") {
+    dailyDemand.value = { Mon: 4, Tue: 4, Wed: 4, Thu: 4, Fri: 5, Sat: 6, Sun: 5 };
+    minSeniorPerDay.value = 1;
+    minShiftsPerStaff.value = 3;
     requestedOff.value = new Set([
       "Alice_Mon",
+      "Bob_Thu",
+      "Claire_Sun",
+      "David_Tue",
+      "Elena_Sat",
+      "Frank_Wed",
+      "Grace_Fri",
+      "Hiro_Mon",
+    ]);
+  } else if (preset === "weekend_peak") {
+    dailyDemand.value = { Mon: 4, Tue: 4, Wed: 4, Thu: 4, Fri: 5, Sat: 6, Sun: 6 };
+    minSeniorPerDay.value = 2;
+    minShiftsPerStaff.value = 3;
+    requestedOff.value = new Set([
+      "Alice_Tue",
       "Bob_Wed",
+      "Claire_Mon",
+      "David_Fri",
+      "Elena_Thu",
+      "Frank_Fri",
+      "Grace_Mon",
+      "Hiro_Wed",
+    ]);
+  } else if (preset === "two_days_off") {
+    dailyDemand.value = { Mon: 4, Tue: 4, Wed: 4, Thu: 4, Fri: 5, Sat: 5, Sun: 5 };
+    minSeniorPerDay.value = 1;
+    minShiftsPerStaff.value = 3;
+    requestedOff.value = new Set([
+      "Alice_Mon",
+      "Alice_Tue",
+      "Bob_Wed",
+      "Bob_Thu",
+      "Claire_Fri",
+      "Claire_Sat",
+      "David_Sun",
+      "David_Mon",
+      "Elena_Tue",
+      "Elena_Wed",
+      "Frank_Thu",
+      "Frank_Fri",
+      "Grace_Sat",
+      "Grace_Sun",
+      "Hiro_Tue",
+      "Hiro_Thu",
+    ]);
+  } else if (preset === "conflict") {
+    dailyDemand.value = { Mon: 4, Tue: 4, Wed: 4, Thu: 4, Fri: 5, Sat: 5, Sun: 5 };
+    minSeniorPerDay.value = 1;
+    minShiftsPerStaff.value = 3;
+    requestedOff.value = new Set([
       "Alice_Sat",
       "Bob_Sat",
-      "Charlie_Sat",
+      "Claire_Sat",
+      "David_Tue",
+      "Elena_Wed",
+      "Frank_Mon",
     ]);
-  } else if (type === "senior_clash") {
-    dailyRequired.value = 2;
-    requireSenior.value = true;
-    requestedOff.value = new Set(["Alice_Wed", "Bob_Wed", "Charlie_Sat"]);
   }
-  solveRoster();
+  isDirty.value = true;
 }
 
 function buildConstraints(m: any, expr: any, sum: any) {
@@ -84,20 +168,26 @@ function buildConstraints(m: any, expr: any, sum: any) {
   );
 
   for (const d of days) {
+    const reqCount = dailyDemand.value[d] ?? 4;
     const workingToday = sum(staffList.map((s) => shift.get(s.id, d)!));
-    m.addConstr(expr`${workingToday} >= ${dailyRequired.value}`, { name: `coverage_${d}` });
+    m.addConstr(expr`${workingToday} >= ${reqCount}`, { name: `coverage_${d}` });
 
-    if (requireSenior.value) {
+    if (minSeniorPerDay.value > 0) {
       const seniorsToday = sum(
         staffList.filter((s) => s.isSenior).map((s) => shift.get(s.id, d)!)
       );
-      m.addConstr(expr`${seniorsToday} >= 1`, { name: `senior_${d}` });
+      m.addConstr(expr`${seniorsToday} >= ${minSeniorPerDay.value}`, { name: `senior_${d}` });
     }
   }
 
   for (const s of staffList) {
     const weeklyShifts = sum(days.map((d) => shift.get(s.id, d)!));
     m.addConstr(expr`${weeklyShifts} <= ${s.maxShifts}`, { name: `max_shifts_${s.id}` });
+    if (minShiftsPerStaff.value > 0) {
+      m.addConstr(expr`${weeklyShifts} >= ${minShiftsPerStaff.value}`, {
+        name: `min_shifts_${s.id}`,
+      });
+    }
   }
 
   for (const req of requestedOff.value) {
@@ -114,19 +204,19 @@ function buildConstraints(m: any, expr: any, sum: any) {
 async function solveRoster() {
   if (typeof window === "undefined") return;
   isSolving.value = true;
-  z3Note.value = "";
 
   try {
     const t0 = performance.now();
     const { Model, expr, sum } = await getWashiClient(false);
 
-    const m = new Model({ name: "ShiftRoster", solver: "highs" });
+    const m = new Model({ name: "ShiftRoster8x7", solver: "highs" });
     const shift = buildConstraints(m, expr, sum);
 
     const costTerms: any[] = [];
     for (const s of staffList) {
       for (const d of days) {
-        costTerms.push(expr`${s.wage} * ${shift.get(s.id, d)!}`);
+        const weekendBonus = d === "Sat" || d === "Sun" ? 20 : 0;
+        costTerms.push(expr`${s.wage + weekendBonus} * ${shift.get(s.id, d)!}`);
       }
     }
     m.minimize(sum(costTerms));
@@ -150,14 +240,16 @@ async function solveRoster() {
       totalCost.value = null;
       assignments.value = {};
 
-      // Run Z3 Unsat Core diagnosis if crossOriginIsolated is available
       if ((window as any).crossOriginIsolated) {
         try {
           const { Model: Z3Model, expr: z3Expr, sum: z3Sum } = await getWashiClient(true);
           const diag = new Z3Model({ name: "ShiftConflict", solver: "z3" });
           buildConstraints(diag, z3Expr, z3Sum);
           await diag.check();
-          unsatCore.value = diag.unsatCore || [];
+          unsatCore.value =
+            diag.unsatCore && diag.unsatCore.length > 0
+              ? diag.unsatCore
+              : inferLocalConflict();
         } catch {
           unsatCore.value = inferLocalConflict();
         }
@@ -165,6 +257,7 @@ async function solveRoster() {
         unsatCore.value = inferLocalConflict();
       }
     }
+    isDirty.value = false;
   } finally {
     isSolving.value = false;
   }
@@ -173,7 +266,8 @@ async function solveRoster() {
 function inferLocalConflict(): string[] {
   for (const d of days) {
     const avail = staffList.filter((s) => !requestedOff.value.has(keyOf(s.id, d)));
-    if (avail.length < dailyRequired.value) {
+    const reqCount = dailyDemand.value[d] ?? 4;
+    if (avail.length < reqCount) {
       return [
         `coverage_${d}`,
         ...staffList
@@ -181,9 +275,9 @@ function inferLocalConflict(): string[] {
           .map((s) => `day_off_${s.id}_${d}`),
       ];
     }
-    if (requireSenior.value) {
+    if (minSeniorPerDay.value > 0) {
       const availSeniors = avail.filter((s) => s.isSenior);
-      if (availSeniors.length < 1) {
+      if (availSeniors.length < minSeniorPerDay.value) {
         return [
           `senior_${d}`,
           ...staffList
@@ -197,13 +291,14 @@ function inferLocalConflict(): string[] {
 }
 
 function isConflictingCell(staffId: string, day: string) {
-  return unsatCore.value.includes(`day_off_${staffId}_${day}`);
+  return !isDirty.value && unsatCore.value.includes(`day_off_${staffId}_${day}`);
 }
 
 function isConflictingDay(day: string) {
   return (
-    unsatCore.value.includes(`coverage_${day}`) ||
-    unsatCore.value.includes(`senior_${day}`)
+    !isDirty.value &&
+    (unsatCore.value.includes(`coverage_${day}`) ||
+      unsatCore.value.includes(`senior_${day}`))
   );
 }
 
@@ -225,28 +320,62 @@ onMounted(() => {
 <template>
   <div class="washi-app-card">
     <div class="washi-app-header">
-      <div>
-        <span class="washi-app-eyebrow">INTERACTIVE MINI-APP · HiGHS + Z3</span>
-        <h4 class="washi-app-title">
-          {{ isJa ? "週間シフトスケジューラ ＆ 希望休の衝突診断" : "Weekly Shift Scheduler & Conflict Diagnosis" }}
-        </h4>
-        <p class="washi-app-subtitle">
-          {{
-            isJa
-              ? "セルをクリックしてスタッフの「希望休」を切り替えられます。条件が矛盾すると自動的に原因制約（Unsat Core）をハイライトします。"
-              : "Click any cell in the calendar to toggle a staff vacation request. If requests clash, conflicting constraints are highlighted."
-          }}
-        </p>
+      <div class="washi-header-top">
+        <div>
+          <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · 8 STAFF × 7 DAYS (56 BINARY VARS)</span>
+          <h4 class="washi-app-title">
+            {{ isJa ? "週間シフトスケジューラ ＆ 希望休の競合診断" : "Weekly Shift Scheduler & Conflict Diagnosis" }}
+          </h4>
+          <p class="washi-app-subtitle">
+            {{
+              isJa
+                ? "カレンダーのセルをクリックして希望休を変更し、「▶ 最適化を実行」を押すと HiGHS が最小コストのシフト表を計算します。"
+                : "Click cells to toggle vacation requests, then click '▶ Run Optimization' to solve with HiGHS."
+            }}
+          </p>
+        </div>
+
+        <button
+          class="washi-solve-btn"
+          :class="{ dirty: isDirty, solving: isSolving }"
+          :disabled="isSolving"
+          @click="solveRoster"
+        >
+          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : "Solving..." }}</span>
+          <span v-else>▶ {{ isJa ? "最適化を実行" : "Run Optimization" }}</span>
+          <span v-if="isDirty && !isSolving" class="dirty-dot" :title="isJa ? '未反映の変更があります' : 'Unsolved changes'"></span>
+        </button>
       </div>
+
+      <!-- Preset Scenarios: 3 Feasible + 1 Conflict -->
       <div class="washi-app-scenarios">
-        <button class="washi-chip-btn" @click="applyScenario('feasible')">
-          ✓ {{ isJa ? "標準（解あり）" : "Standard (Feasible)" }}
+        <button
+          class="washi-chip-btn"
+          :class="{ active: activePreset === 'standard' }"
+          @click="selectPreset('standard')"
+        >
+          1. {{ isJa ? "標準シフト（平日4名・週末5〜6名）" : "Standard Demand (4–6/day)" }}
         </button>
-        <button class="washi-chip-btn danger" @click="applyScenario('sat_clash')">
-          ⚡ {{ isJa ? "土曜に全員希望休（衝突）" : "All Off on Sat (Clash)" }}
+        <button
+          class="washi-chip-btn"
+          :class="{ active: activePreset === 'weekend_peak' }"
+          @click="selectPreset('weekend_peak')"
+        >
+          2. {{ isJa ? "週末ピーク体制（シニア2名必須）" : "Weekend Peak (≥2 Seniors/day)" }}
         </button>
-        <button class="washi-chip-btn danger" @click="applyScenario('senior_clash')">
-          ⚡ {{ isJa ? "水曜にシニア全員休（衝突）" : "Seniors Off Wed (Clash)" }}
+        <button
+          class="washi-chip-btn"
+          :class="{ active: activePreset === 'two_days_off' }"
+          @click="selectPreset('two_days_off')"
+        >
+          3. {{ isJa ? "全員2日ずつ希望休を指定" : "Everyone Requests 2 Days Off" }}
+        </button>
+        <button
+          class="washi-chip-btn danger"
+          :class="{ active: activePreset === 'conflict' }"
+          @click="selectPreset('conflict')"
+        >
+          ⚠️ {{ isJa ? "競合例：土曜にシニア全員が希望休" : "Conflict: All Seniors Off on Sat" }}
         </button>
       </div>
     </div>
@@ -254,44 +383,56 @@ onMounted(() => {
     <!-- Rule Controls Bar -->
     <div class="washi-controls-bar">
       <label class="washi-control-item">
-        <span>{{ isJa ? "1日の必要人数:" : "Daily Required Staff:" }}</span>
-        <select v-model.number="dailyRequired" @change="solveRoster" class="washi-select-sm">
-          <option :value="1">1 {{ isJa ? "名" : "staff" }}</option>
-          <option :value="2">2 {{ isJa ? "名" : "staff" }}</option>
-          <option :value="3">3 {{ isJa ? "名" : "staff" }}</option>
+        <span>{{ isJa ? "1日あたりの最低シニア人数:" : "Min Seniors / Day:" }}</span>
+        <select v-model.number="minSeniorPerDay" @change="markDirty" class="washi-select-sm">
+          <option :value="0">0 {{ isJa ? "名（制約なし）" : "(None)" }}</option>
+          <option :value="1">1 {{ isJa ? "名以上" : "Senior" }}</option>
+          <option :value="2">2 {{ isJa ? "名以上" : "Seniors" }}</option>
         </select>
       </label>
-      <label class="washi-control-item" style="cursor: pointer;">
-        <input type="checkbox" v-model="requireSenior" @change="solveRoster" />
-        <span>{{ isJa ? "毎日シニア1名以上を必須にする" : "Require ≥1 Senior on duty daily" }}</span>
+      <label class="washi-control-item">
+        <span>{{ isJa ? "各スタッフの週最低出勤日数:" : "Min Shifts / Staff:" }}</span>
+        <select v-model.number="minShiftsPerStaff" @change="markDirty" class="washi-select-sm">
+          <option :value="2">2 {{ isJa ? "日以上" : "days" }}</option>
+          <option :value="3">3 {{ isJa ? "日以上" : "days" }}</option>
+          <option :value="4">4 {{ isJa ? "日以上" : "days" }}</option>
+        </select>
       </label>
+      <span v-if="isDirty" class="dirty-notice">
+        {{ isJa ? "※ 条件を変更しました。「▶ 最適化を実行」を押すと結果に反映されます" : "* Parameters modified. Click '▶ Run Optimization' to update." }}
+      </span>
     </div>
 
     <!-- Roster Matrix Table -->
-    <div class="washi-table-wrap">
+    <div class="washi-table-wrap" :class="{ 'is-stale': isDirty }">
       <table class="washi-roster-table">
         <thead>
           <tr>
-            <th class="staff-col">{{ isJa ? "スタッフ (日給)" : "Staff (Daily Wage)" }}</th>
+            <th class="staff-col">{{ isJa ? "スタッフ (日給 / 上限5日)" : "Staff (Wage / Max 5d)" }}</th>
             <th
               v-for="d in days"
               :key="d"
               :class="{ 'conflict-col-head': isConflictingDay(d) }"
             >
               <div>{{ isJa ? daysJa[d] : d }}</div>
+              <div style="font-size: 0.68rem; font-weight: 500; opacity: 0.8;">
+                {{ isJa ? `必要 ${dailyDemand[d]}名` : `Need ${dailyDemand[d]}` }}
+              </div>
             </th>
-            <th>{{ isJa ? "週計" : "Weekly" }}</th>
+            <th>{{ isJa ? "週出勤" : "Total" }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="s in staffList" :key="s.id">
             <td class="staff-col">
-              <div class="staff-name">{{ s.id }}</div>
-              <div class="staff-meta">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                <span class="staff-name">{{ s.id }}</span>
                 <span class="role-pill" :class="{ senior: s.isSenior }">
                   {{ isJa ? s.roleJa : s.role }}
                 </span>
-                <span>${{ s.wage }}/d</span>
+              </div>
+              <div class="staff-meta">
+                <span>${{ s.wage }}/d {{ isJa ? "(土日+$20)" : "(Wknd +$20)" }}</span>
               </div>
             </td>
             <td
@@ -303,7 +444,7 @@ onMounted(() => {
                 'is-off-req': requestedOff.has(keyOf(s.id, d)),
               }"
               @click="toggleDayOff(s.id, d)"
-              :title="isJa ? 'クリックで希望休を切り替え' : 'Click to toggle vacation request'"
+              :title="isJa ? 'クリックで希望休をON/OFF' : 'Click to toggle vacation request'"
             >
               <template v-if="requestedOff.has(keyOf(s.id, d))">
                 <span class="cell-badge off-req" :class="{ conflict: isConflictingCell(s.id, d) }">
@@ -332,15 +473,19 @@ onMounted(() => {
         </tbody>
         <tfoot>
           <tr>
-            <td class="staff-col foot-label">{{ isJa ? "日別出勤人数" : "Daily Headcount" }}</td>
+            <td class="staff-col foot-label">{{ isJa ? "日別割当 / 必要人数" : "Assigned / Required" }}</td>
             <td
               v-for="d in days"
               :key="d"
               class="foot-val"
               :class="{ 'conflict-col-head': isConflictingDay(d) }"
             >
-              <span v-if="status === 'Optimal'">{{ dayTotalStaff(d) }} {{ isJa ? "名" : "" }}</span>
-              <span v-else-if="isConflictingDay(d)" style="color: #e11d48; font-weight: 700;">✗</span>
+              <span v-if="status === 'Optimal'">
+                {{ dayTotalStaff(d) }} / {{ dailyDemand[d] }}{{ isJa ? "名" : "" }}
+              </span>
+              <span v-else-if="isConflictingDay(d)" style="color: #e11d48; font-weight: 700;">
+                ✗ {{ isJa ? "不足" : "Short" }}
+              </span>
               <span v-else>—</span>
             </td>
             <td class="foot-val">
@@ -357,10 +502,10 @@ onMounted(() => {
       <div class="result-main">
         <span class="status-dot optimal"></span>
         <strong>{{ isJa ? "最適シフト確定 (Optimal)" : "Optimal Roster Found" }}</strong>
-        <span class="solve-meta">HiGHS WASM · {{ solveTimeMs.toFixed(1) }} ms</span>
+        <span class="solve-meta">HiGHS WASM · {{ solveTimeMs.toFixed(1) }} ms · 56 Binary Vars</span>
       </div>
       <div class="result-kpi">
-        <span>{{ isJa ? "週間総人件費:" : "Total Weekly Cost:" }}</span>
+        <span>{{ isJa ? "週間総人件費 (最小化):" : "Total Weekly Payroll (Minimized):" }}</span>
         <strong class="kpi-num">${{ totalCost?.toLocaleString() }}</strong>
       </div>
     </div>
@@ -371,8 +516,8 @@ onMounted(() => {
         <strong>
           {{
             isJa
-              ? "シフト編成不可 (Infeasible) — 衝突しているルール (Unsat Core):"
-              : "Schedule Infeasible — Conflicting Constraints (Unsat Core):"
+              ? "シフト編成不可 (Infeasible) — Z3 が特定した原因制約 (Unsat Core):"
+              : "Schedule Infeasible — Conflicting Constraints Identified by Z3 (Unsat Core):"
           }}
         </strong>
       </div>
@@ -382,15 +527,15 @@ onMounted(() => {
       <div class="conflict-hint">
         {{
           isJa
-            ? "💡 赤くハイライトされた「希望休」セルをクリックして解除するか、上の必要人数・シニア必須条件を緩めると即座に再計算されます。"
-            : "💡 Click a highlighted red 'Off Req' cell to clear the vacation request, or relax the daily staffing rule above."
+            ? "💡 赤枠の「希望休」セルを1つクリックして解除し、「▶ 最適化を実行」を押すと再び最適シフトが組めるようになります。"
+            : "💡 Click one of the red 'Off Req' cells to clear that vacation request, then click '▶ Run Optimization'."
         }}
       </div>
     </div>
 
     <div class="washi-app-footer">
       <a href="/washi/demo/?preset=shift_scheduling" class="playground-link">
-        &lt;/&gt; {{ isJa ? "Playground で生のモデリングコードを開く →" : "Open Raw Model Code in Playground →" }}
+        &lt;/&gt; {{ isJa ? "Playground でコードを編集する →" : "Edit Code in Playground →" }}
       </a>
     </div>
   </div>

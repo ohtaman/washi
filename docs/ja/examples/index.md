@@ -1,6 +1,6 @@
 # 実践レシピ集・機能別インデックス
 
-WaSHI を使った数理最適化・論理検証のサンプル集です。すべてのレシピは、[インタラクティブ Web デモ](https://ohtaman.github.io/washi/demo/) でブラウザ上から即座に実行・編集できるほか、[`examples/node/`](https://github.com/ohtaman/washi/tree/main/examples/node) にある単体スクリプトとしてローカル実行できます。
+WaSHI を使った数理最適化・論理検証のサンプル集です。実用サンプルは各解説ページ内でそのまま UI 操作して動かせるほか、すべてのモデルのコードを [Playground](https://ohtaman.github.io/washi/demo/) で自由に編集して実行できます。
 
 ---
 
@@ -8,24 +8,24 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。す�
 
 30〜50行程度のシンプルなコードで、WaSHI の中核機能を1つずつ段階的に学べる入門サンプルです。
 
-| レシピ | 問題クラス | 学べる主な API | 内容・ポイント | デモで試す |
+| レシピ | 問題クラス | 学べる主な API | 内容・ポイント | コード編集 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[生産計画問題](./production.md)** | LP / MIP | `addVar()`, `expr`, `c` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=production) |
-| **[0-1 ナップサック問題](./knapsack.md)** | 0-1 MIP | `addVars(keys)`, `sum()` | 1次元キー配列からの `Binary` 変数生成と、`sum()` による配列集計。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
-| **[輸送・物流ネットワーク](./transportation.md)** | LP | `addVars(rows, cols)`, `sum()` | `ship[factory][store]` のような2次元マトリクス変数の生成と、行・列方向のフロー保存則。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=transportation) |
-| **[栄養問題と感度分析](./diet-sensitivity.md)** | LP | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解後に潜在価格（ボトルネックの特定）、余剰（スラック）、被約費用を取り出す方法。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
+| **[生産計画問題](./production.md)** | LP / MIP | `addVar()`, `expr`, `c` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=production) |
+| **[0-1 ナップサック問題](./knapsack.md)** | 0-1 MIP | `addVars(keys)`, `sum()` | 1次元キー配列からの `Binary` 変数生成と、`sum()` による配列集計。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
+| **[輸送・物流ネットワーク](./transportation.md)** | LP | `addVars(rows, cols)`, `sum()` | `ship[factory][store]` のような2次元マトリクス変数の生成と、行・列方向のフロー保存則。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=transportation) |
+| **[栄養問題と感度分析](./diet-sensitivity.md)** | LP | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解後に潜在価格（ボトルネックの特定）、余剰（スラック）、被約費用を取り出す方法。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
 
 ---
 
-## 2. 実践ユースケース（業務・アプリへの応用）
+## 2. 実践ユースケース（記事内で動かせるインタラクティブ・サンプル）
 
-Web アプリケーション、シフト管理 SaaS、EC 決済画面、金融ポートフォリオ分析など、実務での使い方のイメージを掴める実践モデルです。
+各記事の上部で**そのままブラウザ上で条件を変えて最適化を実行できるインタラクティブUI**付きの応用サンプルです。
 
-| レシピ | 問題クラス | ソルバー | 内容・アピールポイント | デモで試す |
+| レシピ | 問題クラス | ソルバー | 内容・アピールポイント | コード編集 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | 日別必要人数・リーダー配置・連勤上限・希望休を満たすシフト作成と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
-| **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `addIndicator()` を用いた最低購入金額条件、併用不可ルール、さらに「あと少し買い足すと上位割引が解放されて得になる」提案の自動計算。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
-| **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `QuadExpr` を用いたマーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
+| **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | 8名×7日のシフト作成（必要人数・シニア配置・週上限・希望休）と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
+| **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `addIndicator()` を用いた最低購入金額条件、併用不可ルール、さらに「あと少し買い足すと上位割引が解放されて得になる」提案の自動計算。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
+| **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `QuadExpr` を用いた5資産マーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
 
 ---
 
@@ -33,10 +33,10 @@ Web アプリケーション、シフト管理 SaaS、EC 決済画面、金融�
 
 目的関数を持たない論理ルールの充足性判定（`m.check()`）や、ルール同士が矛盾した際の原因特定（`unsatCore`）を行うサンプルです。
 
-| レシピ | 問題クラス | ソルバー | 内容・ポイント | デモで試す |
+| レシピ | 問題クラス | ソルバー | 内容・ポイント | コード編集 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
-| **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [▶ デモ](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
+| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
+| **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [`</> Playground`](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
 
 ---
 
