@@ -316,13 +316,14 @@ export class Model {
   }
 
   private createBoolVar(name?: string): BoolVar {
-    const varName = name ?? this.getNextBoolVarName("p");
+    const trimmed = typeof name === "string" ? name.trim() : undefined;
+    const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName("p");
     if (this.hasVarName(varName)) {
       throw new Error(`Variable with name '${varName}' already exists in model`);
     }
     const bv = new BoolVar(varName);
     this.boolVars.push(bv);
-    this.boolVarMapByName.set(varName, bv);
+    this.boolVarMapByName.set(bv.name, bv);
     return bv;
   }
 
@@ -331,7 +332,9 @@ export class Model {
    */
   private addVar(options?: VarOptions): Var {
     const opts = options || {};
-    const v = new Var(opts);
+    const trimmed = typeof opts.name === "string" ? opts.name.trim() : undefined;
+    const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
+    const v = new Var({ ...opts, name });
 
     // Validate unique name
     if (this.hasVarName(v.name)) {

@@ -369,6 +369,33 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       m.bool("b_var");
       expect(() => m.integer("b_var")).toThrow(/Variable with name 'b_var' already exists in model/);
     });
+
+    it("normalizes empty or whitespace names and rejects subsequent duplicates", async () => {
+      const { registerZ3Solver, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
+      registerZ3Solver();
+
+      const m = new Model({ solver: "z3" });
+      const a = m.bool("");
+      expect(a.name).toBeTruthy();
+      expect(m.getBoolVarByName(a.name)).toBe(a);
+
+      // Attempting to create duplicate using a's actual name should throw
+      expect(() => m.bool(a.name)).toThrow(/already exists in model/);
+      // Attempting to create a numeric variable with a's actual name should also throw
+      expect(() => m.continuous(a.name)).toThrow(/already exists in model/);
+
+      // Second empty name creates independent variable with distinct name
+      const b = m.bool("   ");
+      expect(b.name).not.toBe(a.name);
+      expect(m.getBoolVarByName(b.name)).toBe(b);
+
+      m.constrain(a);
+      m.constrain(b.not());
+      const res = await m.check();
+      expect(res.status).toBe("Sat");
+
+      await killZ3Threads();
+    });
   });
 
   describe("Var.add and Var.sub with Expr union (LinExpr | QuadExpr)", () => {
