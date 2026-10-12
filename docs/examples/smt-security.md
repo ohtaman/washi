@@ -1,10 +1,12 @@
-# 04: SMT Security Policies
+# SMT Security Policies
+
+| Problem Class | Solver | Key APIs | Links |
+| :--- | :--- | :--- | :--- |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `.implies()`, `.and()`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 
 This example demonstrates how to formally verify and deduce system states in an IoT home security system using WaSHI and the Z3 solver engine.
-
----
 
 ## The Scenario
 
@@ -14,9 +16,9 @@ We model a security rule system with sensor readings and logic rules:
 3. If the alarm is armed, the front door must never be unlocked.
 4. When motion is detected at night, comfort lights should turn on.
 
----
-
 ## Implementation in WaSHI
+
+<CodeRunner preset="smt_sat_scheduling">
 
 ```typescript
 import { Model, not } from "@ohtaman/washi";
@@ -60,25 +62,13 @@ async function verifySecurityRules() {
   const res = await m.check({ solver: "z3" });
 
   console.log(`Status: ${res.status}`);
-  console.log("Deduced System State:");
-  console.log(`  Siren Active : ${m.values.get("sirenActive")}`);
-  console.log(`  Lights On    : ${m.values.get("lightsOn")}`);
-  console.log(`  Door Locked  : ${m.values.get("frontDoorUnlocked") ? "No" : "Yes"}`);
-  console.log(`  Is Night     : ${m.values.get("isNight")}`);
+  console.log(`Siren Active : ${sirenActive.value}`);
+  console.log(`Lights On    : ${lightsOn.value}`);
+  console.log(`Door Locked  : ${frontDoorUnlocked.value ? "No" : "Yes"}`);
+  console.log(`Is Night     : ${isNight.value}`);
 }
 
 verifySecurityRules();
 ```
 
----
-
-## Output
-
-```text
-Status: Satisfiable
-Deduced System State:
-  Siren Active : true
-  Lights On    : true
-  Door Locked  : Yes
-  Is Night     : true
-```
+</CodeRunner>

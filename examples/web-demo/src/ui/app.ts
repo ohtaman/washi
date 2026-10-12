@@ -1,4 +1,4 @@
-import { EXAMPLES } from "../presets/index.js";
+import { EXAMPLES, type ExampleModel, type PresetGroup } from "../presets/index.js";
 import { executeModelCode } from "./runner.js";
 import { DOCS_HTML } from "./docs.js";
 import type { Model } from "../../../../src/modeler/model.js";
@@ -14,6 +14,19 @@ import {
   type Locale,
   type TranslationDict,
 } from "./i18n.js";
+
+const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
+  en: {
+    fundamentals: "1. Fundamentals (Core Modeling APIs)",
+    practical: "2. Practical Applications (Real-World Use Cases)",
+    logic: "3. SMT Logic & Conflict Diagnosis (Z3)",
+  },
+  ja: {
+    fundamentals: "1. 基本モデル（APIと概念の理解）",
+    practical: "2. 実践ユースケース（業務・アプリ応用）",
+    logic: "3. 論理検証・競合診断（Z3 SMT / Unsat Core）",
+  },
+};
 
 export function initApp() {
   registerZ3Solver();
@@ -54,6 +67,33 @@ export function initApp() {
 
   let currentModel: Model | null = null;
 
+  function populatePresetOptions(locale: Locale) {
+    const selectedValue = presetSelect.value;
+    presetSelect.innerHTML = "";
+
+    const groups: PresetGroup[] = ["fundamentals", "practical", "logic"];
+    for (const grp of groups) {
+      const groupItems = EXAMPLES.filter((ex) => ex.group === grp);
+      if (groupItems.length === 0) continue;
+
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = GROUP_LABELS[locale][grp];
+
+      for (const ex of groupItems) {
+        const opt = document.createElement("option");
+        opt.value = ex.id;
+        const displayTitle = locale === "ja" && ex.titleJa ? ex.titleJa : ex.title;
+        opt.textContent = `[${ex.category}] ${displayTitle}`;
+        optgroup.appendChild(opt);
+      }
+      presetSelect.appendChild(optgroup);
+    }
+
+    if (selectedValue && EXAMPLES.some((e) => e.id === selectedValue)) {
+      presetSelect.value = selectedValue;
+    }
+  }
+
   function applyLocale(locale: Locale) {
     document.documentElement.lang = locale;
     if (langBtnEn && langBtnJa) {
@@ -73,6 +113,7 @@ export function initApp() {
       }
     });
 
+    populatePresetOptions(locale);
     renderVisualizer();
   }
 
@@ -85,14 +126,8 @@ export function initApp() {
 
   onLocaleChange(applyLocale);
 
-  // Populate presets
-  presetSelect.innerHTML = "";
-  EXAMPLES.forEach((ex) => {
-    const opt = document.createElement("option");
-    opt.value = ex.id;
-    opt.textContent = `[${ex.category}] ${ex.title}`;
-    presetSelect.appendChild(opt);
-  });
+  // Populate initial presets
+  populatePresetOptions(getLocale());
 
   function updateLineNumbers() {
     const lines = codeTextarea.value.split("\n").length;
@@ -395,6 +430,7 @@ export function initApp() {
       return;
     }
 
+    // Default clean Decision Variables Summary cards
     const vars = currentModel.variables || [];
     const nonZeroVars = vars.filter((v) => (v.value ?? 0) > 1e-5);
 

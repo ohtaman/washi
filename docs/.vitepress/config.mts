@@ -1,5 +1,6 @@
 import { defineConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
+import katex from "katex";
 
 export default withMermaid(
   defineConfig({
@@ -9,6 +10,107 @@ export default withMermaid(
   cleanUrls: true,
   lastUpdated: true,
   ignoreDeadLinks: true,
+  markdown: {
+    config(md) {
+      // Block math: $$ ... $$
+      md.block.ruler.after(
+        "blockquote",
+        "math_block",
+        (state, startLine, endLine, silent) => {
+          let pos = state.bMarks[startLine] + state.tShift[startLine];
+          let max = state.eMarks[startLine];
+          if (pos + 2 > max) return false;
+          if (state.src.slice(pos, pos + 2) !== "$$") return false;
+
+          pos += 2;
+          let firstLine = state.src.slice(pos, max);
+
+          if (silent) return true;
+
+          let nextLine = startLine;
+          let haveEndMarker = false;
+
+          if (firstLine.trim().endsWith("$$")) {
+            firstLine = firstLine.trim().slice(0, -2);
+            haveEndMarker = true;
+          }
+
+          const lines: string[] = [firstLine];
+          while (!haveEndMarker) {
+            nextLine++;
+            if (nextLine >= endLine) break;
+            pos = state.bMarks[nextLine] + state.tShift[nextLine];
+            max = state.eMarks[nextLine];
+            const lineText = state.src.slice(pos, max);
+            if (lineText.trim().endsWith("$$")) {
+              lines.push(lineText.trim().slice(0, -2));
+              haveEndMarker = true;
+            } else {
+              lines.push(lineText);
+            }
+          }
+
+          state.line = nextLine + 1;
+          const token = state.push("math_block", "math", 0);
+          token.block = true;
+          token.content = lines.join("\n").trim();
+          token.map = [startLine, state.line];
+          return true;
+        },
+        { alt: ["paragraph", "reference", "blockquote", "list"] }
+      );
+
+      // Inline math: $ ... $ (ignores currency like $400 or $1,020)
+      md.inline.ruler.after("escape", "math_inline", (state, silent) => {
+        if (state.src[state.pos] !== "$") return false;
+        const start = state.pos + 1;
+        if (start >= state.posMax) return false;
+
+        const firstChar = state.src[start];
+        // Ignore currency values ($0-$9) or whitespace after opening $
+        if (!firstChar || /[\s0-9]/.test(firstChar)) return false;
+
+        let match = start;
+        while ((match = state.src.indexOf("$", match)) !== -1) {
+          let backslashes = 0;
+          let k = match - 1;
+          while (k >= start && state.src[k] === "\\") {
+            backslashes++;
+            k--;
+          }
+          if (backslashes % 2 === 0) break;
+          match++;
+        }
+
+        if (match === -1 || match === start) return false;
+        const content = state.src.slice(start, match);
+        if (/\s$/.test(content)) return false;
+
+        if (!silent) {
+          const token = state.push("math_inline", "math", 0);
+          token.content = content;
+        }
+        state.pos = match + 1;
+        return true;
+      });
+
+      md.renderer.rules.math_block = (tokens, idx) => {
+        const html = katex.renderToString(tokens[idx].content, {
+          displayMode: true,
+          throwOnError: false,
+        });
+        return `<div v-pre class="katex-block">${html}</div>\n`;
+      };
+
+      md.renderer.rules.math_inline = (tokens, idx) => {
+        const html = katex.renderToString(tokens[idx].content, {
+          displayMode: false,
+          throwOnError: false,
+        });
+        return `<span v-pre>${html}</span>`;
+      };
+    },
+  },
   head: [
     ["link", { rel: "icon", href: "/washi/washi-logo.svg", type: "image/svg+xml" }],
     ["link", { rel: "alternate icon", href: "/washi/washi-logo.png", type: "image/png" }],
@@ -28,7 +130,7 @@ export default withMermaid(
           { text: "Solvers", link: "/solvers/" },
           { text: "Examples", link: "/examples/" },
           { text: "Custom Solvers", link: "/solvers/custom-solver" },
-          { text: "Interactive Demo ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
           {
@@ -61,14 +163,18 @@ export default withMermaid(
             ],
           },
           {
-            text: "Recipes & Examples",
+            text: "Examples",
             items: [
-              { text: "Overview", link: "/examples/" },
-              { text: "01: Production Planning (LP)", link: "/examples/production" },
-              { text: "02: Knapsack Problem (MIP)", link: "/examples/knapsack" },
-              { text: "03: Portfolio Optimization (QP)", link: "/examples/portfolio-qp" },
-              { text: "04: SMT Security Policies", link: "/examples/smt-security" },
-              { text: "05: Conflict Diagnosis", link: "/examples/unsat-core" },
+              { text: "Overview & API Finder", link: "/examples/" },
+              { text: "Production Planning (LP/MIP)", link: "/examples/production" },
+              { text: "0-1 Knapsack (Binary MIP)", link: "/examples/knapsack" },
+              { text: "Transportation Network (LP)", link: "/examples/transportation" },
+              { text: "Diet & Sensitivity (Dual/Slack)", link: "/examples/diet-sensitivity" },
+              { text: "Staff Shift Scheduling (MIP+Z3)", link: "/examples/shift-scheduling" },
+              { text: "E-Commerce Coupon Optimizer", link: "/examples/ecommerce-coupons" },
+              { text: "Portfolio Optimization (QP)", link: "/examples/portfolio-qp" },
+              { text: "SMT Security Policies (Z3)", link: "/examples/smt-security" },
+              { text: "Conflict Diagnosis (Unsat Core)", link: "/examples/unsat-core" },
             ],
           },
         ],
@@ -86,7 +192,7 @@ export default withMermaid(
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
           { text: "カスタムソルバー", link: "/ja/solvers/custom-solver" },
-          { text: "Web デモを試す ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
           {
@@ -119,14 +225,18 @@ export default withMermaid(
             ],
           },
           {
-            text: "実践レシピ集",
+            text: "実践例・サンプル",
             items: [
-              { text: "レシピ一覧", link: "/ja/examples/" },
-              { text: "01: 生産計画問題 (LP)", link: "/ja/examples/production" },
-              { text: "02: ナップサック問題 (MIP)", link: "/ja/examples/knapsack" },
-              { text: "03: ポートフォリオ最適化 (QP)", link: "/ja/examples/portfolio-qp" },
-              { text: "04: セキュリティポリシー検証 (SMT)", link: "/ja/examples/smt-security" },
-              { text: "05: 制約矛盾の診断", link: "/ja/examples/unsat-core" },
+              { text: "一覧・逆引きインデックス", link: "/ja/examples/" },
+              { text: "生産計画問題 (LP/MIP)", link: "/ja/examples/production" },
+              { text: "0-1 ナップサック問題 (MIP)", link: "/ja/examples/knapsack" },
+              { text: "輸送・物流ネットワーク (LP)", link: "/ja/examples/transportation" },
+              { text: "栄養問題と感度分析 (Dual/Slack)", link: "/ja/examples/diet-sensitivity" },
+              { text: "シフト作成と希望休の競合診断", link: "/ja/examples/shift-scheduling" },
+              { text: "ECカートのクーポン最適適用", link: "/ja/examples/ecommerce-coupons" },
+              { text: "ポートフォリオ最適化 (QP)", link: "/ja/examples/portfolio-qp" },
+              { text: "セキュリティポリシー検証 (SMT)", link: "/ja/examples/smt-security" },
+              { text: "制約矛盾の診断 (Unsat Core)", link: "/ja/examples/unsat-core" },
             ],
           },
         ],
@@ -144,7 +254,7 @@ export default withMermaid(
           { text: "求解器", link: "/zh/solvers/" },
           { text: "示例", link: "/zh/examples/" },
           { text: "自定义求解器", link: "/zh/solvers/custom-solver" },
-          { text: "在线 Demo ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
           {
@@ -179,12 +289,16 @@ export default withMermaid(
           {
             text: "实际案例与代码示例",
             items: [
-              { text: "案例总览", link: "/zh/examples/" },
-              { text: "01: 生产计划问题 (LP)", link: "/zh/examples/production" },
-              { text: "02: 背包问题 (MIP)", link: "/zh/examples/knapsack" },
-              { text: "03: 投资组合优化 (QP)", link: "/zh/examples/portfolio-qp" },
-              { text: "04: 安全策略验证 (SMT)", link: "/zh/examples/smt-security" },
-              { text: "05: 冲突诊断实战", link: "/zh/examples/unsat-core" },
+              { text: "案例总览与 API 索引", link: "/zh/examples/" },
+              { text: "生产计划问题 (LP/MIP)", link: "/examples/production" },
+              { text: "0-1 背包问题 (MIP)", link: "/examples/knapsack" },
+              { text: "运输与分配网络 (LP)", link: "/examples/transportation" },
+              { text: "营养问题与灵敏度分析", link: "/examples/diet-sensitivity" },
+              { text: "员工排班与冲突诊断", link: "/examples/shift-scheduling" },
+              { text: "购物车优惠券最优组合", link: "/examples/ecommerce-coupons" },
+              { text: "投资组合优化 (QP)", link: "/examples/portfolio-qp" },
+              { text: "安全策略验证 (SMT)", link: "/examples/smt-security" },
+              { text: "不可行冲突诊断 (Unsat Core)", link: "/examples/unsat-core" },
             ],
           },
         ],
@@ -202,10 +316,25 @@ export default withMermaid(
     ],
     footer: {
       message: "Released under the MIT License.",
-      copyright: "Copyright © 2026 Mitsuhisa Ota & WaSHI Contributors",
+      copyright: "Copyright © 2026 ohtaman & WaSHI Contributors",
     },
   },
   vite: {
+    assetsInclude: ["**/*.wasm"],
+    optimizeDeps: {
+      exclude: ["highs"],
+    },
+    worker: {
+      format: "es",
+    },
+    resolve: {
+      alias: [
+        {
+          find: /^(.*\/highs\/worker)\.js$/,
+          replacement: "$1.ts",
+        },
+      ],
+    },
     server: {
       headers: {
         "Cross-Origin-Opener-Policy": "same-origin",
