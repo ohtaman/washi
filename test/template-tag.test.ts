@@ -140,16 +140,23 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     );
   });
 
-  it("parses linear expressions and inline linear constraints as documented in expressions guide", () => {
+  it("parses linear, quadratic, and inline constraint expressions as documented in expressions guide", () => {
     const m = new Model();
     const x = m.continuous("x", { lb: 0 });
     const y = m.continuous("y", { lb: 0 });
 
+    // 1. Linear combination: 3*x + 5*y - 10
     const linearExpr = expr`3 * ${x} + 5 * ${y} - 10` as LinExpr;
     expect(linearExpr.terms.get(x)).toBe(3);
     expect(linearExpr.terms.get(y)).toBe(5);
     expect(linearExpr.constant).toBe(-10);
 
+    // 2. Quadratic expression: x * y + 2 * x^2
+    const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}` as QuadExpr;
+    expect(quadExpr.getQuadCoeff(x, y)).toBe(1);
+    expect(quadExpr.getQuadCoeff(x, x)).toBe(2);
+
+    // 3. Inline linear constraint
     const balanceConstraint = expr`${x} + 2 * ${y} <= 40` as Constraint;
     expect(balanceConstraint.sense).toBe("<=");
     expect(balanceConstraint.rhs).toBe(40);

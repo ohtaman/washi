@@ -17,10 +17,13 @@ const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
-// Linear combination: 3*x + 5*y - 10
+// 1. Linear combination: 3*x + 5*y - 10
 const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 
-// Inline linear constraint
+// 2. Quadratic expression: x * y + 2 * x^2
+const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+
+// 3. Inline linear constraint
 const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 

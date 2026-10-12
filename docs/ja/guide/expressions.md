@@ -17,10 +17,13 @@ const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
-// 線形結合: 3*x + 5*y - 10
+// 1. 線形結合: 3*x + 5*y - 10
 const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 
-// インライン線形制約
+// 2. 2次式: x * y + 2 * x^2
+const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+
+// 3. インライン線形制約
 const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
