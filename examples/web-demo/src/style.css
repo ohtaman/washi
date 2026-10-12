@@ -821,3 +821,246 @@ body {
   font-family: var(--font-mono);
   font-weight: 600;
 }
+
+/* Preset Context & API Tags Bar */
+.preset-context-bar {
+  padding: 8px 16px;
+  background: var(--bg-surface-elevated);
+  border-bottom: 1px solid var(--border-washi);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.preset-context-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 240px;
+}
+
+.preset-cat-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-xs);
+  background: var(--color-hi-light);
+  color: var(--color-hi);
+  border: 1px solid var(--color-hi-border);
+  white-space: nowrap;
+}
+
+.preset-cat-badge.cat-lp {
+  background: var(--color-seiji-light);
+  color: var(--color-seiji);
+  border-color: rgba(35, 122, 75, 0.3);
+}
+
+.preset-cat-badge.cat-qp {
+  background: var(--color-ai-light);
+  color: var(--color-ai);
+  border-color: rgba(30, 58, 95, 0.3);
+}
+
+.preset-cat-badge.cat-smt {
+  background: var(--color-amber-light);
+  color: var(--color-amber);
+  border-color: rgba(180, 83, 9, 0.3);
+}
+
+.preset-desc-text {
+  font-size: 0.78rem;
+  color: var(--text-sumi-secondary);
+  line-height: 1.4;
+}
+
+.preset-api-tags {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.api-tag-pill {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-sumi-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-washi);
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+
+/* Structured Matrix & Roster Visualizers */
+.viz-container-full {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.viz-header-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-sumi-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.viz-matrix-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-washi);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+
+.viz-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.viz-matrix-table th,
+.viz-matrix-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: center;
+}
+
+.viz-matrix-table th {
+  background: var(--bg-washi);
+  color: var(--text-sumi-secondary);
+  font-weight: 600;
+  font-size: 0.76rem;
+  border-bottom: 1px solid var(--border-washi);
+}
+
+.viz-matrix-table td.row-label,
+.viz-matrix-table th.row-label {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-sumi);
+  background: #fcfbf8;
+  border-right: 1px solid var(--border-washi);
+}
+
+.viz-matrix-table tr.summary-row td {
+  background: var(--bg-washi);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.76rem;
+  color: var(--text-sumi-secondary);
+  border-top: 1px solid var(--border-washi);
+  border-bottom: none;
+}
+
+.roster-badge-on {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--color-seiji-light);
+  color: var(--color-seiji);
+  border: 1px solid rgba(35, 122, 75, 0.28);
+}
+
+.roster-badge-off {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--text-sumi-muted);
+  opacity: 0.6;
+}
+
+.flow-cell-active {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: var(--color-hi-light);
+  color: var(--color-hi);
+  border: 1px solid var(--color-hi-border);
+}
+
+.flow-cell-zero {
+  font-family: var(--font-mono);
+  color: var(--text-sumi-muted);
+  opacity: 0.45;
+}
+
+/* E-Commerce Coupon & Cart Receipt Visualizer */
+.coupon-summary-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.coupon-list-box,
+.coupon-receipt-box {
+  background: var(--bg-washi);
+  border: 1px solid var(--border-washi);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coupon-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-washi);
+  font-size: 0.78rem;
+}
+
+.coupon-row-item.applied {
+  background: var(--color-seiji-light);
+  border-color: rgba(35, 122, 75, 0.35);
+}
+
+.coupon-row-item.addon {
+  background: var(--color-ai-light);
+  border-color: rgba(30, 58, 95, 0.3);
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.status-pill.binding {
+  background: var(--color-hi-light);
+  color: var(--color-hi);
+  border: 1px solid var(--color-hi-border);
+}
+
+.status-pill.slack {
+  background: var(--bg-surface-elevated);
+  color: var(--text-sumi-muted);
+  border: 1px solid var(--border-washi);
+}
+

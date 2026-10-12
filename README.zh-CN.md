@@ -445,14 +445,18 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 
 ## 💻 示例与浏览器演示
 
-[示例目录](https://github.com/ohtaman/washi/blob/main/examples/README.md)提供源码链接，以及从仓库运行各示例的方法。
+[示例目录](https://github.com/ohtaman/washi/blob/main/examples/README.md)与[在线案例与 API 索引](https://ohtaman.github.io/washi/zh/examples/)按问题类别和 WaSHI API 功能汇总了源码链接及本地运行方法。
 
-| 示例 | 展示内容 | 求解器 |
-| :--- | :--- | :--- |
-| [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 | HiGHS |
-| [投资组合分配](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目标函数与分配约束 | HiGHS |
-| [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束的可满足性检查 | Z3 |
-| [冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 命名约束与 Unsat Core | Z3 |
+| 类别 | 示例 | 展示内容 | 求解器 |
+| :--- | :--- | :--- | :--- |
+| **基础模型** | [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 (`expr`, `c`) | HiGHS |
+| **基础模型** | [运输与分配网络](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 二维矩阵变量 (`addVars(rows, cols)`) 与供需平衡 | HiGHS |
+| **基础模型** | [营养问题与灵敏度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 影子价格 (`constr.dual`)、松弛量 (`constr.slack`) 与缩减成本 (`var.reducedCost`) | HiGHS |
+| **实战应用** | [员工排班与冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 周排班优化与周六休假冲突诊断 | HiGHS + Z3 |
+| **实战应用** | [购物车优惠券最优组合](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 满减门槛条件约束 (`addIndicator`)、互斥规则与凑单推荐 | HiGHS |
+| **实战应用** | [投资组合分配](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目标函数 (`QuadExpr`) 与分配约束 | HiGHS |
+| **逻辑 / SMT** | [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束 (`addBoolVar`, `implies`) 的可满足性检查 | Z3 |
+| **逻辑 / SMT** | [冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 命名约束与 Unsat Core (`unsatCore`) | Z3 |
 
 在[在线浏览器演示](https://ohtaman.github.io/washi/demo/)中可以编辑并运行模型。浏览器 ESM、script 标签和 CodePen 的用法请参阅[分发示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)。Z3 需要跨源隔离；具体要求见上方浏览器说明。
 
@@ -463,14 +467,16 @@ git clone https://github.com/ohtaman/washi.git
 cd washi
 npm ci
 npx tsx examples/node/01-production-planning.ts
+npx tsx examples/node/09-transportation-problem.ts
+npx tsx examples/node/10-diet-sensitivity.ts
+npx tsx examples/node/11-shift-scheduling.ts
+npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 
 # 本地浏览器演示: http://localhost:5173/demo/
 npm run dev
 ```
 
 示例导入仓库的 `src/` 模块。使用已发布软件包的应用应改为导入 `@ohtaman/washi` 及所需的求解器插件。
-
-排班、运输计划及 Vite 应用等后续示例方向记录在[示例扩充建议](https://github.com/ohtaman/washi/blob/main/examples/README.md#directions-for-future-examples)中。
 
 ---
 

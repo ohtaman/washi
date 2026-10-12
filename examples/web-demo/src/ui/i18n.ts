@@ -23,6 +23,14 @@ export interface TranslationDict {
   colValue: string;
   colBounds: string;
   colReducedCost: string;
+  // Constraints & Sensitivity table
+  constrsTableTitle: string;
+  constrsTableSubtitle: string;
+  colConstrName: string;
+  colConstrRhs: string;
+  colConstrStatus: string;
+  colConstrSlack: string;
+  colConstrDual: string;
   // Portfolio QP visualizer
   portfolioRiskLabel: string;
   portfolioVolLabel: string;
@@ -56,7 +64,7 @@ export const translations: Record<Locale, TranslationDict> = {
     objectiveLabel: "Objective Value",
     timeLabel: "Solve Time",
     varsLabel: "Variables",
-    visualizationTitle: "Solution Visualization",
+    visualizationTitle: "Decision Summary",
     tableTitle: "Optimal Variable Values",
     filterNonZeroLabel: "Show non-zero variables only",
     colName: "Name",
@@ -64,6 +72,13 @@ export const translations: Record<Locale, TranslationDict> = {
     colValue: "Value (Primal)",
     colBounds: "Bounds [LB, UB]",
     colReducedCost: "Reduced Cost",
+    constrsTableTitle: "Constraints & Sensitivity (Dual / Slack)",
+    constrsTableSubtitle: "Shadow prices (dual) and surpluses (slack) for linear constraints",
+    colConstrName: "Constraint",
+    colConstrRhs: "Relation & RHS",
+    colConstrStatus: "Status",
+    colConstrSlack: "Slack",
+    colConstrDual: "Shadow Price (Dual)",
     portfolioRiskLabel: "Optimal Portfolio Variance (Risk)",
     portfolioVolLabel: "Annual Volatility (Std Dev σ)",
     portfolioBudgetLabel: "Total Investment Ratio (Budget)",
@@ -100,6 +115,13 @@ export const translations: Record<Locale, TranslationDict> = {
     colValue: "最適値 (Primal)",
     colBounds: "定義域 [下限, 上限]",
     colReducedCost: "被約費用 (Reduced Cost)",
+    constrsTableTitle: "制約条件と感度分析（潜在価格 Dual・スラック Slack）",
+    constrsTableSubtitle: "どの制約がボトルネック（Binding）になっているかと潜在価格を表示",
+    colConstrName: "制約名",
+    colConstrRhs: "条件式 (RHS)",
+    colConstrStatus: "状態",
+    colConstrSlack: "スラック (余剰)",
+    colConstrDual: "潜在価格 (Dual)",
     portfolioRiskLabel: "最適ポートフォリオ分散 (Risk)",
     portfolioVolLabel: "年率ボラティリティ (Std Dev σ)",
     portfolioBudgetLabel: "投資比率合計 (Budget)",
