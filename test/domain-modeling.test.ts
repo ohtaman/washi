@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, dot, expr } from "../src/index.js";
+import { Model, sum, dot, expr, LinExpr, QuadExpr } from "../src/index.js";
 
 describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain, values", () => {
   it("creates single domain variables without fat options", () => {
@@ -329,6 +329,109 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       });
 
       await killZ3Threads();
+    });
+
+    it("generates unique variable names across multiple m.bool(count) calls without collisions (Sat)", async () => {
+      const { registerZ3Solver, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
+      registerZ3Solver();
+
+      const m = new Model({ solver: "z3" });
+      const [a] = m.bool(1);
+      const [b] = m.bool(1);
+      expect(a.name).not.toBe(b.name);
+
+      m.constrain(a);
+      m.constrain(b.not());
+      const res = await m.check();
+      expect(res.status).toBe("Sat");
+
+      await killZ3Threads();
+    });
+
+    it("generates unique variable names between m.bool() and m.bool(count)", () => {
+      const m = new Model();
+      const a = m.bool();
+      const [b, c] = m.bool(2);
+      expect(new Set([a.name, b.name, c.name]).size).toBe(3);
+    });
+
+    it("throws error when duplicate boolean variable name is explicitly specified", () => {
+      const m = new Model();
+      m.bool("flag");
+      expect(() => m.bool("flag")).toThrow(/Variable with name 'flag' already exists in model/);
+    });
+
+    it("throws error when boolean variable conflicts with numeric variable", () => {
+      const m = new Model();
+      m.continuous("x");
+      expect(() => m.bool("x")).toThrow(/Variable with name 'x' already exists in model/);
+
+      m.bool("b_var");
+      expect(() => m.integer("b_var")).toThrow(/Variable with name 'b_var' already exists in model/);
+    });
+  });
+
+  describe("Var.add and Var.sub with Expr union (LinExpr | QuadExpr)", () => {
+    it("accepts Expr union without TS2769 and evaluates correctly", () => {
+      const m = new Model();
+      const x = m.continuous("x");
+      const y = m.continuous("y");
+
+      function combine(e: LinExpr | QuadExpr) {
+        return {
+          added: x.add(e),
+          subbed: x.sub(e),
+        };
+      }
+
+      const lin: LinExpr = y.mul(2);
+      const resLin = combine(lin);
+      expect(resLin.added).toBeInstanceOf(LinExpr);
+      expect(resLin.subbed).toBeInstanceOf(LinExpr);
+
+      const quad: QuadExpr = x.mul(y);
+      const resQuad = combine(quad);
+      expect(resQuad.added).toBeInstanceOf(QuadExpr);
+      expect(resQuad.subbed).toBeInstanceOf(QuadExpr);
+    });
+  });
+
+  describe("Diet Sensitivity Preset constraints verification", () => {
+    it("verifies constraint references retain names, shadow prices (duals) and slacks", async () => {
+      const m = new Model();
+      const foods = [
+        { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
+        { name: "Chicken", cost: 2.40, calories: 220, protein: 32, calcium: 15,  iron: 1.2 },
+        { name: "Eggs",    cost: 0.80, calories: 140, protein: 12, calcium: 50,  iron: 1.7 },
+        { name: "Milk",    cost: 0.90, calories: 120, protein: 8,  calcium: 280, iron: 0.1 },
+        { name: "Spinach", cost: 1.50, calories: 40,  protein: 4,  calcium: 120, iron: 3.5 },
+        { name: "Salmon",  cost: 3.60, calories: 200, protein: 25, calcium: 20,  iron: 0.8 },
+      ];
+
+      const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4, prefix: "srv" });
+      m.minimize(sum(foods, (f) => srv[f.name].mul(f.cost)));
+
+      const cCal  = sum(foods, (f) => srv[f.name].mul(f.calories)).ge(2000, "min_calories");
+      const cProt = sum(foods, (f) => srv[f.name].mul(f.protein)).ge(105,   "min_protein");
+      const cCalc = sum(foods, (f) => srv[f.name].mul(f.calcium)).ge(1000,  "min_calcium");
+      const cIron = sum(foods, (f) => srv[f.name].mul(f.iron)).ge(18,       "min_iron");
+      m.constrain([cCal, cProt, cCalc, cIron]);
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+
+      expect(cCal.name).toBe("min_calories");
+      expect(cProt.name).toBe("min_protein");
+      expect(cCalc.name).toBe("min_calcium");
+      expect(cIron.name).toBe("min_iron");
+
+      // Verify duals (shadow prices)
+      expect(cCal.dual).toBeCloseTo(0.0091, 3);
+      expect(cIron.dual).toBeCloseTo(0.3241, 3);
+
+      // Verify slacks
+      expect(Math.abs(cProt.slack || 0)).toBeCloseTo(46.5, 1);
+      expect(Math.abs(cCalc.slack || 0)).toBeCloseTo(483.0, 1);
     });
   });
 });

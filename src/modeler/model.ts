@@ -55,6 +55,8 @@ export class Model {
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
+  private boolVarMapByName = new Map<string, BoolVar>();
+  private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
 
   public status: SolverStatus = "NotSolved";
@@ -283,7 +285,7 @@ export class Model {
       const result: BoolVar[] = [];
       const p = prefix || "p";
       for (let i = 0; i < arg1; i++) {
-        result.push(this.createBoolVar(`${p}_${i}`));
+        result.push(this.createBoolVar(this.getNextBoolVarName(p)));
       }
       return result;
     } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
@@ -298,9 +300,29 @@ export class Model {
     throw new Error("Invalid arguments provided for boolean variable creation");
   }
 
+  private hasVarName(name: string): boolean {
+    return this.varMapByName.has(name) || this.boolVarMapByName.has(name);
+  }
+
+  private getNextBoolVarName(prefix: string): string {
+    let counter = this.boolVarPrefixCounters.get(prefix) ?? 0;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.boolVarPrefixCounters.set(prefix, counter + 1);
+    return candidate;
+  }
+
   private createBoolVar(name?: string): BoolVar {
-    const bv = new BoolVar(name);
+    const varName = name ?? this.getNextBoolVarName("p");
+    if (this.hasVarName(varName)) {
+      throw new Error(`Variable with name '${varName}' already exists in model`);
+    }
+    const bv = new BoolVar(varName);
     this.boolVars.push(bv);
+    this.boolVarMapByName.set(varName, bv);
     return bv;
   }
 
@@ -312,7 +334,7 @@ export class Model {
     const v = new Var(opts);
 
     // Validate unique name
-    if (this.varMapByName.has(v.name)) {
+    if (this.hasVarName(v.name)) {
       throw new Error(`Variable with name '${v.name}' already exists in model`);
     }
 
@@ -326,6 +348,13 @@ export class Model {
    */
   getVarByName(name: string): Var | undefined {
     return this.varMapByName.get(name);
+  }
+
+  /**
+   * Find boolean variable by name
+   */
+  getBoolVarByName(name: string): BoolVar | undefined {
+    return this.boolVarMapByName.get(name);
   }
 
   /**

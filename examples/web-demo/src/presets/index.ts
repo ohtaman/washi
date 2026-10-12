@@ -202,10 +202,11 @@ const srv = m.continuous(foods.map(f => f.name), { lb: 0, ub: 4, prefix: "srv" }
 m.minimize(sum(foods, f => srv[f.name].mul(f.cost)));
 
 // Nutritional constraints (keep references to inspect .dual and .slack)
-const cCal  = m.constrain(sum(foods, f => srv[f.name].mul(f.calories)).ge(2000), "min_calories");
-const cProt = m.constrain(sum(foods, f => srv[f.name].mul(f.protein)).ge(105),   "min_protein");
-const cCalc = m.constrain(sum(foods, f => srv[f.name].mul(f.calcium)).ge(1000),  "min_calcium");
-const cIron = m.constrain(sum(foods, f => srv[f.name].mul(f.iron)).ge(18),       "min_iron");
+const cCal  = sum(foods, f => srv[f.name].mul(f.calories)).ge(2000, "min_calories");
+const cProt = sum(foods, f => srv[f.name].mul(f.protein)).ge(105,   "min_protein");
+const cCalc = sum(foods, f => srv[f.name].mul(f.calcium)).ge(1000,  "min_calcium");
+const cIron = sum(foods, f => srv[f.name].mul(f.iron)).ge(18,       "min_iron");
+m.constrain([cCal, cProt, cCalc, cIron]);
 
 const status = await m.solve();
 

@@ -76,6 +76,7 @@ export class Var {
   /** Add variable with another variable, linear/quadratic expression, or number */
   add(other: Var | LinExpr | number): LinExpr;
   add(other: QuadExpr): QuadExpr;
+  add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr;
   add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.add(this);
@@ -86,6 +87,7 @@ export class Var {
   /** Subtract another variable, linear/quadratic expression, or number from this variable */
   sub(other: Var | LinExpr | number): LinExpr;
   sub(other: QuadExpr): QuadExpr;
+  sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr;
   sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.neg().add(this);
