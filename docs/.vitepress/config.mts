@@ -5,7 +5,7 @@ import katex from "katex";
 export default withMermaid(
   defineConfig({
   title: "WaSHI",
-  description: "WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT)",
+  description: "WebAssembly-backed, Solver-independent, High-level modeling Interface (LP, MIP, QP, SMT)",
   base: "/washi/",
   cleanUrls: true,
   lastUpdated: true,

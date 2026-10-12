@@ -1,6 +1,6 @@
 # 安装与入门
 
-欢迎使用 **WaSHI** (WebAssembly Algebraic System for Hybrid & Integer modeling)。
+欢迎使用 **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface)。
 
 WaSHI 为现代 TypeScript/JavaScript 生态系统带来了类似于 Python **PuLP** 和 Julia **JuMP** 的代数建模体验。无需繁琐的 C/C++ 本地编译环境，即可在浏览器、Node.js 等多端直接运行工业级 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）。
 

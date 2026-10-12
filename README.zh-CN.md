@@ -24,7 +24,7 @@
 
 ---
 
-**WaSHI** 是面向 TypeScript / JavaScript 的代数建模器，受到 Python **PuLP** 和 Julia **JuMP** 的启发。你可以在应用代码中定义变量、目标函数、算术约束和逻辑约束。WaSHI 负责构建模型、转换为求解器输入，并将结果映射回变量；优化与可满足性检查由 **HiGHS**、**Z3** 和 **GLPK** 完成。
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) 是面向 TypeScript / JavaScript 的代数建模器，受到 Python **PuLP** 和 Julia **JuMP** 的启发。你可以在应用代码中定义变量、目标函数、算术约束和逻辑约束。WaSHI 负责构建模型、转换为求解器输入，并将结果映射回变量；优化与可满足性检查由 **HiGHS**、**Z3** 和 **GLPK** 完成。
 
 HiGHS 是默认求解器；Z3 和 GLPK 是可选插件。软件包提供 Node.js 和浏览器分发版本，并包含 WebAssembly 资源。部署要求请参阅[浏览器使用说明](#-浏览器与-web-worker-使用指南)。
 
