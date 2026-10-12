@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, c, expr } from "../src/index.js";
+import { Model, Var, QuadExpr, c, expr } from "../src/index.js";
 
 describe("Tagged Template Literal Syntax (c and expr)", () => {
   it("parses linear expression with variables and numbers via expr`...`", () => {
@@ -109,16 +109,34 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => c`2 * ${x} + 5`).toThrow(/Constraint must contain a comparison operator/);
   });
 
-  it("rejects non-linear variable multiplication in expr with descriptive error", () => {
+  it("supports quadratic expressions and rejects degree > 2 or quadratic constraints in expr and c", () => {
     const m = new Model();
     const x = m.continuous("x");
     const y = m.continuous("y");
+    const z = m.continuous("z");
 
-    expect(() => expr`${x} * ${y}`).toThrow(
-      /Multiplication of two variables creates a non-linear term \(not allowed in MILP\/LP\)/
+    const q = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+    expect(q).toBeInstanceOf(QuadExpr);
+    if (q instanceof QuadExpr) {
+      expect(q.getQuadCoeff(x, y)).toBe(1);
+      expect(q.getQuadCoeff(x, x)).toBe(2);
+    }
+
+    const qPower = expr`${x}^2 + ${y}**2`;
+    expect(qPower).toBeInstanceOf(QuadExpr);
+    if (qPower instanceof QuadExpr) {
+      expect(qPower.getQuadCoeff(x, x)).toBe(1);
+      expect(qPower.getQuadCoeff(y, y)).toBe(1);
+    }
+
+    expect(() => expr`${x} * ${y} * ${z}`).toThrow(
+      /non-linear term of degree > 2/
     );
-    expect(() => expr`${x} * ${x}`).toThrow(
-      /Multiplication of two variables creates a non-linear term \(not allowed in MILP\/LP\)/
+    expect(() => expr`${x}^3`).toThrow(
+      /non-linear term of degree > 2/
+    );
+    expect(() => c`${x} * ${y} <= 10`).toThrow(
+      /Quadratic constraints are not supported/
     );
   });
 

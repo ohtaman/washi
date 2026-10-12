@@ -38,9 +38,12 @@ const count = model.integer("count", { lb: 0, ub: 50 });
 Solves quadratic objective functions subject to linear constraints:
 
 ```typescript
-// Minimize risk/variance: 0.5 * x^2 + 0.5 * y^2
-const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
-model.minimize(quadObj);
+// Minimize risk/variance uniformly using expr:
+model.minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`);
+
+// Or programmatically with .mul():
+// const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
+// model.minimize(quadObj);
 ```
 
 ---

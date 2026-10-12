@@ -27,13 +27,15 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ### Supported Syntax in `expr`
 - **Addition & Subtraction**: `${x} + ${y} - 5`
 - **Scalar Multiplication**: `4 * ${x}`, `${x} * 4`
+- **Variable Multiplication (Quadratic terms)**: `${x} * ${y}`, `2 * ${x} * ${x}`
+- **Powers & Exponentiation**: `${x}^2`, `${x}**2`
 - **Unary Negation**: `-${x} + 10`
 - **Parentheses**: `2 * (${x} + ${y})`
 - **Linear Comparisons**: `${x} + 2 * ${y} <= 40`, `${x} >= 10`, `${x} == ${y}`
 - **Nested Expressions**: `expr` seamlessly interpolates variables, numbers, `sum()` results, and nested expressions.
 
 > [!NOTE]
-> `expr` is designed for linear expressions (`LinExpr`) and linear constraints (`Constraint`). Variable-by-variable multiplication is non-linear and not supported within `expr`. To model quadratic objectives (QP), construct them using `QuadExpr` or `.mul()`.
+> `expr` uniformly handles linear and quadratic expressions (up to degree 2). If quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Polynomial terms of degree $> 2$ (e.g. `${x} * ${y} * ${z}`, `${x}^3`) and non-linear constraints (e.g. `${x} * ${y} <= 10`) are rejected because standard MILP/LP/QP formulations only support linear constraints and quadratic objectives.
 
 ---
 
@@ -94,9 +96,29 @@ m.minimize(dot(costs, ship));
 
 ---
 
-## 🧮 Quadratic Expressions (`QuadExpr`)
+## 🧮 Quadratic Expressions (`QuadExpr` & `expr`)
 
-WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver. While `expr` handles linear terms, quadratic terms are constructed using `QuadExpr` or by chaining `.mul()` on variables:
+WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver. Quadratic objectives can be written uniformly using the `expr` template literal, or algebraically using `QuadExpr` and `.mul()`:
+
+### 1. Using `expr` (Recommended)
+You can write quadratic formulas naturally with `*`, `^2`, or `**2`:
+
+```typescript
+import { Model, expr } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+// Quadratic objective using expr:
+m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
+
+// Linear constraint:
+m.addConstraint(expr`${x} + ${y} >= 4`);
+```
+
+### 2. Method Chaining with `.mul()` or `QuadExpr`
+Alternatively, you can construct quadratic expressions programmatically:
 
 ```typescript
 import { Model, QuadExpr } from "@ohtaman/washi";

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
+import { QuadExpr } from "../src/modeler/quad-expr.js";
 import { parseExpr, parseConstraint, expr } from "../src/modeler/parser.js";
 
 describe("Algebraic Parser & DSL", () => {
@@ -64,8 +65,29 @@ describe("Algebraic Parser & DSL", () => {
     expect(() => parseExpr("x + unknown_var <= 10", resolver)).toThrow("Unknown variable 'unknown_var'");
   });
 
-  it("throws error on non-linear terms (e.g. x * y)", () => {
-    expect(() => parseExpr("x * y + 5", resolver)).toThrow("non-linear term");
+  it("parses quadratic expressions (e.g. x * y + 5, x^2)", () => {
+    const q = parseExpr("x * y + 2 * x^2 + 5", resolver);
+    expect(q).toBeInstanceOf(QuadExpr);
+    if (q instanceof QuadExpr) {
+      expect(q.getQuadCoeff(x, y)).toBe(1);
+      expect(q.getQuadCoeff(x, x)).toBe(2);
+      expect(q.constant).toBe(5);
+    }
+  });
+
+  it("throws error on non-linear terms of degree > 2 (e.g. x * y * z, x^3)", () => {
+    expect(() => parseExpr("x * y * z + 5", resolver)).toThrow(
+      /non-linear term of degree > 2/
+    );
+    expect(() => parseExpr("x ^ 3 + 5", resolver)).toThrow(
+      /non-linear term of degree > 2/
+    );
+  });
+
+  it("throws error on quadratic constraints", () => {
+    expect(() => parseConstraint("x * y <= 10", resolver)).toThrow(
+      /Quadratic constraints are not supported/
+    );
   });
 
   it("evaluates tagged template literal expr`...` for expressions and constraints", () => {

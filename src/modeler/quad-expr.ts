@@ -137,24 +137,81 @@ export class QuadExpr {
   }
 
   /**
-   * Multiply by a scalar coefficient
+   * Multiply by a scalar coefficient, variable, or linear/quadratic expression
    */
-  mul(scalar: number): QuadExpr {
-    const result = new QuadExpr(new Map(), new Map(), this.constant * scalar);
-    for (const [v, c] of this.linearTerms) {
-      const prod = c * scalar;
-      if (Math.abs(prod) >= 1e-12) {
-        result.linearTerms.set(v, prod);
+  mul(scalar: number): QuadExpr;
+  mul(other: Var | LinExpr | QuadExpr): QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr): QuadExpr {
+    if (typeof operand === "number") {
+      const result = new QuadExpr(new Map(), new Map(), this.constant * operand);
+      for (const [v, c] of this.linearTerms) {
+        const prod = c * operand;
+        if (Math.abs(prod) >= 1e-12) {
+          result.linearTerms.set(v, prod);
+        }
+      }
+      for (const [k, term] of this.quadTerms) {
+        const prod = term.coeff * operand;
+        if (Math.abs(prod) >= 1e-12) {
+          result.quadTerms.set(k, {
+            var1: term.var1,
+            var2: term.var2,
+            coeff: prod,
+          });
+        }
+      }
+      return result;
+    }
+
+    // Check if operand is Var (has id and name, but not terms)
+    if ("id" in operand && "name" in operand && !("terms" in operand) && !("quadTerms" in operand)) {
+      if (this.quadTerms.size > 0) {
+        throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+      }
+      let result = new QuadExpr();
+      if (Math.abs(this.constant) >= 1e-12) {
+        result.linearTerms.set(operand as Var, this.constant);
+      }
+      for (const [v, c] of this.linearTerms) {
+        result = result.add(QuadExpr.fromProduct(v, operand as Var, c));
+      }
+      return result;
+    }
+
+    const otherExpr = operand as LinExpr | QuadExpr;
+    const otherQuadSize = "quadTerms" in otherExpr ? otherExpr.quadTerms.size : 0;
+    const otherLinTerms = "quadTerms" in otherExpr ? otherExpr.linearTerms : otherExpr.terms;
+
+    if (this.quadTerms.size > 0 && (otherQuadSize > 0 || otherLinTerms.size > 0)) {
+      throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+    }
+    if (otherQuadSize > 0 && this.linearTerms.size > 0) {
+      throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+    }
+
+    if (otherQuadSize === 0 && otherLinTerms.size === 0) {
+      return this.mul(otherExpr.constant);
+    }
+    if (this.quadTerms.size === 0 && this.linearTerms.size === 0) {
+      return (otherExpr.mul(this.constant) as QuadExpr);
+    }
+
+    // Both are linear (degree 1)
+    let result = new QuadExpr();
+    result.constant = this.constant * otherExpr.constant;
+    if (Math.abs(otherExpr.constant) >= 1e-12) {
+      for (const [v, c] of this.linearTerms) {
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * otherExpr.constant);
       }
     }
-    for (const [k, term] of this.quadTerms) {
-      const prod = term.coeff * scalar;
-      if (Math.abs(prod) >= 1e-12) {
-        result.quadTerms.set(k, {
-          var1: term.var1,
-          var2: term.var2,
-          coeff: prod,
-        });
+    if (Math.abs(this.constant) >= 1e-12) {
+      for (const [v, c] of otherLinTerms) {
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
+      }
+    }
+    for (const [v1, c1] of this.linearTerms) {
+      for (const [v2, c2] of otherLinTerms) {
+        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
       }
     }
     return result;
@@ -195,6 +252,39 @@ export class QuadExpr {
 
   getValue(): number | null {
     return this.value;
+  }
+
+  toString(): string {
+    const parts: string[] = [];
+    let isFirst = true;
+
+    for (const term of this.quadTerms.values()) {
+      const c = term.coeff;
+      const sign = c >= 0 ? (isFirst ? "" : "+ ") : "- ";
+      const absC = Math.abs(c);
+      const coeffStr = absC === 1 ? "" : `${absC} `;
+      if (term.var1 === term.var2) {
+        parts.push(`${sign}${coeffStr}${term.var1.name}^2`);
+      } else {
+        parts.push(`${sign}${coeffStr}${term.var1.name} * ${term.var2.name}`);
+      }
+      isFirst = false;
+    }
+
+    for (const [v, c] of this.linearTerms) {
+      const sign = c >= 0 ? (isFirst ? "" : "+ ") : "- ";
+      const absC = Math.abs(c);
+      const coeffStr = absC === 1 ? "" : `${absC} `;
+      parts.push(`${sign}${coeffStr}${v.name}`);
+      isFirst = false;
+    }
+
+    if (this.constant !== 0 || parts.length === 0) {
+      const sign = this.constant >= 0 ? (isFirst ? "" : "+ ") : "- ";
+      parts.push(`${sign}${Math.abs(this.constant)}`);
+    }
+
+    return parts.join(" ") || "0";
   }
 
   /**

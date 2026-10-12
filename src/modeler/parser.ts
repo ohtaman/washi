@@ -1,12 +1,23 @@
 import { Var } from "./variable.js";
 import { LinExpr } from "./expression.js";
+import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import type { ComparisonSense } from "./types.js";
 
-type VarResolver = (name: string) => Var | undefined;
+export type ExprResolver = (name: string) => Var | LinExpr | QuadExpr | undefined;
 
 interface Token {
-  type: "NUMBER" | "IDENT" | "PLUS" | "MINUS" | "STAR" | "SLASH" | "LPAREN" | "RPAREN" | "COMP";
+  type:
+    | "NUMBER"
+    | "IDENT"
+    | "PLUS"
+    | "MINUS"
+    | "STAR"
+    | "SLASH"
+    | "CARET"
+    | "LPAREN"
+    | "RPAREN"
+    | "COMP";
   value: string;
 }
 
@@ -26,14 +37,22 @@ function tokenize(input: string): Token[] {
       continue;
     }
 
-    if (ch === "+" ) {
+    if (ch === "+") {
       tokens.push({ type: "PLUS", value: "+" });
       i++;
     } else if (ch === "-") {
       tokens.push({ type: "MINUS", value: "-" });
       i++;
     } else if (ch === "*") {
-      tokens.push({ type: "STAR", value: "*" });
+      if (i + 1 < len && input[i + 1] === "*") {
+        tokens.push({ type: "CARET", value: "**" });
+        i += 2;
+      } else {
+        tokens.push({ type: "STAR", value: "*" });
+        i++;
+      }
+    } else if (ch === "^") {
+      tokens.push({ type: "CARET", value: "^" });
       i++;
     } else if (ch === "/") {
       tokens.push({ type: "SLASH", value: "/" });
@@ -75,12 +94,79 @@ function tokenize(input: string): Token[] {
   return tokens;
 }
 
+function addExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinExpr | QuadExpr {
+  if (a instanceof QuadExpr) {
+    return a.add(b);
+  }
+  if (b instanceof QuadExpr) {
+    return b.add(a);
+  }
+  return a.add(b);
+}
+
+function subExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinExpr | QuadExpr {
+  if (a instanceof QuadExpr) {
+    return a.sub(b);
+  }
+  if (b instanceof QuadExpr) {
+    return b.neg().add(a);
+  }
+  return a.sub(b);
+}
+
+function multiplyExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinExpr | QuadExpr {
+  const aQuadTerms = a instanceof QuadExpr ? a.quadTerms : new Map();
+  const bQuadTerms = b instanceof QuadExpr ? b.quadTerms : new Map();
+  const aLinTerms = a instanceof QuadExpr ? a.linearTerms : a.terms;
+  const bLinTerms = b instanceof QuadExpr ? b.linearTerms : b.terms;
+
+  if (aQuadTerms.size > 0 && (bQuadTerms.size > 0 || bLinTerms.size > 0)) {
+    throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+  }
+  if (bQuadTerms.size > 0 && (aQuadTerms.size > 0 || aLinTerms.size > 0)) {
+    throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+  }
+
+  // If a is pure scalar
+  if (aQuadTerms.size === 0 && aLinTerms.size === 0) {
+    return b.mul(a.constant);
+  }
+  // If b is pure scalar
+  if (bQuadTerms.size === 0 && bLinTerms.size === 0) {
+    return a.mul(b.constant);
+  }
+
+  // Both have at least one linear term, and neither has quadratic terms:
+  // degree 1 * degree 1 => degree 2 QuadExpr
+  let result = new QuadExpr();
+  result.constant = a.constant * b.constant;
+
+  if (Math.abs(b.constant) >= 1e-12) {
+    for (const [v, c] of aLinTerms) {
+      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * b.constant);
+    }
+  }
+  if (Math.abs(a.constant) >= 1e-12) {
+    for (const [v, c] of bLinTerms) {
+      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * a.constant);
+    }
+  }
+
+  for (const [v1, c1] of aLinTerms) {
+    for (const [v2, c2] of bLinTerms) {
+      result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+    }
+  }
+
+  return result;
+}
+
 class Parser {
   private tokens: Token[];
   private pos = 0;
-  private resolver: VarResolver;
+  private resolver: ExprResolver;
 
-  constructor(tokens: Token[], resolver: VarResolver) {
+  constructor(tokens: Token[], resolver: ExprResolver) {
     this.tokens = tokens;
     this.resolver = resolver;
   }
@@ -103,7 +189,7 @@ class Parser {
   /**
    * Parse addition and subtraction: term (( '+' | '-' ) term)*
    */
-  public parseExpression(): LinExpr {
+  public parseExpression(): LinExpr | QuadExpr {
     let result = this.parseTerm();
 
     while (this.pos < this.tokens.length) {
@@ -112,22 +198,25 @@ class Parser {
 
       if (next.type === "PLUS") {
         this.consume();
-        result = result.add(this.parseTerm());
+        result = addExpressions(result, this.parseTerm());
       } else if (next.type === "MINUS") {
         this.consume();
-        result = result.sub(this.parseTerm());
+        result = subExpressions(result, this.parseTerm());
       } else {
         break;
       }
     }
 
+    if (result instanceof QuadExpr && result.quadTerms.size === 0) {
+      return new LinExpr(result.linearTerms, result.constant);
+    }
     return result;
   }
 
   /**
    * Parse multiplication and division: factor (( '*' | '/' ) factor)*
    */
-  private parseTerm(): LinExpr {
+  private parseTerm(): LinExpr | QuadExpr {
     let result = this.parseFactor();
 
     while (this.pos < this.tokens.length) {
@@ -137,12 +226,14 @@ class Parser {
       if (next.type === "STAR") {
         this.consume();
         const factor = this.parseFactor();
-        result = this.multiplyExpressions(result, factor);
+        result = multiplyExpressions(result, factor);
       } else if (next.type === "SLASH") {
         this.consume();
         const divisor = this.parseFactor();
-        if (divisor.terms.size > 0) {
-          throw new Error("Cannot divide by variable in linear expression");
+        const divLin = divisor instanceof QuadExpr ? divisor.linearTerms : divisor.terms;
+        const divQuad = divisor instanceof QuadExpr ? divisor.quadTerms.size : 0;
+        if (divLin.size > 0 || divQuad > 0) {
+          throw new Error("Cannot divide by variable in expression");
         }
         if (Math.abs(divisor.constant) < 1e-12) {
           throw new Error("Division by zero in expression");
@@ -156,21 +247,10 @@ class Parser {
     return result;
   }
 
-  private multiplyExpressions(a: LinExpr, b: LinExpr): LinExpr {
-    if (a.terms.size > 0 && b.terms.size > 0) {
-      throw new Error("Multiplication of two variables creates a non-linear term (not allowed in MILP/LP)");
-    }
-    if (a.terms.size === 0) {
-      return b.mul(a.constant);
-    } else {
-      return a.mul(b.constant);
-    }
-  }
-
   /**
    * Parse unary +/-, numbers, variables, and parenthesized expressions
    */
-  private parseFactor(): LinExpr {
+  private parseFactor(): LinExpr | QuadExpr {
     const t = this.peek();
     if (!t) {
       throw new Error("Unexpected end of expression");
@@ -186,35 +266,68 @@ class Parser {
       return this.parseFactor().neg();
     }
 
+    let primary: LinExpr | QuadExpr;
+
     if (t.type === "NUMBER") {
       this.consume();
       const val = parseFloat(t.value);
-      // Check for implicit multiplication: e.g. "30x"
+      // Check for implicit multiplication: e.g. "30x" or "2__ph_0__"
       if (this.peek()?.type === "IDENT") {
         const identToken = this.consume();
-        const v = this.resolveVariable(identToken.value);
-        return v.mul(val);
+        const v = this.resolve(identToken.value);
+        if (v instanceof Var || ("id" in v && !("terms" in v) && !("quadTerms" in v))) {
+          primary = (v as Var).mul(val);
+        } else {
+          primary = (v as LinExpr | QuadExpr).mul(val);
+        }
+      } else {
+        primary = new LinExpr(new Map(), val);
       }
-      return new LinExpr(new Map(), val);
-    }
-
-    if (t.type === "IDENT") {
+    } else if (t.type === "IDENT") {
       this.consume();
-      const v = this.resolveVariable(t.value);
-      return new LinExpr(new Map([[v, 1]]), 0);
-    }
-
-    if (t.type === "LPAREN") {
+      const v = this.resolve(t.value);
+      if (v instanceof Var || ("id" in v && !("terms" in v) && !("quadTerms" in v))) {
+        primary = new LinExpr(new Map([[(v as Var), 1]]), 0);
+      } else {
+        primary = (v as LinExpr | QuadExpr).clone();
+      }
+    } else if (t.type === "LPAREN") {
       this.consume("LPAREN");
-      const expr = this.parseExpression();
+      primary = this.parseExpression();
       this.consume("RPAREN");
-      return expr;
+    } else {
+      throw new Error(`Unexpected token '${t.value}' in expression`);
     }
 
-    throw new Error(`Unexpected token '${t.value}' in expression`);
+    return this.applyPower(primary);
   }
 
-  private resolveVariable(name: string): Var {
+  private applyPower(base: LinExpr | QuadExpr): LinExpr | QuadExpr {
+    if (this.peek()?.type === "CARET") {
+      this.consume();
+      const expToken = this.peek();
+      if (!expToken || expToken.type !== "NUMBER") {
+        throw new Error("Exponent must be a non-negative integer number");
+      }
+      this.consume();
+      const power = parseFloat(expToken.value);
+      if (!Number.isInteger(power) || power < 0) {
+        throw new Error("Exponent must be a non-negative integer");
+      }
+      if (power === 0) {
+        return new LinExpr(new Map(), 1);
+      } else if (power === 1) {
+        return base;
+      } else if (power === 2) {
+        return multiplyExpressions(base, base);
+      } else {
+        throw new Error(`Exponent ${power} creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)`);
+      }
+    }
+    return base;
+  }
+
+  private resolve(name: string): Var | LinExpr | QuadExpr {
     const v = this.resolver(name);
     if (!v) {
       throw new Error(`Unknown variable '${name}' in expression`);
@@ -224,9 +337,9 @@ class Parser {
 }
 
 /**
- * Parse a mathematical expression string into a LinExpr
+ * Parse a mathematical expression string into a LinExpr or QuadExpr
  */
-export function parseExpr(text: string, resolver: VarResolver): LinExpr {
+export function parseExpr(text: string, resolver: ExprResolver): LinExpr | QuadExpr {
   const tokens = tokenize(text);
   const parser = new Parser(tokens, resolver);
   return parser.parseExpression();
@@ -235,7 +348,7 @@ export function parseExpr(text: string, resolver: VarResolver): LinExpr {
 /**
  * Parse a constraint string such as "chairs + 2 * tables <= 40"
  */
-export function parseConstraint(text: string, resolver: VarResolver, name?: string): Constraint {
+export function parseConstraint(text: string, resolver: ExprResolver, name?: string): Constraint {
   const compMatch = text.match(/(<=|>=|==|=<|=>|=)/);
   if (!compMatch) {
     throw new Error(`Constraint must contain a comparison operator (<=, >=, ==, =): "${text}"`);
@@ -255,24 +368,34 @@ export function parseConstraint(text: string, resolver: VarResolver, name?: stri
   const lhsExpr = parseExpr(leftStr, resolver);
   const rhsExpr = parseExpr(rightStr, resolver);
 
+  if (
+    (lhsExpr instanceof QuadExpr && lhsExpr.quadTerms.size > 0) ||
+    (rhsExpr instanceof QuadExpr && rhsExpr.quadTerms.size > 0)
+  ) {
+    throw new Error("Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)");
+  }
+
+  const lhsLin = lhsExpr instanceof QuadExpr ? new LinExpr(lhsExpr.linearTerms, lhsExpr.constant) : lhsExpr;
+  const rhsLin = rhsExpr instanceof QuadExpr ? new LinExpr(rhsExpr.linearTerms, rhsExpr.constant) : rhsExpr;
+
   // Normalization: lhs - rhs terms <= rhs_constant - lhs_constant
   if (sense === "<=") {
-    return lhsExpr.le(rhsExpr, name);
+    return lhsLin.le(rhsLin, name);
   } else if (sense === ">=") {
-    return lhsExpr.ge(rhsExpr, name);
+    return lhsLin.ge(rhsLin, name);
   } else {
-    return lhsExpr.eq(rhsExpr, name);
+    return lhsLin.eq(rhsLin, name);
   }
 }
 
 /**
- * Parse a template literal with Var / LinExpr / number values
+ * Parse a template literal with Var / LinExpr / QuadExpr / number values
  */
 function parseTemplate(
   strings: TemplateStringsArray,
-  values: (Var | LinExpr | number)[]
-): { fullText: string; resolver: VarResolver } {
-  const placeholderMap = new Map<string, Var>();
+  values: (Var | LinExpr | QuadExpr | number)[]
+): { fullText: string; resolver: ExprResolver } {
+  const placeholderMap = new Map<string, Var | LinExpr | QuadExpr>();
   let fullText = "";
 
   for (let i = 0; i < strings.length; i++) {
@@ -281,22 +404,20 @@ function parseTemplate(
       const val = values[i];
       if (typeof val === "number") {
         fullText += `(${val})`;
-      } else if (val instanceof Var) {
-        const ph = `__v_${i}__`;
-        placeholderMap.set(ph, val);
+      } else if (
+        val instanceof Var ||
+        val instanceof LinExpr ||
+        val instanceof QuadExpr ||
+        (typeof val === "object" && val !== null && ("id" in val || "terms" in val || "quadTerms" in val))
+      ) {
+        const ph = `__ph_${i}__`;
+        placeholderMap.set(ph, val as Var | LinExpr | QuadExpr);
         fullText += ph;
-      } else if (val instanceof LinExpr) {
-        // Expand terms of LinExpr directly
-        const ph = `__expr_${i}__`;
-        fullText += `(${val.toString()})`;
-        for (const [v] of val.terms) {
-          placeholderMap.set(v.name, v);
-        }
       }
     }
   }
 
-  const resolver: VarResolver = (name) => placeholderMap.get(name);
+  const resolver: ExprResolver = (name) => placeholderMap.get(name);
   return { fullText, resolver };
 }
 
@@ -308,21 +429,22 @@ function parseTemplate(
  */
 export function c(
   strings: TemplateStringsArray,
-  ...values: (Var | LinExpr | number)[]
+  ...values: (Var | LinExpr | QuadExpr | number)[]
 ): Constraint {
   const { fullText, resolver } = parseTemplate(strings, values);
   return parseConstraint(fullText, resolver);
 }
 
 /**
- * Tagged template literal for linear expressions or inline constraints:
+ * Tagged template literal for linear or quadratic expressions or inline constraints:
  * expr`45 * ${chairs} + 80 * ${tables}` -> LinExpr
+ * expr`${x} * ${y} + 2 * ${x} * ${x}` -> QuadExpr
  * expr`${x} + 2 * ${y} <= 40` -> Constraint
  */
 export function expr(
   strings: TemplateStringsArray,
-  ...values: (Var | LinExpr | number)[]
-): LinExpr | Constraint {
+  ...values: (Var | LinExpr | QuadExpr | number)[]
+): LinExpr | QuadExpr | Constraint {
   const { fullText, resolver } = parseTemplate(strings, values);
   if (/(<=|>=|==|=<|=>|=)/.test(fullText)) {
     return parseConstraint(fullText, resolver);

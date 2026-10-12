@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model } from "../src/modeler/model.js";
+import { Model, expr, c } from "../src/index.js";
 import { generateLpString } from "../src/modeler/lp-writer.js";
 import { HiGHS } from "../src/modeler/solvers/highs.js";
 
@@ -82,5 +82,24 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     expect(achievedReturn).toBeGreaterThanOrEqual(0.1399);
     // Variance objective is positive and minimal
     expect(m.objectiveValue).toBeGreaterThan(0);
+  });
+
+  it("solves QP formulated cleanly using expr`...` syntax", async () => {
+    const m = new Model("ExprQP");
+    const x = m.addVar({ name: "x" });
+    const y = m.addVar({ name: "y" });
+
+    // min 3x + x^2 + y^2 subject to x + y >= 4, x >= 0, y >= 0
+    // Analytical optimum: x = 1.25, y = 2.75, obj = 12.875
+    m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
+    m.addConstraint(expr`${x} + ${y} >= 4`);
+
+    const status = await m.solve(HiGHS);
+
+    expect(status).toBe("Optimal");
+    expect(m.status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(1.25, 4);
+    expect(y.value).toBeCloseTo(2.75, 4);
+    expect(m.objectiveValue).toBeCloseTo(12.875, 4);
   });
 });
