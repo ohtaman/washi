@@ -56,110 +56,65 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
   </div>
 
   <div class="docs-section">
-    <h3>構文対照表: Python PuLP との比較</h3>
+    <h3>WaSHI モダン代数モデリング API 早見表</h3>
     <table class="comparison-table">
       <thead>
         <tr>
-          <th>機能項目</th>
-          <th>Python PuLP</th>
-          <th>HiGHS Web Modeler</th>
+          <th>モデリング要素</th>
+          <th>WaSHI API (TypeScript / JS)</th>
+          <th>説明</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>インポート</strong></td>
-          <td><code>import pulp</code></td>
-          <td><code>import { LpProblem, LpVariable, lpSum, LpMaximize, value } from "highs-web"</code></td>
+          <td><strong>モデル初期化</strong></td>
+          <td><code>const m = new Model("Name");</code></td>
+          <td>最適化モデルの生成。ソルバーは HiGHS (WASM) がデフォルト。</td>
         </tr>
         <tr>
-          <td><strong>問題定義</strong></td>
-          <td><code>prob = pulp.LpProblem("Name", pulp.LpMaximize)</code></td>
-          <td><code>const prob = new LpProblem("Name", LpMaximize);</code></td>
+          <td><strong>バイナリ変数</strong></td>
+          <td><code>m.binary("x")</code> / <code>m.binary(items)</code></td>
+          <td>0-1 決定変数。多次元・配列渡しもサポート。</td>
         </tr>
         <tr>
-          <td><strong>変数の定義</strong></td>
-          <td><code>x = pulp.LpVariable("x", 0, None, pulp.LpInteger)</code></td>
-          <td><code>const x = new LpVariable("x", 0, undefined, LpInteger);</code></td>
+          <td><strong>整数変数</strong></td>
+          <td><code>m.integer("x", { lb: 0, ub: 10 })</code></td>
+          <td>上下限を指定可能な整数変数。</td>
         </tr>
         <tr>
-          <td><strong>多次元・辞書変数</strong></td>
-          <td><code>x = pulp.LpVariable.dicts("x", items, 0, 1, pulp.LpBinary)</code></td>
-          <td><code>const x = LpVariable.dicts("x", items, 0, 1, LpBinary);</code></td>
+          <td><strong>連続変数</strong></td>
+          <td><code>m.continuous("x", { lb: 0 })</code></td>
+          <td>線形・二次計画問題に対応する連続変数。</td>
+        </tr>
+        <tr>
+          <td><strong>数式・制約の記述</strong></td>
+          <td><code>expr\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
+          <td>タグ付きテンプレートリテラルによる型安全な数式記述。</td>
+        </tr>
+        <tr>
+          <td><strong>制約の追加</strong></td>
+          <td><code>m.constrain(expr\`...\`, "name")</code></td>
+          <td>第1推奨の制約追加メソッド。配列渡しやチェーン記法にも対応。</td>
         </tr>
         <tr>
           <td><strong>目的関数の設定</strong></td>
-          <td><code>prob += 30*x + 50*y, "Profit"</code></td>
-          <td><code>prob.setObjective(x.mul(30).add(y.mul(50)));</code><br/>または <code>prob.setObjective("30 * x + 50 * y");</code></td>
+          <td><code>m.maximize(...)</code> / <code>m.minimize(...)</code></td>
+          <td>直感的な方向（動詞）で目的関数を設定。</td>
         </tr>
         <tr>
-          <td><strong>制約条件の追加</strong></td>
-          <td><code>prob += x + 2*y &lt;= 40, "Carpentry"</code></td>
-          <td><code>prob.addConstraint(x.add(y.mul(2)).le(40), "Carpentry");</code><br/>または <code>prob.addConstraint("x + 2*y &lt;= 40");</code></td>
+          <td><strong>総和・内積集計</strong></td>
+          <td><code>sum(items, i =&gt; x[i])</code> / <code>dot(costs, x)</code></td>
+          <td>関数型および線形代数的なベクトル内積集計。</td>
         </tr>
         <tr>
-          <td><strong>総和計算 (lpSum)</strong></td>
-          <td><code>pulp.lpSum([x[i] * cost[i] for i in items])</code></td>
-          <td><code>lpSum(items, i =&gt; x[i].mul(cost[i]))</code></td>
+          <td><strong>求解・最適化</strong></td>
+          <td><code>await m.optimize()</code></td>
+          <td>WebAssembly ソルバーで求解を実行。</td>
         </tr>
         <tr>
-          <td><strong>最適化の実行</strong></td>
-          <td><code>prob.solve()</code></td>
-          <td><code>await prob.solve();</code></td>
-        </tr>
-        <tr>
-          <td><strong>最適解の値取得</strong></td>
-          <td><code>pulp.value(x), pulp.value(prob.objective)</code></td>
-          <td><code>value(x), value(prob.objective)</code> または <code>x.value</code></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="docs-section">
-    <h3>構文対照表: python-mip との比較</h3>
-    <table class="comparison-table">
-      <thead>
-        <tr>
-          <th>機能項目</th>
-          <th>python-mip</th>
-          <th>HiGHS Web Modeler</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><strong>インポート</strong></td>
-          <td><code>from mip import Model, xsum, maximize, INTEGER</code></td>
-          <td><code>import { MipModel, xsum, maximize, INTEGER } from "highs-web"</code></td>
-        </tr>
-        <tr>
-          <td><strong>モデル作成</strong></td>
-          <td><code>m = Model(sense=MAXIMIZE)</code></td>
-          <td><code>const m = new MipModel("ModelName", MAXIMIZE);</code></td>
-        </tr>
-        <tr>
-          <td><strong>変数追加</strong></td>
-          <td><code>x = m.add_var(name="x", var_type=INTEGER, lb=0)</code></td>
-          <td><code>const x = m.add_var({ name: "x", var_type: INTEGER, lb: 0 });</code></td>
-        </tr>
-        <tr>
-          <td><strong>目的関数指定</strong></td>
-          <td><code>m.objective = maximize(30*x + 50*y)</code></td>
-          <td><code>m.objective_spec = maximize(x.mul(30).add(y.mul(50)));</code></td>
-        </tr>
-        <tr>
-          <td><strong>制約追加</strong></td>
-          <td><code>m += x + 2*y &lt;= 40</code></td>
-          <td><code>m.add_constr(x.add(y.mul(2)).le(40));</code></td>
-        </tr>
-        <tr>
-          <td><strong>最適化実行</strong></td>
-          <td><code>m.optimize()</code></td>
-          <td><code>await m.optimize();</code></td>
-        </tr>
-        <tr>
-          <td><strong>変数解の参照</strong></td>
-          <td><code>x.x</code></td>
-          <td><code>x.x</code> (または <code>x.value</code>)</td>
+          <td><strong>解の値取得</strong></td>
+          <td><code>x.value</code> / <code>m.getValues([x, y])</code></td>
+          <td>変数の最適値、または配列・辞書形式での一括抽出。</td>
         </tr>
       </tbody>
     </table>

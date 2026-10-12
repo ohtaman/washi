@@ -4,7 +4,6 @@ import { QuadExpr } from "./quad-expr.js";
 
 /**
  * Represents a linear expression: c0 + c1*x1 + c2*x2 + ...
- * Compatible with PuLP (LpAffineExpression) and python-mip (LinExpr).
  */
 export class LinExpr {
   public terms: Map<Var, number>;
@@ -136,7 +135,7 @@ export class LinExpr {
   }
 
   /**
-   * PuLP style value accessor
+   * Helper value accessor for expression
    */
   getValue(): number | null {
     return this.value;

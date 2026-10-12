@@ -6,7 +6,6 @@ let constrIdCounter = 0;
 
 /**
  * Represents a linear constraint: lhs (terms) <=, >=, or == rhs (constant)
- * Compatible with PuLP (LpConstraint) and python-mip (Constr).
  */
 export class Constraint {
   public readonly id: number;

@@ -171,7 +171,7 @@ export class HighsSolver implements Solver {
 }
 
 /**
- * PuLP-style alias: pulp.HiGHS()
+ * Short alias for HighsSolver
  */
 export const HiGHS = HighsSolver;
 

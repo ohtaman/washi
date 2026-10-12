@@ -1,8 +1,8 @@
 /**
- * opt-ts: Modern Mathematical Optimization Modeler for TypeScript & JavaScript
+ * WaSHI: Modern Mathematical Optimization Modeler for TypeScript & JavaScript
  * 
- * Elegant PuLP/python-mip style modeling with WebAssembly (HiGHS) and pluggable solvers.
- * Supports LP (Linear Programming), MIP (Mixed-Integer Programming), and QP (Quadratic Programming).
+ * Domain-pure algebraic modeling with WebAssembly (HiGHS, Z3, GLPK) and pluggable solvers.
+ * Supports LP (Linear Programming), MIP (Mixed-Integer Programming), QP (Quadratic Programming), and SMT.
  */
 
 // Core Algebraic Modeler

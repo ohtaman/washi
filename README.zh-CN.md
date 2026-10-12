@@ -49,7 +49,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 ## 🎯 WaSHI 提供的功能
 
-1. **代数模型构建**：使用带类型的变量、索引变量集合、带标签的模板（`expr` 和 `c`）及链式表达式。`Model` API 与 PuLP 风格辅助函数提供不同的模型编写方式。
+1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`）、向量聚合函数（`dot`、`sum`）以及首选的 `m.constrain()` 约束方法，精确且优雅地描述数学模型。
 2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
 3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内求解，无需单独的 Python 服务或本地 C/C++ 编译。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
 4. **命名约束与 SMT 结果**：显式使用 Z3 检查可满足性，并通过 Unsat Core 调查冲突约束。返回的是一个冲突约束子集，不一定是最小子集。

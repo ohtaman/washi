@@ -4,7 +4,7 @@ layout: home
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
   text: "Mathematical Optimization Modeler for TypeScript"
-  tagline: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT). Bring the modeling DX of PuLP and JuMP to TypeScript with native WebAssembly solvers.
+  tagline: WebAssembly Algebraic System for Hybrid & Integer modeling (LP, MIP, QP, SMT). Native mathematical optimization for TypeScript with high-performance WebAssembly solvers.
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem
@@ -25,7 +25,7 @@ features:
     details: Solve industrial optimization problems entirely inside WebAssembly. Private, offline-ready, with zero backend infrastructure expenses.
   - icon: ✍️
     title: Intuitive Algebraic Modeling
-    details: Bring the DX of Python's PuLP & JuMP to TypeScript. Formulate models naturally with tagged template literals (expr`...`, c`...`) or drop-in PuLP syntax.
+    details: Domain-pure variables (m.binary, m.integer, m.continuous), formula templates (expr`...`), vector aggregations (dot, sum), and first-class constraints (m.constrain).
   - icon: ⚡
     title: Industrial Multi-Solver Architecture
     details: Built-in default HiGHS solver (LP/MIP/QP) with pluggable adapters for Z3 (SMT logic & conflict diagnosis) and GLPK.

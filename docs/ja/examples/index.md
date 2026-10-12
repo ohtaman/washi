@@ -43,7 +43,6 @@ npx tsx examples/node/02-knapsack-problem.ts
 npx tsx examples/node/03-portfolio-qp.ts
 npx tsx examples/node/04-smt-security-rules.ts
 npx tsx examples/node/05-unsat-core-diagnosis.ts
-npx tsx examples/node/06-pulp-compatibility.ts
 npx tsx examples/node/07-hybrid-smt-mip.ts
 npx tsx examples/node/08-glpk-solver-plugin.ts
 npx tsx examples/node/09-transportation-problem.ts

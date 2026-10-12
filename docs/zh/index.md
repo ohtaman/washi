@@ -25,7 +25,7 @@ features:
     details: 完全在 WebAssembly 中求解工业级混合整数优化问题。离线可用、数据绝对私密（敏感商业数据无需上传至云端）。
   - icon: ✍️
     title: 直观优雅的代数建模体验
-    details: 将 Python PuLP 与 Julia JuMP 的开发体验带入 TypeScript。通过标签模板字面量（expr`...`, c`...`）自然地编写数学表达式。
+    details: 直观的领域变量（m.binary, m.integer, m.continuous）、公式模板（expr`...`）、向量聚合（dot, sum）与首选约束语法（m.constrain）。
   - icon: ⚡
     title: 工业级多求解器架构
     details: 内置默认 HiGHS（LP/MIP/QP），并无缝支持插件化接入 Z3（SMT 逻辑与约束冲突诊断）及 GLPK。

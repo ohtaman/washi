@@ -10,7 +10,7 @@ import {
   type Solver,
 } from "../src/modeler/index.js";
 
-describe("Pluggable Solvers Architecture (PuLP-like Solver Switching)", () => {
+describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
   it("lists default available solvers", () => {
     const solvers = listAvailableSolvers();
     expect(solvers).toContain("highs");

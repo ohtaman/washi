@@ -51,13 +51,12 @@ use `@ohtaman/washi` and import the required solver plugin.
 | [Portfolio allocation](node/03-portfolio-qp.ts) | Continuous weights, a quadratic variance objective, and budget / return constraints | `new QuadExpr()`, `v1.mul(v2)` | HiGHS |
 | [SMT / MIP workflow](node/07-hybrid-smt-mip.ts) | Separate policy verification and capacity allocation models | `addBoolVar()`, `addIndicator()` | Z3 + HiGHS |
 
-### 3. SMT Logic, Adapters & Compatibility
+### 3. SMT Logic & Solver Adapters
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
 | [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `addBoolVar()`, `.implies()`, `check()` | Z3 |
 | [Conflict diagnosis](node/05-unsat-core-diagnosis.ts) | Inconsistent staffing / budget rules and a conflicting constraint subset | `check()`, `unsatCore` | Z3 |
-| [PuLP-style helpers](node/06-pulp-compatibility.ts) | `LpProblem`, `LpVariable`, `lpSum`, and result access | `LpProblem`, `value()` | HiGHS |
 | [GLPK adapter](node/08-glpk-solver-plugin.ts) | A diet model, plugin selection, an objective value, and row duals | `solver: "glpk"` | GLPK |
 
 For example:

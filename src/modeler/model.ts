@@ -34,8 +34,8 @@ export interface IndicatorOptions {
 }
 
 /**
- * High-level intuitive mathematical programming model.
- * Inspired by PuLP (Python) and python-mip, running directly with HiGHS WASM in browser and Node.js.
+ * High-level mathematical programming model for LP, MIP, QP, and SMT,
+ * running directly with WebAssembly solvers (HiGHS, Z3, GLPK) in browser and Node.js.
  */
 export interface LogicalConstraint {
   name: string;
@@ -670,7 +670,7 @@ export class Model {
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
-   * or a solver passed dynamically (PuLP style: prob.solve(solver))
+   * or a solver passed dynamically (e.g., await model.optimize(new HiGHS()))
    */
   async optimize(
     solverOrOptions?: Solver | string | SolveOptions,
@@ -826,7 +826,7 @@ export class Model {
   }
 
   /**
-   * PuLP style alias for optimize:
+   * Convenience alias for optimize():
    * await model.solve()
    * await model.solve(new HiGHS())
    * await model.solve(new GLPK())

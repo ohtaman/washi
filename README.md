@@ -49,7 +49,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 ## 🎯 What WaSHI provides
 
-1. **Algebraic model construction**: Use typed variables, indexed variable collections, tagged templates (`expr` and `c`), and fluent expressions. The `Model` API and PuLP-style helpers provide alternative ways to describe the same model.
+1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constrain`).
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
 4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect an unsatisfiable core to investigate conflicting constraints. A returned core is a conflicting subset, not necessarily the smallest one.
