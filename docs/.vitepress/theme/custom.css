@@ -753,3 +753,13 @@
   overflow-x: auto;
 }
 
+.vp-doc td ul {
+  margin: 0 !important;
+  padding-left: 1.15rem !important;
+}
+
+.vp-doc td li {
+  margin: 2px 0 !important;
+  white-space: nowrap;
+}
+

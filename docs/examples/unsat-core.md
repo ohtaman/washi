@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Infeasibility Diagnosis / Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.check()`, `m.unsatCore` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
+| Infeasibility Diagnosis / Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.check()`, `m.unsatCore` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">Source Code</a></li></ul> |
 
 When business rules, budgets, and operational policies grow complex, constraints inevitably conflict. Traditional solvers simply report "Infeasible", leaving engineers to guess which of hundreds of rules caused the contradiction.
 

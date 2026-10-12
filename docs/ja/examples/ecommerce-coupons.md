@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 混合整数計画問題 (MIP) | HiGHS (標準) | `m.addIndicator()`, `type: "Binary"`, `sum()` | [Playground で開く](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) · [ソースコード](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) |
+| 混合整数計画問題 (MIP) | HiGHS (標準) | `m.addIndicator()`, `type: "Binary"`, `sum()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">ソースコード</a></li></ul> |
 
 ECサイトのカート・決済画面では、「〇〇円以上で使えるクーポン」「特定カテゴリ限定割引」「他クーポンとの併用不可（排他条件）」「最大2枚まで」といった複雑なプロモーションルールが絡み合います。
 

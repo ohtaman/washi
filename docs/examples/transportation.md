@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `m.addVars(rows, cols)`, `sum()`, `constr.dual` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=transportation) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) |
+| Linear Programming (LP) | HiGHS (default) | `m.addVars(rows, cols)`, `sum()`, `constr.dual` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">Source Code</a></li></ul> |
 
 The transportation problem is one of the most fundamental network optimization models: determine how many units to ship from each supply origin (factory) to each destination (store) to minimize total shipping cost while respecting factory supply limits and meeting store demands.
 

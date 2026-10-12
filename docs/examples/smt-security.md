@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `.implies()`, `.and()`, `m.check()` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.addBoolVar()`, `.implies()`, `.and()`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 

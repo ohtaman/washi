@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `constr.dual`, `constr.slack`, `var.reducedCost` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) |
+| Linear Programming (LP) | HiGHS (default) | `constr.dual`, `constr.slack`, `var.reducedCost` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
 
 When solving a Linear Programming model, the optimal variable values (`var.value`) are only half the story. In practice, decision-makers need to know:
 

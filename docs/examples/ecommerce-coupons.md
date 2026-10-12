@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.addIndicator()`, `type: "Binary"`, `sum()` | [Open in Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) · [Source Code](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) |
+| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.addIndicator()`, `type: "Binary"`, `sum()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
 
 Modern e-commerce checkouts often feature complex promotional rules: minimum spend thresholds, category-specific discounts, stackable vs. mutually exclusive coupons, and maximum coupon limits per order. Running an optimizer directly in the browser (or an edge worker) lets the checkout UI automatically apply the best coupon combination—and even recommend a small "filler" item when crossing a spend threshold lowers the customer's net bill.
 

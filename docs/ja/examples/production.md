@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.addVar()`, `expr`, `c` | [Playground で開く](https://ohtaman.github.io/washi/demo/?preset=production) · [ソースコード](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) |
+| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.addVar()`, `expr`, `c` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
 
 限られたリソース（木材・労働時間など）の制約を守りながら、どの製品をいくつ生産すれば総利益が最大になるかを求める古典的な最適化問題です。
 

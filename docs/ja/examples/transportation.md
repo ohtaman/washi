@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画問題 (LP) | HiGHS (標準) | `m.addVars(rows, cols)`, `sum()`, `constr.dual` | [Playground で開く](https://ohtaman.github.io/washi/demo/?preset=transportation) · [ソースコード](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) |
+| 線形計画問題 (LP) | HiGHS (標準) | `m.addVars(rows, cols)`, `sum()`, `constr.dual` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">ソースコード</a></li></ul> |
 
 複数の工場（供給拠点）から複数の店舗（需要拠点）へ商品を配送する際、各工場の供給能力上限と各店舗の需要量を満たしながら、総輸送コストを最小化する定番の線形計画問題です。
 
