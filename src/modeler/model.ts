@@ -698,6 +698,13 @@ export class Model {
       );
     }
 
+    // Capability check: Validate if solver supports SMT / logical constraints
+    if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
+      throw new Error(
+        `Solver "${activeSolver.name}" does not support SMT / logical constraints (or, implies, not, xor). Please use an SMT-capable solver such as Z3.`
+      );
+    }
+
     const modelData = {
       name: this.name,
       sense: this.sense,
