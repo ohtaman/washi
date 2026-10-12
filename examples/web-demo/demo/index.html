@@ -86,15 +86,6 @@
           </div>
         </div>
 
-        <!-- Problem Context & API Tags Bar -->
-        <div id="preset-context-bar" class="preset-context-bar" aria-live="polite">
-          <div class="preset-context-main">
-            <span id="preset-category-badge" class="preset-cat-badge">MIP</span>
-            <span id="preset-desc-text" class="preset-desc-text"></span>
-          </div>
-          <div id="preset-api-tags" class="preset-api-tags"></div>
-        </div>
-
         <div class="editor-wrapper">
           <div id="line-numbers" class="line-numbers" aria-hidden="true"></div>
           <textarea
@@ -210,30 +201,6 @@
                   </tr>
                 </thead>
                 <tbody id="vars-tbody">
-                  <!-- Dynamically populated -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Constraints & Sensitivity (Duals / Slacks) Table -->
-          <div id="constrs-panel" class="panel-section">
-            <div class="section-title">
-              <span data-i18n="constrsTableTitle">Constraints &amp; Sensitivity (Dual / Slack)</span>
-              <span class="section-subtitle" data-i18n="constrsTableSubtitle">Shadow prices (dual) and surpluses (slack) for linear constraints</span>
-            </div>
-            <div class="data-table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th data-i18n="colConstrName">Constraint</th>
-                    <th data-i18n="colConstrRhs">Relation &amp; RHS</th>
-                    <th data-i18n="colConstrStatus">Status</th>
-                    <th data-i18n="colConstrSlack">Slack</th>
-                    <th data-i18n="colConstrDual">Shadow Price (Dual)</th>
-                  </tr>
-                </thead>
-                <tbody id="constrs-tbody">
                   <!-- Dynamically populated -->
                 </tbody>
               </table>

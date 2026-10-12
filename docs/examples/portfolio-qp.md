@@ -2,6 +2,8 @@
 
 The Markowitz mean-variance portfolio optimization problem is the foundation of modern quantitative finance: allocate capital across risky assets to minimize overall portfolio variance (risk) subject to achieving a minimum required expected return.
 
+<PortfolioQpDemo />
+
 ---
 
 ## Mathematical Formulation

@@ -263,6 +263,21 @@ export default withMermaid(
     },
   },
   vite: {
+    assetsInclude: ["**/*.wasm"],
+    optimizeDeps: {
+      exclude: ["highs"],
+    },
+    worker: {
+      format: "es",
+    },
+    resolve: {
+      alias: [
+        {
+          find: /^(.*\/highs\/worker)\.js$/,
+          replacement: "$1.ts",
+        },
+      ],
+    },
     server: {
       headers: {
         "Cross-Origin-Opener-Policy": "same-origin",

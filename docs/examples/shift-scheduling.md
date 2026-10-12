@@ -9,6 +9,8 @@ This example shows how to combine WaSHI's two strengths in one workflow:
 1. **Optimize Feasible Schedules with HiGHS:** Generate a cost-minimal weekly roster respecting daily headcount, senior shift leadership, max working days, and vacation requests.
 2. **Pinpoint Conflicting Requests with Z3 (`unsatCore`):** When overlapping vacation requests make the schedule infeasible, extract a conflicting constraint subset (`unsatCore`) so your UI can tell the manager *which day's coverage rule and whose day-off requests collided*.
 
+<ShiftSchedulingDemo />
+
 ---
 
 ## Scenario & Rules

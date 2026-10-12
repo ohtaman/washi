@@ -7,6 +7,8 @@ Modern e-commerce checkouts often feature complex promotional rules: minimum spe
 
 This example demonstrates **`m.addIndicator(binVar, constraint, { activeValue, M })`**, which automatically linearizes conditional *"if coupon is selected, minimum spend must hold"* constraints using Big-M reformulation for MIP solvers like HiGHS.
 
+<EcommerceCouponDemo />
+
 ---
 
 ## Scenario & Promotion Rules
