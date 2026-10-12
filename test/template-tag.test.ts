@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, LinExpr, c, expr } from "../src/index.js";
+import { Model, Var, LinExpr, Constraint, QuadExpr, c, expr } from "../src/index.js";
 
 describe("Tagged Template Literal Syntax (c and expr)", () => {
   it("parses linear expression with variables and numbers via expr`...`", () => {
@@ -107,5 +107,60 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
     // Missing comparison operator
     expect(() => c`2 * ${x} + 5`).toThrow(/Constraint must contain a comparison operator/);
+  });
+
+  it("supports quadratic expressions and rejects degree > 2 or quadratic constraints in expr and c", () => {
+    const m = new Model();
+    const x = m.continuous("x");
+    const y = m.continuous("y");
+    const z = m.continuous("z");
+
+    const q = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+    expect(q).toBeInstanceOf(QuadExpr);
+    if (q instanceof QuadExpr) {
+      expect(q.getQuadCoeff(x, y)).toBe(1);
+      expect(q.getQuadCoeff(x, x)).toBe(2);
+    }
+
+    const qPower = expr`${x}^2 + ${y}**2`;
+    expect(qPower).toBeInstanceOf(QuadExpr);
+    if (qPower instanceof QuadExpr) {
+      expect(qPower.getQuadCoeff(x, x)).toBe(1);
+      expect(qPower.getQuadCoeff(y, y)).toBe(1);
+    }
+
+    expect(() => expr`${x} * ${y} * ${z}`).toThrow(
+      /non-linear term of degree > 2/
+    );
+    expect(() => expr`${x}^3`).toThrow(
+      /non-linear term of degree > 2/
+    );
+    expect(() => c`${x} * ${y} <= 10`).toThrow(
+      /Quadratic constraints are not supported/
+    );
+  });
+
+  it("parses linear, quadratic, and inline constraint expressions as documented in expressions guide", () => {
+    const m = new Model();
+    const x = m.continuous("x", { lb: 0 });
+    const y = m.continuous("y", { lb: 0 });
+
+    // 1. Linear combination: 3*x + 5*y - 10
+    const linearExpr = expr`3 * ${x} + 5 * ${y} - 10` as LinExpr;
+    expect(linearExpr.terms.get(x)).toBe(3);
+    expect(linearExpr.terms.get(y)).toBe(5);
+    expect(linearExpr.constant).toBe(-10);
+
+    // 2. Quadratic expression: x * y + 2 * x^2
+    const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}` as QuadExpr;
+    expect(quadExpr.getQuadCoeff(x, y)).toBe(1);
+    expect(quadExpr.getQuadCoeff(x, x)).toBe(2);
+
+    // 3. Inline linear constraint
+    const balanceConstraint = expr`${x} + 2 * ${y} <= 40` as Constraint;
+    expect(balanceConstraint.sense).toBe("<=");
+    expect(balanceConstraint.rhs).toBe(40);
+    expect(balanceConstraint.lhs.terms.get(x)).toBe(1);
+    expect(balanceConstraint.lhs.terms.get(y)).toBe(2);
   });
 });

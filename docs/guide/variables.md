@@ -48,15 +48,21 @@ const alarmTriggered = m.bool("alarmTriggered");
 m.constrain(alarmTriggered.implies(isNight), "alarm_policy");
 ```
 
-### 5. Semi-Continuous Variables
-Can either be `0`, or take a value within `[lb, ub]`. Useful for minimum active production run constraints:
+### 💡 Modeling Semi-Continuous Decisions
+Semi-continuous variables take values in $\{0\} \cup [L, U]$ (either zero or between a positive lower and upper bound, useful for minimum production batches or operational thresholds).
+
+While not a primitive `VarType` in `Model`, semi-continuous behavior is cleanly modeled by combining a continuous variable with a binary indicator variable and linking constraints ($L \cdot b \le x \le U \cdot b$):
 
 ```typescript
-const batch = m.continuous("batch", {
-  type: "SemiContinuous",
-  lb: 10, // Must produce at least 10 if active
-  ub: 100,
-});
+import { Model, expr } from "@ohtaman/washi";
+
+const m = new Model();
+const batch = m.continuous("batch", { lb: 0, ub: 100 });
+const isActive = m.binary("is_active");
+
+// If isActive === 0, batch is forced to 0; if 1, batch is within [10, 100]
+m.constrain(expr`${batch} >= 10 * ${isActive}`, "min_batch_run");
+m.constrain(expr`${batch} <= 100 * ${isActive}`, "max_batch_run");
 ```
 
 ---
@@ -109,7 +115,7 @@ const grid = m.bool(["alice", "bob"], ["admin", "viewer"]);
 | :--- | :--- | :--- | :--- |
 | `lb` | `number` | `0` | Lower bound. Defaults to 0 (non-negative). |
 | `ub` | `number` | `Infinity` (or `1` for binary) | Upper bound. |
-| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` \| `"SemiContinuous"` | Inferred from method | Underlying variable domain category. |
+| `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying variable domain category. |
 
 ---
 

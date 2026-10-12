@@ -55,8 +55,8 @@ docs/
 │   ├── runtimes.md              # Node.js, ブラウザ, Next.js/SSR, Bun, Deno
 │   └── cross-origin.md          # Z3 / SharedArrayBuffer / COOP・COEP / ワークアラウンド
 ├── guide/
-│   ├── variables.md             # 変数 (Continuous, Integer, Binary, SemiContinuous)
-│   ├── expressions.md           # 線形・2次式、expr`...`, quicksum, lpSum
+│   ├── variables.md             # 変数 (Continuous, Integer, Binary, 半連続の定式化)
+│   ├── expressions.md           # 数式 (LinExpr, QuadExpr, expr`...`, sum, dot)
 │   ├── constraints.md           # 等式・不等式制約、c`...` 構文
 │   ├── objectives.md            # maximize / minimize, LP, MIP, QP
 │   ├── pulp-compat.md           # Python PuLP / python-mip からの移行ガイド

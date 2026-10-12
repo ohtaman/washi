@@ -1,4 +1,4 @@
-import type { Var } from "./variable.js";
+import { Var } from "./variable.js";
 import { Constraint } from "./constraint.js";
 import { QuadExpr } from "./quad-expr.js";
 
@@ -26,6 +26,7 @@ export class LinExpr {
    */
   add(other: QuadExpr): QuadExpr;
   add(other: LinExpr | Var | number): LinExpr;
+  add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr;
   add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.add(this);
@@ -63,6 +64,7 @@ export class LinExpr {
    */
   sub(other: QuadExpr): QuadExpr;
   sub(other: LinExpr | Var | number): LinExpr;
+  sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr;
   sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.neg().add(this);
@@ -77,11 +79,14 @@ export class LinExpr {
   }
 
   /**
-   * Multiply this expression by a scalar coefficient or variable
+   * Multiply this expression by a scalar coefficient, variable, or expression
    */
   mul(scalar: number): LinExpr;
   mul(v: Var): QuadExpr;
-  mul(operand: number | Var): LinExpr | QuadExpr {
+  mul(other: LinExpr): LinExpr | QuadExpr;
+  mul(other: QuadExpr): QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof operand === "number") {
       const result = new LinExpr(new Map(), this.constant * operand);
       for (const [v, c] of this.terms) {
@@ -92,13 +97,67 @@ export class LinExpr {
       }
       return result;
     }
-    // operand is Var: (c0 + sum(ci * xi)) * v = c0 * v + sum(ci * xi * v)
-    let result = new QuadExpr();
-    if (Math.abs(this.constant) >= 1e-12) {
-      result.linearTerms.set(operand, this.constant);
+    const isVar = operand instanceof Var || (typeof operand === "object" && operand !== null && "id" in operand && !("terms" in operand) && !("quadTerms" in operand));
+    if (isVar) {
+      const vOperand = operand as Var;
+      let result = new QuadExpr();
+      if (Math.abs(this.constant) >= 1e-12) {
+        result.linearTerms.set(vOperand, this.constant);
+      }
+      for (const [v, c] of this.terms) {
+        result = result.add(QuadExpr.fromProduct(v, vOperand, c));
+      }
+      return result;
     }
-    for (const [v, c] of this.terms) {
-      result = result.add(QuadExpr.fromProduct(v, operand, c));
+    if (operand instanceof QuadExpr) {
+      if (operand.quadTerms.size > 0 && this.terms.size > 0) {
+        throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+      }
+      if (this.terms.size === 0) {
+        return operand.mul(this.constant);
+      }
+      let result = new QuadExpr();
+      result.constant = this.constant * operand.constant;
+      if (Math.abs(operand.constant) >= 1e-12) {
+        for (const [v, c] of this.terms) {
+          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
+        }
+      }
+      if (Math.abs(this.constant) >= 1e-12) {
+        for (const [v, c] of operand.linearTerms) {
+          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
+        }
+      }
+      for (const [v1, c1] of this.terms) {
+        for (const [v2, c2] of operand.linearTerms) {
+          result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+        }
+      }
+      return result;
+    }
+    // operand is LinExpr
+    if (this.terms.size === 0) {
+      return operand.mul(this.constant);
+    }
+    if (operand.terms.size === 0) {
+      return this.mul(operand.constant);
+    }
+    let result = new QuadExpr();
+    result.constant = this.constant * operand.constant;
+    if (Math.abs(operand.constant) >= 1e-12) {
+      for (const [v, c] of this.terms) {
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
+      }
+    }
+    if (Math.abs(this.constant) >= 1e-12) {
+      for (const [v, c] of operand.terms) {
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
+      }
+    }
+    for (const [v1, c1] of this.terms) {
+      for (const [v2, c2] of operand.terms) {
+        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+      }
     }
     return result;
   }

@@ -23,7 +23,7 @@ const model = new Model({ solver: "highs" });
 const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
 model.maximize(expr`10 * ${x} + 6 * ${y}`);
-model.constrain(c`${x} + ${y} <= 100`);
+model.constrain(expr`${x} + ${y} <= 100`);
 await model.solve();
 ```
 
@@ -38,18 +38,22 @@ const count = model.integer("count", { lb: 0, ub: 50 });
 Solves quadratic objective functions subject to linear constraints:
 
 ```typescript
-// Minimize risk/variance: 0.5 * x^2 + 0.5 * y^2
-model.minimize(expr`0.5 * ${x} * ${x} + 0.5 * ${y} * ${y}`);
+// Minimize risk/variance uniformly using expr:
+model.minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`);
+
+// Or programmatically with .mul():
+// const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
+// model.minimize(quadObj);
 ```
 
 ---
 
 ## Solver Options
 
-Pass solver options into `model.solve()`:
+Pass solver options into `model.optimize()`:
 
 ```typescript
-await model.solve({
+await model.optimize({
   timeLimit: 60.0,       // Maximum solve time in seconds
   mipGap: 0.001,         // Terminate when within 0.1% of global optimality
   verbose: true,         // Output internal simplex / branch-and-bound logs

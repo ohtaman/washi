@@ -17,19 +17,28 @@ const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
-// 線形結合: 3*x + 5*y - 10
+// 1. 線形結合: 3*x + 5*y - 10
 const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 
-// 2次式: x * y + 2 * x^2
+// 2. 2次式: x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+
+// 3. インライン線形制約
+const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### `expr` でサポートされる構文
 - **加算と減算**: `${x} + ${y} - 5`
-- **乗算**: `4 * ${x}`, `${x} * 4`, `${x} * ${y}`
+- **スカラー乗算**: `4 * ${x}`, `${x} * 4`
+- **変数同士の乗算（2次項）**: `${x} * ${y}`, `2 * ${x} * ${x}`
+- **べき乗・二乗**: `${x}^2`, `${x}**2`
 - **単項マイナス**: `-${x} + 10`
 - **丸括弧**: `2 * (${x} + ${y})`
+- **線形比較**: `${x} + 2 * ${y} <= 40`, `${x} >= 10`, `${x} == ${y}`
 - **ネスト式**: 変数、数値、`sum()` の結果、およびネストした式を自然に埋め込めます。
+
+> [!NOTE]
+> `expr` は線形式および2次式（次数2以下）を統一的に扱えます。2次項が含まれる場合は `QuadExpr` を返し、すべて線形項の場合は `LinExpr` を返します。次数3以上の非線形多項式（例: `${x} * ${y} * ${z}`, `${x}^3`）や非線形制約（例: `${x} * ${y} <= 10`）は、MILP/LP/QP の定式化要件（線形制約かつ次数2以下の目的関数）に基づきエラーとなります。
 
 ---
 
@@ -90,17 +99,45 @@ m.minimize(dot(costs, ship));
 
 ---
 
-## 🧮 2次式 (`QuadExpr`)
+## 🧮 2次式 (`QuadExpr` & `expr`)
 
-WaSHI は HiGHS ソルバーによる凸2次計画問題（QP）を標準でサポートしています。
+WaSHI は HiGHS ソルバーによる凸2次計画問題（QP）を標準でサポートしています。2次目的関数は、`expr` テンプレートリテラルを用いて直感的に記述することも、`QuadExpr` や `.mul()` メソッドを使って代数的に構築することも可能です：
+
+### 1. `expr` による統一的な記述（推奨）
+`*` や `^2`, `**2` を用いて、直感的に2次目的関数を記述できます：
 
 ```typescript
-import { QuadExpr } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+// expr による2次目的関数:
+m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
+
+// 線形制約:
+m.addConstraint(expr`${x} + ${y} >= 4`);
+```
+
+### 2. `.mul()` や `QuadExpr` による構築
+プログラム的に2次式を組み立てることも可能です：
+
+```typescript
+import { Model, QuadExpr } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+// 1. .mul() による2次項の構築:
+// x * y + 2 * x^2 を表現
+const quad = x.mul(y).add(x.mul(x).mul(2));
+
+// 2. 2次目的関数（ポートフォリオのリスク項 w^T * Sigma * w など）の構築:
 const assets = ["Tech", "Bonds"];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
-// リスク項 w^T * Sigma * w を構築
 let risk = new QuadExpr();
 risk = risk.add(w.Tech.mul(w.Tech).mul(0.04));
 risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
