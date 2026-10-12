@@ -47,7 +47,7 @@ describe("HiGHS status mapping", () => {
 
   it("returns Unknown and preserves raw result when HiGHS returns an unknown or missing status", async () => {
     vi.spyOn(workerClient, "solveLp").mockResolvedValueOnce({
-      result: { Status: undefined as unknown as string, Columns: {}, Rows: [] },
+      result: { Status: undefined as unknown as string, Columns: {}, Rows: [] } as any,
       runTime: 0.01,
     });
 
@@ -62,9 +62,7 @@ describe("HiGHS status mapping", () => {
       },
       {
         lpString: "Minimize\n obj: 0\nEnd",
-        varToName: new Map(),
         nameToVar: new Map(),
-        constraintToName: new Map(),
         nameToConstraint: new Map(),
       }
     );

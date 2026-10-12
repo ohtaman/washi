@@ -9,7 +9,7 @@ import { Z3Solver } from "../../src/modeler/solvers/z3.js";
  * 1. Diagnostic Step (Z3 SMT): Verify satisfiability of discrete business rules
  *    and ensure no logical deadlocks exist before committing to optimization.
  * 2. Optimization Step (HiGHS MIP): Carry over verified deployment decisions
- *    and use Big-M auto-linearization (`addIndicator`) to find optimal capacity allocation.
+ *    and use Big-M auto-linearization (`indicator`) to find optimal capacity allocation.
  */
 export interface RunPipelineOptions {
   scenarioName: string;
@@ -49,10 +49,10 @@ export async function runHybridPipeline({
   console.log("Step 1: Checking propositional policy feasibility with Z3...");
   const policyModel = new Model({ name: "CloudDeploymentPolicy", solver: new Z3Solver() });
 
-  const deployEurope = policyModel.addBoolVar("deployEurope");
-  const deployUS = policyModel.addBoolVar("deployUS");
-  const complianceGDPR = policyModel.addBoolVar("complianceGDPR");
-  const budgetTierHigh = policyModel.addBoolVar("budgetTierHigh");
+  const deployEurope = policyModel.bool("deployEurope");
+  const deployUS = policyModel.bool("deployUS");
+  const complianceGDPR = policyModel.bool("complianceGDPR");
+  const budgetTierHigh = policyModel.bool("budgetTierHigh");
 
   // Rule 1: Europe requires GDPR compliance: deployEurope -> complianceGDPR
   policyModel.constrain(deployEurope.implies(complianceGDPR), "r1_gdpr");
@@ -119,12 +119,12 @@ export async function runHybridPipeline({
   // Big-M Indicator Constraints:
   // If openEU == 0 -> capEU <= 0 (cannot route traffic if cluster is offline)
   // If openUS == 0 -> capUS <= 0
-  mip.addIndicator(openEU, capEU.le(0), { activeValue: 0, M: 500, name: "eu_offline" });
-  mip.addIndicator(openUS, capUS.le(0), { activeValue: 0, M: 500, name: "us_offline" });
+  mip.indicator(openEU, capEU.le(0), { activeValue: 0, M: 500, name: "eu_offline" });
+  mip.indicator(openUS, capUS.le(0), { activeValue: 0, M: 500, name: "us_offline" });
 
   // Minimum activation batch (at least 50 TB/s if activated)
-  mip.addIndicator(openEU, capEU.ge(50), { activeValue: 1, M: 500, name: "eu_min_batch" });
-  mip.addIndicator(openUS, capUS.ge(50), { activeValue: 1, M: 500, name: "us_min_batch" });
+  mip.indicator(openEU, capEU.ge(50), { activeValue: 1, M: 500, name: "eu_min_batch" });
+  mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500, name: "us_min_batch" });
 
   // Demand requirement: total traffic >= 450 TB/s
   mip.constrain(expr`${capEU} + ${capUS} >= 450`, "total_demand");

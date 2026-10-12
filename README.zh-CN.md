@@ -207,10 +207,10 @@ import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
 
-const isNight = m.addBoolVar("isNight");
-const motion = m.addBoolVar("motion");
-const alarm = m.addBoolVar("alarm");
-const siren = m.addBoolVar("siren");
+const isNight = m.bool("isNight");
+const motion = m.bool("motion");
+const alarm = m.bool("alarm");
+const siren = m.bool("siren");
 const lux = m.integer("lux", { lb: 0 });
 
 // 规则定义
@@ -242,7 +242,7 @@ import "@ohtaman/washi/solvers/z3";
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
 const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-const rushDelivery = m.addBoolVar("rushDelivery");
+const rushDelivery = m.bool("rushDelivery");
 
 // 规则 1: 每位工程师成本 $8,000
 m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
@@ -377,7 +377,7 @@ await model.solve();
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
-  const x = model.addVar({ lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x);
   await model.solve();
   console.log("GLPK 求解状态:", model.status);
@@ -390,7 +390,7 @@ await model.solve();
 <script src="./washi/solvers/glpk.min.js"></script>
 <script>
   const model = new Washi.Model({ solver: "glpk" });
-  const x = model.addVar({ lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x);
   model.solve().then(status => console.log("GLPK 求解状态:", status));
 </script>
@@ -447,12 +447,12 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 | 类别 | 示例 | 展示内容 | 求解器 |
 | :--- | :--- | :--- | :--- |
 | **基础模型** | [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 (`expr`, `c`) | HiGHS |
-| **基础模型** | [运输与分配网络](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 二维矩阵变量 (`addVars(rows, cols)`) 与供需平衡 | HiGHS |
+| **基础模型** | [运输与分配网络](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 二维矩阵变量 (`continuous(rows, cols)`) 与供需平衡 | HiGHS |
 | **基础模型** | [营养问题与灵敏度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 影子价格 (`constr.dual`)、松弛量 (`constr.slack`) 与缩减成本 (`var.reducedCost`) | HiGHS |
 | **实战应用** | [员工排班与冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 周排班优化与周六休假冲突诊断 | HiGHS + Z3 |
-| **实战应用** | [购物车优惠券最优组合](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 满减门槛条件约束 (`addIndicator`)、互斥规则与凑单推荐 | HiGHS |
+| **实战应用** | [购物车优惠券最优组合](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 满减门槛条件约束 (`indicator`)、互斥规则与凑单推荐 | HiGHS |
 | **实战应用** | [投资组合分配](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目标函数 (`QuadExpr`) 与分配约束 | HiGHS |
-| **逻辑 / SMT** | [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束 (`addBoolVar`, `implies`) 的可满足性检查 | Z3 |
+| **逻辑 / SMT** | [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束 (`bool`, `implies`) 的可满足性检查 | Z3 |
 | **逻辑 / SMT** | [冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 命名约束与 Unsat Core (`unsatCore`) | Z3 |
 
 在[在线浏览器演示](https://ohtaman.github.io/washi/demo/)中可以编辑并运行模型。浏览器 ESM、script 标签和 CodePen 的用法请参阅[分发示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)。Z3 需要跨源隔离；具体要求见上方浏览器说明。

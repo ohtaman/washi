@@ -2,11 +2,11 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constrain()`, `m.addIndicator()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
+| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constrain()`, `m.indicator()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
 
 Modern e-commerce checkouts often feature complex promotional rules: minimum spend thresholds, category-specific discounts, stackable vs. mutually exclusive coupons, and maximum coupon limits per order. Running an optimizer directly in the browser (or an edge worker) lets the checkout UI automatically apply the best coupon combination—and even recommend a small "filler" item when crossing a spend threshold lowers the customer's net bill.
 
-This example demonstrates **`m.addIndicator(binVar, constraint, { activeValue, M })`**, which automatically linearizes conditional *"if coupon is selected, minimum spend must hold"* constraints using Big-M reformulation for MIP solvers like HiGHS.
+This example demonstrates **`m.indicator(binVar, constraint, { activeValue, M })`**, which automatically linearizes conditional *"if coupon is selected, minimum spend must hold"* constraints using Big-M reformulation for MIP solvers like HiGHS.
 
 <EcommerceCouponDemo />
 
@@ -59,14 +59,14 @@ async function optimizeCheckoutCart() {
   // 1. Indicator constraints: If useCoupon[id] == 1, minimum spend threshold must hold
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
-      m.addIndicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCart), {
+      m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCart), {
         activeValue: 1,
         M: 500,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTech > 0) {
-      m.addIndicator(useCoupon[cpn.id], techSpend.ge(cpn.minTech), {
+      m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTech), {
         activeValue: 1,
         M: 500,
         name: `min_tech_${cpn.id}`,

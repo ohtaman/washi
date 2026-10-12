@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Model, sum } from "../src/index.js";
 
-describe("Indexed Multi-dimensional Variables (addVars)", () => {
+describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
   it("creates a 1D record of variables from an array of string keys", () => {
     const m = new Model("FacilityLocation");
     const cities = ["Tokyo", "Osaka", "Nagoya"];
 
-    const x = m.addVars(cities, { lb: 0, ub: 1, type: "Binary", prefix: "open" });
+    const x = m.binary(cities, { prefix: "open" });
 
     expect(x["Tokyo"]).toBeDefined();
     expect(x["Osaka"]).toBeDefined();
@@ -20,7 +20,7 @@ describe("Indexed Multi-dimensional Variables (addVars)", () => {
     const factories = ["F1", "F2"];
     const stores = ["S1", "S2", "S3"];
 
-    const ship = m.addVars(factories, stores, { lb: 0, type: "Continuous", prefix: "ship" });
+    const ship = m.continuous(factories, stores, { lb: 0, prefix: "ship" });
 
     expect(ship["F1"]["S1"]).toBeDefined();
     expect(ship["F1"]["S3"]).toBeDefined();
@@ -31,7 +31,7 @@ describe("Indexed Multi-dimensional Variables (addVars)", () => {
   it("creates a 2D grid from integer dimensions (e.g. 8x8 chessboard)", () => {
     const m = new Model("NQueens");
 
-    const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
+    const board = m.binary(8, 8, { prefix: "queen" });
 
     expect(board[0][0]).toBeDefined();
     expect(board[7][7]).toBeDefined();
@@ -39,7 +39,7 @@ describe("Indexed Multi-dimensional Variables (addVars)", () => {
     expect(board[3][4].type).toBe("Binary");
   });
 
-  it("solves an assignment problem formulated cleanly with addVars", async () => {
+  it("solves an assignment problem formulated cleanly with domain binary", async () => {
     const m = new Model("WorkerTaskAssignment");
     const workers = ["Alice", "Bob", "Charlie"];
     const tasks = ["Task1", "Task2", "Task3"];
@@ -52,16 +52,16 @@ describe("Indexed Multi-dimensional Variables (addVars)", () => {
     };
 
     // x[worker][task] = 1 if worker assigned to task
-    const x = m.addVars(workers, tasks, { type: "Binary" });
+    const x = m.binary(workers, tasks);
 
     // Each worker assigned to exactly 1 task
     for (const w of workers) {
-      m.addConstraint(sum(tasks.map((t) => x[w][t])).eq(1), `worker_${w}`);
+      m.constrain(sum(tasks.map((t) => x[w][t])).eq(1), `worker_${w}`);
     }
 
     // Each task assigned to exactly 1 worker
     for (const t of tasks) {
-      m.addConstraint(sum(workers.map((w) => x[w][t])).eq(1), `task_${t}`);
+      m.constrain(sum(workers.map((w) => x[w][t])).eq(1), `task_${t}`);
     }
 
     // Objective: Minimize total cost

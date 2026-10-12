@@ -13,7 +13,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 | **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 8名×7日のシフト作成（必要人数・シニア配置・週上限・希望休）と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
 | **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `sum()`, `m.constrain()` | `m.indicator()` を用いた最低購入金額条件、併用不可ルール、さらに追加購入による上位割引解放の同時計算。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
 | **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `m.continuous()`, `m.constrain()`, `dot()`, `QuadExpr` | マーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
-| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.addBoolVar()`, `m.constrain()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
+| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.bool()`, `m.constrain()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
 | **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constrain()`, `m.check()`, `m.unsatCore` | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
 
 ## WaSHI API・機能からの逆引きインデックス
@@ -30,7 +30,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 | `var.reducedCost` | 変数の被約費用（Reduced Cost）の取得 | [栄養問題と感度分析](./diet-sensitivity.md) | [`10-diet-sensitivity.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) |
 | `m.indicator()` | 条件付き制約（Big-M 自動線形化） | [ECカートのクーポン最適適用](./ecommerce-coupons.md) | [`12-ecommerce-coupon-optimizer.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) |
 | `new QuadExpr()` | 凸二次目的関数（$x^T Q x$） | [ポートフォリオ最適化](./portfolio-qp.md) | [`03-portfolio-qp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) |
-| `m.addBoolVar()` / `.implies()` | 命題論理・含意制約（SMT） | [セキュリティポリシー検証](./smt-security.md) | [`04-smt-security-rules.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) |
+| `m.bool()` / `.implies()` | 命題論理・含意制約（SMT） | [セキュリティポリシー検証](./smt-security.md) | [`04-smt-security-rules.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) |
 | `m.check()` / `m.unsatCore` | 充足性チェックと矛盾制約サブセットの抽出 | [制約矛盾の診断](./unsat-core.md), [シフト作成](./shift-scheduling.md) | [`05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
 
 ## ローカル環境（Node.js）での実行方法

@@ -55,6 +55,8 @@ export class Model {
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
+  private boolVarMapByName = new Map<string, BoolVar>();
+  private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
 
   public status: SolverStatus = "NotSolved";
@@ -234,35 +236,108 @@ export class Model {
     return this.createDomainVars("Continuous", arg1, arg2, arg3);
   }
 
-
   /**
-   * Add a decision variable to the model
+   * Create Boolean (propositional logic) variable(s) for SMT / SAT modeling.
+   * Supports:
+   * - m.bool("isNight") -> BoolVar
+   * - m.bool() -> BoolVar
+   * - m.bool(5) -> BoolVar[]
+   * - m.bool(["flagA", "flagB"]) -> Record<string, BoolVar>
+   * - m.bool(rows, cols) -> Record<string, Record<string, BoolVar>>
    */
-  addVar(options?: VarOptions): Var;
-  addVar(name: string, type?: VarType, lb?: number, ub?: number): Var;
-  addVar(
-    arg1?: string | VarOptions,
-    arg2?: VarType,
-    arg3?: number,
-    arg4?: number
-  ): Var {
-    let opts: VarOptions;
-
-    if (typeof arg1 === "string") {
-      opts = {
-        name: arg1,
-        type: arg2,
-        lb: arg3,
-        ub: arg4,
-      };
-    } else {
-      opts = arg1 || {};
+  bool(name?: string): BoolVar;
+  bool(count: number, options?: { prefix?: string; name?: string }): BoolVar[];
+  bool<K extends string | number>(
+    keys: K[] | Iterable<K>,
+    options?: { prefix?: string; name?: string }
+  ): Record<K, BoolVar>;
+  bool<R extends string | number, C extends string | number>(
+    dim1: R[] | number,
+    dim2: C[] | number,
+    options?: { prefix?: string; name?: string }
+  ): Record<R, Record<C, BoolVar>>;
+  bool(arg1?: any, arg2?: any, arg3?: any): any {
+    // 2D case: arg2 is number or array
+    if (typeof arg2 === "number" || Array.isArray(arg2)) {
+      const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
+      const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
+      const opts = arg3 || {};
+      const prefix = opts.prefix || opts.name || "p";
+      const matrix: any = {};
+      for (const r of rows) {
+        matrix[r] = {};
+        for (const c of cols) {
+          matrix[r][c] = this.createBoolVar(`${prefix}_${r}_${c}`);
+        }
+      }
+      return matrix;
     }
 
-    const v = new Var(opts);
+    // 1D single variable or no args
+    if (typeof arg1 === "string" || arg1 === undefined) {
+      return this.createBoolVar(arg1);
+    }
+
+    // 1D multiple variables: count (number) or keys (array/iterable)
+    const opts = (arg2 as { prefix?: string; name?: string }) || {};
+    const prefix = opts.prefix || opts.name;
+    if (typeof arg1 === "number") {
+      const result: BoolVar[] = [];
+      const p = prefix || "p";
+      for (let i = 0; i < arg1; i++) {
+        result.push(this.createBoolVar(this.getNextBoolVarName(p)));
+      }
+      return result;
+    } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
+      const result: Record<string, BoolVar> = {};
+      for (const key of arg1) {
+        const varName = prefix ? `${prefix}_${key}` : `${key}`;
+        result[key] = this.createBoolVar(varName);
+      }
+      return result;
+    }
+
+    throw new Error("Invalid arguments provided for boolean variable creation");
+  }
+
+  private hasVarName(name: string): boolean {
+    return this.varMapByName.has(name) || this.boolVarMapByName.has(name);
+  }
+
+  private getNextBoolVarName(prefix: string): string {
+    let counter = this.boolVarPrefixCounters.get(prefix) ?? 0;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.boolVarPrefixCounters.set(prefix, counter + 1);
+    return candidate;
+  }
+
+  private createBoolVar(name?: string): BoolVar {
+    const trimmed = typeof name === "string" ? name.trim() : undefined;
+    const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName("p");
+    if (this.hasVarName(varName)) {
+      throw new Error(`Variable with name '${varName}' already exists in model`);
+    }
+    const bv = new BoolVar(varName);
+    this.boolVars.push(bv);
+    this.boolVarMapByName.set(bv.name, bv);
+    return bv;
+  }
+
+  /**
+   * Internal variable creator
+   */
+  private addVar(options?: VarOptions): Var {
+    const opts = options || {};
+    const trimmed = typeof opts.name === "string" ? opts.name.trim() : undefined;
+    const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
+    const v = new Var({ ...opts, name });
 
     // Validate unique name
-    if (this.varMapByName.has(v.name)) {
+    if (this.hasVarName(v.name)) {
       throw new Error(`Variable with name '${v.name}' already exists in model`);
     }
 
@@ -272,98 +347,17 @@ export class Model {
   }
 
   /**
-   * Add multiple variables at once:
-   * - by count: addVars(5) -> Var[]
-   * - by key array: addVars(["apples", "oranges"]) -> Record<string, Var>
-   * - by 2D dimensions: addVars(factories, stores) -> Record<string, Record<string, Var>>
-   * - by 2D numeric grid: addVars(8, 8) -> Record<number, Record<number, Var>>
-   */
-  addVars(count: number, options?: VarOptions): Var[];
-  addVars<R extends string | number, C extends string | number>(
-    dim1: R[] | number,
-    dim2: C[] | number,
-    options?: VarOptions
-  ): Record<R, Record<C, Var>>;
-  addVars<K extends string | number>(keys: K[], options?: VarOptions): Record<K, Var>;
-  addVars(
-    arg1: number | (string | number)[],
-    arg2?: number | (string | number)[] | VarOptions,
-    arg3?: VarOptions
-  ): any {
-    // 2D case: arg2 is number or array
-    if (typeof arg2 === "number" || Array.isArray(arg2)) {
-      const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
-      const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
-      const opts = arg3 || {};
-      const prefix = opts.prefix || opts.name || "x";
-      const matrix: any = {};
-      for (const r of rows) {
-        matrix[r] = {};
-        for (const c of cols) {
-          matrix[r][c] = this.addVar({
-            ...opts,
-            name: `${prefix}_${r}_${c}`,
-          });
-        }
-      }
-      return matrix;
-    }
-
-    // 1D case: arg2 is VarOptions or undefined
-    const opts = (arg2 as VarOptions) || {};
-    const prefix = opts.prefix || opts.name;
-    if (typeof arg1 === "number") {
-      const result: Var[] = [];
-      const p = prefix || "x";
-      for (let i = 0; i < arg1; i++) {
-        result.push(
-          this.addVar({
-            ...opts,
-            name: `${p}_${i}`,
-          })
-        );
-      }
-      return result;
-    } else {
-      const result: Record<string, Var> = {};
-      for (const key of arg1) {
-        const varName = prefix ? `${prefix}_${key}` : `${key}`;
-        result[key] = this.addVar({
-          ...opts,
-          name: varName,
-        });
-      }
-      return result;
-    }
-  }
-
-  /**
-   * Add a 2D matrix of decision variables: grid[row][col]
-   */
-  addVars2D<R extends string | number, C extends string | number>(
-    rows: R[],
-    cols: C[],
-    options?: VarOptions
-  ): Record<R, Record<C, Var>> {
-    const matrix: any = {};
-    const prefix = options?.name || "x";
-    for (const r of rows) {
-      matrix[r] = {};
-      for (const c of cols) {
-        matrix[r][c] = this.addVar({
-          ...options,
-          name: `${prefix}_${r}_${c}`,
-        });
-      }
-    }
-    return matrix;
-  }
-
-  /**
    * Find variable by name
    */
   getVarByName(name: string): Var | undefined {
     return this.varMapByName.get(name);
+  }
+
+  /**
+   * Find boolean variable by name
+   */
+  getBoolVarByName(name: string): BoolVar | undefined {
+    return this.boolVarMapByName.get(name);
   }
 
   /**
@@ -454,19 +448,27 @@ export class Model {
   /**
    * Extract primal solution values directly into plain primitives:
    * - m.getValues(x) -> number | null
+   * - m.getValues(p) -> boolean | null
    * - m.getValues([x, y]) -> (number | null)[]
-   * - m.getValues(record) -> Record<string, number | null>
-   * - m.getValues(matrix) -> Record<string, Record<string, number | null>>
+   * - m.getValues([p, q]) -> (boolean | null)[]
+   * - m.getValues(record) -> Record<string, number | boolean | null>
+   * - m.getValues(matrix) -> Record<string, Record<string, number | boolean | null>>
    */
   getValues(item: Var): number | null;
+  getValues(item: BoolVar): boolean | null;
   getValues(items: Var[]): (number | null)[];
+  getValues(items: BoolVar[]): (boolean | null)[];
   getValues<K extends string | number>(items: Record<K, Var>): Record<K, number | null>;
+  getValues<K extends string | number>(items: Record<K, BoolVar>): Record<K, boolean | null>;
   getValues<R extends string | number, C extends string | number>(
     items: Record<R, Record<C, Var>>
   ): Record<R, Record<C, number | null>>;
+  getValues<R extends string | number, C extends string | number>(
+    items: Record<R, Record<C, BoolVar>>
+  ): Record<R, Record<C, boolean | null>>;
   getValues(items: any): any {
     if (items === null || items === undefined) return null;
-    if (items instanceof Var) {
+    if (items instanceof Var || items instanceof BoolVar) {
       return items.value;
     }
     if (Array.isArray(items)) {
@@ -483,21 +485,12 @@ export class Model {
   }
 
   /**
-   * Add a Boolean (propositional logic) variable for SMT / SAT modeling
+   * Internal linear or logical constraint adder
    */
-  addBoolVar(name?: string): BoolVar {
-    const bv = new BoolVar(name);
-    this.boolVars.push(bv);
-    return bv;
-  }
-
-  /**
-   * Add a linear or logical constraint to the model
-   */
-  addConstraint(constraint: Constraint | LinExpr | QuadExpr | string, name?: string): Constraint;
-  addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
-  addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
-  addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
+  private addConstraint(constraint: Constraint | LinExpr | QuadExpr | string, name?: string): Constraint;
+  private addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
+  private addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
+  private addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
     if (constraint instanceof QuadExpr) {
       throw new Error(
         "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
@@ -537,20 +530,6 @@ export class Model {
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
     return constr;
-  }
-
-  /**
-   * python-mip / Gurobi style alias for addConstraint
-   */
-  addConstr(constraint: Constraint | BoolExpr | string, name?: string): Constraint | BoolExpr {
-    return this.addConstraint(constraint, name);
-  }
-
-  /**
-   * Add multiple constraints
-   */
-  addConstrs(constraints: (Constraint | BoolExpr | string)[]): (Constraint | BoolExpr)[] {
-    return constraints.map((c) => this.addConstraint(c));
   }
 
   /**
@@ -659,17 +638,6 @@ export class Model {
     }
 
     return addedConstrs;
-  }
-
-  /**
-   * @deprecated Use m.indicator(binVar, constraint, options) instead.
-   */
-  addIndicator(
-    binVar: Var,
-    constraint: Constraint | LinExpr | QuadExpr,
-    options: IndicatorOptions = {}
-  ): Constraint[] {
-    return this.indicator(binVar, constraint, options);
   }
 
   /**

@@ -37,25 +37,25 @@ use `@ohtaman/washi` and import the required solver plugin.
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
-| [Production planning](node/01-production-planning.ts) | Integer production quantities, a profit objective, resource limits, and the resulting plan | `addVar()`, `expr`, `c` | HiGHS |
-| [Knapsack](node/02-knapsack-problem.ts) | Binary selection variables, a capacity constraint, and selected items | `addVars(keys)`, `sum()` | HiGHS |
-| [Transportation network](node/09-transportation-problem.ts) | 2D origin-destination flows (`ship[factory][store]`), supply/demand balance, and flow changes when capacity shifts | `addVars(rows, cols)`, `sum()` | HiGHS |
+| [Production planning](node/01-production-planning.ts) | Integer production quantities, a profit objective, resource limits, and the resulting plan | `integer()`, `expr`, `c` | HiGHS |
+| [Knapsack](node/02-knapsack-problem.ts) | Binary selection variables, a capacity constraint, and selected items | `binary(keys)`, `sum()` | HiGHS |
+| [Transportation network](node/09-transportation-problem.ts) | 2D origin-destination flows (`ship[factory][store]`), supply/demand balance, and flow changes when capacity shifts | `continuous(rows, cols)`, `sum()` | HiGHS |
 | [Diet & sensitivity analysis](node/10-diet-sensitivity.ts) | Nutritional LP with shadow prices (bottlenecks), constraint surpluses, and variable reduced costs | `constr.dual`, `constr.slack`, `var.reducedCost` | HiGHS |
 
 ### 2. Practical Applications & Hybrid Workflows
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
-| [Staff shift scheduling](node/11-shift-scheduling.ts) | Weekly roster optimization (coverage, senior duty, max shifts, day-off requests) + diagnosing clashing Saturday vacation requests | `addVars(staff, days)`, `check()`, `unsatCore` | HiGHS + Z3 |
-| [E-commerce coupon optimizer](node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds, exclusive vs. stackable coupon rules, and filler add-on recommendations | `addIndicator()`, `type: "Binary"` | HiGHS |
+| [Staff shift scheduling](node/11-shift-scheduling.ts) | Weekly roster optimization (coverage, senior duty, max shifts, day-off requests) + diagnosing clashing Saturday vacation requests | `binary(staff, days)`, `check()`, `unsatCore` | HiGHS + Z3 |
+| [E-commerce coupon optimizer](node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds, exclusive vs. stackable coupon rules, and filler add-on recommendations | `indicator()`, `binary()` | HiGHS |
 | [Portfolio allocation](node/03-portfolio-qp.ts) | Continuous weights, a quadratic variance objective, and budget / return constraints | `new QuadExpr()`, `v1.mul(v2)` | HiGHS |
-| [SMT / MIP workflow](node/07-hybrid-smt-mip.ts) | Separate policy verification and capacity allocation models | `addBoolVar()`, `addIndicator()` | Z3 + HiGHS |
+| [SMT / MIP workflow](node/07-hybrid-smt-mip.ts) | Separate policy verification and capacity allocation models | `bool()`, `indicator()` | Z3 + HiGHS |
 
 ### 3. SMT Logic & Solver Adapters
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
-| [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `addBoolVar()`, `.implies()`, `check()` | Z3 |
+| [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `bool()`, `.implies()`, `check()` | Z3 |
 | [Conflict diagnosis](node/05-unsat-core-diagnosis.ts) | Inconsistent staffing / budget rules and a conflicting constraint subset | `check()`, `unsatCore` | Z3 |
 | [GLPK adapter](node/08-glpk-solver-plugin.ts) | A diet model, plugin selection, an objective value, and row duals | `solver: "glpk"` | GLPK |
 

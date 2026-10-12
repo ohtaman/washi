@@ -207,10 +207,10 @@ import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
 
-const isNight = m.addBoolVar("isNight");
-const motion = m.addBoolVar("motion");
-const alarm = m.addBoolVar("alarm");
-const siren = m.addBoolVar("siren");
+const isNight = m.bool("isNight");
+const motion = m.bool("motion");
+const alarm = m.bool("alarm");
+const siren = m.bool("siren");
 const lux = m.integer("lux", { lb: 0 });
 
 // 論理ルール
@@ -242,7 +242,7 @@ import "@ohtaman/washi/solvers/z3";
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
 const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-const rushDelivery = m.addBoolVar("rushDelivery");
+const rushDelivery = m.bool("rushDelivery");
 
 // ルール 1: エンジニア1人あたり $8,000
 m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
@@ -377,7 +377,7 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
-  const x = model.addVar({ lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x);
   await model.solve();
   console.log("GLPK ステータス:", model.status);
@@ -390,7 +390,7 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 <script src="./washi/solvers/glpk.min.js"></script>
 <script>
   const model = new Washi.Model({ solver: "glpk" });
-  const x = model.addVar({ lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x);
   model.solve().then(status => console.log("GLPK ステータス:", status));
 </script>
@@ -447,12 +447,12 @@ WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャ�
 | カテゴリ | サンプル | 確認できること | ソルバー |
 | :--- | :--- | :--- | :--- |
 | **基本モデル** | [生産計画](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数変数、利益の最大化、資源制約 (`expr`, `c`) | HiGHS |
-| **基本モデル** | [輸送・物流ネットワーク](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2次元マトリクス変数 (`addVars(rows, cols)`) と供給・需要バランス | HiGHS |
+| **基本モデル** | [輸送・物流ネットワーク](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2次元マトリクス変数 (`continuous(rows, cols)`) と供給・需要バランス | HiGHS |
 | **基本モデル** | [栄養問題と感度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 潜在価格 (`constr.dual`)、余剰 (`constr.slack`)、被約費用 (`var.reducedCost`) | HiGHS |
 | **実践応用** | [スタッフのシフト作成](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 週間シフト最適化と、土曜日の希望休が衝突した際の原因特定 | HiGHS + Z3 |
-| **実践応用** | [ECカートのクーポン最適適用](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 条件付き購入金額閾値 (`addIndicator`)、併用不可ルール、追加購入提案 | HiGHS |
+| **実践応用** | [ECカートのクーポン最適適用](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 条件付き購入金額閾値 (`indicator`)、併用不可ルール、追加購入提案 | HiGHS |
 | **実践応用** | [ポートフォリオ配分](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目的関数 (`QuadExpr`) と配分の制約 | HiGHS |
-| **論理 / SMT** | [業務ルールの検証](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 数値・論理制約 (`addBoolVar`, `implies`) の充足可能性の確認 | Z3 |
+| **論理 / SMT** | [業務ルールの検証](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 数値・論理制約 (`bool`, `implies`) の充足可能性の確認 | Z3 |
 | **論理 / SMT** | [矛盾する制約の診断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 名前付き制約と Unsat Core (`unsatCore`) | Z3 |
 
 [公開ブラウザデモ](https://ohtaman.github.io/washi/demo/)では、モデルを編集して実行できます。ブラウザ標準 ESM、script タグ、CodePen での使い方は[配布形式のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)を参照してください。Z3 は Cross-Origin Isolation が必要です。詳細は上記のブラウザ要件に記載しています。

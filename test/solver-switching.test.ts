@@ -19,11 +19,11 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
 
   it("solves with default solver (HiGHS)", async () => {
     const m = new Model({ name: "DefaultTest", sense: "Maximize" });
-    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
-    const y = m.addVar({ name: "y", lb: 0, ub: 10 });
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 10 });
 
     m.maximize(x.mul(2).add(y.mul(3)));
-    m.addConstraint(x.add(y).le(12), "budget");
+    m.constrain(x.add(y).le(12), "budget");
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");
@@ -34,9 +34,9 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
 
   it("solves with explicit HiGHS solver instance", async () => {
     const m = new Model({ name: "ExplicitHighs", sense: "Maximize" });
-    const x = m.addVar({ name: "x", lb: 0 });
+    const x = m.continuous("x", { lb: 0 });
     m.maximize(x.mul(5));
-    m.addConstraint(x.le(7), "c1");
+    m.constrain(x.le(7), "c1");
 
     const status = await m.optimize(new HiGHS({ timeLimit: 10 }));
     expect(status).toBe("Optimal");
@@ -46,7 +46,7 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
 
   it("solves by specifying solver name string", async () => {
     const m = new Model({ name: "StringSolver", sense: "Minimize" });
-    const x = m.addVar({ name: "x", lb: 4 });
+    const x = m.continuous("x", { lb: 4 });
     m.minimize(x);
 
     const status = await m.optimize("highs");
@@ -71,10 +71,10 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
 
   it("switches to MockSolver for deterministic testing without WASM", async () => {
     const m = new Model({ name: "MockTest", sense: "Maximize" });
-    const x = m.addVar({ name: "x" });
-    const y = m.addVar({ name: "y" });
+    const x = m.continuous("x");
+    const y = m.continuous("y");
     m.maximize(x.add(y));
-    m.addConstraint(x.add(y).le(10), "c1");
+    m.constrain(x.add(y).le(10), "c1");
 
     const mock = new MockSolver({
       status: "Optimal",
@@ -111,7 +111,7 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
     };
 
     const m = new Model({ name: "CustomSolverModel", solver: customSolver });
-    const a = m.addVar({ name: "alpha" });
+    const a = m.continuous("alpha");
     m.maximize(a);
 
     const status = await m.optimize();
@@ -130,7 +130,7 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
     expect(listAvailableSolvers()).toContain("fast-mock");
 
     const m = new Model();
-    const v1 = m.addVar({ name: "v1" });
+    const v1 = m.continuous("v1");
     const status = await m.optimize("fast-mock");
 
     expect(status).toBe("Optimal");
@@ -169,8 +169,8 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
       };
 
       const m = new Model({ name: "InHouseBackendModel", solver: backendSolver });
-      const x = m.addVar({ name: "x" });
-      const y = m.addVar({ name: "y" });
+      const x = m.continuous("x");
+      const y = m.continuous("y");
       m.maximize(x.add(y));
 
       const status = await m.optimize();

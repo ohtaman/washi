@@ -24,7 +24,7 @@ const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
 model.maximize(expr`10 * ${x} + 6 * ${y}`);
 model.constrain(expr`${x} + ${y} <= 100`);
-await model.optimize();
+await model.solve();
 ```
 
 ### 2. Mixed-Integer Linear Programming (MIP)

@@ -64,8 +64,8 @@ const model = new Model({ sense: "Maximize" });
 ### 3. 定义决策变量
 
 ```typescript
-const x = model.addVar({ type: "Integer", lb: 0, name: "x" });
-const y = model.addVar({ type: "Integer", lb: 0, name: "y" });
+const x = model.integer("x", { lb: 0 });
+const y = model.integer("y", { lb: 0 });
 ```
 
 ### 4. 设定目标函数
@@ -79,11 +79,11 @@ model.maximize(expr`30 * ${x} + 50 * ${y}`);
 
 ### 5. 添加约束条件
 
-使用 `c` 标签模板字面量添加不等式或等式约束：
+使用 `c`（或 `expr`）标签模板字面量与 `constrain` 添加不等式或等式约束：
 
 ```typescript
-model.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constrain(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constrain(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. 异步求解与结果获取

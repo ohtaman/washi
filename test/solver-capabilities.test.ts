@@ -6,9 +6,9 @@ import { HiGHS } from "../src/modeler/solvers/highs.js";
 describe("Solver Capabilities Enforcement", () => {
   it("allows QP when solver supports QP (e.g. HiGHS)", async () => {
     const m = new Model("QP_Allowed");
-    const x = m.addVar({ name: "x" });
+    const x = m.continuous("x");
     m.minimize(x.mul(x));
-    m.addConstraint(x.ge(2));
+    m.constrain(x.ge(2));
 
     // HiGHS has capabilities.supportsQP === true
     expect(HiGHS.capabilities?.supportsQP).toBe(true);
@@ -18,9 +18,9 @@ describe("Solver Capabilities Enforcement", () => {
 
   it("throws clear error when solving QP with a solver that lacks QP capability", async () => {
     const m = new Model("QP_NotSupported");
-    const x = m.addVar({ name: "x" });
+    const x = m.continuous("x");
     m.minimize(x.mul(x));
-    m.addConstraint(x.ge(2));
+    m.constrain(x.ge(2));
 
     // Create a mock solver with supportsQP: false
     const linearOnlySolver = new MockSolver({

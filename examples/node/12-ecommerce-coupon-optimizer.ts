@@ -2,7 +2,7 @@
  * Example 12: E-Commerce Cart & Coupon Optimizer (Client-Side MIP with Indicators)
  *
  * Demonstrates:
- * - Conditional activation constraints via `m.addIndicator(binVar, constraint, { activeValue, M })`
+ * - Conditional activation constraints via `m.indicator(binVar, constraint, { activeValue, M })`
  * - Mutual exclusion between promotional coupons (`c1 + c2 <= 1`)
  * - Determining whether adding a small "filler" item unlocks a higher discount tier
  *   that reduces the customer's net payable amount
@@ -50,14 +50,14 @@ async function main() {
   // the cart must satisfy its minimum spend threshold.
   for (const cpn of coupons) {
     if (cpn.minCartSpend > 0) {
-      m.addIndicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCartSpend), {
+      m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCartSpend), {
         activeValue: 1,
         M: 500,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTechSpend > 0) {
-      m.addIndicator(useCoupon[cpn.id], techSpend.ge(cpn.minTechSpend), {
+      m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTechSpend), {
         activeValue: 1,
         M: 500,
         name: `min_tech_${cpn.id}`,

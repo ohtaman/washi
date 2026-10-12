@@ -207,10 +207,10 @@ import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
 
-const isNight = m.addBoolVar("isNight");
-const motion = m.addBoolVar("motion");
-const alarm = m.addBoolVar("alarm");
-const siren = m.addBoolVar("siren");
+const isNight = m.bool("isNight");
+const motion = m.bool("motion");
+const alarm = m.bool("alarm");
+const siren = m.bool("siren");
 const lux = m.integer("lux", { lb: 0 });
 
 // Logical rules
@@ -242,7 +242,7 @@ import "@ohtaman/washi/solvers/z3";
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
 const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-const rushDelivery = m.addBoolVar("rushDelivery");
+const rushDelivery = m.bool("rushDelivery");
 
 // Rule 1: Each engineer costs $8,000
 m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
@@ -377,7 +377,7 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
-  const x = model.addVar({ lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x);
   await model.solve();
   console.log("GLPK status:", model.status);
@@ -390,7 +390,7 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 <script src="./washi/solvers/glpk.min.js"></script>
 <script>
   const model = new Washi.Model({ solver: "glpk" });
-  const x = model.addVar({ lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x);
   model.solve().then(status => console.log("GLPK status:", status));
 </script>
@@ -447,12 +447,12 @@ Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/exam
 | Category | Example | What it demonstrates | Solver |
 | :--- | :--- | :--- | :--- |
 | **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`, `c`) | HiGHS |
-| **Fundamentals** | [Transportation network](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2D origin-destination variable matrix (`addVars(rows, cols)`) and flow balance | HiGHS |
+| **Fundamentals** | [Transportation network](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2D origin-destination variable matrix (`continuous(rows, cols)`) and flow balance | HiGHS |
 | **Fundamentals** | [Diet & sensitivity analysis](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | Shadow prices (`constr.dual`), surpluses (`constr.slack`), and reduced costs (`var.reducedCost`) | HiGHS |
 | **Practical** | [Staff shift scheduling](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | Weekly roster optimization + diagnosing conflicting Saturday vacation requests | HiGHS + Z3 |
-| **Practical** | [E-commerce coupon optimizer](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds (`addIndicator`), coupon exclusivity, and add-on recommendations | HiGHS |
+| **Practical** | [E-commerce coupon optimizer](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds (`indicator`), coupon exclusivity, and add-on recommendations | HiGHS |
 | **Practical** | [Portfolio allocation](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | A convex quadratic objective (`QuadExpr`) with allocation constraints | HiGHS |
-| **Logic / SMT** | [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints (`addBoolVar`, `implies`) with satisfiability checking | Z3 |
+| **Logic / SMT** | [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints (`bool`, `implies`) with satisfiability checking | Z3 |
 | **Logic / SMT** | [Conflict diagnosis](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | Named constraints and an unsatisfiable core (`unsatCore`) | Z3 |
 
 [Open the hosted demo](https://ohtaman.github.io/washi/demo/) to edit and run models in your browser. For browser ESM, classic script tags, and CodePen, see the [distribution examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md). Z3 requires cross-origin isolation; see the browser requirements above.

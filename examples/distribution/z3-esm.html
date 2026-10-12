@@ -25,20 +25,20 @@
     try {
       const model = new Model({ name: "FireSuppressionRules", solver: "z3" });
 
-      const smokeDetected = model.addBoolVar("smokeDetected");
-      const heatDetected = model.addBoolVar("heatDetected");
-      const alarmActive = model.addBoolVar("alarmActive");
-      const sprinklerActive = model.addBoolVar("sprinklerActive");
+      const smokeDetected = model.bool("smokeDetected");
+      const heatDetected = model.bool("heatDetected");
+      const alarmActive = model.bool("alarmActive");
+      const sprinklerActive = model.bool("sprinklerActive");
 
       // Rule 1: Smoke or Heat implies Alarm
-      model.addConstraint(or(smokeDetected, heatDetected).implies(alarmActive));
+      model.constrain(or(smokeDetected, heatDetected).implies(alarmActive));
 
       // Rule 2: Both Smoke and Heat implies Sprinkler
-      model.addConstraint(and(smokeDetected, heatDetected).implies(sprinklerActive));
+      model.constrain(and(smokeDetected, heatDetected).implies(sprinklerActive));
 
       // Scenario: Heat is detected, but Sprinkler is not active
-      model.addConstraint(heatDetected);
-      model.addConstraint(not(sprinklerActive));
+      model.constrain(heatDetected);
+      model.constrain(not(sprinklerActive));
 
       const res = await model.check({ solver: "z3" });
       output.textContent = JSON.stringify({

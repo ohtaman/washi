@@ -13,11 +13,11 @@ const fixture = await mkdtemp(path.join(tmpdir(), "washi-distribution-"));
 const source = `
   window.runPlan = async (integer = true, useWorker = false) => {
     const m = new Model("Distribution");
-    const x = m.addVar({ name: "x", type: integer ? "Integer" : "Continuous", lb: 0 });
-    const y = m.addVar({ name: "y", type: integer ? "Integer" : "Continuous", lb: 0 });
+    const x = integer ? m.integer("x", { lb: 0 }) : m.continuous("x", { lb: 0 });
+    const y = integer ? m.integer("y", { lb: 0 }) : m.continuous("y", { lb: 0 });
     m.maximize(x.mul(30).add(y.mul(50)));
-    m.addConstraint(x.add(y.mul(2)).le(40));
-    m.addConstraint(x.mul(2).add(y).le(50));
+    m.constrain(x.add(y.mul(2)).le(40));
+    m.constrain(x.mul(2).add(y).le(50));
     const status = await m.solve({ useWorker });
     return { status, objective: m.objectiveValue, x: x.value, y: y.value };
   };
@@ -280,8 +280,8 @@ async function testZ3WorkerErrorAndRecovery(browserRoot) {
   const runCheck = () => vm.runInContext(`
     (async () => {
       const m = new Model({ solver: 'z3' });
-      const a = m.addBoolVar('a');
-      m.addConstraint(a);
+      const a = m.bool('a');
+      m.constrain(a);
       return await m.check();
     })()
   `, context);
@@ -336,7 +336,7 @@ try {
   const packageRoot = path.join(fixture, "node_modules/@ohtaman/washi");
   const { Model } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
   const model = new Model("PackedNode");
-  const x = model.addVar({ name: "x", lb: 0, ub: 10 });
+  const x = model.continuous("x", { lb: 0, ub: 10 });
   model.maximize(x.mul(3));
   assert.equal(await model.solve(), "Optimal");
   assert.equal(model.objectiveValue, 30);
@@ -359,7 +359,7 @@ try {
   // Test GLPK plugin in Node.js
   await import(new URL(`file://${packageRoot}/dist/lib/solvers/glpk.js`));
   const glpkModel = new Model("GlpkNode", { solver: "glpk" });
-  const gx = glpkModel.addVar({ name: "gx", lb: 0, ub: 10 });
+  const gx = glpkModel.continuous("gx", { lb: 0, ub: 10 });
   glpkModel.maximize(gx.mul(5));
   assert.equal(await glpkModel.solve(), "Optimal");
   assert.equal(glpkModel.objectiveValue, 50);
@@ -369,8 +369,8 @@ try {
   // Test Z3 plugin in Node.js
   const { killZ3Threads } = await import(new URL(`file://${packageRoot}/dist/lib/solvers/z3.js`));
   const z3Model = new Model("Z3Node", { solver: "z3" });
-  const za = z3Model.addBoolVar("za");
-  z3Model.addConstraint(za);
+  const za = z3Model.bool("za");
+  z3Model.constrain(za);
   const z3Res = await z3Model.check();
   assert.equal(z3Res.status, "Sat");
   assert.equal(z3Res.values.za, true);
@@ -475,9 +475,9 @@ try {
         window.runGlpk = async () => {
           const { Model } = window.Washi || await import('${cdn}/factory/washi.js');
           const m = new Model({ solver: 'glpk' });
-          const x = m.addVar({ name: 'x', type: 'Integer', lb: 0 });
+          const x = m.integer('x', { lb: 0 });
           m.maximize(x.mul(10));
-          m.addConstraint(x.le(5));
+          m.constrain(x.le(5));
           const status = await m.optimize();
           return { status, x: x.value, objective: m.objectiveValue };
         };
@@ -529,8 +529,8 @@ try {
         import '${cdnIsolated}/factory/solvers/z3.js';
         window.runZ3 = async () => {
           const m = new Model({ solver: 'z3' });
-          const a = m.addBoolVar('a');
-          m.addConstraint(a);
+          const a = m.bool('a');
+          m.constrain(a);
           return await m.check();
         };
       </script>`;

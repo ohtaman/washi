@@ -14,16 +14,16 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
 
   it("solves a basic Linear Programming (LP) model to optimality", async () => {
     const m = new Model({ name: "SimpleLP", sense: "Maximize" });
-    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
-    const y = m.addVar({ name: "y", lb: 0, ub: 10 });
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 10 });
 
     // Maximize 3x + 2y
     m.maximize(x.mul(3).add(y.mul(2)));
 
     // x + y <= 8
-    m.addConstraint(x.add(y).le(8), "budget");
+    m.constrain(x.add(y).le(8), "budget");
     // 2x + y <= 12
-    m.addConstraint(x.mul(2).add(y).le(12), "capacity");
+    m.constrain(x.mul(2).add(y).le(12), "capacity");
 
     // Solve with GLPK solver explicitly
     const glpk = new GLPKSolver();
@@ -40,16 +40,16 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
   it("solves Mixed-Integer Programming (MIP) with integer and binary variables", async () => {
     // Production Planning with Integer variables
     const m = new Model({ name: "ProductionPlanning", sense: "Maximize" });
-    const chairs = m.addVar({ name: "chairs", type: "Integer", lb: 0 });
-    const tables = m.addVar({ name: "tables", type: "Integer", lb: 0 });
+    const chairs = m.integer("chairs", { lb: 0 });
+    const tables = m.integer("tables", { lb: 0 });
 
     // Maximize 30 chairs + 50 tables
     m.maximize(chairs.mul(30).add(tables.mul(50)));
 
     // Carpentry: chairs + 2 tables <= 40
-    m.addConstraint(chairs.add(tables.mul(2)).le(40), "carpentry");
+    m.constrain(chairs.add(tables.mul(2)).le(40), "carpentry");
     // Finishing: 2 chairs + tables <= 50
-    m.addConstraint(chairs.mul(2).add(tables).le(50), "finishing");
+    m.constrain(chairs.mul(2).add(tables).le(50), "finishing");
 
     // Solve via string solver identifier "glpk"
     const status = await m.optimize({ solver: "glpk" });
@@ -70,7 +70,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     ];
 
     const x = items.map((item) =>
-      m.addVar({ name: `x_${item.name}`, type: "Binary" })
+      m.binary(`x_${item.name}`)
     );
 
     // Maximize total value
@@ -85,7 +85,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     for (let i = 1; i < items.length; i++) {
       totalWeight = totalWeight.add(x[i].mul(items[i].weight));
     }
-    m.addConstraint(totalWeight.le(5), "capacity");
+    m.constrain(totalWeight.le(5), "capacity");
 
     const status = await m.optimize({ solver: "glpk" });
 
@@ -99,12 +99,12 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
 
   it("throws SolverCapabilityError when trying to solve QP with GLPK", async () => {
     const m = new Model({ name: "PortfolioQP", sense: "Minimize" });
-    const x = m.addVar({ name: "x", lb: 0, ub: 1 });
-    const y = m.addVar({ name: "y", lb: 0, ub: 1 });
+    const x = m.continuous("x", { lb: 0, ub: 1 });
+    const y = m.continuous("y", { lb: 0, ub: 1 });
 
     // Quadratic objective: x^2 + y^2
     m.minimize(x.mul(x).add(y.mul(y)));
-    m.addConstraint(x.add(y).ge(1), "sum_ge_1");
+    m.constrain(x.add(y).ge(1), "sum_ge_1");
 
     // Must fail fast because GLPK does not support QP
     await expect(m.optimize({ solver: "glpk" })).rejects.toThrowError(
@@ -117,9 +117,9 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     expect(getSolver().name).toBe("GLPK");
 
     const m = new Model();
-    const v = m.addVar({ lb: 0, ub: 5 });
+    const v = m.continuous("v", { lb: 0, ub: 5 });
     m.maximize(v.mul(10));
-    m.addConstraint(v.le(3));
+    m.constrain(v.le(3));
 
     // Uses default solver (now GLPK)
     const status = await m.optimize();
@@ -144,7 +144,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       for (const d of days) {
         x[n][d] = {};
         for (const s of shifts) {
-          x[n][d][s] = m.addVar({ name: `x_${n}_${d}_${s}`, type: "Binary" });
+          x[n][d][s] = m.binary(`x_${n}_${d}_${s}`);
         }
       }
     }
@@ -152,7 +152,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     // At most 1 shift per nurse per day
     for (const n of nurses) {
       for (const d of days) {
-        m.addConstraint(x[n][d]["Day"].add(x[n][d]["Night"]).le(1));
+        m.constrain(x[n][d]["Day"].add(x[n][d]["Night"]).le(1));
       }
     }
 
@@ -164,14 +164,14 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         daySum = daySum.add(x[nurses[i]][d]["Day"]);
         nightSum = nightSum.add(x[nurses[i]][d]["Night"]);
       }
-      m.addConstraint(daySum.ge(1));
-      m.addConstraint(nightSum.ge(1));
+      m.constrain(daySum.ge(1));
+      m.constrain(nightSum.ge(1));
     }
 
     // Night -> Day forbidden next day
     for (const n of nurses) {
       for (let t = 0; t < days.length - 1; t++) {
-        m.addConstraint(x[n][days[t]]["Night"].add(x[n][days[t + 1]]["Day"]).le(1));
+        m.constrain(x[n][days[t]]["Night"].add(x[n][days[t + 1]]["Day"]).le(1));
       }
     }
 
@@ -181,7 +181,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       for (let t = 1; t < days.length; t++) {
         nurseTotal = nurseTotal.add(x[n][days[t]]["Day"]).add(x[n][days[t]]["Night"]);
       }
-      m.addConstraint(nurseTotal.le(3));
+      m.constrain(nurseTotal.le(3));
     }
 
     // Objective: Minimize total night shifts
