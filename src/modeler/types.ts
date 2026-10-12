@@ -19,6 +19,14 @@ export type OptimizationSense =
   | "minimize"
   | "maximize";
 
+/**
+ * Normalizes user-facing optimization sense to internal canonical form ("Maximize" | "Minimize")
+ */
+export function normalizeSense(sense?: OptimizationSense): "Maximize" | "Minimize" {
+  if (!sense) return "Minimize";
+  return sense.toLowerCase() === "maximize" ? "Maximize" : "Minimize";
+}
+
 
 export type ComparisonSense = "<=" | ">=" | "==";
 

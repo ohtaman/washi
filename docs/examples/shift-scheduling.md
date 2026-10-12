@@ -44,7 +44,7 @@ const requiredCoverage: Record<Day, number> = {
   Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2,
 };
 
-function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; day: Day }>) {
+function buildShiftModel(name, dayOffRequests) {
   const m = new Model(name);
 
   // 2D binary matrix: shift[staff][day] ∈ {0, 1}

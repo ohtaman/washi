@@ -93,10 +93,11 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 For continuous Linear Programming (LP) problems, query the economic shadow price (`dual`) and surplus (`slack`):
 
 ```typescript
-const woodConstraint = m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood");
+m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood");
 
 await m.optimize();
 
-console.log("Shadow price (dual):", woodConstraint.dual);
-console.log("Slack surplus:", woodConstraint.slack);
+const woodConstraint = m.getConstraintByName("wood");
+console.log("Shadow price (dual):", woodConstraint?.dual);
+console.log("Slack surplus:", woodConstraint?.slack);
 ```

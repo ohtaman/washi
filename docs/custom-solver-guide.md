@@ -350,12 +350,13 @@ describe("Custom Solver Integration", () => {
     const x = model.continuous("x", { lb: 0, ub: 10 });
     const y = model.continuous("y", { lb: 0, ub: 10 });
     model.maximize(expr`2 * ${x} + 3 * ${y}`);
-    const c1 = model.constrain(expr`${x} + ${y} <= 12`, "budget");
+    model.constrain(expr`${x} + ${y} <= 12`, "budget");
 
     const status = await model.optimize();
     expect(status).toBe("Optimal");
     expect(x.value).toBeDefined();
-    expect(c1.dual).toBeDefined();
+    const c1 = model.getConstraintByName("budget");
+    expect(c1?.dual).toBeDefined();
   });
 });
 ```

@@ -126,16 +126,16 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
       <li><strong>Web Worker による非同期分散実行</strong>: 大規模な混合整数線形計画問題（MIP）でも、計算を Web Worker スレッドで実行することで、ブラウザの UI 描画やユーザー操作を一切阻害しません。</li>
       <li><strong>タグ付きテンプレート DSL</strong>: <code>expr\`\${x} + 2 * \${y} &lt;= 40\`</code> のように、JavaScript の変数参照を直接式中に埋め込んで自然に制約を定義できます。</li>
       <li><strong>標準 CPLEX LP フォーマット完全準拠</strong>: <code>m.toLpString()</code> により、HiGHS や Gurobi、CPLEX、SCIP、GLPK でそのまま扱える標準 LP 構文のテキストを生成・検査できます。</li>
-      <li><strong>双対変数（シャドウプライス）と被約費用</strong>: <code>constraint.dual</code>（または <code>constraint.pi</code>）および <code>var.reducedCost</code> により、経済的評価や感度分析が可能です。</li>
+      <li><strong>双対変数（シャドウプライス）と被約費用</strong>: <code>constraint.dual</code> および <code>var.reducedCost</code> により、経済的評価や感度分析が可能です。</li>
       <li><strong>多次元変数マトリクス</strong>: <code>m.addVars2D(rows, cols, { type: BINARY })</code> により、配属問題や輸送問題の多次元変数を直感的に一括生成できます。</li>
-      <li><strong>PuLP / python-mip 流のソルバー切り替え（非依存性）</strong>: HiGHS への密結合ではなく、<code>prob.solve(new HiGHS())</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジン（自社バックエンド API 等）を共通インターフェースで自由に差し替えられます。</li>
+      <li><strong>ソルバー切り替え機能（非依存性）</strong>: HiGHS への密結合ではなく、<code>m.optimize(new HiGHS())</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジン（自社バックエンド API 等）を共通インターフェースで自由に差し替えられます。</li>
     </ul>
   </div>
 
   <div class="docs-section">
     <h3>ソルバー切り替え機能 (Solver Independence)</h3>
     <p>
-      Python の <strong>PuLP</strong> と同様に、モデルの定式化とソルバーエンジンの実行が完全に分離されています。
+      モデルの定式化とソルバーエンジンの実行が完全に分離されています。
     </p>
     <div class="code-card">
       <div class="code-title">ソルバーの切り替え利用例</div>
@@ -168,7 +168,7 @@ const myBackendSolver = {
     return { status: data.status, objectiveValue: data.obj, values: data.solution };
   }
 };
-await prob.solve(myBackendSolver);
+await m.optimize(myBackendSolver);
 </code></pre>
     </div>
   </div>

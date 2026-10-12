@@ -347,15 +347,16 @@ describe("Custom Solver Integration", () => {
 
   it("propagates primal values and duals into WaSHI Model", async () => {
     const model = new Model({ solver: new CloudSolver() });
-    const x = model.addVar({ name: "x", lb: 0, ub: 10 });
-    const y = model.addVar({ name: "y", lb: 0, ub: 10 });
-    model.maximize(x.mul(2).add(y.mul(3)));
-    const c1 = model.addConstraint(x.add(y).le(12), "budget");
+    const x = model.continuous("x", { lb: 0, ub: 10 });
+    const y = model.continuous("y", { lb: 0, ub: 10 });
+    model.maximize(expr`2 * ${x} + 3 * ${y}`);
+    model.constrain(expr`${x} + ${y} <= 12`, "budget");
 
     const status = await model.optimize();
     expect(status).toBe("Optimal");
     expect(x.value).toBeDefined();
-    expect(c1.dual).toBeDefined();
+    const c1 = model.getConstraintByName("budget");
+    expect(c1?.dual).toBeDefined();
   });
 });
 ```

@@ -36,14 +36,14 @@ export {
   type LpExportResult,
 } from "./modeler/index.js";
 
-// Core Types
-export type {
-  VarType,
-  OptimizationSense,
-  ComparisonSense,
-  SolverStatus,
-  SolveOptions,
-  SolverSolution,
+export {
+  normalizeSense,
+  type VarType,
+  type OptimizationSense,
+  type ComparisonSense,
+  type SolverStatus,
+  type SolveOptions,
+  type SolverSolution,
 } from "./modeler/types.js";
 
 

@@ -153,4 +153,37 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       m.maximize(expr`${x} <= 10` as any);
     }).toThrow(/Cannot set objective to a constraint comparison/);
   });
+
+  it("normalizes lowercase sense 'maximize' and 'minimize' in Model and LP export", async () => {
+    const m = new Model({ sense: "maximize" });
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    m.setObjective(x, "maximize");
+    expect(m.sense).toBe("Maximize");
+    expect(m.toLpString()).toMatch(/^Maximize/im);
+
+    const m2 = new Model({ sense: "minimize" });
+    const y = m2.continuous("y", { lb: 0, ub: 10 });
+    m2.setObjective(y, "minimize");
+    expect(m2.sense).toBe("Minimize");
+    expect(m2.toLpString()).toMatch(/^Minimize/im);
+  });
+
+  it("throws error on dot() array length mismatch and dictionary key mismatch", () => {
+    const m = new Model();
+    const x = m.continuous(3); // 3 variables
+    expect(() => {
+      dot([1, 2], x); // 2 coeffs vs 3 vars
+    }).toThrow(/Array length mismatch/);
+
+    const xDict = m.continuous(["apple", "banana"]);
+    expect(() => {
+      dot({ apple: 1, orange: 2 }, xDict);
+    }).toThrow(/Key mismatch/);
+
+    // 2D nested mismatch
+    const x2D = m.continuous(["R1"], ["C1", "C2"]);
+    expect(() => {
+      dot({ R1: { C1: 1 } }, x2D);
+    }).toThrow(/Key mismatch/);
+  });
 });

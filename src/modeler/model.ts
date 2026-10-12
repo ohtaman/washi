@@ -1,9 +1,10 @@
-import type {
-  VarType,
-  OptimizationSense,
-  SolverStatus,
-  SolveOptions,
-  SolverSolution,
+import {
+  type VarType,
+  type OptimizationSense,
+  normalizeSense,
+  type SolverStatus,
+  type SolveOptions,
+  type SolverSolution,
 } from "./types.js";
 import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
@@ -70,7 +71,7 @@ export class Model {
       options = nameOrOptions;
     }
     this.name = options.name || "OptimizationModel";
-    this.sense = options.sense || "Minimize";
+    this.sense = normalizeSense(options.sense);
     this.objective = new LinExpr();
     if (options.solver) {
       this.solver = getSolver(options.solver);
@@ -384,7 +385,7 @@ export class Model {
     }
 
     if (sense) {
-      this.sense = sense;
+      this.sense = normalizeSense(sense);
     }
 
     if (typeof expr === "string") {

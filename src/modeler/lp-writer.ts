@@ -80,7 +80,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   const lines: string[] = [];
 
   // 1. Objective Section
-  lines.push(sense === "Maximize" ? "Maximize" : "Minimize");
+  lines.push(sense && sense.toLowerCase() === "maximize" ? "Maximize" : "Minimize");
   const objTerms: string[] = [];
   let isFirst = true;
 

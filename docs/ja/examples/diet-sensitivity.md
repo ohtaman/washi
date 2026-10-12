@@ -57,8 +57,10 @@ async function runDietSensitivity() {
   }
   console.log("--- Nutritional Constraints (Dual & Slack) ---");
   for (const name of ["min_calories", "min_protein", "min_calcium", "min_iron"]) {
-    const c = m.getConstraintByName(name)!;
-    console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
+    const c = m.getConstraintByName(name);
+    if (c) {
+      console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
+    }
   }
 }
 

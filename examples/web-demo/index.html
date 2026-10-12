@@ -574,33 +574,39 @@ console.log("Conflicting Rules:", res.unsatCore);
             </div>
           </div>
 
-          <!-- Guide 4: PuLP Compatibility -->
+          <!-- Guide 4: Natural Domain Modeling API -->
           <div class="doc-card">
             <div class="doc-card-header">
               <div class="doc-card-title">
-                <span>4. Python PuLP Migration Layer</span>
+                <span class="lang-en">4. Natural Domain Modeling &amp; Vector Expressions</span>
+                <span class="lang-ja" style="display: none;">4. 自然なドメインモデリングとベクトル演算</span>
               </div>
             </div>
             <div class="doc-card-body">
               <p class="lang-en">
-                Port existing Python PuLP optimization code directly to TypeScript with familiar classes and operator semantics:
+                Create structured multi-variable maps and formulate clean algebraic constraints using domain types (<code>integer</code>, <code>continuous</code>, <code>dot</code>, <code>expr</code>):
               </p>
               <p class="lang-ja" style="display: none;">
-                既存の Python PuLP スクリプトを、慣れ親しんだクラスや操作感のまま TypeScript に直接移植できます：
+                多変数の構造化マップを定義し、ドメイン型（<code>integer</code>, <code>continuous</code>, <code>dot</code>, <code>expr</code>）を用いて直感的に制約を記述できます：
               </p>
-              <pre class="doc-code-block">import { LpProblem, LpVariable, LpMaximize, LpInteger, HiGHS, value } from "@ohtaman/washi";
+              <pre class="doc-code-block">import { Model, expr, dot } from "@ohtaman/washi";
 
-const prob = new LpProblem("PuLPDemo", LpMaximize);
-const x = new LpVariable("x", 0, undefined, LpInteger);
-const y = new LpVariable("y", 0, undefined, LpInteger);
+const m = new Model({ name: "Woodworking" });
+const items = ["chairs", "tables"] as const;
+const profits = { chairs: 30, tables: 50 };
+const woodCost = { chairs: 1, tables: 2 };
 
-// PuLP += equivalent
-prob.add(x.mul(30).add(y.mul(50)));
-prob.add(x.add(y.mul(2)).le(40));
-prob.add(x.mul(2).add(y).le(50));
+// Multi-variable mapping
+const x = m.integer(items, { lb: 0 });
 
-await prob.solve(new HiGHS());
-console.log(`Status: ${prob.status}, Objective: ${value(prob.objective)}`);</pre>
+// Dot product &amp; natural constraints
+m.maximize(dot(profits, x));
+m.constrain(expr`${dot(woodCost, x)} &lt;= 40`, "wood_limit");
+m.constrain(expr`2 * ${x.chairs} + ${x.tables} &lt;= 50`, "labor_limit");
+
+await m.optimize();
+console.log(`Profit: $${m.objectiveValue}`); // 1100
+console.log(`Solution:`, m.getValues(x)); // { chairs: 20, tables: 10 }</pre>
             </div>
           </div>
         </div>

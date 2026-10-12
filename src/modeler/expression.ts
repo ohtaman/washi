@@ -314,8 +314,10 @@ export function dot(
     }
   }
 
-  function recurse(valA: any, valB: any) {
-    if (valA === undefined || valB === undefined || valA === null || valB === null) return;
+  function recurse(valA: any, valB: any, path: string = "") {
+    if (valA === undefined || valB === undefined || valA === null || valB === null) {
+      throw new Error(`Nullish or undefined operand encountered in dot() at '${path || "root"}'.`);
+    }
 
     if (typeof valA === "number") {
       addProduct(valA, valB);
@@ -326,22 +328,46 @@ export function dot(
       return;
     }
 
-    if (Array.isArray(valA) && Array.isArray(valB)) {
-      const minLen = Math.min(valA.length, valB.length);
-      for (let i = 0; i < minLen; i++) {
-        recurse(valA[i], valB[i]);
+    if (Array.isArray(valA) || Array.isArray(valB)) {
+      if (!Array.isArray(valA) || !Array.isArray(valB)) {
+        throw new Error(
+          `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is not.`
+        );
+      }
+      if (valA.length !== valB.length) {
+        throw new Error(
+          `Array length mismatch in dot() at '${path || "root"}': received lengths ${valA.length} and ${valB.length}.`
+        );
+      }
+      for (let i = 0; i < valA.length; i++) {
+        recurse(valA[i], valB[i], path ? `${path}[${i}]` : `[${i}]`);
       }
       return;
     }
 
     if (typeof valA === "object" && typeof valB === "object") {
-      for (const key of Object.keys(valA)) {
-        if (key in valB) {
-          recurse(valA[key], valB[key]);
-        }
+      const keysA = Object.keys(valA);
+      const keysB = Object.keys(valB);
+
+      const missingInB = keysA.filter((k) => !(k in valB));
+      const missingInA = keysB.filter((k) => !(k in valA));
+
+      if (missingInB.length > 0 || missingInA.length > 0) {
+        const parts: string[] = [];
+        if (missingInB.length > 0) parts.push(`missing in second operand: [${missingInB.join(", ")}]`);
+        if (missingInA.length > 0) parts.push(`missing in first operand: [${missingInA.join(", ")}]`);
+        throw new Error(
+          `Key mismatch in dot() at '${path || "root"}': ${parts.join("; ")}.`
+        );
+      }
+
+      for (const key of keysA) {
+        recurse(valA[key], valB[key], path ? `${path}.${key}` : key);
       }
       return;
     }
+
+    throw new Error(`Unsupported operand types in dot() at '${path || "root"}'.`);
   }
 
   recurse(a, b);
