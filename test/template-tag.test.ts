@@ -108,4 +108,34 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     // Missing comparison operator
     expect(() => c`2 * ${x} + 5`).toThrow(/Constraint must contain a comparison operator/);
   });
+
+  it("rejects non-linear variable multiplication in expr with descriptive error", () => {
+    const m = new Model();
+    const x = m.continuous("x");
+    const y = m.continuous("y");
+
+    expect(() => expr`${x} * ${y}`).toThrow(
+      /Multiplication of two variables creates a non-linear term \(not allowed in MILP\/LP\)/
+    );
+    expect(() => expr`${x} * ${x}`).toThrow(
+      /Multiplication of two variables creates a non-linear term \(not allowed in MILP\/LP\)/
+    );
+  });
+
+  it("parses linear expressions and inline linear constraints as documented in expressions guide", () => {
+    const m = new Model();
+    const x = m.continuous("x", { lb: 0 });
+    const y = m.continuous("y", { lb: 0 });
+
+    const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
+    expect(linearExpr.terms.get(x)).toBe(3);
+    expect(linearExpr.terms.get(y)).toBe(5);
+    expect(linearExpr.constant).toBe(-10);
+
+    const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
+    expect(balanceConstraint.sense).toBe("<=");
+    expect(balanceConstraint.rhs).toBe(40);
+    expect(balanceConstraint.lhs.terms.get(x)).toBe(1);
+    expect(balanceConstraint.lhs.terms.get(y)).toBe(2);
+  });
 });

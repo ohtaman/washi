@@ -20,16 +20,20 @@ const y = m.continuous("y", { lb: 0 });
 // Linear combination: 3*x + 5*y - 10
 const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 
-// Quadratic expression: x * y + 2 * x^2
-const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+// Inline linear constraint
+const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### Supported Syntax in `expr`
 - **Addition & Subtraction**: `${x} + ${y} - 5`
-- **Multiplication**: `4 * ${x}`, `${x} * 4`, `${x} * ${y}`
+- **Scalar Multiplication**: `4 * ${x}`, `${x} * 4`
 - **Unary Negation**: `-${x} + 10`
 - **Parentheses**: `2 * (${x} + ${y})`
+- **Linear Comparisons**: `${x} + 2 * ${y} <= 40`, `${x} >= 10`, `${x} == ${y}`
 - **Nested Expressions**: `expr` seamlessly interpolates variables, numbers, `sum()` results, and nested expressions.
+
+> [!NOTE]
+> `expr` is designed for linear expressions (`LinExpr`) and linear constraints (`Constraint`). Variable-by-variable multiplication is non-linear and not supported within `expr`. To model quadratic objectives (QP), construct them using `QuadExpr` or `.mul()`.
 
 ---
 
@@ -92,15 +96,23 @@ m.minimize(dot(costs, ship));
 
 ## 🧮 Quadratic Expressions (`QuadExpr`)
 
-WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver.
+WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver. While `expr` handles linear terms, quadratic terms are constructed using `QuadExpr` or by chaining `.mul()` on variables:
 
 ```typescript
-import { QuadExpr } from "@ohtaman/washi";
+import { Model, QuadExpr } from "@ohtaman/washi";
 
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+// 1. Construct quadratic terms with .mul()
+// Represents x * y + 2 * x^2
+const quad = x.mul(y).add(x.mul(x).mul(2));
+
+// 2. Build portfolio risk objective: w^T * Sigma * w
 const assets = ["Tech", "Bonds"];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
-// Build risk term w^T * Sigma * w
 let risk = new QuadExpr();
 risk = risk.add(w.Tech.mul(w.Tech).mul(0.04));
 risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));

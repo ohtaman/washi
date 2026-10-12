@@ -20,16 +20,20 @@ const y = m.continuous("y", { lb: 0 });
 // 線形結合: 3*x + 5*y - 10
 const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 
-// 2次式: x * y + 2 * x^2
-const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
+// インライン線形制約
+const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### `expr` でサポートされる構文
 - **加算と減算**: `${x} + ${y} - 5`
-- **乗算**: `4 * ${x}`, `${x} * 4`, `${x} * ${y}`
+- **スカラー乗算**: `4 * ${x}`, `${x} * 4`
 - **単項マイナス**: `-${x} + 10`
 - **丸括弧**: `2 * (${x} + ${y})`
+- **線形比較**: `${x} + 2 * ${y} <= 40`, `${x} >= 10`, `${x} == ${y}`
 - **ネスト式**: 変数、数値、`sum()` の結果、およびネストした式を自然に埋め込めます。
+
+> [!NOTE]
+> `expr` は線形式（`LinExpr`）および線形制約（`Constraint`）の記述に対応しています。変数同士の乗算は非線形項となるため `expr` では未対応です。凸二次計画問題（QP）の2次目的関数を記述する場合は、`QuadExpr` または `.mul()` を使用してください。
 
 ---
 
@@ -92,15 +96,23 @@ m.minimize(dot(costs, ship));
 
 ## 🧮 2次式 (`QuadExpr`)
 
-WaSHI は HiGHS ソルバーによる凸2次計画問題（QP）を標準でサポートしています。
+WaSHI は HiGHS ソルバーによる凸2次計画問題（QP）を標準でサポートしています。`expr` が線形項を扱うのに対し、2次項は `QuadExpr` または変数同士の `.mul()` メソッドを使って構築します：
 
 ```typescript
-import { QuadExpr } from "@ohtaman/washi";
+import { Model, QuadExpr } from "@ohtaman/washi";
 
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+// 1. .mul() による2次項の構築:
+// x * y + 2 * x^2 を表現
+const quad = x.mul(y).add(x.mul(x).mul(2));
+
+// 2. 2次目的関数（ポートフォリオのリスク項 w^T * Sigma * w など）の構築:
 const assets = ["Tech", "Bonds"];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
-// リスク項 w^T * Sigma * w を構築
 let risk = new QuadExpr();
 risk = risk.add(w.Tech.mul(w.Tech).mul(0.04));
 risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));

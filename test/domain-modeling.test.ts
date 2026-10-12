@@ -255,4 +255,46 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     expect(e2Rev.terms.get(x2.terms.id)).toBe(3);
     expect(e2Rev.terms.get(x2.terms.quadTerms)).toBe(4);
   });
+
+  it("models semi-continuous decisions using continuous and binary variables with linking constraints", async () => {
+    // Semi-continuous: batch in {0} U [10, 100]
+    // 1. When minimizing batch without demand: optimal is batch = 0, isActive = 0
+    const m1 = new Model();
+    const batch1 = m1.continuous("batch", { lb: 0, ub: 100 });
+    const isActive1 = m1.binary("is_active");
+    m1.constrain(expr`${batch1} >= 10 * ${isActive1}`, "min_batch_run");
+    m1.constrain(expr`${batch1} <= 100 * ${isActive1}`, "max_batch_run");
+    m1.minimize(batch1);
+
+    const status1 = await m1.optimize();
+    expect(status1).toBe("Optimal");
+    expect(batch1.value).toBe(0);
+    expect(isActive1.value).toBe(0);
+
+    // 2. When batch has positive demand >= 1: optimal is batch = 10, isActive = 1
+    const m2 = new Model();
+    const batch2 = m2.continuous("batch", { lb: 0, ub: 100 });
+    const isActive2 = m2.binary("is_active");
+    m2.constrain(expr`${batch2} >= 10 * ${isActive2}`, "min_batch_run");
+    m2.constrain(expr`${batch2} <= 100 * ${isActive2}`, "max_batch_run");
+    m2.constrain(expr`${batch2} >= 1`, "demand");
+    m2.minimize(batch2);
+
+    const status2 = await m2.optimize();
+    expect(status2).toBe("Optimal");
+    expect(batch2.value).toBe(10);
+    expect(isActive2.value).toBe(1);
+
+    // 3. When demand requires 0 < batch < 10 (e.g. batch in [1, 5]): infeasible
+    const m3 = new Model();
+    const batch3 = m3.continuous("batch", { lb: 0, ub: 100 });
+    const isActive3 = m3.binary("is_active");
+    m3.constrain(expr`${batch3} >= 10 * ${isActive3}`, "min_batch_run");
+    m3.constrain(expr`${batch3} <= 100 * ${isActive3}`, "max_batch_run");
+    m3.constrain(expr`${batch3} >= 1`, "min_demand");
+    m3.constrain(expr`${batch3} <= 5`, "max_demand");
+
+    const status3 = await m3.optimize();
+    expect(status3).toBe("Infeasible");
+  });
 });

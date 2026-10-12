@@ -94,4 +94,15 @@ describe("QuadExpr (Quadratic Expressions)", () => {
     expect(negated.getQuadCoeff(x, x)).toBe(-1);
     expect(negated.getQuadCoeff(y, y)).toBe(1);
   });
+
+  it("constructs quadratic expression via x.mul(y).add(x.mul(x).mul(2)) as documented in expressions guide", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+
+    // Represents x * y + 2 * x^2
+    const quad = x.mul(y).add(x.mul(x).mul(2));
+    expect(quad).toBeInstanceOf(QuadExpr);
+    expect(quad.getQuadCoeff(x, y)).toBe(1);
+    expect(quad.getQuadCoeff(x, x)).toBe(2);
+  });
 });
