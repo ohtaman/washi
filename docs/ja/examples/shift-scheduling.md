@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.addVars(staff, days)`, `sum()`, `m.check()`, `m.unsatCore` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
+| 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constrain()`, `expr`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
 
 シフトスケジューリングは業務 SaaS で最も需要の高い最適化タスクの1つですが、現場で必ず発生するのが**「スタッフの希望休が重なり、必要人数を満たせず解なし（Infeasible）になる」**という問題です。
 
@@ -17,7 +17,7 @@
 <CodeRunner preset="shift_scheduling">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, sum, dot, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -35,45 +35,54 @@ const requiredCoverage: Record<Day, number> = {
   Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2,
 };
 
-function buildShiftModel(name, dayOffRequests) {
-  const m = new Model({ name, sense: "Minimize" });
+function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; day: Day }>) {
+  const m = new Model(name);
 
   // 2次元 0-1 変数: shift[staff][day] (1 = 出勤, 0 = 休日)
-  const shift = m.addVars(
-    staffList.map((s) => s.name),
-    [...days],
-    { type: "Binary", prefix: "shift" }
-  );
+  const shift = m.binary(staffList.map((s) => s.name), [...days]);
 
   // 目的関数: 週間人件費の最小化（土日は +$30 の週末手当）
-  const costTerms = [];
-  for (const s of staffList) {
-    for (const d of days) {
-      const cost = s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0);
-      costTerms.push(shift[s.name][d].mul(cost));
-    }
-  }
-  m.minimize(sum(costTerms));
+  const costMatrix = Object.fromEntries(
+    staffList.map((s) => [
+      s.name,
+      Object.fromEntries(
+        days.map((d) => [d, s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0)])
+      ),
+    ])
+  );
+  m.minimize(dot(costMatrix, shift));
 
   // ルール1: 日別の最低必要人数
   for (const d of days) {
-    m.addConstraint(sum(staffList, (s) => shift[s.name][d]).ge(requiredCoverage[d]), `coverage_${d}`);
+    m.constrain(
+      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+      `coverage_${d}`
+    );
   }
 
   // ルール2: 毎日最低1名のシニアスタッフを配置
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
-    m.addConstraint(sum(seniors, (s) => shift[s.name][d]).ge(1), `senior_duty_${d}`);
+    m.constrain(
+      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+      `senior_duty_${d}`
+    );
   }
 
   // ルール3: 各スタッフの週あたり最大出勤日数（5日以内）
   for (const s of staffList) {
-    m.addConstraint(sum([...days], (d) => shift[s.name][d]).le(s.maxShifts), `max_shifts_${s.name}`);
+    m.constrain(
+      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+      `max_shifts_${s.name}`
+    );
   }
 
-  // ルール4: スタッフの希望休（shift[staff][day] <= 0）
+  // ルール4: スタッフの希望休（shift[staff][day] == 0）
   for (const req of dayOffRequests) {
-    m.addConstraint(shift[req.staff][req.day].le(0), `day_off_${req.staff}_${req.day}`);
+    m.constrain(
+      expr`${shift[req.staff][req.day]} == 0`,
+      `day_off_${req.staff}_${req.day}`
+    );
   }
 
   return { model: m, shift };
@@ -87,7 +96,7 @@ async function runShiftScheduling() {
     { staff: "Charlie", day: "Sat" },
     { staff: "Diana", day: "Wed" },
   ]);
-  const s1 = await m1.solve();
+  const s1 = await m1.optimize();
   console.log(`Part 1 (HiGHS): Status=${s1}, Optimal Weekly Payroll=$${m1.objectiveValue}`);
 
   // パート2: 土曜日に3名の希望休が重なった場合（Z3 unsatCore による衝突診断）
@@ -97,7 +106,7 @@ async function runShiftScheduling() {
     { staff: "Charlie", day: "Sat" },
     { staff: "Diana", day: "Wed" },
   ]);
-  const res2 = await m2.check("z3");
+  const res2 = await m2.check({ solver: "z3" });
   console.log(`Part 2 (Z3 Check): Status=${res2.status}`);
   console.log("Conflicting Constraint Subset (unsatCore):", m2.unsatCore);
 }

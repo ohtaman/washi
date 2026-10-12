@@ -39,26 +39,26 @@ features:
 ## 快速示例
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 // 1. 创建模型
-const m = new Model({ sense: "Maximize" });
+const m = new Model("木工产品利润最大化");
 
 // 2. 定义整数决策变量
-const x = m.addVar({ type: "Integer", lb: 0, name: "桌子" });
-const y = m.addVar({ type: "Integer", lb: 0, name: "椅子" });
+const desks = m.integer("桌子", { lb: 0 });
+const chairs = m.integer("椅子", { lb: 0 });
 
 // 3. 设置目标函数（桌子利润 $30，椅子利润 $50）
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
 
 // 4. 添加约束条件（木材与工时上限）
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
 
 // 5. 调用 WebAssembly (HiGHS) 求解
-await m.solve();
+await m.optimize();
 
-console.log(`生产方案: 桌子=${x.value}, 椅子=${y.value}`);
+console.log(`生产方案: 桌子=${desks.value}, 椅子=${chairs.value}`);
 console.log(`最大利润: $${m.objectiveValue}`);
 ```
 

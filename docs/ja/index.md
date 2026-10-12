@@ -39,26 +39,26 @@ features:
 ## クイックコード例
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 // 1. モデルの作成
-const m = new Model({ sense: "Maximize" });
+const m = new Model("木工製品の利益最大化");
 
 // 2. 決定変数の定義（整数変数）
-const x = m.addVar({ type: "Integer", lb: 0, name: "机" });
-const y = m.addVar({ type: "Integer", lb: 0, name: "椅子" });
+const desks = m.integer("机", { lb: 0 });
+const chairs = m.integer("椅子", { lb: 0 });
 
 // 3. 目的関数の設定（机 $30、椅子 $50 の利益最大化）
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
 
 // 4. 制約条件の追加（木材と労働力の上限）
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "木材上限");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "労働力上限");
+m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "木材上限");
+m.constrain(expr`2 * ${desks} + ${chairs} <= 50`, "労働力上限");
 
 // 5. WebAssembly (HiGHS) による求解
-await m.solve();
+await m.optimize();
 
-console.log(`生産量: 机=${x.value}台, 椅子=${y.value}台`);
+console.log(`生産量: 机=${desks.value}台, 椅子=${chairs.value}台`);
 console.log(`最大利益: $${m.objectiveValue}`);
 ```
 

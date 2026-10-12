@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.addVar()`, `expr`, `c` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
+| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.integer()`, `m.constrain()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
 
 Production planning is a classic Linear Programming problem: determine the optimal quantity of each product to manufacture in order to maximize total profit while respecting resource constraints (raw materials, machine time, labor hours).
 
@@ -22,23 +22,23 @@ $$\begin{aligned}
 <CodeRunner preset="production">
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 async function runProductionOptimization() {
   const m = new Model("FactoryProduction");
 
   // Decision variables: non-negative integer quantities
-  const chairs = m.addVar({ name: "chairs", lb: 0, type: "Integer" });
-  const tables = m.addVar({ name: "tables", lb: 0, type: "Integer" });
+  const chairs = m.integer("chairs", { lb: 0 });
+  const tables = m.integer("tables", { lb: 0 });
 
   // Objective: Maximize total profit ($45 per chair, $80 per table)
   m.maximize(expr`45 * ${chairs} + 80 * ${tables}`);
 
-  // Resource constraints
-  m.addConstraint(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
-  m.addConstraint(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  // Resource constraints: declarative formulas via expr and fluent constrain()
+  m.constrain(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
+   .constrain(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
-  const status = await m.solve();
+  const status = await m.optimize();
 
   console.log(`Status: ${status}`);
   console.log(`Optimal Profit: $${m.objectiveValue}`);

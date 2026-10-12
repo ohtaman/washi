@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/08-glpk-solver-plugin.ts
  */
 
-import { Model } from "../../src/index.js";
+import { Model, expr } from "../../src/index.js";
 // In your application, import: import "@ohtaman/washi/solvers/glpk";
 import "../../src/modeler/solvers/glpk.js";
 
@@ -19,31 +19,18 @@ async function main() {
   const model = new Model({ name: "DietProblem", sense: "Minimize", solver: "glpk" });
 
   // Food variables with unit costs
-  const bread = model.addVar({ name: "bread", lb: 0, ub: 10 });     // $2.00 / loaf
-  const milk = model.addVar({ name: "milk", lb: 0, ub: 10 });       // $3.50 / bottle
-  const cheese = model.addVar({ name: "cheese", lb: 0, ub: 5 });    // $5.00 / pack
+  const bread = model.continuous("bread", { lb: 0, ub: 10 });     // $2.00 / loaf
+  const milk = model.continuous("milk", { lb: 0, ub: 10 });       // $3.50 / bottle
+  const cheese = model.continuous("cheese", { lb: 0, ub: 5 });    // $5.00 / pack
 
   // Objective: Minimize total cost
-  model.minimize(bread.mul(2.0).add(milk.mul(3.5)).add(cheese.mul(5.0)));
+  model.minimize(expr`2 * ${bread} + 3.5 * ${milk} + 5 * ${cheese}`);
 
   // Nutritional requirements:
-  // Calories >= 2000
-  const cCalories = model.addConstraint(
-    bread.mul(300).add(milk.mul(250)).add(cheese.mul(400)).ge(2000),
-    "Calories"
-  );
-
-  // Protein >= 70g
-  const cProtein = model.addConstraint(
-    bread.mul(10).add(milk.mul(15)).add(cheese.mul(25)).ge(70),
-    "Protein"
-  );
-
-  // Calcium >= 800mg
-  const cCalcium = model.addConstraint(
-    bread.mul(50).add(milk.mul(300)).add(cheese.mul(500)).ge(800),
-    "Calcium"
-  );
+  // Calories >= 2000, Protein >= 70g, Calcium >= 800mg
+  model.constrain(expr`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories")
+       .constrain(expr`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein")
+       .constrain(expr`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
 
   console.log("Solving with GLPK...");
   const status = await model.optimize();
@@ -55,9 +42,9 @@ async function main() {
   console.log(`Cheese: ${cheese.value?.toFixed(2)} packs`);
 
   console.log("\nShadow Prices (Duals):");
-  console.log(`Calories dual: ${cCalories.dual?.toFixed(4)}`);
-  console.log(`Protein dual:  ${cProtein.dual?.toFixed(4)}`);
-  console.log(`Calcium dual:  ${cCalcium.dual?.toFixed(4)}`);
+  console.log(`Calories dual: ${model.getConstraintByName("Calories")?.dual?.toFixed(4)}`);
+  console.log(`Protein dual:  ${model.getConstraintByName("Protein")?.dual?.toFixed(4)}`);
+  console.log(`Calcium dual:  ${model.getConstraintByName("Calcium")?.dual?.toFixed(4)}`);
 }
 
 main().catch(console.error);

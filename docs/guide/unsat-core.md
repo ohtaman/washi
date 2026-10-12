@@ -2,31 +2,31 @@
 
 In mathematical optimization, encountering an **Infeasible** problem is one of the most frustrating experiences: the solver simply reports that no solution exists, giving no indication of *which* constraints are contradictory.
 
-WaSHI solves this by integrating with the **Z3 SMT engine** to automatically compute an **Unsatisfiable Core (Unsat Core)**—the minimal subset of mutually contradictory constraints.
+WaSHI solves this by integrating with the **Z3 SMT engine** to automatically compute an **Unsatisfiable Core (Unsat Core)**—a conflicting subset of mutually contradictory constraints.
 
 ---
 
 ## 🔍 How It Works
 
-When a model is solved, you can request an Unsat Core analysis:
+When diagnosing an infeasible model, use `m.check()` or `m.optimize()` with Z3:
 
 ```typescript
-import { Model, c, expr } from "@ohtaman/washi";
-// Ensure z3-solver peer dependency is installed: npm i z3-solver
+import { Model, expr } from "@ohtaman/washi";
+// Ensure z3 solver plugin is imported
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ solver: "z3" });
 
-const x = m.addVar({ lb: 0 });
+const x = m.continuous("reserve", { lb: 0 });
 
 // Add contradictory business requirements
-m.addConstraint(c`${x} >= 100`, "minimum_regulatory_reserve");
-m.addConstraint(c`${x} <= 50`, "budget_ceiling");
-m.addConstraint(c`${x} >= 10`, "routine_operating_cost");
+m.constrain(expr`${x} >= 100`, "minimum_regulatory_reserve");
+m.constrain(expr`${x} <= 50`, "budget_ceiling");
+m.constrain(expr`${x} >= 10`, "routine_operating_cost");
 
-const result = await m.solve({ computeUnsatCore: true });
+const result = await m.check({ solver: "z3" });
 
-if (m.status === "Infeasible") {
+if (result.status === "Unsat") {
   console.log("Contradictory constraints identified:");
   console.log(m.unsatCore);
   // Output: ["minimum_regulatory_reserve", "budget_ceiling"]

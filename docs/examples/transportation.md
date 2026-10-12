@@ -2,11 +2,11 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `m.addVars(rows, cols)`, `sum()`, `constr.dual` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">Source Code</a></li></ul> |
+| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">Source Code</a></li></ul> |
 
 The transportation problem is one of the most fundamental network optimization models: determine how many units to ship from each supply origin (factory) to each destination (store) to minimize total shipping cost while respecting factory supply limits and meeting store demands.
 
-This example demonstrates how to construct a **2D matrix of decision variables** using `m.addVars(factories, stores)` and aggregate across rows and columns using `sum()`.
+This example demonstrates how to construct a **2D matrix of decision variables** using `m.continuous(factories, stores)` and write aggregated constraints declaratively via `dot()` and `m.constrain(expr`...`)`.
 
 ## Problem Inputs
 
@@ -35,7 +35,7 @@ $$\begin{aligned}
 <CodeRunner preset="transportation">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, sum, dot, expr } from "@ohtaman/washi";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -50,37 +50,31 @@ const supplies = { Tokyo: 120, Nagoya: 100, Osaka: 80 };
 const demands = { North: 70, East: 90, West: 60, South: 60 };
 
 async function runTransportation() {
-  const m = new Model({ name: "TransportationNetwork", sense: "Minimize" });
+  const m = new Model("TransportationNetwork");
 
-  // 1. Create a 2D variable dictionary: ship[factory][store] >= 0
-  const ship = m.addVars([...factories], [...stores], { lb: 0, prefix: "ship" });
+  // 1. Create 2D continuous variables: ship[factory][store] >= 0
+  const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
-  // 2. Objective: Minimize total shipping cost across all routes
-  const costTerms = [];
-  for (const f of factories) {
-    for (const s of stores) {
-      costTerms.push(ship[f][s].mul(shippingCost[f][s]));
-    }
-  }
-  m.minimize(sum(costTerms));
+  // 2. Objective: Minimize total shipping cost across all routes via 2D dot product
+  m.minimize(dot(shippingCost, ship));
 
   // 3. Supply constraints (row sums): outgoing from f <= supplies[f]
   for (const f of factories) {
-    m.addConstraint(
-      sum(stores.map((s) => ship[f][s])).le(supplies[f]),
+    m.constrain(
+      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
       `supply_${f}`
     );
   }
 
   // 4. Demand constraints (column sums): incoming to s >= demands[s]
   for (const s of stores) {
-    m.addConstraint(
-      sum(factories.map((f) => ship[f][s])).ge(demands[s]),
+    m.constrain(
+      expr`${sum(factories, (f) => ship[f][s])} >= ${demands[s]}`,
       `demand_${s}`
     );
   }
 
-  const status = await m.solve();
+  const status = await m.optimize();
   console.log(`Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
   for (const f of factories) {
     const routes = stores

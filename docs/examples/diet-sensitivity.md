@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `constr.dual`, `constr.slack`, `var.reducedCost` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
+| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
 
 When solving a Linear Programming model, the optimal variable values (`var.value`) are only half the story. In practice, decision-makers need to know:
 
@@ -28,7 +28,7 @@ We choose daily servings ($0 \le x_i \le 4$) among 6 food items to meet 4 daily 
 <CodeRunner preset="diet_sensitivity">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, expr, dot } from "@ohtaman/washi";
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -40,21 +40,27 @@ const foods = [
 ];
 
 async function runDietSensitivity() {
-  const m = new Model({ name: "DietSensitivity", sense: "Minimize" });
+  const m = new Model("DietSensitivity");
 
   // Continuous servings per day (0 to 4 servings max per food)
-  const srv = m.addVars(foods.map((f) => f.name), { lb: 0, ub: 4, prefix: "srv" });
+  const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4 });
 
-  // Objective: Minimize total daily cost
-  m.minimize(sum(foods, (f) => srv[f.name].mul(f.cost)));
+  const costs = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
+  const cals  = Object.fromEntries(foods.map((f) => [f.name, f.calories]));
+  const prots = Object.fromEntries(foods.map((f) => [f.name, f.protein]));
+  const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
+  const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // Keep references to Constraint objects to inspect .dual and .slack after solving
-  const cCal  = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.calories)).ge(2000), "min_calories");
-  const cProt = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.protein)).ge(105),   "min_protein");
-  const cCalc = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.calcium)).ge(1000),  "min_calcium");
-  const cIron = m.addConstraint(sum(foods, (f) => srv[f.name].mul(f.iron)).ge(18),       "min_iron");
+  // Objective: Minimize total daily cost via dot product
+  m.minimize(dot(costs, srv));
 
-  const status = await m.solve();
+  // Nutritional constraints defined declaratively with expr and constrain()
+  m.constrain(expr`${dot(cals, srv)} >= 2000`, "min_calories")
+   .constrain(expr`${dot(prots, srv)} >= 105`,  "min_protein")
+   .constrain(expr`${dot(calcs, srv)} >= 1000`, "min_calcium")
+   .constrain(expr`${dot(irons, srv)} >= 18`,   "min_iron");
+
+  const status = await m.optimize();
 
   console.log(`Status: ${status}, Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
   console.log("--- Food Servings & Reduced Costs ---");
@@ -63,7 +69,8 @@ async function runDietSensitivity() {
     console.log(`  ${f.name.padEnd(8)}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
   }
   console.log("--- Nutritional Constraints (Dual & Slack) ---");
-  for (const c of [cCal, cProt, cCalc, cIron]) {
+  for (const name of ["min_calories", "min_protein", "min_calcium", "min_iron"]) {
+    const c = m.getConstraintByName(name)!;
     console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
   }
 }

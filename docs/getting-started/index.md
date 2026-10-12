@@ -51,23 +51,22 @@ Here is a step-by-step example of solving a production allocation problem.
 ### 1. Import the Core Classes
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 ```
 
 ### 2. Instantiate a Model
 
 ```typescript
-// Create a maximization model
-const model = new Model({ sense: "Maximize" });
+const model = new Model("WoodworkingProfit");
 ```
 
 ### 3. Add Decision Variables
 
-Variables represent the unknowns you want to determine. You can specify bounds and variable types (`"Continuous"`, `"Integer"`, or `"Binary"`):
+Variables represent the unknowns you want to determine. Factory methods (`m.continuous`, `m.integer`, `m.binary`) clearly define their domain:
 
 ```typescript
-const x = model.addVar({ type: "Integer", lb: 0, name: "x" });
-const y = model.addVar({ type: "Integer", lb: 0, name: "y" });
+const x = model.integer("x", { lb: 0 });
+const y = model.integer("y", { lb: 0 });
 ```
 
 ### 4. Set the Objective Function
@@ -81,21 +80,21 @@ model.maximize(expr`30 * ${x} + 50 * ${y}`);
 
 ### 5. Add Constraints
 
-Use the `c` tagged template literal to formulate equality and inequality constraints:
+Use `model.constrain()` with `expr` to formulate equality and inequality constraints:
 
 ```typescript
-model.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. Solve and Extract Results
 
-Solve the model asynchronously. The solver automatically selects WebAssembly (HiGHS by default):
+Solve the model asynchronously via WebAssembly (HiGHS by default):
 
 ```typescript
-const result = await model.solve();
+const status = await model.optimize();
 
-console.log("Status:", model.status); // "Optimal"
+console.log("Status:", status); // "Optimal"
 console.log("Optimal Objective Value:", model.objectiveValue); // 1100
 console.log(`Solution: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 ```

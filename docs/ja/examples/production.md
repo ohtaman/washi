@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.addVar()`, `expr`, `c` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
+| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.integer()`, `m.constrain()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
 
 限られたリソース（木材・労働時間など）の制約を守りながら、どの製品をいくつ生産すれば総利益が最大になるかを求める古典的な最適化問題です。
 
@@ -22,23 +22,23 @@ $$\begin{aligned}
 <CodeRunner preset="production">
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 async function runProductionOptimization() {
   const m = new Model("FactoryProduction");
 
   // 決定変数: 椅子と机の生産数 (非負整数)
-  const chairs = m.addVar({ name: "chairs", lb: 0, type: "Integer" });
-  const tables = m.addVar({ name: "tables", lb: 0, type: "Integer" });
+  const chairs = m.integer("chairs", { lb: 0 });
+  const tables = m.integer("tables", { lb: 0 });
 
   // 目的関数: 総利益の最大化 ($45/椅子, $80/机)
   m.maximize(expr`45 * ${chairs} + 80 * ${tables}`);
 
-  // リソース制約
-  m.addConstraint(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
-  m.addConstraint(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  // リソース制約: m.constrain と expr による宣言的記述 (メソッドチェーン可能)
+  m.constrain(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
+   .constrain(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
-  const status = await m.solve();
+  const status = await m.optimize();
 
   console.log(`Status: ${status}`);
   console.log(`Optimal Profit: $${m.objectiveValue}`);

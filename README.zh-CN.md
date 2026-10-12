@@ -31,17 +31,17 @@ HiGHS 是默认求解器；Z3 和 GLPK 是可选插件。软件包提供 Node.js
 [试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const m = new Model({ sense: "Maximize" });
-const x = m.addVar({ type: "Integer", lb: 0 });
-const y = m.addVar({ type: "Integer", lb: 0 });
+const m = new Model("木工产品利润最大化");
+const x = m.integer("桌子", { lb: 0 });
+const y = m.integer("椅子", { lb: 0 });
 
 m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-await m.solve();
+await m.optimize();
 console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.objectiveValue})`);
 ```
 
@@ -101,49 +101,49 @@ npm install glpk.js      # 用于 GLPK 求解器 (GPL-3.0)
 在有限资源约束下实现利润最大化：
 
 ```ts
-import { Model, c, expr } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const m = new Model({ name: "FactoryPlanning", sense: "Maximize" });
+const m = new Model("FactoryPlanning");
 
 // 决策变量（非负整数）
-const chairs = m.addVar({ name: "chairs", type: "Integer", lb: 0 });
-const tables = m.addVar({ name: "tables", type: "Integer", lb: 0 });
+const chairs = m.integer("chairs", { lb: 0 });
+const tables = m.integer("tables", { lb: 0 });
 
 // 借助标签模板字面量自然表达目标函数与约束
 m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.addConstraint(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+m.constrain(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
 // 使用默认的 HiGHS WASM 引擎求解
-const status = await m.solve();
+const status = await m.optimize();
 
 console.log(`求解状态: ${status}`); // "Optimal"
 console.log(`最大利润: $${m.objectiveValue}`); // 1100
 console.log(`生产量: 椅子=${chairs.value}, 桌子=${tables.value}`); // 椅子 20, 桌子 10
 ```
 
-#### 🗂 多维变量网格 (`addVars`)
+#### 🗂 多维变量网格
 
-一行代码声明变量字典或多维变量矩阵（类似于 PuLP 的 `LpVariable.dicts`）：
+一行代码声明变量字典或多维变量矩阵：
 
 ```ts
 // 1D 字典形式的布尔变量
-const openCity = m.addVars(["Tokyo", "Osaka", "Nagoya"], { type: "Binary" });
+const openCity = m.binary(["Tokyo", "Osaka", "Nagoya"]);
 
 // 2D 运输量矩阵: [工厂] x [门店]
-const flow = m.addVars(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
+const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
 
 // 2D 网格坐标 (例如 8x8 棋盘)
-const board = m.addVars(8, 8, { type: "Binary", prefix: "queen" });
+const board = m.binary(8, 8, { prefix: "queen" });
 ```
 
-#### 🔀 Big-M 指示约束 (`addIndicator`)
+#### 🔀 Big-M 条件指示约束 (`m.indicator`)
 
-直接表达条件激活与固定成本逻辑，无需手动进行繁琐的 Big-M 代数推导：
+轻松建模条件触发规则与固定成本启动，无需繁琐的手工 Big-M 代数推导：
 
 ```ts
 // "若工厂关闭 (openCity['Tokyo'] == 0)，则产量 flow 必须为 0"
-m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
+m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
@@ -156,20 +156,21 @@ m.addIndicator(openCity["Tokyo"], flow["F1"]["StoreA"].le(0), {
 在满足预期收益与预算约束的前提下，基于协方差矩阵最小化投资组合风险：
 
 ```ts
-import { Model, QuadExpr, sum } from "@ohtaman/washi";
+import { Model, QuadExpr, sum, dot, expr } from "@ohtaman/washi";
 
-const m = new Model({ name: "MarkowitzPortfolio", sense: "Minimize" });
+const m = new Model("MarkowitzPortfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
 const returns = [0.14, 0.04, 0.08];
 
 // 决策变量: 各资产投资权重 (0.0 ~ 1.0)
-const w = assets.map((a) => m.addVar({ name: `w_${a}`, lb: 0, ub: 1 }));
+const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 // 1. 预算约束: 资金分配总额 100%
-m.addConstraint(sum(w).eq(1.0), "budget");
+m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
 // 2. 目标回报率: 组合最低回报率 >= 8.5%
-m.addConstraint(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
+const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
+m.constrain(expr`${dot(retMap, w)} >= 0.085`, "min_return");
 
 // 3. 资产协方差矩阵 (风险与相关性)
 const cov = [
@@ -182,15 +183,15 @@ const cov = [
 let risk = new QuadExpr();
 for (let i = 0; i < assets.length; i++) {
   for (let j = 0; j < assets.length; j++) {
-    risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
+    risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
   }
 }
 m.minimize(risk);
 
-await m.solve();
+await m.optimize();
 console.log(`最小方差: ${m.objectiveValue?.toFixed(6)}`);
-assets.forEach((name, i) => {
-  console.log(`  ${name}: ${((w[i].value || 0) * 100).toFixed(2)}%`);
+assets.forEach((name) => {
+  console.log(`  ${name}: ${((w[name].value || 0) * 100).toFixed(2)}%`);
 });
 ```
 
@@ -201,7 +202,7 @@ assets.forEach((name, i) => {
 原生支持布尔命题变量（`BoolVar`）、逻辑连接词（`and`, `or`, `implies`, `not`, `xor`）与数值算术约束的混合表达：
 
 ```ts
-import { Model, not } from "@ohtaman/washi";
+import { Model, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
@@ -210,16 +211,16 @@ const isNight = m.addBoolVar("isNight");
 const motion = m.addBoolVar("motion");
 const alarm = m.addBoolVar("alarm");
 const siren = m.addBoolVar("siren");
-const lux = m.addVar({ name: "lux", type: "Integer", lb: 0 });
+const lux = m.integer("lux", { lb: 0 });
 
 // 规则定义
-m.addConstraint(lux.le(50).implies(isNight), "dark_implies_night");
-m.addConstraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
+m.constrain(lux.le(50).implies(isNight), "dark_implies_night");
+m.constrain(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
 // 传感器当前输入数据
-m.addConstraint(lux.le(10), "sensor_dark");
-m.addConstraint(motion, "sensor_motion");
-m.addConstraint(alarm, "alarm_on");
+m.constrain(expr`${lux} <= 10`, "sensor_dark");
+m.constrain(motion, "sensor_motion");
+m.constrain(alarm, "alarm_on");
 
 // 无目标函数直接判定可满足性 (SAT)
 const res = await m.check({ solver: "z3" });
@@ -235,28 +236,28 @@ console.log(`警报响起？ ${m.values.get("siren")}`); // true
 当规则或约束之间存在矛盾时，Z3 能够提取引发冲突的**矛盾约束子集**（Unsat Core，不保证最小性；需使用 Z3）：
 
 ```ts
-import { Model } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
-const engineers = m.addVar({ name: "engineers", type: "Integer", lb: 0, ub: 20 });
-const budget = m.addVar({ name: "budget", type: "Continuous", lb: 0, ub: 100000 });
+const engineers = m.integer("engineers", { lb: 0, ub: 20 });
+const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.addBoolVar("rushDelivery");
 
 // 规则 1: 每位工程师成本 $8,000
-m.addConstraint(engineers.mul(8000).le(budget), "budget_limit");
+m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
 // 规则 2: 客户要求加急交付
-m.addConstraint(rushDelivery, "rush_required");
+m.constrain(rushDelivery, "rush_required");
 
 // 规则 3: 加急交付需至少配备 8 名工程师
-m.addConstraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // 规则 4: 董事会严格预算上限 $50,000 (冲突点: 8人 * $8,000 = $64,000 > $50,000!)
-m.addConstraint(budget.le(50000), "strict_board_budget_cap");
+m.constrain(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
 // 规则 5: 最低 1 名员工用工底线（无关规则）
-m.addConstraint(engineers.ge(1), "minimum_one_employee");
+m.constrain(expr`${engineers} >= 1`, "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
@@ -273,53 +274,49 @@ console.log("冲突约束子集:", res.unsatCore);
 使用 GNU Linear Programming Kit (GLPK) 求解器插件：
 
 ```ts
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
-const m = new Model({ sense: "Maximize", solver: "glpk" });
-const x = m.addVar({ type: "Integer", lb: 0 });
-const y = m.addVar({ type: "Integer", lb: 0 });
+const m = new Model({ solver: "glpk" });
+const x = m.integer("x", { lb: 0 });
+const y = m.integer("y", { lb: 0 });
 
 m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-const status = await m.solve();
+const status = await m.optimize();
 console.log(`求解状态: ${status}`); // "Optimal"
 console.log(`目标函数值: ${m.objectiveValue}`); // 1100
 ```
 
 ---
 
-### 6. PuLP 风格辅助函数
+### 6. 向量运算与高效点积 (`dot`)
 
-使用 `LpProblem`、`LpVariable` 和 `lpSum` 等辅助函数，可在 JavaScript 中采用熟悉的建模方式。迁移 Python 代码需要调整语法并确认支持的 API：
+无需嵌套循环，一行代码完成一维和二维变量的线性组合：
 
 ```ts
-import {
-  LpProblem,
-  LpVariable,
-  LpMaximize,
-  LpInteger,
-  HiGHS,
-  value,
-} from "@ohtaman/washi";
+import { Model, dot } from "@ohtaman/washi";
 
-const prob = new LpProblem("PuLPDemo", LpMaximize);
+const m = new Model();
+const factories = ["Tokyo", "Osaka"];
+const stores = ["StoreA", "StoreB"];
 
-const x = new LpVariable("x", 0, undefined, LpInteger);
-const y = new LpVariable("y", 0, undefined, LpInteger);
+const costs = {
+  Tokyo: { StoreA: 4, StoreB: 7 },
+  Osaka: { StoreA: 8, StoreB: 3 },
+};
 
-// 等同于 PuLP 中的 += 语法
-prob.add(x.mul(30).add(y.mul(50)));
-prob.add(x.add(y.mul(2)).le(40));
-prob.add(x.mul(2).add(y).le(50));
+const ship = m.continuous(factories, stores);
 
-await prob.solve(new HiGHS());
+// 一行代码最小化总运输成本:
+m.minimize(dot(costs, ship));
+await m.optimize();
 
-console.log(`状态: ${prob.status}`);
-console.log(`目标函数值: ${value(prob.objective)}`);
-console.log(`x = ${value(x)}, y = ${value(y)}`);
+// 获取所有变量的最优取值结构
+const solution = m.getValues(ship);
+console.log(solution);
 ```
 
 ---

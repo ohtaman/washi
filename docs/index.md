@@ -39,26 +39,26 @@ features:
 ## Quick Example
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 // 1. Create a model
-const m = new Model({ sense: "Maximize" });
+const m = new Model("WoodworkingProfit");
 
 // 2. Define decision variables
-const x = m.addVar({ type: "Integer", lb: 0, name: "desks" });
-const y = m.addVar({ type: "Integer", lb: 0, name: "chairs" });
+const desks = m.integer("desks", { lb: 0 });
+const chairs = m.integer("chairs", { lb: 0 });
 
 // 3. Set objective function ($30/desk, $50/chair)
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
+m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
 
 // 4. Add constraints (material and labor limits)
-m.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.addConstraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+m.constrain(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
 
 // 5. Solve via WebAssembly (HiGHS)
-await m.solve();
+await m.optimize();
 
-console.log(`Produce: ${x.value} desks, ${y.value} chairs`);
+console.log(`Produce: ${desks.value} desks, ${chairs.value} chairs`);
 console.log(`Maximum Profit: $${m.objectiveValue}`);
 ```
 

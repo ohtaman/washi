@@ -1,8 +1,8 @@
-# Expressions (`expr`)
+# Expressions (`expr`, `sum`, `dot`)
 
-Mathematical expressions are linear or quadratic combinations of variables and numeric coefficients.
+Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
 
-In JavaScript and TypeScript, operator overloading (`+`, `-`, `*`) is not supported natively. WaSHI provides **tagged template literals (`expr`)** and summation helpers (`quicksum`, `lpSum`) to give you clean, readable algebraic syntax.
+In JavaScript and TypeScript without native operator overloading, WaSHI provides **tagged template literals (`expr`)**, high-performance **`sum()`**, and matrix/vector **`dot()`** to make algebraic modeling clean and expressive.
 
 ---
 
@@ -13,9 +13,9 @@ The `expr` template tag allows you to write algebraic formulas naturally:
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
 
-const model = new Model();
-const x = model.addVar({ lb: 0 });
-const y = model.addVar({ lb: 0 });
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
 
 // Linear combination: 3*x + 5*y - 10
 const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
@@ -24,57 +24,87 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 ```
 
-### Supported Syntaxes in `expr`
+### Supported Syntax in `expr`
 - **Addition & Subtraction**: `${x} + ${y} - 5`
 - **Multiplication**: `4 * ${x}`, `${x} * 4`, `${x} * ${y}`
 - **Unary Negation**: `-${x} + 10`
 - **Parentheses**: `2 * (${x} + ${y})`
-- **Nested Expressions**: `expr` accepts both `Variable` instances and existing `Expression` instances.
+- **Nested Expressions**: `expr` seamlessly interpolates variables, numbers, `sum()` results, and nested expressions.
 
 ---
 
-## ⚡ Summation Helpers (`quicksum` & `lpSum`)
+## ⚡ High-Performance Summation (`sum`)
 
-When summing over large collections of variables (e.g. hundreds or thousands of variables in loops), string template parsing can introduce unnecessary overhead.
-
-WaSHI provides high-performance $O(N)$ linear-time summation helpers:
-
-### `quicksum`
+For iterating over large collections of variables or indices:
 
 ```typescript
-import { Model, quicksum } from "@ohtaman/washi";
+import { sum } from "@ohtaman/washi";
 
-const model = new Model();
-const items = Array.from({ length: 1000 }, () => model.addVar({ lb: 0 }));
-const costs = Array.from({ length: 1000 }, () => Math.random() * 10);
+const items = ["A", "B", "C"];
+const weights = { A: 10, B: 20, C: 30 };
+const x = m.binary(items);
 
-// Fast linear-time weighted summation: sum(costs[i] * items[i])
-const totalCost = quicksum(items.map((x, i) => [costs[i], x]));
+// 1. Transform elements with a mapping callback:
+const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
+
+// 2. Direct array summation:
+const count = sum(Object.values(x));
 ```
 
-### `lpSum` (PuLP / python-mip compatible)
+`sum()` runs in $O(N)$ linear time without AST overhead.
 
-If you are migrating from Python's PuLP:
+---
+
+## 🎯 Dot Product (`dot`)
+
+The `dot(coefficients, variables)` helper computes linear combinations in a single concise call.
+
+### 1D Vector Dot Product
+```typescript
+import { dot } from "@ohtaman/washi";
+
+const profits = { desk: 30, chair: 50 };
+const vars = m.integer(["desk", "chair"]);
+
+// Computes 30 * vars.desk + 50 * vars.chair
+const totalProfit = dot(profits, vars);
+```
+
+### 2D Matrix Dot Product
+Works directly with nested dictionaries or 2D arrays:
 
 ```typescript
-import { lpSum } from "@ohtaman/washi";
+const factories = ["Tokyo", "Osaka"];
+const stores = ["StoreA", "StoreB"];
 
-// Unweighted sum of an array of variables: sum(items)
-const totalItems = lpSum(items);
+const costs = {
+  Tokyo: { StoreA: 4, StoreB: 7 },
+  Osaka: { StoreA: 8, StoreB: 3 },
+};
+
+const ship = m.continuous(factories, stores);
+
+// Total shipping cost in one line:
+m.minimize(dot(costs, ship));
 ```
 
 ---
 
-## 🧮 Quadratic Expressions
+## 🧮 Quadratic Expressions (`QuadExpr`)
 
-WaSHI natively supports Quadratic Programming (QP) with the HiGHS solver. You can formulate quadratic terms directly in `expr`:
+WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver.
 
 ```typescript
-const x1 = model.addVar();
-const x2 = model.addVar();
+import { QuadExpr } from "@ohtaman/washi";
 
-// Quadratic objective: 0.5 * (x1^2 + x2^2) + covariance terms
-const variance = expr`0.5 * ${x1} * ${x1} + 0.5 * ${x2} * ${x2} + 0.2 * ${x1} * ${x2}`;
+const assets = ["Tech", "Bonds"];
+const w = m.continuous(assets, { lb: 0, ub: 1 });
 
-model.minimize(variance);
+// Build risk term w^T * Sigma * w
+let risk = new QuadExpr();
+risk = risk.add(w.Tech.mul(w.Tech).mul(0.04));
+risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
+risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
+
+m.minimize(risk);
 ```

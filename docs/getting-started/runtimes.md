@@ -9,13 +9,13 @@ WaSHI is designed to run seamlessly in any JavaScript/TypeScript runtime without
 WaSHI natively supports Node.js (v18+) with standard ECMAScript Modules (ESM).
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 const model = new Model();
-const x = model.addVar({ lb: 0, ub: 10 });
+const x = model.continuous("x", { lb: 0, ub: 10 });
 model.maximize(x);
 
-await model.solve();
+await model.optimize();
 console.log("x =", x.value);
 ```
 
@@ -34,13 +34,13 @@ npx tsx app.ts
 When using modern bundlers, WebAssembly assets are automatically bundled.
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 export async function runOptimization() {
   const model = new Model({ solver: "highs" });
-  const x = model.addVar({ lb: 0, ub: 100 });
+  const x = model.continuous("x", { lb: 0, ub: 100 });
   model.maximize(x);
-  await model.solve();
+  await model.optimize();
   return x.value;
 }
 ```
@@ -60,9 +60,9 @@ export default function OptimizerComponent() {
 
   const handleSolve = async () => {
     const model = new Model();
-    const x = model.addVar({ lb: 0, ub: 50 });
+    const x = model.continuous("x", { lb: 0, ub: 50 });
     model.maximize(x);
-    await model.solve();
+    await model.optimize();
     setVal(x.value);
   };
 
@@ -96,16 +96,16 @@ You can load WaSHI directly into static web pages using CDN script tags without 
     <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js"></script>
     <script>
       (async () => {
-        const { Model, expr, c } = Washi;
+        const { Model, expr } = Washi;
 
-        const model = new Model({ sense: "Maximize" });
-        const x = model.addVar({ lb: 0, ub: 10 });
-        const y = model.addVar({ lb: 0, ub: 20 });
+        const model = new Model("CDNDemo");
+        const x = model.continuous("x", { lb: 0, ub: 10 });
+        const y = model.continuous("y", { lb: 0, ub: 20 });
 
         model.maximize(expr`2 * ${x} + 3 * ${y}`);
-        model.addConstraint(c`${x} + ${y} <= 15`);
+        model.constrain(expr`${x} + ${y} <= 15`);
 
-        await model.solve();
+        await model.optimize();
 
         document.getElementById("output").textContent =
           `Status: ${model.status}\n` +
@@ -138,8 +138,8 @@ In Deno (v1.30+ with npm specifiers):
 import { Model } from "npm:@ohtaman/washi";
 
 const model = new Model();
-const x = model.addVar({ lb: 0, ub: 10 });
+const x = model.continuous("x", { lb: 0, ub: 10 });
 model.maximize(x);
-await model.solve();
+await model.optimize();
 console.log("x =", x.value);
 ```

@@ -11,13 +11,13 @@
  * Run with: npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
  */
 
-import { Model, sum } from "../../src/index.js";
+import { Model, sum, expr } from "../../src/index.js";
 
 async function main() {
   console.log("=== E-Commerce Cart & Coupon Optimizer (MIP) ===");
   const t0 = performance.now();
 
-  const m = new Model({ name: "CartCouponOptimizer", sense: "Minimize" });
+  const m = new Model("CartCouponOptimizer");
 
   // Current items in the customer's shopping cart:
   // - Noise-Canceling Headphones (Tech): $160
@@ -29,7 +29,7 @@ async function main() {
 
   // Optional add-on filler item the checkout UI can suggest:
   // - Braided USB-C Cable ($10) -> pushes total cart spend from $242 to $252!
-  const addUsbCable = m.addVar({ name: "addon_USB_Cable", type: "Binary" });
+  const addUsbCable = m.binary("addon_USB_Cable");
   const usbCablePrice = 10;
 
   // Available promotional coupons (Binary: 1 = applied, 0 = not applied)
@@ -40,10 +40,7 @@ async function main() {
     { id: "MEMBER10",    discount: 10, minCartSpend: 150, minTechSpend: 0,   stackable: true,  desc: "$10 loyalty bonus >= $150 (Stackable)" },
   ];
 
-  const useCoupon = m.addVars(
-    coupons.map((c) => c.id),
-    { type: "Binary", prefix: "cpn" }
-  );
+  const useCoupon = m.binary(coupons.map((c) => c.id));
 
   // Total merchandise spend (base cart + optional add-on item)
   const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
@@ -70,14 +67,14 @@ async function main() {
 
   // Rule 2: Mutual exclusion among non-stackable ("Exclusive") coupons
   const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.addConstraint(
-    sum(exclusiveCoupons, (c) => useCoupon[c.id]).le(1),
+  m.constrain(
+    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
     "at_most_one_exclusive_coupon"
   );
 
   // Rule 3: Maximum 2 coupons total per checkout
-  m.addConstraint(
-    sum(coupons, (c) => useCoupon[c.id]).le(2),
+  m.constrain(
+    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
     "max_two_coupons_total"
   );
 
@@ -86,7 +83,7 @@ async function main() {
   m.minimize(merchSpend.sub(totalDiscount));
 
   const buildMs = performance.now() - t0;
-  const status = await m.solve();
+  const status = await m.optimize();
   const solveMs = m.runTime * 1000;
 
   const cableAdded = Math.round(addUsbCable.value ?? 0) === 1;

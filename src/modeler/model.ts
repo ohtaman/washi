@@ -585,17 +585,23 @@ export class Model {
    * Automatically handles <=, >=, and == constraints.
    * Enables solving conditional logic in MIP solvers (HiGHS, GLPK) without requiring SMT.
    */
-  addIndicator(
+  indicator(
     binVar: Var,
-    constraint: Constraint,
+    constraint: Constraint | LinExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    if (!("sense" in constraint) || !("lhs" in constraint)) {
+      throw new Error(
+        "Invalid constraint expression passed to indicator(). Expression must include a comparison operator (<=, >=, ==)."
+      );
+    }
+    const resolvedConstraint = constraint as Constraint;
     const activeVal = options.activeValue !== undefined ? options.activeValue : 1;
     const M = options.M !== undefined ? options.M : 1e5;
-    const baseName = options.name || `ind_${binVar.name}_${constraint.name}`;
+    const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
     const addedConstrs: Constraint[] = [];
 
-    const { lhs, sense, rhs } = constraint;
+    const { lhs, sense, rhs } = resolvedConstraint;
 
     if (activeVal === 1) {
       if (sense === "<=" || sense === "==") {
@@ -635,6 +641,17 @@ export class Model {
     }
 
     return addedConstrs;
+  }
+
+  /**
+   * @deprecated Use m.indicator(binVar, constraint, options) instead.
+   */
+  addIndicator(
+    binVar: Var,
+    constraint: Constraint | LinExpr,
+    options: IndicatorOptions = {}
+  ): Constraint[] {
+    return this.indicator(binVar, constraint, options);
   }
 
   /**

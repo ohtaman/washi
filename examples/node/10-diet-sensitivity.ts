@@ -13,7 +13,7 @@
  * Run with: npx tsx examples/node/10-diet-sensitivity.ts
  */
 
-import { Model, sum } from "../../src/index.js";
+import { Model, expr, dot } from "../../src/index.js";
 
 interface FoodItem {
   name: string;
@@ -37,59 +37,30 @@ async function main() {
   console.log("=== Diet Problem & LP Sensitivity Analysis ===");
   const t0 = performance.now();
 
-  const m = new Model({ name: "DietSensitivity", sense: "Minimize" });
+  const m = new Model("DietSensitivity");
 
   // Continuous decision variables: daily servings of each food (0 to 4 servings)
-  const servings = m.addVars(
-    foods.map((f) => f.name),
-    { lb: 0, ub: 4, type: "Continuous", prefix: "srv" }
-  );
+  const servings = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4 });
 
-  // Objective: Minimize total daily food cost
-  m.minimize(sum(foods, (f) => servings[f.name].mul(f.cost)));
+  // Objective: Minimize total daily food cost via dot product
+  const costMap = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
+  m.minimize(dot(costMap, servings));
 
   // Daily nutritional minimum requirements
-  const requirements = [
-    {
-      name: "min_calories",
-      label: "Calories (kcal)",
-      rhs: 2000,
-      constr: m.addConstraint(
-        sum(foods, (f) => servings[f.name].mul(f.calories)).ge(2000),
-        "min_calories"
-      ),
-    },
-    {
-      name: "min_protein",
-      label: "Protein (g)",
-      rhs: 105,
-      constr: m.addConstraint(
-        sum(foods, (f) => servings[f.name].mul(f.protein)).ge(105),
-        "min_protein"
-      ),
-    },
-    {
-      name: "min_calcium",
-      label: "Calcium (mg)",
-      rhs: 1000,
-      constr: m.addConstraint(
-        sum(foods, (f) => servings[f.name].mul(f.calcium)).ge(1000),
-        "min_calcium"
-      ),
-    },
-    {
-      name: "min_iron",
-      label: "Iron (mg)",
-      rhs: 18,
-      constr: m.addConstraint(
-        sum(foods, (f) => servings[f.name].mul(f.iron)).ge(18),
-        "min_iron"
-      ),
-    },
+  const reqDefs = [
+    { name: "min_calories", label: "Calories (kcal)", rhs: 2000, key: "calories" as const },
+    { name: "min_protein",  label: "Protein (g)",      rhs: 105,  key: "protein" as const },
+    { name: "min_calcium",  label: "Calcium (mg)",     rhs: 1000, key: "calcium" as const },
+    { name: "min_iron",     label: "Iron (mg)",        rhs: 18,   key: "iron" as const },
   ];
 
+  for (const req of reqDefs) {
+    const coeffMap = Object.fromEntries(foods.map((f) => [f.name, f[req.key]]));
+    m.constrain(expr`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name);
+  }
+
   const buildMs = performance.now() - t0;
-  const status = await m.solve();
+  const status = await m.optimize();
   const solveMs = m.runTime * 1000;
 
   console.log(`\nStatus: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);
@@ -118,9 +89,10 @@ async function main() {
   console.log("\n2. Nutritional Constraints & Shadow Prices (constr.dual, constr.slack):");
   console.log("Requirement      | Target |  Slack (Surplus) | Shadow Price (Dual) | Status");
   console.log("-----------------+--------+------------------+---------------------+--------------------");
-  for (const req of requirements) {
-    const slack = Math.abs(req.constr.slack ?? 0);
-    const dual = req.constr.dual ?? 0;
+  for (const req of reqDefs) {
+    const constr = m.getConstraintByName(req.name)!;
+    const slack = Math.abs(constr.slack ?? 0);
+    const dual = constr.dual ?? 0;
     const isBinding = slack < 1e-4;
     const statusText = isBinding ? "BINDING (Bottleneck)" : "Non-binding (Surplus)";
     console.log(

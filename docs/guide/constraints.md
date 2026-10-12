@@ -1,30 +1,33 @@
-# Constraints (`c`)
+# Constraints (`m.constrain`)
 
 Constraints restrict the feasible solution space of your mathematical model.
+In WaSHI, constraints are formulated using the primary method **`m.constrain()`** combined with tagged template literal formulas (`expr`):
 
-In WaSHI, constraints are formulated using the **`c` tagged template literal** or programmatic constraint builders.
+```typescript
+m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+```
 
 ---
 
-## ✍️ Tagged Template Literals (`c`)
+## ✍️ Intuitive Algebraic Constraints (`expr`)
 
-The `c` tag allows you to write algebraic equations and inequalities intuitively:
+The tagged template literal syntax allows writing equations and inequalities with natural mathematical expressions:
 
 ```typescript
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const model = new Model();
-const x = model.addVar({ lb: 0 });
-const y = model.addVar({ lb: 0 });
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
 
-// Less than or equal to (<=)
-model.addConstraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+// Upper bound inequality (<=)
+m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
 
-// Greater than or equal to (>=)
-model.addConstraint(c`3 * ${x} + ${y} >= 20`, "min_demand");
+// Lower bound inequality (>=)
+m.constrain(expr`3 * ${x} + ${y} >= 20`, "min_demand");
 
-// Equality (== or =)
-model.addConstraint(c`${x} + ${y} == 30`, "exact_quota");
+// Exact equality (==)
+m.constrain(expr`${x} + ${y} == 30`, "exact_quota");
 ```
 
 ### Supported Comparison Operators
@@ -36,42 +39,64 @@ model.addConstraint(c`${x} + ${y} == 30`, "exact_quota");
 
 ## 🏷️ Naming Constraints
 
-It is strongly recommended to give meaningful names to constraints (the second argument of `model.addConstraint`):
+Every constraint should be provided with a descriptive name (the second argument of `m.constrain`):
 
 ```typescript
-model.addConstraint(c`${x} + ${y} <= 100`, "budget_cap");
+m.constrain(expr`${x} + ${y} <= 100`, "budget_cap");
 ```
 
 ### Why Name Constraints?
-1. **Model Debugging**: Exporting the model as LP/MPS format will use these human-readable names.
-2. **Conflict Diagnosis (`unsatCore`)**: When a problem is infeasible, WaSHI returns the exact constraint names responsible for the contradiction.
+1. **Model Debugging**: Exported LP and MPS files retain these descriptive names.
+2. **Conflict Diagnosis (`unsatCore`)**: When constraints contradict each other, WaSHI returns the exact constraint names forming the conflicting subset.
 
 ---
 
-## 🔁 Adding Constraints in Loops
+## 🔁 Adding Constraints over Iterables & Sums
 
-When modeling structured problems like knapsack capacities, staffing, or graph flows:
+Use `sum()` inside `expr` to express linear aggregations cleanly:
 
 ```typescript
-// For each time period t, demand must be met
-const demands = [100, 150, 200, 120];
-const production = demands.map((_, t) => model.addVar({ lb: 0, name: `prod_${t}` }));
+import { Model, expr, sum } from "@ohtaman/washi";
 
-for (let t = 0; t < demands.length; t++) {
-  model.addConstraint(c`${production[t]} >= ${demands[t]}`, `demand_met_${t}`);
-}
+const items = ["A", "B", "C"];
+const weights = { A: 5, B: 10, C: 15 };
+const selected = m.binary(items);
+
+// Total weight cannot exceed capacity 25
+m.constrain(
+  expr`${sum(items, (i) => selected[i].mul(weights[i]))} <= 25`,
+  "capacity_limit"
+);
 ```
 
 ---
 
-## 📐 Dual Values & Shadows Prices (LP)
+## 🎯 Conditional / Indicator Constraints (`m.indicator`)
 
-For continuous Linear Programming (LP) problems solved with HiGHS or GLPK, you can query shadow prices (dual values) to analyze economic marginal costs:
+When a constraint should only take effect when a binary decision variable is active (value $= 1$):
 
 ```typescript
-const constraint = model.addConstraint(c`${x} + 2 * ${y} <= 40`, "resource");
+const useDiscount = m.binary("use_discount");
 
-await model.solve();
+// If useDiscount == 1, then cartTotal >= 100
+m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
+  activeValue: 1,
+  M: 1000,
+  name: "min_spend_for_discount",
+});
+```
 
-console.log("Shadow price (dual):", constraint.dual);
+---
+
+## 📐 Dual Values & Shadow Prices (LP)
+
+For continuous Linear Programming (LP) problems, query the economic shadow price (`dual`) and surplus (`slack`):
+
+```typescript
+const woodConstraint = m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood");
+
+await m.optimize();
+
+console.log("Shadow price (dual):", woodConstraint.dual);
+console.log("Slack surplus:", woodConstraint.slack);
 ```

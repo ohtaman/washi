@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 0-1 整数計画 (Binary MIP) | HiGHS (標準) | `m.addVars(keys)`, `type: "Binary"`, `sum()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=knapsack">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">ソースコード</a></li></ul> |
+| 0-1 整数計画 (Binary MIP) | HiGHS (標準) | `m.binary()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=knapsack">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">ソースコード</a></li></ul> |
 
 各アイテムの「重さ」と「価値」が与えられたとき、バックパックの重量上限を超えない範囲で価値の合計が最大になるアイテムの組み合わせを選ぶ離散最適化問題です。
 
@@ -21,7 +21,7 @@ $$\begin{aligned}
 <CodeRunner preset="knapsack">
 
 ```typescript
-import { Model, sum } from "@ohtaman/washi";
+import { Model, expr, dot } from "@ohtaman/washi";
 
 async function runKnapsack() {
   const m = new Model("Knapsack");
@@ -35,27 +35,22 @@ async function runKnapsack() {
   ];
   const maxCapacity = 7; // kg
 
-  // 0-1 決定変数: x[name] = 1 (選ぶ) または 0 (選ばない)
-  const x = m.addVars(items.map((it) => it.name), { type: "Binary" });
+  // 0-1 決定変数: x[name] (0 または 1)
+  const x = m.binary(items.map((it) => it.name));
 
-  // 目的関数: 選んだアイテムの価値合計を最大化
-  m.maximize(sum(items, (it) => x[it.name].mul(it.value)));
+  const values = Object.fromEntries(items.map((it) => [it.name, it.value]));
+  const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
 
-  // 重量上限の制約
-  m.addConstraint(
-    sum(items, (it) => x[it.name].mul(it.weight)).le(maxCapacity),
-    "capacity_limit"
-  );
+  // 目的関数: 選んだアイテムの価値合計を最大化 (dot による内積)
+  m.maximize(dot(values, x));
 
-  const status = await m.solve();
+  // 重量上限の制約 (expr と constrain による自然な不等式記法)
+  m.constrain(expr`${dot(weights, x)} <= ${maxCapacity}`, "capacity_limit");
+
+  const status = await m.optimize();
   console.log(`Status: ${status}`);
   console.log(`Max Total Value: $${m.objectiveValue}`);
-  console.log("Selected Items:");
-  for (const it of items) {
-    if (Math.round(x[it.name].value ?? 0) === 1) {
-      console.log(`  - ${it.name} (${it.weight}kg, $${it.value})`);
-    }
-  }
+  console.log("Selected Items:", m.getValues(x));
 }
 
 runKnapsack();

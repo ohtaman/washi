@@ -160,30 +160,36 @@ function selectPreset(preset: "standard" | "weekend_peak" | "two_days_off" | "co
   isDirty.value = true;
 }
 
-function buildConstraints(m: any, sum: any) {
-  const shift = m.addVars(
-    staffList.map((s) => s.id),
-    [...days],
-    { type: "Binary", prefix: "shift" }
-  );
+function buildConstraints(m: any, sum: any, expr: any) {
+  const staffIds = staffList.map((s) => s.id);
+  const shift = m.binary(staffIds, [...days]);
 
   for (const d of days) {
     const reqCount = dailyDemand.value[d] ?? 4;
-    const workingToday = sum(staffList, (s: StaffMember) => shift[s.id][d]);
-    m.addConstraint(workingToday.ge(reqCount), `coverage_${d}`);
+    m.constrain(
+      expr`${sum(staffList, (s: StaffMember) => shift[s.id][d])} >= ${reqCount}`,
+      `coverage_${d}`
+    );
 
     if (minSeniorPerDay.value > 0) {
       const seniors = staffList.filter((s) => s.isSenior);
-      const seniorsToday = sum(seniors, (s: StaffMember) => shift[s.id][d]);
-      m.addConstraint(seniorsToday.ge(minSeniorPerDay.value), `senior_${d}`);
+      m.constrain(
+        expr`${sum(seniors, (s: StaffMember) => shift[s.id][d])} >= ${minSeniorPerDay.value}`,
+        `senior_${d}`
+      );
     }
   }
 
   for (const s of staffList) {
-    const weeklyShifts = sum(days, (d: string) => shift[s.id][d]);
-    m.addConstraint(weeklyShifts.le(s.maxShifts), `max_shifts_${s.id}`);
+    m.constrain(
+      expr`${sum(days, (d: string) => shift[s.id][d])} <= ${s.maxShifts}`,
+      `max_shifts_${s.id}`
+    );
     if (minShiftsPerStaff.value > 0) {
-      m.addConstraint(weeklyShifts.ge(minShiftsPerStaff.value), `min_shifts_${s.id}`);
+      m.constrain(
+        expr`${sum(days, (d: string) => shift[s.id][d])} >= ${minShiftsPerStaff.value}`,
+        `min_shifts_${s.id}`
+      );
     }
   }
 
@@ -191,7 +197,7 @@ function buildConstraints(m: any, sum: any) {
     const [sId, day] = req.split("_");
     const v = shift[sId]?.[day];
     if (v) {
-      m.addConstraint(v.eq(0), `day_off_${sId}_${day}`);
+      m.constrain(expr`${v} == 0`, `day_off_${sId}_${day}`);
     }
   }
 
@@ -204,20 +210,19 @@ async function solveRoster() {
 
   try {
     const t0 = performance.now();
-    const { Model, sum } = await getWashiClient(false);
+    const { Model, sum, dot, expr } = await getWashiClient(false);
 
-    const m = new Model({ name: "ShiftRoster8x7", sense: "Minimize" });
-    const shift = buildConstraints(m, sum);
+    const m = new Model("ShiftRoster8x7");
+    const shift = buildConstraints(m, sum, expr);
 
-    const costTerms: any[] = [];
-    for (const s of staffList) {
-      for (const d of days) {
-        const weekendBonus = d === "Sat" || d === "Sun" ? 20 : 0;
-        costTerms.push(shift[s.id][d].mul(s.wage + weekendBonus));
-      }
-    }
-    m.minimize(sum(costTerms));
-    const solveStatus = await m.solve();
+    const costMap = Object.fromEntries(
+      staffList.map((s) => [
+        s.id,
+        Object.fromEntries(days.map((d) => [d, s.wage + (d === "Sat" || d === "Sun" ? 20 : 0)])),
+      ])
+    );
+    m.minimize(dot(costMap, shift));
+    const solveStatus = await m.optimize();
     const elapsed = performance.now() - t0;
     solveTimeMs.value = elapsed;
 
@@ -239,9 +244,9 @@ async function solveRoster() {
 
       if ((window as any).crossOriginIsolated) {
         try {
-          const { Model: Z3Model, sum: z3Sum } = await getWashiClient(true);
-          const diag = new Z3Model({ name: "ShiftConflict", sense: "Minimize" });
-          buildConstraints(diag, z3Sum);
+          const { Model: Z3Model, sum: z3Sum, expr: z3Expr } = await getWashiClient(true);
+          const diag = new Z3Model({ name: "ShiftConflict", solver: "z3" });
+          buildConstraints(diag, z3Sum, z3Expr);
           await diag.check("z3");
           unsatCore.value =
             diag.unsatCore && diag.unsatCore.length > 0
