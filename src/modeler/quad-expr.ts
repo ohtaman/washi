@@ -193,7 +193,16 @@ export class QuadExpr {
       return this.mul(otherExpr.constant);
     }
     if (this.quadTerms.size === 0 && this.linearTerms.size === 0) {
-      return (otherExpr.mul(this.constant) as QuadExpr);
+      const mulResult = otherExpr.mul(this.constant);
+      if (mulResult instanceof QuadExpr) {
+        return mulResult;
+      }
+      const result = new QuadExpr();
+      result.constant = mulResult.constant;
+      for (const [v, c] of mulResult.terms) {
+        result.linearTerms.set(v, c);
+      }
+      return result;
     }
 
     // Both are linear (degree 1)

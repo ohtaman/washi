@@ -271,18 +271,28 @@ class Parser {
     if (t.type === "NUMBER") {
       this.consume();
       const val = parseFloat(t.value);
-      // Check for implicit multiplication: e.g. "30x" or "2__ph_0__"
-      if (this.peek()?.type === "IDENT") {
-        const identToken = this.consume();
-        const v = this.resolve(identToken.value);
-        if (v instanceof Var || ("id" in v && !("terms" in v) && !("quadTerms" in v))) {
-          primary = (v as Var).mul(val);
+      // Check for implicit multiplication: e.g. "30x", "2x^2", "2(x+1)^2", "2__ph_0__^2"
+      if (this.peek()?.type === "IDENT" || this.peek()?.type === "LPAREN") {
+        let subExpr: LinExpr | QuadExpr;
+        if (this.peek()?.type === "IDENT") {
+          const identToken = this.consume();
+          const v = this.resolve(identToken.value);
+          if (v instanceof Var || ("id" in v && !("terms" in v) && !("quadTerms" in v))) {
+            subExpr = new LinExpr(new Map([[(v as Var), 1]]), 0);
+          } else {
+            subExpr = (v as LinExpr | QuadExpr).clone();
+          }
         } else {
-          primary = (v as LinExpr | QuadExpr).mul(val);
+          this.consume("LPAREN");
+          subExpr = this.parseExpression();
+          this.consume("RPAREN");
         }
-      } else {
-        primary = new LinExpr(new Map(), val);
+        // Exponentiation binds tighter than implicit scalar multiplication!
+        // e.g. 2x^2 is 2 * (x^2), not (2x)^2.
+        const powered = this.applyPower(subExpr);
+        return powered.mul(val);
       }
+      primary = new LinExpr(new Map(), val);
     } else if (t.type === "IDENT") {
       this.consume();
       const v = this.resolve(t.value);
@@ -303,7 +313,8 @@ class Parser {
   }
 
   private applyPower(base: LinExpr | QuadExpr): LinExpr | QuadExpr {
-    if (this.peek()?.type === "CARET") {
+    let current = base;
+    while (this.peek()?.type === "CARET") {
       this.consume();
       const expToken = this.peek();
       if (!expToken || expToken.type !== "NUMBER") {
@@ -315,16 +326,20 @@ class Parser {
         throw new Error("Exponent must be a non-negative integer");
       }
       if (power === 0) {
-        return new LinExpr(new Map(), 1);
+        current = new LinExpr(new Map(), 1);
       } else if (power === 1) {
-        return base;
+        // current remains unchanged
       } else if (power === 2) {
-        return multiplyExpressions(base, base);
+        current = multiplyExpressions(current, current);
       } else {
         throw new Error(`Exponent ${power} creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)`);
       }
     }
-    return base;
+    return current;
+  }
+
+  getRemainingToken(): Token | undefined {
+    return this.peek();
   }
 
   private resolve(name: string): Var | LinExpr | QuadExpr {
@@ -342,7 +357,12 @@ class Parser {
 export function parseExpr(text: string, resolver: ExprResolver): LinExpr | QuadExpr {
   const tokens = tokenize(text);
   const parser = new Parser(tokens, resolver);
-  return parser.parseExpression();
+  const expr = parser.parseExpression();
+  const remaining = parser.getRemainingToken();
+  if (remaining) {
+    throw new Error(`Unexpected token '${remaining.value}' after expression in "${text}"`);
+  }
+  return expr;
 }
 
 /**

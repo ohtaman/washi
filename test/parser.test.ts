@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
+import { LinExpr } from "../src/modeler/expression.js";
 import { QuadExpr } from "../src/modeler/quad-expr.js";
 import { parseExpr, parseConstraint, expr } from "../src/modeler/parser.js";
 
@@ -16,21 +17,21 @@ describe("Algebraic Parser & DSL", () => {
   };
 
   it("parses linear expressions with addition and subtraction", () => {
-    const e = parseExpr("30 * x + 50 * y - 10", resolver);
+    const e = parseExpr("30 * x + 50 * y - 10", resolver) as LinExpr;
     expect(e.terms.get(x)).toBe(30);
     expect(e.terms.get(y)).toBe(50);
     expect(e.constant).toBe(-10);
   });
 
   it("handles parentheses and precedence", () => {
-    const e = parseExpr("2 * (x + 3 * y) + 4", resolver);
+    const e = parseExpr("2 * (x + 3 * y) + 4", resolver) as LinExpr;
     expect(e.terms.get(x)).toBe(2);
     expect(e.terms.get(y)).toBe(6);
     expect(e.constant).toBe(4);
   });
 
   it("handles unary minus and decimals", () => {
-    const e = parseExpr("-2.5 * x + 1.25 * y", resolver);
+    const e = parseExpr("-2.5 * x + 1.25 * y", resolver) as LinExpr;
     expect(e.terms.get(x)).toBe(-2.5);
     expect(e.terms.get(y)).toBe(1.25);
   });
@@ -107,5 +108,40 @@ describe("Algebraic Parser & DSL", () => {
       expect(c.lhs.terms.get(x)).toBe(1);
       expect(c.lhs.terms.get(y)).toBe(2);
     }
+  });
+
+  it("binds power tighter than implicit scalar multiplication (2x^2 == 2*x^2)", () => {
+    const q1 = parseExpr("2x^2", resolver) as QuadExpr;
+    expect(q1.getQuadCoeff(x, x)).toBe(2);
+
+    const q2 = parseExpr("0.5 x^2", resolver) as QuadExpr;
+    expect(q2.getQuadCoeff(x, x)).toBe(0.5);
+
+    const q3 = parseExpr("2 * x^2", resolver) as QuadExpr;
+    expect(q3.getQuadCoeff(x, x)).toBe(2);
+
+    // Reparsing QuadExpr.toString()
+    const orig = x.mul(x).mul(2);
+    const reparsed = parseExpr(orig.toString(), resolver) as QuadExpr;
+    expect(reparsed.getQuadCoeff(x, x)).toBe(2);
+
+    // Parenthesized scalar should square the scalar: (2x)^2 = 4x^2
+    const qParen = parseExpr("(2x)^2", resolver) as QuadExpr;
+    expect(qParen.getQuadCoeff(x, x)).toBe(4);
+  });
+
+  it("rejects chained exponentiation exceeding degree 2 (x^2^2, x**2**2)", () => {
+    expect(() => parseExpr("x^2^2 + 100", resolver)).toThrow(
+      /non-linear term of degree > 2/
+    );
+    expect(() => parseExpr("x**2**2 + 100", resolver)).toThrow(
+      /non-linear term of degree > 2/
+    );
+  });
+
+  it("throws error when trailing unparsed tokens remain after expression", () => {
+    expect(() => parseExpr("x + 2 100", resolver)).toThrow(/Unexpected token '100' after expression/);
+    expect(() => parseExpr("(x + 2) 100", resolver)).toThrow(/Unexpected token '100' after expression/);
+    expect(() => parseExpr("x + 2 == 10", resolver)).toThrow(/Unexpected token '==' after expression/);
   });
 });

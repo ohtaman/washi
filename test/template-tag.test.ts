@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, QuadExpr, c, expr } from "../src/index.js";
+import { Model, Var, LinExpr, Constraint, QuadExpr, c, expr } from "../src/index.js";
 
 describe("Tagged Template Literal Syntax (c and expr)", () => {
   it("parses linear expression with variables and numbers via expr`...`", () => {
@@ -8,7 +8,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     const y = m.addVar({ name: "y" });
 
     // expr`30 * ${x} + 40 * ${y} + 15`
-    const e = expr`30 * ${x} + 40 * ${y} + 15`;
+    const e = expr`30 * ${x} + 40 * ${y} + 15` as LinExpr;
 
     expect(e.terms.get(x)).toBe(30);
     expect(e.terms.get(y)).toBe(40);
@@ -21,7 +21,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     const y = m.addVar({ name: "y" });
 
     // expr`${x} - 5 * ${y} - 20`
-    const e = expr`${x} - 5 * ${y} - 20`;
+    const e = expr`${x} - 5 * ${y} - 20` as LinExpr;
 
     expect(e.terms.get(x)).toBe(1);
     expect(e.terms.get(y)).toBe(-5);
@@ -145,12 +145,12 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     const x = m.continuous("x", { lb: 0 });
     const y = m.continuous("y", { lb: 0 });
 
-    const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
+    const linearExpr = expr`3 * ${x} + 5 * ${y} - 10` as LinExpr;
     expect(linearExpr.terms.get(x)).toBe(3);
     expect(linearExpr.terms.get(y)).toBe(5);
     expect(linearExpr.constant).toBe(-10);
 
-    const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
+    const balanceConstraint = expr`${x} + 2 * ${y} <= 40` as Constraint;
     expect(balanceConstraint.sense).toBe("<=");
     expect(balanceConstraint.rhs).toBe(40);
     expect(balanceConstraint.lhs.terms.get(x)).toBe(1);

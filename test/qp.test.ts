@@ -102,4 +102,28 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     expect(y.value).toBeCloseTo(2.75, 4);
     expect(m.objectiveValue).toBeCloseTo(12.875, 4);
   });
+
+  it("solves QP with implicit coefficient in objective: min 2 x^2 - 4 x", async () => {
+    const m = new Model("ImplicitCoeffQP");
+    const x = m.addVar({ name: "x", lb: 0, ub: 10 });
+
+    // min 2 x^2 - 4 x. Optimum at x = 1, objective = -2
+    m.minimize("2 x^2 - 4 x");
+
+    const status = await m.solve(HiGHS);
+
+    expect(status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(1.0, 4);
+    expect(m.objectiveValue).toBeCloseTo(-2.0, 4);
+
+    // Also verify tagged template literal expr`2 ${x2}^2 - 4 * ${x2}`
+    const m2 = new Model("ExprImplicitCoeffQP");
+    const x2 = m2.addVar({ name: "x", lb: 0, ub: 10 });
+    m2.minimize(expr`2 ${x2}^2 - 4 * ${x2}`);
+
+    const status2 = await m2.solve(HiGHS);
+    expect(status2).toBe("Optimal");
+    expect(x2.value).toBeCloseTo(1.0, 4);
+    expect(m2.objectiveValue).toBeCloseTo(-2.0, 4);
+  });
 });

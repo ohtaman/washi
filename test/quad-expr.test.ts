@@ -105,4 +105,14 @@ describe("QuadExpr (Quadratic Expressions)", () => {
     expect(quad.getQuadCoeff(x, y)).toBe(1);
     expect(quad.getQuadCoeff(x, x)).toBe(2);
   });
+
+  it("returns actual QuadExpr instance when multiplying constant-only QuadExpr by LinExpr", () => {
+    const x = new Var({ name: "x" });
+    const q = x.mul(x).sub(x.mul(x)).add(2).mul(x.add(1));
+
+    expect(q).toBeInstanceOf(QuadExpr);
+    expect(q.getQuadCoeff(x, x)).toBe(0);
+    expect(q.linearTerms.get(x)).toBe(2);
+    expect(q.constant).toBe(2);
+  });
 });

@@ -600,9 +600,14 @@ export class Model {
    */
   indicator(
     binVar: Var,
-    constraint: Constraint | LinExpr,
+    constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    if (constraint instanceof QuadExpr) {
+      throw new Error(
+        "Quadratic expressions or constraints are not supported in indicator constraints (only linear constraints are allowed)."
+      );
+    }
     if (!("sense" in constraint) || !("lhs" in constraint)) {
       throw new Error(
         "Invalid constraint expression passed to indicator(). Expression must include a comparison operator (<=, >=, ==)."
@@ -661,7 +666,7 @@ export class Model {
    */
   addIndicator(
     binVar: Var,
-    constraint: Constraint | LinExpr,
+    constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
     return this.indicator(binVar, constraint, options);
