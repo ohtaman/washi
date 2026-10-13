@@ -143,7 +143,7 @@ Model conditional activation rules and fixed-charge economics without manual Big
 
 ```ts
 // If factory is closed (openCity['Tokyo'] == 0), its production capacity must be 0
-m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
+m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });

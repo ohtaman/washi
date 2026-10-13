@@ -170,4 +170,120 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(res.conflicts).toEqual(res.unsatCore);
     expect(m.conflicts).toEqual(res.conflicts);
   });
+
+  it("[Review Fix 1] strictly rejects relational comparisons in expr`...` at runtime", () => {
+    const m = new Model();
+    const x = m.continuous("x");
+
+    expect(() => expr`${x} <= 10`).toThrow(
+      /Relational comparison operators.*cannot be used in expr`\.\.\.`/
+    );
+    expect(() => expr`${x} >= 5`).toThrow(
+      /Relational comparison operators.*cannot be used in expr`\.\.\.`/
+    );
+    expect(() => expr`${x} == 3`).toThrow(
+      /Relational comparison operators.*cannot be used in expr`\.\.\.`/
+    );
+
+    // c`...` tag produces Constraint
+    const constraint = c`${x} <= 10`;
+    expect(constraint.sense).toBe("<=");
+    expect(constraint.rhs).toBe(10);
+  });
+
+  it("[Review Fix 2] invalidates solution and diagnostic state immediately upon model mutations", async () => {
+    const m = new Model("MutationInvalidationTest");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    m.objective(maximize(x));
+
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    expect(x.value).toBe(10);
+    expect(m.objectiveValue).toBe(10);
+
+    // 1. Adding a constraint invalidates solution state before any solve call
+    m.constraint(c`${x} <= -1`);
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+    expect(m.objectiveValue).toBeNull();
+    expect(m.solution).toBeNull();
+
+    // 2. Changing objective invalidates solution state before any solve call
+    await m.solve();
+    expect(m.status).toBe("Infeasible");
+
+    m.objective(minimize(x));
+    expect(m.status).toBe("NotSolved");
+    expect(m.objectiveValue).toBeNull();
+    expect(m.solution).toBeNull();
+
+    // 3. Underlying alias paths also invalidate immediately
+    await m.solve();
+    m.add(c`${x} >= 2`);
+    expect(m.status).toBe("NotSolved");
+
+    await m.solve();
+    m.constrain(c`${x} <= 5`);
+    expect(m.status).toBe("NotSolved");
+
+    await m.solve();
+    m.setObjective(x.mul(2), "Maximize");
+    expect(m.status).toBe("NotSolved");
+  });
+
+  it("[Review Fix 3] commits objective expression and sense atomically only after validation succeeds", async () => {
+    const m = new Model("AtomicObjectiveTest");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    m.objective(maximize(x));
+
+    await m.solve();
+    expect(x.value).toBe(10);
+    expect(m.sense).toBe("Maximize");
+
+    // Attempting to set an invalid objective expression throws
+    expect(() => {
+      m.objective(minimize("x <= 5" as any));
+    }).toThrow();
+
+    // Sense and expression must remain completely intact as Maximize(x)
+    expect(m.sense).toBe("Maximize");
+    expect(m.objective()).toBeDefined();
+
+    // Re-solving still optimizes original objective to upper bound (10), not 0
+    await m.solve();
+    expect(x.value).toBe(10);
+
+    // Also verify setObjective transactional behavior
+    expect(() => {
+      m.setObjective(c`${x} <= 5`, "Minimize");
+    }).toThrow();
+    expect(m.sense).toBe("Maximize");
+  });
+
+  it("[Review Fix 4] preserves extracted empty unsat core as defined readonly array", async () => {
+    await import("../src/modeler/solvers/z3/index.js");
+    const m = new Model({ solver: "z3" });
+    // Inconsistent background assertion: lb > ub, no named constraints
+    m.continuous("x", { lb: 2, ub: 1 });
+
+    const res = await m.check();
+    expect(res.status).toBe("Unsat");
+
+    // Conflicts / unsatCore must be an empty array [] rather than undefined
+    expect(res.conflicts).toEqual([]);
+    expect(res.unsatCore).toEqual([]);
+    expect(m.conflicts).toEqual([]);
+    expect(m.unsatCore).toEqual([]);
+    expect(m.conflicts).toBe(res.conflicts);
+
+    // Should be readonly (frozen) against mutation
+    expect(() => {
+      (m.conflicts as any).push("illegal");
+    }).toThrow();
+
+    // Resetting explicitly clears unsatCore to undefined
+    m.resetSolutionState();
+    expect(m.conflicts).toBeUndefined();
+    expect(m.unsatCore).toBeUndefined();
+  });
 });

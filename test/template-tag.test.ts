@@ -156,8 +156,12 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(quadExpr.getQuadCoeff(x, y)).toBe(1);
     expect(quadExpr.getQuadCoeff(x, x)).toBe(2);
 
-    // 3. Inline linear constraint
-    const balanceConstraint = (expr`${x} + 2 * ${y} <= 40` as unknown) as Constraint;
+    // 3. Inline linear constraint rejection in expr`...` and acceptance in c`...`
+    expect(() => expr`${x} + 2 * ${y} <= 40`).toThrow(
+      /Relational comparison operators/
+    );
+
+    const balanceConstraint = c`${x} + 2 * ${y} <= 40`;
     expect(balanceConstraint.sense).toBe("<=");
     expect(balanceConstraint.rhs).toBe(40);
     expect(balanceConstraint.lhs.terms.get(x)).toBe(1);

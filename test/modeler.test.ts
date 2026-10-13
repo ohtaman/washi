@@ -6,6 +6,7 @@ import {
   sum,
   dot,
   expr,
+  c,
 } from "../src/modeler/index.js";
 
 describe("HiGHS Web Modeler", () => {
@@ -48,15 +49,15 @@ describe("HiGHS Web Modeler", () => {
     expect(m.getVarByName("tables")?.value).toBe(10);
   });
 
-  it("supports tagged template literal DSL: expr`...`", async () => {
+  it("supports tagged template literal DSL: expr`...` and c`...`", async () => {
     const m = new Model({ name: "TemplateModel" });
     const x = m.continuous("x", { lb: 0 });
     const y = m.continuous("y", { lb: 0 });
 
     // Maximize 2*x + 3*y
     m.maximize(expr`2 * ${x} + 3 * ${y}`);
-    m.constrain(expr`${x} + ${y} <= 4`);
-    m.constrain(expr`${x} + 2 * ${y} <= 6`);
+    m.constrain(c`${x} + ${y} <= 4`);
+    m.constrain(c`${x} + 2 * ${y} <= 6`);
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");

@@ -68,9 +68,9 @@ export interface SolverSolution {
 export interface CheckResult {
   status: "Sat" | "Unsat" | "Unknown";
   values: Record<string, number | boolean>;
-  unsatCore?: string[];
+  unsatCore?: readonly string[];
   /** Alias for unsatCore: subset of conflicting constraints causing infeasibility */
-  conflicts?: string[];
+  conflicts?: readonly string[];
   runTime?: number;
 }
 

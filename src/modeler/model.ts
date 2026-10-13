@@ -59,15 +59,15 @@ export class Model {
   public constraints: Constraint[] = [];
   public boolVars: BoolVar[] = [];
   public logicalConstraints: LogicalConstraint[] = [];
-  public unsatCore: string[] = [];
+  public unsatCore: readonly string[] | undefined = undefined;
 
   /**
    * User-friendly alias for unsatCore.
    * Returns a subset of conflicting constraint names causing infeasibility,
    * or undefined if not diagnosed, not applicable, or satisfiable.
    */
-  get conflicts(): string[] | undefined {
-    return this.unsatCore.length > 0 ? this.unsatCore : undefined;
+  get conflicts(): readonly string[] | undefined {
+    return this.unsatCore;
   }
 
   public values = new Map<string, number | boolean>();
@@ -122,7 +122,7 @@ export class Model {
     this.objectiveValue = null;
     this.solution = null;
     this.runTime = 0;
-    this.unsatCore = [];
+    this.unsatCore = undefined;
     this.values.clear();
     for (const v of this.variables) {
       v.value = null;
@@ -365,6 +365,7 @@ export class Model {
     const bv = new BoolVar(varName);
     this.boolVars.push(bv);
     this.boolVarMapByName.set(bv.name, bv);
+    this.resetSolutionState();
     return bv;
   }
 
@@ -384,6 +385,7 @@ export class Model {
 
     this.variables.push(v);
     this.varMapByName.set(v.name, v);
+    this.resetSolutionState();
     return v;
   }
 
@@ -424,7 +426,7 @@ export class Model {
     if (!spec) {
       return this.objectiveExpr;
     }
-    this.sense = normalizeSense(spec.sense);
+    const newSense = normalizeSense(spec.sense);
     const expr = spec.expr;
 
     if (expr instanceof Constraint) {
@@ -434,18 +436,23 @@ export class Model {
       );
     }
 
+    let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {
-      this.objectiveExpr = parseExpr(expr, (name) => this.getVarByName(name));
+      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
     } else if (typeof expr === "number") {
-      this.objectiveExpr = new LinExpr(new Map(), expr);
+      parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
-      this.objectiveExpr = expr.clone();
+      parsedExpr = expr.clone();
     } else if ("terms" in expr) {
-      this.objectiveExpr = expr.clone();
+      parsedExpr = expr.clone();
     } else {
       // Var
-      this.objectiveExpr = new LinExpr(new Map([[expr, 1]]), 0);
+      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
     }
+
+    this.sense = newSense;
+    this.objectiveExpr = parsedExpr;
+    this.resetSolutionState();
     return this;
   }
 
@@ -461,22 +468,25 @@ export class Model {
       );
     }
 
-    if (sense) {
-      this.sense = normalizeSense(sense);
-    }
+    const newSense = sense ? normalizeSense(sense) : this.sense;
 
+    let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {
-      this.objectiveExpr = parseExpr(expr, (name) => this.getVarByName(name));
+      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
     } else if (typeof expr === "number") {
-      this.objectiveExpr = new LinExpr(new Map(), expr);
+      parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
-      this.objectiveExpr = expr.clone();
+      parsedExpr = expr.clone();
     } else if ("terms" in expr) {
-      this.objectiveExpr = expr.clone();
+      parsedExpr = expr.clone();
     } else {
       // Var
-      this.objectiveExpr = new LinExpr(new Map([[expr, 1]]), 0);
+      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
     }
+
+    this.sense = newSense;
+    this.objectiveExpr = parsedExpr;
+    this.resetSolutionState();
   }
 
   /**
@@ -598,7 +608,7 @@ export class Model {
     if (constraint instanceof LinExpr) {
       throw new Error(
         "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use expr`... <= ...` or .le(), .ge(), .eq()."
+        "Use c`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     if (constraint instanceof BoolExpr) {
@@ -607,6 +617,7 @@ export class Model {
         name: constrName,
         expr: constraint,
       });
+      this.resetSolutionState();
       return constraint;
     }
 
@@ -627,6 +638,7 @@ export class Model {
 
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
+    this.resetSolutionState();
     return constr;
   }
 
@@ -660,6 +672,7 @@ export class Model {
       if (!this.varMapByName.has(item.name)) {
         this.variables.push(item);
         this.varMapByName.set(item.name, item);
+        this.resetSolutionState();
       }
       return this;
     }
@@ -964,7 +977,7 @@ export class Model {
       );
       this.status = checkResult.status;
       this.runTime = checkResult.runTime ?? 0;
-      this.unsatCore = checkResult.unsatCore || [];
+      this.unsatCore = checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
 
       if (checkResult.values && checkResult.status === "Sat") {
         for (const [name, val] of Object.entries(checkResult.values)) {
@@ -982,8 +995,8 @@ export class Model {
       return {
         status: checkResult.status,
         values: Object.fromEntries(this.values),
-        unsatCore: checkResult.unsatCore,
-        conflicts: checkResult.unsatCore,
+        unsatCore: this.unsatCore,
+        conflicts: this.unsatCore,
         runTime: this.runTime,
       };
     }

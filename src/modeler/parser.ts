@@ -495,8 +495,10 @@ export function expr(
 ): LinExpr | QuadExpr {
   const { fullText, resolver } = parseTemplate(strings, values);
   if (/(<=|>=|==|=<|=>|=)/.test(fullText)) {
-    return parseConstraint(fullText, resolver) as any;
-  } else {
-    return parseExpr(fullText, resolver);
+    throw new Error(
+      `Relational comparison operators (<=, >=, ==) cannot be used in expr\`...\`. ` +
+      `Use the c\`...\` template tag for constraints (e.g. c\`\${x} <= 10\`), or remove the comparison operator for arithmetic expressions.`
+    );
   }
+  return parseExpr(fullText, resolver);
 }

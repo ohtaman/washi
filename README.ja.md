@@ -143,7 +143,7 @@ const board = m.binary(8, 8, { prefix: "queen" });
 
 ```ts
 // 「東京工場が稼働していない (openCity['Tokyo'] == 0) なら、生産量 flow は 0」
-m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
+m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
