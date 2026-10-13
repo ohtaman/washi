@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
+| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `c`, `minimize`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">Source Code</a></li></ul> |
 
 When solving a Linear Programming model, the optimal variable values (`var.value`) are only half the story. In practice, decision-makers need to know:
 
@@ -28,7 +28,7 @@ We choose daily servings ($0 \le x_i \le 4$) among 6 food items to meet 4 daily 
 <CodeRunner preset="diet_sensitivity">
 
 ```typescript
-import { Model, expr, dot } from "@ohtaman/washi";
+import { Model, c, minimize, dot } from "@ohtaman/washi";
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -52,15 +52,15 @@ async function runDietSensitivity() {
   const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
   // Objective: Minimize total daily cost via dot product
-  m.minimize(dot(costs, srv));
+  m.objective(minimize(dot(costs, srv)));
 
-  // Nutritional constraints defined declaratively with expr and constrain()
-  m.constrain(expr`${dot(cals, srv)} >= 2000`, "min_calories")
-   .constrain(expr`${dot(prots, srv)} >= 105`,  "min_protein")
-   .constrain(expr`${dot(calcs, srv)} >= 1000`, "min_calcium")
-   .constrain(expr`${dot(irons, srv)} >= 18`,   "min_iron");
+  // Nutritional constraints defined declaratively with c and constraint()
+  m.constraint(c`${dot(cals, srv)} >= 2000`, "min_calories")
+   .constraint(c`${dot(prots, srv)} >= 105`,  "min_protein")
+   .constraint(c`${dot(calcs, srv)} >= 1000`, "min_calcium")
+   .constraint(c`${dot(irons, srv)} >= 18`,   "min_iron");
 
-  const status = await m.optimize();
+  const status = await m.solve();
 
   console.log(`Status: ${status}, Minimum Daily Cost: $${m.objectiveValue?.toFixed(2)}`);
   console.log("--- Food Servings & Reduced Costs ---");

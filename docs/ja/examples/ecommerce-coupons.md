@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 混合整数計画問題 (MIP) | HiGHS (標準) | `m.binary()`, `m.constrain()`, `m.indicator()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">ソースコード</a></li></ul> |
+| 混合整数計画問題 (MIP) | HiGHS (標準) | `m.binary()`, `m.constraint()`, `m.indicator()`, `c`, `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">ソースコード</a></li></ul> |
 
 ECサイトのカート・決済画面では、「〇〇円以上で使えるクーポン」「特定カテゴリ限定割引」「他クーポンとの併用不可（排他条件）」「最大2枚まで」といった複雑なプロモーションルールが絡み合います。
 
@@ -30,7 +30,7 @@ WaSHI を使えば、サーバーに負荷をかけず**ブラウザ内（クラ
 <CodeRunner preset="cart_coupon">
 
 ```typescript
-import { Model, sum, expr } from "@ohtaman/washi";
+import { Model, sum, c, minimize } from "@ohtaman/washi";
 
 async function optimizeCheckoutCart() {
   const m = new Model("CartCouponOptimizer");
@@ -74,22 +74,22 @@ async function optimizeCheckoutCart() {
 
   // 2. 併用不可（Exclusive）クーポンは最大 1 枚まで
   const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.constrain(
-    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
+  m.constraint(
+    c`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
     "at_most_one_exclusive"
   );
 
   // 3. 1回の決済で使えるクーポンは合計 2 枚まで
-  m.constrain(
-    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
+  m.constraint(
+    c`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
     "max_two_coupons"
   );
 
   // 目的関数: 最終支払額 (商品総額 - 割引合計) を最小化
   const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
-  m.minimize(merchSpend.sub(totalDiscount));
+  m.objective(minimize(merchSpend.sub(totalDiscount)));
 
-  const status = await m.optimize();
+  const status = await m.solve();
   console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);
   console.log(`Recommended Add-on (+$10 USB-C Cable): ${(addUsbCable.value ?? 0) > 0.5 ? "YES" : "NO"}`);
   for (const cpn of coupons) {

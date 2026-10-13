@@ -1,4 +1,4 @@
-# Objectives & Solving (`m.optimize`)
+# Objectives & Solving (`m.solve`)
 
 The objective function defines the goal of mathematical optimization—whether to maximize profits, minimize costs, or minimize quadratic risk variance.
 
@@ -6,34 +6,40 @@ The objective function defines the goal of mathematical optimization—whether t
 
 ## Setting the Objective Function
 
-Set the objective direction and formula using `m.maximize(expression)` or `m.minimize(expression)`:
+Set the objective direction and formula declaratively using `m.objective(maximize(...))` or `m.objective(minimize(...))`:
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, maximize, minimize } from "@ohtaman/washi";
 
 const m = new Model("ProductionRevenue");
 const x = m.integer("x", { lb: 0 });
 const y = m.integer("y", { lb: 0 });
 
 // Maximize revenue: 50*x + 40*y
-m.maximize(expr`50 * ${x} + 40 * ${y}`);
+m.objective(maximize(expr`50 * ${x} + 40 * ${y}`));
 
 // Or minimize cost:
-// m.minimize(expr`10 * ${x} + 15 * ${y}`);
+// m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));
 ```
+
+> [!TIP]
+> `m.maximize(expr)` and `m.minimize(expr)` remain available as backward-compatible convenience methods on `Model`.
 
 ---
 
-## 🚀 Solving the Model (`m.optimize()`)
+## 🚀 Solving the Model (`m.solve()`)
 
-Optimization is executed asynchronously by calling `await m.optimize()`:
+Optimization is executed asynchronously by calling `await m.solve()`:
 
 ```typescript
-const status = await m.optimize({
+const status = await m.solve({
   timeLimit: 10.0, // Timeout in seconds
   verbose: false,  // Enable/disable solver console logging
 });
 ```
+
+> [!NOTE]
+> `m.optimize(options?)` is preserved as a direct pass-through alias to `m.solve(options?)`.
 
 ### Solve Options
 
@@ -51,7 +57,7 @@ const status = await m.optimize({
 After solving, query the status and optimal values:
 
 ```typescript
-const status = await m.optimize();
+const status = await m.solve();
 
 // Solver Status ("Optimal", "Infeasible", "Unbounded", "TimeLimit")
 console.log("Status:", status);

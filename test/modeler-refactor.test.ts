@@ -286,4 +286,35 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.conflicts).toBeUndefined();
     expect(m.unsatCore).toBeUndefined();
   });
+
+  it("[Review Fix 5] avoids quadratic reset cost during model construction before solving", () => {
+    const m = new Model("LargeConstructionTest");
+    let writeCount = 0;
+
+    // Track writes to any variable's value property
+    const vars: any[] = [];
+    for (let i = 0; i < 1000; i++) {
+      const v = m.continuous(`x_${i}`);
+      let currentVal = v.value;
+      Object.defineProperty(v, "value", {
+        get() {
+          return currentVal;
+        },
+        set(val) {
+          writeCount++;
+          currentVal = val;
+        },
+      });
+      vars.push(v);
+    }
+
+    // Creating 1,000 variables before any solve must NOT trigger quadratic resets (499,500 writes)
+    expect(writeCount).toBe(0);
+
+    // Adding constraints also should not trigger redundant resets before solve
+    for (let i = 0; i < 100; i++) {
+      m.constraint(c`${vars[i]} <= ${i + 1}`);
+    }
+    expect(writeCount).toBe(0);
+  });
 });

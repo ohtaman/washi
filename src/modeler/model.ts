@@ -82,6 +82,7 @@ export class Model {
   public runTime: number = 0;
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
+  private hasSolutionState: boolean = false;
 
   constructor(nameOrOptions: string | ModelOptions = {}, maybeOptions?: ModelOptions) {
     let options: ModelOptions;
@@ -116,8 +117,12 @@ export class Model {
 
   /**
    * Reset prior solution and diagnostic state to avoid stale data leakage across runs.
+   * Skips redundant O(N) traversals if the model is already in an unsolved / invalidated state.
    */
   public resetSolutionState(): void {
+    if (!this.hasSolutionState && this.status === "NotSolved" && this.solution === null && this.unsatCore === undefined) {
+      return;
+    }
     this.status = "NotSolved";
     this.objectiveValue = null;
     this.solution = null;
@@ -135,6 +140,7 @@ export class Model {
       c.dual = null;
       c.slack = null;
     }
+    this.hasSolutionState = false;
   }
 
   /**
@@ -904,6 +910,7 @@ export class Model {
       runTime: this.runTime,
       raw: result.raw,
     };
+    this.hasSolutionState = true;
 
     return this.status;
   }
@@ -992,6 +999,7 @@ export class Model {
           }
         }
       }
+      this.hasSolutionState = true;
       return {
         status: checkResult.status,
         values: Object.fromEntries(this.values),

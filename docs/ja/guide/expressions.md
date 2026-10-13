@@ -1,17 +1,17 @@
-# 数式の記述 (`expr`, `sum`, `dot`)
+# 数式の記述 (`expr`, `c`, `sum`, `dot`)
 
 数式は、決定変数と数値係数の線形または2次結合です。
 
-JavaScript / TypeScript には演算子オーバーロード（`+`, `*` 等）がないため、WaSHI は **`expr` タグ付きテンプレートリテラル**、高速な総和関数 **`sum()`**、およびベクトル・行列の内積関数 **`dot()`** を提供し、代数的なモデリングを簡潔かつ表現力豊かに記述できます。
+JavaScript / TypeScript には演算子オーバーロード（`+`, `*` 等）がないため、WaSHI は **`expr` / `c` タグ付きテンプレートリテラル**、高速な総和関数 **`sum()`**、およびベクトル・行列の内積関数 **`dot()`** を提供し、代数的なモデリングを簡潔かつ表現力豊かに記述できます。
 
 ---
 
-## ✍️ タグ付きテンプレートリテラル (`expr`)
+## ✍️ タグ付きテンプレートリテラル (`expr` と `c`)
 
-`expr` テンプレートタグにより、直感的かつ自然な代数数式として表現できます：
+算術式（`LinExpr | QuadExpr`）には `expr` を、関係演算子による制約条件（`Constraint`）には `c` を使用します：
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
@@ -23,8 +23,8 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 // 2. 2次式: x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 
-// 3. インライン線形制約
-const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
+// 3. 関係制約条件 (c タグを使用):
+const balanceConstraint = c`${x} + 2 * ${y} <= 40`;
 ```
 
 ### `expr` でサポートされる構文
@@ -34,11 +34,11 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **べき乗・二乗**: `${x}^2`, `${x}**2`
 - **単項マイナス**: `-${x} + 10`
 - **丸括弧**: `2 * (${x} + ${y})`
-- **線形比較**: `${x} + 2 * ${y} <= 40`, `${x} >= 10`, `${x} == ${y}`
 - **ネスト式**: 変数、数値、`sum()` の結果、およびネストした式を自然に埋め込めます。
 
 > [!NOTE]
-> `expr` は線形式および2次式（次数2以下）を統一的に扱えます。2次項が含まれる場合は `QuadExpr` を返し、すべて線形項の場合は `LinExpr` を返します。次数3以上の非線形多項式（例: `${x} * ${y} * ${z}`, `${x}^3`）や非線形制約（例: `${x} * ${y} <= 10`）は、MILP/LP/QP の定式化要件（線形制約かつ次数2以下の目的関数）に基づきエラーとなります。
+> 関係演算子（`<=`, `>=`, `==`）を含む比較制約には `c` テンプレート（例: ``c`${x} + 2 * ${y} <= 40` ``）を使用してください。`expr` 内で比較演算子を使用すると、`c` の利用を促すエラーが送出されます。
+> `expr` は線形式および2次式（次数2以下）を統一的に扱えます。2次項が含まれる場合は `QuadExpr` を返し、すべて線形項の場合は `LinExpr` を返します。次数3以上の非線形多項式（例: ``${x} * ${y} * ${z}``, ``${x}^3``）や非線形制約（例: ``${x} * ${y} <= 10``）は、MILP/LP/QP の定式化要件（線形制約かつ次数2以下の目的関数）に基づきエラーとなります。
 
 ---
 
@@ -94,7 +94,7 @@ const costs = {
 const ship = m.continuous(factories, stores);
 
 // 総輸送コストを1行で記述:
-m.minimize(dot(costs, ship));
+m.objective(minimize(dot(costs, ship)));
 ```
 
 ---
@@ -107,24 +107,24 @@ WaSHI は HiGHS ソルバーによる凸2次計画問題（QP）を標準でサ�
 `*` や `^2`, `**2` を用いて、直感的に2次目的関数を記述できます：
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
 // expr による2次目的関数:
-m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
+m.objective(minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`));
 
-// 線形制約:
-m.addConstraint(expr`${x} + ${y} >= 4`);
+// 線形制約 (c タグを使用):
+m.constraint(c`${x} + ${y} >= 4`);
 ```
 
 ### 2. `.mul()` や `QuadExpr` による構築
 プログラム的に2次式を組み立てることも可能です：
 
 ```typescript
-import { Model, QuadExpr } from "@ohtaman/washi";
+import { Model, QuadExpr, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
@@ -143,5 +143,5 @@ risk = risk.add(w.Tech.mul(w.Tech).mul(0.04));
 risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
 risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
-m.minimize(risk);
+m.objective(minimize(risk));
 ```

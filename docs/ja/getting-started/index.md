@@ -51,14 +51,13 @@ npm install glpk.js
 ### 1. クラスとタグのインポート
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 ```
 
 ### 2. モデルのインスタンス化
 
 ```typescript
-// 最大化問題のモデルを作成
-const model = new Model({ sense: "Maximize" });
+const model = new Model();
 ```
 
 ### 3. 決定変数の定義
@@ -72,20 +71,20 @@ const y = model.integer("y", { lb: 0 });
 
 ### 4. 目的関数の設定
 
-`expr` タグ付きテンプレートリテラルを用いて、代数的な数式を直感的に記述します：
+`maximize()` コンビネータと `expr` タグ付きテンプレートリテラルを用いて、目的関数を宣言的に設定します：
 
 ```typescript
 // 30*x + 50*y の最大化
-model.maximize(expr`30 * ${x} + 50 * ${y}`);
+model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
 ```
 
 ### 5. 制約条件の追加
 
-`model.constrain()` と `c`（または `expr`）タグ付きテンプレートリテラルを用いて不等式・等式制約を表現します：
+`model.constraint()` と `c` タグ付きテンプレートリテラルを用いて不等式・等式制約を表現します：
 
 ```typescript
-model.constrain(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constrain(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. 求解と結果の取得

@@ -22,8 +22,8 @@ Solves continuous problems via Primal and Dual Simplex algorithms or Interior Po
 const model = new Model({ solver: "highs" });
 const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
-model.maximize(expr`10 * ${x} + 6 * ${y}`);
-model.constrain(expr`${x} + ${y} <= 100`);
+model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
+model.constraint(c`${x} + ${y} <= 100`);
 await model.solve();
 ```
 
@@ -39,21 +39,21 @@ Solves quadratic objective functions subject to linear constraints:
 
 ```typescript
 // Minimize risk/variance uniformly using expr:
-model.minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`);
+model.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
 
 // Or programmatically with .mul():
 // const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
-// model.minimize(quadObj);
+// model.objective(minimize(quadObj));
 ```
 
 ---
 
 ## Solver Options
 
-Pass solver options into `model.optimize()`:
+Pass solver options into `model.solve()`:
 
 ```typescript
-await model.optimize({
+await model.solve({
   timeLimit: 60.0,       // Maximum solve time in seconds
   mipGap: 0.001,         // Terminate when within 0.1% of global optimality
   verbose: true,         // Output internal simplex / branch-and-bound logs

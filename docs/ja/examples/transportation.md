@@ -2,11 +2,11 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constrain()`, `expr`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">ソースコード</a></li></ul> |
+| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `c`, `minimize`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">ソースコード</a></li></ul> |
 
 複数の工場（供給拠点）から複数の店舗（需要拠点）へ商品を配送する際、各工場の供給能力上限と各店舗の需要量を満たしながら、総輸送コストを最小化する定番の線形計画問題です。
 
-このサンプルでは、`m.continuous(factories, stores)` を使って **`ship[factory][store]` のような2次元インデックス変数**を1行で構築し、`dot()` による2次元コスト行列の内積や、`m.constrain(expr`...`)` での集計制約の書き方を学びます。
+このサンプルでは、`m.continuous(factories, stores)` を使って **`ship[factory][store]` のような2次元インデックス変数**を1行で構築し、`dot()` による2次元コスト行列の内積や、`m.constraint(c`...`)` での集計制約の書き方を学びます。
 
 ## 入力データ
 
@@ -24,7 +24,7 @@
 <CodeRunner preset="transportation">
 
 ```typescript
-import { Model, sum, dot, expr } from "@ohtaman/washi";
+import { Model, sum, dot, c, minimize } from "@ohtaman/washi";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -45,25 +45,25 @@ async function runTransportation() {
   const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
   // 2. 目的関数: 2次元内積による総輸送コストの最小化
-  m.minimize(dot(shippingCost, ship));
+  m.objective(minimize(dot(shippingCost, ship)));
 
   // 3. 供給上限（行方向の合計）: 各工場からの総出荷量 <= supplies[f]
   for (const f of factories) {
-    m.constrain(
-      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
+    m.constraint(
+      c`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
       `supply_${f}`
     );
   }
 
   // 4. 需要充足（列方向の合計）: 各店舗への総入荷量 >= demands[s]
   for (const s of stores) {
-    m.constrain(
-      expr`${sum(factories, (f) => ship[f][s])} >= ${demands[s]}`,
+    m.constraint(
+      c`${sum(factories, (f) => ship[f][s])} >= ${demands[s]}`,
       `demand_${s}`
     );
   }
 
-  const status = await m.optimize();
+  const status = await m.solve();
   console.log(`Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
   for (const f of factories) {
     const routes = stores

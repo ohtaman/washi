@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constrain()`, `expr`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
+| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `c`, `minimize`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
 
 Staff shift scheduling is a classic real-world application of Mixed-Integer Programming in SaaS and workforce management tools. However, in real applications, **staff vacation requests frequently collide with minimum coverage or leadership rules**, causing the solver to return `Infeasible`.
 
@@ -35,7 +35,7 @@ We evaluate two distinct, named scenarios with different vacation inputs to illu
 <CodeRunner preset="shift_scheduling">
 
 ```typescript
-import { Model, sum, dot, expr } from "@ohtaman/washi";
+import { Model, sum, dot, c, minimize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -68,12 +68,12 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
       ),
     ])
   );
-  m.minimize(dot(costMatrix, shift));
+  m.objective(minimize(dot(costMatrix, shift)));
 
   // Rule 1: Daily headcount coverage
   for (const d of days) {
-    m.constrain(
-      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+    m.constraint(
+      c`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -81,24 +81,24 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   // Rule 2: At least 1 senior staff member per day
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
-    m.constrain(
-      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+    m.constraint(
+      c`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
       `senior_duty_${d}`
     );
   }
 
   // Rule 3: Max working days per staff member
   for (const s of staffList) {
-    m.constrain(
-      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+    m.constraint(
+      c`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
 
   // Rule 4: Named day-off requests as HARD constraints (shift[staff][day] == 0)
   for (const req of dayOffRequests) {
-    m.constrain(
-      expr`${shift[req.staff][req.day]} == 0`,
+    m.constraint(
+      c`${shift[req.staff][req.day]} == 0`,
       `day_off_${req.staff}_${req.day}`
     );
   }
@@ -120,7 +120,7 @@ async function runScenario(
   const { model, shift } = buildShiftModel(modelName, dayOffRequests);
 
   // Step 1: Optimize with HiGHS
-  const status = await model.optimize();
+  const status = await model.solve();
   console.log(`HiGHS Optimize Status: ${status}`);
 
   if (status === "Optimal") {
