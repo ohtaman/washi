@@ -47,7 +47,7 @@ export interface ShiftSolveResult {
 
 export interface ExtractedPlanIntent {
   action: "create" | "modify" | "relax";
-  dayOffRequests: DayOffRequest[];
+  dayOffRequests?: DayOffRequest[];
   coverageOverrides?: Partial<Record<Day, number>>;
   seniorRequiredDaily?: boolean;
   summary: string;
@@ -67,7 +67,7 @@ export interface NanoSessionWrapper {
  */
 export const SHIFT_INTENT_JSON_SCHEMA = {
   type: "object",
-  required: ["action", "dayOffRequests", "summary"],
+  required: ["action", "summary"],
   properties: {
     action: {
       type: "string",
@@ -102,7 +102,13 @@ export const SHIFT_INTENT_JSON_SCHEMA = {
       type: "object",
       description: "Optional override for headcount requirement on a specific day",
       properties: {
+        Mon: { type: "number" },
+        Tue: { type: "number" },
+        Wed: { type: "number" },
+        Thu: { type: "number" },
+        Fri: { type: "number" },
         Sat: { type: "number" },
+        Sun: { type: "number" },
       },
     },
     seniorRequiredDaily: {

@@ -10,6 +10,7 @@ import {
   checkNanoAvailability,
   createNanoSession,
   parseUserShiftIntent,
+  applyIntentToRequirements,
 } from "./nano-client.js";
 import {
   DEFAULT_STAFF,
@@ -181,7 +182,7 @@ export class AIShiftApp {
     const intent: ExtractedPlanIntent = parseUserShiftIntent(userText);
 
     // 3. Update current requirements
-    this.applyIntentToRequirements(intent);
+    this.currentRequirements = applyIntentToRequirements(this.currentRequirements, intent);
 
     // 4. Solve or diagnose with WaSHI
     const solveResult = await solveShiftSchedule(this.currentRequirements);
@@ -208,28 +209,6 @@ export class AIShiftApp {
 
     this.isProcessing = false;
     this.sendBtn.disabled = false;
-  }
-
-  private applyIntentToRequirements(intent: ExtractedPlanIntent) {
-    if (intent.action === "relax") {
-      this.currentRequirements.dayOffRequests = intent.dayOffRequests;
-      if (intent.coverageOverrides) {
-        this.currentRequirements.requiredCoverage = {
-          ...this.currentRequirements.requiredCoverage,
-          ...intent.coverageOverrides,
-        };
-      }
-      if (intent.seniorRequiredDaily !== undefined) {
-        this.currentRequirements.seniorRequiredDaily = intent.seniorRequiredDaily;
-      }
-    } else if (intent.action === "modify" || intent.action === "create") {
-      this.currentRequirements.dayOffRequests = intent.dayOffRequests;
-      // Reset overrides to standard if starting fresh or normal
-      if (!intent.coverageOverrides) {
-        this.currentRequirements.requiredCoverage = { ...DEFAULT_COVERAGE };
-        this.currentRequirements.seniorRequiredDaily = true;
-      }
-    }
   }
 
   private appendUserMessage(text: string) {

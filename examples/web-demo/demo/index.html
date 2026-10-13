@@ -15,10 +15,10 @@
       (function() {
         try {
           const p = new URLSearchParams(window.location.search).get('theme');
-          const saved = p || localStorage.getItem('washi-theme') || localStorage.getItem('vitepress-theme-appearance');
+          const saved = p || localStorage.getItem('vitepress-theme-appearance') || localStorage.getItem('washi-theme');
           const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          const theme = saved === 'dark' || (saved !== 'light' && prefersDark) ? 'dark' : 'light';
-          document.documentElement.setAttribute('data-theme', theme);
+          const theme = saved === 'dark' || ((!saved || saved === 'auto') && prefersDark);
+          document.documentElement.setAttribute('data-theme', theme ? 'dark' : 'light');
         } catch (_) {}
       })();
     </script>

@@ -1,4 +1,5 @@
-import type { NanoAvailability, NanoSessionWrapper, DayOffRequest, ExtractedPlanIntent } from "./types.js";
+import type { NanoAvailability, NanoSessionWrapper, DayOffRequest, ExtractedPlanIntent, ShiftRequirements, Day } from "./types.js";
+import { DEFAULT_COVERAGE } from "./shift-solver.js";
 
 /**
  * Prompt API Client targeting the modern WICG Prompt API standard (`window.LanguageModel`),
@@ -182,18 +183,41 @@ function createSimulatedSession(_systemPrompt: string): NanoSessionWrapper {
   };
 }
 
+function parseTargetDay(text: string): Day | null {
+  if (/sat|土曜|土/i.test(text)) return "Sat";
+  if (/sun|日曜|日/i.test(text)) return "Sun";
+  if (/fri|金曜|金/i.test(text)) return "Fri";
+  if (/mon|月曜|月/i.test(text)) return "Mon";
+  if (/tue|火曜|火/i.test(text)) return "Tue";
+  if (/wed|水曜|水/i.test(text)) return "Wed";
+  if (/thu|木曜|木/i.test(text)) return "Thu";
+  return null;
+}
+
+function parseTargetCount(text: string): number | null {
+  const match = text.match(/([1-9]|one|two|three|four)\s*(?:人|名|staff|people)?/i);
+  if (match) {
+    const val = match[1].toLowerCase();
+    if (val === "one" || val === "1") return 1;
+    if (val === "two" || val === "2") return 2;
+    if (val === "three" || val === "3") return 3;
+    if (val === "four" || val === "4") return 4;
+    const n = parseInt(val, 10);
+    if (!isNaN(n) && n > 0 && n <= 10) return n;
+  }
+  return null;
+}
+
 /**
  * Natural language parser for extracting shift intents from English or Japanese prompts.
  */
 export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
-  const lower = userText.toLowerCase();
-
-  // Scenario 1: Clash scenario (Alice & Bob both want Saturday off)
   const mentionsAlice = /alice|アリス/i.test(userText);
   const mentionsBob = /bob|ボブ/i.test(userText);
   const mentionsCharlie = /charlie|チャーリー/i.test(userText);
   const mentionsDiana = /diana|ダイアナ/i.test(userText);
   const mentionsEvan = /evan|エヴァン/i.test(userText);
+  const mentionsStaff = mentionsAlice || mentionsBob || mentionsCharlie || mentionsDiana || mentionsEvan;
 
   const mentionsSat = /sat|土曜/i.test(userText);
   const mentionsSun = /sun|日曜/i.test(userText);
@@ -201,27 +225,45 @@ export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
   const mentionsWed = /wed|水曜/i.test(userText);
   const mentionsFri = /fri|金曜/i.test(userText);
 
-  const requests: DayOffRequest[] = [];
+  const mentionsSeniorWaiver = /シニア.*(免除|不要|なし|外す|外して|いらない)|waive.*senior|senior.*waive|without senior/i.test(userText);
+  const mentionsSeniorEnforce = /シニア.*(必須|常駐|配置|必要|戻す)|enforce.*senior|require.*senior/i.test(userText);
 
-  // If user says "relax Saturday coverage to 2" or "緩和"
-  const relaxCoverage = /2人|two|relax|緩和|減ら/i.test(userText) && mentionsSat;
-
-  if (relaxCoverage) {
+  // 1. Explicit preset scenario: "案2（条件緩和）"
+  if (/案2|option\s*2|scenario\s*c|シナリオc/i.test(userText)) {
     return {
       action: "relax",
-      dayOffRequests: [
-        { staff: "Alice", day: "Sat", reason: "Family event" },
-        { staff: "Bob", day: "Sat", reason: "Personal appointment" },
-        { staff: "Charlie", day: "Sat", reason: "Weekend off request" },
-      ],
       coverageOverrides: { Sat: 2 },
-      seniorRequiredDaily: false, // relax senior constraint if explicitly requested
+      seniorRequiredDaily: false,
       summary: "Relaxed Saturday coverage to 2 staff and waived mandatory senior duty.",
     };
   }
 
-  // Negotiated resolution (Bob works Saturday, off on Friday)
-  if (/ボブ.*(土曜.*出勤|出勤.*土曜|振替)|bob.*work.*sat|compromise|解決|案1|案2/i.test(userText)) {
+  // 2. Coverage modification (e.g. "土曜日の必要人数を2人にしてください", "relax Saturday coverage to 2")
+  const isCoverageQuery = /必要人数|出勤人数|体制|人数|coverage|headcount|staffing|staff|requirement|緩和|減ら/i.test(userText);
+  const targetDay = parseTargetDay(userText);
+
+  if (targetDay && isCoverageQuery && !mentionsStaff) {
+    const targetCount = parseTargetCount(userText) ?? 2;
+    const seniorWaiver = mentionsSeniorWaiver ? false : mentionsSeniorEnforce ? true : undefined;
+    return {
+      action: targetCount < (DEFAULT_COVERAGE[targetDay] ?? 3) ? "relax" : "modify",
+      coverageOverrides: { [targetDay]: targetCount },
+      seniorRequiredDaily: seniorWaiver,
+      summary: `Adjusted ${targetDay} required coverage to ${targetCount} staff${seniorWaiver === false ? " and waived senior duty" : ""}.`,
+    };
+  }
+
+  // 3. Senior waiver query without coverage adjustment or staff mention
+  if (mentionsSeniorWaiver && !mentionsStaff) {
+    return {
+      action: "relax",
+      seniorRequiredDaily: false,
+      summary: "Waived mandatory senior staff duty.",
+    };
+  }
+
+  // 4. Negotiated resolution: "案1" or Bob swaps Saturday for Friday
+  if (/ボブ.*(土曜.*出勤|出勤.*土曜|振替)|bob.*work.*sat|compromise|案1|option\s*1/i.test(userText)) {
     return {
       action: "modify",
       dayOffRequests: [
@@ -234,7 +276,7 @@ export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
     };
   }
 
-  // Conflict Scenario: Alice and Bob both request Saturday off
+  // 5. Conflict Scenario: Alice & Bob both request Saturday off (or "シナリオB", "競合")
   if ((mentionsAlice && mentionsBob && mentionsSat) || /重複|clash|conflict|矛盾|シナリオb/i.test(userText)) {
     return {
       action: "create",
@@ -244,33 +286,30 @@ export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
         { staff: "Charlie", day: "Sat", reason: "Weekend off (Junior)" },
         { staff: "Diana", day: "Wed", reason: "Routine errand" },
       ],
+      coverageOverrides: { Sat: 3 },
+      seniorRequiredDaily: true,
       summary: "Requested Saturday off for Alice (Sr), Bob (Sr), Charlie (Jr), and Wednesday off for Diana.",
     };
   }
 
-  // Feasible Scenario (Default balanced requests)
+  // 6. Feasible Scenario: standard balanced requests (or "シナリオA", "作成", "来週")
   if (mentionsAlice || mentionsBob || mentionsCharlie || mentionsDiana || /シナリオa|feasible|作成|来週/i.test(userText)) {
     const list: DayOffRequest[] = [];
-    if (mentionsAlice && mentionsSun) list.push({ staff: "Alice", day: "Sun" });
-    else list.push({ staff: "Alice", day: "Sun" });
-
-    if (mentionsBob && mentionsMon) list.push({ staff: "Bob", day: "Mon" });
-    else list.push({ staff: "Bob", day: "Mon" });
-
-    if (mentionsCharlie && mentionsSat) list.push({ staff: "Charlie", day: "Sat" });
-    else list.push({ staff: "Charlie", day: "Sat" });
-
-    if (mentionsDiana && mentionsWed) list.push({ staff: "Diana", day: "Wed" });
-    else list.push({ staff: "Diana", day: "Wed" });
+    list.push({ staff: "Alice", day: mentionsAlice && mentionsSun ? "Sun" : "Sun" });
+    list.push({ staff: "Bob", day: mentionsBob && mentionsMon ? "Mon" : "Mon" });
+    list.push({ staff: "Charlie", day: mentionsCharlie && mentionsSat ? "Sat" : "Sat" });
+    list.push({ staff: "Diana", day: mentionsDiana && mentionsWed ? "Wed" : "Wed" });
 
     return {
       action: "create",
       dayOffRequests: list,
+      coverageOverrides: { Sat: 3 },
+      seniorRequiredDaily: true,
       summary: "Balanced weekly vacation requests: Alice (Sun), Bob (Mon), Charlie (Sat), Diana (Wed).",
     };
   }
 
-  // Fallback default
+  // 7. Fallback default
   return {
     action: "create",
     dayOffRequests: [
@@ -279,8 +318,49 @@ export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
       { staff: "Charlie", day: "Sat", reason: "Rest" },
       { staff: "Diana", day: "Wed", reason: "Rest" },
     ],
+    coverageOverrides: { Sat: 3 },
+    seniorRequiredDaily: true,
     summary: "Standard vacation requests parsed from your prompt.",
   };
+}
+
+/**
+ * Applies structured ExtractedPlanIntent to the current ShiftRequirements.
+ * Ensures coverage-only edits do not unintentionally modify existing vacation requests
+ * or waive senior duty unless explicitly requested.
+ */
+export function applyIntentToRequirements(
+  current: ShiftRequirements,
+  intent: ExtractedPlanIntent
+): ShiftRequirements {
+  if (intent.action === "create") {
+    return {
+      ...current,
+      staffList: [...current.staffList],
+      dayOffRequests: intent.dayOffRequests !== undefined ? [...intent.dayOffRequests] : [...current.dayOffRequests],
+      requiredCoverage: intent.coverageOverrides
+        ? { ...DEFAULT_COVERAGE, ...intent.coverageOverrides }
+        : { ...DEFAULT_COVERAGE },
+      seniorRequiredDaily: intent.seniorRequiredDaily !== undefined ? intent.seniorRequiredDaily : true,
+    };
+  }
+
+  const updated: ShiftRequirements = {
+    ...current,
+    staffList: [...current.staffList],
+    requiredCoverage: { ...current.requiredCoverage },
+    dayOffRequests: intent.dayOffRequests !== undefined ? [...intent.dayOffRequests] : [...current.dayOffRequests],
+    seniorRequiredDaily: intent.seniorRequiredDaily !== undefined ? intent.seniorRequiredDaily : current.seniorRequiredDaily,
+  };
+
+  if (intent.coverageOverrides) {
+    updated.requiredCoverage = {
+      ...updated.requiredCoverage,
+      ...intent.coverageOverrides,
+    };
+  }
+
+  return updated;
 }
 
 function generateSimulatedResponse(promptText: string): string {
