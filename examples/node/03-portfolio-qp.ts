@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/03-portfolio-qp.ts
  */
 
-import { Model, sum, dot, expr, QuadExpr } from "../../src/index.js";
+import { Model, sum, dot, c, QuadExpr, minimize } from "../../src/index.js";
 
 async function main() {
   console.log("=== Markowitz Portfolio Optimization (Convex QP) ===");
@@ -32,11 +32,11 @@ async function main() {
   const w = m.continuous(assets, { lb: 0, ub: 1 });
 
   // Budget constraint: sum(w) == 1.0 (100% total capital)
-  m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget_full_allocation");
+  m.constraint(c`${sum(assets, (a) => w[a])} == 1.0`, "budget_full_allocation");
 
   // Target expected return: sum(r_i * w_i) >= 8.5%
   const returns = Object.fromEntries(assets.map((name, i) => [name, expectedReturns[i]]));
-  m.constrain(expr`${dot(returns, w)} >= 0.085`, "min_expected_return");
+  m.constraint(c`${dot(returns, w)} >= 0.085`, "min_expected_return");
 
   // Objective: Minimize portfolio variance w^T * Cov * w
   let risk = new QuadExpr();
@@ -47,9 +47,9 @@ async function main() {
       }
     }
   }
-  m.minimize(risk);
+  m.objective(minimize(risk));
 
-  const status = await m.optimize();
+  const status = await m.solve();
 
   console.log(`\nStatus: ${status}`);
   console.log(`Optimal Variance (Risk): ${m.objectiveValue?.toFixed(6)}`);

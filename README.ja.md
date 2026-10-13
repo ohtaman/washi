@@ -31,17 +31,17 @@ HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグ�
 [ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 
 const m = new Model("木工製品の利益最大化");
 const x = m.integer("机", { lb: 0 });
 const y = m.integer("椅子", { lb: 0 });
 
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.constrain(expr`${x} + 2 * ${y} <= 40`, "木材上限");
-m.constrain(expr`2 * ${x} + ${y} <= 50`, "労働力上限");
+m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+m.constraint(c`${x} + 2 * ${y} <= 40`, "木材上限");
+m.constraint(c`2 * ${x} + ${y} <= 50`, "労働力上限");
 
-await m.optimize();
+await m.solve();
 console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objectiveValue})`);
 ```
 
@@ -49,10 +49,10 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 ## 🎯 WaSHI が提供するもの
 
-1. **代数的なモデル記述**: 直感的なドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`）、ベクトル集計関数（`dot`, `sum`）、そして第1推奨の `m.constrain()` により、数学的定義に忠実なモデルを簡潔に記述できます。
+1. **代数的なモデル記述**: 直感的なドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`, `c`）、ベクトル集計関数（`dot`, `sum`）、そして宣言的な `m.constraint()` により、数学的定義に忠実なモデルを簡潔に記述できます。
 2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せず、アプリケーション内で求解できます。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
-4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に Unsat Core を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
+4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に競合制約（`conflicts` / `unsatCore`）を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
 
 モデルの構築と変換は WaSHI が担当します。扱える問題クラス、数値計算の挙動、求解時間は、選択したソルバー・設定・問題に依存します。モデル構築のオーバーヘッドとソルバーの実行時間は分けて計測する必要があり、特定のモデルでの結果は一般的な性能保証ではありません。
 
@@ -101,7 +101,7 @@ npm install glpk.js      # GLPK ソルバーを利用する場合 (GPL-3.0)
 リソース制約の下で利益を最大化する生産計画：
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 
 const m = new Model("FactoryPlanning");
 
@@ -110,12 +110,12 @@ const chairs = m.integer("chairs", { lb: 0 });
 const tables = m.integer("tables", { lb: 0 });
 
 // テンプレートリテラル記法による自然な目的関数と制約
-m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.constrain(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constrain(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+m.constraint(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+m.constraint(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
 // 標準の HiGHS WASM エンジンで求解
-const status = await m.optimize();
+const status = await m.solve();
 
 console.log(`ステータス: ${status}`); // "Optimal"
 console.log(`最大利益: $${m.objectiveValue}`); // 1100
@@ -143,7 +143,7 @@ const board = m.binary(8, 8, { prefix: "queen" });
 
 ```ts
 // 「東京工場が稼働していない (openCity['Tokyo'] == 0) なら、生産量 flow は 0」
-m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
+m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
@@ -156,7 +156,7 @@ m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
 期待リターンと予算制約を満たしつつ、共分散行列に基づく投資リスクを最小化：
 
 ```ts
-import { Model, QuadExpr, sum, dot, expr } from "@ohtaman/washi";
+import { Model, QuadExpr, sum, dot, c, minimize } from "@ohtaman/washi";
 
 const m = new Model("MarkowitzPortfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
@@ -166,11 +166,11 @@ const returns = [0.14, 0.04, 0.08];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 // 1. 予算制約: 合計 100%
-m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+m.constraint(c`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
 // 2. 目標リターン: 最低 8.5%
 const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-m.constrain(expr`${dot(retMap, w)} >= 0.085`, "min_return");
+m.constraint(c`${dot(retMap, w)} >= 0.085`, "min_return");
 
 // 3. 共分散行列 (リスク & 相関)
 const cov = [
@@ -186,9 +186,9 @@ for (let i = 0; i < assets.length; i++) {
     risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
   }
 }
-m.minimize(risk);
+m.objective(minimize(risk));
 
-await m.optimize();
+await m.solve();
 console.log(`最小分散: ${m.objectiveValue?.toFixed(6)}`);
 assets.forEach((name) => {
   console.log(`  ${name}: ${((w[name].value || 0) * 100).toFixed(2)}%`);
@@ -202,7 +202,7 @@ assets.forEach((name) => {
 命題変数（`BoolVar`）と論理結合子（`and`, `or`, `implies`, `not`, `xor`）、数値比較制約を混在させたルール定義：
 
 ```ts
-import { Model, not, expr } from "@ohtaman/washi";
+import { Model, not, c } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
@@ -214,13 +214,13 @@ const siren = m.bool("siren");
 const lux = m.integer("lux", { lb: 0 });
 
 // 論理ルール
-m.constrain(lux.le(50).implies(isNight), "dark_implies_night");
-m.constrain(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
+m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
+m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
 // 観測されたセンサー値
-m.constrain(expr`${lux} <= 10`, "sensor_dark");
-m.constrain(motion, "sensor_motion");
-m.constrain(alarm, "alarm_on");
+m.constraint(c`${lux} <= 10`, "sensor_dark");
+m.constraint(motion, "sensor_motion");
+m.constraint(alarm, "alarm_on");
 
 // 目的関数なしで制約充足可能性（SAT）を判定
 const res = await m.check({ solver: "z3" });
@@ -231,12 +231,12 @@ console.log(`サイレン作動？ ${m.values.get("siren")}`); // true
 
 ---
 
-### 4. 矛盾原因の自動特定 (`unsatCore`)
+### 4. 矛盾原因の自動特定 (`conflicts` / `unsatCore`)
 
-業務ルールや制約群が互いに矛盾している場合、**矛盾を引き起こしている制約の部分集合**（Unsat Core。最小性は保証しません）を特定してデバッグ（Z3 が必要）：
+業務ルールや制約群が互いに矛盾している場合、**矛盾を引き起こしている制約の部分集合**（Unsat Core / Conflicts。最小性は保証しません）を特定してデバッグ（Z3 が必要）：
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, c } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
@@ -245,24 +245,24 @@ const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
 
 // ルール 1: エンジニア1人あたり $8,000
-m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
+m.constraint(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
 // ルール 2: 特急納品が必須
-m.constrain(rushDelivery, "rush_required");
+m.constraint(rushDelivery, "rush_required");
 
 // ルール 3: 特急納品には最低 8 人のエンジニアが必要
-m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // ルール 4: 役員会の予算上限 $50,000 (矛盾: 8人 * $8000 = $64,000 > $50,000!)
-m.constrain(expr`${budget} <= 50000`, "strict_board_budget_cap");
+m.constraint(c`${budget} <= 50000`, "strict_board_budget_cap");
 
 // ルール 5: 最低 1 人雇用の労働基準（無関係なルール）
-m.constrain(expr`${engineers} >= 1`, "minimum_one_employee");
+m.constraint(c`${engineers} >= 1`, "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
 console.log(`ステータス: ${res.status}`); // "Unsat"
-console.log("矛盾している制約:", res.unsatCore);
+console.log("矛盾している制約:", res.conflicts);
 // 出力: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 // ※ 無関係な "minimum_one_employee" は的確に除外されます
 ```
@@ -274,18 +274,18 @@ console.log("矛盾している制約:", res.unsatCore);
 GNU Linear Programming Kit (GLPK) ソルバープラグインを利用する場合：
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
 const m = new Model({ solver: "glpk" });
 const x = m.integer("x", { lb: 0 });
 const y = m.integer("y", { lb: 0 });
 
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-const status = await m.optimize();
+const status = await m.solve();
 console.log(`ステータス: ${status}`); // "Optimal"
 console.log(`目的関数値: ${m.objectiveValue}`); // 1100
 ```

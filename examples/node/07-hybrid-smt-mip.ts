@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { Model, expr } from "../../src/index.js";
+import { Model, expr, c, minimize } from "../../src/index.js";
 import { Z3Solver } from "../../src/modeler/solvers/z3.js";
 
 /**
@@ -55,23 +55,23 @@ export async function runHybridPipeline({
   const budgetTierHigh = policyModel.bool("budgetTierHigh");
 
   // Rule 1: Europe requires GDPR compliance: deployEurope -> complianceGDPR
-  policyModel.constrain(deployEurope.implies(complianceGDPR), "r1_gdpr");
+  policyModel.constraint(deployEurope.implies(complianceGDPR), "r1_gdpr");
 
   // Rule 2: Multi-region deployment requires high budget tier: (deployEurope & deployUS) -> budgetTierHigh
-  policyModel.constrain(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
+  policyModel.constraint(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
 
   // Desired deployment configuration: Deploy both Europe and US, with GDPR compliance enabled
-  policyModel.constrain(deployEurope)
-    .constrain(deployUS)
-    .constrain(complianceGDPR);
+  policyModel.constraint(deployEurope)
+    .constraint(deployUS)
+    .constraint(complianceGDPR);
 
   if (forceConflict) {
     // Contradictory policy: High budget tier is NOT approved (low budget forced),
     // which contradicts Rule 2 ((deployEurope & deployUS) -> budgetTierHigh).
-    policyModel.constrain(budgetTierHigh.not(), "r3_low_budget_cap");
+    policyModel.constraint(budgetTierHigh.not(), "r3_low_budget_cap");
   } else {
     // Consistent policy: High budget tier is approved
-    policyModel.constrain(budgetTierHigh, "r3_high_budget_approved");
+    policyModel.constraint(budgetTierHigh, "r3_high_budget_approved");
   }
 
   const policyCheck = mockStatus
@@ -110,10 +110,10 @@ export async function runHybridPipeline({
   // Since SMT verified that deployEurope and deployUS are feasible together,
   // enforce both data centers to be online to satisfy the business policy (Issue #34).
   if (deployEurope.value ?? true) {
-    mip.constrain(openEU.eq(1), "enforce_eu_deployment");
+    mip.constraint(openEU.eq(1), "enforce_eu_deployment");
   }
   if (deployUS.value ?? true) {
-    mip.constrain(openUS.eq(1), "enforce_us_deployment");
+    mip.constraint(openUS.eq(1), "enforce_us_deployment");
   }
 
   // Big-M Indicator Constraints:
@@ -127,13 +127,13 @@ export async function runHybridPipeline({
   mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500, name: "us_min_batch" });
 
   // Demand requirement: total traffic >= 450 TB/s
-  mip.constrain(expr`${capEU} + ${capUS} >= 450`, "total_demand");
+  mip.constraint(c`${capEU} + ${capUS} >= 450`, "total_demand");
 
   // Objective: Minimize Operational Cost
   // Base fixed cost per DC ($5000), marginal cost per TB ($12 in US, $18 in EU)
-  mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
+  mip.objective(minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`));
 
-  const status = await mip.optimize();
+  const status = await mip.solve();
 
   console.log(`HiGHS MIP Status: ${status}`);
   console.log(`Optimal Total Cost: $${mip.objectiveValue?.toLocaleString()}`);

@@ -5,7 +5,9 @@ import {
   type SolverStatus,
   type SolveOptions,
   type SolverSolution,
+  type CheckResult,
 } from "./types.js";
+import { type ObjectiveSpec } from "./objective.js";
 import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
@@ -14,6 +16,12 @@ import { BoolVar, BoolExpr } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
+
+/**
+ * Valid items that can be added as a constraint to a model.
+ * Raw mathematical expressions (LinExpr, QuadExpr) without comparisons are strictly prohibited.
+ */
+export type ConstraintItem = Constraint | BoolExpr | string;
 
 export interface ModelOptions {
   name?: string;
@@ -46,12 +54,22 @@ export interface LogicalConstraint {
 export class Model {
   public name: string;
   public sense: OptimizationSense;
-  public objective: LinExpr | QuadExpr;
+  public objectiveExpr: LinExpr | QuadExpr;
   public variables: Var[] = [];
   public constraints: Constraint[] = [];
   public boolVars: BoolVar[] = [];
   public logicalConstraints: LogicalConstraint[] = [];
-  public unsatCore: string[] = [];
+  public unsatCore: readonly string[] | undefined = undefined;
+
+  /**
+   * User-friendly alias for unsatCore.
+   * Returns a subset of conflicting constraint names causing infeasibility,
+   * or undefined if not diagnosed, not applicable, or satisfiable.
+   */
+  get conflicts(): readonly string[] | undefined {
+    return this.unsatCore;
+  }
+
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
@@ -64,6 +82,7 @@ export class Model {
   public runTime: number = 0;
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
+  private hasSolutionState: boolean = false;
 
   constructor(nameOrOptions: string | ModelOptions = {}, maybeOptions?: ModelOptions) {
     let options: ModelOptions;
@@ -74,7 +93,7 @@ export class Model {
     }
     this.name = options.name || "OptimizationModel";
     this.sense = normalizeSense(options.sense);
-    this.objective = new LinExpr();
+    this.objectiveExpr = new LinExpr();
     if (options.solver) {
       this.solver = getSolver(options.solver);
     }
@@ -94,6 +113,34 @@ export class Model {
 
   get numConstrs(): number {
     return this.constraints.length;
+  }
+
+  /**
+   * Reset prior solution and diagnostic state to avoid stale data leakage across runs.
+   * Skips redundant O(N) traversals if the model is already in an unsolved / invalidated state.
+   */
+  public resetSolutionState(): void {
+    if (!this.hasSolutionState && this.status === "NotSolved" && this.solution === null && this.unsatCore === undefined) {
+      return;
+    }
+    this.status = "NotSolved";
+    this.objectiveValue = null;
+    this.solution = null;
+    this.runTime = 0;
+    this.unsatCore = undefined;
+    this.values.clear();
+    for (const v of this.variables) {
+      v.value = null;
+      v.reducedCost = null;
+    }
+    for (const bv of this.boolVars) {
+      bv.value = null;
+    }
+    for (const c of this.constraints) {
+      c.dual = null;
+      c.slack = null;
+    }
+    this.hasSolutionState = false;
   }
 
   /**
@@ -324,6 +371,7 @@ export class Model {
     const bv = new BoolVar(varName);
     this.boolVars.push(bv);
     this.boolVarMapByName.set(bv.name, bv);
+    this.resetSolutionState();
     return bv;
   }
 
@@ -343,6 +391,7 @@ export class Model {
 
     this.variables.push(v);
     this.varMapByName.set(v.name, v);
+    this.resetSolutionState();
     return v;
   }
 
@@ -368,64 +417,117 @@ export class Model {
   }
 
   /**
-   * Set the objective function
+   * Get the current objective expression, or set the objective function and direction.
+   * Calling objective(spec) replaces any previously defined objective.
+   * Chainable when setting: returns this.
+   *
+   * @example
+   * m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+   * m.objective(minimize(costExpr));
+   * const currentExpr = m.objective();
+   */
+  objective(): LinExpr | QuadExpr;
+  objective(spec: ObjectiveSpec): this;
+  objective(spec?: ObjectiveSpec): LinExpr | QuadExpr | this {
+    if (!spec) {
+      return this.objectiveExpr;
+    }
+    const newSense = normalizeSense(spec.sense);
+    const expr = spec.expr;
+
+    if (expr instanceof Constraint) {
+      throw new Error(
+        "Cannot set objective to a constraint comparison (<=, >=, ==). " +
+        "Did you mean to use m.constraint(c`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
+      );
+    }
+
+    let parsedExpr: LinExpr | QuadExpr;
+    if (typeof expr === "string") {
+      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
+    } else if (typeof expr === "number") {
+      parsedExpr = new LinExpr(new Map(), expr);
+    } else if (expr instanceof QuadExpr) {
+      parsedExpr = expr.clone();
+    } else if ("terms" in expr) {
+      parsedExpr = expr.clone();
+    } else {
+      // Var
+      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
+    }
+
+    this.sense = newSense;
+    this.objectiveExpr = parsedExpr;
+    this.resetSolutionState();
+    return this;
+  }
+
+  /**
+   * Set the objective function (classic API).
+   * Prefer using `m.objective(maximize(expr))` or `m.objective(minimize(expr))`.
    */
   setObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
     if (expr instanceof Constraint) {
       throw new Error(
         "Cannot set objective to a constraint comparison (<=, >=, ==). " +
-        "Did you mean to use m.constrain(expr`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
+        "Did you mean to use m.constraint(c`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
       );
     }
 
-    if (sense) {
-      this.sense = normalizeSense(sense);
-    }
+    const newSense = sense ? normalizeSense(sense) : this.sense;
 
+    let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {
-      this.objective = parseExpr(expr, (name) => this.getVarByName(name));
+      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
     } else if (typeof expr === "number") {
-      this.objective = new LinExpr(new Map(), expr);
+      parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
-      this.objective = expr.clone();
+      parsedExpr = expr.clone();
     } else if ("terms" in expr) {
-      this.objective = expr.clone();
+      parsedExpr = expr.clone();
     } else {
       // Var
-      this.objective = new LinExpr(new Map([[expr, 1]]), 0);
+      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
     }
+
+    this.sense = newSense;
+    this.objectiveExpr = parsedExpr;
+    this.resetSolutionState();
   }
 
   /**
-   * Set objective to maximize
+   * @deprecated Use `m.objective(maximize(expr))` and `await m.solve()` instead.
    */
   maximize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
     this.setObjective(expr, "Maximize");
   }
 
   /**
-   * Set objective to minimize
+   * @deprecated Use `m.objective(minimize(expr))` and `await m.solve()` instead.
    */
   minimize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
     this.setObjective(expr, "Minimize");
   }
 
   /**
-   * Constrain the model with linear, boolean, or string formula constraints (primary default API).
-   * Supports single constraint, array of constraints, and fluent chaining:
-   * - m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood")
-   * - m.constrain(items.map(i => expr`${x[i]} <= 10`))
-   * - m.constrain(c1).constrain(c2)
+   * Add linear, boolean, or string formula constraint(s) to the model.
+   * Rejects raw arithmetic expressions (e.g. LinExpr) without comparison operators.
+   * Chainable: returns this.
+   *
+   * @example
+   * m.constraint(c`${desks} + 2 * ${chairs} <= 40`, "wood")
+   * m.constraint(items.map(i => c`${x[i]} <= 10`))
+   * m.constraint(c1).constraint(c2)
    */
-  constrain(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): this;
-  constrain(constraints: (Constraint | LinExpr | QuadExpr | BoolExpr | string)[]): this;
-  constrain(
-    item: Constraint | LinExpr | QuadExpr | BoolExpr | string | (Constraint | LinExpr | QuadExpr | BoolExpr | string)[],
+  constraint(constraint: ConstraintItem, name?: string): this;
+  constraint(constraints: ConstraintItem[]): this;
+  constraint(
+    item: ConstraintItem | ConstraintItem[],
     name?: string
   ): this {
     if (Array.isArray(item)) {
       for (const elem of item) {
-        this.constrain(elem);
+        this.constraint(elem);
       }
       return this;
     }
@@ -438,11 +540,23 @@ export class Model {
     if (item instanceof LinExpr) {
       throw new Error(
         "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use expr`... <= ...` or .le(), .ge(), .eq()."
+        "Use c`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     this.addConstraint(item as Constraint | BoolExpr | string, name);
     return this;
+  }
+
+  /**
+   * @deprecated Use `m.constraint(...)` instead.
+   */
+  constrain(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
+  constrain(constraints: (ConstraintItem | LinExpr | QuadExpr)[]): this;
+  constrain(
+    item: any,
+    name?: string
+  ): this {
+    return (this.constraint as any)(item, name);
   }
 
   /**
@@ -500,7 +614,7 @@ export class Model {
     if (constraint instanceof LinExpr) {
       throw new Error(
         "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use expr`... <= ...` or .le(), .ge(), .eq()."
+        "Use c`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     if (constraint instanceof BoolExpr) {
@@ -509,6 +623,7 @@ export class Model {
         name: constrName,
         expr: constraint,
       });
+      this.resetSolutionState();
       return constraint;
     }
 
@@ -529,6 +644,7 @@ export class Model {
 
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
+    this.resetSolutionState();
     return constr;
   }
 
@@ -562,6 +678,7 @@ export class Model {
       if (!this.varMapByName.has(item.name)) {
         this.variables.push(item);
         this.varMapByName.set(item.name, item);
+        this.resetSolutionState();
       }
       return this;
     }
@@ -647,7 +764,7 @@ export class Model {
     const { lpString } = generateLpString({
       name: this.name,
       sense: this.sense,
-      objective: this.objective,
+      objective: this.objectiveExpr,
       constraints: this.constraints,
       variables: this.variables,
     });
@@ -656,12 +773,16 @@ export class Model {
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
-   * or a solver passed dynamically (e.g., await model.optimize(new HiGHS()))
+   * or a solver passed dynamically (e.g., await model.solve(new HiGHS())).
+   *
+   * Calling solve() resets any prior solution and diagnostic values before executing.
    */
-  async optimize(
+  async solve(
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<SolverStatus> {
+    this.resetSolutionState();
+
     let activeSolver: Solver;
     let activeOptions: SolveOptions;
 
@@ -691,7 +812,7 @@ export class Model {
 
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
-      this.objective instanceof QuadExpr && this.objective.quadTerms.size > 0;
+      this.objectiveExpr instanceof QuadExpr && this.objectiveExpr.quadTerms.size > 0;
     if (hasQuadObjective && activeSolver.capabilities?.supportsQP === false) {
       throw new Error(
         `Solver "${activeSolver.name}" does not support quadratic objectives (QP). Please use a QP-capable solver such as HiGHS or Clarabel.`
@@ -708,7 +829,7 @@ export class Model {
     const modelData = {
       name: this.name,
       sense: this.sense,
-      objective: this.objective,
+      objective: this.objectiveExpr,
       constraints: this.constraints,
       variables: this.variables,
       logicalConstraints: this.logicalConstraints,
@@ -729,31 +850,6 @@ export class Model {
     const slacksRecord: Record<string, number> = {};
 
     this.values.clear();
-
-    // Reset previous variable and constraint solutions
-    for (const v of this.variables) {
-      v.value = null;
-      v.reducedCost = null;
-    }
-    for (const bv of this.boolVars) {
-      bv.value = null;
-    }
-    for (const c of this.constraints) {
-      c.dual = null;
-      c.slack = null;
-    }
-    if (lpData?.nameToVar) {
-      for (const v of lpData.nameToVar.values()) {
-        v.value = null;
-        v.reducedCost = null;
-      }
-    }
-    if (lpData?.nameToConstraint) {
-      for (const c of lpData.nameToConstraint.values()) {
-        c.dual = null;
-        c.slack = null;
-      }
-    }
 
     // Map variable solutions back to Var objects
     if (result.values && result.status !== "Infeasible" && result.status !== "Unbounded") {
@@ -814,37 +910,32 @@ export class Model {
       runTime: this.runTime,
       raw: result.raw,
     };
+    this.hasSolutionState = true;
 
     return this.status;
   }
 
   /**
-   * Convenience alias for optimize():
-   * await model.solve()
-   * await model.solve(new HiGHS())
-   * await model.solve(new GLPK())
-   * await model.solve(new RemoteSolver({ url: "..." }))
+   * Fully identical pass-through alias to solve().
+   * Matches parameters, return value, and side effects.
    */
-  async solve(
+  async optimize(
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<SolverStatus> {
-    return this.optimize(solverOrOptions, options);
+    return this.solve(solverOrOptions, options);
   }
 
   /**
    * Check satisfiability of the model without requiring an objective function.
-   * Can be used to verify feasibility or diagnose infeasibilities / unsat core.
+   * Can be used to verify feasibility or diagnose infeasibilities / conflicts.
    */
   async check(
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
-  ): Promise<{
-    status: "Sat" | "Unsat" | "Unknown";
-    values: Record<string, number | boolean>;
-    unsatCore?: string[];
-    runTime?: number;
-  }> {
+  ): Promise<CheckResult> {
+    this.resetSolutionState();
+
     let activeSolver: Solver;
     let activeOptions: SolveOptions;
 
@@ -893,15 +984,7 @@ export class Model {
       );
       this.status = checkResult.status;
       this.runTime = checkResult.runTime ?? 0;
-      this.unsatCore = checkResult.unsatCore || [];
-
-      this.values.clear();
-      for (const v of this.variables) {
-        v.value = null;
-      }
-      for (const bv of this.boolVars) {
-        bv.value = null;
-      }
+      this.unsatCore = checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
 
       if (checkResult.values && checkResult.status === "Sat") {
         for (const [name, val] of Object.entries(checkResult.values)) {
@@ -916,16 +999,23 @@ export class Model {
           }
         }
       }
-      return checkResult;
+      this.hasSolutionState = true;
+      return {
+        status: checkResult.status,
+        values: Object.fromEntries(this.values),
+        unsatCore: this.unsatCore,
+        conflicts: this.unsatCore,
+        runTime: this.runTime,
+      };
     }
 
     // 3. Fallback: Linear Feasibility check using standard solve() with 0 objective
-    const originalObjective = this.objective;
+    const originalObjective = this.objectiveExpr;
     const originalSense = this.sense;
     try {
-      this.objective = new LinExpr();
+      this.objectiveExpr = new LinExpr();
       this.sense = "Minimize";
-      const status = await this.optimize(activeSolver, activeOptions);
+      const status = await this.solve(activeSolver, activeOptions);
       const isSat = status === "Optimal" || status === "Feasible";
       const isUnsat = status === "Infeasible";
 
@@ -949,7 +1039,7 @@ export class Model {
         runTime: this.runTime,
       };
     } finally {
-      this.objective = originalObjective;
+      this.objectiveExpr = originalObjective;
       this.sense = originalSense;
     }
   }

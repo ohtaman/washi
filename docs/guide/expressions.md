@@ -1,17 +1,17 @@
-# Expressions (`expr`, `sum`, `dot`)
+# Expressions (`expr`, `c`, `sum`, `dot`)
 
 Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
 
-In JavaScript and TypeScript without native operator overloading, WaSHI provides **tagged template literals (`expr`)**, high-performance **`sum()`**, and matrix/vector **`dot()`** to make algebraic modeling clean and expressive.
+In JavaScript and TypeScript without native operator overloading, WaSHI provides **tagged template literals (`expr`, `c`)**, high-performance **`sum()`**, and matrix/vector **`dot()`** to make algebraic modeling clean and expressive.
 
 ---
 
-## ✍️ Tagged Template Literals (`expr`)
+## ✍️ Tagged Template Literals (`expr` and `c`)
 
-The `expr` template tag allows you to write algebraic formulas naturally:
+Use `expr` for arithmetic expressions (`LinExpr | QuadExpr`) and `c` for relational constraints (`Constraint`):
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
@@ -23,8 +23,8 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 // 2. Quadratic expression: x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 
-// 3. Inline linear constraint
-const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
+// 3. Relational constraint (using c):
+const balanceConstraint = c`${x} + 2 * ${y} <= 40`;
 ```
 
 ### Supported Syntax in `expr`
@@ -34,11 +34,11 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **Powers & Exponentiation**: `${x}^2`, `${x}**2`
 - **Unary Negation**: `-${x} + 10`
 - **Parentheses**: `2 * (${x} + ${y})`
-- **Linear Comparisons**: `${x} + 2 * ${y} <= 40`, `${x} >= 10`, `${x} == ${y}`
 - **Nested Expressions**: `expr` seamlessly interpolates variables, numbers, `sum()` results, and nested expressions.
 
 > [!NOTE]
-> `expr` uniformly handles linear and quadratic expressions (up to degree 2). If quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Polynomial terms of degree $> 2$ (e.g. `${x} * ${y} * ${z}`, `${x}^3`) and non-linear constraints (e.g. `${x} * ${y} <= 10`) are rejected because standard MILP/LP/QP formulations only support linear constraints and quadratic objectives.
+> For relational comparisons (`<=`, `>=`, `==`), use the `c` tagged template (e.g., ``c`${x} + 2 * ${y} <= 40` ``) which returns a first-class `Constraint`. Calling `expr` with comparison operators strictly throws an Error directing callers to `c`.
+> `expr` uniformly handles linear and quadratic expressions (up to degree 2). If quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Polynomial terms of degree $> 2$ (e.g. ``${x} * ${y} * ${z}``, ``${x}^3``) and non-linear constraints (e.g. ``${x} * ${y} <= 10``) are rejected because standard MILP/LP/QP formulations only support linear constraints and quadratic objectives.
 
 ---
 
@@ -94,7 +94,7 @@ const costs = {
 const ship = m.continuous(factories, stores);
 
 // Total shipping cost in one line:
-m.minimize(dot(costs, ship));
+m.objective(minimize(dot(costs, ship)));
 ```
 
 ---
@@ -107,24 +107,24 @@ WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver.
 You can write quadratic formulas naturally with `*`, `^2`, or `**2`:
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
 // Quadratic objective using expr:
-m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
+m.objective(minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`));
 
-// Linear constraint:
-m.addConstraint(expr`${x} + ${y} >= 4`);
+// Linear constraint using c:
+m.constraint(c`${x} + ${y} >= 4`);
 ```
 
 ### 2. Method Chaining with `.mul()` or `QuadExpr`
 Alternatively, you can construct quadratic expressions programmatically:
 
 ```typescript
-import { Model, QuadExpr } from "@ohtaman/washi";
+import { Model, QuadExpr, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
@@ -143,5 +143,5 @@ risk = risk.add(w.Tech.mul(w.Tech).mul(0.04));
 risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
 risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
-m.minimize(risk);
+m.objective(minimize(risk));
 ```

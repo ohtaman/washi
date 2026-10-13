@@ -13,7 +13,7 @@
  * Run with: npx tsx examples/node/10-diet-sensitivity.ts
  */
 
-import { Model, expr, dot } from "../../src/index.js";
+import { Model, expr, c, dot, minimize } from "../../src/index.js";
 
 interface FoodItem {
   name: string;
@@ -44,7 +44,7 @@ async function main() {
 
   // Objective: Minimize total daily food cost via dot product
   const costMap = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
-  m.minimize(dot(costMap, servings));
+  m.objective(minimize(dot(costMap, servings)));
 
   // Daily nutritional minimum requirements
   const reqDefs = [
@@ -56,11 +56,11 @@ async function main() {
 
   for (const req of reqDefs) {
     const coeffMap = Object.fromEntries(foods.map((f) => [f.name, f[req.key]]));
-    m.constrain(expr`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name);
+    m.constraint(c`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name);
   }
 
   const buildMs = performance.now() - t0;
-  const status = await m.optimize();
+  const status = await m.solve();
   const solveMs = m.runTime * 1000;
 
   console.log(`\nStatus: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);

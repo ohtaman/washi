@@ -8,7 +8,7 @@
  * Run with: npx tsx examples/node/05-unsat-core-diagnosis.ts
  */
 
-import { Model, expr } from "../../src/index.js";
+import { Model, c } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 async function main() {
@@ -23,19 +23,19 @@ async function main() {
   const rushDelivery = m.bool("rushDelivery");
 
   // Rule 1: Each engineer costs $8,000
-  m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
+  m.constraint(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
   // Rule 2: Customer requires rush delivery
-  m.constrain(rushDelivery, "rush_required");
+  m.constraint(rushDelivery, "rush_required");
 
   // Rule 3: Rush delivery requires at least 8 engineers
-  m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+  m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
   // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
-  m.constrain(expr`${budget} <= 50000`, "strict_board_budget_cap");
+  m.constraint(c`${budget} <= 50000`, "strict_board_budget_cap");
 
   // Rule 5: Minimum 1 employee regulation (innocent bystander rule)
-  m.constrain(expr`${engineers} >= 1`, "minimum_one_employee");
+  m.constraint(c`${engineers} >= 1`, "minimum_one_employee");
 
   console.log("Diagnosing constraint feasibility...");
   const res = await m.check({ solver: "z3" });
@@ -43,8 +43,8 @@ async function main() {
   console.log(`\nStatus: ${res.status}`);
 
   if (res.status === "Unsat") {
-    console.log("\n⚠️ Conflicting Constraints (Unsat Core):");
-    m.unsatCore.forEach((ruleName) => {
+    console.log("\n⚠️ Conflicting Constraints (conflicts / unsatCore):");
+    (res.conflicts ?? []).forEach((ruleName) => {
       console.log(`  ❌ ${ruleName}`);
     });
   }

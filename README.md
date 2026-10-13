@@ -31,17 +31,17 @@ HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provi
 [Try the browser demo](https://ohtaman.github.io/washi/demo/) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 
 const m = new Model("WoodworkingProfit");
 const x = m.integer("desks", { lb: 0 });
 const y = m.integer("chairs", { lb: 0 });
 
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-await m.optimize();
+await m.solve();
 console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`);
 ```
 
@@ -49,10 +49,10 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 ## 🎯 What WaSHI provides
 
-1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constrain`).
+1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), tagged template literals (`expr`, `c`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`).
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
-4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect an unsatisfiable core to investigate conflicting constraints. A returned core is a conflicting subset, not necessarily the smallest one.
+4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities. A returned core is a conflicting subset, not necessarily the smallest one.
 
 Model construction and translation are WaSHI's responsibility. Supported problem classes, numerical behavior, and solve time depend on the selected solver, its settings, and the problem. Modeling overhead and solver execution time should be measured separately; a result for one model is not a general performance guarantee.
 
@@ -101,7 +101,7 @@ npm install glpk.js      # For GLPK solver (GPL-3.0)
 Formulate production scheduling, resource allocation, and facility location problems:
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 
 const m = new Model("FactoryPlanning");
 
@@ -110,12 +110,12 @@ const chairs = m.integer("chairs", { lb: 0 });
 const tables = m.integer("tables", { lb: 0 });
 
 // Natural formula objective & constraints via Tagged Template Literals
-m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.constrain(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constrain(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+m.constraint(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+m.constraint(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
 // Solve using default HiGHS WASM engine
-const status = await m.optimize();
+const status = await m.solve();
 
 console.log(`Status: ${status}`); // "Optimal"
 console.log(`Objective: $${m.objectiveValue}`); // 1100
@@ -143,7 +143,7 @@ Model conditional activation rules and fixed-charge economics without manual Big
 
 ```ts
 // If factory is closed (openCity['Tokyo'] == 0), its production capacity must be 0
-m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
+m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
@@ -156,7 +156,7 @@ m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
 Minimize investment risk based on a covariance matrix subject to return and budget constraints:
 
 ```ts
-import { Model, QuadExpr, sum, dot, expr } from "@ohtaman/washi";
+import { Model, QuadExpr, sum, dot, c, minimize } from "@ohtaman/washi";
 
 const m = new Model("MarkowitzPortfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
@@ -166,11 +166,11 @@ const returns = [0.14, 0.04, 0.08];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 // 1. Fully invested budget: sum(w) == 1.0
-m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+m.constraint(c`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
 // 2. Minimum target return: portfolio return >= 8.5%
 const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-m.constrain(expr`${dot(retMap, w)} >= 0.085`, "min_return");
+m.constraint(c`${dot(retMap, w)} >= 0.085`, "min_return");
 
 // 3. Covariance risk matrix
 const cov = [
@@ -186,9 +186,9 @@ for (let i = 0; i < assets.length; i++) {
     risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
   }
 }
-m.minimize(risk);
+m.objective(minimize(risk));
 
-await m.optimize();
+await m.solve();
 console.log(`Minimal Variance: ${m.objectiveValue?.toFixed(6)}`);
 assets.forEach((name) => {
   console.log(`  ${name}: ${((w[name].value || 0) * 100).toFixed(2)}%`);
@@ -202,7 +202,7 @@ assets.forEach((name) => {
 Express boolean variables, propositional connectives (`and`, `or`, `implies`, `not`, `xor`), and mixed arithmetic rules:
 
 ```ts
-import { Model, not, expr } from "@ohtaman/washi";
+import { Model, not, c } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
@@ -214,13 +214,13 @@ const siren = m.bool("siren");
 const lux = m.integer("lux", { lb: 0 });
 
 // Logical rules
-m.constrain(lux.le(50).implies(isNight), "dark_implies_night");
-m.constrain(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
+m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
+m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
 // Current sensor observations
-m.constrain(expr`${lux} <= 10`, "sensor_dark");
-m.constrain(motion, "sensor_motion");
-m.constrain(alarm, "alarm_on");
+m.constraint(c`${lux} <= 10`, "sensor_dark");
+m.constraint(motion, "sensor_motion");
+m.constraint(alarm, "alarm_on");
 
 // Check satisfiability and deduce state without an objective function
 const res = await m.check({ solver: "z3" });
@@ -231,12 +231,12 @@ console.log(`Siren active? ${m.values.get("siren")}`); // true
 
 ---
 
-### 4. Conflict Diagnosis (`unsatCore`)
+### 4. Conflict Diagnosis (`conflicts` / `unsatCore`)
 
 When business rules or constraints contradict each other, extract a **conflicting constraint subset** (unsatisfiable core; minimality is not guaranteed) for troubleshooting (requires Z3):
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, c } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
@@ -245,24 +245,24 @@ const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
 
 // Rule 1: Each engineer costs $8,000
-m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
+m.constraint(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
 // Rule 2: Customer requires rush delivery
-m.constrain(rushDelivery, "rush_required");
+m.constraint(rushDelivery, "rush_required");
 
 // Rule 3: Rush delivery requires at least 8 engineers
-m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
-m.constrain(expr`${budget} <= 50000`, "strict_board_budget_cap");
+m.constraint(c`${budget} <= 50000`, "strict_board_budget_cap");
 
 // Rule 5: Innocent bystander rule
-m.constrain(expr`${engineers} >= 1`, "minimum_one_employee");
+m.constraint(c`${engineers} >= 1`, "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
 console.log(`Status: ${res.status}`); // "Unsat"
-console.log("Conflicting constraints:", res.unsatCore);
+console.log("Conflicting constraints:", res.conflicts);
 // Output: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 // Note: "minimum_one_employee" is correctly excluded!
 ```
@@ -274,18 +274,18 @@ console.log("Conflicting constraints:", res.unsatCore);
 To use the GNU Linear Programming Kit (GLPK) solver plugin:
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
 const m = new Model({ solver: "glpk" });
 const x = m.integer("x", { lb: 0 });
 const y = m.integer("y", { lb: 0 });
 
-m.maximize(expr`30 * ${x} + 50 * ${y}`);
-m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-const status = await m.optimize();
+const status = await m.solve();
 console.log(`Status: ${status}`); // "Optimal"
 console.log(`Objective: ${m.objectiveValue}`); // 1100
 ```

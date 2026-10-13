@@ -11,7 +11,7 @@
  * Run with: npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
  */
 
-import { Model, sum, expr } from "../../src/index.js";
+import { Model, sum, expr, c, minimize } from "../../src/index.js";
 
 async function main() {
   console.log("=== E-Commerce Cart & Coupon Optimizer (MIP) ===");
@@ -67,23 +67,23 @@ async function main() {
 
   // Rule 2: Mutual exclusion among non-stackable ("Exclusive") coupons
   const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.constrain(
-    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
+  m.constraint(
+    c`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
     "at_most_one_exclusive_coupon"
   );
 
   // Rule 3: Maximum 2 coupons total per checkout
-  m.constrain(
-    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
+  m.constraint(
+    c`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
     "max_two_coupons_total"
   );
 
   // Objective: Minimize final net payable amount = merchSpend - totalDiscounts
   const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
-  m.minimize(merchSpend.sub(totalDiscount));
+  m.objective(minimize(merchSpend.sub(totalDiscount)));
 
   const buildMs = performance.now() - t0;
-  const status = await m.optimize();
+  const status = await m.solve();
   const solveMs = m.runTime * 1000;
 
   const cableAdded = Math.round(addUsbCable.value ?? 0) === 1;

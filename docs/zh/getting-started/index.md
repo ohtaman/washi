@@ -51,14 +51,13 @@ npm install glpk.js
 ### 1. 引入核心类与标签函数
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 ```
 
 ### 2. 初始化模型实例
 
 ```typescript
-// 创建最大化目标模型
-const model = new Model({ sense: "Maximize" });
+const model = new Model();
 ```
 
 ### 3. 定义决策变量
@@ -70,20 +69,20 @@ const y = model.integer("y", { lb: 0 });
 
 ### 4. 设定目标函数
 
-使用 `expr` 标签模板字面量自然表述代数公式：
+使用 `maximize()` 与 `expr` 标签模板字面量声明式设定目标函数：
 
 ```typescript
 // 最大化 30*x + 50*y
-model.maximize(expr`30 * ${x} + 50 * ${y}`);
+model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
 ```
 
 ### 5. 添加约束条件
 
-使用 `c`（或 `expr`）标签模板字面量与 `constrain` 添加不等式或等式约束：
+使用 `c` 标签模板字面量与 `constraint` 添加不等式或等式约束：
 
 ```typescript
-model.constrain(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constrain(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. 异步求解与结果获取

@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/01-production-planning.ts
  */
 
-import { Model, expr } from "../../src/index.js";
+import { Model, expr, c, maximize } from "../../src/index.js";
 
 async function main() {
   console.log("=== Production Planning Optimization (LP) ===");
@@ -21,16 +21,16 @@ async function main() {
   const tables = m.integer("tables", { lb: 0 });
 
   // Objective: Maximize profit ($45/chair, $80/table)
-  m.maximize(expr`45 * ${chairs} + 80 * ${tables}`);
+  m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // Resource Constraints via Tagged Template Literals and fluent constrain():
+  // Resource Constraints via Tagged Template Literals and fluent constraint():
   // Mahogany wood: 5 sq ft per chair, 20 sq ft per table <= 400 sq ft
   // Carpentry labor: 10 hrs per chair, 15 hrs per table <= 450 hrs
-  m.constrain(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
-   .constrain(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  m.constraint(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
+   .constraint(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
   console.log("Solving with default HiGHS WebAssembly solver...");
-  const status = await m.optimize();
+  const status = await m.solve();
 
   console.log(`\nStatus: ${status}`);
   console.log(`Optimal Profit: $${m.objectiveValue}`);

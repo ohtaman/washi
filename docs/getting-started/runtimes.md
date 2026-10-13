@@ -9,13 +9,13 @@ WaSHI is designed to run seamlessly in any JavaScript/TypeScript runtime without
 WaSHI natively supports Node.js (v18+) with standard ECMAScript Modules (ESM).
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 const model = new Model();
 const x = model.continuous("x", { lb: 0, ub: 10 });
-model.maximize(x);
+model.objective(maximize(x));
 
-await model.optimize();
+await model.solve();
 console.log("x =", x.value);
 ```
 
@@ -34,13 +34,13 @@ npx tsx app.ts
 When using modern bundlers, WebAssembly assets are automatically bundled.
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 export async function runOptimization() {
   const model = new Model({ solver: "highs" });
   const x = model.continuous("x", { lb: 0, ub: 100 });
-  model.maximize(x);
-  await model.optimize();
+  model.objective(maximize(x));
+  await model.solve();
   return x.value;
 }
 ```
@@ -53,7 +53,7 @@ When importing in Next.js applications, optimization models can be solved either
 "use client";
 
 import { useState } from "react";
-import { Model } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 export default function OptimizerComponent() {
   const [val, setVal] = useState<number | null>(null);
@@ -61,8 +61,8 @@ export default function OptimizerComponent() {
   const handleSolve = async () => {
     const model = new Model();
     const x = model.continuous("x", { lb: 0, ub: 50 });
-    model.maximize(x);
-    await model.optimize();
+    model.objective(maximize(x));
+    await model.solve();
     setVal(x.value);
   };
 
@@ -96,16 +96,16 @@ You can load WaSHI directly into static web pages using CDN script tags without 
     <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js"></script>
     <script>
       (async () => {
-        const { Model, expr } = Washi;
+        const { Model, expr, c, maximize } = Washi;
 
         const model = new Model("CDNDemo");
         const x = model.continuous("x", { lb: 0, ub: 10 });
         const y = model.continuous("y", { lb: 0, ub: 20 });
 
-        model.maximize(expr`2 * ${x} + 3 * ${y}`);
-        model.constrain(expr`${x} + ${y} <= 15`);
+        model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+        model.constraint(c`${x} + ${y} <= 15`);
 
-        await model.optimize();
+        await model.solve();
 
         document.getElementById("output").textContent =
           `Status: ${model.status}\n` +
@@ -135,11 +135,11 @@ bun run app.ts
 In Deno (v1.30+ with npm specifiers):
 
 ```typescript
-import { Model } from "npm:@ohtaman/washi";
+import { Model, maximize } from "npm:@ohtaman/washi";
 
 const model = new Model();
 const x = model.continuous("x", { lb: 0, ub: 10 });
-model.maximize(x);
-await model.optimize();
+model.objective(maximize(x));
+await model.solve();
 console.log("x =", x.value);
 ```

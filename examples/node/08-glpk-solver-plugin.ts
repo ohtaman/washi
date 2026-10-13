@@ -9,14 +9,14 @@
  * Run with: npx tsx examples/node/08-glpk-solver-plugin.ts
  */
 
-import { Model, expr } from "../../src/index.js";
+import { Model, expr, c, minimize } from "../../src/index.js";
 // In your application, import: import "@ohtaman/washi/solvers/glpk";
 import "../../src/modeler/solvers/glpk.js";
 
 async function main() {
   console.log("=== GLPK Solver Plugin Example ===");
 
-  const model = new Model({ name: "DietProblem", sense: "Minimize", solver: "glpk" });
+  const model = new Model({ name: "DietProblem", solver: "glpk" });
 
   // Food variables with unit costs
   const bread = model.continuous("bread", { lb: 0, ub: 10 });     // $2.00 / loaf
@@ -24,16 +24,16 @@ async function main() {
   const cheese = model.continuous("cheese", { lb: 0, ub: 5 });    // $5.00 / pack
 
   // Objective: Minimize total cost
-  model.minimize(expr`2 * ${bread} + 3.5 * ${milk} + 5 * ${cheese}`);
+  model.objective(minimize(expr`2 * ${bread} + 3.5 * ${milk} + 5 * ${cheese}`));
 
   // Nutritional requirements:
   // Calories >= 2000, Protein >= 70g, Calcium >= 800mg
-  model.constrain(expr`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories")
-       .constrain(expr`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein")
-       .constrain(expr`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
+  model.constraint(c`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories")
+       .constraint(c`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein")
+       .constraint(c`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
 
   console.log("Solving with GLPK...");
-  const status = await model.optimize();
+  const status = await model.solve();
 
   console.log(`Status: ${status}`);
   console.log(`Optimal Cost: $${model.objectiveValue?.toFixed(2)}`);

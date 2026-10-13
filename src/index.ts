@@ -10,6 +10,11 @@ export {
   Model,
   type ModelOptions,
   type BoundsOptions,
+  type ConstraintItem,
+  maximize,
+  minimize,
+  type ObjectiveExpr,
+  type ObjectiveSpec,
   Var,
   type VarOptions,
   LinExpr,
@@ -44,6 +49,7 @@ export {
   type SolverStatus,
   type SolveOptions,
   type SolverSolution,
+  type CheckResult,
 } from "./modeler/types.js";
 
 

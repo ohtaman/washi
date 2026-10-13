@@ -15,17 +15,17 @@ export const DOCS_HTML = `
       <div class="code-title">ブラウザ標準 ESM (ビルド済み配布物の配信利用)</div>
       <pre><code>&lt;script type="module"&gt;
   // dist/browser 一式を自社 HTTP サーバー等から配信して読み込みます
-  import { Model, expr } from "./dist/browser/washi.js";
+  import { Model, expr, c, maximize } from "./dist/browser/washi.js";
 
-  const m = new Model({ name: "Production", sense: "Maximize" });
+  const m = new Model("Production");
   const x = m.integer("x", { lb: 0 });
   const y = m.integer("y", { lb: 0 });
 
-  m.maximize(expr\`30 * \${x} + 50 * \${y}\`);
-  m.constrain(expr\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
-  m.constrain(expr\`2 * \${x} + \${y} &lt;= 50\`, "c2");
+  m.objective(maximize(expr\`30 * \${x} + 50 * \${y}\`));
+  m.constraint(c\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
+  m.constraint(c\`2 * \${x} + \${y} &lt;= 50\`, "c2");
 
-  const status = await m.optimize({ useWorker: false });
+  const status = await m.solve({ useWorker: false });
   console.log("最適目的関数値:", m.objectiveValue); // 1100
   console.log("x:", x.value, "y:", y.value);     // 20, 10
 &lt;/script&gt;</code></pre>
@@ -35,7 +35,7 @@ export const DOCS_HTML = `
   <div class="docs-section">
     <h3>配布とオフライン利用</h3>
     <p>npm から Vite / webpack に組み込むと、同梱 WASM と Worker が配布アセットとして出力されます。外部 CDN への自動切り替えはありません。ブラウザ直接利用は dist/browser 一式を HTTP 配信してください。必要なファイルがローカルにあれば、外部ネットワークなしで計算できます。</p>
-    <p>CodePen の External Scripts には dist/browser/washi.min.js の配信 URL を追加し、Washi.Model を使います。簡単なデモは optimize({ useWorker: false }) で実行できます。CDN Worker を使う場合は CORS と CSP の対応が必要です。</p>
+    <p>CodePen の External Scripts には dist/browser/washi.min.js の配信 URL を追加し、Washi.Model を使います。簡単なデモは solve({ useWorker: false }) で実行できます。CDN Worker を使う場合は CORS と CSP の対応が必要です。</p>
   </div>
 
   <div class="docs-section">
@@ -88,18 +88,18 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
         </tr>
         <tr>
           <td><strong>数式・制約の記述</strong></td>
-          <td><code>expr\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
-          <td>タグ付きテンプレートリテラルによる型安全な数式記述。</td>
+          <td><code>expr\`...\`</code> / <code>c\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
+          <td>タグ付きテンプレートリテラルによる算術式（<code>expr</code>）と比較制約（<code>c</code>）。</td>
         </tr>
         <tr>
           <td><strong>制約の追加</strong></td>
-          <td><code>m.constrain(expr\`...\`, "name")</code></td>
-          <td>第1推奨の制約追加メソッド。配列渡しやチェーン記法にも対応。</td>
+          <td><code>m.constraint(c\`...\`, "name")</code></td>
+          <td>宣言的な制約追加メソッド。配列渡しやチェーン記法にも対応。</td>
         </tr>
         <tr>
           <td><strong>目的関数の設定</strong></td>
-          <td><code>m.maximize(...)</code> / <code>m.minimize(...)</code></td>
-          <td>直感的な方向（動詞）で目的関数を設定。</td>
+          <td><code>m.objective(maximize(...))</code> / <code>m.objective(minimize(...))</code></td>
+          <td>明示的なコンビネータ関数で目的関数とその方向を設定。</td>
         </tr>
         <tr>
           <td><strong>総和・内積集計</strong></td>
@@ -108,8 +108,13 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
         </tr>
         <tr>
           <td><strong>求解・最適化</strong></td>
-          <td><code>await m.optimize()</code></td>
+          <td><code>await m.solve()</code></td>
           <td>WebAssembly ソルバーで求解を実行。</td>
+        </tr>
+        <tr>
+          <td><strong>競合制約の特定</strong></td>
+          <td><code>m.conflicts</code> / <code>res.conflicts</code></td>
+          <td>実行不能（Unsat）時に矛盾原因となっている制約サブセットを取得。</td>
         </tr>
         <tr>
           <td><strong>解の値取得</strong></td>

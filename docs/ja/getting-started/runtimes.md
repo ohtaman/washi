@@ -9,11 +9,11 @@ WaSHI は、C++ のネイティブビルドを一切必要とせず、あらゆ�
 Node.js (v18+) の標準 ESM をネイティブサポートしています。
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 const model = new Model();
 const x = model.continuous("x", { lb: 0, ub: 10 });
-model.maximize(x);
+model.objective(maximize(x));
 
 await model.solve();
 console.log("x =", x.value);
@@ -28,12 +28,12 @@ console.log("x =", x.value);
 モダンバンドラーを利用する場合、WebAssembly アセットは自動的にバンドルされます。
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, maximize } from "@ohtaman/washi";
 
 export async function runOptimization() {
   const model = new Model({ solver: "highs" });
   const x = model.continuous("x", { lb: 0, ub: 100 });
-  model.maximize(x);
+  model.objective(maximize(x));
   await model.solve();
   return x.value;
 }
@@ -53,10 +53,10 @@ Next.js アプリケーションでは、サーバー側（Node.js ランタイ�
 <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js"></script>
 <script>
   (async () => {
-    const { Model, expr, c } = Washi;
-    const model = new Model({ sense: "Maximize" });
+    const { Model, maximize } = Washi;
+    const model = new Model();
     const x = model.continuous("x", { lb: 0, ub: 10 });
-    model.maximize(x);
+    model.objective(maximize(x));
     await model.solve();
     console.log("x =", x.value);
   })();

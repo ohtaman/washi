@@ -261,7 +261,7 @@ import { Model } from "@ohtaman/washi";
 import "./cloud-solver.js"; // Auto-registers "cloud"
 
 const model = new Model({ name: "SupplyChain", solver: "cloud" });
-// Or model.optimize("cloud")
+// Or model.solve("cloud")
 ```
 
 #### Option 2: By Passing the Solver Instance Directly
@@ -275,7 +275,7 @@ const customInstance = new CloudSolver({
 });
 
 const model = new Model({ name: "FacilityLocation", solver: customInstance });
-const status = await model.optimize();
+const status = await model.solve();
 ```
 
 #### Option 3: Setting Global Default Solver
@@ -336,7 +336,7 @@ You can test your solver using Vitest or Jest without bundling:
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { Model, expr, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
+import { Model, c, expr, maximize, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
 
 describe("Custom Solver Integration", () => {
@@ -349,10 +349,10 @@ describe("Custom Solver Integration", () => {
     const model = new Model({ solver: new CloudSolver() });
     const x = model.continuous("x", { lb: 0, ub: 10 });
     const y = model.continuous("y", { lb: 0, ub: 10 });
-    model.maximize(expr`2 * ${x} + 3 * ${y}`);
-    model.constrain(expr`${x} + ${y} <= 12`, "budget");
+    model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+    model.constraint(c`${x} + ${y} <= 12`, "budget");
 
-    const status = await model.optimize();
+    const status = await model.solve();
     expect(status).toBe("Optimal");
     expect(x.value).toBeDefined();
     const c1 = model.getConstraintByName("budget");

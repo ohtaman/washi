@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   Model,
   expr,
+  c,
   registerSolver,
   listAvailableSolvers,
   getSolver,
@@ -146,7 +147,7 @@ describe("Custom Solver Plugin Architecture", () => {
     const x = model.continuous("x", { lb: 0, ub: 10 });
     const y = model.continuous("y", { lb: 0, ub: 10 });
     model.maximize(expr`2 * ${x} + 3 * ${y}`);
-    model.constrain(expr`${x} + ${y} <= 12`, "budget");
+    model.constrain(c`${x} + ${y} <= 12`, "budget");
 
     const status = await model.optimize();
     expect(status).toBe("Optimal");

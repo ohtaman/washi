@@ -51,7 +51,7 @@ Here is a step-by-step example of solving a production allocation problem.
 ### 1. Import the Core Classes
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, expr, c, maximize } from "@ohtaman/washi";
 ```
 
 ### 2. Instantiate a Model
@@ -71,20 +71,20 @@ const y = model.integer("y", { lb: 0 });
 
 ### 4. Set the Objective Function
 
-Use the `expr` tagged template literal to write algebraic formulas naturally:
+Use the `expr` tagged template literal along with `maximize(...)` or `minimize(...)` to define the goal:
 
 ```typescript
 // Maximize 30*x + 50*y
-model.maximize(expr`30 * ${x} + 50 * ${y}`);
+model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
 ```
 
 ### 5. Add Constraints
 
-Use `model.constrain()` with `expr` to formulate equality and inequality constraints:
+Use `model.constraint()` with the `c` tagged template to formulate equality and inequality constraints:
 
 ```typescript
-model.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. Solve and Extract Results
@@ -92,7 +92,7 @@ model.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 Solve the model asynchronously via WebAssembly (HiGHS by default):
 
 ```typescript
-const status = await model.optimize();
+const status = await model.solve();
 
 console.log("Status:", status); // "Optimal"
 console.log("Optimal Objective Value:", model.objectiveValue); // 1100
