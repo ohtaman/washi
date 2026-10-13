@@ -124,17 +124,17 @@
             <span class="code-filename">quickstart.ts</span>
             <button class="code-copy-btn" data-copy-target="hero-code-content">Copy</button>
           </div>
-          <pre id="hero-code-content" class="code-body">import { Model, expr, c } from "@ohtaman/washi";
+          <pre id="hero-code-content" class="code-body">import { Model, expr, c, maximize } from "@ohtaman/washi";
 
 // 1. Create model &amp; decision variables
-const m = new Model({ sense: "Maximize" });
+const m = new Model();
 const chairs = m.integer("chairs", { lb: 0 });
 const tables = m.integer("tables", { lb: 0 });
 
 // 2. Natural algebraic objective &amp; constraints
-m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.constrain(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
-m.constrain(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
+m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+m.constraint(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
+m.constraint(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
 
 // 3. Solve instantly with HiGHS WASM
 await m.solve();
@@ -462,18 +462,18 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
               <p class="lang-ja" style="display: none;">
                 整数変数や実数変数を用いたリソース配分問題。テンプレートリテラル記法（<code>c`${x} + ${y} &lt;= 50`</code>）または流れるようなメソッドチェーンで直感的に制約を記述できます。
               </p>
-              <pre class="doc-code-block">import { Model, expr, c } from "@ohtaman/washi";
+              <pre class="doc-code-block">import { Model, expr, c, maximize } from "@ohtaman/washi";
 
-const m = new Model({ name: "FactoryPlanning", sense: "Maximize" });
+const m = new Model("FactoryPlanning");
 
 // Decision variables (integer, non-negative)
 const chairs = m.integer("chairs", { lb: 0 });
 const tables = m.integer("tables", { lb: 0 });
 
 // Natural objective &amp; constraints
-m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-m.constrain(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
-m.constrain(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
+m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+m.constraint(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
+m.constraint(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
 
 // Solve natively in browser WebAssembly
 const status = await m.solve();
@@ -487,7 +487,7 @@ console.log(`Chairs: ${chairs.value}, Tables: ${tables.value}`); // 20, 10</pre>
           <!-- Guide 2: Portfolio QP -->
           <div class="doc-card">
             <div class="doc-card-header">
-              <div class="doc-card-title">
+            <div class="doc-card-title">
                 <span>2. Convex Quadratic Programming (QP: Portfolio)</span>
               </div>
               <a href="./demo/?preset=portfolio_qp" class="btn-hero-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
@@ -501,9 +501,9 @@ console.log(`Chairs: ${chairs.value}, Tables: ${tables.value}`); // 20, 10</pre>
               <p class="lang-ja" style="display: none;">
                 資産間の相関関係（共分散行列）に基づく投資リスク（分散）を、目標期待リターンと資金配分制約の下で最小化します：
               </p>
-              <pre class="doc-code-block">import { Model, QuadExpr, sum } from "@ohtaman/washi";
+              <pre class="doc-code-block">import { Model, QuadExpr, sum, minimize } from "@ohtaman/washi";
 
-const m = new Model({ name: "Portfolio", sense: "Minimize" });
+const m = new Model("Portfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
 const returns = [0.14, 0.04, 0.08];
 
@@ -511,10 +511,10 @@ const returns = [0.14, 0.04, 0.08];
 const w = assets.map(a => m.continuous(`w_${a}`, { lb: 0, ub: 1 }));
 
 // 1. Full budget constraint (sum of weights = 1.0)
-m.constrain(sum(w).eq(1.0), "budget");
+m.constraint(sum(w).eq(1.0), "budget");
 
 // 2. Minimum expected portfolio return: >= 8.5%
-m.constrain(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
+m.constraint(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
 
 // 3. Covariance Matrix risk objective: w^T * Cov * w
 const cov = [
@@ -528,7 +528,7 @@ for (let i = 0; i &lt; assets.length; i++) {
     risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
   }
 }
-m.minimize(risk);
+m.objective(minimize(risk));
 
 await m.solve();
 console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);</pre>
@@ -561,15 +561,15 @@ const budget = m.continuous("budget", { lb: 0 });
 const rush = m.bool("rush");
 
 // Conflicting business rules
-m.constrain(engineers.mul(8000).le(budget), "budget_limit");
-m.constrain(rush, "rush_required");
-m.constrain(rush.implies(engineers.ge(8)), "rush_staffing");
-m.constrain(budget.le(50000), "strict_board_budget_cap"); // 8 * 8000 = 64k > 50k!
+m.constraint(engineers.mul(8000).le(budget), "budget_limit");
+m.constraint(rush, "rush_required");
+m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(budget.le(50000), "strict_board_budget_cap"); // 8 * 8000 = 64k > 50k!
 
 // Solve &amp; diagnose
 const res = await m.check({ solver: "z3" });
 console.log("Status:", res.status); // "Unsat"
-console.log("Conflicting Rules:", res.unsatCore);
+console.log("Conflicting Rules:", res.conflicts);
 // Output: ["budget_limit", "rush_required", "rush_staffing", "strict_board_budget_cap"]</pre>
             </div>
           </div>
@@ -589,7 +589,7 @@ console.log("Conflicting Rules:", res.unsatCore);
               <p class="lang-ja" style="display: none;">
                 多変数の構造化マップを定義し、ドメイン型（<code>integer</code>, <code>continuous</code>, <code>dot</code>, <code>expr</code>）を用いて直感的に制約を記述できます：
               </p>
-              <pre class="doc-code-block">import { Model, expr, dot } from "@ohtaman/washi";
+              <pre class="doc-code-block">import { Model, expr, c, dot, maximize } from "@ohtaman/washi";
 
 const m = new Model({ name: "Woodworking" });
 const items = ["chairs", "tables"] as const;
@@ -600,11 +600,11 @@ const woodCost = { chairs: 1, tables: 2 };
 const x = m.integer(items, { lb: 0 });
 
 // Dot product &amp; natural constraints
-m.maximize(dot(profits, x));
-m.constrain(expr`${dot(woodCost, x)} &lt;= 40`, "wood_limit");
-m.constrain(expr`2 * ${x.chairs} + ${x.tables} &lt;= 50`, "labor_limit");
+m.objective(maximize(dot(profits, x)));
+m.constraint(c`${dot(woodCost, x)} &lt;= 40`, "wood_limit");
+m.constraint(c`2 * ${x.chairs} + ${x.tables} &lt;= 50`, "labor_limit");
 
-await m.optimize();
+await m.solve();
 console.log(`Profit: $${m.objectiveValue}`); // 1100
 console.log(`Solution:`, m.getValues(x)); // { chairs: 20, tables: 10 }</pre>
             </div>

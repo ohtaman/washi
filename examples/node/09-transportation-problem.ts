@@ -10,7 +10,7 @@
  * Run with: npx tsx examples/node/09-transportation-problem.ts
  */
 
-import { Model, sum, dot, expr } from "../../src/index.js";
+import { Model, sum, dot, c, minimize } from "../../src/index.js";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -45,26 +45,26 @@ async function solveTransportation(
   const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
   // Objective: Minimize total shipping cost across all routes via 2D dot product
-  m.minimize(dot(shippingCost, ship));
+  m.objective(minimize(dot(shippingCost, ship)));
 
   // Supply constraints: Outgoing shipments from each factory <= capacity
   for (const f of factories) {
-    m.constrain(
-      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
+    m.constraint(
+      c`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
       `supply_${f}`
     );
   }
 
   // Demand constraints: Incoming shipments to each store >= demand
   for (const s of stores) {
-    m.constrain(
-      expr`${sum(factories, (f) => ship[f][s])} >= ${storeDemands[s]}`,
+    m.constraint(
+      c`${sum(factories, (f) => ship[f][s])} >= ${storeDemands[s]}`,
       `demand_${s}`
     );
   }
 
   const buildMs = performance.now() - t0;
-  const status = await m.optimize();
+  const status = await m.solve();
   const solveMs = m.runTime * 1000;
 
   console.log(`Status: ${status} (model build: ${buildMs.toFixed(2)}ms, solve: ${solveMs.toFixed(2)}ms)`);

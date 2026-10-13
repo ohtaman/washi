@@ -22,7 +22,7 @@
  * Run with: npx tsx examples/node/11-shift-scheduling.ts
  */
 
-import { Model, sum, dot, expr } from "../../src/index.js";
+import { Model, sum, dot, expr, c, minimize } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -71,12 +71,12 @@ function buildShiftModel(
       ),
     ])
   );
-  m.minimize(dot(costMatrix, shift));
+  m.objective(minimize(dot(costMatrix, shift)));
 
   // Rule 1: Daily minimum headcount coverage
   for (const d of days) {
-    m.constrain(
-      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+    m.constraint(
+      c`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -84,24 +84,24 @@ function buildShiftModel(
   // Rule 2: At least 1 senior staff member on duty every day
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
-    m.constrain(
-      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+    m.constraint(
+      c`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
       `senior_duty_${d}`
     );
   }
 
   // Rule 3: Maximum working days per week for each staff member (<= 5 days)
   for (const s of staffList) {
-    m.constrain(
-      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+    m.constraint(
+      c`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
 
   // Rule 4: Hard vacation requests (strictly shift[staff][day] == 0, not soft penalty)
   for (const req of dayOffRequests) {
-    m.constrain(
-      expr`${shift[req.staff][req.day]} == 0`,
+    m.constraint(
+      c`${shift[req.staff][req.day]} == 0`,
       `day_off_${req.staff}_${req.day}`
     );
   }
@@ -134,7 +134,7 @@ async function runShiftSchedulingWorkflow(
 
   // Step 1: Optimize with HiGHS
   console.log("Step 1: Solving optimization model with HiGHS...");
-  const status = await model.optimize();
+  const status = await model.solve();
   console.log(
     `Result: Status=${status} (build: ${buildMs.toFixed(2)}ms, solve: ${(model.runTime * 1000).toFixed(2)}ms)`
   );
@@ -157,7 +157,7 @@ async function runShiftSchedulingWorkflow(
     }
     console.log("\nSchedule successfully generated. No conflict diagnosis required.\n");
   } else if (status === "Infeasible") {
-    // Infeasible: diagnose the exact same problem with Z3 unsatCore
+    // Infeasible: diagnose the exact same problem with Z3 unsatCore / conflicts
     console.log("\nStep 2: HiGHS reported Infeasible! Diagnosing root cause with Z3 unsatCore...");
     console.log("  (Diagnosing the exact same model and constraints without changing inputs)\n");
 
@@ -165,8 +165,8 @@ async function runShiftSchedulingWorkflow(
     console.log(`Z3 Feasibility Check Status: ${checkRes.status}`);
 
     if (checkRes.status === "Unsat") {
-      console.log("⚠️ Conflicting Constraint Subset (unsatCore):");
-      for (const cName of model.unsatCore) {
+      console.log("⚠️ Conflicting Constraint Subset (conflicts / unsatCore):");
+      for (const cName of model.conflicts ?? []) {
         console.log(`  ❌ ${cName}`);
       }
       console.log(

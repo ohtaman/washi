@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/04-smt-security-rules.ts
  */
 
-import { Model, not, expr } from "../../src/index.js";
+import { Model, not, c } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 async function main() {
@@ -32,24 +32,24 @@ async function main() {
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
   // Rule 1: Sensor reading <= 50 implies night
-  m.constrain(luxLevel.le(50).implies(isNight), "dark_implies_night");
+  m.constraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
 
   // Rule 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
-  m.constrain(
+  m.constraint(
     motionDetected.and(isNight).and(alarmArmed).implies(sirenActive),
     "intrusion_rule"
   );
 
   // Rule 3: alarmArmed => NOT(frontDoorUnlocked)
-  m.constrain(alarmArmed.implies(not(frontDoorUnlocked)), "lock_safety_rule");
+  m.constraint(alarmArmed.implies(not(frontDoorUnlocked)), "lock_safety_rule");
 
   // Rule 4: (motionDetected AND isNight) => lightsOn
-  m.constrain(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
+  m.constraint(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
 
   // 3. Observed Context
-  m.constrain(expr`${luxLevel} <= 20`, "sensor_reading_dark");
-  m.constrain(alarmArmed, "user_armed_alarm");
-  m.constrain(motionDetected, "sensor_motion_triggered");
+  m.constraint(c`${luxLevel} <= 20`, "sensor_reading_dark");
+  m.constraint(alarmArmed, "user_armed_alarm");
+  m.constraint(motionDetected, "sensor_motion_triggered");
 
   console.log("Checking security satisfiability with Z3...");
   const res = await m.check({ solver: "z3" });

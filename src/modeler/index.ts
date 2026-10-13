@@ -1,4 +1,10 @@
-export { Model, type ModelOptions, type BoundsOptions, type IndicatorOptions } from "./model.js";
+export { Model, type ModelOptions, type BoundsOptions, type IndicatorOptions, type ConstraintItem } from "./model.js";
+export {
+  maximize,
+  minimize,
+  type ObjectiveExpr,
+  type ObjectiveSpec,
+} from "./objective.js";
 export { Var, type VarOptions } from "./variable.js";
 export { LinExpr, type Expr, sum, dot } from "./expression.js";
 export { QuadExpr, type QuadTerm } from "./quad-expr.js";
@@ -24,6 +30,7 @@ export type {
   SolverStatus,
   SolveOptions,
   SolverSolution,
+  CheckResult,
 } from "./types.js";
 
 // Pluggable Solvers Architecture (HiGHS, GLPK, Remote, Mock, Custom)

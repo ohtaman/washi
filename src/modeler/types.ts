@@ -64,3 +64,13 @@ export interface SolverSolution {
   runTime: number; // in seconds
   raw?: any;
 }
+
+export interface CheckResult {
+  status: "Sat" | "Unsat" | "Unknown";
+  values: Record<string, number | boolean>;
+  unsatCore?: string[];
+  /** Alias for unsatCore: subset of conflicting constraints causing infeasibility */
+  conflicts?: string[];
+  runTime?: number;
+}
+

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
 import { LinExpr } from "../src/modeler/expression.js";
 import { QuadExpr } from "../src/modeler/quad-expr.js";
+import { Constraint } from "../src/modeler/constraint.js";
 import { parseExpr, parseConstraint, expr } from "../src/modeler/parser.js";
 
 describe("Algebraic Parser & DSL", () => {
@@ -100,13 +101,13 @@ describe("Algebraic Parser & DSL", () => {
       expect(e.constant).toBe(-5);
     }
 
-    const c = expr`${x} + 2 * ${y} <= 40`;
-    expect("lhs" in c).toBe(true);
-    if ("lhs" in c) {
-      expect(c.sense).toBe("<=");
-      expect(c.rhs).toBe(40);
-      expect(c.lhs.terms.get(x)).toBe(1);
-      expect(c.lhs.terms.get(y)).toBe(2);
+    const cConstr = (expr`${x} + 2 * ${y} <= 40` as unknown) as Constraint;
+    expect("lhs" in cConstr).toBe(true);
+    if ("lhs" in cConstr) {
+      expect(cConstr.sense).toBe("<=");
+      expect(cConstr.rhs).toBe(40);
+      expect(cConstr.lhs.terms.get(x)).toBe(1);
+      expect(cConstr.lhs.terms.get(y)).toBe(2);
     }
   });
 

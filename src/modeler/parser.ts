@@ -482,18 +482,20 @@ export function c(
 }
 
 /**
- * Tagged template literal for linear or quadratic expressions or inline constraints:
+ * Tagged template literal for linear or quadratic expressions:
  * expr`45 * ${chairs} + 80 * ${tables}` -> LinExpr
  * expr`${x} * ${y} + 2 * ${x} * ${x}` -> QuadExpr
- * expr`${x} + 2 * ${y} <= 40` -> Constraint
+ *
+ * For relational constraints, use the `c` tagged template instead:
+ * c`${x} + 2 * ${y} <= 40` -> Constraint
  */
 export function expr(
   strings: TemplateStringsArray,
   ...values: (Var | LinExpr | QuadExpr | number)[]
-): LinExpr | QuadExpr | Constraint {
+): LinExpr | QuadExpr {
   const { fullText, resolver } = parseTemplate(strings, values);
   if (/(<=|>=|==|=<|=>|=)/.test(fullText)) {
-    return parseConstraint(fullText, resolver);
+    return parseConstraint(fullText, resolver) as any;
   } else {
     return parseExpr(fullText, resolver);
   }

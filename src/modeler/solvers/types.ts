@@ -62,6 +62,8 @@ export interface SolverCheckResult {
   status: "Sat" | "Unsat" | "Unknown";
   values: Record<string, number | boolean>;
   unsatCore?: string[];
+  /** Alias for unsatCore: subset of conflicting constraints causing infeasibility */
+  conflicts?: string[];
   runTime?: number;
   logs?: string[];
   raw?: any;

@@ -157,7 +157,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(quadExpr.getQuadCoeff(x, x)).toBe(2);
 
     // 3. Inline linear constraint
-    const balanceConstraint = expr`${x} + 2 * ${y} <= 40` as Constraint;
+    const balanceConstraint = (expr`${x} + 2 * ${y} <= 40` as unknown) as Constraint;
     expect(balanceConstraint.sense).toBe("<=");
     expect(balanceConstraint.rhs).toBe(40);
     expect(balanceConstraint.lhs.terms.get(x)).toBe(1);

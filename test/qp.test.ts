@@ -16,7 +16,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     const { lpString } = generateLpString({
       name: m.name,
       sense: m.sense,
-      objective: m.objective,
+      objective: m.objective(),
       constraints: m.constraints,
       variables: m.variables,
     });
