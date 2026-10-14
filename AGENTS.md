@@ -85,3 +85,23 @@ Structure each PR review response concisely in English using the following forma
    - Omit sections that have no findings (do not pad with filler text).
 3. **Verdict**:
    - Clear recommendation: **Approve**, **Approve with minor nits**, or **Request Changes** (listing the exact blockers required to resolve).
+
+---
+
+## 7. Review Response & Fix Verification Rules (For Coding Agents)
+
+When addressing review comments, simplifying a PR, or reporting that a PR is "merge-ready", coding agents MUST follow these verification rules:
+
+1. **Never Equate "Zero New Bot Findings on Latest Push" with "All Threads Resolved"**:
+   - Automated reviewers (e.g., Codex) only inspect the latest push and may stop re-reporting older unresolved threads.
+   - Before claiming a PR is ready, enumerate **all** review comments across the PR timeline and explicitly classify each one as:
+     - **Fixed** (cite the exact file/line and the regression test on the current `HEAD`), or
+     - **Intentionally Deferred / Won't Fix** (cite the reason, scope boundary, or follow-up Issue, and leave a clear reply on the PR).
+2. **Audit Against Historical Review Comments After Any Reset, Rebase, or Simplification**:
+   - Whenever a branch is reset, rebased, or simplified to remove over-engineering, previously applied fixes can easily be dropped.
+   - After any branch rewrite, re-verify every historical review finding against the **current `HEAD` code and `git diff origin/main...HEAD`**—never rely on memory of what was fixed in an earlier, discarded commit.
+3. **Check Symmetric Entrypoints & Execution Paths**:
+   - When fixing a bug in one method or solver backend, systematically check symmetric entrypoints and branches (e.g., `solve()` vs. `check()`, `sat` vs. `unsat`, `<=` vs. `>=`, `HiGHS` vs. `GLPK` vs. `Z3`) so fixes are never applied to only half of a parallel code path.
+4. **Reproduce Every Reported Bug with a Test on `HEAD`**:
+   - Never claim a review finding is fixed without an automated test in the current branch that reproduces the exact scenario from the review comment and passes on `HEAD`.
+
