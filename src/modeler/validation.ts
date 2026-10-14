@@ -281,6 +281,14 @@ export function validateModelIntegrity(model: Model): void {
     }
   }
 
+  for (const lc of model.logicalConstraints) {
+    if (model.getLogicalConstraintByName(lc.name) !== lc) {
+      throw new Error(
+        `Logical constraint "${lc.name}" is duplicated or not canonically registered in model "${model.name}".`
+      );
+    }
+  }
+
   // 4. Model ownership & coefficients in objective
   if (model.objectiveExpr) {
     validateObjectiveExpr(model.objectiveExpr, model.name, (v) => registeredVars.has(v));
