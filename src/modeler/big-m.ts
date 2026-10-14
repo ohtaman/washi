@@ -46,7 +46,7 @@ function validateIndicatorExpressionInputs(
   rhs: number,
   constraintName: string
 ): number {
-  const constant = lhs.constant || 0;
+  const constant = lhs.constant !== undefined ? lhs.constant : 0;
   if (!Number.isFinite(rhs) || !Number.isFinite(constant)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -151,7 +151,7 @@ export function deriveBigMForLe(
   }
 
   const M = Math.max(0, rawDiff);
-  if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs + M) || !Number.isFinite(rhs + M)) {
+  if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs + M)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
       `derived Big-M (${M}) or shifted right-hand side overflows finite floating-point range. ` +
@@ -229,7 +229,7 @@ export function deriveBigMForGe(
   }
 
   const M = Math.max(0, rawDiff);
-  if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs - M) || !Number.isFinite(rhs - M)) {
+  if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs - M)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
       `derived Big-M (${M}) or shifted right-hand side overflows finite floating-point range. ` +

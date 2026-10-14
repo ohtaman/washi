@@ -849,8 +849,8 @@ export class Model {
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<SolverStatus> {
-    this.refreshAutoIndicators();
     this.resetSolutionState();
+    this.refreshAutoIndicators();
 
     let activeSolver: Solver;
     let activeOptions: SolveOptions;
@@ -1003,8 +1003,8 @@ export class Model {
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<CheckResult> {
-    this.refreshAutoIndicators();
     this.resetSolutionState();
+    this.refreshAutoIndicators();
 
     let activeSolver: Solver;
     let activeOptions: SolveOptions;

@@ -476,6 +476,9 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const smallExpr = new LinExpr(new Map([[y, 1e-13]]));
 
       m2.indicator(b, smallExpr.le(0), { activeValue: 0, name: "ind_small_m" });
+      // Verify LP string preserves both 1e-13 * y and 1e-13 * b
+      expect(m2.toLpString()).toContain("1e-13 y - 1e-13 b <= 0");
+
       // Inactive when b == 1; y == 1 must be Sat
       m2.constrain(c`${b} == 1`);
       m2.constrain(c`${y} == 1`);
@@ -484,7 +487,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(checkRes2.status).toBe("Sat");
     });
 
-    it("[Review Fix 3] detects finite arithmetic overflow in Big-M derivation and shifted RHS before mutating model", () => {
+    it("[Review Fix 3] detects finite arithmetic overflow in Big-M derivation and shifted RHS before mutating model", async () => {
       const m = new Model("OverflowDetection");
       const x = m.continuous("x", { lb: -1e308, ub: 1e308 });
       const z = m.binary("z");
@@ -512,6 +515,31 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         m.indicator(z, u.le(1e308), { activeValue: 1, M: 1e308, name: "shifted_rhs_overflow" })
       ).toThrow(/shifted right-hand side overflows finite floating-point range/i);
       expect(m.constraints.length).toBe(0);
+
+      // 5. Representable indicator with large cancelling lhs.constant and rhs (effectiveRhs = 0) succeeds
+      const w = m.continuous("w", { lb: 0, ub: 1e308 });
+      const cancellingExpr = new LinExpr(new Map([[w, 1]]), 1e308);
+      expect(deriveBigMForLe(cancellingExpr, 1e308, "cancelling_le")).toBe(1e308);
+
+      // 6. NaN constant in LinExpr is rejected rather than coerced to 0
+      const nanExpr = new LinExpr(new Map([[u, 1]]), NaN);
+      expect(() => deriveBigMForLe(nanExpr, 10, "nan_const")).toThrow(/non-finite constant/i);
+
+      // 7. Reset stale solution state if refreshAutoIndicators throws after bound is widened to Infinity
+      const mStale = new Model("StaleOnRefreshFail");
+      const v = mStale.continuous("v", { lb: 0, ub: 10 });
+      const bStale = mStale.binary("b");
+      mStale.indicator(bStale, v.le(5), { name: "ind_v" });
+      mStale.maximize(v);
+      await mStale.solve();
+      expect(mStale.status).toBe("Optimal");
+      expect(v.value).toBeCloseTo(10, 5);
+
+      v.ub = Infinity;
+      await expect(mStale.solve()).rejects.toThrow(/lacks a finite upper bound/i);
+      expect(mStale.status).toBe("NotSolved");
+      expect(mStale.objectiveValue).toBeNull();
+      expect(v.value).toBeNull();
     });
   });
 });

@@ -49,7 +49,7 @@ export class GLPKSolver implements Solver {
         : (modelData.objective as any).terms;
     if (linTerms) {
       for (const [v, coef] of linTerms) {
-        if (Math.abs(coef) < 1e-12) continue;
+        if (coef === 0) continue;
         const vName = varToName.get(v) || v.name;
         objVars.push({ name: vName, coef: Number(coef) });
       }
@@ -62,7 +62,7 @@ export class GLPKSolver implements Solver {
       const vars: { name: string; coef: number }[] = [];
 
       for (const [v, coef] of c.lhs.terms) {
-        if (Math.abs(coef) < 1e-12) continue;
+        if (coef === 0) continue;
         const vName = varToName.get(v) || v.name;
         vars.push({ name: vName, coef: Number(coef) });
       }
