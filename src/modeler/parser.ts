@@ -78,6 +78,24 @@ function tokenize(input: string): Token[] {
         numStr += input[i];
         i++;
       }
+      if (
+        i < len &&
+        (input[i] === "e" || input[i] === "E") &&
+        /^[eE][+-]?[0-9]/.test(input.slice(i))
+      ) {
+        numStr += input[i++];
+        if (input[i] === "+" || input[i] === "-") {
+          numStr += input[i++];
+        }
+        while (i < len && /[0-9]/.test(input[i])) {
+          numStr += input[i++];
+        }
+        if (!Number.isFinite(Number(numStr))) {
+          throw new Error(
+            `Numeric literal "${numStr}" overflows finite floating-point range in: "${input}"`
+          );
+        }
+      }
       tokens.push({ type: "NUMBER", value: numStr });
     } else if (/[a-zA-Z_]/.test(ch)) {
       let ident = "";
@@ -141,14 +159,18 @@ function multiplyExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinE
   let result = new QuadExpr();
   result.constant = a.constant * b.constant;
 
-  if (Math.abs(b.constant) >= 1e-12) {
+  if (b.constant !== 0) {
     for (const [v, c] of aLinTerms) {
-      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * b.constant);
+      const sumCoeff = (result.linearTerms.get(v) || 0) + c * b.constant;
+      if (sumCoeff === 0) result.linearTerms.delete(v);
+      else result.linearTerms.set(v, sumCoeff);
     }
   }
-  if (Math.abs(a.constant) >= 1e-12) {
+  if (a.constant !== 0) {
     for (const [v, c] of bLinTerms) {
-      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * a.constant);
+      const sumCoeff = (result.linearTerms.get(v) || 0) + c * a.constant;
+      if (sumCoeff === 0) result.linearTerms.delete(v);
+      else result.linearTerms.set(v, sumCoeff);
     }
   }
 
@@ -235,7 +257,7 @@ class Parser {
         if (divLin.size > 0 || divQuad > 0) {
           throw new Error("Cannot divide by variable in expression");
         }
-        if (Math.abs(divisor.constant) < 1e-12) {
+        if (divisor.constant === 0) {
           throw new Error("Division by zero in expression");
         }
         result = result.div(divisor.constant);

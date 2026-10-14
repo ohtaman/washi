@@ -88,7 +88,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   const linTerms = objective instanceof QuadExpr ? objective.linearTerms : objective.terms;
   if (linTerms) {
     for (const [v, coeff] of linTerms) {
-      if (Math.abs(coeff) < 1e-12) continue;
+      if (coeff === 0) continue;
       const vName = varToName.get(v)!;
       const sign = coeff >= 0 ? (isFirst ? "" : "+ ") : "- ";
       const absCoeff = Math.abs(coeff);
@@ -104,7 +104,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     let isFirstQuad = true;
 
     for (const term of objective.quadTerms.values()) {
-      if (Math.abs(term.coeff) < 1e-12) continue;
+      if (term.coeff === 0) continue;
       // In CPLEX LP format [ Q ] / 2, the expression inside bracket is multiplied by 1/2.
       // Thus, each term x1*x2 with coefficient c is represented as (2*c) inside [ ... ] / 2.
       const doubleCoeff = 2 * term.coeff;
@@ -143,7 +143,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     let firstTerm = true;
 
     for (const [v, coeff] of c.lhs.terms) {
-      if (Math.abs(coeff) < 1e-12) continue;
+      if (coeff === 0) continue;
       const vName = varToName.get(v)!;
       const sign = coeff >= 0 ? (firstTerm ? "" : "+ ") : "- ";
       const absCoeff = Math.abs(coeff);

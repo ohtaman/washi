@@ -49,7 +49,7 @@ export class GLPKSolver implements Solver {
         : (modelData.objective as any).terms;
     if (linTerms) {
       for (const [v, coef] of linTerms) {
-        if (Math.abs(coef) < 1e-12) continue;
+        if (coef === 0) continue;
         const vName = varToName.get(v) || v.name;
         objVars.push({ name: vName, coef: Number(coef) });
       }
@@ -62,7 +62,7 @@ export class GLPKSolver implements Solver {
       const vars: { name: string; coef: number }[] = [];
 
       for (const [v, coef] of c.lhs.terms) {
-        if (Math.abs(coef) < 1e-12) continue;
+        if (coef === 0) continue;
         const vName = varToName.get(v) || v.name;
         vars.push({ name: vName, coef: Number(coef) });
       }
@@ -206,23 +206,10 @@ export class GLPKSolver implements Solver {
       if (hasValidVariablePayload) {
         for (const v of modelData.variables) {
           const lpName = varToName.get(v) || v.name;
-          let rawVal: unknown;
-          if (Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
-            rawVal = (rawVars as Record<string, unknown>)[lpName];
-          } else if (
-            (!nameToVar.has(v.name) || nameToVar.get(v.name) === v) &&
-            Object.prototype.hasOwnProperty.call(rawVars, v.name)
-          ) {
-            rawVal = (rawVars as Record<string, unknown>)[v.name];
-          } else {
+          if (!Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
             hasValidVariablePayload = false;
             break;
           }
-          if (typeof rawVal !== "number" || !Number.isFinite(rawVal)) {
-            hasValidVariablePayload = false;
-            break;
-          }
-          valuesRecord[v.name] = Math.abs(rawVal) < 1e-9 ? 0 : rawVal;
         }
       }
     }

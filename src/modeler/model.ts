@@ -41,6 +41,7 @@ import {
   deriveBigMForLe,
   deriveBigMForGe,
   validateUserBigM,
+  buildIndicatorLinearization,
 } from "./big-m.js";
 export type { IndicatorOptions };
 
@@ -701,6 +702,25 @@ export class Model {
     constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    this.resetSolutionState();
+
+    if (!(binVar instanceof Var)) {
+      throw new Error(
+        "Invalid binary variable passed to indicator(). Expected a binary Var instance."
+      );
+    }
+    const isBinary =
+      binVar.type === "Binary" ||
+      (binVar.type as string) === "BINARY" ||
+      ((binVar.type === "Integer" || (binVar.type as string) === "INTEGER") &&
+        binVar.lb === 0 &&
+        binVar.ub === 1);
+    if (!isBinary) {
+      throw new Error(
+        `Invalid variable "${binVar.name}" passed to indicator(): variable has type "${binVar.type}" with bounds [${binVar.lb}, ${binVar.ub}]. Indicator activation variable must be a Binary variable (or Integer variable with bounds [0, 1]).`
+      );
+    }
+
     if (constraint instanceof QuadExpr) {
       throw new Error(
         "Quadratic expressions or constraints are not supported in indicator constraints (only linear constraints are allowed)."
@@ -725,58 +745,39 @@ export class Model {
     }
 
     const { lhs, sense, rhs } = resolvedConstraint;
+    const leName = sense === "==" ? `${baseName}_le` : baseName;
+    const geName = sense === "==" ? `${baseName}_ge` : baseName;
+
+    if ((sense === "<=" || sense === "==") && this.constrMapByName.has(leName)) {
+      throw new Error(`Constraint with name '${leName}' already exists in model`);
+    }
+    if ((sense === ">=" || sense === "==") && this.constrMapByName.has(geName)) {
+      throw new Error(`Constraint with name '${geName}' already exists in model`);
+    }
+
+    let leLinearized: { lhs: LinExpr; rhs: number } | undefined;
+    let geLinearized: { lhs: LinExpr; rhs: number } | undefined;
+
+    if (sense === "<=" || sense === "==") {
+      const mLe = options.M !== undefined ? options.M : deriveBigMForLe(lhs, rhs, leName);
+      leLinearized = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, mLe, leName);
+    }
+
+    if (sense === ">=" || sense === "==") {
+      const mGe = options.M !== undefined ? options.M : deriveBigMForGe(lhs, rhs, geName);
+      geLinearized = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, mGe, geName);
+    }
+
     const addedConstrs: Constraint[] = [];
-
-    // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
-    const mLe =
-      options.M !== undefined
-        ? options.M
-        : sense === "<=" || sense === "=="
-        ? deriveBigMForLe(lhs, rhs, sense === "==" ? `${baseName}_le` : baseName)
-        : 0;
-
-    const mGe =
-      options.M !== undefined
-        ? options.M
-        : sense === ">=" || sense === "=="
-        ? deriveBigMForGe(lhs, rhs, sense === "==" ? `${baseName}_ge` : baseName)
-        : 0;
-
-    if (activeVal === 1) {
-      if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*(1 - binVar) <=> lhs + mLe*binVar <= rhs + mLe
-        const cLe = this.addConstraint(
-          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
-          sense === "==" ? `${baseName}_le` : baseName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*(1 - binVar) <=> lhs - mGe*binVar >= rhs - mGe
-        const cGe = this.addConstraint(
-          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
-          sense === "==" ? `${baseName}_ge` : baseName
-        );
-        addedConstrs.push(cGe);
-      }
-    } else {
-      // activeVal === 0: holds when binVar == 0, relaxed by M*binVar
-      if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*binVar <=> lhs - mLe*binVar <= rhs
-        const cLe = this.addConstraint(
-          lhs.sub(binVar.mul(mLe)).le(rhs),
-          sense === "==" ? `${baseName}_le` : baseName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*binVar <=> lhs + mGe*binVar >= rhs
-        const cGe = this.addConstraint(
-          lhs.add(binVar.mul(mGe)).ge(rhs),
-          sense === "==" ? `${baseName}_ge` : baseName
-        );
-        addedConstrs.push(cGe);
-      }
+    if (leLinearized) {
+      addedConstrs.push(
+        this.addConstraint(new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName), leName)
+      );
+    }
+    if (geLinearized) {
+      addedConstrs.push(
+        this.addConstraint(new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName)
+      );
     }
 
     return addedConstrs;
