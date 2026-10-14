@@ -48,10 +48,14 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   const varToName = new Map<Var, string>();
   const nameToConstraint = new Map<string, Constraint>();
 
+  const varOrder = new Map<Var, number>();
+
   // Ensure unique sanitized names for all variables
   const usedVarNames = new Set<string>();
-  for (const v of variables) {
-    let clean = sanitizeIdentifier(v.name, "x", v.id);
+  for (let i = 0; i < variables.length; i++) {
+    const v = variables[i];
+    varOrder.set(v, i);
+    let clean = sanitizeIdentifier(v.name, "x", i);
     let unique = clean;
     let count = 1;
     while (usedVarNames.has(unique)) {
@@ -65,8 +69,9 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   // Ensure unique sanitized names for all constraints
   const usedConstrNames = new Set<string>();
   const constrToName = new Map<Constraint, string>();
-  for (const c of constraints) {
-    let clean = sanitizeIdentifier(c.name, "c", c.id);
+  for (let i = 0; i < constraints.length; i++) {
+    const c = constraints[i];
+    let clean = sanitizeIdentifier(c.name, "c", i + 1);
     let unique = clean;
     let count = 1;
     while (usedConstrNames.has(unique)) {
@@ -103,18 +108,30 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     const quadParts: string[] = [];
     let isFirstQuad = true;
 
-    for (const term of objective.quadTerms.values()) {
-      if (Math.abs(term.coeff) < 1e-12) continue;
+    const orderedQuadTerms = Array.from(objective.quadTerms.values())
+      .filter((term) => Math.abs(term.coeff) >= 1e-12)
+      .map((term) => {
+        const idx1 = varOrder.get(term.var1) ?? term.var1.id;
+        const idx2 = varOrder.get(term.var2) ?? term.var2.id;
+        const [firstVar, secondVar, firstIdx, secondIdx] =
+          idx1 <= idx2
+            ? [term.var1, term.var2, idx1, idx2]
+            : [term.var2, term.var1, idx2, idx1];
+        return { firstVar, secondVar, firstIdx, secondIdx, coeff: term.coeff };
+      })
+      .sort((a, b) => a.firstIdx - b.firstIdx || a.secondIdx - b.secondIdx);
+
+    for (const term of orderedQuadTerms) {
       // In CPLEX LP format [ Q ] / 2, the expression inside bracket is multiplied by 1/2.
       // Thus, each term x1*x2 with coefficient c is represented as (2*c) inside [ ... ] / 2.
       const doubleCoeff = 2 * term.coeff;
       const sign = doubleCoeff >= 0 ? (isFirstQuad ? "" : "+ ") : "- ";
       const absCoeff = Math.abs(doubleCoeff);
       const coeffStr = absCoeff === 1 ? "" : `${absCoeff} `;
-      const v1Name = varToName.get(term.var1)!;
-      const v2Name = varToName.get(term.var2)!;
+      const v1Name = varToName.get(term.firstVar)!;
+      const v2Name = varToName.get(term.secondVar)!;
 
-      if (term.var1 === term.var2) {
+      if (term.firstVar === term.secondVar) {
         quadParts.push(`${sign}${coeffStr}${v1Name} ^ 2`);
       } else {
         quadParts.push(`${sign}${coeffStr}${v1Name} * ${v2Name}`);
