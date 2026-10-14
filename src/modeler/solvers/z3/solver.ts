@@ -23,6 +23,12 @@ export { resetZ3LoaderCache, killZ3Threads, unlockAllZ3Semaphores, notifyZ3Worke
  * - Feasibility checking via check()
  * - Unsatisfiable core extraction (unsatCore) for conflict diagnosis
  * - Mixed-Integer Programming (MIP) optimization via Z3 Optimize
+ *
+ * Solution metrics provided by Z3:
+ * - `status` and `terminationStatus`: `"Optimal" | "Infeasible" | "Error"`
+ * - `hasPrimalSolution`: `true` when Z3 returns `"sat"` (`status === "Optimal"`), `false` otherwise.
+ * - `objectiveValue`: Primal objective value when `hasPrimalSolution` is `true`, otherwise `null`.
+ * - `objectiveBound`, `relGap` (`mipGap`), `absGap`: Z3 Optimize is an SMT optimization engine and does not expose branch-and-bound MIP dual bounds or relative/absolute MIP gaps, so these fields are intentionally left `undefined` rather than returning invented defaults.
  */
 export class Z3Solver implements Solver {
   readonly name = "z3";
@@ -195,11 +201,20 @@ export class Z3Solver implements Solver {
               translateBoolExpr(opNode.children[0]),
               translateBoolExpr(opNode.children[1])
             );
-          case "xor":
-            return ctx.Xor(
-              translateBoolExpr(opNode.children[0]),
-              translateBoolExpr(opNode.children[1])
-            );
+          case "xor": {
+            if (opNode.children.length === 0) {
+              return ctx.Bool.val(false);
+            }
+            if (opNode.children.length === 1) {
+              return translateBoolExpr(opNode.children[0]);
+            }
+            return opNode.children
+              .slice(1)
+              .reduce(
+                (acc, child) => ctx.Xor(acc, translateBoolExpr(child)),
+                translateBoolExpr(opNode.children[0])
+              );
+          }
           default:
             throw new Error(`Unsupported boolean operation: ${opNode.op}`);
         }
@@ -268,21 +283,29 @@ export class Z3Solver implements Solver {
       }
     }
 
-    // 2. Arithmetic Constraints (tracked for unsatCore)
-    for (const c of constraints) {
-      const cAst = trans.translateConstraint(c);
-      const trackVar = ctx.Bool.const(c.name);
-      s.addAndTrack(cAst, trackVar);
-    }
+    const boolVarNames = new Set(boolVars.map((bv) => bv.name));
+    const trackKeyToName = new Map<string, string>();
+    let trackCounter = 0;
+    const createTracker = (constraintName: string) => {
+      let trackKey = `__washi_track_${++trackCounter}`;
+      while (boolVarNames.has(trackKey) || trackKeyToName.has(trackKey)) {
+        trackKey = `__washi_track_${++trackCounter}`;
+      }
+      const trackVar = ctx.Bool.const(trackKey);
+      trackKeyToName.set(trackKey, constraintName);
+      trackKeyToName.set(trackVar.toString(), constraintName);
+      return trackVar;
+    };
 
-    // 3. Logical Constraints (tracked for unsatCore)
+    // 2. Add tracked arithmetic and logical constraints
+    for (const c of constraints) {
+      s.addAndTrack(trans.translateConstraint(c), createTracker(c.name));
+    }
     for (let i = 0; i < logicalConstraints.length; i++) {
       const item = logicalConstraints[i];
-      const name = (item && (item as any).name) || `lc_${i + 1}`;
-      const expr = (item && (item as any).expr) || item;
-      const lcAst = trans.translateBoolExpr(expr);
-      const trackVar = ctx.Bool.const(name);
-      s.addAndTrack(lcAst, trackVar);
+      const name = (item && item.name) || `lc_${i + 1}`;
+      const expr = (item && item.expr) || item;
+      s.addAndTrack(trans.translateBoolExpr(expr), createTracker(name));
     }
 
     let unregister: (() => void) | undefined;
@@ -323,7 +346,8 @@ export class Z3Solver implements Solver {
       const unsatCore: string[] = [];
       const len = typeof coreVector.length === "function" ? coreVector.length() : coreVector.length;
       for (let i = 0; i < len; i++) {
-        unsatCore.push(coreVector.get(i).toString());
+        const rawKey = coreVector.get(i).toString();
+        unsatCore.push(trackKeyToName.get(rawKey) ?? rawKey);
       }
 
       return {
@@ -362,10 +386,20 @@ export class Z3Solver implements Solver {
         numericValues[k] = typeof v === "boolean" ? (v ? 1 : 0) : v;
       }
 
+      const isSat = checkRes.status === "Sat";
+      const mappedStatus = isSat
+        ? "Optimal"
+        : checkRes.status === "Unsat"
+          ? "Infeasible"
+          : checkRes.status === "Unknown"
+            ? "Unknown"
+            : "Error";
       return {
-        status: checkRes.status === "Sat" ? "Optimal" : checkRes.status === "Unsat" ? "Infeasible" : "Error",
-        objectiveValue: 0,
-        values: numericValues,
+        status: mappedStatus,
+        terminationStatus: mappedStatus,
+        hasPrimalSolution: isSat,
+        objectiveValue: isSat ? (modelData.objective?.constant ?? 0) : null,
+        values: isSat ? numericValues : {},
       };
     }
 
@@ -415,11 +449,7 @@ export class Z3Solver implements Solver {
         : trans.translateLinExpr(modelData.objective as LinExpr);
 
     const sense = (modelData.sense || "MINIMIZE").toUpperCase();
-    if (sense === "MAXIMIZE") {
-      opt.maximize(objAst);
-    } else {
-      opt.minimize(objAst);
-    }
+    const objHandle = sense === "MAXIMIZE" ? opt.maximize(objAst) : opt.minimize(objAst);
 
     let unregister: (() => void) | undefined;
     let checkRes: any;
@@ -451,21 +481,75 @@ export class Z3Solver implements Solver {
       }
 
       const objVal = trans.parseAstValue(z3Model.eval(objAst));
+      let isUnbounded = false;
+      let isUnattained = false;
+      try {
+        const boundAst =
+          sense === "MAXIMIZE"
+            ? typeof opt.getUpper === "function"
+              ? opt.getUpper(objHandle)
+              : undefined
+            : typeof opt.getLower === "function"
+              ? opt.getLower(objHandle)
+              : undefined;
+        const boundStr = boundAst ? boundAst.toString() : "";
+        if (boundStr.includes("oo")) {
+          isUnbounded = true;
+        } else if (boundStr.includes("epsilon")) {
+          isUnattained = true;
+        }
+      } catch {
+        // Ignore if bound inspection is unavailable
+      }
+
+      if (isUnbounded) {
+        return {
+          status: "Unbounded",
+          terminationStatus: "Unbounded",
+          hasPrimalSolution: true,
+          objectiveValue: objVal,
+          values,
+        };
+      }
+
+      if (isUnattained) {
+        return {
+          status: "Unknown",
+          terminationStatus: "Unknown",
+          hasPrimalSolution: false,
+          objectiveValue: null,
+          values: {},
+        };
+      }
 
       return {
         status: "Optimal",
+        terminationStatus: "Optimal",
+        hasPrimalSolution: true,
         objectiveValue: objVal,
         values,
       };
     } else if (statusStr === "unsat") {
       return {
         status: "Infeasible",
+        terminationStatus: "Infeasible",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+      };
+    } else if (statusStr === "unknown") {
+      return {
+        status: "Unknown",
+        terminationStatus: "Unknown",
+        hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
       };
     } else {
       return {
         status: "Error",
+        terminationStatus: "Error",
+        hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
       };
