@@ -104,7 +104,7 @@ export function validateObjectiveExpr(
           `Variable "${term.var2.name}" in quadratic objective function does not belong to model "${modelName}". All variables must belong to the model by object identity.`
         );
       }
-      if (!Number.isFinite(term.coeff)) {
+      if (!Number.isFinite(term.coeff) || !Number.isFinite(term.coeff * 2)) {
         throw new Error(
           `Quadratic term (${term.var1.name} * ${term.var2.name}) in objective function has invalid coefficient: ${term.coeff}.`
         );
@@ -270,6 +270,15 @@ export function validateModelIntegrity(model: Model): void {
       );
     }
     constraintNames.add(lc.name);
+  }
+
+  for (const c of model.constraints) {
+    const cOwner = constrOwner.get(c);
+    if ((cOwner && cOwner !== model) || model.getConstraintByName(c.name) !== c) {
+      throw new Error(
+        `Constraint "${c.name}" is duplicated or not canonically registered in model "${model.name}".`
+      );
+    }
   }
 
   // 4. Model ownership & coefficients in objective
