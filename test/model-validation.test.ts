@@ -341,6 +341,11 @@ describe("Model Integrity Validation (Issue #51)", () => {
         m.bool("renamed_con");
       }).toThrow(/conflicts with an existing constraint/);
 
+      // Unnamed m.bool() skips existing constraint names
+      m.constraint(c`${x} <= 9`, "p_0");
+      const autoBool = m.bool();
+      expect(autoBool.name).toBe("p_1");
+
       // 3. Embedded Constraint with non-finite lhs.constant inside BoolExpr
       const badEmbedded = new Constraint(new LinExpr(new Map([[x, 1]]), NaN), "<=", 5, "bad_emb");
       expect(() => {

@@ -368,7 +368,7 @@ export class Model {
   private getNextBoolVarName(prefix: string): string {
     let counter = this.boolVarPrefixCounters.get(prefix) ?? 0;
     let candidate = `${prefix}_${counter}`;
-    while (this.hasVarName(candidate)) {
+    while (this.hasVarName(candidate) || this.hasConstraintName(candidate)) {
       counter++;
       candidate = `${prefix}_${counter}`;
     }
