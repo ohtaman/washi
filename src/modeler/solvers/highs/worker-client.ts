@@ -64,6 +64,42 @@ function createInterruptedRawResult(
   };
 }
 
+function terminateActiveWorkerAndRedispatch(): void {
+  const currentWorker = workerInstance;
+  if (currentWorker) {
+    workerInstance = null;
+    currentWorker.terminate();
+  }
+
+  if (pendingRequests.size > 0) {
+    const replacementWorker = getWorker();
+    if (replacementWorker) {
+      for (const other of Array.from(pendingRequests.values())) {
+        try {
+          replacementWorker.postMessage({
+            type: "SOLVE",
+            id: other.id,
+            lpString: other.lpString,
+            options: other.workerOptions,
+            ...(other.reportProgress ? { reportProgress: true } : {}),
+          });
+        } catch (err) {
+          pendingRequests.delete(other.id);
+          other.cleanupAbort?.();
+          other.reject(err);
+        }
+      }
+    } else {
+      const recreateErr = new Error("[WaSHI] Failed to recreate HiGHS Worker after interruption.");
+      for (const other of Array.from(pendingRequests.values())) {
+        pendingRequests.delete(other.id);
+        other.cleanupAbort?.();
+        other.reject(recreateErr);
+      }
+    }
+  }
+}
+
 function getWorker(): Worker | null {
   if (typeof window === "undefined" || typeof Worker === "undefined") {
     return null;
@@ -84,7 +120,20 @@ function getWorker(): Worker | null {
         if (type === "SOLVE_PROGRESS") {
           if (progress) {
             pending.lastProgress = progress;
-            pending.onProgress?.(progress);
+            try {
+              pending.onProgress?.(progress);
+            } catch (callbackErr) {
+              const stillPending = pendingRequests.get(id);
+              if (stillPending) {
+                const activeId = pendingRequests.keys().next().value;
+                pendingRequests.delete(id);
+                stillPending.cleanupAbort?.();
+                if (activeId === id) {
+                  terminateActiveWorkerAndRedispatch();
+                }
+                stillPending.reject(callbackErr);
+              }
+            }
           }
           return;
         }
@@ -199,32 +248,7 @@ export async function solveLp(
         pending.cleanupAbort?.();
 
         if (activeId === id) {
-          const currentWorker = workerInstance;
-          if (currentWorker) {
-            workerInstance = null;
-            currentWorker.terminate();
-          }
-
-          if (pendingRequests.size > 0) {
-            const replacementWorker = getWorker();
-            if (replacementWorker) {
-              for (const other of Array.from(pendingRequests.values())) {
-                try {
-                  replacementWorker.postMessage({
-                    type: "SOLVE",
-                    id: other.id,
-                    lpString: other.lpString,
-                    options: other.workerOptions,
-                    ...(other.reportProgress ? { reportProgress: true } : {}),
-                  });
-                } catch (err) {
-                  pendingRequests.delete(other.id);
-                  other.cleanupAbort?.();
-                  other.reject(err);
-                }
-              }
-            }
-          }
+          terminateActiveWorkerAndRedispatch();
         }
 
         const elapsed = (performance.now() - pending.startTime) / 1000;
