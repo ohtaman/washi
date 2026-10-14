@@ -39,6 +39,7 @@ import type {
   LpModelData,
   LpExportResult,
   SolverStatus,
+  TerminationStatus,
 } from "@ohtaman/washi";
 ```
 
@@ -127,8 +128,26 @@ export interface SolverResult {
   /** Standardized status string */
   status: SolverStatus;
 
-  /** Optimal or best objective value (null if infeasible/unbounded/error) */
+  /** Exact termination reason independent of whether a feasible incumbent is available (defaults to status) */
+  terminationStatus?: TerminationStatus;
+
+  /** Whether a feasible primal solution / incumbent is available (inferred from status/values if omitted) */
+  hasPrimalSolution?: boolean;
+
+  /** Optimal or best objective value (null if no primal solution is available) */
   objectiveValue: number | null;
+
+  /** Best proven dual/objective bound when provided by the solver */
+  objectiveBound?: number;
+
+  /** Relative MIP optimality gap when provided by the solver */
+  relGap?: number;
+
+  /** Alias for relGap: relative MIP optimality gap when provided by the solver */
+  mipGap?: number;
+
+  /** Absolute MIP optimality gap |objectiveValue - objectiveBound| (computed automatically when both are finite) */
+  absGap?: number;
 
   /** Variable primal values keyed by variable name or ID */
   values: Record<string, number>;

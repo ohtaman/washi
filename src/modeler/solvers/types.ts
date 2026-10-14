@@ -1,4 +1,4 @@
-import type { SolverStatus } from "../types.js";
+import type { SolverStatus, TerminationStatus } from "../types.js";
 import type { LpModelData, LpExportResult } from "../lp-writer.js";
 
 /**
@@ -6,7 +6,19 @@ import type { LpModelData, LpExportResult } from "../lp-writer.js";
  */
 export interface SolverResult {
   status: SolverStatus;
+  /** Exact termination reason independent of whether a feasible incumbent is available */
+  terminationStatus?: TerminationStatus;
+  /** Whether a feasible primal solution / incumbent is available */
+  hasPrimalSolution?: boolean;
   objectiveValue: number | null;
+  /** Best proven dual/objective bound when provided by the solver */
+  objectiveBound?: number;
+  /** Relative MIP optimality gap when provided by the solver */
+  relGap?: number;
+  /** Alias for relGap: relative MIP optimality gap when provided by the solver */
+  mipGap?: number;
+  /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when provided by the solver */
+  absGap?: number;
   /** Variable primal values (keyed by variable name or ID) */
   values: Record<string, number>;
   /** Variable reduced costs (optional) */

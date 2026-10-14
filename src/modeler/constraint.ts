@@ -12,7 +12,8 @@ export class Constraint {
   public lhs: LinExpr;
   public sense: ComparisonSense;
   public rhs: number;
-  public name: string;
+  private _name: string;
+  public hasExplicitName: boolean;
 
   /** Slack value after solve */
   public slack: number | null = null;
@@ -29,7 +30,23 @@ export class Constraint {
     this.lhs = lhs;
     this.sense = sense;
     this.rhs = rhs;
-    this.name = name || `c_${this.id}`;
+    const trimmed = typeof name === "string" ? name.trim() : undefined;
+    if (trimmed && trimmed.length > 0) {
+      this._name = trimmed;
+      this.hasExplicitName = true;
+    } else {
+      this._name = `c_${this.id}`;
+      this.hasExplicitName = false;
+    }
+  }
+
+  get name(): string {
+    return this._name;
+  }
+
+  set name(value: string) {
+    this._name = value;
+    this.hasExplicitName = true;
   }
 
   // Logical operators for SMT / SAT

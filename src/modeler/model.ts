@@ -3,6 +3,7 @@ import {
   type OptimizationSense,
   normalizeSense,
   type SolverStatus,
+  type TerminationStatus,
   type SolveOptions,
   type SolverSolution,
   type CheckResult,
@@ -89,13 +90,22 @@ export class Model {
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
+  private varPrefixCounters = new Map<string, number>();
   private boolVarMapByName = new Map<string, BoolVar>();
   private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
+  private constrPrefixCounters = new Map<string, number>();
   private logicalConstrMapByName = new Map<string, LogicalConstraint>();
+  private logicalConstrCounter = 0;
 
   public status: SolverStatus = "NotSolved";
+  public terminationStatus: TerminationStatus = "NotSolved";
+  public hasPrimalSolution: boolean = false;
   public objectiveValue: number | null = null;
+  public objectiveBound: number | undefined = undefined;
+  public relGap: number | undefined = undefined;
+  public mipGap: number | undefined = undefined;
+  public absGap: number | undefined = undefined;
   public runTime: number = 0;
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
@@ -137,11 +147,24 @@ export class Model {
    * Skips redundant O(N) traversals if the model is already in an unsolved / invalidated state.
    */
   public resetSolutionState(): void {
-    if (!this.hasSolutionState && this.status === "NotSolved" && this.solution === null && this.unsatCore === undefined) {
+    if (
+      !this.hasSolutionState &&
+      this.status === "NotSolved" &&
+      this.terminationStatus === "NotSolved" &&
+      !this.hasPrimalSolution &&
+      this.solution === null &&
+      this.unsatCore === undefined
+    ) {
       return;
     }
     this.status = "NotSolved";
+    this.terminationStatus = "NotSolved";
+    this.hasPrimalSolution = false;
     this.objectiveValue = null;
+    this.objectiveBound = undefined;
+    this.relGap = undefined;
+    this.mipGap = undefined;
+    this.absGap = undefined;
     this.solution = null;
     this.runTime = 0;
     this.unsatCore = undefined;
@@ -189,13 +212,21 @@ export class Model {
       return matrix;
     }
 
-    // 1D single variable: arg1 is string
-    if (typeof arg1 === "string") {
+    // 1D single variable: arg1 is string, undefined, or options object
+    if (typeof arg1 === "string" || arg1 === undefined) {
       const opts = (arg2 as BoundsOptions) || {};
+      const explicitName = typeof arg1 === "string" ? arg1 : opts.name;
       return this.addVar({
         ...opts,
         type: domainType,
-        name: arg1,
+        name: explicitName,
+      });
+    }
+    if (typeof arg1 === "object" && !Array.isArray(arg1) && typeof (arg1 as any)[Symbol.iterator] !== "function") {
+      const opts = arg1 as BoundsOptions;
+      return this.addVar({
+        ...opts,
+        type: domainType,
       });
     }
 
@@ -210,7 +241,8 @@ export class Model {
           this.addVar({
             ...opts,
             type: domainType,
-            name: `${p}_${i}`,
+            name: undefined,
+            prefix: p,
           })
         );
       }
@@ -235,11 +267,13 @@ export class Model {
    * Create 0-1 binary variable(s) (x in {0, 1}).
    * Supports:
    * - m.binary("x") -> Var
+   * - m.binary() -> Var
    * - m.binary(5) -> Var[]
    * - m.binary(["a", "b"]) -> Record<string, Var>
    * - m.binary(rows, cols) -> Record<string, Record<string, Var>>
    */
-  binary(name: string): Var;
+  binary(name?: string, options?: { prefix?: string; name?: string }): Var;
+  binary(options: { prefix?: string; name?: string }): Var;
   binary(count: number, options?: { prefix?: string; name?: string }): Var[];
   binary<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -250,7 +284,7 @@ export class Model {
     dim2: C[] | number,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, Var>>;
-  binary(arg1: any, arg2?: any, arg3?: any): any {
+  binary(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Binary", arg1, arg2, arg3);
   }
 
@@ -258,11 +292,13 @@ export class Model {
    * Create integer variable(s) (y in Z).
    * Supports:
    * - m.integer("y", { lb: 0, ub: 10 }) -> Var
+   * - m.integer({ lb: 0, ub: 10 }) -> Var
    * - m.integer(5, { lb: 0 }) -> Var[]
    * - m.integer(["a", "b"], { lb: 0, ub: 5 }) -> Record<string, Var>
    * - m.integer(rows, cols, options) -> Record<string, Record<string, Var>>
    */
-  integer(name: string, options?: BoundsOptions): Var;
+  integer(name?: string, options?: BoundsOptions): Var;
+  integer(options: BoundsOptions): Var;
   integer(count: number, options?: BoundsOptions): Var[];
   integer<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -273,7 +309,7 @@ export class Model {
     dim2: C[] | number,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
-  integer(arg1: any, arg2?: any, arg3?: any): any {
+  integer(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Integer", arg1, arg2, arg3);
   }
 
@@ -281,11 +317,13 @@ export class Model {
    * Create continuous (real) variable(s) (z in R).
    * Supports:
    * - m.continuous("z", { lb: 0 }) -> Var
+   * - m.continuous({ lb: 0 }) -> Var
    * - m.continuous(5, { lb: 0 }) -> Var[]
    * - m.continuous(["a", "b"], { lb: 0 }) -> Record<string, Var>
    * - m.continuous(rows, cols, options) -> Record<string, Record<string, Var>>
    */
-  continuous(name: string, options?: BoundsOptions): Var;
+  continuous(name?: string, options?: BoundsOptions): Var;
+  continuous(options: BoundsOptions): Var;
   continuous(count: number, options?: BoundsOptions): Var[];
   continuous<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -296,7 +334,7 @@ export class Model {
     dim2: C[] | number,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
-  continuous(arg1: any, arg2?: any, arg3?: any): any {
+  continuous(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Continuous", arg1, arg2, arg3);
   }
 
@@ -309,7 +347,8 @@ export class Model {
    * - m.bool(["flagA", "flagB"]) -> Record<string, BoolVar>
    * - m.bool(rows, cols) -> Record<string, Record<string, BoolVar>>
    */
-  bool(name?: string): BoolVar;
+  bool(name?: string, options?: { prefix?: string; name?: string }): BoolVar;
+  bool(options: { prefix?: string; name?: string }): BoolVar;
   bool(count: number, options?: { prefix?: string; name?: string }): BoolVar[];
   bool<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -337,9 +376,15 @@ export class Model {
       return matrix;
     }
 
-    // 1D single variable or no args
+    // 1D single variable or options object
     if (typeof arg1 === "string" || arg1 === undefined) {
-      return this.createBoolVar(arg1);
+      const opts = (arg2 as { prefix?: string; name?: string }) || {};
+      const explicitName = typeof arg1 === "string" ? arg1 : opts.name;
+      return this.createBoolVar(explicitName, opts.prefix);
+    }
+    if (typeof arg1 === "object" && !Array.isArray(arg1) && typeof (arg1 as any)[Symbol.iterator] !== "function") {
+      const opts = arg1 as { prefix?: string; name?: string };
+      return this.createBoolVar(opts.name, opts.prefix);
     }
 
     // 1D multiple variables: count (number) or keys (array/iterable)
@@ -349,7 +394,7 @@ export class Model {
       const result: BoolVar[] = [];
       const p = prefix || "p";
       for (let i = 0; i < arg1; i++) {
-        result.push(this.createBoolVar(this.getNextBoolVarName(p)));
+        result.push(this.createBoolVar(undefined, p));
       }
       return result;
     } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
@@ -366,6 +411,17 @@ export class Model {
 
   private hasVarName(name: string): boolean {
     return this.varMapByName.has(name) || this.boolVarMapByName.has(name);
+  }
+
+  private getNextVarName(prefix: string): string {
+    let counter = this.varPrefixCounters.get(prefix) ?? 0;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.varPrefixCounters.set(prefix, counter + 1);
+    return candidate;
   }
 
   private getNextBoolVarName(prefix: string): string {
@@ -387,9 +443,33 @@ export class Model {
     return this.boolVarMapByName.has(name);
   }
 
-  private createBoolVar(name?: string): BoolVar {
+  private getNextConstrName(prefix: string = "c"): string {
+    let counter = this.constrPrefixCounters.get(prefix) ?? 1;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasConstraintName(candidate) || this.hasBoolVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.constrPrefixCounters.set(prefix, counter + 1);
+    return candidate;
+  }
+
+  private getNextLogicalConstrName(): string {
+    let counter = this.logicalConstrCounter + 1;
+    let candidate = `lc_${counter}`;
+    while (this.hasConstraintName(candidate) || this.hasBoolVarName(candidate)) {
+      counter++;
+      candidate = `lc_${counter}`;
+    }
+    this.logicalConstrCounter = counter;
+    return candidate;
+  }
+
+  private createBoolVar(name?: string, prefix?: string): BoolVar {
     const trimmed = typeof name === "string" ? name.trim() : undefined;
-    const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName("p");
+    const rawPrefix = typeof prefix === "string" ? prefix.trim() : "";
+    const resolvedPrefix = rawPrefix.length > 0 ? rawPrefix : "p";
+    const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName(resolvedPrefix);
     if (this.hasVarName(varName)) {
       throw new Error(`Variable with name '${varName}' already exists in model`);
     }
@@ -411,21 +491,38 @@ export class Model {
   private addVar(options?: VarOptions): Var {
     const opts = options || {};
     const trimmed = typeof opts.name === "string" ? opts.name.trim() : undefined;
-    const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
-    const v = new Var({ ...opts, name });
+    const explicitName = trimmed && trimmed.length > 0 ? trimmed : undefined;
+    const rawPrefix = typeof opts.prefix === "string" ? opts.prefix.trim() : "";
+    const resolvedPrefix = rawPrefix.length > 0 ? rawPrefix : "x";
+    const savedCounter = this.varPrefixCounters.get(resolvedPrefix);
+    const name = explicitName ?? this.getNextVarName(resolvedPrefix);
 
-    validateVarBounds(v);
+    try {
+      // Validate unique name
+      if (this.hasVarName(name)) {
+        throw new Error(`Variable with name '${name}' already exists in model`);
+      }
 
-    // Validate unique name
-    if (this.hasVarName(v.name)) {
-      throw new Error(`Variable with name '${v.name}' already exists in model`);
+      const v = new Var({ ...opts, name, prefix: resolvedPrefix });
+      v.hasExplicitName = explicitName !== undefined;
+      validateVarBounds(v);
+      claimVarOwnership(v, this);
+      v.ownerModel = this;
+
+      this.variables.push(v);
+      this.varMapByName.set(v.name, v);
+      this.resetSolutionState();
+      return v;
+    } catch (err) {
+      if (explicitName === undefined) {
+        if (savedCounter === undefined) {
+          this.varPrefixCounters.delete(resolvedPrefix);
+        } else {
+          this.varPrefixCounters.set(resolvedPrefix, savedCounter);
+        }
+      }
+      throw err;
     }
-
-    claimVarOwnership(v, this);
-    this.variables.push(v);
-    this.varMapByName.set(v.name, v);
-    this.resetSolutionState();
-    return v;
   }
 
   /**
@@ -635,32 +732,33 @@ export class Model {
       );
     }
     if (constraint instanceof BoolExpr) {
-      let constrName = name;
-      if (!constrName) {
-        let idx = this.logicalConstraints.length + 1;
-        while (this.hasConstraintName(`lc_${idx}`) || this.hasBoolVarName(`lc_${idx}`)) {
-          idx++;
+      const explicitName = typeof name === "string" && name.trim().length > 0 ? name.trim() : undefined;
+      if (explicitName !== undefined) {
+        if (this.hasConstraintName(explicitName)) {
+          throw new Error(`Constraint with name '${explicitName}' already exists in model`);
         }
-        constrName = `lc_${idx}`;
+        if (this.hasBoolVarName(explicitName)) {
+          throw new Error(
+            `Constraint name '${explicitName}' conflicts with an existing Boolean variable in model`
+          );
+        }
       }
-      if (this.hasConstraintName(constrName)) {
-        throw new Error(
-          `Constraint with name '${constrName}' already exists in model`
+      const savedLogicalCounter = this.logicalConstrCounter;
+      const constrName = explicitName ?? this.getNextLogicalConstrName();
+      try {
+        validateLogicElement(
+          constraint,
+          constrName,
+          this.name,
+          (v) => this.varMapByName.get(v.name) === v,
+          (bv) => this.boolVarMapByName.get(bv.name) === bv
         );
+      } catch (err) {
+        if (explicitName === undefined) {
+          this.logicalConstrCounter = savedLogicalCounter;
+        }
+        throw err;
       }
-      if (this.hasBoolVarName(constrName)) {
-        throw new Error(
-          `Constraint name '${constrName}' conflicts with an existing Boolean variable in model`
-        );
-      }
-
-      validateLogicElement(
-        constraint,
-        constrName,
-        this.name,
-        (v) => this.varMapByName.get(v.name) === v,
-        (bv) => this.boolVarMapByName.get(bv.name) === bv
-      );
 
       const lcEntry: LogicalConstraint = {
         name: constrName,
@@ -676,21 +774,42 @@ export class Model {
       typeof constraint === "string"
         ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
         : constraint;
-    const constrName = name || constr.name;
 
-    if (this.hasConstraintName(constrName)) {
-      throw new Error(`Constraint with name '${constrName}' already exists in model`);
+    const explicitName =
+      typeof name === "string" && name.trim().length > 0
+        ? name.trim()
+        : constr.hasExplicitName
+        ? constr.name.trim()
+        : undefined;
+    if (explicitName !== undefined) {
+      if (this.hasConstraintName(explicitName)) {
+        throw new Error(`Constraint with name '${explicitName}' already exists in model`);
+      }
+      if (this.hasBoolVarName(explicitName)) {
+        throw new Error(
+          `Constraint name '${explicitName}' conflicts with an existing Boolean variable in model`
+        );
+      }
     }
-    if (this.hasBoolVarName(constrName)) {
-      throw new Error(
-        `Constraint name '${constrName}' conflicts with an existing Boolean variable in model`
-      );
+
+    const savedCounter = this.constrPrefixCounters.get("c");
+    const resolvedName = explicitName ?? this.getNextConstrName("c");
+    try {
+      validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, resolvedName);
+      claimConstraintOwnership(constr, this);
+    } catch (err) {
+      if (explicitName === undefined) {
+        if (savedCounter === undefined) {
+          this.constrPrefixCounters.delete("c");
+        } else {
+          this.constrPrefixCounters.set("c", savedCounter);
+        }
+      }
+      throw err;
     }
 
-    validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, constrName);
-    claimConstraintOwnership(constr, this);
-    constr.name = constrName;
-
+    constr.name = resolvedName;
+    constr.hasExplicitName = true;
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
     this.resetSolutionState();
@@ -724,14 +843,35 @@ export class Model {
     }
 
     if (item instanceof Var) {
-      if (this.varMapByName.get(item.name) === item) {
+      if (item.ownerModel === this || this.varMapByName.get(item.name) === item) {
         return this;
       }
       validateVarBounds(item);
-      if (this.hasVarName(item.name)) {
-        throw new Error(`Variable with name '${item.name}' already exists in model`);
+      if (item.ownerModel !== null && item.ownerModel !== this) {
+        claimVarOwnership(item, this);
+        throw new Error(
+          `Variable "${item.name}" already belongs to another model and cannot be shared across models.`
+        );
       }
-      claimVarOwnership(item, this);
+      const savedCounter = this.varPrefixCounters.get(item.prefix);
+      const resolvedName = item.hasExplicitName ? item.name.trim() : this.getNextVarName(item.prefix);
+      try {
+        if (this.hasVarName(resolvedName)) {
+          throw new Error(`Variable with name '${resolvedName}' already exists in model`);
+        }
+        claimVarOwnership(item, this);
+      } catch (err) {
+        if (!item.hasExplicitName) {
+          if (savedCounter === undefined) {
+            this.varPrefixCounters.delete(item.prefix);
+          } else {
+            this.varPrefixCounters.set(item.prefix, savedCounter);
+          }
+        }
+        throw err;
+      }
+      item._assignModelName(resolvedName);
+      item.ownerModel = this;
       this.variables.push(item);
       this.varMapByName.set(item.name, item);
       this.resetSolutionState();
@@ -771,70 +911,106 @@ export class Model {
         `Invalid activeValue: ${activeVal}. Indicator activeValue must be 0 or 1.`
       );
     }
-
     if (this.varMapByName.get(binVar.name) !== binVar) {
       throw new Error(
         `Variable "${binVar.name}" passed to indicator() does not belong to model "${this.name}". All variables must belong to the model by object identity.`
       );
     }
-    const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
-    if (options.M !== undefined) {
-      validateUserBigM(options.M, baseName);
-    }
 
+    const explicitOptName =
+      typeof options.name === "string" && options.name.trim().length > 0
+        ? options.name.trim()
+        : undefined;
+    const savedCounter = this.constrPrefixCounters.get("c");
     const { lhs, sense, rhs } = resolvedConstraint;
-    const leName = sense === "==" ? `${baseName}_le` : baseName;
-    const geName = sense === "==" ? `${baseName}_ge` : baseName;
-    if ((sense === "<=" || sense === "==") && (this.hasConstraintName(leName) || this.hasBoolVarName(leName))) {
-      throw new Error(
-        this.hasBoolVarName(leName)
-          ? `Constraint name '${leName}' conflicts with an existing Boolean variable in model`
-          : `Constraint with name '${leName}' already exists in model`
-      );
-    }
-    if ((sense === ">=" || sense === "==") && (this.hasConstraintName(geName) || this.hasBoolVarName(geName))) {
-      throw new Error(
-        this.hasBoolVarName(geName)
-          ? `Constraint name '${geName}' conflicts with an existing Boolean variable in model`
-          : `Constraint with name '${geName}' already exists in model`
-      );
-    }
 
-    // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
-    const mLe =
-      options.M !== undefined
-        ? options.M
-        : sense === "<=" || sense === "=="
-        ? deriveBigMForLe(lhs, rhs, leName)
-        : 0;
-
-    const mGe =
-      options.M !== undefined
-        ? options.M
-        : sense === ">=" || sense === "=="
-        ? deriveBigMForGe(lhs, rhs, geName)
-        : 0;
-
-    const pending: Array<[Constraint, string]> = [];
-    if (activeVal === 1) {
-      if (sense === "<=" || sense === "==") {
-        pending.push([lhs.add(binVar.mul(mLe)).le(rhs + mLe), leName]);
-      }
-      if (sense === ">=" || sense === "==") {
-        pending.push([lhs.sub(binVar.mul(mGe)).ge(rhs - mGe), geName]);
-      }
+    let baseName: string;
+    let leName: string;
+    let geName: string;
+    if (explicitOptName !== undefined) {
+      baseName = explicitOptName;
+      leName = sense === "==" ? `${baseName}_le` : baseName;
+      geName = sense === "==" ? `${baseName}_ge` : baseName;
+    } else if (resolvedConstraint.hasExplicitName) {
+      baseName = `ind_${binVar.name}_${resolvedConstraint.name.trim()}`;
+      leName = sense === "==" ? `${baseName}_le` : baseName;
+      geName = sense === "==" ? `${baseName}_ge` : baseName;
     } else {
-      if (sense === "<=" || sense === "==") {
-        pending.push([lhs.sub(binVar.mul(mLe)).le(rhs), leName]);
-      }
-      if (sense === ">=" || sense === "==") {
-        pending.push([lhs.add(binVar.mul(mGe)).ge(rhs), geName]);
-      }
+      do {
+        const targetConstrName = this.getNextConstrName("c");
+        baseName = `ind_${binVar.name}_${targetConstrName}`;
+        leName = sense === "==" ? `${baseName}_le` : baseName;
+        geName = sense === "==" ? `${baseName}_ge` : baseName;
+      } while (
+        ((sense === "<=" || sense === "==") && (this.hasConstraintName(leName) || this.hasBoolVarName(leName))) ||
+        ((sense === ">=" || sense === "==") && (this.hasConstraintName(geName) || this.hasBoolVarName(geName)))
+      );
     }
 
-    const isOwnedVar = (v: Var) => this.varMapByName.get(v.name) === v;
-    for (const [cRow, rowName] of pending) {
-      validateLinearConstraint(cRow, this.name, isOwnedVar, rowName);
+    let mLe = 0;
+    let mGe = 0;
+    const pending: Array<[Constraint, string]> = [];
+    try {
+      if ((sense === "<=" || sense === "==") && (this.hasConstraintName(leName) || this.hasBoolVarName(leName))) {
+        throw new Error(
+          this.hasBoolVarName(leName)
+            ? `Constraint name '${leName}' conflicts with an existing Boolean variable in model`
+            : `Constraint with name '${leName}' already exists in model`
+        );
+      }
+      if ((sense === ">=" || sense === "==") && (this.hasConstraintName(geName) || this.hasBoolVarName(geName))) {
+        throw new Error(
+          this.hasBoolVarName(geName)
+            ? `Constraint name '${geName}' conflicts with an existing Boolean variable in model`
+            : `Constraint with name '${geName}' already exists in model`
+        );
+      }
+      if (options.M !== undefined) {
+        validateUserBigM(options.M, baseName);
+      }
+
+      // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
+      mLe =
+        options.M !== undefined
+          ? options.M
+          : sense === "<=" || sense === "=="
+          ? deriveBigMForLe(lhs, rhs, leName)
+          : 0;
+
+      mGe =
+        options.M !== undefined
+          ? options.M
+          : sense === ">=" || sense === "=="
+          ? deriveBigMForGe(lhs, rhs, geName)
+          : 0;
+
+      if (activeVal === 1) {
+        if (sense === "<=" || sense === "==") {
+          pending.push([lhs.add(binVar.mul(mLe)).le(rhs + mLe), leName]);
+        }
+        if (sense === ">=" || sense === "==") {
+          pending.push([lhs.sub(binVar.mul(mGe)).ge(rhs - mGe), geName]);
+        }
+      } else {
+        if (sense === "<=" || sense === "==") {
+          pending.push([lhs.sub(binVar.mul(mLe)).le(rhs), leName]);
+        }
+        if (sense === ">=" || sense === "==") {
+          pending.push([lhs.add(binVar.mul(mGe)).ge(rhs), geName]);
+        }
+      }
+
+      const isOwnedVar = (v: Var) => this.varMapByName.get(v.name) === v;
+      for (const [cRow, rowName] of pending) {
+        validateLinearConstraint(cRow, this.name, isOwnedVar, rowName);
+      }
+    } catch (err) {
+      if (savedCounter === undefined) {
+        this.constrPrefixCounters.delete("c");
+      } else {
+        this.constrPrefixCounters.set("c", savedCounter);
+      }
+      throw err;
     }
 
     return pending.map(([cRow, rowName]) => this.addConstraint(cRow, rowName));
@@ -935,7 +1111,56 @@ export class Model {
 
     this.runTime = result.runTime ?? 0;
     this.status = result.status;
-    this.objectiveValue = result.objectiveValue ?? null;
+    this.terminationStatus = result.terminationStatus ?? result.status;
+
+    const rawValues = result.values || {};
+    const hasPrimal =
+      typeof result.hasPrimalSolution === "boolean"
+        ? result.hasPrimalSolution
+        : this.status !== "Infeasible" &&
+          this.status !== "Unsat" &&
+          this.status !== "Unbounded" &&
+          this.status !== "Error" &&
+          this.status !== "NotSolved" &&
+          this.terminationStatus !== "Infeasible" &&
+          this.terminationStatus !== "Unsat" &&
+          this.terminationStatus !== "Unbounded" &&
+          this.terminationStatus !== "InfeasibleOrUnbounded" &&
+          this.terminationStatus !== "Error" &&
+          this.terminationStatus !== "NotSolved" &&
+          (this.status === "Optimal" ||
+            this.status === "Feasible" ||
+            this.status === "Sat" ||
+            this.terminationStatus === "Optimal" ||
+            this.terminationStatus === "Feasible" ||
+            this.terminationStatus === "Sat" ||
+            (typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)) ||
+            Object.values(rawValues).some((val) => typeof val === "number" && Number.isFinite(val)));
+
+    this.hasPrimalSolution = hasPrimal;
+    this.objectiveValue =
+      hasPrimal && typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)
+        ? result.objectiveValue
+        : null;
+
+    this.objectiveBound =
+      typeof result.objectiveBound === "number" && Number.isFinite(result.objectiveBound)
+        ? result.objectiveBound
+        : undefined;
+    const resolvedRelGap =
+      typeof result.relGap === "number" && Number.isFinite(result.relGap)
+        ? result.relGap
+        : typeof result.mipGap === "number" && Number.isFinite(result.mipGap)
+          ? result.mipGap
+          : undefined;
+    this.relGap = resolvedRelGap;
+    this.mipGap = resolvedRelGap;
+    this.absGap =
+      typeof result.absGap === "number" && Number.isFinite(result.absGap)
+        ? result.absGap
+        : this.objectiveValue !== null && this.objectiveBound !== undefined
+          ? Math.abs(this.objectiveValue - this.objectiveBound)
+          : undefined;
 
     const valuesRecord: Record<string, number> = {};
     const dualsRecord: Record<string, number> = {};
@@ -944,8 +1169,8 @@ export class Model {
 
     this.values.clear();
 
-    // Map variable solutions back to Var objects
-    if (result.values && result.status !== "Infeasible" && result.status !== "Unbounded") {
+    // Map variable solutions back to Var objects only when a feasible primal solution exists
+    if (hasPrimal && result.values) {
       for (const [vName, primal] of Object.entries(result.values)) {
         if (typeof primal === "number" && !Number.isNaN(primal)) {
           this.values.set(vName, primal);
@@ -995,7 +1220,12 @@ export class Model {
 
     this.solution = {
       status: this.status,
+      terminationStatus: this.terminationStatus,
+      hasPrimalSolution: this.hasPrimalSolution,
       objectiveValue: this.objectiveValue,
+      ...(this.objectiveBound !== undefined ? { objectiveBound: this.objectiveBound } : {}),
+      ...(this.relGap !== undefined ? { relGap: this.relGap, mipGap: this.mipGap } : {}),
+      ...(this.absGap !== undefined ? { absGap: this.absGap } : {}),
       values: valuesRecord,
       duals: dualsRecord,
       reducedCosts: reducedCostsRecord,
@@ -1077,6 +1307,8 @@ export class Model {
         activeOptions
       );
       this.status = checkResult.status;
+      this.terminationStatus = checkResult.status;
+      this.hasPrimalSolution = checkResult.status === "Sat";
       this.runTime = checkResult.runTime ?? 0;
       this.unsatCore = checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
 
@@ -1110,8 +1342,29 @@ export class Model {
       this.objectiveExpr = new LinExpr();
       this.sense = "Minimize";
       const status = await this.solve(activeSolver, activeOptions);
-      const isSat = status === "Optimal" || status === "Feasible";
+      const isSat = this.hasPrimalSolution || status === "Optimal" || status === "Feasible";
       const isUnsat = status === "Infeasible";
+      const checkStatus = isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown";
+
+      this.status = checkStatus;
+      this.terminationStatus =
+        isSat || isUnsat || this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
+          ? checkStatus
+          : this.terminationStatus;
+      this.hasPrimalSolution = isSat;
+      this.objectiveValue = null;
+      this.objectiveBound = undefined;
+      this.relGap = undefined;
+      this.mipGap = undefined;
+      this.absGap = undefined;
+      this.solution = null;
+
+      for (const v of this.variables) {
+        v.reducedCost = null;
+      }
+      for (const c of this.constraints) {
+        c.dual = null;
+      }
 
       const values: Record<string, number | boolean> = {};
       if (isSat) {
@@ -1128,7 +1381,7 @@ export class Model {
       }
 
       return {
-        status: isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown",
+        status: checkStatus,
         values,
         runTime: this.runTime,
       };
