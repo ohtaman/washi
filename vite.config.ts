@@ -16,12 +16,16 @@ function z3DemoAssets(): Plugin {
         if (urlPath === "/z3-built.js" || urlPath.endsWith("/z3-built.js")) {
           res.setHeader("Content-Type", "application/javascript");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+          res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+          res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
           res.end(readFileSync(z3JsPath));
           return;
         }
         if (urlPath === "/z3-built.wasm" || urlPath.endsWith("/z3-built.wasm")) {
           res.setHeader("Content-Type", "application/wasm");
           res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+          res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+          res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
           res.end(readFileSync(z3WasmPath));
           return;
         }

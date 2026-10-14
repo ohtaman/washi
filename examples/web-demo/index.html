@@ -12,6 +12,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./src/style.css" />
     <link rel="stylesheet" href="./src/docs-page.css" />
+    <script>
+      (function() {
+        try {
+          const p = new URLSearchParams(window.location.search).get('theme');
+          const saved = p || localStorage.getItem('vitepress-theme-appearance') || localStorage.getItem('washi-theme');
+          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const theme = saved === 'dark' || ((!saved || saved === 'auto') && prefersDark);
+          document.documentElement.setAttribute('data-theme', theme ? 'dark' : 'light');
+        } catch (_) {}
+      })();
+    </script>
     <script src="/coi-serviceworker.js"></script>
   </head>
   <body class="docs-page">
@@ -44,11 +55,17 @@
         <a href="#solvers" class="nav-link lang-en">Solvers</a>
         <a href="#solvers" class="nav-link lang-ja" style="display: none;">ソルバー</a>
 
+
         <!-- Interactive Demo Link (Primary CTA) -->
         <a href="./demo/" class="btn-demo-cta">
-          <span class="lang-en">Interactive Demo ↗</span>
-          <span class="lang-ja" style="display: none;">Web デモを試す ↗</span>
+          <span class="lang-en">Playground ↗</span>
+          <span class="lang-ja" style="display: none;">プレイグラウンド ↗</span>
         </a>
+
+        <!-- Theme Toggle -->
+        <button type="button" class="theme-toggle-btn" id="docs-theme-toggle-btn" aria-label="Switch theme" title="Switch theme">
+          🌙
+        </button>
 
         <!-- Language Switcher -->
         <div class="lang-switch-group" role="group" aria-label="Language Selector">

@@ -14,6 +14,7 @@ import {
   type Locale,
   type TranslationDict,
 } from "./i18n.js";
+import { initTheme } from "./theme.js";
 
 const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
   en: {
@@ -29,6 +30,7 @@ const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
 };
 
 export function initApp() {
+  initTheme();
   registerZ3Solver();
   registerGLPKSolver();
 

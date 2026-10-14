@@ -1,6 +1,8 @@
 // WaSHI Project Page & Docs Scripts
+import { initTheme } from "./ui/theme.js";
 
 export function initDocsPage() {
+  initTheme();
   // Install tab switching
   const installTabs = document.querySelectorAll<HTMLButtonElement>(".install-tab-btn");
   const installCode = document.getElementById("install-code-text");

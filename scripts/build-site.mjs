@@ -64,12 +64,12 @@ for (const file of filesToCopy) {
   }
 }
 
-// Also ensure demo has copy of shared assets if needed
+// Also ensure demo has copies of shared assets if needed
 for (const file of filesToCopy) {
   const src = resolve(demoDist, file);
-  const dest = resolve(demoTarget, file);
-  if (existsSync(src) && !existsSync(dest)) {
-    cpSync(src, dest, { recursive: true });
+  const destDemo = resolve(demoTarget, file);
+  if (existsSync(src) && !existsSync(destDemo)) {
+    cpSync(src, destDemo, { recursive: true });
   }
 }
 
