@@ -822,15 +822,30 @@ export class Model {
         ? options.name.trim()
         : undefined;
     const savedCounter = this.constrPrefixCounters.get("c");
-    const targetConstrName = resolvedConstraint.hasExplicitName
-      ? resolvedConstraint.name.trim()
-      : explicitOptName !== undefined
-      ? resolvedConstraint.name
-      : this.getNextConstrName("c");
-    const baseName = explicitOptName ?? `ind_${binVar.name}_${targetConstrName}`;
     const { lhs, sense, rhs } = resolvedConstraint;
-    const leName = sense === "==" ? `${baseName}_le` : baseName;
-    const geName = sense === "==" ? `${baseName}_ge` : baseName;
+
+    let baseName: string;
+    let leName: string;
+    let geName: string;
+    if (explicitOptName !== undefined) {
+      baseName = explicitOptName;
+      leName = sense === "==" ? `${baseName}_le` : baseName;
+      geName = sense === "==" ? `${baseName}_ge` : baseName;
+    } else if (resolvedConstraint.hasExplicitName) {
+      baseName = `ind_${binVar.name}_${resolvedConstraint.name.trim()}`;
+      leName = sense === "==" ? `${baseName}_le` : baseName;
+      geName = sense === "==" ? `${baseName}_ge` : baseName;
+    } else {
+      do {
+        const targetConstrName = this.getNextConstrName("c");
+        baseName = `ind_${binVar.name}_${targetConstrName}`;
+        leName = sense === "==" ? `${baseName}_le` : baseName;
+        geName = sense === "==" ? `${baseName}_ge` : baseName;
+      } while (
+        ((sense === "<=" || sense === "==") && this.hasConstrName(leName)) ||
+        ((sense === ">=" || sense === "==") && this.hasConstrName(geName))
+      );
+    }
 
     let mLe = 0;
     let mGe = 0;
