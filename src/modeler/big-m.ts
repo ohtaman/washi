@@ -256,9 +256,16 @@ export function buildIndicatorLinearization(
   M: number,
   constraintName: string
 ): { lhs: LinExpr; rhs: number } {
-  if (!(binVar instanceof Var) || binVar.type !== "Binary") {
+  const isBinaryDomain =
+    binVar instanceof Var &&
+    (binVar.type === "Binary" ||
+      (binVar.type as string) === "BINARY" ||
+      ((binVar.type === "Integer" || (binVar.type as string) === "INTEGER") &&
+        binVar.lb === 0 &&
+        binVar.ub === 1));
+  if (!isBinaryDomain) {
     throw new Error(
-      `Indicator variable "${binVar?.name ?? String(binVar)}" must be a Binary variable (type === "Binary"), received "${binVar?.type ?? typeof binVar}".`
+      `Indicator variable "${binVar?.name ?? String(binVar)}" must be a Binary variable (or Integer variable with bounds [0, 1]), received "${binVar?.type ?? typeof binVar}" with bounds [${binVar?.lb}, ${binVar?.ub}].`
     );
   }
   if (!Number.isFinite(binVar.lb) || !Number.isFinite(binVar.ub) || binVar.lb < 0 || binVar.ub > 1 || binVar.lb > binVar.ub) {
