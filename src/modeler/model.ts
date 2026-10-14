@@ -12,7 +12,7 @@ import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
-import { BoolVar, BoolExpr } from "./boolean-expr.js";
+import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
@@ -42,6 +42,15 @@ import {
   deriveBigMForGe,
   validateUserBigM,
 } from "./big-m.js";
+import {
+  claimConstraintOwnership,
+  claimVarOwnership,
+  validateLinearConstraint,
+  validateLogicElement,
+  validateModelIntegrity,
+  validateObjectiveExpr,
+  validateVarBounds,
+} from "./validation.js";
 export type { IndicatorOptions };
 
 /**
@@ -80,7 +89,7 @@ export class Model {
   private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
   private constrPrefixCounters = new Map<string, number>();
-  private logicalConstrNames = new Set<string>();
+  private logicalConstrMapByName = new Map<string, LogicalConstraint>();
   private logicalConstrCounter = 0;
 
   public status: SolverStatus = "NotSolved";
@@ -393,7 +402,7 @@ export class Model {
   private getNextBoolVarName(prefix: string): string {
     let counter = this.boolVarPrefixCounters.get(prefix) ?? 0;
     let candidate = `${prefix}_${counter}`;
-    while (this.hasVarName(candidate)) {
+    while (this.hasVarName(candidate) || this.hasConstraintName(candidate)) {
       counter++;
       candidate = `${prefix}_${counter}`;
     }
@@ -401,14 +410,18 @@ export class Model {
     return candidate;
   }
 
-  private hasConstrName(name: string): boolean {
-    return this.constrMapByName.has(name) || this.logicalConstrNames.has(name);
+  private hasConstraintName(name: string): boolean {
+    return this.constrMapByName.has(name) || this.logicalConstrMapByName.has(name);
+  }
+
+  private hasBoolVarName(name: string): boolean {
+    return this.boolVarMapByName.has(name);
   }
 
   private getNextConstrName(prefix: string = "c"): string {
     let counter = this.constrPrefixCounters.get(prefix) ?? 1;
     let candidate = `${prefix}_${counter}`;
-    while (this.hasConstrName(candidate)) {
+    while (this.hasConstraintName(candidate) || this.hasBoolVarName(candidate)) {
       counter++;
       candidate = `${prefix}_${counter}`;
     }
@@ -419,7 +432,7 @@ export class Model {
   private getNextLogicalConstrName(): string {
     let counter = this.logicalConstrCounter + 1;
     let candidate = `lc_${counter}`;
-    while (this.hasConstrName(candidate)) {
+    while (this.hasConstraintName(candidate) || this.hasBoolVarName(candidate)) {
       counter++;
       candidate = `lc_${counter}`;
     }
@@ -434,6 +447,11 @@ export class Model {
     const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName(resolvedPrefix);
     if (this.hasVarName(varName)) {
       throw new Error(`Variable with name '${varName}' already exists in model`);
+    }
+    if (this.hasConstraintName(varName)) {
+      throw new Error(
+        `Boolean variable name '${varName}' conflicts with an existing constraint in model`
+      );
     }
     const bv = new BoolVar(varName);
     this.boolVars.push(bv);
@@ -451,21 +469,35 @@ export class Model {
     const explicitName = trimmed && trimmed.length > 0 ? trimmed : undefined;
     const rawPrefix = typeof opts.prefix === "string" ? opts.prefix.trim() : "";
     const resolvedPrefix = rawPrefix.length > 0 ? rawPrefix : "x";
+    const savedCounter = this.varPrefixCounters.get(resolvedPrefix);
     const name = explicitName ?? this.getNextVarName(resolvedPrefix);
 
-    // Validate unique name
-    if (this.hasVarName(name)) {
-      throw new Error(`Variable with name '${name}' already exists in model`);
+    try {
+      // Validate unique name
+      if (this.hasVarName(name)) {
+        throw new Error(`Variable with name '${name}' already exists in model`);
+      }
+
+      const v = new Var({ ...opts, name, prefix: resolvedPrefix });
+      v.hasExplicitName = explicitName !== undefined;
+      validateVarBounds(v);
+      claimVarOwnership(v, this);
+      v.ownerModel = this;
+
+      this.variables.push(v);
+      this.varMapByName.set(v.name, v);
+      this.resetSolutionState();
+      return v;
+    } catch (err) {
+      if (explicitName === undefined) {
+        if (savedCounter === undefined) {
+          this.varPrefixCounters.delete(resolvedPrefix);
+        } else {
+          this.varPrefixCounters.set(resolvedPrefix, savedCounter);
+        }
+      }
+      throw err;
     }
-
-    const v = new Var({ ...opts, name, prefix: resolvedPrefix });
-    v.hasExplicitName = explicitName !== undefined;
-    v.ownerModel = this;
-
-    this.variables.push(v);
-    this.varMapByName.set(v.name, v);
-    this.resetSolutionState();
-    return v;
   }
 
   /**
@@ -490,6 +522,13 @@ export class Model {
   }
 
   /**
+   * Find a logical constraint by its name
+   */
+  getLogicalConstraintByName(name: string): LogicalConstraint | undefined {
+    return this.logicalConstrMapByName.get(name);
+  }
+
+  /**
    * Get the current objective expression, or set the objective function and direction.
    * Calling objective(spec) replaces any previously defined objective.
    * Chainable when setting: returns this.
@@ -505,33 +544,7 @@ export class Model {
     if (!spec) {
       return this.objectiveExpr;
     }
-    const newSense = normalizeSense(spec.sense);
-    const expr = spec.expr;
-
-    if (expr instanceof Constraint) {
-      throw new Error(
-        "Cannot set objective to a constraint comparison (<=, >=, ==). " +
-        "Did you mean to use m.constraint(c`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
-      );
-    }
-
-    let parsedExpr: LinExpr | QuadExpr;
-    if (typeof expr === "string") {
-      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
-    } else if (typeof expr === "number") {
-      parsedExpr = new LinExpr(new Map(), expr);
-    } else if (expr instanceof QuadExpr) {
-      parsedExpr = expr.clone();
-    } else if ("terms" in expr) {
-      parsedExpr = expr.clone();
-    } else {
-      // Var
-      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
-    }
-
-    this.sense = newSense;
-    this.objectiveExpr = parsedExpr;
-    this.resetSolutionState();
+    this.setObjective(spec.expr, spec.sense);
     return this;
   }
 
@@ -562,6 +575,9 @@ export class Model {
       // Var
       parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
     }
+
+    // Validate objective numeric inputs and model ownership
+    validateObjectiveExpr(parsedExpr, this.name, (v) => this.varMapByName.get(v.name) === v);
 
     this.sense = newSense;
     this.objectiveExpr = parsedExpr;
@@ -692,29 +708,47 @@ export class Model {
     }
     if (constraint instanceof BoolExpr) {
       const explicitName = typeof name === "string" && name.trim().length > 0 ? name.trim() : undefined;
-      if (explicitName !== undefined && this.hasConstrName(explicitName)) {
-        throw new Error(`Constraint with name '${explicitName}' already exists in model`);
+      if (explicitName !== undefined) {
+        if (this.hasConstraintName(explicitName)) {
+          throw new Error(`Constraint with name '${explicitName}' already exists in model`);
+        }
+        if (this.hasBoolVarName(explicitName)) {
+          throw new Error(
+            `Constraint name '${explicitName}' conflicts with an existing Boolean variable in model`
+          );
+        }
       }
+      const savedLogicalCounter = this.logicalConstrCounter;
       const constrName = explicitName ?? this.getNextLogicalConstrName();
-      if (this.hasConstrName(constrName)) {
-        throw new Error(`Constraint with name '${constrName}' already exists in model`);
+      try {
+        validateLogicElement(
+          constraint,
+          constrName,
+          this.name,
+          (v) => this.varMapByName.get(v.name) === v,
+          (bv) => this.boolVarMapByName.get(bv.name) === bv
+        );
+      } catch (err) {
+        if (explicitName === undefined) {
+          this.logicalConstrCounter = savedLogicalCounter;
+        }
+        throw err;
       }
-      this.logicalConstraints.push({
+
+      const lcEntry: LogicalConstraint = {
         name: constrName,
         expr: constraint,
-      });
-      this.logicalConstrNames.add(constrName);
+      };
+      this.logicalConstraints.push(lcEntry);
+      this.logicalConstrMapByName.set(constrName, lcEntry);
       this.resetSolutionState();
       return constraint;
     }
 
-    let constr: Constraint;
-
-    if (typeof constraint === "string") {
-      constr = parseConstraint(constraint, (varName) => this.getVarByName(varName), name);
-    } else {
-      constr = constraint;
-    }
+    const constr =
+      typeof constraint === "string"
+        ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
+        : constraint;
 
     const explicitName =
       typeof name === "string" && name.trim().length > 0
@@ -722,10 +756,31 @@ export class Model {
         : constr.hasExplicitName
         ? constr.name.trim()
         : undefined;
-    const resolvedName = explicitName ?? this.getNextConstrName("c");
+    if (explicitName !== undefined) {
+      if (this.hasConstraintName(explicitName)) {
+        throw new Error(`Constraint with name '${explicitName}' already exists in model`);
+      }
+      if (this.hasBoolVarName(explicitName)) {
+        throw new Error(
+          `Constraint name '${explicitName}' conflicts with an existing Boolean variable in model`
+        );
+      }
+    }
 
-    if (this.hasConstrName(resolvedName)) {
-      throw new Error(`Constraint with name '${resolvedName}' already exists in model`);
+    const savedCounter = this.constrPrefixCounters.get("c");
+    const resolvedName = explicitName ?? this.getNextConstrName("c");
+    try {
+      validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, resolvedName);
+      claimConstraintOwnership(constr, this);
+    } catch (err) {
+      if (explicitName === undefined) {
+        if (savedCounter === undefined) {
+          this.constrPrefixCounters.delete("c");
+        } else {
+          this.constrPrefixCounters.set("c", savedCounter);
+        }
+      }
+      throw err;
     }
 
     constr.name = resolvedName;
@@ -763,17 +818,32 @@ export class Model {
     }
 
     if (item instanceof Var) {
-      if (item.ownerModel === this) {
+      if (item.ownerModel === this || this.varMapByName.get(item.name) === item) {
         return this;
       }
+      validateVarBounds(item);
       if (item.ownerModel !== null && item.ownerModel !== this) {
+        claimVarOwnership(item, this);
         throw new Error(
-          `Variable '${item.name}' already belongs to another model and cannot be shared across models.`
+          `Variable "${item.name}" already belongs to another model and cannot be shared across models.`
         );
       }
+      const savedCounter = this.varPrefixCounters.get(item.prefix);
       const resolvedName = item.hasExplicitName ? item.name.trim() : this.getNextVarName(item.prefix);
-      if (this.hasVarName(resolvedName)) {
-        throw new Error(`Variable with name '${resolvedName}' already exists in model`);
+      try {
+        if (this.hasVarName(resolvedName)) {
+          throw new Error(`Variable with name '${resolvedName}' already exists in model`);
+        }
+        claimVarOwnership(item, this);
+      } catch (err) {
+        if (!item.hasExplicitName) {
+          if (savedCounter === undefined) {
+            this.varPrefixCounters.delete(item.prefix);
+          } else {
+            this.varPrefixCounters.set(item.prefix, savedCounter);
+          }
+        }
+        throw err;
       }
       item._assignModelName(resolvedName);
       item.ownerModel = this;
@@ -816,6 +886,11 @@ export class Model {
         `Invalid activeValue: ${activeVal}. Indicator activeValue must be 0 or 1.`
       );
     }
+    if (this.varMapByName.get(binVar.name) !== binVar) {
+      throw new Error(
+        `Variable "${binVar.name}" passed to indicator() does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+      );
+    }
 
     const explicitOptName =
       typeof options.name === "string" && options.name.trim().length > 0
@@ -842,19 +917,28 @@ export class Model {
         leName = sense === "==" ? `${baseName}_le` : baseName;
         geName = sense === "==" ? `${baseName}_ge` : baseName;
       } while (
-        ((sense === "<=" || sense === "==") && this.hasConstrName(leName)) ||
-        ((sense === ">=" || sense === "==") && this.hasConstrName(geName))
+        ((sense === "<=" || sense === "==") && (this.hasConstraintName(leName) || this.hasBoolVarName(leName))) ||
+        ((sense === ">=" || sense === "==") && (this.hasConstraintName(geName) || this.hasBoolVarName(geName)))
       );
     }
 
     let mLe = 0;
     let mGe = 0;
+    const pending: Array<[Constraint, string]> = [];
     try {
-      if ((sense === "<=" || sense === "==") && this.hasConstrName(leName)) {
-        throw new Error(`Constraint with name '${leName}' already exists in model`);
+      if ((sense === "<=" || sense === "==") && (this.hasConstraintName(leName) || this.hasBoolVarName(leName))) {
+        throw new Error(
+          this.hasBoolVarName(leName)
+            ? `Constraint name '${leName}' conflicts with an existing Boolean variable in model`
+            : `Constraint with name '${leName}' already exists in model`
+        );
       }
-      if ((sense === ">=" || sense === "==") && this.hasConstrName(geName)) {
-        throw new Error(`Constraint with name '${geName}' already exists in model`);
+      if ((sense === ">=" || sense === "==") && (this.hasConstraintName(geName) || this.hasBoolVarName(geName))) {
+        throw new Error(
+          this.hasBoolVarName(geName)
+            ? `Constraint name '${geName}' conflicts with an existing Boolean variable in model`
+            : `Constraint with name '${geName}' already exists in model`
+        );
       }
       if (options.M !== undefined) {
         validateUserBigM(options.M, baseName);
@@ -874,6 +958,27 @@ export class Model {
           : sense === ">=" || sense === "=="
           ? deriveBigMForGe(lhs, rhs, geName)
           : 0;
+
+      if (activeVal === 1) {
+        if (sense === "<=" || sense === "==") {
+          pending.push([lhs.add(binVar.mul(mLe)).le(rhs + mLe), leName]);
+        }
+        if (sense === ">=" || sense === "==") {
+          pending.push([lhs.sub(binVar.mul(mGe)).ge(rhs - mGe), geName]);
+        }
+      } else {
+        if (sense === "<=" || sense === "==") {
+          pending.push([lhs.sub(binVar.mul(mLe)).le(rhs), leName]);
+        }
+        if (sense === ">=" || sense === "==") {
+          pending.push([lhs.add(binVar.mul(mGe)).ge(rhs), geName]);
+        }
+      }
+
+      const isOwnedVar = (v: Var) => this.varMapByName.get(v.name) === v;
+      for (const [cRow, rowName] of pending) {
+        validateLinearConstraint(cRow, this.name, isOwnedVar, rowName);
+      }
     } catch (err) {
       if (savedCounter === undefined) {
         this.constrPrefixCounters.delete("c");
@@ -883,46 +988,14 @@ export class Model {
       throw err;
     }
 
-    const addedConstrs: Constraint[] = [];
-    if (activeVal === 1) {
-      if (sense === "<=" || sense === "==") {
-        const cLe = this.addConstraint(
-          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
-          leName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        const cGe = this.addConstraint(
-          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
-          geName
-        );
-        addedConstrs.push(cGe);
-      }
-    } else {
-      if (sense === "<=" || sense === "==") {
-        const cLe = this.addConstraint(
-          lhs.sub(binVar.mul(mLe)).le(rhs),
-          leName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        const cGe = this.addConstraint(
-          lhs.add(binVar.mul(mGe)).ge(rhs),
-          geName
-        );
-        addedConstrs.push(cGe);
-      }
-    }
-
-    return addedConstrs;
+    return pending.map(([cRow, rowName]) => this.addConstraint(cRow, rowName));
   }
 
   /**
    * Export model to CPLEX LP format string
    */
   toLpString(): string {
+    this.validateIntegrity();
     const { lpString } = generateLpString({
       name: this.name,
       sense: this.sense,
@@ -931,6 +1004,14 @@ export class Model {
       variables: this.variables,
     });
     return lpString;
+  }
+
+  /**
+   * Validates model integrity: variable bounds, ownership, numeric sanity, and unique constraint names.
+   * Throws an Error with actionable explanation if any validation rule is violated.
+   */
+  validateIntegrity(): void {
+    validateModelIntegrity(this);
   }
 
   /**
@@ -944,6 +1025,7 @@ export class Model {
     options?: SolveOptions
   ): Promise<SolverStatus> {
     this.resetSolutionState();
+    this.validateIntegrity();
 
     let activeSolver: Solver;
     let activeOptions: SolveOptions;
@@ -1097,6 +1179,7 @@ export class Model {
     options?: SolveOptions
   ): Promise<CheckResult> {
     this.resetSolutionState();
+    this.validateIntegrity();
 
     let activeSolver: Solver;
     let activeOptions: SolveOptions;

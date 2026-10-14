@@ -15,6 +15,7 @@ export {
   deriveBigMForLe,
   deriveBigMForGe,
   validateUserBigM,
+  validateModelIntegrity,
   maximize,
   minimize,
   type ObjectiveExpr,

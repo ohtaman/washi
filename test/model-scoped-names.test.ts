@@ -220,7 +220,7 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
 
     const mOther = new Model("OtherModel");
     mOther.continuous(); // consumes x_0 in OtherModel
-    expect(() => mOther.add(sharedVar)).toThrow(/already belongs to another model/i);
+    expect(() => mOther.add(sharedVar)).toThrow(/already belongs to model "OwnerModel"/i);
     expect(sharedVar.name).toBe("x_0");
     expect(mOwner.getVarByName("x_0")).toBe(sharedVar);
   });
