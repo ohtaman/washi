@@ -267,13 +267,21 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
     expect(model.terminationStatus).toBe("Interrupted");
     expect(model.hasPrimalSolution).toBe(false);
 
-    // 3. Z3 progress reporting and pre-abort
+    // 3. Z3 progress reporting, post-solve callback abort preservation, and pre-abort
     const z3Events: SolveProgressEvent[] = [];
+    const z3PostCtrl = new AbortController();
     const z3Status = await model.solve({
       solver: "z3",
-      onProgress: (ev) => z3Events.push(ev),
+      signal: z3PostCtrl.signal,
+      onProgress: (ev) => {
+        z3Events.push(ev);
+        if (ev.objectiveValue !== undefined) {
+          z3PostCtrl.abort();
+        }
+      },
     });
     expect(z3Status).toBe("Optimal");
+    expect(model.terminationStatus).toBe("Optimal");
     expect(z3Events.length).toBeGreaterThan(0);
 
     await model.solve({

@@ -583,7 +583,8 @@ export class Z3Solver implements Solver {
         // Ignore if bound inspection is unavailable
       }
 
-      if (options.onProgress && !options.signal?.aborted) {
+      const wasAbortedBeforeFinalProgress = Boolean(options.signal?.aborted);
+      if (options.onProgress && !wasAbortedBeforeFinalProgress) {
         const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
           elapsedTime: elapsed,
@@ -592,7 +593,7 @@ export class Z3Solver implements Solver {
         });
       }
 
-      if (options.signal?.aborted) {
+      if (wasAbortedBeforeFinalProgress) {
         return {
           status: "Feasible",
           terminationStatus: "Interrupted",
@@ -620,14 +621,15 @@ export class Z3Solver implements Solver {
         values,
       };
     } else if (statusStr === "unsat") {
-      if (options.onProgress && !options.signal?.aborted) {
+      const wasAbortedBeforeFinalProgress = Boolean(options.signal?.aborted);
+      if (options.onProgress && !wasAbortedBeforeFinalProgress) {
         const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
           elapsedTime: elapsed,
           elapsedSeconds: elapsed,
         });
       }
-      if (options.signal?.aborted) {
+      if (wasAbortedBeforeFinalProgress) {
         return {
           status: "Unknown",
           terminationStatus: "Interrupted",
