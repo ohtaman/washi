@@ -453,10 +453,6 @@ export async function solveLpWithHighs(
             [cbTypes.simplexInterrupt]: handleInterrupt,
             [cbTypes.ipmInterrupt]: handleInterrupt,
             [cbTypes.mipInterrupt]: handleInterrupt,
-            [cbTypes.mipSolution]: (event: any): undefined => {
-              captureIncumbentFromEvent(event);
-              return undefined;
-            },
             [cbTypes.mipImprovingSolution]: (event: any): undefined => {
               captureIncumbentFromEvent(event);
               if (options.onProgress && !options.signal?.aborted) {
