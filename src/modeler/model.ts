@@ -86,6 +86,7 @@ export class Model {
   private boolVarMapByName = new Map<string, BoolVar>();
   private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
+  private logicalConstrNames = new Set<string>();
 
   public status: SolverStatus = "NotSolved";
   public objectiveValue: number | null = null;
@@ -373,17 +374,11 @@ export class Model {
   }
 
   private hasConstraintName(name: string): boolean {
-    return (
-      this.constraints.some((c) => c.name === name) ||
-      this.logicalConstraints.some((lc) => lc.name === name)
-    );
+    return this.constrMapByName.has(name) || this.logicalConstrNames.has(name);
   }
 
   private hasBoolVarName(name: string): boolean {
-    return (
-      this.boolVarMapByName.has(name) ||
-      this.boolVars.some((bv) => bv.name === name)
-    );
+    return this.boolVarMapByName.has(name);
   }
 
   private createBoolVar(name?: string): BoolVar {
@@ -445,11 +440,7 @@ export class Model {
    * Find a constraint by its name
    */
   getConstraintByName(name: string): Constraint | undefined {
-    const mapped = this.constrMapByName.get(name);
-    if (mapped && mapped.name === name) {
-      return mapped;
-    }
-    return this.constraints.find((c) => c.name === name);
+    return this.constrMapByName.get(name);
   }
 
   /**
@@ -662,6 +653,7 @@ export class Model {
         name: constrName,
         expr: constraint,
       });
+      this.logicalConstrNames.add(constrName);
       this.resetSolutionState();
       return constraint;
     }
