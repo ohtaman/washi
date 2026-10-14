@@ -307,8 +307,10 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
 
     const mBadConstr = new Model("BadConstraintDataModel");
     const xGood = mBadConstr.continuous("xGood", { lb: 0, ub: 10 });
-    mBadConstr.constraint(xGood.le(NaN), "nan_rhs");
-    mBadConstr.constraint(xGood.mul(NaN).le(5), "nan_coeff");
+    mBadConstr.constraint(xGood.le(5), "nan_rhs");
+    mBadConstr.getConstraintByName("nan_rhs")!.rhs = NaN;
+    mBadConstr.constraint(xGood.le(5), "nan_coeff");
+    mBadConstr.getConstraintByName("nan_coeff")!.lhs.terms.set(xGood, NaN);
     const repBadConstr = mBadConstr.validateSolution({ values: { xGood: 2 } });
     expect(repBadConstr.valid).toBe(false);
     expect(repBadConstr.complete).toBe(false);
