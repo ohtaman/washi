@@ -26,7 +26,9 @@ function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
  */
 export class Var {
   public readonly id: number;
-  public readonly name: string;
+  private _name: string;
+  public hasExplicitName: boolean;
+  public readonly prefix?: string;
   public type: "Continuous" | "Integer" | "Binary";
   public lb: number;
   public ub: number;
@@ -35,10 +37,22 @@ export class Var {
   public value: number | null = null;
   /** Reduced cost from dual solution */
   public reducedCost: number | null = null;
+  /** @internal */
+  public ownerModel?: unknown;
 
   constructor(options: VarOptions = {}) {
     this.id = ++varIdCounter;
-    this.name = options.name || `x_${this.id}`;
+    const trimmed = typeof options.name === "string" ? options.name.trim() : undefined;
+    const prefixTrimmed = typeof options.prefix === "string" ? options.prefix.trim() : undefined;
+    this.prefix = prefixTrimmed && prefixTrimmed.length > 0 ? prefixTrimmed : undefined;
+    if (trimmed && trimmed.length > 0) {
+      this._name = trimmed;
+      this.hasExplicitName = true;
+    } else {
+      const fallbackPrefix = this.prefix || "x";
+      this._name = `${fallbackPrefix}_${this.id}`;
+      this.hasExplicitName = false;
+    }
     this.type = normalizeVarType(options.type);
 
     if (this.type === "Binary") {
@@ -48,6 +62,16 @@ export class Var {
       this.lb = options.lb !== undefined ? options.lb : 0;
       this.ub = options.ub !== undefined ? options.ub : Infinity;
     }
+  }
+
+  get name(): string {
+    return this._name;
+  }
+
+  /** @internal */
+  assignModelName(name: string): void {
+    this._name = name;
+    this.hasExplicitName = true;
   }
 
   /** Multiply variable by a scalar coefficient or another variable/expression */
