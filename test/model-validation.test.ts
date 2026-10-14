@@ -348,6 +348,25 @@ describe("Model Integrity Validation (Issue #51)", () => {
       }).toThrow(/invalid LHS constant: NaN/);
       expect(m.logicalConstraints.length).toBe(0);
     });
+
+    it("isolates Z3 tracking symbols from user BoolVars and preserves constraint names with spaces in unsatCore", async () => {
+      // 1. User BoolVar named "__washi_track_1" must not alias Z3 internal tracker
+      const mSat = new Model({ name: "Z3TrackerNoAlias", solver: "z3" });
+      const p = mSat.bool("__washi_track_1");
+      mSat.constraint(p.not(), "c");
+      const satRes = await mSat.check();
+      expect(satRes.status).toBe("Sat");
+      expect(p.value).toBe(false);
+
+      // 2. Unsat constraints with spaces in their names return exact user names in conflicts
+      const mUnsat = new Model({ name: "Z3QuotedConstraintNames", solver: "z3" });
+      const x = mUnsat.continuous("x", { lb: 0, ub: 100 });
+      mUnsat.constraint(c`${x} <= 10`, "budget limit");
+      mUnsat.constraint(c`${x} >= 50`, "minimum requirement");
+      const unsatRes = await mUnsat.check();
+      expect(unsatRes.status).toBe("Unsat");
+      expect(mUnsat.conflicts).toEqual(expect.arrayContaining(["budget limit", "minimum requirement"]));
+    });
   });
 
   describe("4. Valid free and one-sided-unbounded variables across HiGHS, GLPK, and Z3", () => {

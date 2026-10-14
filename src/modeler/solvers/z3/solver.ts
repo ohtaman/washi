@@ -268,28 +268,51 @@ export class Z3Solver implements Solver {
       }
     }
 
-    const trackKeyToName = new Map<string, string>();
-    let trackCounter = 0;
+    // 2. Translate arithmetic and logical constraints first so all referenced symbols are registered
+    const translatedConstraints = constraints.map((c) => ({
+      name: c.name,
+      ast: trans.translateConstraint(c),
+    }));
+    const translatedLogical = logicalConstraints.map((item: any, i: number) => {
+      const name = (item && item.name) || `lc_${i + 1}`;
+      const expr = (item && item.expr) || item;
+      return {
+        name,
+        ast: trans.translateBoolExpr(expr),
+      };
+    });
 
-    // 2. Arithmetic Constraints (tracked for unsatCore)
-    for (const c of constraints) {
-      const cAst = trans.translateConstraint(c);
-      const trackKey = `__washi_track_${++trackCounter}_${c.name}`;
-      trackKeyToName.set(trackKey, c.name);
-      const trackVar = ctx.Bool.const(trackKey);
-      s.addAndTrack(cAst, trackVar);
+    const usedSymbolNames = new Set<string>();
+    for (const v of variables) usedSymbolNames.add(v.name);
+    for (const bv of boolVars) usedSymbolNames.add(bv.name);
+    for (const [k, ast] of trans.varAstMap.entries()) {
+      usedSymbolNames.add(k);
+      if (ast) usedSymbolNames.add(ast.toString());
+    }
+    for (const [k, ast] of trans.boolVarAstMap.entries()) {
+      usedSymbolNames.add(k);
+      if (ast) usedSymbolNames.add(ast.toString());
     }
 
-    // 3. Logical Constraints (tracked for unsatCore)
-    for (let i = 0; i < logicalConstraints.length; i++) {
-      const item = logicalConstraints[i];
-      const name = (item && (item as any).name) || `lc_${i + 1}`;
-      const expr = (item && (item as any).expr) || item;
-      const lcAst = trans.translateBoolExpr(expr);
-      const trackKey = `__washi_track_${++trackCounter}_${name}`;
-      trackKeyToName.set(trackKey, name);
+    const trackKeyToName = new Map<string, string>();
+    let trackCounter = 0;
+    const createTracker = (constraintName: string) => {
+      let trackKey = `__washi_track_${++trackCounter}`;
+      while (usedSymbolNames.has(trackKey) || trackKeyToName.has(trackKey)) {
+        trackKey = `__washi_track_${++trackCounter}`;
+      }
       const trackVar = ctx.Bool.const(trackKey);
-      s.addAndTrack(lcAst, trackVar);
+      trackKeyToName.set(trackKey, constraintName);
+      trackKeyToName.set(trackVar.toString(), constraintName);
+      return trackVar;
+    };
+
+    // 3. Add tracked arithmetic and logical constraints
+    for (const item of translatedConstraints) {
+      s.addAndTrack(item.ast, createTracker(item.name));
+    }
+    for (const item of translatedLogical) {
+      s.addAndTrack(item.ast, createTracker(item.name));
     }
 
     let unregister: (() => void) | undefined;
