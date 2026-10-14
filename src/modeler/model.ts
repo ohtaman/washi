@@ -12,7 +12,7 @@ import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
-import { BoolVar, BoolExpr } from "./boolean-expr.js";
+import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
@@ -43,6 +43,7 @@ import {
   validateUserBigM,
   buildIndicatorLinearization,
 } from "./big-m.js";
+import { validateModelIntegrity } from "./validation.js";
 export type { IndicatorOptions };
 
 interface AutoIndicatorRecord {
@@ -397,6 +398,19 @@ export class Model {
     const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
     const v = new Var({ ...opts, name });
 
+    // Validate bounds
+    if (Number.isNaN(v.lb) || v.lb === Infinity) {
+      throw new Error(`Variable "${v.name}" has invalid lower bound: ${v.lb}.`);
+    }
+    if (Number.isNaN(v.ub) || v.ub === -Infinity) {
+      throw new Error(`Variable "${v.name}" has invalid upper bound: ${v.ub}.`);
+    }
+    if (v.lb > v.ub) {
+      throw new Error(
+        `Variable "${v.name}" has invalid bounds: lower bound (${v.lb}) is strictly greater than upper bound (${v.ub}).`
+      );
+    }
+
     // Validate unique name
     if (this.hasVarName(v.name)) {
       throw new Error(`Variable with name '${v.name}' already exists in model`);
@@ -445,33 +459,7 @@ export class Model {
     if (!spec) {
       return this.objectiveExpr;
     }
-    const newSense = normalizeSense(spec.sense);
-    const expr = spec.expr;
-
-    if (expr instanceof Constraint) {
-      throw new Error(
-        "Cannot set objective to a constraint comparison (<=, >=, ==). " +
-        "Did you mean to use m.constraint(c`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
-      );
-    }
-
-    let parsedExpr: LinExpr | QuadExpr;
-    if (typeof expr === "string") {
-      parsedExpr = parseExpr(expr, (name) => this.getVarByName(name));
-    } else if (typeof expr === "number") {
-      parsedExpr = new LinExpr(new Map(), expr);
-    } else if (expr instanceof QuadExpr) {
-      parsedExpr = expr.clone();
-    } else if ("terms" in expr) {
-      parsedExpr = expr.clone();
-    } else {
-      // Var
-      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
-    }
-
-    this.sense = newSense;
-    this.objectiveExpr = parsedExpr;
-    this.resetSolutionState();
+    this.setObjective(spec.expr, spec.sense);
     return this;
   }
 
@@ -501,6 +489,62 @@ export class Model {
     } else {
       // Var
       parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
+    }
+
+    // Validate objective numeric inputs and model ownership
+    if (parsedExpr instanceof QuadExpr) {
+      if (!Number.isFinite(parsedExpr.constant)) {
+        throw new Error(
+          `Objective function has invalid constant: ${parsedExpr.constant}. Constant must be a finite number.`
+        );
+      }
+      for (const [v, coeff] of parsedExpr.linearTerms) {
+        if (this.varMapByName.get(v.name) !== v) {
+          throw new Error(
+            `Variable "${v.name}" in objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+          );
+        }
+        if (!Number.isFinite(coeff)) {
+          throw new Error(
+            `Variable "${v.name}" in objective function has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
+          );
+        }
+      }
+      for (const [, term] of parsedExpr.quadTerms) {
+        if (this.varMapByName.get(term.var1.name) !== term.var1) {
+          throw new Error(
+            `Variable "${term.var1.name}" in quadratic objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+          );
+        }
+        if (this.varMapByName.get(term.var2.name) !== term.var2) {
+          throw new Error(
+            `Variable "${term.var2.name}" in quadratic objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+          );
+        }
+        if (!Number.isFinite(term.coeff)) {
+          throw new Error(
+            `Quadratic term (${term.var1.name} * ${term.var2.name}) in objective function has invalid coefficient: ${term.coeff}.`
+          );
+        }
+      }
+    } else if ("terms" in parsedExpr) {
+      if (!Number.isFinite(parsedExpr.constant)) {
+        throw new Error(
+          `Objective function has invalid constant: ${parsedExpr.constant}. Constant must be a finite number.`
+        );
+      }
+      for (const [v, coeff] of parsedExpr.terms) {
+        if (this.varMapByName.get(v.name) !== v) {
+          throw new Error(
+            `Variable "${v.name}" in objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+          );
+        }
+        if (!Number.isFinite(coeff)) {
+          throw new Error(
+            `Variable "${v.name}" in objective function has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
+          );
+        }
+      }
     }
 
     this.sense = newSense;
@@ -632,6 +676,48 @@ export class Model {
     }
     if (constraint instanceof BoolExpr) {
       const constrName = name || `lc_${this.logicalConstraints.length + 1}`;
+      if (
+        this.constrMapByName.has(constrName) ||
+        this.logicalConstraints.some((lc) => lc.name === constrName)
+      ) {
+        throw new Error(
+          `Constraint with name '${constrName}' already exists in model`
+        );
+      }
+
+      const checkElem = (elem: LogicElement): void => {
+        if (elem instanceof BoolVar) {
+          if (this.boolVarMapByName.get(elem.name) !== elem) {
+            throw new Error(
+              `Boolean variable "${elem.name}" in logical constraint "${constrName}" does not belong to model "${this.name}".`
+            );
+          }
+        } else if (elem instanceof BoolOp) {
+          for (const child of elem.children) {
+            checkElem(child);
+          }
+        } else if (elem instanceof Constraint) {
+          if (!Number.isFinite(elem.rhs)) {
+            throw new Error(
+              `Constraint "${elem.name}" embedded in logical constraint "${constrName}" has invalid RHS: ${elem.rhs}.`
+            );
+          }
+          for (const [v, coeff] of elem.lhs.terms) {
+            if (this.varMapByName.get(v.name) !== v) {
+              throw new Error(
+                `Variable "${v.name}" embedded in logical constraint "${constrName}" does not belong to model "${this.name}".`
+              );
+            }
+            if (!Number.isFinite(coeff)) {
+              throw new Error(
+                `Variable "${v.name}" embedded in logical constraint "${constrName}" has invalid coefficient: ${coeff}.`
+              );
+            }
+          }
+        }
+      };
+      checkElem(constraint);
+
       this.logicalConstraints.push({
         name: constrName,
         expr: constraint,
@@ -651,8 +737,34 @@ export class Model {
       }
     }
 
-    if (this.constrMapByName.has(constr.name)) {
+    if (
+      this.constrMapByName.has(constr.name) ||
+      this.logicalConstraints.some((lc) => lc.name === constr.name)
+    ) {
       throw new Error(`Constraint with name '${constr.name}' already exists in model`);
+    }
+
+    if (!Number.isFinite(constr.rhs)) {
+      throw new Error(
+        `Constraint "${constr.name}" has invalid right-hand side (RHS): ${constr.rhs}. RHS must be a finite number.`
+      );
+    }
+    if (constr.lhs.constant !== undefined && !Number.isFinite(constr.lhs.constant)) {
+      throw new Error(
+        `Constraint "${constr.name}" has invalid LHS constant: ${constr.lhs.constant}. Constant must be a finite number.`
+      );
+    }
+    for (const [v, coeff] of constr.lhs.terms) {
+      if (this.varMapByName.get(v.name) !== v) {
+        throw new Error(
+          `Variable "${v.name}" in constraint "${constr.name}" does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+        );
+      }
+      if (!Number.isFinite(coeff)) {
+        throw new Error(
+          `Variable "${v.name}" in constraint "${constr.name}" has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
+        );
+      }
     }
 
     this.constraints.push(constr);
@@ -730,6 +842,11 @@ export class Model {
       );
     }
 
+    if (this.varMapByName.get(binVar.name) !== binVar) {
+      throw new Error(
+        `Variable "${binVar.name}" passed to indicator() does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+      );
+    }
     const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
     if (options.M !== undefined) {
       validateUserBigM(options.M, baseName);
@@ -828,6 +945,7 @@ export class Model {
    * Export model to CPLEX LP format string
    */
   toLpString(): string {
+    this.validateIntegrity();
     this.refreshAutoIndicators();
     const { lpString } = generateLpString({
       name: this.name,
@@ -837,6 +955,14 @@ export class Model {
       variables: this.variables,
     });
     return lpString;
+  }
+
+  /**
+   * Validates model integrity: variable bounds, ownership, numeric sanity, and unique constraint names.
+   * Throws an Error with actionable explanation if any validation rule is violated.
+   */
+  validateIntegrity(): void {
+    validateModelIntegrity(this);
   }
 
   /**
@@ -850,6 +976,7 @@ export class Model {
     options?: SolveOptions
   ): Promise<SolverStatus> {
     this.resetSolutionState();
+    this.validateIntegrity();
     this.refreshAutoIndicators();
 
     let activeSolver: Solver;
@@ -1004,6 +1131,7 @@ export class Model {
     options?: SolveOptions
   ): Promise<CheckResult> {
     this.resetSolutionState();
+    this.validateIntegrity();
     this.refreshAutoIndicators();
 
     let activeSolver: Solver;
