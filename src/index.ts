@@ -43,6 +43,12 @@ export {
   generateLpString,
   type LpModelData,
   type LpExportResult,
+  validateModelSolution,
+  type SolutionValidationOptions,
+  type ViolationType,
+  type SolutionViolation,
+  type SolutionValidationSummary,
+  type SolutionValidationReport,
 } from "./modeler/index.js";
 
 export {

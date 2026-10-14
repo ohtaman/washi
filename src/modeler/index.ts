@@ -22,6 +22,14 @@ export {
 } from "./boolean-expr.js";
 export { parseExpr, parseConstraint, expr, c } from "./parser.js";
 export { generateLpString, type LpModelData, type LpExportResult } from "./lp-writer.js";
+export {
+  validateModelSolution,
+  type SolutionValidationOptions,
+  type ViolationType,
+  type SolutionViolation,
+  type SolutionValidationSummary,
+  type SolutionValidationReport,
+} from "./solution-validator.js";
 
 // Type definitions
 export type {

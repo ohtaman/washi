@@ -195,11 +195,20 @@ export class Z3Solver implements Solver {
               translateBoolExpr(opNode.children[0]),
               translateBoolExpr(opNode.children[1])
             );
-          case "xor":
-            return ctx.Xor(
-              translateBoolExpr(opNode.children[0]),
-              translateBoolExpr(opNode.children[1])
-            );
+          case "xor": {
+            if (opNode.children.length === 0) {
+              return ctx.Bool.val(false);
+            }
+            if (opNode.children.length === 1) {
+              return translateBoolExpr(opNode.children[0]);
+            }
+            return opNode.children
+              .slice(1)
+              .reduce(
+                (acc, child) => ctx.Xor(acc, translateBoolExpr(child)),
+                translateBoolExpr(opNode.children[0])
+              );
+          }
           default:
             throw new Error(`Unsupported boolean operation: ${opNode.op}`);
         }
@@ -268,21 +277,25 @@ export class Z3Solver implements Solver {
       }
     }
 
-    // 2. Arithmetic Constraints (tracked for unsatCore)
-    for (const c of constraints) {
-      const cAst = trans.translateConstraint(c);
-      const trackVar = ctx.Bool.const(c.name);
-      s.addAndTrack(cAst, trackVar);
-    }
+    const trackKeyToName = new Map<string, string>();
+    let trackCounter = 0;
+    const createTracker = (constraintName: string) => {
+      const trackKey = `__washi_track_${++trackCounter}`;
+      const trackVar = ctx.Bool.const(trackKey);
+      trackKeyToName.set(trackKey, constraintName);
+      trackKeyToName.set(trackVar.toString(), constraintName);
+      return trackVar;
+    };
 
-    // 3. Logical Constraints (tracked for unsatCore)
+    // 2. Add tracked arithmetic and logical constraints
+    for (const c of constraints) {
+      s.addAndTrack(trans.translateConstraint(c), createTracker(c.name));
+    }
     for (let i = 0; i < logicalConstraints.length; i++) {
       const item = logicalConstraints[i];
-      const name = (item && (item as any).name) || `lc_${i + 1}`;
-      const expr = (item && (item as any).expr) || item;
-      const lcAst = trans.translateBoolExpr(expr);
-      const trackVar = ctx.Bool.const(name);
-      s.addAndTrack(lcAst, trackVar);
+      const name = (item && item.name) || `lc_${i + 1}`;
+      const expr = (item && item.expr) || item;
+      s.addAndTrack(trans.translateBoolExpr(expr), createTracker(name));
     }
 
     let unregister: (() => void) | undefined;
@@ -323,7 +336,8 @@ export class Z3Solver implements Solver {
       const unsatCore: string[] = [];
       const len = typeof coreVector.length === "function" ? coreVector.length() : coreVector.length;
       for (let i = 0; i < len; i++) {
-        unsatCore.push(coreVector.get(i).toString());
+        const rawKey = coreVector.get(i).toString();
+        unsatCore.push(trackKeyToName.get(rawKey) ?? rawKey);
       }
 
       return {
