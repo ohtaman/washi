@@ -1125,7 +1125,7 @@ export class Model {
       this.terminationStatus =
         activeOptions.signal?.aborted || this.terminationStatus === "Interrupted"
           ? "Interrupted"
-          : isSat || isUnsat || this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
+          : this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
             ? checkStatus
             : this.terminationStatus;
       this.hasPrimalSolution = isSat;
