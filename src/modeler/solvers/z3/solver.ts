@@ -328,16 +328,6 @@ export class Z3Solver implements Solver {
     }
 
     let unregister: (() => void) | undefined;
-    const onAbort = () => {
-      try {
-        if (typeof ctx.interrupt === "function") {
-          ctx.interrupt();
-        }
-      } catch {
-        // Ignore interrupt errors
-      }
-    };
-    options.signal?.addEventListener("abort", onAbort, { once: true });
     let checkRes: any;
     try {
       const checkPromise = s.check();
@@ -346,7 +336,6 @@ export class Z3Solver implements Solver {
         checkPromise.then(resolve, reject);
       });
     } finally {
-      options.signal?.removeEventListener("abort", onAbort);
       unregister?.();
     }
     const statusStr = checkRes.toString();
@@ -529,16 +518,6 @@ export class Z3Solver implements Solver {
     }
 
     let unregister: (() => void) | undefined;
-    const onAbort = () => {
-      try {
-        if (typeof ctx.interrupt === "function") {
-          ctx.interrupt();
-        }
-      } catch {
-        // Ignore interrupt errors
-      }
-    };
-    options.signal?.addEventListener("abort", onAbort, { once: true });
     let checkRes: any;
     try {
       const checkPromise = opt.check();
@@ -547,7 +526,6 @@ export class Z3Solver implements Solver {
         checkPromise.then(resolve, reject);
       });
     } finally {
-      options.signal?.removeEventListener("abort", onAbort);
       unregister?.();
     }
     const statusStr = checkRes.toString();
@@ -570,6 +548,7 @@ export class Z3Solver implements Solver {
 
       const objVal = trans.parseAstValue(z3Model.eval(objAst));
       let isUnbounded = false;
+      let isUnattained = false;
       try {
         const boundAst =
           sense === "MAXIMIZE"
@@ -582,32 +561,22 @@ export class Z3Solver implements Solver {
         const boundStr = boundAst ? boundAst.toString() : "";
         if (boundStr.includes("oo")) {
           isUnbounded = true;
+        } else if (boundStr.includes("epsilon")) {
+          isUnattained = true;
         }
       } catch {
         // Ignore if bound inspection is unavailable
       }
 
-      const wasAbortedBeforeFinalProgress = Boolean(options.signal?.aborted);
-      if (options.onProgress && !wasAbortedBeforeFinalProgress) {
-        const elapsed = (performance.now() - startTime) / 1000;
-        options.onProgress({
-          elapsedTime: elapsed,
-          elapsedSeconds: elapsed,
-          ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
-        });
-      }
-
-      if (wasAbortedBeforeFinalProgress) {
-        return {
-          status: "Feasible",
-          terminationStatus: "Interrupted",
-          hasPrimalSolution: true,
-          objectiveValue: objVal,
-          values,
-        };
-      }
-
       if (isUnbounded) {
+        if (options.onProgress) {
+          const elapsed = (performance.now() - startTime) / 1000;
+          options.onProgress({
+            elapsedTime: elapsed,
+            elapsedSeconds: elapsed,
+            ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
+          });
+        }
         return {
           status: "Unbounded",
           terminationStatus: "Unbounded",
@@ -615,6 +584,32 @@ export class Z3Solver implements Solver {
           objectiveValue: objVal,
           values,
         };
+      }
+
+      if (isUnattained) {
+        if (options.onProgress) {
+          const elapsed = (performance.now() - startTime) / 1000;
+          options.onProgress({
+            elapsedTime: elapsed,
+            elapsedSeconds: elapsed,
+          });
+        }
+        return {
+          status: "Unknown",
+          terminationStatus: "Unknown",
+          hasPrimalSolution: false,
+          objectiveValue: null,
+          values: {},
+        };
+      }
+
+      if (options.onProgress) {
+        const elapsed = (performance.now() - startTime) / 1000;
+        options.onProgress({
+          elapsedTime: elapsed,
+          elapsedSeconds: elapsed,
+          ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
+        });
       }
 
       return {
@@ -625,22 +620,12 @@ export class Z3Solver implements Solver {
         values,
       };
     } else if (statusStr === "unsat") {
-      const wasAbortedBeforeFinalProgress = Boolean(options.signal?.aborted);
-      if (options.onProgress && !wasAbortedBeforeFinalProgress) {
+      if (options.onProgress) {
         const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
           elapsedTime: elapsed,
           elapsedSeconds: elapsed,
         });
-      }
-      if (wasAbortedBeforeFinalProgress) {
-        return {
-          status: "Unknown",
-          terminationStatus: "Interrupted",
-          hasPrimalSolution: false,
-          objectiveValue: null,
-          values: {},
-        };
       }
       return {
         status: "Infeasible",
@@ -650,7 +635,7 @@ export class Z3Solver implements Solver {
         values: {},
       };
     } else if (statusStr === "unknown") {
-      if (options.onProgress && !options.signal?.aborted) {
+      if (options.onProgress) {
         const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
           elapsedTime: elapsed,
@@ -659,7 +644,7 @@ export class Z3Solver implements Solver {
       }
       return {
         status: "Unknown",
-        terminationStatus: options.signal?.aborted ? "Interrupted" : "Unknown",
+        terminationStatus: "Unknown",
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},

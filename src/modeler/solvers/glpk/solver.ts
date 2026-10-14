@@ -190,7 +190,27 @@ export class GLPKSolver implements Solver {
     }
 
     const objConstant =
-      typeof modelData.objective?.constant === "number" ? modelData.objective.constant : 0;
+      typeof modelData.objective?.constant === "number" &&
+      Number.isFinite(modelData.objective.constant)
+        ? modelData.objective.constant
+        : 0;
+    let objConstVarName: string | null = null;
+    if (objConstant !== 0 && glpkOptions.presol) {
+      let candidate = "__washi_obj_const";
+      while (nameToVar.has(candidate)) {
+        candidate = `_${candidate}`;
+      }
+      objConstVarName = candidate;
+      objVars.push({ name: objConstVarName, coef: objConstant });
+      bounds.push({
+        name: objConstVarName,
+        type: glpk.GLP_FX,
+        lb: 1,
+        ub: 1,
+      });
+      glpkProblem.bounds = bounds;
+    }
+    const postSolveObjOffset = objConstVarName !== null ? 0 : objConstant;
 
     const startTime = performance.now();
     let emittedProgressCount = 0;
@@ -201,8 +221,10 @@ export class GLPKSolver implements Solver {
           emittedProgressCount++;
           const rawZ = cbRes?.z;
           const zVal =
-            typeof rawZ === "number" && Number.isFinite(rawZ) && Number.isFinite(rawZ + objConstant)
-              ? rawZ + objConstant
+            typeof rawZ === "number" &&
+            Number.isFinite(rawZ) &&
+            Number.isFinite(rawZ + postSolveObjOffset)
+              ? rawZ + postSolveObjOffset
               : undefined;
           const elapsed = (performance.now() - startTime) / 1000;
           mergedOptions.onProgress?.({
@@ -254,7 +276,7 @@ export class GLPKSolver implements Solver {
     const hasValidObjective =
       typeof rawObj === "number" &&
       Number.isFinite(rawObj) &&
-      Number.isFinite(rawObj + objConstant);
+      Number.isFinite(rawObj + postSolveObjOffset);
     const hasValidVarsObject =
       typeof rawVars === "object" && rawVars !== null && !Array.isArray(rawVars);
 
@@ -263,6 +285,7 @@ export class GLPKSolver implements Solver {
 
     if (hasValidVarsObject) {
       for (const [vName, val] of Object.entries(rawVars)) {
+        if (vName === objConstVarName) continue;
         if (typeof val !== "number" || !Number.isFinite(val)) {
           hasValidVariablePayload = false;
           break;
@@ -300,7 +323,7 @@ export class GLPKSolver implements Solver {
       };
     }
 
-    const objectiveValue = rawObj + objConstant;
+    const objectiveValue = rawObj + postSolveObjOffset;
     if (mergedOptions.onProgress && emittedProgressCount === 0) {
       mergedOptions.onProgress({
         elapsedTime: effectiveRunTime,

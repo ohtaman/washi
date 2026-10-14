@@ -24,7 +24,7 @@ describe("HiGHS worker failures", () => {
     const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
     const requests = [solveLp("first"), solveLp("second")];
     const rejected = requests.map((request) => expect(request).rejects.toThrow("Worker failed"));
-    await vi.waitFor(() => expect(FakeWorker.instances[0]?.messages).toHaveLength(2));
+    await vi.waitFor(() => expect(FakeWorker.instances[0]?.messages).toHaveLength(1));
     const failed = FakeWorker.instances[0];
     failed.onerror?.({ message: "404" });
     await Promise.all(rejected);

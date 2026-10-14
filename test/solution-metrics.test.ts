@@ -311,6 +311,30 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     expect(mZ3Unb.hasPrimalSolution).toBe(true);
     expect(zu.value).not.toBeNull();
 
+    // Unattained Z3 optimization objective (strict inequality 0 <= x < 1) must not claim Optimal
+    const { not } = await import("../src/index.js");
+    const mZ3Open = new Model({ name: "Z3OpenBound", solver: "z3" });
+    const zo = mZ3Open.continuous("zo", { lb: 0, ub: 10 });
+    mZ3Open.add(not(zo.ge(1)));
+    mZ3Open.objective(maximize(zo));
+    const z3OpenStatus = await mZ3Open.solve();
+    expect(z3OpenStatus).toBe("Unknown");
+    expect(mZ3Open.terminationStatus).toBe("Unknown");
+    expect(mZ3Open.hasPrimalSolution).toBe(false);
+    expect(mZ3Open.objectiveValue).toBeNull();
+    expect(zo.value).toBeNull();
+
+    // GLPKSolver applies objective constant in MIP gap (presolve folds fixed constant column into c0)
+    await import("../src/modeler/solvers/glpk/index.js");
+    const mGlpkOffset = new Model({ name: "GLPKOffsetMip", solver: "glpk" });
+    const gx = mGlpkOffset.integer("gx", { lb: 1, ub: 10 });
+    mGlpkOffset.objective(minimize(expr`10 * ${gx} + 990`));
+    const glpkOffsetStatus = await mGlpkOffset.solve({ mipGap: 0.05 });
+    expect(glpkOffsetStatus).toBe("Optimal");
+    expect(mGlpkOffset.hasPrimalSolution).toBe(true);
+    expect(gx.value).toBe(1);
+    expect(mGlpkOffset.objectiveValue).toBe(1000);
+
     // Real HiGHS MIP with nonzero objective offset and mipGap tolerance preserves nonzero relGap at Optimal
     const mOffsetGap = new Model("OffsetGapTolerance");
     const ox1 = mOffsetGap.integer("ox1", { lb: 0 });
