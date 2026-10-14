@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import {
   Model,
+  Constraint,
+  LinExpr,
   expr,
   c,
   maximize,
@@ -312,6 +314,39 @@ describe("Model Integrity Validation (Issue #51)", () => {
       x.lb = "invalid" as any;
       await expect(m.check()).rejects.toThrow(/invalid lower bound/);
       expect(m.status).toBe("NotSolved");
+    });
+
+    it("rejects live renamed constraint collisions, BoolVar-constraint name collisions, and embedded non-finite LHS constants", () => {
+      const m = new Model("LiveAndBoolVarCollision");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      const p = m.bool("p");
+
+      // 1. Live rename of an already-added arithmetic constraint
+      m.constraint(c`${x} <= 5`, "orig_name");
+      m.constraints[0].name = "renamed_con";
+      expect(m.getConstraintByName("renamed_con")).toBe(m.constraints[0]);
+      expect(m.getConstraintByName("orig_name")).toBeUndefined();
+      expect(() => {
+        m.constraint(c`${x} >= 1`, "renamed_con");
+      }).toThrow(/Constraint with name 'renamed_con' already exists in model/);
+
+      // 2. Constraint name colliding with BoolVar name (and vice versa)
+      expect(() => {
+        m.constraint(p.not(), "p");
+      }).toThrow(/conflicts with an existing Boolean variable/);
+      expect(() => {
+        m.constraint(c`${x} <= 8`, "p");
+      }).toThrow(/conflicts with an existing Boolean variable/);
+      expect(() => {
+        m.bool("renamed_con");
+      }).toThrow(/conflicts with an existing constraint/);
+
+      // 3. Embedded Constraint with non-finite lhs.constant inside BoolExpr
+      const badEmbedded = new Constraint(new LinExpr(new Map([[x, 1]]), NaN), "<=", 5, "bad_emb");
+      expect(() => {
+        m.constraint(p.implies(badEmbedded), "lc_bad_emb");
+      }).toThrow(/invalid LHS constant: NaN/);
+      expect(m.logicalConstraints.length).toBe(0);
     });
   });
 

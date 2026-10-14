@@ -46,9 +46,15 @@ export function validateModelIntegrity(model: Model): void {
     }
   }
 
-  // 2. Validate constraint name uniqueness across arithmetic and logical constraints
+  // 2. Validate constraint name uniqueness across arithmetic, logical constraints, and Boolean variables
+  const boolVarNames = new Set<string>(model.boolVars.map((bv) => bv.name));
   const constraintNames = new Set<string>();
   for (const c of model.constraints) {
+    if (boolVarNames.has(c.name)) {
+      throw new Error(
+        `Constraint name "${c.name}" conflicts with Boolean variable "${c.name}" in model "${model.name}".`
+      );
+    }
     if (constraintNames.has(c.name)) {
       throw new Error(
         `Duplicate constraint name "${c.name}" in model "${model.name}".`
@@ -58,6 +64,11 @@ export function validateModelIntegrity(model: Model): void {
   }
 
   for (const lc of model.logicalConstraints) {
+    if (boolVarNames.has(lc.name)) {
+      throw new Error(
+        `Logical constraint name "${lc.name}" conflicts with Boolean variable "${lc.name}" in model "${model.name}".`
+      );
+    }
     if (constraintNames.has(lc.name)) {
       throw new Error(
         `Conflicting constraint name "${lc.name}" across arithmetic and logical constraints in model "${model.name}".`

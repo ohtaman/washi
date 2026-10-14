@@ -376,11 +376,30 @@ export class Model {
     return candidate;
   }
 
+  private hasConstraintName(name: string): boolean {
+    return (
+      this.constraints.some((c) => c.name === name) ||
+      this.logicalConstraints.some((lc) => lc.name === name)
+    );
+  }
+
+  private hasBoolVarName(name: string): boolean {
+    return (
+      this.boolVarMapByName.has(name) ||
+      this.boolVars.some((bv) => bv.name === name)
+    );
+  }
+
   private createBoolVar(name?: string): BoolVar {
     const trimmed = typeof name === "string" ? name.trim() : undefined;
     const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName("p");
     if (this.hasVarName(varName)) {
       throw new Error(`Variable with name '${varName}' already exists in model`);
+    }
+    if (this.hasConstraintName(varName)) {
+      throw new Error(
+        `Boolean variable name '${varName}' conflicts with an existing constraint in model`
+      );
     }
     const bv = new BoolVar(varName);
     this.boolVars.push(bv);
@@ -440,7 +459,11 @@ export class Model {
    * Find a constraint by its name
    */
   getConstraintByName(name: string): Constraint | undefined {
-    return this.constrMapByName.get(name);
+    const mapped = this.constrMapByName.get(name);
+    if (mapped && mapped.name === name) {
+      return mapped;
+    }
+    return this.constraints.find((c) => c.name === name);
   }
 
   /**
@@ -676,12 +699,14 @@ export class Model {
     }
     if (constraint instanceof BoolExpr) {
       const constrName = name || `lc_${this.logicalConstraints.length + 1}`;
-      if (
-        this.constrMapByName.has(constrName) ||
-        this.logicalConstraints.some((lc) => lc.name === constrName)
-      ) {
+      if (this.hasConstraintName(constrName)) {
         throw new Error(
           `Constraint with name '${constrName}' already exists in model`
+        );
+      }
+      if (this.hasBoolVarName(constrName)) {
+        throw new Error(
+          `Constraint name '${constrName}' conflicts with an existing Boolean variable in model`
         );
       }
 
@@ -700,6 +725,11 @@ export class Model {
           if (!Number.isFinite(elem.rhs)) {
             throw new Error(
               `Constraint "${elem.name}" embedded in logical constraint "${constrName}" has invalid RHS: ${elem.rhs}.`
+            );
+          }
+          if (elem.lhs.constant !== undefined && !Number.isFinite(elem.lhs.constant)) {
+            throw new Error(
+              `Constraint "${elem.name}" embedded in logical constraint "${constrName}" has invalid LHS constant: ${elem.lhs.constant}.`
             );
           }
           for (const [v, coeff] of elem.lhs.terms) {
@@ -737,11 +767,13 @@ export class Model {
       }
     }
 
-    if (
-      this.constrMapByName.has(constr.name) ||
-      this.logicalConstraints.some((lc) => lc.name === constr.name)
-    ) {
+    if (this.hasConstraintName(constr.name)) {
       throw new Error(`Constraint with name '${constr.name}' already exists in model`);
+    }
+    if (this.hasBoolVarName(constr.name)) {
+      throw new Error(
+        `Constraint name '${constr.name}' conflicts with an existing Boolean variable in model`
+      );
     }
 
     if (!Number.isFinite(constr.rhs)) {
@@ -871,17 +903,21 @@ export class Model {
     const leName = sense === "==" ? `${baseName}_le` : baseName;
     const geName = sense === "==" ? `${baseName}_ge` : baseName;
 
-    if (
-      (sense === "<=" || sense === "==") &&
-      (this.constrMapByName.has(leName) || this.logicalConstraints.some((lc) => lc.name === leName))
-    ) {
+    if ((sense === "<=" || sense === "==") && this.hasConstraintName(leName)) {
       throw new Error(`Constraint with name '${leName}' already exists in model`);
     }
-    if (
-      (sense === ">=" || sense === "==") &&
-      (this.constrMapByName.has(geName) || this.logicalConstraints.some((lc) => lc.name === geName))
-    ) {
+    if ((sense === "<=" || sense === "==") && this.hasBoolVarName(leName)) {
+      throw new Error(
+        `Constraint name '${leName}' conflicts with an existing Boolean variable in model`
+      );
+    }
+    if ((sense === ">=" || sense === "==") && this.hasConstraintName(geName)) {
       throw new Error(`Constraint with name '${geName}' already exists in model`);
+    }
+    if ((sense === ">=" || sense === "==") && this.hasBoolVarName(geName)) {
+      throw new Error(
+        `Constraint name '${geName}' conflicts with an existing Boolean variable in model`
+      );
     }
 
     let leLinearized: { lhs: LinExpr; rhs: number } | undefined;
