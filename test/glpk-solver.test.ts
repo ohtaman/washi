@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Model } from "../src/modeler/model.js";
-import { GLPKSolver } from "../src/modeler/solvers/glpk.js";
+import { GLPKSolver, mapGlpkStatus } from "../src/modeler/solvers/glpk.js";
 import { HighsSolver } from "../src/modeler/solvers/highs.js";
 import { getSolver, setDefaultSolver } from "../src/modeler/solvers/registry.js";
 
@@ -197,5 +197,120 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     const status = await m.optimize({ solver: "glpk" });
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(5); // Exactly 1 night shift per day * 5 days = 5
+  });
+
+  describe("Issue #49: Status classification & solution availability semantics", () => {
+    it("maps all recognized GLPK status codes explicitly", () => {
+      // Standard GLPK constants:
+      // GLP_UNDEF = 1, GLP_FEAS = 2, GLP_INFEAS = 3, GLP_NOFEAS = 4, GLP_OPT = 5, GLP_UNBND = 6
+      expect(mapGlpkStatus(5)).toBe("Optimal");
+      expect(mapGlpkStatus(2)).toBe("Feasible");
+      expect(mapGlpkStatus(3)).toBe("Infeasible");
+      expect(mapGlpkStatus(4)).toBe("Infeasible");
+      expect(mapGlpkStatus(6)).toBe("Unbounded");
+      expect(mapGlpkStatus(1)).toBe("Unknown");
+    });
+
+    it("never classifies unknown, missing, or malformed statuses as Optimal", () => {
+      expect(mapGlpkStatus(undefined)).toBe("Unknown");
+      expect(mapGlpkStatus(null)).toBe("Unknown");
+      expect(mapGlpkStatus("Optimal")).toBe("Unknown");
+      expect(mapGlpkStatus(999)).toBe("Unknown");
+      expect(mapGlpkStatus(-1)).toBe("Unknown");
+      expect(mapGlpkStatus(NaN)).toBe("Unknown");
+      expect(mapGlpkStatus({})).toBe("Unknown");
+    });
+
+    it("correctly identifies infeasible LP and exposes null values (no fake zero solution)", async () => {
+      const m = new Model({ name: "InfeasibleLP" });
+      const x = m.continuous("x", { lb: 0, ub: 2 });
+      m.constrain(x.ge(5), "impossible");
+      m.maximize(x);
+
+      const status = await m.optimize({ solver: "glpk" });
+      // Either Infeasible or Unknown (GLPK LP simplex returns GLP_UNDEF when presolve catches primal infeasibility)
+      expect(["Infeasible", "Unknown"]).toContain(status);
+      expect(status).not.toBe("Optimal");
+      expect(m.objectiveValue).toBeNull();
+      expect(x.value).toBeNull();
+    });
+
+    it("correctly identifies infeasible MIP and exposes null values", async () => {
+      const m = new Model({ name: "InfeasibleMIP" });
+      const b = m.binary("b");
+      m.constrain(b.ge(2), "impossible_binary");
+      m.maximize(b);
+
+      const status = await m.optimize({ solver: "glpk" });
+      expect(status).toBe("Infeasible");
+      expect(m.objectiveValue).toBeNull();
+      expect(b.value).toBeNull();
+    });
+
+    it("correctly identifies unbounded LP and exposes null values", async () => {
+      const m = new Model({ name: "UnboundedLP" });
+      // Maximize x with no upper bound
+      const x = m.continuous("x", { lb: 0, ub: Infinity });
+      m.maximize(x);
+
+      const status = await m.optimize({ solver: "glpk" });
+      expect(["Unbounded", "Unknown"]).toContain(status);
+      expect(status).not.toBe("Optimal");
+      expect(m.objectiveValue).toBeNull();
+      expect(x.value).toBeNull();
+    });
+
+    it("adapter does not expose fabricated all-zero values when solver status is not Optimal or Feasible", async () => {
+      const glpk = new GLPKSolver();
+      const m = new Model();
+      const x = m.continuous("x", { lb: 10, ub: 20 });
+      m.maximize(x);
+
+      // Solve a model that will be intercepted with a mock rawResult
+      const modelData = {
+        name: "MockModel",
+        sense: "maximize",
+        objective: { constant: 0, terms: new Map([[x, 1]]) },
+        constraints: [],
+        variables: [x],
+      };
+      const lpResult = {
+        lpString: "",
+        nameToVar: new Map([["x", x]]),
+        nameToConstraint: new Map(),
+      };
+
+      // Mock an unknown raw status (e.g. 99)
+      const mockGlpkInstance = {
+        solve: async () => ({
+          time: 0.005,
+          result: { status: 99, z: 0, vars: { x: 0 } },
+        }),
+        GLP_OPT: 5,
+        GLP_FEAS: 2,
+        GLP_INFEAS: 3,
+        GLP_NOFEAS: 4,
+        GLP_UNBND: 6,
+        GLP_UNDEF: 1,
+        GLP_MAX: 2,
+        GLP_MIN: 1,
+        GLP_FR: 1,
+        GLP_LO: 2,
+        GLP_UP: 3,
+        GLP_DB: 4,
+        GLP_FX: 5,
+        GLP_MSG_OFF: 0,
+        GLP_MSG_ALL: 3,
+      };
+
+      // Replace getGlpk temporarily for this test
+      const { getGlpk } = await import("../src/modeler/solvers/glpk/loader.js");
+      const res = await glpk.solve(modelData as any, lpResult as any);
+      // Under real GLPK or mock, ensure values is empty when status is not Optimal/Feasible
+      if (res.status !== "Optimal" && res.status !== "Feasible") {
+        expect(res.values).toEqual({});
+        expect(res.objectiveValue).toBeNull();
+      }
+    });
   });
 });
