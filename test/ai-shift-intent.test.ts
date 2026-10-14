@@ -32,6 +32,56 @@ describe("AI Shift Intent Parser & Requirements Applicator", () => {
       expect(intent.summary).toContain("2");
     });
 
+    it("correctly identifies all seven Japanese weekdays without Sunday false positive", () => {
+      const weekdays = [
+        { text: "月曜日の必要人数を4人にしてください", day: "Mon", count: 4 },
+        { text: "火曜日の必要人数を3人にしてください", day: "Tue", count: 3 },
+        { text: "水曜日の必要人数を2人にしてください", day: "Wed", count: 2 },
+        { text: "木曜日の必要人数を3人にしてください", day: "Thu", count: 3 },
+        { text: "金曜日の必要人数を4人にしてください", day: "Fri", count: 4 },
+        { text: "土曜日の必要人数を2人にしてください", day: "Sat", count: 2 },
+        { text: "日曜日の必要人数を3人にしてください", day: "Sun", count: 3 },
+      ] as const;
+
+      for (const { text, day, count } of weekdays) {
+        const intent = parseUserShiftIntent(text);
+        expect(intent.coverageOverrides, `Testing ${text}`).toEqual({ [day]: count });
+      }
+    });
+
+    it("correctly parses delimited single-kanji weekday abbreviations", () => {
+      const intentMon = parseUserShiftIntent("(月)の必要人数を2人にしてください");
+      expect(intentMon.coverageOverrides).toEqual({ Mon: 2 });
+
+      const intentSun = parseUserShiftIntent("（日）の必要人数を2人にしてください");
+      expect(intentSun.coverageOverrides).toEqual({ Sun: 2 });
+    });
+
+    it("parses multi-digit headcount values without truncating to first digit", () => {
+      const intent = parseUserShiftIntent("土曜日の必要人数を10人にしてください");
+
+      expect(intent.coverageOverrides).toEqual({ Sat: 10 });
+      expect(intent.coverageOverrides?.Sat).not.toBe(1);
+    });
+
+    it("rejects 0人 and leaves coverage requirements unchanged", () => {
+      const intent = parseUserShiftIntent("土曜日の必要人数を0人にしてください");
+
+      expect(intent.coverageOverrides).toBeUndefined();
+      expect(intent.summary).toContain("must be between 1 and 10 staff");
+
+      const updated = applyIntentToRequirements(baseRequirements, intent);
+      expect(updated.requiredCoverage.Sat).toBe(DEFAULT_COVERAGE.Sat);
+    });
+
+    it("rejects out-of-range counts and missing numbers without substituting default 2", () => {
+      const intentOutOfRange = parseUserShiftIntent("土曜日の必要人数を15人にしてください");
+      expect(intentOutOfRange.coverageOverrides).toBeUndefined();
+
+      const intentMissing = parseUserShiftIntent("土曜日の必要人数を変更してください");
+      expect(intentMissing.coverageOverrides).toBeUndefined();
+    });
+
     it("handles English coverage-only query without clearing leaves or waiving senior duty", () => {
       const intent = parseUserShiftIntent("Please reduce Saturday required coverage to 2 staff");
 

@@ -34,7 +34,7 @@ export interface ShiftSolveResult {
   status: "Optimal" | "Infeasible" | "Error";
   buildTimeMs: number;
   solveTimeMs: number;
-  objectiveValue?: number;
+  objectiveValue?: number | null;
   assignments?: ShiftAssignment[];
   dailyCoverage?: Record<Day, { current: number; required: number; seniors: number }>;
   unsatCore?: string[];

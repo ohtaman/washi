@@ -175,7 +175,7 @@ export async function solveShiftSchedule(req: ShiftRequirements): Promise<ShiftS
       status: "Optimal",
       buildTimeMs,
       solveTimeMs,
-      objectiveValue: m.objectiveValue,
+      objectiveValue: m.objectiveValue ?? undefined,
       assignments,
       dailyCoverage,
       modelCodePreview,

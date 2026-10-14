@@ -183,28 +183,64 @@ function createSimulatedSession(_systemPrompt: string): NanoSessionWrapper {
   };
 }
 
+const WORD_NUMBERS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5,
+  six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  一: 1, 二: 2, 三: 3, 四: 4, 五: 5,
+  六: 6, 七: 7, 八: 8, 九: 9, 十: 10,
+};
+
 function parseTargetDay(text: string): Day | null {
-  if (/sat|土曜|土/i.test(text)) return "Sat";
-  if (/sun|日曜|日/i.test(text)) return "Sun";
-  if (/fri|金曜|金/i.test(text)) return "Fri";
-  if (/mon|月曜|月/i.test(text)) return "Mon";
-  if (/tue|火曜|火/i.test(text)) return "Tue";
-  if (/wed|水曜|水/i.test(text)) return "Wed";
-  if (/thu|木曜|木/i.test(text)) return "Thu";
+  // Match full and explicit multi-character names first
+  if (/月曜日|月曜|\bmon(?:day)?\b/i.test(text)) return "Mon";
+  if (/火曜日|火曜|\btue(?:sday)?\b/i.test(text)) return "Tue";
+  if (/水曜日|水曜|\bwed(?:nesday)?\b/i.test(text)) return "Wed";
+  if (/木曜日|木曜|\bthu(?:rsday)?\b/i.test(text)) return "Thu";
+  if (/金曜日|金曜|\bfri(?:day)?\b/i.test(text)) return "Fri";
+  if (/土曜日|土曜|\bsat(?:urday)?\b/i.test(text)) return "Sat";
+  if (/日曜日|日曜|\bsun(?:day)?\b/i.test(text)) return "Sun";
+
+  // Match clearly delimited single-character abbreviations (e.g. "(月)", "（水）", "月:", "月 の")
+  const delimited = text.match(/[（\(]([月火水木金土日])[）\)]|(?:^|[^\p{Script=Han}])([月火水木金土日])(?:[:：\s]|の(?:人数|シフト|体制|出勤))/u);
+  if (delimited) {
+    const kanji = delimited[1] || delimited[2];
+    switch (kanji) {
+      case "月": return "Mon";
+      case "火": return "Tue";
+      case "水": return "Wed";
+      case "木": return "Thu";
+      case "金": return "Fri";
+      case "土": return "Sat";
+      case "日": return "Sun";
+    }
+  }
+
   return null;
 }
 
 function parseTargetCount(text: string): number | null {
-  const match = text.match(/([1-9]|one|two|three|four)\s*(?:人|名|staff|people)?/i);
-  if (match) {
-    const val = match[1].toLowerCase();
-    if (val === "one" || val === "1") return 1;
-    if (val === "two" || val === "2") return 2;
-    if (val === "three" || val === "3") return 3;
-    if (val === "four" || val === "4") return 4;
-    const n = parseInt(val, 10);
-    if (!isNaN(n) && n > 0 && n <= 10) return n;
+  // 1. Look for explicit headcount with units: e.g. "3人", "10名", "4 staff", "2 people", "3人体制"
+  const unitMatch = text.match(/(?:to\s+|[:：=]\s*|\b)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十])\s*(?:人|名|名体制|人体制|staff|people|workers)\b/iu);
+  if (unitMatch) {
+    const raw = unitMatch[1].toLowerCase();
+    const count = WORD_NUMBERS[raw] ?? parseInt(raw, 10);
+    if (!isNaN(count) && count >= 1 && count <= 10) {
+      return count;
+    }
+    return null; // out of range (e.g. 0, negative, > 10)
   }
+
+  // 2. Look for pattern following "to <num>" or "を<num>に" e.g. "必要人数を 3 に", "coverage to 3"
+  const toMatch = text.match(/(?:人数|体制|coverage|staffing|headcount|staff|requirement)?\s*(?:を|to|:|=)\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十])\s*(?:人|名|staff|people|に|へと|へ)?/iu);
+  if (toMatch) {
+    const raw = toMatch[1].toLowerCase();
+    const count = WORD_NUMBERS[raw] ?? parseInt(raw, 10);
+    if (!isNaN(count) && count >= 1 && count <= 10) {
+      return count;
+    }
+    return null;
+  }
+
   return null;
 }
 
@@ -243,8 +279,18 @@ export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
   const targetDay = parseTargetDay(userText);
 
   if (targetDay && isCoverageQuery && !mentionsStaff) {
-    const targetCount = parseTargetCount(userText) ?? 2;
+    const targetCount = parseTargetCount(userText);
     const seniorWaiver = mentionsSeniorWaiver ? false : mentionsSeniorEnforce ? true : undefined;
+
+    // Reject missing, zero, or unsupported counts (leaves requirements untouched)
+    if (targetCount === null) {
+      return {
+        action: "modify",
+        seniorRequiredDaily: seniorWaiver,
+        summary: `Could not parse a valid headcount for ${targetDay} (must be between 1 and 10 staff). Current staffing requirements remain unchanged.`,
+      };
+    }
+
     return {
       action: targetCount < (DEFAULT_COVERAGE[targetDay] ?? 3) ? "relax" : "modify",
       coverageOverrides: { [targetDay]: targetCount },
