@@ -2,7 +2,7 @@ import type { Solver, SolverOptions, SolverResult } from "../types.js";
 import type { LpModelData, LpExportResult } from "../../lp-writer.js";
 import type { SolverStatus } from "../../types.js";
 import { registerSolver } from "../registry.js";
-import { getGlpk } from "./loader.js";
+import * as glpkLoader from "./loader.js";
 
 /**
  * GLPK Solver adapter (GNU Linear Programming Kit via WebAssembly / JS).
@@ -28,7 +28,7 @@ export class GLPKSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const mergedOptions: SolverOptions = { ...this.options, ...options };
-    const glpk = await getGlpk();
+    const glpk = await glpkLoader.getGlpk();
 
     // Mapping from Var to sanitized name used in LP export
     const { nameToVar, nameToConstraint } = lpResult;
@@ -154,54 +154,108 @@ export class GLPKSolver implements Solver {
     const startTime = performance.now();
     const rawResult = await glpk.solve(glpkProblem, glpkOptions);
     const runTime = (performance.now() - startTime) / 1000;
+    const effectiveRunTime =
+      typeof rawResult?.time === "number" && Number.isFinite(rawResult.time)
+        ? rawResult.time
+        : runTime;
 
     const rawStatus = rawResult?.result?.status;
     const status = mapGlpkStatus(rawStatus, glpk);
 
     // Only expose objective and variable values when a valid primal solution/incumbent exists
-    const hasPrimalSolution = status === "Optimal" || status === "Feasible";
+    const isPrimalStatus = status === "Optimal" || status === "Feasible";
 
-    if (!hasPrimalSolution) {
+    if (!isPrimalStatus) {
       return {
         status,
         objectiveValue: null,
         values: {},
         duals: {},
         slacks: {},
-        runTime: rawResult?.time || runTime,
+        runTime: effectiveRunTime,
         logs: [`GLPK solve finished with status: ${status}.`],
         raw: rawResult,
       };
     }
 
     const rawObj = rawResult?.result?.z;
-    const objectiveValue =
-      typeof rawObj === "number" ? rawObj + modelData.objective.constant : null;
+    const rawVars = rawResult?.result?.vars;
+    const objConstant =
+      typeof modelData.objective?.constant === "number" ? modelData.objective.constant : 0;
+    const hasValidObjective =
+      typeof rawObj === "number" &&
+      Number.isFinite(rawObj) &&
+      Number.isFinite(rawObj + objConstant);
+    const hasValidVarsObject =
+      typeof rawVars === "object" && rawVars !== null && !Array.isArray(rawVars);
 
     const valuesRecord: Record<string, number> = {};
-    const rawVars = rawResult?.result?.vars || {};
+    let hasValidVariablePayload = hasValidVarsObject;
 
-    for (const [vName, val] of Object.entries(rawVars)) {
-      const v = nameToVar.get(vName);
-      const originalName = v ? v.name : vName;
-      const numVal = typeof val === "number" ? (Math.abs(val) < 1e-9 ? 0 : val) : 0;
-      valuesRecord[originalName] = numVal;
-    }
+    if (hasValidVarsObject) {
+      for (const [vName, val] of Object.entries(rawVars)) {
+        if (typeof val !== "number" || !Number.isFinite(val)) {
+          hasValidVariablePayload = false;
+          break;
+        }
+        const v = nameToVar.get(vName);
+        const originalName = v ? v.name : vName;
+        valuesRecord[originalName] = Math.abs(val) < 1e-9 ? 0 : val;
+      }
 
-    // When an optimal or feasible primal solution exists, ensure all model variables have an entry
-    for (const v of modelData.variables) {
-      if (valuesRecord[v.name] === undefined) {
-        valuesRecord[v.name] = 0;
+      if (hasValidVariablePayload) {
+        for (const v of modelData.variables) {
+          const lpName = varToName.get(v) || v.name;
+          let rawVal: unknown;
+          if (Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
+            rawVal = (rawVars as Record<string, unknown>)[lpName];
+          } else if (
+            (!nameToVar.has(v.name) || nameToVar.get(v.name) === v) &&
+            Object.prototype.hasOwnProperty.call(rawVars, v.name)
+          ) {
+            rawVal = (rawVars as Record<string, unknown>)[v.name];
+          } else {
+            hasValidVariablePayload = false;
+            break;
+          }
+          if (typeof rawVal !== "number" || !Number.isFinite(rawVal)) {
+            hasValidVariablePayload = false;
+            break;
+          }
+          valuesRecord[v.name] = Math.abs(rawVal) < 1e-9 ? 0 : rawVal;
+        }
       }
     }
 
+    if (!hasValidObjective || !hasValidVariablePayload) {
+      return {
+        status: "Error",
+        objectiveValue: null,
+        values: {},
+        duals: {},
+        slacks: {},
+        runTime: effectiveRunTime,
+        logs: [
+          `GLPK reported status ${status} (${String(rawStatus)}), but the primal solution payload was missing or malformed.`,
+        ],
+        raw: rawResult,
+      };
+    }
+
+    const objectiveValue = rawObj + objConstant;
+
     // Dual values: provided for LP (simplex) solves; MIP does not produce dual solutions
     const dualsRecord: Record<string, number> = {};
-    if (rawResult?.result?.dual) {
+    if (
+      rawResult?.result?.dual &&
+      typeof rawResult.result.dual === "object" &&
+      !Array.isArray(rawResult.result.dual)
+    ) {
       for (const [cName, dualVal] of Object.entries(rawResult.result.dual)) {
+        if (typeof dualVal !== "number" || !Number.isFinite(dualVal)) continue;
         const c = nameToConstraint.get(cName);
         const originalName = c ? c.name : cName;
-        dualsRecord[originalName] = Number(dualVal);
+        dualsRecord[originalName] = Math.abs(dualVal) < 1e-9 ? 0 : dualVal;
       }
     }
 
@@ -210,8 +264,8 @@ export class GLPKSolver implements Solver {
       objectiveValue,
       values: valuesRecord,
       duals: dualsRecord,
-      runTime: rawResult?.time || runTime,
-      logs: [`GLPK solved in ${(rawResult?.time || runTime) * 1000} ms.`],
+      runTime: effectiveRunTime,
+      logs: [`GLPK solved in ${effectiveRunTime * 1000} ms.`],
       raw: rawResult,
     };
   }
