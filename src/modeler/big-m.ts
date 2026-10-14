@@ -84,6 +84,65 @@ function validateIndicatorExpressionInputs(
   return effectiveRhs;
 }
 
+interface ExactDecimal {
+  num: bigint;
+  scale: number; // denominator is 10^scale
+}
+
+function parseExactDecimal(n: number): ExactDecimal | null {
+  if (!Number.isFinite(n)) return null;
+  if (n === 0) return { num: 0n, scale: 0 };
+  const s = n.toString();
+  const match = /^([+-]?\d+)(?:\.(\d+))?(?:[eE]([+-]?\d+))?$/.exec(s);
+  if (!match) return null;
+  const intPart = match[1];
+  const fracPart = match[2] ?? "";
+  const expPart = match[3] ? parseInt(match[3], 10) : 0;
+  if (Math.abs(expPart) > 400) return null;
+  const digits = intPart + fracPart;
+  const rawScale = fracPart.length - expPart;
+  if (rawScale >= 0) {
+    return { num: BigInt(digits), scale: rawScale };
+  }
+  return { num: BigInt(digits) * 10n ** BigInt(-rawScale), scale: 0 };
+}
+
+function addExactDecimal(a: ExactDecimal, b: ExactDecimal): ExactDecimal {
+  if (a.scale === b.scale) {
+    return { num: a.num + b.num, scale: a.scale };
+  }
+  if (a.scale < b.scale) {
+    const diff = BigInt(b.scale - a.scale);
+    return { num: a.num * 10n ** diff + b.num, scale: b.scale };
+  }
+  const diff = BigInt(a.scale - b.scale);
+  return { num: a.num + b.num * 10n ** diff, scale: a.scale };
+}
+
+function subExactDecimal(a: ExactDecimal, b: ExactDecimal): ExactDecimal {
+  return addExactDecimal(a, { num: -b.num, scale: b.scale });
+}
+
+function mulExactDecimal(a: ExactDecimal, b: ExactDecimal): ExactDecimal {
+  return { num: a.num * b.num, scale: a.scale + b.scale };
+}
+
+function compareFloatWithExact(f: number, exact: ExactDecimal): number {
+  const fDec = parseExactDecimal(f);
+  if (!fDec) return 0;
+  const diff = subExactDecimal(fDec, exact);
+  return diff.num < 0n ? -1 : diff.num > 0n ? 1 : 0;
+}
+
+function nextUpPositive(x: number): number {
+  if (x === 0) return Number.MIN_VALUE;
+  let step = Math.max(Number.MIN_VALUE, x * (Number.EPSILON / 2));
+  while (x + step === x && Number.isFinite(step)) {
+    step *= 2;
+  }
+  return x + step;
+}
+
 /**
  * Derives a sufficient, tight Big-M value for a "<=" linear inequality:
  *   lhs <= rhs  (or terms <= effectiveRhs)
@@ -107,8 +166,7 @@ export function deriveBigMForLe(
 ): number {
   const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
   let maxLhs = 0;
-  let maxAbsTerm = Math.abs(effectiveRhs);
-  let hasFractionalFloat = !Number.isInteger(effectiveRhs);
+  let exactMaxLhs: ExactDecimal | null = { num: 0n, scale: 0 };
 
   for (const [v, coeff] of lhs.terms) {
     if (coeff === 0) continue;
@@ -142,11 +200,10 @@ export function deriveBigMForLe(
         `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
       );
     }
-    if (Math.abs(termMax) > maxAbsTerm) {
-      maxAbsTerm = Math.abs(termMax);
-    }
-    if (!Number.isInteger(coeff) || !Number.isInteger(boundVal) || !Number.isInteger(termMax)) {
-      hasFractionalFloat = true;
+    if (exactMaxLhs !== null) {
+      const cDec = parseExactDecimal(coeff);
+      const bDec = parseExactDecimal(boundVal);
+      exactMaxLhs = cDec && bDec ? addExactDecimal(exactMaxLhs, mulExactDecimal(cDec, bDec)) : null;
     }
   }
 
@@ -159,10 +216,19 @@ export function deriveBigMForLe(
     );
   }
 
-  const ulpPad = hasFractionalFloat ? 8 * Number.EPSILON * Math.max(maxAbsTerm, Math.abs(maxLhs)) : 0;
-  let M = Math.max(0, rawDiff + ulpPad);
-  if (M > 0 && hasFractionalFloat && effectiveRhs + M < maxLhs + ulpPad) {
-    M += 8 * Number.EPSILON * Math.max(Math.abs(effectiveRhs), M);
+  let M = Math.max(0, rawDiff);
+  const exactRhs = parseExactDecimal(effectiveRhs);
+  if (exactMaxLhs && exactRhs) {
+    const exactDiff = subExactDecimal(exactMaxLhs, exactRhs);
+    if (exactDiff.num > 0n) {
+      while (
+        Number.isFinite(M) &&
+        (compareFloatWithExact(M, exactDiff) < 0 ||
+          compareFloatWithExact(effectiveRhs + M, exactMaxLhs) < 0)
+      ) {
+        M = nextUpPositive(M);
+      }
+    }
   }
   if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs + M)) {
     throw new Error(
@@ -198,8 +264,7 @@ export function deriveBigMForGe(
 ): number {
   const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
   let minLhs = 0;
-  let maxAbsTerm = Math.abs(effectiveRhs);
-  let hasFractionalFloat = !Number.isInteger(effectiveRhs);
+  let exactMinLhs: ExactDecimal | null = { num: 0n, scale: 0 };
 
   for (const [v, coeff] of lhs.terms) {
     if (coeff === 0) continue;
@@ -233,11 +298,10 @@ export function deriveBigMForGe(
         `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
       );
     }
-    if (Math.abs(termMin) > maxAbsTerm) {
-      maxAbsTerm = Math.abs(termMin);
-    }
-    if (!Number.isInteger(coeff) || !Number.isInteger(boundVal) || !Number.isInteger(termMin)) {
-      hasFractionalFloat = true;
+    if (exactMinLhs !== null) {
+      const cDec = parseExactDecimal(coeff);
+      const bDec = parseExactDecimal(boundVal);
+      exactMinLhs = cDec && bDec ? addExactDecimal(exactMinLhs, mulExactDecimal(cDec, bDec)) : null;
     }
   }
 
@@ -250,10 +314,19 @@ export function deriveBigMForGe(
     );
   }
 
-  const ulpPad = hasFractionalFloat ? 8 * Number.EPSILON * Math.max(maxAbsTerm, Math.abs(minLhs)) : 0;
-  let M = Math.max(0, rawDiff + ulpPad);
-  if (M > 0 && hasFractionalFloat && effectiveRhs - M > minLhs - ulpPad) {
-    M += 8 * Number.EPSILON * Math.max(Math.abs(effectiveRhs), M);
+  let M = Math.max(0, rawDiff);
+  const exactRhs = parseExactDecimal(effectiveRhs);
+  if (exactMinLhs && exactRhs) {
+    const exactDiff = subExactDecimal(exactRhs, exactMinLhs);
+    if (exactDiff.num > 0n) {
+      while (
+        Number.isFinite(M) &&
+        (compareFloatWithExact(M, exactDiff) < 0 ||
+          compareFloatWithExact(effectiveRhs - M, exactMinLhs) > 0)
+      ) {
+        M = nextUpPositive(M);
+      }
+    }
   }
   if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs - M)) {
     throw new Error(
@@ -328,10 +401,26 @@ export function buildIndicatorLinearization(
       // terms + M * binVar <= effectiveRhs + M
       deltaBinCoeff = M;
       finalRhs = effectiveRhs + M;
+      const exactEff = parseExactDecimal(effectiveRhs);
+      const exactM = parseExactDecimal(M);
+      if (exactEff && exactM && M > 0) {
+        const target = addExactDecimal(exactEff, exactM);
+        while (Number.isFinite(finalRhs) && compareFloatWithExact(finalRhs, target) < 0) {
+          finalRhs = nextUpPositive(finalRhs);
+        }
+      }
     } else {
       // terms - M * binVar >= effectiveRhs - M
       deltaBinCoeff = -M;
       finalRhs = effectiveRhs - M;
+      const exactEff = parseExactDecimal(effectiveRhs);
+      const exactM = parseExactDecimal(M);
+      if (exactEff && exactM && M > 0) {
+        const target = subExactDecimal(exactEff, exactM);
+        while (Number.isFinite(finalRhs) && compareFloatWithExact(finalRhs, target) > 0) {
+          finalRhs = -nextUpPositive(-finalRhs);
+        }
+      }
     }
   } else {
     if (sense === "<=") {

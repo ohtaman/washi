@@ -475,9 +475,9 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       await mFrac.solve();
       expect(xFrac.value).toBeCloseTo(0.1, 6);
 
-      // 9. Floating-point downward rounding in coeff * bound (0.3 * 6.1 < 1.83) does not cut off valid boundary points in exact solvers (Z3) when inactive
+      // 9. Floating-point downward rounding in coeff * bound (0.3 * 6.1 < 1.83) does not cut off valid boundary points in exact solvers (Z3) when inactive or active
       await import("../src/modeler/solvers/z3/index.js");
-      const mZ3 = new Model({ name: "Z3FloatBigM", solver: "z3" });
+      const mZ3 = new Model({ name: "Z3FloatBigMInactive", solver: "z3" });
       const xZ3 = mZ3.continuous("x", { lb: 0, ub: 6.1 });
       const bZ3 = mZ3.binary("b");
       mZ3.indicator(bZ3, xZ3.mul(0.3).le(0), { activeValue: 1 });
@@ -485,6 +485,15 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       mZ3.add(xZ3.eq(6.1));
       const checkRes = await mZ3.check();
       expect(checkRes.status).toBe("Sat");
+
+      const mZ3Active = new Model({ name: "Z3FloatBigMActive", solver: "z3" });
+      const xAct = mZ3Active.continuous("x", { lb: 0, ub: 6.1 });
+      const bAct = mZ3Active.binary("b");
+      mZ3Active.indicator(bAct, xAct.le(0.1), { activeValue: 1 });
+      mZ3Active.add(bAct.eq(1));
+      mZ3Active.add(xAct.eq(0.1));
+      const checkActRes = await mZ3Active.check();
+      expect(checkActRes.status).toBe("Sat");
     });
   });
 });
