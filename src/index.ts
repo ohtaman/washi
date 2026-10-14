@@ -53,6 +53,7 @@ export {
   type ComparisonSense,
   type SolverStatus,
   type TerminationStatus,
+  type SolveProgressEvent,
   type SolveOptions,
   type SolverSolution,
   type CheckResult,

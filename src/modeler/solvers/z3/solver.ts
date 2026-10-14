@@ -257,7 +257,19 @@ export class Z3Solver implements Solver {
    * Tracks constraints to return an unsatCore if infeasible.
    */
   async check(modelData: any, options: SolverOptions = {}): Promise<SolverCheckResult> {
+    if (options.signal?.aborted) {
+      return {
+        status: "Unknown",
+        values: {},
+      };
+    }
     const { Context } = await loadZ3(options);
+    if (options.signal?.aborted) {
+      return {
+        status: "Unknown",
+        values: {},
+      };
+    }
     const ctx = new Context(`check_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     const s = new ctx.Solver();
     const trans = this.createContextTranslator(ctx);
@@ -306,6 +318,13 @@ export class Z3Solver implements Solver {
       const name = (item && item.name) || `lc_${i + 1}`;
       const expr = (item && item.expr) || item;
       s.addAndTrack(trans.translateBoolExpr(expr), createTracker(name));
+    }
+
+    if (options.signal?.aborted) {
+      return {
+        status: "Unknown",
+        values: {},
+      };
     }
 
     let unregister: (() => void) | undefined;
@@ -371,6 +390,16 @@ export class Z3Solver implements Solver {
     _lpResult: any,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
+    if (options.signal?.aborted) {
+      return {
+        status: "Unknown",
+        terminationStatus: "Interrupted",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+      };
+    }
+    const startTime = performance.now();
     const hasObjective =
       modelData.objective !== null &&
       modelData.objective !== undefined &&
@@ -387,6 +416,24 @@ export class Z3Solver implements Solver {
       }
 
       const isSat = checkRes.status === "Sat";
+      const objVal = isSat ? (modelData.objective?.constant ?? 0) : null;
+      if (options.onProgress && !options.signal?.aborted) {
+        const elapsed = (performance.now() - startTime) / 1000;
+        options.onProgress({
+          elapsedTime: elapsed,
+          elapsedSeconds: elapsed,
+          ...(typeof objVal === "number" && Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
+        });
+      }
+      if (options.signal?.aborted) {
+        return {
+          status: isSat ? "Feasible" : "Unknown",
+          terminationStatus: "Interrupted",
+          hasPrimalSolution: isSat,
+          objectiveValue: objVal,
+          values: isSat ? numericValues : {},
+        };
+      }
       const mappedStatus = isSat
         ? "Optimal"
         : checkRes.status === "Unsat"
@@ -398,12 +445,21 @@ export class Z3Solver implements Solver {
         status: mappedStatus,
         terminationStatus: mappedStatus,
         hasPrimalSolution: isSat,
-        objectiveValue: isSat ? (modelData.objective?.constant ?? 0) : null,
+        objectiveValue: objVal,
         values: isSat ? numericValues : {},
       };
     }
 
     const { Context } = await loadZ3(options);
+    if (options.signal?.aborted) {
+      return {
+        status: "Unknown",
+        terminationStatus: "Interrupted",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+      };
+    }
     const ctx = new Context(`opt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     const opt = new ctx.Optimize();
     const trans = this.createContextTranslator(ctx);
@@ -450,6 +506,16 @@ export class Z3Solver implements Solver {
 
     const sense = (modelData.sense || "MINIMIZE").toUpperCase();
     const objHandle = sense === "MAXIMIZE" ? opt.maximize(objAst) : opt.minimize(objAst);
+
+    if (options.signal?.aborted) {
+      return {
+        status: "Unknown",
+        terminationStatus: "Interrupted",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+      };
+    }
 
     let unregister: (() => void) | undefined;
     let checkRes: any;
@@ -503,6 +569,14 @@ export class Z3Solver implements Solver {
       }
 
       if (isUnbounded) {
+        if (options.onProgress) {
+          const elapsed = (performance.now() - startTime) / 1000;
+          options.onProgress({
+            elapsedTime: elapsed,
+            elapsedSeconds: elapsed,
+            ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
+          });
+        }
         return {
           status: "Unbounded",
           terminationStatus: "Unbounded",
@@ -513,6 +587,13 @@ export class Z3Solver implements Solver {
       }
 
       if (isUnattained) {
+        if (options.onProgress) {
+          const elapsed = (performance.now() - startTime) / 1000;
+          options.onProgress({
+            elapsedTime: elapsed,
+            elapsedSeconds: elapsed,
+          });
+        }
         return {
           status: "Unknown",
           terminationStatus: "Unknown",
@@ -520,6 +601,15 @@ export class Z3Solver implements Solver {
           objectiveValue: null,
           values: {},
         };
+      }
+
+      if (options.onProgress) {
+        const elapsed = (performance.now() - startTime) / 1000;
+        options.onProgress({
+          elapsedTime: elapsed,
+          elapsedSeconds: elapsed,
+          ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
+        });
       }
 
       return {
@@ -530,6 +620,13 @@ export class Z3Solver implements Solver {
         values,
       };
     } else if (statusStr === "unsat") {
+      if (options.onProgress) {
+        const elapsed = (performance.now() - startTime) / 1000;
+        options.onProgress({
+          elapsedTime: elapsed,
+          elapsedSeconds: elapsed,
+        });
+      }
       return {
         status: "Infeasible",
         terminationStatus: "Infeasible",
@@ -538,6 +635,13 @@ export class Z3Solver implements Solver {
         values: {},
       };
     } else if (statusStr === "unknown") {
+      if (options.onProgress) {
+        const elapsed = (performance.now() - startTime) / 1000;
+        options.onProgress({
+          elapsedTime: elapsed,
+          elapsedSeconds: elapsed,
+        });
+      }
       return {
         status: "Unknown",
         terminationStatus: "Unknown",

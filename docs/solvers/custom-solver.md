@@ -40,6 +40,7 @@ import type {
   LpExportResult,
   SolverStatus,
   TerminationStatus,
+  SolveProgressEvent,
 } from "@ohtaman/washi";
 ```
 
@@ -99,6 +100,32 @@ export interface SolverCapabilities {
 
   /** Supports extracting an unsatisfiable core (conflicting constraint subset) */
   supportsUnsatCore?: boolean;
+}
+```
+
+### `SolverOptions` & `SolveProgressEvent`
+
+Runtime options passed to `solve` and `check` include cancellation and progress hooks:
+
+```typescript
+export interface SolverOptions {
+  /** Time limit in seconds */
+  timeLimit?: number;
+
+  /** Relative MIP optimality gap tolerance */
+  mipGap?: number;
+
+  /** Enable solver console logging */
+  verbose?: boolean;
+
+  /** Cooperative cancellation signal; when aborted, return terminationStatus: "Interrupted" */
+  signal?: AbortSignal;
+
+  /** Progress callback invoked with normalized SolveProgressEvent snapshots */
+  onProgress?: (progress: SolveProgressEvent) => void;
+
+  /** Additional solver-specific options */
+  [key: string]: any;
 }
 ```
 
