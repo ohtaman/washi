@@ -95,7 +95,15 @@ export interface SolveOptions {
   relGap?: number;
   absGap?: number;
   wasmUrl?: string;
-  /** AbortSignal to cancel an in-flight solve */
+  /**
+   * AbortSignal to cancel a solve:
+   * - Pre-solve cancellation (`signal.aborted` before execution starts) is supported by all solvers.
+   * - Preemptive mid-solve cancellation is supported in browser HiGHS via Web Worker termination
+   *   (and cancels queued Worker requests before they are dispatched).
+   * - Main-thread (Node.js) HiGHS supports cooperative mid-solve cancellation when `abort()` is
+   *   triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint.
+   * - Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
+   */
   signal?: AbortSignal;
   /** Callback invoked with real solver progress metrics when available */
   onProgress?: (progress: SolveProgressEvent) => void;

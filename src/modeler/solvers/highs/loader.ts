@@ -423,6 +423,7 @@ export async function solveLpWithHighs(
           }
         };
 
+        let didInterrupt = false;
         const hasCallbacks = Boolean(options.signal || options.onProgress || options.onIncumbent);
         if (hasCallbacks) {
           const cbTypes = highs.constants?.callbackType ?? {
@@ -436,6 +437,7 @@ export async function solveLpWithHighs(
           };
           const handleInterrupt = (event: any): undefined => {
             if (options.signal?.aborted) {
+              didInterrupt = true;
               event.interrupt();
               return undefined;
             }
@@ -443,6 +445,7 @@ export async function solveLpWithHighs(
               emittedProgressCount++;
               options.onProgress(extractProgressEvent(event));
               if (options.signal?.aborted) {
+                didInterrupt = true;
                 event.interrupt();
               }
             }
@@ -475,7 +478,7 @@ export async function solveLpWithHighs(
         }
 
         let statusCode: number = m.getModelStatus();
-        if (options.signal?.aborted) {
+        if (didInterrupt) {
           statusCode = 17;
         }
         const statusStr = HIGHS_STATUS_NAMES[statusCode] ?? "Unknown";

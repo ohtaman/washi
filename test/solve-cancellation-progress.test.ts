@@ -96,7 +96,7 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
     }
   });
 
-  it("terminates an in-flight Web Worker on abort, preserves streamed incumbent, and creates a fresh worker on next solve", async () => {
+  it("terminates an in-flight Web Worker on abort, drops aborted queued requests without executing them, and creates a fresh worker for remaining queued requests", async () => {
     class ControllableFakeWorker {
       static instances: ControllableFakeWorker[] = [];
       onmessage: ((event: any) => void) | null = null;
@@ -119,30 +119,46 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
 
     const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
 
-    const controller = new AbortController();
+    const controller1 = new AbortController();
+    const controllerQueued = new AbortController();
     const receivedProgress: SolveProgressEvent[] = [];
 
     const firstPromise = solveLp("Maximize\n obj: x\nBounds\n 0 <= x <= 10\nBinary\n x\nEnd", {
       useWorker: true,
-      signal: controller.signal,
+      signal: controller1.signal,
       onProgress: (ev) => receivedProgress.push(ev),
     });
 
-    // Queue a second request behind the first on the same worker
-    const secondPromise = solveLp("Maximize\n obj: x\nBounds\n 0 <= x <= 5\nEnd", {
+    // Queue a request that will be cancelled while waiting in the queue
+    const cancelledQueuedPromise = solveLp("Maximize\n obj: x\nBounds\n 0 <= x <= 3\nEnd", {
+      useWorker: true,
+      signal: controllerQueued.signal,
+    });
+
+    // Queue a third request behind the second
+    const thirdPromise = solveLp("Maximize\n obj: x\nBounds\n 0 <= x <= 5\nEnd", {
       useWorker: true,
     });
 
+    // Only the head request (req1) should be posted to the Worker while it is busy
     await vi.waitFor(() =>
-      expect(ControllableFakeWorker.instances[0]?.messages).toHaveLength(2)
+      expect(ControllableFakeWorker.instances[0]?.messages).toHaveLength(1)
     );
     const firstWorker = ControllableFakeWorker.instances[0];
     const req1Id = firstWorker.messages[0].id;
-    const req2Id = firstWorker.messages[1].id;
     expect(firstWorker.messages[0].reportProgress).toBe(true);
     // Ensure non-cloneable signal/onProgress were stripped before postMessage
     expect(firstWorker.messages[0].options.signal).toBeUndefined();
     expect(firstWorker.messages[0].options.onProgress).toBeUndefined();
+
+    // Cancel the second (queued) request before req1 finishes
+    controllerQueued.abort();
+    const cancelledQueuedRes = await cancelledQueuedPromise;
+    expect(cancelledQueuedRes.result.Status).toBe("Interrupted");
+    expect(cancelledQueuedRes.result.HasPrimalSolution).toBe(false);
+    // Active worker must NOT be terminated when a non-active queued request is aborted
+    expect(firstWorker.terminate).not.toHaveBeenCalled();
+    expect(firstWorker.messages).toHaveLength(1);
 
     // Simulate Worker streaming an incumbent and a progress event for req1
     firstWorker.onmessage?.({
@@ -180,7 +196,7 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
     expect(receivedProgress[0].objectiveValue).toBe(1);
 
     // Abort the first solve while it is still running in the Worker
-    controller.abort();
+    controller1.abort();
 
     const firstRes = await firstPromise;
     expect(firstWorker.terminate).toHaveBeenCalledOnce();
@@ -190,16 +206,18 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
     expect(firstRes.result.ObjectiveValue).toBe(1);
     expect(firstRes.result.Columns.x.Primal).toBe(1);
 
-    // Verify the queued second request was re-dispatched onto a fresh Worker (instance[1])
+    // Verify only the un-aborted third request was dispatched onto a fresh Worker (instance[1]),
+    // skipping the already-cancelled second request
     await vi.waitFor(() => expect(ControllableFakeWorker.instances).toHaveLength(2));
     const secondWorker = ControllableFakeWorker.instances[1];
     expect(secondWorker.messages).toHaveLength(1);
-    expect(secondWorker.messages[0].id).toBe(req2Id);
+    const req3Id = secondWorker.messages[0].id;
+    expect(secondWorker.messages[0].lpString).toContain("0 <= x <= 5");
 
     secondWorker.onmessage?.({
       data: {
         type: "SOLVE_SUCCESS",
-        id: req2Id,
+        id: req3Id,
         result: {
           Status: "Optimal",
           StatusCode: 7,
@@ -211,9 +229,9 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
       },
     });
 
-    const secondRes = await secondPromise;
-    expect(secondRes.result.Status).toBe("Optimal");
-    expect(secondRes.result.ObjectiveValue).toBe(5);
+    const thirdRes = await thirdPromise;
+    expect(thirdRes.result.Status).toBe("Optimal");
+    expect(thirdRes.result.ObjectiveValue).toBe(5);
   });
 
   it("supports cancellation and progress events across MockSolver, GLPK, and Z3", async () => {
@@ -249,13 +267,19 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
     expect(mockSol.hasPrimalSolution).toBe(true);
     expect(mockSol.objectiveValue).toBe(7);
 
-    // 2. GLPK progress reporting and pre-abort
+    // 2. GLPK progress reporting, post-solve callback abort preservation, and pre-abort
     const glpkEvents: SolveProgressEvent[] = [];
+    const glpkPostCtrl = new AbortController();
     const glpkStatus = await model.solve({
       solver: "glpk",
-      onProgress: (ev) => glpkEvents.push(ev),
+      signal: glpkPostCtrl.signal,
+      onProgress: (ev) => {
+        glpkEvents.push(ev);
+        glpkPostCtrl.abort();
+      },
     });
     expect(glpkStatus).toBe("Optimal");
+    expect(model.terminationStatus).toBe("Optimal");
     expect(glpkEvents.length).toBeGreaterThan(0);
 
     const abortedCtrl = new AbortController();

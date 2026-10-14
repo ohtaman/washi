@@ -198,7 +198,6 @@ export class GLPKSolver implements Solver {
       glpkOptions.cb = {
         each: 1,
         call: (cbRes: any) => {
-          if (mergedOptions.signal?.aborted) return;
           emittedProgressCount++;
           const rawZ = cbRes?.z;
           const zVal =
@@ -229,28 +228,23 @@ export class GLPKSolver implements Solver {
     const isPrimalStatus = status === "Optimal" || status === "Feasible";
 
     if (!isPrimalStatus) {
-      if (mergedOptions.onProgress && !mergedOptions.signal?.aborted && emittedProgressCount === 0) {
+      if (mergedOptions.onProgress && emittedProgressCount === 0) {
         mergedOptions.onProgress({
           elapsedTime: effectiveRunTime,
           elapsedSeconds: effectiveRunTime,
         });
       }
-      const finalAborted = Boolean(mergedOptions.signal?.aborted);
       const infeasCode = glpk?.GLP_INFEAS ?? 3;
       return {
-        status: finalAborted ? "Unknown" : status,
-        terminationStatus: finalAborted
-          ? "Interrupted"
-          : rawStatus === infeasCode
-            ? "Unknown"
-            : status,
+        status,
+        terminationStatus: rawStatus === infeasCode ? "Unknown" : status,
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
         duals: {},
         slacks: {},
         runTime: effectiveRunTime,
-        logs: [`GLPK solve finished with status: ${finalAborted ? "Interrupted" : status}.`],
+        logs: [`GLPK solve finished with status: ${status}.`],
         raw: rawResult,
       };
     }
@@ -307,7 +301,7 @@ export class GLPKSolver implements Solver {
     }
 
     const objectiveValue = rawObj + objConstant;
-    if (mergedOptions.onProgress && !mergedOptions.signal?.aborted && emittedProgressCount === 0) {
+    if (mergedOptions.onProgress && emittedProgressCount === 0) {
       mergedOptions.onProgress({
         elapsedTime: effectiveRunTime,
         elapsedSeconds: effectiveRunTime,
@@ -330,10 +324,9 @@ export class GLPKSolver implements Solver {
       }
     }
 
-    const finalAborted = Boolean(mergedOptions.signal?.aborted);
     return {
-      status: finalAborted ? "Feasible" : status,
-      terminationStatus: finalAborted ? "Interrupted" : status === "Feasible" ? "Unknown" : status,
+      status,
+      terminationStatus: status === "Feasible" ? "Unknown" : status,
       hasPrimalSolution: true,
       objectiveValue,
       values: valuesRecord,

@@ -12,6 +12,7 @@ interface PendingWorkerRequest {
   lpString: string;
   workerOptions: Record<string, any>;
   reportProgress: boolean;
+  dispatched?: boolean;
   startTime: number;
   onProgress?: (progress: SolveProgressEvent) => void;
   lastProgress?: SolveProgressEvent;
@@ -64,6 +65,28 @@ function createInterruptedRawResult(
   };
 }
 
+function dispatchHeadRequestIfIdle(worker: Worker): void {
+  const head = pendingRequests.values().next().value as PendingWorkerRequest | undefined;
+  if (!head || head.dispatched) {
+    return;
+  }
+  head.dispatched = true;
+  try {
+    worker.postMessage({
+      type: "SOLVE",
+      id: head.id,
+      lpString: head.lpString,
+      options: head.workerOptions,
+      ...(head.reportProgress ? { reportProgress: true } : {}),
+    });
+  } catch (err) {
+    pendingRequests.delete(head.id);
+    head.cleanupAbort?.();
+    head.reject(err);
+    dispatchHeadRequestIfIdle(worker);
+  }
+}
+
 function terminateActiveWorkerAndRedispatch(): void {
   const currentWorker = workerInstance;
   if (currentWorker) {
@@ -71,24 +94,14 @@ function terminateActiveWorkerAndRedispatch(): void {
     currentWorker.terminate();
   }
 
+  for (const other of pendingRequests.values()) {
+    other.dispatched = false;
+  }
+
   if (pendingRequests.size > 0) {
     const replacementWorker = getWorker();
     if (replacementWorker) {
-      for (const other of Array.from(pendingRequests.values())) {
-        try {
-          replacementWorker.postMessage({
-            type: "SOLVE",
-            id: other.id,
-            lpString: other.lpString,
-            options: other.workerOptions,
-            ...(other.reportProgress ? { reportProgress: true } : {}),
-          });
-        } catch (err) {
-          pendingRequests.delete(other.id);
-          other.cleanupAbort?.();
-          other.reject(err);
-        }
-      }
+      dispatchHeadRequestIfIdle(replacementWorker);
     } else {
       const recreateErr = new Error("[WaSHI] Failed to recreate HiGHS Worker after interruption.");
       for (const other of Array.from(pendingRequests.values())) {
@@ -151,6 +164,9 @@ function getWorker(): Worker | null {
           pending.resolve({ result, runTime });
         } else {
           pending.reject(new Error(error || "Worker solve failed"));
+        }
+        if (workerInstance === currentWorker) {
+          dispatchHeadRequestIfIdle(currentWorker);
         }
       };
 
@@ -263,18 +279,6 @@ export async function solveLp(
     }
 
     pendingRequests.set(id, entry);
-    try {
-      worker.postMessage({
-        type: "SOLVE",
-        id,
-        lpString,
-        options: workerOptions,
-        ...(reportProgress ? { reportProgress: true } : {}),
-      });
-    } catch (error) {
-      pendingRequests.delete(id);
-      entry.cleanupAbort?.();
-      reject(error);
-    }
+    dispatchHeadRequestIfIdle(worker);
   });
 }
