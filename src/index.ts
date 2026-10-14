@@ -53,6 +53,7 @@ export {
   type OptimizationSense,
   type ComparisonSense,
   type SolverStatus,
+  type TerminationStatus,
   type SolveOptions,
   type SolverSolution,
   type CheckResult,

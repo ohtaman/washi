@@ -43,6 +43,25 @@ export type SolverStatus =
   | "Unsat"
   | "Unknown";
 
+export type TerminationStatus =
+  | "Optimal"
+  | "Feasible"
+  | "Infeasible"
+  | "Unbounded"
+  | "InfeasibleOrUnbounded"
+  | "TimeLimit"
+  | "IterationLimit"
+  | "SolutionLimit"
+  | "MemoryLimit"
+  | "ObjectiveBound"
+  | "ObjectiveTarget"
+  | "Interrupted"
+  | "Error"
+  | "NotSolved"
+  | "Sat"
+  | "Unsat"
+  | "Unknown";
+
 export interface SolveOptions {
   timeLimit?: number; // seconds
   outputFlag?: boolean;
@@ -56,7 +75,19 @@ export interface SolveOptions {
 
 export interface SolverSolution {
   status: SolverStatus;
+  /** Exact termination reason independent of whether a feasible incumbent is available */
+  terminationStatus: TerminationStatus;
+  /** Whether a feasible primal solution / incumbent is available */
+  hasPrimalSolution: boolean;
   objectiveValue: number | null;
+  /** Best proven dual/objective bound when provided by the solver */
+  objectiveBound?: number;
+  /** Relative MIP optimality gap when provided by the solver */
+  relGap?: number;
+  /** Alias for relGap: relative MIP optimality gap when provided by the solver */
+  mipGap?: number;
+  /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when provided by the solver */
+  absGap?: number;
   values: Record<string, number>;
   duals: Record<string, number>;
   reducedCosts: Record<string, number>;

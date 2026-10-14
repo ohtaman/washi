@@ -1,3 +1,4 @@
+import type { Highs, Model as HighsPersistentModel, SymbolDisposable } from "highs";
 import type { SolveOptions } from "../../types.js";
 import { getBundledWasmUrl } from "./assets.js";
 import { loadNodeHighs } from "./node-runtime.js";
@@ -5,7 +6,7 @@ import { loadNodeHighs } from "./node-runtime.js";
 export const OFFICIAL_HIGHS_CDN_WASM_URL =
   "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.wasm";
 
-type HighsInstance = any;
+type HighsInstance = Highs;
 
 let cachedHighsPromise: Promise<HighsInstance> | null = null;
 let cachedWasmKey: string | null = null;
@@ -143,25 +144,62 @@ export async function getHighs(options: SolveOptions = {}): Promise<HighsInstanc
 
 export interface RawHighsSolveResult {
   Status: string;
+  StatusCode?: number;
+  PrimalSolutionStatus?: number;
+  DualSolutionStatus?: number;
+  HasPrimalSolution?: boolean;
+  IsMip?: boolean;
   ObjectiveValue: number;
+  ObjectiveOffsetApplied?: boolean;
+  MipDualBound?: number;
+  MipGap?: number;
   Columns: Record<string, {
-    Index: number;
-    Lower: number;
-    Upper: number;
-    Type: string;
-    Primal: number;
+    Index?: number;
+    Lower?: number;
+    Upper?: number;
+    Type?: string;
+    Primal?: number;
     Dual?: number;
-    Name: string;
+    Name?: string;
   }>;
   Rows?: Record<string, {
     Index: number;
-    Lower: number;
-    Upper: number;
+    Lower?: number;
+    Upper?: number;
     Dual?: number;
     Primal?: number;
-    Name: string;
+    Name?: string;
+  }> | Array<{
+    Index: number;
+    Lower?: number;
+    Upper?: number;
+    Dual?: number;
+    Primal?: number;
+    Name?: string;
   }>;
 }
+
+const HIGHS_STATUS_NAMES: Record<number, string> = {
+  0: "Not Set",
+  1: "Load error",
+  2: "Model error",
+  3: "Presolve error",
+  4: "Solve error",
+  5: "Postsolve error",
+  6: "Empty",
+  7: "Optimal",
+  8: "Infeasible",
+  9: "Primal infeasible or unbounded",
+  10: "Unbounded",
+  11: "Bound on objective reached",
+  12: "Target for objective reached",
+  13: "Time limit reached",
+  14: "Iteration limit reached",
+  15: "Unknown",
+  16: "Solution limit reached",
+  17: "Interrupted",
+  18: "Memory limit reached",
+};
 
 /**
  * Solve an LP formatted model using HiGHS WASM
@@ -188,9 +226,171 @@ export async function solveLpWithHighs(
   }
   if (options.relGap !== undefined) {
     highsOptions.mip_rel_gap = options.relGap;
+  } else if (options.mipGap !== undefined) {
+    highsOptions.mip_rel_gap = options.mipGap;
   }
   if (options.absGap !== undefined) {
     highsOptions.mip_abs_gap = options.absGap;
+  }
+
+  const passthroughKeys = [
+    "mip_max_nodes",
+    "mip_max_improving_sols",
+    "mip_max_leaves",
+    "simplex_iteration_limit",
+    "ipm_iteration_limit",
+  ] as const;
+  for (const key of passthroughKeys) {
+    if (options[key] !== undefined) {
+      highsOptions[key] = options[key];
+    }
+  }
+
+  const objectiveOffset =
+    typeof options.objectiveOffset === "number" && Number.isFinite(options.objectiveOffset)
+      ? options.objectiveOffset
+      : 0;
+
+  if (typeof highs.withModel === "function") {
+    const result = highs.withModel(
+      { format: "lp", data: lpString },
+      (m: SymbolDisposable<HighsPersistentModel>): RawHighsSolveResult => {
+        if (objectiveOffset !== 0 && typeof m.changeObjectiveOffset === "function") {
+          const baseOffset = typeof m.getObjectiveOffset === "function" ? m.getObjectiveOffset() : 0;
+          m.changeObjectiveOffset(baseOffset + objectiveOffset);
+        }
+        for (const [optName, optVal] of Object.entries(highsOptions)) {
+          try {
+            m.options.set(optName, optVal as any);
+          } catch (err: any) {
+            if (
+              err?.name !== "HighsUnsupportedOptionError" &&
+              !(
+                highs.errors?.HighsUnsupportedOptionError &&
+                err instanceof highs.errors.HighsUnsupportedOptionError
+              )
+            ) {
+              throw err;
+            }
+          }
+        }
+        m.run();
+
+        const statusCode: number = m.getModelStatus();
+        const statusStr = HIGHS_STATUS_NAMES[statusCode] ?? "Unknown";
+        const dims = m.getDimensions();
+
+        let primalSolutionStatus = 0;
+        let dualSolutionStatus = 0;
+        try {
+          primalSolutionStatus = Number(m.info.get("primal_solution_status"));
+        } catch {
+          // Unavailable info
+        }
+        try {
+          dualSolutionStatus = Number(m.info.get("dual_solution_status"));
+        } catch {
+          // Unavailable info
+        }
+        const feasibleCode = highs.constants?.solutionStatus?.feasible ?? 2;
+        const hasPrimalSolution = primalSolutionStatus === feasibleCode;
+        const hasDualSolution = dualSolutionStatus === feasibleCode;
+
+        let isMip = false;
+        for (let j = 0; j < dims.numCols; j++) {
+          if (m.getColIntegrality(j) !== 0) {
+            isMip = true;
+            break;
+          }
+        }
+
+        const sol = hasPrimalSolution || hasDualSolution ? m.getSolution() : null;
+
+        const Columns: RawHighsSolveResult["Columns"] = {};
+        for (let j = 0; j < dims.numCols; j++) {
+          const name = m.getColName(j);
+          const integ = m.getColIntegrality(j);
+          const colEntry: RawHighsSolveResult["Columns"][string] = {
+            Index: j,
+            Type: integ === 1 ? "Integer" : "Continuous",
+            Name: name,
+          };
+          if (hasPrimalSolution && sol) {
+            colEntry.Primal = sol.colValue[j];
+          }
+          if (!isMip && hasDualSolution && sol) {
+            colEntry.Dual = sol.colDual[j];
+          }
+          Columns[name] = colEntry;
+        }
+
+        const Rows: Array<{
+          Index: number;
+          Dual?: number;
+          Primal?: number;
+          Name?: string;
+        }> = [];
+        for (let i = 0; i < dims.numRows; i++) {
+          const name = m.getRowName(i);
+          const rowEntry: {
+            Index: number;
+            Dual?: number;
+            Primal?: number;
+            Name?: string;
+          } = {
+            Index: i,
+            Name: name,
+          };
+          if (hasPrimalSolution && sol) {
+            rowEntry.Primal = sol.rowValue[i];
+          }
+          if (!isMip && hasDualSolution && sol) {
+            rowEntry.Dual = sol.rowDual[i];
+          }
+          Rows.push(rowEntry);
+        }
+
+        const objectiveValue = hasPrimalSolution ? m.getObjectiveValue() : NaN;
+        let mipDualBound: number | undefined;
+        let mipGap: number | undefined;
+        if (isMip) {
+          try {
+            const rawBound = Number(m.info.get("mip_dual_bound"));
+            if (Number.isFinite(rawBound)) {
+              mipDualBound = rawBound;
+            }
+          } catch {
+            // Unavailable info
+          }
+          try {
+            const rawGap = Number(m.info.get("mip_gap"));
+            if (Number.isFinite(rawGap)) {
+              mipGap = rawGap;
+            }
+          } catch {
+            // Unavailable info
+          }
+        }
+
+        return {
+          Status: statusStr,
+          StatusCode: statusCode,
+          PrimalSolutionStatus: primalSolutionStatus,
+          DualSolutionStatus: dualSolutionStatus,
+          HasPrimalSolution: hasPrimalSolution,
+          IsMip: isMip,
+          ObjectiveValue: objectiveValue,
+          ObjectiveOffsetApplied: objectiveOffset !== 0,
+          MipDualBound: mipDualBound,
+          MipGap: mipGap,
+          Columns,
+          Rows,
+        };
+      }
+    );
+    const endTime = performance.now();
+    const runTime = (endTime - startTime) / 1000;
+    return { result, runTime };
   }
 
   const result = highs.solve(lpString, highsOptions);
