@@ -17,6 +17,11 @@ import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js"
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
+import {
+  validateModelSolution,
+  type SolutionValidationOptions,
+  type SolutionValidationReport,
+} from "./solution-validator.js";
 
 /**
  * Valid items that can be added as a constraint to a model.
@@ -1386,5 +1391,14 @@ export class Model {
       this.objectiveExpr = originalObjective;
       this.sense = originalSense;
     }
+  }
+
+  /**
+   * Independently evaluate and verify variable bounds, integrality, linear constraints,
+   * and logical (SMT/propositional) constraints against the model's current solution
+   * or an explicit `values` map.
+   */
+  validateSolution(options: SolutionValidationOptions = {}): SolutionValidationReport {
+    return validateModelSolution(this, options);
   }
 }
