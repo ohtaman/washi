@@ -295,10 +295,14 @@ export class Z3Solver implements Solver {
       }
     }
 
+    const boolVarNames = new Set(boolVars.map((bv) => bv.name));
     const trackKeyToName = new Map<string, string>();
     let trackCounter = 0;
     const createTracker = (constraintName: string) => {
-      const trackKey = `__washi_track_${++trackCounter}`;
+      let trackKey = `__washi_track_${++trackCounter}`;
+      while (boolVarNames.has(trackKey) || trackKeyToName.has(trackKey)) {
+        trackKey = `__washi_track_${++trackCounter}`;
+      }
       const trackVar = ctx.Bool.const(trackKey);
       trackKeyToName.set(trackKey, constraintName);
       trackKeyToName.set(trackVar.toString(), constraintName);
