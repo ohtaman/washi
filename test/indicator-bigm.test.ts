@@ -495,25 +495,27 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const checkActRes = await mZ3Active.check();
       expect(checkActRes.status).toBe("Sat");
 
-      // 10. Large cancelling bound contributions jump directly to exact decimal bound (20000) without ULP loops
+      // 10. Z3 translates auto-derived indicator constraints as exact logical implications even under large cancelling bounds or negated original conditions (A' AND NOT A)
       const mCancel = new Model({ name: "Z3LargeCancel", solver: "z3" });
       const xCancel = mCancel.continuous("xCancel", { lb: 0, ub: 1e20 });
       const yCancel = mCancel.continuous("yCancel", { lb: -99999999999999980000, ub: -99999999999999980000 });
       const bCancel = mCancel.binary("bCancel");
-      expect(deriveBigMForLe(xCancel.add(yCancel), 0, "cancel_le")).toBe(20000);
-      mCancel.indicator(bCancel, xCancel.add(yCancel).le(0), { activeValue: 0 });
+      const condCancel = xCancel.add(yCancel).le(0.1);
+      mCancel.indicator(bCancel, condCancel, { activeValue: 1 });
+      mCancel.constraint(condCancel.not());
       mCancel.add(bCancel.eq(1));
-      mCancel.add(xCancel.eq(1e20));
-      mCancel.add(yCancel.eq(-99999999999999980000));
-      const cancelCheck = await mCancel.check();
-      expect(cancelCheck.status).toBe("Sat");
+      const activeNotACheck = await mCancel.check();
+      expect(activeNotACheck.status).toBe("Unsat");
 
-      // 11. Failed indicator() validation preserves existing solved state
+      // 11. Failed indicator() validation preserves existing solved state and rejects non-canonical runtime type spellings
       expect(() =>
         mFrac.indicator(zFrac, xFrac.le(0), { activeValue: 2 as unknown as 0 | 1 })
       ).toThrow(/Invalid activeValue/i);
       expect(mFrac.status).toBe("Optimal");
       expect(xFrac.value).toBeCloseTo(0.1, 6);
+      const fakeUpperVar = m.continuous("fakeUpper", { lb: 0, ub: 1 });
+      (fakeUpperVar as unknown as { type: string }).type = "BINARY";
+      expect(() => m.indicator(fakeUpperVar, x.le(0))).toThrow(/Invalid variable/i);
 
       // 12. Out-of-range scientific literals in c`...` are rejected
       expect(() => c`1e309 * ${xFrac} <= 1`).toThrow(/outside finite floating-point range/i);

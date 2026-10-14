@@ -161,7 +161,33 @@ export class Z3Solver implements Solver {
       return result;
     }
 
+    function isUnmodifiedIndicatorConstraint(c: Constraint): boolean {
+      const meta = c.indicatorMeta;
+      if (!meta) return false;
+      if (c.sense !== meta.targetSense || c.rhs !== meta.expectedRhs) return false;
+      if (!c.lhs || "quadTerms" in c.lhs || !c.lhs.terms) return false;
+      const constant = typeof c.lhs.constant === "number" ? c.lhs.constant : 0;
+      if (constant !== meta.expectedConstant) return false;
+      if (c.lhs.terms.size !== meta.expectedTerms.size) return false;
+      for (const [v, coeff] of c.lhs.terms.entries()) {
+        if (meta.expectedTerms.get(v) !== coeff) return false;
+      }
+      return true;
+    }
+
     function translateConstraint(c: Constraint) {
+      if (isUnmodifiedIndicatorConstraint(c)) {
+        const meta = c.indicatorMeta!;
+        const triggerAst = compareAstWithNumber(
+          getVarAst(meta.binVar),
+          "==",
+          meta.activeValue
+        );
+        const targetLhsAst = translateLinExpr(meta.targetLhs);
+        const targetAst = compareAstWithNumber(targetLhsAst, meta.targetSense, meta.targetRhs);
+        return ctx.Implies(triggerAst, targetAst);
+      }
+
       const lhsAst =
         c.lhs instanceof Object && "quadTerms" in c.lhs
           ? translateQuadExpr(c.lhs as any)

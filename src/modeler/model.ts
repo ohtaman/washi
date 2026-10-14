@@ -897,10 +897,7 @@ export class Model {
     }
     const isBinary =
       binVar.type === "Binary" ||
-      (binVar.type as string) === "BINARY" ||
-      ((binVar.type === "Integer" || (binVar.type as string) === "INTEGER") &&
-        binVar.lb === 0 &&
-        binVar.ub === 1);
+      (binVar.type === "Integer" && binVar.lb === 0 && binVar.ub === 1);
     if (!isBinary) {
       throw new Error(
         `Invalid variable "${binVar.name}" passed to indicator(): variable has type "${binVar.type}" with bounds [${binVar.lb}, ${binVar.ub}]. Indicator activation variable must be a Binary variable (or Integer variable with bounds [0, 1]).`
@@ -992,12 +989,38 @@ export class Model {
       if (sense === "<=" || sense === "==") {
         const mLe = options.M !== undefined ? options.M : deriveBigMForLe(lhs, rhs, leName);
         const leLinearized = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, mLe, leName);
-        pending.push([new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName), leName]);
+        const leConstraint = new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName);
+        if (options.M === undefined) {
+          leConstraint.indicatorMeta = {
+            binVar,
+            activeValue: activeVal,
+            targetLhs: new LinExpr(new Map(lhs.terms), lhs.constant ?? 0),
+            targetSense: "<=",
+            targetRhs: rhs,
+            expectedTerms: new Map(leLinearized.lhs.terms),
+            expectedConstant: leLinearized.lhs.constant ?? 0,
+            expectedRhs: leLinearized.rhs,
+          };
+        }
+        pending.push([leConstraint, leName]);
       }
       if (sense === ">=" || sense === "==") {
         const mGe = options.M !== undefined ? options.M : deriveBigMForGe(lhs, rhs, geName);
         const geLinearized = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, mGe, geName);
-        pending.push([new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName]);
+        const geConstraint = new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName);
+        if (options.M === undefined) {
+          geConstraint.indicatorMeta = {
+            binVar,
+            activeValue: activeVal,
+            targetLhs: new LinExpr(new Map(lhs.terms), lhs.constant ?? 0),
+            targetSense: ">=",
+            targetRhs: rhs,
+            expectedTerms: new Map(geLinearized.lhs.terms),
+            expectedConstant: geLinearized.lhs.constant ?? 0,
+            expectedRhs: geLinearized.rhs,
+          };
+        }
+        pending.push([geConstraint, geName]);
       }
 
       for (const [cRow, rowName] of pending) {
