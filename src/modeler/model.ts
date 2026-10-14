@@ -43,6 +43,7 @@ import {
   validateUserBigM,
 } from "./big-m.js";
 import {
+  claimConstraintOwnership,
   claimVarOwnership,
   validateLinearConstraint,
   validateLogicElement,
@@ -658,27 +659,24 @@ export class Model {
       return constraint;
     }
 
-    let constr: Constraint;
+    const constr =
+      typeof constraint === "string"
+        ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
+        : constraint;
+    const constrName = name || constr.name;
 
-    if (typeof constraint === "string") {
-      constr = parseConstraint(constraint, (varName) => this.getVarByName(varName), name);
-    } else {
-      constr = constraint;
-      if (name) {
-        constr.name = name;
-      }
+    if (this.hasConstraintName(constrName)) {
+      throw new Error(`Constraint with name '${constrName}' already exists in model`);
     }
-
-    if (this.hasConstraintName(constr.name)) {
-      throw new Error(`Constraint with name '${constr.name}' already exists in model`);
-    }
-    if (this.hasBoolVarName(constr.name)) {
+    if (this.hasBoolVarName(constrName)) {
       throw new Error(
-        `Constraint name '${constr.name}' conflicts with an existing Boolean variable in model`
+        `Constraint name '${constrName}' conflicts with an existing Boolean variable in model`
       );
     }
 
-    validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v);
+    validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, constrName);
+    claimConstraintOwnership(constr, this);
+    constr.name = constrName;
 
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);

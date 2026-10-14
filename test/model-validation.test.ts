@@ -254,6 +254,14 @@ describe("Model Integrity Validation (Issue #51)", () => {
       expect(() => {
         m.constraint(p.implies(q), "logic_only_name");
       }).toThrow(/Constraint with name 'logic_only_name' already exists in model/);
+
+      // Reusing an already-registered Constraint instance with a new name must fail without renaming it
+      const cInst = x.le(8);
+      m.constraint(cInst, "first_name");
+      expect(() => {
+        m.constraint(cInst, "second_name");
+      }).toThrow(/Constraint "first_name" is already registered in model "CollisionModel"/);
+      expect(cInst.name).toBe("first_name");
     });
 
     it("prevents collision with auto-generated logical constraint names", () => {

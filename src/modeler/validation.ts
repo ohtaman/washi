@@ -6,6 +6,7 @@ import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 
 const varOwner = new WeakMap<Var, Model>();
+const constrOwner = new WeakMap<Constraint, Model>();
 
 /**
  * Associates a variable instance with its owning model and rejects cross-model sharing.
@@ -18,6 +19,21 @@ export function claimVarOwnership(v: Var, model: Model): void {
     );
   }
   varOwner.set(v, model);
+}
+
+/**
+ * Associates a constraint instance with its owning model and rejects reusing or cross-model sharing.
+ */
+export function claimConstraintOwnership(c: Constraint, model: Model): void {
+  const existing = constrOwner.get(c);
+  if (existing) {
+    throw new Error(
+      existing === model
+        ? `Constraint "${c.name}" is already registered in model "${model.name}".`
+        : `Constraint "${c.name}" already belongs to model "${existing.name}" and cannot be added to model "${model.name}".`
+    );
+  }
+  constrOwner.set(c, model);
 }
 
 /**
