@@ -13,6 +13,7 @@ export class Constraint {
   public sense: ComparisonSense;
   public rhs: number;
   public name: string;
+  public hasExplicitName: boolean;
 
   /** Slack value after solve */
   public slack: number | null = null;
@@ -29,7 +30,14 @@ export class Constraint {
     this.lhs = lhs;
     this.sense = sense;
     this.rhs = rhs;
-    this.name = name || `c_${this.id}`;
+    const trimmed = typeof name === "string" ? name.trim() : undefined;
+    if (trimmed && trimmed.length > 0) {
+      this.name = trimmed;
+      this.hasExplicitName = true;
+    } else {
+      this.name = `c_${this.id}`;
+      this.hasExplicitName = false;
+    }
   }
 
   // Logical operators for SMT / SAT

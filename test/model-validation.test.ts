@@ -234,13 +234,19 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const p = m.bool("p");
       const q = m.bool("q");
 
-      // Explicitly name an arithmetic constraint "lc_1"
-      m.constraint(c`${x} <= 5`, "lc_1");
+      // Unnamed logical constraint auto-generates "lc_1"
+      m.constraint(p.and(q));
+      expect(m.logicalConstraints[0].name).toBe("lc_1");
 
-      // Next unnamed logical constraint would auto-generate "lc_1" and must be rejected
+      // Explicit arithmetic constraint with name "lc_1" must be rejected
       expect(() => {
-        m.constraint(p.and(q));
+        m.constraint(c`${x} <= 5`, "lc_1");
       }).toThrow(/Constraint with name 'lc_1' already exists in model/);
+
+      // If an explicit arithmetic constraint reserves "lc_2" first, the next unnamed logical constraint skips to "lc_3"
+      m.constraint(c`${x} <= 5`, "lc_2");
+      m.constraint(p.or(q));
+      expect(m.logicalConstraints[1].name).toBe("lc_3");
     });
 
     it("catches post-construction duplicate constraint names via validateModelIntegrity()", () => {

@@ -86,9 +86,11 @@ export class Model {
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
+  private varPrefixCounters = new Map<string, number>();
   private boolVarMapByName = new Map<string, BoolVar>();
   private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
+  private constrPrefixCounters = new Map<string, number>();
   private autoIndicators: AutoIndicatorRecord[] = [];
 
   public status: SolverStatus = "NotSolved";
@@ -186,8 +188,8 @@ export class Model {
       return matrix;
     }
 
-    // 1D single variable: arg1 is string
-    if (typeof arg1 === "string") {
+    // 1D single variable: arg1 is string or undefined
+    if (typeof arg1 === "string" || arg1 === undefined) {
       const opts = (arg2 as BoundsOptions) || {};
       return this.addVar({
         ...opts,
@@ -207,7 +209,7 @@ export class Model {
           this.addVar({
             ...opts,
             type: domainType,
-            name: `${p}_${i}`,
+            name: this.getNextVarName(p),
           })
         );
       }
@@ -223,6 +225,11 @@ export class Model {
         });
       }
       return result;
+    } else if (arg1 && typeof arg1 === "object") {
+      return this.addVar({
+        ...(arg1 as BoundsOptions),
+        type: domainType,
+      });
     }
 
     throw new Error(`Invalid arguments provided for ${domainType.toLowerCase()} variable creation`);
@@ -232,11 +239,13 @@ export class Model {
    * Create 0-1 binary variable(s) (x in {0, 1}).
    * Supports:
    * - m.binary("x") -> Var
+   * - m.binary() -> Var
    * - m.binary(5) -> Var[]
    * - m.binary(["a", "b"]) -> Record<string, Var>
    * - m.binary(rows, cols) -> Record<string, Record<string, Var>>
    */
-  binary(name: string): Var;
+  binary(name?: string, options?: { prefix?: string; name?: string }): Var;
+  binary(options: { prefix?: string; name?: string }): Var;
   binary(count: number, options?: { prefix?: string; name?: string }): Var[];
   binary<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -247,7 +256,7 @@ export class Model {
     dim2: C[] | number,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, Var>>;
-  binary(arg1: any, arg2?: any, arg3?: any): any {
+  binary(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Binary", arg1, arg2, arg3);
   }
 
@@ -255,11 +264,13 @@ export class Model {
    * Create integer variable(s) (y in Z).
    * Supports:
    * - m.integer("y", { lb: 0, ub: 10 }) -> Var
+   * - m.integer({ lb: 0, ub: 10 }) -> Var
    * - m.integer(5, { lb: 0 }) -> Var[]
    * - m.integer(["a", "b"], { lb: 0, ub: 5 }) -> Record<string, Var>
    * - m.integer(rows, cols, options) -> Record<string, Record<string, Var>>
    */
-  integer(name: string, options?: BoundsOptions): Var;
+  integer(name?: string, options?: BoundsOptions): Var;
+  integer(options: BoundsOptions): Var;
   integer(count: number, options?: BoundsOptions): Var[];
   integer<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -270,7 +281,7 @@ export class Model {
     dim2: C[] | number,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
-  integer(arg1: any, arg2?: any, arg3?: any): any {
+  integer(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Integer", arg1, arg2, arg3);
   }
 
@@ -278,11 +289,13 @@ export class Model {
    * Create continuous (real) variable(s) (z in R).
    * Supports:
    * - m.continuous("z", { lb: 0 }) -> Var
+   * - m.continuous({ lb: 0 }) -> Var
    * - m.continuous(5, { lb: 0 }) -> Var[]
    * - m.continuous(["a", "b"], { lb: 0 }) -> Record<string, Var>
    * - m.continuous(rows, cols, options) -> Record<string, Record<string, Var>>
    */
-  continuous(name: string, options?: BoundsOptions): Var;
+  continuous(name?: string, options?: BoundsOptions): Var;
+  continuous(options: BoundsOptions): Var;
   continuous(count: number, options?: BoundsOptions): Var[];
   continuous<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -293,7 +306,7 @@ export class Model {
     dim2: C[] | number,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
-  continuous(arg1: any, arg2?: any, arg3?: any): any {
+  continuous(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Continuous", arg1, arg2, arg3);
   }
 
@@ -365,6 +378,17 @@ export class Model {
     return this.varMapByName.has(name) || this.boolVarMapByName.has(name);
   }
 
+  private getNextVarName(prefix: string): string {
+    let counter = this.varPrefixCounters.get(prefix) ?? 0;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.varPrefixCounters.set(prefix, counter + 1);
+    return candidate;
+  }
+
   private getNextBoolVarName(prefix: string): string {
     let counter = this.boolVarPrefixCounters.get(prefix) ?? 0;
     let candidate = `${prefix}_${counter}`;
@@ -388,6 +412,17 @@ export class Model {
       this.boolVarMapByName.has(name) ||
       this.boolVars.some((bv) => bv.name === name)
     );
+  }
+
+  private getNextConstraintName(prefix: string): string {
+    let counter = this.constrPrefixCounters.get(prefix) ?? 1;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasConstraintName(candidate) || this.hasBoolVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.constrPrefixCounters.set(prefix, counter + 1);
+    return candidate;
   }
 
   private createBoolVar(name?: string): BoolVar {
@@ -414,7 +449,9 @@ export class Model {
   private addVar(options?: VarOptions): Var {
     const opts = options || {};
     const trimmed = typeof opts.name === "string" ? opts.name.trim() : undefined;
-    const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
+    const prefixTrimmed = typeof opts.prefix === "string" ? opts.prefix.trim() : undefined;
+    const defaultPrefix = prefixTrimmed && prefixTrimmed.length > 0 ? prefixTrimmed : "x";
+    const name = trimmed && trimmed.length > 0 ? trimmed : this.getNextVarName(defaultPrefix);
     const v = new Var({ ...opts, name });
 
     // Validate bounds
@@ -698,7 +735,11 @@ export class Model {
       );
     }
     if (constraint instanceof BoolExpr) {
-      const constrName = name || `lc_${this.logicalConstraints.length + 1}`;
+      const trimmedName = typeof name === "string" ? name.trim() : undefined;
+      const constrName =
+        trimmedName && trimmedName.length > 0
+          ? trimmedName
+          : this.getNextConstraintName("lc");
       if (this.hasConstraintName(constrName)) {
         throw new Error(
           `Constraint with name '${constrName}' already exists in model`
@@ -722,6 +763,10 @@ export class Model {
             checkElem(child);
           }
         } else if (elem instanceof Constraint) {
+          if (!elem.hasExplicitName) {
+            elem.name = this.getNextConstraintName("ec");
+            elem.hasExplicitName = true;
+          }
           if (!Number.isFinite(elem.rhs)) {
             throw new Error(
               `Constraint "${elem.name}" embedded in logical constraint "${constrName}" has invalid RHS: ${elem.rhs}.`
@@ -757,13 +802,22 @@ export class Model {
     }
 
     let constr: Constraint;
+    const trimmedName = typeof name === "string" ? name.trim() : undefined;
 
     if (typeof constraint === "string") {
-      constr = parseConstraint(constraint, (varName) => this.getVarByName(varName), name);
+      const resolvedName =
+        trimmedName && trimmedName.length > 0
+          ? trimmedName
+          : this.getNextConstraintName("c");
+      constr = parseConstraint(constraint, (varName) => this.getVarByName(varName), resolvedName);
     } else {
       constr = constraint;
-      if (name) {
-        constr.name = name;
+      if (trimmedName && trimmedName.length > 0) {
+        constr.name = trimmedName;
+        constr.hasExplicitName = true;
+      } else if (!constr.hasExplicitName) {
+        constr.name = this.getNextConstraintName("c");
+        constr.hasExplicitName = true;
       }
     }
 
@@ -835,6 +889,10 @@ export class Model {
       if (this.varMapByName.get(item.name) === item) {
         return this;
       }
+      if (!item.hasExplicitName) {
+        item.name = this.getNextVarName(item.prefix || "x");
+        item.hasExplicitName = true;
+      }
       if (typeof item.lb !== "number" || Number.isNaN(item.lb) || item.lb === Infinity) {
         throw new Error(`Variable "${item.name}" has invalid lower bound: ${item.lb}.`);
       }
@@ -894,12 +952,35 @@ export class Model {
         `Variable "${binVar.name}" passed to indicator() does not belong to model "${this.name}". All variables must belong to the model by object identity.`
       );
     }
-    const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
+
+    const { lhs, sense, rhs } = resolvedConstraint;
+    const trimmedOptName =
+      typeof options.name === "string" ? options.name.trim() : undefined;
+    let baseName: string;
+    if (trimmedOptName && trimmedOptName.length > 0) {
+      baseName = trimmedOptName;
+    } else {
+      const initialSub = resolvedConstraint.hasExplicitName
+        ? resolvedConstraint.name
+        : this.getNextConstraintName("c");
+      baseName = `ind_${binVar.name}_${initialSub}`;
+      while (
+        ((sense === "<=" || sense === "==") &&
+          (this.hasConstraintName(sense === "==" ? `${baseName}_le` : baseName) ||
+            this.hasBoolVarName(sense === "==" ? `${baseName}_le` : baseName))) ||
+        ((sense === ">=" || sense === "==") &&
+          (this.hasConstraintName(sense === "==" ? `${baseName}_ge` : baseName) ||
+            this.hasBoolVarName(sense === "==" ? `${baseName}_ge` : baseName)))
+      ) {
+        const nextSub = this.getNextConstraintName("c");
+        baseName = `ind_${binVar.name}_${nextSub}`;
+      }
+    }
+
     if (options.M !== undefined) {
       validateUserBigM(options.M, baseName);
     }
 
-    const { lhs, sense, rhs } = resolvedConstraint;
     const leName = sense === "==" ? `${baseName}_le` : baseName;
     const geName = sense === "==" ? `${baseName}_ge` : baseName;
 

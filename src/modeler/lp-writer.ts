@@ -46,12 +46,14 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
 
   const nameToVar = new Map<string, Var>();
   const varToName = new Map<Var, string>();
+  const varToIndex = new Map<Var, number>();
   const nameToConstraint = new Map<string, Constraint>();
 
   // Ensure unique sanitized names for all variables
   const usedVarNames = new Set<string>();
-  for (const v of variables) {
-    let clean = sanitizeIdentifier(v.name, "x", v.id);
+  for (let i = 0; i < variables.length; i++) {
+    const v = variables[i];
+    let clean = sanitizeIdentifier(v.name, "x", i + 1);
     let unique = clean;
     let count = 1;
     while (usedVarNames.has(unique)) {
@@ -59,14 +61,16 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     }
     usedVarNames.add(unique);
     varToName.set(v, unique);
+    varToIndex.set(v, i);
     nameToVar.set(unique, v);
   }
 
   // Ensure unique sanitized names for all constraints
   const usedConstrNames = new Set<string>();
   const constrToName = new Map<Constraint, string>();
-  for (const c of constraints) {
-    let clean = sanitizeIdentifier(c.name, "c", c.id);
+  for (let i = 0; i < constraints.length; i++) {
+    const c = constraints[i];
+    let clean = sanitizeIdentifier(c.name, "c", i + 1);
     let unique = clean;
     let count = 1;
     while (usedConstrNames.has(unique)) {
@@ -111,10 +115,14 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
       const sign = doubleCoeff >= 0 ? (isFirstQuad ? "" : "+ ") : "- ";
       const absCoeff = Math.abs(doubleCoeff);
       const coeffStr = absCoeff === 1 ? "" : `${absCoeff} `;
-      const v1Name = varToName.get(term.var1)!;
-      const v2Name = varToName.get(term.var2)!;
+      const idx1 = varToIndex.get(term.var1) ?? 0;
+      const idx2 = varToIndex.get(term.var2) ?? 0;
+      const firstVar = idx1 <= idx2 ? term.var1 : term.var2;
+      const secondVar = idx1 <= idx2 ? term.var2 : term.var1;
+      const v1Name = varToName.get(firstVar)!;
+      const v2Name = varToName.get(secondVar)!;
 
-      if (term.var1 === term.var2) {
+      if (firstVar === secondVar) {
         quadParts.push(`${sign}${coeffStr}${v1Name} ^ 2`);
       } else {
         quadParts.push(`${sign}${coeffStr}${v1Name} * ${v2Name}`);
