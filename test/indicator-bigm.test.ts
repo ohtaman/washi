@@ -7,6 +7,7 @@ import {
   LinExpr,
   deriveBigMForLe,
   deriveBigMForGe,
+  buildIndicatorLinearization,
 } from "../src/modeler/index.js";
 
 describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
@@ -390,6 +391,12 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(() => m.indicator(z, x.le(50), { activeValue: -1 as any })).toThrow(
         /Invalid activeValue: -1.*must be 0 or 1/
       );
+      expect(() =>
+        buildIndicatorLinearization(z, x.add(0), "<=", 50, 2 as any, 50, "ind")
+      ).toThrow(/Invalid activeValue: 2.*must be 0 or 1/);
+      expect(() =>
+        buildIndicatorLinearization(z, x.add(0), "==" as any, 50, 1, 50, "ind")
+      ).toThrow(/Invalid indicator sense/i);
     });
 
     it("handles constraints where bounds already satisfy the inequality (M = 0)", async () => {

@@ -255,6 +255,16 @@ export function buildIndicatorLinearization(
   constraintName: string
 ): { lhs: LinExpr; rhs: number } {
   const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
+  if (activeVal !== 0 && activeVal !== 1) {
+    throw new Error(
+      `Invalid activeValue: ${activeVal}. Indicator activation value must be 0 or 1.`
+    );
+  }
+  if (sense !== "<=" && sense !== ">=") {
+    throw new Error(
+      `Invalid indicator sense for "${constraintName}": expected "<=" or ">=", received "${String(sense)}".`
+    );
+  }
   if (!Number.isFinite(M) || M < 0) {
     throw new Error(
       `Invalid Big-M value for indicator constraint "${constraintName}": expected a finite non-negative number, received ${M}.`
