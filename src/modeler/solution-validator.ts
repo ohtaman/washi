@@ -464,7 +464,7 @@ export function validateModelSolution(
     | { ok: true; value: boolean; violation: number }
     | { ok: false; reason: string };
 
-  const evalLogicNode = (elem: LogicElement, negated = false): LogicEvalResult => {
+  const evalLogicNode = (elem: LogicElement): LogicEvalResult => {
     if (elem instanceof BoolVar) {
       if (!booleanValues.has(elem)) {
         return { ok: false, reason: `missing or invalid value for Boolean variable "${elem.name}"` };
@@ -472,29 +472,37 @@ export function validateModelSolution(
       return { ok: true, value: booleanValues.get(elem)!, violation: 0 };
     }
     if (elem instanceof Constraint) {
-      const tol = negated ? 0 : feasibilityTolerance;
-      const res = checkLinearConstraint(elem, tol);
+      const res = checkLinearConstraint(elem, 0);
       if (res.status === "unchecked") {
         return { ok: false, reason: res.reason };
+      }
+      if (feasibilityTolerance > 0) {
+        const diff = Math.abs(res.lhsVal - elem.rhs);
+        if (diff > 0 && diff <= feasibilityTolerance) {
+          return {
+            ok: false,
+            reason: `numeric comparison "${elem.name}" lies within feasibilityTolerance (${feasibilityTolerance}) of boundary (${res.lhsVal} vs ${elem.rhs})`,
+          };
+        }
       }
       const isSatisfied = res.status === "satisfied";
       return {
         ok: true,
         value: isSatisfied,
-        violation: isSatisfied ? res.violation : 0,
+        violation: 0,
       };
     }
     if (elem instanceof BoolOp) {
       switch (elem.op) {
         case "not": {
-          const sub = evalLogicNode(elem.children[0], !negated);
+          const sub = evalLogicNode(elem.children[0]);
           if (!sub.ok) return sub;
           return { ok: true, value: !sub.value, violation: 0 };
         }
         case "and": {
           let maxViol = 0;
           for (const child of elem.children) {
-            const sub = evalLogicNode(child, negated);
+            const sub = evalLogicNode(child);
             if (!sub.ok) return sub;
             if (!sub.value) return { ok: true, value: false, violation: 0 };
             if (sub.violation > maxViol) maxViol = sub.violation;
@@ -505,7 +513,7 @@ export function validateModelSolution(
           let anyTrue = false;
           let minTrueViol = Infinity;
           for (const child of elem.children) {
-            const sub = evalLogicNode(child, negated);
+            const sub = evalLogicNode(child);
             if (!sub.ok) return sub;
             if (sub.value) {
               anyTrue = true;
@@ -515,10 +523,10 @@ export function validateModelSolution(
           return { ok: true, value: anyTrue, violation: anyTrue ? minTrueViol : 0 };
         }
         case "implies": {
-          const left = evalLogicNode(elem.children[0], !negated);
+          const left = evalLogicNode(elem.children[0]);
           if (!left.ok) return left;
           if (!left.value) return { ok: true, value: true, violation: 0 };
-          const right = evalLogicNode(elem.children[1], negated);
+          const right = evalLogicNode(elem.children[1]);
           if (!right.ok) return right;
           return { ok: true, value: right.value, violation: right.value ? right.violation : 0 };
         }
@@ -526,7 +534,7 @@ export function validateModelSolution(
           let parity = false;
           let maxViol = 0;
           for (const child of elem.children) {
-            const sub = evalLogicNode(child, negated);
+            const sub = evalLogicNode(child);
             if (!sub.ok) return sub;
             if (sub.value) {
               parity = !parity;

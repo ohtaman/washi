@@ -160,17 +160,27 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(invalidRep.complete).toBe(true);
     expect(invalidRep.violationsByName["imp_px"][0].type).toBe("logical_constraint");
 
-    // Polarity-aware tolerance check: if antecedent (x >= 10) is slightly false (x = 9.9999999 < 10),
-    // implies(x >= 10, q) with q = false must still be recognized as satisfied!
-    const mPol = new Model("PolarityTolerance");
+    // Boundary numeric comparison in logical formula (e.g. A AND NOT A at x = 5e-7) is marked unchecked rather than certifying a contradiction as valid
+    const mPol = new Model("BoundaryLogicalComparison");
     const u = mPol.continuous("u", { lb: 0, ub: 20 });
-    const flag = mPol.bool("flag");
-    mPol.constraint(implies(c`${u} >= 10`, flag), "imp_u_flag");
+    const a = u.le(0);
+    mPol.constraint(a.and(a.not()), "contradiction_boundary");
     const polReport = mPol.validateSolution({
-      values: { u: 10 - 1e-7, flag: false },
+      values: { u: 5e-7 },
       feasibilityTolerance: 1e-6,
     });
-    expect(polReport.valid).toBe(true);
+    expect(polReport.valid).toBe(false);
+    expect(polReport.complete).toBe(false);
+    expect(polReport.uncheckedConstraints).toContain("contradiction_boundary");
+
+    // And outside the tolerance band (u = 1), A AND NOT A evaluates to false (logical_constraint violation)
+    const polOutsideReport = mPol.validateSolution({
+      values: { u: 1 },
+      feasibilityTolerance: 1e-6,
+    });
+    expect(polOutsideReport.valid).toBe(false);
+    expect(polOutsideReport.complete).toBe(true);
+    expect(polOutsideReport.violationsByName["contradiction_boundary"][0].type).toBe("logical_constraint");
 
     // When evaluateLogicalConstraints is false, logical constraints are marked unchecked and valid/complete are false
     const skippedRep = m.validateSolution({
