@@ -890,7 +890,7 @@ export class Model {
         return this;
       }
       if (!item.hasExplicitName) {
-        item.name = this.getNextVarName(item.prefix || "x");
+        item.assignModelName(this.getNextVarName(item.prefix || "x"));
         item.hasExplicitName = true;
       }
       if (typeof item.lb !== "number" || Number.isNaN(item.lb) || item.lb === Infinity) {

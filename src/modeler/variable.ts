@@ -26,7 +26,7 @@ function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
  */
 export class Var {
   public readonly id: number;
-  public name: string;
+  private _name: string;
   public hasExplicitName: boolean;
   public readonly prefix?: string;
   public type: "Continuous" | "Integer" | "Binary";
@@ -44,11 +44,11 @@ export class Var {
     const prefixTrimmed = typeof options.prefix === "string" ? options.prefix.trim() : undefined;
     this.prefix = prefixTrimmed && prefixTrimmed.length > 0 ? prefixTrimmed : undefined;
     if (trimmed && trimmed.length > 0) {
-      this.name = trimmed;
+      this._name = trimmed;
       this.hasExplicitName = true;
     } else {
       const fallbackPrefix = this.prefix || "x";
-      this.name = `${fallbackPrefix}_${this.id}`;
+      this._name = `${fallbackPrefix}_${this.id}`;
       this.hasExplicitName = false;
     }
     this.type = normalizeVarType(options.type);
@@ -60,6 +60,15 @@ export class Var {
       this.lb = options.lb !== undefined ? options.lb : 0;
       this.ub = options.ub !== undefined ? options.ub : Infinity;
     }
+  }
+
+  get name(): string {
+    return this._name;
+  }
+
+  /** @internal */
+  assignModelName(name: string): void {
+    this._name = name;
   }
 
   /** Multiply variable by a scalar coefficient or another variable/expression */

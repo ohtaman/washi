@@ -103,6 +103,13 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     expect(u2.name).toBe("y_0");
     expect(k1.name).toBe("c_1");
     expect(m1.toLpString()).toBe(m2.toLpString());
+
+    // Preserves Constraint.name assigned via property setter before insertion
+    const preNamed = u1.le(8);
+    preNamed.name = "custom_capacity";
+    m2.constraint(preNamed);
+    expect(preNamed.name).toBe("custom_capacity");
+    expect(m2.getConstraintByName("custom_capacity")).toBe(preNamed);
   });
 
   it("increments auto-generated variable names across multiple batch and single calls within the same model", () => {
