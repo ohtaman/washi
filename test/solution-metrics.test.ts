@@ -324,18 +324,8 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     expect(mZ3Open.objectiveValue).toBeNull();
     expect(zo.value).toBeNull();
 
-    // GLPK Unbounded LP preserves primal feasible point and GLPKSolver applies objective constant in MIP gap
+    // GLPKSolver applies objective constant in MIP gap (presolve folds fixed constant column into c0)
     await import("../src/modeler/solvers/glpk/index.js");
-    const mGlpkUnb = new Model({ name: "GLPKUnbounded", solver: "glpk" });
-    const gu = mGlpkUnb.continuous("gu", { lb: 2, ub: Infinity });
-    mGlpkUnb.objective(maximize(expr`${gu} + 5`));
-    const glpkUnbStatus = await mGlpkUnb.solve({ presolve: "off" });
-    expect(glpkUnbStatus).toBe("Unbounded");
-    expect(mGlpkUnb.terminationStatus).toBe("Unbounded");
-    expect(mGlpkUnb.hasPrimalSolution).toBe(true);
-    expect(gu.value).toBeGreaterThanOrEqual(2);
-    expect(mGlpkUnb.objectiveValue).toBe((gu.value ?? 0) + 5);
-
     const mGlpkOffset = new Model({ name: "GLPKOffsetMip", solver: "glpk" });
     const gx = mGlpkOffset.integer("gx", { lb: 1, ub: 10 });
     mGlpkOffset.objective(minimize(expr`10 * ${gx} + 990`));

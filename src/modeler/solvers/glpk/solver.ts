@@ -196,11 +196,10 @@ export class GLPKSolver implements Solver {
     const rawStatus = rawResult?.result?.status;
     const status = mapGlpkStatus(rawStatus, glpk);
 
-    // Expose objective and variable values when a valid primal solution/incumbent exists (or on Unbounded LP if GLPK provides a feasible point)
+    // Only expose objective and variable values when a valid primal solution/incumbent exists
     const isPrimalStatus = status === "Optimal" || status === "Feasible";
-    const isUnboundedStatus = status === "Unbounded";
 
-    if (!isPrimalStatus && !isUnboundedStatus) {
+    if (!isPrimalStatus) {
       const infeasCode = glpk?.GLP_INFEAS ?? 3;
       return {
         status,
@@ -253,20 +252,6 @@ export class GLPKSolver implements Solver {
     }
 
     if (!hasValidObjective || !hasValidVariablePayload) {
-      if (isUnboundedStatus) {
-        return {
-          status: "Unbounded",
-          terminationStatus: "Unbounded",
-          hasPrimalSolution: false,
-          objectiveValue: null,
-          values: {},
-          duals: {},
-          slacks: {},
-          runTime: effectiveRunTime,
-          logs: [`GLPK solve finished with status: Unbounded.`],
-          raw: rawResult,
-        };
-      }
       return {
         status: "Error",
         terminationStatus: "Error",
