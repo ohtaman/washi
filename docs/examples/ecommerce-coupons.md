@@ -6,7 +6,7 @@
 
 Modern e-commerce checkouts often feature complex promotional rules: minimum spend thresholds, category-specific discounts, stackable vs. mutually exclusive coupons, and maximum coupon limits per order. Running an optimizer directly in the browser (or an edge worker) lets the checkout UI automatically apply the best coupon combination—and even recommend a small "filler" item when crossing a spend threshold lowers the customer's net bill.
 
-This example demonstrates **`m.indicator(binVar, constraint, { activeValue, M })`**, which automatically linearizes conditional *"if coupon is selected, minimum spend must hold"* constraints using Big-M reformulation for MIP solvers like HiGHS.
+This example demonstrates **`m.indicator(binVar, constraint, { activeValue, M? })`**, which automatically linearizes conditional *"if coupon is selected, minimum spend must hold"* constraints using Big-M reformulation for MIP solvers like HiGHS. When `M` is omitted, WaSHI automatically derives safe, tight Big-M values from finite variable bounds.
 
 <EcommerceCouponDemo />
 
