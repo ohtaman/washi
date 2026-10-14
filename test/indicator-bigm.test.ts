@@ -494,6 +494,30 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       mZ3Active.add(xAct.eq(0.1));
       const checkActRes = await mZ3Active.check();
       expect(checkActRes.status).toBe("Sat");
+
+      // 10. Large cancelling bound contributions jump directly to exact decimal bound (20000) without ULP loops
+      const mCancel = new Model({ name: "Z3LargeCancel", solver: "z3" });
+      const xCancel = mCancel.continuous("xCancel", { lb: 0, ub: 1e20 });
+      const yCancel = mCancel.continuous("yCancel", { lb: -99999999999999980000, ub: -99999999999999980000 });
+      const bCancel = mCancel.binary("bCancel");
+      expect(deriveBigMForLe(xCancel.add(yCancel), 0, "cancel_le")).toBe(20000);
+      mCancel.indicator(bCancel, xCancel.add(yCancel).le(0), { activeValue: 0 });
+      mCancel.add(bCancel.eq(1));
+      mCancel.add(xCancel.eq(1e20));
+      mCancel.add(yCancel.eq(-99999999999999980000));
+      const cancelCheck = await mCancel.check();
+      expect(cancelCheck.status).toBe("Sat");
+
+      // 11. Failed indicator() validation preserves existing solved state
+      expect(() =>
+        mFrac.indicator(zFrac, xFrac.le(0), { activeValue: 2 as unknown as 0 | 1 })
+      ).toThrow(/Invalid activeValue/i);
+      expect(mFrac.status).toBe("Optimal");
+      expect(xFrac.value).toBeCloseTo(0.1, 6);
+
+      // 12. Out-of-range scientific literals in c`...` are rejected
+      expect(() => c`1e309 * ${xFrac} <= 1`).toThrow(/outside finite floating-point range/i);
+      expect(() => c`1e-400 * ${xFrac} <= 1`).toThrow(/outside finite floating-point range/i);
     });
   });
 });

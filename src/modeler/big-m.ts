@@ -147,6 +147,31 @@ function nextDown(x: number): number {
   return -nextUp(-x);
 }
 
+function exactDecimalToApproxNumber(exact: ExactDecimal): number {
+  if (exact.num === 0n) return 0;
+  const sign = exact.num < 0n ? "-" : "";
+  const absStr = (exact.num < 0n ? -exact.num : exact.num).toString();
+  const exp = absStr.length - 1 - exact.scale;
+  const mantissa = absStr.length === 1 ? absStr : `${absStr[0]}.${absStr.slice(1)}`;
+  return Number(`${sign}${mantissa}e${exp}`);
+}
+
+function exactDecimalToNumberCeil(exact: ExactDecimal): number {
+  let candidate = exactDecimalToApproxNumber(exact);
+  while (Number.isFinite(candidate) && compareFloatWithExact(candidate, exact) < 0) {
+    candidate = nextUp(candidate);
+  }
+  return candidate;
+}
+
+function exactDecimalToNumberFloor(exact: ExactDecimal): number {
+  let candidate = exactDecimalToApproxNumber(exact);
+  while (Number.isFinite(candidate) && compareFloatWithExact(candidate, exact) > 0) {
+    candidate = nextDown(candidate);
+  }
+  return candidate;
+}
+
 /**
  * Derives a sufficient, tight Big-M value for a "<=" linear inequality:
  *   lhs <= rhs  (or terms <= effectiveRhs)
@@ -225,12 +250,19 @@ export function deriveBigMForLe(
   if (exactMaxLhs && exactRhs) {
     const exactDiff = subExactDecimal(exactMaxLhs, exactRhs);
     if (exactDiff.num > 0n) {
-      while (
-        Number.isFinite(M) &&
-        (compareFloatWithExact(M, exactDiff) < 0 ||
-          compareFloatWithExact(effectiveRhs + M, exactMaxLhs) < 0)
-      ) {
-        M = nextUp(M);
+      M = Math.max(M, exactDecimalToNumberCeil(exactDiff));
+      const minSum = exactDecimalToNumberCeil(exactMaxLhs);
+      if (effectiveRhs + M < minSum) {
+        M = Math.max(M, minSum - effectiveRhs);
+        while (
+          Number.isFinite(M) &&
+          Number.isFinite(effectiveRhs + M) &&
+          compareFloatWithExact(effectiveRhs + M, exactMaxLhs) < 0
+        ) {
+          const sum = effectiveRhs + M;
+          const sumStep = (nextUp(sum) - sum) / 2;
+          M = Math.max(nextUp(M), M + sumStep);
+        }
       }
     }
   }
@@ -323,12 +355,19 @@ export function deriveBigMForGe(
   if (exactMinLhs && exactRhs) {
     const exactDiff = subExactDecimal(exactRhs, exactMinLhs);
     if (exactDiff.num > 0n) {
-      while (
-        Number.isFinite(M) &&
-        (compareFloatWithExact(M, exactDiff) < 0 ||
-          compareFloatWithExact(effectiveRhs - M, exactMinLhs) > 0)
-      ) {
-        M = nextUp(M);
+      M = Math.max(M, exactDecimalToNumberCeil(exactDiff));
+      const maxDiff = exactDecimalToNumberFloor(exactMinLhs);
+      if (effectiveRhs - M > maxDiff) {
+        M = Math.max(M, effectiveRhs - maxDiff);
+        while (
+          Number.isFinite(M) &&
+          Number.isFinite(effectiveRhs - M) &&
+          compareFloatWithExact(effectiveRhs - M, exactMinLhs) > 0
+        ) {
+          const diff = effectiveRhs - M;
+          const diffStep = (diff - nextDown(diff)) / 2;
+          M = Math.max(nextUp(M), M + diffStep);
+        }
       }
     }
   }
@@ -409,9 +448,7 @@ export function buildIndicatorLinearization(
       const exactM = parseExactDecimal(M);
       if (exactEff && exactM && M > 0) {
         const target = addExactDecimal(exactEff, exactM);
-        while (Number.isFinite(finalRhs) && compareFloatWithExact(finalRhs, target) < 0) {
-          finalRhs = nextUp(finalRhs);
-        }
+        finalRhs = Math.max(finalRhs, exactDecimalToNumberCeil(target));
       }
     } else {
       // terms - M * binVar >= effectiveRhs - M
@@ -421,9 +458,7 @@ export function buildIndicatorLinearization(
       const exactM = parseExactDecimal(M);
       if (exactEff && exactM && M > 0) {
         const target = subExactDecimal(exactEff, exactM);
-        while (Number.isFinite(finalRhs) && compareFloatWithExact(finalRhs, target) > 0) {
-          finalRhs = nextDown(finalRhs);
-        }
+        finalRhs = Math.min(finalRhs, exactDecimalToNumberFloor(target));
       }
     }
   } else {

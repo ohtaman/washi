@@ -890,8 +890,6 @@ export class Model {
     constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
-    this.resetSolutionState();
-
     if (!(binVar instanceof Var)) {
       throw new Error(
         "Invalid binary variable passed to indicator(). Expected a binary Var instance."

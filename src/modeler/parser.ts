@@ -83,6 +83,7 @@ function tokenize(input: string): Token[] {
         (input[i] === "e" || input[i] === "E") &&
         /^[eE][+-]?[0-9]/.test(input.slice(i))
       ) {
+        const significand = numStr;
         numStr += input[i++];
         if (input[i] === "+" || input[i] === "-") {
           numStr += input[i++];
@@ -90,9 +91,10 @@ function tokenize(input: string): Token[] {
         while (i < len && /[0-9]/.test(input[i])) {
           numStr += input[i++];
         }
-        if (!Number.isFinite(Number(numStr))) {
+        const parsedNum = Number(numStr);
+        if (!Number.isFinite(parsedNum) || (parsedNum === 0 && /[1-9]/.test(significand))) {
           throw new Error(
-            `Numeric literal "${numStr}" overflows finite floating-point range in: "${input}"`
+            `Numeric literal "${numStr}" is outside finite floating-point range in: "${input}"`
           );
         }
       }
