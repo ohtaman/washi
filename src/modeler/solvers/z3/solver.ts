@@ -478,6 +478,7 @@ export class Z3Solver implements Solver {
 
       const objVal = trans.parseAstValue(z3Model.eval(objAst));
       let isUnbounded = false;
+      let isUnattained = false;
       try {
         const boundAst =
           sense === "MAXIMIZE"
@@ -490,6 +491,8 @@ export class Z3Solver implements Solver {
         const boundStr = boundAst ? boundAst.toString() : "";
         if (boundStr.includes("oo")) {
           isUnbounded = true;
+        } else if (boundStr.includes("epsilon")) {
+          isUnattained = true;
         }
       } catch {
         // Ignore if bound inspection is unavailable
@@ -502,6 +505,16 @@ export class Z3Solver implements Solver {
           hasPrimalSolution: true,
           objectiveValue: objVal,
           values,
+        };
+      }
+
+      if (isUnattained) {
+        return {
+          status: "Unknown",
+          terminationStatus: "Unknown",
+          hasPrimalSolution: false,
+          objectiveValue: null,
+          values: {},
         };
       }
 

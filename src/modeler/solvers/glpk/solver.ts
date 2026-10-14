@@ -163,6 +163,28 @@ export class GLPKSolver implements Solver {
       glpkOptions.mipgap = relGapOpt;
     }
 
+    const objConstant =
+      typeof modelData.objective?.constant === "number" &&
+      Number.isFinite(modelData.objective.constant)
+        ? modelData.objective.constant
+        : 0;
+    let objConstVarName: string | null = null;
+    if (objConstant !== 0 && glpkOptions.presol) {
+      let candidate = "__washi_obj_const";
+      while (nameToVar.has(candidate)) {
+        candidate = `_${candidate}`;
+      }
+      objConstVarName = candidate;
+      objVars.push({ name: objConstVarName, coef: objConstant });
+      bounds.push({
+        name: objConstVarName,
+        type: glpk.GLP_FX,
+        lb: 1,
+        ub: 1,
+      });
+      glpkProblem.bounds = bounds;
+    }
+
     const startTime = performance.now();
     const rawResult = await glpk.solve(glpkProblem, glpkOptions);
     const runTime = (performance.now() - startTime) / 1000;
@@ -174,10 +196,11 @@ export class GLPKSolver implements Solver {
     const rawStatus = rawResult?.result?.status;
     const status = mapGlpkStatus(rawStatus, glpk);
 
-    // Only expose objective and variable values when a valid primal solution/incumbent exists
+    // Expose objective and variable values when a valid primal solution/incumbent exists (or on Unbounded LP if GLPK provides a feasible point)
     const isPrimalStatus = status === "Optimal" || status === "Feasible";
+    const isUnboundedStatus = status === "Unbounded";
 
-    if (!isPrimalStatus) {
+    if (!isPrimalStatus && !isUnboundedStatus) {
       const infeasCode = glpk?.GLP_INFEAS ?? 3;
       return {
         status,
@@ -195,12 +218,11 @@ export class GLPKSolver implements Solver {
 
     const rawObj = rawResult?.result?.z;
     const rawVars = rawResult?.result?.vars;
-    const objConstant =
-      typeof modelData.objective?.constant === "number" ? modelData.objective.constant : 0;
+    const postSolveObjOffset = objConstVarName !== null ? 0 : objConstant;
     const hasValidObjective =
       typeof rawObj === "number" &&
       Number.isFinite(rawObj) &&
-      Number.isFinite(rawObj + objConstant);
+      Number.isFinite(rawObj + postSolveObjOffset);
     const hasValidVarsObject =
       typeof rawVars === "object" && rawVars !== null && !Array.isArray(rawVars);
 
@@ -209,6 +231,7 @@ export class GLPKSolver implements Solver {
 
     if (hasValidVarsObject) {
       for (const [vName, val] of Object.entries(rawVars)) {
+        if (vName === objConstVarName) continue;
         if (typeof val !== "number" || !Number.isFinite(val)) {
           hasValidVariablePayload = false;
           break;
@@ -230,6 +253,20 @@ export class GLPKSolver implements Solver {
     }
 
     if (!hasValidObjective || !hasValidVariablePayload) {
+      if (isUnboundedStatus) {
+        return {
+          status: "Unbounded",
+          terminationStatus: "Unbounded",
+          hasPrimalSolution: false,
+          objectiveValue: null,
+          values: {},
+          duals: {},
+          slacks: {},
+          runTime: effectiveRunTime,
+          logs: [`GLPK solve finished with status: Unbounded.`],
+          raw: rawResult,
+        };
+      }
       return {
         status: "Error",
         terminationStatus: "Error",
@@ -246,7 +283,7 @@ export class GLPKSolver implements Solver {
       };
     }
 
-    const objectiveValue = rawObj + objConstant;
+    const objectiveValue = rawObj + postSolveObjOffset;
 
     // Dual values: provided for LP (simplex) solves; MIP does not produce dual solutions
     const dualsRecord: Record<string, number> = {};
