@@ -775,7 +775,7 @@ export class Model {
       if (this.hasVarName(resolvedName)) {
         throw new Error(`Variable with name '${resolvedName}' already exists in model`);
       }
-      item.name = resolvedName;
+      item._assignModelName(resolvedName);
       item.ownerModel = this;
       this.variables.push(item);
       this.varMapByName.set(item.name, item);
@@ -828,67 +828,37 @@ export class Model {
       ? resolvedConstraint.name
       : this.getNextConstrName("c");
     const baseName = explicitOptName ?? `ind_${binVar.name}_${targetConstrName}`;
+    const { lhs, sense, rhs } = resolvedConstraint;
+    const leName = sense === "==" ? `${baseName}_le` : baseName;
+    const geName = sense === "==" ? `${baseName}_ge` : baseName;
+
+    let mLe = 0;
+    let mGe = 0;
     try {
+      if ((sense === "<=" || sense === "==") && this.hasConstrName(leName)) {
+        throw new Error(`Constraint with name '${leName}' already exists in model`);
+      }
+      if ((sense === ">=" || sense === "==") && this.hasConstrName(geName)) {
+        throw new Error(`Constraint with name '${geName}' already exists in model`);
+      }
       if (options.M !== undefined) {
         validateUserBigM(options.M, baseName);
       }
 
-      const { lhs, sense, rhs } = resolvedConstraint;
-      const addedConstrs: Constraint[] = [];
-
       // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
-      const mLe =
+      mLe =
         options.M !== undefined
           ? options.M
           : sense === "<=" || sense === "=="
-          ? deriveBigMForLe(lhs, rhs, sense === "==" ? `${baseName}_le` : baseName)
+          ? deriveBigMForLe(lhs, rhs, leName)
           : 0;
 
-      const mGe =
+      mGe =
         options.M !== undefined
           ? options.M
           : sense === ">=" || sense === "=="
-          ? deriveBigMForGe(lhs, rhs, sense === "==" ? `${baseName}_ge` : baseName)
+          ? deriveBigMForGe(lhs, rhs, geName)
           : 0;
-
-    if (activeVal === 1) {
-      if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*(1 - binVar) <=> lhs + mLe*binVar <= rhs + mLe
-        const cLe = this.addConstraint(
-          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
-          sense === "==" ? `${baseName}_le` : baseName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*(1 - binVar) <=> lhs - mGe*binVar >= rhs - mGe
-        const cGe = this.addConstraint(
-          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
-          sense === "==" ? `${baseName}_ge` : baseName
-        );
-        addedConstrs.push(cGe);
-      }
-    } else {
-      // activeVal === 0: holds when binVar == 0, relaxed by M*binVar
-      if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*binVar <=> lhs - mLe*binVar <= rhs
-        const cLe = this.addConstraint(
-          lhs.sub(binVar.mul(mLe)).le(rhs),
-          sense === "==" ? `${baseName}_le` : baseName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*binVar <=> lhs + mGe*binVar >= rhs
-        const cGe = this.addConstraint(
-          lhs.add(binVar.mul(mGe)).ge(rhs),
-          sense === "==" ? `${baseName}_ge` : baseName
-        );
-        addedConstrs.push(cGe);
-      }
-    }
-
-      return addedConstrs;
     } catch (err) {
       if (savedCounter === undefined) {
         this.constrPrefixCounters.delete("c");
@@ -897,6 +867,41 @@ export class Model {
       }
       throw err;
     }
+
+    const addedConstrs: Constraint[] = [];
+    if (activeVal === 1) {
+      if (sense === "<=" || sense === "==") {
+        const cLe = this.addConstraint(
+          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
+          leName
+        );
+        addedConstrs.push(cLe);
+      }
+      if (sense === ">=" || sense === "==") {
+        const cGe = this.addConstraint(
+          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
+          geName
+        );
+        addedConstrs.push(cGe);
+      }
+    } else {
+      if (sense === "<=" || sense === "==") {
+        const cLe = this.addConstraint(
+          lhs.sub(binVar.mul(mLe)).le(rhs),
+          leName
+        );
+        addedConstrs.push(cLe);
+      }
+      if (sense === ">=" || sense === "==") {
+        const cGe = this.addConstraint(
+          lhs.add(binVar.mul(mGe)).ge(rhs),
+          geName
+        );
+        addedConstrs.push(cGe);
+      }
+    }
+
+    return addedConstrs;
   }
 
   /**

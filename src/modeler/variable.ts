@@ -26,7 +26,7 @@ function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
  */
 export class Var {
   public readonly id: number;
-  public name: string;
+  private _name: string;
   public readonly prefix: string;
   public hasExplicitName: boolean;
   public ownerModel: unknown = null;
@@ -45,7 +45,7 @@ export class Var {
     const rawPrefix = typeof options.prefix === "string" ? options.prefix.trim() : "";
     this.prefix = rawPrefix.length > 0 ? rawPrefix : "x";
     this.hasExplicitName = explicitName.length > 0;
-    this.name = this.hasExplicitName ? explicitName : `${this.prefix}_${this.id}`;
+    this._name = this.hasExplicitName ? explicitName : `${this.prefix}_${this.id}`;
     this.type = normalizeVarType(options.type);
 
     if (this.type === "Binary") {
@@ -55,6 +55,15 @@ export class Var {
       this.lb = options.lb !== undefined ? options.lb : 0;
       this.ub = options.ub !== undefined ? options.ub : Infinity;
     }
+  }
+
+  get name(): string {
+    return this._name;
+  }
+
+  /** @internal Assigns a model-scoped name when registering an unnamed Var via Model.add() */
+  _assignModelName(name: string): void {
+    this._name = name;
   }
 
   /** Multiply variable by a scalar coefficient or another variable/expression */
