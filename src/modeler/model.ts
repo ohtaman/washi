@@ -42,7 +42,14 @@ import {
   deriveBigMForGe,
   validateUserBigM,
 } from "./big-m.js";
-import { validateModelIntegrity } from "./validation.js";
+import {
+  claimVarOwnership,
+  validateLinearConstraint,
+  validateLogicElement,
+  validateModelIntegrity,
+  validateObjectiveExpr,
+  validateVarBounds,
+} from "./validation.js";
 export type { IndicatorOptions };
 
 /**
@@ -406,24 +413,14 @@ export class Model {
     const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
     const v = new Var({ ...opts, name });
 
-    // Validate bounds
-    if (typeof v.lb !== "number" || Number.isNaN(v.lb) || v.lb === Infinity) {
-      throw new Error(`Variable "${v.name}" has invalid lower bound: ${v.lb}.`);
-    }
-    if (typeof v.ub !== "number" || Number.isNaN(v.ub) || v.ub === -Infinity) {
-      throw new Error(`Variable "${v.name}" has invalid upper bound: ${v.ub}.`);
-    }
-    if (v.lb > v.ub) {
-      throw new Error(
-        `Variable "${v.name}" has invalid bounds: lower bound (${v.lb}) is strictly greater than upper bound (${v.ub}).`
-      );
-    }
+    validateVarBounds(v);
 
     // Validate unique name
     if (this.hasVarName(v.name)) {
       throw new Error(`Variable with name '${v.name}' already exists in model`);
     }
 
+    claimVarOwnership(v, this);
     this.variables.push(v);
     this.varMapByName.set(v.name, v);
     this.resetSolutionState();
@@ -504,60 +501,7 @@ export class Model {
     }
 
     // Validate objective numeric inputs and model ownership
-    if (parsedExpr instanceof QuadExpr) {
-      if (!Number.isFinite(parsedExpr.constant)) {
-        throw new Error(
-          `Objective function has invalid constant: ${parsedExpr.constant}. Constant must be a finite number.`
-        );
-      }
-      for (const [v, coeff] of parsedExpr.linearTerms) {
-        if (this.varMapByName.get(v.name) !== v) {
-          throw new Error(
-            `Variable "${v.name}" in objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
-          );
-        }
-        if (!Number.isFinite(coeff)) {
-          throw new Error(
-            `Variable "${v.name}" in objective function has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
-          );
-        }
-      }
-      for (const [, term] of parsedExpr.quadTerms) {
-        if (this.varMapByName.get(term.var1.name) !== term.var1) {
-          throw new Error(
-            `Variable "${term.var1.name}" in quadratic objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
-          );
-        }
-        if (this.varMapByName.get(term.var2.name) !== term.var2) {
-          throw new Error(
-            `Variable "${term.var2.name}" in quadratic objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
-          );
-        }
-        if (!Number.isFinite(term.coeff)) {
-          throw new Error(
-            `Quadratic term (${term.var1.name} * ${term.var2.name}) in objective function has invalid coefficient: ${term.coeff}.`
-          );
-        }
-      }
-    } else {
-      if (!Number.isFinite(parsedExpr.constant)) {
-        throw new Error(
-          `Objective function has invalid constant: ${parsedExpr.constant}. Constant must be a finite number.`
-        );
-      }
-      for (const [v, coeff] of parsedExpr.terms) {
-        if (this.varMapByName.get(v.name) !== v) {
-          throw new Error(
-            `Variable "${v.name}" in objective function does not belong to model "${this.name}". All variables must belong to the model by object identity.`
-          );
-        }
-        if (!Number.isFinite(coeff)) {
-          throw new Error(
-            `Variable "${v.name}" in objective function has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
-          );
-        }
-      }
-    }
+    validateObjectiveExpr(parsedExpr, this.name, (v) => this.varMapByName.get(v.name) === v);
 
     this.sense = newSense;
     this.objectiveExpr = parsedExpr;
@@ -706,43 +650,13 @@ export class Model {
         );
       }
 
-      const checkElem = (elem: LogicElement): void => {
-        if (elem instanceof BoolVar) {
-          if (this.boolVarMapByName.get(elem.name) !== elem) {
-            throw new Error(
-              `Boolean variable "${elem.name}" in logical constraint "${constrName}" does not belong to model "${this.name}".`
-            );
-          }
-        } else if (elem instanceof BoolOp) {
-          for (const child of elem.children) {
-            checkElem(child);
-          }
-        } else if (elem instanceof Constraint) {
-          if (!Number.isFinite(elem.rhs)) {
-            throw new Error(
-              `Constraint "${elem.name}" embedded in logical constraint "${constrName}" has invalid RHS: ${elem.rhs}.`
-            );
-          }
-          if (elem.lhs.constant !== undefined && !Number.isFinite(elem.lhs.constant)) {
-            throw new Error(
-              `Constraint "${elem.name}" embedded in logical constraint "${constrName}" has invalid LHS constant: ${elem.lhs.constant}.`
-            );
-          }
-          for (const [v, coeff] of elem.lhs.terms) {
-            if (this.varMapByName.get(v.name) !== v) {
-              throw new Error(
-                `Variable "${v.name}" embedded in logical constraint "${constrName}" does not belong to model "${this.name}".`
-              );
-            }
-            if (!Number.isFinite(coeff)) {
-              throw new Error(
-                `Variable "${v.name}" embedded in logical constraint "${constrName}" has invalid coefficient: ${coeff}.`
-              );
-            }
-          }
-        }
-      };
-      checkElem(constraint);
+      validateLogicElement(
+        constraint,
+        constrName,
+        this.name,
+        (v) => this.varMapByName.get(v.name) === v,
+        (bv) => this.boolVarMapByName.get(bv.name) === bv
+      );
 
       this.logicalConstraints.push({
         name: constrName,
@@ -772,28 +686,7 @@ export class Model {
       );
     }
 
-    if (!Number.isFinite(constr.rhs)) {
-      throw new Error(
-        `Constraint "${constr.name}" has invalid right-hand side (RHS): ${constr.rhs}. RHS must be a finite number.`
-      );
-    }
-    if (constr.lhs.constant !== undefined && !Number.isFinite(constr.lhs.constant)) {
-      throw new Error(
-        `Constraint "${constr.name}" has invalid LHS constant: ${constr.lhs.constant}. Constant must be a finite number.`
-      );
-    }
-    for (const [v, coeff] of constr.lhs.terms) {
-      if (this.varMapByName.get(v.name) !== v) {
-        throw new Error(
-          `Variable "${v.name}" in constraint "${constr.name}" does not belong to model "${this.name}". All variables must belong to the model by object identity.`
-        );
-      }
-      if (!Number.isFinite(coeff)) {
-        throw new Error(
-          `Variable "${v.name}" in constraint "${constr.name}" has invalid coefficient: ${coeff}. Coefficients must be finite numbers.`
-        );
-      }
-    }
+    validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v);
 
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
@@ -831,20 +724,11 @@ export class Model {
       if (this.varMapByName.get(item.name) === item) {
         return this;
       }
-      if (typeof item.lb !== "number" || Number.isNaN(item.lb) || item.lb === Infinity) {
-        throw new Error(`Variable "${item.name}" has invalid lower bound: ${item.lb}.`);
-      }
-      if (typeof item.ub !== "number" || Number.isNaN(item.ub) || item.ub === -Infinity) {
-        throw new Error(`Variable "${item.name}" has invalid upper bound: ${item.ub}.`);
-      }
-      if (item.lb > item.ub) {
-        throw new Error(
-          `Variable "${item.name}" has invalid bounds: lower bound (${item.lb}) is strictly greater than upper bound (${item.ub}).`
-        );
-      }
+      validateVarBounds(item);
       if (this.hasVarName(item.name)) {
         throw new Error(`Variable with name '${item.name}' already exists in model`);
       }
+      claimVarOwnership(item, this);
       this.variables.push(item);
       this.varMapByName.set(item.name, item);
       this.resetSolutionState();
@@ -912,7 +796,6 @@ export class Model {
           : `Constraint with name '${geName}' already exists in model`
       );
     }
-    const addedConstrs: Constraint[] = [];
 
     // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
     const mLe =
@@ -929,44 +812,29 @@ export class Model {
         ? deriveBigMForGe(lhs, rhs, geName)
         : 0;
 
+    const pending: Array<[Constraint, string]> = [];
     if (activeVal === 1) {
       if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*(1 - binVar) <=> lhs + mLe*binVar <= rhs + mLe
-        const cLe = this.addConstraint(
-          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
-          leName
-        );
-        addedConstrs.push(cLe);
+        pending.push([lhs.add(binVar.mul(mLe)).le(rhs + mLe), leName]);
       }
       if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*(1 - binVar) <=> lhs - mGe*binVar >= rhs - mGe
-        const cGe = this.addConstraint(
-          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
-          geName
-        );
-        addedConstrs.push(cGe);
+        pending.push([lhs.sub(binVar.mul(mGe)).ge(rhs - mGe), geName]);
       }
     } else {
-      // activeVal === 0: holds when binVar == 0, relaxed by M*binVar
       if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*binVar <=> lhs - mLe*binVar <= rhs
-        const cLe = this.addConstraint(
-          lhs.sub(binVar.mul(mLe)).le(rhs),
-          leName
-        );
-        addedConstrs.push(cLe);
+        pending.push([lhs.sub(binVar.mul(mLe)).le(rhs), leName]);
       }
       if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*binVar <=> lhs + mGe*binVar >= rhs
-        const cGe = this.addConstraint(
-          lhs.add(binVar.mul(mGe)).ge(rhs),
-          geName
-        );
-        addedConstrs.push(cGe);
+        pending.push([lhs.add(binVar.mul(mGe)).ge(rhs), geName]);
       }
     }
 
-    return addedConstrs;
+    const isOwnedVar = (v: Var) => this.varMapByName.get(v.name) === v;
+    for (const [cRow, rowName] of pending) {
+      validateLinearConstraint(cRow, this.name, isOwnedVar, rowName);
+    }
+
+    return pending.map(([cRow, rowName]) => this.addConstraint(cRow, rowName));
   }
 
   /**

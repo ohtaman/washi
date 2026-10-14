@@ -120,6 +120,34 @@ describe("Model Integrity Validation (Issue #51)", () => {
         /Variable "x" in constraint "mutated_c" does not belong to model "ModelB"/
       );
     });
+
+    it("rejects adding a variable already owned by another model via add(Var) or mutable variables array", () => {
+      const m1 = new Model("ModelA");
+      const m2 = new Model("ModelB");
+      const x1 = m1.continuous("x", { lb: 0, ub: 10 });
+
+      expect(() => m2.add(x1)).toThrow(/Variable "x" already belongs to model "ModelA"/);
+      expect(m2.variables).toHaveLength(0);
+
+      // Direct push to mutable variables array must also be caught by validateModelIntegrity()
+      m2.variables.push(x1);
+      expect(() => validateModelIntegrity(m2)).toThrow(
+        /Variable "x" is duplicated or not canonically registered in model "ModelB"/
+      );
+    });
+
+    it("keeps equality indicator() atomic when second generated row overflows RHS", () => {
+      const m = new Model("AtomicIndicatorOverflow");
+      const b = m.binary("b");
+      const x = m.continuous("x", { lb: -1e308, ub: 1e308 });
+
+      expect(() => {
+        m.indicator(b, x.eq(-1e308), { M: 1e308, name: "ovf" });
+      }).toThrow(/invalid right-hand side \(RHS\): -Infinity/);
+
+      expect(m.constraints).toHaveLength(0);
+      expect(m.getConstraintByName("ovf_le")).toBeUndefined();
+    });
   });
 
   describe("2. Invalid bounds, coefficients, and RHS validation", () => {
