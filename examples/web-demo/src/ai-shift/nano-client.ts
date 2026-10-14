@@ -219,10 +219,14 @@ function parseTargetDay(text: string): Day | null {
 }
 
 function parseTargetCount(text: string): number | null {
-  // 1. Look for explicit headcount with units: e.g. "3人", "10名", "4 staff", "2 people", "3人体制"
-  const unitMatch = text.match(/(?:to\s+|[:：=]\s*|\b)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十])\s*(?:人|名|名体制|人体制|staff|people|workers)\b/iu);
-  if (unitMatch) {
-    const raw = unitMatch[1].toLowerCase();
+  // 1. Japanese units: 人体制, 名体制, 人, 名
+  // Ensure token is complete (not preceded by digits, signs, or decimal dots)
+  const jpMatch = text.match(/(?<![-+0-9a-zA-Z.])([-+]?\d+(?:\.\d+)?|[一二三四五六七八九十])\s*(?:人体制|名体制|人|名)(?![0-9a-zA-Z.])/u);
+  if (jpMatch) {
+    const raw = jpMatch[1].trim();
+    if (raw.includes(".") || raw.startsWith("-") || raw.startsWith("+")) {
+      return null;
+    }
     const count = WORD_NUMBERS[raw] ?? parseInt(raw, 10);
     if (!isNaN(count) && count >= 1 && count <= 10) {
       return count;
@@ -230,10 +234,29 @@ function parseTargetCount(text: string): number | null {
     return null; // out of range (e.g. 0, negative, > 10)
   }
 
-  // 2. Look for pattern following "to <num>" or "を<num>に" e.g. "必要人数を 3 に", "coverage to 3"
-  const toMatch = text.match(/(?:人数|体制|coverage|staffing|headcount|staff|requirement)?\s*(?:を|to|:|=)\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十])\s*(?:人|名|staff|people|に|へと|へ)?/iu);
-  if (toMatch) {
-    const raw = toMatch[1].toLowerCase();
+  // 2. English units: staff, people, workers, persons
+  // Strict non-word boundary before and word boundary after English unit
+  const enMatch = text.match(/(?<![-+0-9a-zA-Z.])([-+]?\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\s*(?:staff|people|workers|persons)\b/i);
+  if (enMatch) {
+    const raw = enMatch[1].toLowerCase().trim();
+    if (raw.includes(".") || raw.startsWith("-") || raw.startsWith("+")) {
+      return null;
+    }
+    const count = WORD_NUMBERS[raw] ?? parseInt(raw, 10);
+    if (!isNaN(count) && count >= 1 && count <= 10) {
+      return count;
+    }
+    return null;
+  }
+
+  // 3. Fallback for prepositional/particle counts without immediate unit:
+  // e.g. "coverage to 3", "必要人数を 3 に", "headcount: 4"
+  const prepMatch = text.match(/(?:\bto\s+|[:：=]\s*|[をに]\s*)(?<![-+0-9a-zA-Z.])([-+]?\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|[一二三四五六七八九十])(?!\s*[-+0-9a-zA-Z./])/i);
+  if (prepMatch) {
+    const raw = prepMatch[1].toLowerCase().trim();
+    if (raw.includes(".") || raw.startsWith("-") || raw.startsWith("+")) {
+      return null;
+    }
     const count = WORD_NUMBERS[raw] ?? parseInt(raw, 10);
     if (!isNaN(count) && count >= 1 && count <= 10) {
       return count;
@@ -282,12 +305,12 @@ export function parseUserShiftIntent(userText: string): ExtractedPlanIntent {
     const targetCount = parseTargetCount(userText);
     const seniorWaiver = mentionsSeniorWaiver ? false : mentionsSeniorEnforce ? true : undefined;
 
-    // Reject missing, zero, or unsupported counts (leaves requirements untouched)
+    // Reject missing, non-integer, zero, negative, or unsupported counts (leaves requirements untouched)
     if (targetCount === null) {
       return {
         action: "modify",
         seniorRequiredDaily: seniorWaiver,
-        summary: `Could not parse a valid headcount for ${targetDay} (must be between 1 and 10 staff). Current staffing requirements remain unchanged.`,
+        summary: `Could not parse a valid headcount for ${targetDay} (must be an integer between 1 and 10 staff). Current staffing requirements remain unchanged.`,
       };
     }
 

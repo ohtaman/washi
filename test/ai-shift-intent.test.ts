@@ -57,29 +57,52 @@ describe("AI Shift Intent Parser & Requirements Applicator", () => {
       expect(intentSun.coverageOverrides).toEqual({ Sun: 2 });
     });
 
+    it("correctly parses various valid Japanese unit phrasings and particle endings", () => {
+      const unitPhrases = [
+        { text: "土曜日の必要人数は2人です", expected: 2 },
+        { text: "土曜日は3人体制にしてください", expected: 3 },
+        { text: "土曜日の出勤人数を4名に変更", expected: 4 },
+        { text: "土曜日は2名体制を希望", expected: 2 },
+        { text: "土曜日の必要人数で2人", expected: 2 },
+        { text: "土曜日の必要人数は2人", expected: 2 },
+        { text: "土曜日の必要人数を2人に", expected: 2 },
+      ];
+
+      for (const { text, expected } of unitPhrases) {
+        const intent = parseUserShiftIntent(text);
+        expect(intent.coverageOverrides, `Testing Japanese phrase: ${text}`).toEqual({ Sat: expected });
+      }
+    });
+
+    it("rejects decimals, negative counts, and invalid numeric-token boundaries without partial salvaging", () => {
+      const invalidPhrases = [
+        "Saturday staffing to 2.5 people",
+        "Saturday staffing to 0.5 people",
+        "Saturday coverage to -2 staff",
+        "Saturday coverage to 0 staff",
+        "Saturday coverage to 15 staff",
+        "土曜日の必要人数を2.5人にしてください",
+        "土曜日の必要人数を0.5人にしてください",
+        "土曜日の必要人数を-2人にしてください",
+        "土曜日の必要人数を0人にしてください",
+        "土曜日の必要人数を15人にしてください",
+        "土曜日の必要人数を変更してください",
+      ];
+
+      for (const text of invalidPhrases) {
+        const intent = parseUserShiftIntent(text);
+        expect(intent.coverageOverrides, `Testing invalid phrase rejection: ${text}`).toBeUndefined();
+
+        const updated = applyIntentToRequirements(baseRequirements, intent);
+        expect(updated.requiredCoverage.Sat, `Ensuring Sat coverage unchanged for: ${text}`).toBe(DEFAULT_COVERAGE.Sat);
+      }
+    });
+
     it("parses multi-digit headcount values without truncating to first digit", () => {
       const intent = parseUserShiftIntent("土曜日の必要人数を10人にしてください");
 
       expect(intent.coverageOverrides).toEqual({ Sat: 10 });
       expect(intent.coverageOverrides?.Sat).not.toBe(1);
-    });
-
-    it("rejects 0人 and leaves coverage requirements unchanged", () => {
-      const intent = parseUserShiftIntent("土曜日の必要人数を0人にしてください");
-
-      expect(intent.coverageOverrides).toBeUndefined();
-      expect(intent.summary).toContain("must be between 1 and 10 staff");
-
-      const updated = applyIntentToRequirements(baseRequirements, intent);
-      expect(updated.requiredCoverage.Sat).toBe(DEFAULT_COVERAGE.Sat);
-    });
-
-    it("rejects out-of-range counts and missing numbers without substituting default 2", () => {
-      const intentOutOfRange = parseUserShiftIntent("土曜日の必要人数を15人にしてください");
-      expect(intentOutOfRange.coverageOverrides).toBeUndefined();
-
-      const intentMissing = parseUserShiftIntent("土曜日の必要人数を変更してください");
-      expect(intentMissing.coverageOverrides).toBeUndefined();
     });
 
     it("handles English coverage-only query without clearing leaves or waiving senior duty", () => {
