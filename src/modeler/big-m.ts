@@ -1,4 +1,4 @@
-import type { LinExpr } from "./expression.js";
+import { LinExpr } from "./expression.js";
 import type { Var } from "./variable.js";
 
 /**
@@ -41,6 +41,49 @@ export function validateUserBigM(M: number, constraintName: string): void {
   }
 }
 
+function validateIndicatorExpressionInputs(
+  lhs: LinExpr,
+  rhs: number,
+  constraintName: string
+): number {
+  const constant = lhs.constant || 0;
+  if (!Number.isFinite(rhs) || !Number.isFinite(constant)) {
+    throw new Error(
+      `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+      `constraint contains non-finite constant (${constant}) or right-hand side (${rhs}).`
+    );
+  }
+  const effectiveRhs = rhs - constant;
+  if (!Number.isFinite(effectiveRhs)) {
+    throw new Error(
+      `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+      `effective right-hand side (${rhs} - ${constant}) overflows finite floating-point range. ` +
+      `Please rescale coefficients/constants.`
+    );
+  }
+  for (const [v, coeff] of lhs.terms) {
+    if (!Number.isFinite(coeff)) {
+      throw new Error(
+        `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+        `variable "${v.name}" has non-finite coefficient (${coeff}).`
+      );
+    }
+    if (
+      Number.isNaN(v.lb) ||
+      Number.isNaN(v.ub) ||
+      v.lb === Infinity ||
+      v.ub === -Infinity ||
+      v.lb > v.ub
+    ) {
+      throw new Error(
+        `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+        `variable "${v.name}" has invalid bounds [${v.lb}, ${v.ub}].`
+      );
+    }
+  }
+  return effectiveRhs;
+}
+
 /**
  * Derives a sufficient, tight Big-M value for a "<=" linear inequality:
  *   lhs <= rhs  (or terms <= effectiveRhs)
@@ -54,18 +97,20 @@ export function validateUserBigM(M: number, constraintName: string): void {
  * Therefore, the safe tight non-negative Big-M is:
  *   M = max(0, max(terms) - effectiveRhs)
  *
- * Fails with an actionable error if any variable lacks a required finite bound.
+ * Fails with an actionable error if any variable lacks a required finite bound
+ * or if finite arithmetic overflows.
  */
 export function deriveBigMForLe(
   lhs: LinExpr,
   rhs: number,
   constraintName: string
 ): number {
-  const effectiveRhs = rhs - (lhs.constant || 0);
+  const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
   let maxLhs = 0;
 
   for (const [v, coeff] of lhs.terms) {
-    if (Math.abs(coeff) < 1e-12) continue;
+    if (coeff === 0) continue;
+    let termMax: number;
     if (coeff > 0) {
       if (!Number.isFinite(v.ub)) {
         throw new Error(
@@ -74,7 +119,7 @@ export function deriveBigMForLe(
           `Please set an explicit finite upper bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      maxLhs += coeff * v.ub;
+      termMax = coeff * v.ub;
     } else {
       if (!Number.isFinite(v.lb)) {
         throw new Error(
@@ -83,11 +128,38 @@ export function deriveBigMForLe(
           `Please set an explicit finite lower bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      maxLhs += coeff * v.lb;
+      termMax = coeff * v.lb;
+    }
+
+    maxLhs += termMax;
+    if (!Number.isFinite(termMax) || !Number.isFinite(maxLhs)) {
+      throw new Error(
+        `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+        `numeric overflow while bounding contribution of variable "${v.name}". ` +
+        `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+      );
     }
   }
 
-  return Math.max(0, maxLhs - effectiveRhs);
+  const rawDiff = maxLhs - effectiveRhs;
+  if (!Number.isFinite(rawDiff)) {
+    throw new Error(
+      `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+      `numeric overflow while computing Big-M (${maxLhs} - ${effectiveRhs}). ` +
+      `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+    );
+  }
+
+  const M = Math.max(0, rawDiff);
+  if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs + M) || !Number.isFinite(rhs + M)) {
+    throw new Error(
+      `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+      `derived Big-M (${M}) or shifted right-hand side overflows finite floating-point range. ` +
+      `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+    );
+  }
+
+  return M;
 }
 
 /**
@@ -103,18 +175,20 @@ export function deriveBigMForLe(
  * Therefore, the safe tight non-negative Big-M is:
  *   M = max(0, effectiveRhs - min(terms))
  *
- * Fails with an actionable error if any variable lacks a required finite bound.
+ * Fails with an actionable error if any variable lacks a required finite bound
+ * or if finite arithmetic overflows.
  */
 export function deriveBigMForGe(
   lhs: LinExpr,
   rhs: number,
   constraintName: string
 ): number {
-  const effectiveRhs = rhs - (lhs.constant || 0);
+  const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
   let minLhs = 0;
 
   for (const [v, coeff] of lhs.terms) {
-    if (Math.abs(coeff) < 1e-12) continue;
+    if (coeff === 0) continue;
+    let termMin: number;
     if (coeff > 0) {
       if (!Number.isFinite(v.lb)) {
         throw new Error(
@@ -123,7 +197,7 @@ export function deriveBigMForGe(
           `Please set an explicit finite lower bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      minLhs += coeff * v.lb;
+      termMin = coeff * v.lb;
     } else {
       if (!Number.isFinite(v.ub)) {
         throw new Error(
@@ -132,9 +206,119 @@ export function deriveBigMForGe(
           `Please set an explicit finite upper bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      minLhs += coeff * v.ub;
+      termMin = coeff * v.ub;
+    }
+
+    minLhs += termMin;
+    if (!Number.isFinite(termMin) || !Number.isFinite(minLhs)) {
+      throw new Error(
+        `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+        `numeric overflow while bounding contribution of variable "${v.name}". ` +
+        `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+      );
     }
   }
 
-  return Math.max(0, effectiveRhs - minLhs);
+  const rawDiff = effectiveRhs - minLhs;
+  if (!Number.isFinite(rawDiff)) {
+    throw new Error(
+      `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+      `numeric overflow while computing Big-M (${effectiveRhs} - ${minLhs}). ` +
+      `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+    );
+  }
+
+  const M = Math.max(0, rawDiff);
+  if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs - M) || !Number.isFinite(rhs - M)) {
+    throw new Error(
+      `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+      `derived Big-M (${M}) or shifted right-hand side overflows finite floating-point range. ` +
+      `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+    );
+  }
+
+  return M;
+}
+
+/**
+ * Constructs the linearized LHS and RHS for a single directional indicator constraint,
+ * preserving all non-zero terms (including small magnitudes < 1e-12) and verifying
+ * that all resulting coefficients and shifted RHS values remain finite.
+ */
+export function buildIndicatorLinearization(
+  binVar: Var,
+  lhs: LinExpr,
+  sense: "<=" | ">=",
+  rhs: number,
+  activeVal: 0 | 1,
+  M: number,
+  constraintName: string
+): { lhs: LinExpr; rhs: number } {
+  const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
+  if (!Number.isFinite(M) || M < 0) {
+    throw new Error(
+      `Invalid Big-M value for indicator constraint "${constraintName}": expected a finite non-negative number, received ${M}.`
+    );
+  }
+
+  let deltaBinCoeff: number;
+  let finalRhs: number;
+
+  if (activeVal === 1) {
+    if (sense === "<=") {
+      // terms + M * binVar <= effectiveRhs + M
+      deltaBinCoeff = M;
+      finalRhs = effectiveRhs + M;
+    } else {
+      // terms - M * binVar >= effectiveRhs - M
+      deltaBinCoeff = -M;
+      finalRhs = effectiveRhs - M;
+    }
+  } else {
+    if (sense === "<=") {
+      // terms - M * binVar <= effectiveRhs
+      deltaBinCoeff = -M;
+      finalRhs = effectiveRhs;
+    } else {
+      // terms + M * binVar >= effectiveRhs
+      deltaBinCoeff = M;
+      finalRhs = effectiveRhs;
+    }
+  }
+
+  if (!Number.isFinite(finalRhs)) {
+    throw new Error(
+      `Cannot construct finite indicator constraint "${constraintName}": ` +
+      `shifted right-hand side overflows finite floating-point range. ` +
+      `Please rescale coefficients/bounds or specify a smaller finite { M }.`
+    );
+  }
+
+  const terms = new Map<Var, number>();
+  for (const [v, coeff] of lhs.terms) {
+    if (coeff !== 0) {
+      terms.set(v, coeff);
+    }
+  }
+
+  const currentBinCoeff = terms.get(binVar) || 0;
+  const newBinCoeff = currentBinCoeff + deltaBinCoeff;
+  if (!Number.isFinite(newBinCoeff)) {
+    throw new Error(
+      `Cannot construct finite indicator constraint "${constraintName}": ` +
+      `indicator variable "${binVar.name}" coefficient overflows finite floating-point range. ` +
+      `Please rescale coefficients/bounds or specify a smaller finite { M }.`
+    );
+  }
+
+  if (newBinCoeff === 0) {
+    terms.delete(binVar);
+  } else {
+    terms.set(binVar, newBinCoeff);
+  }
+
+  return {
+    lhs: new LinExpr(terms, 0),
+    rhs: finalRhs,
+  };
 }

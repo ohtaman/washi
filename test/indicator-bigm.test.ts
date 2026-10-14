@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, expr, c } from "../src/modeler/index.js";
+import {
+  Model,
+  sum,
+  expr,
+  c,
+  LinExpr,
+  deriveBigMForLe,
+  deriveBigMForGe,
+} from "../src/modeler/index.js";
 
 describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
   it("enforces constraint f(x) <= b only when indicator variable z == 1 (activeValue = 1)", async () => {
@@ -276,7 +284,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const x2 = m.continuous("x2", { lb: 5, ub: 15 });
       const z = m.binary("z");
 
-      m.indicator(z, expr`2 * ${x1} - 3 * ${x2}`.le(10), { activeValue: 1 });
+      m.indicator(z, c`2 * ${x1} - 3 * ${x2} <= 10`, { activeValue: 1 });
 
       // When z == 1, 2*x1 - 3*x2 <= 10 is enforced.
       // If we maximize 2*x1 - 3*x2, the maximum should be exactly 10.
@@ -292,7 +300,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const y1 = m2.continuous("y1", { lb: 0, ub: 20 });
       const y2 = m2.continuous("y2", { lb: 5, ub: 15 });
       const b2 = m2.binary("b2");
-      m2.indicator(b2, expr`2 * ${y1} - 3 * ${y2}`.le(10), { activeValue: 1 });
+      m2.indicator(b2, c`2 * ${y1} - 3 * ${y2} <= 10`, { activeValue: 1 });
       m2.constrain(c`${b2} == 0`);
       m2.maximize(expr`2 * ${y1} - 3 * ${y2}`);
 
@@ -313,7 +321,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
 
       // 2. Variable with negative coefficient in <= lacking lower bound (lb = -Infinity)
       const xUnboundedLb = m.continuous("x_no_lb", { lb: -Infinity, ub: 10 });
-      expect(() => m.indicator(z, expr`-2 * ${xUnboundedLb}`.le(50))).toThrow(
+      expect(() => m.indicator(z, c`-2 * ${xUnboundedLb} <= 50`)).toThrow(
         /Cannot derive safe Big-M for indicator constraint.*variable "x_no_lb" lacks a finite lower bound.*specify \{ M \} explicitly/i
       );
 
@@ -323,7 +331,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       );
 
       // 4. Variable with negative coefficient in >= lacking upper bound (ub = Infinity)
-      expect(() => m.indicator(z, expr`-1 * ${xUnboundedUb}`.ge(50))).toThrow(
+      expect(() => m.indicator(z, c`-1 * ${xUnboundedUb} >= 50`)).toThrow(
         /Cannot derive safe Big-M for indicator constraint.*variable "x_no_ub" lacks a finite upper bound.*specify \{ M \} explicitly/i
       );
 
@@ -397,6 +405,113 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const status = await m.solve();
       expect(status).toBe("Optimal");
       expect(x.value).toBe(50);
+    });
+
+    it("[Review Fix 1] re-derives automatic Big-M when variable bounds change after indicator()", async () => {
+      const m = new Model("BoundWideningAfterIndicator");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      const z = m.binary("z");
+
+      const [indConstr] = m.indicator(z, x.le(0), { name: "ind_x_zero" });
+      expect(indConstr.rhs).toBe(10);
+
+      // Fix indicator to inactive (z = 0) and widen x.ub from 10 to 100
+      m.constrain(c`${z} == 0`);
+      x.ub = 100;
+      m.maximize(x);
+
+      // LP export and solve must reflect the widened bound (M = 100) rather than truncating at 10
+      expect(m.toLpString()).toContain("<= 100");
+      expect(indConstr.rhs).toBe(100);
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+      expect(x.value).toBe(100);
+
+      // If x.ub is later widened to Infinity without explicit M, solve() must reject
+      x.ub = Infinity;
+      await expect(m.solve()).rejects.toThrow(
+        /Cannot derive safe Big-M for indicator constraint "ind_x_zero": variable "x" lacks a finite upper bound/
+      );
+
+      // Also verify >= direction when lower bound is lowered after indicator()
+      const mGe = new Model("BoundWideningGeAfterIndicator");
+      const y = mGe.continuous("y", { lb: -10, ub: 50 });
+      const b = mGe.binary("b");
+      mGe.indicator(b, y.ge(0), { name: "ind_y_nonneg" });
+      mGe.constrain(c`${b} == 0`);
+      y.lb = -80;
+      mGe.minimize(y);
+
+      const statusGe = await mGe.solve();
+      expect(statusGe).toBe("Optimal");
+      expect(y.value).toBe(-80);
+    });
+
+    it("[Review Fix 2] includes small non-zero coefficients (< 1e-12) when deriving Big-M and linearizing", async () => {
+      await import("../src/modeler/solvers/z3/index.js");
+
+      // Case A: small coefficient (1e-13) with large domain [0, 1e14] => max contribution = 10
+      const m = new Model({ name: "SmallCoeffLargeDomain", solver: "z3" });
+      const x = m.continuous("x", { lb: 0, ub: 1e14 });
+      const z = m.binary("z");
+
+      const lhsLe = new LinExpr(new Map([[x, 1e-13]]));
+      expect(deriveBigMForLe(lhsLe, 0, "small_le")).toBeCloseTo(10, 8);
+
+      const lhsGe = new LinExpr(new Map([[x, -1e-13]]));
+      expect(deriveBigMForGe(lhsGe, 0, "small_ge")).toBeCloseTo(10, 8);
+
+      m.indicator(z, lhsLe.le(0), { activeValue: 1, name: "ind_small_le" });
+      m.constrain(c`${z} == 0`);
+      m.constrain(c`${x} == 100000000000000`); // 1e14
+
+      const checkRes = await m.check("z3");
+      expect(checkRes.status).toBe("Sat");
+
+      // Case B: small coefficient (1e-13) with unit domain [0, 1] => derived M = 1e-13 (must not drop binVar!)
+      const m2 = new Model({ name: "SmallDerivedM", solver: "z3" });
+      const y = m2.continuous("y", { lb: 0, ub: 1 });
+      const b = m2.binary("b");
+      const smallExpr = new LinExpr(new Map([[y, 1e-13]]));
+
+      m2.indicator(b, smallExpr.le(0), { activeValue: 0, name: "ind_small_m" });
+      // Inactive when b == 1; y == 1 must be Sat
+      m2.constrain(c`${b} == 1`);
+      m2.constrain(c`${y} == 1`);
+
+      const checkRes2 = await m2.check("z3");
+      expect(checkRes2.status).toBe("Sat");
+    });
+
+    it("[Review Fix 3] detects finite arithmetic overflow in Big-M derivation and shifted RHS before mutating model", () => {
+      const m = new Model("OverflowDetection");
+      const x = m.continuous("x", { lb: -1e308, ub: 1e308 });
+      const z = m.binary("z");
+
+      // 1. Overflow in deriveBigMForLe (2 * 1e308 => Infinity)
+      expect(() => deriveBigMForLe(x.mul(2), 0, "overflow_le")).toThrow(
+        /Cannot derive safe Big-M.*numeric overflow/i
+      );
+
+      // 2. Overflow in deriveBigMForGe (2 * -1e308 => -Infinity)
+      expect(() => deriveBigMForGe(x.mul(2), 0, "overflow_ge")).toThrow(
+        /Cannot derive safe Big-M.*numeric overflow/i
+      );
+
+      // 3. indicator() throws before mutating model.constraints (even on equality where <= might succeed before >= overflows)
+      const y = m.continuous("y", { lb: -1e308, ub: 10 });
+      expect(() => m.indicator(z, y.mul(2).eq(0), { name: "eq_overflow" })).toThrow(
+        /Cannot derive safe Big-M.*numeric overflow/i
+      );
+      expect(m.constraints.length).toBe(0);
+
+      // 4. User-supplied finite M that overflows shifted RHS (rhs + M => Infinity)
+      const u = m.continuous("u", { lb: 0, ub: 100 });
+      expect(() =>
+        m.indicator(z, u.le(1e308), { activeValue: 1, M: 1e308, name: "shifted_rhs_overflow" })
+      ).toThrow(/shifted right-hand side overflows finite floating-point range/i);
+      expect(m.constraints.length).toBe(0);
     });
   });
 });

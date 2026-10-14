@@ -41,8 +41,18 @@ import {
   deriveBigMForLe,
   deriveBigMForGe,
   validateUserBigM,
+  buildIndicatorLinearization,
 } from "./big-m.js";
 export type { IndicatorOptions };
+
+interface AutoIndicatorRecord {
+  binVar: Var;
+  baseLhs: LinExpr;
+  baseRhs: number;
+  activeVal: 0 | 1;
+  leConstraint?: Constraint;
+  geConstraint?: Constraint;
+}
 
 /**
  * High-level mathematical programming model for LP, MIP, QP, and SMT,
@@ -78,6 +88,7 @@ export class Model {
   private boolVarMapByName = new Map<string, BoolVar>();
   private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
+  private autoIndicators: AutoIndicatorRecord[] = [];
 
   public status: SolverStatus = "NotSolved";
   public objectiveValue: number | null = null;
@@ -725,67 +736,99 @@ export class Model {
     }
 
     const { lhs, sense, rhs } = resolvedConstraint;
+    const leName = sense === "==" ? `${baseName}_le` : baseName;
+    const geName = sense === "==" ? `${baseName}_ge` : baseName;
+
+    if ((sense === "<=" || sense === "==") && this.constrMapByName.has(leName)) {
+      throw new Error(`Constraint with name '${leName}' already exists in model`);
+    }
+    if ((sense === ">=" || sense === "==") && this.constrMapByName.has(geName)) {
+      throw new Error(`Constraint with name '${geName}' already exists in model`);
+    }
+
+    let leLinearized: { lhs: LinExpr; rhs: number } | undefined;
+    let geLinearized: { lhs: LinExpr; rhs: number } | undefined;
+
+    if (sense === "<=" || sense === "==") {
+      const mLe = options.M !== undefined ? options.M : deriveBigMForLe(lhs, rhs, leName);
+      leLinearized = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, mLe, leName);
+    }
+
+    if (sense === ">=" || sense === "==") {
+      const mGe = options.M !== undefined ? options.M : deriveBigMForGe(lhs, rhs, geName);
+      geLinearized = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, mGe, geName);
+    }
+
     const addedConstrs: Constraint[] = [];
+    let cLe: Constraint | undefined;
+    let cGe: Constraint | undefined;
 
-    // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
-    const mLe =
-      options.M !== undefined
-        ? options.M
-        : sense === "<=" || sense === "=="
-        ? deriveBigMForLe(lhs, rhs, sense === "==" ? `${baseName}_le` : baseName)
-        : 0;
+    if (leLinearized) {
+      cLe = this.addConstraint(new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName), leName);
+      addedConstrs.push(cLe);
+    }
+    if (geLinearized) {
+      cGe = this.addConstraint(new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName);
+      addedConstrs.push(cGe);
+    }
 
-    const mGe =
-      options.M !== undefined
-        ? options.M
-        : sense === ">=" || sense === "=="
-        ? deriveBigMForGe(lhs, rhs, sense === "==" ? `${baseName}_ge` : baseName)
-        : 0;
-
-    if (activeVal === 1) {
-      if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*(1 - binVar) <=> lhs + mLe*binVar <= rhs + mLe
-        const cLe = this.addConstraint(
-          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
-          sense === "==" ? `${baseName}_le` : baseName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*(1 - binVar) <=> lhs - mGe*binVar >= rhs - mGe
-        const cGe = this.addConstraint(
-          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
-          sense === "==" ? `${baseName}_ge` : baseName
-        );
-        addedConstrs.push(cGe);
-      }
-    } else {
-      // activeVal === 0: holds when binVar == 0, relaxed by M*binVar
-      if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + mLe*binVar <=> lhs - mLe*binVar <= rhs
-        const cLe = this.addConstraint(
-          lhs.sub(binVar.mul(mLe)).le(rhs),
-          sense === "==" ? `${baseName}_le` : baseName
-        );
-        addedConstrs.push(cLe);
-      }
-      if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - mGe*binVar <=> lhs + mGe*binVar >= rhs
-        const cGe = this.addConstraint(
-          lhs.add(binVar.mul(mGe)).ge(rhs),
-          sense === "==" ? `${baseName}_ge` : baseName
-        );
-        addedConstrs.push(cGe);
-      }
+    if (options.M === undefined) {
+      this.autoIndicators.push({
+        binVar,
+        baseLhs: lhs.clone(),
+        baseRhs: rhs,
+        activeVal,
+        leConstraint: cLe,
+        geConstraint: cGe,
+      });
     }
 
     return addedConstrs;
   }
 
   /**
+   * Re-derives Big-M values and updates linearized rows for any indicator constraints
+   * that did not specify an explicit { M } override, ensuring subsequent changes to
+   * variable bounds (v.lb / v.ub) are reflected before export, solving, or checking.
+   */
+  private refreshAutoIndicators(): void {
+    for (const rec of this.autoIndicators) {
+      if (rec.leConstraint) {
+        const mLe = deriveBigMForLe(rec.baseLhs, rec.baseRhs, rec.leConstraint.name);
+        const leLinearized = buildIndicatorLinearization(
+          rec.binVar,
+          rec.baseLhs,
+          "<=",
+          rec.baseRhs,
+          rec.activeVal,
+          mLe,
+          rec.leConstraint.name
+        );
+        rec.leConstraint.lhs = leLinearized.lhs;
+        rec.leConstraint.rhs = leLinearized.rhs;
+      }
+      if (rec.geConstraint) {
+        const mGe = deriveBigMForGe(rec.baseLhs, rec.baseRhs, rec.geConstraint.name);
+        const geLinearized = buildIndicatorLinearization(
+          rec.binVar,
+          rec.baseLhs,
+          ">=",
+          rec.baseRhs,
+          rec.activeVal,
+          mGe,
+          rec.geConstraint.name
+        );
+        rec.geConstraint.lhs = geLinearized.lhs;
+        rec.geConstraint.rhs = geLinearized.rhs;
+      }
+    }
+  }
+
+  /**
    * Export model to CPLEX LP format string
    */
   toLpString(): string {
+    this.refreshAutoIndicators();
     const { lpString } = generateLpString({
       name: this.name,
       sense: this.sense,
@@ -806,6 +849,7 @@ export class Model {
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<SolverStatus> {
+    this.refreshAutoIndicators();
     this.resetSolutionState();
 
     let activeSolver: Solver;
@@ -959,6 +1003,7 @@ export class Model {
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<CheckResult> {
+    this.refreshAutoIndicators();
     this.resetSolutionState();
 
     let activeSolver: Solver;
