@@ -37,6 +37,8 @@ export class Var {
   public value: number | null = null;
   /** Reduced cost from dual solution */
   public reducedCost: number | null = null;
+  /** @internal */
+  public ownerModel?: unknown;
 
   constructor(options: VarOptions = {}) {
     this.id = ++varIdCounter;
@@ -69,6 +71,7 @@ export class Var {
   /** @internal */
   assignModelName(name: string): void {
     this._name = name;
+    this.hasExplicitName = true;
   }
 
   /** Multiply variable by a scalar coefficient or another variable/expression */

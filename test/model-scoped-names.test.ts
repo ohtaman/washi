@@ -227,6 +227,35 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     const rowB = mB.add(c`${xB} <= 8`);
     expect(mB.constrs[0].name).toBe("c_1");
     expect(rowB).toBe(mB);
+
+    // Failed batch variable creation does not advance prefix counter
+    const mBatch = new Model("BatchRetry");
+    expect(() => mBatch.continuous(2, { lb: NaN })).toThrow(/invalid lower bound/i);
+    const retryBatch = mBatch.continuous(2, { lb: 0, ub: 10 });
+    expect(retryBatch.map((v) => v.name)).toEqual(["x_0", "x_1"]);
+
+    // Failed indicator derivation does not advance c counter
+    const mInd = new Model("IndicatorRetry");
+    const uInd = mInd.continuous("u", { lb: 0 }); // unbounded ub
+    const zInd = mInd.binary("z");
+    expect(() => mInd.indicator(zInd, c`${uInd} <= 5`)).toThrow(/lacks a finite upper bound/i);
+    uInd.ub = 20;
+    const [indRow] = mInd.indicator(zInd, c`${uInd} <= 5`);
+    expect(indRow.name).toBe("ind_z_c_1");
+
+    // Adding an already-registered unnamed Var to a second model is rejected without renaming it
+    const sharedVar = new Var({ lb: 0, ub: 10 });
+    const mOwner = new Model("OwnerModel");
+    mOwner.add(sharedVar);
+    expect(sharedVar.name).toBe("x_0");
+    expect(mOwner.getVarByName("x_0")).toBe(sharedVar);
+
+    const mOther = new Model("OtherModel");
+    mOther.continuous(); // consumes x_0 in OtherModel
+    expect(() => mOther.add(sharedVar)).toThrow(/already belongs to another model/i);
+    expect(sharedVar.name).toBe("x_0");
+    expect(mOwner.getVarByName("x_0")).toBe(sharedVar);
   });
 });
+
 

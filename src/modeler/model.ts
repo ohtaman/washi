@@ -209,7 +209,8 @@ export class Model {
           this.addVar({
             ...opts,
             type: domainType,
-            name: this.getNextVarName(p),
+            name: undefined,
+            prefix: p,
           })
         );
       }
@@ -487,6 +488,7 @@ export class Model {
       v.assignModelName(this.getNextVarName(defaultPrefix));
     }
 
+    v.ownerModel = this;
     this.variables.push(v);
     this.varMapByName.set(v.name, v);
     this.resetSolutionState();
@@ -923,6 +925,11 @@ export class Model {
       if (this.varMapByName.get(item.name) === item) {
         return this;
       }
+      if (item.ownerModel !== undefined && item.ownerModel !== this) {
+        throw new Error(
+          `Variable "${item.name}" already belongs to another model and cannot be added to model "${this.name}".`
+        );
+      }
       if (typeof item.lb !== "number" || Number.isNaN(item.lb) || item.lb === Infinity) {
         throw new Error(`Variable "${item.name}" has invalid lower bound: ${item.lb}.`);
       }
@@ -941,6 +948,7 @@ export class Model {
       } else {
         item.assignModelName(this.getNextVarName(item.prefix || "x"));
       }
+      item.ownerModel = this;
       this.variables.push(item);
       this.varMapByName.set(item.name, item);
       this.resetSolutionState();
@@ -991,13 +999,13 @@ export class Model {
     const trimmedOptName =
       typeof options.name === "string" ? options.name.trim() : undefined;
     let baseName: string;
+    let nextConstrCounterToCommit: number | undefined;
+
     if (trimmedOptName && trimmedOptName.length > 0) {
       baseName = trimmedOptName;
-    } else {
-      const initialSub = resolvedConstraint.hasExplicitName
-        ? resolvedConstraint.name
-        : this.getNextConstraintName("c");
-      baseName = `ind_${binVar.name}_${initialSub}`;
+    } else if (resolvedConstraint.hasExplicitName) {
+      let subCounter = this.constrPrefixCounters.get("c") ?? 1;
+      baseName = `ind_${binVar.name}_${resolvedConstraint.name}`;
       while (
         ((sense === "<=" || sense === "==") &&
           (this.hasConstraintName(sense === "==" ? `${baseName}_le` : baseName) ||
@@ -1006,8 +1014,37 @@ export class Model {
           (this.hasConstraintName(sense === "==" ? `${baseName}_ge` : baseName) ||
             this.hasBoolVarName(sense === "==" ? `${baseName}_ge` : baseName)))
       ) {
-        const nextSub = this.getNextConstraintName("c");
-        baseName = `ind_${binVar.name}_${nextSub}`;
+        let candidateSub = `c_${subCounter}`;
+        while (this.hasConstraintName(candidateSub) || this.hasBoolVarName(candidateSub)) {
+          subCounter++;
+          candidateSub = `c_${subCounter}`;
+        }
+        subCounter++;
+        nextConstrCounterToCommit = subCounter;
+        baseName = `ind_${binVar.name}_${candidateSub}`;
+      }
+    } else {
+      let subCounter = this.constrPrefixCounters.get("c") ?? 1;
+      const takeCandidateSub = (): string => {
+        let candidateSub = `c_${subCounter}`;
+        while (this.hasConstraintName(candidateSub) || this.hasBoolVarName(candidateSub)) {
+          subCounter++;
+          candidateSub = `c_${subCounter}`;
+        }
+        subCounter++;
+        nextConstrCounterToCommit = subCounter;
+        return candidateSub;
+      };
+      baseName = `ind_${binVar.name}_${takeCandidateSub()}`;
+      while (
+        ((sense === "<=" || sense === "==") &&
+          (this.hasConstraintName(sense === "==" ? `${baseName}_le` : baseName) ||
+            this.hasBoolVarName(sense === "==" ? `${baseName}_le` : baseName))) ||
+        ((sense === ">=" || sense === "==") &&
+          (this.hasConstraintName(sense === "==" ? `${baseName}_ge` : baseName) ||
+            this.hasBoolVarName(sense === "==" ? `${baseName}_ge` : baseName)))
+      ) {
+        baseName = `ind_${binVar.name}_${takeCandidateSub()}`;
       }
     }
 
@@ -1059,6 +1096,10 @@ export class Model {
     if (geLinearized) {
       cGe = this.addConstraint(new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName);
       addedConstrs.push(cGe);
+    }
+
+    if (nextConstrCounterToCommit !== undefined) {
+      this.constrPrefixCounters.set("c", nextConstrCounterToCommit);
     }
 
     if (options.M === undefined) {
