@@ -43,3 +43,24 @@ await model.solve();
 console.log("GLPK Status:", model.status);
 console.log("Objective:", model.objectiveValue);
 ```
+
+---
+
+## Result Semantics & Status Mapping
+
+### Solver Statuses
+GLPK return codes are mapped strictly to WaSHI `SolverStatus`:
+- `GLP_OPT` (5) $\to$ `"Optimal"`
+- `GLP_FEAS` (2) $\to$ `"Feasible"` (feasible MIP incumbent found)
+- `GLP_INFEAS` (3) / `GLP_NOFEAS` (4) $\to$ `"Infeasible"`
+- `GLP_UNBND` (6) $\to$ `"Unbounded"`
+- `GLP_UNDEF` (1) and unrecognized/missing statuses $\to$ `"Unknown"` (never misclassified as `"Optimal"`)
+
+### Solution Availability
+- Variable values (`model.values`, `var.value`) and objective values (`model.objectiveValue`) are exposed **only** when a valid primal solution is available (`"Optimal"` or `"Feasible"`).
+- For unsuccessful or non-optimal solves (`Infeasible`, `Unbounded`, `Unknown`, `Error`), `model.objectiveValue` is `null` and variable values remain `null` without fabricating fake all-zero solutions.
+
+### Differences Between LP and MIP
+- **Linear Programming (LP)**: Solved using the simplex algorithm. Dual values (shadow prices via `constraint.dual`) and slacks are populated for optimal solutions.
+- **Mixed-Integer Programming (MIP)**: Solved using the branch-and-cut algorithm. Produces integer-feasible primal variable solutions; dual values are mathematically undefined for discrete optimization and omitted.
+

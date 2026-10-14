@@ -156,28 +156,20 @@ export class GLPKSolver implements Solver {
     const runTime = (performance.now() - startTime) / 1000;
 
     const rawStatus = rawResult?.result?.status;
-    let status: SolverStatus;
+    const status = mapGlpkStatus(rawStatus, glpk);
 
-    if (rawStatus === glpk.GLP_OPT) {
-      status = "Optimal";
-    } else if (rawStatus === glpk.GLP_FEAS) {
-      status = "Feasible";
-    } else if (rawStatus === glpk.GLP_INFEAS || rawStatus === glpk.GLP_NOFEAS) {
-      status = "Infeasible";
-    } else if (rawStatus === glpk.GLP_UNBND) {
-      status = "Unbounded";
-    } else {
-      status = "Optimal"; // Default fallback if solve succeeded
-    }
+    // Only expose objective and variable values when a valid primal solution/incumbent exists
+    const hasPrimalSolution = status === "Optimal" || status === "Feasible";
 
-    if (status === "Infeasible" || status === "Unbounded") {
+    if (!hasPrimalSolution) {
       return {
         status,
         objectiveValue: null,
         values: {},
         duals: {},
         slacks: {},
-        runTime,
+        runTime: rawResult?.time || runTime,
+        logs: [`GLPK solve finished with status: ${status}.`],
         raw: rawResult,
       };
     }
@@ -196,13 +188,14 @@ export class GLPKSolver implements Solver {
       valuesRecord[originalName] = numVal;
     }
 
-    // Ensure all variables have a value entry
+    // When an optimal or feasible primal solution exists, ensure all model variables have an entry
     for (const v of modelData.variables) {
       if (valuesRecord[v.name] === undefined) {
         valuesRecord[v.name] = 0;
       }
     }
 
+    // Dual values: provided for LP (simplex) solves; MIP does not produce dual solutions
     const dualsRecord: Record<string, number> = {};
     if (rawResult?.result?.dual) {
       for (const [cName, dualVal] of Object.entries(rawResult.result.dual)) {
@@ -222,6 +215,50 @@ export class GLPKSolver implements Solver {
       raw: rawResult,
     };
   }
+}
+
+/**
+ * Maps a raw GLPK status code to a WaSHI SolverStatus.
+ *
+ * GLPK status codes (glpk.js):
+ * - GLP_UNDEF (1): Solution is undefined
+ * - GLP_FEAS  (2): Solution is feasible (incumbent found, optimality not proven)
+ * - GLP_INFEAS(3): Solution is infeasible
+ * - GLP_NOFEAS(4): Problem has no feasible solution
+ * - GLP_OPT   (5): Solution is optimal
+ * - GLP_UNBND (6): Solution is unbounded
+ *
+ * Unknown, missing, or error codes map to "Unknown" or "Error" and NEVER to "Optimal".
+ */
+export function mapGlpkStatus(rawStatus: unknown, glpk?: any): SolverStatus {
+  if (typeof rawStatus !== "number") {
+    return "Unknown";
+  }
+
+  const optCode = glpk?.GLP_OPT ?? 5;
+  const feasCode = glpk?.GLP_FEAS ?? 2;
+  const infeasCode = glpk?.GLP_INFEAS ?? 3;
+  const nofeasCode = glpk?.GLP_NOFEAS ?? 4;
+  const unbndCode = glpk?.GLP_UNBND ?? 6;
+  const undefCode = glpk?.GLP_UNDEF ?? 1;
+
+  if (rawStatus === optCode) {
+    return "Optimal";
+  }
+  if (rawStatus === feasCode) {
+    return "Feasible";
+  }
+  if (rawStatus === infeasCode || rawStatus === nofeasCode) {
+    return "Infeasible";
+  }
+  if (rawStatus === unbndCode) {
+    return "Unbounded";
+  }
+  if (rawStatus === undefCode) {
+    return "Unknown";
+  }
+
+  return "Unknown";
 }
 
 /**
