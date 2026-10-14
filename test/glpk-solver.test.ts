@@ -1,10 +1,32 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { Model } from "../src/modeler/model.js";
 import { GLPKSolver, mapGlpkStatus } from "../src/modeler/solvers/glpk.js";
-import { HighsSolver } from "../src/modeler/solvers/highs.js";
+import * as glpkLoader from "../src/modeler/solvers/glpk/loader.js";
 import { getSolver, setDefaultSolver } from "../src/modeler/solvers/registry.js";
 
+const MOCK_GLPK_CONSTANTS = {
+  GLP_OPT: 5,
+  GLP_FEAS: 2,
+  GLP_INFEAS: 3,
+  GLP_NOFEAS: 4,
+  GLP_UNBND: 6,
+  GLP_UNDEF: 1,
+  GLP_MAX: 2,
+  GLP_MIN: 1,
+  GLP_FR: 1,
+  GLP_LO: 2,
+  GLP_UP: 3,
+  GLP_DB: 4,
+  GLP_FX: 5,
+  GLP_MSG_OFF: 0,
+  GLP_MSG_ALL: 3,
+};
+
 describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("has correct solver capabilities (supportsMIP: true, supportsQP: false)", () => {
     const glpk = new GLPKSolver();
     expect(glpk.name).toBe("GLPK");
@@ -266,7 +288,6 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       const x = m.continuous("x", { lb: 10, ub: 20 });
       m.maximize(x);
 
-      // Solve a model that will be intercepted with a mock rawResult
       const modelData = {
         name: "MockModel",
         sense: "maximize",
@@ -280,37 +301,125 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         nameToConstraint: new Map(),
       };
 
-      // Mock an unknown raw status (e.g. 99)
       const mockGlpkInstance = {
-        solve: async () => ({
+        ...MOCK_GLPK_CONSTANTS,
+        solve: vi.fn(async () => ({
           time: 0.005,
           result: { status: 99, z: 0, vars: { x: 0 } },
-        }),
-        GLP_OPT: 5,
-        GLP_FEAS: 2,
-        GLP_INFEAS: 3,
-        GLP_NOFEAS: 4,
-        GLP_UNBND: 6,
-        GLP_UNDEF: 1,
-        GLP_MAX: 2,
-        GLP_MIN: 1,
-        GLP_FR: 1,
-        GLP_LO: 2,
-        GLP_UP: 3,
-        GLP_DB: 4,
-        GLP_FX: 5,
-        GLP_MSG_OFF: 0,
-        GLP_MSG_ALL: 3,
+        })),
       };
 
-      // Replace getGlpk temporarily for this test
-      const { getGlpk } = await import("../src/modeler/solvers/glpk/loader.js");
+      const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
+
       const res = await glpk.solve(modelData as any, lpResult as any);
-      // Under real GLPK or mock, ensure values is empty when status is not Optimal/Feasible
-      if (res.status !== "Optimal" && res.status !== "Feasible") {
-        expect(res.values).toEqual({});
-        expect(res.objectiveValue).toBeNull();
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
+      expect(res.status).toBe("Unknown");
+      expect(res.values).toEqual({});
+      expect(res.objectiveValue).toBeNull();
+    });
+
+    it("rejects malformed or missing primal payloads even when GLPK reports status 5 (Optimal) or 2 (Feasible)", async () => {
+      const glpk = new GLPKSolver();
+
+      // 1. Missing objective `z` and missing `vars` (exact case from review: `{ result: { status: 5 } }`)
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 10, ub: 20 });
+        m.maximize(x);
+
+        const mockGlpkInstance = {
+          ...MOCK_GLPK_CONSTANTS,
+          solve: vi.fn(async () => ({
+            time: 0.002,
+            result: { status: 5 },
+          })),
+        };
+        const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
+
+        const status = await m.optimize({ solver: glpk });
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
+        expect(status).toBe("Error");
+        expect(m.status).toBe("Error");
+        expect(m.objectiveValue).toBeNull();
+        expect(x.value).toBeNull();
+
+        spy.mockRestore();
+      }
+
+      // 2. Finite objective `z`, but missing variable `x` in `vars` (no fabricated zero values)
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 10, ub: 20 });
+        m.maximize(x);
+
+        const mockGlpkInstance = {
+          ...MOCK_GLPK_CONSTANTS,
+          solve: vi.fn(async () => ({
+            time: 0.002,
+            result: { status: 5, z: 15, vars: {} },
+          })),
+        };
+        const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
+
+        const status = await m.optimize({ solver: glpk });
+        expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
+        expect(status).toBe("Error");
+        expect(m.objectiveValue).toBeNull();
+        expect(x.value).toBeNull();
+
+        spy.mockRestore();
+      }
+
+      // 3. Present `vars`, but non-finite objective `z` (`null` or `NaN`)
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 10, ub: 20 });
+        m.maximize(x);
+
+        const mockGlpkInstance = {
+          ...MOCK_GLPK_CONSTANTS,
+          solve: vi.fn(async () => ({
+            time: 0.002,
+            result: { status: 5, z: null, vars: { x: 15 } },
+          })),
+        };
+        const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
+
+        const status = await m.optimize({ solver: glpk });
+        expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
+        expect(status).toBe("Error");
+        expect(m.objectiveValue).toBeNull();
+        expect(x.value).toBeNull();
+
+        spy.mockRestore();
+      }
+
+      // 4. Feasible status (2) with non-finite variable value in `vars`
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 10, ub: 20 });
+        m.maximize(x);
+
+        const mockGlpkInstance = {
+          ...MOCK_GLPK_CONSTANTS,
+          solve: vi.fn(async () => ({
+            time: 0.002,
+            result: { status: 2, z: 15, vars: { x: Number.NaN } },
+          })),
+        };
+        const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
+
+        const status = await m.optimize({ solver: glpk });
+        expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
+        expect(status).toBe("Error");
+        expect(m.objectiveValue).toBeNull();
+        expect(x.value).toBeNull();
+
+        spy.mockRestore();
       }
     });
   });
 });
+
