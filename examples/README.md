@@ -7,14 +7,10 @@ HiGHS, Z3, or GLPK. The solver performs the optimization or satisfiability check
 
 ## Browser demo
 
-- **Interactive Playground**: [Open the interactive demo](https://ohtaman.github.io/washi/demo/) to select a
-  preset, edit the model, choose a compatible solver, and inspect its results
-  (including 2D flow matrices, weekly shift rosters, coupon breakdowns, and
-  constraint shadow prices).
-- **AI Shift Copilot**: [Open on-device Gemini Nano demo](https://ohtaman.github.io/washi/ai-shift/) to experience
-  natural-language-driven roster optimization and SMT conflict negotiation (HiGHS + Z3 + Gemini Nano).
-
-The [demo source](web-demo/) is included in this repository.
+[Open the interactive demo](https://ohtaman.github.io/washi/demo/) to select a
+preset, edit the model, choose a compatible solver, and inspect its results
+(including 2D flow matrices, weekly shift rosters, coupon breakdowns, and
+constraint shadow prices). The [demo source](web-demo/) is included in this repository.
 
 For a local development server:
 

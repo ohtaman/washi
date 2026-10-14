@@ -130,7 +130,6 @@ export default withMermaid(
           { text: "Solvers", link: "/solvers/" },
           { text: "Examples", link: "/examples/" },
           { text: "Custom Solvers", link: "/solvers/custom-solver" },
-          { text: "AI Copilot 🤖", link: "https://ohtaman.github.io/washi/ai-shift/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
@@ -192,7 +191,6 @@ export default withMermaid(
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
           { text: "カスタムソルバー", link: "/ja/solvers/custom-solver" },
-          { text: "AI Copilot 🤖", link: "https://ohtaman.github.io/washi/ai-shift/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
