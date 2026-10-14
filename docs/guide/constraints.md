@@ -73,18 +73,45 @@ m.constraint(
 
 ## 🎯 Conditional / Indicator Constraints (`m.indicator`)
 
-When a constraint should only take effect when a binary decision variable is active (value $= 1$):
+When a constraint should only take effect when a binary decision variable is active (e.g. value $= 1$ or $0$):
 
 ```typescript
 const useDiscount = m.binary("use_discount");
+const cartTotal = m.continuous("cart_total", { lb: 0, ub: 10_000 });
 
 // If useDiscount == 1, then cartTotal >= 100
+// WaSHI automatically derives a safe, tight Big-M from the variable bounds
 m.indicator(useDiscount, c`${cartTotal} >= 100`, {
   activeValue: 1,
-  M: 1000,
   name: "min_spend_for_discount",
 });
 ```
+
+### Safe Automatic Big-M Derivation & Bounds
+
+When `options.M` is omitted, WaSHI automatically derives a safe, minimal Big-M value from the finite variable bounds:
+- For `<="` constraints, variables with positive coefficients require finite upper bounds (`ub`), and negative coefficients require finite lower bounds (`lb`).
+- For `>="` constraints, variables with positive coefficients require finite lower bounds (`lb`), and negative coefficients require finite upper bounds (`ub`).
+- For `=="` constraints, safe bounds are derived separately for both the `<="` and `>="` directions.
+
+If any referenced variable lacks the required finite bounds, `m.indicator()` throws an actionable error prompting for finite bounds or an explicit `options.M`.
+
+### Explicit Override & Numerical Stability
+
+You can override the derived Big-M by providing `{ M: number }`:
+
+```typescript
+m.indicator(useDiscount, c`${cartTotal} >= 100`, {
+  activeValue: 1,
+  M: 10_000, // Explicit override
+});
+```
+
+> [!TIP]
+> **Numerical Stability vs. Correctness**:
+> An $M$ value that is too small can inadvertently cut off valid solutions. Conversely, an excessively large $M$ (e.g., $10^9$) causes poor matrix conditioning and numerical instability in MIP solvers.
+> By setting explicit, realistic variable bounds (`lb` and `ub`), WaSHI will derive the tightest possible safe Big-M automatically.
+
 
 ---
 

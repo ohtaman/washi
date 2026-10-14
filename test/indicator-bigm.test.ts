@@ -109,4 +109,294 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       /Invalid constraint expression passed to indicator/
     );
   });
+
+  describe("Issue #50: Safe Big-M derivation, bound checking & override validation", () => {
+    it("never silently truncates feasible solutions with large bounds when M is omitted", async () => {
+      const m = new Model("LargeBoundSafeBigM");
+      // Scale: 10,000,000 (1e7). With the old default M = 1e5, x would be truncated to 1e5 when z = 0.
+      const x = m.continuous("x", { lb: 0, ub: 10_000_000 });
+      const z = m.binary("z");
+
+      // When z == 1, capacity is restricted to 2,000,000
+      // When z == 0, constraint is relaxed and x should reach its full 10,000,000 upper bound!
+      m.indicator(z, x.le(2_000_000), { activeValue: 1 });
+
+      // Force z = 0 (inactive), maximize x
+      m.constrain(c`${z} == 0`);
+      m.maximize(x);
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+      expect(z.value).toBe(0);
+      expect(x.value).toBe(10_000_000);
+      expect(m.objectiveValue).toBe(10_000_000);
+    });
+
+    it("correctly auto-derives Big-M for all activeValue (0, 1) and sense (<=, >=, ==) combinations", async () => {
+      // 1. activeValue = 1, sense: <=
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 100 });
+        const z = m.binary("z");
+        m.indicator(z, x.le(30), { activeValue: 1 });
+        m.constrain(c`${z} == 1`);
+        m.maximize(x);
+        await m.solve();
+        expect(x.value).toBe(30);
+
+        // When inactive (z == 0), x can reach 100
+        const m2 = new Model();
+        const x2 = m2.continuous("x", { lb: 0, ub: 100 });
+        const z2 = m2.binary("z");
+        m2.indicator(z2, x2.le(30), { activeValue: 1 });
+        m2.constrain(c`${z2} == 0`);
+        m2.maximize(x2);
+        await m2.solve();
+        expect(x2.value).toBe(100);
+      }
+
+      // 2. activeValue = 1, sense: >=
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 100 });
+        const z = m.binary("z");
+        m.indicator(z, x.ge(40), { activeValue: 1 });
+        m.constrain(c`${z} == 1`);
+        m.minimize(x);
+        await m.solve();
+        expect(x.value).toBe(40);
+
+        // When inactive (z == 0), x can reach 0
+        const m2 = new Model();
+        const x2 = m2.continuous("x", { lb: 0, ub: 100 });
+        const z2 = m2.binary("z");
+        m2.indicator(z2, x2.ge(40), { activeValue: 1 });
+        m2.constrain(c`${z2} == 0`);
+        m2.minimize(x2);
+        await m2.solve();
+        expect(x2.value).toBe(0);
+      }
+
+      // 3. activeValue = 1, sense: ==
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 100 });
+        const z = m.binary("z");
+        m.indicator(z, x.eq(55), { activeValue: 1 });
+        m.constrain(c`${z} == 1`);
+        m.minimize(x);
+        await m.solve();
+        expect(x.value).toBe(55);
+
+        // When inactive (z == 0), x can be minimized to 0 and maximized to 100
+        const m2 = new Model();
+        const x2 = m2.continuous("x", { lb: 0, ub: 100 });
+        const z2 = m2.binary("z");
+        m2.indicator(z2, x2.eq(55), { activeValue: 1 });
+        m2.constrain(c`${z2} == 0`);
+        m2.maximize(x2);
+        await m2.solve();
+        expect(x2.value).toBe(100);
+      }
+
+      // 4. activeValue = 0, sense: <=
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 100 });
+        const z = m.binary("z");
+        m.indicator(z, x.le(25), { activeValue: 0 });
+        m.constrain(c`${z} == 0`);
+        m.maximize(x);
+        await m.solve();
+        expect(x.value).toBe(25);
+
+        // When inactive (z == 1), x can reach 100
+        const m2 = new Model();
+        const x2 = m2.continuous("x", { lb: 0, ub: 100 });
+        const z2 = m2.binary("z");
+        m2.indicator(z2, x2.le(25), { activeValue: 0 });
+        m2.constrain(c`${z2} == 1`);
+        m2.maximize(x2);
+        await m2.solve();
+        expect(x2.value).toBe(100);
+      }
+
+      // 5. activeValue = 0, sense: >=
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 100 });
+        const z = m.binary("z");
+        m.indicator(z, x.ge(65), { activeValue: 0 });
+        m.constrain(c`${z} == 0`);
+        m.minimize(x);
+        await m.solve();
+        expect(x.value).toBe(65);
+
+        // When inactive (z == 1), x can reach 0
+        const m2 = new Model();
+        const x2 = m2.continuous("x", { lb: 0, ub: 100 });
+        const z2 = m2.binary("z");
+        m2.indicator(z2, x2.ge(65), { activeValue: 0 });
+        m2.constrain(c`${z2} == 1`);
+        m2.minimize(x2);
+        await m2.solve();
+        expect(x2.value).toBe(0);
+      }
+
+      // 6. activeValue = 0, sense: ==
+      {
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 100 });
+        const z = m.binary("z");
+        m.indicator(z, x.eq(77), { activeValue: 0 });
+        m.constrain(c`${z} == 0`);
+        m.minimize(x);
+        await m.solve();
+        expect(x.value).toBe(77);
+
+        // When inactive (z == 1), x can reach 100
+        const m2 = new Model();
+        const x2 = m2.continuous("x", { lb: 0, ub: 100 });
+        const z2 = m2.binary("z");
+        m2.indicator(z2, x2.eq(77), { activeValue: 0 });
+        m2.constrain(c`${z2} == 1`);
+        m2.maximize(x2);
+        await m2.solve();
+        expect(x2.value).toBe(100);
+      }
+    });
+
+    it("correctly handles multi-variable expressions with mixed positive and negative coefficients", async () => {
+      const m = new Model("MixedCoeffTest");
+      // 2*x1 - 3*x2 <= 10
+      // x1 in [0, 20], x2 in [5, 15]
+      // max(2*x1 - 3*x2) = 2*20 - 3*5 = 40 - 15 = 25
+      // M_le = 25 - 10 = 15
+      const x1 = m.continuous("x1", { lb: 0, ub: 20 });
+      const x2 = m.continuous("x2", { lb: 5, ub: 15 });
+      const z = m.binary("z");
+
+      m.indicator(z, expr`2 * ${x1} - 3 * ${x2}`.le(10), { activeValue: 1 });
+
+      // When z == 1, 2*x1 - 3*x2 <= 10 is enforced.
+      // If we maximize 2*x1 - 3*x2, the maximum should be exactly 10.
+      m.constrain(c`${z} == 1`);
+      m.maximize(expr`2 * ${x1} - 3 * ${x2}`);
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+      expect(2 * x1.value! - 3 * x2.value!).toBeCloseTo(10);
+
+      // When z == 0, the constraint is relaxed and 2*x1 - 3*x2 can reach 25!
+      const m2 = new Model();
+      const y1 = m2.continuous("y1", { lb: 0, ub: 20 });
+      const y2 = m2.continuous("y2", { lb: 5, ub: 15 });
+      const b2 = m2.binary("b2");
+      m2.indicator(b2, expr`2 * ${y1} - 3 * ${y2}`.le(10), { activeValue: 1 });
+      m2.constrain(c`${b2} == 0`);
+      m2.maximize(expr`2 * ${y1} - 3 * ${y2}`);
+
+      const status2 = await m2.solve();
+      expect(status2).toBe("Optimal");
+      expect(2 * y1.value! - 3 * y2.value!).toBeCloseTo(25);
+    });
+
+    it("fails with an actionable error when variables lack required finite bounds", () => {
+      const m = new Model("UnboundedCheck");
+      const z = m.binary("z");
+
+      // 1. Variable with positive coefficient in <= lacking upper bound (ub = Infinity)
+      const xUnboundedUb = m.continuous("x_no_ub", { lb: 0 }); // ub is Infinity
+      expect(() => m.indicator(z, xUnboundedUb.le(50))).toThrow(
+        /Cannot derive safe Big-M for indicator constraint.*variable "x_no_ub" lacks a finite upper bound.*specify \{ M \} explicitly/i
+      );
+
+      // 2. Variable with negative coefficient in <= lacking lower bound (lb = -Infinity)
+      const xUnboundedLb = m.continuous("x_no_lb", { lb: -Infinity, ub: 10 });
+      expect(() => m.indicator(z, expr`-2 * ${xUnboundedLb}`.le(50))).toThrow(
+        /Cannot derive safe Big-M for indicator constraint.*variable "x_no_lb" lacks a finite lower bound.*specify \{ M \} explicitly/i
+      );
+
+      // 3. Variable with positive coefficient in >= lacking lower bound (lb = -Infinity)
+      expect(() => m.indicator(z, xUnboundedLb.ge(50))).toThrow(
+        /Cannot derive safe Big-M for indicator constraint.*variable "x_no_lb" lacks a finite lower bound.*specify \{ M \} explicitly/i
+      );
+
+      // 4. Variable with negative coefficient in >= lacking upper bound (ub = Infinity)
+      expect(() => m.indicator(z, expr`-1 * ${xUnboundedUb}`.ge(50))).toThrow(
+        /Cannot derive safe Big-M for indicator constraint.*variable "x_no_ub" lacks a finite upper bound.*specify \{ M \} explicitly/i
+      );
+
+      // 5. Equality constraint requires bounds in both directions
+      expect(() => m.indicator(z, xUnboundedUb.eq(50))).toThrow(
+        /Cannot derive safe Big-M/i
+      );
+    });
+
+    it("accepts user-provided M override even when variables are unbounded", async () => {
+      const m = new Model("ExplicitMUnbounded");
+      // Variables have no explicit upper bound (default ub = Infinity)
+      const x = m.continuous("x", { lb: 0 });
+      const z = m.binary("z");
+
+      // Specifying M explicitly bypasses bound requirement
+      expect(() =>
+        m.indicator(z, x.le(50), { activeValue: 1, M: 200 })
+      ).not.toThrow();
+
+      m.constrain(c`${z} == 1`);
+      m.maximize(x);
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+      expect(x.value).toBe(50);
+    });
+
+    it("rejects invalid user-provided M values (negative, zero, NaN, Infinity)", () => {
+      const m = new Model();
+      const x = m.continuous("x", { lb: 0, ub: 100 });
+      const z = m.binary("z");
+
+      expect(() => m.indicator(z, x.le(50), { M: 0 })).toThrow(
+        /Invalid Big-M value.*expected a finite positive number/
+      );
+      expect(() => m.indicator(z, x.le(50), { M: -100 })).toThrow(
+        /Invalid Big-M value.*expected a finite positive number/
+      );
+      expect(() => m.indicator(z, x.le(50), { M: NaN })).toThrow(
+        /Invalid Big-M value.*expected a finite positive number/
+      );
+      expect(() => m.indicator(z, x.le(50), { M: Infinity })).toThrow(
+        /Invalid Big-M value.*expected a finite positive number/
+      );
+    });
+
+    it("rejects invalid activeValue options", () => {
+      const m = new Model();
+      const x = m.continuous("x", { lb: 0, ub: 100 });
+      const z = m.binary("z");
+
+      expect(() => m.indicator(z, x.le(50), { activeValue: 2 as any })).toThrow(
+        /Invalid activeValue: 2.*must be 0 or 1/
+      );
+      expect(() => m.indicator(z, x.le(50), { activeValue: -1 as any })).toThrow(
+        /Invalid activeValue: -1.*must be 0 or 1/
+      );
+    });
+
+    it("handles constraints where bounds already satisfy the inequality (M = 0)", async () => {
+      const m = new Model("TriviallySatisfied");
+      // x in [0, 50], constraint is x <= 100. max(x) - 100 = 50 - 100 = -50 <= 0, so M = 0.
+      const x = m.continuous("x", { lb: 0, ub: 50 });
+      const z = m.binary("z");
+
+      expect(() => m.indicator(z, x.le(100), { activeValue: 1 })).not.toThrow();
+      m.constrain(c`${z} == 0`);
+      m.maximize(x);
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+      expect(x.value).toBe(50);
+    });
+  });
 });

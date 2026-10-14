@@ -1,4 +1,5 @@
 export { Model, type ModelOptions, type BoundsOptions, type IndicatorOptions, type ConstraintItem } from "./model.js";
+export { deriveBigMForLe, deriveBigMForGe, validateUserBigM } from "./big-m.js";
 export {
   maximize,
   minimize,

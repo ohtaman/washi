@@ -36,11 +36,13 @@ export interface BoundsOptions {
   ub?: number;
 }
 
-export interface IndicatorOptions {
-  activeValue?: 0 | 1;
-  M?: number;
-  name?: string;
-}
+import {
+  type IndicatorOptions,
+  deriveBigMForLe,
+  deriveBigMForGe,
+  validateUserBigM,
+} from "./big-m.js";
+export type { IndicatorOptions };
 
 /**
  * High-level mathematical programming model for LP, MIP, QP, and SMT,
@@ -711,25 +713,48 @@ export class Model {
     }
     const resolvedConstraint = constraint as Constraint;
     const activeVal = options.activeValue !== undefined ? options.activeValue : 1;
-    const M = options.M !== undefined ? options.M : 1e5;
+    if (activeVal !== 0 && activeVal !== 1) {
+      throw new Error(
+        `Invalid activeValue: ${activeVal}. Indicator activeValue must be 0 or 1.`
+      );
+    }
+
     const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
-    const addedConstrs: Constraint[] = [];
+    if (options.M !== undefined) {
+      validateUserBigM(options.M, baseName);
+    }
 
     const { lhs, sense, rhs } = resolvedConstraint;
+    const addedConstrs: Constraint[] = [];
+
+    // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
+    const mLe =
+      options.M !== undefined
+        ? options.M
+        : sense === "<=" || sense === "=="
+        ? deriveBigMForLe(lhs, rhs, sense === "==" ? `${baseName}_le` : baseName)
+        : 0;
+
+    const mGe =
+      options.M !== undefined
+        ? options.M
+        : sense === ">=" || sense === "=="
+        ? deriveBigMForGe(lhs, rhs, sense === "==" ? `${baseName}_ge` : baseName)
+        : 0;
 
     if (activeVal === 1) {
       if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + M*(1 - binVar) <=> lhs + M*binVar <= rhs + M
+        // lhs <= rhs + mLe*(1 - binVar) <=> lhs + mLe*binVar <= rhs + mLe
         const cLe = this.addConstraint(
-          lhs.add(binVar.mul(M)).le(rhs + M),
+          lhs.add(binVar.mul(mLe)).le(rhs + mLe),
           sense === "==" ? `${baseName}_le` : baseName
         );
         addedConstrs.push(cLe);
       }
       if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - M*(1 - binVar) <=> lhs - M*binVar >= rhs - M
+        // lhs >= rhs - mGe*(1 - binVar) <=> lhs - mGe*binVar >= rhs - mGe
         const cGe = this.addConstraint(
-          lhs.sub(binVar.mul(M)).ge(rhs - M),
+          lhs.sub(binVar.mul(mGe)).ge(rhs - mGe),
           sense === "==" ? `${baseName}_ge` : baseName
         );
         addedConstrs.push(cGe);
@@ -737,17 +762,17 @@ export class Model {
     } else {
       // activeVal === 0: holds when binVar == 0, relaxed by M*binVar
       if (sense === "<=" || sense === "==") {
-        // lhs <= rhs + M*binVar <=> lhs - M*binVar <= rhs
+        // lhs <= rhs + mLe*binVar <=> lhs - mLe*binVar <= rhs
         const cLe = this.addConstraint(
-          lhs.sub(binVar.mul(M)).le(rhs),
+          lhs.sub(binVar.mul(mLe)).le(rhs),
           sense === "==" ? `${baseName}_le` : baseName
         );
         addedConstrs.push(cLe);
       }
       if (sense === ">=" || sense === "==") {
-        // lhs >= rhs - M*binVar <=> lhs + M*binVar >= rhs
+        // lhs >= rhs - mGe*binVar <=> lhs + mGe*binVar >= rhs
         const cGe = this.addConstraint(
-          lhs.add(binVar.mul(M)).ge(rhs),
+          lhs.add(binVar.mul(mGe)).ge(rhs),
           sense === "==" ? `${baseName}_ge` : baseName
         );
         addedConstrs.push(cGe);
