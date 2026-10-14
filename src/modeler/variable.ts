@@ -26,7 +26,10 @@ function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
  */
 export class Var {
   public readonly id: number;
-  public readonly name: string;
+  public name: string;
+  public readonly prefix: string;
+  public hasExplicitName: boolean;
+  public ownerModel: unknown = null;
   public type: "Continuous" | "Integer" | "Binary";
   public lb: number;
   public ub: number;
@@ -38,7 +41,11 @@ export class Var {
 
   constructor(options: VarOptions = {}) {
     this.id = ++varIdCounter;
-    this.name = options.name || `x_${this.id}`;
+    const explicitName = typeof options.name === "string" ? options.name.trim() : "";
+    const rawPrefix = typeof options.prefix === "string" ? options.prefix.trim() : "";
+    this.prefix = rawPrefix.length > 0 ? rawPrefix : "x";
+    this.hasExplicitName = explicitName.length > 0;
+    this.name = this.hasExplicitName ? explicitName : `${this.prefix}_${this.id}`;
     this.type = normalizeVarType(options.type);
 
     if (this.type === "Binary") {

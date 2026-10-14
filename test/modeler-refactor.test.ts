@@ -261,10 +261,17 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
   });
 
   it("[Review Fix 4] preserves extracted empty unsat core as defined readonly array", async () => {
-    await import("../src/modeler/solvers/z3/index.js");
-    const m = new Model({ solver: "z3" });
-    // Inconsistent background assertion: lb > ub, no named constraints
-    m.continuous("x", { lb: 2, ub: 1 });
+    const mockSolver = {
+      name: "MockUnsatSolver",
+      capabilities: { supportsMIP: false, supportsQP: false },
+      async solve() {
+        return { status: "Infeasible" as const, values: {}, objectiveValue: null };
+      },
+      async check() {
+        return { status: "Unsat" as const, unsatCore: [] };
+      },
+    };
+    const m = new Model({ solver: mockSolver as any });
 
     const res = await m.check();
     expect(res.status).toBe("Unsat");

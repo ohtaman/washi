@@ -75,9 +75,13 @@ export class Model {
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
+  private varPrefixCounters = new Map<string, number>();
   private boolVarMapByName = new Map<string, BoolVar>();
   private boolVarPrefixCounters = new Map<string, number>();
   private constrMapByName = new Map<string, Constraint>();
+  private constrPrefixCounters = new Map<string, number>();
+  private logicalConstrNames = new Set<string>();
+  private logicalConstrCounter = 0;
 
   public status: SolverStatus = "NotSolved";
   public objectiveValue: number | null = null;
@@ -174,13 +178,21 @@ export class Model {
       return matrix;
     }
 
-    // 1D single variable: arg1 is string
-    if (typeof arg1 === "string") {
+    // 1D single variable: arg1 is string, undefined, or options object
+    if (typeof arg1 === "string" || arg1 === undefined) {
       const opts = (arg2 as BoundsOptions) || {};
+      const explicitName = typeof arg1 === "string" ? arg1 : opts.name;
       return this.addVar({
         ...opts,
         type: domainType,
-        name: arg1,
+        name: explicitName,
+      });
+    }
+    if (typeof arg1 === "object" && !Array.isArray(arg1) && typeof (arg1 as any)[Symbol.iterator] !== "function") {
+      const opts = arg1 as BoundsOptions;
+      return this.addVar({
+        ...opts,
+        type: domainType,
       });
     }
 
@@ -195,7 +207,8 @@ export class Model {
           this.addVar({
             ...opts,
             type: domainType,
-            name: `${p}_${i}`,
+            name: undefined,
+            prefix: p,
           })
         );
       }
@@ -220,11 +233,13 @@ export class Model {
    * Create 0-1 binary variable(s) (x in {0, 1}).
    * Supports:
    * - m.binary("x") -> Var
+   * - m.binary() -> Var
    * - m.binary(5) -> Var[]
    * - m.binary(["a", "b"]) -> Record<string, Var>
    * - m.binary(rows, cols) -> Record<string, Record<string, Var>>
    */
-  binary(name: string): Var;
+  binary(name?: string, options?: { prefix?: string; name?: string }): Var;
+  binary(options: { prefix?: string; name?: string }): Var;
   binary(count: number, options?: { prefix?: string; name?: string }): Var[];
   binary<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -235,7 +250,7 @@ export class Model {
     dim2: C[] | number,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, Var>>;
-  binary(arg1: any, arg2?: any, arg3?: any): any {
+  binary(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Binary", arg1, arg2, arg3);
   }
 
@@ -243,11 +258,13 @@ export class Model {
    * Create integer variable(s) (y in Z).
    * Supports:
    * - m.integer("y", { lb: 0, ub: 10 }) -> Var
+   * - m.integer({ lb: 0, ub: 10 }) -> Var
    * - m.integer(5, { lb: 0 }) -> Var[]
    * - m.integer(["a", "b"], { lb: 0, ub: 5 }) -> Record<string, Var>
    * - m.integer(rows, cols, options) -> Record<string, Record<string, Var>>
    */
-  integer(name: string, options?: BoundsOptions): Var;
+  integer(name?: string, options?: BoundsOptions): Var;
+  integer(options: BoundsOptions): Var;
   integer(count: number, options?: BoundsOptions): Var[];
   integer<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -258,7 +275,7 @@ export class Model {
     dim2: C[] | number,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
-  integer(arg1: any, arg2?: any, arg3?: any): any {
+  integer(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Integer", arg1, arg2, arg3);
   }
 
@@ -266,11 +283,13 @@ export class Model {
    * Create continuous (real) variable(s) (z in R).
    * Supports:
    * - m.continuous("z", { lb: 0 }) -> Var
+   * - m.continuous({ lb: 0 }) -> Var
    * - m.continuous(5, { lb: 0 }) -> Var[]
    * - m.continuous(["a", "b"], { lb: 0 }) -> Record<string, Var>
    * - m.continuous(rows, cols, options) -> Record<string, Record<string, Var>>
    */
-  continuous(name: string, options?: BoundsOptions): Var;
+  continuous(name?: string, options?: BoundsOptions): Var;
+  continuous(options: BoundsOptions): Var;
   continuous(count: number, options?: BoundsOptions): Var[];
   continuous<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -281,7 +300,7 @@ export class Model {
     dim2: C[] | number,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
-  continuous(arg1: any, arg2?: any, arg3?: any): any {
+  continuous(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Continuous", arg1, arg2, arg3);
   }
 
@@ -294,7 +313,8 @@ export class Model {
    * - m.bool(["flagA", "flagB"]) -> Record<string, BoolVar>
    * - m.bool(rows, cols) -> Record<string, Record<string, BoolVar>>
    */
-  bool(name?: string): BoolVar;
+  bool(name?: string, options?: { prefix?: string; name?: string }): BoolVar;
+  bool(options: { prefix?: string; name?: string }): BoolVar;
   bool(count: number, options?: { prefix?: string; name?: string }): BoolVar[];
   bool<K extends string | number>(
     keys: K[] | Iterable<K>,
@@ -322,9 +342,15 @@ export class Model {
       return matrix;
     }
 
-    // 1D single variable or no args
+    // 1D single variable or options object
     if (typeof arg1 === "string" || arg1 === undefined) {
-      return this.createBoolVar(arg1);
+      const opts = (arg2 as { prefix?: string; name?: string }) || {};
+      const explicitName = typeof arg1 === "string" ? arg1 : opts.name;
+      return this.createBoolVar(explicitName, opts.prefix);
+    }
+    if (typeof arg1 === "object" && !Array.isArray(arg1) && typeof (arg1 as any)[Symbol.iterator] !== "function") {
+      const opts = arg1 as { prefix?: string; name?: string };
+      return this.createBoolVar(opts.name, opts.prefix);
     }
 
     // 1D multiple variables: count (number) or keys (array/iterable)
@@ -334,7 +360,7 @@ export class Model {
       const result: BoolVar[] = [];
       const p = prefix || "p";
       for (let i = 0; i < arg1; i++) {
-        result.push(this.createBoolVar(this.getNextBoolVarName(p)));
+        result.push(this.createBoolVar(undefined, p));
       }
       return result;
     } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
@@ -353,6 +379,17 @@ export class Model {
     return this.varMapByName.has(name) || this.boolVarMapByName.has(name);
   }
 
+  private getNextVarName(prefix: string): string {
+    let counter = this.varPrefixCounters.get(prefix) ?? 0;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasVarName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.varPrefixCounters.set(prefix, counter + 1);
+    return candidate;
+  }
+
   private getNextBoolVarName(prefix: string): string {
     let counter = this.boolVarPrefixCounters.get(prefix) ?? 0;
     let candidate = `${prefix}_${counter}`;
@@ -364,9 +401,37 @@ export class Model {
     return candidate;
   }
 
-  private createBoolVar(name?: string): BoolVar {
+  private hasConstrName(name: string): boolean {
+    return this.constrMapByName.has(name) || this.logicalConstrNames.has(name);
+  }
+
+  private getNextConstrName(prefix: string = "c"): string {
+    let counter = this.constrPrefixCounters.get(prefix) ?? 1;
+    let candidate = `${prefix}_${counter}`;
+    while (this.hasConstrName(candidate)) {
+      counter++;
+      candidate = `${prefix}_${counter}`;
+    }
+    this.constrPrefixCounters.set(prefix, counter + 1);
+    return candidate;
+  }
+
+  private getNextLogicalConstrName(): string {
+    let counter = this.logicalConstrCounter + 1;
+    let candidate = `lc_${counter}`;
+    while (this.hasConstrName(candidate)) {
+      counter++;
+      candidate = `lc_${counter}`;
+    }
+    this.logicalConstrCounter = counter;
+    return candidate;
+  }
+
+  private createBoolVar(name?: string, prefix?: string): BoolVar {
     const trimmed = typeof name === "string" ? name.trim() : undefined;
-    const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName("p");
+    const rawPrefix = typeof prefix === "string" ? prefix.trim() : "";
+    const resolvedPrefix = rawPrefix.length > 0 ? rawPrefix : "p";
+    const varName = trimmed && trimmed.length > 0 ? trimmed : this.getNextBoolVarName(resolvedPrefix);
     if (this.hasVarName(varName)) {
       throw new Error(`Variable with name '${varName}' already exists in model`);
     }
@@ -383,13 +448,19 @@ export class Model {
   private addVar(options?: VarOptions): Var {
     const opts = options || {};
     const trimmed = typeof opts.name === "string" ? opts.name.trim() : undefined;
-    const name = trimmed && trimmed.length > 0 ? trimmed : undefined;
-    const v = new Var({ ...opts, name });
+    const explicitName = trimmed && trimmed.length > 0 ? trimmed : undefined;
+    const rawPrefix = typeof opts.prefix === "string" ? opts.prefix.trim() : "";
+    const resolvedPrefix = rawPrefix.length > 0 ? rawPrefix : "x";
+    const name = explicitName ?? this.getNextVarName(resolvedPrefix);
 
     // Validate unique name
-    if (this.hasVarName(v.name)) {
-      throw new Error(`Variable with name '${v.name}' already exists in model`);
+    if (this.hasVarName(name)) {
+      throw new Error(`Variable with name '${name}' already exists in model`);
     }
+
+    const v = new Var({ ...opts, name, prefix: resolvedPrefix });
+    v.hasExplicitName = explicitName !== undefined;
+    v.ownerModel = this;
 
     this.variables.push(v);
     this.varMapByName.set(v.name, v);
@@ -620,11 +691,19 @@ export class Model {
       );
     }
     if (constraint instanceof BoolExpr) {
-      const constrName = name || `lc_${this.logicalConstraints.length + 1}`;
+      const explicitName = typeof name === "string" && name.trim().length > 0 ? name.trim() : undefined;
+      if (explicitName !== undefined && this.hasConstrName(explicitName)) {
+        throw new Error(`Constraint with name '${explicitName}' already exists in model`);
+      }
+      const constrName = explicitName ?? this.getNextLogicalConstrName();
+      if (this.hasConstrName(constrName)) {
+        throw new Error(`Constraint with name '${constrName}' already exists in model`);
+      }
       this.logicalConstraints.push({
         name: constrName,
         expr: constraint,
       });
+      this.logicalConstrNames.add(constrName);
       this.resetSolutionState();
       return constraint;
     }
@@ -635,15 +714,22 @@ export class Model {
       constr = parseConstraint(constraint, (varName) => this.getVarByName(varName), name);
     } else {
       constr = constraint;
-      if (name) {
-        constr.name = name;
-      }
     }
 
-    if (this.constrMapByName.has(constr.name)) {
-      throw new Error(`Constraint with name '${constr.name}' already exists in model`);
+    const explicitName =
+      typeof name === "string" && name.trim().length > 0
+        ? name.trim()
+        : constr.hasExplicitName
+        ? constr.name.trim()
+        : undefined;
+    const resolvedName = explicitName ?? this.getNextConstrName("c");
+
+    if (this.hasConstrName(resolvedName)) {
+      throw new Error(`Constraint with name '${resolvedName}' already exists in model`);
     }
 
+    constr.name = resolvedName;
+    constr.hasExplicitName = true;
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
     this.resetSolutionState();
@@ -677,11 +763,23 @@ export class Model {
     }
 
     if (item instanceof Var) {
-      if (!this.varMapByName.has(item.name)) {
-        this.variables.push(item);
-        this.varMapByName.set(item.name, item);
-        this.resetSolutionState();
+      if (item.ownerModel === this) {
+        return this;
       }
+      if (item.ownerModel !== null && item.ownerModel !== this) {
+        throw new Error(
+          `Variable '${item.name}' already belongs to another model and cannot be shared across models.`
+        );
+      }
+      const resolvedName = item.hasExplicitName ? item.name.trim() : this.getNextVarName(item.prefix);
+      if (this.hasVarName(resolvedName)) {
+        throw new Error(`Variable with name '${resolvedName}' already exists in model`);
+      }
+      item.name = resolvedName;
+      item.ownerModel = this;
+      this.variables.push(item);
+      this.varMapByName.set(item.name, item);
+      this.resetSolutionState();
       return this;
     }
 
@@ -719,28 +817,39 @@ export class Model {
       );
     }
 
-    const baseName = options.name || `ind_${binVar.name}_${resolvedConstraint.name}`;
-    if (options.M !== undefined) {
-      validateUserBigM(options.M, baseName);
-    }
+    const explicitOptName =
+      typeof options.name === "string" && options.name.trim().length > 0
+        ? options.name.trim()
+        : undefined;
+    const savedCounter = this.constrPrefixCounters.get("c");
+    const targetConstrName = resolvedConstraint.hasExplicitName
+      ? resolvedConstraint.name.trim()
+      : explicitOptName !== undefined
+      ? resolvedConstraint.name
+      : this.getNextConstrName("c");
+    const baseName = explicitOptName ?? `ind_${binVar.name}_${targetConstrName}`;
+    try {
+      if (options.M !== undefined) {
+        validateUserBigM(options.M, baseName);
+      }
 
-    const { lhs, sense, rhs } = resolvedConstraint;
-    const addedConstrs: Constraint[] = [];
+      const { lhs, sense, rhs } = resolvedConstraint;
+      const addedConstrs: Constraint[] = [];
 
-    // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
-    const mLe =
-      options.M !== undefined
-        ? options.M
-        : sense === "<=" || sense === "=="
-        ? deriveBigMForLe(lhs, rhs, sense === "==" ? `${baseName}_le` : baseName)
-        : 0;
+      // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
+      const mLe =
+        options.M !== undefined
+          ? options.M
+          : sense === "<=" || sense === "=="
+          ? deriveBigMForLe(lhs, rhs, sense === "==" ? `${baseName}_le` : baseName)
+          : 0;
 
-    const mGe =
-      options.M !== undefined
-        ? options.M
-        : sense === ">=" || sense === "=="
-        ? deriveBigMForGe(lhs, rhs, sense === "==" ? `${baseName}_ge` : baseName)
-        : 0;
+      const mGe =
+        options.M !== undefined
+          ? options.M
+          : sense === ">=" || sense === "=="
+          ? deriveBigMForGe(lhs, rhs, sense === "==" ? `${baseName}_ge` : baseName)
+          : 0;
 
     if (activeVal === 1) {
       if (sense === "<=" || sense === "==") {
@@ -779,7 +888,15 @@ export class Model {
       }
     }
 
-    return addedConstrs;
+      return addedConstrs;
+    } catch (err) {
+      if (savedCounter === undefined) {
+        this.constrPrefixCounters.delete("c");
+      } else {
+        this.constrPrefixCounters.set("c", savedCounter);
+      }
+      throw err;
+    }
   }
 
   /**
