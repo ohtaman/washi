@@ -1,6 +1,6 @@
 import type { Solver, SolverOptions, SolverResult, SolverCapabilities } from "./types.js";
 import type { LpModelData, LpExportResult } from "../lp-writer.js";
-import type { SolverStatus, TerminationStatus } from "../types.js";
+import type { SolverStatus, TerminationStatus, SolveProgressEvent } from "../types.js";
 
 export interface MockSolverOptions extends SolverOptions {
   name?: string;
@@ -18,6 +18,7 @@ export interface MockSolverOptions extends SolverOptions {
   duals?: Record<string, number>;
   slacks?: Record<string, number>;
   delayMs?: number;
+  progressEvents?: SolveProgressEvent[];
 }
 
 /**
@@ -39,21 +40,96 @@ export class MockSolver implements Solver {
     _lpResult: LpExportResult,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
-    const opts = { ...this.options, ...options };
-    if (opts.delayMs && opts.delayMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, opts.delayMs));
+    const opts: MockSolverOptions = { ...this.options, ...options };
+    if (opts.signal?.aborted) {
+      return {
+        status: "Unknown",
+        terminationStatus: "Interrupted",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+        runTime: 0,
+        raw: { mock: true },
+      };
     }
 
-    const status = opts.status || "Optimal";
-    const terminationStatus = opts.terminationStatus ?? status;
-    const hasPrimalSolution =
+    if (opts.delayMs && opts.delayMs > 0) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          opts.signal?.removeEventListener("abort", onAbort);
+          resolve();
+        }, opts.delayMs);
+        const onAbort = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        opts.signal?.addEventListener("abort", onAbort, { once: true });
+      });
+      if (opts.signal?.aborted) {
+        const hasIncumbent = Boolean(
+          opts.hasPrimalSolution ?? (opts.values && Object.keys(opts.values).length > 0)
+        );
+        return {
+          status: hasIncumbent ? "Feasible" : "Unknown",
+          terminationStatus: "Interrupted",
+          hasPrimalSolution: hasIncumbent,
+          objectiveValue: hasIncumbent ? (opts.objectiveValue ?? 0) : null,
+          ...(opts.objectiveBound !== undefined ? { objectiveBound: opts.objectiveBound } : {}),
+          ...(opts.relGap !== undefined
+            ? { relGap: opts.relGap, mipGap: opts.relGap }
+            : opts.mipGap !== undefined
+              ? { relGap: opts.mipGap, mipGap: opts.mipGap }
+              : {}),
+          ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
+          values: hasIncumbent ? opts.values || {} : {},
+          runTime: 0.001,
+          raw: { mock: true },
+        };
+      }
+    }
+
+    if (opts.onProgress && Array.isArray(opts.progressEvents)) {
+      for (const ev of opts.progressEvents) {
+        if (opts.signal?.aborted) break;
+        opts.onProgress(ev);
+      }
+    }
+
+    let status = opts.status || "Optimal";
+    let terminationStatus = opts.terminationStatus ?? status;
+    let hasPrimalSolution =
       opts.hasPrimalSolution !== undefined
         ? opts.hasPrimalSolution
         : status === "Optimal" ||
           status === "Feasible" ||
           status === "Sat" ||
-          ((status === "TimeLimit" || status === "IterationLimit") &&
+          ((status === "TimeLimit" || status === "IterationLimit" || terminationStatus === "Interrupted") &&
             Boolean(opts.values && Object.keys(opts.values).length > 0));
+
+    if (opts.onProgress && !Array.isArray(opts.progressEvents) && !opts.signal?.aborted) {
+      const obj = hasPrimalSolution ? (opts.objectiveValue ?? 0) : undefined;
+      opts.onProgress({
+        elapsedTime: 0.001,
+        elapsedSeconds: 0.001,
+        ...(typeof obj === "number" && Number.isFinite(obj) ? { objectiveValue: obj } : {}),
+        ...(opts.objectiveBound !== undefined ? { objectiveBound: opts.objectiveBound } : {}),
+        ...(opts.relGap !== undefined
+          ? { relGap: opts.relGap, mipGap: opts.relGap }
+          : opts.mipGap !== undefined
+            ? { relGap: opts.mipGap, mipGap: opts.mipGap }
+            : {}),
+        ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
+      });
+    }
+
+    if (opts.signal?.aborted) {
+      terminationStatus = "Interrupted";
+      hasPrimalSolution =
+        opts.hasPrimalSolution !== undefined
+          ? opts.hasPrimalSolution
+          : Boolean(opts.values && Object.keys(opts.values).length > 0);
+      status = hasPrimalSolution ? "Feasible" : "Unknown";
+    }
 
     return {
       status,

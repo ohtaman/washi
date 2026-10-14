@@ -34,7 +34,33 @@ export class GLPKSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const mergedOptions: SolverOptions = { ...this.options, ...options };
+    if (mergedOptions.signal?.aborted) {
+      return {
+        status: "Unknown",
+        terminationStatus: "Interrupted",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+        duals: {},
+        slacks: {},
+        runTime: 0,
+        logs: ["GLPK solve was cancelled before execution."],
+      };
+    }
     const glpk = await glpkLoader.getGlpk();
+    if (mergedOptions.signal?.aborted) {
+      return {
+        status: "Unknown",
+        terminationStatus: "Interrupted",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+        duals: {},
+        slacks: {},
+        runTime: 0,
+        logs: ["GLPK solve was cancelled before execution."],
+      };
+    }
 
     // Mapping from Var to sanitized name used in LP export
     const { nameToVar, nameToConstraint } = lpResult;
@@ -163,7 +189,32 @@ export class GLPKSolver implements Solver {
       glpkOptions.mipgap = relGapOpt;
     }
 
+    const objConstant =
+      typeof modelData.objective?.constant === "number" ? modelData.objective.constant : 0;
+
     const startTime = performance.now();
+    let emittedProgressCount = 0;
+    if (mergedOptions.onProgress) {
+      glpkOptions.cb = {
+        each: 1,
+        call: (cbRes: any) => {
+          if (mergedOptions.signal?.aborted) return;
+          emittedProgressCount++;
+          const rawZ = cbRes?.z;
+          const zVal =
+            typeof rawZ === "number" && Number.isFinite(rawZ) && Number.isFinite(rawZ + objConstant)
+              ? rawZ + objConstant
+              : undefined;
+          const elapsed = (performance.now() - startTime) / 1000;
+          mergedOptions.onProgress?.({
+            elapsedTime: elapsed,
+            elapsedSeconds: elapsed,
+            ...(zVal !== undefined ? { objectiveValue: zVal } : {}),
+          });
+        },
+      };
+    }
+
     const rawResult = await glpk.solve(glpkProblem, glpkOptions);
     const runTime = (performance.now() - startTime) / 1000;
     const effectiveRunTime =
@@ -178,25 +229,34 @@ export class GLPKSolver implements Solver {
     const isPrimalStatus = status === "Optimal" || status === "Feasible";
 
     if (!isPrimalStatus) {
+      if (mergedOptions.onProgress && !mergedOptions.signal?.aborted && emittedProgressCount === 0) {
+        mergedOptions.onProgress({
+          elapsedTime: effectiveRunTime,
+          elapsedSeconds: effectiveRunTime,
+        });
+      }
+      const finalAborted = Boolean(mergedOptions.signal?.aborted);
       const infeasCode = glpk?.GLP_INFEAS ?? 3;
       return {
-        status,
-        terminationStatus: rawStatus === infeasCode ? "Unknown" : status,
+        status: finalAborted ? "Unknown" : status,
+        terminationStatus: finalAborted
+          ? "Interrupted"
+          : rawStatus === infeasCode
+            ? "Unknown"
+            : status,
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
         duals: {},
         slacks: {},
         runTime: effectiveRunTime,
-        logs: [`GLPK solve finished with status: ${status}.`],
+        logs: [`GLPK solve finished with status: ${finalAborted ? "Interrupted" : status}.`],
         raw: rawResult,
       };
     }
 
     const rawObj = rawResult?.result?.z;
     const rawVars = rawResult?.result?.vars;
-    const objConstant =
-      typeof modelData.objective?.constant === "number" ? modelData.objective.constant : 0;
     const hasValidObjective =
       typeof rawObj === "number" &&
       Number.isFinite(rawObj) &&
@@ -247,6 +307,13 @@ export class GLPKSolver implements Solver {
     }
 
     const objectiveValue = rawObj + objConstant;
+    if (mergedOptions.onProgress && !mergedOptions.signal?.aborted && emittedProgressCount === 0) {
+      mergedOptions.onProgress({
+        elapsedTime: effectiveRunTime,
+        elapsedSeconds: effectiveRunTime,
+        objectiveValue,
+      });
+    }
 
     // Dual values: provided for LP (simplex) solves; MIP does not produce dual solutions
     const dualsRecord: Record<string, number> = {};
@@ -263,9 +330,10 @@ export class GLPKSolver implements Solver {
       }
     }
 
+    const finalAborted = Boolean(mergedOptions.signal?.aborted);
     return {
-      status,
-      terminationStatus: status === "Feasible" ? "Unknown" : status,
+      status: finalAborted ? "Feasible" : status,
+      terminationStatus: finalAborted ? "Interrupted" : status === "Feasible" ? "Unknown" : status,
       hasPrimalSolution: true,
       objectiveValue,
       values: valuesRecord,

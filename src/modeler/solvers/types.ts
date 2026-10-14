@@ -1,4 +1,4 @@
-import type { SolverStatus, TerminationStatus } from "../types.js";
+import type { SolverStatus, TerminationStatus, SolveProgressEvent } from "../types.js";
 import type { LpModelData, LpExportResult } from "../lp-writer.js";
 
 /**
@@ -50,6 +50,10 @@ export interface SolverOptions {
   verbose?: boolean;
   /** Use Web Worker for non-blocking browser execution */
   useWorker?: boolean;
+  /** AbortSignal to cancel an in-flight solve */
+  signal?: AbortSignal;
+  /** Callback invoked with real solver progress metrics when available */
+  onProgress?: (progress: SolveProgressEvent) => void;
   /** Additional solver-specific options */
   [key: string]: any;
 }

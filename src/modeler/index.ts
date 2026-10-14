@@ -30,6 +30,7 @@ export type {
   ComparisonSense,
   SolverStatus,
   TerminationStatus,
+  SolveProgressEvent,
   SolveOptions,
   SolverSolution,
   CheckResult,

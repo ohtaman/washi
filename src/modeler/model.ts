@@ -1082,7 +1082,7 @@ export class Model {
         activeOptions
       );
       this.status = checkResult.status;
-      this.terminationStatus = checkResult.status;
+      this.terminationStatus = activeOptions.signal?.aborted ? "Interrupted" : checkResult.status;
       this.hasPrimalSolution = checkResult.status === "Sat";
       this.runTime = checkResult.runTime ?? 0;
       this.unsatCore = checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
@@ -1123,9 +1123,11 @@ export class Model {
 
       this.status = checkStatus;
       this.terminationStatus =
-        isSat || isUnsat || this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
-          ? checkStatus
-          : this.terminationStatus;
+        activeOptions.signal?.aborted || this.terminationStatus === "Interrupted"
+          ? "Interrupted"
+          : isSat || isUnsat || this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
+            ? checkStatus
+            : this.terminationStatus;
       this.hasPrimalSolution = isSat;
       this.objectiveValue = null;
       this.objectiveBound = undefined;

@@ -1,5 +1,5 @@
 import type { Highs, Model as HighsPersistentModel, SymbolDisposable } from "highs";
-import type { SolveOptions } from "../../types.js";
+import type { SolveOptions, SolveProgressEvent } from "../../types.js";
 import { getBundledWasmUrl } from "./assets.js";
 import { loadNodeHighs } from "./node-runtime.js";
 
@@ -179,6 +179,13 @@ export interface RawHighsSolveResult {
   }>;
 }
 
+export interface HighsIncumbentSnapshot {
+  objectiveValue: number;
+  mipDualBound?: number;
+  mipGap?: number;
+  columns: RawHighsSolveResult["Columns"];
+}
+
 const HIGHS_STATUS_NAMES: Record<number, string> = {
   0: "Not Set",
   1: "Load error",
@@ -206,9 +213,39 @@ const HIGHS_STATUS_NAMES: Record<number, string> = {
  */
 export async function solveLpWithHighs(
   lpString: string,
-  options: SolveOptions = {}
+  options: SolveOptions & {
+    onIncumbent?: (incumbent: HighsIncumbentSnapshot) => void;
+  } = {}
 ): Promise<{ result: RawHighsSolveResult; runTime: number }> {
+  if (options.signal?.aborted) {
+    return {
+      result: {
+        Status: "Interrupted",
+        StatusCode: 17,
+        HasPrimalSolution: false,
+        ObjectiveValue: NaN,
+        Columns: {},
+        Rows: [],
+      },
+      runTime: 0,
+    };
+  }
+
   const highs = await getHighs(options);
+  if (options.signal?.aborted) {
+    return {
+      result: {
+        Status: "Interrupted",
+        StatusCode: 17,
+        HasPrimalSolution: false,
+        ObjectiveValue: NaN,
+        Columns: {},
+        Rows: [],
+      },
+      runTime: 0,
+    };
+  }
+
   const startTime = performance.now();
 
   const highsOptions: Record<string, any> = {
@@ -274,11 +311,178 @@ export async function solveLpWithHighs(
             }
           }
         }
-        m.run();
 
-        const statusCode: number = m.getModelStatus();
-        const statusStr = HIGHS_STATUS_NAMES[statusCode] ?? "Unknown";
         const dims = m.getDimensions();
+        const colMeta: Array<{ name: string; type: string }> = [];
+        let isMip = false;
+        for (let j = 0; j < dims.numCols; j++) {
+          const integ = m.getColIntegrality(j);
+          if (integ !== 0) {
+            isMip = true;
+          }
+          colMeta.push({
+            name: m.getColName(j),
+            type: integ === 1 ? "Integer" : "Continuous",
+          });
+        }
+
+        let lastIncumbentSnapshot: HighsIncumbentSnapshot | null = null;
+        let lastProgressEvent: SolveProgressEvent | null = null;
+        let emittedProgressCount = 0;
+
+        const extractProgressEvent = (event: any): SolveProgressEvent => {
+          const data = event?.data ?? {};
+          const elapsedSeconds =
+            typeof data.running_time === "number" && Number.isFinite(data.running_time)
+              ? data.running_time
+              : (performance.now() - startTime) / 1000;
+          const objectiveValue =
+            typeof data.mip_primal_bound === "number" && Number.isFinite(data.mip_primal_bound)
+              ? data.mip_primal_bound
+              : typeof data.objective_function_value === "number" && Number.isFinite(data.objective_function_value)
+                ? data.objective_function_value
+                : undefined;
+          const objectiveBound =
+            typeof data.mip_dual_bound === "number" && Number.isFinite(data.mip_dual_bound)
+              ? data.mip_dual_bound
+              : undefined;
+          const relGap =
+            typeof data.mip_gap === "number" && Number.isFinite(data.mip_gap)
+              ? data.mip_gap
+              : undefined;
+          const absGap =
+            objectiveValue !== undefined && objectiveBound !== undefined
+              ? Math.abs(objectiveValue - objectiveBound)
+              : undefined;
+          const nodes =
+            typeof data.mip_node_count === "bigint"
+              ? Number(data.mip_node_count)
+              : typeof data.mip_node_count === "number" && Number.isFinite(data.mip_node_count)
+                ? data.mip_node_count
+                : undefined;
+          const iterations =
+            typeof data.mip_total_lp_iterations === "bigint"
+              ? Number(data.mip_total_lp_iterations)
+              : typeof data.simplex_iteration_count === "number" && Number.isFinite(data.simplex_iteration_count)
+                ? data.simplex_iteration_count
+                : typeof data.ipm_iteration_count === "number" && Number.isFinite(data.ipm_iteration_count)
+                  ? data.ipm_iteration_count
+                  : undefined;
+          const message =
+            typeof event?.message === "string" && event.message.trim().length > 0
+              ? event.message.trim()
+              : undefined;
+          const prog: SolveProgressEvent = {
+            elapsedTime: elapsedSeconds,
+            elapsedSeconds,
+            ...(objectiveValue !== undefined ? { objectiveValue } : {}),
+            ...(objectiveBound !== undefined ? { objectiveBound } : {}),
+            ...(relGap !== undefined ? { relGap, mipGap: relGap } : {}),
+            ...(absGap !== undefined ? { absGap } : {}),
+            ...(nodes !== undefined ? { nodes } : {}),
+            ...(iterations !== undefined ? { iterations } : {}),
+            ...(message !== undefined ? { message } : {}),
+          };
+          lastProgressEvent = prog;
+          return prog;
+        };
+
+        const captureIncumbentFromEvent = (event: any) => {
+          const data = event?.data;
+          if (!data || !(data.mip_solution instanceof Float64Array)) {
+            return;
+          }
+          const vec = data.mip_solution as Float64Array;
+          const cols: RawHighsSolveResult["Columns"] = {};
+          for (let j = 0; j < colMeta.length && j < vec.length; j++) {
+            cols[colMeta[j].name] = {
+              Index: j,
+              Type: colMeta[j].type,
+              Name: colMeta[j].name,
+              Primal: vec[j],
+            };
+          }
+          const obj =
+            typeof data.objective_function_value === "number" && Number.isFinite(data.objective_function_value)
+              ? data.objective_function_value
+              : typeof data.mip_primal_bound === "number" && Number.isFinite(data.mip_primal_bound)
+                ? data.mip_primal_bound
+                : NaN;
+          if (Number.isFinite(obj)) {
+            lastIncumbentSnapshot = {
+              objectiveValue: obj,
+              ...(typeof data.mip_dual_bound === "number" && Number.isFinite(data.mip_dual_bound)
+                ? { mipDualBound: data.mip_dual_bound }
+                : {}),
+              ...(typeof data.mip_gap === "number" && Number.isFinite(data.mip_gap)
+                ? { mipGap: data.mip_gap }
+                : {}),
+              columns: cols,
+            };
+            options.onIncumbent?.(lastIncumbentSnapshot);
+          }
+        };
+
+        const hasCallbacks = Boolean(options.signal || options.onProgress || options.onIncumbent);
+        if (hasCallbacks) {
+          const cbTypes = highs.constants?.callbackType ?? {
+            logging: 0,
+            simplexInterrupt: 1,
+            ipmInterrupt: 2,
+            mipSolution: 3,
+            mipImprovingSolution: 4,
+            mipLogging: 5,
+            mipInterrupt: 6,
+          };
+          const handleInterrupt = (event: any): undefined => {
+            if (options.signal?.aborted) {
+              event.interrupt();
+              return undefined;
+            }
+            if (options.onProgress) {
+              emittedProgressCount++;
+              options.onProgress(extractProgressEvent(event));
+              if (options.signal?.aborted) {
+                event.interrupt();
+              }
+            }
+            return undefined;
+          };
+
+          const callbacks: Record<number, (event: any) => undefined> = {
+            [cbTypes.simplexInterrupt]: handleInterrupt,
+            [cbTypes.ipmInterrupt]: handleInterrupt,
+            [cbTypes.mipInterrupt]: handleInterrupt,
+            [cbTypes.mipSolution]: (event: any): undefined => {
+              captureIncumbentFromEvent(event);
+              return undefined;
+            },
+            [cbTypes.mipImprovingSolution]: (event: any): undefined => {
+              captureIncumbentFromEvent(event);
+              if (options.onProgress && !options.signal?.aborted) {
+                emittedProgressCount++;
+                options.onProgress(extractProgressEvent(event));
+              }
+              return undefined;
+            },
+            [cbTypes.mipLogging]: (event: any): undefined => {
+              if (options.onProgress && !options.signal?.aborted) {
+                emittedProgressCount++;
+                options.onProgress(extractProgressEvent(event));
+              }
+              return undefined;
+            },
+          };
+          m.run(callbacks);
+        } else {
+          m.run();
+        }
+
+        let statusCode: number = m.getModelStatus();
+        if (options.signal?.aborted) {
+          statusCode = 17;
+        }
+        const statusStr = HIGHS_STATUS_NAMES[statusCode] ?? "Unknown";
 
         let primalSolutionStatus = 0;
         let dualSolutionStatus = 0;
@@ -293,35 +497,32 @@ export async function solveLpWithHighs(
           // Unavailable info
         }
         const feasibleCode = highs.constants?.solutionStatus?.feasible ?? 2;
-        const hasPrimalSolution = primalSolutionStatus === feasibleCode;
+        const hasNativePrimal = primalSolutionStatus === feasibleCode;
         const hasDualSolution = dualSolutionStatus === feasibleCode;
 
-        let isMip = false;
-        for (let j = 0; j < dims.numCols; j++) {
-          if (m.getColIntegrality(j) !== 0) {
-            isMip = true;
-            break;
-          }
-        }
+        const sol = hasNativePrimal || hasDualSolution ? m.getSolution() : null;
 
-        const sol = hasPrimalSolution || hasDualSolution ? m.getSolution() : null;
-
-        const Columns: RawHighsSolveResult["Columns"] = {};
-        for (let j = 0; j < dims.numCols; j++) {
-          const name = m.getColName(j);
-          const integ = m.getColIntegrality(j);
-          const colEntry: RawHighsSolveResult["Columns"][string] = {
-            Index: j,
-            Type: integ === 1 ? "Integer" : "Continuous",
-            Name: name,
-          };
-          if (hasPrimalSolution && sol) {
-            colEntry.Primal = sol.colValue[j];
+        let hasPrimalSolution = hasNativePrimal;
+        let Columns: RawHighsSolveResult["Columns"] = {};
+        if (!hasNativePrimal && lastIncumbentSnapshot !== null) {
+          hasPrimalSolution = true;
+          Columns = (lastIncumbentSnapshot as HighsIncumbentSnapshot).columns;
+        } else {
+          for (let j = 0; j < dims.numCols; j++) {
+            const meta = colMeta[j];
+            const colEntry: RawHighsSolveResult["Columns"][string] = {
+              Index: j,
+              Type: meta.type,
+              Name: meta.name,
+            };
+            if (hasNativePrimal && sol) {
+              colEntry.Primal = sol.colValue[j];
+            }
+            if (!isMip && hasDualSolution && sol) {
+              colEntry.Dual = sol.colDual[j];
+            }
+            Columns[meta.name] = colEntry;
           }
-          if (!isMip && hasDualSolution && sol) {
-            colEntry.Dual = sol.colDual[j];
-          }
-          Columns[name] = colEntry;
         }
 
         const Rows: Array<{
@@ -341,7 +542,7 @@ export async function solveLpWithHighs(
             Index: i,
             Name: name,
           };
-          if (hasPrimalSolution && sol) {
+          if (hasNativePrimal && sol) {
             rowEntry.Primal = sol.rowValue[i];
           }
           if (!isMip && hasDualSolution && sol) {
@@ -350,7 +551,11 @@ export async function solveLpWithHighs(
           Rows.push(rowEntry);
         }
 
-        const objectiveValue = hasPrimalSolution ? m.getObjectiveValue() : NaN;
+        const objectiveValue = hasNativePrimal
+          ? m.getObjectiveValue()
+          : lastIncumbentSnapshot !== null
+            ? (lastIncumbentSnapshot as HighsIncumbentSnapshot).objectiveValue
+            : NaN;
         let mipDualBound: number | undefined;
         let mipGap: number | undefined;
         if (isMip) {
@@ -362,6 +567,9 @@ export async function solveLpWithHighs(
           } catch {
             // Unavailable info
           }
+          if (mipDualBound === undefined && lastProgressEvent && (lastProgressEvent as SolveProgressEvent).objectiveBound !== undefined) {
+            mipDualBound = (lastProgressEvent as SolveProgressEvent).objectiveBound;
+          }
           try {
             const rawGap = Number(m.info.get("mip_gap"));
             if (Number.isFinite(rawGap)) {
@@ -370,10 +578,13 @@ export async function solveLpWithHighs(
           } catch {
             // Unavailable info
           }
+          if (mipGap === undefined && lastProgressEvent && (lastProgressEvent as SolveProgressEvent).relGap !== undefined) {
+            mipGap = (lastProgressEvent as SolveProgressEvent).relGap;
+          }
         }
 
         return {
-          Status: statusStr,
+          Status: HIGHS_STATUS_NAMES[statusCode] ?? statusStr,
           StatusCode: statusCode,
           PrimalSolutionStatus: primalSolutionStatus,
           DualSolutionStatus: dualSolutionStatus,
