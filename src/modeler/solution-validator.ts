@@ -219,7 +219,20 @@ export function validateModelSolution(
     const effectiveLb = isBinary ? Math.max(0, v.lb) : v.lb;
     const effectiveUb = isBinary ? Math.min(1, v.ub) : v.ub;
 
-    if (effectiveLb !== -Infinity) {
+    const hasValidLb = typeof v.lb === "number" && !Number.isNaN(v.lb) && v.lb !== Infinity;
+    const hasValidUb = typeof v.ub === "number" && !Number.isNaN(v.ub) && v.ub !== -Infinity;
+
+    if (!hasValidLb) {
+      recordViolation({
+        type: "lower_bound",
+        target: "variable",
+        name: v.name,
+        actual: rawVal,
+        limit: v.lb,
+        violation: Infinity,
+        message: `Variable "${v.name}" has invalid lower bound (${String(v.lb)}).`,
+      });
+    } else if (effectiveLb !== -Infinity) {
       const signed = rawVal - effectiveLb;
       const viol = Math.max(0, effectiveLb - rawVal);
       updateMaxViolation(viol);
@@ -237,7 +250,17 @@ export function validateModelSolution(
       }
     }
 
-    if (effectiveUb !== Infinity) {
+    if (!hasValidUb) {
+      recordViolation({
+        type: "upper_bound",
+        target: "variable",
+        name: v.name,
+        actual: rawVal,
+        limit: v.ub,
+        violation: Infinity,
+        message: `Variable "${v.name}" has invalid upper bound (${String(v.ub)}).`,
+      });
+    } else if (effectiveUb !== Infinity) {
       const signed = rawVal - effectiveUb;
       const viol = Math.max(0, rawVal - effectiveUb);
       updateMaxViolation(viol);
@@ -253,6 +276,26 @@ export function validateModelSolution(
           message: `Variable "${v.name}" value (${rawVal}) violates upper bound (${effectiveUb}) by ${viol}.`,
         });
       }
+    }
+
+    if (
+      hasValidLb &&
+      hasValidUb &&
+      effectiveLb > effectiveUb &&
+      effectiveLb - rawVal <= feasibilityTolerance &&
+      rawVal - effectiveUb <= feasibilityTolerance
+    ) {
+      const invViol = effectiveLb - effectiveUb;
+      recordViolation({
+        type: "lower_bound",
+        target: "variable",
+        name: v.name,
+        actual: rawVal,
+        limit: effectiveLb,
+        violation: invViol,
+        signedViolation: rawVal - effectiveLb,
+        message: `Variable "${v.name}" has inverted bounds [${effectiveLb}, ${effectiveUb}].`,
+      });
     }
 
     if (isInteger) {
@@ -317,13 +360,26 @@ export function validateModelSolution(
   const evalLinExpr = (
     expr: LinExpr
   ): { ok: true; value: number } | { ok: false; reason: string } => {
-    let sum = expr.constant !== undefined ? expr.constant : 0;
+    const constant = expr.constant !== undefined ? expr.constant : 0;
+    if (typeof constant !== "number" || !Number.isFinite(constant)) {
+      return { ok: false, reason: `non-finite constant (${String(constant)})` };
+    }
+    let sum = constant;
     for (const [v, coeff] of expr.terms) {
+      if (typeof coeff !== "number" || !Number.isFinite(coeff)) {
+        return {
+          ok: false,
+          reason: `non-finite coefficient (${String(coeff)}) for variable "${v.name}"`,
+        };
+      }
       if (coeff === 0) continue;
       if (!numericValues.has(v)) {
         return { ok: false, reason: `missing or invalid value for variable "${v.name}"` };
       }
       sum += coeff * numericValues.get(v)!;
+      if (!Number.isFinite(sum)) {
+        return { ok: false, reason: "linear expression evaluation overflowed finite range" };
+      }
     }
     return { ok: true, value: sum };
   };
@@ -336,6 +392,9 @@ export function validateModelSolution(
     | { status: "satisfied"; lhsVal: number; signed: number; violation: number }
     | { status: "violated"; lhsVal: number; signed: number; violation: number; message: string }
     | { status: "unchecked"; reason: string } => {
+    if (typeof c.rhs !== "number" || !Number.isFinite(c.rhs)) {
+      return { status: "unchecked", reason: `non-finite right-hand side (${String(c.rhs)})` };
+    }
     const lhsRes = evalLinExpr(c.lhs);
     if (!lhsRes.ok) {
       return { status: "unchecked", reason: lhsRes.reason };
@@ -343,6 +402,9 @@ export function validateModelSolution(
 
     const lhsVal = lhsRes.value;
     const signed = lhsVal - c.rhs;
+    if (!Number.isFinite(signed)) {
+      return { status: "unchecked", reason: "constraint residual overflowed finite range" };
+    }
     const viol =
       c.sense === "<="
         ? Math.max(0, signed)

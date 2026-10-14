@@ -275,7 +275,36 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const z3XorRes = await mXorZ3.check("z3");
     expect(z3XorRes.status).toBe("Sat");
     expect(mXorZ3.validateSolution().valid).toBe(true);
+
+    // 7. Rejects NaN/inverted variable bounds and non-finite constraint RHS/coefficients/constants
+    const mBadBounds = new Model("BadBoundsModel");
+    const xNanLb = mBadBounds.continuous("xNanLb", { lb: 0, ub: 10 });
+    xNanLb.lb = NaN;
+    const repNanLb = mBadBounds.validateSolution({ values: { xNanLb: 5 } });
+    expect(repNanLb.valid).toBe(false);
+    expect(repNanLb.violationsByName["xNanLb"][0].type).toBe("lower_bound");
+
+    const mInvBounds = new Model("InvertedBoundsModel");
+    const xInv = mInvBounds.continuous("xInv", { lb: 0, ub: 10 });
+    xInv.lb = 5 + 1e-7;
+    xInv.ub = 5;
+    const repInv = mInvBounds.validateSolution({
+      values: { xInv: 5 },
+      feasibilityTolerance: 1e-6,
+    });
+    expect(repInv.valid).toBe(false);
+    expect(repInv.violationsByName["xInv"][0].type).toBe("lower_bound");
+
+    const mBadConstr = new Model("BadConstraintDataModel");
+    const xGood = mBadConstr.continuous("xGood", { lb: 0, ub: 10 });
+    mBadConstr.constraint(xGood.le(NaN), "nan_rhs");
+    mBadConstr.constraint(xGood.mul(NaN).le(5), "nan_coeff");
+    const repBadConstr = mBadConstr.validateSolution({ values: { xGood: 2 } });
+    expect(repBadConstr.valid).toBe(false);
+    expect(repBadConstr.complete).toBe(false);
+    expect(repBadConstr.uncheckedConstraints).toEqual(["nan_rhs", "nan_coeff"]);
   });
 });
+
 
 
