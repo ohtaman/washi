@@ -276,7 +276,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const x2 = m.continuous("x2", { lb: 5, ub: 15 });
       const z = m.binary("z");
 
-      m.indicator(z, expr`2 * ${x1} - 3 * ${x2}`.le(10), { activeValue: 1 });
+      m.indicator(z, c`2 * ${x1} - 3 * ${x2} <= 10`, { activeValue: 1 });
 
       // When z == 1, 2*x1 - 3*x2 <= 10 is enforced.
       // If we maximize 2*x1 - 3*x2, the maximum should be exactly 10.
@@ -292,7 +292,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const y1 = m2.continuous("y1", { lb: 0, ub: 20 });
       const y2 = m2.continuous("y2", { lb: 5, ub: 15 });
       const b2 = m2.binary("b2");
-      m2.indicator(b2, expr`2 * ${y1} - 3 * ${y2}`.le(10), { activeValue: 1 });
+      m2.indicator(b2, c`2 * ${y1} - 3 * ${y2} <= 10`, { activeValue: 1 });
       m2.constrain(c`${b2} == 0`);
       m2.maximize(expr`2 * ${y1} - 3 * ${y2}`);
 
@@ -313,7 +313,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
 
       // 2. Variable with negative coefficient in <= lacking lower bound (lb = -Infinity)
       const xUnboundedLb = m.continuous("x_no_lb", { lb: -Infinity, ub: 10 });
-      expect(() => m.indicator(z, expr`-2 * ${xUnboundedLb}`.le(50))).toThrow(
+      expect(() => m.indicator(z, c`-2 * ${xUnboundedLb} <= 50`)).toThrow(
         /Cannot derive safe Big-M for indicator constraint.*variable "x_no_lb" lacks a finite lower bound.*specify \{ M \} explicitly/i
       );
 
@@ -323,7 +323,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       );
 
       // 4. Variable with negative coefficient in >= lacking upper bound (ub = Infinity)
-      expect(() => m.indicator(z, expr`-1 * ${xUnboundedUb}`.ge(50))).toThrow(
+      expect(() => m.indicator(z, c`-1 * ${xUnboundedUb} >= 50`)).toThrow(
         /Cannot derive safe Big-M for indicator constraint.*variable "x_no_ub" lacks a finite upper bound.*specify \{ M \} explicitly/i
       );
 
