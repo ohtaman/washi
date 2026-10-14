@@ -19,9 +19,9 @@ import { QuadExpr } from "./quad-expr.js";
 export function validateModelIntegrity(model: Model): void {
   // 1. Validate variable bounds
   for (const v of model.variables) {
-    if (Number.isNaN(v.lb)) {
+    if (typeof v.lb !== "number" || Number.isNaN(v.lb)) {
       throw new Error(
-        `Variable "${v.name}" has invalid lower bound: NaN is not allowed.`
+        `Variable "${v.name}" has invalid lower bound: ${v.lb} (NaN or non-numeric bound is not allowed).`
       );
     }
     if (v.lb === Infinity) {
@@ -29,9 +29,9 @@ export function validateModelIntegrity(model: Model): void {
         `Variable "${v.name}" has invalid lower bound: +Infinity is not allowed as a lower bound.`
       );
     }
-    if (Number.isNaN(v.ub)) {
+    if (typeof v.ub !== "number" || Number.isNaN(v.ub)) {
       throw new Error(
-        `Variable "${v.name}" has invalid upper bound: NaN is not allowed.`
+        `Variable "${v.name}" has invalid upper bound: ${v.ub} (NaN or non-numeric bound is not allowed).`
       );
     }
     if (v.ub === -Infinity) {

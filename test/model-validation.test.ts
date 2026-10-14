@@ -263,6 +263,56 @@ describe("Model Integrity Validation (Issue #51)", () => {
         /Duplicate constraint name "c_one" in model "MutatedNamesModel"/
       );
     });
+
+    it("preflights logical constraint name collisions in equality indicator() without leaving partial rows", () => {
+      const m = new Model("IndicatorLogicalCollision");
+      const b = m.binary("b");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      const p = m.bool("p");
+
+      // Logical constraint owns "foo_ge"
+      m.constraint(p.not(), "foo_ge");
+
+      expect(() => {
+        m.indicator(b, c`${x} == 5`, { name: "foo" });
+      }).toThrow(/Constraint with name 'foo_ge' already exists in model/);
+
+      // Ensure "foo_le" was NOT partially inserted into the model
+      expect(m.constraints.length).toBe(0);
+      expect(m.getConstraintByName("foo_le")).toBeUndefined();
+    });
+
+    it("rejects non-number variable bounds and clears prior solution state when validation fails", async () => {
+      const m = new Model("StaleStateOnInvalidBounds");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      m.objective(maximize(expr`${x}`));
+
+      expect(() => m.continuous("bad_str", { lb: "invalid" as any })).toThrow(
+        /Variable "bad_str" has invalid lower bound/
+      );
+      expect(() => m.continuous("bad_null", { ub: null as any })).toThrow(
+        /Variable "bad_null" has invalid upper bound/
+      );
+
+      const status = await m.solve();
+      expect(status).toBe("Optimal");
+      expect(x.value).toBeCloseTo(10, 5);
+
+      // Mutate bound to invalid state after solve
+      x.lb = 20;
+      await expect(m.solve()).rejects.toThrow(/lower bound \(20\) is strictly greater than upper bound \(10\)/);
+
+      // Prior solution state must be cleared
+      expect(m.status).toBe("NotSolved");
+      expect(m.objectiveValue).toBeNull();
+      expect(m.solution).toBeNull();
+      expect(x.value).toBeNull();
+
+      // Mutate bound to non-number and verify check() also clears prior state and rejects
+      x.lb = "invalid" as any;
+      await expect(m.check()).rejects.toThrow(/invalid lower bound/);
+      expect(m.status).toBe("NotSolved");
+    });
   });
 
   describe("4. Valid free and one-sided-unbounded variables across HiGHS, GLPK, and Z3", () => {

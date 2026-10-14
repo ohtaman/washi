@@ -399,10 +399,10 @@ export class Model {
     const v = new Var({ ...opts, name });
 
     // Validate bounds
-    if (Number.isNaN(v.lb) || v.lb === Infinity) {
+    if (typeof v.lb !== "number" || Number.isNaN(v.lb) || v.lb === Infinity) {
       throw new Error(`Variable "${v.name}" has invalid lower bound: ${v.lb}.`);
     }
-    if (Number.isNaN(v.ub) || v.ub === -Infinity) {
+    if (typeof v.ub !== "number" || Number.isNaN(v.ub) || v.ub === -Infinity) {
       throw new Error(`Variable "${v.name}" has invalid upper bound: ${v.ub}.`);
     }
     if (v.lb > v.ub) {
@@ -800,11 +800,26 @@ export class Model {
     }
 
     if (item instanceof Var) {
-      if (!this.varMapByName.has(item.name)) {
-        this.variables.push(item);
-        this.varMapByName.set(item.name, item);
-        this.resetSolutionState();
+      if (this.varMapByName.get(item.name) === item) {
+        return this;
       }
+      if (typeof item.lb !== "number" || Number.isNaN(item.lb) || item.lb === Infinity) {
+        throw new Error(`Variable "${item.name}" has invalid lower bound: ${item.lb}.`);
+      }
+      if (typeof item.ub !== "number" || Number.isNaN(item.ub) || item.ub === -Infinity) {
+        throw new Error(`Variable "${item.name}" has invalid upper bound: ${item.ub}.`);
+      }
+      if (item.lb > item.ub) {
+        throw new Error(
+          `Variable "${item.name}" has invalid bounds: lower bound (${item.lb}) is strictly greater than upper bound (${item.ub}).`
+        );
+      }
+      if (this.hasVarName(item.name)) {
+        throw new Error(`Variable with name '${item.name}' already exists in model`);
+      }
+      this.variables.push(item);
+      this.varMapByName.set(item.name, item);
+      this.resetSolutionState();
       return this;
     }
 
@@ -856,10 +871,16 @@ export class Model {
     const leName = sense === "==" ? `${baseName}_le` : baseName;
     const geName = sense === "==" ? `${baseName}_ge` : baseName;
 
-    if ((sense === "<=" || sense === "==") && this.constrMapByName.has(leName)) {
+    if (
+      (sense === "<=" || sense === "==") &&
+      (this.constrMapByName.has(leName) || this.logicalConstraints.some((lc) => lc.name === leName))
+    ) {
       throw new Error(`Constraint with name '${leName}' already exists in model`);
     }
-    if ((sense === ">=" || sense === "==") && this.constrMapByName.has(geName)) {
+    if (
+      (sense === ">=" || sense === "==") &&
+      (this.constrMapByName.has(geName) || this.logicalConstraints.some((lc) => lc.name === geName))
+    ) {
       throw new Error(`Constraint with name '${geName}' already exists in model`);
     }
 
