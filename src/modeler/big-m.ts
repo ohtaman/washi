@@ -107,6 +107,8 @@ export function deriveBigMForLe(
 ): number {
   const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
   let maxLhs = 0;
+  let maxAbsTerm = Math.abs(effectiveRhs);
+  let hasFractionalFloat = !Number.isInteger(effectiveRhs);
 
   for (const [v, coeff] of lhs.terms) {
     if (coeff === 0) continue;
@@ -140,6 +142,12 @@ export function deriveBigMForLe(
         `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
       );
     }
+    if (Math.abs(termMax) > maxAbsTerm) {
+      maxAbsTerm = Math.abs(termMax);
+    }
+    if (!Number.isInteger(coeff) || !Number.isInteger(boundVal) || !Number.isInteger(termMax)) {
+      hasFractionalFloat = true;
+    }
   }
 
   const rawDiff = maxLhs - effectiveRhs;
@@ -151,7 +159,11 @@ export function deriveBigMForLe(
     );
   }
 
-  const M = Math.max(0, rawDiff);
+  const ulpPad = hasFractionalFloat ? 8 * Number.EPSILON * Math.max(maxAbsTerm, Math.abs(maxLhs)) : 0;
+  let M = Math.max(0, rawDiff + ulpPad);
+  if (M > 0 && hasFractionalFloat && effectiveRhs + M < maxLhs + ulpPad) {
+    M += 8 * Number.EPSILON * Math.max(Math.abs(effectiveRhs), M);
+  }
   if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs + M)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -186,6 +198,8 @@ export function deriveBigMForGe(
 ): number {
   const effectiveRhs = validateIndicatorExpressionInputs(lhs, rhs, constraintName);
   let minLhs = 0;
+  let maxAbsTerm = Math.abs(effectiveRhs);
+  let hasFractionalFloat = !Number.isInteger(effectiveRhs);
 
   for (const [v, coeff] of lhs.terms) {
     if (coeff === 0) continue;
@@ -219,6 +233,12 @@ export function deriveBigMForGe(
         `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
       );
     }
+    if (Math.abs(termMin) > maxAbsTerm) {
+      maxAbsTerm = Math.abs(termMin);
+    }
+    if (!Number.isInteger(coeff) || !Number.isInteger(boundVal) || !Number.isInteger(termMin)) {
+      hasFractionalFloat = true;
+    }
   }
 
   const rawDiff = effectiveRhs - minLhs;
@@ -230,7 +250,11 @@ export function deriveBigMForGe(
     );
   }
 
-  const M = Math.max(0, rawDiff);
+  const ulpPad = hasFractionalFloat ? 8 * Number.EPSILON * Math.max(maxAbsTerm, Math.abs(minLhs)) : 0;
+  let M = Math.max(0, rawDiff + ulpPad);
+  if (M > 0 && hasFractionalFloat && effectiveRhs - M > minLhs - ulpPad) {
+    M += 8 * Number.EPSILON * Math.max(Math.abs(effectiveRhs), M);
+  }
   if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs - M)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
