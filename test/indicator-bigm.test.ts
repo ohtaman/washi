@@ -476,13 +476,12 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const checkRes = await m.check("z3");
       expect(checkRes.status).toBe("Sat");
 
-      // Case B: small coefficient (1e-13) with unit domain [0, 1] => derived M = 1e-13 (must not drop binVar!)
+      // Case B: small coefficient (1e-13) built via normal DSL (c`...` and .mul()) with unit domain [0, 1]
       const m2 = new Model({ name: "SmallDerivedM", solver: "z3" });
       const y = m2.continuous("y", { lb: 0, ub: 1 });
       const b = m2.binary("b");
-      const smallExpr = new LinExpr(new Map([[y, 1e-13]]));
 
-      m2.indicator(b, smallExpr.le(0), { activeValue: 0, name: "ind_small_m" });
+      m2.indicator(b, c`1e-13 * ${y} <= 0`, { activeValue: 0, name: "ind_small_m" });
       // Verify LP string preserves both 1e-13 * y and 1e-13 * b
       expect(m2.toLpString()).toContain("1e-13 y - 1e-13 b <= 0");
 
@@ -547,6 +546,37 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(mStale.status).toBe("NotSolved");
       expect(mStale.objectiveValue).toBeNull();
       expect(v.value).toBeNull();
+
+      // 8. Underflow when coeff * bound underflows to 0 for nonzero operands
+      const tinyVar = m.continuous("tiny", { lb: -1e-200, ub: 1e-200 });
+      const tinyExpr = new LinExpr(new Map([[tinyVar, 1e-200]]));
+      expect(() => deriveBigMForLe(tinyExpr, 0, "underflow_le")).toThrow(
+        /Cannot derive safe Big-M.*numeric underflow/i
+      );
+      expect(() => deriveBigMForGe(tinyExpr, 0, "underflow_ge")).toThrow(
+        /Cannot derive safe Big-M.*numeric underflow/i
+      );
+
+      // 9. Outward rounding when maxLhs - effectiveRhs rounds away maxLhs, or when differently scaled terms cancel (x + y - w)
+      const unitVar = m.continuous("unit", { lb: -1, ub: 1 });
+      const mLe = deriveBigMForLe(unitVar.add(0), -1e20, "outward_le");
+      expect(-1e20 + mLe).toBeGreaterThanOrEqual(1);
+      const mGe = deriveBigMForGe(unitVar.add(0), 1e20, "outward_ge");
+      expect(1e20 - mGe).toBeLessThanOrEqual(-1);
+
+      const bigVal = 2 ** 53;
+      const xBig = m.continuous("xBig", { lb: bigVal, ub: bigVal });
+      const yUnit = m.continuous("yUnit", { lb: -1, ub: 1 });
+      const wBig = m.continuous("wBig", { lb: bigVal, ub: bigVal });
+      const cancelExpr = new LinExpr(
+        new Map([
+          [xBig, 1],
+          [yUnit, 1],
+          [wBig, -1],
+        ])
+      );
+      expect(deriveBigMForLe(cancelExpr, 0, "cancel_le")).toBeGreaterThanOrEqual(1);
+      expect(deriveBigMForGe(cancelExpr, 0, "cancel_ge")).toBeGreaterThanOrEqual(1);
     });
   });
 });

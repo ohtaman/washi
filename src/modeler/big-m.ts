@@ -84,6 +84,92 @@ function validateIndicatorExpressionInputs(
   return effectiveRhs;
 }
 
+const f64Buf = new ArrayBuffer(8);
+const f64View = new Float64Array(f64Buf);
+const u64View = new BigUint64Array(f64Buf);
+
+function nextUp(x: number): number {
+  if (Number.isNaN(x) || x === Infinity) return x;
+  if (x === -Infinity) return -Number.MAX_VALUE;
+  if (x === 0) return Number.MIN_VALUE;
+  f64View[0] = x;
+  if (x > 0) {
+    u64View[0] += 1n;
+  } else {
+    u64View[0] -= 1n;
+  }
+  return f64View[0];
+}
+
+function nextDown(x: number): number {
+  return -nextUp(-x);
+}
+
+function twoSum(a: number, b: number): [number, number] {
+  const s = a + b;
+  const v = s - a;
+  const err = (a - (s - v)) + (b - v);
+  return [s, err];
+}
+
+function addUp(a: number, b: number): number {
+  const [s, err] = twoSum(a, b);
+  if (!Number.isFinite(s)) return s;
+  return err > 0 ? nextUp(s) : s;
+}
+
+function addDown(a: number, b: number): number {
+  const [s, err] = twoSum(a, b);
+  if (!Number.isFinite(s)) return s;
+  return err < 0 ? nextDown(s) : s;
+}
+
+function splitFloat64(a: number): [number, number] {
+  const c = 134217729 * a; // (2^27 + 1) * a
+  const aBig = c - a;
+  const aHi = c - aBig;
+  const aLo = a - aHi;
+  return [aHi, aLo];
+}
+
+function isPowerOfTwo(x: number): boolean {
+  const abs = Math.abs(x);
+  if (abs === 0 || !Number.isFinite(abs)) return false;
+  return Number.isInteger(Math.log2(abs));
+}
+
+function twoProduct(a: number, b: number): [number, number] {
+  const p = a * b;
+  if (!Number.isFinite(p) || p === 0) return [p, 0];
+  if (Math.abs(p) >= 2.2250738585072014e-308 && (isPowerOfTwo(a) || isPowerOfTwo(b))) {
+    return [p, 0];
+  }
+  const [aHi, aLo] = splitFloat64(a);
+  const [bHi, bLo] = splitFloat64(b);
+  if (!Number.isFinite(aHi) || !Number.isFinite(bHi)) {
+    return [p, Number.NaN];
+  }
+  const err1 = p - aHi * bHi;
+  const err2 = err1 - aLo * bHi;
+  const err3 = err2 - aHi * bLo;
+  const err = aLo * bLo - err3;
+  return [p, err];
+}
+
+function mulUp(a: number, b: number): number {
+  const [p, err] = twoProduct(a, b);
+  if (!Number.isFinite(p)) return p;
+  if (Number.isNaN(err)) return nextUp(p);
+  return err > 0 ? nextUp(p) : p;
+}
+
+function mulDown(a: number, b: number): number {
+  const [p, err] = twoProduct(a, b);
+  if (!Number.isFinite(p)) return p;
+  if (Number.isNaN(err)) return nextDown(p);
+  return err < 0 ? nextDown(p) : p;
+}
+
 /**
  * Derives a sufficient, tight Big-M value for a "<=" linear inequality:
  *   lhs <= rhs  (or terms <= effectiveRhs)
@@ -98,7 +184,7 @@ function validateIndicatorExpressionInputs(
  *   M = max(0, max(terms) - effectiveRhs)
  *
  * Fails with an actionable error if any variable lacks a required finite bound
- * or if finite arithmetic overflows.
+ * or if finite arithmetic overflows or underflows.
  */
 export function deriveBigMForLe(
   lhs: LinExpr,
@@ -110,7 +196,7 @@ export function deriveBigMForLe(
 
   for (const [v, coeff] of lhs.terms) {
     if (coeff === 0) continue;
-    let termMax: number;
+    let boundVal: number;
     if (coeff > 0) {
       if (!Number.isFinite(v.ub)) {
         throw new Error(
@@ -119,7 +205,7 @@ export function deriveBigMForLe(
           `Please set an explicit finite upper bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      termMax = coeff * v.ub;
+      boundVal = v.ub;
     } else {
       if (!Number.isFinite(v.lb)) {
         throw new Error(
@@ -128,10 +214,20 @@ export function deriveBigMForLe(
           `Please set an explicit finite lower bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      termMax = coeff * v.lb;
+      boundVal = v.lb;
     }
 
-    maxLhs += termMax;
+    const rawProd = coeff * boundVal;
+    if (!Number.isFinite(rawProd) || (boundVal !== 0 && rawProd === 0)) {
+      throw new Error(
+        `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+        `numeric ${rawProd === 0 ? "underflow" : "overflow"} while bounding contribution of variable "${v.name}". ` +
+        `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+      );
+    }
+
+    const termMax = mulUp(coeff, boundVal);
+    maxLhs = addUp(maxLhs, termMax);
     if (!Number.isFinite(termMax) || !Number.isFinite(maxLhs)) {
       throw new Error(
         `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -141,7 +237,7 @@ export function deriveBigMForLe(
     }
   }
 
-  const rawDiff = maxLhs - effectiveRhs;
+  const rawDiff = addUp(maxLhs, -effectiveRhs);
   if (!Number.isFinite(rawDiff)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -150,7 +246,12 @@ export function deriveBigMForLe(
     );
   }
 
-  const M = Math.max(0, rawDiff);
+  let M = Math.max(0, rawDiff);
+  if (maxLhs > effectiveRhs) {
+    while (Number.isFinite(M) && (effectiveRhs + M < maxLhs || maxLhs - M > effectiveRhs)) {
+      M = nextUp(M);
+    }
+  }
   if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs + M)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -176,7 +277,7 @@ export function deriveBigMForLe(
  *   M = max(0, effectiveRhs - min(terms))
  *
  * Fails with an actionable error if any variable lacks a required finite bound
- * or if finite arithmetic overflows.
+ * or if finite arithmetic overflows or underflows.
  */
 export function deriveBigMForGe(
   lhs: LinExpr,
@@ -188,7 +289,7 @@ export function deriveBigMForGe(
 
   for (const [v, coeff] of lhs.terms) {
     if (coeff === 0) continue;
-    let termMin: number;
+    let boundVal: number;
     if (coeff > 0) {
       if (!Number.isFinite(v.lb)) {
         throw new Error(
@@ -197,7 +298,7 @@ export function deriveBigMForGe(
           `Please set an explicit finite lower bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      termMin = coeff * v.lb;
+      boundVal = v.lb;
     } else {
       if (!Number.isFinite(v.ub)) {
         throw new Error(
@@ -206,10 +307,20 @@ export function deriveBigMForGe(
           `Please set an explicit finite upper bound on the variable or specify { M } explicitly in indicator options.`
         );
       }
-      termMin = coeff * v.ub;
+      boundVal = v.ub;
     }
 
-    minLhs += termMin;
+    const rawProd = coeff * boundVal;
+    if (!Number.isFinite(rawProd) || (boundVal !== 0 && rawProd === 0)) {
+      throw new Error(
+        `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
+        `numeric ${rawProd === 0 ? "underflow" : "overflow"} while bounding contribution of variable "${v.name}". ` +
+        `Please rescale coefficients/bounds or specify a finite { M } explicitly.`
+      );
+    }
+
+    const termMin = mulDown(coeff, boundVal);
+    minLhs = addDown(minLhs, termMin);
     if (!Number.isFinite(termMin) || !Number.isFinite(minLhs)) {
       throw new Error(
         `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -219,7 +330,7 @@ export function deriveBigMForGe(
     }
   }
 
-  const rawDiff = effectiveRhs - minLhs;
+  const rawDiff = addUp(effectiveRhs, -minLhs);
   if (!Number.isFinite(rawDiff)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
@@ -228,7 +339,12 @@ export function deriveBigMForGe(
     );
   }
 
-  const M = Math.max(0, rawDiff);
+  let M = Math.max(0, rawDiff);
+  if (minLhs < effectiveRhs) {
+    while (Number.isFinite(M) && (effectiveRhs - M > minLhs || minLhs + M < effectiveRhs)) {
+      M = nextUp(M);
+    }
+  }
   if (!Number.isFinite(M) || !Number.isFinite(effectiveRhs - M)) {
     throw new Error(
       `Cannot derive safe Big-M for indicator constraint "${constraintName}": ` +
