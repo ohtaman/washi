@@ -134,13 +134,17 @@ function compareFloatWithExact(f: number, exact: ExactDecimal): number {
   return diff.num < 0n ? -1 : diff.num > 0n ? 1 : 0;
 }
 
-function nextUpPositive(x: number): number {
+function nextUp(x: number): number {
   if (x === 0) return Number.MIN_VALUE;
-  let step = Math.max(Number.MIN_VALUE, x * (Number.EPSILON / 2));
+  let step = Math.max(Number.MIN_VALUE, Math.abs(x) * (Number.EPSILON / 2));
   while (x + step === x && Number.isFinite(step)) {
     step *= 2;
   }
   return x + step;
+}
+
+function nextDown(x: number): number {
+  return -nextUp(-x);
 }
 
 /**
@@ -226,7 +230,7 @@ export function deriveBigMForLe(
         (compareFloatWithExact(M, exactDiff) < 0 ||
           compareFloatWithExact(effectiveRhs + M, exactMaxLhs) < 0)
       ) {
-        M = nextUpPositive(M);
+        M = nextUp(M);
       }
     }
   }
@@ -324,7 +328,7 @@ export function deriveBigMForGe(
         (compareFloatWithExact(M, exactDiff) < 0 ||
           compareFloatWithExact(effectiveRhs - M, exactMinLhs) > 0)
       ) {
-        M = nextUpPositive(M);
+        M = nextUp(M);
       }
     }
   }
@@ -406,7 +410,7 @@ export function buildIndicatorLinearization(
       if (exactEff && exactM && M > 0) {
         const target = addExactDecimal(exactEff, exactM);
         while (Number.isFinite(finalRhs) && compareFloatWithExact(finalRhs, target) < 0) {
-          finalRhs = nextUpPositive(finalRhs);
+          finalRhs = nextUp(finalRhs);
         }
       }
     } else {
@@ -418,7 +422,7 @@ export function buildIndicatorLinearization(
       if (exactEff && exactM && M > 0) {
         const target = subExactDecimal(exactEff, exactM);
         while (Number.isFinite(finalRhs) && compareFloatWithExact(finalRhs, target) > 0) {
-          finalRhs = -nextUpPositive(-finalRhs);
+          finalRhs = nextDown(finalRhs);
         }
       }
     }
