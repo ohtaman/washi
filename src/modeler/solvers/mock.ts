@@ -1,12 +1,18 @@
 import type { Solver, SolverOptions, SolverResult, SolverCapabilities } from "./types.js";
 import type { LpModelData, LpExportResult } from "../lp-writer.js";
-import type { SolverStatus } from "../types.js";
+import type { SolverStatus, TerminationStatus } from "../types.js";
 
 export interface MockSolverOptions extends SolverOptions {
   name?: string;
   capabilities?: SolverCapabilities;
   status?: SolverStatus;
-  objectiveValue?: number;
+  terminationStatus?: TerminationStatus;
+  hasPrimalSolution?: boolean;
+  objectiveValue?: number | null;
+  objectiveBound?: number;
+  relGap?: number;
+  mipGap?: number;
+  absGap?: number;
   values?: Record<string, number>;
   reducedCosts?: Record<string, number>;
   duals?: Record<string, number>;
@@ -38,10 +44,30 @@ export class MockSolver implements Solver {
       await new Promise((resolve) => setTimeout(resolve, opts.delayMs));
     }
 
+    const status = opts.status || "Optimal";
+    const terminationStatus = opts.terminationStatus ?? status;
+    const hasPrimalSolution =
+      opts.hasPrimalSolution !== undefined
+        ? opts.hasPrimalSolution
+        : status === "Optimal" ||
+          status === "Feasible" ||
+          status === "Sat" ||
+          ((status === "TimeLimit" || status === "IterationLimit") &&
+            Boolean(opts.values && Object.keys(opts.values).length > 0));
+
     return {
-      status: opts.status || "Optimal",
-      objectiveValue: opts.objectiveValue ?? 0,
-      values: opts.values || {},
+      status,
+      terminationStatus,
+      hasPrimalSolution,
+      objectiveValue: hasPrimalSolution ? (opts.objectiveValue ?? 0) : null,
+      ...(opts.objectiveBound !== undefined ? { objectiveBound: opts.objectiveBound } : {}),
+      ...(opts.relGap !== undefined
+        ? { relGap: opts.relGap, mipGap: opts.relGap }
+        : opts.mipGap !== undefined
+          ? { relGap: opts.mipGap, mipGap: opts.mipGap }
+          : {}),
+      ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
+      values: hasPrimalSolution ? opts.values || {} : {},
       reducedCosts: opts.reducedCosts,
       duals: opts.duals,
       slacks: opts.slacks,

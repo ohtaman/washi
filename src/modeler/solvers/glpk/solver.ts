@@ -7,6 +7,12 @@ import * as glpkLoader from "./loader.js";
 /**
  * GLPK Solver adapter (GNU Linear Programming Kit via WebAssembly / JS).
  * Supports standard Linear Programming (LP) and Mixed-Integer Programming (MIP).
+ *
+ * Solution metrics provided by GLPK:
+ * - `status` and `terminationStatus`: `"Optimal" | "Feasible" | "Infeasible" | "Unbounded" | "Unknown" | "Error"`
+ * - `hasPrimalSolution`: `true` when `status` is `"Optimal"` or `"Feasible"` (`GLP_OPT` or `GLP_FEAS`) with a valid primal payload, `false` otherwise.
+ * - `objectiveValue`: Primal objective value (including constant offset) when `hasPrimalSolution` is `true`, otherwise `null`.
+ * - `objectiveBound`, `relGap` (`mipGap`), `absGap`: GLPK's JS/WASM wrapper (`glpk.js`) does not expose the MIP best dual bound or relative/absolute gap in its result payload, so these fields are intentionally left `undefined` rather than returning invented defaults.
  */
 export class GLPKSolver implements Solver {
   public static readonly capabilities = {
@@ -49,7 +55,7 @@ export class GLPKSolver implements Solver {
         : (modelData.objective as any).terms;
     if (linTerms) {
       for (const [v, coef] of linTerms) {
-        if (Math.abs(coef) < 1e-12) continue;
+        if (coef === 0) continue;
         const vName = varToName.get(v) || v.name;
         objVars.push({ name: vName, coef: Number(coef) });
       }
@@ -62,7 +68,7 @@ export class GLPKSolver implements Solver {
       const vars: { name: string; coef: number }[] = [];
 
       for (const [v, coef] of c.lhs.terms) {
-        if (Math.abs(coef) < 1e-12) continue;
+        if (coef === 0) continue;
         const vName = varToName.get(v) || v.name;
         vars.push({ name: vName, coef: Number(coef) });
       }
@@ -147,8 +153,14 @@ export class GLPKSolver implements Solver {
     if (typeof mergedOptions.timeLimit === "number") {
       glpkOptions.tmlim = mergedOptions.timeLimit;
     }
-    if (typeof mergedOptions.mipGap === "number") {
-      glpkOptions.mipgap = mergedOptions.mipGap;
+    const relGapOpt =
+      typeof mergedOptions.mipGap === "number"
+        ? mergedOptions.mipGap
+        : typeof mergedOptions.relGap === "number"
+          ? mergedOptions.relGap
+          : undefined;
+    if (relGapOpt !== undefined) {
+      glpkOptions.mipgap = relGapOpt;
     }
 
     const startTime = performance.now();
@@ -166,8 +178,11 @@ export class GLPKSolver implements Solver {
     const isPrimalStatus = status === "Optimal" || status === "Feasible";
 
     if (!isPrimalStatus) {
+      const infeasCode = glpk?.GLP_INFEAS ?? 3;
       return {
         status,
+        terminationStatus: rawStatus === infeasCode ? "Unknown" : status,
+        hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
         duals: {},
@@ -206,23 +221,10 @@ export class GLPKSolver implements Solver {
       if (hasValidVariablePayload) {
         for (const v of modelData.variables) {
           const lpName = varToName.get(v) || v.name;
-          let rawVal: unknown;
-          if (Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
-            rawVal = (rawVars as Record<string, unknown>)[lpName];
-          } else if (
-            (!nameToVar.has(v.name) || nameToVar.get(v.name) === v) &&
-            Object.prototype.hasOwnProperty.call(rawVars, v.name)
-          ) {
-            rawVal = (rawVars as Record<string, unknown>)[v.name];
-          } else {
+          if (!Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
             hasValidVariablePayload = false;
             break;
           }
-          if (typeof rawVal !== "number" || !Number.isFinite(rawVal)) {
-            hasValidVariablePayload = false;
-            break;
-          }
-          valuesRecord[v.name] = Math.abs(rawVal) < 1e-9 ? 0 : rawVal;
         }
       }
     }
@@ -230,6 +232,8 @@ export class GLPKSolver implements Solver {
     if (!hasValidObjective || !hasValidVariablePayload) {
       return {
         status: "Error",
+        terminationStatus: "Error",
+        hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
         duals: {},
@@ -261,6 +265,8 @@ export class GLPKSolver implements Solver {
 
     return {
       status,
+      terminationStatus: status === "Feasible" ? "Unknown" : status,
+      hasPrimalSolution: true,
       objectiveValue,
       values: valuesRecord,
       duals: dualsRecord,

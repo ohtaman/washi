@@ -29,6 +29,7 @@ export type {
   OptimizationSense,
   ComparisonSense,
   SolverStatus,
+  TerminationStatus,
   SolveOptions,
   SolverSolution,
   CheckResult,

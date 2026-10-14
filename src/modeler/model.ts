@@ -3,6 +3,7 @@ import {
   type OptimizationSense,
   normalizeSense,
   type SolverStatus,
+  type TerminationStatus,
   type SolveOptions,
   type SolverSolution,
   type CheckResult,
@@ -80,7 +81,13 @@ export class Model {
   private constrMapByName = new Map<string, Constraint>();
 
   public status: SolverStatus = "NotSolved";
+  public terminationStatus: TerminationStatus = "NotSolved";
+  public hasPrimalSolution: boolean = false;
   public objectiveValue: number | null = null;
+  public objectiveBound: number | undefined = undefined;
+  public relGap: number | undefined = undefined;
+  public mipGap: number | undefined = undefined;
+  public absGap: number | undefined = undefined;
   public runTime: number = 0;
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
@@ -122,11 +129,24 @@ export class Model {
    * Skips redundant O(N) traversals if the model is already in an unsolved / invalidated state.
    */
   public resetSolutionState(): void {
-    if (!this.hasSolutionState && this.status === "NotSolved" && this.solution === null && this.unsatCore === undefined) {
+    if (
+      !this.hasSolutionState &&
+      this.status === "NotSolved" &&
+      this.terminationStatus === "NotSolved" &&
+      !this.hasPrimalSolution &&
+      this.solution === null &&
+      this.unsatCore === undefined
+    ) {
       return;
     }
     this.status = "NotSolved";
+    this.terminationStatus = "NotSolved";
+    this.hasPrimalSolution = false;
     this.objectiveValue = null;
+    this.objectiveBound = undefined;
+    this.relGap = undefined;
+    this.mipGap = undefined;
+    this.absGap = undefined;
     this.solution = null;
     this.runTime = 0;
     this.unsatCore = undefined;
@@ -867,7 +887,56 @@ export class Model {
 
     this.runTime = result.runTime ?? 0;
     this.status = result.status;
-    this.objectiveValue = result.objectiveValue ?? null;
+    this.terminationStatus = result.terminationStatus ?? result.status;
+
+    const rawValues = result.values || {};
+    const hasPrimal =
+      typeof result.hasPrimalSolution === "boolean"
+        ? result.hasPrimalSolution
+        : this.status !== "Infeasible" &&
+          this.status !== "Unsat" &&
+          this.status !== "Unbounded" &&
+          this.status !== "Error" &&
+          this.status !== "NotSolved" &&
+          this.terminationStatus !== "Infeasible" &&
+          this.terminationStatus !== "Unsat" &&
+          this.terminationStatus !== "Unbounded" &&
+          this.terminationStatus !== "InfeasibleOrUnbounded" &&
+          this.terminationStatus !== "Error" &&
+          this.terminationStatus !== "NotSolved" &&
+          (this.status === "Optimal" ||
+            this.status === "Feasible" ||
+            this.status === "Sat" ||
+            this.terminationStatus === "Optimal" ||
+            this.terminationStatus === "Feasible" ||
+            this.terminationStatus === "Sat" ||
+            (typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)) ||
+            Object.values(rawValues).some((val) => typeof val === "number" && Number.isFinite(val)));
+
+    this.hasPrimalSolution = hasPrimal;
+    this.objectiveValue =
+      hasPrimal && typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)
+        ? result.objectiveValue
+        : null;
+
+    this.objectiveBound =
+      typeof result.objectiveBound === "number" && Number.isFinite(result.objectiveBound)
+        ? result.objectiveBound
+        : undefined;
+    const resolvedRelGap =
+      typeof result.relGap === "number" && Number.isFinite(result.relGap)
+        ? result.relGap
+        : typeof result.mipGap === "number" && Number.isFinite(result.mipGap)
+          ? result.mipGap
+          : undefined;
+    this.relGap = resolvedRelGap;
+    this.mipGap = resolvedRelGap;
+    this.absGap =
+      typeof result.absGap === "number" && Number.isFinite(result.absGap)
+        ? result.absGap
+        : this.objectiveValue !== null && this.objectiveBound !== undefined
+          ? Math.abs(this.objectiveValue - this.objectiveBound)
+          : undefined;
 
     const valuesRecord: Record<string, number> = {};
     const dualsRecord: Record<string, number> = {};
@@ -876,8 +945,8 @@ export class Model {
 
     this.values.clear();
 
-    // Map variable solutions back to Var objects
-    if (result.values && result.status !== "Infeasible" && result.status !== "Unbounded") {
+    // Map variable solutions back to Var objects only when a feasible primal solution exists
+    if (hasPrimal && result.values) {
       for (const [vName, primal] of Object.entries(result.values)) {
         if (typeof primal === "number" && !Number.isNaN(primal)) {
           this.values.set(vName, primal);
@@ -927,7 +996,12 @@ export class Model {
 
     this.solution = {
       status: this.status,
+      terminationStatus: this.terminationStatus,
+      hasPrimalSolution: this.hasPrimalSolution,
       objectiveValue: this.objectiveValue,
+      ...(this.objectiveBound !== undefined ? { objectiveBound: this.objectiveBound } : {}),
+      ...(this.relGap !== undefined ? { relGap: this.relGap, mipGap: this.mipGap } : {}),
+      ...(this.absGap !== undefined ? { absGap: this.absGap } : {}),
       values: valuesRecord,
       duals: dualsRecord,
       reducedCosts: reducedCostsRecord,
@@ -1008,6 +1082,8 @@ export class Model {
         activeOptions
       );
       this.status = checkResult.status;
+      this.terminationStatus = checkResult.status;
+      this.hasPrimalSolution = checkResult.status === "Sat";
       this.runTime = checkResult.runTime ?? 0;
       this.unsatCore = checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
 
@@ -1041,8 +1117,29 @@ export class Model {
       this.objectiveExpr = new LinExpr();
       this.sense = "Minimize";
       const status = await this.solve(activeSolver, activeOptions);
-      const isSat = status === "Optimal" || status === "Feasible";
+      const isSat = this.hasPrimalSolution || status === "Optimal" || status === "Feasible";
       const isUnsat = status === "Infeasible";
+      const checkStatus = isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown";
+
+      this.status = checkStatus;
+      this.terminationStatus =
+        isSat || isUnsat || this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
+          ? checkStatus
+          : this.terminationStatus;
+      this.hasPrimalSolution = isSat;
+      this.objectiveValue = null;
+      this.objectiveBound = undefined;
+      this.relGap = undefined;
+      this.mipGap = undefined;
+      this.absGap = undefined;
+      this.solution = null;
+
+      for (const v of this.variables) {
+        v.reducedCost = null;
+      }
+      for (const c of this.constraints) {
+        c.dual = null;
+      }
 
       const values: Record<string, number | boolean> = {};
       if (isSat) {
@@ -1059,7 +1156,7 @@ export class Model {
       }
 
       return {
-        status: isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown",
+        status: checkStatus,
         values,
         runTime: this.runTime,
       };
