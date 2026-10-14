@@ -277,25 +277,21 @@ export class Z3Solver implements Solver {
       }
     }
 
-    const trackKeyToName = new Map<string, string>();
-    let trackCounter = 0;
-    const createTracker = (constraintName: string) => {
-      const trackKey = `__washi_track_${++trackCounter}`;
-      const trackVar = ctx.Bool.const(trackKey);
-      trackKeyToName.set(trackKey, constraintName);
-      trackKeyToName.set(trackVar.toString(), constraintName);
-      return trackVar;
-    };
-
-    // 2. Add tracked arithmetic and logical constraints
+    // 2. Arithmetic Constraints (tracked for unsatCore)
     for (const c of constraints) {
-      s.addAndTrack(trans.translateConstraint(c), createTracker(c.name));
+      const cAst = trans.translateConstraint(c);
+      const trackVar = ctx.Bool.const(c.name);
+      s.addAndTrack(cAst, trackVar);
     }
+
+    // 3. Logical Constraints (tracked for unsatCore)
     for (let i = 0; i < logicalConstraints.length; i++) {
       const item = logicalConstraints[i];
-      const name = (item && item.name) || `lc_${i + 1}`;
-      const expr = (item && item.expr) || item;
-      s.addAndTrack(trans.translateBoolExpr(expr), createTracker(name));
+      const name = (item && (item as any).name) || `lc_${i + 1}`;
+      const expr = (item && (item as any).expr) || item;
+      const lcAst = trans.translateBoolExpr(expr);
+      const trackVar = ctx.Bool.const(name);
+      s.addAndTrack(lcAst, trackVar);
     }
 
     let unregister: (() => void) | undefined;
@@ -336,8 +332,7 @@ export class Z3Solver implements Solver {
       const unsatCore: string[] = [];
       const len = typeof coreVector.length === "function" ? coreVector.length() : coreVector.length;
       for (let i = 0; i < len; i++) {
-        const rawKey = coreVector.get(i).toString();
-        unsatCore.push(trackKeyToName.get(rawKey) ?? rawKey);
+        unsatCore.push(coreVector.get(i).toString());
       }
 
       return {
