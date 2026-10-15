@@ -96,6 +96,16 @@ function startStaticPagesServer(port = 0) {
   });
 }
 
+async function runAndWait(page) {
+  await page.click("#run-btn");
+  // Status/variables remain visible during a solve; wait for this run to finish.
+  await page.waitForFunction(
+    () => !document.getElementById("run-btn")?.disabled,
+    null,
+    { timeout: 30_000 }
+  );
+}
+
 async function runBrowserVerification() {
   console.log("=== WaSHI Web Demo GitHub Pages Cross-Origin Isolation Verification ===");
 
@@ -187,7 +197,7 @@ async function runBrowserVerification() {
     await page.waitForTimeout(300);
 
     // Click Run button
-    await page.click("#run-btn");
+    await runAndWait(page);
 
     // Wait until metric status is updated to Sat
     await page.waitForFunction(() => {
@@ -204,7 +214,7 @@ async function runBrowserVerification() {
     await page.selectOption("#preset-select", "conflict_diagnosis_unsat");
     await page.waitForTimeout(300);
 
-    await page.click("#run-btn");
+    await runAndWait(page);
 
     await page.waitForFunction(() => {
       const el = document.getElementById("metric-status");
@@ -235,7 +245,7 @@ async function runBrowserVerification() {
         editor.dispatchEvent(new Event("input"));
       }
     }, intCode);
-    await page.click("#run-btn");
+    await runAndWait(page);
 
     await page.waitForFunction(() => {
       const el = document.getElementById("metric-status");
@@ -250,7 +260,7 @@ async function runBrowserVerification() {
     await page.selectOption("#solver-select", "z3");
     await page.waitForTimeout(300);
 
-    await page.click("#run-btn");
+    await runAndWait(page);
 
     await page.waitForFunction(() => {
       const el = document.getElementById("metric-status");
@@ -270,7 +280,7 @@ async function runBrowserVerification() {
     await page.selectOption("#preset-select", "production");
     await page.waitForTimeout(300);
 
-    await page.click("#run-btn");
+    await runAndWait(page);
 
     await page.waitForFunction(() => {
       const el = document.getElementById("metric-status");
@@ -297,7 +307,7 @@ async function runBrowserVerification() {
     assert.equal(failIsolated, false, "When Service Workers are blocked, crossOriginIsolated must be false");
 
     await failPage.selectOption("#solver-select", "z3");
-    await failPage.click("#run-btn");
+    await runAndWait(failPage);
 
     const failStatus = await failPage.evaluate(() => document.getElementById("metric-status")?.textContent?.trim());
     assert.equal(failStatus, "Unsupported", "Metric status must be 'Unsupported' when isolation requirements fail");

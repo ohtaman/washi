@@ -8,6 +8,7 @@ import vm from "node:vm";
 import { createServer } from "node:http";
 import { build } from "vite";
 import webpack from "webpack";
+import { checkBrowserRegressions } from "./check-browser-regressions.mjs";
 
 const fixture = await mkdtemp(path.join(tmpdir(), "washi-distribution-"));
 const source = `
@@ -25,10 +26,10 @@ const source = `
 const expected = { status: "Optimal", objective: 1100, x: 20, y: 10 };
 const check = (value) => assert.deepEqual(JSON.parse(JSON.stringify(value)), expected);
 const npm = (args, cwd = fixture) => execFileSync("npm", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-const timeout = (promise) => {
+const timeout = (promise, milliseconds = 15_000) => {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Solver did not settle within 15s")), 15_000);
+    timer = setTimeout(() => reject(new Error(`Solver did not settle within ${milliseconds}ms`)), milliseconds);
   })]).finally(() => clearTimeout(timer));
 };
 
@@ -545,6 +546,8 @@ try {
       assert.equal(z3Res.values.a, true);
       await z3Ctx2.close();
       console.log("PASS Chromium: Z3 solves SMT check under Cross-Origin-Isolation");
+
+      await checkBrowserRegressions({ browser, serve, fixture, browserRoot: path.join(packageRoot, "dist/browser") });
 
     } finally {
       await browser.close();

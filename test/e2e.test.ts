@@ -11,6 +11,15 @@ describe("Browser End-to-End (E2E) Tests", () => {
   let devServerUrl = "http://localhost:5173/demo/";
   const screenshotsDir = path.resolve(process.cwd(), "test/screenshots");
 
+  async function runAndWait() {
+    await page.click("#run-btn");
+    await page.waitForFunction(
+      () => !(document.getElementById("run-btn") as HTMLButtonElement)?.disabled,
+      null,
+      { timeout: 30_000 }
+    );
+  }
+
   beforeAll(async () => {
     if (!fs.existsSync(screenshotsDir)) {
       fs.mkdirSync(screenshotsDir, { recursive: true });
@@ -26,7 +35,9 @@ describe("Browser End-to-End (E2E) Tests", () => {
     devServerUrl = `http://localhost:${port}/demo/`;
 
     browser = await chromium.launch({
-      executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+        ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+        : {}),
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
@@ -87,7 +98,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
   it("switches to 0-1 Knapsack problem and solves interactively", async () => {
     await page.selectOption("#preset-select", "knapsack");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () =>
@@ -106,7 +117,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
   it("switches to Transportation problem and solves distribution network", async () => {
     await page.selectOption("#preset-select", "transportation");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () =>
@@ -126,7 +137,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
   it("switches to Markowitz Portfolio Optimization (Convex QP) and solves", async () => {
     await page.selectOption("#preset-select", "portfolio_qp");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () =>
@@ -179,7 +190,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
     expect(await page.textContent("#solver-badge-text")).toContain("Z3 v5.2.0 (SMT/SAT/MIP)");
 
     await page.selectOption("#preset-select", "conflict_diagnosis_unsat");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () => {
