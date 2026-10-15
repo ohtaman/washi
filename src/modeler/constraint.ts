@@ -14,12 +14,11 @@ export class Constraint {
   private _rhs: number;
   private _name: string;
   public hasExplicitName: boolean;
-  public ownerModel: {
-    notifyMutation?: (source?: Constraint) => void;
-    syncSolutionValidity?: () => void;
-  } | null = null;
-  private _slack: number | null = null;
-  private _dual: number | null = null;
+  public ownerModel: { notifyMutation?: () => void } | null = null;
+  /** Slack value after solve */
+  public slack: number | null = null;
+  /** Dual value (shadow price) after solve */
+  public dual: number | null = null;
 
   constructor(
     lhs: LinExpr,
@@ -41,26 +40,6 @@ export class Constraint {
     }
   }
 
-  /** Slack value after solve */
-  get slack(): number | null {
-    this.ownerModel?.syncSolutionValidity?.();
-    return this._slack;
-  }
-
-  set slack(val: number | null) {
-    this._slack = val;
-  }
-
-  /** Dual value (shadow price) after solve */
-  get dual(): number | null {
-    this.ownerModel?.syncSolutionValidity?.();
-    return this._dual;
-  }
-
-  set dual(val: number | null) {
-    this._dual = val;
-  }
-
   get lhs(): LinExpr {
     return this._lhs;
   }
@@ -68,7 +47,7 @@ export class Constraint {
   set lhs(value: LinExpr) {
     if (this._lhs !== value) {
       this._lhs = value;
-      this.ownerModel?.notifyMutation?.(this);
+      this.ownerModel?.notifyMutation?.();
     }
   }
 
@@ -79,7 +58,7 @@ export class Constraint {
   set sense(value: ComparisonSense) {
     if (this._sense !== value) {
       this._sense = value;
-      this.ownerModel?.notifyMutation?.(this);
+      this.ownerModel?.notifyMutation?.();
     }
   }
 
@@ -90,7 +69,7 @@ export class Constraint {
   set rhs(value: number) {
     if (!Object.is(this._rhs, value)) {
       this._rhs = value;
-      this.ownerModel?.notifyMutation?.(this);
+      this.ownerModel?.notifyMutation?.();
     }
   }
 
@@ -99,8 +78,17 @@ export class Constraint {
   }
 
   set name(value: string) {
-    this._name = value;
+    if (this._name !== value) {
+      this._name = value;
+      this.ownerModel?.notifyMutation?.();
+    }
     this.hasExplicitName = true;
+  }
+
+  /** @internal Assigns a model-scoped name and explicit flag without triggering setter mutation notifications */
+  _assignModelName(name: string, hasExplicitName: boolean): void {
+    this._name = name;
+    this.hasExplicitName = hasExplicitName;
   }
 
   // Logical operators for SMT / SAT

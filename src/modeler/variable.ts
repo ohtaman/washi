@@ -29,15 +29,15 @@ export class Var {
   private _name: string;
   public readonly prefix: string;
   public hasExplicitName: boolean;
-  public ownerModel: {
-    notifyMutation?: (source?: Var) => void;
-    syncSolutionValidity?: () => void;
-  } | null = null;
+  public ownerModel: { notifyMutation?: () => void } | null = null;
   private _type: "Continuous" | "Integer" | "Binary";
   private _lb: number;
   private _ub: number;
-  private _value: number | null = null;
-  private _reducedCost: number | null = null;
+
+  /** Optimal primal value after solve */
+  public value: number | null = null;
+  /** Reduced cost from dual solution */
+  public reducedCost: number | null = null;
 
   constructor(options: VarOptions = {}) {
     this.id = ++varIdCounter;
@@ -57,26 +57,6 @@ export class Var {
     }
   }
 
-  /** Optimal primal value after solve */
-  get value(): number | null {
-    this.ownerModel?.syncSolutionValidity?.();
-    return this._value;
-  }
-
-  set value(val: number | null) {
-    this._value = val;
-  }
-
-  /** Reduced cost from dual solution */
-  get reducedCost(): number | null {
-    this.ownerModel?.syncSolutionValidity?.();
-    return this._reducedCost;
-  }
-
-  set reducedCost(val: number | null) {
-    this._reducedCost = val;
-  }
-
   get name(): string {
     return this._name;
   }
@@ -88,7 +68,7 @@ export class Var {
   set type(val: "Continuous" | "Integer" | "Binary") {
     if (this._type !== val) {
       this._type = val;
-      this.ownerModel?.notifyMutation?.(this);
+      this.ownerModel?.notifyMutation?.();
     }
   }
 
@@ -99,7 +79,7 @@ export class Var {
   set lb(val: number) {
     if (!Object.is(this._lb, val)) {
       this._lb = val;
-      this.ownerModel?.notifyMutation?.(this);
+      this.ownerModel?.notifyMutation?.();
     }
   }
 
@@ -110,7 +90,7 @@ export class Var {
   set ub(val: number) {
     if (!Object.is(this._ub, val)) {
       this._ub = val;
-      this.ownerModel?.notifyMutation?.(this);
+      this.ownerModel?.notifyMutation?.();
     }
   }
 

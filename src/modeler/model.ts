@@ -13,7 +13,7 @@ import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
-import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolVar, BoolExpr } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
@@ -72,68 +72,6 @@ export interface LogicalConstraint {
   expr: BoolExpr | Constraint;
 }
 
-interface ObjectiveSnapshot {
-  kind: "linear" | "quad";
-  constant: number;
-  linearTerms: Array<[Var, number]>;
-  quadTerms: Array<[string, Var, Var, number]>;
-}
-
-interface VarSnapshot {
-  ref: Var;
-  name: string;
-  type: "Continuous" | "Integer" | "Binary";
-  lb: number;
-  ub: number;
-}
-
-interface BoolVarSnapshot {
-  ref: BoolVar;
-  name: string;
-}
-
-interface ConstraintSnapshot {
-  ref: Constraint;
-  name: string;
-  sense: string;
-  rhs: number;
-  lhsConstant: number;
-  lhsTerms: Array<[Var, number]>;
-}
-
-interface LogicalConstraintSnapshot {
-  ref: LogicalConstraint;
-  name: string;
-  exprKey: string;
-}
-
-interface ExecutionSnapshot {
-  revision: number;
-  name: string;
-  sense: OptimizationSense;
-  objective: ObjectiveSnapshot;
-  variables: VarSnapshot[];
-  boolVars: BoolVarSnapshot[];
-  constraints: ConstraintSnapshot[];
-  logicalConstraints: LogicalConstraintSnapshot[];
-}
-
-function serializeLogicElement(elem: LogicElement): string {
-  if (elem instanceof BoolVar) {
-    return `bv:${elem.id}:${elem.name}`;
-  }
-  if (elem instanceof BoolOp) {
-    return `op:${elem.op}(${elem.children.map(serializeLogicElement).join(",")})`;
-  }
-  if (elem instanceof Constraint) {
-    const terms = Array.from(elem.lhs.terms.entries())
-      .map(([v, c]) => `${v.id}:${v.name}:${c}`)
-      .join(",");
-    return `c:${elem.id}:${elem.name}:${elem.sense}:${elem.rhs}:${elem.lhs.constant}:[${terms}]`;
-  }
-  return String(elem);
-}
-
 function assertValidCount(count: number, label: string): void {
   if (!Number.isInteger(count) || count < 0) {
     throw new Error(
@@ -150,8 +88,8 @@ export class Model {
   public constraints: Constraint[] = [];
   public boolVars: BoolVar[] = [];
   public logicalConstraints: LogicalConstraint[] = [];
-  private _unsatCore: readonly string[] | undefined = undefined;
-  private _values = new Map<string, number | boolean>();
+  public unsatCore: readonly string[] | undefined = undefined;
+  public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
   private varPrefixCounters = new Map<string, number>();
@@ -162,19 +100,18 @@ export class Model {
   private logicalConstrMapByName = new Map<string, LogicalConstraint>();
   private logicalConstrCounter = 0;
 
-  private _status: SolverStatus = "NotSolved";
-  private _terminationStatus: TerminationStatus = "NotSolved";
-  private _hasPrimalSolution: boolean = false;
-  private _objectiveValue: number | null = null;
-  private _objectiveBound: number | undefined = undefined;
-  private _relGap: number | undefined = undefined;
-  private _mipGap: number | undefined = undefined;
-  private _absGap: number | undefined = undefined;
-  private _runTime: number = 0;
-  private _solution: SolverSolution | null = null;
+  public status: SolverStatus = "NotSolved";
+  public terminationStatus: TerminationStatus = "NotSolved";
+  public hasPrimalSolution: boolean = false;
+  public objectiveValue: number | null = null;
+  public objectiveBound: number | undefined = undefined;
+  public relGap: number | undefined = undefined;
+  public mipGap: number | undefined = undefined;
+  public absGap: number | undefined = undefined;
+  public runTime: number = 0;
+  public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
   private hasSolutionState: boolean = false;
-  private solvedSnapshot: ExecutionSnapshot | null = null;
   private modelRevision: number = 0;
   private activeOperationId: number = 0;
   private batchDepth: number = 0;
@@ -219,105 +156,6 @@ export class Model {
     }
   }
 
-  get status(): SolverStatus {
-    this.syncSolutionValidity();
-    return this._status;
-  }
-
-  set status(value: SolverStatus) {
-    this._status = value;
-  }
-
-  get terminationStatus(): TerminationStatus {
-    this.syncSolutionValidity();
-    return this._terminationStatus;
-  }
-
-  set terminationStatus(value: TerminationStatus) {
-    this._terminationStatus = value;
-  }
-
-  get hasPrimalSolution(): boolean {
-    this.syncSolutionValidity();
-    return this._hasPrimalSolution;
-  }
-
-  set hasPrimalSolution(value: boolean) {
-    this._hasPrimalSolution = value;
-  }
-
-  get objectiveValue(): number | null {
-    this.syncSolutionValidity();
-    return this._objectiveValue;
-  }
-
-  set objectiveValue(value: number | null) {
-    this._objectiveValue = value;
-  }
-
-  get objectiveBound(): number | undefined {
-    this.syncSolutionValidity();
-    return this._objectiveBound;
-  }
-
-  set objectiveBound(value: number | undefined) {
-    this._objectiveBound = value;
-  }
-
-  get relGap(): number | undefined {
-    this.syncSolutionValidity();
-    return this._relGap;
-  }
-
-  set relGap(value: number | undefined) {
-    this._relGap = value;
-  }
-
-  get mipGap(): number | undefined {
-    this.syncSolutionValidity();
-    return this._mipGap;
-  }
-
-  set mipGap(value: number | undefined) {
-    this._mipGap = value;
-  }
-
-  get absGap(): number | undefined {
-    this.syncSolutionValidity();
-    return this._absGap;
-  }
-
-  set absGap(value: number | undefined) {
-    this._absGap = value;
-  }
-
-  get runTime(): number {
-    this.syncSolutionValidity();
-    return this._runTime;
-  }
-
-  set runTime(value: number) {
-    this._runTime = value;
-  }
-
-  get solution(): SolverSolution | null {
-    this.syncSolutionValidity();
-    return this._solution;
-  }
-
-  set solution(value: SolverSolution | null) {
-    this._solution = value;
-  }
-
-  get unsatCore(): readonly string[] | undefined {
-    this.syncSolutionValidity();
-    return this._unsatCore;
-  }
-
-  set unsatCore(value: readonly string[] | undefined) {
-    this._unsatCore = value;
-  }
-
   /**
    * User-friendly alias for unsatCore.
    * Returns a subset of conflicting constraint names causing infeasibility,
@@ -325,15 +163,6 @@ export class Model {
    */
   get conflicts(): readonly string[] | undefined {
     return this.unsatCore;
-  }
-
-  get values(): Map<string, number | boolean> {
-    this.syncSolutionValidity();
-    return this._values;
-  }
-
-  set values(value: Map<string, number | boolean>) {
-    this._values = value;
   }
 
   get vars(): Var[] {
@@ -353,91 +182,42 @@ export class Model {
   }
 
   /**
-   * @internal Verifies whether any solved state still matches the current model definition;
-   * if the model was mutated in-place since the last solve/check, clears all stored solution fields.
-   */
-  public syncSolutionValidity(): void {
-    if (!this.hasSolutionState) {
-      return;
-    }
-    if (!this.solvedSnapshot || !this.matchesExecutionSnapshot(this.solvedSnapshot)) {
-      this.clearSolutionFields();
-    }
-  }
-
-  /**
-   * @internal Checks whether a Constraint or BoolOp node is currently part of this model.
-   */
-  public ownsConstraintOrLogicNode(node: Constraint | BoolOp): boolean {
-    if (node instanceof Constraint && this.constraints.includes(node)) {
-      return true;
-    }
-    const visit = (elem: LogicElement): boolean => {
-      if (elem === node) return true;
-      if (elem instanceof BoolOp) {
-        return elem.children.some(visit);
-      }
-      return false;
-    };
-    return this.logicalConstraints.some((lc) => visit(lc.expr));
-  }
-
-  /**
    * Clears stored solution and diagnostic fields on the model and its entities.
    */
   private clearSolutionFields(): void {
     if (
       !this.hasSolutionState &&
-      this._status === "NotSolved" &&
-      this._terminationStatus === "NotSolved" &&
-      !this._hasPrimalSolution &&
-      this._solution === null &&
-      this._unsatCore === undefined
+      this.status === "NotSolved" &&
+      this.terminationStatus === "NotSolved" &&
+      !this.hasPrimalSolution &&
+      this.solution === null &&
+      this.unsatCore === undefined
     ) {
       return;
     }
-    const prevSnapshot = this.solvedSnapshot;
     this.hasSolutionState = false;
-    this.solvedSnapshot = null;
-    this._status = "NotSolved";
-    this._terminationStatus = "NotSolved";
-    this._hasPrimalSolution = false;
-    this._objectiveValue = null;
-    this._objectiveBound = undefined;
-    this._relGap = undefined;
-    this._mipGap = undefined;
-    this._absGap = undefined;
-    this._solution = null;
-    this._runTime = 0;
-    this._unsatCore = undefined;
-    this._values.clear();
+    this.status = "NotSolved";
+    this.terminationStatus = "NotSolved";
+    this.hasPrimalSolution = false;
+    this.objectiveValue = null;
+    this.objectiveBound = undefined;
+    this.relGap = undefined;
+    this.mipGap = undefined;
+    this.absGap = undefined;
+    this.solution = null;
+    this.runTime = 0;
+    this.unsatCore = undefined;
+    this.values.clear();
     for (const v of this.variables) {
       v.value = null;
       v.reducedCost = null;
     }
-    if (prevSnapshot) {
-      for (const sv of prevSnapshot.variables) {
-        sv.ref.value = null;
-        sv.ref.reducedCost = null;
-      }
-    }
     for (const bv of this.boolVars) {
       bv.value = null;
-    }
-    if (prevSnapshot) {
-      for (const sbv of prevSnapshot.boolVars) {
-        sbv.ref.value = null;
-      }
     }
     for (const c of this.constraints) {
       c.dual = null;
       c.slack = null;
-    }
-    if (prevSnapshot) {
-      for (const sc of prevSnapshot.constraints) {
-        sc.ref.dual = null;
-        sc.ref.slack = null;
-      }
     }
   }
 
@@ -456,13 +236,7 @@ export class Model {
   /**
    * @internal Notifies the model that an owned entity (e.g., Var bounds/type or Constraint RHS/sense) was mutated.
    */
-  public notifyMutation(source?: Var | Constraint): void {
-    if (source instanceof Constraint && !this.ownsConstraintOrLogicNode(source)) {
-      return;
-    }
-    if (source instanceof Var && !this.variables.includes(source)) {
-      return;
-    }
+  public notifyMutation(): void {
     this.recordModelMutation();
   }
 
@@ -520,7 +294,6 @@ export class Model {
       for (let i = boolVarsLen; i < this.boolVars.length; i++) {
         const bv = this.boolVars[i];
         this.boolVarMapByName.delete(bv.name);
-        bv.ownerModel = null;
       }
       this.boolVars.length = boolVarsLen;
 
@@ -871,7 +644,6 @@ export class Model {
       );
     }
     const bv = new BoolVar(varName);
-    bv.ownerModel = this;
     this.boolVars.push(bv);
     this.boolVarMapByName.set(bv.name, bv);
     this.recordModelMutation();
@@ -1215,16 +987,14 @@ export class Model {
     const prevOwner = constr.ownerModel;
     const savedPrevOwnerModel = prevOwnerModel;
     this.batchUndoActions.push(() => {
-      constr.name = prevName;
-      constr.hasExplicitName = prevExplicit;
       constr.ownerModel = prevOwner;
+      constr._assignModelName(prevName, prevExplicit);
       releaseConstraintOwnership(constr, this, savedPrevOwnerModel);
     });
     if (this.batchDepth === 0) {
       this.batchUndoActions = [];
     }
-    constr.name = resolvedName;
-    constr.hasExplicitName = true;
+    constr._assignModelName(resolvedName, true);
     constr.ownerModel = this;
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
@@ -1469,151 +1239,12 @@ export class Model {
     validateModelIntegrity(this);
   }
 
-  private captureObjectiveSnapshot(): ObjectiveSnapshot {
-    if (this.objectiveExpr instanceof QuadExpr) {
-      return {
-        kind: "quad",
-        constant: this.objectiveExpr.constant,
-        linearTerms: Array.from(this.objectiveExpr.linearTerms.entries()),
-        quadTerms: Array.from(this.objectiveExpr.quadTerms.entries()).map(([key, term]) => [
-          key,
-          term.var1,
-          term.var2,
-          term.coeff,
-        ]),
-      };
-    }
-    return {
-      kind: "linear",
-      constant: this.objectiveExpr.constant,
-      linearTerms: Array.from(this.objectiveExpr.terms.entries()),
-      quadTerms: [],
-    };
-  }
-
-  private captureExecutionSnapshot(): ExecutionSnapshot {
-    return {
-      revision: this.modelRevision,
-      name: this.name,
-      sense: this.sense,
-      objective: this.captureObjectiveSnapshot(),
-      variables: this.variables.map((v) => ({
-        ref: v,
-        name: v.name,
-        type: v.type,
-        lb: v.lb,
-        ub: v.ub,
-      })),
-      boolVars: this.boolVars.map((bv) => ({
-        ref: bv,
-        name: bv.name,
-      })),
-      constraints: this.constraints.map((c) => ({
-        ref: c,
-        name: c.name,
-        sense: c.sense,
-        rhs: c.rhs,
-        lhsConstant: c.lhs.constant,
-        lhsTerms: Array.from(c.lhs.terms.entries()),
-      })),
-      logicalConstraints: this.logicalConstraints.map((lc) => ({
-        ref: lc,
-        name: lc.name,
-        exprKey: serializeLogicElement(lc.expr),
-      })),
-    };
-  }
-
-  private matchesExecutionSnapshot(snapshot: ExecutionSnapshot): boolean {
-    if (this.modelRevision !== snapshot.revision) return false;
-    if (this.name !== snapshot.name || this.sense !== snapshot.sense) return false;
-
-    const currentObj = this.captureObjectiveSnapshot();
-    if (
-      currentObj.kind !== snapshot.objective.kind ||
-      currentObj.constant !== snapshot.objective.constant ||
-      currentObj.linearTerms.length !== snapshot.objective.linearTerms.length ||
-      currentObj.quadTerms.length !== snapshot.objective.quadTerms.length
-    ) {
-      return false;
-    }
-    for (let i = 0; i < currentObj.linearTerms.length; i++) {
-      const [v1, c1] = currentObj.linearTerms[i];
-      const [v2, c2] = snapshot.objective.linearTerms[i];
-      if (v1 !== v2 || c1 !== c2) return false;
-    }
-    for (let i = 0; i < currentObj.quadTerms.length; i++) {
-      const [k1, v1a, v1b, c1] = currentObj.quadTerms[i];
-      const [k2, v2a, v2b, c2] = snapshot.objective.quadTerms[i];
-      if (k1 !== k2 || v1a !== v2a || v1b !== v2b || c1 !== c2) return false;
-    }
-
-    if (this.variables.length !== snapshot.variables.length) return false;
-    for (let i = 0; i < this.variables.length; i++) {
-      const v = this.variables[i];
-      const sv = snapshot.variables[i];
-      if (
-        v !== sv.ref ||
-        v.name !== sv.name ||
-        v.type !== sv.type ||
-        v.lb !== sv.lb ||
-        v.ub !== sv.ub
-      ) {
-        return false;
-      }
-    }
-
-    if (this.boolVars.length !== snapshot.boolVars.length) return false;
-    for (let i = 0; i < this.boolVars.length; i++) {
-      const bv = this.boolVars[i];
-      const sbv = snapshot.boolVars[i];
-      if (bv !== sbv.ref || bv.name !== sbv.name) return false;
-    }
-
-    if (this.constraints.length !== snapshot.constraints.length) return false;
-    for (let i = 0; i < this.constraints.length; i++) {
-      const c = this.constraints[i];
-      const sc = snapshot.constraints[i];
-      if (
-        c !== sc.ref ||
-        c.name !== sc.name ||
-        c.sense !== sc.sense ||
-        c.rhs !== sc.rhs ||
-        c.lhs.constant !== sc.lhsConstant
-      ) {
-        return false;
-      }
-      const terms = Array.from(c.lhs.terms.entries());
-      if (terms.length !== sc.lhsTerms.length) return false;
-      for (let j = 0; j < terms.length; j++) {
-        if (terms[j][0] !== sc.lhsTerms[j][0] || terms[j][1] !== sc.lhsTerms[j][1]) {
-          return false;
-        }
-      }
-    }
-
-    if (this.logicalConstraints.length !== snapshot.logicalConstraints.length) return false;
-    for (let i = 0; i < this.logicalConstraints.length; i++) {
-      const lc = this.logicalConstraints[i];
-      const slc = snapshot.logicalConstraints[i];
-      if (
-        lc !== slc.ref ||
-        lc.name !== slc.name ||
-        serializeLogicElement(lc.expr) !== slc.exprKey
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
   private ensureExecutionValid(
-    snapshot: ExecutionSnapshot,
+    startRevision: number,
     opId: number,
     opName: "solve" | "check"
   ): void {
-    if (!this.matchesExecutionSnapshot(snapshot)) {
+    if (this.modelRevision !== startRevision) {
       if (this.activeOperationId === opId) {
         this.clearSolutionFields();
       }
@@ -1630,7 +1261,7 @@ export class Model {
 
   private wrapSolveOptions(
     activeOptions: SolveOptions,
-    snapshot: ExecutionSnapshot,
+    startRevision: number,
     opId: number
   ): SolveOptions {
     const userOnProgress = activeOptions.onProgress;
@@ -1640,7 +1271,7 @@ export class Model {
     return {
       ...activeOptions,
       onProgress: (event) => {
-        if (this.activeOperationId !== opId || !this.matchesExecutionSnapshot(snapshot)) {
+        if (this.activeOperationId !== opId || this.modelRevision !== startRevision) {
           return;
         }
         userOnProgress(event);
@@ -1691,6 +1322,7 @@ export class Model {
     options?: SolveOptions
   ): Promise<SolverStatus> {
     const opId = ++this.activeOperationId;
+    const startRevision = this.modelRevision;
     this.clearSolutionFields();
     this.validateIntegrity();
 
@@ -1748,8 +1380,7 @@ export class Model {
     };
 
     const lpData: LpExportResult = generateLpString(modelData);
-    const snapshot = this.captureExecutionSnapshot();
-    const effectiveOptions = this.wrapSolveOptions(activeOptions, snapshot, opId);
+    const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
 
     let result: SolverResult;
     try {
@@ -1761,7 +1392,7 @@ export class Model {
       throw err;
     }
 
-    this.ensureExecutionValid(snapshot, opId, "solve");
+    this.ensureExecutionValid(startRevision, opId, "solve");
 
     this.runTime = result.runTime ?? 0;
     this.status = result.status;
@@ -1865,10 +1496,9 @@ export class Model {
       runTime: this.runTime,
       raw: result.raw,
     };
-    this.solvedSnapshot = snapshot;
     this.hasSolutionState = true;
 
-    return this._status;
+    return this.status;
   }
 
   /**
@@ -1893,6 +1523,7 @@ export class Model {
     options?: SolveOptions
   ): Promise<CheckResult> {
     const opId = ++this.activeOperationId;
+    const startRevision = this.modelRevision;
     this.clearSolutionFields();
     this.validateIntegrity();
 
@@ -1930,8 +1561,7 @@ export class Model {
       );
     }
 
-    const snapshot = this.captureExecutionSnapshot();
-    const effectiveOptions = this.wrapSolveOptions(activeOptions, snapshot, opId);
+    const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
 
     // 2. If solver implements native check() (e.g. Z3)
     if (typeof activeSolver.check === "function") {
@@ -1954,7 +1584,7 @@ export class Model {
         throw err;
       }
 
-      this.ensureExecutionValid(snapshot, opId, "check");
+      this.ensureExecutionValid(startRevision, opId, "check");
 
       this.status = checkResult.status;
       this.terminationStatus = activeOptions.signal?.aborted ? "Interrupted" : checkResult.status;
@@ -1975,14 +1605,13 @@ export class Model {
           }
         }
       }
-      this.solvedSnapshot = snapshot;
       this.hasSolutionState = true;
       return {
         status: checkResult.status,
-        values: Object.fromEntries(this._values),
-        unsatCore: this._unsatCore,
-        conflicts: this._unsatCore,
-        runTime: this._runTime,
+        values: Object.fromEntries(this.values),
+        unsatCore: this.unsatCore,
+        conflicts: this.unsatCore,
+        runTime: this.runTime,
       };
     }
 
@@ -2009,7 +1638,7 @@ export class Model {
       throw err;
     }
 
-    this.ensureExecutionValid(snapshot, opId, "check");
+    this.ensureExecutionValid(startRevision, opId, "check");
 
     this.runTime = result.runTime ?? 0;
     const rawStatus = result.status;
@@ -2064,13 +1693,12 @@ export class Model {
       }
     }
 
-    this.solvedSnapshot = snapshot;
     this.hasSolutionState = true;
 
     return {
       status: checkStatus,
       values,
-      runTime: this._runTime,
+      runTime: this.runTime,
     };
   }
 

@@ -351,12 +351,12 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.solution).toBeNull();
     expect(x.value).toBeNull();
 
-    // Solve again and mutate c1.lhs.terms and c1.lhs.constant in-place
+    // Solve again and replace c1.lhs and c1.sense via property setters
     await m.solve();
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(3, 5);
 
-    c1.lhs.terms.set(x, 2);
+    c1.lhs = x.mul(2);
     expect(m.status).toBe("NotSolved");
     expect(m.solution).toBeNull();
     expect(x.value).toBeNull();
@@ -365,20 +365,11 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(1.5, 5);
 
-    c1.lhs.constant = 1;
+    c1.sense = "==";
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
 
-    // Mutate objective expression in-place after solve
-    c1.lhs.constant = 0;
-    await m.solve();
-    expect(m.status).toBe("Optimal");
-    const firstObj = m.objective();
-    firstObj.constant = 10;
-    expect(m.status).toBe("NotSolved");
-    expect(x.value).toBeNull();
-
-    // Direct property replacements on m.sense and m.objectiveExpr must also invalidate and attach observers
+    // Direct property replacements on m.sense and m.objectiveExpr must also invalidate
     await m.solve();
     expect(m.status).toBe("Optimal");
     m.sense = "Minimize";
@@ -387,40 +378,19 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
 
     await m.solve();
     expect(m.status).toBe("Optimal");
-    const directObj = expr`2 * ${x}`;
-    m.objectiveExpr = directObj;
+    m.objectiveExpr = expr`2 * ${x}`;
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
-
-    // Mutating the old replaced objective expression must NOT invalidate the new solve
-    await m.solve();
-    expect(m.status).toBe("Optimal");
-    firstObj.constant = 999;
-    firstObj.terms.set(x, 999);
-    expect(m.status).toBe("Optimal");
-
-    // Mutating the newly assigned m.objectiveExpr in place MUST invalidate
-    directObj.constant = 5;
-    expect(m.status).toBe("NotSolved");
-    expect(x.value).toBeNull();
-
-    // Replacing c1.lhs detaches observer from the previous lhs expression
-    const oldLhs = c1.lhs;
-    c1.lhs = expr`${x}`;
-    await m.solve();
-    expect(m.status).toBe("Optimal");
-    oldLhs.constant = 123;
-    expect(m.status).toBe("Optimal");
   });
 
-  it("invalidates check() state when a Constraint or BoolOp structure is mutated in-place and rejects cross-model embedded Constraint reuse", async () => {
+  it("invalidates check() state when an embedded Constraint property is mutated via setter and rejects cross-model embedded Constraint reuse", async () => {
     const gatedNative = createGatedSolver(
       () => ({ status: "Optimal", objectiveValue: 0, values: { x: 2 }, runTime: 1 }),
       () => ({
         status: "Sat",
         terminationStatus: "Optimal",
         hasPrimalSolution: true,
-        values: { x: 2, p: true, q: false },
+        values: { x: 2, p: true },
         runTime: 1,
       })
     );
@@ -428,7 +398,6 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     const m = new Model({ name: "LogicalEmbeddedMutate", solver: gatedNative.solver });
     const x = m.continuous("x", { lb: 0, ub: 10 });
     const p = m.bool("p");
-    const q = m.bool("q");
     const nested = x.le(5);
     const formula = p.implies(nested);
     m.constraint(formula, "imp_c");
@@ -447,40 +416,17 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(x.value).toBeNull();
     expect(p.value).toBeNull();
 
-    // Re-check and mutate embedded constraint's lhs terms in-place
+    // Re-check and replace embedded constraint's lhs via setter
     const checkPromise2 = m.check();
     await gatedNative.waitForStart;
     gatedNative.release();
     await expect(checkPromise2).resolves.toMatchObject({ status: "Sat" });
     expect(m.status).toBe("Sat");
 
-    nested.lhs.terms.set(x, 3);
+    nested.lhs = x.mul(3);
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
     expect(p.value).toBeNull();
-
-    // Re-check and mutate BoolOp.children structurally in-place
-    const checkPromise3 = m.check();
-    await gatedNative.waitForStart;
-    gatedNative.release();
-    await expect(checkPromise3).resolves.toMatchObject({ status: "Sat" });
-    expect(m.status).toBe("Sat");
-
-    const replacementConstr = x.le(8);
-    formula.children.splice(1, 1, q.and(replacementConstr));
-    expect(m.status).toBe("NotSolved");
-    expect(x.value).toBeNull();
-    expect(p.value).toBeNull();
-
-    // Newly spliced-in Constraint child should also have ownership attached
-    const checkPromise4 = m.check();
-    await gatedNative.waitForStart;
-    gatedNative.release();
-    await expect(checkPromise4).resolves.toMatchObject({ status: "Sat" });
-    expect(m.status).toBe("Sat");
-
-    replacementConstr.rhs = 4;
-    expect(m.status).toBe("NotSolved");
 
     // Cross-model reuse of an embedded Constraint (even variable-free) must be rejected
     const constConstraint = c`0 <= 1`;
@@ -578,118 +524,6 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
 
     embeddedConstr.rhs = 4;
     expect(m.status).toBe("NotSolved");
-  });
-
-  it("handles detached logical subtrees, foreign child pushes, direct collection mutations, and shared QuadExpr maps", async () => {
-    const gatedNative = createGatedSolver(
-      () => ({ status: "Optimal", objectiveValue: 2, values: { x: 2 }, runTime: 1 }),
-      () => ({
-        status: "Sat",
-        terminationStatus: "Optimal",
-        hasPrimalSolution: true,
-        values: { x: 2, p: true, q: false },
-        runTime: 1,
-      })
-    );
-
-    const m1 = new Model({ name: "Model1", solver: gatedNative.solver });
-    const x1 = m1.continuous("x", { lb: 0, ub: 10 });
-    const p1 = m1.bool("p");
-    const q1 = m1.bool("q");
-    const removedConstr = x1.le(5);
-    const keptConstr = x1.le(8);
-    const formula = p1.and(removedConstr, keptConstr);
-    m1.constraint(formula, "f1");
-
-    const check1 = m1.check();
-    await gatedNative.waitForStart;
-    gatedNative.release();
-    await expect(check1).resolves.toMatchObject({ status: "Sat" });
-    expect(m1.status).toBe("Sat");
-
-    // Splice out removedConstr and re-check: mutating removedConstr later must NOT invalidate the new Sat state
-    formula.children.splice(1, 1);
-    expect(m1.status).toBe("NotSolved");
-
-    const gatedNative2 = createGatedSolver(
-      () => ({ status: "Optimal", objectiveValue: 2, values: { x: 2 }, runTime: 1 }),
-      () => ({
-        status: "Sat",
-        terminationStatus: "Optimal",
-        hasPrimalSolution: true,
-        values: { x: 2, p: true, q: false },
-        runTime: 1,
-      })
-    );
-    const check2 = m1.check(gatedNative2.solver);
-    await gatedNative2.waitForStart;
-    gatedNative2.release();
-    await expect(check2).resolves.toMatchObject({ status: "Sat" });
-    expect(m1.status).toBe("Sat");
-
-    removedConstr.rhs = 0;
-    expect(m1.status).toBe("Sat");
-
-    // Pushing a foreign constraint into formula.children must invalidate m1 without stealing foreignConstr from m2
-    const m2 = new Model("Model2");
-    const x2 = m2.continuous("x2", { lb: 0, ub: 10 });
-    const foreignConstr = x2.le(6, "foreign_c");
-    m2.constraint(foreignConstr);
-    m2.objective(maximize(x2));
-    await m2.solve();
-    expect(m2.status).toBe("Optimal");
-
-    formula.children.push(foreignConstr);
-    expect(m1.status).toBe("NotSolved");
-    expect(m2.status).toBe("Optimal");
-
-    // Mutating foreignConstr still invalidates m2 (its rightful owner)
-    foreignConstr.rhs = 3;
-    expect(m2.status).toBe("NotSolved");
-
-    // Direct collection mutation (e.g. m2.constraints.splice) after solve invalidates m2 and clears entity values
-    await m2.solve();
-    expect(m2.status).toBe("Optimal");
-    expect(x2.value).toBeCloseTo(3, 5);
-    m2.constraints.splice(0, 1);
-    expect(m2.status).toBe("NotSolved");
-    expect(x2.value).toBeNull();
-    expect(foreignConstr.dual).toBeNull();
-    expect(foreignConstr.slack).toBeNull();
-
-    // Direct LogicalConstraint.expr mutation after check() invalidates m1
-    formula.children.pop();
-    const gatedNative3 = createGatedSolver(
-      () => ({ status: "Optimal", objectiveValue: 2, values: { x: 2 }, runTime: 1 }),
-      () => ({
-        status: "Sat",
-        terminationStatus: "Optimal",
-        hasPrimalSolution: true,
-        values: { x: 2, p: true, q: false },
-        runTime: 1,
-      })
-    );
-    const check3 = m1.check(gatedNative3.solver);
-    await gatedNative3.waitForStart;
-    gatedNative3.release();
-    await expect(check3).resolves.toMatchObject({ status: "Sat" });
-    expect(m1.status).toBe("Sat");
-
-    m1.logicalConstraints[0]!.expr = q1.not();
-    expect(m1.status).toBe("NotSolved");
-    expect(p1.value).toBeNull();
-
-    // Shared QuadExpr.quadTerms map across two solved models invalidates both when mutated
-    const qm1 = new Model("QuadModel1");
-    const qv1 = qm1.continuous("v1", { lb: 0, ub: 5 });
-    const qExpr = qv1.mul(qv1);
-    qm1.objectiveExpr = qExpr;
-    await qm1.solve(gatedNative.solver);
-    expect(qm1.status).toBe("Optimal");
-
-    const existingTerm = Array.from(qExpr.quadTerms.values())[0]!;
-    existingTerm.coeff = 5;
-    expect(qm1.status).toBe("NotSolved");
   });
 });
 

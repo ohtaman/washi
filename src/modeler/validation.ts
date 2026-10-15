@@ -8,22 +8,9 @@ import { QuadExpr } from "./quad-expr.js";
 const varOwner = new WeakMap<Var, Model>();
 const constrOwner = new WeakMap<Constraint, Model>();
 const topLevelConstrOwner = new WeakMap<Constraint, Model>();
-const boolOpOwner = new WeakMap<BoolOp, Model>();
-
-function getActiveConstraintOwner(c: Constraint): Model | undefined {
-  const topOwner = topLevelConstrOwner.get(c);
-  if (topOwner && topOwner.ownsConstraintOrLogicNode(c)) {
-    return topOwner;
-  }
-  const anyOwner = constrOwner.get(c) ?? ((c.ownerModel as Model | null) ?? undefined);
-  if (anyOwner && anyOwner.ownsConstraintOrLogicNode(c)) {
-    return anyOwner;
-  }
-  return undefined;
-}
 
 /**
- * Recursively attaches ownerModel mutation tracking to any BoolOp and Constraint nodes in a logical expression.
+ * Recursively attaches ownerModel mutation tracking to any Constraint nodes embedded in a logical expression.
  */
 export function attachLogicElementOwnership(
   elem: LogicElement,
@@ -31,19 +18,6 @@ export function attachLogicElementOwnership(
   undoActions?: (() => void)[]
 ): void {
   if (elem instanceof BoolOp) {
-    const prevOpOwner = boolOpOwner.get(elem);
-    if (prevOpOwner !== model) {
-      if (undoActions) {
-        undoActions.push(() => {
-          if (prevOpOwner) {
-            boolOpOwner.set(elem, prevOpOwner);
-          } else {
-            boolOpOwner.delete(elem);
-          }
-        });
-      }
-      boolOpOwner.set(elem, model);
-    }
     for (const child of elem.children) {
       attachLogicElementOwnership(child, model, undoActions);
     }
@@ -85,23 +59,22 @@ export function claimVarOwnership(v: Var, model: Model): void {
  */
 export function claimConstraintOwnership(c: Constraint, model: Model): Model | undefined {
   const existingTop = topLevelConstrOwner.get(c);
-  if (existingTop && existingTop.ownsConstraintOrLogicNode(c)) {
+  if (existingTop) {
     throw new Error(
       existingTop === model
         ? `Constraint "${c.name}" is already registered in model "${model.name}".`
         : `Constraint "${c.name}" already belongs to model "${existingTop.name}" and cannot be added to model "${model.name}".`
     );
   }
-  const existingAny = getActiveConstraintOwner(c);
+  const existingAny = constrOwner.get(c);
   if (existingAny && existingAny !== model) {
     throw new Error(
       `Constraint "${c.name}" already belongs to model "${existingAny.name}" and cannot be added to model "${model.name}".`
     );
   }
-  const prevOwner = constrOwner.get(c);
   topLevelConstrOwner.set(c, model);
   constrOwner.set(c, model);
-  return prevOwner;
+  return existingAny;
 }
 
 /**
@@ -279,20 +252,12 @@ export function validateLogicElement(
       );
     }
   } else if (elem instanceof BoolOp) {
-    if (ownerModel) {
-      const existingOpOwner = boolOpOwner.get(elem);
-      if (existingOpOwner && existingOpOwner !== ownerModel && existingOpOwner.ownsConstraintOrLogicNode(elem)) {
-        throw new Error(
-          `Logical expression in "${lcName}" already belongs to model "${existingOpOwner.name}" and cannot be shared with model "${modelName}".`
-        );
-      }
-    }
     for (const child of elem.children) {
       validateLogicElement(child, lcName, modelName, isOwnedVar, isOwnedBoolVar, ownerModel);
     }
   } else if (elem instanceof Constraint) {
     if (ownerModel) {
-      const existingOwner = getActiveConstraintOwner(elem);
+      const existingOwner = constrOwner.get(elem) ?? ((elem.ownerModel as Model | null) ?? undefined);
       if (existingOwner && existingOwner !== ownerModel) {
         throw new Error(
           `Constraint "${elem.name}" embedded in logical constraint "${lcName}" already belongs to model "${existingOwner.name ?? "another model"}" and cannot be added to model "${modelName}".`
