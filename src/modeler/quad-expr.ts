@@ -82,7 +82,7 @@ export class QuadExpr {
       }
       // Add linear terms
       for (const [v, c] of other.linearTerms) {
-        const current = result.linearTerms.get(v) || 0;
+        const current = result.linearTerms.get(v) ?? 0;
         const sumCoeff = current + c;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
@@ -97,7 +97,7 @@ export class QuadExpr {
     // Check if it's LinExpr (has `terms` map)
     if ("terms" in other && other.terms instanceof Map) {
       for (const [v, c] of other.terms) {
-        const current = result.linearTerms.get(v) || 0;
+        const current = result.linearTerms.get(v) ?? 0;
         const sumCoeff = current + c;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
@@ -111,7 +111,7 @@ export class QuadExpr {
 
     // Otherwise it is a Var
     const v = other as Var;
-    const current = result.linearTerms.get(v) || 0;
+    const current = result.linearTerms.get(v) ?? 0;
     const sumCoeff = current + 1;
     if (sumCoeff === 0) {
       result.linearTerms.delete(v);
@@ -213,15 +213,26 @@ export class QuadExpr {
 
     // Both are linear (degree 1)
     let result = new QuadExpr();
-    result.constant = this.constant * otherExpr.constant;
+    const rawConst = this.constant * otherExpr.constant;
+    result.constant = rawConst === 0 ? 0 : rawConst;
     if (otherExpr.constant !== 0) {
       for (const [v, c] of this.linearTerms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * otherExpr.constant);
+        const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * otherExpr.constant;
+        if (sumCoeff === 0) {
+          result.linearTerms.delete(v);
+        } else {
+          result.linearTerms.set(v, sumCoeff);
+        }
       }
     }
     if (this.constant !== 0) {
       for (const [v, c] of otherLinTerms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
+        const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * this.constant;
+        if (sumCoeff === 0) {
+          result.linearTerms.delete(v);
+        } else {
+          result.linearTerms.set(v, sumCoeff);
+        }
       }
     }
     for (const [v1, c1] of this.linearTerms) {
@@ -307,6 +318,9 @@ export class QuadExpr {
    */
   static fromProduct(v1: Var, v2: Var, coeff: number = 1): QuadExpr {
     const expr = new QuadExpr();
+    if (coeff === 0) {
+      return expr;
+    }
     const key = makeQuadKey(v1, v2);
     expr.quadTerms.set(key, {
       var1: v1.id <= v2.id ? v1 : v2,

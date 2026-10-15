@@ -37,7 +37,7 @@ export class LinExpr {
     } else if ("terms" in other) {
       // other is LinExpr
       for (const [v, c] of other.terms) {
-        const current = result.terms.get(v) || 0;
+        const current = result.terms.get(v) ?? 0;
         const sumCoeff = current + c;
         if (sumCoeff === 0) {
           result.terms.delete(v);
@@ -48,7 +48,7 @@ export class LinExpr {
       result.constant += other.constant;
     } else {
       // other is Var
-      const current = result.terms.get(other) || 0;
+      const current = result.terms.get(other) ?? 0;
       const sumCoeff = current + 1;
       if (sumCoeff === 0) {
         result.terms.delete(other);
@@ -121,15 +121,26 @@ export class LinExpr {
         return operand.mul(this.constant);
       }
       let result = new QuadExpr();
-      result.constant = this.constant * operand.constant;
+      const rawConst = this.constant * operand.constant;
+      result.constant = rawConst === 0 ? 0 : rawConst;
       if (operand.constant !== 0) {
         for (const [v, c] of this.terms) {
-          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
+          const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * operand.constant;
+          if (sumCoeff === 0) {
+            result.linearTerms.delete(v);
+          } else {
+            result.linearTerms.set(v, sumCoeff);
+          }
         }
       }
       if (this.constant !== 0) {
         for (const [v, c] of operand.linearTerms) {
-          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
+          const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * this.constant;
+          if (sumCoeff === 0) {
+            result.linearTerms.delete(v);
+          } else {
+            result.linearTerms.set(v, sumCoeff);
+          }
         }
       }
       for (const [v1, c1] of this.terms) {
@@ -147,15 +158,26 @@ export class LinExpr {
       return this.mul(operand.constant);
     }
     let result = new QuadExpr();
-    result.constant = this.constant * operand.constant;
+    const rawConst = this.constant * operand.constant;
+    result.constant = rawConst === 0 ? 0 : rawConst;
     if (operand.constant !== 0) {
       for (const [v, c] of this.terms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
+        const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * operand.constant;
+        if (sumCoeff === 0) {
+          result.linearTerms.delete(v);
+        } else {
+          result.linearTerms.set(v, sumCoeff);
+        }
       }
     }
     if (this.constant !== 0) {
       for (const [v, c] of operand.terms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
+        const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * this.constant;
+        if (sumCoeff === 0) {
+          result.linearTerms.delete(v);
+        } else {
+          result.linearTerms.set(v, sumCoeff);
+        }
       }
     }
     for (const [v1, c1] of this.terms) {
@@ -312,13 +334,13 @@ export function sum<T = any>(
     } else if (typeof val === "object" && "terms" in val) {
       const linExpr = val as LinExpr;
       for (const [v, c] of linExpr.terms) {
-        const cur = terms.get(v) || 0;
+        const cur = terms.get(v) ?? 0;
         terms.set(v, cur + c);
       }
       constant += linExpr.constant;
     } else {
       const v = val as Var;
-      const cur = terms.get(v) || 0;
+      const cur = terms.get(v) ?? 0;
       terms.set(v, cur + 1);
     }
   }
@@ -337,9 +359,9 @@ export function sum<T = any>(
     }
   }
 
-  // Prune negligible terms
+  // Prune exact zero terms
   for (const [v, c] of terms) {
-    if (Math.abs(c) < 1e-12) {
+    if (c === 0) {
       terms.delete(v);
     }
   }
@@ -381,13 +403,13 @@ export function dot(
       constant += coeff * exprOrVar;
     } else if (exprOrVar instanceof LinExpr) {
       for (const [v, c] of exprOrVar.terms) {
-        const cur = terms.get(v) || 0;
+        const cur = terms.get(v) ?? 0;
         terms.set(v, cur + coeff * c);
       }
       constant += coeff * exprOrVar.constant;
     } else if (isVar(exprOrVar)) {
       const v = exprOrVar as Var;
-      const cur = terms.get(v) || 0;
+      const cur = terms.get(v) ?? 0;
       terms.set(v, cur + coeff);
     } else {
       throw new Error("Cannot multiply number by non-variable/expression operand in dot().");
@@ -500,7 +522,7 @@ export function dot(
   recurse(a, b);
 
   for (const [v, c] of terms) {
-    if (Math.abs(c) < 1e-12) {
+    if (c === 0) {
       terms.delete(v);
     }
   }

@@ -281,13 +281,24 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${Infinity} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => c`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
 
+    // Symmetric tiny-constant multiplication across Var, LinExpr, and QuadExpr
+    const tinyLin = new LinExpr(new Map(), 1e-13);
+    const tinyQuad = new QuadExpr(new Map(), new Map(), 1e-13);
+    expect(tinyLin.mul(x).linearTerms.get(x)).toBe(1e-13);
+    expect(x.mul(tinyLin).linearTerms.get(x)).toBe(1e-13);
+    expect(tinyQuad.mul(x).linearTerms.get(x)).toBe(1e-13);
+    expect(x.mul(tinyQuad).linearTerms.get(x)).toBe(1e-13);
+
     // Non-finite scalar products on zero-constant expressions and non-finite term additions must propagate
     expect(Number.isNaN(new LinExpr().mul(NaN).constant)).toBe(true);
     expect(Number.isNaN(x.sub(x).mul(Infinity).constant)).toBe(true);
     expect(Number.isNaN(new QuadExpr().mul(NaN).constant)).toBe(true);
     expect(x.mul(Infinity).add(x.mul(1)).terms.get(x)).toBe(Infinity);
+    expect(Number.isNaN(x.mul(NaN).add(x.mul(1)).terms.get(x))).toBe(true);
+    expect(Number.isNaN(new QuadExpr(new Map([[x, NaN]])).add(x.mul(1)).linearTerms.get(x))).toBe(true);
     expect(() => expr`${new LinExpr().mul(NaN)} + ${x}`).toThrow(/Invalid non-finite constant/);
     expect(() => expr`${x.mul(Infinity).add(x.mul(1))}`).toThrow(/Invalid non-finite coefficient/);
+    expect(() => expr`${x.mul(NaN).add(x.mul(1))}`).toThrow(/Invalid non-finite coefficient/);
 
     // Post-normalization overflow in constraints
     expect(() => c`${Number.MAX_VALUE} <= ${-Number.MAX_VALUE}`).toThrow(
