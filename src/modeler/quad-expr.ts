@@ -68,8 +68,9 @@ export class QuadExpr {
       // Add quadratic terms
       for (const [key, term] of other.quadTerms) {
         const current = result.quadTerms.get(key);
-        const sumCoeff = (current ? current.coeff : 0) + term.coeff;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        const currentCoeff = current ? current.coeff : 0;
+        const sumCoeff = currentCoeff + term.coeff;
+        if (currentCoeff !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.quadTerms.delete(key);
         } else {
           result.quadTerms.set(key, {
@@ -83,7 +84,7 @@ export class QuadExpr {
       for (const [v, c] of other.linearTerms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -98,7 +99,7 @@ export class QuadExpr {
       for (const [v, c] of other.terms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -143,16 +144,20 @@ export class QuadExpr {
   mul(other: Var | LinExpr | QuadExpr): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): QuadExpr {
     if (typeof operand === "number") {
-      const result = new QuadExpr(new Map(), new Map(), this.constant * operand);
+      const result = new QuadExpr(
+        new Map(),
+        new Map(),
+        this.constant === 0 ? 0 : this.constant * operand
+      );
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
-        if (Math.abs(prod) >= 1e-12) {
+        if (prod !== 0) {
           result.linearTerms.set(v, prod);
         }
       }
       for (const [k, term] of this.quadTerms) {
         const prod = term.coeff * operand;
-        if (Math.abs(prod) >= 1e-12) {
+        if (prod !== 0) {
           result.quadTerms.set(k, {
             var1: term.var1,
             var2: term.var2,
@@ -169,7 +174,7 @@ export class QuadExpr {
         throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
       }
       let result = new QuadExpr();
-      if (Math.abs(this.constant) >= 1e-12) {
+      if (this.constant !== 0) {
         result.linearTerms.set(operand as Var, this.constant);
       }
       for (const [v, c] of this.linearTerms) {
@@ -208,12 +213,12 @@ export class QuadExpr {
     // Both are linear (degree 1)
     let result = new QuadExpr();
     result.constant = this.constant * otherExpr.constant;
-    if (Math.abs(otherExpr.constant) >= 1e-12) {
+    if (otherExpr.constant !== 0) {
       for (const [v, c] of this.linearTerms) {
         result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * otherExpr.constant);
       }
     }
-    if (Math.abs(this.constant) >= 1e-12) {
+    if (this.constant !== 0) {
       for (const [v, c] of otherLinTerms) {
         result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
       }

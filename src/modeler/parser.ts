@@ -179,12 +179,12 @@ function multiplyExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinE
   let result = new QuadExpr();
   result.constant = a.constant * b.constant;
 
-  if (Math.abs(b.constant) >= 1e-12) {
+  if (b.constant !== 0) {
     for (const [v, c] of aLinTerms) {
       result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * b.constant);
     }
   }
-  if (Math.abs(a.constant) >= 1e-12) {
+  if (a.constant !== 0) {
     for (const [v, c] of bLinTerms) {
       result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * a.constant);
     }
@@ -358,11 +358,21 @@ class Parser {
     const exponents: number[] = [];
     while (this.peek()?.type === "CARET") {
       this.consume();
+      const isParenthesizedNumber =
+        this.tokens[this.pos]?.type === "LPAREN" &&
+        this.tokens[this.pos + 1]?.type === "NUMBER" &&
+        this.tokens[this.pos + 2]?.type === "RPAREN";
+      if (isParenthesizedNumber) {
+        this.consume("LPAREN");
+      }
       const expToken = this.peek();
       if (!expToken || expToken.type !== "NUMBER") {
         throw new Error("Exponent must be a non-negative integer number");
       }
       this.consume();
+      if (isParenthesizedNumber) {
+        this.consume("RPAREN");
+      }
       const power = expToken.numericValue ?? Number(expToken.value);
       if (!Number.isInteger(power) || power < 0) {
         throw new Error("Exponent must be a non-negative integer");
@@ -474,13 +484,19 @@ function parseConstraintInternal(
   const rhsLin = rhsExpr instanceof QuadExpr ? new LinExpr(rhsExpr.linearTerms, rhsExpr.constant) : rhsExpr;
 
   // Normalization: lhs - rhs terms <= rhs_constant - lhs_constant
+  let constr: Constraint;
   if (sense === "<=") {
-    return lhsLin.le(rhsLin, name);
+    constr = lhsLin.le(rhsLin, name);
   } else if (sense === ">=") {
-    return lhsLin.ge(rhsLin, name);
+    constr = lhsLin.ge(rhsLin, name);
   } else {
-    return lhsLin.eq(rhsLin, name);
+    constr = lhsLin.eq(rhsLin, name);
   }
+  validateTemplateExprNumericSanity(constr.lhs);
+  if (!Number.isFinite(constr.rhs)) {
+    throw new Error(`Invalid non-finite right-hand side "${constr.rhs}" in constraint.`);
+  }
+  return constr;
 }
 
 /**
@@ -549,6 +565,11 @@ function parseTemplate(
 ): { fullText: string; resolver: ExprResolver; numberMap: Map<string, number> } {
   const placeholderMap = new Map<string, Var | LinExpr | QuadExpr>();
   const numberMap = new Map<string, number>();
+  const rawJoined = strings.join("");
+  let tag = "__washi_";
+  while (rawJoined.includes(tag)) {
+    tag += "_";
+  }
   let fullText = "";
 
   for (let i = 0; i < strings.length; i++) {
@@ -561,12 +582,12 @@ function parseTemplate(
             `Invalid numeric value "${val}" in template expression: interpolated numbers must be finite.`
           );
         }
-        const numPh = `__num_${i}__`;
+        const numPh = `${tag}num_${i}__`;
         numberMap.set(numPh, val);
-        fullText += ` ${numPh} `;
+        fullText += `(${numPh})`;
       } else if (isTemplateExprOrVar(val)) {
         validateTemplateExprNumericSanity(val);
-        const ph = `__ph_${i}__`;
+        const ph = `${tag}ph_${i}__`;
         placeholderMap.set(ph, val);
         fullText += ` ${ph} `;
       } else {

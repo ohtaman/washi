@@ -203,6 +203,20 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(expConstr.lhs.terms.get(x)).toBe(1e-7);
     expect(expConstr.lhs.terms.get(y)).toBe(-5e-6);
     expect(expConstr.rhs).toBe(2.5e-4);
+
+    // Small scientific coefficients below 1e-12 must not be discarded
+    const tinyTemplate = expr`1 + ${1e-13} * ${x}` as LinExpr;
+    expect(tinyTemplate.terms.get(x)).toBe(1e-13);
+    expect(tinyTemplate.constant).toBe(1);
+
+    const tinyQuad = expr`${1e-13} * ${x}^2` as QuadExpr;
+    expect(tinyQuad.getQuadCoeff(x, x)).toBe(1e-13);
+
+    // Implicit multiplication at numeric boundaries and unary negation of negative numbers
+    const implicitProd = expr`2${3}` as LinExpr;
+    expect(implicitProd.constant).toBe(6);
+    const doubleNeg = expr`-${-5}` as LinExpr;
+    expect(doubleNeg.constant).toBe(5);
   });
 
   it("parses valid textual decimal and scientific notation literals", () => {
@@ -215,6 +229,9 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(parsed.terms.get(x)).toBe(1e-7);
     expect(parsed.terms.get(y)).toBe(0.5);
     expect(parsed.constant).toBe(-2500);
+
+    const tinyParsed = parseExpr("1e-13 * x", resolver) as LinExpr;
+    expect(tinyParsed.terms.get(x)).toBe(1e-13);
 
     const constr = parseConstraint("1.5e-4 * x + .25e2 * y <= 1E3", resolver);
     expect(constr.lhs.terms.get(x)).toBe(1.5e-4);
@@ -254,6 +271,20 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${Infinity} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => c`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
 
+    // Post-normalization overflow in constraints
+    expect(() => c`${Number.MAX_VALUE} <= ${-Number.MAX_VALUE}`).toThrow(
+      /Invalid non-finite right-hand side/
+    );
+    expect(() => c`${Number.MAX_VALUE} * ${x} <= ${-Number.MAX_VALUE} * ${x}`).toThrow(
+      /Invalid non-finite coefficient/
+    );
+
+    // Collision-free placeholder identifiers in literal template text
+    expect(() => expr`${2} + __num_0__`).toThrow(/Unknown variable '__num_0__'/);
+    expect(() => expr`${2} + __washi_num_0__`).toThrow(/Unknown variable '__washi_num_0__'/);
+    expect(() => expr`${x} + __ph_0__`).toThrow(/Unknown variable '__ph_0__'/);
+    expect(() => expr`${x} + __washi_ph_0__`).toThrow(/Unknown variable '__washi_ph_0__'/);
+
     expect(() => expr`${null as unknown as number} * ${x}`).toThrow(/Unsupported interpolation value/);
     expect(() => expr`${undefined as unknown as number} * ${x}`).toThrow(/Unsupported interpolation value/);
     expect(() => expr`${"x" as unknown as number} + 1`).toThrow(/Unsupported interpolation value/);
@@ -261,3 +292,4 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${new LinExpr(new Map(), NaN)} + ${x}`).toThrow(/Invalid non-finite constant/);
   });
 });
+
