@@ -68,8 +68,9 @@ export class QuadExpr {
       // Add quadratic terms
       for (const [key, term] of other.quadTerms) {
         const current = result.quadTerms.get(key);
-        const sumCoeff = (current ? current.coeff : 0) + term.coeff;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        const currentCoeff = current ? current.coeff : 0;
+        const sumCoeff = currentCoeff + term.coeff;
+        if (currentCoeff !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.quadTerms.delete(key);
         } else {
           result.quadTerms.set(key, {
@@ -83,7 +84,7 @@ export class QuadExpr {
       for (const [v, c] of other.linearTerms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -98,7 +99,7 @@ export class QuadExpr {
       for (const [v, c] of other.terms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -144,13 +145,13 @@ export class QuadExpr {
       );
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
-        if (!(Math.abs(prod) < 1e-12)) {
+        if (prod !== 0) {
           result.linearTerms.set(v, prod);
         }
       }
       for (const [k, term] of this.quadTerms) {
         const prod = term.coeff * operand;
-        if (!(Math.abs(prod) < 1e-12)) {
+        if (prod !== 0) {
           result.quadTerms.set(k, {
             var1: term.var1,
             var2: term.var2,
@@ -271,7 +272,7 @@ export class QuadExpr {
    */
   static fromProduct(v1: Var, v2: Var, coeff: number = 1): QuadExpr {
     const expr = new QuadExpr();
-    if (Math.abs(coeff) < 1e-12) {
+    if (coeff === 0) {
       return expr;
     }
     const key = makeQuadKey(v1, v2);
@@ -297,18 +298,19 @@ export class QuadExpr {
       new Map(),
       constantA === 0 || constantB === 0 ? 0 : constantA * constantB
     );
-    if (!(Math.abs(constantB) < 1e-12)) {
+    if (constantB !== 0) {
       for (const [v, c] of termsA) {
         const prod = c * constantB;
-        if (!(Math.abs(prod) < 1e-12)) {
+        if (prod !== 0) {
           result.linearTerms.set(v, prod);
         }
       }
     }
-    if (!(Math.abs(constantA) < 1e-12)) {
+    if (constantA !== 0) {
       for (const [v, c] of termsB) {
-        const sumCoeff = (result.linearTerms.get(v) || 0) + c * constantA;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        const current = result.linearTerms.get(v) || 0;
+        const sumCoeff = current + c * constantA;
+        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);

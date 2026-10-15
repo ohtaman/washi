@@ -39,7 +39,7 @@ export class LinExpr {
       for (const [v, c] of other.terms) {
         const current = result.terms.get(v) || 0;
         const sumCoeff = current + c;
-        if (Math.abs(sumCoeff) < 1e-12) {
+        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
           result.terms.delete(v);
         } else {
           result.terms.set(v, sumCoeff);
@@ -91,7 +91,7 @@ export class LinExpr {
       );
       for (const [v, c] of this.terms) {
         const prod = c * operand;
-        if (!(Math.abs(prod) < 1e-12)) {
+        if (prod !== 0) {
           result.terms.set(v, prod);
         }
       }
