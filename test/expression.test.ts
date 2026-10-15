@@ -110,4 +110,16 @@ describe("LinExpr & Arithmetic Operations", () => {
     expect(c3.sense).toBe("==");
     expect(c3.rhs).toBe(0);
   });
+
+  it("serializes retained small non-zero residual coefficients in LP export", () => {
+    const x = new Var({ name: "x" });
+    const residualLin = x.mul(1).sub(x.mul(1 - 5e-13));
+    const coeff = residualLin.terms.get(x)!;
+    expect(coeff).toBeGreaterThan(0);
+    expect(coeff).toBeLessThan(1e-12);
+
+    const cSmall = residualLin.le(1, "c_small");
+    expect(residualLin.toString()).toContain("x");
+    expect(cSmall.toString()).toContain("x");
+  });
 });

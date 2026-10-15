@@ -144,11 +144,7 @@ export class QuadExpr {
       if (this.constant !== 0 && operand !== 0 && rawConst === 0) {
         throw new Error("Constant multiplication underflows to zero.");
       }
-      const result = new QuadExpr(
-        new Map(),
-        new Map(),
-        rawConst === 0 ? 0 : rawConst
-      );
+      const result = new QuadExpr(new Map(), new Map(), rawConst);
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
         if (c !== 0 && operand !== 0 && prod === 0) {
@@ -199,8 +195,12 @@ export class QuadExpr {
     if (otherQuadSize === 0 && otherLinTerms.size === 0) {
       return this.mul(otherConstant);
     }
-    if (this.quadTerms.size === 0 && this.linearTerms.size === 0 && "quadTerms" in operand) {
-      return operand.mul(this.constant);
+    if (this.quadTerms.size === 0 && this.linearTerms.size === 0 && !isVar) {
+      const scaled = operand.mul(this.constant);
+      if ("quadTerms" in scaled) {
+        return scaled;
+      }
+      return new QuadExpr(scaled.terms, new Map(), scaled.constant);
     }
 
     return QuadExpr.multiplyLinearTerms(
