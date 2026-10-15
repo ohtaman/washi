@@ -8,8 +8,17 @@ describe("Browser End-to-End (E2E) Tests", () => {
   let viteServer: ViteDevServer;
   let browser: Browser;
   let page: Page;
-  let devServerUrl = "http://localhost:5173/demo/";
+  let devServerUrl: string;
   const screenshotsDir = path.resolve(process.cwd(), "test/screenshots");
+
+  async function runAndWait() {
+    await page.click("#run-btn");
+    await page.waitForFunction(
+      () => !(document.getElementById("run-btn") as HTMLButtonElement)?.disabled,
+      null,
+      { timeout: 30_000 }
+    );
+  }
 
   beforeAll(async () => {
     if (!fs.existsSync(screenshotsDir)) {
@@ -19,14 +28,19 @@ describe("Browser End-to-End (E2E) Tests", () => {
     // Start Vite dev server programmatically
     viteServer = await createServer({
       configFile: path.resolve(process.cwd(), "vite.config.ts"),
+      // The dev demo uses root-relative solver URLs; the built /washi/ deployment
+      // is covered separately by scripts/check-demo-browser.mjs.
+      base: "/",
     });
     await viteServer.listen();
     const address = viteServer.httpServer?.address();
     const port = typeof address === "object" && address ? address.port : 5173;
-    devServerUrl = `http://localhost:${port}/demo/`;
+    devServerUrl = new URL("demo/", `http://localhost:${port}${viteServer.config.base}`).href;
 
     browser = await chromium.launch({
-      executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+      ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+        ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+        : {}),
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
@@ -52,7 +66,8 @@ describe("Browser End-to-End (E2E) Tests", () => {
   });
 
   it("loads the demo playground and verifies title and branding", async () => {
-    await page.goto(devServerUrl, { waitUntil: "networkidle" });
+    const response = await page.goto(devServerUrl, { waitUntil: "networkidle" });
+    expect(response?.status()).toBe(200);
 
     const title = await page.title();
     expect(title).toContain("WaSHI Playground");
@@ -87,7 +102,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
   it("switches to 0-1 Knapsack problem and solves interactively", async () => {
     await page.selectOption("#preset-select", "knapsack");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () =>
@@ -106,7 +121,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
   it("switches to Transportation problem and solves distribution network", async () => {
     await page.selectOption("#preset-select", "transportation");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () =>
@@ -126,7 +141,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
   it("switches to Markowitz Portfolio Optimization (Convex QP) and solves", async () => {
     await page.selectOption("#preset-select", "portfolio_qp");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () =>
@@ -179,7 +194,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
     expect(await page.textContent("#solver-badge-text")).toContain("Z3 v5.2.0 (SMT/SAT/MIP)");
 
     await page.selectOption("#preset-select", "conflict_diagnosis_unsat");
-    await page.click("#run-btn");
+    await runAndWait();
 
     await page.waitForFunction(
       () => {

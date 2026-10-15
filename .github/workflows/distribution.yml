@@ -20,6 +20,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
       - run: npm run test:distribution
         env:
           RUN_DISTRIBUTION_BROWSER: '1'
