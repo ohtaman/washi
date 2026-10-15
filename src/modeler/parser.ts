@@ -88,19 +88,27 @@ function tokenize(input: string, numberMap?: ReadonlyMap<string, number>): Token
         }
       }
       if (i < len && (input[i] === "e" || input[i] === "E")) {
-        numStr += input[i++];
-        if (i < len && (input[i] === "+" || input[i] === "-")) {
+        const nextCh = i + 1 < len ? input[i + 1] : "";
+        const isIdentStartExceptExp = /[a-zA-Z_]/.test(nextCh);
+        if (!isIdentStartExceptExp) {
+          numStr += input[i++];
+          if (i < len && (input[i] === "+" || input[i] === "-")) {
+            numStr += input[i++];
+          }
+          while (i < len && /[0-9]/.test(input[i])) {
+            numStr += input[i++];
+          }
+          while (
+            i < len &&
+            (input[i] === "." || input[i] === "e" || input[i] === "E" || /[0-9]/.test(input[i]))
+          ) {
+            numStr += input[i++];
+          }
+        }
+      } else {
+        while (i < len && (input[i] === "." || /[0-9]/.test(input[i]))) {
           numStr += input[i++];
         }
-        while (i < len && /[0-9]/.test(input[i])) {
-          numStr += input[i++];
-        }
-      }
-      while (
-        i < len &&
-        (input[i] === "." || input[i] === "e" || input[i] === "E" || /[0-9]/.test(input[i]))
-      ) {
-        numStr += input[i++];
       }
       if (!STRICT_NUMBER_LITERAL_RE.test(numStr)) {
         throw new Error(`Invalid numeric literal '${numStr}' at position ${start} in: "${input}"`);
@@ -429,6 +437,9 @@ class Parser {
 
     if (isPureConstant) {
       const val = Math.pow(base.constant, totalPower);
+      if (base.constant !== 0 && totalPower > 0 && val === 0) {
+        throw new Error("Constant exponentiation underflows to zero.");
+      }
       return new LinExpr(new Map(), val);
     }
 

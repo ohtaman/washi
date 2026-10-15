@@ -250,6 +250,15 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(constr.lhs.terms.get(x)).toBe(1.5e-4);
     expect(constr.lhs.terms.get(y)).toBe(25);
     expect(constr.rhs).toBe(1000);
+
+    // Implicit multiplication before variable names starting with e/E
+    const energy = m.continuous("energy");
+    const E_max = m.continuous("E_max");
+    const eResolver = (name: string) =>
+      name === "energy" ? energy : name === "E_max" ? E_max : resolver(name);
+    const eIdentExpr = parseExpr("2energy + 0.5E_max", eResolver) as LinExpr;
+    expect(eIdentExpr.terms.get(energy)).toBe(2);
+    expect(eIdentExpr.terms.get(E_max)).toBe(0.5);
   });
 
   it("rejects malformed numeric literals, incomplete exponents, trailing tokens, and invalid interpolations", () => {
@@ -278,6 +287,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
     expect(() => parseExpr("1e309", emptyResolver)).toThrow(/overflows finite floating-point range/);
     expect(() => parseExpr("1e-324 * x", xResolver)).toThrow(/underflows to zero/);
+    expect(() => parseExpr("1e-200^2", emptyResolver)).toThrow(/underflows to zero/);
+    expect(() => expr`${1e-200}^2`).toThrow(/underflows to zero/);
     expect(() => expr`${Number.MIN_VALUE} * ${x} / 2`).toThrow(/underflows to zero/);
     expect(() => expr`${Number.MIN_VALUE} * ${x}^2 / 2`).toThrow(/underflows to zero/);
     expect(() => parseExpr("x + 1 )", xResolver)).toThrow(/Unexpected token '\)'/);
@@ -286,6 +297,11 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${NaN} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => expr`${Infinity} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => c`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
+
+    // Signed zero preserved through scalar multiplication
+    expect(Object.is((expr`${-0} * 1` as LinExpr).constant, -0)).toBe(true);
+    expect(Object.is(new LinExpr(new Map(), -0).mul(1).constant, -0)).toBe(true);
+    expect(Object.is(new QuadExpr(new Map(), new Map(), -0).mul(1).constant, -0)).toBe(true);
 
     // Symmetric tiny-constant multiplication across Var, LinExpr, and QuadExpr
     const tinyLin = new LinExpr(new Map(), 1e-13);
