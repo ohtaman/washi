@@ -1,18 +1,6 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
-import type { Var } from "./variable.js";
 import { BoolOp, type LogicElement } from "./boolean-expr.js";
-
-export interface IndicatorConstraintMeta {
-  binVar: Var;
-  activeValue: 0 | 1;
-  targetLhs: LinExpr;
-  targetSense: "<=" | ">=";
-  targetRhs: number;
-  expectedTerms: ReadonlyMap<Var, number>;
-  expectedConstant: number;
-  expectedRhs: number;
-}
 
 let constrIdCounter = 0;
 
@@ -26,7 +14,6 @@ export class Constraint {
   public rhs: number;
   private _name: string;
   public hasExplicitName: boolean;
-  public indicatorMeta?: IndicatorConstraintMeta;
 
   /** Slack value after solve */
   public slack: number | null = null;

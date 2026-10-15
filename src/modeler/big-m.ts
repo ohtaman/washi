@@ -243,9 +243,8 @@ export function deriveBigMForGe(
 }
 
 /**
- * Constructs the linearized LHS and RHS for a single directional indicator constraint,
- * preserving all non-zero terms (including small magnitudes < 1e-12) and verifying
- * that all resulting coefficients and shifted RHS values remain finite.
+ * Constructs the linearized LHS and RHS for a single directional indicator constraint
+ * and verifies that all resulting coefficients and shifted RHS values remain finite.
  */
 export function buildIndicatorLinearization(
   binVar: Var,

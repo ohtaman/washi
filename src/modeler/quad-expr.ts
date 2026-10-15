@@ -69,7 +69,7 @@ export class QuadExpr {
       for (const [key, term] of other.quadTerms) {
         const current = result.quadTerms.get(key);
         const sumCoeff = (current ? current.coeff : 0) + term.coeff;
-        if (sumCoeff === 0) {
+        if (Math.abs(sumCoeff) < 1e-12) {
           result.quadTerms.delete(key);
         } else {
           result.quadTerms.set(key, {
@@ -83,7 +83,7 @@ export class QuadExpr {
       for (const [v, c] of other.linearTerms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (sumCoeff === 0) {
+        if (Math.abs(sumCoeff) < 1e-12) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -98,7 +98,7 @@ export class QuadExpr {
       for (const [v, c] of other.terms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (sumCoeff === 0) {
+        if (Math.abs(sumCoeff) < 1e-12) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -112,7 +112,7 @@ export class QuadExpr {
     const v = other as Var;
     const current = result.linearTerms.get(v) || 0;
     const sumCoeff = current + 1;
-    if (sumCoeff === 0) {
+    if (Math.abs(sumCoeff) < 1e-12) {
       result.linearTerms.delete(v);
     } else {
       result.linearTerms.set(v, sumCoeff);
@@ -146,13 +146,13 @@ export class QuadExpr {
       const result = new QuadExpr(new Map(), new Map(), this.constant * operand);
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
-        if (prod !== 0) {
+        if (Math.abs(prod) >= 1e-12) {
           result.linearTerms.set(v, prod);
         }
       }
       for (const [k, term] of this.quadTerms) {
         const prod = term.coeff * operand;
-        if (prod !== 0) {
+        if (Math.abs(prod) >= 1e-12) {
           result.quadTerms.set(k, {
             var1: term.var1,
             var2: term.var2,
@@ -169,7 +169,7 @@ export class QuadExpr {
         throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
       }
       let result = new QuadExpr();
-      if (this.constant !== 0) {
+      if (Math.abs(this.constant) >= 1e-12) {
         result.linearTerms.set(operand as Var, this.constant);
       }
       for (const [v, c] of this.linearTerms) {
@@ -208,18 +208,14 @@ export class QuadExpr {
     // Both are linear (degree 1)
     let result = new QuadExpr();
     result.constant = this.constant * otherExpr.constant;
-    if (otherExpr.constant !== 0) {
+    if (Math.abs(otherExpr.constant) >= 1e-12) {
       for (const [v, c] of this.linearTerms) {
-        const sumCoeff = (result.linearTerms.get(v) || 0) + c * otherExpr.constant;
-        if (sumCoeff === 0) result.linearTerms.delete(v);
-        else result.linearTerms.set(v, sumCoeff);
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * otherExpr.constant);
       }
     }
-    if (this.constant !== 0) {
+    if (Math.abs(this.constant) >= 1e-12) {
       for (const [v, c] of otherLinTerms) {
-        const sumCoeff = (result.linearTerms.get(v) || 0) + c * this.constant;
-        if (sumCoeff === 0) result.linearTerms.delete(v);
-        else result.linearTerms.set(v, sumCoeff);
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
       }
     }
     for (const [v1, c1] of this.linearTerms) {
@@ -234,7 +230,7 @@ export class QuadExpr {
    * Divide by a non-zero scalar
    */
   div(scalar: number): QuadExpr {
-    if (scalar === 0) {
+    if (Math.abs(scalar) < 1e-12) {
       throw new Error("Division by zero in QuadExpr.div()");
     }
     return this.mul(1 / scalar);
@@ -305,7 +301,6 @@ export class QuadExpr {
    */
   static fromProduct(v1: Var, v2: Var, coeff: number = 1): QuadExpr {
     const expr = new QuadExpr();
-    if (coeff === 0) return expr;
     const key = makeQuadKey(v1, v2);
     expr.quadTerms.set(key, {
       var1: v1.id <= v2.id ? v1 : v2,

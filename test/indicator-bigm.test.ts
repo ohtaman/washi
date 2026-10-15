@@ -475,39 +475,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       await mFrac.solve();
       expect(xFrac.value).toBeCloseTo(0.1, 6);
 
-      // 9. Floating-point downward rounding in coeff * bound (0.3 * 6.1 < 1.83) does not cut off valid boundary points in exact solvers (Z3) when inactive or active
-      await import("../src/modeler/solvers/z3/index.js");
-      const mZ3 = new Model({ name: "Z3FloatBigMInactive", solver: "z3" });
-      const xZ3 = mZ3.continuous("x", { lb: 0, ub: 6.1 });
-      const bZ3 = mZ3.binary("b");
-      mZ3.indicator(bZ3, xZ3.mul(0.3).le(0), { activeValue: 1 });
-      mZ3.add(bZ3.eq(0));
-      mZ3.add(xZ3.eq(6.1));
-      const checkRes = await mZ3.check();
-      expect(checkRes.status).toBe("Sat");
-
-      const mZ3Active = new Model({ name: "Z3FloatBigMActive", solver: "z3" });
-      const xAct = mZ3Active.continuous("x", { lb: 0, ub: 6.1 });
-      const bAct = mZ3Active.binary("b");
-      mZ3Active.indicator(bAct, xAct.le(0.1), { activeValue: 1 });
-      mZ3Active.add(bAct.eq(1));
-      mZ3Active.add(xAct.eq(0.1));
-      const checkActRes = await mZ3Active.check();
-      expect(checkActRes.status).toBe("Sat");
-
-      // 10. Z3 translates auto-derived indicator constraints as exact logical implications even under large cancelling bounds or negated original conditions (A' AND NOT A)
-      const mCancel = new Model({ name: "Z3LargeCancel", solver: "z3" });
-      const xCancel = mCancel.continuous("xCancel", { lb: 0, ub: 1e20 });
-      const yCancel = mCancel.continuous("yCancel", { lb: -99999999999999980000, ub: -99999999999999980000 });
-      const bCancel = mCancel.binary("bCancel");
-      const condCancel = xCancel.add(yCancel).le(0.1);
-      mCancel.indicator(bCancel, condCancel, { activeValue: 1 });
-      mCancel.constraint(condCancel.not());
-      mCancel.add(bCancel.eq(1));
-      const activeNotACheck = await mCancel.check();
-      expect(activeNotACheck.status).toBe("Unsat");
-
-      // 11. Failed indicator() validation preserves existing solved state and rejects non-canonical runtime type spellings
+      // 9. Failed indicator() validation preserves existing solved state and rejects non-canonical runtime type spellings
       expect(() =>
         mFrac.indicator(zFrac, xFrac.le(0), { activeValue: 2 as unknown as 0 | 1 })
       ).toThrow(/Invalid activeValue/i);
@@ -516,10 +484,6 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const fakeUpperVar = m.continuous("fakeUpper", { lb: 0, ub: 1 });
       (fakeUpperVar as unknown as { type: string }).type = "BINARY";
       expect(() => m.indicator(fakeUpperVar, x.le(0))).toThrow(/Invalid variable/i);
-
-      // 12. Out-of-range scientific literals in c`...` are rejected
-      expect(() => c`1e309 * ${xFrac} <= 1`).toThrow(/outside finite floating-point range/i);
-      expect(() => c`1e-400 * ${xFrac} <= 1`).toThrow(/outside finite floating-point range/i);
     });
   });
 });

@@ -879,11 +879,14 @@ export class Model {
   }
 
   /**
-   * Add an indicator constraint via Big-M auto-linearization:
+   * Add an indicator constraint via floating-point Big-M auto-linearization:
    * "If binVar == activeValue, then constraint holds"
    *
-   * Automatically handles <=, >=, and == constraints.
-   * Enables solving conditional logic in MIP solvers (HiGHS, GLPK) without requiring SMT.
+   * Automatically handles <=, >=, and == constraints for LP/MIP solvers (HiGHS, GLPK)
+   * under standard floating-point feasibility tolerances.
+   * Note: Because Big-M rows are floating-point linear relaxations, they do not
+   * guarantee exact rational equivalence in SMT solvers (Z3); use logical
+   * implications (`implies()`) when exact SMT diagnosis is required.
    */
   indicator(
     binVar: Var,
@@ -989,38 +992,12 @@ export class Model {
       if (sense === "<=" || sense === "==") {
         const mLe = options.M !== undefined ? options.M : deriveBigMForLe(lhs, rhs, leName);
         const leLinearized = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, mLe, leName);
-        const leConstraint = new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName);
-        if (options.M === undefined) {
-          leConstraint.indicatorMeta = {
-            binVar,
-            activeValue: activeVal,
-            targetLhs: new LinExpr(new Map(lhs.terms), lhs.constant ?? 0),
-            targetSense: "<=",
-            targetRhs: rhs,
-            expectedTerms: new Map(leLinearized.lhs.terms),
-            expectedConstant: leLinearized.lhs.constant ?? 0,
-            expectedRhs: leLinearized.rhs,
-          };
-        }
-        pending.push([leConstraint, leName]);
+        pending.push([new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName), leName]);
       }
       if (sense === ">=" || sense === "==") {
         const mGe = options.M !== undefined ? options.M : deriveBigMForGe(lhs, rhs, geName);
         const geLinearized = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, mGe, geName);
-        const geConstraint = new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName);
-        if (options.M === undefined) {
-          geConstraint.indicatorMeta = {
-            binVar,
-            activeValue: activeVal,
-            targetLhs: new LinExpr(new Map(lhs.terms), lhs.constant ?? 0),
-            targetSense: ">=",
-            targetRhs: rhs,
-            expectedTerms: new Map(geLinearized.lhs.terms),
-            expectedConstant: geLinearized.lhs.constant ?? 0,
-            expectedRhs: geLinearized.rhs,
-          };
-        }
-        pending.push([geConstraint, geName]);
+        pending.push([new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName]);
       }
 
       for (const [cRow, rowName] of pending) {

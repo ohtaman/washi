@@ -74,9 +74,6 @@ export class Var {
   mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof other === "number") {
-      if (other === 0) {
-        return new LinExpr(new Map(), 0);
-      }
       return new LinExpr(new Map([[this, other]]), 0);
     }
     if (other instanceof Var) {
@@ -87,7 +84,7 @@ export class Var {
         throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
       }
       let result = new QuadExpr();
-      if (other.constant !== 0) {
+      if (Math.abs(other.constant) >= 1e-12) {
         result.linearTerms.set(this, other.constant);
       }
       for (const [v, c] of other.linearTerms) {
@@ -97,7 +94,7 @@ export class Var {
     }
     // LinExpr: this * (c0 + sum(ci * xi)) = c0 * this + sum(ci * this * xi)
     let result = new QuadExpr();
-    if (other.constant !== 0) {
+    if (Math.abs(other.constant) >= 1e-12) {
       result.linearTerms.set(this, other.constant);
     }
     for (const [v, c] of other.terms) {

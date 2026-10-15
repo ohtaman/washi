@@ -39,7 +39,7 @@ export class LinExpr {
       for (const [v, c] of other.terms) {
         const current = result.terms.get(v) || 0;
         const sumCoeff = current + c;
-        if (sumCoeff === 0) {
+        if (Math.abs(sumCoeff) < 1e-12) {
           result.terms.delete(v);
         } else {
           result.terms.set(v, sumCoeff);
@@ -50,7 +50,7 @@ export class LinExpr {
       // other is Var
       const current = result.terms.get(other) || 0;
       const sumCoeff = current + 1;
-      if (sumCoeff === 0) {
+      if (Math.abs(sumCoeff) < 1e-12) {
         result.terms.delete(other);
       } else {
         result.terms.set(other, sumCoeff);
@@ -91,7 +91,7 @@ export class LinExpr {
       const result = new LinExpr(new Map(), this.constant * operand);
       for (const [v, c] of this.terms) {
         const prod = c * operand;
-        if (prod !== 0) {
+        if (Math.abs(prod) >= 1e-12) {
           result.terms.set(v, prod);
         }
       }
@@ -101,7 +101,7 @@ export class LinExpr {
     if (isVar) {
       const vOperand = operand as Var;
       let result = new QuadExpr();
-      if (this.constant !== 0) {
+      if (Math.abs(this.constant) >= 1e-12) {
         result.linearTerms.set(vOperand, this.constant);
       }
       for (const [v, c] of this.terms) {
@@ -118,18 +118,14 @@ export class LinExpr {
       }
       let result = new QuadExpr();
       result.constant = this.constant * operand.constant;
-      if (operand.constant !== 0) {
+      if (Math.abs(operand.constant) >= 1e-12) {
         for (const [v, c] of this.terms) {
-          const sumCoeff = (result.linearTerms.get(v) || 0) + c * operand.constant;
-          if (sumCoeff === 0) result.linearTerms.delete(v);
-          else result.linearTerms.set(v, sumCoeff);
+          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
         }
       }
-      if (this.constant !== 0) {
+      if (Math.abs(this.constant) >= 1e-12) {
         for (const [v, c] of operand.linearTerms) {
-          const sumCoeff = (result.linearTerms.get(v) || 0) + c * this.constant;
-          if (sumCoeff === 0) result.linearTerms.delete(v);
-          else result.linearTerms.set(v, sumCoeff);
+          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
         }
       }
       for (const [v1, c1] of this.terms) {
@@ -148,18 +144,14 @@ export class LinExpr {
     }
     let result = new QuadExpr();
     result.constant = this.constant * operand.constant;
-    if (operand.constant !== 0) {
+    if (Math.abs(operand.constant) >= 1e-12) {
       for (const [v, c] of this.terms) {
-        const sumCoeff = (result.linearTerms.get(v) || 0) + c * operand.constant;
-        if (sumCoeff === 0) result.linearTerms.delete(v);
-        else result.linearTerms.set(v, sumCoeff);
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
       }
     }
-    if (this.constant !== 0) {
+    if (Math.abs(this.constant) >= 1e-12) {
       for (const [v, c] of operand.terms) {
-        const sumCoeff = (result.linearTerms.get(v) || 0) + c * this.constant;
-        if (sumCoeff === 0) result.linearTerms.delete(v);
-        else result.linearTerms.set(v, sumCoeff);
+        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
       }
     }
     for (const [v1, c1] of this.terms) {
@@ -174,7 +166,7 @@ export class LinExpr {
    * Divide this expression by a non-zero scalar
    */
   div(scalar: number): LinExpr {
-    if (scalar === 0) {
+    if (Math.abs(scalar) < 1e-12) {
       throw new Error("Division by zero in LinExpr.div()");
     }
     return this.mul(1 / scalar);
@@ -341,9 +333,9 @@ export function sum<T = any>(
     }
   }
 
-  // Prune zero terms
+  // Prune negligible terms
   for (const [v, c] of terms) {
-    if (c === 0) {
+    if (Math.abs(c) < 1e-12) {
       terms.delete(v);
     }
   }
@@ -504,7 +496,7 @@ export function dot(
   recurse(a, b);
 
   for (const [v, c] of terms) {
-    if (c === 0) {
+    if (Math.abs(c) < 1e-12) {
       terms.delete(v);
     }
   }

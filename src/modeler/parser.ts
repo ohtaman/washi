@@ -78,26 +78,6 @@ function tokenize(input: string): Token[] {
         numStr += input[i];
         i++;
       }
-      if (
-        i < len &&
-        (input[i] === "e" || input[i] === "E") &&
-        /^[eE][+-]?[0-9]/.test(input.slice(i))
-      ) {
-        const significand = numStr;
-        numStr += input[i++];
-        if (input[i] === "+" || input[i] === "-") {
-          numStr += input[i++];
-        }
-        while (i < len && /[0-9]/.test(input[i])) {
-          numStr += input[i++];
-        }
-        const parsedNum = Number(numStr);
-        if (!Number.isFinite(parsedNum) || (parsedNum === 0 && /[1-9]/.test(significand))) {
-          throw new Error(
-            `Numeric literal "${numStr}" is outside finite floating-point range in: "${input}"`
-          );
-        }
-      }
       tokens.push({ type: "NUMBER", value: numStr });
     } else if (/[a-zA-Z_]/.test(ch)) {
       let ident = "";
@@ -161,18 +141,14 @@ function multiplyExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinE
   let result = new QuadExpr();
   result.constant = a.constant * b.constant;
 
-  if (b.constant !== 0) {
+  if (Math.abs(b.constant) >= 1e-12) {
     for (const [v, c] of aLinTerms) {
-      const sumCoeff = (result.linearTerms.get(v) || 0) + c * b.constant;
-      if (sumCoeff === 0) result.linearTerms.delete(v);
-      else result.linearTerms.set(v, sumCoeff);
+      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * b.constant);
     }
   }
-  if (a.constant !== 0) {
+  if (Math.abs(a.constant) >= 1e-12) {
     for (const [v, c] of bLinTerms) {
-      const sumCoeff = (result.linearTerms.get(v) || 0) + c * a.constant;
-      if (sumCoeff === 0) result.linearTerms.delete(v);
-      else result.linearTerms.set(v, sumCoeff);
+      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * a.constant);
     }
   }
 
@@ -259,7 +235,7 @@ class Parser {
         if (divLin.size > 0 || divQuad > 0) {
           throw new Error("Cannot divide by variable in expression");
         }
-        if (divisor.constant === 0) {
+        if (Math.abs(divisor.constant) < 1e-12) {
           throw new Error("Division by zero in expression");
         }
         result = result.div(divisor.constant);

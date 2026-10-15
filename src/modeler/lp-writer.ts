@@ -93,7 +93,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   const linTerms = objective instanceof QuadExpr ? objective.linearTerms : objective.terms;
   if (linTerms) {
     for (const [v, coeff] of linTerms) {
-      if (coeff === 0) continue;
+      if (Math.abs(coeff) < 1e-12) continue;
       const vName = varToName.get(v)!;
       const sign = coeff >= 0 ? (isFirst ? "" : "+ ") : "- ";
       const absCoeff = Math.abs(coeff);
@@ -109,7 +109,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     let isFirstQuad = true;
 
     const orderedQuadTerms = Array.from(objective.quadTerms.values())
-      .filter((term) => term.coeff !== 0)
+      .filter((term) => Math.abs(term.coeff) >= 1e-12)
       .map((term) => {
         const idx1 = varOrder.get(term.var1) ?? term.var1.id;
         const idx2 = varOrder.get(term.var2) ?? term.var2.id;
@@ -160,7 +160,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     let firstTerm = true;
 
     for (const [v, coeff] of c.lhs.terms) {
-      if (coeff === 0) continue;
+      if (Math.abs(coeff) < 1e-12) continue;
       const vName = varToName.get(v)!;
       const sign = coeff >= 0 ? (firstTerm ? "" : "+ ") : "- ";
       const absCoeff = Math.abs(coeff);
