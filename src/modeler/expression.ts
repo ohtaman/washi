@@ -88,13 +88,20 @@ export class LinExpr {
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof operand === "number") {
-      const rawConst = this.constant * operand;
+      const rawConst =
+        this.constant === 0 && this.terms.size > 0 ? 0 : this.constant * operand;
+      if (this.constant !== 0 && operand !== 0 && rawConst === 0) {
+        throw new Error("Constant multiplication underflows to zero.");
+      }
       const result = new LinExpr(
         new Map(),
         rawConst === 0 ? 0 : rawConst
       );
       for (const [v, c] of this.terms) {
         const prod = c * operand;
+        if (c !== 0 && operand !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
         if (prod !== 0) {
           result.terms.set(v, prod);
         }
@@ -121,11 +128,19 @@ export class LinExpr {
         return operand.mul(this.constant);
       }
       let result = new QuadExpr();
-      const rawConst = this.constant * operand.constant;
+      const rawConst =
+        this.constant === 0 || operand.constant === 0 ? 0 : this.constant * operand.constant;
+      if (this.constant !== 0 && operand.constant !== 0 && rawConst === 0) {
+        throw new Error("Constant multiplication underflows to zero.");
+      }
       result.constant = rawConst === 0 ? 0 : rawConst;
       if (operand.constant !== 0) {
         for (const [v, c] of this.terms) {
-          const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * operand.constant;
+          const prod = c * operand.constant;
+          if (c !== 0 && prod === 0) {
+            throw new Error("Coefficient multiplication underflows to zero.");
+          }
+          const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
           if (sumCoeff === 0) {
             result.linearTerms.delete(v);
           } else {
@@ -135,7 +150,11 @@ export class LinExpr {
       }
       if (this.constant !== 0) {
         for (const [v, c] of operand.linearTerms) {
-          const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * this.constant;
+          const prod = c * this.constant;
+          if (c !== 0 && prod === 0) {
+            throw new Error("Coefficient multiplication underflows to zero.");
+          }
+          const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
           if (sumCoeff === 0) {
             result.linearTerms.delete(v);
           } else {
@@ -145,7 +164,11 @@ export class LinExpr {
       }
       for (const [v1, c1] of this.terms) {
         for (const [v2, c2] of operand.linearTerms) {
-          result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+          const prod = c1 * c2;
+          if (c1 !== 0 && c2 !== 0 && prod === 0) {
+            throw new Error("Coefficient multiplication underflows to zero.");
+          }
+          result = result.add(QuadExpr.fromProduct(v1, v2, prod));
         }
       }
       return result;
@@ -158,11 +181,19 @@ export class LinExpr {
       return this.mul(operand.constant);
     }
     let result = new QuadExpr();
-    const rawConst = this.constant * operand.constant;
+    const rawConst =
+      this.constant === 0 || operand.constant === 0 ? 0 : this.constant * operand.constant;
+    if (this.constant !== 0 && operand.constant !== 0 && rawConst === 0) {
+      throw new Error("Constant multiplication underflows to zero.");
+    }
     result.constant = rawConst === 0 ? 0 : rawConst;
     if (operand.constant !== 0) {
       for (const [v, c] of this.terms) {
-        const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * operand.constant;
+        const prod = c * operand.constant;
+        if (c !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
@@ -172,7 +203,11 @@ export class LinExpr {
     }
     if (this.constant !== 0) {
       for (const [v, c] of operand.terms) {
-        const sumCoeff = (result.linearTerms.get(v) ?? 0) + c * this.constant;
+        const prod = c * this.constant;
+        if (c !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
@@ -182,7 +217,11 @@ export class LinExpr {
     }
     for (const [v1, c1] of this.terms) {
       for (const [v2, c2] of operand.terms) {
-        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+        const prod = c1 * c2;
+        if (c1 !== 0 && c2 !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        result = result.add(QuadExpr.fromProduct(v1, v2, prod));
       }
     }
     return result;

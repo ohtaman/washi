@@ -239,6 +239,10 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     const residualParsed = parseExpr("1e12 * x - 999999999999.5 * x", resolver) as LinExpr;
     expect(residualParsed.terms.get(x)).toBe(0.5);
 
+    const exactCancelledProduct = parseExpr("(x + 1e-13) * (x - 1e-13) - x^2", resolver) as LinExpr;
+    expect(exactCancelledProduct.terms.size).toBe(0);
+    expect(exactCancelledProduct.value).toBeCloseTo(-1e-26, 40);
+
     const zeroScientific = parseExpr("0e-400 * x + 0.00 * y", resolver) as LinExpr;
     expect(zeroScientific.terms.size).toBe(0);
 
@@ -274,6 +278,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
     expect(() => parseExpr("1e309", emptyResolver)).toThrow(/overflows finite floating-point range/);
     expect(() => parseExpr("1e-324 * x", xResolver)).toThrow(/underflows to zero/);
+    expect(() => expr`${Number.MIN_VALUE} * ${x} / 2`).toThrow(/underflows to zero/);
+    expect(() => expr`${Number.MIN_VALUE} * ${x}^2 / 2`).toThrow(/underflows to zero/);
     expect(() => parseExpr("x + 1 )", xResolver)).toThrow(/Unexpected token '\)'/);
     expect(() => parseConstraint("x <= 10 <= 20", xResolver)).toThrow(/Unexpected token '<='/);
 

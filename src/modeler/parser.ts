@@ -182,22 +182,49 @@ function multiplyExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinE
   // Both have at least one linear term, and neither has quadratic terms:
   // degree 1 * degree 1 => degree 2 QuadExpr
   let result = new QuadExpr();
-  result.constant = a.constant * b.constant;
+  const rawConst =
+    a.constant === 0 || b.constant === 0 ? 0 : a.constant * b.constant;
+  if (a.constant !== 0 && b.constant !== 0 && rawConst === 0) {
+    throw new Error("Constant multiplication underflows to zero.");
+  }
+  result.constant = rawConst === 0 ? 0 : rawConst;
 
   if (b.constant !== 0) {
     for (const [v, c] of aLinTerms) {
-      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * b.constant);
+      const prod = c * b.constant;
+      if (c !== 0 && prod === 0) {
+        throw new Error("Coefficient multiplication underflows to zero.");
+      }
+      const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
+      if (sumCoeff === 0) {
+        result.linearTerms.delete(v);
+      } else {
+        result.linearTerms.set(v, sumCoeff);
+      }
     }
   }
   if (a.constant !== 0) {
     for (const [v, c] of bLinTerms) {
-      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * a.constant);
+      const prod = c * a.constant;
+      if (c !== 0 && prod === 0) {
+        throw new Error("Coefficient multiplication underflows to zero.");
+      }
+      const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
+      if (sumCoeff === 0) {
+        result.linearTerms.delete(v);
+      } else {
+        result.linearTerms.set(v, sumCoeff);
+      }
     }
   }
 
   for (const [v1, c1] of aLinTerms) {
     for (const [v2, c2] of bLinTerms) {
-      result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+      const prod = c1 * c2;
+      if (c1 !== 0 && c2 !== 0 && prod === 0) {
+        throw new Error("Coefficient multiplication underflows to zero.");
+      }
+      result = result.add(QuadExpr.fromProduct(v1, v2, prod));
     }
   }
 
