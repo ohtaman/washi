@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, LinExpr, Constraint, QuadExpr, c, expr } from "../src/index.js";
+import {
+  Model,
+  Var,
+  LinExpr,
+  Constraint,
+  QuadExpr,
+  c,
+  expr,
+  parseExpr,
+  parseConstraint,
+} from "../src/index.js";
 
 describe("Tagged Template Literal Syntax (c and expr)", () => {
   it("parses linear expression with variables and numbers via expr`...`", () => {
@@ -167,4 +177,170 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(balanceConstraint.lhs.terms.get(x)).toBe(1);
     expect(balanceConstraint.lhs.terms.get(y)).toBe(2);
   });
+
+  it("preserves finite numeric interpolations including scientific notation, negative numbers, 0, and -0", () => {
+    const m = new Model();
+    const x = m.continuous("x");
+    const y = m.continuous("y");
+
+    const expExpr = expr`${1e-7} * ${x} + ${-2.5e-6} * ${y} + ${1e-9}` as LinExpr;
+    expect(expExpr.terms.get(x)).toBe(1e-7);
+    expect(expExpr.terms.get(y)).toBe(-2.5e-6);
+    expect(expExpr.constant).toBe(1e-9);
+
+    const negZeroExpr = expr`${-0}` as LinExpr;
+    expect(Object.is(negZeroExpr.constant, -0)).toBe(true);
+
+    const posZeroExpr = expr`${0}` as LinExpr;
+    expect(Object.is(posZeroExpr.constant, 0)).toBe(true);
+
+    const negPowerExpr = expr`${-2}^2 + ${3} * ${x}^${2}` as QuadExpr;
+    expect(negPowerExpr).toBeInstanceOf(QuadExpr);
+    expect(negPowerExpr.constant).toBe(4);
+    expect(negPowerExpr.getQuadCoeff(x, x)).toBe(3);
+
+    const expConstr = c`${1e-7} * ${x} - ${5e-6} * ${y} <= ${2.5e-4}`;
+    expect(expConstr.lhs.terms.get(x)).toBe(1e-7);
+    expect(expConstr.lhs.terms.get(y)).toBe(-5e-6);
+    expect(expConstr.rhs).toBe(2.5e-4);
+
+    // Small scientific coefficients below 1e-12 must not be discarded, including repeated sums and divisors
+    const tinyTemplate = expr`1 + ${1e-13} * ${x} + ${1e-13} * ${x}` as LinExpr;
+    expect(tinyTemplate.terms.get(x)).toBe(2e-13);
+    expect(tinyTemplate.constant).toBe(1);
+
+    const tinyDiv = expr`${x} / ${1e-13}` as LinExpr;
+    expect(tinyDiv.terms.get(x)).toBeCloseTo(1e13, 0);
+
+    const tinyQuad = expr`${1e-13} * ${x}^2 + ${1e-13} * ${x}^2` as QuadExpr;
+    expect(tinyQuad.getQuadCoeff(x, x)).toBe(2e-13);
+
+    // Implicit multiplication at numeric boundaries and unary negation of negative numbers
+    const implicitProd = expr`2${3}` as LinExpr;
+    expect(implicitProd.constant).toBe(6);
+    const doubleNeg = expr`-${-5}` as LinExpr;
+    expect(doubleNeg.constant).toBe(5);
+  });
+
+  it("parses valid textual decimal and scientific notation literals", () => {
+    const m = new Model();
+    const x = m.continuous("x");
+    const y = m.continuous("y");
+    const resolver = (name: string) => (name === "x" ? x : name === "y" ? y : undefined);
+
+    const parsed = parseExpr("1e-7 * x + .5 * y - 2.5E+3", resolver) as LinExpr;
+    expect(parsed.terms.get(x)).toBe(1e-7);
+    expect(parsed.terms.get(y)).toBe(0.5);
+    expect(parsed.constant).toBe(-2500);
+
+    const tinyParsed = parseExpr("1e-13 * x + 1e-13 * x", resolver) as LinExpr;
+    expect(tinyParsed.terms.get(x)).toBe(2e-13);
+
+    const residualParsed = parseExpr("1e12 * x - 999999999999.5 * x", resolver) as LinExpr;
+    expect(residualParsed.terms.get(x)).toBe(0.5);
+
+    const exactCancelledProduct = parseExpr("(x + 1e-13) * (x - 1e-13) - x^2", resolver) as LinExpr;
+    expect(exactCancelledProduct.terms.size).toBe(0);
+    expect(exactCancelledProduct.value).toBeCloseTo(-1e-26, 40);
+
+    const zeroScientific = parseExpr("0e-400 * x + 0.00 * y", resolver) as LinExpr;
+    expect(zeroScientific.terms.size).toBe(0);
+
+    const constr = parseConstraint("1.5e-4 * x + .25e2 * y <= 1E3", resolver);
+    expect(constr.lhs.terms.get(x)).toBe(1.5e-4);
+    expect(constr.lhs.terms.get(y)).toBe(25);
+    expect(constr.rhs).toBe(1000);
+
+    // Implicit multiplication before variable names starting with e/E
+    const energy = m.continuous("energy");
+    const E_max = m.continuous("E_max");
+    const eResolver = (name: string) =>
+      name === "energy" ? energy : name === "E_max" ? E_max : resolver(name);
+    const eIdentExpr = parseExpr("2energy + 0.5E_max", eResolver) as LinExpr;
+    expect(eIdentExpr.terms.get(energy)).toBe(2);
+    expect(eIdentExpr.terms.get(E_max)).toBe(0.5);
+  });
+
+  it("rejects malformed numeric literals, incomplete exponents, trailing tokens, and invalid interpolations", () => {
+    const m = new Model();
+    const x = m.continuous("x");
+    const b = m.bool("b");
+    const emptyResolver = () => undefined;
+    const xResolver = (name: string) => (name === "x" ? x : undefined);
+
+    for (const malformed of [
+      "1.2.3",
+      "1..2",
+      ".",
+      "1.",
+      ".5.2",
+      "1e",
+      "1E",
+      "1e+",
+      "1e-",
+      "1e2.3",
+      "1e2e3",
+      "1.e5",
+    ]) {
+      expect(() => parseExpr(malformed, emptyResolver)).toThrow(/Invalid numeric literal/);
+    }
+
+    expect(() => parseExpr("1e309", emptyResolver)).toThrow(/overflows finite floating-point range/);
+    expect(() => parseExpr("1e-324 * x", xResolver)).toThrow(/underflows to zero/);
+    expect(() => parseExpr("1e-200^2", emptyResolver)).toThrow(/underflows to zero/);
+    expect(() => expr`${1e-200}^2`).toThrow(/underflows to zero/);
+    expect(() => expr`${Number.MIN_VALUE} * ${x} / 2`).toThrow(/underflows to zero/);
+    expect(() => expr`${Number.MIN_VALUE} * ${x}^2 / 2`).toThrow(/underflows to zero/);
+    expect(() => parseExpr("x + 1 )", xResolver)).toThrow(/Unexpected token '\)'/);
+    expect(() => parseConstraint("x <= 10 <= 20", xResolver)).toThrow(/Unexpected token '<='/);
+
+    expect(() => expr`${NaN} * ${x}`).toThrow(/interpolated numbers must be finite/);
+    expect(() => expr`${Infinity} * ${x}`).toThrow(/interpolated numbers must be finite/);
+    expect(() => c`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
+
+    // Signed zero preserved through scalar multiplication
+    expect(Object.is((expr`${-0} * 1` as LinExpr).constant, -0)).toBe(true);
+    expect(Object.is(new LinExpr(new Map(), -0).mul(1).constant, -0)).toBe(true);
+    expect(Object.is(new QuadExpr(new Map(), new Map(), -0).mul(1).constant, -0)).toBe(true);
+
+    // Symmetric tiny-constant multiplication across Var, LinExpr, and QuadExpr
+    const tinyLin = new LinExpr(new Map(), 1e-13);
+    const tinyQuad = new QuadExpr(new Map(), new Map(), 1e-13);
+    expect(tinyLin.mul(x).linearTerms.get(x)).toBe(1e-13);
+    expect(x.mul(tinyLin).linearTerms.get(x)).toBe(1e-13);
+    expect(tinyQuad.mul(x).linearTerms.get(x)).toBe(1e-13);
+    expect(x.mul(tinyQuad).linearTerms.get(x)).toBe(1e-13);
+
+    // Non-finite scalar products on zero-constant expressions and non-finite term additions must propagate
+    expect(Number.isNaN(new LinExpr().mul(NaN).constant)).toBe(true);
+    expect(Number.isNaN(x.sub(x).mul(Infinity).constant)).toBe(true);
+    expect(Number.isNaN(new QuadExpr().mul(NaN).constant)).toBe(true);
+    expect(x.mul(Infinity).add(x.mul(1)).terms.get(x)).toBe(Infinity);
+    expect(Number.isNaN(x.mul(NaN).add(x.mul(1)).terms.get(x))).toBe(true);
+    expect(Number.isNaN(new QuadExpr(new Map([[x, NaN]])).add(x.mul(1)).linearTerms.get(x))).toBe(true);
+    expect(() => expr`${new LinExpr().mul(NaN)} + ${x}`).toThrow(/Invalid non-finite constant/);
+    expect(() => expr`${x.mul(Infinity).add(x.mul(1))}`).toThrow(/Invalid non-finite coefficient/);
+    expect(() => expr`${x.mul(NaN).add(x.mul(1))}`).toThrow(/Invalid non-finite coefficient/);
+
+    // Post-normalization overflow in constraints
+    expect(() => c`${Number.MAX_VALUE} <= ${-Number.MAX_VALUE}`).toThrow(
+      /Invalid non-finite right-hand side/
+    );
+    expect(() => c`${Number.MAX_VALUE} * ${x} <= ${-Number.MAX_VALUE} * ${x}`).toThrow(
+      /Invalid non-finite coefficient/
+    );
+
+    // Collision-free placeholder identifiers in literal template text
+    expect(() => expr`${2} + __num_0__`).toThrow(/Unknown variable '__num_0__'/);
+    expect(() => expr`${2} + __washi_num_0__`).toThrow(/Unknown variable '__washi_num_0__'/);
+    expect(() => expr`${x} + __ph_0__`).toThrow(/Unknown variable '__ph_0__'/);
+    expect(() => expr`${x} + __washi_ph_0__`).toThrow(/Unknown variable '__washi_ph_0__'/);
+
+    expect(() => expr`${null as unknown as number} * ${x}`).toThrow(/Unsupported interpolation value/);
+    expect(() => expr`${undefined as unknown as number} * ${x}`).toThrow(/Unsupported interpolation value/);
+    expect(() => expr`${"x" as unknown as number} + 1`).toThrow(/Unsupported interpolation value/);
+    expect(() => expr`${b as unknown as Var} + 1`).toThrow(/Unsupported interpolation value/);
+    expect(() => expr`${new LinExpr(new Map(), NaN)} + ${x}`).toThrow(/Invalid non-finite constant/);
+  });
 });
+
