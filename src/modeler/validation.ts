@@ -1,266 +1,25 @@
 import type { Model } from "./model.js";
 import { Var } from "./variable.js";
-import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolVar, BoolOp, type LogicElement } from "./boolean-expr.js";
 import { Constraint } from "./constraint.js";
 import { LinExpr } from "./expression.js";
-import { QuadExpr, type QuadTerm } from "./quad-expr.js";
+import { QuadExpr } from "./quad-expr.js";
 
 const varOwner = new WeakMap<Var, Model>();
 const constrOwner = new WeakMap<Constraint, Model>();
-const exprListeners = new WeakMap<object, Set<() => void>>();
-const boolOpModels = new WeakMap<BoolOp, Set<Model>>();
-const instrumentedBoolOps = new WeakSet<BoolOp>();
+const topLevelConstrOwner = new WeakMap<Constraint, Model>();
+const boolOpOwner = new WeakMap<BoolOp, Model>();
 
-function instrumentQuadTerm(term: QuadTerm, notify: () => void): QuadTerm {
-  let var1 = term.var1;
-  let var2 = term.var2;
-  let coeff = term.coeff;
-  const wrapped = {} as QuadTerm;
-  Object.defineProperties(wrapped, {
-    var1: {
-      configurable: true,
-      enumerable: true,
-      get: () => var1,
-      set: (val: Var) => {
-        if (var1 !== val) {
-          var1 = val;
-          notify();
-        }
-      },
-    },
-    var2: {
-      configurable: true,
-      enumerable: true,
-      get: () => var2,
-      set: (val: Var) => {
-        if (var2 !== val) {
-          var2 = val;
-          notify();
-        }
-      },
-    },
-    coeff: {
-      configurable: true,
-      enumerable: true,
-      get: () => coeff,
-      set: (val: number) => {
-        if (!Object.is(coeff, val)) {
-          coeff = val;
-          notify();
-        }
-      },
-    },
-  });
-  return wrapped;
-}
-
-function instrumentMap<K, V>(
-  map: Map<K, V>,
-  notify: () => void,
-  wrapValue?: (v: V) => V
-): Map<K, V> {
-  if (wrapValue) {
-    for (const [k, v] of Array.from(map.entries())) {
-      Map.prototype.set.call(map, k, wrapValue(v));
-    }
+function getActiveConstraintOwner(c: Constraint): Model | undefined {
+  const topOwner = topLevelConstrOwner.get(c);
+  if (topOwner && topOwner.ownsConstraintOrLogicNode(c)) {
+    return topOwner;
   }
-  const origSet = map.set.bind(map);
-  const origDelete = map.delete.bind(map);
-  const origClear = map.clear.bind(map);
-
-  map.set = (key: K, value: V) => {
-    const had = map.has(key);
-    const prev = map.get(key);
-    const nextVal = wrapValue ? wrapValue(value) : value;
-    origSet(key, nextVal);
-    if (!had || !Object.is(prev, value)) {
-      notify();
-    }
-    return map;
-  };
-  map.delete = (key: K) => {
-    const removed = origDelete(key);
-    if (removed) {
-      notify();
-    }
-    return removed;
-  };
-  map.clear = () => {
-    if (map.size > 0) {
-      origClear();
-      notify();
-    }
-  };
-  return map;
-}
-
-/**
- * Removes a previously registered mutation listener from a LinExpr or QuadExpr instance.
- */
-export function unobserveExprMutations(expr: LinExpr | QuadExpr, onMutate: () => void): void {
-  exprListeners.get(expr)?.delete(onMutate);
-}
-
-/**
- * Instruments a LinExpr or QuadExpr instance so in-place mutations to its constant or term maps invoke onMutate.
- */
-export function observeExprMutations(expr: LinExpr | QuadExpr, onMutate: () => void): void {
-  const existing = exprListeners.get(expr);
-  if (existing) {
-    existing.add(onMutate);
-    return;
+  const anyOwner = constrOwner.get(c) ?? ((c.ownerModel as Model | null) ?? undefined);
+  if (anyOwner && anyOwner.ownsConstraintOrLogicNode(c)) {
+    return anyOwner;
   }
-  const listeners = new Set<() => void>([onMutate]);
-  exprListeners.set(expr, listeners);
-  const notify = () => {
-    for (const fn of Array.from(listeners)) {
-      fn();
-    }
-  };
-
-  let currentConstant = expr.constant;
-  Object.defineProperty(expr, "constant", {
-    configurable: true,
-    enumerable: true,
-    get: () => currentConstant,
-    set: (val: number) => {
-      if (!Object.is(currentConstant, val)) {
-        currentConstant = val;
-        notify();
-      }
-    },
-  });
-
-  if (expr instanceof QuadExpr) {
-    let currentLinear = instrumentMap(expr.linearTerms, notify);
-    Object.defineProperty(expr, "linearTerms", {
-      configurable: true,
-      enumerable: true,
-      get: () => currentLinear,
-      set: (val: Map<Var, number>) => {
-        if (currentLinear !== val) {
-          currentLinear = instrumentMap(val, notify);
-          notify();
-        }
-      },
-    });
-
-    const wrapTerm = (t: QuadTerm) => instrumentQuadTerm(t, notify);
-    let currentQuad = instrumentMap(expr.quadTerms, notify, wrapTerm);
-    Object.defineProperty(expr, "quadTerms", {
-      configurable: true,
-      enumerable: true,
-      get: () => currentQuad,
-      set: (val: Map<string, QuadTerm>) => {
-        if (currentQuad !== val) {
-          currentQuad = instrumentMap(val, notify, wrapTerm);
-          notify();
-        }
-      },
-    });
-  } else {
-    let currentTerms = instrumentMap(expr.terms, notify);
-    Object.defineProperty(expr, "terms", {
-      configurable: true,
-      enumerable: true,
-      get: () => currentTerms,
-      set: (val: Map<Var, number>) => {
-        if (currentTerms !== val) {
-          currentTerms = instrumentMap(val, notify);
-          notify();
-        }
-      },
-    });
-  }
-}
-
-function instrumentLogicChildrenArray(
-  arr: LogicElement[],
-  onMutate: () => void,
-  onAddChild: (child: LogicElement) => void
-): LogicElement[] {
-  return new Proxy(arr, {
-    set(target, prop, value, receiver) {
-      const prevLen = target.length;
-      const hadProp = Reflect.has(target, prop);
-      const prevVal = Reflect.get(target, prop, receiver);
-      const ok = Reflect.set(target, prop, value, receiver);
-      if (ok) {
-        if (typeof prop === "string" && /^\d+$/.test(prop) && value && typeof value === "object") {
-          try {
-            onAddChild(value as LogicElement);
-          } catch {
-            // Validation errors for invalid children will surface on next solve()/check()
-          }
-        }
-        if (!hadProp || !Object.is(prevVal, value) || target.length !== prevLen) {
-          onMutate();
-        }
-      }
-      return ok;
-    },
-    deleteProperty(target, prop) {
-      const had = Reflect.has(target, prop);
-      const ok = Reflect.deleteProperty(target, prop);
-      if (ok && had) {
-        onMutate();
-      }
-      return ok;
-    },
-  });
-}
-
-function ensureBoolOpInstrumented(elem: BoolOp): void {
-  if (instrumentedBoolOps.has(elem)) {
-    return;
-  }
-  instrumentedBoolOps.add(elem);
-
-  const notifyModels = () => {
-    const models = boolOpModels.get(elem);
-    if (!models) return;
-    for (const m of models) {
-      m.notifyMutation();
-    }
-  };
-
-  const attachNewChild = (child: LogicElement) => {
-    const models = boolOpModels.get(elem);
-    if (!models) return;
-    for (const m of models) {
-      attachLogicElementOwnership(child, m);
-    }
-  };
-
-  let currentOp = elem.op;
-  let currentChildren = instrumentLogicChildrenArray(elem.children, notifyModels, attachNewChild);
-  Object.defineProperties(elem, {
-    op: {
-      configurable: true,
-      enumerable: true,
-      get: () => currentOp,
-      set: (val) => {
-        if (currentOp !== val) {
-          currentOp = val;
-          notifyModels();
-        }
-      },
-    },
-    children: {
-      configurable: true,
-      enumerable: true,
-      get: () => currentChildren,
-      set: (val: LogicElement[]) => {
-        if (currentChildren !== val) {
-          for (const child of val) {
-            attachNewChild(child);
-          }
-          currentChildren = instrumentLogicChildrenArray(val, notifyModels, attachNewChild);
-          notifyModels();
-        }
-      },
-    },
-  });
+  return undefined;
 }
 
 /**
@@ -272,33 +31,38 @@ export function attachLogicElementOwnership(
   undoActions?: (() => void)[]
 ): void {
   if (elem instanceof BoolOp) {
-    let models = boolOpModels.get(elem);
-    if (!models) {
-      models = new Set<Model>();
-      boolOpModels.set(elem, models);
-    }
-    if (!models.has(model)) {
-      models.add(model);
+    const prevOpOwner = boolOpOwner.get(elem);
+    if (prevOpOwner !== model) {
       if (undoActions) {
-        const targetModels = models;
         undoActions.push(() => {
-          targetModels.delete(model);
+          if (prevOpOwner) {
+            boolOpOwner.set(elem, prevOpOwner);
+          } else {
+            boolOpOwner.delete(elem);
+          }
         });
       }
+      boolOpOwner.set(elem, model);
     }
     for (const child of elem.children) {
       attachLogicElementOwnership(child, model, undoActions);
     }
-    ensureBoolOpInstrumented(elem);
   } else if (elem instanceof Constraint) {
     const prevOwner = elem.ownerModel;
-    if (prevOwner !== model) {
+    const prevMapOwner = constrOwner.get(elem);
+    if (prevOwner !== model || prevMapOwner !== model) {
       if (undoActions) {
         undoActions.push(() => {
           elem.ownerModel = prevOwner;
+          if (prevMapOwner) {
+            constrOwner.set(elem, prevMapOwner);
+          } else {
+            constrOwner.delete(elem);
+          }
         });
       }
       elem.ownerModel = model;
+      constrOwner.set(elem, model);
     }
   }
 }
@@ -319,22 +83,25 @@ export function claimVarOwnership(v: Var, model: Model): void {
 /**
  * Associates a constraint instance with its owning model and rejects reusing or cross-model sharing.
  */
-export function claimConstraintOwnership(c: Constraint, model: Model): void {
-  const existing = constrOwner.get(c);
-  if (existing) {
+export function claimConstraintOwnership(c: Constraint, model: Model): Model | undefined {
+  const existingTop = topLevelConstrOwner.get(c);
+  if (existingTop && existingTop.ownsConstraintOrLogicNode(c)) {
     throw new Error(
-      existing === model
+      existingTop === model
         ? `Constraint "${c.name}" is already registered in model "${model.name}".`
-        : `Constraint "${c.name}" already belongs to model "${existing.name}" and cannot be added to model "${model.name}".`
+        : `Constraint "${c.name}" already belongs to model "${existingTop.name}" and cannot be added to model "${model.name}".`
     );
   }
-  if (c.ownerModel && c.ownerModel !== model) {
-    const existingName = (c.ownerModel as Model).name ?? "another model";
+  const existingAny = getActiveConstraintOwner(c);
+  if (existingAny && existingAny !== model) {
     throw new Error(
-      `Constraint "${c.name}" already belongs to model "${existingName}" and cannot be added to model "${model.name}".`
+      `Constraint "${c.name}" already belongs to model "${existingAny.name}" and cannot be added to model "${model.name}".`
     );
   }
+  const prevOwner = constrOwner.get(c);
+  topLevelConstrOwner.set(c, model);
   constrOwner.set(c, model);
+  return prevOwner;
 }
 
 /**
@@ -349,9 +116,20 @@ export function releaseVarOwnership(v: Var, model: Model): void {
 /**
  * Releases constraint ownership when rolling back a failed batch operation.
  */
-export function releaseConstraintOwnership(c: Constraint, model: Model): void {
+export function releaseConstraintOwnership(
+  c: Constraint,
+  model: Model,
+  previousOwner?: Model
+): void {
+  if (topLevelConstrOwner.get(c) === model) {
+    topLevelConstrOwner.delete(c);
+  }
   if (constrOwner.get(c) === model) {
-    constrOwner.delete(c);
+    if (previousOwner) {
+      constrOwner.set(c, previousOwner);
+    } else {
+      constrOwner.delete(c);
+    }
   }
 }
 
@@ -502,15 +280,11 @@ export function validateLogicElement(
     }
   } else if (elem instanceof BoolOp) {
     if (ownerModel) {
-      const existingModels = boolOpModels.get(elem);
-      if (existingModels) {
-        for (const m of existingModels) {
-          if (m !== ownerModel) {
-            throw new Error(
-              `Logical expression in "${lcName}" already belongs to model "${m.name}" and cannot be shared with model "${modelName}".`
-            );
-          }
-        }
+      const existingOpOwner = boolOpOwner.get(elem);
+      if (existingOpOwner && existingOpOwner !== ownerModel && existingOpOwner.ownsConstraintOrLogicNode(elem)) {
+        throw new Error(
+          `Logical expression in "${lcName}" already belongs to model "${existingOpOwner.name}" and cannot be shared with model "${modelName}".`
+        );
       }
     }
     for (const child of elem.children) {
@@ -518,7 +292,7 @@ export function validateLogicElement(
     }
   } else if (elem instanceof Constraint) {
     if (ownerModel) {
-      const existingOwner = constrOwner.get(elem) ?? (elem.ownerModel as Model | null);
+      const existingOwner = getActiveConstraintOwner(elem);
       if (existingOwner && existingOwner !== ownerModel) {
         throw new Error(
           `Constraint "${elem.name}" embedded in logical constraint "${lcName}" already belongs to model "${existingOwner.name ?? "another model"}" and cannot be added to model "${modelName}".`

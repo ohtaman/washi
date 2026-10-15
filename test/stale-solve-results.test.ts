@@ -549,6 +549,149 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(() => m.integer(1.5)).toThrow(/non-negative integer/);
     expect(() => m.bool(-2)).toThrow(/non-negative integer/);
     expect(m.status).toBe("Optimal");
+
+    // Rolling back a failed batch that includes a constraint already embedded in a logical formula
+    // of the same model must preserve its ownership on the model so subsequent mutations still invalidate
+    const p = m.bool("p");
+    const embeddedConstr = x.le(7);
+    m.constraint(p.implies(embeddedConstr), "logical_with_embedded");
+    const gatedCheck = createGatedSolver(
+      () => ({ status: "Optimal", objectiveValue: 7, values: { x: 7 }, runTime: 1 }),
+      () => ({
+        status: "Sat",
+        terminationStatus: "Optimal",
+        hasPrimalSolution: true,
+        values: { x: 7, p: true },
+        runTime: 1,
+      })
+    );
+    const checkPromise = m.check(gatedCheck.solver);
+    await gatedCheck.waitForStart;
+    gatedCheck.release();
+    await expect(checkPromise).resolves.toMatchObject({ status: "Sat" });
+    expect(m.status).toBe("Sat");
+
+    expect(() => {
+      m.constraint([embeddedConstr, c`${foreignVar} <= 3`]);
+    }).toThrow(/does not belong to model "TransactionalBatchModel"/);
+    expect(m.status).toBe("Sat");
+
+    embeddedConstr.rhs = 4;
+    expect(m.status).toBe("NotSolved");
+  });
+
+  it("handles detached logical subtrees, foreign child pushes, direct collection mutations, and shared QuadExpr maps", async () => {
+    const gatedNative = createGatedSolver(
+      () => ({ status: "Optimal", objectiveValue: 2, values: { x: 2 }, runTime: 1 }),
+      () => ({
+        status: "Sat",
+        terminationStatus: "Optimal",
+        hasPrimalSolution: true,
+        values: { x: 2, p: true, q: false },
+        runTime: 1,
+      })
+    );
+
+    const m1 = new Model({ name: "Model1", solver: gatedNative.solver });
+    const x1 = m1.continuous("x", { lb: 0, ub: 10 });
+    const p1 = m1.bool("p");
+    const q1 = m1.bool("q");
+    const removedConstr = x1.le(5);
+    const keptConstr = x1.le(8);
+    const formula = p1.and(removedConstr, keptConstr);
+    m1.constraint(formula, "f1");
+
+    const check1 = m1.check();
+    await gatedNative.waitForStart;
+    gatedNative.release();
+    await expect(check1).resolves.toMatchObject({ status: "Sat" });
+    expect(m1.status).toBe("Sat");
+
+    // Splice out removedConstr and re-check: mutating removedConstr later must NOT invalidate the new Sat state
+    formula.children.splice(1, 1);
+    expect(m1.status).toBe("NotSolved");
+
+    const gatedNative2 = createGatedSolver(
+      () => ({ status: "Optimal", objectiveValue: 2, values: { x: 2 }, runTime: 1 }),
+      () => ({
+        status: "Sat",
+        terminationStatus: "Optimal",
+        hasPrimalSolution: true,
+        values: { x: 2, p: true, q: false },
+        runTime: 1,
+      })
+    );
+    const check2 = m1.check(gatedNative2.solver);
+    await gatedNative2.waitForStart;
+    gatedNative2.release();
+    await expect(check2).resolves.toMatchObject({ status: "Sat" });
+    expect(m1.status).toBe("Sat");
+
+    removedConstr.rhs = 0;
+    expect(m1.status).toBe("Sat");
+
+    // Pushing a foreign constraint into formula.children must invalidate m1 without stealing foreignConstr from m2
+    const m2 = new Model("Model2");
+    const x2 = m2.continuous("x2", { lb: 0, ub: 10 });
+    const foreignConstr = x2.le(6, "foreign_c");
+    m2.constraint(foreignConstr);
+    m2.objective(maximize(x2));
+    await m2.solve();
+    expect(m2.status).toBe("Optimal");
+
+    formula.children.push(foreignConstr);
+    expect(m1.status).toBe("NotSolved");
+    expect(m2.status).toBe("Optimal");
+
+    // Mutating foreignConstr still invalidates m2 (its rightful owner)
+    foreignConstr.rhs = 3;
+    expect(m2.status).toBe("NotSolved");
+
+    // Direct collection mutation (e.g. m2.constraints.splice) after solve invalidates m2 and clears entity values
+    await m2.solve();
+    expect(m2.status).toBe("Optimal");
+    expect(x2.value).toBeCloseTo(3, 5);
+    m2.constraints.splice(0, 1);
+    expect(m2.status).toBe("NotSolved");
+    expect(x2.value).toBeNull();
+    expect(foreignConstr.dual).toBeNull();
+    expect(foreignConstr.slack).toBeNull();
+
+    // Direct LogicalConstraint.expr mutation after check() invalidates m1
+    formula.children.pop();
+    const gatedNative3 = createGatedSolver(
+      () => ({ status: "Optimal", objectiveValue: 2, values: { x: 2 }, runTime: 1 }),
+      () => ({
+        status: "Sat",
+        terminationStatus: "Optimal",
+        hasPrimalSolution: true,
+        values: { x: 2, p: true, q: false },
+        runTime: 1,
+      })
+    );
+    const check3 = m1.check(gatedNative3.solver);
+    await gatedNative3.waitForStart;
+    gatedNative3.release();
+    await expect(check3).resolves.toMatchObject({ status: "Sat" });
+    expect(m1.status).toBe("Sat");
+
+    m1.logicalConstraints[0]!.expr = q1.not();
+    expect(m1.status).toBe("NotSolved");
+    expect(p1.value).toBeNull();
+
+    // Shared QuadExpr.quadTerms map across two solved models invalidates both when mutated
+    const qm1 = new Model("QuadModel1");
+    const qv1 = qm1.continuous("v1", { lb: 0, ub: 5 });
+    const qExpr = qv1.mul(qv1);
+    qm1.objectiveExpr = qExpr;
+    await qm1.solve(gatedNative.solver);
+    expect(qm1.status).toBe("Optimal");
+
+    const existingTerm = Array.from(qExpr.quadTerms.values())[0]!;
+    existingTerm.coeff = 5;
+    expect(qm1.status).toBe("NotSolved");
   });
 });
+
+
 

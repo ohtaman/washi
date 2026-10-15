@@ -53,10 +53,8 @@ import {
   attachLogicElementOwnership,
   claimConstraintOwnership,
   claimVarOwnership,
-  observeExprMutations,
   releaseConstraintOwnership,
   releaseVarOwnership,
-  unobserveExprMutations,
   validateLinearConstraint,
   validateLogicElement,
   validateModelIntegrity,
@@ -148,25 +146,12 @@ export class Model {
   public name: string;
   private _sense: OptimizationSense;
   private _objectiveExpr: LinExpr | QuadExpr;
-  private readonly _onObjectiveMutate = () => {
-    this.recordModelMutation();
-  };
   public variables: Var[] = [];
   public constraints: Constraint[] = [];
   public boolVars: BoolVar[] = [];
   public logicalConstraints: LogicalConstraint[] = [];
-  public unsatCore: readonly string[] | undefined = undefined;
-
-  /**
-   * User-friendly alias for unsatCore.
-   * Returns a subset of conflicting constraint names causing infeasibility,
-   * or undefined if not diagnosed, not applicable, or satisfiable.
-   */
-  get conflicts(): readonly string[] | undefined {
-    return this.unsatCore;
-  }
-
-  public values = new Map<string, number | boolean>();
+  private _unsatCore: readonly string[] | undefined = undefined;
+  private _values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
   private varPrefixCounters = new Map<string, number>();
@@ -177,18 +162,19 @@ export class Model {
   private logicalConstrMapByName = new Map<string, LogicalConstraint>();
   private logicalConstrCounter = 0;
 
-  public status: SolverStatus = "NotSolved";
-  public terminationStatus: TerminationStatus = "NotSolved";
-  public hasPrimalSolution: boolean = false;
-  public objectiveValue: number | null = null;
-  public objectiveBound: number | undefined = undefined;
-  public relGap: number | undefined = undefined;
-  public mipGap: number | undefined = undefined;
-  public absGap: number | undefined = undefined;
-  public runTime: number = 0;
-  public solution: SolverSolution | null = null;
+  private _status: SolverStatus = "NotSolved";
+  private _terminationStatus: TerminationStatus = "NotSolved";
+  private _hasPrimalSolution: boolean = false;
+  private _objectiveValue: number | null = null;
+  private _objectiveBound: number | undefined = undefined;
+  private _relGap: number | undefined = undefined;
+  private _mipGap: number | undefined = undefined;
+  private _absGap: number | undefined = undefined;
+  private _runTime: number = 0;
+  private _solution: SolverSolution | null = null;
   public solver: Solver | null = null;
   private hasSolutionState: boolean = false;
+  private solvedSnapshot: ExecutionSnapshot | null = null;
   private modelRevision: number = 0;
   private activeOperationId: number = 0;
   private batchDepth: number = 0;
@@ -205,7 +191,6 @@ export class Model {
     this.name = options.name || "OptimizationModel";
     this._sense = normalizeSense(options.sense);
     this._objectiveExpr = new LinExpr();
-    observeExprMutations(this._objectiveExpr, this._onObjectiveMutate);
     if (options.solver) {
       this.solver = getSolver(options.solver);
     }
@@ -229,11 +214,126 @@ export class Model {
 
   set objectiveExpr(value: LinExpr | QuadExpr) {
     if (this._objectiveExpr !== value) {
-      unobserveExprMutations(this._objectiveExpr, this._onObjectiveMutate);
       this._objectiveExpr = value;
-      observeExprMutations(this._objectiveExpr, this._onObjectiveMutate);
       this.recordModelMutation();
     }
+  }
+
+  get status(): SolverStatus {
+    this.syncSolutionValidity();
+    return this._status;
+  }
+
+  set status(value: SolverStatus) {
+    this._status = value;
+  }
+
+  get terminationStatus(): TerminationStatus {
+    this.syncSolutionValidity();
+    return this._terminationStatus;
+  }
+
+  set terminationStatus(value: TerminationStatus) {
+    this._terminationStatus = value;
+  }
+
+  get hasPrimalSolution(): boolean {
+    this.syncSolutionValidity();
+    return this._hasPrimalSolution;
+  }
+
+  set hasPrimalSolution(value: boolean) {
+    this._hasPrimalSolution = value;
+  }
+
+  get objectiveValue(): number | null {
+    this.syncSolutionValidity();
+    return this._objectiveValue;
+  }
+
+  set objectiveValue(value: number | null) {
+    this._objectiveValue = value;
+  }
+
+  get objectiveBound(): number | undefined {
+    this.syncSolutionValidity();
+    return this._objectiveBound;
+  }
+
+  set objectiveBound(value: number | undefined) {
+    this._objectiveBound = value;
+  }
+
+  get relGap(): number | undefined {
+    this.syncSolutionValidity();
+    return this._relGap;
+  }
+
+  set relGap(value: number | undefined) {
+    this._relGap = value;
+  }
+
+  get mipGap(): number | undefined {
+    this.syncSolutionValidity();
+    return this._mipGap;
+  }
+
+  set mipGap(value: number | undefined) {
+    this._mipGap = value;
+  }
+
+  get absGap(): number | undefined {
+    this.syncSolutionValidity();
+    return this._absGap;
+  }
+
+  set absGap(value: number | undefined) {
+    this._absGap = value;
+  }
+
+  get runTime(): number {
+    this.syncSolutionValidity();
+    return this._runTime;
+  }
+
+  set runTime(value: number) {
+    this._runTime = value;
+  }
+
+  get solution(): SolverSolution | null {
+    this.syncSolutionValidity();
+    return this._solution;
+  }
+
+  set solution(value: SolverSolution | null) {
+    this._solution = value;
+  }
+
+  get unsatCore(): readonly string[] | undefined {
+    this.syncSolutionValidity();
+    return this._unsatCore;
+  }
+
+  set unsatCore(value: readonly string[] | undefined) {
+    this._unsatCore = value;
+  }
+
+  /**
+   * User-friendly alias for unsatCore.
+   * Returns a subset of conflicting constraint names causing infeasibility,
+   * or undefined if not diagnosed, not applicable, or satisfiable.
+   */
+  get conflicts(): readonly string[] | undefined {
+    return this.unsatCore;
+  }
+
+  get values(): Map<string, number | boolean> {
+    this.syncSolutionValidity();
+    return this._values;
+  }
+
+  set values(value: Map<string, number | boolean>) {
+    this._values = value;
   }
 
   get vars(): Var[] {
@@ -253,43 +353,92 @@ export class Model {
   }
 
   /**
+   * @internal Verifies whether any solved state still matches the current model definition;
+   * if the model was mutated in-place since the last solve/check, clears all stored solution fields.
+   */
+  public syncSolutionValidity(): void {
+    if (!this.hasSolutionState) {
+      return;
+    }
+    if (!this.solvedSnapshot || !this.matchesExecutionSnapshot(this.solvedSnapshot)) {
+      this.clearSolutionFields();
+    }
+  }
+
+  /**
+   * @internal Checks whether a Constraint or BoolOp node is currently part of this model.
+   */
+  public ownsConstraintOrLogicNode(node: Constraint | BoolOp): boolean {
+    if (node instanceof Constraint && this.constraints.includes(node)) {
+      return true;
+    }
+    const visit = (elem: LogicElement): boolean => {
+      if (elem === node) return true;
+      if (elem instanceof BoolOp) {
+        return elem.children.some(visit);
+      }
+      return false;
+    };
+    return this.logicalConstraints.some((lc) => visit(lc.expr));
+  }
+
+  /**
    * Clears stored solution and diagnostic fields on the model and its entities.
    */
   private clearSolutionFields(): void {
     if (
       !this.hasSolutionState &&
-      this.status === "NotSolved" &&
-      this.terminationStatus === "NotSolved" &&
-      !this.hasPrimalSolution &&
-      this.solution === null &&
-      this.unsatCore === undefined
+      this._status === "NotSolved" &&
+      this._terminationStatus === "NotSolved" &&
+      !this._hasPrimalSolution &&
+      this._solution === null &&
+      this._unsatCore === undefined
     ) {
       return;
     }
-    this.status = "NotSolved";
-    this.terminationStatus = "NotSolved";
-    this.hasPrimalSolution = false;
-    this.objectiveValue = null;
-    this.objectiveBound = undefined;
-    this.relGap = undefined;
-    this.mipGap = undefined;
-    this.absGap = undefined;
-    this.solution = null;
-    this.runTime = 0;
-    this.unsatCore = undefined;
-    this.values.clear();
+    const prevSnapshot = this.solvedSnapshot;
+    this.hasSolutionState = false;
+    this.solvedSnapshot = null;
+    this._status = "NotSolved";
+    this._terminationStatus = "NotSolved";
+    this._hasPrimalSolution = false;
+    this._objectiveValue = null;
+    this._objectiveBound = undefined;
+    this._relGap = undefined;
+    this._mipGap = undefined;
+    this._absGap = undefined;
+    this._solution = null;
+    this._runTime = 0;
+    this._unsatCore = undefined;
+    this._values.clear();
     for (const v of this.variables) {
       v.value = null;
       v.reducedCost = null;
     }
+    if (prevSnapshot) {
+      for (const sv of prevSnapshot.variables) {
+        sv.ref.value = null;
+        sv.ref.reducedCost = null;
+      }
+    }
     for (const bv of this.boolVars) {
       bv.value = null;
+    }
+    if (prevSnapshot) {
+      for (const sbv of prevSnapshot.boolVars) {
+        sbv.ref.value = null;
+      }
     }
     for (const c of this.constraints) {
       c.dual = null;
       c.slack = null;
     }
-    this.hasSolutionState = false;
+    if (prevSnapshot) {
+      for (const sc of prevSnapshot.constraints) {
+        sc.ref.dual = null;
+        sc.ref.slack = null;
+      }
+    }
   }
 
   /**
@@ -307,7 +456,13 @@ export class Model {
   /**
    * @internal Notifies the model that an owned entity (e.g., Var bounds/type or Constraint RHS/sense) was mutated.
    */
-  public notifyMutation(): void {
+  public notifyMutation(source?: Var | Constraint): void {
+    if (source instanceof Constraint && !this.ownsConstraintOrLogicNode(source)) {
+      return;
+    }
+    if (source instanceof Var && !this.variables.includes(source)) {
+      return;
+    }
     this.recordModelMutation();
   }
 
@@ -365,14 +520,13 @@ export class Model {
       for (let i = boolVarsLen; i < this.boolVars.length; i++) {
         const bv = this.boolVars[i];
         this.boolVarMapByName.delete(bv.name);
+        bv.ownerModel = null;
       }
       this.boolVars.length = boolVarsLen;
 
       for (let i = constrsLen; i < this.constraints.length; i++) {
         const c = this.constraints[i];
         this.constrMapByName.delete(c.name);
-        c.ownerModel = null;
-        releaseConstraintOwnership(c, this);
       }
       this.constraints.length = constrsLen;
 
@@ -717,6 +871,7 @@ export class Model {
       );
     }
     const bv = new BoolVar(varName);
+    bv.ownerModel = this;
     this.boolVars.push(bv);
     this.boolVarMapByName.set(bv.name, bv);
     this.recordModelMutation();
@@ -842,10 +997,8 @@ export class Model {
     // Validate objective numeric inputs and model ownership
     validateObjectiveExpr(parsedExpr, this.name, (v) => this.varMapByName.get(v.name) === v);
 
-    unobserveExprMutations(this._objectiveExpr, this._onObjectiveMutate);
     this._sense = newSense;
     this._objectiveExpr = parsedExpr;
-    observeExprMutations(this._objectiveExpr, this._onObjectiveMutate);
     this.recordModelMutation();
   }
 
@@ -1042,9 +1195,10 @@ export class Model {
 
     const savedCounter = this.constrPrefixCounters.get("c");
     const resolvedName = explicitName ?? this.getNextConstrName("c");
+    let prevOwnerModel: Model | undefined;
     try {
       validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, resolvedName);
-      claimConstraintOwnership(constr, this);
+      prevOwnerModel = claimConstraintOwnership(constr, this);
     } catch (err) {
       if (explicitName === undefined) {
         if (savedCounter === undefined) {
@@ -1056,14 +1210,18 @@ export class Model {
       throw err;
     }
 
-    if (this.batchDepth > 0) {
-      const prevName = constr.name;
-      const prevExplicit = constr.hasExplicitName;
-      this.batchUndoActions.push(() => {
-        constr.name = prevName;
-        constr.hasExplicitName = prevExplicit;
-        constr.ownerModel = null;
-      });
+    const prevName = constr.name;
+    const prevExplicit = constr.hasExplicitName;
+    const prevOwner = constr.ownerModel;
+    const savedPrevOwnerModel = prevOwnerModel;
+    this.batchUndoActions.push(() => {
+      constr.name = prevName;
+      constr.hasExplicitName = prevExplicit;
+      constr.ownerModel = prevOwner;
+      releaseConstraintOwnership(constr, this, savedPrevOwnerModel);
+    });
+    if (this.batchDepth === 0) {
+      this.batchUndoActions = [];
     }
     constr.name = resolvedName;
     constr.hasExplicitName = true;
@@ -1707,9 +1865,10 @@ export class Model {
       runTime: this.runTime,
       raw: result.raw,
     };
+    this.solvedSnapshot = snapshot;
     this.hasSolutionState = true;
 
-    return this.status;
+    return this._status;
   }
 
   /**
@@ -1816,13 +1975,14 @@ export class Model {
           }
         }
       }
+      this.solvedSnapshot = snapshot;
       this.hasSolutionState = true;
       return {
         status: checkResult.status,
-        values: Object.fromEntries(this.values),
-        unsatCore: this.unsatCore,
-        conflicts: this.unsatCore,
-        runTime: this.runTime,
+        values: Object.fromEntries(this._values),
+        unsatCore: this._unsatCore,
+        conflicts: this._unsatCore,
+        runTime: this._runTime,
       };
     }
 
@@ -1904,12 +2064,13 @@ export class Model {
       }
     }
 
+    this.solvedSnapshot = snapshot;
     this.hasSolutionState = true;
 
     return {
       status: checkStatus,
       values,
-      runTime: this.runTime,
+      runTime: this._runTime,
     };
   }
 

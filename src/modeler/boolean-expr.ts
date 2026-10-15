@@ -37,12 +37,22 @@ export abstract class BoolExpr {
 export class BoolVar extends BoolExpr {
   public readonly id: number;
   public readonly name: string;
-  public value: boolean | null = null;
+  public ownerModel: { syncSolutionValidity?: () => void } | null = null;
+  private _value: boolean | null = null;
 
   constructor(name?: string) {
     super();
     this.id = ++boolVarIdCounter;
     this.name = name || `p_${this.id}`;
+  }
+
+  get value(): boolean | null {
+    this.ownerModel?.syncSolutionValidity?.();
+    return this._value;
+  }
+
+  set value(val: boolean | null) {
+    this._value = val;
   }
 
   toString(): string {

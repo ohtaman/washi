@@ -1,7 +1,6 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
 import { BoolOp, type LogicElement } from "./boolean-expr.js";
-import { observeExprMutations, unobserveExprMutations } from "./validation.js";
 
 let constrIdCounter = 0;
 
@@ -15,15 +14,12 @@ export class Constraint {
   private _rhs: number;
   private _name: string;
   public hasExplicitName: boolean;
-  public ownerModel: { notifyMutation?: () => void } | null = null;
-  private readonly _notifyOwner = () => {
-    this.ownerModel?.notifyMutation?.();
-  };
-
-  /** Slack value after solve */
-  public slack: number | null = null;
-  /** Dual value (shadow price) after solve */
-  public dual: number | null = null;
+  public ownerModel: {
+    notifyMutation?: (source?: Constraint) => void;
+    syncSolutionValidity?: () => void;
+  } | null = null;
+  private _slack: number | null = null;
+  private _dual: number | null = null;
 
   constructor(
     lhs: LinExpr,
@@ -33,7 +29,6 @@ export class Constraint {
   ) {
     this.id = ++constrIdCounter;
     this._lhs = lhs;
-    observeExprMutations(this._lhs, this._notifyOwner);
     this._sense = sense;
     this._rhs = rhs;
     const trimmed = typeof name === "string" ? name.trim() : undefined;
@@ -46,16 +41,34 @@ export class Constraint {
     }
   }
 
+  /** Slack value after solve */
+  get slack(): number | null {
+    this.ownerModel?.syncSolutionValidity?.();
+    return this._slack;
+  }
+
+  set slack(val: number | null) {
+    this._slack = val;
+  }
+
+  /** Dual value (shadow price) after solve */
+  get dual(): number | null {
+    this.ownerModel?.syncSolutionValidity?.();
+    return this._dual;
+  }
+
+  set dual(val: number | null) {
+    this._dual = val;
+  }
+
   get lhs(): LinExpr {
     return this._lhs;
   }
 
   set lhs(value: LinExpr) {
     if (this._lhs !== value) {
-      unobserveExprMutations(this._lhs, this._notifyOwner);
       this._lhs = value;
-      observeExprMutations(this._lhs, this._notifyOwner);
-      this.ownerModel?.notifyMutation?.();
+      this.ownerModel?.notifyMutation?.(this);
     }
   }
 
@@ -66,7 +79,7 @@ export class Constraint {
   set sense(value: ComparisonSense) {
     if (this._sense !== value) {
       this._sense = value;
-      this.ownerModel?.notifyMutation?.();
+      this.ownerModel?.notifyMutation?.(this);
     }
   }
 
@@ -77,7 +90,7 @@ export class Constraint {
   set rhs(value: number) {
     if (!Object.is(this._rhs, value)) {
       this._rhs = value;
-      this.ownerModel?.notifyMutation?.();
+      this.ownerModel?.notifyMutation?.(this);
     }
   }
 
