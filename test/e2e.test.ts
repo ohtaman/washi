@@ -28,8 +28,9 @@ describe("Browser End-to-End (E2E) Tests", () => {
     // Start Vite dev server programmatically
     viteServer = await createServer({
       configFile: path.resolve(process.cwd(), "vite.config.ts"),
-      // Exercise the deployed subpath independently of Vitest's own BASE_URL.
-      base: "/washi/",
+      // The dev demo uses root-relative solver URLs; the built /washi/ deployment
+      // is covered separately by scripts/check-demo-browser.mjs.
+      base: "/",
     });
     await viteServer.listen();
     const address = viteServer.httpServer?.address();
