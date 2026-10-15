@@ -1,6 +1,7 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
 import { BoolOp, type LogicElement } from "./boolean-expr.js";
+import { observeExprMutations } from "./validation.js";
 
 let constrIdCounter = 0;
 
@@ -15,6 +16,9 @@ export class Constraint {
   private _name: string;
   public hasExplicitName: boolean;
   public ownerModel: { notifyMutation?: () => void } | null = null;
+  private readonly _notifyOwner = () => {
+    this.ownerModel?.notifyMutation?.();
+  };
 
   /** Slack value after solve */
   public slack: number | null = null;
@@ -29,6 +33,7 @@ export class Constraint {
   ) {
     this.id = ++constrIdCounter;
     this._lhs = lhs;
+    observeExprMutations(this._lhs, this._notifyOwner);
     this._sense = sense;
     this._rhs = rhs;
     const trimmed = typeof name === "string" ? name.trim() : undefined;
@@ -48,6 +53,7 @@ export class Constraint {
   set lhs(value: LinExpr) {
     if (this._lhs !== value) {
       this._lhs = value;
+      observeExprMutations(this._lhs, this._notifyOwner);
       this.ownerModel?.notifyMutation?.();
     }
   }

@@ -350,6 +350,77 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("NotSolved");
     expect(m.solution).toBeNull();
     expect(x.value).toBeNull();
+
+    // Solve again and mutate c1.lhs.terms and c1.lhs.constant in-place
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(3, 5);
+
+    c1.lhs.terms.set(x, 2);
+    expect(m.status).toBe("NotSolved");
+    expect(m.solution).toBeNull();
+    expect(x.value).toBeNull();
+
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    expect(x.value).toBeCloseTo(1.5, 5);
+
+    c1.lhs.constant = 1;
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+
+    // Mutate objective expression in-place after solve
+    c1.lhs.constant = 0;
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    m.objective().constant = 10;
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+  });
+
+  it("invalidates check() state when a Constraint embedded inside a BoolOp is mutated in-place", async () => {
+    const gatedNative = createGatedSolver(
+      () => ({ status: "Optimal", objectiveValue: 0, values: { x: 2 }, runTime: 1 }),
+      () => ({
+        status: "Sat",
+        terminationStatus: "Optimal",
+        hasPrimalSolution: true,
+        values: { x: 2, p: true },
+        runTime: 1,
+      })
+    );
+
+    const m = new Model({ name: "LogicalEmbeddedMutate", solver: gatedNative.solver });
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const p = m.bool("p");
+    const nested = x.le(5);
+    m.constraint(p.implies(nested), "imp_c");
+
+    const checkPromise = m.check();
+    await gatedNative.waitForStart;
+    gatedNative.release();
+    await expect(checkPromise).resolves.toMatchObject({ status: "Sat" });
+    expect(m.status).toBe("Sat");
+    expect(x.value).toBe(2);
+    expect(p.value).toBe(true);
+
+    // Mutating the embedded constraint's rhs clears the solved Sat state
+    nested.rhs = 1;
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+    expect(p.value).toBeNull();
+
+    // Re-check and mutate embedded constraint's lhs terms in-place
+    const checkPromise2 = m.check();
+    await gatedNative.waitForStart;
+    gatedNative.release();
+    await expect(checkPromise2).resolves.toMatchObject({ status: "Sat" });
+    expect(m.status).toBe("Sat");
+
+    nested.lhs.terms.set(x, 3);
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+    expect(p.value).toBeNull();
   });
 
   it("keeps batch edits transactional so invalid batch calls neither leave partial state nor invalidate prior solutions", async () => {
@@ -371,8 +442,19 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
 
     // Neither the model entities nor the solved state should have been mutated
     expect(m.constraints).toHaveLength(0);
+    expect(m.getConstraintByName("c_0")).toBeUndefined();
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(10, 5);
+
+    // Unnamed external Var and Constraint in a failed m.add([...]) batch must not leave ghost map entries
+    const unnamedExtVar = new Var({ lb: 0, ub: 5 });
+    const unnamedExtConstr = x.le(8);
+    expect(() => {
+      m.add([unnamedExtVar, unnamedExtConstr, c`${foreignVar} <= 3`]);
+    }).toThrow(/does not belong to model "TransactionalBatchModel"/);
+    expect(m.getVarByName("x_0")).toBeUndefined();
+    expect(m.getConstraintByName("c_0")).toBeUndefined();
+    expect(m.status).toBe("Optimal");
 
     // validConstraint ownership must have been released on rollback so it can be added cleanly
     m.constraint(validConstraint, "valid_after_rollback");
@@ -398,3 +480,4 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("Optimal");
   });
 });
+

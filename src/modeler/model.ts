@@ -50,8 +50,10 @@ import {
   buildIndicatorLinearization,
 } from "./big-m.js";
 import {
+  attachLogicElementOwnership,
   claimConstraintOwnership,
   claimVarOwnership,
+  observeExprMutations,
   releaseConstraintOwnership,
   releaseVarOwnership,
   validateLinearConstraint,
@@ -199,6 +201,7 @@ export class Model {
     this.name = options.name || "OptimizationModel";
     this.sense = normalizeSense(options.sense);
     this.objectiveExpr = new LinExpr();
+    observeExprMutations(this.objectiveExpr, () => this.recordModelMutation());
     if (options.solver) {
       this.solver = getSolver(options.solver);
     }
@@ -321,10 +324,6 @@ export class Model {
     } catch (err) {
       this.batchDepth = 0;
       this.batchMutated = false;
-      for (let i = this.batchUndoActions.length - 1; i >= 0; i--) {
-        this.batchUndoActions[i]();
-      }
-      this.batchUndoActions = [];
 
       for (let i = varsLen; i < this.variables.length; i++) {
         const v = this.variables[i];
@@ -353,6 +352,11 @@ export class Model {
         this.logicalConstrMapByName.delete(lc.name);
       }
       this.logicalConstraints.length = logicalConstrsLen;
+
+      for (let i = this.batchUndoActions.length - 1; i >= 0; i--) {
+        this.batchUndoActions[i]();
+      }
+      this.batchUndoActions = [];
 
       this.varPrefixCounters = savedVarCounters;
       this.boolVarPrefixCounters = savedBoolVarCounters;
@@ -811,6 +815,7 @@ export class Model {
 
     this.sense = newSense;
     this.objectiveExpr = parsedExpr;
+    observeExprMutations(this.objectiveExpr, () => this.recordModelMutation());
     this.recordModelMutation();
   }
 
@@ -967,6 +972,11 @@ export class Model {
         throw err;
       }
 
+      attachLogicElementOwnership(
+        constraint,
+        this,
+        this.batchDepth > 0 ? this.batchUndoActions : undefined
+      );
       const lcEntry: LogicalConstraint = {
         name: constrName,
         expr: constraint,

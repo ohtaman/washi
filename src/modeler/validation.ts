@@ -3,10 +3,192 @@ import { Var } from "./variable.js";
 import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
 import { Constraint } from "./constraint.js";
 import { LinExpr } from "./expression.js";
-import { QuadExpr } from "./quad-expr.js";
+import { QuadExpr, type QuadTerm } from "./quad-expr.js";
 
 const varOwner = new WeakMap<Var, Model>();
 const constrOwner = new WeakMap<Constraint, Model>();
+const exprListeners = new WeakMap<object, Set<() => void>>();
+
+function instrumentQuadTerm(term: QuadTerm, notify: () => void): QuadTerm {
+  let var1 = term.var1;
+  let var2 = term.var2;
+  let coeff = term.coeff;
+  const wrapped = {} as QuadTerm;
+  Object.defineProperties(wrapped, {
+    var1: {
+      configurable: true,
+      enumerable: true,
+      get: () => var1,
+      set: (val: Var) => {
+        if (var1 !== val) {
+          var1 = val;
+          notify();
+        }
+      },
+    },
+    var2: {
+      configurable: true,
+      enumerable: true,
+      get: () => var2,
+      set: (val: Var) => {
+        if (var2 !== val) {
+          var2 = val;
+          notify();
+        }
+      },
+    },
+    coeff: {
+      configurable: true,
+      enumerable: true,
+      get: () => coeff,
+      set: (val: number) => {
+        if (!Object.is(coeff, val)) {
+          coeff = val;
+          notify();
+        }
+      },
+    },
+  });
+  return wrapped;
+}
+
+function instrumentMap<K, V>(
+  map: Map<K, V>,
+  notify: () => void,
+  wrapValue?: (v: V) => V
+): Map<K, V> {
+  if (wrapValue) {
+    for (const [k, v] of Array.from(map.entries())) {
+      Map.prototype.set.call(map, k, wrapValue(v));
+    }
+  }
+  const origSet = map.set.bind(map);
+  const origDelete = map.delete.bind(map);
+  const origClear = map.clear.bind(map);
+
+  map.set = (key: K, value: V) => {
+    const had = map.has(key);
+    const prev = map.get(key);
+    const nextVal = wrapValue ? wrapValue(value) : value;
+    origSet(key, nextVal);
+    if (!had || !Object.is(prev, value)) {
+      notify();
+    }
+    return map;
+  };
+  map.delete = (key: K) => {
+    const removed = origDelete(key);
+    if (removed) {
+      notify();
+    }
+    return removed;
+  };
+  map.clear = () => {
+    if (map.size > 0) {
+      origClear();
+      notify();
+    }
+  };
+  return map;
+}
+
+/**
+ * Instruments a LinExpr or QuadExpr instance so in-place mutations to its constant or term maps invoke onMutate.
+ */
+export function observeExprMutations(expr: LinExpr | QuadExpr, onMutate: () => void): void {
+  const existing = exprListeners.get(expr);
+  if (existing) {
+    existing.add(onMutate);
+    return;
+  }
+  const listeners = new Set<() => void>([onMutate]);
+  exprListeners.set(expr, listeners);
+  const notify = () => {
+    for (const fn of listeners) {
+      fn();
+    }
+  };
+
+  let currentConstant = expr.constant;
+  Object.defineProperty(expr, "constant", {
+    configurable: true,
+    enumerable: true,
+    get: () => currentConstant,
+    set: (val: number) => {
+      if (!Object.is(currentConstant, val)) {
+        currentConstant = val;
+        notify();
+      }
+    },
+  });
+
+  if (expr instanceof QuadExpr) {
+    let currentLinear = instrumentMap(expr.linearTerms, notify);
+    Object.defineProperty(expr, "linearTerms", {
+      configurable: true,
+      enumerable: true,
+      get: () => currentLinear,
+      set: (val: Map<Var, number>) => {
+        if (currentLinear !== val) {
+          currentLinear = instrumentMap(val, notify);
+          notify();
+        }
+      },
+    });
+
+    const wrapTerm = (t: QuadTerm) => instrumentQuadTerm(t, notify);
+    let currentQuad = instrumentMap(expr.quadTerms, notify, wrapTerm);
+    Object.defineProperty(expr, "quadTerms", {
+      configurable: true,
+      enumerable: true,
+      get: () => currentQuad,
+      set: (val: Map<string, QuadTerm>) => {
+        if (currentQuad !== val) {
+          currentQuad = instrumentMap(val, notify, wrapTerm);
+          notify();
+        }
+      },
+    });
+  } else {
+    let currentTerms = instrumentMap(expr.terms, notify);
+    Object.defineProperty(expr, "terms", {
+      configurable: true,
+      enumerable: true,
+      get: () => currentTerms,
+      set: (val: Map<Var, number>) => {
+        if (currentTerms !== val) {
+          currentTerms = instrumentMap(val, notify);
+          notify();
+        }
+      },
+    });
+  }
+}
+
+/**
+ * Recursively attaches ownerModel mutation tracking to any Constraint nodes embedded in a logical expression.
+ */
+export function attachLogicElementOwnership(
+  elem: LogicElement,
+  model: Model,
+  undoActions?: (() => void)[]
+): void {
+  if (elem instanceof BoolOp) {
+    for (const child of elem.children) {
+      attachLogicElementOwnership(child, model, undoActions);
+    }
+  } else if (elem instanceof Constraint) {
+    const prevOwner = elem.ownerModel;
+    if (prevOwner !== model) {
+      if (undoActions) {
+        undoActions.push(() => {
+          elem.ownerModel = prevOwner;
+        });
+      }
+      elem.ownerModel = model;
+    }
+  }
+}
 
 /**
  * Associates a variable instance with its owning model and rejects cross-model sharing.
