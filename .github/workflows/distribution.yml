@@ -21,6 +21,8 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+        env:
+          BASE_URL: /washi/
       - run: npm run test:distribution
         env:
           RUN_DISTRIBUTION_BROWSER: '1'

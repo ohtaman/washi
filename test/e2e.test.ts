@@ -8,7 +8,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
   let viteServer: ViteDevServer;
   let browser: Browser;
   let page: Page;
-  let devServerUrl = "http://localhost:5173/demo/";
+  let devServerUrl: string;
   const screenshotsDir = path.resolve(process.cwd(), "test/screenshots");
 
   async function runAndWait() {
@@ -32,7 +32,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
     await viteServer.listen();
     const address = viteServer.httpServer?.address();
     const port = typeof address === "object" && address ? address.port : 5173;
-    devServerUrl = `http://localhost:${port}/demo/`;
+    devServerUrl = new URL("demo/", `http://localhost:${port}${viteServer.config.base}`).href;
 
     browser = await chromium.launch({
       ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
@@ -63,7 +63,8 @@ describe("Browser End-to-End (E2E) Tests", () => {
   });
 
   it("loads the demo playground and verifies title and branding", async () => {
-    await page.goto(devServerUrl, { waitUntil: "networkidle" });
+    const response = await page.goto(devServerUrl, { waitUntil: "networkidle" });
+    expect(response?.status()).toBe(200);
 
     const title = await page.title();
     expect(title).toContain("WaSHI Playground");
