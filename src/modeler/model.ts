@@ -56,6 +56,7 @@ import {
   observeExprMutations,
   releaseConstraintOwnership,
   releaseVarOwnership,
+  unobserveExprMutations,
   validateLinearConstraint,
   validateLogicElement,
   validateModelIntegrity,
@@ -145,8 +146,11 @@ function assertValidCount(count: number, label: string): void {
 
 export class Model {
   public name: string;
-  public sense: OptimizationSense;
-  public objectiveExpr: LinExpr | QuadExpr;
+  private _sense: OptimizationSense;
+  private _objectiveExpr: LinExpr | QuadExpr;
+  private readonly _onObjectiveMutate = () => {
+    this.recordModelMutation();
+  };
   public variables: Var[] = [];
   public constraints: Constraint[] = [];
   public boolVars: BoolVar[] = [];
@@ -199,11 +203,36 @@ export class Model {
       options = nameOrOptions;
     }
     this.name = options.name || "OptimizationModel";
-    this.sense = normalizeSense(options.sense);
-    this.objectiveExpr = new LinExpr();
-    observeExprMutations(this.objectiveExpr, () => this.recordModelMutation());
+    this._sense = normalizeSense(options.sense);
+    this._objectiveExpr = new LinExpr();
+    observeExprMutations(this._objectiveExpr, this._onObjectiveMutate);
     if (options.solver) {
       this.solver = getSolver(options.solver);
+    }
+  }
+
+  get sense(): OptimizationSense {
+    return this._sense;
+  }
+
+  set sense(value: OptimizationSense) {
+    const normalized = normalizeSense(value);
+    if (this._sense !== normalized) {
+      this._sense = normalized;
+      this.recordModelMutation();
+    }
+  }
+
+  get objectiveExpr(): LinExpr | QuadExpr {
+    return this._objectiveExpr;
+  }
+
+  set objectiveExpr(value: LinExpr | QuadExpr) {
+    if (this._objectiveExpr !== value) {
+      unobserveExprMutations(this._objectiveExpr, this._onObjectiveMutate);
+      this._objectiveExpr = value;
+      observeExprMutations(this._objectiveExpr, this._onObjectiveMutate);
+      this.recordModelMutation();
     }
   }
 
@@ -813,9 +842,10 @@ export class Model {
     // Validate objective numeric inputs and model ownership
     validateObjectiveExpr(parsedExpr, this.name, (v) => this.varMapByName.get(v.name) === v);
 
-    this.sense = newSense;
-    this.objectiveExpr = parsedExpr;
-    observeExprMutations(this.objectiveExpr, () => this.recordModelMutation());
+    unobserveExprMutations(this._objectiveExpr, this._onObjectiveMutate);
+    this._sense = newSense;
+    this._objectiveExpr = parsedExpr;
+    observeExprMutations(this._objectiveExpr, this._onObjectiveMutate);
     this.recordModelMutation();
   }
 
@@ -963,7 +993,8 @@ export class Model {
           constrName,
           this.name,
           (v) => this.varMapByName.get(v.name) === v,
-          (bv) => this.boolVarMapByName.get(bv.name) === bv
+          (bv) => this.boolVarMapByName.get(bv.name) === bv,
+          this
         );
       } catch (err) {
         if (explicitName === undefined) {

@@ -1,7 +1,7 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
 import { BoolOp, type LogicElement } from "./boolean-expr.js";
-import { observeExprMutations } from "./validation.js";
+import { observeExprMutations, unobserveExprMutations } from "./validation.js";
 
 let constrIdCounter = 0;
 
@@ -52,6 +52,7 @@ export class Constraint {
 
   set lhs(value: LinExpr) {
     if (this._lhs !== value) {
+      unobserveExprMutations(this._lhs, this._notifyOwner);
       this._lhs = value;
       observeExprMutations(this._lhs, this._notifyOwner);
       this.ownerModel?.notifyMutation?.();

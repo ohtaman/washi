@@ -373,19 +373,54 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     c1.lhs.constant = 0;
     await m.solve();
     expect(m.status).toBe("Optimal");
-    m.objective().constant = 10;
+    const firstObj = m.objective();
+    firstObj.constant = 10;
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
+
+    // Direct property replacements on m.sense and m.objectiveExpr must also invalidate and attach observers
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    m.sense = "Minimize";
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    const directObj = expr`2 * ${x}`;
+    m.objectiveExpr = directObj;
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+
+    // Mutating the old replaced objective expression must NOT invalidate the new solve
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    firstObj.constant = 999;
+    firstObj.terms.set(x, 999);
+    expect(m.status).toBe("Optimal");
+
+    // Mutating the newly assigned m.objectiveExpr in place MUST invalidate
+    directObj.constant = 5;
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+
+    // Replacing c1.lhs detaches observer from the previous lhs expression
+    const oldLhs = c1.lhs;
+    c1.lhs = expr`${x}`;
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    oldLhs.constant = 123;
+    expect(m.status).toBe("Optimal");
   });
 
-  it("invalidates check() state when a Constraint embedded inside a BoolOp is mutated in-place", async () => {
+  it("invalidates check() state when a Constraint or BoolOp structure is mutated in-place and rejects cross-model embedded Constraint reuse", async () => {
     const gatedNative = createGatedSolver(
       () => ({ status: "Optimal", objectiveValue: 0, values: { x: 2 }, runTime: 1 }),
       () => ({
         status: "Sat",
         terminationStatus: "Optimal",
         hasPrimalSolution: true,
-        values: { x: 2, p: true },
+        values: { x: 2, p: true, q: false },
         runTime: 1,
       })
     );
@@ -393,8 +428,10 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     const m = new Model({ name: "LogicalEmbeddedMutate", solver: gatedNative.solver });
     const x = m.continuous("x", { lb: 0, ub: 10 });
     const p = m.bool("p");
+    const q = m.bool("q");
     const nested = x.le(5);
-    m.constraint(p.implies(nested), "imp_c");
+    const formula = p.implies(nested);
+    m.constraint(formula, "imp_c");
 
     const checkPromise = m.check();
     await gatedNative.waitForStart;
@@ -421,6 +458,38 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
     expect(p.value).toBeNull();
+
+    // Re-check and mutate BoolOp.children structurally in-place
+    const checkPromise3 = m.check();
+    await gatedNative.waitForStart;
+    gatedNative.release();
+    await expect(checkPromise3).resolves.toMatchObject({ status: "Sat" });
+    expect(m.status).toBe("Sat");
+
+    const replacementConstr = x.le(8);
+    formula.children.splice(1, 1, q.and(replacementConstr));
+    expect(m.status).toBe("NotSolved");
+    expect(x.value).toBeNull();
+    expect(p.value).toBeNull();
+
+    // Newly spliced-in Constraint child should also have ownership attached
+    const checkPromise4 = m.check();
+    await gatedNative.waitForStart;
+    gatedNative.release();
+    await expect(checkPromise4).resolves.toMatchObject({ status: "Sat" });
+    expect(m.status).toBe("Sat");
+
+    replacementConstr.rhs = 4;
+    expect(m.status).toBe("NotSolved");
+
+    // Cross-model reuse of an embedded Constraint (even variable-free) must be rejected
+    const constConstraint = c`0 <= 1`;
+    m.constraint(p.implies(constConstraint), "const_imp");
+    const m2 = new Model("OtherLogicalModel");
+    const p2 = m2.bool("p2");
+    expect(() => {
+      m2.constraint(p2.implies(constConstraint), "foreign_const_imp");
+    }).toThrow(/already belongs to model "LogicalEmbeddedMutate"/);
   });
 
   it("keeps batch edits transactional so invalid batch calls neither leave partial state nor invalidate prior solutions", async () => {
@@ -442,7 +511,7 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
 
     // Neither the model entities nor the solved state should have been mutated
     expect(m.constraints).toHaveLength(0);
-    expect(m.getConstraintByName("c_0")).toBeUndefined();
+    expect(m.getConstraintByName("c_1")).toBeUndefined();
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(10, 5);
 
@@ -453,12 +522,14 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
       m.add([unnamedExtVar, unnamedExtConstr, c`${foreignVar} <= 3`]);
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
     expect(m.getVarByName("x_0")).toBeUndefined();
-    expect(m.getConstraintByName("c_0")).toBeUndefined();
+    expect(m.getConstraintByName("c_1")).toBeUndefined();
     expect(m.status).toBe("Optimal");
 
-    // validConstraint ownership must have been released on rollback so it can be added cleanly
-    m.constraint(validConstraint, "valid_after_rollback");
+    // validConstraint ownership and auto-naming counter must have been released on rollback
+    m.constraint(validConstraint);
     expect(m.constraints).toHaveLength(1);
+    expect(validConstraint.name).toBe("c_1");
+    expect(m.getConstraintByName("c_1")).toBe(validConstraint);
     expect(m.status).toBe("NotSolved");
 
     // Re-solve and verify failed variable batch creation also rolls back cleanly

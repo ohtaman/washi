@@ -8,6 +8,8 @@ import { QuadExpr, type QuadTerm } from "./quad-expr.js";
 const varOwner = new WeakMap<Var, Model>();
 const constrOwner = new WeakMap<Constraint, Model>();
 const exprListeners = new WeakMap<object, Set<() => void>>();
+const boolOpModels = new WeakMap<BoolOp, Set<Model>>();
+const instrumentedBoolOps = new WeakSet<BoolOp>();
 
 function instrumentQuadTerm(term: QuadTerm, notify: () => void): QuadTerm {
   let var1 = term.var1;
@@ -93,6 +95,13 @@ function instrumentMap<K, V>(
 }
 
 /**
+ * Removes a previously registered mutation listener from a LinExpr or QuadExpr instance.
+ */
+export function unobserveExprMutations(expr: LinExpr | QuadExpr, onMutate: () => void): void {
+  exprListeners.get(expr)?.delete(onMutate);
+}
+
+/**
  * Instruments a LinExpr or QuadExpr instance so in-place mutations to its constant or term maps invoke onMutate.
  */
 export function observeExprMutations(expr: LinExpr | QuadExpr, onMutate: () => void): void {
@@ -104,7 +113,7 @@ export function observeExprMutations(expr: LinExpr | QuadExpr, onMutate: () => v
   const listeners = new Set<() => void>([onMutate]);
   exprListeners.set(expr, listeners);
   const notify = () => {
-    for (const fn of listeners) {
+    for (const fn of Array.from(listeners)) {
       fn();
     }
   };
@@ -165,8 +174,97 @@ export function observeExprMutations(expr: LinExpr | QuadExpr, onMutate: () => v
   }
 }
 
+function instrumentLogicChildrenArray(
+  arr: LogicElement[],
+  onMutate: () => void,
+  onAddChild: (child: LogicElement) => void
+): LogicElement[] {
+  return new Proxy(arr, {
+    set(target, prop, value, receiver) {
+      const prevLen = target.length;
+      const hadProp = Reflect.has(target, prop);
+      const prevVal = Reflect.get(target, prop, receiver);
+      const ok = Reflect.set(target, prop, value, receiver);
+      if (ok) {
+        if (typeof prop === "string" && /^\d+$/.test(prop) && value && typeof value === "object") {
+          try {
+            onAddChild(value as LogicElement);
+          } catch {
+            // Validation errors for invalid children will surface on next solve()/check()
+          }
+        }
+        if (!hadProp || !Object.is(prevVal, value) || target.length !== prevLen) {
+          onMutate();
+        }
+      }
+      return ok;
+    },
+    deleteProperty(target, prop) {
+      const had = Reflect.has(target, prop);
+      const ok = Reflect.deleteProperty(target, prop);
+      if (ok && had) {
+        onMutate();
+      }
+      return ok;
+    },
+  });
+}
+
+function ensureBoolOpInstrumented(elem: BoolOp): void {
+  if (instrumentedBoolOps.has(elem)) {
+    return;
+  }
+  instrumentedBoolOps.add(elem);
+
+  const notifyModels = () => {
+    const models = boolOpModels.get(elem);
+    if (!models) return;
+    for (const m of models) {
+      m.notifyMutation();
+    }
+  };
+
+  const attachNewChild = (child: LogicElement) => {
+    const models = boolOpModels.get(elem);
+    if (!models) return;
+    for (const m of models) {
+      attachLogicElementOwnership(child, m);
+    }
+  };
+
+  let currentOp = elem.op;
+  let currentChildren = instrumentLogicChildrenArray(elem.children, notifyModels, attachNewChild);
+  Object.defineProperties(elem, {
+    op: {
+      configurable: true,
+      enumerable: true,
+      get: () => currentOp,
+      set: (val) => {
+        if (currentOp !== val) {
+          currentOp = val;
+          notifyModels();
+        }
+      },
+    },
+    children: {
+      configurable: true,
+      enumerable: true,
+      get: () => currentChildren,
+      set: (val: LogicElement[]) => {
+        if (currentChildren !== val) {
+          for (const child of val) {
+            attachNewChild(child);
+          }
+          currentChildren = instrumentLogicChildrenArray(val, notifyModels, attachNewChild);
+          notifyModels();
+        }
+      },
+    },
+  });
+}
+
 /**
- * Recursively attaches ownerModel mutation tracking to any Constraint nodes embedded in a logical expression.
+ * Recursively attaches ownerModel mutation tracking to any BoolOp and Constraint nodes in a logical expression.
  */
 export function attachLogicElementOwnership(
   elem: LogicElement,
@@ -174,9 +272,24 @@ export function attachLogicElementOwnership(
   undoActions?: (() => void)[]
 ): void {
   if (elem instanceof BoolOp) {
+    let models = boolOpModels.get(elem);
+    if (!models) {
+      models = new Set<Model>();
+      boolOpModels.set(elem, models);
+    }
+    if (!models.has(model)) {
+      models.add(model);
+      if (undoActions) {
+        const targetModels = models;
+        undoActions.push(() => {
+          targetModels.delete(model);
+        });
+      }
+    }
     for (const child of elem.children) {
       attachLogicElementOwnership(child, model, undoActions);
     }
+    ensureBoolOpInstrumented(elem);
   } else if (elem instanceof Constraint) {
     const prevOwner = elem.ownerModel;
     if (prevOwner !== model) {
@@ -213,6 +326,12 @@ export function claimConstraintOwnership(c: Constraint, model: Model): void {
       existing === model
         ? `Constraint "${c.name}" is already registered in model "${model.name}".`
         : `Constraint "${c.name}" already belongs to model "${existing.name}" and cannot be added to model "${model.name}".`
+    );
+  }
+  if (c.ownerModel && c.ownerModel !== model) {
+    const existingName = (c.ownerModel as Model).name ?? "another model";
+    throw new Error(
+      `Constraint "${c.name}" already belongs to model "${existingName}" and cannot be added to model "${model.name}".`
     );
   }
   constrOwner.set(c, model);
@@ -372,7 +491,8 @@ export function validateLogicElement(
   lcName: string,
   modelName: string,
   isOwnedVar: (v: Var) => boolean,
-  isOwnedBoolVar: (bv: BoolVar) => boolean
+  isOwnedBoolVar: (bv: BoolVar) => boolean,
+  ownerModel?: Model
 ): void {
   if (elem instanceof BoolVar) {
     if (!isOwnedBoolVar(elem)) {
@@ -381,10 +501,30 @@ export function validateLogicElement(
       );
     }
   } else if (elem instanceof BoolOp) {
+    if (ownerModel) {
+      const existingModels = boolOpModels.get(elem);
+      if (existingModels) {
+        for (const m of existingModels) {
+          if (m !== ownerModel) {
+            throw new Error(
+              `Logical expression in "${lcName}" already belongs to model "${m.name}" and cannot be shared with model "${modelName}".`
+            );
+          }
+        }
+      }
+    }
     for (const child of elem.children) {
-      validateLogicElement(child, lcName, modelName, isOwnedVar, isOwnedBoolVar);
+      validateLogicElement(child, lcName, modelName, isOwnedVar, isOwnedBoolVar, ownerModel);
     }
   } else if (elem instanceof Constraint) {
+    if (ownerModel) {
+      const existingOwner = constrOwner.get(elem) ?? (elem.ownerModel as Model | null);
+      if (existingOwner && existingOwner !== ownerModel) {
+        throw new Error(
+          `Constraint "${elem.name}" embedded in logical constraint "${lcName}" already belongs to model "${existingOwner.name ?? "another model"}" and cannot be added to model "${modelName}".`
+        );
+      }
+    }
     if (!Number.isFinite(elem.rhs)) {
       throw new Error(
         `Constraint "${elem.name}" embedded in logical constraint "${lcName}" has invalid RHS: ${elem.rhs}.`
@@ -506,7 +646,8 @@ export function validateModelIntegrity(model: Model): void {
       lc.name,
       model.name,
       (v) => registeredVars.has(v),
-      (bv) => registeredBoolVars.has(bv)
+      (bv) => registeredBoolVars.has(bv),
+      model
     );
   }
 }
