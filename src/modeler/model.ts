@@ -146,14 +146,13 @@ export class Model {
   }
 
   get objectiveExpr(): LinExpr | QuadExpr {
-    return this._objectiveExpr;
+    return this._objectiveExpr.clone();
   }
 
   set objectiveExpr(value: LinExpr | QuadExpr) {
-    if (this._objectiveExpr !== value) {
-      this._objectiveExpr = value;
-      this.recordModelMutation();
-    }
+    const cloned = value.clone();
+    this._objectiveExpr = cloned;
+    this.recordModelMutation();
   }
 
   /**
@@ -1355,7 +1354,7 @@ export class Model {
 
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
-      this.objectiveExpr instanceof QuadExpr && this.objectiveExpr.quadTerms.size > 0;
+      this._objectiveExpr instanceof QuadExpr && this._objectiveExpr.quadTerms.size > 0;
     if (hasQuadObjective && activeSolver.capabilities?.supportsQP === false) {
       throw new Error(
         `Solver "${activeSolver.name}" does not support quadratic objectives (QP). Please use a QP-capable solver such as HiGHS or Clarabel.`
@@ -1372,7 +1371,7 @@ export class Model {
     const modelData = {
       name: this.name,
       sense: this.sense,
-      objective: this.objectiveExpr,
+      objective: this._objectiveExpr,
       constraints: this.constraints,
       variables: this.variables,
       logicalConstraints: this.logicalConstraints,

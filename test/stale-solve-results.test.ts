@@ -381,6 +381,18 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     m.objectiveExpr = expr`2 * ${x}`;
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
+
+    // m.objective() and m.objectiveExpr return defensive clones so external mutation
+    // of a returned objective expression cannot silently diverge the model's live objective from its solved state
+    await m.solve();
+    expect(m.status).toBe("Optimal");
+    const inspectedObj = m.objective();
+    inspectedObj.constant = 999;
+    if ("terms" in inspectedObj) {
+      inspectedObj.terms.set(x, 999);
+    }
+    expect(m.objective().constant).toBe(0);
+    expect(m.status).toBe("Optimal");
   });
 
   it("invalidates check() state when an embedded Constraint property is mutated via setter and rejects cross-model embedded Constraint reuse", async () => {
