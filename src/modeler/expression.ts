@@ -39,7 +39,10 @@ export class LinExpr {
       for (const [v, c] of other.terms) {
         const current = result.terms.get(v) || 0;
         const sumCoeff = current + c;
-        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
+        if (
+          sumCoeff === 0 ||
+          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(c)))
+        ) {
           result.terms.delete(v);
         } else {
           result.terms.set(v, sumCoeff);
