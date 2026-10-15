@@ -3,44 +3,40 @@ import { getBundledZ3AssetUrls } from "./assets.js";
 type Z3Instance = any;
 
 let z3InitPromise: Promise<Z3Instance> | null = null;
-let currentZ3Instance: any = null;
 let customZ3JsUrl: string | null = null;
 let customZ3WasmUrl: string | null = null;
-const activeErrorHandlers = new Set<(err: Error) => void>();
-const activeAsyncRejects = new Set<(err: Error) => void>();
-const trackedSemaphores = new Set<any>();
-
-function hookAsyncMutex(mod: any): void {
-  const Semaphore = mod?.Semaphore || mod?.default?.Semaphore;
-  if (!Semaphore || Semaphore.__washi_hooked) return;
-  Semaphore.__washi_hooked = true;
-
-  const originalAcquire = Semaphore.prototype.acquire;
-  Semaphore.prototype.acquire = function (...args: any[]) {
-    trackedSemaphores.add(this);
-    return originalAcquire.apply(this, args);
-  };
+interface Z3Runtime {
+  instance: Z3Instance | null;
+  error: Error | null;
+  bootstrapUrl?: string;
+  errorHandlers: Set<(error: Error) => void>;
+  asyncRejects: Set<(error: Error) => void>;
 }
 
-// Proactively hook async-mutex if available in the current environment
-import("async-mutex").then(hookAsyncMutex).catch(() => {});
+let currentRuntime: Z3Runtime | null = null;
+const instanceRuntimes = new WeakMap<object, Z3Runtime>();
 
-export function unlockAllZ3Semaphores(error?: Error): void {
-  for (const sem of Array.from(trackedSemaphores)) {
-    try {
-      if (typeof sem.isLocked === "function" && sem.isLocked()) {
-        if (typeof sem.cancel === "function") {
-          try { sem.cancel(); } catch (_) {}
-        }
-        if (typeof sem.release === "function") {
-          try { sem.release(); } catch (_) {}
-        }
-      }
-    } catch (_) {}
+function failRuntime(runtime: Z3Runtime, err: unknown): void {
+  if (runtime.error) return;
+  const error = err instanceof Error
+    ? err
+    : new Error(`[WaSHI] Z3 internal worker error: ${typeof err === "object" && err !== null && "message" in err ? String(err.message) : String(err)}`);
+  runtime.error = error;
+
+  // Reject the owned async_call so z3-solver's runExclusive finally releases its
+  // own mutex. Never cancel/release host locks or modify async-mutex prototypes.
+  for (const reject of runtime.asyncRejects) reject(error);
+  runtime.asyncRejects.clear();
+  if (currentRuntime === runtime) resetZ3LoaderCache();
+  try { runtime.instance?.em?.PThread?.terminateAllThreads(); } catch { /* Already disposed. */ }
+  if (runtime.bootstrapUrl) URL.revokeObjectURL(runtime.bootstrapUrl);
+  for (const handler of Array.from(runtime.errorHandlers)) {
+    try { handler(error); } catch { /* One subscriber must not block the others. */ }
   }
+  runtime.errorHandlers.clear();
 }
 
-function hookEmscriptenAsyncCall(em: any): void {
+function hookEmscriptenAsyncCall(em: any, runtime: Z3Runtime): void {
   if (!em || em.__washi_async_call_hooked) return;
   em.__washi_async_call_hooked = true;
 
@@ -48,10 +44,11 @@ function hookEmscriptenAsyncCall(em: any): void {
   if (typeof originalAsyncCall !== "function") return;
 
   em.async_call = function (f: any, ...args: any[]) {
+    if (runtime.error) return Promise.reject(runtime.error);
     let rejectFn!: (err: Error) => void;
     const trackerPromise = new Promise<never>((_, reject) => {
       rejectFn = reject;
-      activeAsyncRejects.add(reject);
+      runtime.asyncRejects.add(reject);
     });
     // Ensure trackerPromise never triggers unhandledRejection if rejected later
     trackerPromise.catch(() => {});
@@ -59,49 +56,32 @@ function hookEmscriptenAsyncCall(em: any): void {
     try {
       const callPromise = originalAsyncCall.call(this, f, ...args);
       return Promise.race([callPromise, trackerPromise]).finally(() => {
-        activeAsyncRejects.delete(rejectFn);
+        runtime.asyncRejects.delete(rejectFn);
       });
     } catch (syncErr: any) {
-      activeAsyncRejects.delete(rejectFn);
-      notifyZ3WorkerError(syncErr);
+      runtime.asyncRejects.delete(rejectFn);
+      failRuntime(runtime, syncErr);
       throw syncErr;
     }
   };
 }
 
-export function registerZ3ErrorHandler(handler: (err: Error) => void): () => void {
-  activeErrorHandlers.add(handler);
-  return () => { activeErrorHandlers.delete(handler); };
+export function registerZ3ErrorHandler(handler: (err: Error) => void, instance?: Z3Instance): () => void {
+  const runtime = instance ? instanceRuntimes.get(instance) : currentRuntime;
+  if (!runtime) return () => {};
+  if (runtime.error) {
+    handler(runtime.error);
+    return () => {};
+  }
+  runtime.errorHandlers.add(handler);
+  return () => { runtime.errorHandlers.delete(handler); };
 }
 
-export function notifyZ3WorkerError(err: any): void {
-  const error = err instanceof Error
-    ? err
-    : new Error(`[WaSHI] Z3 internal worker error: ${err?.message || (typeof err === "string" ? err : "Worker failed to initialize or execute")}`);
-
-  // 1. Immediately reject pending Emscripten async_call operations so low-level wrapper throws inside runExclusive
-  for (const reject of Array.from(activeAsyncRejects)) {
-    try { reject(error); } catch (_) {}
-  }
-  activeAsyncRejects.clear();
-
-  // 2. Unlock / cancel any locked async-mutex semaphores as safety net
-  unlockAllZ3Semaphores(error);
-
-  // 3. Terminate worker threads immediately
-  if (currentZ3Instance?.em?.PThread?.terminateAllThreads) {
-    try { currentZ3Instance.em.PThread.terminateAllThreads(); } catch (_) {}
-  }
-  // 4. Invalidate cached loader instance
-  resetZ3LoaderCache();
-
-  // 5. Notify and reject all active check() / solve() operations
-  for (const handler of Array.from(activeErrorHandlers)) {
-    try { handler(error); } catch (_) {}
-  }
+export function notifyZ3WorkerError(err: unknown): void {
+  if (currentRuntime) failRuntime(currentRuntime, err);
 }
 
-function attachPThreadWorkerErrorHandling(em: any): void {
+function attachPThreadWorkerErrorHandling(em: any, runtime: Z3Runtime): void {
   if (!em || !em.PThread || em.PThread.__washi_monitored) {
     return;
   }
@@ -110,11 +90,11 @@ function attachPThreadWorkerErrorHandling(em: any): void {
   const hookWorker = (worker: any) => {
     if (!worker) return;
     worker.onerror = (e: any) => {
-      notifyZ3WorkerError(e);
+      failRuntime(runtime, e);
     };
     if (typeof worker.addEventListener === "function") {
       worker.addEventListener("error", (e: any) => {
-        notifyZ3WorkerError(e);
+        failRuntime(runtime, e);
         if (typeof e.preventDefault === "function") {
           e.preventDefault();
         }
@@ -138,11 +118,11 @@ function attachPThreadWorkerErrorHandling(em: any): void {
         // We override it immediately after originalLoad.call to prevent unhandled throws,
         // notify active solve/check promises, and clean up threads:
         worker.onerror = (e: any) => {
-          notifyZ3WorkerError(e);
+          failRuntime(runtime, e);
         };
         return p;
       } catch (e: any) {
-        notifyZ3WorkerError(e);
+        failRuntime(runtime, e);
         throw e;
       }
     };
@@ -158,7 +138,7 @@ function attachPThreadWorkerErrorHandling(em: any): void {
           hookWorker(worker);
         }
       } catch (e: any) {
-        notifyZ3WorkerError(e);
+        failRuntime(runtime, e);
         throw e;
       }
     };
@@ -179,7 +159,7 @@ export function setZ3Assets(urls: { jsUrl?: string | null; wasmUrl?: string | nu
  */
 export function resetZ3LoaderCache(): void {
   z3InitPromise = null;
-  currentZ3Instance = null;
+  currentRuntime = null;
 }
 
 /**
@@ -384,27 +364,45 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
     return z3InitPromise;
   }
 
+  const runtime: Z3Runtime = {
+    instance: null,
+    error: null,
+    errorHandlers: new Set(),
+    asyncRejects: new Set(),
+  };
+  currentRuntime = runtime;
+
+  async function initialize(init: () => Promise<Z3Instance>): Promise<Z3Instance> {
+    if (runtime.error) throw runtime.error;
+    const instance = await init();
+    runtime.instance = instance;
+    instanceRuntimes.set(instance, runtime);
+    if (runtime.error) {
+      try { instance.em?.PThread?.terminateAllThreads(); } catch { /* Already disposed. */ }
+      throw runtime.error;
+    }
+    if (instance.em) {
+      attachPThreadWorkerErrorHandling(instance.em, runtime);
+      hookEmscriptenAsyncCall(instance.em, runtime);
+    }
+    return instance;
+  }
+
+  let rejectInit!: (error: Error) => void;
+  const interrupted = new Promise<never>((_, reject) => { rejectInit = reject; });
+  runtime.errorHandlers.add(rejectInit);
+
   const isNode =
     typeof process !== "undefined" &&
     process.versions &&
     process.versions.node &&
     (process as any).type !== "renderer";
 
-  const pending = (async () => {
+  const initializing = (async () => {
     if (isNode) {
       try {
         const z3 = await import("z3-solver");
-        try {
-          const asyncMutexMod = await import("async-mutex");
-          hookAsyncMutex(asyncMutexMod);
-        } catch (_) {}
-        const instance = await z3.init();
-        currentZ3Instance = instance;
-        if (instance && instance.em) {
-          attachPThreadWorkerErrorHandling(instance.em);
-          hookEmscriptenAsyncCall(instance.em);
-        }
-        return instance;
+        return await initialize(() => z3.init());
       } catch (err: any) {
         throw new Error(
           `[WaSHI] Failed to load z3-solver. Ensure the optional dependency is installed (npm install z3-solver) and supported in this environment. Error: ${
@@ -425,6 +423,7 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
 
     // Ensure initZ3 is defined
     await ensureInitZ3Loaded(jsUrl);
+    if (runtime.error) throw runtime.error;
 
     // Cross-origin worker bootstrap support
     let mainScriptUrlOrBlob = jsUrl;
@@ -433,6 +432,7 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
         type: "application/javascript",
       });
       mainScriptUrlOrBlob = URL.createObjectURL(bootstrapBlob);
+      runtime.bootstrapUrl = mainScriptUrlOrBlob;
     }
 
     const moduleOverrides = {
@@ -447,24 +447,8 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
 
     try {
       const z3 = await import("z3-solver");
-      try {
-        const asyncMutexMod = await import("async-mutex");
-        hookAsyncMutex(asyncMutexMod);
-      } catch (_) {}
-      let unregister: (() => void) | undefined;
-      const instance = await new Promise<any>((resolve, reject) => {
-        unregister = registerZ3ErrorHandler(reject);
-        z3.init(moduleOverrides).then(resolve, reject);
-      }).finally(() => unregister?.());
-
-      currentZ3Instance = instance;
-      if (instance && instance.em) {
-        attachPThreadWorkerErrorHandling(instance.em);
-        hookEmscriptenAsyncCall(instance.em);
-      }
-      return instance;
+      return await initialize(() => z3.init(moduleOverrides));
     } catch (err: any) {
-      resetZ3LoaderCache();
       throw new Error(
         `[WaSHI] Failed to initialize Z3 in browser: ${err?.message || String(err)}`,
         { cause: err }
@@ -472,11 +456,10 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
     }
   })();
 
-  pending.catch(() => {
-    if (z3InitPromise === pending) {
-      resetZ3LoaderCache();
-    }
+  const pending = Promise.race([initializing, interrupted]).finally(() => {
+    runtime.errorHandlers.delete(rejectInit);
   });
+  pending.catch((error) => failRuntime(runtime, error));
 
   z3InitPromise = pending;
   return pending;
@@ -486,31 +469,19 @@ export async function loadZ3(options: { z3JsUrl?: string; z3WasmUrl?: string; [k
  * Terminate background Z3 worker threads (Node.js and Browser).
  */
 export async function killZ3Threads(z3Instance?: any): Promise<void> {
-  const instance = z3Instance || currentZ3Instance || (z3InitPromise ? await z3InitPromise.catch(() => null) : null);
-  unlockAllZ3Semaphores();
-  for (const reject of Array.from(activeAsyncRejects)) {
-    try { reject(new Error("[WaSHI] Z3 threads terminated")); } catch (_) {}
-  }
-  activeAsyncRejects.clear();
-
-  if (!instance || !instance.em) {
-    resetZ3LoaderCache();
-    return;
-  }
-
+  const runtime = z3Instance ? instanceRuntimes.get(z3Instance) : currentRuntime;
+  const instance = z3Instance || runtime?.instance;
+  if (runtime) failRuntime(runtime, new Error("[WaSHI] Z3 threads terminated"));
+  // A pending init is already rejected; its late instance will be disposed by initialize().
+  if (!instance?.em) return;
   try {
     const { killThreads } = await import("z3-solver");
     if (typeof killThreads === "function") {
       await killThreads(instance.em);
-    } else if (instance.em?.PThread?.terminateAllThreads) {
-      instance.em.PThread.terminateAllThreads();
+    } else {
+      instance.em.PThread?.terminateAllThreads();
     }
   } catch {
-    if (instance.em?.PThread?.terminateAllThreads) {
-      instance.em.PThread.terminateAllThreads();
-    }
-  } finally {
-    resetZ3LoaderCache();
+    instance.em.PThread?.terminateAllThreads();
   }
 }
-
