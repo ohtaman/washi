@@ -236,6 +236,12 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     const tinyParsed = parseExpr("1e-13 * x + 1e-13 * x", resolver) as LinExpr;
     expect(tinyParsed.terms.get(x)).toBe(2e-13);
 
+    const residualParsed = parseExpr("1e12 * x - 999999999999.5 * x", resolver) as LinExpr;
+    expect(residualParsed.terms.get(x)).toBe(0.5);
+
+    const zeroScientific = parseExpr("0e-400 * x + 0.00 * y", resolver) as LinExpr;
+    expect(zeroScientific.terms.size).toBe(0);
+
     const constr = parseConstraint("1.5e-4 * x + .25e2 * y <= 1E3", resolver);
     expect(constr.lhs.terms.get(x)).toBe(1.5e-4);
     expect(constr.lhs.terms.get(y)).toBe(25);
@@ -267,12 +273,21 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     }
 
     expect(() => parseExpr("1e309", emptyResolver)).toThrow(/overflows finite floating-point range/);
+    expect(() => parseExpr("1e-324 * x", xResolver)).toThrow(/underflows to zero/);
     expect(() => parseExpr("x + 1 )", xResolver)).toThrow(/Unexpected token '\)'/);
     expect(() => parseConstraint("x <= 10 <= 20", xResolver)).toThrow(/Unexpected token '<='/);
 
     expect(() => expr`${NaN} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => expr`${Infinity} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => c`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
+
+    // Non-finite scalar products on zero-constant expressions and non-finite term additions must propagate
+    expect(Number.isNaN(new LinExpr().mul(NaN).constant)).toBe(true);
+    expect(Number.isNaN(x.sub(x).mul(Infinity).constant)).toBe(true);
+    expect(Number.isNaN(new QuadExpr().mul(NaN).constant)).toBe(true);
+    expect(x.mul(Infinity).add(x.mul(1)).terms.get(x)).toBe(Infinity);
+    expect(() => expr`${new LinExpr().mul(NaN)} + ${x}`).toThrow(/Invalid non-finite constant/);
+    expect(() => expr`${x.mul(Infinity).add(x.mul(1))}`).toThrow(/Invalid non-finite coefficient/);
 
     // Post-normalization overflow in constraints
     expect(() => c`${Number.MAX_VALUE} <= ${-Number.MAX_VALUE}`).toThrow(

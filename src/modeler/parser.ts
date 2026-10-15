@@ -111,6 +111,11 @@ function tokenize(input: string, numberMap?: ReadonlyMap<string, number>): Token
           `Numeric literal '${numStr}' overflows finite floating-point range in: "${input}"`
         );
       }
+      if (numericValue === 0 && !/^[0.]+(?:[eE][+-]?\d+)?$/.test(numStr)) {
+        throw new Error(
+          `Numeric literal '${numStr}' underflows to zero at position ${start} in: "${input}"`
+        );
+      }
       tokens.push({ type: "NUMBER", value: numStr, numericValue });
     } else if (/[a-zA-Z_]/.test(ch)) {
       let ident = "";
