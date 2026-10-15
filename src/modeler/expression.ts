@@ -85,7 +85,8 @@ export class LinExpr {
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof operand === "number") {
-      const rawConst = this.constant * operand;
+      const rawConst =
+        this.constant === 0 && this.terms.size > 0 ? 0 : this.constant * operand;
       const result = new LinExpr(
         new Map(),
         rawConst === 0 ? 0 : rawConst

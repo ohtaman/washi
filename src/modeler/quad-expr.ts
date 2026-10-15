@@ -138,7 +138,9 @@ export class QuadExpr {
   mul(other: Var | LinExpr | QuadExpr): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): QuadExpr {
     if (typeof operand === "number") {
-      const rawConst = this.constant * operand;
+      const hasTerms = this.linearTerms.size > 0 || this.quadTerms.size > 0;
+      const rawConst =
+        this.constant === 0 && hasTerms ? 0 : this.constant * operand;
       const result = new QuadExpr(
         new Map(),
         new Map(),
@@ -294,7 +296,9 @@ export class QuadExpr {
     constantB: number,
     termsB: ReadonlyMap<Var, number>
   ): QuadExpr {
-    const rawConst = constantA * constantB;
+    const hasTerms = termsA.size > 0 || termsB.size > 0;
+    const rawConst =
+      (constantA === 0 || constantB === 0) && hasTerms ? 0 : constantA * constantB;
     let result = new QuadExpr(
       new Map(),
       new Map(),
