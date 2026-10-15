@@ -155,10 +155,17 @@ describe("QuadExpr (Quadratic Expressions)", () => {
 
     const infLin = x.mul(Infinity).add(x.mul(1));
     expect(infLin.terms.get(x)).toBe(Infinity);
+    expect(x.mul(Infinity).constant).toBe(0);
+    expect(x.mul(NaN).constant).toBe(0);
+    expect(Number.isNaN(x.mul(NaN).add(x.mul(1)).terms.get(x))).toBe(true);
     const infQuad = x.mul(x).mul(Infinity).add(x.mul(x));
     expect(infQuad.getQuadCoeff(x, x)).toBe(Infinity);
+    expect(x.mul(x).mul(Infinity).constant).toBe(0);
     expect(Number.isNaN(new LinExpr().mul(NaN).constant)).toBe(true);
     expect(Number.isNaN(new QuadExpr().mul(NaN).constant)).toBe(true);
+    expect(() => x.mul(Number.MIN_VALUE).div(2)).toThrow(/underflows to zero/);
+    expect(() => x.mul(x).mul(Number.MIN_VALUE).div(2)).toThrow(/underflows to zero/);
   });
 });
+
 

@@ -87,12 +87,18 @@ export class LinExpr {
     if (typeof operand === "number") {
       const rawConst =
         this.constant === 0 && this.terms.size > 0 ? 0 : this.constant * operand;
+      if (this.constant !== 0 && operand !== 0 && rawConst === 0) {
+        throw new Error("Constant multiplication underflows to zero.");
+      }
       const result = new LinExpr(
         new Map(),
         rawConst === 0 ? 0 : rawConst
       );
       for (const [v, c] of this.terms) {
         const prod = c * operand;
+        if (c !== 0 && operand !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
         if (prod !== 0) {
           result.terms.set(v, prod);
         }

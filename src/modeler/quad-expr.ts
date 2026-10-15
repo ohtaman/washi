@@ -141,6 +141,9 @@ export class QuadExpr {
       const hasTerms = this.linearTerms.size > 0 || this.quadTerms.size > 0;
       const rawConst =
         this.constant === 0 && hasTerms ? 0 : this.constant * operand;
+      if (this.constant !== 0 && operand !== 0 && rawConst === 0) {
+        throw new Error("Constant multiplication underflows to zero.");
+      }
       const result = new QuadExpr(
         new Map(),
         new Map(),
@@ -148,12 +151,18 @@ export class QuadExpr {
       );
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
+        if (c !== 0 && operand !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
         if (prod !== 0) {
           result.linearTerms.set(v, prod);
         }
       }
       for (const [k, term] of this.quadTerms) {
         const prod = term.coeff * operand;
+        if (term.coeff !== 0 && operand !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
         if (prod !== 0) {
           result.quadTerms.set(k, {
             var1: term.var1,
@@ -299,6 +308,9 @@ export class QuadExpr {
     const hasTerms = termsA.size > 0 || termsB.size > 0;
     const rawConst =
       (constantA === 0 || constantB === 0) && hasTerms ? 0 : constantA * constantB;
+    if (constantA !== 0 && constantB !== 0 && rawConst === 0) {
+      throw new Error("Constant multiplication underflows to zero.");
+    }
     let result = new QuadExpr(
       new Map(),
       new Map(),
@@ -307,6 +319,9 @@ export class QuadExpr {
     if (constantB !== 0) {
       for (const [v, c] of termsA) {
         const prod = c * constantB;
+        if (c !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
         if (prod !== 0) {
           result.linearTerms.set(v, prod);
         }
@@ -316,6 +331,9 @@ export class QuadExpr {
       for (const [v, c] of termsB) {
         const current = result.linearTerms.get(v) ?? 0;
         const added = c * constantA;
+        if (c !== 0 && added === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
         const sumCoeff = current + added;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
@@ -326,7 +344,11 @@ export class QuadExpr {
     }
     for (const [v1, c1] of termsA) {
       for (const [v2, c2] of termsB) {
-        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+        const prod = c1 * c2;
+        if (c1 !== 0 && c2 !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        result = result.add(QuadExpr.fromProduct(v1, v2, prod));
       }
     }
     return result;
