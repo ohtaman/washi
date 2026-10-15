@@ -82,7 +82,7 @@ export class QuadExpr {
       }
       // Add linear terms
       for (const [v, c] of other.linearTerms) {
-        const current = result.linearTerms.get(v) || 0;
+        const current = result.linearTerms.get(v) ?? 0;
         const sumCoeff = current + c;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
@@ -97,7 +97,7 @@ export class QuadExpr {
     // Check if it's LinExpr (has `terms` map)
     if ("terms" in other && other.terms instanceof Map) {
       for (const [v, c] of other.terms) {
-        const current = result.linearTerms.get(v) || 0;
+        const current = result.linearTerms.get(v) ?? 0;
         const sumCoeff = current + c;
         if (sumCoeff === 0) {
           result.linearTerms.delete(v);
@@ -111,7 +111,7 @@ export class QuadExpr {
 
     // Otherwise it is a Var
     const v = other as Var;
-    const current = result.linearTerms.get(v) || 0;
+    const current = result.linearTerms.get(v) ?? 0;
     const sumCoeff = current + 1;
     if (sumCoeff === 0) {
       result.linearTerms.delete(v);
@@ -310,7 +310,7 @@ export class QuadExpr {
     }
     if (constantA !== 0) {
       for (const [v, c] of termsB) {
-        const current = result.linearTerms.get(v) || 0;
+        const current = result.linearTerms.get(v) ?? 0;
         const added = c * constantA;
         const sumCoeff = current + added;
         if (sumCoeff === 0) {
