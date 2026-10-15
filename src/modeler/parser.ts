@@ -273,7 +273,7 @@ class Parser {
         if (divLin.size > 0 || divQuad > 0) {
           throw new Error("Cannot divide by variable in expression");
         }
-        if (Math.abs(divisor.constant) < 1e-12) {
+        if (divisor.constant === 0) {
           throw new Error("Division by zero in expression");
         }
         result = result.div(divisor.constant);

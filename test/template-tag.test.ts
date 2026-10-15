@@ -204,13 +204,16 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(expConstr.lhs.terms.get(y)).toBe(-5e-6);
     expect(expConstr.rhs).toBe(2.5e-4);
 
-    // Small scientific coefficients below 1e-12 must not be discarded
-    const tinyTemplate = expr`1 + ${1e-13} * ${x}` as LinExpr;
-    expect(tinyTemplate.terms.get(x)).toBe(1e-13);
+    // Small scientific coefficients below 1e-12 must not be discarded, including repeated sums and divisors
+    const tinyTemplate = expr`1 + ${1e-13} * ${x} + ${1e-13} * ${x}` as LinExpr;
+    expect(tinyTemplate.terms.get(x)).toBe(2e-13);
     expect(tinyTemplate.constant).toBe(1);
 
-    const tinyQuad = expr`${1e-13} * ${x}^2` as QuadExpr;
-    expect(tinyQuad.getQuadCoeff(x, x)).toBe(1e-13);
+    const tinyDiv = expr`${x} / ${1e-13}` as LinExpr;
+    expect(tinyDiv.terms.get(x)).toBeCloseTo(1e13, 0);
+
+    const tinyQuad = expr`${1e-13} * ${x}^2 + ${1e-13} * ${x}^2` as QuadExpr;
+    expect(tinyQuad.getQuadCoeff(x, x)).toBe(2e-13);
 
     // Implicit multiplication at numeric boundaries and unary negation of negative numbers
     const implicitProd = expr`2${3}` as LinExpr;
@@ -230,8 +233,8 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(parsed.terms.get(y)).toBe(0.5);
     expect(parsed.constant).toBe(-2500);
 
-    const tinyParsed = parseExpr("1e-13 * x", resolver) as LinExpr;
-    expect(tinyParsed.terms.get(x)).toBe(1e-13);
+    const tinyParsed = parseExpr("1e-13 * x + 1e-13 * x", resolver) as LinExpr;
+    expect(tinyParsed.terms.get(x)).toBe(2e-13);
 
     const constr = parseConstraint("1.5e-4 * x + .25e2 * y <= 1E3", resolver);
     expect(constr.lhs.terms.get(x)).toBe(1.5e-4);

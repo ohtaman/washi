@@ -70,7 +70,11 @@ export class QuadExpr {
         const current = result.quadTerms.get(key);
         const currentCoeff = current ? current.coeff : 0;
         const sumCoeff = currentCoeff + term.coeff;
-        if (currentCoeff !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
+        if (
+          sumCoeff === 0 ||
+          (currentCoeff !== 0 &&
+            Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(currentCoeff), Math.abs(term.coeff)))
+        ) {
           result.quadTerms.delete(key);
         } else {
           result.quadTerms.set(key, {
@@ -84,7 +88,10 @@ export class QuadExpr {
       for (const [v, c] of other.linearTerms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
+        if (
+          sumCoeff === 0 ||
+          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(c)))
+        ) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -99,7 +106,10 @@ export class QuadExpr {
       for (const [v, c] of other.terms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (current !== 0 ? Math.abs(sumCoeff) < 1e-12 : sumCoeff === 0) {
+        if (
+          sumCoeff === 0 ||
+          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(c)))
+        ) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -235,7 +245,7 @@ export class QuadExpr {
    * Divide by a non-zero scalar
    */
   div(scalar: number): QuadExpr {
-    if (Math.abs(scalar) < 1e-12) {
+    if (scalar === 0) {
       throw new Error("Division by zero in QuadExpr.div()");
     }
     return this.mul(1 / scalar);
