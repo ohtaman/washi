@@ -214,7 +214,20 @@ async function checkWorkerCancellation(page) {
         "Remaining queued solve failed after Worker replacement");
       require(await queued.optimize({ useWorker: true }) === "Optimal" && q.value === 3,
         "Cancelled model could not be solved again");
-      console.log("PASS real HiGHS Worker: active abort, queued abort, replacement, and recovery");
+      const mutatedInWorker = new Model("Mutated during real Worker solve");
+      const mw = mutatedInWorker.continuous("mw", { lb: 0, ub: 10 });
+      mutatedInWorker.objective(window.api.maximize(mw));
+      const staleWorkerPromise = mutatedInWorker.solve({ useWorker: true });
+      mutatedInWorker.objective(window.api.minimize(mw));
+      let staleRejected = false;
+      try {
+        await staleWorkerPromise;
+      } catch (err) {
+        staleRejected = String(err?.message || err).includes("modified while solve() was in progress");
+      }
+      require(staleRejected && mutatedInWorker.status === "NotSolved" && mw.value === null,
+        "Stale Worker solve result was not discarded after mid-flight objective change");
+      console.log("PASS real HiGHS Worker: active abort, queued abort, replacement, recovery, and stale-result rejection");
     } finally {
       window.Worker = NativeWorker;
     }

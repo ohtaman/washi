@@ -13,7 +13,7 @@ import { Var, type VarOptions } from "./variable.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
-import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolVar, BoolExpr } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
 import { generateLpString, type LpExportResult } from "./lp-writer.js";
 import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
@@ -50,8 +50,11 @@ import {
   buildIndicatorLinearization,
 } from "./big-m.js";
 import {
+  attachLogicElementOwnership,
   claimConstraintOwnership,
   claimVarOwnership,
+  releaseConstraintOwnership,
+  releaseVarOwnership,
   validateLinearConstraint,
   validateLogicElement,
   validateModelIntegrity,
@@ -69,25 +72,23 @@ export interface LogicalConstraint {
   expr: BoolExpr | Constraint;
 }
 
+function assertValidCount(count: number, label: string): void {
+  if (!Number.isInteger(count) || count < 0) {
+    throw new Error(
+      `Invalid count (${count}) for ${label} variable creation: count must be a non-negative integer.`
+    );
+  }
+}
+
 export class Model {
   public name: string;
-  public sense: OptimizationSense;
-  public objectiveExpr: LinExpr | QuadExpr;
+  private _sense: OptimizationSense;
+  private _objectiveExpr: LinExpr | QuadExpr;
   public variables: Var[] = [];
   public constraints: Constraint[] = [];
   public boolVars: BoolVar[] = [];
   public logicalConstraints: LogicalConstraint[] = [];
   public unsatCore: readonly string[] | undefined = undefined;
-
-  /**
-   * User-friendly alias for unsatCore.
-   * Returns a subset of conflicting constraint names causing infeasibility,
-   * or undefined if not diagnosed, not applicable, or satisfiable.
-   */
-  get conflicts(): readonly string[] | undefined {
-    return this.unsatCore;
-  }
-
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
@@ -111,6 +112,11 @@ export class Model {
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
   private hasSolutionState: boolean = false;
+  private modelRevision: number = 0;
+  private activeOperationId: number = 0;
+  private batchDepth: number = 0;
+  private batchMutated: boolean = false;
+  private batchUndoActions: Array<() => void> = [];
 
   constructor(nameOrOptions: string | ModelOptions = {}, maybeOptions?: ModelOptions) {
     let options: ModelOptions;
@@ -120,11 +126,42 @@ export class Model {
       options = nameOrOptions;
     }
     this.name = options.name || "OptimizationModel";
-    this.sense = normalizeSense(options.sense);
-    this.objectiveExpr = new LinExpr();
+    this._sense = normalizeSense(options.sense);
+    this._objectiveExpr = new LinExpr();
     if (options.solver) {
       this.solver = getSolver(options.solver);
     }
+  }
+
+  get sense(): OptimizationSense {
+    return this._sense;
+  }
+
+  set sense(value: OptimizationSense) {
+    const normalized = normalizeSense(value);
+    if (this._sense !== normalized) {
+      this._sense = normalized;
+      this.recordModelMutation();
+    }
+  }
+
+  get objectiveExpr(): LinExpr | QuadExpr {
+    return this._objectiveExpr.clone();
+  }
+
+  set objectiveExpr(value: LinExpr | QuadExpr) {
+    const cloned = value.clone();
+    this._objectiveExpr = cloned;
+    this.recordModelMutation();
+  }
+
+  /**
+   * User-friendly alias for unsatCore.
+   * Returns a subset of conflicting constraint names causing infeasibility,
+   * or undefined if not diagnosed, not applicable, or satisfiable.
+   */
+  get conflicts(): readonly string[] | undefined {
+    return this.unsatCore;
   }
 
   get vars(): Var[] {
@@ -144,10 +181,9 @@ export class Model {
   }
 
   /**
-   * Reset prior solution and diagnostic state to avoid stale data leakage across runs.
-   * Skips redundant O(N) traversals if the model is already in an unsolved / invalidated state.
+   * Clears stored solution and diagnostic fields on the model and its entities.
    */
-  public resetSolutionState(): void {
+  private clearSolutionFields(): void {
     if (
       !this.hasSolutionState &&
       this.status === "NotSolved" &&
@@ -158,6 +194,7 @@ export class Model {
     ) {
       return;
     }
+    this.hasSolutionState = false;
     this.status = "NotSolved";
     this.terminationStatus = "NotSolved";
     this.hasPrimalSolution = false;
@@ -181,7 +218,108 @@ export class Model {
       c.dual = null;
       c.slack = null;
     }
-    this.hasSolutionState = false;
+  }
+
+  /**
+   * Records a model mutation, invalidating any stored solution state and in-flight solver executions.
+   */
+  private recordModelMutation(): void {
+    if (this.batchDepth > 0) {
+      this.batchMutated = true;
+      return;
+    }
+    this.modelRevision++;
+    this.clearSolutionFields();
+  }
+
+  /**
+   * @internal Notifies the model that an owned entity (e.g., Var bounds/type or Constraint RHS/sense) was mutated.
+   */
+  public notifyMutation(): void {
+    this.recordModelMutation();
+  }
+
+  /**
+   * Reset prior solution and diagnostic state to avoid stale data leakage across runs,
+   * and invalidate any in-flight solve() or check() execution.
+   */
+  public resetSolutionState(): void {
+    this.recordModelMutation();
+  }
+
+  /**
+   * Executes a multi-item model mutation atomically so failed batch edits neither leave
+   * partial entities registered nor invalidate prior solved / in-flight state.
+   */
+  private runTransactionalBatch<T>(fn: () => T): T {
+    if (this.batchDepth > 0) {
+      return fn();
+    }
+    const varsLen = this.variables.length;
+    const boolVarsLen = this.boolVars.length;
+    const constrsLen = this.constraints.length;
+    const logicalConstrsLen = this.logicalConstraints.length;
+    const savedVarCounters = new Map(this.varPrefixCounters);
+    const savedBoolVarCounters = new Map(this.boolVarPrefixCounters);
+    const savedConstrCounters = new Map(this.constrPrefixCounters);
+    const savedLogicalCounter = this.logicalConstrCounter;
+
+    this.batchDepth = 1;
+    this.batchMutated = false;
+    this.batchUndoActions = [];
+
+    try {
+      const result = fn();
+      this.batchDepth = 0;
+      const mutated = this.batchMutated;
+      this.batchMutated = false;
+      this.batchUndoActions = [];
+      if (mutated) {
+        this.recordModelMutation();
+      }
+      return result;
+    } catch (err) {
+      this.batchDepth = 0;
+      this.batchMutated = false;
+
+      for (let i = varsLen; i < this.variables.length; i++) {
+        const v = this.variables[i];
+        this.varMapByName.delete(v.name);
+        v.ownerModel = null;
+        releaseVarOwnership(v, this);
+      }
+      this.variables.length = varsLen;
+
+      for (let i = boolVarsLen; i < this.boolVars.length; i++) {
+        const bv = this.boolVars[i];
+        this.boolVarMapByName.delete(bv.name);
+      }
+      this.boolVars.length = boolVarsLen;
+
+      for (let i = constrsLen; i < this.constraints.length; i++) {
+        const c = this.constraints[i];
+        this.constrMapByName.delete(c.name);
+      }
+      this.constraints.length = constrsLen;
+
+      for (let i = logicalConstrsLen; i < this.logicalConstraints.length; i++) {
+        const lc = this.logicalConstraints[i];
+        this.logicalConstrMapByName.delete(lc.name);
+      }
+      this.logicalConstraints.length = logicalConstrsLen;
+
+      for (let i = this.batchUndoActions.length - 1; i >= 0; i--) {
+        this.batchUndoActions[i]();
+      }
+      this.batchUndoActions = [];
+
+      this.varPrefixCounters = savedVarCounters;
+      this.boolVarPrefixCounters = savedBoolVarCounters;
+      this.constrPrefixCounters = savedConstrCounters;
+      this.logicalConstrCounter = savedLogicalCounter;
+
+      throw err;
+    }
   }
 
   /**
@@ -193,24 +331,32 @@ export class Model {
     arg2?: any,
     arg3?: any
   ): any {
+    const label = domainType.toLowerCase();
     // 2D case: arg2 is number or array
     if (typeof arg2 === "number" || Array.isArray(arg2)) {
+      if (typeof arg1 === "number") assertValidCount(arg1, label);
+      if (typeof arg2 === "number") assertValidCount(arg2, label);
+      if (typeof arg1 !== "number" && !Array.isArray(arg1)) {
+        throw new Error(`Invalid arguments provided for ${label} variable creation`);
+      }
       const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
       const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
       const opts = arg3 || {};
       const prefix = opts.prefix || opts.name || "x";
-      const matrix: any = {};
-      for (const r of rows) {
-        matrix[r] = {};
-        for (const c of cols) {
-          matrix[r][c] = this.addVar({
-            ...opts,
-            type: domainType,
-            name: `${prefix}_${r}_${c}`,
-          });
+      return this.runTransactionalBatch(() => {
+        const matrix: any = {};
+        for (const r of rows) {
+          matrix[r] = {};
+          for (const c of cols) {
+            matrix[r][c] = this.addVar({
+              ...opts,
+              type: domainType,
+              name: `${prefix}_${r}_${c}`,
+            });
+          }
         }
-      }
-      return matrix;
+        return matrix;
+      });
     }
 
     // 1D single variable: arg1 is string, undefined, or options object
@@ -235,33 +381,38 @@ export class Model {
     const opts = (arg2 as BoundsOptions) || {};
     const prefix = opts.prefix || opts.name;
     if (typeof arg1 === "number") {
-      const result: Var[] = [];
-      const p = prefix || "x";
-      for (let i = 0; i < arg1; i++) {
-        result.push(
-          this.addVar({
+      assertValidCount(arg1, label);
+      return this.runTransactionalBatch(() => {
+        const result: Var[] = [];
+        const p = prefix || "x";
+        for (let i = 0; i < arg1; i++) {
+          result.push(
+            this.addVar({
+              ...opts,
+              type: domainType,
+              name: undefined,
+              prefix: p,
+            })
+          );
+        }
+        return result;
+      });
+    } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
+      return this.runTransactionalBatch(() => {
+        const result: Record<string, Var> = {};
+        for (const key of arg1) {
+          const varName = prefix ? `${prefix}_${key}` : `${key}`;
+          result[key] = this.addVar({
             ...opts,
             type: domainType,
-            name: undefined,
-            prefix: p,
-          })
-        );
-      }
-      return result;
-    } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
-      const result: Record<string, Var> = {};
-      for (const key of arg1) {
-        const varName = prefix ? `${prefix}_${key}` : `${key}`;
-        result[key] = this.addVar({
-          ...opts,
-          type: domainType,
-          name: varName,
-        });
-      }
-      return result;
+            name: varName,
+          });
+        }
+        return result;
+      });
     }
 
-    throw new Error(`Invalid arguments provided for ${domainType.toLowerCase()} variable creation`);
+    throw new Error(`Invalid arguments provided for ${label} variable creation`);
   }
 
   /**
@@ -363,18 +514,25 @@ export class Model {
   bool(arg1?: any, arg2?: any, arg3?: any): any {
     // 2D case: arg2 is number or array
     if (typeof arg2 === "number" || Array.isArray(arg2)) {
+      if (typeof arg1 === "number") assertValidCount(arg1, "boolean");
+      if (typeof arg2 === "number") assertValidCount(arg2, "boolean");
+      if (typeof arg1 !== "number" && !Array.isArray(arg1)) {
+        throw new Error("Invalid arguments provided for boolean variable creation");
+      }
       const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
       const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
       const opts = arg3 || {};
       const prefix = opts.prefix || opts.name || "p";
-      const matrix: any = {};
-      for (const r of rows) {
-        matrix[r] = {};
-        for (const c of cols) {
-          matrix[r][c] = this.createBoolVar(`${prefix}_${r}_${c}`);
+      return this.runTransactionalBatch(() => {
+        const matrix: any = {};
+        for (const r of rows) {
+          matrix[r] = {};
+          for (const c of cols) {
+            matrix[r][c] = this.createBoolVar(`${prefix}_${r}_${c}`);
+          }
         }
-      }
-      return matrix;
+        return matrix;
+      });
     }
 
     // 1D single variable or options object
@@ -392,19 +550,24 @@ export class Model {
     const opts = (arg2 as { prefix?: string; name?: string }) || {};
     const prefix = opts.prefix || opts.name;
     if (typeof arg1 === "number") {
-      const result: BoolVar[] = [];
-      const p = prefix || "p";
-      for (let i = 0; i < arg1; i++) {
-        result.push(this.createBoolVar(undefined, p));
-      }
-      return result;
+      assertValidCount(arg1, "boolean");
+      return this.runTransactionalBatch(() => {
+        const result: BoolVar[] = [];
+        const p = prefix || "p";
+        for (let i = 0; i < arg1; i++) {
+          result.push(this.createBoolVar(undefined, p));
+        }
+        return result;
+      });
     } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
-      const result: Record<string, BoolVar> = {};
-      for (const key of arg1) {
-        const varName = prefix ? `${prefix}_${key}` : `${key}`;
-        result[key] = this.createBoolVar(varName);
-      }
-      return result;
+      return this.runTransactionalBatch(() => {
+        const result: Record<string, BoolVar> = {};
+        for (const key of arg1) {
+          const varName = prefix ? `${prefix}_${key}` : `${key}`;
+          result[key] = this.createBoolVar(varName);
+        }
+        return result;
+      });
     }
 
     throw new Error("Invalid arguments provided for boolean variable creation");
@@ -482,7 +645,7 @@ export class Model {
     const bv = new BoolVar(varName);
     this.boolVars.push(bv);
     this.boolVarMapByName.set(bv.name, bv);
-    this.resetSolutionState();
+    this.recordModelMutation();
     return bv;
   }
 
@@ -512,7 +675,7 @@ export class Model {
 
       this.variables.push(v);
       this.varMapByName.set(v.name, v);
-      this.resetSolutionState();
+      this.recordModelMutation();
       return v;
     } catch (err) {
       if (explicitName === undefined) {
@@ -605,9 +768,9 @@ export class Model {
     // Validate objective numeric inputs and model ownership
     validateObjectiveExpr(parsedExpr, this.name, (v) => this.varMapByName.get(v.name) === v);
 
-    this.sense = newSense;
-    this.objectiveExpr = parsedExpr;
-    this.resetSolutionState();
+    this._sense = newSense;
+    this._objectiveExpr = parsedExpr;
+    this.recordModelMutation();
   }
 
   /**
@@ -641,10 +804,12 @@ export class Model {
     name?: string
   ): this {
     if (Array.isArray(item)) {
-      for (const elem of item) {
-        this.constraint(elem);
-      }
-      return this;
+      return this.runTransactionalBatch(() => {
+        for (const elem of item) {
+          this.constraint(elem);
+        }
+        return this;
+      });
     }
     if (item instanceof QuadExpr) {
       throw new Error(
@@ -752,7 +917,8 @@ export class Model {
           constrName,
           this.name,
           (v) => this.varMapByName.get(v.name) === v,
-          (bv) => this.boolVarMapByName.get(bv.name) === bv
+          (bv) => this.boolVarMapByName.get(bv.name) === bv,
+          this
         );
       } catch (err) {
         if (explicitName === undefined) {
@@ -761,13 +927,18 @@ export class Model {
         throw err;
       }
 
+      attachLogicElementOwnership(
+        constraint,
+        this,
+        this.batchDepth > 0 ? this.batchUndoActions : undefined
+      );
       const lcEntry: LogicalConstraint = {
         name: constrName,
         expr: constraint,
       };
       this.logicalConstraints.push(lcEntry);
       this.logicalConstrMapByName.set(constrName, lcEntry);
-      this.resetSolutionState();
+      this.recordModelMutation();
       return constraint;
     }
 
@@ -795,9 +966,10 @@ export class Model {
 
     const savedCounter = this.constrPrefixCounters.get("c");
     const resolvedName = explicitName ?? this.getNextConstrName("c");
+    let prevOwnerModel: Model | undefined;
     try {
       validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, resolvedName);
-      claimConstraintOwnership(constr, this);
+      prevOwnerModel = claimConstraintOwnership(constr, this);
     } catch (err) {
       if (explicitName === undefined) {
         if (savedCounter === undefined) {
@@ -809,11 +981,23 @@ export class Model {
       throw err;
     }
 
-    constr.name = resolvedName;
-    constr.hasExplicitName = true;
+    const prevName = constr.name;
+    const prevExplicit = constr.hasExplicitName;
+    const prevOwner = constr.ownerModel;
+    const savedPrevOwnerModel = prevOwnerModel;
+    this.batchUndoActions.push(() => {
+      constr.ownerModel = prevOwner;
+      constr._assignModelName(prevName, prevExplicit);
+      releaseConstraintOwnership(constr, this, savedPrevOwnerModel);
+    });
+    if (this.batchDepth === 0) {
+      this.batchUndoActions = [];
+    }
+    constr._assignModelName(resolvedName, true);
+    constr.ownerModel = this;
     this.constraints.push(constr);
     this.constrMapByName.set(constr.name, constr);
-    this.resetSolutionState();
+    this.recordModelMutation();
     return constr;
   }
 
@@ -837,10 +1021,12 @@ export class Model {
     name?: string
   ): this {
     if (Array.isArray(item)) {
-      for (const elem of item) {
-        this.add(elem as any);
-      }
-      return this;
+      return this.runTransactionalBatch(() => {
+        for (const elem of item) {
+          this.add(elem as any);
+        }
+        return this;
+      });
     }
 
     if (item instanceof Var) {
@@ -871,11 +1057,18 @@ export class Model {
         }
         throw err;
       }
+      if (this.batchDepth > 0) {
+        const prevName = item.name;
+        this.batchUndoActions.push(() => {
+          item._assignModelName(prevName);
+          item.ownerModel = null;
+        });
+      }
       item._assignModelName(resolvedName);
       item.ownerModel = this;
       this.variables.push(item);
       this.varMapByName.set(item.name, item);
-      this.resetSolutionState();
+      this.recordModelMutation();
       return this;
     }
 
@@ -1017,7 +1210,9 @@ export class Model {
       throw err;
     }
 
-    return pending.map(([cRow, rowName]) => this.addConstraint(cRow, rowName));
+    return this.runTransactionalBatch(() =>
+      pending.map(([cRow, rowName]) => this.addConstraint(cRow, rowName))
+    );
   }
 
   /**
@@ -1043,17 +1238,91 @@ export class Model {
     validateModelIntegrity(this);
   }
 
+  private ensureExecutionValid(
+    startRevision: number,
+    opId: number,
+    opName: "solve" | "check"
+  ): void {
+    if (this.modelRevision !== startRevision) {
+      if (this.activeOperationId === opId) {
+        this.clearSolutionFields();
+      }
+      throw new Error(
+        `Model "${this.name}" was modified while ${opName}() was in progress; stale solver result was discarded.`
+      );
+    }
+    if (this.activeOperationId !== opId) {
+      throw new Error(
+        `Stale ${opName}() result discarded because a newer solve or check operation was started on model "${this.name}".`
+      );
+    }
+  }
+
+  private wrapSolveOptions(
+    activeOptions: SolveOptions,
+    startRevision: number,
+    opId: number
+  ): SolveOptions {
+    const userOnProgress = activeOptions.onProgress;
+    if (!userOnProgress) {
+      return activeOptions;
+    }
+    return {
+      ...activeOptions,
+      onProgress: (event) => {
+        if (this.activeOperationId !== opId || this.modelRevision !== startRevision) {
+          return;
+        }
+        userOnProgress(event);
+      },
+    };
+  }
+
+  private hasPrimalFromResult(result: SolverResult): boolean {
+    if (typeof result.hasPrimalSolution === "boolean") {
+      return result.hasPrimalSolution;
+    }
+    const status = result.status;
+    const termStatus = result.terminationStatus ?? status;
+    const rawValues = result.values || {};
+    return (
+      status !== "Infeasible" &&
+      status !== "Unsat" &&
+      status !== "Unbounded" &&
+      status !== "Error" &&
+      status !== "NotSolved" &&
+      termStatus !== "Infeasible" &&
+      termStatus !== "Unsat" &&
+      termStatus !== "Unbounded" &&
+      termStatus !== "InfeasibleOrUnbounded" &&
+      termStatus !== "Error" &&
+      termStatus !== "NotSolved" &&
+      (status === "Optimal" ||
+        status === "Feasible" ||
+        status === "Sat" ||
+        termStatus === "Optimal" ||
+        termStatus === "Feasible" ||
+        termStatus === "Sat" ||
+        (typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)) ||
+        Object.values(rawValues).some((val) => typeof val === "number" && Number.isFinite(val)))
+    );
+  }
+
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
    * or a solver passed dynamically (e.g., await model.solve(new HiGHS())).
    *
    * Calling solve() resets any prior solution and diagnostic values before executing.
+   * If the model is modified or a newer solve()/check() call is started before this
+   * execution completes, the stale result is discarded and the returned promise rejects.
    */
   async solve(
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<SolverStatus> {
-    this.resetSolutionState();
+    const opId = ++this.activeOperationId;
+    const startRevision = this.modelRevision;
+    this.clearSolutionFields();
     this.validateIntegrity();
 
     let activeSolver: Solver;
@@ -1085,7 +1354,7 @@ export class Model {
 
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
-      this.objectiveExpr instanceof QuadExpr && this.objectiveExpr.quadTerms.size > 0;
+      this._objectiveExpr instanceof QuadExpr && this._objectiveExpr.quadTerms.size > 0;
     if (hasQuadObjective && activeSolver.capabilities?.supportsQP === false) {
       throw new Error(
         `Solver "${activeSolver.name}" does not support quadratic objectives (QP). Please use a QP-capable solver such as HiGHS or Clarabel.`
@@ -1102,7 +1371,7 @@ export class Model {
     const modelData = {
       name: this.name,
       sense: this.sense,
-      objective: this.objectiveExpr,
+      objective: this._objectiveExpr,
       constraints: this.constraints,
       variables: this.variables,
       logicalConstraints: this.logicalConstraints,
@@ -1110,36 +1379,25 @@ export class Model {
     };
 
     const lpData: LpExportResult = generateLpString(modelData);
+    const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
 
-    const result: SolverResult = await activeSolver.solve(modelData, lpData, activeOptions);
+    let result: SolverResult;
+    try {
+      result = await activeSolver.solve(modelData, lpData, effectiveOptions);
+    } catch (err) {
+      if (this.activeOperationId === opId) {
+        this.clearSolutionFields();
+      }
+      throw err;
+    }
+
+    this.ensureExecutionValid(startRevision, opId, "solve");
 
     this.runTime = result.runTime ?? 0;
     this.status = result.status;
     this.terminationStatus = result.terminationStatus ?? result.status;
 
-    const rawValues = result.values || {};
-    const hasPrimal =
-      typeof result.hasPrimalSolution === "boolean"
-        ? result.hasPrimalSolution
-        : this.status !== "Infeasible" &&
-          this.status !== "Unsat" &&
-          this.status !== "Unbounded" &&
-          this.status !== "Error" &&
-          this.status !== "NotSolved" &&
-          this.terminationStatus !== "Infeasible" &&
-          this.terminationStatus !== "Unsat" &&
-          this.terminationStatus !== "Unbounded" &&
-          this.terminationStatus !== "InfeasibleOrUnbounded" &&
-          this.terminationStatus !== "Error" &&
-          this.terminationStatus !== "NotSolved" &&
-          (this.status === "Optimal" ||
-            this.status === "Feasible" ||
-            this.status === "Sat" ||
-            this.terminationStatus === "Optimal" ||
-            this.terminationStatus === "Feasible" ||
-            this.terminationStatus === "Sat" ||
-            (typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)) ||
-            Object.values(rawValues).some((val) => typeof val === "number" && Number.isFinite(val)));
+    const hasPrimal = this.hasPrimalFromResult(result);
 
     this.hasPrimalSolution = hasPrimal;
     this.objectiveValue =
@@ -1256,12 +1514,16 @@ export class Model {
   /**
    * Check satisfiability of the model without requiring an objective function.
    * Can be used to verify feasibility or diagnose infeasibilities / conflicts.
+   * If the model is modified or a newer solve()/check() call is started before this
+   * execution completes, the stale result is discarded and the returned promise rejects.
    */
   async check(
     solverOrOptions?: Solver | string | SolveOptions,
     options?: SolveOptions
   ): Promise<CheckResult> {
-    this.resetSolutionState();
+    const opId = ++this.activeOperationId;
+    const startRevision = this.modelRevision;
+    this.clearSolutionFields();
     this.validateIntegrity();
 
     let activeSolver: Solver;
@@ -1298,18 +1560,31 @@ export class Model {
       );
     }
 
+    const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
+
     // 2. If solver implements native check() (e.g. Z3)
     if (typeof activeSolver.check === "function") {
-      const checkResult = await activeSolver.check(
-        {
-          name: this.name,
-          variables: this.variables,
-          boolVars: this.boolVars,
-          constraints: this.constraints,
-          logicalConstraints: this.logicalConstraints,
-        },
-        activeOptions
-      );
+      let checkResult: CheckResult;
+      try {
+        checkResult = await activeSolver.check(
+          {
+            name: this.name,
+            variables: this.variables,
+            boolVars: this.boolVars,
+            constraints: this.constraints,
+            logicalConstraints: this.logicalConstraints,
+          },
+          effectiveOptions
+        );
+      } catch (err) {
+        if (this.activeOperationId === opId) {
+          this.clearSolutionFields();
+        }
+        throw err;
+      }
+
+      this.ensureExecutionValid(startRevision, opId, "check");
+
       this.status = checkResult.status;
       this.terminationStatus = activeOptions.signal?.aborted ? "Interrupted" : checkResult.status;
       this.hasPrimalSolution = checkResult.status === "Sat";
@@ -1339,62 +1614,91 @@ export class Model {
       };
     }
 
-    // 3. Fallback: Linear Feasibility check using standard solve() with 0 objective
-    const originalObjective = this.objectiveExpr;
-    const originalSense = this.sense;
+    // 3. Fallback: Linear feasibility check using activeSolver.solve() with a zero objective
+    // without mutating this.objectiveExpr or this.sense on the Model instance.
+    const feasibilityModelData = {
+      name: this.name,
+      sense: "Minimize" as const,
+      objective: new LinExpr(),
+      constraints: this.constraints,
+      variables: this.variables,
+      logicalConstraints: this.logicalConstraints,
+      boolVars: this.boolVars,
+    };
+    const lpData: LpExportResult = generateLpString(feasibilityModelData);
+
+    let result: SolverResult;
     try {
-      this.objectiveExpr = new LinExpr();
-      this.sense = "Minimize";
-      const status = await this.solve(activeSolver, activeOptions);
-      const isSat = this.hasPrimalSolution || status === "Optimal" || status === "Feasible";
-      const isUnsat = status === "Infeasible";
-      const checkStatus = isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown";
-
-      this.status = checkStatus;
-      this.terminationStatus =
-        activeOptions.signal?.aborted || this.terminationStatus === "Interrupted"
-          ? "Interrupted"
-          : this.terminationStatus === "Optimal" || this.terminationStatus === "Feasible" || this.terminationStatus === "Infeasible"
-            ? checkStatus
-            : this.terminationStatus;
-      this.hasPrimalSolution = isSat;
-      this.objectiveValue = null;
-      this.objectiveBound = undefined;
-      this.relGap = undefined;
-      this.mipGap = undefined;
-      this.absGap = undefined;
-      this.solution = null;
-
-      for (const v of this.variables) {
-        v.reducedCost = null;
+      result = await activeSolver.solve(feasibilityModelData, lpData, effectiveOptions);
+    } catch (err) {
+      if (this.activeOperationId === opId) {
+        this.clearSolutionFields();
       }
-      for (const c of this.constraints) {
-        c.dual = null;
-      }
+      throw err;
+    }
 
-      const values: Record<string, number | boolean> = {};
-      if (isSat) {
-        for (const v of this.variables) {
-          if (v.value !== null) {
-            values[v.name] = v.value;
+    this.ensureExecutionValid(startRevision, opId, "check");
+
+    this.runTime = result.runTime ?? 0;
+    const rawStatus = result.status;
+    const rawTermStatus = result.terminationStatus ?? rawStatus;
+    const hasPrimal = this.hasPrimalFromResult(result);
+
+    const isSat = hasPrimal || rawStatus === "Optimal" || rawStatus === "Feasible";
+    const isUnsat = rawStatus === "Infeasible";
+    const checkStatus = isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown";
+
+    this.status = checkStatus;
+    this.terminationStatus =
+      activeOptions.signal?.aborted || rawTermStatus === "Interrupted"
+        ? "Interrupted"
+        : rawTermStatus === "Optimal" || rawTermStatus === "Feasible" || rawTermStatus === "Infeasible"
+          ? checkStatus
+          : rawTermStatus;
+    this.hasPrimalSolution = isSat;
+    this.objectiveValue = null;
+    this.objectiveBound = undefined;
+    this.relGap = undefined;
+    this.mipGap = undefined;
+    this.absGap = undefined;
+    this.solution = null;
+    this.values.clear();
+
+    const values: Record<string, number | boolean> = {};
+    if (isSat && result.values) {
+      for (const [vName, primal] of Object.entries(result.values)) {
+        if (typeof primal === "number" && !Number.isNaN(primal)) {
+          this.values.set(vName, primal);
+          const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
+          if (v) {
+            v.value = primal;
+            values[v.name] = primal;
           }
-        }
-        for (const bv of this.boolVars) {
-          if (bv.value !== null) {
+          const bv = this.boolVars.find((b) => b.name === vName);
+          if (bv) {
+            bv.value = Boolean(primal);
             values[bv.name] = bv.value;
           }
         }
       }
-
-      return {
-        status: checkStatus,
-        values,
-        runTime: this.runTime,
-      };
-    } finally {
-      this.objectiveExpr = originalObjective;
-      this.sense = originalSense;
     }
+
+    if (result.slacks) {
+      for (const [cName, slack] of Object.entries(result.slacks)) {
+        const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
+        if (c) {
+          c.slack = slack;
+        }
+      }
+    }
+
+    this.hasSolutionState = true;
+
+    return {
+      status: checkStatus,
+      values,
+      runTime: this.runTime,
+    };
   }
 
   /**

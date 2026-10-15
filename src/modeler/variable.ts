@@ -29,10 +29,10 @@ export class Var {
   private _name: string;
   public readonly prefix: string;
   public hasExplicitName: boolean;
-  public ownerModel: unknown = null;
-  public type: "Continuous" | "Integer" | "Binary";
-  public lb: number;
-  public ub: number;
+  public ownerModel: { notifyMutation?: () => void } | null = null;
+  private _type: "Continuous" | "Integer" | "Binary";
+  private _lb: number;
+  private _ub: number;
 
   /** Optimal primal value after solve */
   public value: number | null = null;
@@ -46,19 +46,52 @@ export class Var {
     this.prefix = rawPrefix.length > 0 ? rawPrefix : "x";
     this.hasExplicitName = explicitName.length > 0;
     this._name = this.hasExplicitName ? explicitName : `${this.prefix}_${this.id}`;
-    this.type = normalizeVarType(options.type);
+    this._type = normalizeVarType(options.type);
 
-    if (this.type === "Binary") {
-      this.lb = 0;
-      this.ub = 1;
+    if (this._type === "Binary") {
+      this._lb = 0;
+      this._ub = 1;
     } else {
-      this.lb = options.lb !== undefined ? options.lb : 0;
-      this.ub = options.ub !== undefined ? options.ub : Infinity;
+      this._lb = options.lb !== undefined ? options.lb : 0;
+      this._ub = options.ub !== undefined ? options.ub : Infinity;
     }
   }
 
   get name(): string {
     return this._name;
+  }
+
+  get type(): "Continuous" | "Integer" | "Binary" {
+    return this._type;
+  }
+
+  set type(val: "Continuous" | "Integer" | "Binary") {
+    if (this._type !== val) {
+      this._type = val;
+      this.ownerModel?.notifyMutation?.();
+    }
+  }
+
+  get lb(): number {
+    return this._lb;
+  }
+
+  set lb(val: number) {
+    if (!Object.is(this._lb, val)) {
+      this._lb = val;
+      this.ownerModel?.notifyMutation?.();
+    }
+  }
+
+  get ub(): number {
+    return this._ub;
+  }
+
+  set ub(val: number) {
+    if (!Object.is(this._ub, val)) {
+      this._ub = val;
+      this.ownerModel?.notifyMutation?.();
+    }
   }
 
   /** @internal Assigns a model-scoped name when registering an unnamed Var via Model.add() */

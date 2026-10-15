@@ -1,12 +1,45 @@
 import type { Model } from "./model.js";
 import { Var } from "./variable.js";
-import { BoolVar, BoolExpr, BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolVar, BoolOp, type LogicElement } from "./boolean-expr.js";
 import { Constraint } from "./constraint.js";
 import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 
 const varOwner = new WeakMap<Var, Model>();
 const constrOwner = new WeakMap<Constraint, Model>();
+const topLevelConstrOwner = new WeakMap<Constraint, Model>();
+
+/**
+ * Recursively attaches ownerModel mutation tracking to any Constraint nodes embedded in a logical expression.
+ */
+export function attachLogicElementOwnership(
+  elem: LogicElement,
+  model: Model,
+  undoActions?: (() => void)[]
+): void {
+  if (elem instanceof BoolOp) {
+    for (const child of elem.children) {
+      attachLogicElementOwnership(child, model, undoActions);
+    }
+  } else if (elem instanceof Constraint) {
+    const prevOwner = elem.ownerModel;
+    const prevMapOwner = constrOwner.get(elem);
+    if (prevOwner !== model || prevMapOwner !== model) {
+      if (undoActions) {
+        undoActions.push(() => {
+          elem.ownerModel = prevOwner;
+          if (prevMapOwner) {
+            constrOwner.set(elem, prevMapOwner);
+          } else {
+            constrOwner.delete(elem);
+          }
+        });
+      }
+      elem.ownerModel = model;
+      constrOwner.set(elem, model);
+    }
+  }
+}
 
 /**
  * Associates a variable instance with its owning model and rejects cross-model sharing.
@@ -24,16 +57,53 @@ export function claimVarOwnership(v: Var, model: Model): void {
 /**
  * Associates a constraint instance with its owning model and rejects reusing or cross-model sharing.
  */
-export function claimConstraintOwnership(c: Constraint, model: Model): void {
-  const existing = constrOwner.get(c);
-  if (existing) {
+export function claimConstraintOwnership(c: Constraint, model: Model): Model | undefined {
+  const existingTop = topLevelConstrOwner.get(c);
+  if (existingTop) {
     throw new Error(
-      existing === model
+      existingTop === model
         ? `Constraint "${c.name}" is already registered in model "${model.name}".`
-        : `Constraint "${c.name}" already belongs to model "${existing.name}" and cannot be added to model "${model.name}".`
+        : `Constraint "${c.name}" already belongs to model "${existingTop.name}" and cannot be added to model "${model.name}".`
     );
   }
+  const existingAny = constrOwner.get(c);
+  if (existingAny && existingAny !== model) {
+    throw new Error(
+      `Constraint "${c.name}" already belongs to model "${existingAny.name}" and cannot be added to model "${model.name}".`
+    );
+  }
+  topLevelConstrOwner.set(c, model);
   constrOwner.set(c, model);
+  return existingAny;
+}
+
+/**
+ * Releases variable ownership when rolling back a failed batch operation.
+ */
+export function releaseVarOwnership(v: Var, model: Model): void {
+  if (varOwner.get(v) === model) {
+    varOwner.delete(v);
+  }
+}
+
+/**
+ * Releases constraint ownership when rolling back a failed batch operation.
+ */
+export function releaseConstraintOwnership(
+  c: Constraint,
+  model: Model,
+  previousOwner?: Model
+): void {
+  if (topLevelConstrOwner.get(c) === model) {
+    topLevelConstrOwner.delete(c);
+  }
+  if (constrOwner.get(c) === model) {
+    if (previousOwner) {
+      constrOwner.set(c, previousOwner);
+    } else {
+      constrOwner.delete(c);
+    }
+  }
 }
 
 /**
@@ -172,7 +242,8 @@ export function validateLogicElement(
   lcName: string,
   modelName: string,
   isOwnedVar: (v: Var) => boolean,
-  isOwnedBoolVar: (bv: BoolVar) => boolean
+  isOwnedBoolVar: (bv: BoolVar) => boolean,
+  ownerModel?: Model
 ): void {
   if (elem instanceof BoolVar) {
     if (!isOwnedBoolVar(elem)) {
@@ -182,9 +253,17 @@ export function validateLogicElement(
     }
   } else if (elem instanceof BoolOp) {
     for (const child of elem.children) {
-      validateLogicElement(child, lcName, modelName, isOwnedVar, isOwnedBoolVar);
+      validateLogicElement(child, lcName, modelName, isOwnedVar, isOwnedBoolVar, ownerModel);
     }
   } else if (elem instanceof Constraint) {
+    if (ownerModel) {
+      const existingOwner = constrOwner.get(elem) ?? ((elem.ownerModel as Model | null) ?? undefined);
+      if (existingOwner && existingOwner !== ownerModel) {
+        throw new Error(
+          `Constraint "${elem.name}" embedded in logical constraint "${lcName}" already belongs to model "${existingOwner.name ?? "another model"}" and cannot be added to model "${modelName}".`
+        );
+      }
+    }
     if (!Number.isFinite(elem.rhs)) {
       throw new Error(
         `Constraint "${elem.name}" embedded in logical constraint "${lcName}" has invalid RHS: ${elem.rhs}.`
@@ -306,7 +385,8 @@ export function validateModelIntegrity(model: Model): void {
       lc.name,
       model.name,
       (v) => registeredVars.has(v),
-      (bv) => registeredBoolVars.has(bv)
+      (bv) => registeredBoolVars.has(bv),
+      model
     );
   }
 }

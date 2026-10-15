@@ -170,6 +170,16 @@ async function runtime(root, entry, esm, base = "/factory/") {
     assert(requests.every((url) => new URL(url).origin === origin));
     console.log(`PASS invalid / missing WASM: ${entry} (URL reported, no CDN, retry succeeds)`);
   }
+  if (api?.Model && api?.maximize && api?.minimize) {
+    const mStale = new api.Model("StaleRuntimeCheck");
+    const xStale = mStale.continuous("x", { lb: 0, ub: 10 });
+    mStale.objective(api.maximize(xStale));
+    const pendingStale = mStale.solve({ useWorker: true });
+    mStale.objective(api.minimize(xStale));
+    await assert.rejects(timeout(pendingStale), /modified while solve\(\) was in progress/);
+    assert.equal(mStale.status, "NotSolved");
+    assert.equal(xStale.value, null);
+  }
 }
 
 async function testZ3WorkerErrorAndRecovery(browserRoot) {
