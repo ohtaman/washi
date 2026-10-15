@@ -11,9 +11,9 @@ import type {
   SolverCheckResult,
 } from "../types.js";
 import { registerSolver } from "../registry.js";
-import { loadZ3, resetZ3LoaderCache, killZ3Threads, registerZ3ErrorHandler, unlockAllZ3Semaphores, notifyZ3WorkerError } from "./loader.js";
+import { loadZ3, resetZ3LoaderCache, killZ3Threads, registerZ3ErrorHandler, notifyZ3WorkerError } from "./loader.js";
 
-export { resetZ3LoaderCache, killZ3Threads, unlockAllZ3Semaphores, notifyZ3WorkerError };
+export { resetZ3LoaderCache, killZ3Threads, notifyZ3WorkerError };
 
 /**
  * Z3 SMT / SAT / MIP Solver Adapter
@@ -263,7 +263,8 @@ export class Z3Solver implements Solver {
         values: {},
       };
     }
-    const { Context } = await loadZ3(options);
+    const instance = await loadZ3(options);
+    const { Context } = instance;
     if (options.signal?.aborted) {
       return {
         status: "Unknown",
@@ -332,7 +333,7 @@ export class Z3Solver implements Solver {
     try {
       const checkPromise = s.check();
       checkRes = await new Promise((resolve, reject) => {
-        unregister = registerZ3ErrorHandler(reject);
+        unregister = registerZ3ErrorHandler(reject, instance);
         checkPromise.then(resolve, reject);
       });
     } finally {
@@ -450,7 +451,8 @@ export class Z3Solver implements Solver {
       };
     }
 
-    const { Context } = await loadZ3(options);
+    const instance = await loadZ3(options);
+    const { Context } = instance;
     if (options.signal?.aborted) {
       return {
         status: "Unknown",
@@ -522,7 +524,7 @@ export class Z3Solver implements Solver {
     try {
       const checkPromise = opt.check();
       checkRes = await new Promise((resolve, reject) => {
-        unregister = registerZ3ErrorHandler(reject);
+        unregister = registerZ3ErrorHandler(reject, instance);
         checkPromise.then(resolve, reject);
       });
     } finally {

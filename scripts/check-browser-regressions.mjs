@@ -96,6 +96,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           }
         }, solver));
         if (solver === "highs") await checkWorkerCancellation(page);
+        if (solver === "z3") await checkZ3FailureRecovery(page, assets);
         assert.deepEqual(errors, [], `${solver}/${format}: uncaught browser errors`);
         assert.deepEqual(externalRequests, [], `${solver}/${format}: external network dependency`);
         console.log(`PASS Chromium regression: ${solver}/${format} (declarative API, Big-M, validation, metrics, cancellation/recovery${solver === "z3" ? ", SAT/UNSAT/conflicts" : ""})`);
@@ -104,6 +105,50 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
       }
     }
   }
+}
+
+async function checkZ3FailureRecovery(page, assets) {
+  await withDeadline(page.evaluate(async (assetsUrl) => {
+    const z3 = window.WashiZ3 || await import(`${assetsUrl}/factory/solvers/z3.js`);
+    const { Model, maximize } = window.api;
+    const require = (condition, message) => { if (!condition) throw new Error(message); };
+    const old = await z3.loadZ3();
+    const originalCall = old.em.async_call;
+    let started;
+    const inFlight = new Promise(resolve => { started = resolve; });
+    old.em.async_call = function (...args) {
+      const result = originalCall.apply(this, args);
+      started();
+      return result;
+    };
+    const checkModel = new Model("Worker failure check");
+    checkModel.constraint(checkModel.bool("present"));
+    const solveModel = new Model("Worker failure optimization");
+    const x = solveModel.integer("x", { lb: 0, ub: 7 });
+    solveModel.objective(maximize(x));
+    // Start actual WASM work and queue another operation behind Z3's own mutex.
+    const outcomes = Promise.allSettled([checkModel.check("z3"), solveModel.solve("z3")]);
+    await inFlight;
+    const workers = [...old.em.PThread.runningWorkers, ...old.em.PThread.unusedWorkers];
+    require(workers.length > 0 && typeof workers[0].onerror === "function", "No real Z3 worker observed");
+    const staleError = workers[0].onerror;
+    staleError({ message: "injected Z3 worker failure" });
+    for (const outcome of await outcomes) {
+      require(outcome.status === "rejected" && outcome.reason.message.includes("injected Z3 worker failure"),
+        "Affected check/solve did not reject with the worker failure");
+    }
+    require(!checkModel.hasPrimalSolution && !solveModel.hasPrimalSolution, "Failed operation fabricated a solution");
+
+    const replacement = await z3.loadZ3();
+    require(replacement !== old, "Failed runtime was reused");
+    staleError({ message: "late failure from the disposed runtime" });
+    await z3.killZ3Threads(old);
+    require(await z3.loadZ3() === replacement, "Old cleanup invalidated the replacement");
+    require((await checkModel.check("z3")).status === "Sat", "check() did not recover");
+    require(await solveModel.solve("z3") === "Optimal" && x.value === 7, "solve() did not recover");
+    require(solveModel.validateSolution().valid, "Recovered solution is invalid");
+    await z3.killZ3Threads();
+  }, assets));
 }
 
 async function checkWorkerCancellation(page) {
