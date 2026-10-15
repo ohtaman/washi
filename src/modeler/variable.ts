@@ -107,34 +107,9 @@ export class Var {
   mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof other === "number") {
-      return new LinExpr(new Map([[this, other]]), 0);
+      return new LinExpr(new Map([[this, 1]]), 0).mul(other);
     }
-    if (other instanceof Var) {
-      return QuadExpr.fromProduct(this, other, 1);
-    }
-    if (other instanceof QuadExpr) {
-      if (other.quadTerms.size > 0) {
-        throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-      }
-      let result = new QuadExpr();
-      if (other.constant !== 0) {
-        result.linearTerms.set(this, other.constant);
-      }
-      for (const [v, c] of other.linearTerms) {
-        result = result.add(QuadExpr.fromProduct(this, v, c));
-      }
-      return result;
-    }
-    // LinExpr: this * (c0 + sum(ci * xi)) = c0 * this + sum(ci * this * xi)
-    let result = new QuadExpr();
-    if (other.constant !== 0) {
-      result.linearTerms.set(this, other.constant);
-    }
-    for (const [v, c] of other.terms) {
-      const qTerm = QuadExpr.fromProduct(this, v, c);
-      result = result.add(qTerm);
-    }
-    return result;
+    return new QuadExpr(new Map([[this, 1]]), new Map(), 0).mul(other);
   }
 
   /** Add variable with another variable, linear/quadratic expression, or number */

@@ -128,12 +128,6 @@ export class QuadExpr {
     if (typeof other === "number") {
       return this.add(-other);
     }
-    if (other instanceof QuadExpr) {
-      return this.add(other.neg());
-    }
-    if ("terms" in other && other.terms instanceof Map) {
-      return this.add(other.mul(-1));
-    }
     return this.add(other.mul(-1));
   }
 
@@ -176,103 +170,52 @@ export class QuadExpr {
       return result;
     }
 
-    // Check if operand is Var (has id and name, but not terms)
-    if ("id" in operand && "name" in operand && !("terms" in operand) && !("quadTerms" in operand)) {
-      if (this.quadTerms.size > 0) {
-        throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-      }
-      let result = new QuadExpr();
-      if (this.constant !== 0) {
-        result.linearTerms.set(operand as Var, this.constant);
-      }
-      for (const [v, c] of this.linearTerms) {
-        result = result.add(QuadExpr.fromProduct(v, operand as Var, c));
-      }
-      return result;
-    }
+    const isVar =
+      "id" in operand &&
+      "name" in operand &&
+      !("terms" in operand) &&
+      !("quadTerms" in operand);
+    const otherQuadSize = "quadTerms" in operand ? operand.quadTerms.size : 0;
+    const otherLinTerms: ReadonlyMap<Var, number> = isVar
+      ? new Map([[operand as Var, 1]])
+      : "quadTerms" in operand
+        ? operand.linearTerms
+        : operand.terms;
+    const otherConstant = isVar ? 0 : operand.constant;
 
-    const otherExpr = operand as LinExpr | QuadExpr;
-    const otherQuadSize = "quadTerms" in otherExpr ? otherExpr.quadTerms.size : 0;
-    const otherLinTerms = "quadTerms" in otherExpr ? otherExpr.linearTerms : otherExpr.terms;
-
-    if (this.quadTerms.size > 0 && (otherQuadSize > 0 || otherLinTerms.size > 0)) {
-      throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-    }
-    if (otherQuadSize > 0 && this.linearTerms.size > 0) {
-      throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+    if (
+      (this.quadTerms.size > 0 && (otherQuadSize > 0 || otherLinTerms.size > 0)) ||
+      (otherQuadSize > 0 && this.linearTerms.size > 0)
+    ) {
+      throw new Error(
+        "Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)"
+      );
     }
 
     if (otherQuadSize === 0 && otherLinTerms.size === 0) {
-      return this.mul(otherExpr.constant);
+      return this.mul(otherConstant);
     }
-    if (this.quadTerms.size === 0 && this.linearTerms.size === 0) {
-      const mulResult = otherExpr.mul(this.constant);
-      if (mulResult instanceof QuadExpr) {
-        return mulResult;
+    if (this.quadTerms.size === 0 && this.linearTerms.size === 0 && !isVar) {
+      const scaled = operand.mul(this.constant);
+      if ("quadTerms" in scaled) {
+        return scaled;
       }
-      const result = new QuadExpr();
-      result.constant = mulResult.constant;
-      for (const [v, c] of mulResult.terms) {
-        result.linearTerms.set(v, c);
-      }
-      return result;
+      return new QuadExpr(scaled.terms, new Map(), scaled.constant);
     }
 
-    // Both are linear (degree 1)
-    let result = new QuadExpr();
-    const rawConst =
-      this.constant === 0 || otherExpr.constant === 0 ? 0 : this.constant * otherExpr.constant;
-    if (this.constant !== 0 && otherExpr.constant !== 0 && rawConst === 0) {
-      throw new Error("Constant multiplication underflows to zero.");
-    }
-    result.constant = rawConst === 0 ? 0 : rawConst;
-    if (otherExpr.constant !== 0) {
-      for (const [v, c] of this.linearTerms) {
-        const prod = c * otherExpr.constant;
-        if (c !== 0 && prod === 0) {
-          throw new Error("Coefficient multiplication underflows to zero.");
-        }
-        const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
-        if (sumCoeff === 0) {
-          result.linearTerms.delete(v);
-        } else {
-          result.linearTerms.set(v, sumCoeff);
-        }
-      }
-    }
-    if (this.constant !== 0) {
-      for (const [v, c] of otherLinTerms) {
-        const prod = c * this.constant;
-        if (c !== 0 && prod === 0) {
-          throw new Error("Coefficient multiplication underflows to zero.");
-        }
-        const sumCoeff = (result.linearTerms.get(v) ?? 0) + prod;
-        if (sumCoeff === 0) {
-          result.linearTerms.delete(v);
-        } else {
-          result.linearTerms.set(v, sumCoeff);
-        }
-      }
-    }
-    for (const [v1, c1] of this.linearTerms) {
-      for (const [v2, c2] of otherLinTerms) {
-        const prod = c1 * c2;
-        if (c1 !== 0 && c2 !== 0 && prod === 0) {
-          throw new Error("Coefficient multiplication underflows to zero.");
-        }
-        result = result.add(QuadExpr.fromProduct(v1, v2, prod));
-      }
-    }
-    return result;
+    return QuadExpr.multiplyLinearTerms(
+      this.constant,
+      this.linearTerms,
+      otherConstant,
+      otherLinTerms
+    );
   }
 
   /**
-   * Divide by a non-zero scalar
+   * Divide by a non-zero scalar or constant-only expression
    */
-  div(scalar: number): QuadExpr {
-    if (scalar === 0) {
-      throw new Error("Division by zero in QuadExpr.div()");
-    }
+  div(divisor: number | LinExpr | QuadExpr): QuadExpr {
+    const scalar = QuadExpr.extractScalarDivisor(divisor, "QuadExpr.div()");
     return this.mul(1 / scalar);
   }
 
@@ -351,5 +294,84 @@ export class QuadExpr {
       coeff,
     });
     return expr;
+  }
+
+  /**
+   * Canonical linear-by-linear multiplication shared across Var, LinExpr, QuadExpr, and Parser.
+   */
+  static multiplyLinearTerms(
+    constantA: number,
+    termsA: ReadonlyMap<Var, number>,
+    constantB: number,
+    termsB: ReadonlyMap<Var, number>
+  ): QuadExpr {
+    const hasTerms = termsA.size > 0 || termsB.size > 0;
+    const rawConst =
+      (constantA === 0 || constantB === 0) && hasTerms ? 0 : constantA * constantB;
+    if (constantA !== 0 && constantB !== 0 && rawConst === 0) {
+      throw new Error("Constant multiplication underflows to zero.");
+    }
+    let result = new QuadExpr(
+      new Map(),
+      new Map(),
+      rawConst === 0 ? 0 : rawConst
+    );
+    if (constantB !== 0) {
+      for (const [v, c] of termsA) {
+        const prod = c * constantB;
+        if (c !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        if (prod !== 0) {
+          result.linearTerms.set(v, prod);
+        }
+      }
+    }
+    if (constantA !== 0) {
+      for (const [v, c] of termsB) {
+        const current = result.linearTerms.get(v) ?? 0;
+        const added = c * constantA;
+        if (c !== 0 && added === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        const sumCoeff = current + added;
+        if (sumCoeff === 0) {
+          result.linearTerms.delete(v);
+        } else {
+          result.linearTerms.set(v, sumCoeff);
+        }
+      }
+    }
+    for (const [v1, c1] of termsA) {
+      for (const [v2, c2] of termsB) {
+        const prod = c1 * c2;
+        if (c1 !== 0 && c2 !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        result = result.add(QuadExpr.fromProduct(v1, v2, prod));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Validates and extracts a non-zero scalar divisor from a number or constant-only expression.
+   */
+  static extractScalarDivisor(divisor: number | LinExpr | QuadExpr, context: string): number {
+    if (typeof divisor === "number") {
+      if (divisor === 0) {
+        throw new Error(`Division by zero in ${context}`);
+      }
+      return divisor;
+    }
+    const linSize = "quadTerms" in divisor ? divisor.linearTerms.size : divisor.terms.size;
+    const quadSize = "quadTerms" in divisor ? divisor.quadTerms.size : 0;
+    if (linSize > 0 || quadSize > 0) {
+      throw new Error("Cannot divide by variable in expression");
+    }
+    if (divisor.constant === 0) {
+      throw new Error(`Division by zero in ${context}`);
+    }
+    return divisor.constant;
   }
 }
