@@ -39,10 +39,7 @@ export class LinExpr {
       for (const [v, c] of other.terms) {
         const current = result.terms.get(v) || 0;
         const sumCoeff = current + c;
-        if (
-          sumCoeff === 0 ||
-          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(c)))
-        ) {
+        if (sumCoeff === 0) {
           result.terms.delete(v);
         } else {
           result.terms.set(v, sumCoeff);
@@ -53,7 +50,7 @@ export class LinExpr {
       // other is Var
       const current = result.terms.get(other) || 0;
       const sumCoeff = current + 1;
-      if (Math.abs(sumCoeff) < 1e-12) {
+      if (sumCoeff === 0) {
         result.terms.delete(other);
       } else {
         result.terms.set(other, sumCoeff);
@@ -88,9 +85,10 @@ export class LinExpr {
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof operand === "number") {
+      const rawConst = this.constant * operand;
       const result = new LinExpr(
         new Map(),
-        this.constant === 0 ? 0 : this.constant * operand
+        rawConst === 0 ? 0 : rawConst
       );
       for (const [v, c] of this.terms) {
         const prod = c * operand;

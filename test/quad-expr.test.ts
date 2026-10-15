@@ -148,6 +148,17 @@ describe("QuadExpr (Quadratic Expressions)", () => {
     expect(complexTemplate.linearTerms.get(x)).toBe(complexMethod.linearTerms.get(x));
     expect(complexTemplate.linearTerms.get(y)).toBe(complexMethod.linearTerms.get(y));
     expect(complexTemplate.constant).toBe(complexMethod.constant);
+
+    // Preserve small residual coefficients from large near-cancellations and propagate non-finite coefficients
+    const residual = x.mul(1e12).sub(x.mul(999999999999.5));
+    expect(residual.terms.get(x)).toBe(0.5);
+
+    const infLin = x.mul(Infinity).add(x.mul(1));
+    expect(infLin.terms.get(x)).toBe(Infinity);
+    const infQuad = x.mul(x).mul(Infinity).add(x.mul(x));
+    expect(infQuad.getQuadCoeff(x, x)).toBe(Infinity);
+    expect(Number.isNaN(new LinExpr().mul(NaN).constant)).toBe(true);
+    expect(Number.isNaN(new QuadExpr().mul(NaN).constant)).toBe(true);
   });
 });
 

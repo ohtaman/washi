@@ -70,11 +70,7 @@ export class QuadExpr {
         const current = result.quadTerms.get(key);
         const currentCoeff = current ? current.coeff : 0;
         const sumCoeff = currentCoeff + term.coeff;
-        if (
-          sumCoeff === 0 ||
-          (currentCoeff !== 0 &&
-            Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(currentCoeff), Math.abs(term.coeff)))
-        ) {
+        if (sumCoeff === 0) {
           result.quadTerms.delete(key);
         } else {
           result.quadTerms.set(key, {
@@ -88,10 +84,7 @@ export class QuadExpr {
       for (const [v, c] of other.linearTerms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (
-          sumCoeff === 0 ||
-          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(c)))
-        ) {
+        if (sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -106,10 +99,7 @@ export class QuadExpr {
       for (const [v, c] of other.terms) {
         const current = result.linearTerms.get(v) || 0;
         const sumCoeff = current + c;
-        if (
-          sumCoeff === 0 ||
-          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(c)))
-        ) {
+        if (sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
@@ -123,7 +113,7 @@ export class QuadExpr {
     const v = other as Var;
     const current = result.linearTerms.get(v) || 0;
     const sumCoeff = current + 1;
-    if (Math.abs(sumCoeff) < 1e-12) {
+    if (sumCoeff === 0) {
       result.linearTerms.delete(v);
     } else {
       result.linearTerms.set(v, sumCoeff);
@@ -148,10 +138,11 @@ export class QuadExpr {
   mul(other: Var | LinExpr | QuadExpr): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): QuadExpr {
     if (typeof operand === "number") {
+      const rawConst = this.constant * operand;
       const result = new QuadExpr(
         new Map(),
         new Map(),
-        this.constant === 0 ? 0 : this.constant * operand
+        rawConst === 0 ? 0 : rawConst
       );
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
@@ -303,10 +294,11 @@ export class QuadExpr {
     constantB: number,
     termsB: ReadonlyMap<Var, number>
   ): QuadExpr {
+    const rawConst = constantA * constantB;
     let result = new QuadExpr(
       new Map(),
       new Map(),
-      constantA === 0 || constantB === 0 ? 0 : constantA * constantB
+      rawConst === 0 ? 0 : rawConst
     );
     if (constantB !== 0) {
       for (const [v, c] of termsA) {
@@ -321,10 +313,7 @@ export class QuadExpr {
         const current = result.linearTerms.get(v) || 0;
         const added = c * constantA;
         const sumCoeff = current + added;
-        if (
-          sumCoeff === 0 ||
-          (current !== 0 && Math.abs(sumCoeff) <= 1e-12 * Math.max(Math.abs(current), Math.abs(added)))
-        ) {
+        if (sumCoeff === 0) {
           result.linearTerms.delete(v);
         } else {
           result.linearTerms.set(v, sumCoeff);
