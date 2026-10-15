@@ -37,6 +37,24 @@ export function claimConstraintOwnership(c: Constraint, model: Model): void {
 }
 
 /**
+ * Releases variable ownership when rolling back a failed batch operation.
+ */
+export function releaseVarOwnership(v: Var, model: Model): void {
+  if (varOwner.get(v) === model) {
+    varOwner.delete(v);
+  }
+}
+
+/**
+ * Releases constraint ownership when rolling back a failed batch operation.
+ */
+export function releaseConstraintOwnership(c: Constraint, model: Model): void {
+  if (constrOwner.get(c) === model) {
+    constrOwner.delete(c);
+  }
+}
+
+/**
  * Validates lower and upper bounds of a single variable.
  */
 export function validateVarBounds(v: Var): void {

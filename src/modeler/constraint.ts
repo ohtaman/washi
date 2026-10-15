@@ -9,11 +9,12 @@ let constrIdCounter = 0;
  */
 export class Constraint {
   public readonly id: number;
-  public lhs: LinExpr;
-  public sense: ComparisonSense;
-  public rhs: number;
+  private _lhs: LinExpr;
+  private _sense: ComparisonSense;
+  private _rhs: number;
   private _name: string;
   public hasExplicitName: boolean;
+  public ownerModel: { notifyMutation?: () => void } | null = null;
 
   /** Slack value after solve */
   public slack: number | null = null;
@@ -27,9 +28,9 @@ export class Constraint {
     name?: string
   ) {
     this.id = ++constrIdCounter;
-    this.lhs = lhs;
-    this.sense = sense;
-    this.rhs = rhs;
+    this._lhs = lhs;
+    this._sense = sense;
+    this._rhs = rhs;
     const trimmed = typeof name === "string" ? name.trim() : undefined;
     if (trimmed && trimmed.length > 0) {
       this._name = trimmed;
@@ -37,6 +38,39 @@ export class Constraint {
     } else {
       this._name = `c_${this.id}`;
       this.hasExplicitName = false;
+    }
+  }
+
+  get lhs(): LinExpr {
+    return this._lhs;
+  }
+
+  set lhs(value: LinExpr) {
+    if (this._lhs !== value) {
+      this._lhs = value;
+      this.ownerModel?.notifyMutation?.();
+    }
+  }
+
+  get sense(): ComparisonSense {
+    return this._sense;
+  }
+
+  set sense(value: ComparisonSense) {
+    if (this._sense !== value) {
+      this._sense = value;
+      this.ownerModel?.notifyMutation?.();
+    }
+  }
+
+  get rhs(): number {
+    return this._rhs;
+  }
+
+  set rhs(value: number) {
+    if (!Object.is(this._rhs, value)) {
+      this._rhs = value;
+      this.ownerModel?.notifyMutation?.();
     }
   }
 

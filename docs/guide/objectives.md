@@ -83,3 +83,15 @@ console.log(values); // { x: ..., y: ... }
 | `"Unbounded"` | The objective can increase/decrease indefinitely without violating constraints. |
 | `"TimeLimit"` | The solver reached the specified time limit before proving optimality. |
 | `"Error"` | Solver encountered an internal error. |
+
+---
+
+## 🔄 Model Mutations & Execution Validity
+
+A `Model` instance always keeps its solution state synchronized with its current mathematical definition:
+
+1. **Post-Solve Mutations Reset Solution State**: Adding variables or constraints, updating the objective, or modifying variable bounds/types or constraint properties immediately resets `m.status` to `"NotSolved"`, clears `m.solution` and `m.objectiveValue`, and resets variable/constraint primal and dual values to `null`.
+2. **Mid-Flight Mutations Discard Stale Runs**: If the model is modified while an asynchronous `m.solve()` or `m.check()` call is in progress, the stale solver result is discarded, the model remains in `"NotSolved"`, and the in-flight promise rejects with an explicit error.
+3. **Overlapping Executions**: Starting a new `m.solve()` or `m.check()` call supersedes any earlier in-flight call on the same model so out-of-order completions can never overwrite the latest run's state.
+4. **Transactional Batch Edits**: If an invalid edit is rejected (including batch array calls like `m.constraint([...])`), the model rolls back the failed edit without leaving partial entities registered or invalidating an existing valid solution.
+
