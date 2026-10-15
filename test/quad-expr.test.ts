@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
 import { LinExpr } from "../src/modeler/expression.js";
 import { QuadExpr } from "../src/modeler/quad-expr.js";
+import { expr, parseExpr } from "../src/modeler/parser.js";
 
 describe("QuadExpr (Quadratic Expressions)", () => {
   it("creates a QuadExpr by multiplying two variables (x * x)", () => {
@@ -115,4 +116,38 @@ describe("QuadExpr (Quadratic Expressions)", () => {
     expect(q.linearTerms.get(x)).toBe(2);
     expect(q.constant).toBe(2);
   });
+
+  it("prunes cancelled linear terms and matches across method chaining, expr, and parseExpr", () => {
+    const x = new Var({ name: "x" });
+    const y = new Var({ name: "y" });
+
+    // (x + 1) * (-x + 1) = -x^2 + 1 (linear terms x and -x cancel out)
+    const viaMethod = x.add(1).mul(x.neg().add(1));
+    const viaTemplate = expr`(${x} + 1) * (-${x} + 1)`;
+    const viaParse = parseExpr("(x + 1) * (-x + 1)", (name) => (name === "x" ? x : undefined));
+
+    for (const candidate of [viaMethod, viaTemplate, viaParse]) {
+      expect(candidate).toBeInstanceOf(QuadExpr);
+      const q = candidate as QuadExpr;
+      expect(q.getQuadCoeff(x, x)).toBe(-1);
+      expect(q.linearTerms.size).toBe(0);
+      expect(q.constant).toBe(1);
+    }
+
+    // ((2x - 3y + 4)^2 - 2x * (2x - 3y)) / 2
+    const baseMethod = x.mul(2).sub(y.mul(3)).add(4);
+    const complexMethod = baseMethod
+      .mul(baseMethod)
+      .sub(x.mul(2).mul(x.mul(2).sub(y.mul(3))))
+      .div(2);
+    const complexTemplate = expr`((2 * ${x} - 3 * ${y} + 4)^2 - 2 * ${x} * (2 * ${x} - 3 * ${y})) / (1 + 1)` as QuadExpr;
+
+    expect(complexTemplate.getQuadCoeff(x, x)).toBe(complexMethod.getQuadCoeff(x, x));
+    expect(complexTemplate.getQuadCoeff(x, y)).toBe(complexMethod.getQuadCoeff(x, y));
+    expect(complexTemplate.getQuadCoeff(y, y)).toBe(complexMethod.getQuadCoeff(y, y));
+    expect(complexTemplate.linearTerms.get(x)).toBe(complexMethod.linearTerms.get(x));
+    expect(complexTemplate.linearTerms.get(y)).toBe(complexMethod.linearTerms.get(y));
+    expect(complexTemplate.constant).toBe(complexMethod.constant);
+  });
 });
+

@@ -94,73 +94,6 @@ function tokenize(input: string): Token[] {
   return tokens;
 }
 
-function addExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinExpr | QuadExpr {
-  if (a instanceof QuadExpr) {
-    return a.add(b);
-  }
-  if (b instanceof QuadExpr) {
-    return b.add(a);
-  }
-  return a.add(b);
-}
-
-function subExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinExpr | QuadExpr {
-  if (a instanceof QuadExpr) {
-    return a.sub(b);
-  }
-  if (b instanceof QuadExpr) {
-    return b.neg().add(a);
-  }
-  return a.sub(b);
-}
-
-function multiplyExpressions(a: LinExpr | QuadExpr, b: LinExpr | QuadExpr): LinExpr | QuadExpr {
-  const aQuadTerms = a instanceof QuadExpr ? a.quadTerms : new Map();
-  const bQuadTerms = b instanceof QuadExpr ? b.quadTerms : new Map();
-  const aLinTerms = a instanceof QuadExpr ? a.linearTerms : a.terms;
-  const bLinTerms = b instanceof QuadExpr ? b.linearTerms : b.terms;
-
-  if (aQuadTerms.size > 0 && (bQuadTerms.size > 0 || bLinTerms.size > 0)) {
-    throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-  }
-  if (bQuadTerms.size > 0 && (aQuadTerms.size > 0 || aLinTerms.size > 0)) {
-    throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-  }
-
-  // If a is pure scalar
-  if (aQuadTerms.size === 0 && aLinTerms.size === 0) {
-    return b.mul(a.constant);
-  }
-  // If b is pure scalar
-  if (bQuadTerms.size === 0 && bLinTerms.size === 0) {
-    return a.mul(b.constant);
-  }
-
-  // Both have at least one linear term, and neither has quadratic terms:
-  // degree 1 * degree 1 => degree 2 QuadExpr
-  let result = new QuadExpr();
-  result.constant = a.constant * b.constant;
-
-  if (Math.abs(b.constant) >= 1e-12) {
-    for (const [v, c] of aLinTerms) {
-      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * b.constant);
-    }
-  }
-  if (Math.abs(a.constant) >= 1e-12) {
-    for (const [v, c] of bLinTerms) {
-      result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * a.constant);
-    }
-  }
-
-  for (const [v1, c1] of aLinTerms) {
-    for (const [v2, c2] of bLinTerms) {
-      result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
-    }
-  }
-
-  return result;
-}
-
 class Parser {
   private tokens: Token[];
   private pos = 0;
@@ -198,10 +131,10 @@ class Parser {
 
       if (next.type === "PLUS") {
         this.consume();
-        result = addExpressions(result, this.parseTerm());
+        result = result.add(this.parseTerm());
       } else if (next.type === "MINUS") {
         this.consume();
-        result = subExpressions(result, this.parseTerm());
+        result = result.sub(this.parseTerm());
       } else {
         break;
       }
@@ -225,20 +158,10 @@ class Parser {
 
       if (next.type === "STAR") {
         this.consume();
-        const factor = this.parseFactor();
-        result = multiplyExpressions(result, factor);
+        result = result.mul(this.parseFactor());
       } else if (next.type === "SLASH") {
         this.consume();
-        const divisor = this.parseFactor();
-        const divLin = divisor instanceof QuadExpr ? divisor.linearTerms : divisor.terms;
-        const divQuad = divisor instanceof QuadExpr ? divisor.quadTerms.size : 0;
-        if (divLin.size > 0 || divQuad > 0) {
-          throw new Error("Cannot divide by variable in expression");
-        }
-        if (Math.abs(divisor.constant) < 1e-12) {
-          throw new Error("Division by zero in expression");
-        }
-        result = result.div(divisor.constant);
+        result = result.div(this.parseFactor());
       } else {
         break;
       }
@@ -359,7 +282,7 @@ class Parser {
       return base;
     }
     if (totalPower === 2) {
-      return multiplyExpressions(base, base);
+      return base.mul(base);
     }
     throw new Error(`Exponent ${totalPower} creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)`);
   }

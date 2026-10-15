@@ -127,12 +127,6 @@ export class QuadExpr {
     if (typeof other === "number") {
       return this.add(-other);
     }
-    if (other instanceof QuadExpr) {
-      return this.add(other.neg());
-    }
-    if ("terms" in other && other.terms instanceof Map) {
-      return this.add(other.mul(-1));
-    }
     return this.add(other.mul(-1));
   }
 
@@ -143,16 +137,20 @@ export class QuadExpr {
   mul(other: Var | LinExpr | QuadExpr): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): QuadExpr {
     if (typeof operand === "number") {
-      const result = new QuadExpr(new Map(), new Map(), this.constant * operand);
+      const result = new QuadExpr(
+        new Map(),
+        new Map(),
+        this.constant === 0 ? 0 : this.constant * operand
+      );
       for (const [v, c] of this.linearTerms) {
         const prod = c * operand;
-        if (Math.abs(prod) >= 1e-12) {
+        if (!(Math.abs(prod) < 1e-12)) {
           result.linearTerms.set(v, prod);
         }
       }
       for (const [k, term] of this.quadTerms) {
         const prod = term.coeff * operand;
-        if (Math.abs(prod) >= 1e-12) {
+        if (!(Math.abs(prod) < 1e-12)) {
           result.quadTerms.set(k, {
             var1: term.var1,
             var2: term.var2,
@@ -163,76 +161,48 @@ export class QuadExpr {
       return result;
     }
 
-    // Check if operand is Var (has id and name, but not terms)
-    if ("id" in operand && "name" in operand && !("terms" in operand) && !("quadTerms" in operand)) {
-      if (this.quadTerms.size > 0) {
-        throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-      }
-      let result = new QuadExpr();
-      if (Math.abs(this.constant) >= 1e-12) {
-        result.linearTerms.set(operand as Var, this.constant);
-      }
-      for (const [v, c] of this.linearTerms) {
-        result = result.add(QuadExpr.fromProduct(v, operand as Var, c));
-      }
-      return result;
-    }
+    const isVar =
+      "id" in operand &&
+      "name" in operand &&
+      !("terms" in operand) &&
+      !("quadTerms" in operand);
+    const otherQuadSize = "quadTerms" in operand ? operand.quadTerms.size : 0;
+    const otherLinTerms: ReadonlyMap<Var, number> = isVar
+      ? new Map([[operand as Var, 1]])
+      : "quadTerms" in operand
+        ? operand.linearTerms
+        : operand.terms;
+    const otherConstant = isVar ? 0 : operand.constant;
 
-    const otherExpr = operand as LinExpr | QuadExpr;
-    const otherQuadSize = "quadTerms" in otherExpr ? otherExpr.quadTerms.size : 0;
-    const otherLinTerms = "quadTerms" in otherExpr ? otherExpr.linearTerms : otherExpr.terms;
-
-    if (this.quadTerms.size > 0 && (otherQuadSize > 0 || otherLinTerms.size > 0)) {
-      throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-    }
-    if (otherQuadSize > 0 && this.linearTerms.size > 0) {
-      throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
+    if (
+      (this.quadTerms.size > 0 && (otherQuadSize > 0 || otherLinTerms.size > 0)) ||
+      (otherQuadSize > 0 && this.linearTerms.size > 0)
+    ) {
+      throw new Error(
+        "Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)"
+      );
     }
 
     if (otherQuadSize === 0 && otherLinTerms.size === 0) {
-      return this.mul(otherExpr.constant);
+      return this.mul(otherConstant);
     }
-    if (this.quadTerms.size === 0 && this.linearTerms.size === 0) {
-      const mulResult = otherExpr.mul(this.constant);
-      if (mulResult instanceof QuadExpr) {
-        return mulResult;
-      }
-      const result = new QuadExpr();
-      result.constant = mulResult.constant;
-      for (const [v, c] of mulResult.terms) {
-        result.linearTerms.set(v, c);
-      }
-      return result;
+    if (this.quadTerms.size === 0 && this.linearTerms.size === 0 && "quadTerms" in operand) {
+      return operand.mul(this.constant);
     }
 
-    // Both are linear (degree 1)
-    let result = new QuadExpr();
-    result.constant = this.constant * otherExpr.constant;
-    if (Math.abs(otherExpr.constant) >= 1e-12) {
-      for (const [v, c] of this.linearTerms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * otherExpr.constant);
-      }
-    }
-    if (Math.abs(this.constant) >= 1e-12) {
-      for (const [v, c] of otherLinTerms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
-      }
-    }
-    for (const [v1, c1] of this.linearTerms) {
-      for (const [v2, c2] of otherLinTerms) {
-        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
-      }
-    }
-    return result;
+    return QuadExpr.multiplyLinearTerms(
+      this.constant,
+      this.linearTerms,
+      otherConstant,
+      otherLinTerms
+    );
   }
 
   /**
-   * Divide by a non-zero scalar
+   * Divide by a non-zero scalar or constant-only expression
    */
-  div(scalar: number): QuadExpr {
-    if (Math.abs(scalar) < 1e-12) {
-      throw new Error("Division by zero in QuadExpr.div()");
-    }
+  div(divisor: number | LinExpr | QuadExpr): QuadExpr {
+    const scalar = QuadExpr.extractScalarDivisor(divisor, "QuadExpr.div()");
     return this.mul(1 / scalar);
   }
 
@@ -301,6 +271,9 @@ export class QuadExpr {
    */
   static fromProduct(v1: Var, v2: Var, coeff: number = 1): QuadExpr {
     const expr = new QuadExpr();
+    if (Math.abs(coeff) < 1e-12) {
+      return expr;
+    }
     const key = makeQuadKey(v1, v2);
     expr.quadTerms.set(key, {
       var1: v1.id <= v2.id ? v1 : v2,
@@ -308,5 +281,66 @@ export class QuadExpr {
       coeff,
     });
     return expr;
+  }
+
+  /**
+   * Canonical linear-by-linear multiplication shared across Var, LinExpr, QuadExpr, and Parser.
+   */
+  static multiplyLinearTerms(
+    constantA: number,
+    termsA: ReadonlyMap<Var, number>,
+    constantB: number,
+    termsB: ReadonlyMap<Var, number>
+  ): QuadExpr {
+    let result = new QuadExpr(
+      new Map(),
+      new Map(),
+      constantA === 0 || constantB === 0 ? 0 : constantA * constantB
+    );
+    if (!(Math.abs(constantB) < 1e-12)) {
+      for (const [v, c] of termsA) {
+        const prod = c * constantB;
+        if (!(Math.abs(prod) < 1e-12)) {
+          result.linearTerms.set(v, prod);
+        }
+      }
+    }
+    if (!(Math.abs(constantA) < 1e-12)) {
+      for (const [v, c] of termsB) {
+        const sumCoeff = (result.linearTerms.get(v) || 0) + c * constantA;
+        if (Math.abs(sumCoeff) < 1e-12) {
+          result.linearTerms.delete(v);
+        } else {
+          result.linearTerms.set(v, sumCoeff);
+        }
+      }
+    }
+    for (const [v1, c1] of termsA) {
+      for (const [v2, c2] of termsB) {
+        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Validates and extracts a non-zero scalar divisor from a number or constant-only expression.
+   */
+  static extractScalarDivisor(divisor: number | LinExpr | QuadExpr, context: string): number {
+    if (typeof divisor === "number") {
+      if (Math.abs(divisor) < 1e-12) {
+        throw new Error(`Division by zero in ${context}`);
+      }
+      return divisor;
+    }
+    const linSize = "quadTerms" in divisor ? divisor.linearTerms.size : divisor.terms.size;
+    const quadSize = "quadTerms" in divisor ? divisor.quadTerms.size : 0;
+    if (linSize > 0 || quadSize > 0) {
+      throw new Error("Cannot divide by variable in expression");
+    }
+    if (Math.abs(divisor.constant) < 1e-12) {
+      throw new Error(`Division by zero in ${context}`);
+    }
+    return divisor.constant;
   }
 }

@@ -71,11 +71,8 @@ export class LinExpr {
     }
     if (typeof other === "number") {
       return this.add(-other);
-    } else if ("terms" in other) {
-      return this.add(other.mul(-1));
-    } else {
-      return this.add(other.mul(-1));
     }
+    return this.add(other.mul(-1));
   }
 
   /**
@@ -88,52 +85,38 @@ export class LinExpr {
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
     if (typeof operand === "number") {
-      const result = new LinExpr(new Map(), this.constant * operand);
+      const result = new LinExpr(
+        new Map(),
+        this.constant === 0 ? 0 : this.constant * operand
+      );
       for (const [v, c] of this.terms) {
         const prod = c * operand;
-        if (Math.abs(prod) >= 1e-12) {
+        if (!(Math.abs(prod) < 1e-12)) {
           result.terms.set(v, prod);
         }
       }
       return result;
     }
-    const isVar = operand instanceof Var || (typeof operand === "object" && operand !== null && "id" in operand && !("terms" in operand) && !("quadTerms" in operand));
+    const isVar =
+      operand instanceof Var ||
+      (typeof operand === "object" &&
+        operand !== null &&
+        "id" in operand &&
+        !("terms" in operand) &&
+        !("quadTerms" in operand));
     if (isVar) {
-      const vOperand = operand as Var;
-      let result = new QuadExpr();
-      if (Math.abs(this.constant) >= 1e-12) {
-        result.linearTerms.set(vOperand, this.constant);
-      }
-      for (const [v, c] of this.terms) {
-        result = result.add(QuadExpr.fromProduct(v, vOperand, c));
-      }
-      return result;
+      return QuadExpr.multiplyLinearTerms(
+        this.constant,
+        this.terms,
+        0,
+        new Map([[operand as Var, 1]])
+      );
     }
     if (operand instanceof QuadExpr) {
-      if (operand.quadTerms.size > 0 && this.terms.size > 0) {
-        throw new Error("Multiplication creates a non-linear term of degree > 2 (not allowed in MILP/LP/QP)");
-      }
       if (this.terms.size === 0) {
         return operand.mul(this.constant);
       }
-      let result = new QuadExpr();
-      result.constant = this.constant * operand.constant;
-      if (Math.abs(operand.constant) >= 1e-12) {
-        for (const [v, c] of this.terms) {
-          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
-        }
-      }
-      if (Math.abs(this.constant) >= 1e-12) {
-        for (const [v, c] of operand.linearTerms) {
-          result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
-        }
-      }
-      for (const [v1, c1] of this.terms) {
-        for (const [v2, c2] of operand.linearTerms) {
-          result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
-        }
-      }
-      return result;
+      return new QuadExpr(this.terms, new Map(), this.constant).mul(operand);
     }
     // operand is LinExpr
     if (this.terms.size === 0) {
@@ -142,33 +125,19 @@ export class LinExpr {
     if (operand.terms.size === 0) {
       return this.mul(operand.constant);
     }
-    let result = new QuadExpr();
-    result.constant = this.constant * operand.constant;
-    if (Math.abs(operand.constant) >= 1e-12) {
-      for (const [v, c] of this.terms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * operand.constant);
-      }
-    }
-    if (Math.abs(this.constant) >= 1e-12) {
-      for (const [v, c] of operand.terms) {
-        result.linearTerms.set(v, (result.linearTerms.get(v) || 0) + c * this.constant);
-      }
-    }
-    for (const [v1, c1] of this.terms) {
-      for (const [v2, c2] of operand.terms) {
-        result = result.add(QuadExpr.fromProduct(v1, v2, c1 * c2));
-      }
-    }
-    return result;
+    return QuadExpr.multiplyLinearTerms(
+      this.constant,
+      this.terms,
+      operand.constant,
+      operand.terms
+    );
   }
 
   /**
-   * Divide this expression by a non-zero scalar
+   * Divide this expression by a non-zero scalar or constant-only expression
    */
-  div(scalar: number): LinExpr {
-    if (Math.abs(scalar) < 1e-12) {
-      throw new Error("Division by zero in LinExpr.div()");
-    }
+  div(divisor: number | LinExpr | QuadExpr): LinExpr {
+    const scalar = QuadExpr.extractScalarDivisor(divisor, "LinExpr.div()");
     return this.mul(1 / scalar);
   }
 
