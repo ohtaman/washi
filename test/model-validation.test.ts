@@ -143,7 +143,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
 
       expect(() => {
         m.indicator(b, x.eq(-1e308), { M: 1e308, name: "ovf" });
-      }).toThrow(/invalid right-hand side \(RHS\): -Infinity/);
+      }).toThrow(/invalid right-hand side \(RHS\): -Infinity|shifted right-hand side overflows finite floating-point range/);
 
       expect(m.constraints).toHaveLength(0);
       expect(m.getConstraintByName("ovf_le")).toBeUndefined();

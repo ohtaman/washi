@@ -47,6 +47,7 @@ import {
   deriveBigMForLe,
   deriveBigMForGe,
   validateUserBigM,
+  buildIndicatorLinearization,
 } from "./big-m.js";
 import {
   claimConstraintOwnership,
@@ -883,17 +884,34 @@ export class Model {
   }
 
   /**
-   * Add an indicator constraint via Big-M auto-linearization:
+   * Add an indicator constraint via floating-point Big-M auto-linearization:
    * "If binVar == activeValue, then constraint holds"
    *
-   * Automatically handles <=, >=, and == constraints.
-   * Enables solving conditional logic in MIP solvers (HiGHS, GLPK) without requiring SMT.
+   * Automatically handles <=, >=, and == constraints for LP/MIP solvers (HiGHS, GLPK)
+   * under standard floating-point feasibility tolerances.
+   * Note: Because Big-M rows are floating-point linear relaxations, they do not
+   * guarantee exact rational equivalence in SMT solvers (Z3); use logical
+   * implications (`implies()`) when exact SMT diagnosis is required.
    */
   indicator(
     binVar: Var,
     constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    if (!(binVar instanceof Var)) {
+      throw new Error(
+        "Invalid binary variable passed to indicator(). Expected a binary Var instance."
+      );
+    }
+    const isBinary =
+      binVar.type === "Binary" ||
+      (binVar.type === "Integer" && binVar.lb === 0 && binVar.ub === 1);
+    if (!isBinary) {
+      throw new Error(
+        `Invalid variable "${binVar.name}" passed to indicator(): variable has type "${binVar.type}" with bounds [${binVar.lb}, ${binVar.ub}]. Indicator activation variable must be a Binary variable (or Integer variable with bounds [0, 1]).`
+      );
+    }
+
     if (constraint instanceof QuadExpr) {
       throw new Error(
         "Quadratic expressions or constraints are not supported in indicator constraints (only linear constraints are allowed)."
@@ -947,8 +965,6 @@ export class Model {
       );
     }
 
-    let mLe = 0;
-    let mGe = 0;
     const pending: Array<[Constraint, string]> = [];
     try {
       if ((sense === "<=" || sense === "==") && (this.hasConstraintName(leName) || this.hasBoolVarName(leName))) {
@@ -969,38 +985,26 @@ export class Model {
         validateUserBigM(options.M, baseName);
       }
 
-      // Derive Big-M separately for each direction (<=, >=), including both sides of equality.
-      mLe =
-        options.M !== undefined
-          ? options.M
-          : sense === "<=" || sense === "=="
-          ? deriveBigMForLe(lhs, rhs, leName)
-          : 0;
-
-      mGe =
-        options.M !== undefined
-          ? options.M
-          : sense === ">=" || sense === "=="
-          ? deriveBigMForGe(lhs, rhs, geName)
-          : 0;
-
-      if (activeVal === 1) {
-        if (sense === "<=" || sense === "==") {
-          pending.push([lhs.add(binVar.mul(mLe)).le(rhs + mLe), leName]);
-        }
-        if (sense === ">=" || sense === "==") {
-          pending.push([lhs.sub(binVar.mul(mGe)).ge(rhs - mGe), geName]);
-        }
-      } else {
-        if (sense === "<=" || sense === "==") {
-          pending.push([lhs.sub(binVar.mul(mLe)).le(rhs), leName]);
-        }
-        if (sense === ">=" || sense === "==") {
-          pending.push([lhs.add(binVar.mul(mGe)).ge(rhs), geName]);
+      const isOwnedVar = (v: Var) => this.varMapByName.get(v.name) === v;
+      for (const [v] of lhs.terms) {
+        if (!isOwnedVar(v)) {
+          throw new Error(
+            `Variable "${v.name}" in constraint "${baseName}" does not belong to model "${this.name}". All variables must belong to the model by object identity.`
+          );
         }
       }
 
-      const isOwnedVar = (v: Var) => this.varMapByName.get(v.name) === v;
+      if (sense === "<=" || sense === "==") {
+        const mLe = options.M !== undefined ? options.M : deriveBigMForLe(lhs, rhs, leName);
+        const leLinearized = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, mLe, leName);
+        pending.push([new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName), leName]);
+      }
+      if (sense === ">=" || sense === "==") {
+        const mGe = options.M !== undefined ? options.M : deriveBigMForGe(lhs, rhs, geName);
+        const geLinearized = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, mGe, geName);
+        pending.push([new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName]);
+      }
+
       for (const [cRow, rowName] of pending) {
         validateLinearConstraint(cRow, this.name, isOwnedVar, rowName);
       }

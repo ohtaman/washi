@@ -15,6 +15,7 @@ export {
   deriveBigMForLe,
   deriveBigMForGe,
   validateUserBigM,
+  buildIndicatorLinearization,
   validateModelIntegrity,
   maximize,
   minimize,

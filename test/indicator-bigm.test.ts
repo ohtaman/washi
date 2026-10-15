@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, expr, c } from "../src/modeler/index.js";
+import {
+  Model,
+  sum,
+  expr,
+  c,
+  LinExpr,
+  deriveBigMForLe,
+  deriveBigMForGe,
+  buildIndicatorLinearization,
+} from "../src/modeler/index.js";
 
 describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
   it("enforces constraint f(x) <= b only when indicator variable z == 1 (activeValue = 1)", async () => {
@@ -382,6 +391,20 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(() => m.indicator(z, x.le(50), { activeValue: -1 as any })).toThrow(
         /Invalid activeValue: -1.*must be 0 or 1/
       );
+      expect(() =>
+        buildIndicatorLinearization(z, x.add(0), "<=", 50, 2 as any, 50, "ind")
+      ).toThrow(/Invalid activeValue: 2.*must be 0 or 1/);
+      expect(() =>
+        buildIndicatorLinearization(z, x.add(0), "==" as any, 50, 1, 50, "ind")
+      ).toThrow(/Invalid indicator sense/i);
+      expect(() =>
+        buildIndicatorLinearization(x, x.add(0), "<=", 50, 1, 50, "ind")
+      ).toThrow(/must be a Binary variable/i);
+      const corruptedZ = m.binary("corrupted_z");
+      corruptedZ.ub = 2;
+      expect(() =>
+        buildIndicatorLinearization(corruptedZ, x.add(0), "<=", 50, 1, 50, "ind")
+      ).toThrow(/Binary indicator variable.*invalid bounds/i);
     });
 
     it("handles constraints where bounds already satisfy the inequality (M = 0)", async () => {
@@ -398,5 +421,70 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(status).toBe("Optimal");
       expect(x.value).toBe(50);
     });
+
+    it("detects finite arithmetic overflow in Big-M derivation and shifted RHS before mutating model", async () => {
+      const m = new Model("OverflowDetection");
+      const x = m.continuous("x", { lb: -1e308, ub: 1e308 });
+      const z = m.binary("z");
+
+      // 1. Overflow in deriveBigMForLe (2 * 1e308 => Infinity)
+      expect(() => deriveBigMForLe(x.mul(2), 0, "overflow_le")).toThrow(
+        /Cannot derive safe Big-M.*numeric overflow/i
+      );
+
+      // 2. Overflow in deriveBigMForGe (2 * -1e308 => -Infinity)
+      expect(() => deriveBigMForGe(x.mul(2), 0, "overflow_ge")).toThrow(
+        /Cannot derive safe Big-M.*numeric overflow/i
+      );
+
+      // 3. indicator() throws before mutating model.constraints (even on equality where <= might succeed before >= overflows)
+      const y = m.continuous("y", { lb: -1e308, ub: 10 });
+      expect(() => m.indicator(z, y.mul(2).eq(0), { name: "eq_overflow" })).toThrow(
+        /Cannot derive safe Big-M.*numeric overflow/i
+      );
+      expect(m.constraints.length).toBe(0);
+
+      // 4. User-supplied finite M that overflows shifted RHS (rhs + M => Infinity)
+      const u = m.continuous("u", { lb: 0, ub: 100 });
+      expect(() =>
+        m.indicator(z, u.le(1e308), { activeValue: 1, M: 1e308, name: "shifted_rhs_overflow" })
+      ).toThrow(/shifted right-hand side overflows finite floating-point range/i);
+      expect(m.constraints.length).toBe(0);
+
+      // 5. Representable indicator with large cancelling lhs.constant and rhs (effectiveRhs = 0) succeeds
+      const w = m.continuous("w", { lb: 0, ub: 1e308 });
+      const cancellingExpr = new LinExpr(new Map([[w, 1]]), 1e308);
+      expect(deriveBigMForLe(cancellingExpr, 1e308, "cancelling_le")).toBe(1e308);
+
+      // 6. NaN constant in LinExpr is rejected rather than coerced to 0
+      const nanExpr = new LinExpr(new Map([[u, 1]]), NaN);
+      expect(() => deriveBigMForLe(nanExpr, 10, "nan_const")).toThrow(/non-finite constant/i);
+
+      // 7. Rejects trigger variable appearing in constrained linear expression
+      expect(() =>
+        buildIndicatorLinearization(z, u.add(z), "<=", 0, 1, 100, "trigger_in_lhs")
+      ).toThrow(/cannot include its own binary activation variable/i);
+
+      // 8. Ordinary fractional indicator (x in [0, 1], x <= 0.1, activeValue = 1) succeeds and solves accurately
+      const mFrac = new Model("FractionalIndicator");
+      const xFrac = mFrac.continuous("xFrac", { lb: 0, ub: 1 });
+      const zFrac = mFrac.binary("zFrac");
+      expect(() => mFrac.indicator(zFrac, xFrac.le(0.1), { activeValue: 1 })).not.toThrow();
+      mFrac.constrain(c`${zFrac} == 1`);
+      mFrac.maximize(xFrac);
+      await mFrac.solve();
+      expect(xFrac.value).toBeCloseTo(0.1, 6);
+
+      // 9. Failed indicator() validation preserves existing solved state and rejects non-canonical runtime type spellings
+      expect(() =>
+        mFrac.indicator(zFrac, xFrac.le(0), { activeValue: 2 as unknown as 0 | 1 })
+      ).toThrow(/Invalid activeValue/i);
+      expect(mFrac.status).toBe("Optimal");
+      expect(xFrac.value).toBeCloseTo(0.1, 6);
+      const fakeUpperVar = m.continuous("fakeUpper", { lb: 0, ub: 1 });
+      (fakeUpperVar as unknown as { type: string }).type = "BINARY";
+      expect(() => m.indicator(fakeUpperVar, x.le(0))).toThrow(/Invalid variable/i);
+    });
   });
 });
+
