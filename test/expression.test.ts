@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
 import { LinExpr, sum } from "../src/modeler/expression.js";
+import { Model } from "../src/modeler/model.js";
+import { parseExpr } from "../src/modeler/parser.js";
 
 describe("LinExpr & Arithmetic Operations", () => {
   it("creates empty expression with zero constant", () => {
@@ -111,15 +113,30 @@ describe("LinExpr & Arithmetic Operations", () => {
     expect(c3.rhs).toBe(0);
   });
 
-  it("serializes retained small non-zero residual coefficients in LP export", () => {
-    const x = new Var({ name: "x" });
+  it("serializes retained small non-zero residual coefficients in LP export and round-trips through parseExpr", () => {
+    const m = new Model("SmallCoeffLpExport");
+    const x = m.continuous("x");
     const residualLin = x.mul(1).sub(x.mul(1 - 5e-13));
-    const coeff = residualLin.terms.get(x)!;
-    expect(coeff).toBeGreaterThan(0);
-    expect(coeff).toBeLessThan(1e-12);
+    const linCoeff = residualLin.terms.get(x)!;
+    expect(linCoeff).toBeGreaterThan(0);
+    expect(linCoeff).toBeLessThan(1e-12);
 
-    const cSmall = residualLin.le(1, "c_small");
-    expect(residualLin.toString()).toContain("x");
-    expect(cSmall.toString()).toContain("x");
+    const constrExpr = x.mul(3e-13);
+    const quadObj = residualLin.add(x.mul(x).mul(4e-13));
+
+    m.minimize(quadObj);
+    m.constraint(constrExpr.le(1), "c_small");
+
+    const lp = m.toLpString();
+    expect(lp).toContain(`${linCoeff} x`);
+    expect(lp).toContain(`[ 8e-13 x ^ 2 ] / 2`);
+    expect(lp).toContain(`c_small: 3e-13 x <= 1`);
+
+    // Scientific notation emitted by toString() must round-trip through parseExpr()
+    const resolver = (name: string) => (name === "x" ? x : undefined);
+    const reparsedLin = parseExpr(residualLin.toString(), resolver) as LinExpr;
+    expect(reparsedLin.terms.get(x)).toBe(linCoeff);
+    const reparsedQuad = parseExpr(quadObj.toString(), resolver);
+    expect("quadTerms" in reparsedQuad && reparsedQuad.getQuadCoeff(x, x)).toBe(4e-13);
   });
 });

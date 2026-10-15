@@ -57,6 +57,8 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           const m = new Model("Browser integration");
           const x = m.integer("x", { lb: 0, ub: 10 });
           const active = m.binary("active");
+          const scaled = expr`${1e-7} * ${x} + 1.5e-6`;
+          require(scaled.terms.get(x) === 1e-7 && scaled.constant === 1.5e-6, "Exponential interpolation failed");
           m.constraint(active.eq(1), "activation");
           m.indicator(active, x.le(7), { name: "conditional_capacity" });
           m.objective(maximize(expr`3 * ${x} + 5`));

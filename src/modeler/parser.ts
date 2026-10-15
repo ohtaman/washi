@@ -19,12 +19,15 @@ interface Token {
     | "RPAREN"
     | "COMP";
   value: string;
+  numericValue?: number;
 }
+
+const STRICT_NUMBER_LITERAL_RE = /^(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
 
 /**
  * Tokenize an algebraic expression string
  */
-function tokenize(input: string): Token[] {
+function tokenize(input: string, numberMap?: ReadonlyMap<string, number>): Token[] {
   const tokens: Token[] = [];
   let i = 0;
   const len = input.length;
@@ -73,19 +76,67 @@ function tokenize(input: string): Token[] {
       }
       tokens.push({ type: "COMP", value: comp });
     } else if (/[0-9.]/.test(ch)) {
+      const start = i;
       let numStr = "";
-      while (i < len && /[0-9.]/.test(input[i])) {
-        numStr += input[i];
-        i++;
+      while (i < len && /[0-9]/.test(input[i])) {
+        numStr += input[i++];
       }
-      tokens.push({ type: "NUMBER", value: numStr });
+      if (i < len && input[i] === ".") {
+        numStr += input[i++];
+        while (i < len && /[0-9]/.test(input[i])) {
+          numStr += input[i++];
+        }
+      }
+      if (i < len && (input[i] === "e" || input[i] === "E")) {
+        const nextCh = i + 1 < len ? input[i + 1] : "";
+        const isIdentStartExceptExp = /[a-zA-Z_]/.test(nextCh);
+        if (!isIdentStartExceptExp) {
+          numStr += input[i++];
+          if (i < len && (input[i] === "+" || input[i] === "-")) {
+            numStr += input[i++];
+          }
+          while (i < len && /[0-9]/.test(input[i])) {
+            numStr += input[i++];
+          }
+          while (
+            i < len &&
+            (input[i] === "." || input[i] === "e" || input[i] === "E" || /[0-9]/.test(input[i]))
+          ) {
+            numStr += input[i++];
+          }
+        }
+      } else {
+        while (i < len && (input[i] === "." || /[0-9]/.test(input[i]))) {
+          numStr += input[i++];
+        }
+      }
+      if (!STRICT_NUMBER_LITERAL_RE.test(numStr)) {
+        throw new Error(`Invalid numeric literal '${numStr}' at position ${start} in: "${input}"`);
+      }
+      const numericValue = Number(numStr);
+      if (!Number.isFinite(numericValue)) {
+        throw new Error(
+          `Numeric literal '${numStr}' overflows finite floating-point range in: "${input}"`
+        );
+      }
+      if (numericValue === 0 && !/^[0.]+(?:[eE][+-]?\d+)?$/.test(numStr)) {
+        throw new Error(
+          `Numeric literal '${numStr}' underflows to zero at position ${start} in: "${input}"`
+        );
+      }
+      tokens.push({ type: "NUMBER", value: numStr, numericValue });
     } else if (/[a-zA-Z_]/.test(ch)) {
       let ident = "";
       while (i < len && /[a-zA-Z0-9_]/.test(input[i])) {
         ident += input[i];
         i++;
       }
-      tokens.push({ type: "IDENT", value: ident });
+      if (numberMap && numberMap.has(ident)) {
+        const numericValue = numberMap.get(ident)!;
+        tokens.push({ type: "NUMBER", value: String(numericValue), numericValue });
+      } else {
+        tokens.push({ type: "IDENT", value: ident });
+      }
     } else {
       throw new Error(`Unexpected character '${ch}' at position ${i} in: "${input}"`);
     }
@@ -193,7 +244,7 @@ class Parser {
 
     if (t.type === "NUMBER") {
       this.consume();
-      const val = parseFloat(t.value);
+      const val = t.numericValue ?? Number(t.value);
       // Check for implicit multiplication: e.g. "30x", "2x^2", "2(x+1)^2", "2__ph_0__^2"
       if (this.peek()?.type === "IDENT" || this.peek()?.type === "LPAREN") {
         let subExpr: LinExpr | QuadExpr;
@@ -243,12 +294,22 @@ class Parser {
     const exponents: number[] = [];
     while (this.peek()?.type === "CARET") {
       this.consume();
+      const isParenthesizedNumber =
+        this.tokens[this.pos]?.type === "LPAREN" &&
+        this.tokens[this.pos + 1]?.type === "NUMBER" &&
+        this.tokens[this.pos + 2]?.type === "RPAREN";
+      if (isParenthesizedNumber) {
+        this.consume("LPAREN");
+      }
       const expToken = this.peek();
       if (!expToken || expToken.type !== "NUMBER") {
         throw new Error("Exponent must be a non-negative integer number");
       }
       this.consume();
-      const power = parseFloat(expToken.value);
+      if (isParenthesizedNumber) {
+        this.consume("RPAREN");
+      }
+      const power = expToken.numericValue ?? Number(expToken.value);
       if (!Number.isInteger(power) || power < 0) {
         throw new Error("Exponent must be a non-negative integer");
       }
@@ -272,6 +333,9 @@ class Parser {
 
     if (isPureConstant) {
       const val = Math.pow(base.constant, totalPower);
+      if (base.constant !== 0 && totalPower > 0 && val === 0) {
+        throw new Error("Constant exponentiation underflows to zero.");
+      }
       return new LinExpr(new Map(), val);
     }
 
@@ -300,24 +364,35 @@ class Parser {
   }
 }
 
-/**
- * Parse a mathematical expression string into a LinExpr or QuadExpr
- */
-export function parseExpr(text: string, resolver: ExprResolver): LinExpr | QuadExpr {
-  const tokens = tokenize(text);
+function parseExprInternal(
+  text: string,
+  resolver: ExprResolver,
+  numberMap?: ReadonlyMap<string, number>
+): LinExpr | QuadExpr {
+  const tokens = tokenize(text, numberMap);
   const parser = new Parser(tokens, resolver);
   const expr = parser.parseExpression();
   const remaining = parser.getRemainingToken();
   if (remaining) {
     throw new Error(`Unexpected token '${remaining.value}' after expression in "${text}"`);
   }
+  validateTemplateExprNumericSanity(expr);
   return expr;
 }
 
 /**
- * Parse a constraint string such as "chairs + 2 * tables <= 40"
+ * Parse a mathematical expression string into a LinExpr or QuadExpr
  */
-export function parseConstraint(text: string, resolver: ExprResolver, name?: string): Constraint {
+export function parseExpr(text: string, resolver: ExprResolver): LinExpr | QuadExpr {
+  return parseExprInternal(text, resolver);
+}
+
+function parseConstraintInternal(
+  text: string,
+  resolver: ExprResolver,
+  name?: string,
+  numberMap?: ReadonlyMap<string, number>
+): Constraint {
   const compMatch = text.match(/(<=|>=|==|=<|=>|=)/);
   if (!compMatch) {
     throw new Error(`Constraint must contain a comparison operator (<=, >=, ==, =): "${text}"`);
@@ -334,8 +409,8 @@ export function parseConstraint(text: string, resolver: ExprResolver, name?: str
   else if (rawOp === "==" || rawOp === "=") sense = "==";
   else throw new Error(`Unsupported operator "${rawOp}"`);
 
-  const lhsExpr = parseExpr(leftStr, resolver);
-  const rhsExpr = parseExpr(rightStr, resolver);
+  const lhsExpr = parseExprInternal(leftStr, resolver, numberMap);
+  const rhsExpr = parseExprInternal(rightStr, resolver, numberMap);
 
   if (
     (lhsExpr instanceof QuadExpr && lhsExpr.quadTerms.size > 0) ||
@@ -348,12 +423,75 @@ export function parseConstraint(text: string, resolver: ExprResolver, name?: str
   const rhsLin = rhsExpr instanceof QuadExpr ? new LinExpr(rhsExpr.linearTerms, rhsExpr.constant) : rhsExpr;
 
   // Normalization: lhs - rhs terms <= rhs_constant - lhs_constant
+  let constr: Constraint;
   if (sense === "<=") {
-    return lhsLin.le(rhsLin, name);
+    constr = lhsLin.le(rhsLin, name);
   } else if (sense === ">=") {
-    return lhsLin.ge(rhsLin, name);
+    constr = lhsLin.ge(rhsLin, name);
   } else {
-    return lhsLin.eq(rhsLin, name);
+    constr = lhsLin.eq(rhsLin, name);
+  }
+  validateTemplateExprNumericSanity(constr.lhs);
+  if (!Number.isFinite(constr.rhs)) {
+    throw new Error(`Invalid non-finite right-hand side "${constr.rhs}" in constraint.`);
+  }
+  return constr;
+}
+
+/**
+ * Parse a constraint string such as "chairs + 2 * tables <= 40"
+ */
+export function parseConstraint(text: string, resolver: ExprResolver, name?: string): Constraint {
+  return parseConstraintInternal(text, resolver, name);
+}
+
+function isTemplateExprOrVar(val: unknown): val is Var | LinExpr | QuadExpr {
+  if (val instanceof Var || val instanceof LinExpr || val instanceof QuadExpr) {
+    return true;
+  }
+  if (typeof val !== "object" || val === null) {
+    return false;
+  }
+  if ("terms" in val && val.terms instanceof Map) {
+    return true;
+  }
+  if ("quadTerms" in val && val.quadTerms instanceof Map) {
+    return true;
+  }
+  return (
+    "id" in val &&
+    "name" in val &&
+    "lb" in val &&
+    "ub" in val &&
+    "type" in val &&
+    typeof (val as Var).mul === "function"
+  );
+}
+
+function validateTemplateExprNumericSanity(val: Var | LinExpr | QuadExpr): void {
+  if ("constant" in val && !Number.isFinite(val.constant)) {
+    throw new Error(`Invalid non-finite constant "${val.constant}" in expression.`);
+  }
+  if ("terms" in val && val.terms instanceof Map) {
+    for (const [, coeff] of val.terms) {
+      if (!Number.isFinite(coeff)) {
+        throw new Error(`Invalid non-finite coefficient "${coeff}" in expression.`);
+      }
+    }
+  }
+  if ("linearTerms" in val && val.linearTerms instanceof Map) {
+    for (const [, coeff] of val.linearTerms) {
+      if (!Number.isFinite(coeff)) {
+        throw new Error(`Invalid non-finite coefficient "${coeff}" in expression.`);
+      }
+    }
+  }
+  if ("quadTerms" in val && val.quadTerms instanceof Map) {
+    for (const [, term] of val.quadTerms) {
+      if (!Number.isFinite(term.coeff)) {
+        throw new Error(`Invalid non-finite quadratic coefficient "${term.coeff}" in expression.`);
+      }
+    }
   }
 }
 
@@ -363,8 +501,14 @@ export function parseConstraint(text: string, resolver: ExprResolver, name?: str
 function parseTemplate(
   strings: TemplateStringsArray,
   values: (Var | LinExpr | QuadExpr | number)[]
-): { fullText: string; resolver: ExprResolver } {
+): { fullText: string; resolver: ExprResolver; numberMap: Map<string, number> } {
   const placeholderMap = new Map<string, Var | LinExpr | QuadExpr>();
+  const numberMap = new Map<string, number>();
+  const rawJoined = strings.join("");
+  let tag = "__washi_";
+  while (rawJoined.includes(tag)) {
+    tag += "_";
+  }
   let fullText = "";
 
   for (let i = 0; i < strings.length; i++) {
@@ -372,22 +516,29 @@ function parseTemplate(
     if (i < values.length) {
       const val = values[i];
       if (typeof val === "number") {
-        fullText += `(${val})`;
-      } else if (
-        val instanceof Var ||
-        val instanceof LinExpr ||
-        val instanceof QuadExpr ||
-        (typeof val === "object" && val !== null && ("id" in val || "terms" in val || "quadTerms" in val))
-      ) {
-        const ph = `__ph_${i}__`;
-        placeholderMap.set(ph, val as Var | LinExpr | QuadExpr);
-        fullText += ph;
+        if (!Number.isFinite(val)) {
+          throw new Error(
+            `Invalid numeric value "${val}" in template expression: interpolated numbers must be finite.`
+          );
+        }
+        const numPh = `${tag}num_${i}__`;
+        numberMap.set(numPh, val);
+        fullText += `(${numPh})`;
+      } else if (isTemplateExprOrVar(val)) {
+        validateTemplateExprNumericSanity(val);
+        const ph = `${tag}ph_${i}__`;
+        placeholderMap.set(ph, val);
+        fullText += ` ${ph} `;
+      } else {
+        throw new Error(
+          `Unsupported interpolation value in template expression: expected a finite number, Var, LinExpr, or QuadExpr.`
+        );
       }
     }
   }
 
   const resolver: ExprResolver = (name) => placeholderMap.get(name);
-  return { fullText, resolver };
+  return { fullText, resolver, numberMap };
 }
 
 /**
@@ -400,8 +551,8 @@ export function c(
   strings: TemplateStringsArray,
   ...values: (Var | LinExpr | QuadExpr | number)[]
 ): Constraint {
-  const { fullText, resolver } = parseTemplate(strings, values);
-  return parseConstraint(fullText, resolver);
+  const { fullText, resolver, numberMap } = parseTemplate(strings, values);
+  return parseConstraintInternal(fullText, resolver, undefined, numberMap);
 }
 
 /**
@@ -416,12 +567,12 @@ export function expr(
   strings: TemplateStringsArray,
   ...values: (Var | LinExpr | QuadExpr | number)[]
 ): LinExpr | QuadExpr {
-  const { fullText, resolver } = parseTemplate(strings, values);
+  const { fullText, resolver, numberMap } = parseTemplate(strings, values);
   if (/(<=|>=|==|=<|=>|=)/.test(fullText)) {
     throw new Error(
       `Relational comparison operators (<=, >=, ==) cannot be used in expr\`...\`. ` +
       `Use the c\`...\` template tag for constraints (e.g. c\`\${x} <= 10\`), or remove the comparison operator for arithmetic expressions.`
     );
   }
-  return parseExpr(fullText, resolver);
+  return parseExprInternal(fullText, resolver, numberMap);
 }

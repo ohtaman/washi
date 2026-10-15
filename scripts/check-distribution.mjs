@@ -148,6 +148,13 @@ async function runtime(root, entry, esm, base = "/factory/") {
   check(await timeout(context.runPlan(false, false)));
   check(await timeout(context.runPlan(true, true)));
   assert(requests.some((url) => url.endsWith(".wasm")));
+  if (api?.expr && api?.Model) {
+    const expModel = new api.Model("ExpCheck");
+    const expVar = expModel.continuous("x");
+    const expTerm = api.expr`${1e-7} * ${expVar} + 2.5e-6`;
+    assert.equal(expTerm.terms.get(expVar), 1e-7);
+    assert.equal(expTerm.constant, 2.5e-6);
+  }
   console.log(`PASS emitted runtime: ${base}${entry} (LP / MIP / Worker, local assets only)`);
   if (api?.getHighs) {
     for (const name of ["missing.wasm", "html-instead-of.wasm"]) {
