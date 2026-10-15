@@ -1,11 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createRequire } from "node:module";
+import { Mutex, Semaphore } from "async-mutex";
 import { Model, maximize } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
 import { killZ3Threads, loadZ3, notifyZ3WorkerError } from "../src/modeler/solvers/z3/loader.js";
 
-// Resolve the exact dependency instance used by z3-solver, even when nested.
-const { Mutex, Semaphore } = createRequire(import.meta.resolve("z3-solver"))("async-mutex");
 const originalAcquire = Semaphore.prototype.acquire;
 
 afterEach(async () => {
