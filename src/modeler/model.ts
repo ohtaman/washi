@@ -101,10 +101,7 @@ function isPlainOptionsObject(val: unknown): boolean {
 
 export type KeyCollection<K extends string | number> =
   | ReadonlyArray<K>
-  | (Iterable<K> & object);
-
-type ValidKeyCollection<C, K extends string | number> =
-  KeyCollection<K> & ([C] extends [String] ? never : unknown);
+  | (Iterable<K> & object & { readonly trim?: never });
 
 function assertValidCount(count: number, label: string): void {
   if (!Number.isInteger(count) || count < 0) {
@@ -486,8 +483,8 @@ export class Model {
   binary(name?: string, options?: VarNameOptions): Var;
   binary(options: VarNameOptions): Var;
   binary(count: number, options?: VarNameOptions): Var[];
-  binary<K extends string | number, KC extends KeyCollection<K> = KeyCollection<K>>(
-    keys: KC & ValidKeyCollection<KC, K>,
+  binary<K extends string | number>(
+    keys: KeyCollection<K>,
     options?: VarNameOptions
   ): Record<K, Var>;
   binary(
@@ -495,24 +492,19 @@ export class Model {
     cols: number,
     options?: VarNameOptions
   ): Var[][];
-  binary<C extends string | number, CC extends KeyCollection<C> = KeyCollection<C>>(
+  binary<C extends string | number>(
     rows: number,
-    cols: CC & ValidKeyCollection<CC, C>,
+    cols: KeyCollection<C>,
     options?: VarNameOptions
   ): Array<Record<C, Var>>;
-  binary<R extends string | number, RC extends KeyCollection<R> = KeyCollection<R>>(
-    rows: RC & ValidKeyCollection<RC, R>,
+  binary<R extends string | number>(
+    rows: KeyCollection<R>,
     cols: number,
     options?: VarNameOptions
   ): Record<R, Var[]>;
-  binary<
-    R extends string | number,
-    C extends string | number,
-    RC extends KeyCollection<R> = KeyCollection<R>,
-    CC extends KeyCollection<C> = KeyCollection<C>,
-  >(
-    rows: RC & ValidKeyCollection<RC, R>,
-    cols: CC & ValidKeyCollection<CC, C>,
+  binary<R extends string | number, C extends string | number>(
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: VarNameOptions
   ): Record<R, Record<C, Var>>;
   binary(arg1?: any, arg2?: any, arg3?: any): any {
@@ -534,8 +526,8 @@ export class Model {
   integer(name?: string, options?: BoundsOptions): Var;
   integer(options: BoundsOptions): Var;
   integer(count: number, options?: BoundsOptions): Var[];
-  integer<K extends string | number, KC extends KeyCollection<K> = KeyCollection<K>>(
-    keys: KC & ValidKeyCollection<KC, K>,
+  integer<K extends string | number>(
+    keys: KeyCollection<K>,
     options?: BoundsOptions
   ): Record<K, Var>;
   integer(
@@ -543,24 +535,19 @@ export class Model {
     cols: number,
     options?: BoundsOptions
   ): Var[][];
-  integer<C extends string | number, CC extends KeyCollection<C> = KeyCollection<C>>(
+  integer<C extends string | number>(
     rows: number,
-    cols: CC & ValidKeyCollection<CC, C>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Array<Record<C, Var>>;
-  integer<R extends string | number, RC extends KeyCollection<R> = KeyCollection<R>>(
-    rows: RC & ValidKeyCollection<RC, R>,
+  integer<R extends string | number>(
+    rows: KeyCollection<R>,
     cols: number,
     options?: BoundsOptions
   ): Record<R, Var[]>;
-  integer<
-    R extends string | number,
-    C extends string | number,
-    RC extends KeyCollection<R> = KeyCollection<R>,
-    CC extends KeyCollection<C> = KeyCollection<C>,
-  >(
-    rows: RC & ValidKeyCollection<RC, R>,
-    cols: CC & ValidKeyCollection<CC, C>,
+  integer<R extends string | number, C extends string | number>(
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
   integer(arg1?: any, arg2?: any, arg3?: any): any {
@@ -582,8 +569,8 @@ export class Model {
   continuous(name?: string, options?: BoundsOptions): Var;
   continuous(options: BoundsOptions): Var;
   continuous(count: number, options?: BoundsOptions): Var[];
-  continuous<K extends string | number, KC extends KeyCollection<K> = KeyCollection<K>>(
-    keys: KC & ValidKeyCollection<KC, K>,
+  continuous<K extends string | number>(
+    keys: KeyCollection<K>,
     options?: BoundsOptions
   ): Record<K, Var>;
   continuous(
@@ -591,24 +578,19 @@ export class Model {
     cols: number,
     options?: BoundsOptions
   ): Var[][];
-  continuous<C extends string | number, CC extends KeyCollection<C> = KeyCollection<C>>(
+  continuous<C extends string | number>(
     rows: number,
-    cols: CC & ValidKeyCollection<CC, C>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Array<Record<C, Var>>;
-  continuous<R extends string | number, RC extends KeyCollection<R> = KeyCollection<R>>(
-    rows: RC & ValidKeyCollection<RC, R>,
+  continuous<R extends string | number>(
+    rows: KeyCollection<R>,
     cols: number,
     options?: BoundsOptions
   ): Record<R, Var[]>;
-  continuous<
-    R extends string | number,
-    C extends string | number,
-    RC extends KeyCollection<R> = KeyCollection<R>,
-    CC extends KeyCollection<C> = KeyCollection<C>,
-  >(
-    rows: RC & ValidKeyCollection<RC, R>,
-    cols: CC & ValidKeyCollection<CC, C>,
+  continuous<R extends string | number, C extends string | number>(
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
   continuous(arg1?: any, arg2?: any, arg3?: any): any {
@@ -630,8 +612,8 @@ export class Model {
   bool(name?: string, options?: VarNameOptions): BoolVar;
   bool(options: VarNameOptions): BoolVar;
   bool(count: number, options?: VarNameOptions): BoolVar[];
-  bool<K extends string | number, KC extends KeyCollection<K> = KeyCollection<K>>(
-    keys: KC & ValidKeyCollection<KC, K>,
+  bool<K extends string | number>(
+    keys: KeyCollection<K>,
     options?: VarNameOptions
   ): Record<K, BoolVar>;
   bool(
@@ -639,24 +621,19 @@ export class Model {
     cols: number,
     options?: VarNameOptions
   ): BoolVar[][];
-  bool<C extends string | number, CC extends KeyCollection<C> = KeyCollection<C>>(
+  bool<C extends string | number>(
     rows: number,
-    cols: CC & ValidKeyCollection<CC, C>,
+    cols: KeyCollection<C>,
     options?: VarNameOptions
   ): Array<Record<C, BoolVar>>;
-  bool<R extends string | number, RC extends KeyCollection<R> = KeyCollection<R>>(
-    rows: RC & ValidKeyCollection<RC, R>,
+  bool<R extends string | number>(
+    rows: KeyCollection<R>,
     cols: number,
     options?: VarNameOptions
   ): Record<R, BoolVar[]>;
-  bool<
-    R extends string | number,
-    C extends string | number,
-    RC extends KeyCollection<R> = KeyCollection<R>,
-    CC extends KeyCollection<C> = KeyCollection<C>,
-  >(
-    rows: RC & ValidKeyCollection<RC, R>,
-    cols: CC & ValidKeyCollection<CC, C>,
+  bool<R extends string | number, C extends string | number>(
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: VarNameOptions
   ): Record<R, Record<C, BoolVar>>;
   bool(arg1?: any, arg2?: any, arg3?: any): any {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, sum } from "../src/index.js";
+import { Model, Var, sum, type KeyCollection } from "../src/index.js";
 
 describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
   it("creates a 1D record of variables from an array of string keys", () => {
@@ -178,6 +178,10 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
 
     // Boxed String objects (new String("AB")) are also excluded from KeyCollection<K> at compile time and runtime
     const boxed = new String("AB");
+    if (false as boolean) {
+      // @ts-expect-error boxed String is not assignable to KeyCollection<string>
+      const _badAlias: KeyCollection<string> = new String("AB");
+    }
     expect(() => {
       // @ts-expect-error boxed String is not a valid KeyCollection
       m.binary(boxed);
@@ -194,6 +198,23 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
       // @ts-expect-error boxed String is not a valid 2nd dimension KeyCollection
       m.bool(2, boxed);
     }).toThrow(/Invalid arguments provided for boolean variable creation/);
+
+    // Generic wrappers constrained by C extends KeyCollection<string> resolve cleanly
+    function makeGenericBinary<K extends string, C extends KeyCollection<K>>(keys: C) {
+      return m.binary(keys, { prefix: "gen" });
+    }
+    function makeGenericMatrix<
+      R extends string,
+      C extends string,
+      RC extends KeyCollection<R>,
+      CC extends KeyCollection<C>,
+    >(rows: RC, cols: CC) {
+      return m.continuous(rows, cols, { prefix: "gmat" });
+    }
+    const genBin = makeGenericBinary(["g1", "g2"] as const);
+    expect(genBin.g1.name).toBe("gen_g1");
+    const genMat = makeGenericMatrix(["r1"] as const, ["c1"] as const);
+    expect(genMat.r1.c1.name).toBe("gmat_r1_c1");
 
     // Custom iterable with primitive valueOf(): number and charAt(): string is accepted at compile time and runtime
     const customIterable = {
