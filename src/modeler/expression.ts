@@ -341,39 +341,30 @@ export type DotCoeffContainer<
   | { readonly [K in R]: ReadonlyArray<number> }
   | { readonly [K in R]: { readonly [L in C]: number } };
 
-type HasSymbolKey<T> = Extract<keyof T, symbol> extends never ? false : true;
+type NoSymbolKeys<T> = {
+  readonly [Symbol.iterator]?: never;
+} & (
+  | { readonly [s: symbol]: never }
+  | { readonly [S in Extract<keyof T, symbol>]?: never }
+);
 
-type DotRecordShape<T, Leaf> =
-  HasSymbolKey<T> extends true
-    ? never
-    : {
-        readonly [K in keyof T]: T[K] extends ReadonlyArray<any>
-          ? ReadonlyArray<Leaf>
-          : T[K] extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
-            ? Leaf
-            : T[K] extends object
-              ? HasSymbolKey<T[K]> extends true
-                ? never
-                : { readonly [C in keyof T[K]]: Leaf }
-              : Leaf;
-      };
+type DotRecordLeafMap<T, Leaf> = object & {
+  readonly [K in keyof T]: Leaf;
+} & NoSymbolKeys<T>;
 
-type DotContainerArg<T, Leaf> =
+type DotRecordShape<T, Leaf, Inner = never> = object & {
+  readonly [K in keyof T]:
+    | Leaf
+    | ReadonlyArray<Leaf>
+    | DotRecordLeafMap<T[K], Leaf>
+    | DotRecordLeafMap<Inner, Leaf>;
+} & NoSymbolKeys<T>;
+
+type DotContainerArg<T, Leaf, Inner = never> =
   | ReadonlyArray<Leaf>
   | ReadonlyArray<ReadonlyArray<Leaf>>
-  | (T extends ReadonlyArray<infer U>
-      ? U extends Var | LinExpr | QuadExpr | number | ((...args: any[]) => any)
-        ? never
-        : U extends object
-          ? HasSymbolKey<U> extends true
-            ? never
-            : ReadonlyArray<{ readonly [K in keyof U]: Leaf }>
-          : never
-      : T extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
-        ? never
-        : T extends object
-          ? DotRecordShape<T, Leaf>
-          : never);
+  | ReadonlyArray<DotRecordLeafMap<T[number & keyof T], Leaf>>
+  | DotRecordShape<T, Leaf, Inner>;
 
 /**
  * Compute the vector or matrix dot product (linear combination) of numeric coefficients and variables/linear expressions.
@@ -382,13 +373,23 @@ type DotContainerArg<T, Leaf> =
  * - dot(vars, costs)
  * - dot(costMatrix, flowMatrix)
  */
-export function dot<C = DotCoeffContainer, V = DotVarContainer>(
-  coeffs: C & DotContainerArg<C, number>,
-  vars: V & DotContainerArg<V, DotTerm>
+export function dot<
+  C = DotCoeffContainer,
+  V = DotVarContainer,
+  CI = never,
+  VI = never,
+>(
+  coeffs: C & (Record<any, CI> | unknown) & DotContainerArg<C, number, CI>,
+  vars: V & (Record<any, VI> | unknown) & DotContainerArg<V, DotTerm, VI>
 ): LinExpr;
-export function dot<V = DotVarContainer, C = DotCoeffContainer>(
-  vars: V & DotContainerArg<V, DotTerm>,
-  coeffs: C & DotContainerArg<C, number>
+export function dot<
+  V = DotVarContainer,
+  C = DotCoeffContainer,
+  VI = never,
+  CI = never,
+>(
+  vars: V & (Record<any, VI> | unknown) & DotContainerArg<V, DotTerm, VI>,
+  coeffs: C & (Record<any, CI> | unknown) & DotContainerArg<C, number, CI>
 ): LinExpr;
 export function dot(a: any, b: any): LinExpr {
   const terms = new Map<Var, number>();

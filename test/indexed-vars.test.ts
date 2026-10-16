@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum } from "../src/index.js";
+import { Model, Var, sum } from "../src/index.js";
 
 describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
   it("creates a 1D record of variables from an array of string keys", () => {
@@ -195,7 +195,7 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
       m.bool(2, boxed);
     }).toThrow(/Invalid arguments provided for boolean variable creation/);
 
-    // Custom iterable with primitive valueOf(): number is accepted at compile time and runtime
+    // Custom iterable with primitive valueOf(): number and charAt(): string is accepted at compile time and runtime
     const customIterable = {
       *[Symbol.iterator](): IterableIterator<"k1" | "k2"> {
         yield "k1";
@@ -204,9 +204,45 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
       valueOf(): number {
         return 2;
       },
+      charAt(): string {
+        return "k";
+      },
     };
     const customVars = m.binary(customIterable, { prefix: "cust" });
     expect(Object.keys(customVars)).toEqual(["k1", "k2"]);
+
+    // Aliased one-shot iterator supplied for both dimensions preserves both rows and cols
+    const oneShot1 = (["a", "b"] as const).values();
+    const aliasedBin = m.binary(oneShot1, oneShot1, { prefix: "ab" });
+    expect(Object.keys(aliasedBin)).toEqual(["a", "b"]);
+    expect(Object.keys(aliasedBin.a)).toEqual(["a", "b"]);
+    expect(Object.keys(aliasedBin.b)).toEqual(["a", "b"]);
+
+    const oneShot2 = (["p", "q"] as const).values();
+    const aliasedBool = m.bool(oneShot2, oneShot2, { prefix: "pq" });
+    expect(Object.keys(aliasedBool)).toEqual(["p", "q"]);
+    expect(Object.keys(aliasedBool.p)).toEqual(["p", "q"]);
+    expect(Object.keys(aliasedBool.q)).toEqual(["p", "q"]);
+
+    // Iterable objects are excluded from options overloads at compile time and treated as 2nd dimension when in 2nd position
+    const iterableOpts = {
+      prefix: "p",
+      lb: 0,
+      *[Symbol.iterator](): IterableIterator<"col"> {
+        yield "col";
+      },
+    };
+    const twoDimFromIterable: Array<Record<"col", Var>> = m.binary(2, iterableOpts);
+    expect(twoDimFromIterable).toHaveLength(2);
+    expect(Object.keys(twoDimFromIterable[0])).toEqual(["col"]);
+    if (false as boolean) {
+      // @ts-expect-error iterable object does not match 1D options overload returning Var[]
+      const _bad1D: Var[] = m.binary(2, iterableOpts);
+      // @ts-expect-error iterable object is not a valid BoundsOptions in scalar options position
+      m.continuous("x_bad_opts", iterableOpts);
+      // @ts-expect-error iterable object is not a valid BoundsOptions in 2D third-argument options position
+      m.continuous(2, 2, iterableOpts);
+    }
   });
 
   it("solves an assignment problem formulated cleanly with domain binary", async () => {

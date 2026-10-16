@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, dot, expr, c, LinExpr, QuadExpr } from "../src/index.js";
+import { Model, Var, sum, dot, expr, c, LinExpr, QuadExpr } from "../src/index.js";
 
 describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain, values", () => {
   it("creates single domain variables without fat options", () => {
@@ -362,6 +362,36 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     expect(e2Rev.terms.get(x2.id.quadTerms)).toBe(2);
     expect(e2Rev.terms.get(x2.terms.id)).toBe(3);
     expect(e2Rev.terms.get(x2.terms.quadTerms)).toBe(4);
+
+    // Generic Record<K, ...> helper functions compile and execute cleanly while rejecting same-kind operands
+    function weighted<K extends string | number>(c: Record<K, number>, v: Record<K, Var>): LinExpr {
+      if (false as boolean) {
+        // @ts-expect-error same-kind numeric record operands are rejected in generic helpers
+        dot(c, c);
+        // @ts-expect-error same-kind variable record operands are rejected in generic helpers
+        dot(v, v);
+      }
+      return dot(c, v);
+    }
+    function weightedRev<K extends string | number>(c: Record<K, number>, v: Record<K, Var>): LinExpr {
+      return dot(v, c);
+    }
+    function weighted2D<R extends string | number, C extends string | number>(
+      c: Record<R, Record<C, number>>,
+      v: Record<R, Record<C, Var>>
+    ): LinExpr {
+      if (false as boolean) {
+        // @ts-expect-error same-kind 2D numeric record operands are rejected in generic helpers
+        dot(c, c);
+        // @ts-expect-error same-kind 2D variable record operands are rejected in generic helpers
+        dot(v, v);
+      }
+      return dot(c, v);
+    }
+
+    expect(weighted(coeffs1, x1).terms.get(x1.id)).toBe(10);
+    expect(weightedRev(coeffs1, x1).terms.get(x1.terms)).toBe(20);
+    expect(weighted2D(coeffs2, x2).terms.get(x2.terms.quadTerms)).toBe(4);
   });
 
   describe("m.bool factory (propositional boolean variables)", () => {
