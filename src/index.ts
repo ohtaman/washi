@@ -12,6 +12,7 @@ export {
   type BoundsOptions,
   type IndicatorOptions,
   type ConstraintItem,
+  type KeyCollection,
   deriveBigMForLe,
   deriveBigMForGe,
   validateUserBigM,

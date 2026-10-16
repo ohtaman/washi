@@ -72,6 +72,30 @@ export interface LogicalConstraint {
   expr: BoolExpr | Constraint;
 }
 
+function isKeyCollection(val: unknown): val is Iterable<string | number> {
+  return (
+    Array.isArray(val) ||
+    (typeof val === "object" &&
+      val !== null &&
+      !(val instanceof String) &&
+      typeof (val as any)[Symbol.iterator] === "function")
+  );
+}
+
+function isPlainOptionsObject(val: unknown): boolean {
+  return (
+    typeof val === "object" &&
+    val !== null &&
+    !Array.isArray(val) &&
+    !(val instanceof String) &&
+    typeof (val as any)[Symbol.iterator] !== "function"
+  );
+}
+
+export type KeyCollection<K extends string | number> =
+  | ReadonlyArray<K>
+  | (Iterable<K> & object);
+
 function assertValidCount(count: number, label: string): void {
   if (!Number.isInteger(count) || count < 0) {
     throw new Error(
@@ -335,17 +359,16 @@ export class Model {
     // 2D case: arg2 is number or array/iterable
     const isDim1Count = typeof arg1 === "number";
     const isDim2Count = typeof arg2 === "number";
-    const isDim1Iterable =
-      Array.isArray(arg1) ||
-      (typeof arg1 === "object" && arg1 !== null && typeof arg1[Symbol.iterator] === "function");
-    const isDim2Iterable =
-      Array.isArray(arg2) ||
-      (typeof arg2 === "object" && arg2 !== null && typeof arg2[Symbol.iterator] === "function");
+    const isDim1Iterable = isKeyCollection(arg1);
+    const isDim2Iterable = isKeyCollection(arg2);
 
     if (isDim2Count || isDim2Iterable) {
       if (isDim1Count) assertValidCount(arg1, label);
       if (isDim2Count) assertValidCount(arg2, label);
       if (!isDim1Count && !isDim1Iterable) {
+        throw new Error(`Invalid arguments provided for ${label} variable creation`);
+      }
+      if (arg3 !== undefined && !isPlainOptionsObject(arg3)) {
         throw new Error(`Invalid arguments provided for ${label} variable creation`);
       }
       const rows = isDim1Count ? Array.from({ length: arg1 }, (_, i) => i) : Array.from(arg1);
@@ -371,6 +394,9 @@ export class Model {
 
     // 1D single variable: arg1 is string, undefined, or options object
     if (typeof arg1 === "string" || arg1 === undefined) {
+      if (arg2 !== undefined && !isPlainOptionsObject(arg2)) {
+        throw new Error(`Invalid arguments provided for ${label} variable creation`);
+      }
       const opts = (arg2 as BoundsOptions) || {};
       const explicitName = typeof arg1 === "string" ? arg1 : opts.name;
       return this.addVar({
@@ -379,7 +405,10 @@ export class Model {
         name: explicitName,
       });
     }
-    if (typeof arg1 === "object" && !Array.isArray(arg1) && typeof (arg1 as any)[Symbol.iterator] !== "function") {
+    if (isPlainOptionsObject(arg1)) {
+      if (arg2 !== undefined) {
+        throw new Error(`Invalid arguments provided for ${label} variable creation`);
+      }
       const opts = arg1 as BoundsOptions;
       return this.addVar({
         ...opts,
@@ -388,6 +417,9 @@ export class Model {
     }
 
     // 1D multiple variables: count (number) or keys (array/iterable)
+    if (arg2 !== undefined && !isPlainOptionsObject(arg2)) {
+      throw new Error(`Invalid arguments provided for ${label} variable creation`);
+    }
     const opts = (arg2 as BoundsOptions) || {};
     const prefix = opts.prefix || opts.name;
     if (typeof arg1 === "number") {
@@ -407,7 +439,7 @@ export class Model {
         }
         return result;
       });
-    } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
+    } else if (isKeyCollection(arg1)) {
       return this.runTransactionalBatch(() => {
         const result: Record<string, Var> = {};
         for (const key of arg1) {
@@ -441,7 +473,7 @@ export class Model {
   binary(options: { prefix?: string; name?: string }): Var;
   binary(count: number, options?: { prefix?: string; name?: string }): Var[];
   binary<K extends string | number>(
-    keys: ReadonlyArray<K> | Iterable<K>,
+    keys: KeyCollection<K>,
     options?: { prefix?: string; name?: string }
   ): Record<K, Var>;
   binary(
@@ -451,17 +483,17 @@ export class Model {
   ): Var[][];
   binary<C extends string | number>(
     rows: number,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    cols: KeyCollection<C>,
     options?: { prefix?: string; name?: string }
   ): Array<Record<C, Var>>;
   binary<R extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
+    rows: KeyCollection<R>,
     cols: number,
     options?: { prefix?: string; name?: string }
   ): Record<R, Var[]>;
   binary<R extends string | number, C extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, Var>>;
   binary(arg1?: any, arg2?: any, arg3?: any): any {
@@ -484,7 +516,7 @@ export class Model {
   integer(options: BoundsOptions): Var;
   integer(count: number, options?: BoundsOptions): Var[];
   integer<K extends string | number>(
-    keys: ReadonlyArray<K> | Iterable<K>,
+    keys: KeyCollection<K>,
     options?: BoundsOptions
   ): Record<K, Var>;
   integer(
@@ -494,17 +526,17 @@ export class Model {
   ): Var[][];
   integer<C extends string | number>(
     rows: number,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Array<Record<C, Var>>;
   integer<R extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
+    rows: KeyCollection<R>,
     cols: number,
     options?: BoundsOptions
   ): Record<R, Var[]>;
   integer<R extends string | number, C extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
   integer(arg1?: any, arg2?: any, arg3?: any): any {
@@ -527,7 +559,7 @@ export class Model {
   continuous(options: BoundsOptions): Var;
   continuous(count: number, options?: BoundsOptions): Var[];
   continuous<K extends string | number>(
-    keys: ReadonlyArray<K> | Iterable<K>,
+    keys: KeyCollection<K>,
     options?: BoundsOptions
   ): Record<K, Var>;
   continuous(
@@ -537,17 +569,17 @@ export class Model {
   ): Var[][];
   continuous<C extends string | number>(
     rows: number,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Array<Record<C, Var>>;
   continuous<R extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
+    rows: KeyCollection<R>,
     cols: number,
     options?: BoundsOptions
   ): Record<R, Var[]>;
   continuous<R extends string | number, C extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
   continuous(arg1?: any, arg2?: any, arg3?: any): any {
@@ -570,7 +602,7 @@ export class Model {
   bool(options: { prefix?: string; name?: string }): BoolVar;
   bool(count: number, options?: { prefix?: string; name?: string }): BoolVar[];
   bool<K extends string | number>(
-    keys: ReadonlyArray<K> | Iterable<K>,
+    keys: KeyCollection<K>,
     options?: { prefix?: string; name?: string }
   ): Record<K, BoolVar>;
   bool(
@@ -580,34 +612,33 @@ export class Model {
   ): BoolVar[][];
   bool<C extends string | number>(
     rows: number,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    cols: KeyCollection<C>,
     options?: { prefix?: string; name?: string }
   ): Array<Record<C, BoolVar>>;
   bool<R extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
+    rows: KeyCollection<R>,
     cols: number,
     options?: { prefix?: string; name?: string }
   ): Record<R, BoolVar[]>;
   bool<R extends string | number, C extends string | number>(
-    rows: ReadonlyArray<R> | Iterable<R>,
-    cols: ReadonlyArray<C> | Iterable<C>,
+    rows: KeyCollection<R>,
+    cols: KeyCollection<C>,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, BoolVar>>;
   bool(arg1?: any, arg2?: any, arg3?: any): any {
     // 2D case: arg2 is number or array/iterable
     const isDim1Count = typeof arg1 === "number";
     const isDim2Count = typeof arg2 === "number";
-    const isDim1Iterable =
-      Array.isArray(arg1) ||
-      (typeof arg1 === "object" && arg1 !== null && typeof arg1[Symbol.iterator] === "function");
-    const isDim2Iterable =
-      Array.isArray(arg2) ||
-      (typeof arg2 === "object" && arg2 !== null && typeof arg2[Symbol.iterator] === "function");
+    const isDim1Iterable = isKeyCollection(arg1);
+    const isDim2Iterable = isKeyCollection(arg2);
 
     if (isDim2Count || isDim2Iterable) {
       if (isDim1Count) assertValidCount(arg1, "boolean");
       if (isDim2Count) assertValidCount(arg2, "boolean");
       if (!isDim1Count && !isDim1Iterable) {
+        throw new Error("Invalid arguments provided for boolean variable creation");
+      }
+      if (arg3 !== undefined && !isPlainOptionsObject(arg3)) {
         throw new Error("Invalid arguments provided for boolean variable creation");
       }
       const rows = isDim1Count ? Array.from({ length: arg1 }, (_, i) => i) : Array.from(arg1);
@@ -629,16 +660,25 @@ export class Model {
 
     // 1D single variable or options object
     if (typeof arg1 === "string" || arg1 === undefined) {
+      if (arg2 !== undefined && !isPlainOptionsObject(arg2)) {
+        throw new Error("Invalid arguments provided for boolean variable creation");
+      }
       const opts = (arg2 as { prefix?: string; name?: string }) || {};
       const explicitName = typeof arg1 === "string" ? arg1 : opts.name;
       return this.createBoolVar(explicitName, opts.prefix);
     }
-    if (typeof arg1 === "object" && !Array.isArray(arg1) && typeof (arg1 as any)[Symbol.iterator] !== "function") {
+    if (isPlainOptionsObject(arg1)) {
+      if (arg2 !== undefined) {
+        throw new Error("Invalid arguments provided for boolean variable creation");
+      }
       const opts = arg1 as { prefix?: string; name?: string };
       return this.createBoolVar(opts.name, opts.prefix);
     }
 
     // 1D multiple variables: count (number) or keys (array/iterable)
+    if (arg2 !== undefined && !isPlainOptionsObject(arg2)) {
+      throw new Error("Invalid arguments provided for boolean variable creation");
+    }
     const opts = (arg2 as { prefix?: string; name?: string }) || {};
     const prefix = opts.prefix || opts.name;
     if (typeof arg1 === "number") {
@@ -651,7 +691,7 @@ export class Model {
         }
         return result;
       });
-    } else if (Array.isArray(arg1) || (arg1 && typeof (arg1 as any)[Symbol.iterator] === "function")) {
+    } else if (isKeyCollection(arg1)) {
       return this.runTransactionalBatch(() => {
         const result: Record<string, BoolVar> = {};
         for (const key of arg1) {

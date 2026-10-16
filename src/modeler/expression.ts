@@ -319,34 +319,67 @@ export function sum<T = any>(
 
 export type DotTerm = Var | LinExpr;
 
-export type DotVarContainer =
+export type DotVarContainer<
+  R extends PropertyKey = string | number,
+  C extends PropertyKey = string | number,
+> =
   | ReadonlyArray<DotTerm>
-  | Record<string | number, DotTerm>
+  | { readonly [K in R]: DotTerm }
   | ReadonlyArray<ReadonlyArray<DotTerm>>
-  | ReadonlyArray<Record<string | number, DotTerm>>
-  | Record<string | number, ReadonlyArray<DotTerm>>
-  | Record<string | number, Record<string | number, DotTerm>>;
+  | ReadonlyArray<{ readonly [K in C]: DotTerm }>
+  | { readonly [K in R]: ReadonlyArray<DotTerm> }
+  | { readonly [K in R]: { readonly [L in C]: DotTerm } };
 
-export type DotCoeffContainer =
+export type DotCoeffContainer<
+  R extends PropertyKey = string | number,
+  C extends PropertyKey = string | number,
+> =
   | ReadonlyArray<number>
-  | Record<string | number, number>
+  | { readonly [K in R]: number }
   | ReadonlyArray<ReadonlyArray<number>>
-  | ReadonlyArray<Record<string | number, number>>
-  | Record<string | number, ReadonlyArray<number>>
-  | Record<string | number, Record<string | number, number>>;
+  | ReadonlyArray<{ readonly [K in C]: number }>
+  | { readonly [K in R]: ReadonlyArray<number> }
+  | { readonly [K in R]: { readonly [L in C]: number } };
+
+type DotRecordShape<T, Leaf> = {
+  readonly [K in keyof T]: T[K] extends ReadonlyArray<any>
+    ? ReadonlyArray<Leaf>
+    : T[K] extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
+      ? Leaf
+      : T[K] extends object
+        ? { readonly [C in keyof T[K]]: Leaf }
+        : Leaf;
+};
+
+type DotContainerArg<T, Leaf> =
+  | ReadonlyArray<Leaf>
+  | ReadonlyArray<ReadonlyArray<Leaf>>
+  | (T extends ReadonlyArray<infer U>
+      ? U extends Var | LinExpr | QuadExpr | number | ((...args: any[]) => any)
+        ? never
+        : U extends object
+          ? ReadonlyArray<{ readonly [K in keyof U]: Leaf }>
+          : never
+      : T extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
+        ? never
+        : T extends object
+          ? DotRecordShape<T, Leaf>
+          : never);
 
 /**
  * Compute the vector or matrix dot product (linear combination) of numeric coefficients and variables/linear expressions.
- * Works with 1D/2D arrays, records, and mixed-domain containers in either operand order:
+ * Works with 1D/2D arrays, records, named interfaces, and mixed-domain containers in either operand order:
  * - dot(costs, vars)
  * - dot(vars, costs)
  * - dot(costMatrix, flowMatrix)
  */
-export function dot(coeffs: DotCoeffContainer, vars: DotVarContainer): LinExpr;
-export function dot(vars: DotVarContainer, coeffs: DotCoeffContainer): LinExpr;
-export function dot(
-  a: DotCoeffContainer | DotVarContainer,
-  b: DotCoeffContainer | DotVarContainer
+export function dot<C = DotCoeffContainer, V = DotVarContainer>(
+  coeffs: C & DotContainerArg<C, number>,
+  vars: V & DotContainerArg<V, DotTerm>
+): LinExpr;
+export function dot<V = DotVarContainer, C = DotCoeffContainer>(
+  vars: V & DotContainerArg<V, DotTerm>,
+  coeffs: C & DotContainerArg<C, number>
 ): LinExpr;
 export function dot(a: any, b: any): LinExpr {
   const terms = new Map<Var, number>();

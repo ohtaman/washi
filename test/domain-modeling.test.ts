@@ -263,12 +263,48 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     }).toThrow(/Invalid non-finite coefficient "Infinity" in dot\(\) at '\[1\]'/);
 
     expect(() => {
-      dot([1, 2], [3, 4] as any);
+      // @ts-expect-error same-kind numeric containers are rejected at compile time
+      dot([1, 2], [3, 4]);
     }).toThrow(/Cannot multiply two numbers in dot\(\) at '\[0\]'/);
 
     expect(() => {
-      dot([1], [x[0][0].mul(x[0][1])] as any);
+      // @ts-expect-error same-kind variable containers are rejected at compile time
+      dot([x[0][0], x[0][1]], [x[1][0], x[1][1]]);
+    }).toThrow(/Unsupported operand types in dot\(\) at '\[0\]'/);
+
+    expect(() => {
+      // @ts-expect-error QuadExpr is not a valid DotTerm
+      dot([1], [x[0][0].mul(x[0][1])]);
     }).toThrow(/Quadratic expressions are not supported in dot\(\) at '\[0\]'/);
+
+    // Interface-typed records (without index signatures) work in both 1D and 2D dot()
+    interface FruitCosts {
+      apple: number;
+      banana: number;
+    }
+    interface StoreFruitCosts {
+      storeA: FruitCosts;
+      storeB: FruitCosts;
+    }
+    const fruitVars = m.continuous(["apple", "banana"] as const, { prefix: "f" });
+    const fruitCosts: FruitCosts = { apple: 3, banana: 5 };
+    const exprInterface1 = dot(fruitCosts, fruitVars);
+    const exprInterface2 = dot(fruitVars, fruitCosts);
+    expect(exprInterface1.terms.get(fruitVars.apple)).toBe(3);
+    expect(exprInterface1.terms.get(fruitVars.banana)).toBe(5);
+    expect(exprInterface2.terms.get(fruitVars.apple)).toBe(3);
+    expect(exprInterface2.terms.get(fruitVars.banana)).toBe(5);
+
+    const storeFruitVars = m.continuous(["storeA", "storeB"] as const, ["apple", "banana"] as const, {
+      prefix: "sf",
+    });
+    const storeFruitCosts: StoreFruitCosts = {
+      storeA: { apple: 2, banana: 4 },
+      storeB: { apple: 6, banana: 8 },
+    };
+    const expr2DInterface = dot(storeFruitCosts, storeFruitVars);
+    expect(expr2DInterface.terms.get(storeFruitVars.storeA.apple)).toBe(2);
+    expect(expr2DInterface.terms.get(storeFruitVars.storeB.banana)).toBe(8);
   });
 
   it("handles 1D and 2D variable dictionaries with arbitrary keys like 'id', 'terms', 'quadTerms'", async () => {

@@ -157,6 +157,24 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
       R1: [1, 0],
       R2: [0, 1],
     });
+
+    // Primitive strings are excluded from KeyCollection<K> at compile time and rejected as 2nd dimension at runtime
+    expect(() => {
+      // @ts-expect-error primitive string is not a valid 2nd dimension KeyCollection
+      m.binary(2, "AB");
+    }).toThrow(/Invalid arguments provided for binary variable creation/);
+    expect(() => {
+      // @ts-expect-error primitive string is not a valid 1st dimension KeyCollection with numeric 2nd dimension
+      m.binary("AB", 2);
+    }).toThrow(/Invalid arguments provided for binary variable creation/);
+    expect(() => {
+      // @ts-expect-error primitive string is not a valid 2nd dimension KeyCollection
+      m.bool(2, "AB");
+    }).toThrow(/Invalid arguments provided for boolean variable creation/);
+    expect(() => {
+      // @ts-expect-error primitive string is not a valid 1st dimension KeyCollection with numeric 2nd dimension
+      m.bool("AB", 2);
+    }).toThrow(/Invalid arguments provided for boolean variable creation/);
   });
 
   it("solves an assignment problem formulated cleanly with domain binary", async () => {
