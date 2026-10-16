@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, dot, expr, c, LinExpr, QuadExpr } from "../src/index.js";
+import {
+  Model,
+  Var,
+  sum,
+  dot,
+  expr,
+  c,
+  LinExpr,
+  QuadExpr,
+  type DotCoeffContainer,
+  type DotVarContainer,
+} from "../src/index.js";
 
 describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain, values", () => {
   it("creates single domain variables without fat options", () => {
@@ -187,36 +198,155 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     }).toThrow(/Key mismatch/);
   });
 
-  it("computes dot() between 2D coefficient Arrays and numeric grid Records in both operand orders", () => {
+  it("computes dot() between 2D coefficient Arrays, mixed containers, and numeric grid Records in both operand orders", () => {
     const m = new Model();
-    const x = m.continuous(2, 2); // Record<number, Record<number, Var>>
+    const x = m.continuous(2, 2); // Var[][]
+    expect(Array.isArray(x)).toBe(true);
+    expect(Array.isArray(x[0])).toBe(true);
     const coeffs = [
       [1, 2],
       [3, 4],
     ];
 
-    // Array x Record
+    // Array x Array
     const expr1 = dot(coeffs, x);
     expect(expr1.terms.get(x[0][0])).toBe(1);
     expect(expr1.terms.get(x[0][1])).toBe(2);
     expect(expr1.terms.get(x[1][0])).toBe(3);
     expect(expr1.terms.get(x[1][1])).toBe(4);
 
-    // Record x Array
+    // Reversed order: Vars x Coeffs
     const expr2 = dot(x, coeffs);
     expect(expr2.terms.get(x[0][0])).toBe(1);
     expect(expr2.terms.get(x[0][1])).toBe(2);
     expect(expr2.terms.get(x[1][0])).toBe(3);
     expect(expr2.terms.get(x[1][1])).toBe(4);
 
-    // Shape mismatch throws
+    // Explicit numeric-key Record compatibility with Array
+    const xNumRecord = m.continuous([0, 1], [0, 1], { prefix: "nr" });
+    const exprNumRec1 = dot(coeffs, xNumRecord);
+    const exprNumRec2 = dot(xNumRecord, coeffs);
+    expect(exprNumRec1.terms.get(xNumRecord[0][0])).toBe(1);
+    expect(exprNumRec1.terms.get(xNumRecord[1][1])).toBe(4);
+    expect(exprNumRec2.terms.get(xNumRecord[0][1])).toBe(2);
+    expect(exprNumRec2.terms.get(xNumRecord[1][0])).toBe(3);
+
+    // Mixed 2D containers: count x keys and keys x count
+    const shifts = ["Day", "Night"] as const;
+    const ckVars = m.binary(2, shifts, { prefix: "ck" });
+    const ckCoeffs = [
+      { Day: 10, Night: 15 },
+      { Day: 20, Night: 25 },
+    ];
+    const exprCK = dot(ckCoeffs, ckVars);
+    expect(exprCK.terms.get(ckVars[0].Day)).toBe(10);
+    expect(exprCK.terms.get(ckVars[1].Night)).toBe(25);
+
+    const kcVars = m.continuous(["Alice", "Bob"] as const, 2, { prefix: "kc" });
+    const kcCoeffs = {
+      Alice: [5, 6],
+      Bob: [7, 8],
+    };
+    const exprKC = dot(kcVars, kcCoeffs);
+    expect(exprKC.terms.get(kcVars.Alice[0])).toBe(5);
+    expect(exprKC.terms.get(kcVars.Bob[1])).toBe(8);
+
+    // Shape mismatch throws with path context
     expect(() => {
       dot([[1, 2]], x); // 1 row vs 2 rows
     }).toThrow(/Array length mismatch/);
 
     expect(() => {
-      dot([[1, 2, 3], [4, 5, 6]], x); // 3 cols vs 2 cols
-    }).toThrow(/Array length mismatch/);
+      dot([[1, 2, 3], [4, 5, 6]], x); // 3 cols vs 2 cols at [0]
+    }).toThrow(/Array length mismatch in dot\(\) at '\[0\]'/);
+
+    expect(() => {
+      dot({ 0: 1, 2: 2 }, [x[0][0], x[0][1]]); // non-contiguous numeric record
+    }).toThrow(/Key mismatch in dot\(\) at 'root': missing indices \[1\]/);
+
+    // Invalid leaf types throw clearly with path
+    expect(() => {
+      dot([1, NaN], [x[0][0], x[0][1]]);
+    }).toThrow(/Invalid non-finite coefficient "NaN" in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([1, Infinity], [x[0][0], x[0][1]]);
+    }).toThrow(/Invalid non-finite coefficient "Infinity" in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      // @ts-expect-error same-kind numeric containers are rejected at compile time
+      dot([1, 2], [3, 4]);
+    }).toThrow(/Cannot multiply two numbers in dot\(\) at '\[0\]'/);
+
+    expect(() => {
+      // @ts-expect-error same-kind variable containers are rejected at compile time
+      dot([x[0][0], x[0][1]], [x[1][0], x[1][1]]);
+    }).toThrow(/Unsupported operand types in dot\(\) at '\[0\]'/);
+
+    expect(() => {
+      // @ts-expect-error QuadExpr is not a valid DotTerm
+      dot([1], [x[0][0].mul(x[0][1])]);
+    }).toThrow(/Quadratic expressions are not supported in dot\(\) at '\[0\]'/);
+
+    // Interface-typed records (without index signatures) work in both 1D and 2D dot()
+    interface FruitCosts {
+      apple: number;
+      banana: number;
+    }
+    interface StoreFruitCosts {
+      storeA: FruitCosts;
+      storeB: FruitCosts;
+    }
+    const fruitVars = m.continuous(["apple", "banana"] as const, { prefix: "f" });
+    const fruitCosts: FruitCosts = { apple: 3, banana: 5 };
+    const exprInterface1 = dot(fruitCosts, fruitVars);
+    const exprInterface2 = dot(fruitVars, fruitCosts);
+    expect(exprInterface1.terms.get(fruitVars.apple)).toBe(3);
+    expect(exprInterface1.terms.get(fruitVars.banana)).toBe(5);
+    expect(exprInterface2.terms.get(fruitVars.apple)).toBe(3);
+    expect(exprInterface2.terms.get(fruitVars.banana)).toBe(5);
+
+    const storeFruitVars = m.continuous(["storeA", "storeB"] as const, ["apple", "banana"] as const, {
+      prefix: "sf",
+    });
+    const storeFruitCosts: StoreFruitCosts = {
+      storeA: { apple: 2, banana: 4 },
+      storeB: { apple: 6, banana: 8 },
+    };
+    const expr2DInterface = dot(storeFruitCosts, storeFruitVars);
+    expect(expr2DInterface.terms.get(storeFruitVars.storeA.apple)).toBe(2);
+    expect(expr2DInterface.terms.get(storeFruitVars.storeB.banana)).toBe(8);
+
+    // Exported DotCoeffContainer and DotVarContainer union aliases work in both directions
+    function dotFromUnionAliases<K extends string>(
+      coeffs: DotCoeffContainer<K>,
+      vars: DotVarContainer<K>
+    ) {
+      return dot(coeffs, vars).add(dot(vars, coeffs));
+    }
+    const unionDot = dotFromUnionAliases(fruitCosts, fruitVars);
+    expect(unionDot.terms.get(fruitVars.apple)).toBe(6);
+    expect(unionDot.terms.get(fruitVars.banana)).toBe(10);
+
+    // Symbol-keyed objects are rejected at compile time and runtime
+    const sym = Symbol("cost");
+    expect(() => {
+      // @ts-expect-error symbol keys are not supported in dot()
+      dot({ [sym]: 2 }, { [sym]: x[0][0] });
+    }).toThrow(/Symbol keys are not supported in dot\(\) at 'root'/);
+
+    // Accumulated coefficient or constant overflow is rejected
+    expect(() => {
+      dot([Number.MAX_VALUE, Number.MAX_VALUE], [x[0][0].mul(1), x[0][0].mul(1)]);
+    }).toThrow(/Coefficient accumulation overflows finite floating-point range in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([Number.MAX_VALUE, Number.MAX_VALUE], [x[0][0], x[0][0]]);
+    }).toThrow(/Coefficient accumulation overflows finite floating-point range in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([Number.MAX_VALUE, Number.MAX_VALUE], [x[0][0].add(1), x[0][1].add(1)]);
+    }).toThrow(/Constant accumulation overflows finite floating-point range in dot\(\) at '\[1\]'/);
   });
 
   it("handles 1D and 2D variable dictionaries with arbitrary keys like 'id', 'terms', 'quadTerms'", async () => {
@@ -254,6 +384,36 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     expect(e2Rev.terms.get(x2.id.quadTerms)).toBe(2);
     expect(e2Rev.terms.get(x2.terms.id)).toBe(3);
     expect(e2Rev.terms.get(x2.terms.quadTerms)).toBe(4);
+
+    // Generic Record<K, ...> helper functions compile and execute cleanly while rejecting same-kind operands
+    function weighted<K extends string | number>(c: Record<K, number>, v: Record<K, Var>): LinExpr {
+      if (false as boolean) {
+        // @ts-expect-error same-kind numeric record operands are rejected in generic helpers
+        dot(c, c);
+        // @ts-expect-error same-kind variable record operands are rejected in generic helpers
+        dot(v, v);
+      }
+      return dot(c, v);
+    }
+    function weightedRev<K extends string | number>(c: Record<K, number>, v: Record<K, Var>): LinExpr {
+      return dot(v, c);
+    }
+    function weighted2D<R extends string | number, C extends string | number>(
+      c: Record<R, Record<C, number>>,
+      v: Record<R, Record<C, Var>>
+    ): LinExpr {
+      if (false as boolean) {
+        // @ts-expect-error same-kind 2D numeric record operands are rejected in generic helpers
+        dot(c, c);
+        // @ts-expect-error same-kind 2D variable record operands are rejected in generic helpers
+        dot(v, v);
+      }
+      return dot(c, v);
+    }
+
+    expect(weighted(coeffs1, x1).terms.get(x1.id)).toBe(10);
+    expect(weightedRev(coeffs1, x1).terms.get(x1.terms)).toBe(20);
+    expect(weighted2D(coeffs2, x2).terms.get(x2.terms.quadTerms)).toBe(4);
   });
 
   describe("m.bool factory (propositional boolean variables)", () => {

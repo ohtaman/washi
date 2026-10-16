@@ -139,7 +139,7 @@ describe("QuadExpr (Quadratic Expressions)", () => {
     const complexMethod = baseMethod
       .mul(baseMethod)
       .sub(x.mul(2).mul(x.mul(2).sub(y.mul(3))))
-      .div(2);
+      .div(2) as QuadExpr;
     const complexTemplate = expr`((2 * ${x} - 3 * ${y} + 4)^2 - 2 * ${x} * (2 * ${x} - 3 * ${y})) / (1 + 1)` as QuadExpr;
 
     expect(complexTemplate.getQuadCoeff(x, x)).toBe(complexMethod.getQuadCoeff(x, x));

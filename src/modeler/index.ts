@@ -1,4 +1,11 @@
-export { Model, type ModelOptions, type BoundsOptions, type IndicatorOptions, type ConstraintItem } from "./model.js";
+export {
+  Model,
+  type ModelOptions,
+  type BoundsOptions,
+  type IndicatorOptions,
+  type ConstraintItem,
+  type KeyCollection,
+} from "./model.js";
 export { deriveBigMForLe, deriveBigMForGe, validateUserBigM, buildIndicatorLinearization } from "./big-m.js";
 export { validateModelIntegrity } from "./validation.js";
 export {
@@ -8,7 +15,15 @@ export {
   type ObjectiveSpec,
 } from "./objective.js";
 export { Var, type VarOptions } from "./variable.js";
-export { LinExpr, type Expr, sum, dot } from "./expression.js";
+export {
+  LinExpr,
+  type Expr,
+  type DotTerm,
+  type DotVarContainer,
+  type DotCoeffContainer,
+  sum,
+  dot,
+} from "./expression.js";
 export { QuadExpr, type QuadTerm } from "./quad-expr.js";
 export { Constraint } from "./constraint.js";
 export {
