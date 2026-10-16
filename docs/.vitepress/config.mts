@@ -137,6 +137,7 @@ export default withMermaid(
             text: "Getting Started",
             items: [
               { text: "Introduction & Installation", link: "/getting-started/" },
+              { text: "AI Agent Quick-Reference", link: "/getting-started/ai-agents" },
               { text: "Runtime Environments", link: "/getting-started/runtimes" },
               { text: "Cross-Origin Isolation", link: "/getting-started/cross-origin" },
             ],
@@ -146,7 +147,7 @@ export default withMermaid(
             items: [
               { text: "Variables & Bounds", link: "/guide/variables" },
               { text: "Expressions (`expr`)", link: "/guide/expressions" },
-              { text: "Constraints (`c`)", link: "/guide/constraints" },
+              { text: "Constraints (`expr`)", link: "/guide/constraints" },
               { text: "Objectives & Sense", link: "/guide/objectives" },
               { text: "Unsat Core Diagnosis", link: "/guide/unsat-core" },
             ],
@@ -198,6 +199,7 @@ export default withMermaid(
             text: "はじめに",
             items: [
               { text: "インストールと入門", link: "/ja/getting-started/" },
+              { text: "AIエージェント向けリファレンス", link: "/getting-started/ai-agents" },
               { text: "ランタイム環境設定", link: "/ja/getting-started/runtimes" },
               { text: "Cross-Origin Isolation (COOP/COEP)", link: "/ja/getting-started/cross-origin" },
             ],
@@ -207,7 +209,7 @@ export default withMermaid(
             items: [
               { text: "変数と境界値", link: "/ja/guide/variables" },
               { text: "数式の記述 (`expr`)", link: "/ja/guide/expressions" },
-              { text: "制約条件 (`c`)", link: "/ja/guide/constraints" },
+              { text: "制約条件 (`expr`)", link: "/ja/guide/constraints" },
               { text: "目的関数と最適化", link: "/ja/guide/objectives" },
               { text: "競合制約診断 (Unsat Core)", link: "/ja/guide/unsat-core" },
             ],
@@ -259,6 +261,7 @@ export default withMermaid(
             text: "快速入门",
             items: [
               { text: "安装与入门", link: "/zh/getting-started/" },
+              { text: "AI 编程助手快速参考", link: "/getting-started/ai-agents" },
               { text: "运行时环境配置", link: "/zh/getting-started/runtimes" },
               { text: "跨源隔离 (COOP/COEP)", link: "/zh/getting-started/cross-origin" },
             ],
@@ -268,7 +271,7 @@ export default withMermaid(
             items: [
               { text: "决策变量与上下界", link: "/zh/guide/variables" },
               { text: "数学表达式 (`expr`)", link: "/zh/guide/expressions" },
-              { text: "约束条件 (`c`)", link: "/zh/guide/constraints" },
+              { text: "约束条件 (`expr`)", link: "/zh/guide/constraints" },
               { text: "目标函数与求解方向", link: "/zh/guide/objectives" },
               { text: "不可行冲突诊断 (Unsat Core)", link: "/zh/guide/unsat-core" },
             ],

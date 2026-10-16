@@ -28,7 +28,7 @@
 
 HiGHS 是默认求解器；Z3 和 GLPK 是可选插件。软件包提供 Node.js 和浏览器分发版本，并包含 WebAssembly 资源。部署要求请参阅[浏览器使用说明](#-浏览器与-web-worker-使用指南)。
 
-[试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [AI 编程助手快速参考](docs/getting-started/ai-agents.md) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";

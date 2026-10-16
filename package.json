@@ -48,6 +48,7 @@
     "dist/lib",
     "dist/browser",
     "dist/types",
+    "docs/getting-started/ai-agents.md",
     "README.md",
     "README.ja.md",
     "README.zh-CN.md",

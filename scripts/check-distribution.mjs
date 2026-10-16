@@ -377,13 +377,15 @@ try {
   await writeFile(path.join(fixture, "package.json"), JSON.stringify({ private: true, type: "module" }));
   npm(["install", "--ignore-scripts", "--omit=optional", "--no-audit", "--no-fund", path.join(fixture, pack.filename)]);
   const packageRoot = path.join(fixture, "node_modules/@ohtaman/washi");
+  const shippedAgentGuide = await readFile(path.join(packageRoot, "docs/getting-started/ai-agents.md"), "utf8");
+  assert(shippedAgentGuide.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing AI agent guide");
   const { Model, maximize } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
   const model = new Model("PackedNode");
   const x = model.continuous("x", { lb: 0, ub: 10 });
   model.objective(maximize(x.mul(3)));
   assert.equal(await model.solve(), "Optimal");
   assert.equal(model.objectiveValue, 30);
-  console.log("PASS npm tarball: Node.js solve without optional peers");
+  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide");
 
   // Verify unimported solver errors
   await assert.rejects(async () => model.solve({ solver: "glpk" }), (err) => {

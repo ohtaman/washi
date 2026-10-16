@@ -28,7 +28,7 @@
 
 HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provides Node.js and browser distributions, including WebAssembly assets. See the [browser integration guide](#-browser--web-worker-usage) for deployment requirements.
 
-[Try the browser demo](https://ohtaman.github.io/washi/demo/) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[Try the browser demo](https://ohtaman.github.io/washi/demo/) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";

@@ -103,6 +103,7 @@ console.log(`Solution: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 
 ## 🧭 Next Steps
 
+- Give AI coding agents a concise API & deployment reference with the [AI Coding Agent Quick-Reference Guide](./ai-agents.md).
 - Learn how to run WaSHI across different environments in [Runtime Environments](./runtimes.md).
 - Understand how to formulate complex expressions in the [Modeling Guide](../guide/expressions.md).
 - Explore built-in and pluggable solvers in the [Solvers Matrix](../solvers/).
