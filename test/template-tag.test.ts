@@ -488,26 +488,51 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(c2.sense).toBe(">=");
     expect(c2.rhs).toBe(1);
 
-    // Direct logical chaining on stored constraint expr result
+    // Direct common expression members on stored expr result: value, getValue(), clone(), constant
+    x.value = 3;
+    expect(cost.constant).toBe(1);
+    expect(cost.value).toBe(4);
+    expect(cost.getValue()).toBe(4);
+    const clonedCost = cost.clone();
+    expect(clonedCost.constant).toBe(1);
+    expect(clonedCost.value).toBe(4);
+
+    // Direct logical chaining and clone() on stored constraint expr result
     const guard = expr`${x} >= 4`;
     const logic = guard.implies(p);
     expect(logic.op).toBe("implies");
+    const clonedGuard = guard.clone();
+    expect(clonedGuard.kind).toBe("constraint");
 
-    // Runtime guards when chaining arithmetic/comparison on a Constraint or logical methods on an arithmetic Expr
+    // Runtime guards when chaining arithmetic/comparison/value/constant on a Constraint or logical methods on an arithmetic Expr
     expect(() => guard.add(1)).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => guard.sub(1)).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => guard.mul(2)).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => guard.div(2)).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => guard.neg()).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => guard.le(5)).toThrow(/Cannot compare a Constraint/);
+    expect(() => guard.value).toThrow(/Cannot read numeric value of a Constraint/);
+    expect(() => guard.getValue()).toThrow(/Cannot read numeric value of a Constraint/);
+    expect(() => guard.constant).toThrow(/Cannot read numeric constant of a Constraint/);
     expect(() => x.add(guard)).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => x.le(guard)).toThrow(/Cannot compare against a Constraint/);
     expect(() => cost.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
     expect(() => cost.implies(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
     expect(() => expr`${x}^2`.le(10)).toThrow(/Quadratic expressions are not supported in linear constraints/);
     expect(() => expr`${x}^2`.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+
+    // Structural objective validation rejects partial objects and normalizes complete structural objects without clone()
+    expect(() => maximize({ terms: new Map() } as any)).toThrow(/Invalid expression passed to maximize/);
+    expect(() => minimize({ quadTerms: new Map() } as any)).toThrow(/Invalid expression passed to minimize/);
+    expect(() => m.setObjective({ terms: new Map() } as any, "Maximize")).toThrow(/Invalid objective expression/);
+    expect(() => m.setObjective({ quadTerms: new Map() } as any, "Minimize")).toThrow(/Invalid objective expression/);
+
+    const structuralLin = { terms: new Map([[x, 2]]), constant: 5 };
+    m.objective(maximize(structuralLin as any));
+    expect(m.objectiveExpr.constant).toBe(5);
   });
 });
+
 
 
 

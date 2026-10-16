@@ -174,6 +174,31 @@ export class Constraint {
     return this.eq(rhs, name);
   }
 
+  public get value(): never {
+    throw new Error(
+      "Cannot read numeric value of a Constraint: expected a Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public getValue(): never {
+    return this.value;
+  }
+
+  public get constant(): never {
+    throw new Error(
+      "Cannot read numeric constant of a Constraint: expected a LinExpr or QuadExpr."
+    );
+  }
+
+  public clone(): Constraint {
+    return new Constraint(
+      this._lhs.clone(),
+      this._sense,
+      this._rhs,
+      this.hasExplicitName ? this._name : undefined
+    );
+  }
+
   toString(): string {
     const senseSymbol = this.sense === "==" ? "=" : this.sense;
     return `${this.name}: ${this.lhs.toString()} ${senseSymbol} ${this.rhs}`;

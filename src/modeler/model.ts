@@ -919,10 +919,28 @@ export class Model {
       parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
       parsedExpr = expr.clone();
-    } else if (typeof expr === "object" && expr !== null && "quadTerms" in expr) {
-      parsedExpr = (expr as unknown as QuadExpr).clone();
-    } else if (typeof expr === "object" && expr !== null && "terms" in expr) {
-      parsedExpr = (expr as unknown as LinExpr).clone();
+    } else if (expr instanceof LinExpr) {
+      parsedExpr = expr.clone();
+    } else if (
+      typeof expr === "object" &&
+      expr !== null &&
+      "quadTerms" in expr &&
+      (expr as { quadTerms: unknown }).quadTerms instanceof Map &&
+      "linearTerms" in expr &&
+      (expr as { linearTerms: unknown }).linearTerms instanceof Map &&
+      typeof (expr as { constant?: unknown }).constant === "number"
+    ) {
+      const q = expr as unknown as QuadExpr;
+      parsedExpr = new QuadExpr(q.linearTerms, q.quadTerms, q.constant);
+    } else if (
+      typeof expr === "object" &&
+      expr !== null &&
+      "terms" in expr &&
+      (expr as { terms: unknown }).terms instanceof Map &&
+      typeof (expr as { constant?: unknown }).constant === "number"
+    ) {
+      const l = expr as unknown as LinExpr;
+      parsedExpr = new LinExpr(l.terms, l.constant);
     } else if (
       expr instanceof Var ||
       (typeof expr === "object" &&

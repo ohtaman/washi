@@ -59,8 +59,14 @@ function validateObjectiveConstructorInput(
     raw instanceof Var ||
     (typeof raw === "object" &&
       raw !== null &&
-      (("terms" in raw && (raw as { terms: unknown }).terms instanceof Map) ||
-        ("quadTerms" in raw && (raw as { quadTerms: unknown }).quadTerms instanceof Map) ||
+      (("terms" in raw &&
+        (raw as { terms: unknown }).terms instanceof Map &&
+        typeof (raw as { constant?: unknown }).constant === "number") ||
+        ("quadTerms" in raw &&
+          (raw as { quadTerms: unknown }).quadTerms instanceof Map &&
+          "linearTerms" in raw &&
+          (raw as { linearTerms: unknown }).linearTerms instanceof Map &&
+          typeof (raw as { constant?: unknown }).constant === "number") ||
         ("id" in raw && "name" in raw && "lb" in raw && "ub" in raw)))
   ) {
     return raw as ObjectiveExpr;
