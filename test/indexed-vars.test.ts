@@ -175,6 +175,25 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
       // @ts-expect-error primitive string is not a valid 1st dimension KeyCollection with numeric 2nd dimension
       m.bool("AB", 2);
     }).toThrow(/Invalid arguments provided for boolean variable creation/);
+
+    // Boxed String objects (new String("AB")) are also excluded from KeyCollection<K> at compile time and runtime
+    const boxed = new String("AB");
+    expect(() => {
+      // @ts-expect-error boxed String is not a valid KeyCollection
+      m.binary(boxed);
+    }).toThrow(/Invalid arguments provided for binary variable creation/);
+    expect(() => {
+      // @ts-expect-error boxed String is not a valid 2nd dimension KeyCollection
+      m.binary(2, boxed);
+    }).toThrow(/Invalid arguments provided for binary variable creation/);
+    expect(() => {
+      // @ts-expect-error boxed String is not a valid KeyCollection
+      m.bool(boxed);
+    }).toThrow(/Invalid arguments provided for boolean variable creation/);
+    expect(() => {
+      // @ts-expect-error boxed String is not a valid 2nd dimension KeyCollection
+      m.bool(2, boxed);
+    }).toThrow(/Invalid arguments provided for boolean variable creation/);
   });
 
   it("solves an assignment problem formulated cleanly with domain binary", async () => {

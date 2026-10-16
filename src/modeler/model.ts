@@ -94,7 +94,7 @@ function isPlainOptionsObject(val: unknown): boolean {
 
 export type KeyCollection<K extends string | number> =
   | ReadonlyArray<K>
-  | (Iterable<K> & object);
+  | (Iterable<K> & object & { valueOf(): object });
 
 function assertValidCount(count: number, label: string): void {
   if (!Number.isInteger(count) || count < 0) {
