@@ -99,9 +99,16 @@ function isPlainOptionsObject(val: unknown): boolean {
   );
 }
 
+declare const UniqueStringTag: unique symbol;
+declare global {
+  interface String {
+    readonly [UniqueStringTag]: false;
+  }
+}
+
 export type KeyCollection<K extends string | number> =
   | ReadonlyArray<K>
-  | (Iterable<K> & object & { readonly trim?: never });
+  | (Iterable<K> & object & { readonly [UniqueStringTag]?: true });
 
 function assertValidCount(count: number, label: string): void {
   if (!Number.isInteger(count) || count < 0) {

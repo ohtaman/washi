@@ -391,6 +391,14 @@ export function dot<
   vars: V & (Record<any, VI> | unknown) & DotContainerArg<V, DotTerm, VI>,
   coeffs: C & (Record<any, CI> | unknown) & DotContainerArg<C, number, CI>
 ): LinExpr;
+export function dot(
+  coeffs: DotCoeffContainer<any, any>,
+  vars: DotVarContainer<any, any>
+): LinExpr;
+export function dot(
+  vars: DotVarContainer<any, any>,
+  coeffs: DotCoeffContainer<any, any>
+): LinExpr;
 export function dot(a: any, b: any): LinExpr {
   const terms = new Map<Var, number>();
   let constant = 0;

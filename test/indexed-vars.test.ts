@@ -216,7 +216,7 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
     const genMat = makeGenericMatrix(["r1"] as const, ["c1"] as const);
     expect(genMat.r1.c1.name).toBe("gmat_r1_c1");
 
-    // Custom iterable with primitive valueOf(): number and charAt(): string is accepted at compile time and runtime
+    // Custom iterable with primitive valueOf(): number, charAt(): string, and trim(): string is accepted at compile time and runtime
     const customIterable = {
       *[Symbol.iterator](): IterableIterator<"k1" | "k2"> {
         yield "k1";
@@ -226,6 +226,9 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
         return 2;
       },
       charAt(): string {
+        return "k";
+      },
+      trim(): string {
         return "k";
       },
     };

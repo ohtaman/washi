@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, sum, dot, expr, c, LinExpr, QuadExpr } from "../src/index.js";
+import {
+  Model,
+  Var,
+  sum,
+  dot,
+  expr,
+  c,
+  LinExpr,
+  QuadExpr,
+  type DotCoeffContainer,
+  type DotVarContainer,
+} from "../src/index.js";
 
 describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain, values", () => {
   it("creates single domain variables without fat options", () => {
@@ -305,6 +316,17 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const expr2DInterface = dot(storeFruitCosts, storeFruitVars);
     expect(expr2DInterface.terms.get(storeFruitVars.storeA.apple)).toBe(2);
     expect(expr2DInterface.terms.get(storeFruitVars.storeB.banana)).toBe(8);
+
+    // Exported DotCoeffContainer and DotVarContainer union aliases work in both directions
+    function dotFromUnionAliases<K extends string>(
+      coeffs: DotCoeffContainer<K>,
+      vars: DotVarContainer<K>
+    ) {
+      return dot(coeffs, vars).add(dot(vars, coeffs));
+    }
+    const unionDot = dotFromUnionAliases(fruitCosts, fruitVars);
+    expect(unionDot.terms.get(fruitVars.apple)).toBe(6);
+    expect(unionDot.terms.get(fruitVars.banana)).toBe(10);
 
     // Symbol-keyed objects are rejected at compile time and runtime
     const sym = Symbol("cost");
