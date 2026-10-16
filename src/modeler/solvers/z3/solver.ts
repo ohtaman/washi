@@ -37,6 +37,7 @@ export class Z3Solver implements Solver {
     supportsQP: false,
     supportsSMT: true,
     supportsUnsatCore: true,
+    supportsWarmStart: false,
   };
 
   /**
@@ -257,6 +258,11 @@ export class Z3Solver implements Solver {
    * Tracks constraints to return an unsatCore if infeasible.
    */
   async check(modelData: any, options: SolverOptions = {}): Promise<SolverCheckResult> {
+    if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
+      throw new Error(
+        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+      );
+    }
     if (options.signal?.aborted) {
       return {
         status: "Unknown",
@@ -391,6 +397,11 @@ export class Z3Solver implements Solver {
     _lpResult: any,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
+    if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
+      throw new Error(
+        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+      );
+    }
     if (options.signal?.aborted) {
       return {
         status: "Unknown",

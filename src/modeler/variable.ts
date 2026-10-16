@@ -2,6 +2,7 @@ import type { VarType } from "./types.js";
 import { LinExpr } from "./expression.js";
 import { Constraint } from "./constraint.js";
 import { QuadExpr } from "./quad-expr.js";
+import { validateVarBounds } from "./validation.js";
 
 let varIdCounter = 0;
 
@@ -11,6 +12,8 @@ export interface VarOptions {
   type?: VarType;
   lb?: number;
   ub?: number;
+  /** Optional primal initial value (MIP start / warm-start hint), distinct from solved Var.value */
+  initialValue?: number;
 }
 
 function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
@@ -38,6 +41,7 @@ export class Var {
   private _type: "Continuous" | "Integer" | "Binary";
   private _lb: number;
   private _ub: number;
+  private _initialValue: number | undefined;
 
   /** Optimal primal value after solve */
   public value: number | null = null;
@@ -59,6 +63,17 @@ export class Var {
     } else {
       this._lb = options.lb !== undefined ? options.lb : 0;
       this._ub = options.ub !== undefined ? options.ub : Infinity;
+    }
+
+    this._initialValue =
+      options.initialValue !== undefined
+        ? Object.is(options.initialValue, -0)
+          ? 0
+          : options.initialValue
+        : undefined;
+
+    if (this._initialValue !== undefined) {
+      validateVarBounds(this);
     }
   }
 
@@ -96,6 +111,19 @@ export class Var {
   set ub(val: number) {
     if (!Object.is(this._ub, val)) {
       this._ub = val;
+      this.ownerModel?.notifyMutation?.();
+    }
+  }
+
+  /** Optional primal initial value (MIP start / warm-start hint), distinct from solved Var.value */
+  get initialValue(): number | undefined {
+    return this._initialValue;
+  }
+
+  set initialValue(val: number | undefined) {
+    const normalized = val !== undefined && Object.is(val, -0) ? 0 : val;
+    if (!Object.is(this._initialValue, normalized)) {
+      this._initialValue = normalized;
       this.ownerModel?.notifyMutation?.();
     }
   }

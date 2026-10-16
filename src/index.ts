@@ -10,6 +10,7 @@ export {
   Model,
   type ModelOptions,
   type BoundsOptions,
+  type BinaryOptions,
   type IndicatorOptions,
   type ConstraintItem,
   type KeyCollection,

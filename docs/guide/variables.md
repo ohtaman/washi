@@ -125,6 +125,32 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 | `lb` | `number` | `0` | Lower bound. Defaults to 0 (non-negative). |
 | `ub` | `number` | `Infinity` (or `1` for binary) | Upper bound. |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying variable domain category. |
+| `initialValue` | `number` | `undefined` | Optional primal solution hint (MIP start), kept distinct from solved `variable.value`. |
+
+---
+
+## Primal Initial Values (Warm-Start Hints)
+
+When rebuilding a model across iterations with stable variable names, you can supply optional primal initial values (`initialValue`) on a subset or all numeric variables (`m.continuous`, `m.integer`, `m.binary`, or `v.initialValue = ...`):
+
+```typescript
+const prevValues: Record<string, number | null> = { trucks: 8, open_warehouse: 1 };
+
+const m2 = new Model("RebuiltMIP");
+const trucks2 = m2.integer("trucks", {
+  lb: 0,
+  ub: 15,
+  initialValue: prevValues.trucks ?? undefined,
+});
+const openWarehouse2 = m2.binary("open_warehouse", {
+  initialValue: prevValues.open_warehouse ?? undefined,
+});
+const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial start: no initialValue needed
+```
+
+- **Hint vs. Hard Constraint**: `initialValue` is strictly an optional solver hint (passed to HiGHS via `setSolution`). It does **not** fix the variable, add a constraint, or guarantee either solver acceptance or a runtime speedup. It remains separate from `variable.value` (which is `null` until solved and populated with the solver's primal solution).
+- **Validation & Tolerance (`1e-6`)**: Supplied values must be finite numbers within `[lb - 1e-6, ub + 1e-6]` (and within `1e-6` of an integer inside bounds for `"Integer"` and `"Binary"` variables). Partial starts are not required to satisfy every model constraint.
+- **Solver Support**: Supported by **HiGHS** (`capabilities.supportsWarmStart === true`). Solvers without warm-start support (**GLPK**, **Z3**, or custom adapters without `supportsWarmStart: true`) reject `solve()` and `check()` with a descriptive error rather than silently ignoring `initialValue`.
 
 ---
 

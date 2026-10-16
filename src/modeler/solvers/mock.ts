@@ -31,7 +31,11 @@ export class MockSolver implements Solver {
 
   constructor(options: MockSolverOptions = {}) {
     this.name = options.name || "MockSolver";
-    this.capabilities = options.capabilities || { supportsMIP: true, supportsQP: true };
+    this.capabilities = options.capabilities || {
+      supportsMIP: true,
+      supportsQP: true,
+      supportsWarmStart: true,
+    };
     this.options = options;
   }
 

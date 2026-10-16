@@ -85,6 +85,11 @@ const byItem = m.integer(["desk", "chair"] as const, { lb: 0 }); // Record<"desk
 const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 ```
 
+- **Optional Primal Initial Values (`initialValue?: number`)**:
+  - Numeric variable constructors (`m.continuous`, `m.integer`, `m.binary`, and `new Var`) and the mutable `v.initialValue` property accept an optional finite primal hint (validated with tolerance `1e-6` against bounds `[lb, ub]` and integer/binary domains), kept distinct from the solved `v.value`.
+  - A start may be complete or partial (e.g., transferred by stable variable names when rebuilding a MIP model). Supplying `initialValue` is a hint only—it does **not** fix the variable, add a hard constraint, or guarantee solver acceptance or a runtime speedup.
+  - Supported by **HiGHS** (`supportsWarmStart: true`); solvers without warm-start support (**GLPK**, **Z3**) throw an error if any variable has `initialValue !== undefined`.
+
 ### Step 2: Build Expressions (`expr`, `sum`, `dot`)
 
 - **Unified `expr` template tag**:

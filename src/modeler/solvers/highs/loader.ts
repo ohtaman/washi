@@ -214,6 +214,7 @@ const HIGHS_STATUS_NAMES: Record<number, string> = {
 export async function solveLpWithHighs(
   lpString: string,
   options: SolveOptions & {
+    initialValues?: Record<string, number>;
     onIncumbent?: (incumbent: HighsIncumbentSnapshot) => void;
   } = {}
 ): Promise<{ result: RawHighsSolveResult; runTime: number }> {
@@ -288,6 +289,21 @@ export async function solveLpWithHighs(
       ? options.objectiveOffset
       : 0;
 
+  const initialValues = options.initialValues;
+  let hasInitialValues = false;
+  if (initialValues) {
+    for (const [colName, val] of Object.entries(initialValues)) {
+      if (val !== undefined) {
+        if (typeof val !== "number" || !Number.isFinite(val)) {
+          throw new Error(
+            `Invalid initial value for column "${colName}": ${String(val)} (must be a finite number).`
+          );
+        }
+        hasInitialValues = true;
+      }
+    }
+  }
+
   if (typeof highs.withModel === "function") {
     const result = highs.withModel(
       { format: "lp", data: lpString },
@@ -324,6 +340,44 @@ export async function solveLpWithHighs(
             name: m.getColName(j),
             type: integ === 1 ? "Integer" : "Continuous",
           });
+        }
+
+        if (hasInitialValues && initialValues) {
+          if (typeof m.setSolution !== "function") {
+            throw new Error(
+              "HiGHS runtime does not support setting primal initial values (setSolution is unavailable)."
+            );
+          }
+          const colIndexByName = new Map<string, number>();
+          for (let j = 0; j < dims.numCols; j++) {
+            colIndexByName.set(colMeta[j].name, j);
+          }
+          for (const [colName, val] of Object.entries(initialValues)) {
+            if (val !== undefined && !colIndexByName.has(colName)) {
+              throw new Error(
+                `Unknown column "${colName}" in initialValues (column does not exist in the HiGHS LP model).`
+              );
+            }
+          }
+          const indices: number[] = [];
+          const values: number[] = [];
+          for (let j = 0; j < dims.numCols; j++) {
+            const colName = colMeta[j].name;
+            if (Object.prototype.hasOwnProperty.call(initialValues, colName)) {
+              const val = initialValues[colName];
+              if (val !== undefined) {
+                indices.push(j);
+                values.push(val);
+              }
+            }
+          }
+          if (indices.length > 0) {
+            if (indices.length === dims.numCols) {
+              m.setSolution({ colValue: values });
+            } else {
+              m.setSolution({ indices, values });
+            }
+          }
         }
 
         let lastIncumbentSnapshot: HighsIncumbentSnapshot | null = null;
@@ -603,6 +657,11 @@ export async function solveLpWithHighs(
     return { result, runTime };
   }
 
+  if (hasInitialValues) {
+    throw new Error(
+      "HiGHS runtime does not support setting primal initial values (withModel/setSolution is unavailable)."
+    );
+  }
   const result = highs.solve(lpString, highsOptions);
   const endTime = performance.now();
   const runTime = (endTime - startTime) / 1000;

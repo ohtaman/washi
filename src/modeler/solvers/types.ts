@@ -72,6 +72,8 @@ export interface SolverCapabilities {
   supportsSMT?: boolean;
   /** Supports extracting an unsatisfiable core (conflicting constraint subset; minimality is not guaranteed) */
   supportsUnsatCore?: boolean;
+  /** Supports primal initial values (MIP starts / warm-start hints) */
+  supportsWarmStart?: boolean;
 }
 
 export interface SolverCheckResult {

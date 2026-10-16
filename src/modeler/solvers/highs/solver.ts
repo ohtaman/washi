@@ -1,6 +1,7 @@
 import type { Solver, SolverOptions, SolverResult } from "../types.js";
-import type { LpModelData, LpExportResult } from "../../lp-writer.js";
+import { sanitizeIdentifier, type LpModelData, type LpExportResult } from "../../lp-writer.js";
 import type { SolverStatus, TerminationStatus } from "../../types.js";
+import { normalizeVarInitialValue, validateVarBounds } from "../../validation.js";
 import { solveLp } from "./worker-client.js";
 
 /**
@@ -192,6 +193,7 @@ export class HighsSolver implements Solver {
   public static readonly capabilities = {
     supportsMIP: true,
     supportsQP: true,
+    supportsWarmStart: true,
   };
   public readonly name = "HiGHS";
   public readonly version = "1.15.3";
@@ -211,11 +213,41 @@ export class HighsSolver implements Solver {
     const { lpString, nameToVar, nameToConstraint } = lpResult;
     const offset = modelData.objective.constant || 0;
 
+    for (const v of modelData.variables) {
+      validateVarBounds(v);
+    }
+
+    const initialValues: Record<string, number> = {};
+    let hasInitialValues = false;
+    const mappedVars = new Set<any>();
+    for (const [colName, v] of nameToVar.entries()) {
+      mappedVars.add(v);
+      const normalized = normalizeVarInitialValue(v);
+      if (normalized !== undefined) {
+        initialValues[colName] = normalized;
+        hasInitialValues = true;
+      }
+    }
+    for (let i = 0; i < modelData.variables.length; i++) {
+      const v = modelData.variables[i];
+      if (!mappedVars.has(v)) {
+        const normalized = normalizeVarInitialValue(v);
+        if (normalized !== undefined) {
+          const fallbackName = sanitizeIdentifier(v.name, "x", i);
+          if (!Object.prototype.hasOwnProperty.call(initialValues, fallbackName)) {
+            initialValues[fallbackName] = normalized;
+            hasInitialValues = true;
+          }
+        }
+      }
+    }
+
     let effectiveOptions: SolverOptions = mergedOptions;
-    if (offset !== 0) {
+    if (offset !== 0 || hasInitialValues || effectiveOptions.initialValues !== undefined) {
       effectiveOptions = {
         ...effectiveOptions,
-        objectiveOffset: offset,
+        ...(offset !== 0 ? { objectiveOffset: offset } : {}),
+        initialValues: hasInitialValues ? initialValues : undefined,
       };
     }
 

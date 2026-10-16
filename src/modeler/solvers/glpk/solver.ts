@@ -18,6 +18,7 @@ export class GLPKSolver implements Solver {
   public static readonly capabilities = {
     supportsMIP: true,
     supportsQP: false,
+    supportsWarmStart: false,
   };
   public readonly name = "GLPK";
   public readonly version = "5.0.0";
@@ -33,6 +34,11 @@ export class GLPKSolver implements Solver {
     lpResult: LpExportResult,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
+    if (modelData.variables?.some((v) => v.initialValue !== undefined)) {
+      throw new Error(
+        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+      );
+    }
     const mergedOptions: SolverOptions = { ...this.options, ...options };
     if (mergedOptions.signal?.aborted) {
       return {
