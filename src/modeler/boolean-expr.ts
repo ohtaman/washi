@@ -1,4 +1,4 @@
-import type { Constraint } from "./constraint.js";
+import { Constraint } from "./constraint.js";
 import type { LinExpr } from "./expression.js";
 import type { QuadExpr } from "./quad-expr.js";
 
@@ -11,17 +11,8 @@ export type LogicElement = BoolExpr | Constraint;
 export type LogicInput = LogicElement | LinExpr | QuadExpr;
 
 function assertLogicElement(el: unknown, op: string): LogicElement {
-  if (el instanceof BoolExpr) {
+  if (el instanceof BoolExpr || el instanceof Constraint) {
     return el;
-  }
-  if (
-    typeof el === "object" &&
-    el !== null &&
-    "sense" in el &&
-    "lhs" in el &&
-    "rhs" in el
-  ) {
-    return el as Constraint;
   }
   if (
     typeof el === "object" &&

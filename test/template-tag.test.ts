@@ -524,6 +524,12 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => dot([1], [guard as any])).toThrow(
       /Cannot multiply number by non-variable\/expression operand in dot/
     );
+    const senseLhsDot = dot({ sense: 2, lhs: 3 }, { sense: x, lhs: y });
+    expect(senseLhsDot.terms.get(x)).toBe(2);
+    expect(senseLhsDot.terms.get(y)).toBe(3);
+    expect(() => and({ sense: "<=", lhs: new LinExpr(), rhs: 5 } as any)).toThrow(
+      /Invalid operand passed to logical operator/
+    );
 
     // Structural objective validation rejects partial objects and normalizes complete structural objects without clone()
     expect(() => maximize({ terms: new Map() } as any)).toThrow(/Invalid expression passed to maximize/);
