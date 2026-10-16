@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum } from "../src/modeler/index.js";
+import { Model, minimize } from "../src/modeler/index.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -21,15 +21,15 @@ describe("HiGHS WebAssembly Binary Verification", () => {
     const x = m.continuous(3, { lb: 0 });
 
     // Minimize 2*x0 + 3*x1 + x2
-    m.minimize(x[0].mul(2).add(x[1].mul(3)).add(x[2]));
+    m.objective(minimize(x[0].mul(2).add(x[1].mul(3)).add(x[2])));
 
     // Subject to:
     // x0 + x1 >= 5
-    m.constrain(x[0].add(x[1]).ge(5));
+    m.constraint(x[0].add(x[1]).ge(5));
     // x1 + x2 >= 8
-    m.constrain(x[1].add(x[2]).ge(8));
+    m.constraint(x[1].add(x[2]).ge(8));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(18); // x0=5, x1=0, x2=8 -> 2*5 + 1*8 = 18
     expect(x[0].value).toBe(5);

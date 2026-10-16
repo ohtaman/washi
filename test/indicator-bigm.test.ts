@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum, expr, LinExpr, deriveBigMForLe, deriveBigMForGe, buildIndicatorLinearization } from "../src/modeler/index.js";
+import { Model, sum, expr, maximize, minimize, LinExpr, deriveBigMForLe, deriveBigMForGe, buildIndicatorLinearization } from "../src/modeler/index.js";
 
 describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
   it("enforces constraint f(x) <= b only when indicator variable z == 1 (activeValue = 1)", async () => {
@@ -17,10 +17,10 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
 
     // Fixed cost for opening factory ($20), profit from production ($1/unit)
     // Objective: Maximize profit - cost = 1*x - 20*z
-    m.maximize(x.sub(z.mul(20)));
+    m.objective(maximize(x.sub(z.mul(20))));
 
     // Case 1: Capacity upper bound 30. Profit = 30 - 20 = 10 > 0 -> should open (z=1, x=30)
-    m.add(x.le(30));
+    m.constraint(x.le(30));
     let status = await m.solve();
     expect(status).toBe("Optimal");
     expect(z.value).toBe(1);
@@ -37,8 +37,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
     m.indicator(z, x.le(0), { activeValue: 0, M: 100 });
 
     // If demand is only 5 units, profit = 5 - 20 = -15 < 0 -> should not open (z=0, x=0)
-    m.add(x.le(5));
-    m.maximize(x.sub(z.mul(20)));
+    m.constraint(x.le(5));
+    m.objective(maximize(x.sub(z.mul(20))));
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
@@ -56,8 +56,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
     m.indicator(z, x.ge(20), { activeValue: 1, M: 50, name: "min_batch" });
 
     // Force z = 1
-    m.add(z.eq(1));
-    m.minimize(x);
+    m.constraint(z.eq(1));
+    m.objective(minimize(x));
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
@@ -72,8 +72,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
     // If z == 1, then x == 42
     m.indicator(z, x.eq(42), { activeValue: 1, M: 100, name: "exact_value" });
 
-    m.add(z.eq(1));
-    m.minimize(x);
+    m.constraint(z.eq(1));
+    m.objective(minimize(x));
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
@@ -89,8 +89,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
     m.indicator(b, expr`${x} >= 100`, { activeValue: 1, M: 1000 });
 
     // Force b = 1
-    m.constrain(expr`${b} == 1`);
-    m.minimize(expr`${x}`);
+    m.constraint(expr`${b} == 1`);
+    m.objective(minimize(expr`${x}`));
 
     const status = await m.solve();
     expect(status).toBe("Optimal");
@@ -122,8 +122,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       m.indicator(z, x.le(2_000_000), { activeValue: 1 });
 
       // Force z = 0 (inactive), maximize x
-      m.constrain(expr`${z} == 0`);
-      m.maximize(x);
+      m.constraint(expr`${z} == 0`);
+      m.objective(maximize(x));
 
       const status = await m.solve();
       expect(status).toBe("Optimal");
@@ -139,8 +139,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x = m.continuous("x", { lb: 0, ub: 100 });
         const z = m.binary("z");
         m.indicator(z, x.le(30), { activeValue: 1 });
-        m.constrain(expr`${z} == 1`);
-        m.maximize(x);
+        m.constraint(expr`${z} == 1`);
+        m.objective(maximize(x));
         await m.solve();
         expect(x.value).toBe(30);
 
@@ -149,8 +149,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x2 = m2.continuous("x", { lb: 0, ub: 100 });
         const z2 = m2.binary("z");
         m2.indicator(z2, x2.le(30), { activeValue: 1 });
-        m2.constrain(expr`${z2} == 0`);
-        m2.maximize(x2);
+        m2.constraint(expr`${z2} == 0`);
+        m2.objective(maximize(x2));
         await m2.solve();
         expect(x2.value).toBe(100);
       }
@@ -161,8 +161,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x = m.continuous("x", { lb: 0, ub: 100 });
         const z = m.binary("z");
         m.indicator(z, x.ge(40), { activeValue: 1 });
-        m.constrain(expr`${z} == 1`);
-        m.minimize(x);
+        m.constraint(expr`${z} == 1`);
+        m.objective(minimize(x));
         await m.solve();
         expect(x.value).toBe(40);
 
@@ -171,8 +171,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x2 = m2.continuous("x", { lb: 0, ub: 100 });
         const z2 = m2.binary("z");
         m2.indicator(z2, x2.ge(40), { activeValue: 1 });
-        m2.constrain(expr`${z2} == 0`);
-        m2.minimize(x2);
+        m2.constraint(expr`${z2} == 0`);
+        m2.objective(minimize(x2));
         await m2.solve();
         expect(x2.value).toBe(0);
       }
@@ -183,8 +183,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x = m.continuous("x", { lb: 0, ub: 100 });
         const z = m.binary("z");
         m.indicator(z, x.eq(55), { activeValue: 1 });
-        m.constrain(expr`${z} == 1`);
-        m.minimize(x);
+        m.constraint(expr`${z} == 1`);
+        m.objective(minimize(x));
         await m.solve();
         expect(x.value).toBe(55);
 
@@ -193,8 +193,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x2 = m2.continuous("x", { lb: 0, ub: 100 });
         const z2 = m2.binary("z");
         m2.indicator(z2, x2.eq(55), { activeValue: 1 });
-        m2.constrain(expr`${z2} == 0`);
-        m2.maximize(x2);
+        m2.constraint(expr`${z2} == 0`);
+        m2.objective(maximize(x2));
         await m2.solve();
         expect(x2.value).toBe(100);
       }
@@ -205,8 +205,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x = m.continuous("x", { lb: 0, ub: 100 });
         const z = m.binary("z");
         m.indicator(z, x.le(25), { activeValue: 0 });
-        m.constrain(expr`${z} == 0`);
-        m.maximize(x);
+        m.constraint(expr`${z} == 0`);
+        m.objective(maximize(x));
         await m.solve();
         expect(x.value).toBe(25);
 
@@ -215,8 +215,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x2 = m2.continuous("x", { lb: 0, ub: 100 });
         const z2 = m2.binary("z");
         m2.indicator(z2, x2.le(25), { activeValue: 0 });
-        m2.constrain(expr`${z2} == 1`);
-        m2.maximize(x2);
+        m2.constraint(expr`${z2} == 1`);
+        m2.objective(maximize(x2));
         await m2.solve();
         expect(x2.value).toBe(100);
       }
@@ -227,8 +227,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x = m.continuous("x", { lb: 0, ub: 100 });
         const z = m.binary("z");
         m.indicator(z, x.ge(65), { activeValue: 0 });
-        m.constrain(expr`${z} == 0`);
-        m.minimize(x);
+        m.constraint(expr`${z} == 0`);
+        m.objective(minimize(x));
         await m.solve();
         expect(x.value).toBe(65);
 
@@ -237,8 +237,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x2 = m2.continuous("x", { lb: 0, ub: 100 });
         const z2 = m2.binary("z");
         m2.indicator(z2, x2.ge(65), { activeValue: 0 });
-        m2.constrain(expr`${z2} == 1`);
-        m2.minimize(x2);
+        m2.constraint(expr`${z2} == 1`);
+        m2.objective(minimize(x2));
         await m2.solve();
         expect(x2.value).toBe(0);
       }
@@ -249,8 +249,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x = m.continuous("x", { lb: 0, ub: 100 });
         const z = m.binary("z");
         m.indicator(z, x.eq(77), { activeValue: 0 });
-        m.constrain(expr`${z} == 0`);
-        m.minimize(x);
+        m.constraint(expr`${z} == 0`);
+        m.objective(minimize(x));
         await m.solve();
         expect(x.value).toBe(77);
 
@@ -259,8 +259,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         const x2 = m2.continuous("x", { lb: 0, ub: 100 });
         const z2 = m2.binary("z");
         m2.indicator(z2, x2.eq(77), { activeValue: 0 });
-        m2.constrain(expr`${z2} == 1`);
-        m2.maximize(x2);
+        m2.constraint(expr`${z2} == 1`);
+        m2.objective(maximize(x2));
         await m2.solve();
         expect(x2.value).toBe(100);
       }
@@ -280,8 +280,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
 
       // When z == 1, 2*x1 - 3*x2 <= 10 is enforced.
       // If we maximize 2*x1 - 3*x2, the maximum should be exactly 10.
-      m.constrain(expr`${z} == 1`);
-      m.maximize(expr`2 * ${x1} - 3 * ${x2}`);
+      m.constraint(expr`${z} == 1`);
+      m.objective(maximize(expr`2 * ${x1} - 3 * ${x2}`));
 
       const status = await m.solve();
       expect(status).toBe("Optimal");
@@ -293,8 +293,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const y2 = m2.continuous("y2", { lb: 5, ub: 15 });
       const b2 = m2.binary("b2");
       m2.indicator(b2, expr`2 * ${y1} - 3 * ${y2} <= 10`, { activeValue: 1 });
-      m2.constrain(expr`${b2} == 0`);
-      m2.maximize(expr`2 * ${y1} - 3 * ${y2}`);
+      m2.constraint(expr`${b2} == 0`);
+      m2.objective(maximize(expr`2 * ${y1} - 3 * ${y2}`));
 
       const status2 = await m2.solve();
       expect(status2).toBe("Optimal");
@@ -344,8 +344,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
         m.indicator(z, x.le(50), { activeValue: 1, M: 200 })
       ).not.toThrow();
 
-      m.constrain(expr`${z} == 1`);
-      m.maximize(x);
+      m.constraint(expr`${z} == 1`);
+      m.objective(maximize(x));
 
       const status = await m.solve();
       expect(status).toBe("Optimal");
@@ -405,8 +405,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const z = m.binary("z");
 
       expect(() => m.indicator(z, x.le(100), { activeValue: 1 })).not.toThrow();
-      m.constrain(expr`${z} == 0`);
-      m.maximize(x);
+      m.constraint(expr`${z} == 0`);
+      m.objective(maximize(x));
 
       const status = await m.solve();
       expect(status).toBe("Optimal");
@@ -461,8 +461,8 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       const xFrac = mFrac.continuous("xFrac", { lb: 0, ub: 1 });
       const zFrac = mFrac.binary("zFrac");
       expect(() => mFrac.indicator(zFrac, xFrac.le(0.1), { activeValue: 1 })).not.toThrow();
-      mFrac.constrain(expr`${zFrac} == 1`);
-      mFrac.maximize(xFrac);
+      mFrac.constraint(expr`${zFrac} == 1`);
+      mFrac.objective(maximize(xFrac));
       await mFrac.solve();
       expect(xFrac.value).toBeCloseTo(0.1, 6);
 
@@ -473,7 +473,7 @@ describe("TDD: Indicator Constraints & Big-M Auto-Linearization", () => {
       expect(mFrac.status).toBe("Optimal");
       expect(xFrac.value).toBeCloseTo(0.1, 6);
       const fakeUpperVar = m.continuous("fakeUpper", { lb: 0, ub: 1 });
-      (fakeUpperVar as unknown as { type: string }).type = "BINARY";
+      (fakeUpperVar as unknown as { _type: string })._type = "BINARY";
       expect(() => m.indicator(fakeUpperVar, x.le(0))).toThrow(/Invalid variable/i);
     });
   });

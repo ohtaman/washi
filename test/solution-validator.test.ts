@@ -246,7 +246,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     // 4. Excludes false logical atoms inside satisfied negations from maxViolation
     const mFalseAtom = new Model("FalseAtomPolarity");
     const xPol = mFalseAtom.continuous("xPol", { lb: 0, ub: 200 });
-    mFalseAtom.add(not(xPol.le(0)), "neg_le");
+    mFalseAtom.constraint(not(xPol.le(0)), "neg_le");
     const repFalseAtom = mFalseAtom.validateSolution({
       values: { xPol: 100 },
     });
@@ -266,10 +266,10 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const pA = mXorZ3.bool("pA");
     const pB = mXorZ3.bool("pB");
     const pC = mXorZ3.bool("pC");
-    mXorZ3.add(xor(pA, pB, pC), "xor3");
-    mXorZ3.add(pA, "force_a");
-    mXorZ3.add(pB, "force_b");
-    mXorZ3.add(pC, "force_c");
+    mXorZ3.constraint(xor(pA, pB, pC), "xor3");
+    mXorZ3.constraint(pA, "force_a");
+    mXorZ3.constraint(pB, "force_b");
+    mXorZ3.constraint(pC, "force_c");
     const z3XorRes = await mXorZ3.check("z3");
     expect(z3XorRes.status).toBe("Sat");
     expect(mXorZ3.validateSolution().valid).toBe(true);

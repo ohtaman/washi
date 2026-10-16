@@ -275,7 +275,7 @@ export class Z3Solver implements Solver {
     const s = new ctx.Solver();
     const trans = this.createContextTranslator(ctx);
 
-    const variables: Var[] = modelData.variables || modelData.vars || [];
+    const variables: Var[] = modelData.variables || [];
     const boolVars: BoolVar[] = modelData.boolVars || [];
     const constraints: Constraint[] = modelData.constraints || [];
     const logicalConstraints = modelData.logicalConstraints || [];
@@ -466,7 +466,7 @@ export class Z3Solver implements Solver {
     const opt = new ctx.Optimize();
     const trans = this.createContextTranslator(ctx);
 
-    const variables: Var[] = modelData.variables || modelData.vars || [];
+    const variables: Var[] = modelData.variables || [];
     const boolVars: BoolVar[] = modelData.boolVars || [];
     const constraints: Constraint[] = modelData.constraints || [];
     const logicalConstraints = modelData.logicalConstraints || [];

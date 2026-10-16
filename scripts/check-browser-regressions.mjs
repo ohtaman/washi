@@ -65,7 +65,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           m.indicator(active, x.le(7), { name: "conditional_capacity" });
           m.objective(maximize(expr`3 * ${x} + 5`));
           const progress = [];
-          require(await m.optimize({ solver: solverName, useWorker: true,
+          require(await m.solve({ solver: solverName, useWorker: true,
             onProgress: (event) => progress.push(event) }) === "Optimal", "Expected Optimal");
           require(x.value === 7 && m.objectiveValue === 26, "Wrong primal or objective offset");
           require(m.hasPrimalSolution && m.terminationStatus === "Optimal", "Wrong solution metrics");
@@ -80,10 +80,10 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           require(rejected && m.objectiveValue === 26 && m.status === "Optimal", "Failed validation changed solved state");
           const controller = new AbortController();
           controller.abort();
-          require(await m.optimize({ solver: solverName, signal: controller.signal }) === "Unknown", "Wrong pre-abort status");
+          require(await m.solve({ solver: solverName, signal: controller.signal }) === "Unknown", "Wrong pre-abort status");
           require(m.terminationStatus === "Interrupted" && !m.hasPrimalSolution && x.value === null,
             "Pre-abort left stale primal values");
-          require(await m.optimize({ solver: solverName }) === "Optimal" && m.objectiveValue === 26,
+          require(await m.solve({ solver: solverName }) === "Optimal" && m.objectiveValue === 26,
             "Could not solve again after cancellation");
 
           if (solverName === "z3") {
@@ -186,14 +186,14 @@ async function checkWorkerCancellation(page) {
       active.objective(window.api.maximize(sum(x.map((v, i) => v.mul(weights[i] + 6))).add(100)));
       const queued = new Model("Cancelled queued solve");
       const q = queued.continuous("cancelled_queue_marker", { lb: 0, ub: 3 });
-      queued.maximize(q);
+      queued.objective(window.api.maximize(q));
       const remaining = new Model("Remaining queued solve");
       const r = remaining.continuous("remaining_queue_marker", { lb: 0, ub: 5 });
-      remaining.maximize(r);
+      remaining.objective(window.api.maximize(r));
       const activeController = new AbortController();
       const queuedController = new AbortController();
       let progressCount = 0;
-      const first = active.optimize({ useWorker: true, presolve: "off", signal: activeController.signal,
+      const first = active.solve({ useWorker: true, presolve: "off", signal: activeController.signal,
         onProgress: () => {
           if (progressCount++ > 0) return;
           queuedController.abort();
@@ -201,8 +201,8 @@ async function checkWorkerCancellation(page) {
           activeController.abort();
         } });
       // All three requests enter the queue before the fresh Worker emits progress.
-      const second = queued.optimize({ useWorker: true, signal: queuedController.signal });
-      const third = remaining.optimize({ useWorker: true });
+      const second = queued.solve({ useWorker: true, signal: queuedController.signal });
+      const third = remaining.solve({ useWorker: true });
       await Promise.all([first, second, third]);
       require(progressCount > 0, "Real Worker did not emit progress");
       require(active.terminationStatus === "Interrupted", "Active solve was not interrupted");
@@ -214,7 +214,7 @@ async function checkWorkerCancellation(page) {
         "Cancelled queued solve was dispatched or remaining solve was lost");
       require(remaining.status === "Optimal" && r.value === 5 && remaining.validateSolution().valid,
         "Remaining queued solve failed after Worker replacement");
-      require(await queued.optimize({ useWorker: true }) === "Optimal" && q.value === 3,
+      require(await queued.solve({ useWorker: true }) === "Optimal" && q.value === 3,
         "Cancelled model could not be solved again");
       const mutatedInWorker = new Model("Mutated during real Worker solve");
       const mw = mutatedInWorker.continuous("mw", { lb: 0, ub: 10 });

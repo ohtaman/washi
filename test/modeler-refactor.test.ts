@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   Model,
+  Var,
   Constraint,
   expr,
   maximize,
   minimize,
+  normalizeSense,
   type ConstraintItem,
   type ObjectiveExpr,
 } from "../src/index.js";
@@ -64,9 +66,9 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(() => m.objective({ expr: x.le(10), sense: "Maximize" })).toThrow(
       /Cannot use a Constraint as an objective/
     );
-    expect(() => (m.setObjective as any)(x.le(10))).toThrow(
-      /Cannot use a Constraint as an objective/
-    );
+    expect(() => {
+      m.objectiveExpr = x.le(10);
+    }).toThrow(/Cannot use a Constraint as an objective/);
   });
 
   it("replaces prior objective when objective() is called repeatedly", async () => {
@@ -146,14 +148,57 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.conflicts).toBeUndefined();
   });
 
-  it("ensures optimize() is an exact alias for solve()", async () => {
-    const m = new Model("OptimizeAliasTest");
+  it("retires redundant aliases on Model, Var, LinExpr, and QuadExpr (Issue #81)", () => {
+    const m = new Model("CanonicalSurfaceTest");
     const x = m.continuous("x", { lb: 0, ub: 10 });
-    m.objective(maximize(x));
+    const lin = x.add(1);
+    const quad = x.mul(x);
 
-    const status = await m.optimize();
-    expect(status).toBe("Optimal");
-    expect(x.value).toBe(10);
+    expect((m as any).constrain).toBeUndefined();
+    expect((m as any).optimize).toBeUndefined();
+    expect((m as any).maximize).toBeUndefined();
+    expect((m as any).minimize).toBeUndefined();
+    expect((m as any).setObjective).toBeUndefined();
+    expect((m as any).add).toBeUndefined();
+    expect((m as any).vars).toBeUndefined();
+    expect((m as any).constrs).toBeUndefined();
+
+    expect((x as any).lessThanOrEqual).toBeUndefined();
+    expect((x as any).greaterThanOrEqual).toBeUndefined();
+    expect((x as any).equalTo).toBeUndefined();
+
+    expect((lin as any).getValue).toBeUndefined();
+    expect((lin as any).lessThanOrEqual).toBeUndefined();
+    expect((lin as any).greaterThanOrEqual).toBeUndefined();
+    expect((lin as any).equalTo).toBeUndefined();
+
+    expect((quad as any).getValue).toBeUndefined();
+    expect((quad as any).lessThanOrEqual).toBeUndefined();
+    expect((quad as any).greaterThanOrEqual).toBeUndefined();
+    expect((quad as any).equalTo).toBeUndefined();
+  });
+
+  it("rejects invalid runtime VarType and OptimizationSense strings instead of silently defaulting (Issue #81)", () => {
+    expect(() => new Var({ type: "bogus" as any })).toThrow(/Invalid variable type/);
+    const v = new Var({ type: "integer" });
+    expect(v.type).toBe("Integer");
+    expect(() => {
+      v.type = "unknown_type" as any;
+    }).toThrow(/Invalid variable type/);
+
+    expect(() => normalizeSense("bogus" as any)).toThrow(/Invalid optimization sense/);
+    expect(() => new Model({ sense: "bogus" as any })).toThrow(/Invalid optimization sense/);
+    const m = new Model();
+    const x = m.continuous("x");
+    expect(() => {
+      m.sense = "bogus" as any;
+    }).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      m.objective({ expr: x, sense: "" as any });
+    }).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      m.objective({ expr: x, sense: null as any });
+    }).toThrow(/Invalid optimization sense/);
   });
 
   it("provides conflicts string[] on unsatisfiable SMT models via check()", async () => {
@@ -219,17 +264,9 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.objectiveValue).toBeNull();
     expect(m.solution).toBeNull();
 
-    // 3. Underlying alias paths also invalidate immediately
+    // 3. Property setter paths also invalidate immediately
     await m.solve();
-    m.add(expr`${x} >= 2`);
-    expect(m.status).toBe("NotSolved");
-
-    await m.solve();
-    m.constrain(expr`${x} <= 5`);
-    expect(m.status).toBe("NotSolved");
-
-    await m.solve();
-    m.setObjective(x.mul(2), "Maximize");
+    m.objectiveExpr = x.mul(2);
     expect(m.status).toBe("NotSolved");
   });
 
@@ -255,9 +292,9 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     await m.solve();
     expect(x.value).toBe(10);
 
-    // Also verify setObjective transactional behavior
+    // Also verify objectiveExpr setter transactional behavior
     expect(() => {
-      m.setObjective(expr`${x} <= 5` as any, "Minimize");
+      m.objectiveExpr = expr`${x} <= 5` as any;
     }).toThrow();
     expect(m.sense).toBe("Maximize");
   });

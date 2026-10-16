@@ -10,7 +10,7 @@
 <pre id="result">Loading WaSHI…</pre>
 <script src="./washi/washi.min.js"></script>
 <script>
-  const { Model } = Washi;
+  const { Model, maximize } = Washi;
   const button = document.querySelector("#solve");
   const output = document.querySelector("#result");
   button.disabled = false;
@@ -21,9 +21,9 @@
       const model = new Model("Production");
       const x = model.integer("x", { lb: 0 });
       const y = model.integer("y", { lb: 0 });
-      model.maximize(x.mul(30).add(y.mul(50)));
-      model.constrain(x.add(y.mul(2)).le(40));
-      model.constrain(x.mul(2).add(y).le(50));
+      model.objective(maximize(x.mul(30).add(y.mul(50))));
+      model.constraint(x.add(y.mul(2)).le(40));
+      model.constraint(x.mul(2).add(y).le(50));
       const status = await model.solve({ useWorker: document.querySelector("#worker").checked });
       output.textContent = JSON.stringify({ status, objective: model.objectiveValue, x: x.value, y: y.value }, null, 2);
     } catch (error) {

@@ -188,7 +188,7 @@ export class Model {
   }
 
   set objectiveExpr(value: LinExpr | QuadExpr | Constraint) {
-    this.setObjective(value);
+    this.applyObjective(value);
   }
 
   /**
@@ -198,14 +198,6 @@ export class Model {
    */
   get conflicts(): readonly string[] | undefined {
     return this.unsatCore;
-  }
-
-  get vars(): Var[] {
-    return this.variables;
-  }
-
-  get constrs(): Constraint[] {
-    return this.constraints;
   }
 
   get numVars(): number {
@@ -885,15 +877,14 @@ export class Model {
     if (!spec) {
       return this.objectiveExpr;
     }
-    this.setObjective(spec.expr, spec.sense);
+    this.applyObjective(spec.expr, spec.sense);
     return this;
   }
 
   /**
-   * Set the objective function (classic API).
-   * Prefer using `m.objective(maximize(expr))` or `m.objective(minimize(expr))`.
+   * Internal objective setter.
    */
-  setObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
+  private applyObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
     if (
       expr instanceof Constraint ||
       (typeof expr === "object" &&
@@ -910,7 +901,7 @@ export class Model {
       );
     }
 
-    const newSense = sense ? normalizeSense(sense) : this.sense;
+    const newSense = sense !== undefined ? normalizeSense(sense) : this.sense;
 
     let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {
@@ -966,20 +957,6 @@ export class Model {
   }
 
   /**
-   * @deprecated Use `m.objective(maximize(expr))` and `await m.solve()` instead.
-   */
-  maximize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
-    this.setObjective(expr, "Maximize");
-  }
-
-  /**
-   * @deprecated Use `m.objective(minimize(expr))` and `await m.solve()` instead.
-   */
-  minimize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
-    this.setObjective(expr, "Minimize");
-  }
-
-  /**
    * Add linear, boolean, or string formula constraint(s) to the model.
    * Rejects raw arithmetic expressions (e.g. LinExpr, QuadExpr) without comparison operators.
    * Chainable: returns this.
@@ -1021,18 +998,6 @@ export class Model {
     }
     this.addConstraint(item as Constraint | BoolExpr | string, name);
     return this;
-  }
-
-  /**
-   * @deprecated Use `m.constraint(...)` instead.
-   */
-  constrain(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
-  constrain(constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>): this;
-  constrain(
-    item: any,
-    name?: string
-  ): this {
-    return (this.constraint as any)(item, name);
   }
 
   /**
@@ -1161,6 +1126,11 @@ export class Model {
         ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
         : constraint;
 
+    if (constr.ownerModel && constr.ownerModel !== this) {
+      validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, constr.name);
+      claimConstraintOwnership(constr, this);
+    }
+
     const explicitName =
       typeof name === "string" && name.trim().length > 0
         ? name.trim()
@@ -1213,88 +1183,6 @@ export class Model {
     this.constrMapByName.set(constr.name, constr);
     this.recordModelMutation();
     return constr;
-  }
-
-  /**
-   * Universal classical fluent adder for constraints, variables, or batches.
-   * Enables:
-   * - m.add(x.mul(2).add(y).le(10))
-   * - m.add(expr`${x} + ${y} <= 10`)
-   * - m.add("x + y <= 10")
-   * - m.add([c1, c2, c3])
-   * - m.add(new Var(...))
-   * - m.add(c1).add(c2) (fluent chaining)
-   */
-  add(constraint: Constraint | LinExpr | QuadExpr, name?: string): this;
-  add(expr: BoolExpr, name?: string): this;
-  add(strConstraint: string, name?: string): this;
-  add(variable: Var): this;
-  add(items: ReadonlyArray<Constraint | LinExpr | QuadExpr | BoolExpr | string | Var>): this;
-  add(
-    item:
-      | Constraint
-      | LinExpr
-      | QuadExpr
-      | BoolExpr
-      | string
-      | Var
-      | ReadonlyArray<Constraint | LinExpr | QuadExpr | BoolExpr | string | Var>,
-    name?: string
-  ): this {
-    if (Array.isArray(item)) {
-      return this.runTransactionalBatch(() => {
-        for (const elem of item) {
-          this.add(elem as any);
-        }
-        return this;
-      });
-    }
-
-    if (item instanceof Var) {
-      if (item.ownerModel === this || this.varMapByName.get(item.name) === item) {
-        return this;
-      }
-      validateVarBounds(item);
-      if (item.ownerModel !== null && item.ownerModel !== this) {
-        claimVarOwnership(item, this);
-        throw new Error(
-          `Variable "${item.name}" already belongs to another model and cannot be shared across models.`
-        );
-      }
-      const savedCounter = this.varPrefixCounters.get(item.prefix);
-      const resolvedName = item.hasExplicitName ? item.name.trim() : this.getNextVarName(item.prefix);
-      try {
-        if (this.hasVarName(resolvedName)) {
-          throw new Error(`Variable with name '${resolvedName}' already exists in model`);
-        }
-        claimVarOwnership(item, this);
-      } catch (err) {
-        if (!item.hasExplicitName) {
-          if (savedCounter === undefined) {
-            this.varPrefixCounters.delete(item.prefix);
-          } else {
-            this.varPrefixCounters.set(item.prefix, savedCounter);
-          }
-        }
-        throw err;
-      }
-      if (this.batchDepth > 0) {
-        const prevName = item.name;
-        this.batchUndoActions.push(() => {
-          item._assignModelName(prevName);
-          item.ownerModel = null;
-        });
-      }
-      item._assignModelName(resolvedName);
-      item.ownerModel = this;
-      this.variables.push(item);
-      this.varMapByName.set(item.name, item);
-      this.recordModelMutation();
-      return this;
-    }
-
-    this.addConstraint(item as Constraint | LinExpr | QuadExpr | BoolExpr | string, name);
-    return this;
   }
 
   /**
@@ -1719,17 +1607,6 @@ export class Model {
     this.hasSolutionState = true;
 
     return this.status;
-  }
-
-  /**
-   * Fully identical pass-through alias to solve().
-   * Matches parameters, return value, and side effects.
-   */
-  async optimize(
-    solverOrOptions?: Solver | string | SolveOptions,
-    options?: SolveOptions
-  ): Promise<SolverStatus> {
-    return this.solve(solverOrOptions, options);
   }
 
   /**

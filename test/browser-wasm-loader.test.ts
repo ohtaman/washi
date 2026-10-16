@@ -7,7 +7,7 @@ import {
   OFFICIAL_HIGHS_CDN_WASM_URL,
   getHighs,
 } from "../src/modeler/solvers/highs/loader.js";
-import { Model } from "../src/index.js";
+import { Model, maximize } from "../src/index.js";
 
 describe("HiGHS WebAssembly Loader & Resolver", () => {
   beforeEach(() => {
@@ -83,8 +83,8 @@ describe("HiGHS WebAssembly Loader & Resolver", () => {
       const model = new Model({ name: "NodeTest" });
       const x = model.continuous("x", { lb: 0, ub: 10 });
       const y = model.continuous("y", { lb: 0, ub: 10 });
-      model.constrain(x.add(y).le(12), "c1");
-      model.setObjective(x.mul(3).add(y.mul(2)), "Maximize");
+      model.constraint(x.add(y).le(12), "c1");
+      model.objective(maximize(x.mul(3).add(y.mul(2))));
 
       const status = await model.solve();
       expect(status).toBe("Optimal");

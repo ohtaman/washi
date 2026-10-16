@@ -392,7 +392,7 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => {
       m.objectiveExpr = expr`${x} <= 5`;
     }).toThrow(/Cannot use a Constraint as an objective/);
-    expect(() => m.setObjective("x <= 5", "minimize")).toThrow(
+    expect(() => m.objective({ expr: "x <= 5" as any, sense: "minimize" })).toThrow(
       /Cannot use a comparison constraint as an objective/
     );
 
@@ -405,7 +405,7 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => m.constraint(expr`2 * ${x} + ${y}`, "bad_constr")).toThrow(
       /Constraint must contain a comparison operator/
     );
-    expect(() => m.add(expr`2 * ${x} + ${y}`, "bad_add")).toThrow(
+    expect(() => m.constraint([expr`2 * ${x} + ${y}`])).toThrow(
       /Constraint must contain a comparison operator/
     );
     expect(() => m.indicator(z, expr`2 * ${x} + ${y}`)).toThrow(
@@ -489,11 +489,10 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(c2.sense).toBe(">=");
     expect(c2.rhs).toBe(1);
 
-    // Direct common expression members on stored expr result: value, getValue(), clone(), constant
+    // Direct common expression members on stored expr result: value, clone(), constant
     x.value = 3;
     expect(cost.constant).toBe(1);
     expect(cost.value).toBe(4);
-    expect(cost.getValue()).toBe(4);
     const clonedCost = cost.clone();
     expect(clonedCost.constant).toBe(1);
     expect(clonedCost.value).toBe(4);
@@ -513,7 +512,6 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => guard.neg()).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => guard.le(5)).toThrow(/Cannot compare a Constraint/);
     expect(() => guard.value).toThrow(/Cannot read numeric value of a Constraint/);
-    expect(() => guard.getValue()).toThrow(/Cannot read numeric value of a Constraint/);
     expect(() => guard.constant).toThrow(/Cannot read numeric constant of a Constraint/);
     expect(() => x.add(guard)).toThrow(/Cannot perform arithmetic on a Constraint/);
     expect(() => x.le(guard)).toThrow(/Cannot compare against a Constraint/);
@@ -555,14 +553,15 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     // Structural objective validation rejects partial objects and normalizes complete structural objects without clone()
     expect(() => maximize({ terms: new Map() } as any)).toThrow(/Invalid expression passed to maximize/);
     expect(() => minimize({ quadTerms: new Map() } as any)).toThrow(/Invalid expression passed to minimize/);
-    expect(() => m.setObjective({ terms: new Map() } as any, "Maximize")).toThrow(/Invalid objective expression/);
-    expect(() => m.setObjective({ quadTerms: new Map() } as any, "Minimize")).toThrow(/Invalid objective expression/);
+    expect(() => m.objective({ expr: { terms: new Map() } as any, sense: "Maximize" })).toThrow(/Invalid objective expression/);
+    expect(() => m.objective({ expr: { quadTerms: new Map() } as any, sense: "Minimize" })).toThrow(/Invalid objective expression/);
 
     const structuralLin = { terms: new Map([[x, 2]]), constant: 5 };
     m.objective(maximize(structuralLin as any));
     expect(m.objectiveExpr.constant).toBe(5);
   });
 });
+
 
 
 

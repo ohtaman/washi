@@ -114,31 +114,31 @@ function markDirty() {
 }
 
 async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
-  const { Model, sum, dot, expr } = await getWashiClient(false);
+  const { Model, sum, dot, expr, minimize } = await getWashiClient(false);
   const m = new Model("CartCouponOptimizer");
 
   const useCoupon = m.binary(coupons.map((c) => c.id));
   const addFiller = m.binary(fillers.map((f) => f.id));
 
   // Max 2 coupons per order
-  m.constrain(
+  m.constraint(
     expr`${sum(coupons, (c: any) => useCoupon[c.id])} <= 2`,
     "max_two_coupons"
   );
 
   if (!enableFillers) {
     for (const f of fillers) {
-      m.constrain(expr`${addFiller[f.id]} == 0`, `disable_${f.id}`);
+      m.constraint(expr`${addFiller[f.id]} == 0`, `disable_${f.id}`);
     }
   } else {
-    m.constrain(
+    m.constraint(
       expr`${sum(fillers, (f: any) => addFiller[f.id])} <= 1`,
       "max_one_filler"
     );
   }
 
   const tierCoupons = coupons.filter((c) => c.group === "tier");
-  m.constrain(
+  m.constraint(
     expr`${sum(tierCoupons, (c: any) => useCoupon[c.id])} <= 1`,
     "tier_mutex"
   );
@@ -160,8 +160,8 @@ async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
   const totalDiscExpr = dot(discMap, useCoupon);
   const fillerCostExpr = dot(netCostMap, addFiller);
 
-  m.minimize(fillerCostExpr.sub(totalDiscExpr).add(cartVal));
-  await m.optimize();
+  m.objective(minimize(fillerCostExpr.sub(totalDiscExpr).add(cartVal)));
+  await m.solve();
 
   const activeCpns = coupons
     .filter((c) => Math.round(useCoupon[c.id].value ?? 0) === 1)
@@ -221,7 +221,7 @@ onMounted(() => {
           <p class="washi-app-subtitle">
             {{
               isJa
-                ? "カートの商品を選んで「▶ 最適化を実行」を押すと、併用上限（最大2枚）と最低利用額（m.addIndicator）から最安になるクーポンの組と追加提案アイテムを計算します。"
+                ? "カートの商品を選んで「▶ 最適化を実行」を押すと、併用上限（最大2枚）と最低利用額（m.indicator）から最安になるクーポンの組と追加提案アイテムを計算します。"
                 : "Select items in the cart and click '▶ Run Optimization' to find the best coupon combination and smart filler add-on."
             }}
           </p>

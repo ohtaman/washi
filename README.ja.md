@@ -297,7 +297,7 @@ console.log(`目的関数値: ${m.objectiveValue}`); // 1100
 ネストしたループを書くことなく、1次元・2次元の線形結合を1行で記述：
 
 ```ts
-import { Model, dot } from "@ohtaman/washi";
+import { Model, dot, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const factories = ["Tokyo", "Osaka"];
@@ -311,8 +311,8 @@ const costs = {
 const ship = m.continuous(factories, stores);
 
 // 総輸送コストを1行で最小化:
-m.minimize(dot(costs, ship));
-await m.optimize();
+m.objective(minimize(dot(costs, ship)));
+await m.solve();
 
 // 最適解の全変数値を取得
 const solution = m.getValues(ship);
@@ -373,12 +373,12 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 #### ブラウザ ESM での GLPK 利用
 ```html
 <script type="module">
-  import { Model } from "./washi/washi.js";
+  import { Model, maximize } from "./washi/washi.js";
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(maximize(x));
   await model.solve();
   console.log("GLPK ステータス:", model.status);
 </script>
@@ -391,7 +391,7 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 <script>
   const model = new Washi.Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(Washi.maximize(x));
   model.solve().then(status => console.log("GLPK ステータス:", status));
 </script>
 ```
@@ -417,11 +417,11 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 
 ESM はモジュール URL、script 版は読み込み時に保持した script URL からアセットを解決します。CDN の Worker は Blob のモジュールから起動します。配信元の CORS と、CSP の script・通信先許可が必要です。CDN Worker では `worker-src blob:` も許可してください。使えない場合は `useWorker: false` を指定します。Worker の読み込み・メッセージ処理に失敗した場合は、求解 Promise がエラーになります。
 
-自前 URL は `setHighsWasmUrl(url)` / `options.wasmUrl` で指定できます。従来の HiGHS CDN を明示的に選ぶ場合：
+自前 URL は `setHighsWasmUrl(url)` / `options.wasmUrl` で指定できます：
 
 ```typescript
-import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
-setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
+import { setHighsWasmUrl } from "@ohtaman/washi";
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
 ```
 
 初期化に失敗すると取得先を含むエラーを返し、別ホストには切り替えません。従来のオリジンルート / CDN 自動フォールバックを利用していた場合は、生成アセットを配布するか URL を明示してください。

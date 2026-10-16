@@ -13,12 +13,12 @@ import { checkBrowserRegressions } from "./check-browser-regressions.mjs";
 const fixture = await mkdtemp(path.join(tmpdir(), "washi-distribution-"));
 const source = `
   window.runPlan = async (integer = true, useWorker = false) => {
-    const m = new Model("Distribution");
+    const m = new Model("Distribution", { sense: "Maximize" });
     const x = integer ? m.integer("x", { lb: 0 }) : m.continuous("x", { lb: 0 });
     const y = integer ? m.integer("y", { lb: 0 }) : m.continuous("y", { lb: 0 });
-    m.maximize(x.mul(30).add(y.mul(50)));
-    m.constrain(x.add(y.mul(2)).le(40));
-    m.constrain(x.mul(2).add(y).le(50));
+    m.objectiveExpr = x.mul(30).add(y.mul(50));
+    m.constraint(x.add(y.mul(2)).le(40));
+    m.constraint(x.mul(2).add(y).le(50));
     const status = await m.solve({ useWorker });
     return { status, objective: m.objectiveValue, x: x.value, y: y.value };
   };
@@ -150,9 +150,28 @@ async function runtime(root, entry, esm, base = "/factory/") {
   assert(requests.some((url) => url.endsWith(".wasm")));
   if (api?.expr && api?.Model) {
     assert.equal(api.c, undefined);
+    assert.equal(api.OFFICIAL_HIGHS_CDN_WASM_URL, undefined);
+    assert.equal(api.isValidWasmHeader, undefined);
+    assert.equal(api.probeWasmUrl, undefined);
+    assert.equal(api.resolveBrowserWasmUrl, undefined);
     const expModel = new api.Model("ExpCheck");
+    assert.equal(expModel.constrain, undefined);
+    assert.equal(expModel.optimize, undefined);
+    assert.equal(expModel.maximize, undefined);
+    assert.equal(expModel.minimize, undefined);
+    assert.equal(expModel.setObjective, undefined);
+    assert.equal(expModel.add, undefined);
+    assert.equal(expModel.vars, undefined);
+    assert.equal(expModel.constrs, undefined);
     const expVar = expModel.continuous("x");
+    assert.equal(expVar.lessThanOrEqual, undefined);
+    assert.equal(expVar.greaterThanOrEqual, undefined);
+    assert.equal(expVar.equalTo, undefined);
     const expTerm = api.expr`${1e-7} * ${expVar} + 2.5e-6`;
+    assert.equal(expTerm.getValue, undefined);
+    assert.equal(expTerm.lessThanOrEqual, undefined);
+    assert.equal(expTerm.greaterThanOrEqual, undefined);
+    assert.equal(expTerm.equalTo, undefined);
     assert.equal(expTerm.terms.get(expVar), 1e-7);
     assert.equal(expTerm.constant, 2.5e-6);
     const expConstr = api.expr`${expVar} <= 10`;
@@ -305,7 +324,7 @@ async function testZ3WorkerErrorAndRecovery(browserRoot) {
     (async () => {
       const m = new Model({ solver: 'z3' });
       const a = m.bool('a');
-      m.constrain(a);
+      m.constraint(a);
       return await m.check();
     })()
   `, context);
@@ -358,10 +377,10 @@ try {
   await writeFile(path.join(fixture, "package.json"), JSON.stringify({ private: true, type: "module" }));
   npm(["install", "--ignore-scripts", "--omit=optional", "--no-audit", "--no-fund", path.join(fixture, pack.filename)]);
   const packageRoot = path.join(fixture, "node_modules/@ohtaman/washi");
-  const { Model } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
+  const { Model, maximize } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
   const model = new Model("PackedNode");
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x.mul(3));
+  model.objective(maximize(x.mul(3)));
   assert.equal(await model.solve(), "Optimal");
   assert.equal(model.objectiveValue, 30);
   console.log("PASS npm tarball: Node.js solve without optional peers");
@@ -384,7 +403,7 @@ try {
   await import(new URL(`file://${packageRoot}/dist/lib/solvers/glpk.js`));
   const glpkModel = new Model("GlpkNode", { solver: "glpk" });
   const gx = glpkModel.continuous("gx", { lb: 0, ub: 10 });
-  glpkModel.maximize(gx.mul(5));
+  glpkModel.objective(maximize(gx.mul(5)));
   assert.equal(await glpkModel.solve(), "Optimal");
   assert.equal(glpkModel.objectiveValue, 50);
   assert.equal(gx.value, 10);
@@ -394,7 +413,7 @@ try {
   const { killZ3Threads } = await import(new URL(`file://${packageRoot}/dist/lib/solvers/z3.js`));
   const z3Model = new Model("Z3Node", { solver: "z3" });
   const za = z3Model.bool("za");
-  z3Model.constrain(za);
+  z3Model.constraint(za);
   const z3Res = await z3Model.check();
   assert.equal(z3Res.status, "Sat");
   assert.equal(z3Res.values.za, true);
@@ -497,12 +516,12 @@ try {
       // Test GLPK ESM and IIFE in Chromium
       const glpkSource = `
         window.runGlpk = async () => {
-          const { Model } = window.Washi || await import('${cdn}/factory/washi.js');
+          const { Model, maximize } = window.Washi || await import('${cdn}/factory/washi.js');
           const m = new Model({ solver: 'glpk' });
           const x = m.integer('x', { lb: 0 });
-          m.maximize(x.mul(10));
-          m.constrain(x.le(5));
-          const status = await m.optimize();
+          m.objective(maximize(x.mul(10)));
+          m.constraint(x.le(5));
+          const status = await m.solve();
           return { status, x: x.value, objective: m.objectiveValue };
         };
       `;
@@ -554,7 +573,7 @@ try {
         window.runZ3 = async () => {
           const m = new Model({ solver: 'z3' });
           const a = m.bool('a');
-          m.constrain(a);
+          m.constraint(a);
           return await m.check();
         };
       </script>`;

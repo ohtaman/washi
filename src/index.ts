@@ -96,9 +96,5 @@ export {
   solveLpWithHighs,
   setHighsWasmUrl,
   getHighsWasmUrl,
-  OFFICIAL_HIGHS_CDN_WASM_URL,
-  isValidWasmHeader,
-  probeWasmUrl,
-  resolveBrowserWasmUrl,
 } from "./modeler/solvers/highs/index.js";
 

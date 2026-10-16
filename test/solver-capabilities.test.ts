@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Model } from "../src/modeler/model.js";
+import { minimize } from "../src/modeler/objective.js";
 import { MockSolver } from "../src/modeler/solvers/mock.js";
 import { HiGHS } from "../src/modeler/solvers/highs.js";
 
@@ -7,8 +8,8 @@ describe("Solver Capabilities Enforcement", () => {
   it("allows QP when solver supports QP (e.g. HiGHS)", async () => {
     const m = new Model("QP_Allowed");
     const x = m.continuous("x");
-    m.minimize(x.mul(x));
-    m.constrain(x.ge(2));
+    m.objective(minimize(x.mul(x)));
+    m.constraint(x.ge(2));
 
     // HiGHS has capabilities.supportsQP === true
     expect(HiGHS.capabilities?.supportsQP).toBe(true);
@@ -19,8 +20,8 @@ describe("Solver Capabilities Enforcement", () => {
   it("throws clear error when solving QP with a solver that lacks QP capability", async () => {
     const m = new Model("QP_NotSupported");
     const x = m.continuous("x");
-    m.minimize(x.mul(x));
-    m.constrain(x.ge(2));
+    m.objective(minimize(x.mul(x)));
+    m.constraint(x.ge(2));
 
     // Create a mock solver with supportsQP: false
     const linearOnlySolver = new MockSolver({

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
-import { Model, expr, registerSolver, listAvailableSolvers, getSolver, setDefaultSolver, type Solver, type SolverOptions, type SolverResult, type LpModelData, type LpExportResult } from "../src/index.js";
+import { Model, expr, maximize, registerSolver, listAvailableSolvers, getSolver, setDefaultSolver, type Solver, type SolverOptions, type SolverResult, type LpModelData, type LpExportResult } from "../src/index.js";
 
 describe("Custom Solver Plugin Architecture", () => {
   it("rejects unregistered solver names with helpful instructions", async () => {
     const model = new Model({ name: "UnregisteredGlpk" });
     const x = model.continuous("x");
-    model.maximize(x);
+    model.objective(maximize(x));
 
     expect(() => getSolver("glpk")).toThrow(
       "Solver 'glpk' not found. Available solvers: highs, mock. Please import '@ohtaman/washi/solvers/glpk' before selecting this solver."
@@ -63,11 +63,11 @@ describe("Custom Solver Plugin Architecture", () => {
     const m = new Model({ name: "ThirdPartyModel", solver: "dummy-3rd-party" });
     const a = m.continuous("v_a");
     const b = m.continuous("v_b");
-    m.maximize(a.mul(2).add(b.mul(3)));
-    m.constrain(a.add(b).le(30), "c_budget");
+    m.objective(maximize(a.mul(2).add(b.mul(3))));
+    m.constraint(a.add(b).le(30), "c_budget");
     const c1 = m.getConstraintByName("c_budget")!;
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1234.5);
     expect(a.value).toBe(10);
@@ -91,8 +91,8 @@ describe("Custom Solver Plugin Architecture", () => {
 
     const model = new Model({ solver: inlineSolver });
     const x = model.continuous("p_x");
-    model.maximize(x);
-    await model.optimize();
+    model.objective(maximize(x));
+    await model.solve();
     expect(x.value).toBe(42);
     expect(model.objectiveValue).toBe(999);
   });
@@ -109,9 +109,9 @@ describe("Custom Solver Plugin Architecture", () => {
     const model = new Model({ solver: linearOnlySolver });
     const x = model.continuous("x");
     // Quadratic objective x * x
-    model.maximize(x.mul(x));
+    model.objective(maximize(x.mul(x)));
 
-    await expect(model.optimize()).rejects.toThrow(
+    await expect(model.solve()).rejects.toThrow(
       'does not support quadratic objectives'
     );
   });
@@ -133,10 +133,10 @@ describe("Custom Solver Plugin Architecture", () => {
     const model = new Model({ solver: new CloudSolver() });
     const x = model.continuous("x", { lb: 0, ub: 10 });
     const y = model.continuous("y", { lb: 0, ub: 10 });
-    model.maximize(expr`2 * ${x} + 3 * ${y}`);
-    model.constrain(expr`${x} + ${y} <= 12`, "budget");
+    model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+    model.constraint(expr`${x} + ${y} <= 12`, "budget");
 
-    const status = await model.optimize();
+    const status = await model.solve();
     expect(status).toBe("Optimal");
     expect(x.value).toBeDefined();
     const c1 = model.getConstraintByName("budget");

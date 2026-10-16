@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   Model,
+  maximize,
+  minimize,
   HiGHS,
   MockSolver,
   registerSolver,
@@ -22,10 +24,10 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
     const x = m.continuous("x", { lb: 0, ub: 10 });
     const y = m.continuous("y", { lb: 0, ub: 10 });
 
-    m.maximize(x.mul(2).add(y.mul(3)));
-    m.constrain(x.add(y).le(12), "budget");
+    m.objective(maximize(x.mul(2).add(y.mul(3))));
+    m.constraint(x.add(y).le(12), "budget");
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(34);
     expect(x.value).toBe(2);
@@ -35,10 +37,10 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
   it("solves with explicit HiGHS solver instance", async () => {
     const m = new Model({ name: "ExplicitHighs", sense: "Maximize" });
     const x = m.continuous("x", { lb: 0 });
-    m.maximize(x.mul(5));
-    m.constrain(x.le(7), "c1");
+    m.objective(maximize(x.mul(5)));
+    m.constraint(x.le(7), "c1");
 
-    const status = await m.optimize(new HiGHS({ timeLimit: 10 }));
+    const status = await m.solve(new HiGHS({ timeLimit: 10 }));
     expect(status).toBe("Optimal");
     expect(x.value).toBe(7);
     expect(m.objectiveValue).toBe(35);
@@ -47,23 +49,23 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
   it("solves by specifying solver name string", async () => {
     const m = new Model({ name: "StringSolver", sense: "Minimize" });
     const x = m.continuous("x", { lb: 4 });
-    m.minimize(x);
+    m.objective(minimize(x));
 
-    const status = await m.optimize("highs");
+    const status = await m.solve("highs");
     expect(status).toBe("Optimal");
     expect(x.value).toBe(4);
   });
 
-  it("switches solver in Model.solve(solver) and optimize(solver)", async () => {
+  it("switches solver in Model.solve(solver)", async () => {
     const m = new Model("SolverSwitching");
     const x = m.continuous("x", { lb: 0, ub: 100 });
     const y = m.continuous("y", { lb: 0, ub: 100 });
 
-    m.maximize(x.mul(10).add(y.mul(20)));
-    m.constrain(x.add(y).le(50));
+    m.objective(maximize(x.mul(10).add(y.mul(20))));
+    m.constraint(x.add(y).le(50));
 
-    // Passing solver instance directly: m.optimize(new HiGHS())
-    const status = await m.optimize(new HiGHS());
+    // Passing solver instance directly: m.solve(new HiGHS())
+    const status = await m.solve(new HiGHS());
     expect(status).toBe("Optimal");
     expect(y.value).toBe(50);
     expect(m.objectiveValue).toBe(1000);
@@ -73,8 +75,8 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
     const m = new Model({ name: "MockTest", sense: "Maximize" });
     const x = m.continuous("x");
     const y = m.continuous("y");
-    m.maximize(x.add(y));
-    m.constrain(x.add(y).le(10), "c1");
+    m.objective(maximize(x.add(y)));
+    m.constraint(x.add(y).le(10), "c1");
 
     const mock = new MockSolver({
       status: "Optimal",
@@ -85,7 +87,7 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
       slacks: { c1: 0 },
     });
 
-    const status = await m.optimize(mock);
+    const status = await m.solve(mock);
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(42);
     expect(x.value).toBe(12);
@@ -112,9 +114,9 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
 
     const m = new Model({ name: "CustomSolverModel", solver: customSolver });
     const a = m.continuous("alpha");
-    m.maximize(a);
+    m.objective(maximize(a));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(a.value).toBe(77);
     expect(m.objectiveValue).toBe(999);
@@ -131,7 +133,7 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
 
     const m = new Model();
     const v1 = m.continuous("v1");
-    const status = await m.optimize("fast-mock");
+    const status = await m.solve("fast-mock");
 
     expect(status).toBe("Optimal");
     expect(v1.value).toBe(99);
@@ -171,9 +173,9 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
       const m = new Model({ name: "InHouseBackendModel", solver: backendSolver });
       const x = m.continuous("x");
       const y = m.continuous("y");
-      m.maximize(x.add(y));
+      m.objective(maximize(x.add(y)));
 
-      const status = await m.optimize();
+      const status = await m.solve();
       expect(status).toBe("Optimal");
       expect(m.objectiveValue).toBe(123.45);
       expect(x.value).toBe(15);

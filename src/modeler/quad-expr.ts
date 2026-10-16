@@ -261,41 +261,16 @@ export class QuadExpr {
     return sum;
   }
 
-  getValue(): number | null {
-    return this.value;
-  }
-
   public le(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint("<=", rhs, name);
-  }
-
-  public lessThanOrEqual(
-    rhs: number | Var | LinExpr | QuadExpr | Constraint,
-    name?: string
-  ): Constraint {
-    return this.le(rhs, name);
   }
 
   public ge(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint(">=", rhs, name);
   }
 
-  public greaterThanOrEqual(
-    rhs: number | Var | LinExpr | QuadExpr | Constraint,
-    name?: string
-  ): Constraint {
-    return this.ge(rhs, name);
-  }
-
   public eq(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint("==", rhs, name);
-  }
-
-  public equalTo(
-    rhs: number | Var | LinExpr | QuadExpr | Constraint,
-    name?: string
-  ): Constraint {
-    return this.eq(rhs, name);
   }
 
   private toConstraint(

@@ -78,11 +78,6 @@ async function runSlotCode() {
     const pendingPromises: Promise<unknown>[] = [];
 
     class TrackedModel extends Modeler.Model {
-      override optimize(...args: Parameters<Modeler.Model["optimize"]>) {
-        const p = super.optimize(...args);
-        pendingPromises.push(p);
-        return p;
-      }
       override solve(...args: Parameters<Modeler.Model["solve"]>) {
         const p = super.solve(...args);
         pendingPromises.push(p);

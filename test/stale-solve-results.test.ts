@@ -461,13 +461,11 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("Optimal");
     expect(x.value).toBeCloseTo(10, 5);
 
-    // Unnamed external Var and Constraint in a failed m.add([...]) batch must not leave ghost map entries
-    const unnamedExtVar = new Var({ lb: 0, ub: 5 });
+    // Unnamed external Constraint in a failed m.constraint([...]) batch must not leave ghost map entries
     const unnamedExtConstr = x.le(8);
     expect(() => {
-      m.add([unnamedExtVar, unnamedExtConstr, expr`${foreignVar} <= 3`]);
+      m.constraint([unnamedExtConstr, expr`${foreignVar} <= 3`]);
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
-    expect(m.getVarByName("x_0")).toBeUndefined();
     expect(m.getConstraintByName("c_1")).toBeUndefined();
     expect(m.status).toBe("Optimal");
 

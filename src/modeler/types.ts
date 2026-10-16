@@ -20,11 +20,19 @@ export type OptimizationSense =
   | "maximize";
 
 /**
- * Normalizes user-facing optimization sense to internal canonical form ("Maximize" | "Minimize")
+ * Normalizes user-facing optimization sense to internal canonical form ("Maximize" | "Minimize").
+ * Throws a descriptive error if an invalid sense string is provided at runtime.
  */
 export function normalizeSense(sense?: OptimizationSense): "Maximize" | "Minimize" {
-  if (!sense) return "Minimize";
-  return sense.toLowerCase() === "maximize" ? "Maximize" : "Minimize";
+  if (sense === undefined) return "Minimize";
+  if (typeof sense === "string") {
+    const lower = sense.toLowerCase();
+    if (lower === "maximize") return "Maximize";
+    if (lower === "minimize") return "Minimize";
+  }
+  throw new Error(
+    `Invalid optimization sense "${String(sense)}": expected "Maximize", "Minimize", "maximize", or "minimize".`
+  );
 }
 
 
