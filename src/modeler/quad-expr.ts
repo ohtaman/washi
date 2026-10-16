@@ -16,7 +16,7 @@ export interface QuadTerm {
   coeff: number;
 }
 
-import { Constraint } from "./constraint.js";
+import { type Constraint, isConstraint } from "./constraint.js";
 
 /**
  * Represents a quadratic expression:
@@ -61,7 +61,7 @@ export class QuadExpr {
    * Add another expression, variable, or number
    */
   add(other: QuadExpr | LinExpr | Var | number | Constraint): QuadExpr {
-    if (other instanceof Constraint) {
+    if (isConstraint(other)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -133,7 +133,7 @@ export class QuadExpr {
    * Subtract another expression, variable, or number
    */
   sub(other: QuadExpr | LinExpr | Var | number | Constraint): QuadExpr {
-    if (other instanceof Constraint) {
+    if (isConstraint(other)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -151,7 +151,7 @@ export class QuadExpr {
   mul(other: Var | LinExpr | QuadExpr | Constraint): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): QuadExpr {
-    if (operand instanceof Constraint) {
+    if (isConstraint(operand)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -461,7 +461,7 @@ export class QuadExpr {
     divisor: number | LinExpr | QuadExpr | Constraint,
     context: string
   ): number {
-    if (divisor instanceof Constraint) {
+    if (isConstraint(divisor)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );

@@ -204,3 +204,15 @@ export class Constraint {
     return `${this.name}: ${this.lhs.toString()} ${senseSymbol} ${this.rhs}`;
   }
 }
+
+export function isConstraint(val: unknown): val is Constraint {
+  return (
+    val instanceof Constraint ||
+    (typeof val === "object" &&
+      val !== null &&
+      "sense" in val &&
+      "lhs" in val &&
+      "rhs" in val)
+  );
+}
+

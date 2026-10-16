@@ -1,5 +1,5 @@
 import { Var } from "./variable.js";
-import { Constraint } from "./constraint.js";
+import { Constraint, isConstraint } from "./constraint.js";
 import { QuadExpr } from "./quad-expr.js";
 
 /**
@@ -29,7 +29,7 @@ export class LinExpr {
   add(other: LinExpr | Var | number): LinExpr;
   add(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr;
   add(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr {
-    if (other instanceof Constraint) {
+    if (isConstraint(other)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -72,7 +72,7 @@ export class LinExpr {
   sub(other: LinExpr | Var | number): LinExpr;
   sub(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr;
   sub(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr {
-    if (other instanceof Constraint) {
+    if (isConstraint(other)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -95,7 +95,7 @@ export class LinExpr {
   mul(other: QuadExpr): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr {
-    if (operand instanceof Constraint) {
+    if (isConstraint(operand)) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );

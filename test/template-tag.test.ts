@@ -537,6 +537,12 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => dot([1], [foreignConstraint as any])).toThrow(
       /Cannot multiply number by non-variable\/expression operand in dot/
     );
+    expect(() => cost.add(foreignConstraint as any)).toThrow(
+      /Cannot perform arithmetic on a Constraint/
+    );
+    expect(() => expr`${x}^2`.add(foreignConstraint as any)).toThrow(
+      /Cannot perform arithmetic on a Constraint/
+    );
     const senseLhsDot = dot({ sense: 2, lhs: 3 }, { sense: x, lhs: y });
     expect(senseLhsDot.terms.get(x)).toBe(2);
     expect(senseLhsDot.terms.get(y)).toBe(3);
