@@ -149,11 +149,15 @@ async function runtime(root, entry, esm, base = "/factory/") {
   check(await timeout(context.runPlan(true, true)));
   assert(requests.some((url) => url.endsWith(".wasm")));
   if (api?.expr && api?.Model) {
+    assert.equal(api.c, undefined);
     const expModel = new api.Model("ExpCheck");
     const expVar = expModel.continuous("x");
     const expTerm = api.expr`${1e-7} * ${expVar} + 2.5e-6`;
     assert.equal(expTerm.terms.get(expVar), 1e-7);
     assert.equal(expTerm.constant, 2.5e-6);
+    const expConstr = api.expr`${expVar} <= 10`;
+    assert.equal(expConstr.sense, "<=");
+    assert.equal(expConstr.rhs, 10);
     const grid2d = expModel.continuous(2, 2, { prefix: "g" });
     assert(Array.isArray(grid2d) && Array.isArray(grid2d[0]));
   }

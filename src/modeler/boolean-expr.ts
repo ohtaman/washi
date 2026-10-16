@@ -1,4 +1,6 @@
 import type { Constraint } from "./constraint.js";
+import type { LinExpr } from "./expression.js";
+import type { QuadExpr } from "./quad-expr.js";
 
 let boolVarIdCounter = 0;
 
@@ -6,24 +8,54 @@ export type LogicalOpType = "and" | "or" | "not" | "implies" | "xor" | "eq";
 
 export type LogicElement = BoolExpr | Constraint;
 
+export type LogicInput = LogicElement | LinExpr | QuadExpr;
+
+function assertLogicElement(el: unknown, op: string): LogicElement {
+  if (el instanceof BoolExpr) {
+    return el;
+  }
+  if (
+    typeof el === "object" &&
+    el !== null &&
+    "sense" in el &&
+    "lhs" in el &&
+    "rhs" in el
+  ) {
+    return el as Constraint;
+  }
+  if (
+    typeof el === "object" &&
+    el !== null &&
+    ("terms" in el || "quadTerms" in el)
+  ) {
+    throw new Error(
+      `Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical operator "${op}". ` +
+        `Use a comparison constraint such as expr\`\${x} <= 10\` or a BoolVar/BoolExpr.`
+    );
+  }
+  throw new Error(
+    `Invalid operand passed to logical operator "${op}": expected a BoolVar, BoolExpr, or Constraint.`
+  );
+}
+
 /**
  * Base abstract class for Boolean expressions in SMT / SAT
  */
 export abstract class BoolExpr {
-  public and(other: LogicElement): BoolOp {
-    return new BoolOp("and", [this, other]);
+  public and(other: LogicInput): BoolOp {
+    return new BoolOp("and", [this, assertLogicElement(other, "and")]);
   }
 
-  public or(other: LogicElement): BoolOp {
-    return new BoolOp("or", [this, other]);
+  public or(other: LogicInput): BoolOp {
+    return new BoolOp("or", [this, assertLogicElement(other, "or")]);
   }
 
-  public implies(consequent: LogicElement): BoolOp {
-    return new BoolOp("implies", [this, consequent]);
+  public implies(consequent: LogicInput): BoolOp {
+    return new BoolOp("implies", [this, assertLogicElement(consequent, "implies")]);
   }
 
-  public xor(other: LogicElement): BoolOp {
-    return new BoolOp("xor", [this, other]);
+  public xor(other: LogicInput): BoolOp {
+    return new BoolOp("xor", [this, assertLogicElement(other, "xor")]);
   }
 
   public not(): BoolOp {
@@ -57,10 +89,10 @@ export class BoolOp extends BoolExpr {
   public readonly op: LogicalOpType;
   public readonly children: LogicElement[];
 
-  constructor(op: LogicalOpType, children: LogicElement[]) {
+  constructor(op: LogicalOpType, children: LogicInput[]) {
     super();
     this.op = op;
-    this.children = children;
+    this.children = children.map((c) => assertLogicElement(c, op));
   }
 
   toString(): string {
@@ -72,25 +104,26 @@ export class BoolOp extends BoolExpr {
 }
 
 // Global Functional Combinators
-export function and(...exprs: LogicElement[]): BoolOp {
+export function and(...exprs: LogicInput[]): BoolOp {
   if (exprs.length === 0) throw new Error("and() requires at least one expression");
   return new BoolOp("and", exprs);
 }
 
-export function or(...exprs: LogicElement[]): BoolOp {
+export function or(...exprs: LogicInput[]): BoolOp {
   if (exprs.length === 0) throw new Error("or() requires at least one expression");
   return new BoolOp("or", exprs);
 }
 
-export function not(expr: LogicElement): BoolOp {
+export function not(expr: LogicInput): BoolOp {
   return new BoolOp("not", [expr]);
 }
 
-export function implies(antecedent: LogicElement, consequent: LogicElement): BoolOp {
+export function implies(antecedent: LogicInput, consequent: LogicInput): BoolOp {
   return new BoolOp("implies", [antecedent, consequent]);
 }
 
-export function xor(...exprs: LogicElement[]): BoolOp {
+export function xor(...exprs: LogicInput[]): BoolOp {
   if (exprs.length === 0) throw new Error("xor() requires at least one expression");
   return new BoolOp("xor", exprs);
 }
+

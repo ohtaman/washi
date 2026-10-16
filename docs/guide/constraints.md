@@ -1,33 +1,33 @@
 # Constraints (`m.constraint`)
 
 Constraints restrict the feasible solution space of your mathematical model.
-In WaSHI, constraints are formulated using the declarative method **`m.constraint()`** combined with the tagged template literal **`c`**:
+In WaSHI, constraints are formulated using the declarative method **`m.constraint()`** combined with the tagged template literal **`expr`**:
 
 ```typescript
-m.constraint(c`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
 ```
 
 ---
 
-## ✍️ Intuitive Algebraic Constraints (`c`)
+## ✍️ Intuitive Algebraic Constraints (`expr`)
 
-The `c` tagged template literal syntax allows writing equations and inequalities with natural mathematical expressions:
+The `expr` tagged template literal syntax allows writing equations and inequalities with natural mathematical expressions:
 
 ```typescript
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
 // Upper bound inequality (<=)
-m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
 
 // Lower bound inequality (>=)
-m.constraint(c`3 * ${x} + ${y} >= 20`, "min_demand");
+m.constraint(expr`3 * ${x} + ${y} >= 20`, "min_demand");
 
 // Exact equality (==)
-m.constraint(c`${x} + ${y} == 30`, "exact_quota");
+m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 ```
 
 ### Supported Comparison Operators
@@ -42,7 +42,7 @@ m.constraint(c`${x} + ${y} == 30`, "exact_quota");
 Every constraint can be provided with a descriptive name (the second argument of `m.constraint`):
 
 ```typescript
-m.constraint(c`${x} + ${y} <= 100`, "budget_cap");
+m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ```
 
 ### Why Name Constraints?
@@ -53,10 +53,10 @@ m.constraint(c`${x} + ${y} <= 100`, "budget_cap");
 
 ## 🔁 Adding Constraints over Iterables & Sums
 
-Use `sum()` inside `c` to express linear aggregations cleanly:
+Use `sum()` inside `expr` to express linear aggregations cleanly:
 
 ```typescript
-import { Model, c, sum } from "@ohtaman/washi";
+import { Model, sum, expr } from "@ohtaman/washi";
 
 const items = ["A", "B", "C"];
 const weights = { A: 5, B: 10, C: 15 };
@@ -64,7 +64,7 @@ const selected = m.binary(items);
 
 // Total weight cannot exceed capacity 25
 m.constraint(
-  c`${sum(items, (i) => selected[i].mul(weights[i]))} <= 25`,
+  expr`${sum(items, (i) => selected[i].mul(weights[i]))} <= 25`,
   "capacity_limit"
 );
 ```
@@ -81,7 +81,7 @@ const cartTotal = m.continuous("cart_total", { lb: 0, ub: 10_000 });
 
 // If useDiscount == 1, then cartTotal >= 100
 // WaSHI automatically derives a safe, tight Big-M from the variable bounds
-m.indicator(useDiscount, c`${cartTotal} >= 100`, {
+m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
   activeValue: 1,
   name: "min_spend_for_discount",
 });
@@ -101,7 +101,7 @@ If any referenced variable lacks the required finite bounds, `m.indicator()` thr
 You can override the derived Big-M by providing `{ M: number }`:
 
 ```typescript
-m.indicator(useDiscount, c`${cartTotal} >= 100`, {
+m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
   activeValue: 1,
   M: 10_000, // Explicit override
 });
@@ -120,7 +120,7 @@ m.indicator(useDiscount, c`${cartTotal} >= 100`, {
 For continuous Linear Programming (LP) problems, query the economic shadow price (`dual`) and surplus (`slack`):
 
 ```typescript
-m.constraint(c`${x} + 2 * ${y} <= 40`, "wood");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
 
 await m.solve();
 

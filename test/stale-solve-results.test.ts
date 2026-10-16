@@ -1,17 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  Model,
-  Var,
-  Constraint,
-  expr,
-  c,
-  maximize,
-  minimize,
-  type Solver,
-  type SolverResult,
-  type CheckResult,
-  type SolveOptions,
-} from "../src/index.js";
+import { Model, Var, Constraint, expr, maximize, minimize, type Solver, type SolverResult, type CheckResult, type SolveOptions } from "../src/index.js";
 
 function createGatedSolver(
   resultFactory: () => SolverResult,
@@ -119,7 +107,7 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
       {
         label: "add linear constraint",
         mutate: (m, x) => {
-          m.constraint(c`${x} <= 4`, "cap");
+          m.constraint(expr`${x} <= 4`, "cap");
         },
       },
       {
@@ -212,11 +200,11 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
 
     const mNative = new Model({ name: "NativeCheckModel", solver: gatedNative.solver });
     const x1 = mNative.continuous("x", { lb: 0, ub: 10 });
-    mNative.constraint(c`${x1} <= 5`, "c1");
+    mNative.constraint(expr`${x1} <= 5`, "c1");
 
     const pendingNative = mNative.check();
     await gatedNative.waitForStart;
-    mNative.constraint(c`${x1} >= 1`, "c2");
+    mNative.constraint(expr`${x1} >= 1`, "c2");
     gatedNative.release();
 
     await expect(pendingNative).rejects.toThrow(
@@ -441,7 +429,7 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(p.value).toBeNull();
 
     // Cross-model reuse of an embedded Constraint (even variable-free) must be rejected
-    const constConstraint = c`0 <= 1`;
+    const constConstraint = expr`0 <= 1`;
     m.constraint(p.implies(constConstraint), "const_imp");
     const m2 = new Model("OtherLogicalModel");
     const p2 = m2.bool("p2");
@@ -462,9 +450,9 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     const otherModel = new Model("ForeignModel");
     const foreignVar = otherModel.continuous("x", { lb: 0, ub: 5 });
 
-    const validConstraint = c`${x} <= 9`;
+    const validConstraint = expr`${x} <= 9`;
     expect(() => {
-      m.constraint([validConstraint, c`${foreignVar} <= 3`]);
+      m.constraint([validConstraint, expr`${foreignVar} <= 3`]);
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
 
     // Neither the model entities nor the solved state should have been mutated
@@ -477,7 +465,7 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     const unnamedExtVar = new Var({ lb: 0, ub: 5 });
     const unnamedExtConstr = x.le(8);
     expect(() => {
-      m.add([unnamedExtVar, unnamedExtConstr, c`${foreignVar} <= 3`]);
+      m.add([unnamedExtVar, unnamedExtConstr, expr`${foreignVar} <= 3`]);
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
     expect(m.getVarByName("x_0")).toBeUndefined();
     expect(m.getConstraintByName("c_1")).toBeUndefined();
@@ -486,7 +474,10 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     // validConstraint ownership and auto-naming counter must have been released on rollback
     m.constraint(validConstraint);
     expect(m.constraints).toHaveLength(1);
-    expect(validConstraint.name).toBe("c_1");
+    expect(validConstraint).toBeInstanceOf(Constraint);
+    if (validConstraint instanceof Constraint) {
+      expect(validConstraint.name).toBe("c_1");
+    }
     expect(m.getConstraintByName("c_1")).toBe(validConstraint);
     expect(m.status).toBe("NotSolved");
 
@@ -530,7 +521,7 @@ describe("Stale solve() and check() result prevention (Issue #77)", () => {
     expect(m.status).toBe("Sat");
 
     expect(() => {
-      m.constraint([embeddedConstr, c`${foreignVar} <= 3`]);
+      m.constraint([embeddedConstr, expr`${foreignVar} <= 3`]);
     }).toThrow(/does not belong to model "TransactionalBatchModel"/);
     expect(m.status).toBe("Sat");
 

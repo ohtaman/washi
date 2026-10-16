@@ -13,7 +13,7 @@
  * Run with: npx tsx examples/node/10-diet-sensitivity.ts
  */
 
-import { Model, expr, c, dot, minimize } from "../../src/index.js";
+import { Model, expr, dot, minimize } from "../../src/index.js";
 
 interface FoodItem {
   name: string;
@@ -56,7 +56,7 @@ async function main() {
 
   for (const req of reqDefs) {
     const coeffMap = Object.fromEntries(foods.map((f) => [f.name, f[req.key]]));
-    m.constraint(c`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name);
+    m.constraint(expr`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name);
   }
 
   const buildMs = performance.now() - t0;

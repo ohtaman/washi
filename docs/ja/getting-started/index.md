@@ -51,7 +51,7 @@ npm install glpk.js
 ### 1. クラスとタグのインポート
 
 ```typescript
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 ```
 
 ### 2. モデルのインスタンス化
@@ -80,11 +80,11 @@ model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
 
 ### 5. 制約条件の追加
 
-`model.constraint()` と `c` タグ付きテンプレートリテラルを用いて不等式・等式制約を表現します：
+`model.constraint()` と `expr` タグ付きテンプレートリテラルを用いて不等式・等式制約を表現します：
 
 ```typescript
-model.constraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. 求解と結果の取得

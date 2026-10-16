@@ -262,23 +262,45 @@ export type Expr = LinExpr | QuadExpr;
  */
 export function sum(
   count: number,
-  mapFn: (index: number) => LinExpr | Var | number
+  mapFn: (index: number) => LinExpr | QuadExpr | Constraint | Var | number
 ): LinExpr;
 export function sum<T = any>(
   items: Iterable<T>,
-  mapFn?: (item: T, index: number) => LinExpr | Var | number
+  mapFn?: (item: T, index: number) => LinExpr | QuadExpr | Constraint | Var | number
 ): LinExpr;
 export function sum<T = any>(
   arg1: number | Iterable<T>,
-  arg2?: (item: any, index: number) => LinExpr | Var | number
+  arg2?: (item: any, index: number) => LinExpr | QuadExpr | Constraint | Var | number
 ): LinExpr {
   const terms = new Map<Var, number>();
   let constant = 0;
 
-  function addVal(val: LinExpr | Var | number | undefined | null) {
+  function addVal(val: LinExpr | QuadExpr | Constraint | Var | number | undefined | null) {
     if (val === null || val === undefined) return;
     if (typeof val === "number") {
       constant += val;
+    } else if (
+      val instanceof Constraint ||
+      (typeof val === "object" && "sense" in val && "lhs" in val && "rhs" in val)
+    ) {
+      throw new Error(
+        "Cannot sum a constraint comparison (<=, >=, ==) in sum(): expected a number, Var, or LinExpr."
+      );
+    } else if (
+      val instanceof QuadExpr ||
+      (typeof val === "object" && "quadTerms" in val && val.quadTerms instanceof Map)
+    ) {
+      const quadExpr = val as QuadExpr;
+      if (quadExpr.quadTerms.size > 0) {
+        throw new Error(
+          "Quadratic expressions are not supported in sum(): sum() produces a linear expression (LinExpr)."
+        );
+      }
+      for (const [v, c] of quadExpr.linearTerms) {
+        const cur = terms.get(v) ?? 0;
+        terms.set(v, cur + c);
+      }
+      constant += quadExpr.constant;
     } else if (typeof val === "object" && "terms" in val) {
       const linExpr = val as LinExpr;
       for (const [v, c] of linExpr.terms) {
@@ -286,10 +308,12 @@ export function sum<T = any>(
         terms.set(v, cur + c);
       }
       constant += linExpr.constant;
-    } else {
+    } else if (typeof val === "object" && "id" in val && "name" in val && "lb" in val && "ub" in val) {
       const v = val as Var;
       const cur = terms.get(v) ?? 0;
       terms.set(v, cur + 1);
+    } else {
+      throw new Error("Unsupported item in sum(): expected a number, Var, or LinExpr.");
     }
   }
 

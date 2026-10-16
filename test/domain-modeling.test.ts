@@ -5,7 +5,6 @@ import {
   sum,
   dot,
   expr,
-  c,
   LinExpr,
   QuadExpr,
   type DotCoeffContainer,
@@ -112,7 +111,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
 
     // Constraints: constrain() with expr
     const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
-    m.constrain(c`${dot(weights, x)} <= ${capacity}`, "capacity");
+    m.constrain(expr`${dot(weights, x)} <= ${capacity}`, "capacity");
 
     const status = await m.optimize();
 
@@ -136,8 +135,8 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
 
     // Fluent constrain
-    m.constrain(c`${desks} + 2 * ${chairs} <= 40`, "wood")
-      .constrain(c`2 * ${desks} + ${chairs} <= 50`, "labor");
+    m.constrain(expr`${desks} + 2 * ${chairs} <= 40`, "wood")
+      .constrain(expr`2 * ${desks} + ${chairs} <= 50`, "labor");
 
     expect(m.numConstrs).toBe(2);
 
@@ -153,16 +152,16 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m = new Model();
     const x = m.continuous("x");
     expect(() => {
-      m.constrain(expr`2 * ${x} + 5` as any);
-    }).toThrow(/Cannot add a linear expression without a comparison operator/);
+      m.constrain(expr`2 * ${x} + 5`);
+    }).toThrow(/cannot add a linear expression without a comparison operator/);
   });
 
   it("throws clear error when passing a Constraint to maximize()", () => {
     const m = new Model();
     const x = m.continuous("x");
     expect(() => {
-      m.maximize(c`${x} <= 10`);
-    }).toThrow(/Cannot set objective to a constraint comparison/);
+      m.maximize(expr`${x} <= 10`);
+    }).toThrow(/Cannot use a Constraint as an objective/);
   });
 
   it("normalizes lowercase sense 'maximize' and 'minimize' in Model and LP export", async () => {
@@ -628,8 +627,8 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m1 = new Model();
     const batch1 = m1.continuous("batch", { lb: 0, ub: 100 });
     const isActive1 = m1.binary("is_active");
-    m1.constrain(c`${batch1} >= 10 * ${isActive1}`, "min_batch_run");
-    m1.constrain(c`${batch1} <= 100 * ${isActive1}`, "max_batch_run");
+    m1.constrain(expr`${batch1} >= 10 * ${isActive1}`, "min_batch_run");
+    m1.constrain(expr`${batch1} <= 100 * ${isActive1}`, "max_batch_run");
     m1.minimize(batch1);
 
     const status1 = await m1.optimize();
@@ -641,9 +640,9 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m2 = new Model();
     const batch2 = m2.continuous("batch", { lb: 0, ub: 100 });
     const isActive2 = m2.binary("is_active");
-    m2.constrain(c`${batch2} >= 10 * ${isActive2}`, "min_batch_run");
-    m2.constrain(c`${batch2} <= 100 * ${isActive2}`, "max_batch_run");
-    m2.constrain(c`${batch2} >= 1`, "demand");
+    m2.constrain(expr`${batch2} >= 10 * ${isActive2}`, "min_batch_run");
+    m2.constrain(expr`${batch2} <= 100 * ${isActive2}`, "max_batch_run");
+    m2.constrain(expr`${batch2} >= 1`, "demand");
     m2.minimize(batch2);
 
     const status2 = await m2.optimize();
@@ -655,10 +654,10 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m3 = new Model();
     const batch3 = m3.continuous("batch", { lb: 0, ub: 100 });
     const isActive3 = m3.binary("is_active");
-    m3.constrain(c`${batch3} >= 10 * ${isActive3}`, "min_batch_run");
-    m3.constrain(c`${batch3} <= 100 * ${isActive3}`, "max_batch_run");
-    m3.constrain(c`${batch3} >= 1`, "min_demand");
-    m3.constrain(c`${batch3} <= 5`, "max_demand");
+    m3.constrain(expr`${batch3} >= 10 * ${isActive3}`, "min_batch_run");
+    m3.constrain(expr`${batch3} <= 100 * ${isActive3}`, "max_batch_run");
+    m3.constrain(expr`${batch3} >= 1`, "min_demand");
+    m3.constrain(expr`${batch3} <= 5`, "max_demand");
 
     const status3 = await m3.optimize();
     expect(status3).toBe("Infeasible");

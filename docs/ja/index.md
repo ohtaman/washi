@@ -25,7 +25,7 @@ features:
     details: WebAssembly 上で工業グレードの最適化問題を全自動で求解。機密データをサーバーに送らず、オフラインでもセキュアに動作します。
   - icon: ✍️
     title: 直感的な代数モデリング
-    details: 直感的なドメイン変数（m.binary, m.integer, m.continuous）、数式テンプレート（expr`...`, c`...`）、ベクトル集計（dot, sum）、宣言的な m.constraint() で自然に定式化。
+    details: 直感的なドメイン変数（m.binary, m.integer, m.continuous）、数式テンプレート（expr`...`）、ベクトル集計（dot, sum）、宣言的な m.constraint() で自然に定式化。
   - icon: ⚡
     title: 産業用マルチソルバーアーキテクチャ
     details: 高速な HiGHS（LP/MIP/QP）を標準搭載。さらに Z3（SMT論理制約・競合診断）や GLPK をプラグインとして自由に切り替え可能。
@@ -39,7 +39,7 @@ features:
 ## クイックコード例
 
 ```typescript
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 // 1. モデルの作成
 const m = new Model("木工製品の利益最大化");
@@ -52,8 +52,8 @@ const chairs = m.integer("椅子", { lb: 0 });
 m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
 
 // 4. 制約条件の追加（木材と労働力の上限）
-m.constraint(c`${desks} + 2 * ${chairs} <= 40`, "木材上限");
-m.constraint(c`2 * ${desks} + ${chairs} <= 50`, "労働力上限");
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "木材上限");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "労働力上限");
 
 // 5. WebAssembly (HiGHS) による求解
 await m.solve();

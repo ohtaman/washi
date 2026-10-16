@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   Model,
+  Constraint,
   expr,
-  c,
   maximize,
   minimize,
   type ConstraintItem,
@@ -17,10 +17,10 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     const y = m.continuous("y", { lb: 0, ub: 20 });
 
     // Method chaining with constraint()
-    m.constraint(c`${x} + 2 * ${y} <= 40`, "wood")
-      .constraint(c`${x} <= 15`, "cap_x")
+    m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood")
+      .constraint(expr`${x} <= 15`, "cap_x")
       .constraint([
-        c`${y} <= 18`,
+        expr`${y} <= 18`,
         "x + y <= 30",
       ]);
 
@@ -41,17 +41,17 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     const y = m.continuous("y");
 
     // Raw LinExpr without comparison
-    expect(() => (m.constraint as any)(x.add(y))).toThrow(
-      /Cannot add a linear expression without a comparison operator/
+    expect(() => m.constraint(x.add(y))).toThrow(
+      /Constraint must contain a comparison operator/
     );
 
     // Raw QuadExpr without comparison
-    expect(() => (m.constraint as any)(x.mul(x))).toThrow(
-      /Cannot add a quadratic expression without a comparison operator/
+    expect(() => m.constraint(x.mul(x))).toThrow(
+      /Constraint must contain a comparison operator/
     );
 
     // String without comparison operator
-    expect(() => (m.constraint as any)("x + 2 * y")).toThrow(
+    expect(() => m.constraint("x + 2 * y")).toThrow(
       /Constraint must contain a comparison operator/
     );
   });
@@ -61,11 +61,11 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     const x = m.continuous("x");
 
     // Passing Constraint to objective() throws an Error
-    expect(() => (m.objective as any)({ expr: x.le(10) as any, sense: "Maximize" })).toThrow(
-      /Cannot set objective to a constraint comparison/
+    expect(() => m.objective({ expr: x.le(10), sense: "Maximize" })).toThrow(
+      /Cannot use a Constraint as an objective/
     );
     expect(() => (m.setObjective as any)(x.le(10))).toThrow(
-      /Cannot set objective to a constraint comparison/
+      /Cannot use a Constraint as an objective/
     );
   });
 
@@ -103,7 +103,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     const x = m.continuous("x", { lb: 5, ub: 10 });
     const y = m.continuous("y", { lb: 5, ub: 10 });
 
-    m.constraint(c`${x} + ${y} == 15`);
+    m.constraint(expr`${x} + ${y} == 15`);
     // No objective configured!
     const status = await m.solve();
 
@@ -125,7 +125,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.status).toBe("Optimal");
 
     // Now introduce an infeasible constraint
-    m.constraint(c`${x} <= -1`);
+    m.constraint(expr`${x} <= -1`);
 
     await m.solve();
     expect(m.status).toBe("Infeasible");
@@ -136,7 +136,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
   it("provides conflicts as undefined when satisfiable or not diagnosed", async () => {
     const m = new Model("ConflictsUndefinedTest");
     const x = m.continuous("x", { lb: 0, ub: 10 });
-    m.constraint(c`${x} >= 2`);
+    m.constraint(expr`${x} >= 2`);
 
     // Before solve
     expect(m.conflicts).toBeUndefined();
@@ -171,24 +171,26 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.conflicts).toEqual(res.conflicts);
   });
 
-  it("[Review Fix 1] strictly rejects relational comparisons in expr`...` at runtime", () => {
+  it("[Review Fix 1] supports relational comparisons in unified expr`...` and rejects them in objective contexts", () => {
     const m = new Model();
     const x = m.continuous("x");
 
-    expect(() => expr`${x} <= 10`).toThrow(
-      /Relational comparison operators.*cannot be used in expr`\.\.\.`/
-    );
-    expect(() => expr`${x} >= 5`).toThrow(
-      /Relational comparison operators.*cannot be used in expr`\.\.\.`/
-    );
-    expect(() => expr`${x} == 3`).toThrow(
-      /Relational comparison operators.*cannot be used in expr`\.\.\.`/
-    );
+    const cLe = expr`${x} <= 10` as Constraint;
+    expect(cLe).toBeInstanceOf(Constraint);
+    expect(cLe.sense).toBe("<=");
+    expect(cLe.rhs).toBe(10);
 
-    // c`...` tag produces Constraint
-    const constraint = c`${x} <= 10`;
-    expect(constraint.sense).toBe("<=");
-    expect(constraint.rhs).toBe(10);
+    const cGe = expr`${x} >= 5` as Constraint;
+    expect(cGe).toBeInstanceOf(Constraint);
+    expect(cGe.sense).toBe(">=");
+
+    const cEq = expr`${x} == 3` as Constraint;
+    expect(cEq).toBeInstanceOf(Constraint);
+    expect(cEq.sense).toBe("==");
+
+    expect(() => maximize(expr`${x} <= 10`)).toThrow(
+      /Cannot use a Constraint as an objective/
+    );
   });
 
   it("[Review Fix 2] invalidates solution and diagnostic state immediately upon model mutations", async () => {
@@ -202,7 +204,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.objectiveValue).toBe(10);
 
     // 1. Adding a constraint invalidates solution state before any solve call
-    m.constraint(c`${x} <= -1`);
+    m.constraint(expr`${x} <= -1`);
     expect(m.status).toBe("NotSolved");
     expect(x.value).toBeNull();
     expect(m.objectiveValue).toBeNull();
@@ -219,11 +221,11 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
 
     // 3. Underlying alias paths also invalidate immediately
     await m.solve();
-    m.add(c`${x} >= 2`);
+    m.add(expr`${x} >= 2`);
     expect(m.status).toBe("NotSolved");
 
     await m.solve();
-    m.constrain(c`${x} <= 5`);
+    m.constrain(expr`${x} <= 5`);
     expect(m.status).toBe("NotSolved");
 
     await m.solve();
@@ -255,7 +257,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
 
     // Also verify setObjective transactional behavior
     expect(() => {
-      m.setObjective(c`${x} <= 5`, "Minimize");
+      m.setObjective(expr`${x} <= 5` as any, "Minimize");
     }).toThrow();
     expect(m.sense).toBe("Maximize");
   });
@@ -320,7 +322,7 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
 
     // Adding constraints also should not trigger redundant resets before solve
     for (let i = 0; i < 100; i++) {
-      m.constraint(c`${vars[i]} <= ${i + 1}`);
+      m.constraint(expr`${vars[i]} <= ${i + 1}`);
     }
     expect(writeCount).toBe(0);
   });

@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.integer()`, `m.constraint()`, `c`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
+| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.integer()`, `m.constraint()`, `expr`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
 
 Production planning is a classic Linear Programming problem: determine the optimal quantity of each product to manufacture in order to maximize total profit while respecting resource constraints (raw materials, machine time, labor hours).
 
@@ -22,7 +22,7 @@ $$\begin{aligned}
 <CodeRunner preset="production">
 
 ```typescript
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 async function runProductionOptimization() {
   const m = new Model("FactoryProduction");
@@ -35,8 +35,8 @@ async function runProductionOptimization() {
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
   // Resource constraints: declarative formulas via c and fluent constraint()
-  m.constraint(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
-   .constraint(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
+   .constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
   const status = await m.solve();
 

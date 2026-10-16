@@ -30,13 +30,21 @@ export {
   BoolVar,
   BoolExpr,
   BoolOp,
+  type LogicElement,
+  type LogicInput,
   and,
   or,
   not,
   implies,
   xor,
 } from "./boolean-expr.js";
-export { parseExpr, parseConstraint, expr, c } from "./parser.js";
+export {
+  parseExpr,
+  parseConstraint,
+  expr,
+  type ParsedExpr,
+  type ExprResolver,
+} from "./parser.js";
 export { generateLpString, type LpModelData, type LpExportResult } from "./lp-writer.js";
 export {
   validateModelSolution,

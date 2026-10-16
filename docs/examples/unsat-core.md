@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Infeasibility Diagnosis / Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `m.constraint()`, `c`, `m.check()`, `m.conflicts` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">Source Code</a></li></ul> |
+| Infeasibility Diagnosis / Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">Source Code</a></li></ul> |
 
 When business rules, budgets, and operational policies grow complex, constraints inevitably conflict. Traditional solvers simply report "Infeasible", leaving engineers to guess which of hundreds of rules caused the contradiction.
 
@@ -26,7 +26,7 @@ $$8 \text{ engineers} \times \$8,000 = \$64,000 > \$50,000 \text{ budget!}$$
 <CodeRunner preset="conflict_diagnosis_unsat">
 
 ```typescript
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 async function diagnoseConflicts() {
@@ -37,7 +37,7 @@ async function diagnoseConflicts() {
   const rushDelivery = m.bool("rushDelivery");
 
   // Rule 1: Each engineer costs $8,000
-  m.constraint(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
+  m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
   // Rule 2: Customer requires rush delivery
   m.constraint(rushDelivery, "rush_required");
@@ -46,10 +46,10 @@ async function diagnoseConflicts() {
   m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
   // Rule 4: Board budget cap of $50,000 (Conflict!)
-  m.constraint(c`${budget} <= 50000`, "strict_board_budget_cap");
+  m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
   // Rule 5: Innocent bystander rule
-  m.constraint(c`${engineers} >= 1`, "minimum_one_employee");
+  m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
   // Run diagnosis
   const res = await m.check({ solver: "z3" });

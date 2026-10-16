@@ -1,18 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import {
-  Model,
-  expr,
-  c,
-  registerSolver,
-  listAvailableSolvers,
-  getSolver,
-  setDefaultSolver,
-  type Solver,
-  type SolverOptions,
-  type SolverResult,
-  type LpModelData,
-  type LpExportResult,
-} from "../src/index.js";
+import { Model, expr, registerSolver, listAvailableSolvers, getSolver, setDefaultSolver, type Solver, type SolverOptions, type SolverResult, type LpModelData, type LpExportResult } from "../src/index.js";
 
 describe("Custom Solver Plugin Architecture", () => {
   it("rejects unregistered solver names with helpful instructions", async () => {
@@ -147,7 +134,7 @@ describe("Custom Solver Plugin Architecture", () => {
     const x = model.continuous("x", { lb: 0, ub: 10 });
     const y = model.continuous("y", { lb: 0, ub: 10 });
     model.maximize(expr`2 * ${x} + 3 * ${y}`);
-    model.constrain(c`${x} + ${y} <= 12`, "budget");
+    model.constrain(expr`${x} + ${y} <= 12`, "budget");
 
     const status = await model.optimize();
     expect(status).toBe("Optimal");

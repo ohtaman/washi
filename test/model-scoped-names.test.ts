@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, BoolVar, Constraint, expr, c, maximize } from "../src/index.js";
+import { Model, Var, BoolVar, Constraint, expr, maximize } from "../src/index.js";
 
 function buildCanonicalModel(modelName: string): Model {
   const m = new Model({ name: modelName });
@@ -12,14 +12,14 @@ function buildCanonicalModel(modelName: string): Model {
   m.objective(maximize(expr`3 * ${x[0]} + 2 * ${x[1]} + ${singleVar} + ${x[0]} * ${x[1]}`));
 
   // Unnamed arithmetic constraints -> c_1, c_2
-  m.constraint(c`${x[0]} + ${x[1]} <= 12`);
-  m.constraint(c`${singleVar} <= 4`);
+  m.constraint(expr`${x[0]} + ${x[1]} <= 12`);
+  m.constraint(expr`${singleVar} <= 4`);
 
   // Unnamed string constraint -> c_3
   m.constraint("x_0 - x_1 <= 3");
 
   // Unnamed indicator constraint -> ind_x_3_c_4
-  m.indicator(b, c`${x[0]} <= 5`);
+  m.indicator(b, expr`${x[0]} <= 5`);
 
   // Unnamed logical constraints -> lc_1, lc_2
   m.constraint(p.implies(flags[0]));
@@ -38,7 +38,7 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     noiseModel.binary(15);
     noiseModel.bool(10);
     for (let i = 0; i < 20; i++) {
-      noiseModel.constraint(c`${noiseModel.vars[i]} <= ${i + 1}`);
+      noiseModel.constraint(expr`${noiseModel.vars[i]} <= ${i + 1}`);
     }
     for (let i = 0; i < 5; i++) {
       noiseModel.constraint(noiseModel.boolVars[i].not());
@@ -142,13 +142,13 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     expect(autoP.map((bv) => bv.name)).toEqual(["p_1", "p_2"]);
 
     // Explicit constraint names reserved before auto-generated constraints
-    m.constraint(c`${explicitX0} <= 5`, "c_1");
-    m.constraint(c`${explicitX2} <= 5`, "c_3");
+    m.constraint(expr`${explicitX0} <= 5`, "c_1");
+    m.constraint(expr`${explicitX2} <= 5`, "c_3");
     m.constraint(explicitP0.not(), "lc_1");
 
     // Auto-generated arithmetic constraints skip c_1 and c_3 -> c_2, c_4
-    m.constraint(c`${autoX[0]} <= 8`);
-    m.constraint(c`${autoX[1]} <= 9`);
+    m.constraint(expr`${autoX[0]} <= 8`);
+    m.constraint(expr`${autoX[1]} <= 9`);
     expect(m.constrs.map((con) => con.name)).toEqual(["c_1", "c_3", "c_2", "c_4"]);
 
     // Auto-generated logical constraint skips lc_1 -> lc_2
@@ -158,7 +158,7 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     // 2. Explicit names registered AFTER auto-generated names -> rejected with clear error
     expect(() => m.continuous("x_1")).toThrow(/Variable with name 'x_1' already exists in model/);
     expect(() => m.bool("p_1")).toThrow(/Variable with name 'p_1' already exists in model/);
-    expect(() => m.constraint(c`${explicitX0} >= 0`, "c_2")).toThrow(
+    expect(() => m.constraint(expr`${explicitX0} >= 0`, "c_2")).toThrow(
       /Constraint with name 'c_2' already exists in model/
     );
     expect(() => m.constraint(explicitP0, "lc_2")).toThrow(
@@ -206,9 +206,9 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     const mInd = new Model("IndicatorRetry");
     const uInd = mInd.continuous("u", { lb: 0 }); // unbounded ub
     const zInd = mInd.binary("z");
-    expect(() => mInd.indicator(zInd, c`${uInd} <= 5`)).toThrow(/lacks a finite upper bound/i);
+    expect(() => mInd.indicator(zInd, expr`${uInd} <= 5`)).toThrow(/lacks a finite upper bound/i);
     uInd.ub = 20;
-    const [indRow] = mInd.indicator(zInd, c`${uInd} <= 5`);
+    const [indRow] = mInd.indicator(zInd, expr`${uInd} <= 5`);
     expect(indRow.name).toBe("ind_z_c_1");
 
     // Adding an already-registered unnamed Var to a second model is rejected without renaming it

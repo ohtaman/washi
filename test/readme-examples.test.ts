@@ -1,14 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  Model,
-  expr,
-  c,
-  sum,
-  dot,
-  not,
-  QuadExpr,
-  HiGHS,
-} from "../src/index.js";
+import { Model, expr, sum, dot, not, QuadExpr, HiGHS } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
 import "../src/modeler/solvers/glpk/index.js";
 
@@ -19,8 +10,8 @@ describe("README.md Code Snippets Validation", () => {
     const tables = m.integer("tables", { lb: 0 });
 
     m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-    m.constrain(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-    m.constrain(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+    m.constrain(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+    m.constrain(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");
@@ -54,13 +45,13 @@ describe("README.md Code Snippets Validation", () => {
     const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 500 });
 
     // If Tokyo is closed (0), flow to StoreA must be <= 0
-    m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
+    m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
       activeValue: 0,
       M: 1000,
     });
 
     // Close Tokyo factory
-    m.constrain(c`${openCity["Tokyo"]} == 0`);
+    m.constrain(expr`${openCity["Tokyo"]} == 0`);
     m.maximize(flow["F1"]["StoreA"]);
 
     await m.optimize();
@@ -76,11 +67,11 @@ describe("README.md Code Snippets Validation", () => {
     const w = m.continuous(assets, { lb: 0, ub: 1 });
 
     // 1. Fully invested budget: sum(w) == 1.0
-    m.constrain(c`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+    m.constrain(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
     // 2. Minimum target return: portfolio return >= 8.5%
     const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-    m.constrain(c`${dot(retMap, w)} >= 0.085`, "min_return");
+    m.constrain(expr`${dot(retMap, w)} >= 0.085`, "min_return");
 
     // 3. Covariance risk matrix
     const cov = [
@@ -119,7 +110,7 @@ describe("README.md Code Snippets Validation", () => {
     m.constrain(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
     // Current sensor observations
-    m.constrain(c`${lux} <= 10`, "sensor_dark");
+    m.constrain(expr`${lux} <= 10`, "sensor_dark");
     m.constrain(motion, "sensor_motion");
     m.constrain(alarm, "alarm_on");
 
@@ -137,7 +128,7 @@ describe("README.md Code Snippets Validation", () => {
     const rushDelivery = m.bool("rushDelivery");
 
     // Rule 1: Each engineer costs $8,000
-    m.constrain(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
+    m.constrain(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
     // Rule 2: Customer requires rush delivery
     m.constrain(rushDelivery, "rush_required");
@@ -146,10 +137,10 @@ describe("README.md Code Snippets Validation", () => {
     m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
     // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
-    m.constrain(c`${budget} <= 50000`, "strict_board_budget_cap");
+    m.constrain(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
     // Rule 5: Minimum 1 employee regulation (innocent bystander rule)
-    m.constrain(c`${engineers} >= 1`, "minimum_one_employee");
+    m.constrain(expr`${engineers} >= 1`, "minimum_one_employee");
 
     const res = await m.check({ solver: "z3" });
     expect(res.status).toBe("Unsat");
@@ -168,8 +159,8 @@ describe("README.md Code Snippets Validation", () => {
     const y = m.integer("y", { lb: 0 });
 
     m.maximize(expr`30 * ${x} + 50 * ${y}`);
-    m.constrain(c`${x} + 2 * ${y} <= 40`);
-    m.constrain(c`2 * ${x} + ${y} <= 50`);
+    m.constrain(expr`${x} + 2 * ${y} <= 40`);
+    m.constrain(expr`2 * ${x} + ${y} <= 50`);
 
     const status = await m.optimize(new HiGHS());
     expect(status).toBe("Optimal");
@@ -184,8 +175,8 @@ describe("README.md Code Snippets Validation", () => {
     const y = m.integer("y", { lb: 0 });
 
     m.maximize(expr`30 * ${x} + 50 * ${y}`);
-    m.constrain(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-    m.constrain(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+    m.constrain(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+    m.constrain(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");
@@ -236,7 +227,7 @@ describe("README.md Code Snippets Validation", () => {
       mip.indicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
       mip.indicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
       mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500 });
-      mip.constrain(c`${capEU} + ${capUS} >= 450`);
+      mip.constrain(expr`${capEU} + ${capUS} >= 450`);
       mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
 
       const mipStatus = await mip.optimize();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, c } from "../src/index.js";
+import { Model, expr } from "../src/index.js";
 import { generateLpString } from "../src/modeler/lp-writer.js";
 import { HiGHS } from "../src/modeler/solvers/highs.js";
 
@@ -92,7 +92,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     // min 3x + x^2 + y^2 subject to x + y >= 4, x >= 0, y >= 0
     // Analytical optimum: x = 1.25, y = 2.75, obj = 12.875
     m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
-    m.constrain(c`${x} + ${y} >= 4`);
+    m.constrain(expr`${x} + ${y} >= 4`);
 
     const status = await m.solve(HiGHS);
 

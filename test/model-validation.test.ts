@@ -1,14 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import {
-  Model,
-  Constraint,
-  LinExpr,
-  expr,
-  c,
-  maximize,
-  minimize,
-  validateModelIntegrity,
-} from "../src/index.js";
+import { Model, Constraint, LinExpr, expr, maximize, minimize, validateModelIntegrity } from "../src/index.js";
 
 describe("Model Integrity Validation (Issue #51)", () => {
   beforeAll(async () => {
@@ -53,7 +44,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const x2 = m2.continuous("x", { lb: 0, ub: 10 });
 
       expect(() => {
-        m2.constraint(c`${x1} + ${x2} <= 10`, "c_foreign");
+        m2.constraint(expr`${x1} + ${x2} <= 10`, "c_foreign");
       }).toThrow(/Variable "x" in constraint "c_foreign" does not belong to model "ModelB".*object identity/);
     });
 
@@ -68,12 +59,12 @@ describe("Model Integrity Validation (Issue #51)", () => {
 
       // Foreign binary variable
       expect(() => {
-        m2.indicator(z1, c`${x2} <= 5`);
+        m2.indicator(z1, expr`${x2} <= 5`);
       }).toThrow(/Variable "z" passed to indicator\(\) does not belong to model "ModelB"/);
 
       // Foreign variable in indicator's linear constraint
       expect(() => {
-        m2.indicator(z2, c`${x1} <= 5`, { name: "ind_foreign" });
+        m2.indicator(z2, expr`${x1} <= 5`, { name: "ind_foreign" });
       }).toThrow(/Variable "x" in constraint "ind_foreign" does not belong to model "ModelB"/);
     });
 
@@ -90,7 +81,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
       }).toThrow(/Boolean variable "p" in logical constraint "logic_foreign_bool" does not belong to model "ModelB"/);
 
       expect(() => {
-        m2.constraint(p2.implies(c`${x1} <= 5`), "logic_foreign_var");
+        m2.constraint(p2.implies(expr`${x1} <= 5`), "logic_foreign_var");
       }).toThrow(/Variable "x" embedded in logical constraint "logic_foreign_var" does not belong to model "ModelB"/);
     });
 
@@ -102,7 +93,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const x2 = m2.continuous("x", { lb: 0, ub: 10 });
 
       const constr = m2.continuous("y", { lb: 0, ub: 10 });
-      m2.constraint(c`${x2} + ${constr} <= 10`, "mutated_c");
+      m2.constraint(expr`${x2} + ${constr} <= 10`, "mutated_c");
 
       // Mutate internal terms map after construction to inject foreign variable x1
       m2.constraints[0].lhs.terms.set(x1, 2);
@@ -237,7 +228,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const p = m.bool("p");
       const q = m.bool("q");
 
-      m.constraint(c`${x} <= 5`, "shared_name");
+      m.constraint(expr`${x} <= 5`, "shared_name");
 
       // Logical constraint with same name as arithmetic constraint must fail
       expect(() => {
@@ -247,7 +238,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
       // Arithmetic constraint with same name as logical constraint must fail
       m.constraint(p.or(q), "logic_only_name");
       expect(() => {
-        m.constraint(c`${x} >= 1`, "logic_only_name");
+        m.constraint(expr`${x} >= 1`, "logic_only_name");
       }).toThrow(/Constraint with name 'logic_only_name' already exists in model/);
 
       // Duplicate logical constraint name must fail
@@ -276,11 +267,11 @@ describe("Model Integrity Validation (Issue #51)", () => {
 
       // Explicit arithmetic constraint with name "lc_1" must be rejected
       expect(() => {
-        m.constraint(c`${x} <= 5`, "lc_1");
+        m.constraint(expr`${x} <= 5`, "lc_1");
       }).toThrow(/Constraint with name 'lc_1' already exists in model/);
 
       // If an explicit arithmetic constraint reserves "lc_2" first, the next unnamed logical constraint skips to "lc_3"
-      m.constraint(c`${x} <= 5`, "lc_2");
+      m.constraint(expr`${x} <= 5`, "lc_2");
       m.constraint(p.or(q));
       expect(m.logicalConstraints[1].name).toBe("lc_3");
     });
@@ -291,8 +282,8 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const p = m.bool("p");
 
       const c1 = m.continuous("y", { lb: 0, ub: 10 });
-      m.constraint(c`${x} <= 5`, "c_one");
-      m.constraint(c`${c1} <= 5`, "c_two");
+      m.constraint(expr`${x} <= 5`, "c_one");
+      m.constraint(expr`${c1} <= 5`, "c_two");
       m.constraint(p.not(), "lc_one");
 
       // Mutate name to collide with logical constraint
@@ -318,7 +309,7 @@ describe("Model Integrity Validation (Issue #51)", () => {
       m.constraint(p.not(), "foo_ge");
 
       expect(() => {
-        m.indicator(b, c`${x} == 5`, { name: "foo" });
+        m.indicator(b, expr`${x} == 5`, { name: "foo" });
       }).toThrow(/Constraint with name 'foo_ge' already exists in model/);
 
       // Ensure "foo_le" was NOT partially inserted into the model
@@ -363,21 +354,21 @@ describe("Model Integrity Validation (Issue #51)", () => {
       const x = m.continuous("x", { lb: 0, ub: 10 });
       const p = m.bool("p");
 
-      m.constraint(c`${x} <= 5`, "con_a");
+      m.constraint(expr`${x} <= 5`, "con_a");
 
       // 1. Constraint name colliding with BoolVar name (and vice versa)
       expect(() => {
         m.constraint(p.not(), "p");
       }).toThrow(/conflicts with an existing Boolean variable/);
       expect(() => {
-        m.constraint(c`${x} <= 8`, "p");
+        m.constraint(expr`${x} <= 8`, "p");
       }).toThrow(/conflicts with an existing Boolean variable/);
       expect(() => {
         m.bool("con_a");
       }).toThrow(/conflicts with an existing constraint/);
 
       // Unnamed m.bool() skips existing constraint names
-      m.constraint(c`${x} <= 9`, "p_0");
+      m.constraint(expr`${x} <= 9`, "p_0");
       const autoBool = m.bool();
       expect(autoBool.name).toBe("p_1");
 
@@ -392,8 +383,8 @@ describe("Model Integrity Validation (Issue #51)", () => {
     it("preserves constraint names with spaces in unsatCore", async () => {
       const mUnsat = new Model({ name: "Z3QuotedConstraintNames", solver: "z3" });
       const x = mUnsat.continuous("x", { lb: 0, ub: 100 });
-      mUnsat.constraint(c`${x} <= 10`, "budget limit");
-      mUnsat.constraint(c`${x} >= 50`, "minimum requirement");
+      mUnsat.constraint(expr`${x} <= 10`, "budget limit");
+      mUnsat.constraint(expr`${x} >= 50`, "minimum requirement");
       const unsatRes = await mUnsat.check();
       expect(unsatRes.status).toBe("Unsat");
       expect(mUnsat.conflicts).toEqual(expect.arrayContaining(["budget limit", "minimum requirement"]));
@@ -413,9 +404,9 @@ describe("Model Integrity Validation (Issue #51)", () => {
         // Lower-unbounded variable: -Infinity <= negVar <= -5
         const negVar = m.continuous("negVar", { lb: -Infinity, ub: -5 });
 
-        m.constraint(c`${freeVar} == -12`, "fix_free");
-        m.constraint(c`${posVar} <= 20`, "bound_pos");
-        m.constraint(c`${negVar} >= -15`, "bound_neg");
+        m.constraint(expr`${freeVar} == -12`, "fix_free");
+        m.constraint(expr`${posVar} <= 20`, "bound_pos");
+        m.constraint(expr`${negVar} >= -15`, "bound_neg");
 
         // Maximize posVar + freeVar + negVar => 20 + (-12) + (-5) = 3
         m.objective(maximize(expr`${posVar} + ${freeVar} + ${negVar}`));

@@ -6,7 +6,7 @@ Explore runnable optimization and logic formulations built with WaSHI. Every exa
 
 | Example | Problem Class | Solver | Key WaSHI APIs | Description | Code Editor |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[Production Planning](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `c` | Basic variables, tagged template literal equations, and maximizing profit under resource limits. | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
+| **[Production Planning](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | Basic variables, tagged template literal equations, and maximizing profit under resource limits. | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
 | **[0-1 Knapsack](./knapsack.md)** | Binary MIP | HiGHS | `m.binary(keys)`, `sum()`, `m.constraint()` | 1D dictionary of `Binary` variables and linear aggregation over item arrays. | [Playground](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
 | **[Transportation Network](./transportation.md)** | LP | HiGHS | `m.continuous(rows, cols)`, `dot()`, `m.constraint()` | 2D matrix indexing (`ship[factory][store]`) and row/column flow balance constraints. | [Playground](https://ohtaman.github.io/washi/demo/?preset=transportation) |
 | **[Diet & Sensitivity Analysis](./diet-sensitivity.md)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | Reading shadow prices (bottlenecks), constraint surpluses, and reduced costs after solving. | [Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
@@ -22,7 +22,7 @@ Looking for a specific modeling method or solver capability? Jump straight to th
 
 | Feature / API | Description | Example Page | Node.js Source |
 | :--- | :--- | :--- | :--- |
-| ``m.constraint(c`...`)`` | Tagged template literal constraints | [Production Planning](./production.md) | [`01-production-planning.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) |
+| ``m.constraint(expr`...`)`` | Tagged template literal constraints | [Production Planning](./production.md) | [`01-production-planning.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) |
 | `m.binary(keys)` / `m.continuous(keys)` | 1D dictionary of indexed variables | [0-1 Knapsack](./knapsack.md) | [`02-knapsack-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts) |
 | `m.continuous(rows, cols)` / `m.binary(rows, cols)` | 2D matrix of indexed variables | [Transportation Network](./transportation.md), [Shift Scheduling](./shift-scheduling.md) | [`09-transportation-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) |
 | `dot(matrix, vars2d)` / `dot(vector, vars)` | Fast vector/matrix dot product | [Transportation Network](./transportation.md), [Portfolio Optimization](./portfolio-qp.md) | [`09-transportation-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) |

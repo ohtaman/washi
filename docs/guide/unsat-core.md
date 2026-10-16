@@ -11,7 +11,7 @@ WaSHI solves this by integrating with the **Z3 SMT engine** to automatically com
 When diagnosing an infeasible model, use `m.check()` or `m.solve()` with Z3:
 
 ```typescript
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 // Ensure z3 solver plugin is imported
 import "@ohtaman/washi/solvers/z3";
 
@@ -20,9 +20,9 @@ const m = new Model({ solver: "z3" });
 const x = m.continuous("reserve", { lb: 0 });
 
 // Add contradictory business requirements
-m.constraint(c`${x} >= 100`, "minimum_regulatory_reserve");
-m.constraint(c`${x} <= 50`, "budget_ceiling");
-m.constraint(c`${x} >= 10`, "routine_operating_cost");
+m.constraint(expr`${x} >= 100`, "minimum_regulatory_reserve");
+m.constraint(expr`${x} <= 50`, "budget_ceiling");
+m.constraint(expr`${x} >= 10`, "routine_operating_cost");
 
 const result = await m.check({ solver: "z3" });
 

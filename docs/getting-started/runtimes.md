@@ -103,7 +103,7 @@ You can load WaSHI directly into static web pages using CDN script tags without 
         const y = model.continuous("y", { lb: 0, ub: 20 });
 
         model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
-        model.constraint(c`${x} + ${y} <= 15`);
+        model.constraint(expr`${x} + ${y} <= 15`);
 
         await model.solve();
 

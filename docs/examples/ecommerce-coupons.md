@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constraint()`, `m.indicator()`, `c`, `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
+| Mixed-Integer Programming (MIP) | HiGHS (default) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">Source Code</a></li></ul> |
 
 Modern e-commerce checkouts often feature complex promotional rules: minimum spend thresholds, category-specific discounts, stackable vs. mutually exclusive coupons, and maximum coupon limits per order. Running an optimizer directly in the browser (or an edge worker) lets the checkout UI automatically apply the best coupon combination—and even recommend a small "filler" item when crossing a spend threshold lowers the customer's net bill.
 
@@ -31,7 +31,7 @@ By adding the `$10` cable (`$252` gross), the customer unlocks `MEGA45_250` (`-$
 <CodeRunner preset="cart_coupon">
 
 ```typescript
-import { Model, sum, c, minimize } from "@ohtaman/washi";
+import { Model, sum, minimize, expr } from "@ohtaman/washi";
 
 async function optimizeCheckoutCart() {
   const m = new Model("CartCouponOptimizer");
@@ -77,13 +77,13 @@ async function optimizeCheckoutCart() {
   // 2. Mutual exclusion among non-stackable ("Exclusive") coupons
   const exclusiveCoupons = coupons.filter((c) => !c.stackable);
   m.constraint(
-    c`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
+    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
     "at_most_one_exclusive"
   );
 
   // 3. Max 2 coupons per order
   m.constraint(
-    c`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
+    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
     "max_two_coupons"
   );
 

@@ -10,7 +10,7 @@
  * Run with: npx tsx examples/node/09-transportation-problem.ts
  */
 
-import { Model, sum, dot, c, minimize } from "../../src/index.js";
+import { Model, sum, dot, minimize, expr } from "../../src/index.js";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -50,7 +50,7 @@ async function solveTransportation(
   // Supply constraints: Outgoing shipments from each factory <= capacity
   for (const f of factories) {
     m.constraint(
-      c`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
+      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
       `supply_${f}`
     );
   }
@@ -58,7 +58,7 @@ async function solveTransportation(
   // Demand constraints: Incoming shipments to each store >= demand
   for (const s of stores) {
     m.constraint(
-      c`${sum(factories, (f) => ship[f][s])} >= ${storeDemands[s]}`,
+      expr`${sum(factories, (f) => ship[f][s])} >= ${storeDemands[s]}`,
       `demand_${s}`
     );
   }

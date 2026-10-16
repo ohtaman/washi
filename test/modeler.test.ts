@@ -1,13 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  Model,
-  Var,
-  LinExpr,
-  sum,
-  dot,
-  expr,
-  c,
-} from "../src/modeler/index.js";
+import { Model, Var, LinExpr, sum, dot, expr } from "../src/modeler/index.js";
 
 describe("HiGHS Web Modeler", () => {
   it("solves standard MIP production planning problem (chairs and tables)", async () => {
@@ -49,15 +41,15 @@ describe("HiGHS Web Modeler", () => {
     expect(m.getVarByName("tables")?.value).toBe(10);
   });
 
-  it("supports tagged template literal DSL: expr`...` and c`...`", async () => {
+  it("supports tagged template literal DSL: expr`...` and expr`...`", async () => {
     const m = new Model({ name: "TemplateModel" });
     const x = m.continuous("x", { lb: 0 });
     const y = m.continuous("y", { lb: 0 });
 
     // Maximize 2*x + 3*y
     m.maximize(expr`2 * ${x} + 3 * ${y}`);
-    m.constrain(c`${x} + ${y} <= 4`);
-    m.constrain(c`${x} + 2 * ${y} <= 6`);
+    m.constrain(expr`${x} + ${y} <= 4`);
+    m.constrain(expr`${x} + 2 * ${y} <= 6`);
 
     const status = await m.optimize();
     expect(status).toBe("Optimal");

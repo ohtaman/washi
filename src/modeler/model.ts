@@ -187,10 +187,8 @@ export class Model {
     return this._objectiveExpr.clone();
   }
 
-  set objectiveExpr(value: LinExpr | QuadExpr) {
-    const cloned = value.clone();
-    this._objectiveExpr = cloned;
-    this.recordModelMutation();
+  set objectiveExpr(value: LinExpr | QuadExpr | Constraint) {
+    this.setObjective(value);
   }
 
   /**
@@ -896,10 +894,19 @@ export class Model {
    * Prefer using `m.objective(maximize(expr))` or `m.objective(minimize(expr))`.
    */
   setObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
-    if (expr instanceof Constraint) {
+    if (
+      expr instanceof Constraint ||
+      (typeof expr === "object" &&
+        expr !== null &&
+        "sense" in expr &&
+        "lhs" in expr &&
+        "rhs" in expr) ||
+      (typeof expr === "string" && /(<=|>=|==|=<|=>|=)/.test(expr))
+    ) {
       throw new Error(
-        "Cannot set objective to a constraint comparison (<=, >=, ==). " +
-        "Did you mean to use m.constraint(c`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
+        typeof expr === "string"
+          ? "Cannot use a comparison constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)?"
+          : "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
       );
     }
 
@@ -912,11 +919,24 @@ export class Model {
       parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
       parsedExpr = expr.clone();
-    } else if ("terms" in expr) {
-      parsedExpr = expr.clone();
+    } else if (typeof expr === "object" && expr !== null && "quadTerms" in expr) {
+      parsedExpr = (expr as unknown as QuadExpr).clone();
+    } else if (typeof expr === "object" && expr !== null && "terms" in expr) {
+      parsedExpr = (expr as unknown as LinExpr).clone();
+    } else if (
+      expr instanceof Var ||
+      (typeof expr === "object" &&
+        expr !== null &&
+        "id" in expr &&
+        "name" in expr &&
+        "lb" in expr &&
+        "ub" in expr)
+    ) {
+      parsedExpr = new LinExpr(new Map([[expr as Var, 1]]), 0);
     } else {
-      // Var
-      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
+      throw new Error(
+        "Invalid objective expression: expected a finite number, Var, LinExpr, QuadExpr, or arithmetic expression string."
+      );
     }
 
     // Validate objective numeric inputs and model ownership
@@ -943,18 +963,18 @@ export class Model {
 
   /**
    * Add linear, boolean, or string formula constraint(s) to the model.
-   * Rejects raw arithmetic expressions (e.g. LinExpr) without comparison operators.
+   * Rejects raw arithmetic expressions (e.g. LinExpr, QuadExpr) without comparison operators.
    * Chainable: returns this.
    *
    * @example
-   * m.constraint(c`${desks} + 2 * ${chairs} <= 40`, "wood")
-   * m.constraint(items.map(i => c`${x[i]} <= 10`))
+   * m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood")
+   * m.constraint(items.map(i => expr`${x[i]} <= 10`))
    * m.constraint(c1).constraint(c2)
    */
-  constraint(constraint: ConstraintItem, name?: string): this;
-  constraint(constraints: ConstraintItem[]): this;
+  constraint(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
+  constraint(constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>): this;
   constraint(
-    item: ConstraintItem | ConstraintItem[],
+    item: ConstraintItem | LinExpr | QuadExpr | ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>,
     name?: string
   ): this {
     if (Array.isArray(item)) {
@@ -965,16 +985,20 @@ export class Model {
         return this;
       });
     }
-    if (item instanceof QuadExpr) {
+    if (
+      item instanceof QuadExpr ||
+      (typeof item === "object" && item !== null && "quadTerms" in item)
+    ) {
       throw new Error(
-        "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a quadratic expression as a constraint."
       );
     }
-    if (item instanceof LinExpr) {
+    if (
+      item instanceof LinExpr ||
+      (typeof item === "object" && item !== null && "terms" in item)
+    ) {
       throw new Error(
-        "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use c`... <= ...` or .le(), .ge(), .eq()."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a linear expression without a comparison operator. Use expr`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     this.addConstraint(item as Constraint | BoolExpr | string, name);
@@ -985,7 +1009,7 @@ export class Model {
    * @deprecated Use `m.constraint(...)` instead.
    */
   constrain(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
-  constrain(constraints: (ConstraintItem | LinExpr | QuadExpr)[]): this;
+  constrain(constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>): this;
   constrain(
     item: any,
     name?: string
@@ -1053,16 +1077,20 @@ export class Model {
   private addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
   private addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
   private addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
-    if (constraint instanceof QuadExpr) {
+    if (
+      constraint instanceof QuadExpr ||
+      (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
+    ) {
       throw new Error(
-        "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a quadratic expression as a constraint."
       );
     }
-    if (constraint instanceof LinExpr) {
+    if (
+      constraint instanceof LinExpr ||
+      (typeof constraint === "object" && constraint !== null && "terms" in constraint)
+    ) {
       throw new Error(
-        "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use c`... <= ...` or .le(), .ge(), .eq()."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a linear expression without a comparison operator. Use expr`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     if (constraint instanceof BoolExpr) {
@@ -1173,19 +1201,26 @@ export class Model {
    * Universal classical fluent adder for constraints, variables, or batches.
    * Enables:
    * - m.add(x.mul(2).add(y).le(10))
-   * - m.add(c`${x} + ${y} <= 10`)
+   * - m.add(expr`${x} + ${y} <= 10`)
    * - m.add("x + y <= 10")
    * - m.add([c1, c2, c3])
    * - m.add(new Var(...))
    * - m.add(c1).add(c2) (fluent chaining)
    */
-  add(constraint: Constraint, name?: string): this;
+  add(constraint: Constraint | LinExpr | QuadExpr, name?: string): this;
   add(expr: BoolExpr, name?: string): this;
   add(strConstraint: string, name?: string): this;
   add(variable: Var): this;
-  add(items: (Constraint | BoolExpr | string | Var)[]): this;
+  add(items: ReadonlyArray<Constraint | LinExpr | QuadExpr | BoolExpr | string | Var>): this;
   add(
-    item: Constraint | BoolExpr | string | Var | (Constraint | BoolExpr | string | Var)[],
+    item:
+      | Constraint
+      | LinExpr
+      | QuadExpr
+      | BoolExpr
+      | string
+      | Var
+      | ReadonlyArray<Constraint | LinExpr | QuadExpr | BoolExpr | string | Var>,
     name?: string
   ): this {
     if (Array.isArray(item)) {
@@ -1240,7 +1275,7 @@ export class Model {
       return this;
     }
 
-    this.addConstraint(item, name);
+    this.addConstraint(item as Constraint | LinExpr | QuadExpr | BoolExpr | string, name);
     return this;
   }
 

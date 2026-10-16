@@ -31,15 +31,15 @@ HiGHS 是默认求解器；Z3 和 GLPK 是可选插件。软件包提供 Node.js
 [试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 const m = new Model("木工产品利润最大化");
 const x = m.integer("桌子", { lb: 0 });
 const y = m.integer("椅子", { lb: 0 });
 
 m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
 await m.solve();
 console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.objectiveValue})`);
@@ -49,7 +49,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 ## 🎯 WaSHI 提供的功能
 
-1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`、`c`）、向量聚合函数（`dot`、`sum`）以及声明式的 `m.constraint()` 约束方法，精确且优雅地描述数学模型。
+1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`、`expr`）、向量聚合函数（`dot`、`sum`）以及声明式的 `m.constraint()` 约束方法，精确且优雅地描述数学模型。
 2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
 3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内求解，无需单独的 Python 服务或本地 C/C++ 编译。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
 4. **命名约束与 SMT 结果**：显式使用 Z3 检查可满足性，并通过冲突约束（`conflicts` / `unsatCore`）调查冲突约束。返回的是一个冲突约束子集，不一定是最小子集。
@@ -101,7 +101,7 @@ npm install glpk.js      # 用于 GLPK 求解器 (GPL-3.0)
 在有限资源约束下实现利润最大化：
 
 ```ts
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 const m = new Model("FactoryPlanning");
 
@@ -111,8 +111,8 @@ const tables = m.integer("tables", { lb: 0 });
 
 // 借助标签模板字面量自然表达目标函数与约束
 m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constraint(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+m.constraint(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
 // 使用默认的 HiGHS WASM 引擎求解
 const status = await m.solve();
@@ -143,7 +143,7 @@ const board = m.binary(8, 8, { prefix: "queen" });
 
 ```ts
 // "若工厂关闭 (openCity['Tokyo'] == 0)，则产量 flow 必须为 0"
-m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
+m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
@@ -156,7 +156,7 @@ m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
 在满足预期收益与预算约束的前提下，基于协方差矩阵最小化投资组合风险：
 
 ```ts
-import { Model, QuadExpr, sum, dot, c, minimize } from "@ohtaman/washi";
+import { Model, QuadExpr, sum, dot, minimize, expr } from "@ohtaman/washi";
 
 const m = new Model("MarkowitzPortfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
@@ -166,11 +166,11 @@ const returns = [0.14, 0.04, 0.08];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 // 1. 预算约束: 资金分配总额 100%
-m.constraint(c`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
 // 2. 目标回报率: 组合最低回报率 >= 8.5%
 const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-m.constraint(c`${dot(retMap, w)} >= 0.085`, "min_return");
+m.constraint(expr`${dot(retMap, w)} >= 0.085`, "min_return");
 
 // 3. 资产协方差矩阵 (风险与相关性)
 const cov = [
@@ -202,7 +202,7 @@ assets.forEach((name) => {
 原生支持布尔命题变量（`BoolVar`）、逻辑连接词（`and`, `or`, `implies`, `not`, `xor`）与数值算术约束的混合表达：
 
 ```ts
-import { Model, not, c } from "@ohtaman/washi";
+import { Model, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
@@ -218,7 +218,7 @@ m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
 m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
 // 传感器当前输入数据
-m.constraint(c`${lux} <= 10`, "sensor_dark");
+m.constraint(expr`${lux} <= 10`, "sensor_dark");
 m.constraint(motion, "sensor_motion");
 m.constraint(alarm, "alarm_on");
 
@@ -236,7 +236,7 @@ console.log(`警报响起？ ${m.values.get("siren")}`); // true
 当规则或约束之间存在矛盾时，Z3 能够提取引发冲突的**矛盾约束子集**（Unsat Core / Conflicts，不保证最小性；需使用 Z3）：
 
 ```ts
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
@@ -245,7 +245,7 @@ const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
 
 // 规则 1: 每位工程师成本 $8,000
-m.constraint(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
+m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
 // 规则 2: 客户要求加急交付
 m.constraint(rushDelivery, "rush_required");
@@ -254,10 +254,10 @@ m.constraint(rushDelivery, "rush_required");
 m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // 规则 4: 董事会严格预算上限 $50,000 (冲突点: 8人 * $8,000 = $64,000 > $50,000!)
-m.constraint(c`${budget} <= 50000`, "strict_board_budget_cap");
+m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
 // 规则 5: 最低 1 名员工用工底线（无关规则）
-m.constraint(c`${engineers} >= 1`, "minimum_one_employee");
+m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
@@ -274,7 +274,7 @@ console.log("冲突约束子集:", res.conflicts);
 使用 GNU Linear Programming Kit (GLPK) 求解器插件：
 
 ```ts
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
 const m = new Model({ solver: "glpk" });
@@ -282,8 +282,8 @@ const x = m.integer("x", { lb: 0 });
 const y = m.integer("y", { lb: 0 });
 
 m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
 const status = await m.solve();
 console.log(`求解状态: ${status}`); // "Optimal"
@@ -446,7 +446,7 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 
 | 类别 | 示例 | 展示内容 | 求解器 |
 | :--- | :--- | :--- | :--- |
-| **基础模型** | [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 (`expr`, `c`) | HiGHS |
+| **基础模型** | [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 (`expr`, `expr`) | HiGHS |
 | **基础模型** | [运输与分配网络](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 二维矩阵变量 (`continuous(rows, cols)`) 与供需平衡 | HiGHS |
 | **基础模型** | [营养问题与灵敏度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 影子价格 (`constr.dual`)、松弛量 (`constr.slack`) 与缩减成本 (`var.reducedCost`) | HiGHS |
 | **实战应用** | [员工排班与冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 周排班优化与周六休假冲突诊断 | HiGHS + Z3 |

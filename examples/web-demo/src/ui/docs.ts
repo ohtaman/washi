@@ -15,7 +15,7 @@ export const DOCS_HTML = `
       <div class="code-title">ブラウザ標準 ESM (ビルド済み配布物の配信利用)</div>
       <pre><code>&lt;script type="module"&gt;
   // dist/browser 一式を自社 HTTP サーバー等から配信して読み込みます
-  import { Model, expr, c, maximize } from "./dist/browser/washi.js";
+  import { Model, expr, maximize } from "./dist/browser/washi.js";
 
   const m = new Model("Production");
   const x = m.integer("x", { lb: 0 });

@@ -25,7 +25,7 @@ features:
     details: Solve industrial optimization problems entirely inside WebAssembly. Private, offline-ready, with zero backend infrastructure expenses.
   - icon: ✍️
     title: Intuitive Algebraic Modeling
-    details: Domain-pure variables (m.binary, m.integer, m.continuous), formula templates (expr`...`, c`...`), vector aggregations (dot, sum), and first-class constraints (m.constraint).
+    details: Domain-pure variables (m.binary, m.integer, m.continuous), formula templates (expr`...`), vector aggregations (dot, sum), and first-class constraints (m.constraint).
   - icon: ⚡
     title: Industrial Multi-Solver Architecture
     details: Built-in default HiGHS solver (LP/MIP/QP) with pluggable adapters for Z3 (SMT logic & conflict diagnosis) and GLPK.
@@ -39,7 +39,7 @@ features:
 ## Quick Example
 
 ```typescript
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 // 1. Create a model
 const m = new Model("WoodworkingProfit");
@@ -52,8 +52,8 @@ const chairs = m.integer("chairs", { lb: 0 });
 m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
 
 // 4. Add constraints (material and labor limits)
-m.constraint(c`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
-m.constraint(c`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
 
 // 5. Solve via WebAssembly (HiGHS)
 await m.solve();

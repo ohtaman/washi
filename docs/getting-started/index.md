@@ -51,7 +51,7 @@ Here is a step-by-step example of solving a production allocation problem.
 ### 1. Import the Core Classes
 
 ```typescript
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 ```
 
 ### 2. Instantiate a Model
@@ -80,11 +80,11 @@ model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
 
 ### 5. Add Constraints
 
-Use `model.constraint()` with the `c` tagged template to formulate equality and inequality constraints:
+Use `model.constraint()` with the `expr` tagged template to formulate equality and inequality constraints:
 
 ```typescript
-model.constraint(c`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constraint(c`2 * ${x} + ${y} <= 50`, "labor_capacity");
+model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
+model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
 ### 6. Solve and Extract Results

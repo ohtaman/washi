@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, c, LinExpr, sum } from "../src/modeler/index.js";
+import { Model, Var, LinExpr, sum, expr } from "../src/modeler/index.js";
 
 describe("TDD: Classical m.add(...) API", () => {
   it("adds Constraint objects using classical method chaining or direct calls", async () => {
@@ -29,13 +29,13 @@ describe("TDD: Classical m.add(...) API", () => {
     expect(m.objectiveValue).toBeCloseTo(32.666666, 4);
   });
 
-  it("adds Tagged Template Literal constraints via m.add(c`...`)", async () => {
+  it("adds Tagged Template Literal constraints via m.add(expr`...`)", async () => {
     const m = new Model();
     const x = m.continuous("x", { lb: 0 });
     const y = m.continuous("y", { lb: 0 });
 
-    m.add(c`${x} + 2 * ${y} <= 8`);
-    m.add(c`2 * ${x} + ${y} <= 8`);
+    m.add(expr`${x} + 2 * ${y} <= 8`);
+    m.add(expr`2 * ${x} + ${y} <= 8`);
 
     expect(m.numConstrs).toBe(2);
 
