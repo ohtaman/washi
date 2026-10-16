@@ -305,6 +305,13 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const expr2DInterface = dot(storeFruitCosts, storeFruitVars);
     expect(expr2DInterface.terms.get(storeFruitVars.storeA.apple)).toBe(2);
     expect(expr2DInterface.terms.get(storeFruitVars.storeB.banana)).toBe(8);
+
+    // Symbol-keyed objects are rejected at compile time and runtime
+    const sym = Symbol("cost");
+    expect(() => {
+      // @ts-expect-error symbol keys are not supported in dot()
+      dot({ [sym]: 2 }, { [sym]: x[0][0] });
+    }).toThrow(/Symbol keys are not supported in dot\(\) at 'root'/);
   });
 
   it("handles 1D and 2D variable dictionaries with arbitrary keys like 'id', 'terms', 'quadTerms'", async () => {

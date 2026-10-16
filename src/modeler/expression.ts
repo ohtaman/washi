@@ -320,8 +320,8 @@ export function sum<T = any>(
 export type DotTerm = Var | LinExpr;
 
 export type DotVarContainer<
-  R extends PropertyKey = string | number,
-  C extends PropertyKey = string | number,
+  R extends string | number = string | number,
+  C extends string | number = string | number,
 > =
   | ReadonlyArray<DotTerm>
   | { readonly [K in R]: DotTerm }
@@ -331,8 +331,8 @@ export type DotVarContainer<
   | { readonly [K in R]: { readonly [L in C]: DotTerm } };
 
 export type DotCoeffContainer<
-  R extends PropertyKey = string | number,
-  C extends PropertyKey = string | number,
+  R extends string | number = string | number,
+  C extends string | number = string | number,
 > =
   | ReadonlyArray<number>
   | { readonly [K in R]: number }
@@ -341,15 +341,22 @@ export type DotCoeffContainer<
   | { readonly [K in R]: ReadonlyArray<number> }
   | { readonly [K in R]: { readonly [L in C]: number } };
 
-type DotRecordShape<T, Leaf> = {
-  readonly [K in keyof T]: T[K] extends ReadonlyArray<any>
-    ? ReadonlyArray<Leaf>
-    : T[K] extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
-      ? Leaf
-      : T[K] extends object
-        ? { readonly [C in keyof T[K]]: Leaf }
-        : Leaf;
-};
+type HasSymbolKey<T> = Extract<keyof T, symbol> extends never ? false : true;
+
+type DotRecordShape<T, Leaf> =
+  HasSymbolKey<T> extends true
+    ? never
+    : {
+        readonly [K in keyof T]: T[K] extends ReadonlyArray<any>
+          ? ReadonlyArray<Leaf>
+          : T[K] extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
+            ? Leaf
+            : T[K] extends object
+              ? HasSymbolKey<T[K]> extends true
+                ? never
+                : { readonly [C in keyof T[K]]: Leaf }
+              : Leaf;
+      };
 
 type DotContainerArg<T, Leaf> =
   | ReadonlyArray<Leaf>
@@ -358,7 +365,9 @@ type DotContainerArg<T, Leaf> =
       ? U extends Var | LinExpr | QuadExpr | number | ((...args: any[]) => any)
         ? never
         : U extends object
-          ? ReadonlyArray<{ readonly [K in keyof U]: Leaf }>
+          ? HasSymbolKey<U> extends true
+            ? never
+            : ReadonlyArray<{ readonly [K in keyof U]: Leaf }>
           : never
       : T extends Var | LinExpr | QuadExpr | ((...args: any[]) => any)
         ? never
@@ -502,6 +511,11 @@ export function dot(a: any, b: any): LinExpr {
       const other = Array.isArray(valA) ? valB : valA;
 
       if (isPlainRecord(other)) {
+        if (Object.getOwnPropertySymbols(other).length > 0) {
+          throw new Error(
+            `Symbol keys are not supported in dot() at '${path || "root"}'.`
+          );
+        }
         const keys = Object.keys(other);
         const allNumeric =
           keys.length === arr.length &&
@@ -544,6 +558,14 @@ export function dot(a: any, b: any): LinExpr {
     }
 
     if (isPlainRecord(valA) && isPlainRecord(valB)) {
+      if (
+        Object.getOwnPropertySymbols(valA).length > 0 ||
+        Object.getOwnPropertySymbols(valB).length > 0
+      ) {
+        throw new Error(
+          `Symbol keys are not supported in dot() at '${path || "root"}'.`
+        );
+      }
       const keysA = Object.keys(valA);
       const keysB = Object.keys(valB);
 
