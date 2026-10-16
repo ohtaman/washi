@@ -8,6 +8,7 @@ let constrIdCounter = 0;
  * Represents a linear constraint: lhs (terms) <=, >=, or == rhs (constant)
  */
 export class Constraint {
+  public readonly kind = "constraint" as const;
   public readonly id: number;
   private _lhs: LinExpr;
   private _sense: ComparisonSense;
@@ -110,6 +111,67 @@ export class Constraint {
 
   public not(): BoolOp {
     return new BoolOp("not", [this]);
+  }
+
+  // Runtime guards for arithmetic / comparison chaining on unified expr`...` results
+  public add(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public sub(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public mul(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public div(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public neg(): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public le(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (<=): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public lessThanOrEqual(rhs: unknown, name?: string): never {
+    return this.le(rhs, name);
+  }
+
+  public ge(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (>=): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public greaterThanOrEqual(rhs: unknown, name?: string): never {
+    return this.ge(rhs, name);
+  }
+
+  public eq(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (==): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public equalTo(rhs: unknown, name?: string): never {
+    return this.eq(rhs, name);
   }
 
   toString(): string {

@@ -6,6 +6,7 @@ import { QuadExpr } from "./quad-expr.js";
  * Represents a linear expression: c0 + c1*x1 + c2*x2 + ...
  */
 export class LinExpr {
+  public readonly kind = "linear" as const;
   public terms: Map<Var, number>;
   public constant: number;
 
@@ -26,8 +27,18 @@ export class LinExpr {
    */
   add(other: QuadExpr): QuadExpr;
   add(other: LinExpr | Var | number): LinExpr;
-  add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr;
-  add(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
+  add(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr;
+  add(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr {
+    if (
+      typeof other === "object" &&
+      other !== null &&
+      "sense" in other &&
+      "lhs" in other
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     if (other instanceof QuadExpr) {
       return other.add(this);
     }
@@ -64,8 +75,18 @@ export class LinExpr {
    */
   sub(other: QuadExpr): QuadExpr;
   sub(other: LinExpr | Var | number): LinExpr;
-  sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr;
-  sub(other: QuadExpr | LinExpr | Var | number): LinExpr | QuadExpr {
+  sub(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr;
+  sub(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr {
+    if (
+      typeof other === "object" &&
+      other !== null &&
+      "sense" in other &&
+      "lhs" in other
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     if (other instanceof QuadExpr) {
       return other.neg().add(this);
     }
@@ -82,8 +103,18 @@ export class LinExpr {
   mul(v: Var): QuadExpr;
   mul(other: LinExpr): LinExpr | QuadExpr;
   mul(other: QuadExpr): QuadExpr;
-  mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
-  mul(operand: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
+  mul(operand: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr {
+    if (
+      typeof operand === "object" &&
+      operand !== null &&
+      "sense" in operand &&
+      "lhs" in operand
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     if (typeof operand === "number") {
       const rawConst =
         this.constant === 0 && this.terms.size > 0 ? 0 : this.constant * operand;
@@ -141,7 +172,7 @@ export class LinExpr {
   /**
    * Divide this expression by a non-zero scalar or constant-only expression
    */
-  div(divisor: number | LinExpr | QuadExpr): LinExpr {
+  div(divisor: number | LinExpr | QuadExpr | Constraint): LinExpr {
     const scalar = QuadExpr.extractScalarDivisor(divisor, "LinExpr.div()");
     return this.mul(1 / scalar);
   }
@@ -177,34 +208,38 @@ export class LinExpr {
   /**
    * Create constraint: this <= rhs
    */
-  le(rhs: number | Var | LinExpr, name?: string): Constraint {
+  le(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint("<=", rhs, name);
   }
-  lessThanOrEqual(rhs: number | Var | LinExpr, name?: string): Constraint {
+  lessThanOrEqual(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.le(rhs, name);
   }
 
   /**
    * Create constraint: this >= rhs
    */
-  ge(rhs: number | Var | LinExpr, name?: string): Constraint {
+  ge(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint(">=", rhs, name);
   }
-  greaterThanOrEqual(rhs: number | Var | LinExpr, name?: string): Constraint {
+  greaterThanOrEqual(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.ge(rhs, name);
   }
 
   /**
    * Create constraint: this == rhs
    */
-  eq(rhs: number | Var | LinExpr, name?: string): Constraint {
+  eq(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint("==", rhs, name);
   }
-  equalTo(rhs: number | Var | LinExpr, name?: string): Constraint {
+  equalTo(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.eq(rhs, name);
   }
 
-  private toConstraint(sense: "<=" | ">=" | "==", rhs: number | Var | LinExpr, name?: string): Constraint {
+  private toConstraint(
+    sense: "<=" | ">=" | "==",
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
     // Normalization: lhs terms on left, constant on right:
     // this - rhs_terms <= rhs_constant - this.constant
     let target = this.clone();
@@ -212,6 +247,25 @@ export class LinExpr {
 
     if (typeof rhs === "number") {
       rhsConstant = rhs;
+    } else if (
+      rhs instanceof Constraint ||
+      (typeof rhs === "object" && rhs !== null && "sense" in rhs && "lhs" in rhs)
+    ) {
+      throw new Error(
+        `Cannot compare against a Constraint in (${sense}): expected a number, Var, or LinExpr.`
+      );
+    } else if (
+      rhs instanceof QuadExpr ||
+      (typeof rhs === "object" && rhs !== null && "quadTerms" in rhs)
+    ) {
+      const quad = rhs as QuadExpr;
+      if (quad.quadTerms.size > 0) {
+        throw new Error(
+          `Quadratic expressions are not supported in linear constraints (${sense}): quadratic terms are only allowed in objectives.`
+        );
+      }
+      target = target.sub(new LinExpr(quad.linearTerms, 0));
+      rhsConstant = quad.constant;
     } else if ("terms" in rhs) {
       // rhs is LinExpr: subtract its terms and add its constant
       target = target.sub(new LinExpr(rhs.terms, 0));
@@ -225,6 +279,37 @@ export class LinExpr {
     target.constant = 0;
 
     return new Constraint(target, sense, finalRhs, name);
+  }
+
+  // Runtime guards when an arithmetic expression from unified expr`...` is chained with logical combinators
+  public and(_other: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'and': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public or(_other: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'or': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public implies(_consequent: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'implies': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public xor(_other: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'xor': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public not(): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'not': expected a BoolVar, Constraint, or BoolOp."
+    );
   }
 
   toString(): string {

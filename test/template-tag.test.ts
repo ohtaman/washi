@@ -452,6 +452,62 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
       /Cannot use an arithmetic expression without a comparison operator/
     );
   });
+
+  it("supports direct arithmetic, comparison, and logical method chaining on expr`...` results and .kind narrowing without casts", () => {
+    const m = new Model("ChainingOnExpr");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 10 });
+    const p = m.bool("p");
+
+    // Direct arithmetic chaining on stored expr result: const cost = expr`${x} + 1`; cost.add(2)
+    const cost = expr`${x} + 1`;
+    const totalCost = cost.add(2).sub(expr`0.5 * ${y}`).mul(2).div(2);
+    expect(totalCost.kind).toBe("linear");
+    if (totalCost.kind === "linear") {
+      expect(totalCost.terms.get(x)).toBe(1);
+      expect(totalCost.terms.get(y)).toBe(-0.5);
+      expect(totalCost.constant).toBe(3);
+    }
+
+    // Method-DSL operands accepting ParsedExpr directly
+    const varPlusExpr = x.add(cost);
+    expect(varPlusExpr.kind).toBe("linear");
+    if (varPlusExpr.kind === "linear") {
+      expect(varPlusExpr.terms.get(x)).toBe(2);
+      expect(varPlusExpr.constant).toBe(1);
+    }
+
+    // Direct comparison chaining on stored expr result
+    const c1 = cost.le(10, "cost_le");
+    expect(c1.kind).toBe("constraint");
+    expect(c1.sense).toBe("<=");
+    expect(c1.rhs).toBe(9);
+    expect(c1.lhs.terms.get(x)).toBe(1);
+
+    const c2 = x.ge(cost, "x_ge_cost");
+    expect(c2.sense).toBe(">=");
+    expect(c2.rhs).toBe(1);
+
+    // Direct logical chaining on stored constraint expr result
+    const guard = expr`${x} >= 4`;
+    const logic = guard.implies(p);
+    expect(logic.op).toBe("implies");
+
+    // Runtime guards when chaining arithmetic/comparison on a Constraint or logical methods on an arithmetic Expr
+    expect(() => guard.add(1)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.sub(1)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.mul(2)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.div(2)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.neg()).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.le(5)).toThrow(/Cannot compare a Constraint/);
+    expect(() => x.add(guard)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => x.le(guard)).toThrow(/Cannot compare against a Constraint/);
+    expect(() => cost.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+    expect(() => cost.implies(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+    expect(() => expr`${x}^2`.le(10)).toThrow(/Quadratic expressions are not supported in linear constraints/);
+    expect(() => expr`${x}^2`.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+  });
 });
+
 
 

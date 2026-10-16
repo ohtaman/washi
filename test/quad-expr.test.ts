@@ -139,15 +139,19 @@ describe("QuadExpr (Quadratic Expressions)", () => {
     const complexMethod = baseMethod
       .mul(baseMethod)
       .sub(x.mul(2).mul(x.mul(2).sub(y.mul(3))))
-      .div(2) as QuadExpr;
-    const complexTemplate = expr`((2 * ${x} - 3 * ${y} + 4)^2 - 2 * ${x} * (2 * ${x} - 3 * ${y})) / (1 + 1)` as QuadExpr;
+      .div(2);
+    const complexTemplate = expr`((2 * ${x} - 3 * ${y} + 4)^2 - 2 * ${x} * (2 * ${x} - 3 * ${y})) / (1 + 1)`;
 
-    expect(complexTemplate.getQuadCoeff(x, x)).toBe(complexMethod.getQuadCoeff(x, x));
-    expect(complexTemplate.getQuadCoeff(x, y)).toBe(complexMethod.getQuadCoeff(x, y));
-    expect(complexTemplate.getQuadCoeff(y, y)).toBe(complexMethod.getQuadCoeff(y, y));
-    expect(complexTemplate.linearTerms.get(x)).toBe(complexMethod.linearTerms.get(x));
-    expect(complexTemplate.linearTerms.get(y)).toBe(complexMethod.linearTerms.get(y));
-    expect(complexTemplate.constant).toBe(complexMethod.constant);
+    expect(complexMethod.kind).toBe("quadratic");
+    expect(complexTemplate.kind).toBe("quadratic");
+    if (complexMethod.kind === "quadratic" && complexTemplate.kind === "quadratic") {
+      expect(complexTemplate.getQuadCoeff(x, x)).toBe(complexMethod.getQuadCoeff(x, x));
+      expect(complexTemplate.getQuadCoeff(x, y)).toBe(complexMethod.getQuadCoeff(x, y));
+      expect(complexTemplate.getQuadCoeff(y, y)).toBe(complexMethod.getQuadCoeff(y, y));
+      expect(complexTemplate.linearTerms.get(x)).toBe(complexMethod.linearTerms.get(x));
+      expect(complexTemplate.linearTerms.get(y)).toBe(complexMethod.linearTerms.get(y));
+      expect(complexTemplate.constant).toBe(complexMethod.constant);
+    }
 
     // Preserve small residual coefficients from large near-cancellations and propagate non-finite coefficients
     const residual = x.mul(1e12).sub(x.mul(999999999999.5));

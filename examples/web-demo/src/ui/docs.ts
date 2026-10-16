@@ -22,8 +22,8 @@ export const DOCS_HTML = `
   const y = m.integer("y", { lb: 0 });
 
   m.objective(maximize(expr\`30 * \${x} + 50 * \${y}\`));
-  m.constraint(c\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
-  m.constraint(c\`2 * \${x} + \${y} &lt;= 50\`, "c2");
+  m.constraint(expr\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
+  m.constraint(expr\`2 * \${x} + \${y} &lt;= 50\`, "c2");
 
   const status = await m.solve({ useWorker: false });
   console.log("最適目的関数値:", m.objectiveValue); // 1100
@@ -88,12 +88,12 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
         </tr>
         <tr>
           <td><strong>数式・制約の記述</strong></td>
-          <td><code>expr\`...\`</code> / <code>c\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
-          <td>タグ付きテンプレートリテラルによる算術式（<code>expr</code>）と比較制約（<code>c</code>）。</td>
+          <td><code>expr\`30 * \${x} + 50 * \${y}\`</code> / <code>expr\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
+          <td>統一タグ付きテンプレートリテラルによる算術式と比較制約（<code>expr</code>）。</td>
         </tr>
         <tr>
           <td><strong>制約の追加</strong></td>
-          <td><code>m.constraint(c\`...\`, "name")</code></td>
+          <td><code>m.constraint(expr\`...\`, "name")</code></td>
           <td>宣言的な制約追加メソッド。配列渡しやチェーン記法にも対応。</td>
         </tr>
         <tr>

@@ -1,5 +1,5 @@
 import type { Var } from "./variable.js";
-import type { LinExpr } from "./expression.js";
+import { LinExpr } from "./expression.js";
 
 /**
  * Key representation for quadratic pair (v1, v2) with normalized ordering (id1 <= id2)
@@ -16,11 +16,14 @@ export interface QuadTerm {
   coeff: number;
 }
 
+import type { Constraint } from "./constraint.js";
+
 /**
  * Represents a quadratic expression:
  * constant + sum(c_i * x_i) + sum(q_ij * x_i * x_j)
  */
 export class QuadExpr {
+  public readonly kind = "quadratic" as const;
   public linearTerms: Map<Var, number>;
   public quadTerms: Map<string, QuadTerm>;
   public constant: number;
@@ -57,7 +60,17 @@ export class QuadExpr {
   /**
    * Add another expression, variable, or number
    */
-  add(other: QuadExpr | LinExpr | Var | number): QuadExpr {
+  add(other: QuadExpr | LinExpr | Var | number | Constraint): QuadExpr {
+    if (
+      typeof other === "object" &&
+      other !== null &&
+      "sense" in other &&
+      "lhs" in other
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     const result = this.clone();
     if (typeof other === "number") {
       result.constant += other;
@@ -124,7 +137,17 @@ export class QuadExpr {
   /**
    * Subtract another expression, variable, or number
    */
-  sub(other: QuadExpr | LinExpr | Var | number): QuadExpr {
+  sub(other: QuadExpr | LinExpr | Var | number | Constraint): QuadExpr {
+    if (
+      typeof other === "object" &&
+      other !== null &&
+      "sense" in other &&
+      "lhs" in other
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     if (typeof other === "number") {
       return this.add(-other);
     }
@@ -135,8 +158,19 @@ export class QuadExpr {
    * Multiply by a scalar coefficient, variable, or linear/quadratic expression
    */
   mul(scalar: number): QuadExpr;
-  mul(other: Var | LinExpr | QuadExpr): QuadExpr;
-  mul(operand: number | Var | LinExpr | QuadExpr): QuadExpr {
+  mul(other: Var | LinExpr | QuadExpr | Constraint): QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr | Constraint): QuadExpr;
+  mul(operand: number | Var | LinExpr | QuadExpr | Constraint): QuadExpr {
+    if (
+      typeof operand === "object" &&
+      operand !== null &&
+      "sense" in operand &&
+      "lhs" in operand
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     if (typeof operand === "number") {
       const hasTerms = this.linearTerms.size > 0 || this.quadTerms.size > 0;
       const rawConst =
@@ -214,7 +248,7 @@ export class QuadExpr {
   /**
    * Divide by a non-zero scalar or constant-only expression
    */
-  div(divisor: number | LinExpr | QuadExpr): QuadExpr {
+  div(divisor: number | LinExpr | QuadExpr | Constraint): QuadExpr {
     const scalar = QuadExpr.extractScalarDivisor(divisor, "QuadExpr.div()");
     return this.mul(1 / scalar);
   }
@@ -244,6 +278,87 @@ export class QuadExpr {
 
   getValue(): number | null {
     return this.value;
+  }
+
+  public le(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toConstraint("<=", rhs, name);
+  }
+
+  public lessThanOrEqual(
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
+    return this.le(rhs, name);
+  }
+
+  public ge(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toConstraint(">=", rhs, name);
+  }
+
+  public greaterThanOrEqual(
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
+    return this.ge(rhs, name);
+  }
+
+  public eq(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toConstraint("==", rhs, name);
+  }
+
+  public equalTo(
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
+    return this.eq(rhs, name);
+  }
+
+  private toConstraint(
+    sense: "<=" | ">=" | "==",
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
+    if (this.quadTerms.size > 0) {
+      throw new Error(
+        `Quadratic expressions are not supported in linear constraints (${sense}): quadratic terms are only allowed in objectives.`
+      );
+    }
+    const lin = new LinExpr(this.linearTerms, this.constant);
+    return sense === "<="
+      ? lin.le(rhs, name)
+      : sense === ">="
+        ? lin.ge(rhs, name)
+        : lin.eq(rhs, name);
+  }
+
+  public and(_other: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'and': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public or(_other: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'or': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public implies(_consequent: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'implies': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public xor(_other: unknown): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'xor': expected a BoolVar, Constraint, or BoolOp."
+    );
+  }
+
+  public not(): never {
+    throw new Error(
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'not': expected a BoolVar, Constraint, or BoolOp."
+    );
   }
 
   toString(): string {
@@ -357,7 +472,20 @@ export class QuadExpr {
   /**
    * Validates and extracts a non-zero scalar divisor from a number or constant-only expression.
    */
-  static extractScalarDivisor(divisor: number | LinExpr | QuadExpr, context: string): number {
+  static extractScalarDivisor(
+    divisor: number | LinExpr | QuadExpr | Constraint,
+    context: string
+  ): number {
+    if (
+      typeof divisor === "object" &&
+      divisor !== null &&
+      "sense" in divisor &&
+      "lhs" in divisor
+    ) {
+      throw new Error(
+        "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+      );
+    }
     if (typeof divisor === "number") {
       if (divisor === 0) {
         throw new Error(`Division by zero in ${context}`);

@@ -104,8 +104,8 @@ export class Var {
   mul(other: Var): QuadExpr;
   mul(other: LinExpr): QuadExpr;
   mul(other: QuadExpr): QuadExpr;
-  mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
-  mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
+  mul(other: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr;
+  mul(other: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr {
     if (typeof other === "number") {
       return new LinExpr(new Map([[this, 1]]), 0).mul(other);
     }
@@ -115,8 +115,8 @@ export class Var {
   /** Add variable with another variable, linear/quadratic expression, or number */
   add(other: QuadExpr): QuadExpr;
   add(other: Var | LinExpr | number): LinExpr;
-  add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr;
-  add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
+  add(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr;
+  add(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.add(this);
     }
@@ -126,8 +126,8 @@ export class Var {
   /** Subtract another variable, linear/quadratic expression, or number from this variable */
   sub(other: QuadExpr): QuadExpr;
   sub(other: Var | LinExpr | number): LinExpr;
-  sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr;
-  sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
+  sub(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr;
+  sub(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.neg().add(this);
     }
@@ -140,26 +140,26 @@ export class Var {
   }
 
   /** Create a less-than-or-equal constraint: this <= rhs */
-  le(rhs: number | Var | LinExpr, name?: string): Constraint {
+  le(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return new LinExpr(new Map([[this, 1]]), 0).le(rhs, name);
   }
-  lessThanOrEqual(rhs: number | Var | LinExpr, name?: string): Constraint {
+  lessThanOrEqual(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.le(rhs, name);
   }
 
   /** Create a greater-than-or-equal constraint: this >= rhs */
-  ge(rhs: number | Var | LinExpr, name?: string): Constraint {
+  ge(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return new LinExpr(new Map([[this, 1]]), 0).ge(rhs, name);
   }
-  greaterThanOrEqual(rhs: number | Var | LinExpr, name?: string): Constraint {
+  greaterThanOrEqual(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.ge(rhs, name);
   }
 
   /** Create an equality constraint: this == rhs */
-  eq(rhs: number | Var | LinExpr, name?: string): Constraint {
+  eq(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return new LinExpr(new Map([[this, 1]]), 0).eq(rhs, name);
   }
-  equalTo(rhs: number | Var | LinExpr, name?: string): Constraint {
+  equalTo(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.eq(rhs, name);
   }
 
