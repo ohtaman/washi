@@ -417,11 +417,11 @@ Deploy the full application build or the entire browser distribution to a local 
 
 ESM assets resolve relative to their module URL; the script build captures its own script URL at load time. CDN Workers use a Blob module bootstrap. The server must permit cross-origin JS / WASM loading; CSP must permit the selected script / connection origins and `worker-src blob:` for CDN Workers. If that is unavailable, use `useWorker: false`. Worker load / message failures reject pending solves rather than leaving them unresolved.
 
-For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain available. To explicitly use the existing HiGHS CDN:
+For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain available:
 
 ```typescript
-import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
-setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
+import { setHighsWasmUrl } from "@ohtaman/washi";
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/public/highs.wasm");
 ```
 
 Failed initialization reports the attempted URL and does not try a different host. This changes the previous local-root/CDN fallback behavior: deploy the generated assets or configure an explicit URL.

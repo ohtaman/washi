@@ -417,11 +417,11 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 
 ESM はモジュール URL、script 版は読み込み時に保持した script URL からアセットを解決します。CDN の Worker は Blob のモジュールから起動します。配信元の CORS と、CSP の script・通信先許可が必要です。CDN Worker では `worker-src blob:` も許可してください。使えない場合は `useWorker: false` を指定します。Worker の読み込み・メッセージ処理に失敗した場合は、求解 Promise がエラーになります。
 
-自前 URL は `setHighsWasmUrl(url)` / `options.wasmUrl` で指定できます。従来の HiGHS CDN を明示的に選ぶ場合：
+自前 URL は `setHighsWasmUrl(url)` / `options.wasmUrl` で指定できます：
 
 ```typescript
-import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
-setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
+import { setHighsWasmUrl } from "@ohtaman/washi";
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/public/highs.wasm");
 ```
 
 初期化に失敗すると取得先を含むエラーを返し、別ホストには切り替えません。従来のオリジンルート / CDN 自動フォールバックを利用していた場合は、生成アセットを配布するか URL を明示してください。

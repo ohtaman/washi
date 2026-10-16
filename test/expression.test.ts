@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Var } from "../src/modeler/variable.js";
 import { LinExpr, sum } from "../src/modeler/expression.js";
 import { Model } from "../src/modeler/model.js";
+import { minimize } from "../src/modeler/objective.js";
 import { parseExpr } from "../src/modeler/parser.js";
 
 describe("LinExpr & Arithmetic Operations", () => {
@@ -64,7 +65,7 @@ describe("LinExpr & Arithmetic Operations", () => {
 
     y.value = 2;
     expect(expr.value).toBe(3 * 5 + 4 * 2 + 10); // 15 + 8 + 10 = 33
-    expect(expr.getValue()).toBe(33);
+    expect((expr as any).getValue).toBeUndefined();
   });
 
   it("handles sum aggregation function with iterables and mapping", () => {
@@ -124,7 +125,7 @@ describe("LinExpr & Arithmetic Operations", () => {
     const constrExpr = x.mul(3e-13);
     const quadObj = residualLin.add(x.mul(x).mul(4e-13));
 
-    m.minimize(quadObj);
+    m.objective(minimize(quadObj));
     m.constraint(constrExpr.le(1), "c_small");
 
     const lp = m.toLpString();

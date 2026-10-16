@@ -8,7 +8,7 @@
 <button id="solve" disabled>Solve</button>
 <pre id="result">Loading WaSHI & GLPK plugin…</pre>
 <script type="module">
-  import { Model } from "./washi/washi.js";
+  import { Model, maximize } from "./washi/washi.js";
   import "./washi/solvers/glpk.js";
 
   const button = document.querySelector("#solve");
@@ -23,12 +23,12 @@
       const y = model.integer("y", { lb: 0 });
       const z = model.integer("z", { lb: 0 });
 
-      model.maximize(x.mul(10).add(y.mul(6)).add(z.mul(4)));
-      model.constrain(x.add(y).add(z).le(100));
-      model.constrain(x.mul(10).add(y.mul(4)).add(z.mul(5)).le(600));
-      model.constrain(x.mul(2).add(y.mul(2)).add(z.mul(6)).le(300));
+      model.objective(maximize(x.mul(10).add(y.mul(6)).add(z.mul(4))));
+      model.constraint(x.add(y).add(z).le(100));
+      model.constraint(x.mul(10).add(y.mul(4)).add(z.mul(5)).le(600));
+      model.constraint(x.mul(2).add(y.mul(2)).add(z.mul(6)).le(300));
 
-      const status = await model.optimize();
+      const status = await model.solve();
       output.textContent = JSON.stringify({
         solver: "GLPK",
         status,

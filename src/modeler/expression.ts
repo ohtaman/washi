@@ -184,20 +184,10 @@ export class LinExpr {
   }
 
   /**
-   * Helper value accessor for expression
-   */
-  getValue(): number | null {
-    return this.value;
-  }
-
-  /**
    * Create constraint: this <= rhs
    */
   le(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint("<=", rhs, name);
-  }
-  lessThanOrEqual(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
-    return this.le(rhs, name);
   }
 
   /**
@@ -206,18 +196,12 @@ export class LinExpr {
   ge(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint(">=", rhs, name);
   }
-  greaterThanOrEqual(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
-    return this.ge(rhs, name);
-  }
 
   /**
    * Create constraint: this == rhs
    */
   eq(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return this.toConstraint("==", rhs, name);
-  }
-  equalTo(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
-    return this.eq(rhs, name);
   }
 
   private toConstraint(

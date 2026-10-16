@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { Model } from "../src/modeler/model.js";
+import { Model, maximize, minimize } from "../src/modeler/index.js";
 import { GLPKSolver, mapGlpkStatus } from "../src/modeler/solvers/glpk.js";
 import * as glpkLoader from "../src/modeler/solvers/glpk/loader.js";
 import { getSolver, setDefaultSolver } from "../src/modeler/solvers/registry.js";
@@ -40,16 +40,16 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     const y = m.continuous("y", { lb: 0, ub: 10 });
 
     // Maximize 3x + 2y
-    m.maximize(x.mul(3).add(y.mul(2)));
+    m.objective(maximize(x.mul(3).add(y.mul(2))));
 
     // x + y <= 8
-    m.constrain(x.add(y).le(8), "budget");
+    m.constraint(x.add(y).le(8), "budget");
     // 2x + y <= 12
-    m.constrain(x.mul(2).add(y).le(12), "capacity");
+    m.constraint(x.mul(2).add(y).le(12), "capacity");
 
     // Solve with GLPK solver explicitly
     const glpk = new GLPKSolver();
-    const status = await m.optimize({ solver: glpk });
+    const status = await m.solve({ solver: glpk });
 
     expect(status).toBe("Optimal");
     expect(m.status).toBe("Optimal");
@@ -66,15 +66,15 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     const tables = m.integer("tables", { lb: 0 });
 
     // Maximize 30 chairs + 50 tables
-    m.maximize(chairs.mul(30).add(tables.mul(50)));
+    m.objective(maximize(chairs.mul(30).add(tables.mul(50))));
 
     // Carpentry: chairs + 2 tables <= 40
-    m.constrain(chairs.add(tables.mul(2)).le(40), "carpentry");
+    m.constraint(chairs.add(tables.mul(2)).le(40), "carpentry");
     // Finishing: 2 chairs + tables <= 50
-    m.constrain(chairs.mul(2).add(tables).le(50), "finishing");
+    m.constraint(chairs.mul(2).add(tables).le(50), "finishing");
 
     // Solve via string solver identifier "glpk"
-    const status = await m.optimize({ solver: "glpk" });
+    const status = await m.solve({ solver: "glpk" });
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
@@ -100,16 +100,16 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     for (let i = 1; i < items.length; i++) {
       obj = obj.add(x[i].mul(items[i].value));
     }
-    m.maximize(obj);
+    m.objective(maximize(obj));
 
     // Capacity constraint: sum(weight * x) <= 5
     let totalWeight = x[0].mul(items[0].weight);
     for (let i = 1; i < items.length; i++) {
       totalWeight = totalWeight.add(x[i].mul(items[i].weight));
     }
-    m.constrain(totalWeight.le(5), "capacity");
+    m.constraint(totalWeight.le(5), "capacity");
 
-    const status = await m.optimize({ solver: "glpk" });
+    const status = await m.solve({ solver: "glpk" });
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(70); // Laptop (40) + Camera (30) = 70, weight 3 + 2 = 5
@@ -125,11 +125,11 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     const y = m.continuous("y", { lb: 0, ub: 1 });
 
     // Quadratic objective: x^2 + y^2
-    m.minimize(x.mul(x).add(y.mul(y)));
-    m.constrain(x.add(y).ge(1), "sum_ge_1");
+    m.objective(minimize(x.mul(x).add(y.mul(y))));
+    m.constraint(x.add(y).ge(1), "sum_ge_1");
 
     // Must fail fast because GLPK does not support QP
-    await expect(m.optimize({ solver: "glpk" })).rejects.toThrowError(
+    await expect(m.solve({ solver: "glpk" })).rejects.toThrowError(
       /Solver "GLPK" does not support quadratic objectives \(QP\)/
     );
   });
@@ -140,11 +140,11 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
 
     const m = new Model();
     const v = m.continuous("v", { lb: 0, ub: 5 });
-    m.maximize(v.mul(10));
-    m.constrain(v.le(3));
+    m.objective(maximize(v.mul(10)));
+    m.constraint(v.le(3));
 
     // Uses default solver (now GLPK)
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(v.value).toBe(3);
 
@@ -174,7 +174,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     // At most 1 shift per nurse per day
     for (const n of nurses) {
       for (const d of days) {
-        m.constrain(x[n][d]["Day"].add(x[n][d]["Night"]).le(1));
+        m.constraint(x[n][d]["Day"].add(x[n][d]["Night"]).le(1));
       }
     }
 
@@ -186,14 +186,14 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         daySum = daySum.add(x[nurses[i]][d]["Day"]);
         nightSum = nightSum.add(x[nurses[i]][d]["Night"]);
       }
-      m.constrain(daySum.ge(1));
-      m.constrain(nightSum.ge(1));
+      m.constraint(daySum.ge(1));
+      m.constraint(nightSum.ge(1));
     }
 
     // Night -> Day forbidden next day
     for (const n of nurses) {
       for (let t = 0; t < days.length - 1; t++) {
-        m.constrain(x[n][days[t]]["Night"].add(x[n][days[t + 1]]["Day"]).le(1));
+        m.constraint(x[n][days[t]]["Night"].add(x[n][days[t + 1]]["Day"]).le(1));
       }
     }
 
@@ -203,7 +203,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       for (let t = 1; t < days.length; t++) {
         nurseTotal = nurseTotal.add(x[n][days[t]]["Day"]).add(x[n][days[t]]["Night"]);
       }
-      m.constrain(nurseTotal.le(3));
+      m.constraint(nurseTotal.le(3));
     }
 
     // Objective: Minimize total night shifts
@@ -214,9 +214,9 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         totalNights = totalNights.add(x[n][d]["Night"]);
       }
     }
-    m.minimize(totalNights);
+    m.objective(minimize(totalNights));
 
-    const status = await m.optimize({ solver: "glpk" });
+    const status = await m.solve({ solver: "glpk" });
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(5); // Exactly 1 night shift per day * 5 days = 5
   });
@@ -246,10 +246,10 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     it("correctly identifies infeasible LP and exposes null values (no fake zero solution)", async () => {
       const m = new Model({ name: "InfeasibleLP" });
       const x = m.continuous("x", { lb: 0, ub: 2 });
-      m.constrain(x.ge(5), "impossible");
-      m.maximize(x);
+      m.constraint(x.ge(5), "impossible");
+      m.objective(maximize(x));
 
-      const status = await m.optimize({ solver: "glpk" });
+      const status = await m.solve({ solver: "glpk" });
       // Either Infeasible or Unknown (GLPK LP simplex returns GLP_UNDEF when presolve catches primal infeasibility)
       expect(["Infeasible", "Unknown"]).toContain(status);
       expect(status).not.toBe("Optimal");
@@ -260,10 +260,10 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
     it("correctly identifies infeasible MIP and exposes null values", async () => {
       const m = new Model({ name: "InfeasibleMIP" });
       const b = m.binary("b");
-      m.constrain(b.ge(2), "impossible_binary");
-      m.maximize(b);
+      m.constraint(b.ge(2), "impossible_binary");
+      m.objective(maximize(b));
 
-      const status = await m.optimize({ solver: "glpk" });
+      const status = await m.solve({ solver: "glpk" });
       expect(status).toBe("Infeasible");
       expect(m.objectiveValue).toBeNull();
       expect(b.value).toBeNull();
@@ -273,9 +273,9 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       const m = new Model({ name: "UnboundedLP" });
       // Maximize x with no upper bound
       const x = m.continuous("x", { lb: 0, ub: Infinity });
-      m.maximize(x);
+      m.objective(maximize(x));
 
-      const status = await m.optimize({ solver: "glpk" });
+      const status = await m.solve({ solver: "glpk" });
       expect(["Unbounded", "Unknown"]).toContain(status);
       expect(status).not.toBe("Optimal");
       expect(m.objectiveValue).toBeNull();
@@ -286,7 +286,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       const glpk = new GLPKSolver();
       const m = new Model();
       const x = m.continuous("x", { lb: 10, ub: 20 });
-      m.maximize(x);
+      m.objective(maximize(x));
 
       const modelData = {
         name: "MockModel",
@@ -326,7 +326,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       {
         const m = new Model();
         const x = m.continuous("x", { lb: 10, ub: 20 });
-        m.maximize(x);
+        m.objective(maximize(x));
 
         const mockGlpkInstance = {
           ...MOCK_GLPK_CONSTANTS,
@@ -337,7 +337,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         };
         const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
 
-        const status = await m.optimize({ solver: glpk });
+        const status = await m.solve({ solver: glpk });
         expect(spy).toHaveBeenCalledTimes(1);
         expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
         expect(status).toBe("Error");
@@ -352,7 +352,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       {
         const m = new Model();
         const x = m.continuous("x", { lb: 10, ub: 20 });
-        m.maximize(x);
+        m.objective(maximize(x));
 
         const mockGlpkInstance = {
           ...MOCK_GLPK_CONSTANTS,
@@ -363,7 +363,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         };
         const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
 
-        const status = await m.optimize({ solver: glpk });
+        const status = await m.solve({ solver: glpk });
         expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
         expect(status).toBe("Error");
         expect(m.objectiveValue).toBeNull();
@@ -376,7 +376,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       {
         const m = new Model();
         const x = m.continuous("x", { lb: 10, ub: 20 });
-        m.maximize(x);
+        m.objective(maximize(x));
 
         const mockGlpkInstance = {
           ...MOCK_GLPK_CONSTANTS,
@@ -387,7 +387,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         };
         const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
 
-        const status = await m.optimize({ solver: glpk });
+        const status = await m.solve({ solver: glpk });
         expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
         expect(status).toBe("Error");
         expect(m.objectiveValue).toBeNull();
@@ -400,7 +400,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
       {
         const m = new Model();
         const x = m.continuous("x", { lb: 10, ub: 20 });
-        m.maximize(x);
+        m.objective(maximize(x));
 
         const mockGlpkInstance = {
           ...MOCK_GLPK_CONSTANTS,
@@ -411,7 +411,7 @@ describe("GLPKSolver Adapter (Alternative Solver Engine)", () => {
         };
         const spy = vi.spyOn(glpkLoader, "getGlpk").mockResolvedValue(mockGlpkInstance);
 
-        const status = await m.optimize({ solver: glpk });
+        const status = await m.solve({ solver: glpk });
         expect(mockGlpkInstance.solve).toHaveBeenCalledTimes(1);
         expect(status).toBe("Error");
         expect(m.objectiveValue).toBeNull();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum } from "../src/modeler/index.js";
+import { Model, sum, minimize } from "../src/modeler/index.js";
 
 describe("Nurse Scheduling Problem (NSP)", () => {
   it("solves 10-nurse 7-day complex scheduling problem to optimality", async () => {
@@ -62,7 +62,7 @@ describe("Nurse Scheduling Problem (NSP)", () => {
     // (H1) One shift per nurse per day
     for (const n of nurses) {
       for (const d of days) {
-        m.constrain(
+        m.constraint(
           sum(shifts, (s) => x[n.id][d][s]).le(1),
           `c_oneshift_${n.id}_${d}`
         );
@@ -73,7 +73,7 @@ describe("Nurse Scheduling Problem (NSP)", () => {
     for (const d of days) {
       for (const s of shifts) {
         const minStaff = reqs[d][s as "D" | "E" | "N"];
-        m.constrain(
+        m.constraint(
           sum(nurses, (n) => x[n.id][d][s]).ge(minStaff),
           `c_coverage_${d}_${s}`
         );
@@ -84,12 +84,12 @@ describe("Nurse Scheduling Problem (NSP)", () => {
     const leaders = nurses.filter((n) => n.isLeader);
     for (const d of days) {
       // Day shift leader
-      m.constrain(
+      m.constraint(
         sum(leaders, (n) => x[n.id][d]["D"]).ge(1),
         `c_leader_day_${d}`
       );
       // Evening/Night combined at least 1 leader
-      m.constrain(
+      m.constraint(
         sum(leaders, (n) => x[n.id][d]["E"].add(x[n.id][d]["N"])).ge(1),
         `c_leader_night_${d}`
       );
@@ -103,7 +103,7 @@ describe("Nurse Scheduling Problem (NSP)", () => {
           allShifts.push(x[n.id][d][s]);
         }
       }
-      m.constrain(sum(allShifts).le(n.maxDays), `c_maxdays_${n.id}`);
+      m.constraint(sum(allShifts).le(n.maxDays), `c_maxdays_${n.id}`);
     }
 
     // (H5) Shift transitions / Rest hours:
@@ -115,17 +115,17 @@ describe("Nurse Scheduling Problem (NSP)", () => {
         const tomorrow = days[t + 1];
 
         // N -> D prohibited
-        m.constrain(
+        m.constraint(
           x[n.id][today]["N"].add(x[n.id][tomorrow]["D"]).le(1),
           `c_rest_ND_${n.id}_${today}`
         );
         // N -> E prohibited
-        m.constrain(
+        m.constraint(
           x[n.id][today]["N"].add(x[n.id][tomorrow]["E"]).le(1),
           `c_rest_NE_${n.id}_${today}`
         );
         // E -> D prohibited
-        m.constrain(
+        m.constraint(
           x[n.id][today]["E"].add(x[n.id][tomorrow]["D"]).le(1),
           `c_rest_ED_${n.id}_${today}`
         );
@@ -143,14 +143,14 @@ describe("Nurse Scheduling Problem (NSP)", () => {
             windowShifts.push(x[n.id][d][s]);
           }
         }
-        m.constrain(sum(windowShifts).le(4), `c_consec_${n.id}_d${t}`);
+        m.constraint(sum(windowShifts).le(4), `c_consec_${n.id}_d${t}`);
       }
     }
 
     // (H7) Night shift limit: No more than 2 consecutive night shifts
     for (const n of nurses) {
       for (let t = 0; t <= numDays - 3; t++) {
-        m.constrain(
+        m.constraint(
           x[n.id][days[t]]["N"]
             .add(x[n.id][days[t + 1]]["N"])
             .add(x[n.id][days[t + 2]]["N"])
@@ -177,10 +177,10 @@ describe("Nurse Scheduling Problem (NSP)", () => {
       }
     }
 
-    m.minimize(sum(penaltyTerms));
+    m.objective(minimize(sum(penaltyTerms)));
 
     // 5. Solve with HiGHS
-    const status = await m.optimize();
+    const status = await m.solve();
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBeGreaterThan(0);

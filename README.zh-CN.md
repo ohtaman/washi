@@ -417,11 +417,11 @@ await model.solve();
 
 ESM 根据模块 URL 解析资源；script 构建在加载时保存自身的 URL。CDN Worker 使用 Blob 模块启动，需要服务端的跨域资源许可及相应 CSP。CDN Worker 还需允许 `worker-src blob:`。不支持时可使用 `useWorker: false`。Worker 加载或消息处理失败会拒绝求解 Promise。
 
-自定义地址仍可通过 `setHighsWasmUrl(url)` 或 `options.wasmUrl` 指定。显式选择现有 HiGHS CDN：
+自定义地址仍可通过 `setHighsWasmUrl(url)` 或 `options.wasmUrl` 指定：
 
 ```typescript
-import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
-setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
+import { setHighsWasmUrl } from "@ohtaman/washi";
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/public/highs.wasm");
 ```
 
 初始化失败会返回包含请求地址的错误，不会尝试其他主机。依赖旧的域名根目录 / CDN 自动回退的应用需部署生成资源或显式配置 URL。

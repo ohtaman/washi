@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum } from "../src/modeler/index.js";
+import { Model, sum, minimize } from "../src/modeler/index.js";
 
 describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
   it("solves a realistic 20,050-variable supply chain facility location & distribution problem", async () => {
@@ -76,7 +76,7 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
     expect(m.variables.length).toBe(20050);
 
     // Set Objective: Minimize total cost using fast O(N) sum
-    m.minimize(sum(objTerms, (t) => t.v.mul(t.c)));
+    m.objective(minimize(sum(objTerms, (t) => t.v.mul(t.c))));
 
     // 3. Constraints
     // 3.1. Demand satisfaction: sum_{w} x[w][c] >= demands[c] (400 constraints)
@@ -85,7 +85,7 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
       for (let w = 0; w < numWarehouses; w++) {
         suppliers.push(x[w][c]);
       }
-      m.constrain(sum(suppliers).ge(demands[c]), `demand_${c}`);
+      m.constraint(sum(suppliers).ge(demands[c]), `demand_${c}`);
     }
 
     // 3.2. Capacity & opening linking: sum_{c} x[w][c] <= capacities[w] * y[w]
@@ -95,20 +95,20 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
       for (let c = 0; c < numCustomers; c++) {
         shipments.push(x[w][c]);
       }
-      m.constrain(
+      m.constraint(
         sum(shipments).sub(y[w].mul(capacities[w])).le(0),
         `cap_${w}`
       );
     }
 
     // 3.3. Maximum warehouse budget: sum_{w} y[w] <= 25 (at most 25 warehouses open)
-    m.constrain(sum(y).le(25), "max_warehouses");
+    m.constraint(sum(y).le(25), "max_warehouses");
 
     const tBuilt = performance.now();
     console.log(`[LargeScale] Model built in ${(tBuilt - t0).toFixed(1)} ms. Total vars: ${m.variables.length}, constraints: ${m.constraints.length}`);
 
     // 4. Solve with HiGHS WASM
-    const status = await m.optimize();
+    const status = await m.solve();
     const tSolved = performance.now();
 
     console.log(`[LargeScale] Solved in ${(tSolved - tBuilt).toFixed(1)} ms. Status: ${status}, Objective: ${m.objectiveValue?.toFixed(2)}`);

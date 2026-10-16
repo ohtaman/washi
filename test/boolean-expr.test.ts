@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model } from "../src/modeler/model.js";
+import { Model, minimize } from "../src/modeler/index.js";
 import { BoolVar, and, or, not, implies, xor } from "../src/modeler/boolean-expr.js";
 import "../src/modeler/solvers/glpk/index.js";
 import "../src/modeler/solvers/z3/index.js";
@@ -51,9 +51,9 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     const rule3 = not(flag.and(y.eq(0)));
     expect(rule3.op).toBe("not");
 
-    m.constrain(rule1, "rule1");
-    m.constrain(rule2, "rule2");
-    m.constrain(rule3, "rule3");
+    m.constraint(rule1, "rule1");
+    m.constraint(rule2, "rule2");
+    m.constraint(rule3, "rule3");
 
     expect(m.logicalConstraints.length).toBe(3);
   });
@@ -64,8 +64,8 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     const x = m.continuous("x", { lb: 0, ub: 10 });
     const y = m.continuous("y", { lb: 0, ub: 10 });
 
-    m.constrain(x.add(y).eq(15), "sum_15");
-    m.constrain(x.ge(6), "x_ge_6");
+    m.constraint(x.add(y).eq(15), "sum_15");
+    m.constraint(x.ge(6), "x_ge_6");
 
     // HiGHS solve feasibility
     const res = await m.check({ solver: "highs" });
@@ -76,8 +76,8 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     // Infeasible case
     const mInf = new Model("InfeasibleCheck");
     const v = mInf.continuous("v");
-    mInf.constrain(v.ge(10), "v_ge_10");
-    mInf.constrain(v.le(5), "v_le_5");
+    mInf.constraint(v.ge(10), "v_ge_10");
+    mInf.constraint(v.le(5), "v_le_5");
 
     const resInf = await mInf.check({ solver: "highs" });
     expect(resInf.status).toBe("Unsat");
@@ -89,7 +89,7 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     const p = m.bool("p");
 
     // Logical constraint: p or (x >= 5)
-    m.constrain(p.or(x.ge(5)));
+    m.constraint(p.or(x.ge(5)));
 
     // HiGHS and GLPK do not support SMT native logic without translation
     await expect(m.check({ solver: "highs" })).rejects.toThrowError(
@@ -100,32 +100,26 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     );
   });
 
-  it("guards against logical constraints in optimize() and solve() on non-SMT solvers (Issue #39)", async () => {
+  it("guards against logical constraints in solve() on non-SMT solvers (Issue #39)", async () => {
     // Model with logical constraint (implies)
     const createModel = (solverName: string) => {
       const m = new Model({ solver: solverName });
       const b = m.binary("b");
       const x = m.continuous("x", { lb: 0, ub: 10 });
-      m.constrain(b.eq(1));
-      m.constrain(b.eq(1).implies(x.ge(5)));
-      m.minimize(x);
+      m.constraint(b.eq(1));
+      m.constraint(b.eq(1).implies(x.ge(5)));
+      m.objective(minimize(x));
       return { m, b, x };
     };
 
-    // 1. HiGHS rejects optimize() and solve()
+    // 1. HiGHS rejects solve()
     const { m: mHighs } = createModel("highs");
-    await expect(mHighs.optimize()).rejects.toThrowError(
-      /does not support SMT \/ logical constraints/
-    );
     await expect(mHighs.solve()).rejects.toThrowError(
       /does not support SMT \/ logical constraints/
     );
 
-    // 2. GLPK rejects optimize() and solve()
+    // 2. GLPK rejects solve()
     const { m: mGlpk } = createModel("glpk");
-    await expect(mGlpk.optimize()).rejects.toThrowError(
-      /does not support SMT \/ logical constraints/
-    );
     await expect(mGlpk.solve()).rejects.toThrowError(
       /does not support SMT \/ logical constraints/
     );
@@ -134,29 +128,22 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     const mInd = new Model({ solver: "highs" });
     const bInd = mInd.binary("b");
     const xInd = mInd.continuous("x", { lb: 0, ub: 10 });
-    mInd.constrain(bInd.eq(1));
+    mInd.constraint(bInd.eq(1));
     mInd.indicator(bInd, xInd.ge(5), { activeValue: 1, M: 10 });
-    mInd.minimize(xInd);
+    mInd.objective(minimize(xInd));
 
-    const statusInd = await mInd.optimize();
+    const statusInd = await mInd.solve();
     expect(statusInd).toBe("Optimal");
     expect(bInd.value).toBe(1);
     expect(xInd.value).toBeCloseTo(5, 4);
 
     // 4. SMT-capable solver (Z3) solves model with logical constraint successfully
     const { m: mZ3, b: bZ3, x: xZ3 } = createModel("z3");
-    const statusZ3 = await mZ3.optimize();
+    const statusZ3 = await mZ3.solve();
     expect(statusZ3).toBe("Optimal");
     expect(bZ3.value).toBe(1);
     expect(xZ3.value).toBe(5);
     expect(mZ3.objectiveValue).toBe(5);
-
-    // solve() alias also works on Z3
-    const { m: mZ3Solve, b: bZ3Solve, x: xZ3Solve } = createModel("z3");
-    const statusZ3Solve = await mZ3Solve.solve();
-    expect(statusZ3Solve).toBe("Optimal");
-    expect(bZ3Solve.value).toBe(1);
-    expect(xZ3Solve.value).toBe(5);
   });
 });
 

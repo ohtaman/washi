@@ -150,18 +150,10 @@ export class Constraint {
     );
   }
 
-  public lessThanOrEqual(rhs: unknown, name?: string): never {
-    return this.le(rhs, name);
-  }
-
   public ge(_rhs: unknown, _name?: string): never {
     throw new Error(
       "Cannot compare a Constraint in (>=): expected a number, Var, or LinExpr."
     );
-  }
-
-  public greaterThanOrEqual(rhs: unknown, name?: string): never {
-    return this.ge(rhs, name);
   }
 
   public eq(_rhs: unknown, _name?: string): never {
@@ -170,18 +162,10 @@ export class Constraint {
     );
   }
 
-  public equalTo(rhs: unknown, name?: string): never {
-    return this.eq(rhs, name);
-  }
-
   public get value(): never {
     throw new Error(
       "Cannot read numeric value of a Constraint: expected a Var, LinExpr, or QuadExpr."
     );
-  }
-
-  public getValue(): never {
-    return this.value;
   }
 
   public get constant(): never {

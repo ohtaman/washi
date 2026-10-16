@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, sum } from "../src/modeler/index.js";
+import { Model, sum, maximize, minimize } from "../src/modeler/index.js";
 
 describe("HiGHS Solver Edge Cases & Advanced Features", () => {
   it("detects Infeasible problems properly", async () => {
@@ -7,10 +7,10 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const x = m.continuous("x", { lb: 0 });
 
     // x <= 2 AND x >= 5 (impossible)
-    m.constrain(x.le(2));
-    m.constrain(x.ge(5));
+    m.constraint(x.le(2));
+    m.constraint(x.ge(5));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Infeasible");
   });
 
@@ -19,9 +19,9 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const x = m.continuous("x", { lb: 0, ub: Infinity });
 
     // Maximize x with no upper constraint
-    m.maximize(x);
+    m.objective(maximize(x));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Unbounded");
   });
 
@@ -33,11 +33,11 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const y = m.continuous("y", { lb: -Infinity, ub: Infinity });
 
     // Minimize 2*x + y
-    m.minimize(x.mul(2).add(y));
+    m.objective(minimize(x.mul(2).add(y)));
     // y >= -5
-    m.constrain(y.ge(-5));
+    m.constraint(y.ge(-5));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(x.value).toBe(-10);
     expect(y.value).toBe(-5);
@@ -49,10 +49,10 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const x = m.continuous("x", { lb: 0 });
 
     // Minimize 3*x + 100
-    m.minimize(x.mul(3).add(100));
-    m.constrain(x.ge(10));
+    m.objective(minimize(x.mul(3).add(100)));
+    m.constraint(x.ge(10));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(x.value).toBe(10);
     expect(m.objectiveValue).toBe(130); // 3*10 + 100
@@ -64,16 +64,16 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const x2 = m.continuous("x2", { lb: 0 });
 
     // Maximize 3*x1 + 2*x2
-    m.maximize(x1.mul(3).add(x2.mul(2)));
+    m.objective(maximize(x1.mul(3).add(x2.mul(2))));
 
     // c1: 2*x1 + x2 <= 100
-    m.constrain(x1.mul(2).add(x2).le(100), "res_labor");
+    m.constraint(x1.mul(2).add(x2).le(100), "res_labor");
     // c2: x1 + x2 <= 80
-    m.constrain(x1.add(x2).le(80), "res_material");
+    m.constraint(x1.add(x2).le(80), "res_material");
     const c1 = m.getConstraintByName("res_labor")!;
     const c2 = m.getConstraintByName("res_material")!;
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(180); // x1=20, x2=60
     expect(x1.value).toBe(20);
@@ -96,11 +96,11 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const v2 = m.continuous("user-name with spaces:1");
     const v3 = m.continuous("123_number_start");
 
-    m.minimize(v1.add(v2.mul(2)).add(v3.mul(3)));
-    m.constrain(v1.add(v2).ge(5));
-    m.constrain(v3.ge(2));
+    m.objective(minimize(v1.add(v2.mul(2)).add(v3.mul(3))));
+    m.constraint(v1.add(v2).ge(5));
+    m.constraint(v3.ge(2));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(v1.value).toBe(5);
     expect(v2.value).toBe(0);
@@ -115,18 +115,18 @@ describe("HiGHS Solver Edge Cases & Advanced Features", () => {
     const vars = m.continuous(N, { lb: 0, ub: 10 });
 
     // Maximize sum of c_i * x_i
-    m.maximize(sum(vars, (v, i) => v.mul(i + 1)));
+    m.objective(maximize(sum(vars, (v, i) => v.mul(i + 1))));
 
     // 30 random-like linear constraints
     for (let c = 0; c < 30; c++) {
-      m.constrain(
+      m.constraint(
         sum(vars, (v, i) => v.mul(((i + c) % 5) + 1)).le(150 + c * 5),
         `limit_${c}`
       );
     }
 
     const start = performance.now();
-    const status = await m.optimize();
+    const status = await m.solve();
     const elapsed = performance.now() - start;
 
     expect(status).toBe("Optimal");

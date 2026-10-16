@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import {
   Model,
   sum,
+  maximize,
   and,
   or,
   not,
@@ -29,9 +30,9 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const canDrive = m.bool("canDrive");
 
     // canDrive => (isAdult AND hasLicense)
-    m.constrain(canDrive.implies(isAdult.and(hasLicense)), "license_rule");
+    m.constraint(canDrive.implies(isAdult.and(hasLicense)), "license_rule");
     // canDrive is true
-    m.constrain(canDrive, "must_drive");
+    m.constraint(canDrive, "must_drive");
 
     const result = await m.check({ solver: "z3" });
 
@@ -48,11 +49,11 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const isHoliday = m.bool("isHoliday");
 
     // (x + y >= 10) OR isHoliday
-    m.constrain(sum([x, y]).ge(10).or(isHoliday), "c1");
+    m.constraint(sum([x, y]).ge(10).or(isHoliday), "c1");
     // isHoliday => (x <= 2)
-    m.constrain(isHoliday.implies(x.le(2)), "c2");
+    m.constraint(isHoliday.implies(x.le(2)), "c2");
     // Not(isHoliday)
-    m.constrain(not(isHoliday), "c3");
+    m.constraint(not(isHoliday), "c3");
 
     const result = await m.check({ solver: "z3" });
 
@@ -69,10 +70,10 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const y = m.continuous("y", { lb: 0 });
 
     // Conflicting constraints
-    m.constrain(x.ge(10), "x_must_be_large");
-    m.constrain(x.le(5), "x_must_be_small");
+    m.constraint(x.ge(10), "x_must_be_large");
+    m.constraint(x.le(5), "x_must_be_small");
     // Harmless constraint
-    m.constrain(y.ge(0), "y_positive");
+    m.constraint(y.ge(0), "y_positive");
 
     const result = await m.check({ solver: "z3" });
 
@@ -90,11 +91,11 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const y = m.integer("y", { lb: 0, ub: 6 });
 
     // x + y <= 10
-    m.constrain(sum([x, y]).le(10), "resource");
+    m.constraint(sum([x, y]).le(10), "resource");
     // Maximize 3x + 5y -> at x=4, y=6 => 12 + 30 = 42
-    m.maximize(sum([x.mul(3), y.mul(5)]));
+    m.objective(maximize(sum([x.mul(3), y.mul(5)])));
 
-    const status = await m.optimize({ solver: "z3" });
+    const status = await m.solve({ solver: "z3" });
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(42);
@@ -102,20 +103,20 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(m.values.get("y")).toBe(6);
   });
 
-  it("enables hybrid pipeline: Z3 check() validation before HiGHS optimize()", async () => {
+  it("enables hybrid pipeline: Z3 check() validation before HiGHS solve()", async () => {
     const m = new Model("HybridPipeline");
     const x = m.integer("x", { lb: 0, ub: 10 });
     const y = m.integer("y", { lb: 0, ub: 10 });
 
-    m.constrain(sum([x, y]).ge(5), "min_total");
-    m.maximize(sum([x.mul(10), y.mul(20)]));
+    m.constraint(sum([x, y]).ge(5), "min_total");
+    m.objective(maximize(sum([x.mul(10), y.mul(20)])));
 
     // Phase 1: Check feasibility & validate constraints using Z3
     const checkRes = await m.check({ solver: "z3" });
     expect(checkRes.status).toBe("Sat");
 
     // Phase 2: Solve large MIP optimization using HiGHS
-    const optStatus = await m.optimize({ solver: "highs" });
+    const optStatus = await m.solve({ solver: "highs" });
     expect(optStatus).toBe("Optimal");
     expect(m.objectiveValue).toBe(300); // x=10, y=10 => 100 + 200 = 300
     expect(m.values.get("x")).toBe(10);
@@ -125,8 +126,8 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
   it("halts hybrid pipeline when policy check() is Unsat (verifying status === 'Sat')", async () => {
     const policy = new Model({ solver: "z3" });
     const budgetTierHigh = policy.bool("budgetTierHigh");
-    policy.constrain(budgetTierHigh, "budget_must_be_high");
-    policy.constrain(budgetTierHigh.not(), "budget_must_be_low");
+    policy.constraint(budgetTierHigh, "budget_must_be_high");
+    policy.constraint(budgetTierHigh.not(), "budget_must_be_low");
 
     const policyCheck = await policy.check();
     // SolverCheckResult is an object and truthy, so checking Boolean(policyCheck) would be a bug (Issue #28)
@@ -138,8 +139,8 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     if (policyCheck.status === "Sat") {
       const mip = new Model("ShouldNotRun");
       const x = mip.continuous("x", { lb: 0 });
-      mip.constrain(x.ge(10));
-      await mip.optimize({ solver: "highs" });
+      mip.constraint(x.ge(10));
+      await mip.solve({ solver: "highs" });
       mipExecuted = true;
     }
 
@@ -152,7 +153,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
       lb: 0,
       ub: 1,
     });
-    m.constrain(x.eq(0.5), "half_integer");
+    m.constraint(x.eq(0.5), "half_integer");
 
     const result = await m.check({ solver: "z3" });
     expect(result.status).toBe("Unsat");
@@ -165,7 +166,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const m1 = new Model("MixedIntFirst");
     const x1 = m1.integer("x", { lb: 0, ub: 1 });
     const y1 = m1.continuous("y", { lb: 0, ub: 1 });
-    m1.constrain(x1.add(y1).le(1), "int_plus_real");
+    m1.constraint(x1.add(y1).le(1), "int_plus_real");
     const res1 = await m1.check({ solver: "z3" });
     expect(res1.status).toBe("Sat");
 
@@ -173,14 +174,14 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const m2 = new Model("MixedRealFirst");
     const x2 = m2.integer("x", { lb: 0, ub: 1 });
     const y2 = m2.continuous("y", { lb: 0, ub: 1 });
-    m2.constrain(y2.add(x2).le(1), "real_plus_int");
+    m2.constraint(y2.add(x2).le(1), "real_plus_int");
     const res2 = await m2.check({ solver: "z3" });
     expect(res2.status).toBe("Sat");
 
     // 3. Non-integer coefficient on Integer variable: 0.5 * x == 0.5 -> x = 1 (Sat)
     const m3 = new Model("FractionalCoeffOnInt");
     const x3 = m3.integer("x", { lb: 0, ub: 1 });
-    m3.constrain(x3.mul(0.5).eq(0.5), "half_coeff");
+    m3.constraint(x3.mul(0.5).eq(0.5), "half_coeff");
     const res3 = await m3.check({ solver: "z3" });
     expect(res3.status).toBe("Sat");
     expect(res3.values.x).toBe(1);
@@ -198,7 +199,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     try {
       const m = new Model("MissingZ3");
       const x = m.integer("integer_x", { lb: 0, ub: 1 });
-      m.constrain(x.eq(0.5), "half_integer");
+      m.constraint(x.eq(0.5), "half_integer");
 
       await expect(m.check({ solver: "z3" })).rejects.toThrow(/Failed to load z3-solver/);
     } finally {
@@ -213,7 +214,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
 
     const m1 = new Model("ErrorModel");
     const a1 = m1.bool("a1");
-    m1.constrain(a1);
+    m1.constraint(a1);
 
     const checkPromise1 = m1.check({ solver: "z3" });
     // Let solver begin execution before worker error occurs
@@ -225,7 +226,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     // Verify recovery: subsequent check() must not deadlock on asyncMutex and must solve correctly
     const m2 = new Model("RecoveryModel");
     const a2 = m2.bool("a2");
-    m2.constrain(a2);
+    m2.constraint(a2);
 
     const res2 = await m2.check({ solver: "z3" });
     expect(res2.status).toBe("Sat");
@@ -250,7 +251,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
 
       const m = new Model("SyncFailModel");
       const a = m.bool("a");
-      m.constrain(a);
+      m.constraint(a);
 
       await expect(m.check({ solver: "z3" })).rejects.toThrow(/Synchronous worker init exception/);
 
@@ -261,7 +262,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
       // Verify recovery: a fresh model solves after sync failure
       const mRecover = new Model("SyncRecoverModel");
       const b = mRecover.bool("b");
-      mRecover.constrain(b);
+      mRecover.constraint(b);
       const res = await mRecover.check({ solver: "z3" });
       expect(res.status).toBe("Sat");
       expect(res.values.b).toBe(true);
@@ -276,8 +277,8 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const m = new Model({ solver: "z3" });
     const b = m.bool("b");
     const x = m.integer("x", { lb: 0, ub: 10 });
-    m.constrain(b);
-    m.constrain(x.ge(5));
+    m.constraint(b);
+    m.constraint(x.ge(5));
 
     const res1 = await m.check();
     expect(res1.status).toBe("Sat");
@@ -287,7 +288,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(m.values.get("x")).toBe(5);
 
     // Add contradicting constraint to make model Unsat
-    m.constrain(b.not());
+    m.constraint(b.not());
     const res2 = await m.check();
     expect(res2.status).toBe("Unsat");
     expect(b.value).toBe(null);
@@ -301,9 +302,9 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     const m = new Model({ solver: "z3" });
     const b = m.bool("b");
     const x = m.integer("x", { lb: 0, ub: 10 });
-    m.constrain(b);
-    m.constrain(x.ge(5));
-    m.maximize(x);
+    m.constraint(b);
+    m.constraint(x.ge(5));
+    m.objective(maximize(x));
 
     const status1 = await m.solve();
     expect(status1).toBe("Optimal");
@@ -313,7 +314,7 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
     expect(m.values.get("x")).toBe(10);
 
     // Add contradicting constraint to make model Infeasible
-    m.constrain(b.not());
+    m.constraint(b.not());
     const status2 = await m.solve();
     expect(status2).toBe("Infeasible");
     expect(b.value).toBe(null);

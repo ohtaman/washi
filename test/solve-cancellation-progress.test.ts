@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Model, sum, MockSolver, type SolveProgressEvent } from "../src/index.js";
+import { Model, sum, maximize, MockSolver, type SolveProgressEvent } from "../src/index.js";
 import "../src/modeler/solvers/glpk/index.js";
 import "../src/modeler/solvers/z3/index.js";
 
@@ -12,7 +12,7 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
   it("returns Interrupted immediately when AbortSignal is already aborted before solve", async () => {
     const model = new Model();
     const x = model.continuous("x", { lb: 0, ub: 10 });
-    model.maximize(x);
+    model.objective(maximize(x));
 
     const controller = new AbortController();
     controller.abort();
@@ -38,12 +38,12 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
     // Subset sum / knapsack MIP that explores multiple checkpoints/incumbents
     const weights = [13, 17, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71];
     const values = [19, 23, 29, 37, 41, 47, 53, 59, 61, 67, 71, 73, 79, 83];
-    model.add(
+    model.constraint(
       sum(x.map((xi, i) => xi.mul(weights[i]))).le(180),
       "cap"
     );
     // Add an objective constant (+100) to verify progress metrics shift by offset
-    model.maximize(sum(x.map((xi, i) => xi.mul(values[i]))).add(100));
+    model.objective(maximize(sum(x.map((xi, i) => xi.mul(values[i]))).add(100)));
 
     const progressEvents: SolveProgressEvent[] = [];
     const fullStatus = await model.solve({
@@ -237,8 +237,8 @@ describe("Solve Cancellation and Progress Reporting (Issue #55)", () => {
   it("supports cancellation and progress events across MockSolver, GLPK, and Z3", async () => {
     const model = new Model();
     const x = model.integer("x", { lb: 0, ub: 10 });
-    model.add(x.le(7));
-    model.maximize(x);
+    model.constraint(x.le(7));
+    model.objective(maximize(x));
 
     // 1. MockSolver with progressEvents and cancellation
     const mockEvents: SolveProgressEvent[] = [];
