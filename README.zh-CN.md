@@ -297,7 +297,7 @@ console.log(`目标函数值: ${m.objectiveValue}`); // 1100
 无需嵌套循环，一行代码完成一维和二维变量的线性组合：
 
 ```ts
-import { Model, dot } from "@ohtaman/washi";
+import { Model, dot, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const factories = ["Tokyo", "Osaka"];
@@ -311,8 +311,8 @@ const costs = {
 const ship = m.continuous(factories, stores);
 
 // 一行代码最小化总运输成本:
-m.minimize(dot(costs, ship));
-await m.optimize();
+m.objective(minimize(dot(costs, ship)));
+await m.solve();
 
 // 获取所有变量的最优取值结构
 const solution = m.getValues(ship);
@@ -373,12 +373,12 @@ await model.solve();
 #### 浏览器 ESM 使用 GLPK
 ```html
 <script type="module">
-  import { Model } from "./washi/washi.js";
+  import { Model, maximize } from "./washi/washi.js";
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(maximize(x));
   await model.solve();
   console.log("GLPK 求解状态:", model.status);
 </script>
@@ -391,7 +391,7 @@ await model.solve();
 <script>
   const model = new Washi.Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(Washi.maximize(x));
   model.solve().then(status => console.log("GLPK 求解状态:", status));
 </script>
 ```
@@ -421,7 +421,7 @@ ESM 根据模块 URL 解析资源；script 构建在加载时保存自身的 URL
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
-setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/public/highs.wasm");
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
 ```
 
 初始化失败会返回包含请求地址的错误，不会尝试其他主机。依赖旧的域名根目录 / CDN 自动回退的应用需部署生成资源或显式配置 URL。

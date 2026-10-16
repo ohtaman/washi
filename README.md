@@ -297,7 +297,7 @@ console.log(`Objective: ${m.objectiveValue}`); // 1100
 Cleanly compute 1D/2D linear combinations without nested loops:
 
 ```ts
-import { Model, dot } from "@ohtaman/washi";
+import { Model, dot, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const factories = ["Tokyo", "Osaka"];
@@ -311,8 +311,8 @@ const costs = {
 const ship = m.continuous(factories, stores);
 
 // Total transportation cost in one line:
-m.minimize(dot(costs, ship));
-await m.optimize();
+m.objective(minimize(dot(costs, ship)));
+await m.solve();
 
 // Extract all optimal variable values as a structured object
 const solution = m.getValues(ship);
@@ -373,12 +373,12 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 #### Browser ESM with GLPK
 ```html
 <script type="module">
-  import { Model } from "./washi/washi.js";
+  import { Model, maximize } from "./washi/washi.js";
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(maximize(x));
   await model.solve();
   console.log("GLPK status:", model.status);
 </script>
@@ -391,7 +391,7 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 <script>
   const model = new Washi.Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(Washi.maximize(x));
   model.solve().then(status => console.log("GLPK status:", status));
 </script>
 ```
@@ -421,7 +421,7 @@ For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain availabl
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
-setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/public/highs.wasm");
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
 ```
 
 Failed initialization reports the attempted URL and does not try a different host. This changes the previous local-root/CDN fallback behavior: deploy the generated assets or configure an explicit URL.

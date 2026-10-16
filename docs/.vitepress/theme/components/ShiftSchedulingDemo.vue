@@ -166,14 +166,14 @@ function buildConstraints(m: any, sum: any, expr: any) {
 
   for (const d of days) {
     const reqCount = dailyDemand.value[d] ?? 4;
-    m.constrain(
+    m.constraint(
       expr`${sum(staffList, (s: StaffMember) => shift[s.id][d])} >= ${reqCount}`,
       `coverage_${d}`
     );
 
     if (minSeniorPerDay.value > 0) {
       const seniors = staffList.filter((s) => s.isSenior);
-      m.constrain(
+      m.constraint(
         expr`${sum(seniors, (s: StaffMember) => shift[s.id][d])} >= ${minSeniorPerDay.value}`,
         `senior_${d}`
       );
@@ -181,12 +181,12 @@ function buildConstraints(m: any, sum: any, expr: any) {
   }
 
   for (const s of staffList) {
-    m.constrain(
+    m.constraint(
       expr`${sum(days, (d: string) => shift[s.id][d])} <= ${s.maxShifts}`,
       `max_shifts_${s.id}`
     );
     if (minShiftsPerStaff.value > 0) {
-      m.constrain(
+      m.constraint(
         expr`${sum(days, (d: string) => shift[s.id][d])} >= ${minShiftsPerStaff.value}`,
         `min_shifts_${s.id}`
       );
@@ -197,7 +197,7 @@ function buildConstraints(m: any, sum: any, expr: any) {
     const [sId, day] = req.split("_");
     const v = shift[sId]?.[day];
     if (v) {
-      m.constrain(expr`${v} == 0`, `day_off_${sId}_${day}`);
+      m.constraint(expr`${v} == 0`, `day_off_${sId}_${day}`);
     }
   }
 
@@ -210,7 +210,7 @@ async function solveRoster() {
 
   try {
     const t0 = performance.now();
-    const { Model, sum, dot, expr } = await getWashiClient(false);
+    const { Model, sum, dot, expr, minimize } = await getWashiClient(false);
 
     const m = new Model("ShiftRoster8x7");
     const shift = buildConstraints(m, sum, expr);
@@ -221,8 +221,8 @@ async function solveRoster() {
         Object.fromEntries(days.map((d) => [d, s.wage + (d === "Sat" || d === "Sun" ? 20 : 0)])),
       ])
     );
-    m.minimize(dot(costMap, shift));
-    const solveStatus = await m.optimize();
+    m.objective(minimize(dot(costMap, shift)));
+    const solveStatus = await m.solve();
     const elapsed = performance.now() - t0;
     solveTimeMs.value = elapsed;
 
