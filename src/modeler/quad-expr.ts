@@ -16,7 +16,7 @@ export interface QuadTerm {
   coeff: number;
 }
 
-import type { Constraint } from "./constraint.js";
+import { Constraint } from "./constraint.js";
 
 /**
  * Represents a quadratic expression:
@@ -61,12 +61,7 @@ export class QuadExpr {
    * Add another expression, variable, or number
    */
   add(other: QuadExpr | LinExpr | Var | number | Constraint): QuadExpr {
-    if (
-      typeof other === "object" &&
-      other !== null &&
-      "sense" in other &&
-      "lhs" in other
-    ) {
+    if (other instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -138,12 +133,7 @@ export class QuadExpr {
    * Subtract another expression, variable, or number
    */
   sub(other: QuadExpr | LinExpr | Var | number | Constraint): QuadExpr {
-    if (
-      typeof other === "object" &&
-      other !== null &&
-      "sense" in other &&
-      "lhs" in other
-    ) {
+    if (other instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -161,12 +151,7 @@ export class QuadExpr {
   mul(other: Var | LinExpr | QuadExpr | Constraint): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): QuadExpr {
-    if (
-      typeof operand === "object" &&
-      operand !== null &&
-      "sense" in operand &&
-      "lhs" in operand
-    ) {
+    if (operand instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -476,12 +461,7 @@ export class QuadExpr {
     divisor: number | LinExpr | QuadExpr | Constraint,
     context: string
   ): number {
-    if (
-      typeof divisor === "object" &&
-      divisor !== null &&
-      "sense" in divisor &&
-      "lhs" in divisor
-    ) {
+    if (divisor instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );

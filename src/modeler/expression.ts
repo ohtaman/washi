@@ -29,12 +29,7 @@ export class LinExpr {
   add(other: LinExpr | Var | number): LinExpr;
   add(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr;
   add(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr {
-    if (
-      typeof other === "object" &&
-      other !== null &&
-      "sense" in other &&
-      "lhs" in other
-    ) {
+    if (other instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -77,12 +72,7 @@ export class LinExpr {
   sub(other: LinExpr | Var | number): LinExpr;
   sub(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr;
   sub(other: QuadExpr | LinExpr | Var | number | Constraint): LinExpr | QuadExpr {
-    if (
-      typeof other === "object" &&
-      other !== null &&
-      "sense" in other &&
-      "lhs" in other
-    ) {
+    if (other instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
@@ -105,12 +95,7 @@ export class LinExpr {
   mul(other: QuadExpr): QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr;
   mul(operand: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr {
-    if (
-      typeof operand === "object" &&
-      operand !== null &&
-      "sense" in operand &&
-      "lhs" in operand
-    ) {
+    if (operand instanceof Constraint) {
       throw new Error(
         "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
       );
