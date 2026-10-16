@@ -46,7 +46,7 @@ async function main() {
   const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
   const techSpend = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
 
-  // Rule 1: Indicator constraints — if coupon `expr` is applied (useCoupon[c.id] == 1),
+  // Rule 1: Indicator constraints — if coupon `c` is applied (useCoupon[c.id] == 1),
   // the cart must satisfy its minimum spend threshold.
   for (const cpn of coupons) {
     if (cpn.minCartSpend > 0) {

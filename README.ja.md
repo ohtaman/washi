@@ -49,7 +49,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 ## 🎯 WaSHI が提供するもの
 
-1. **代数的なモデル記述**: 直感的なドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`, `expr`）、ベクトル集計関数（`dot`, `sum`）、そして宣言的な `m.constraint()` により、数学的定義に忠実なモデルを簡潔に記述できます。
+1. **代数的なモデル記述**: 直感的なドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`）、ベクトル集計関数（`dot`, `sum`）、そして宣言的な `m.constraint()` により、数学的定義に忠実なモデルを簡潔に記述できます。
 2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せず、アプリケーション内で求解できます。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
 4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に競合制約（`conflicts` / `unsatCore`）を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
@@ -446,7 +446,7 @@ WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャ�
 
 | カテゴリ | サンプル | 確認できること | ソルバー |
 | :--- | :--- | :--- | :--- |
-| **基本モデル** | [生産計画](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数変数、利益の最大化、資源制約 (`expr`, `expr`) | HiGHS |
+| **基本モデル** | [生産計画](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数変数、利益の最大化、資源制約 (`expr`) | HiGHS |
 | **基本モデル** | [輸送・物流ネットワーク](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2次元マトリクス変数 (`continuous(rows, cols)`) と供給・需要バランス | HiGHS |
 | **基本モデル** | [栄養問題と感度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 潜在価格 (`constr.dual`)、余剰 (`constr.slack`)、被約費用 (`var.reducedCost`) | HiGHS |
 | **実践応用** | [スタッフのシフト作成](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 週間シフト最適化と、土曜日の希望休が衝突した際の原因特定 | HiGHS + Z3 |

@@ -116,7 +116,7 @@ const y = m.continuous("y", { lb: 0 });
 // expr による2次目的関数:
 m.objective(minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`));
 
-// 線形制約 (c タグを使用):
+// 線形制約 (expr タグを使用):
 m.constraint(expr`${x} + ${y} >= 4`);
 ```
 

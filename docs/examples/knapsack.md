@@ -44,7 +44,7 @@ async function solveKnapsack() {
   // Maximize total value via dot product
   m.objective(maximize(dot(values, x)));
 
-  // Weight capacity constraint using natural c and constraint() syntax
+  // Weight capacity constraint using natural expr and constraint() syntax
   m.constraint(expr`${dot(weights, x)} <= ${maxCapacity}`, "capacity_limit");
 
   const status = await m.solve();

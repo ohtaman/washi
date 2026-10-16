@@ -41,7 +41,7 @@ async function runDietSensitivity() {
   // 目的関数: 1日の食費合計を最小化 (dot による内積)
   m.objective(minimize(dot(costs, srv)));
 
-  // 栄養基準の制約: m.constraint と c による数式定義
+  // 栄養基準の制約: m.constraint と expr による数式定義
   m.constraint(expr`${dot(cals, srv)} >= 2000`, "min_calories")
    .constraint(expr`${dot(prots, srv)} >= 105`,  "min_protein")
    .constraint(expr`${dot(calcs, srv)} >= 1000`, "min_calcium")

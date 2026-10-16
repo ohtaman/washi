@@ -44,7 +44,7 @@ async function runKnapsack() {
   // 目的関数: 選んだアイテムの価値合計を最大化 (dot による内積)
   m.objective(maximize(dot(values, x)));
 
-  // 重量上限の制約 (c と constraint による自然な不等式記法)
+  // 重量上限の制約 (expr と constraint による自然な不等式記法)
   m.constraint(expr`${dot(weights, x)} <= ${maxCapacity}`, "capacity_limit");
 
   const status = await m.solve();

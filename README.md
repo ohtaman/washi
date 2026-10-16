@@ -49,7 +49,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 ## 🎯 What WaSHI provides
 
-1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), tagged template literals (`expr`, `expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`).
+1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), unified tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`).
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
 4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities. A returned core is a conflicting subset, not necessarily the smallest one.
@@ -446,7 +446,7 @@ Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/exam
 
 | Category | Example | What it demonstrates | Solver |
 | :--- | :--- | :--- | :--- |
-| **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`, `expr`) | HiGHS |
+| **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`) | HiGHS |
 | **Fundamentals** | [Transportation network](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2D origin-destination variable matrix (`continuous(rows, cols)`) and flow balance | HiGHS |
 | **Fundamentals** | [Diet & sensitivity analysis](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | Shadow prices (`constr.dual`), surpluses (`constr.slack`), and reduced costs (`var.reducedCost`) | HiGHS |
 | **Practical** | [Staff shift scheduling](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | Weekly roster optimization + diagnosing conflicting Saturday vacation requests | HiGHS + Z3 |

@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.integer()`, `m.constraint()`, `expr`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
+| 線形計画・整数計画 (LP / MIP) | HiGHS (標準) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">ソースコード</a></li></ul> |
 
 限られたリソース（木材・労働時間など）の制約を守りながら、どの製品をいくつ生産すれば総利益が最大になるかを求める古典的な最適化問題です。
 
@@ -34,7 +34,7 @@ async function runProductionOptimization() {
   // 目的関数: 総利益の最大化 ($45/椅子, $80/机)
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // リソース制約: m.constraint と c による宣言的記述 (メソッドチェーン可能)
+  // リソース制約: m.constraint と expr による宣言的記述 (メソッドチェーン可能)
   m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
    .constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 

@@ -9,6 +9,7 @@ import {
   maximize,
   minimize,
   sum,
+  dot,
   and,
   or,
   not,
@@ -520,6 +521,9 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => cost.implies(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
     expect(() => expr`${x}^2`.le(10)).toThrow(/Quadratic expressions are not supported in linear constraints/);
     expect(() => expr`${x}^2`.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+    expect(() => dot([1], [guard as any])).toThrow(
+      /Cannot multiply number by non-variable\/expression operand in dot/
+    );
 
     // Structural objective validation rejects partial objects and normalizes complete structural objects without clone()
     expect(() => maximize({ terms: new Map() } as any)).toThrow(/Invalid expression passed to maximize/);

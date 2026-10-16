@@ -54,7 +54,7 @@ async function runDietSensitivity() {
   // Objective: Minimize total daily cost via dot product
   m.objective(minimize(dot(costs, srv)));
 
-  // Nutritional constraints defined declaratively with c and constraint()
+  // Nutritional constraints defined declaratively with expr and constraint()
   m.constraint(expr`${dot(cals, srv)} >= 2000`, "min_calories")
    .constraint(expr`${dot(prots, srv)} >= 105`,  "min_protein")
    .constraint(expr`${dot(calcs, srv)} >= 1000`, "min_calcium")

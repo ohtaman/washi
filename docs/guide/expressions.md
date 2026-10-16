@@ -125,7 +125,7 @@ const y = m.continuous("y", { lb: 0 });
 // Quadratic objective using expr:
 m.objective(minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`));
 
-// Linear constraint using c:
+// Linear constraint using expr:
 m.constraint(expr`${x} + ${y} >= 4`);
 ```
 

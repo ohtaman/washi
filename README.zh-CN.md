@@ -49,7 +49,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 ## 🎯 WaSHI 提供的功能
 
-1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`、`expr`）、向量聚合函数（`dot`、`sum`）以及声明式的 `m.constraint()` 约束方法，精确且优雅地描述数学模型。
+1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`）、向量聚合函数（`dot`、`sum`）以及声明式的 `m.constraint()` 约束方法，精确且优雅地描述数学模型。
 2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
 3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内求解，无需单独的 Python 服务或本地 C/C++ 编译。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
 4. **命名约束与 SMT 结果**：显式使用 Z3 检查可满足性，并通过冲突约束（`conflicts` / `unsatCore`）调查冲突约束。返回的是一个冲突约束子集，不一定是最小子集。
@@ -446,7 +446,7 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 
 | 类别 | 示例 | 展示内容 | 求解器 |
 | :--- | :--- | :--- | :--- |
-| **基础模型** | [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 (`expr`, `expr`) | HiGHS |
+| **基础模型** | [生产计划](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | 整数变量、利润目标与资源约束 (`expr`) | HiGHS |
 | **基础模型** | [运输与分配网络](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 二维矩阵变量 (`continuous(rows, cols)`) 与供需平衡 | HiGHS |
 | **基础模型** | [营养问题与灵敏度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 影子价格 (`constr.dual`)、松弛量 (`constr.slack`) 与缩减成本 (`var.reducedCost`) | HiGHS |
 | **实战应用** | [员工排班与冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 周排班优化与周六休假冲突诊断 | HiGHS + Z3 |

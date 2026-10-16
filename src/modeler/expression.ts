@@ -516,6 +516,8 @@ export function dot(a: any, b: any): LinExpr {
     return (
       x !== null &&
       typeof x === "object" &&
+      !(x instanceof Constraint) &&
+      !("sense" in x && "lhs" in x) &&
       typeof x.id === "number" &&
       typeof x.name === "string" &&
       typeof x.mul === "function" &&
@@ -607,7 +609,9 @@ export function dot(a: any, b: any): LinExpr {
       typeof obj === "object" &&
       obj !== null &&
       !Array.isArray(obj) &&
-      !isExprOrVar(obj)
+      !isExprOrVar(obj) &&
+      !(obj instanceof Constraint) &&
+      !("sense" in obj && "lhs" in obj)
     );
   }
 
