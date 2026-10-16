@@ -236,7 +236,8 @@ async function checkWorkerCancellation(page) {
       queued.objective(window.api.maximize(q));
       const remaining = new Model("Remaining queued solve");
       const r = remaining.continuous("remaining_queue_marker", { lb: 0, ub: 5, initialValue: 4 });
-      remaining.objective(window.api.maximize(r));
+      const protoHint = remaining.binary("__proto__", { initialValue: 1 });
+      remaining.objective(window.api.maximize(r.add(protoHint)));
       const activeController = new AbortController();
       const queuedController = new AbortController();
       let progressCount = 0;
@@ -259,10 +260,23 @@ async function checkWorkerCancellation(page) {
         "Active Worker was not replaced correctly");
       require(workers[1].solves.length === 1 && workers[1].solves[0].includes("remaining_queue_marker"),
         "Cancelled queued solve was dispatched or remaining solve was lost");
-      require(workers[1].initialValuePayloads[0]?.remaining_queue_marker === 4,
-        "Worker postMessage did not carry initialValues across Worker replacement");
-      require(remaining.status === "Optimal" && r.value === 5 && r.initialValue === 4 && remaining.validateSolution().valid,
-        "Remaining queued solve failed after Worker replacement");
+      require(
+        workers[1].initialValuePayloads[0]?.remaining_queue_marker === 4 &&
+          Object.hasOwn(workers[1].initialValuePayloads[0], "__proto__") &&
+          workers[1].initialValuePayloads[0]["__proto__"] === 1,
+        "Worker postMessage did not carry initialValues (including __proto__) across Worker replacement"
+      );
+      require(
+        remaining.status === "Optimal" &&
+          r.value === 5 &&
+          protoHint.value === 1 &&
+          r.initialValue === 4 &&
+          protoHint.initialValue === 1 &&
+          Object.hasOwn(remaining.solution.values, "__proto__") &&
+          remaining.solution.values["__proto__"] === 1 &&
+          remaining.validateSolution().valid,
+        "Remaining queued solve failed after Worker replacement"
+      );
       require(await queued.solve({ useWorker: true }) === "Optimal" && q.value === 3,
         "Cancelled model could not be solved again");
       const mutatedInWorker = new Model("Mutated during real Worker solve");

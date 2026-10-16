@@ -1551,6 +1551,15 @@ export class Model {
           ? Math.abs(this.objectiveValue - this.objectiveBound)
           : undefined;
 
+    const setOwnProperty = <T>(record: Record<string, T>, key: string, value: T) => {
+      Object.defineProperty(record, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    };
+
     const valuesRecord: Record<string, number> = {};
     const dualsRecord: Record<string, number> = {};
     const reducedCostsRecord: Record<string, number> = {};
@@ -1566,7 +1575,7 @@ export class Model {
           const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
           if (v) {
             v.value = primal;
-            valuesRecord[v.name] = primal;
+            setOwnProperty(valuesRecord, v.name, primal);
           }
           const bv = this.boolVars.find((b) => b.name === vName);
           if (bv) {
@@ -1581,7 +1590,7 @@ export class Model {
         const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
         if (v) {
           v.reducedCost = rc;
-          reducedCostsRecord[v.name] = rc;
+          setOwnProperty(reducedCostsRecord, v.name, rc);
         }
       }
     }
@@ -1592,7 +1601,7 @@ export class Model {
         const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
         if (c) {
           c.dual = dual;
-          dualsRecord[c.name] = dual;
+          setOwnProperty(dualsRecord, c.name, dual);
         }
       }
     }
@@ -1602,7 +1611,7 @@ export class Model {
         const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
         if (c) {
           c.slack = slack;
-          slacksRecord[c.name] = slack;
+          setOwnProperty(slacksRecord, c.name, slack);
         }
       }
     }
@@ -1798,12 +1807,22 @@ export class Model {
           const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
           if (v) {
             v.value = primal;
-            values[v.name] = primal;
+            Object.defineProperty(values, v.name, {
+              value: primal,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
           }
           const bv = this.boolVars.find((b) => b.name === vName);
           if (bv) {
             bv.value = Boolean(primal);
-            values[bv.name] = bv.value;
+            Object.defineProperty(values, bv.name, {
+              value: bv.value,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
           }
         }
       }

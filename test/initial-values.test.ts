@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   Model,
   Var,
@@ -10,6 +10,7 @@ import {
   solveLpWithHighs,
   type Solver,
 } from "../src/index.js";
+import * as workerClient from "../src/modeler/solvers/highs/worker-client.js";
 import { GLPKSolver } from "../src/modeler/solvers/glpk/index.js";
 import { Z3Solver, killZ3Threads } from "../src/modeler/solvers/z3/index.js";
 
@@ -300,6 +301,40 @@ describe("Primal Initial Values / MIP Warm Starts (Issue #48)", () => {
       expect([v1.value, v2.value, v3.value, v4.value]).toEqual([1, 0, 0, 1]);
       expect(unused.value).toBeDefined();
       expect(m.validateSolution().valid).toBe(true);
+    });
+
+    it("preserves __proto__ as an own initial-value column key in the solve/Worker payload and solved values", async () => {
+      const spy = vi.spyOn(workerClient, "solveLp");
+      try {
+        const m = new Model("ProtoColumnKey");
+        const proto = m.binary("__proto__", { initialValue: 1 });
+        const alt = m.binary("alt", { initialValue: 0 });
+        m.objective(maximize(expr`10 * ${proto} + 10 * ${alt}`));
+        m.constraint(expr`${proto} + ${alt} <= 1`, "cap");
+
+        const status = await m.solve({ presolve: "off" });
+        expect(status).toBe("Optimal");
+        expect(spy).toHaveBeenCalledTimes(1);
+
+        const passedInitialValues = spy.mock.calls[0][1]?.initialValues;
+        expect(passedInitialValues).toBeDefined();
+        expect(Object.hasOwn(passedInitialValues!, "__proto__")).toBe(true);
+        expect(passedInitialValues!["__proto__"]).toBe(1);
+        expect(passedInitialValues!.alt).toBe(0);
+
+        expect(proto.value).toBe(1);
+        expect(alt.value).toBe(0);
+        expect(Object.hasOwn(m.solution!.values, "__proto__")).toBe(true);
+        expect(m.solution!.values["__proto__"]).toBe(1);
+        expect(m.validateSolution().valid).toBe(true);
+
+        const checkRes = await m.check("highs");
+        expect(checkRes.status).toBe("Sat");
+        expect(Object.hasOwn(checkRes.values, "__proto__")).toBe(true);
+        expect(typeof checkRes.values["__proto__"]).toBe("number");
+      } finally {
+        spy.mockRestore();
+      }
     });
 
     it("supports transferring values by stable names to a rebuilt MIP model with new unhinted variables", async () => {

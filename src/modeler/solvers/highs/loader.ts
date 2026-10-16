@@ -449,12 +449,17 @@ export async function solveLpWithHighs(
           const vec = data.mip_solution as Float64Array;
           const cols: RawHighsSolveResult["Columns"] = {};
           for (let j = 0; j < colMeta.length && j < vec.length; j++) {
-            cols[colMeta[j].name] = {
-              Index: j,
-              Type: colMeta[j].type,
-              Name: colMeta[j].name,
-              Primal: vec[j],
-            };
+            Object.defineProperty(cols, colMeta[j].name, {
+              value: {
+                Index: j,
+                Type: colMeta[j].type,
+                Name: colMeta[j].name,
+                Primal: vec[j],
+              },
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
           }
           const obj =
             typeof data.objective_function_value === "number" && Number.isFinite(data.objective_function_value)
@@ -574,7 +579,12 @@ export async function solveLpWithHighs(
             if (!isMip && hasDualSolution && sol) {
               colEntry.Dual = sol.colDual[j];
             }
-            Columns[meta.name] = colEntry;
+            Object.defineProperty(Columns, meta.name, {
+              value: colEntry,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
           }
         }
 

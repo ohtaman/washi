@@ -217,7 +217,7 @@ export class HighsSolver implements Solver {
       validateVarBounds(v);
     }
 
-    const initialValues: Record<string, number> = {};
+    const initialValues: Record<string, number> = Object.create(null);
     let hasInitialValues = false;
     const mappedVars = new Set<any>();
     for (const [colName, v] of nameToVar.entries()) {
@@ -340,6 +340,15 @@ export class HighsSolver implements Solver {
       };
     }
 
+    const setOwnProperty = (record: Record<string, number>, key: string, value: number) => {
+      Object.defineProperty(record, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    };
+
     const valuesRecord: Record<string, number> = {};
     const dualsRecord: Record<string, number> = {};
     const reducedCostsRecord: Record<string, number> = {};
@@ -351,10 +360,10 @@ export class HighsSolver implements Solver {
         if (v) {
           if (typeof colData.Primal === "number" && Number.isFinite(colData.Primal)) {
             const primal = Math.abs(colData.Primal) < 1e-9 ? 0 : colData.Primal;
-            valuesRecord[v.name] = primal;
+            setOwnProperty(valuesRecord, v.name, primal);
           }
           if (typeof colData.Dual === "number" && Number.isFinite(colData.Dual)) {
-            reducedCostsRecord[v.name] = Math.abs(colData.Dual) < 1e-9 ? 0 : colData.Dual;
+            setOwnProperty(reducedCostsRecord, v.name, Math.abs(colData.Dual) < 1e-9 ? 0 : colData.Dual);
           }
         }
       }
@@ -367,11 +376,11 @@ export class HighsSolver implements Solver {
         const c = rowName ? nameToConstraint.get(rowName) : undefined;
         if (c) {
           if (typeof rowData.Dual === "number" && Number.isFinite(rowData.Dual)) {
-            dualsRecord[c.name] = Math.abs(rowData.Dual) < 1e-9 ? 0 : rowData.Dual;
+            setOwnProperty(dualsRecord, c.name, Math.abs(rowData.Dual) < 1e-9 ? 0 : rowData.Dual);
           }
           if (typeof rowData.Primal === "number" && Number.isFinite(rowData.Primal)) {
             const slack = c.rhs - rowData.Primal;
-            slacksRecord[c.name] = Math.abs(slack) < 1e-9 ? 0 : slack;
+            setOwnProperty(slacksRecord, c.name, Math.abs(slack) < 1e-9 ? 0 : slack);
           }
         }
       }
