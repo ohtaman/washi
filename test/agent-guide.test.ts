@@ -232,5 +232,36 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
     expect(() => Washi.expr`${x}^2 <= 10`).toThrow(
       /Quadratic constraints are not supported/
     );
+
+    // Verify documented m.check() LP fallback on a purely linear model with default HiGHS
+    const linearCheckModel = new Washi.Model("LinearCheckFallback");
+    const lx = linearCheckModel.continuous("lx", { lb: 0, ub: 10 });
+    linearCheckModel.constraint(Washi.expr`${lx} >= 4`, "min_lx");
+    const linearCheckRes = await linearCheckModel.check();
+    expect(linearCheckRes.status).toBe("Sat");
+    expect(Number(linearCheckRes.values.lx)).toBeGreaterThanOrEqual(4);
+  });
+
+  it("does not advertise nonexistent APIs or types in guide prose or comments", () => {
+    expect(guideContent).not.toContain("subjectTo");
+    expect(guideContent).not.toContain("m.getValue(");
+    expect(guideContent).not.toContain(".iff(");
+    expect(guideContent).not.toContain("ModelStatus");
+    expect(guideContent).not.toMatch(/\bm\.(maximize|minimize)\s*=/);
+    expect(guideContent).not.toMatch(/`dot\(a,\s*b\)`[^\n]*`Iterable`/);
+    expect(guideContent).toContain("SolverStatus");
+
+    // Every `m.<member>` referenced in the positive guide sections must exist on a Model instance
+    const positiveGuide = guideContent.split("## 4. Negative Examples")[0];
+    const sampleModel = new Washi.Model("MemberCheck");
+    const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
+    let memberMatch: RegExpExecArray | null;
+    while ((memberMatch = memberRegex.exec(positiveGuide)) !== null) {
+      const member = memberMatch[1];
+      expect(
+        member in sampleModel,
+        `Expected 'm.${member}' referenced in positive guide sections to exist on Model`
+      ).toBe(true);
+    }
   });
 });

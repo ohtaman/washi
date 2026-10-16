@@ -92,24 +92,22 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
   - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` `` (supports `<=`, `>=`, `==`, and `=`).
 - **Aggregations**:
   - `sum(iterable, mapper?)` sums an `Iterable` of `Var` / `LinExpr` / `number` (e.g., `Var[]`, `grid.flat()`, or `Object.values(record)`).
-  - `dot(a, b)` computes the inner product of matching 1D/2D arrays, plain records, `Iterable`s, or `TypedArray`s.
+  - `dot(a, b)` computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`), plain records (`Record<string, ...>`), or numeric `TypedArray`s.
 - **Fluent methods**:
   - Arithmetic: `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
-  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint` for Z3): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`, `.iff(...)`
+  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint` for Z3): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`
 
 ### Step 3: Register Objective & Constraints on the Model
 
-Constructing an `expr` or `.le()` object does **not** attach it to the model until you pass it to `m.constraint(...)` (or `m.subjectTo(...)`) or `m.objective(...)`:
+Constructing an `expr` or `.le()` object does **not** attach it to the model until you pass it to `m.constraint(...)` or `m.objective(...)`:
 
 ```ts
-// Set objective (using maximize() / minimize() or property assignment)
+// Set objective using maximize() or minimize()
 m.objective(maximize(expr`30 * ${x} + 50 * ${n}`));
-// Equivalent property form: m.maximize = expr`30 * ${x} + 50 * ${n}`;
 
 // Register constraints on the model
 m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
-// Equivalent alias: m.subjectTo(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
 
 // Indicator constraint (MIP Big-M reformulation: b === 1 => x <= 50)
 m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
@@ -118,13 +116,12 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 ### Step 4: Execute (`solve` or `check`) & Verify (`validateSolution`)
 
 - **Optimization (`await m.solve(options?)`)**:
-  - Returns `ModelStatus` (`"Optimal"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"Error"`, `"Unknown"`).
-  - Read values via `x.value`, `expr`...`.value`, `m.getValue(x)`, `m.getValues(container)`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`.
-  - Call `m.validateSolution()` after solving to independently verify variable bounds, integer/binary domains, constraint residuals, and objective value (`{ valid: boolean, maxViolation: number, violations: [...] }`).
+  - Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, or `"NotSolved"`). Note that a time-, iteration-, or solution-limited run (or an interrupted solve) that found a valid primal incumbent returns `"Feasible"`.
+  - Read values via `x.value`, `expr`...`.value`, `m.getValues(x)`, `m.getValues(container)`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`.
+  - Call `m.validateSolution()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary domains, and linear constraint residuals (`{ valid: boolean, maxViolation: number, violations: [...] }`). Note that `validateSolution()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
 - **Satisfiability & Unsat Core (`await m.check(options?)`)**:
-  - Requires a solver supporting SMT/SAT checks (`{ solver: "z3" }`).
   - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values, conflicts, unsatCore }`).
-  - When `status === "Unsat"`, `result.conflicts` (alias `result.unsatCore`) lists the names of conflicting named constraints (a conflicting subset, not guaranteed minimal).
+  - For models containing only linear arithmetic constraints, `m.check()` works with any solver (including the default HiGHS and GLPK) by falling back to a feasibility `solve()`. Logical constraints (`BoolVar`, `and`, `or`, `implies`, etc.) and unsatisfiable-core extraction (`result.conflicts` / `result.unsatCore`, a conflicting subset not guaranteed minimal) require an SMT-capable solver (`{ solver: "z3" }`).
 - **No concurrent mutation during async solve/check**:
   - Mutating variables, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight execution and rejects the stale promise.
 
@@ -245,11 +242,11 @@ export function verifyNegativePatterns() {
 
   // 4. DO NOT use retired aliases (removed in #59 / #81):
   // - Use `expr` instead of retired `c` template tag
-  // - Use `m.constraint(...)` or `m.subjectTo(...)` instead of `m.constrain(...)` or `m.add(...)`
-  // - Use `m.objective(maximize(...))` or `m.maximize = ...` instead of `m.maximize(...)` / `m.setObjective(...)`
+  // - Use `m.constraint(...)` instead of `m.constrain(...)` or `m.add(...)`
+  // - Use `m.objective(maximize(...))` / `m.objective(minimize(...))` instead of `m.maximize(...)` / `m.minimize(...)` / `m.setObjective(...)`
   // - Use `await m.solve()` instead of `await m.optimize()`
   // - Use `.le()`, `.ge()`, `.eq()` instead of `.lessThanOrEqual()`, `.greaterThanOrEqual()`, `.equalTo()`
-  // - Use `.value` or `m.getValue(...)` instead of `expr.getValue()`
+  // - Use `.value` or `m.getValues(...)` instead of `expr.getValue()`
   // - Use `m.variables` / `m.constraints` instead of `m.vars` / `m.constrs`
   return { m, x, y, maximize };
 }
