@@ -66,7 +66,16 @@ const count = sum(Object.values(x));
 
 ## 🎯 Dot Product (`dot`)
 
-The `dot(coefficients, variables)` helper computes linear combinations in a single concise call.
+The `dot(a, b)` helper computes linear combinations of numeric coefficients (`number`) and variables or linear expressions (`Var | LinExpr`) in either operand order (`dot(coeffs, vars)` or `dot(vars, coeffs)`).
+
+Supported 1D and 2D container shapes:
+- **1D Arrays**: `number[]` $\times$ `(Var | LinExpr)[]`
+- **1D Records**: `Record<K, number>` $\times$ `Record<K, Var | LinExpr>`
+- **2D Arrays**: `number[][]` $\times$ `(Var | LinExpr)[][]`
+- **2D Records**: `Record<R, Record<C, number>>` $\times$ `Record<R, Record<C, Var | LinExpr>>`
+- **2D Mixed**: `Array<Record<C, ...>>` or `Record<R, Array<...>>`
+
+Mismatched array lengths, missing dictionary keys, or non-finite/non-linear leaves throw an explicit error indicating the offending path (e.g., `at '[0].StoreB'`).
 
 ### 1D Vector Dot Product
 ```typescript
@@ -80,7 +89,7 @@ const totalProfit = dot(profits, vars);
 ```
 
 ### 2D Matrix Dot Product
-Works directly with nested dictionaries or 2D arrays:
+Works directly with 2D arrays (`m.continuous(rows, cols)`), nested dictionaries (`m.continuous(rowKeys, colKeys)`), or mixed 2D containers:
 
 ```typescript
 const factories = ["Tokyo", "Osaka"];

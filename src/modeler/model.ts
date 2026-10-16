@@ -332,28 +332,38 @@ export class Model {
     arg3?: any
   ): any {
     const label = domainType.toLowerCase();
-    // 2D case: arg2 is number or array
-    if (typeof arg2 === "number" || Array.isArray(arg2)) {
-      if (typeof arg1 === "number") assertValidCount(arg1, label);
-      if (typeof arg2 === "number") assertValidCount(arg2, label);
-      if (typeof arg1 !== "number" && !Array.isArray(arg1)) {
+    // 2D case: arg2 is number or array/iterable
+    const isDim1Count = typeof arg1 === "number";
+    const isDim2Count = typeof arg2 === "number";
+    const isDim1Iterable =
+      Array.isArray(arg1) ||
+      (typeof arg1 === "object" && arg1 !== null && typeof arg1[Symbol.iterator] === "function");
+    const isDim2Iterable =
+      Array.isArray(arg2) ||
+      (typeof arg2 === "object" && arg2 !== null && typeof arg2[Symbol.iterator] === "function");
+
+    if (isDim2Count || isDim2Iterable) {
+      if (isDim1Count) assertValidCount(arg1, label);
+      if (isDim2Count) assertValidCount(arg2, label);
+      if (!isDim1Count && !isDim1Iterable) {
         throw new Error(`Invalid arguments provided for ${label} variable creation`);
       }
-      const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
-      const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
+      const rows = isDim1Count ? Array.from({ length: arg1 }, (_, i) => i) : Array.from(arg1);
+      const cols = isDim2Count ? Array.from({ length: arg2 }, (_, i) => i) : Array.from(arg2);
       const opts = arg3 || {};
       const prefix = opts.prefix || opts.name || "x";
       return this.runTransactionalBatch(() => {
-        const matrix: any = {};
+        const matrix: any = isDim1Count ? [] : {};
         for (const r of rows) {
-          matrix[r] = {};
+          const rowContainer: any = isDim2Count ? [] : {};
           for (const c of cols) {
-            matrix[r][c] = this.addVar({
+            rowContainer[c as any] = this.addVar({
               ...opts,
               type: domainType,
               name: `${prefix}_${r}_${c}`,
             });
           }
+          matrix[r as any] = rowContainer;
         }
         return matrix;
       });
@@ -422,18 +432,36 @@ export class Model {
    * - m.binary() -> Var
    * - m.binary(5) -> Var[]
    * - m.binary(["a", "b"]) -> Record<string, Var>
-   * - m.binary(rows, cols) -> Record<string, Record<string, Var>>
+   * - m.binary(rowsCount, colsCount) -> Var[][]
+   * - m.binary(rowsCount, colKeys) -> Record<C, Var>[]
+   * - m.binary(rowKeys, colsCount) -> Record<R, Var[]>
+   * - m.binary(rowKeys, colKeys) -> Record<R, Record<C, Var>>
    */
   binary(name?: string, options?: { prefix?: string; name?: string }): Var;
   binary(options: { prefix?: string; name?: string }): Var;
   binary(count: number, options?: { prefix?: string; name?: string }): Var[];
   binary<K extends string | number>(
-    keys: K[] | Iterable<K>,
+    keys: ReadonlyArray<K> | Iterable<K>,
     options?: { prefix?: string; name?: string }
   ): Record<K, Var>;
+  binary(
+    rows: number,
+    cols: number,
+    options?: { prefix?: string; name?: string }
+  ): Var[][];
+  binary<C extends string | number>(
+    rows: number,
+    cols: ReadonlyArray<C> | Iterable<C>,
+    options?: { prefix?: string; name?: string }
+  ): Array<Record<C, Var>>;
+  binary<R extends string | number>(
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: number,
+    options?: { prefix?: string; name?: string }
+  ): Record<R, Var[]>;
   binary<R extends string | number, C extends string | number>(
-    dim1: R[] | number,
-    dim2: C[] | number,
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: ReadonlyArray<C> | Iterable<C>,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, Var>>;
   binary(arg1?: any, arg2?: any, arg3?: any): any {
@@ -447,18 +475,36 @@ export class Model {
    * - m.integer({ lb: 0, ub: 10 }) -> Var
    * - m.integer(5, { lb: 0 }) -> Var[]
    * - m.integer(["a", "b"], { lb: 0, ub: 5 }) -> Record<string, Var>
-   * - m.integer(rows, cols, options) -> Record<string, Record<string, Var>>
+   * - m.integer(rowsCount, colsCount, options) -> Var[][]
+   * - m.integer(rowsCount, colKeys, options) -> Record<C, Var>[]
+   * - m.integer(rowKeys, colsCount, options) -> Record<R, Var[]>
+   * - m.integer(rowKeys, colKeys, options) -> Record<R, Record<C, Var>>
    */
   integer(name?: string, options?: BoundsOptions): Var;
   integer(options: BoundsOptions): Var;
   integer(count: number, options?: BoundsOptions): Var[];
   integer<K extends string | number>(
-    keys: K[] | Iterable<K>,
+    keys: ReadonlyArray<K> | Iterable<K>,
     options?: BoundsOptions
   ): Record<K, Var>;
+  integer(
+    rows: number,
+    cols: number,
+    options?: BoundsOptions
+  ): Var[][];
+  integer<C extends string | number>(
+    rows: number,
+    cols: ReadonlyArray<C> | Iterable<C>,
+    options?: BoundsOptions
+  ): Array<Record<C, Var>>;
+  integer<R extends string | number>(
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: number,
+    options?: BoundsOptions
+  ): Record<R, Var[]>;
   integer<R extends string | number, C extends string | number>(
-    dim1: R[] | number,
-    dim2: C[] | number,
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: ReadonlyArray<C> | Iterable<C>,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
   integer(arg1?: any, arg2?: any, arg3?: any): any {
@@ -472,18 +518,36 @@ export class Model {
    * - m.continuous({ lb: 0 }) -> Var
    * - m.continuous(5, { lb: 0 }) -> Var[]
    * - m.continuous(["a", "b"], { lb: 0 }) -> Record<string, Var>
-   * - m.continuous(rows, cols, options) -> Record<string, Record<string, Var>>
+   * - m.continuous(rowsCount, colsCount, options) -> Var[][]
+   * - m.continuous(rowsCount, colKeys, options) -> Record<C, Var>[]
+   * - m.continuous(rowKeys, colsCount, options) -> Record<R, Var[]>
+   * - m.continuous(rowKeys, colKeys, options) -> Record<R, Record<C, Var>>
    */
   continuous(name?: string, options?: BoundsOptions): Var;
   continuous(options: BoundsOptions): Var;
   continuous(count: number, options?: BoundsOptions): Var[];
   continuous<K extends string | number>(
-    keys: K[] | Iterable<K>,
+    keys: ReadonlyArray<K> | Iterable<K>,
     options?: BoundsOptions
   ): Record<K, Var>;
+  continuous(
+    rows: number,
+    cols: number,
+    options?: BoundsOptions
+  ): Var[][];
+  continuous<C extends string | number>(
+    rows: number,
+    cols: ReadonlyArray<C> | Iterable<C>,
+    options?: BoundsOptions
+  ): Array<Record<C, Var>>;
+  continuous<R extends string | number>(
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: number,
+    options?: BoundsOptions
+  ): Record<R, Var[]>;
   continuous<R extends string | number, C extends string | number>(
-    dim1: R[] | number,
-    dim2: C[] | number,
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: ReadonlyArray<C> | Iterable<C>,
     options?: BoundsOptions
   ): Record<R, Record<C, Var>>;
   continuous(arg1?: any, arg2?: any, arg3?: any): any {
@@ -497,39 +561,67 @@ export class Model {
    * - m.bool() -> BoolVar
    * - m.bool(5) -> BoolVar[]
    * - m.bool(["flagA", "flagB"]) -> Record<string, BoolVar>
-   * - m.bool(rows, cols) -> Record<string, Record<string, BoolVar>>
+   * - m.bool(rowsCount, colsCount) -> BoolVar[][]
+   * - m.bool(rowsCount, colKeys) -> Record<C, BoolVar>[]
+   * - m.bool(rowKeys, colsCount) -> Record<R, BoolVar[]>
+   * - m.bool(rowKeys, colKeys) -> Record<R, Record<C, BoolVar>>
    */
   bool(name?: string, options?: { prefix?: string; name?: string }): BoolVar;
   bool(options: { prefix?: string; name?: string }): BoolVar;
   bool(count: number, options?: { prefix?: string; name?: string }): BoolVar[];
   bool<K extends string | number>(
-    keys: K[] | Iterable<K>,
+    keys: ReadonlyArray<K> | Iterable<K>,
     options?: { prefix?: string; name?: string }
   ): Record<K, BoolVar>;
+  bool(
+    rows: number,
+    cols: number,
+    options?: { prefix?: string; name?: string }
+  ): BoolVar[][];
+  bool<C extends string | number>(
+    rows: number,
+    cols: ReadonlyArray<C> | Iterable<C>,
+    options?: { prefix?: string; name?: string }
+  ): Array<Record<C, BoolVar>>;
+  bool<R extends string | number>(
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: number,
+    options?: { prefix?: string; name?: string }
+  ): Record<R, BoolVar[]>;
   bool<R extends string | number, C extends string | number>(
-    dim1: R[] | number,
-    dim2: C[] | number,
+    rows: ReadonlyArray<R> | Iterable<R>,
+    cols: ReadonlyArray<C> | Iterable<C>,
     options?: { prefix?: string; name?: string }
   ): Record<R, Record<C, BoolVar>>;
   bool(arg1?: any, arg2?: any, arg3?: any): any {
-    // 2D case: arg2 is number or array
-    if (typeof arg2 === "number" || Array.isArray(arg2)) {
-      if (typeof arg1 === "number") assertValidCount(arg1, "boolean");
-      if (typeof arg2 === "number") assertValidCount(arg2, "boolean");
-      if (typeof arg1 !== "number" && !Array.isArray(arg1)) {
+    // 2D case: arg2 is number or array/iterable
+    const isDim1Count = typeof arg1 === "number";
+    const isDim2Count = typeof arg2 === "number";
+    const isDim1Iterable =
+      Array.isArray(arg1) ||
+      (typeof arg1 === "object" && arg1 !== null && typeof arg1[Symbol.iterator] === "function");
+    const isDim2Iterable =
+      Array.isArray(arg2) ||
+      (typeof arg2 === "object" && arg2 !== null && typeof arg2[Symbol.iterator] === "function");
+
+    if (isDim2Count || isDim2Iterable) {
+      if (isDim1Count) assertValidCount(arg1, "boolean");
+      if (isDim2Count) assertValidCount(arg2, "boolean");
+      if (!isDim1Count && !isDim1Iterable) {
         throw new Error("Invalid arguments provided for boolean variable creation");
       }
-      const rows = typeof arg1 === "number" ? Array.from({ length: arg1 }, (_, i) => i) : arg1;
-      const cols = typeof arg2 === "number" ? Array.from({ length: arg2 }, (_, i) => i) : arg2;
+      const rows = isDim1Count ? Array.from({ length: arg1 }, (_, i) => i) : Array.from(arg1);
+      const cols = isDim2Count ? Array.from({ length: arg2 }, (_, i) => i) : Array.from(arg2);
       const opts = arg3 || {};
       const prefix = opts.prefix || opts.name || "p";
       return this.runTransactionalBatch(() => {
-        const matrix: any = {};
+        const matrix: any = isDim1Count ? [] : {};
         for (const r of rows) {
-          matrix[r] = {};
+          const rowContainer: any = isDim2Count ? [] : {};
           for (const c of cols) {
-            matrix[r][c] = this.createBoolVar(`${prefix}_${r}_${c}`);
+            rowContainer[c as any] = this.createBoolVar(`${prefix}_${r}_${c}`);
           }
+          matrix[r as any] = rowContainer;
         }
         return matrix;
       });
@@ -840,18 +932,32 @@ export class Model {
   }
 
   /**
-   * Extract primal solution values directly into plain primitives:
+   * Extract primal solution values directly into plain primitives, preserving container shapes:
    * - m.getValues(x) -> number | null
    * - m.getValues(p) -> boolean | null
    * - m.getValues([x, y]) -> (number | null)[]
-   * - m.getValues([p, q]) -> (boolean | null)[]
-   * - m.getValues(record) -> Record<string, number | boolean | null>
-   * - m.getValues(matrix) -> Record<string, Record<string, number | boolean | null>>
+   * - m.getValues([[x11, x12], [x21, x22]]) -> (number | null)[][]
+   * - m.getValues(record) -> Record<K, number | boolean | null>
+   * - m.getValues(matrix) -> Record<R, Record<C, number | boolean | null>>
    */
   getValues(item: Var): number | null;
   getValues(item: BoolVar): boolean | null;
-  getValues(items: Var[]): (number | null)[];
-  getValues(items: BoolVar[]): (boolean | null)[];
+  getValues(items: ReadonlyArray<Var>): (number | null)[];
+  getValues(items: ReadonlyArray<BoolVar>): (boolean | null)[];
+  getValues(items: ReadonlyArray<ReadonlyArray<Var>>): (number | null)[][];
+  getValues(items: ReadonlyArray<ReadonlyArray<BoolVar>>): (boolean | null)[][];
+  getValues<C extends string | number>(
+    items: ReadonlyArray<Record<C, Var>>
+  ): Array<Record<C, number | null>>;
+  getValues<C extends string | number>(
+    items: ReadonlyArray<Record<C, BoolVar>>
+  ): Array<Record<C, boolean | null>>;
+  getValues<R extends string | number>(
+    items: Record<R, ReadonlyArray<Var>>
+  ): Record<R, (number | null)[]>;
+  getValues<R extends string | number>(
+    items: Record<R, ReadonlyArray<BoolVar>>
+  ): Record<R, (boolean | null)[]>;
   getValues<K extends string | number>(items: Record<K, Var>): Record<K, number | null>;
   getValues<K extends string | number>(items: Record<K, BoolVar>): Record<K, boolean | null>;
   getValues<R extends string | number, C extends string | number>(

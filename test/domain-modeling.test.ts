@@ -187,36 +187,88 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     }).toThrow(/Key mismatch/);
   });
 
-  it("computes dot() between 2D coefficient Arrays and numeric grid Records in both operand orders", () => {
+  it("computes dot() between 2D coefficient Arrays, mixed containers, and numeric grid Records in both operand orders", () => {
     const m = new Model();
-    const x = m.continuous(2, 2); // Record<number, Record<number, Var>>
+    const x = m.continuous(2, 2); // Var[][]
+    expect(Array.isArray(x)).toBe(true);
+    expect(Array.isArray(x[0])).toBe(true);
     const coeffs = [
       [1, 2],
       [3, 4],
     ];
 
-    // Array x Record
+    // Array x Array
     const expr1 = dot(coeffs, x);
     expect(expr1.terms.get(x[0][0])).toBe(1);
     expect(expr1.terms.get(x[0][1])).toBe(2);
     expect(expr1.terms.get(x[1][0])).toBe(3);
     expect(expr1.terms.get(x[1][1])).toBe(4);
 
-    // Record x Array
+    // Reversed order: Vars x Coeffs
     const expr2 = dot(x, coeffs);
     expect(expr2.terms.get(x[0][0])).toBe(1);
     expect(expr2.terms.get(x[0][1])).toBe(2);
     expect(expr2.terms.get(x[1][0])).toBe(3);
     expect(expr2.terms.get(x[1][1])).toBe(4);
 
-    // Shape mismatch throws
+    // Explicit numeric-key Record compatibility with Array
+    const xNumRecord = m.continuous([0, 1], [0, 1], { prefix: "nr" });
+    const exprNumRec1 = dot(coeffs, xNumRecord);
+    const exprNumRec2 = dot(xNumRecord, coeffs);
+    expect(exprNumRec1.terms.get(xNumRecord[0][0])).toBe(1);
+    expect(exprNumRec1.terms.get(xNumRecord[1][1])).toBe(4);
+    expect(exprNumRec2.terms.get(xNumRecord[0][1])).toBe(2);
+    expect(exprNumRec2.terms.get(xNumRecord[1][0])).toBe(3);
+
+    // Mixed 2D containers: count x keys and keys x count
+    const shifts = ["Day", "Night"] as const;
+    const ckVars = m.binary(2, shifts, { prefix: "ck" });
+    const ckCoeffs = [
+      { Day: 10, Night: 15 },
+      { Day: 20, Night: 25 },
+    ];
+    const exprCK = dot(ckCoeffs, ckVars);
+    expect(exprCK.terms.get(ckVars[0].Day)).toBe(10);
+    expect(exprCK.terms.get(ckVars[1].Night)).toBe(25);
+
+    const kcVars = m.continuous(["Alice", "Bob"] as const, 2, { prefix: "kc" });
+    const kcCoeffs = {
+      Alice: [5, 6],
+      Bob: [7, 8],
+    };
+    const exprKC = dot(kcVars, kcCoeffs);
+    expect(exprKC.terms.get(kcVars.Alice[0])).toBe(5);
+    expect(exprKC.terms.get(kcVars.Bob[1])).toBe(8);
+
+    // Shape mismatch throws with path context
     expect(() => {
       dot([[1, 2]], x); // 1 row vs 2 rows
     }).toThrow(/Array length mismatch/);
 
     expect(() => {
-      dot([[1, 2, 3], [4, 5, 6]], x); // 3 cols vs 2 cols
-    }).toThrow(/Array length mismatch/);
+      dot([[1, 2, 3], [4, 5, 6]], x); // 3 cols vs 2 cols at [0]
+    }).toThrow(/Array length mismatch in dot\(\) at '\[0\]'/);
+
+    expect(() => {
+      dot({ 0: 1, 2: 2 }, [x[0][0], x[0][1]]); // non-contiguous numeric record
+    }).toThrow(/Key mismatch in dot\(\) at 'root': missing indices \[1\]/);
+
+    // Invalid leaf types throw clearly with path
+    expect(() => {
+      dot([1, NaN], [x[0][0], x[0][1]]);
+    }).toThrow(/Invalid non-finite coefficient "NaN" in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([1, Infinity], [x[0][0], x[0][1]]);
+    }).toThrow(/Invalid non-finite coefficient "Infinity" in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([1, 2], [3, 4] as any);
+    }).toThrow(/Cannot multiply two numbers in dot\(\) at '\[0\]'/);
+
+    expect(() => {
+      dot([1], [x[0][0].mul(x[0][1])] as any);
+    }).toThrow(/Quadratic expressions are not supported in dot\(\) at '\[0\]'/);
   });
 
   it("handles 1D and 2D variable dictionaries with arbitrary keys like 'id', 'terms', 'quadTerms'", async () => {

@@ -92,19 +92,28 @@ const perms = m.bool(["read", "write", "execute"]);
 // perms.read, perms.write, perms.execute
 ```
 
-### 2D Variable Matrices
-Pass row keys and column keys to create a 2D matrix `Record<string, Record<string, Var>>` (or `Record<string, Record<string, BoolVar>>`):
+### 2D Variable Matrices & Grids
+Each dimension follows a consistent rule: passing a numeric count (`number`) produces an `Array`, and passing a collection of keys produces a `Record`:
+- `(rowsCount, colsCount)` $\rightarrow$ `Var[][]` (or `BoolVar[][]`)
+- `(rowKeys, colKeys)` $\rightarrow$ `Record<R, Record<C, Var>>` (or `Record<R, Record<C, BoolVar>>`)
+- `(rowsCount, colKeys)` $\rightarrow$ `Array<Record<C, Var>>`
+- `(rowKeys, colsCount)` $\rightarrow$ `Record<R, Var[]>`
 
 ```typescript
 const factories = ["Tokyo", "Osaka"];
 const stores = ["StoreA", "StoreB", "StoreC"];
 
-// ship[factory][store]
+// 1. Named keys x Named keys -> Record<string, Record<string, Var>>
 const ship = m.continuous(factories, stores, { lb: 0 });
+// ship.Tokyo.StoreA
 
-// 2D boolean grid for staff permissions
-const grid = m.bool(["alice", "bob"], ["admin", "viewer"]);
-// grid.alice.admin
+// 2. Numeric count x Numeric count -> Var[][] (2D Array)
+const board = m.binary(8, 8, { prefix: "queen" });
+// board[0][0], board.map(...)
+
+// 3. Mixed dimensions: Named keys x Numeric count -> Record<string, Var[]>
+const schedule = m.binary(factories, 7, { prefix: "open_day" });
+// schedule.Tokyo[0]
 ```
 
 ---

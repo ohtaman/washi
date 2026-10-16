@@ -154,6 +154,8 @@ async function runtime(root, entry, esm, base = "/factory/") {
     const expTerm = api.expr`${1e-7} * ${expVar} + 2.5e-6`;
     assert.equal(expTerm.terms.get(expVar), 1e-7);
     assert.equal(expTerm.constant, 2.5e-6);
+    const grid2d = expModel.continuous(2, 2, { prefix: "g" });
+    assert(Array.isArray(grid2d) && Array.isArray(grid2d[0]));
   }
   console.log(`PASS emitted runtime: ${base}${entry} (LP / MIP / Worker, local assets only)`);
   if (api?.getHighs) {

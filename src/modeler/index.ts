@@ -8,7 +8,15 @@ export {
   type ObjectiveSpec,
 } from "./objective.js";
 export { Var, type VarOptions } from "./variable.js";
-export { LinExpr, type Expr, sum, dot } from "./expression.js";
+export {
+  LinExpr,
+  type Expr,
+  type DotTerm,
+  type DotVarContainer,
+  type DotCoeffContainer,
+  sum,
+  dot,
+} from "./expression.js";
 export { QuadExpr, type QuadTerm } from "./quad-expr.js";
 export { Constraint } from "./constraint.js";
 export {

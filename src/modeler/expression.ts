@@ -317,17 +317,38 @@ export function sum<T = any>(
   return new LinExpr(terms, constant);
 }
 
+export type DotTerm = Var | LinExpr;
+
+export type DotVarContainer =
+  | ReadonlyArray<DotTerm>
+  | Record<string | number, DotTerm>
+  | ReadonlyArray<ReadonlyArray<DotTerm>>
+  | ReadonlyArray<Record<string | number, DotTerm>>
+  | Record<string | number, ReadonlyArray<DotTerm>>
+  | Record<string | number, Record<string | number, DotTerm>>;
+
+export type DotCoeffContainer =
+  | ReadonlyArray<number>
+  | Record<string | number, number>
+  | ReadonlyArray<ReadonlyArray<number>>
+  | ReadonlyArray<Record<string | number, number>>
+  | Record<string | number, ReadonlyArray<number>>
+  | Record<string | number, Record<string | number, number>>;
+
 /**
- * Compute the vector dot product (linear combination) of coefficients and variables.
- * Works with 1D/2D arrays and records in either order:
+ * Compute the vector or matrix dot product (linear combination) of numeric coefficients and variables/linear expressions.
+ * Works with 1D/2D arrays, records, and mixed-domain containers in either operand order:
  * - dot(costs, vars)
  * - dot(vars, costs)
  * - dot(costMatrix, flowMatrix)
  */
+export function dot(coeffs: DotCoeffContainer, vars: DotVarContainer): LinExpr;
+export function dot(vars: DotVarContainer, coeffs: DotCoeffContainer): LinExpr;
 export function dot(
-  a: Record<string, any> | any[],
-  b: Record<string, any> | any[]
-): LinExpr {
+  a: DotCoeffContainer | DotVarContainer,
+  b: DotCoeffContainer | DotVarContainer
+): LinExpr;
+export function dot(a: any, b: any): LinExpr {
   const terms = new Map<Var, number>();
   let constant = 0;
 
@@ -346,21 +367,60 @@ export function dot(
     return isVar(x) || x instanceof LinExpr || x instanceof QuadExpr;
   }
 
-  function addProduct(coeff: number, exprOrVar: Var | LinExpr | number) {
-    if (typeof exprOrVar === "number") {
-      constant += coeff * exprOrVar;
-    } else if (exprOrVar instanceof LinExpr) {
-      for (const [v, c] of exprOrVar.terms) {
-        const cur = terms.get(v) ?? 0;
-        terms.set(v, cur + coeff * c);
+  function addProduct(coeff: number, exprOrVar: unknown, path: string) {
+    if (!Number.isFinite(coeff)) {
+      throw new Error(
+        `Invalid non-finite coefficient "${coeff}" in dot() at '${path || "root"}'.`
+      );
+    }
+    if (exprOrVar instanceof QuadExpr) {
+      throw new Error(
+        `Quadratic expressions are not supported in dot() at '${path || "root"}': dot() produces a linear expression (LinExpr).`
+      );
+    }
+    if (exprOrVar instanceof LinExpr) {
+      if (!Number.isFinite(exprOrVar.constant)) {
+        throw new Error(
+          `Invalid non-finite constant "${exprOrVar.constant}" in dot() at '${path || "root"}'.`
+        );
       }
-      constant += coeff * exprOrVar.constant;
+      const rawConst =
+        coeff === 0 || exprOrVar.constant === 0 ? 0 : coeff * exprOrVar.constant;
+      if (coeff !== 0 && exprOrVar.constant !== 0 && rawConst === 0) {
+        throw new Error("Constant multiplication underflows to zero.");
+      }
+      if (!Number.isFinite(rawConst)) {
+        throw new Error(
+          `Coefficient multiplication overflows finite floating-point range in dot() at '${path || "root"}'.`
+        );
+      }
+      constant += rawConst;
+      for (const [v, c] of exprOrVar.terms) {
+        if (!Number.isFinite(c)) {
+          throw new Error(
+            `Invalid non-finite coefficient "${c}" in dot() at '${path || "root"}'.`
+          );
+        }
+        const prod = coeff * c;
+        if (coeff !== 0 && c !== 0 && prod === 0) {
+          throw new Error("Coefficient multiplication underflows to zero.");
+        }
+        if (!Number.isFinite(prod)) {
+          throw new Error(
+            `Coefficient multiplication overflows finite floating-point range in dot() at '${path || "root"}'.`
+          );
+        }
+        const cur = terms.get(v) ?? 0;
+        terms.set(v, cur + prod);
+      }
     } else if (isVar(exprOrVar)) {
       const v = exprOrVar as Var;
       const cur = terms.get(v) ?? 0;
       terms.set(v, cur + coeff);
     } else {
-      throw new Error("Cannot multiply number by non-variable/expression operand in dot().");
+      throw new Error(
+        `Cannot multiply number by non-variable/expression operand in dot() at '${path || "root"}'.`
+      );
     }
   }
 
@@ -378,12 +438,17 @@ export function dot(
       throw new Error(`Nullish or undefined operand encountered in dot() at '${path || "root"}'.`);
     }
 
+    if (typeof valA === "number" && typeof valB === "number") {
+      throw new Error(
+        `Cannot multiply two numbers in dot() at '${path || "root"}': expected one numeric coefficient and one Var or LinExpr.`
+      );
+    }
     if (typeof valA === "number") {
-      addProduct(valA, valB);
+      addProduct(valA, valB, path);
       return;
     }
     if (typeof valB === "number") {
-      addProduct(valB, valA);
+      addProduct(valB, valA, path);
       return;
     }
 
@@ -405,17 +470,14 @@ export function dot(
 
       if (isPlainRecord(other)) {
         const keys = Object.keys(other);
-        const allNumeric = keys.length > 0 && keys.every((k) => /^\d+$/.test(k));
+        const allNumeric =
+          keys.length === arr.length &&
+          keys.every((k) => /^(?:0|[1-9]\d*)$/.test(k));
 
         if (allNumeric) {
-          if (keys.length !== arr.length) {
-            throw new Error(
-              `Array length mismatch in dot() at '${path || "root"}': array has length ${arr.length}, but object has ${keys.length} indices.`
-            );
-          }
           const missingIndices: number[] = [];
           for (let i = 0; i < arr.length; i++) {
-            if (!(i in other) && !(String(i) in other)) {
+            if (!Object.prototype.hasOwnProperty.call(other, i)) {
               missingIndices.push(i);
             }
           }
@@ -432,6 +494,12 @@ export function dot(
           return;
         }
 
+        if (keys.length > 0 && keys.every((k) => /^(?:0|[1-9]\d*)$/.test(k))) {
+          throw new Error(
+            `Array length mismatch in dot() at '${path || "root"}': array has length ${arr.length}, but object has ${keys.length} indices.`
+          );
+        }
+
         throw new Error(
           `Type mismatch in dot() at '${path || "root"}': one operand is an Array while the other is an Object with keys [${keys.slice(0, 5).join(", ")}].`
         );
@@ -446,8 +514,8 @@ export function dot(
       const keysA = Object.keys(valA);
       const keysB = Object.keys(valB);
 
-      const missingInB = keysA.filter((k) => !(k in valB));
-      const missingInA = keysB.filter((k) => !(k in valA));
+      const missingInB = keysA.filter((k) => !Object.prototype.hasOwnProperty.call(valB, k));
+      const missingInA = keysB.filter((k) => !Object.prototype.hasOwnProperty.call(valA, k));
 
       if (missingInB.length > 0 || missingInA.length > 0) {
         const parts: string[] = [];

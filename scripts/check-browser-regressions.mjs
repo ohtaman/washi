@@ -59,6 +59,8 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           const active = m.binary("active");
           const scaled = expr`${1e-7} * ${x} + 1.5e-6`;
           require(scaled.terms.get(x) === 1e-7 && scaled.constant === 1.5e-6, "Exponential interpolation failed");
+          const gridCheck = new Model("GridShapeCheck").binary(2, 2);
+          require(Array.isArray(gridCheck) && Array.isArray(gridCheck[0]), "2D numeric grid must be an Array of Arrays");
           m.constraint(active.eq(1), "activation");
           m.indicator(active, x.le(7), { name: "conditional_capacity" });
           m.objective(maximize(expr`3 * ${x} + 5`));
