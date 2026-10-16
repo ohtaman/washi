@@ -194,6 +194,19 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
       // @ts-expect-error boxed String is not a valid 2nd dimension KeyCollection
       m.bool(2, boxed);
     }).toThrow(/Invalid arguments provided for boolean variable creation/);
+
+    // Custom iterable with primitive valueOf(): number is accepted at compile time and runtime
+    const customIterable = {
+      *[Symbol.iterator](): IterableIterator<"k1" | "k2"> {
+        yield "k1";
+        yield "k2";
+      },
+      valueOf(): number {
+        return 2;
+      },
+    };
+    const customVars = m.binary(customIterable, { prefix: "cust" });
+    expect(Object.keys(customVars)).toEqual(["k1", "k2"]);
   });
 
   it("solves an assignment problem formulated cleanly with domain binary", async () => {

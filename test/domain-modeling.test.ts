@@ -312,6 +312,19 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       // @ts-expect-error symbol keys are not supported in dot()
       dot({ [sym]: 2 }, { [sym]: x[0][0] });
     }).toThrow(/Symbol keys are not supported in dot\(\) at 'root'/);
+
+    // Accumulated coefficient or constant overflow is rejected
+    expect(() => {
+      dot([Number.MAX_VALUE, Number.MAX_VALUE], [x[0][0].mul(1), x[0][0].mul(1)]);
+    }).toThrow(/Coefficient accumulation overflows finite floating-point range in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([Number.MAX_VALUE, Number.MAX_VALUE], [x[0][0], x[0][0]]);
+    }).toThrow(/Coefficient accumulation overflows finite floating-point range in dot\(\) at '\[1\]'/);
+
+    expect(() => {
+      dot([Number.MAX_VALUE, Number.MAX_VALUE], [x[0][0].add(1), x[0][1].add(1)]);
+    }).toThrow(/Constant accumulation overflows finite floating-point range in dot\(\) at '\[1\]'/);
   });
 
   it("handles 1D and 2D variable dictionaries with arbitrary keys like 'id', 'terms', 'quadTerms'", async () => {

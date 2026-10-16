@@ -436,7 +436,13 @@ export function dot(a: any, b: any): LinExpr {
           `Coefficient multiplication overflows finite floating-point range in dot() at '${path || "root"}'.`
         );
       }
-      constant += rawConst;
+      const nextConst = constant + rawConst;
+      if (!Number.isFinite(nextConst)) {
+        throw new Error(
+          `Constant accumulation overflows finite floating-point range in dot() at '${path || "root"}'.`
+        );
+      }
+      constant = nextConst;
       for (const [v, c] of exprOrVar.terms) {
         if (!Number.isFinite(c)) {
           throw new Error(
@@ -453,12 +459,24 @@ export function dot(a: any, b: any): LinExpr {
           );
         }
         const cur = terms.get(v) ?? 0;
-        terms.set(v, cur + prod);
+        const next = cur + prod;
+        if (!Number.isFinite(next)) {
+          throw new Error(
+            `Coefficient accumulation overflows finite floating-point range in dot() at '${path || "root"}'.`
+          );
+        }
+        terms.set(v, next);
       }
     } else if (isVar(exprOrVar)) {
       const v = exprOrVar as Var;
       const cur = terms.get(v) ?? 0;
-      terms.set(v, cur + coeff);
+      const next = cur + coeff;
+      if (!Number.isFinite(next)) {
+        throw new Error(
+          `Coefficient accumulation overflows finite floating-point range in dot() at '${path || "root"}'.`
+        );
+      }
+      terms.set(v, next);
     } else {
       throw new Error(
         `Cannot multiply number by non-variable/expression operand in dot() at '${path || "root"}'.`
