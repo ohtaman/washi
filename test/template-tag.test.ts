@@ -524,6 +524,19 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => dot([1], [guard as any])).toThrow(
       /Cannot multiply number by non-variable\/expression operand in dot/
     );
+    const foreignConstraint = {
+      kind: "constraint",
+      id: 1,
+      name: "c_1",
+      sense: "<=",
+      lhs: new LinExpr(),
+      rhs: 5,
+      mul: () => {},
+      le: () => {},
+    };
+    expect(() => dot([1], [foreignConstraint as any])).toThrow(
+      /Cannot multiply number by non-variable\/expression operand in dot/
+    );
     const senseLhsDot = dot({ sense: 2, lhs: 3 }, { sense: x, lhs: y });
     expect(senseLhsDot.terms.get(x)).toBe(2);
     expect(senseLhsDot.terms.get(y)).toBe(3);
