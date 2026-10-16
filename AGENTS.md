@@ -2,6 +2,8 @@
 
 This document defines the standards and instructions for automated and human code reviews on Pull Requests (PRs) in **WaSHI** (`@ohtaman/washi`), triggered on initial submission and on every subsequent push (`synchronize`).
 
+> **Looking for the consumer modeling API quick-reference?** If you are an AI coding agent or developer using `@ohtaman/washi` to formulate and solve optimization or SMT models, see the [AI Coding Agent Quick-Reference Guide](docs/getting-started/ai-agents.md).
+
 ---
 
 ## 1. Communication & Language Policy

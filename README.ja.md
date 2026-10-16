@@ -28,7 +28,7 @@
 
 HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグインです。Node.js 用とブラウザ用の配布物に WebAssembly アセットを含みます。配信に必要な設定は[ブラウザでの利用方法](#-ブラウザ--web-worker-での利用方法)を参照してください。
 
-[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
