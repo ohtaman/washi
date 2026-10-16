@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { Model, expr, c, minimize } from "../../src/index.js";
+import { Model, expr, minimize } from "../../src/index.js";
 import { Z3Solver } from "../../src/modeler/solvers/z3.js";
 
 /**
@@ -127,7 +127,7 @@ export async function runHybridPipeline({
   mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500, name: "us_min_batch" });
 
   // Demand requirement: total traffic >= 450 TB/s
-  mip.constraint(c`${capEU} + ${capUS} >= 450`, "total_demand");
+  mip.constraint(expr`${capEU} + ${capUS} >= 450`, "total_demand");
 
   // Objective: Minimize Operational Cost
   // Base fixed cost per DC ($5000), marginal cost per TB ($12 in US, $18 in EU)

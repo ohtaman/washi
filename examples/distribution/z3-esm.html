@@ -31,14 +31,14 @@
       const sprinklerActive = model.bool("sprinklerActive");
 
       // Rule 1: Smoke or Heat implies Alarm
-      model.constrain(or(smokeDetected, heatDetected).implies(alarmActive));
+      model.constraint(or(smokeDetected, heatDetected).implies(alarmActive));
 
       // Rule 2: Both Smoke and Heat implies Sprinkler
-      model.constrain(and(smokeDetected, heatDetected).implies(sprinklerActive));
+      model.constraint(and(smokeDetected, heatDetected).implies(sprinklerActive));
 
       // Scenario: Heat is detected, but Sprinkler is not active
-      model.constrain(heatDetected);
-      model.constrain(not(sprinklerActive));
+      model.constraint(heatDetected);
+      model.constraint(not(sprinklerActive));
 
       const res = await model.check({ solver: "z3" });
       output.textContent = JSON.stringify({

@@ -22,7 +22,7 @@
  * Run with: npx tsx examples/node/11-shift-scheduling.ts
  */
 
-import { Model, sum, dot, expr, c, minimize } from "../../src/index.js";
+import { Model, sum, dot, expr, minimize } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -76,7 +76,7 @@ function buildShiftModel(
   // Rule 1: Daily minimum headcount coverage
   for (const d of days) {
     m.constraint(
-      c`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -85,7 +85,7 @@ function buildShiftModel(
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
     m.constraint(
-      c`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
       `senior_duty_${d}`
     );
   }
@@ -93,7 +93,7 @@ function buildShiftModel(
   // Rule 3: Maximum working days per week for each staff member (<= 5 days)
   for (const s of staffList) {
     m.constraint(
-      c`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
@@ -101,7 +101,7 @@ function buildShiftModel(
   // Rule 4: Hard vacation requests (strictly shift[staff][day] == 0, not soft penalty)
   for (const req of dayOffRequests) {
     m.constraint(
-      c`${shift[req.staff][req.day]} == 0`,
+      expr`${shift[req.staff][req.day]} == 0`,
       `day_off_${req.staff}_${req.day}`
     );
   }

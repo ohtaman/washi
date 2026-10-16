@@ -234,7 +234,7 @@ async function runBrowserVerification() {
     const intCode = `
       const m = new Model({ solver: "z3" });
       const x = m.integer("x");
-      m.constrain(x.eq(0.5), "int_x_is_half");
+      m.constraint(x.eq(0.5), "int_x_is_half");
       const res = await m.check({ solver: "z3" });
       console.log("Integer contradiction status:", res.status);
     `;

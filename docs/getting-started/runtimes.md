@@ -96,14 +96,14 @@ You can load WaSHI directly into static web pages using CDN script tags without 
     <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js"></script>
     <script>
       (async () => {
-        const { Model, expr, c, maximize } = Washi;
+        const { Model, expr, maximize } = Washi;
 
         const model = new Model("CDNDemo");
         const x = model.continuous("x", { lb: 0, ub: 10 });
         const y = model.continuous("y", { lb: 0, ub: 20 });
 
         model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
-        model.constraint(c`${x} + ${y} <= 15`);
+        model.constraint(expr`${x} + ${y} <= 15`);
 
         await model.solve();
 

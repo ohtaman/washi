@@ -11,7 +11,7 @@
  * Run with: npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
  */
 
-import { Model, sum, expr, c, minimize } from "../../src/index.js";
+import { Model, sum, expr, minimize } from "../../src/index.js";
 
 async function main() {
   console.log("=== E-Commerce Cart & Coupon Optimizer (MIP) ===");
@@ -68,13 +68,13 @@ async function main() {
   // Rule 2: Mutual exclusion among non-stackable ("Exclusive") coupons
   const exclusiveCoupons = coupons.filter((c) => !c.stackable);
   m.constraint(
-    c`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
+    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
     "at_most_one_exclusive_coupon"
   );
 
   // Rule 3: Maximum 2 coupons total per checkout
   m.constraint(
-    c`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
+    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
     "max_two_coupons_total"
   );
 

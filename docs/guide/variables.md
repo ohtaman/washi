@@ -54,15 +54,15 @@ Semi-continuous variables take values in $\{0\} \cup [L, U]$ (either zero or bet
 While not a primitive `VarType` in `Model`, semi-continuous behavior is cleanly modeled by combining a continuous variable with a binary indicator variable and linking constraints ($L \cdot b \le x \le U \cdot b$):
 
 ```typescript
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 const m = new Model();
 const batch = m.continuous("batch", { lb: 0, ub: 100 });
 const isActive = m.binary("is_active");
 
 // If isActive === 0, batch is forced to 0; if 1, batch is within [10, 100]
-m.constraint(c`${batch} >= 10 * ${isActive}`, "min_batch_run");
-m.constraint(c`${batch} <= 100 * ${isActive}`, "max_batch_run");
+m.constraint(expr`${batch} >= 10 * ${isActive}`, "min_batch_run");
+m.constraint(expr`${batch} <= 100 * ${isActive}`, "max_batch_run");
 ```
 
 ---

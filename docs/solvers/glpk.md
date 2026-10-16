@@ -27,7 +27,7 @@ GLPK is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
 ## Basic Usage
 
 ```typescript
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
 const model = new Model({ solver: "glpk" });
@@ -36,7 +36,7 @@ const x = model.continuous("x", { lb: 0, ub: 10 });
 const y = model.continuous("y", { lb: 0, ub: 20 });
 
 model.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
-model.constraint(c`${x} + ${y} <= 15`, "cap");
+model.constraint(expr`${x} + ${y} <= 15`, "cap");
 
 await model.solve();
 

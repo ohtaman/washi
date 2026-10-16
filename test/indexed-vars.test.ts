@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, sum, type KeyCollection } from "../src/index.js";
+import { Model, Var, sum, minimize, type KeyCollection } from "../src/index.js";
 
 describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
   it("creates a 1D record of variables from an array of string keys", () => {
@@ -286,19 +286,19 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
 
     // Each worker assigned to exactly 1 task
     for (const w of workers) {
-      m.constrain(sum(tasks.map((t) => x[w][t])).eq(1), `worker_${w}`);
+      m.constraint(sum(tasks.map((t) => x[w][t])).eq(1), `worker_${w}`);
     }
 
     // Each task assigned to exactly 1 worker
     for (const t of tasks) {
-      m.constrain(sum(workers.map((w) => x[w][t])).eq(1), `task_${t}`);
+      m.constraint(sum(workers.map((w) => x[w][t])).eq(1), `task_${t}`);
     }
 
     // Objective: Minimize total cost
     const totalCost = sum(
       workers.flatMap((w) => tasks.map((t) => x[w][t].mul(cost[w][t])))
     );
-    m.minimize(totalCost);
+    m.objective(minimize(totalCost));
 
     const status = await m.solve();
 

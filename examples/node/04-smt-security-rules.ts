@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/04-smt-security-rules.ts
  */
 
-import { Model, not, c } from "../../src/index.js";
+import { Model, not, expr } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 async function main() {
@@ -47,7 +47,7 @@ async function main() {
   m.constraint(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
 
   // 3. Observed Context
-  m.constraint(c`${luxLevel} <= 20`, "sensor_reading_dark");
+  m.constraint(expr`${luxLevel} <= 20`, "sensor_reading_dark");
   m.constraint(alarmArmed, "user_armed_alarm");
   m.constraint(motionDetected, "sensor_motion_triggered");
 

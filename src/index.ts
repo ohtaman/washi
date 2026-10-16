@@ -37,6 +37,8 @@ export {
   BoolVar,
   BoolExpr,
   BoolOp,
+  type LogicElement,
+  type LogicInput,
   and,
   or,
   not,
@@ -45,7 +47,8 @@ export {
   parseExpr,
   parseConstraint,
   expr,
-  c,
+  type ParsedExpr,
+  type ExprResolver,
   generateLpString,
   type LpModelData,
   type LpExportResult,
@@ -93,9 +96,5 @@ export {
   solveLpWithHighs,
   setHighsWasmUrl,
   getHighsWasmUrl,
-  OFFICIAL_HIGHS_CDN_WASM_URL,
-  isValidWasmHeader,
-  probeWasmUrl,
-  resolveBrowserWasmUrl,
 } from "./modeler/solvers/highs/index.js";
 

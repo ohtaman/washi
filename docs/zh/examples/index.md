@@ -6,7 +6,7 @@
 
 | 案例 | 问题类型 | 求解器 | 核心 API | 演示内容 | 代码编辑 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[生产计划问题](/examples/production)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `c` | 决策变量、模板字符串表达式与资源约束下的利润最大化。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
+| **[生产计划问题](/examples/production)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 决策变量、模板字符串表达式与资源约束下的利润最大化。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
 | **[0-1 背包问题](/examples/knapsack)** | Binary MIP | HiGHS | `m.binary(keys)`, `sum()`, `m.constraint()` | 一维 `Binary` 变量字典与 `sum()` 聚合。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
 | **[运输与分配网络](/examples/transportation)** | LP | HiGHS | `m.continuous(rows, cols)`, `dot()`, `m.constraint()` | 二维矩阵变量 `ship[factory][store]` 与供需平衡约束。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=transportation) |
 | **[营养问题与灵敏度分析](/examples/diet-sensitivity)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解后读取影子价格（瓶颈识别）、松弛变量与缩减成本。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |

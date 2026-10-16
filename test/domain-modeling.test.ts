@@ -5,14 +5,15 @@ import {
   sum,
   dot,
   expr,
-  c,
+  maximize,
+  minimize,
   LinExpr,
   QuadExpr,
   type DotCoeffContainer,
   type DotVarContainer,
 } from "../src/index.js";
 
-describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain, values", () => {
+describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint, values", () => {
   it("creates single domain variables without fat options", () => {
     const m = new Model();
     const b = m.binary("flag");
@@ -94,7 +95,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     expect(s.terms.get(vars[4])).toBe(5);
   });
 
-  it("solves standard knapsack problem using constrain() and values()", async () => {
+  it("solves standard knapsack problem using constraint() and values()", async () => {
     const m = new Model("KnapsackProduction");
 
     const items = [
@@ -108,13 +109,13 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
 
     // Objective: maximize dot(profit, x)
     const profits = Object.fromEntries(items.map((it) => [it.name, it.value]));
-    m.maximize(dot(profits, x));
+    m.objective(maximize(dot(profits, x)));
 
-    // Constraints: constrain() with expr
+    // Constraints: constraint() with expr
     const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
-    m.constrain(c`${dot(weights, x)} <= ${capacity}`, "capacity");
+    m.constraint(expr`${dot(weights, x)} <= ${capacity}`, "capacity");
 
-    const status = await m.optimize();
+    const status = await m.solve();
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(90); // laptop (3, 50) + camera (2, 40) = 5 wt, 90 val
@@ -128,20 +129,19 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     });
   });
 
-  it("supports chaining multiple m.constrain(...) calls fluently", async () => {
+  it("supports adding multiple constraints via m.constraint(...)", async () => {
     const m = new Model("ChainedConstraints");
     const desks = m.integer("desks", { lb: 0 });
     const chairs = m.integer("chairs", { lb: 0 });
 
-    m.maximize(expr`30 * ${desks} + 50 * ${chairs}`);
+    m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
 
-    // Fluent constrain
-    m.constrain(c`${desks} + 2 * ${chairs} <= 40`, "wood")
-      .constrain(c`2 * ${desks} + ${chairs} <= 50`, "labor");
+    m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood");
+    m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor");
 
     expect(m.numConstrs).toBe(2);
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
     expect(m.getValues(desks)).toBe(20);
@@ -149,32 +149,32 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     expect(m.getValues([desks, chairs])).toEqual([20, 10]);
   });
 
-  it("throws clear error when passing a LinExpr without comparison operator to constrain()", () => {
+  it("throws clear error when passing a LinExpr without comparison operator to constraint()", () => {
     const m = new Model();
     const x = m.continuous("x");
     expect(() => {
-      m.constrain(expr`2 * ${x} + 5` as any);
-    }).toThrow(/Cannot add a linear expression without a comparison operator/);
+      m.constraint(expr`2 * ${x} + 5`);
+    }).toThrow(/cannot add a linear expression without a comparison operator/);
   });
 
   it("throws clear error when passing a Constraint to maximize()", () => {
     const m = new Model();
     const x = m.continuous("x");
     expect(() => {
-      m.maximize(c`${x} <= 10`);
-    }).toThrow(/Cannot set objective to a constraint comparison/);
+      m.objective(maximize(expr`${x} <= 10` as any));
+    }).toThrow(/Cannot use a Constraint as an objective/);
   });
 
   it("normalizes lowercase sense 'maximize' and 'minimize' in Model and LP export", async () => {
     const m = new Model({ sense: "maximize" });
     const x = m.continuous("x", { lb: 0, ub: 10 });
-    m.setObjective(x, "maximize");
+    m.objective(maximize(x));
     expect(m.sense).toBe("Maximize");
     expect(m.toLpString()).toMatch(/^Maximize/im);
 
     const m2 = new Model({ sense: "minimize" });
     const y = m2.continuous("y", { lb: 0, ub: 10 });
-    m2.setObjective(y, "minimize");
+    m2.objective(minimize(y));
     expect(m2.sense).toBe("Minimize");
     expect(m2.toLpString()).toMatch(/^Minimize/im);
   });
@@ -463,18 +463,18 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       const grid = m.bool(["r1", "r2"], ["c1", "c2"]);
 
       // single must be true
-      m.constrain(single);
+      m.constraint(single);
       // list[0] is true, list[1] is false
-      m.constrain(list[0]);
-      m.constrain(list[1].not());
+      m.constraint(list[0]);
+      m.constraint(list[1].not());
       // dict.optA is true, dict.optB is false
-      m.constrain(dict.optA);
-      m.constrain(dict.optB.not());
+      m.constraint(dict.optA);
+      m.constraint(dict.optB.not());
       // grid: r1.c1 true, others false
-      m.constrain(grid.r1.c1);
-      m.constrain(grid.r1.c2.not());
-      m.constrain(grid.r2.c1.not());
-      m.constrain(grid.r2.c2.not());
+      m.constraint(grid.r1.c1);
+      m.constraint(grid.r1.c2.not());
+      m.constraint(grid.r2.c1.not());
+      m.constraint(grid.r2.c2.not());
 
       const res = await m.check();
       expect(res.status).toBe("Sat");
@@ -500,8 +500,8 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       const [b] = m.bool(1);
       expect(a.name).not.toBe(b.name);
 
-      m.constrain(a);
-      m.constrain(b.not());
+      m.constraint(a);
+      m.constraint(b.not());
       const res = await m.check();
       expect(res.status).toBe("Sat");
 
@@ -549,8 +549,8 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       expect(b.name).not.toBe(a.name);
       expect(m.getBoolVarByName(b.name)).toBe(b);
 
-      m.constrain(a);
-      m.constrain(b.not());
+      m.constraint(a);
+      m.constraint(b.not());
       const res = await m.check();
       expect(res.status).toBe("Sat");
 
@@ -596,13 +596,13 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
       ];
 
       const srv = m.continuous(foods.map((f) => f.name), { lb: 0, ub: 4, prefix: "srv" });
-      m.minimize(sum(foods, (f) => srv[f.name].mul(f.cost)));
+      m.objective(minimize(sum(foods, (f) => srv[f.name].mul(f.cost))));
 
       const cCal  = sum(foods, (f) => srv[f.name].mul(f.calories)).ge(2000, "min_calories");
       const cProt = sum(foods, (f) => srv[f.name].mul(f.protein)).ge(105,   "min_protein");
       const cCalc = sum(foods, (f) => srv[f.name].mul(f.calcium)).ge(1000,  "min_calcium");
       const cIron = sum(foods, (f) => srv[f.name].mul(f.iron)).ge(18,       "min_iron");
-      m.constrain([cCal, cProt, cCalc, cIron]);
+      m.constraint([cCal, cProt, cCalc, cIron]);
 
       const status = await m.solve();
       expect(status).toBe("Optimal");
@@ -628,11 +628,11 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m1 = new Model();
     const batch1 = m1.continuous("batch", { lb: 0, ub: 100 });
     const isActive1 = m1.binary("is_active");
-    m1.constrain(c`${batch1} >= 10 * ${isActive1}`, "min_batch_run");
-    m1.constrain(c`${batch1} <= 100 * ${isActive1}`, "max_batch_run");
-    m1.minimize(batch1);
+    m1.constraint(expr`${batch1} >= 10 * ${isActive1}`, "min_batch_run");
+    m1.constraint(expr`${batch1} <= 100 * ${isActive1}`, "max_batch_run");
+    m1.objective(minimize(batch1));
 
-    const status1 = await m1.optimize();
+    const status1 = await m1.solve();
     expect(status1).toBe("Optimal");
     expect(batch1.value).toBe(0);
     expect(isActive1.value).toBe(0);
@@ -641,12 +641,12 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m2 = new Model();
     const batch2 = m2.continuous("batch", { lb: 0, ub: 100 });
     const isActive2 = m2.binary("is_active");
-    m2.constrain(c`${batch2} >= 10 * ${isActive2}`, "min_batch_run");
-    m2.constrain(c`${batch2} <= 100 * ${isActive2}`, "max_batch_run");
-    m2.constrain(c`${batch2} >= 1`, "demand");
-    m2.minimize(batch2);
+    m2.constraint(expr`${batch2} >= 10 * ${isActive2}`, "min_batch_run");
+    m2.constraint(expr`${batch2} <= 100 * ${isActive2}`, "max_batch_run");
+    m2.constraint(expr`${batch2} >= 1`, "demand");
+    m2.objective(minimize(batch2));
 
-    const status2 = await m2.optimize();
+    const status2 = await m2.solve();
     expect(status2).toBe("Optimal");
     expect(batch2.value).toBe(10);
     expect(isActive2.value).toBe(1);
@@ -655,12 +655,12 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constrain,
     const m3 = new Model();
     const batch3 = m3.continuous("batch", { lb: 0, ub: 100 });
     const isActive3 = m3.binary("is_active");
-    m3.constrain(c`${batch3} >= 10 * ${isActive3}`, "min_batch_run");
-    m3.constrain(c`${batch3} <= 100 * ${isActive3}`, "max_batch_run");
-    m3.constrain(c`${batch3} >= 1`, "min_demand");
-    m3.constrain(c`${batch3} <= 5`, "max_demand");
+    m3.constraint(expr`${batch3} >= 10 * ${isActive3}`, "min_batch_run");
+    m3.constraint(expr`${batch3} <= 100 * ${isActive3}`, "max_batch_run");
+    m3.constraint(expr`${batch3} >= 1`, "min_demand");
+    m3.constraint(expr`${batch3} <= 5`, "max_demand");
 
-    const status3 = await m3.optimize();
+    const status3 = await m3.solve();
     expect(status3).toBe("Infeasible");
   });
 });

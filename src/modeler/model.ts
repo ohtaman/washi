@@ -187,10 +187,8 @@ export class Model {
     return this._objectiveExpr.clone();
   }
 
-  set objectiveExpr(value: LinExpr | QuadExpr) {
-    const cloned = value.clone();
-    this._objectiveExpr = cloned;
-    this.recordModelMutation();
+  set objectiveExpr(value: LinExpr | QuadExpr | Constraint) {
+    this.applyObjective(value);
   }
 
   /**
@@ -200,14 +198,6 @@ export class Model {
    */
   get conflicts(): readonly string[] | undefined {
     return this.unsatCore;
-  }
-
-  get vars(): Var[] {
-    return this.variables;
-  }
-
-  get constrs(): Constraint[] {
-    return this.constraints;
   }
 
   get numVars(): number {
@@ -887,23 +877,31 @@ export class Model {
     if (!spec) {
       return this.objectiveExpr;
     }
-    this.setObjective(spec.expr, spec.sense);
+    this.applyObjective(spec.expr, spec.sense);
     return this;
   }
 
   /**
-   * Set the objective function (classic API).
-   * Prefer using `m.objective(maximize(expr))` or `m.objective(minimize(expr))`.
+   * Internal objective setter.
    */
-  setObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
-    if (expr instanceof Constraint) {
+  private applyObjective(expr: LinExpr | QuadExpr | Var | number | string | Constraint, sense?: OptimizationSense): void {
+    if (
+      expr instanceof Constraint ||
+      (typeof expr === "object" &&
+        expr !== null &&
+        "sense" in expr &&
+        "lhs" in expr &&
+        "rhs" in expr) ||
+      (typeof expr === "string" && /(<=|>=|==|=<|=>|=)/.test(expr))
+    ) {
       throw new Error(
-        "Cannot set objective to a constraint comparison (<=, >=, ==). " +
-        "Did you mean to use m.constraint(c`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
+        typeof expr === "string"
+          ? "Cannot use a comparison constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)?"
+          : "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
       );
     }
 
-    const newSense = sense ? normalizeSense(sense) : this.sense;
+    const newSense = sense !== undefined ? normalizeSense(sense) : this.sense;
 
     let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {
@@ -912,11 +910,42 @@ export class Model {
       parsedExpr = new LinExpr(new Map(), expr);
     } else if (expr instanceof QuadExpr) {
       parsedExpr = expr.clone();
-    } else if ("terms" in expr) {
+    } else if (expr instanceof LinExpr) {
       parsedExpr = expr.clone();
+    } else if (
+      typeof expr === "object" &&
+      expr !== null &&
+      "quadTerms" in expr &&
+      (expr as { quadTerms: unknown }).quadTerms instanceof Map &&
+      "linearTerms" in expr &&
+      (expr as { linearTerms: unknown }).linearTerms instanceof Map &&
+      typeof (expr as { constant?: unknown }).constant === "number"
+    ) {
+      const q = expr as unknown as QuadExpr;
+      parsedExpr = new QuadExpr(q.linearTerms, q.quadTerms, q.constant);
+    } else if (
+      typeof expr === "object" &&
+      expr !== null &&
+      "terms" in expr &&
+      (expr as { terms: unknown }).terms instanceof Map &&
+      typeof (expr as { constant?: unknown }).constant === "number"
+    ) {
+      const l = expr as unknown as LinExpr;
+      parsedExpr = new LinExpr(l.terms, l.constant);
+    } else if (
+      expr instanceof Var ||
+      (typeof expr === "object" &&
+        expr !== null &&
+        "id" in expr &&
+        "name" in expr &&
+        "lb" in expr &&
+        "ub" in expr)
+    ) {
+      parsedExpr = new LinExpr(new Map([[expr as Var, 1]]), 0);
     } else {
-      // Var
-      parsedExpr = new LinExpr(new Map([[expr, 1]]), 0);
+      throw new Error(
+        "Invalid objective expression: expected a finite number, Var, LinExpr, QuadExpr, or arithmetic expression string."
+      );
     }
 
     // Validate objective numeric inputs and model ownership
@@ -928,33 +957,19 @@ export class Model {
   }
 
   /**
-   * @deprecated Use `m.objective(maximize(expr))` and `await m.solve()` instead.
-   */
-  maximize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
-    this.setObjective(expr, "Maximize");
-  }
-
-  /**
-   * @deprecated Use `m.objective(minimize(expr))` and `await m.solve()` instead.
-   */
-  minimize(expr: LinExpr | QuadExpr | Var | number | string | Constraint): void {
-    this.setObjective(expr, "Minimize");
-  }
-
-  /**
    * Add linear, boolean, or string formula constraint(s) to the model.
-   * Rejects raw arithmetic expressions (e.g. LinExpr) without comparison operators.
+   * Rejects raw arithmetic expressions (e.g. LinExpr, QuadExpr) without comparison operators.
    * Chainable: returns this.
    *
    * @example
-   * m.constraint(c`${desks} + 2 * ${chairs} <= 40`, "wood")
-   * m.constraint(items.map(i => c`${x[i]} <= 10`))
+   * m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood")
+   * m.constraint(items.map(i => expr`${x[i]} <= 10`))
    * m.constraint(c1).constraint(c2)
    */
-  constraint(constraint: ConstraintItem, name?: string): this;
-  constraint(constraints: ConstraintItem[]): this;
+  constraint(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
+  constraint(constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>): this;
   constraint(
-    item: ConstraintItem | ConstraintItem[],
+    item: ConstraintItem | LinExpr | QuadExpr | ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>,
     name?: string
   ): this {
     if (Array.isArray(item)) {
@@ -965,32 +980,24 @@ export class Model {
         return this;
       });
     }
-    if (item instanceof QuadExpr) {
+    if (
+      item instanceof QuadExpr ||
+      (typeof item === "object" && item !== null && "quadTerms" in item)
+    ) {
       throw new Error(
-        "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a quadratic expression as a constraint."
       );
     }
-    if (item instanceof LinExpr) {
+    if (
+      item instanceof LinExpr ||
+      (typeof item === "object" && item !== null && "terms" in item)
+    ) {
       throw new Error(
-        "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use c`... <= ...` or .le(), .ge(), .eq()."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a linear expression without a comparison operator. Use expr`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     this.addConstraint(item as Constraint | BoolExpr | string, name);
     return this;
-  }
-
-  /**
-   * @deprecated Use `m.constraint(...)` instead.
-   */
-  constrain(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
-  constrain(constraints: (ConstraintItem | LinExpr | QuadExpr)[]): this;
-  constrain(
-    item: any,
-    name?: string
-  ): this {
-    return (this.constraint as any)(item, name);
   }
 
   /**
@@ -1053,16 +1060,20 @@ export class Model {
   private addConstraint(constraint: BoolExpr, name?: string): BoolExpr;
   private addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr;
   private addConstraint(constraint: Constraint | LinExpr | QuadExpr | BoolExpr | string, name?: string): Constraint | BoolExpr {
-    if (constraint instanceof QuadExpr) {
+    if (
+      constraint instanceof QuadExpr ||
+      (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
+    ) {
       throw new Error(
-        "Cannot add a quadratic expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Quadratic constraints are not supported (only linear constraints are allowed in MILP/LP/QP)."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a quadratic expression as a constraint."
       );
     }
-    if (constraint instanceof LinExpr) {
+    if (
+      constraint instanceof LinExpr ||
+      (typeof constraint === "object" && constraint !== null && "terms" in constraint)
+    ) {
       throw new Error(
-        "Cannot add a linear expression without a comparison operator (<=, >=, ==) as a constraint. " +
-        "Use c`... <= ...` or .le(), .ge(), .eq()."
+        "Constraint must contain a comparison operator (<=, >=, ==): cannot add a linear expression without a comparison operator. Use expr`... <= ...` or .le(), .ge(), .eq()."
       );
     }
     if (constraint instanceof BoolExpr) {
@@ -1114,6 +1125,11 @@ export class Model {
       typeof constraint === "string"
         ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
         : constraint;
+
+    if (constr.ownerModel && constr.ownerModel !== this) {
+      validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, constr.name);
+      claimConstraintOwnership(constr, this);
+    }
 
     const explicitName =
       typeof name === "string" && name.trim().length > 0
@@ -1167,81 +1183,6 @@ export class Model {
     this.constrMapByName.set(constr.name, constr);
     this.recordModelMutation();
     return constr;
-  }
-
-  /**
-   * Universal classical fluent adder for constraints, variables, or batches.
-   * Enables:
-   * - m.add(x.mul(2).add(y).le(10))
-   * - m.add(c`${x} + ${y} <= 10`)
-   * - m.add("x + y <= 10")
-   * - m.add([c1, c2, c3])
-   * - m.add(new Var(...))
-   * - m.add(c1).add(c2) (fluent chaining)
-   */
-  add(constraint: Constraint, name?: string): this;
-  add(expr: BoolExpr, name?: string): this;
-  add(strConstraint: string, name?: string): this;
-  add(variable: Var): this;
-  add(items: (Constraint | BoolExpr | string | Var)[]): this;
-  add(
-    item: Constraint | BoolExpr | string | Var | (Constraint | BoolExpr | string | Var)[],
-    name?: string
-  ): this {
-    if (Array.isArray(item)) {
-      return this.runTransactionalBatch(() => {
-        for (const elem of item) {
-          this.add(elem as any);
-        }
-        return this;
-      });
-    }
-
-    if (item instanceof Var) {
-      if (item.ownerModel === this || this.varMapByName.get(item.name) === item) {
-        return this;
-      }
-      validateVarBounds(item);
-      if (item.ownerModel !== null && item.ownerModel !== this) {
-        claimVarOwnership(item, this);
-        throw new Error(
-          `Variable "${item.name}" already belongs to another model and cannot be shared across models.`
-        );
-      }
-      const savedCounter = this.varPrefixCounters.get(item.prefix);
-      const resolvedName = item.hasExplicitName ? item.name.trim() : this.getNextVarName(item.prefix);
-      try {
-        if (this.hasVarName(resolvedName)) {
-          throw new Error(`Variable with name '${resolvedName}' already exists in model`);
-        }
-        claimVarOwnership(item, this);
-      } catch (err) {
-        if (!item.hasExplicitName) {
-          if (savedCounter === undefined) {
-            this.varPrefixCounters.delete(item.prefix);
-          } else {
-            this.varPrefixCounters.set(item.prefix, savedCounter);
-          }
-        }
-        throw err;
-      }
-      if (this.batchDepth > 0) {
-        const prevName = item.name;
-        this.batchUndoActions.push(() => {
-          item._assignModelName(prevName);
-          item.ownerModel = null;
-        });
-      }
-      item._assignModelName(resolvedName);
-      item.ownerModel = this;
-      this.variables.push(item);
-      this.varMapByName.set(item.name, item);
-      this.recordModelMutation();
-      return this;
-    }
-
-    this.addConstraint(item, name);
-    return this;
   }
 
   /**
@@ -1666,17 +1607,6 @@ export class Model {
     this.hasSolutionState = true;
 
     return this.status;
-  }
-
-  /**
-   * Fully identical pass-through alias to solve().
-   * Matches parameters, return value, and side effects.
-   */
-  async optimize(
-    solverOrOptions?: Solver | string | SolveOptions,
-    options?: SolveOptions
-  ): Promise<SolverStatus> {
-    return this.solve(solverOrOptions, options);
   }
 
   /**

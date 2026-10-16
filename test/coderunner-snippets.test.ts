@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { stripTypeScriptTypes } from "node:module";
+import * as Washi from "../src/index.js";
 import { transpileSnippetToJs } from "../docs/.vitepress/theme/utils/transpile.js";
 
 describe("CodeRunner documentation snippets syntax validity", () => {
@@ -58,4 +60,59 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       }).not.toThrow();
     });
   }
+
+  it("verifies shipped README.md, README.ja.md, and README.zh-CN.md contain no retired API calls or unpublished public/highs.wasm URLs", () => {
+    for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8");
+      expect(content).not.toMatch(
+        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+      );
+      expect(content).not.toMatch(/\b(?:m|model)\.(minimize|maximize)\b/);
+      expect(content).not.toContain("/public/highs.wasm");
+    }
+  });
+
+  it("executes VitePress interactive demo components (PortfolioQpDemo, EcommerceCouponDemo, ShiftSchedulingDemo) at runtime", async () => {
+    const componentsDir = path.resolve(process.cwd(), "docs/.vitepress/theme/components");
+    const demoSpecs = [
+      { file: "PortfolioQpDemo.vue", fn: "solvePortfolio", check: "varianceVal.value > 0" },
+      { file: "EcommerceCouponDemo.vue", fn: "solveCart", check: "netPayableWithFiller.value > 0" },
+      { file: "ShiftSchedulingDemo.vue", fn: "solveRoster", check: "status.value === 'Optimal'" },
+    ];
+
+    for (const spec of demoSpecs) {
+      const vueSource = fs.readFileSync(path.join(componentsDir, spec.file), "utf-8");
+      expect(vueSource).not.toMatch(
+        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+      );
+      const scriptMatch = vueSource.match(/<script setup lang="ts">([\s\S]*?)<\/script>/);
+      expect(scriptMatch).not.toBeNull();
+      const transpiled = stripTypeScriptTypes(scriptMatch![1]).replace(
+        /^\s*import\s+[\s\S]*?from\s+["'][^"']+["'];?\s*$/gm,
+        ""
+      );
+      const runner = new Function(
+        "ref",
+        "computed",
+        "onMounted",
+        "useData",
+        "getWashiClient",
+        "window",
+        `return (async () => {\n${transpiled}\nawait ${spec.fn}();\nreturn Boolean(${spec.check});\n})();`
+      );
+      const ok = await runner(
+        (v: unknown) => ({ value: v }),
+        (fn: () => unknown) => ({
+          get value() {
+            return fn();
+          },
+        }),
+        () => {},
+        () => ({ lang: { value: "en" } }),
+        async () => Washi,
+        {}
+      );
+      expect(ok).toBe(true);
+    }
+  });
 });

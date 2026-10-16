@@ -1,12 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import {
-  Model,
-  c,
-  expr,
-  maximize,
-  minimize,
-  MockSolver,
-} from "../src/index.js";
+import { Model, expr, maximize, minimize, MockSolver } from "../src/index.js";
 import {
   mapHighsStatus,
   mapHighsTerminationStatus,
@@ -23,7 +16,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const lpModel = new Model("OptimalLP");
     const x = lpModel.continuous("x", { lb: 0, ub: 10 });
     const y = lpModel.continuous("y", { lb: 0, ub: 10 });
-    lpModel.add(c`${x} + ${y} >= 5`, "c1");
+    lpModel.constraint(expr`${x} + ${y} >= 5`, "c1");
     lpModel.objective(minimize(expr`2 * ${x} + 3 * ${y} + 4`));
 
     const lpStatus = await lpModel.solve();
@@ -45,7 +38,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const b1 = mipModel.binary("b1");
     const b2 = mipModel.binary("b2");
     const b3 = mipModel.binary("b3");
-    mipModel.add(c`2 * ${b1} + 3 * ${b2} + 4 * ${b3} <= 5`, "cap");
+    mipModel.constraint(expr`2 * ${b1} + 3 * ${b2} + 4 * ${b3} <= 5`, "cap");
     mipModel.objective(maximize(expr`3 * ${b1} + 4 * ${b2} + 5 * ${b3} + 10`));
 
     const mipStatus = await mipModel.solve();
@@ -72,8 +65,8 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const x5 = m.binary("x5");
     const x6 = m.binary("x6");
 
-    m.add(
-      c`11 * ${x1} + 15 * ${x2} + 20 * ${x3} + 35 * ${x4} + 10 * ${x5} + 33 * ${x6} <= 47`,
+    m.constraint(
+      expr`11 * ${x1} + 15 * ${x2} + 20 * ${x3} + 35 * ${x4} + 10 * ${x5} + 33 * ${x6} <= 47`,
       "knapsack"
     );
     m.objective(
@@ -103,7 +96,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const x1 = mNoInc.binary("x1");
     const x2 = mNoInc.binary("x2");
     const x3 = mNoInc.binary("x3");
-    mNoInc.add(c`2 * ${x1} + 3 * ${x2} + 4 * ${x3} <= 5`, "cap");
+    mNoInc.constraint(expr`2 * ${x1} + 3 * ${x2} + 4 * ${x3} <= 5`, "cap");
     mNoInc.objective(maximize(expr`3 * ${x1} + 4 * ${x2} + 5 * ${x3}`));
 
     const statusNoInc = await mNoInc.solve({ timeLimit: 0, presolve: "off" });
@@ -140,7 +133,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const y1 = mWithInc.binary("x1");
     const y2 = mWithInc.binary("x2");
     const y3 = mWithInc.binary("x3");
-    mWithInc.add(c`2 * ${y1} + 3 * ${y2} + 4 * ${y3} <= 5`, "cap");
+    mWithInc.constraint(expr`2 * ${y1} + 3 * ${y2} + 4 * ${y3} <= 5`, "cap");
     mWithInc.objective(maximize(expr`3 * ${y1} + 4 * ${y2} + 5 * ${y3}`));
 
     const statusWithInc = await mWithInc.solve({ timeLimit: 1 });
@@ -171,7 +164,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     expect(m.absGap).toBe(0);
 
     // Mutating model resets all metrics
-    m.add(c`${x} <= 0`);
+    m.constraint(expr`${x} <= 0`);
     expect(m.status).toBe("NotSolved");
     expect(m.terminationStatus).toBe("NotSolved");
     expect(m.hasPrimalSolution).toBe(false);
@@ -190,7 +183,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const mGlpk = new Model({ name: "GlpkMetrics", solver: "glpk" });
     const g1 = mGlpk.binary("g1");
     const g2 = mGlpk.binary("g2");
-    mGlpk.add(c`${g1} + ${g2} <= 1`);
+    mGlpk.constraint(expr`${g1} + ${g2} <= 1`);
     mGlpk.objective(maximize(expr`4 * ${g1} + 6 * ${g2}`));
 
     const glpkStatus = await mGlpk.solve();
@@ -207,7 +200,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const mZ3 = new Model({ name: "Z3Metrics", solver: "z3" });
     const z1 = mZ3.binary("z1");
     const z2 = mZ3.binary("z2");
-    mZ3.add(c`${z1} + ${z2} <= 1`);
+    mZ3.constraint(expr`${z1} + ${z2} <= 1`);
     mZ3.objective(maximize(expr`4 * ${z1} + 6 * ${z2}`));
 
     const z3Status = await mZ3.solve();
@@ -315,7 +308,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const { not } = await import("../src/index.js");
     const mZ3Open = new Model({ name: "Z3OpenBound", solver: "z3" });
     const zo = mZ3Open.continuous("zo", { lb: 0, ub: 10 });
-    mZ3Open.add(not(zo.ge(1)));
+    mZ3Open.constraint(not(zo.ge(1)));
     mZ3Open.objective(maximize(zo));
     const z3OpenStatus = await mZ3Open.solve();
     expect(z3OpenStatus).toBe("Unknown");
@@ -340,9 +333,9 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     const ox1 = mOffsetGap.integer("ox1", { lb: 0 });
     const ox2 = mOffsetGap.integer("ox2", { lb: 0 });
     const ox3 = mOffsetGap.integer("ox3", { lb: 0 });
-    mOffsetGap.add(c`2 * ${ox1} + 2 * ${ox2} >= 1`);
-    mOffsetGap.add(c`2 * ${ox2} + 2 * ${ox3} >= 1`);
-    mOffsetGap.add(c`2 * ${ox1} + 2 * ${ox3} >= 1`);
+    mOffsetGap.constraint(expr`2 * ${ox1} + 2 * ${ox2} >= 1`);
+    mOffsetGap.constraint(expr`2 * ${ox2} + 2 * ${ox3} >= 1`);
+    mOffsetGap.constraint(expr`2 * ${ox1} + 2 * ${ox3} >= 1`);
     mOffsetGap.objective(minimize(expr`10 * ${ox1} + 10 * ${ox2} + 10 * ${ox3} + 980`));
     const offsetGapStatus = await mOffsetGap.solve({ presolve: "off", mipGap: 0.02 });
     expect(offsetGapStatus).toBe("Optimal");

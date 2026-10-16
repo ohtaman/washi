@@ -31,15 +31,15 @@ HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provi
 [Try the browser demo](https://ohtaman.github.io/washi/demo/) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 const m = new Model("WoodworkingProfit");
 const x = m.integer("desks", { lb: 0 });
 const y = m.integer("chairs", { lb: 0 });
 
 m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
 await m.solve();
 console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`);
@@ -49,7 +49,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 ## 🎯 What WaSHI provides
 
-1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), tagged template literals (`expr`, `c`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`).
+1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), unified tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`).
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
 4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities. A returned core is a conflicting subset, not necessarily the smallest one.
@@ -101,7 +101,7 @@ npm install glpk.js      # For GLPK solver (GPL-3.0)
 Formulate production scheduling, resource allocation, and facility location problems:
 
 ```ts
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 
 const m = new Model("FactoryPlanning");
 
@@ -111,8 +111,8 @@ const tables = m.integer("tables", { lb: 0 });
 
 // Natural formula objective & constraints via Tagged Template Literals
 m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constraint(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+m.constraint(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
 // Solve using default HiGHS WASM engine
 const status = await m.solve();
@@ -143,7 +143,7 @@ Model conditional activation rules and fixed-charge economics without manual Big
 
 ```ts
 // If factory is closed (openCity['Tokyo'] == 0), its production capacity must be 0
-m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
+m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
   M: 1000,
 });
@@ -156,7 +156,7 @@ m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
 Minimize investment risk based on a covariance matrix subject to return and budget constraints:
 
 ```ts
-import { Model, QuadExpr, sum, dot, c, minimize } from "@ohtaman/washi";
+import { Model, QuadExpr, sum, dot, minimize, expr } from "@ohtaman/washi";
 
 const m = new Model("MarkowitzPortfolio");
 const assets = ["Tech", "Bonds", "RealEstate"];
@@ -166,11 +166,11 @@ const returns = [0.14, 0.04, 0.08];
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 // 1. Fully invested budget: sum(w) == 1.0
-m.constraint(c`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
 // 2. Minimum target return: portfolio return >= 8.5%
 const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-m.constraint(c`${dot(retMap, w)} >= 0.085`, "min_return");
+m.constraint(expr`${dot(retMap, w)} >= 0.085`, "min_return");
 
 // 3. Covariance risk matrix
 const cov = [
@@ -202,7 +202,7 @@ assets.forEach((name) => {
 Express boolean variables, propositional connectives (`and`, `or`, `implies`, `not`, `xor`), and mixed arithmetic rules:
 
 ```ts
-import { Model, not, c } from "@ohtaman/washi";
+import { Model, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "SmartSecurityRules" });
@@ -218,7 +218,7 @@ m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
 m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
 // Current sensor observations
-m.constraint(c`${lux} <= 10`, "sensor_dark");
+m.constraint(expr`${lux} <= 10`, "sensor_dark");
 m.constraint(motion, "sensor_motion");
 m.constraint(alarm, "alarm_on");
 
@@ -236,7 +236,7 @@ console.log(`Siren active? ${m.values.get("siren")}`); // true
 When business rules or constraints contradict each other, extract a **conflicting constraint subset** (unsatisfiable core; minimality is not guaranteed) for troubleshooting (requires Z3):
 
 ```ts
-import { Model, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
@@ -245,7 +245,7 @@ const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
 
 // Rule 1: Each engineer costs $8,000
-m.constraint(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
+m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
 // Rule 2: Customer requires rush delivery
 m.constraint(rushDelivery, "rush_required");
@@ -254,10 +254,10 @@ m.constraint(rushDelivery, "rush_required");
 m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
-m.constraint(c`${budget} <= 50000`, "strict_board_budget_cap");
+m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
 // Rule 5: Innocent bystander rule
-m.constraint(c`${engineers} >= 1`, "minimum_one_employee");
+m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
 const res = await m.check({ solver: "z3" });
 
@@ -274,7 +274,7 @@ console.log("Conflicting constraints:", res.conflicts);
 To use the GNU Linear Programming Kit (GLPK) solver plugin:
 
 ```ts
-import { Model, expr, c, maximize } from "@ohtaman/washi";
+import { Model, expr, maximize } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/glpk";
 
 const m = new Model({ solver: "glpk" });
@@ -282,8 +282,8 @@ const x = m.integer("x", { lb: 0 });
 const y = m.integer("y", { lb: 0 });
 
 m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-m.constraint(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constraint(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
 const status = await m.solve();
 console.log(`Status: ${status}`); // "Optimal"
@@ -297,7 +297,7 @@ console.log(`Objective: ${m.objectiveValue}`); // 1100
 Cleanly compute 1D/2D linear combinations without nested loops:
 
 ```ts
-import { Model, dot } from "@ohtaman/washi";
+import { Model, dot, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const factories = ["Tokyo", "Osaka"];
@@ -311,8 +311,8 @@ const costs = {
 const ship = m.continuous(factories, stores);
 
 // Total transportation cost in one line:
-m.minimize(dot(costs, ship));
-await m.optimize();
+m.objective(minimize(dot(costs, ship)));
+await m.solve();
 
 // Extract all optimal variable values as a structured object
 const solution = m.getValues(ship);
@@ -373,12 +373,12 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 #### Browser ESM with GLPK
 ```html
 <script type="module">
-  import { Model } from "./washi/washi.js";
+  import { Model, maximize } from "./washi/washi.js";
   import "./washi/solvers/glpk.js";
 
   const model = new Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(maximize(x));
   await model.solve();
   console.log("GLPK status:", model.status);
 </script>
@@ -391,7 +391,7 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 <script>
   const model = new Washi.Model({ solver: "glpk" });
   const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.maximize(x);
+  model.objective(Washi.maximize(x));
   model.solve().then(status => console.log("GLPK status:", status));
 </script>
 ```
@@ -417,11 +417,11 @@ Deploy the full application build or the entire browser distribution to a local 
 
 ESM assets resolve relative to their module URL; the script build captures its own script URL at load time. CDN Workers use a Blob module bootstrap. The server must permit cross-origin JS / WASM loading; CSP must permit the selected script / connection origins and `worker-src blob:` for CDN Workers. If that is unavailable, use `useWorker: false`. Worker load / message failures reject pending solves rather than leaving them unresolved.
 
-For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain available. To explicitly use the existing HiGHS CDN:
+For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain available:
 
 ```typescript
-import { setHighsWasmUrl, OFFICIAL_HIGHS_CDN_WASM_URL } from "@ohtaman/washi";
-setHighsWasmUrl(OFFICIAL_HIGHS_CDN_WASM_URL);
+import { setHighsWasmUrl } from "@ohtaman/washi";
+setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
 ```
 
 Failed initialization reports the attempted URL and does not try a different host. This changes the previous local-root/CDN fallback behavior: deploy the generated assets or configure an explicit URL.
@@ -446,7 +446,7 @@ Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/exam
 
 | Category | Example | What it demonstrates | Solver |
 | :--- | :--- | :--- | :--- |
-| **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`, `c`) | HiGHS |
+| **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`) | HiGHS |
 | **Fundamentals** | [Transportation network](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2D origin-destination variable matrix (`continuous(rows, cols)`) and flow balance | HiGHS |
 | **Fundamentals** | [Diet & sensitivity analysis](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | Shadow prices (`constr.dual`), surpluses (`constr.slack`), and reduced costs (`var.reducedCost`) | HiGHS |
 | **Practical** | [Staff shift scheduling](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | Weekly roster optimization + diagnosing conflicting Saturday vacation requests | HiGHS + Z3 |

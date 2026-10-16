@@ -1,17 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  Model,
-  c,
-  expr,
-  maximize,
-  minimize,
-  and,
-  or,
-  not,
-  implies,
-  xor,
-  validateModelSolution,
-} from "../src/index.js";
+import { Model, expr, maximize, minimize, and, or, not, implies, xor, validateModelSolution } from "../src/index.js";
 
 describe("Post-solve Solution Validation (Issue #54)", () => {
   it("validates feasible LP and MIP solutions within tolerance and returns valid: true, complete: true", async () => {
@@ -20,9 +8,9 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const y = m.binary("y");
     const z = m.continuous("z", { lb: 0, ub: 20 });
 
-    m.constraint(c`2 * ${x} + 5 * ${y} + ${z} <= 25`, "cap");
-    m.constraint(c`${x} + ${z} >= 4`, "min_load");
-    m.constraint(c`${z} == 2 * ${y} + 3`, "exact_z");
+    m.constraint(expr`2 * ${x} + 5 * ${y} + ${z} <= 25`, "cap");
+    m.constraint(expr`${x} + ${z} >= 4`, "min_load");
+    m.constraint(expr`${z} == 2 * ${y} + 3`, "exact_z");
     m.objective(maximize(expr`10 * ${x} + 15 * ${y} + 2 * ${z}`));
 
     const status = await m.solve();
@@ -66,9 +54,9 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const k = m.integer("k", { lb: 0, ub: 5 });
     const b = m.binary("b");
 
-    m.constraint(c`${x} + ${k} <= 8`, "le_cap");
-    m.constraint(c`2 * ${x} - ${k} >= 6`, "ge_req");
-    m.constraint(c`${k} + ${b} == 3`, "eq_target");
+    m.constraint(expr`${x} + ${k} <= 8`, "le_cap");
+    m.constraint(expr`2 * ${x} - ${k} >= 6`, "ge_req");
+    m.constraint(expr`${k} + ${b} == 3`, "eq_target");
 
     const report = m.validateSolution({
       values: {
@@ -109,7 +97,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const m = new Model("IncompleteTest");
     const x = m.continuous("x", { lb: 0, ub: 10 });
     const y = m.continuous("y", { lb: 0, ub: 10 });
-    m.constraint(c`${x} + ${y} <= 10`, "sum_le");
+    m.constraint(expr`${x} + ${y} <= 10`, "sum_le");
 
     // 1. Before solve (all values null)
     const unsolvedReport = m.validateSolution();
@@ -140,7 +128,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const q = m.bool("q");
     const x = m.continuous("x", { lb: 0, ub: 20 });
 
-    m.constraint(implies(p, c`${x} >= 10`), "imp_px");
+    m.constraint(implies(p, expr`${x} >= 10`), "imp_px");
     m.constraint(or(p, q), "or_pq");
     m.constraint(xor(p, not(q)), "equiv_pq");
 
@@ -197,7 +185,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const x = m.continuous("x", { lb: 0, ub: 100 });
     const z = m.binary("z");
 
-    m.indicator(z, c`${x} <= 0`, { name: "ind_x0" });
+    m.indicator(z, expr`${x} <= 0`, { name: "ind_x0" });
 
     const reportInactive = m.validateSolution({
       values: { x: 80, z: 0 },
@@ -247,7 +235,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     // 3. Includes tolerated residuals in maxViolation
     const mTol = new Model("ToleratedResidual");
     const xTol = mTol.continuous("xTol", { lb: 0, ub: 1 });
-    mTol.constraint(c`${xTol} == 0`, "eq0");
+    mTol.constraint(expr`${xTol} == 0`, "eq0");
     const repTol = mTol.validateSolution({
       values: { xTol: 5e-7 },
       feasibilityTolerance: 1e-6,
@@ -258,7 +246,7 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     // 4. Excludes false logical atoms inside satisfied negations from maxViolation
     const mFalseAtom = new Model("FalseAtomPolarity");
     const xPol = mFalseAtom.continuous("xPol", { lb: 0, ub: 200 });
-    mFalseAtom.add(not(xPol.le(0)), "neg_le");
+    mFalseAtom.constraint(not(xPol.le(0)), "neg_le");
     const repFalseAtom = mFalseAtom.validateSolution({
       values: { xPol: 100 },
     });
@@ -278,10 +266,10 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     const pA = mXorZ3.bool("pA");
     const pB = mXorZ3.bool("pB");
     const pC = mXorZ3.bool("pC");
-    mXorZ3.add(xor(pA, pB, pC), "xor3");
-    mXorZ3.add(pA, "force_a");
-    mXorZ3.add(pB, "force_b");
-    mXorZ3.add(pC, "force_c");
+    mXorZ3.constraint(xor(pA, pB, pC), "xor3");
+    mXorZ3.constraint(pA, "force_a");
+    mXorZ3.constraint(pB, "force_b");
+    mXorZ3.constraint(pC, "force_c");
     const z3XorRes = await mXorZ3.check("z3");
     expect(z3XorRes.status).toBe("Sat");
     expect(mXorZ3.validateSolution().valid).toBe(true);

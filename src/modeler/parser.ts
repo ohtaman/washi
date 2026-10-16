@@ -496,11 +496,30 @@ function validateTemplateExprNumericSanity(val: Var | LinExpr | QuadExpr): void 
 }
 
 /**
+ * Union type returned by the unified `expr` template tag:
+ * - `LinExpr` for linear arithmetic expressions (`expr\`2 * \${x} + 1\``)
+ * - `QuadExpr` for quadratic arithmetic expressions (`expr\`\${x}^2 + \${x} * \${y}\``)
+ * - `Constraint` for linear relational comparisons (`expr\`2 * \${x} <= 10\``)
+ */
+export type ParsedExpr = LinExpr | QuadExpr | Constraint;
+
+function isConstraintLike(val: unknown): val is Constraint {
+  return (
+    val instanceof Constraint ||
+    (typeof val === "object" &&
+      val !== null &&
+      "sense" in val &&
+      "lhs" in val &&
+      "rhs" in val)
+  );
+}
+
+/**
  * Parse a template literal with Var / LinExpr / QuadExpr / number values
  */
 function parseTemplate(
   strings: TemplateStringsArray,
-  values: (Var | LinExpr | QuadExpr | number)[]
+  values: (Var | ParsedExpr | number)[]
 ): { fullText: string; resolver: ExprResolver; numberMap: Map<string, number> } {
   const placeholderMap = new Map<string, Var | LinExpr | QuadExpr>();
   const numberMap = new Map<string, number>();
@@ -524,6 +543,10 @@ function parseTemplate(
         const numPh = `${tag}num_${i}__`;
         numberMap.set(numPh, val);
         fullText += `(${numPh})`;
+      } else if (isConstraintLike(val)) {
+        throw new Error(
+          `Cannot interpolate a constraint comparison (<=, >=, ==) inside a template expression: expected a finite number, Var, LinExpr, or QuadExpr.`
+        );
       } else if (isTemplateExprOrVar(val)) {
         validateTemplateExprNumericSanity(val);
         const ph = `${tag}ph_${i}__`;
@@ -542,37 +565,19 @@ function parseTemplate(
 }
 
 /**
- * Tagged template literal for constraints:
- * c`${chairs} + 2 * ${tables} <= 40`
- * c`3 * ${x} - ${y} >= 5`
- * c`${x} == 2 * ${y} + 4`
- */
-export function c(
-  strings: TemplateStringsArray,
-  ...values: (Var | LinExpr | QuadExpr | number)[]
-): Constraint {
-  const { fullText, resolver, numberMap } = parseTemplate(strings, values);
-  return parseConstraintInternal(fullText, resolver, undefined, numberMap);
-}
-
-/**
- * Tagged template literal for linear or quadratic expressions:
- * expr`45 * ${chairs} + 80 * ${tables}` -> LinExpr
- * expr`${x} * ${y} + 2 * ${x} * ${x}` -> QuadExpr
- *
- * For relational constraints, use the `c` tagged template instead:
- * c`${x} + 2 * ${y} <= 40` -> Constraint
+ * Unified tagged template literal for linear/quadratic arithmetic expressions and linear constraints:
+ * - `expr\`45 * \${chairs} + 80 * \${tables}\`` -> `LinExpr`
+ * - `expr\`\${x} * \${y} + 2 * \${x}^2\`` -> `QuadExpr`
+ * - `expr\`\${chairs} + 2 * \${tables} <= 40\`` -> `Constraint`
  */
 export function expr(
   strings: TemplateStringsArray,
-  ...values: (Var | LinExpr | QuadExpr | number)[]
-): LinExpr | QuadExpr {
+  ...values: (Var | ParsedExpr | number)[]
+): ParsedExpr {
   const { fullText, resolver, numberMap } = parseTemplate(strings, values);
   if (/(<=|>=|==|=<|=>|=)/.test(fullText)) {
-    throw new Error(
-      `Relational comparison operators (<=, >=, ==) cannot be used in expr\`...\`. ` +
-      `Use the c\`...\` template tag for constraints (e.g. c\`\${x} <= 10\`), or remove the comparison operator for arithmetic expressions.`
-    );
+    return parseConstraintInternal(fullText, resolver, undefined, numberMap);
   }
   return parseExprInternal(fullText, resolver, numberMap);
 }
+

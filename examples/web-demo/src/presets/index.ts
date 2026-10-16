@@ -27,7 +27,7 @@ export const EXAMPLES: ExampleModel[] = [
       "Classic workshop resource allocation. Maximize profit from chairs and tables subject to carpentry and finishing labor limits.",
     descriptionJa:
       "木工・仕上げ時間の制約下で椅子と机の生産数を決定し、総利益を最大化する基本モデル。",
-    apis: ["integer()", "maximize()", "constrain()"],
+    apis: ["integer()", "maximize()", "constraint()"],
     visualizer: "summary",
     code: `// --- Production Planning (Chairs & Tables) ---
 // Maximize profit under carpentry and finishing hours constraints.
@@ -38,14 +38,14 @@ const chairs = m.integer("chairs", { lb: 0 });
 const tables = m.integer("tables", { lb: 0 });
 
 // Objective: Profit is $30 per chair, $50 per table
-m.maximize(chairs.mul(30).add(tables.mul(50)));
+m.objective(maximize(chairs.mul(30).add(tables.mul(50))));
 
 // Constraints:
 // 1. Carpentry: 1 hr/chair + 2 hrs/table <= 40 hrs
-m.constrain(chairs.add(tables.mul(2)).le(40), "carpentry_limit");
+m.constraint(chairs.add(tables.mul(2)).le(40), "carpentry_limit");
 
 // 2. Finishing: 2 hrs/chair + 1 hr/table <= 50 hrs
-m.constrain(chairs.mul(2).add(tables).le(50), "finishing_limit");
+m.constraint(chairs.mul(2).add(tables).le(50), "finishing_limit");
 
 // Solve with HiGHS WASM in browser
 const status = await m.solve();
@@ -66,7 +66,7 @@ console.log("Tables to produce:", tables.value);
       "Binary integer programming. Select the highest-value combination of items without exceeding the backpack weight limit.",
     descriptionJa:
       "重量上限（7kg）を超えない範囲で価値の合計が最大になるアイテムの組み合わせを0-1変数で選択します。",
-    apis: ["binary(keys)", "sum()", "constrain()"],
+    apis: ["binary(keys)", "sum()", "constraint()"],
     visualizer: "summary",
     code: `// --- 0-1 Knapsack Selection Problem ---
 // Maximize total item value within backpack weight capacity.
@@ -86,10 +86,10 @@ const maxCapacity = 7;
 const x = m.binary(items.map(it => it.name));
 
 // Objective: Maximize total packed value
-m.maximize(sum(items, it => x[it.name].mul(it.value)));
+m.objective(maximize(sum(items, it => x[it.name].mul(it.value))));
 
 // Constraint: Total weight <= maxCapacity (7 kg)
-m.constrain(
+m.constraint(
   sum(items, it => x[it.name].mul(it.weight)).le(maxCapacity),
   "capacity_limit"
 );
@@ -144,16 +144,16 @@ for (const f of factories) {
     terms.push(ship[f][s].mul(cost[f][s]));
   }
 }
-m.minimize(sum(terms));
+m.objective(minimize(sum(terms)));
 
 // Supply constraints: Outgoing shipments from each factory <= supply[f]
 for (const f of factories) {
-  m.constrain(sum(stores.map(s => ship[f][s])).le(supplies[f]), \`supply_\${f}\`);
+  m.constraint(sum(stores.map(s => ship[f][s])).le(supplies[f]), \`supply_\${f}\`);
 }
 
 // Demand constraints: Incoming shipments to each store >= demand[s]
 for (const s of stores) {
-  m.constrain(sum(factories.map(f => ship[f][s])).ge(demands[s]), \`demand_\${s}\`);
+  m.constraint(sum(factories.map(f => ship[f][s])).ge(demands[s]), \`demand_\${s}\`);
 }
 
 const status = await m.solve();
@@ -199,14 +199,14 @@ const foods = [
 const srv = m.continuous(foods.map(f => f.name), { lb: 0, ub: 4, prefix: "srv" });
 
 // Objective: Minimize daily food cost
-m.minimize(sum(foods, f => srv[f.name].mul(f.cost)));
+m.objective(minimize(sum(foods, f => srv[f.name].mul(f.cost))));
 
 // Nutritional constraints (keep references to inspect .dual and .slack)
 const cCal  = sum(foods, f => srv[f.name].mul(f.calories)).ge(2000, "min_calories");
 const cProt = sum(foods, f => srv[f.name].mul(f.protein)).ge(105,   "min_protein");
 const cCalc = sum(foods, f => srv[f.name].mul(f.calcium)).ge(1000,  "min_calcium");
 const cIron = sum(foods, f => srv[f.name].mul(f.iron)).ge(18,       "min_iron");
-m.constrain([cCal, cProt, cCalc, cIron]);
+m.constraint([cCal, cProt, cCalc, cIron]);
 
 const status = await m.solve();
 
@@ -233,7 +233,7 @@ for (const c of [cCal, cProt, cCalc, cIron]) {
       "Assign 5 staff members across a 7-day week meeting daily coverage, senior leader rules, max shifts, and day-off requests.",
     descriptionJa:
       "日別の必要人数・リーダー配置・週5日上限・スタッフの希望休をすべて満たしつつ人件費を最小化するシフト表を作成します。",
-    apis: ["binary(staff, days)", "sum()", "constrain()"],
+    apis: ["binary(staff, days)", "sum()", "constraint()"],
     visualizer: "roster",
     code: `// --- Staff Shift Scheduling (Weekly Roster Optimization) ---
 // Assign 5 staff across Mon..Sun meeting coverage, senior duty, and day-off requests.
@@ -261,22 +261,22 @@ for (const s of staffList) {
     costTerms.push(shift[s.name][d].mul(cost));
   }
 }
-m.minimize(sum(costTerms));
+m.objective(minimize(sum(costTerms)));
 
 // 1. Daily minimum headcount coverage
 for (const d of days) {
-  m.constrain(sum(staffList, s => shift[s.name][d]).ge(requiredCoverage[d]), \`coverage_\${d}\`);
+  m.constraint(sum(staffList, s => shift[s.name][d]).ge(requiredCoverage[d]), \`coverage_\${d}\`);
 }
 
 // 2. At least 1 senior staff member on duty every day
 const seniors = staffList.filter(s => s.isSenior);
 for (const d of days) {
-  m.constrain(sum(seniors, s => shift[s.name][d]).ge(1), \`senior_duty_\${d}\`);
+  m.constraint(sum(seniors, s => shift[s.name][d]).ge(1), \`senior_duty_\${d}\`);
 }
 
 // 3. Max working days per week (<= 5 shifts)
 for (const s of staffList) {
-  m.constrain(sum(days, d => shift[s.name][d]).le(s.maxShifts), \`max_shifts_\${s.name}\`);
+  m.constraint(sum(days, d => shift[s.name][d]).le(s.maxShifts), \`max_shifts_\${s.name}\`);
 }
 
 // 4. Requested days off
@@ -287,7 +287,7 @@ const dayOffRequests = [
   { staff: "Diana",   day: "Wed" },
 ];
 for (const req of dayOffRequests) {
-  m.constrain(shift[req.staff][req.day].le(0), \`day_off_\${req.staff}_\${req.day}\`);
+  m.constraint(shift[req.staff][req.day].le(0), \`day_off_\${req.staff}_\${req.day}\`);
 }
 
 const status = await m.solve();
@@ -343,14 +343,14 @@ for (const c of coupons) {
 
 // 2. Mutual exclusion among non-stackable ("Exclusive") coupons
 const exclusive = coupons.filter(c => !c.stackable);
-m.constrain(sum(exclusive, c => cpn[c.id]).le(1), "exclusive_coupon_limit");
+m.constraint(sum(exclusive, c => cpn[c.id]).le(1), "exclusive_coupon_limit");
 
 // 3. Max 2 coupons per order
-m.constrain(sum(coupons, c => cpn[c.id]).le(2), "max_two_coupons");
+m.constraint(sum(coupons, c => cpn[c.id]).le(2), "max_two_coupons");
 
 // Objective: Minimize final net payable amount (merchSpend - discounts)
 const totalDiscount = sum(coupons, c => cpn[c.id].mul(c.discount));
-m.minimize(merchSpend.sub(totalDiscount));
+m.objective(minimize(merchSpend.sub(totalDiscount)));
 
 const status = await m.solve();
 
@@ -388,11 +388,11 @@ const expectedReturns = [0.15, 0.04, 0.10, 0.08, 0.06];
 const w = assets.map((name) => m.continuous(\`weight_\${name}\`, { lb: 0, ub: 1 }));
 
 // 2. Budget constraint: sum of weights = 1.0 (100% capital allocation)
-m.constrain(sum(w).eq(1.0), "budget_full_investment");
+m.constraint(sum(w).eq(1.0), "budget_full_investment");
 
 // 3. Minimum expected return target: sum(r_i * w_i) >= 9.0%
 const portfolioReturn = sum(w.map((v, i) => v.mul(expectedReturns[i])));
-m.constrain(portfolioReturn.ge(0.09), "min_expected_return");
+m.constraint(portfolioReturn.ge(0.09), "min_expected_return");
 
 // 4. Covariance Matrix (risk & asset correlations)
 const cov = [
@@ -412,7 +412,7 @@ for (let i = 0; i < assets.length; i++) {
     }
   }
 }
-m.minimize(risk);
+m.objective(minimize(risk));
 
 const status = await m.solve();
 
@@ -434,7 +434,7 @@ assets.forEach((name, i) => {
       "Classic linear programming diet cost minimization solved using the pluggable GNU Linear Programming Kit (GLPK) WebAssembly engine.",
     descriptionJa:
       "プラガブルな GLPK WebAssembly エンジン（solver: 'glpk'）に切り替えて古典的な栄養問題を求解します。",
-    apis: ['solver: "glpk"', "continuous()", "m.optimize()"],
+    apis: ['solver: "glpk"', "continuous()", "m.solve()"],
     visualizer: "summary",
     code: `// --- Diet Optimization via GLPK Solver Plugin ---
 // Switch seamlessly to GLPK solver via solver: "glpk"
@@ -446,15 +446,15 @@ const milk = m.continuous("milk", { lb: 0, ub: 10 });       // $3.50 / bottle
 const cheese = m.continuous("cheese", { lb: 0, ub: 5 });    // $5.00 / pack
 
 // Objective: Minimize total basket cost
-m.minimize(bread.mul(2.0).add(milk.mul(3.5)).add(cheese.mul(5.0)));
+m.objective(minimize(bread.mul(2.0).add(milk.mul(3.5)).add(cheese.mul(5.0))));
 
 // Nutritional requirements
-m.constrain(bread.mul(300).add(milk.mul(250)).add(cheese.mul(400)).ge(2000), "Calories_min");
-m.constrain(bread.mul(10).add(milk.mul(15)).add(cheese.mul(25)).ge(70), "Protein_min");
-m.constrain(bread.mul(50).add(milk.mul(300)).add(cheese.mul(500)).ge(800), "Calcium_min");
+m.constraint(bread.mul(300).add(milk.mul(250)).add(cheese.mul(400)).ge(2000), "Calories_min");
+m.constraint(bread.mul(10).add(milk.mul(15)).add(cheese.mul(25)).ge(70), "Protein_min");
+m.constraint(bread.mul(50).add(milk.mul(300)).add(cheese.mul(500)).ge(800), "Calcium_min");
 
 console.log("Solving with GLPK plugin engine...");
-const status = await m.optimize();
+const status = await m.solve();
 
 console.log("Status:", status);
 console.log("Optimal Cost: $" + m.objectiveValue?.toFixed(2));
@@ -490,17 +490,17 @@ const days = ["Fri", "Sat", "Sun"];
 const shift = m.integer(staff, days, { lb: 0, ub: 1, prefix: "shift" });
 
 // Daily coverage requirements
-m.constrain(sum(staff, s => shift[s]["Fri"]).ge(3), "coverage_Fri");
-m.constrain(sum(staff, s => shift[s]["Sat"]).ge(3), "coverage_Sat");
-m.constrain(sum(staff, s => shift[s]["Sun"]).ge(2), "coverage_Sun");
+m.constraint(sum(staff, s => shift[s]["Fri"]).ge(3), "coverage_Fri");
+m.constraint(sum(staff, s => shift[s]["Sat"]).ge(3), "coverage_Sat");
+m.constraint(sum(staff, s => shift[s]["Sun"]).ge(2), "coverage_Sun");
 
 // Vacation requests: 3 staff request Saturday off -> leaves at most 2 staff for Saturday!
-m.constrain(shift["Alice"]["Sat"].le(0),   "day_off_Alice_Sat");
-m.constrain(shift["Bob"]["Sat"].le(0),     "day_off_Bob_Sat");
-m.constrain(shift["Charlie"]["Sat"].le(0), "day_off_Charlie_Sat");
+m.constraint(shift["Alice"]["Sat"].le(0),   "day_off_Alice_Sat");
+m.constraint(shift["Bob"]["Sat"].le(0),     "day_off_Bob_Sat");
+m.constraint(shift["Charlie"]["Sat"].le(0), "day_off_Charlie_Sat");
 
 // Unrelated Friday request (innocent bystander rule)
-m.constrain(shift["Diana"]["Fri"].le(0),   "day_off_Diana_Fri");
+m.constraint(shift["Diana"]["Fri"].le(0),   "day_off_Diana_Fri");
 
 console.log("Checking shift schedule feasibility with Z3...");
 const res = await m.check({ solver: "z3" });
@@ -534,20 +534,20 @@ const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
 
 // Rule 1: Each engineer costs $8,000
-m.constrain(engineers.mul(8000).le(budget), "budget_limit");
+m.constraint(engineers.mul(8000).le(budget), "budget_limit");
 
 // Rule 2: Client strictly requires rush delivery
-m.constrain(rushDelivery, "rush_required");
+m.constraint(rushDelivery, "rush_required");
 
 // Rule 3: Rush delivery requires at least 8 engineers
-m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
 // Rule 4: Board of Directors budget cap: $50,000
 // Note: 8 engineers * $8,000 = $64,000 > $50,000 budget! (CONFLICT!)
-m.constrain(budget.le(50000), "strict_board_budget_cap");
+m.constraint(budget.le(50000), "strict_board_budget_cap");
 
 // Rule 5: Completely independent regulation (unrelated to conflict)
-m.constrain(engineers.ge(1), "minimum_one_employee");
+m.constraint(engineers.ge(1), "minimum_one_employee");
 
 // Solve feasibility & extract conflict core
 console.log("Checking rule feasibility with Z3 SMT engine...");
@@ -584,16 +584,16 @@ const taskB_s1 = m.bool("taskB_s1");
 const taskB_s2 = m.bool("taskB_s2");
 
 // Task A must be assigned to exactly one server
-m.constrain(taskA_s1.xor(taskA_s2), "taskA_assignment");
+m.constraint(taskA_s1.xor(taskA_s2), "taskA_assignment");
 // Task B must be assigned to exactly one server
-m.constrain(taskB_s1.xor(taskB_s2), "taskB_assignment");
+m.constraint(taskB_s1.xor(taskB_s2), "taskB_assignment");
 // Cannot run both Task A and Task B on Server 1 simultaneously
-m.constrain(taskA_s1.and(taskB_s1).not(), "server1_capacity");
+m.constraint(taskA_s1.and(taskB_s1).not(), "server1_capacity");
 
 // Worker hours (integer)
 const hours = m.integer("worker_hours", { lb: 1, ub: 8 });
 // If Task A is on Server 2, requires at least 4 hours
-m.constrain(taskA_s2.implies(hours.ge(4)), "s2_overtime_rule");
+m.constraint(taskA_s2.implies(hours.ge(4)), "s2_overtime_rule");
 
 console.log("Checking feasibility with Z3 SMT engine...");
 const res = await m.check({ solver: "z3" });

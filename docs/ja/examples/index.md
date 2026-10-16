@@ -6,7 +6,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 
 | サンプル | 問題クラス | ソルバー | 主な API | 概要 | コード編集 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[生産計画問題](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `c` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
+| **[生産計画問題](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
 | **[0-1 ナップサック問題](./knapsack.md)** | 0-1 MIP | HiGHS | `m.binary(keys)`, `sum()`, `m.constraint()` | 1次元キー配列からの `Binary` 変数生成と、`sum()` による配列集計。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
 | **[輸送・物流ネットワーク](./transportation.md)** | LP | HiGHS | `m.continuous(rows, cols)`, `dot()`, `m.constraint()` | `ship[factory][store]` のような2次元マトリクス変数の生成と、行・列方向のフロー保存則。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=transportation) |
 | **[栄養問題と感度分析](./diet-sensitivity.md)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解後に潜在価格（ボトルネックの特定）、余剰（スラック）、被約費用を取り出す方法。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
@@ -22,7 +22,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 
 | 機能 / API | 用途 | サンプルページ | Node.js ソースコード |
 | :--- | :--- | :--- | :--- |
-| ``m.constraint(c`...`)`` | テンプレートリテラルによる直感的な制約記述 | [生産計画問題](./production.md) | [`01-production-planning.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) |
+| ``m.constraint(expr`...`)`` | テンプレートリテラルによる直感的な制約記述 | [生産計画問題](./production.md) | [`01-production-planning.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) |
 | `m.binary(keys)` / `m.continuous(keys)` | 1次元キー辞書による決定変数の宣言 | [0-1 ナップサック問題](./knapsack.md) | [`02-knapsack-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts) |
 | `m.continuous(rows, cols)` / `m.binary(rows, cols)` | 2次元マトリクス決定変数の宣言 | [輸送・物流ネットワーク](./transportation.md), [シフト作成](./shift-scheduling.md) | [`09-transportation-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) |
 | `dot(matrix, vars2d)` / `dot(vector, vars)` | 内積・線形結合のワンライナー計算 | [輸送・物流ネットワーク](./transportation.md), [ポートフォリオ最適化](./portfolio-qp.md) | [`09-transportation-problem.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) |

@@ -141,7 +141,7 @@
             <span class="code-filename">quickstart.ts</span>
             <button class="code-copy-btn" data-copy-target="hero-code-content">Copy</button>
           </div>
-          <pre id="hero-code-content" class="code-body">import { Model, expr, c, maximize } from "@ohtaman/washi";
+          <pre id="hero-code-content" class="code-body">import { Model, expr, maximize } from "@ohtaman/washi";
 
 // 1. Create model &amp; decision variables
 const m = new Model();
@@ -150,8 +150,8 @@ const tables = m.integer("tables", { lb: 0 });
 
 // 2. Natural algebraic objective &amp; constraints
 m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
-m.constraint(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
+m.constraint(expr`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
+m.constraint(expr`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
 
 // 3. Solve instantly with HiGHS WASM
 await m.solve();
@@ -206,10 +206,10 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
               <h4 class="feature-title lang-en">Intuitive Algebraic Syntax</h4>
               <h4 class="feature-title lang-ja" style="display: none;">自然な数式・代数モデリング DX</h4>
               <p class="feature-text lang-en">
-                Formulate mathematical models using natural template expressions (<code>c`${x} + 2*${y} &lt;= 40`</code>), vector inner products (<code>dot</code>, <code>sum</code>), and typed domain variables.
+                Formulate mathematical models using natural template expressions (<code>expr`${x} + 2*${y} &lt;= 40`</code>), vector inner products (<code>dot</code>, <code>sum</code>), and typed domain variables.
               </p>
               <p class="feature-text lang-ja" style="display: none;">
-                泥臭い行列インデックス操作は不要。テンプレート式（<code>c`${x} + 2*${y} &lt;= 40`</code>）やベクトル内積（<code>dot</code>, <code>sum</code>）、型安全なドメイン変数で直感的に数式を記述できます。
+                泥臭い行列インデックス操作は不要。テンプレート式（<code>expr`${x} + 2*${y} &lt;= 40`</code>）やベクトル内積（<code>dot</code>, <code>sum</code>）、型安全なドメイン変数で直感的に数式を記述できます。
               </p>
             </div>
 
@@ -474,12 +474,12 @@ console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
             </div>
             <div class="doc-card-body">
               <p class="lang-en">
-                Formulate resource allocation problems with integer or continuous variables. Define constraints using tagged template literals (<code>c`${x} + ${y} &lt;= 50`</code>) or fluent expression chaining.
+                Formulate resource allocation problems with integer or continuous variables. Define constraints using tagged template literals (<code>expr`${x} + ${y} &lt;= 50`</code>) or fluent expression chaining.
               </p>
               <p class="lang-ja" style="display: none;">
-                整数変数や実数変数を用いたリソース配分問題。テンプレートリテラル記法（<code>c`${x} + ${y} &lt;= 50`</code>）または流れるようなメソッドチェーンで直感的に制約を記述できます。
+                整数変数や実数変数を用いたリソース配分問題。テンプレートリテラル記法（<code>expr`${x} + ${y} &lt;= 50`</code>）または流れるようなメソッドチェーンで直感的に制約を記述できます。
               </p>
-              <pre class="doc-code-block">import { Model, expr, c, maximize } from "@ohtaman/washi";
+              <pre class="doc-code-block">import { Model, expr, maximize } from "@ohtaman/washi";
 
 const m = new Model("FactoryPlanning");
 
@@ -489,8 +489,8 @@ const tables = m.integer("tables", { lb: 0 });
 
 // Natural objective &amp; constraints
 m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(c`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
-m.constraint(c`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
+m.constraint(expr`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
+m.constraint(expr`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
 
 // Solve natively in browser WebAssembly
 const status = await m.solve();
@@ -606,7 +606,7 @@ console.log("Conflicting Rules:", res.conflicts);
               <p class="lang-ja" style="display: none;">
                 多変数の構造化マップを定義し、ドメイン型（<code>integer</code>, <code>continuous</code>, <code>dot</code>, <code>expr</code>）を用いて直感的に制約を記述できます：
               </p>
-              <pre class="doc-code-block">import { Model, expr, c, dot, maximize } from "@ohtaman/washi";
+              <pre class="doc-code-block">import { Model, expr, dot, maximize } from "@ohtaman/washi";
 
 const m = new Model({ name: "Woodworking" });
 const items = ["chairs", "tables"] as const;
@@ -618,8 +618,8 @@ const x = m.integer(items, { lb: 0 });
 
 // Dot product &amp; natural constraints
 m.objective(maximize(dot(profits, x)));
-m.constraint(c`${dot(woodCost, x)} &lt;= 40`, "wood_limit");
-m.constraint(c`2 * ${x.chairs} + ${x.tables} &lt;= 50`, "labor_limit");
+m.constraint(expr`${dot(woodCost, x)} &lt;= 40`, "wood_limit");
+m.constraint(expr`2 * ${x.chairs} + ${x.tables} &lt;= 50`, "labor_limit");
 
 await m.solve();
 console.log(`Profit: $${m.objectiveValue}`); // 1100

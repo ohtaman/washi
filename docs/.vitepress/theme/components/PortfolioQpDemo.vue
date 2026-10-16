@@ -45,17 +45,17 @@ async function solvePortfolio() {
   isSolving.value = true;
   try {
     const t0 = performance.now();
-    const { Model, sum, dot, expr, QuadExpr } = await getWashiClient(false);
+    const { Model, sum, dot, expr, minimize, QuadExpr } = await getWashiClient(false);
 
     const m = new Model("PortfolioQP5");
     const assetIds = assets.map((a) => a.id);
     const w = m.continuous(assetIds, { lb: 0, ub: 0.6 });
 
-    m.constrain(expr`${sum(assetIds, (id) => w[id])} == 1.0`, "full_invest");
+    m.constraint(expr`${sum(assetIds, (id) => w[id])} == 1.0`, "full_invest");
 
     const targetRet = minReturnPct.value / 100;
     const retMap = Object.fromEntries(assets.map((a) => [a.id, a.ret]));
-    m.constrain(expr`${dot(retMap, w)} >= ${targetRet}`, "target_return");
+    m.constraint(expr`${dot(retMap, w)} >= ${targetRet}`, "target_return");
 
     let risk = new QuadExpr();
     for (let i = 0; i < assets.length; i++) {
@@ -66,8 +66,8 @@ async function solvePortfolio() {
       }
     }
 
-    m.minimize(risk);
-    const status = await m.optimize();
+    m.objective(minimize(risk));
+    const status = await m.solve();
     solveTimeMs.value = performance.now() - t0;
 
     if (status === "Optimal") {

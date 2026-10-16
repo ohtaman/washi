@@ -15,15 +15,15 @@ export const DOCS_HTML = `
       <div class="code-title">ブラウザ標準 ESM (ビルド済み配布物の配信利用)</div>
       <pre><code>&lt;script type="module"&gt;
   // dist/browser 一式を自社 HTTP サーバー等から配信して読み込みます
-  import { Model, expr, c, maximize } from "./dist/browser/washi.js";
+  import { Model, expr, maximize } from "./dist/browser/washi.js";
 
   const m = new Model("Production");
   const x = m.integer("x", { lb: 0 });
   const y = m.integer("y", { lb: 0 });
 
   m.objective(maximize(expr\`30 * \${x} + 50 * \${y}\`));
-  m.constraint(c\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
-  m.constraint(c\`2 * \${x} + \${y} &lt;= 50\`, "c2");
+  m.constraint(expr\`\${x} + 2 * \${y} &lt;= 40\`, "c1");
+  m.constraint(expr\`2 * \${x} + \${y} &lt;= 50\`, "c2");
 
   const status = await m.solve({ useWorker: false });
   console.log("最適目的関数値:", m.objectiveValue); // 1100
@@ -88,13 +88,13 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
         </tr>
         <tr>
           <td><strong>数式・制約の記述</strong></td>
-          <td><code>expr\`...\`</code> / <code>c\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
-          <td>タグ付きテンプレートリテラルによる算術式（<code>expr</code>）と比較制約（<code>c</code>）。</td>
+          <td><code>expr\`30 * \${x} + 50 * \${y}\`</code> / <code>expr\`\${x} + 2 * \${y} &lt;= 40\`</code></td>
+          <td>単一のタグ付きテンプレートリテラル（<code>expr</code>）による算術式と比較制約の記述。</td>
         </tr>
         <tr>
           <td><strong>制約の追加</strong></td>
-          <td><code>m.constraint(c\`...\`, "name")</code></td>
-          <td>宣言的な制約追加メソッド。配列渡しやチェーン記法にも対応。</td>
+          <td><code>m.constraint(expr\`...\`, "name")</code></td>
+          <td>宣言的な制約追加メソッド。単一制約または配列渡しに対応。</td>
         </tr>
         <tr>
           <td><strong>目的関数の設定</strong></td>
@@ -133,7 +133,7 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
       <li><strong>標準 CPLEX LP フォーマット完全準拠</strong>: <code>m.toLpString()</code> により、HiGHS や Gurobi、CPLEX、SCIP、GLPK でそのまま扱える標準 LP 構文のテキストを生成・検査できます。</li>
       <li><strong>双対変数（シャドウプライス）と被約費用</strong>: <code>constraint.dual</code> および <code>var.reducedCost</code> により、経済的評価や感度分析が可能です。</li>
       <li><strong>多次元変数マトリクス</strong>: <code>m.binary(rows, cols)</code> により、配属問題や輸送問題の多次元変数を直感的に一括生成できます。</li>
-      <li><strong>ソルバー切り替え機能（非依存性）</strong>: HiGHS への密結合ではなく、<code>m.optimize(new HiGHS())</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジン（自社バックエンド API 等）を共通インターフェースで自由に差し替えられます。</li>
+      <li><strong>ソルバー切り替え機能（非依存性）</strong>: HiGHS への密結合ではなく、<code>m.solve(new HiGHS())</code>、<code>MockSolver</code>、あるいは任意の独自ソルバーエンジン（自社バックエンド API 等）を共通インターフェースで自由に差し替えられます。</li>
     </ul>
   </div>
 
@@ -147,13 +147,13 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
       <pre><code>import { Model, HiGHS, MockSolver } from "@ohtaman/washi";
 
 // 1. デフォルトソルバー (HiGHS WebAssembly) で解く
-await m.optimize();
+await m.solve();
 
 // 2. オプションを指定した明示的な HiGHS インスタンスで解く
-await m.optimize(new HiGHS({ timeLimit: 30, mipGap: 0.01 }));
+await m.solve(new HiGHS({ timeLimit: 30, mipGap: 0.01 }));
 
 // 3. テスト・CI 用 Mock ソルバー（WASM を読み込まず即座に擬似解を返却）
-await m.optimize(new MockSolver({
+await m.solve(new MockSolver({
   status: "Optimal",
   values: { x: 10, y: 20 },
   objectiveValue: 100
@@ -173,7 +173,7 @@ const myBackendSolver = {
     return { status: data.status, objectiveValue: data.obj, values: data.solution };
   }
 };
-await m.optimize(myBackendSolver);
+await m.solve(myBackendSolver);
 </code></pre>
     </div>
   </div>

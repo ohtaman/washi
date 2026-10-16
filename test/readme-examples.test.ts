@@ -1,14 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  Model,
-  expr,
-  c,
-  sum,
-  dot,
-  not,
-  QuadExpr,
-  HiGHS,
-} from "../src/index.js";
+import { Model, expr, sum, dot, not, QuadExpr, HiGHS, maximize, minimize } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
 import "../src/modeler/solvers/glpk/index.js";
 
@@ -18,11 +9,11 @@ describe("README.md Code Snippets Validation", () => {
     const chairs = m.integer("chairs", { lb: 0 });
     const tables = m.integer("tables", { lb: 0 });
 
-    m.maximize(expr`30 * ${chairs} + 50 * ${tables}`);
-    m.constrain(c`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-    m.constrain(c`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
+    m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+    m.constraint(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
+    m.constraint(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
     expect(chairs.value).toBe(20);
@@ -54,16 +45,16 @@ describe("README.md Code Snippets Validation", () => {
     const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 500 });
 
     // If Tokyo is closed (0), flow to StoreA must be <= 0
-    m.indicator(openCity["Tokyo"], c`${flow["F1"]["StoreA"]} <= 0`, {
+    m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
       activeValue: 0,
       M: 1000,
     });
 
     // Close Tokyo factory
-    m.constrain(c`${openCity["Tokyo"]} == 0`);
-    m.maximize(flow["F1"]["StoreA"]);
+    m.constraint(expr`${openCity["Tokyo"]} == 0`);
+    m.objective(maximize(flow["F1"]["StoreA"]));
 
-    await m.optimize();
+    await m.solve();
     expect(flow["F1"]["StoreA"].value).toBeCloseTo(0);
   });
 
@@ -76,11 +67,11 @@ describe("README.md Code Snippets Validation", () => {
     const w = m.continuous(assets, { lb: 0, ub: 1 });
 
     // 1. Fully invested budget: sum(w) == 1.0
-    m.constrain(c`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+    m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
 
     // 2. Minimum target return: portfolio return >= 8.5%
     const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-    m.constrain(c`${dot(retMap, w)} >= 0.085`, "min_return");
+    m.constraint(expr`${dot(retMap, w)} >= 0.085`, "min_return");
 
     // 3. Covariance risk matrix
     const cov = [
@@ -96,9 +87,9 @@ describe("README.md Code Snippets Validation", () => {
         risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
       }
     }
-    m.minimize(risk);
+    m.objective(minimize(risk));
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBeGreaterThan(0);
     const totalAllocated = assets.reduce((acc, a) => acc + (w[a].value || 0), 0);
@@ -115,13 +106,13 @@ describe("README.md Code Snippets Validation", () => {
     const lux = m.integer("lux", { lb: 0 });
 
     // Logical rules
-    m.constrain(lux.le(50).implies(isNight), "dark_implies_night");
-    m.constrain(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
+    m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
+    m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
     // Current sensor observations
-    m.constrain(c`${lux} <= 10`, "sensor_dark");
-    m.constrain(motion, "sensor_motion");
-    m.constrain(alarm, "alarm_on");
+    m.constraint(expr`${lux} <= 10`, "sensor_dark");
+    m.constraint(motion, "sensor_motion");
+    m.constraint(alarm, "alarm_on");
 
     // Check satisfiability without objective
     const res = await m.check({ solver: "z3" });
@@ -137,19 +128,19 @@ describe("README.md Code Snippets Validation", () => {
     const rushDelivery = m.bool("rushDelivery");
 
     // Rule 1: Each engineer costs $8,000
-    m.constrain(c`8000 * ${engineers} <= ${budget}`, "budget_limit");
+    m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 
     // Rule 2: Customer requires rush delivery
-    m.constrain(rushDelivery, "rush_required");
+    m.constraint(rushDelivery, "rush_required");
 
     // Rule 3: Rush delivery requires at least 8 engineers
-    m.constrain(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+    m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
 
     // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
-    m.constrain(c`${budget} <= 50000`, "strict_board_budget_cap");
+    m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 
     // Rule 5: Minimum 1 employee regulation (innocent bystander rule)
-    m.constrain(c`${engineers} >= 1`, "minimum_one_employee");
+    m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
     const res = await m.check({ solver: "z3" });
     expect(res.status).toBe("Unsat");
@@ -167,11 +158,11 @@ describe("README.md Code Snippets Validation", () => {
     const x = m.integer("x", { lb: 0 });
     const y = m.integer("y", { lb: 0 });
 
-    m.maximize(expr`30 * ${x} + 50 * ${y}`);
-    m.constrain(c`${x} + 2 * ${y} <= 40`);
-    m.constrain(c`2 * ${x} + ${y} <= 50`);
+    m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+    m.constraint(expr`${x} + 2 * ${y} <= 40`);
+    m.constraint(expr`2 * ${x} + ${y} <= 50`);
 
-    const status = await m.optimize(new HiGHS());
+    const status = await m.solve(new HiGHS());
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
     expect(x.value).toBe(20);
@@ -183,11 +174,11 @@ describe("README.md Code Snippets Validation", () => {
     const x = m.integer("x", { lb: 0 });
     const y = m.integer("y", { lb: 0 });
 
-    m.maximize(expr`30 * ${x} + 50 * ${y}`);
-    m.constrain(c`${x} + 2 * ${y} <= 40`, "wood_limit");
-    m.constrain(c`2 * ${x} + ${y} <= 50`, "labor_limit");
+    m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+    m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
+    m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
 
-    const status = await m.optimize();
+    const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
     expect(x.value).toBe(20);
@@ -203,14 +194,14 @@ describe("README.md Code Snippets Validation", () => {
       const complianceGDPR = policyModel.bool("complianceGDPR");
       const budgetTierHigh = policyModel.bool("budgetTierHigh");
 
-      policyModel.constrain(deployEurope.implies(complianceGDPR), "r1_gdpr");
-      policyModel.constrain(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
-      policyModel.constrain(deployEurope).constrain(deployUS).constrain(complianceGDPR);
+      policyModel.constraint(deployEurope.implies(complianceGDPR), "r1_gdpr");
+      policyModel.constraint(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
+      policyModel.constraint(deployEurope).constraint(deployUS).constraint(complianceGDPR);
 
       if (forceConflict) {
-        policyModel.constrain(budgetTierHigh.not(), "r3_low_budget_cap");
+        policyModel.constraint(budgetTierHigh.not(), "r3_low_budget_cap");
       } else {
-        policyModel.constrain(budgetTierHigh, "r3_high_budget_approved");
+        policyModel.constraint(budgetTierHigh, "r3_high_budget_approved");
       }
 
       const checkRes = await policyModel.check();
@@ -226,20 +217,20 @@ describe("README.md Code Snippets Validation", () => {
 
       // Carry over SMT-verified deployment decisions into MIP (Issue #34)
       if (deployEurope.value ?? true) {
-        mip.constrain(openEU.eq(1), "enforce_eu_deployment");
+        mip.constraint(openEU.eq(1), "enforce_eu_deployment");
       }
       if (deployUS.value ?? true) {
-        mip.constrain(openUS.eq(1), "enforce_us_deployment");
+        mip.constraint(openUS.eq(1), "enforce_us_deployment");
       }
 
       mip.indicator(openEU, capEU.le(0), { activeValue: 0, M: 500 });
       mip.indicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
       mip.indicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
       mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500 });
-      mip.constrain(c`${capEU} + ${capUS} >= 450`);
-      mip.minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`);
+      mip.constraint(expr`${capEU} + ${capUS} >= 450`);
+      mip.objective(minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`));
 
-      const mipStatus = await mip.optimize();
+      const mipStatus = await mip.solve();
       return {
         halted: false,
         status: checkRes.status,

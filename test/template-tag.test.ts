@@ -5,13 +5,21 @@ import {
   LinExpr,
   Constraint,
   QuadExpr,
-  c,
   expr,
+  maximize,
+  minimize,
+  sum,
+  dot,
+  and,
+  or,
+  not,
+  implies,
+  xor,
   parseExpr,
   parseConstraint,
 } from "../src/index.js";
 
-describe("Tagged Template Literal Syntax (c and expr)", () => {
+describe("Unified Tagged Template Literal Syntax (expr)", () => {
   it("parses linear expression with variables and numbers via expr`...`", () => {
     const m = new Model("TestModel");
     const x = m.continuous("x");
@@ -38,59 +46,62 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(e.constant).toBe(-20);
   });
 
-  it("parses inequality constraints via c`... <= ...`", () => {
+  it("parses inequality constraints via expr`... <= ...`", () => {
     const m = new Model("TestModel");
     const x = m.continuous("x");
     const y = m.continuous("y");
 
-    // c`${x} + 2 * ${y} <= 10`
-    const constr = c`${x} + 2 * ${y} <= 10`;
+    // expr`${x} + 2 * ${y} <= 10`
+    const constr = expr`${x} + 2 * ${y} <= 10` as Constraint;
 
+    expect(constr).toBeInstanceOf(Constraint);
     expect(constr.sense).toBe("<=");
     expect(constr.rhs).toBe(10);
     expect(constr.lhs.terms.get(x)).toBe(1);
     expect(constr.lhs.terms.get(y)).toBe(2);
   });
 
-  it("parses greater-than-or-equal constraints via c`... >= ...`", () => {
+  it("parses greater-than-or-equal constraints via expr`... >= ...`", () => {
     const m = new Model("TestModel");
     const x = m.continuous("x");
     const y = m.continuous("y");
 
-    // c`3 * ${x} - ${y} >= 5`
-    const constr = c`3 * ${x} - ${y} >= 5`;
+    // expr`3 * ${x} - ${y} >= 5`
+    const constr = expr`3 * ${x} - ${y} >= 5` as Constraint;
 
+    expect(constr).toBeInstanceOf(Constraint);
     expect(constr.sense).toBe(">=");
     expect(constr.rhs).toBe(5);
     expect(constr.lhs.terms.get(x)).toBe(3);
     expect(constr.lhs.terms.get(y)).toBe(-1);
   });
 
-  it("parses equality constraints with variables on both sides via c`... == ...`", () => {
+  it("parses equality constraints with variables on both sides via expr`... == ...`", () => {
     const m = new Model("TestModel");
     const x = m.continuous("x");
     const y = m.continuous("y");
 
-    // c`${x} == 2 * ${y} + 4` => x - 2*y == 4
-    const constr = c`${x} == 2 * ${y} + 4`;
+    // expr`${x} == 2 * ${y} + 4` => x - 2*y == 4
+    const constr = expr`${x} == 2 * ${y} + 4` as Constraint;
 
+    expect(constr).toBeInstanceOf(Constraint);
     expect(constr.sense).toBe("==");
     expect(constr.rhs).toBe(4);
     expect(constr.lhs.terms.get(x)).toBe(1);
     expect(constr.lhs.terms.get(y)).toBe(-2);
   });
 
-  it("solves an optimization problem formulated cleanly using c`...` and expr`...`", async () => {
+  it("solves an optimization problem formulated cleanly using unified expr`...` without casts", async () => {
     const m = new Model("ProductionPlanningTTL");
     const chairs = m.integer("chairs", { lb: 0 });
     const tables = m.integer("tables", { lb: 0 });
 
-    // Objective: Maximize profit 45 * chairs + 80 * tables
-    m.maximize(expr`45 * ${chairs} + 80 * ${tables}`);
+    // Objective: Maximize profit 45 * chairs + 80 * tables (no casts required)
+    m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-    // Constraints via c`...`
-    m.constrain(c`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany");
-    m.constrain(c`10 * ${chairs} + 15 * ${tables} <= 450`, "labor");
+    // Constraints via expr`...` (no casts required)
+    m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany");
+    m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor");
 
     const status = await m.solve();
 
@@ -105,7 +116,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     const x = m.continuous("x");
     const y = m.continuous("y");
 
-    const constr = c`0.25 * ${x} + 1.75 * ${y} <= 12.5`;
+    const constr = expr`0.25 * ${x} + 1.75 * ${y} <= 12.5` as Constraint;
     expect(constr.lhs.terms.get(x)).toBeCloseTo(0.25);
     expect(constr.lhs.terms.get(y)).toBeCloseTo(1.75);
     expect(constr.rhs).toBeCloseTo(12.5);
@@ -114,12 +125,22 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
   it("throws clear error on malformed constraint expressions", () => {
     const m = new Model();
     const x = m.continuous("x");
+    const xResolver = (name: string) => (name === "x" ? x : undefined);
 
-    // Missing comparison operator
-    expect(() => c`2 * ${x} + 5`).toThrow(/Constraint must contain a comparison operator/);
+    // Missing comparison operator in parseConstraint
+    expect(() => parseConstraint("2 * x + 5", xResolver)).toThrow(
+      /Constraint must contain a comparison operator/
+    );
+    // Strict inequality operators are rejected
+    expect(() => expr`${x} < 10`).toThrow(
+      /Unexpected token '<'/
+    );
+    expect(() => expr`${x} > 10`).toThrow(
+      /Unexpected token '>'/
+    );
   });
 
-  it("supports quadratic expressions and rejects degree > 2 or quadratic constraints in expr and c", () => {
+  it("supports quadratic expressions and rejects degree > 2 or quadratic constraints in expr", () => {
     const m = new Model();
     const x = m.continuous("x");
     const y = m.continuous("y");
@@ -145,7 +166,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${x}^3`).toThrow(
       /non-linear term of degree > 2/
     );
-    expect(() => c`${x} * ${y} <= 10`).toThrow(
+    expect(() => expr`${x} * ${y} <= 10`).toThrow(
       /Quadratic constraints are not supported/
     );
   });
@@ -157,21 +178,20 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
     // 1. Linear combination: 3*x + 5*y - 10
     const linearExpr = expr`3 * ${x} + 5 * ${y} - 10` as LinExpr;
+    expect(linearExpr).toBeInstanceOf(LinExpr);
     expect(linearExpr.terms.get(x)).toBe(3);
     expect(linearExpr.terms.get(y)).toBe(5);
     expect(linearExpr.constant).toBe(-10);
 
     // 2. Quadratic expression: x * y + 2 * x^2
     const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}` as QuadExpr;
+    expect(quadExpr).toBeInstanceOf(QuadExpr);
     expect(quadExpr.getQuadCoeff(x, y)).toBe(1);
     expect(quadExpr.getQuadCoeff(x, x)).toBe(2);
 
-    // 3. Inline linear constraint rejection in expr`...` and acceptance in c`...`
-    expect(() => expr`${x} + 2 * ${y} <= 40`).toThrow(
-      /Relational comparison operators/
-    );
-
-    const balanceConstraint = c`${x} + 2 * ${y} <= 40`;
+    // 3. Inline linear constraint in unified expr`...`
+    const balanceConstraint = expr`${x} + 2 * ${y} <= 40` as Constraint;
+    expect(balanceConstraint).toBeInstanceOf(Constraint);
     expect(balanceConstraint.sense).toBe("<=");
     expect(balanceConstraint.rhs).toBe(40);
     expect(balanceConstraint.lhs.terms.get(x)).toBe(1);
@@ -199,7 +219,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(negPowerExpr.constant).toBe(4);
     expect(negPowerExpr.getQuadCoeff(x, x)).toBe(3);
 
-    const expConstr = c`${1e-7} * ${x} - ${5e-6} * ${y} <= ${2.5e-4}`;
+    const expConstr = expr`${1e-7} * ${x} - ${5e-6} * ${y} <= ${2.5e-4}` as Constraint;
     expect(expConstr.lhs.terms.get(x)).toBe(1e-7);
     expect(expConstr.lhs.terms.get(y)).toBe(-5e-6);
     expect(expConstr.rhs).toBe(2.5e-4);
@@ -296,7 +316,7 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
 
     expect(() => expr`${NaN} * ${x}`).toThrow(/interpolated numbers must be finite/);
     expect(() => expr`${Infinity} * ${x}`).toThrow(/interpolated numbers must be finite/);
-    expect(() => c`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
+    expect(() => expr`${x} <= ${-Infinity}`).toThrow(/interpolated numbers must be finite/);
 
     // Signed zero preserved through scalar multiplication
     expect(Object.is((expr`${-0} * 1` as LinExpr).constant, -0)).toBe(true);
@@ -323,10 +343,10 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${x.mul(NaN).add(x.mul(1))}`).toThrow(/Invalid non-finite coefficient/);
 
     // Post-normalization overflow in constraints
-    expect(() => c`${Number.MAX_VALUE} <= ${-Number.MAX_VALUE}`).toThrow(
+    expect(() => expr`${Number.MAX_VALUE} <= ${-Number.MAX_VALUE}`).toThrow(
       /Invalid non-finite right-hand side/
     );
-    expect(() => c`${Number.MAX_VALUE} * ${x} <= ${-Number.MAX_VALUE} * ${x}`).toThrow(
+    expect(() => expr`${Number.MAX_VALUE} * ${x} <= ${-Number.MAX_VALUE} * ${x}`).toThrow(
       /Invalid non-finite coefficient/
     );
 
@@ -341,6 +361,208 @@ describe("Tagged Template Literal Syntax (c and expr)", () => {
     expect(() => expr`${"x" as unknown as number} + 1`).toThrow(/Unsupported interpolation value/);
     expect(() => expr`${b as unknown as Var} + 1`).toThrow(/Unsupported interpolation value/);
     expect(() => expr`${new LinExpr(new Map(), NaN)} + ${x}`).toThrow(/Invalid non-finite constant/);
+    expect(() => expr`2 * ${expr`${x} <= 5`}`).toThrow(
+      /Cannot interpolate a constraint comparison/
+    );
+  });
+
+  it("enforces transactional context validation for unified expr`...` across objectives, constraints, indicators, sum, and logic", async () => {
+    const m = new Model("ContextValidation");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 10 });
+    const z = m.binary("z");
+    const p = m.bool("p");
+
+    // Set initial valid model state and solve
+    m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
+    m.constraint(expr`${x} + ${y} <= 8`, "cap");
+    const status = await m.solve();
+    expect(status).toBe("Optimal");
+    expect(m.objectiveValue).toBeCloseTo(24);
+    expect(m.constraints).toHaveLength(1);
+
+    // 1. Objective contexts must reject Constraint inputs immediately without mutating model state
+    expect(() => maximize(expr`${x} <= 5`)).toThrow(/Cannot use a Constraint as an objective/);
+    expect(() => minimize(expr`${x} >= 2`)).toThrow(/Cannot use a Constraint as an objective/);
+    expect(() => maximize("x <= 5")).toThrow(/Cannot use a comparison constraint as an objective/);
+    expect(() => minimize("x == 5")).toThrow(/Cannot use a comparison constraint as an objective/);
+    expect(() => m.objective({ expr: expr`${x} <= 5`, sense: "maximize" })).toThrow(
+      /Cannot use a Constraint as an objective/
+    );
+    expect(() => {
+      m.objectiveExpr = expr`${x} <= 5`;
+    }).toThrow(/Cannot use a Constraint as an objective/);
+    expect(() => m.objective({ expr: "x <= 5" as any, sense: "minimize" })).toThrow(
+      /Cannot use a comparison constraint as an objective/
+    );
+
+    // Verify objective and solved state were NOT corrupted
+    expect(m.sense).toBe("Maximize");
+    expect(m.objectiveValue).toBeCloseTo(24);
+    expect(x.value).toBeCloseTo(8);
+
+    // 2. Constraint and indicator contexts must reject arithmetic expressions without comparison operators
+    expect(() => m.constraint(expr`2 * ${x} + ${y}`, "bad_constr")).toThrow(
+      /Constraint must contain a comparison operator/
+    );
+    expect(() => m.constraint([expr`2 * ${x} + ${y}`])).toThrow(
+      /Constraint must contain a comparison operator/
+    );
+    expect(() => m.indicator(z, expr`2 * ${x} + ${y}`)).toThrow(
+      /Invalid constraint expression passed to indicator\(\)\. Expression must include a comparison operator/
+    );
+
+    // Verify constraints and solved state were NOT corrupted
+    expect(m.constraints).toHaveLength(1);
+    expect(m.objectiveValue).toBeCloseTo(24);
+
+    // 3. sum() must reject Constraint and non-zero QuadExpr in callback and array forms
+    expect(() => sum([1, 2], (i) => expr`${x} <= ${i}`)).toThrow(
+      /Cannot sum a constraint comparison/
+    );
+    expect(() => sum([expr`${x} <= 1`])).toThrow(
+      /Cannot sum a constraint comparison/
+    );
+    expect(() => sum([1, 2], (i) => expr`${i} * ${x}^2`)).toThrow(
+      /Quadratic expressions are not supported in sum/
+    );
+
+    // 4. Propositional logic combinators must accept comparison expr`...` and reject arithmetic expr`...`
+    const validLogic = implies(p, expr`${x} >= 4`);
+    expect(validLogic.op).toBe("implies");
+
+    expect(() => implies(p, expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+    expect(() => and(p, expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+    expect(() => or(p, expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+    expect(() => not(expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+    expect(() => xor(p, expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+    expect(() => p.and(expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+    expect(() => p.implies(expr`2 * ${x}`)).toThrow(
+      /Cannot use an arithmetic expression without a comparison operator/
+    );
+  });
+
+  it("supports direct arithmetic, comparison, and logical method chaining on expr`...` results and .kind narrowing without casts", () => {
+    const m = new Model("ChainingOnExpr");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 10 });
+    const p = m.bool("p");
+
+    // Direct arithmetic chaining on stored expr result: const cost = expr`${x} + 1`; cost.add(2)
+    const cost = expr`${x} + 1`;
+    const totalCost = cost.add(2).sub(expr`0.5 * ${y}`).mul(2).div(2);
+    expect(totalCost.kind).toBe("linear");
+    if (totalCost.kind === "linear") {
+      expect(totalCost.terms.get(x)).toBe(1);
+      expect(totalCost.terms.get(y)).toBe(-0.5);
+      expect(totalCost.constant).toBe(3);
+    }
+
+    // Method-DSL operands accepting ParsedExpr directly
+    const varPlusExpr = x.add(cost);
+    expect(varPlusExpr.kind).toBe("linear");
+    if (varPlusExpr.kind === "linear") {
+      expect(varPlusExpr.terms.get(x)).toBe(2);
+      expect(varPlusExpr.constant).toBe(1);
+    }
+
+    // Direct comparison chaining on stored expr result
+    const c1 = cost.le(10, "cost_le");
+    expect(c1.kind).toBe("constraint");
+    expect(c1.sense).toBe("<=");
+    expect(c1.rhs).toBe(9);
+    expect(c1.lhs.terms.get(x)).toBe(1);
+
+    const c2 = x.ge(cost, "x_ge_cost");
+    expect(c2.sense).toBe(">=");
+    expect(c2.rhs).toBe(1);
+
+    // Direct common expression members on stored expr result: value, clone(), constant
+    x.value = 3;
+    expect(cost.constant).toBe(1);
+    expect(cost.value).toBe(4);
+    const clonedCost = cost.clone();
+    expect(clonedCost.constant).toBe(1);
+    expect(clonedCost.value).toBe(4);
+
+    // Direct logical chaining and clone() on stored constraint expr result
+    const guard = expr`${x} >= 4`;
+    const logic = guard.implies(p);
+    expect(logic.op).toBe("implies");
+    const clonedGuard = guard.clone();
+    expect(clonedGuard.kind).toBe("constraint");
+
+    // Runtime guards when chaining arithmetic/comparison/value/constant on a Constraint or logical methods on an arithmetic Expr
+    expect(() => guard.add(1)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.sub(1)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.mul(2)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.div(2)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.neg()).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => guard.le(5)).toThrow(/Cannot compare a Constraint/);
+    expect(() => guard.value).toThrow(/Cannot read numeric value of a Constraint/);
+    expect(() => guard.constant).toThrow(/Cannot read numeric constant of a Constraint/);
+    expect(() => x.add(guard)).toThrow(/Cannot perform arithmetic on a Constraint/);
+    expect(() => x.le(guard)).toThrow(/Cannot compare against a Constraint/);
+    expect(() => cost.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+    expect(() => cost.implies(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+    expect(() => expr`${x}^2`.le(10)).toThrow(/Quadratic expressions are not supported in linear constraints/);
+    expect(() => expr`${x}^2`.and(p)).toThrow(/Cannot use an arithmetic expression without a comparison operator/);
+    expect(() => dot([1], [guard as any])).toThrow(
+      /Cannot multiply number by non-variable\/expression operand in dot/
+    );
+    const foreignConstraint = {
+      kind: "constraint",
+      id: 1,
+      name: "c_1",
+      sense: "<=",
+      lhs: new LinExpr(),
+      rhs: 5,
+      mul: () => {},
+      le: () => {},
+    };
+    expect(() => dot([1], [foreignConstraint as any])).toThrow(
+      /Cannot multiply number by non-variable\/expression operand in dot/
+    );
+    for (const op of ["add", "sub", "mul", "div"] as const) {
+      expect(() => cost[op](foreignConstraint as any)).toThrow(
+        /Cannot perform arithmetic on a Constraint/
+      );
+      expect(() => expr`${x}^2`[op](foreignConstraint as any)).toThrow(
+        /Cannot perform arithmetic on a Constraint/
+      );
+    }
+    const senseLhsDot = dot({ sense: 2, lhs: 3 }, { sense: x, lhs: y });
+    expect(senseLhsDot.terms.get(x)).toBe(2);
+    expect(senseLhsDot.terms.get(y)).toBe(3);
+    expect(() => and({ sense: "<=", lhs: new LinExpr(), rhs: 5 } as any)).toThrow(
+      /Invalid operand passed to logical operator/
+    );
+
+    // Structural objective validation rejects partial objects and normalizes complete structural objects without clone()
+    expect(() => maximize({ terms: new Map() } as any)).toThrow(/Invalid expression passed to maximize/);
+    expect(() => minimize({ quadTerms: new Map() } as any)).toThrow(/Invalid expression passed to minimize/);
+    expect(() => m.objective({ expr: { terms: new Map() } as any, sense: "Maximize" })).toThrow(/Invalid objective expression/);
+    expect(() => m.objective({ expr: { quadTerms: new Map() } as any, sense: "Minimize" })).toThrow(/Invalid objective expression/);
+
+    const structuralLin = { terms: new Map([[x, 2]]), constant: 5 };
+    m.objective(maximize(structuralLin as any));
+    expect(m.objectiveExpr.constant).toBe(5);
   });
 });
+
+
+
+
 

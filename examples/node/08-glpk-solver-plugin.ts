@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/08-glpk-solver-plugin.ts
  */
 
-import { Model, expr, c, minimize } from "../../src/index.js";
+import { Model, expr, minimize } from "../../src/index.js";
 // In your application, import: import "@ohtaman/washi/solvers/glpk";
 import "../../src/modeler/solvers/glpk.js";
 
@@ -28,9 +28,9 @@ async function main() {
 
   // Nutritional requirements:
   // Calories >= 2000, Protein >= 70g, Calcium >= 800mg
-  model.constraint(c`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories")
-       .constraint(c`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein")
-       .constraint(c`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
+  model.constraint(expr`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories")
+       .constraint(expr`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein")
+       .constraint(expr`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
 
   console.log("Solving with GLPK...");
   const status = await model.solve();

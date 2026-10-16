@@ -3,7 +3,7 @@ import { Var } from "../src/modeler/variable.js";
 import { LinExpr } from "../src/modeler/expression.js";
 import { QuadExpr } from "../src/modeler/quad-expr.js";
 import { Constraint } from "../src/modeler/constraint.js";
-import { parseExpr, parseConstraint, expr, c } from "../src/modeler/parser.js";
+import { parseExpr, parseConstraint, expr } from "../src/modeler/parser.js";
 
 describe("Algebraic Parser & DSL", () => {
   const x = new Var({ name: "x" });
@@ -92,22 +92,18 @@ describe("Algebraic Parser & DSL", () => {
     );
   });
 
-  it("evaluates tagged template literal expr`...` for expressions and rejects constraints", () => {
+  it("evaluates unified tagged template literal expr`...` for both expressions and constraints", () => {
     const e = expr`30 * ${x} + 50 * ${y} - 5`;
-    expect("terms" in e).toBe(true);
-    if ("terms" in e) {
+    expect(e).toBeInstanceOf(LinExpr);
+    if (e instanceof LinExpr) {
       expect(e.terms.get(x)).toBe(30);
       expect(e.terms.get(y)).toBe(50);
       expect(e.constant).toBe(-5);
     }
 
-    expect(() => expr`${x} + 2 * ${y} <= 40`).toThrow(
-      /Relational comparison operators/
-    );
-
-    const cConstr = c`${x} + 2 * ${y} <= 40`;
-    expect("lhs" in cConstr).toBe(true);
-    if ("lhs" in cConstr) {
+    const cConstr = expr`${x} + 2 * ${y} <= 40`;
+    expect(cConstr).toBeInstanceOf(Constraint);
+    if (cConstr instanceof Constraint) {
       expect(cConstr.sense).toBe("<=");
       expect(cConstr.rhs).toBe(40);
       expect(cConstr.lhs.terms.get(x)).toBe(1);

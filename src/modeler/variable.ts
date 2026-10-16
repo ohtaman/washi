@@ -14,11 +14,16 @@ export interface VarOptions {
 }
 
 function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
-  if (!type) return "Continuous";
-  const lower = type.toLowerCase();
-  if (lower === "binary" || lower === "bin") return "Binary";
-  if (lower === "integer" || lower === "int") return "Integer";
-  return "Continuous";
+  if (type === undefined) return "Continuous";
+  if (typeof type === "string") {
+    const lower = type.toLowerCase();
+    if (lower === "binary" || lower === "bin") return "Binary";
+    if (lower === "integer" || lower === "int") return "Integer";
+    if (lower === "continuous" || lower === "cont") return "Continuous";
+  }
+  throw new Error(
+    `Invalid variable type "${String(type)}": expected "Continuous", "Integer", or "Binary".`
+  );
 }
 
 /**
@@ -65,9 +70,10 @@ export class Var {
     return this._type;
   }
 
-  set type(val: "Continuous" | "Integer" | "Binary") {
-    if (this._type !== val) {
-      this._type = val;
+  set type(val: VarType) {
+    const normalized = normalizeVarType(val);
+    if (this._type !== normalized) {
+      this._type = normalized;
       this.ownerModel?.notifyMutation?.();
     }
   }
@@ -104,8 +110,8 @@ export class Var {
   mul(other: Var): QuadExpr;
   mul(other: LinExpr): QuadExpr;
   mul(other: QuadExpr): QuadExpr;
-  mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr;
-  mul(other: number | Var | LinExpr | QuadExpr): LinExpr | QuadExpr {
+  mul(other: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr;
+  mul(other: number | Var | LinExpr | QuadExpr | Constraint): LinExpr | QuadExpr {
     if (typeof other === "number") {
       return new LinExpr(new Map([[this, 1]]), 0).mul(other);
     }
@@ -115,8 +121,8 @@ export class Var {
   /** Add variable with another variable, linear/quadratic expression, or number */
   add(other: QuadExpr): QuadExpr;
   add(other: Var | LinExpr | number): LinExpr;
-  add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr;
-  add(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
+  add(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr;
+  add(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.add(this);
     }
@@ -126,8 +132,8 @@ export class Var {
   /** Subtract another variable, linear/quadratic expression, or number from this variable */
   sub(other: QuadExpr): QuadExpr;
   sub(other: Var | LinExpr | number): LinExpr;
-  sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr;
-  sub(other: Var | LinExpr | QuadExpr | number): LinExpr | QuadExpr {
+  sub(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr;
+  sub(other: Var | LinExpr | QuadExpr | number | Constraint): LinExpr | QuadExpr {
     if (other instanceof QuadExpr) {
       return other.neg().add(this);
     }
@@ -140,27 +146,18 @@ export class Var {
   }
 
   /** Create a less-than-or-equal constraint: this <= rhs */
-  le(rhs: number | Var | LinExpr, name?: string): Constraint {
+  le(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return new LinExpr(new Map([[this, 1]]), 0).le(rhs, name);
-  }
-  lessThanOrEqual(rhs: number | Var | LinExpr, name?: string): Constraint {
-    return this.le(rhs, name);
   }
 
   /** Create a greater-than-or-equal constraint: this >= rhs */
-  ge(rhs: number | Var | LinExpr, name?: string): Constraint {
+  ge(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return new LinExpr(new Map([[this, 1]]), 0).ge(rhs, name);
-  }
-  greaterThanOrEqual(rhs: number | Var | LinExpr, name?: string): Constraint {
-    return this.ge(rhs, name);
   }
 
   /** Create an equality constraint: this == rhs */
-  eq(rhs: number | Var | LinExpr, name?: string): Constraint {
+  eq(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
     return new LinExpr(new Map([[this, 1]]), 0).eq(rhs, name);
-  }
-  equalTo(rhs: number | Var | LinExpr, name?: string): Constraint {
-    return this.eq(rhs, name);
   }
 
   toString(): string {

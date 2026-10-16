@@ -23,7 +23,7 @@ const model = new Model({ solver: "highs" });
 const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
 model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
-model.constraint(c`${x} + ${y} <= 100`);
+model.constraint(expr`${x} + ${y} <= 100`);
 await model.solve();
 ```
 

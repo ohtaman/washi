@@ -1,17 +1,17 @@
-# Expressions (`expr`, `c`, `sum`, `dot`)
+# Expressions (`expr`, `sum`, `dot`)
 
 Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
 
-In JavaScript and TypeScript without native operator overloading, WaSHI provides **tagged template literals (`expr`, `c`)**, high-performance **`sum()`**, and matrix/vector **`dot()`** to make algebraic modeling clean and expressive.
+In JavaScript and TypeScript without native operator overloading, WaSHI provides the **unified tagged template literal (`expr`)**, high-performance **`sum()`**, and matrix/vector **`dot()`** to make algebraic modeling clean and expressive.
 
 ---
 
-## ✍️ Tagged Template Literals (`expr` and `c`)
+## ✍️ Tagged Template Literal (`expr`)
 
-Use `expr` for arithmetic expressions (`LinExpr | QuadExpr`) and `c` for relational constraints (`Constraint`):
+Use `expr` for both arithmetic expressions (`LinExpr | QuadExpr`) and relational constraints (`Constraint`):
 
 ```typescript
-import { Model, expr, c } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
@@ -23,8 +23,8 @@ const linearExpr = expr`3 * ${x} + 5 * ${y} - 10`;
 // 2. Quadratic expression: x * y + 2 * x^2
 const quadExpr = expr`${x} * ${y} + 2 * ${x} * ${x}`;
 
-// 3. Relational constraint (using c):
-const balanceConstraint = c`${x} + 2 * ${y} <= 40`;
+// 3. Relational constraint:
+const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 ```
 
 ### Supported Syntax in `expr`
@@ -37,8 +37,8 @@ const balanceConstraint = c`${x} + 2 * ${y} <= 40`;
 - **Nested Expressions**: `expr` seamlessly interpolates variables, numbers, `sum()` results, and nested expressions.
 
 > [!NOTE]
-> For relational comparisons (`<=`, `>=`, `==`), use the `c` tagged template (e.g., ``c`${x} + 2 * ${y} <= 40` ``) which returns a first-class `Constraint`. Calling `expr` with comparison operators strictly throws an Error directing callers to `c`.
-> `expr` uniformly handles linear and quadratic expressions (up to degree 2). If quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Polynomial terms of degree $> 2$ (e.g. ``${x} * ${y} * ${z}``, ``${x}^3``) and non-linear constraints (e.g. ``${x} * ${y} <= 10``) are rejected because standard MILP/LP/QP formulations only support linear constraints and quadratic objectives.
+> For relational comparisons (`<=`, `>=`, `==`), `expr` (e.g., ``expr`${x} + 2 * ${y} <= 40` ``) returns a first-class `Constraint`.
+> For arithmetic expressions without comparison operators, `expr` uniformly handles linear and quadratic expressions (up to degree 2): if quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Polynomial terms of degree $> 2$ (e.g. ``${x} * ${y} * ${z}``, ``${x}^3``) and non-linear constraints (e.g. ``${x} * ${y} <= 10``) are rejected because standard MILP/LP/QP formulations only support linear constraints and quadratic objectives.
 
 ---
 
@@ -116,7 +116,7 @@ WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver.
 You can write quadratic formulas naturally with `*`, `^2`, or `**2`:
 
 ```typescript
-import { Model, expr, c, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model();
 const x = m.continuous("x", { lb: 0 });
@@ -125,8 +125,8 @@ const y = m.continuous("y", { lb: 0 });
 // Quadratic objective using expr:
 m.objective(minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`));
 
-// Linear constraint using c:
-m.constraint(c`${x} + ${y} >= 4`);
+// Linear constraint using expr:
+m.constraint(expr`${x} + ${y} >= 4`);
 ```
 
 ### 2. Method Chaining with `.mul()` or `QuadExpr`

@@ -1,6 +1,6 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
-import { BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolOp, type LogicInput } from "./boolean-expr.js";
 
 let constrIdCounter = 0;
 
@@ -8,6 +8,7 @@ let constrIdCounter = 0;
  * Represents a linear constraint: lhs (terms) <=, >=, or == rhs (constant)
  */
 export class Constraint {
+  public readonly kind = "constraint" as const;
   public readonly id: number;
   private _lhs: LinExpr;
   private _sense: ComparisonSense;
@@ -92,19 +93,19 @@ export class Constraint {
   }
 
   // Logical operators for SMT / SAT
-  public and(other: LogicElement): BoolOp {
+  public and(other: LogicInput): BoolOp {
     return new BoolOp("and", [this, other]);
   }
 
-  public or(other: LogicElement): BoolOp {
+  public or(other: LogicInput): BoolOp {
     return new BoolOp("or", [this, other]);
   }
 
-  public implies(consequent: LogicElement): BoolOp {
+  public implies(consequent: LogicInput): BoolOp {
     return new BoolOp("implies", [this, consequent]);
   }
 
-  public xor(other: LogicElement): BoolOp {
+  public xor(other: LogicInput): BoolOp {
     return new BoolOp("xor", [this, other]);
   }
 
@@ -112,8 +113,90 @@ export class Constraint {
     return new BoolOp("not", [this]);
   }
 
+  // Runtime guards for arithmetic / comparison chaining on unified expr`...` results
+  public add(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public sub(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public mul(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public div(_other: unknown): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public neg(): never {
+    throw new Error(
+      "Cannot perform arithmetic on a Constraint: expected a number, Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public le(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (<=): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public ge(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (>=): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public eq(_rhs: unknown, _name?: string): never {
+    throw new Error(
+      "Cannot compare a Constraint in (==): expected a number, Var, or LinExpr."
+    );
+  }
+
+  public get value(): never {
+    throw new Error(
+      "Cannot read numeric value of a Constraint: expected a Var, LinExpr, or QuadExpr."
+    );
+  }
+
+  public get constant(): never {
+    throw new Error(
+      "Cannot read numeric constant of a Constraint: expected a LinExpr or QuadExpr."
+    );
+  }
+
+  public clone(): Constraint {
+    return new Constraint(
+      this._lhs.clone(),
+      this._sense,
+      this._rhs,
+      this.hasExplicitName ? this._name : undefined
+    );
+  }
+
   toString(): string {
     const senseSymbol = this.sense === "==" ? "=" : this.sense;
     return `${this.name}: ${this.lhs.toString()} ${senseSymbol} ${this.rhs}`;
   }
 }
+
+export function isConstraint(val: unknown): val is Constraint {
+  return (
+    val instanceof Constraint ||
+    (typeof val === "object" &&
+      val !== null &&
+      "sense" in val &&
+      "lhs" in val &&
+      "rhs" in val)
+  );
+}
+

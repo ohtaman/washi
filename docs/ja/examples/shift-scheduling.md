@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `c`, `minimize`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
+| 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr`, `minimize`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
 
 シフトスケジューリングは業務 SaaS で最も需要の高い最適化タスクの1つですが、現場で必ず発生するのが**「スタッフの希望休が重なり、必要人数やリーダー要件を満たせず解なし（Infeasible）になる」**という問題です。
 
@@ -36,7 +36,7 @@
 <CodeRunner preset="shift_scheduling">
 
 ```typescript
-import { Model, sum, dot, c, minimize } from "@ohtaman/washi";
+import { Model, sum, dot, minimize, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -74,7 +74,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   // ルール1: 日別の最低必要人数
   for (const d of days) {
     m.constraint(
-      c`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -83,7 +83,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
     m.constraint(
-      c`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
       `senior_duty_${d}`
     );
   }
@@ -91,7 +91,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   // ルール3: 各スタッフの週あたり最大出勤日数（5日以内）
   for (const s of staffList) {
     m.constraint(
-      c`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
@@ -99,7 +99,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   // ルール4: スタッフの希望休（厳格なハード制約: shift[staff][day] == 0）
   for (const req of dayOffRequests) {
     m.constraint(
-      c`${shift[req.staff][req.day]} == 0`,
+      expr`${shift[req.staff][req.day]} == 0`,
       `day_off_${req.staff}_${req.day}`
     );
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, c } from "../src/index.js";
+import { Model, expr, minimize } from "../src/index.js";
 import { generateLpString } from "../src/modeler/lp-writer.js";
 import { HiGHS } from "../src/modeler/solvers/highs.js";
 
@@ -10,8 +10,8 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     const y = m.continuous("y");
 
     // min 3x + x^2 + y^2
-    m.minimize(x.mul(3).add(x.mul(x)).add(y.mul(y)));
-    m.constrain(x.add(y).ge(4), "c1");
+    m.objective(minimize(x.mul(3).add(x.mul(x)).add(y.mul(y))));
+    m.constraint(x.add(y).ge(4), "c1");
 
     const { lpString } = generateLpString({
       name: m.name,
@@ -34,8 +34,8 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
 
     // min 3x + x^2 + y^2 subject to x + y >= 4, x >= 0, y >= 0
     // Analytical optimum: x = 1.25, y = 2.75, obj = 12.875
-    m.minimize(x.mul(3).add(x.mul(x)).add(y.mul(y)));
-    m.constrain(x.add(y).ge(4), "sum_ge_4");
+    m.objective(minimize(x.mul(3).add(x.mul(x)).add(y.mul(y))));
+    m.constraint(x.add(y).ge(4), "sum_ge_4");
 
     const status = await m.solve(HiGHS);
 
@@ -52,11 +52,11 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     const w2 = m.continuous("w2", { lb: 0, ub: 1 });
 
     // Sum of weights = 1.0 (100% investment)
-    m.constrain(w1.add(w2).eq(1), "budget");
+    m.constraint(w1.add(w2).eq(1), "budget");
 
     // Target expected return >= 14%
     // Asset 1 return = 10%, Asset 2 return = 20%
-    m.constrain(w1.mul(0.10).add(w2.mul(0.20)).ge(0.14), "target_return");
+    m.constraint(w1.mul(0.10).add(w2.mul(0.20)).ge(0.14), "target_return");
 
     // Portfolio variance:
     // Var = sigma1^2 * w1^2 + 2 * cov12 * w1 * w2 + sigma2^2 * w2^2
@@ -67,7 +67,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
       .add(w1.mul(w2).mul(2 * 0.02))
       .add(w2.mul(w2).mul(0.16));
 
-    m.minimize(variance);
+    m.objective(minimize(variance));
 
     const status = await m.solve(HiGHS);
 
@@ -91,8 +91,8 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
 
     // min 3x + x^2 + y^2 subject to x + y >= 4, x >= 0, y >= 0
     // Analytical optimum: x = 1.25, y = 2.75, obj = 12.875
-    m.minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`);
-    m.constrain(c`${x} + ${y} >= 4`);
+    m.objective(minimize(expr`3 * ${x} + ${x}^2 + ${y}^2`));
+    m.constraint(expr`${x} + ${y} >= 4`);
 
     const status = await m.solve(HiGHS);
 
@@ -108,7 +108,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     const x = m.continuous("x", { lb: 0, ub: 10 });
 
     // min 2 x^2 - 4 x. Optimum at x = 1, objective = -2
-    m.minimize("2 x^2 - 4 x");
+    m.objective(minimize("2 x^2 - 4 x"));
 
     const status = await m.solve(HiGHS);
 
@@ -119,7 +119,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     // Also verify tagged template literal expr`2 ${x2}^2 - 4 * ${x2}`
     const m2 = new Model("ExprImplicitCoeffQP");
     const x2 = m2.continuous("x", { lb: 0, ub: 10 });
-    m2.minimize(expr`2 ${x2}^2 - 4 * ${x2}`);
+    m2.objective(minimize(expr`2 ${x2}^2 - 4 * ${x2}`));
 
     const status2 = await m2.solve(HiGHS);
     expect(status2).toBe("Optimal");
@@ -134,7 +134,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     // x**1**2 parses as x**(1**2) = x^1 = x.
     // So obj = x - 4x = -3x.
     // For x in [0, 10], min -3x achieves optimum at x = 10, obj = -30.
-    m.minimize(expr`${x}**1**2 - 4 * ${x}`);
+    m.objective(minimize(expr`${x}**1**2 - 4 * ${x}`));
 
     const status = await m.solve(HiGHS);
     expect(status).toBe("Optimal");

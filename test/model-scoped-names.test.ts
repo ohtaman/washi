@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, Var, BoolVar, Constraint, expr, c, maximize } from "../src/index.js";
+import { Model, Var, BoolVar, Constraint, expr, maximize } from "../src/index.js";
 
 function buildCanonicalModel(modelName: string): Model {
   const m = new Model({ name: modelName });
@@ -12,14 +12,14 @@ function buildCanonicalModel(modelName: string): Model {
   m.objective(maximize(expr`3 * ${x[0]} + 2 * ${x[1]} + ${singleVar} + ${x[0]} * ${x[1]}`));
 
   // Unnamed arithmetic constraints -> c_1, c_2
-  m.constraint(c`${x[0]} + ${x[1]} <= 12`);
-  m.constraint(c`${singleVar} <= 4`);
+  m.constraint(expr`${x[0]} + ${x[1]} <= 12`);
+  m.constraint(expr`${singleVar} <= 4`);
 
   // Unnamed string constraint -> c_3
   m.constraint("x_0 - x_1 <= 3");
 
   // Unnamed indicator constraint -> ind_x_3_c_4
-  m.indicator(b, c`${x[0]} <= 5`);
+  m.indicator(b, expr`${x[0]} <= 5`);
 
   // Unnamed logical constraints -> lc_1, lc_2
   m.constraint(p.implies(flags[0]));
@@ -38,7 +38,7 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     noiseModel.binary(15);
     noiseModel.bool(10);
     for (let i = 0; i < 20; i++) {
-      noiseModel.constraint(c`${noiseModel.vars[i]} <= ${i + 1}`);
+      noiseModel.constraint(expr`${noiseModel.variables[i]} <= ${i + 1}`);
     }
     for (let i = 0; i < 5; i++) {
       noiseModel.constraint(noiseModel.boolVars[i].not());
@@ -55,19 +55,19 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
 
     const m2 = buildCanonicalModel("DeterministicModel");
 
-    expect(m2.vars.map((v) => v.name)).toEqual(["x_0", "x_1", "x_2", "x_3"]);
-    expect(m1.vars.map((v) => v.name)).toEqual(m2.vars.map((v) => v.name));
+    expect(m2.variables.map((v) => v.name)).toEqual(["x_0", "x_1", "x_2", "x_3"]);
+    expect(m1.variables.map((v) => v.name)).toEqual(m2.variables.map((v) => v.name));
 
     expect(m2.boolVars.map((bv) => bv.name)).toEqual(["p_0", "p_1", "p_2"]);
     expect(m1.boolVars.map((bv) => bv.name)).toEqual(m2.boolVars.map((bv) => bv.name));
 
-    expect(m2.constrs.map((con) => con.name)).toEqual([
+    expect(m2.constraints.map((con) => con.name)).toEqual([
       "c_1",
       "c_2",
       "c_3",
       "ind_x_3_c_4",
     ]);
-    expect(m1.constrs.map((con) => con.name)).toEqual(m2.constrs.map((con) => con.name));
+    expect(m1.constraints.map((con) => con.name)).toEqual(m2.constraints.map((con) => con.name));
 
     expect(m2.logicalConstraints.map((lc) => lc.name)).toEqual(["lc_1", "lc_2"]);
     expect(m1.logicalConstraints.map((lc) => lc.name)).toEqual(
@@ -77,23 +77,21 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     expect(m1.toLpString()).toBe(m2.toLpString());
   });
 
-  it("assigns model-scoped names when unnamed Var or Constraint instances are added via m.add()", () => {
+  it("assigns model-scoped names when unnamed variables and Constraint instances are registered", () => {
     const m1 = new Model("AddModel1");
-    const v1 = new Var({ lb: 0, ub: 10 });
-    const v2 = new Var({ prefix: "y", lb: 0, ub: 10 });
-    m1.add([v1, v2]);
+    const v1 = m1.continuous({ lb: 0, ub: 10 });
+    const v2 = m1.continuous({ prefix: "y", lb: 0, ub: 10 });
     const c1 = new Constraint(expr`${v1} + ${v2}` as any, "<=", 15);
-    m1.add(c1);
+    m1.constraint(c1);
 
     // Build second identical model after intermediate allocations
     new Var();
     new Var({ prefix: "y" });
     const m2 = new Model("AddModel2");
-    const u1 = new Var({ lb: 0, ub: 10 });
-    const u2 = new Var({ prefix: "y", lb: 0, ub: 10 });
-    m2.add([u1, u2]);
+    const u1 = m2.continuous({ lb: 0, ub: 10 });
+    const u2 = m2.continuous({ prefix: "y", lb: 0, ub: 10 });
     const k1 = new Constraint(expr`${u1} + ${u2}` as any, "<=", 15);
-    m2.add(k1);
+    m2.constraint(k1);
 
     expect(v1.name).toBe("x_0");
     expect(v2.name).toBe("y_0");
@@ -142,14 +140,14 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     expect(autoP.map((bv) => bv.name)).toEqual(["p_1", "p_2"]);
 
     // Explicit constraint names reserved before auto-generated constraints
-    m.constraint(c`${explicitX0} <= 5`, "c_1");
-    m.constraint(c`${explicitX2} <= 5`, "c_3");
+    m.constraint(expr`${explicitX0} <= 5`, "c_1");
+    m.constraint(expr`${explicitX2} <= 5`, "c_3");
     m.constraint(explicitP0.not(), "lc_1");
 
     // Auto-generated arithmetic constraints skip c_1 and c_3 -> c_2, c_4
-    m.constraint(c`${autoX[0]} <= 8`);
-    m.constraint(c`${autoX[1]} <= 9`);
-    expect(m.constrs.map((con) => con.name)).toEqual(["c_1", "c_3", "c_2", "c_4"]);
+    m.constraint(expr`${autoX[0]} <= 8`);
+    m.constraint(expr`${autoX[1]} <= 9`);
+    expect(m.constraints.map((con) => con.name)).toEqual(["c_1", "c_3", "c_2", "c_4"]);
 
     // Auto-generated logical constraint skips lc_1 -> lc_2
     m.constraint(autoP[0].or(autoP[1]));
@@ -158,7 +156,7 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     // 2. Explicit names registered AFTER auto-generated names -> rejected with clear error
     expect(() => m.continuous("x_1")).toThrow(/Variable with name 'x_1' already exists in model/);
     expect(() => m.bool("p_1")).toThrow(/Variable with name 'p_1' already exists in model/);
-    expect(() => m.constraint(c`${explicitX0} >= 0`, "c_2")).toThrow(
+    expect(() => m.constraint(expr`${explicitX0} >= 0`, "c_2")).toThrow(
       /Constraint with name 'c_2' already exists in model/
     );
     expect(() => m.constraint(explicitP0, "lc_2")).toThrow(
@@ -166,20 +164,16 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     );
   });
 
-  it("orders quadratic cross-term factors deterministically by model registration order regardless of Var instantiation order", () => {
-    // Instantiate vA then vB
-    const vA1 = new Var({ name: "alpha", lb: 0, ub: 10 });
-    const vB1 = new Var({ name: "beta", lb: 0, ub: 10 });
+  it("orders quadratic cross-term factors deterministically by model registration order regardless of term multiplication order", () => {
     const m1 = new Model("QuadOrder1");
-    m1.add([vA1, vB1]);
+    const vA1 = m1.continuous("alpha", { lb: 0, ub: 10 });
+    const vB1 = m1.continuous("beta", { lb: 0, ub: 10 });
     m1.objective(maximize(expr`${vA1} * ${vB1}`));
 
-    // Instantiate vB then vA (reverse global Var.id order), but register in the same model order
-    const vB2 = new Var({ name: "beta", lb: 0, ub: 10 });
-    const vA2 = new Var({ name: "alpha", lb: 0, ub: 10 });
     const m2 = new Model("QuadOrder2");
-    m2.add([vA2, vB2]);
-    m2.objective(maximize(expr`${vA2} * ${vB2}`));
+    const vA2 = m2.continuous("alpha", { lb: 0, ub: 10 });
+    const vB2 = m2.continuous("beta", { lb: 0, ub: 10 });
+    m2.objective(maximize(expr`${vB2} * ${vA2}`));
 
     expect(m1.toLpString()).toBe(m2.toLpString());
   });
@@ -201,28 +195,30 @@ describe("Model-scoped Auto-Generated Variable and Constraint Names (Issue #52)"
     expect(m.getBoolVarByName("flag")).toBe(flag);
   });
 
-  it("does not advance indicator constraint counter when indicator derivation fails and prevents cross-model Var renaming", () => {
+  it("does not advance indicator constraint counter when indicator derivation fails and prevents cross-model Constraint reuse", () => {
     // Failed indicator derivation does not advance c counter
     const mInd = new Model("IndicatorRetry");
     const uInd = mInd.continuous("u", { lb: 0 }); // unbounded ub
     const zInd = mInd.binary("z");
-    expect(() => mInd.indicator(zInd, c`${uInd} <= 5`)).toThrow(/lacks a finite upper bound/i);
+    expect(() => mInd.indicator(zInd, expr`${uInd} <= 5`)).toThrow(/lacks a finite upper bound/i);
     uInd.ub = 20;
-    const [indRow] = mInd.indicator(zInd, c`${uInd} <= 5`);
+    const [indRow] = mInd.indicator(zInd, expr`${uInd} <= 5`);
     expect(indRow.name).toBe("ind_z_c_1");
 
-    // Adding an already-registered unnamed Var to a second model is rejected without renaming it
-    const sharedVar = new Var({ lb: 0, ub: 10 });
+    // Adding an already-registered unnamed Constraint to a second model is rejected without renaming it
     const mOwner = new Model("OwnerModel");
-    mOwner.add(sharedVar);
-    expect(sharedVar.name).toBe("x_0");
-    expect(mOwner.getVarByName("x_0")).toBe(sharedVar);
+    const ownerVar = mOwner.continuous("x", { lb: 0, ub: 10 });
+    const sharedConstr = ownerVar.le(10);
+    mOwner.constraint(sharedConstr);
+    expect(sharedConstr.name).toBe("c_1");
+    expect(mOwner.getConstraintByName("c_1")).toBe(sharedConstr);
 
     const mOther = new Model("OtherModel");
-    mOther.continuous(); // consumes x_0 in OtherModel
-    expect(() => mOther.add(sharedVar)).toThrow(/already belongs to model "OwnerModel"/i);
-    expect(sharedVar.name).toBe("x_0");
-    expect(mOwner.getVarByName("x_0")).toBe(sharedVar);
+    const otherVar = mOther.continuous("x", { lb: 0, ub: 10 });
+    mOther.constraint(otherVar.le(5)); // consumes c_1 in OtherModel
+    expect(() => mOther.constraint(sharedConstr)).toThrow(/does not belong to model "OtherModel"/i);
+    expect(sharedConstr.name).toBe("c_1");
+    expect(mOwner.getConstraintByName("c_1")).toBe(sharedConstr);
   });
 });
 

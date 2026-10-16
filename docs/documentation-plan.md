@@ -57,7 +57,7 @@ docs/
 ├── guide/
 │   ├── variables.md             # 変数 (Continuous, Integer, Binary, 半連続の定式化)
 │   ├── expressions.md           # 数式 (LinExpr, QuadExpr, expr`...`, sum, dot)
-│   ├── constraints.md           # 等式・不等式制約、c`...` 構文
+│   ├── constraints.md           # 等式・不等式制約、expr`...` 構文
 │   ├── objectives.md            # maximize / minimize, LP, MIP, QP
 │   ├── pulp-compat.md           # Python PuLP / python-mip からの移行ガイド
 │   └── unsat-core.md            # 実行不可能 (Infeasible) モデルの制約競合診断

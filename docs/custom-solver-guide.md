@@ -382,7 +382,7 @@ You can test your solver using Vitest or Jest without bundling:
 
 ```typescript
 import { describe, it, expect } from "vitest";
-import { Model, c, expr, maximize, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
+import { Model, expr, maximize, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
 
 describe("Custom Solver Integration", () => {
@@ -396,7 +396,7 @@ describe("Custom Solver Integration", () => {
     const x = model.continuous("x", { lb: 0, ub: 10 });
     const y = model.continuous("y", { lb: 0, ub: 10 });
     model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
-    model.constraint(c`${x} + ${y} <= 12`, "budget");
+    model.constraint(expr`${x} + ${y} <= 12`, "budget");
 
     const status = await model.solve();
     expect(status).toBe("Optimal");
