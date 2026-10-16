@@ -47,16 +47,17 @@ import "@ohtaman/washi/solvers/glpk";
 1. **Bundled WASM by default (no implicit CDN fallback)**:
    - In Node.js and modern bundlers, WebAssembly assets resolve relative to the module automatically.
    - In browser deployments, deploy the full `dist/browser/` directory (JS, Worker, and `.wasm` files) together. If a local WASM URL is missing or returns an HTML SPA fallback, initialization fails immediately and reports the attempted URL—it **never** silently switches to a public CDN.
-   - To load `highs.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` or pass `await m.solve({ wasmUrl: "https://.../highs.wasm" })`.
-2. **Z3 requires Cross-Origin Isolation in browsers**:
-   - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
-     - `Cross-Origin-Opener-Policy: same-origin`
-     - `Cross-Origin-Embedder-Policy: require-corp`
-     - `Cross-Origin-Resource-Policy: cross-origin` (on cross-origin script/WASM assets)
-   - Importing `@ohtaman/washi` never auto-injects a Service Worker. When cross-origin isolation is absent in a browser, Z3 rejects immediately with a descriptive error.
+   - In browser runtimes, to load `highs.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` or pass `await m.solve({ wasmUrl: "https://.../highs.wasm" })` (ignored in Node.js, which always loads the local Node `highs` package runtime).
+2. **Z3 requires a Secure Context, Cross-Origin Isolation, and CORS in browsers**:
+   - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must run in a secure context (`window.isSecureContext === true`, i.e., HTTPS or `localhost`) and be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
+     - `Cross-Origin-Opener-Policy: same-origin` (on the document)
+     - `Cross-Origin-Embedder-Policy: require-corp` (on the document)
+     - `Cross-Origin-Resource-Policy: cross-origin` and `Access-Control-Allow-Origin` (on cross-origin script/WASM asset responses)
+   - Importing `@ohtaman/washi` never auto-injects a Service Worker. When a secure context or cross-origin isolation is absent in a browser, Z3 rejects immediately with a descriptive error.
 3. **Web Workers & Cancellation (`AbortSignal`)**:
-   - In browsers where `Worker` is available, HiGHS runs in a dedicated Web Worker by default (`useWorker: true`). Passing `{ signal }` to `m.solve({ signal })` terminates an in-flight Worker solve immediately upon abort.
-   - When `useWorker: false` (or on main-thread / synchronous solver execution in Node.js), `signal` is checked before and after native WASM execution; it cannot preempt a synchronous blocking WASM call mid-solve.
+   - Pre-solve cancellation (`signal.aborted` before execution starts) is supported across all solvers.
+   - In browsers where `Worker` is available, HiGHS runs in a dedicated Web Worker by default (`useWorker: true`). Passing `{ signal }` to `m.solve({ signal })` preemptively terminates an in-flight Worker solve (or cancels queued Worker requests).
+   - On main-thread HiGHS (`useWorker: false` or in Node.js), cooperative mid-solve cancellation is supported when `abort()` is triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint; arbitrary asynchronous aborts from outside cannot preempt a blocked synchronous WASM thread until a callback checkpoint or completion. Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
 
 ---
 
@@ -92,7 +93,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
   - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` `` (supports `<=`, `>=`, `==`, and `=`).
 - **Aggregations**:
   - `sum(iterable, mapper?)` sums an `Iterable` of `Var` / `LinExpr` / `number` (e.g., `Var[]`, `grid.flat()`, or `Object.values(record)`).
-  - `dot(a, b)` computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`), plain records (`Record<string, ...>`), or numeric `TypedArray`s.
+  - `dot(a, b)` computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
 - **Fluent methods**:
   - Arithmetic: `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
@@ -116,12 +117,12 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 ### Step 4: Execute (`solve` or `check`) & Verify (`validateSolution`)
 
 - **Optimization (`await m.solve(options?)`)**:
-  - Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, or `"NotSolved"`). Note that a time-, iteration-, or solution-limited run (or an interrupted solve) that found a valid primal incumbent returns `"Feasible"`.
+  - Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, or `"Unsat"`). Built-in optimization solvers return the optimization statuses (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`), where a time-, iteration-, or solution-limited run (or an interrupted solve) that found a valid primal incumbent returns `"Feasible"`; `"Sat"` and `"Unsat"` are included in `SolverStatus` for satisfiability/custom solver adapters (such as `MockSolver`).
   - Read values via `x.value`, `expr`...`.value`, `m.getValues(x)`, `m.getValues(container)`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`.
-  - Call `m.validateSolution()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary domains, and linear constraint residuals (`{ valid: boolean, maxViolation: number, violations: [...] }`). Note that `validateSolution()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
+  - Call `m.validateSolution()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary/boolean domains, linear constraint residuals, and logical constraints (`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`). Note that `validateSolution()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
 - **Satisfiability & Unsat Core (`await m.check(options?)`)**:
-  - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values, conflicts, unsatCore }`).
-  - For models containing only linear arithmetic constraints, `m.check()` works with any solver (including the default HiGHS and GLPK) by falling back to a feasibility `solve()`. Logical constraints (`BoolVar`, `and`, `or`, `implies`, etc.) and unsatisfiable-core extraction (`result.conflicts` / `result.unsatCore`, a conflicting subset not guaranteed minimal) require an SMT-capable solver (`{ solver: "z3" }`).
+  - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`), where `conflicts` and `unsatCore` are optional and populated only when an unsat-core-capable solver (such as Z3) returns `"Unsat"`.
+  - For models containing only linear arithmetic constraints, `m.check()` works with any solver (including the default HiGHS and GLPK) by falling back to a feasibility `solve()`. Logical constraints (`BoolVar`, `and`, `or`, `implies`, etc.) and unsatisfiable-core extraction (`result.conflicts` / `result.unsatCore`) require an SMT-capable solver (`{ solver: "z3" }`). Because Z3 asserts variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking registered constraints, `conflicts` / `unsatCore` reports a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (and is not guaranteed minimal).
 - **No concurrent mutation during async solve/check**:
   - Mutating variables, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight execution and rejects the stale promise.
 

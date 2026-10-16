@@ -206,6 +206,14 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
       expect(z3Res.conflicts).toEqual(
         expect.arrayContaining(["customer_is_vip", "vip_min_discount", "campaign_cap"])
       );
+
+      // Verify Z3 unsat core when infeasibility combines an untracked variable bound with a tracked constraint
+      const boundModel = new Washi.Model("BoundConflict", { solver: "z3" });
+      const bx = boundModel.continuous("bx", { lb: 10 });
+      boundModel.constraint(Washi.expr`${bx} <= 5`, "cap_bx");
+      const boundRes = await boundModel.check();
+      expect(boundRes.status).toBe("Unsat");
+      expect(boundRes.conflicts).toEqual(["cap_bx"]);
     } finally {
       await killZ3Threads();
     }
@@ -240,6 +248,8 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
     const linearCheckRes = await linearCheckModel.check();
     expect(linearCheckRes.status).toBe("Sat");
     expect(Number(linearCheckRes.values.lx)).toBeGreaterThanOrEqual(4);
+    expect(linearCheckRes.conflicts).toBeUndefined();
+    expect(linearCheckRes.unsatCore).toBeUndefined();
   });
 
   it("does not advertise nonexistent APIs or types in guide prose or comments", () => {
@@ -247,9 +257,34 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
     expect(guideContent).not.toContain("m.getValue(");
     expect(guideContent).not.toContain(".iff(");
     expect(guideContent).not.toContain("ModelStatus");
+    expect(guideContent).not.toContain("TypedArray");
     expect(guideContent).not.toMatch(/\bm\.(maximize|minimize)\s*=/);
     expect(guideContent).not.toMatch(/`dot\(a,\s*b\)`[^\n]*`Iterable`/);
     expect(guideContent).toContain("SolverStatus");
+    expect(guideContent).toContain("isSecureContext");
+    expect(guideContent).toContain("Access-Control-Allow-Origin");
+    expect(guideContent).toContain("conflicts?:");
+    expect(guideContent).toContain("unsatCore?:");
+
+    const solverStatusLine = guideContent
+      .split("\n")
+      .find((line) => line.includes("Returns `SolverStatus`"));
+    expect(solverStatusLine).toBeDefined();
+    for (const status of [
+      "Optimal",
+      "Feasible",
+      "Infeasible",
+      "Unbounded",
+      "TimeLimit",
+      "IterationLimit",
+      "Error",
+      "Unknown",
+      "NotSolved",
+      "Sat",
+      "Unsat",
+    ]) {
+      expect(solverStatusLine).toContain(`"${status}"`);
+    }
 
     // Every `m.<member>` referenced in the positive guide sections must exist on a Model instance
     const positiveGuide = guideContent.split("## 4. Negative Examples")[0];
@@ -265,3 +300,4 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
     }
   });
 });
+
