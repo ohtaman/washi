@@ -189,8 +189,15 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(() => normalizeSense("bogus" as any)).toThrow(/Invalid optimization sense/);
     expect(() => new Model({ sense: "bogus" as any })).toThrow(/Invalid optimization sense/);
     const m = new Model();
+    const x = m.continuous("x");
     expect(() => {
       m.sense = "bogus" as any;
+    }).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      m.objective({ expr: x, sense: "" as any });
+    }).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      m.objective({ expr: x, sense: null as any });
     }).toThrow(/Invalid optimization sense/);
   });
 

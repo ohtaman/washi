@@ -901,7 +901,7 @@ export class Model {
       );
     }
 
-    const newSense = sense ? normalizeSense(sense) : this.sense;
+    const newSense = sense !== undefined ? normalizeSense(sense) : this.sense;
 
     let parsedExpr: LinExpr | QuadExpr;
     if (typeof expr === "string") {

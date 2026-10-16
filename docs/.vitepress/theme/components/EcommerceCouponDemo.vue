@@ -221,7 +221,7 @@ onMounted(() => {
           <p class="washi-app-subtitle">
             {{
               isJa
-                ? "カートの商品を選んで「▶ 最適化を実行」を押すと、併用上限（最大2枚）と最低利用額（m.addIndicator）から最安になるクーポンの組と追加提案アイテムを計算します。"
+                ? "カートの商品を選んで「▶ 最適化を実行」を押すと、併用上限（最大2枚）と最低利用額（m.indicator）から最安になるクーポンの組と追加提案アイテムを計算します。"
                 : "Select items in the cart and click '▶ Run Optimization' to find the best coupon combination and smart filler add-on."
             }}
           </p>
