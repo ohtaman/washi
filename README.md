@@ -436,7 +436,7 @@ Failed initialization reports the attempted URL and does not try a different hos
 
 WaSHI features a decoupled, pluggable solver architecture. You can easily build and register your own custom solver adapter (e.g., for cloud REST optimizers, WebAssembly engines, or proprietary solvers):
 
-- See the complete [Custom Solver Developer Guide](docs/custom-solver-guide.md) for step-by-step tutorials, complete API contracts (`Solver`, `LpModelData`, `SolverResult`), and testing best practices.
+- See the complete [Custom Solver Developer Guide](docs/custom-solver-guide.md) for step-by-step tutorials, complete API contracts (`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`), and testing best practices.
 
 ---
 

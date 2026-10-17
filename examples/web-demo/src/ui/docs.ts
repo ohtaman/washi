@@ -144,7 +144,7 @@ Cross-Origin-Embedder-Policy: require-corp</code></pre>
     </p>
     <div class="code-card">
       <div class="code-title">ソルバーの切り替え利用例</div>
-      <pre><code>import { Model, HiGHS, MockSolver } from "@ohtaman/washi";
+      <pre><code>import { Model, HiGHS, MockSolver, generateLpString } from "@ohtaman/washi";
 
 // 1. デフォルトソルバー (HiGHS WebAssembly) で解く
 await m.solve();
@@ -162,12 +162,13 @@ await m.solve(new MockSolver({
 // 4. 自社バックエンドサーバーや独自エンジンの注入 (Solver インターフェース)
 const myBackendSolver = {
   name: "CompanyOptAPI",
-  async solve(modelData, lpResult) {
-    // 自社の最適化マイクロサービス (Gurobi / SCIP 等) へ LP 文字列を POST
+  async solve(modelData) {
+    // 必要に応じて LP 文字列を生成し、自社の最適化マイクロサービスへ POST
+    const { lpString } = generateLpString(modelData);
     const res = await fetch("/api/v1/solve", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lp: lpResult.lpString }),
+      body: JSON.stringify({ lp: lpString }),
     });
     const data = await res.json();
     return { status: data.status, objectiveValue: data.obj, values: data.solution };

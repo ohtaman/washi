@@ -436,7 +436,7 @@ setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser
 
 WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャを採用しています。独自の最適化エンジン（クラウド REST ソルバー、WebAssembly エンジン、商用ソルバーアダプターなど）を容易に構築・登録できます：
 
-- 詳細な開発手順、API コントラクト仕様（`Solver`, `LpModelData`, `SolverResult`）、およびテスト手法については [Custom Solver Developer Guide](docs/custom-solver-guide.md) をご覧ください。
+- 詳細な開発手順、API コントラクト仕様（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）、およびテスト手法については [Custom Solver Developer Guide](docs/custom-solver-guide.md) をご覧ください。
 
 ---
 

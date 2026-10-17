@@ -2,14 +2,30 @@ import type { Var } from "./variable.js";
 import type { LinExpr } from "./expression.js";
 import type { Constraint } from "./constraint.js";
 import type { OptimizationSense } from "./types.js";
+import type { SolveModelData } from "./solvers/types.js";
 import { QuadExpr } from "./quad-expr.js";
 
-export interface LpModelData {
+export interface LpModelData extends SolveModelData {
   name?: string;
   sense: OptimizationSense;
   objective: LinExpr | QuadExpr;
   constraints: Constraint[];
   variables: Var[];
+}
+
+export interface LpSymbolMaps {
+  /** Maps sanitized name in LP/backend to original Var */
+  nameToVar: Map<string, Var>;
+  /** Maps original Var handle to sanitized LP/backend name */
+  varToName: Map<Var, string>;
+  /** Maps sanitized name in LP/backend to original Constraint */
+  nameToConstraint: Map<string, Constraint>;
+  /** Maps original Constraint handle to sanitized LP/backend name */
+  constraintToName: Map<Constraint, string>;
+  /** Alias for constraintToName */
+  constrToName: Map<Constraint, string>;
+  /** Maps original Var handle to its 0-based order index */
+  varOrder: Map<Var, number>;
 }
 
 export interface LpExportResult {
@@ -18,6 +34,20 @@ export interface LpExportResult {
   nameToVar: Map<string, Var>;
   /** Maps sanitized name in LP to original Constraint */
   nameToConstraint: Map<string, Constraint>;
+  /** Maps original Var handle to sanitized name in LP */
+  varToName?: Map<Var, string>;
+  /** Maps original Constraint handle to sanitized name in LP */
+  constrToName?: Map<Constraint, string>;
+}
+
+export function isLpExportResult(value: unknown): value is LpExportResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as LpExportResult).lpString === "string" &&
+    (value as LpExportResult).nameToVar instanceof Map &&
+    (value as LpExportResult).nameToConstraint instanceof Map
+  );
 }
 
 /**
@@ -39,15 +69,19 @@ export function sanitizeIdentifier(raw: string, fallbackPrefix: string, id: numb
 }
 
 /**
- * Convert a linear or quadratic model to standard CPLEX LP format string
+ * Builds deterministic, collision-free sanitized identifier mappings for variables and constraints
+ * without serializing a full CPLEX LP text string.
  */
-export function generateLpString(modelData: LpModelData): LpExportResult {
-  const { sense, objective, constraints, variables } = modelData;
+export function buildLpSymbolMaps(
+  modelData: Pick<LpModelData, "variables" | "constraints">
+): LpSymbolMaps {
+  const variables = modelData.variables || [];
+  const constraints = modelData.constraints || [];
 
   const nameToVar = new Map<string, Var>();
   const varToName = new Map<Var, string>();
   const nameToConstraint = new Map<string, Constraint>();
-
+  const constrToName = new Map<Constraint, string>();
   const varOrder = new Map<Var, number>();
 
   // Ensure unique sanitized names for all variables
@@ -55,7 +89,7 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   for (let i = 0; i < variables.length; i++) {
     const v = variables[i];
     varOrder.set(v, i);
-    let clean = sanitizeIdentifier(v.name, "x", i);
+    const clean = sanitizeIdentifier(v.name, "x", i);
     let unique = clean;
     let count = 1;
     while (usedVarNames.has(unique)) {
@@ -68,10 +102,9 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
 
   // Ensure unique sanitized names for all constraints
   const usedConstrNames = new Set<string>();
-  const constrToName = new Map<Constraint, string>();
   for (let i = 0; i < constraints.length; i++) {
     const c = constraints[i];
-    let clean = sanitizeIdentifier(c.name, "c", i + 1);
+    const clean = sanitizeIdentifier(c.name, "c", i + 1);
     let unique = clean;
     let count = 1;
     while (usedConstrNames.has(unique)) {
@@ -81,6 +114,24 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     constrToName.set(c, unique);
     nameToConstraint.set(unique, c);
   }
+
+  return {
+    nameToVar,
+    varToName,
+    nameToConstraint,
+    constraintToName: constrToName,
+    constrToName,
+    varOrder,
+  };
+}
+
+/**
+ * Convert a linear or quadratic model to standard CPLEX LP format string
+ */
+export function generateLpString(modelData: LpModelData): LpExportResult {
+  const { sense, objective, constraints, variables } = modelData;
+  const { nameToVar, varToName, nameToConstraint, constrToName, varOrder } =
+    buildLpSymbolMaps(modelData);
 
   const lines: string[] = [];
 

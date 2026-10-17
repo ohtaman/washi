@@ -32,7 +32,7 @@ function createGatedSolver(
       supportsQP: true,
       supportsSMT: Boolean(checkFactory),
     },
-    async solve(_modelData, _lpData, options) {
+    async solve(_modelData, options) {
       capturedOptions = options;
       resolveStart();
       await gate;

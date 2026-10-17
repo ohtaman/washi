@@ -1,5 +1,11 @@
-import type { Solver, SolverOptions, SolverResult, SolverCapabilities } from "./types.js";
-import type { LpModelData, LpExportResult } from "../lp-writer.js";
+import type {
+  Solver,
+  SolverOptions,
+  SolverResult,
+  SolverCapabilities,
+  SolveModelData,
+} from "./types.js";
+import { isLpExportResult, type LpModelData, type LpExportResult } from "../lp-writer.js";
 import type { SolverStatus, TerminationStatus, SolveProgressEvent } from "../types.js";
 
 export interface MockSolverOptions extends SolverOptions {
@@ -39,11 +45,20 @@ export class MockSolver implements Solver {
     this.options = options;
   }
 
+  solve(modelData: SolveModelData, options?: SolverOptions): Promise<SolverResult>;
+  solve(
+    modelData: LpModelData,
+    lpResult: LpExportResult,
+    options?: SolverOptions
+  ): Promise<SolverResult>;
   async solve(
-    _modelData: LpModelData,
-    _lpResult: LpExportResult,
-    options: SolverOptions = {}
+    _modelData: SolveModelData,
+    optionsOrLpResult: SolverOptions | LpExportResult = {},
+    maybeOptions: SolverOptions = {}
   ): Promise<SolverResult> {
+    const options: SolverOptions = isLpExportResult(optionsOrLpResult)
+      ? maybeOptions
+      : optionsOrLpResult;
     const opts: MockSolverOptions = { ...this.options, ...options };
     if (opts.signal?.aborted) {
       return {

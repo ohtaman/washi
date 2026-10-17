@@ -46,7 +46,15 @@ export {
   type ParsedExpr,
   type ExprResolver,
 } from "./parser.js";
-export { generateLpString, type LpModelData, type LpExportResult } from "./lp-writer.js";
+export {
+  generateLpString,
+  buildLpSymbolMaps,
+  isLpExportResult,
+  sanitizeIdentifier,
+  type LpModelData,
+  type LpSymbolMaps,
+  type LpExportResult,
+} from "./lp-writer.js";
 export {
   validateModelSolution,
   type SolutionValidationOptions,

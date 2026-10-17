@@ -5,6 +5,7 @@ import {
   minimize,
   HiGHS,
   MockSolver,
+  generateLpString,
   registerSolver,
   listAvailableSolvers,
   getSolver,
@@ -99,8 +100,9 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
     const customSolver: Solver = {
       name: "AcmeQuantumSolver",
       version: "0.1.0",
-      async solve(modelData, lpResult) {
-        expect(lpResult.lpString).toContain("Subject To");
+      async solve(modelData) {
+        expect(modelData.variables.map((v) => v.name)).toEqual(["alpha"]);
+        expect(modelData.sense).toBe("Maximize");
         return {
           status: "Optimal",
           objectiveValue: 999,
@@ -152,14 +154,15 @@ describe("Pluggable Solvers Architecture (Dynamic Solver Switching)", () => {
         }),
       } as any);
 
-      // A real-world custom backend solver driver
+      // A real-world custom backend solver driver using opt-in LP export
       const backendSolver: Solver = {
         name: "InHouseOptimizationAPI",
-        async solve(modelData, lpResult) {
+        async solve(modelData) {
+          const { lpString } = generateLpString(modelData);
           const res = await fetch("https://internal-opt.corp/api/v1/solve", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: "Bearer secret-token" },
-            body: JSON.stringify({ lp: lpResult.lpString }),
+            body: JSON.stringify({ lp: lpString }),
           });
           const data = await res.json();
           return {
