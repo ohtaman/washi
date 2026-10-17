@@ -7,6 +7,7 @@ import {
   implies,
   generateLpString,
   buildLpSymbolMaps,
+  sanitizeIdentifier,
   registerSolver,
   listAvailableSolvers,
   getSolver,
@@ -258,27 +259,44 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     expect(z3Check.values["x-1"]).toBeLessThanOrEqual(3);
     expect(z3Check.values["x_1"]).toBeLessThanOrEqual(7);
 
-    // 4. Custom LP adapter returning raw sanitized LP names ("x_1" for "x-1", "x_1_1" for "x_1")
-    const rawSanitizedSolver: Solver = {
-      name: "RawSanitizedLpSolver",
+    // 4. Custom LP adapter translating sanitized LP names ("x_1" for "x-1", "x_1_1" for "x_1")
+    //    via buildLpSymbolMaps (both full and sparse backend responses)
+    expect(sanitizeIdentifier("x-1")).toBe("x_1");
+    expect(sanitizeIdentifier("1var", "v")).toBe("v_1var");
+    expect(sanitizeIdentifier("", "c", 2)).toBe("c_2");
+
+    const createLpMappedAdapter = (
+      rawBackendVars: Record<string, number>,
+      rawBackendDuals: Record<string, number>
+    ): Solver => ({
+      name: "CustomLpMappedSolver",
       async solve(modelData) {
         const maps = buildLpSymbolMaps(modelData);
         expect(maps.varToName.get(xDash)).toBe("x_1");
         expect(maps.varToName.get(xUnder)).toBe("x_1_1");
         expect(maps.constraintToName.get(cDash)).toBe("c_1");
         expect(maps.constraintToName.get(cUnder)).toBe("c_1_1");
+
+        const values: Record<string, number> = {};
+        for (const [lpName, val] of Object.entries(rawBackendVars)) {
+          values[maps.nameToVar.get(lpName)?.name ?? lpName] = val;
+        }
+        const duals: Record<string, number> = {};
+        for (const [lpName, val] of Object.entries(rawBackendDuals)) {
+          duals[maps.nameToConstraint.get(lpName)?.name ?? lpName] = val;
+        }
         return {
           status: "Optimal",
           objectiveValue: 73,
-          values: { x_1: 3, x_1_1: 7 },
-          reducedCosts: { x_1: 0, x_1_1: 0 },
-          duals: { c_1: 1, c_1_1: 10 },
-          slacks: { c_1: 0, c_1_1: 0 },
+          values,
+          duals,
         };
       },
-    };
+    });
 
-    expect(await m.solve(rawSanitizedSolver)).toBe("Optimal");
+    expect(
+      await m.solve(createLpMappedAdapter({ x_1: 3, x_1_1: 7 }, { c_1: 1, c_1_1: 10 }))
+    ).toBe("Optimal");
     expect(xDash.value).toBe(3);
     expect(xUnder.value).toBe(7);
     expect(cDash.dual).toBe(1);
@@ -286,7 +304,16 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     expect(m.solution?.values).toEqual({ "x-1": 3, x_1: 7 });
     expect(m.solution?.duals).toEqual({ "c-1": 1, c_1: 10 });
 
-    // 5. Partial canonical result with an extra unknown key does not misroute "x_1" to "x-1"
+    // Sparse sanitized backend response ({ x_1: 3 } where x_1 is the LP name for "x-1")
+    expect(await m.solve(createLpMappedAdapter({ x_1: 3 }, { c_1: 1 }))).toBe("Optimal");
+    expect(xDash.value).toBe(3);
+    expect(xUnder.value).toBeNull();
+    expect(cDash.dual).toBe(1);
+    expect(cUnder.dual).toBeNull();
+    expect(m.solution?.values).toEqual({ "x-1": 3 });
+    expect(m.solution?.duals).toEqual({ "c-1": 1 });
+
+    // 5. Sparse canonical result ({ x_1: 7 }) assigns 7 to canonical "x_1" and leaves "x-1" null
     const partialCanonicalSolver: Solver = {
       name: "PartialCanonicalSolver",
       async solve() {

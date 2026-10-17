@@ -55,7 +55,11 @@ export function isLpExportResult(value: unknown): value is LpExportResult {
  * Allowed chars: a-z, A-Z, 0-9, _, !, ", #, $, %, &, (, ), /, ?, @, ~, '
  * Avoid +, -, *, :, <, >, =, [, ], spaces
  */
-export function sanitizeIdentifier(raw: string, fallbackPrefix: string, id: number): string {
+export function sanitizeIdentifier(
+  raw: string,
+  fallbackPrefix: string = "x",
+  id: number = 0
+): string {
   // Replace invalid characters with underscore
   let s = raw.replace(/[^a-zA-Z0-9_]/g, "_");
   // Cannot start with a number or dot

@@ -15,11 +15,7 @@ import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import { BoolVar, BoolExpr } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
-import {
-  buildLpSymbolMaps,
-  generateLpString,
-  type LpSymbolMaps,
-} from "./lp-writer.js";
+import { generateLpString } from "./lp-writer.js";
 import {
   getSolver,
   type CheckModelData,
@@ -1472,90 +1468,6 @@ export class Model {
     return { activeSolver: this.solver || getSolver(), activeOptions: rest };
   }
 
-  /**
-   * Creates lazy lookup helpers that resolve canonical variable/constraint names in O(1)
-   * and fall back to LP symbol maps only when an adapter returns sanitized LP identifiers.
-   */
-  private createResultSymbolResolver(modelData: CheckModelData) {
-    let symbolMaps: LpSymbolMaps | undefined;
-    const getSymbolMaps = (): LpSymbolMaps => {
-      if (!symbolMaps) {
-        symbolMaps = buildLpSymbolMaps(modelData);
-      }
-      return symbolMaps;
-    };
-
-    const resolveVarFromRecord = (
-      key: string,
-      record: Record<string, unknown>,
-      allCanonical: boolean
-    ): Var | undefined => {
-      const canonicalVar = this.getVarByName(key);
-      if (allCanonical) {
-        return canonicalVar;
-      }
-      const maps = getSymbolMaps();
-      const lpMapped = maps.nameToVar.get(key);
-      if (!canonicalVar) {
-        return lpMapped;
-      }
-      if (
-        lpMapped &&
-        lpMapped !== canonicalVar &&
-        !Object.prototype.hasOwnProperty.call(record, lpMapped.name)
-      ) {
-        const canonicalLpName = maps.varToName.get(canonicalVar);
-        if (
-          canonicalLpName &&
-          canonicalLpName !== key &&
-          Object.prototype.hasOwnProperty.call(record, canonicalLpName)
-        ) {
-          return lpMapped;
-        }
-      }
-      return canonicalVar;
-    };
-
-    const resolveConstraintFromRecord = (
-      key: string,
-      record: Record<string, unknown>,
-      allCanonical: boolean
-    ): Constraint | undefined => {
-      const canonicalConstr = this.getConstraintByName(key);
-      if (allCanonical) {
-        return canonicalConstr;
-      }
-      const maps = getSymbolMaps();
-      const lpMapped = maps.nameToConstraint.get(key);
-      if (!canonicalConstr) {
-        return lpMapped;
-      }
-      if (
-        lpMapped &&
-        lpMapped !== canonicalConstr &&
-        !Object.prototype.hasOwnProperty.call(record, lpMapped.name)
-      ) {
-        const canonicalLpName = maps.constraintToName.get(canonicalConstr);
-        if (
-          canonicalLpName &&
-          canonicalLpName !== key &&
-          Object.prototype.hasOwnProperty.call(record, canonicalLpName)
-        ) {
-          return lpMapped;
-        }
-      }
-      return canonicalConstr;
-    };
-
-    return {
-      areAllVarKeysCanonical: (keys: string[]) =>
-        keys.every((k) => this.varMapByName.has(k) || this.boolVarMapByName.has(k)),
-      areAllConstraintKeysCanonical: (keys: string[]) =>
-        keys.every((k) => this.constrMapByName.has(k) || this.logicalConstrMapByName.has(k)),
-      resolveVarFromRecord,
-      resolveConstraintFromRecord,
-    };
-  }
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
@@ -1672,15 +1584,12 @@ export class Model {
     const slacksRecord: Record<string, number> = {};
 
     this.values.clear();
-    const resolver = this.createResultSymbolResolver(modelData);
 
     // Map variable solutions back to Var/BoolVar objects only when a feasible primal solution exists
     if (hasPrimal && result.values) {
-      const valueKeys = Object.keys(result.values);
-      const allCanonical = resolver.areAllVarKeysCanonical(valueKeys);
       for (const [vName, primal] of Object.entries(result.values)) {
         if (typeof primal === "number" && Number.isFinite(primal)) {
-          const v = resolver.resolveVarFromRecord(vName, result.values, allCanonical);
+          const v = this.getVarByName(vName);
           const bv = this.getBoolVarByName(vName);
           if (v) {
             v.value = primal;
@@ -1724,11 +1633,9 @@ export class Model {
     }
 
     if (hasPrimal && result.reducedCosts) {
-      const rcKeys = Object.keys(result.reducedCosts);
-      const allCanonical = resolver.areAllVarKeysCanonical(rcKeys);
       for (const [vName, rc] of Object.entries(result.reducedCosts)) {
         if (typeof rc !== "number" || !Number.isFinite(rc)) continue;
-        const v = resolver.resolveVarFromRecord(vName, result.reducedCosts, allCanonical);
+        const v = this.getVarByName(vName);
         if (v) {
           v.reducedCost = rc;
           setOwnProperty(reducedCostsRecord, v.name, rc);
@@ -1738,11 +1645,9 @@ export class Model {
 
     // Map row duals and slacks back to Constraint objects
     if (result.duals) {
-      const dualKeys = Object.keys(result.duals);
-      const allCanonical = resolver.areAllConstraintKeysCanonical(dualKeys);
       for (const [cName, dual] of Object.entries(result.duals)) {
         if (typeof dual !== "number" || !Number.isFinite(dual)) continue;
-        const c = resolver.resolveConstraintFromRecord(cName, result.duals, allCanonical);
+        const c = this.getConstraintByName(cName);
         if (c) {
           c.dual = dual;
           setOwnProperty(dualsRecord, c.name, dual);
@@ -1751,11 +1656,9 @@ export class Model {
     }
 
     if (result.slacks) {
-      const slackKeys = Object.keys(result.slacks);
-      const allCanonical = resolver.areAllConstraintKeysCanonical(slackKeys);
       for (const [cName, slack] of Object.entries(result.slacks)) {
         if (typeof slack !== "number" || !Number.isFinite(slack)) continue;
-        const c = resolver.resolveConstraintFromRecord(cName, result.slacks, allCanonical);
+        const c = this.getConstraintByName(cName);
         if (c) {
           c.slack = slack;
           setOwnProperty(slacksRecord, c.name, slack);
@@ -1835,7 +1738,6 @@ export class Model {
       constraints: this.constraints,
       logicalConstraints: this.logicalConstraints,
     };
-    const resolver = this.createResultSymbolResolver(checkModelData);
 
     // 2. If solver implements native check() (e.g. Z3 or custom check-capable solver)
     if (typeof activeSolver.check === "function") {
@@ -1860,12 +1762,10 @@ export class Model {
 
       const values: Record<string, number | boolean> = {};
       if (checkResult.values && checkResult.status === "Sat") {
-        const valueKeys = Object.keys(checkResult.values);
-        const allCanonical = resolver.areAllVarKeysCanonical(valueKeys);
         for (const [name, val] of Object.entries(checkResult.values)) {
           if (typeof val === "number") {
             if (!Number.isFinite(val)) continue;
-            const v = resolver.resolveVarFromRecord(name, checkResult.values, allCanonical);
+            const v = this.getVarByName(name);
             const bv = this.getBoolVarByName(name);
             if (v) {
               v.value = val;
@@ -1955,11 +1855,9 @@ export class Model {
 
     const values: Record<string, number | boolean> = {};
     if (isSat && result.values) {
-      const valueKeys = Object.keys(result.values);
-      const allCanonical = resolver.areAllVarKeysCanonical(valueKeys);
       for (const [vName, primal] of Object.entries(result.values)) {
         if (typeof primal === "number" && Number.isFinite(primal)) {
-          const v = resolver.resolveVarFromRecord(vName, result.values, allCanonical);
+          const v = this.getVarByName(vName);
           const bv = this.getBoolVarByName(vName);
           if (v) {
             v.value = primal;
@@ -2006,11 +1904,9 @@ export class Model {
     }
 
     if (result.slacks) {
-      const slackKeys = Object.keys(result.slacks);
-      const allCanonical = resolver.areAllConstraintKeysCanonical(slackKeys);
       for (const [cName, slack] of Object.entries(result.slacks)) {
         if (typeof slack !== "number" || !Number.isFinite(slack)) continue;
-        const c = resolver.resolveConstraintFromRecord(cName, result.slacks, allCanonical);
+        const c = this.getConstraintByName(cName);
         if (c) {
           c.slack = slack;
         }

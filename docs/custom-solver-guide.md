@@ -173,7 +173,7 @@ If your adapter targets a backend that requires CPLEX/HiGHS LP text or restricte
 
 - `generateLpString(modelData): LpExportResult` — serializes `modelData` into a CPLEX LP format string (`lpString`) along with collision-safe symbol lookup maps (`nameToVar`, `nameToConstraint`).
 - `buildLpSymbolMaps(modelData): LpSymbolMaps` — builds collision-safe sanitized symbol maps (`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`) without serializing an LP string.
-- `sanitizeIdentifier(raw, prefix)` — sanitizes an arbitrary display name into a valid LP identifier.
+- `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` — sanitizes an arbitrary display name into a valid LP identifier.
 
 ```typescript
 export interface LpExportResult {
@@ -190,7 +190,7 @@ export interface LpExportResult {
 
 ### `SolverResult` Normalization & Identity Decoding
 
-The `solve` method must return normalized results keyed by the model's canonical variable/constraint names (`v.name`, `bv.name`, `c.name`)—or, if using `generateLpString` / `buildLpSymbolMaps`, either canonical names or the sanitized LP identifiers:
+The `solve` method must return normalized results keyed by the model's canonical variable/constraint names (`v.name`, `bv.name`, `c.name`). Adapters that use `generateLpString(modelData)` or `buildLpSymbolMaps(modelData)` for an LP backend must translate sanitized LP identifiers back to canonical model names using `nameToVar` and `nameToConstraint`:
 
 ```typescript
 export interface SolverResult {
@@ -298,7 +298,7 @@ export class CloudSolver implements Solver {
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const startTime = performance.now();
-    const { lpString } = generateLpString(modelData);
+    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
 
     const response = await fetch(this.endpoint, {
       method: "POST",
@@ -320,12 +320,25 @@ export class CloudSolver implements Solver {
     const payload = await response.json();
     const runTime = (performance.now() - startTime) / 1000;
 
+    const values: Record<string, number> = {};
+    for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
+      values[nameToVar.get(k)?.name ?? k] = val;
+    }
+    const duals: Record<string, number> = {};
+    for (const [k, val] of Object.entries((payload.duals || {}) as Record<string, number>)) {
+      duals[nameToConstraint.get(k)?.name ?? k] = val;
+    }
+    const slacks: Record<string, number> = {};
+    for (const [k, val] of Object.entries((payload.slacks || {}) as Record<string, number>)) {
+      slacks[nameToConstraint.get(k)?.name ?? k] = val;
+    }
+
     return {
       status: payload.status === "OPTIMAL" ? "Optimal" : payload.status,
       objectiveValue: payload.objectiveValue ?? null,
-      values: payload.values || {},
-      duals: payload.duals || {},
-      slacks: payload.slacks || {},
+      values,
+      duals,
+      slacks,
       runTime: payload.solveDuration || runTime,
       logs: payload.logs || [],
       raw: payload,
