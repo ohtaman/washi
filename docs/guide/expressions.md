@@ -2,11 +2,19 @@
 
 Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
 
-In JavaScript and TypeScript without native operator overloading, WaSHI provides the **unified tagged template literal (`expr`)**, high-performance **`sum()`**, and matrix/vector **`dot()`** to make algebraic modeling clean and expressive.
+In JavaScript and TypeScript—which do not support operator overloading—WaSHI provides the **unified tagged template literal (`expr`)**, **`sum()`**, and matrix/vector **`dot()`** to construct algebraic expressions without losing static type safety.
+
+| Approach | Example | Infix readability | Type safety & IDE rename | Indexed variables (`flow[i][j]`) |
+| :--- | :--- | :--- | :--- | :--- |
+| Method chaining | `x.mul(30).add(y.mul(50)).le(40)` | Low | Yes | Yes |
+| Raw string parsing | `parse("30 * x + 50 * y <= 40")` | High | No (runtime string lookup) | Fragile (string concatenation) |
+| **Tagged template (`expr`)** | `` expr`30 * ${x} + 50 * ${y} <= 40` `` | **High** | **Yes (actual TS references)** | **Yes (bound by object reference)** |
 
 ---
 
 ## ✍️ Tagged Template Literal (`expr`)
+
+Similar to parameterized `sql` tagged templates, `expr` receives the static operator text (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) separately from the interpolated `${...}` values (`Var`, `LinExpr`, `QuadExpr`, or finite `number`). Variables are bound by object reference rather than resolved by string name, avoiding naming collisions and preserving TypeScript type checking and IDE refactoring.
 
 Use `expr` for both arithmetic expressions (`LinExpr | QuadExpr`) and relational constraints (`Constraint`):
 

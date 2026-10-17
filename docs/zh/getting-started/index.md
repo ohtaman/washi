@@ -2,7 +2,12 @@
 
 欢迎使用 **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface)。
 
-WaSHI 为现代 TypeScript/JavaScript 生态系统带来了类似于 Python **PuLP** 和 Julia **JuMP** 的代数建模体验。无需繁琐的 C/C++ 本地编译环境，即可在浏览器、Node.js 等多端直接运行工业级 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）。
+WaSHI 为 TypeScript/JavaScript 生态系统带来了类似于 Python **PuLP** 和 Julia **JuMP** 的代数建模方式。无需单独的 Python 后端或本地 C/C++ 编译环境，即可在浏览器与 Node.js 中运行 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）。
+
+### 为什么选择 TypeScript 与 WebAssembly？
+
+- **消除部署瓶颈与客户端协同**：在传统的运筹优化工作流（如 Python 的 PuLP 或 Pyomo）中，将模型转化为可交互的应用通常需要部署后端服务并维护本地 C/C++ 求解器二进制文件。随着 AI 辅助编程大幅加快 UI 与应用原型的开发速度，后端基础设施往往成为交付的主要瓶颈。通过基于 Web 标准（TypeScript + WebAssembly）运行建模器与求解器，整个优化应用可以直接作为静态资源（托管在 GitHub Pages 或 Cloudflare Pages 等平台上，包含生成的 JS、Worker 与 WASM 文件；使用 Z3 时需配置 COOP/COEP 响应头）发布，并能直接在浏览器端与端侧 LLM（如 WebGPU / WebLLM）无缝配合。
+- **无需运算符重载的代数语法 (`expr`)**：由于 JavaScript 不支持运算符重载，常规库往往只能在冗长的方法链（`x.mul(30).add(y.mul(50))`）和无类型的纯字符串（`"30 * x + 50 * y"`）之间妥协。WaSHI 借鉴了参数化 SQL 模板的思路，使用标签模板字面量（`` expr`30 * ${x} + 50 * ${y} <= 40` ``）解析中缀运算符，同时将 `${x}` 直接绑定为 TypeScript 对象引用，从而兼顾公式可读性、静态类型检查、IDE 符号重命名以及多维索引访问（`${flow[i][j]}`）。
 
 ---
 
