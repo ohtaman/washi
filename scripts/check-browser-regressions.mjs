@@ -86,6 +86,49 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           require(await m.solve({ solver: solverName }) === "Optimal" && m.objectiveValue === 26,
             "Could not solve again after cancellation");
 
+          if (solverName === "highs") {
+            const warm = new Model("Browser warm start");
+            // Create variables in reverse order of LP appearance so model.variables order !== LP column order
+            const w4 = warm.binary("w4", { initialValue: 1 });
+            const w3 = warm.binary("w3");
+            const w2 = warm.binary("w2");
+            const w1 = warm.binary("w1", { initialValue: 1 });
+            warm.objective(maximize(expr`10 * ${w1} + 10 * ${w2} + 10 * ${w3} + 10 * ${w4}`));
+            warm.constraint(expr`${w1} + ${w2} + ${w3} + ${w4} <= 2`, "cap");
+            warm.constraint(expr`${w1} + ${w2} >= 1`, "g1");
+            warm.constraint(expr`${w3} + ${w4} >= 1`, "g2");
+            require(
+              await warm.solve({ solver: "highs", useWorker: true, presolve: "off" }) === "Optimal",
+              "Expected Optimal for warm-started MIP"
+            );
+            require(
+              w1.value === 1 && w2.value === 0 && w3.value === 0 && w4.value === 1,
+              "HiGHS Worker did not apply partial primal initial values with native column mapping"
+            );
+            require(
+              w1.initialValue === 1 && w2.initialValue === undefined,
+              "initialValue must remain distinct from solved Var.value"
+            );
+          } else {
+            const unsupported = new Model("Unsupported warm start");
+            const ux = unsupported.integer("ux", { lb: 0, ub: 5, initialValue: 2 });
+            unsupported.objective(maximize(ux));
+            let solveRejected = false;
+            try {
+              await unsupported.solve({ solver: solverName });
+            } catch (err) {
+              solveRejected = String(err?.message || err).includes("does not support primal initial values");
+            }
+            require(solveRejected, `${solverName} solve() did not reject initialValue`);
+            let checkRejected = false;
+            try {
+              await unsupported.check({ solver: solverName });
+            } catch (err) {
+              checkRejected = String(err?.message || err).includes("does not support primal initial values");
+            }
+            require(checkRejected, `${solverName} check() did not reject initialValue`);
+          }
+
           if (solverName === "z3") {
             const logic = new Model("Browser conflicts");
             const a = logic.bool("a");
@@ -169,11 +212,15 @@ async function checkWorkerCancellation(page) {
       constructor(...args) {
         super(...args);
         this.solves = [];
+        this.initialValuePayloads = [];
         this.stopped = false;
         workers.push(this);
       }
       postMessage(message, ...args) {
-        if (message.type === "SOLVE") this.solves.push(message.lpString);
+        if (message.type === "SOLVE") {
+          this.solves.push(message.lpString);
+          this.initialValuePayloads.push(message.options?.initialValues);
+        }
         return super.postMessage(message, ...args);
       }
       terminate() { this.stopped = true; return super.terminate(); }
@@ -188,8 +235,9 @@ async function checkWorkerCancellation(page) {
       const q = queued.continuous("cancelled_queue_marker", { lb: 0, ub: 3 });
       queued.objective(window.api.maximize(q));
       const remaining = new Model("Remaining queued solve");
-      const r = remaining.continuous("remaining_queue_marker", { lb: 0, ub: 5 });
-      remaining.objective(window.api.maximize(r));
+      const r = remaining.continuous("remaining_queue_marker", { lb: 0, ub: 5, initialValue: 4 });
+      const protoHint = remaining.binary("__proto__", { initialValue: 1 });
+      remaining.objective(window.api.maximize(r.add(protoHint)));
       const activeController = new AbortController();
       const queuedController = new AbortController();
       let progressCount = 0;
@@ -212,8 +260,23 @@ async function checkWorkerCancellation(page) {
         "Active Worker was not replaced correctly");
       require(workers[1].solves.length === 1 && workers[1].solves[0].includes("remaining_queue_marker"),
         "Cancelled queued solve was dispatched or remaining solve was lost");
-      require(remaining.status === "Optimal" && r.value === 5 && remaining.validateSolution().valid,
-        "Remaining queued solve failed after Worker replacement");
+      require(
+        workers[1].initialValuePayloads[0]?.remaining_queue_marker === 4 &&
+          Object.hasOwn(workers[1].initialValuePayloads[0], "__proto__") &&
+          workers[1].initialValuePayloads[0]["__proto__"] === 1,
+        "Worker postMessage did not carry initialValues (including __proto__) across Worker replacement"
+      );
+      require(
+        remaining.status === "Optimal" &&
+          r.value === 5 &&
+          protoHint.value === 1 &&
+          r.initialValue === 4 &&
+          protoHint.initialValue === 1 &&
+          Object.hasOwn(remaining.solution.values, "__proto__") &&
+          remaining.solution.values["__proto__"] === 1 &&
+          remaining.validateSolution().valid,
+        "Remaining queued solve failed after Worker replacement"
+      );
       require(await queued.solve({ useWorker: true }) === "Optimal" && q.value === 3,
         "Cancelled model could not be solved again");
       const mutatedInWorker = new Model("Mutated during real Worker solve");
@@ -229,7 +292,17 @@ async function checkWorkerCancellation(page) {
       }
       require(staleRejected && mutatedInWorker.status === "NotSolved" && mw.value === null,
         "Stale Worker solve result was not discarded after mid-flight objective change");
-      console.log("PASS real HiGHS Worker: active abort, queued abort, replacement, recovery, and stale-result rejection");
+      const staleInitPromise = mutatedInWorker.solve({ useWorker: true });
+      mw.initialValue = 3;
+      let staleInitRejected = false;
+      try {
+        await staleInitPromise;
+      } catch (err) {
+        staleInitRejected = String(err?.message || err).includes("modified while solve() was in progress");
+      }
+      require(staleInitRejected && mutatedInWorker.status === "NotSolved" && mw.value === null && mw.initialValue === 3,
+        "Stale Worker solve result was not discarded after mid-flight initialValue change");
+      console.log("PASS real HiGHS Worker: active abort, queued abort, replacement, recovery, warm-start payload, and stale-result rejection");
     } finally {
       window.Worker = NativeWorker;
     }

@@ -200,11 +200,10 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
     } else if (lbIsInf && !ubIsInf) {
       lines.push(` -infinity <= ${vName} <= ${v.ub}`);
     } else if (!lbIsInf && ubIsInf) {
-      if (v.lb !== 0) {
+      if (v.lb !== 0 || v.initialValue !== undefined) {
         lines.push(` ${vName} >= ${v.lb}`);
       }
-      // If lb === 0 and ub === Infinity, default in LP is 0 <= x <= inf, but explicitly writing it is safe:
-      // lines.push(` 0 <= ${vName} <= +infinity`);
+      // If lb === 0 and ub === Infinity without initialValue, default in LP is 0 <= x <= inf
     } else {
       lines.push(` ${v.lb} <= ${vName} <= ${v.ub}`);
     }

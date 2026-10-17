@@ -1,6 +1,7 @@
 import type { Solver, SolverOptions, SolverResult } from "../types.js";
-import type { LpModelData, LpExportResult } from "../../lp-writer.js";
+import { sanitizeIdentifier, type LpModelData, type LpExportResult } from "../../lp-writer.js";
 import type { SolverStatus, TerminationStatus } from "../../types.js";
+import { normalizeVarInitialValue, validateVarBounds } from "../../validation.js";
 import { solveLp } from "./worker-client.js";
 
 /**
@@ -192,6 +193,7 @@ export class HighsSolver implements Solver {
   public static readonly capabilities = {
     supportsMIP: true,
     supportsQP: true,
+    supportsWarmStart: true,
   };
   public readonly name = "HiGHS";
   public readonly version = "1.15.3";
@@ -211,11 +213,41 @@ export class HighsSolver implements Solver {
     const { lpString, nameToVar, nameToConstraint } = lpResult;
     const offset = modelData.objective.constant || 0;
 
+    for (const v of modelData.variables) {
+      validateVarBounds(v);
+    }
+
+    const initialValues: Record<string, number> = Object.create(null);
+    let hasInitialValues = false;
+    const mappedVars = new Set<any>();
+    for (const [colName, v] of nameToVar.entries()) {
+      mappedVars.add(v);
+      const normalized = normalizeVarInitialValue(v);
+      if (normalized !== undefined) {
+        initialValues[colName] = normalized;
+        hasInitialValues = true;
+      }
+    }
+    for (let i = 0; i < modelData.variables.length; i++) {
+      const v = modelData.variables[i];
+      if (!mappedVars.has(v)) {
+        const normalized = normalizeVarInitialValue(v);
+        if (normalized !== undefined) {
+          const fallbackName = sanitizeIdentifier(v.name, "x", i);
+          if (!Object.prototype.hasOwnProperty.call(initialValues, fallbackName)) {
+            initialValues[fallbackName] = normalized;
+            hasInitialValues = true;
+          }
+        }
+      }
+    }
+
     let effectiveOptions: SolverOptions = mergedOptions;
-    if (offset !== 0) {
+    if (offset !== 0 || hasInitialValues || effectiveOptions.initialValues !== undefined) {
       effectiveOptions = {
         ...effectiveOptions,
-        objectiveOffset: offset,
+        ...(offset !== 0 ? { objectiveOffset: offset } : {}),
+        initialValues: hasInitialValues ? initialValues : undefined,
       };
     }
 
@@ -308,6 +340,15 @@ export class HighsSolver implements Solver {
       };
     }
 
+    const setOwnProperty = (record: Record<string, number>, key: string, value: number) => {
+      Object.defineProperty(record, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    };
+
     const valuesRecord: Record<string, number> = {};
     const dualsRecord: Record<string, number> = {};
     const reducedCostsRecord: Record<string, number> = {};
@@ -319,10 +360,10 @@ export class HighsSolver implements Solver {
         if (v) {
           if (typeof colData.Primal === "number" && Number.isFinite(colData.Primal)) {
             const primal = Math.abs(colData.Primal) < 1e-9 ? 0 : colData.Primal;
-            valuesRecord[v.name] = primal;
+            setOwnProperty(valuesRecord, v.name, primal);
           }
           if (typeof colData.Dual === "number" && Number.isFinite(colData.Dual)) {
-            reducedCostsRecord[v.name] = Math.abs(colData.Dual) < 1e-9 ? 0 : colData.Dual;
+            setOwnProperty(reducedCostsRecord, v.name, Math.abs(colData.Dual) < 1e-9 ? 0 : colData.Dual);
           }
         }
       }
@@ -335,11 +376,11 @@ export class HighsSolver implements Solver {
         const c = rowName ? nameToConstraint.get(rowName) : undefined;
         if (c) {
           if (typeof rowData.Dual === "number" && Number.isFinite(rowData.Dual)) {
-            dualsRecord[c.name] = Math.abs(rowData.Dual) < 1e-9 ? 0 : rowData.Dual;
+            setOwnProperty(dualsRecord, c.name, Math.abs(rowData.Dual) < 1e-9 ? 0 : rowData.Dual);
           }
           if (typeof rowData.Primal === "number" && Number.isFinite(rowData.Primal)) {
             const slack = c.rhs - rowData.Primal;
-            slacksRecord[c.name] = Math.abs(slack) < 1e-9 ? 0 : slack;
+            setOwnProperty(slacksRecord, c.name, Math.abs(slack) < 1e-9 ? 0 : slack);
           }
         }
       }

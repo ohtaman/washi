@@ -107,7 +107,12 @@ export function releaseConstraintOwnership(
 }
 
 /**
- * Validates lower and upper bounds of a single variable.
+ * Numerical tolerance used when validating variable initial values against bounds and integrality.
+ */
+export const INITIAL_VALUE_TOLERANCE = 1e-6;
+
+/**
+ * Validates lower and upper bounds (and optional primal initialValue) of a single variable.
  */
 export function validateVarBounds(v: Var): void {
   if (typeof v.lb !== "number" || Number.isNaN(v.lb)) {
@@ -135,6 +140,53 @@ export function validateVarBounds(v: Var): void {
       `Variable "${v.name}" has invalid bounds: lower bound (${v.lb}) is strictly greater than upper bound (${v.ub}).`
     );
   }
+
+  if (v.initialValue !== undefined) {
+    if (typeof v.initialValue !== "number" || !Number.isFinite(v.initialValue)) {
+      throw new Error(
+        `Variable "${v.name}" has invalid initialValue: ${String(v.initialValue)} (initialValue must be a finite number).`
+      );
+    }
+    const effectiveLb = v.type === "Binary" ? Math.max(0, v.lb) : v.lb;
+    const effectiveUb = v.type === "Binary" ? Math.min(1, v.ub) : v.ub;
+    if (
+      v.initialValue < effectiveLb - INITIAL_VALUE_TOLERANCE ||
+      v.initialValue > effectiveUb + INITIAL_VALUE_TOLERANCE
+    ) {
+      throw new Error(
+        `Variable "${v.name}" has initialValue (${v.initialValue}) outside its bounds [${effectiveLb}, ${effectiveUb}] (tolerance ${INITIAL_VALUE_TOLERANCE}).`
+      );
+    }
+    if (v.type === "Integer" || v.type === "Binary") {
+      const nearest = Math.round(v.initialValue);
+      if (
+        Math.abs(v.initialValue - nearest) > INITIAL_VALUE_TOLERANCE ||
+        nearest < effectiveLb ||
+        nearest > effectiveUb
+      ) {
+        throw new Error(
+          `Variable "${v.name}" of type "${v.type}" has non-integral or out-of-domain initialValue: ${v.initialValue} (must be within ${INITIAL_VALUE_TOLERANCE} of an integer in [${effectiveLb}, ${effectiveUb}]).`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Validates and normalizes a variable's optional primal initialValue for solver consumption.
+ * Rounds near-integer values for Integer/Binary variables and clamps near-bound values for Continuous variables.
+ */
+export function normalizeVarInitialValue(v: Var): number | undefined {
+  if (v.initialValue === undefined) {
+    return undefined;
+  }
+  validateVarBounds(v);
+  if (v.type === "Integer" || v.type === "Binary") {
+    const rounded = Math.round(v.initialValue);
+    return Object.is(rounded, -0) ? 0 : rounded;
+  }
+  const clamped = Math.min(v.ub, Math.max(v.lb, v.initialValue));
+  return Object.is(clamped, -0) ? 0 : clamped;
 }
 
 /**

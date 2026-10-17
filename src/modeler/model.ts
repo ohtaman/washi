@@ -40,6 +40,14 @@ export interface BoundsOptions {
   prefix?: string;
   lb?: number;
   ub?: number;
+  initialValue?: number;
+  [Symbol.iterator]?: never;
+}
+
+export interface BinaryOptions {
+  name?: string;
+  prefix?: string;
+  initialValue?: number;
   [Symbol.iterator]?: never;
 }
 
@@ -477,32 +485,32 @@ export class Model {
    * - m.binary(rowKeys, colsCount) -> Record<R, Var[]>
    * - m.binary(rowKeys, colKeys) -> Record<R, Record<C, Var>>
    */
-  binary(name?: string, options?: VarNameOptions): Var;
-  binary(options: VarNameOptions): Var;
-  binary(count: number, options?: VarNameOptions): Var[];
+  binary(name?: string, options?: BinaryOptions): Var;
+  binary(options: BinaryOptions): Var;
+  binary(count: number, options?: BinaryOptions): Var[];
   binary<K extends string | number>(
     keys: KeyCollection<K>,
-    options?: VarNameOptions
+    options?: BinaryOptions
   ): Record<K, Var>;
   binary(
     rows: number,
     cols: number,
-    options?: VarNameOptions
+    options?: BinaryOptions
   ): Var[][];
   binary<C extends string | number>(
     rows: number,
     cols: KeyCollection<C>,
-    options?: VarNameOptions
+    options?: BinaryOptions
   ): Array<Record<C, Var>>;
   binary<R extends string | number>(
     rows: KeyCollection<R>,
     cols: number,
-    options?: VarNameOptions
+    options?: BinaryOptions
   ): Record<R, Var[]>;
   binary<R extends string | number, C extends string | number>(
     rows: KeyCollection<R>,
     cols: KeyCollection<C>,
-    options?: VarNameOptions
+    options?: BinaryOptions
   ): Record<R, Record<C, Var>>;
   binary(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Binary", arg1, arg2, arg3);
@@ -1477,6 +1485,16 @@ export class Model {
       );
     }
 
+    // Capability check: Validate if solver supports primal initial values (warm starts)
+    if (
+      this.variables.some((v) => v.initialValue !== undefined) &&
+      activeSolver.capabilities?.supportsWarmStart !== true
+    ) {
+      throw new Error(
+        `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+      );
+    }
+
     const modelData = {
       name: this.name,
       sense: this.sense,
@@ -1533,6 +1551,15 @@ export class Model {
           ? Math.abs(this.objectiveValue - this.objectiveBound)
           : undefined;
 
+    const setOwnProperty = <T>(record: Record<string, T>, key: string, value: T) => {
+      Object.defineProperty(record, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    };
+
     const valuesRecord: Record<string, number> = {};
     const dualsRecord: Record<string, number> = {};
     const reducedCostsRecord: Record<string, number> = {};
@@ -1548,7 +1575,7 @@ export class Model {
           const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
           if (v) {
             v.value = primal;
-            valuesRecord[v.name] = primal;
+            setOwnProperty(valuesRecord, v.name, primal);
           }
           const bv = this.boolVars.find((b) => b.name === vName);
           if (bv) {
@@ -1563,7 +1590,7 @@ export class Model {
         const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
         if (v) {
           v.reducedCost = rc;
-          reducedCostsRecord[v.name] = rc;
+          setOwnProperty(reducedCostsRecord, v.name, rc);
         }
       }
     }
@@ -1574,7 +1601,7 @@ export class Model {
         const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
         if (c) {
           c.dual = dual;
-          dualsRecord[c.name] = dual;
+          setOwnProperty(dualsRecord, c.name, dual);
         }
       }
     }
@@ -1584,7 +1611,7 @@ export class Model {
         const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
         if (c) {
           c.slack = slack;
-          slacksRecord[c.name] = slack;
+          setOwnProperty(slacksRecord, c.name, slack);
         }
       }
     }
@@ -1655,6 +1682,16 @@ export class Model {
     if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
       throw new Error(
         `Solver "${activeSolver.name}" does not support SMT / logical constraints (or, implies, not, xor). Please use an SMT-capable solver such as Z3.`
+      );
+    }
+
+    // Guard against primal initial values if solver lacks warm-start support
+    if (
+      this.variables.some((v) => v.initialValue !== undefined) &&
+      activeSolver.capabilities?.supportsWarmStart !== true
+    ) {
+      throw new Error(
+        `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
       );
     }
 
@@ -1770,12 +1807,22 @@ export class Model {
           const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
           if (v) {
             v.value = primal;
-            values[v.name] = primal;
+            Object.defineProperty(values, v.name, {
+              value: primal,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
           }
           const bv = this.boolVars.find((b) => b.name === vName);
           if (bv) {
             bv.value = Boolean(primal);
-            values[bv.name] = bv.value;
+            Object.defineProperty(values, bv.name, {
+              value: bv.value,
+              enumerable: true,
+              writable: true,
+              configurable: true,
+            });
           }
         }
       }
