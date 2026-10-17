@@ -477,7 +477,7 @@ npm run dev
 
 ---
 
-## 🧪 自动化测试
+## 🧪 自动化测试与可复现基准测试
 
 运行仓库的单元测试与集成测试，并构建分发版本：
 
@@ -488,6 +488,24 @@ npm test
 # 构建生产级依赖包与 TypeScript 类型定义
 npm run build
 ```
+
+### 可选的可复现基准测试
+
+在不将耗时阈值混入正确性测试断言的前提下，对确定性的 `small-lp`（24 个变量、18 条约束）和 `scheduling-mip`（315 个变量、231 条约束，含重建模型的 `initialValue` 热启动）进行分阶段性能测量：
+
+```bash
+# 运行 Node.js 进程内 WASM 基准测试（HiGHS 与 GLPK，默认 5 次热重复）
+npm run bench
+
+# 自定义重复次数或输出 JSON
+node scripts/run-benchmarks.mjs --iterations=10 --json
+
+# 同时测量无头 Chromium Web Worker 执行（需要安装 Playwright Chromium）
+node scripts/run-benchmarks.mjs --browser
+```
+
+- **明确的测量边界**：将冷启动初始化（`coldRuntimeInitMs`、`coldFirstSolveMs`）与复用运行时的重复测量（`modelBuildMs`、`validationMs`、LP 字符串适配器的 `lpSerializationMs` 或结构化适配器的 `symbolMapMs`、基于 `MockSolver` 的 `resultMappingMs`、`adapterSolveMs` 以及 `endToEndSolveMs`）分开直接测量，不通过相减来臆造“原生求解器时间”。
+- **区分不同执行环境**：Node.js 进程内 WASM（`usesBrowserWorker: false`）与浏览器 Web Worker 执行（`usesBrowserWorker: true`，包含 Worker 生命周期与 `postMessage` 结构化克隆传输）作为不同执行环境分别报告，不可直接互换作基线。
 
 ---
 

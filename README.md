@@ -477,7 +477,7 @@ The example sources import the repository's `src/` modules. In an application us
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing & Reproducible Benchmarks
 
 Run the repository's unit and integration tests, and build the distributions:
 
@@ -488,6 +488,24 @@ npm test
 # Build production bundle and TypeScript declarations
 npm run build
 ```
+
+### Optional Reproducible Benchmarks
+
+To measure modeling and solver phases on deterministic `small-lp` (24 variables, 18 constraints) and `scheduling-mip` (315 variables, 231 constraints, including rebuilt `initialValue` warm starts) scenarios without mixing performance timings into correctness test thresholds:
+
+```bash
+# Run Node.js in-process WASM benchmarks (HiGHS and GLPK, 5 warm iterations by default)
+npm run bench
+
+# Customize iteration count or emit structured JSON
+node scripts/run-benchmarks.mjs --iterations=10 --json
+
+# Also measure headless Chromium Web Worker execution (requires Playwright Chromium)
+node scripts/run-benchmarks.mjs --browser
+```
+
+- **Explicit phase boundaries**: Reports cold runtime initialization (`coldRuntimeInitMs`, `coldFirstSolveMs`) separately from repeated warm-runtime measurements (`modelBuildMs`, `validationMs`, `lpSerializationMs` for LP-string adapters or `symbolMapMs` for structured adapters, `resultMappingMs` via `MockSolver`, `adapterSolveMs`, and `endToEndSolveMs`). Timings are measured directly per phase and are never subtracted to estimate "native solver time".
+- **Distinct execution environments**: Node.js in-process WASM (`usesBrowserWorker: false`) and Browser Web Worker execution (`usesBrowserWorker: true`, which includes Worker lifecycle and `postMessage` structured-clone transfer) are reported as separate environments, not interchangeable baselines.
 
 ---
 
