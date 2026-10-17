@@ -71,7 +71,8 @@
     "prepublishOnly": "npm run build:types && npm run build:lib && npm run build:browser",
     "build:browser": "node scripts/build-browser.mjs",
     "test:distribution": "npm run build:types && npm run build:lib && npm run build:browser && node --experimental-vm-modules scripts/check-distribution.mjs",
-    "test:demo": "BASE_URL=/washi/ npm run build:demo && node scripts/check-demo-browser.mjs"
+    "test:demo": "BASE_URL=/washi/ npm run build:demo && node scripts/check-demo-browser.mjs",
+    "bench": "node scripts/run-benchmarks.mjs"
   },
   "keywords": [
     "optimization",

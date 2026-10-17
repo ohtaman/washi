@@ -477,7 +477,7 @@ npm run dev
 
 ---
 
-## 🧪 テスト & 信頼性
+## 🧪 テスト & 再現可能なベンチマーク
 
 リポジトリのユニット・統合テストを実行し、配布物をビルドできます：
 
@@ -488,6 +488,24 @@ npm test
 # プロダクション用バンドルと型定義を生成
 npm run build
 ```
+
+### オプションの再現可能なベンチマーク
+
+正しさのテストの合否閾値に実行時間を含めることなく、決定論的な `small-lp`（24変数・18制約）および `scheduling-mip`（315変数・231制約、再構築モデルの `initialValue` ウォームスタートを含む）の各フェーズを計測できます：
+
+```bash
+# Node.js インプロセス WASM ベンチマークを実行（HiGHS・GLPK、デフォルト5回反復）
+npm run bench
+
+# 反復回数の指定や JSON 出力
+node scripts/run-benchmarks.mjs --iterations=10 --json
+
+# ヘッドレス Chromium の Web Worker 実行も計測（Playwright Chromium が必要）
+node scripts/run-benchmarks.mjs --browser
+```
+
+- **明示的な計測境界**: コールド初期化（`coldRuntimeInitMs`, `coldFirstSolveMs`）と再利用ランタイムでの反復計測（`modelBuildMs`, `validationMs`, LP文字列アダプタ向けの `lpSerializationMs` または構造化アダプタ向けの `symbolMapMs`, `MockSolver` による `resultMappingMs`, `adapterSolveMs`, `endToEndSolveMs`）を分離して直接計測します（無関係なフェーズ時間を差し引いて「ネイティブソルバー時間」とみなすことはしません）。
+- **実行環境の区別**: Node.js のインプロセス WASM（`usesBrowserWorker: false`）とブラウザ Web Worker 実行（`usesBrowserWorker: true`、Worker ライフサイクルや `postMessage` 転送を含む）は異なる実行環境として区別してレポートされます。
 
 ---
 
