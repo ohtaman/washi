@@ -20,6 +20,7 @@ export interface MockSolverOptions extends SolverOptions {
   mipGap?: number;
   absGap?: number;
   values?: Record<string, number>;
+  boolValues?: Record<string, boolean>;
   reducedCosts?: Record<string, number>;
   duals?: Record<string, number>;
   slacks?: Record<string, number>;
@@ -60,6 +61,10 @@ export class MockSolver implements Solver {
       ? maybeOptions
       : optionsOrLpResult;
     const opts: MockSolverOptions = { ...this.options, ...options };
+    const hasConfiguredIncumbent = Boolean(
+      (opts.values && Object.keys(opts.values).length > 0) ||
+        (opts.boolValues && Object.keys(opts.boolValues).length > 0)
+    );
     if (opts.signal?.aborted) {
       return {
         status: "Unknown",
@@ -85,9 +90,7 @@ export class MockSolver implements Solver {
         opts.signal?.addEventListener("abort", onAbort, { once: true });
       });
       if (opts.signal?.aborted) {
-        const hasIncumbent = Boolean(
-          opts.hasPrimalSolution ?? (opts.values && Object.keys(opts.values).length > 0)
-        );
+        const hasIncumbent = Boolean(opts.hasPrimalSolution ?? hasConfiguredIncumbent);
         return {
           status: hasIncumbent ? "Feasible" : "Unknown",
           terminationStatus: "Interrupted",
@@ -101,6 +104,7 @@ export class MockSolver implements Solver {
               : {}),
           ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
           values: hasIncumbent ? opts.values || {} : {},
+          ...(hasIncumbent && opts.boolValues !== undefined ? { boolValues: opts.boolValues } : {}),
           runTime: 0.001,
           raw: { mock: true },
         };
@@ -123,7 +127,7 @@ export class MockSolver implements Solver {
           status === "Feasible" ||
           status === "Sat" ||
           ((status === "TimeLimit" || status === "IterationLimit" || terminationStatus === "Interrupted") &&
-            Boolean(opts.values && Object.keys(opts.values).length > 0));
+            hasConfiguredIncumbent);
 
     if (opts.onProgress && !Array.isArray(opts.progressEvents) && !opts.signal?.aborted) {
       const obj = hasPrimalSolution ? (opts.objectiveValue ?? 0) : undefined;
@@ -146,7 +150,7 @@ export class MockSolver implements Solver {
       hasPrimalSolution =
         opts.hasPrimalSolution !== undefined
           ? opts.hasPrimalSolution
-          : Boolean(opts.values && Object.keys(opts.values).length > 0);
+          : hasConfiguredIncumbent;
       status = hasPrimalSolution ? "Feasible" : "Unknown";
     }
 
@@ -163,6 +167,7 @@ export class MockSolver implements Solver {
           : {}),
       ...(opts.absGap !== undefined ? { absGap: opts.absGap } : {}),
       values: hasPrimalSolution ? opts.values || {} : {},
+      ...(hasPrimalSolution && opts.boolValues !== undefined ? { boolValues: opts.boolValues } : {}),
       reducedCosts: opts.reducedCosts,
       duals: opts.duals,
       slacks: opts.slacks,

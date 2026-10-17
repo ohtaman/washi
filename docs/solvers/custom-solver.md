@@ -33,6 +33,7 @@ All custom solvers must implement the `Solver` interface defined in `@ohtaman/wa
 import {
   generateLpString,
   buildLpSymbolMaps,
+  isLpExportResult,
   sanitizeIdentifier,
   type Solver,
   type SolverOptions,
@@ -173,6 +174,7 @@ If your adapter targets a backend that requires CPLEX/HiGHS LP text or restricte
 
 - `generateLpString(modelData): LpExportResult` — serializes `modelData` into a CPLEX LP format string (`lpString`) along with collision-safe symbol lookup maps (`nameToVar`, `nameToConstraint`).
 - `buildLpSymbolMaps(modelData): LpSymbolMaps` — builds collision-safe sanitized symbol maps (`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`) without serializing an LP string.
+- `isLpExportResult(value): value is LpExportResult` — runtime type guard for `LpExportResult` (useful when supporting legacy 3-argument `solve(modelData, lpResult, options)` overloads).
 - `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` — sanitizes an arbitrary display name into a valid LP identifier.
 
 ```typescript
@@ -320,15 +322,15 @@ export class CloudSolver implements Solver {
     const payload = await response.json();
     const runTime = (performance.now() - startTime) / 1000;
 
-    const values: Record<string, number> = {};
+    const values: Record<string, number> = Object.create(null);
     for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
       values[nameToVar.get(k)?.name ?? k] = val;
     }
-    const duals: Record<string, number> = {};
+    const duals: Record<string, number> = Object.create(null);
     for (const [k, val] of Object.entries((payload.duals || {}) as Record<string, number>)) {
       duals[nameToConstraint.get(k)?.name ?? k] = val;
     }
-    const slacks: Record<string, number> = {};
+    const slacks: Record<string, number> = Object.create(null);
     for (const [k, val] of Object.entries((payload.slacks || {}) as Record<string, number>)) {
       slacks[nameToConstraint.get(k)?.name ?? k] = val;
     }

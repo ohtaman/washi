@@ -23,6 +23,9 @@ import {
   setHighsWasmUrl,
   getHighsWasmUrl,
   getHighs,
+  buildLpSymbolMaps,
+  isLpExportResult,
+  sanitizeIdentifier,
 } from "../src/index.js";
 
 describe("opt-ts Library Entry Point Exports", () => {
@@ -49,6 +52,9 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect(setHighsWasmUrl).toBeDefined();
     expect(getHighsWasmUrl).toBeDefined();
     expect(getHighs).toBeDefined();
+    expect(buildLpSymbolMaps).toBeDefined();
+    expect(isLpExportResult).toBeDefined();
+    expect(sanitizeIdentifier).toBeDefined();
 
     // Retired root aliases and internal WASM probe helpers must not be exported from root
     expect((WashiRoot as any).c).toBeUndefined();

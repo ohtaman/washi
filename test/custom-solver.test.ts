@@ -7,6 +7,7 @@ import {
   implies,
   generateLpString,
   buildLpSymbolMaps,
+  isLpExportResult,
   sanitizeIdentifier,
   registerSolver,
   listAvailableSolvers,
@@ -277,11 +278,11 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
         expect(maps.constraintToName.get(cDash)).toBe("c_1");
         expect(maps.constraintToName.get(cUnder)).toBe("c_1_1");
 
-        const values: Record<string, number> = {};
+        const values: Record<string, number> = Object.create(null);
         for (const [lpName, val] of Object.entries(rawBackendVars)) {
           values[maps.nameToVar.get(lpName)?.name ?? lpName] = val;
         }
-        const duals: Record<string, number> = {};
+        const duals: Record<string, number> = Object.create(null);
         for (const [lpName, val] of Object.entries(rawBackendDuals)) {
           duals[maps.nameToConstraint.get(lpName)?.name ?? lpName] = val;
         }
@@ -497,6 +498,80 @@ describe("Custom Solver Plugin Architecture & Typed Adapter Contract", () => {
     expect(frozenCheckOpts.solver).toBe("immutable-opts-test");
     expect(receivedCheckOpts?.timeLimit).toBe(7);
     expect((receivedCheckOpts as any)?.solver).toBeUndefined();
+  });
+
+  it("preserves __proto__ variable and constraint names in LP-mapped custom adapters and exports isLpExportResult", async () => {
+    const m = new Model({ name: "ProtoAdapterModel" });
+    const pVar = m.continuous("__proto__", { lb: 0, ub: 10 });
+    m.objective(maximize(pVar));
+    m.constraint(pVar.le(6), "__proto__");
+    const pConstr = m.getConstraintByName("__proto__")!;
+
+    const protoLpAdapter: Solver = {
+      name: "ProtoLpAdapter",
+      async solve(modelData, opts) {
+        const lpExport = generateLpString(modelData);
+        expect(isLpExportResult(lpExport)).toBe(true);
+        expect(isLpExportResult(opts)).toBe(false);
+
+        const rawBackendValues = { [lpExport.nameToVar.keys().next().value!]: 6 };
+        const rawBackendDuals = { [lpExport.nameToConstraint.keys().next().value!]: 1 };
+
+        const values: Record<string, number> = Object.create(null);
+        for (const [k, val] of Object.entries(rawBackendValues)) {
+          values[lpExport.nameToVar.get(k)?.name ?? k] = val;
+        }
+        const duals: Record<string, number> = Object.create(null);
+        for (const [k, val] of Object.entries(rawBackendDuals)) {
+          duals[lpExport.nameToConstraint.get(k)?.name ?? k] = val;
+        }
+        return {
+          status: "Optimal",
+          objectiveValue: 6,
+          values,
+          duals,
+        };
+      },
+    };
+
+    expect(await m.solve(protoLpAdapter)).toBe("Optimal");
+    expect(pVar.value).toBe(6);
+    expect(pConstr.dual).toBe(1);
+    expect(Object.prototype.hasOwnProperty.call(m.solution?.values, "__proto__")).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(m.solution?.duals, "__proto__")).toBe(true);
+  });
+
+  it("forwards boolValues from MockSolver on normal and interrupted solves", async () => {
+    const m = new Model({ name: "MockBoolValuesModel" });
+    const flag = m.bool("flag");
+    const other = m.bool("other");
+    m.constraint(implies(flag, other), "imp");
+
+    const mockNormal = new MockSolver({
+      capabilities: { supportsMIP: true, supportsSMT: true },
+      status: "Optimal",
+      objectiveValue: 0,
+      boolValues: { flag: true, other: true },
+    });
+    expect(await m.solve(mockNormal)).toBe("Optimal");
+    expect(m.hasPrimalSolution).toBe(true);
+    expect(flag.value).toBe(true);
+    expect(other.value).toBe(true);
+
+    // Interrupted solve with a Boolean-only incumbent
+    const controller = new AbortController();
+    const mockDelayed = new MockSolver({
+      capabilities: { supportsMIP: true, supportsSMT: true },
+      delayMs: 50,
+      boolValues: { flag: false, other: true },
+    });
+    setTimeout(() => controller.abort(), 5);
+    const interruptedStatus = await m.solve(mockDelayed, { signal: controller.signal });
+    expect(interruptedStatus).toBe("Feasible");
+    expect(m.terminationStatus).toBe("Interrupted");
+    expect(m.hasPrimalSolution).toBe(true);
+    expect(flag.value).toBe(false);
+    expect(other.value).toBe(true);
   });
 });
 
