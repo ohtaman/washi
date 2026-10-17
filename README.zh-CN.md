@@ -436,7 +436,7 @@ setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser
 
 WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并注册自定义求解器适配器（如云端 REST 求解服务、定制 WebAssembly 引擎或商业求解器）：
 
-- 完整开发指南、接口契约（`Solver`, `LpModelData`, `SolverResult`）与测试实践详见 [Custom Solver Developer Guide](docs/custom-solver-guide.md)。
+- 完整开发指南、接口契约（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）与测试实践详见 [Custom Solver Developer Guide](docs/custom-solver-guide.md)。
 
 ---
 

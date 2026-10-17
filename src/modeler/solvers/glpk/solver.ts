@@ -1,8 +1,22 @@
-import type { Solver, SolverOptions, SolverResult } from "../types.js";
-import type { LpModelData, LpExportResult } from "../../lp-writer.js";
+import type { SolveModelData, Solver, SolverOptions, SolverResult } from "../types.js";
+import {
+  buildLpSymbolMaps,
+  isLpExportResult,
+  type LpModelData,
+  type LpExportResult,
+} from "../../lp-writer.js";
 import type { SolverStatus } from "../../types.js";
 import { registerSolver } from "../registry.js";
 import * as glpkLoader from "./loader.js";
+
+function setOwnProperty<T>(record: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
 
 /**
  * GLPK Solver adapter (GNU Linear Programming Kit via WebAssembly / JS).
@@ -29,16 +43,24 @@ export class GLPKSolver implements Solver {
     this.options = options;
   }
 
+  async solve(modelData: SolveModelData, options?: SolverOptions): Promise<SolverResult>;
   async solve(
     modelData: LpModelData,
     lpResult: LpExportResult,
-    options: SolverOptions = {}
+    options?: SolverOptions
+  ): Promise<SolverResult>;
+  async solve(
+    modelData: SolveModelData,
+    lpResultOrOptions?: LpExportResult | SolverOptions,
+    maybeOptions?: SolverOptions
   ): Promise<SolverResult> {
     if (modelData.variables?.some((v) => v.initialValue !== undefined)) {
       throw new Error(
         `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
       );
     }
+    const hasExplicitLpResult = isLpExportResult(lpResultOrOptions);
+    const options: SolverOptions = (hasExplicitLpResult ? maybeOptions : lpResultOrOptions) ?? {};
     const mergedOptions: SolverOptions = { ...this.options, ...options };
     if (mergedOptions.signal?.aborted) {
       return {
@@ -68,15 +90,29 @@ export class GLPKSolver implements Solver {
       };
     }
 
-    // Mapping from Var to sanitized name used in LP export
-    const { nameToVar, nameToConstraint } = lpResult;
-    const varToName = new Map<any, string>();
-    for (const [name, v] of nameToVar.entries()) {
-      varToName.set(v, name);
-    }
-    const constraintToName = new Map<any, string>();
-    for (const [name, c] of nameToConstraint.entries()) {
-      constraintToName.set(c, name);
+    // Build collision-safe sanitized symbol maps without serializing an LP string
+    let nameToVar: Map<string, any>;
+    let varToName: Map<any, string>;
+    let nameToConstraint: Map<string, any>;
+    let constraintToName: Map<any, string>;
+
+    if (
+      hasExplicitLpResult &&
+      (lpResultOrOptions.nameToVar.size > 0 || lpResultOrOptions.nameToConstraint.size > 0)
+    ) {
+      nameToVar = lpResultOrOptions.nameToVar;
+      nameToConstraint = lpResultOrOptions.nameToConstraint;
+      varToName = new Map<any, string>();
+      for (const [name, v] of nameToVar.entries()) {
+        varToName.set(v, name);
+      }
+      constraintToName = new Map<any, string>();
+      for (const [name, c] of nameToConstraint.entries()) {
+        constraintToName.set(c, name);
+      }
+    } else {
+      ({ nameToVar, varToName, nameToConstraint, constraintToName } =
+        buildLpSymbolMaps(modelData));
     }
 
     // 1. Objective linear variables
@@ -298,13 +334,16 @@ export class GLPKSolver implements Solver {
         }
         const v = nameToVar.get(vName);
         const originalName = v ? v.name : vName;
-        valuesRecord[originalName] = Math.abs(val) < 1e-9 ? 0 : val;
+        setOwnProperty(valuesRecord, originalName, Math.abs(val) < 1e-9 ? 0 : val);
       }
 
       if (hasValidVariablePayload) {
         for (const v of modelData.variables) {
           const lpName = varToName.get(v) || v.name;
-          if (!Object.prototype.hasOwnProperty.call(rawVars, lpName)) {
+          if (
+            !Object.prototype.hasOwnProperty.call(rawVars, lpName) &&
+            !Object.prototype.hasOwnProperty.call(rawVars, v.name)
+          ) {
             hasValidVariablePayload = false;
             break;
           }
@@ -349,7 +388,7 @@ export class GLPKSolver implements Solver {
         if (typeof dualVal !== "number" || !Number.isFinite(dualVal)) continue;
         const c = nameToConstraint.get(cName);
         const originalName = c ? c.name : cName;
-        dualsRecord[originalName] = Math.abs(dualVal) < 1e-9 ? 0 : dualVal;
+        setOwnProperty(dualsRecord, originalName, Math.abs(dualVal) < 1e-9 ? 0 : dualVal);
       }
     }
 

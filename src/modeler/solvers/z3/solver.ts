@@ -4,16 +4,32 @@ import type { LinExpr } from "../../expression.js";
 import type { QuadExpr } from "../../quad-expr.js";
 import { Constraint } from "../../constraint.js";
 import type {
+  CheckModelData,
+  SolveModelData,
   Solver,
   SolverCapabilities,
   SolverOptions,
   SolverResult,
   SolverCheckResult,
 } from "../types.js";
+import {
+  isLpExportResult,
+  type LpExportResult,
+  type LpModelData,
+} from "../../lp-writer.js";
 import { registerSolver } from "../registry.js";
 import { loadZ3, resetZ3LoaderCache, killZ3Threads, registerZ3ErrorHandler, notifyZ3WorkerError } from "./loader.js";
 
 export { resetZ3LoaderCache, killZ3Threads, notifyZ3WorkerError };
+
+function setOwnProperty<T>(record: Record<string, T>, key: string, value: T): void {
+  Object.defineProperty(record, key, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
 
 /**
  * Z3 SMT / SAT / MIP Solver Adapter
@@ -44,26 +60,40 @@ export class Z3Solver implements Solver {
    * Helper to build AST translations for a given Z3 Context
    */
   private createContextTranslator(ctx: any) {
-    const varAstMap = new Map<string, any>();
-    const boolVarAstMap = new Map<string, any>();
+    const varAstMap = new Map<Var, any>();
+    const boolVarAstMap = new Map<BoolVar, any>();
+    const usedSymbolNames = new Set<string>();
+
+    function allocSymbolName(baseName: string, fallbackPrefix: string): string {
+      const base = baseName || fallbackPrefix;
+      let candidate = base;
+      let suffix = 1;
+      while (usedSymbolNames.has(candidate)) {
+        candidate = `${base}__${suffix++}`;
+      }
+      usedSymbolNames.add(candidate);
+      return candidate;
+    }
 
     function getVarAst(v: Var) {
-      if (!varAstMap.has(v.name)) {
+      let ast = varAstMap.get(v);
+      if (!ast) {
+        const symName = allocSymbolName(v.name, `v_${v.id ?? varAstMap.size}`);
         const isCont = v.type === "Continuous" || (v.type as string) === "CONTINUOUS";
-        const ast = isCont
-          ? ctx.Real.const(v.name)
-          : ctx.Int.const(v.name);
-        varAstMap.set(v.name, ast);
+        ast = isCont ? ctx.Real.const(symName) : ctx.Int.const(symName);
+        varAstMap.set(v, ast);
       }
-      return varAstMap.get(v.name);
+      return ast;
     }
 
     function getBoolVarAst(bv: BoolVar) {
-      if (!boolVarAstMap.has(bv.name)) {
-        const ast = ctx.Bool.const(bv.name);
-        boolVarAstMap.set(bv.name, ast);
+      let ast = boolVarAstMap.get(bv);
+      if (!ast) {
+        const symName = allocSymbolName(bv.name, `b_${bv.id ?? boolVarAstMap.size}`);
+        ast = ctx.Bool.const(symName);
+        boolVarAstMap.set(bv, ast);
       }
-      return boolVarAstMap.get(bv.name);
+      return ast;
     }
 
     function ensureRealAst(ast: any) {
@@ -253,11 +283,48 @@ export class Z3Solver implements Solver {
     };
   }
 
+  private addVariableBounds(
+    target: { add(ast: any): void },
+    variables: ReadonlyArray<Var>,
+    trans: ReturnType<Z3Solver["createContextTranslator"]>
+  ): void {
+    for (const v of variables) {
+      const vAst = trans.getVarAst(v);
+      if (v.lb !== -Infinity) {
+        target.add(trans.compareAstWithNumber(vAst, ">=", v.lb));
+      }
+      if (v.ub !== Infinity) {
+        target.add(trans.compareAstWithNumber(vAst, "<=", v.ub));
+      }
+      const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
+      if (isBin) {
+        target.add(trans.compareAstWithNumber(vAst, ">=", 0));
+        target.add(trans.compareAstWithNumber(vAst, "<=", 1));
+      }
+    }
+  }
+
+  private async runZ3CheckWithErrorGuard(
+    target: { check(): Promise<any> },
+    instance: any
+  ): Promise<any> {
+    let unregister: (() => void) | undefined;
+    try {
+      const checkPromise = target.check();
+      return await new Promise((resolve, reject) => {
+        unregister = registerZ3ErrorHandler(reject, instance);
+        checkPromise.then(resolve, reject);
+      });
+    } finally {
+      unregister?.();
+    }
+  }
+
   /**
    * Check feasibility & propositional satisfaction without an objective function.
    * Tracks constraints to return an unsatCore if infeasible.
    */
-  async check(modelData: any, options: SolverOptions = {}): Promise<SolverCheckResult> {
+  async check(modelData: CheckModelData, options: SolverOptions = {}): Promise<SolverCheckResult> {
     if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
       throw new Error(
         `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
@@ -281,26 +348,13 @@ export class Z3Solver implements Solver {
     const s = new ctx.Solver();
     const trans = this.createContextTranslator(ctx);
 
-    const variables: Var[] = modelData.variables || [];
-    const boolVars: BoolVar[] = modelData.boolVars || [];
-    const constraints: Constraint[] = modelData.constraints || [];
+    const variables: ReadonlyArray<Var> = modelData.variables || [];
+    const boolVars: ReadonlyArray<BoolVar> = modelData.boolVars || [];
+    const constraints: ReadonlyArray<Constraint> = modelData.constraints || [];
     const logicalConstraints = modelData.logicalConstraints || [];
 
     // 1. Variable bounds
-    for (const v of variables) {
-      const vAst = trans.getVarAst(v);
-      if (v.lb !== -Infinity) {
-        s.add(trans.compareAstWithNumber(vAst, ">=", v.lb));
-      }
-      if (v.ub !== Infinity) {
-        s.add(trans.compareAstWithNumber(vAst, "<=", v.ub));
-      }
-      const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
-      if (isBin) {
-        s.add(trans.compareAstWithNumber(vAst, ">=", 0));
-        s.add(trans.compareAstWithNumber(vAst, "<=", 1));
-      }
-    }
+    this.addVariableBounds(s, variables, trans);
 
     const boolVarNames = new Set(boolVars.map((bv) => bv.name));
     const trackKeyToName = new Map<string, string>();
@@ -321,9 +375,9 @@ export class Z3Solver implements Solver {
       s.addAndTrack(trans.translateConstraint(c), createTracker(c.name));
     }
     for (let i = 0; i < logicalConstraints.length; i++) {
-      const item = logicalConstraints[i];
-      const name = (item && item.name) || `lc_${i + 1}`;
-      const expr = (item && item.expr) || item;
+      const item = logicalConstraints[i]!;
+      const name = "name" in item && typeof item.name === "string" ? item.name : `lc_${i + 1}`;
+      const expr = "expr" in item ? item.expr : (item as LogicElement);
       s.addAndTrack(trans.translateBoolExpr(expr), createTracker(name));
     }
 
@@ -334,17 +388,7 @@ export class Z3Solver implements Solver {
       };
     }
 
-    let unregister: (() => void) | undefined;
-    let checkRes: any;
-    try {
-      const checkPromise = s.check();
-      checkRes = await new Promise((resolve, reject) => {
-        unregister = registerZ3ErrorHandler(reject, instance);
-        checkPromise.then(resolve, reject);
-      });
-    } finally {
-      unregister?.();
-    }
+    const checkRes = await this.runZ3CheckWithErrorGuard(s, instance);
     const statusStr = checkRes.toString();
 
     if (statusStr === "sat") {
@@ -354,13 +398,13 @@ export class Z3Solver implements Solver {
       for (const v of variables) {
         const vAst = trans.getVarAst(v);
         const val = z3Model.eval(vAst);
-        values[v.name] = trans.parseAstValue(val);
+        setOwnProperty(values, v.name, trans.parseAstValue(val));
       }
 
       for (const bv of boolVars) {
         const bvAst = trans.getBoolVarAst(bv);
         const val = z3Model.eval(bvAst);
-        values[bv.name] = val.toString() === "true";
+        setOwnProperty(values, bv.name, val.toString() === "true");
       }
 
       return {
@@ -392,11 +436,20 @@ export class Z3Solver implements Solver {
   /**
    * Solve optimization problem (MIP) or feasibility problem
    */
+  async solve(modelData: SolveModelData, options?: SolverOptions): Promise<SolverResult>;
   async solve(
-    modelData: any,
-    _lpResult: any,
-    options: SolverOptions = {}
+    modelData: LpModelData,
+    lpResult: LpExportResult,
+    options?: SolverOptions
+  ): Promise<SolverResult>;
+  async solve(
+    modelData: SolveModelData,
+    lpResultOrOptions?: LpExportResult | SolverOptions,
+    maybeOptions?: SolverOptions
   ): Promise<SolverResult> {
+    const hasExplicitLpResult = isLpExportResult(lpResultOrOptions);
+    const options: SolverOptions = (hasExplicitLpResult ? maybeOptions : lpResultOrOptions) ?? {};
+
     if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
       throw new Error(
         `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
@@ -412,23 +465,29 @@ export class Z3Solver implements Solver {
       };
     }
     const startTime = performance.now();
+    const obj = modelData.objective;
     const hasObjective =
-      modelData.objective !== null &&
-      modelData.objective !== undefined &&
-      (("terms" in modelData.objective && modelData.objective.terms.size > 0) ||
-        ("linearTerms" in modelData.objective && modelData.objective.linearTerms.size > 0) ||
-        ("quadTerms" in modelData.objective && modelData.objective.quadTerms.length > 0) ||
-        (modelData.objective.offset && modelData.objective.offset !== 0));
+      obj !== null &&
+      obj !== undefined &&
+      ("quadTerms" in obj
+        ? obj.linearTerms.size > 0 || obj.quadTerms.size > 0
+        : "terms" in obj && obj.terms.size > 0);
 
     if (!hasObjective) {
       const checkRes = await this.check(modelData, options);
       const numericValues: Record<string, number> = {};
+      const boolValues: Record<string, boolean> = {};
       for (const [k, v] of Object.entries(checkRes.values)) {
-        numericValues[k] = typeof v === "boolean" ? (v ? 1 : 0) : v;
+        if (typeof v === "boolean") {
+          setOwnProperty(numericValues, k, v ? 1 : 0);
+          setOwnProperty(boolValues, k, v);
+        } else {
+          setOwnProperty(numericValues, k, v);
+        }
       }
 
       const isSat = checkRes.status === "Sat";
-      const objVal = isSat ? (modelData.objective?.constant ?? 0) : null;
+      const objVal = isSat ? (obj?.constant ?? 0) : null;
       if (options.onProgress && !options.signal?.aborted) {
         const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
@@ -444,6 +503,7 @@ export class Z3Solver implements Solver {
           hasPrimalSolution: isSat,
           objectiveValue: objVal,
           values: isSat ? numericValues : {},
+          ...(isSat && Object.keys(boolValues).length > 0 ? { boolValues } : {}),
         };
       }
       const mappedStatus = isSat
@@ -459,6 +519,7 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: isSat,
         objectiveValue: objVal,
         values: isSat ? numericValues : {},
+        ...(isSat && Object.keys(boolValues).length > 0 ? { boolValues } : {}),
       };
     }
 
@@ -477,26 +538,13 @@ export class Z3Solver implements Solver {
     const opt = new ctx.Optimize();
     const trans = this.createContextTranslator(ctx);
 
-    const variables: Var[] = modelData.variables || [];
-    const boolVars: BoolVar[] = modelData.boolVars || [];
-    const constraints: Constraint[] = modelData.constraints || [];
+    const variables: ReadonlyArray<Var> = modelData.variables || [];
+    const boolVars: ReadonlyArray<BoolVar> = modelData.boolVars || [];
+    const constraints: ReadonlyArray<Constraint> = modelData.constraints || [];
     const logicalConstraints = modelData.logicalConstraints || [];
 
     // 1. Variable bounds
-    for (const v of variables) {
-      const vAst = trans.getVarAst(v);
-      if (v.lb !== -Infinity) {
-        opt.add(trans.compareAstWithNumber(vAst, ">=", v.lb));
-      }
-      if (v.ub !== Infinity) {
-        opt.add(trans.compareAstWithNumber(vAst, "<=", v.ub));
-      }
-      const isBin = v.type === "Binary" || (v.type as string) === "BINARY";
-      if (isBin) {
-        opt.add(trans.compareAstWithNumber(vAst, ">=", 0));
-        opt.add(trans.compareAstWithNumber(vAst, "<=", 1));
-      }
-    }
+    this.addVariableBounds(opt, variables, trans);
 
     // 2. Arithmetic constraints
     for (const c of constraints) {
@@ -506,16 +554,16 @@ export class Z3Solver implements Solver {
 
     // 3. Logical constraints
     for (const item of logicalConstraints) {
-      const expr = (item && (item as any).expr) || item;
+      const expr = "expr" in item ? item.expr : (item as LogicElement);
       const lcAst = trans.translateBoolExpr(expr);
       opt.add(lcAst);
     }
 
     // 4. Objective
     const objAst =
-      modelData.objective instanceof Object && "quadTerms" in modelData.objective
-        ? trans.translateQuadExpr(modelData.objective as QuadExpr)
-        : trans.translateLinExpr(modelData.objective as LinExpr);
+      "quadTerms" in obj
+        ? trans.translateQuadExpr(obj)
+        : trans.translateLinExpr(obj);
 
     const sense = (modelData.sense || "MINIMIZE").toUpperCase();
     const objHandle = sense === "MAXIMIZE" ? opt.maximize(objAst) : opt.minimize(objAst);
@@ -530,33 +578,26 @@ export class Z3Solver implements Solver {
       };
     }
 
-    let unregister: (() => void) | undefined;
-    let checkRes: any;
-    try {
-      const checkPromise = opt.check();
-      checkRes = await new Promise((resolve, reject) => {
-        unregister = registerZ3ErrorHandler(reject, instance);
-        checkPromise.then(resolve, reject);
-      });
-    } finally {
-      unregister?.();
-    }
+    const checkRes = await this.runZ3CheckWithErrorGuard(opt, instance);
     const statusStr = checkRes.toString();
 
     if (statusStr === "sat") {
       const z3Model = opt.model();
       const values: Record<string, number> = {};
+      const boolValues: Record<string, boolean> = {};
 
       for (const v of variables) {
         const vAst = trans.getVarAst(v);
         const val = z3Model.eval(vAst);
-        values[v.name] = trans.parseAstValue(val);
+        setOwnProperty(values, v.name, trans.parseAstValue(val));
       }
 
       for (const bv of boolVars) {
         const bvAst = trans.getBoolVarAst(bv);
         const val = z3Model.eval(bvAst);
-        values[bv.name] = val.toString() === "true" ? 1 : 0;
+        const isTrue = val.toString() === "true";
+        setOwnProperty(values, bv.name, isTrue ? 1 : 0);
+        setOwnProperty(boolValues, bv.name, isTrue);
       }
 
       const objVal = trans.parseAstValue(z3Model.eval(objAst));
@@ -596,6 +637,7 @@ export class Z3Solver implements Solver {
           hasPrimalSolution: true,
           objectiveValue: objVal,
           values,
+          ...(Object.keys(boolValues).length > 0 ? { boolValues } : {}),
         };
       }
 
@@ -631,6 +673,7 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: true,
         objectiveValue: objVal,
         values,
+        ...(Object.keys(boolValues).length > 0 ? { boolValues } : {}),
       };
     } else if (statusStr === "unsat") {
       if (options.onProgress) {

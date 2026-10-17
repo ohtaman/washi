@@ -1,5 +1,11 @@
-import type { Solver, SolverOptions, SolverResult } from "../types.js";
-import { sanitizeIdentifier, type LpModelData, type LpExportResult } from "../../lp-writer.js";
+import type { Solver, SolverOptions, SolverResult, SolveModelData } from "../types.js";
+import {
+  generateLpString,
+  isLpExportResult,
+  sanitizeIdentifier,
+  type LpModelData,
+  type LpExportResult,
+} from "../../lp-writer.js";
 import type { SolverStatus, TerminationStatus } from "../../types.js";
 import { normalizeVarInitialValue, validateVarBounds } from "../../validation.js";
 import { solveLp } from "./worker-client.js";
@@ -204,18 +210,30 @@ export class HighsSolver implements Solver {
     this.options = options;
   }
 
-  async solve(
+  solve(modelData: SolveModelData, options?: SolverOptions): Promise<SolverResult>;
+  solve(
     modelData: LpModelData,
     lpResult: LpExportResult,
-    options: SolverOptions = {}
+    options?: SolverOptions
+  ): Promise<SolverResult>;
+  async solve(
+    modelData: SolveModelData,
+    optionsOrLpResult: SolverOptions | LpExportResult = {},
+    maybeOptions: SolverOptions = {}
   ): Promise<SolverResult> {
+    const hasExplicitLp = isLpExportResult(optionsOrLpResult);
+    const options: SolverOptions = hasExplicitLp ? maybeOptions : optionsOrLpResult;
     const mergedOptions: SolverOptions = { ...this.options, ...options };
-    const { lpString, nameToVar, nameToConstraint } = lpResult;
     const offset = modelData.objective.constant || 0;
 
     for (const v of modelData.variables) {
       validateVarBounds(v);
     }
+
+    const lpResult: LpExportResult = hasExplicitLp
+      ? optionsOrLpResult
+      : generateLpString(modelData);
+    const { lpString, nameToVar, nameToConstraint } = lpResult;
 
     const initialValues: Record<string, number> = Object.create(null);
     let hasInitialValues = false;

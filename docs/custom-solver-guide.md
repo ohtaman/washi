@@ -30,17 +30,25 @@ graph TD
 All custom solvers must implement the `Solver` interface defined in `@ohtaman/washi`:
 
 ```typescript
-import type {
-  Solver,
-  SolverOptions,
-  SolverResult,
-  SolverCheckResult,
-  SolverCapabilities,
-  LpModelData,
-  LpExportResult,
-  SolverStatus,
-  TerminationStatus,
-  SolveProgressEvent,
+import {
+  generateLpString,
+  buildLpSymbolMaps,
+  isLpExportResult,
+  sanitizeIdentifier,
+  type Solver,
+  type SolverOptions,
+  type SolverResult,
+  type SolverCheckResult,
+  type SolverCapabilities,
+  type SolveModelData,
+  type CheckModelData,
+  type LogicalConstraintItem,
+  type LpModelData,
+  type LpExportResult,
+  type LpSymbolMaps,
+  type SolverStatus,
+  type TerminationStatus,
+  type SolveProgressEvent,
 } from "@ohtaman/washi";
 ```
 
@@ -58,25 +66,52 @@ export interface Solver {
   readonly capabilities?: SolverCapabilities;
 
   /**
-   * Main solve method for LP, MIP, and QP optimization models.
+   * Main solve method for LP, MIP, QP, and SMT optimization models.
    *
-   * @param modelData In-memory model structure (variables, constraints, objective)
-   * @param lpResult Serialized LP format string and symbol lookup maps
-   * @param options Runtime execution options (timeLimit, mipGap, verbose, etc.)
+   * @param modelData Typed in-memory model structure (variables, constraints, objective, sense, boolVars, logicalConstraints)
+   * @param options Runtime execution options (timeLimit, mipGap, verbose, signal, onProgress, etc.)
    */
   solve(
-    modelData: LpModelData,
-    lpResult: LpExportResult,
+    modelData: SolveModelData,
     options?: SolverOptions
   ): Promise<SolverResult>;
 
   /**
-   * Optional check method for Pure SAT / SMT satisfiability without an objective.
+   * Optional check method for Pure SAT / SMT or feasibility checking without an objective.
+   *
+   * @param modelData Objective-free in-memory model structure (variables, boolVars, constraints, logicalConstraints)
+   * @param options Runtime execution options
    */
   check?(
-    modelData: any,
+    modelData: CheckModelData,
     options?: SolverOptions
   ): Promise<SolverCheckResult>;
+}
+```
+
+### `CheckModelData` & `SolveModelData`
+
+`Model.solve()` and `Model.check()` pass the structured model directly to your adapter without serializing an LP string upfront:
+
+```typescript
+export interface CheckModelData {
+  /** Model name */
+  name?: string;
+  /** Decision variables registered in the model */
+  variables: Var[];
+  /** Propositional Boolean variables registered in the model */
+  boolVars?: BoolVar[];
+  /** Linear arithmetic constraints registered in the model */
+  constraints: Constraint[];
+  /** Logical / SMT constraints registered in the model */
+  logicalConstraints?: LogicalConstraintItem[];
+}
+
+export interface SolveModelData extends CheckModelData {
+  /** Optimization direction ("Minimize" | "Maximize") */
+  sense: OptimizationSense;
+  /** Linear or quadratic objective expression */
+  objective: LinExpr | QuadExpr;
 }
 ```
 
@@ -100,12 +135,15 @@ export interface SolverCapabilities {
 
   /** Supports extracting an unsatisfiable core (conflicting constraint subset) */
   supportsUnsatCore?: boolean;
+
+  /** Supports primal initial values / MIP warm starts (Var.initialValue) */
+  supportsWarmStart?: boolean;
 }
 ```
 
 ### `SolverOptions` & `SolveProgressEvent`
 
-Runtime options passed to `solve` and `check` include cancellation and progress hooks:
+Runtime options passed to `solve` and `check` include cancellation and progress hooks (note that the routing `solver` field from `SolveOptions` is stripped before options are passed to your adapter):
 
 ```typescript
 export interface SolverOptions {
@@ -129,9 +167,15 @@ export interface SolverOptions {
 }
 ```
 
-### `LpExportResult` & `LpModelData`
+### Optional LP Serialization & Symbol-Mapping Helpers
 
-The `solve` method receives both the structured `modelData` and the standardized `lpResult`:
+Solvers that consume structured JS/WASM data (such as `GLPKSolver` and `Z3Solver`) work directly with `SolveModelData` / `CheckModelData`.
+If your adapter targets a backend that requires CPLEX/HiGHS LP text or restricted identifier syntax, WaSHI exports opt-in helpers:
+
+- `generateLpString(modelData): LpExportResult` — serializes `modelData` into a CPLEX LP format string (`lpString`) along with collision-safe symbol lookup maps (`nameToVar`, `nameToConstraint`).
+- `buildLpSymbolMaps(modelData): LpSymbolMaps` — builds collision-safe sanitized symbol maps (`nameToVar`, `varToName`, `nameToConstraint`, `constraintToName`) without serializing an LP string.
+- `isLpExportResult(value): value is LpExportResult` — runtime type guard for `LpExportResult` (useful when supporting legacy 3-argument `solve(modelData, lpResult, options)` overloads).
+- `sanitizeIdentifier(raw, fallbackPrefix = "x", id = 0)` — sanitizes an arbitrary display name into a valid LP identifier.
 
 ```typescript
 export interface LpExportResult {
@@ -146,9 +190,9 @@ export interface LpExportResult {
 }
 ```
 
-### `SolverResult` Normalization
+### `SolverResult` Normalization & Identity Decoding
 
-The solve method must return normalized results:
+The `solve` method must return normalized results keyed by the model's canonical variable/constraint names (`v.name`, `bv.name`, `c.name`). Adapters that use `generateLpString(modelData)` or `buildLpSymbolMaps(modelData)` for an LP backend must translate sanitized LP identifiers back to canonical model names using `nameToVar` and `nameToConstraint`:
 
 ```typescript
 export interface SolverResult {
@@ -176,8 +220,11 @@ export interface SolverResult {
   /** Absolute MIP optimality gap |objectiveValue - objectiveBound| (computed automatically when both are finite) */
   absGap?: number;
 
-  /** Variable primal values keyed by variable name or ID */
+  /** Variable primal values keyed by canonical variable name (non-finite values are ignored) */
   values: Record<string, number>;
+
+  /** Propositional Boolean variable assignments keyed by BoolVar name (optional, SMT/SAT) */
+  boolValues?: Record<string, boolean>;
 
   /** Variable reduced costs (optional, LP only) */
   reducedCosts?: Record<string, number>;
@@ -215,16 +262,16 @@ export interface SolverResult {
 
 ### Tutorial A: In-House Cloud REST Solver Adapter
 
-Here is a complete, production-ready custom solver connecting to an HTTP microservice:
+Here is a complete, production-ready custom solver connecting to an HTTP microservice that accepts LP format strings on demand via `generateLpString(modelData)`:
 
 ```typescript
 import {
+  generateLpString,
+  registerSolver,
   type Solver,
   type SolverOptions,
   type SolverResult,
-  type LpModelData,
-  type LpExportResult,
-  registerSolver,
+  type SolveModelData,
 } from "@ohtaman/washi";
 
 export interface CloudSolverConfig extends SolverOptions {
@@ -249,11 +296,11 @@ export class CloudSolver implements Solver {
   }
 
   async solve(
-    modelData: LpModelData,
-    lpResult: LpExportResult,
+    modelData: SolveModelData,
     options: SolverOptions = {}
   ): Promise<SolverResult> {
     const startTime = performance.now();
+    const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
 
     const response = await fetch(this.endpoint, {
       method: "POST",
@@ -262,7 +309,7 @@ export class CloudSolver implements Solver {
         ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
       },
       body: JSON.stringify({
-        lp: lpResult.lpString,
+        lp: lpString,
         timeLimit: options.timeLimit,
         mipGap: options.mipGap,
       }),
@@ -275,12 +322,25 @@ export class CloudSolver implements Solver {
     const payload = await response.json();
     const runTime = (performance.now() - startTime) / 1000;
 
+    const values: Record<string, number> = Object.create(null);
+    for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
+      values[nameToVar.get(k)?.name ?? k] = val;
+    }
+    const duals: Record<string, number> = Object.create(null);
+    for (const [k, val] of Object.entries((payload.duals || {}) as Record<string, number>)) {
+      duals[nameToConstraint.get(k)?.name ?? k] = val;
+    }
+    const slacks: Record<string, number> = Object.create(null);
+    for (const [k, val] of Object.entries((payload.slacks || {}) as Record<string, number>)) {
+      slacks[nameToConstraint.get(k)?.name ?? k] = val;
+    }
+
     return {
       status: payload.status === "OPTIMAL" ? "Optimal" : payload.status,
       objectiveValue: payload.objectiveValue ?? null,
-      values: payload.values || {},
-      duals: payload.duals || {},
-      slacks: payload.slacks || {},
+      values,
+      duals,
+      slacks,
       runTime: payload.solveDuration || runTime,
       logs: payload.logs || [],
       raw: payload,

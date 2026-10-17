@@ -15,8 +15,15 @@ import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import { BoolVar, BoolExpr } from "./boolean-expr.js";
 import { parseExpr, parseConstraint } from "./parser.js";
-import { generateLpString, type LpExportResult } from "./lp-writer.js";
-import { getSolver, type Solver, type SolverOptions, type SolverResult } from "./solvers/index.js";
+import { generateLpString } from "./lp-writer.js";
+import {
+  getSolver,
+  type CheckModelData,
+  type SolveModelData,
+  type Solver,
+  type SolverOptions,
+  type SolverResult,
+} from "./solvers/index.js";
 import {
   validateModelSolution,
   type SolutionValidationOptions,
@@ -1402,6 +1409,7 @@ export class Model {
     const status = result.status;
     const termStatus = result.terminationStatus ?? status;
     const rawValues = result.values || {};
+    const rawBoolValues = result.boolValues || {};
     return (
       status !== "Infeasible" &&
       status !== "Unsat" &&
@@ -1421,9 +1429,45 @@ export class Model {
         termStatus === "Feasible" ||
         termStatus === "Sat" ||
         (typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)) ||
-        Object.values(rawValues).some((val) => typeof val === "number" && Number.isFinite(val)))
+        Object.values(rawValues).some(
+          (val) => (typeof val === "number" && Number.isFinite(val)) || typeof val === "boolean"
+        ) ||
+        Object.values(rawBoolValues).some((val) => typeof val === "boolean"))
     );
   }
+
+  /**
+   * Resolves the target solver and execution options without mutating caller-owned objects,
+   * stripping the routing `solver` field from the returned `SolverOptions`.
+   */
+  private resolveSolverAndOptions(
+    solverOrOptions?: Solver | string | SolveOptions,
+    options?: SolveOptions
+  ): { activeSolver: Solver; activeOptions: SolverOptions } {
+    if (
+      solverOrOptions &&
+      typeof solverOrOptions === "object" &&
+      "solve" in solverOrOptions &&
+      typeof (solverOrOptions as any).solve === "function"
+    ) {
+      const { solver: _ignored, ...rest } = options || {};
+      return { activeSolver: solverOrOptions as Solver, activeOptions: rest };
+    }
+    if (typeof solverOrOptions === "function") {
+      const { solver: _ignored, ...rest } = options || {};
+      return { activeSolver: new (solverOrOptions as any)(rest), activeOptions: rest };
+    }
+    if (typeof solverOrOptions === "string") {
+      const { solver: _ignored, ...rest } = options || {};
+      return { activeSolver: getSolver(solverOrOptions, rest), activeOptions: rest };
+    }
+    const { solver: solverChoice, ...rest } = (solverOrOptions as SolveOptions) || {};
+    if (solverChoice) {
+      return { activeSolver: getSolver(solverChoice, rest), activeOptions: rest };
+    }
+    return { activeSolver: this.solver || getSolver(), activeOptions: rest };
+  }
+
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
@@ -1442,32 +1486,7 @@ export class Model {
     this.clearSolutionFields();
     this.validateIntegrity();
 
-    let activeSolver: Solver;
-    let activeOptions: SolveOptions;
-
-    if (
-      solverOrOptions &&
-      typeof solverOrOptions === "object" &&
-      "solve" in solverOrOptions &&
-      typeof (solverOrOptions as any).solve === "function"
-    ) {
-      activeSolver = solverOrOptions as Solver;
-      activeOptions = options || {};
-    } else if (typeof solverOrOptions === "function") {
-      activeSolver = new (solverOrOptions as any)(options);
-      activeOptions = options || {};
-    } else if (typeof solverOrOptions === "string") {
-      activeSolver = getSolver(solverOrOptions, options);
-      activeOptions = options || {};
-    } else {
-      activeOptions = { ...(solverOrOptions as SolveOptions) };
-      if (activeOptions.solver) {
-        activeSolver = getSolver(activeOptions.solver, activeOptions);
-        delete activeOptions.solver;
-      } else {
-        activeSolver = this.solver || getSolver();
-      }
-    }
+    const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
@@ -1495,7 +1514,7 @@ export class Model {
       );
     }
 
-    const modelData = {
+    const modelData: SolveModelData = {
       name: this.name,
       sense: this.sense,
       objective: this._objectiveExpr,
@@ -1505,12 +1524,11 @@ export class Model {
       boolVars: this.boolVars,
     };
 
-    const lpData: LpExportResult = generateLpString(modelData);
     const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
 
     let result: SolverResult;
     try {
-      result = await activeSolver.solve(modelData, lpData, effectiveOptions);
+      result = await activeSolver.solve(modelData, effectiveOptions);
     } catch (err) {
       if (this.activeOperationId === opId) {
         this.clearSolutionFields();
@@ -1567,27 +1585,57 @@ export class Model {
 
     this.values.clear();
 
-    // Map variable solutions back to Var objects only when a feasible primal solution exists
+    // Map variable solutions back to Var/BoolVar objects only when a feasible primal solution exists
     if (hasPrimal && result.values) {
       for (const [vName, primal] of Object.entries(result.values)) {
-        if (typeof primal === "number" && !Number.isNaN(primal)) {
-          this.values.set(vName, primal);
-          const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
+        if (typeof primal === "number" && Number.isFinite(primal)) {
+          const v = this.getVarByName(vName);
+          const bv = this.getBoolVarByName(vName);
           if (v) {
             v.value = primal;
             setOwnProperty(valuesRecord, v.name, primal);
+            this.values.set(v.name, primal);
           }
-          const bv = this.boolVars.find((b) => b.name === vName);
           if (bv) {
             bv.value = Boolean(primal);
+            this.values.set(bv.name, primal);
+          }
+          if (!v && !bv) {
+            this.values.set(vName, primal);
+          }
+        } else if (typeof (primal as unknown) === "boolean") {
+          const boolVal = primal as unknown as boolean;
+          const bv = this.getBoolVarByName(vName);
+          if (bv) {
+            bv.value = boolVal;
+            setOwnProperty(valuesRecord, bv.name, boolVal ? 1 : 0);
+            this.values.set(bv.name, boolVal);
+          } else {
+            this.values.set(vName, boolVal);
           }
         }
       }
     }
 
-    if (result.reducedCosts) {
+    if (hasPrimal && result.boolValues) {
+      for (const [bName, bVal] of Object.entries(result.boolValues)) {
+        if (typeof bVal !== "boolean") continue;
+        const bv = this.getBoolVarByName(bName);
+        if (bv) {
+          bv.value = bVal;
+          if (!this.values.has(bv.name)) {
+            this.values.set(bv.name, bVal);
+          }
+        } else if (!this.values.has(bName)) {
+          this.values.set(bName, bVal);
+        }
+      }
+    }
+
+    if (hasPrimal && result.reducedCosts) {
       for (const [vName, rc] of Object.entries(result.reducedCosts)) {
-        const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
+        if (typeof rc !== "number" || !Number.isFinite(rc)) continue;
+        const v = this.getVarByName(vName);
         if (v) {
           v.reducedCost = rc;
           setOwnProperty(reducedCostsRecord, v.name, rc);
@@ -1598,7 +1646,8 @@ export class Model {
     // Map row duals and slacks back to Constraint objects
     if (result.duals) {
       for (const [cName, dual] of Object.entries(result.duals)) {
-        const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
+        if (typeof dual !== "number" || !Number.isFinite(dual)) continue;
+        const c = this.getConstraintByName(cName);
         if (c) {
           c.dual = dual;
           setOwnProperty(dualsRecord, c.name, dual);
@@ -1608,7 +1657,8 @@ export class Model {
 
     if (result.slacks) {
       for (const [cName, slack] of Object.entries(result.slacks)) {
-        const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
+        if (typeof slack !== "number" || !Number.isFinite(slack)) continue;
+        const c = this.getConstraintByName(cName);
         if (c) {
           c.slack = slack;
           setOwnProperty(slacksRecord, c.name, slack);
@@ -1651,32 +1701,7 @@ export class Model {
     this.clearSolutionFields();
     this.validateIntegrity();
 
-    let activeSolver: Solver;
-    let activeOptions: SolveOptions;
-
-    if (
-      solverOrOptions &&
-      typeof solverOrOptions === "object" &&
-      "solve" in solverOrOptions &&
-      typeof (solverOrOptions as any).solve === "function"
-    ) {
-      activeSolver = solverOrOptions as Solver;
-      activeOptions = options || {};
-    } else if (typeof solverOrOptions === "function") {
-      activeSolver = new (solverOrOptions as any)(options);
-      activeOptions = options || {};
-    } else if (typeof solverOrOptions === "string") {
-      activeSolver = getSolver(solverOrOptions, options);
-      activeOptions = options || {};
-    } else {
-      activeOptions = { ...(solverOrOptions as SolveOptions) };
-      if (activeOptions.solver) {
-        activeSolver = getSolver(activeOptions.solver, activeOptions);
-        delete activeOptions.solver;
-      } else {
-        activeSolver = this.solver || getSolver();
-      }
-    }
+    const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
     // 1. Guard against logical constraints if solver lacks SMT
     if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
@@ -1697,20 +1722,28 @@ export class Model {
 
     const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
 
-    // 2. If solver implements native check() (e.g. Z3)
+    const setOwnProperty = <T>(record: Record<string, T>, key: string, value: T) => {
+      Object.defineProperty(record, key, {
+        value,
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
+    };
+
+    const checkModelData: CheckModelData = {
+      name: this.name,
+      variables: this.variables,
+      boolVars: this.boolVars,
+      constraints: this.constraints,
+      logicalConstraints: this.logicalConstraints,
+    };
+
+    // 2. If solver implements native check() (e.g. Z3 or custom check-capable solver)
     if (typeof activeSolver.check === "function") {
       let checkResult: CheckResult;
       try {
-        checkResult = await activeSolver.check(
-          {
-            name: this.name,
-            variables: this.variables,
-            boolVars: this.boolVars,
-            constraints: this.constraints,
-            logicalConstraints: this.logicalConstraints,
-          },
-          effectiveOptions
-        );
+        checkResult = await activeSolver.check(checkModelData, effectiveOptions);
       } catch (err) {
         if (this.activeOperationId === opId) {
           this.clearSolutionFields();
@@ -1724,25 +1757,47 @@ export class Model {
       this.terminationStatus = activeOptions.signal?.aborted ? "Interrupted" : checkResult.status;
       this.hasPrimalSolution = checkResult.status === "Sat";
       this.runTime = checkResult.runTime ?? 0;
-      this.unsatCore = checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
+      this.unsatCore =
+        checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
 
+      const values: Record<string, number | boolean> = {};
       if (checkResult.values && checkResult.status === "Sat") {
         for (const [name, val] of Object.entries(checkResult.values)) {
-          this.values.set(name, val);
-          const v = this.getVarByName(name);
-          if (v && typeof val === "number") {
-            v.value = val;
-          }
-          const bv = this.boolVars.find((b) => b.name === name);
-          if (bv) {
-            bv.value = Boolean(val);
+          if (typeof val === "number") {
+            if (!Number.isFinite(val)) continue;
+            const v = this.getVarByName(name);
+            const bv = this.getBoolVarByName(name);
+            if (v) {
+              v.value = val;
+              this.values.set(v.name, val);
+              setOwnProperty(values, v.name, val);
+            }
+            if (bv) {
+              bv.value = Boolean(val);
+              this.values.set(bv.name, bv.value);
+              setOwnProperty(values, bv.name, bv.value);
+            }
+            if (!v && !bv) {
+              this.values.set(name, val);
+              setOwnProperty(values, name, val);
+            }
+          } else if (typeof val === "boolean") {
+            const bv = this.getBoolVarByName(name);
+            if (bv) {
+              bv.value = val;
+              this.values.set(bv.name, val);
+              setOwnProperty(values, bv.name, val);
+            } else {
+              this.values.set(name, val);
+              setOwnProperty(values, name, val);
+            }
           }
         }
       }
       this.hasSolutionState = true;
       return {
         status: checkResult.status,
-        values: Object.fromEntries(this.values),
+        values,
         unsatCore: this.unsatCore,
         conflicts: this.unsatCore,
         runTime: this.runTime,
@@ -1751,7 +1806,7 @@ export class Model {
 
     // 3. Fallback: Linear feasibility check using activeSolver.solve() with a zero objective
     // without mutating this.objectiveExpr or this.sense on the Model instance.
-    const feasibilityModelData = {
+    const feasibilityModelData: SolveModelData = {
       name: this.name,
       sense: "Minimize" as const,
       objective: new LinExpr(),
@@ -1760,11 +1815,10 @@ export class Model {
       logicalConstraints: this.logicalConstraints,
       boolVars: this.boolVars,
     };
-    const lpData: LpExportResult = generateLpString(feasibilityModelData);
 
     let result: SolverResult;
     try {
-      result = await activeSolver.solve(feasibilityModelData, lpData, effectiveOptions);
+      result = await activeSolver.solve(feasibilityModelData, effectiveOptions);
     } catch (err) {
       if (this.activeOperationId === opId) {
         this.clearSolutionFields();
@@ -1802,35 +1856,57 @@ export class Model {
     const values: Record<string, number | boolean> = {};
     if (isSat && result.values) {
       for (const [vName, primal] of Object.entries(result.values)) {
-        if (typeof primal === "number" && !Number.isNaN(primal)) {
-          this.values.set(vName, primal);
-          const v = this.getVarByName(vName) || lpData.nameToVar.get(vName);
+        if (typeof primal === "number" && Number.isFinite(primal)) {
+          const v = this.getVarByName(vName);
+          const bv = this.getBoolVarByName(vName);
           if (v) {
             v.value = primal;
-            Object.defineProperty(values, v.name, {
-              value: primal,
-              enumerable: true,
-              writable: true,
-              configurable: true,
-            });
+            this.values.set(v.name, primal);
+            setOwnProperty(values, v.name, primal);
           }
-          const bv = this.boolVars.find((b) => b.name === vName);
           if (bv) {
             bv.value = Boolean(primal);
-            Object.defineProperty(values, bv.name, {
-              value: bv.value,
-              enumerable: true,
-              writable: true,
-              configurable: true,
-            });
+            this.values.set(bv.name, bv.value);
+            setOwnProperty(values, bv.name, bv.value);
           }
+          if (!v && !bv) {
+            this.values.set(vName, primal);
+            setOwnProperty(values, vName, primal);
+          }
+        } else if (typeof (primal as unknown) === "boolean") {
+          const boolVal = primal as unknown as boolean;
+          const bv = this.getBoolVarByName(vName);
+          if (bv) {
+            bv.value = boolVal;
+            this.values.set(bv.name, boolVal);
+            setOwnProperty(values, bv.name, boolVal);
+          } else {
+            this.values.set(vName, boolVal);
+            setOwnProperty(values, vName, boolVal);
+          }
+        }
+      }
+    }
+
+    if (isSat && result.boolValues) {
+      for (const [bName, bVal] of Object.entries(result.boolValues)) {
+        if (typeof bVal !== "boolean") continue;
+        const bv = this.getBoolVarByName(bName);
+        if (bv) {
+          bv.value = bVal;
+          this.values.set(bv.name, bVal);
+          setOwnProperty(values, bv.name, bVal);
+        } else {
+          this.values.set(bName, bVal);
+          setOwnProperty(values, bName, bVal);
         }
       }
     }
 
     if (result.slacks) {
       for (const [cName, slack] of Object.entries(result.slacks)) {
-        const c = this.getConstraintByName(cName) || lpData.nameToConstraint.get(cName);
+        if (typeof slack !== "number" || !Number.isFinite(slack)) continue;
+        const c = this.getConstraintByName(cName);
         if (c) {
           c.slack = slack;
         }

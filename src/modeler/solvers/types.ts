@@ -1,5 +1,47 @@
-import type { SolverStatus, TerminationStatus, SolveProgressEvent } from "../types.js";
-import type { LpModelData, LpExportResult } from "../lp-writer.js";
+import type {
+  OptimizationSense,
+  SolverStatus,
+  TerminationStatus,
+  SolveProgressEvent,
+} from "../types.js";
+import type { Var } from "../variable.js";
+import type { LinExpr } from "../expression.js";
+import type { QuadExpr } from "../quad-expr.js";
+import type { Constraint } from "../constraint.js";
+import type { BoolVar, LogicElement } from "../boolean-expr.js";
+
+/**
+ * Named logical constraint entry in a model snapshot.
+ */
+export interface LogicalConstraintItem {
+  name: string;
+  expr: LogicElement;
+}
+
+/**
+ * Typed model snapshot passed to `Solver.check()` (objective-free satisfiability / feasibility).
+ *
+ * Each entity in `variables`, `boolVars`, and `constraints` carries its own model-unique
+ * `.name` (and numeric `.id`), while `logicalConstraints` entries carry their `.name` and
+ * AST `.expr`. Adapters should key returned `values`, `duals`, `reducedCosts`, `slacks`,
+ * and `unsatCore` by these canonical model names (`v.name`, `bv.name`, `c.name`, `lc.name`),
+ * keeping any backend-specific identifier sanitization internal to the adapter.
+ */
+export interface CheckModelData {
+  name?: string;
+  variables: Var[];
+  boolVars?: BoolVar[];
+  constraints: Constraint[];
+  logicalConstraints?: LogicalConstraintItem[];
+}
+
+/**
+ * Typed model snapshot passed to `Solver.solve()` (optimization with an objective).
+ */
+export interface SolveModelData extends CheckModelData {
+  sense: OptimizationSense;
+  objective: LinExpr | QuadExpr;
+}
 
 /**
  * Normalized solution result returned by any solver adapter
@@ -19,13 +61,15 @@ export interface SolverResult {
   mipGap?: number;
   /** Absolute MIP optimality gap |objectiveValue - objectiveBound| when provided by the solver */
   absGap?: number;
-  /** Variable primal values (keyed by variable name or ID) */
+  /** Variable primal values (keyed by canonical variable name) */
   values: Record<string, number>;
-  /** Variable reduced costs (optional) */
+  /** Boolean variable assignments (optional, keyed by canonical BoolVar name) */
+  boolValues?: Record<string, boolean>;
+  /** Variable reduced costs (optional, keyed by canonical variable name) */
   reducedCosts?: Record<string, number>;
-  /** Constraint dual values (optional) */
+  /** Constraint dual values (optional, keyed by canonical constraint name) */
   duals?: Record<string, number>;
-  /** Constraint slacks (optional) */
+  /** Constraint slacks (optional, keyed by canonical constraint name) */
   slacks?: Record<string, number>;
   /** Solution time in seconds */
   runTime?: number;
@@ -44,6 +88,10 @@ export interface SolverOptions {
   presolve?: "on" | "off" | "choose";
   /** Relative MIP gap tolerance (e.g. 0.01 for 1%) */
   mipGap?: number;
+  /** Relative MIP gap tolerance alias */
+  relGap?: number;
+  /** Absolute MIP gap tolerance */
+  absGap?: number;
   /** Number of parallel threads */
   threads?: number;
   /** Enable verbose solver logging */
@@ -89,7 +137,7 @@ export interface SolverCheckResult {
 
 /**
  * Universal Solver interface.
- * Any optimization engine (HiGHS WASM, GLPK, Gurobi Remote, CBC, SCIP, custom JS)
+ * Any optimization engine (HiGHS WASM, GLPK, Z3, Gurobi Remote, CBC, SCIP, custom JS)
  * implements this interface to be used interchangeably with Model.
  */
 export interface Solver {
@@ -103,15 +151,15 @@ export interface Solver {
    * Solve the given mathematical programming model data
    */
   solve(
-    modelData: LpModelData,
-    lpResult: LpExportResult,
+    modelData: SolveModelData,
     options?: SolverOptions
   ): Promise<SolverResult>;
   /**
-   * Check satisfiability of the model and logical constraints (optional)
+   * Check satisfiability of the model and logical constraints without an objective (optional)
    */
   check?(
-    modelData: any,
+    modelData: CheckModelData,
     options?: SolverOptions
   ): Promise<SolverCheckResult>;
 }
+
