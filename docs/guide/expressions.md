@@ -7,7 +7,7 @@ In JavaScript and TypeScript—which do not support operator overloading—WaSHI
 | Approach | Example | Infix readability | Type safety & IDE rename | Indexed variables (`flow[i][j]`) |
 | :--- | :--- | :--- | :--- | :--- |
 | Method chaining | `x.mul(30).add(y.mul(50)).le(40)` | Low | Yes | Yes |
-| Raw string parsing | `parse("30 * x + 50 * y <= 40")` | High | No (runtime string lookup) | Fragile (string concatenation) |
+| Raw string parsing | `parseConstraint("30 * x + 50 * y <= 40", resolver)` | High | No (runtime string lookup) | Fragile (string concatenation) |
 | **Tagged template (`expr`)** | `` expr`30 * ${x} + 50 * ${y} <= 40` `` | **High** | **Yes (actual TS references)** | **Yes (bound by object reference)** |
 
 ---
