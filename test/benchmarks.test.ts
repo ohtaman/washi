@@ -131,7 +131,17 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
         return {
           valid: true,
           complete: true,
-          summary: { maxConstraintViolation: 0 },
+          maxViolation: 0,
+          summary: {
+            checkedVariables: 1,
+            totalVariables: 1,
+            checkedBoolVariables: 0,
+            totalBoolVariables: 0,
+            checkedLinearConstraints: 0,
+            totalLinearConstraints: 0,
+            checkedLogicalConstraints: 0,
+            totalLogicalConstraints: 0,
+          },
         };
       }
     }
@@ -178,6 +188,7 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
     expect(scenarioOut.warmWorkerSolveSamples).toHaveLength(2);
     expect(scenarioOut.valid).toBe(true);
     expect(scenarioOut.objectiveValue).toBe(42);
+    expect(scenarioOut.maxViolation).toBe(0);
     // Verify cold build occurs before workerSolve:1, and warm build occurs before workerSolve:2 and workerSolve:3
     expect(events).toEqual([
       "build",
@@ -239,7 +250,7 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
         model: {},
         status: "Optimal",
         objectiveValue: 100.5,
-        validation: { valid: true, complete: true, summary: { maxConstraintViolation: 0 } },
+        validation: { valid: true, complete: true, maxViolation: 0 },
         expectedObjective: 100.0,
         contextLabel: "drift-check",
       })
@@ -250,11 +261,26 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
         model: {},
         status: "Optimal",
         objectiveValue: 100,
-        validation: { valid: false, complete: true, summary: { maxConstraintViolation: 0.25 } },
+        validation: { valid: false, complete: true, maxViolation: 0.25 },
         expectedObjective: 100,
         contextLabel: "invalid-check",
       })
-    ).toThrow(/invalid or incomplete solution in invalid-check/);
+    ).toThrow(/invalid or incomplete solution in invalid-check.*maxViolation=0\.25/);
+
+    // Verify verifySolvedModel reads top-level maxViolation from a real SolutionValidationReport
+    const realLp = buildSmallLpModel(washi);
+    const realStatus = await realLp.solve({ solver: "highs", presolve: "on" });
+    const realValidation = realLp.validateSolution();
+    const realChecked = verifySolvedModel({
+      model: realLp,
+      status: realStatus,
+      objectiveValue: realLp.objectiveValue,
+      validation: realValidation,
+      contextLabel: "real-lp-check",
+    });
+    expect(typeof realChecked.maxViolation).toBe("number");
+    expect(Number.isFinite(realChecked.maxViolation)).toBe(true);
+    expect(realChecked.maxViolation).toBe(realValidation.maxViolation);
   });
 
   it("runs the benchmark suite with separated phase boundaries, solver parity, and browser version formatting", async () => {
@@ -306,9 +332,16 @@ describe("Reproducible Modeler & Solver Benchmarks (#57)", () => {
     expect(mipGlpk.solution.objectiveValue).toBe(3357);
 
     // Verify phase separation and metadata structure (without asserting wall-clock speed thresholds)
-    for (const sc of report.nodeScenarios) {
+    const jsonRoundTrip = JSON.parse(JSON.stringify(report));
+    for (let idx = 0; idx < report.nodeScenarios.length; idx++) {
+      const sc = report.nodeScenarios[idx];
       expect(sc.environment).toBe("node");
       expect(sc.usesBrowserWorker).toBe(false);
+      expect(typeof sc.solution.maxViolation).toBe("number");
+      expect(Number.isFinite(sc.solution.maxViolation)).toBe(true);
+      expect(sc.solution.maxViolation).toBeGreaterThanOrEqual(0);
+      expect(sc.solution.maxViolation).toBeLessThan(1e-6);
+      expect(typeof jsonRoundTrip.nodeScenarios[idx].solution.maxViolation).toBe("number");
       expect(typeof sc.coldStart.coldRuntimeInitMs).toBe("number");
       expect(sc.coldStart.coldRuntimeInitMs).toBeGreaterThanOrEqual(0);
       expect(typeof sc.coldStart.coldFirstSolveMs).toBe("number");

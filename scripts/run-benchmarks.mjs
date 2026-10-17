@@ -396,7 +396,7 @@ export function verifySolvedModel({
   }
   if (!validation.valid || !validation.complete) {
     throw new Error(
-      `Benchmark solve produced an invalid or incomplete solution in ${contextLabel}: valid=${validation.valid}, complete=${validation.complete}, maxViolation=${validation.summary?.maxConstraintViolation}.`
+      `Benchmark solve produced an invalid or incomplete solution in ${contextLabel}: valid=${validation.valid}, complete=${validation.complete}, maxViolation=${validation.maxViolation}.`
     );
   }
   if (
@@ -412,7 +412,7 @@ export function verifySolvedModel({
     status,
     objectiveValue: Number(objectiveValue.toFixed(6)),
     valid: validation.valid && validation.complete,
-    maxViolation: validation.summary.maxConstraintViolation,
+    maxViolation: validation.maxViolation,
   };
 }
 
