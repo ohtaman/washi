@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import os from "node:os";
@@ -33,12 +33,31 @@ export const MEASUREMENT_BOUNDARIES = Object.freeze({
   endToEndSolveMs:
     "Full user workflow on a warm (reused) runtime: fresh model construction + model.solve(options) + solution hydration.",
   browserWorkerColdSolveMs:
-    "First model.solve({ useWorker: true }) in a fresh headless Chromium context, including Web Worker creation, WASM fetch/compilation inside the Worker, structured-clone message transfer, and result hydration.",
+    "First model.solve({ useWorker: true }) on a pre-built Model in a fresh headless Chromium context, including Web Worker creation, WASM fetch/compilation inside the Worker, structured-clone message transfer, and result hydration (excludes modelBuildMs).",
   browserWorkerWarmSolveMs:
-    "Repeated model.solve({ useWorker: true }) calls in Chromium reusing the active Web Worker and loaded WASM runtime (includes LP serialization, postMessage structured clone, Worker WASM execution, and result hydration).",
+    "Repeated model.solve({ useWorker: true }) calls on pre-built Models in Chromium reusing the active Web Worker and loaded WASM runtime (includes LP serialization, postMessage structured clone, Worker WASM execution, and result hydration; excludes modelBuildMs).",
   environmentNote:
     "Node.js in-process WASM (usesBrowserWorker: false) and Browser Web Worker execution (usesBrowserWorker: true) are distinct execution environments with different thread/serialization boundaries and are not directly interchangeable baselines.",
 });
+
+/**
+ * Validate that the iteration count is a positive integer (>= 1).
+ */
+export function validateIterations(value, flagName = "iterations") {
+  const parsed = value === undefined ? 5 : Number(value);
+  if (
+    typeof value === "boolean" ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "") ||
+    !Number.isInteger(parsed) ||
+    parsed < 1
+  ) {
+    throw new Error(
+      `Invalid ${flagName} value: ${String(value)}. Expected a positive integer (>= 1).`
+    );
+  }
+  return parsed;
+}
 
 /**
  * Compute summary statistics (min, median, mean, max, samples) for an array of millisecond timings.
@@ -269,26 +288,58 @@ export function buildSchedulingMipModel(api, initialValuesByName = null) {
   return m;
 }
 
-async function loadWashiModules() {
-  if (process.env.VITEST) {
+/**
+ * Rebuild library (and optionally browser) distribution bundles silently before benchmarking
+ * so `npm run bench` / `node scripts/run-benchmarks.mjs` never measures stale `dist/` artifacts
+ * and `--json` stdout remains clean.
+ */
+export async function rebuildBenchmarkArtifacts({ includeBrowser = false } = {}) {
+  const { build } = await import("vite");
+  await build({
+    configFile: path.join(repoRoot, "vite.config.lib.ts"),
+    logLevel: "silent",
+  });
+  process.env.WASHI_BROWSER_FORMAT = "runtime";
+  await build({
+    configFile: path.join(repoRoot, "vite.config.browser.ts"),
+    logLevel: "silent",
+  });
+  delete process.env.WASHI_BROWSER_FORMAT;
+
+  if (includeBrowser) {
+    delete process.env.WASHI_BROWSER_FORMAT;
+    process.env.WASHI_BROWSER_TARGET = "core";
+    await build({
+      configFile: path.join(repoRoot, "vite.config.browser.ts"),
+      logLevel: "silent",
+    });
+    delete process.env.WASHI_BROWSER_TARGET;
+  }
+}
+
+async function loadWashiModules({ includeBrowser = false, rebuild } = {}) {
+  if (process.env.VITEST && rebuild !== true) {
     const api = await import("../src/index.ts");
     const glpk = await import("../src/modeler/solvers/glpk/index.ts");
     return { api, glpk };
   }
+  if (rebuild !== false) {
+    await rebuildBenchmarkArtifacts({ includeBrowser });
+  }
   const distWashi = path.join(repoRoot, "dist/lib/washi.js");
   const distGlpk = path.join(repoRoot, "dist/lib/solvers/glpk.js");
-  if (!existsSync(distWashi) || !existsSync(distGlpk)) {
-    await import("./build-library.mjs");
-  }
-  const api = await import(pathToFileURL(distWashi).href);
-  const glpk = await import(pathToFileURL(distGlpk).href);
+  const cacheBust = `?v=${Date.now()}`;
+  const api = await import(`${pathToFileURL(distWashi).href}${cacheBust}`);
+  const glpk = await import(`${pathToFileURL(distGlpk).href}${cacheBust}`);
   return { api, glpk };
 }
 
 function readPackageVersions() {
   const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
   let highsVersion = pkg.dependencies?.highs ?? "unknown";
-  let glpkVersion = pkg.devDependencies?.["glpk.js"] ?? pkg.peerDependencies?.["glpk.js"] ?? "unknown";
+  let glpkVersion =
+    pkg.devDependencies?.["glpk.js"] ?? pkg.peerDependencies?.["glpk.js"] ?? "unknown";
+  let playwrightVersion = pkg.devDependencies?.playwright ?? "unknown";
   try {
     const highsPkg = JSON.parse(
       readFileSync(path.join(repoRoot, "node_modules/highs/package.json"), "utf8")
@@ -305,10 +356,63 @@ function readPackageVersions() {
   } catch {
     // fallback to package.json range
   }
+  try {
+    const pwPkg = JSON.parse(
+      readFileSync(path.join(repoRoot, "node_modules/playwright/package.json"), "utf8")
+    );
+    playwrightVersion = pwPkg.version || playwrightVersion;
+  } catch {
+    // fallback to package.json range
+  }
   return {
     washiVersion: pkg.version,
     highsVersion,
     glpkVersion,
+    playwrightVersion,
+  };
+}
+
+/**
+ * Verify that a solved Model (or SolverResult against a Model) achieved Optimal status,
+ * passed solution validation, and matched the expected objective value (when provided).
+ */
+export function verifySolvedModel({
+  model,
+  status,
+  objectiveValue,
+  validation,
+  expectedObjective,
+  contextLabel,
+}) {
+  if (status !== "Optimal") {
+    throw new Error(
+      `Benchmark solve failed in ${contextLabel}: expected status "Optimal", got "${String(status)}".`
+    );
+  }
+  if (typeof objectiveValue !== "number" || !Number.isFinite(objectiveValue)) {
+    throw new Error(
+      `Benchmark solve failed in ${contextLabel}: non-finite objectiveValue (${String(objectiveValue)}).`
+    );
+  }
+  if (!validation.valid || !validation.complete) {
+    throw new Error(
+      `Benchmark solve produced an invalid or incomplete solution in ${contextLabel}: valid=${validation.valid}, complete=${validation.complete}, maxViolation=${validation.summary?.maxConstraintViolation}.`
+    );
+  }
+  if (
+    typeof expectedObjective === "number" &&
+    Math.abs(objectiveValue - expectedObjective) > 1e-4
+  ) {
+    throw new Error(
+      `Benchmark solve objective drift in ${contextLabel}: expected ${expectedObjective}, got ${objectiveValue}.`
+    );
+  }
+  return {
+    model,
+    status,
+    objectiveValue: Number(objectiveValue.toFixed(6)),
+    valid: validation.valid && validation.complete,
+    maxViolation: validation.summary.maxConstraintViolation,
   };
 }
 
@@ -350,6 +454,14 @@ async function measureNodeScenario({
   const coldFirstSolveMs = Number((performance.now() - tColdSolve0).toFixed(3));
 
   const coldValidation = coldModel.validateSolution();
+  const coldChecked = verifySolvedModel({
+    model: coldModel,
+    status: coldStatus,
+    objectiveValue: coldModel.objectiveValue,
+    validation: coldValidation,
+    contextLabel: `${scenarioId} (${solverKey} cold solve)`,
+  });
+
   const referenceSolution = coldModel.solution;
   const modelSize = countModelSize(coldModel);
 
@@ -380,8 +492,10 @@ async function measureNodeScenario({
   const adapterSolveSamples = [];
   const endToEndSolveSamples = [];
 
-  let lastWarmStatus = coldStatus;
-  let lastWarmObjective = coldModel.objectiveValue;
+  let lastWarmStatus = coldChecked.status;
+  let lastWarmObjective = coldChecked.objectiveValue;
+  let allWarmValid = coldChecked.valid;
+  let maxViolation = coldChecked.maxViolation;
 
   for (let i = 0; i < iterations; i++) {
     // Phase A: Model construction
@@ -421,17 +535,40 @@ async function measureNodeScenario({
     // Phase E: Adapter solve on pre-built modelData (warm runtime)
     const solverInstance = getSolver(solverKey, solverOptions);
     const tAdapter0 = performance.now();
-    await solverInstance.solve(modelData, solverOptions);
+    const adapterResult = await solverInstance.solve(modelData, solverOptions);
     const tAdapter1 = performance.now();
+    const adapterValidation = m.validateSolution({ values: adapterResult.values });
+    const adapterChecked = verifySolvedModel({
+      model: m,
+      status: adapterResult.status,
+      objectiveValue: adapterResult.objectiveValue,
+      validation: adapterValidation,
+      expectedObjective: coldChecked.objectiveValue,
+      contextLabel: `${scenarioId} (${solverKey} warm adapterSolve iteration ${i + 1})`,
+    });
     adapterSolveSamples.push(tAdapter1 - tAdapter0);
+    allWarmValid = allWarmValid && adapterChecked.valid;
+    maxViolation = Math.max(maxViolation, adapterChecked.maxViolation);
 
     // Phase F: Full end-to-end model build + solve + hydration (warm runtime)
     const tE2E0 = performance.now();
     const e2eModel = buildModel();
-    lastWarmStatus = await e2eModel.solve({ solver: solverKey, ...solverOptions });
+    const warmStatus = await e2eModel.solve({ solver: solverKey, ...solverOptions });
     const tE2E1 = performance.now();
+    const warmValidation = e2eModel.validateSolution();
+    const warmChecked = verifySolvedModel({
+      model: e2eModel,
+      status: warmStatus,
+      objectiveValue: e2eModel.objectiveValue,
+      validation: warmValidation,
+      expectedObjective: coldChecked.objectiveValue,
+      contextLabel: `${scenarioId} (${solverKey} warm endToEndSolve iteration ${i + 1})`,
+    });
     endToEndSolveSamples.push(tE2E1 - tE2E0);
-    lastWarmObjective = e2eModel.objectiveValue;
+    lastWarmStatus = warmChecked.status;
+    lastWarmObjective = warmChecked.objectiveValue;
+    allWarmValid = allWarmValid && warmChecked.valid;
+    maxViolation = Math.max(maxViolation, warmChecked.maxViolation);
   }
 
   return {
@@ -451,12 +588,9 @@ async function measureNodeScenario({
     },
     solution: {
       status: lastWarmStatus,
-      objectiveValue:
-        typeof lastWarmObjective === "number"
-          ? Number(lastWarmObjective.toFixed(6))
-          : lastWarmObjective,
-      valid: coldValidation.valid && coldValidation.complete,
-      maxViolation: coldValidation.summary.maxConstraintViolation,
+      objectiveValue: lastWarmObjective,
+      valid: allWarmValid,
+      maxViolation,
       valuesSnapshot: referenceSolution?.values ?? {},
     },
     coldStart: {
@@ -487,16 +621,153 @@ async function measureNodeScenario({
 }
 
 /**
+ * In-page Browser Worker scenario execution logic.
+ * Exported so unit tests can directly verify that `browserWorkerColdSolveMs` and
+ * `browserWorkerWarmSolveMs` exclude model construction (`build()`) and validate
+ * every warm worker solve before recording samples.
+ */
+export async function executeBrowserScenario({
+  api,
+  scDef,
+  iterCount,
+  makeSmallLp,
+  makeSchedulingMip,
+  getSize,
+  checkSolved,
+}) {
+  const build =
+    scDef.scenarioId === "small-lp"
+      ? () => makeSmallLp(api)
+      : () => makeSchedulingMip(api, scDef.hints);
+
+  // Build model BEFORE starting the cold Worker solve timer so modelBuildMs is excluded
+  const firstModel = build();
+  const tCold0 = performance.now();
+  const firstStatus = await firstModel.solve({
+    solver: "highs",
+    useWorker: true,
+    presolve: "on",
+  });
+  const coldSolveMs = Number((performance.now() - tCold0).toFixed(3));
+  const firstValidation = firstModel.validateSolution();
+  const coldChecked = checkSolved({
+    model: firstModel,
+    status: firstStatus,
+    objectiveValue: firstModel.objectiveValue,
+    validation: firstValidation,
+    contextLabel: `${scDef.scenarioId} (browser worker cold solve)`,
+  });
+
+  const refSolution = firstModel.solution;
+  const size = getSize(firstModel);
+  const { lpString } = api.generateLpString({
+    name: firstModel.name,
+    sense: firstModel.sense,
+    objective: firstModel.objectiveExpr,
+    constraints: firstModel.constraints,
+    variables: firstModel.variables,
+  });
+  const lpStringBytes = new TextEncoder().encode(lpString).byteLength;
+
+  const mockSolver = new api.MockSolver({
+    status: "Optimal",
+    terminationStatus: "Optimal",
+    hasPrimalSolution: true,
+    objectiveValue: refSolution?.objectiveValue ?? 0,
+    values: refSolution?.values ?? {},
+    duals: refSolution?.duals ?? {},
+    reducedCosts: refSolution?.reducedCosts ?? {},
+    slacks: refSolution?.slacks ?? {},
+  });
+
+  const modelBuildSamples = [];
+  const validationSamples = [];
+  const lpSerializationSamples = [];
+  const resultMappingSamples = [];
+  const warmWorkerSolveSamples = [];
+
+  let lastStatus = coldChecked.status;
+  let lastObjective = coldChecked.objectiveValue;
+  let allValid = coldChecked.valid;
+  let maxViolation = coldChecked.maxViolation;
+
+  for (let i = 0; i < iterCount; i++) {
+    const tb0 = performance.now();
+    const m = build();
+    const tb1 = performance.now();
+    modelBuildSamples.push(tb1 - tb0);
+
+    const tv0 = performance.now();
+    api.validateModelIntegrity(m);
+    const tv1 = performance.now();
+    validationSamples.push(tv1 - tv0);
+
+    const tlp0 = performance.now();
+    api.generateLpString({
+      name: m.name,
+      sense: m.sense,
+      objective: m.objectiveExpr,
+      constraints: m.constraints,
+      variables: m.variables,
+    });
+    const tlp1 = performance.now();
+    lpSerializationSamples.push(tlp1 - tlp0);
+
+    const mapModel = build();
+    const tm0 = performance.now();
+    await mapModel.solve(mockSolver);
+    const tm1 = performance.now();
+    resultMappingSamples.push(tm1 - tm0);
+
+    // Construct warmModel BEFORE starting the worker solve timer so modelBuildMs is excluded
+    const warmModel = build();
+    const tw0 = performance.now();
+    const warmStatus = await warmModel.solve({
+      solver: "highs",
+      useWorker: true,
+      presolve: "on",
+    });
+    const tw1 = performance.now();
+    const warmValidation = warmModel.validateSolution();
+    const warmChecked = checkSolved({
+      model: warmModel,
+      status: warmStatus,
+      objectiveValue: warmModel.objectiveValue,
+      validation: warmValidation,
+      expectedObjective: coldChecked.objectiveValue,
+      contextLabel: `${scDef.scenarioId} (browser worker warm solve iteration ${i + 1})`,
+    });
+    warmWorkerSolveSamples.push(tw1 - tw0);
+    lastStatus = warmChecked.status;
+    lastObjective = warmChecked.objectiveValue;
+    allValid = allValid && warmChecked.valid;
+    maxViolation = Math.max(maxViolation, warmChecked.maxViolation);
+  }
+
+  return {
+    scenarioId: scDef.scenarioId,
+    description: scDef.description,
+    coldSolveMs,
+    status: lastStatus,
+    objectiveValue: lastObjective,
+    valid: allValid,
+    maxViolation,
+    modelSize: { ...size, lpStringBytes },
+    modelBuildSamples,
+    validationSamples,
+    lpSerializationSamples,
+    resultMappingSamples,
+    warmWorkerSolveSamples,
+  };
+}
+
+/**
  * Optional Browser Worker benchmark runner using headless Chromium (Playwright) against `dist/browser`.
  * Clearly separated from Node.js measurements because Browser Worker solves include
  * Worker lifecycle, structured-clone message passing, and separate-thread WASM execution.
  */
 async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints }) {
   const browserDistRoot = path.join(repoRoot, "dist/browser");
-  if (!existsSync(path.join(browserDistRoot, "washi.js"))) {
-    await import("./build-browser.mjs");
-  }
-
   const { chromium } = await import("playwright");
   const fixture = await mkdtemp(path.join(os.tmpdir(), "washi-bench-browser-"));
   const server = createServer(async (req, res) => {
@@ -535,6 +806,9 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
     );
 
     browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+    const chromiumVersion = browser.version();
+    let userAgent = "unknown";
+
     const scenarioDefs = [
       {
         scenarioId: "small-lp",
@@ -565,6 +839,9 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
         const page = await context.newPage();
         await page.goto(`${origin}/bench.html`);
         await page.waitForFunction(() => Boolean(window.washiApi));
+        if (userAgent === "unknown") {
+          userAgent = await page.evaluate(() => navigator.userAgent);
+        }
 
         const r = await page.evaluate(
           async ({
@@ -573,6 +850,8 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
             buildSmallLpSource,
             buildSchedulingMipSource,
             countModelSizeSource,
+            verifySolvedModelSource,
+            executeBrowserScenarioSource,
           }) => {
             const api = window.washiApi;
             const makeSmallLp = new Function("api", `return (${buildSmallLpSource})(api);`);
@@ -582,99 +861,24 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
               `return (${buildSchedulingMipSource})(api, hints);`
             );
             const getSize = new Function("model", `return (${countModelSizeSource})(model);`);
+            const checkSolved = new Function(
+              "arg",
+              `return (${verifySolvedModelSource})(arg);`
+            );
+            const runScenario = new Function(
+              "arg",
+              `return (${executeBrowserScenarioSource})(arg);`
+            );
 
-            const build =
-              scDef.scenarioId === "small-lp"
-                ? () => makeSmallLp(api)
-                : () => makeSchedulingMip(api, scDef.hints);
-
-            const tCold0 = performance.now();
-            const firstModel = build();
-            const firstStatus = await firstModel.solve({
-              solver: "highs",
-              useWorker: true,
-              presolve: "on",
+            return await runScenario({
+              api,
+              scDef,
+              iterCount,
+              makeSmallLp,
+              makeSchedulingMip,
+              getSize,
+              checkSolved,
             });
-            const coldSolveMs = Number((performance.now() - tCold0).toFixed(3));
-            const validation = firstModel.validateSolution();
-            const refSolution = firstModel.solution;
-            const size = getSize(firstModel);
-            const { lpString } = api.generateLpString({
-              name: firstModel.name,
-              sense: firstModel.sense,
-              objective: firstModel.objectiveExpr,
-              constraints: firstModel.constraints,
-              variables: firstModel.variables,
-            });
-            const lpStringBytes = new TextEncoder().encode(lpString).byteLength;
-
-            const mockSolver = new api.MockSolver({
-              status: "Optimal",
-              terminationStatus: "Optimal",
-              hasPrimalSolution: true,
-              objectiveValue: refSolution?.objectiveValue ?? 0,
-              values: refSolution?.values ?? {},
-              duals: refSolution?.duals ?? {},
-              reducedCosts: refSolution?.reducedCosts ?? {},
-              slacks: refSolution?.slacks ?? {},
-            });
-
-            const modelBuildSamples = [];
-            const validationSamples = [];
-            const lpSerializationSamples = [];
-            const resultMappingSamples = [];
-            const warmWorkerSolveSamples = [];
-
-            for (let i = 0; i < iterCount; i++) {
-              const tb0 = performance.now();
-              const m = build();
-              const tb1 = performance.now();
-              modelBuildSamples.push(tb1 - tb0);
-
-              const tv0 = performance.now();
-              api.validateModelIntegrity(m);
-              const tv1 = performance.now();
-              validationSamples.push(tv1 - tv0);
-
-              const tlp0 = performance.now();
-              api.generateLpString({
-                name: m.name,
-                sense: m.sense,
-                objective: m.objectiveExpr,
-                constraints: m.constraints,
-                variables: m.variables,
-              });
-              const tlp1 = performance.now();
-              lpSerializationSamples.push(tlp1 - tlp0);
-
-              const mapModel = build();
-              const tm0 = performance.now();
-              await mapModel.solve(mockSolver);
-              const tm1 = performance.now();
-              resultMappingSamples.push(tm1 - tm0);
-
-              const tw0 = performance.now();
-              const warmModel = build();
-              await warmModel.solve({ solver: "highs", useWorker: true, presolve: "on" });
-              const tw1 = performance.now();
-              warmWorkerSolveSamples.push(tw1 - tw0);
-            }
-
-            return {
-              scenarioId: scDef.scenarioId,
-              description: scDef.description,
-              coldSolveMs,
-              status: firstStatus,
-              objectiveValue: Number(firstModel.objectiveValue.toFixed(6)),
-              valid: validation.valid && validation.complete,
-              maxViolation: validation.summary.maxConstraintViolation,
-              modelSize: { ...size, lpStringBytes },
-              modelBuildSamples,
-              validationSamples,
-              lpSerializationSamples,
-              resultMappingSamples,
-              warmWorkerSolveSamples,
-            };
           },
           {
             iterCount: iterations,
@@ -682,6 +886,8 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
             buildSmallLpSource: buildSmallLpModel.toString(),
             buildSchedulingMipSource: buildSchedulingMipModel.toString(),
             countModelSizeSource: countModelSize.toString(),
+            verifySolvedModelSource: verifySolvedModel.toString(),
+            executeBrowserScenarioSource: executeBrowserScenario.toString(),
           }
         );
 
@@ -689,6 +895,8 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
           scenarioId: r.scenarioId,
           description: r.description,
           environment: "chromium-headless",
+          browserVersion: chromiumVersion,
+          playwrightVersion: versions.playwrightVersion,
           usesBrowserWorker: true,
           solver: {
             name: "highs",
@@ -724,7 +932,15 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
       }
     }
 
-    return out;
+    return {
+      scenarios: out,
+      browserInfo: {
+        name: "chromium-headless",
+        version: chromiumVersion,
+        playwrightVersion: versions.playwrightVersion,
+        userAgent,
+      },
+    };
   } finally {
     if (browser) {
       await browser.close();
@@ -738,11 +954,14 @@ async function runBrowserWorkerBenchmarks({ iterations, versions, warmStartHints
  * Run the reproducible benchmark suite and return a structured report.
  */
 export async function runBenchmarks(options = {}) {
-  const iterations = Math.max(1, Number(options.iterations ?? 5));
+  const iterations = validateIterations(options.iterations, "iterations");
   const includeBrowser = Boolean(
     options.includeBrowser ?? process.env.RUN_BENCH_BROWSER === "1"
   );
-  const { api, glpk } = await loadWashiModules();
+  const { api, glpk } = await loadWashiModules({
+    includeBrowser,
+    rebuild: options.rebuild,
+  });
   const versions = readPackageVersions();
   const cpus = os.cpus();
 
@@ -845,12 +1064,15 @@ export async function runBenchmarks(options = {}) {
   }
 
   let browserResults = [];
+  let browserInfo = null;
   if (includeBrowser) {
-    browserResults = await runBrowserWorkerBenchmarks({
+    const browserRun = await runBrowserWorkerBenchmarks({
       iterations,
       versions,
       warmStartHints,
     });
+    browserResults = browserRun.scenarios;
+    browserInfo = browserRun.browserInfo;
   }
 
   return {
@@ -869,6 +1091,7 @@ export async function runBenchmarks(options = {}) {
         glpk: versions.glpkVersion,
       },
       browserWorkerIncluded: includeBrowser,
+      browser: browserInfo,
     },
     measurementBoundaries: MEASUREMENT_BOUNDARIES,
     nodeScenarios: results,
@@ -889,6 +1112,11 @@ export function formatReportText(report) {
   lines.push(
     `Versions : @ohtaman/washi ${env.washiVersion} | highs ${env.solvers.highs} | glpk.js ${env.solvers.glpk}`
   );
+  if (env.browser) {
+    lines.push(
+      `Browser  : ${env.browser.name} ${env.browser.version} (Playwright ${env.browser.playwrightVersion})`
+    );
+  }
   lines.push("");
   lines.push("Measurement Boundaries (measured directly; phases are never subtracted):");
   for (const [key, desc] of Object.entries(report.measurementBoundaries)) {
@@ -949,7 +1177,7 @@ export function formatReportText(report) {
       const fmt = (stat) =>
         `${stat.medianMs.toFixed(3)} / ${stat.meanMs.toFixed(3)} (${stat.minMs.toFixed(3)}..${stat.maxMs.toFixed(3)}) ms`;
       lines.push(
-        `\n[${bsc.scenarioId}] solver=${bsc.solver.name}@${bsc.solver.version} options=${JSON.stringify(bsc.solver.options)} usesBrowserWorker=${bsc.usesBrowserWorker}`
+        `\n[${bsc.scenarioId}] solver=${bsc.solver.name}@${bsc.solver.version} browser=chromium@${bsc.browserVersion} options=${JSON.stringify(bsc.solver.options)} usesBrowserWorker=${bsc.usesBrowserWorker}`
       );
       lines.push(`  Description : ${bsc.description}`);
       lines.push(
@@ -992,18 +1220,11 @@ export function parseCliArgs(argv, env = process.env) {
     } else if (arg === "--browser") {
       includeBrowser = true;
     } else if (arg.startsWith("--iterations=")) {
-      const parsed = Number(arg.slice("--iterations=".length));
-      if (!Number.isInteger(parsed) || parsed < 1) {
-        throw new Error(`Invalid --iterations value: ${arg}`);
-      }
-      iterations = parsed;
+      const raw = arg.slice("--iterations=".length);
+      iterations = validateIterations(raw, "--iterations");
     } else if (arg === "--iterations") {
       const next = argv[++i];
-      const parsed = Number(next);
-      if (next === undefined || !Number.isInteger(parsed) || parsed < 1) {
-        throw new Error(`Invalid --iterations value: ${String(next)}`);
-      }
-      iterations = parsed;
+      iterations = validateIterations(next, "--iterations");
     } else {
       throw new Error(
         `Unknown CLI option: ${arg}. Supported options: --iterations=<N>, --json, --browser`
