@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
-  text: "TypeScriptのための数理最適化モデラー"
-  tagline: WebAssembly 代数モデリングシステム（LP, MIP, QP, SMT）。Node.js、ブラウザ、Bun、Deno、Next.js でネイティブな高速最適化を実現。
+  text: "TypeScript / JavaScript 向け代数モデラー"
+  tagline: WebAssembly ベースの数理最適化・SMT モデリングインターフェース（LP, MIP, 凸QP, SMT）。TypeScript でモデルを記述し、HiGHS・Z3・GLPK でローカル求解。
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem
@@ -13,25 +13,33 @@ hero:
       text: はじめに
       link: /ja/getting-started/
     - theme: alt
+      text: ドキュメント
+      link: /ja/guide/expressions
+    - theme: alt
       text: Playground ↗
       link: https://ohtaman.github.io/washi/demo/
-    - theme: alt
-      text: GitHub
-      link: https://github.com/ohtaman/washi
 
 features:
-  - icon: 🌐
-    title: 100% クライアント完結 & サーバー費用ゼロ
-    details: WebAssembly 上で工業グレードの最適化問題を全自動で求解。機密データをサーバーに送らず、オフラインでもセキュアに動作します。
   - icon: ✍️
-    title: 直感的な代数モデリング
-    details: 直感的なドメイン変数（m.binary, m.integer, m.continuous）、数式テンプレート（expr`...`）、ベクトル集計（dot, sum）、宣言的な m.constraint() で自然に定式化。
-  - icon: ⚡
-    title: 産業用マルチソルバーアーキテクチャ
-    details: 高速な HiGHS（LP/MIP/QP）を標準搭載。さらに Z3（SMT論理制約・競合診断）や GLPK をプラグインとして自由に切り替え可能。
+    title: 代数的なモデル記述 (expr)
+    details: タグ付きテンプレート（expr`30 * ${x} + 50 * ${y} <= 40`）や内積（dot）・総和（sum）により、${...} を型付きの変数参照として直接バインドして定式化。
+    link: /ja/guide/expressions
+    linkText: 数式の記述ガイド
+  - icon: ⚙️
+    title: ソルバーアダプター機構
+    details: 共通のモデリング API から標準搭載の HiGHS（LP/MIP/凸QP）およびオプションの Z3（SMT・論理制約・競合診断）、GLPK を切り替え可能。
+    link: /ja/solvers/
+    linkText: ソルバー比較
+  - icon: 🌐
+    title: WebAssembly によるローカル実行
+    details: Python バックエンドや C/C++ のネイティブビルドなしで Node.js やブラウザの Web Worker 上で動作。静的アセットとして配信でき、ブラウザ内 LLM とも連携可能。
+    link: /ja/getting-started/runtimes
+    linkText: ランタイム環境設定
   - icon: 🔍
-    title: 競合制約の自動診断 (Unsat Core)
-    details: 制約同士が矛盾して実行不可能（Infeasible）になった際、Z3 エンジンが原因となっている制約の最小集合を自動特定します。
+    title: 矛盾制約の特定 (unsatCore)
+    details: 名前付き制約と Z3 アダプターを用いて、実行不可能（Infeasible）なモデルの矛盾する制約の部分集合（unsatCore）を抽出。
+    link: /ja/examples/unsat-core
+    linkText: Unsat Core の実例
 ---
 
 <div style="max-width: 800px; margin: 40px auto;">

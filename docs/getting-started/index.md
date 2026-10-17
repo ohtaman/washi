@@ -2,7 +2,12 @@
 
 Welcome to **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface).
 
-WaSHI brings the expressive elegance of Python's **PuLP** and Julia's **JuMP** to the modern TypeScript and JavaScript ecosystem. You can formulate mathematical optimization problems using natural algebraic expressions and solve them natively using industrial WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**)—with zero native C/C++ compilation steps.
+WaSHI brings the algebraic modeling style of Python's **PuLP** and Julia's **JuMP** to the TypeScript and JavaScript ecosystem. You can formulate mathematical optimization problems using algebraic expressions and solve them locally using WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**)—without a separate Python service or native C/C++ build steps.
+
+### Why TypeScript & WebAssembly?
+
+- **Removing the deployment bottleneck**: In traditional optimization workflows (e.g., Python with PuLP or Pyomo), turning a model into an interactive application requires provisioning a backend service and managing native C/C++ solver binaries. As AI-assisted development accelerates UI and application prototyping, backend infrastructure often becomes the primary bottleneck to shipping. Running both the modeler and WebAssembly solvers on standard Web technologies allows an optimization tool to be deployed as static assets (e.g., on GitHub Pages or Cloudflare Pages, serving the generated JS, Worker, and WASM files; with COOP/COEP headers when using Z3)—and makes it straightforward to pair mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) entirely on the client.
+- **Algebraic syntax without operator overloading (`expr`)**: Because JavaScript lacks operator overloading, libraries usually trade off between verbose method chaining (`x.mul(30).add(y.mul(50))`) and untyped strings (`"30 * x + 50 * y"`). WaSHI uses tagged template literals (`` expr`30 * ${x} + 50 * ${y} <= 40` ``) similar to parameterized SQL queries—parsing infix operators while binding `${x}` directly as typed TypeScript object references for static type checking, IDE symbol renaming, and multi-dimensional indexing (`${flow[i][j]}`).
 
 ---
 

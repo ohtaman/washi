@@ -126,10 +126,10 @@ export default withMermaid(
       description: "Intuitive Mathematical Optimization & Algebraic Modeler for TypeScript & JavaScript",
       themeConfig: {
         nav: [
-          { text: "Guide", link: "/getting-started/" },
+          { text: "Getting Started", link: "/getting-started/" },
+          { text: "Guide", link: "/guide/variables" },
           { text: "Solvers", link: "/solvers/" },
           { text: "Examples", link: "/examples/" },
-          { text: "Custom Solvers", link: "/solvers/custom-solver" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
@@ -188,10 +188,10 @@ export default withMermaid(
       description: "TypeScript & JavaScript 向け直感的数理最適化モデラー",
       themeConfig: {
         nav: [
-          { text: "ガイド", link: "/ja/getting-started/" },
+          { text: "はじめに", link: "/ja/getting-started/" },
+          { text: "ガイド", link: "/ja/guide/expressions" },
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
-          { text: "カスタムソルバー", link: "/ja/solvers/custom-solver" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [
@@ -250,10 +250,10 @@ export default withMermaid(
       description: "适用于 TypeScript/JavaScript 的现代代数建模与数理优化系统",
       themeConfig: {
         nav: [
-          { text: "指南", link: "/zh/getting-started/" },
-          { text: "求解器", link: "/zh/solvers/" },
+          { text: "快速入门", link: "/zh/getting-started/" },
+          { text: "指南", link: "/guide/variables" },
+          { text: "求解器", link: "/solvers/" },
           { text: "示例", link: "/zh/examples/" },
-          { text: "自定义求解器", link: "/zh/solvers/custom-solver" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
         sidebar: [

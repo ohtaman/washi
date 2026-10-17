@@ -2,7 +2,12 @@
 
 **WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）へようこそ。
 
-WaSHI は、Python の **PuLP** や Julia の **JuMP** が持つ直感的でエレガントな代数モデリング体験を、モダンな TypeScript / JavaScript エコシステムにもたらすライブラリです。C/C++ のネイティブビルドを一切必要とせず、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によってブラウザや Node.js で高速に数理最適化を実行できます。
+WaSHI は、Python の **PuLP** や Julia の **JuMP** のような代数モデリングを TypeScript / JavaScript エコシステムで提供するライブラリです。別途 Python サーバーや C/C++ のネイティブビルドを用意することなく、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によってブラウザや Node.js で数理最適化を実行できます。
+
+### なぜ TypeScript & WebAssembly なのか？
+
+- **デプロイのボトルネック解消とクライアント完結**: 従来の数理最適化ワークフロー（Python の PuLP や Pyomo など）では、作成したモデルを他の人が使える Web ツールとして公開しようとすると、Python バックエンドやネイティブソルバーのホスティング・運用が必要になります。AI コーディングによって UI やアプリケーションの実装が高速化する中、このインフラ準備が公開時のボトルネックになりがちです。モデラーとソルバーを Web 標準技術（TypeScript + WebAssembly）で動かすことで、静的アセット（生成された JS・Worker・WASM を配信する GitHub Pages や Cloudflare Pages などの静的ホスティング。Z3 利用時は COOP/COEP ヘッダーが必要）として配布でき、さらにブラウザ内 LLM（WebGPU / WebLLM 等）ともサーバーを介さず同一ランタイム内で連携できます。
+- **演算子オーバーロードなしでの数式記述 (`expr`)**: JavaScript / TypeScript には演算子オーバーロードがないため、通常のライブラリは冗長なメソッドチェーン（`x.mul(30).add(y.mul(50))`）か、型が効かない生文字列パース（`"30 * x + 50 * y"`）の二択になりがちです。WaSHI は SQL クエリビルダのパラメータバインディングと同様にタグ付きテンプレートリテラル（`` expr`30 * ${x} + 50 * ${y} <= 40` ``）を採用し、中置記法の演算子を解析しつつ `${x}` を実際の TypeScript オブジェクト参照としてバインドします。これにより、型チェック・IDE の変数リネーム（F2）・多次元配列の添字指定（`${flow[i][j]}`）がそのまま機能します。
 
 ---
 
