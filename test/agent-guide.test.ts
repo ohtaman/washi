@@ -321,8 +321,11 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     expect(nameMatch?.[1]?.trim()).toBe("washi");
     expect(descMatch?.[1]?.trim().length).toBeGreaterThan(20);
 
-    // Covers required lifecycle stages and links to ai-agents.md
+    // Covers required lifecycle stages and links to ai-agents.md with a location-independent URL
     expect(skillContent).toContain("docs/getting-started/ai-agents.md");
+    expect(skillContent).toContain("https://github.com/ohtaman/washi/blob/main/docs/getting-started/ai-agents.md");
+    expect(skillContent).toContain("node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md");
+    expect(skillContent).not.toContain("](../../");
     expect(skillContent).toContain("toLpString()");
     expect(skillContent).toContain("validateIntegrity()");
     expect(skillContent).toContain("validateSolution()");

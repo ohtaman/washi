@@ -5,7 +5,7 @@ description: Formulate, inspect, solve, and verify mathematical optimization (LP
 
 # WaSHI Modeling & Verification Skill
 
-Use this skill when building, debugging, or verifying mathematical optimization (LP, MIP, convex QP) or satisfiability (SMT / SAT) models with `@ohtaman/washi`. For the full API reference and browser/bundler deployment rules, see [`docs/getting-started/ai-agents.md`](../../docs/getting-started/ai-agents.md) (available in consumer projects at `node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md`).
+Use this skill when building, debugging, or verifying mathematical optimization (LP, MIP, convex QP) or satisfiability (SMT / SAT) models with `@ohtaman/washi`. For the full API reference and browser/bundler deployment rules, see [`docs/getting-started/ai-agents.md`](https://github.com/ohtaman/washi/blob/main/docs/getting-started/ai-agents.md) (available locally at `node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md` in consumer projects or `docs/getting-started/ai-agents.md` in the repository).
 
 ---
 
