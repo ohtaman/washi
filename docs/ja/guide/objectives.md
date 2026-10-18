@@ -59,6 +59,8 @@ const status = await m.solve({
 | `signal` | `AbortSignal` | `undefined` | 協調的キャンセル用の `AbortSignal` (`AbortController.signal`)。 |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | 求解中の進捗スナップショットを受け取るコールバック。 |
 
+第1引数にソルバー名を直接渡すことも可能です：`await m.solve("glpk", { timeLimit: 5 })`。
+
 ---
 
 ## ⏱️ リアルタイム進捗 (`onProgress`) と中断 (`AbortSignal`)
@@ -162,3 +164,7 @@ MIP ソルバーが制限時間（`timeLimit`）やキャンセル（`AbortSigna
 2. **求解中のモデル変更**: 非同期の `m.solve()` / `m.check()` の実行中にモデルが変更された場合、進行中の古い求解結果は破棄され、Promise は明示的なエラーで reject されます。
 3. **重複呼び出しの制御**: 同じモデルに対して新しい `m.solve()` / `m.check()` が開始されると、先に走っていた古い実行の結果が後から完了しても最新の状態を上書きしないよう保護されます。
 4. **トランザクション的な一括編集**: `m.constraint([...])` 等の一括操作で不正な要素が含まれていた場合、部分的な登録を残さずロールバックされます。
+
+> [!NOTE]
+> 登録済みの変数や制約の名前変更（登録後の `c.name` の再代入など）や、内部コレクション・AST の直接書き換え（`c.lhs.terms`、`m.constraints.splice(...)`、`BoolOp.children` など）はサポートされておらず、次回 `solve()` / `check()` / エクスポートを呼び出した際のモデル整合性検証でエラーとして拒否されます。
+

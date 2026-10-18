@@ -9,6 +9,7 @@
 - **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi`. No separate peer dependency or compilation required.
 - **Permissive MIT License**: 100% commercially friendly.
 - **Web Worker Multithreading**: Automatically offloads intensive solving to background Web Workers in browser environments to avoid freezing the UI thread.
+- **Warm-Start Support (`initialValue`)**: Supports passing variable primal initial value hints (`initialValue`) to HiGHS `setSolution` for warm starting.
 - **Fast WASM Execution**: Emscripten-compiled 32-bit WASM runs at near-native speed.
 
 ---
@@ -16,14 +17,16 @@
 ## Supported Problem Classes
 
 ### 1. Linear Programming (LP)
-Solves continuous problems via Primal and Dual Simplex algorithms or Interior Point (IPM) methods:
+Solves continuous problems via Primal and Dual Simplex algorithms or Interior Point (IPM) methods. After solving, you can inspect constraint shadow prices (`c.dual`), slacks (`c.slack`), and variable reduced costs (`v.reducedCost`):
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
 const model = new Model({ solver: "highs" });
 const x = model.continuous("x", { lb: 0 });
 const y = model.continuous("y", { lb: 0 });
 model.objective(maximize(expr`10 * ${x} + 6 * ${y}`));
-model.constraint(expr`${x} + ${y} <= 100`);
+model.constraint(expr`${x} + ${y} <= 100`, "cap");
 await model.solve();
 ```
 

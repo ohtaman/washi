@@ -79,8 +79,10 @@ describe("CodeRunner documentation snippets syntax validity", () => {
 
     for (const docFile of mdFiles) {
       const rawContent = fs.readFileSync(docFile, "utf-8");
-      // Exclude the intentional Negative Examples section in ai-agents.md
-      const content = rawContent.split("## 4. Negative Examples")[0];
+      // Exclude the intentional Negative Examples section in ai-agents.md (EN/JA/ZH)
+      const content = docFile.endsWith("ai-agents.md")
+        ? rawContent.split(/^## 4\./m)[0]
+        : rawContent;
       expect(content, `Retired API in ${docFile}`).not.toMatch(
         /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
       );
@@ -309,10 +311,10 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 25-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
-      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/") && rel !== "getting-started/ai-agents.md")
+      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
       .sort();
     const jaPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
@@ -325,6 +327,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
+    expect(enPages).toHaveLength(25);
     expect(jaPages).toEqual(enPages);
     expect(zhPages).toEqual(enPages);
   });

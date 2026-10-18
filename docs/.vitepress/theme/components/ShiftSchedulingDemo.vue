@@ -335,7 +335,15 @@ onMounted(() => {
     <div class="washi-app-header">
       <div class="washi-header-top">
         <div>
-          <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · 8 STAFF × 7 DAYS (56 BINARY VARS)</span>
+          <span class="washi-app-eyebrow">
+            {{
+              isJa
+                ? "インタラクティブ実例 · 8名 × 7日間 (56 バイナリ変数)"
+                : isZh
+                ? "交互式示例 · 8 名员工 × 7 天 (56 个二元变量)"
+                : "INTERACTIVE EXAMPLE · 8 STAFF × 7 DAYS (56 BINARY VARS)"
+            }}
+          </span>
           <h4 class="washi-app-title">
             {{ isJa ? "週間シフトスケジューラ ＆ 希望休の競合診断" : isZh ? "周排班计划器与休假冲突诊断" : "Weekly Shift Scheduler & Conflict Diagnosis" }}
           </h4>
@@ -517,7 +525,9 @@ onMounted(() => {
       <div class="result-main">
         <span class="status-dot optimal"></span>
         <strong>{{ isJa ? "最適シフト確定 (Optimal)" : isZh ? "已求得最优排班 (Optimal)" : "Optimal Roster Found" }}</strong>
-        <span class="solve-meta">HiGHS WASM · {{ solveTimeMs.toFixed(1) }} ms · 56 Binary Vars</span>
+        <span class="solve-meta">
+          HiGHS WASM · {{ solveTimeMs.toFixed(1) }} ms · {{ isJa ? "56 バイナリ変数" : isZh ? "56 个二元变量" : "56 Binary Vars" }}
+        </span>
       </div>
       <div class="result-kpi">
         <span>{{ isJa ? "週間総人件費 (最小化):" : isZh ? "周总人力成本 (最小化):" : "Total Weekly Payroll (Minimized):" }}</span>

@@ -16,7 +16,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://ohtaman.github.io/washi/ja/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
@@ -28,7 +28,7 @@
 
 HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグインです。Node.js 用とブラウザ用の配布物に WebAssembly アセットを含みます。配信に必要な設定は[ブラウザでの利用方法](#-ブラウザ--web-worker-での利用方法)を参照してください。
 
-[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/ja/getting-started/ai-agents.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -50,7 +50,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 ## 🎯 WaSHI が提供するもの
 
 1. **代数的なモデル記述**: ドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`）、ベクトル集計関数（`dot`, `sum`）、およびファーストクラスの制約（`m.constraint`）によりモデルを記述します。JavaScript には演算子オーバーロードがないため、`` expr`...` `` は SQL のパラメータバインディングと同様に、中置記法の演算子（`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`）を構文解析しつつ `${...}` に渡された値を型付きの `Var` や式のオブジェクト参照として直接バインドします。これにより、TypeScript の型検査、IDE のシンボルリネーム、多次元変数の添字参照（`${flow[i][j]}`）がそのまま機能します。
-2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
+2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/ja/solvers/custom-solver.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せずアプリケーション内で求解できるため、プロトタイプから Web ツールを公開する際のバックエンド構築のボトルネックを解消でき、ブラウザ内 LLM（WebGPU / WebLLM 等）とのクライアントサイド連携も容易です。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
 4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に競合制約（`conflicts` / `unsatCore`）を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
 
@@ -394,7 +394,7 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 
 WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャを採用しています。独自の最適化エンジン（クラウド REST ソルバー、WebAssembly エンジン、商用ソルバーアダプターなど）を容易に構築・登録できます：
 
-- 詳細な開発手順、API コントラクト仕様（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）、およびテスト手法については [カスタムソルバー開発ガイド](docs/ja/solvers/custom-solver.md)（[英語版](docs/solvers/custom-solver.md)）をご覧ください。
+- 詳細な開発手順、API コントラクト仕様（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）、およびテスト手法については [カスタムソルバー開発ガイド](docs/ja/solvers/custom-solver.md) をご覧ください。
 
 ---
 
