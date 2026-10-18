@@ -1,6 +1,6 @@
 {
   "name": "@ohtaman/washi",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "WaSHI: WebAssembly-backed, Solver-independent, High-level modeling Interface (LP, MIP, QP, SMT)",
   "type": "module",
   "main": "./dist/lib/washi.js",
