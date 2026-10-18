@@ -154,20 +154,35 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial sta
 
 ---
 
-## Accessing Solution Values
+## Accessing Solution Values & Reduced Costs
 
-After calling `await m.solve()`, optimal values are accessible via `variable.value` or the bulk accessor `m.getValues()`:
+After calling `await m.solve()` or `await m.check()`, assigned variable values (optimal or incumbent primal values from `solve()`, or a satisfying assignment from `check()`) are accessible via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`) or the bulk accessor `m.getValues()`:
 
 ```typescript
 await m.solve();
 
-// Single variable
+// Single variable primal value
 console.log(`trucks: ${trucks.value}`);
 
-// Bulk extraction for 1D or 2D collections
+// Reduced cost (LP sensitivity analysis — how much an objective coefficient must improve before a variable at its bound enters the basis)
+console.log(`fuel reduced cost: ${fuel.reducedCost}`);
+
+// Bulk extraction for 1D or 2D collections (works for both Var and BoolVar collections)
 const selectedValues = m.getValues(selected);
 // { laptop: 1, phone: 0, tablet: 1 }
 
 const flowValues = m.getValues(ship);
 // { Tokyo: { StoreA: 50, ... }, Osaka: { ... } }
+```
+
+---
+
+## Looking Up Variables by Name
+
+You can retrieve registered decision variables by name or inspect the total variable count on the model:
+
+```typescript
+const v = m.getVarByName("trucks");           // Var | undefined
+const b = m.getBoolVarByName("isNight");      // BoolVar | undefined
+console.log("Total numeric variables:", m.numVars);
 ```

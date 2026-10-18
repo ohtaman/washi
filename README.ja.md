@@ -50,7 +50,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 ## 🎯 WaSHI が提供するもの
 
 1. **代数的なモデル記述**: ドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`）、ベクトル集計関数（`dot`, `sum`）、およびファーストクラスの制約（`m.constraint`）によりモデルを記述します。JavaScript には演算子オーバーロードがないため、`` expr`...` `` は SQL のパラメータバインディングと同様に、中置記法の演算子（`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`）を構文解析しつつ `${...}` に渡された値を型付きの `Var` や式のオブジェクト参照として直接バインドします。これにより、TypeScript の型検査、IDE のシンボルリネーム、多次元変数の添字参照（`${flow[i][j]}`）がそのまま機能します。
-2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
+2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せずアプリケーション内で求解できるため、プロトタイプから Web ツールを公開する際のバックエンド構築のボトルネックを解消でき、ブラウザ内 LLM（WebGPU / WebLLM 等）とのクライアントサイド連携も容易です。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
 4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に競合制約（`conflicts` / `unsatCore`）を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
 
@@ -96,57 +96,43 @@ npm install glpk.js      # GLPK ソルバーを利用する場合 (GPL-3.0)
 
 ## 🚀 使い方ガイド
 
-### 1. 混合整数線形計画法 (MIP: 生産計画問題)
+### 1. 多次元変数・条件付き制約 (`m.indicator`)・解の検証 (`m.validateSolution`)
 
-リソース制約の下で利益を最大化する生産計画：
-
-```ts
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model("FactoryPlanning");
-
-// 決定変数（整数・非負）
-const chairs = m.integer("chairs", { lb: 0 });
-const tables = m.integer("tables", { lb: 0 });
-
-// テンプレートリテラル記法による自然な目的関数と制約
-m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constraint(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
-
-// 標準の HiGHS WASM エンジンで求解
-const status = await m.solve();
-
-console.log(`ステータス: ${status}`); // "Optimal"
-console.log(`最大利益: $${m.objectiveValue}`); // 1100
-console.log(`生産数: 椅子=${chairs.value}, 机=${tables.value}`); // 椅子 20, 机 10
-```
-
-#### 🗂 多次元変数グリッド
-
-キー一覧や多次元インデックスから、1 行で変数群を定義：
+1次元辞書や2次元マトリクス変数を1行で宣言し、`m.indicator()` による条件付き Big-M 制約、進捗イベント（`onProgress`）とキャンセル（`AbortSignal`）、および `m.validateSolution()` による独立解検証を行えます：
 
 ```ts
+import { Model, expr } from "@ohtaman/washi";
+
+const m = new Model("FacilityPlanning");
+
 // 1次元辞書形式のバイナリ変数群
 const openCity = m.binary(["Tokyo", "Osaka", "Nagoya"]);
 
 // 2次元輸送量行列: [工場] x [店舗]
-const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
+const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 1000 });
 
 // 2次元グリッド (例: 8x8 チェス盤)
 const board = m.binary(8, 8, { prefix: "queen" });
-```
 
-#### 🔀 Big-M インジケータ制約 (`m.indicator`)
-
-条件分岐や固定費の発生ルールを、煩雑な手動 Big-M 計算なしに記述：
-
-```ts
-// 「東京工場が稼働していない (openCity['Tokyo'] == 0) なら、生産量 flow は 0」
+// 条件付き Big-M 制約: 東京拠点が閉鎖 (openCity['Tokyo'] == 0) なら flow <= 0
+// (M を省略すると、変数の有限な上下限から安全な最小の Big-M が自動導出されます)
 m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
-  M: 1000,
+  name: "tokyo_closed_no_flow",
 });
+
+// 進捗コールバック (onProgress) と AbortSignal によるキャンセル制御
+const controller = new AbortController();
+await m.solve({
+  signal: controller.signal,
+  onProgress: (ev) => {
+    // 分枝限定法のライブ指標: ev.elapsedTime, ev.objectiveValue, ev.objectiveBound, ev.mipGap
+  },
+});
+
+// 求解結果が境界・整数性・線形/論理制約を満たすか独立検証
+const report = m.validateSolution();
+console.log("解の検証結果:", report.valid);
 ```
 
 ---
@@ -362,11 +348,11 @@ await model.solve();
 </script>
 ```
 
-CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js`（`0.1.2` 以降のバージョンを固定）に指定できます。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
+CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js`（対応版リリースが公開された後にそのバージョンを指定）に指定できます。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
 
 ### ブラウザ環境でのソルバープラグイン（GLPK & Z3）
 
-ブラウザ配布物には、`dist/browser/solvers/` 配下に事前バンドルされたスタンドアロンソルバープラグインが含まれています（CDN 利用時は `>= 0.2.0` または `@latest` で利用可能）：
+ブラウザ配布物には、`dist/browser/solvers/` 配下に事前バンドルされたスタンドアロンソルバープラグインが含まれています：
 - **GLPK**: `dist/browser/solvers/glpk.js` (ESM) および `dist/browser/solvers/glpk.min.js` (IIFE、グローバル `WashiGLPK` を登録)
 - **Z3**: `dist/browser/solvers/z3.js` (ESM) および `dist/browser/solvers/z3.min.js` (IIFE、グローバル `WashiZ3` を登録)、ならびに `z3-built.js` / `z3-built.wasm`
 
@@ -398,37 +384,9 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 
 > [!NOTE]
 > **ブラウザ環境での Z3 利用と Cross-Origin Isolation**:
-> Z3 の WebAssembly エンジンはマルチスレッド（`SharedArrayBuffer`）を必要とするため、ブラウザのセキュリティ仕様により Cross-Origin Isolation が必須となります。ドキュメントレスポンスに以下のヘッダーが必要です：
-> ```http
-> Cross-Origin-Opener-Policy: same-origin
-> Cross-Origin-Embedder-Policy: require-corp
-> ```
-> また、別オリジンからアセットを読み込む場合は `Cross-Origin-Resource-Policy: cross-origin` の返却が必要です。
-> 
-> 任意のヘッダーを設定できない一般的な静的配信（GitHub Pages や CodePen 等の iframe プレビュー環境）では、追加対応なしで条件を満たすことはできません。なお、ライブラリ本体 `@ohtaman/washi` のインポートによって利用者のページに Service Worker が勝手に登録されることはありません。
-> 
-> GitHub Pages で公開している公式 Web デモでは、`/washi/` スコープ限定の独立した `coi-serviceworker.js` を同オリジンに配置・登録し、初回アクセス時に1回だけ安全に再読み込みを行って `window.crossOriginIsolated === true` を確立してから Z3 を実行します。Service Worker が利用できない環境や隔離の確立に失敗した環境では、原因を明示して安全に実行を中断します。
+> Z3 の WebAssembly エンジンはマルチスレッド（`SharedArrayBuffer`）を必要とするため、`Cross-Origin-Opener-Policy: same-origin` および `Cross-Origin-Embedder-Policy: require-corp` ヘッダーによる Cross-Origin Isolation が必要です。静的ホスティング（`coi-serviceworker.js`）、イントラネット・オフライン配置、CSP（`worker-src blob:`）、カスタム WASM URL（`setHighsWasmUrl`）の詳細は [Cross-Origin Isolation 設定](docs/ja/getting-started/cross-origin.md) および [ランタイム環境とデプロイ構成](docs/ja/getting-started/runtimes.md) を参照してください。
 
-完全なスタンドアロンサンプル（ESM、スクリプトタグ、CodePen）は `examples/distribution/` に用意されています。
-
-### 工場内・オフライン配布、Worker、自前配信
-
-アプリのビルド出力一式、または `dist/browser` 一式をローカル HTTP サーバー・社内サーバーに配布します。必要なアセットがローカルにあれば、ブラウザのキャッシュが空でも外部ネットワークは不要です。HTML や最初の JS だけでは不足します。`file://` 実行や PWA の自動キャッシュは対象外です。
-
-ESM はモジュール URL、script 版は読み込み時に保持した script URL からアセットを解決します。CDN の Worker は Blob のモジュールから起動します。配信元の CORS と、CSP の script・通信先許可が必要です。CDN Worker では `worker-src blob:` も許可してください。使えない場合は `useWorker: false` を指定します。Worker の読み込み・メッセージ処理に失敗した場合は、求解 Promise がエラーになります。
-
-自前 URL は `setHighsWasmUrl(url)` / `options.wasmUrl` で指定できます：
-
-```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
-setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
-```
-
-初期化に失敗すると取得先を含むエラーを返し、別ホストには切り替えません。従来のオリジンルート / CDN 自動フォールバックを利用していた場合は、生成アセットを配布するか URL を明示してください。
-
-### 配布物の検証
-
-`npm run test:distribution` は実際の npm tarball をインストールし、任意依存なしの Vite / webpack アプリをビルドして、生成 JS と実 WASM を VM で実行します。ブラウザ・CORS の検証とは別です。`npx playwright install chromium` 後に `RUN_DISTRIBUTION_BROWSER=1 npm run test:distribution` で Chromium の検証も実行できます。CI はそのモードを使い、別オリジン配信と外部ネットワーク遮断も確認します。
+完全なスタンドアロンサンプル（ESM、スクリプトタグ、CodePen）は [`examples/distribution/`](examples/distribution/README.md) に用意されています。
 
 ---
 
@@ -436,7 +394,7 @@ setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser
 
 WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャを採用しています。独自の最適化エンジン（クラウド REST ソルバー、WebAssembly エンジン、商用ソルバーアダプターなど）を容易に構築・登録できます：
 
-- 詳細な開発手順、API コントラクト仕様（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）、およびテスト手法については [Custom Solver Developer Guide](docs/custom-solver-guide.md) をご覧ください。
+- 詳細な開発手順、API コントラクト仕様（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）、およびテスト手法については [カスタムソルバー開発ガイド](docs/ja/solvers/custom-solver.md)（[英語版](docs/solvers/custom-solver.md)）をご覧ください。
 
 ---
 

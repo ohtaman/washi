@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 import * as Washi from "../src/index.js";
+import "../src/modeler/solvers/z3.js";
 import { transpileSnippetToJs } from "../docs/.vitepress/theme/utils/transpile.js";
 
 describe("CodeRunner documentation snippets syntax validity", () => {
@@ -47,8 +48,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   }
 
-  it("extracts all documentation code snippets (18 expected across EN and JA)", () => {
-    expect(snippets.length).toBe(18);
+  it("extracts all documentation code snippets (27 expected across EN, JA, and ZH)", () => {
+    expect(snippets.length).toBe(27);
   });
 
   for (const snippet of snippets) {
@@ -61,7 +62,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     });
   }
 
-  it("verifies shipped README.md, README.ja.md, and README.zh-CN.md contain no retired API calls or unpublished public/highs.wasm URLs", () => {
+  it("verifies shipped README.md, README.ja.md, README.zh-CN.md, and docs/ contain no retired API calls, invalid options, or broken doc paths", () => {
     for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
       const content = fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8");
       expect(content).not.toMatch(
@@ -69,15 +70,271 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       );
       expect(content).not.toMatch(/\b(?:m|model)\.(minimize|maximize)\b/);
       expect(content).not.toContain("/public/highs.wasm");
+      expect(content).not.toContain("custom-solver-guide.md");
+      expect(content).not.toContain("documentation-plan.md");
+      expect(content).not.toContain("bestBound");
+      expect(content).not.toContain("iterationCount");
+      expect(content).not.toContain("@0.4.0");
     }
+
+    for (const docFile of mdFiles) {
+      const rawContent = fs.readFileSync(docFile, "utf-8");
+      // Exclude the intentional Negative Examples section in ai-agents.md
+      const content = rawContent.split("## 4. Negative Examples")[0];
+      expect(content, `Retired API in ${docFile}`).not.toMatch(
+        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+      );
+      expect(content, `Retired m.minimize/maximize in ${docFile}`).not.toMatch(
+        /\b(?:m|model)\.(minimize|maximize)\b/
+      );
+      expect(content, `Invalid computeUnsatCore option in ${docFile}`).not.toContain("computeUnsatCore");
+      expect(content, `Invalid solverOptions on Model in ${docFile}`).not.toContain("solverOptions:");
+      expect(content, `Invalid SolutionValidationOptions/Report field in ${docFile}`).not.toMatch(
+        /\b(absTol|relTol|integralityTol|maxBoundViolation|maxIntegralityViolation|maxConstraintViolation|objectiveDiscrepancy|checkedSolveStatus)\b/
+      );
+      expect(content, `Invalid MockSolver defaultResult wrapper in ${docFile}`).not.toContain("defaultResult");
+      expect(content, `Invalid SolveProgressEvent field in ${docFile}`).not.toMatch(/\b(bestBound|iterationCount)\b/);
+      expect(content, `Invalid two-argument objective call in ${docFile}`).not.toContain(', "Maximize")');
+      expect(content, `Invalid Interrupted row in SolverStatus table in ${docFile}`).not.toContain('| `"Interrupted"` | `false` |');
+      expect(content, `Invalid boolean presolve type in ${docFile}`).not.toMatch(/presolve.*boolean/);
+      expect(content, `Invalid numConstraints property in ${docFile}`).not.toContain("numConstraints");
+      expect(content, `Invalid Promise<SolverCheckResult> for m.check() in ${docFile}`).not.toContain(
+        "| `Promise<SolverCheckResult>` |"
+      );
+      expect(content, `Invalid "Empty" in SolverStatus list in ${docFile}`).not.toContain('- `"Empty"`');
+      expect(content, `Incorrect negated LP objective in ${docFile}`).not.toContain("obj: - 5 x");
+      expect(content, `Incorrect highs.worker.js asset name in ${docFile}`).not.toContain("highs.worker.js");
+      expect(content, `Incorrect objectiveBound null comment in ${docFile}`).not.toMatch(
+        /m\.objectiveBound\);\s*\/\/.*null/
+      );
+      expect(content, `Stale @0.4.0 CDN URL in ${docFile}`).not.toContain("@0.4.0");
+      expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
+
+      if (docFile.endsWith("highs.md")) {
+        expect(content, `Stale verbose: true in ${docFile}`).not.toContain("verbose: true");
+        expect(content, `Missing outputFlag: true in ${docFile}`).toContain("outputFlag: true");
+      }
+      if (docFile.endsWith("custom-solver.md")) {
+        expect(content, `Unmapped status in ${docFile}`).not.toContain('payload.status === "OPTIMAL"');
+        expect(content, `Missing statusMap in ${docFile}`).toContain("statusMap");
+        expect(content, `Missing AbortError handling in ${docFile}`).toContain("AbortError");
+      }
+      expect(content, `Invalid Var.div() in ${docFile}`).not.toMatch(/\|\s*`\.div\(divisor\)`\s*\|\s*`Var`/);
+
+      const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
+      let blockMatch;
+      let blockIdx = 0;
+      while ((blockMatch = tsBlockRegex.exec(content)) !== null) {
+        blockIdx++;
+        const code = blockMatch[1];
+        expect(
+          () => stripTypeScriptTypes(code),
+          `Invalid TypeScript syntax in ${path.relative(process.cwd(), docFile)} block #${blockIdx}`
+        ).not.toThrow();
+      }
+    }
+  });
+
+  it("executes guide examples for validateSolution, MockSolver, batch constraint, LinExpr.value, numConstrs, toLpString, and check() at runtime", async () => {
+    const { Model, MockSolver, expr, maximize } = Washi;
+
+    // 1. MockSolver flat options (docs/guide/unsat-core.md)
+    const mock = new MockSolver({
+      status: "Optimal",
+      objectiveValue: 420,
+      values: { x: 10, y: 20 },
+    });
+    const mMock = new Model({ solver: mock });
+    const mx = mMock.integer("x");
+    const my = mMock.integer("y");
+    mMock.objective(maximize(expr`10 * ${mx} + 16 * ${my}`));
+    await mMock.solve();
+    expect(mMock.objectiveValue).toBe(420);
+    expect(mMock.objectiveBound).toBeUndefined();
+    expect(mx.value).toBe(10);
+    expect(my.value).toBe(20);
+
+    // 2. SolutionValidationOptions & SolutionValidationReport + LinExpr.value + numConstrs (docs/guide/unsat-core.md, expressions.md, constraints.md)
+    const m = new Model();
+    const x = m.integer("x", { lb: 0 });
+    const y = m.integer("y", { lb: 0 });
+    const revenue = expr`30 * ${x} + 50 * ${y}`;
+    const laborUsed = expr`2 * ${x} + ${y}`;
+    m.objective(maximize(revenue));
+    m.constraint([expr`${x} + 2 * ${y} <= 40`, expr`${laborUsed} <= 50`]);
+    expect(m.numConstrs).toBe(2);
+    expect((m as Record<string, unknown>).numConstraints).toBeUndefined();
+    await m.solve();
+
+    expect(revenue.value).toBe(1100);
+    expect(laborUsed.value).toBe(50);
+
+    const report = m.validateSolution({
+      feasibilityTolerance: 1e-6,
+      integralityTolerance: 1e-6,
+      evaluateLogicalConstraints: true,
+    });
+    expect(report.valid).toBe(true);
+    expect(report.complete).toBe(true);
+    expect(report.maxViolation).toBe(0);
+    expect(report.summary.checkedLinearConstraints).toBe(2);
+
+    // 3. m.toLpString() exact output (docs/guide/unsat-core.md)
+    const mDebug = new Model("DebugModel");
+    const dx = mDebug.integer("x", { lb: 0, ub: 10 });
+    mDebug.objective(maximize(expr`5 * ${dx}`));
+    mDebug.constraint(expr`2 * ${dx} <= 15`, "resource_limit");
+    expect(mDebug.toLpString().trim()).toBe(
+      [
+        "Maximize",
+        " obj: 5 x",
+        "Subject To",
+        " resource_limit: 2 x <= 15",
+        "Bounds",
+        " 0 <= x <= 10",
+        "Generals",
+        " x",
+        "End",
+      ].join("\n")
+    );
+
+    // 4. m.check() CheckResult shape (docs/guide/objectives.md)
+    const checkRes = await mDebug.check();
+    expect(checkRes.status).toBe("Sat");
+    expect(typeof checkRes.values.x).toBe("number");
+    expect("boolValues" in checkRes).toBe(false);
+
+    // 5. HiGHS solve() -> Z3 check({ solver: "z3" }) diagnostic workflow (docs/guide/unsat-core.md)
+    const mDiag = new Model();
+    expect(mDiag.solver).toBeNull(); // Uses default HiGHS on mDiag.solve()
+    const rx = mDiag.continuous("reserve", { lb: 0 });
+    mDiag.constraint(expr`${rx} >= 100`, "minimum_regulatory_reserve");
+    mDiag.constraint(expr`${rx} <= 50`, "budget_ceiling");
+    mDiag.constraint(expr`${rx} >= 10`, "routine_operating_cost");
+    const solveStatus = await mDiag.solve();
+    expect(solveStatus).toBe("Infeasible");
+    const diag = await mDiag.check({ solver: "z3" });
+    expect(diag.status).toBe("Unsat");
+    expect(diag.conflicts).toEqual(
+      expect.arrayContaining(["minimum_regulatory_reserve", "budget_ceiling"])
+    );
+
+    // 6. Bounded ProductionRevenue model + onProgress/AbortSignal (docs/guide/objectives.md)
+    const mRev = new Model("ProductionRevenue");
+    const rx1 = mRev.integer("x", { lb: 0, ub: 40 });
+    const ry1 = mRev.integer("y", { lb: 0, ub: 40 });
+    mRev.objective(maximize(expr`50 * ${rx1} + 40 * ${ry1}`));
+    mRev.constraint(expr`2 * ${rx1} + 3 * ${ry1} <= 100`, "resource_limit");
+    const revStatus = await mRev.solve();
+    expect(revStatus).toBe("Optimal");
+    expect(mRev.objectiveValue).toBe(2240);
+
+    // 7. CloudSolver pattern AbortError and status normalization (docs/solvers/custom-solver.md)
+    const { generateLpString } = Washi;
+    class TestCloudSolver {
+      public readonly name = "TestCloud";
+      public readonly version = "1.0.0";
+      public readonly capabilities = { supportsMIP: true, supportsQP: false };
+      private mockHandler: (body: any, signal?: AbortSignal) => Promise<any>;
+      constructor(mockHandler: (body: any, signal?: AbortSignal) => Promise<any>) {
+        this.mockHandler = mockHandler;
+      }
+      async solve(modelData: any, options: any = {}) {
+        const startTime = performance.now();
+        const { lpString, nameToVar } = generateLpString(modelData);
+        let payload: any;
+        try {
+          payload = await this.mockHandler({ lp: lpString }, options.signal);
+        } catch (err: any) {
+          if (options.signal?.aborted || err?.name === "AbortError") {
+            return {
+              status: "Unknown" as const,
+              terminationStatus: "Interrupted" as const,
+              objectiveValue: null,
+              values: {},
+              runTime: (performance.now() - startTime) / 1000,
+            };
+          }
+          throw err;
+        }
+        const values: Record<string, number> = Object.create(null);
+        for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
+          values[nameToVar.get(k)?.name ?? k] = val;
+        }
+        const statusMap: Record<string, any> = {
+          OPTIMAL: "Optimal",
+          FEASIBLE: "Feasible",
+          INFEASIBLE: "Infeasible",
+          UNBOUNDED: "Unbounded",
+          TIME_LIMIT: "TimeLimit",
+          TIMELIMIT: "TimeLimit",
+          ITERATION_LIMIT: "IterationLimit",
+        };
+        const status = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+        return {
+          status,
+          objectiveValue: payload.objectiveValue ?? null,
+          values,
+          runTime: (performance.now() - startTime) / 1000,
+        };
+      }
+    }
+
+    const infeasCloud = new TestCloudSolver(async () => ({
+      status: "INFEASIBLE",
+      objectiveValue: null,
+      values: {},
+    }));
+    const mCloud1 = new Model({ solver: infeasCloud as any });
+    const c1 = mCloud1.integer("x");
+    mCloud1.constraint(expr`${c1} >= 10`);
+    const s1 = await mCloud1.solve();
+    expect(s1).toBe("Infeasible");
+
+    const abortCloud = new TestCloudSolver(async (_body, signal) => {
+      if (signal?.aborted) {
+        const err = new Error("The operation was aborted");
+        err.name = "AbortError";
+        throw err;
+      }
+      return { status: "OPTIMAL", objectiveValue: 10, values: { x: 10 } };
+    });
+    const mCloud2 = new Model({ solver: abortCloud as any });
+    const c2 = mCloud2.integer("x");
+    mCloud2.constraint(expr`${c2} >= 10`);
+    const abortCtrl = new AbortController();
+    abortCtrl.abort();
+    const res2 = await mCloud2.solve({ signal: abortCtrl.signal });
+    expect(res2).toBe("Unknown");
+    expect(mCloud2.status).toBe("Unknown");
+  });
+
+  it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+    const enPages = mdFiles
+      .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
+      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/") && rel !== "getting-started/ai-agents.md")
+      .sort();
+    const jaPages = mdFiles
+      .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
+      .filter((rel) => rel.startsWith("ja/"))
+      .map((rel) => rel.slice(3))
+      .sort();
+    const zhPages = mdFiles
+      .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
+      .filter((rel) => rel.startsWith("zh/"))
+      .map((rel) => rel.slice(3))
+      .sort();
+
+    expect(jaPages).toEqual(enPages);
+    expect(zhPages).toEqual(enPages);
   });
 
   it("executes VitePress interactive demo components (PortfolioQpDemo, EcommerceCouponDemo, ShiftSchedulingDemo) at runtime", async () => {
     const componentsDir = path.resolve(process.cwd(), "docs/.vitepress/theme/components");
     const demoSpecs = [
-      { file: "PortfolioQpDemo.vue", fn: "solvePortfolio", check: "varianceVal.value > 0" },
-      { file: "EcommerceCouponDemo.vue", fn: "solveCart", check: "netPayableWithFiller.value > 0" },
-      { file: "ShiftSchedulingDemo.vue", fn: "solveRoster", check: "status.value === 'Optimal'" },
+      { file: "PortfolioQpDemo.vue", fn: "solvePortfolio", check: "varianceVal.value > 0 && isZh.value === true && isJa.value === false" },
+      { file: "EcommerceCouponDemo.vue", fn: "solveCart", check: "netPayableWithFiller.value > 0 && isZh.value === true && isJa.value === false" },
+      { file: "ShiftSchedulingDemo.vue", fn: "solveRoster", check: "status.value === 'Optimal' && isZh.value === true && isJa.value === false" },
     ];
 
     for (const spec of demoSpecs) {
@@ -108,7 +365,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
           },
         }),
         () => {},
-        () => ({ lang: { value: "en" } }),
+        () => ({ lang: { value: "zh-CN" } }),
         async () => Washi,
         {}
       );

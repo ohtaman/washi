@@ -99,3 +99,13 @@ console.log("状态:", model.status); // "Optimal"
 console.log("最优目标值:", model.objectiveValue); // 1100
 console.log(`最优解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 ```
+
+---
+
+## 🧭 下一步
+
+- [AI 编程助手快速参考](/getting-started/ai-agents)：面向 AI 编程代理的 API 签名与部署要点速查
+- [运行时环境配置](/zh/getting-started/runtimes)：Node.js、现代打包工具、浏览器 ESM、CDN 与离线部署说明
+- [建模指南](/zh/guide/variables)：决策变量、代数表达式 (`expr`)、约束条件与解验证 (`validateSolution`)
+- [求解器矩阵](/zh/solvers/)：HiGHS、Z3、GLPK 与自定义求解器插件对比
+- [实际案例与 API 索引](/zh/examples/)：9 个可在页面内直接运行的优化与逻辑建模示例

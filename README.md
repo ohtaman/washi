@@ -50,7 +50,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 ## 🎯 What WaSHI provides
 
 1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), unified tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`). Because JavaScript lacks operator overloading, `` expr`...` `` parses infix math (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) while binding interpolated `${...}` values directly as typed `Var` or expression references—similar to parameterized SQL templates—preserving static type checking, IDE refactoring, and indexed variable lookups (`${flow[i][j]}`).
-2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
+2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build—removing backend provisioning as a bottleneck when shipping interactive tools or combining mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) on the client. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
 4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities. A returned core is a conflicting subset, not necessarily the smallest one.
 
@@ -96,57 +96,43 @@ npm install glpk.js      # For GLPK solver (GPL-3.0)
 
 ## 🚀 Usage Guide
 
-### 1. Mixed-Integer Linear Programming (MIP)
+### 1. Multidimensional Variables, Indicator Constraints & Solution Validation
 
-Formulate production scheduling, resource allocation, and facility location problems:
-
-```ts
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model("FactoryPlanning");
-
-// Decision variables (Integer, non-negative)
-const chairs = m.integer("chairs", { lb: 0 });
-const tables = m.integer("tables", { lb: 0 });
-
-// Natural formula objective & constraints via Tagged Template Literals
-m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constraint(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
-
-// Solve using default HiGHS WASM engine
-const status = await m.solve();
-
-console.log(`Status: ${status}`); // "Optimal"
-console.log(`Objective: $${m.objectiveValue}`); // 1100
-console.log(`Chairs: ${chairs.value}, Tables: ${tables.value}`); // 20 chairs, 10 tables
-```
-
-#### 🗂 Multidimensional Variables Grid
-
-Construct variable arrays or multi-index matrices in one call:
+Construct 1D dictionaries or 2D matrices of variables in a single call, express conditional Big-M logic with `m.indicator()`, monitor live progress (`onProgress`), and independently verify solutions with `m.validateSolution()`:
 
 ```ts
+import { Model, expr } from "@ohtaman/washi";
+
+const m = new Model("FacilityPlanning");
+
 // 1D dictionary of binary variables
 const openCity = m.binary(["Tokyo", "Osaka", "Nagoya"]);
 
 // 2D transport flow matrix: [Factory] x [Store]
-const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
+const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 1000 });
 
 // 2D coordinate grid (e.g. 8x8 chessboard)
 const board = m.binary(8, 8, { prefix: "queen" });
-```
 
-#### 🔀 Big-M Indicator Constraints (`m.indicator`)
-
-Model conditional activation rules and fixed-charge economics without manual Big-M algebra:
-
-```ts
-// If factory is closed (openCity['Tokyo'] == 0), its production capacity must be 0
+// Conditional Big-M constraint: if openCity["Tokyo"] == 0, flow["F1"]["StoreA"] <= 0
+// (Omit M to let WaSHI automatically derive a tight Big-M from finite variable bounds)
 m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
-  M: 1000,
+  name: "tokyo_closed_no_flow",
 });
+
+// Solve with optional progress callback & AbortSignal cancellation
+const controller = new AbortController();
+await m.solve({
+  signal: controller.signal,
+  onProgress: (ev) => {
+    // Live branch-and-bound metrics: ev.elapsedTime, ev.objectiveValue, ev.objectiveBound, ev.mipGap
+  },
+});
+
+// Independently verify variable bounds, integrality, and linear/logical constraints
+const report = m.validateSolution();
+console.log("Solution valid?", report.valid);
 ```
 
 ---
@@ -362,11 +348,11 @@ The package also includes `dist/browser/washi.min.js`, which exports the `Washi`
 </script>
 ```
 
-For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js` (or pin your desired release version `>= 0.1.2`). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
+For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js` (specifying a compatible release version once published). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
 
 ### Solver Plugins in the Browser (GLPK & Z3)
 
-The browser distribution includes pre-bundled, standalone solver plugins under `dist/browser/solvers/` (available from `>= 0.2.0` or `@latest` on CDN):
+The browser distribution includes pre-bundled, standalone solver plugins under `dist/browser/solvers/`:
 - **GLPK**: `dist/browser/solvers/glpk.js` (ESM) and `dist/browser/solvers/glpk.min.js` (IIFE, registers global `WashiGLPK`)
 - **Z3**: `dist/browser/solvers/z3.js` (ESM) and `dist/browser/solvers/z3.min.js` (IIFE, registers global `WashiZ3`), accompanied by `z3-built.js` and `z3-built.wasm`
 
@@ -398,37 +384,9 @@ The browser distribution includes pre-bundled, standalone solver plugins under `
 
 > [!NOTE]
 > **Z3 in Browser Environments & Cross-Origin Isolation**:
-> Because the Z3 WebAssembly engine uses multithreading (`SharedArrayBuffer`), modern browsers require cross-origin isolation. The HTML document response must send:
-> ```http
-> Cross-Origin-Opener-Policy: same-origin
-> Cross-Origin-Embedder-Policy: require-corp
-> ```
-> And any cross-origin assets must serve `Cross-Origin-Resource-Policy: cross-origin`.
-> 
-> General static sites without custom header control (e.g. standard GitHub Pages or preview platforms) and third-party iframe embeds (e.g. CodePen / JSFiddle) do not satisfy these requirements without extra setup. Importing `@ohtaman/washi` never automatically injects or registers a Service Worker into consumer applications.
-> 
-> To enable Z3 on GitHub Pages, the official WaSHI Web Demo bundles a dedicated `coi-serviceworker.js` strictly scoped to `/washi/`. On fresh browser sessions, it registers the worker and reloads once to establish `window.crossOriginIsolated === true` before running Z3. Environments lacking Service Workers or failing isolation abort Z3 execution with a descriptive explanation rather than hanging.
+> Because the Z3 WebAssembly engine uses multithreading (`SharedArrayBuffer`), modern browsers require cross-origin isolation (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`). See the [Cross-Origin Isolation Guide](docs/getting-started/cross-origin.md) and [Runtime Environments Guide](docs/getting-started/runtimes.md) for full details on static hosting, `coi-serviceworker.js`, offline/intranet deployment, CSP (`worker-src blob:`), and custom WASM URLs (`setHighsWasmUrl`).
 
-Complete standalone examples for ESM, script tags, and CodePen are available in `examples/distribution/`.
-
-### Offline distribution, Workers and custom hosting
-
-Deploy the full application build or the entire browser distribution to a local HTTP / intranet server. With all assets locally available, an empty browser cache does not require access to the internet. Saving only the HTML or the first JS file is insufficient. `file://` execution and automatic PWA caching are not supported by this distribution.
-
-ESM assets resolve relative to their module URL; the script build captures its own script URL at load time. CDN Workers use a Blob module bootstrap. The server must permit cross-origin JS / WASM loading; CSP must permit the selected script / connection origins and `worker-src blob:` for CDN Workers. If that is unavailable, use `useWorker: false`. Worker load / message failures reject pending solves rather than leaving them unresolved.
-
-For custom hosting, `setHighsWasmUrl(url)` and `options.wasmUrl` remain available:
-
-```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
-setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
-```
-
-Failed initialization reports the attempted URL and does not try a different host. This changes the previous local-root/CDN fallback behavior: deploy the generated assets or configure an explicit URL.
-
-### Verify the distributable
-
-`npm run test:distribution` packs and installs the actual npm tarball, builds Vite / webpack consumers without optional peers, and runs their emitted JS with real WASM in a VM. This is not a browser/CORS test. For Playwright Chromium checks, run `npx playwright install chromium` and `RUN_DISTRIBUTION_BROWSER=1 npm run test:distribution`. CI also runs that browser mode, including separate-origin browser bundles with external network requests blocked.
+Complete standalone examples for ESM, script tags, and CodePen are available in [`examples/distribution/`](examples/distribution/README.md).
 
 ---
 
@@ -436,7 +394,7 @@ Failed initialization reports the attempted URL and does not try a different hos
 
 WaSHI features a decoupled, pluggable solver architecture. You can easily build and register your own custom solver adapter (e.g., for cloud REST optimizers, WebAssembly engines, or proprietary solvers):
 
-- See the complete [Custom Solver Developer Guide](docs/custom-solver-guide.md) for step-by-step tutorials, complete API contracts (`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`), and testing best practices.
+- See the complete [Custom Solver Developer Guide](docs/solvers/custom-solver.md) for step-by-step tutorials, complete API contracts (`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`), and testing best practices.
 
 ---
 

@@ -162,3 +162,43 @@ risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
 m.objective(minimize(risk));
 ```
+
+---
+
+## 📊 Evaluating Expressions After Solving (`.value`)
+
+Both `LinExpr` and `QuadExpr` expose a `.value` getter (`number | null`). Once a model has been solved and all referenced variables have finite primal values, you can evaluate any sub-expression—such as total department cost, portfolio return, or resource utilization—directly without manual arithmetic:
+
+```typescript
+const revenue = expr`30 * ${x} + 50 * ${y}`;
+const laborUsed = expr`2 * ${x} + ${y}`;
+
+m.objective(maximize(revenue));
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_cap");
+m.constraint(expr`${laborUsed} <= 50`, "labor_cap");
+
+await m.solve();
+
+console.log("Total Revenue:", revenue.value);   // 1100 (x = 20, y = 10)
+console.log("Labor Used:", laborUsed.value);    // 50
+```
+
+If the model has not been solved (or any variable in the expression has `value === null`), `.value` returns `null`.
+
+---
+
+## 🔗 Fluent Arithmetic & Relational Methods
+
+In addition to `expr`, `Var`, `LinExpr`, and `QuadExpr` provide immutable fluent methods for programmatic expression building:
+
+| Method | Supported On | Return Type | Description |
+| :--- | :--- | :--- | :--- |
+| `.add(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Adds a number, `Var`, `LinExpr`, or `QuadExpr`. |
+| `.sub(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Subtracts a number, `Var`, `LinExpr`, or `QuadExpr`. |
+| `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Multiplies by a scalar `number`, or multiplies two linear terms into a `QuadExpr`. |
+| `.div(divisor)` | `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Divides by a non-zero finite scalar `number`. |
+| `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` or `QuadExpr` | Negates all terms ($-e$). |
+| `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a $\le$ constraint (`lhs <= rhs`). |
+| `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a $\ge$ constraint (`lhs >= rhs`). |
+| `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds an $==$ equality constraint (`lhs == rhs`). |
+

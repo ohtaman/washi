@@ -9,7 +9,8 @@ const props = defineProps<{
 }>();
 
 const { lang } = useData();
-const isJa = computed(() => lang.value === "ja");
+const isJa = computed(() => lang.value.startsWith("ja"));
+const isZh = computed(() => lang.value.startsWith("zh"));
 
 const slotEl = ref<HTMLElement | null>(null);
 const isRunning = ref(false);
@@ -148,12 +149,12 @@ onMounted(() => {
         :disabled="isRunning"
         @click="runSlotCode"
       >
-        <span v-if="isRunning">⏳ {{ isJa ? "実行中..." : "Running..." }}</span>
-        <span v-else>▶ {{ isJa ? "コードを実行" : "Run Code" }}</span>
+        <span v-if="isRunning">⏳ {{ isJa ? "実行中..." : isZh ? "运行中..." : "Running..." }}</span>
+        <span v-else>▶ {{ isJa ? "コードを実行" : isZh ? "运行代码" : "Run Code" }}</span>
       </button>
 
       <span v-if="hasRun && !isRunning && !errorMsg" class="runner-status-meta">
-        ✓ {{ isJa ? "実行完了" : "Executed" }} ({{ runTimeMs.toFixed(1) }} ms)
+        ✓ {{ isJa ? "実行完了" : isZh ? "执行完成" : "Executed" }} ({{ runTimeMs.toFixed(1) }} ms)
       </span>
 
       <a
@@ -162,13 +163,13 @@ onMounted(() => {
         class="playground-link"
         style="margin-left: auto;"
       >
-        {{ isJa ? "Playground で開く →" : "Open in Playground →" }}
+        {{ isJa ? "Playground で開く →" : isZh ? "在 Playground 中打开 →" : "Open in Playground →" }}
       </a>
     </div>
 
     <div v-if="hasRun || isRunning" class="runner-output-panel" :class="{ 'is-stale': isRunning }">
       <div class="console-header">
-        <span>{{ isJa ? "実行結果 (stdout)" : "Execution Output (stdout)" }}</span>
+        <span>{{ isJa ? "実行結果 (stdout)" : isZh ? "执行输出 (stdout)" : "Execution Output (stdout)" }}</span>
       </div>
       <pre v-if="errorMsg" class="console-pre error-text"><code>Error: {{ errorMsg }}</code></pre>
       <pre v-else class="console-pre"><code>{{ logs.length > 0 ? logs.join("\n") : (isRunning ? "..." : "(no output)") }}</code></pre>

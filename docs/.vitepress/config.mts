@@ -9,7 +9,6 @@ export default withMermaid(
   base: "/washi/",
   cleanUrls: true,
   lastUpdated: true,
-  ignoreDeadLinks: true,
   markdown: {
     config(md) {
       // Block math: $$ ... $$
@@ -189,7 +188,7 @@ export default withMermaid(
       themeConfig: {
         nav: [
           { text: "はじめに", link: "/ja/getting-started/" },
-          { text: "ガイド", link: "/ja/guide/expressions" },
+          { text: "ガイド", link: "/ja/guide/variables" },
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
@@ -251,8 +250,8 @@ export default withMermaid(
       themeConfig: {
         nav: [
           { text: "快速入门", link: "/zh/getting-started/" },
-          { text: "指南", link: "/guide/variables" },
-          { text: "求解器", link: "/solvers/" },
+          { text: "指南", link: "/zh/guide/variables" },
+          { text: "求解器", link: "/zh/solvers/" },
           { text: "示例", link: "/zh/examples/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
         ],
@@ -290,15 +289,15 @@ export default withMermaid(
             text: "实际案例与代码示例",
             items: [
               { text: "案例总览与 API 索引", link: "/zh/examples/" },
-              { text: "生产计划问题 (LP/MIP)", link: "/examples/production" },
-              { text: "0-1 背包问题 (MIP)", link: "/examples/knapsack" },
-              { text: "运输与分配网络 (LP)", link: "/examples/transportation" },
-              { text: "营养问题与灵敏度分析", link: "/examples/diet-sensitivity" },
-              { text: "员工排班与冲突诊断", link: "/examples/shift-scheduling" },
-              { text: "购物车优惠券最优组合", link: "/examples/ecommerce-coupons" },
-              { text: "投资组合优化 (QP)", link: "/examples/portfolio-qp" },
-              { text: "安全策略验证 (SMT)", link: "/examples/smt-security" },
-              { text: "不可行冲突诊断 (Unsat Core)", link: "/examples/unsat-core" },
+              { text: "生产计划问题 (LP/MIP)", link: "/zh/examples/production" },
+              { text: "0-1 背包问题 (MIP)", link: "/zh/examples/knapsack" },
+              { text: "运输与分配网络 (LP)", link: "/zh/examples/transportation" },
+              { text: "营养问题与灵敏度分析", link: "/zh/examples/diet-sensitivity" },
+              { text: "员工排班与冲突诊断", link: "/zh/examples/shift-scheduling" },
+              { text: "购物车优惠券最优组合", link: "/zh/examples/ecommerce-coupons" },
+              { text: "投资组合优化 (QP)", link: "/zh/examples/portfolio-qp" },
+              { text: "安全策略验证 (SMT)", link: "/zh/examples/smt-security" },
+              { text: "不可行冲突诊断 (Unsat Core)", link: "/zh/examples/unsat-core" },
             ],
           },
         ],

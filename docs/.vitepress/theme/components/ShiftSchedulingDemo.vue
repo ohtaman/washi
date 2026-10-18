@@ -5,25 +5,27 @@ import { getWashiClient } from "./washiClient";
 
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
+const isZh = computed(() => lang.value.startsWith("zh"));
 
 interface StaffMember {
   id: string;
   role: "Senior" | "Mid" | "Junior";
   roleJa: string;
+  roleZh: string;
   wage: number;
   maxShifts: number;
   isSenior: boolean;
 }
 
 const staffList: StaffMember[] = [
-  { id: "Alice", role: "Senior", roleJa: "シニア", wage: 160, maxShifts: 5, isSenior: true },
-  { id: "Bob", role: "Senior", roleJa: "シニア", wage: 155, maxShifts: 5, isSenior: true },
-  { id: "Claire", role: "Senior", roleJa: "シニア", wage: 150, maxShifts: 5, isSenior: true },
-  { id: "David", role: "Mid", roleJa: "中堅", wage: 125, maxShifts: 5, isSenior: false },
-  { id: "Elena", role: "Mid", roleJa: "中堅", wage: 120, maxShifts: 5, isSenior: false },
-  { id: "Frank", role: "Junior", roleJa: "ジュニア", wage: 100, maxShifts: 5, isSenior: false },
-  { id: "Grace", role: "Junior", roleJa: "ジュニア", wage: 95, maxShifts: 5, isSenior: false },
-  { id: "Hiro", role: "Junior", roleJa: "ジュニア", wage: 95, maxShifts: 5, isSenior: false },
+  { id: "Alice", role: "Senior", roleJa: "シニア", roleZh: "资深", wage: 160, maxShifts: 5, isSenior: true },
+  { id: "Bob", role: "Senior", roleJa: "シニア", roleZh: "资深", wage: 155, maxShifts: 5, isSenior: true },
+  { id: "Claire", role: "Senior", roleJa: "シニア", roleZh: "资深", wage: 150, maxShifts: 5, isSenior: true },
+  { id: "David", role: "Mid", roleJa: "中堅", roleZh: "骨干", wage: 125, maxShifts: 5, isSenior: false },
+  { id: "Elena", role: "Mid", roleJa: "中堅", roleZh: "骨干", wage: 120, maxShifts: 5, isSenior: false },
+  { id: "Frank", role: "Junior", roleJa: "ジュニア", roleZh: "初级", wage: 100, maxShifts: 5, isSenior: false },
+  { id: "Grace", role: "Junior", roleJa: "ジュニア", roleZh: "初级", wage: 95, maxShifts: 5, isSenior: false },
+  { id: "Hiro", role: "Junior", roleJa: "ジュニア", roleZh: "初级", wage: 95, maxShifts: 5, isSenior: false },
 ];
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -35,6 +37,15 @@ const daysJa: Record<string, string> = {
   Fri: "金",
   Sat: "土",
   Sun: "日",
+};
+const daysZh: Record<string, string> = {
+  Mon: "周一",
+  Tue: "周二",
+  Wed: "周三",
+  Thu: "周四",
+  Fri: "周五",
+  Sat: "周六",
+  Sun: "周日",
 };
 
 const activePreset = ref<"standard" | "weekend_peak" | "two_days_off" | "conflict">("standard");
@@ -326,12 +337,14 @@ onMounted(() => {
         <div>
           <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · 8 STAFF × 7 DAYS (56 BINARY VARS)</span>
           <h4 class="washi-app-title">
-            {{ isJa ? "週間シフトスケジューラ ＆ 希望休の競合診断" : "Weekly Shift Scheduler & Conflict Diagnosis" }}
+            {{ isJa ? "週間シフトスケジューラ ＆ 希望休の競合診断" : isZh ? "周排班计划器与休假冲突诊断" : "Weekly Shift Scheduler & Conflict Diagnosis" }}
           </h4>
           <p class="washi-app-subtitle">
             {{
               isJa
                 ? "カレンダーのセルをクリックして希望休を変更し、「▶ 最適化を実行」を押すと HiGHS が最小コストのシフト表を計算します。"
+                : isZh
+                ? "点击表格单元格切换休假申请，然后点击“▶ 运行优化”，由 HiGHS 计算最低成本排班表。"
                 : "Click cells to toggle vacation requests, then click '▶ Run Optimization' to solve with HiGHS."
             }}
           </p>
@@ -343,9 +356,9 @@ onMounted(() => {
           :disabled="isSolving"
           @click="solveRoster"
         >
-          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : "Solving..." }}</span>
-          <span v-else>▶ {{ isJa ? "最適化を実行" : "Run Optimization" }}</span>
-          <span v-if="isDirty && !isSolving" class="dirty-dot" :title="isJa ? '未反映の変更があります' : 'Unsolved changes'"></span>
+          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : isZh ? "计算中..." : "Solving..." }}</span>
+          <span v-else>▶ {{ isJa ? "最適化を実行" : isZh ? "运行优化" : "Run Optimization" }}</span>
+          <span v-if="isDirty && !isSolving" class="dirty-dot" :title="isJa ? '未反映の変更があります' : isZh ? '有未应用的更改' : 'Unsolved changes'"></span>
         </button>
       </div>
 
@@ -356,28 +369,28 @@ onMounted(() => {
           :class="{ active: activePreset === 'standard' }"
           @click="selectPreset('standard')"
         >
-          1. {{ isJa ? "標準シフト（平日4名・週末5〜6名）" : "Standard Demand (4–6/day)" }}
+          1. {{ isJa ? "標準シフト（平日4名・週末5〜6名）" : isZh ? "标准需求（工作日 4 人·周末 5–6 人）" : "Standard Demand (4–6/day)" }}
         </button>
         <button
           class="washi-chip-btn"
           :class="{ active: activePreset === 'weekend_peak' }"
           @click="selectPreset('weekend_peak')"
         >
-          2. {{ isJa ? "週末ピーク体制（シニア2名必須）" : "Weekend Peak (≥2 Seniors/day)" }}
+          2. {{ isJa ? "週末ピーク体制（シニア2名必須）" : isZh ? "周末高峰配置（每日至少 2 名资深）" : "Weekend Peak (≥2 Seniors/day)" }}
         </button>
         <button
           class="washi-chip-btn"
           :class="{ active: activePreset === 'two_days_off' }"
           @click="selectPreset('two_days_off')"
         >
-          3. {{ isJa ? "全員2日ずつ希望休を指定" : "Everyone Requests 2 Days Off" }}
+          3. {{ isJa ? "全員2日ずつ希望休を指定" : isZh ? "全员各申请 2 天休假" : "Everyone Requests 2 Days Off" }}
         </button>
         <button
           class="washi-chip-btn danger"
           :class="{ active: activePreset === 'conflict' }"
           @click="selectPreset('conflict')"
         >
-          ⚠️ {{ isJa ? "競合例：土曜にシニア全員が希望休" : "Conflict: All Seniors Off on Sat" }}
+          ⚠️ {{ isJa ? "競合例：土曜にシニア全員が希望休" : isZh ? "冲突示例：周六所有资深员工申请休假" : "Conflict: All Seniors Off on Sat" }}
         </button>
       </div>
     </div>
@@ -385,23 +398,23 @@ onMounted(() => {
     <!-- Rule Controls Bar -->
     <div class="washi-controls-bar">
       <label class="washi-control-item">
-        <span>{{ isJa ? "1日あたりの最低シニア人数:" : "Min Seniors / Day:" }}</span>
+        <span>{{ isJa ? "1日あたりの最低シニア人数:" : isZh ? "每日最少资深员工数:" : "Min Seniors / Day:" }}</span>
         <select v-model.number="minSeniorPerDay" @change="markDirty" class="washi-select-sm">
-          <option :value="0">0 {{ isJa ? "名（制約なし）" : "(None)" }}</option>
-          <option :value="1">1 {{ isJa ? "名以上" : "Senior" }}</option>
-          <option :value="2">2 {{ isJa ? "名以上" : "Seniors" }}</option>
+          <option :value="0">0 {{ isJa ? "名（制約なし）" : isZh ? "人（无限制）" : "(None)" }}</option>
+          <option :value="1">1 {{ isJa ? "名以上" : isZh ? "人以上" : "Senior" }}</option>
+          <option :value="2">2 {{ isJa ? "名以上" : isZh ? "人以上" : "Seniors" }}</option>
         </select>
       </label>
       <label class="washi-control-item">
-        <span>{{ isJa ? "各スタッフの週最低出勤日数:" : "Min Shifts / Staff:" }}</span>
+        <span>{{ isJa ? "各スタッフの週最低出勤日数:" : isZh ? "每人每周最少出勤天数:" : "Min Shifts / Staff:" }}</span>
         <select v-model.number="minShiftsPerStaff" @change="markDirty" class="washi-select-sm">
-          <option :value="2">2 {{ isJa ? "日以上" : "days" }}</option>
-          <option :value="3">3 {{ isJa ? "日以上" : "days" }}</option>
-          <option :value="4">4 {{ isJa ? "日以上" : "days" }}</option>
+          <option :value="2">2 {{ isJa ? "日以上" : isZh ? "天以上" : "days" }}</option>
+          <option :value="3">3 {{ isJa ? "日以上" : isZh ? "天以上" : "days" }}</option>
+          <option :value="4">4 {{ isJa ? "日以上" : isZh ? "天以上" : "days" }}</option>
         </select>
       </label>
       <span v-if="isDirty" class="dirty-notice">
-        {{ isJa ? "※ 条件を変更しました。「▶ 最適化を実行」を押すと結果に反映されます" : "* Parameters modified. Click '▶ Run Optimization' to update." }}
+        {{ isJa ? "※ 条件を変更しました。「▶ 最適化を実行」を押すと結果に反映されます" : isZh ? "※ 参数已修改，点击“▶ 运行优化”更新排班结果" : "* Parameters modified. Click '▶ Run Optimization' to update." }}
       </span>
     </div>
 
@@ -410,18 +423,18 @@ onMounted(() => {
       <table class="washi-roster-table">
         <thead>
           <tr>
-            <th class="staff-col">{{ isJa ? "スタッフ (日給 / 上限5日)" : "Staff (Wage / Max 5d)" }}</th>
+            <th class="staff-col">{{ isJa ? "スタッフ (日給 / 上限5日)" : isZh ? "员工 (日薪 / 上限 5 天)" : "Staff (Wage / Max 5d)" }}</th>
             <th
               v-for="d in days"
               :key="d"
               :class="{ 'conflict-col-head': isConflictingDay(d) }"
             >
-              <div>{{ isJa ? daysJa[d] : d }}</div>
+              <div>{{ isJa ? daysJa[d] : isZh ? daysZh[d] : d }}</div>
               <div style="font-size: 0.68rem; font-weight: 500; opacity: 0.8;">
-                {{ isJa ? `必要 ${dailyDemand[d]}名` : `Need ${dailyDemand[d]}` }}
+                {{ isJa ? `必要 ${dailyDemand[d]}名` : isZh ? `需 ${dailyDemand[d]}人` : `Need ${dailyDemand[d]}` }}
               </div>
             </th>
-            <th>{{ isJa ? "週出勤" : "Total" }}</th>
+            <th>{{ isJa ? "週出勤" : isZh ? "周出勤" : "Total" }}</th>
           </tr>
         </thead>
         <tbody>
@@ -430,11 +443,11 @@ onMounted(() => {
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                 <span class="staff-name">{{ s.id }}</span>
                 <span class="role-pill" :class="{ senior: s.isSenior }">
-                  {{ isJa ? s.roleJa : s.role }}
+                  {{ isJa ? s.roleJa : isZh ? s.roleZh : s.role }}
                 </span>
               </div>
               <div class="staff-meta">
-                <span>${{ s.wage }}/d {{ isJa ? "(土日+$20)" : "(Wknd +$20)" }}</span>
+                <span>${{ s.wage }}/d {{ isJa ? "(土日+$20)" : isZh ? "(周末+$20)" : "(Wknd +$20)" }}</span>
               </div>
             </td>
             <td
@@ -446,21 +459,21 @@ onMounted(() => {
                 'is-off-req': requestedOff.has(keyOf(s.id, d)),
               }"
               @click="toggleDayOff(s.id, d)"
-              :title="isJa ? 'クリックで希望休をON/OFF' : 'Click to toggle vacation request'"
+              :title="isJa ? 'クリックで希望休をON/OFF' : isZh ? '点击切换休假申请' : 'Click to toggle vacation request'"
             >
               <template v-if="requestedOff.has(keyOf(s.id, d))">
                 <span class="cell-badge off-req" :class="{ conflict: isConflictingCell(s.id, d) }">
-                  {{ isJa ? "希望休" : "Off Req" }}
+                  {{ isJa ? "希望休" : isZh ? "请假" : "Off Req" }}
                 </span>
               </template>
               <template v-else-if="status === 'Optimal' && assignments[keyOf(s.id, d)] === 1">
                 <span class="cell-badge on-duty">
-                  ● {{ isJa ? "出勤" : "On Duty" }}
+                  ● {{ isJa ? "出勤" : isZh ? "值班" : "On Duty" }}
                 </span>
               </template>
               <template v-else-if="status === 'Optimal'">
                 <span class="cell-badge rest">
-                  {{ isJa ? "公休" : "Rest" }}
+                  {{ isJa ? "公休" : isZh ? "轮休" : "Rest" }}
                 </span>
               </template>
               <template v-else>
@@ -475,7 +488,7 @@ onMounted(() => {
         </tbody>
         <tfoot>
           <tr>
-            <td class="staff-col foot-label">{{ isJa ? "日別割当 / 必要人数" : "Assigned / Required" }}</td>
+            <td class="staff-col foot-label">{{ isJa ? "日別割当 / 必要人数" : isZh ? "每日排班 / 需求人数" : "Assigned / Required" }}</td>
             <td
               v-for="d in days"
               :key="d"
@@ -483,10 +496,10 @@ onMounted(() => {
               :class="{ 'conflict-col-head': isConflictingDay(d) }"
             >
               <span v-if="status === 'Optimal'">
-                {{ dayTotalStaff(d) }} / {{ dailyDemand[d] }}{{ isJa ? "名" : "" }}
+                {{ dayTotalStaff(d) }} / {{ dailyDemand[d] }}{{ isJa ? "名" : isZh ? "人" : "" }}
               </span>
               <span v-else-if="isConflictingDay(d)" style="color: #e11d48; font-weight: 700;">
-                ✗ {{ isJa ? "不足" : "Short" }}
+                ✗ {{ isJa ? "不足" : isZh ? "不足" : "Short" }}
               </span>
               <span v-else>—</span>
             </td>
@@ -503,11 +516,11 @@ onMounted(() => {
     <div v-if="status === 'Optimal'" class="washi-result-bar optimal">
       <div class="result-main">
         <span class="status-dot optimal"></span>
-        <strong>{{ isJa ? "最適シフト確定 (Optimal)" : "Optimal Roster Found" }}</strong>
+        <strong>{{ isJa ? "最適シフト確定 (Optimal)" : isZh ? "已求得最优排班 (Optimal)" : "Optimal Roster Found" }}</strong>
         <span class="solve-meta">HiGHS WASM · {{ solveTimeMs.toFixed(1) }} ms · 56 Binary Vars</span>
       </div>
       <div class="result-kpi">
-        <span>{{ isJa ? "週間総人件費 (最小化):" : "Total Weekly Payroll (Minimized):" }}</span>
+        <span>{{ isJa ? "週間総人件費 (最小化):" : isZh ? "周总人力成本 (最小化):" : "Total Weekly Payroll (Minimized):" }}</span>
         <strong class="kpi-num">${{ totalCost?.toLocaleString() }}</strong>
       </div>
     </div>
@@ -519,6 +532,8 @@ onMounted(() => {
           {{
             isJa
               ? "シフト編成不可 (Infeasible) — Z3 が特定した原因制約 (Unsat Core):"
+              : isZh
+              ? "无法排班 (Infeasible) — Z3 定位的冲突约束子集 (Unsat Core):"
               : "Schedule Infeasible — Conflicting Constraints Identified by Z3 (Unsat Core):"
           }}
         </strong>
@@ -530,6 +545,8 @@ onMounted(() => {
         {{
           isJa
             ? "💡 赤枠の「希望休」セルを1つクリックして解除し、「▶ 最適化を実行」を押すと再び最適シフトが組めるようになります。"
+            : isZh
+            ? "💡 点击任意红框“请假”单元格取消该休假申请，再点击“▶ 运行优化”即可恢复可行排班。"
             : "💡 Click one of the red 'Off Req' cells to clear that vacation request, then click '▶ Run Optimization'."
         }}
       </div>
@@ -537,7 +554,7 @@ onMounted(() => {
 
     <div class="washi-app-footer">
       <a href="/washi/demo/?preset=shift_scheduling" class="playground-link">
-        {{ isJa ? "Playground でコードを編集する →" : "Edit Code in Playground →" }}
+        {{ isJa ? "Playground でコードを編集する →" : isZh ? "在 Playground 中编辑代码 →" : "Edit Code in Playground →" }}
       </a>
     </div>
   </div>

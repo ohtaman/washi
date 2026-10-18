@@ -5,6 +5,7 @@ import { getWashiClient } from "./washiClient";
 
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
+const isZh = computed(() => lang.value.startsWith("zh"));
 
 const minReturnPct = ref(7.5);
 const isSolving = ref(false);
@@ -13,11 +14,11 @@ const solveTimeMs = ref(0);
 const varianceVal = ref(0.0088);
 
 const assets = [
-  { id: "Tech", labelEn: "US Tech Equity", labelJa: "ハイテク株", ret: 0.12, color: "#c23b22" },
-  { id: "Global", labelEn: "Global Index", labelJa: "全世界株式", ret: 0.085, color: "#1e3a5f" },
-  { id: "REIT", labelEn: "Real Estate (REIT)", labelJa: "不動産 REIT", ret: 0.07, color: "#237a4b" },
-  { id: "Gold", labelEn: "Gold (Hedge)", labelJa: "金 (ヘッジ)", ret: 0.055, color: "#b45309" },
-  { id: "Bonds", labelEn: "Gov Bonds", labelJa: "国債", ret: 0.035, color: "#64748b" },
+  { id: "Tech", labelEn: "US Tech Equity", labelJa: "ハイテク株", labelZh: "美股科技", ret: 0.12, color: "#c23b22" },
+  { id: "Global", labelEn: "Global Index", labelJa: "全世界株式", labelZh: "全球股票指数", ret: 0.085, color: "#1e3a5f" },
+  { id: "REIT", labelEn: "Real Estate (REIT)", labelJa: "不動産 REIT", labelZh: "房地产 REIT", ret: 0.07, color: "#237a4b" },
+  { id: "Gold", labelEn: "Gold (Hedge)", labelJa: "金 (ヘッジ)", labelZh: "黄金 (避险)", ret: 0.055, color: "#b45309" },
+  { id: "Bonds", labelEn: "Gov Bonds", labelJa: "国債", labelZh: "国债", ret: 0.035, color: "#64748b" },
 ];
 
 const cov = [
@@ -96,12 +97,14 @@ onMounted(() => {
         <div>
           <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · 5 ASSETS CONVEX QP (QuadExpr)</span>
           <h4 class="washi-app-title">
-            {{ isJa ? "ポートフォリオ配分オプティマイザ (Markowitz QP)" : "Portfolio Allocation Optimizer (Markowitz QP)" }}
+            {{ isJa ? "ポートフォリオ配分オプティマイザ (Markowitz QP)" : isZh ? "投资组合配置优化器 (Markowitz QP)" : "Portfolio Allocation Optimizer (Markowitz QP)" }}
           </h4>
           <p class="washi-app-subtitle">
             {{
               isJa
                 ? "目標期待リターンを変更して「▶ 最適化を実行」を押すと、5資産の共分散行列（QuadExpr）からリスク最小の配分比率を計算します。"
+                : isZh
+                ? "调整目标期望收益率并点击“▶ 运行优化”，即可根据 5 项资产的协方差矩阵（QuadExpr）计算最小风险配置比例。"
                 : "Adjust the target expected return and click '▶ Run Optimization' to solve the 5-asset Quadratic Program."
             }}
           </p>
@@ -113,8 +116,8 @@ onMounted(() => {
           :disabled="isSolving"
           @click="solvePortfolio"
         >
-          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : "Solving..." }}</span>
-          <span v-else>▶ {{ isJa ? "最適化を実行" : "Run Optimization" }}</span>
+          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : isZh ? "计算中..." : "Solving..." }}</span>
+          <span v-else>▶ {{ isJa ? "最適化を実行" : isZh ? "运行优化" : "Run Optimization" }}</span>
           <span v-if="isDirty && !isSolving" class="dirty-dot"></span>
         </button>
       </div>
@@ -123,7 +126,7 @@ onMounted(() => {
     <div class="washi-controls-bar" style="justify-content: space-between;">
       <label class="washi-control-item" style="flex: 1; max-width: 460px;">
         <span style="min-width: 175px;">
-          {{ isJa ? "目標期待リターン:" : "Target Expected Return:" }}
+          {{ isJa ? "目標期待リターン:" : isZh ? "目标期望收益率:" : "Target Expected Return:" }}
           <strong>{{ minReturnPct.toFixed(1) }}%</strong>
         </span>
         <input
@@ -138,7 +141,7 @@ onMounted(() => {
       </label>
       <div class="solve-meta">
         HiGHS QP · {{ solveTimeMs.toFixed(1) }} ms ·
-        {{ isJa ? "最小分散:" : "Min Variance:" }}
+        {{ isJa ? "最小分散:" : isZh ? "最小方差:" : "Min Variance:" }}
         <strong>{{ varianceVal.toFixed(5) }}</strong>
       </div>
     </div>
@@ -146,7 +149,7 @@ onMounted(() => {
     <!-- Allocation Stacked Bar & Cards -->
     <div style="padding: 16px 20px;" :class="{ 'is-stale': isDirty }">
       <div v-if="isDirty" class="dirty-banner" style="margin-bottom: 12px;">
-        {{ isJa ? "目標リターンが変更されました。右上の「▶ 最適化を実行」を押して再計算してください。" : "Target return changed. Click '▶ Run Optimization' above to recompute." }}
+        {{ isJa ? "目標リターンが変更されました。右上の「▶ 最適化を実行」を押して再計算してください。" : isZh ? "目标收益率已更改，请点击右上角“▶ 运行优化”重新计算。" : "Target return changed. Click '▶ Run Optimization' above to recompute." }}
       </div>
 
       <div style="display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--vp-c-divider);">
@@ -162,7 +165,7 @@ onMounted(() => {
         <div v-for="a in assets" :key="a.id" class="qp-asset-card">
           <div class="qp-asset-top">
             <span class="qp-dot" :style="{ background: a.color }"></span>
-            <strong>{{ isJa ? a.labelJa : a.labelEn }}</strong>
+            <strong>{{ isJa ? a.labelJa : isZh ? a.labelZh : a.labelEn }}</strong>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px;">
             <span class="qp-pct" :style="{ color: a.color, marginTop: 0 }">
@@ -176,7 +179,7 @@ onMounted(() => {
 
     <div class="washi-app-footer">
       <a href="/washi/demo/?preset=portfolio_qp" class="playground-link">
-        {{ isJa ? "Playground でコードを編集する →" : "Edit Code in Playground →" }}
+        {{ isJa ? "Playground でコードを編集する →" : isZh ? "在 Playground 中编辑代码 →" : "Edit Code in Playground →" }}
       </a>
     </div>
   </div>

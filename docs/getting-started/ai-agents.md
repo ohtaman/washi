@@ -100,7 +100,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
   - `sum(iterable, mapper?)` sums an `Iterable` of `Var` / `LinExpr` / `number` (e.g., `Var[]`, `grid.flat()`, or `Object.values(record)`).
   - `dot(a, b)` computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
 - **Fluent methods**:
-  - Arithmetic: `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
+  - Arithmetic (on `LinExpr` and `QuadExpr`; `Var` supports `.add()`, `.sub()`, `.mul()`, `.neg()`): `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
   - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint` for Z3): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`
 
@@ -258,15 +258,3 @@ export function verifyNegativePatterns() {
 }
 ```
 
----
-
-## 5. Verification & Agent Evaluation Procedure
-
-1. **Automated Code-Block & Drift Verification (`test/agent-guide.test.ts`)**:
-   - The test suite extracts the TypeScript examples in this guide, executes them against the real HiGHS and Z3 WebAssembly engines, verifies expected solutions and `validateSolution()` reports, and asserts that retired aliases and invalid contexts throw descriptive errors.
-   - `scripts/check-distribution.mjs` verifies that `docs/getting-started/ai-agents.md` is shipped inside the packed npm tarball (`@ohtaman/washi`).
-2. **Representative Agent Evaluation Procedure**:
-   - Give an AI coding agent access only to `docs/getting-started/ai-agents.md` and ask it to generate:
-     1. **Task 1 (MIP)**: A resource-allocation MIP using indexed variables (`m.integer(...)`), `dot()`, `expr`, `m.constraint()`, `m.objective(maximize(...))`, `await m.solve()`, and `m.validateSolution()`.
-     2. **Task 2 (Z3 SMT)**: A satisfiability/conflict check using `new Model({ solver: "z3" })`, `m.bool()`, `implies()`, named `m.constraint(..., "name")` rules, and `await m.check()`.
-   - Run the generated code with `npx vitest` or `npx tsx` and confirm both tasks type-check, execute without retired aliases, and pass `validateSolution()` / return the expected `CheckResult`. (This verifies guide completeness on representative tasks without claiming universal performance across all prompts or models.)
