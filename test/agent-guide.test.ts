@@ -314,11 +314,16 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
   const guidePath = path.resolve(docsDir, "getting-started/ai-agents.md");
   const guideContent = fs.readFileSync(guidePath, "utf-8");
 
-  it("deterministically generates llms.txt and llms-full.txt and ships llms.txt in package.json files", () => {
+  it("deterministically generates llms.txt and llms-full.txt and ships llms.txt, llms-full.txt, and English docs in package.json files", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(rootDir, "package.json"), "utf-8")
     );
     expect(pkg.files).toContain("llms.txt");
+    expect(pkg.files).toContain("llms-full.txt");
+    expect(pkg.files).toContain("docs/getting-started");
+    expect(pkg.files).toContain("docs/guide");
+    expect(pkg.files).toContain("docs/solvers");
+    expect(pkg.files).toContain("docs/examples");
     expect(pkg.scripts["docs:build"]).toContain("scripts/generate-llms.mjs");
     expect(pkg.scripts.prepublishOnly).toMatch(/build:llms|generate-llms\.mjs/);
 
@@ -370,15 +375,15 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     }
   });
 
-  it("embeds up-to-date docs/getting-started/ai-agents.md in llms-full.txt and strips YAML frontmatter and container directives", () => {
+  it("embeds up-to-date docs/getting-started/ai-agents.md and all canonical English guides, solvers, and examples in llms-full.txt without YAML frontmatter or VitePress directives", () => {
     const { llmsFullTxt } = buildLlmsArtifacts(rootDir);
-    const trimmedAgentGuide = guideContent.trim();
+    const trimmedAgentGuide = guideContent.replace(/\r\n/g, "\n").trim();
 
     // Starts with and embeds the full up-to-date ai-agents.md content
     expect(llmsFullTxt.startsWith(trimmedAgentGuide)).toBe(true);
     expect(llmsFullTxt).toContain(trimmedAgentGuide);
 
-    // Includes canonical Getting Started, Guide, and Solver docs
+    // Includes canonical Getting Started, Guide, Solver, and Example docs
     expect(llmsFullTxt).toContain("# Introduction & Installation");
     expect(llmsFullTxt).toContain("# Runtime Environments & Deployment");
     expect(llmsFullTxt).toContain("# Cross-Origin Isolation (Z3 & Browsers)");
@@ -392,10 +397,24 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Z3 SMT Solver Engine");
     expect(llmsFullTxt).toContain("# GLPK Solver Engine");
     expect(llmsFullTxt).toContain("# WaSHI Custom Solver Developer Guide");
+    expect(llmsFullTxt).toContain("# Examples & API Finder");
+    expect(llmsFullTxt).toContain("# Production Planning (LP / MIP)");
+    expect(llmsFullTxt).toContain("# 0-1 Knapsack Problem (Binary MIP)");
+    expect(llmsFullTxt).toContain("# Transportation & Allocation Network (LP)");
+    expect(llmsFullTxt).toContain("# Diet Problem & Sensitivity Analysis (LP Duals & Slacks)");
+    expect(llmsFullTxt).toContain("# Staff Shift Scheduling & Conflict Diagnosis (MIP + Z3)");
+    expect(llmsFullTxt).toContain("# E-Commerce Cart & Coupon Optimizer (Indicator MIP)");
+    expect(llmsFullTxt).toContain("# Portfolio Optimization (QP)");
+    expect(llmsFullTxt).toContain("# SMT Security Policies");
+    expect(llmsFullTxt).toContain("# Conflict Diagnosis (Unsat Core)");
+    expect(llmsFullTxt).toContain("async function runProductionOptimization()");
 
-    // No unstripped YAML frontmatter or VitePress container directives (`:::`)
+    // No unstripped YAML frontmatter, VitePress container directives (`:::`), or Vue demo wrapper tags
     expect(llmsFullTxt).not.toMatch(/^---\n[A-Za-z0-9_-]+\s*:/m);
     expect(llmsFullTxt).not.toMatch(/^[ \t]*:::/m);
+    expect(llmsFullTxt).not.toContain("<CodeRunner");
+    expect(llmsFullTxt).not.toContain("</CodeRunner>");
+    expect(llmsFullTxt).not.toMatch(/<(?:PortfolioQpDemo|EcommerceCouponDemo|ShiftSchedulingDemo)\b/);
 
     // Verify stripVitePressSyntax directly against docs/index.md (which has YAML frontmatter) and container directives
     const homeMd = fs.readFileSync(path.resolve(docsDir, "index.md"), "utf-8");
@@ -431,6 +450,34 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(strippedSynthetic).toContain("---\n\nParagraph after horizontal rule.");
   });
 
+  it("normalizes CRLF line endings when generating llms.txt and llms-full.txt (Windows autocrlf regression)", () => {
+    const tmpCrlfRoot = fs.mkdtempSync(path.join(os.tmpdir(), "washi-crlf-llms-"));
+    try {
+      const lfArtifacts = buildLlmsArtifacts(rootDir);
+      const pkgRaw = fs.readFileSync(path.resolve(rootDir, "package.json"), "utf-8");
+      fs.writeFileSync(
+        path.join(tmpCrlfRoot, "package.json"),
+        pkgRaw.replace(/\r?\n/g, "\r\n"),
+        "utf-8"
+      );
+
+      for (const relPath of lfArtifacts.allDocFiles) {
+        const srcMd = fs.readFileSync(path.resolve(docsDir, relPath), "utf-8");
+        const dstMdPath = path.join(tmpCrlfRoot, "docs", relPath);
+        fs.mkdirSync(path.dirname(dstMdPath), { recursive: true });
+        fs.writeFileSync(dstMdPath, srcMd.replace(/\r?\n/g, "\r\n"), "utf-8");
+      }
+
+      const crlfArtifacts = buildLlmsArtifacts(tmpCrlfRoot);
+      expect(crlfArtifacts.llmsTxt).not.toContain("\r");
+      expect(crlfArtifacts.llmsFullTxt).not.toContain("\r");
+      expect(crlfArtifacts.llmsTxt).toBe(lfArtifacts.llmsTxt);
+      expect(crlfArtifacts.llmsFullTxt).toBe(lfArtifacts.llmsFullTxt);
+    } finally {
+      fs.rmSync(tmpCrlfRoot, { recursive: true, force: true });
+    }
+  });
+
   it("populates target site directory with llms.txt, llms-full.txt, and all raw English .md files referenced by llms.txt", () => {
     const tmpSiteDir = fs.mkdtempSync(path.join(os.tmpdir(), "washi-site-llms-"));
     try {
@@ -457,5 +504,6 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     }
   });
 });
+
 
 

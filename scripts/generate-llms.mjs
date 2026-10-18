@@ -55,7 +55,7 @@ export const DOC_SECTIONS = [
   },
 ];
 
-export const LLMS_FULL_SECTIONS = ["getting-started", "guide", "solvers"];
+export const LLMS_FULL_SECTIONS = ["getting-started", "guide", "solvers", "examples"];
 
 /**
  * Resolves the canonical ordered list of English documentation files per section,
@@ -239,8 +239,14 @@ export function extractDocMetadata(rawMarkdown) {
 function buildLlmsTxtContent(rootDir, sections) {
   const docsDir = resolve(rootDir, "docs");
   const pkg = JSON.parse(readFileSync(resolve(rootDir, "package.json"), "utf8"));
-  const introMd = readFileSync(resolve(docsDir, "getting-started/index.md"), "utf8");
-  const aiAgentsMd = readFileSync(resolve(docsDir, "getting-started/ai-agents.md"), "utf8");
+  const introMd = readFileSync(resolve(docsDir, "getting-started/index.md"), "utf8").replace(
+    /\r\n/g,
+    "\n"
+  );
+  const aiAgentsMd = readFileSync(resolve(docsDir, "getting-started/ai-agents.md"), "utf8").replace(
+    /\r\n/g,
+    "\n"
+  );
 
   const { summary: introOverview } = extractDocMetadata(introMd);
 
@@ -309,6 +315,8 @@ function buildLlmsTxtContent(rootDir, sections) {
       "",
       "## 4. Canonical English Documentation Index",
       "",
+      "> On the documentation site (`https://ohtaman.github.io/washi/`), these paths resolve relative to the site root. In a repository checkout or installed npm package (`node_modules/@ohtaman/washi/`), the Markdown files are located under `docs/` alongside `llms-full.txt` at the package root.",
+      "",
       ...docIndexLines,
     ]
       .join("\n")
@@ -318,7 +326,7 @@ function buildLlmsTxtContent(rootDir, sections) {
 
 /**
  * Concatenates `docs/getting-started/ai-agents.md` followed by the canonical English
- * Getting Started, Modeling Guide, and Solver documentation files, stripped of
+ * Getting Started, Modeling Guide, Solver, and Example documentation files, stripped of
  * VitePress-specific YAML frontmatter and container directives.
  */
 function buildLlmsFullTxtContent(rootDir, sections) {

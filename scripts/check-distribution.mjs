@@ -382,13 +382,23 @@ try {
   const shippedLlmsTxt = await readFile(path.join(packageRoot, "llms.txt"), "utf8");
   assert(shippedLlmsTxt.includes("# WaSHI (@ohtaman/washi)"), "npm tarball missing llms.txt");
   assert(shippedLlmsTxt.includes("getting-started/ai-agents.md"), "npm tarball llms.txt missing ai-agents.md link");
+  const shippedLlmsFullTxt = await readFile(path.join(packageRoot, "llms-full.txt"), "utf8");
+  assert(shippedLlmsFullTxt.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing llms-full.txt");
+  const linkedMdPaths = [...shippedLlmsTxt.matchAll(/\]\(([^)]+\.md)\)/g)]
+    .map((m) => m[1])
+    .filter((target) => !/^https?:\/\//.test(target));
+  assert(linkedMdPaths.length >= 24, "Expected at least 24 relative .md links in shipped llms.txt");
+  for (const relPath of linkedMdPaths) {
+    const shippedDoc = await readFile(path.join(packageRoot, "docs", relPath), "utf8");
+    assert(shippedDoc.trim().length > 0, `npm tarball missing linked doc: docs/${relPath}`);
+  }
   const { Model, maximize } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
   const model = new Model("PackedNode");
   const x = model.continuous("x", { lb: 0, ub: 10 });
   model.objective(maximize(x.mul(3)));
   assert.equal(await model.solve(), "Optimal");
   assert.equal(model.objectiveValue, 30);
-  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide & llms.txt");
+  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide, llms.txt, llms-full.txt & docs");
 
   // Verify unimported solver errors
   await assert.rejects(async () => model.solve({ solver: "glpk" }), (err) => {
