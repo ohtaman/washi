@@ -14,7 +14,7 @@ hero:
       link: /ja/getting-started/
     - theme: alt
       text: ドキュメント
-      link: /ja/guide/expressions
+      link: /ja/guide/variables
     - theme: alt
       text: Playground ↗
       link: https://ohtaman.github.io/washi/demo/

@@ -9,7 +9,6 @@ export default withMermaid(
   base: "/washi/",
   cleanUrls: true,
   lastUpdated: true,
-  ignoreDeadLinks: true,
   markdown: {
     config(md) {
       // Block math: $$ ... $$
@@ -189,7 +188,7 @@ export default withMermaid(
       themeConfig: {
         nav: [
           { text: "はじめに", link: "/ja/getting-started/" },
-          { text: "ガイド", link: "/ja/guide/expressions" },
+          { text: "ガイド", link: "/ja/guide/variables" },
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
@@ -262,28 +261,28 @@ export default withMermaid(
             items: [
               { text: "安装与入门", link: "/zh/getting-started/" },
               { text: "AI 编程助手快速参考", link: "/getting-started/ai-agents" },
-              { text: "运行时环境配置", link: "/zh/getting-started/runtimes" },
-              { text: "跨源隔离 (COOP/COEP)", link: "/zh/getting-started/cross-origin" },
+              { text: "运行时环境配置", link: "/getting-started/runtimes" },
+              { text: "跨源隔离 (COOP/COEP)", link: "/getting-started/cross-origin" },
             ],
           },
           {
             text: "建模指南",
             items: [
-              { text: "决策变量与上下界", link: "/zh/guide/variables" },
-              { text: "数学表达式 (`expr`)", link: "/zh/guide/expressions" },
-              { text: "约束条件 (`expr`)", link: "/zh/guide/constraints" },
-              { text: "目标函数与求解方向", link: "/zh/guide/objectives" },
-              { text: "不可行冲突诊断 (Unsat Core)", link: "/zh/guide/unsat-core" },
+              { text: "决策变量与上下界", link: "/guide/variables" },
+              { text: "数学表达式 (`expr`)", link: "/guide/expressions" },
+              { text: "约束条件 (`expr`)", link: "/guide/constraints" },
+              { text: "目标函数与求解方向", link: "/guide/objectives" },
+              { text: "不可行冲突诊断 (Unsat Core)", link: "/guide/unsat-core" },
             ],
           },
           {
             text: "求解器矩阵",
             items: [
-              { text: "概览与对比", link: "/zh/solvers/" },
-              { text: "HiGHS (内置默认)", link: "/zh/solvers/highs" },
-              { text: "Z3 (SMT / 冲突诊断)", link: "/zh/solvers/z3" },
-              { text: "GLPK (LP / MIP)", link: "/zh/solvers/glpk" },
-              { text: "自定义求解器指南", link: "/zh/solvers/custom-solver" },
+              { text: "概览与对比", link: "/solvers/" },
+              { text: "HiGHS (内置默认)", link: "/solvers/highs" },
+              { text: "Z3 (SMT / 冲突诊断)", link: "/solvers/z3" },
+              { text: "GLPK (LP / MIP)", link: "/solvers/glpk" },
+              { text: "自定义求解器指南", link: "/solvers/custom-solver" },
             ],
           },
           {

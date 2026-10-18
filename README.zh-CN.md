@@ -50,7 +50,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 ## 🎯 WaSHI 提供的功能
 
 1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`）、向量聚合函数（`dot`、`sum`）以及一等约束（`m.constraint`）构建优化模型。由于 JavaScript 不支持运算符重载，`` expr`...` `` 采用类似参数化 SQL 模板的方式，在解析中缀数学运算符（`+`、`-`、`*`、`^2`、`<=`、`>=`、`==`）的同时，将 `${...}` 插值直接绑定为强类型的 `Var` 或表达式对象引用，从而保留静态类型检查、IDE 重命名支持以及多维索引访问（`${flow[i][j]}`）。
-2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/custom-solver-guide.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
+2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
 3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内直接求解，无需单独的 Python 服务或本地 C/C++ 编译——这消除了在快速开发和交付交互式工具时的后端基础设施瓶颈，也便于在客户端直接与浏览器内 LLM（如 WebGPU / WebLLM）协同工作。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
 4. **命名约束与 SMT 结果**：显式使用 Z3 检查可满足性，并通过冲突约束（`conflicts` / `unsatCore`）调查冲突约束。返回的是一个冲突约束子集，不一定是最小子集。
 
@@ -96,57 +96,43 @@ npm install glpk.js      # 用于 GLPK 求解器 (GPL-3.0)
 
 ## 🚀 快速上手指南
 
-### 1. 混合整数线性规划 (MIP: 生产计划问题)
+### 1. 多维变量、条件指示约束 (`m.indicator`) 与解验证 (`m.validateSolution`)
 
-在有限资源约束下实现利润最大化：
-
-```ts
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model("FactoryPlanning");
-
-// 决策变量（非负整数）
-const chairs = m.integer("chairs", { lb: 0 });
-const tables = m.integer("tables", { lb: 0 });
-
-// 借助标签模板字面量自然表达目标函数与约束
-m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(expr`${chairs} + 2 * ${tables} <= 40`, "wood_limit");
-m.constraint(expr`2 * ${chairs} + ${tables} <= 50`, "labor_limit");
-
-// 使用默认的 HiGHS WASM 引擎求解
-const status = await m.solve();
-
-console.log(`求解状态: ${status}`); // "Optimal"
-console.log(`最大利润: $${m.objectiveValue}`); // 1100
-console.log(`生产量: 椅子=${chairs.value}, 桌子=${tables.value}`); // 椅子 20, 桌子 10
-```
-
-#### 🗂 多维变量网格
-
-一行代码声明变量字典或多维变量矩阵：
+一行代码声明一维字典或二维变量矩阵，通过 `m.indicator()` 表达 Big-M 条件规则，结合 `onProgress` / `AbortSignal` 控制求解过程，并通过 `m.validateSolution()` 独立校验解的合法性：
 
 ```ts
-// 1D 字典形式的布尔变量
+import { Model, expr } from "@ohtaman/washi";
+
+const m = new Model("FacilityPlanning");
+
+// 1D 字典形式的二元变量
 const openCity = m.binary(["Tokyo", "Osaka", "Nagoya"]);
 
 // 2D 运输量矩阵: [工厂] x [门店]
-const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0 });
+const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 1000 });
 
 // 2D 网格坐标 (例如 8x8 棋盘)
 const board = m.binary(8, 8, { prefix: "queen" });
-```
 
-#### 🔀 Big-M 条件指示约束 (`m.indicator`)
-
-轻松建模条件触发规则与固定成本启动，无需繁琐的手工 Big-M 代数推导：
-
-```ts
-// "若工厂关闭 (openCity['Tokyo'] == 0)，则产量 flow 必须为 0"
+// Big-M 条件约束: 若工厂关闭 (openCity['Tokyo'] == 0)，则 flow <= 0
+// (省略 M 时，WaSHI 会根据变量的有限上下界自动推导紧凑安全的 Big-M)
 m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
   activeValue: 0,
-  M: 1000,
+  name: "tokyo_closed_no_flow",
 });
+
+// 支持实时进度回调 (onProgress) 与 AbortSignal 取消
+const controller = new AbortController();
+await m.solve({
+  signal: controller.signal,
+  onProgress: (ev) => {
+    // 实时指标: ev.elapsedSeconds, ev.objectiveValue, ev.bestBound, ev.mipGap
+  },
+});
+
+// 独立校验变量边界、整数性、约束残差与目标函数值
+const report = m.validateSolution();
+console.log("解验证通过？", report.valid);
 ```
 
 ---
@@ -362,11 +348,11 @@ await model.solve();
 </script>
 ```
 
-若通过 CDN 加载，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.1.2/dist/browser/washi.min.js`（请固定 `0.1.2` 及以上版本号）。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
+若通过 CDN 加载，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js`（可固定所需的发布版本号）。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
 
 ### 浏览器环境中的求解器插件（GLPK & Z3）
 
-浏览器发布包在 `dist/browser/solvers/` 下提供了开箱即用的独立求解器插件（通过 CDN 引入时适用于 `>= 0.2.0` 或 `@latest`）：
+浏览器发布包在 `dist/browser/solvers/` 下提供了开箱即用的独立求解器插件：
 - **GLPK**: `dist/browser/solvers/glpk.js` (ESM) 与 `dist/browser/solvers/glpk.min.js` (IIFE，挂载全局 `WashiGLPK`)
 - **Z3**: `dist/browser/solvers/z3.js` (ESM) 与 `dist/browser/solvers/z3.min.js` (IIFE，挂载全局 `WashiZ3`)，附带 `z3-built.js` 和 `z3-built.wasm`
 
@@ -398,37 +384,9 @@ await model.solve();
 
 > [!NOTE]
 > **浏览器环境中使用 Z3 的配置要求与跨源隔离**：
-> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，现代浏览器强制要求 Cross-Origin Isolation。文档响应头必须包含：
-> ```http
-> Cross-Origin-Opener-Policy: same-origin
-> Cross-Origin-Embedder-Policy: require-corp
-> ```
-> 并且跨源资源必须包含 `Cross-Origin-Resource-Policy: cross-origin` 标头。
-> 
-> 无法自定义响应标头的常见静态托管（如标准 GitHub Pages 或 CodePen 等 iframe 预览环境）在缺少额外配置时无法直接满足条件。引入 `@ohtaman/washi` 核心库绝不会自动向用户项目中注入或注册 Service Worker。
-> 
-> 在 GitHub Pages 部署的 WaSHI 官方 Web Demo 中，通过在同源独立部署作用域严格限定为 `/washi/` 的 `coi-serviceworker.js`，在首次访问时安全自动重载一次以建立 `window.crossOriginIsolated === true` 环境。在不支持 Service Worker 或隔离失败的环境中，Z3 会清晰展示诊断原因并中止执行，防止无限重载或无响应挂起。
+> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，现代浏览器强制要求跨源隔离（`Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`）。关于静态托管（`coi-serviceworker.js`）、离线/内网部署、CSP（`worker-src blob:`）与自定义 WASM URL（`setHighsWasmUrl`）的完整说明，请参阅 [Cross-Origin Isolation 指南](docs/getting-started/cross-origin.md) 与 [运行时环境配置](docs/getting-started/runtimes.md)。
 
-完整独立的 ESM、Script 标签与 CodePen 示例请参阅 `examples/distribution/`。
-
-### 工厂内网、离线部署、Worker 与自定义 URL
-
-将应用构建产物或整个 `dist/browser` 目录部署到本地 HTTP / 内网服务器。所有资源可在本地访问时，即使浏览器缓存为空也不需要外部网络。仅保存 HTML 或第一个 JS 文件是不够的。不保证 `file://` 执行，也不自动提供 PWA 缓存。
-
-ESM 根据模块 URL 解析资源；script 构建在加载时保存自身的 URL。CDN Worker 使用 Blob 模块启动，需要服务端的跨域资源许可及相应 CSP。CDN Worker 还需允许 `worker-src blob:`。不支持时可使用 `useWorker: false`。Worker 加载或消息处理失败会拒绝求解 Promise。
-
-自定义地址仍可通过 `setHighsWasmUrl(url)` 或 `options.wasmUrl` 指定：
-
-```typescript
-import { setHighsWasmUrl } from "@ohtaman/washi";
-setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/highs.wasm");
-```
-
-初始化失败会返回包含请求地址的错误，不会尝试其他主机。依赖旧的域名根目录 / CDN 自动回退的应用需部署生成资源或显式配置 URL。
-
-### 验证发布产物
-
-`npm run test:distribution` 安装实际 npm tarball，在没有可选依赖时构建 Vite / webpack 应用，并通过 VM 执行生成的 JS 和真实 WASM。这不等同于浏览器 / CORS 验证。安装 `npx playwright install chromium` 后，运行 `RUN_DISTRIBUTION_BROWSER=1 npm run test:distribution` 以验证 Chromium。CI 使用该模式，验证跨域部署及外部网络请求阻断。
+完整独立的 ESM、Script 标签与 CodePen 示例请参阅 [`examples/distribution/`](examples/distribution/README.md)。
 
 ---
 
@@ -436,7 +394,7 @@ setHighsWasmUrl("https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser
 
 WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并注册自定义求解器适配器（如云端 REST 求解服务、定制 WebAssembly 引擎或商业求解器）：
 
-- 完整开发指南、接口契约（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）与测试实践详见 [Custom Solver Developer Guide](docs/custom-solver-guide.md)。
+- 完整开发指南、接口契约（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）与测试实践详见 [Custom Solver Developer Guide](docs/solvers/custom-solver.md)。
 
 ---
 

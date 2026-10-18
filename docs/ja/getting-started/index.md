@@ -108,6 +108,8 @@ console.log(`最適解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 
 ## 🧭 次のステップ
 
-- [ランタイム環境設定](./runtimes.md): Node.js, ブラウザ, Next.js, CDN での動かし方
-- [モデリングガイド](../guide/expressions.md): 変数・数式テンプレート・制約の記述方法
+- AI コーディングエージェント向けの API・デプロイ要点は [AI Coding Agent Quick-Reference Guide](/getting-started/ai-agents) を参照してください。
+- [ランタイム環境設定](./runtimes.md): Node.js, ブラウザバンドラー, ESM, CDN, イントラネット (CSP) での動かし方
+- [モデリングガイド](../guide/variables.md): 決定変数・数式テンプレート (`expr`)・制約条件の記述方法
 - [ソルバー詳細](../solvers/): 各ソルバーの特性と選び方
+

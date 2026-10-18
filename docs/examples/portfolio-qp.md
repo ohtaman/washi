@@ -1,4 +1,4 @@
-# 03: Portfolio Optimization (QP)
+# Portfolio Optimization (QP)
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
@@ -13,7 +13,7 @@ The Markowitz mean-variance portfolio optimization problem is the foundation of 
 Let $w_i \ge 0$ denote the allocation weight for asset $i$:
 
 $$\begin{aligned}
-\text{Minimize} \quad & \frac{1}{2} \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{Portfolio Variance}) \\
+\text{Minimize} \quad & \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} & (\text{Portfolio Variance}) \\
 \text{Subject to} \quad & \sum_{i=1}^n w_i = 1 & (\text{Full Capital Budget}) \\
 & \sum_{i=1}^n r_i w_i \ge R_{\text{target}} & (\text{Minimum Target Return}) \\
 & 0 \le w_i \le 1 & (\text{Long-Only Weights})

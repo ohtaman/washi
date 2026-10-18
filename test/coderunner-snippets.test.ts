@@ -61,7 +61,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     });
   }
 
-  it("verifies shipped README.md, README.ja.md, and README.zh-CN.md contain no retired API calls or unpublished public/highs.wasm URLs", () => {
+  it("verifies shipped README.md, README.ja.md, README.zh-CN.md, and docs/ contain no retired API calls, invalid options, or broken doc paths", () => {
     for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
       const content = fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8");
       expect(content).not.toMatch(
@@ -69,6 +69,35 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       );
       expect(content).not.toMatch(/\b(?:m|model)\.(minimize|maximize)\b/);
       expect(content).not.toContain("/public/highs.wasm");
+      expect(content).not.toContain("custom-solver-guide.md");
+      expect(content).not.toContain("documentation-plan.md");
+    }
+
+    for (const docFile of mdFiles) {
+      const rawContent = fs.readFileSync(docFile, "utf-8");
+      // Exclude the intentional Negative Examples section in ai-agents.md
+      const content = rawContent.split("## 4. Negative Examples")[0];
+      expect(content, `Retired API in ${docFile}`).not.toMatch(
+        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+      );
+      expect(content, `Retired m.minimize/maximize in ${docFile}`).not.toMatch(
+        /\b(?:m|model)\.(minimize|maximize)\b/
+      );
+      expect(content, `Invalid computeUnsatCore option in ${docFile}`).not.toContain("computeUnsatCore");
+      expect(content, `Invalid solverOptions on Model in ${docFile}`).not.toContain("solverOptions:");
+      expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
+
+      const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
+      let blockMatch;
+      let blockIdx = 0;
+      while ((blockMatch = tsBlockRegex.exec(content)) !== null) {
+        blockIdx++;
+        const code = blockMatch[1];
+        expect(
+          () => stripTypeScriptTypes(code),
+          `Invalid TypeScript syntax in ${path.relative(process.cwd(), docFile)} block #${blockIdx}`
+        ).not.toThrow();
+      }
     }
   });
 

@@ -56,6 +56,24 @@ describe("README.md Code Snippets Validation", () => {
 
     await m.solve();
     expect(flow["F1"]["StoreA"].value).toBeCloseTo(0);
+
+    // Also verify automatic Big-M derivation + onProgress/AbortSignal + validateSolution() from README Section 1
+    const m2 = new Model("FacilityPlanning");
+    const openCity2 = m2.binary(["Tokyo", "Osaka", "Nagoya"]);
+    const flow2 = m2.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 1000 });
+    m2.binary(8, 8, { prefix: "queen" });
+    m2.indicator(openCity2["Tokyo"], expr`${flow2["F1"]["StoreA"]} <= 0`, {
+      activeValue: 0,
+      name: "tokyo_closed_no_flow",
+    });
+    const controller = new AbortController();
+    await m2.solve({
+      signal: controller.signal,
+      onProgress: () => {},
+    });
+    const report = m2.validateSolution();
+    expect(report.valid).toBe(true);
+    expect(report.violations).toHaveLength(0);
   });
 
   it("executes 2. Portfolio Risk Minimization (Convex QP)", async () => {

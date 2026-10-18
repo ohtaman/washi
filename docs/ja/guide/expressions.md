@@ -153,3 +153,42 @@ risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
 m.objective(minimize(risk));
 ```
+
+---
+
+## 📊 求解後の数式評価 (`.value`)
+
+`LinExpr` と `QuadExpr` は `.value` ゲッター（`number | null`）を備えています。モデルの求解後、式に含まれるすべての変数に解が格納されていれば、部門別コストやリソース使用量などの部分式をそのまま評価できます：
+
+```typescript
+const revenue = expr`30 * ${x} + 50 * ${y}`;
+const laborUsed = expr`2 * ${x} + ${y}`;
+
+m.objective(maximize(revenue));
+m.constraint(expr`${laborUsed} <= 50`, "labor_cap");
+
+await m.solve();
+
+console.log("総売上:", revenue.value);       // 1100
+console.log("労働力使用量:", laborUsed.value); // 50
+```
+
+未求解の場合（または式内のいずれかの変数が `value === null` の場合）は `null` を返します。
+
+---
+
+## 🔗 メソッドチェーンによる算術・比較メソッド
+
+`expr` タグに加えて、`Var`, `LinExpr`, `QuadExpr` は不変（イミュータブル）なメソッドを備えており、動的な式の組み立てに利用できます：
+
+| メソッド | 対象クラス | 戻り値 | 説明 |
+| :--- | :--- | :--- | :--- |
+| `.add(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | 数値、`Var`、`LinExpr`、`QuadExpr` を加算します。 |
+| `.sub(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | 数値、`Var`、`LinExpr`、`QuadExpr` を減算します。 |
+| `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | スカラー倍、または1次式同士の積（`QuadExpr`）を計算します。 |
+| `.div(divisor)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | 非ゼロの有限スカラー数値で除算します。 |
+| `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` または `QuadExpr` | 符号を反転します（$-e$）。 |
+| `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | $\le$ 制約（`lhs <= rhs`）を生成します。 |
+| `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | $\ge$ 制約（`lhs >= rhs`）を生成します。 |
+| `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | $==$ 等式制約（`lhs == rhs`）を生成します。 |
+
