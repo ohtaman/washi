@@ -16,7 +16,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://ohtaman.github.io/washi/ja/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
@@ -28,7 +28,7 @@
 
 HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグインです。Node.js 用とブラウザ用の配布物に WebAssembly アセットを含みます。配信に必要な設定は[ブラウザでの利用方法](#-ブラウザ--web-worker-での利用方法)を参照してください。
 
-[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[ドキュメント](https://ohtaman.github.io/washi/ja/) · [ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -402,6 +402,16 @@ CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@o
 WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャを採用しています。独自の最適化エンジン（クラウド REST ソルバー、WebAssembly エンジン、商用ソルバーアダプターなど）を容易に構築・登録できます：
 
 - 詳細な開発手順、API コントラクト仕様（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）、およびテスト手法については [カスタムソルバー開発ガイド](docs/ja/solvers/custom-solver.md)（[英語版](docs/solvers/custom-solver.md)）をご覧ください。
+
+---
+
+## 📚 ドキュメント
+
+完全なドキュメントは **[ohtaman.github.io/washi/ja/](https://ohtaman.github.io/washi/ja/)** およびリポジトリの [`docs/ja/`](docs/ja/)（[英語版 `docs/`](docs/)）で公開されています：
+
+- **はじめに**: [クイックスタート](docs/ja/getting-started/index.md) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [ランタイム環境とデプロイ構成](docs/ja/getting-started/runtimes.md) · [Cross-Origin Isolation (Z3)](docs/ja/getting-started/cross-origin.md)
+- **モデリングガイド**: [決定変数 (`Var`, `BoolVar`)](docs/ja/guide/variables.md) · [数式と集計 (`expr`, `sum`, `dot`)](docs/ja/guide/expressions.md) · [制約と論理条件 (`indicator`, SMT)](docs/ja/guide/constraints.md) · [目的関数と求解 (`solve`, `validateSolution`)](docs/ja/guide/objectives.md) · [充足可能性と Unsat Core (`check`)](docs/ja/guide/unsat-core.md)
+- **ソルバー**: [ソルバー概要](docs/ja/solvers/index.md) · [HiGHS](docs/ja/solvers/highs.md) · [Z3](docs/ja/solvers/z3.md) · [GLPK](docs/ja/solvers/glpk.md) · [カスタムソルバー](docs/ja/solvers/custom-solver.md)
 
 ---
 

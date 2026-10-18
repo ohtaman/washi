@@ -16,7 +16,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://ohtaman.github.io/washi/zh/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
     <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
@@ -28,7 +28,7 @@
 
 HiGHS 是默认求解器；Z3 和 GLPK 是可选插件。软件包提供 Node.js 和浏览器分发版本，并包含 WebAssembly 资源。部署要求请参阅[浏览器使用说明](#-浏览器与-web-worker-使用指南)。
 
-[试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [AI 编程助手快速参考](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[在线文档](https://ohtaman.github.io/washi/zh/) · [试用浏览器演示](https://ohtaman.github.io/washi/demo/) · [AI 编程助手快速参考](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [示例源码与运行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen 示例](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -402,6 +402,16 @@ await model.solve();
 WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并注册自定义求解器适配器（如云端 REST 求解服务、定制 WebAssembly 引擎或商业求解器）：
 
 - 完整开发指南、接口契约（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）与测试实践详见 [自定义求解器开发指南](docs/zh/solvers/custom-solver.md)。
+
+---
+
+## 📚 文档指南
+
+完整文档可在 **[ohtaman.github.io/washi/zh/](https://ohtaman.github.io/washi/zh/)** 及仓库的 [`docs/zh/`](docs/zh/)（[英文版 `docs/`](docs/)）中查阅：
+
+- **快速上手**: [快速开始](docs/zh/getting-started/index.md) · [AI 编程助手快速参考](docs/getting-started/ai-agents.md) · [运行时环境配置](docs/zh/getting-started/runtimes.md) · [跨源隔离指南 (Z3)](docs/zh/getting-started/cross-origin.md)
+- **建模指南**: [决策变量 (`Var`, `BoolVar`)](docs/zh/guide/variables.md) · [表达式与聚合 (`expr`, `sum`, `dot`)](docs/zh/guide/expressions.md) · [约束与逻辑条件 (`indicator`, SMT)](docs/zh/guide/constraints.md) · [目标函数与求解 (`solve`, `validateSolution`)](docs/zh/guide/objectives.md) · [可满足性与 Unsat Core (`check`)](docs/zh/guide/unsat-core.md)
+- **求解器**: [求解器概览](docs/zh/solvers/index.md) · [HiGHS](docs/zh/solvers/highs.md) · [Z3](docs/zh/solvers/z3.md) · [GLPK](docs/zh/solvers/glpk.md) · [自定义求解器](docs/zh/solvers/custom-solver.md)
 
 ---
 
