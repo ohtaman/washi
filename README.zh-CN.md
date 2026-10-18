@@ -384,7 +384,7 @@ await model.solve();
 
 > [!NOTE]
 > **浏览器环境中使用 Z3 的配置要求与跨源隔离**：
-> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，现代浏览器强制要求跨源隔离（`Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`）。关于静态托管（`coi-serviceworker.js`）、离线/内网部署、CSP（`worker-src blob:`）与自定义 WASM URL（`setHighsWasmUrl`）的完整说明，请参阅 [Cross-Origin Isolation 指南](docs/getting-started/cross-origin.md) 与 [运行时环境配置](docs/getting-started/runtimes.md)。
+> 由于 Z3 的 WebAssembly 引擎依托多线程 (`SharedArrayBuffer`)，现代浏览器强制要求跨源隔离（`Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`）。关于静态托管（`coi-serviceworker.js`）、离线/内网部署、CSP（`worker-src blob:`）与自定义 WASM URL（`setHighsWasmUrl`）的完整说明，请参阅 [跨源隔离指南](docs/zh/getting-started/cross-origin.md) 与 [运行时环境配置](docs/zh/getting-started/runtimes.md)。
 
 完整独立的 ESM、Script 标签与 CodePen 示例请参阅 [`examples/distribution/`](examples/distribution/README.md)。
 
@@ -394,7 +394,7 @@ await model.solve();
 
 WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并注册自定义求解器适配器（如云端 REST 求解服务、定制 WebAssembly 引擎或商业求解器）：
 
-- 完整开发指南、接口契约（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）与测试实践详见 [Custom Solver Developer Guide](docs/solvers/custom-solver.md)。
+- 完整开发指南、接口契约（`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`）与测试实践详见 [自定义求解器开发指南](docs/zh/solvers/custom-solver.md)。
 
 ---
 

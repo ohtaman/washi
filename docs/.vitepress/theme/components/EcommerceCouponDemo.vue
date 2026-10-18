@@ -5,22 +5,24 @@ import { getWashiClient } from "./washiClient";
 
 const { lang } = useData();
 const isJa = computed(() => lang.value.startsWith("ja"));
+const isZh = computed(() => lang.value.startsWith("zh"));
 
 interface CartCatalogItem {
   id: string;
   nameEn: string;
   nameJa: string;
+  nameZh: string;
   category: "Tech" | "Office";
   price: number;
 }
 
 const catalog: CartCatalogItem[] = [
-  { id: "headphones", nameEn: "Wireless ANC Headphones", nameJa: "ワイヤレスヘッドホン", category: "Tech", price: 160 },
-  { id: "keyboard", nameEn: "Mechanical Keyboard", nameJa: "メカニカルキーボード", category: "Tech", price: 80 },
-  { id: "webcam", nameEn: "4K Streaming Webcam", nameJa: "4K ウェブカメラ", category: "Tech", price: 95 },
-  { id: "stand", nameEn: "Aluminum Laptop Stand", nameJa: "アルミPCスタンド", category: "Office", price: 45 },
-  { id: "lightbar", nameEn: "Monitor Light Bar", nameJa: "モニターライトバー", category: "Office", price: 55 },
-  { id: "mat", nameEn: "Felt Desk Mat", nameJa: "フェルトデスクマット", category: "Office", price: 25 },
+  { id: "headphones", nameEn: "Wireless ANC Headphones", nameJa: "ワイヤレスヘッドホン", nameZh: "无线降噪耳机", category: "Tech", price: 160 },
+  { id: "keyboard", nameEn: "Mechanical Keyboard", nameJa: "メカニカルキーボード", nameZh: "机械键盘", category: "Tech", price: 80 },
+  { id: "webcam", nameEn: "4K Streaming Webcam", nameJa: "4K ウェブカメラ", nameZh: "4K 直播摄像头", category: "Tech", price: 95 },
+  { id: "stand", nameEn: "Aluminum Laptop Stand", nameJa: "アルミPCスタンド", nameZh: "铝合金笔记本支架", category: "Office", price: 45 },
+  { id: "lightbar", nameEn: "Monitor Light Bar", nameJa: "モニターライトバー", nameZh: "显示器挂灯", category: "Office", price: 55 },
+  { id: "mat", nameEn: "Felt Desk Mat", nameJa: "フェルトデスクマット", nameZh: "毛毡桌垫", category: "Office", price: 25 },
 ];
 
 const selectedItems = ref<Set<string>>(new Set(["headphones", "keyboard"]));
@@ -33,6 +35,7 @@ const coupons = [
     minSpend: 100,
     group: "welcome",
     labelJa: "$100以上で $15 OFF (併用可)",
+    labelZh: "满 $100 减 $15 (可叠加)",
     labelEn: "$15 off $100+ (Stackable)",
   },
   {
@@ -41,6 +44,7 @@ const coupons = [
     minSpend: 180,
     group: "member",
     labelJa: "$180以上で $10 OFF (併用可)",
+    labelZh: "满 $180 减 $10 (可叠加)",
     labelEn: "$10 off $180+ (Stackable)",
   },
   {
@@ -49,6 +53,7 @@ const coupons = [
     minSpend: 200,
     group: "tier",
     labelJa: "$200以上で $30 OFF (Tier排他)",
+    labelZh: "满 $200 减 $30 (档位互斥)",
     labelEn: "$30 off $200+ (Tier exclusive)",
   },
   {
@@ -57,14 +62,15 @@ const coupons = [
     minSpend: 250,
     group: "tier",
     labelJa: "$250以上で $50 OFF (Tier排他)",
+    labelZh: "满 $250 减 $50 (档位互斥)",
     labelEn: "$50 off $250+ (Tier exclusive)",
   },
 ];
 
 const fillers = [
-  { id: "USB_Cable", nameEn: "USB-C Braided Cable", nameJa: "USB-C ケーブル", price: 10, netCost: 8 },
-  { id: "Screen_Wipe", nameEn: "Microfiber Cleaning Kit", nameJa: "液晶クリーナー", price: 15, netCost: 12 },
-  { id: "Keycap_Puller", nameEn: "Metal Keycap Puller", nameJa: "キーキャッププラー", price: 25, netCost: 20 },
+  { id: "USB_Cable", nameEn: "USB-C Braided Cable", nameJa: "USB-C ケーブル", nameZh: "USB-C 编织线", price: 10, netCost: 8 },
+  { id: "Screen_Wipe", nameEn: "Microfiber Cleaning Kit", nameJa: "液晶クリーナー", nameZh: "屏幕清洁套装", price: 15, netCost: 12 },
+  { id: "Keycap_Puller", nameEn: "Metal Keycap Puller", nameJa: "キーキャッププラー", nameZh: "金属拔键器", price: 25, netCost: 20 },
 ];
 
 const isSolving = ref(false);
@@ -216,12 +222,14 @@ onMounted(() => {
         <div>
           <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · HiGHS Indicator Constraints</span>
           <h4 class="washi-app-title">
-            {{ isJa ? "ECカート・クーポン＆「あと少し買い」最適化" : "E-Commerce Cart & Smart Coupon Optimizer" }}
+            {{ isJa ? "ECカート・クーポン＆「あと少し買い」最適化" : isZh ? "电商购物车优惠券与智能凑单优化" : "E-Commerce Cart & Smart Coupon Optimizer" }}
           </h4>
           <p class="washi-app-subtitle">
             {{
               isJa
                 ? "カートの商品を選んで「▶ 最適化を実行」を押すと、併用上限（最大2枚）と最低利用額（m.indicator）から最安になるクーポンの組と追加提案アイテムを計算します。"
+                : isZh
+                ? "勾选购物车商品并点击“▶ 运行优化”，根据叠加限制（最多 2 张）与满减门槛（m.indicator）计算最优优惠券组合与智能凑单商品。"
                 : "Select items in the cart and click '▶ Run Optimization' to find the best coupon combination and smart filler add-on."
             }}
           </p>
@@ -233,8 +241,8 @@ onMounted(() => {
           :disabled="isSolving"
           @click="solveCart"
         >
-          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : "Solving..." }}</span>
-          <span v-else>▶ {{ isJa ? "最適化を実行" : "Run Optimization" }}</span>
+          <span v-if="isSolving">⏳ {{ isJa ? "計算中..." : isZh ? "计算中..." : "Solving..." }}</span>
+          <span v-else>▶ {{ isJa ? "最適化を実行" : isZh ? "运行优化" : "Run Optimization" }}</span>
           <span v-if="isDirty && !isSolving" class="dirty-dot"></span>
         </button>
       </div>
@@ -244,8 +252,8 @@ onMounted(() => {
       <!-- Left: Cart Items & Filler Toggle -->
       <div class="washi-cart-col">
         <div class="col-section-label" style="display: flex; justify-content: space-between;">
-          <span>{{ isJa ? "1. カートに入れる商品を選択" : "1. Select Cart Items" }}</span>
-          <span>{{ isJa ? `選択中: $${liveSelectedTotal}` : `Selected: $${liveSelectedTotal}` }}</span>
+          <span>{{ isJa ? "1. カートに入れる商品を選択" : isZh ? "1. 选择购物车商品" : "1. Select Cart Items" }}</span>
+          <span>{{ isJa ? `選択中: $${liveSelectedTotal}` : isZh ? `已选: $${liveSelectedTotal}` : `Selected: $${liveSelectedTotal}` }}</span>
         </div>
         <div class="cart-items-list">
           <div
@@ -260,7 +268,7 @@ onMounted(() => {
               :checked="selectedItems.has(item.id)"
               @click.stop="toggleCartItem(item.id)"
             />
-            <span class="item-title">{{ isJa ? item.nameJa : item.nameEn }}</span>
+            <span class="item-title">{{ isJa ? item.nameJa : isZh ? item.nameZh : item.nameEn }}</span>
             <span class="item-price">${{ item.price }}</span>
           </div>
         </div>
@@ -272,6 +280,8 @@ onMounted(() => {
               {{
                 isJa
                   ? "「あと少し買い（Fillerアイテム）」の同時最適化を有効化"
+                  : isZh
+                  ? "启用智能凑单商品（Filler）联合优化"
                   : "Enable Smart Filler Add-on Optimization"
               }}
             </span>
@@ -280,6 +290,8 @@ onMounted(() => {
             {{
               isJa
                 ? "候補: USB-Cケーブル (+$10) / クリーナー (+$15) / キーキャッププラー (+$25)"
+                : isZh
+                ? "候选凑单品: USB-C 编织线 (+$10) / 屏幕清洁套装 (+$15) / 金属拔键器 (+$25)"
                 : "Candidates: USB-C Cable (+$10), Cleaning Kit (+$15), Keycap Puller (+$25)"
             }}
           </div>
@@ -289,23 +301,26 @@ onMounted(() => {
       <!-- Right: Live Checkout Receipt -->
       <div class="washi-receipt-col" :class="{ 'is-stale': isDirty }">
         <div class="col-section-label" style="display: flex; justify-content: space-between;">
-          <span>{{ isJa ? "2. 最適化された決済内訳 (最大2枚適用)" : "2. Optimized Checkout Receipt (Max 2 Coupons)" }}</span>
+          <span>{{ isJa ? "2. 最適化された決済内訳 (最大2枚適用)" : isZh ? "2. 优化结算明细 (最多叠加 2 张)" : "2. Optimized Checkout Receipt (Max 2 Coupons)" }}</span>
           <span class="solve-meta">HiGHS · {{ solveTimeMs.toFixed(1) }} ms</span>
         </div>
 
         <div v-if="isDirty" class="dirty-banner">
-          {{ isJa ? "商品の選択が変更されました。右上の「▶ 最適化を実行」を押して再計算してください。" : "Cart changed. Click '▶ Run Optimization' above to recompute." }}
+          {{ isJa ? "商品の選択が変更されました。右上の「▶ 最適化を実行」を押して再計算してください。" : isZh ? "商品选择已更改，请点击右上角“▶ 运行优化”重新计算。" : "Cart changed. Click '▶ Run Optimization' above to recompute." }}
         </div>
 
         <!-- Smart Filler Callout -->
         <div v-if="chosenFiller" class="smart-filler-banner">
           <div style="font-weight: 700; font-size: 0.84rem; margin-bottom: 2px;">
-            💡 {{ isJa ? "あと少し買い提案: 小物を1点足した方が支払額が下がります！" : "Smart Tip: Adding a filler item lowers your net bill!" }}
+            💡 {{ isJa ? "あと少し買い提案: 小物を1点足した方が支払額が下がります！" : isZh ? "智能凑单建议：加购 1 件凑单小件反而能降低实付金额！" : "Smart Tip: Adding a filler item lowers your net bill!" }}
           </div>
           <div style="font-size: 0.78rem;">
             <template v-if="isJa">
               <strong>{{ chosenFiller.nameJa }} (+${{ chosenFiller.price }})</strong> を追加すると上位クーポンが解放され、そのまま買う（${{ netPayableWithoutFiller }}）より
               <strong>${{ netPayableWithoutFiller - cashToPay }} お得</strong> になります。
+            </template>
+            <template v-else-if="isZh">
+              加购 <strong>{{ chosenFiller.nameZh }} (+${{ chosenFiller.price }})</strong> 可解锁更高档位满减券，比直接结算（${{ netPayableWithoutFiller }}）<strong>立省 ${{ netPayableWithoutFiller - cashToPay }}</strong>。
             </template>
             <template v-else>
               Adding <strong>{{ chosenFiller.nameEn }} (+${{ chosenFiller.price }})</strong> unlocks a higher tier discount, saving
@@ -324,7 +339,7 @@ onMounted(() => {
           >
             <div>
               <code class="cpn-code">{{ c.id }}</code>
-              <span class="cpn-desc">{{ isJa ? c.labelJa : c.labelEn }}</span>
+              <span class="cpn-desc">{{ isJa ? c.labelJa : isZh ? c.labelZh : c.labelEn }}</span>
             </div>
             <span class="cpn-status">
               {{
@@ -332,6 +347,8 @@ onMounted(() => {
                   ? `-$${c.discount}`
                   : isJa
                   ? "未適用"
+                  : isZh
+                  ? "未使用"
                   : "Skipped"
               }}
             </span>
@@ -341,19 +358,19 @@ onMounted(() => {
         <!-- Totals -->
         <div class="receipt-totals">
           <div class="receipt-line">
-            <span>{{ isJa ? "選択商品の小計" : "Selected Items Subtotal" }}</span>
+            <span>{{ isJa ? "選択商品の小計" : isZh ? "已选商品小计" : "Selected Items Subtotal" }}</span>
             <span class="mono">${{ solvedBaseTotal }}</span>
           </div>
           <div v-if="chosenFiller" class="receipt-line filler-line">
-            <span>+ {{ isJa ? chosenFiller.nameJa : chosenFiller.nameEn }} (Filler)</span>
+            <span>+ {{ isJa ? chosenFiller.nameJa : isZh ? chosenFiller.nameZh : chosenFiller.nameEn }} (Filler)</span>
             <span class="mono">+${{ chosenFiller.price }}</span>
           </div>
           <div class="receipt-line discount-line">
-            <span>{{ isJa ? "クーポン割引合計" : "Total Coupon Discounts" }}</span>
+            <span>{{ isJa ? "クーポン割引合計" : isZh ? "优惠券抵扣合计" : "Total Coupon Discounts" }}</span>
             <span class="mono">-${{ totalDiscount }}</span>
           </div>
           <div class="receipt-line grand-total">
-            <span>{{ isJa ? "最終お支払い額 (Cash Payable)" : "Final Cash Payable" }}</span>
+            <span>{{ isJa ? "最終お支払い額 (Cash Payable)" : isZh ? "最终实付金额 (Cash Payable)" : "Final Cash Payable" }}</span>
             <span class="grand-num">${{ cashToPay }}</span>
           </div>
         </div>
@@ -362,7 +379,7 @@ onMounted(() => {
 
     <div class="washi-app-footer">
       <a href="/washi/demo/?preset=cart_coupon" class="playground-link">
-        {{ isJa ? "Playground でコードを編集する →" : "Edit Code in Playground →" }}
+        {{ isJa ? "Playground でコードを編集する →" : isZh ? "在 Playground 中编辑代码 →" : "Edit Code in Playground →" }}
       </a>
     </div>
   </div>

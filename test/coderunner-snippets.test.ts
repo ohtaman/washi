@@ -47,8 +47,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   }
 
-  it("extracts all documentation code snippets (18 expected across EN and JA)", () => {
-    expect(snippets.length).toBe(18);
+  it("extracts all documentation code snippets (27 expected across EN, JA, and ZH)", () => {
+    expect(snippets.length).toBe(27);
   });
 
   for (const snippet of snippets) {
@@ -101,12 +101,32 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   });
 
+  it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+    const enPages = mdFiles
+      .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
+      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/") && rel !== "getting-started/ai-agents.md")
+      .sort();
+    const jaPages = mdFiles
+      .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
+      .filter((rel) => rel.startsWith("ja/"))
+      .map((rel) => rel.slice(3))
+      .sort();
+    const zhPages = mdFiles
+      .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
+      .filter((rel) => rel.startsWith("zh/"))
+      .map((rel) => rel.slice(3))
+      .sort();
+
+    expect(jaPages).toEqual(enPages);
+    expect(zhPages).toEqual(enPages);
+  });
+
   it("executes VitePress interactive demo components (PortfolioQpDemo, EcommerceCouponDemo, ShiftSchedulingDemo) at runtime", async () => {
     const componentsDir = path.resolve(process.cwd(), "docs/.vitepress/theme/components");
     const demoSpecs = [
-      { file: "PortfolioQpDemo.vue", fn: "solvePortfolio", check: "varianceVal.value > 0" },
-      { file: "EcommerceCouponDemo.vue", fn: "solveCart", check: "netPayableWithFiller.value > 0" },
-      { file: "ShiftSchedulingDemo.vue", fn: "solveRoster", check: "status.value === 'Optimal'" },
+      { file: "PortfolioQpDemo.vue", fn: "solvePortfolio", check: "varianceVal.value > 0 && isZh.value === true && isJa.value === false" },
+      { file: "EcommerceCouponDemo.vue", fn: "solveCart", check: "netPayableWithFiller.value > 0 && isZh.value === true && isJa.value === false" },
+      { file: "ShiftSchedulingDemo.vue", fn: "solveRoster", check: "status.value === 'Optimal' && isZh.value === true && isJa.value === false" },
     ];
 
     for (const spec of demoSpecs) {
@@ -137,7 +157,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
           },
         }),
         () => {},
-        () => ({ lang: { value: "en" } }),
+        () => ({ lang: { value: "zh-CN" } }),
         async () => Washi,
         {}
       );
