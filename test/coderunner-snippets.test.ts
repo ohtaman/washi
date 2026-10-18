@@ -110,6 +110,16 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content, `Stale @0.4.0 CDN URL in ${docFile}`).not.toContain("@0.4.0");
       expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
 
+      if (docFile.endsWith("highs.md")) {
+        expect(content, `Stale verbose: true in ${docFile}`).not.toContain("verbose: true");
+        expect(content, `Missing outputFlag: true in ${docFile}`).toContain("outputFlag: true");
+      }
+      if (docFile.endsWith("custom-solver.md")) {
+        expect(content, `Unmapped status in ${docFile}`).not.toContain('payload.status === "OPTIMAL"');
+        expect(content, `Missing statusMap in ${docFile}`).toContain("statusMap");
+        expect(content, `Missing AbortError handling in ${docFile}`).toContain("AbortError");
+      }
+
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
       let blockMatch;
       let blockIdx = 0;
@@ -217,6 +227,85 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     const revStatus = await mRev.solve();
     expect(revStatus).toBe("Optimal");
     expect(mRev.objectiveValue).toBe(2240);
+
+    // 7. CloudSolver pattern AbortError and status normalization (docs/solvers/custom-solver.md)
+    const { generateLpString } = Washi;
+    class TestCloudSolver {
+      public readonly name = "TestCloud";
+      public readonly version = "1.0.0";
+      public readonly capabilities = { supportsMIP: true, supportsQP: false };
+      private mockHandler: (body: any, signal?: AbortSignal) => Promise<any>;
+      constructor(mockHandler: (body: any, signal?: AbortSignal) => Promise<any>) {
+        this.mockHandler = mockHandler;
+      }
+      async solve(modelData: any, options: any = {}) {
+        const startTime = performance.now();
+        const { lpString, nameToVar } = generateLpString(modelData);
+        let payload: any;
+        try {
+          payload = await this.mockHandler({ lp: lpString }, options.signal);
+        } catch (err: any) {
+          if (options.signal?.aborted || err?.name === "AbortError") {
+            return {
+              status: "Unknown" as const,
+              terminationStatus: "Interrupted" as const,
+              objectiveValue: null,
+              values: {},
+              runTime: (performance.now() - startTime) / 1000,
+            };
+          }
+          throw err;
+        }
+        const values: Record<string, number> = Object.create(null);
+        for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
+          values[nameToVar.get(k)?.name ?? k] = val;
+        }
+        const statusMap: Record<string, any> = {
+          OPTIMAL: "Optimal",
+          FEASIBLE: "Feasible",
+          INFEASIBLE: "Infeasible",
+          UNBOUNDED: "Unbounded",
+          TIME_LIMIT: "TimeLimit",
+          TIMELIMIT: "TimeLimit",
+          ITERATION_LIMIT: "IterationLimit",
+        };
+        const status = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+        return {
+          status,
+          objectiveValue: payload.objectiveValue ?? null,
+          values,
+          runTime: (performance.now() - startTime) / 1000,
+        };
+      }
+    }
+
+    const infeasCloud = new TestCloudSolver(async () => ({
+      status: "INFEASIBLE",
+      objectiveValue: null,
+      values: {},
+    }));
+    const mCloud1 = new Model({ solver: infeasCloud as any });
+    const c1 = mCloud1.integer("x");
+    mCloud1.constraint(expr`${c1} >= 10`);
+    const s1 = await mCloud1.solve();
+    expect(s1).toBe("Infeasible");
+
+    const abortCloud = new TestCloudSolver(async (_body, signal) => {
+      if (signal?.aborted) {
+        const err = new Error("The operation was aborted");
+        err.name = "AbortError";
+        throw err;
+      }
+      return { status: "OPTIMAL", objectiveValue: 10, values: { x: 10 } };
+    });
+    const mCloud2 = new Model({ solver: abortCloud as any });
+    const c2 = mCloud2.integer("x");
+    mCloud2.constraint(expr`${c2} >= 10`);
+    const abortCtrl = new AbortController();
+    abortCtrl.abort();
+    const res2 = await mCloud2.solve({ signal: abortCtrl.signal });
+    expect(res2).toBe("Unknown");
+    expect(mCloud2.status).toBe("Unknown");
   });
 
   it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {

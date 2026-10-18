@@ -64,7 +64,7 @@ await model.solve({
   mipGap: 0.001,         // 当相对 MIP 间隙达到 0.1% 以内时终止（别名：relGap）
   absGap: 1.0,           // 绝对 MIP 最优间隙容差
   presolve: "on",        // 预处理控制（"on" | "off" | "choose"）
-  verbose: true,         // 输出内部单纯形法 / 分支定界法日志
+  outputFlag: true,      // 输出内部单纯形法 / 分支定界法日志 (output_flag)
   signal: controller.signal,
   onProgress: (ev) => {
     console.log(`已用时: ${ev.elapsedTime.toFixed(1)}s, 当前最优值: ${ev.objectiveValue}`);

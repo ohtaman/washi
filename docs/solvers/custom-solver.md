@@ -274,6 +274,7 @@ import {
   type Solver,
   type SolverOptions,
   type SolverResult,
+  type SolverStatus,
   type SolveModelData,
 } from "@ohtaman/washi";
 
@@ -305,25 +306,40 @@ export class CloudSolver implements Solver {
     const startTime = performance.now();
     const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
 
-    const response = await fetch(this.endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
-      },
-      body: JSON.stringify({
-        lp: lpString,
-        timeLimit: options.timeLimit,
-        mipGap: options.mipGap,
-      }),
-      signal: options.signal,
-    });
+    let payload: any;
+    try {
+      const response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          lp: lpString,
+          timeLimit: options.timeLimit,
+          mipGap: options.mipGap,
+        }),
+        signal: options.signal,
+      });
 
-    if (!response.ok) {
-      throw new Error(`[CloudSolver] Server returned HTTP ${response.status}: ${await response.text()}`);
+      if (!response.ok) {
+        throw new Error(`[CloudSolver] Server returned HTTP ${response.status}: ${await response.text()}`);
+      }
+
+      payload = await response.json();
+    } catch (err: any) {
+      if (options.signal?.aborted || err?.name === "AbortError") {
+        return {
+          status: "Unknown",
+          terminationStatus: "Interrupted",
+          objectiveValue: null,
+          values: {},
+          runTime: (performance.now() - startTime) / 1000,
+        };
+      }
+      throw err;
     }
 
-    const payload = await response.json();
     const runTime = (performance.now() - startTime) / 1000;
 
     const values: Record<string, number> = Object.create(null);
@@ -339,8 +355,23 @@ export class CloudSolver implements Solver {
       slacks[nameToConstraint.get(k)?.name ?? k] = val;
     }
 
+    const statusMap: Record<string, SolverStatus> = {
+      OPTIMAL: "Optimal",
+      FEASIBLE: "Feasible",
+      INFEASIBLE: "Infeasible",
+      UNBOUNDED: "Unbounded",
+      TIME_LIMIT: "TimeLimit",
+      TIMELIMIT: "TimeLimit",
+      ITERATION_LIMIT: "IterationLimit",
+      ERROR: "Error",
+      NOT_SOLVED: "NotSolved",
+      SAT: "Sat",
+      UNSAT: "Unsat",
+    };
+    const status: SolverStatus = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+
     return {
-      status: payload.status === "OPTIMAL" ? "Optimal" : payload.status,
+      status,
       objectiveValue: payload.objectiveValue ?? null,
       values,
       duals,
