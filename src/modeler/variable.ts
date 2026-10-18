@@ -12,7 +12,11 @@ export interface VarOptions {
   type?: VarType;
   lb?: number;
   ub?: number;
-  /** Optional primal initial value (MIP start / warm-start hint), distinct from solved Var.value */
+  /**
+   * Optional finite primal initial value (MIP start / warm-start hint), distinct from solved `Var.value`.
+   * Validated within tolerance `1e-6` against `[lb, ub]` and integer/binary domains.
+   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   */
   initialValue?: number;
 }
 
@@ -30,7 +34,17 @@ function normalizeVarType(type?: VarType): "Continuous" | "Integer" | "Binary" {
 }
 
 /**
- * Represents a decision variable in an optimization problem.
+ * Represents a numeric decision variable (`"Continuous"`, `"Integer"`, or `"Binary"`) in an optimization model.
+ * Typically created and registered via `m.continuous(...)`, `m.integer(...)`, or `m.binary(...)`.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("VarExample");
+ * const x = m.continuous("x", { lb: 0, ub: 100 });
+ * const y = m.integer("y", { lb: 0, ub: 10, initialValue: 5 });
+ * m.objective(maximize(x.mul(2).add(y.mul(5))));
+ * m.constraint(x.add(y).le(50));
+ * ```
  */
 export class Var {
   public readonly id: number;
@@ -115,7 +129,10 @@ export class Var {
     }
   }
 
-  /** Optional primal initial value (MIP start / warm-start hint), distinct from solved Var.value */
+  /**
+   * Optional finite primal initial value (MIP start / warm-start hint), distinct from solved `Var.value`.
+   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   */
   get initialValue(): number | undefined {
     return this._initialValue;
   }
