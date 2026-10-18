@@ -112,3 +112,5 @@ console.log(`Solution: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 - Learn how to run WaSHI across different environments in [Runtime Environments](./runtimes.md).
 - Understand how to formulate complex expressions in the [Modeling Guide](../guide/expressions.md).
 - Explore built-in and pluggable solvers in the [Solvers Matrix](../solvers/).
+- Browse 9 runnable optimization and SMT recipes in [Examples & API Finder](../examples/).
+

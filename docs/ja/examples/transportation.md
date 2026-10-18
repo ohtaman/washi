@@ -19,6 +19,17 @@
 | **Osaka** | $9 | $7 | $2 | $3 | **80** 個 |
 | **店舗の需要量** | **70** 個 | **90** 個 | **60** 個 | **60** 個 | 合計: 280 / 300 |
 
+## 数理モデルの定式化
+
+工場 $f \in F$ から店舗 $s \in S$ への輸送量を $x_{f, s} \ge 0$、単位輸送コストを $c_{f, s}$ とします。
+
+$$\begin{aligned}
+\text{Minimize} \quad & \sum_{f \in F} \sum_{s \in S} c_{f,s} \, x_{f,s} \\
+\text{Subject to} \quad & \sum_{s \in S} x_{f,s} \le \text{Supply}_f \quad \forall f \in F \quad (\text{工場の供給能力上限}) \\
+& \sum_{f \in F} x_{f,s} \ge \text{Demand}_s \quad \forall s \in S \quad (\text{店舗の需要充足}) \\
+& x_{f,s} \ge 0 \quad \forall f \in F, s \in S
+\end{aligned}$$
+
 ## WaSHI による実装
 
 <CodeRunner preset="transportation">

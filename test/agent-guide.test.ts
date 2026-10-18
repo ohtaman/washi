@@ -14,37 +14,68 @@ import {
   stripVitePressSyntax,
 } from "../scripts/generate-llms.mjs";
 
-describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.md)", () => {
+describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", () => {
+  const guidePaths = [
+    "docs/getting-started/ai-agents.md",
+    "docs/ja/getting-started/ai-agents.md",
+    "docs/zh/getting-started/ai-agents.md",
+  ];
   const guidePath = path.resolve(process.cwd(), "docs/getting-started/ai-agents.md");
   const guideContent = fs.readFileSync(guidePath, "utf-8");
 
-  const codeBlocks: string[] = [];
-  const blockRegex = /```(?:ts|typescript)\n([\s\S]*?)```/g;
-  let match: RegExpExecArray | null;
-  while ((match = blockRegex.exec(guideContent)) !== null) {
-    codeBlocks.push(match[1]);
+  function extractTsBlocks(markdown: string): string[] {
+    const blocks: string[] = [];
+    const blockRegex = /```(?:ts|typescript)\n([\s\S]*?)```/g;
+    let match: RegExpExecArray | null;
+    while ((match = blockRegex.exec(markdown)) !== null) {
+      blocks.push(match[1]);
+    }
+    return blocks;
   }
 
-  it("is linked from READMEs, AGENTS.md, and docs/getting-started/index.md, and shipped in package.json files", () => {
+  const codeBlocks = extractTsBlocks(guideContent);
+
+  it("is linked with localized routes from READMEs, AGENTS.md, getting-started/index.md, and VitePress config, and shipped in package.json files", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
     );
-    expect(pkg.files).toContain("docs/getting-started/ai-agents.md");
-
-    for (const file of [
-      "README.md",
-      "README.ja.md",
-      "README.zh-CN.md",
-      "AGENTS.md",
-      "docs/getting-started/index.md",
-      "docs/.vitepress/config.mts",
-    ]) {
-      const text = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
-      expect(text).toContain("ai-agents");
+    for (const relPath of guidePaths) {
+      expect(pkg.files).toContain(relPath);
     }
+
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "README.md"), "utf-8")
+    ).toContain("docs/getting-started/ai-agents.md");
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "README.ja.md"), "utf-8")
+    ).toContain("docs/ja/getting-started/ai-agents.md");
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "README.zh-CN.md"), "utf-8")
+    ).toContain("docs/zh/getting-started/ai-agents.md");
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "AGENTS.md"), "utf-8")
+    ).toContain("docs/getting-started/ai-agents.md");
+
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "docs/getting-started/index.md"), "utf-8")
+    ).toContain("./ai-agents.md");
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "docs/ja/getting-started/index.md"), "utf-8")
+    ).toContain("./ai-agents.md");
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "docs/zh/getting-started/index.md"), "utf-8")
+    ).toContain("/zh/getting-started/ai-agents");
+
+    const vpConfig = fs.readFileSync(
+      path.resolve(process.cwd(), "docs/.vitepress/config.mts"),
+      "utf-8"
+    );
+    expect(vpConfig).toContain('link: "/getting-started/ai-agents"');
+    expect(vpConfig).toContain('link: "/ja/getting-started/ai-agents"');
+    expect(vpConfig).toContain('link: "/zh/getting-started/ai-agents"');
   });
 
-  it("type-checks all extracted guide code blocks and verifies package export subpaths and symbols", () => {
+  it("type-checks all extracted guide code blocks across EN, JA, and ZH and verifies package export subpaths and symbols", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
     );
@@ -54,75 +85,80 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
       )
     );
 
-    expect(codeBlocks.length).toBe(7);
-
-    const importBlock = codeBlocks[0];
-    const namedImportsMatch = importBlock.match(/import\s*\{([\s\S]*?)\}\s*from\s*"@ohtaman\/washi"/);
-    expect(namedImportsMatch).not.toBeNull();
-    const importedNames = namedImportsMatch![1]
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    expect(importedNames.length).toBeGreaterThan(0);
-    for (const sym of importedNames) {
-      expect(
-        sym in Washi,
-        `Expected symbol '${sym}' documented in ai-agents.md to be exported from @ohtaman/washi`
-      ).toBe(true);
-    }
-
-    for (const block of codeBlocks) {
-      const specifierRegex = /from\s+["'](@ohtaman\/washi[^"']*)["']|import\s+["'](@ohtaman\/washi[^"']*)["']/g;
-      let specMatch: RegExpExecArray | null;
-      while ((specMatch = specifierRegex.exec(block)) !== null) {
-        const spec = specMatch[1] ?? specMatch[2];
-        expect(exportSubpaths.has(spec)).toBe(true);
-      }
-    }
-
-    // Type-check all guide snippets against src/ using tsc
     const rewriteImports = (src: string) =>
       src
         .replaceAll('"@ohtaman/washi/solvers/z3"', '"../src/modeler/solvers/z3/index.js"')
         .replaceAll('"@ohtaman/washi/solvers/glpk"', '"../src/modeler/solvers/glpk/index.js"')
         .replaceAll('"@ohtaman/washi"', '"../src/index.js"');
 
-    const tmpBase = `.tmp-agent-guide-${process.pid}`;
-    const tmpTsPath = path.resolve(process.cwd(), `test/${tmpBase}.ts`);
-    const tmpTsconfigPath = path.resolve(process.cwd(), `test/${tmpBase}-tsconfig.json`);
-    const combinedSource = [
-      rewriteImports(codeBlocks[0]),
-      `export function __step1And3() {\n${codeBlocks[1]}\n${codeBlocks[2]}\n}`,
-      ...codeBlocks.slice(3).map((b) => rewriteImports(b).replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")),
-    ].join("\n\n");
+    for (const relPath of guidePaths) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const blocks = extractTsBlocks(content);
+      expect(blocks.length, `Expected 7 TS blocks in ${relPath}`).toBe(7);
 
-    try {
-      fs.writeFileSync(tmpTsPath, combinedSource, "utf-8");
-      fs.writeFileSync(
-        tmpTsconfigPath,
-        JSON.stringify({
-          extends: "../tsconfig.lib.json",
-          compilerOptions: {
-            rootDir: "..",
-            emitDeclarationOnly: false,
-            noEmit: true,
-          },
-          include: [`${tmpBase}.ts`, "../src/index.ts", "../src/modeler/**/*"],
-        }),
-        "utf-8"
-      );
-      const tscBin = path.resolve(process.cwd(), "node_modules/.bin/tsc");
-      try {
-        execFileSync(tscBin, ["-p", tmpTsconfigPath, "--noEmit"], {
-          cwd: process.cwd(),
-          encoding: "utf-8",
-        });
-      } catch (err: any) {
-        throw new Error(`tsc typecheck failed:\n${err.stdout || err.stderr || err.message}`);
+      const importBlock = blocks[0];
+      const namedImportsMatch = importBlock.match(/import\s*\{([\s\S]*?)\}\s*from\s*"@ohtaman\/washi"/);
+      expect(namedImportsMatch).not.toBeNull();
+      const importedNames = namedImportsMatch![1]
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      expect(importedNames.length).toBeGreaterThan(0);
+      for (const sym of importedNames) {
+        expect(
+          sym in Washi,
+          `Expected symbol '${sym}' documented in ${relPath} to be exported from @ohtaman/washi`
+        ).toBe(true);
       }
-    } finally {
-      fs.rmSync(tmpTsPath, { force: true });
-      fs.rmSync(tmpTsconfigPath, { force: true });
+
+      for (const block of blocks) {
+        const specifierRegex = /from\s+["'](@ohtaman\/washi[^"']*)["']|import\s+["'](@ohtaman\/washi[^"']*)["']/g;
+        let specMatch: RegExpExecArray | null;
+        while ((specMatch = specifierRegex.exec(block)) !== null) {
+          const spec = specMatch[1] ?? specMatch[2];
+          expect(exportSubpaths.has(spec)).toBe(true);
+        }
+      }
+
+      // Type-check all guide snippets against src/ using tsc
+      const slug = relPath.replace(/[^a-zA-Z0-9]/g, "-");
+      const tmpBase = `.tmp-agent-guide-${slug}-${process.pid}`;
+      const tmpTsPath = path.resolve(process.cwd(), `test/${tmpBase}.ts`);
+      const tmpTsconfigPath = path.resolve(process.cwd(), `test/${tmpBase}-tsconfig.json`);
+      const combinedSource = [
+        rewriteImports(blocks[0]),
+        `export function __step1And3() {\n${blocks[1]}\n${blocks[2]}\n}`,
+        ...blocks.slice(3).map((b) => rewriteImports(b).replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")),
+      ].join("\n\n");
+
+      try {
+        fs.writeFileSync(tmpTsPath, combinedSource, "utf-8");
+        fs.writeFileSync(
+          tmpTsconfigPath,
+          JSON.stringify({
+            extends: "../tsconfig.lib.json",
+            compilerOptions: {
+              rootDir: "..",
+              emitDeclarationOnly: false,
+              noEmit: true,
+            },
+            include: [`${tmpBase}.ts`, "../src/index.ts", "../src/modeler/**/*"],
+          }),
+          "utf-8"
+        );
+        const tscBin = path.resolve(process.cwd(), "node_modules/.bin/tsc");
+        try {
+          execFileSync(tscBin, ["-p", tmpTsconfigPath, "--noEmit"], {
+            cwd: process.cwd(),
+            encoding: "utf-8",
+          });
+        } catch (err: any) {
+          throw new Error(`tsc typecheck failed for ${relPath}:\n${err.stdout || err.stderr || err.message}`);
+        }
+      } finally {
+        fs.rmSync(tmpTsPath, { force: true });
+        fs.rmSync(tmpTsconfigPath, { force: true });
+      }
     }
   });
 
@@ -259,51 +295,54 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
     expect(linearCheckRes.unsatCore).toBeUndefined();
   });
 
-  it("does not advertise nonexistent APIs or types in guide prose or comments", () => {
-    expect(guideContent).not.toContain("subjectTo");
-    expect(guideContent).not.toContain("m.getValue(");
-    expect(guideContent).not.toContain(".iff(");
-    expect(guideContent).not.toContain("ModelStatus");
-    expect(guideContent).not.toContain("TypedArray");
-    expect(guideContent).not.toMatch(/\bm\.(maximize|minimize)\s*=/);
-    expect(guideContent).not.toMatch(/`dot\(a,\s*b\)`[^\n]*`Iterable`/);
-    expect(guideContent).toContain("SolverStatus");
-    expect(guideContent).toContain("isSecureContext");
-    expect(guideContent).toContain("Access-Control-Allow-Origin");
-    expect(guideContent).toContain("conflicts?:");
-    expect(guideContent).toContain("unsatCore?:");
-
-    const solverStatusLine = guideContent
-      .split("\n")
-      .find((line) => line.includes("Returns `SolverStatus`"));
-    expect(solverStatusLine).toBeDefined();
-    for (const status of [
-      "Optimal",
-      "Feasible",
-      "Infeasible",
-      "Unbounded",
-      "TimeLimit",
-      "IterationLimit",
-      "Error",
-      "Unknown",
-      "NotSolved",
-      "Sat",
-      "Unsat",
-    ]) {
-      expect(solverStatusLine).toContain(`"${status}"`);
-    }
-
-    // Every `m.<member>` referenced in the positive guide sections must exist on a Model instance
-    const positiveGuide = guideContent.split("## 4. Negative Examples")[0];
+  it("does not advertise nonexistent APIs or types in guide prose or comments across EN, JA, and ZH", () => {
     const sampleModel = new Washi.Model("MemberCheck");
-    const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
-    let memberMatch: RegExpExecArray | null;
-    while ((memberMatch = memberRegex.exec(positiveGuide)) !== null) {
-      const member = memberMatch[1];
-      expect(
-        member in sampleModel,
-        `Expected 'm.${member}' referenced in positive guide sections to exist on Model`
-      ).toBe(true);
+    for (const relPath of guidePaths) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      expect(content).not.toContain("subjectTo");
+      expect(content).not.toContain("m.getValue(");
+      expect(content).not.toContain(".iff(");
+      expect(content).not.toContain("ModelStatus");
+      expect(content).not.toContain("TypedArray");
+      expect(content).not.toMatch(/\bm\.(maximize|minimize)\s*=/);
+      expect(content).not.toMatch(/`dot\(a,\s*b\)`[^\n]*`Iterable`/);
+      expect(content).toContain("SolverStatus");
+      expect(content).toContain("isSecureContext");
+      expect(content).toContain("Access-Control-Allow-Origin");
+      expect(content).toContain("conflicts?:");
+      expect(content).toContain("unsatCore?:");
+
+      const solverStatusLine = content
+        .split("\n")
+        .find((line) => line.includes("`SolverStatus`") && line.includes('"Optimal"'));
+      expect(solverStatusLine, `Missing SolverStatus line in ${relPath}`).toBeDefined();
+      for (const status of [
+        "Optimal",
+        "Feasible",
+        "Infeasible",
+        "Unbounded",
+        "TimeLimit",
+        "IterationLimit",
+        "Error",
+        "Unknown",
+        "NotSolved",
+        "Sat",
+        "Unsat",
+      ]) {
+        expect(solverStatusLine).toContain(`"${status}"`);
+      }
+
+      // Every `m.<member>` referenced in the positive guide sections must exist on a Model instance
+      const positiveGuide = content.split(/^## 4\./m)[0];
+      const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
+      let memberMatch: RegExpExecArray | null;
+      while ((memberMatch = memberRegex.exec(positiveGuide)) !== null) {
+        const member = memberMatch[1];
+        expect(
+          member in sampleModel,
+          `Expected 'm.${member}' referenced in positive guide sections of ${relPath} to exist on Model`
+        ).toBe(true);
+      }
     }
   });
 });

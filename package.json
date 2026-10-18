@@ -49,6 +49,8 @@
     "dist/browser",
     "dist/types",
     "docs/getting-started/ai-agents.md",
+    "docs/ja/getting-started/ai-agents.md",
+    "docs/zh/getting-started/ai-agents.md",
     "docs/getting-started",
     "docs/guide",
     "docs/solvers",

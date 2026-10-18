@@ -81,3 +81,10 @@ runDietSensitivity();
 ```
 
 </CodeRunner>
+
+## Interpretation of Results
+
+- **Bottleneck constraints (`slack == 0`, `dual > 0`):** Calories (`2000 kcal`) and Iron (`18 mg`) are tight at their lower bounds. Increasing the daily Iron requirement by 1 mg increases the minimum daily diet cost by **$0.3241**.
+- **Constraints with surplus (`slack > 0`, `dual == 0`):** Protein (`+46.46 g` surplus) and Calcium (`+483.02 mg` surplus) are already exceeded with room to spare, so their shadow prices are `$0`.
+- **Reduced cost (`Salmon`):** Unselected `Salmon` (`0.00` servings) has a reduced cost of `+1.5125`, meaning its price per serving would need to drop by at least **$1.51** before it enters the optimal daily menu.
+

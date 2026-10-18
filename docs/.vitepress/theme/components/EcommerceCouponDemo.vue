@@ -220,7 +220,15 @@ onMounted(() => {
     <div class="washi-app-header">
       <div class="washi-header-top">
         <div>
-          <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · HiGHS Indicator Constraints</span>
+          <span class="washi-app-eyebrow">
+            {{
+              isJa
+                ? "インタラクティブ実例 · HiGHS 条件付き制約 (Indicator)"
+                : isZh
+                ? "交互式示例 · HiGHS 条件指示约束 (Indicator)"
+                : "INTERACTIVE EXAMPLE · HiGHS Indicator Constraints"
+            }}
+          </span>
           <h4 class="washi-app-title">
             {{ isJa ? "ECカート・クーポン＆「あと少し買い」最適化" : isZh ? "电商购物车优惠券与智能凑单优化" : "E-Commerce Cart & Smart Coupon Optimizer" }}
           </h4>

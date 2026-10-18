@@ -38,8 +38,8 @@ features:
   - icon: 🔍
     title: 矛盾制約の特定 (unsatCore)
     details: 名前付き制約と Z3 アダプターを用いて、実行不可能（Infeasible）なモデルの矛盾する制約の部分集合（unsatCore）を抽出。
-    link: /ja/examples/unsat-core
-    linkText: Unsat Core の実例
+    link: /ja/guide/unsat-core
+    linkText: Unsat Core 診断ガイド
 ---
 
 <div style="max-width: 800px; margin: 40px auto;">
