@@ -28,7 +28,7 @@
 
 HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provides Node.js and browser distributions, including WebAssembly assets. See the [browser integration guide](#-browser--web-worker-usage) for deployment requirements.
 
-[Try the browser demo](https://ohtaman.github.io/washi/demo/) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[Documentation](https://ohtaman.github.io/washi/) · [Try the browser demo](https://ohtaman.github.io/washi/demo/) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -90,6 +90,13 @@ bun add @ohtaman/washi
 ```bash
 npm install z3-solver    # For SMT and unsat core diagnosis
 npm install glpk.js      # For GLPK solver (GPL-3.0)
+```
+
+*(Optional)* For AI coding agents (Claude Code, Antigravity, Cursor, Codex, etc.), `@ohtaman/washi` ships a portable [`skills/washi/SKILL.md`](skills/washi/SKILL.md) workflow alongside the [AI Agent Quick-Reference](docs/getting-started/ai-agents.md):
+
+```bash
+mkdir -p .agents/skills/washi
+cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 ```
 
 ---
@@ -395,6 +402,16 @@ Complete standalone examples for ESM, script tags, and CodePen are available in 
 WaSHI features a decoupled, pluggable solver architecture. You can easily build and register your own custom solver adapter (e.g., for cloud REST optimizers, WebAssembly engines, or proprietary solvers):
 
 - See the complete [Custom Solver Developer Guide](docs/solvers/custom-solver.md) for step-by-step tutorials, complete API contracts (`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`), and testing best practices.
+
+---
+
+## 📚 Documentation
+
+Full documentation is available at **[ohtaman.github.io/washi](https://ohtaman.github.io/washi/)** and in the repository's [`docs/`](docs/) directory:
+
+- **Getting Started**: [Quick Start](docs/getting-started/index.md) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Runtime Environments](docs/getting-started/runtimes.md) · [Cross-Origin Isolation (Z3)](docs/getting-started/cross-origin.md)
+- **Modeling Guide**: [Variables (`Var`, `BoolVar`)](docs/guide/variables.md) · [Expressions (`expr`, `sum`, `dot`)](docs/guide/expressions.md) · [Constraints & Logic (`indicator`, SMT)](docs/guide/constraints.md) · [Objectives & Solving (`solve`, `validateSolution`)](docs/guide/objectives.md) · [Feasibility & Unsat Core (`check`)](docs/guide/unsat-core.md)
+- **Solvers**: [Solver Overview](docs/solvers/index.md) · [HiGHS](docs/solvers/highs.md) · [Z3](docs/solvers/z3.md) · [GLPK](docs/solvers/glpk.md) · [Custom Solvers](docs/solvers/custom-solver.md)
 
 ---
 

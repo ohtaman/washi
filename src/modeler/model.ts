@@ -37,23 +37,41 @@ import {
 export type ConstraintItem = Constraint | BoolExpr | string;
 
 export interface ModelOptions {
+  /** Optional model name (default: `"OptimizationModel"`). */
   name?: string;
+  /** Default optimization direction (`"Minimize"` or `"Maximize"`, default: `"Minimize"`). */
   sense?: OptimizationSense;
+  /** Solver instance or registered solver name (`"highs"`, `"glpk"`, `"z3"`, or custom solver). */
   solver?: Solver | string;
 }
 
 export interface BoundsOptions {
+  /** Explicit name for a scalar variable, or fallback prefix for indexed variable containers. */
   name?: string;
+  /** Name prefix when creating unnamed scalar variables or indexed variable containers (default: `"x"`). */
   prefix?: string;
+  /** Lower bound (default: `0`; `-Infinity` allowed for free lower bound; `+Infinity` and `NaN` rejected). */
   lb?: number;
+  /** Upper bound (default: `Infinity`; `-Infinity` and `NaN` rejected; must satisfy `lb <= ub`). */
   ub?: number;
+  /**
+   * Optional finite primal initial value (MIP start / warm-start hint), distinct from solved `Var.value`.
+   * Validated within tolerance `1e-6` against `[lb, ub]` and integer domain.
+   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   */
   initialValue?: number;
   [Symbol.iterator]?: never;
 }
 
 export interface BinaryOptions {
+  /** Explicit name for a scalar variable, or fallback prefix for indexed variable containers. */
   name?: string;
+  /** Name prefix when creating unnamed scalar variables or indexed variable containers (default: `"x"`). */
   prefix?: string;
+  /**
+   * Optional finite primal initial value (`0` or `1` within tolerance `1e-6`), distinct from solved `Var.value`.
+   * Supported by HiGHS (`supportsWarmStart: true`); throws on solvers without warm-start support (GLPK, Z3).
+   */
   initialValue?: number;
   [Symbol.iterator]?: never;
 }
@@ -86,8 +104,7 @@ import {
 export type { IndicatorOptions };
 
 /**
- * High-level mathematical programming model for LP, MIP, QP, and SMT,
- * running directly with WebAssembly solvers (HiGHS, Z3, GLPK) in browser and Node.js.
+ * Named propositional or SMT constraint registered on a `Model`.
  */
 export interface LogicalConstraint {
   name: string;
@@ -133,6 +150,38 @@ function assertValidCount(count: number, label: string): void {
   }
 }
 
+/**
+ * High-level mathematical programming and SMT model for LP, MIP, convex QP, and SAT/SMT,
+ * running with WebAssembly solvers (HiGHS, GLPK, Z3) in Node.js and browsers.
+ *
+ * **Solver capability notes**:
+ * - `"highs"` (default, built-in): Supports LP, MIP, convex QP objectives (`supportsQP: true`),
+ *   and `initialValue` warm starts (`supportsWarmStart: true`). Also supports `m.check()` on purely
+ *   linear models via a zero-objective feasibility fallback. Throws if `BoolVar`/logical constraints are present.
+ * - `"glpk"` (`import "@ohtaman/washi/solvers/glpk"`): Supports LP and MIP, and `m.check()` on purely
+ *   linear models via LP feasibility fallback. Throws on quadratic objectives, `BoolVar`/logical constraints,
+ *   or `initialValue` warm starts.
+ * - `"z3"` (`import "@ohtaman/washi/solvers/z3"`): Supports SMT satisfiability (`m.check()`), optimization (`m.solve()`),
+ *   `BoolVar`/logical constraints (`and`, `or`, `not`, `implies`, `xor`), and unsatisfiable-core extraction
+ *   (`conflicts` / `unsatCore`). Throws on quadratic objectives or `initialValue` warm starts.
+ *
+ * @example
+ * ```ts
+ * import { Model, expr, sum, dot, maximize } from "@ohtaman/washi";
+ *
+ * const m = new Model("ProductionPlan");
+ * const qty = m.integer(["desk", "chair"] as const, { lb: 0, ub: 100 });
+ * const setup = m.binary("setup", { initialValue: 1 });
+ *
+ * m.objective(maximize(expr`${dot({ desk: 30, chair: 50 }, qty)} - 20 * ${setup}`));
+ * m.constraint(expr`${dot({ desk: 1, chair: 2 }, qty)} <= 40`, "wood_cap");
+ * m.constraint(expr`${sum(Object.values(qty))} <= 30 * ${setup}`, "require_setup");
+ *
+ * const status = await m.solve();
+ * const report = m.validateSolution();
+ * const solvedQty = m.getValues(qty);
+ * ```
+ */
 export class Model {
   public name: string;
   private _sense: OptimizationSense;
@@ -481,16 +530,30 @@ export class Model {
   }
 
   /**
-   * Create 0-1 binary variable(s) (x in {0, 1}).
-   * Supports:
-   * - m.binary("x") -> Var
-   * - m.binary() -> Var
-   * - m.binary(5) -> Var[]
-   * - m.binary(["a", "b"]) -> Record<string, Var>
-   * - m.binary(rowsCount, colsCount) -> Var[][]
-   * - m.binary(rowsCount, colKeys) -> Record<C, Var>[]
-   * - m.binary(rowKeys, colsCount) -> Record<R, Var[]>
-   * - m.binary(rowKeys, colKeys) -> Record<R, Record<C, Var>>
+   * Create 0-1 binary decision variable(s) ($x \in \{0, 1\}$).
+   *
+   * **Scalar & indexed container overloads**:
+   * - `m.binary("x", options?)` or `m.binary(options?)` -> `Var`
+   * - `m.binary(count, options?)` -> `Var[]`
+   * - `m.binary(keys, options?)` -> `Record<K, Var>`
+   * - `m.binary(rowsCount, colsCount, options?)` -> `Var[][]`
+   * - `m.binary(rowsCount, colKeys, options?)` -> `Array<Record<C, Var>>`
+   * - `m.binary(rowKeys, colsCount, options?)` -> `Record<R, Var[]>`
+   * - `m.binary(rowKeys, colKeys, options?)` -> `Record<R, Record<C, Var>>`
+   *
+   * **Warm-start (`initialValue`) semantics**:
+   * - `options.initialValue` supplies an optional finite primal hint (`0` or `1` within tolerance `1e-6`),
+   *   kept distinct from solved `v.value`.
+   * - Supported by HiGHS (`supportsWarmStart: true`); throws on GLPK and Z3.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("BinaryVars");
+   * const b = m.binary("b", { initialValue: 1 }); // Var
+   * const vec = m.binary(4, { prefix: "u" }); // Var[]
+   * const grid = m.binary(2, 3, { prefix: "g" }); // Var[][]
+   * const byShift = m.binary(["day", "night"] as const); // Record<"day" | "night", Var>
+   * ```
    */
   binary(name?: string, options?: BinaryOptions): Var;
   binary(options: BinaryOptions): Var;
@@ -524,16 +587,30 @@ export class Model {
   }
 
   /**
-   * Create integer variable(s) (y in Z).
-   * Supports:
-   * - m.integer("y", { lb: 0, ub: 10 }) -> Var
-   * - m.integer({ lb: 0, ub: 10 }) -> Var
-   * - m.integer(5, { lb: 0 }) -> Var[]
-   * - m.integer(["a", "b"], { lb: 0, ub: 5 }) -> Record<string, Var>
-   * - m.integer(rowsCount, colsCount, options) -> Var[][]
-   * - m.integer(rowsCount, colKeys, options) -> Record<C, Var>[]
-   * - m.integer(rowKeys, colsCount, options) -> Record<R, Var[]>
-   * - m.integer(rowKeys, colKeys, options) -> Record<R, Record<C, Var>>
+   * Create integer decision variable(s) ($y \in \mathbb{Z}$, default bounds `lb: 0`, `ub: Infinity`).
+   *
+   * **Scalar & indexed container overloads**:
+   * - `m.integer("y", options?)` or `m.integer(options)` -> `Var`
+   * - `m.integer(count, options?)` -> `Var[]`
+   * - `m.integer(keys, options?)` -> `Record<K, Var>`
+   * - `m.integer(rowsCount, colsCount, options?)` -> `Var[][]`
+   * - `m.integer(rowsCount, colKeys, options?)` -> `Array<Record<C, Var>>`
+   * - `m.integer(rowKeys, colsCount, options?)` -> `Record<R, Var[]>`
+   * - `m.integer(rowKeys, colKeys, options?)` -> `Record<R, Record<C, Var>>`
+   *
+   * **Warm-start (`initialValue`) semantics**:
+   * - `options.initialValue` supplies an optional finite integer primal hint within tolerance `1e-6` of `[lb, ub]`,
+   *   kept distinct from solved `v.value`.
+   * - Supported by HiGHS (`supportsWarmStart: true`); throws on GLPK and Z3.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("IntegerVars");
+   * const n = m.integer("n", { lb: 0, ub: 10, initialValue: 4 }); // Var
+   * const counts = m.integer(3, { lb: 0, prefix: "k" }); // Var[]
+   * const matrix = m.integer(2, 2, { lb: 0, prefix: "m" }); // Var[][]
+   * const byItem = m.integer(["desk", "chair"] as const, { lb: 0, ub: 50 }); // Record<"desk" | "chair", Var>
+   * ```
    */
   integer(name?: string, options?: BoundsOptions): Var;
   integer(options: BoundsOptions): Var;
@@ -567,16 +644,30 @@ export class Model {
   }
 
   /**
-   * Create continuous (real) variable(s) (z in R).
-   * Supports:
-   * - m.continuous("z", { lb: 0 }) -> Var
-   * - m.continuous({ lb: 0 }) -> Var
-   * - m.continuous(5, { lb: 0 }) -> Var[]
-   * - m.continuous(["a", "b"], { lb: 0 }) -> Record<string, Var>
-   * - m.continuous(rowsCount, colsCount, options) -> Var[][]
-   * - m.continuous(rowsCount, colKeys, options) -> Record<C, Var>[]
-   * - m.continuous(rowKeys, colsCount, options) -> Record<R, Var[]>
-   * - m.continuous(rowKeys, colKeys, options) -> Record<R, Record<C, Var>>
+   * Create continuous (real) decision variable(s) ($z \in \mathbb{R}$, default bounds `lb: 0`, `ub: Infinity`).
+   *
+   * **Scalar & indexed container overloads**:
+   * - `m.continuous("z", options?)` or `m.continuous(options)` -> `Var`
+   * - `m.continuous(count, options?)` -> `Var[]`
+   * - `m.continuous(keys, options?)` -> `Record<K, Var>`
+   * - `m.continuous(rowsCount, colsCount, options?)` -> `Var[][]`
+   * - `m.continuous(rowsCount, colKeys, options?)` -> `Array<Record<C, Var>>`
+   * - `m.continuous(rowKeys, colsCount, options?)` -> `Record<R, Var[]>`
+   * - `m.continuous(rowKeys, colKeys, options?)` -> `Record<R, Record<C, Var>>`
+   *
+   * **Warm-start (`initialValue`) semantics**:
+   * - `options.initialValue` supplies an optional finite primal hint within tolerance `1e-6` of `[lb, ub]`,
+   *   kept distinct from solved `v.value`.
+   * - Supported by HiGHS (`supportsWarmStart: true`); throws on GLPK and Z3.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("ContinuousVars");
+   * const x = m.continuous("x", { lb: 0, ub: 100, initialValue: 25 }); // Var
+   * const vec = m.continuous(4, { lb: 0, prefix: "v" }); // Var[]
+   * const flow = m.continuous(2, 3, { lb: 0, prefix: "f" }); // Var[][]
+   * const alloc = m.continuous(["A", "B"] as const, { lb: 0 }); // Record<"A" | "B", Var>
+   * ```
    */
   continuous(name?: string, options?: BoundsOptions): Var;
   continuous(options: BoundsOptions): Var;
@@ -610,16 +701,34 @@ export class Model {
   }
 
   /**
-   * Create Boolean (propositional logic) variable(s) for SMT / SAT modeling.
-   * Supports:
-   * - m.bool("isNight") -> BoolVar
-   * - m.bool() -> BoolVar
-   * - m.bool(5) -> BoolVar[]
-   * - m.bool(["flagA", "flagB"]) -> Record<string, BoolVar>
-   * - m.bool(rowsCount, colsCount) -> BoolVar[][]
-   * - m.bool(rowsCount, colKeys) -> Record<C, BoolVar>[]
-   * - m.bool(rowKeys, colsCount) -> Record<R, BoolVar[]>
-   * - m.bool(rowKeys, colKeys) -> Record<R, Record<C, BoolVar>>
+   * Create propositional Boolean variable(s) (`BoolVar`: `true` / `false`) for SMT / SAT logical modeling.
+   *
+   * **Scalar & indexed container overloads**:
+   * - `m.bool("flag", options?)` or `m.bool(options?)` -> `BoolVar`
+   * - `m.bool(count, options?)` -> `BoolVar[]`
+   * - `m.bool(keys, options?)` -> `Record<K, BoolVar>`
+   * - `m.bool(rowsCount, colsCount, options?)` -> `BoolVar[][]`
+   * - `m.bool(rowsCount, colKeys, options?)` -> `Array<Record<C, BoolVar>>`
+   * - `m.bool(rowKeys, colsCount, options?)` -> `Record<R, BoolVar[]>`
+   * - `m.bool(rowKeys, colKeys, options?)` -> `Record<R, Record<C, BoolVar>>`
+   *
+   * **Solver capability note**:
+   * - Logical constraints over `BoolVar` (`and`, `or`, `not`, `implies`, `xor`) require an SMT-capable solver
+   *   such as Z3 (`new Model("...", { solver: "z3" })` after `import "@ohtaman/washi/solvers/z3"`).
+   * - LP/MIP solvers (HiGHS, GLPK) throw if logical constraints are present. For 0-1 arithmetic variables
+   *   in LP/MIP (or Big-M `m.indicator()`), use `m.binary()` instead.
+   *
+   * @example
+   * ```ts
+   * import "@ohtaman/washi/solvers/z3";
+   *
+   * const m = new Model("BoolVars", { solver: "z3" });
+   * const vip = m.bool("vip"); // BoolVar
+   * const flags = m.bool(3, { prefix: "f" }); // BoolVar[]
+   * const grid = m.bool(2, 2, { prefix: "g" }); // BoolVar[][]
+   * const byRole = m.bool(["admin", "guest"] as const); // Record<"admin" | "guest", BoolVar>
+   * m.constraint(implies(vip, flags[0]), "vip_flag");
+   * ```
    */
   bool(name?: string, options?: VarNameOptions): BoolVar;
   bool(options: VarNameOptions): BoolVar;
@@ -877,14 +986,23 @@ export class Model {
   }
 
   /**
-   * Get the current objective expression, or set the objective function and direction.
-   * Calling objective(spec) replaces any previously defined objective.
-   * Chainable when setting: returns this.
+   * Get the current objective expression, or set the objective function and direction (`maximize(...)` / `minimize(...)`).
+   * Calling `objective(spec)` replaces any previously defined objective and returns `this` for chaining.
+   *
+   * **Formulation & solver capability notes**:
+   * - Supports linear (`LinExpr`, `Var`, `number`, formula string) and quadratic (`QuadExpr`: `^2`, `${x} * ${y}`) expressions.
+   * - Quadratic terms are supported in **objectives only** (requires a QP-capable solver such as HiGHS; throws on GLPK and Z3).
+   * - Passing a comparison `Constraint` (`<=`, `>=`, `==`) throws an Error.
    *
    * @example
+   * ```ts
+   * const m = new Model("ObjectiveExample");
+   * const chairs = m.integer("chairs", { lb: 0 });
+   * const tables = m.integer("tables", { lb: 0 });
+   *
    * m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-   * m.objective(minimize(costExpr));
    * const currentExpr = m.objective();
+   * ```
    */
   objective(): LinExpr | QuadExpr;
   objective(spec: ObjectiveSpec): this;
@@ -972,14 +1090,25 @@ export class Model {
   }
 
   /**
-   * Add linear, boolean, or string formula constraint(s) to the model.
-   * Rejects raw arithmetic expressions (e.g. LinExpr, QuadExpr) without comparison operators.
-   * Chainable: returns this.
+   * Register linear comparison constraint(s) (`<=`, `>=`, `==`), SMT logical constraint(s) (`BoolVar`, `BoolExpr`),
+   * or constraint formula string(s) on the model. Chainable: returns `this`.
+   *
+   * **Formulation & solver capability notes**:
+   * - Rejects raw arithmetic expressions (`LinExpr`, `QuadExpr`) without a comparison operator and quadratic constraints.
+   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) require an SMT-capable solver (`{ solver: "z3" }`);
+   *   LP/MIP solvers (HiGHS, GLPK) throw if logical constraints are present.
    *
    * @example
-   * m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood")
-   * m.constraint(items.map(i => expr`${x[i]} <= 10`))
-   * m.constraint(c1).constraint(c2)
+   * ```ts
+   * const m = new Model("ConstraintExample");
+   * const desks = m.integer("desks", { lb: 0 });
+   * const chairs = m.integer("chairs", { lb: 0 });
+   * const x = m.continuous(3, { lb: 0, prefix: "x" });
+   *
+   * m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood");
+   * m.constraint(x.map((v) => expr`${v} <= 10`));
+   * m.constraint(desks.ge(2)).constraint(chairs.ge(4));
+   * ```
    */
   constraint(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
   constraint(constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>): this;
@@ -1017,12 +1146,22 @@ export class Model {
 
   /**
    * Extract primal solution values directly into plain primitives, preserving container shapes:
-   * - m.getValues(x) -> number | null
-   * - m.getValues(p) -> boolean | null
-   * - m.getValues([x, y]) -> (number | null)[]
-   * - m.getValues([[x11, x12], [x21, x22]]) -> (number | null)[][]
-   * - m.getValues(record) -> Record<K, number | boolean | null>
-   * - m.getValues(matrix) -> Record<R, Record<C, number | boolean | null>>
+   * - `m.getValues(x)` -> `number | null`
+   * - `m.getValues(p)` -> `boolean | null`
+   * - `m.getValues([x, y])` -> `(number | null)[]`
+   * - `m.getValues([[x11, x12], [x21, x22]])` -> `(number | null)[][]`
+   * - `m.getValues(record)` -> `Record<K, number | boolean | null>`
+   * - `m.getValues(matrix)` -> `Record<R, Record<C, number | boolean | null>>`
+   *
+   * @example
+   * ```ts
+   * const m = new Model("GetValuesExample");
+   * const qty = m.integer(["desk", "chair"] as const, { lb: 0, ub: 10 });
+   * m.objective(maximize(expr`30 * ${qty.desk} + 50 * ${qty.chair}`));
+   * m.constraint(expr`${qty.desk} + ${qty.chair} <= 10`);
+   * await m.solve();
+   * const values = m.getValues(qty); // Record<"desk" | "chair", number | null>
+   * ```
    */
   getValues(item: Var): number | null;
   getValues(item: BoolVar): boolean | null;
@@ -1202,13 +1341,24 @@ export class Model {
 
   /**
    * Add an indicator constraint via floating-point Big-M auto-linearization:
-   * "If binVar == activeValue, then constraint holds"
+   * `"If binVar === activeValue, then constraint holds"` (`activeValue` defaults to `1`).
    *
-   * Automatically handles <=, >=, and == constraints for LP/MIP solvers (HiGHS, GLPK)
-   * under standard floating-point feasibility tolerances.
-   * Note: Because Big-M rows are floating-point linear relaxations, they do not
-   * guarantee exact rational equivalence in SMT solvers (Z3); use logical
-   * implications (`implies()`) when exact SMT diagnosis is required.
+   * **Formulation & solver capability notes**:
+   * - Automatically linearizes `<=`, `>=`, and `==` constraints for LP/MIP solvers (HiGHS, GLPK)
+   *   under standard floating-point feasibility tolerances (`==` generates `_le` and `_ge` rows).
+   * - Variables appearing in `constraint` must have finite bounds (`lb`/`ub`) to derive a safe tight Big-M
+   *   automatically, unless an explicit `{ M }` override is supplied in `options`.
+   * - Because Big-M rows are floating-point linear relaxations, they do not guarantee exact rational
+   *   equivalence in SMT solvers (Z3); use `implies(...)` with `m.bool(...)` when exact SMT diagnosis is required.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("IndicatorExample");
+   * const b = m.binary("b");
+   * const x = m.continuous("x", { lb: 0, ub: 100 });
+   * // Enforces x <= 50 when b === 1 (relaxed to x <= 100 when b === 0)
+   * m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
+   * ```
    */
   indicator(
     binVar: Var,
@@ -1340,7 +1490,20 @@ export class Model {
   }
 
   /**
-   * Export model to CPLEX LP format string
+   * Validate model integrity (`validateIntegrity()`) and serialize the model's linear/quadratic objective,
+   * linear constraints, and numeric variable bounds/domains (`Continuous`, `Integer`, `Binary`) to a
+   * standard CPLEX LP format string with collision-free sanitized identifiers.
+   *
+   * **Note**: Propositional `BoolVar`s and SMT `logicalConstraints` are not part of the CPLEX LP format.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("LpExportExample");
+   * const x = m.integer("x", { lb: 0, ub: 10 });
+   * m.objective(maximize(expr`5 * ${x}`));
+   * m.constraint(expr`${x} <= 8`, "cap");
+   * const lpText = m.toLpString();
+   * ```
    */
   toLpString(): string {
     this.validateIntegrity();
@@ -1471,11 +1634,38 @@ export class Model {
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
-   * or a solver passed dynamically (e.g., await model.solve(new HiGHS())).
+   * or a solver passed dynamically (e.g., `await m.solve("glpk")` or `await m.solve({ timeLimit: 10 })`).
    *
-   * Calling solve() resets any prior solution and diagnostic values before executing.
-   * If the model is modified or a newer solve()/check() call is started before this
-   * execution completes, the stale result is discarded and the returned promise rejects.
+   * **Return status (`SolverStatus`)**:
+   * - Built-in optimization solvers return `"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`,
+   *   `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, or `"NotSolved"` (`"Sat"` / `"Unsat"`
+   *   are included in `SolverStatus` for custom/satisfiability adapters).
+   * - When a time-, iteration-, or solution-limited run (or an interrupted solve) has found a valid
+   *   primal incumbent, `solve()` returns `"Feasible"` (`m.hasPrimalSolution === true`, with the exact
+   *   stopping reason in `m.terminationStatus`).
+   * - After solving, read primal/dual values via `x.value`, `m.getValues(...)`, `m.objectiveValue`,
+   *   `constr.dual`, `constr.slack`, and `x.reducedCost`, and verify primal feasibility with `m.validateSolution()`.
+   *
+   * **Solver capability preconditions**:
+   * - Quadratic objectives (`QuadExpr`) require `supportsQP` (supported by HiGHS; throws on GLPK and Z3).
+   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) require `supportsSMT`
+   *   (supported by Z3; throws on HiGHS and GLPK).
+   * - Primal `initialValue` warm starts require `supportsWarmStart` (supported by HiGHS; throws on GLPK and Z3).
+   * - Mutating the model or starting a newer `solve()` / `check()` while in flight discards the stale
+   *   result and rejects the pending promise.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("SolveExample");
+   * const x = m.integer("x", { lb: 0, ub: 50, initialValue: 10 });
+   * const y = m.integer("y", { lb: 0, ub: 50 });
+   * m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
+   * m.constraint(expr`${x} + 2 * ${y} <= 40`, "resource_limit");
+   *
+   * const status = await m.solve();
+   * const report = m.validateSolution();
+   * const obj = m.objectiveValue;
+   * ```
    */
   async solve(
     solverOrOptions?: Solver | string | SolveOptions,
@@ -1687,10 +1877,42 @@ export class Model {
   }
 
   /**
-   * Check satisfiability of the model without requiring an objective function.
-   * Can be used to verify feasibility or diagnose infeasibilities / conflicts.
-   * If the model is modified or a newer solve()/check() call is started before this
-   * execution completes, the stale result is discarded and the returned promise rejects.
+   * Check satisfiability / feasibility of the model without requiring an objective function.
+   *
+   * Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values, conflicts?, unsatCore?, runTime? }`).
+   *
+   * **LP feasibility fallback vs. Z3 requirement**:
+   * - **Linear models (`m.check()` fallback)**: For models containing only linear arithmetic constraints,
+   *   `m.check()` works with any solver (including the default HiGHS and GLPK) by falling back to a
+   *   zero-objective feasibility `solve()` without mutating `m.objectiveExpr` or `m.sense`.
+   * - **Logical constraints & `unsatCore` (requires Z3)**: Models containing `BoolVar` or logical
+   *   constraints (`and`, `or`, `not`, `implies`, `xor`) require an SMT-capable solver (`{ solver: "z3" }`
+   *   after `import "@ohtaman/washi/solvers/z3"`). Unsatisfiable-core extraction (`result.conflicts` /
+   *   `result.unsatCore` and `m.conflicts` / `m.unsatCore`) is populated only when an unsat-core-capable
+   *   solver such as Z3 returns `"Unsat"`, reporting a subset of registered constraint names that conflicts
+   *   together with the model's fixed variable bounds/domains.
+   * - Mutating the model or starting a newer `solve()` / `check()` while in flight discards the stale
+   *   result and rejects the pending promise.
+   *
+   * @example
+   * ```ts
+   * import "@ohtaman/washi/solvers/z3";
+   *
+   * // 1. Linear feasibility check (works with default HiGHS via LP fallback)
+   * const mLin = new Model("LinearCheck");
+   * const x = mLin.continuous("x", { lb: 0, ub: 10 });
+   * mLin.constraint(expr`${x} >= 4`, "min_x");
+   * const linRes = await mLin.check(); // { status: "Sat", values: { x: ... } }
+   *
+   * // 2. SMT satisfiability & unsatCore diagnosis (requires Z3)
+   * const mSmt = new Model("PolicyCheck", { solver: "z3" });
+   * const vip = mSmt.bool("vip");
+   * const discount = mSmt.integer("discount", { lb: 0, ub: 50 });
+   * mSmt.constraint(vip, "is_vip");
+   * mSmt.constraint(implies(vip, expr`${discount} >= 20`), "vip_min");
+   * mSmt.constraint(expr`${discount} <= 10`, "cap");
+   * const smtRes = await mSmt.check(); // { status: "Unsat", conflicts: [...], unsatCore: [...] }
+   * ```
    */
   async check(
     solverOrOptions?: Solver | string | SolveOptions,
@@ -1923,9 +2145,27 @@ export class Model {
   }
 
   /**
-   * Independently evaluate and verify variable bounds, integrality, linear constraints,
-   * and logical (SMT/propositional) constraints against the model's current solution
-   * or an explicit `values` map.
+   * Independently evaluate and verify variable finiteness, variable bounds (`lb`/`ub`),
+   * integer/binary/boolean domains, linear constraint residuals, and logical (SMT/propositional)
+   * constraints against the model's current solved values (or an explicit `options.values` map).
+   *
+   * Returns a `SolutionValidationReport` (`{ valid, complete, maxViolation, violations, violationsByName, uncheckedConstraints, missingVariables, summary }`).
+   *
+   * **Verification notes**:
+   * - Runs purely in JavaScript/TypeScript without requiring any WASM solver runtime.
+   * - Verifies primal feasibility of variables and constraints; does not recompute or compare `m.objectiveValue`.
+   *
+   * @example
+   * ```ts
+   * const m = new Model("ValidateExample");
+   * const x = m.integer("x", { lb: 0, ub: 10 });
+   * m.objective(maximize(expr`3 * ${x}`));
+   * m.constraint(expr`${x} <= 7`, "cap");
+   *
+   * await m.solve();
+   * const report = m.validateSolution();
+   * const isFeasible = report.valid && report.maxViolation <= 1e-6;
+   * ```
    */
   validateSolution(options: SolutionValidationOptions = {}): SolutionValidationReport {
     return validateModelSolution(this, options);

@@ -379,6 +379,9 @@ try {
   const packageRoot = path.join(fixture, "node_modules/@ohtaman/washi");
   const shippedAgentGuide = await readFile(path.join(packageRoot, "docs/getting-started/ai-agents.md"), "utf8");
   assert(shippedAgentGuide.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing AI agent guide");
+  const shippedAgentSkill = await readFile(path.join(packageRoot, "skills/washi/SKILL.md"), "utf8");
+  assert(shippedAgentSkill.includes("name: washi"), "npm tarball missing Agent Skill frontmatter");
+  assert(shippedAgentSkill.includes("# WaSHI Modeling & Verification Skill"), "npm tarball missing Agent Skill heading");
   const shippedLlmsTxt = await readFile(path.join(packageRoot, "llms.txt"), "utf8");
   assert(shippedLlmsTxt.includes("# WaSHI (@ohtaman/washi)"), "npm tarball missing llms.txt");
   assert(shippedLlmsTxt.includes("getting-started/ai-agents.md"), "npm tarball llms.txt missing ai-agents.md link");
@@ -398,7 +401,7 @@ try {
   model.objective(maximize(x.mul(3)));
   assert.equal(await model.solve(), "Optimal");
   assert.equal(model.objectiveValue, 30);
-  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide, llms.txt, llms-full.txt & docs");
+  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide, skill, llms.txt, llms-full.txt & docs");
 
   // Verify unimported solver errors
   await assert.rejects(async () => model.solve({ solver: "glpk" }), (err) => {

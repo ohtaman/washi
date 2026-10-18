@@ -53,6 +53,7 @@
     "docs/guide",
     "docs/solvers",
     "docs/examples",
+    "skills/washi/SKILL.md",
     "llms.txt",
     "llms-full.txt",
     "README.md",

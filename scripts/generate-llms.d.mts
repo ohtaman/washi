@@ -15,7 +15,7 @@ export const DOC_SECTIONS: readonly DocSection[];
 export const LLMS_FULL_SECTIONS: readonly string[];
 
 export function getCanonicalDocSections(docsDir?: string): DocSection[];
-export function stripVitePressSyntax(rawMarkdown: string): string;
+export function stripVitePressSyntax(rawMarkdown: string, relPath?: string): string;
 export function extractDocMetadata(rawMarkdown: string): { title: string; summary: string };
 export function buildLlmsArtifacts(rootDir?: string): LlmsArtifacts;
 export function populateSiteLlmsAssets(

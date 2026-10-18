@@ -1,5 +1,5 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, posix, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const defaultRootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -80,11 +80,40 @@ export function getCanonicalDocSections(docsDir = resolve(defaultRootDir, "docs"
   });
 }
 
+function resolveRelativeDocTarget(target, relPath) {
+  const trimmed = target.trim();
+  if (!trimmed || !relPath || /^(?:https?:\/\/|mailto:|#)/i.test(trimmed)) {
+    return target;
+  }
+  const hashIndex = trimmed.indexOf("#");
+  const rawPath = hashIndex >= 0 ? trimmed.slice(0, hashIndex) : trimmed;
+  const hash = hashIndex >= 0 ? trimmed.slice(hashIndex) : "";
+  if (!rawPath) {
+    return target;
+  }
+
+  const baseDir = posix.dirname(relPath);
+  const isTrailingSlash = rawPath.endsWith("/");
+  let resolved = rawPath.startsWith("/")
+    ? posix.normalize(rawPath.slice(1))
+    : posix.normalize(posix.join(baseDir, rawPath));
+
+  if (isTrailingSlash || resolved.endsWith("/")) {
+    resolved = `${resolved.replace(/\/+$/, "")}/index.md`;
+  } else if (!posix.extname(resolved)) {
+    const isSectionDir = DOC_SECTIONS.some((s) => s.dir === resolved);
+    resolved = isSectionDir ? `${resolved}/index.md` : `${resolved}.md`;
+  }
+
+  return `${resolved}${hash}`;
+}
+
 /**
  * Strips VitePress-specific YAML frontmatter, container directives (`:::`),
  * and interactive Vue wrapper tags while preserving standard Markdown and code blocks.
+ * When `relPath` is provided, rewrites source-relative Markdown links to root-relative doc paths.
  */
-export function stripVitePressSyntax(rawMarkdown) {
+export function stripVitePressSyntax(rawMarkdown, relPath = "") {
   let text = rawMarkdown.replace(/\r\n/g, "\n");
 
   // Strip YAML frontmatter only when anchored at the start of the file and containing YAML keys
@@ -125,6 +154,15 @@ export function stripVitePressSyntax(rawMarkdown) {
         /^[ \t]*<\/?CodeRunner\b[^>]*>[ \t]*$/.test(line) ||
         /^[ \t]*<(?:PortfolioQpDemo|EcommerceCouponDemo|ShiftSchedulingDemo)\b[^>]*\/>[ \t]*$/.test(line)
       ) {
+        continue;
+      }
+      if (relPath) {
+        out.push(
+          line.replace(
+            /\[([^\]]+)\]\(([^)\s]+)\)/g,
+            (_full, label, target) => `[${label}](${resolveRelativeDocTarget(target, relPath)})`
+          )
+        );
         continue;
       }
     }
@@ -207,6 +245,21 @@ export function extractDocMetadata(rawMarkdown) {
         .replace(/^>[ \t]*/, "")
         .replace(/^\*\*Scope Note\*\*:[ \t]*/i, "")
         .trim();
+      if (
+        quoteText.startsWith("- ") ||
+        quoteText.startsWith("* ") ||
+        quoteText.startsWith("`")
+      ) {
+        if (paragraphLines.length > 0) {
+          const candidate = paragraphLines.join(" ").trim();
+          if (isAcceptableSummary(candidate)) {
+            summary = candidate;
+            break;
+          }
+          paragraphLines.length = 0;
+        }
+        continue;
+      }
       if (quoteText && !quoteText.startsWith("[!")) {
         paragraphLines.push(quoteText);
       }
@@ -345,7 +398,7 @@ function buildLlmsFullTxtContent(rootDir, sections) {
 
   const parts = orderedFiles.map((relPath) => {
     const raw = readFileSync(resolve(docsDir, relPath), "utf8");
-    return stripVitePressSyntax(raw);
+    return stripVitePressSyntax(raw, relPath);
   });
 
   return parts.join("\n\n---\n\n").trimEnd() + "\n";
