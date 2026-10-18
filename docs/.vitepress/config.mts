@@ -145,8 +145,8 @@ export default withMermaid(
             text: "Modeling Guide",
             items: [
               { text: "Variables & Bounds", link: "/guide/variables" },
-              { text: "Expressions (`expr`)", link: "/guide/expressions" },
-              { text: "Constraints (`expr`)", link: "/guide/constraints" },
+              { text: "Expressions", link: "/guide/expressions" },
+              { text: "Constraints", link: "/guide/constraints" },
               { text: "Objectives & Sense", link: "/guide/objectives" },
               { text: "Unsat Core Diagnosis", link: "/guide/unsat-core" },
             ],
@@ -207,8 +207,8 @@ export default withMermaid(
             text: "モデリングガイド",
             items: [
               { text: "変数と境界値", link: "/ja/guide/variables" },
-              { text: "数式の記述 (`expr`)", link: "/ja/guide/expressions" },
-              { text: "制約条件 (`expr`)", link: "/ja/guide/constraints" },
+              { text: "数式の記述", link: "/ja/guide/expressions" },
+              { text: "制約条件", link: "/ja/guide/constraints" },
               { text: "目的関数と最適化", link: "/ja/guide/objectives" },
               { text: "競合制約診断 (Unsat Core)", link: "/ja/guide/unsat-core" },
             ],
@@ -286,8 +286,8 @@ export default withMermaid(
             text: "建模指南",
             items: [
               { text: "决策变量与上下界", link: "/zh/guide/variables" },
-              { text: "数学表达式 (`expr`)", link: "/zh/guide/expressions" },
-              { text: "约束条件 (`expr`)", link: "/zh/guide/constraints" },
+              { text: "数学表达式", link: "/zh/guide/expressions" },
+              { text: "约束条件", link: "/zh/guide/constraints" },
               { text: "目标函数与求解方向", link: "/zh/guide/objectives" },
               { text: "不可行冲突诊断 (Unsat Core)", link: "/zh/guide/unsat-core" },
             ],
