@@ -476,7 +476,7 @@ const model = new Model("DefaultedModel");
 无需打包即可直接使用 Vitest 或 Jest 测试你的求解器：
 
 ```typescript
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Model, expr, maximize, registerSolver, listAvailableSolvers } from "@ohtaman/washi";
 import { CloudSolver } from "./cloud-solver.js";
 
@@ -487,17 +487,33 @@ describe("Custom Solver Integration", () => {
   });
 
   it("propagates primal values and duals into WaSHI Model", async () => {
-    const model = new Model({ solver: new CloudSolver() });
-    const x = model.continuous("x", { lb: 0, ub: 10 });
-    const y = model.continuous("y", { lb: 0, ub: 10 });
-    model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
-    model.constraint(expr`${x} + ${y} <= 12`, "budget");
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "OPTIMAL",
+          objectiveValue: 34,
+          values: { x: 2, y: 10 },
+          duals: { budget: 2 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
 
-    const status = await model.solve();
-    expect(status).toBe("Optimal");
-    expect(x.value).toBeDefined();
-    const c1 = model.getConstraintByName("budget");
-    expect(c1?.dual).toBeDefined();
+    try {
+      const model = new Model({ solver: new CloudSolver() });
+      const x = model.continuous("x", { lb: 0, ub: 10 });
+      const y = model.continuous("y", { lb: 0, ub: 10 });
+      model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+      model.constraint(expr`${x} + ${y} <= 12`, "budget");
+
+      const status = await model.solve();
+      expect(status).toBe("Optimal");
+      expect(x.value).toBe(2);
+      const c1 = model.getConstraintByName("budget");
+      expect(c1?.dual).toBe(2);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });
 ```

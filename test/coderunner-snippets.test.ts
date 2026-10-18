@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
@@ -373,6 +373,105 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         {}
       );
       expect(ok).toBe(true);
+    }
+  });
+
+  it("verifies custom-solver.md Section 5 mocks fetch across EN/JA/ZH and VitePress config translates all local-search controls", async () => {
+    const customSolverPaths = [
+      "docs/solvers/custom-solver.md",
+      "docs/ja/solvers/custom-solver.md",
+      "docs/zh/solvers/custom-solver.md",
+    ];
+    for (const relPath of customSolverPaths) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const section5 = content.split(/^## 5\./m)[1] ?? "";
+      expect(section5, `Missing Section 5 in ${relPath}`).toContain('vi.spyOn(globalThis, "fetch")');
+      expect(section5, `Missing fetchSpy.mockRestore() in ${relPath}`).toContain("fetchSpy.mockRestore()");
+    }
+
+    // Execute the documented CloudSolver + fetchSpy flow end-to-end
+    const { Model, expr, maximize, generateLpString } = Washi;
+    class DocCloudSolver {
+      public readonly name = "CloudSolver";
+      public readonly version = "1.0.0";
+      public readonly capabilities = { supportsMIP: true, supportsQP: false };
+      private endpoint = "https://solver.mycompany.internal/v1/solve";
+      async solve(modelData: any, options: any = {}) {
+        const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
+        const response = await fetch(this.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lp: lpString }),
+          signal: options.signal,
+        });
+        const payload: any = await response.json();
+        const values: Record<string, number> = Object.create(null);
+        for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
+          values[nameToVar.get(k)?.name ?? k] = val;
+        }
+        const duals: Record<string, number> = Object.create(null);
+        for (const [k, val] of Object.entries((payload.duals || {}) as Record<string, number>)) {
+          duals[nameToConstraint.get(k)?.name ?? k] = val;
+        }
+        return {
+          status: (payload.status === "OPTIMAL" ? "Optimal" : "Unknown") as any,
+          objectiveValue: payload.objectiveValue ?? null,
+          values,
+          duals,
+        };
+      }
+    }
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "OPTIMAL",
+          objectiveValue: 34,
+          values: { x: 2, y: 10 },
+          duals: { budget: 2 },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    try {
+      const model = new Model({ solver: new DocCloudSolver() as any });
+      const x = model.continuous("x", { lb: 0, ub: 10 });
+      const y = model.continuous("y", { lb: 0, ub: 10 });
+      model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+      model.constraint(expr`${x} + ${y} <= 12`, "budget");
+
+      const status = await model.solve();
+      expect(status).toBe("Optimal");
+      expect(x.value).toBe(2);
+      const c1 = model.getConstraintByName("budget");
+      expect(c1?.dual).toBe(2);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+
+    // Verify all LocalSearchTranslations keys are present for both ja and zh in docs/.vitepress/config.mts
+    const configContent = fs.readFileSync(
+      path.resolve(process.cwd(), "docs/.vitepress/config.mts"),
+      "utf-8"
+    );
+    const requiredSearchKeys = [
+      "buttonText",
+      "buttonAriaLabel",
+      "displayDetails",
+      "resetButtonTitle",
+      "backButtonTitle",
+      "noResultsText",
+      "selectText",
+      "selectKeyAriaLabel",
+      "navigateText",
+      "navigateUpKeyAriaLabel",
+      "navigateDownKeyAriaLabel",
+      "closeText",
+      "closeKeyAriaLabel",
+    ];
+    for (const key of requiredSearchKeys) {
+      const matches = configContent.match(new RegExp(`\\b${key}:`, "g")) ?? [];
+      expect(matches.length, `Expected search translation key '${key}' in both ja and zh`).toBeGreaterThanOrEqual(2);
     }
   });
 });

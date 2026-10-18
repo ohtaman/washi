@@ -32,7 +32,9 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
     );
-    expect(pkg.files).toContain("docs/getting-started/ai-agents.md");
+    for (const relPath of guidePaths) {
+      expect(pkg.files).toContain(relPath);
+    }
 
     expect(
       fs.readFileSync(path.resolve(process.cwd(), "README.md"), "utf-8")
