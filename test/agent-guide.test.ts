@@ -301,3 +301,213 @@ describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.
   });
 });
 
+describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
+  const skillPath = path.resolve(process.cwd(), "skills/washi/SKILL.md");
+  const skillContent = fs.readFileSync(skillPath, "utf-8");
+
+  const skillCodeBlocks: string[] = [];
+  const blockRegex = /```(?:ts|typescript)\n([\s\S]*?)```/g;
+  let match: RegExpExecArray | null;
+  while ((match = blockRegex.exec(skillContent)) !== null) {
+    skillCodeBlocks.push(match[1]);
+  }
+
+  it("has valid YAML frontmatter (name, description), covers the required lifecycle, and is linked and packaged", () => {
+    const frontmatterMatch = skillContent.match(/^---\n([\s\S]*?)\n---\n/);
+    expect(frontmatterMatch).not.toBeNull();
+    const frontmatter = frontmatterMatch![1];
+    const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+    const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+    expect(nameMatch?.[1]?.trim()).toBe("washi");
+    expect(descMatch?.[1]?.trim().length).toBeGreaterThan(20);
+
+    // Covers required lifecycle stages and links to ai-agents.md
+    expect(skillContent).toContain("docs/getting-started/ai-agents.md");
+    expect(skillContent).toContain("toLpString()");
+    expect(skillContent).toContain("validateIntegrity()");
+    expect(skillContent).toContain("validateSolution()");
+    expect(skillContent).toContain("unsatCore");
+    expect(skillContent).toContain("conflicts");
+
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
+    );
+    expect(pkg.files).toContain("skills/washi/SKILL.md");
+
+    for (const file of [
+      "README.md",
+      "README.ja.md",
+      "README.zh-CN.md",
+      "AGENTS.md",
+      "docs/getting-started/ai-agents.md",
+    ]) {
+      const text = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
+      expect(text).toContain("skills/washi/SKILL.md");
+    }
+  });
+
+  it("type-checks all TypeScript code blocks in SKILL.md and verifies imported symbols and subpaths", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
+    );
+    const exportSubpaths = new Set(
+      Object.keys(pkg.exports).map((k) =>
+        k === "." ? "@ohtaman/washi" : `@ohtaman/washi/${k.replace(/^\.\//, "")}`
+      )
+    );
+
+    expect(skillCodeBlocks.length).toBe(3);
+
+    const allImportedSymbols = new Set<string>();
+    const extractBlockImports = (block: string): string[] => {
+      const syms: string[] = [];
+      const namedImportsRegex = /import\s*\{([\s\S]*?)\}\s*from\s*"@ohtaman\/washi"/g;
+      let namedMatch: RegExpExecArray | null;
+      while ((namedMatch = namedImportsRegex.exec(block)) !== null) {
+        const names = namedMatch[1]
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        for (const sym of names) {
+          syms.push(sym);
+          allImportedSymbols.add(sym);
+        }
+      }
+      return syms;
+    };
+
+    for (const block of skillCodeBlocks) {
+      const specifierRegex = /from\s+["'](@ohtaman\/washi[^"']*)["']|import\s+["'](@ohtaman\/washi[^"']*)["']/g;
+      let specMatch: RegExpExecArray | null;
+      while ((specMatch = specifierRegex.exec(block)) !== null) {
+        const spec = specMatch[1] ?? specMatch[2];
+        expect(exportSubpaths.has(spec)).toBe(true);
+      }
+
+      const names = extractBlockImports(block);
+      expect(names.length).toBeGreaterThan(0);
+      for (const sym of names) {
+        expect(
+          sym in Washi,
+          `Expected symbol '${sym}' imported in SKILL.md to be exported from @ohtaman/washi`
+        ).toBe(true);
+      }
+    }
+
+    const rewriteImports = (src: string) =>
+      src
+        .replaceAll('"@ohtaman/washi/solvers/z3"', '"../src/modeler/solvers/z3/index.js"')
+        .replaceAll('"@ohtaman/washi/solvers/glpk"', '"../src/modeler/solvers/glpk/index.js"')
+        .replaceAll('"@ohtaman/washi"', '"../src/index.js"');
+
+    const tmpBase = `.tmp-agent-skill-${process.pid}`;
+    const tmpTsPath = path.resolve(process.cwd(), `test/${tmpBase}.ts`);
+    const tmpTsconfigPath = path.resolve(process.cwd(), `test/${tmpBase}-tsconfig.json`);
+    const combinedSource = [
+      `import { ${Array.from(allImportedSymbols).join(", ")} } from "../src/index.js";`,
+      `import "../src/modeler/solvers/z3/index.js";`,
+      ...skillCodeBlocks.map((b) => rewriteImports(b).replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")),
+    ].join("\n\n");
+
+    try {
+      fs.writeFileSync(tmpTsPath, combinedSource, "utf-8");
+      fs.writeFileSync(
+        tmpTsconfigPath,
+        JSON.stringify({
+          extends: "../tsconfig.lib.json",
+          compilerOptions: {
+            rootDir: "..",
+            emitDeclarationOnly: false,
+            noEmit: true,
+          },
+          include: [`${tmpBase}.ts`, "../src/index.ts", "../src/modeler/**/*"],
+        }),
+        "utf-8"
+      );
+      const tscBin = path.resolve(process.cwd(), "node_modules/.bin/tsc");
+      try {
+        execFileSync(tscBin, ["-p", tmpTsconfigPath, "--noEmit"], {
+          cwd: process.cwd(),
+          encoding: "utf-8",
+        });
+      } catch (err: any) {
+        throw new Error(`SKILL.md tsc typecheck failed:\n${err.stdout || err.stderr || err.message}`);
+      }
+    } finally {
+      fs.rmSync(tmpTsPath, { force: true });
+      fs.rmSync(tmpTsconfigPath, { force: true });
+    }
+  });
+
+  it("executes all TypeScript workflow recipes in SKILL.md (MIP, QP, and Z3 diagnosis/verification)", async () => {
+    const runBlockFunction = (block: string, fnCall: string) => {
+      const match = block.match(/import\s*\{([\s\S]*?)\}\s*from\s*"@ohtaman\/washi"/);
+      const paramNames = match![1]
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const paramValues = paramNames.map((name) => (Washi as Record<string, unknown>)[name]);
+      const jsBody = stripTypeScriptTypes(block)
+        .replace(/^\s*import\s+[\s\S]*?;\s*$/gm, "")
+        .replace(/\bexport\s+async\s+function\b/, "async function");
+      const runner = new Function(...paramNames, `${jsBody}\nreturn ${fnCall};`);
+      return runner(...paramValues);
+    };
+
+    // Recipe 1: MIP + toLpString() + validateSolution()
+    const mipRes = await runBlockFunction(skillCodeBlocks[0], "solveAndVerifyMip()");
+    expect(mipRes.status).toBe("Optimal");
+    expect(mipRes.valid).toBe(true);
+    expect(mipRes.maxViolation).toBeLessThanOrEqual(1e-6);
+    expect(mipRes.quantities).toEqual({ desk: 20, chair: 10 });
+    expect(mipRes.lineOpen).toBe(1);
+    expect(mipRes.objectiveValue).toBeCloseTo(1080, 6);
+    expect(mipRes.lpText).toContain("Maximize");
+    expect(mipRes.lpText).toContain("wood_limit:");
+    expect(mipRes.lpText).toContain("labor_limit:");
+    expect(mipRes.lpText).toContain("closed_line_zero_output:");
+
+    // Recipe 2: Convex QP + toLpString() + validateSolution()
+    const qpRes = await runBlockFunction(skillCodeBlocks[1], "solveAndVerifyQp()");
+    expect(qpRes.status).toBe("Optimal");
+    expect(qpRes.valid).toBe(true);
+    expect(qpRes.x).toBeCloseTo(2, 5);
+    expect(qpRes.y).toBeCloseTo(2, 5);
+    expect(qpRes.objectiveValue).toBeCloseTo(8, 5);
+    expect(qpRes.lpText).toContain("Minimize");
+    expect(qpRes.lpText).toContain("[ 2 x ^ 2 + 2 y ^ 2 ] / 2");
+    expect(qpRes.lpText).toContain("target_total:");
+
+    // Recipe 3: Z3 unsatCore diagnosis & sat verification
+    try {
+      const z3Res = await runBlockFunction(skillCodeBlocks[2], "diagnoseAndVerifyWithZ3()");
+      expect(z3Res.unsatStatus).toBe("Unsat");
+      expect(z3Res.conflicts).toEqual(
+        expect.arrayContaining(["customer_is_vip", "vip_min_discount", "campaign_cap"])
+      );
+      expect(z3Res.unsatCore).toEqual(z3Res.conflicts);
+      expect(z3Res.satStatus).toBe("Sat");
+      expect(z3Res.resolvedDiscount).toBeGreaterThanOrEqual(20);
+      expect(z3Res.resolvedDiscount).toBeLessThanOrEqual(25);
+      expect(z3Res.valid).toBe(true);
+    } finally {
+      await killZ3Threads();
+    }
+  });
+
+  it("ensures every m.<member> in positive SKILL.md sections exists on a Model instance", () => {
+    const positiveSkill = skillContent.split("## 6. Guardrails")[0];
+    const sampleModel = new Washi.Model("SkillMemberCheck");
+    const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
+    let memberMatch: RegExpExecArray | null;
+    while ((memberMatch = memberRegex.exec(positiveSkill)) !== null) {
+      const member = memberMatch[1];
+      expect(
+        member in sampleModel,
+        `Expected 'm.${member}' referenced in positive SKILL.md sections to exist on Model`
+      ).toBe(true);
+    }
+  });
+});
+
+

@@ -28,7 +28,7 @@
 
 HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグインです。Node.js 用とブラウザ用の配布物に WebAssembly アセットを含みます。配信に必要な設定は[ブラウザでの利用方法](#-ブラウザ--web-worker-での利用方法)を参照してください。
 
-[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+[ブラウザデモを試す](https://ohtaman.github.io/washi/demo/) · [AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [サンプルのソースと実行方法](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen のサンプル](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -90,6 +90,13 @@ bun add @ohtaman/washi
 ```bash
 npm install z3-solver    # SMT・矛盾診断を利用する場合
 npm install glpk.js      # GLPK ソルバーを利用する場合 (GPL-3.0)
+```
+
+*(任意)* AI コーディングエージェント（Claude Code, Antigravity, Cursor, Codex 等）向けに、[AIエージェント向けクイックリファレンス](docs/getting-started/ai-agents.md)とあわせてポータブルな [`skills/washi/SKILL.md`](skills/washi/SKILL.md) を同梱しています：
+
+```bash
+mkdir -p .agents/skills/washi
+cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 ```
 
 ---
