@@ -1,6 +1,13 @@
 # AI コーディングエージェント向けクイックリファレンス
 
-> **スコープに関する注記**: このドキュメントは、`@ohtaman/washi` を用いて数理最適化モデルや充足可能性（SAT/SMT）モデルを構築する AI コーディングエージェントおよび開発者向けの**利用者向けモデリング・クイックリファレンス**です。リポジトリへのコントリビューションや Pull Request レビュー規約については、リポジトリルートの [`AGENTS.md`](https://github.com/ohtaman/washi/blob/main/AGENTS.md) を参照してください。
+> **スコープに関する注記**: このドキュメントは、`@ohtaman/washi` を用いて数理最適化モデルや充足可能性（SAT/SMT）モデルを構築する AI コーディングエージェントおよび開発者向けの**利用者向けモデリング・クイックリファレンス**です。
+> - **ポータブル Agent Skill (`SKILL.md`)**: モデリング・`toLpString()` による式検査・`validateSolution()` による解検証・Z3 `unsatCore` による矛盾診断までを一貫して実行するワークフロースキル（Claude Code, Antigravity, Cursor, Codex 等に対応）として、[`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md)（npm パッケージ内の `node_modules/@ohtaman/washi/skills/washi/SKILL.md` にも同梱）を利用できます：
+>   ```bash
+>   # パッケージ同梱のスキルをプロジェクトのエージェントスキルディレクトリへ配置
+>   mkdir -p .agents/skills/washi
+>   cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
+>   ```
+> - **リポジトリのレビュー規約**: リポジトリへのコントリビューションや Pull Request レビュー規約については、リポジトリルートの [`AGENTS.md`](https://github.com/ohtaman/washi/blob/main/AGENTS.md) を参照してください。
 
 ---
 

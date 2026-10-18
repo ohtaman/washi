@@ -1,6 +1,13 @@
 # AI 编程助手快速参考指南
 
-> **范围说明**：本文档是面向使用 `@ohtaman/washi` 构建数理优化或可满足性（SAT/SMT）模型的 AI 编程助手与开发者的**使用端建模快速参考**。关于仓库贡献规范与 Pull Request 代码审查规则，请参阅仓库根目录下的 [`AGENTS.md`](https://github.com/ohtaman/washi/blob/main/AGENTS.md)。
+> **范围说明**：本文档是面向使用 `@ohtaman/washi` 构建数理优化或可满足性（SAT/SMT）模型的 AI 编程助手与开发者的**使用端建模快速参考**。
+> - **可移植 Agent Skill (`SKILL.md`)**：如需涵盖端到端建模、`toLpString()` 导出检查、`validateSolution()` 解验证以及 Z3 `unsatCore` 冲突诊断的完整工作流技能（兼容 Claude Code、Antigravity、Cursor、Codex 等支持 `SKILL.md` 的代理），请使用 [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md)（同时随 npm 包分发于 `node_modules/@ohtaman/washi/skills/washi/SKILL.md`）：
+>   ```bash
+>   # 将随包附带的技能复制到项目的代理技能目录中
+>   mkdir -p .agents/skills/washi
+>   cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
+>   ```
+> - **仓库审查规范**：关于仓库贡献规范与 Pull Request 代码审查规则，请参阅仓库根目录下的 [`AGENTS.md`](https://github.com/ohtaman/washi/blob/main/AGENTS.md)。
 
 ---
 
