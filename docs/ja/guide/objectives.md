@@ -39,8 +39,8 @@ WaSHI には2つの非同期実行メソッドがあります：
 ```typescript
 const status = await m.solve({
   timeLimit: 10.0, // 制限時間（秒）
-  mipGap: 0.01,    // 相対 MIP ギャップ許容値（1%）
-  verbose: false,  // ソルバー内部ログの出力有無
+  mipGap: 0.01,    // 相对 MIP ギャップ許容値（1%）
+  outputFlag: false, // ソルバー内部ログの出力有無（HiGHS: outputFlag, GLPK: verbose）
 });
 ```
 
@@ -53,7 +53,7 @@ const status = await m.solve({
 | `mipGap` / `relGap` | `number` | `undefined` | 相対 MIP ギャップ許容値（例: `0.01` = 1%）。 |
 | `absGap` | `number` | `undefined` | 絶対 MIP ギャップ許容値（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 求解前の前処理（Presolve）の制御モード。 |
-| `verbose` / `outputFlag` | `boolean` | `false` | `true` の場合、ソルバーの反復ログを出力します。 |
+| `outputFlag` / `verbose` | `boolean` | `false` | ソルバーの反復ログを出力します（HiGHS は `outputFlag`、GLPK は `verbose`）。 |
 | `useWorker` | `boolean` | `true` (ブラウザ) | ブラウザ環境で HiGHS を Web Worker 内で実行します。メインスレッド実行時は `false`。 |
 | `wasmUrl` | `string` | 自動解決 | ブラウザ環境で `highs.wasm` を読み込むカスタム URL。 |
 | `signal` | `AbortSignal` | `undefined` | 協調的キャンセル用の `AbortSignal` (`AbortController.signal`)。 |

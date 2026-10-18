@@ -40,7 +40,7 @@ WaSHI 提供两个异步执行入口：
 const status = await m.solve({
   timeLimit: 10.0, // 超时时间（秒）
   mipGap: 0.01,    // 距离全局最优解在 1% 以内时停止
-  verbose: false,  // 启用/禁用求解器控制台日志输出
+  outputFlag: false, // 启用/禁用求解器控制台日志输出（HiGHS: outputFlag, GLPK: verbose）
 });
 ```
 
@@ -53,7 +53,7 @@ const status = await m.solve({
 | `mipGap` / `relGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
 | `absGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
-| `verbose` / `outputFlag` | `boolean` | `false` | 设为 `true` 时输出求解器内部迭代日志。 |
+| `outputFlag` / `verbose` | `boolean` | `false` | 输出求解器内部迭代日志（HiGHS 使用 `outputFlag`，GLPK 使用 `verbose`）。 |
 | `useWorker` | `boolean` | `true` (浏览器) | 在浏览器中将 HiGHS 卸载到专用 Web Worker 中执行。设为 `false` 则在主线程执行。 |
 | `wasmUrl` | `string` | 自动解析 | 浏览器部署时用于加载 `highs.wasm` 的自定义 URL。 |
 | `signal` | `AbortSignal` | `undefined` | 协作式取消信号（`AbortController.signal`）。 |

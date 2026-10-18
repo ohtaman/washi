@@ -40,7 +40,7 @@ WaSHI provides two asynchronous execution entrypoints:
 const status = await m.solve({
   timeLimit: 10.0, // Timeout in seconds
   mipGap: 0.01,    // Stop within 1% of global optimum
-  verbose: false,  // Enable/disable solver console logging
+  outputFlag: false, // Enable/disable solver console logging (HiGHS: outputFlag, GLPK: verbose)
 });
 ```
 
@@ -53,7 +53,7 @@ const status = await m.solve({
 | `mipGap` / `relGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
 | `absGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
-| `verbose` / `outputFlag` | `boolean` | `false` | When `true`, emits internal solver iteration logs. |
+| `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver iteration logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
 | `useWorker` | `boolean` | `true` (browser) | Offloads HiGHS to a dedicated Web Worker in browsers. Set `false` for main-thread execution. |
 | `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` in browser deployments. |
 | `signal` | `AbortSignal` | `undefined` | Cooperative cancellation signal (`AbortController.signal`). |
