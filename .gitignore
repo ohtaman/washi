@@ -6,6 +6,9 @@ node_modules/
 # Production build outputs
 dist/
 dist-ssr/
+docs/.vitepress/cache/
+/llms.txt
+/llms-full.txt
 *.local
 
 # Logs

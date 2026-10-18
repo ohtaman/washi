@@ -382,13 +382,35 @@ try {
   const shippedAgentSkill = await readFile(path.join(packageRoot, "skills/washi/SKILL.md"), "utf8");
   assert(shippedAgentSkill.includes("name: washi"), "npm tarball missing Agent Skill frontmatter");
   assert(shippedAgentSkill.includes("# WaSHI Modeling & Verification Skill"), "npm tarball missing Agent Skill heading");
+  const shippedLlmsTxt = await readFile(path.join(packageRoot, "llms.txt"), "utf8");
+  assert(shippedLlmsTxt.includes("# WaSHI (@ohtaman/washi)"), "npm tarball missing llms.txt");
+  assert(shippedLlmsTxt.includes("docs/getting-started/ai-agents.md"), "npm tarball llms.txt missing docs/getting-started/ai-agents.md link");
+  const shippedLlmsFullTxt = await readFile(path.join(packageRoot, "llms-full.txt"), "utf8");
+  assert(shippedLlmsFullTxt.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing llms-full.txt");
+  for (const [artifactName, artifactText, minCount] of [
+    ["llms.txt", shippedLlmsTxt, 25],
+    ["llms-full.txt", shippedLlmsFullTxt, 15],
+  ]) {
+    const relTargets = [...artifactText.matchAll(/\]\(([^)\s]+)\)/g)]
+      .map((m) => m[1])
+      .filter((target) => !/^(?:https?:\/\/|mailto:|#)/i.test(target));
+    assert(
+      relTargets.length >= minCount,
+      `Expected at least ${minCount} relative links in shipped ${artifactName}, got ${relTargets.length}`
+    );
+    for (const target of relTargets) {
+      const cleanTarget = target.split("#")[0];
+      const shippedTarget = await readFile(path.join(packageRoot, cleanTarget), "utf8");
+      assert(shippedTarget.trim().length > 0, `npm tarball ${artifactName} has broken relative link: ${target}`);
+    }
+  }
   const { Model, maximize } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
   const model = new Model("PackedNode");
   const x = model.continuous("x", { lb: 0, ub: 10 });
   model.objective(maximize(x.mul(3)));
   assert.equal(await model.solve(), "Optimal");
   assert.equal(model.objectiveValue, 30);
-  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide & skill");
+  console.log("PASS npm tarball: Node.js solve without optional peers + shipped AI agent guide, skill, llms.txt, llms-full.txt & docs");
 
   // Verify unimported solver errors
   await assert.rejects(async () => model.solve({ solver: "glpk" }), (err) => {

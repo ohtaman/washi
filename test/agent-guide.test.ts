@@ -1,11 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 import * as Washi from "../src/index.js";
 import "../src/modeler/solvers/glpk/index.js";
 import { killZ3Threads } from "../src/modeler/solvers/z3/index.js";
+import {
+  buildLlmsArtifacts,
+  generateLlms,
+  populateSiteLlmsAssets,
+  stripVitePressSyntax,
+} from "../scripts/generate-llms.mjs";
 
 describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", () => {
   const guidePaths = [
@@ -340,6 +347,250 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
   });
 });
 
+describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
+  const rootDir = process.cwd();
+  const docsDir = path.resolve(rootDir, "docs");
+  const guidePath = path.resolve(docsDir, "getting-started/ai-agents.md");
+  const guideContent = fs.readFileSync(guidePath, "utf-8");
+
+  it("deterministically generates llms.txt and llms-full.txt and ships llms.txt, llms-full.txt, and English docs in package.json files", () => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.resolve(rootDir, "package.json"), "utf-8")
+    );
+    expect(pkg.files).toContain("llms.txt");
+    expect(pkg.files).toContain("llms-full.txt");
+    expect(pkg.files).toContain("docs/getting-started");
+    expect(pkg.files).toContain("docs/guide");
+    expect(pkg.files).toContain("docs/solvers");
+    expect(pkg.files).toContain("docs/examples");
+    expect(pkg.scripts["docs:build"]).toContain("scripts/generate-llms.mjs");
+    expect(pkg.scripts.prepublishOnly).toMatch(/build:llms|generate-llms\.mjs/);
+
+    const run1 = generateLlms(rootDir);
+    const run2 = buildLlmsArtifacts(rootDir);
+
+    expect(run1.llmsTxt).toBe(run2.llmsTxt);
+    expect(run1.llmsFullTxt).toBe(run2.llmsFullTxt);
+    expect(fs.readFileSync(path.resolve(rootDir, "llms.txt"), "utf-8")).toBe(run1.llmsTxt);
+    expect(fs.readFileSync(path.resolve(rootDir, "llms-full.txt"), "utf-8")).toBe(
+      run1.llmsFullTxt
+    );
+  });
+
+  it("verifies every relative doc path in llms.txt and llms-full.txt resolves directly from the containing root directory", () => {
+    const { llmsTxt, llmsFullTxt, allDocFiles } = buildLlmsArtifacts(rootDir);
+
+    // Extract all relative Markdown link targets from root/package llms.txt and resolve directly against rootDir
+    const linkTargetRegex = /\]\(([^)\s]+)\)/g;
+    const linkedPaths: string[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = linkTargetRegex.exec(llmsTxt)) !== null) {
+      const target = match[1];
+      if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
+        linkedPaths.push(target.split("#")[0]);
+      }
+    }
+
+    expect(linkedPaths.length).toBeGreaterThanOrEqual(25);
+    expect(linkedPaths).toContain("llms-full.txt");
+    expect(linkedPaths).toContain("docs/getting-started/ai-agents.md");
+
+    for (const relTarget of linkedPaths) {
+      const resolvedPath = path.resolve(rootDir, relTarget);
+      expect(
+        fs.existsSync(resolvedPath),
+        `Expected relative link '${relTarget}' in root/packaged llms.txt to exist directly at ${resolvedPath}`
+      ).toBe(true);
+    }
+
+    // Verify all 24 canonical docs are indexed as `docs/<section>/<file>.md`
+    const relPathTokenRegex = /\bdocs\/((?:getting-started|guide|solvers|examples)\/[a-z0-9-]+\.md)\b/g;
+    const tokenPaths = new Set<string>();
+    while ((match = relPathTokenRegex.exec(llmsTxt)) !== null) {
+      tokenPaths.add(match[1]);
+    }
+    expect(tokenPaths.size).toBe(allDocFiles.length);
+    for (const relPath of allDocFiles) {
+      expect(tokenPaths.has(relPath)).toBe(true);
+      expect(fs.existsSync(path.resolve(rootDir, `docs/${relPath}`))).toBe(true);
+    }
+
+    // Also verify every relative link in root/packaged llms-full.txt resolves directly against rootDir
+    const fullLinkedPaths: string[] = [];
+    while ((match = linkTargetRegex.exec(llmsFullTxt)) !== null) {
+      const target = match[1];
+      if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
+        fullLinkedPaths.push(target.split("#")[0]);
+      }
+    }
+    expect(fullLinkedPaths.length).toBeGreaterThanOrEqual(15);
+    for (const relTarget of fullLinkedPaths) {
+      const resolvedPath = path.resolve(rootDir, relTarget);
+      expect(
+        fs.existsSync(resolvedPath),
+        `Expected relative link '${relTarget}' in root/packaged llms-full.txt to exist directly at ${resolvedPath}`
+      ).toBe(true);
+    }
+  });
+
+  it("embeds up-to-date docs/getting-started/ai-agents.md and all canonical English guides, solvers, and examples in llms-full.txt without YAML frontmatter or VitePress directives", () => {
+    const { llmsFullTxt } = buildLlmsArtifacts(rootDir);
+    const trimmedAgentGuide = guideContent.replace(/\r\n/g, "\n").trim();
+
+    // Starts with and embeds the full up-to-date ai-agents.md content
+    expect(llmsFullTxt.startsWith(trimmedAgentGuide)).toBe(true);
+    expect(llmsFullTxt).toContain(trimmedAgentGuide);
+
+    // Includes canonical Getting Started, Guide, Solver, and Example docs
+    expect(llmsFullTxt).toContain("# Introduction & Installation");
+    expect(llmsFullTxt).toContain("# Runtime Environments & Deployment");
+    expect(llmsFullTxt).toContain("# Cross-Origin Isolation (Z3 & Browsers)");
+    expect(llmsFullTxt).toContain("# Variables & Domains");
+    expect(llmsFullTxt).toContain("# Expressions (`expr`, `sum`, `dot`)");
+    expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
+    expect(llmsFullTxt).toContain("# Objectives & Solving (`m.solve` & `m.check`)");
+    expect(llmsFullTxt).toContain("# Conflict Diagnosis (`unsatCore`) & Solution Validation");
+    expect(llmsFullTxt).toContain("# Solvers Overview");
+    expect(llmsFullTxt).toContain("# HiGHS Solver Engine");
+    expect(llmsFullTxt).toContain("# Z3 SMT Solver Engine");
+    expect(llmsFullTxt).toContain("# GLPK Solver Engine");
+    expect(llmsFullTxt).toContain("# WaSHI Custom Solver Developer Guide");
+    expect(llmsFullTxt).toContain("# Examples & API Finder");
+    expect(llmsFullTxt).toContain("# Production Planning (LP / MIP)");
+    expect(llmsFullTxt).toContain("# 0-1 Knapsack Problem (Binary MIP)");
+    expect(llmsFullTxt).toContain("# Transportation & Allocation Network (LP)");
+    expect(llmsFullTxt).toContain("# Diet Problem & Sensitivity Analysis (LP Duals & Slacks)");
+    expect(llmsFullTxt).toContain("# Staff Shift Scheduling & Conflict Diagnosis (MIP + Z3)");
+    expect(llmsFullTxt).toContain("# E-Commerce Cart & Coupon Optimizer (Indicator MIP)");
+    expect(llmsFullTxt).toContain("# Portfolio Optimization (QP)");
+    expect(llmsFullTxt).toContain("# SMT Security Policies");
+    expect(llmsFullTxt).toContain("# Conflict Diagnosis (Unsat Core)");
+    expect(llmsFullTxt).toContain("async function runProductionOptimization()");
+
+    // Rewrites subfolder-relative links (`./...`, `../...`) to root/package-relative `docs/...` paths
+    expect(llmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](docs/getting-started/ai-agents.md)");
+    expect(llmsFullTxt).toContain("[Modeling Guide](docs/guide/expressions.md)");
+    expect(llmsFullTxt).toContain("[Solvers Matrix](docs/solvers/index.md)");
+    expect(llmsFullTxt).toContain("[Production Planning](docs/examples/production.md)");
+    expect(llmsFullTxt).toContain("[GLPK Solver Guide](docs/solvers/glpk.md)");
+    expect(llmsFullTxt).not.toMatch(/\]\(\.\.?\//);
+
+    // No unstripped YAML frontmatter, VitePress container directives (`:::`), or Vue demo wrapper tags
+    expect(llmsFullTxt).not.toMatch(/^---\n[A-Za-z0-9_-]+\s*:/m);
+    expect(llmsFullTxt).not.toMatch(/^[ \t]*:::/m);
+    expect(llmsFullTxt).not.toContain("<CodeRunner");
+    expect(llmsFullTxt).not.toContain("</CodeRunner>");
+    expect(llmsFullTxt).not.toMatch(/<(?:PortfolioQpDemo|EcommerceCouponDemo|ShiftSchedulingDemo)\b/);
+
+    // Verify stripVitePressSyntax directly against docs/index.md (which has YAML frontmatter) and container directives
+    const homeMd = fs.readFileSync(path.resolve(docsDir, "index.md"), "utf-8");
+    const strippedHome = stripVitePressSyntax(homeMd);
+    expect(strippedHome).not.toContain("layout: home");
+    expect(strippedHome).not.toMatch(/^---/);
+    expect(strippedHome).toContain("## Quick Example");
+
+    const synthetic = [
+      "---",
+      "title: Synthetic Doc",
+      "layout: doc",
+      "---",
+      "",
+      "# Synthetic Heading",
+      "",
+      "::: code-group",
+      "```bash [npm]",
+      "npm install @ohtaman/washi",
+      "::: inside-fence-preserved",
+      "```",
+      ":::",
+      "",
+      "---",
+      "",
+      "Paragraph after horizontal rule.",
+    ].join("\n");
+    const strippedSynthetic = stripVitePressSyntax(synthetic);
+    expect(strippedSynthetic.startsWith("# Synthetic Heading")).toBe(true);
+    expect(strippedSynthetic).not.toContain("title: Synthetic Doc");
+    expect(strippedSynthetic).not.toContain("::: code-group");
+    expect(strippedSynthetic).toContain("::: inside-fence-preserved");
+    expect(strippedSynthetic).toContain("---\n\nParagraph after horizontal rule.");
+  });
+
+  it("normalizes CRLF line endings when generating llms.txt and llms-full.txt (Windows autocrlf regression)", () => {
+    const tmpCrlfRoot = fs.mkdtempSync(path.join(os.tmpdir(), "washi-crlf-llms-"));
+    try {
+      const lfArtifacts = buildLlmsArtifacts(rootDir);
+      const pkgRaw = fs.readFileSync(path.resolve(rootDir, "package.json"), "utf-8");
+      fs.writeFileSync(
+        path.join(tmpCrlfRoot, "package.json"),
+        pkgRaw.replace(/\r?\n/g, "\r\n"),
+        "utf-8"
+      );
+
+      for (const relPath of lfArtifacts.allDocFiles) {
+        const srcMd = fs.readFileSync(path.resolve(docsDir, relPath), "utf-8");
+        const dstMdPath = path.join(tmpCrlfRoot, "docs", relPath);
+        fs.mkdirSync(path.dirname(dstMdPath), { recursive: true });
+        fs.writeFileSync(dstMdPath, srcMd.replace(/\r?\n/g, "\r\n"), "utf-8");
+      }
+
+      const crlfArtifacts = buildLlmsArtifacts(tmpCrlfRoot);
+      expect(crlfArtifacts.llmsTxt).not.toContain("\r");
+      expect(crlfArtifacts.llmsFullTxt).not.toContain("\r");
+      expect(crlfArtifacts.llmsTxt).toBe(lfArtifacts.llmsTxt);
+      expect(crlfArtifacts.llmsFullTxt).toBe(lfArtifacts.llmsFullTxt);
+    } finally {
+      fs.rmSync(tmpCrlfRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("populates target site directory with site-relative llms.txt, llms-full.txt, and all raw English .md files", () => {
+    const tmpSiteDir = fs.mkdtempSync(path.join(os.tmpdir(), "washi-site-llms-"));
+    try {
+      const siteArtifacts = buildLlmsArtifacts(rootDir, { docPathPrefix: "" });
+      populateSiteLlmsAssets(tmpSiteDir, rootDir);
+
+      const siteLlmsTxt = fs.readFileSync(path.join(tmpSiteDir, "llms.txt"), "utf-8");
+      const siteLlmsFullTxt = fs.readFileSync(path.join(tmpSiteDir, "llms-full.txt"), "utf-8");
+      expect(siteLlmsTxt).toBe(siteArtifacts.llmsTxt);
+      expect(siteLlmsFullTxt).toBe(siteArtifacts.llmsFullTxt);
+      expect(siteLlmsTxt).toContain("[getting-started/ai-agents.md](getting-started/ai-agents.md)");
+      expect(siteLlmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](getting-started/ai-agents.md)");
+      expect(siteLlmsFullTxt).toContain("[Modeling Guide](guide/expressions.md)");
+
+      for (const relPath of siteArtifacts.allDocFiles) {
+        const siteMdPath = path.join(tmpSiteDir, relPath);
+        const srcMdPath = path.join(docsDir, relPath);
+        expect(fs.existsSync(siteMdPath)).toBe(true);
+        expect(fs.readFileSync(siteMdPath, "utf-8")).toBe(
+          fs.readFileSync(srcMdPath, "utf-8")
+        );
+      }
+
+      // Every relative link in site llms.txt and llms-full.txt must resolve directly relative to tmpSiteDir
+      const linkRegex = /\]\(([^)\s]+)\)/g;
+      for (const [name, content] of [
+        ["site llms.txt", siteLlmsTxt],
+        ["site llms-full.txt", siteLlmsFullTxt],
+      ]) {
+        let match: RegExpExecArray | null;
+        while ((match = linkRegex.exec(content)) !== null) {
+          const target = match[1];
+          if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
+            const cleanTarget = target.split("#")[0];
+            expect(
+              fs.existsSync(path.resolve(tmpSiteDir, cleanTarget)),
+              `Expected relative link '${target}' in ${name} to exist at ${path.resolve(tmpSiteDir, cleanTarget)}`
+            ).toBe(true);
+          }
+        }
+      }
+    } finally {
+      fs.rmSync(tmpSiteDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
   const skillPath = path.resolve(process.cwd(), "skills/washi/SKILL.md");
   const skillContent = fs.readFileSync(skillPath, "utf-8");
@@ -551,5 +802,4 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     }
   });
 });
-
 

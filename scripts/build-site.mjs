@@ -1,6 +1,7 @@
 import { cpSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { execSync } from "node:child_process";
+import { generateLlms, populateSiteLlmsAssets } from "./generate-llms.mjs";
 
 const rootDir = resolve(import.meta.dirname, "..");
 const docsDist = resolve(rootDir, "docs/.vitepress/dist");
@@ -30,6 +31,10 @@ mkdirSync(siteDist, { recursive: true });
 
 // Copy all documentation assets to site root
 cpSync(docsDist, siteDist, { recursive: true });
+
+// Write llms.txt, llms-full.txt, and raw English .md endpoints into dist/site
+const llmsArtifacts = generateLlms(rootDir);
+populateSiteLlmsAssets(siteDist, rootDir, llmsArtifacts);
 
 // Copy demo directory into site /demo/
 const demoTarget = resolve(siteDist, "demo");
