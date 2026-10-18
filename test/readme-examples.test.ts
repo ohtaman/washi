@@ -297,4 +297,32 @@ describe("README.md Code Snippets Validation", () => {
     m.constraint(browserExpr`${x} + ${y} <= 15`);
     expect(m.numConstrs).toBe(1);
   });
+
+  it("links to the online documentation and valid relative docs/ files across README.md, README.ja.md, and README.zh-CN.md", () => {
+    const expectations = [
+      { file: "README.md", docsUrl: "https://ohtaman.github.io/washi/" },
+      { file: "README.ja.md", docsUrl: "https://ohtaman.github.io/washi/ja/" },
+      { file: "README.zh-CN.md", docsUrl: "https://ohtaman.github.io/washi/zh/" },
+    ];
+
+    for (const { file, docsUrl } of expectations) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
+      expect(content).toContain(`](${docsUrl})`);
+
+      const relativeDocRegex = /\]\((docs\/[^)#\s]+)\)/g;
+      let match: RegExpExecArray | null;
+      const matchedPaths: string[] = [];
+      while ((match = relativeDocRegex.exec(content)) !== null) {
+        const relPath = match[1];
+        matchedPaths.push(relPath);
+        const absPath = path.resolve(process.cwd(), relPath);
+        expect(
+          fs.existsSync(absPath),
+          `Expected relative doc path '${relPath}' in ${file} to exist`
+        ).toBe(true);
+      }
+      expect(matchedPaths.length).toBeGreaterThanOrEqual(10);
+    }
+  });
 });
+
