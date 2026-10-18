@@ -33,7 +33,7 @@ WaSHI 提供两个异步执行入口：
 | 方法 | 返回值 | 用途 |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | 在满足所有约束的前提下优化目标函数（`Minimize` 或 `Maximize`）。自动填充变量的原问题解、目标函数值、MIP 边界/间隙以及 LP 的对偶值（`dual`）与松弛量（`slack`）。 |
-| **`await m.check(options?)`** | `Promise<SolverCheckResult>` | 在无目标函数的情况下检查约束的可满足性（SAT/UNSAT）。返回 `{ status, values?, boolValues?, conflicts?, unsatCore? }`，非常适用于 SMT/SAT 逻辑验证以及使用 Z3 提取不可行冲突核（`unsatCore`）。 |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | 在无目标函数的情况下检查约束的可满足性（SAT/UNSAT）。返回 `{ status, values, conflicts?, unsatCore?, runTime? }`（其中 `values: Record<string, number \| boolean>` 包含数值变量与布尔变量的赋值），非常适用于 SMT/SAT 逻辑验证以及使用 Z3 提取不可行冲突核（`unsatCore`）。 |
 
 ```typescript
 const status = await m.solve({

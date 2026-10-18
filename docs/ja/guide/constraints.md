@@ -170,7 +170,7 @@ await m.solve();
 const woodConstraint = m.getConstraintByName("wood");
 console.log("潜在価格 (dual):", woodConstraint?.dual);
 console.log("余剰 (slack):", woodConstraint?.slack);
-console.log("線形制約の総数:", m.numConstraints);
+console.log("線形制約の総数:", m.numConstrs);
 ```
 
 名前付きの論理制約は `m.getLogicalConstraintByName(name)` で検索できます。

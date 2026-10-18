@@ -95,6 +95,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content, `Invalid two-argument objective call in ${docFile}`).not.toContain(', "Maximize")');
       expect(content, `Invalid Interrupted row in SolverStatus table in ${docFile}`).not.toContain('| `"Interrupted"` | `false` |');
       expect(content, `Invalid boolean presolve type in ${docFile}`).not.toMatch(/presolve.*boolean/);
+      expect(content, `Invalid numConstraints property in ${docFile}`).not.toContain("numConstraints");
+      expect(content, `Invalid Promise<SolverCheckResult> for m.check() in ${docFile}`).not.toContain(
+        "| `Promise<SolverCheckResult>` |"
+      );
+      expect(content, `Invalid "Empty" in SolverStatus list in ${docFile}`).not.toContain('- `"Empty"`');
+      expect(content, `Incorrect negated LP objective in ${docFile}`).not.toContain("obj: - 5 x");
       expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
@@ -111,7 +117,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   });
 
-  it("executes guide examples for validateSolution, MockSolver, batch constraint, and LinExpr.value at runtime", async () => {
+  it("executes guide examples for validateSolution, MockSolver, batch constraint, LinExpr.value, numConstrs, toLpString, and check() at runtime", async () => {
     const { Model, MockSolver, expr, maximize } = Washi;
 
     // 1. MockSolver flat options (docs/guide/unsat-core.md)
@@ -129,7 +135,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mx.value).toBe(10);
     expect(my.value).toBe(20);
 
-    // 2. SolutionValidationOptions & SolutionValidationReport + LinExpr.value (docs/guide/unsat-core.md & expressions.md)
+    // 2. SolutionValidationOptions & SolutionValidationReport + LinExpr.value + numConstrs (docs/guide/unsat-core.md, expressions.md, constraints.md)
     const m = new Model();
     const x = m.integer("x", { lb: 0 });
     const y = m.integer("y", { lb: 0 });
@@ -137,6 +143,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     const laborUsed = expr`2 * ${x} + ${y}`;
     m.objective(maximize(revenue));
     m.constraint([expr`${x} + 2 * ${y} <= 40`, expr`${laborUsed} <= 50`]);
+    expect(m.numConstrs).toBe(2);
+    expect((m as Record<string, unknown>).numConstraints).toBeUndefined();
     await m.solve();
 
     expect(revenue.value).toBe(1100);
@@ -151,6 +159,31 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(report.complete).toBe(true);
     expect(report.maxViolation).toBe(0);
     expect(report.summary.checkedLinearConstraints).toBe(2);
+
+    // 3. m.toLpString() exact output (docs/guide/unsat-core.md)
+    const mDebug = new Model("DebugModel");
+    const dx = mDebug.integer("x", { lb: 0, ub: 10 });
+    mDebug.objective(maximize(expr`5 * ${dx}`));
+    mDebug.constraint(expr`2 * ${dx} <= 15`, "resource_limit");
+    expect(mDebug.toLpString().trim()).toBe(
+      [
+        "Maximize",
+        " obj: 5 x",
+        "Subject To",
+        " resource_limit: 2 x <= 15",
+        "Bounds",
+        " 0 <= x <= 10",
+        "Generals",
+        " x",
+        "End",
+      ].join("\n")
+    );
+
+    // 4. m.check() CheckResult shape (docs/guide/objectives.md)
+    const checkRes = await mDebug.check();
+    expect(checkRes.status).toBe("Sat");
+    expect(typeof checkRes.values.x).toBe("number");
+    expect("boolValues" in checkRes).toBe(false);
   });
 
   it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {

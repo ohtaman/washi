@@ -85,7 +85,10 @@ export interface Solver {
 
 ### `SolverCapabilities`
 
-カスタムソルバーがサポートする機能を `capabilities` で宣言すると、`Model` は求解前にモデルの機能要件を自動検証します：
+カスタムソルバーは対応機能を `capabilities` で宣言します。`Model` は `solve()` / `check()` の実行前に以下のフラグを検証します：
+- `supportsQP === false`（目的関数に2次項が含まれる場合）
+- `supportsSMT !== true`（論理制約 `m.logicalConstraints` が含まれる場合）
+- `supportsWarmStart !== true`（初期値ヒント `initialValue` が設定された変数が含まれる場合）
 
 ```typescript
 export interface SolverCapabilities {

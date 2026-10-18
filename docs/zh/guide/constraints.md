@@ -171,7 +171,7 @@ await m.solve();
 const woodConstraint = m.getConstraintByName("wood");
 console.log("Shadow price (dual):", woodConstraint?.dual);
 console.log("Slack surplus:", woodConstraint?.slack);
-console.log("Total linear constraints:", m.numConstraints);
+console.log("Total linear constraints:", m.numConstrs);
 ```
 
 对于已命名的逻辑约束，可使用 `m.getLogicalConstraintByName(name)` 查询已注册的 `LogicalConstraintItem`。

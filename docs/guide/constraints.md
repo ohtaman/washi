@@ -171,7 +171,7 @@ await m.solve();
 const woodConstraint = m.getConstraintByName("wood");
 console.log("Shadow price (dual):", woodConstraint?.dual);
 console.log("Slack surplus:", woodConstraint?.slack);
-console.log("Total linear constraints:", m.numConstraints);
+console.log("Total linear constraints:", m.numConstrs);
 ```
 
 For logical constraints registered with a name, use `m.getLogicalConstraintByName(name)` to look up the registered `LogicalConstraintItem`.

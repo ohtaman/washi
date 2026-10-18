@@ -33,7 +33,7 @@ WaSHI provides two asynchronous execution entrypoints:
 | Method | Return Value | Purpose |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | Optimizes the objective (`Minimize` or `Maximize`) subject to all constraints. Populates primal values, objective value, MIP bounds/gaps, and LP duals/slacks. |
-| **`await m.check(options?)`** | `Promise<SolverCheckResult>` | Checks constraint satisfiability without an objective. Returns `{ status, values?, boolValues?, conflicts?, unsatCore? }`. Ideal for SMT/SAT verification and Z3 `unsatCore` extraction. |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks constraint satisfiability without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` where `values: Record<string, number \| boolean>` contains both numeric and Boolean variable assignments. Ideal for SMT/SAT verification and Z3 `unsatCore` extraction. |
 
 ```typescript
 const status = await m.solve({

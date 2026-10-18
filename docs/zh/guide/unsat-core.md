@@ -109,14 +109,14 @@ m.constraint(expr`2 * ${x} <= 15`, "resource_limit");
 
 console.log(m.toLpString());
 /*
-Minimize
-  obj: - 5 x
+Maximize
+ obj: 5 x
 Subject To
-  resource_limit: 2 x <= 15
+ resource_limit: 2 x <= 15
 Bounds
-  0 <= x <= 10
-General
-  x
+ 0 <= x <= 10
+Generals
+ x
 End
 */
 ```

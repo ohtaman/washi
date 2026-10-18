@@ -33,7 +33,7 @@ WaSHI には2つの非同期実行メソッドがあります：
 | メソッド | 戻り値 | 用途 |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | すべての制約の下で目的関数を最適化します。変数の解、目的関数値、MIP ギャップ・双対境界、LP の双対変数/スラックを格納します。 |
-| **`await m.check(options?)`** | `Promise<SolverCheckResult>` | 目的関数なしで制約の充足可能性（SAT/UNSAT）を判定します。`{ status, values?, boolValues?, conflicts?, unsatCore? }` を返し、Z3 による競合診断（`unsatCore`）に使われます。 |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | 目的関数なしで制約の充足可能性（SAT/UNSAT）を判定します。`{ status, values, conflicts?, unsatCore?, runTime? }`（`values: Record<string, number \| boolean>` に数値変数と論理変数の両方の解が格納されます）を返し、Z3 による競合診断（`unsatCore`）に使われます。 |
 
 ```typescript
 const status = await m.solve({

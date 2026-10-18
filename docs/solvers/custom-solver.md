@@ -117,7 +117,10 @@ export interface SolveModelData extends CheckModelData {
 
 ### `SolverCapabilities`
 
-Custom solvers declare their supported features using `capabilities`:
+Custom solvers declare their supported features using `capabilities`. Before dispatching `solve()` or `check()`, `Model` validates:
+- `supportsQP === false` when the objective contains quadratic terms (`QuadExpr`),
+- `supportsSMT !== true` when the model contains logical constraints (`m.logicalConstraints`), and
+- `supportsWarmStart !== true` when any variable has a primal `initialValue` set.
 
 ```typescript
 export interface SolverCapabilities {
@@ -248,13 +251,13 @@ export interface SolverResult {
 
 #### Standardized `SolverStatus` Values
 - `"Optimal"`: Global optimal solution found (for MIP within tolerance, for LP proven optimal).
+- `"Feasible"`: Feasible solution found, but optimality not yet proven (e.g., hit time limit with an incumbent).
 - `"Infeasible"`: Model is proven mathematically infeasible.
 - `"Unbounded"`: Model objective is unbounded.
-- `"Feasible"`: Integer feasible solution found, but optimality not yet proven (e.g., hit time limit).
 - `"TimeLimit"`: Solver terminated due to `timeLimit` without proof of optimality.
-- `"IterationLimit"`: Solver terminated due to simplex/simplex iteration limit.
-- `"Empty"`: No variables or constraints defined.
-- `"Unknown"`: Error or unrecognized status. **Never convert Unknown/Error to Optimal.**
+- `"IterationLimit"`: Solver terminated due to iteration limit.
+- `"Sat"` / `"Unsat"`: Satisfiable / unsatisfiable status returned by `check()` or SMT solvers.
+- `"Error"` / `"NotSolved"` / `"Unknown"`: Error, not yet solved, or unrecognized status. **Never convert Unknown/Error to Optimal.**
 
 ---
 

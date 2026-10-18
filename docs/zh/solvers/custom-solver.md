@@ -117,7 +117,10 @@ export interface SolveModelData extends CheckModelData {
 
 ### `SolverCapabilities`
 
-自定义求解器通过 `capabilities` 声明其支持的功能特性：
+自定义求解器通过 `capabilities` 声明其支持的功能特性。在分发调用 `solve()` 或 `check()` 之前，`Model` 会自动校验以下能力标志：
+- 当目标函数包含二次项（`QuadExpr`）时检查 `supportsQP === false`；
+- 当模型包含逻辑约束（`m.logicalConstraints`）时检查 `supportsSMT !== true`；
+- 当任意变量设置了初始值（`initialValue`）时检查 `supportsWarmStart !== true`。
 
 ```typescript
 export interface SolverCapabilities {
@@ -248,13 +251,13 @@ export interface SolverResult {
 
 #### 标准化的 `SolverStatus` 取值
 - `"Optimal"`：找到全局最优解（MIP 在容差范围内最优，LP 已证明全局最优）。
+- `"Feasible"`：已找到可行解，但尚未证明全局最优（例如达到时间上限时存在暂定解）。
 - `"Infeasible"`：从数学上证明模型不可行。
 - `"Unbounded"`：模型目标函数无界。
-- `"Feasible"`：已找到整数可行解，但尚未证明全局最优（例如达到时间上限）。
 - `"TimeLimit"`：因达到 `timeLimit` 而终止，尚未证明最优性。
 - `"IterationLimit"`：因达到单纯形法或节点迭代上限而终止。
-- `"Empty"`：未定义任何变量或约束。
-- `"Unknown"`：发生错误或状态无法识别。**切勿将 Unknown/Error 转换为 Optimal。**
+- `"Sat"` / `"Unsat"`：`check()` 或 SMT 求解器返回的可满足 / 不可满足状态。
+- `"Error"` / `"NotSolved"` / `"Unknown"`：发生错误、尚未求解或状态无法识别。**切勿将 Unknown/Error 转换为 Optimal。**
 
 ---
 
