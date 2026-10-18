@@ -36,14 +36,10 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `==` or `=`: Exact equality constraint
 
 ### Batch Registration
-You can pass an array of constraints to `m.constraint()` in a single call. If an optional name prefix is provided, each constraint is named `${prefix}_${index}`:
+You can pass an array of constraints to `m.constraint([...])` to register them transactionally in a single call:
 
 ```typescript
-const limits = m.constraint(
-  [expr`${x} <= 10`, expr`${y} <= 20`],
-  "bound"
-);
-// Registers "bound_0" and "bound_1" transactionally
+m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
 ```
 
 ---

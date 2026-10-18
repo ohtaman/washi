@@ -36,14 +36,10 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `==` 或 `=`：等式约束
 
 ### 数组批量注册
-您可以在一次调用中向 `m.constraint()` 传入约束数组。若提供了可选的名称前缀，每条约束将被命名为 `${prefix}_${index}`：
+您可以在一次调用中向 `m.constraint([...])` 传入约束数组，以事务方式批量注册多条约束：
 
 ```typescript
-const limits = m.constraint(
-  [expr`${x} <= 10`, expr`${y} <= 20`],
-  "bound"
-);
-// 以事务方式注册 "bound_0" 和 "bound_1"
+m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
 ```
 
 ---

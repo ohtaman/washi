@@ -22,7 +22,7 @@ m.objective(maximize(expr`50 * ${x} + 40 * ${y}`));
 // m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));
 ```
 
-`m.objective(expr`50 * ${x} + 40 * ${y}`, "Maximize")` のように第2引数で指定することも可能です（省略時は `0` の最小化になります）。
+引数なしで `m.objective()` を呼び出すと、現在設定されている目的関数式（`LinExpr | QuadExpr`）を取得できます（目的関数を設定しない場合のデフォルトは `0` の最小化です）。
 
 ---
 
@@ -51,7 +51,7 @@ const status = await m.solve({
 | `timeLimit` | `number` | `undefined` | 最大実行時間（秒）。 |
 | `mipGap` / `relGap` | `number` | `undefined` | 相対 MIP ギャップ許容値（例: `0.01` = 1%）。 |
 | `absGap` | `number` | `undefined` | 絶対 MIP ギャップ許容値（HiGHS `mip_abs_gap`）。 |
-| `presolve` | `boolean` \| `"on"` \| `"off"` \| `"choose"` | `"choose"` | 求解前の前処理（Presolve）の有効・無効。 |
+| `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 求解前の前処理（Presolve）の制御モード。 |
 | `verbose` / `outputFlag` | `boolean` | `false` | `true` の場合、ソルバーの反復ログを出力します。 |
 | `useWorker` | `boolean` | `true` (ブラウザ) | ブラウザ環境で HiGHS を Web Worker 内で実行します。メインスレッド実行時は `false`。 |
 | `wasmUrl` | `string` | 自動解決 | ブラウザ環境で `highs.wasm` を読み込むカスタム URL。 |
@@ -71,9 +71,9 @@ const status = await m.solve({
   signal: controller.signal,
   onProgress: (event) => {
     console.log(
-      `[${event.elapsedSeconds.toFixed(1)}s] ` +
+      `[${event.elapsedTime.toFixed(1)}s] ` +
       `暫定値: ${event.objectiveValue ?? "—"}, ` +
-      `境界値: ${event.bestBound ?? "—"}, ` +
+      `境界値: ${event.objectiveBound ?? "—"}, ` +
       `ギャップ: ${event.mipGap !== undefined ? (event.mipGap * 100).toFixed(2) + "%" : "—"}`
     );
 
@@ -84,7 +84,7 @@ const status = await m.solve({
   },
 });
 
-console.log("ステータス:", m.status);               // 暫定解があれば "Feasible"、なければ "Interrupted"
+console.log("ステータス:", m.status);               // 暫定解があれば "Feasible"、なければ "Unknown"
 console.log("終了理由:", m.terminationStatus);      // "Interrupted"
 console.log("解の有無:", m.hasPrimalSolution);      // 暫定解が存在すれば true
 ```
@@ -93,12 +93,14 @@ console.log("解の有無:", m.hasPrimalSolution);      // 暫定解が存在す
 
 | フィールド | 型 | 説明 |
 | :--- | :--- | :--- |
-| `elapsedSeconds` | `number` | 求解開始からの経過秒数。 |
+| `elapsedTime` | `number` | 求解開始からの経過秒数（オプション別名: `elapsedSeconds`）。 |
+| `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | 現在のソルバーフェーズ（判明している場合）。 |
 | `objectiveValue` | `number \| undefined` | 現在見つかっている最良の実行可能解（暫定解）の目的関数値。 |
-| `bestBound` | `number \| undefined` | 現在の最良双対境界値（Best Bound）。 |
-| `mipGap` | `number \| undefined` | 現在の相対 MIP ギャップ（`0.05` = 5%）。 |
+| `objectiveBound` | `number \| undefined` | 現在の最良双対境界値（Objective Bound）。 |
+| `relGap` / `mipGap` | `number \| undefined` | 現在の相対 MIP ギャップ（`0.05` = 5%）。 |
+| `absGap` | `number \| undefined` | 現在の絶対 MIP ギャップ `\|objectiveValue - objectiveBound\|`。 |
 | `nodes` | `number \| undefined` | 探索済みの分枝限定ノード数。 |
-| `iterationCount` | `number \| undefined` | シンプレックス/内点法の反復回数。 |
+| `iterations` | `number \| undefined` | ソルバーの反復回数（シンプレックス、内点法、または MIP LP 反復）。 |
 | `message` | `string \| undefined` | ソルバーが出力した生の進捗ログ行。 |
 
 ---
@@ -131,7 +133,7 @@ MIP ソルバーが制限時間（`timeLimit`）やキャンセル（`AbortSigna
 1. **利用可能な実行可能解（暫定解）が見つかったか？**（`m.hasPrimalSolution` / `m.status`）
 2. **なぜソルバーが停止したか？**（`m.terminationStatus`）
 
-停止前に実行可能な整数解（Incumbent）が見つかっていた場合、`m.status` は `"Feasible"` となり（`x.value` や `m.objectiveValue` から暫定解を取得可能）、`m.terminationStatus` には `"TimeLimit"` や `"Interrupted"` が記録されます。まだ実行可能解が1つも見つかっていない段階で停止した場合は、`m.status` も `"TimeLimit"`（または `"Interrupted"`）となり、`m.hasPrimalSolution` は `false` になります。
+停止前に実行可能な整数解（Incumbent）が見つかっていた場合、`m.status` は `"Feasible"` となり（`x.value` や `m.objectiveValue` から暫定解を取得可能）、`m.terminationStatus` には `"TimeLimit"` や `"Interrupted"` が記録されます。まだ実行可能解が1つも見つかっていない段階で停止した場合は、`m.hasPrimalSolution` は `false`、`m.terminationStatus` は `"TimeLimit"` / `"IterationLimit"` / `"Interrupted"` となり、`m.status` は `"TimeLimit"`、`"IterationLimit"`、または `"Unknown"`（暫定解なしで `AbortSignal` により中断された場合）となります。
 
 ### 全 `SolverStatus` 一覧
 
@@ -145,8 +147,7 @@ MIP ソルバーが制限時間（`timeLimit`）やキャンセル（`AbortSigna
 | `"Unbounded"` | `false` | 制約を満たしたまま目的関数値を無限に改善できます（非有界）。 |
 | `"TimeLimit"` | `false` | 実行可能解が見つかる前に制限時間に達しました。 |
 | `"IterationLimit"` | `false` | 実行可能解が見つかる前に反復上限に達しました。 |
-| `"Interrupted"` | `false` | 実行可能解が見つかる前に `AbortSignal` によって中断されました。 |
-| `"Unknown"` | `false` | 解が見つからないまま判定不能で終了しました。 |
+| `"Unknown"` | `false` | 解が見つからないまま判定不能で終了しました（暫定解が見つかる前に `AbortSignal` で中断された場合も含み、その際は `terminationStatus === "Interrupted"` となります）。 |
 | `"Error"` | `false` | ソルバー内部でエラーが発生しました。 |
 | `"NotSolved"` | `false` | 求解前、またはモデル変更により解がリセットされた初期状態です。 |
 

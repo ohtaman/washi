@@ -126,11 +126,11 @@ const controller = new AbortController();
 await m.solve({
   signal: controller.signal,
   onProgress: (ev) => {
-    // Live branch-and-bound metrics: ev.elapsedSeconds, ev.objectiveValue, ev.bestBound, ev.mipGap
+    // Live branch-and-bound metrics: ev.elapsedTime, ev.objectiveValue, ev.objectiveBound, ev.mipGap
   },
 });
 
-// Independently verify bounds, integrality, constraints, and objective value
+// Independently verify variable bounds, integrality, and linear/logical constraints
 const report = m.validateSolution();
 console.log("Solution valid?", report.valid);
 ```

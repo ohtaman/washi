@@ -36,14 +36,10 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `==` または `=`: 等式制約
 
 ### 配列による一括登録
-制約の配列を `m.constraint([...], "prefix")` に渡して一括登録することも可能です。第2引数にプレフィックスを指定すると `${prefix}_${index}` の名前が付与されます：
+制約の配列を `m.constraint([...])` に渡して、トランザクション的に一括登録することも可能です：
 
 ```typescript
-const limits = m.constraint(
-  [expr`${x} <= 10`, expr`${y} <= 20`],
-  "bound"
-);
-// "bound_0", "bound_1" としてトランザクション登録
+m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
 ```
 
 ---

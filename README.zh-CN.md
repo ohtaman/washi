@@ -126,11 +126,11 @@ const controller = new AbortController();
 await m.solve({
   signal: controller.signal,
   onProgress: (ev) => {
-    // 实时指标: ev.elapsedSeconds, ev.objectiveValue, ev.bestBound, ev.mipGap
+    // 实时指标: ev.elapsedTime, ev.objectiveValue, ev.objectiveBound, ev.mipGap
   },
 });
 
-// 独立校验变量边界、整数性、约束残差与目标函数值
+// 独立校验变量边界、整数性以及线性/逻辑约束
 const report = m.validateSolution();
 console.log("解验证通过？", report.valid);
 ```

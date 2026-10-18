@@ -59,11 +59,11 @@ await model.solve({
   timeLimit: 60.0,       // Maximum solve time in seconds
   mipGap: 0.001,         // Terminate when within 0.1% of global optimality (alias: relGap)
   absGap: 1.0,           // Absolute MIP optimality gap tolerance
-  presolve: "on",        // Presolve control ("on" | "off" | "choose" | boolean)
+  presolve: "on",        // Presolve control ("on" | "off" | "choose")
   verbose: true,         // Output internal simplex / branch-and-bound logs
   signal: controller.signal,
   onProgress: (ev) => {
-    console.log(`Elapsed: ${ev.elapsedSeconds}s, Best: ${ev.objectiveValue}`);
+    console.log(`Elapsed: ${ev.elapsedTime.toFixed(1)}s, Best: ${ev.objectiveValue}`);
   },
 });
 ```

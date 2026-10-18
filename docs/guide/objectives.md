@@ -22,7 +22,7 @@ m.objective(maximize(expr`50 * ${x} + 40 * ${y}`));
 // m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));
 ```
 
-You can also pass raw arguments `m.objective(expr`50 * ${x} + 40 * ${y}`, "Maximize")` or omit the objective (defaults to minimizing `0`).
+Calling `m.objective()` with no arguments returns the current objective expression (`LinExpr | QuadExpr`). If you omit setting an objective, the model defaults to minimizing `0`.
 
 ---
 
@@ -51,7 +51,7 @@ const status = await m.solve({
 | `timeLimit` | `number` | `undefined` | Maximum solve duration in seconds. |
 | `mipGap` / `relGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
 | `absGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
-| `presolve` | `boolean` \| `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
+| `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
 | `verbose` / `outputFlag` | `boolean` | `false` | When `true`, emits internal solver iteration logs. |
 | `useWorker` | `boolean` | `true` (browser) | Offloads HiGHS to a dedicated Web Worker in browsers. Set `false` for main-thread execution. |
 | `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` in browser deployments. |
@@ -74,9 +74,9 @@ const status = await m.solve({
   signal: controller.signal,
   onProgress: (event) => {
     console.log(
-      `[${event.elapsedSeconds.toFixed(1)}s] ` +
+      `[${event.elapsedTime.toFixed(1)}s] ` +
       `Best: ${event.objectiveValue ?? "—"}, ` +
-      `Bound: ${event.bestBound ?? "—"}, ` +
+      `Bound: ${event.objectiveBound ?? "—"}, ` +
       `Gap: ${event.mipGap !== undefined ? (event.mipGap * 100).toFixed(2) + "%" : "—"}`
     );
 
@@ -87,7 +87,7 @@ const status = await m.solve({
   },
 });
 
-console.log("Status:", m.status);                   // "Feasible" (if an incumbent was found before abort) or "Interrupted"
+console.log("Status:", m.status);                   // "Feasible" (if an incumbent was found before abort) or "Unknown"
 console.log("Termination:", m.terminationStatus);   // "Interrupted"
 console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was available
 ```
@@ -96,12 +96,14 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `elapsedSeconds` | `number` | Wall-clock time elapsed since the solve started. |
+| `elapsedTime` | `number` | Elapsed solver time in seconds (optional alias: `elapsedSeconds`). |
+| `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | Current solver phase when known. |
 | `objectiveValue` | `number \| undefined` | Current best feasible incumbent objective value (MIP). |
-| `bestBound` | `number \| undefined` | Current best proven dual bound on the objective (MIP). |
-| `mipGap` | `number \| undefined` | Current relative optimality gap (`0.05` = 5%). |
+| `objectiveBound` | `number \| undefined` | Current best proven dual / objective bound (MIP). |
+| `relGap` / `mipGap` | `number \| undefined` | Current relative MIP optimality gap (`0.05` = 5%). |
+| `absGap` | `number \| undefined` | Current absolute MIP optimality gap `\|objectiveValue - objectiveBound\|`. |
 | `nodes` | `number \| undefined` | Branch-and-bound nodes explored so far. |
-| `iterationCount` | `number \| undefined` | Simplex / barrier iterations completed. |
+| `iterations` | `number \| undefined` | Solver iteration count (simplex, IPM, or MIP LP iterations). |
 | `message` | `string \| undefined` | Raw progress line emitted by the solver. |
 
 ---
@@ -134,7 +136,7 @@ When a MIP solver stops early due to a time limit, iteration limit, or `AbortSig
 1. **Is there a usable solution?** (`m.hasPrimalSolution` / `m.status`)
 2. **Why did the solver stop?** (`m.terminationStatus`)
 
-If an integer-feasible incumbent was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so you know `x.value` and `m.objectiveValue` hold a valid solution) and sets `m.terminationStatus = "TimeLimit"` (or `"Interrupted"`). If no incumbent was found before stopping, both `m.status` and `m.terminationStatus` are `"TimeLimit"` (or `"Interrupted"`), and `m.hasPrimalSolution` is `false`.
+If an integer-feasible incumbent was found before hitting `timeLimit` or `signal.abort()`, WaSHI sets `m.status = "Feasible"` (so you know `x.value` and `m.objectiveValue` hold a valid solution) and sets `m.terminationStatus = "TimeLimit"` (or `"Interrupted"`). If no incumbent was found before stopping, `m.hasPrimalSolution` is `false`, `m.terminationStatus` records why the solver stopped (`"TimeLimit"`, `"IterationLimit"`, or `"Interrupted"`), and `m.status` is `"TimeLimit"`, `"IterationLimit"`, or `"Unknown"` (when aborted via `AbortSignal` without an incumbent).
 
 ### All `SolverStatus` Values
 
@@ -148,8 +150,7 @@ If an integer-feasible incumbent was found before hitting `timeLimit` or `signal
 | `"Unbounded"` | `false` | Objective can improve indefinitely without violating constraints. |
 | `"TimeLimit"` | `false` | Time limit reached before finding any feasible primal solution. |
 | `"IterationLimit"` | `false` | Iteration limit reached before finding any feasible primal solution. |
-| `"Interrupted"` | `false` | Cancelled via `AbortSignal` before finding any feasible primal solution. |
-| `"Unknown"` | `false` | Solver stopped inconclusively without a valid primal solution. |
+| `"Unknown"` | `false` | Solver stopped inconclusively without a valid primal solution (including when cancelled via `AbortSignal` before finding an incumbent, where `terminationStatus === "Interrupted"`). |
 | `"Error"` | `false` | Solver encountered an internal execution error. |
 | `"NotSolved"` | `false` | Initial state before solving, or after the model has been mutated. |
 

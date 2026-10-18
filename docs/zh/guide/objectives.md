@@ -22,7 +22,7 @@ m.objective(maximize(expr`50 * ${x} + 40 * ${y}`));
 // m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));
 ```
 
-您也可以直接传入双参数形式 `m.objective(expr`50 * ${x} + 40 * ${y}`, "Maximize")`，或省略目标函数（默认为最小化常数 `0`）。
+无参数调用 `m.objective()` 可读取当前的目标函数表达式（`LinExpr | QuadExpr`）。如果未设置目标函数，模型默认最小化常数 `0`。
 
 ---
 
@@ -51,7 +51,7 @@ const status = await m.solve({
 | `timeLimit` | `number` | `undefined` | 最大求解时间上限（秒）。 |
 | `mipGap` / `relGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
 | `absGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
-| `presolve` | `boolean` \| `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
+| `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | 控制优化前的求解器预处理（Presolve）化简策略。 |
 | `verbose` / `outputFlag` | `boolean` | `false` | 设为 `true` 时输出求解器内部迭代日志。 |
 | `useWorker` | `boolean` | `true` (浏览器) | 在浏览器中将 HiGHS 卸载到专用 Web Worker 中执行。设为 `false` 则在主线程执行。 |
 | `wasmUrl` | `string` | 自动解析 | 浏览器部署时用于加载 `highs.wasm` 的自定义 URL。 |
@@ -74,9 +74,9 @@ const status = await m.solve({
   signal: controller.signal,
   onProgress: (event) => {
     console.log(
-      `[${event.elapsedSeconds.toFixed(1)}s] ` +
+      `[${event.elapsedTime.toFixed(1)}s] ` +
       `Best: ${event.objectiveValue ?? "—"}, ` +
-      `Bound: ${event.bestBound ?? "—"}, ` +
+      `Bound: ${event.objectiveBound ?? "—"}, ` +
       `Gap: ${event.mipGap !== undefined ? (event.mipGap * 100).toFixed(2) + "%" : "—"}`
     );
 
@@ -87,7 +87,7 @@ const status = await m.solve({
   },
 });
 
-console.log("Status:", m.status);                   // 若中断前已找到可行解则为 "Feasible"，否则为 "Interrupted"
+console.log("Status:", m.status);                   // 若中断前已找到可行解则为 "Feasible"，否则为 "Unknown"
 console.log("Termination:", m.terminationStatus);   // "Interrupted"
 console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解则为 true
 ```
@@ -96,12 +96,14 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 
 | 字段 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `elapsedSeconds` | `number` | 自求解开始以来经过的挂钟时间（秒）。 |
+| `elapsedTime` | `number` | 自求解开始以来经过的求解时间（秒；可选别名：`elapsedSeconds`）。 |
+| `phase` | `"simplex" \| "ipm" \| "mip" \| undefined` | 当前求解器阶段（已知时提供）。 |
 | `objectiveValue` | `number \| undefined` | 当前找到的最佳可行整数解（Incumbent）的目标函数值（MIP）。 |
-| `bestBound` | `number \| undefined` | 当前已证明的目标函数最佳对偶界（Best Bound，MIP）。 |
-| `mipGap` | `number \| undefined` | 当前相对最优性间隙（`0.05` = 5%）。 |
+| `objectiveBound` | `number \| undefined` | 当前已证明的目标函数最佳对偶界（Objective Bound，MIP）。 |
+| `relGap` / `mipGap` | `number \| undefined` | 当前相对最优性间隙（`0.05` = 5%）。 |
+| `absGap` | `number \| undefined` | 当前绝对最优性间隙 `\|objectiveValue - objectiveBound\|`。 |
 | `nodes` | `number \| undefined` | 截至目前已探索的分支定界节点数。 |
-| `iterationCount` | `number \| undefined` | 已完成的单纯形法 / 内点法迭代次数。 |
+| `iterations` | `number \| undefined` | 求解器迭代次数（单纯形法、内点法或 MIP LP 迭代）。 |
 | `message` | `string \| undefined` | 求解器输出的原始进度日志行。 |
 
 ---
@@ -134,7 +136,7 @@ console.log(m.getValues({ x, y }));                       // { x: ..., y: ... }
 1. **是否存在可用的可行解？**（`m.hasPrimalSolution` / `m.status`）
 2. **求解器为什么停止？**（`m.terminationStatus`）
 
-如果在触发 `timeLimit` 或 `signal.abort()` 之前已经找到了满足整数约束的可行解（Incumbent），WaSHI 会将 `m.status` 设为 `"Feasible"`（表示 `x.value` 和 `m.objectiveValue` 中保存了合法的可行解），同时将 `m.terminationStatus` 设为 `"TimeLimit"`（或 `"Interrupted"`）。如果在停止前尚未找到任何可行解，则 `m.status` 和 `m.terminationStatus` 均为 `"TimeLimit"`（或 `"Interrupted"`），且 `m.hasPrimalSolution` 为 `false`。
+如果在触发 `timeLimit` 或 `signal.abort()` 之前已经找到了满足整数约束的可行解（Incumbent），WaSHI 会将 `m.status` 设为 `"Feasible"`（表示 `x.value` 和 `m.objectiveValue` 中保存了合法的可行解），同时将 `m.terminationStatus` 设为 `"TimeLimit"`（或 `"Interrupted"`）。如果在停止前尚未找到任何可行解，则 `m.hasPrimalSolution` 为 `false`，`m.terminationStatus` 记录停止原因（`"TimeLimit"`、`"IterationLimit"` 或 `"Interrupted"`），而 `m.status` 为 `"TimeLimit"`、`"IterationLimit"` 或 `"Unknown"`（当通过 `AbortSignal` 取消且尚无可行解时）。
 
 ### 所有 `SolverStatus` 状态值一览
 
@@ -148,8 +150,7 @@ console.log(m.getValues({ x, y }));                       // { x: ..., y: ... }
 | `"Unbounded"` | `false` | 在不违反任何约束的前提下，目标函数值可以无限优化（无界）。 |
 | `"TimeLimit"` | `false` | 在找到任何原问题可行解之前已达到时间上限。 |
 | `"IterationLimit"` | `false` | 在找到任何原问题可行解之前已达到迭代次数上限。 |
-| `"Interrupted"` | `false` | 在找到任何原问题可行解之前被 `AbortSignal` 取消。 |
-| `"Unknown"` | `false` | 求解器未得出确定结论且未找到合法原问题解。 |
+| `"Unknown"` | `false` | 求解器未得出确定结论且未找到合法原问题解（包括在找到可行解前被 `AbortSignal` 取消的情况，此时 `terminationStatus === "Interrupted"`）。 |
 | `"Error"` | `false` | 求解器遇到内部执行错误。 |
 | `"NotSolved"` | `false` | 求解前的初始状态，或模型被修改后已重置解状态。 |
 

@@ -71,6 +71,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content).not.toContain("/public/highs.wasm");
       expect(content).not.toContain("custom-solver-guide.md");
       expect(content).not.toContain("documentation-plan.md");
+      expect(content).not.toContain("bestBound");
+      expect(content).not.toContain("iterationCount");
     }
 
     for (const docFile of mdFiles) {
@@ -85,6 +87,14 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       );
       expect(content, `Invalid computeUnsatCore option in ${docFile}`).not.toContain("computeUnsatCore");
       expect(content, `Invalid solverOptions on Model in ${docFile}`).not.toContain("solverOptions:");
+      expect(content, `Invalid SolutionValidationOptions/Report field in ${docFile}`).not.toMatch(
+        /\b(absTol|relTol|integralityTol|maxBoundViolation|maxIntegralityViolation|maxConstraintViolation|objectiveDiscrepancy|checkedSolveStatus)\b/
+      );
+      expect(content, `Invalid MockSolver defaultResult wrapper in ${docFile}`).not.toContain("defaultResult");
+      expect(content, `Invalid SolveProgressEvent field in ${docFile}`).not.toMatch(/\b(bestBound|iterationCount)\b/);
+      expect(content, `Invalid two-argument objective call in ${docFile}`).not.toContain(', "Maximize")');
+      expect(content, `Invalid Interrupted row in SolverStatus table in ${docFile}`).not.toContain('| `"Interrupted"` | `false` |');
+      expect(content, `Invalid boolean presolve type in ${docFile}`).not.toMatch(/presolve.*boolean/);
       expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
@@ -99,6 +109,48 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         ).not.toThrow();
       }
     }
+  });
+
+  it("executes guide examples for validateSolution, MockSolver, batch constraint, and LinExpr.value at runtime", async () => {
+    const { Model, MockSolver, expr, maximize } = Washi;
+
+    // 1. MockSolver flat options (docs/guide/unsat-core.md)
+    const mock = new MockSolver({
+      status: "Optimal",
+      objectiveValue: 420,
+      values: { x: 10, y: 20 },
+    });
+    const mMock = new Model({ solver: mock });
+    const mx = mMock.integer("x");
+    const my = mMock.integer("y");
+    mMock.objective(maximize(expr`10 * ${mx} + 16 * ${my}`));
+    await mMock.solve();
+    expect(mMock.objectiveValue).toBe(420);
+    expect(mx.value).toBe(10);
+    expect(my.value).toBe(20);
+
+    // 2. SolutionValidationOptions & SolutionValidationReport + LinExpr.value (docs/guide/unsat-core.md & expressions.md)
+    const m = new Model();
+    const x = m.integer("x", { lb: 0 });
+    const y = m.integer("y", { lb: 0 });
+    const revenue = expr`30 * ${x} + 50 * ${y}`;
+    const laborUsed = expr`2 * ${x} + ${y}`;
+    m.objective(maximize(revenue));
+    m.constraint([expr`${x} + 2 * ${y} <= 40`, expr`${laborUsed} <= 50`]);
+    await m.solve();
+
+    expect(revenue.value).toBe(1100);
+    expect(laborUsed.value).toBe(50);
+
+    const report = m.validateSolution({
+      feasibilityTolerance: 1e-6,
+      integralityTolerance: 1e-6,
+      evaluateLogicalConstraints: true,
+    });
+    expect(report.valid).toBe(true);
+    expect(report.complete).toBe(true);
+    expect(report.maxViolation).toBe(0);
+    expect(report.summary.checkedLinearConstraints).toBe(2);
   });
 
   it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {

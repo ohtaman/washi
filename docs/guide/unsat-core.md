@@ -59,23 +59,22 @@ if (status === "Infeasible") {
 
 ## ✅ Independent Solution Validation (`m.validateSolution()`)
 
-After solving a model (or supplying a custom solution), you can independently verify that all variable bounds, integer/binary domains, linear constraints, logical SMT formulas, and the objective value hold against the original model definitions:
+After solving a model (or supplying a custom candidate map via `values`), you can independently verify that all variable bounds, integer/binary domains, linear constraints, and logical SMT formulas hold against the original model definitions:
 
 ```typescript
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
   const report = m.validateSolution({
-    absTol: 1e-6,         // Absolute tolerance for bounds, constraints, and objective
-    relTol: 1e-6,         // Relative tolerance scaled by magnitude
-    integralityTol: 1e-5, // Maximum distance from nearest integer for Integer/Binary vars
+    feasibilityTolerance: 1e-6,     // Max allowed violation for bounds and linear constraints
+    integralityTolerance: 1e-6,     // Max distance from nearest integer for Integer/Binary vars
+    evaluateLogicalConstraints: true,
   });
 
   console.log("Valid:", report.valid);
-  console.log("Max bound violation:", report.maxBoundViolation);
-  console.log("Max integrality violation:", report.maxIntegralityViolation);
-  console.log("Max constraint violation:", report.maxConstraintViolation);
-  console.log("Objective discrepancy:", report.objectiveDiscrepancy);
+  console.log("Complete:", report.complete);
+  console.log("Max violation:", report.maxViolation);
+  console.log("Summary:", report.summary);
 
   if (!report.valid) {
     console.warn("Violations detected:", report.violations);
@@ -87,13 +86,14 @@ if (m.hasPrimalSolution) {
 
 | Property | Type | Description |
 | :--- | :--- | :--- |
-| `valid` | `boolean` | `true` iff a primal solution exists and `violations.length === 0`. |
-| `checkedSolveStatus` | `SolverStatus` | The model's `status` at validation time. |
-| `maxBoundViolation` | `number` | Largest absolute bound violation across all numeric variables. |
-| `maxIntegralityViolation` | `number` | Largest distance from an integer across `"Integer"` and `"Binary"` variables. |
-| `maxConstraintViolation` | `number` | Largest residual violation across all linear constraints. |
-| `objectiveDiscrepancy` | `number \| null` | Absolute difference between recomputed objective and `m.objectiveValue`. |
-| `violations` | `SolutionViolation[]` | Detailed list of violations (`"missing_solution"`, `"bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"objective"`). |
+| `valid` | `boolean` | `true` iff `complete === true`, `uncheckedConstraints.length === 0`, and `violations.length === 0`. |
+| `complete` | `boolean` | `true` when all variables, Boolean variables, linear constraints, and logical constraints were evaluated. |
+| `maxViolation` | `number` | Largest numeric violation magnitude across all evaluated bounds, integrality checks, and constraints. |
+| `violations` | `SolutionViolation[]` | Flat list of violations (`"missing_value"`, `"non_finite_value"`, `"invalid_boolean_value"`, `"lower_bound"`, `"upper_bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"unchecked_constraint"`). |
+| `violationsByName` | `Record<string, SolutionViolation[]>` | Violations grouped by variable or constraint name. |
+| `uncheckedConstraints` | `string[]` | Names of constraints that could not be evaluated. |
+| `missingVariables` | `string[]` | Names of numeric or Boolean variables whose values were `null` or `undefined`. |
+| `summary` | `SolutionValidationSummary` | Counts of checked vs. total variables, Boolean variables, linear constraints, and logical constraints. |
 
 ---
 
@@ -131,11 +131,9 @@ When running unit tests for application code that builds or consumes a WaSHI `Mo
 import { Model, MockSolver, expr, maximize } from "@ohtaman/washi";
 
 const mock = new MockSolver({
-  defaultResult: {
-    status: "Optimal",
-    objectiveValue: 420,
-    values: { x: 10, y: 20 },
-  },
+  status: "Optimal",
+  objectiveValue: 420,
+  values: { x: 10, y: 20 },
 });
 
 const m = new Model({ solver: mock });

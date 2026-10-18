@@ -58,11 +58,11 @@ await model.solve({
   timeLimit: 60.0,       // 最大実行時間（秒）
   mipGap: 0.001,         // 相対 MIP ギャップが 0.1% 以内になったら終了 (別名: relGap)
   absGap: 1.0,           // 絶対 MIP ギャップ許容値
-  presolve: "on",        // 前処理 ("on" | "off" | "choose" | boolean)
+  presolve: "on",        // 前処理 ("on" | "off" | "choose")
   verbose: true,         // シンプレックス / 分枝限定法の内部ログを出力
   signal: controller.signal,
   onProgress: (ev) => {
-    console.log(`経過: ${ev.elapsedSeconds}s, 暫定値: ${ev.objectiveValue}`);
+    console.log(`経過: ${ev.elapsedTime.toFixed(1)}s, 暫定値: ${ev.objectiveValue}`);
   },
 });
 ```

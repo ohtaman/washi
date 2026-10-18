@@ -59,23 +59,22 @@ if (status === "Infeasible") {
 
 ## ✅ 独立解验证 (`m.validateSolution()`)
 
-求解完成后（或手动注入自定义解后），您可以对照原始模型定义，独立验证所有变量边界、整数/二元定义域、线性约束、SMT 逻辑公式以及目标函数值是否在容差范围内成立：
+求解完成后（或通过 `values` 选项传入自定义候选解后），您可以对照原始模型定义，独立验证所有变量边界、整数/二元定义域、线性约束以及 SMT 逻辑公式是否在容差范围内成立：
 
 ```typescript
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
   const report = m.validateSolution({
-    absTol: 1e-6,         // 变量边界、约束与目标函数的绝对容差
-    relTol: 1e-6,         // 按数值量级缩放的相对容差
-    integralityTol: 1e-5, // Integer/Binary 变量距离最近整数的最大允许偏差
+    feasibilityTolerance: 1e-6,     // 变量边界与线性约束的最大允许违反量
+    integralityTolerance: 1e-6,     // Integer/Binary 变量距离最近整数的最大允许偏差
+    evaluateLogicalConstraints: true,
   });
 
   console.log("Valid:", report.valid);
-  console.log("Max bound violation:", report.maxBoundViolation);
-  console.log("Max integrality violation:", report.maxIntegralityViolation);
-  console.log("Max constraint violation:", report.maxConstraintViolation);
-  console.log("Objective discrepancy:", report.objectiveDiscrepancy);
+  console.log("Complete:", report.complete);
+  console.log("Max violation:", report.maxViolation);
+  console.log("Summary:", report.summary);
 
   if (!report.valid) {
     console.warn("Violations detected:", report.violations);
@@ -87,13 +86,14 @@ if (m.hasPrimalSolution) {
 
 | 属性 | 类型 | 说明 |
 | :--- | :--- | :--- |
-| `valid` | `boolean` | 当且仅当存在原问题解且 `violations.length === 0` 时为 `true`。 |
-| `checkedSolveStatus` | `SolverStatus` | 执行验证时模型的 `status`。 |
-| `maxBoundViolation` | `number` | 所有数值变量中最大的绝对边界违反量。 |
-| `maxIntegralityViolation` | `number` | 所有 `"Integer"` 与 `"Binary"` 变量距离最近整数的最大偏差。 |
-| `maxConstraintViolation` | `number` | 所有线性约束中最大的残差违反量。 |
-| `objectiveDiscrepancy` | `number \| null` | 重新计算的目标函数值与 `m.objectiveValue` 之间的绝对差值。 |
-| `violations` | `SolutionViolation[]` | 检测到的违规详情列表（`"missing_solution"`、`"bound"`、`"integrality"`、`"linear_constraint"`、`"logical_constraint"`、`"objective"`）。 |
+| `valid` | `boolean` | 当且仅当 `complete === true`、`uncheckedConstraints.length === 0` 且 `violations.length === 0` 时为 `true`。 |
+| `complete` | `boolean` | 当所有变量、布尔变量、线性约束和逻辑约束均已完成评估时为 `true`。 |
+| `maxViolation` | `number` | 所有已评估边界、整数性检查和约束中的最大数值违反量。 |
+| `violations` | `SolutionViolation[]` | 检测到的违规详情列表（`"missing_value"`、`"non_finite_value"`、`"invalid_boolean_value"`、`"lower_bound"`、`"upper_bound"`、`"integrality"`、`"linear_constraint"`、`"logical_constraint"`、`"unchecked_constraint"`）。 |
+| `violationsByName` | `Record<string, SolutionViolation[]>` | 按变量名或约束名分组的违规列表。 |
+| `uncheckedConstraints` | `string[]` | 因缺失变量值等原因未能评估的约束名称列表。 |
+| `missingVariables` | `string[]` | 取值为 `null` 或 `undefined` 的数值或布尔变量名称列表。 |
+| `summary` | `SolutionValidationSummary` | 已检查与总计的变量、布尔变量、线性约束及逻辑约束数量统计。 |
 
 ---
 
@@ -131,11 +131,9 @@ End
 import { Model, MockSolver, expr, maximize } from "@ohtaman/washi";
 
 const mock = new MockSolver({
-  defaultResult: {
-    status: "Optimal",
-    objectiveValue: 420,
-    values: { x: 10, y: 20 },
-  },
+  status: "Optimal",
+  objectiveValue: 420,
+  values: { x: 10, y: 20 },
 });
 
 const m = new Model({ solver: mock });

@@ -59,23 +59,22 @@ if (status === "Infeasible") {
 
 ## ✅ 解の独立検証 (`m.validateSolution()`)
 
-求解後（またはカスタム解の適用後）に、得られた解が元のモデルの変数上下限・整数条件・線形制約・論理制約・目的関数値を許容誤差内で満たしているかを独立して検証できます：
+求解後（または `values` オプションでカスタム解を渡して）、得られた解が元のモデルの変数上下限・整数条件・線形制約・論理制約を許容誤差内で満たしているかを独立して検証できます：
 
 ```typescript
 const status = await m.solve();
 
 if (m.hasPrimalSolution) {
   const report = m.validateSolution({
-    absTol: 1e-6,         // 境界・制約・目的関数の絶対許容誤差
-    relTol: 1e-6,         // 値の大きさに比例する相対許容誤差
-    integralityTol: 1e-5, // Integer / Binary 変数の整数からの最大許容誤差
+    feasibilityTolerance: 1e-6,     // 変数上下限および線形制約の最大許容違反量
+    integralityTolerance: 1e-6,     // Integer / Binary 変数の整数からの最大許容誤差
+    evaluateLogicalConstraints: true,
   });
 
   console.log("検証結果 (valid):", report.valid);
-  console.log("最大境界違反:", report.maxBoundViolation);
-  console.log("最大整数性違反:", report.maxIntegralityViolation);
-  console.log("最大制約違反:", report.maxConstraintViolation);
-  console.log("目的関数の乖離:", report.objectiveDiscrepancy);
+  console.log("全項目評価済 (complete):", report.complete);
+  console.log("最大違反量 (maxViolation):", report.maxViolation);
+  console.log("集計サマリ:", report.summary);
 
   if (!report.valid) {
     console.warn("違反の詳細:", report.violations);
@@ -87,13 +86,14 @@ if (m.hasPrimalSolution) {
 
 | プロパティ | 型 | 説明 |
 | :--- | :--- | :--- |
-| `valid` | `boolean` | 解が存在し、かつ違反（`violations`）が 0 件のとき `true`。 |
-| `checkedSolveStatus` | `SolverStatus` | 検証時点でのモデルの `status`。 |
-| `maxBoundViolation` | `number` | 全数値変数における上下限違反の最大値。 |
-| `maxIntegralityViolation` | `number` | `"Integer"` / `"Binary"` 変数における最寄り整数からの最大距離。 |
-| `maxConstraintViolation` | `number` | 全線形制約における残差違反の最大値。 |
-| `objectiveDiscrepancy` | `number \| null` | 再計算した目的関数値と `m.objectiveValue` の絶対差。 |
-| `violations` | `SolutionViolation[]` | 検出された違反の詳細リスト（`"missing_solution"`, `"bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"objective"`）。 |
+| `valid` | `boolean` | `complete === true` かつ `uncheckedConstraints.length === 0` かつ `violations.length === 0` のとき `true`。 |
+| `complete` | `boolean` | すべての変数・論理変数・線形制約・論理制約が評価完了したとき `true`。 |
+| `maxViolation` | `number` | 評価されたすべての境界・整数性・制約における違反量の最大値。 |
+| `violations` | `SolutionViolation[]` | 検出された違反のリスト（`"missing_value"`, `"non_finite_value"`, `"invalid_boolean_value"`, `"lower_bound"`, `"upper_bound"`, `"integrality"`, `"linear_constraint"`, `"logical_constraint"`, `"unchecked_constraint"`）。 |
+| `violationsByName` | `Record<string, SolutionViolation[]>` | 変数名または制約名ごとにグループ化された違反マップ。 |
+| `uncheckedConstraints` | `string[]` | 変数値の欠落等により評価できなかった制約名のリスト。 |
+| `missingVariables` | `string[]` | 値が `null` または `undefined` だった変数名のリスト。 |
+| `summary` | `SolutionValidationSummary` | 評価済み／全体の変数数・論理変数数・線形制約数・論理制約数の集計。 |
 
 ---
 
@@ -131,11 +131,9 @@ CI 環境などで WebAssembly をロードせずにアプリケーション側�
 import { Model, MockSolver, expr, maximize } from "@ohtaman/washi";
 
 const mock = new MockSolver({
-  defaultResult: {
-    status: "Optimal",
-    objectiveValue: 420,
-    values: { x: 10, y: 20 },
-  },
+  status: "Optimal",
+  objectiveValue: 420,
+  values: { x: 10, y: 20 },
 });
 
 const m = new Model({ solver: mock });

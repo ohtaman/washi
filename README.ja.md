@@ -126,11 +126,11 @@ const controller = new AbortController();
 await m.solve({
   signal: controller.signal,
   onProgress: (ev) => {
-    // 分枝限定法のライブ指標: ev.elapsedSeconds, ev.objectiveValue, ev.bestBound, ev.mipGap
+    // 分枝限定法のライブ指標: ev.elapsedTime, ev.objectiveValue, ev.objectiveBound, ev.mipGap
   },
 });
 
-// 求解結果が境界・整数性・線形/論理制約・目的関数を満たすか独立検証
+// 求解結果が境界・整数性・線形/論理制約を満たすか独立検証
 const report = m.validateSolution();
 console.log("解の検証結果:", report.valid);
 ```

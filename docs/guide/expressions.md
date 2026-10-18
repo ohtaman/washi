@@ -174,11 +174,12 @@ const revenue = expr`30 * ${x} + 50 * ${y}`;
 const laborUsed = expr`2 * ${x} + ${y}`;
 
 m.objective(maximize(revenue));
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_cap");
 m.constraint(expr`${laborUsed} <= 50`, "labor_cap");
 
 await m.solve();
 
-console.log("Total Revenue:", revenue.value);   // 1100
+console.log("Total Revenue:", revenue.value);   // 1100 (x = 20, y = 10)
 console.log("Labor Used:", laborUsed.value);    // 50
 ```
 
