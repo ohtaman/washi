@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 import * as Washi from "../src/index.js";
+import "../src/modeler/solvers/z3.js";
 import { transpileSnippetToJs } from "../docs/.vitepress/theme/utils/transpile.js";
 
 describe("CodeRunner documentation snippets syntax validity", () => {
@@ -101,6 +102,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       );
       expect(content, `Invalid "Empty" in SolverStatus list in ${docFile}`).not.toContain('- `"Empty"`');
       expect(content, `Incorrect negated LP objective in ${docFile}`).not.toContain("obj: - 5 x");
+      expect(content, `Incorrect highs.worker.js asset name in ${docFile}`).not.toContain("highs.worker.js");
       expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
@@ -184,6 +186,19 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(checkRes.status).toBe("Sat");
     expect(typeof checkRes.values.x).toBe("number");
     expect("boolValues" in checkRes).toBe(false);
+
+    // 5. HiGHS solve() -> Z3 check({ solver: "z3" }) diagnostic workflow (docs/guide/unsat-core.md)
+    const mDiag = new Model();
+    expect(mDiag.solver).toBeNull(); // Uses default HiGHS on mDiag.solve()
+    const rx = mDiag.continuous("reserve", { lb: 0 });
+    mDiag.constraint(expr`${rx} >= 100`, "minimum_regulatory_reserve");
+    mDiag.constraint(expr`${rx} <= 50`, "budget_ceiling");
+    mDiag.constraint(expr`${rx} >= 10`, "routine_operating_cost");
+    const solveStatus = await mDiag.solve();
+    expect(solveStatus).toBe("Infeasible");
+    const diag = await mDiag.check({ solver: "z3" });
+    expect(diag.status).toBe("Unsat");
+    expect(diag.conflicts).toEqual(["minimum_regulatory_reserve", "budget_ceiling"]);
   });
 
   it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {

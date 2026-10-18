@@ -185,13 +185,13 @@ For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard 
 WaSHI never phones home or falls back to public CDNs. To self-host in an air-gapped intranet or under a strict Content Security Policy (CSP):
 
 1. **Copy Static Assets**: Serve the files from `node_modules/@ohtaman/washi/dist/browser/` on your own origin:
-   - `washi.js` / `washi.min.js`, `highs.wasm`, and `highs.worker.js`
+   - `washi.js` / `washi.min.js`, `highs.wasm`, and `highs-worker.js`
    - Optional GLPK: `solvers/glpk.js` / `solvers/glpk.min.js`
    - Optional Z3: `solvers/z3.js` / `solvers/z3.min.js`, `solvers/z3-built.js`, `solvers/z3-built.wasm`
 2. **Content Security Policy (CSP) Headers**:
    - Allow WebAssembly compilation (`'wasm-unsafe-eval'` in `script-src`).
    - If using the default Web Worker or cross-origin Blob worker fallback, allow `worker-src 'self' blob:;`.
-   - If `blob:` workers are prohibited by policy, either serve `highs.worker.js` from `'self'` or run on the main thread with `await m.solve({ useWorker: false })`.
+   - If `blob:` workers are prohibited by policy, either serve `highs-worker.js` from `'self'` or run on the main thread with `await m.solve({ useWorker: false })`.
 3. **Cross-Origin Isolation (Z3 Only)**:
    - HiGHS and GLPK run in standard browser contexts without special headers.
    - Z3 WASM uses pthreads + `SharedArrayBuffer` and requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (or `credentialless`). See the [Cross-Origin Isolation Guide](./cross-origin.md) for setup details.

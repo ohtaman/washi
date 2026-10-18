@@ -185,13 +185,13 @@ export default function OptimizerComponent() {
 WaSHI は外部 CDN への暗黙的な通信を一切行いません。インターネット接続のない閉域網や厳格な Content Security Policy (CSP) 環境でセルフホストする場合は、以下の手順で配置できます：
 
 1. **静的アセットの配置**: `node_modules/@ohtaman/washi/dist/browser/` 内のファイルを同一オリジンに配置します：
-   - `washi.js` / `washi.min.js`, `highs.wasm`, `highs.worker.js`
+   - `washi.js` / `washi.min.js`, `highs.wasm`, `highs-worker.js`
    - GLPK 利用時: `solvers/glpk.js` / `solvers/glpk.min.js`
    - Z3 利用時: `solvers/z3.js` / `solvers/z3.min.js`, `solvers/z3-built.js`, `solvers/z3-built.wasm`
 2. **Content Security Policy (CSP) ヘッダー**:
    - WebAssembly の実行許可（`script-src` に `'wasm-unsafe-eval'`）。
    - Web Worker または Blob Worker フォールバックを利用する場合は `worker-src 'self' blob:;` を許可します。
-   - `blob:` Worker が禁止されている環境では、同一オリジン（`'self'`）から `highs.worker.js` を配信するか、`await m.solve({ useWorker: false })` でメインスレッド実行を選択してください。
+   - `blob:` Worker が禁止されている環境では、同一オリジン（`'self'`）から `highs-worker.js` を配信するか、`await m.solve({ useWorker: false })` でメインスレッド実行を選択してください。
 3. **Cross-Origin Isolation（Z3 利用時のみ）**:
    - HiGHS と GLPK は通常のブラウザ環境でそのまま動作します。
    - Z3 WASM は pthreads と `SharedArrayBuffer` を使用するため、`Cross-Origin-Opener-Policy: same-origin` および `Cross-Origin-Embedder-Policy: require-corp`（または `credentialless`）が必要です。詳細は [Cross-Origin Isolation 設定](./cross-origin.md) を参照してください。

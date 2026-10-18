@@ -18,7 +18,7 @@ import { Model, expr } from "@ohtaman/washi";
 // Z3 ソルバープラグインを登録
 import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ solver: "z3" });
+const m = new Model();
 
 const x = m.continuous("reserve", { lb: 0 });
 

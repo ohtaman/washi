@@ -185,13 +185,13 @@ export default function OptimizerComponent() {
 WaSHI 绝不会向外部发送遥测数据或隐式回退到公共 CDN。若需在物理隔离的内网或严格的内容安全策略 (CSP) 环境下自托管部署，请按以下步骤配置：
 
 1. **复制静态资源**：将 `node_modules/@ohtaman/washi/dist/browser/` 下的文件托管到您自己的同源服务器上：
-   - `washi.js` / `washi.min.js`、`highs.wasm` 以及 `highs.worker.js`
+   - `washi.js` / `washi.min.js`、`highs.wasm` 以及 `highs-worker.js`
    - 可选 GLPK：`solvers/glpk.js` / `solvers/glpk.min.js`
    - 可选 Z3：`solvers/z3.js` / `solvers/z3.min.js`、`solvers/z3-built.js`、`solvers/z3-built.wasm`
 2. **内容安全策略 (CSP) 响应头**：
    - 允许 WebAssembly 编译（在 `script-src` 中包含 `'wasm-unsafe-eval'`）。
    - 若使用默认的 Web Worker 或跨源 Blob Worker 回退方案，请允许 `worker-src 'self' blob:;`。
-   - 如果安全策略禁止 `blob:` Worker，请从同源（`'self'`）托管 `highs.worker.js`，或使用 `await m.solve({ useWorker: false })` 在主线程中运行。
+   - 如果安全策略禁止 `blob:` Worker，请从同源（`'self'`）托管 `highs-worker.js`，或使用 `await m.solve({ useWorker: false })` 在主线程中运行。
 3. **跨源隔离（仅限使用 Z3 时）**：
    - HiGHS 与 GLPK 在标准浏览器上下文中即可直接运行，无需特殊响应头。
    - Z3 WASM 使用了 pthreads 与 `SharedArrayBuffer`，需要配置 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`（或 `credentialless`）。详细配置请参阅[跨源隔离配置指南](./cross-origin.md)。
