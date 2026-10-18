@@ -48,7 +48,7 @@ const status = await m.solve({
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `solver` | `"highs"` \| `"z3"` \| `"glpk"` \| `Solver` | Model's solver (`"highs"`) | Target solver plugin or instance for this run. |
+| `solver` | `string` \| `Solver` | Model's solver (`"highs"`) | Registered solver name (e.g. `"highs"`, `"z3"`, `"glpk"`, or custom) or `Solver` instance for this run. |
 | `timeLimit` | `number` | `undefined` | Maximum solve duration in seconds. |
 | `mipGap` / `relGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
 | `absGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
@@ -122,7 +122,7 @@ console.log("Has Primal Solution:", m.hasPrimalSolution); // true when x.value /
 
 // Objective & MIP Gap Metrics
 console.log("Objective Value:", m.objectiveValue);        // Best primal objective (or null)
-console.log("Objective Bound:", m.objectiveBound);        // Best dual bound (or null)
+console.log("Objective Bound:", m.objectiveBound);        // Best dual bound (or undefined)
 console.log("Relative Gap:", m.relGap);                   // Relative MIP gap (alias: m.mipGap)
 console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
 

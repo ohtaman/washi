@@ -155,7 +155,7 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 
 ## 获取求解结果与缩减成本 (Reduced Cost)
 
-调用 `await m.solve()` 或 `await m.check()` 后，可通过 `variable.value`（`Var` 返回 `number | null`，`BoolVar` 返回 `boolean | null`）或批量访问器 `m.getValues()` 获取最优解：
+调用 `await m.solve()` 或 `await m.check()` 后，可通过 `variable.value`（`Var` 返回 `number | null`，`BoolVar` 返回 `boolean | null`）或批量访问器 `m.getValues()` 获取变量赋值（`solve()` 返回最优解或暂定可行解，`check()` 返回满足约束的可行赋值）：
 
 ```typescript
 await m.solve();

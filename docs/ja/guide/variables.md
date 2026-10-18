@@ -155,7 +155,7 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的�
 
 ## 求解後の値と被約費用の取得
 
-`await m.solve()` または `await m.check()` の実行後、`variable.value` または一括取得メソッド `m.getValues()` で解を取り出せます：
+`await m.solve()` または `await m.check()` の実行後、`variable.value` または一括取得メソッド `m.getValues()` で変数の解（`solve()` では最適解または暫定解、`check()` では制約を充足する割当）を取り出せます：
 
 ```typescript
 await m.solve();

@@ -103,6 +103,9 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content, `Invalid "Empty" in SolverStatus list in ${docFile}`).not.toContain('- `"Empty"`');
       expect(content, `Incorrect negated LP objective in ${docFile}`).not.toContain("obj: - 5 x");
       expect(content, `Incorrect highs.worker.js asset name in ${docFile}`).not.toContain("highs.worker.js");
+      expect(content, `Incorrect objectiveBound null comment in ${docFile}`).not.toMatch(
+        /m\.objectiveBound\);\s*\/\/.*null/
+      );
       expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
@@ -134,6 +137,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     mMock.objective(maximize(expr`10 * ${mx} + 16 * ${my}`));
     await mMock.solve();
     expect(mMock.objectiveValue).toBe(420);
+    expect(mMock.objectiveBound).toBeUndefined();
     expect(mx.value).toBe(10);
     expect(my.value).toBe(20);
 

@@ -156,7 +156,7 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial sta
 
 ## Accessing Solution Values & Reduced Costs
 
-After calling `await m.solve()` or `await m.check()`, optimal values are accessible via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`) or the bulk accessor `m.getValues()`:
+After calling `await m.solve()` or `await m.check()`, assigned variable values (optimal or incumbent primal values from `solve()`, or a satisfying assignment from `check()`) are accessible via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`) or the bulk accessor `m.getValues()`:
 
 ```typescript
 await m.solve();

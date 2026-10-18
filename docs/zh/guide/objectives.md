@@ -48,7 +48,7 @@ const status = await m.solve({
 
 | 选项 | 类型 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- |
-| `solver` | `"highs"` \| `"z3"` \| `"glpk"` \| `Solver` | 模型的求解器 (`"highs"`) | 本次运行使用的目标求解器插件或实例。 |
+| `solver` | `string` \| `Solver` | 模型的求解器 (`"highs"`) | 本次运行使用的已注册求解器名称（例如 `"highs"`、`"z3"`、`"glpk"` 或自定义名称）或 `Solver` 实例。 |
 | `timeLimit` | `number` | `undefined` | 最大求解时间上限（秒）。 |
 | `mipGap` / `relGap` | `number` | `undefined` | 相对 MIP 最优性间隙容差（例如 `0.01` 表示 1%）。 |
 | `absGap` | `number` | `undefined` | 绝对 MIP 最优性间隙容差（HiGHS `mip_abs_gap`）。 |
@@ -122,7 +122,7 @@ console.log("Has Primal Solution:", m.hasPrimalSolution); // 当 x.value / m.obj
 
 // 目标函数与 MIP 间隙指标
 console.log("Objective Value:", m.objectiveValue);        // 最佳原问题目标值 (或 null)
-console.log("Objective Bound:", m.objectiveBound);        // 最佳对偶界 (或 null)
+console.log("Objective Bound:", m.objectiveBound);        // 最佳对偶界 (或 undefined)
 console.log("Relative Gap:", m.relGap);                   // 相对 MIP 间隙 (别名: m.mipGap)
 console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
 

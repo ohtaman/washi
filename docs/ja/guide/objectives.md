@@ -48,7 +48,7 @@ const status = await m.solve({
 
 | オプション | 型 | デフォルト | 説明 |
 | :--- | :--- | :--- | :--- |
-| `solver` | `"highs"` \| `"z3"` \| `"glpk"` \| `Solver` | モデルのソルバー (`"highs"`) | 実行に使用するソルバー名またはインスタンス。 |
+| `solver` | `string` \| `Solver` | モデルのソルバー (`"highs"`) | 実行に使用する登録済みソルバー名（`"highs"`, `"z3"`, `"glpk"` またはカスタム名）または `Solver` インスタンス。 |
 | `timeLimit` | `number` | `undefined` | 最大実行時間（秒）。 |
 | `mipGap` / `relGap` | `number` | `undefined` | 相対 MIP ギャップ許容値（例: `0.01` = 1%）。 |
 | `absGap` | `number` | `undefined` | 絶対 MIP ギャップ許容値（HiGHS `mip_abs_gap`）。 |
@@ -119,7 +119,7 @@ console.log("Has Primal Solution:", m.hasPrimalSolution); // 解が利用可能�
 
 // 目的関数値と MIP ギャップ指標
 console.log("Objective Value:", m.objectiveValue);        // 目的関数値 (または null)
-console.log("Objective Bound:", m.objectiveBound);        // 双対境界値 (または null)
+console.log("Objective Bound:", m.objectiveBound);        // 双対境界値 (または undefined)
 console.log("Relative Gap:", m.relGap);                   // 相対ギャップ (別名: m.mipGap)
 console.log("Absolute Gap:", m.absGap);                   // 絶対ギャップ |objectiveValue - objectiveBound|
 
