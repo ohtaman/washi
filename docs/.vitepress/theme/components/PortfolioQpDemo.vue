@@ -95,7 +95,15 @@ onMounted(() => {
     <div class="washi-app-header">
       <div class="washi-header-top">
         <div>
-          <span class="washi-app-eyebrow">INTERACTIVE EXAMPLE · 5 ASSETS CONVEX QP (QuadExpr)</span>
+          <span class="washi-app-eyebrow">
+            {{
+              isJa
+                ? "インタラクティブ実例 · 5資産の凸二次計画 (QuadExpr)"
+                : isZh
+                ? "交互式示例 · 5 项资产凸二次规划 (QuadExpr)"
+                : "INTERACTIVE EXAMPLE · 5 ASSETS CONVEX QP (QuadExpr)"
+            }}
+          </span>
           <h4 class="washi-app-title">
             {{ isJa ? "ポートフォリオ配分オプティマイザ (Markowitz QP)" : isZh ? "投资组合配置优化器 (Markowitz QP)" : "Portfolio Allocation Optimizer (Markowitz QP)" }}
           </h4>
@@ -157,7 +165,7 @@ onMounted(() => {
           v-for="a in assets"
           :key="a.id"
           :style="{ width: `${(weights[a.id] || 0) * 100}%`, background: a.color }"
-          :title="a.labelEn"
+          :title="isJa ? a.labelJa : isZh ? a.labelZh : a.labelEn"
         ></div>
       </div>
 

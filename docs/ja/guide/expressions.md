@@ -74,7 +74,16 @@ const count = sum(Object.values(x));
 
 ## 🎯 内積関数 (`dot`)
 
-`dot(coefficients, variables)` は、係数と変数の内積（線形結合）をワンライナーで計算します。
+`dot(a, b)` ヘルパー関数は、数値係数（`number`）と決定変数または1次式（`Var | LinExpr`）の線形結合を、引数の順序を問わず（`dot(coeffs, vars)` または `dot(vars, coeffs)`）計算します。
+
+サポートされる 1次元・2次元コンテナ構造：
+- **1次元配列**: `number[]` $\times$ `(Var | LinExpr)[]`
+- **1次元辞書**: `Record<K, number>` $\times$ `Record<K, Var | LinExpr>`
+- **2次元配列**: `number[][]` $\times$ `(Var | LinExpr)[][]`
+- **2次元辞書**: `Record<R, Record<C, number>>` $\times$ `Record<R, Record<C, Var | LinExpr>>`
+- **2次元混合コンテナ**: `Array<Record<C, ...>>` または `Record<R, Array<...>>`
+
+配列長や辞書キーの不一致、あるいは非有限値・非線形要素が含まれている場合は、該当する要素パス（例: `at '[0].StoreB'`）を明示したエラーをスローします。
 
 ### 1次元ベクトルの内積
 ```typescript
@@ -88,7 +97,7 @@ const totalProfit = dot(profits, vars);
 ```
 
 ### 2次元行列の内積
-ネストされた辞書や2次元配列とも直接連携します：
+2次元配列（`m.continuous(rows, cols)`）、ネストされた辞書（`m.continuous(rowKeys, colKeys)`）、または混合2次元コンテナと直接連携します：
 
 ```typescript
 const factories = ["Tokyo", "Osaka"];

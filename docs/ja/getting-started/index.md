@@ -108,8 +108,10 @@ console.log(`最適解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
 
 ## 🧭 次のステップ
 
-- AI コーディングエージェント向けの API・デプロイ要点は [AI Coding Agent Quick-Reference Guide](/getting-started/ai-agents) を参照してください。
+- [AI コーディングエージェント向けクイックリファレンス](./ai-agents.md): AI コーディングエージェント向けの API シグネチャとデプロイ要点の速習リファレンス
 - [ランタイム環境設定](./runtimes.md): Node.js, ブラウザバンドラー, ESM, CDN, イントラネット (CSP) での動かし方
 - [モデリングガイド](../guide/variables.md): 決定変数・数式テンプレート (`expr`)・制約条件の記述方法
 - [ソルバー詳細](../solvers/): 各ソルバーの特性と選び方
+- [実践例・API 逆引きインデックス](../examples/): ブラウザ上で直接実行できる 9 つの最適化・論理モデリング事例
+
 

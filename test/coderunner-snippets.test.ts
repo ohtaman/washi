@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
@@ -79,8 +79,10 @@ describe("CodeRunner documentation snippets syntax validity", () => {
 
     for (const docFile of mdFiles) {
       const rawContent = fs.readFileSync(docFile, "utf-8");
-      // Exclude the intentional Negative Examples section in ai-agents.md
-      const content = rawContent.split("## 4. Negative Examples")[0];
+      // Exclude the intentional Negative Examples section in ai-agents.md (EN/JA/ZH)
+      const content = docFile.endsWith("ai-agents.md")
+        ? rawContent.split(/^## 4\./m)[0]
+        : rawContent;
       expect(content, `Retired API in ${docFile}`).not.toMatch(
         /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
       );
@@ -309,10 +311,10 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 25-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
-      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/") && rel !== "getting-started/ai-agents.md")
+      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
       .sort();
     const jaPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
@@ -325,6 +327,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
+    expect(enPages).toHaveLength(25);
     expect(jaPages).toEqual(enPages);
     expect(zhPages).toEqual(enPages);
   });
@@ -370,6 +373,133 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         {}
       );
       expect(ok).toBe(true);
+    }
+  });
+
+  it("verifies custom-solver.md Section 5 mocks fetch across EN/JA/ZH and VitePress config translates all local-search controls", async () => {
+    const customSolverPaths = [
+      "docs/solvers/custom-solver.md",
+      "docs/ja/solvers/custom-solver.md",
+      "docs/zh/solvers/custom-solver.md",
+    ];
+    const { Model, expr, maximize, generateLpString, registerSolver } = Washi;
+
+    for (const relPath of customSolverPaths) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const section5 = content.split(/^## 5\./m)[1] ?? "";
+      expect(section5, `Missing Section 5 in ${relPath}`).toContain('vi.spyOn(globalThis, "fetch")');
+      expect(section5, `Missing fetchSpy.mockRestore() in ${relPath}`).toContain("fetchSpy.mockRestore()");
+
+      // Extract the actual CloudSolver implementation block from Section 3 of each locale guide
+      const tsBlocks = [...content.matchAll(/```typescript\n([\s\S]*?)```/g)].map((m) => m[1]);
+      const cloudSolverTs = tsBlocks.find((b) => b.includes("export class CloudSolver"));
+      expect(cloudSolverTs, `Missing CloudSolver block in ${relPath}`).toBeDefined();
+
+      const jsCode = stripTypeScriptTypes(cloudSolverTs!)
+        .replace(/^\s*import\s+[\s\S]*?from\s+["']@ohtaman\/washi["'];?\s*$/gm, "")
+        .replace(/\bexport\s+(class|function)\b/g, "$1");
+
+      const CloudSolverClass = new Function(
+        "generateLpString",
+        "registerSolver",
+        `${jsCode}\nreturn CloudSolver;`
+      )(generateLpString, registerSolver);
+
+      const runWithPayload = async (payloadObj: Record<string, unknown>) => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+          new Response(JSON.stringify(payloadObj), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+        try {
+          const model = new Model({ solver: new CloudSolverClass() });
+          const x = model.continuous("x", { lb: 0, ub: 10 });
+          const y = model.continuous("y", { lb: 0, ub: 10 });
+          model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+          model.constraint(expr`${x} + ${y} <= 12`, "budget");
+          const status = await model.solve();
+          return { model, x, y, c1: model.getConstraintByName("budget"), status };
+        } finally {
+          fetchSpy.mockRestore();
+        }
+      };
+
+      // 1. OPTIMAL with incumbent and duals
+      const opt = await runWithPayload({
+        status: "OPTIMAL",
+        objectiveValue: 34,
+        values: { x: 2, y: 10 },
+        duals: { budget: 2 },
+      });
+      expect(opt.status).toBe("Optimal");
+      expect(opt.model.terminationStatus).toBe("Optimal");
+      expect(opt.model.hasPrimalSolution).toBe(true);
+      expect(opt.x.value).toBe(2);
+      expect(opt.y.value).toBe(10);
+      expect(opt.c1?.dual).toBe(2);
+
+      // 2. TIME_LIMIT and ITERATION_LIMIT WITH a feasible incumbent -> status "Feasible", terminationStatus preserved
+      for (const [rawStop, expectedTerm] of [
+        ["TIME_LIMIT", "TimeLimit"],
+        ["ITERATION_LIMIT", "IterationLimit"],
+      ] as const) {
+        const inc = await runWithPayload({
+          status: rawStop,
+          objectiveValue: 34,
+          values: { x: 2, y: 10 },
+        });
+        expect(inc.status, `${relPath} ${rawStop} with incumbent status`).toBe("Feasible");
+        expect(inc.model.status).toBe("Feasible");
+        expect(inc.model.terminationStatus).toBe(expectedTerm);
+        expect(inc.model.hasPrimalSolution).toBe(true);
+        expect(inc.model.objectiveValue).toBe(34);
+        expect(inc.x.value).toBe(2);
+        expect(inc.y.value).toBe(10);
+      }
+
+      // 3. TIME_LIMIT and ITERATION_LIMIT WITHOUT an incumbent -> retains limit status, hasPrimalSolution false
+      for (const [rawStop, expectedTerm] of [
+        ["TIME_LIMIT", "TimeLimit"],
+        ["ITERATION_LIMIT", "IterationLimit"],
+      ] as const) {
+        const noInc = await runWithPayload({
+          status: rawStop,
+          objectiveValue: null,
+          values: {},
+        });
+        expect(noInc.status, `${relPath} ${rawStop} without incumbent status`).toBe(expectedTerm);
+        expect(noInc.model.status).toBe(expectedTerm);
+        expect(noInc.model.terminationStatus).toBe(expectedTerm);
+        expect(noInc.model.hasPrimalSolution).toBe(false);
+        expect(noInc.model.objectiveValue).toBeNull();
+        expect(noInc.x.value).toBeNull();
+      }
+    }
+
+    // Verify all LocalSearchTranslations keys are present for both ja and zh in docs/.vitepress/config.mts
+    const configContent = fs.readFileSync(
+      path.resolve(process.cwd(), "docs/.vitepress/config.mts"),
+      "utf-8"
+    );
+    const requiredSearchKeys = [
+      "buttonText",
+      "buttonAriaLabel",
+      "displayDetails",
+      "resetButtonTitle",
+      "backButtonTitle",
+      "noResultsText",
+      "selectText",
+      "selectKeyAriaLabel",
+      "navigateText",
+      "navigateUpKeyAriaLabel",
+      "navigateDownKeyAriaLabel",
+      "closeText",
+      "closeKeyAriaLabel",
+    ];
+    for (const key of requiredSearchKeys) {
+      const matches = configContent.match(new RegExp(`\\b${key}:`, "g")) ?? [];
+      expect(matches.length, `Expected search translation key '${key}' in both ja and zh`).toBeGreaterThanOrEqual(2);
     }
   });
 });
