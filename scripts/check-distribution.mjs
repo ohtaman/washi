@@ -384,16 +384,25 @@ try {
   assert(shippedAgentSkill.includes("# WaSHI Modeling & Verification Skill"), "npm tarball missing Agent Skill heading");
   const shippedLlmsTxt = await readFile(path.join(packageRoot, "llms.txt"), "utf8");
   assert(shippedLlmsTxt.includes("# WaSHI (@ohtaman/washi)"), "npm tarball missing llms.txt");
-  assert(shippedLlmsTxt.includes("getting-started/ai-agents.md"), "npm tarball llms.txt missing ai-agents.md link");
+  assert(shippedLlmsTxt.includes("docs/getting-started/ai-agents.md"), "npm tarball llms.txt missing docs/getting-started/ai-agents.md link");
   const shippedLlmsFullTxt = await readFile(path.join(packageRoot, "llms-full.txt"), "utf8");
   assert(shippedLlmsFullTxt.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing llms-full.txt");
-  const linkedMdPaths = [...shippedLlmsTxt.matchAll(/\]\(([^)]+\.md)\)/g)]
-    .map((m) => m[1])
-    .filter((target) => !/^https?:\/\//.test(target));
-  assert(linkedMdPaths.length >= 24, "Expected at least 24 relative .md links in shipped llms.txt");
-  for (const relPath of linkedMdPaths) {
-    const shippedDoc = await readFile(path.join(packageRoot, "docs", relPath), "utf8");
-    assert(shippedDoc.trim().length > 0, `npm tarball missing linked doc: docs/${relPath}`);
+  for (const [artifactName, artifactText, minCount] of [
+    ["llms.txt", shippedLlmsTxt, 25],
+    ["llms-full.txt", shippedLlmsFullTxt, 15],
+  ]) {
+    const relTargets = [...artifactText.matchAll(/\]\(([^)\s]+)\)/g)]
+      .map((m) => m[1])
+      .filter((target) => !/^(?:https?:\/\/|mailto:|#)/i.test(target));
+    assert(
+      relTargets.length >= minCount,
+      `Expected at least ${minCount} relative links in shipped ${artifactName}, got ${relTargets.length}`
+    );
+    for (const target of relTargets) {
+      const cleanTarget = target.split("#")[0];
+      const shippedTarget = await readFile(path.join(packageRoot, cleanTarget), "utf8");
+      assert(shippedTarget.trim().length > 0, `npm tarball ${artifactName} has broken relative link: ${target}`);
+    }
   }
   const { Model, maximize } = await import(new URL(`file://${packageRoot}/dist/lib/washi.js`));
   const model = new Model("PackedNode");

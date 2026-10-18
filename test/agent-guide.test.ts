@@ -338,32 +338,34 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     );
   });
 
-  it("verifies every relative doc path in llms.txt corresponds to an existing English documentation source file", () => {
-    const { llmsTxt, allDocFiles } = buildLlmsArtifacts(rootDir);
+  it("verifies every relative doc path in llms.txt and llms-full.txt resolves directly from the containing root directory", () => {
+    const { llmsTxt, llmsFullTxt, allDocFiles } = buildLlmsArtifacts(rootDir);
 
-    // Extract all Markdown link targets ending in .md
-    const linkTargetRegex = /\]\(([^)]+\.md)\)/g;
-    const linkedDocPaths: string[] = [];
+    // Extract all relative Markdown link targets from root/package llms.txt and resolve directly against rootDir
+    const linkTargetRegex = /\]\(([^)\s]+)\)/g;
+    const linkedPaths: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = linkTargetRegex.exec(llmsTxt)) !== null) {
       const target = match[1];
-      if (!/^https?:\/\//.test(target)) {
-        linkedDocPaths.push(target);
+      if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
+        linkedPaths.push(target.split("#")[0]);
       }
     }
 
-    expect(linkedDocPaths.length).toBeGreaterThanOrEqual(24);
+    expect(linkedPaths.length).toBeGreaterThanOrEqual(25);
+    expect(linkedPaths).toContain("llms-full.txt");
+    expect(linkedPaths).toContain("docs/getting-started/ai-agents.md");
 
-    for (const relPath of linkedDocPaths) {
-      const sourcePath = path.resolve(docsDir, relPath);
+    for (const relTarget of linkedPaths) {
+      const resolvedPath = path.resolve(rootDir, relTarget);
       expect(
-        fs.existsSync(sourcePath),
-        `Expected relative doc path '${relPath}' in llms.txt to exist at ${sourcePath}`
+        fs.existsSync(resolvedPath),
+        `Expected relative link '${relTarget}' in root/packaged llms.txt to exist directly at ${resolvedPath}`
       ).toBe(true);
     }
 
-    // Also verify any relative `<dir>/<file>.md` token anywhere in llms.txt resolves under docs/
-    const relPathTokenRegex = /\b((?:getting-started|guide|solvers|examples)\/[a-z0-9-]+\.md)\b/g;
+    // Verify all 24 canonical docs are indexed as `docs/<section>/<file>.md`
+    const relPathTokenRegex = /\bdocs\/((?:getting-started|guide|solvers|examples)\/[a-z0-9-]+\.md)\b/g;
     const tokenPaths = new Set<string>();
     while ((match = relPathTokenRegex.exec(llmsTxt)) !== null) {
       tokenPaths.add(match[1]);
@@ -371,7 +373,24 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(tokenPaths.size).toBe(allDocFiles.length);
     for (const relPath of allDocFiles) {
       expect(tokenPaths.has(relPath)).toBe(true);
-      expect(fs.existsSync(path.resolve(docsDir, relPath))).toBe(true);
+      expect(fs.existsSync(path.resolve(rootDir, `docs/${relPath}`))).toBe(true);
+    }
+
+    // Also verify every relative link in root/packaged llms-full.txt resolves directly against rootDir
+    const fullLinkedPaths: string[] = [];
+    while ((match = linkTargetRegex.exec(llmsFullTxt)) !== null) {
+      const target = match[1];
+      if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
+        fullLinkedPaths.push(target.split("#")[0]);
+      }
+    }
+    expect(fullLinkedPaths.length).toBeGreaterThanOrEqual(15);
+    for (const relTarget of fullLinkedPaths) {
+      const resolvedPath = path.resolve(rootDir, relTarget);
+      expect(
+        fs.existsSync(resolvedPath),
+        `Expected relative link '${relTarget}' in root/packaged llms-full.txt to exist directly at ${resolvedPath}`
+      ).toBe(true);
     }
   });
 
@@ -409,26 +428,13 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Conflict Diagnosis (Unsat Core)");
     expect(llmsFullTxt).toContain("async function runProductionOptimization()");
 
-    // Rewrites subfolder-relative links (`./...`, `../...`) to root-relative doc paths
-    expect(llmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](getting-started/ai-agents.md)");
-    expect(llmsFullTxt).toContain("[Modeling Guide](guide/expressions.md)");
-    expect(llmsFullTxt).toContain("[Solvers Matrix](solvers/index.md)");
-    expect(llmsFullTxt).toContain("[Production Planning](examples/production.md)");
-    expect(llmsFullTxt).toContain("[GLPK Solver Guide](solvers/glpk.md)");
+    // Rewrites subfolder-relative links (`./...`, `../...`) to root/package-relative `docs/...` paths
+    expect(llmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](docs/getting-started/ai-agents.md)");
+    expect(llmsFullTxt).toContain("[Modeling Guide](docs/guide/expressions.md)");
+    expect(llmsFullTxt).toContain("[Solvers Matrix](docs/solvers/index.md)");
+    expect(llmsFullTxt).toContain("[Production Planning](docs/examples/production.md)");
+    expect(llmsFullTxt).toContain("[GLPK Solver Guide](docs/solvers/glpk.md)");
     expect(llmsFullTxt).not.toMatch(/\]\(\.\.?\//);
-
-    const fullLinksRegex = /\]\(([^)\s]+)\)/g;
-    let linkMatch: RegExpExecArray | null;
-    while ((linkMatch = fullLinksRegex.exec(llmsFullTxt)) !== null) {
-      const target = linkMatch[1];
-      if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
-        const cleanTarget = target.split("#")[0];
-        expect(
-          fs.existsSync(path.resolve(docsDir, cleanTarget)),
-          `Expected flattened link '${target}' in llms-full.txt to exist under docs/`
-        ).toBe(true);
-      }
-    }
 
     // No unstripped YAML frontmatter, VitePress container directives (`:::`), or Vue demo wrapper tags
     expect(llmsFullTxt).not.toMatch(/^---\n[A-Za-z0-9_-]+\s*:/m);
@@ -499,26 +505,46 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     }
   });
 
-  it("populates target site directory with llms.txt, llms-full.txt, and all raw English .md files referenced by llms.txt", () => {
+  it("populates target site directory with site-relative llms.txt, llms-full.txt, and all raw English .md files", () => {
     const tmpSiteDir = fs.mkdtempSync(path.join(os.tmpdir(), "washi-site-llms-"));
     try {
-      const artifacts = buildLlmsArtifacts(rootDir);
-      populateSiteLlmsAssets(tmpSiteDir, rootDir, artifacts);
+      const siteArtifacts = buildLlmsArtifacts(rootDir, { docPathPrefix: "" });
+      populateSiteLlmsAssets(tmpSiteDir, rootDir);
 
-      expect(fs.readFileSync(path.join(tmpSiteDir, "llms.txt"), "utf-8")).toBe(
-        artifacts.llmsTxt
-      );
-      expect(fs.readFileSync(path.join(tmpSiteDir, "llms-full.txt"), "utf-8")).toBe(
-        artifacts.llmsFullTxt
-      );
+      const siteLlmsTxt = fs.readFileSync(path.join(tmpSiteDir, "llms.txt"), "utf-8");
+      const siteLlmsFullTxt = fs.readFileSync(path.join(tmpSiteDir, "llms-full.txt"), "utf-8");
+      expect(siteLlmsTxt).toBe(siteArtifacts.llmsTxt);
+      expect(siteLlmsFullTxt).toBe(siteArtifacts.llmsFullTxt);
+      expect(siteLlmsTxt).toContain("[getting-started/ai-agents.md](getting-started/ai-agents.md)");
+      expect(siteLlmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](getting-started/ai-agents.md)");
+      expect(siteLlmsFullTxt).toContain("[Modeling Guide](guide/expressions.md)");
 
-      for (const relPath of artifacts.allDocFiles) {
+      for (const relPath of siteArtifacts.allDocFiles) {
         const siteMdPath = path.join(tmpSiteDir, relPath);
         const srcMdPath = path.join(docsDir, relPath);
         expect(fs.existsSync(siteMdPath)).toBe(true);
         expect(fs.readFileSync(siteMdPath, "utf-8")).toBe(
           fs.readFileSync(srcMdPath, "utf-8")
         );
+      }
+
+      // Every relative link in site llms.txt and llms-full.txt must resolve directly relative to tmpSiteDir
+      const linkRegex = /\]\(([^)\s]+)\)/g;
+      for (const [name, content] of [
+        ["site llms.txt", siteLlmsTxt],
+        ["site llms-full.txt", siteLlmsFullTxt],
+      ]) {
+        let match: RegExpExecArray | null;
+        while ((match = linkRegex.exec(content)) !== null) {
+          const target = match[1];
+          if (!/^(?:https?:\/\/|mailto:|#)/i.test(target)) {
+            const cleanTarget = target.split("#")[0];
+            expect(
+              fs.existsSync(path.resolve(tmpSiteDir, cleanTarget)),
+              `Expected relative link '${target}' in ${name} to exist at ${path.resolve(tmpSiteDir, cleanTarget)}`
+            ).toBe(true);
+          }
+        }
       }
     } finally {
       fs.rmSync(tmpSiteDir, { recursive: true, force: true });

@@ -80,7 +80,7 @@ export function getCanonicalDocSections(docsDir = resolve(defaultRootDir, "docs"
   });
 }
 
-function resolveRelativeDocTarget(target, relPath) {
+function resolveRelativeDocTarget(target, relPath, docPathPrefix = "") {
   const trimmed = target.trim();
   if (!trimmed || !relPath || /^(?:https?:\/\/|mailto:|#)/i.test(trimmed)) {
     return target;
@@ -105,7 +105,7 @@ function resolveRelativeDocTarget(target, relPath) {
     resolved = isSectionDir ? `${resolved}/index.md` : `${resolved}.md`;
   }
 
-  return `${resolved}${hash}`;
+  return `${docPathPrefix}${resolved}${hash}`;
 }
 
 /**
@@ -113,7 +113,7 @@ function resolveRelativeDocTarget(target, relPath) {
  * and interactive Vue wrapper tags while preserving standard Markdown and code blocks.
  * When `relPath` is provided, rewrites source-relative Markdown links to root-relative doc paths.
  */
-export function stripVitePressSyntax(rawMarkdown, relPath = "") {
+export function stripVitePressSyntax(rawMarkdown, relPath = "", docPathPrefix = "") {
   let text = rawMarkdown.replace(/\r\n/g, "\n");
 
   // Strip YAML frontmatter only when anchored at the start of the file and containing YAML keys
@@ -160,7 +160,8 @@ export function stripVitePressSyntax(rawMarkdown, relPath = "") {
         out.push(
           line.replace(
             /\[([^\]]+)\]\(([^)\s]+)\)/g,
-            (_full, label, target) => `[${label}](${resolveRelativeDocTarget(target, relPath)})`
+            (_full, label, target) =>
+              `[${label}](${resolveRelativeDocTarget(target, relPath, docPathPrefix)})`
           )
         );
         continue;
@@ -289,7 +290,7 @@ export function extractDocMetadata(rawMarkdown) {
  * Extracts key modeling rules directly from `docs/getting-started/ai-agents.md`
  * and overview text from `docs/getting-started/index.md` without maintaining duplicate prose by hand.
  */
-function buildLlmsTxtContent(rootDir, sections) {
+function buildLlmsTxtContent(rootDir, sections, docPathPrefix = "docs/") {
   const docsDir = resolve(rootDir, "docs");
   const pkg = JSON.parse(readFileSync(resolve(rootDir, "package.json"), "utf8"));
   const introMd = readFileSync(resolve(docsDir, "getting-started/index.md"), "utf8").replace(
@@ -330,10 +331,13 @@ function buildLlmsTxtContent(rootDir, sections) {
     for (const relPath of section.files) {
       const raw = readFileSync(resolve(docsDir, relPath), "utf8");
       const { title, summary } = extractDocMetadata(raw);
-      docIndexLines.push(`- [${title}](${relPath})${summary ? `: ${summary}` : ""}`);
+      const linkPath = `${docPathPrefix}${relPath}`;
+      docIndexLines.push(`- [${title}](${linkPath})${summary ? `: ${summary}` : ""}`);
     }
     docIndexLines.push("");
   }
+
+  const aiAgentsLink = `${docPathPrefix}getting-started/ai-agents.md`;
 
   return (
     [
@@ -344,19 +348,19 @@ function buildLlmsTxtContent(rootDir, sections) {
       introOverview,
       "",
       "- Full single-file documentation reference: [llms-full.txt](llms-full.txt)",
-      "- Canonical AI agent modeling quick-reference: [getting-started/ai-agents.md](getting-started/ai-agents.md)",
+      `- Canonical AI agent modeling quick-reference: [${aiAgentsLink}](${aiAgentsLink})`,
       "",
       "---",
       "",
       "## 1. Package Imports & Deployment",
       "",
-      sec1Match[1].trim(),
+      stripVitePressSyntax(sec1Match[1].trim(), "getting-started/ai-agents.md", docPathPrefix),
       "",
       "---",
       "",
       "## 2. Canonical Modeling Workflow & Key Rules",
       "",
-      sec2Match[1].trim(),
+      stripVitePressSyntax(sec2Match[1].trim(), "getting-started/ai-agents.md", docPathPrefix),
       "",
       "---",
       "",
@@ -367,8 +371,6 @@ function buildLlmsTxtContent(rootDir, sections) {
       "---",
       "",
       "## 4. Canonical English Documentation Index",
-      "",
-      "> On the documentation site (`https://ohtaman.github.io/washi/`), these paths resolve relative to the site root. In a repository checkout or installed npm package (`node_modules/@ohtaman/washi/`), the Markdown files are located under `docs/` alongside `llms-full.txt` at the package root.",
       "",
       ...docIndexLines,
     ]
@@ -382,7 +384,7 @@ function buildLlmsTxtContent(rootDir, sections) {
  * Getting Started, Modeling Guide, Solver, and Example documentation files, stripped of
  * VitePress-specific YAML frontmatter and container directives.
  */
-function buildLlmsFullTxtContent(rootDir, sections) {
+function buildLlmsFullTxtContent(rootDir, sections, docPathPrefix = "docs/") {
   const docsDir = resolve(rootDir, "docs");
   const fullSectionSet = new Set(LLMS_FULL_SECTIONS);
   const orderedFiles = [];
@@ -398,7 +400,7 @@ function buildLlmsFullTxtContent(rootDir, sections) {
 
   const parts = orderedFiles.map((relPath) => {
     const raw = readFileSync(resolve(docsDir, relPath), "utf8");
-    return stripVitePressSyntax(raw, relPath);
+    return stripVitePressSyntax(raw, relPath, docPathPrefix);
   });
 
   return parts.join("\n\n---\n\n").trimEnd() + "\n";
@@ -406,33 +408,45 @@ function buildLlmsFullTxtContent(rootDir, sections) {
 
 /**
  * Generates `llms.txt` and `llms-full.txt` deterministically from the English docs.
+ * By default (`docPathPrefix = "docs/"`), links resolve relative to the repository/package root.
+ * Pass `{ docPathPrefix: "" }` for documentation site root artifacts.
  */
-export function buildLlmsArtifacts(rootDir = defaultRootDir) {
+export function buildLlmsArtifacts(rootDir = defaultRootDir, options = {}) {
+  const docPathPrefix = options.docPathPrefix ?? "docs/";
   const docsDir = resolve(rootDir, "docs");
   const sections = getCanonicalDocSections(docsDir);
   const allDocFiles = sections.flatMap((s) => s.files);
-  const llmsTxt = buildLlmsTxtContent(rootDir, sections);
-  const llmsFullTxt = buildLlmsFullTxtContent(rootDir, sections);
+  const llmsTxt = buildLlmsTxtContent(rootDir, sections, docPathPrefix);
+  const llmsFullTxt = buildLlmsFullTxtContent(rootDir, sections, docPathPrefix);
 
   return {
     llmsTxt,
     llmsFullTxt,
     sections,
     allDocFiles,
+    docPathPrefix,
   };
 }
 
 /**
- * Writes `llms.txt`, `llms-full.txt`, and copies all canonical raw English `.md` files
+ * Writes site-relative `llms.txt`, `llms-full.txt`, and copies all canonical raw English `.md` files
  * into a built site directory (such as `dist/site` or `docs/.vitepress/dist`).
  */
-export function populateSiteLlmsAssets(targetSiteDir, rootDir = defaultRootDir, artifacts = buildLlmsArtifacts(rootDir)) {
+export function populateSiteLlmsAssets(
+  targetSiteDir,
+  rootDir = defaultRootDir,
+  artifacts = buildLlmsArtifacts(rootDir, { docPathPrefix: "" })
+) {
+  const siteArtifacts =
+    artifacts.docPathPrefix === ""
+      ? artifacts
+      : buildLlmsArtifacts(rootDir, { docPathPrefix: "" });
   const docsDir = resolve(rootDir, "docs");
   mkdirSync(targetSiteDir, { recursive: true });
-  writeFileSync(resolve(targetSiteDir, "llms.txt"), artifacts.llmsTxt, "utf8");
-  writeFileSync(resolve(targetSiteDir, "llms-full.txt"), artifacts.llmsFullTxt, "utf8");
+  writeFileSync(resolve(targetSiteDir, "llms.txt"), siteArtifacts.llmsTxt, "utf8");
+  writeFileSync(resolve(targetSiteDir, "llms-full.txt"), siteArtifacts.llmsFullTxt, "utf8");
 
-  const filesToCopy = [...artifacts.allDocFiles];
+  const filesToCopy = [...siteArtifacts.allDocFiles];
   if (existsSync(resolve(docsDir, "index.md")) && !filesToCopy.includes("index.md")) {
     filesToCopy.push("index.md");
   }
@@ -450,21 +464,23 @@ export function populateSiteLlmsAssets(targetSiteDir, rootDir = defaultRootDir, 
  * and populates `docs/.vitepress/dist` and `dist/site` if they already exist.
  */
 export function generateLlms(rootDir = defaultRootDir) {
-  const artifacts = buildLlmsArtifacts(rootDir);
-  writeFileSync(resolve(rootDir, "llms.txt"), artifacts.llmsTxt, "utf8");
-  writeFileSync(resolve(rootDir, "llms-full.txt"), artifacts.llmsFullTxt, "utf8");
+  const packageArtifacts = buildLlmsArtifacts(rootDir, { docPathPrefix: "docs/" });
+  writeFileSync(resolve(rootDir, "llms.txt"), packageArtifacts.llmsTxt, "utf8");
+  writeFileSync(resolve(rootDir, "llms-full.txt"), packageArtifacts.llmsFullTxt, "utf8");
 
   const vitepressDist = resolve(rootDir, "docs/.vitepress/dist");
-  if (existsSync(vitepressDist)) {
-    populateSiteLlmsAssets(vitepressDist, rootDir, artifacts);
-  }
-
   const siteDist = resolve(rootDir, "dist/site");
-  if (existsSync(siteDist)) {
-    populateSiteLlmsAssets(siteDist, rootDir, artifacts);
+  if (existsSync(vitepressDist) || existsSync(siteDist)) {
+    const siteArtifacts = buildLlmsArtifacts(rootDir, { docPathPrefix: "" });
+    if (existsSync(vitepressDist)) {
+      populateSiteLlmsAssets(vitepressDist, rootDir, siteArtifacts);
+    }
+    if (existsSync(siteDist)) {
+      populateSiteLlmsAssets(siteDist, rootDir, siteArtifacts);
+    }
   }
 
-  return artifacts;
+  return packageArtifacts;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
