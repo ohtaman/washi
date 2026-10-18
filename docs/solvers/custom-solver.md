@@ -368,10 +368,16 @@ export class CloudSolver implements Solver {
       SAT: "Sat",
       UNSAT: "Unsat",
     };
-    const status: SolverStatus = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+    const rawStatus: SolverStatus = statusMap[String(payload.status).toUpperCase()] ?? "Unknown";
+    const hasIncumbent =
+      (typeof payload.objectiveValue === "number" && Number.isFinite(payload.objectiveValue)) ||
+      Object.values(values).some((val) => typeof val === "number" && Number.isFinite(val));
+    const isLimitStop = rawStatus === "TimeLimit" || rawStatus === "IterationLimit";
+    const status: SolverStatus = isLimitStop && hasIncumbent ? "Feasible" : rawStatus;
 
     return {
       status,
+      terminationStatus: rawStatus,
       objectiveValue: payload.objectiveValue ?? null,
       values,
       duals,

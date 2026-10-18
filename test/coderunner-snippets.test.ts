@@ -382,71 +382,99 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       "docs/ja/solvers/custom-solver.md",
       "docs/zh/solvers/custom-solver.md",
     ];
+    const { Model, expr, maximize, generateLpString, registerSolver } = Washi;
+
     for (const relPath of customSolverPaths) {
       const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
       const section5 = content.split(/^## 5\./m)[1] ?? "";
       expect(section5, `Missing Section 5 in ${relPath}`).toContain('vi.spyOn(globalThis, "fetch")');
       expect(section5, `Missing fetchSpy.mockRestore() in ${relPath}`).toContain("fetchSpy.mockRestore()");
-    }
 
-    // Execute the documented CloudSolver + fetchSpy flow end-to-end
-    const { Model, expr, maximize, generateLpString } = Washi;
-    class DocCloudSolver {
-      public readonly name = "CloudSolver";
-      public readonly version = "1.0.0";
-      public readonly capabilities = { supportsMIP: true, supportsQP: false };
-      private endpoint = "https://solver.mycompany.internal/v1/solve";
-      async solve(modelData: any, options: any = {}) {
-        const { lpString, nameToVar, nameToConstraint } = generateLpString(modelData);
-        const response = await fetch(this.endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lp: lpString }),
-          signal: options.signal,
-        });
-        const payload: any = await response.json();
-        const values: Record<string, number> = Object.create(null);
-        for (const [k, val] of Object.entries((payload.values || {}) as Record<string, number>)) {
-          values[nameToVar.get(k)?.name ?? k] = val;
-        }
-        const duals: Record<string, number> = Object.create(null);
-        for (const [k, val] of Object.entries((payload.duals || {}) as Record<string, number>)) {
-          duals[nameToConstraint.get(k)?.name ?? k] = val;
-        }
-        return {
-          status: (payload.status === "OPTIMAL" ? "Optimal" : "Unknown") as any,
-          objectiveValue: payload.objectiveValue ?? null,
-          values,
-          duals,
-        };
-      }
-    }
+      // Extract the actual CloudSolver implementation block from Section 3 of each locale guide
+      const tsBlocks = [...content.matchAll(/```typescript\n([\s\S]*?)```/g)].map((m) => m[1]);
+      const cloudSolverTs = tsBlocks.find((b) => b.includes("export class CloudSolver"));
+      expect(cloudSolverTs, `Missing CloudSolver block in ${relPath}`).toBeDefined();
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          status: "OPTIMAL",
+      const jsCode = stripTypeScriptTypes(cloudSolverTs!)
+        .replace(/^\s*import\s+[\s\S]*?from\s+["']@ohtaman\/washi["'];?\s*$/gm, "")
+        .replace(/\bexport\s+(class|function)\b/g, "$1");
+
+      const CloudSolverClass = new Function(
+        "generateLpString",
+        "registerSolver",
+        `${jsCode}\nreturn CloudSolver;`
+      )(generateLpString, registerSolver);
+
+      const runWithPayload = async (payloadObj: Record<string, unknown>) => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+          new Response(JSON.stringify(payloadObj), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
+        );
+        try {
+          const model = new Model({ solver: new CloudSolverClass() });
+          const x = model.continuous("x", { lb: 0, ub: 10 });
+          const y = model.continuous("y", { lb: 0, ub: 10 });
+          model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
+          model.constraint(expr`${x} + ${y} <= 12`, "budget");
+          const status = await model.solve();
+          return { model, x, y, c1: model.getConstraintByName("budget"), status };
+        } finally {
+          fetchSpy.mockRestore();
+        }
+      };
+
+      // 1. OPTIMAL with incumbent and duals
+      const opt = await runWithPayload({
+        status: "OPTIMAL",
+        objectiveValue: 34,
+        values: { x: 2, y: 10 },
+        duals: { budget: 2 },
+      });
+      expect(opt.status).toBe("Optimal");
+      expect(opt.model.terminationStatus).toBe("Optimal");
+      expect(opt.model.hasPrimalSolution).toBe(true);
+      expect(opt.x.value).toBe(2);
+      expect(opt.y.value).toBe(10);
+      expect(opt.c1?.dual).toBe(2);
+
+      // 2. TIME_LIMIT and ITERATION_LIMIT WITH a feasible incumbent -> status "Feasible", terminationStatus preserved
+      for (const [rawStop, expectedTerm] of [
+        ["TIME_LIMIT", "TimeLimit"],
+        ["ITERATION_LIMIT", "IterationLimit"],
+      ] as const) {
+        const inc = await runWithPayload({
+          status: rawStop,
           objectiveValue: 34,
           values: { x: 2, y: 10 },
-          duals: { budget: 2 },
-        }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      )
-    );
-    try {
-      const model = new Model({ solver: new DocCloudSolver() as any });
-      const x = model.continuous("x", { lb: 0, ub: 10 });
-      const y = model.continuous("y", { lb: 0, ub: 10 });
-      model.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
-      model.constraint(expr`${x} + ${y} <= 12`, "budget");
+        });
+        expect(inc.status, `${relPath} ${rawStop} with incumbent status`).toBe("Feasible");
+        expect(inc.model.status).toBe("Feasible");
+        expect(inc.model.terminationStatus).toBe(expectedTerm);
+        expect(inc.model.hasPrimalSolution).toBe(true);
+        expect(inc.model.objectiveValue).toBe(34);
+        expect(inc.x.value).toBe(2);
+        expect(inc.y.value).toBe(10);
+      }
 
-      const status = await model.solve();
-      expect(status).toBe("Optimal");
-      expect(x.value).toBe(2);
-      const c1 = model.getConstraintByName("budget");
-      expect(c1?.dual).toBe(2);
-    } finally {
-      fetchSpy.mockRestore();
+      // 3. TIME_LIMIT and ITERATION_LIMIT WITHOUT an incumbent -> retains limit status, hasPrimalSolution false
+      for (const [rawStop, expectedTerm] of [
+        ["TIME_LIMIT", "TimeLimit"],
+        ["ITERATION_LIMIT", "IterationLimit"],
+      ] as const) {
+        const noInc = await runWithPayload({
+          status: rawStop,
+          objectiveValue: null,
+          values: {},
+        });
+        expect(noInc.status, `${relPath} ${rawStop} without incumbent status`).toBe(expectedTerm);
+        expect(noInc.model.status).toBe(expectedTerm);
+        expect(noInc.model.terminationStatus).toBe(expectedTerm);
+        expect(noInc.model.hasPrimalSolution).toBe(false);
+        expect(noInc.model.objectiveValue).toBeNull();
+        expect(noInc.x.value).toBeNull();
+      }
     }
 
     // Verify all LocalSearchTranslations keys are present for both ja and zh in docs/.vitepress/config.mts
