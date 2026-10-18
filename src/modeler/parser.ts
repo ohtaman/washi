@@ -565,10 +565,34 @@ function parseTemplate(
 }
 
 /**
- * Unified tagged template literal for linear/quadratic arithmetic expressions and linear constraints:
- * - `expr\`45 * \${chairs} + 80 * \${tables}\`` -> `LinExpr`
- * - `expr\`\${x} * \${y} + 2 * \${x}^2\`` -> `QuadExpr`
- * - `expr\`\${chairs} + 2 * \${tables} <= 40\`` -> `Constraint`
+ * Unified tagged template literal for linear/quadratic arithmetic expressions and linear comparison constraints:
+ * - Linear expression (`LinExpr`): `` expr`45 * ${chairs} + 80 * ${tables} - 10` ``
+ * - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``
+ * - Linear comparison constraint (`Constraint`): `` expr`${chairs} + 2 * ${tables} <= 40` `` (supports `<=`, `>=`, `==`, and `=`)
+ *
+ * **Formulation & solver capability notes**:
+ * - **Quadratic terms (`^2`, `${x} * ${y}`) are supported in objectives only** (convex QP on QP-capable solvers such as HiGHS; throws on GLPK and Z3).
+ * - Using quadratic terms inside a comparison constraint (`<=`, `>=`, `==`) throws an Error (`"Quadratic constraints are not supported"`).
+ * - Interpolating a `Constraint` inside another `expr` template throws an Error.
+ * - Constructing an `expr` does not attach it to a `Model` until passed to `m.objective(...)` or `m.constraint(...)`.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("TemplateExprExample");
+ * const x = m.continuous("x", { lb: 0 });
+ * const y = m.continuous("y", { lb: 0 });
+ *
+ * // 1. Linear arithmetic expression (LinExpr)
+ * const linCost = expr`30 * ${x} + 50 * ${y} - 10`;
+ *
+ * // 2. Quadratic objective expression (QuadExpr — supported in objectives only)
+ * m.objective(minimize(expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2 + ${linCost}`));
+ *
+ * // 3. Linear comparison constraints (Constraint: <=, >=, ==)
+ * m.constraint(expr`${x} + 2 * ${y} <= 40`, "upper_cap");
+ * m.constraint(expr`${x} + ${y} >= 4`, "min_total");
+ * m.constraint(expr`${x} - ${y} == 0`, "balance");
+ * ```
  */
 export function expr(
   strings: TemplateStringsArray,
@@ -580,4 +604,5 @@ export function expr(
   }
   return parseExprInternal(fullText, resolver, numberMap);
 }
+
 

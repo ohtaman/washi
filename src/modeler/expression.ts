@@ -308,11 +308,28 @@ export class LinExpr {
 export type Expr = LinExpr | QuadExpr;
 
 /**
- * Sum an array, iterable, or count-range of variables, expressions, or numbers.
- * Supports:
- * - sum([x, y, z])
- * - sum(items, item => expr)
- * - sum(10, i => expr) (range 0..9)
+ * Sum an `Iterable` of `Var` / `LinExpr` / `number` items, an `Iterable` with a mapping function,
+ * or a numeric count `n` with an index mapper `(0 .. n - 1)` into a single `LinExpr`.
+ *
+ * **Formulation notes**:
+ * - Produces a linear expression (`LinExpr`).
+ * - Passing comparison `Constraint`s (`<=`, `>=`, `==`) or non-linear `QuadExpr` terms throws an Error
+ *   (quadratic terms are supported in objectives only via `expr` or `.mul()`).
+ *
+ * @example
+ * ```ts
+ * const m = new Model("SumExample");
+ * const x = m.continuous(3, { lb: 0, prefix: "x" });
+ * const byItem = m.integer(["desk", "chair"] as const, { lb: 0 });
+ *
+ * // Sum an array or iterable directly
+ * m.constraint(expr`${sum(x)} <= 100`, "total_x");
+ * m.constraint(expr`${sum(Object.values(byItem))} <= 50`, "total_items");
+ *
+ * // Sum with a mapper or over a count range (0..2)
+ * const weighted = sum(3, (i) => expr`${i + 1} * ${x[i]}`);
+ * m.objective(maximize(weighted));
+ * ```
  */
 export function sum(
   count: number,
@@ -445,11 +462,39 @@ type DotContainerArg<T, Leaf, Inner = never> =
   | DotRecordShape<T, Leaf, Inner>;
 
 /**
- * Compute the vector or matrix dot product (linear combination) of numeric coefficients and variables/linear expressions.
- * Works with 1D/2D arrays, records, named interfaces, and mixed-domain containers in either operand order:
- * - dot(costs, vars)
- * - dot(vars, costs)
- * - dot(costMatrix, flowMatrix)
+ * Compute the inner product (linear combination `LinExpr`) of numeric coefficients and
+ * `Var` / `LinExpr` containers across 1D arrays, 2D matrices (`number[][]` / `Var[][]`),
+ * plain records (`Record<K, ...>`), and mixed Array/Record containers in either operand order:
+ * - `dot(coeffs, vars)` or `dot(vars, coeffs)`
+ * - `dot(costMatrix, flowMatrix)`
+ *
+ * **Formulation notes**:
+ * - Produces a linear expression (`LinExpr`) and validates matching array lengths / record keys and finite coefficients.
+ * - Does not accept arbitrary `Iterable`s (use `sum()` for general iterables) or non-linear `QuadExpr` / `Constraint` operands
+ *   (quadratic variable-by-variable terms are supported in objectives only via `expr` or `.mul()`).
+ *
+ * @example
+ * ```ts
+ * const m = new Model("DotExample");
+ * const vec = m.continuous(3, { lb: 0, prefix: "v" });
+ * const qty = m.integer(["desk", "chair"] as const, { lb: 0 });
+ * const grid = m.binary(2, 2, { prefix: "g" });
+ *
+ * // 1D array, Record, and 2D matrix inner products
+ * m.constraint(expr`${dot([2, 4, 6], vec)} <= 60`, "vec_limit");
+ * m.constraint(expr`${dot({ desk: 1, chair: 2 }, qty)} <= 40`, "wood_cap");
+ * m.objective(
+ *   maximize(
+ *     expr`${dot({ desk: 30, chair: 50 }, qty)} - ${dot(
+ *       [
+ *         [5, 8],
+ *         [3, 6],
+ *       ],
+ *       grid
+ *     )}`
+ *   )
+ * );
+ * ```
  */
 export function dot<
   C = DotCoeffContainer,

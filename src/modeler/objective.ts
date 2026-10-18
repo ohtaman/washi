@@ -77,9 +77,22 @@ function validateObjectiveConstructorInput(
 }
 
 /**
- * Define an objective function to MAXIMIZE:
- * ```typescript
- * model.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
+ * Create a maximization objective specification (`sense: "Maximize"`) for `m.objective(...)`.
+ *
+ * Accepts a linear expression (`LinExpr`, `Var`, finite `number`, or formula string) or a
+ * quadratic objective expression (`QuadExpr` using `^2` or `${x} * ${y}`).
+ *
+ * **Solver & formulation notes**:
+ * - Quadratic terms (`^2`, variable-by-variable products) are supported in **objectives only**
+ *   (requires a QP-capable solver such as the default HiGHS; throws on GLPK and Z3).
+ * - Passing a comparison `Constraint` (`<=`, `>=`, `==`) throws an Error.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("Production");
+ * const chairs = m.integer("chairs", { lb: 0 });
+ * const tables = m.integer("tables", { lb: 0 });
+ * m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
  * ```
  */
 export function maximize(expr: ObjectiveExpr | Constraint): ObjectiveSpec {
@@ -90,9 +103,23 @@ export function maximize(expr: ObjectiveExpr | Constraint): ObjectiveSpec {
 }
 
 /**
- * Define an objective function to MINIMIZE:
- * ```typescript
- * model.objective(minimize(expr`2 * ${x} + 3 * ${y}`));
+ * Create a minimization objective specification (`sense: "Minimize"`) for `m.objective(...)`.
+ *
+ * Accepts a linear expression (`LinExpr`, `Var`, finite `number`, or formula string) or a
+ * convex quadratic objective expression (`QuadExpr` using `^2` or `${x} * ${y}`).
+ *
+ * **Solver & formulation notes**:
+ * - Quadratic terms (`^2`, variable-by-variable products) are supported in **objectives only**
+ *   (requires a QP-capable solver such as the default HiGHS; throws on GLPK and Z3).
+ * - Passing a comparison `Constraint` (`<=`, `>=`, `==`) throws an Error.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("PortfolioQP");
+ * const x = m.continuous("x", { lb: 0 });
+ * const y = m.continuous("y", { lb: 0 });
+ * // Linear or convex quadratic objective (quadratic terms are allowed in objectives only)
+ * m.objective(minimize(expr`${x}^2 + 2 * ${x} * ${y} + 2 * ${y}^2`));
  * ```
  */
 export function minimize(expr: ObjectiveExpr | Constraint): ObjectiveSpec {
@@ -101,4 +128,5 @@ export function minimize(expr: ObjectiveExpr | Constraint): ObjectiveSpec {
     sense: "Minimize",
   };
 }
+
 
