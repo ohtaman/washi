@@ -12,11 +12,12 @@ Set the objective direction and formula declaratively using `m.objective(maximiz
 import { Model, expr, maximize, minimize } from "@ohtaman/washi";
 
 const m = new Model("ProductionRevenue");
-const x = m.integer("x", { lb: 0 });
-const y = m.integer("y", { lb: 0 });
+const x = m.integer("x", { lb: 0, ub: 40 });
+const y = m.integer("y", { lb: 0, ub: 40 });
 
-// Maximize revenue: 50*x + 40*y
+// Maximize revenue: 50*x + 40*y subject to resource capacity
 m.objective(maximize(expr`50 * ${x} + 40 * ${y}`));
+m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 
 // Or minimize cost:
 // m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));

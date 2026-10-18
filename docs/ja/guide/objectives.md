@@ -12,11 +12,12 @@
 import { Model, expr, maximize, minimize } from "@ohtaman/washi";
 
 const m = new Model("ProductionRevenue");
-const x = m.integer("x", { lb: 0 });
-const y = m.integer("y", { lb: 0 });
+const x = m.integer("x", { lb: 0, ub: 40 });
+const y = m.integer("y", { lb: 0, ub: 40 });
 
-// 売上の最大化: 50*x + 40*y
+// リソース制約の下で売上を最大化: 50*x + 40*y
 m.objective(maximize(expr`50 * ${x} + 40 * ${y}`));
+m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 
 // コストの最小化の場合:
 // m.objective(minimize(expr`10 * ${x} + 15 * ${y}`));

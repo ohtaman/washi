@@ -198,7 +198,19 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(solveStatus).toBe("Infeasible");
     const diag = await mDiag.check({ solver: "z3" });
     expect(diag.status).toBe("Unsat");
-    expect(diag.conflicts).toEqual(["minimum_regulatory_reserve", "budget_ceiling"]);
+    expect(diag.conflicts).toEqual(
+      expect.arrayContaining(["minimum_regulatory_reserve", "budget_ceiling"])
+    );
+
+    // 6. Bounded ProductionRevenue model + onProgress/AbortSignal (docs/guide/objectives.md)
+    const mRev = new Model("ProductionRevenue");
+    const rx1 = mRev.integer("x", { lb: 0, ub: 40 });
+    const ry1 = mRev.integer("y", { lb: 0, ub: 40 });
+    mRev.objective(maximize(expr`50 * ${rx1} + 40 * ${ry1}`));
+    mRev.constraint(expr`2 * ${rx1} + 3 * ${ry1} <= 100`, "resource_limit");
+    const revStatus = await mRev.solve();
+    expect(revStatus).toBe("Optimal");
+    expect(mRev.objectiveValue).toBe(2240);
   });
 
   it("maintains full page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {

@@ -316,6 +316,7 @@ export class CloudSolver implements Solver {
         timeLimit: options.timeLimit,
         mipGap: options.mipGap,
       }),
+      signal: options.signal,
     });
 
     if (!response.ok) {
