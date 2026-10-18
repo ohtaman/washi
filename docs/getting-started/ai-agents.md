@@ -100,7 +100,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
   - `sum(iterable, mapper?)` sums an `Iterable` of `Var` / `LinExpr` / `number` (e.g., `Var[]`, `grid.flat()`, or `Object.values(record)`).
   - `dot(a, b)` computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
 - **Fluent methods**:
-  - Arithmetic: `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
+  - Arithmetic (on `LinExpr` and `QuadExpr`; `Var` supports `.add()`, `.sub()`, `.mul()`, `.neg()`): `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
   - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint` for Z3): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`
 

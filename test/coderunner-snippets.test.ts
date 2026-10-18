@@ -119,6 +119,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         expect(content, `Missing statusMap in ${docFile}`).toContain("statusMap");
         expect(content, `Missing AbortError handling in ${docFile}`).toContain("AbortError");
       }
+      expect(content, `Invalid Var.div() in ${docFile}`).not.toMatch(/\|\s*`\.div\(divisor\)`\s*\|\s*`Var`/);
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
       let blockMatch;

@@ -196,7 +196,7 @@ console.log("Labor Used:", laborUsed.value);    // 50
 | `.add(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 加上一个数值、`Var`、`LinExpr` 或 `QuadExpr`。 |
 | `.sub(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 减去一个数值、`Var`、`LinExpr` 或 `QuadExpr`。 |
 | `.mul(other)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 乘以标量 `number`，或将两个一次项相乘得到 `QuadExpr`。 |
-| `.div(divisor)` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 除以非零有限标量 `number`。 |
+| `.div(divisor)` | `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 除以非零有限标量 `number`。 |
 | `.neg()` | `Var`, `LinExpr`, `QuadExpr` | `LinExpr` 或 `QuadExpr` | 对所有项取反（$-e$）。 |
 | `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $\le$ 约束（`lhs <= rhs`）。 |
 | `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $\ge$ 约束（`lhs >= rhs`）。 |
