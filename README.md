@@ -348,7 +348,7 @@ The package also includes `dist/browser/washi.min.js`, which exports the `Washi`
 </script>
 ```
 
-For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js` (or pin your desired release version). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
+For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js` (specifying a compatible release version once published). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
 
 ### Solver Plugins in the Browser (GLPK & Z3)
 

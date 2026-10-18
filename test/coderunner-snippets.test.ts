@@ -74,6 +74,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content).not.toContain("documentation-plan.md");
       expect(content).not.toContain("bestBound");
       expect(content).not.toContain("iterationCount");
+      expect(content).not.toContain("@0.4.0");
     }
 
     for (const docFile of mdFiles) {
@@ -106,6 +107,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content, `Incorrect objectiveBound null comment in ${docFile}`).not.toMatch(
         /m\.objectiveBound\);\s*\/\/.*null/
       );
+      expect(content, `Stale @0.4.0 CDN URL in ${docFile}`).not.toContain("@0.4.0");
       expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;

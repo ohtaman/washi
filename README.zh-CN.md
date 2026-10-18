@@ -348,7 +348,7 @@ await model.solve();
 </script>
 ```
 
-若通过 CDN 加载，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js`（可固定所需的发布版本号）。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
+若通过 CDN 加载，可使用 `https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js`（待包含相应 API 的版本发布后指定该版本号）。ESM 使用同版本的 `dist/browser/washi.js`。选择 CDN URL 就是显式使用 CDN；本地部署不会自动改用外部 CDN。
 
 ### 浏览器环境中的求解器插件（GLPK & Z3）
 

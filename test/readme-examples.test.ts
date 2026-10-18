@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { Model, expr, sum, dot, not, QuadExpr, HiGHS, maximize, minimize } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
@@ -273,5 +275,26 @@ describe("README.md Code Snippets Validation", () => {
     expect(resFeasible.openEU).toBe(1);
     expect(resFeasible.openUS).toBe(1);
     expect(resFeasible.totalCost).toBe(15700);
+  });
+
+  it("verifies pre-built browser distribution (dist/browser/washi.min.js) exports the modern API and executes the browser demo", () => {
+    const minJsPath = path.resolve(process.cwd(), "dist/browser/washi.min.js");
+    if (!fs.existsSync(minJsPath)) return;
+    const code = fs.readFileSync(minJsPath, "utf-8");
+    const WashiGlobal = new Function(code + "; return Washi;")();
+
+    expect(typeof WashiGlobal.maximize).toBe("function");
+    expect(typeof WashiGlobal.minimize).toBe("function");
+    expect(typeof WashiGlobal.Model.prototype.objective).toBe("function");
+    expect(typeof WashiGlobal.Model.prototype.constraint).toBe("function");
+
+    // Execute the exact snippet from runtimes.md
+    const { Model: BrowserModel, expr: browserExpr, maximize: browserMaximize } = WashiGlobal;
+    const m = new BrowserModel("BrowserDemo");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    const y = m.continuous("y", { lb: 0, ub: 20 });
+    m.objective(browserMaximize(browserExpr`2 * ${x} + 3 * ${y}`));
+    m.constraint(browserExpr`${x} + ${y} <= 15`);
+    expect(m.numConstrs).toBe(1);
   });
 });

@@ -348,7 +348,7 @@ await model.solve();
 </script>
 ```
 
-CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js`（任意のリリースバージョンを固定）に指定できます。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
+CDN から直接読み込む場合は、URL を `https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js`（対応版リリースが公開された後にそのバージョンを指定）に指定できます。ESM は同じ版の `dist/browser/washi.js` を指定します。CDN の URL を選ぶことが明示的な CDN 利用になり、ローカル配信が勝手に CDN へ切り替わることはありません。
 
 ### ブラウザ環境でのソルバープラグイン（GLPK & Z3）
 

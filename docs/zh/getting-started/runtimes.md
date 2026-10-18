@@ -107,14 +107,17 @@ export default function OptimizerComponent() {
 
 ## 📦 浏览器 ESM (`<script type="module">`)
 
-无需构建步骤，您可以直接从本地静态服务器或 CDN 导入预打包的浏览器 ESM 模块：
+无需构建步骤，您可以直接从本地静态服务器（或待包含相应 API 的版本发布后的 npm CDN）导入预打包的浏览器 ESM 模块：
 
 ```html
 <script type="module">
-  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.js";
+  // 从本地静态服务器 / dist 加载：
+  import { Model, expr, maximize } from "./dist/browser/washi.js";
+  // 或待相应版本发布后通过 npm CDN 加载：
+  // import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.js";
   // 可选的求解器插件：
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/glpk.js";
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/z3.js";
+  // import "./dist/browser/solvers/glpk.js";
+  // import "./dist/browser/solvers/z3.js";
 
   const m = new Model("BrowserESM");
   const x = m.integer("x", { lb: 0 });
@@ -131,7 +134,7 @@ export default function OptimizerComponent() {
 
 ---
 
-## 🟨 传统 `<script>` 标签 (IIFE / CDN / CodePen)
+## 🟨 传统 `<script>` 标签 (IIFE / 独立构建发布 / CDN)
 
 对于静态 HTML 页面、CodePen 或 JSFiddle，可通过标准 `<script>` 标签加载 `washi.min.js`。所有导出项均挂载在全局变量 `window.Washi` 上：
 
@@ -140,23 +143,25 @@ export default function OptimizerComponent() {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WaSHI CDN Demo</title>
+    <title>WaSHI Browser Demo</title>
   </head>
   <body>
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- WaSHI 核心 + HiGHS (MIT) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js"></script>
+    <!-- 从本地静态构建 / 资源加载 WaSHI 核心 + HiGHS (MIT) -->
+    <script src="./dist/browser/washi.min.js"></script>
+    <!-- 或待相应版本发布后通过 CDN 加载： -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js"></script> -->
     <!-- 可选插件（自动注册到 window.Washi）： -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/glpk.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/z3.min.js"></script> -->
+    <!-- <script src="./dist/browser/solvers/glpk.min.js"></script> -->
+    <!-- <script src="./dist/browser/solvers/z3.min.js"></script> -->
 
     <script>
       (async () => {
         const { Model, expr, maximize } = Washi;
 
-        const m = new Model("CDNDemo");
+        const m = new Model("BrowserDemo");
         const x = m.continuous("x", { lb: 0, ub: 10 });
         const y = m.continuous("y", { lb: 0, ub: 20 });
 

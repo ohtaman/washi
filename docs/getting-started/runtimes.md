@@ -107,14 +107,17 @@ export default function OptimizerComponent() {
 
 ## 📦 Browser ESM (`<script type="module">`)
 
-You can import the pre-bundled browser ESM modules directly from a local static server or CDN without a build step:
+You can import the pre-bundled browser ESM modules directly from a local static server (or from an npm CDN once a compatible release is published) without a build step:
 
 ```html
 <script type="module">
-  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.js";
+  // Serve from your local static server / dist:
+  import { Model, expr, maximize } from "./dist/browser/washi.js";
+  // Or from an npm CDN once a compatible release is published:
+  // import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.js";
   // Optional solver plugins:
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/glpk.js";
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/z3.js";
+  // import "./dist/browser/solvers/glpk.js";
+  // import "./dist/browser/solvers/z3.js";
 
   const m = new Model("BrowserESM");
   const x = m.integer("x", { lb: 0 });
@@ -131,7 +134,7 @@ You can import the pre-bundled browser ESM modules directly from a local static 
 
 ---
 
-## 🟨 Classic `<script>` Tags (IIFE / CDN / CodePen)
+## 🟨 Classic `<script>` Tags (IIFE / Standalone Build / CDN)
 
 For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard `<script>` tag. All exports are attached to the global `window.Washi` object:
 
@@ -140,23 +143,25 @@ For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard 
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WaSHI CDN Demo</title>
+    <title>WaSHI Browser Demo</title>
   </head>
   <body>
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- Core WaSHI + HiGHS (MIT) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js"></script>
+    <!-- Core WaSHI + HiGHS (MIT) from local static build / assets -->
+    <script src="./dist/browser/washi.min.js"></script>
+    <!-- Or via CDN once a compatible release is published: -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js"></script> -->
     <!-- Optional plugins (auto-register on window.Washi): -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/glpk.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/z3.min.js"></script> -->
+    <!-- <script src="./dist/browser/solvers/glpk.min.js"></script> -->
+    <!-- <script src="./dist/browser/solvers/z3.min.js"></script> -->
 
     <script>
       (async () => {
         const { Model, expr, maximize } = Washi;
 
-        const m = new Model("CDNDemo");
+        const m = new Model("BrowserDemo");
         const x = m.continuous("x", { lb: 0, ub: 10 });
         const y = m.continuous("y", { lb: 0, ub: 20 });
 

@@ -107,14 +107,17 @@ export default function OptimizerComponent() {
 
 ## 📦 ブラウザ ESM (`<script type="module">`)
 
-ビルドツールを使わずに、ローカル配信または CDN からブラウザ向け ESM バンドルを直接インポートできます：
+ビルドツールを使わずに、ローカル静的サーバー（または対応版リリース公開後の npm CDN）からブラウザ向け ESM バンドルを直接インポートできます：
 
 ```html
 <script type="module">
-  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.js";
+  // ローカル配信 / dist からの読み込み:
+  import { Model, expr, maximize } from "./dist/browser/washi.js";
+  // または対応版リリース公開後の npm CDN からの読み込み:
+  // import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.js";
   // オプションのソルバープラグイン:
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/glpk.js";
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/z3.js";
+  // import "./dist/browser/solvers/glpk.js";
+  // import "./dist/browser/solvers/z3.js";
 
   const m = new Model("BrowserESM");
   const x = m.integer("x", { lb: 0 });
@@ -131,7 +134,7 @@ export default function OptimizerComponent() {
 
 ---
 
-## 🟨 クラシック `<script>` タグ (IIFE / CDN / CodePen)
+## 🟨 クラシック `<script>` タグ (IIFE / スタンドアロン配布 / CDN)
 
 単一の HTML ファイルや CodePen 等では、`washi.min.js` を `<script>` タグで読み込むことでグローバル変数 `window.Washi` から全 API を利用できます：
 
@@ -140,23 +143,25 @@ export default function OptimizerComponent() {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>WaSHI CDN Demo</title>
+    <title>WaSHI Browser Demo</title>
   </head>
   <body>
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- WaSHI コア + HiGHS (MIT) -->
-    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/washi.min.js"></script>
+    <!-- ローカル静的配信 / dist からの WaSHI コア + HiGHS (MIT) -->
+    <script src="./dist/browser/washi.min.js"></script>
+    <!-- または対応版リリース公開後の CDN からの読み込み: -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js"></script> -->
     <!-- オプションプラグイン (window.Washi に自動登録): -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/glpk.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.4.0/dist/browser/solvers/z3.min.js"></script> -->
+    <!-- <script src="./dist/browser/solvers/glpk.min.js"></script> -->
+    <!-- <script src="./dist/browser/solvers/z3.min.js"></script> -->
 
     <script>
       (async () => {
         const { Model, expr, maximize } = Washi;
 
-        const m = new Model("CDNDemo");
+        const m = new Model("BrowserDemo");
         const x = m.continuous("x", { lb: 0, ub: 10 });
         const y = m.continuous("y", { lb: 0, ub: 20 });
 
