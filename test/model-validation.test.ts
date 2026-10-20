@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { Model, Constraint, LinExpr, expr, maximize, minimize, validateModelIntegrity } from "../src/index.js";
+import { Model, Constraint, LinExpr, expr, maximize, minimize, implies, validateModelIntegrity } from "../src/index.js";
 
 describe("Model Integrity Validation (Issue #51)", () => {
   beforeAll(async () => {
@@ -416,5 +416,106 @@ describe("Model Integrity Validation (Issue #51)", () => {
         expect(negVar.value).toBeCloseTo(-5, 5);
       }
     );
+  });
+
+  describe("5. Self-correcting runtime validation errors for common API misuses (Issue #101)", () => {
+    it("throws self-correcting errors when m.objective(...) is called without maximize(...) or minimize(...)", () => {
+      const m = new Model("ObjectiveMisuseTest");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      const y = m.integer("y", { lb: 0, ub: 10 });
+
+      const expectedConstraintMsg =
+        "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? To set an objective, wrap an unconstrained expression with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`)).";
+      expect(() => m.objective(expr`${x} <= 10` as any)).toThrow(expectedConstraintMsg);
+      expect(() => m.objective("x <= 10" as any)).toThrow(expectedConstraintMsg);
+
+      const expectedWrapperMsg =
+        "m.objective(...) expects an ObjectiveSpec created with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`)).";
+      expect(() => m.objective(expr`30 * ${x} + 50 * ${y}` as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective(expr`${x}^2 + ${y}^2` as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective(x as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective(42 as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective(0 as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective("30 * x" as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective("" as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective(null as any)).toThrow(expectedWrapperMsg);
+      expect(() => m.objective(undefined as any)).toThrow(expectedWrapperMsg);
+
+      // 0-argument getter overload still returns the current objective expression
+      expect(m.objective()).toBeInstanceOf(LinExpr);
+    });
+
+    it("throws an actionable error when m.constraint(...) is called with a bare numeric Var", () => {
+      const m = new Model("BareVarConstraintMisuseTest");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      const k = m.integer("k", { lb: 0, ub: 5 });
+      const b = m.binary("b");
+      const flag = m.bool("flag");
+
+      for (const numVar of [x, k, b]) {
+        expect(() => m.constraint(numVar as any)).toThrow(
+          `Cannot add numeric variable "${numVar.name}" directly as a constraint without a comparison operator (<=, >=, ==). Numeric variables require a comparison such as expr\`\${x} <= 10\` or x.le(10), whereas propositional BoolVar variables must be created with m.bool().`
+        );
+      }
+
+      // Also rejected inside array batches without leaving partial constraints registered
+      expect(() => m.constraint([expr`${x} <= 5`, b as any])).toThrow(
+        /Cannot add numeric variable "b" directly as a constraint/
+      );
+      expect(m.constraints).toHaveLength(0);
+
+      // Propositional BoolVar created with m.bool() remains valid in m.constraint()
+      m.constraint(flag, "flag_must_hold");
+      expect(m.logicalConstraints).toHaveLength(1);
+    });
+
+    it("throws self-correcting precondition errors in m.indicator(...) and logical combinators", () => {
+      const m = new Model("IndicatorMisuseTest");
+      const x = m.continuous("x", { lb: 0, ub: 100 });
+      const k = m.integer("k", { lb: 0, ub: 5 });
+      const b = m.binary("b");
+      const flag = m.bool("flag");
+
+      // 1. Passing a BoolVar or BoolExpr as the indicator variable
+      expect(() => m.indicator(flag as any, expr`${x} <= 50`)).toThrow(
+        "Invalid binary variable passed to indicator(): received a propositional BoolVar/BoolExpr, but m.indicator() requires a 0-1 numeric binary Var created with m.binary(). For general boolean logic with m.bool(), use m.constraint(implies(flag, expr`${x} <= 10`)) with the Z3 solver."
+      );
+      expect(() => m.indicator(flag.not() as any, expr`${x} <= 50`)).toThrow(
+        /m\.indicator\(\) requires a 0-1 numeric binary Var created with m\.binary\(\)/
+      );
+
+      // 2. Passing non-Var or non-binary numeric Var as the indicator variable
+      expect(() => m.indicator("b" as any, expr`${x} <= 50`)).toThrow(
+        /Expected a 0-1 binary Var instance created with m\.binary\(\)/
+      );
+      expect(() => m.indicator(x, expr`${x} <= 50`)).toThrow(
+        /Indicator activation variable must be a Binary variable created with m\.binary\(\)/
+      );
+      expect(() => m.indicator(k, expr`${x} <= 50`)).toThrow(
+        /Indicator activation variable must be a Binary variable created with m\.binary\(\)/
+      );
+
+      // 3. Passing invalid constraint arguments to m.indicator(b, ...)
+      expect(() => m.indicator(b, expr`2 * ${x} + 1` as any)).toThrow(
+        /Expression must include a comparison operator \(<=, >=, ==\), e\.g\. m\.indicator\(b, expr`\$\{x\} <= 10`\)\. For general boolean logic.*implies\(flag, \.\.\.\)/
+      );
+      expect(() => m.indicator(b, x as any)).toThrow(
+        /Expression must include a comparison operator \(<=, >=, ==\), e\.g\. m\.indicator\(b, expr`\$\{x\} <= 10`\)/
+      );
+      expect(() => m.indicator(b, flag as any)).toThrow(
+        /Expression must include a comparison operator \(<=, >=, ==\).*implies\(flag, \.\.\.\)/
+      );
+      expect(() => m.indicator(b, "x <= 50" as any)).toThrow(
+        /Expression must include a comparison operator \(<=, >=, ==\)/
+      );
+      expect(() => m.indicator(b, null as any)).toThrow(
+        /Expression must include a comparison operator \(<=, >=, ==\)/
+      );
+
+      // 4. Passing a numeric Var to logical combinators (implies/and/or/not/xor)
+      expect(() => implies(b as any, expr`${x} <= 50`)).toThrow(
+        /received numeric variable "b".*Use m\.bool\(\) for propositional variables.*or use m\.indicator\(binVar, constraint\)/
+      );
+    });
   });
 });
