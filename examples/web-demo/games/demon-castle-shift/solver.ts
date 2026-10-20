@@ -179,6 +179,7 @@ export function rollStageBattles(
       conflictTitle: activeNegativeRel?.title,
       isPerfectDefense,
       isBossRaid: Boolean(req.isBossRaid),
+      isFullMoon: Boolean(req.isFullMoon),
       defensePower: slot.currentPower,
       expectedEnemyPower: slot.expectedPower,
       maxEnemyPower: slot.requiredPower,

@@ -247,6 +247,11 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     const outcomeNight0 = outcomes.find((o) => o.day === 0 && o.shift === "night")!;
     expect(outcomeNight0.hasConflict).toBe(true);
     expect(outcomeNight0.conflictTitle).toContain("同番拒否");
+    expect(outcomeNight0.isFullMoon).toBe(false);
+
+    // Full-moon slot in STAGE 5 (day 2 Wednesday night) carries isFullMoon = true into SlotBattleOutcome
+    const outcomeFullMoon = outcomes.find((o) => o.day === 2 && o.shift === "night")!;
+    expect(outcomeFullMoon.isFullMoon).toBe(true);
   });
 
   it("regenerates freshly randomized, solvable campaign stage variants on retry after defense failure", async () => {

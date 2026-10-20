@@ -1664,7 +1664,7 @@ function renderOptimalComparisonHtml(
       const pSlot = playerEval.slotStatuses.find((s) => s.day === req.day && s.shift === req.shift);
       const oSlot = optEval.slotStatuses.find((s) => s.day === req.day && s.shift === req.shift);
       const outcome = outcomes[idx];
-      const shiftIcon = req.shift === "day" ? "☀️" : "🌙";
+      const shiftIcon = req.shift === "day" ? "☀️" : req.isFullMoon ? "🌕" : "🌙";
       const shiftLabel = req.shift === "day" ? "昼" : "夜";
       const pPower = pSlot?.currentPower ?? 0;
       const oPower = oSlot?.currentPower ?? 0;
@@ -1908,7 +1908,7 @@ async function openDispatchResultDialog(): Promise<void> {
 
   const initialSlotsHtml = outcomes
     .map((o, idx) => {
-      const shiftIcon = o.shift === "day" ? "☀️" : "🌙";
+      const shiftIcon = o.shift === "day" ? "☀️" : o.isFullMoon ? "🌕" : "🌙";
       const shiftLabel = o.shift === "day" ? "昼" : "夜";
       const miniAvatars = o.assignedMonsters
         .map((mId) => `<img class="log-mini-avatar" src="${MONSTERS[mId].portrait}" alt="${MONSTERS[mId].name}" width="20" height="20" />`)

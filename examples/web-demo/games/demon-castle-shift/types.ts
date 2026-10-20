@@ -233,6 +233,7 @@ export interface SlotBattleOutcome {
   conflictTitle?: string;
   isPerfectDefense: boolean;
   isBossRaid: boolean;
+  isFullMoon?: boolean;
   defensePower: number;
   expectedEnemyPower: number;
   maxEnemyPower: number;
