@@ -131,6 +131,23 @@ function isPlainOptionsObject(val: unknown): boolean {
   );
 }
 
+function isNumericVarLike(val: unknown): val is Var {
+  return (
+    val instanceof Var ||
+    (typeof val === "object" &&
+      val !== null &&
+      !(val instanceof BoolExpr) &&
+      !(val instanceof Constraint) &&
+      "id" in val &&
+      "name" in val &&
+      "lb" in val &&
+      "ub" in val &&
+      !("terms" in val) &&
+      !("quadTerms" in val) &&
+      !("sense" in val))
+  );
+}
+
 declare const UniqueStringTag: unique symbol;
 declare global {
   interface String {
@@ -1007,10 +1024,34 @@ export class Model {
   objective(): LinExpr | QuadExpr;
   objective(spec: ObjectiveSpec): this;
   objective(spec?: ObjectiveSpec): LinExpr | QuadExpr | this {
-    if (!spec) {
+    if (arguments.length === 0) {
       return this.objectiveExpr;
     }
-    this.applyObjective(spec.expr, spec.sense);
+    const raw = spec as unknown;
+    if (
+      raw instanceof Constraint ||
+      (typeof raw === "object" &&
+        raw !== null &&
+        "sense" in raw &&
+        "lhs" in raw &&
+        "rhs" in raw) ||
+      (typeof raw === "string" && /(<=|>=|==|=<|=>|=)/.test(raw))
+    ) {
+      throw new Error(
+        "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? To set an objective, wrap an unconstrained expression with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`))."
+      );
+    }
+    if (
+      typeof raw !== "object" ||
+      raw === null ||
+      !("expr" in raw) ||
+      !("sense" in raw)
+    ) {
+      throw new Error(
+        "m.objective(...) expects an ObjectiveSpec created with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`))."
+      );
+    }
+    this.applyObjective((raw as ObjectiveSpec).expr, (raw as ObjectiveSpec).sense);
     return this;
   }
 
@@ -1029,8 +1070,8 @@ export class Model {
     ) {
       throw new Error(
         typeof expr === "string"
-          ? "Cannot use a comparison constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)?"
-          : "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? For objectives, supply an unconstrained expression like expr`45 * ${x} + 80 * ${y}`."
+          ? "Cannot use a comparison constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? To set an objective, wrap an unconstrained expression with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`))."
+          : "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? To set an objective, wrap an unconstrained expression with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`))."
       );
     }
 
@@ -1140,6 +1181,11 @@ export class Model {
         "Constraint must contain a comparison operator (<=, >=, ==): cannot add a linear expression without a comparison operator. Use expr`... <= ...` or .le(), .ge(), .eq()."
       );
     }
+    if (isNumericVarLike(item)) {
+      throw new Error(
+        `Cannot add numeric variable "${item.name}" directly as a constraint without a comparison operator (<=, >=, ==). Numeric variables require a comparison such as expr\`\${x} <= 10\` or x.le(10), whereas propositional BoolVar variables must be created with m.bool().`
+      );
+    }
     this.addConstraint(item as Constraint | BoolExpr | string, name);
     return this;
   }
@@ -1230,6 +1276,11 @@ export class Model {
         "Constraint must contain a comparison operator (<=, >=, ==): cannot add a linear expression without a comparison operator. Use expr`... <= ...` or .le(), .ge(), .eq()."
       );
     }
+    if (isNumericVarLike(constraint)) {
+      throw new Error(
+        `Cannot add numeric variable "${constraint.name}" directly as a constraint without a comparison operator (<=, >=, ==). Numeric variables require a comparison such as expr\`\${x} <= 10\` or x.le(10), whereas propositional BoolVar variables must be created with m.bool().`
+      );
+    }
     if (constraint instanceof BoolExpr) {
       const explicitName = typeof name === "string" && name.trim().length > 0 ? name.trim() : undefined;
       if (explicitName !== undefined) {
@@ -1279,6 +1330,18 @@ export class Model {
       typeof constraint === "string"
         ? parseConstraint(constraint, (varName) => this.getVarByName(varName), name)
         : constraint;
+
+    if (
+      typeof constr !== "object" ||
+      constr === null ||
+      !("sense" in constr) ||
+      !("lhs" in constr) ||
+      !("rhs" in constr)
+    ) {
+      throw new Error(
+        "Invalid constraint passed to m.constraint(...): expected a linear Constraint (e.g. expr`${x} <= 10` or x.le(10)), a propositional BoolVar/BoolExpr (created with m.bool()), or an array of constraints."
+      );
+    }
 
     if (constr.ownerModel && constr.ownerModel !== this) {
       validateLinearConstraint(constr, this.name, (v) => this.varMapByName.get(v.name) === v, constr.name);
@@ -1365,9 +1428,14 @@ export class Model {
     constraint: Constraint | LinExpr | QuadExpr,
     options: IndicatorOptions = {}
   ): Constraint[] {
+    if ((binVar as unknown) instanceof BoolExpr) {
+      throw new Error(
+        "Invalid binary variable passed to indicator(): received a propositional BoolVar/BoolExpr, but m.indicator() requires a 0-1 numeric binary Var created with m.binary(). For general boolean logic with m.bool(), use m.constraint(implies(flag, expr`${x} <= 10`)) with the Z3 solver."
+      );
+    }
     if (!(binVar instanceof Var)) {
       throw new Error(
-        "Invalid binary variable passed to indicator(). Expected a binary Var instance."
+        "Invalid binary variable passed to indicator(). Expected a 0-1 binary Var instance created with m.binary() (or use implies(flag, ...) with m.bool() and the Z3 solver for general boolean logic)."
       );
     }
     const isBinary =
@@ -1375,18 +1443,27 @@ export class Model {
       (binVar.type === "Integer" && binVar.lb === 0 && binVar.ub === 1);
     if (!isBinary) {
       throw new Error(
-        `Invalid variable "${binVar.name}" passed to indicator(): variable has type "${binVar.type}" with bounds [${binVar.lb}, ${binVar.ub}]. Indicator activation variable must be a Binary variable (or Integer variable with bounds [0, 1]).`
+        `Invalid variable "${binVar.name}" passed to indicator(): variable has type "${binVar.type}" with bounds [${binVar.lb}, ${binVar.ub}]. Indicator activation variable must be a Binary variable created with m.binary() (or Integer variable with bounds [0, 1]).`
       );
     }
 
-    if (constraint instanceof QuadExpr) {
+    if (
+      constraint instanceof QuadExpr ||
+      (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
+    ) {
       throw new Error(
-        "Quadratic expressions or constraints are not supported in indicator constraints (only linear constraints are allowed)."
+        "Quadratic expressions or constraints are not supported in indicator constraints (only linear Constraints with <=, >=, or == such as expr`${x} <= 10` are allowed)."
       );
     }
-    if (!("sense" in constraint) || !("lhs" in constraint)) {
+    if (
+      typeof constraint !== "object" ||
+      constraint === null ||
+      !("sense" in constraint) ||
+      !("lhs" in constraint) ||
+      !("rhs" in constraint)
+    ) {
       throw new Error(
-        "Invalid constraint expression passed to indicator(). Expression must include a comparison operator (<=, >=, ==)."
+        "Invalid constraint expression passed to indicator(). Expression must include a comparison operator (<=, >=, ==), e.g. m.indicator(b, expr`${x} <= 10`). For general boolean logic (such as BoolVar or implies/and/or/not), use m.constraint(implies(flag, ...)) with the Z3 solver."
       );
     }
     const resolvedConstraint = constraint as Constraint;

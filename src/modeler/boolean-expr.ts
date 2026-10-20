@@ -24,6 +24,20 @@ function assertLogicElement(el: unknown, op: string): LogicElement {
         `Use a comparison constraint such as expr\`\${x} <= 10\` or a BoolVar/BoolExpr.`
     );
   }
+  if (
+    typeof el === "object" &&
+    el !== null &&
+    "id" in el &&
+    "name" in el &&
+    "lb" in el &&
+    "ub" in el &&
+    !("sense" in el)
+  ) {
+    throw new Error(
+      `Invalid operand passed to logical operator "${op}": expected a BoolVar, BoolExpr, or Constraint, but received numeric variable "${(el as { name: string }).name}". ` +
+        `Use m.bool() for propositional variables, add a comparison such as expr\`\${x} == 1\`, or use m.indicator(binVar, constraint) for 0-1 Big-M indicator constraints.`
+    );
+  }
   throw new Error(
     `Invalid operand passed to logical operator "${op}": expected a BoolVar, BoolExpr, or Constraint.`
   );

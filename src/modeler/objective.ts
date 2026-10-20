@@ -33,13 +33,13 @@ function validateObjectiveConstructorInput(
   ) {
     throw new Error(
       `Cannot use a Constraint as an objective in ${fnName}(). ` +
-        `Use model.constraint(expr\`... <= ...\`) for constraints, or supply an unconstrained arithmetic expression to ${fnName}().`
+        `Use m.constraint(expr\`... <= ...\`) for constraints, or supply an unconstrained arithmetic expression to ${fnName}(), e.g. m.objective(${fnName}(expr\`30 * \${x}\`)).`
     );
   }
   if (typeof raw === "string" && /(<=|>=|==|=<|=>|=)/.test(raw)) {
     throw new Error(
       `Cannot use a comparison constraint as an objective in ${fnName}(). ` +
-        `Use model.constraint(expr\`... <= ...\`) for constraints, or supply an unconstrained arithmetic expression to ${fnName}().`
+        `Use m.constraint(expr\`... <= ...\`) for constraints, or supply an unconstrained arithmetic expression to ${fnName}(), e.g. m.objective(${fnName}(expr\`30 * \${x}\`)).`
     );
   }
   if (typeof raw === "number") {
