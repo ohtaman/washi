@@ -157,6 +157,7 @@ interface SaveData {
   clearedRanks: Record<string, "S" | "A" | "B">;
   playHistory: StagePlayRecord[];
   stageRetryCounts: Record<string, number>;
+  stageFailedAttempts: Record<string, number>;
   unlockAllDemo: boolean;
 }
 
@@ -173,15 +174,21 @@ function loadSaveData(): SaveData {
         typeof parsed.highestUnlockedWeek === "number"
           ? Math.max(1, parsed.highestUnlockedWeek)
           : unlockedStageIndex + 1;
+      const stageRetryCounts =
+        parsed.stageRetryCounts && typeof parsed.stageRetryCounts === "object"
+          ? parsed.stageRetryCounts
+          : {};
+      const stageFailedAttempts =
+        parsed.stageFailedAttempts && typeof parsed.stageFailedAttempts === "object"
+          ? parsed.stageFailedAttempts
+          : { ...stageRetryCounts };
       return {
         unlockedStageIndex,
         highestUnlockedWeek,
         clearedRanks: parsed.clearedRanks ?? {},
         playHistory: Array.isArray(parsed.playHistory) ? parsed.playHistory : [],
-        stageRetryCounts:
-          parsed.stageRetryCounts && typeof parsed.stageRetryCounts === "object"
-            ? parsed.stageRetryCounts
-            : {},
+        stageRetryCounts,
+        stageFailedAttempts,
         unlockAllDemo: Boolean(parsed.unlockAllDemo),
       };
     }
@@ -194,6 +201,7 @@ function loadSaveData(): SaveData {
     clearedRanks: {},
     playHistory: [],
     stageRetryCounts: {},
+    stageFailedAttempts: {},
     unlockAllDemo: false,
   };
 }
@@ -238,6 +246,7 @@ let prologueSlideIndex = 0;
 let tutorialSkipped = false;
 let hintsUsedThisStage = 0;
 let failedAttemptsThisStage = 0;
+let stageLoadGeneration = 0;
 
 // Typewriter state for bottom RPG dialogue dock
 let dockTimer: number | null = null;
@@ -567,6 +576,7 @@ function advanceOpeningCut(forceNext = false): void {
 // ============================================================================
 
 function showTitleScreen(): void {
+  stageLoadGeneration++;
   const titleScreen = getEl<HTMLElement>("title-screen");
   const gameApp = getEl<HTMLElement>("game-app");
   titleScreen.hidden = false;
@@ -677,32 +687,38 @@ function renderPrologueSlide(): void {
 // Stage Loading & Stage Progression Navigation
 // ============================================================================
 
-async function loadCampaignStage(stageIndex: number, openBriefing = true): Promise<void> {
+export async function loadCampaignStage(stageIndex: number, openBriefing = true): Promise<void> {
+  const loadGen = ++stageLoadGeneration;
   const clampedIdx = Math.max(0, Math.min(CAMPAIGN_STAGES.length - 1, stageIndex));
   const retryCount = saveData.stageRetryCounts[`week-${clampedIdx + 1}`] ?? 0;
   if (retryCount > 0) {
     const { stage, optimalResult } = await generateVerifiedStageWithHighs((attempt) =>
       getCampaignStageScenario(clampedIdx, attempt)
     );
-    await loadStage(stage, clampedIdx, openBriefing, optimalResult);
+    if (loadGen !== stageLoadGeneration) return;
+    await loadStage(stage, clampedIdx, openBriefing, optimalResult, loadGen);
     return;
   }
-  await loadStage(CAMPAIGN_STAGES[clampedIdx], clampedIdx, openBriefing);
+  await loadStage(CAMPAIGN_STAGES[clampedIdx], clampedIdx, openBriefing, null, loadGen);
 }
 
-async function loadEndlessStage(weekNumber: number, openBriefing = true): Promise<void> {
+export async function loadEndlessStage(weekNumber: number, openBriefing = true): Promise<void> {
+  const loadGen = ++stageLoadGeneration;
   const { stage, optimalResult } = await generateVerifiedStageWithHighs((attempt) =>
     getEndlessStageScenario(weekNumber, attempt)
   );
-  await loadStage(stage, -1, openBriefing, optimalResult);
+  if (loadGen !== stageLoadGeneration) return;
+  await loadStage(stage, -1, openBriefing, optimalResult, loadGen);
 }
 
 async function loadStage(
   stage: StageScenario,
   stageIndex: number,
   openBriefing = true,
-  precomputedOptimal: OptimalSolveResult | null = null
+  precomputedOptimal: OptimalSolveResult | null = null,
+  loadGen = ++stageLoadGeneration
 ): Promise<void> {
+  if (loadGen !== stageLoadGeneration) return;
   currentStage = stage;
   currentStageIndex = stageIndex;
   const days = getStageDays(stage);
@@ -710,27 +726,36 @@ async function loadStage(
   cachedOptimalResult = precomputedOptimal;
   tutorialSkipped = false;
   hintsUsedThisStage = 0;
-  failedAttemptsThisStage = 0;
+  const retryKey = `week-${stage.weekNumber}`;
+  failedAttemptsThisStage =
+    saveData.stageFailedAttempts[retryKey] ?? saveData.stageRetryCounts[retryKey] ?? 0;
 
-  renderStageProgressNav();
+  const hasDom = typeof document !== "undefined" && Boolean(document.getElementById("stage-progress-nav"));
+  if (hasDom) {
+    renderStageProgressNav();
 
-  getEl<HTMLElement>("stage-heading").textContent =
-    stageIndex >= 0
-      ? stage.title
-      : `${stage.title}${stage.difficultyLabel ? `（難易度：${stage.difficultyLabel}）` : ""}`;
+    getEl<HTMLElement>("stage-heading").textContent =
+      stageIndex >= 0
+        ? stage.title
+        : `${stage.title}${stage.difficultyLabel ? `（難易度：${stage.difficultyLabel}）` : ""}`;
 
-  refreshEvaluationAndBoard(true);
+    refreshEvaluationAndBoard(true);
 
-  if (openBriefing) {
-    openBriefingDialog(stage);
+    if (openBriefing) {
+      openBriefingDialog(stage);
+    }
+  } else {
+    currentEvaluation = evaluateSchedule(currentStage, currentSchedule);
   }
 
   if (!cachedOptimalResult) {
     try {
       const res = await solveOptimalSchedule(stage);
-      if (currentStage.id === stage.id) {
+      if (loadGen === stageLoadGeneration && currentStage.id === stage.id) {
         cachedOptimalResult = res;
-        refreshEvaluationAndBoard(false);
+        if (hasDom) {
+          refreshEvaluationAndBoard(false);
+        }
       }
     } catch (err) {
       console.error("Background solver error:", err);
@@ -1470,9 +1495,13 @@ function renderPairBonusStrip(): void {
 // ============================================================================
 
 async function giveOneCellHint(): Promise<void> {
+  const activeGen = stageLoadGeneration;
+  const activeStageId = currentStage.id;
   hintsUsedThisStage++;
   if (!cachedOptimalResult) {
-    cachedOptimalResult = await solveOptimalSchedule(currentStage);
+    const solved = await solveOptimalSchedule(currentStage);
+    if (activeGen !== stageLoadGeneration || currentStage.id !== activeStageId) return;
+    cachedOptimalResult = solved;
   }
   const opt = cachedOptimalResult.optimalSchedule;
   const days = getStageDays(currentStage);
@@ -1547,8 +1576,11 @@ async function giveOneCellHint(): Promise<void> {
 }
 
 async function runLilithDiagnosis(): Promise<void> {
+  const activeGen = stageLoadGeneration;
+  const activeStageId = currentStage.id;
   try {
     const diag = await diagnoseScheduleWithHighs(currentStage, currentSchedule);
+    if (activeGen !== stageLoadGeneration || currentStage.id !== activeStageId) return;
     if (diag.status === "Feasible") {
       soundEngine.playSolveSuccess();
       speakInDock({
@@ -1703,6 +1735,68 @@ function renderOptimalComparisonHtml(
 // Scene 5 & 6: Sequential Probabilistic Defense Animation & Result Dialog
 // ============================================================================
 
+export function recordStageBreachFailure(): void {
+  const retryKey = `week-${currentStage.weekNumber}`;
+  const nextRetryCount = (saveData.stageRetryCounts[retryKey] ?? 0) + 1;
+  saveData.stageRetryCounts[retryKey] = nextRetryCount;
+  failedAttemptsThisStage = Math.max(failedAttemptsThisStage + 1, nextRetryCount);
+  saveData.stageFailedAttempts[retryKey] = failedAttemptsThisStage;
+  persistSaveData(saveData);
+}
+
+export function recordStageVictory(remainingHp: number, maxHp: number): "S" | "A" | "B" {
+  const rank: "S" | "A" | "B" = currentEvaluation.isValid ? "S" : "A";
+  const prevRank = saveData.clearedRanks[currentStage.id];
+  const rankOrder = { S: 3, A: 2, B: 1 };
+  if (!prevRank || rankOrder[rank] > rankOrder[prevRank]) {
+    saveData.clearedRanks[currentStage.id] = rank;
+  }
+  if (currentStageIndex >= 0 && currentStageIndex + 1 > saveData.unlockedStageIndex) {
+    saveData.unlockedStageIndex = Math.min(CAMPAIGN_STAGES.length - 1, currentStageIndex + 1);
+  }
+  const nextWeekNumber = currentStage.weekNumber + 1;
+  saveData.highestUnlockedWeek = Math.max(saveData.highestUnlockedWeek, nextWeekNumber);
+  const hpRatio = remainingHp / maxHp;
+  const retryKey = `week-${currentStage.weekNumber}`;
+  saveData.playHistory = [
+    ...saveData.playHistory.slice(-19),
+    {
+      weekNumber: currentStage.weekNumber,
+      rank,
+      scoreRatio: Number(hpRatio.toFixed(2)),
+      hintsUsed: hintsUsedThisStage,
+      failedAttempts: failedAttemptsThisStage,
+    },
+  ];
+  saveData.stageFailedAttempts[retryKey] = 0;
+  persistSaveData(saveData);
+  return rank;
+}
+
+export function getActiveStageStateForTest() {
+  return {
+    currentStage,
+    currentStageIndex,
+    failedAttemptsThisStage,
+    saveData,
+  };
+}
+
+export function resetSaveDataForTest(): void {
+  stageLoadGeneration++;
+  saveData = {
+    unlockedStageIndex: 0,
+    highestUnlockedWeek: 1,
+    clearedRanks: {},
+    playHistory: [],
+    stageRetryCounts: {},
+    stageFailedAttempts: {},
+    unlockAllDemo: false,
+  };
+  failedAttemptsThisStage = 0;
+  hintsUsedThisStage = 0;
+}
+
 let battleAnimAbort: (() => void) | null = null;
 
 function renderHpOrbsHtml(remainingHp: number, maxHp: number, justLostIndex = -1): string {
@@ -1748,8 +1842,12 @@ async function openDispatchResultDialog(): Promise<void> {
   const body = getEl<HTMLElement>("result-dialog-body");
   dialog.classList.remove("is-breach-shake", "is-fullscreen-battle");
 
+  const activeGen = stageLoadGeneration;
+  const activeStageId = currentStage.id;
   if (!cachedOptimalResult) {
-    cachedOptimalResult = await solveOptimalSchedule(currentStage);
+    const solved = await solveOptimalSchedule(currentStage);
+    if (activeGen !== stageLoadGeneration || currentStage.id !== activeStageId) return;
+    cachedOptimalResult = solved;
   }
 
   const laborViolations = currentEvaluation.violations.filter(
@@ -1759,6 +1857,9 @@ async function openDispatchResultDialog(): Promise<void> {
   // Block dispatch only if there are labor violations or zero guards assigned
   if (!currentEvaluation.canDispatch) {
     failedAttemptsThisStage++;
+    const retryKey = `week-${currentStage.weekNumber}`;
+    saveData.stageFailedAttempts[retryKey] = failedAttemptsThisStage;
+    persistSaveData(saveData);
     soundEngine.playError();
     const issues =
       laborViolations.length > 0
@@ -2523,10 +2624,7 @@ async function openDispatchResultDialog(): Promise<void> {
   if (!finalArea) return;
 
   if (remainingHp <= 0) {
-    failedAttemptsThisStage++;
-    const retryKey = `week-${currentStage.weekNumber}`;
-    saveData.stageRetryCounts[retryKey] = (saveData.stageRetryCounts[retryKey] ?? 0) + 1;
-    persistSaveData(saveData);
+    recordStageBreachFailure();
     soundEngine.setSceneTrack("gameover");
     syncAudioButtonUi();
     soundEngine.playError();
@@ -2568,7 +2666,7 @@ async function openDispatchResultDialog(): Promise<void> {
   soundEngine.setSceneTrack("victory");
   syncAudioButtonUi();
   soundEngine.playVictoryFanfare();
-  const rank: "S" | "A" | "B" = currentEvaluation.isValid ? "S" : "A";
+  const rank = recordStageVictory(remainingHp, maxHp);
   const rankTitle =
     rank === "S"
       ? "評価 S：完全防衛（全襲来を完封）"
@@ -2581,28 +2679,7 @@ async function openDispatchResultDialog(): Promise<void> {
         : "激しい攻防の末、魔王城の城門を守り抜くことができた。";
   }
 
-  const prevRank = saveData.clearedRanks[currentStage.id];
-  const rankOrder = { S: 3, A: 2, B: 1 };
-  if (!prevRank || rankOrder[rank] > rankOrder[prevRank]) {
-    saveData.clearedRanks[currentStage.id] = rank;
-  }
-  if (currentStageIndex >= 0 && currentStageIndex + 1 > saveData.unlockedStageIndex) {
-    saveData.unlockedStageIndex = Math.min(CAMPAIGN_STAGES.length - 1, currentStageIndex + 1);
-  }
   const nextWeekNumber = currentStage.weekNumber + 1;
-  saveData.highestUnlockedWeek = Math.max(saveData.highestUnlockedWeek, nextWeekNumber);
-  const hpRatio = remainingHp / maxHp;
-  saveData.playHistory = [
-    ...saveData.playHistory.slice(-19),
-    {
-      weekNumber: currentStage.weekNumber,
-      rank,
-      scoreRatio: Number(hpRatio.toFixed(2)),
-      hintsUsed: hintsUsedThisStage,
-      failedAttempts: failedAttemptsThisStage,
-    },
-  ];
-  persistSaveData(saveData);
   renderStageProgressNav();
 
   const hasNextCampaignStage =
@@ -2956,4 +3033,6 @@ function initGame(): void {
   showTitleScreen();
 }
 
-initGame();
+if (typeof document !== "undefined" && document.getElementById("title-screen")) {
+  initGame();
+}

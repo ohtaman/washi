@@ -27,6 +27,14 @@ import {
   BALANCE_CONFIG,
   type StagePlayRecord,
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
+import {
+  getActiveStageStateForTest,
+  loadCampaignStage,
+  loadEndlessStage,
+  recordStageBreachFailure,
+  recordStageVictory,
+  resetSaveDataForTest,
+} from "../examples/web-demo/games/demon-castle-shift/main.js";
 
 describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", () => {
   for (const stage of CAMPAIGN_STAGES) {
@@ -284,5 +292,52 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(optimalResult.status).toBe("Optimal");
     expect(optimalResult.verified).toBe(true);
     expect(evaluateSchedule(verifiedStage, optimalResult.optimalSchedule).isValid).toBe(true);
+  });
+
+  it("preserves failed-attempt history across stage reloads so adaptive difficulty applies retry penalties", async () => {
+    resetSaveDataForTest();
+    await loadCampaignStage(0, false);
+    expect(getActiveStageStateForTest().failedAttemptsThisStage).toBe(0);
+
+    // Breach 1 -> return to title and reload stage 1
+    recordStageBreachFailure();
+    expect(getActiveStageStateForTest().saveData.stageRetryCounts["week-1"]).toBe(1);
+    await loadCampaignStage(0, false);
+    expect(getActiveStageStateForTest().failedAttemptsThisStage).toBe(1);
+
+    // Breach 2 -> return to title and reload stage 1
+    recordStageBreachFailure();
+    expect(getActiveStageStateForTest().saveData.stageRetryCounts["week-1"]).toBe(2);
+    await loadCampaignStage(0, false);
+    expect(getActiveStageStateForTest().failedAttemptsThisStage).toBe(2);
+
+    // Clear stage 1 on the third attempt -> StagePlayRecord must retain failedAttempts: 2
+    recordStageVictory(1, 1);
+    const { saveData } = getActiveStageStateForTest();
+    expect(saveData.playHistory.length).toBe(1);
+    expect(saveData.playHistory[0].weekNumber).toBe(1);
+    expect(saveData.playHistory[0].failedAttempts).toBe(2);
+    expect(saveData.stageFailedAttempts["week-1"]).toBe(0);
+
+    // Subsequent replay of cleared stage 1 starts with 0 pending failures while keeping retry seed count
+    await loadCampaignStage(0, false);
+    expect(getActiveStageStateForTest().failedAttemptsThisStage).toBe(0);
+    expect(getActiveStageStateForTest().saveData.stageRetryCounts["week-1"]).toBe(2);
+  });
+
+  it("discards stale asynchronous stage loads when another stage is selected before verification finishes", async () => {
+    resetSaveDataForTest();
+    await loadCampaignStage(0, false);
+    // Mark week-1 as having a retry so loadCampaignStage(0) awaits generateVerifiedStageWithHighs
+    recordStageBreachFailure();
+
+    // Start an async retry load for week-1 (or endless week-6) and immediately select week-2 before it completes
+    const staleEndlessLoad = loadEndlessStage(6, false);
+    const newerCampaignLoad = loadCampaignStage(1, false);
+    await Promise.all([staleEndlessLoad, newerCampaignLoad]);
+
+    const state = getActiveStageStateForTest();
+    expect(state.currentStageIndex).toBe(1);
+    expect(state.currentStage.id).toBe("week-2");
   });
 });
