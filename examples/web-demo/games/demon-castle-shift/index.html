@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>魔王城の24時間警備シフト | 拠点防衛シフトパズル</title>
+    <link rel="preload" as="image" href="./title-logo.png" fetchpriority="high" />
+    <link rel="preload" as="image" href="./bg-castle-hall.jpg" fetchpriority="high" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&family=Shippori+Mincho:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="castle-backdrop" aria-hidden="true"></div>
+
+    <!-- =====================================================================
+         SCENE 0: FULL-SCREEN TITLE SCREEN
+         ===================================================================== -->
+    <section id="title-screen" class="title-screen" aria-label="タイトル画面">
+      <header class="title-topbar">
+        <span class="title-genre-pill">拠点防衛シフトパズル</span>
+        <div class="title-topbar-right">
+          <button type="button" class="btn-glass btn-sm btn-audio" data-bgm-toggle aria-pressed="false">
+            🔇 BGM: OFF（クリックで音楽ON）
+          </button>
+          <a href="../" class="title-back-link">← ゲーム一覧へ</a>
+        </div>
+      </header>
+
+      <div class="title-hero-stage">
+        <h1 class="title-logo">
+          <img
+            class="title-logo-img"
+            src="./title-logo.png"
+            width="469"
+            height="341"
+            alt="魔王城の24時間警備シフト"
+            fetchpriority="high"
+          />
+        </h1>
+
+        <div class="title-menu-dock">
+          <p class="title-catchphrase">
+            深い森の奥、魔物たちが静かに暮らす最後の砦――「魔王城」。<br />
+            昼夜を問わず押し寄せる討伐軍から、<strong>24時間の交代シフトで仲間と城を守り抜こう。</strong>
+          </p>
+
+          <div class="title-actions">
+            <button id="btn-title-start" type="button" class="btn-title-primary">
+              はじめから遊ぶ
+            </button>
+            <button id="btn-title-continue" type="button" class="btn-title-secondary" hidden>
+              つづきから遊ぶ
+            </button>
+            <div class="title-sub-actions">
+              <button id="btn-title-roster" type="button" class="btn-glass">
+                📖 警備隊名鑑
+              </button>
+              <button id="btn-title-help" type="button" class="btn-glass">
+                遊び方
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =====================================================================
+         MAIN GAME VIEW (CLEAN, COMPACT 100VH LAYOUT)
+         ===================================================================== -->
+    <div id="game-app" class="game-shell" hidden>
+      <!-- Top Bar -->
+      <header class="game-topbar">
+        <div class="brand-cluster">
+          <button id="btn-back-title" type="button" class="btn-glass btn-sm" title="タイトル画面へ戻る">
+            ← タイトル
+          </button>
+          <nav id="stage-progress-nav" class="stage-progress-nav" aria-label="年月選択">
+            <!-- Populated dynamically by main.ts -->
+          </nav>
+        </div>
+
+        <div class="topbar-controls">
+          <button id="btn-roster" type="button" class="btn-glass btn-sm" title="魔王城で働く全20名のメンバー名鑑と相性一覧">
+            📖 名鑑
+          </button>
+          <button id="btn-help" type="button" class="btn-glass btn-sm">
+            ルール
+          </button>
+          <button id="btn-audio" type="button" class="btn-glass btn-sm btn-audio" data-bgm-toggle aria-pressed="false">
+            🔇 BGM: OFF（クリックで音楽ON）
+          </button>
+        </div>
+      </header>
+
+      <!-- Center Workspace: Clean Shift Table -->
+      <main class="board-container">
+        <section class="board-panel" aria-labelledby="stage-heading">
+          <!-- Stage Header, Pair Synergies & Compact Condition Indicators -->
+          <div class="board-header">
+            <div class="stage-title-block">
+              <h2 id="stage-heading" class="stage-heading">シフト読込中</h2>
+              <div id="pair-bonus-strip" class="pair-bonus-strip"></div>
+            </div>
+
+            <!-- Compact Status Strip & Quick Tools -->
+            <div class="condition-summary-row" aria-label="シフト達成状況">
+              <span id="goal-step-staff" class="cond-pill">人数: 確認中</span>
+              <span id="goal-step-power" class="cond-pill">予測到達: 確認中</span>
+              <span id="goal-step-law" class="cond-pill">勤務条件: 確認中</span>
+              <button id="btn-hint-one" type="button" class="btn-glass btn-sm" title="1マスだけお手本を配置します">
+                💡 ヒント
+              </button>
+              <button id="btn-reset" type="button" class="btn-glass btn-sm">
+                白紙に戻す
+              </button>
+            </div>
+          </div>
+
+          <!-- Shift Matrix Table -->
+          <div class="matrix-scroll-wrapper">
+            <table id="shift-grid-table" class="shift-matrix" aria-label="警備シフト編成表">
+              <!-- Populated dynamically by main.ts -->
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <!-- Sticky Bottom RPG Conversation Window & Primary Dispatch Button -->
+      <section class="rpg-dialogue-dock" aria-label="会話ウィンドウと出撃コマンド">
+        <div
+          id="dialogue-box"
+          class="dialogue-window"
+          role="button"
+          tabindex="0"
+          aria-live="polite"
+          title="クリックでメッセージを全文表示・次へ進める"
+        >
+          <div class="dialogue-portrait-col">
+            <img
+              id="dialogue-portrait"
+              src="./char-lilith.jpg"
+              alt="リリス"
+              width="54"
+              height="54"
+              class="dialogue-portrait"
+            />
+          </div>
+          <div class="dialogue-content-col">
+            <div class="dialogue-meta-row">
+              <strong id="dialogue-speaker" class="dialogue-speaker">リリス</strong>
+              <span id="dialogue-tag" class="dialogue-tag">警備参謀</span>
+            </div>
+            <p id="dialogue-text" class="dialogue-text"></p>
+          </div>
+          <span id="dialogue-cursor" class="dialogue-cursor" aria-hidden="true">▼</span>
+        </div>
+
+        <div class="dialogue-actions-col">
+          <div id="dispatch-tutorial-callout" class="dispatch-tutorial-callout" hidden></div>
+          <button id="btn-dispatch" type="button" class="btn-dispatch">
+            ⚔️ このシフトで警備する
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- =====================================================================
+         SCENE 0.5: FULL-SCREEN CINEMATIC OPENING MOVIE
+         ===================================================================== -->
+    <dialog id="opening-movie-dialog" class="game-dialog op-movie-dialog" closedby="none" aria-label="オープニングムービー">
+      <div class="op-movie-shell">
+        <div class="op-floating-controls">
+          <button type="button" class="btn-glass btn-sm btn-audio" data-bgm-toggle aria-pressed="false">
+            🔇 BGM: OFF（クリックで音楽ON）
+          </button>
+          <button id="btn-op-skip" type="button" class="btn-glass btn-sm">
+            スキップ ⏭
+          </button>
+        </div>
+
+        <div id="op-stage-viewport" class="op-stage-viewport" role="button" tabindex="0" title="クリックで次へ進む">
+          <img id="op-scene-img" class="op-scene-img op-cam-zoom-in" src="./op-scene-1-castle.jpg" alt="オープニング情景" />
+          <div class="op-vignette-overlay" aria-hidden="true"></div>
+          <div id="op-particles-layer" class="op-particles-layer" aria-hidden="true"></div>
+
+          <!-- Final Cut Climax Logo Overlay -->
+          <div id="op-climax-overlay" class="op-climax-overlay" hidden>
+            <img
+              class="op-climax-logo-img"
+              src="./title-logo.png"
+              width="469"
+              height="341"
+              alt="魔王城の24時間警備シフト"
+            />
+            <p class="op-climax-tagline">誰ひとり無理をさせないシフトで、私たちの魔王城を守り抜く。</p>
+            <button id="btn-op-finish" type="button" class="btn-dispatch op-climax-btn">
+              物語を始める
+            </button>
+          </div>
+
+          <div class="op-letterbox-bottom">
+            <div class="op-telop-box">
+              <p id="op-telop-lead" class="op-telop-lead"></p>
+              <p id="op-telop-sub" class="op-telop-sub"></p>
+            </div>
+            <div class="op-bottom-bar">
+              <div class="op-progress-track" aria-hidden="true">
+                <div id="op-progress-fill" class="op-progress-fill"></div>
+              </div>
+              <button id="btn-op-next-cut" type="button" class="btn-glass btn-sm op-next-btn">
+                次へ ▶
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         SCENE 1: FULL-SCREEN PROLOGUE (LARGE LILITH GREETING & VISUAL NOVEL STAGE)
+         ===================================================================== -->
+    <dialog id="prologue-dialog" class="game-dialog prologue-vn-dialog" closedby="none" aria-labelledby="prologue-title">
+      <div class="prologue-vn-shell">
+        <header class="prologue-vn-topbar">
+          <span id="prologue-title" class="title-genre-pill">プロローグ</span>
+          <div class="prologue-vn-top-controls">
+            <button type="button" class="btn-glass btn-sm btn-audio" data-bgm-toggle aria-pressed="false">
+              🔇 BGM: OFF（クリックで音楽ON）
+            </button>
+            <button id="btn-prologue-skip" type="button" class="btn-glass btn-sm">
+              スキップ ⏭
+            </button>
+          </div>
+        </header>
+
+        <!-- Center Visual Novel Stage: Large Lilith Portrait + Optional Scene Illustration -->
+        <div id="prologue-vn-center" class="prologue-vn-center is-greeting-solo">
+          <div class="prologue-lilith-showcase">
+            <div class="prologue-lilith-frame">
+              <img
+                id="prologue-portrait"
+                src="./char-lilith.jpg"
+                alt="警備参謀 リリス"
+                width="300"
+                height="300"
+                class="prologue-lilith-large"
+              />
+            </div>
+            <div class="prologue-lilith-nameplate">
+              <span class="prologue-lilith-role">魔王城 警備参謀</span>
+              <strong class="prologue-lilith-name">リリス</strong>
+            </div>
+          </div>
+
+          <div id="prologue-visual-scene" class="prologue-visual-scene" aria-hidden="true" hidden></div>
+        </div>
+
+        <!-- Bottom RPG / Visual Novel Message Box -->
+        <div id="prologue-stage-box" class="prologue-vn-textbox">
+          <div class="prologue-vn-textbox-header">
+            <span class="prologue-speaker-chip">リリス</span>
+            <span id="prologue-step-indicator" class="prologue-step-indicator">1 / 3</span>
+          </div>
+          <h3 id="prologue-slide-heading" class="prologue-slide-heading"></h3>
+          <p id="prologue-slide-text" class="prologue-slide-text"></p>
+
+          <div class="prologue-footer">
+            <div id="prologue-dots" class="prologue-dots"></div>
+            <div class="prologue-btn-row">
+              <button id="btn-prologue-prev" type="button" class="btn-glass">前へ</button>
+              <button id="btn-prologue-next" type="button" class="btn-dispatch btn-prologue-next">
+                次へ
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         SCENE 3: STAGE OVERVIEW BRIEFING DIALOG
+         ===================================================================== -->
+    <dialog id="briefing-dialog" class="game-dialog briefing-dialog" closedby="none" aria-labelledby="briefing-title">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h2 id="briefing-title">今月の警備概要</h2>
+          <button type="button" class="btn-dialog-close" data-close-dialog="briefing-dialog" aria-label="閉じる">✕</button>
+        </div>
+        <div id="briefing-body" class="dialog-body">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         SCENE 5 & 6: DEFENSE RESULT & STAGE CLEAR DIALOG
+         ===================================================================== -->
+    <dialog id="result-dialog" class="game-dialog result-dialog" closedby="none" aria-labelledby="result-dialog-title">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h2 id="result-dialog-title">警備結果</h2>
+        </div>
+        <div id="result-dialog-body" class="dialog-body">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         ROSTER ENCYCLOPEDIA DIALOG (HEAVY ANCIENT OPEN TOME / GRIMOIRE)
+         ===================================================================== -->
+    <dialog id="roster-dialog" class="game-dialog roster-dialog grimoire-dialog" closedby="any" aria-labelledby="roster-dialog-title">
+      <div class="grimoire-leather-binding">
+        <span class="grimoire-corner grimoire-corner-tl" aria-hidden="true"></span>
+        <span class="grimoire-corner grimoire-corner-tr" aria-hidden="true"></span>
+        <span class="grimoire-corner grimoire-corner-bl" aria-hidden="true"></span>
+        <span class="grimoire-corner grimoire-corner-br" aria-hidden="true"></span>
+
+        <div class="grimoire-parchment-spread">
+          <div class="grimoire-header">
+            <div class="grimoire-title-group">
+              <span class="grimoire-wax-seal" aria-hidden="true">印</span>
+              <div>
+                <div class="grimoire-folio-sub">── 魔王城 警備隊古録・全二十名 ──</div>
+                <h2 id="roster-dialog-title" class="grimoire-title">魔王城・全20名メンバー名鑑</h2>
+              </div>
+            </div>
+            <button type="button" class="grimoire-close-btn" data-close-dialog="roster-dialog" aria-label="閉じる">
+              ✕ 書を閉じる
+            </button>
+          </div>
+          <div id="roster-dialog-body" class="grimoire-body">
+            <!-- Populated dynamically by main.ts -->
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         HOW TO PLAY DIALOG
+         ===================================================================== -->
+    <dialog id="help-dialog" class="game-dialog" closedby="any" aria-labelledby="help-dialog-title">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h2 id="help-dialog-title">遊び方と勤務ルール</h2>
+          <button type="button" class="btn-dialog-close" data-close-dialog="help-dialog" aria-label="閉じる">✕</button>
+        </div>
+        <div class="dialog-body help-body">
+          <div class="help-grid">
+            <div class="help-step-card">
+              <span class="step-num">手順 1</span>
+              <h3>敵の戦闘力と味方防衛力の力比べ</h3>
+              <p>
+                各時間帯で、押し寄せる勇者軍部隊の実際の戦闘力が<strong>「予測戦力」の前後で変動</strong>します。<br />
+                <strong>味方の防衛力が敵の戦闘力以上なら防衛成功</strong>です。得意な時間帯や相性ペアを活かして、厚みのある守りを築きましょう。
+              </p>
+            </div>
+            <div class="help-step-card">
+              <span class="step-num">手順 2</span>
+              <h3>無理のない勤務ルールを守る</h3>
+              <p>
+                城の仲間に無理をさせないため、以下の勤務条件を守る必要があります（勤務条件さえ守れば、戦力が足りない枠があっても確率勝負で警備を開始できます）。
+              </p>
+              <ul class="help-list">
+                <li><strong>大物枠（ドラゴ・ゴーレム等）は連勤不可</strong>：1日働いたら翌日は「休」にします（週3回まで）。</li>
+                <li><strong>夜番の翌朝は昼番不可</strong>：夜番に入った翌日にすぐ昼番へ入ることはできません（夜→夜は可能）。</li>
+                <li><strong>新米枠（プルル・マンドラ等）は夜の単独配置不可</strong>：夜番にする時は、他の仲間も一緒に夜番へ配置します。</li>
+                <li><strong>指定休・満月の夜</strong>：指定休の日や、満月の夜の昼型獣人（フェンリル等）は最初からロックされています。</li>
+              </ul>
+            </div>
+            <div class="help-step-card">
+              <span class="step-num">手順 3</span>
+              <h3>相性◎（+100）と同番NG（-150）・全戦防衛必須</h3>
+              <p>
+                気の合うペアを同じ時間帯に並べると<strong>防衛力が +100</strong> 上がりますが、<strong>「この人とは一緒に働きたくない」という不仲ペアを同じ枠に置くと防衛力が -150 下がってしまいます</strong>。<br />
+                勇者軍は毎日決まった時間ではなく<strong>ランダムな時間帯に突如現れ（手薄な枠は特に狙われます）</strong>、<strong>1回でも城門を突破されたら防衛失敗</strong>となります。どの時間帯に来ても守り抜けるシフトを組みましょう。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WaSHI ゲーム＆インタラクティブ・ショーケース</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-dark: #0f0a1c;
+        --card-bg: rgba(28, 19, 48, 0.88);
+        --gold: #f6c453;
+        --text-main: #f8f4ff;
+        --text-muted: #c8bce3;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
+        background: radial-gradient(circle at top, #241642 0%, #0f0a1c 70%);
+        color: var(--text-main);
+        padding: 2rem 1.25rem 4rem;
+      }
+      .hub-container {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      .hub-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+      .back-btn {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        padding: 0.45rem 0.95rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .back-btn:hover {
+        color: #fff;
+        border-color: var(--gold);
+      }
+      .hub-hero {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+      .hub-hero h1 {
+        font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+        margin: 0.4rem 0 0.6rem;
+        color: #ffe18d;
+      }
+      .hub-hero p {
+        margin: 0 auto;
+        max-width: 660px;
+        color: var(--text-muted);
+        font-size: 0.96rem;
+        line-height: 1.6;
+      }
+      .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+        gap: 1.5rem;
+      }
+      .game-card {
+        background: var(--card-bg);
+        border: 2px solid rgba(246, 196, 83, 0.45);
+        border-radius: 20px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .game-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 22px 48px rgba(246, 196, 83, 0.22);
+      }
+      .game-card.coming-soon {
+        border-color: rgba(255, 255, 255, 0.12);
+        opacity: 0.72;
+      }
+      .game-thumb {
+        height: 190px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        padding: 0.85rem;
+      }
+      .game-tag {
+        background: rgba(15, 10, 28, 0.85);
+        border: 1px solid var(--gold);
+        color: #ffe18d;
+        font-size: 0.75rem;
+        font-weight: 800;
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+      }
+      .game-body {
+        padding: 1.25rem 1.35rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .game-body h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+      }
+      .game-body p {
+        margin: 0 0 1.25rem;
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.6;
+        flex: 1;
+      }
+      .play-btn {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+        padding: 0.75rem 1.25rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #f59e0b 0%, #ea580c 55%, #e11d48 100%);
+        color: #fff;
+        font-weight: 900;
+        font-size: 0.96rem;
+        border: 2px solid #fde68a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hub-container">
+      <header class="hub-topbar">
+        <a href="../" class="back-btn">← WaSHI トップページへ戻る</a>
+        <a href="../demo/" class="back-btn">📐 数理モデル Playground へ</a>
+      </header>
+
+      <section class="hub-hero">
+        <h1>🎮 WaSHI ブラウザゲーム・ショーケース</h1>
+        <p>
+          WebAssembly 数理最適化ソルバー（HiGHS）をブラウザ内で動かし、サーバー通信ゼロで遊べるパズル＆シミュレーションゲーム集です。
+        </p>
+      </section>
+
+      <main class="games-grid">
+        <article class="game-card">
+          <div
+            class="game-thumb"
+            style="
+              background-image:
+                linear-gradient(180deg, rgba(15, 10, 28, 0.25), rgba(15, 10, 28, 0.88)),
+                url('./demon-castle-shift/op-scene-4-guards.jpg');
+              justify-content: space-between;
+              align-items: center;
+              flex-direction: column;
+            "
+          >
+            <img
+              src="./demon-castle-shift/title-logo.png"
+              alt="魔王城の24時間警備シフト"
+              style="max-height: 126px; width: auto; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.85));"
+            />
+            <span class="game-tag">拠点防衛シフトパズル（星月暦の月次進行＋エンドレス編成）</span>
+          </div>
+          <div class="game-body">
+            <h2>魔王城の24時間警備シフト</h2>
+            <p>
+              昼夜を問わず進軍してくる勇者軍から、参謀リリスと共に魔王城を守り抜くシフト編成パズル。各メンバーの得意な時間帯と休息を守りながら、誰ひとり無理をさせないシフトを組んで城を守り抜きます。
+            </p>
+            <a href="./demon-castle-shift/" class="play-btn">ゲームをプレイする</a>
+          </div>
+        </article>
+
+        <article class="game-card coming-soon">
+          <div
+            class="game-thumb"
+            style="background: linear-gradient(135deg, #1e1b4b, #31102f);"
+          >
+            <span class="game-tag" style="border-color: rgba(255,255,255,0.3); color: #cbd5e1;">
+              ⚔️ 企画中（Coming Soon）
+            </span>
+          </div>
+          <div class="game-body">
+            <h2>魔王城トラップ設計局 vs 最強の勇者AI</h2>
+            <p>
+              限られた予算でダンジョンに罠とモンスターを配置し、最短ダメージ経路をリアルタイムに計算して突破してくる「最強の勇者AI」を足止めする逆タワーディフェンス！
+            </p>
+          </div>
+        </article>
+      </main>
+    </div>
+  </body>
+</html>

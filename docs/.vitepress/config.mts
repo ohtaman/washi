@@ -130,6 +130,7 @@ export default withMermaid(
           { text: "Solvers", link: "/solvers/" },
           { text: "Examples", link: "/examples/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Games ↗", link: "https://ohtaman.github.io/washi/games/" },
         ],
         sidebar: [
           {
@@ -192,6 +193,7 @@ export default withMermaid(
           { text: "ソルバー", link: "/ja/solvers/" },
           { text: "実践例", link: "/ja/examples/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "ゲーム ↗", link: "https://ohtaman.github.io/washi/games/" },
         ],
         sidebar: [
           {
@@ -271,6 +273,7 @@ export default withMermaid(
           { text: "求解器", link: "/zh/solvers/" },
           { text: "示例", link: "/zh/examples/" },
           { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
+          { text: "Games ↗", link: "https://ohtaman.github.io/washi/games/" },
         ],
         sidebar: [
           {
