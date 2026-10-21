@@ -637,6 +637,18 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       const text = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
       expect(text).toContain("skills/washi/SKILL.md");
     }
+
+    for (const file of [
+      "README.md",
+      "README.ja.md",
+      "README.zh-CN.md",
+      "docs/getting-started/ai-agents.md",
+      "docs/ja/getting-started/ai-agents.md",
+      "docs/zh/getting-started/ai-agents.md",
+    ]) {
+      const text = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
+      expect(text).toContain("npx skills add ohtaman/washi");
+    }
   });
 
   it("type-checks all TypeScript code blocks in SKILL.md and verifies imported symbols and subpaths", () => {

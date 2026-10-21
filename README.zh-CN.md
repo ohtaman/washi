@@ -92,9 +92,13 @@ npm install z3-solver    # 用于 SMT 与冲突诊断
 npm install glpk.js      # 用于 GLPK 求解器 (GPL-3.0)
 ```
 
-*(可选)* 面向 AI 编程助手（Claude Code、Antigravity、Cursor、Codex 等），`@ohtaman/washi` 随包附带了可复用的 [`skills/washi/SKILL.md`](skills/washi/SKILL.md) 建模与校验技能及 [AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md)：
+*(可选)* 面向 AI 编程助手（Claude Code、Antigravity、Cursor、Codex 等），可以通过 `skills` CLI 或随包附带的 [`skills/washi/SKILL.md`](skills/washi/SKILL.md) 引入建模与校验技能：
 
 ```bash
+# 通过 skills CLI (skills.sh / vercel-labs/skills) 安装
+npx skills add ohtaman/washi
+
+# 或将随包附带的技能手动复制到项目中
 mkdir -p .agents/skills/washi
 cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 ```
