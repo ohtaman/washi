@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   ALL_PAIR_RELATIONS,
   MONSTERS,
@@ -253,6 +255,14 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     // Full-moon slot in STAGE 5 (day 2 Wednesday night) carries isFullMoon = true into SlotBattleOutcome
     const outcomeFullMoon = outcomes.find((o) => o.day === 2 && o.shift === "night")!;
     expect(outcomeFullMoon.isFullMoon).toBe(true);
+
+    // CSS background url() paths must use public-root /games/demon-castle-shift/ so Vite rewrites them for assets/ bundles
+    const cssText = readFileSync(
+      resolve(import.meta.dirname, "../examples/web-demo/games/demon-castle-shift/style.css"),
+      "utf8"
+    );
+    expect(cssText).not.toMatch(/url\(["']?\.\/[^)"']+\.jpg["']?\)/);
+    expect(cssText).toContain('url("/games/demon-castle-shift/bg-castle-hall.jpg")');
   });
 
   it("regenerates freshly randomized, solvable campaign stage variants on retry after defense failure", async () => {

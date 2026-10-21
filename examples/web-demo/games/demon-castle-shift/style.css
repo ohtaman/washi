@@ -57,7 +57,7 @@ body {
   z-index: -1;
   background-image:
     linear-gradient(180deg, rgba(14, 10, 24, 0.42) 0%, rgba(16, 12, 28, 0.58) 55%, rgba(12, 9, 20, 0.76) 100%),
-    url("./bg-castle-hall.jpg");
+    url("/games/demon-castle-shift/bg-castle-hall.jpg");
   background-size: cover;
   background-position: center;
 }
@@ -76,7 +76,7 @@ body {
   background-image:
     radial-gradient(circle at 50% 34%, rgba(15, 10, 28, 0.08) 0%, rgba(10, 7, 20, 0.55) 70%, rgba(8, 5, 16, 0.84) 100%),
     linear-gradient(180deg, rgba(10, 7, 20, 0.45) 0%, rgba(10, 7, 20, 0.12) 35%, rgba(10, 7, 20, 0.78) 100%),
-    url("./op-scene-1-castle.jpg");
+    url("/games/demon-castle-shift/op-scene-1-castle.jpg");
   background-size: cover;
   background-position: center;
 }
@@ -1595,7 +1595,7 @@ body {
   border-radius: 0;
   background:
     radial-gradient(circle at 50% 38%, rgba(28, 18, 52, 0.25) 0%, rgba(12, 8, 24, 0.72) 70%, rgba(8, 5, 16, 0.9) 100%),
-    url("./bg-castle-hall.jpg") center / cover no-repeat;
+    url("/games/demon-castle-shift/bg-castle-hall.jpg") center / cover no-repeat;
   overflow: hidden;
 }
 
@@ -2087,7 +2087,7 @@ body {
   border-radius: 0;
   background:
     radial-gradient(circle at 50% 25%, rgba(28, 18, 52, 0.45) 0%, rgba(10, 7, 20, 0.96) 80%),
-    url("./bg-castle-hall.jpg") center / cover no-repeat;
+    url("/games/demon-castle-shift/bg-castle-hall.jpg") center / cover no-repeat;
   overflow-y: auto;
 }
 
@@ -2250,7 +2250,7 @@ body {
 .battle-encounter-scene.is-day-encounter {
   background:
     radial-gradient(circle at 50% 18%, rgba(251, 191, 36, 0.42) 0%, rgba(120, 53, 15, 0.72) 48%, rgba(15, 10, 28, 0.94) 100%),
-    url("./op-scene-1-castle.jpg") center / cover no-repeat;
+    url("/games/demon-castle-shift/op-scene-1-castle.jpg") center / cover no-repeat;
   border: 2px solid rgba(251, 191, 36, 0.7);
   border-radius: 18px;
   animation: dawnSkySweep 0.65s ease-out forwards;
@@ -2259,7 +2259,7 @@ body {
 .battle-encounter-scene.is-night-encounter {
   background:
     radial-gradient(circle at 50% 18%, rgba(56, 189, 248, 0.32) 0%, rgba(15, 23, 58, 0.82) 50%, rgba(8, 6, 20, 0.96) 100%),
-    url("./op-scene-2-heroes.jpg") center / cover no-repeat;
+    url("/games/demon-castle-shift/op-scene-2-heroes.jpg") center / cover no-repeat;
   border: 2px solid rgba(125, 211, 252, 0.65);
   border-radius: 18px;
   animation: nightSkySweep 0.65s ease-out forwards;
@@ -2587,7 +2587,7 @@ body {
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(16, 11, 28, 0.82), rgba(10, 7, 20, 0.94)),
-    url("./op-scene-1-castle.jpg") center / cover;
+    url("/games/demon-castle-shift/op-scene-1-castle.jpg") center / cover;
   border: 2px solid var(--border-gold);
   border-radius: 18px;
   padding: 1.35rem 1.75rem;
@@ -2598,14 +2598,14 @@ body {
 .battle-cutin-stage.is-day-battle {
   background:
     linear-gradient(135deg, rgba(68, 42, 12, 0.72) 0%, rgba(16, 12, 28, 0.86) 60%, rgba(48, 20, 24, 0.82) 100%),
-    url("./op-scene-1-castle.jpg") center / cover;
+    url("/games/demon-castle-shift/op-scene-1-castle.jpg") center / cover;
   border-color: rgba(246, 200, 106, 0.65);
 }
 
 .battle-cutin-stage.is-night-battle {
   background:
     linear-gradient(135deg, rgba(14, 24, 54, 0.8) 0%, rgba(12, 9, 26, 0.88) 60%, rgba(44, 14, 30, 0.85) 100%),
-    url("./op-scene-2-heroes.jpg") center / cover;
+    url("/games/demon-castle-shift/op-scene-2-heroes.jpg") center / cover;
   border-color: rgba(125, 211, 252, 0.55);
 }
 
