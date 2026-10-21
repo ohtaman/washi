@@ -29,6 +29,7 @@ import {
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
 import {
   getActiveStageStateForTest,
+  isEndlessModeUnlocked,
   loadCampaignStage,
   loadEndlessStage,
   recordStageBreachFailure,
@@ -328,6 +329,13 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     await loadCampaignStage(0, false);
     expect(getActiveStageStateForTest().failedAttemptsThisStage).toBe(0);
     expect(getActiveStageStateForTest().saveData.stageRetryCounts["week-1"]).toBe(2);
+    expect(isEndlessModeUnlocked()).toBe(false);
+
+    // Clearing stage 5 (index 4) unlocks week 6 endless mode
+    await loadCampaignStage(4, false);
+    recordStageVictory(1, 1);
+    expect(getActiveStageStateForTest().saveData.highestUnlockedWeek).toBe(6);
+    expect(isEndlessModeUnlocked()).toBe(true);
   });
 
   it("discards stale asynchronous stage loads when another stage is selected before verification finishes", async () => {

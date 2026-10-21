@@ -763,6 +763,10 @@ async function loadStage(
   }
 }
 
+export function isEndlessModeUnlocked(data: SaveData = saveData): boolean {
+  return data.unlockAllDemo || data.highestUnlockedWeek > CAMPAIGN_STAGES.length;
+}
+
 function renderStageProgressNav(): void {
   const nav = getEl<HTMLElement>("stage-progress-nav");
   const buttonsHtml = CAMPAIGN_STAGES.map((st, idx) => {
@@ -784,14 +788,16 @@ function renderStageProgressNav(): void {
     </button>`;
   }).join("");
 
+  const endlessUnlocked = isEndlessModeUnlocked(saveData);
   const isEndlessActive = currentStageIndex === -1;
   const endlessWeek = isEndlessActive
     ? currentStage.weekNumber
-    : Math.max(6, saveData.highestUnlockedWeek);
+    : Math.max(CAMPAIGN_STAGES.length + 1, saveData.highestUnlockedWeek);
   const endlessTier = computeAdaptiveDifficultyTier(saveData.playHistory, endlessWeek);
   const endlessLabel = `${formatCastleCalendarMonth(endlessWeek, false)}（難易度：${getDifficultyLabel(endlessTier)}）`;
-  const randomBtnHtml = `<button type="button" class="stage-pill-btn ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" title="ユーザーの警備履歴に応じて難易度が自動調整される翌月以降の編成">
+  const randomBtnHtml = `<button type="button" class="stage-pill-btn ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" ${!endlessUnlocked ? "disabled" : ""} title="ユーザーの警備履歴に応じて難易度が自動調整される翌月以降の編成">
     <span>${endlessLabel}</span>
+    ${!endlessUnlocked ? `<span>🔒</span>` : ""}
   </button>`;
 
   nav.innerHTML = buttonsHtml + randomBtnHtml;
@@ -805,8 +811,9 @@ function renderStageProgressNav(): void {
   });
 
   nav.querySelector<HTMLButtonElement>("[data-stage-random]")?.addEventListener("click", () => {
+    if (!isEndlessModeUnlocked(saveData)) return;
     soundEngine.playClick("night");
-    const targetWeek = Math.max(6, saveData.highestUnlockedWeek);
+    const targetWeek = Math.max(CAMPAIGN_STAGES.length + 1, saveData.highestUnlockedWeek);
     void loadEndlessStage(targetWeek, true);
   });
 }
