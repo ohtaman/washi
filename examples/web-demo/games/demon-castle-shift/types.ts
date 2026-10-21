@@ -44,7 +44,7 @@ export const DAY_KEYS: readonly string[] = ["mon", "tue", "wed", "thu", "fri"];
  *
  * - `enemyLogSigma`: 1σあたりの対数標準偏差（デフォルト 0.12 ≒ 1σで約±13%）。
  *   上限（+2σカット）を設けないため、どれほど守りを固めてもごく稀な上振れ（強襲）で突破される可能性が残り、
- *   「何事も100%確実ではない」緊張感と城門ライフ（3）のリスク管理が生まれます。
+ *   「何事も100%確実ではない」緊張感が生まれます。
  * - `expectedToMaxRatio`: 各枠の目標防衛ライン（`requiredPower`）に対する「敵予測値（中央値 M）」の比率。
  *   デフォルト 0.80（例：目標ライン 400 のとき、敵予測値 M = 320）。
  * - `raidOccurrenceRatio`: 全時間帯のうち実際に勇者軍が襲来する割合の目安（デフォルト 0.45）。
@@ -105,7 +105,7 @@ export interface ShiftSlotRequirement {
   raidTitle: string;
   enemyName: string;
   enemyIcon: string;
-  /** +2σ 安全上限（味方防衛力がこの値以上なら 100% 確実に勝利） */
+  /** 目標防衛ライン（+2σ 目安。ソルバーの最適編成および高勝率の基準値） */
   requiredPower: number;
   /** 敵の予測戦力（対数正規分布の中央値 M。省略時は requiredPower * BALANCE_CONFIG.expectedToMaxRatio） */
   expectedPower?: number;
@@ -201,13 +201,13 @@ export interface SlotStatus {
   day: DayIndex;
   shift: ActiveShiftType;
   currentPower: number;
-  /** +2σ 安全上限（この値以上なら勝率 100%） */
+  /** 目標防衛ライン（+2σ 目安） */
   requiredPower: number;
   /** 敵の予測戦力（中央値 M） */
   expectedPower: number;
-  /** -2σ 最小戦力 */
+  /** -2σ 最小戦力目安 */
   minEnemyPower: number;
-  /** 対数正規分布にもとづく防衛成功率（0〜100%） */
+  /** 対数正規分布にもとづく防衛成功率（0〜99%） */
   winProbability: number;
   currentStaff: number;
   minStaff: number;
@@ -245,7 +245,7 @@ export interface SlotBattleOutcome {
 }
 
 export interface ScheduleEvaluation {
-  /** 全枠で安全上限（+2σ）と人数を満たし、かつ勤務条件違反がない場合は true（ソルバーの最適解検証用） */
+  /** 全枠で目標防衛ライン（requiredPower）と人数を満たし、かつ勤務条件違反がない場合は true（ソルバーの最適解検証用） */
   isValid: boolean;
   /** 勤務条件違反（連勤・夜→昼・指定休・満月・単独夜）が0件で、1人以上配置されていれば確率勝負に出撃可能 */
   canDispatch: boolean;
