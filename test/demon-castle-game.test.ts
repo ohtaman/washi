@@ -93,10 +93,11 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     });
     expect(formatCastleCalendarMonth(3, true, refDate)).toBe(`${CALENDAR_ERA_NAME} 953年12月`);
     expect(formatCastleCalendarMonth(4, true, refDate)).toBe(`${CALENDAR_ERA_NAME} 954年1月`);
+    expect(formatCastleCalendarMonth(4, false, refDate)).toBe("1月");
 
     const stage1 = CAMPAIGN_STAGES[0];
     expect(stage1.numDays).toBe(3);
-    expect(stage1.title).toContain(CALENDAR_ERA_NAME);
+    expect(stage1.subtitle).toContain(CALENDAR_ERA_NAME);
     expect(stage1.title).not.toContain("STAGE");
     expect(stage1.lilithIntro).toContain("一緒に");
     expect(stage1.tutorialSteps).toBeDefined();

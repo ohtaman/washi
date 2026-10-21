@@ -506,7 +506,6 @@ function renderOpeningCut(index: number): void {
   imgEl.classList.add(cut.cameraClass);
 
   renderOpeningParticles(cut.particleColor);
-  soundEngine.playOpeningCutChime(opCutIndex);
 
   const climaxOverlay = getEl<HTMLElement>("op-climax-overlay");
   const finishBtn = getEl<HTMLButtonElement>("btn-op-finish");
@@ -775,14 +774,15 @@ function renderStageProgressNav(): void {
       idx <= saveData.unlockedStageIndex ||
       idx + 1 <= saveData.highestUnlockedWeek;
     const isActive = currentStage.id === st.id;
-    const rank = saveData.clearedRanks[st.id];
-    const rankBadge = rank
-      ? `<span class="stage-rank-mini">${rank}</span>`
+    const isCleared = Boolean(saveData.clearedRanks[st.id]);
+    const rankBadge = isCleared
+      ? `<span class="stage-rank-mini" title="防衛成功">✓</span>`
       : !isUnlocked
         ? `<span>🔒</span>`
         : "";
-    const label = idx === 0 ? formatCastleCalendarMonth(idx + 1, true) : formatCastleCalendarMonth(idx + 1, false);
-    return `<button type="button" class="stage-pill-btn ${isActive ? "is-active" : ""}" data-stage-idx="${idx}" ${!isUnlocked ? "disabled" : ""}>
+    const label = formatCastleCalendarMonth(idx + 1, false);
+    const fullEraTitle = formatCastleCalendarMonth(idx + 1, true);
+    return `<button type="button" class="stage-pill-btn ${isActive ? "is-active" : ""}" data-stage-idx="${idx}" ${!isUnlocked ? "disabled" : ""} title="${fullEraTitle}">
       <span>${label}</span>
       ${rankBadge}
     </button>`;
@@ -2517,12 +2517,11 @@ async function openDispatchResultDialog(): Promise<void> {
     rowEl?.classList.remove("is-active");
     if (o.isWin) {
       rowEl?.classList.add("win");
-      const winLabel = o.isPerfectDefense ? "完全防衛" : "防衛成功";
       if (resEl) {
-        resEl.textContent = `🛡️ 防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}（${winLabel}）`;
+        resEl.textContent = `🛡️ 防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}（防衛成功）`;
       }
       if (cutinPhasePill) {
-        cutinPhasePill.textContent = o.isPerfectDefense ? "✨ 完全防衛" : "🛡️ 防衛成功";
+        cutinPhasePill.textContent = "🛡️ 防衛成功";
         cutinPhasePill.className = "cutin-phase-pill is-win";
       }
       leftSide?.classList.add("is-lunge-win");
@@ -2530,17 +2529,13 @@ async function openDispatchResultDialog(): Promise<void> {
       cutinBox?.classList.add(o.isPerfectDefense ? "is-perfect-flash" : "is-win-flash");
       fxOverlay?.classList.add(o.isPerfectDefense ? "is-perfect" : "is-win");
       if (fxStamp) {
-        fxStamp.textContent = o.isPerfectDefense
-          ? `✨ 完全防衛（防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}）`
-          : `🛡️ 防衛成功（防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}）`;
+        fxStamp.textContent = `🛡️ 防衛成功（防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}）`;
       }
       if (vsCenter) {
-        vsCenter.textContent = o.isPerfectDefense ? "✨" : "🛡️";
+        vsCenter.textContent = "🛡️";
       }
       if (tugStatus) {
-        tugStatus.textContent = o.isPerfectDefense
-          ? `✨ 完全防衛（${o.defensePower} vs ${o.actualEnemyPower}）`
-          : `🛡️ 防衛成功（${o.defensePower} vs ${o.actualEnemyPower}）`;
+        tugStatus.textContent = `🛡️ 防衛成功（${o.defensePower} vs ${o.actualEnemyPower}）`;
         tugStatus.className = "tug-status-center is-win";
       }
       if (salStatusTextEl && remainingHp > 0) {
@@ -2673,17 +2668,12 @@ async function openDispatchResultDialog(): Promise<void> {
   soundEngine.setSceneTrack("victory");
   syncAudioButtonUi();
   soundEngine.playVictoryFanfare();
-  const rank = recordStageVictory(remainingHp, maxHp);
-  const rankTitle =
-    rank === "S"
-      ? "評価 S：完全防衛（全襲来を完封）"
-      : "評価 A：警備成功（城門防衛達成）";
+  recordStageVictory(remainingHp, maxHp);
+  const rankTitle = `防衛成功 — ${formatCastleCalendarMonth(currentStage.weekNumber)}の警備完了`;
 
   if (salStatusTextEl) {
     salStatusTextEl.textContent =
-      remainingHp === maxHp
-        ? "城門は一度も抜かれることなく、魔王城の静かな日常が守られた。"
-        : "激しい攻防の末、魔王城の城門を守り抜くことができた。";
+      "城門は一度も抜かれることなく、魔王城の静かな日常が守られた。";
   }
 
   const nextWeekNumber = currentStage.weekNumber + 1;
@@ -2710,7 +2700,7 @@ async function openDispatchResultDialog(): Promise<void> {
   const adaptiveNoteHtml = !hasNextCampaignStage
     ? `<div class="lore-unlock-card" style="margin-top:0.65rem;">
         <h4>翌月の警備難度調整（${formatCastleCalendarMonth(nextWeekNumber)}・難易度：${nextAdaptiveLabel}）</h4>
-        <p>これまでの警備履歴（残り城門ライフやヒント使用状況）に応じて、${formatCastleCalendarMonth(nextWeekNumber)}の進軍状況が「難易度：${nextAdaptiveLabel}」に自動調整されました。</p>
+        <p>これまでの警備履歴（ヒント使用状況や再挑戦回数）に応じて、${formatCastleCalendarMonth(nextWeekNumber)}の進軍状況が「難易度：${nextAdaptiveLabel}」に自動調整されました。</p>
       </div>`
     : "";
 
@@ -2879,18 +2869,15 @@ function initGame(): void {
 
   getEl<HTMLButtonElement>("btn-op-next-cut").addEventListener("click", (e) => {
     e.stopPropagation();
-    soundEngine.playClick("day");
     advanceOpeningCut(true);
   });
 
   getEl<HTMLButtonElement>("btn-op-skip").addEventListener("click", () => {
-    soundEngine.playClick("off");
     finishOpeningMovie();
   });
 
   getEl<HTMLButtonElement>("btn-op-finish").addEventListener("click", (e) => {
     e.stopPropagation();
-    soundEngine.playClick("day");
     finishOpeningMovie();
   });
 
@@ -2941,7 +2928,6 @@ function initGame(): void {
 
   getEl<HTMLButtonElement>("btn-prologue-skip").addEventListener("click", (e) => {
     e.stopPropagation();
-    soundEngine.playClick("off");
     if (prologueTimer !== null) {
       window.clearInterval(prologueTimer);
       prologueTimer = null;
@@ -2954,16 +2940,22 @@ function initGame(): void {
 
   getEl<HTMLButtonElement>("btn-prologue-prev").addEventListener("click", (e) => {
     e.stopPropagation();
+    if (prologueTimer !== null) {
+      window.clearInterval(prologueTimer);
+      prologueTimer = null;
+      const slide = PROLOGUE_SLIDES[prologueSlideIndex];
+      getEl<HTMLElement>("prologue-slide-heading").textContent = slide.heading;
+      getEl<HTMLElement>("prologue-slide-text").textContent = prologueFullText;
+      return;
+    }
     if (prologueSlideIndex > 0) {
       prologueSlideIndex--;
-      soundEngine.playClick("off");
       renderPrologueSlide();
     }
   });
 
   getEl<HTMLButtonElement>("btn-prologue-next").addEventListener("click", (e) => {
     e.stopPropagation();
-    soundEngine.playClick("day");
     if (prologueTimer !== null) {
       window.clearInterval(prologueTimer);
       prologueTimer = null;

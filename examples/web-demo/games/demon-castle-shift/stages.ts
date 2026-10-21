@@ -53,11 +53,11 @@ export function getCastleCalendarYearMonth(
 
 export function formatCastleCalendarMonth(
   monthNumberOneBased: number,
-  includeEra = true,
+  includeEra = false,
   refDate: Date = new Date()
 ): string {
   const { eraName, year, month } = getCastleCalendarYearMonth(monthNumberOneBased, refDate);
-  return includeEra ? `${eraName} ${year}年${month}月` : `${year}年${month}月`;
+  return includeEra ? `${eraName} ${year}年${month}月` : `${month}月`;
 }
 
 /**
@@ -92,7 +92,7 @@ export const CAMPAIGN_STAGES: readonly StageScenario[] = [
     weekNumber: 1,
     numDays: 3,
     title: `${formatCastleCalendarMonth(1)}：先遣隊の偵察（3日間）`,
-    subtitle: "まずは3日間、3人の警備メンバーを得意な時間帯へ配置して守る。",
+    subtitle: `${formatCastleCalendarMonth(1, true)} — まずは3日間、3人の警備メンバーを得意な時間帯へ配置して守る。`,
     newRuleTitle: "基本ルール：得意な時間帯とドラゴの休養",
     newRuleSummary:
       "フェンリルは昼（防衛力400）、カーミラは夜（防衛力400）が得意です。ドラゴ（防衛力500）は昼も夜も頼りになりますが、1日働いたら翌日は必ず「休」にする必要があります。",
