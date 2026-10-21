@@ -72,6 +72,11 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "examples/web-demo/index.html"),
         demo: resolve(import.meta.dirname, "examples/web-demo/demo/index.html"),
+        games: resolve(import.meta.dirname, "examples/web-demo/games/index.html"),
+        demonCastleShift: resolve(
+          import.meta.dirname,
+          "examples/web-demo/games/demon-castle-shift/index.html",
+        ),
       },
     },
   },

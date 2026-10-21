@@ -43,6 +43,13 @@ if (existsSync(resolve(demoDist, "demo"))) {
   cpSync(resolve(demoDist, "demo"), demoTarget, { recursive: true });
 }
 
+// Copy games showcase directory into site /games/
+const gamesTarget = resolve(siteDist, "games");
+if (existsSync(resolve(demoDist, "games"))) {
+  mkdirSync(gamesTarget, { recursive: true });
+  cpSync(resolve(demoDist, "games"), gamesTarget, { recursive: true });
+}
+
 // Copy demo built assets (CSS, JS, Web Workers, WASM) into site /assets/
 if (existsSync(resolve(demoDist, "assets"))) {
   cpSync(resolve(demoDist, "assets"), resolve(siteDist, "assets"), { recursive: true });
