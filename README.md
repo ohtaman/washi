@@ -92,9 +92,13 @@ npm install z3-solver    # For SMT and unsat core diagnosis
 npm install glpk.js      # For GLPK solver (GPL-3.0)
 ```
 
-*(Optional)* For AI coding agents (Claude Code, Antigravity, Cursor, Codex, etc.), `@ohtaman/washi` ships a portable [`skills/washi/SKILL.md`](skills/washi/SKILL.md) workflow alongside the [AI Agent Quick-Reference](docs/getting-started/ai-agents.md):
+*(Optional)* For AI coding agents (Claude Code, Antigravity, Cursor, Codex, etc.), install the portable [`skills/washi/SKILL.md`](skills/washi/SKILL.md) workflow directly via the `skills` CLI or copy it from the installed package:
 
 ```bash
+# Install via the open skills CLI (skills.sh / vercel-labs/skills)
+npx skills add ohtaman/washi
+
+# Or manually copy the packaged skill into your project's agent directory
 mkdir -p .agents/skills/washi
 cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 ```

@@ -92,9 +92,13 @@ npm install z3-solver    # SMT・矛盾診断を利用する場合
 npm install glpk.js      # GLPK ソルバーを利用する場合 (GPL-3.0)
 ```
 
-*(任意)* AI コーディングエージェント（Claude Code, Antigravity, Cursor, Codex 等）向けに、[AIエージェント向けクイックリファレンス](docs/ja/getting-started/ai-agents.md)とあわせてポータブルな [`skills/washi/SKILL.md`](skills/washi/SKILL.md) を同梱しています：
+*(任意)* AI コーディングエージェント（Claude Code, Antigravity, Cursor, Codex 等）向けに、`skills` CLI またはパッケージ同梱の [`skills/washi/SKILL.md`](skills/washi/SKILL.md) を導入できます：
 
 ```bash
+# skills CLI (skills.sh / vercel-labs/skills) 経由で導入
+npx skills add ohtaman/washi
+
+# またはパッケージ同梱のスキルを手動で配置
 mkdir -p .agents/skills/washi
 cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 ```

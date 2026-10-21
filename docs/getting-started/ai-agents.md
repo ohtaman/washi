@@ -3,7 +3,10 @@
 > **Scope Note**: This document is the **consumer modeling quick-reference** for AI coding agents and developers building optimization or satisfiability models with `@ohtaman/washi`.
 > - **Portable Agent Skill (`SKILL.md`)**: For an actionable end-to-end modeling, `toLpString()` inspection, `validateSolution()` verification, and Z3 `unsatCore` conflict-diagnosis workflow skill (compatible with Claude Code, Antigravity, Cursor, Codex, and other `SKILL.md`-aware agents), use [`skills/washi/SKILL.md`](https://github.com/ohtaman/washi/blob/main/skills/washi/SKILL.md) (also shipped in the npm package at `node_modules/@ohtaman/washi/skills/washi/SKILL.md`):
 >   ```bash
->   # Link or copy the packaged skill into your project's agent skills directory
+>   # Install directly via the skills CLI (skills.sh / vercel-labs/skills)
+>   npx skills add ohtaman/washi
+>
+>   # Or link/copy the packaged skill into your project's agent skills directory
 >   mkdir -p .agents/skills/washi
 >   cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
 >   ```
