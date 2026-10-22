@@ -1,7 +1,28 @@
 import { defineConfig, type Plugin } from "vite";
 import { resolve } from "path";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+function discoverGameInputs(baseDir: string): Record<string, string> {
+  const gamesRoot = resolve(baseDir, "examples/web-demo/games");
+  const inputs: Record<string, string> = {};
+  if (!existsSync(gamesRoot)) return inputs;
+
+  const hubIndex = resolve(gamesRoot, "index.html");
+  if (existsSync(hubIndex)) {
+    inputs["games-hub"] = hubIndex;
+  }
+
+  for (const entry of readdirSync(gamesRoot, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      const gameIndex = resolve(gamesRoot, entry.name, "index.html");
+      if (existsSync(gameIndex)) {
+        inputs[`game-${entry.name}`] = gameIndex;
+      }
+    }
+  }
+  return inputs;
+}
 
 function z3DemoAssets(): Plugin {
   const z3JsPath = fileURLToPath(new URL("./z3-built.js", import.meta.resolve("z3-solver")));
@@ -72,11 +93,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "examples/web-demo/index.html"),
         demo: resolve(import.meta.dirname, "examples/web-demo/demo/index.html"),
-        games: resolve(import.meta.dirname, "examples/web-demo/games/index.html"),
-        demonCastleShift: resolve(
-          import.meta.dirname,
-          "examples/web-demo/games/demon-castle-shift/index.html",
-        ),
+        ...discoverGameInputs(import.meta.dirname),
       },
     },
   },

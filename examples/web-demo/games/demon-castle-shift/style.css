@@ -96,6 +96,41 @@ body {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(16, 11, 28, 0.72);
+  border: 1px solid var(--border-subtle);
+  padding: 2px;
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+.lang-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.22rem 0.55rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+.lang-btn:hover {
+  color: var(--text-main);
+}
+
+.lang-btn.active {
+  background: rgba(229, 185, 92, 0.24);
+  color: var(--gold-bright);
 }
 
 .title-genre-pill {

@@ -22,12 +22,17 @@
          ===================================================================== -->
     <section id="title-screen" class="title-screen" aria-label="タイトル画面">
       <header class="title-topbar">
-        <span class="title-genre-pill">拠点防衛シフトパズル</span>
+        <span id="title-genre-pill" class="title-genre-pill">拠点防衛シフトパズル</span>
         <div class="title-topbar-right">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
           <button type="button" class="btn-glass btn-sm btn-audio" data-bgm-toggle aria-pressed="false">
             🔇 BGM: OFF（クリックで音楽ON）
           </button>
-          <a href="../" class="title-back-link">← ゲーム一覧へ</a>
+          <a href="../" id="title-back-link" class="title-back-link">← ゲーム一覧へ</a>
         </div>
       </header>
 
@@ -44,7 +49,7 @@
         </h1>
 
         <div class="title-menu-dock">
-          <p class="title-catchphrase">
+          <p id="title-catchphrase" class="title-catchphrase">
             深い森の奥、魔物たちが静かに暮らす最後の砦――「魔王城」。<br />
             昼夜を問わず押し寄せる討伐軍から、<strong>24時間の交代シフトで仲間と城を守り抜こう。</strong>
           </p>
@@ -85,6 +90,11 @@
         </div>
 
         <div class="topbar-controls">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
           <button id="btn-roster" type="button" class="btn-glass btn-sm" title="魔王城で働く全20名のメンバー名鑑と相性一覧">
             📖 名鑑
           </button>
@@ -197,7 +207,7 @@
               height="341"
               alt="魔王城の24時間警備シフト"
             />
-            <p class="op-climax-tagline">誰ひとり無理をさせないシフトで、私たちの魔王城を守り抜く。</p>
+            <p id="op-climax-tagline" class="op-climax-tagline">誰ひとり無理をさせないシフトで、私たちの魔王城を守り抜く。</p>
             <button id="btn-op-finish" type="button" class="btn-dispatch op-climax-btn">
               物語を始める
             </button>
@@ -252,8 +262,8 @@
               />
             </div>
             <div class="prologue-lilith-nameplate">
-              <span class="prologue-lilith-role">魔王城 警備参謀</span>
-              <strong class="prologue-lilith-name">リリス</strong>
+              <span id="prologue-lilith-role" class="prologue-lilith-role">魔王城 警備参謀</span>
+              <strong id="prologue-lilith-name" class="prologue-lilith-name">リリス</strong>
             </div>
           </div>
 
@@ -263,7 +273,7 @@
         <!-- Bottom RPG / Visual Novel Message Box -->
         <div id="prologue-stage-box" class="prologue-vn-textbox">
           <div class="prologue-vn-textbox-header">
-            <span class="prologue-speaker-chip">リリス</span>
+            <span id="prologue-speaker-chip" class="prologue-speaker-chip">リリス</span>
             <span id="prologue-step-indicator" class="prologue-step-indicator">1 / 3</span>
           </div>
           <h3 id="prologue-slide-heading" class="prologue-slide-heading"></h3>
@@ -326,11 +336,11 @@
             <div class="grimoire-title-group">
               <span class="grimoire-wax-seal" aria-hidden="true">印</span>
               <div>
-                <div class="grimoire-folio-sub">── 魔王城 警備隊古録・全二十名 ──</div>
+                <div id="grimoire-folio-sub" class="grimoire-folio-sub">── 魔王城 警備隊古録・全二十名 ──</div>
                 <h2 id="roster-dialog-title" class="grimoire-title">魔王城・全20名メンバー名鑑</h2>
               </div>
             </div>
-            <button type="button" class="grimoire-close-btn" data-close-dialog="roster-dialog" aria-label="閉じる">
+            <button type="button" id="grimoire-close-btn" class="grimoire-close-btn" data-close-dialog="roster-dialog" aria-label="閉じる">
               ✕ 書を閉じる
             </button>
           </div>
@@ -350,7 +360,7 @@
           <h2 id="help-dialog-title">遊び方と勤務ルール</h2>
           <button type="button" class="btn-dialog-close" data-close-dialog="help-dialog" aria-label="閉じる">✕</button>
         </div>
-        <div class="dialog-body help-body">
+        <div id="help-dialog-body" class="dialog-body help-body">
           <div class="help-grid">
             <div class="help-step-card">
               <span class="step-num">手順 1</span>
