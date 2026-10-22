@@ -6,6 +6,7 @@ import {
 } from "../examples/web-demo/apps/ai-shift/generator.js";
 import {
   buildNurseWashiModel,
+  evaluateNurseSchedule,
   solveNurseScheduleWithWashi,
   diagnoseNurseScheduleWithZ3,
 } from "../examples/web-demo/apps/ai-shift/solver.js";
@@ -2562,4 +2563,115 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const objSection = lp.split("Subject To")[0] ?? "";
     expect(objSection).not.toMatch(/\+\s*30\s+C_/);
   });
+
+  it("enforces zero-holder skill/staffing minima, validates ICU coverage, resolves aliases in daily_shift_cap, and counts custom O-based shifts as days off", async () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+
+    // 1. Custom skill with minDay > 0 and 0 holders must be Infeasible when hard, and diagnosed in Z3
+    const unheldSkillState = {
+      ...baseState,
+      skillDefs: [
+        ...(baseState.skillDefs ?? []),
+        {
+          code: "ecmo_cert",
+          label: "ECMO認定",
+          shortLabel: "ECMO",
+          minDay: 1,
+          minEvening: 0,
+          minNight: 0,
+        },
+      ],
+    };
+    const unheldHardOutcome = await solveNurseScheduleWithWashi(unheldSkillState);
+    expect(unheldHardOutcome.status).toBe("Infeasible");
+    expect(unheldHardOutcome.conflicts.some((c) => c.name.startsWith("skill_ecmo_cert_D_"))).toBe(true);
+
+    // Same for staffing_rule with minCount > 0 and 0 holders: Infeasible when hard, Optimal with soft compromise when isHard: false
+    const unheldStaffingHardState = applyChatOperationsToState(baseState, [
+      {
+        op: "set_staffing_rule",
+        targetShift: "D",
+        shifts: ["D"],
+        attribute: "ecmo_cert",
+        minCount: 1,
+        isHard: true,
+      },
+    ]).updatedState;
+    const staffingHardRes = await solveNurseScheduleWithWashi(unheldStaffingHardState);
+    expect(staffingHardRes.status).toBe("Infeasible");
+
+    const unheldStaffingSoftState = applyChatOperationsToState(baseState, [
+      {
+        op: "set_staffing_rule",
+        targetShift: "D",
+        shifts: ["D"],
+        attribute: "ecmo_cert",
+        minCount: 1,
+        isHard: false,
+        penaltyWeight: 40,
+      },
+    ]).updatedState;
+    const staffingSoftRes = await solveNurseScheduleWithWashi(unheldStaffingSoftState);
+    expect(staffingSoftRes.status).toBe("Optimal");
+    expect(
+      staffingSoftRes.evaluation?.violations.some(
+        (v) => v.id.startsWith("staffing_min_") && v.isSoft === true
+      )
+    ).toBe(true);
+
+    // 2. evaluateNurseSchedule validates ICU coverage (minIcuDay / minIcuEvening / minIcuNight)
+    const emptySchedule: Record<string, string[]> = {};
+    for (const n of baseState.nurses) {
+      emptySchedule[n.id] = new Array(baseState.config.numDays).fill("O");
+    }
+    const icuEval = evaluateNurseSchedule(baseState, emptySchedule);
+    expect(icuEval.violations.some((v) => v.id === "icu_D_d1")).toBe(true);
+    expect(icuEval.violations.some((v) => v.id === "icu_E_d1")).toBe(true);
+    expect(icuEval.violations.some((v) => v.id === "icu_N_d1")).toBe(true);
+
+    // 3. evaluateNurseSchedule resolves shift aliases (e.g. "D" -> D_A / D_B) in daily_shift_cap
+    const baselineSolved = await solveNurseScheduleWithWashi(baseState);
+    expect(baselineSolved.status).toBe("Optimal");
+    const dayAliasCapState: typeof baseState = {
+      ...baseState,
+      customRules: [
+        ...baseState.customRules,
+        {
+          id: "cap_alias_D",
+          kind: "daily_shift_cap",
+          shift: "D",
+          minStaff: 6,
+          maxStaff: 20,
+          description: "日勤(D)は1日6〜20名",
+          enabled: true,
+        },
+      ],
+    };
+    const dayAliasEval = evaluateNurseSchedule(dayAliasCapState, baselineSolved.schedule!);
+    expect(dayAliasEval.violations.some((v) => v.id.startsWith("daily_min_cap_alias_D"))).toBe(false);
+
+    // 4. Custom O-based shift (baseShift: "O", countsAsWorkDay: false) counts toward monthly days off
+    const paidLeaveState = applyChatOperationsToState(baseState, [
+      {
+        op: "add_custom_shift",
+        shiftName: "有給休暇",
+        shortLabel: "有",
+        baseShift: "O",
+        countsAsWorkDay: false,
+      },
+    ]).updatedState;
+    const customOffCode = paidLeaveState.customShiftDefs![0]!.code;
+    const schedWithPaidLeave: Record<string, string[]> = {};
+    for (const n of paidLeaveState.nurses) {
+      schedWithPaidLeave[n.id] = [...baselineSolved.schedule![n.id]!];
+    }
+    const targetNurseId = paidLeaveState.nurses[0]!.id;
+    schedWithPaidLeave[targetNurseId] = schedWithPaidLeave[targetNurseId]!.map((s) =>
+      s === "O" ? customOffCode : s
+    );
+    const paidLeaveEval = evaluateNurseSchedule(paidLeaveState, schedWithPaidLeave);
+    expect(
+      paidLeaveEval.violations.some((v) => v.id === `off_min_${targetNurseId}`)
+    ).toBe(false);
+  }, 30_000);
 });

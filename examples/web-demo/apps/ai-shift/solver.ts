@@ -343,6 +343,20 @@ export function buildNurseWashiModel(
         }
         return;
       }
+      if (c.lhs.terms.size === 0) {
+        const zeroVar =
+          m.getVarByName("__zero_const__") ??
+          m.continuous("__zero_const__", { lb: 0, ub: 0 });
+        const effectiveRhs = c.rhs - (c.lhs.constant || 0);
+        if (c.sense === "<=") {
+          m.constraint(expr`${zeroVar} <= ${effectiveRhs}`, normalizedMeta.name);
+        } else if (c.sense === ">=") {
+          m.constraint(expr`${zeroVar} >= ${effectiveRhs}`, normalizedMeta.name);
+        } else {
+          m.constraint(expr`${zeroVar} == ${effectiveRhs}`, normalizedMeta.name);
+        }
+        return;
+      }
       m.constraint(c, normalizedMeta.name);
       return;
     }
@@ -1187,7 +1201,7 @@ export function buildNurseWashiModel(
 
     if (config.enforceTeamBalance) {
       const minTeam = config.minTeamMembersDay ?? 3;
-      if (minTeam > 0 && teamANurses.length >= minTeam) {
+      if (minTeam > 0) {
         addTrackedConstraint(
           expr`${sum(teamANurses.flatMap((n) => getShiftVarsForNurseDay("D", n.id, idx)))} >= ${minTeam}`,
           {
@@ -1198,8 +1212,6 @@ export function buildNurseWashiModel(
             relaxSuggestion: `固定チームナーシングのチーム別日勤最低人数（現在:${minTeam}名）を緩和してください。`,
           }
         );
-      }
-      if (minTeam > 0 && teamBNurses.length >= minTeam) {
         addTrackedConstraint(
           expr`${sum(teamBNurses.flatMap((n) => getShiftVarsForNurseDay("D", n.id, idx)))} >= ${minTeam}`,
           {
@@ -1236,7 +1248,6 @@ export function buildNurseWashiModel(
         const skillHolders = nurses.filter((n) =>
           doesNurseSatisfySkill(n, sd.code, activeSkillDefs)
         );
-        if (skillHolders.length === 0) continue;
 
         const cPrefix =
           sd.code === "leader_cap"
@@ -1502,42 +1513,41 @@ export function buildNurseWashiModel(
       const matchingNurses = nurses.filter((n) =>
         doesNurseMatchAttribute(n, attr, activeSkillDefs)
       );
-      if (matchingNurses.length > 0) {
-        const allowedDow = rule.allowedDaysOfWeek?.length
-          ? new Set(rule.allowedDaysOfWeek)
-          : null;
-        for (let d = 1; d <= numDays; d++) {
-          if (!isDayIncluded(d)) continue;
-          if (typeof rule.startDay === "number" && d < rule.startDay) continue;
-          if (typeof rule.endDay === "number" && d > rule.endDay) continue;
-          const dow = getDayOfWeek(config.year, config.month, d);
-          if (allowedDow && !allowedDow.has(dow)) continue;
-          const idx = d - 1;
-          for (const s of rule.shifts) {
-            if (!isDayAllowedForShift(d, s)) continue;
-            const vars = matchingNurses.flatMap((n) =>
-              getShiftVarsForNurseDay(s, n.id, idx)
-            );
-            if (vars.length === 0) continue;
-            const sLabel = SHIFT_LABEL_JA[s as ActiveShiftCode] ?? getShiftMeta(s, customShiftDefs).label;
-            if (typeof rule.minCount === "number" && rule.minCount > 0) {
-              addRuleConstraint(expr`${sum(vars)} >= ${rule.minCount}`, {
-                name: `staffing_min_${rule.id}_${s}_d${d}`,
-                category: "skill",
-                labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} >= ${rule.minCount}名）`,
-                relatedDay: d,
-                relaxSuggestion: `配置ルール「${rule.description}」の必要人数（${rule.minCount}名）を緩和してください。`,
-              });
-            }
-            if (typeof rule.maxCount === "number" && rule.maxCount >= 0) {
-              addRuleConstraint(expr`${sum(vars)} <= ${rule.maxCount}`, {
-                name: `staffing_max_${rule.id}_${s}_d${d}`,
-                category: "skill",
-                labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} <= ${rule.maxCount}名）`,
-                relatedDay: d,
-                relaxSuggestion: `配置ルール「${rule.description}」の上限人数（${rule.maxCount}名）を緩和してください。`,
-              });
-            }
+      const allowedDow = rule.allowedDaysOfWeek?.length
+        ? new Set(rule.allowedDaysOfWeek)
+        : null;
+      for (let d = 1; d <= numDays; d++) {
+        if (!isDayIncluded(d)) continue;
+        if (typeof rule.startDay === "number" && d < rule.startDay) continue;
+        if (typeof rule.endDay === "number" && d > rule.endDay) continue;
+        const dow = getDayOfWeek(config.year, config.month, d);
+        if (allowedDow && !allowedDow.has(dow)) continue;
+        const idx = d - 1;
+        for (const s of rule.shifts) {
+          if (!isDayAllowedForShift(d, s)) continue;
+          const vars = matchingNurses.flatMap((n) =>
+            getShiftVarsForNurseDay(s, n.id, idx)
+          );
+          const sLabel =
+            SHIFT_LABEL_JA[s as ActiveShiftCode] ??
+            getShiftMeta(s, customShiftDefs, state.shiftAliases).label;
+          if (typeof rule.minCount === "number" && rule.minCount > 0) {
+            addRuleConstraint(expr`${sum(vars)} >= ${rule.minCount}`, {
+              name: `staffing_min_${rule.id}_${s}_d${d}`,
+              category: "skill",
+              labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} >= ${rule.minCount}名）`,
+              relatedDay: d,
+              relaxSuggestion: `配置ルール「${rule.description}」の必要人数（${rule.minCount}名）を緩和してください。`,
+            });
+          }
+          if (vars.length > 0 && typeof rule.maxCount === "number" && rule.maxCount >= 0) {
+            addRuleConstraint(expr`${sum(vars)} <= ${rule.maxCount}`, {
+              name: `staffing_max_${rule.id}_${s}_d${d}`,
+              category: "skill",
+              labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} <= ${rule.maxCount}名）`,
+              relatedDay: d,
+              relaxSuggestion: `配置ルール「${rule.description}」の上限人数（${rule.maxCount}名）を緩和してください。`,
+            });
           }
         }
       }
@@ -1652,7 +1662,6 @@ export function buildNurseWashiModel(
         const dayShiftVars = targetNurses.flatMap((n) =>
           getShiftVarsForNurseDay(rule.shift!, n.id, idx)
         );
-        if (dayShiftVars.length === 0) continue;
         if (typeof rule.minStaff === "number" && rule.minStaff > 0) {
           addRuleConstraint(expr`${sum(dayShiftVars)} >= ${rule.minStaff}`, {
             name: `daily_min_${rule.id}_d${d}`,
@@ -1662,7 +1671,7 @@ export function buildNurseWashiModel(
             relaxSuggestion: `追加ルール「${rule.description}」の1日あたり必要人数を緩和するか解除してください。`,
           });
         }
-        if (typeof rule.maxStaff === "number" && rule.maxStaff >= 0) {
+        if (dayShiftVars.length > 0 && typeof rule.maxStaff === "number" && rule.maxStaff >= 0) {
           addRuleConstraint(expr`${sum(dayShiftVars)} <= ${rule.maxStaff}`, {
             name: `daily_cap_${rule.id}_d${d}`,
             category: "custom",
@@ -1984,6 +1993,7 @@ export function evaluateNurseSchedule(
   const nurseById = new Map(nurses.map((n) => [n.id, n]));
   const activeSkillDefs = state.skillDefs ?? createDefaultSkillDefs(config);
   const hasLeaderSkillDef = !state.skillDefs || activeSkillDefs.some((d) => d.code === "leader_cap");
+  const hasIcuSkillDef = !state.skillDefs || activeSkillDefs.some((d) => d.code === "icu_er");
 
   // 1. Daily coverage & skill checks
   for (let d = 1; d <= numDays; d++) {
@@ -2107,6 +2117,30 @@ export function evaluateNurseSchedule(
           message: `${config.month}/${d} 深夜勤(N)のリーダー不足（${leaders.N}/${config.minLeadersNight}名）`,
         });
       }
+      if (hasIcuSkillDef && config.minIcuDay > 0 && icuSkills.D < config.minIcuDay) {
+        violations.push({
+          id: `icu_D_d${d}`,
+          category: "skill",
+          day: d,
+          message: `${config.month}/${d} 日勤(D)の救急・ICU対応不足（${icuSkills.D}/${config.minIcuDay}名）`,
+        });
+      }
+      if (hasIcuSkillDef && config.minIcuEvening > 0 && icuSkills.E < config.minIcuEvening) {
+        violations.push({
+          id: `icu_E_d${d}`,
+          category: "skill",
+          day: d,
+          message: `${config.month}/${d} 準夜勤(E)の救急・ICU対応不足（${icuSkills.E}/${config.minIcuEvening}名）`,
+        });
+      }
+      if (hasIcuSkillDef && config.minIcuNight > 0 && icuSkills.N < config.minIcuNight) {
+        violations.push({
+          id: `icu_N_d${d}`,
+          category: "skill",
+          day: d,
+          message: `${config.month}/${d} 深夜勤(N)の救急・ICU対応不足（${icuSkills.N}/${config.minIcuNight}名）`,
+        });
+      }
 
       for (const sd of activeSkillDefs) {
         if (sd.code === "leader_cap" || sd.code === "icu_er") continue;
@@ -2115,7 +2149,7 @@ export function evaluateNurseSchedule(
         for (const nurse of nurses) {
           const shift = schedule[nurse.id]?.[idx] ?? "O";
           if (!doesNurseSatisfySkill(nurse, sd.code, activeSkillDefs)) continue;
-          if (isDaySubgroupShift(shift)) {
+          if (doesShiftMatchGroup(shift, "D", customShiftDefs, state.shiftAliases)) {
             skillCounts.D++;
             if (shift === "D_A" || shift === "D_B") skillCounts[shift as "D_A" | "D_B"]++;
           } else if (shift === "E" || shift === "N") {
@@ -2194,10 +2228,11 @@ export function evaluateNurseSchedule(
         const targetNurses = hasTargetFilter
           ? nurses.filter((n) => isNurseTargetedByRule(n, rule))
           : nurses;
-        const assignedCount = targetNurses.filter(
-          (n) => (schedule[n.id]?.[idx] ?? "O") === rule.shift
-        ).length;
-        const sMeta = getShiftMeta(rule.shift, customShiftDefs);
+        const assignedCount = targetNurses.filter((n) => {
+          const s = schedule[n.id]?.[idx] ?? "O";
+          return doesShiftMatchGroup(s, rule.shift!, customShiftDefs, state.shiftAliases);
+        }).length;
+        const sMeta = getShiftMeta(rule.shift, customShiftDefs, state.shiftAliases);
         if (typeof rule.minStaff === "number" && assignedCount < rule.minStaff) {
           violations.push({
             id: `daily_min_${rule.id}_d${d}`,
@@ -2282,10 +2317,10 @@ export function evaluateNurseSchedule(
         counts.D = (counts.D ?? 0) + 1;
       }
       const dow = getDayOfWeek(config.year, config.month, d);
-      if ((dow === 0 || dow === 6) && s === "O") {
+      const baseOden = getBaseOdenShift(s, customShiftDefs);
+      if ((dow === 0 || dow === 6) && baseOden === "O") {
         weekendDaysOff++;
       }
-      const baseOden = getBaseOdenShift(s, customShiftDefs);
       if (!nurse.nightOk && (baseOden === "E" || baseOden === "N")) {
         const msg = `${config.month}/${d}: 日勤専従スタッフに夜勤(${s})が配置されています`;
         nurseViolations.push(msg);
@@ -2332,7 +2367,7 @@ export function evaluateNurseSchedule(
           });
         }
       }
-      if (nurse.weekdayOnly && (dow === 0 || dow === 6) && s !== "O") {
+      if (nurse.weekdayOnly && (dow === 0 || dow === 6) && baseOden !== "O") {
         const msg = `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): 平日のみ勤務スタッフに土日勤務(${s})が配置されています`;
         nurseViolations.push(msg);
         violations.push({
@@ -2355,7 +2390,7 @@ export function evaluateNurseSchedule(
     let maxConsecutiveWork = 0;
     let currentStreak = 0;
     for (let t = 0; t < timeline.length; t++) {
-      if (timeline[t] !== "O") {
+      if (getBaseOdenShift(timeline[t]!, customShiftDefs) !== "O") {
         currentStreak++;
         if (t >= offset && currentStreak > maxConsecutiveWork) {
           maxConsecutiveWork = currentStreak;
@@ -2390,7 +2425,11 @@ export function evaluateNurseSchedule(
           : row[d - 2] ?? "O";
 
       const cat: ConstraintMeta["category"] = d === 1 ? "carryover" : "transition";
-      if (config.requireOffAfterNight && prevShift === "N" && curr !== "O") {
+      if (
+        config.requireOffAfterNight &&
+        prevShift === "N" &&
+        getBaseOdenShift(curr, customShiftDefs) !== "O"
+      ) {
         const msg = `${config.month}/${d}: 深夜明け公休違反（深夜勤N → ${curr}、公休O必須）`;
         nurseViolations.push(msg);
         violations.push({
@@ -2481,18 +2520,25 @@ export function evaluateNurseSchedule(
     }
 
     const customWorkDays = customShiftDefs.reduce(
-      (acc, cs) => acc + (cs.countsAsWorkDay ? counts[cs.code] ?? 0 : 0),
+      (acc, cs) =>
+        acc + (getBaseOdenShift(cs.code, customShiftDefs) !== "O" ? counts[cs.code] ?? 0 : 0),
+      0
+    );
+    const customOffDays = customShiftDefs.reduce(
+      (acc, cs) =>
+        acc + (getBaseOdenShift(cs.code, customShiftDefs) === "O" ? counts[cs.code] ?? 0 : 0),
       0
     );
     const totalWorkDays = counts.D + counts.E + counts.N + customWorkDays;
+    const totalOffDays = (counts.O ?? 0) + customOffDays;
     const totalNightShifts = counts.E + counts.N;
     counts.W = totalWorkDays;
     counts.EN = totalNightShifts;
 
     const effectiveMinOff = nurse.minMonthlyDaysOff ?? config.minMonthlyDaysOff;
     const maxWorkByOff = Math.max(0, numDays - effectiveMinOff);
-    if (counts.O < effectiveMinOff) {
-      const msg = `月間公休不足（${counts.O}日 / 最低${effectiveMinOff}日）`;
+    if (totalOffDays < effectiveMinOff) {
+      const msg = `月間公休不足（${totalOffDays}日 / 最低${effectiveMinOff}日）`;
       nurseViolations.push(msg);
       violations.push({
         id: `off_min_${nurse.id}`,
@@ -2678,7 +2724,7 @@ export function evaluateNurseSchedule(
         const shiftMeta = getShiftMeta(rule.shift, customShiftDefs, state.shiftAliases);
         for (let d = 1; d <= numDays; d++) {
           const s = row[d - 1] ?? "O";
-          if (s === rule.shift) {
+          if (doesShiftMatchGroup(s, rule.shift, customShiftDefs, state.shiftAliases)) {
             const dow = getDayOfWeek(config.year, config.month, d);
             const okDow = !allowedSet || allowedSet.has(dow);
             const okStart = typeof rule.startDay !== "number" || d >= rule.startDay;
@@ -2710,7 +2756,12 @@ export function evaluateNurseSchedule(
         const prereqMeta = getShiftMeta(rule.prereqShift, customShiftDefs, state.shiftAliases);
         for (let d = 1; d <= numDays; d++) {
           const s = row[d - 1] ?? "O";
-          if (rule.restrictedShifts.includes(s) && completedPrereq < rule.prereqMinCount) {
+          if (
+            rule.restrictedShifts.some((rs) =>
+              doesShiftMatchGroup(s, rs, customShiftDefs, state.shiftAliases)
+            ) &&
+            completedPrereq < rule.prereqMinCount
+          ) {
             const sMeta = getShiftMeta(s, customShiftDefs, state.shiftAliases);
             const msg = `${config.month}/${d}: ${prereqMeta.label}を${rule.prereqMinCount}回受ける前に${sMeta.label}が配置されています（前日まで累計${completedPrereq}回）`;
             nurseViolations.push(msg);
@@ -2722,7 +2773,7 @@ export function evaluateNurseSchedule(
               message: `${nurse.name}: ${msg}`,
             });
           }
-          if (s === rule.prereqShift) {
+          if (doesShiftMatchGroup(s, rule.prereqShift, customShiftDefs, state.shiftAliases)) {
             completedPrereq++;
           }
         }
