@@ -1,716 +1,520 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="ja">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/washi-logo.svg" />
     <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WaSHI — Mathematical Optimization Modeler for TypeScript &amp; JavaScript (@ohtaman/washi)</title>
-    <meta name="description" content="WaSHI: WebAssembly-backed, Solver-independent, High-level modeling Interface (LP, MIP, QP, SMT). Formulate models natively in TypeScript and solve with HiGHS, Z3, and GLPK." />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Serif+JP:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="./src/style.css" />
-    <link rel="stylesheet" href="./src/docs-page.css" />
-    <script>
-      (function() {
-        try {
-          const p = new URLSearchParams(window.location.search).get('theme');
-          const saved = p || localStorage.getItem('vitepress-theme-appearance') || localStorage.getItem('washi-theme');
-          const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          const theme = saved === 'dark' || ((!saved || saved === 'auto') && prefersDark);
-          document.documentElement.setAttribute('data-theme', theme ? 'dark' : 'light');
-        } catch (_) {}
-      })();
-    </script>
+    <title>WaSHI — Development Portal & Showcase Hub</title>
+    <meta
+      name="description"
+      content="Local development portal for WaSHI: access Playground, practical apps, optimization games, and documentation."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;600;700;900&family=JetBrains+Mono:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
     <script src="/coi-serviceworker.js"></script>
+    <style>
+      :root {
+        --bg-main: #0b1120;
+        --card-bg: rgba(17, 25, 46, 0.85);
+        --card-border: rgba(255, 255, 255, 0.1);
+        --card-border-hover: rgba(56, 189, 248, 0.5);
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --color-accent: #38bdf8;
+        --color-hi: #e11d48;
+        --font-sans: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        min-height: 100vh;
+        font-family: var(--font-sans);
+        background: radial-gradient(ellipse at top, #1e1b4b 0%, #0b1120 60%, #030712 100%);
+        color: var(--text-primary);
+        padding: 2rem 1.25rem 4rem;
+        line-height: 1.6;
+      }
+
+      .portal-container {
+        max-width: 1080px;
+        margin: 0 auto;
+      }
+
+      /* Header */
+      .portal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2.5rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .brand-title {
+        font-size: 1.35rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 1px;
+      }
+
+      .brand-title .was {
+        color: #f8fafc;
+      }
+
+      .brand-title .hi {
+        color: var(--color-hi);
+      }
+
+      .badge-dev {
+        font-size: 0.72rem;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 999px;
+        background: rgba(225, 29, 72, 0.15);
+        color: #fda4af;
+        border: 1px solid rgba(225, 29, 72, 0.35);
+      }
+
+      .header-links {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+
+      .header-btn {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-decoration: none;
+        padding: 6px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.04);
+        transition: all 0.15s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .header-btn:hover {
+        color: #fff;
+        border-color: var(--color-accent);
+        background: rgba(56, 189, 248, 0.08);
+      }
+
+      /* Hero */
+      .portal-hero {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
+
+      .portal-hero h1 {
+        font-size: clamp(1.8rem, 4vw, 2.5rem);
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        margin-bottom: 0.75rem;
+        background: linear-gradient(135deg, #f8fafc 30%, #94a3b8 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .portal-hero p {
+        color: var(--text-secondary);
+        font-size: 1.05rem;
+        max-width: 680px;
+        margin: 0 auto;
+      }
+
+      /* Section */
+      .portal-section {
+        margin-bottom: 2.75rem;
+      }
+
+      .section-heading {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #e2e8f0;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .section-heading::before {
+        content: "";
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        background: var(--color-accent);
+        border-radius: 2px;
+      }
+
+      /* Cards Grid */
+      .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.25rem;
+      }
+
+      .portal-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        backdrop-filter: blur(12px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .portal-card:hover {
+        transform: translateY(-3px);
+        border-color: var(--card-border-hover);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 24px rgba(56, 189, 248, 0.15);
+      }
+
+      .portal-card.primary {
+        border-color: rgba(225, 29, 72, 0.35);
+        background: linear-gradient(145deg, rgba(30, 20, 45, 0.9) 0%, rgba(17, 25, 46, 0.9) 100%);
+      }
+
+      .portal-card.primary:hover {
+        border-color: rgba(225, 29, 72, 0.7);
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), 0 0 28px rgba(225, 29, 72, 0.22);
+      }
+
+      .card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 0.85rem;
+      }
+
+      .card-icon {
+        font-size: 2rem;
+        line-height: 1;
+      }
+
+      .card-title {
+        font-size: 1.18rem;
+        font-weight: 700;
+        color: #f1f5f9;
+        margin-bottom: 0.35rem;
+      }
+
+      .card-desc {
+        font-size: 0.92rem;
+        color: var(--text-secondary);
+        line-height: 1.55;
+        margin-bottom: 1.25rem;
+      }
+
+      .card-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 1.25rem;
+      }
+
+      .card-tag {
+        font-size: 0.74rem;
+        font-family: var(--font-mono);
+        padding: 2px 7px;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .card-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--color-accent);
+      }
+
+      .portal-card.primary .card-cta {
+        color: #fda4af;
+      }
+
+      .portal-card:hover .card-cta {
+        text-decoration: underline;
+      }
+
+      /* Footer */
+      .portal-footer {
+        margin-top: 4rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+      }
+
+      .portal-footer a {
+        color: var(--text-secondary);
+        text-decoration: none;
+      }
+
+      .portal-footer a:hover {
+        color: #fff;
+        text-decoration: underline;
+      }
+    </style>
   </head>
-  <body class="docs-page">
-    <!-- Header -->
-    <header class="docs-header">
-      <div class="brand">
-        <a href="./" class="brand-crest" style="text-decoration: none;" aria-label="WaSHI Home">
-          <img src="/washi-logo.svg" alt="WaSHI Logo" class="brand-crest-img" />
-        </a>
-        <div class="brand-text">
-          <div style="display: flex; align-items: baseline; gap: 8px;">
-            <a href="./" style="text-decoration: none; color: inherit;"><h1 class="brand-title" style="font-size: 1.15rem;"><span>WaS</span><span style="color: #e11d48;">HI</span></h1></a>
-            <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: var(--bg-surface-elevated); color: var(--text-sumi-secondary); font-family: var(--font-mono);">v1.0.1</span>
+  <body>
+    <div class="portal-container">
+      <!-- Header -->
+      <header class="portal-header">
+        <a href="./" class="brand" aria-label="WaSHI Home">
+          <img src="/washi-logo.svg" alt="WaSHI Logo" style="height: 32px; width: 32px;" onerror="this.style.display='none';" />
+          <div class="brand-title">
+            <span class="was">WaS</span><span class="hi">HI</span>
           </div>
-          <span class="brand-subtitle lang-en">Mathematical Optimization Modeler</span>
-          <span class="brand-subtitle lang-ja" style="display: none;">数理最適化モデラー</span>
-        </div>
-      </div>
-
-      <nav class="docs-nav">
-        <a href="#features" class="nav-link lang-en">Features</a>
-        <a href="#features" class="nav-link lang-ja" style="display: none;">特徴</a>
-
-        <a href="#demo" class="nav-link lang-en">Playground</a>
-        <a href="#demo" class="nav-link lang-ja" style="display: none;">デモ</a>
-
-        <a href="#quickstart" class="nav-link lang-en">Guides</a>
-        <a href="#quickstart" class="nav-link lang-ja" style="display: none;">使い方</a>
-
-        <a href="#solvers" class="nav-link lang-en">Solvers</a>
-        <a href="#solvers" class="nav-link lang-ja" style="display: none;">ソルバー</a>
-
-
-        <!-- Games Showcase Link -->
-        <a href="./games/" class="nav-link lang-en" title="WaSHI Browser Games Showcase">🎮 Games</a>
-        <a href="./games/" class="nav-link lang-ja" style="display: none;" title="WaSHI ブラウザゲーム集">🎮 ゲーム</a>
-
-        <!-- Interactive Demo Link (Primary CTA) -->
-        <a href="./demo/" class="btn-demo-cta">
-          <span class="lang-en">Playground ↗</span>
-          <span class="lang-ja" style="display: none;">プレイグラウンド ↗</span>
+          <span class="badge-dev">Development Portal</span>
         </a>
 
-        <!-- Theme Toggle -->
-        <button type="button" class="theme-toggle-btn" id="docs-theme-toggle-btn" aria-label="Switch theme" title="Switch theme">
-          🌙
-        </button>
+        <nav class="header-links">
+          <a href="./demo/" class="header-btn">Playground ↗</a>
+          <a href="./apps/" class="header-btn">Apps ↗</a>
+          <a href="./games/" class="header-btn">Games ↗</a>
+          <a href="https://ohtaman.github.io/washi/" target="_blank" rel="noopener" class="header-btn">Docs ↗</a>
+          <a href="https://github.com/ohtaman/washi" target="_blank" rel="noopener" class="header-btn">GitHub ↗</a>
+        </nav>
+      </header>
 
-        <!-- Language Switcher -->
-        <div class="lang-switch-group" role="group" aria-label="Language Selector">
-          <button type="button" id="docs-lang-en" class="lang-btn active" title="English">EN</button>
-          <button type="button" id="docs-lang-ja" class="lang-btn" title="日本語">JA</button>
-        </div>
+      <!-- Hero -->
+      <section class="portal-hero">
+        <h1>WaSHI Development Portal</h1>
+        <p>
+          ローカル開発用ハブ。対話型 Playground、実務アプリケーション、パズルゲーム、ドキュメントへ直接アクセスできます。
+        </p>
+      </section>
 
-        <a
-          href="https://github.com/ohtaman/washi"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="external-link"
-          title="GitHub Repository"
-        >
-          <span>GitHub</span>
-          <span class="link-arrow">↗</span>
-        </a>
-      </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main>
-      <!-- Hero Section -->
-      <section class="docs-container hero-section">
-        <div class="hero-content">
-          <div class="hero-badge">
-            <span>⚡ WebAssembly Solvers: HiGHS • Z3 • GLPK</span>
-          </div>
-
-          <!-- English Hero -->
-          <div class="lang-en">
-            <h2 class="hero-title">
-              Mathematical Optimization Modeler for <span class="accent">TypeScript &amp; JavaScript</span>
-            </h2>
-            <p class="hero-desc">
-              Algebraic modeling elegance of PuLP and JuMP for modern web and Node.js applications. Formulate LP, MIP, QP, and SMT models using natural equations and solve them client-side in WebAssembly—with zero server costs and zero native build dependencies.
-            </p>
-          </div>
-
-          <!-- Japanese Hero -->
-          <div class="lang-ja" style="display: none;">
-            <h2 class="hero-title">
-              TypeScript / JS のための<br />直感的な<span class="accent">数理最適化モデラー</span>
-            </h2>
-            <p class="hero-desc">
-              Python の PuLP や Julia の JuMP のような自然な数式記述をモダンな TypeScript / JavaScript へ。線形計画 (LP)・混合整数計画 (MIP)・凸二次計画 (QP)・SMT論理制約を WebAssembly でクライアントサイド完結求解。サーバー代ゼロ・外部データ送信ゼロ・C++コンパイル不要。
-            </p>
-          </div>
-
-          <div class="hero-actions">
-            <a href="./demo/" class="btn-hero-primary">
-              <span class="lang-en">Launch Interactive Demo →</span>
-              <span class="lang-ja" style="display: none;">インタラクティブ デモを起動 →</span>
-            </a>
-            <a href="#quickstart" class="btn-hero-secondary">
-              <span class="lang-en">View Documentation</span>
-              <span class="lang-ja" style="display: none;">ドキュメントを見る</span>
-            </a>
-            <a href="https://www.npmjs.com/package/@ohtaman/washi" target="_blank" rel="noopener noreferrer" class="btn-hero-secondary">
-              <span>npm @ohtaman/washi</span>
-            </a>
-          </div>
-        </div>
-
-        <!-- Hero Code Preview -->
-        <div class="code-preview-card">
-          <div class="code-header">
-            <div class="code-dots">
-              <div class="code-dot" style="background: #ff5f56;"></div>
-              <div class="code-dot" style="background: #ffbd2e;"></div>
-              <div class="code-dot" style="background: #27c93f;"></div>
+      <!-- Section: Core & Playground -->
+      <section class="portal-section">
+        <h2 class="section-heading">Core Modeler & Playground</h2>
+        <div class="cards-grid">
+          <a href="./demo/" class="portal-card primary">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">⚡</span>
+              </div>
+              <div class="card-title">WaSHI Playground</div>
+              <p class="card-desc">
+                LP, MIP, QP, SMT の対話型オンラインモデラー環境。TypeScript / JavaScript で定式化し、ブラウザ上の WebAssembly ソルバーで即座に求解できます。
+              </p>
             </div>
-            <span class="code-filename">quickstart.ts</span>
-            <button class="code-copy-btn" data-copy-target="hero-code-content">Copy</button>
-          </div>
-          <pre id="hero-code-content" class="code-body">import { Model, expr, maximize } from "@ohtaman/washi";
-
-// 1. Create model &amp; decision variables
-const m = new Model();
-const chairs = m.integer("chairs", { lb: 0 });
-const tables = m.integer("tables", { lb: 0 });
-
-// 2. Natural algebraic objective &amp; constraints
-m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(expr`${chairs} + 2 * ${tables} &lt;= 40`, "wood");
-m.constraint(expr`2 * ${chairs} + ${tables} &lt;= 50`, "labor");
-
-// 3. Solve instantly with HiGHS WASM
-await m.solve();
-
-console.log(`Chairs: ${chairs.value}, Tables: ${tables.value}`);
-console.log(`Max Profit: $${m.objectiveValue}`); // $1,100</pre>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">HiGHS</span>
+                <span class="card-tag">Z3</span>
+                <span class="card-tag">GLPK</span>
+                <span class="card-tag">Interactive</span>
+              </div>
+              <span class="card-cta">Playground を開く →</span>
+            </div>
+          </a>
         </div>
       </section>
 
-      <!-- Why WaSHI Section -->
-      <section id="features" class="section">
-        <div class="docs-container">
-          <div class="section-header">
-            <span class="section-label">Core Advantages</span>
-            <h3 class="section-heading lang-en">Why Choose WaSHI?</h3>
-            <h3 class="section-heading lang-ja" style="display: none;">なぜ WaSHI を選ぶのか？</h3>
-            <p class="section-subheading lang-en">
-              Designed from the ground up for modern JavaScript runtimes without the operational overhead of Python or legacy C binaries.
-            </p>
-            <p class="section-subheading lang-ja" style="display: none;">
-              Python 仮想環境や OS 依存のネイティブバイナリの運用負担を排し、Web 時代の開発体験のために一から設計されました。
-            </p>
-          </div>
-
-          <div class="features-grid">
-            <div class="feature-card">
-              <div class="feature-icon">🌐</div>
-              <h4 class="feature-title lang-en">100% Client-Side &amp; Private</h4>
-              <h4 class="feature-title lang-ja" style="display: none;">完全クライアント実行 &amp; データ秘匿</h4>
-              <p class="feature-text lang-en">
-                Run optimization directly in browsers, Electron, or Edge Workers. Zero backend server costs, offline-ready, and sensitive enterprise data never leaves the client device.
-              </p>
-              <p class="feature-text lang-ja" style="display: none;">
-                ブラウザや Electron 内で完結して最適化を実行。サーバー運用コストがゼロになり、オフライン動作が可能。社外秘データが外部に送信されず安全です。
+      <!-- Section: Practical Applications -->
+      <section class="portal-section">
+        <h2 class="section-heading">Practical Applications</h2>
+        <div class="cards-grid">
+          <a href="./apps/ai-shift/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🏥</span>
+              </div>
+              <div class="card-title">AI Nurse Shift</div>
+              <p class="card-desc">
+                1ヶ月ナースシフト自動作成アシスタント。Gemini Nano による自然言語の勤務要望・意図解釈と、WaSHI × HiGHS の厳密な MIP 最適化をハイブリッドで連携。
               </p>
             </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">Gemini Nano</span>
+                <span class="card-tag">HiGHS</span>
+                <span class="card-tag">Nurse Scheduling</span>
+              </div>
+              <span class="card-cta">AI Nurse Shift を開く →</span>
+            </div>
+          </a>
 
-            <div class="feature-card">
-              <div class="feature-icon">📦</div>
-              <h4 class="feature-title lang-en">Zero Native Dependencies</h4>
-              <h4 class="feature-title lang-ja" style="display: none;">ゼロ依存・単一パッケージ</h4>
-              <p class="feature-text lang-en">
-                No Python runtimes, no node-gyp C/C++ compilation, and no OS-specific native solver binaries. Just <code>npm install @ohtaman/washi</code> and everything works out of the box.
-              </p>
-              <p class="feature-text lang-ja" style="display: none;">
-                Python ランタイムや node-gyp の C++ ビルド、OS 別のバイナリ同梱は不要。<code>npm install @ohtaman/washi</code> だけで即座に WASM ソルバーが動きます。
+          <a href="./apps/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">📂</span>
+              </div>
+              <div class="card-title">Apps Showcase Hub</div>
+              <p class="card-desc">
+                WaSHI を実務ドメインに応用したショーケースアプリケーション一覧。
               </p>
             </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">✍️</div>
-              <h4 class="feature-title lang-en">Intuitive Algebraic Syntax</h4>
-              <h4 class="feature-title lang-ja" style="display: none;">自然な数式・代数モデリング DX</h4>
-              <p class="feature-text lang-en">
-                Formulate mathematical models using natural template expressions (<code>expr`${x} + 2*${y} &lt;= 40`</code>), vector inner products (<code>dot</code>, <code>sum</code>), and typed domain variables.
-              </p>
-              <p class="feature-text lang-ja" style="display: none;">
-                泥臭い行列インデックス操作は不要。テンプレート式（<code>expr`${x} + 2*${y} &lt;= 40`</code>）やベクトル内積（<code>dot</code>, <code>sum</code>）、型安全なドメイン変数で直感的に数式を記述できます。
-              </p>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">Showcase</span>
+                <span class="card-tag">Real-World</span>
+              </div>
+              <span class="card-cta">Apps 一覧を見る →</span>
             </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">⚡</div>
-              <h4 class="feature-title lang-en">Industrial Scale Performance</h4>
-              <h4 class="feature-title lang-ja" style="display: none;">WebAssembly で産業規模の高速性</h4>
-              <p class="feature-text lang-en">
-                Built with an O(N) linear-time expression builder. Formulate 20,000+ variable MIP models in ~100ms and solve them in seconds via the official HiGHS WebAssembly port.
-              </p>
-              <p class="feature-text lang-ja" style="display: none;">
-                O(N) 線形時間の高速式ビルダーを搭載。20,000 変数規模の MIP モデルを約 100ms で構築し、HiGHS WASM で高速に求解します。
-              </p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🔄</div>
-              <h4 class="feature-title lang-en">Pluggable Multi-Solver API</h4>
-              <h4 class="feature-title lang-ja" style="display: none;">統一マルチソルバー対応</h4>
-              <p class="feature-text lang-en">
-                Write your optimization model once; solve with <strong>HiGHS</strong> (MIP/QP default), <strong>Z3</strong> (SMT logic &amp; conflict diagnosis), or <strong>GLPK</strong> with a single option.
-              </p>
-              <p class="feature-text lang-ja" style="display: none;">
-                モデルコードはそのまま、産業用 MIP/QP に強い HiGHS、論理制約・SMT に強い Z3、学術用途の GLPK をオプション 1 つで柔軟に切り替え可能です。
-              </p>
-            </div>
-
-            <div class="feature-card">
-              <div class="feature-icon">🔍</div>
-              <h4 class="feature-title lang-en">Automatic Conflict Diagnosis</h4>
-              <h4 class="feature-title lang-ja" style="display: none;">矛盾原因の自動特定 (Unsat Core)</h4>
-              <p class="feature-text lang-en">
-                When business rules clash and no solution exists (Infeasible), isolate a conflicting constraint subset (unsat core) using Z3 SMT reasoning.
-              </p>
-              <p class="feature-text lang-ja" style="display: none;">
-                業務ルール同士が衝突して解なし（Infeasible）になった場合、衝突している制約の部分集合（Unsat Core）を Z3 エンジン経由で自動診断します。
-              </p>
-            </div>
-          </div>
+          </a>
         </div>
       </section>
 
-      <!-- Interactive Demo Section (Focused & Meaningful) -->
-      <section id="demo" class="section">
-        <div class="docs-container">
-          <div class="section-header">
-            <span class="section-label">Live Playground</span>
-            <h3 class="section-heading lang-en">Explore Practical Cases in Browser</h3>
-            <h3 class="section-heading lang-ja" style="display: none;">実践的なケースをブラウザで試す</h3>
-            <p class="section-subheading lang-en">
-              Clean, focused examples of real-world mathematical optimization. Test, edit, and solve directly in your browser with zero setup.
-            </p>
-            <p class="section-subheading lang-ja" style="display: none;">
-              実務で役立つ代表的な問題クラスを厳選。余計な装飾を排し、ブラウザ上で数式を直接編集・実行して解や LP 出力を確認できます。
-            </p>
-          </div>
-
-          <div class="demo-showcase-box">
-            <div class="demo-cards-grid">
-              <!-- Case 1: Production Planning -->
-              <a href="./demo/?preset=production" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-mip">MIP / LP</span>
-                  <h4 class="demo-card-title lang-en">Production Planning</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">生産計画問題</h4>
-                  <p class="demo-card-desc lang-en">
-                    Resource allocation under carpentry and labor hours. Maximize total workshop profit.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    木材・労働時間の有限リソース下で机と椅子の生産数を決定し利益を最大化。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 2: Transportation Network (2D Matrix) -->
-              <a href="./demo/?preset=transportation" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-lp">2D Matrix LP</span>
-                  <h4 class="demo-card-title lang-en">Transportation Network</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">輸送・物流ネットワーク</h4>
-                  <p class="demo-card-desc lang-en">
-                    2D variable matrices with <code>m.continuous(factories, stores)</code>. Minimize shipping costs across 3 factories and 4 stores.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    <code>m.continuous(factories, stores)</code> による2次元マトリクス変数。3工場から4店舗への輸送コストを最小化。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 3: Diet & Sensitivity Analysis -->
-              <a href="./demo/?preset=diet_sensitivity" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-lp">Dual &amp; Slack</span>
-                  <h4 class="demo-card-title lang-en">Diet &amp; Sensitivity Analysis</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">栄養問題と感度分析</h4>
-                  <p class="demo-card-desc lang-en">
-                    Inspect shadow prices (<code>constr.dual</code>), surpluses (<code>constr.slack</code>), and reduced costs to find bottlenecks.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    どの栄養基準がコストを押し上げているか（潜在価格 <code>dual</code>・余剰 <code>slack</code>・被約費用）を分析。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 4: Staff Shift Scheduling -->
-              <a href="./demo/?preset=shift_scheduling" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-mip">Roster MIP</span>
-                  <h4 class="demo-card-title lang-en">Staff Shift Scheduling</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">スタッフのシフト作成</h4>
-                  <p class="demo-card-desc lang-en">
-                    Assign 5 staff across 7 days respecting daily headcount, senior duty, max shifts, and vacation requests.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    日別の必要人数・リーダー配置・週5日上限・スタッフ希望休をすべて満たす週間シフト表を自動生成。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 5: E-Commerce Cart & Coupon Optimizer -->
-              <a href="./demo/?preset=cart_coupon" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-mip">Indicator MIP</span>
-                  <h4 class="demo-card-title lang-en">E-Commerce Coupon Optimizer</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">ECカートのクーポン最適適用</h4>
-                  <p class="demo-card-desc lang-en">
-                    Conditional threshold rules with <code>m.constraint(...)</code>, coupon exclusivity, and tier-unlocking add-on items.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    <code>m.constraint(...)</code> による最低購入額条件と併用可否ルールから、支払額が最小になるクーポン構成を計算。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 6: Portfolio QP -->
-              <a href="./demo/?preset=portfolio_qp" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-qp">Convex QP</span>
-                  <h4 class="demo-card-title lang-en">Markowitz Portfolio</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">ポートフォリオ最適化</h4>
-                  <p class="demo-card-desc lang-en">
-                    Minimize covariance risk subject to target investment return and full capital budget.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    目標リターンと資金制約を満たしつつ共分散リスク（分散）を最小化する二次計画。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 7: Shift Vacation Conflict Diagnosis -->
-              <a href="./demo/?preset=shift_conflict_unsat" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-smt">SMT / Z3</span>
-                  <h4 class="demo-card-title lang-en">Shift Conflict Diagnosis</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">シフト希望休の衝突診断</h4>
-                  <p class="demo-card-desc lang-en">
-                    Pinpoint which Saturday vacation requests conflict with minimum staffing rules via Z3 <code>unsatCore</code>.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    土曜日の希望休が重なり解なしになった際、Z3 の <code>unsatCore</code> で衝突原因の制約群を特定。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-
-              <!-- Case 8: Rule Conflict Diagnosis -->
-              <a href="./demo/?preset=conflict_diagnosis_unsat" class="demo-card">
-                <div>
-                  <span class="demo-card-badge badge-smt">SMT / Z3</span>
-                  <h4 class="demo-card-title lang-en">Rule Conflict Diagnosis</h4>
-                  <h4 class="demo-card-title lang-ja" style="display: none;">ルール矛盾診断 (Unsat Core)</h4>
-                  <p class="demo-card-desc lang-en">
-                    Isolate a subset of mutually incompatible rules (unsat core) causing infeasibility.
-                  </p>
-                  <p class="demo-card-desc lang-ja" style="display: none;">
-                    予算上限と必須要件が衝突した際、矛盾原因の制約サブセット（Unsat Core）を自動特定。
-                  </p>
-                </div>
-                <span class="demo-card-link lang-en">Open in Demo →</span>
-                <span class="demo-card-link lang-ja" style="display: none;">デモで開く →</span>
-              </a>
-            </div>
-
-            <!-- Action Banner -->
-            <div class="demo-action-banner">
-              <div class="demo-action-banner-text">
-                <h3 class="lang-en">Ready to try your own optimization model?</h3>
-                <h3 class="lang-ja" style="display: none;">独自の数理モデルを試してみませんか？</h3>
-                <p class="lang-en">Open the full interactive playground with real-time code editor, solver switching, and CPLEX LP export.</p>
-                <p class="lang-ja" style="display: none;">リアルタイムコードエディタ、ソルバー切替、LP 出力プレビューを備えたデモ環境へ進みます。</p>
+      <!-- Section: Interactive Games -->
+      <section class="portal-section">
+        <h2 class="section-heading">Optimization Puzzle Games</h2>
+        <div class="cards-grid">
+          <a href="./games/demon-castle-shift/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🏰</span>
               </div>
-              <a href="./demo/" class="btn-hero-primary" style="background: var(--color-hi); color: white; white-space: nowrap;">
-                <span class="lang-en">Open Web Demo 🚀</span>
-                <span class="lang-ja" style="display: none;">Web デモを開く 🚀</span>
-              </a>
+              <div class="card-title">魔王城24時間シフトパズル</div>
+              <p class="card-desc">
+                個性豊かなモンスターたちの希望と警備条件を満たしてシフト表を完成させるパズルゲーム。WaSHI のソルバーがリアルタイムに判定・ヒントを算出。
+              </p>
             </div>
-          </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">HiGHS</span>
+                <span class="card-tag">Puzzle</span>
+                <span class="card-tag">Sound Effects</span>
+              </div>
+              <span class="card-cta">魔王城シフトをプレイ →</span>
+            </div>
+          </a>
+
+          <a href="./games/mofumofu-sheep/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🐑</span>
+              </div>
+              <div class="card-title">もふもふ羊の毛刈りパズル</div>
+              <p class="card-desc">
+                羊たちの毛刈り順序やスケジュール制約を最適化するインタラクティブパズル。
+              </p>
+            </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">Scheduling</span>
+                <span class="card-tag">Interactive</span>
+              </div>
+              <span class="card-cta">もふもふ羊をプレイ →</span>
+            </div>
+          </a>
+
+          <a href="./games/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🕹️</span>
+              </div>
+              <div class="card-title">Games Showcase Hub</div>
+              <p class="card-desc">
+                WaSHI の数理最適化を活用したインタラクティブゲームのショーケース一覧。
+              </p>
+            </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">Gaming</span>
+                <span class="card-tag">Math Programming</span>
+              </div>
+              <span class="card-cta">Games 一覧を見る →</span>
+            </div>
+          </a>
         </div>
       </section>
 
-      <!-- Installation Section -->
-      <section class="section" style="background: var(--bg-surface-elevated);">
-        <div class="docs-container">
-          <div class="section-header">
-            <span class="section-label">Get Started</span>
-            <h3 class="section-heading lang-en">Installation</h3>
-            <h3 class="section-heading lang-ja" style="display: none;">インストール</h3>
-          </div>
-
-          <div class="install-box">
-            <div class="install-tabs">
-              <button class="install-tab-btn active" data-pm="npm">npm</button>
-              <button class="install-tab-btn" data-pm="pnpm">pnpm</button>
-              <button class="install-tab-btn" data-pm="yarn">yarn</button>
-              <button class="install-tab-btn" data-pm="bun">bun</button>
-            </div>
-            <div class="install-code-box">
-              <code id="install-code-text">npm install @ohtaman/washi</code>
-              <button class="code-copy-btn" data-copy-target="install-code-text">Copy</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Usage Guide Section -->
-      <section id="quickstart" class="section">
-        <div class="docs-container">
-          <div class="section-header">
-            <span class="section-label">Documentation</span>
-            <h3 class="section-heading lang-en">Usage Guide &amp; Code Examples</h3>
-            <h3 class="section-heading lang-ja" style="display: none;">使い方ガイド &amp; コード例</h3>
-            <p class="section-subheading lang-en">
-              Step-by-step walkthroughs for linear programming, quadratic optimization, and rule checking.
-            </p>
-            <p class="section-subheading lang-ja" style="display: none;">
-              線形計画、混合整数計画、二次計画、SMT ルール検証の実践的なコード例です。
-            </p>
-          </div>
-
-          <!-- Guide 1: MIP -->
-          <div class="doc-card">
-            <div class="doc-card-header">
-              <div class="doc-card-title">
-                <span>1. Mixed-Integer Linear Programming (MIP)</span>
+      <!-- Section: Documentation & Resources -->
+      <section class="portal-section">
+        <h2 class="section-heading">Documentation & Tools</h2>
+        <div class="cards-grid">
+          <a href="https://ohtaman.github.io/washi/" target="_blank" rel="noopener" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">📖</span>
               </div>
-              <a href="./demo/?preset=production" class="btn-hero-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
-                ▶ Run in Demo
-              </a>
-            </div>
-            <div class="doc-card-body">
-              <p class="lang-en">
-                Formulate resource allocation problems with integer or continuous variables. Define constraints using tagged template literals (<code>expr`${x} + ${y} &lt;= 50`</code>) or fluent expression chaining.
+              <div class="card-title">Official Documentation</div>
+              <p class="card-desc">
+                VitePress 製の公式ドキュメントサイト（日英中対応）。クイックスタート、モデリングガイド、ソルバー対応表、実践例など。
               </p>
-              <p class="lang-ja" style="display: none;">
-                整数変数や実数変数を用いたリソース配分問題。テンプレートリテラル記法（<code>expr`${x} + ${y} &lt;= 50`</code>）または流れるようなメソッドチェーンで直感的に制約を記述できます。
-              </p>
-              <pre class="doc-code-block">import { Model, expr, maximize } from "@ohtaman/washi";
-
-const m = new Model("FactoryPlanning");
-
-// Decision variables (integer, non-negative)
-const chairs = m.integer("chairs", { lb: 0 });
-const tables = m.integer("tables", { lb: 0 });
-
-// Natural objective &amp; constraints
-m.objective(maximize(expr`30 * ${chairs} + 50 * ${tables}`));
-m.constraint(expr`${chairs} + 2 * ${tables} &lt;= 40`, "wood_limit");
-m.constraint(expr`2 * ${chairs} + ${tables} &lt;= 50`, "labor_limit");
-
-// Solve natively in browser WebAssembly
-const status = await m.solve();
-
-console.log(`Status: ${status}`); // "Optimal"
-console.log(`Profit: $${m.objectiveValue}`); // 1100
-console.log(`Chairs: ${chairs.value}, Tables: ${tables.value}`); // 20, 10</pre>
             </div>
-          </div>
-
-          <!-- Guide 2: Portfolio QP -->
-          <div class="doc-card">
-            <div class="doc-card-header">
-            <div class="doc-card-title">
-                <span>2. Convex Quadratic Programming (QP: Portfolio)</span>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">VitePress</span>
+                <span class="card-tag">i18n</span>
+                <span class="card-tag">Guides</span>
               </div>
-              <a href="./demo/?preset=portfolio_qp" class="btn-hero-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
-                ▶ Run in Demo
-              </a>
+              <span class="card-cta">ドキュメントを開く ↗</span>
             </div>
-            <div class="doc-card-body">
-              <p class="lang-en">
-                Minimize investment variance risk under covariance matrix correlations subject to expected return targets:
-              </p>
-              <p class="lang-ja" style="display: none;">
-                資産間の相関関係（共分散行列）に基づく投資リスク（分散）を、目標期待リターンと資金配分制約の下で最小化します：
-              </p>
-              <pre class="doc-code-block">import { Model, QuadExpr, sum, minimize } from "@ohtaman/washi";
+          </a>
 
-const m = new Model("Portfolio");
-const assets = ["Tech", "Bonds", "RealEstate"];
-const returns = [0.14, 0.04, 0.08];
-
-// Decision variables: allocation weight (0.0 - 1.0)
-const w = assets.map(a => m.continuous(`w_${a}`, { lb: 0, ub: 1 }));
-
-// 1. Full budget constraint (sum of weights = 1.0)
-m.constraint(sum(w).eq(1.0), "budget");
-
-// 2. Minimum expected portfolio return: >= 8.5%
-m.constraint(sum(w.map((v, i) => v.mul(returns[i]))).ge(0.085), "min_return");
-
-// 3. Covariance Matrix risk objective: w^T * Cov * w
-const cov = [
-  [0.040, 0.002, 0.015],
-  [0.002, 0.005, 0.002],
-  [0.015, 0.002, 0.025],
-];
-let risk = new QuadExpr();
-for (let i = 0; i &lt; assets.length; i++) {
-  for (let j = 0; j &lt; assets.length; j++) {
-    risk = risk.add(w[i].mul(w[j]).mul(cov[i][j]));
-  }
-}
-m.objective(minimize(risk));
-
-await m.solve();
-console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);</pre>
-            </div>
-          </div>
-
-          <!-- Guide 3: SMT Conflict Diagnosis -->
-          <div class="doc-card">
-            <div class="doc-card-header">
-              <div class="doc-card-title">
-                <span>3. Conflict Diagnosis &amp; Unsat Core (Z3 Engine)</span>
+          <div class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">💻</span>
               </div>
-              <a href="./demo/?preset=conflict_diagnosis_unsat" class="btn-hero-secondary" style="font-size: 0.8rem; padding: 6px 12px;">
-                ▶ Run in Demo
-              </a>
-            </div>
-            <div class="doc-card-body">
-              <p class="lang-en">
-                When business rules clash, automatically isolate a subset of contradictory constraints (unsat core; minimality is not guaranteed) causing infeasibility:
+              <div class="card-title">Local Dev Commands</div>
+              <p class="card-desc" style="font-family: var(--font-mono); font-size: 0.82rem; background: rgba(0, 0, 0, 0.3); padding: 8px 12px; border-radius: 8px;">
+                npm run dev &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Vite Dev Server<br />
+                npm run docs:dev &nbsp;# VitePress Docs<br />
+                npm run test &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# Vitest Run<br />
+                npm run build:site # Unified Site Build
               </p>
-              <p class="lang-ja" style="display: none;">
-                業務ルール群が矛盾して実行不能になった際、矛盾の原因となっている制約の部分集合（Unsat Core。最小性は保証しません）を特定してデバッグします：
-              </p>
-              <pre class="doc-code-block">import { Model } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/z3";
-
-const m = new Model({ solver: "z3" });
-const engineers = m.integer("engineers", { lb: 0 });
-const budget = m.continuous("budget", { lb: 0 });
-const rush = m.bool("rush");
-
-// Conflicting business rules
-m.constraint(engineers.mul(8000).le(budget), "budget_limit");
-m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
-m.constraint(budget.le(50000), "strict_board_budget_cap"); // 8 * 8000 = 64k > 50k!
-
-// Solve &amp; diagnose
-const res = await m.check({ solver: "z3" });
-console.log("Status:", res.status); // "Unsat"
-console.log("Conflicting Rules:", res.conflicts);
-// Output: ["budget_limit", "rush_required", "rush_staffing", "strict_board_budget_cap"]</pre>
             </div>
-          </div>
-
-          <!-- Guide 4: Natural Domain Modeling API -->
-          <div class="doc-card">
-            <div class="doc-card-header">
-              <div class="doc-card-title">
-                <span class="lang-en">4. Natural Domain Modeling &amp; Vector Expressions</span>
-                <span class="lang-ja" style="display: none;">4. 自然なドメインモデリングとベクトル演算</span>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">npm scripts</span>
               </div>
             </div>
-            <div class="doc-card-body">
-              <p class="lang-en">
-                Create structured multi-variable maps and formulate clean algebraic constraints using domain types (<code>integer</code>, <code>continuous</code>, <code>dot</code>, <code>expr</code>):
-              </p>
-              <p class="lang-ja" style="display: none;">
-                多変数の構造化マップを定義し、ドメイン型（<code>integer</code>, <code>continuous</code>, <code>dot</code>, <code>expr</code>）を用いて直感的に制約を記述できます：
-              </p>
-              <pre class="doc-code-block">import { Model, expr, dot, maximize } from "@ohtaman/washi";
-
-const m = new Model({ name: "Woodworking" });
-const items = ["chairs", "tables"] as const;
-const profits = { chairs: 30, tables: 50 };
-const woodCost = { chairs: 1, tables: 2 };
-
-// Multi-variable mapping
-const x = m.integer(items, { lb: 0 });
-
-// Dot product &amp; natural constraints
-m.objective(maximize(dot(profits, x)));
-m.constraint(expr`${dot(woodCost, x)} &lt;= 40`, "wood_limit");
-m.constraint(expr`2 * ${x.chairs} + ${x.tables} &lt;= 50`, "labor_limit");
-
-await m.solve();
-console.log(`Profit: $${m.objectiveValue}`); // 1100
-console.log(`Solution:`, m.getValues(x)); // { chairs: 20, tables: 10 }</pre>
-            </div>
           </div>
         </div>
       </section>
 
-      <!-- Solvers Matrix Section -->
-      <section id="solvers" class="section" style="background: var(--bg-surface-elevated);">
-        <div class="docs-container">
-          <div class="section-header">
-            <span class="section-label">Engines</span>
-            <h3 class="section-heading lang-en">Supported Solvers Matrix</h3>
-            <h3 class="section-heading lang-ja" style="display: none;">ソルバー対応マトリクス</h3>
-          </div>
-
-          <div style="overflow-x: auto;">
-            <table class="solvers-table">
-              <thead>
-                <tr>
-                  <th>Solver</th>
-                  <th>License</th>
-                  <th>Classes</th>
-                  <th>Best For</th>
-                  <th>Distribution</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>HiGHS</strong></td>
-                  <td>MIT</td>
-                  <td>LP, MIP, Convex QP</td>
-                  <td>Industrial planning, resource scheduling, portfolio</td>
-                  <td><strong>Built-in default (Zero config)</strong></td>
-                </tr>
-                <tr>
-                  <td><strong>Z3</strong></td>
-                  <td>MIT</td>
-                  <td>SMT, SAT, Logic, MIP</td>
-                  <td>Rule engines, conflict diagnosis (<code>unsatCore</code>)</td>
-                  <td>Optional plugin (<code>@ohtaman/washi/solvers/z3</code>)</td>
-                </tr>
-                <tr>
-                  <td><strong>GLPK</strong></td>
-                  <td>GPL-3.0</td>
-                  <td>LP, MIP</td>
-                  <td>Academic benchmarks, legacy GLPK models</td>
-                  <td>Optional plugin (<code>@ohtaman/washi/solvers/glpk</code>)</td>
-                </tr>
-                <tr>
-                  <td><strong>Mock</strong></td>
-                  <td>MIT</td>
-                  <td>Any</td>
-                  <td>Ultra-fast unit testing in CI without loading WASM</td>
-                  <td>Built-in</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="docs-footer">
-      <div class="docs-container footer-content">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <div class="brand-crest" style="width: 26px; height: 26px;">
-            <img src="/washi-logo.svg" alt="WaSHI Logo" class="brand-crest-img" />
-          </div>
-          <span style="font-size: 0.88rem; color: var(--text-sumi-secondary);">
-            <strong>WaSHI</strong> — MIT License. Created by ohtaman.
-          </span>
-        </div>
-
-        <div class="footer-links">
-          <a href="./demo/">Interactive Demo</a>
-          <a href="https://github.com/ohtaman/washi" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a href="https://www.npmjs.com/package/@ohtaman/washi" target="_blank" rel="noopener noreferrer">npm</a>
-          <a href="https://github.com/ohtaman/washi/issues" target="_blank" rel="noopener noreferrer">Issues</a>
-        </div>
-      </div>
-    </footer>
-
-    <!-- Scripts -->
-    <script type="module" src="./src/docs-page.ts"></script>
+      <!-- Footer -->
+      <footer class="portal-footer">
+        <p>
+          WaSHI: WebAssembly-backed, Solver-independent, High-level modeling Interface &bull;
+          <a href="https://github.com/ohtaman/washi" target="_blank" rel="noopener">GitHub</a> &bull;
+          <a href="https://www.npmjs.com/package/@ohtaman/washi" target="_blank" rel="noopener">npm</a>
+        </p>
+      </footer>
+    </div>
   </body>
 </html>
