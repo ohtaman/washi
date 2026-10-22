@@ -5,14 +5,18 @@ import {
   createEmptyFences,
   diagnoseAndSuggestFenceHint,
   evaluatePasture,
+  resolveTargetScore,
+  selectVerifiedOptimal,
   solveOptimalPasture,
 } from "../examples/web-demo/games/mofumofu-sheep/solver.js";
+import type { OptimalPastureResult } from "../examples/web-demo/games/mofumofu-sheep/types.js";
 import {
   CAMPAIGN_STAGES,
   generateVerifiedPastureStage,
   getLocalizedStageText,
 } from "../examples/web-demo/games/mofumofu-sheep/stages.js";
 import {
+  getDayLabel,
   getMonsterLocalized,
   getOpeningMovieCutsLocalized,
   getPrologueSlidesLocalized,
@@ -189,5 +193,34 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     const castleS1Zh = getStageLocalized(CASTLE_STAGES[0], "zh");
     expect(castleS1En.title).not.toBe(CASTLE_STAGES[0].title);
     expect(castleS1Zh.title).not.toBe(CASTLE_STAGES[0].title);
+
+    // 5. Chinese weekday labels already include "周" (周一..周五) and must not be double-prefixed as "周${dayName}"
+    expect(getDayLabel(0, "zh")).toBe("周一");
+    const castleMainTs = readFileSync(resolve(gamesRoot, "demon-castle-shift/main.ts"), "utf8");
+    expect(castleMainTs).not.toContain("周${dayName}");
+  });
+
+  it("preserves authored stage.targetScore and ignores unverified solver results when optimization fails", async () => {
+    const stage4 = CAMPAIGN_STAGES[3];
+    const empty = createEmptyFences(stage4.grid.length, stage4.grid[0].length);
+    const failedResult: OptimalPastureResult = {
+      status: "Error",
+      optimalFences: empty,
+      optimalScore: 0,
+      optimalFenceCount: 0,
+      optimalEvaluation: evaluatePasture(stage4, empty),
+      solveTimeMs: 1,
+      verified: false,
+    };
+
+    expect(selectVerifiedOptimal(failedResult)).toBeNull();
+    expect(resolveTargetScore(stage4, failedResult)).toBe(stage4.targetScore);
+    expect(resolveTargetScore(stage4, null)).toBe(stage4.targetScore);
+
+    // Hint diagnosis also ignores an unverified cached result and falls back to solving properly
+    const hint = await diagnoseAndSuggestFenceHint(stage4, empty, failedResult);
+    expect(hint.status).toBe("can_achieve_optimal");
+    expect(hint.action).toBe("place");
+    expect(hint.targetCell).toEqual({ row: 0, col: 1 });
   });
 });

@@ -381,6 +381,27 @@ export async function solveOptimalPasture(
 }
 
 /**
+ * Returns the cached solver result only when it is a verified optimal solution.
+ */
+export function selectVerifiedOptimal(
+  result: OptimalPastureResult | null | undefined
+): OptimalPastureResult | null {
+  return result?.verified && result.status === "Optimal" ? result : null;
+}
+
+/**
+ * Resolves the target score for a stage, preserving the authored `stage.targetScore`
+ * whenever no verified optimal solution is available.
+ */
+export function resolveTargetScore(
+  stage: StagePuzzle,
+  cachedOptimal?: OptimalPastureResult | null
+): number {
+  const verified = selectVerifiedOptimal(cachedOptimal);
+  return verified ? verified.optimalScore : stage.targetScore;
+}
+
+/**
  * Interactive HiGHS Hint & Mistake Diagnosis Engine:
  * Checks whether the player's currently placed fences can still be completed to an Optimal (★3) pasture,
  * or identifies which placed fence is preventing an optimal/safe enclosure.
@@ -390,7 +411,7 @@ export async function diagnoseAndSuggestFenceHint(
   currentFences: FenceGrid,
   cachedOptimal?: OptimalPastureResult | null
 ): Promise<HintDiagnosis> {
-  const baseOpt = cachedOptimal ?? (await solveOptimalPasture(stage));
+  const baseOpt = selectVerifiedOptimal(cachedOptimal) ?? (await solveOptimalPasture(stage));
   const rows = stage.grid.length;
   const cols = stage.grid[0]?.length ?? 0;
 
@@ -405,12 +426,21 @@ export async function diagnoseAndSuggestFenceHint(
 
   // Case 1: Over budget — tell the player to remove a fence that isn't in the optimal solution
   if (placedCells.length > stage.maxFences) {
-    const extraCell =
-      placedCells.find((c) => !baseOpt.optimalFences[c.row]?.[c.col]) ?? placedCells[0];
+    const extraCell = baseOpt.verified
+      ? (placedCells.find((c) => !baseOpt.optimalFences[c.row]?.[c.col]) ?? placedCells[0])
+      : placedCells[0];
     return {
       status: "bad_fence_placed",
       targetCell: extraCell,
       action: "remove",
+    };
+  }
+
+  if (!baseOpt.verified) {
+    return {
+      status: "can_achieve_optimal",
+      targetCell: null,
+      action: "place",
     };
   }
 

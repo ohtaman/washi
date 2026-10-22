@@ -2706,30 +2706,30 @@ async function openDispatchResultDialog(): Promise<void> {
             ? pickLang(currentLang, {
                 ja: `🌅 ${dayName}曜日の朝 ── 夜が明けた`,
                 en: `🌅 ${dayName} Morning — Dawn breaks`,
-                zh: `🌅 周${dayName}清晨 ── 天亮了`,
+                zh: `🌅 ${dayName}清晨 ── 天亮了`,
               })
             : pickLang(currentLang, {
                 ja: `🌅 夜が明け、${dayName}曜日の朝が訪れた`,
                 en: `🌅 Dawn breaks on ${dayName} morning`,
-                zh: `🌅 黎明破晓，周${dayName}清晨来临`,
+                zh: `🌅 黎明破晓，${dayName}清晨来临`,
               })
           : o.isFullMoon
             ? pickLang(currentLang, {
                 ja: `🌕 日が暮れて暗くなり、${dayName}曜日の満月が昇った`,
                 en: `🌕 Night falls and the full moon rises on ${dayName}`,
-                zh: `🌕 夜幕降临，周${dayName}的满月升起`,
+                zh: `🌕 夜幕降临，${dayName}的满月升起`,
               })
             : pickLang(currentLang, {
                 ja: `🌙 日が暮れて暗くなり、${dayName}曜日の夜が訪れた`,
                 en: `🌙 Night falls on ${dayName} evening`,
-                zh: `🌙 夜幕降临，周${dayName}的夜晚来临`,
+                zh: `🌙 夜幕降临，${dayName}的夜晚来临`,
               });
 
         if (encounterSlotProgress) {
           encounterSlotProgress.textContent = pickLang(currentLang, {
             ja: `${dayName}曜日・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
             en: `${dayName} ${shiftLabel} (${i + 1} / ${outcomes.length})`,
-            zh: `周${dayName}・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
+            zh: `${dayName}・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
           });
         }
         if (encounterCelestialOrb) {
@@ -2794,7 +2794,7 @@ async function openDispatchResultDialog(): Promise<void> {
           salStatusTextEl.textContent = pickLang(currentLang, {
             ja: `${dayName}曜日・${shiftLabel}：勇者軍の動きはなく、静かに時間が過ぎた。`,
             en: `${dayName} ${shiftLabel}: No enemy movement; time passed quietly.`,
-            zh: `周${dayName}・${shiftLabel}：勇者军没有动静，时间平静流逝。`,
+            zh: `${dayName}・${shiftLabel}：勇者军没有动静，时间平静流逝。`,
           });
         }
 
@@ -2859,7 +2859,7 @@ async function openDispatchResultDialog(): Promise<void> {
       headerEl.textContent = pickLang(currentLang, {
         ja: `${shiftIcon} ${dayName}曜日・${shiftLabel}の戦い`,
         en: `${shiftIcon} ${dayName} ${shiftLabel} Battle`,
-        zh: `${shiftIcon} 周${dayName}・${shiftLabel}之战`,
+        zh: `${shiftIcon} ${dayName}・${shiftLabel}之战`,
       });
     }
     if (winProbBadge) {
@@ -2908,23 +2908,23 @@ async function openDispatchResultDialog(): Promise<void> {
           ? pickLang(currentLang, {
               ja: `🌅 ${dayName}曜日の朝 ── 夜が明けた`,
               en: `🌅 ${dayName} Morning — Dawn breaks`,
-              zh: `🌅 周${dayName}清晨 ── 天亮了`,
+              zh: `🌅 ${dayName}清晨 ── 天亮了`,
             })
           : pickLang(currentLang, {
               ja: `🌅 夜が明け、${dayName}曜日の朝が訪れた`,
               en: `🌅 Dawn breaks on ${dayName} morning`,
-              zh: `🌅 黎明破晓，周${dayName}清晨来临`,
+              zh: `🌅 黎明破晓，${dayName}清晨来临`,
             })
         : o.isFullMoon
           ? pickLang(currentLang, {
               ja: `🌕 日が暮れて暗くなり、${dayName}曜日の満月が昇った`,
               en: `🌕 Night falls and the full moon rises on ${dayName}`,
-              zh: `🌕 夜幕降临，周${dayName}的满月升起`,
+              zh: `🌕 夜幕降临，${dayName}的满月升起`,
             })
           : pickLang(currentLang, {
               ja: `🌙 日が暮れて暗くなり、${dayName}曜日の夜が訪れた`,
               en: `🌙 Night falls on ${dayName} evening`,
-              zh: `🌙 夜幕降临，周${dayName}的夜晚来临`,
+              zh: `🌙 夜幕降临，${dayName}的夜晚来临`,
             });
 
       const arrivalHeadlineText = isDay
@@ -2943,7 +2943,7 @@ async function openDispatchResultDialog(): Promise<void> {
         encounterSlotProgress.textContent = pickLang(currentLang, {
           ja: `${dayName}曜日・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
           en: `${dayName} ${shiftLabel} (${i + 1} / ${outcomes.length})`,
-          zh: `周${dayName}・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
+          zh: `${dayName}・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
         });
       }
       if (encounterCelestialOrb) {
@@ -3015,12 +3015,12 @@ async function openDispatchResultDialog(): Promise<void> {
           ? pickLang(currentLang, {
               ja: `🌅 ${dayName}曜日の朝が訪れました…`,
               en: `🌅 ${dayName} morning arrives...`,
-              zh: `🌅 周${dayName}清晨来临……`,
+              zh: `🌅 ${dayName}清晨来临……`,
             })
           : pickLang(currentLang, {
               ja: `🌙 ${dayName}曜日の夜が訪れました…`,
               en: `🌙 ${dayName} night arrives...`,
-              zh: `🌙 周${dayName}夜晚来临……`,
+              zh: `🌙 ${dayName}夜晚来临……`,
             });
       }
       soundEngine.playTimeTransitionCue(isDay, o.isFullMoon);
@@ -3051,7 +3051,7 @@ async function openDispatchResultDialog(): Promise<void> {
             ? pickLang(currentLang, {
                 ja: `${dayName}曜日の夜が明けると、城門の前に「${locO.enemyName}」が現れた。`,
                 en: `As dawn broke on ${dayName}, ${locO.enemyName} appeared at the gate.`,
-                zh: `周${dayName}黎明破晓，「${locO.enemyName}」出现在了城门前。`,
+                zh: `${dayName}黎明破晓，「${locO.enemyName}」出现在了城门前。`,
               })
             : pickLang(currentLang, {
                 ja: `日が暮れて暗くなると、闇の中から「${locO.enemyName}」が現れた。`,
@@ -3188,7 +3188,7 @@ async function openDispatchResultDialog(): Promise<void> {
         salStatusTextEl.textContent = pickLang(currentLang, {
           ja: `${dayName}曜日・${shiftLabel}：${locO.defenderName}が「${locO.enemyName}」を退けた。`,
           en: `${dayName} ${shiftLabel}: ${locO.defenderName} repelled ${locO.enemyName}.`,
-          zh: `周${dayName}・${shiftLabel}：${locO.defenderName}击退了「${locO.enemyName}」。`,
+          zh: `${dayName}・${shiftLabel}：${locO.defenderName}击退了「${locO.enemyName}」。`,
         });
       }
       if (!skipped) {

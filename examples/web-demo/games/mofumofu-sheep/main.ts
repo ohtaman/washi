@@ -6,6 +6,8 @@ import {
   createEmptyFences,
   diagnoseAndSuggestFenceHint,
   evaluatePasture,
+  resolveTargetScore,
+  selectVerifiedOptimal,
   solveOptimalPasture,
 } from "./solver.js";
 import {
@@ -146,6 +148,7 @@ let currentFences: FenceGrid = createEmptyFences(
 let undoStack: FenceGrid[] = [];
 let currentEval: PastureEvaluation = evaluatePasture(currentStage, currentFences);
 let cachedOptimal: OptimalPastureResult | null = null;
+let solverFailed = false;
 let activeHint: HintDiagnosis | null = null;
 let wasClearedBeforeMove = false;
 let showingModelAnswer = false;
@@ -334,7 +337,7 @@ function applyStaticTranslations(): void {
 }
 
 function getTargetScore(): number {
-  return cachedOptimal?.optimalScore ?? currentStage.targetScore;
+  return resolveTargetScore(currentStage, cachedOptimal);
 }
 
 function isStageCleared(): boolean {
@@ -485,6 +488,7 @@ function renderHud(): void {
   // Controls state
   btnUndo.disabled = undoStack.length === 0;
   btnRestart.disabled = currentEval.fencesUsed === 0 && undoStack.length === 0;
+  btnHint.disabled = solverFailed;
   btnNewRandom.hidden = !isEx;
 
   // Inline Clear / Shortfall Banner
@@ -551,7 +555,23 @@ function renderHud(): void {
           en: `Current ${currentEval.pastureScore} pt / Goal ${targetScore} pt — Adjust your fences to enclose more 🍓 strawberries and 🌱 grass tiles`,
           zh: `当前 ${currentEval.pastureScore} pt / 目标 ${targetScore} pt — 请调整栅栏位置，将更多🍓野草莓和🌱草地圈入牧场`,
         });
-    btnShowOptimal.hidden = false;
+    btnShowOptimal.hidden = !cachedOptimal?.verified;
+    btnNextStage.hidden = true;
+  } else if (solverFailed) {
+    clearBannerEl.hidden = false;
+    clearBannerEl.className = "clear-banner banner-shortfall";
+    clearStarsEl.textContent = "⚠️";
+    clearHeadlineEl.textContent = pickLang(currentLang, {
+      ja: "お手本・ヒントの計算に失敗しました（目標スコアでプレイ可能です）",
+      en: "Could not compute model solution or hints (stage remains playable with target score)",
+      zh: "未能计算示范解答与提示（仍可按目标得分正常游玩）",
+    });
+    clearSubtextEl.textContent = pickLang(currentLang, {
+      ja: `クリア目標 ${targetScore} pt はそのまま有効です`,
+      en: `Goal ${targetScore} pt remains active`,
+      zh: `通关目标 ${targetScore} pt 保持有效`,
+    });
+    btnShowOptimal.hidden = true;
     btnNextStage.hidden = true;
   } else {
     clearBannerEl.hidden = true;
@@ -729,6 +749,7 @@ function handleRestart(): void {
 }
 
 async function handleHint(): Promise<void> {
+  if (solverFailed) return;
   const myToken = solveToken;
   const fencesSnapshot = currentFences;
   btnHint.disabled = true;
@@ -742,13 +763,17 @@ async function handleHint(): Promise<void> {
     activeHint = diagnosis;
     renderBoard();
     playTone(587.33, 110, "sine", 0.08);
+  } catch {
+    if (myToken !== solveToken) return;
+    solverFailed = true;
+    renderHud();
   } finally {
-    btnHint.disabled = false;
+    btnHint.disabled = solverFailed;
   }
 }
 
 function handleShowOptimal(): void {
-  if (!cachedOptimal) return;
+  if (!cachedOptimal?.verified) return;
   undoStack.push(cloneFences(currentFences));
   currentFences = cloneFences(cachedOptimal.optimalFences);
   showingModelAnswer = true;
@@ -763,15 +788,24 @@ async function loadStage(stage: StagePuzzle, index: number): Promise<void> {
   currentFences = createEmptyFences(stage.grid.length, stage.grid[0].length);
   undoStack = [];
   cachedOptimal = null;
+  solverFailed = false;
   activeHint = null;
   wasClearedBeforeMove = false;
   showingModelAnswer = false;
 
   updateEvaluationAndRender(false);
 
-  const solved = await solveOptimalPasture(stage);
-  if (myToken !== solveToken) return;
-  cachedOptimal = solved;
+  try {
+    const solved = await solveOptimalPasture(stage);
+    if (myToken !== solveToken) return;
+    const verifiedOpt = selectVerifiedOptimal(solved);
+    cachedOptimal = verifiedOpt;
+    solverFailed = verifiedOpt === null;
+  } catch {
+    if (myToken !== solveToken) return;
+    cachedOptimal = null;
+    solverFailed = true;
+  }
   updateEvaluationAndRender(false);
 }
 
