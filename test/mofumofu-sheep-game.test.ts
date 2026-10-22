@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  computeCellSize,
   createEmptyFences,
   diagnoseAndSuggestFenceHint,
   evaluatePasture,
@@ -222,5 +223,16 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(hint.status).toBe("can_achieve_optimal");
     expect(hint.action).toBe("place");
     expect(hint.targetCell).toEqual({ row: 0, col: 1 });
+  });
+
+  it("scales cell size to fit narrow 375px mobile viewports for 7x7 boards without overflowing", () => {
+    // Desktop / unconstrained fallback preserves ideal cell sizes
+    expect(computeCellSize(3, 4)).toBe(88);
+    expect(computeCellSize(7, 7)).toBe(60);
+
+    // 375px mobile viewport (~299px available inner board width): 7 * cellSize + 6 * 7 <= 299
+    const mobileCellSize = computeCellSize(7, 7, 299, 7);
+    expect(mobileCellSize).toBe(36);
+    expect(7 * mobileCellSize + 6 * 7).toBeLessThanOrEqual(299);
   });
 });

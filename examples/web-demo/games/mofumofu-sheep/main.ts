@@ -3,6 +3,7 @@ import { setHighsWasmUrl } from "../../../../src/index.js";
 import { getGameLang, pickLang, setGameLang, type GameLang } from "../i18n.js";
 import {
   cloneFences,
+  computeCellSize,
   createEmptyFences,
   diagnoseAndSuggestFenceHint,
   evaluatePasture,
@@ -344,12 +345,20 @@ function isStageCleared(): boolean {
   return currentEval.isSafe && currentEval.pastureScore >= getTargetScore();
 }
 
-function computeCellSize(rows: number, cols: number): number {
-  const maxDim = Math.max(rows, cols);
-  if (maxDim <= 4) return 88;
-  if (maxDim === 5) return 76;
-  if (maxDim === 6) return 68;
-  return 60;
+function getAvailableBoardWidth(): number | undefined {
+  const stageEl = boardGridEl.parentElement;
+  const viewportBound =
+    typeof window !== "undefined" && window.innerWidth > 0
+      ? Math.max(200, window.innerWidth - 76)
+      : undefined;
+  if (stageEl && stageEl.clientWidth > 0) {
+    const style = window.getComputedStyle(stageEl);
+    const padLeft = Number.parseFloat(style.paddingLeft) || 0;
+    const padRight = Number.parseFloat(style.paddingRight) || 0;
+    const stageInner = Math.max(200, stageEl.clientWidth - padLeft - padRight - 4);
+    return viewportBound !== undefined ? Math.min(stageInner, viewportBound) : stageInner;
+  }
+  return viewportBound;
 }
 
 function renderStageStrip(): void {
@@ -581,7 +590,7 @@ function renderHud(): void {
 function renderBoard(): void {
   const rows = currentStage.grid.length;
   const cols = currentStage.grid[0]?.length ?? 0;
-  const cellSize = computeCellSize(rows, cols);
+  const cellSize = computeCellSize(rows, cols, getAvailableBoardWidth());
   const cleared = isStageCleared();
 
   boardGridEl.style.setProperty("--cell-size", `${cellSize}px`);
@@ -872,6 +881,10 @@ window.addEventListener("keydown", (ev: KeyboardEvent) => {
     ev.preventDefault();
     void handleHint();
   }
+});
+
+window.addEventListener("resize", () => {
+  renderBoard();
 });
 
 // Initialize language & start directly in Stage 1

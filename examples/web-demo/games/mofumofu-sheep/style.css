@@ -368,8 +368,10 @@ body {
 /* Interactive Board Area */
 .board-stage {
   display: flex;
-  justify-content: center;
+  justify-content: safe center;
   align-items: center;
+  max-width: 100%;
+  overflow-x: auto;
   padding: 10px;
   background: radial-gradient(circle at center, #e6f4d2 0%, #d4e8bc 100%);
   border: 3px solid #b5d194;
@@ -380,6 +382,7 @@ body {
 .board-grid {
   display: grid;
   gap: 7px;
+  margin: 0 auto;
   justify-content: center;
   align-content: center;
 }
@@ -829,6 +832,15 @@ body {
 }
 
 @media (max-width: 640px) {
+  body {
+    padding: 10px 10px 24px;
+  }
+  .puzzle-card {
+    padding: 12px 12px 14px;
+  }
+  .board-stage {
+    padding: 8px;
+  }
   .hud-bar {
     grid-template-columns: 1fr;
   }

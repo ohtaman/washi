@@ -402,6 +402,30 @@ export function resolveTargetScore(
 }
 
 /**
+ * Computes the responsive board cell size (in px) so that even a 7×7 grid fits
+ * comfortably inside mobile viewports (e.g. 375px wide) without clipping.
+ */
+export function computeCellSize(
+  rows: number,
+  cols: number,
+  availableWidthPx?: number,
+  gapPx = 7
+): number {
+  const maxDim = Math.max(rows, cols);
+  const ideal = maxDim <= 4 ? 88 : maxDim === 5 ? 76 : maxDim === 6 ? 68 : 60;
+  if (
+    typeof availableWidthPx !== "number" ||
+    !Number.isFinite(availableWidthPx) ||
+    availableWidthPx <= 0 ||
+    cols <= 0
+  ) {
+    return ideal;
+  }
+  const fitWidth = Math.floor((availableWidthPx - Math.max(0, cols - 1) * gapPx) / cols);
+  return Math.max(34, Math.min(ideal, fitWidth));
+}
+
+/**
  * Interactive HiGHS Hint & Mistake Diagnosis Engine:
  * Checks whether the player's currently placed fences can still be completed to an Optimal (★3) pasture,
  * or identifies which placed fence is preventing an optimal/safe enclosure.
