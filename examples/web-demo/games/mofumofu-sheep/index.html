@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>もふもふ羊の牧場囲い — まきばの柵パズル</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <!-- Top Bar: Title + Cleared Count + Language Switcher + Back Link -->
+      <header class="topbar">
+        <div class="brand">
+          <a href="../index.html" class="back-link" id="back-link" title="ゲーム一覧へ戻る">← 一覧</a>
+          <img
+            src="/games/mofumofu-sheep/char-moko.jpg"
+            alt="モコ"
+            class="brand-avatar"
+          />
+          <div class="brand-text">
+            <h1 id="app-title">もふもふ羊の牧場囲い</h1>
+            <span class="engine-tag" id="app-subtitle">まきばの柵パズル</span>
+          </div>
+        </div>
+
+        <div class="topbar-stats">
+          <div class="star-counter" id="total-stars-badge" title="クリア済みステージ数">
+            <span class="star-icon">★</span>
+            <span id="total-stars-text">0 / 12 CLEAR</span>
+          </div>
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Stage Selector Strip (1..12 + EX Random) -->
+      <nav class="stage-strip" id="stage-strip" aria-label="ステージ選択"></nav>
+
+      <!-- Main Puzzle Card -->
+      <main class="puzzle-card">
+        <!-- Stage Header (Title + 1-line rule hint) -->
+        <div class="stage-header">
+          <div class="stage-title-group">
+            <span class="stage-badge" id="stage-badge">STAGE 1</span>
+            <h2 id="stage-title">はじめての柵</h2>
+          </div>
+          <p class="stage-oneliner" id="stage-oneliner">
+            マスをタップして柵🪵を置き、🐺から🐑を守ろう
+          </p>
+        </div>
+
+        <!-- Compact 3-Pill HUD -->
+        <div class="hud-bar">
+          <div class="hud-pill" id="hud-fence-pill">
+            <span class="hud-label" id="hud-fence-label">柵の残り</span>
+            <div class="fence-dots" id="fence-dots"></div>
+            <strong class="hud-value" id="fence-count-text">残り 1 / 1</strong>
+          </div>
+
+          <div class="hud-pill" id="hud-score-pill">
+            <span class="hud-label" id="hud-score-label">現在 / クリア目標</span>
+            <strong class="hud-value" id="score-text">— / 目標 7 pt</strong>
+          </div>
+
+          <div class="hud-pill status-danger" id="hud-status-pill">
+            <span class="status-icon" id="status-icon">🐺</span>
+            <strong class="status-text" id="status-text">オオカミ侵入中</strong>
+          </div>
+        </div>
+
+        <!-- Interactive Board Area -->
+        <div class="board-stage" id="board-stage">
+          <div
+            class="board-grid"
+            id="board-grid"
+            role="grid"
+            aria-label="牧場パズル盤面"
+          ></div>
+        </div>
+
+        <!-- Non-Blocking Inline Clear / Suboptimal Feedback Bar -->
+        <div class="clear-banner" id="clear-banner" hidden>
+          <div class="clear-banner-main">
+            <div class="clear-stars" id="clear-stars">★</div>
+            <div class="clear-copy">
+              <strong id="clear-headline">まきば完成・ステージクリア</strong>
+              <span id="clear-subtext">目標スコア達成</span>
+            </div>
+          </div>
+          <div class="clear-actions">
+            <button type="button" class="btn btn-secondary" id="btn-show-optimal" hidden>
+              ✨ お手本を見る
+            </button>
+            <button type="button" class="btn btn-next" id="btn-next-stage">
+              次のステージへ ▶
+            </button>
+          </div>
+        </div>
+
+        <!-- Puzzle Control Bar (Undo / Restart / Hint / Random) -->
+        <div class="controls-bar">
+          <div class="controls-left">
+            <button
+              type="button"
+              class="btn btn-tool"
+              id="btn-undo"
+              disabled
+              title="1手戻す (Zキー)"
+            >
+              ↩ <span id="btn-undo-label">1手戻す</span> <kbd>Z</kbd>
+            </button>
+            <button
+              type="button"
+              class="btn btn-tool"
+              id="btn-restart"
+              disabled
+              title="最初からやり直す (Rキー)"
+            >
+              🔄 <span id="btn-restart-label">リスタート</span> <kbd>R</kbd>
+            </button>
+          </div>
+
+          <div class="controls-right">
+            <button
+              type="button"
+              class="btn btn-hint"
+              id="btn-hint"
+              title="次の1手を盤面上で光らせて教えます (Hキー)"
+            >
+              💡 <span id="btn-hint-label">1手ヒント</span> <kbd>H</kbd>
+            </button>
+            <button
+              type="button"
+              class="btn btn-tool"
+              id="btn-new-random"
+              hidden
+              title="ちがう牧場へ移動する"
+            >
+              🌿 <span id="btn-new-random-label">ちがう牧場へ</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Minimal Visual Icon Legend (No prose) -->
+        <footer class="legend-strip" id="legend-strip" aria-label="タイル得点一覧">
+          <span class="legend-chip" id="legend-sheep" title="ヒツジ（+2点・守る対象）">🐑 +2</span>
+          <span class="legend-chip" id="legend-grass" title="草地（+1点）">🌱 +1</span>
+          <span class="legend-chip chip-plus" id="legend-strawberry" title="野いちご（+5点）">🍓 +5</span>
+          <span class="legend-chip chip-minus" id="legend-mushroom" title="どくキノコ（-5点・柵で潰せる）">🍄 -5</span>
+          <span class="legend-chip chip-bridge" id="legend-bridge" title="石橋（+1点・通り抜け可・柵は置けない）">🌉 +1 <small>(柵×)</small></span>
+          <span class="legend-chip chip-wall" id="legend-wall" title="水辺・岩（通り抜け不可の壁）">💧🪨 壁</span>
+        </footer>
+      </main>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
