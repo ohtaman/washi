@@ -1067,7 +1067,8 @@ export interface NurseMonthlySummary {
   nurseId: string;
   counts: Record<string, number>;
   totalWorkDays: number;
-  totalNightShifts: number; // E + N
+  totalOffDays: number;
+  totalNightShifts: number; // E + N (+ E/N-based custom shifts)
   maxConsecutiveWork: number; // including carryover
   prevMonthTailStreak: number; // how many consecutive work days at the end of prev month
   weekendDaysOff: number;

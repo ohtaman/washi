@@ -7,6 +7,7 @@ import {
 import {
   buildNurseWashiModel,
   evaluateNurseSchedule,
+  getPrevMonthTailWorkStreak,
   solveNurseScheduleWithWashi,
   diagnoseNurseScheduleWithHiGHS,
 } from "../examples/web-demo/apps/ai-shift/solver.js";
@@ -3305,5 +3306,48 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const diagQuota = await diagnoseNurseScheduleWithHiGHS(quotaInfeasibleState);
     expect(diagQuota.status).toBe("Unsat");
     expect(diagQuota.conflicts.some((c) => c.name.startsWith("quota_min_"))).toBe(true);
+
+    // 10. O-based custom shifts in prevMonthShifts do not count toward carryover work streak (4362997688)
+    const leaveCustomDefs = [
+      { code: "CONF", label: "学会出張", shortLabel: "学", baseShift: "O" as const },
+      { code: "NIGHT_TR", label: "夜勤研修", shortLabel: "夜研", baseShift: "N" as const },
+    ];
+    expect(getPrevMonthTailWorkStreak(["D", "D", "CONF"], leaveCustomDefs)).toBe(0);
+    expect(getPrevMonthTailWorkStreak(["CONF", "D", "NIGHT_TR"], leaveCustomDefs)).toBe(2);
+
+    const stateCarryoverLeave = {
+      ...baseState,
+      customShiftDefs: leaveCustomDefs,
+      nurses: baseState.nurses.map((n) =>
+        n.id === "N01" ? { ...n, prevMonthShifts: ["D", "D", "D", "D", "CONF"] } : n
+      ),
+    };
+    const builtCarryoverLeave = buildNurseWashiModel(stateCarryoverLeave);
+    expect(builtCarryoverLeave.constraintMeta.has("carryover_consec_N01")).toBe(false);
+
+    // 11. NurseMonthlySummary populates totalOffDays and totalNightShifts including custom shifts (4362997695)
+    const customSummarySched: Record<string, string[]> = {};
+    for (const n of stateCarryoverLeave.nurses) {
+      customSummarySched[n.id] = new Array(stateCarryoverLeave.config.numDays).fill("D");
+    }
+    // Assign N01: 2 standard O, 3 CONF (O-based), 2 standard E, 1 standard N, 2 NIGHT_TR (N-based), rest D (20 days)
+    customSummarySched["N01"] = [
+      "O",
+      "O",
+      "CONF",
+      "CONF",
+      "CONF",
+      "E",
+      "E",
+      "N",
+      "NIGHT_TR",
+      "NIGHT_TR",
+      ...new Array(20).fill("D"),
+    ];
+    const evalCustomSummary = evaluateNurseSchedule(stateCarryoverLeave, customSummarySched);
+    const n01Summary = evalCustomSummary.nurseSummaries["N01"]!;
+    expect(n01Summary.totalOffDays).toBe(5);
+    expect(n01Summary.totalWorkDays).toBe(25);
+    expect(n01Summary.totalNightShifts).toBe(5);
   });
 });

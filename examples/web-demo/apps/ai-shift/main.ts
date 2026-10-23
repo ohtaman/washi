@@ -790,7 +790,7 @@ function renderScheduleMatrix(): void {
     roleSpan.textContent = roleLabel;
     topRow.append(nameSpan, roleSpan);
 
-    const tailStreak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts);
+    const tailStreak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts, customShiftDefs);
     tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${roleLabel})\n前月末: ${tailStreak}連勤\n直近11ヶ月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
     tdNurse.appendChild(topRow);
     tr.appendChild(tdNurse);
@@ -877,7 +877,8 @@ function renderScheduleMatrix(): void {
     // 4 summary columns: 夜勤 (E+N), 公休 (O), 連勤, 36協定(年間累計)
     const summary = currentEvaluation?.nurseSummaries[nurse.id];
     const counts = summary?.counts ?? { D: 0, E: 0, N: 0, O: 0 };
-    const nightTotal = (counts.E ?? 0) + (counts.N ?? 0);
+    const nightTotal = summary?.totalNightShifts ?? ((counts.E ?? 0) + (counts.N ?? 0));
+    const offTotal = summary?.totalOffDays ?? (counts.O ?? 0);
     const maxStreak = summary?.maxConsecutiveWork ?? 0;
 
     const tdNight = document.createElement("td");
@@ -888,9 +889,9 @@ function renderScheduleMatrix(): void {
 
     const tdOff = document.createElement("td");
     tdOff.className = "stat-col";
-    tdOff.textContent = `${counts.O ?? 0}日`;
+    tdOff.textContent = `${offTotal}日`;
     const effectiveMinOff = nurse.minMonthlyDaysOff ?? config.minMonthlyDaysOff;
-    if ((counts.O ?? 0) < effectiveMinOff) tdOff.classList.add("cov-short");
+    if (offTotal < effectiveMinOff) tdOff.classList.add("cov-short");
 
     const tdStreak = document.createElement("td");
     tdStreak.className = "stat-col";
@@ -2062,7 +2063,7 @@ function renderStaffProfilesTab(): void {
     tdSkills.appendChild(skillsWrap);
 
     const tdPrev = document.createElement("td");
-    const streak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts);
+    const streak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts, appState.customShiftDefs);
     tdPrev.textContent = `${nurse.prevMonthShifts
       .map((s) => getShiftMeta(s, appState.customShiftDefs).shortLabel)
       .join("-")} (末${streak}連)`;
@@ -2362,7 +2363,10 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
     })`,
     `前月末のシフト: ${nurse.prevMonthShifts
       .map((s) => getShiftMeta(s, appState.customShiftDefs).shortLabel)
-      .join(" → ")} (前月末${getPrevMonthTailWorkStreak(nurse.prevMonthShifts)}連勤)`,
+      .join(" → ")} (前月末${getPrevMonthTailWorkStreak(
+      nurse.prevMonthShifts,
+      appState.customShiftDefs
+    )}連勤)`,
     `36協定 直近11ヶ月累計: 残業 ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h / 年間上限 ${appState.config.maxAnnualOvertimeHours}h`,
   ];
 

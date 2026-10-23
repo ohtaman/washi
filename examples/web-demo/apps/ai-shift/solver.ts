@@ -135,10 +135,13 @@ function getElasticPenaltyWeight(meta: ConstraintMeta, mode: ElasticWeightMode):
 /**
  * Counts how many consecutive working days a nurse had at the very end of the previous month.
  */
-export function getPrevMonthTailWorkStreak(prevMonthShifts: readonly ShiftCode[]): number {
+export function getPrevMonthTailWorkStreak(
+  prevMonthShifts: readonly ShiftCode[],
+  customShiftDefs: readonly CustomShiftDef[] = []
+): number {
   let streak = 0;
   for (let i = prevMonthShifts.length - 1; i >= 0; i--) {
-    if (prevMonthShifts[i] !== "O") {
+    if (getBaseOdenShift(prevMonthShifts[i], customShiftDefs) !== "O") {
       streak++;
     } else {
       break;
@@ -648,7 +651,7 @@ export function buildNurseWashiModel(
       }
 
       // Consecutive work days across month boundary
-      const tailStreak = getPrevMonthTailWorkStreak(prev);
+      const tailStreak = getPrevMonthTailWorkStreak(prev, customShiftDefs);
       const maxConsec = nurse.maxConsecutiveWorkDays ?? config.maxConsecutiveWorkDays;
       if (tailStreak > 0 && maxConsec >= 1) {
         const clampedStreak = Math.min(tailStreak, maxConsec);
@@ -2457,9 +2460,10 @@ export function evaluateNurseSchedule(
       nurseId: nurse.id,
       counts,
       totalWorkDays,
+      totalOffDays,
       totalNightShifts,
       maxConsecutiveWork,
-      prevMonthTailStreak: getPrevMonthTailWorkStreak(nurse.prevMonthShifts),
+      prevMonthTailStreak: getPrevMonthTailWorkStreak(nurse.prevMonthShifts, customShiftDefs),
       weekendDaysOff,
       hardRequestsMet: nHardMet,
       hardRequestsTotal: nHardTotal,
@@ -2797,7 +2801,7 @@ function buildAggregateMonthlyHiGHSModel(
               r.isHard !== false &&
               r.kind === "pin_shift" &&
               r.nurseId === nurse.id &&
-              r.shift === "O" &&
+              Boolean(r.shift && getBaseOdenShift(r.shift, customShiftDefs) === "O") &&
               typeof r.day === "number"
           )
           .map((r) => r.day!)
@@ -2826,7 +2830,7 @@ function buildAggregateMonthlyHiGHSModel(
               r.isHard !== false &&
               r.kind === "pin_shift" &&
               r.nurseId === nurse.id &&
-              Boolean(r.shift && r.shift !== "O") &&
+              Boolean(r.shift && getBaseOdenShift(r.shift, customShiftDefs) !== "O") &&
               typeof r.day === "number"
           )
           .map((r) => r.day!)
@@ -2860,7 +2864,7 @@ function buildAggregateMonthlyHiGHSModel(
 
     const effectiveMaxConsec = nurse.maxConsecutiveWorkDays ?? config.maxConsecutiveWorkDays;
     const tailStreak = config.enforcePrevMonthCarryover
-      ? getPrevMonthTailWorkStreak(nurse.prevMonthShifts)
+      ? getPrevMonthTailWorkStreak(nurse.prevMonthShifts, customShiftDefs)
       : 0;
     const minOffByConsec = Math.floor(
       (numDays + Math.min(tailStreak, effectiveMaxConsec)) / (effectiveMaxConsec + 1)
