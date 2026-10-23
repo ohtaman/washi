@@ -2830,7 +2830,7 @@ function collectViolatedSlacks(
  * Diagnoses conflicting constraints using ONLY HiGHS (`@ohtaman/washi`) via two-pass
  * Elastic Constraint Relaxation (Slack Penalty Minimization).
  *
- * Requires zero Z3 / `SharedArrayBuffer` / COOP-COEP headers, runs in < 30ms, and works
+ * Requires no `SharedArrayBuffer` / COOP-COEP headers, runs in < 30ms, and works
  * out-of-the-box on GitHub Pages.
  */
 export async function diagnoseNurseScheduleWithHiGHS(

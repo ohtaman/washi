@@ -483,7 +483,7 @@ async function checkAndInitNano(triggerWarmup = false): Promise<GeminiNanoStatus
   return status;
 }
 
-// ==================== RIGHT PANE: CLEAN STATUS BAR & Z3 CONFLICT ALERT ====================
+// ==================== RIGHT PANE: CLEAN STATUS BAR & CONFLICT ALERT ====================
 function renderStatusAndConflictBar(): void {
   const statusBadge = $("kpi-status-badge");
   const summaryTextEl = $("kpi-summary-text");
@@ -546,9 +546,9 @@ function renderStatusAndConflictBar(): void {
     summaryTextEl.textContent = lastSolveOutcome.errorMessage || "計算が中断されました";
   }
 
-  // Z3 Unsat Core Alert Box
-  const conflictBanner = $("z3-conflict-alert");
-  const conflictList = $("z3-conflict-list");
+  // Conflict Alert Box
+  const conflictBanner = $("conflict-alert");
+  const conflictList = $("conflict-list");
   conflictList.replaceChildren();
 
   if (lastSolveOutcome.status === "Infeasible" && lastSolveOutcome.conflicts.length > 0) {
@@ -2174,7 +2174,7 @@ async function runWashiOptimization(): Promise<WashiSolveOutcome | null> {
   return activeSolvePromise;
 }
 
-async function runExplicitZ3Diagnosis(): Promise<void> {
+async function runExplicitConflictDiagnosis(): Promise<void> {
   if (isSolving) return;
   isSolving = true;
   renderStatusAndConflictBar();
@@ -2666,7 +2666,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
         pillSummaries,
         "⏳ 矛盾の原因を診断しています…"
       );
-      await runExplicitZ3Diagnosis();
+      await runExplicitConflictDiagnosis();
       turnRecord.solverOutcome = {
         ran: true,
         mode: "diagnose",
@@ -2855,12 +2855,12 @@ function setupEventListeners(): void {
 
   $("btn-check-current").addEventListener("click", () => {
     readConfigInputsToState();
-    void runExplicitZ3Diagnosis();
+    void runExplicitConflictDiagnosis();
   });
 
-  $("btn-diagnose-z3").addEventListener("click", () => {
+  $("btn-diagnose-conflict").addEventListener("click", () => {
     readConfigInputsToState();
-    void runExplicitZ3Diagnosis();
+    void runExplicitConflictDiagnosis();
   });
 
   const resetToCleanState = () => {
@@ -3042,7 +3042,7 @@ function setupEventListeners(): void {
     void runWashiOptimization();
   });
 
-  // Z3 Conflict Alert buttons
+  // Conflict Alert buttons
   $("btn-clear-custom-conflicts").addEventListener("click", () => {
     resetToCleanState();
   });

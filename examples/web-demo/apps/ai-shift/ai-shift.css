@@ -913,8 +913,8 @@ body.ai-shift-body {
   font-family: var(--font-mono, monospace);
 }
 
-/* Z3 Unsat Core Banner */
-.z3-conflict-banner {
+/* Conflict Alert Banner */
+.conflict-banner {
   margin: 8px 16px 0;
   padding: 10px 14px;
   border-radius: 8px;
@@ -925,7 +925,7 @@ body.ai-shift-body {
   overflow-y: auto;
 }
 
-.z3-conflict-header {
+.conflict-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -934,22 +934,22 @@ body.ai-shift-body {
   margin-bottom: 6px;
 }
 
-.z3-conflict-title {
+.conflict-title {
   font-size: 0.79rem;
   font-weight: 700;
   color: #dc2626;
 }
 
-[data-theme="dark"] .z3-conflict-title {
+[data-theme="dark"] .conflict-title {
   color: #f87171;
 }
 
-.z3-conflict-actions {
+.conflict-actions {
   display: flex;
   gap: 6px;
 }
 
-.z3-conflict-list {
+.conflict-list {
   margin: 0;
   padding-left: 18px;
   font-size: 0.74rem;

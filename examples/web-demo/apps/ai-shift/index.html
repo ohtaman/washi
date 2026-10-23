@@ -388,12 +388,12 @@
         </div>
 
         <!-- Conflict Alert Box (Shown only when Infeasible) -->
-        <div id="z3-conflict-alert" class="z3-conflict-banner" hidden>
-          <div class="z3-conflict-header">
-            <div class="z3-conflict-title">
+        <div id="conflict-alert" class="conflict-banner" hidden>
+          <div class="conflict-header">
+            <div class="conflict-title">
               <span>🚨 シフトを組めません — WaSHI (HiGHS) が特定した衝突ルール</span>
             </div>
-            <div class="z3-conflict-actions">
+            <div class="conflict-actions">
               <button type="button" id="btn-clear-custom-conflicts" class="btn-xs-primary">
                 ✨ 衝突している追加ルールを解除して解決
               </button>
@@ -402,7 +402,7 @@
               </button>
             </div>
           </div>
-          <ul id="z3-conflict-list" class="z3-conflict-list"></ul>
+          <ul id="conflict-list" class="conflict-list"></ul>
         </div>
 
         <!-- Clean 3-Tab Navigation Bar -->
@@ -826,12 +826,12 @@
           <!-- Optional Collapsible Developer Inspector -->
           <details class="dev-inspector-details">
             <summary class="dev-inspector-summary">
-              💻 開発者向け: WaSHI 数理モデルコード ＆ Z3 整合性チェックを表示
+              💻 開発者向け: WaSHI 数理モデルコード ＆ 整合性チェックを表示
             </summary>
             <div class="dev-inspector-body">
               <div class="dev-inspector-actions">
-                <button type="button" id="btn-diagnose-z3" class="btn-solve-secondary">
-                  🔍 Z3 で現在の制約の論理整合性を単体チェック
+                <button type="button" id="btn-diagnose-conflict" class="btn-solve-secondary">
+                  🔍 WaSHI (HiGHS) で現在の制約の論理整合性を単体チェック
                 </button>
                 <span id="lp-stats-badge" class="constraint-tag">-- vars / -- constraints</span>
               </div>
@@ -1011,7 +1011,7 @@
             </li>
           </ol>
           <p class="nano-guide-note">
-            💡 Gemini Nano が未有効の環境でも、右側のシフト表クリック固定・チュートリアル・条件変更・WaSHI (HiGHS / Z3) による最適化と矛盾診断はすべてご利用いただけます。
+            💡 Gemini Nano が未有効の環境でも、右側のシフト表クリック固定・チュートリアル・条件変更・WaSHI (HiGHS) による最適化と矛盾診断はすべてご利用いただけます。
           </p>
         </div>
         <div class="dialog-footer">

@@ -39,7 +39,7 @@ import {
   verifyExecutionAgainstRequest,
 } from "../examples/web-demo/apps/ai-shift/nano-client.js";
 
-describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z3)", () => {
+describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", () => {
   it("solves default 30-nurse 30-day schedule to Optimal with HiGHS and passes validateSolution()", async () => {
     const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
     expect(state.nurses.length).toBe(30);
@@ -75,7 +75,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(workedInFirst2).toBeLessThanOrEqual(1);
   }, 30_000);
 
-  it("diagnoses carryover conflict with Z3 unsatCore when Day 1 is pinned to D after prev month N", async () => {
+  it("diagnoses carryover conflict with HiGHS when Day 1 is pinned to D after prev month N", async () => {
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
     const { updatedState } = injectConflictScenario(baseState, "carryover_clash");
 
@@ -84,7 +84,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const elapsed = performance.now() - t0;
 
     console.log(
-      `[Carryover Conflict Z3] status=${res.status}, conflicts=${res.rawConflictNames.join(", ")}, total=${Math.round(elapsed)}ms`
+      `[Carryover Conflict HiGHS] status=${res.status}, conflicts=${res.rawConflictNames.join(", ")}, total=${Math.round(elapsed)}ms`
     );
 
     expect(res.status).toBe("Infeasible");
@@ -92,7 +92,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(res.rawConflictNames.some((c) => c.includes("carryover_N_to_D_N01_d1"))).toBe(true);
   }, 30_000);
 
-  it("diagnoses leader shortage conflict with Z3 unsatCore", async () => {
+  it("diagnoses leader shortage conflict with HiGHS", async () => {
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
     const { updatedState } = injectConflictScenario(baseState, "leader_shortage");
 
@@ -101,7 +101,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const elapsed = performance.now() - t0;
 
     console.log(
-      `[Leader Shortage Conflict Z3] status=${res.status}, conflicts=${res.rawConflictNames.join(", ")}, total=${Math.round(elapsed)}ms`
+      `[Leader Shortage Conflict HiGHS] status=${res.status}, conflicts=${res.rawConflictNames.join(", ")}, total=${Math.round(elapsed)}ms`
     );
 
     expect(res.status).toBe("Infeasible");
@@ -175,7 +175,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const resNight = await solveNurseScheduleWithWashi(nightCapInfeasibleState);
     const nightMs = Math.round(performance.now() - t1);
     console.log(
-      `[Monthly Night Cap=5 Z3] status=${resNight.status}, conflicts=${resNight.rawConflictNames.slice(0, 6).join(", ")}, time=${nightMs}ms`
+      `[Monthly Night Cap=5 HiGHS] status=${resNight.status}, conflicts=${resNight.rawConflictNames.slice(0, 6).join(", ")}, time=${nightMs}ms`
     );
     expect(resNight.status).toBe("Infeasible");
     expect(resNight.conflicts.length).toBeGreaterThan(0);
@@ -2619,7 +2619,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
   it("enforces zero-holder skill/staffing minima, validates ICU coverage, resolves aliases in daily_shift_cap, and counts custom O-based shifts as days off", async () => {
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
 
-    // 1. Custom skill with minDay > 0 and 0 holders must be Infeasible when hard, and diagnosed in Z3
+    // 1. Custom skill with minDay > 0 and 0 holders must be Infeasible when hard, and diagnosed in HiGHS
     const unheldSkillState = {
       ...baseState,
       skillDefs: [
