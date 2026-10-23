@@ -166,7 +166,7 @@ export function getNursePrevCompletedShiftCount(
 }
 
 /**
- * Determines whether a nurse is targeted by a custom constraint rule (`nurseIds`, `nurseId`, `attribute`, or `targetRole`).
+ * Determines whether a nurse is targeted by a custom constraint rule (`nurseIds`, `nurseId`, or `attribute`).
  */
 export function isNurseTargetedByRule(
   nurse: NurseProfile,
@@ -179,7 +179,7 @@ export function isNurseTargetedByRule(
   if (rule.nurseId) {
     return rule.nurseId === nurse.id;
   }
-  const attr = rule.attribute || rule.targetRole;
+  const attr = rule.attribute;
   if (!attr) {
     return false;
   }
@@ -630,39 +630,6 @@ export function buildNurseWashiModel(
         }
       }
 
-      const secondLastPrevBase = getBaseOdenShift(secondLastPrev, customShiftDefs);
-      if (prevBase === "N" && config.maxConsecutiveNight2) {
-        if (secondLastPrevBase === "N") {
-          addTrackedConstraint(
-            expr`${sum(getNurseBaseShiftVars(nurse.id, 0, "N"))} <= 0`,
-            {
-              name: `carryover_max_N2_${nurse.id}_d1`,
-              category: "carryover",
-              ruleKey: "maxConsecutiveNight2",
-              labelJa: `前月引き継ぎ: ${nurse.name}(${nurse.id}) は前月末に深夜勤2連続済のため、${config.month}/1の深夜勤(N)は禁止`,
-              relatedNurseIds: [nurse.id],
-              relatedDay: 1,
-            }
-          );
-        } else if (numDays >= 2 && isDayIncluded(2)) {
-          const nVarsDay1And2 = [
-            ...getNurseBaseShiftVars(nurse.id, 0, "N"),
-            ...getNurseBaseShiftVars(nurse.id, 1, "N"),
-          ];
-          addTrackedConstraint(
-            expr`${sum(nVarsDay1And2)} <= 1`,
-            {
-              name: `carryover_max_N2_${nurse.id}_d1_d2`,
-              category: "carryover",
-              ruleKey: "maxConsecutiveNight2",
-              labelJa: `前月引き継ぎ: ${nurse.name}(${nurse.id}) は前月末日が深夜勤(N)のため、${config.month}/1〜2の連続深夜勤は禁止（深夜3連続防止）`,
-              relatedNurseIds: [nurse.id],
-              relatedDay: 1,
-            }
-          );
-        }
-      }
-
       // Consecutive work days across month boundary
       const tailStreak = getPrevMonthTailWorkStreak(prev);
       const maxConsec = nurse.maxConsecutiveWorkDays ?? config.maxConsecutiveWorkDays;
@@ -741,29 +708,6 @@ export function buildNurseWashiModel(
             );
           }
         }
-      }
-    }
-
-    if (config.maxConsecutiveNight2) {
-      for (let d = 1; d <= numDays - 2; d++) {
-        if (!isDayIncluded(d) || !isDayIncluded(d + 1) || !isDayIncluded(d + 2)) continue;
-        const idx = d - 1;
-        const nWindowVars = [
-          ...getNurseBaseShiftVars(nurse.id, idx, "N"),
-          ...getNurseBaseShiftVars(nurse.id, idx + 1, "N"),
-          ...getNurseBaseShiftVars(nurse.id, idx + 2, "N"),
-        ];
-        addTrackedConstraint(
-          expr`${sum(nWindowVars)} <= 2`,
-          {
-            name: `max_consec_N2_${nurse.id}_d${d}`,
-            category: "transition",
-            ruleKey: "maxConsecutiveNight2",
-            labelJa: `深夜3連続禁止: ${nurse.name}(${nurse.id}) の ${config.month}/${d}〜${config.month}/${d + 2} における3日連続深夜勤は禁止`,
-            relatedNurseIds: [nurse.id],
-            relatedDay: d,
-          }
-        );
       }
     }
   }
@@ -1012,7 +956,7 @@ export function buildNurseWashiModel(
               {
                 name: `skill_${sd.code}_${s}_d${d}`,
                 category: "skill",
-                ruleKey: "enforceSkillCoverage",
+                ruleKey: `skill_${sd.code}`,
                 labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}の「${sd.label}」配置 (>= ${minReq}名)`,
                 relatedDay: d,
                 relaxSuggestion: `「${sd.label}」の${SHIFT_LABEL_JA[s]}必要人数（${minReq}名）を緩和するか保持者を増やしてください。`,
@@ -1032,7 +976,7 @@ export function buildNurseWashiModel(
               {
                 name: `skill_max_${sd.code}_${s}_d${d}`,
                 category: "skill",
-                ruleKey: "enforceSkillCoverage",
+                ruleKey: `skill_${sd.code}`,
                 labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}の「${sd.label}」人数上限 (<= ${maxCap}名)`,
                 relatedDay: d,
                 relaxSuggestion: `「${sd.label}」の${SHIFT_LABEL_JA[s]}上限人数（現在:${maxCap}名）を緩和してください。`,
@@ -1380,8 +1324,7 @@ export function buildNurseWashiModel(
     ) {
       const shiftMeta = getShiftMeta(rule.shift, customShiftDefs);
       const hasTargetFilter = Boolean(
-        (rule.targetRole && rule.targetRole !== "all") ||
-          (rule.attribute && rule.attribute !== "all") ||
+        (rule.attribute && rule.attribute !== "all") ||
           rule.nurseId ||
           (rule.nurseIds && rule.nurseIds.length > 0)
       );
@@ -1558,14 +1501,11 @@ export function buildNurseWashiModel(
       (r) => r.enabled && r.kind === "level_night_shifts"
     );
     if (nightLevelRule) {
-      const groupBy = nightLevelRule.levelGroupBy ?? "role_and_skill";
+      const groupBy = nightLevelRule.levelGroupBy ?? "skill";
       const eligibleNurses = nurses.filter((n) => n.nightOk);
       const getGroupKey = (n: NurseProfile): string => {
-        const skillKey = [...n.skills].sort().join(",");
         if (groupBy === "all") return "all";
-        if (groupBy === "role") return n.role;
-        if (groupBy === "skill") return skillKey;
-        return `${n.role}:${skillKey}`;
+        return [...n.skills].sort().join(",");
       };
       const groups = new Map<string, NurseProfile[]>();
       for (const n of eligibleNurses) {
@@ -1751,14 +1691,14 @@ export function evaluateNurseSchedule(
         if (doesNurseSatisfySkill(nurse, "icu_er", activeSkillDefs)) {
           icuSkills.D++;
         }
-        if (nurse.role === "newcomer") {
+        if (doesNurseSatisfySkill(nurse, "newcomer", activeSkillDefs)) {
           newcomers.D++;
         }
       } else if (shift === "E" || shift === "N") {
         const nightSub = shift as "E" | "N";
         if (doesNurseSatisfySkill(nurse, "leader_cap", activeSkillDefs)) leaders[nightSub]++;
         if (doesNurseSatisfySkill(nurse, "icu_er", activeSkillDefs)) icuSkills[nightSub]++;
-        if (nurse.role === "newcomer") newcomers[nightSub]++;
+        if (doesNurseSatisfySkill(nurse, "newcomer", activeSkillDefs)) newcomers[nightSub]++;
       }
     }
 
@@ -1838,7 +1778,7 @@ export function evaluateNurseSchedule(
                 day: d,
                 message: `${config.month}/${d} ${sLabel}の「${sd.label}」不足（${skillCounts[s]}/${minVal}名）`,
               },
-              { ruleKey: "enforceSkillCoverage" }
+              { ruleKey: `skill_${sd.code}` }
             );
           }
 
@@ -1860,7 +1800,7 @@ export function evaluateNurseSchedule(
                 day: d,
                 message: `${config.month}/${d} ${sLabel}の「${sd.label}」上限超過（${skillCounts[s]}/${maxVal}名）`,
               },
-              { ruleKey: "enforceSkillCoverage" }
+              { ruleKey: `skill_${sd.code}` }
             );
           }
         }
@@ -1886,8 +1826,7 @@ export function evaluateNurseSchedule(
         if (!okStart || !okEnd || restrictedByDayRule) continue;
 
         const hasTargetFilter = Boolean(
-          (rule.targetRole && rule.targetRole !== "all") ||
-            (rule.attribute && rule.attribute !== "all") ||
+          (rule.attribute && rule.attribute !== "all") ||
             rule.nurseId ||
             (rule.nurseIds && rule.nurseIds.length > 0)
         );
@@ -2174,68 +2113,6 @@ export function evaluateNurseSchedule(
           },
           { ruleKey: `trans_${prevBase}_${currBase}` }
         );
-      }
-    }
-
-    if (config.maxConsecutiveNight2) {
-      if (config.enforcePrevMonthCarryover && nurse.prevMonthShifts.length > 0) {
-        const lastPrev = nurse.prevMonthShifts[nurse.prevMonthShifts.length - 1] ?? "O";
-        const secondLastPrev =
-          nurse.prevMonthShifts.length >= 2
-            ? nurse.prevMonthShifts[nurse.prevMonthShifts.length - 2] ?? "O"
-            : "O";
-        const prevBase = getBaseOdenShift(lastPrev, customShiftDefs);
-        const secondLastPrevBase = getBaseOdenShift(secondLastPrev, customShiftDefs);
-        const d1Base = getBaseOdenShift(row[0] ?? "O", customShiftDefs);
-        const d2Base = numDays >= 2 ? getBaseOdenShift(row[1] ?? "O", customShiftDefs) : "O";
-
-        if (prevBase === "N" && secondLastPrevBase === "N" && d1Base === "N") {
-          const msg = `${config.month}/1: 前月末からの深夜勤3連続違反`;
-          nurseViolations.push(msg);
-          pushViolation(
-            {
-              id: `carryover_max_N2_${nurse.id}_d1`,
-              category: "carryover",
-              nurseId: nurse.id,
-              day: 1,
-              message: `${nurse.name}: ${msg}`,
-            },
-            { ruleKey: "maxConsecutiveNight2" }
-          );
-        } else if (prevBase === "N" && d1Base === "N" && d2Base === "N") {
-          const msg = `${config.month}/1〜2: 前月末からの深夜勤3連続違反`;
-          nurseViolations.push(msg);
-          pushViolation(
-            {
-              id: `carryover_max_N2_${nurse.id}_d1_d2`,
-              category: "carryover",
-              nurseId: nurse.id,
-              day: 2,
-              message: `${nurse.name}: ${msg}`,
-            },
-            { ruleKey: "maxConsecutiveNight2" }
-          );
-        }
-      }
-
-      for (let d = 1; d <= numDays - 2; d++) {
-        const b0 = getBaseOdenShift(row[d - 1] ?? "O", customShiftDefs);
-        const b1 = getBaseOdenShift(row[d] ?? "O", customShiftDefs);
-        const b2 = getBaseOdenShift(row[d + 1] ?? "O", customShiftDefs);
-        if (b0 === "N" && b1 === "N" && b2 === "N") {
-          const msg = `${config.month}/${d}〜${d + 2}: 深夜勤3連続違反`;
-          nurseViolations.push(msg);
-          pushViolation(
-            {
-              id: `max_consec_N2_${nurse.id}_d${d}`,
-              category: "transition",
-              nurseId: nurse.id,
-              day: d,
-              message: `${nurse.name}: ${msg}`,
-            },
-            { ruleKey: "maxConsecutiveNight2" }
-          );
-        }
       }
     }
 

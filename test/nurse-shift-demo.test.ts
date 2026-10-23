@@ -239,7 +239,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
         baseState
       )!,
       convertStage2ToolToOperation(
-        { tool_name: "add_shift_quota", args: { shiftName: "新人研修", targetRole: "newcomer", count: 2 } },
+        { tool_name: "add_shift_quota", args: { shiftName: "新人研修", attribute: "newcomer", count: 2 } },
         baseState
       )!,
     ];
@@ -259,7 +259,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(res.evaluation?.violations).toEqual([]);
 
     // Every newcomer must have exactly 2 custom training shifts per the newcomer quota rule
-    const newcomers = updatedState.nurses.filter((n) => n.role === "newcomer");
+    const newcomers = updatedState.nurses.filter((n) => n.skills.includes("newcomer"));
     expect(newcomers.length).toBeGreaterThan(0);
 
     for (const nurse of newcomers) {
@@ -323,11 +323,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     // Turn 2: "新人は新人研修を2回受けないと夜勤ができない"
     state = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
-        { tool_name: "add_shift_quota", args: { shiftName: "新人研修", targetRole: "newcomer", count: 2 } },
+        { tool_name: "add_shift_quota", args: { shiftName: "新人研修", attribute: "newcomer", count: 2 } },
         state
       )!,
       convertStage2ToolToOperation(
-        { tool_name: "add_shift_prerequisite", args: { shiftName: "新人研修", targetRole: "newcomer", count: 2 } },
+        { tool_name: "add_shift_prerequisite", args: { shiftName: "新人研修", attribute: "newcomer", count: 2 } },
         state
       )!,
     ]).updatedState;
@@ -364,12 +364,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
           expect([1, 2, 3, 4, 5]).toContain(dow);
           completedTraining++;
         }
-        if (nurse.role === "newcomer" && (s === "E" || s === "N")) {
+        if (nurse.skills.includes("newcomer") && (s === "E" || s === "N")) {
           // Newcomer cannot work E or N until they have ALREADY completed 2 training shifts on earlier days
           expect(completedTraining).toBeGreaterThanOrEqual(2);
         }
       }
-      if (nurse.role === "newcomer") {
+      if (nurse.skills.includes("newcomer")) {
         expect(completedTraining).toBe(2);
       }
     }
@@ -385,11 +385,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
         state
       )!,
       convertStage2ToolToOperation(
-        { tool_name: "add_shift_quota", args: { shiftName: "新人研修", targetRole: "newcomer", count: 2 } },
+        { tool_name: "add_shift_quota", args: { shiftName: "新人研修", attribute: "newcomer", count: 2 } },
         state
       )!,
       convertStage2ToolToOperation(
-        { tool_name: "add_shift_prerequisite", args: { shiftName: "新人研修", targetRole: "newcomer", count: 2 } },
+        { tool_name: "add_shift_prerequisite", args: { shiftName: "新人研修", attribute: "newcomer", count: 2 } },
         state
       )!,
     ]).updatedState;
@@ -409,7 +409,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(state.customRules.some((r) => r.includePrevMonth === true)).toBe(true);
 
     // Suppose half of the newcomers have not yet taken training in previous months, and half already completed 2 shifts in previous months:
-    const newcomers = state.nurses.filter((n) => n.role === "newcomer");
+    const newcomers = state.nurses.filter((n) => n.skills.includes("newcomer"));
     const group1Ids = new Set(newcomers.slice(0, 3).map((n) => n.id));
     const group2Ids = new Set(newcomers.slice(3).map((n) => n.id));
     state = {
@@ -540,7 +540,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
             tool_name: "add_shift_quota",
             args: {
               shiftName: "新人研修",
-              targetRole: "newcomer",
+              attribute: "newcomer",
               count: 2,
             },
           },
@@ -548,7 +548,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
             tool_name: "add_shift_prerequisite",
             args: {
               shiftName: "新人研修",
-              targetRole: "newcomer",
+              attribute: "newcomer",
               count: 2,
             },
           },
@@ -661,7 +661,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
         tools: [
           {
             tool_name: "level_night_shifts",
-            args: { groupBy: "role_and_skill" },
+            args: { groupBy: "skill" },
           },
         ],
       };
@@ -674,7 +674,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(state.customRules.some((r) => r.kind === "level_night_shifts")).toBe(true);
       // Mid-career nurses must NOT be assigned newcomer training
       expect(
-        state.customRules.some((r) => r.kind === "shift_count_quota" && r.targetRole === "mid")
+        state.customRules.some((r) => r.kind === "shift_count_quota" && r.attribute === "mid")
       ).toBe(false);
 
       // Verify STAGE1_ROUTER_SCHEMA generates "thought" BEFORE "routes" and "response"
@@ -881,10 +881,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(res.evaluation?.valid).toBe(true);
 
       const leaderNights = state.nurses
-        .filter((n) => n.role === "leader" && n.nightOk)
+        .filter((n) => n.skills.includes("leader") && n.nightOk)
         .map((n) => res.evaluation!.nurseSummaries[n.id]!.totalNightShifts);
       const midNights = state.nurses
-        .filter((n) => n.role === "mid" && n.nightOk)
+        .filter((n) => n.skills.includes("mid") && n.nightOk)
         .map((n) => res.evaluation!.nurseSummaries[n.id]!.totalNightShifts);
       expect(Math.max(...leaderNights) - Math.min(...leaderNights)).toBeLessThanOrEqual(2);
       expect(Math.max(...midNights) - Math.min(...midNights)).toBeLessThanOrEqual(2);
@@ -948,8 +948,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     }
 
     // Check enforceTeamBalance: at least minTeamMembersDay (3) from Team A and Team B on Day shift every day
-    const teamANurses = state.nurses.filter((n) => n.team === "A");
-    const teamBNurses = state.nurses.filter((n) => n.team === "B");
+    const teamANurses = state.nurses.filter((n) => n.skills.includes("team_A"));
+    const teamBNurses = state.nurses.filter((n) => n.skills.includes("team_B"));
     for (let d = 1; d <= state.config.numDays; d++) {
       const aDayCount = teamANurses.filter((n) => res.schedule![n.id]![d - 1] === "D").length;
       const bDayCount = teamBNurses.filter((n) => res.schedule![n.id]![d - 1] === "D").length;
@@ -1251,15 +1251,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(dIcuCount).toBeGreaterThanOrEqual(2);
 
       // Rule 2: Newcomers <= 2 in D
-      const dNewcomers = dNurses.filter((n) => n.role === "newcomer").length;
+      const dNewcomers = dNurses.filter((n) => n.skills.includes("newcomer")).length;
       expect(dNewcomers).toBeLessThanOrEqual(2);
 
       // Rule 3: Team A nurses in D >= 3
-      const teamAInD = dNurses.filter((n) => n.team === "A").length;
+      const teamAInD = dNurses.filter((n) => n.skills.includes("team_A")).length;
       expect(teamAInD).toBeGreaterThanOrEqual(3);
 
       // Rule 4: Team B nurses in E >= 1
-      const teamBInE = eNurses.filter((n) => n.team === "B").length;
+      const teamBInE = eNurses.filter((n) => n.skills.includes("team_B")).length;
       expect(teamBInE).toBeGreaterThanOrEqual(1);
     }
   }, 30_000);
@@ -1288,7 +1288,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
             shiftName: "祭り",
             minStaffPerDay: 2,
             maxStaffPerDay: 2,
-            targetRole: "newcomer",
+            attribute: "newcomer",
           },
         },
         state
@@ -1314,7 +1314,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       const assignedNurses = state.nurses.filter((n) => res.schedule![n.id]![idx] === csCode);
       if (d >= 16 && d <= 18) {
         // Exactly 2 newcomers assigned on Nov 16, 17, 18 per the newcomer daily cap rule
-        const assignedNewcomers = assignedNurses.filter((n) => n.role === "newcomer");
+        const assignedNewcomers = assignedNurses.filter((n) => n.skills.includes("newcomer"));
         expect(assignedNewcomers.length).toBe(2);
       } else {
         // 0 assigned outside Nov 16..18 per the shift_day_restriction rule
@@ -2442,7 +2442,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       config: {
         ...baseState.config,
         softRuleWeights: {
-          enforceSkillCoverage: 40,
+          skill_leader_cap: 40,
         },
       },
       customRules: [...baseState.customRules, ...leaderOffRules],
@@ -2521,7 +2521,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       {
         op: "add_shift_quota",
         shiftName: "未登録シフト",
-        targetRole: "newcomer",
+        attribute: "newcomer",
         minCount: 2,
         maxCount: 2,
       },
@@ -2535,7 +2535,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     // Invariant 3: add_shift_day_restriction (even for <= 7 days) must NEVER delete shift_count_quota or create daily_shift_cap
     let customShiftState = applyChatOperationsToState(baseState, [
       { op: "add_custom_shift", shiftName: "祭り", shortLabel: "祭", baseShift: "D" },
-      { op: "add_shift_quota", shiftName: "祭り", targetRole: "all", minCount: 2, maxCount: 2 },
+      { op: "add_shift_quota", shiftName: "祭り", attribute: "all", minCount: 2, maxCount: 2 },
       { op: "add_shift_day_restriction", shiftName: "祭り", startDay: 10, endDay: 12 },
     ]).updatedState;
     expect(customShiftState.customRules.some((r) => r.kind === "shift_count_quota")).toBe(true);
@@ -2583,7 +2583,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     // Invariant 7: buildNurseWashiModel with shift_prerequisite must NOT inject ad-hoc early-month bonus Coefficients (e.g. 30 C_...) into objective
     const prereqState = applyChatOperationsToState(baseState, [
       { op: "add_custom_shift", shiftName: "オリエンテーション", shortLabel: "オリ", baseShift: "D" },
-      { op: "add_shift_prerequisite", shiftName: "オリエンテーション", targetRole: "newcomer", prereqMinCount: 2, restrictedShifts: ["E", "N"] },
+      { op: "add_shift_prerequisite", shiftName: "オリエンテーション", attribute: "newcomer", prereqMinCount: 2, restrictedShifts: ["E", "N"] },
     ]).updatedState;
     const built = buildNurseWashiModel(prereqState);
     const lp = built.model.toLpString();
@@ -2723,13 +2723,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const quotaTeamOp = convertStage2ToolToOperation(
       {
         tool_name: "add_shift_quota",
-        args: { shiftName: "カンファレンス", targetRole: "A班", count: 1 },
+        args: { shiftName: "カンファレンス", attribute: "A班", count: 1 },
       },
       baseState
     );
     expect(quotaTeamOp?.op).toBe("add_shift_quota");
     if (quotaTeamOp?.op === "add_shift_quota") {
-      expect(quotaTeamOp.targetRole).toBe("team_A");
       expect(quotaTeamOp.attribute).toBe("team_A");
     }
 
@@ -2742,7 +2741,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     );
     expect(grantTeamSkillOp?.op).toBe("update_nurse_skill");
     if (grantTeamSkillOp?.op === "update_nurse_skill") {
-      expect(grantTeamSkillOp.targetRole).toBe("team_B");
+      expect(grantTeamSkillOp.attribute).toBe("team_B");
     }
 
     const applied = applyChatOperationsToState(baseState, [
@@ -2756,21 +2755,21 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(subLeaderSkill).toBeDefined();
     expect(subLeaderSkill!.substitutesFor).toBe("leader_cap");
 
-    // Every B班 (team === "B") nurse should now hold subLeaderSkill.code, and no A班 nurse should have gained it
+    // Every B班 (team_B) nurse should now hold subLeaderSkill.code, and no A班 nurse should have gained it
     for (const n of applied.nurses) {
-      if (n.team === "B") {
+      if (n.skills.includes("team_B")) {
         expect(n.skills.includes(subLeaderSkill!.code)).toBe(true);
       } else {
         expect(n.skills.includes(subLeaderSkill!.code)).toBe(false);
       }
     }
 
-    // Solver should enforce quota on A班 (team === "A") nurses for カンファレンス
+    // Solver should enforce quota on A班 (team_A) nurses for カンファレンス
     const solved = await solveNurseScheduleWithWashi(applied);
     expect(solved.status).toBe("Optimal");
     expect(solved.evaluation?.valid).toBe(true);
     const confCode = applied.customShiftDefs![0]!.code;
-    for (const n of applied.nurses.filter((nurse) => nurse.team === "A")) {
+    for (const n of applied.nurses.filter((nurse) => nurse.skills.includes("team_A"))) {
       const cnt = solved.schedule![n.id]!.filter((s) => s === confCode).length;
       expect(cnt).toBe(1);
     }
@@ -2886,7 +2885,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       {
         op: "add_shift_prerequisite",
         shiftName: "OUT_D",
-        targetRole: "newcomer",
+        attribute: "newcomer",
         prereqMinCount: 1,
         restrictedShifts: ["E", "N"],
       },
@@ -2947,7 +2946,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     ).toBe(true);
   }, 30_000);
 
-  it("aligns UI softRuleWeights keys, custom N three-night caps & E/N exemptions, statutory holidays, skill removal cascade, target-scoped daily caps, and soft date coverage / day restriction evaluation", async () => {
+  it("aligns UI softRuleWeights keys, E/N contract exemptions, statutory holidays, skill removal cascade, target-scoped daily caps, and soft date coverage / day restriction evaluation", async () => {
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
 
     // 1. Statutory Japanese holidays: chained substitute holidays (2025-05-06, 2026-05-06) & citizens' holiday (2026-09-22)
@@ -2958,7 +2957,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       21, 22, 23,
     ]);
 
-    // 2. Align UI softRuleWeights keys (consecutive, monthlyDaysOff, monthlyNightCap, trans_N_D) with buildNurseWashiModel
+    // 2. Align dynamic softRuleWeights keys (consecutive, monthlyDaysOff, monthlyNightCap, trans_N_D, skill_leader_cap) with buildNurseWashiModel
     const uiSoftModel = buildNurseWashiModel({
       ...baseState,
       config: {
@@ -2968,6 +2967,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
           monthlyDaysOff: 40,
           monthlyNightCap: 40,
           trans_N_D: 40,
+          skill_leader_cap: 40,
         },
       },
     });
@@ -2976,34 +2976,23 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(uiSoftModel.constraintMeta.get("monthly_night_max_N01")?.isHard).toBe(false);
     expect(uiSoftModel.constraintMeta.get("trans_N_to_D_N01_d1")?.isHard).toBe(false);
     expect(uiSoftModel.constraintMeta.get("carryover_N_to_D_N01_d1")?.isHard).toBe(false);
+    expect(uiSoftModel.constraintMeta.get("skill_leader_cap_D_d1")?.isHard).toBe(false);
 
-    // 3. Custom N-base shift in maxConsecutiveNight2 (model & evaluator) and E/N contract exemptions
+    // 3. Custom E/N-base shifts in E/N contract exemptions
     const customEnState = applyChatOperationsToState(baseState, [
       { op: "add_custom_shift", shiftName: "特別準夜", shift: "E_SP", shortLabel: "特準", baseShift: "E" },
       { op: "add_custom_shift", shiftName: "特別深夜", shift: "N_SP", shortLabel: "特深", baseShift: "N" },
       { op: "set_nurse_contract", nurseNameOrId: "N01", forbiddenShifts: ["E", "N"] },
     ]).updatedState;
-    const builtCustomEn = buildNurseWashiModel({
-      ...customEnState,
-      config: { ...customEnState.config, maxConsecutiveNight2: true },
-    });
+    const builtCustomEn = buildNurseWashiModel(customEnState);
     const lpCustomEn = builtCustomEn.model.toLpString();
     expect(lpCustomEn).toMatch(/forbid_contract_E_N01_d1:.*C_E_SP_N01_d1/);
     expect(lpCustomEn).toMatch(/forbid_contract_N_N01_d1:.*C_N_SP_N01_d1/);
-    expect(lpCustomEn).toMatch(/max_consec_N2_N01_d1:.*C_N_SP_N01_d1/);
 
     const emptySched: Record<string, string[]> = {};
     for (const n of customEnState.nurses) {
       emptySched[n.id] = new Array(customEnState.config.numDays).fill("O");
     }
-    emptySched["N02"]![3] = "N_SP";
-    emptySched["N02"]![4] = "N_SP";
-    emptySched["N02"]![5] = "N_SP";
-    const evalN2 = evaluateNurseSchedule(
-      { ...customEnState, config: { ...customEnState.config, maxConsecutiveNight2: true } },
-      emptySched
-    );
-    expect(evalN2.violations.some((v) => v.id === "max_consec_N2_N02_d4")).toBe(true);
 
     // 4. Skill removal clears substitutesFor within skillDefs without cross-domain customRules deletion (honest infeasibility)
     const withCustomSkillState = applyChatOperationsToState(baseState, [
@@ -3027,8 +3016,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     // 5. Preserve daily_shift_cap rules across distinct target groups on the same shift
     const multiTargetCapState = applyChatOperationsToState(baseState, [
       { op: "add_custom_shift", shiftName: "合同研修", shift: "TR_ALL", shortLabel: "合", baseShift: "D" },
-      { op: "add_daily_shift_cap", shiftName: "合同研修", targetRole: "newcomer", maxStaff: 2 },
-      { op: "add_daily_shift_cap", shiftName: "合同研修", targetRole: "leader_cap", minStaff: 1 },
+      { op: "add_daily_shift_cap", shiftName: "合同研修", attribute: "newcomer", maxStaff: 2 },
+      { op: "add_daily_shift_cap", shiftName: "合同研修", attribute: "leader_cap", minStaff: 1 },
     ]).updatedState;
     const trCaps = multiTargetCapState.customRules.filter(
       (r) => r.kind === "daily_shift_cap" && r.shift === "TR_ALL"

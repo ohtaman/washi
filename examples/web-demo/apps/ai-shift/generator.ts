@@ -4,7 +4,6 @@ import {
   createDefaultShiftTransitions,
   type CustomConstraintRule,
   type NurseProfile,
-  type NurseRole,
   type NurseScheduleConfig,
   type NurseSchedulingState,
   type NurseSkill,
@@ -256,7 +255,6 @@ export function createDefaultConfig(overrides?: Partial<NurseScheduleConfig>): N
 
     enforcePrevMonthCarryover: true,
     shiftTransitions: createDefaultShiftTransitions(),
-    maxConsecutiveNight2: true,
 
     maxConsecutiveWorkDays: 5,
     minMonthlyDaysOff: 9,
@@ -405,23 +403,25 @@ export function generateNurseSchedulingState(
   for (let i = 0; i < count; i++) {
     const id = `N${String(i + 1).padStart(2, "0")}`;
     const entry = NURSE_CATALOG[i];
-    const team: "A" | "B" = i % 2 === 0 ? "A" : "B";
+    const teamAttr: NurseSkill = i % 2 === 0 ? "team_A" : "team_B";
 
-    let role: NurseRole = "mid";
+    let tierAttr: "leader" | "mid" | "newcomer" = "mid";
     let yearsExp = 4 + Math.floor(rand() * 5);
     const skills: NurseSkill[] = [];
 
     if (i < leaderCount) {
-      role = "leader";
+      tierAttr = "leader";
       yearsExp = 8 + Math.floor(rand() * 10);
-      skills.push("leader_cap");
+      skills.push("leader", teamAttr, "leader_cap");
       if (i % 2 === 0 || rand() < 0.65) skills.push("icu_er");
       if (rand() < 0.6) skills.push("ventilator");
     } else if (i >= count - newcomerCount) {
-      role = "newcomer";
+      tierAttr = "newcomer";
       yearsExp = 1;
+      skills.push("newcomer", teamAttr);
     } else {
-      role = "mid";
+      tierAttr = "mid";
+      skills.push("mid", teamAttr);
       // Top mid-career nurses also have leader_cap or icu_er
       if (i < leaderCount + Math.round(count * 0.18)) {
         skills.push("leader_cap");
@@ -435,7 +435,7 @@ export function generateNurseSchedulingState(
     }
 
     // 2 nurses in mid-career are daytime-only (日勤専従 / 育児短時間・夜勤免除)
-    const nightOk = !(role === "mid" && (i === leaderCount + 1 || i === leaderCount + 2));
+    const nightOk = !(tierAttr === "mid" && (i === leaderCount + 1 || i === leaderCount + 2));
 
     const prevMonthShifts = generatePrevMonthTail(
       rand,
@@ -452,9 +452,9 @@ export function generateNurseSchedulingState(
       ? i === 3
         ? 318
         : 315
-      : role === "leader"
+      : tierAttr === "leader"
         ? 210 + ((i * 19) % 75)
-        : role === "mid"
+        : tierAttr === "mid"
           ? 175 + ((i * 23) % 85)
           : 120 + ((i * 17) % 60);
     const prev11MonthsWorkDays = 212 + ((i * 7) % 15);
@@ -468,8 +468,6 @@ export function generateNurseSchedulingState(
       id,
       name: entry.name,
       kana: entry.kana,
-      role,
-      team,
       skills,
       nightOk,
       yearsExp,
@@ -514,8 +512,8 @@ export function generateNurseSchedulingState(
     });
   }
 
-  const newcomers = nurses.filter((n) => n.role === "newcomer");
-  const seniors = nurses.filter((n) => n.role === "leader" || n.skills.includes("leader_cap"));
+  const newcomers = nurses.filter((n) => n.skills.includes("newcomer"));
+  const seniors = nurses.filter((n) => n.skills.includes("leader") || n.skills.includes("leader_cap"));
   for (let k = 0; k < Math.min(3, newcomers.length, seniors.length); k++) {
     relations.push({
       id: `prec_${k + 1}`,

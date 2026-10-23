@@ -447,8 +447,6 @@ export function getShiftMeta(
   };
 }
 
-export type NurseRole = "leader" | "mid" | "newcomer" | (string & {});
-
 export type NurseSkill = string;
 
 export interface SkillDefinition {
@@ -481,14 +479,6 @@ export function getSkillMeta(
     };
   }
   return { label: code, badge: `🎖️${code}` };
-}
-
-export function getRoleLabel(
-  role: string,
-  skillDefs?: readonly SkillDefinition[]
-): string {
-  const found = skillDefs?.find((d) => d.code === role);
-  return found?.label ?? role;
 }
 
 export interface DefaultAttributeDef {
@@ -548,7 +538,7 @@ export function findSkillOrAttributeDef(
 }
 
 /**
- * Checks whether a nurse holds `targetSkillCode` directly, matches role/group attribute,
+ * Checks whether a nurse holds `targetSkillCode` directly in `nurse.skills`,
  * OR holds a skill that substitutes for `targetSkillCode`.
  */
 export function doesNurseSatisfySkill(
@@ -562,10 +552,7 @@ export function doesNurseSatisfySkill(
   if (resolvedCode === "all") return true;
   if (
     nurse.skills.includes(resolvedCode) ||
-    nurse.skills.includes(targetSkillCode) ||
-    nurse.role === resolvedCode ||
-    nurse.team === resolvedCode ||
-    (nurse.team && `team_${nurse.team}` === resolvedCode)
+    nurse.skills.includes(targetSkillCode)
   ) {
     return true;
   }
@@ -772,10 +759,8 @@ export interface NurseProfile {
   id: string; // e.g., "N01"
   name: string; // e.g., "佐藤 美咲"
   kana: string;
-  role: NurseRole;
-  /** Optional subgroup label (e.g., "新人1", "新人2(研済)") displayed in UI when role is split */
+  /** Optional subgroup label (e.g., "新人1", "新人2(研済)") displayed in UI when group is split */
   subRoleLabel?: string;
-  team: "A" | "B";
   skills: NurseSkill[];
   /** Optional base contract preset ID */
   contractPreset?: ContractPresetId;
@@ -865,13 +850,12 @@ export interface CustomConstraintRule {
   nurseBId?: string;
   /** Explicit subset of nurse IDs (e.g. 新人1 group vs 新人2 group) */
   nurseIds?: string[];
-  targetRole?: NurseRole | "all" | (string & {});
   day?: number; // 1..numDays
   shift?: ShiftCode;
   forbidShifts?: ShiftCode[];
   /** Target shifts for pair rules (`ng_pair_custom`) or unified staffing rules (`staffing_rule`), e.g. ["D"], ["E", "N"], or custom shift codes */
   shifts?: ShiftCode[];
-  /** Target nurse attribute/skill/role/team for `staffing_rule` (e.g. "all", "team_A", "team_B", "newcomer", "leader_cap", "icu_er") */
+  /** Target nurse attribute/skill for `staffing_rule`, `shift_count_quota`, `daily_shift_cap`, `shift_prerequisite` (e.g. "all", "team_A", "team_B", "newcomer", "leader_cap", "icu_er") */
   attribute?: string;
   minStaff?: number;
   maxStaff?: number;
@@ -890,8 +874,8 @@ export interface CustomConstraintRule {
   prereqShift?: ShiftCode;
   prereqMinCount?: number;
   restrictedShifts?: ShiftCode[];
-  /** Grouping mode for night shift leveling ("role_and_skill" | "role" | "skill" | "all") */
-  levelGroupBy?: "role_and_skill" | "role" | "skill" | "all";
+  /** Grouping mode for night shift leveling ("skill" | "all") */
+  levelGroupBy?: "skill" | "all";
 }
 
 export type ShiftTransitionPolicy = "allow" | "forbid" | "require";
@@ -933,7 +917,6 @@ export interface NurseScheduleConfig {
   // 3. 3-Shift Transition Matrix & Previous Month Carryover Rules
   enforcePrevMonthCarryover: boolean;
   shiftTransitions: ShiftTransitionMatrix;
-  maxConsecutiveNight2: boolean; // N -> N -> N forbidden (at most 2 consecutive N)
 
   // 4. Monthly & Consecutive Workload Rules + Pair Rules
   maxConsecutiveWorkDays: number; // default 5 (window of 6 days <= 5)
@@ -1179,7 +1162,6 @@ export type WardNumericParamName =
   | "staffCount";
 
 export type WardBooleanRuleName =
-  | "maxConsecutiveNight2"
   | "enforcePrevMonthCarryover"
   | "enforceSkillCoverage"
   | "requireWeekendOff"
@@ -1210,7 +1192,7 @@ export interface SetShiftTransitionOperation {
 
 export interface LevelNightShiftsOperation {
   op: "level_night_shifts";
-  levelGroupBy?: "role_and_skill" | "role" | "skill" | "all";
+  levelGroupBy?: "skill" | "all";
 }
 
 export interface AddDateCoverageOperation {
@@ -1274,7 +1256,6 @@ export interface UpdateNurseSkillOperation {
   skillName: string;
   skillAction: "add" | "remove";
   nurseNameOrId?: string;
-  targetRole?: string;
   attribute?: string;
 }
 
@@ -1322,7 +1303,6 @@ export interface AddShiftQuotaOperation {
   shiftName: string;
   shift?: ShiftCode;
   nurseNameOrId?: string;
-  targetRole?: string;
   attribute?: string;
   minCount?: number;
   maxCount?: number;
@@ -1333,8 +1313,7 @@ export interface AddShiftPrerequisiteOperation {
   shiftName: string;
   prereqShift?: ShiftCode;
   shift?: ShiftCode;
-  targetRole: string;
-  attribute?: string;
+  attribute: string;
   prereqMinCount: number;
   restrictedShifts?: ShiftCode[];
 }
@@ -1354,7 +1333,6 @@ export interface AddDailyShiftCapOperation {
   shift?: ShiftCode;
   minStaff?: number;
   maxStaff?: number;
-  targetRole?: string;
   attribute?: string;
 }
 

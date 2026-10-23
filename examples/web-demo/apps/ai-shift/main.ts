@@ -5,9 +5,9 @@ import {
   clearNurseContractFromState,
   CONTRACT_PRESETS,
   createDefaultShiftAliases,
+  doesNurseMatchAttribute,
   doesNurseSatisfySkill,
   getJapaneseHolidayName,
-  getRoleLabel,
   getShiftMeta,
   getShiftTransitionMatrix,
   getSkillMeta,
@@ -749,13 +749,26 @@ function renderScheduleMatrix(): void {
   thead.appendChild(trDays);
 
   // ---- TBODY: Filter & Nurse Rows ----
+  const activeSkillDefs = appState.skillDefs ?? createDefaultSkillDefs();
   const roleFilter = ($("filter-role") as HTMLSelectElement).value;
   const filteredNurses = nurses.filter((n) => {
-    if (roleFilter === "leader") return n.role === "leader";
-    if (roleFilter === "mid") return n.role === "mid";
-    if (roleFilter === "newcomer") return n.role === "newcomer";
-    return true;
+    if (!roleFilter || roleFilter === "all") return true;
+    return doesNurseMatchAttribute(n, roleFilter, activeSkillDefs);
   });
+
+  const getNurseDisplayAttributes = (nurse: NurseProfile) => {
+    const roleDef = activeSkillDefs.find(
+      (sd) => sd.category === "role" && nurse.skills.includes(sd.code)
+    );
+    const groupDef = activeSkillDefs.find(
+      (sd) => sd.category === "group" && nurse.skills.includes(sd.code)
+    );
+    return {
+      roleCode: roleDef?.code ?? "mid",
+      roleLabel: roleDef?.label ?? "",
+      groupLabel: groupDef?.shortLabel ?? groupDef?.label ?? "",
+    };
+  };
 
   for (const nurse of filteredNurses) {
     const tr = document.createElement("tr");
@@ -770,14 +783,14 @@ function renderScheduleMatrix(): void {
     nameSpan.className = "nurse-name-label";
     nameSpan.textContent = `${nurse.name}${!nurse.nightOk ? " ☀️" : ""}`;
 
-    const roleLabel = getRoleLabel(nurse.role, appState.skillDefs);
+    const { roleCode, roleLabel, groupLabel } = getNurseDisplayAttributes(nurse);
     const roleSpan = document.createElement("span");
-    roleSpan.className = `role-pill role-${nurse.role}`;
+    roleSpan.className = `role-pill role-${roleCode}`;
     roleSpan.textContent = nurse.subRoleLabel || roleLabel;
     topRow.append(nameSpan, roleSpan);
 
     const tailStreak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts);
-    tdNurse.title = `${nurse.id} ${nurse.name} (${nurse.team}班 / ${
+    tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${
       nurse.subRoleLabel ? `${roleLabel}・${nurse.subRoleLabel}` : roleLabel
     })\n前月末: ${tailStreak}連勤\n直近11ヶ月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
     tdNurse.appendChild(topRow);
@@ -992,8 +1005,6 @@ function syncConfigInputsFromState(): void {
   ($("cfg-enforcePreceptorPairs") as HTMLInputElement).checked = Boolean(c.enforcePreceptorPairs);
 
   ($("cfg-enforcePrevMonthCarryover") as HTMLInputElement).checked = c.enforcePrevMonthCarryover;
-  ($("cfg-forbidThreeConsecutiveNights") as HTMLInputElement).checked =
-    c.maxConsecutiveNight2;
 
   ($("cfg-maxConsecutiveWorkDays") as HTMLInputElement).value = String(c.maxConsecutiveWorkDays);
   ($("cfg-minMonthlyDaysOff") as HTMLInputElement).value = String(c.minMonthlyDaysOff);
@@ -1124,16 +1135,49 @@ function renderSoftRuleWeightsList(): void {
     { key: "consecutive", label: "最大連勤日数上限" },
     { key: "monthlyDaysOff", label: "月間最低公休日数" },
     { key: "monthlyNightCap", label: "月間夜勤(準+深)上限" },
-    { key: "trans_N_O", label: "深夜明け公休必須 (深→休)" },
-    { key: "trans_N_D", label: "深夜→翌日勤禁止 (深→日)" },
-    { key: "trans_E_D", label: "準夜→翌日勤禁止 (準→日)" },
-    { key: "enforceSkillCoverage", label: "スキル・属性ごとの配置人数" },
     { key: "enforcePreceptorPairs", label: "プリセプター同行夜勤" },
     { key: "enforceNgPairs", label: "相性NGペアの同シフト回避" },
     { key: "requireWeekendOff", label: "週末(土日)最低2日公休" },
     { key: "enforceHardRequests", label: "確定希望休の遵守" },
     { key: "enforce36Agreement", label: "36協定 時間外労働上限" },
   ];
+
+  // Dynamically add active shift transitions from shiftTransitions matrix
+  const transMatrix = getShiftTransitionMatrix(appState.config);
+  const shiftShortJa: Record<string, string> = { D: "日", E: "準", N: "深", O: "休" };
+  for (const fromShift of ["D", "E", "N"] as const) {
+    for (const toShift of ["D", "E", "N", "O"] as const) {
+      const policy = transMatrix[fromShift][toShift];
+      if (policy === "require") {
+        items.push({
+          key: `trans_${fromShift}_${toShift}`,
+          label: `遷移必須 (${shiftShortJa[fromShift]}→${shiftShortJa[toShift]})`,
+        });
+      } else if (policy === "forbid") {
+        items.push({
+          key: `trans_${fromShift}_${toShift}`,
+          label: `遷移禁止 (${shiftShortJa[fromShift]}→${shiftShortJa[toShift]})`,
+        });
+      }
+    }
+  }
+
+  // Dynamically add active skill/attribute coverage definitions from skillDefs
+  for (const sd of appState.skillDefs ?? createDefaultSkillDefs()) {
+    const hasBound =
+      sd.minDay > 0 ||
+      sd.minEvening > 0 ||
+      sd.minNight > 0 ||
+      typeof sd.maxDay === "number" ||
+      typeof sd.maxEvening === "number" ||
+      typeof sd.maxNight === "number";
+    if (hasBound) {
+      items.push({
+        key: `skill_${sd.code}`,
+        label: `配置人数: ${sd.label}`,
+      });
+    }
+  }
 
   const weights = appState.config.softRuleWeights ?? {};
 
@@ -1402,8 +1446,6 @@ function readConfigInputsToState(): void {
     enforceSkillCoverage: ($("cfg-enforceSkillCoverage") as HTMLInputElement).checked,
     enforcePreceptorPairs: ($("cfg-enforcePreceptorPairs") as HTMLInputElement).checked,
     enforcePrevMonthCarryover: ($("cfg-enforcePrevMonthCarryover") as HTMLInputElement).checked,
-    maxConsecutiveNight2: ($("cfg-forbidThreeConsecutiveNights") as HTMLInputElement)
-      .checked,
     maxConsecutiveWorkDays: readNumInput("cfg-maxConsecutiveWorkDays", 5),
     minMonthlyDaysOff: readNumInput("cfg-minMonthlyDaysOff", 9),
     minMonthlyWorkDays: readNumInput("cfg-minMonthlyWorkDays", 14),
@@ -1873,8 +1915,12 @@ function renderStaffProfilesTab(): void {
     tdName.style.fontWeight = "600";
     tdName.textContent = `${nurse.name} (${nurse.yearsExp}年目)`;
 
+    const allSkillDefs = appState.skillDefs ?? createDefaultSkillDefs();
+    const heldGroupAndRoleLabels = allSkillDefs
+      .filter((sd) => (sd.category === "group" || sd.category === "role") && nurse.skills.includes(sd.code))
+      .map((sd) => sd.shortLabel || sd.label);
     const tdRole = document.createElement("td");
-    tdRole.textContent = `${nurse.team}班 / ${getRoleLabel(nurse.role, appState.skillDefs)}${
+    tdRole.textContent = `${heldGroupAndRoleLabels.join(" / ")}${
       nurse.subRoleLabel ? ` [${nurse.subRoleLabel}]` : ""
     }`;
 
@@ -2266,11 +2312,16 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
   })`;
 
   bodyEl.replaceChildren();
+  const allSkillDefs = appState.skillDefs ?? createDefaultSkillDefs();
+  const heldAttrLabels = allSkillDefs
+    .filter((sd) => nurse.skills.includes(sd.code))
+    .map((sd) => sd.shortLabel || sd.label)
+    .join("・");
   const infoLines: string[] = [
     `現在のシフト: ${currentMeta.label} (${currentMeta.shortLabel})`,
-    `区分: ${getRoleLabel(nurse.role, appState.skillDefs)}${nurse.subRoleLabel ? ` [${nurse.subRoleLabel}]` : ""} (${
-      nurse.team
-    }班 / ${nurse.nightOk ? "夜勤可" : "日勤専従"})`,
+    `属性・スキル: ${heldAttrLabels || "なし"}${nurse.subRoleLabel ? ` [${nurse.subRoleLabel}]` : ""} (${
+      nurse.nightOk ? "夜勤可" : "日勤専従"
+    })`,
     `前月末のシフト: ${nurse.prevMonthShifts
       .map((s) => getShiftMeta(s, appState.customShiftDefs).shortLabel)
       .join(" → ")} (前月末${getPrevMonthTailWorkStreak(nurse.prevMonthShifts)}連勤)`,
@@ -2438,7 +2489,12 @@ function openNurseContractDialog(nurse: NurseProfile): void {
   editingContractNurseId = nurse.id;
   const dialog = $("nurse-contract-dialog") as HTMLDialogElement;
   const infoEl = $("contract-dialog-nurse-info");
-  infoEl.textContent = `${nurse.name} (${nurse.id} / ${nurse.team}班 / ${getRoleLabel(nurse.role, appState.skillDefs)})`;
+  const allSkillDefs = appState.skillDefs ?? createDefaultSkillDefs();
+  const heldAttrLabels = allSkillDefs
+    .filter((sd) => (sd.category === "group" || sd.category === "role") && nurse.skills.includes(sd.code))
+    .map((sd) => sd.shortLabel || sd.label)
+    .join(" / ");
+  infoEl.textContent = `${nurse.name} (${nurse.id}${heldAttrLabels ? ` / ${heldAttrLabels}` : ""})`;
   ($("contract-preset-select") as HTMLSelectElement).value = "";
   populateContractModalFieldsFromNurse(nurse);
   dialog.showModal();

@@ -12,7 +12,6 @@ import {
   doesNurseMatchAttribute,
   doesNurseSatisfySkill,
   findSkillOrAttributeDef,
-  getRoleLabel,
   getShiftMeta,
   getShiftTransitionMatrix,
   getSkillMeta,
@@ -26,7 +25,6 @@ import {
   type ExecutionVerificationResult,
   type LlmCallTrace,
   type NurseProfile,
-  type NurseRole,
   type NurseSchedulingState,
   type NurseSkill,
   type ParsedChatPlan,
@@ -207,7 +205,7 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 3. "ward_coverage_and_param" (病棟全体の数値基準・必要人数・特定日の人数変更・夜勤回数の平準化):
    病棟全体の基本数値パラメータ（最大連勤日数、月間最低公休日数、月間最低勤務日数、月間夜勤上限、平日/土日の日勤必要人数、準夜/深夜の必要人数、36協定の時間外上限）、特定のカレンダー日付の病棟必要人数変更（「18日の日勤を11人以上に」）、夜勤回数の平準化・均等化（「夜勤の数を平準化したい」「スキル・役割ごとに夜勤回数を均等にしたい」など）
 4. "ward_transition_and_rule" (病棟全体のシフト遷移マトリクス・2日間の並び順禁止/必須・全体ルールON/OFF):
-   2日間のシフト連続・遷移ルール（深夜勤の翌日は必ず公休にする[深→休必須]、日勤→翌日深夜勤の禁止[日→深禁止]、準夜→翌日日勤の禁止[準→日禁止]、連続準夜勤の禁止[準→準禁止]、連続深夜勤の禁止[深→深禁止]など）や、病棟全体ルールのON/OFF（深夜3連続禁止、プリセプター同行夜勤、固定チーム均等配置、週末公休確保、36協定遵守、微調整モード）
+   2日間のシフト連続・遷移ルール（深夜勤の翌日は必ず公休にする[深→休必須]、日勤→翌日深夜勤の禁止[日→深禁止]、準夜→翌日日勤の禁止[準→日禁止]、連続準夜勤の禁止[準→準禁止]、連続深夜勤の禁止[深→深禁止]など）や、病棟全体ルールのON/OFF（プリセプター同行夜勤、週末公休確保、36協定遵守、微調整モード）
 5. "skill_and_pair" (スキル定義・既存シフトの属性配置人数ルール・スキル付与・ペア制約):
    スキル・資格の定義追加・削除・各シフトの必要人数設定・他スキルの代行(substitutesFor)設定、既存シフト（日勤・準夜・深夜・夜勤両方）ごとのスタッフ属性・スキル別の配置人数下限(minCount)・上限(maxCount)、スタッフや属性グループへのスキル付与・解除、2名の看護師が特定シフトで同時に入らないNGペア設定、新人と指導者の同行ペア設定（※追加シフトに対する人数指定は custom_shift、夜勤回数の平準化は ward_coverage_and_param にルーティングすること）
 6. "custom_shift" (追加シフト枠・開催期間/曜日ルール・1日あたり配置人数・受講条件):
@@ -298,19 +296,19 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_shift_quota",
             {
               shiftName: { type: "string" },
-              targetRole: { type: "string" },
+              attribute: { type: "string" },
               count: { type: "number" },
             },
-            ["shiftName", "targetRole", "count"]
+            ["shiftName", "attribute", "count"]
           ),
           toolBranch(
             "add_shift_prerequisite",
             {
               shiftName: { type: "string" },
-              targetRole: { type: "string" },
+              attribute: { type: "string" },
               count: { type: "number" },
             },
-            ["shiftName", "targetRole", "count"]
+            ["shiftName", "attribute", "count"]
           ),
           toolBranch(
             "add_shift_day_restriction",
@@ -329,14 +327,14 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_daily_shift_cap",
             {
               shiftName: { type: "string" },
-              targetRole: { type: "string" },
+              attribute: { type: "string" },
               boundType: {
                 type: "string",
                 enum: ["exact", "max", "min"],
               },
               staffCount: { type: "number" },
             },
-            ["shiftName", "targetRole", "boundType", "staffCount"]
+            ["shiftName", "attribute", "boundType", "staffCount"]
           ),
           toolBranch(
             "allow_prev_month_shift",
@@ -358,7 +356,7 @@ const CUSTOM_SHIFT_STAGE2_PROMPT = `あなたは「custom_shift (追加シフト
 ・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
 ・対象月は11月です。「11月X日からN日間」と記載されている場合、「11」は月番号なので startDay に 11 を入れず、必ず日番号 X を startDay、X + N - 1 を endDay にしてください。
 ・「1人あたり月N回ずつ受ける」は個人別月間ノルマ("add_shift_quota")、「毎日N名をアサイン / 1日最大N名まで」は1日あたりの配置人数("add_daily_shift_cap")、「N回受けないと夜勤に入れない」は夜勤先行条件("add_shift_prerequisite")として厳密に区別し、ユーザーが言及していないツールを勝手に追加しないでください。
-・対象属性(targetRole)には、実行時に注入される【指定可能な対象属性】辞書にある基本属性コード・ラベルおよび登録済みスキル名を統一的に指定できます。
+・対象属性(attribute)には、実行時に注入される【指定可能な対象属性】辞書にある属性コード・ラベルおよび登録済みスキル名を統一的に指定できます。
 
 【ツール一覧（各引数の意味・数値例・デフォルト値）】
 1. "add_custom_shift": 新しい追加シフト枠を定義する
@@ -370,17 +368,17 @@ const CUSTOM_SHIFT_STAGE2_PROMPT = `あなたは「custom_shift (追加シフト
 2. "add_shift_quota": 対象属性のスタッフ1人あたりが、その追加シフトを月何回取得するか（個人別の月間回数ノルマ）を設定する
    - 必須引数:
      * shiftName: 対象の追加シフト名（文字列、例: "委員会"）
-     * targetRole: 対象スタッフ属性（基本属性コード/ラベルまたはスキル名、例: "mid", "all"）
+     * attribute: 対象スタッフ属性（属性コード/ラベルまたはスキル名、例: "mid", "all"）
      * count: スタッフ1人あたりの月間取得回数（数値、数値例: 1）
    - 任意引数: なし
-   - 引数例: { "shiftName": "委員会", "targetRole": "mid", "count": 1 }
+   - 引数例: { "shiftName": "委員会", "attribute": "mid", "count": 1 }
 3. "add_shift_prerequisite": 対象属性のスタッフが、その追加シフトを規定回数受けるまで夜勤（準夜・深夜）に入れない先行条件を設定する
    - 必須引数:
      * shiftName: 対象の追加シフト名（文字列、例: "勉強会"）
-     * targetRole: 対象スタッフ属性（基本属性コード/ラベルまたはスキル名、例: "newcomer"）
+     * attribute: 対象スタッフ属性（属性コード/ラベルまたはスキル名、例: "newcomer"）
      * count: 夜勤に入る前に必要な受講回数（数値、数値例: 1）
    - 任意引数: なし
-   - 引数例: { "shiftName": "勉強会", "targetRole": "newcomer", "count": 1 }
+   - 引数例: { "shiftName": "勉強会", "attribute": "newcomer", "count": 1 }
 4. "add_shift_day_restriction": その追加シフトを実施できる開催期間（startDay〜endDay）または曜日（dayRestriction）を制限する（期間・曜日外の日には0名に制限されます）
    - 必須引数:
      * shiftName: 対象の追加シフト名（文字列、例: "委員会"）
@@ -390,11 +388,11 @@ const CUSTOM_SHIFT_STAGE2_PROMPT = `あなたは「custom_shift (追加シフト
 5. "add_daily_shift_cap": その追加シフトの1日あたりの配置人数と対象属性を設定する
    - 必須引数（4項目すべて必須）:
      * shiftName: 対象の追加シフト名（文字列、例: "勉強会"）
-     * targetRole: 対象スタッフ属性（特定属性の指定があればその属性コード/ラベル［例: "newcomer"］、属性指定がなければ "all"）
+     * attribute: 対象スタッフ属性（特定属性の指定があればその属性コード/ラベル［例: "newcomer"］、属性指定がなければ "all"）
      * boundType: 人数指定の種別（"exact"=「毎日N名をアサイン・配置」の固定人数 | "max"=「1日にN名まで」の上限のみ | "min"=「毎日N名以上」の下限のみ）
      * staffCount: 1日あたりの人数（数値 N、例: 2）
    - 任意引数: なし
-   - 引数例: { "shiftName": "勉強会", "targetRole": "all", "boundType": "max", "staffCount": 2 } / { "shiftName": "院内イベント", "targetRole": "newcomer", "boundType": "exact", "staffCount": 2 }
+   - 引数例: { "shiftName": "勉強会", "attribute": "all", "boundType": "max", "staffCount": 2 } / { "shiftName": "院内イベント", "attribute": "newcomer", "boundType": "exact", "staffCount": 2 }
 6. "allow_prev_month_shift": 前月までに受けた回数も受講実績として算入できるようにする
    - 必須引数:
      * shiftName: 対象の追加シフト名（文字列、例: "勉強会"）
@@ -405,10 +403,10 @@ const CUSTOM_SHIFT_STAGE2_PROMPT = `あなたは「custom_shift (追加シフト
 
 【Few-shot 例】
 指示: 「『委員会』というシフト枠を追加して。平日の月〜金のみ開催で1日2名までにして」
-出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"委員会","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"委員会","dayRestriction":"weekday_only"}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"委員会","targetRole":"all","boundType":"max","staffCount":2}}]}
+出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"委員会","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"委員会","dayRestriction":"weekday_only"}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"委員会","attribute":"all","boundType":"max","staffCount":2}}]}
 
 指示: 「『院内イベント』というシフトを追加して。20日から3日間、毎日新人2名をアサイン、日勤扱い」
-出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"院内イベント","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"院内イベント","startDay":20,"endDay":22}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"院内イベント","targetRole":"newcomer","boundType":"exact","staffCount":2}}]}
+出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"院内イベント","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"院内イベント","startDay":20,"endDay":22}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"院内イベント","attribute":"newcomer","boundType":"exact","staffCount":2}}]}
 
 指示: 「新しいスキルとして『透析管理』を追加して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
@@ -934,7 +932,7 @@ const WARD_COVERAGE_AND_PARAM_BRANCHES = [
     {
       groupBy: {
         type: "string",
-        enum: ["role_and_skill", "role", "skill", "all"],
+        enum: ["skill", "all"],
       },
     },
     ["groupBy"]
@@ -960,7 +958,6 @@ const WARD_TRANSITION_AND_RULE_BRANCHES = [
       ruleName: {
         type: "string",
         enum: [
-          "maxConsecutiveNight2",
           "requireWeekendOff",
           "enforcePreceptorPairs",
           "enforcePrevMonthCarryover",
@@ -1065,11 +1062,11 @@ const WARD_COVERAGE_AND_PARAM_STAGE2_PROMPT = `あなたは「ward_coverage_and_
      * paramValue: 設定する数値（数値、数値例: 4）
    - 任意引数: なし
    - 引数例: { "paramName": "maxConsecutiveWorkDays", "paramValue": 4 }
-2. "level_night_shifts": スキル・役割ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
+2. "level_night_shifts": スキル・属性ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
    - 必須引数:
-     * groupBy: 平準化のグループ単位（"role_and_skill"=役割とスキルの両方 | "role"=役割ごと | "skill"=スキルごと | "all"=全員一律、例: "role_and_skill", デフォルト値: "role_and_skill"）
+     * groupBy: 平準化のグループ単位（"skill"=スキル・属性ごと | "all"=全員一律、例: "skill", デフォルト値: "skill"）
    - 任意引数: なし
-   - 引数例: { "groupBy": "role_and_skill" }
+   - 引数例: { "groupBy": "skill" }
 3. "add_date_coverage": 特定のカレンダー日付(day=1〜30)における病棟全体の必要人数(minStaff名以上)を変更する
    - 必須引数:
      * day: 対象日（数値 1〜30、数値例: 15）
@@ -1105,7 +1102,6 @@ const WARD_TRANSITION_AND_RULE_STAGE2_PROMPT = `あなたは「ward_transition_a
 2. "toggle_rule": 病棟全体ルールを有効(true)または無効(false)に切り替える
    - 必須引数:
      * ruleName: 切り替えるルール名（以下から1つ選択）
-       - "maxConsecutiveNight2": 深夜勤3連続の禁止・2連続まで（デフォルト値: true）
        - "requireWeekendOff": 週末公休の確保ルール（デフォルト値: true）
        - "enforcePreceptorPairs": プリセプター同行夜勤ルール（デフォルト値: false）
        - "enforcePrevMonthCarryover": 前月末シフトからの連続性引き継ぎルール（デフォルト値: true）
@@ -1147,13 +1143,13 @@ const WARD_CONFIG_STAGE2_PROMPT = `あなたは「ward_config (病棟全体の�
    - 任意引数: なし
    - 引数例: { "fromShift": "E", "toShift": "D", "policy": "forbid" }
 3. "toggle_rule": 病棟全体ルールを有効(true)または無効(false)に切り替える
-   - 必須引数: ruleName ("maxConsecutiveNight2" | "requireWeekendOff" | "enforcePreceptorPairs" | "enforcePrevMonthCarryover" | "enforce36Agreement" | "preserveCurrentSchedule", 例: "enforcePreceptorPairs"), ruleEnabled (真偽値、例: true)
+   - 必須引数: ruleName ("requireWeekendOff" | "enforcePreceptorPairs" | "enforcePrevMonthCarryover" | "enforce36Agreement" | "preserveCurrentSchedule", 例: "enforcePreceptorPairs"), ruleEnabled (真偽値、例: true)
    - 任意引数: なし
    - 引数例: { "ruleName": "enforcePreceptorPairs", "ruleEnabled": true }
-4. "level_night_shifts": スキル・役割ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
-   - 必須引数: groupBy ("role_and_skill" | "role" | "skill" | "all", 例: "role_and_skill", デフォルト値: "role_and_skill")
+4. "level_night_shifts": スキル・属性ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
+   - 必須引数: groupBy ("skill" | "all", 例: "skill", デフォルト値: "skill")
    - 任意引数: なし
-   - 引数例: { "groupBy": "role_and_skill" }
+   - 引数例: { "groupBy": "skill" }
 5. "add_date_coverage": 特定のカレンダー日付(day=1〜30)における病棟全体の必要人数(minStaff名以上)を変更する
    - 必須引数: day (対象日 1〜30、数値例: 15), shift ("D" | "E" | "N", 例: "D"), minStaff (最低必要人数、数値例: 12)
    - 任意引数: なし
@@ -1315,7 +1311,12 @@ export function buildCategoryDynamicDictionary(
   const nurseLine =
     matchedNurses.length > 0
       ? `対象スタッフ候補: ${matchedNurses
-          .map((n) => `${n.id}:${n.name}(${getRoleLabel(n.role, skills)})`)
+          .map((n) => {
+            const roleSkill =
+              skills.find((s) => s.category === "role" && n.skills.includes(s.code))?.label ??
+              "一般";
+            return `${n.id}:${n.name}(${roleSkill})`;
+          })
           .join(", ")}`
       : "";
 
@@ -1361,7 +1362,7 @@ export function buildCategoryDynamicDictionary(
             .map((cs) => `${cs.label}(${cs.shortLabel}, 所属:${cs.baseShift ?? "D"})`)
             .join(", ")}`
         : `【登録済み追加シフト辞書】 なし`;
-    return [shiftDict, `【指定可能な対象属性(targetRole)】 ${defaultAttributeSummary}`].join("\n");
+    return [shiftDict, `【指定可能な対象属性(attribute)】 ${defaultAttributeSummary}`].join("\n");
   }
 
   return "";
@@ -1595,21 +1596,19 @@ export function convertStage2ToolToOperation(
       if (!rawShiftName) return null;
       const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const rawTargetAttr =
-        typeof a.targetRole === "string" && a.targetRole.trim().length > 0
-          ? a.targetRole.trim()
-          : typeof a.attribute === "string" && a.attribute.trim().length > 0
-            ? a.attribute.trim()
-            : undefined;
-      let targetRole: string | undefined;
+        typeof a.attribute === "string" && a.attribute.trim().length > 0
+          ? a.attribute.trim()
+          : undefined;
+      let attribute: string | undefined;
       if (rawTargetAttr) {
         const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
-        targetRole = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+        attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
       }
       const nurseNameOrId =
         typeof a.nurseNameOrId === "string" && a.nurseNameOrId.trim().length > 0
           ? a.nurseNameOrId.trim()
           : undefined;
-      if (!targetRole && !nurseNameOrId) return null;
+      if (!attribute && !nurseNameOrId) return null;
       const minCount =
         typeof a.minCount === "number"
           ? a.minCount
@@ -1627,8 +1626,7 @@ export function convertStage2ToolToOperation(
         op: "add_shift_quota",
         shiftName: rawShiftName,
         nurseNameOrId,
-        targetRole,
-        attribute: targetRole,
+        attribute,
         minCount,
         maxCount,
       };
@@ -1637,15 +1635,13 @@ export function convertStage2ToolToOperation(
       if (!rawShiftName) return null;
       const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const rawTargetAttr =
-        typeof a.targetRole === "string" && a.targetRole.trim().length > 0
-          ? a.targetRole.trim()
-          : typeof a.attribute === "string" && a.attribute.trim().length > 0
-            ? a.attribute.trim()
-            : undefined;
-      let targetRole: string | undefined;
+        typeof a.attribute === "string" && a.attribute.trim().length > 0
+          ? a.attribute.trim()
+          : undefined;
+      let attribute: string | undefined;
       if (rawTargetAttr) {
         const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
-        targetRole = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+        attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
       }
       const cnt =
         typeof a.count === "number"
@@ -1653,13 +1649,12 @@ export function convertStage2ToolToOperation(
           : typeof a.prereqMinCount === "number"
             ? a.prereqMinCount
             : undefined;
-      if (!targetRole || cnt === undefined) return null;
+      if (!attribute || cnt === undefined) return null;
       const restrictedShifts = normalizeActiveShifts(a.restrictedShifts, state) ?? ["E", "N"];
       return {
         op: "add_shift_prerequisite",
         shiftName: rawShiftName,
-        targetRole,
-        attribute: targetRole,
+        attribute,
         prereqMinCount: cnt,
         restrictedShifts,
       };
@@ -1726,23 +1721,20 @@ export function convertStage2ToolToOperation(
       if (minStaff === undefined && maxStaff === undefined) return null;
       const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const rawTargetAttr =
-        typeof a.targetRole === "string" && a.targetRole.trim().length > 0
-          ? a.targetRole.trim()
-          : typeof a.attribute === "string" && a.attribute.trim().length > 0
-            ? a.attribute.trim()
-            : undefined;
-      let targetRole: string | undefined;
+        typeof a.attribute === "string" && a.attribute.trim().length > 0
+          ? a.attribute.trim()
+          : undefined;
+      let attribute: string | undefined;
       if (rawTargetAttr) {
         const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
-        targetRole = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+        attribute = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
       }
       return {
         op: "add_daily_shift_cap",
         shiftName: rawShiftName,
         minStaff,
         maxStaff,
-        targetRole,
-        attribute: targetRole,
+        attribute,
       };
     }
     case "allow_prev_month_shift":
@@ -1755,7 +1747,7 @@ export function convertStage2ToolToOperation(
     case "level_night_shifts":
       return {
         op: "level_night_shifts",
-        levelGroupBy: a.groupBy || "role_and_skill",
+        levelGroupBy: a.groupBy === "all" ? "all" : "skill",
       };
     case "none":
       return null;
@@ -1801,17 +1793,17 @@ export function convertStage2ToolToOperation(
     case "update_nurse_skill": {
       if (!a.skillName) return null;
       const rawTarget = String(a.target || "").trim();
-      let targetRole: string | undefined;
+      let attribute: string | undefined;
       let nurseNameOrId: string | undefined;
       if (rawTarget) {
         if (/^全員$|^all$|^全$/i.test(rawTarget)) {
-          targetRole = "all";
+          attribute = "all";
         } else {
           const cleanedAttr = rawTarget.replace(/スタッフ|看護師|全員|層|たち/g, "").trim();
           const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
           const resolved = resolveAttributeCodeAndLabel(cleanedAttr || rawTarget, activeSkills);
           if (!resolved.isUnknownCustomSkill && !resolveNurseFromText(rawTarget, state.nurses)) {
-            targetRole = resolved.code;
+            attribute = resolved.code;
           } else {
             nurseNameOrId = rawTarget;
           }
@@ -1822,13 +1814,12 @@ export function convertStage2ToolToOperation(
         skillName: String(a.skillName).trim(),
         skillAction: a.action === "remove" ? "remove" : "add",
         nurseNameOrId,
-        targetRole,
-        attribute: targetRole,
+        attribute,
       };
     }
     case "set_staffing_rule": {
-      if (!a.attribute && !a.skillName && !a.targetRole) return null;
-      const rawAttr = String(a.attribute || a.skillName || a.targetRole || "all").trim();
+      if (!a.attribute && !a.skillName) return null;
+      const rawAttr = String(a.attribute || a.skillName || "all").trim();
       const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const attrValue = resolvedAttr.isUnknownCustomSkill ? rawAttr : resolvedAttr.code;
@@ -2283,7 +2274,12 @@ function buildCompactStatePrompt(state: NurseSchedulingState): string {
   const transMatrix = getShiftTransitionMatrix(config);
   const sampleNurses = nurses
     .slice(0, 12)
-    .map((n) => `${n.id}:${n.name}(${getRoleLabel(n.role, activeSkills)})`)
+    .map((n) => {
+      const roleSkill =
+        activeSkills.find((s) => s.category === "role" && n.skills.includes(s.code))?.label ??
+        "一般";
+      return `${n.id}:${n.name}(${roleSkill})`;
+    })
     .join(", ");
   const skillSummary = activeSkills
     .map((s) => {
@@ -3627,7 +3623,7 @@ export function applyChatOperationsToState(
       const targetNurse = op.nurseNameOrId
         ? resolveNurseFromText(op.nurseNameOrId, nextState.nurses)
         : null;
-      const targetAttr = op.attribute || op.targetRole;
+      const targetAttr = op.attribute;
       let countChanged = 0;
 
       nextState.nurses = nextState.nurses.map((n) => {
@@ -3924,13 +3920,13 @@ export function applyChatOperationsToState(
         ? resolveNurseFromText(op.nurseNameOrId, nextState.nurses)
         : null;
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
-      const rawAttr = nurse ? undefined : op.targetRole || op.attribute;
+      const rawAttr = nurse ? undefined : op.attribute;
       if (!nurse && !rawAttr) continue;
 
       const resolvedAttr = rawAttr
         ? resolveAttributeCodeAndLabel(rawAttr, activeSkills)
         : null;
-      const targetRole = nurse
+      const attribute = nurse
         ? undefined
         : rawAttr === "all"
           ? "all"
@@ -3953,9 +3949,9 @@ export function applyChatOperationsToState(
 
       const targetLabel = nurse
         ? `${nurse.name}(${nurse.id})`
-        : targetRole === "all"
+        : attribute === "all"
           ? "スタッフ全員"
-          : `${resolvedAttr?.label ?? getRoleLabel(String(targetRole), activeSkills)}全員`;
+          : `${resolvedAttr?.label ?? getSkillMeta(String(attribute), activeSkills).label}全員`;
 
       // Replace any previous quota rule for the same target and shift
       nextState.customRules = nextState.customRules.filter(
@@ -3963,7 +3959,7 @@ export function applyChatOperationsToState(
           !(
             r.kind === "shift_count_quota" &&
             r.shift === shiftCode &&
-            (r.targetRole || r.attribute) === targetRole &&
+            r.attribute === attribute &&
             r.nurseId === nurse?.id
           )
       );
@@ -3973,8 +3969,7 @@ export function applyChatOperationsToState(
         kind: "shift_count_quota",
         enabled: true,
         nurseId: nurse?.id,
-        targetRole,
-        attribute: targetRole,
+        attribute,
         shift: shiftCode,
         minCount,
         maxCount,
@@ -4061,11 +4056,11 @@ export function applyChatOperationsToState(
 
       const meta = getShiftMeta(prereqCode, nextState.customShiftDefs);
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
-      const rawAttr = op.targetRole || op.attribute;
+      const rawAttr = op.attribute;
       const rawK = typeof op.prereqMinCount === "number" ? op.prereqMinCount : undefined;
       if (!rawAttr || rawK === undefined) continue;
       const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
-      const targetRole =
+      const attribute =
         rawAttr === "all"
           ? "all"
           : !resolvedAttr.isUnknownCustomSkill
@@ -4077,16 +4072,16 @@ export function applyChatOperationsToState(
           ? op.restrictedShifts
           : ["E", "N"];
       const targetLabel =
-        targetRole === "all"
+        attribute === "all"
           ? "スタッフ全員"
-          : `${resolvedAttr.label || getRoleLabel(targetRole, activeSkills)}全員`;
+          : `${resolvedAttr.label || getSkillMeta(attribute, activeSkills).label}全員`;
 
       nextState.customRules = nextState.customRules.filter(
         (r) =>
           !(
             r.kind === "shift_prerequisite" &&
             r.prereqShift === prereqCode &&
-            (r.targetRole || r.attribute) === targetRole
+            r.attribute === attribute
           )
       );
 
@@ -4094,8 +4089,7 @@ export function applyChatOperationsToState(
         id: `prereq_${prereqCode}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
         kind: "shift_prerequisite",
         enabled: true,
-        targetRole,
-        attribute: targetRole,
+        attribute,
         prereqShift: prereqCode,
         prereqMinCount: kReq,
         restrictedShifts: restricted,
@@ -4120,11 +4114,11 @@ export function applyChatOperationsToState(
         typeof op.minStaff === "number" ? Math.max(0, Math.round(op.minStaff)) : undefined;
       if (minStaff === undefined && maxStaff === undefined) continue;
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
-      const rawAttr = op.targetRole || op.attribute;
+      const rawAttr = op.attribute;
       const resolvedAttr = rawAttr
         ? resolveAttributeCodeAndLabel(rawAttr, activeSkills)
         : null;
-      const targetRole = !rawAttr
+      const attribute = !rawAttr
         ? undefined
         : rawAttr === "all"
           ? "all"
@@ -4132,14 +4126,14 @@ export function applyChatOperationsToState(
             ? resolvedAttr.code
             : rawAttr;
       const rolePrefix =
-        targetRole && targetRole !== "all"
-          ? `${resolvedAttr?.label ?? getRoleLabel(targetRole, activeSkills)}`
+        attribute && attribute !== "all"
+          ? `${resolvedAttr?.label ?? getSkillMeta(attribute, activeSkills).label}`
           : "";
 
-      const normalizedCapTarget = targetRole && targetRole !== "all" ? targetRole : "all";
+      const normalizedCapTarget = attribute && attribute !== "all" ? attribute : "all";
       nextState.customRules = nextState.customRules.filter((r) => {
         if (r.kind !== "daily_shift_cap" || r.shift !== shiftCode) return true;
-        const rAttr = r.attribute || r.targetRole;
+        const rAttr = r.attribute;
         const rTarget = rAttr && rAttr !== "all" ? rAttr : "all";
         return rTarget !== normalizedCapTarget;
       });
@@ -4158,8 +4152,7 @@ export function applyChatOperationsToState(
         kind: "daily_shift_cap",
         enabled: true,
         shift: shiftCode,
-        targetRole,
-        attribute: targetRole,
+        attribute,
         minStaff,
         maxStaff,
         description: desc,
@@ -4208,9 +4201,9 @@ export function applyChatOperationsToState(
         id: `level_night_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
         kind: "level_night_shifts",
         enabled: true,
-        levelGroupBy: op.levelGroupBy || "role_and_skill",
+        levelGroupBy: op.levelGroupBy || "skill",
         description:
-          "夜勤平準化ルール: スキル・役割グループ（リーダー・中堅・新人・救急スキル等）ごとに月間の夜勤回数(準夜・深夜)のばらつきを最小化して均等化する",
+          "夜勤平準化ルール: スキル・属性グループ（リーダー・中堅・新人・救急スキル等）ごとに月間の夜勤回数(準夜・深夜)のばらつきを最小化して均等化する",
       };
       nextState.customRules.push(rule);
       appliedLogs.push(rule.description);
@@ -4249,7 +4242,6 @@ export function applyChatOperationsToState(
     if (op.op === "toggle_rule" && op.ruleName && typeof op.ruleEnabled === "boolean") {
       (nextState.config as any)[op.ruleName] = op.ruleEnabled;
       const ruleLabels: Record<string, string> = {
-        maxConsecutiveNight2: "深夜勤3連続の禁止(2連続まで)",
         enforcePrevMonthCarryover: "前月末シフトからの連続性・連勤引き継ぎ",
         enforceSkillCoverage: "スキル・属性ごとの配置人数ルール",
         enforcePreceptorPairs: "プリセプター同行夜勤(新人の夜勤時に指導者も同シフト配置)",
