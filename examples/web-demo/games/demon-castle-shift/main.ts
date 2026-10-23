@@ -3830,6 +3830,78 @@ function applyStaticTranslations(): void {
     );
   });
 
+  const setAttr = (id: string, attr: string, val: string) => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute(attr, val);
+  };
+  setAttr(
+    "title-screen",
+    "aria-label",
+    pickLang(currentLang, { ja: "タイトル画面", en: "Title Screen", zh: "标题画面" })
+  );
+  setAttr(
+    "stage-progress-nav",
+    "aria-label",
+    pickLang(currentLang, { ja: "年月選択", en: "Month Selection", zh: "年月选择" })
+  );
+  setAttr(
+    "shift-grid-table",
+    "aria-label",
+    pickLang(currentLang, { ja: "警備シフト編成表", en: "Guard Shift Matrix", zh: "警备排班表" })
+  );
+  setAttr(
+    "opening-movie-dialog",
+    "aria-label",
+    pickLang(currentLang, { ja: "オープニングムービー", en: "Opening Movie", zh: "开场动画" })
+  );
+  document.querySelectorAll<HTMLElement>(".condition-summary-row").forEach((el) => {
+    el.setAttribute(
+      "aria-label",
+      pickLang(currentLang, { ja: "シフト達成状況", en: "Shift Goal Status", zh: "排班达成状况" })
+    );
+  });
+  document.querySelectorAll<HTMLElement>(".rpg-dialogue-dock").forEach((el) => {
+    el.setAttribute(
+      "aria-label",
+      pickLang(currentLang, {
+        ja: "会話ウィンドウと出撃コマンド",
+        en: "Dialogue Window and Dispatch Command",
+        zh: "对话窗口与出击指令",
+      })
+    );
+  });
+  document
+    .querySelectorAll<HTMLImageElement>(".title-logo-img, .op-climax-logo-img")
+    .forEach((el) => {
+      el.setAttribute(
+        "alt",
+        pickLang(currentLang, {
+          ja: "魔王城の24時間警備シフト",
+          en: "Demon Castle 24h Guard Shift",
+          zh: "魔王城的24小时警备排班",
+        })
+      );
+    });
+  setAttr(
+    "dialogue-portrait",
+    "alt",
+    pickLang(currentLang, { ja: "リリス", en: "Lilith", zh: "莉莉丝" })
+  );
+  setAttr(
+    "op-scene-img",
+    "alt",
+    pickLang(currentLang, { ja: "オープニング情景", en: "Opening Scene", zh: "开场情景" })
+  );
+  setAttr(
+    "prologue-portrait",
+    "alt",
+    pickLang(currentLang, {
+      ja: "警備参謀 リリス",
+      en: "Chief Guard Tactician Lilith",
+      zh: "警备参谋 莉莉丝",
+    })
+  );
+
   setText(
     "help-dialog-title",
     pickLang(currentLang, { ja: "遊び方と勤務ルール", en: "How to Play & Shift Rules", zh: "玩法与出勤规则" })

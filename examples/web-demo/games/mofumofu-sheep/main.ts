@@ -155,32 +155,13 @@ let wasClearedBeforeMove = false;
 let showingModelAnswer = false;
 let solveToken = 0;
 
-// DOM Elements
-const domEl = <T extends HTMLElement>(id: string): T =>
-  (typeof document !== "undefined" ? document.getElementById(id) : null) as unknown as T;
-
-const stageStripEl = domEl<HTMLElement>("stage-strip");
-const totalStarsTextEl = domEl<HTMLElement>("total-stars-text");
-const stageBadgeEl = domEl<HTMLElement>("stage-badge");
-const stageTitleEl = domEl<HTMLElement>("stage-title");
-const stageOneLinerEl = domEl<HTMLElement>("stage-oneliner");
-const fenceDotsEl = domEl<HTMLElement>("fence-dots");
-const fenceCountTextEl = domEl<HTMLElement>("fence-count-text");
-const scoreTextEl = domEl<HTMLElement>("score-text");
-const hudStatusPillEl = domEl<HTMLElement>("hud-status-pill");
-const statusIconEl = domEl<HTMLElement>("status-icon");
-const statusTextEl = domEl<HTMLElement>("status-text");
-const boardGridEl = domEl<HTMLElement>("board-grid");
-const clearBannerEl = domEl<HTMLElement>("clear-banner");
-const clearStarsEl = domEl<HTMLElement>("clear-stars");
-const clearHeadlineEl = domEl<HTMLElement>("clear-headline");
-const clearSubtextEl = domEl<HTMLElement>("clear-subtext");
-const btnShowOptimal = domEl<HTMLButtonElement>("btn-show-optimal");
-const btnNextStage = domEl<HTMLButtonElement>("btn-next-stage");
-const btnUndo = domEl<HTMLButtonElement>("btn-undo");
-const btnRestart = domEl<HTMLButtonElement>("btn-restart");
-const btnHint = domEl<HTMLButtonElement>("btn-hint");
-const btnNewRandom = domEl<HTMLButtonElement>("btn-new-random");
+function getEl<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`Missing required DOM element: #${id}`);
+  }
+  return el as T;
+}
 
 export function applyStaticTranslations(langOverride?: GameLang): void {
   if (langOverride) {
@@ -305,6 +286,18 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
       zh: "牧场解谜棋盘",
     })
   );
+  setAttr(
+    "legend-strip",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "タイル得点一覧",
+      en: "Tile Score Legend",
+      zh: "地块得分一览",
+    })
+  );
+  document.querySelectorAll<HTMLImageElement>(".brand-avatar").forEach((el) => {
+    el.setAttribute("alt", pickLang(currentLang, { ja: "モコ", en: "Moko", zh: "莫可" }));
+  });
 
   setText(
     "btn-undo-label",
@@ -453,7 +446,7 @@ function isStageCleared(): boolean {
 }
 
 function getAvailableBoardWidth(): number | undefined {
-  const stageEl = boardGridEl.parentElement;
+  const stageEl = getEl<HTMLElement>("board-grid").parentElement;
   const viewportBound =
     typeof window !== "undefined" && window.innerWidth > 0
       ? Math.max(200, window.innerWidth - 76)
@@ -469,6 +462,8 @@ function getAvailableBoardWidth(): number | undefined {
 }
 
 function renderStageStrip(): void {
+  const stageStripEl = getEl<HTMLElement>("stage-strip");
+  const totalStarsTextEl = getEl<HTMLElement>("total-stars-text");
   stageStripEl.innerHTML = "";
 
   let clearedCount = 0;
@@ -533,6 +528,26 @@ function renderStageStrip(): void {
 }
 
 function renderHud(): void {
+  const stageBadgeEl = getEl<HTMLElement>("stage-badge");
+  const stageTitleEl = getEl<HTMLElement>("stage-title");
+  const stageOneLinerEl = getEl<HTMLElement>("stage-oneliner");
+  const fenceDotsEl = getEl<HTMLElement>("fence-dots");
+  const fenceCountTextEl = getEl<HTMLElement>("fence-count-text");
+  const scoreTextEl = getEl<HTMLElement>("score-text");
+  const hudStatusPillEl = getEl<HTMLElement>("hud-status-pill");
+  const statusIconEl = getEl<HTMLElement>("status-icon");
+  const statusTextEl = getEl<HTMLElement>("status-text");
+  const clearBannerEl = getEl<HTMLElement>("clear-banner");
+  const clearStarsEl = getEl<HTMLElement>("clear-stars");
+  const clearHeadlineEl = getEl<HTMLElement>("clear-headline");
+  const clearSubtextEl = getEl<HTMLElement>("clear-subtext");
+  const btnShowOptimal = getEl<HTMLButtonElement>("btn-show-optimal");
+  const btnNextStage = getEl<HTMLButtonElement>("btn-next-stage");
+  const btnUndo = getEl<HTMLButtonElement>("btn-undo");
+  const btnRestart = getEl<HTMLButtonElement>("btn-restart");
+  const btnHint = getEl<HTMLButtonElement>("btn-hint");
+  const btnNewRandom = getEl<HTMLButtonElement>("btn-new-random");
+
   const isEx = currentStageIndex >= CAMPAIGN_STAGES.length;
   stageBadgeEl.textContent = isEx ? "EXTRA" : `STAGE ${currentStage.stageNumber}`;
   const localizedStage = getLocalizedStageText(currentStage, currentLang);
@@ -695,6 +710,7 @@ function renderHud(): void {
 }
 
 function renderBoard(): void {
+  const boardGridEl = getEl<HTMLElement>("board-grid");
   const rows = currentStage.grid.length;
   const cols = currentStage.grid[0]?.length ?? 0;
   const cellSize = computeCellSize(rows, cols, getAvailableBoardWidth());
@@ -866,6 +882,7 @@ function handleRestart(): void {
 
 async function handleHint(): Promise<void> {
   if (solverFailed) return;
+  const btnHint = getEl<HTMLButtonElement>("btn-hint");
   const myToken = solveToken;
   const fencesSnapshot = currentFences;
   btnHint.disabled = true;
@@ -931,6 +948,7 @@ async function loadStageByIndex(index: number): Promise<void> {
 }
 
 async function loadRandomStage(): Promise<void> {
+  const btnNewRandom = getEl<HTMLButtonElement>("btn-new-random");
   const myToken = ++solveToken;
   btnNewRandom.disabled = true;
   try {
@@ -955,16 +973,16 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     });
   });
 
-  btnUndo.addEventListener("click", handleUndo);
-  btnRestart.addEventListener("click", handleRestart);
-  btnHint.addEventListener("click", () => {
+  getEl<HTMLButtonElement>("btn-undo").addEventListener("click", handleUndo);
+  getEl<HTMLButtonElement>("btn-restart").addEventListener("click", handleRestart);
+  getEl<HTMLButtonElement>("btn-hint").addEventListener("click", () => {
     void handleHint();
   });
-  btnShowOptimal.addEventListener("click", handleShowOptimal);
-  btnNewRandom.addEventListener("click", () => {
+  getEl<HTMLButtonElement>("btn-show-optimal").addEventListener("click", handleShowOptimal);
+  getEl<HTMLButtonElement>("btn-new-random").addEventListener("click", () => {
     void loadRandomStage();
   });
-  btnNextStage.addEventListener("click", () => {
+  getEl<HTMLButtonElement>("btn-next-stage").addEventListener("click", () => {
     if (currentStageIndex < CAMPAIGN_STAGES.length - 1) {
       void loadStageByIndex(currentStageIndex + 1);
     } else {

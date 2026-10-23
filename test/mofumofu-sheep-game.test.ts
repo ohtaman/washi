@@ -228,10 +228,15 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
     const createHtmlMockDocument = (html: string) => {
       const byId = new Map<string, MockElement>();
+      const allElements: MockElement[] = [];
       const langBtns: MockElement[] = [];
       const waxSeals: MockElement[] = [];
       const closeBtns: MockElement[] = [];
       const bgmBtns: MockElement[] = [];
+      const conditionRows: MockElement[] = [];
+      const dialogueDocks: MockElement[] = [];
+      const logoImgs: MockElement[] = [];
+      const brandAvatars: MockElement[] = [];
 
       const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
       for (const match of html.matchAll(tagRegex)) {
@@ -243,13 +248,34 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
           attrs.set(attrMatch[1], attrMatch[2] ?? "");
         }
         const id = attrs.get("id") ?? "";
-        const cls = attrs.get("class") ?? "";
-        const hasWaxSeal = cls.split(/\s+/).includes("grimoire-wax-seal");
+        const clsList = (attrs.get("class") ?? "").split(/\s+/);
+        const hasWaxSeal = clsList.includes("grimoire-wax-seal");
+        const hasConditionRow = clsList.includes("condition-summary-row");
+        const hasDialogueDock = clsList.includes("rpg-dialogue-dock");
+        const hasLogoImg =
+          clsList.includes("title-logo-img") || clsList.includes("op-climax-logo-img");
+        const hasBrandAvatar = clsList.includes("brand-avatar");
         const hasCloseDialog = attrs.has("data-close-dialog");
         const hasLangBtn = attrs.has("data-lang-btn");
         const hasBgmToggle = attrs.has("data-bgm-toggle");
+        const hasAriaLabel = attrs.has("aria-label");
+        const hasTitle = attrs.has("title");
+        const hasAlt = attrs.has("alt");
 
-        if (!id && !hasWaxSeal && !hasCloseDialog && !hasLangBtn && !hasBgmToggle) {
+        if (
+          !id &&
+          !hasWaxSeal &&
+          !hasConditionRow &&
+          !hasDialogueDock &&
+          !hasLogoImg &&
+          !hasBrandAvatar &&
+          !hasCloseDialog &&
+          !hasLangBtn &&
+          !hasBgmToggle &&
+          !hasAriaLabel &&
+          !hasTitle &&
+          !hasAlt
+        ) {
           continue;
         }
 
@@ -257,7 +283,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
           id,
           textContent: "__JA_INITIAL__",
           innerHTML: "__JA_INITIAL__",
-          title: attrs.get("title") ?? "__JA_TITLE__",
+          title: attrs.get("title") ?? "",
           hidden: attrs.has("hidden"),
           open: false,
           dataset: hasLangBtn ? { langBtn: attrs.get("data-lang-btn") ?? "" } : {},
@@ -272,8 +298,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
           getAttribute: (attr: string) => attrs.get(attr) ?? null,
         };
 
+        allElements.push(el);
         if (id) byId.set(id, el);
         if (hasWaxSeal) waxSeals.push(el);
+        if (hasConditionRow) conditionRows.push(el);
+        if (hasDialogueDock) dialogueDocks.push(el);
+        if (hasLogoImg) logoImgs.push(el);
+        if (hasBrandAvatar) brandAvatars.push(el);
         if (hasCloseDialog) closeBtns.push(el);
         if (hasLangBtn) langBtns.push(el);
         if (hasBgmToggle) bgmBtns.push(el);
@@ -288,11 +319,18 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
           if (selector === ".grimoire-wax-seal") return waxSeals;
           if (selector === "[data-close-dialog]") return closeBtns;
           if (selector === "[data-bgm-toggle]") return bgmBtns;
+          if (selector === ".condition-summary-row") return conditionRows;
+          if (selector === ".rpg-dialogue-dock") return dialogueDocks;
+          if (selector === ".title-logo-img, .op-climax-logo-img") return logoImgs;
+          if (selector === ".brand-avatar") return brandAvatars;
           return [];
         },
         byId,
+        allElements,
         waxSeals,
         closeBtns,
+        conditionRows,
+        dialogueDocks,
       };
     };
 
@@ -346,6 +384,25 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       for (const closeBtn of castleDoc.closeBtns) {
         expect(closeBtn.getAttribute("aria-label")).toBe("Close");
       }
+      expect(castleDoc.byId.get("title-screen")?.getAttribute("aria-label")).toBe("Title Screen");
+      expect(castleDoc.byId.get("stage-progress-nav")?.getAttribute("aria-label")).toBe(
+        "Month Selection"
+      );
+      expect(castleDoc.byId.get("shift-grid-table")?.getAttribute("aria-label")).toBe(
+        "Guard Shift Matrix"
+      );
+      expect(castleDoc.byId.get("opening-movie-dialog")?.getAttribute("aria-label")).toBe(
+        "Opening Movie"
+      );
+      expect(castleDoc.conditionRows[0]?.getAttribute("aria-label")).toBe("Shift Goal Status");
+      expect(castleDoc.dialogueDocks[0]?.getAttribute("aria-label")).toBe(
+        "Dialogue Window and Dispatch Command"
+      );
+      for (const el of castleDoc.allElements) {
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+      }
       expect(castleDoc.byId.get("stage-heading")?.textContent).toBe(
         getStageLocalized(CASTLE_STAGES[0], "en").title
       );
@@ -382,6 +439,19 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       }
       for (const closeBtn of castleDoc.closeBtns) {
         expect(closeBtn.getAttribute("aria-label")).toBe("关闭");
+      }
+      expect(castleDoc.byId.get("title-screen")?.getAttribute("aria-label")).toBe("标题画面");
+      expect(castleDoc.byId.get("stage-progress-nav")?.getAttribute("aria-label")).toBe("年月选择");
+      expect(castleDoc.byId.get("shift-grid-table")?.getAttribute("aria-label")).toBe("警备排班表");
+      expect(castleDoc.byId.get("opening-movie-dialog")?.getAttribute("aria-label")).toBe(
+        "开场动画"
+      );
+      expect(castleDoc.conditionRows[0]?.getAttribute("aria-label")).toBe("排班达成状况");
+      expect(castleDoc.dialogueDocks[0]?.getAttribute("aria-label")).toBe("对话窗口与出击指令");
+      for (const el of castleDoc.allElements) {
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
       }
       expect(castleDoc.byId.get("stage-heading")?.textContent).toBe(
         getStageLocalized(CASTLE_STAGES[0], "zh").title
@@ -442,6 +512,14 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("legend-wall")?.title).toBe(
         "Water & Rock (impassable natural wall)"
       );
+      expect(sheepDoc.byId.get("legend-strip")?.getAttribute("aria-label")).toBe(
+        "Tile Score Legend"
+      );
+      for (const el of sheepDoc.allElements) {
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+      }
 
       applySheepStaticTranslations("zh");
       expect(sheepDoc.documentElement.lang).toBe("zh");
@@ -472,6 +550,12 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("legend-wall")?.title).toBe(
         "水池与岩石（不可通行的天然墙壁）"
       );
+      expect(sheepDoc.byId.get("legend-strip")?.getAttribute("aria-label")).toBe("地块得分一览");
+      for (const el of sheepDoc.allElements) {
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+      }
     } finally {
       if (prevDocument === undefined) {
         delete (globalThis as { document?: unknown }).document;
