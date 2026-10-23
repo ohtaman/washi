@@ -246,6 +246,27 @@ function applyStaticTranslations(): void {
     en: "✨ View Model Solution",
     zh: "✨ 查看示范解答",
   });
+  btnNextStage.textContent = pickLang(currentLang, {
+    ja: "次のステージへ ▶",
+    en: "Next Stage ▶",
+    zh: "下一关 ▶",
+  });
+  stageStripEl.setAttribute(
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "ステージ選択",
+      en: "Stage Selection",
+      zh: "关卡选择",
+    })
+  );
+  boardGridEl.setAttribute(
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "牧場パズル盤面",
+      en: "Pasture Puzzle Board",
+      zh: "牧场解谜棋盘",
+    })
+  );
 
   btnUndoLabel.textContent = pickLang(currentLang, {
     ja: "1手戻す",

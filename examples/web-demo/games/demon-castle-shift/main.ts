@@ -689,23 +689,7 @@ async function loadStage(
   const hasDom = typeof document !== "undefined" && Boolean(document.getElementById("stage-progress-nav"));
   if (hasDom) {
     renderStageProgressNav();
-
-    const locStage = getStageLocalized(stage, currentLang);
-    const diffLabel = stage.difficultyTier
-      ? getDifficultyLabelLocalized(stage.difficultyTier, currentLang)
-      : stage.difficultyLabel;
-    getEl<HTMLElement>("stage-heading").textContent =
-      stageIndex >= 0
-        ? locStage.title
-        : `${locStage.title}${
-            diffLabel
-              ? pickLang(currentLang, {
-                  ja: `（難易度：${diffLabel}）`,
-                  en: ` (Difficulty: ${diffLabel})`,
-                  zh: `（难度：${diffLabel}）`,
-                })
-              : ""
-          }`;
+    renderStageHeading();
 
     refreshEvaluationAndBoard(true);
 
@@ -1599,11 +1583,33 @@ function updateDefaultDockMessage(lastMove?: {
   });
 }
 
+function renderStageHeading(): void {
+  const headingEl = document.getElementById("stage-heading");
+  if (!headingEl) return;
+  const locStage = getStageLocalized(currentStage, currentLang);
+  const diffLabel = currentStage.difficultyTier
+    ? getDifficultyLabelLocalized(currentStage.difficultyTier, currentLang)
+    : currentStage.difficultyLabel;
+  headingEl.textContent =
+    currentStageIndex >= 0
+      ? locStage.title
+      : `${locStage.title}${
+          diffLabel
+            ? pickLang(currentLang, {
+                ja: `（難易度：${diffLabel}）`,
+                en: ` (Difficulty: ${diffLabel})`,
+                zh: `（难度：${diffLabel}）`,
+              })
+            : ""
+        }`;
+}
+
 function refreshEvaluationAndBoard(
   updateSpeech = true,
   lastMove?: { monsterId: MonsterId; day: DayIndex; shift: ShiftType }
 ): void {
   currentEvaluation = evaluateSchedule(currentStage, currentSchedule);
+  renderStageHeading();
   renderShiftMatrix();
   renderGoalTrackerAndHud();
   renderPairBonusStrip();
@@ -3627,6 +3633,10 @@ function applyStaticTranslations(): void {
     const el = document.getElementById(id);
     if (el) el.innerHTML = html;
   };
+  const setTitle = (id: string, title: string) => {
+    const el = document.getElementById(id);
+    if (el) el.title = title;
+  };
 
   setText(
     "title-genre-pill",
@@ -3653,6 +3663,22 @@ function applyStaticTranslations(): void {
     })
   );
   setText(
+    "btn-title-start",
+    pickLang(currentLang, {
+      ja: "はじめから遊ぶ",
+      en: "Start New Game",
+      zh: "从头开始游玩",
+    })
+  );
+  setText(
+    "btn-title-continue",
+    pickLang(currentLang, {
+      ja: "つづきから遊ぶ",
+      en: "Continue",
+      zh: "继续游戏",
+    })
+  );
+  setText(
     "btn-title-roster",
     pickLang(currentLang, { ja: "📖 警備隊名鑑", en: "📖 Guard Grimoire", zh: "📖 警备队名鉴" })
   );
@@ -3665,15 +3691,63 @@ function applyStaticTranslations(): void {
     "btn-back-title",
     pickLang(currentLang, { ja: "← タイトル", en: "← Title", zh: "← 标题" })
   );
+  setTitle(
+    "btn-back-title",
+    pickLang(currentLang, {
+      ja: "タイトル画面へ戻る",
+      en: "Back to Title Screen",
+      zh: "返回标题画面",
+    })
+  );
   setText(
     "btn-roster",
     pickLang(currentLang, { ja: "📖 名鑑", en: "📖 Grimoire", zh: "📖 名鉴" })
   );
+  setTitle(
+    "btn-roster",
+    pickLang(currentLang, {
+      ja: "魔王城で働く全20名のメンバー名鑑と相性一覧",
+      en: "Grimoire of all 20 Demon Castle guards and pair affinities",
+      zh: "魔王城全20名成员名鉴与搭档相性一览",
+    })
+  );
   setText("btn-help", pickLang(currentLang, { ja: "ルール", en: "Rules", zh: "规则" }));
   setText("btn-hint-one", pickLang(currentLang, { ja: "💡 ヒント", en: "💡 Hint", zh: "💡 提示" }));
+  setTitle(
+    "btn-hint-one",
+    pickLang(currentLang, {
+      ja: "1マスだけお手本を配置します",
+      en: "Fill 1 cell from the model shift",
+      zh: "填入1格示范排班",
+    })
+  );
   setText("btn-reset", pickLang(currentLang, { ja: "白紙に戻す", en: "Clear All", zh: "清空重排" }));
+  setTitle(
+    "dialogue-box",
+    pickLang(currentLang, {
+      ja: "クリックでメッセージを全文表示・次へ進める",
+      en: "Click to reveal full message or advance",
+      zh: "点击显示完整信息或继续",
+    })
+  );
+  setText(
+    "btn-dispatch",
+    pickLang(currentLang, {
+      ja: "⚔️ このシフトで警備する",
+      en: "⚔️ Guard with This Shift",
+      zh: "⚔️ 按此班表出击警备",
+    })
+  );
 
   setText("btn-op-skip", pickLang(currentLang, { ja: "スキップ ⏭", en: "Skip ⏭", zh: "跳过 ⏭" }));
+  setTitle(
+    "op-stage-viewport",
+    pickLang(currentLang, {
+      ja: "クリックで次へ進む",
+      en: "Click to advance",
+      zh: "点击继续",
+    })
+  );
   setText(
     "op-climax-tagline",
     pickLang(currentLang, {
@@ -3685,6 +3759,10 @@ function applyStaticTranslations(): void {
   setText(
     "btn-op-finish",
     pickLang(currentLang, { ja: "物語を始める", en: "Begin Story", zh: "开始物语" })
+  );
+  setText(
+    "btn-op-next-cut",
+    pickLang(currentLang, { ja: "次へ ▶", en: "Next ▶", zh: "下一步 ▶" })
   );
 
   setText("prologue-title", pickLang(currentLang, { ja: "プロローグ", en: "Prologue", zh: "序章" }));
@@ -3706,6 +3784,7 @@ function applyStaticTranslations(): void {
     pickLang(currentLang, { ja: "リリス", en: "Lilith", zh: "莉莉丝" })
   );
   setText("btn-prologue-prev", pickLang(currentLang, { ja: "前へ", en: "Prev", zh: "上一页" }));
+  setText("btn-prologue-next", pickLang(currentLang, { ja: "次へ", en: "Next", zh: "下一步" }));
 
   setText(
     "briefing-title",
@@ -3735,6 +3814,15 @@ function applyStaticTranslations(): void {
     "grimoire-close-btn",
     pickLang(currentLang, { ja: "✕ 書を閉じる", en: "✕ Close Tome", zh: "✕ 合上书卷" })
   );
+  document.querySelectorAll<HTMLElement>(".grimoire-wax-seal").forEach((el) => {
+    el.textContent = pickLang(currentLang, { ja: "印", en: "Seal", zh: "印" });
+  });
+  document.querySelectorAll<HTMLElement>("[data-close-dialog]").forEach((el) => {
+    el.setAttribute(
+      "aria-label",
+      pickLang(currentLang, { ja: "閉じる", en: "Close", zh: "关闭" })
+    );
+  });
 
   setText(
     "help-dialog-title",

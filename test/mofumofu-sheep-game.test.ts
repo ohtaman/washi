@@ -199,6 +199,43 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(getDayLabel(0, "zh")).toBe("周一");
     const castleMainTs = readFileSync(resolve(gamesRoot, "demon-castle-shift/main.ts"), "utf8");
     expect(castleMainTs).not.toContain("周${dayName}");
+
+    // 6. Every static button in Demon Castle Shift & Mofumofu Sheep HTML is localized in applyStaticTranslations()
+    const castleStaticButtons = [
+      "btn-title-start",
+      "btn-title-continue",
+      "btn-title-roster",
+      "btn-title-help",
+      "btn-back-title",
+      "btn-roster",
+      "btn-help",
+      "btn-hint-one",
+      "btn-reset",
+      "btn-dispatch",
+      "btn-op-skip",
+      "btn-op-finish",
+      "btn-op-next-cut",
+      "btn-prologue-skip",
+      "btn-prologue-prev",
+      "btn-prologue-next",
+      "grimoire-close-btn",
+    ];
+    for (const btnId of castleStaticButtons) {
+      expect(castleMainTs).toMatch(new RegExp(`setText\\(\\s*"${btnId}"`));
+    }
+
+    const sheepMainTs = readFileSync(resolve(gamesRoot, "mofumofu-sheep/main.ts"), "utf8");
+    const sheepStaticButtons = [
+      "btnShowOptimal.textContent",
+      "btnNextStage.textContent",
+      "btnUndoLabel.textContent",
+      "btnRestartLabel.textContent",
+      "btnHintLabel.textContent",
+      "btnNewRandomLabel.textContent",
+    ];
+    for (const prop of sheepStaticButtons) {
+      expect(sheepMainTs).toContain(prop);
+    }
   });
 
   it("preserves authored stage.targetScore and ignores unverified solver results when optimization fails", async () => {
