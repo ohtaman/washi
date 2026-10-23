@@ -155,47 +155,20 @@ let wasClearedBeforeMove = false;
 let showingModelAnswer = false;
 let solveToken = 0;
 
-// DOM Elements
-const backLinkEl = document.getElementById("back-link") as HTMLAnchorElement;
-const appTitleEl = document.getElementById("app-title") as HTMLElement;
-const appSubtitleEl = document.getElementById("app-subtitle") as HTMLElement;
-const stageStripEl = document.getElementById("stage-strip") as HTMLElement;
-const totalStarsBadgeEl = document.getElementById("total-stars-badge") as HTMLElement;
-const totalStarsTextEl = document.getElementById("total-stars-text") as HTMLElement;
-const stageBadgeEl = document.getElementById("stage-badge") as HTMLElement;
-const stageTitleEl = document.getElementById("stage-title") as HTMLElement;
-const stageOneLinerEl = document.getElementById("stage-oneliner") as HTMLElement;
-const hudFenceLabelEl = document.getElementById("hud-fence-label") as HTMLElement;
-const fenceDotsEl = document.getElementById("fence-dots") as HTMLElement;
-const fenceCountTextEl = document.getElementById("fence-count-text") as HTMLElement;
-const hudScoreLabelEl = document.getElementById("hud-score-label") as HTMLElement;
-const scoreTextEl = document.getElementById("score-text") as HTMLElement;
-const hudStatusPillEl = document.getElementById("hud-status-pill") as HTMLElement;
-const statusIconEl = document.getElementById("status-icon") as HTMLElement;
-const statusTextEl = document.getElementById("status-text") as HTMLElement;
-const boardGridEl = document.getElementById("board-grid") as HTMLElement;
-const clearBannerEl = document.getElementById("clear-banner") as HTMLElement;
-const clearStarsEl = document.getElementById("clear-stars") as HTMLElement;
-const clearHeadlineEl = document.getElementById("clear-headline") as HTMLElement;
-const clearSubtextEl = document.getElementById("clear-subtext") as HTMLElement;
-const btnShowOptimal = document.getElementById("btn-show-optimal") as HTMLButtonElement;
-const btnNextStage = document.getElementById("btn-next-stage") as HTMLButtonElement;
-const btnUndo = document.getElementById("btn-undo") as HTMLButtonElement;
-const btnUndoLabel = document.getElementById("btn-undo-label") as HTMLElement;
-const btnRestart = document.getElementById("btn-restart") as HTMLButtonElement;
-const btnRestartLabel = document.getElementById("btn-restart-label") as HTMLElement;
-const btnHint = document.getElementById("btn-hint") as HTMLButtonElement;
-const btnHintLabel = document.getElementById("btn-hint-label") as HTMLElement;
-const btnNewRandom = document.getElementById("btn-new-random") as HTMLButtonElement;
-const btnNewRandomLabel = document.getElementById("btn-new-random-label") as HTMLElement;
-const legendSheepEl = document.getElementById("legend-sheep") as HTMLElement;
-const legendGrassEl = document.getElementById("legend-grass") as HTMLElement;
-const legendStrawberryEl = document.getElementById("legend-strawberry") as HTMLElement;
-const legendMushroomEl = document.getElementById("legend-mushroom") as HTMLElement;
-const legendBridgeEl = document.getElementById("legend-bridge") as HTMLElement;
-const legendWallEl = document.getElementById("legend-wall") as HTMLElement;
+function getEl<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (!el) {
+    throw new Error(`Missing required DOM element: #${id}`);
+  }
+  return el as T;
+}
 
-function applyStaticTranslations(): void {
+export function applyStaticTranslations(langOverride?: GameLang): void {
+  if (langOverride) {
+    currentLang = langOverride;
+    setGameLang(langOverride);
+  }
+  if (typeof document === "undefined") return;
   document.documentElement.lang = currentLang;
   document.title = pickLang(currentLang, {
     ja: "もふもふ羊の牧場囲い — まきばの柵パズル",
@@ -203,134 +176,261 @@ function applyStaticTranslations(): void {
     zh: "毛茸茸绵羊围牧场 — 牧场栅栏谜题",
   });
 
-  backLinkEl.textContent = pickLang(currentLang, {
-    ja: "← 一覧",
-    en: "← Portal",
-    zh: "← 返回列表",
-  });
-  backLinkEl.title = pickLang(currentLang, {
-    ja: "ゲーム一覧へ戻る",
-    en: "Back to Game Portal",
-    zh: "返回游戏列表",
+  const setText = (id: string, text: string) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const setHtml = (id: string, html: string) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  };
+  const setTitle = (id: string, title: string) => {
+    const el = document.getElementById(id);
+    if (el) el.title = title;
+  };
+  const setAttr = (id: string, attr: string, val: string) => {
+    const el = document.getElementById(id);
+    if (el) el.setAttribute(attr, val);
+  };
+
+  setText(
+    "back-link",
+    pickLang(currentLang, {
+      ja: "← 一覧",
+      en: "← Portal",
+      zh: "← 返回列表",
+    })
+  );
+  setTitle(
+    "back-link",
+    pickLang(currentLang, {
+      ja: "ゲーム一覧へ戻る",
+      en: "Back to Game Portal",
+      zh: "返回游戏列表",
+    })
+  );
+
+  setText(
+    "app-title",
+    pickLang(currentLang, {
+      ja: "もふもふ羊の牧場囲い",
+      en: "Fluffy Sheep Pasture",
+      zh: "毛茸茸绵羊围牧场",
+    })
+  );
+  setText(
+    "app-subtitle",
+    pickLang(currentLang, {
+      ja: "まきばの柵パズル",
+      en: "Pasture Fence Puzzle",
+      zh: "牧场栅栏谜题",
+    })
+  );
+  setTitle(
+    "total-stars-badge",
+    pickLang(currentLang, {
+      ja: "クリア済みステージ数",
+      en: "Cleared stages",
+      zh: "已通关关卡数",
+    })
+  );
+
+  setText(
+    "hud-fence-label",
+    pickLang(currentLang, {
+      ja: "柵の残り",
+      en: "Fences Left",
+      zh: "剩余栅栏",
+    })
+  );
+  setText(
+    "hud-score-label",
+    pickLang(currentLang, {
+      ja: "現在 / クリア目標",
+      en: "Current / Target",
+      zh: "当前 / 目标得分",
+    })
+  );
+
+  setText(
+    "btn-show-optimal",
+    pickLang(currentLang, {
+      ja: "✨ お手本を見る",
+      en: "✨ View Model Solution",
+      zh: "✨ 查看示范解答",
+    })
+  );
+  setText(
+    "btn-next-stage",
+    pickLang(currentLang, {
+      ja: "次のステージへ ▶",
+      en: "Next Stage ▶",
+      zh: "下一关 ▶",
+    })
+  );
+  setAttr(
+    "stage-strip",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "ステージ選択",
+      en: "Stage Selection",
+      zh: "关卡选择",
+    })
+  );
+  setAttr(
+    "board-grid",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "牧場パズル盤面",
+      en: "Pasture Puzzle Board",
+      zh: "牧场解谜棋盘",
+    })
+  );
+  setAttr(
+    "legend-strip",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "タイル得点一覧",
+      en: "Tile Score Legend",
+      zh: "地块得分一览",
+    })
+  );
+  document.querySelectorAll<HTMLImageElement>(".brand-avatar").forEach((el) => {
+    el.setAttribute("alt", pickLang(currentLang, { ja: "モコ", en: "Moko", zh: "莫可" }));
   });
 
-  appTitleEl.textContent = pickLang(currentLang, {
-    ja: "もふもふ羊の牧場囲い",
-    en: "Fluffy Sheep Pasture",
-    zh: "毛茸茸绵羊围牧场",
-  });
-  appSubtitleEl.textContent = pickLang(currentLang, {
-    ja: "まきばの柵パズル",
-    en: "Pasture Fence Puzzle",
-    zh: "牧场栅栏谜题",
-  });
-  totalStarsBadgeEl.title = pickLang(currentLang, {
-    ja: "クリア済みステージ数",
-    en: "Cleared stages",
-    zh: "已通关关卡数",
-  });
+  setText(
+    "btn-undo-label",
+    pickLang(currentLang, {
+      ja: "1手戻す",
+      en: "Undo",
+      zh: "撤销一步",
+    })
+  );
+  setTitle(
+    "btn-undo",
+    pickLang(currentLang, {
+      ja: "1手戻す (Zキー)",
+      en: "Undo 1 move (Z key)",
+      zh: "撤销一步 (Z键)",
+    })
+  );
 
-  hudFenceLabelEl.textContent = pickLang(currentLang, {
-    ja: "柵の残り",
-    en: "Fences Left",
-    zh: "剩余栅栏",
-  });
-  hudScoreLabelEl.textContent = pickLang(currentLang, {
-    ja: "現在 / クリア目標",
-    en: "Current / Target",
-    zh: "当前 / 目标得分",
-  });
+  setText(
+    "btn-restart-label",
+    pickLang(currentLang, {
+      ja: "リスタート",
+      en: "Restart",
+      zh: "重新开始",
+    })
+  );
+  setTitle(
+    "btn-restart",
+    pickLang(currentLang, {
+      ja: "最初からやり直す (Rキー)",
+      en: "Restart stage (R key)",
+      zh: "从头重新开始 (R键)",
+    })
+  );
 
-  btnShowOptimal.textContent = pickLang(currentLang, {
-    ja: "✨ お手本を見る",
-    en: "✨ View Model Solution",
-    zh: "✨ 查看示范解答",
-  });
+  setText(
+    "btn-hint-label",
+    pickLang(currentLang, {
+      ja: "1手ヒント",
+      en: "1-Move Hint",
+      zh: "一步提示",
+    })
+  );
+  setTitle(
+    "btn-hint",
+    pickLang(currentLang, {
+      ja: "次の1手を盤面上で光らせて教えます (Hキー)",
+      en: "Highlight the next recommended move on the board (H key)",
+      zh: "在棋盘上高亮提示下一步操作 (H键)",
+    })
+  );
 
-  btnUndoLabel.textContent = pickLang(currentLang, {
-    ja: "1手戻す",
-    en: "Undo",
-    zh: "撤销一步",
-  });
-  btnUndo.title = pickLang(currentLang, {
-    ja: "1手戻す (Zキー)",
-    en: "Undo 1 move (Z key)",
-    zh: "撤销一步 (Z键)",
-  });
+  setText(
+    "btn-new-random-label",
+    pickLang(currentLang, {
+      ja: "ちがう牧場へ",
+      en: "Another Pasture",
+      zh: "换一个牧场",
+    })
+  );
+  setTitle(
+    "btn-new-random",
+    pickLang(currentLang, {
+      ja: "ちがう牧場へ移動する",
+      en: "Move to another pasture",
+      zh: "前往另一个牧场",
+    })
+  );
 
-  btnRestartLabel.textContent = pickLang(currentLang, {
-    ja: "リスタート",
-    en: "Restart",
-    zh: "重新开始",
-  });
-  btnRestart.title = pickLang(currentLang, {
-    ja: "最初からやり直す (Rキー)",
-    en: "Restart stage (R key)",
-    zh: "从头重新开始 (R键)",
-  });
-
-  btnHintLabel.textContent = pickLang(currentLang, {
-    ja: "1手ヒント",
-    en: "1-Move Hint",
-    zh: "一步提示",
-  });
-  btnHint.title = pickLang(currentLang, {
-    ja: "次の1手を盤面上で光らせて教えます (Hキー)",
-    en: "Highlight the next recommended move on the board (H key)",
-    zh: "在棋盘上高亮提示下一步操作 (H键)",
-  });
-
-  btnNewRandomLabel.textContent = pickLang(currentLang, {
-    ja: "ちがう牧場へ",
-    en: "Another Pasture",
-    zh: "换一个牧场",
-  });
-  btnNewRandom.title = pickLang(currentLang, {
-    ja: "ちがう牧場へ移動する",
-    en: "Move to another pasture",
-    zh: "前往另一个牧场",
-  });
-
-  legendSheepEl.title = pickLang(currentLang, {
-    ja: "ヒツジ（+2点・守る対象）",
-    en: "Sheep (+2 pts, protect from wolves)",
-    zh: "绵羊（+2分・保护对象）",
-  });
-  legendGrassEl.title = pickLang(currentLang, {
-    ja: "草地（+1点）",
-    en: "Meadow (+1 pt)",
-    zh: "草地（+1分）",
-  });
-  legendStrawberryEl.title = pickLang(currentLang, {
-    ja: "野いちご（+5点）",
-    en: "Wild Strawberry (+5 pts)",
-    zh: "野草莓（+5分）",
-  });
-  legendMushroomEl.title = pickLang(currentLang, {
-    ja: "どくキノコ（-5点・柵で潰せる）",
-    en: "Poison Mushroom (-5 pts, can be covered with a fence)",
-    zh: "毒蘑菇（-5分・可用栅栏盖住）",
-  });
-  legendBridgeEl.innerHTML = pickLang(currentLang, {
-    ja: "🌉 +1 <small>(柵×)</small>",
-    en: "🌉 +1 <small>(no fence)</small>",
-    zh: "🌉 +1 <small>(禁放栅栏)</small>",
-  });
-  legendBridgeEl.title = pickLang(currentLang, {
-    ja: "石橋（+1点・通り抜け可・柵は置けない）",
-    en: "Stone Bridge (+1 pt, passable, cannot place fence)",
-    zh: "石桥（+1分・可通行・不可放栅栏）",
-  });
-  legendWallEl.textContent = pickLang(currentLang, {
-    ja: "💧🪨 壁",
-    en: "💧🪨 Wall",
-    zh: "💧🪨 障碍墙",
-  });
-  legendWallEl.title = pickLang(currentLang, {
-    ja: "水辺・岩（通り抜け不可の壁）",
-    en: "Water & Rock (impassable natural wall)",
-    zh: "水池与岩石（不可通行的天然墙壁）",
-  });
+  setTitle(
+    "legend-sheep",
+    pickLang(currentLang, {
+      ja: "ヒツジ（+2点・守る対象）",
+      en: "Sheep (+2 pts, protect from wolves)",
+      zh: "绵羊（+2分・保护对象）",
+    })
+  );
+  setTitle(
+    "legend-grass",
+    pickLang(currentLang, {
+      ja: "草地（+1点）",
+      en: "Meadow (+1 pt)",
+      zh: "草地（+1分）",
+    })
+  );
+  setTitle(
+    "legend-strawberry",
+    pickLang(currentLang, {
+      ja: "野いちご（+5点）",
+      en: "Wild Strawberry (+5 pts)",
+      zh: "野草莓（+5分）",
+    })
+  );
+  setTitle(
+    "legend-mushroom",
+    pickLang(currentLang, {
+      ja: "どくキノコ（-5点・柵で潰せる）",
+      en: "Poison Mushroom (-5 pts, can be covered with a fence)",
+      zh: "毒蘑菇（-5分・可用栅栏盖住）",
+    })
+  );
+  setHtml(
+    "legend-bridge",
+    pickLang(currentLang, {
+      ja: "🌉 +1 <small>(柵×)</small>",
+      en: "🌉 +1 <small>(no fence)</small>",
+      zh: "🌉 +1 <small>(禁放栅栏)</small>",
+    })
+  );
+  setTitle(
+    "legend-bridge",
+    pickLang(currentLang, {
+      ja: "石橋（+1点・通り抜け可・柵は置けない）",
+      en: "Stone Bridge (+1 pt, passable, cannot place fence)",
+      zh: "石桥（+1分・可通行・不可放栅栏）",
+    })
+  );
+  setText(
+    "legend-wall",
+    pickLang(currentLang, {
+      ja: "💧🪨 壁",
+      en: "💧🪨 Wall",
+      zh: "💧🪨 障碍墙",
+    })
+  );
+  setTitle(
+    "legend-wall",
+    pickLang(currentLang, {
+      ja: "水辺・岩（通り抜け不可の壁）",
+      en: "Water & Rock (impassable natural wall)",
+      zh: "水池与岩石（不可通行的天然墙壁）",
+    })
+  );
 
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.langBtn === currentLang);
@@ -346,7 +446,7 @@ function isStageCleared(): boolean {
 }
 
 function getAvailableBoardWidth(): number | undefined {
-  const stageEl = boardGridEl.parentElement;
+  const stageEl = getEl<HTMLElement>("board-grid").parentElement;
   const viewportBound =
     typeof window !== "undefined" && window.innerWidth > 0
       ? Math.max(200, window.innerWidth - 76)
@@ -362,6 +462,8 @@ function getAvailableBoardWidth(): number | undefined {
 }
 
 function renderStageStrip(): void {
+  const stageStripEl = getEl<HTMLElement>("stage-strip");
+  const totalStarsTextEl = getEl<HTMLElement>("total-stars-text");
   stageStripEl.innerHTML = "";
 
   let clearedCount = 0;
@@ -426,6 +528,26 @@ function renderStageStrip(): void {
 }
 
 function renderHud(): void {
+  const stageBadgeEl = getEl<HTMLElement>("stage-badge");
+  const stageTitleEl = getEl<HTMLElement>("stage-title");
+  const stageOneLinerEl = getEl<HTMLElement>("stage-oneliner");
+  const fenceDotsEl = getEl<HTMLElement>("fence-dots");
+  const fenceCountTextEl = getEl<HTMLElement>("fence-count-text");
+  const scoreTextEl = getEl<HTMLElement>("score-text");
+  const hudStatusPillEl = getEl<HTMLElement>("hud-status-pill");
+  const statusIconEl = getEl<HTMLElement>("status-icon");
+  const statusTextEl = getEl<HTMLElement>("status-text");
+  const clearBannerEl = getEl<HTMLElement>("clear-banner");
+  const clearStarsEl = getEl<HTMLElement>("clear-stars");
+  const clearHeadlineEl = getEl<HTMLElement>("clear-headline");
+  const clearSubtextEl = getEl<HTMLElement>("clear-subtext");
+  const btnShowOptimal = getEl<HTMLButtonElement>("btn-show-optimal");
+  const btnNextStage = getEl<HTMLButtonElement>("btn-next-stage");
+  const btnUndo = getEl<HTMLButtonElement>("btn-undo");
+  const btnRestart = getEl<HTMLButtonElement>("btn-restart");
+  const btnHint = getEl<HTMLButtonElement>("btn-hint");
+  const btnNewRandom = getEl<HTMLButtonElement>("btn-new-random");
+
   const isEx = currentStageIndex >= CAMPAIGN_STAGES.length;
   stageBadgeEl.textContent = isEx ? "EXTRA" : `STAGE ${currentStage.stageNumber}`;
   const localizedStage = getLocalizedStageText(currentStage, currentLang);
@@ -588,6 +710,7 @@ function renderHud(): void {
 }
 
 function renderBoard(): void {
+  const boardGridEl = getEl<HTMLElement>("board-grid");
   const rows = currentStage.grid.length;
   const cols = currentStage.grid[0]?.length ?? 0;
   const cellSize = computeCellSize(rows, cols, getAvailableBoardWidth());
@@ -759,6 +882,7 @@ function handleRestart(): void {
 
 async function handleHint(): Promise<void> {
   if (solverFailed) return;
+  const btnHint = getEl<HTMLButtonElement>("btn-hint");
   const myToken = solveToken;
   const fencesSnapshot = currentFences;
   btnHint.disabled = true;
@@ -824,6 +948,7 @@ async function loadStageByIndex(index: number): Promise<void> {
 }
 
 async function loadRandomStage(): Promise<void> {
+  const btnNewRandom = getEl<HTMLButtonElement>("btn-new-random");
   const myToken = ++solveToken;
   btnNewRandom.disabled = true;
   try {
@@ -836,57 +961,57 @@ async function loadRandomStage(): Promise<void> {
 }
 
 // Event Listeners
-document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const lang = btn.dataset.langBtn as GameLang;
-    if (lang === "ja" || lang === "en" || lang === "zh") {
-      currentLang = lang;
-      setGameLang(lang);
-      applyStaticTranslations();
-      renderStageStrip();
-      renderHud();
+if (typeof document !== "undefined" && document.getElementById("board-grid")) {
+  document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lang = btn.dataset.langBtn as GameLang;
+      if (lang === "ja" || lang === "en" || lang === "zh") {
+        applyStaticTranslations(lang);
+        renderStageStrip();
+        renderHud();
+      }
+    });
+  });
+
+  getEl<HTMLButtonElement>("btn-undo").addEventListener("click", handleUndo);
+  getEl<HTMLButtonElement>("btn-restart").addEventListener("click", handleRestart);
+  getEl<HTMLButtonElement>("btn-hint").addEventListener("click", () => {
+    void handleHint();
+  });
+  getEl<HTMLButtonElement>("btn-show-optimal").addEventListener("click", handleShowOptimal);
+  getEl<HTMLButtonElement>("btn-new-random").addEventListener("click", () => {
+    void loadRandomStage();
+  });
+  getEl<HTMLButtonElement>("btn-next-stage").addEventListener("click", () => {
+    if (currentStageIndex < CAMPAIGN_STAGES.length - 1) {
+      void loadStageByIndex(currentStageIndex + 1);
+    } else {
+      void loadRandomStage();
     }
   });
-});
 
-btnUndo.addEventListener("click", handleUndo);
-btnRestart.addEventListener("click", handleRestart);
-btnHint.addEventListener("click", () => {
-  void handleHint();
-});
-btnShowOptimal.addEventListener("click", handleShowOptimal);
-btnNewRandom.addEventListener("click", () => {
-  void loadRandomStage();
-});
-btnNextStage.addEventListener("click", () => {
-  if (currentStageIndex < CAMPAIGN_STAGES.length - 1) {
-    void loadStageByIndex(currentStageIndex + 1);
-  } else {
-    void loadRandomStage();
-  }
-});
+  window.addEventListener("keydown", (ev: KeyboardEvent) => {
+    if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLTextAreaElement) {
+      return;
+    }
+    const key = ev.key.toLowerCase();
+    if (key === "z") {
+      ev.preventDefault();
+      handleUndo();
+    } else if (key === "r" && !ev.metaKey && !ev.ctrlKey) {
+      ev.preventDefault();
+      handleRestart();
+    } else if (key === "h" && !ev.metaKey && !ev.ctrlKey) {
+      ev.preventDefault();
+      void handleHint();
+    }
+  });
 
-window.addEventListener("keydown", (ev: KeyboardEvent) => {
-  if (ev.target instanceof HTMLInputElement || ev.target instanceof HTMLTextAreaElement) {
-    return;
-  }
-  const key = ev.key.toLowerCase();
-  if (key === "z") {
-    ev.preventDefault();
-    handleUndo();
-  } else if (key === "r" && !ev.metaKey && !ev.ctrlKey) {
-    ev.preventDefault();
-    handleRestart();
-  } else if (key === "h" && !ev.metaKey && !ev.ctrlKey) {
-    ev.preventDefault();
-    void handleHint();
-  }
-});
+  window.addEventListener("resize", () => {
+    renderBoard();
+  });
 
-window.addEventListener("resize", () => {
-  renderBoard();
-});
-
-// Initialize language & start directly in Stage 1
-applyStaticTranslations();
-void loadStageByIndex(0);
+  // Initialize language & start directly in Stage 1
+  applyStaticTranslations();
+  void loadStageByIndex(0);
+}
