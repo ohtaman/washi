@@ -364,4 +364,32 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(state.currentStageIndex).toBe(1);
     expect(state.currentStage.id).toBe("week-2");
   });
+
+  it("verifies mobile layout resilience: 100dvh, safe-area-insets, sticky table column, and accessible touch targets (Issue #123)", () => {
+    const cssPath = resolve(__dirname, "../examples/web-demo/games/demon-castle-shift/style.css");
+    const css = readFileSync(cssPath, "utf-8");
+
+    // 1. Dynamic viewport units (100dvh) for mobile browser address bars
+    expect(css).toContain("min-height: 100dvh;");
+    expect(css).toContain("height: 100dvh;");
+
+    // 2. Safe area inset handling for bottom toolbars and gestures
+    expect(css).toContain("env(safe-area-inset-bottom)");
+    expect(css).toMatch(/\.rpg-dialogue-dock\s*\{[^}]*bottom:\s*max\([^;]*env\(safe-area-inset-bottom\)/s);
+
+    // 3. Shift matrix horizontal scroll & sticky first column
+    expect(css).toContain("border-collapse: separate;");
+    expect(css).toMatch(/\.shift-matrix thead th\.col-monster\s*\{[^}]*position:\s*sticky;[^}]*left:\s*0;/s);
+    expect(css).toMatch(/\.raid-row th\s*\{[^}]*position:\s*sticky;[^}]*left:\s*0;/s);
+    expect(css).toMatch(/\.monster-row-th\s*\{[^}]*position:\s*sticky;[^}]*left:\s*0;/s);
+
+    // 4. Mobile media query (@media (max-width: 768px)) with touch target size >= 44x44px and bottom clearance
+    const mobile768BlockMatch = css.match(/@media\s*\(max-width:\s*768px\)\s*\{([\s\S]*?)\n\}\n\n@media/);
+    expect(mobile768BlockMatch).toBeTruthy();
+    const mobile768Block = mobile768BlockMatch![1];
+    expect(mobile768Block).toMatch(/\.shift-btn\s*\{[^}]*min-height:\s*44px;/);
+    expect(mobile768Block).toMatch(/\.shift-btn\s*\{[^}]*min-width:\s*44px;/);
+    expect(mobile768Block).toMatch(/\.board-container\s*\{[^}]*padding-bottom:\s*5rem;/);
+    expect(mobile768Block).toMatch(/\.shift-matrix thead th\.col-monster\s*\{[^}]*width:\s*168px;/);
+  });
 });
