@@ -69,6 +69,7 @@ let lastSolveOutcome: WashiSolveOutcome | null = null;
 let isSolving = false;
 let pendingSolveRequested = false;
 let activeSolveAbortController: AbortController | null = null;
+let activeSolvePromise: Promise<WashiSolveOutcome | null> | null = null;
 let activeChatAbortController: AbortController | null = null;
 let selectedCellContext: { nurseId: string; day: number } | null = null;
 let editingContractNurseId: string | null = null;
@@ -2079,50 +2080,56 @@ function renderAllViews(): void {
 
 // ==================== SINGLE-FLIGHT COALESCE SOLVER RUNNER (NEVER FREEZES OR DROPS) ====================
 async function runWashiOptimization(): Promise<WashiSolveOutcome | null> {
-  if (isSolving) {
-    // Coalesce: request a fresh solve of the latest state and abort the superseded HiGHS solve
+  if (activeSolvePromise) {
+    // Coalesce: request a fresh solve of the latest state, abort the superseded HiGHS solve,
+    // and return the shared in-flight promise so callers await the latest coalesced outcome.
     pendingSolveRequested = true;
     activeSolveAbortController?.abort();
-    return lastSolveOutcome;
+    return activeSolvePromise;
   }
 
   isSolving = true;
   renderStatusAndConflictBar();
 
-  try {
-    do {
-      pendingSolveRequested = false;
-      activeSolveAbortController = new AbortController();
-      const signal = activeSolveAbortController.signal;
+  activeSolvePromise = (async () => {
+    try {
+      do {
+        pendingSolveRequested = false;
+        activeSolveAbortController = new AbortController();
+        const signal = activeSolveAbortController.signal;
 
-      // Yield to browser paint so status updates smoothly
-      await new Promise((r) => setTimeout(r, 16));
-      if (pendingSolveRequested) continue;
+        // Yield to browser paint so status updates smoothly
+        await new Promise((r) => setTimeout(r, 16));
+        if (pendingSolveRequested) continue;
 
-      const outcome = await solveNurseScheduleWithWashi(appState, {
-        signal,
-        timeLimit: 2.5,
-        referenceSchedule: currentSchedule,
-      });
+        const outcome = await solveNurseScheduleWithWashi(appState, {
+          signal,
+          timeLimit: 2.5,
+          referenceSchedule: currentSchedule,
+        });
 
-      // If superseded by a newer click while solving, loop immediately with latest appState
-      if (pendingSolveRequested) continue;
+        // If superseded by a newer click while solving, loop immediately with latest appState
+        if (pendingSolveRequested) continue;
 
-      lastSolveOutcome = outcome;
-      if (outcome.schedule && outcome.evaluation) {
-        currentSchedule = outcome.schedule;
-        currentEvaluation = outcome.evaluation;
-      } else if (outcome.status === "Infeasible") {
-        currentEvaluation = null;
-      }
-    } while (pendingSolveRequested);
+        lastSolveOutcome = outcome;
+        if (outcome.schedule && outcome.evaluation) {
+          currentSchedule = outcome.schedule;
+          currentEvaluation = outcome.evaluation;
+        } else if (outcome.status === "Infeasible") {
+          currentEvaluation = null;
+        }
+      } while (pendingSolveRequested);
 
-    return lastSolveOutcome;
-  } finally {
-    isSolving = false;
-    activeSolveAbortController = null;
-    renderAllViews();
-  }
+      return lastSolveOutcome;
+    } finally {
+      isSolving = false;
+      activeSolveAbortController = null;
+      activeSolvePromise = null;
+      renderAllViews();
+    }
+  })();
+
+  return activeSolvePromise;
 }
 
 async function runExplicitZ3Diagnosis(): Promise<void> {

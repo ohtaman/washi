@@ -13,6 +13,7 @@ import {
 import {
   clearNurseContractFromState,
   createDefaultShiftAliases,
+  getJapaneseHolidayName,
   removeCustomShiftFromState,
   resolveShiftSelector,
   resolveDaysBySelector,
@@ -2947,4 +2948,132 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       overPrevEval.violations.some((v) => v.id === "quota_max_quota_prev_exceeded_N05")
     ).toBe(true);
   }, 30_000);
+
+  it("aligns UI softRuleWeights keys, custom N three-night caps & E/N exemptions, statutory holidays, skill removal cascade, target-scoped daily caps, and soft date coverage / day restriction evaluation", async () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+
+    // 1. Statutory Japanese holidays: chained substitute holidays (2025-05-06, 2026-05-06) & citizens' holiday (2026-09-22)
+    expect(getJapaneseHolidayName(2025, 5, 6)).toBe("振替休日");
+    expect(getJapaneseHolidayName(2026, 5, 6)).toBe("振替休日");
+    expect(getJapaneseHolidayName(2026, 9, 22)).toBe("国民の休日");
+    expect(resolveDaysBySelector(2026, 9, 30, { kind: "pattern", holidays: "only" })).toEqual([
+      21, 22, 23,
+    ]);
+
+    // 2. Align UI softRuleWeights keys (consecutive, monthlyDaysOff, monthlyNightCap, trans_N_D) with buildNurseWashiModel
+    const uiSoftModel = buildNurseWashiModel({
+      ...baseState,
+      config: {
+        ...baseState.config,
+        softRuleWeights: {
+          consecutive: 40,
+          monthlyDaysOff: 40,
+          monthlyNightCap: 40,
+          trans_N_D: 40,
+        },
+      },
+    });
+    expect(uiSoftModel.constraintMeta.get("consec_work_N01_d1_to_d6")?.isHard).toBe(false);
+    expect(uiSoftModel.constraintMeta.get("monthly_off_min_N01")?.isHard).toBe(false);
+    expect(uiSoftModel.constraintMeta.get("monthly_night_max_N01")?.isHard).toBe(false);
+    expect(uiSoftModel.constraintMeta.get("trans_N_to_D_N01_d1")?.isHard).toBe(false);
+    expect(uiSoftModel.constraintMeta.get("carryover_N_to_D_N01_d1")?.isHard).toBe(false);
+
+    // 3. Custom N-base shift in maxConsecutiveNight2 (model & evaluator) and E/N contract exemptions
+    const customEnState = applyChatOperationsToState(baseState, [
+      { op: "add_custom_shift", shiftName: "特別準夜", shift: "E_SP", shortLabel: "特準", baseShift: "E" },
+      { op: "add_custom_shift", shiftName: "特別深夜", shift: "N_SP", shortLabel: "特深", baseShift: "N" },
+      { op: "set_nurse_contract", nurseNameOrId: "N01", forbiddenShifts: ["E", "N"] },
+    ]).updatedState;
+    const builtCustomEn = buildNurseWashiModel({
+      ...customEnState,
+      config: { ...customEnState.config, maxConsecutiveNight2: true },
+    });
+    const lpCustomEn = builtCustomEn.model.toLpString();
+    expect(lpCustomEn).toMatch(/forbid_contract_E_N01_d1:.*C_E_SP_N01_d1/);
+    expect(lpCustomEn).toMatch(/forbid_contract_N_N01_d1:.*C_N_SP_N01_d1/);
+    expect(lpCustomEn).toMatch(/max_consec_N2_N01_d1:.*C_N_SP_N01_d1/);
+
+    const emptySched: Record<string, string[]> = {};
+    for (const n of customEnState.nurses) {
+      emptySched[n.id] = new Array(customEnState.config.numDays).fill("O");
+    }
+    emptySched["N02"]![3] = "N_SP";
+    emptySched["N02"]![4] = "N_SP";
+    emptySched["N02"]![5] = "N_SP";
+    const evalN2 = evaluateNurseSchedule(
+      { ...customEnState, config: { ...customEnState.config, maxConsecutiveNight2: true } },
+      emptySched
+    );
+    expect(evalN2.violations.some((v) => v.id === "max_consec_N2_N02_d4")).toBe(true);
+
+    // 4. Cascade skill deletion into dependent staffing rules and substitutesFor references
+    const withCustomSkillState = applyChatOperationsToState(baseState, [
+      { op: "add_skill_def", skillName: "透析管理" },
+      { op: "add_skill_def", skillName: "透析サブ", substitutesFor: "透析管理" },
+      { op: "set_staffing_rule", targetShift: "D", shifts: ["D"], attribute: "透析管理", minCount: 1 },
+    ]).updatedState;
+    const dialysisCode = withCustomSkillState.skillDefs!.find((s) => s.label === "透析管理")!.code;
+    expect(withCustomSkillState.customRules.some((r) => r.attribute === dialysisCode)).toBe(true);
+    const afterSkillRemoved = applyChatOperationsToState(withCustomSkillState, [
+      { op: "remove_skill_def", skillName: "透析管理" },
+    ]).updatedState;
+    expect(afterSkillRemoved.skillDefs!.some((s) => s.code === dialysisCode)).toBe(false);
+    expect(afterSkillRemoved.customRules.some((r) => r.attribute === dialysisCode)).toBe(false);
+    expect(
+      afterSkillRemoved.skillDefs!.find((s) => s.label === "透析サブ")?.substitutesFor
+    ).toBeUndefined();
+
+    // 5. Preserve daily_shift_cap rules across distinct target groups on the same shift
+    const multiTargetCapState = applyChatOperationsToState(baseState, [
+      { op: "add_custom_shift", shiftName: "合同研修", shift: "TR_ALL", shortLabel: "合", baseShift: "D" },
+      { op: "add_daily_shift_cap", shiftName: "合同研修", targetRole: "newcomer", maxStaff: 2 },
+      { op: "add_daily_shift_cap", shiftName: "合同研修", targetRole: "leader_cap", minStaff: 1 },
+    ]).updatedState;
+    const trCaps = multiTargetCapState.customRules.filter(
+      (r) => r.kind === "daily_shift_cap" && r.shift === "TR_ALL"
+    );
+    expect(trCaps.length).toBe(2);
+    expect(trCaps.some((r) => r.attribute === "newcomer" && r.maxStaff === 2)).toBe(true);
+    expect(trCaps.some((r) => r.attribute === "leader_cap" && r.minStaff === 1)).toBe(true);
+
+    // 6. Evaluate soft date_coverage violations and do not suppress hard daily_shift_cap minima with soft shift_day_restriction
+    const softDateCovAndSoftRestrictState: typeof baseState = {
+      ...multiTargetCapState,
+      customRules: [
+        ...multiTargetCapState.customRules,
+        {
+          id: "soft_date_cov_d5",
+          kind: "date_coverage",
+          enabled: true,
+          isHard: false,
+          penaltyWeight: 30,
+          day: 5,
+          shift: "D",
+          minStaff: 25,
+          description: "11/5 日勤25名目標(ソフト)",
+        },
+        {
+          id: "soft_restrict_tr",
+          kind: "shift_day_restriction",
+          enabled: true,
+          isHard: false,
+          penaltyWeight: 15,
+          shift: "TR_ALL",
+          startDay: 10,
+          endDay: 12,
+          description: "合同研修はなるべく11/10〜12のみ(ソフト)",
+        },
+      ],
+    };
+    const evalSoftRules = evaluateNurseSchedule(softDateCovAndSoftRestrictState, emptySched);
+    expect(
+      evalSoftRules.violations.some((v) => v.id === "custom_date_cov_soft_date_cov_d5_d5" && v.isSoft === true)
+    ).toBe(true);
+    // Day 1 is outside soft_restrict_tr (10..12), but because soft_restrict_tr is soft (isHard: false),
+    // the hard daily_shift_cap minimum (leader_cap >= 1 on TR_ALL) on Day 1 must still be evaluated!
+    expect(
+      evalSoftRules.violations.some((v) => v.id.startsWith("daily_min_") && v.day === 1 && !v.isSoft)
+    ).toBe(true);
+  });
 });

@@ -3598,11 +3598,18 @@ export function applyChatOperationsToState(
       const targetCode = targetDef.code;
       const targetLabel = targetDef.label;
 
-      nextState.skillDefs = activeSkills.filter((s) => s.code !== targetCode);
+      nextState.skillDefs = activeSkills
+        .filter((s) => s.code !== targetCode)
+        .map((s) =>
+          s.substitutesFor === targetCode ? { ...s, substitutesFor: undefined } : s
+        );
       nextState.nurses = nextState.nurses.map((n) =>
         n.skills.includes(targetCode)
           ? { ...n, skills: n.skills.filter((sk) => sk !== targetCode) }
           : n
+      );
+      nextState.customRules = nextState.customRules.filter(
+        (r) => r.attribute !== targetCode && (r.targetRole as string | undefined) !== targetCode
       );
       appliedLogs.push(
         `スキル削除: 「${targetLabel}」をスキル定義および全スタッフの保有スキルから削除しました`
@@ -4140,9 +4147,13 @@ export function applyChatOperationsToState(
           ? `${resolvedAttr?.label ?? getRoleLabel(targetRole, activeSkills)}`
           : "";
 
-      nextState.customRules = nextState.customRules.filter(
-        (r) => !(r.kind === "daily_shift_cap" && r.shift === shiftCode)
-      );
+      const normalizedCapTarget = targetRole && targetRole !== "all" ? targetRole : "all";
+      nextState.customRules = nextState.customRules.filter((r) => {
+        if (r.kind !== "daily_shift_cap" || r.shift !== shiftCode) return true;
+        const rAttr = r.attribute || r.targetRole;
+        const rTarget = rAttr && rAttr !== "all" ? rAttr : "all";
+        return rTarget !== normalizedCapTarget;
+      });
 
       const desc =
         typeof minStaff === "number" && minStaff > 0

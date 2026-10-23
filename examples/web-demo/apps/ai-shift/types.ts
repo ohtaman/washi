@@ -297,12 +297,29 @@ export function getJapaneseHolidayName(year: number, month: number, day: number)
     if (m === 11 && d === 23) return "勤労感謝の日";
     return null;
   };
+  const dateObj = new Date(year, month - 1, day);
+  if (day < 1 || dateObj.getFullYear() !== year || dateObj.getMonth() !== month - 1 || dateObj.getDate() !== day) {
+    return null;
+  }
   const direct = checkBaseHoliday(month, day);
   if (direct) return direct;
-  // 振替休日 (Substitute holiday when a holiday falls on Sunday)
-  const dow = new Date(year, month - 1, day).getDay();
-  if (dow === 1 && day > 1 && checkBaseHoliday(month, day - 1)) {
-    return "振替休日";
+  // 振替休日 (Substitute holiday: first non-base-holiday weekday after a contiguous run of base holidays containing a Sunday)
+  let prevDay = day - 1;
+  while (prevDay >= 1 && checkBaseHoliday(month, prevDay) !== null) {
+    if (new Date(year, month - 1, prevDay).getDay() === 0) {
+      return "振替休日";
+    }
+    prevDay--;
+  }
+  // 国民の休日 (Citizens' holiday: a non-Sunday weekday sandwiched between two base national holidays)
+  const dow = dateObj.getDay();
+  if (
+    dow !== 0 &&
+    day > 1 &&
+    checkBaseHoliday(month, day - 1) !== null &&
+    checkBaseHoliday(month, day + 1) !== null
+  ) {
+    return "国民の休日";
   }
   return null;
 }
@@ -1263,9 +1280,13 @@ export interface UpdateNurseSkillOperation {
 
 export interface SetStaffingRuleOperation {
   op: "set_staffing_rule";
-  targetShift: string;
+  targetShift?: string;
+  shiftName?: string;
+  shift?: ShiftCode;
   shifts?: ShiftCode[];
-  attribute: string;
+  attribute?: string;
+  skillName?: string;
+  targetRole?: string;
   minCount?: number;
   maxCount?: number;
   isHard?: boolean;
@@ -1319,6 +1340,7 @@ export interface AddShiftPrerequisiteOperation {
   targetRole: string;
   attribute?: string;
   prereqMinCount: number;
+  minCount?: number;
   restrictedShifts?: ShiftCode[];
 }
 
@@ -1520,7 +1542,7 @@ export function removeCustomShiftFromState(
     nextRules.push(nextRule);
   }
 
-  const nextRelations: StaffPairRelation[] = [];
+  const nextRelations: PairRelation[] = [];
   for (const rel of state.relations) {
     if (Array.isArray(rel.shifts) && rel.shifts.includes(shiftCode)) {
       const filtered = rel.shifts.filter((s) => s !== shiftCode);
