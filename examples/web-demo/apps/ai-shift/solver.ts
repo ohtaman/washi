@@ -323,6 +323,9 @@ export function buildNurseWashiModel(
       m.constraint(c, normalizedMeta.name);
       return;
     }
+    if (normalizedMeta.isHard === false) {
+      return;
+    }
     const s = m.continuous(`slk_${normalizedMeta.name}`, { lb: 0 });
     const weight = getElasticPenaltyWeight(normalizedMeta, elasticMode);
     elasticSlacks.push({ slackVar: s, meta: normalizedMeta, weight });
@@ -598,7 +601,10 @@ export function buildNurseWashiModel(
 
       if (prevBase !== "O") {
         const rowPolicy = transMatrix[prevBase];
-        if (rowPolicy.O === "require") {
+        const reqTarget = (["D", "E", "N", "O"] as const).find(
+          (t) => rowPolicy[t] === "require"
+        );
+        if (reqTarget === "O") {
           addTrackedConstraint(expr`${sum(getNurseDayWorkVars(nurse.id, 0))} <= 0`, {
             name: `carryover_${prevBase}_to_Off_${nurse.id}_d1`,
             category: "carryover",
@@ -608,21 +614,35 @@ export function buildNurseWashiModel(
             relatedDay: 1,
             relaxSuggestion: `シフト遷移マトリクスの「${SHIFT_SHORT_JA[prevBase]}→休 必須」を解除するか、${nurse.name}さんの${config.month}/1の固定シフトを解除してください。`,
           });
-        }
-        for (const toShift of ["D", "E", "N"] as const) {
-          if (rowPolicy[toShift] === "forbid") {
-            addTrackedConstraint(
-              expr`${sum(getNurseBaseShiftVars(nurse.id, 0, toShift))} <= 0`,
-              {
-                name: `carryover_${prevBase}_to_${toShift}_${nurse.id}_d1`,
-                category: "carryover",
-                ruleKey: `trans_${prevBase}_${toShift}`,
-                labelJa: `前月引き継ぎ: ${nurse.name}(${nurse.id}) は前月末日が${SHIFT_LABEL_JA[prevBase]}のため、${config.month}/1の${SHIFT_LABEL_JA[toShift]}は禁止`,
-                relatedNurseIds: [nurse.id],
-                relatedDay: 1,
-                relaxSuggestion: `${nurse.name}さんの${config.month}/1の固定シフトを解除するか、前月引き継ぎ制約を緩和してください。`,
-              }
-            );
+        } else if (reqTarget) {
+          addTrackedConstraint(
+            expr`${sum(getNurseBaseShiftVars(nurse.id, 0, reqTarget))} >= 1`,
+            {
+              name: `carryover_${prevBase}_to_Req_${reqTarget}_${nurse.id}_d1`,
+              category: "carryover",
+              ruleKey: `trans_${prevBase}_${reqTarget}`,
+              labelJa: `前月引き継ぎ(${SHIFT_SHORT_JA[prevBase]}→${SHIFT_SHORT_JA[reqTarget]}必須): ${nurse.name}(${nurse.id}) は前月末日が${SHIFT_LABEL_JA[prevBase]}のため、${config.month}/1は${SHIFT_LABEL_JA[reqTarget]}必須`,
+              relatedNurseIds: [nurse.id],
+              relatedDay: 1,
+              relaxSuggestion: `シフト遷移マトリクスの「${SHIFT_SHORT_JA[prevBase]}→${SHIFT_SHORT_JA[reqTarget]} 必須」を解除するか、${nurse.name}さんの${config.month}/1の固定シフトを解除してください。`,
+            }
+          );
+        } else {
+          for (const toShift of ["D", "E", "N"] as const) {
+            if (rowPolicy[toShift] === "forbid") {
+              addTrackedConstraint(
+                expr`${sum(getNurseBaseShiftVars(nurse.id, 0, toShift))} <= 0`,
+                {
+                  name: `carryover_${prevBase}_to_${toShift}_${nurse.id}_d1`,
+                  category: "carryover",
+                  ruleKey: `trans_${prevBase}_${toShift}`,
+                  labelJa: `前月引き継ぎ: ${nurse.name}(${nurse.id}) は前月末日が${SHIFT_LABEL_JA[prevBase]}のため、${config.month}/1の${SHIFT_LABEL_JA[toShift]}は禁止`,
+                  relatedNurseIds: [nurse.id],
+                  relatedDay: 1,
+                  relaxSuggestion: `${nurse.name}さんの${config.month}/1の固定シフトを解除するか、前月引き継ぎ制約を緩和してください。`,
+                }
+              );
+            }
           }
         }
       }
@@ -671,8 +691,11 @@ export function buildNurseWashiModel(
         const fromVars = getNurseBaseShiftVars(nurse.id, idx, fromShift);
         if (fromVars.length === 0) continue;
         const rowPolicy = transMatrix[fromShift];
+        const reqTarget = (["D", "E", "N", "O"] as const).find(
+          (t) => rowPolicy[t] === "require"
+        );
 
-        if (rowPolicy.O === "require") {
+        if (reqTarget === "O") {
           addTrackedConstraint(
             expr`${sum(fromVars)} + ${sum(getNurseDayWorkVars(nurse.id, nextIdx))} <= 1`,
             {
@@ -685,24 +708,40 @@ export function buildNurseWashiModel(
               relaxSuggestion: `シフト遷移マトリクスの「${SHIFT_SHORT_JA[fromShift]}→休 必須」を解除するか、${nurse.name}さんの固定シフトを調整してください。`,
             }
           );
-        }
-
-        for (const toShift of ["D", "E", "N"] as const) {
-          if (rowPolicy[toShift] === "forbid") {
-            const toVars = getNurseBaseShiftVars(nurse.id, nextIdx, toShift);
-            if (toVars.length === 0) continue;
-            addTrackedConstraint(
-              expr`${sum(fromVars)} + ${sum(toVars)} <= 1`,
-              {
-                name: `trans_${fromShift}_to_${toShift}_${nurse.id}_d${d}`,
-                category: "transition",
-                ruleKey: `trans_${fromShift}_${toShift}`,
-                labelJa: `シフト遷移禁止(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[toShift]}): ${nurse.name}(${nurse.id}) の ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]} → ${config.month}/${d + 1}${SHIFT_LABEL_JA[toShift]} は禁止`,
-                relatedNurseIds: [nurse.id],
-                relatedDay: d,
-                relaxSuggestion: `${nurse.name}さんの${config.month}/${d}〜${d + 1}の固定シフト指定またはシフト遷移マトリクスを見直してください。`,
-              }
-            );
+        } else if (reqTarget) {
+          const toReqVars = getNurseBaseShiftVars(nurse.id, nextIdx, reqTarget);
+          addTrackedConstraint(
+            toReqVars.length > 0
+              ? expr`${sum(fromVars)} - ${sum(toReqVars)} <= 0`
+              : expr`${sum(fromVars)} <= 0`,
+            {
+              name: `trans_${fromShift}_to_Req_${reqTarget}_${nurse.id}_d${d}`,
+              category: "transition",
+              ruleKey: `trans_${fromShift}_${reqTarget}`,
+              labelJa: `シフト遷移必須(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[reqTarget]}): ${nurse.name}(${nurse.id}) の ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]}の翌日(${config.month}/${d + 1})は${SHIFT_LABEL_JA[reqTarget]}必須`,
+              relatedNurseIds: [nurse.id],
+              relatedDay: d,
+              relaxSuggestion: `シフト遷移マトリクスの「${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[reqTarget]} 必須」を解除するか、${nurse.name}さんの固定シフトを調整してください。`,
+            }
+          );
+        } else {
+          for (const toShift of ["D", "E", "N"] as const) {
+            if (rowPolicy[toShift] === "forbid") {
+              const toVars = getNurseBaseShiftVars(nurse.id, nextIdx, toShift);
+              if (toVars.length === 0) continue;
+              addTrackedConstraint(
+                expr`${sum(fromVars)} + ${sum(toVars)} <= 1`,
+                {
+                  name: `trans_${fromShift}_to_${toShift}_${nurse.id}_d${d}`,
+                  category: "transition",
+                  ruleKey: `trans_${fromShift}_${toShift}`,
+                  labelJa: `シフト遷移禁止(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[toShift]}): ${nurse.name}(${nurse.id}) の ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]} → ${config.month}/${d + 1}${SHIFT_LABEL_JA[toShift]} は禁止`,
+                  relatedNurseIds: [nurse.id],
+                  relatedDay: d,
+                  relaxSuggestion: `${nurse.name}さんの${config.month}/${d}〜${d + 1}の固定シフト指定またはシフト遷移マトリクスを見直してください。`,
+                }
+              );
+            }
           }
         }
       }
@@ -1415,7 +1454,7 @@ export function buildNurseWashiModel(
     m.objective(
       minimize(sum(elasticSlacks, (entry) => expr`${entry.weight} * ${entry.slackVar}`))
     );
-  } else if (!onlyDays) {
+  } else if (!onlyDays && !elasticMode) {
     const objTerms: Array<LinExpr | Var | number> = [1000, ...softPenaltyTerms];
 
     for (const pref of preferences) {
@@ -2023,22 +2062,40 @@ export function evaluateNurseSchedule(
       if (!rowPolicies) continue;
 
       const cat: ConstraintMeta["category"] = d === 1 ? "carryover" : "transition";
-      if (rowPolicies.O === "require" && currBase !== "O") {
-        const msg = `${config.month}/${d}: ${SHIFT_LABELS[prevBase]}明け公休違反（${prevShift} → ${curr}、公休O必須）`;
-        nurseViolations.push(msg);
-        pushViolation(
-          {
-            id: `trans_${prevBase}Off_${nurse.id}_d${d}`,
-            category: cat,
-            nurseId: nurse.id,
-            day: d,
-            message: `${nurse.name}: ${msg}`,
-          },
-          { ruleKey: `trans_${prevBase}_O` }
-        );
-      }
-
-      if (currBase !== "O" && rowPolicies[currBase] === "forbid") {
+      const reqTarget = (["D", "E", "N", "O"] as const).find(
+        (t) => rowPolicies[t] === "require"
+      );
+      if (reqTarget === "O") {
+        if (currBase !== "O") {
+          const msg = `${config.month}/${d}: ${SHIFT_LABELS[prevBase]}明け公休違反（${prevShift} → ${curr}、公休O必須）`;
+          nurseViolations.push(msg);
+          pushViolation(
+            {
+              id: `trans_${prevBase}Off_${nurse.id}_d${d}`,
+              category: cat,
+              nurseId: nurse.id,
+              day: d,
+              message: `${nurse.name}: ${msg}`,
+            },
+            { ruleKey: `trans_${prevBase}_O` }
+          );
+        }
+      } else if (reqTarget) {
+        if (currBase !== reqTarget) {
+          const msg = `${config.month}/${d}: 必須シフト遷移違反（${SHIFT_LABELS[prevBase]}${prevShift} → ${curr}、${SHIFT_LABELS[reqTarget]}${reqTarget}必須）`;
+          nurseViolations.push(msg);
+          pushViolation(
+            {
+              id: `trans_${prevBase}Req${reqTarget}_${nurse.id}_d${d}`,
+              category: cat,
+              nurseId: nurse.id,
+              day: d,
+              message: `${nurse.name}: ${msg}`,
+            },
+            { ruleKey: `trans_${prevBase}_${reqTarget}` }
+          );
+        }
+      } else if (currBase !== "O" && rowPolicies[currBase] === "forbid") {
         const msg = `${config.month}/${d}: 禁止シフト遷移（${SHIFT_LABELS[prevBase]}${prevShift} → ${SHIFT_LABELS[currBase]}${curr}）`;
         nurseViolations.push(msg);
         pushViolation(
@@ -2837,13 +2894,36 @@ export async function diagnoseNurseScheduleWithHiGHS(
   state: NurseSchedulingState,
   options?: { assumeInfeasibleFromMip?: boolean; signal?: AbortSignal }
 ): Promise<{ status: string; conflicts: ConstraintMeta[]; rawNames: string[] }> {
-  // Determine candidate active days (boundary days + days with custom rules + adjacent days + days with multiple hard requests)
+  // Determine candidate active days (boundary days + days with custom rules + date spans + days with multiple hard requests)
   const candidateDays = new Set<number>([1, 2, 3]);
+  const addDayWithNeighbors = (d: number) => {
+    if (d >= 1 && d <= state.config.numDays) {
+      candidateDays.add(d);
+      if (d > 1) candidateDays.add(d - 1);
+      if (d < state.config.numDays) candidateDays.add(d + 1);
+    }
+  };
   for (const r of state.customRules) {
-    if (r.enabled && r.day) {
-      candidateDays.add(r.day);
-      if (r.day > 1) candidateDays.add(r.day - 1);
-      if (r.day < state.config.numDays) candidateDays.add(r.day + 1);
+    if (!r.enabled || r.isHard === false) continue;
+    if (typeof r.day === "number") {
+      addDayWithNeighbors(r.day);
+    }
+    if (typeof r.startDay === "number" || typeof r.endDay === "number") {
+      const sDay = Math.max(1, r.startDay ?? 1);
+      const eDay = Math.min(state.config.numDays, r.endDay ?? state.config.numDays);
+      for (let d = sDay; d <= eDay; d++) {
+        candidateDays.add(d);
+      }
+      addDayWithNeighbors(sDay);
+      addDayWithNeighbors(eDay);
+    }
+    if (Array.isArray(r.allowedDaysOfWeek) && r.allowedDaysOfWeek.length > 0) {
+      for (let d = 1; d <= state.config.numDays; d++) {
+        const dow = getDayOfWeek(state.config.year, state.config.month, d);
+        if (r.allowedDaysOfWeek.includes(dow)) {
+          candidateDays.add(d);
+        }
+      }
     }
   }
   const hardCountByDay = new Map<number, number>();
@@ -2907,28 +2987,47 @@ export async function diagnoseNurseScheduleWithHiGHS(
     }
   }
 
-  // If MIP already proved the full 30-day model is Infeasible due to multi-week transition/consecutive coupling:
+  // Stage 3: Full-month HiGHS Elastic check (only when MIP already proved full-month infeasibility and Stages 1-2 found no localized conflict)
+  if (options?.assumeInfeasibleFromMip && candidateDays.size < state.config.numDays) {
+    const pass1Full = buildNurseWashiModel(state, {
+      solver: "highs",
+      elasticWeightMode: "prefer_structural",
+    });
+    await pass1Full.model.solve({ timeLimit: 1.5, signal: options?.signal });
+    if ((pass1Full.model.objectiveValue ?? 0) > 1e-4) {
+      const found = new Map<string, ConstraintMeta>();
+      collectViolatedSlacks(pass1Full.elasticSlacks, found);
+
+      const pass2Full = buildNurseWashiModel(state, {
+        solver: "highs",
+        elasticWeightMode: "prefer_user",
+      });
+      await pass2Full.model.solve({ timeLimit: 1.5, signal: options?.signal });
+      collectViolatedSlacks(pass2Full.elasticSlacks, found);
+
+      const conflicts = Array.from(found.values());
+      if (conflicts.length > 0) {
+        return {
+          status: "Unsat",
+          conflicts,
+          rawNames: conflicts.map((c) => c.name),
+        };
+      }
+    }
+  }
+
   if (options?.assumeInfeasibleFromMip) {
     const c = state.config;
-    const synthConflicts: ConstraintMeta[] = [
-      {
-        name: "coupled_consec_and_transitions",
-        category: "consecutive",
-        labelJa: `最大${c.maxConsecutiveWorkDays}連勤制限 × 3交代シフト遷移禁止（準夜・深夜明けのインターバル公休）× 月間公休${c.minMonthlyDaysOff}日以上の組み合わせによる人員不足`,
-        relaxSuggestion: `最大連続勤務日数（現在:${c.maxConsecutiveWorkDays}日）を1日増やすか、月間夜勤上限（現在:${c.maxMonthlyNightShifts}回）または日勤必要人数を調整してください。`,
-      },
-    ];
-    for (const rule of state.customRules.filter((r) => r.enabled)) {
-      synthConflicts.push({
-        name: `custom_${rule.id}`,
-        category: "custom",
-        labelJa: `追加ルール: ${rule.description}`,
-      });
-    }
+    const unisolatedConflict: ConstraintMeta = {
+      name: "coupled_consec_and_transitions",
+      category: "consecutive",
+      labelJa: `複数制約の複合競合（候補: 最大${c.maxConsecutiveWorkDays}連勤制限・シフト遷移ルール・月間公休${c.minMonthlyDaysOff}日以上の組み合わせ）`,
+      relaxSuggestion: `最大連続勤務日数（現在:${c.maxConsecutiveWorkDays}日）または日別の必要人数を調整してください。`,
+    };
     return {
       status: "Unsat",
-      conflicts: synthConflicts,
-      rawNames: synthConflicts.map((x) => x.name),
+      conflicts: [unisolatedConflict],
+      rawNames: [unisolatedConflict.name],
     };
   }
 

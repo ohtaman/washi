@@ -7,6 +7,7 @@ import {
   createDefaultShiftAliases,
   doesNurseMatchAttribute,
   doesNurseSatisfySkill,
+  getEffectiveIncludedAliases,
   getJapaneseHolidayName,
   getShiftMeta,
   getShiftTransitionMatrix,
@@ -1103,12 +1104,6 @@ function renderShiftTransitionMatrix(): void {
   wrap.appendChild(table);
 }
 
-function getEffectiveIncludedAliases(cs: CustomShiftDef): string[] {
-  if (Array.isArray(cs.includedInAliases)) return [...cs.includedInAliases];
-  const base = cs.baseShift ?? (cs.countsAsWorkDay ? "D" : "O");
-  return base !== "O" ? ["W"] : [];
-}
-
 function formatCustomShiftBaseAndAliases(cs: CustomShiftDef): string {
   const base = cs.baseShift ?? (cs.countsAsWorkDay ? "D" : "O");
   const baseText =
@@ -1144,18 +1139,23 @@ function renderSoftRuleWeightsList(): void {
   const transMatrix = getShiftTransitionMatrix(appState.config);
   const shiftShortJa: Record<string, string> = { D: "日", E: "準", N: "深", O: "休" };
   for (const fromShift of ["D", "E", "N"] as const) {
-    for (const toShift of ["D", "E", "N", "O"] as const) {
-      const policy = transMatrix[fromShift][toShift];
-      if (policy === "require") {
-        items.push({
-          key: `trans_${fromShift}_${toShift}`,
-          label: `遷移必須 (${shiftShortJa[fromShift]}→${shiftShortJa[toShift]})`,
-        });
-      } else if (policy === "forbid") {
-        items.push({
-          key: `trans_${fromShift}_${toShift}`,
-          label: `遷移禁止 (${shiftShortJa[fromShift]}→${shiftShortJa[toShift]})`,
-        });
+    const rowPolicies = transMatrix[fromShift];
+    const reqTarget = (["D", "E", "N", "O"] as const).find(
+      (t) => rowPolicies[t] === "require"
+    );
+    if (reqTarget) {
+      items.push({
+        key: `trans_${fromShift}_${reqTarget}`,
+        label: `遷移必須 (${shiftShortJa[fromShift]}→${shiftShortJa[reqTarget]})`,
+      });
+    } else {
+      for (const toShift of ["D", "E", "N"] as const) {
+        if (rowPolicies[toShift] === "forbid") {
+          items.push({
+            key: `trans_${fromShift}_${toShift}`,
+            label: `遷移禁止 (${shiftShortJa[fromShift]}→${shiftShortJa[toShift]})`,
+          });
+        }
       }
     }
   }
@@ -2174,14 +2174,45 @@ async function runWashiOptimization(): Promise<WashiSolveOutcome | null> {
   return activeSolvePromise;
 }
 
-async function runExplicitConflictDiagnosis(): Promise<void> {
-  if (isSolving) return;
+async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null> {
+  if (activeSolvePromise) {
+    await activeSolvePromise;
+  }
+  if (isSolving) return lastSolveOutcome;
   isSolving = true;
   renderStatusAndConflictBar();
   await new Promise((r) => setTimeout(r, 16));
 
   try {
+    const t0 = performance.now();
     const diag = await diagnoseNurseScheduleWithHiGHS(appState);
+    const diagTimeMs = Math.max(1, Math.round(performance.now() - t0));
+    const isUnsat = diag.status === "Unsat";
+    const diagOutcome: WashiSolveOutcome = {
+      status: isUnsat
+        ? "Infeasible"
+        : lastSolveOutcome?.status && lastSolveOutcome.status !== "Infeasible"
+          ? lastSolveOutcome.status
+          : "Optimal",
+      solverUsed: "HiGHS (WASM)",
+      buildTimeMs: lastSolveOutcome?.buildTimeMs ?? 1,
+      solveTimeMs: diagTimeMs,
+      numVariables: lastSolveOutcome?.numVariables ?? 0,
+      numConstraints: lastSolveOutcome?.numConstraints ?? 0,
+      objectiveValue: isUnsat ? null : (lastSolveOutcome?.objectiveValue ?? 0),
+      validatedByWashi: !isUnsat,
+      maxViolation: lastSolveOutcome?.maxViolation ?? 0,
+      schedule: isUnsat ? null : currentSchedule,
+      evaluation: isUnsat ? null : currentEvaluation,
+      lpPreview: lastSolveOutcome?.lpPreview ?? "",
+      modelCodePreview:
+        lastSolveOutcome?.modelCodePreview ?? generateWashiCodePreview(appState),
+      conflicts: diag.conflicts,
+      rawConflictNames: diag.rawNames,
+      diffFromPrevious: lastSolveOutcome?.diffFromPrevious ?? null,
+    };
+    lastSolveOutcome = diagOutcome;
+
     if (diag.status === "Unsat") {
       appendChatMessage({
         role: "system",
@@ -2212,6 +2243,7 @@ async function runExplicitConflictDiagnosis(): Promise<void> {
           `- **WaSHI \`validateSolution()\` 数理検証**: **全制約クリア (最大誤差 0)**`,
       });
     }
+    return diagOutcome;
   } finally {
     isSolving = false;
     renderAllViews();
@@ -2666,14 +2698,14 @@ async function handleChatSubmit(userText: string): Promise<void> {
         pillSummaries,
         "⏳ 矛盾の原因を診断しています…"
       );
-      await runExplicitConflictDiagnosis();
+      const diagOutcome = await runExplicitConflictDiagnosis();
       turnRecord.solverOutcome = {
         ran: true,
         mode: "diagnose",
-        status: lastSolveOutcome?.status,
-        solveTimeMs: lastSolveOutcome?.solveTimeMs,
-        conflicts: lastSolveOutcome?.conflicts,
-        rawConflictNames: lastSolveOutcome?.rawConflictNames,
+        status: diagOutcome?.status,
+        solveTimeMs: diagOutcome?.solveTimeMs,
+        conflicts: diagOutcome?.conflicts,
+        rawConflictNames: diagOutcome?.rawConflictNames,
       };
     } else if (appliedLogs.length > 0) {
       renderAllViews();

@@ -15,6 +15,7 @@ import {
   getShiftMeta,
   getShiftTransitionMatrix,
   getSkillMeta,
+  removeCustomShiftFromState,
   resolveCalendarDaysByPattern,
   resolveDaysBySelector,
   type ActiveShiftCode,
@@ -1368,7 +1369,7 @@ function resolveTargetShiftsFromArg(
 function resolveShiftCodeOrAliasFromInput(
   rawShift: unknown,
   state: NurseSchedulingState
-): ShiftCode {
+): ShiftCode | null {
   if (!rawShift) return "O";
   const s = String(rawShift)
     .trim()
@@ -1408,7 +1409,7 @@ function resolveShiftCodeOrAliasFromInput(
       return al.code;
     }
   }
-  return s as ShiftCode;
+  return null;
 }
 
 /**
@@ -1802,17 +1803,21 @@ export function convertStage2ToolToOperation(
       if (!a.nurseNameOrId) return null;
       const days = resolveDaysFromToolArgs(a, state.config.numDays);
       if (days.length === 0) return null;
+      const shift = resolveShiftCodeOrAliasFromInput(a.shift, state);
+      if (!shift) return null;
       return {
         op: "add_request",
         nurseNameOrId: String(a.nurseNameOrId),
         day: days[0],
         days: days.length > 1 ? days : undefined,
-        shift: resolveShiftCodeOrAliasFromInput(a.shift, state),
+        shift,
         isHard: a.isHard !== false,
       };
     }
     case "add_calendar_request": {
       if (!a.nurseNameOrId) return null;
+      const shift = resolveShiftCodeOrAliasFromInput(a.shift, state);
+      if (!shift) return null;
       const dowMap: Record<string, number> = {
         日: 0,
         月: 1,
@@ -1862,7 +1867,7 @@ export function convertStage2ToolToOperation(
         nurseNameOrId: String(a.nurseNameOrId),
         day: days[0],
         days: days.length > 1 ? days : undefined,
-        shift: resolveShiftCodeOrAliasFromInput(a.shift, state),
+        shift,
         isHard: true,
         onlyMatchedDaysWork: onlyMatched,
         isCalendarPattern: true,
@@ -2563,6 +2568,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         ...unsupportedRouteInstructions.map((inst) => `unsupported("${inst}")`),
       ];
 
+      let workingState = state;
       const runTurn2CategoryExtractor = async (
         category: ExecutableToolCategory,
         instruction: string
@@ -2584,7 +2590,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           const catConfig = STAGE2_CATEGORY_CONFIGS[category];
           const dynamicDict = buildCategoryDynamicDictionary(
             category,
-            state,
+            workingState,
             `${userMessage} ${instruction}`
           );
           const dictNote = dynamicDict ? `${dynamicDict}\n` : "";
@@ -2640,10 +2646,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               continue;
             }
 
-            const mappedOp = convertStage2ToolToOperation(tc, state);
+            const mappedOp = convertStage2ToolToOperation(tc, workingState);
             if (mappedOp) {
               routeOps.push(mappedOp);
               operations.push(mappedOp);
+              if (mappedOp.op === "add_custom_shift" || mappedOp.op === "add_skill_def") {
+                workingState = applyChatOperationsToState(workingState, [mappedOp]).updatedState;
+              }
               routerTrace.push(
                 `🛠️ Turn 2 (${category}): ${tc.tool_name}(${JSON.stringify(tc.args ?? {})})`
               );
@@ -3625,6 +3634,7 @@ export function applyChatOperationsToState(
       if (nA && nB && nA.id !== nB.id) {
         const targetShifts: ShiftCode[] = op.shifts?.length ? op.shifts : ["E", "N"];
         nextState.relations.push({
+          id: `chat_preceptor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           nurseA: nA.id,
           nurseB: nB.id,
           type: "preceptor",
@@ -3649,19 +3659,17 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "clear_custom_rules") {
+      for (const cs of [...nextState.customShiftDefs]) {
+        nextState = removeCustomShiftFromState(nextState, cs.code);
+      }
       nextState.customRules = [];
       nextState.customShiftDefs = [];
-      nextState.nurses = nextState.nurses.map((n) => ({
-        ...n,
-        minMonthlyWorkDays: undefined,
-        maxMonthlyWorkDays: undefined,
-        minMonthlyDaysOff: undefined,
-        maxMonthlyNightShifts: undefined,
-        maxConsecutiveWorkDays: undefined,
-        forbiddenShifts: undefined,
-        weekdayOnly: undefined,
-        holidaysOff: undefined,
-      }));
+      nextState.relations = nextState.relations.filter(
+        (r) =>
+          !r.id?.startsWith("chat_ng_") &&
+          !r.id?.startsWith("chat_preceptor_") &&
+          r.reason !== "チャット指示によるプリセプター指導ペア設定"
+      );
       appliedLogs.push("追加された個別カスタム制約および追加シフト種別をすべて解除しました");
       continue;
     }
@@ -3673,14 +3681,24 @@ export function applyChatOperationsToState(
         rawName,
         nextState.customShiftDefs
       );
-      const code =
-        op.shiftName &&
-        op.shift &&
-        op.shift.trim().length > 0 &&
-        op.shift.trim() !== op.shiftName.trim() &&
-        /^[A-Za-z0-9_]+$/.test(op.shift.trim())
-          ? op.shift.trim()
-          : inferredCode;
+      const reservedCodes = new Set([
+        "D",
+        "E",
+        "N",
+        "O",
+        "W",
+        "EN",
+        ...(nextState.shiftAliases ?? []).map((a) => a.code),
+      ]);
+      const rawExplicit = op.shift?.trim() ?? "";
+      const canUseExplicit =
+        Boolean(op.shiftName) &&
+        rawExplicit.length > 0 &&
+        rawExplicit !== op.shiftName!.trim() &&
+        /^[A-Za-z0-9_]+$/.test(rawExplicit) &&
+        !reservedCodes.has(rawExplicit) &&
+        !reservedCodes.has(rawExplicit.toUpperCase());
+      let code = canUseExplicit ? rawExplicit : inferredCode;
       const finalShort = op.shortLabel?.trim() || shortLabel;
       const baseShift: BaseShiftCode = op.baseShift ?? "D";
       const includedInAliases = Array.isArray(op.includedInAliases)
@@ -3694,10 +3712,22 @@ export function applyChatOperationsToState(
             : baseShift === "O"
               ? "終日 (休暇)"
               : "09:00–17:00";
+      const countsAsWorkDay =
+        typeof op.countsAsWorkDay === "boolean" ? op.countsAsWorkDay : baseShift !== "O";
+      const overtimeHoursPerShift = baseShift === "O" ? 0 : 0.5;
       const existing = nextState.customShiftDefs.find(
-        (d) => d.code === code || d.label === label
+        (d) => d.label === label || (canUseExplicit && d.code === code)
       );
       if (!existing) {
+        let seq = 1;
+        while (
+          reservedCodes.has(code) ||
+          reservedCodes.has(code.toUpperCase()) ||
+          nextState.customShiftDefs.some((d) => d.code === code)
+        ) {
+          code = `CS${nextState.customShiftDefs.length + seq}`;
+          seq++;
+        }
         nextState.customShiftDefs.push({
           code,
           shortLabel: finalShort,
@@ -3706,9 +3736,8 @@ export function applyChatOperationsToState(
           includedInAliases,
           timeRange,
           colorClass: "shift-custom",
-          countsAsWorkDay:
-            typeof op.countsAsWorkDay === "boolean" ? op.countsAsWorkDay : baseShift !== "O",
-          overtimeHoursPerShift: baseShift === "O" ? 0 : 0.5,
+          countsAsWorkDay,
+          overtimeHoursPerShift,
         });
         nextState.shiftAliases = createDefaultShiftAliases(nextState.customShiftDefs);
         appliedLogs.push(
@@ -3716,10 +3745,19 @@ export function applyChatOperationsToState(
         );
       } else {
         existing.baseShift = baseShift;
+        existing.timeRange = timeRange;
+        existing.countsAsWorkDay = countsAsWorkDay;
+        existing.overtimeHoursPerShift = overtimeHoursPerShift;
+        if (op.shortLabel?.trim()) {
+          existing.shortLabel = op.shortLabel.trim();
+        }
         if (includedInAliases !== undefined) {
           existing.includedInAliases = includedInAliases;
         }
         nextState.shiftAliases = createDefaultShiftAliases(nextState.customShiftDefs);
+        appliedLogs.push(
+          `シフト種別「${existing.shortLabel}: ${existing.label} (${existing.timeRange}, 所属:${baseShift})」を更新しました`
+        );
       }
       continue;
     }
@@ -3967,10 +4005,14 @@ export function applyChatOperationsToState(
         id: `daily_cap_${shiftCode}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
         kind: "daily_shift_cap",
         enabled: true,
+        isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
+        penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
         shift: shiftCode,
         attribute,
         minStaff,
         maxStaff,
+        startDay: typeof op.startDay === "number" ? op.startDay : undefined,
+        endDay: typeof op.endDay === "number" ? op.endDay : undefined,
         description: desc,
       };
       nextState.customRules.push(rule);
@@ -4079,7 +4121,9 @@ export function applyChatOperationsToState(
       const days = Array.from(
         new Set(rawDays.filter((d) => d >= 1 && d <= nextState.config.numDays))
       ).sort((a, b) => a - b);
-      const shift: ShiftCode = resolveShiftCodeOrAliasFromInput(op.shift ?? "O", nextState);
+      const resolvedShift = resolveShiftCodeOrAliasFromInput(op.shift ?? "O", nextState);
+      if (!resolvedShift) continue;
+      const shift: ShiftCode = resolvedShift;
       const isHard = op.isHard !== false;
       if (nurse && days.length > 0) {
         const customOrAliasMeta = getShiftMeta(

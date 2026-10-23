@@ -134,29 +134,24 @@ export function getBaseOdenShift(
   return "D";
 }
 
+export function getEffectiveIncludedAliases(cs: CustomShiftDef): string[] {
+  if (Array.isArray(cs.includedInAliases)) return [...cs.includedInAliases];
+  const base = cs.baseShift ?? (cs.countsAsWorkDay ? "D" : "O");
+  if (base === "O") return [];
+  return base === "E" || base === "N" ? ["W", "EN"] : ["W"];
+}
+
 export function createDefaultShiftAliases(
   customShiftDefs?: readonly CustomShiftDef[]
 ): ShiftAliasDef[] {
   const customWorkCodes = (customShiftDefs ?? [])
-    .filter((c) =>
-      Array.isArray(c.includedInAliases)
-        ? c.includedInAliases.includes("W")
-        : getBaseOdenShift(c.code, customShiftDefs) !== "O"
-    )
+    .filter((c) => getEffectiveIncludedAliases(c).includes("W"))
     .map((c) => c.code);
   const customDayCodes = (customShiftDefs ?? [])
-    .filter((c) =>
-      Array.isArray(c.includedInAliases) ? c.includedInAliases.includes("D") : false
-    )
+    .filter((c) => getEffectiveIncludedAliases(c).includes("D"))
     .map((c) => c.code);
   const customNightCodes = (customShiftDefs ?? [])
-    .filter((c) => {
-      if (Array.isArray(c.includedInAliases)) {
-        return c.includedInAliases.includes("EN");
-      }
-      const b = getBaseOdenShift(c.code, customShiftDefs);
-      return b === "E" || b === "N";
-    })
+    .filter((c) => getEffectiveIncludedAliases(c).includes("EN"))
     .map((c) => c.code);
   return [
     {
@@ -947,14 +942,23 @@ export function getShiftTransitionMatrix(
 ): ShiftTransitionMatrix {
   const base = config.shiftTransitions ?? createDefaultShiftTransitions();
   const normalizeRow = (row: Record<"D" | "E" | "N" | "O", ShiftTransitionPolicy>) => {
-    const reqOff =
-      row.O === "require" ||
-      (row.D === "forbid" && row.E === "forbid" && row.N === "forbid");
+    const explicitReq = (["D", "E", "N", "O"] as const).find((k) => row[k] === "require");
+    const reqTarget =
+      explicitReq ??
+      (row.D === "forbid" && row.E === "forbid" && row.N === "forbid" ? "O" : undefined);
+    if (reqTarget) {
+      return {
+        D: reqTarget === "D" ? ("require" as const) : ("forbid" as const),
+        E: reqTarget === "E" ? ("require" as const) : ("forbid" as const),
+        N: reqTarget === "N" ? ("require" as const) : ("forbid" as const),
+        O: reqTarget === "O" ? ("require" as const) : ("forbid" as const),
+      };
+    }
     return {
-      D: reqOff || row.D === "forbid" ? ("forbid" as const) : ("allow" as const),
-      E: reqOff || row.E === "forbid" ? ("forbid" as const) : ("allow" as const),
-      N: reqOff || row.N === "forbid" ? ("forbid" as const) : ("allow" as const),
-      O: reqOff ? ("require" as const) : ("allow" as const),
+      D: row.D === "forbid" ? ("forbid" as const) : ("allow" as const),
+      E: row.E === "forbid" ? ("forbid" as const) : ("allow" as const),
+      N: row.N === "forbid" ? ("forbid" as const) : ("allow" as const),
+      O: "allow" as const,
     };
   };
   return {
@@ -977,19 +981,21 @@ export function applyShiftTransitionToConfig(
   const current = getShiftTransitionMatrix(config);
   const nextRow = { ...current[fromShift] };
 
-  if (toShift === "O") {
-    if (policy === "require") {
-      nextRow.O = "require";
-      nextRow.D = "forbid";
-      nextRow.E = "forbid";
-      nextRow.N = "forbid";
-    } else {
-      nextRow.O = "allow";
-      if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
-        nextRow.N = "allow";
-      }
+  if (policy === "require") {
+    for (const k of ["D", "E", "N", "O"] as const) {
+      nextRow[k] = k === toShift ? "require" : "forbid";
+    }
+  } else if (toShift === "O") {
+    nextRow.O = "allow";
+    if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
+      nextRow.N = "allow";
     }
   } else {
+    for (const k of ["D", "E", "N", "O"] as const) {
+      if (nextRow[k] === "require") {
+        nextRow[k] = "allow";
+      }
+    }
     nextRow[toShift] = policy === "forbid" ? "forbid" : "allow";
     if (policy === "allow") {
       nextRow.O = "allow";
@@ -1558,7 +1564,8 @@ export function clearNurseContractFromState(
       n.id === nurseId
         ? {
             ...n,
-            ...(options?.resetNightOk ? { nightOk: true } : {}),
+            ...(options?.resetNightOk !== false ? { nightOk: true } : {}),
+            contractPreset: undefined,
             minMonthlyWorkDays: undefined,
             maxMonthlyWorkDays: undefined,
             minMonthlyDaysOff: undefined,

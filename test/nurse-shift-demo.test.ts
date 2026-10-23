@@ -13,6 +13,7 @@ import {
 import {
   clearNurseContractFromState,
   createDefaultShiftAliases,
+  getEffectiveIncludedAliases,
   getJapaneseHolidayName,
   removeCustomShiftFromState,
   resolveShiftSelector,
@@ -3089,5 +3090,177 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(
       evalSoftRules.violations.some((v) => v.id.startsWith("daily_min_") && v.day === 1 && !v.isSoft)
     ).toBe(true);
+  });
+
+  it("verifies Codex review fixes for custom shifts, clear_custom_rules, transition require policies, and ranged conflict diagnosis", async () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
+
+    // 1. getEffectiveIncludedAliases returns ["W", "EN"] for E/N-based custom shifts (4359929261)
+    expect(
+      getEffectiveIncludedAliases({
+        code: "E_SP",
+        label: "特別準夜",
+        shortLabel: "特準",
+        baseShift: "E",
+      })
+    ).toEqual(["W", "EN"]);
+    expect(
+      getEffectiveIncludedAliases({
+        code: "N_SP",
+        label: "特別深夜",
+        shortLabel: "特深",
+        baseShift: "N",
+      })
+    ).toEqual(["W", "EN"]);
+    expect(
+      getEffectiveIncludedAliases({
+        code: "D_SP",
+        label: "特別日勤",
+        shortLabel: "特日",
+        baseShift: "D",
+      })
+    ).toEqual(["W"]);
+
+    // 2. Reject unknown/unregistered shift names in add_request / add_calendar_request (4359929248)
+    const unknownCalendarOp = convertStage2ToolToOperation(
+      { action: "add_calendar_request", nurseName: "N01", day: 5, shift: "早番" },
+      baseState
+    );
+    expect(unknownCalendarOp).toBeNull();
+    const unknownRequestExec = applyChatOperationsToState(baseState, [
+      { op: "add_request", nurseNameOrId: "N01", day: 5, shift: "早番" as unknown as "D" },
+    ]);
+    expect(
+      unknownRequestExec.updatedState.preferences.some((r) => r.nurseId === "N01" && r.day === 5)
+    ).toBe(false);
+    expect(
+      unknownRequestExec.updatedState.customRules.some(
+        (r) => r.kind === "pin_shift" && r.nurseId === "N01" && r.day === 5
+      )
+    ).toBe(false);
+    expect(unknownRequestExec.appliedLogs.length).toBe(0);
+
+    // 3. Reject reserved shift codes and normalize baseShift metadata on custom shift reclassification (4358960706, 4358960698)
+    const reservedShiftExec = applyChatOperationsToState(baseState, [
+      { op: "add_custom_shift", shiftName: "偽日勤", shift: "D", shortLabel: "偽" },
+      { op: "add_custom_shift", shiftName: "偽夜勤枠", shift: "EN", shortLabel: "偽夜" },
+    ]);
+    expect((reservedShiftExec.updatedState.customShiftDefs ?? []).length).toBe(2);
+    expect(reservedShiftExec.updatedState.customShiftDefs![0].code).toBe("CS1");
+    expect(reservedShiftExec.updatedState.customShiftDefs![1].code).toBe("CS2");
+
+    const addedOffCustom = applyChatOperationsToState(baseState, [
+      { op: "add_custom_shift", shiftName: "学会出張", shift: "CONF", shortLabel: "学", baseShift: "O" },
+    ]).updatedState;
+    const offDef = addedOffCustom.customShiftDefs!.find((cs) => cs.code === "CONF")!;
+    expect(offDef.baseShift).toBe("O");
+    expect(offDef.countsAsWorkDay).toBe(false);
+    expect(offDef.timeRange).toBe("終日 (休暇)");
+
+    const reclassifiedToNight = applyChatOperationsToState(addedOffCustom, [
+      { op: "add_custom_shift", shiftName: "学会出張", baseShift: "N" },
+    ]).updatedState;
+    const nightDef = reclassifiedToNight.customShiftDefs!.find((cs) => cs.code === "CONF")!;
+    expect(nightDef.baseShift).toBe("N");
+    expect(nightDef.countsAsWorkDay).toBe(true);
+    expect(nightDef.timeRange).toBe("00:30–09:00");
+    expect(nightDef.overtimeHoursPerShift).toBe(0.5);
+
+    // 4. clear_custom_rules cascades custom-shift cleanup, removes chat_ng_*/chat_preceptor_* relations, and preserves nurse contracts (4357874570, 4358960690, 4359488756)
+    const dirtyState = applyChatOperationsToState(reclassifiedToNight, [
+      { op: "add_request", nurseNameOrId: "N01", day: 6, shift: "CONF" },
+      { op: "set_nurse_contract", nurseNameOrId: "N02", maxMonthlyNightShifts: 2, forbiddenShifts: ["E"] },
+      { op: "add_ng_pair", nurseNameOrId: "N01", nurseBNameOrId: "N02" },
+      { op: "add_preceptor_pair", nurseNameOrId: "N03", nurseBNameOrId: "N04" },
+      { op: "add_daily_shift_cap", shiftName: "CONF", maxStaff: 1 },
+    ]).updatedState;
+    expect(dirtyState.customRules.some((r) => r.kind === "pin_shift" && r.shift === "CONF")).toBe(true);
+    expect(dirtyState.relations.some((r) => r.id.startsWith("chat_ng_"))).toBe(true);
+    expect(dirtyState.relations.some((r) => r.id.startsWith("chat_preceptor_"))).toBe(true);
+
+    const clearedRulesState = applyChatOperationsToState(dirtyState, [
+      { op: "clear_custom_rules" },
+    ]).updatedState;
+    expect(clearedRulesState.customRules.length).toBe(0);
+    expect((clearedRulesState.customShiftDefs ?? []).length).toBe(0);
+    expect(clearedRulesState.preferences.some((r) => r.shift === "CONF")).toBe(false);
+    expect(clearedRulesState.relations.some((r) => r.id.startsWith("chat_ng_"))).toBe(false);
+    expect(clearedRulesState.relations.some((r) => r.id.startsWith("chat_preceptor_"))).toBe(false);
+    const n02AfterClear = clearedRulesState.nurses.find((n) => n.id === "N02")!;
+    expect(n02AfterClear.maxMonthlyNightShifts).toBe(2);
+    expect(n02AfterClear.forbiddenShifts).toEqual(["E"]);
+
+    // 5. clearNurseContractFromState resets nightOk and contractPreset (4359236107)
+    const stateWithDayOnly: typeof baseState = {
+      ...baseState,
+      nurses: baseState.nurses.map((n) =>
+        n.id === "N05" ? applyContractPresetToNurse(n, "day_only") : n
+      ),
+    };
+    expect(stateWithDayOnly.nurses.find((n) => n.id === "N05")?.nightOk).toBe(false);
+    expect(stateWithDayOnly.nurses.find((n) => n.id === "N05")?.contractPreset).toBe("day_only");
+    const stateAfterContractReset = clearNurseContractFromState(stateWithDayOnly, "N05");
+    const n05Reset = stateAfterContractReset.nurses.find((n) => n.id === "N05")!;
+    expect(n05Reset.nightOk).toBe(true);
+    expect(n05Reset.contractPreset).toBeUndefined();
+    expect(n05Reset.forbiddenShifts).toBeUndefined();
+
+    // 6. Preserve and enforce "require" transition policies on non-off shifts and unify require under a single ruleKey (4359236088, 4359236095)
+    const configWithRequireEN = applyShiftTransitionToConfig(baseState.config, "E", "N", "require");
+    const matrixEN = getShiftTransitionMatrix(configWithRequireEN);
+    expect(matrixEN.E.N).toBe("require");
+    expect(matrixEN.E.D).toBe("forbid");
+    expect(matrixEN.E.O).toBe("forbid");
+
+    const stateRequireEN = { ...baseState, config: configWithRequireEN };
+    const builtRequireEN = buildNurseWashiModel(stateRequireEN);
+    expect(builtRequireEN.constraintMeta.get("trans_E_to_Req_N_N01_d1")?.ruleKey).toBe("trans_E_N");
+    expect(builtRequireEN.constraintMeta.has("trans_E_to_D_N01_d1")).toBe(false);
+
+    // Softening trans_N_O softens the entire N->O required transition without leaving hard N->D/E/N forbid constraints
+    const configWithRequireNO = applyShiftTransitionToConfig(baseState.config, "N", "O", "require");
+    const stateSoftNO = {
+      ...baseState,
+      config: {
+        ...configWithRequireNO,
+        softRuleWeights: {
+          ...(configWithRequireNO.softRuleWeights ?? {}),
+          trans_N_O: 15,
+        },
+      },
+    };
+    const builtSoftNO = buildNurseWashiModel(stateSoftNO);
+    expect(builtSoftNO.constraintMeta.get("trans_N_to_Off_N01_d1")?.isHard).toBe(false);
+    expect(builtSoftNO.constraintMeta.get("trans_N_to_Off_N01_d1")?.ruleKey).toBe("trans_N_O");
+    expect(builtSoftNO.constraintMeta.has("trans_N_to_D_N01_d1")).toBe(false);
+    expect(builtSoftNO.constraintMeta.has("trans_N_to_E_N01_d1")).toBe(false);
+    expect(builtSoftNO.constraintMeta.has("trans_N_to_N_N01_d1")).toBe(false);
+
+    // 7. Diagnose ranged startDay/endDay conflicts and never fabricate conflicts for soft rules (4357874582, 4357874589)
+    const rangedConflictState = applyChatOperationsToState(baseState, [
+      { op: "add_custom_shift", shiftName: "集中研修", shift: "TR_R", shortLabel: "集", baseShift: "D" },
+      { op: "add_shift_day_restriction", shiftName: "TR_R", startDay: 10, endDay: 15 },
+      {
+        op: "add_daily_shift_cap",
+        shiftName: "TR_R",
+        minStaff: 5,
+        maxStaff: 2,
+        startDay: 10,
+        endDay: 12,
+      },
+      {
+        op: "add_daily_shift_cap",
+        shiftName: "D",
+        minStaff: 12,
+        isHard: false,
+        penaltyWeight: 10,
+      },
+    ]).updatedState;
+    const diagRanged = await diagnoseNurseScheduleWithHiGHS(rangedConflictState);
+    expect(diagRanged.conflicts.length).toBeGreaterThan(0);
+    expect(diagRanged.conflicts.some((c) => c.relatedDay === 10)).toBe(true);
+    // Soft rule must never appear as a hard conflict in diagnosis
+    const softRule = rangedConflictState.customRules.find((r) => r.isHard === false)!;
+    expect(diagRanged.conflicts.some((c) => c.name.includes(softRule.id))).toBe(false);
   });
 });
