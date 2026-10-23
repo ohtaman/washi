@@ -1,0 +1,1274 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>『もふもふ羊の牧場囲い』の数理モデル解説 — 最小カットから最大重み連結領域問題（MILP）へ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-page: #f7f4eb;
+        --card-bg: #ffffff;
+        --border-warm: #e4d8c1;
+        --accent-green: #3f7d20;
+        --accent-green-soft: #eef8e6;
+        --accent-amber: #b45309;
+        --accent-amber-soft: #fef3c7;
+        --accent-purple: #6b21a8;
+        --accent-purple-soft: #faf5ff;
+        --text-main: #2b2118;
+        --text-muted: #695846;
+        --code-bg: #1e241b;
+        --code-text: #e6f0e0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg-page);
+        color: var(--text-main);
+        font-family: "Noto Sans JP", system-ui, sans-serif;
+        line-height: 1.8;
+        padding: 2rem 1.25rem 5rem;
+      }
+
+      .article-shell {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+
+      .topnav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .topnav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--text-main);
+        background: #fff;
+        border: 1px solid var(--border-warm);
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
+      }
+
+      .nav-btn:hover {
+        border-color: var(--accent-green);
+        color: var(--accent-green);
+      }
+
+      .nav-btn.primary {
+        background: var(--accent-green);
+        color: #fff;
+        border-color: var(--accent-green);
+      }
+
+      .nav-btn.primary:hover {
+        background: #316417;
+        color: #fff;
+      }
+
+      .lang-switch {
+        display: inline-flex;
+        align-items: center;
+        background: #fff;
+        border: 1px solid var(--border-warm);
+        border-radius: 999px;
+        padding: 0.18rem;
+        gap: 0.15rem;
+      }
+
+      .lang-btn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.28rem 0.68rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .lang-btn.is-active {
+        background: var(--accent-green);
+        color: #fff;
+      }
+
+      .hero-card {
+        background: linear-gradient(135deg, #f0f9e8 0%, #fef9e7 100%);
+        border: 2px solid #c5dfb0;
+        border-radius: 24px;
+        padding: 2.2rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 10px 28px rgba(63, 125, 32, 0.08);
+      }
+
+      .hero-eyebrow {
+        display: inline-block;
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: var(--accent-green);
+        background: #dcfce7;
+        border: 1px solid #86efac;
+        padding: 0.2rem 0.75rem;
+        border-radius: 999px;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-card h1 {
+        font-family: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
+        font-size: clamp(1.45rem, 3.2vw, 2.05rem);
+        line-height: 1.35;
+        margin: 0 0 0.9rem;
+        color: #1f3b10;
+      }
+
+      .hero-card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.96rem;
+      }
+
+      .section-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-warm);
+        border-radius: 20px;
+        padding: 1.9rem 2rem;
+        margin-bottom: 1.6rem;
+        box-shadow: 0 6px 20px rgba(43, 33, 24, 0.04);
+      }
+
+      .section-card h2 {
+        font-family: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
+        font-size: 1.32rem;
+        color: #244712;
+        margin: 0 0 1rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 2px solid #e7f3df;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .section-card h3 {
+        font-size: 1.06rem;
+        color: #3d2c1d;
+        margin: 1.4rem 0 0.5rem;
+      }
+
+      .section-card p {
+        margin: 0 0 1rem;
+      }
+
+      .math-box {
+        background: #f8faf5;
+        border-left: 4px solid var(--accent-green);
+        border-radius: 0 12px 12px 0;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0 1.25rem;
+        font-family: "JetBrains Mono", "Hiragino Sans", monospace;
+        font-size: 0.92rem;
+        overflow-x: auto;
+      }
+
+      .math-box .math-title {
+        font-family: "Noto Sans JP", sans-serif;
+        font-weight: 800;
+        font-size: 0.84rem;
+        color: var(--accent-green);
+        margin-bottom: 0.35rem;
+        display: block;
+      }
+
+      .callout {
+        border-radius: 14px;
+        padding: 1.1rem 1.3rem;
+        margin: 1.1rem 0;
+        font-size: 0.93rem;
+      }
+
+      .callout.amber {
+        background: var(--accent-amber-soft);
+        border: 1px solid #f59e0b;
+        color: #78350f;
+      }
+
+      .callout.purple {
+        background: var(--accent-purple-soft);
+        border: 1px solid #d8b4fe;
+        color: #4c1d95;
+      }
+
+      .callout.green {
+        background: var(--accent-green-soft);
+        border: 1px solid #86efac;
+        color: #14532d;
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+
+      table.mapping-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.25rem;
+        font-size: 0.9rem;
+      }
+
+      table.mapping-table th,
+      table.mapping-table td {
+        border: 1px solid var(--border-warm);
+        padding: 0.65rem 0.85rem;
+        text-align: left;
+      }
+
+      table.mapping-table th {
+        background: #f5efe2;
+        font-weight: 800;
+      }
+
+      .diagram-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0 1.25rem;
+      }
+
+      .mini-board {
+        background: #f4f9ec;
+        border: 2px solid #c5dfb0;
+        border-radius: 14px;
+        padding: 1rem;
+        text-align: center;
+      }
+
+      .mini-board-title {
+        font-weight: 800;
+        font-size: 0.86rem;
+        color: #244712;
+        margin-bottom: 0.5rem;
+      }
+
+      .mini-cells {
+        display: inline-grid;
+        grid-template-columns: repeat(5, 42px);
+        gap: 5px;
+        margin: 0.4rem 0;
+      }
+
+      .mcell {
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        background: #c5ea99;
+        border: 1px solid #86b953;
+      }
+
+      .mcell.wall {
+        background: #6ec3f5;
+        border-color: #2f80c2;
+      }
+
+      .mcell.fence {
+        background: #9c6334;
+        border-color: #593315;
+      }
+
+      .mcell.safe {
+        background: #ecfccb;
+        border: 2px solid #65a30d;
+      }
+
+      .mcell.bad {
+        background: #f3e8ff;
+        border: 2px dashed #9333ea;
+      }
+
+      pre.code-block {
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 1.15rem 1.35rem;
+        border-radius: 14px;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.85rem;
+        line-height: 1.65;
+        margin: 1rem 0;
+      }
+
+      .footer-cta {
+        text-align: center;
+        margin-top: 2.2rem;
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="article-shell">
+      <nav class="topnav">
+        <a href="../index.html" class="nav-btn" id="nav-back">← ゲーム一覧へ戻る</a>
+        <div class="topnav-right">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <a href="../demon-castle-shift-theory/" class="nav-btn" id="nav-other-theory">🏰 警備シフトの解説記事へ</a>
+          <a href="../mofumofu-sheep/" class="nav-btn primary" id="nav-play">🐑 パズルをプレイする ▶</a>
+        </div>
+      </nav>
+
+      <!-- =====================================================================
+           JAPANESE ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="ja">
+        <header class="hero-card">
+          <span class="hero-eyebrow">数理最適化（MILP）モデリング解説</span>
+          <h1>『もふもふ羊の牧場囲い』の裏側：<br />最小点カット問題から「予算制約付き・最大重み連結領域問題」へ</h1>
+          <p>
+            対象読者：混合整数線形計画（MIP）の基礎（二値変数・線形不等式・目的関数）をご存じの方。<br />
+            一見ほのぼのとした「柵でヒツジを囲うパズル」が、グラフ理論の<strong>最小点カット問題</strong>を土台にしつつ、どのように「どくキノコ（負の重み）」や「孤立領域の排除（連結性）」を線形制約として定式化しているのかを解説します。
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. パズルのルールとグラフ表現</h2>
+          <p>
+            盤面は無向グリッドグラフ <code>G = (V, E)</code> として表せます。上下左右に隣接する通行可能なマスの組が辺集合 <code>E</code> を構成し、各頂点（マス）<code>v ∈ V</code> は以下の性質を持ちます。
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>盤面のタイル</th>
+                <th>集合・記号</th>
+                <th>柵の設置</th>
+                <th>重み（得点） <code>w_v</code></th>
+                <th>数理モデル上の役割</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>🐑 ヒツジ</td>
+                <td><code>S ⊂ V</code></td>
+                <td>不可</td>
+                <td><code>+2</code></td>
+                <td>牧場の起点（湧き出し Source、常に <code>reach_s = 1</code>）</td>
+              </tr>
+              <tr>
+                <td>🐺 オオカミ</td>
+                <td><code>W ⊂ V</code></td>
+                <td>不可</td>
+                <td><code>0</code></td>
+                <td>侵入源（常に <code>reach_w = 0</code> を強制）</td>
+              </tr>
+              <tr>
+                <td>🌱 草地 / 🍓 野いちご</td>
+                <td><code>V_fence ⊂ V</code></td>
+                <td><strong>可能</strong></td>
+                <td><code>+1</code> / <code>+5</code></td>
+                <td>正の利得を持つ通常頂点（柵を置くと通行不可）</td>
+              </tr>
+              <tr>
+                <td>🍄 どくキノコ</td>
+                <td><code>V_fence ⊂ V</code></td>
+                <td><strong>可能</strong></td>
+                <td><strong><code>-5</code></strong></td>
+                <td><strong>負の重み</strong>を持つ頂点（牧場に入ると減点、柵で潰せる）</td>
+              </tr>
+              <tr>
+                <td>🌉 石橋</td>
+                <td><code>V_bridge ⊂ V</code></td>
+                <td>不可</td>
+                <td><code>+1</code></td>
+                <td>通行できるが<strong>カット不能</strong>な頂点（カット容量 ∞）</td>
+              </tr>
+              <tr>
+                <td>💧 水辺 / 🪨 岩</td>
+                <td><code>V_wall</code></td>
+                <td>不可</td>
+                <td>—</td>
+                <td>最初から通行不能（グラフ <code>V</code> から除外して扱える天然の壁）</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            プレイヤーの目的は、<strong>最大 <code>K</code> 本までの柵</strong>を設置してすべてのオオカミ <code>W</code> からヒツジ <code>S</code> への経路を遮断し、その状態で<strong>ヒツジ <code>S</code> から歩いて到達できる連結領域（まきば）の合計スコアを最大化</strong>することです。
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>2. もし「最小何本で守れるか」だけなら？（最小 s-t 点カット問題）</h2>
+          <p>
+            まずはスコア（いちごやキノコ）を一旦忘れ、<strong>「最小何本の柵でオオカミ <code>W</code> とヒツジ <code>S</code> を分断できるか？」</strong>という部分問題だけを取り出してみます。
+          </p>
+          <p>
+            通常の最小カット問題はグラフの「辺（Edge）」を切りますが、このパズルでは「マス（頂点 Vertex）」の上に柵を置いて通行止めにするため、グラフ理論における<strong>最小 <code>s-t</code> 点カット問題（Minimum Vertex Cut）</strong>に対応します。
+          </p>
+
+          <div class="callout green">
+            <strong>💡 メンガーの定理（Menger's Theorem）とパズルの難易度設計</strong>
+            「オオカミ <code>W</code> からヒツジ <code>S</code> へ至る<strong>頂点素な（互いに柵設置可能マスを共有しない）経路の最大本数</strong>は、両者を分断するのに必要な<strong>柵の最小本数</strong>に等しい」という定理が成り立ちます。<br />
+            たとえば石橋 <code>🌉</code>（カット不能頂点）を介してオオカミの侵入路が3本に分岐していれば、オオカミの目の前を1本の柵で塞ぐことは原理的に不可能になります。
+          </div>
+
+          <h3>なぜ単なる「最小カット問題」では終わらないのか</h3>
+          <p>
+            このパズルが最小カット問題より一段深く、かつ面白い理由は次の2点にあります。
+          </p>
+          <ol>
+            <li>
+              <strong>「最小本数」ではなく「上限 <code>K</code> 本の予算制約下での領域価値最大化」</strong>：<br />
+              1本で塞げる狭い通路があっても、あえて2本の柵を使って手前の分岐を抑えた方が、その奥にある野いちご畑（<code>🍓 +5</code>）を牧場に取り込める場合があります。つまり「どの方向の戦線に柵予算 <code>K</code> を投資するか」という<strong>ナップサック問題的なトレードオフ</strong>が絡みます。
+            </li>
+            <li>
+              <strong>負の重み「🍄 どくキノコ（<code>-5</code> 点）」の存在</strong>：<br />
+              オオカミが全くいない袋小路であっても、そこに <code>🍄 (-5)</code> があれば、余った柵を1本使ってその袋小路を切り離す（あるいは <code>🍄</code> の真上に柵を置いて潰す）ことでスコアが <code>+5</code> 点改善します。逆に、<code>🍄 (-5)</code> のさらに奥に <code>🍓×3 (+15)</code> が眠っていれば、<strong>あえて毒キノコを牧場内に残して奥へ道をつなぐ</strong>方が得になります（Stage 7『毒を喰らわば皿まで』）。
+            </li>
+          </ol>
+        </section>
+
+        <section class="section-card">
+          <h2>3. MILPによる定式化（1）：決定変数と「フラッド制約」</h2>
+          <p>
+            それでは、このパズルを混合整数線形計画（MILP）として定式化していきましょう。通行可能な各マス <code>v ∈ V</code> に対して、以下の2種類の二値変数を導入します。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">二値決定変数（Binary Decision Variables）</span>
+            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : マス v に柵🪵を置くなら 1、置かないなら 0<br />
+            r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : マス v が「ヒツジの安全な牧場」に含まれるなら 1
+          </div>
+
+          <p>まず、自明な境界条件と柵の本数上限（予算制約）を書きます。</p>
+
+          <div class="math-box">
+            <span class="math-title">基本制約（起点・侵入源・排他・予算）</span>
+            (1) r_s == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀s ∈ S) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ヒツジのいるマスは必ず牧場内<br />
+            (2) r_w == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀w ∈ W) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: オオカミのいるマスは絶対に牧場に入れてはならない<br />
+            (3) r_v + f_v &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀v ∈ V_fence) : 柵を置いたマス自体は牧場に含まれない<br />
+            (4) Σ_{v ∈ V_fence} f_v &lt;= K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 置ける柵は最大 K 本まで
+          </div>
+
+          <h3>隣接マスへ牧場が広がる「フラッド制約（Flood / Cut Constraint）」</h3>
+          <p>
+            次に、「ヒツジの牧場 <code>r_u = 1</code> の隣マス <code>v</code> に柵がなければ（<code>f_v = 0</code>）、その隣マス <code>v</code> も自動的に牧場と地続きになる（<code>r_v = 1</code>）」という物理法則を1本の線形不等式で表します。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">フラッド制約（すべての隣接ペア (u, v) ∈ E について）</span>
+            r_u - r_v - f_v &lt;= 0 &nbsp;&nbsp;&nbsp;（変形すると: &nbsp; r_u &lt;= r_v + f_v）
+          </div>
+
+          <p>
+            このシンプルな不等式 <code>r_u &lt;= r_v + f_v</code> は、<strong>1本で2つの重要な役割</strong>を同時に果たします。
+          </p>
+          <ul>
+            <li>
+              <strong>役割A（オオカミの完全遮断）</strong>：<br />
+              ヒツジ（<code>r_s = 1</code>）から始まる道の途中で一度も柵（<code>f_v = 1</code>）が置かれないままオオカミ（<code>r_w = 0</code>）に到達すると、<code>1 = r_s &lt;= … &lt;= r_w = 0</code> となって制約違反（Infeasible）になります。つまり、<strong>すべての侵入経路のどこかに必ず <code>f_v = 1</code> を置かなければ実行可能解になりません</strong>。
+            </li>
+            <li>
+              <strong>役割B（どくキノコ <code>🍄 -5</code> のつまみ食い防止）</strong>：<br />
+              もしこの制約がなければ、ソルバーは「正の得点マス（<code>🍓 +5</code>）だけ <code>r_v = 1</code> にし、牧場の真ん中にあるどくキノコ（<code>🍄 -5</code>）は都合よく <code>r_v = 0</code> にする」という抜け道を使えてしまいます。<br />
+              しかしフラッド制約があるため、牧場（<code>r_u = 1</code>）に隣接するどくキノコ <code>v</code> は、<strong>柵を置いて潰す（<code>f_v = 1, r_v = 0</code>）か、牧場に含めて <code>-5</code> 点を受け入れる（<code>f_v = 0, r_v = 1</code>）かの二択</strong>を厳密に迫られます。
+            </li>
+          </ul>
+        </section>
+
+        <section class="section-card">
+          <h2>4. MILPによる定式化（2）：「孤立ポケット問題」と単一品種フロー</h2>
+          <p>
+            ここで数理モデリング上の興味深い落とし穴が登場します。実は、<strong>前節のフラッド制約だけでは、まだ正しい定式化にはなりません。</strong>
+          </p>
+
+          <div class="diagram-grid">
+            <div class="mini-board">
+              <div class="mini-board-title">❌ フラッド制約のみの場合の不整合</div>
+              <div class="mini-cells">
+                <div class="mcell">🐺</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell bad" title="柵の向こう側なのに r_v = 1 にされてしまう">🍓</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🐑</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🍓</div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
+                右上の 🍓 は柵🪵と水辺💧でヒツジから完全に切り離されているのに、<code>r_v = 1</code> にしてもフラッド制約 <code>r_u &lt;= r_v + f_v</code> に違反しない。
+              </p>
+            </div>
+
+            <div class="mini-board">
+              <div class="mini-board-title">⭕ 単一品種フロー保存則を入れた場合</div>
+              <div class="mini-cells">
+                <div class="mcell">🐺</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell" title="ヒツジからフローが届かないため r_v = 0 になる">🍓</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🐑</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🍓</div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
+                ヒツジ🐑を水源とする水流（ネットワークフロー）が届くマスだけが <code>r_v = 1</code> になれる。
+              </p>
+            </div>
+          </div>
+
+          <p>
+            なぜこの現象が起きるかというと、フラッド制約 <code>r_u &lt;= r_v + f_v</code> は「ヒツジから到達できるマスはすべて <code>1</code> になる（下界）」は強制しますが、<strong>「柵や壁で囲まれた別の孤立ポケットの中身をまるごと <code>r_v = 1</code> にする」</strong>ことは禁止していないからです。
+          </p>
+
+          <h3>解決策：単一品種ネットワークフロー（Single-Commodity Flow）</h3>
+          <p>
+            「<code>r_v = 1</code> ならば、そのマス <code>v</code> はヒツジ <code>S</code> と実際にパスで繋がっていなければならない」という連結性を線形制約で表す定番の手法が、<strong>単一品種フロー保存則</strong>です。
+          </p>
+          <p>
+            隣接する各マスの組に有向連続変数 <code>flow_{u→v} &gt;= 0</code>（マス <code>u</code> から隣マス <code>v</code> へ流す「水」の量）を用意し、以下の制約を加えます（<code>M = |V|</code> は通行可能マスの総数）：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">連結性を保証する単一品種フロー制約</span>
+            (5) 0 &lt;= flow_{u→v} &lt;= M * r_u &nbsp;&nbsp;(∀(u, v) ∈ E) : 牧場内のマス u からしか水を出せない<br />
+            (6) 0 &lt;= flow_{u→v} &lt;= M * r_v &nbsp;&nbsp;(∀(u, v) ∈ E) : 牧場内のマス v へしか水を流せない<br />
+            (7) Σ_{u} flow_{u→v} - Σ_{w} flow_{v→w} == r_v &nbsp;&nbsp;(∀v ∈ V \ S) : ヒツジ以外の各牧場マス(r_v = 1)で水をちょうど 1 単位消費する
+          </div>
+
+          <div class="callout purple">
+            <strong>🔍 なぜこれで連結性が厳密に保証されるのか</strong>
+            ヒツジ以外のマス <code>v</code> を <code>r_v = 1</code> にするためには、式(7)より「どこかから <code>1</code> 単位の水が流れ込んでくる」必要があります。しかし式(5)・(6)より、水は <code>r = 1</code> のマス同士の間しか流れず、かつ水を新たに生み出せる（流入超過が許される）のは式(7)の対象外である<strong>ヒツジのマス <code>S</code> だけ</strong>です。<br />
+            したがって、ヒツジ <code>S</code> と柵なしで繋がっていない孤立ポケットには一滴も水が届かず、必ず <code>r_v = 0</code> になります。
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>5. 目的関数と「1手ヒント（部分固定再求解）」</h2>
+          <p>
+            最後に目的関数です。「牧場の合計スコアを最大化する（第1優先）」とともに、同じスコアなら「使う柵の本数をできるだけ少なくする（第2優先）」という辞書式順序（Lexicographic Objective）を、重み係数 <code>100</code> を使って1本の線形目的関数にまとめています。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">目的関数（Objective Function）</span>
+            maximize &nbsp; Σ_{v ∈ V} (100 * w_v) * r_v &nbsp;-&nbsp; Σ_{v ∈ V_fence} 1 * f_v
+          </div>
+
+          <p>
+            また、ゲーム内の<strong>「💡 1手ヒント」</strong>ボタンは、あらかじめ用意した固定の答えを見ているのではなく、<strong>プレイヤーが現在盤面に置いている柵集合 <code>F_cur</code> を <code>f_v == 1 (∀v ∈ F_cur)</code> として固定した上でリアルタイムに再求解</strong>しています：
+          </p>
+          <ul>
+            <li>
+              固定した状態での最適スコアが本来の理論値 <code>Z*</code> に届く場合：<br />
+              「現在の柵配置は正解ルートに乗っている」と判定し、残りの最適柵 <code>f_v* = 1 (v ∉ F_cur)</code> のうち1マスを盤面上で黄色く点滅させます。
+            </li>
+            <li>
+              固定した状態では Infeasible（オオカミを防げない）または <code>Z*</code> 未満にしかならない場合：<br />
+              「現在置いている柵の中に邪魔な柵がある」と判定し、外すべき柵のマスを赤く点滅させて教えてくれます。
+            </li>
+          </ul>
+
+          <h3>実際のモデル構築コード（抜粋）</h3>
+          <pre class="code-block"><code>// 1. フラッド制約（u が牧場内で隣 v に柵がなければ、v も必ず牧場内）
+if (vFence) {
+  model.constraint(expr`${uReach} - ${vReach} - ${vFence} &lt;= 0`);
+} else {
+  model.constraint(expr`${uReach} - ${vReach} &lt;= 0`);
+}
+
+// 2. 単一品種フロー（u と v の両方が牧場内のときのみフローを流せる）
+const flowUV = model.continuous(`flow_${r}_${c}_to_${nr}_${nc}`, { lb: 0, ub: maxFlowM });
+model.constraint(expr`${flowUV} - ${maxFlowM} * ${uReach} &lt;= 0`);
+model.constraint(expr`${flowUV} - ${maxFlowM} * ${vReach} &lt;= 0`);
+
+// 3. 非ヒツジ頂点でのフロー保存則（流入 - 流出 == r_v）
+model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code></pre>
+
+          <div class="footer-cta">
+            <a href="../mofumofu-sheep/" class="nav-btn primary">🐑 『もふもふ羊の牧場囲い』をプレイする ▶</a>
+            <a href="../demon-castle-shift-theory/" class="nav-btn">🏰 『魔王城の24時間警備シフト』の解説記事を読む →</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- =====================================================================
+           ENGLISH ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="en" hidden>
+        <header class="hero-card">
+          <span class="hero-eyebrow">Mathematical Optimization (MILP) Formulation Guide</span>
+          <h1>Behind "Fluffy Sheep Pasture Enclosure":<br />From Minimum Vertex Cut to Budgeted Maximum-Weight Connected Subgraph</h1>
+          <p>
+            Target Audience: Readers familiar with the basics of Mixed-Integer Linear Programming (binary variables, linear inequalities, and objective functions).<br />
+            This article explains how a cozy puzzle about enclosing sheep with wooden fences builds upon the classic <strong>Minimum s-t Vertex Cut</strong> problem while formulating negative-weight tiles (poison mushrooms) and strict region connectivity using linear constraints.
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. Puzzle Rules and Graph Representation</h2>
+          <p>
+            The board is modeled as an undirected grid graph <code>G = (V, E)</code>, where orthogonally adjacent passable cells form the edge set <code>E</code>. Each vertex (cell) <code>v ∈ V</code> has the following properties:
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>Board Tile</th>
+                <th>Set / Symbol</th>
+                <th>Fence Allowed</th>
+                <th>Weight (Score) <code>w_v</code></th>
+                <th>Role in the Mathematical Model</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>🐑 Sheep</td>
+                <td><code>S ⊂ V</code></td>
+                <td>No</td>
+                <td><code>+2</code></td>
+                <td>Pasture origin (Source; fixed to <code>reach_s = 1</code>)</td>
+              </tr>
+              <tr>
+                <td>🐺 Wolf</td>
+                <td><code>W ⊂ V</code></td>
+                <td>No</td>
+                <td><code>0</code></td>
+                <td>Hazard source (fixed to <code>reach_w = 0</code>)</td>
+              </tr>
+              <tr>
+                <td>🌱 Grass / 🍓 Strawberry</td>
+                <td><code>V_fence ⊂ V</code></td>
+                <td><strong>Yes</strong></td>
+                <td><code>+1</code> / <code>+5</code></td>
+                <td>Positive-reward vertices (impassable when a fence is placed)</td>
+              </tr>
+              <tr>
+                <td>🍄 Poison Mushroom</td>
+                <td><code>V_fence ⊂ V</code></td>
+                <td><strong>Yes</strong></td>
+                <td><strong><code>-5</code></strong></td>
+                <td><strong>Negative-weight</strong> vertex (penalizes score if enclosed; can be crushed by a fence)</td>
+              </tr>
+              <tr>
+                <td>🌉 Stone Bridge</td>
+                <td><code>V_bridge ⊂ V</code></td>
+                <td>No</td>
+                <td><code>+1</code></td>
+                <td>Passable but <strong>uncuttable</strong> vertex (infinite cut capacity)</td>
+              </tr>
+              <tr>
+                <td>💧 Water / 🪨 Rock</td>
+                <td><code>V_wall</code></td>
+                <td>No</td>
+                <td>—</td>
+                <td>Impassable natural walls (excluded from <code>V</code>)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            The player's goal is to place <strong>at most <code>K</code> fences</strong> so that all paths between the wolves <code>W</code> and the sheep <code>S</code> are blocked, while <strong>maximizing the total score of the connected pasture reachable from the sheep <code>S</code></strong>.
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>2. What If We Only Minimized Fence Count? (Minimum s-t Vertex Cut)</h2>
+          <p>
+            Suppose we temporarily ignore tile scores and ask only: <strong>"What is the minimum number of fences required to separate the wolves <code>W</code> from the sheep <code>S</code>?"</strong>
+          </p>
+          <p>
+            Whereas the standard minimum cut problem removes graph edges, here we block grid cells (vertices) with fences. This corresponds to the <strong>Minimum s-t Vertex Cut</strong> problem in graph theory.
+          </p>
+
+          <div class="callout green">
+            <strong>💡 Menger's Theorem and Level Design</strong>
+            By Menger's Theorem, the <strong>maximum number of vertex-disjoint paths</strong> (sharing no fenceable cells) between the wolves <code>W</code> and the sheep <code>S</code> equals the <strong>minimum number of fences</strong> needed to separate them.<br />
+            For example, if stone bridges <code>🌉</code> (uncuttable vertices) split a wolf's approach into three independent corridors, caging the wolf with a single fence right in front of its spawn is mathematically impossible.
+          </div>
+
+          <h3>Why This Puzzle Goes Beyond a Pure Minimum Cut</h3>
+          <p>
+            Two structural features make this puzzle richer than a textbook minimum cut problem:
+          </p>
+          <ol>
+            <li>
+              <strong>Maximizing Enclosed Value Under a Fence Budget <code>K</code></strong>:<br />
+              Even when a narrow choke point can be sealed with 1 fence, spending 2 fences further forward to hold a branch junction may capture a rich strawberry patch (<code>🍓 +5</code>) beyond it. Deciding where to invest the fence budget <code>K</code> introduces a <strong>knapsack-like trade-off</strong> across multiple fronts.
+            </li>
+            <li>
+              <strong>Negative Weights from Poison Mushrooms (<code>🍄 -5</code>)</strong>:<br />
+              Even in a dead-end corridor with no wolves, if a poison mushroom <code>🍄 (-5)</code> lies connected to the pasture, spending a fence to seal off that corridor—or placing a fence directly on top of the mushroom to crush it—improves the score by <code>+5</code>. Conversely, if three strawberries (<code>+15</code>) lie behind a mushroom (<code>-5</code>), <strong>deliberately leaving the mushroom inside the pasture to keep the path open</strong> yields a net gain of <code>+10</code> (as seen in Stage 7).
+            </li>
+          </ol>
+        </section>
+
+        <section class="section-card">
+          <h2>3. MILP Formulation (Part 1): Decision Variables and the Flood Constraint</h2>
+          <p>
+            To formulate the puzzle as a Mixed-Integer Linear Program (MILP), we introduce two sets of binary decision variables over the passable cells <code>v ∈ V</code>:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Binary Decision Variables</span>
+            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 1 if a wooden fence 🪵 is placed on cell v, 0 otherwise<br />
+            r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : 1 if cell v is part of the sheep's safe pasture, 0 otherwise
+          </div>
+
+          <p>First, we state the boundary conditions, mutual exclusion, and the fence budget constraint:</p>
+
+          <div class="math-box">
+            <span class="math-title">Base Constraints (Sources, Hazards, Exclusion, and Budget)</span>
+            (1) r_s == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀s ∈ S) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Every sheep cell is always inside the pasture<br />
+            (2) r_w == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀w ∈ W) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: No wolf cell may ever be inside the pasture<br />
+            (3) r_v + f_v &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀v ∈ V_fence) : A fenced cell cannot itself be part of the pasture<br />
+            (4) Σ_{v ∈ V_fence} f_v &lt;= K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: At most K fences can be placed
+          </div>
+
+          <h3>The Flood / Cut Constraint Across Adjacent Cells</h3>
+          <p>
+            Next, we express the propagation rule: "If cell <code>u</code> is inside the pasture (<code>r_u = 1</code>) and its neighbor <code>v</code> has no fence (<code>f_v = 0</code>), then <code>v</code> must also be inside the pasture (<code>r_v = 1</code>)."
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Flood Constraint (for every ordered adjacent pair (u, v) ∈ E)</span>
+            r_u - r_v - f_v &lt;= 0 &nbsp;&nbsp;&nbsp;(equivalently: &nbsp; r_u &lt;= r_v + f_v)
+          </div>
+
+          <p>
+            This single linear inequality <code>r_u &lt;= r_v + f_v</code> simultaneously enforces two essential properties:
+          </p>
+          <ul>
+            <li>
+              <strong>Role A (Complete Wolf Separation)</strong>:<br />
+              If any open path from a sheep (<code>r_s = 1</code>) reaches a wolf (<code>r_w = 0</code>) without encountering a fence (<code>f_v = 1</code>), chaining the inequality along the path yields <code>1 = r_s &lt;= … &lt;= r_w = 0</code>, which is infeasible. Thus every wolf-to-sheep path must contain at least one fence.
+            </li>
+            <li>
+              <strong>Role B (Preventing Cherry-Picking Around Poison Mushrooms)</strong>:<br />
+              Without this constraint, an optimizer could set <code>r_v = 1</code> on positive tiles (<code>🍓 +5</code>) while arbitrarily setting <code>r_v = 0</code> on an unfenced poison mushroom (<code>🍄 -5</code>) right next to the sheep. Because of the flood constraint, any mushroom adjacent to the pasture forces a strict choice: <strong>spend a fence to crush/block it (<code>f_v = 1, r_v = 0</code>) or include it in the pasture and accept the <code>-5</code> penalty (<code>f_v = 0, r_v = 1</code>)</strong>.
+            </li>
+          </ul>
+        </section>
+
+        <section class="section-card">
+          <h2>4. MILP Formulation (Part 2): Disconnected Pockets and Single-Commodity Flow</h2>
+          <p>
+            Here we encounter a classic mathematical modeling pitfall: <strong>the flood constraint alone is not sufficient to define the pasture accurately.</strong>
+          </p>
+
+          <div class="diagram-grid">
+            <div class="mini-board">
+              <div class="mini-board-title">❌ Loophole Under Flood Constraints Alone</div>
+              <div class="mini-cells">
+                <div class="mcell">🐺</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell bad" title="Set to r_v = 1 even though it is behind a fence">🍓</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🐑</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🍓</div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
+                The top-right 🍓 is completely walled off from the sheep by a fence 🪵 and water 💧, yet setting <code>r_v = 1</code> there does not violate <code>r_u &lt;= r_v + f_v</code>.
+              </p>
+            </div>
+
+            <div class="mini-board">
+              <div class="mini-board-title">⭕ With Single-Commodity Flow Conservation</div>
+              <div class="mini-cells">
+                <div class="mcell">🐺</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell" title="Forced to r_v = 0 because no flow from the sheep can reach it">🍓</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🐑</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🍓</div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
+                Only cells that can receive network flow originating from the sheep 🐑 can set <code>r_v = 1</code>.
+              </p>
+            </div>
+          </div>
+
+          <p>
+            Why does this happen? Because <code>r_u &lt;= r_v + f_v</code> forces every cell reachable from the sheep to have <code>r_v = 1</code> (a lower bound), but it does not forbid setting <code>r_v = 1</code> inside an <strong>isolated pocket walled off by fences and water</strong>.
+          </p>
+
+          <h3>Solution: Single-Commodity Network Flow</h3>
+          <p>
+            To guarantee that <code>r_v = 1</code> holds only if cell <code>v</code> is genuinely connected to at least one sheep in <code>S</code>, we add <strong>Single-Commodity Flow conservation</strong> constraints.
+          </p>
+          <p>
+            For each directed edge <code>(u, v) ∈ E</code>, we define a non-negative continuous variable <code>flow_{u→v} &gt;= 0</code> representing the amount of flow sent from <code>u</code> to <code>v</code> (where <code>M = |V|</code> is the total number of passable cells):
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Single-Commodity Flow Constraints for Connectivity</span>
+            (5) 0 &lt;= flow_{u→v} &lt;= M * r_u &nbsp;&nbsp;(∀(u, v) ∈ E) : Flow can only leave a cell u that is in the pasture<br />
+            (6) 0 &lt;= flow_{u→v} &lt;= M * r_v &nbsp;&nbsp;(∀(u, v) ∈ E) : Flow can only enter a cell v that is in the pasture<br />
+            (7) Σ_{u} flow_{u→v} - Σ_{w} flow_{v→w} == r_v &nbsp;&nbsp;(∀v ∈ V \ S) : Each non-sheep pasture cell (r_v = 1) consumes 1 unit of flow
+          </div>
+
+          <div class="callout purple">
+            <strong>🔍 Why This Strictly Guarantees Connectivity</strong>
+            By equation (7), any non-sheep cell with <code>r_v = 1</code> must consume 1 net unit of flow. By (5) and (6), flow can only travel through cells where <code>r = 1</code>, and the only nodes exempt from flow conservation (able to act as flow sources) are the <strong>sheep cells <code>S</code></strong>. Consequently, any pocket disconnected from the sheep receives zero flow and is forced to <code>r_v = 0</code>.
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>5. Objective Function and 1-Move Hint Diagnosis (Partial Fixing)</h2>
+          <p>
+            Finally, we combine "maximizing total pasture score (primary objective)" and "using as few fences as possible among tied scores (secondary tie-breaker)" into a single linear objective using a lexicographic weight of <code>100</code>:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Objective Function</span>
+            maximize &nbsp; Σ_{v ∈ V} (100 * w_v) * r_v &nbsp;-&nbsp; Σ_{v ∈ V_fence} 1 * f_v
+          </div>
+
+          <p>
+            The in-game <strong>"💡 1-Move Hint"</strong> button does not merely look up a static answer key. Instead, it <strong>fixes the player's currently placed fences <code>F_cur</code> (<code>f_v == 1</code> for all <code>v ∈ F_cur</code>) and re-solves the MILP in real time</strong>:
+          </p>
+          <ul>
+            <li>
+              If the restricted problem is still Feasible and achieves the optimal target score <code>Z*</code>:<br />
+              The player's current fences are on a valid optimal path, so the game highlights one remaining unplaced fence <code>f_v* = 1 (v ∉ F_cur)</code> in yellow.
+            </li>
+            <li>
+              If the restricted problem is Infeasible or its optimal objective falls short of <code>Z*</code>:<br />
+              At least one placed fence is blocking the optimal enclosure, so the game identifies that fence and highlights it in red for removal.
+            </li>
+          </ul>
+
+          <h3>Model Construction Excerpt</h3>
+          <pre class="code-block"><code>// 1. Flood constraint (if u is in the pasture and v has no fence, v must also be in the pasture)
+if (vFence) {
+  model.constraint(expr`${uReach} - ${vReach} - ${vFence} &lt;= 0`);
+} else {
+  model.constraint(expr`${uReach} - ${vReach} &lt;= 0`);
+}
+
+// 2. Single-commodity flow (flow is active only when both u and v are in the pasture)
+const flowUV = model.continuous(`flow_${r}_${c}_to_${nr}_${nc}`, { lb: 0, ub: maxFlowM });
+model.constraint(expr`${flowUV} - ${maxFlowM} * ${uReach} &lt;= 0`);
+model.constraint(expr`${flowUV} - ${maxFlowM} * ${vReach} &lt;= 0`);
+
+// 3. Flow conservation at every non-sheep cell (inflow - outflow == r_v)
+model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code></pre>
+
+          <div class="footer-cta">
+            <a href="../mofumofu-sheep/" class="nav-btn primary">🐑 Play "Fluffy Sheep Pasture Enclosure" ▶</a>
+            <a href="../demon-castle-shift-theory/" class="nav-btn">🏰 Read "Demon Castle 24-Hour Guard Shift" Article →</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- =====================================================================
+           CHINESE ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="zh" hidden>
+        <header class="hero-card">
+          <span class="hero-eyebrow">数学规划（MILP）建模解说</span>
+          <h1>《毛茸茸绵羊的牧场围栏》背后的数学模型：<br />从最小点割问题到“带预算约束的最大权连通子图问题”</h1>
+          <p>
+            适合读者：了解混合整数线性规划（MIP）基础（0-1变量、线性不等式与目标函数）的读者。<br />
+            本文将解说这款看似轻松治愈的“用木栅栏围住小羊”的益智游戏，是如何以图论中的<strong>最小点割问题</strong>为基础，将“毒蘑菇（负权重）”与“排除孤立飞地（连通性约束）”转化为严格的线性约束的。
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. 游戏规则与网格图表示</h2>
+          <p>
+            游戏棋盘可以表示为无向网格图 <code>G = (V, E)</code>。上下左右相邻的可通行格构成边集 <code>E</code>，每个顶点（格子）<code>v ∈ V</code> 具有以下属性：
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>棋盘地形</th>
+                <th>集合与符号</th>
+                <th>可否放置栅栏</th>
+                <th>权重（得分） <code>w_v</code></th>
+                <th>数学模型中的角色</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>🐑 绵羊</td>
+                <td><code>S ⊂ V</code></td>
+                <td>不可</td>
+                <td><code>+2</code></td>
+                <td>牧场起点（源点 Source，固定为 <code>reach_s = 1</code>）</td>
+              </tr>
+              <tr>
+                <td>🐺 野狼</td>
+                <td><code>W ⊂ V</code></td>
+                <td>不可</td>
+                <td><code>0</code></td>
+                <td>入侵源（强制要求 <code>reach_w = 0</code>）</td>
+              </tr>
+              <tr>
+                <td>🌱 草地 / 🍓 野草莓</td>
+                <td><code>V_fence ⊂ V</code></td>
+                <td><strong>可以</strong></td>
+                <td><code>+1</code> / <code>+5</code></td>
+                <td>正收益普通顶点（放置栅栏后不可通行）</td>
+              </tr>
+              <tr>
+                <td>🍄 毒蘑菇</td>
+                <td><code>V_fence ⊂ V</code></td>
+                <td><strong>可以</strong></td>
+                <td><strong><code>-5</code></strong></td>
+                <td><strong>负权重</strong>顶点（纳入牧场会扣分，可直接放栅栏压掉）</td>
+              </tr>
+              <tr>
+                <td>🌉 石桥</td>
+                <td><code>V_bridge ⊂ V</code></td>
+                <td>不可</td>
+                <td><code>+1</code></td>
+                <td>可通行但<strong>不可割</strong>的顶点（割容量 ∞）</td>
+              </tr>
+              <tr>
+                <td>💧 水域 / 🪨 岩石</td>
+                <td><code>V_wall</code></td>
+                <td>不可</td>
+                <td>—</td>
+                <td>天然障碍物（直接从图 <code>V</code> 中排除）</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p>
+            玩家的目标是放置<strong>最多 <code>K</code> 根栅栏</strong>，阻断所有野狼 <code>W</code> 通往绵羊 <code>S</code> 的路径，并在该条件下<strong>最大化从绵羊 <code>S</code> 出发可步行的连通区域（安全牧场）的总得分</strong>。
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>2. 如果只问“最少几根栅栏能守住”？（最小 s-t 点割问题）</h2>
+          <p>
+            我们先暂时忽略草莓与毒蘑菇的分数，只考虑子问题：<strong>“最少需要几根栅栏才能将野狼 <code>W</code> 与绵羊 <code>S</code> 完全隔开？”</strong>
+          </p>
+          <p>
+            标准的最小割问题切断的是图中的“边（Edge）”，而本作是在“格子（顶点 Vertex）”上放置栅栏阻断通行，因此在图论中对应<strong>最小 <code>s-t</code> 点割问题（Minimum Vertex Cut）</strong>。
+          </p>
+
+          <div class="callout green">
+            <strong>💡 门格尔定理（Menger's Theorem）与关卡设计</strong>
+            根据门格尔定理，“从野狼 <code>W</code> 到绵羊 <code>S</code> 之间<strong>顶点不相交（不共用任何可放栅栏格）的最大路径条数</strong>，严格等于将两者隔开所需的<strong>最少栅栏数</strong>”。<br />
+            例如，当野狼出生点旁通过石桥 <code>🌉</code>（不可放置栅栏的顶点）分叉出多条进攻路线时，玩家就无法用1根栅栏直接在野狼面前将其堵死。
+          </div>
+
+          <h3>为什么它不只是一个简单的“最小割问题”</h3>
+          <p>
+            本作比单纯的最小割问题更有深度，主要源于以下两个机制：
+          </p>
+          <ol>
+            <li>
+              <strong>不是“最小化栅栏数”，而是“在栅栏预算上限 <code>K</code> 下最大化区域价值”</strong>：<br />
+              即使某条狭窄通道只需1根栅栏就能封死，有时主动消耗2根栅栏把防线推到前方分叉口，反而能将后方的野草莓田（<code>🍓 +5</code>）纳入牧场。也就是说，玩家需要在不同防线之间权衡如何分配有限的栅栏预算 <code>K</code>。
+            </li>
+            <li>
+              <strong>负权重地形“🍄 毒蘑菇（<code>-5</code> 分）”的取舍</strong>：<br />
+              即使某个死胡同里根本没有野狼，只要里面有 <code>🍄 (-5)</code>，用1根富余的栅栏把死胡同隔开（或者直接把栅栏放在 <code>🍄</code> 上将其压掉）就能让总分提高 <code>+5</code> 分。反过来，如果 <code>🍄 (-5)</code> 的更深处藏着 <code>🍓×3 (+15)</code>，那么<strong>故意保留毒蘑菇不压掉、穿过它去拿深处的草莓</strong>反而能净赚 <code>+10</code> 分（如第7关）。
+            </li>
+          </ol>
+        </section>
+
+        <section class="section-card">
+          <h2>3. MILP 建模（一）：决策变量与“漫延（Flood）约束”</h2>
+          <p>
+            下面我们将该问题建立为混合整数线性规划（MILP）。对每个可通行格 <code>v ∈ V</code>，引入以下两类 0-1 决策变量：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">0-1 决策变量（Binary Decision Variables）</span>
+            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 在格子 v 放置栅栏🪵则为 1，否则为 0<br />
+            r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : 格子 v 属于“绵羊的安全牧场”则为 1，否则为 0
+          </div>
+
+          <p>首先写出边界条件、互斥条件与栅栏预算上限：</p>
+
+          <div class="math-box">
+            <span class="math-title">基础约束（起点、入侵源、互斥与预算）</span>
+            (1) r_s == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀s ∈ S) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 绵羊所在格必定属于牧场<br />
+            (2) r_w == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀w ∈ W) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 野狼所在格绝对不能属于牧场<br />
+            (3) r_v + f_v &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀v ∈ V_fence) : 放置了栅栏的格子本身不属于牧场<br />
+            (4) Σ_{v ∈ V_fence} f_v &lt;= K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 最多只能放置 K 根栅栏
+          </div>
+
+          <h3>向相邻格子扩展的“漫延约束（Flood / Cut Constraint）”</h3>
+          <p>
+            接着，用一条线性不等式刻画连通传播规律：“如果格子 <code>u</code> 在牧场内（<code>r_u = 1</code>），且相邻格子 <code>v</code> 没有放栅栏（<code>f_v = 0</code>），那么相邻格子 <code>v</code> 也必须自动属于牧场（<code>r_v = 1</code>）”。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">漫延约束（对所有相邻有序对 (u, v) ∈ E）</span>
+            r_u - r_v - f_v &lt;= 0 &nbsp;&nbsp;&nbsp;（等价变形为: &nbsp; r_u &lt;= r_v + f_v）
+          </div>
+
+          <p>
+            这条简洁的不等式 <code>r_u &lt;= r_v + f_v</code> 同时承担了<strong>两个重要作用</strong>：
+          </p>
+          <ul>
+            <li>
+              <strong>作用 A（彻底阻断野狼）</strong>：<br />
+              如果从绵羊（<code>r_s = 1</code>）出发的某条路径在到达野狼（<code>r_w = 0</code>）之前没有任何一格放置栅栏（<code>f_v = 1</code>），沿路径串联不等式就会得到 <code>1 = r_s &lt;= … &lt;= r_w = 0</code>，从而导致模型无解（Infeasible）。因此所有入侵路径上都必须至少放置1根栅栏。
+            </li>
+            <li>
+              <strong>作用 B（防止跳过毒蘑菇 <code>🍄 -5</code> 只捡正分格）</strong>：<br />
+              如果没有这条约束，求解器就会只把草莓（<code>🍓 +5</code>）设为 <code>r_v = 1</code>，而把牧场中间没放栅栏的毒蘑菇（<code>🍄 -5</code>）偷偷设为 <code>r_v = 0</code>。<br />
+              有了漫延约束后，任何与牧场（<code>r_u = 1</code>）相邻的毒蘑菇 <code>v</code> 都必须二选一：<strong>要么花1根栅栏压掉它（<code>f_v = 1, r_v = 0</code>），要么将它纳入牧场并接受 <code>-5</code> 分（<code>f_v = 0, r_v = 1</code>）</strong>。
+            </li>
+          </ul>
+        </section>
+
+        <section class="section-card">
+          <h2>4. MILP 建模（二）：“孤立飞地问题”与单商品网络流</h2>
+          <p>
+            这里会出现一个经典的数学建模陷阱：<strong>仅靠上一节的漫延约束，还不足以正确定义连通牧场。</strong>
+          </p>
+
+          <div class="diagram-grid">
+            <div class="mini-board">
+              <div class="mini-board-title">❌ 仅使用漫延约束时的漏洞</div>
+              <div class="mini-cells">
+                <div class="mcell">🐺</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell bad" title="明明被栅栏隔在外面，却被设成了 r_v = 1">🍓</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🐑</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🍓</div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
+                右上角的 🍓 已被栅栏🪵和水域💧完全隔绝在绵羊不可达之处，但将其设为 <code>r_v = 1</code> 并不违反 <code>r_u &lt;= r_v + f_v</code>。
+              </p>
+            </div>
+
+            <div class="mini-board">
+              <div class="mini-board-title">⭕ 加入单商品流守恒约束后</div>
+              <div class="mini-cells">
+                <div class="mcell">🐺</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell" title="来自绵羊的网络流无法到达，因此被强制为 r_v = 0">🍓</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell">🌱</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell fence">🪵</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell wall">💧</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🐑</div>
+                <div class="mcell safe">🌱</div>
+                <div class="mcell safe">🍓</div>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
+                只有从绵羊🐑出发的“水流（网络流）”能够送达的格子，才能设为 <code>r_v = 1</code>。
+              </p>
+            </div>
+          </div>
+
+          <p>
+            原因在于：漫延约束 <code>r_u &lt;= r_v + f_v</code> 只规定了“绵羊能走到的格子必须为 <code>1</code>（下界）”，却没有禁止求解器把<strong>被栅栏和墙壁围起来的另一块孤立口袋整体设为 <code>r_v = 1</code></strong> 来白拿里面的草莓分数。
+          </p>
+
+          <h3>解决方案：单商品网络流（Single-Commodity Flow）</h3>
+          <p>
+            为了用线性约束严格表达“若 <code>r_v = 1</code>，则格子 <code>v</code> 必须与某只绵羊 <code>S</code> 存在真实连通路径”，标准做法是引入<strong>单商品流守恒约束</strong>。
+          </p>
+          <p>
+            对每对相邻有向边 <code>(u, v) ∈ E</code> 引入非负连续变量 <code>flow_{u→v} &gt;= 0</code>（表示从格子 <code>u</code> 流向相邻格子 <code>v</code> 的“水量”，其中 <code>M = |V|</code> 为可通行格总数）：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">保证连通性的单商品流约束</span>
+            (5) 0 &lt;= flow_{u→v} &lt;= M * r_u &nbsp;&nbsp;(∀(u, v) ∈ E) : 只有牧场内的格子 u 才能流出水<br />
+            (6) 0 &lt;= flow_{u→v} &lt;= M * r_v &nbsp;&nbsp;(∀(u, v) ∈ E) : 只有牧场内的格子 v 才能流入水<br />
+            (7) Σ_{u} flow_{u→v} - Σ_{w} flow_{v→w} == r_v &nbsp;&nbsp;(∀v ∈ V \ S) : 除绵羊外的每个牧场格(r_v = 1)恰好消耗 1 单位水
+          </div>
+
+          <div class="callout purple">
+            <strong>🔍 为什么这能严格保证连通性</strong>
+            由式(7)可知，任何非绵羊格若想设为 <code>r_v = 1</code>，就必须有 <code>1</code> 单位的净水流注入该格。而由式(5)・(6)可知，水流只能在 <code>r = 1</code> 的格子之间传递，且全图中唯一不受式(7)约束、能够凭空产生水流的源点只有<strong>绵羊所在格 <code>S</code></strong>。<br />
+            因此，任何与绵羊被栅栏隔开的孤立区域都无法获得水流，其 <code>r_v</code> 必然被强制为 <code>0</code>。
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>5. 目标函数与“一步提示（部分固定重求解）”</h2>
+          <p>
+            最后是目标函数。我们将“最大化牧场总得分（第一优先级）”与“同分时尽量少用栅栏（第二优先级）”通过字典序权重系数 <code>100</code> 合并为一条线性目标函数：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">目标函数（Objective Function）</span>
+            maximize &nbsp; Σ_{v ∈ V} (100 * w_v) * r_v &nbsp;-&nbsp; Σ_{v ∈ V_fence} 1 * f_v
+          </div>
+
+          <p>
+            此外，游戏中的<strong>“💡 一步提示”</strong>按钮并不是简单读取预设答案，而是<strong>将玩家当前已在棋盘上放置的栅栏集合 <code>F_cur</code> 作为固定约束 <code>f_v == 1 (∀v ∈ F_cur)</code> 加入模型并实时重求解</strong>：
+          </p>
+          <ul>
+            <li>
+              若固定当前栅栏后的最优得分仍能达到理论最优值 <code>Z*</code>：<br />
+              说明玩家当前的摆法走在正确的最优路线上，系统会从剩余未放的最优栅栏 <code>f_v* = 1 (v ∉ F_cur)</code> 中挑出1格在棋盘上以黄色高亮提示。
+            </li>
+            <li>
+              若固定当前栅栏后无解（无法挡住野狼）或最优得分低于 <code>Z*</code>：<br />
+              说明玩家已放置的栅栏中存在阻碍最优解的错误栅栏，系统会找出该栅栏并以红色高亮提示玩家将其移除。
+            </li>
+          </ul>
+
+          <h3>模型构建代码摘录</h3>
+          <pre class="code-block"><code>// 1. 漫延约束（若 u 在牧场内且相邻 v 未放栅栏，则 v 也必定在牧场内）
+if (vFence) {
+  model.constraint(expr`${uReach} - ${vReach} - ${vFence} &lt;= 0`);
+} else {
+  model.constraint(expr`${uReach} - ${vReach} &lt;= 0`);
+}
+
+// 2. 单商品流（仅当 u 与 v 均在牧场内时才允许流量通过）
+const flowUV = model.continuous(`flow_${r}_${c}_to_${nr}_${nc}`, { lb: 0, ub: maxFlowM });
+model.constraint(expr`${flowUV} - ${maxFlowM} * ${uReach} &lt;= 0`);
+model.constraint(expr`${flowUV} - ${maxFlowM} * ${vReach} &lt;= 0`);
+
+// 3. 非绵羊顶点的流量守恒（流入 - 流出 == r_v）
+model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code></pre>
+
+          <div class="footer-cta">
+            <a href="../mofumofu-sheep/" class="nav-btn primary">🐑 游玩《毛茸茸绵羊的牧场围栏》 ▶</a>
+            <a href="../demon-castle-shift-theory/" class="nav-btn">🏰 阅读《魔王城24小时警备排班》解说文章 →</a>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script type="module">
+      import { getGameLang, setGameLang, pickLang } from "../i18n.ts";
+
+      const NAV_TEXT = {
+        ja: {
+          title: "『もふもふ羊の牧場囲い』の数理モデル解説 — 最小カットから最大重み連結領域問題（MILP）へ",
+          back: "← ゲーム一覧へ戻る",
+          other: "🏰 警備シフトの解説記事へ",
+          play: "🐑 パズルをプレイする ▶",
+        },
+        en: {
+          title: 'Behind "Fluffy Sheep Pasture Enclosure" — From Minimum Cut to Budgeted Connected Subgraph (MILP)',
+          back: "← Back to Games",
+          other: "🏰 Guard Shift Article",
+          play: "🐑 Play Puzzle ▶",
+        },
+        zh: {
+          title: "《毛茸茸绵羊的牧场围栏》数学模型解说 — 从最小割到最大权连通子图问题（MILP）",
+          back: "← 返回游戏一览",
+          other: "🏰 警备排班解说文章",
+          play: "🐑 开始解谜 ▶",
+        },
+      };
+
+      function applyLang(lang) {
+        setGameLang(lang);
+        const t = pickLang(lang, NAV_TEXT);
+        document.title = t.title;
+        document.getElementById("nav-back").textContent = t.back;
+        document.getElementById("nav-other-theory").textContent = t.other;
+        document.getElementById("nav-play").textContent = t.play;
+
+        document.querySelectorAll("[data-lang-section]").forEach((sec) => {
+          sec.hidden = sec.getAttribute("data-lang-section") !== lang;
+        });
+        document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
+        });
+      }
+
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const lang = btn.getAttribute("data-lang-btn");
+          if (lang === "ja" || lang === "en" || lang === "zh") {
+            applyLang(lang);
+          }
+        });
+      });
+
+      applyLang(getGameLang());
+    </script>
+  </body>
+</html>

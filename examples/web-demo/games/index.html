@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WaSHI ゲーム＆インタラクティブ・ショーケース</title>
+    <title>ブラウザパズルゲーム一覧</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -24,7 +24,7 @@
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
+        font-family: "M PLUS Rounded 1c", "Noto Sans JP", system-ui, sans-serif;
         background: radial-gradient(circle at top, #241642 0%, #0f0a1c 70%);
         color: var(--text-main);
         padding: 2rem 1.25rem 4rem;
@@ -41,6 +41,12 @@
         margin-bottom: 2rem;
         flex-wrap: wrap;
       }
+      .hub-topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
       .back-btn {
         color: var(--text-muted);
         text-decoration: none;
@@ -54,6 +60,35 @@
       .back-btn:hover {
         color: #fff;
         border-color: var(--gold);
+      }
+      .lang-switch {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(246, 196, 83, 0.4);
+        border-radius: 999px;
+        padding: 0.18rem;
+        gap: 0.15rem;
+      }
+      .lang-btn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.28rem 0.68rem;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .lang-btn:hover {
+        color: #fff;
+      }
+      .lang-btn.is-active {
+        background: var(--gold);
+        color: #1c1330;
       }
       .hub-hero {
         text-align: center;
@@ -129,6 +164,11 @@
         line-height: 1.6;
         flex: 1;
       }
+      .card-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
       .play-btn {
         display: inline-block;
         text-align: center;
@@ -140,20 +180,51 @@
         font-weight: 900;
         font-size: 0.96rem;
         border: 2px solid #fde68a;
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+      .play-btn:hover {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+      }
+      .theory-btn {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+        padding: 0.6rem 1rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.07);
+        color: #fde68a;
+        font-weight: 800;
+        font-size: 0.84rem;
+        border: 1px solid rgba(246, 196, 83, 0.45);
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .theory-btn:hover {
+        background: rgba(246, 196, 83, 0.16);
+        border-color: var(--gold);
+        color: #fff;
       }
     </style>
   </head>
   <body>
     <div class="hub-container">
       <header class="hub-topbar">
-        <a href="../" class="back-btn">← WaSHI トップページへ戻る</a>
-        <a href="../demo/" class="back-btn">📐 数理モデル Playground へ</a>
+        <a href="../" class="back-btn" id="portal-back-top">← トップページへ戻る</a>
+        <div class="hub-topbar-right">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <a href="../apps/" class="back-btn" id="portal-nav-apps">🏥 実用アプリ一覧へ</a>
+          <a href="../demo/" class="back-btn" id="portal-nav-demo">📐 Playground へ</a>
+        </div>
       </header>
 
       <section class="hub-hero">
-        <h1>🎮 WaSHI ブラウザゲーム・ショーケース</h1>
-        <p>
-          WebAssembly 数理最適化ソルバー（HiGHS）をブラウザ内で動かし、サーバー通信ゼロで遊べるパズル＆シミュレーションゲーム集です。
+        <h1 id="portal-hero-title">🎮 ブラウザパズルゲーム一覧</h1>
+        <p id="portal-hero-sub">
+          ブラウザ上でそのまま遊べる思考型パズルゲームと、その背景にある仕組みの解説記事をご覧いただけます。
         </p>
       </section>
 
@@ -175,14 +246,48 @@
               alt="魔王城の24時間警備シフト"
               style="max-height: 126px; width: auto; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.85));"
             />
-            <span class="game-tag">拠点防衛シフトパズル（星月暦の月次進行＋エンドレス編成）</span>
+            <span class="game-tag" id="card1-tag">拠点防衛シフトパズル</span>
           </div>
           <div class="game-body">
-            <h2>魔王城の24時間警備シフト</h2>
-            <p>
+            <h2 id="card1-title">魔王城の24時間警備シフト</h2>
+            <p id="card1-desc">
               昼夜を問わず進軍してくる勇者軍から、参謀リリスと共に魔王城を守り抜くシフト編成パズル。各メンバーの得意な時間帯と休息を守りながら、誰ひとり無理をさせないシフトを組んで城を守り抜きます。
             </p>
-            <a href="./demon-castle-shift/" class="play-btn">ゲームをプレイする</a>
+            <div class="card-actions">
+              <a href="./demon-castle-shift/" class="play-btn" id="card1-play">ゲームをプレイする</a>
+              <a href="./demon-castle-shift-theory/" class="theory-btn" id="card1-theory">解説記事を読む</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="game-card">
+          <div
+            class="game-thumb"
+            style="
+              background-image:
+                linear-gradient(180deg, rgba(20, 40, 20, 0.15), rgba(20, 35, 18, 0.78)),
+                url('/games/mofumofu-sheep/bg-pasture-meadow.jpg');
+              justify-content: space-between;
+              align-items: center;
+              flex-direction: column;
+            "
+          >
+            <img
+              src="/games/mofumofu-sheep/char-moko.jpg"
+              alt="もふもふ羊の牧場囲い"
+              style="height: 108px; width: 108px; border-radius: 50%; border: 3px solid #fde68a; object-fit: cover; box-shadow: 0 6px 16px rgba(0,0,0,0.45);"
+            />
+            <span class="game-tag" id="card2-tag">まきばの柵パズル</span>
+          </div>
+          <div class="game-body">
+            <h2 id="card2-title">もふもふ羊の牧場囲い</h2>
+            <p id="card2-desc">
+              限られた本数の木の柵🪵だけで腹ペコオオカミ🐺の侵入ルートを遮断しつつ、ヒツジのモコたちが歩ける「安全なまきば」の野いちご🍓を最大化し、どくキノコ🍄を避ける囲い込みパズル。
+            </p>
+            <div class="card-actions">
+              <a href="./mofumofu-sheep/" class="play-btn" id="card2-play">ゲームをプレイする</a>
+              <a href="./mofumofu-sheep-theory/" class="theory-btn" id="card2-theory">解説記事を読む</a>
+            </div>
           </div>
         </article>
 
@@ -191,18 +296,133 @@
             class="game-thumb"
             style="background: linear-gradient(135deg, #1e1b4b, #31102f);"
           >
-            <span class="game-tag" style="border-color: rgba(255,255,255,0.3); color: #cbd5e1;">
+            <span class="game-tag" id="card3-tag" style="border-color: rgba(255,255,255,0.3); color: #cbd5e1;">
               ⚔️ 企画中（Coming Soon）
             </span>
           </div>
           <div class="game-body">
-            <h2>魔王城トラップ設計局 vs 最強の勇者AI</h2>
-            <p>
-              限られた予算でダンジョンに罠とモンスターを配置し、最短ダメージ経路をリアルタイムに計算して突破してくる「最強の勇者AI」を足止めする逆タワーディフェンス！
+            <h2 id="card3-title">魔王城トラップ設計局</h2>
+            <p id="card3-desc">
+              限られた予算でダンジョンに罠とモンスターを配置し、最短経路を選んで突破してくる勇者パーティを足止めする逆タワーディフェンス。
             </p>
           </div>
         </article>
       </main>
     </div>
+
+    <script type="module">
+      import { getGameLang, setGameLang, pickLang } from "./i18n.ts";
+
+      const PORTAL_TEXT = {
+        ja: {
+          pageTitle: "ブラウザパズルゲーム一覧",
+          backTop: "← トップページへ戻る",
+          navApps: "🏥 実用アプリ一覧へ",
+          navDemo: "📐 Playground へ",
+          heroTitle: "🎮 ブラウザパズルゲーム一覧",
+          heroSub:
+            "ブラウザ上でそのまま遊べる思考型パズルゲームと、その背景にある仕組みの解説記事をご覧いただけます。",
+          card1Tag: "拠点防衛シフトパズル",
+          card1Title: "魔王城の24時間警備シフト",
+          card1Desc:
+            "昼夜を問わず進軍してくる勇者軍から、参謀リリスと共に魔王城を守り抜くシフト編成パズル。各メンバーの得意な時間帯と休息を守りながら、誰ひとり無理をさせないシフトを組んで城を守り抜きます。",
+          card2Tag: "まきばの柵パズル",
+          card2Title: "もふもふ羊の牧場囲い",
+          card2Desc:
+            "限られた本数の木の柵🪵だけで腹ペコオオカミ🐺の侵入ルートを遮断しつつ、ヒツジのモコたちが歩ける「安全なまきば」の野いちご🍓を最大化し、どくキノコ🍄を避ける囲い込みパズル。",
+          playBtn: "ゲームをプレイする",
+          theoryBtn: "解説記事を読む",
+          card3Tag: "⚔️ 企画中（Coming Soon）",
+          card3Title: "魔王城トラップ設計局",
+          card3Desc:
+            "限られた予算でダンジョンに罠とモンスターを配置し、最短経路を選んで突破してくる勇者パーティを足止めする逆タワーディフェンス。",
+        },
+        en: {
+          pageTitle: "Browser Puzzle Games",
+          backTop: "← Back to Home",
+          navApps: "🏥 Practical Apps",
+          navDemo: "📐 Playground",
+          heroTitle: "🎮 Browser Puzzle Games",
+          heroSub:
+            "Playable logic puzzle games in your browser, along with companion articles explaining how each puzzle works behind the scenes.",
+          card1Tag: "Castle Defense Shift Puzzle",
+          card1Title: "Demon Castle 24-Hour Guard Shift",
+          card1Desc:
+            "Work alongside Chief Tactician Lilith to defend the Demon Castle from the Hero's advancing army day and night. Respect each guard's preferred hours and rest rules so no one is overworked.",
+          card2Tag: "Pasture Enclosure Puzzle",
+          card2Title: "Fluffy Sheep Pasture Enclosure",
+          card2Desc:
+            "Block hungry wolves 🐺 using a limited number of wooden fences 🪵 while maximizing wild strawberries 🍓 and avoiding poison mushrooms 🍄 inside the safe pasture where Moko the sheep can roam.",
+          playBtn: "Play Game",
+          theoryBtn: "Read Article",
+          card3Tag: "⚔️ Coming Soon",
+          card3Title: "Demon Castle Trap Design Bureau",
+          card3Desc:
+            "Place traps and monsters in a dungeon within a limited budget to hold back an advancing hero party that chooses the safest path through your defenses.",
+        },
+        zh: {
+          pageTitle: "网页益智游戏一览",
+          backTop: "← 返回首页",
+          navApps: "🏥 实用应用展示",
+          navDemo: "📐 Playground",
+          heroTitle: "🎮 网页益智游戏一览",
+          heroSub:
+            "可在浏览器中直接游玩的思考型益智游戏，以及介绍游戏背后设计原理的解说文章。",
+          card1Tag: "据点防卫排班益智游戏",
+          card1Title: "魔王城24小时警备排班",
+          card1Desc:
+            "与参谋莉莉丝一起，从昼夜不停进军的勇者军手中守卫魔王城的排班解谜游戏。兼顾每位成员擅长的时段与休息规则，在不让任何人过度劳累的前提下守住城门。",
+          card2Tag: "牧场围栏益智游戏",
+          card2Title: "毛茸茸绵羊的牧场围栏",
+          card2Desc:
+            "仅用有限数量的木栅栏🪵阻断饥饿野狼🐺的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓🍓并避开毒蘑菇🍄。",
+          playBtn: "开始游戏",
+          theoryBtn: "阅读解说文章",
+          card3Tag: "⚔️ 企划中（Coming Soon）",
+          card3Title: "魔王城陷阱设计局",
+          card3Desc:
+            "在有限预算内于地下城布置陷阱与魔物，阻挡总是选择最优路线突围的勇者小队的逆向塔防游戏。",
+        },
+      };
+
+      function applyPortalLang(lang) {
+        setGameLang(lang);
+        const t = pickLang(lang, PORTAL_TEXT);
+        document.title = t.pageTitle;
+        document.getElementById("portal-back-top").textContent = t.backTop;
+        document.getElementById("portal-nav-apps").textContent = t.navApps;
+        document.getElementById("portal-nav-demo").textContent = t.navDemo;
+        document.getElementById("portal-hero-title").textContent = t.heroTitle;
+        document.getElementById("portal-hero-sub").textContent = t.heroSub;
+        document.getElementById("card1-tag").textContent = t.card1Tag;
+        document.getElementById("card1-title").textContent = t.card1Title;
+        document.getElementById("card1-desc").textContent = t.card1Desc;
+        document.getElementById("card1-play").textContent = t.playBtn;
+        document.getElementById("card1-theory").textContent = t.theoryBtn;
+        document.getElementById("card2-tag").textContent = t.card2Tag;
+        document.getElementById("card2-title").textContent = t.card2Title;
+        document.getElementById("card2-desc").textContent = t.card2Desc;
+        document.getElementById("card2-play").textContent = t.playBtn;
+        document.getElementById("card2-theory").textContent = t.theoryBtn;
+        document.getElementById("card3-tag").textContent = t.card3Tag;
+        document.getElementById("card3-title").textContent = t.card3Title;
+        document.getElementById("card3-desc").textContent = t.card3Desc;
+
+        document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
+        });
+      }
+
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const lang = btn.getAttribute("data-lang-btn");
+          if (lang === "ja" || lang === "en" || lang === "zh") {
+            applyPortalLang(lang);
+          }
+        });
+      });
+
+      applyPortalLang(getGameLang());
+    </script>
   </body>
 </html>
