@@ -585,6 +585,16 @@ const SKILL_AND_PAIR_STAGE2_PROMPT = `あなたは「skill_and_pair (スキル�
 
 const STAFF_CALENDAR_BRANCHES = [
   toolBranch(
+    "add_request_day",
+    {
+      nurseNameOrId: { type: "string" },
+      day: { type: "number" },
+      shift: { type: "string" },
+      isHard: { type: "boolean" },
+    },
+    ["nurseNameOrId", "day", "shift", "isHard"]
+  ),
+  toolBranch(
     "add_request_range",
     {
       nurseNameOrId: { type: "string" },
@@ -594,16 +604,6 @@ const STAFF_CALENDAR_BRANCHES = [
       isHard: { type: "boolean" },
     },
     ["nurseNameOrId", "startDay", "endDay", "shift", "isHard"]
-  ),
-  toolBranch(
-    "add_request",
-    {
-      nurseNameOrId: { type: "string" },
-      day: { type: "number" },
-      shift: { type: "string" },
-      isHard: { type: "boolean" },
-    },
-    ["nurseNameOrId", "day", "shift", "isHard"]
   ),
   toolBranch(
     "add_calendar_request",
@@ -626,6 +626,18 @@ const STAFF_CALENDAR_BRANCHES = [
     ["nurseNameOrId", "daysOfWeek", "shift"]
   ),
   toolBranch(
+    "forbid_shift_day",
+    {
+      nurseNameOrId: { type: "string" },
+      day: { type: "number" },
+      shifts: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    ["nurseNameOrId", "day", "shifts"]
+  ),
+  toolBranch(
     "forbid_shift_range",
     {
       nurseNameOrId: { type: "string" },
@@ -637,18 +649,6 @@ const STAFF_CALENDAR_BRANCHES = [
       },
     },
     ["nurseNameOrId", "startDay", "endDay", "shifts"]
-  ),
-  toolBranch(
-    "forbid_shift",
-    {
-      nurseNameOrId: { type: "string" },
-      day: { type: "number" },
-      shifts: {
-        type: "array",
-        items: { type: "string" },
-      },
-    },
-    ["nurseNameOrId", "day", "shifts"]
   ),
 ];
 
@@ -752,11 +752,19 @@ const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定ス�
 【基本ルール】
 ・特定スタッフ個人の単日(day)・複数日期間(startDay〜endDay)・曜日/祝日におけるシフト希望・固定・特定日のシフト禁止に厳密に合致する指示のみを抽出してください。
 ・日付・曜日・祝日の指定がない月間契約条件（月間勤務日数、月間夜勤上限、日勤専従など）や他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
-・対象月は11月(1日〜30日)です。1日だけの指定には単日用("add_request" / "forbid_shift")、「〇日まで」「〇日から△日まで」「〇日以降」の期間指定には必ず期間用("add_request_range" / "forbid_shift_range")、「毎週〇曜」「〇曜と△曜だけ出勤」「祝日」のパターン指定には "add_calendar_request" を使用します。
-・公休（休み・療養・動けない等）にする場合は、単日なら "add_request"(shift: "O")、期間（「〇日まで休み」「〇日〜△日休み」）なら "add_request_range"(shift: "O") を使用してください（"forbid_shift" は夜勤等の勤務シフト禁止専用です）。
+・対象月は11月(1日〜30日)です。1日だけの指定には単日用("add_request_day" / "forbid_shift_day")、「〇日まで」「〇日から△日まで」「〇日以降」の期間指定には必ず期間用("add_request_range" / "forbid_shift_range")、「毎週〇曜」「〇曜と△曜だけ出勤」「祝日」のパターン指定には "add_calendar_request" を使用します。
+・公休（休み・療養・動けない等）にする場合は、単日なら "add_request_day"(shift: "O")、期間（「〇日まで休み」「〇日〜△日休み」）なら "add_request_range"(shift: "O") を使用してください（"forbid_shift_day" / "forbid_shift_range" は夜勤等の勤務シフト禁止専用です）。
 
 【ツール一覧（各引数の意味・数値例・デフォルト値）】
-1. "add_request_range": 特定の看護師の複数日の期間（開始日 startDay 〜 終了日 endDay、「〇日まで」「1日から〇日まで」「〇日以降」）を指定シフトに一括で固定または希望設定する
+1. "add_request_day": 特定の看護師の単日（1日だけ）を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する（※「〇日まで」「1日〜〇日」等の複数日期間には使わず必ず "add_request_range" を使うこと）
+   - 必須引数:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "村上", "N18"）
+     * day: 対象日（数値 1〜30、数値例: 8）
+     * shift: 指定するシフト記号（"O"=公休[休み], "W"=勤務[シフトお任せ出勤], "D"=日勤, "EN"=夜勤帯, "E"=準夜勤, "N"=深夜勤, または追加シフト名、例: "O"）
+     * isHard: 確定の固定条件なら true、「できれば」等のソフト希望なら false（真偽値、例: true, デフォルト値: true）
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
+2. "add_request_range": 特定の看護師の複数日の期間（開始日 startDay 〜 終了日 endDay、「〇日まで」「1日から〇日まで」「〇日以降」）を指定シフトに一括で固定または希望設定する
    - 必須引数（5項目すべて必須）:
      * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "村上"）
      * startDay: 期間の開始日（数値 1〜30。「〇日まで休み」のように開始日が省略された場合は必ず月初 1 を指定、数値例: 1）
@@ -765,14 +773,6 @@ const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定ス�
      * isHard: 確定固定なら true、ソフト希望なら false（真偽値、例: true, デフォルト値: true）
    - 任意引数: なし
    - 引数例: { "nurseNameOrId": "村上", "startDay": 1, "endDay": 10, "shift": "O", "isHard": true } / { "nurseNameOrId": "村上", "startDay": 6, "endDay": 10, "shift": "O", "isHard": true }
-2. "add_request": 特定の看護師の単日（1日だけ）を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する（※「〇日まで」「1日〜〇日」等の複数日期間には使わず必ず "add_request_range" を使うこと）
-   - 必須引数:
-     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "村上", "N18"）
-     * day: 対象日（数値 1〜30、数値例: 8）
-     * shift: 指定するシフト記号（"O"=公休[休み], "W"=勤務[シフトお任せ出勤], "D"=日勤, "EN"=夜勤帯, "E"=準夜勤, "N"=深夜勤, または追加シフト名、例: "O"）
-     * isHard: 確定の固定条件なら true、「できれば」等のソフト希望なら false（真偽値、例: true, デフォルト値: true）
-   - 任意引数: なし
-   - 引数例: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
 3. "add_calendar_request": 特定の看護師の曜日（日〜土）または祝日のシフトを一括で固定・指定する
    - 必須引数:
      * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "高木"）
@@ -782,7 +782,14 @@ const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定ス�
      * holidays: 祝日の扱い（"include"=指定曜日と祝日の両方を含める | "exclude"=指定曜日から祝日を除外する | "only"=祝日のみを対象にする、例: "include", デフォルト値: 曜日指定のみの場合は省略）
      * onlyMatchedDaysWork: 指定した曜日・祝日以外の日をすべて公休("O")に固定するかどうか（「毎週〇曜と△曜だけ出勤」「〇曜日のみ勤務」のように指定曜日以外の出勤を禁止する場合は true、単に対象曜日を休みまたは出勤にするだけなら false、真偽値、例: true, デフォルト値: false）
    - 引数例: { "nurseNameOrId": "高木", "daysOfWeek": ["月", "木"], "shift": "W", "onlyMatchedDaysWork": true }
-4. "forbid_shift_range": 特定の看護師の複数日の期間（開始日〜終了日）において、特定の勤務シフト（夜勤など）への配置を禁止する（※期間中ずっと公休Oにする場合は "add_request_range" を使うこと）
+4. "forbid_shift_day": 特定の看護師の単日（1日だけ）において、特定の勤務シフト（夜勤や日勤など）への配置を禁止する（※公休Oにする場合は "add_request_day" を使うこと）
+   - 必須引数（3項目すべて必須）:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "原田"）
+     * day: 対象日（数値 1〜30、数値例: 19）
+     * shifts: 禁止する勤務シフト記号の配列（"D", "E", "N" 等、夜勤禁止なら ["E", "N"]）
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "原田", "day": 19, "shifts": ["E", "N"] }
+5. "forbid_shift_range": 特定の看護師の複数日の期間（開始日〜終了日）において、特定の勤務シフト（夜勤など）への配置を禁止する（※期間中ずっと公休Oにする場合は "add_request_range" を使うこと）
    - 必須引数（4項目すべて必須）:
      * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "原田"）
      * startDay: 期間の開始日（数値 1〜30、省略時は 1、数値例: 19）
@@ -790,22 +797,15 @@ const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定ス�
      * shifts: 禁止する勤務シフト記号の配列（夜勤禁止なら ["E", "N"]）
    - 任意引数: なし
    - 引数例: { "nurseNameOrId": "原田", "startDay": 19, "endDay": 23, "shifts": ["E", "N"] }
-5. "forbid_shift": 特定の看護師の単日（1日だけ）において、特定の勤務シフト（夜勤や日勤など）への配置を禁止する（※公休Oにする場合は "add_request" を使うこと）
-   - 必須引数（3項目すべて必須）:
-     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "原田"）
-     * day: 対象日（数値 1〜30、数値例: 19）
-     * shifts: 禁止する勤務シフト記号の配列（"D", "E", "N" 等、夜勤禁止なら ["E", "N"]）
-   - 任意引数: なし
-   - 引数例: { "nurseNameOrId": "原田", "day": 19, "shifts": ["E", "N"] }
 6. "none": 上記ツールの定義に合致しない場合
    - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
+指示: 「村上さんの8日を確定の休み(O)にして」
+出力: {"tools":[{"tool_name":"add_request_day","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
+
 指示: 「村上さんは10日まで動けないので休みにして」
 出力: {"tools":[{"tool_name":"add_request_range","args":{"nurseNameOrId":"村上","startDay":1,"endDay":10,"shift":"O","isHard":true}}]}
-
-指示: 「村上さんの8日を確定の休み(O)にして」
-出力: {"tools":[{"tool_name":"add_request","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
 
 指示: 「高木さんは毎週月曜と木曜だけ出勤にして」
 出力: {"tools":[{"tool_name":"add_calendar_request","args":{"nurseNameOrId":"高木","daysOfWeek":["月","木"],"shift":"W","onlyMatchedDaysWork":true}}]}
@@ -869,7 +869,7 @@ const STAFF_REQUEST_STAGE2_PROMPT = `あなたは「staff_request (特定スタ�
 ・シフト記号(shift)には "O"(公休), "W"(勤務:シフトお任せ出勤), "D"(日勤), "EN"(夜勤帯), "E"(準夜勤), "N"(深夜勤) または追加シフト名・エイリアス記号を指定できます。
 
 【ツール一覧（各引数の意味・数値例・デフォルト値）】
-1. "add_request": 特定の看護師の単日(day=1〜30)を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する
+1. "add_request_day": 特定の看護師の単日(day=1〜30)を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する
    - 必須引数: nurseNameOrId (例: "村上"), day (数値 1〜30、数値例: 8), shift (例: "O"), isHard (真偽値、例: true, デフォルト値: true)
    - 任意引数: なし
    - 引数例: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
@@ -881,7 +881,7 @@ const STAFF_REQUEST_STAGE2_PROMPT = `あなたは「staff_request (特定スタ�
    - 必須引数: nurseNameOrId (例: "高木"), daysOfWeek ("日"〜"土" の配列、例: ["月", "木"], デフォルト値: []), shift ("O"=公休 | "W"=勤務 | "D"=日勤 等、例: "W")
    - 任意引数: holidays ("include" | "exclude" | "only", デフォルト値: 曜日のみ), onlyMatchedDaysWork (指定曜日以外をすべて公休Oにする場合は true、例: true, デフォルト値: false)
    - 引数例: { "nurseNameOrId": "高木", "daysOfWeek": ["月", "木"], "shift": "W", "onlyMatchedDaysWork": true }
-4. "forbid_shift": 特定の看護師の単日(day=1〜30)における特定の勤務シフトを禁止する（※公休Oにする場合は "add_request" を使うこと）
+4. "forbid_shift_day": 特定の看護師の単日(day=1〜30)における特定の勤務シフトを禁止する（※公休Oにする場合は "add_request_day" を使うこと）
    - 必須引数: nurseNameOrId (例: "原田"), day (数値 1〜30、数値例: 19), shifts (禁止シフトの配列、例: ["E", "N"])
    - 任意引数: なし
    - 引数例: { "nurseNameOrId": "原田", "day": 19, "shifts": ["E", "N"] }
@@ -898,7 +898,7 @@ const STAFF_REQUEST_STAGE2_PROMPT = `あなたは「staff_request (特定スタ�
 
 【Few-shot 例】
 指示: 「村上さんの8日を確定の休み(O)にして」
-出力: {"tools":[{"tool_name":"add_request","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
+出力: {"tools":[{"tool_name":"add_request_day","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
 
 指示: 「西村さんを日勤専従にして」
 出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"日勤専従"}}]}
@@ -1957,6 +1957,7 @@ export function convertStage2ToolToOperation(
       return { op: "inject_conflict_demo" };
     case "reset_default":
       return { op: "reset_default" };
+    case "add_request_day":
     case "add_request":
     case "add_request_range": {
       if (!a.nurseNameOrId) return null;
@@ -2029,6 +2030,7 @@ export function convertStage2ToolToOperation(
         reason,
       };
     }
+    case "forbid_shift_day":
     case "forbid_shift":
     case "forbid_shift_range": {
       if (!a.nurseNameOrId) return null;

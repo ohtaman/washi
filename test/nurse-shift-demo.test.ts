@@ -957,18 +957,22 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     }
   }, 30_000);
 
-  it("separates single-day add_request(day) from multi-day add_request_range(startDay, endDay) and honestly diagnoses Infeasible on 17 off days", async () => {
+  it("separates single-day add_request_day(day) from multi-day add_request_range(startDay, endDay) in prefix-free natural order and honestly diagnoses Infeasible on 17 off days", async () => {
     const g = globalThis as any;
     const origLM = g.LanguageModel;
     try {
-      // Verify schema separates single-day (`day`) and range (`startDay`, `endDay`) branches
+      // Verify schema separates single-day (`day`) and range (`startDay`, `endDay`) branches in natural order (single-day -> range)
       const srBranches = STAFF_REQUEST_TOOLS_SCHEMA.properties.tools.items.anyOf;
-      const singleBranch = srBranches.find(
-        (b: any) => b.properties.tool_name.enum[0] === "add_request"
+      const singleIdx = srBranches.findIndex(
+        (b: any) => b.properties.tool_name.enum[0] === "add_request_day"
       );
-      const rangeBranch = srBranches.find(
+      const rangeIdx = srBranches.findIndex(
         (b: any) => b.properties.tool_name.enum[0] === "add_request_range"
       );
+      expect(singleIdx).toBeGreaterThanOrEqual(0);
+      expect(rangeIdx).toBeGreaterThan(singleIdx);
+      const singleBranch = srBranches[singleIdx];
+      const rangeBranch = srBranches[rangeIdx];
       expect((singleBranch!.properties.args as any).required).toEqual([
         "nurseNameOrId",
         "day",
@@ -1729,6 +1733,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
         if (tName === "none") continue;
         expect(seenTools7.has(tName)).toBe(false);
         seenTools7.add(tName);
+      }
+      // Verify all tool names within the schema are prefix-free (no tool_name is a strict prefix of another)
+      const branchNames = branches.map((b: any) => b.properties.tool_name.enum[0] as string);
+      for (const aName of branchNames) {
+        for (const bName of branchNames) {
+          if (aName !== bName) {
+            expect(bName.startsWith(aName)).toBe(false);
+          }
+        }
       }
     }
 
