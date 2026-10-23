@@ -3163,6 +3163,7 @@ export async function solveNurseScheduleWithWashi(
   try {
     status = await model.solve({
       timeLimit: options?.timeLimit ?? 4.0,
+      relGap: useRefSchedule ? 0.0005 : 0.01,
       signal: options?.signal,
     });
   } catch (err: any) {
