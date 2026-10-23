@@ -40,7 +40,7 @@ import {
   WEEKDAY_NAMES_JA,
 } from "./generator";
 import {
-  diagnoseNurseScheduleWithZ3,
+  diagnoseNurseScheduleWithHiGHS,
   evaluateNurseSchedule,
   generateWashiCodePreview,
   getPrevMonthTailWorkStreak,
@@ -786,13 +786,11 @@ function renderScheduleMatrix(): void {
     const { roleCode, roleLabel, groupLabel } = getNurseDisplayAttributes(nurse);
     const roleSpan = document.createElement("span");
     roleSpan.className = `role-pill role-${roleCode}`;
-    roleSpan.textContent = nurse.subRoleLabel || roleLabel;
+    roleSpan.textContent = roleLabel;
     topRow.append(nameSpan, roleSpan);
 
     const tailStreak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts);
-    tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${
-      nurse.subRoleLabel ? `${roleLabel}・${nurse.subRoleLabel}` : roleLabel
-    })\n前月末: ${tailStreak}連勤\n直近11ヶ月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
+    tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${roleLabel})\n前月末: ${tailStreak}連勤\n直近11ヶ月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
     tdNurse.appendChild(topRow);
     tr.appendChild(tdNurse);
 
@@ -933,7 +931,7 @@ function renderScheduleMatrix(): void {
         return {
           text: String(ds.counts.D),
           ok: ds.counts.D >= ds.required.D,
-          title: `日勤配置: ${ds.counts.D}名 / 必要:${ds.required.D}名 (リーダー:${ds.leaders.D}名)`,
+          title: `日勤配置: ${ds.counts.D}名 / 必要:${ds.required.D}名 (リーダー:${ds.skillCounts.leader_cap?.D ?? 0}名)`,
         };
       },
     },
@@ -945,7 +943,7 @@ function renderScheduleMatrix(): void {
         return {
           text: String(ds.counts.E),
           ok: ds.counts.E >= ds.required.E,
-          title: `準夜配置: ${ds.counts.E}名 / 必要: ${ds.required.E}名 (リーダー:${ds.leaders.E}名)`,
+          title: `準夜配置: ${ds.counts.E}名 / 必要: ${ds.required.E}名 (リーダー:${ds.skillCounts.leader_cap?.E ?? 0}名)`,
         };
       },
     },
@@ -957,7 +955,7 @@ function renderScheduleMatrix(): void {
         return {
           text: String(ds.counts.N),
           ok: ds.counts.N >= ds.required.N,
-          title: `深夜配置: ${ds.counts.N}名 / 必要: ${ds.required.N}名 (リーダー:${ds.leaders.N}名)`,
+          title: `深夜配置: ${ds.counts.N}名 / 必要: ${ds.required.N}名 (リーダー:${ds.skillCounts.leader_cap?.N ?? 0}名)`,
         };
       },
     },
@@ -1920,9 +1918,7 @@ function renderStaffProfilesTab(): void {
       .filter((sd) => (sd.category === "group" || sd.category === "role") && nurse.skills.includes(sd.code))
       .map((sd) => sd.shortLabel || sd.label);
     const tdRole = document.createElement("td");
-    tdRole.textContent = `${heldGroupAndRoleLabels.join(" / ")}${
-      nurse.subRoleLabel ? ` [${nurse.subRoleLabel}]` : ""
-    }`;
+    tdRole.textContent = heldGroupAndRoleLabels.join(" / ");
 
     const tdSkills = document.createElement("td");
     const skillsWrap = document.createElement("div");
@@ -2185,7 +2181,7 @@ async function runExplicitZ3Diagnosis(): Promise<void> {
   await new Promise((r) => setTimeout(r, 16));
 
   try {
-    const diag = await diagnoseNurseScheduleWithZ3(appState);
+    const diag = await diagnoseNurseScheduleWithHiGHS(appState);
     if (diag.status === "Unsat") {
       appendChatMessage({
         role: "system",
@@ -2319,7 +2315,7 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
     .join("・");
   const infoLines: string[] = [
     `現在のシフト: ${currentMeta.label} (${currentMeta.shortLabel})`,
-    `属性・スキル: ${heldAttrLabels || "なし"}${nurse.subRoleLabel ? ` [${nurse.subRoleLabel}]` : ""} (${
+    `属性・スキル: ${heldAttrLabels || "なし"} (${
       nurse.nightOk ? "夜勤可" : "日勤専従"
     })`,
     `前月末のシフト: ${nurse.prevMonthShifts

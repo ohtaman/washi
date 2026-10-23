@@ -759,8 +759,6 @@ export interface NurseProfile {
   id: string; // e.g., "N01"
   name: string; // e.g., "佐藤 美咲"
   kana: string;
-  /** Optional subgroup label (e.g., "新人1", "新人2(研済)") displayed in UI when group is split */
-  subRoleLabel?: string;
   skills: NurseSkill[];
   /** Optional base contract preset ID */
   contractPreset?: ContractPresetId;
@@ -829,8 +827,6 @@ export type CustomConstraintKind =
   | "date_coverage"
   | "daily_shift_cap"
   | "staffing_rule"
-  | "nurse_max_night"
-  | "ng_pair_custom"
   | "shift_count_quota"
   | "shift_day_restriction"
   | "shift_prerequisite"
@@ -847,19 +843,15 @@ export interface CustomConstraintRule {
   penaltyWeight?: number;
   // Payload fields depending on kind
   nurseId?: string;
-  nurseBId?: string;
-  /** Explicit subset of nurse IDs (e.g. 新人1 group vs 新人2 group) */
-  nurseIds?: string[];
   day?: number; // 1..numDays
   shift?: ShiftCode;
   forbidShifts?: ShiftCode[];
-  /** Target shifts for pair rules (`ng_pair_custom`) or unified staffing rules (`staffing_rule`), e.g. ["D"], ["E", "N"], or custom shift codes */
+  /** Target shifts for unified staffing rules (`staffing_rule`), e.g. ["D"], ["E", "N"], or custom shift codes */
   shifts?: ShiftCode[];
   /** Target nurse attribute/skill for `staffing_rule`, `shift_count_quota`, `daily_shift_cap`, `shift_prerequisite` (e.g. "all", "team_A", "team_B", "newcomer", "leader_cap", "icu_er") */
   attribute?: string;
   minStaff?: number;
   maxStaff?: number;
-  maxNight?: number;
   minCount?: number;
   maxCount?: number;
   /** Whether shifts completed in previous months (`prevMonthShifts` / `prevCompletedShifts`) count toward quota/prerequisite */
@@ -1062,9 +1054,7 @@ export interface DailySlotSummary {
   isWeekend: boolean;
   counts: Record<string, number>;
   required: Record<ActiveShiftCode, number>;
-  leaders: Record<ActiveShiftCode, number>;
-  icuSkills: Record<ActiveShiftCode, number>;
-  newcomers: Record<ActiveShiftCode, number>;
+  skillCounts: Record<string, Record<ActiveShiftCode, number>>;
 }
 
 export interface NurseMonthlySummary {
@@ -1416,7 +1406,7 @@ export interface ParsedChatPlan {
   stage1Response?: string;
   /** Reason when intentType is "consult_only" ("question" | "unsupported" | "clarify") */
   nonToolReason?: "question" | "unsupported" | "clarify";
-  /** Trace of Stage 1 (tool_types) and Stage 2 (tool_name + args) selected by Gemini Nano */
+  /** Trace of Stage 1 (routes) and Stage 2 (tool_name + args) selected by Gemini Nano */
   routerTrace?: string[];
   /** Post-Turn-2 verification result checking that extracted operations match the planned routes */
   verificationResult?: ExecutionVerificationResult;

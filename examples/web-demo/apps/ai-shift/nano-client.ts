@@ -81,21 +81,11 @@ export type ExecutableToolCategory =
   | "ward_transition_and_rule"
   | "skill_and_pair"
   | "custom_shift"
-  | "system_action"
-  // Legacy umbrella categories retained for full backward compatibility
-  | "staff_request"
-  | "ward_config";
+  | "system_action";
 
 export type NonToolCategory = "question" | "unsupported" | "clarify";
 
-export type ToolCategory =
-  | ExecutableToolCategory
-  | NonToolCategory
-  // Legacy aliases accepted in normalizeToolCategories for backward compatibility
-  | "staff_group"
-  | "diagnose_conflict"
-  | "solve_only"
-  | "none";
+export type ToolCategory = ExecutableToolCategory | NonToolCategory;
 
 export interface Stage1RouteItem {
   tool_type: ToolCategory;
@@ -106,10 +96,6 @@ export interface Stage1RouterResult {
   thought?: string;
   routes?: Stage1RouteItem[];
   response: string;
-  /** Legacy fields accepted for backward compatibility */
-  tool_types?: ToolCategory[];
-  tool_type?: ToolCategory;
-  secondary_tool_type?: ToolCategory;
 }
 
 export interface Stage2ToolCall {
@@ -149,8 +135,6 @@ export const STAGE1_ROUTER_SCHEMA = {
                   "skill_and_pair",
                   "custom_shift",
                   "system_action",
-                  "staff_request",
-                  "ward_config",
                 ],
               },
               instruction: {
@@ -509,9 +493,6 @@ export const SKILL_AND_PAIR_TOOLS_SCHEMA = {
   },
 };
 
-/** Alias retained for backward compatibility */
-export const STAFF_GROUP_TOOLS_SCHEMA = SKILL_AND_PAIR_TOOLS_SCHEMA;
-
 const SKILL_AND_PAIR_STAGE2_PROMPT = `あなたは「skill_and_pair (スキル定義・シフト別の属性配置人数ルール・スキル付与・ペア制約)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
@@ -729,21 +710,6 @@ export const STAFF_CONTRACT_TOOLS_SCHEMA = {
   },
 };
 
-export const STAFF_REQUEST_TOOLS_SCHEMA = {
-  type: "object",
-  required: ["tools"],
-  properties: {
-    tools: {
-      type: "array",
-      minItems: 1,
-      maxItems: 5,
-      items: {
-        anyOf: [...STAFF_CALENDAR_BRANCHES, SET_NURSE_CONTRACT_BRANCH, NONE_ESCAPE_HATCH_BRANCH],
-      },
-    },
-  },
-};
-
 const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定スタッフ個人の日付・期間・曜日/祝日カレンダー希望・固定・禁止)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
@@ -856,52 +822,6 @@ const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定ス�
 出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"minWorkDays","value":8}}]}
 
 指示: 「村上さんの8日を確定の休みにして」
-出力: {"tools":[{"tool_name":"none","args":{}}]}`;
-
-const STAFF_REQUEST_STAGE2_PROMPT = `あなたは「staff_request (特定スタッフ個人のカレンダー希望・シフト固定/禁止・個人契約条件)」専用のツール抽出AI (Turn 2) です。
-ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
-
-【基本ルール】
-・特定スタッフ個人の単日/期間/曜日シフト希望・禁止・個人契約条件に厳密に合致する指示のみを抽出してください。
-・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
-・シフト記号(shift)には "O"(公休), "W"(勤務:シフトお任せ出勤), "D"(日勤), "EN"(夜勤帯), "E"(準夜勤), "N"(深夜勤) または追加シフト名・エイリアス記号を指定できます。
-
-【ツール一覧（各引数の意味・数値例・デフォルト値）】
-1. "add_request_day": 特定の看護師の単日(day=1〜30)を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する
-   - 必須引数: nurseNameOrId (例: "村上"), day (数値 1〜30、数値例: 8), shift (例: "O"), isHard (真偽値、例: true, デフォルト値: true)
-   - 任意引数: なし
-   - 引数例: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
-2. "add_request_range": 特定の看護師の複数日の期間(startDay〜endDay)を指定シフトに一括で固定または希望設定する
-   - 必須引数: nurseNameOrId (例: "村上"), startDay (開始日 1〜30、「〇日まで」なら 1), endDay (終了日 1〜30、「〇日以降」なら 30), shift (例: "O"), isHard (真偽値、例: true, デフォルト値: true)
-   - 任意引数: なし
-   - 引数例: { "nurseNameOrId": "村上", "startDay": 1, "endDay": 10, "shift": "O", "isHard": true }
-3. "add_calendar_request": 特定の看護師の曜日（日〜土）または祝日のシフトを一括で固定・指定する
-   - 必須引数: nurseNameOrId (例: "高木"), daysOfWeek ("日"〜"土" の配列、例: ["月", "木"], デフォルト値: []), shift ("O"=公休 | "W"=勤務 | "D"=日勤 等、例: "W")
-   - 任意引数: holidays ("include" | "exclude" | "only", デフォルト値: 曜日のみ), onlyMatchedDaysWork (指定曜日以外をすべて公休Oにする場合は true、例: true, デフォルト値: false)
-   - 引数例: { "nurseNameOrId": "高木", "daysOfWeek": ["月", "木"], "shift": "W", "onlyMatchedDaysWork": true }
-4. "forbid_shift_day": 特定の看護師の単日(day=1〜30)における特定の勤務シフトを禁止する（※公休Oにする場合は "add_request_day" を使うこと）
-   - 必須引数: nurseNameOrId (例: "原田"), day (数値 1〜30、数値例: 19), shifts (禁止シフトの配列、例: ["E", "N"])
-   - 任意引数: なし
-   - 引数例: { "nurseNameOrId": "原田", "day": 19, "shifts": ["E", "N"] }
-5. "forbid_shift_range": 特定の看護師の複数日の期間(startDay〜endDay)における特定の勤務シフトを禁止する（※公休Oにする場合は "add_request_range" を使うこと）
-   - 必須引数: nurseNameOrId (例: "原田"), startDay (開始日 1〜30、例: 19), endDay (終了日 1〜30、例: 23), shifts (禁止シフトの配列、例: ["E", "N"])
-   - 任意引数: なし
-   - 引数例: { "nurseNameOrId": "原田", "startDay": 19, "endDay": 23, "shifts": ["E", "N"] }
-6. "set_nurse_contract": 特定の看護師個人の月間を通じた働き方契約・数値条件を変更する
-   - 必須引数: nurseNameOrId (例: "西村"), item ("maxWorkDays"=月間最大勤務日数上限 | "minWorkDays"=月間最低勤務日数下限 | "minDaysOff"=月間最低公休日数 | "maxConsecutiveDays"=個人最大連勤日数 | "maxNight"=個人月間夜勤上限 | "日勤専従" | "夜勤専従" | "深夜勤免除" | "準夜勤免除" | "土日休み" | "土日祝休み" | "制限解除")
-   - 任意引数: value (数値項目の日数・回数、数値例: 10, デフォルト値: プリセット選択時は不要)
-   - 引数例: { "nurseNameOrId": "西村", "item": "日勤専従" }
-7. "none": 上記ツールの定義に合致しない場合
-   - 必須引数: なし / 任意引数: なし / 引数例: {}
-
-【Few-shot 例】
-指示: 「村上さんの8日を確定の休み(O)にして」
-出力: {"tools":[{"tool_name":"add_request_day","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
-
-指示: 「西村さんを日勤専従にして」
-出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"日勤専従"}}]}
-
-指示: 「最大連勤を4日に変更して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 const WARD_COVERAGE_AND_PARAM_BRANCHES = [
@@ -1019,25 +939,6 @@ export const WARD_TRANSITION_AND_RULE_TOOLS_SCHEMA = {
   },
 };
 
-export const WARD_CONFIG_TOOLS_SCHEMA = {
-  type: "object",
-  required: ["tools"],
-  properties: {
-    tools: {
-      type: "array",
-      minItems: 1,
-      maxItems: 5,
-      items: {
-        anyOf: [
-          ...WARD_COVERAGE_AND_PARAM_BRANCHES,
-          ...WARD_TRANSITION_AND_RULE_BRANCHES,
-          NONE_ESCAPE_HATCH_BRANCH,
-        ],
-      },
-    },
-  },
-};
-
 const WARD_COVERAGE_AND_PARAM_STAGE2_PROMPT = `あなたは「ward_coverage_and_param (病棟全体の数値パラメータ・必要人数・特定日の人数変更・夜勤回数の平準化)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
@@ -1124,47 +1025,6 @@ const WARD_TRANSITION_AND_RULE_STAGE2_PROMPT = `あなたは「ward_transition_a
 出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"enforcePreceptorPairs","ruleEnabled":true}}]}
 
 指示: 「病棟全体の最大連勤を4日に変更して」
-出力: {"tools":[{"tool_name":"none","args":{}}]}`;
-
-const WARD_CONFIG_STAGE2_PROMPT = `あなたは「ward_config (病棟全体の数値パラメータ・シフト遷移ルール・全体ルールON/OFF・夜勤平準化・特定日の必要人数)」専用のツール抽出AI (Turn 2) です。
-ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
-
-【基本ルール】
-・病棟全体の数値パラメータ・シフト遷移ルール・全体ルールON/OFF・夜勤平準化・特定日の必要人数に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
-・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
-
-【ツール一覧（各引数の意味・数値例・デフォルト値）】
-1. "set_param": 病棟全体の基本数値パラメータを変更する
-   - 必須引数: paramName ("maxConsecutiveWorkDays" | "minMonthlyDaysOff" | "minMonthlyWorkDays" | "maxMonthlyNightShifts" | "weekdayDayStaff" | "weekendDayStaff" | "eveningStaff" | "nightStaff" | "maxAnnualOvertimeHours" | "maxMonthlyOvertimeHours", 例: "maxConsecutiveWorkDays"), paramValue (設定する数値、数値例: 4)
-   - 任意引数: なし
-   - 引数例: { "paramName": "maxConsecutiveWorkDays", "paramValue": 4 }
-2. "set_shift_transition": 2日間のシフト並び順（前日 fromShift ➔ 翌日 toShift）を禁止("forbid")・許可("allow")・必須("require")に設定する
-   - 必須引数: fromShift ("D" | "E" | "N", 例: "E"), toShift ("D" | "E" | "N" | "O", 例: "D"), policy ("forbid" | "allow" | "require", 例: "forbid")
-   - 任意引数: なし
-   - 引数例: { "fromShift": "E", "toShift": "D", "policy": "forbid" }
-3. "toggle_rule": 病棟全体ルールを有効(true)または無効(false)に切り替える
-   - 必須引数: ruleName ("requireWeekendOff" | "enforcePreceptorPairs" | "enforcePrevMonthCarryover" | "enforce36Agreement" | "preserveCurrentSchedule", 例: "enforcePreceptorPairs"), ruleEnabled (真偽値、例: true)
-   - 任意引数: なし
-   - 引数例: { "ruleName": "enforcePreceptorPairs", "ruleEnabled": true }
-4. "level_night_shifts": スキル・属性ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
-   - 必須引数: groupBy ("skill" | "all", 例: "skill", デフォルト値: "skill")
-   - 任意引数: なし
-   - 引数例: { "groupBy": "skill" }
-5. "add_date_coverage": 特定のカレンダー日付(day=1〜30)における病棟全体の必要人数(minStaff名以上)を変更する
-   - 必須引数: day (対象日 1〜30、数値例: 15), shift ("D" | "E" | "N", 例: "D"), minStaff (最低必要人数、数値例: 12)
-   - 任意引数: なし
-   - 引数例: { "day": 15, "shift": "D", "minStaff": 12 }
-6. "none": 上記ツールの定義に合致しない場合
-   - 必須引数: なし / 任意引数: なし / 引数例: {}
-
-【Few-shot 例】
-指示: 「病棟全体の最大連勤を4日に変更して」
-出力: {"tools":[{"tool_name":"set_param","args":{"paramName":"maxConsecutiveWorkDays","paramValue":4}}]}
-
-指示: 「プリセプター同行夜勤ルールを有効にして」
-出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"enforcePreceptorPairs","ruleEnabled":true}}]}
-
-指示: 「委員会というシフトを追加して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 export const SYSTEM_ACTION_TOOLS_SCHEMA = {
@@ -1254,14 +1114,6 @@ const STAGE2_CATEGORY_CONFIGS: Record<
     schema: SKILL_AND_PAIR_TOOLS_SCHEMA,
     systemPrompt: SKILL_AND_PAIR_STAGE2_PROMPT,
   },
-  staff_request: {
-    schema: STAFF_REQUEST_TOOLS_SCHEMA,
-    systemPrompt: STAFF_REQUEST_STAGE2_PROMPT,
-  },
-  ward_config: {
-    schema: WARD_CONFIG_TOOLS_SCHEMA,
-    systemPrompt: WARD_CONFIG_STAGE2_PROMPT,
-  },
   system_action: {
     schema: SYSTEM_ACTION_TOOLS_SCHEMA,
     systemPrompt: SYSTEM_ACTION_STAGE2_PROMPT,
@@ -1320,13 +1172,9 @@ export function buildCategoryDynamicDictionary(
           .join(", ")}`
       : "";
 
-  if (
-    category === "staff_calendar" ||
-    category === "staff_contract" ||
-    category === "staff_request"
-  ) {
+  if (category === "staff_calendar" || category === "staff_contract") {
     const presetLine =
-      category === "staff_contract" || category === "staff_request"
+      category === "staff_contract"
         ? `契約プリセット: ${CONTRACT_PRESETS.map((p) => p.label).join(" / ")}`
         : "";
     return [
@@ -2631,17 +2479,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       const rawRoutes: Stage1RouteItem[] =
         Array.isArray(stage1.routes) && stage1.routes.length > 0
           ? stage1.routes
-          : Array.isArray(stage1.tool_types) && stage1.tool_types.length > 0
-            ? stage1.tool_types.map((t) => ({ tool_type: t, instruction: userMessage }))
-            : [
-                {
-                  tool_type: stage1.tool_type || "question",
-                  instruction: userMessage,
-                },
-                ...(stage1.secondary_tool_type && stage1.secondary_tool_type !== "none"
-                  ? [{ tool_type: stage1.secondary_tool_type, instruction: userMessage }]
-                  : []),
-              ];
+          : [{ tool_type: "question", instruction: userMessage }];
 
       const stage1Thought = stage1.thought?.trim() || undefined;
       const stage1Response = stage1.response || userMessage;
@@ -2650,35 +2488,29 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       const activeRoutes: Array<{ category: ExecutableToolCategory; instruction: string }> = [];
       const nonToolCategories: NonToolCategory[] = [];
       const unsupportedRouteInstructions: string[] = [];
-      let directSystemIntent: "diagnose_conflict" | "solve_only" | null = null;
 
       for (const routeItem of rawRoutes) {
-        const rawCat = routeItem.tool_type;
-        const mappedCat = rawCat === "staff_group" ? "skill_and_pair" : rawCat;
+        const cat = routeItem.tool_type;
         const routeInstruction = routeItem.instruction?.trim() || userMessage;
         if (
-          mappedCat === "staff_calendar" ||
-          mappedCat === "staff_contract" ||
-          mappedCat === "ward_coverage_and_param" ||
-          mappedCat === "ward_transition_and_rule" ||
-          mappedCat === "custom_shift" ||
-          mappedCat === "skill_and_pair" ||
-          mappedCat === "staff_request" ||
-          mappedCat === "ward_config" ||
-          mappedCat === "system_action"
+          cat === "staff_calendar" ||
+          cat === "staff_contract" ||
+          cat === "ward_coverage_and_param" ||
+          cat === "ward_transition_and_rule" ||
+          cat === "custom_shift" ||
+          cat === "skill_and_pair" ||
+          cat === "system_action"
         ) {
           activeRoutes.push({
-            category: mappedCat,
+            category: cat,
             instruction: routeInstruction,
           });
-        } else if (mappedCat === "diagnose_conflict" || mappedCat === "solve_only") {
-          directSystemIntent = mappedCat;
-        } else if (mappedCat === "unsupported" || mappedCat === "clarify") {
-          nonToolCategories.push(mappedCat);
-          if (mappedCat === "unsupported" && routeItem.instruction?.trim()) {
+        } else if (cat === "unsupported" || cat === "clarify") {
+          nonToolCategories.push(cat);
+          if (cat === "unsupported" && routeItem.instruction?.trim()) {
             unsupportedRouteInstructions.push(routeItem.instruction.trim());
           }
-        } else if (mappedCat === "question" || mappedCat === "none") {
+        } else if (cat === "question") {
           nonToolCategories.push("question");
         }
       }
@@ -2686,11 +2518,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       const traceLabels =
         activeRoutes.length > 0
           ? activeRoutes.map((r) => `${r.category}("${r.instruction}")`)
-          : directSystemIntent
-            ? [directSystemIntent]
-            : nonToolCategories.length > 0
-              ? nonToolCategories
-              : ["question"];
+          : nonToolCategories.length > 0
+            ? nonToolCategories
+            : ["question"];
       const thoughtPrefix = stage1Thought ? `💭 ${stage1Thought} ➔ ` : "";
       routerTrace.push(`🧭 Turn 1 (Planner): ${thoughtPrefix}routes=${JSON.stringify(traceLabels)}`);
       onProgress?.({
@@ -2702,19 +2532,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         stage1Response,
         routerTrace: [...routerTrace],
       });
-
-      if (activeRoutes.length === 0 && directSystemIntent) {
-        lastNonToolReason = null;
-        return {
-          intentType: directSystemIntent,
-          operations: [],
-          summaryJa: stage1Response,
-          stage1Thought,
-          stage1Response,
-          routerTrace,
-          llmCalls,
-        };
-      }
 
       if (activeRoutes.length === 0) {
         const reason: NonToolCategory = nonToolCategories.includes("unsupported")
@@ -2740,7 +2557,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
       // ==================== TURN 2: CATEGORY-SPECIFIC TOOL EXTRACTION (tool_name + args) ====================
       const operations: ChatConstraintOperation[] = [];
-      let stage2SystemIntent: "diagnose_conflict" | "solve_only" | null = directSystemIntent;
+      let stage2SystemIntent: "diagnose_conflict" | "solve_only" | null = null;
       const repairedRoutes: string[] = [];
       const missingRouteLabels: string[] = [
         ...unsupportedRouteInstructions.map((inst) => `unsupported("${inst}")`),
@@ -3178,13 +2995,12 @@ export function createGeminiNanoManager(): GeminiNanoManager {
                     for (let d = 1; d <= state.config.numDays; d++) {
                       if (row[d - 1] === cs.code) csDays.push(`${state.config.month}/${d}`);
                     }
-                    const groupTag = n.subRoleLabel ? `[${n.subRoleLabel}]` : "";
                     const shownDays =
                       csDays.length > 4
                         ? `${csDays.slice(0, 3).join("・")}他(計${csDays.length}回)`
                         : csDays.join("・");
                     samplePlacements.push(
-                      `${n.name}${groupTag}(${cs.shortLabel}:${shownDays})`
+                      `${n.name}(${cs.shortLabel}:${shownDays})`
                     );
                   }
                 }
@@ -4435,27 +4251,27 @@ export function applyChatOperationsToState(
                 targetShifts.includes("N")
               ? "同夜勤(準夜・深夜)"
               : `[${targetShifts.join("/")}] シフト`;
-        nextState.customRules = nextState.customRules.filter(
+        nextState.relations = nextState.relations.filter(
           (r) =>
             !(
-              r.kind === "ng_pair_custom" &&
-              ((r.nurseId === nA.id && r.nurseBId === nB.id) ||
-                (r.nurseId === nB.id && r.nurseBId === nA.id))
+              r.type === "ng_pair" &&
+              ((r.nurseA === nA.id && r.nurseB === nB.id) ||
+                (r.nurseA === nB.id && r.nurseB === nA.id))
             )
         );
-        const rule: CustomConstraintRule = {
+        const description = `相性NGペア追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) の${shiftDesc}同時配置を禁止`;
+        nextState.relations.push({
           id: `chat_ng_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          kind: "ng_pair_custom",
+          type: "ng_pair",
           enabled: true,
+          nurseA: nA.id,
+          nurseB: nB.id,
+          shifts: targetShifts,
           isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
           penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
-          nurseId: nA.id,
-          nurseBId: nB.id,
-          shifts: targetShifts,
-          description: `相性NGペア追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) の${shiftDesc}同時配置を禁止`,
-        };
-        nextState.customRules.push(rule);
-        appliedLogs.push(rule.description);
+          reason: description,
+        });
+        appliedLogs.push(description);
       }
     }
   }

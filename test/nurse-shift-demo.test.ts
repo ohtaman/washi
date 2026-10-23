@@ -8,7 +8,7 @@ import {
   buildNurseWashiModel,
   evaluateNurseSchedule,
   solveNurseScheduleWithWashi,
-  diagnoseNurseScheduleWithZ3,
+  diagnoseNurseScheduleWithHiGHS,
 } from "../examples/web-demo/apps/ai-shift/solver.js";
 import {
   clearNurseContractFromState,
@@ -30,11 +30,8 @@ import {
   STAGE1_ROUTER_SCHEMA,
   CUSTOM_SHIFT_TOOLS_SCHEMA,
   SKILL_AND_PAIR_TOOLS_SCHEMA,
-  STAFF_GROUP_TOOLS_SCHEMA,
-  STAFF_REQUEST_TOOLS_SCHEMA,
   STAFF_CALENDAR_TOOLS_SCHEMA,
   STAFF_CONTRACT_TOOLS_SCHEMA,
-  WARD_CONFIG_TOOLS_SCHEMA,
   WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA,
   WARD_TRANSITION_AND_RULE_TOOLS_SCHEMA,
   SYSTEM_ACTION_TOOLS_SCHEMA,
@@ -157,12 +154,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     }
   }, 30_000);
 
-  it("never freezes when diagnosing a feasible schedule or monthly night-cap infeasibility with Z3", async () => {
+  it("never freezes when diagnosing a feasible schedule or monthly night-cap infeasibility with HiGHS", async () => {
     const feasibleState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
     const t0 = performance.now();
-    const diagSat = await diagnoseNurseScheduleWithZ3(feasibleState);
+    const diagSat = await diagnoseNurseScheduleWithHiGHS(feasibleState);
     const satMs = Math.round(performance.now() - t0);
-    console.log(`[Feasible Z3 Check] status=${diagSat.status}, time=${satMs}ms`);
+    console.log(`[Feasible HiGHS Check] status=${diagSat.status}, time=${satMs}ms`);
     expect(diagSat.status).toBe("Sat");
     expect(satMs).toBeLessThan(2000);
 
@@ -269,7 +266,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     }
 
     // Conflict check must also agree it's feasible (Sat)
-    const diag = await diagnoseNurseScheduleWithZ3(updatedState);
+    const diag = await diagnoseNurseScheduleWithHiGHS(updatedState);
     expect(diag.status).toBe("Sat");
     expect(diag.conflicts).toEqual([]);
   }, 30_000);
@@ -522,10 +519,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       const manager = createGeminiNanoManager();
       let state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
 
-      // Step 1: Add custom shift "T" + quota + prerequisite via Turn 1 (tool_types: ["custom_shift"]) -> Turn 2
+      // Step 1: Add custom shift "T" + quota + prerequisite via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2
       currentTurn1Reply = {
         response: "新人研修シフト(研)を追加し、2回受講するまで夜勤に入れないルールを設定します。",
-        tool_types: ["custom_shift"],
+        routes: [
+          {
+            tool_type: "custom_shift",
+            instruction:
+              "新人研修シフトを追加して。新人は、この研修を必ず2回受けないと、夜勤や準夜勤にはいれない。",
+          },
+        ],
       };
       currentTurn2Reply = {
         tools: [
@@ -570,11 +573,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(state.customRules.some((r) => r.kind === "shift_prerequisite")).toBe(true);
       expect(state.customRules.some((r) => r.kind === "shift_count_quota")).toBe(true);
 
-      // Step 2: Allow previous month training credit via Turn 1 (tool_types: ["custom_shift"]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
+      // Step 2: Allow previous month training credit via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "前月までの新人研修の受講実績も含めるように設定します。",
-        tool_types: ["custom_shift"],
+        routes: [
+          {
+            tool_type: "custom_shift",
+            instruction: "新人研修は、前の月までの受講分も含めてよいことにして。",
+          },
+        ],
       };
       currentTurn2Reply = {
         tools: [
@@ -595,11 +603,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(promptCalls[1]!.schema).toBe(CUSTOM_SHIFT_TOOLS_SCHEMA);
       state = applyChatOperationsToState(state, plan2.operations).updatedState;
 
-      // Step 3: Weekday restriction + Daily cap ("1日に2名まで") via Turn 1 (tool_types: ["custom_shift"]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
+      // Step 3: Weekday restriction + Daily cap ("1日に2名まで") via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "新人研修を平日のみ・1日2名までに制限します。",
-        tool_types: ["custom_shift"],
+        routes: [
+          {
+            tool_type: "custom_shift",
+            instruction: "新人研修は平日のみで、1日に2名までしか受けられない。",
+          },
+        ],
       };
       currentTurn2Reply = {
         tools: [
@@ -623,13 +636,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(promptCalls[1]!.schema).toBe(CUSTOM_SHIFT_TOOLS_SCHEMA);
       state = applyChatOperationsToState(state, plan3.operations).updatedState;
 
-      // Step 4: Verify all 5 Stage 2 schemas have zero overlapping tools (1 tool = 1 category) + universal "none" escape hatch
+      // Step 4: Verify all 7 Stage 2 schemas have zero overlapping tools (1 tool = 1 category) + universal "none" escape hatch
       const seenToolsAcrossCategories = new Set<string>();
       for (const stage2Schema of [
         CUSTOM_SHIFT_TOOLS_SCHEMA,
         SKILL_AND_PAIR_TOOLS_SCHEMA,
-        STAFF_REQUEST_TOOLS_SCHEMA,
-        WARD_CONFIG_TOOLS_SCHEMA,
+        STAFF_CALENDAR_TOOLS_SCHEMA,
+        STAFF_CONTRACT_TOOLS_SCHEMA,
+        WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA,
+        WARD_TRANSITION_AND_RULE_TOOLS_SCHEMA,
         SYSTEM_ACTION_TOOLS_SCHEMA,
       ]) {
         const branches = stage2Schema.properties.tools.items.anyOf;
@@ -651,11 +666,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       );
       expect((addCustomShiftBranch!.properties.args as any).required).toEqual(["shiftName"]);
 
-      // Step 4b: Night shift leveling by skill/role ("スキル毎に、夜勤の数を平準化したい" -> ward_config -> level_night_shifts)
+      // Step 4b: Night shift leveling by skill/role ("スキル毎に、夜勤の数を平準化したい" -> ward_coverage_and_param -> level_night_shifts)
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "スキルごとに夜勤の数を平準化するルールを設定します。",
-        tool_types: ["ward_config"],
+        routes: [
+          {
+            tool_type: "ward_coverage_and_param",
+            instruction: "スキル毎に、夜勤の数を平準化したい",
+          },
+        ],
       };
       currentTurn2Reply = {
         tools: [
@@ -669,7 +689,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       expect(planLevel.intentType).toBe("modify_and_solve");
       expect(planLevel.operations.length).toBe(1);
       expect(planLevel.operations[0]!.op).toBe("level_night_shifts");
-      expect(promptCalls[1]!.schema).toBe(WARD_CONFIG_TOOLS_SCHEMA);
+      expect(promptCalls[1]!.schema).toBe(WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA);
       state = applyChatOperationsToState(state, planLevel.operations).updatedState;
       expect(state.customRules.some((r) => r.kind === "level_night_shifts")).toBe(true);
       // Mid-career nurses must NOT be assigned newcomer training
@@ -684,28 +704,28 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       // Step 4c: Multi-category routing with per-category decomposed instruction (routes: [{ tool_type, instruction }]) + thought + onProgress
       promptCalls.length = 0;
       currentTurn1Reply = {
-        thought: "佐藤さんの12日休み固定はstaff_request、最大連勤4日への変更はward_configに分解する。",
+        thought: "佐藤さんの12日休み固定はstaff_calendar、最大連勤4日への変更はward_coverage_and_paramに分解する。",
         response: "佐藤さんの12日を公休に固定し、最大連勤日数を4日に変更します。",
         routes: [
           {
-            tool_type: "staff_request",
+            tool_type: "staff_calendar",
             instruction: "佐藤 美咲さんの12日を確定の休み(O)にして",
           },
           {
-            tool_type: "ward_config",
+            tool_type: "ward_coverage_and_param",
             instruction: "最大連勤を4日に変更して",
           },
         ],
       };
-      currentTurn2ReplyBySchema.set(STAFF_REQUEST_TOOLS_SCHEMA, {
+      currentTurn2ReplyBySchema.set(STAFF_CALENDAR_TOOLS_SCHEMA, {
         tools: [
           {
-            tool_name: "add_request",
+            tool_name: "add_request_day",
             args: { nurseNameOrId: "佐藤 美咲", day: 12, shift: "O", isHard: true },
           },
         ],
       });
-      currentTurn2ReplyBySchema.set(WARD_CONFIG_TOOLS_SCHEMA, {
+      currentTurn2ReplyBySchema.set(WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA, {
         tools: [
           {
             tool_name: "set_param",
@@ -723,7 +743,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       currentTurn2ReplyBySchema.clear();
       expect(planMultiCat.intentType).toBe("modify_and_solve");
       expect(planMultiCat.stage1Thought).toBe(
-        "佐藤さんの12日休み固定はstaff_request、最大連勤4日への変更はward_configに分解する。"
+        "佐藤さんの12日休み固定はstaff_calendar、最大連勤4日への変更はward_coverage_and_paramに分解する。"
       );
       expect(progressPhases).toEqual([
         "turn1_start",
@@ -734,11 +754,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
         "turn2_route_done",
         "verification_done",
       ]);
-      expect(promptCalls.length).toBe(3); // Turn 1 + Turn 2 (staff_request) + Turn 2 (ward_config)
-      expect(promptCalls[1]!.schema).toBe(STAFF_REQUEST_TOOLS_SCHEMA);
+      expect(promptCalls.length).toBe(3); // Turn 1 + Turn 2 (staff_calendar) + Turn 2 (ward_coverage_and_param)
+      expect(promptCalls[1]!.schema).toBe(STAFF_CALENDAR_TOOLS_SCHEMA);
       expect(promptCalls[1]!.promptText).toContain("佐藤 美咲さんの12日を確定の休み(O)にして");
       expect(promptCalls[1]!.promptText).not.toContain("最大連勤を4日に変更して");
-      expect(promptCalls[2]!.schema).toBe(WARD_CONFIG_TOOLS_SCHEMA);
+      expect(promptCalls[2]!.schema).toBe(WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA);
       expect(promptCalls[2]!.promptText).toContain("最大連勤を4日に変更して");
       expect(promptCalls[2]!.promptText).not.toContain("佐藤 美咲さんの12日を確定の休み(O)にして");
       expect(planMultiCat.operations).toEqual([
@@ -762,7 +782,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "現在のルール設定や対応機能をご説明します。",
-        tool_types: ["question"],
+        routes: [{ tool_type: "question" }],
       };
       const plan4 = await manager.extractPlan("なにができる？", state);
       expect(plan4.intentType).toBe("consult_only");
@@ -786,7 +806,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "給与や手当額の計算・変更には対応していません。",
-        tool_types: ["unsupported"],
+        routes: [{ tool_type: "unsupported" }],
       };
       const planUnsupported = await manager.extractPlan("夜勤手当を1回5000円に増やして", state);
       expect(planUnsupported.intentType).toBe("consult_only");
@@ -805,7 +825,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "どなたの・何月何日（または何日〜何日）を公休にするか教えていただけますか？",
-        tool_types: ["clarify"],
+        routes: [{ tool_type: "clarify" }],
       };
       const planClarify = await manager.extractPlan("来週休ませて", state);
       expect(planClarify.intentType).toBe("consult_only");
@@ -826,7 +846,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       promptCalls.length = 0;
       currentTurn1Reply = {
         response: "リーダーの代わりになれる「副リーダー」スキルを追加します。",
-        tool_types: ["skill_and_pair"],
+        routes: [
+          {
+            tool_type: "skill_and_pair",
+            instruction: "スキルを追加したい。副リーダー。リーダーの代わりになれる。",
+          },
+        ],
       };
       currentTurn2Reply = {
         tools: [
@@ -963,7 +988,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const origLM = g.LanguageModel;
     try {
       // Verify schema separates single-day (`day`) and range (`startDay`, `endDay`) branches in natural order (single-day -> range)
-      const srBranches = STAFF_REQUEST_TOOLS_SCHEMA.properties.tools.items.anyOf;
+      const srBranches = STAFF_CALENDAR_TOOLS_SCHEMA.properties.tools.items.anyOf;
       const singleIdx = srBranches.findIndex(
         (b: any) => b.properties.tool_name.enum[0] === "add_request_day"
       );
@@ -997,7 +1022,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
                 response: "小林さんの11月1日から11月17日までのシフトを公休(O)に固定します。",
                 routes: [
                   {
-                    tool_type: "staff_request",
+                    tool_type: "staff_calendar",
                     instruction: "小林さんが怪我をして11/17まで動けないらしい。",
                   },
                 ],

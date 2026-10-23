@@ -166,16 +166,13 @@ export function getNursePrevCompletedShiftCount(
 }
 
 /**
- * Determines whether a nurse is targeted by a custom constraint rule (`nurseIds`, `nurseId`, or `attribute`).
+ * Determines whether a nurse is targeted by a custom constraint rule (`nurseId` or `attribute`).
  */
 export function isNurseTargetedByRule(
   nurse: NurseProfile,
   rule: CustomConstraintRule,
   skillDefs?: readonly SkillDefinition[]
 ): boolean {
-  if (rule.nurseIds && rule.nurseIds.length > 0) {
-    return rule.nurseIds.includes(nurse.id);
-  }
   if (rule.nurseId) {
     return rule.nurseId === nurse.id;
   }
@@ -809,13 +806,8 @@ export function buildNurseWashiModel(
       }
 
       if (nurse.nightOk) {
-        const customMaxNightRule = customRules.find(
-          (r) => r.enabled && r.kind === "nurse_max_night" && r.nurseId === nurse.id && typeof r.maxNight === "number"
-        );
         const effectiveMaxNight =
-          customMaxNightRule?.maxNight ??
-          nurse.maxMonthlyNightShifts ??
-          config.maxMonthlyNightShifts;
+          nurse.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
 
         addTrackedConstraint(
           expr`${sum(allNightVars)} <= ${effectiveMaxNight}`,
@@ -826,8 +818,6 @@ export function buildNurseWashiModel(
             labelJa: `月間夜勤上限(${effectiveMaxNight}回以下): ${nurse.name}(${nurse.id}) の準夜＋深夜合計は月${effectiveMaxNight}回まで`,
             relatedNurseIds: [nurse.id],
             relaxSuggestion: `月間夜勤上限（現在:${effectiveMaxNight}回）を増やすか、準夜・深夜の必要人数を緩和してください。`,
-            isHard: customMaxNightRule?.isHard,
-            softWeight: customMaxNightRule?.penaltyWeight,
           }
         );
       }
@@ -990,36 +980,35 @@ export function buildNurseWashiModel(
 
   // 7. Pair Relations: Incompatible NG Pairs (同時配置禁止) & Preceptor Pairs (同行配置) across target shifts
   const nurseMap = new Map(nurses.map((n) => [n.id, n]));
-  if (config.enforceNgPairs) {
-    for (const rel of relations) {
-      if (rel.type !== "ng_pair") continue;
-      const nA = nurseMap.get(rel.nurseA);
-      const nB = nurseMap.get(rel.nurseB);
-      if (!nA || !nB) continue;
-      const targetShifts: ShiftCode[] = rel.shifts?.length ? rel.shifts : ["E", "N"];
+  for (const rel of relations) {
+    if (rel.type !== "ng_pair") continue;
+    if (rel.enabled === false || (!config.enforceNgPairs && rel.enabled !== true)) continue;
+    const nA = nurseMap.get(rel.nurseA);
+    const nB = nurseMap.get(rel.nurseB);
+    if (!nA || !nB) continue;
+    const targetShifts: ShiftCode[] = rel.shifts?.length ? rel.shifts : ["E", "N"];
 
-      for (let d = 1; d <= numDays; d++) {
-        if (!isDayIncluded(d)) continue;
-        const idx = d - 1;
-        for (const s of targetShifts) {
-          const varsA = getShiftVarsForNurseDay(s, nA.id, idx);
-          const varsB = getShiftVarsForNurseDay(s, nB.id, idx);
-          if (varsA.length === 0 || varsB.length === 0) continue;
-          addTrackedConstraint(
-            expr`${sum(varsA)} + ${sum(varsB)} <= 1`,
-            {
-              name: `ng_pair_${nA.id}_${nB.id}_${s}_d${d}`,
-              category: "ng_pair",
-              ruleKey: "enforceNgPairs",
-              labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: 相性NGペア（${nA.name} × ${nB.name}）の同時配置禁止`,
-              relatedNurseIds: [nA.id, nB.id],
-              relatedDay: d,
-              relaxSuggestion: `相性NGペア制約をOFFにするか、${nA.name}さん・${nB.name}さんの${config.month}/${d}のシフト指定を変更してください。`,
-              isHard: rel.isHard,
-              softWeight: rel.penaltyWeight,
-            }
-          );
-        }
+    for (let d = 1; d <= numDays; d++) {
+      if (!isDayIncluded(d)) continue;
+      const idx = d - 1;
+      for (const s of targetShifts) {
+        const varsA = getShiftVarsForNurseDay(s, nA.id, idx);
+        const varsB = getShiftVarsForNurseDay(s, nB.id, idx);
+        if (varsA.length === 0 || varsB.length === 0) continue;
+        addTrackedConstraint(
+          expr`${sum(varsA)} + ${sum(varsB)} <= 1`,
+          {
+            name: `ng_pair_${nA.id}_${nB.id}_${s}_d${d}`,
+            category: "ng_pair",
+            ruleKey: "enforceNgPairs",
+            labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: 相性NGペア（${nA.name} × ${nB.name}）の同時配置禁止`,
+            relatedNurseIds: [nA.id, nB.id],
+            relatedDay: d,
+            relaxSuggestion: `相性NGペア制約をOFFにするか、${nA.name}さん・${nB.name}さんの${config.month}/${d}のシフト指定を変更してください。`,
+            isHard: rel.isHard,
+            softWeight: rel.penaltyWeight,
+          }
+        );
       }
     }
   }
@@ -1182,31 +1171,6 @@ export function buildNurseWashiModel(
           relaxSuggestion: `追加された禁止ルール「${rule.description}」を解除してください。`,
         });
       }
-    } else if (rule.kind === "ng_pair_custom" && rule.nurseId && rule.nurseBId) {
-      const nA = nurseById.get(rule.nurseId);
-      const nB = nurseById.get(rule.nurseBId);
-      if (!nA || !nB) continue;
-      const targetShifts: ShiftCode[] = rule.shifts?.length ? rule.shifts : ["E", "N"];
-      for (let d = 1; d <= numDays; d++) {
-        if (!isDayIncluded(d)) continue;
-        const idx = d - 1;
-        for (const s of targetShifts) {
-          const varsA = getShiftVarsForNurseDay(s, nA.id, idx);
-          const varsB = getShiftVarsForNurseDay(s, nB.id, idx);
-          if (varsA.length === 0 || varsB.length === 0) continue;
-          addRuleConstraint(
-            expr`${sum(varsA)} + ${sum(varsB)} <= 1`,
-            {
-              name: `custom_ng_${rule.id}_${nA.id}_${nB.id}_${s}_d${d}`,
-              category: "custom",
-              labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: ${rule.description}`,
-              relatedNurseIds: [nA.id, nB.id],
-              relatedDay: d,
-              relaxSuggestion: `追加された相性NGルール「${rule.description}」を解除してください。`,
-            }
-          );
-        }
-      }
     } else if (rule.kind === "staffing_rule" && rule.shifts?.length) {
       const attr = rule.attribute ?? "all";
       const matchingNurses = nurses.filter((n) =>
@@ -1324,9 +1288,7 @@ export function buildNurseWashiModel(
     ) {
       const shiftMeta = getShiftMeta(rule.shift, customShiftDefs);
       const hasTargetFilter = Boolean(
-        (rule.attribute && rule.attribute !== "all") ||
-          rule.nurseId ||
-          (rule.nurseIds && rule.nurseIds.length > 0)
+        (rule.attribute && rule.attribute !== "all") || rule.nurseId
       );
       const targetNurses = hasTargetFilter
         ? nurses.filter((n) => isNurseTargetedByRule(n, rule, activeSkillDefs))
@@ -1515,16 +1477,8 @@ export function buildNurseWashiModel(
         groups.set(k, list);
       }
       const totalNightSlots = numDays * (config.eveningStaff + config.nightStaff);
-      const getNurseNightCap = (n: NurseProfile): number => {
-        const customMax = customRules.find(
-          (r) =>
-            r.enabled &&
-            r.kind === "nurse_max_night" &&
-            r.nurseId === n.id &&
-            typeof r.maxNight === "number"
-        );
-        return customMax?.maxNight ?? n.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
-      };
+      const getNurseNightCap = (n: NurseProfile): number =>
+        n.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
       const totalCap = Math.max(
         1,
         eligibleNurses.reduce((acc, n) => acc + getNurseNightCap(n), 0)
@@ -1668,9 +1622,10 @@ export function evaluateNurseSchedule(
     for (const cs of customShiftDefs) {
       counts[cs.code] = 0;
     }
-    const leaders: Record<ActiveShiftCode, number> = { D: 0, E: 0, N: 0 };
-    const icuSkills: Record<ActiveShiftCode, number> = { D: 0, E: 0, N: 0 };
-    const newcomers: Record<ActiveShiftCode, number> = { D: 0, E: 0, N: 0 };
+    const skillCounts: Record<string, Record<ActiveShiftCode, number>> = {};
+    for (const sd of activeSkillDefs) {
+      skillCounts[sd.code] = { D: 0, E: 0, N: 0 };
+    }
 
     for (const nurse of nurses) {
       const shift = schedule[nurse.id]?.[idx] ?? "O";
@@ -1684,21 +1639,17 @@ export function evaluateNurseSchedule(
       if (shift !== "D" && matchesDayGroup) {
         counts.D = (counts.D ?? 0) + 1;
       }
-      if (matchesDayGroup) {
-        if (doesNurseSatisfySkill(nurse, "leader_cap", activeSkillDefs)) {
-          leaders.D++;
+      const activeShiftKey: ActiveShiftCode | null = matchesDayGroup
+        ? "D"
+        : shift === "E" || shift === "N"
+          ? shift
+          : null;
+      if (activeShiftKey) {
+        for (const sd of activeSkillDefs) {
+          if (doesNurseSatisfySkill(nurse, sd.code, activeSkillDefs)) {
+            skillCounts[sd.code]![activeShiftKey]++;
+          }
         }
-        if (doesNurseSatisfySkill(nurse, "icu_er", activeSkillDefs)) {
-          icuSkills.D++;
-        }
-        if (doesNurseSatisfySkill(nurse, "newcomer", activeSkillDefs)) {
-          newcomers.D++;
-        }
-      } else if (shift === "E" || shift === "N") {
-        const nightSub = shift as "E" | "N";
-        if (doesNurseSatisfySkill(nurse, "leader_cap", activeSkillDefs)) leaders[nightSub]++;
-        if (doesNurseSatisfySkill(nurse, "icu_er", activeSkillDefs)) icuSkills[nightSub]++;
-        if (doesNurseSatisfySkill(nurse, "newcomer", activeSkillDefs)) newcomers[nightSub]++;
       }
     }
 
@@ -1708,9 +1659,7 @@ export function evaluateNurseSchedule(
       isWeekend,
       counts,
       required,
-      leaders,
-      icuSkills,
-      newcomers,
+      skillCounts,
     });
 
     for (const s of ["D", "E", "N"] as const) {
@@ -1737,16 +1686,7 @@ export function evaluateNurseSchedule(
           typeof sd.maxNight === "number";
         if (!hasMin && !hasMax) continue;
 
-        const skillCounts: Record<ActiveShiftCode, number> = { D: 0, E: 0, N: 0 };
-        for (const nurse of nurses) {
-          const shift = schedule[nurse.id]?.[idx] ?? "O";
-          if (!doesNurseSatisfySkill(nurse, sd.code, activeSkillDefs)) continue;
-          if (doesShiftMatchGroup(shift, "D", customShiftDefs, state.shiftAliases)) {
-            skillCounts.D++;
-          } else if (shift === "E" || shift === "N") {
-            skillCounts[shift as "E" | "N"]++;
-          }
-        }
+        const sdCounts = skillCounts[sd.code] ?? { D: 0, E: 0, N: 0 };
 
         const shiftBounds: Array<{
           s: ActiveShiftCode;
@@ -1770,13 +1710,13 @@ export function evaluateNurseSchedule(
             const okDow = !r.allowedDaysOfWeek?.length || r.allowedDaysOfWeek.includes(dow);
             return okStart && okEnd && okDow;
           });
-          if (minVal > 0 && !overriddenMin && skillCounts[s] < minVal) {
+          if (minVal > 0 && !overriddenMin && sdCounts[s] < minVal) {
             pushViolation(
               {
                 id: `skill_${sd.code}_${s}_d${d}`,
                 category: "skill",
                 day: d,
-                message: `${config.month}/${d} ${sLabel}の「${sd.label}」不足（${skillCounts[s]}/${minVal}名）`,
+                message: `${config.month}/${d} ${sLabel}の「${sd.label}」不足（${sdCounts[s]}/${minVal}名）`,
               },
               { ruleKey: `skill_${sd.code}` }
             );
@@ -1792,13 +1732,13 @@ export function evaluateNurseSchedule(
             const okDow = !r.allowedDaysOfWeek?.length || r.allowedDaysOfWeek.includes(dow);
             return okStart && okEnd && okDow;
           });
-          if (typeof maxVal === "number" && maxVal >= 0 && !overriddenMax && skillCounts[s] > maxVal) {
+          if (typeof maxVal === "number" && maxVal >= 0 && !overriddenMax && sdCounts[s] > maxVal) {
             pushViolation(
               {
                 id: `skill_max_${sd.code}_${s}_d${d}`,
                 category: "skill",
                 day: d,
-                message: `${config.month}/${d} ${sLabel}の「${sd.label}」上限超過（${skillCounts[s]}/${maxVal}名）`,
+                message: `${config.month}/${d} ${sLabel}の「${sd.label}」上限超過（${sdCounts[s]}/${maxVal}名）`,
               },
               { ruleKey: `skill_${sd.code}` }
             );
@@ -1826,9 +1766,7 @@ export function evaluateNurseSchedule(
         if (!okStart || !okEnd || restrictedByDayRule) continue;
 
         const hasTargetFilter = Boolean(
-          (rule.attribute && rule.attribute !== "all") ||
-            rule.nurseId ||
-            (rule.nurseIds && rule.nurseIds.length > 0)
+          (rule.attribute && rule.attribute !== "all") || rule.nurseId
         );
         const targetNurses = hasTargetFilter
           ? nurses.filter((n) => isNurseTargetedByRule(n, rule, activeSkillDefs))
@@ -2180,17 +2118,8 @@ export function evaluateNurseSchedule(
       );
     }
 
-    const customMaxNightRule = customRules.find(
-      (r) =>
-        r.enabled &&
-        r.kind === "nurse_max_night" &&
-        r.nurseId === nurse.id &&
-        typeof r.maxNight === "number"
-    );
     const effectiveMaxNight =
-      customMaxNightRule?.maxNight ??
-      nurse.maxMonthlyNightShifts ??
-      config.maxMonthlyNightShifts;
+      nurse.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
     if (totalNightShifts > effectiveMaxNight) {
       const msg = `月間夜勤回数超過（${totalNightShifts}回 / 上限${effectiveMaxNight}回）`;
       nurseViolations.push(msg);
@@ -2201,7 +2130,7 @@ export function evaluateNurseSchedule(
           nurseId: nurse.id,
           message: `${nurse.name}: ${msg}`,
         },
-        { ruleKey: "monthlyNightCap", customRule: customMaxNightRule }
+        { ruleKey: "monthlyNightCap" }
       );
     }
 
@@ -2474,43 +2403,13 @@ export function evaluateNurseSchedule(
   }
 
   // 3. NG Pair & Preceptor Pair check across target shifts
-  if (config.enforceNgPairs) {
-    for (const rel of relations) {
-      if (rel.type !== "ng_pair") continue;
-      const nA = nurseById.get(rel.nurseA);
-      const nB = nurseById.get(rel.nurseB);
-      if (!nA || !nB) continue;
-      const targetShifts = rel.shifts?.length ? rel.shifts : ["E", "N"];
-      for (let d = 1; d <= numDays; d++) {
-        const sA = schedule[nA.id]?.[d - 1] ?? "O";
-        const sB = schedule[nB.id]?.[d - 1] ?? "O";
-        for (const ts of targetShifts) {
-          if (
-            doesShiftMatchGroup(sA, ts, customShiftDefs, state.shiftAliases) &&
-            doesShiftMatchGroup(sB, ts, customShiftDefs, state.shiftAliases)
-          ) {
-            pushViolation(
-              {
-                id: `ng_${nA.id}_${nB.id}_${ts}_d${d}`,
-                category: "ng_pair",
-                day: d,
-                message: `${config.month}/${d} ${ts}シフト: 相性NGペア（${nA.name} × ${nB.name}）が同時配置されています`,
-                isSoft: rel.isHard === false ? true : undefined,
-              },
-              { ruleKey: "enforceNgPairs" }
-            );
-          }
-        }
-      }
-    }
-  }
-
-  for (const rule of customRules) {
-    if (!rule.enabled || rule.kind !== "ng_pair_custom" || !rule.nurseId || !rule.nurseBId) continue;
-    const nA = nurseById.get(rule.nurseId);
-    const nB = nurseById.get(rule.nurseBId);
+  for (const rel of relations) {
+    if (rel.type !== "ng_pair") continue;
+    if (rel.enabled === false || (!config.enforceNgPairs && rel.enabled !== true)) continue;
+    const nA = nurseById.get(rel.nurseA);
+    const nB = nurseById.get(rel.nurseB);
     if (!nA || !nB) continue;
-    const targetShifts = rule.shifts?.length ? rule.shifts : ["E", "N"];
+    const targetShifts = rel.shifts?.length ? rel.shifts : ["E", "N"];
     for (let d = 1; d <= numDays; d++) {
       const sA = schedule[nA.id]?.[d - 1] ?? "O";
       const sB = schedule[nB.id]?.[d - 1] ?? "O";
@@ -2521,12 +2420,13 @@ export function evaluateNurseSchedule(
         ) {
           pushViolation(
             {
-              id: `custom_ng_${rule.id}_${nA.id}_${nB.id}_${ts}_d${d}`,
+              id: `ng_${nA.id}_${nB.id}_${ts}_d${d}`,
               category: "ng_pair",
               day: d,
               message: `${config.month}/${d} ${ts}シフト: 相性NGペア（${nA.name} × ${nB.name}）が同時配置されています`,
+              isSoft: rel.isHard === false ? true : undefined,
             },
-            { customRule: rule, ruleKey: "enforceNgPairs" }
+            { ruleKey: "enforceNgPairs" }
           );
         }
       }
@@ -2813,17 +2713,8 @@ function buildAggregateMonthlyHiGHSModel(
     );
 
     if (nurse.nightOk) {
-      const customMaxNightRule = state.customRules.find(
-        (r) =>
-          r.enabled &&
-          r.kind === "nurse_max_night" &&
-          r.nurseId === nurse.id &&
-          typeof r.maxNight === "number"
-      );
       const effectiveMaxNight =
-        customMaxNightRule?.maxNight ??
-        nurse.maxMonthlyNightShifts ??
-        config.maxMonthlyNightShifts;
+        nurse.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
       addTracked(
         expr`${aggE[nurse.id]} + ${aggN[nurse.id]} <= ${effectiveMaxNight}`,
         {
@@ -3047,9 +2938,6 @@ export async function diagnoseNurseScheduleWithHiGHS(
     rawNames: [],
   };
 }
-
-/** Backward-compatible alias for diagnoseNurseScheduleWithHiGHS */
-export const diagnoseNurseScheduleWithZ3 = diagnoseNurseScheduleWithHiGHS;
 
 /**
  * Computes a cell-by-cell diff summary between a previous schedule and a newly solved schedule.
