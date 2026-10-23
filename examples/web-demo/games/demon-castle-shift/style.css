@@ -1363,14 +1363,15 @@ body {
   }
 
   .shift-btn-group {
-    max-width: 144px;
+    min-width: 144px;
+    max-width: 156px;
     gap: 0.15rem;
     padding: 0.15rem;
   }
 
   .shift-btn {
     min-height: 44px;
-    min-width: 38px;
+    min-width: 44px;
     padding: 0.5rem 0.2rem;
     font-size: 0.82rem;
     display: flex;
