@@ -1108,8 +1108,8 @@ body.ai-shift-body {
   z-index: 3;
   background: var(--bg-surface);
   text-align: left;
-  min-width: 155px;
-  max-width: 165px;
+  min-width: 168px;
+  max-width: 184px;
   padding: 4px 8px;
   border-right: 2px solid var(--border-hairline);
 }
@@ -1143,6 +1143,8 @@ body.ai-shift-body {
   padding: 1px 5px;
   border-radius: 4px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .role-leader {
@@ -1235,23 +1237,10 @@ body.ai-shift-body {
   font-weight: 700;
 }
 
-.shift-D,
-.shift-D_A {
+.shift-D {
   background: var(--shift-d-bg);
   color: var(--shift-d-fg);
   border-color: var(--shift-d-border);
-}
-
-.shift-D_B {
-  background: rgba(14, 165, 233, 0.16);
-  color: #0369a1;
-  border-color: rgba(14, 165, 233, 0.38);
-}
-
-[data-theme="dark"] .shift-D_B {
-  background: rgba(56, 189, 248, 0.2);
-  color: #7dd3fc;
-  border-color: rgba(56, 189, 248, 0.42);
 }
 
 .shift-E {
@@ -1446,6 +1435,28 @@ body.ai-shift-body {
   font-family: var(--font-mono, monospace);
   font-size: 0.76rem;
   font-weight: 600;
+}
+
+.skill-add-bar .form-field {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+.skill-add-bar .form-field > span {
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-sumi-secondary);
+}
+
+.skill-add-bar .form-field input[type="number"],
+.skill-add-bar .form-field input[type="text"],
+.skill-add-bar .form-field select {
+  width: 100%;
+  box-sizing: border-box;
+  height: 30px;
 }
 
 .constraint-toggles-list {

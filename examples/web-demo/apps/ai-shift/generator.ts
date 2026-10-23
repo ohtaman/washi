@@ -1,6 +1,7 @@
 import {
   PREV_MONTH_DAYS,
-  createDefaultSkillDefs,
+  applyShiftTransitionToConfig,
+  createDefaultShiftTransitions,
   type CustomConstraintRule,
   type NurseProfile,
   type NurseRole,
@@ -10,7 +11,144 @@ import {
   type PairRelation,
   type ShiftCode,
   type ShiftPreference,
+  type SkillDefinition,
 } from "./types.js";
+
+/**
+ * Creates the initial demo skill, role, and group attribute definitions (`SkillDefinition[]`).
+ * All domain attributes (clinical skills, staff roles, and ward teams) are represented uniformly
+ * here in the demo generator rather than hardcoded in core solver/type primitives.
+ */
+export function createDefaultSkillDefs(): SkillDefinition[] {
+  return [
+    {
+      code: "leader_cap",
+      label: "リーダー業務可",
+      shortLabel: "リ",
+      badge: "👑リーダー",
+      category: "skill",
+      aliases: [
+        "leader_cap",
+        "リーダー業務可",
+        "リーダー",
+        "リーダー業務",
+        "リーダースキル",
+        "日勤リーダー",
+        "夜勤リーダー",
+      ],
+      minDay: 2,
+      minEvening: 1,
+      minNight: 1,
+      builtIn: true,
+    },
+    {
+      code: "icu_er",
+      label: "救急・重症対応",
+      shortLabel: "救",
+      badge: "🚑救急/ICU",
+      category: "skill",
+      aliases: ["icu_er", "救急・重症対応", "救急・ICU", "救急", "ICU", "重症対応"],
+      minDay: 2,
+      minEvening: 1,
+      minNight: 1,
+      builtIn: true,
+    },
+    {
+      code: "ventilator",
+      label: "人工呼吸器管理",
+      shortLabel: "呼",
+      badge: "🫁呼吸器",
+      category: "skill",
+      aliases: ["ventilator", "人工呼吸器管理", "人工呼吸器", "呼吸器"],
+      minDay: 0,
+      minEvening: 0,
+      minNight: 0,
+      builtIn: true,
+    },
+    {
+      code: "newcomer",
+      label: "新人",
+      shortLabel: "新",
+      badge: "🌱新人",
+      category: "role",
+      aliases: ["newcomer", "新人", "新人スタッフ", "新人看護師"],
+      minDay: 0,
+      minEvening: 0,
+      minNight: 0,
+      maxEvening: 1,
+      maxNight: 1,
+      builtIn: true,
+    },
+    {
+      code: "mid",
+      label: "中堅",
+      shortLabel: "中",
+      badge: "中堅",
+      category: "role",
+      aliases: ["mid", "中堅", "中堅スタッフ", "中堅看護師"],
+      minDay: 0,
+      minEvening: 0,
+      minNight: 0,
+      builtIn: true,
+    },
+    {
+      code: "leader",
+      label: "リーダー・主任",
+      shortLabel: "主任",
+      badge: "主任",
+      category: "role",
+      aliases: ["leader", "role_leader", "リーダー・主任", "主任"],
+      minDay: 0,
+      minEvening: 0,
+      minNight: 0,
+      builtIn: true,
+    },
+    {
+      code: "team_A",
+      label: "A班(Group A)",
+      shortLabel: "A班",
+      badge: "A班",
+      category: "group",
+      aliases: [
+        "team_A",
+        "A",
+        "A班",
+        "Group A",
+        "グループA",
+        "グループ A",
+        "Aグループ",
+        "A グループ",
+        "属性A",
+      ],
+      minDay: 0,
+      minEvening: 0,
+      minNight: 0,
+      builtIn: true,
+    },
+    {
+      code: "team_B",
+      label: "B班(Group B)",
+      shortLabel: "B班",
+      badge: "B班",
+      category: "group",
+      aliases: [
+        "team_B",
+        "B",
+        "B班",
+        "Group B",
+        "グループB",
+        "グループ B",
+        "Bグループ",
+        "B グループ",
+        "属性B",
+      ],
+      minDay: 0,
+      minEvening: 0,
+      minNight: 0,
+      builtIn: true,
+    },
+  ];
+}
 
 const NURSE_CATALOG: ReadonlyArray<{ name: string; kana: string }> = [
   { name: "佐藤 美咲", kana: "さとう みさき" },
@@ -115,22 +253,10 @@ export function createDefaultConfig(overrides?: Partial<NurseScheduleConfig>): N
     nightStaff: Math.max(2, Math.round((staffCount * 3) / 30)),
 
     enforceSkillCoverage: true,
-    minLeadersDay: 2,
-    minLeadersEvening: 1,
-    minLeadersNight: 1,
-    minIcuDay: 2,
-    minIcuEvening: 1,
-    minIcuNight: 1,
-    enforceNewcomerNightLimit: true,
-    maxNewcomersNight: 1,
 
     enforcePrevMonthCarryover: true,
-    forbidNightToDay: true,
-    forbidEveningToDay: true,
-    forbidEveningToNight: true,
-    forbidNightToEvening: true,
+    shiftTransitions: createDefaultShiftTransitions(),
     maxConsecutiveNight2: true,
-    requireOffAfterNight: false,
 
     maxConsecutiveWorkDays: 5,
     minMonthlyDaysOff: 9,
@@ -139,8 +265,6 @@ export function createDefaultConfig(overrides?: Partial<NurseScheduleConfig>): N
     requireWeekendOff: true,
     enforceNgPairs: true,
     enforcePreceptorPairs: false,
-    enforceTeamBalance: false,
-    minTeamMembersDay: 3,
     enforceHardRequests: true,
 
     enforce36Agreement: true,
@@ -396,6 +520,7 @@ export function generateNurseSchedulingState(
     relations.push({
       id: `prec_${k + 1}`,
       type: "preceptor",
+      enabled: false,
       nurseA: newcomers[k].id,
       nurseB: seniors[k].id,
       reason: `プリセプター指導ペア（新人:${newcomers[k].name} ⇄ 指導:${seniors[k].name}）`,
@@ -471,13 +596,13 @@ export function generateNurseSchedulingState(
     preferences,
     customRules: [],
     customShiftDefs: [],
-    skillDefs: createDefaultSkillDefs(config),
+    skillDefs: createDefaultSkillDefs(),
   };
 }
 
 /**
  * Injects a realistic nurse scheduling conflict into the state so the user can experience
- * WaSHI (HiGHS Infeasible detection + Z3 unsatCore diagnosis) and consult Gemini Nano.
+ * WaSHI (HiGHS Infeasible detection + Elastic conflict diagnosis) and consult Gemini Nano.
  */
 export function injectConflictScenario(
   state: NurseSchedulingState,
@@ -510,11 +635,15 @@ export function injectConflictScenario(
     return {
       updatedState: {
         ...state,
-        config: {
-          ...state.config,
-          enforcePrevMonthCarryover: true,
-          forbidNightToDay: true,
-        },
+        config: applyShiftTransitionToConfig(
+          {
+            ...state.config,
+            enforcePrevMonthCarryover: true,
+          },
+          "N",
+          "D",
+          "forbid"
+        ),
         nurses: updatedNurses,
         customRules: nextCustomRules,
       },
@@ -570,16 +699,20 @@ export function injectConflictScenario(
     });
   }
 
+  const nextSkills = (state.skillDefs ?? createDefaultSkillDefs()).map((s) =>
+    s.code === "leader_cap"
+      ? { ...s, minDay: 2, minEvening: 1, minNight: 1 }
+      : s
+  );
+
   return {
     updatedState: {
       ...state,
       config: {
         ...state.config,
         enforceSkillCoverage: true,
-        minLeadersDay: 2,
-        minLeadersEvening: 1,
-        minLeadersNight: 1,
       },
+      skillDefs: nextSkills,
       customRules: nextCustomRules,
     },
     descriptionJa: `${targetDay}日にリーダー資格者${offLeaders.length}名が院外研修で一斉に確定休（O）となったため、同日のリーダー必須配置（日勤2名＋準夜1名＋深夜1名＝計4名必要、残りリーダー2名のみ）が満たせず矛盾が発生します。`,

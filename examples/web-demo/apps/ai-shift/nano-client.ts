@@ -1,15 +1,20 @@
 import {
+  createDefaultSkillDefs,
   generateNurseSchedulingState,
   injectConflictScenario,
 } from "./generator.js";
 import {
+  ALL_STAFF_ATTRIBUTE_DEF,
   CONTRACT_PRESETS,
-  ROLE_LABELS,
+  SHIFT_LABELS,
+  applyShiftTransitionToConfig,
   createDefaultShiftAliases,
-  createDefaultSkillDefs,
   doesNurseMatchAttribute,
   doesNurseSatisfySkill,
+  findSkillOrAttributeDef,
+  getRoleLabel,
   getShiftMeta,
+  getShiftTransitionMatrix,
   getSkillMeta,
   resolveCalendarDaysByPattern,
   resolveDaysBySelector,
@@ -185,28 +190,28 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 
 1. "thought" (思考・プランニング):
    ・【文脈補完】直近の対話履歴がある場合、省略されている主語（どのシフト名・スキル名・スタッフ名に対する指示か）を特定する。
-   ・【日常語からドメイン概念への翻訳】ユーザーの自然な表現（例:「働かなくていい／出勤ノルマなし／最小勤務日数をゼロに」＝個人の月間最低勤務日数を0日にする、「月10日まで」＝個人の月間最大勤務日数を10日にする、「昼間だけ／夜勤なし」＝個人の日勤専従契約、「夜勤専従」＝個人の夜勤専従契約、「深夜勤は免除／準夜勤は免除」＝個人の深夜勤・準夜勤免除契約、「3連勤まで」＝個人の最大連勤日数契約、「次の日は休ませる」＝明け公休ルール、「日勤の翌日に深夜はダメ」＝日深夜禁止、「X班は日Xにしか入れない」＝反対側のサブシフトに対するX班の配置上限0名[skill_and_pair で処理し、シフト遷移 ward_transition_and_rule にはしない]、「足りない時だけ応援」＝不足時ヘルプ上限、「毎日N名をアサイン」＝1日あたりの配置人数[個人の月間回数ノルマではない]など）が、どのスケジューリング概念に当たるかを整理する。
+   ・【意図の整理】ユーザーの要望が、個人カレンダー（特定日・期間・曜日/祝日）なのか、個人の月間契約条件（月間日数・夜勤回数・連勤上限・シフト免除）なのか、病棟全体の設定なのか、追加シフト枠やスキル・ペア設定なのかを整理する。また「1日あたりの配置人数」と「個人別の月間回数」を混同しないように区別する。
    ・【タスク分解】1つの発話に複数カテゴリの要求が含まれる場合はカテゴリごとに分割し、同じカテゴリに属する複数条件は1つのルートにまとめる計画を立てる。
 2. "routes" (カテゴリ別ルート配列):
    ・ツール実行カテゴリ(1〜7)に該当する場合は、各カテゴリごとに { "tool_type": "...", "instruction": "..." } を出力する。
-   ・重要: "instruction" には、直前の履歴から補完した対象名と、日常語を明確なスケジューリング用語に言い換えた完結した指示文（日付・人数・回数などの数値は正確に維持）を書くこと。
+   ・重要: "instruction" には、直前の履歴から補完した対象名と、ユーザーが実際に指示した内容のみを簡潔に書くこと（「〜だけ出勤」「〜のみ」等の条件表現や日付・人数・回数などの数値は省略せず維持し、言及されていない項目は推測・追加しないこと。また日付を書く際は月番号「11月」と日番号の混同を防ぐため「11月」を省いて「1日から18日まで」「16日から18日までの3日間」のように日番号のみで記載すること）。
    ・非ツールカテゴリ（"question", "unsupported", "clarify"）に該当する場合は、単独の [{ "tool_type": "..." }] として出力する。
 3. "response" (一次返答):
    ・計画した routes に基づき、これから何を行うか（または聞き返し・回答）をユーザー向けに1文で簡潔に出力する。
 
 【7つの専門ツール実行カテゴリ（各ツールは1つの専門カテゴリに所属）】
 1. "staff_calendar" (特定スタッフ個人の日付・期間・曜日/祝日カレンダー希望・固定・禁止):
-   特定の看護師（例: 村上さん、福田さん、西村さん、三浦さん、N11）の「特定の日付（8日など）」「期間（11/6〜11/11、11/14まで、24日以降など）」「特定の曜日・祝日パターン（毎週水曜休み、火曜と金曜だけ勤務、土日は休みだけど祝日は出勤OK、祝日は日勤など）」におけるシフト・シフトグループ（公休O・勤務W[お任せ出勤]・日勤D[日A/日B]・夜勤EN・準夜E・深夜N・追加シフト）の希望・固定・特定日のシフト禁止
+   特定の看護師の「特定の日付（8日など）」「期間（開始日〜終了日、1日から〇日まで、〇日以降など）」「特定の曜日・祝日パターン（毎週水曜休み、毎週〇曜と△曜だけ出勤、週末や祝日の公休・出勤指定など）」におけるシフト・シフトグループ（公休O・勤務W[お任せ出勤]・日勤D・夜勤EN・準夜E・深夜N・追加シフト）の希望・固定・特定日のシフト禁止（※特定の曜日指定は必ず staff_calendar にルーティングすること）
 2. "staff_contract" (特定スタッフ個人の働き方契約・シフト免除・月間日数/夜勤回数/個人連勤の上限・下限):
-   特定の看護師個人の月間を通じた基本の働き方契約（日勤専従/夜勤免除、夜勤専従/日勤免除、深夜勤のみ免除、準夜勤のみ免除、土日休み契約、土日祝休み契約、制限解除）および個人別の数値上限・下限（月間最大勤務日数・月間最低勤務日数[0日免除含む]・月間最低公休日数・月間夜勤回数上限・個人別の最大連勤日数）
+   特定の看護師個人の月間を通じた基本の働き方契約（日勤専従/夜勤免除、夜勤専従/日勤免除、深夜勤のみ免除、準夜勤のみ免除、土日休み契約、土日祝休み契約、制限解除）および個人別の数値上限・下限（月間最大勤務日数・月間最低勤務日数[0日免除含む]・月間最低公休日数・月間夜勤回数上限・個人別の最大連勤日数）（※「月N日までの勤務」と「毎週〇曜と△曜だけ出勤」が両方言及された場合は staff_contract と staff_calendar の2つのルートに分割すること）
 3. "ward_coverage_and_param" (病棟全体の数値基準・必要人数・特定日の人数変更・夜勤回数の平準化):
-   病棟全体の基本数値パラメータ（最大連勤日数、月間最低公休日数、月間最低勤務日数、月間夜勤上限、平日/土日の日勤必要人数、準夜/深夜の必要人数、スキル最低人数、36協定の時間外上限）、特定のカレンダー日付の病棟必要人数変更（「18日の日勤を11人以上に」）、スキル・役割ごとの月間夜勤回数の平準化（均等化）
+   病棟全体の基本数値パラメータ（最大連勤日数、月間最低公休日数、月間最低勤務日数、月間夜勤上限、平日/土日の日勤必要人数、準夜/深夜の必要人数、36協定の時間外上限）、特定のカレンダー日付の病棟必要人数変更（「18日の日勤を11人以上に」）、夜勤回数の平準化・均等化（「夜勤の数を平準化したい」「スキル・役割ごとに夜勤回数を均等にしたい」など）
 4. "ward_transition_and_rule" (病棟全体のシフト遷移マトリクス・2日間の並び順禁止/必須・全体ルールON/OFF):
-   2日間のシフト連続・遷移ルール（深夜勤の翌日は必ず公休にする[深→休必須]、日勤→翌日深夜勤の禁止[日→深禁止]、準夜→翌日日勤の禁止[準→日禁止]、連続準夜勤の禁止[準→準禁止]、連続深夜勤の禁止[深→深禁止]など）や、病棟全体ルールのON/OFF（プリセプター同行夜勤、固定チーム均等配置、週末公休確保、微調整モードなど）
-5. "skill_and_pair" (スキル定義・サブシフト/グループ別の属性配置人数ルール・スキル付与・ペア制約):
-   スキル・資格（リーダー・副リーダー・透析管理・認知症ケア・呼吸器管理・救急対応・感染管理など）の定義追加・削除・各シフトの必要人数設定・他スキルの代行(substitutesFor)設定、サブシフト（日勤Group A[日A]・日勤Group B[日B]・各グループ・準夜・深夜）ごとのスキルや属性（新人・中堅・A班・B班）の人数下限(minCount)・上限(maxCount)・不足時のみのヘルプ制限(onlyWhenShort)、スタッフやロールへのスキル付与・解除、2名の看護師が特定シフトで同時に入らないNGペア設定、新人と指導者の同行ペア設定
+   2日間のシフト連続・遷移ルール（深夜勤の翌日は必ず公休にする[深→休必須]、日勤→翌日深夜勤の禁止[日→深禁止]、準夜→翌日日勤の禁止[準→日禁止]、連続準夜勤の禁止[準→準禁止]、連続深夜勤の禁止[深→深禁止]など）や、病棟全体ルールのON/OFF（深夜3連続禁止、プリセプター同行夜勤、固定チーム均等配置、週末公休確保、36協定遵守、微調整モード）
+5. "skill_and_pair" (スキル定義・既存シフトの属性配置人数ルール・スキル付与・ペア制約):
+   スキル・資格の定義追加・削除・各シフトの必要人数設定・他スキルの代行(substitutesFor)設定、既存シフト（日勤・準夜・深夜・夜勤両方）ごとのスタッフ属性・スキル別の配置人数下限(minCount)・上限(maxCount)、スタッフや属性グループへのスキル付与・解除、2名の看護師が特定シフトで同時に入らないNGペア設定、新人と指導者の同行ペア設定（※追加シフトに対する人数指定は custom_shift、夜勤回数の平準化は ward_coverage_and_param にルーティングすること）
 6. "custom_shift" (追加シフト枠・開催期間/曜日ルール・1日あたり配置人数・受講条件):
-   既存シフト（日勤[日A/日B]・準夜・深夜・公休）以外の新しい「勤務シフト・イベント枠（オリエンテーション・研修・委員会・勉強会・出張・行事など）」の追加、その開催期間（開始日〜終了日）や曜日制限（平日のみ・週末のみ）、1日あたりの配置人数・上限、個人別の月間取得回数ノルマ、夜勤先行条件（「規定回数を受けるまで夜勤に入れない」）、前月実績の算入
+   既存シフト（日勤・準夜・深夜・公休）以外の新しい「勤務シフト・イベント枠（研修・勉強会・委員会・出張・行事など）」の追加と、その追加シフトに関するすべての条件（開催期間[開始日〜終了日]や曜日制限、1日あたりの対象属性・役割別の配置人数・上限、個人別月間取得回数ノルマ、夜勤先行条件、前月実績の算入）を分割せず1つの custom_shift ルートにまとめること
 7. "system_action" (全体操作・診断・再計算):
    追加したカスタムルールの全クリア、すべての設定の初期状態へのリセット、矛盾デモシナリオの注入、矛盾チェック（シフトが組めない原因の診断）、条件を変えずにシフトを再最適化する指示
 
@@ -220,36 +225,19 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 
 【Few-shot 例】
 ユーザー: 「なにができる？」
-出力: {"thought":"ユーザーはシステムの対応機能一覧を質問している。設定変更ではないため question とする。","routes":[{"tool_type":"question"}],"response":"スキルの追加・削除（シフト別の必要人数や代替スキル設定含む）、カスタムシフトや受講条件の追加、グループ分け、スキル別の夜勤平準化、NGペア・プリセプター設定、個人の希望休・期間休職・個人契約設定、病棟全体の連勤・公休・シフト遷移・36協定ルールの変更、矛盾診断などが可能です。"}
+出力: {"thought":"ユーザーはシステムの対応機能一覧を質問している。設定変更ではないため question とする。","routes":[{"tool_type":"question"}],"response":"スキルの追加・削除、カスタムシフトの追加、シフト別の属性人数設定、夜勤平準化、NGペア・プリセプター設定、個人の希望休・個人契約設定、病棟全体の連勤・公休・シフト遷移・36協定ルールの変更、矛盾診断などが可能です。"}
 
-ユーザー: 「新しいスキルとして『感染管理』を追加して、救急・ICUの代わりになれるようにして」
-出力: {"thought":"新しいスキル『感染管理』を追加し、救急・ICUスキルの代行(substitutesFor)として設定する要求。skill_and_pair で処理する。","routes":[{"tool_type":"skill_and_pair","instruction":"スキル『感染管理』を追加し、救急・ICUの代わりになれる(代行可)ように設定する"}],"response":"新しいスキル『感染管理』を救急・ICU代行可として追加します。"}
+ユーザー: 「夜勤の各シフトには新人を1人以下にして、日勤にはリーダーを2人以上配置して」
+出力: {"thought":"準夜勤・深夜勤における新人の上限1名と、日勤におけるリーダーの下限2名を設定する既存シフトの属性配置人数ルール。どちらも skill_and_pair で処理する。","routes":[{"tool_type":"skill_and_pair","instruction":"夜勤の各シフト(night_both)における新人の上限を1名以下にし、日勤(D)におけるリーダーの下限を2名以上に設定する"}],"response":"夜勤の新人上限を1名以下にし、日勤にリーダーを2名以上配置するよう設定します。"}
 
-ユーザー: 「日勤のBグループにはリーダーを2人以上配置して、B班は日Bにしか入れないようにして」
-出力: {"thought":"サブシフト日B(D_B)のリーダー下限2名と、B班スタッフを日B専任（反対側の日A[D_A]への配置上限0名）にする配置人数ルール。どちらもサブシフトの属性人数制限なので単一の skill_and_pair ルートにまとめる（シフト遷移ではない）。","routes":[{"tool_type":"skill_and_pair","instruction":"日勤Group B(D_B)にリーダーを2名以上配置し、反対側の日勤Group A(D_A)におけるB班スタッフの上限を0名(配置禁止)に設定する"}],"response":"日勤Group B(日B)にリーダーを2名以上配置し、B班のスタッフは日Bにのみ入るよう設定します。"}
+ユーザー: 「『勉強会』というシフトを追加して。20日から3日間、新人はこの勉強会を1回受けないと夜勤に入れないようにして、毎日新人2名をアサイン、日勤扱いにして」
+出力: {"thought":"新しいシフト枠『勉強会』の追加と、開催期間・夜勤先行条件（規定回数を受けるまで夜勤不可）・1日あたりの対象属性人数の指定。追加シフトに関する条件は分割せずすべて custom_shift の1ルートにまとめる。","routes":[{"tool_type":"custom_shift","instruction":"『勉強会』シフト(日勤扱い)を追加し、期間を20日から22日までの3日間、新人は1回受けないと夜勤に入れない先行条件、毎日新人2名をアサインする"}],"response":"『勉強会』シフトを追加し、開催期間・新人の夜勤先行条件・1日2名配置を設定します。"}
 
-ユーザー: 「日Aの人数が足りないときだけB班も日Aに応援で入れるけど、最大2名までにして」
-出力: {"thought":"サブシフト日Aに対して、B班のスタッフは不足時のみヘルプ配置可(onlyWhenShort)とし、上限を2名以下にする配置ルール。skill_and_pair で処理する。","routes":[{"tool_type":"skill_and_pair","instruction":"日AにおけるB班スタッフの配置を不足時ヘルプのみとし、上限2名以下に設定する"}],"response":"B班の看護師が日Aにヘルプで入る場合の上限を2名までに制限し、不足時のみ配置するよう設定します。"}
+ユーザー: 「村上さんの8日を確定の休み(O)にして、病棟の最大連勤を4日に変更して」
+出力: {"thought":"前半は村上さん個人の8日の公休固定(staff_calendar)、後半は病棟全体の最大連勤日数を4日にする変更(ward_coverage_and_param)の2カテゴリ複合指示。","routes":[{"tool_type":"staff_calendar","instruction":"村上さんの8日を確定の公休(O)に固定する"},{"tool_type":"ward_coverage_and_param","instruction":"病棟全体の最大連勤日数を4日に変更する"}],"response":"村上さんの8日を公休に固定し、最大連勤日数を4日に変更します。"}
 
-ユーザー: 「オリエンテーションというシフトを追加して。新人は月3回受講必須で、3回受けるまで夜勤には入れないようにして、1日に3名までにして。」
-出力: {"thought":"新規シフト枠『オリエンテーション』の追加、新人の月3回受講ノルマ、3回受講完了まで夜勤不可とする先行条件、および1日あたり最大3名までの人数上限。すべて custom_shift で処理する。","routes":[{"tool_type":"custom_shift","instruction":"オリエンテーションシフトを追加し、新人は月3回受講必須・3回受けるまで準夜勤や深夜勤に入れない・1日あたり最大3名までに設定する"}],"response":"オリエンテーションシフトを追加し、新人が3回受講するまで夜勤不可かつ1日3名までのルールを設定します。"}
-
-【直近の対話履歴】
-・前回:「委員会というシフトを追加して」➔ 適用済: 新しいシフト種別「委: 委員会 (09:00–17:00, 所属:D)」を追加しました
-ユーザー: 「毎日リーダー2名をアサインだよ」
-出力: {"thought":"直前の履歴で追加した『委員会』シフトに対する指示。1日あたりリーダー2名を配置するルールなので custom_shift に委員会を補完して渡す。","routes":[{"tool_type":"custom_shift","instruction":"委員会シフトに毎日リーダー2名をアサインする"}],"response":"委員会シフトに毎日リーダー2名をアサインします。"}
-
-ユーザー: 「村上さんの8日を確定の休み(O)にして、病棟の最大連勤を3日に変更して」
-出力: {"thought":"前半は村上さん個人の11/8の公休固定(staff_calendar)、後半は病棟全体の最大連勤日数を3日にする変更(ward_coverage_and_param)の2カテゴリ複合指示。","routes":[{"tool_type":"staff_calendar","instruction":"村上さんの8日を確定の公休(O)に固定する"},{"tool_type":"ward_coverage_and_param","instruction":"病棟全体の最大連勤日数を3日に変更する"}],"response":"村上さんの8日を公休に固定し、最大連勤日数を3日に変更します。"}
-
-ユーザー: 「福田さんが体調不良で11/14まで出勤できないので休みにして」
-出力: {"thought":"福田さん個人の11/1から11/14までの期間を公休(O)に固定するカレンダー指示。staff_calendar で処理する。","routes":[{"tool_type":"staff_calendar","instruction":"福田さんの11月1日から11月14日までを確定の公休(O)に固定する"}],"response":"福田さんの11月1日から11月14日までの期間を公休(O)に固定し、シフトを再計算します。"}
-
-ユーザー: 「西村さんは育児休業中なので、月の最低勤務日数をゼロにして」
-出力: {"thought":"西村さん個人の出勤日数下限（月間最低勤務日数）を0日（免除）に変更する個人契約の指示。staff_contract で処理する。","routes":[{"tool_type":"staff_contract","instruction":"西村さん個人の月間最低勤務日数(出勤日数下限)を0日に設定する"}],"response":"西村さんの個人別の月間最低勤務日数を0日に変更します。"}
-
-ユーザー: 「準夜勤の翌日に日勤を入れるシフト並びを禁止して」
-出力: {"thought":"標準シフトの準夜勤から翌日日勤へのシフト遷移を禁止する病棟全体ルール。ward_transition_and_rule で処理する。","routes":[{"tool_type":"ward_transition_and_rule","instruction":"準夜勤の翌日に日勤を入れるシフト遷移禁止ルールをONにする"}],"response":"準夜勤の翌日に日勤を入れるシフト遷移禁止ルールをONにします。"}
+ユーザー: 「高木さんは月12日までの勤務で、毎週月曜と木曜だけ出勤にして」
+出力: {"thought":"前半の月12日までの勤務上限は個人契約(staff_contract)、後半の毎週月曜・木曜のみ出勤は曜日カレンダー指定(staff_calendar)の2カテゴリ複合指示。","routes":[{"tool_type":"staff_contract","instruction":"高木さんの月間最大勤務日数を12日までに設定する"},{"tool_type":"staff_calendar","instruction":"高木さんを毎週月曜と木曜だけ出勤(W)に設定する"}],"response":"高木さんを月12日までの勤務とし、毎週月曜と木曜のみの出勤に設定します。"}
 
 ユーザー: 「日勤の開始時間を8時30分に変更して」
 出力: {"thought":"シフトの開始・終了時刻の変更はシステム未対応のため unsupported とする。","routes":[{"tool_type":"unsupported"}],"response":"シフトの開始・終了時刻の変更には対応していません。"}
@@ -310,10 +298,7 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_shift_quota",
             {
               shiftName: { type: "string" },
-              targetRole: {
-                type: "string",
-                enum: ["newcomer", "mid", "leader", "all"],
-              },
+              targetRole: { type: "string" },
               count: { type: "number" },
             },
             ["shiftName", "targetRole", "count"]
@@ -322,10 +307,7 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_shift_prerequisite",
             {
               shiftName: { type: "string" },
-              targetRole: {
-                type: "string",
-                enum: ["newcomer", "mid", "leader", "all"],
-              },
+              targetRole: { type: "string" },
               count: { type: "number" },
             },
             ["shiftName", "targetRole", "count"]
@@ -334,12 +316,12 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_shift_day_restriction",
             {
               shiftName: { type: "string" },
+              startDay: { type: "number" },
+              endDay: { type: "number" },
               dayRestriction: {
                 type: "string",
                 enum: ["weekday_only", "weekend_only"],
               },
-              startDay: { type: "number" },
-              endDay: { type: "number" },
             },
             ["shiftName"]
           ),
@@ -347,14 +329,14 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
             "add_daily_shift_cap",
             {
               shiftName: { type: "string" },
-              minStaffPerDay: { type: "number" },
-              maxStaffPerDay: { type: "number" },
-              targetRole: {
+              targetRole: { type: "string" },
+              boundType: {
                 type: "string",
-                enum: ["newcomer", "mid", "leader", "all"],
+                enum: ["exact", "max", "min"],
               },
+              staffCount: { type: "number" },
             },
-            ["shiftName", "maxStaffPerDay"]
+            ["shiftName", "targetRole", "boundType", "staffCount"]
           ),
           toolBranch(
             "allow_prev_month_shift",
@@ -368,69 +350,67 @@ export const CUSTOM_SHIFT_TOOLS_SCHEMA = {
   },
 };
 
-const CUSTOM_SHIFT_STAGE2_PROMPT = `あなたは「custom_shift (カレンダーの日付セルに割り当てる追加シフト枠・研修ルール)」専用のツール抽出AI (Turn 2) です。
+const CUSTOM_SHIFT_STAGE2_PROMPT = `あなたは「custom_shift (追加シフト枠・開催期間/曜日ルール・1日あたり配置人数・受講条件)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（既存の日勤D・準夜E・深夜N・公休O以外の新しい「追加シフト枠（新人研修・勉強会・委員会・出張など）」およびその受講条件）に厳密に合致する指示のみを抽出してください。
-・既存の公休・日勤・準夜・深夜に関する指示（個人の休み希望、深夜勤明けの公休必須ルール、最大連勤など）や他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+【基本ルール】
+・既存4シフト（日勤D・準夜E・深夜N・公休O）以外の新しい追加シフト枠（研修・勉強会・委員会・行事など）とその実施・受講条件に厳密に合致する指示のみを抽出してください。
+・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+・対象月は11月です。「11月X日からN日間」と記載されている場合、「11」は月番号なので startDay に 11 を入れず、必ず日番号 X を startDay、X + N - 1 を endDay にしてください。
+・「1人あたり月N回ずつ受ける」は個人別月間ノルマ("add_shift_quota")、「毎日N名をアサイン / 1日最大N名まで」は1日あたりの配置人数("add_daily_shift_cap")、「N回受けないと夜勤に入れない」は夜勤先行条件("add_shift_prerequisite")として厳密に区別し、ユーザーが言及していないツールを勝手に追加しないでください。
+・対象属性(targetRole)には、実行時に注入される【指定可能な対象属性】辞書にある基本属性コード・ラベルおよび登録済みスキル名を統一的に指定できます。
 
-【重要：「1人あたり月N回 (add_shift_quota)」と「毎日N名 (add_daily_shift_cap)」の区別】
-・「1人あたり月N回ずつ受ける」「各自N回受講しないと夜勤に入れない」は、各スタッフ個人の月間取得回数ノルマ（"add_shift_quota"）です。
-・「毎日N名をアサイン」「その期間、毎日N名ずつ配置」「1日に最大N名まで」は、1日あたりの配置人数枠（"add_daily_shift_cap"）です。
-・注意: 「毎日N名をアサイン」という指示に対して、"add_shift_quota"（個人の月間回数ノルマ）を誤って追加しないでください。「毎日N名」と「各自月N回」は全く別の制約です（両方を出力するのは、「各自月N回受講し、かつ1日最大M名まで」のように両方が明示されている場合のみです）。
-
-【custom_shift に属するツール一覧】
-1. "add_custom_shift": 既存4シフト（日勤D・準夜E・深夜N・公休O）のいずれかに所属する新しい「タグ付きシフト枠（新人研修・勉強会・委員会・出張・院内イベントなど）」を追加する
-   - 必須引数: shiftName (シフト名)
-   - 任意引数: baseShift ("D" | "E" | "N" | "O"、省略時は "D" [日勤扱いの勤務]。休暇・休日の別名なら "O"、準夜帯なら "E"、深夜帯なら "N" を指定。指定した基本シフトの連勤・シフト遷移ルールを継承します)
-   args: { "shiftName": "新人研修" }
-2. "add_shift_quota": 指定ロールのスタッフ1人あたりが、そのカスタムシフトを月何回（「各自月N回ずつ」）取得するか設定する（※「毎日N名アサイン」のような1日あたりの人数指定には絶対に使わず、5の "add_daily_shift_cap" を使ってください）
-   args: { "shiftName": "新人研修", "targetRole": "newcomer", "count": 2 }
-3. "add_shift_prerequisite": そのカスタムシフトをN回受けるまで夜勤・準夜勤に入れない順序ルールを設定する
-   args: { "shiftName": "新人研修", "targetRole": "newcomer", "count": 2 }
-4. "add_shift_day_restriction": そのカスタムシフトを実施する「曜日」または「開催期間（開始日〜終了日）」を制限する（期間外・対象曜日外は配置禁止＝0名になります）
-   - 曜日制限: dayRestriction に "weekday_only" (平日のみ) または "weekend_only" (土日のみ) を指定
-   - 期間制限: startDay (開始日 1〜30) と endDay (終了日 1〜30) を指定
-     ※対象月は11月です。「11月X日」「11/X」「11月Xから」は開始日 startDay: X を意味します。「X日からN日間」の場合は終了日を endDay = X + N - 1 として計算します（例: 5日から4日間 ➔ startDay: 5, endDay: 8）。
-   args例: { "shiftName": "新人研修", "dayRestriction": "weekday_only" } / { "shiftName": "学会", "startDay": 20, "endDay": 22 }
-5. "add_daily_shift_cap": そのカスタムシフトの「1日あたりの配置人数（毎日N名アサイン / 1日最大N名まで）」を設定する
-   - 必須引数: shiftName, maxStaffPerDay (1日あたりの人数・上限人数)
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "add_custom_shift": 新しい追加シフト枠を定義する
+   - 必須引数:
+     * shiftName: 追加するシフト枠の名称（文字列、例: "委員会"）
    - 任意引数:
-     * minStaffPerDay: 1日あたりの最低人数（「毎日N名をアサイン」のように毎日必ずN名配置する場合は minStaffPerDay と maxStaffPerDay に同じ人数を指定。「1日にN名まで」のような上限のみの場合は省略）
-     * targetRole: 対象ロール ("newcomer"=新人, "mid"=中堅, "leader"=リーダー, "all"=全員)
-   args例: { "shiftName": "新人研修", "maxStaffPerDay": 2 } / { "shiftName": "勉強会", "minStaffPerDay": 3, "maxStaffPerDay": 3, "targetRole": "mid" }
-6. "allow_prev_month_shift": 前の月(前月)までに受けた回数も実績に含めてよいことにする
-   args: { "shiftName": "新人研修" }
+     * baseShift: 所属する基本シフト区分（"D"=日勤帯 | "E"=準夜帯 | "N"=深夜帯 | "O"=公休・休暇扱い、例: "D", デフォルト値: "D"）
+   - 引数例: { "shiftName": "委員会", "baseShift": "D" }
+2. "add_shift_quota": 対象属性のスタッフ1人あたりが、その追加シフトを月何回取得するか（個人別の月間回数ノルマ）を設定する
+   - 必須引数:
+     * shiftName: 対象の追加シフト名（文字列、例: "委員会"）
+     * targetRole: 対象スタッフ属性（基本属性コード/ラベルまたはスキル名、例: "mid", "all"）
+     * count: スタッフ1人あたりの月間取得回数（数値、数値例: 1）
+   - 任意引数: なし
+   - 引数例: { "shiftName": "委員会", "targetRole": "mid", "count": 1 }
+3. "add_shift_prerequisite": 対象属性のスタッフが、その追加シフトを規定回数受けるまで夜勤（準夜・深夜）に入れない先行条件を設定する
+   - 必須引数:
+     * shiftName: 対象の追加シフト名（文字列、例: "勉強会"）
+     * targetRole: 対象スタッフ属性（基本属性コード/ラベルまたはスキル名、例: "newcomer"）
+     * count: 夜勤に入る前に必要な受講回数（数値、数値例: 1）
+   - 任意引数: なし
+   - 引数例: { "shiftName": "勉強会", "targetRole": "newcomer", "count": 1 }
+4. "add_shift_day_restriction": その追加シフトを実施できる開催期間（startDay〜endDay）または曜日（dayRestriction）を制限する（期間・曜日外の日には0名に制限されます）
+   - 必須引数:
+     * shiftName: 対象の追加シフト名（文字列、例: "委員会"）
+     * 期間指定の場合は startDay（開始日 1〜30 ※「11月」の11ではなく日番号）と endDay（終了日 1〜30。「X日からN日間」なら X + N - 1）の両方が必須
+     * 曜日指定の場合は dayRestriction（"weekday_only"=平日のみ | "weekend_only"=土日のみ）が必須
+   - 引数例: { "shiftName": "委員会", "dayRestriction": "weekday_only" } / { "shiftName": "院内イベント", "startDay": 20, "endDay": 22 }
+5. "add_daily_shift_cap": その追加シフトの1日あたりの配置人数と対象属性を設定する
+   - 必須引数（4項目すべて必須）:
+     * shiftName: 対象の追加シフト名（文字列、例: "勉強会"）
+     * targetRole: 対象スタッフ属性（特定属性の指定があればその属性コード/ラベル［例: "newcomer"］、属性指定がなければ "all"）
+     * boundType: 人数指定の種別（"exact"=「毎日N名をアサイン・配置」の固定人数 | "max"=「1日にN名まで」の上限のみ | "min"=「毎日N名以上」の下限のみ）
+     * staffCount: 1日あたりの人数（数値 N、例: 2）
+   - 任意引数: なし
+   - 引数例: { "shiftName": "勉強会", "targetRole": "all", "boundType": "max", "staffCount": 2 } / { "shiftName": "院内イベント", "targetRole": "newcomer", "boundType": "exact", "staffCount": 2 }
+6. "allow_prev_month_shift": 前月までに受けた回数も受講実績として算入できるようにする
+   - 必須引数:
+     * shiftName: 対象の追加シフト名（文字列、例: "勉強会"）
+   - 任意引数: なし
+   - 引数例: { "shiftName": "勉強会" }
 7. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
-指示: 「オリエンテーションというシフトを追加して」
-出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"オリエンテーション"}}]}
+指示: 「『委員会』というシフト枠を追加して。平日の月〜金のみ開催で1日2名までにして」
+出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"委員会","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"委員会","dayRestriction":"weekday_only"}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"委員会","targetRole":"all","boundType":"max","staffCount":2}}]}
 
-指示: 「オリエンテーションシフトを追加して。新人はこのオリエンテーションを3回受けないと夜勤や準夜勤には入れないようにして、1日に3名までにして。」
-出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"オリエンテーション"}},{"tool_name":"add_shift_quota","args":{"shiftName":"オリエンテーション","targetRole":"newcomer","count":3}},{"tool_name":"add_shift_prerequisite","args":{"shiftName":"オリエンテーション","targetRole":"newcomer","count":3}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"オリエンテーション","maxStaffPerDay":3}}]}
+指示: 「『院内イベント』というシフトを追加して。20日から3日間、毎日新人2名をアサイン、日勤扱い」
+出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"院内イベント","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"院内イベント","startDay":20,"endDay":22}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"院内イベント","targetRole":"newcomer","boundType":"exact","staffCount":2}}]}
 
-指示: 「委員会というシフトを日勤扱いで追加して。11月8日から3日間、毎日リーダー2名をアサインして。」
-出力: {"tools":[{"tool_name":"add_custom_shift","args":{"shiftName":"委員会","baseShift":"D"}},{"tool_name":"add_shift_day_restriction","args":{"shiftName":"委員会","startDay":8,"endDay":10}},{"tool_name":"add_daily_shift_cap","args":{"shiftName":"委員会","minStaffPerDay":2,"maxStaffPerDay":2,"targetRole":"leader"}}]}
-
-指示: 「委員会シフトに毎日中堅2名をアサインして」
-出力: {"tools":[{"tool_name":"add_daily_shift_cap","args":{"shiftName":"委員会","minStaffPerDay":2,"maxStaffPerDay":2,"targetRole":"mid"}}]}
-
-指示: 「学会は11月20日から22日までにして」
-出力: {"tools":[{"tool_name":"add_shift_day_restriction","args":{"shiftName":"学会","startDay":20,"endDay":22}}]}
-
-指示: 「オリエンテーションは前月までの受講分も含めてよいことにして」
-出力: {"tools":[{"tool_name":"allow_prev_month_shift","args":{"shiftName":"オリエンテーション"}}]}
-
-指示: 「オリエンテーションは1日に最大3名までしか受けられないようにして」
-出力: {"tools":[{"tool_name":"add_daily_shift_cap","args":{"shiftName":"オリエンテーション","maxStaffPerDay":3}}]}
-
-指示: 「オリエンテーションは平日のみ実施にして」
-出力: {"tools":[{"tool_name":"add_shift_day_restriction","args":{"shiftName":"オリエンテーション","dayRestriction":"weekday_only"}}]}
-
-指示: 「新しいスキルとして『感染管理』を追加して」
+指示: 「新しいスキルとして『透析管理』を追加して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 export const SKILL_AND_PAIR_TOOLS_SCHEMA = {
@@ -477,7 +457,7 @@ export const SKILL_AND_PAIR_TOOLS_SCHEMA = {
               nurseB: { type: "string" },
               shifts: {
                 type: "array",
-                items: { type: "string", enum: ["D", "D_A", "D_B", "E", "N"] },
+                items: { type: "string" },
               },
             },
             ["nurseA", "nurseB"]
@@ -489,24 +469,41 @@ export const SKILL_AND_PAIR_TOOLS_SCHEMA = {
               mentorNurse: { type: "string" },
               shifts: {
                 type: "array",
-                items: { type: "string", enum: ["D", "D_A", "D_B", "E", "N"] },
+                items: { type: "string" },
               },
             },
             ["newcomerNurse", "mentorNurse"]
           ),
-          toolBranch(
-            "set_staffing_rule",
-            {
-              targetShift: {
-                type: "string",
+          {
+            type: "object",
+            required: ["tool_name", "args"],
+            properties: {
+              tool_name: { type: "string", enum: ["set_staffing_rule"] },
+              args: {
+                anyOf: [
+                  {
+                    type: "object",
+                    required: ["targetShift", "attribute", "minCount"],
+                    properties: {
+                      targetShift: { type: "string" },
+                      attribute: { type: "string" },
+                      minCount: { type: "number" },
+                      maxCount: { type: "number" },
+                    },
+                  },
+                  {
+                    type: "object",
+                    required: ["targetShift", "attribute", "maxCount"],
+                    properties: {
+                      targetShift: { type: "string" },
+                      attribute: { type: "string" },
+                      maxCount: { type: "number" },
+                    },
+                  },
+                ],
               },
-              attribute: { type: "string" },
-              minCount: { type: "number" },
-              maxCount: { type: "number" },
-              onlyWhenShort: { type: "boolean" },
             },
-            ["targetShift", "attribute"]
-          ),
+          },
           NONE_ESCAPE_HATCH_BRANCH,
         ],
       },
@@ -517,91 +514,76 @@ export const SKILL_AND_PAIR_TOOLS_SCHEMA = {
 /** Alias retained for backward compatibility */
 export const STAFF_GROUP_TOOLS_SCHEMA = SKILL_AND_PAIR_TOOLS_SCHEMA;
 
-const SKILL_AND_PAIR_STAGE2_PROMPT = `あなたは「skill_and_pair (スキル定義・サブシフト/グループ別の属性配置人数ルール・スキル付与・ペア制約)」専用のツール抽出AI (Turn 2) です。
+const SKILL_AND_PAIR_STAGE2_PROMPT = `あなたは「skill_and_pair (スキル定義・シフト別の属性配置人数ルール・スキル付与・ペア制約)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（スキル・資格の追加/削除/付与・サブシフト/グループ別のスキルや属性の人数下限/上限/ヘルプ条件・ペア同時勤務制限/同行）に厳密に合致する指示のみを抽出してください。
-・他カテゴリの指示や、一覧のツールで表現できない未対応の要求は無視し、該当する操作が1つもなければ "none" を出力してください。
+【基本ルール】
+・スキル・資格の定義追加("add_skill_def")/削除("remove_skill_def")、スタッフや属性へのスキル付与・解除("update_nurse_skill")、各シフト別の属性配置人数ルール("set_staffing_rule")、ペア制約("add_ng_pair" / "add_preceptor_pair")に厳密に合致する指示のみを抽出してください。
+・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+・「新しいスキルを追加したい」「〇〇というスキルを定義し、××の代わりになれるようにする」はスキルの新規定義("add_skill_def")であり、「〇〇さんにスキルを付与する」("update_nurse_skill")と区別してください。
+・スタッフ属性には、実行時に注入される【指定可能な属性】辞書にある基本属性および登録済みスキル名を統一的に指定できます。
 
-【skill_and_pair に属するツール一覧】
-1. "add_skill_def": 新しいスキル・資格（例: 「感染管理」「緩和ケア」「小児対応」「副リーダー」など）を追加・設定する
-   - 必須引数: skillName (スキル名)
-   - 任意引数 (指示がある場合のみ指定):
-     * minDay / minEvening / minNight: 日勤 / 準夜 / 深夜の各シフトで必要な最低人数 (数値)
-     * substitutesFor: このスキルが別スキル（例: "リーダー" や "救急・ICU"）の代わりになれる場合のみ、その対象スキル名を指定する
-   args例: { "skillName": "感染管理" } / { "skillName": "小児対応", "minDay": 1 } / { "skillName": "救命サポート", "substitutesFor": "救急・ICU" }
-2. "remove_skill_def": 既存のスキル（例: 「呼吸器管理」「救急・重症対応」など）を削除・削減する
-   args: { "skillName": "呼吸器管理" }
-3. "update_nurse_skill": 特定のスタッフまたはロール（"中堅", "リーダー", "新人", "村上" など）にスキルを付与("add")または解除("remove")する
-   args: { "target": "村上", "skillName": "感染管理", "action": "add" }
-4. "set_staffing_rule": シフト・サブシフト（日勤Group A[日A]="D_A"、日勤Group B[日B]="D_B"、日勤の各グループ="D_each_group"、日勤全体="D"、準夜="E"、深夜="N"、夜勤帯="night_both"）における、特定スキル・属性（スキル名、"新人"、"中堅"、所属グループ "A班" / "B班"）の配置人数の下限(minCount)・上限(maxCount)・不足時のみのヘルプ制限(onlyWhenShort)を設定する
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "add_skill_def": システムに新しいスキル・資格の定義自体を新規登録する
    - 必須引数:
-     * targetShift: 対象シフト記号（"D_A" = 日勤Group A / 日A, "D_B" = 日勤Group B / 日B, "D_each_group" = 日勤の各グループ両方, "D" = 日勤全体, "E" = 準夜勤, "N" = 深夜勤, "night_both" = 準夜・深夜の各シフト）
-     * attribute: 対象のスタッフ属性名またはスキル名（例: "救急・ICU", "リーダー", "新人", "中堅", "A班", "B班" など。※注意: attribute に "日勤A" や "D_A" のようなシフト名を絶対に入れないでください）
+     * skillName: 新規登録するスキル・資格の名称（文字列、例: "感染管理", "救急サブ"）
    - 任意引数:
-     * minCount: 下限人数（「y人以上」「最低y名」）
-     * maxCount: 上限人数（「n人以下」「最大n名まで」「入れない/禁止なら 0」）
-     * onlyWhenShort: 「足りないときだけ」「ヘルプとしてのみ」他グループに入ることを許可する場合は true（ソルバー側で調整済みのペナルティ重みを自動適用します）
-   ※【重要】「〇〇班は自班の日勤にしか入れない（他班の日勤には入れない）」の表現ルール:
-     自班のサブシフトに maxCount: 0 を指定すると「自班の日勤に0名しか入れない（＝自班配置禁止）」という逆の意味になってしまいます。必ず「入れない側（反対側）のサブシフト」を targetShift に指定し、attribute にその班名（"A班" または "B班"）、maxCount に 0 を指定してください（例: 「B班は日Bにしか入れない」➔ 日A("D_A")に "B班" が入るのを禁止するため {"targetShift":"D_A","attribute":"B班","maxCount":0}）。
-   ※「一方の班が足りないときだけ他方の班から応援で入れるが上限k名」の場合は、応援に入る班を attribute に指定し、maxCount: k, onlyWhenShort: true とします。
-5. "add_ng_pair": 2名の看護師(nurseA, nurseB)が同じシフト・同じグループに同時に入らないよう禁止する（相性NGペア）
-   - 必須引数: nurseA, nurseB
-   - 任意引数: shifts ("D" | "D_A" | "D_B" | "E" | "N" の配列。省略時は夜勤帯 ["E", "N"]。日勤も含めて同じチームにしない場合は ["D", "E", "N"]、日勤のみなら ["D"] を指定)
-   args例: { "nurseA": "N11", "nurseB": "N18" } / { "nurseA": "村上", "nurseB": "福田", "shifts": ["D", "E", "N"] }
-6. "add_preceptor_pair": 新人(newcomerNurse)と指導者(mentorNurse)が同じシフトに同行するよう設定する（プリセプターペア）
-   - 必須引数: newcomerNurse, mentorNurse
-   - 任意引数: shifts ("D" | "D_A" | "D_B" | "E" | "N" の配列。省略時は夜勤帯 ["E", "N"])
-   args: { "newcomerNurse": "N25", "mentorNurse": "N01" }
+     * minDay: 日勤(D)での毎日最低必要人数（数値、数値例: 1, デフォルト値: 0）
+     * minEvening: 準夜勤(E)での毎日最低必要人数（数値、数値例: 1, デフォルト値: 0）
+     * minNight: 深夜勤(N)での毎日最低必要人数（数値、数値例: 1, デフォルト値: 0）
+     * substitutesFor: このスキル保持者が代替（カバー）できる既存スキル名（「〇〇の代わりになれる」と指示された場合に指定。文字列、例: "リーダー", "救急・重症対応", デフォルト値: なし）
+   - 引数例: { "skillName": "救急サブ", "substitutesFor": "救急・重症対応" }
+2. "remove_skill_def": 既存のスキル定義をシステムから削除する
+   - 必須引数:
+     * skillName: 削除するスキル名（文字列、例: "人工呼吸器管理"）
+   - 任意引数: なし
+   - 引数例: { "skillName": "人工呼吸器管理" }
+3. "update_nurse_skill": 特定のスタッフ個人または属性グループに既存スキルを付与("add")または解除("remove")する
+   - 必須引数:
+     * target: 対象スタッフ名/IDまたは属性名（文字列、例: "村上", "中堅", "全員"）
+     * skillName: 付与・解除するスキル名（文字列、例: "感染管理"）
+     * action: 操作種別（"add"=付与 | "remove"=解除、例: "add"）
+   - 任意引数: なし
+   - 引数例: { "target": "村上", "skillName": "感染管理", "action": "add" }
+4. "set_staffing_rule": 指定シフトにおける特定属性スタッフの1日あたり配置人数の下限(minCount)または上限(maxCount)を設定する
+   - 必須引数:
+     * targetShift: 対象シフト記号（"D"=日勤, "E"=準夜勤, "N"=深夜勤, "night_both"=準夜勤と深夜勤の両方, または追加シフト名。例: 日勤なら "D"、準夜勤と深夜勤の両方なら "night_both"）
+     * attribute: 対象スタッフ属性名またはスキル名（【指定可能な属性】辞書にある属性名またはスキル名、例: "新人", "リーダー", "救急・重症対応"。※シフト名は指定不可）
+     * minCount または maxCount のいずれか必須:
+       - minCount: 「最低N名」「N名以上」の下限人数（数値、例: 2）
+       - maxCount: 「N名以下」「配置しない(0)」の上限人数（数値、例: 0）
+   - 引数例: { "targetShift": "D", "attribute": "救急・重症対応", "minCount": 2 } / { "targetShift": "night_both", "attribute": "リーダー", "minCount": 1 }
+5. "add_ng_pair": 2名の看護師が同じシフトに同時に入らないよう禁止する（相性NGペア）
+   - 必須引数:
+     * nurseA: 1人目の看護師名またはID（文字列、例: "村上"）
+     * nurseB: 2人目の看護師名またはID（文字列、例: "福田"）
+   - 任意引数:
+     * shifts: 同時勤務を禁止するシフト記号の配列（例: ["D", "E", "N"], デフォルト値: ["E", "N"] [夜勤帯]）
+   - 引数例: { "nurseA": "村上", "nurseB": "福田", "shifts": ["E", "N"] }
+6. "add_preceptor_pair": 新人と指導者が同じシフトに同行するよう設定する（プリセプターペア）
+   - 必須引数:
+     * newcomerNurse: 新人看護師名またはID（文字列、例: "N25"）
+     * mentorNurse: 指導者看護師名またはID（文字列、例: "N01"）
+   - 任意引数:
+     * shifts: 同行対象シフト記号の配列（例: ["E", "N"], デフォルト値: ["E", "N"] [夜勤帯]）
+   - 引数例: { "newcomerNurse": "N25", "mentorNurse": "N01", "shifts": ["E", "N"] }
 7. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
-指示: 「新しいスキルとして『感染管理』を追加して」
-出力: {"tools":[{"tool_name":"add_skill_def","args":{"skillName":"感染管理"}}]}
-
-指示: 「新しいスキルとして『救命サポート』を追加して、救急・ICUの代わりになれるようにして」
-出力: {"tools":[{"tool_name":"add_skill_def","args":{"skillName":"救命サポート","substitutesFor":"救急・ICU"}}]}
-
-指示: 「小児対応スキルを追加して、日勤に最低1名配置して」
-出力: {"tools":[{"tool_name":"add_skill_def","args":{"skillName":"小児対応","minDay":1}}]}
-
-指示: 「緩和ケアのスキルを削除して」
-出力: {"tools":[{"tool_name":"remove_skill_def","args":{"skillName":"緩和ケア"}}]}
+指示: 「新しいスキルとして『救急サブ』を追加して。救急・重症対応の代わりになれるようにして」
+出力: {"tools":[{"tool_name":"add_skill_def","args":{"skillName":"救急サブ","substitutesFor":"救急・重症対応"}}]}
 
 指示: 「村上さんに感染管理スキルを付与して」
 出力: {"tools":[{"tool_name":"update_nurse_skill","args":{"target":"村上","skillName":"感染管理","action":"add"}}]}
 
-指示: 「日勤のBグループにはリーダーを2人以上配置して、B班は日Bにしか入れないようにして」
-出力: {"tools":[{"tool_name":"set_staffing_rule","args":{"targetShift":"D_B","attribute":"リーダー","minCount":2}},{"tool_name":"set_staffing_rule","args":{"targetShift":"D_A","attribute":"B班","maxCount":0}}]}
+指示: 「日勤にはリーダーを2人以上配置して、準夜勤と深夜勤には新人を配置しないようにして」
+出力: {"tools":[{"tool_name":"set_staffing_rule","args":{"targetShift":"D","attribute":"リーダー","minCount":2}},{"tool_name":"set_staffing_rule","args":{"targetShift":"night_both","attribute":"新人","maxCount":0}}]}
 
-指示: 「夜勤の各シフトには新人を1人以下にして」
-出力: {"tools":[{"tool_name":"set_staffing_rule","args":{"targetShift":"night_both","attribute":"新人","maxCount":1}}]}
-
-指示: 「日Aの人数が足りないときだけB班も日Aに応援で入れるけど、最大2名までにして」
-出力: {"tools":[{"tool_name":"set_staffing_rule","args":{"targetShift":"D_A","attribute":"B班","maxCount":2,"onlyWhenShort":true}}]}
-
-指示: 「N11とN18を相性NGペアにして」
-出力: {"tools":[{"tool_name":"add_ng_pair","args":{"nurseA":"N11","nurseB":"N18"}}]}
-
-指示: 「村上さんと福田さんは日勤でも夜勤でも同じシフトに入らないようにして」
-出力: {"tools":[{"tool_name":"add_ng_pair","args":{"nurseA":"村上","nurseB":"福田","shifts":["D","E","N"]}}]}
-
-指示: 「オリエンテーションというシフトを追加して」
+指示: 「『院内勉強会』というシフト枠を追加して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 const STAFF_CALENDAR_BRANCHES = [
-  toolBranch(
-    "add_request",
-    {
-      nurseNameOrId: { type: "string" },
-      day: { type: "number" },
-      shift: { type: "string" },
-      isHard: { type: "boolean" },
-    },
-    ["nurseNameOrId", "day", "shift", "isHard"]
-  ),
   toolBranch(
     "add_request_range",
     {
@@ -611,7 +593,17 @@ const STAFF_CALENDAR_BRANCHES = [
       shift: { type: "string" },
       isHard: { type: "boolean" },
     },
-    ["nurseNameOrId", "shift", "isHard"]
+    ["nurseNameOrId", "startDay", "endDay", "shift", "isHard"]
+  ),
+  toolBranch(
+    "add_request",
+    {
+      nurseNameOrId: { type: "string" },
+      day: { type: "number" },
+      shift: { type: "string" },
+      isHard: { type: "boolean" },
+    },
+    ["nurseNameOrId", "day", "shift", "isHard"]
   ),
   toolBranch(
     "add_calendar_request",
@@ -631,19 +623,7 @@ const STAFF_CALENDAR_BRANCHES = [
       shift: { type: "string" },
       onlyMatchedDaysWork: { type: "boolean" },
     },
-    ["nurseNameOrId", "shift"]
-  ),
-  toolBranch(
-    "forbid_shift",
-    {
-      nurseNameOrId: { type: "string" },
-      day: { type: "number" },
-      shifts: {
-        type: "array",
-        items: { type: "string" },
-      },
-    },
-    ["nurseNameOrId", "day"]
+    ["nurseNameOrId", "daysOfWeek", "shift"]
   ),
   toolBranch(
     "forbid_shift_range",
@@ -656,7 +636,19 @@ const STAFF_CALENDAR_BRANCHES = [
         items: { type: "string" },
       },
     },
-    ["nurseNameOrId"]
+    ["nurseNameOrId", "startDay", "endDay", "shifts"]
+  ),
+  toolBranch(
+    "forbid_shift",
+    {
+      nurseNameOrId: { type: "string" },
+      day: { type: "number" },
+      shifts: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+    ["nurseNameOrId", "day", "shifts"]
   ),
 ];
 
@@ -757,69 +749,66 @@ export const STAFF_REQUEST_TOOLS_SCHEMA = {
 const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定スタッフ個人の日付・期間・曜日/祝日カレンダー希望・固定・禁止)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（特定スタッフ個人の単日・期間・曜日/祝日におけるシフト希望・固定・特定日のシフト禁止）に厳密に合致する指示のみを抽出してください。
-・日付・曜日・祝日の指定がない月間契約条件（日勤専従、深夜勤免除、月間夜勤上限、月間勤務日数上限/下限など）や他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+【基本ルール】
+・特定スタッフ個人の単日(day)・複数日期間(startDay〜endDay)・曜日/祝日におけるシフト希望・固定・特定日のシフト禁止に厳密に合致する指示のみを抽出してください。
+・日付・曜日・祝日の指定がない月間契約条件（月間勤務日数、月間夜勤上限、日勤専従など）や他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+・対象月は11月(1日〜30日)です。1日だけの指定には単日用("add_request" / "forbid_shift")、「〇日まで」「〇日から△日まで」「〇日以降」の期間指定には必ず期間用("add_request_range" / "forbid_shift_range")、「毎週〇曜」「〇曜と△曜だけ出勤」「祝日」のパターン指定には "add_calendar_request" を使用します。
+・公休（休み・療養・動けない等）にする場合は、単日なら "add_request"(shift: "O")、期間（「〇日まで休み」「〇日〜△日休み」）なら "add_request_range"(shift: "O") を使用してください（"forbid_shift" は夜勤等の勤務シフト禁止専用です）。
 
-【単日指定と期間指定の使い分けルール】
-・対象月は11月(1日〜30日)です。「11/17」のような表記は「11月17日 (17日)」を意味します。
-・1日だけの指定（例:「12日を休みに」「11/12を休みに」）には単日用の "add_request" / "forbid_shift" (引数: day) を使います。
-・「〜まで」「〜から〜まで」「〜以降」のような複数日の期間指定には期間用の "add_request_range" / "forbid_shift_range" (引数: startDay, endDay ※片方のみの指定も可) を使います。
-  - 開始日の記載がない「11/17まで動けない」「10日まで休み」は endDay のみ指定 (endDay: 17)
-  - 終了日の記載がない「20日以降休み」は startDay のみ指定 (startDay: 20)
-  - 「11/5から11/10まで休み」は両方指定 (startDay: 5, endDay: 10)
-
-【staff_calendar に属するツール一覧】
-※シフト・シフトエイリアス記号の対応（任意の粒度で指定可）:
-  - "O": 休み・公休
-  - "W": 勤務（日勤・準夜・深夜などシフト種別お任せで出勤）
-  - "D": 日勤（日A・日Bを含む日勤帯） / "D_A": 日勤A / "D_B": 日勤B
-  - "EN": 夜勤（準夜または深夜の夜勤帯）
-  - "E": 準夜・準夜勤
-  - "N": 深夜・深夜勤
-  - カスタムシフト名・エイリアス記号（例: "新人研修", "勉強会", "DE" など）もそのまま shift に指定可能
-1. "add_request": 特定の看護師の「単日(day=1〜30)」を指定シフト("O" | "W" | "D" | "D_A" | "D_B" | "EN" | "E" | "N" または追加シフト名)に固定(isHard: true)またはソフト希望(isHard: false)として設定する
-   args: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
-2. "add_request_range": 特定の看護師の「複数日の期間(startDay〜endDay、片方省略可)」を指定シフトに一括で固定または希望追加する
-   args例: { "nurseNameOrId": "福田", "endDay": 14, "shift": "O", "isHard": true } / { "nurseNameOrId": "三浦", "startDay": 24, "shift": "O", "isHard": true } / { "nurseNameOrId": "村上", "startDay": 6, "endDay": 11, "shift": "O", "isHard": true }
-3. "add_calendar_request": 特定の看護師の「特定の曜日（日〜土）」または「祝日（11/3文化の日・11/23勤労感謝の日）」のシフトを一括で固定・指定する
-   - 必須引数: nurseNameOrId, shift ("O" | "W" | "D" | "EN" | "E" | "N" 等)
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "add_request_range": 特定の看護師の複数日の期間（開始日 startDay 〜 終了日 endDay、「〇日まで」「1日から〇日まで」「〇日以降」）を指定シフトに一括で固定または希望設定する
+   - 必須引数（5項目すべて必須）:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "村上"）
+     * startDay: 期間の開始日（数値 1〜30。「〇日まで休み」のように開始日が省略された場合は必ず月初 1 を指定、数値例: 1）
+     * endDay: 期間の終了日（数値 1〜30。「〇日以降休み」のように終了日が省略された場合は必ず月末 30 を指定、数値例: 10）
+     * shift: 期間中に設定するシフト記号（"O"=公休[休み], "W"=勤務, "D"=日勤 等、例: "O"）
+     * isHard: 確定固定なら true、ソフト希望なら false（真偽値、例: true, デフォルト値: true）
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "村上", "startDay": 1, "endDay": 10, "shift": "O", "isHard": true } / { "nurseNameOrId": "村上", "startDay": 6, "endDay": 10, "shift": "O", "isHard": true }
+2. "add_request": 特定の看護師の単日（1日だけ）を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する（※「〇日まで」「1日〜〇日」等の複数日期間には使わず必ず "add_request_range" を使うこと）
+   - 必須引数:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "村上", "N18"）
+     * day: 対象日（数値 1〜30、数値例: 8）
+     * shift: 指定するシフト記号（"O"=公休[休み], "W"=勤務[シフトお任せ出勤], "D"=日勤, "EN"=夜勤帯, "E"=準夜勤, "N"=深夜勤, または追加シフト名、例: "O"）
+     * isHard: 確定の固定条件なら true、「できれば」等のソフト希望なら false（真偽値、例: true, デフォルト値: true）
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
+3. "add_calendar_request": 特定の看護師の曜日（日〜土）または祝日のシフトを一括で固定・指定する
+   - 必須引数:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "高木"）
+     * daysOfWeek: 対象曜日の配列（"日","月","火","水","木","金","土" から選択、祝日のみ対象なら []、例: ["月", "木"], デフォルト値: []）
+     * shift: 該当日に設定するシフト記号（"O"=公休[休み], "W"=勤務[出勤], "D"=日勤, "EN"=夜勤帯 等、例: "W"）
    - 任意引数:
-     * daysOfWeek: 対象曜日の配列（"日" | "月" | "火" | "水" | "木" | "金" | "土"）
-     * holidays: 祝日の扱い ("include"=祝日も含める, "exclude"=祝日を除外する, "only"=祝日のみ対象)
-     * onlyMatchedDaysWork: 「〇〇曜日だけ勤務」「〇〇曜日のみ出勤（それ以外の曜日はすべて休み）」のように指定日以外をすべて公休(O)にする場合は true を指定
-   args例: { "nurseNameOrId": "村上", "daysOfWeek": ["火", "金"], "shift": "W", "onlyMatchedDaysWork": true } / { "nurseNameOrId": "西村", "daysOfWeek": ["日", "土"], "holidays": "include", "shift": "O" }
-4. "forbid_shift": 特定の看護師の「特定の単日(day=1〜30が明示されている場合のみ)」の指定シフト（省略時は夜勤 ["E", "N"]）を禁止する
-   args: { "nurseNameOrId": "原田", "day": 19 }
-5. "forbid_shift_range": 特定の看護師の「複数日の期間(startDay〜endDayが明示されている場合のみ)」の指定シフト（省略時は夜勤 ["E", "N"]）を禁止する
-   args: { "nurseNameOrId": "原田", "startDay": 19, "endDay": 23 }
+     * holidays: 祝日の扱い（"include"=指定曜日と祝日の両方を含める | "exclude"=指定曜日から祝日を除外する | "only"=祝日のみを対象にする、例: "include", デフォルト値: 曜日指定のみの場合は省略）
+     * onlyMatchedDaysWork: 指定した曜日・祝日以外の日をすべて公休("O")に固定するかどうか（「毎週〇曜と△曜だけ出勤」「〇曜日のみ勤務」のように指定曜日以外の出勤を禁止する場合は true、単に対象曜日を休みまたは出勤にするだけなら false、真偽値、例: true, デフォルト値: false）
+   - 引数例: { "nurseNameOrId": "高木", "daysOfWeek": ["月", "木"], "shift": "W", "onlyMatchedDaysWork": true }
+4. "forbid_shift_range": 特定の看護師の複数日の期間（開始日〜終了日）において、特定の勤務シフト（夜勤など）への配置を禁止する（※期間中ずっと公休Oにする場合は "add_request_range" を使うこと）
+   - 必須引数（4項目すべて必須）:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "原田"）
+     * startDay: 期間の開始日（数値 1〜30、省略時は 1、数値例: 19）
+     * endDay: 期間の終了日（数値 1〜30、省略時は 30、数値例: 23）
+     * shifts: 禁止する勤務シフト記号の配列（夜勤禁止なら ["E", "N"]）
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "原田", "startDay": 19, "endDay": 23, "shifts": ["E", "N"] }
+5. "forbid_shift": 特定の看護師の単日（1日だけ）において、特定の勤務シフト（夜勤や日勤など）への配置を禁止する（※公休Oにする場合は "add_request" を使うこと）
+   - 必須引数（3項目すべて必須）:
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "原田"）
+     * day: 対象日（数値 1〜30、数値例: 19）
+     * shifts: 禁止する勤務シフト記号の配列（"D", "E", "N" 等、夜勤禁止なら ["E", "N"]）
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "原田", "day": 19, "shifts": ["E", "N"] }
 6. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
+指示: 「村上さんは10日まで動けないので休みにして」
+出力: {"tools":[{"tool_name":"add_request_range","args":{"nurseNameOrId":"村上","startDay":1,"endDay":10,"shift":"O","isHard":true}}]}
+
 指示: 「村上さんの8日を確定の休み(O)にして」
 出力: {"tools":[{"tool_name":"add_request","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
 
-指示: 「西村さんの3日を日勤に固定して」
-出力: {"tools":[{"tool_name":"add_request","args":{"nurseNameOrId":"西村","day":3,"shift":"D","isHard":true}}]}
-
-指示: 「福田さんが体調不良で11/14まで出勤できないので休みにして」
-出力: {"tools":[{"tool_name":"add_request_range","args":{"nurseNameOrId":"福田","endDay":14,"shift":"O","isHard":true}}]}
-
-指示: 「三浦さんは24日以降休みにして」
-出力: {"tools":[{"tool_name":"add_request_range","args":{"nurseNameOrId":"三浦","startDay":24,"shift":"O","isHard":true}}]}
-
-指示: 「村上さんは11/6から11/11までリフレッシュ休暇で休みにして」
-出力: {"tools":[{"tool_name":"add_request_range","args":{"nurseNameOrId":"村上","startDay":6,"endDay":11,"shift":"O","isHard":true}}]}
-
-指示: 「三浦さんは火曜と金曜だけ勤務にして」
-出力: {"tools":[{"tool_name":"add_calendar_request","args":{"nurseNameOrId":"三浦","daysOfWeek":["火","金"],"shift":"W","onlyMatchedDaysWork":true}}]}
-
-指示: 「原田さんは土日は休みだけど祝日は出勤OKにして」
-出力: {"tools":[{"tool_name":"add_calendar_request","args":{"nurseNameOrId":"原田","daysOfWeek":["日","土"],"holidays":"exclude","shift":"O"}}]}
-
-指示: 「原田さんの19日は夜勤不可にして」
-出力: {"tools":[{"tool_name":"forbid_shift","args":{"nurseNameOrId":"原田","day":19}}]}
+指示: 「高木さんは毎週月曜と木曜だけ出勤にして」
+出力: {"tools":[{"tool_name":"add_calendar_request","args":{"nurseNameOrId":"高木","daysOfWeek":["月","木"],"shift":"W","onlyMatchedDaysWork":true}}]}
 
 指示: 「西村さんを日勤専従にして」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
@@ -827,119 +816,94 @@ const STAFF_CALENDAR_STAGE2_PROMPT = `あなたは「staff_calendar (特定ス�
 const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定スタッフ個人の働き方契約・シフト免除・月間日数/夜勤回数/個人連勤の上限・下限)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（特定スタッフ個人の月間契約条件・シフト免除・月間日数や夜勤回数の上限/下限）に厳密に合致する指示のみを抽出してください。
-・特定の日付指定（例:「8日を休みに」）や病棟全体のルール変更は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+【基本ルール】
+・特定スタッフ個人の月間契約条件・シフト免除・月間日数や夜勤回数の上限/下限に厳密に合致する指示のみを抽出してください。
+・特定の日付や曜日の指定、病棟全体のルール変更は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+・「勤務日数（働く日数）」と「公休日数（休む日数）」を混同しないでください：
+  * 勤務日数の上限（「月N日までの勤務」「月N日以下勤務」）➔ item: "maxWorkDays"
+  * 勤務日数の下限（「月間最小勤務日数をN日に」「最低勤務日数を0日に」）➔ item: "minWorkDays"
+  * 公休日数の下限（「月N日以上休みに」「最低公休日数をN日に」）➔ item: "minDaysOff"
 
-【staff_contract に属するツール一覧】
-1. "set_nurse_contract": 特定の看護師個人の月間を通じた基本の働き方・勤務契約条件を変更する
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "set_nurse_contract": 特定の看護師個人の月間を通じた働き方契約・個人別数値条件を変更する
    - 必須引数:
-     * nurseNameOrId: 看護師名またはID
-     * item: 変更する契約項目（以下から1つ選択）
-       - "maxWorkDays": 個人の月間最大勤務日数上限（パート等の「月N日までの勤務」「最大N日以内」の上限。value: N）
-       - "minWorkDays": 個人の月間最低勤務日数下限（「最低N日以上」「最小勤務日数をN日に」の下限。免除・下限なし・ゼロにする場合は value: 0）
-       - "minDaysOff": 個人の月間最低公休日数（月の休日数の下限。value: N）
-       - "maxConsecutiveDays": 個人の最大連続勤務日数（「〇連勤まで」の上限。value: N）
-       - "maxNight": 個人の月間夜勤回数上限（準夜＋深夜の最大回数。value: N）
-       - "日勤専従": 日勤専従（昼間のみ勤務・夜勤免除・夜勤なし）に設定
-       - "夜勤専従": 夜勤専従（夜勤のみ勤務・日勤なし）に設定
-       - "深夜勤免除": 深夜勤(N)のみ免除（深夜勤は入れない）に設定
-       - "準夜勤免除": 準夜勤(E)のみ免除（準夜勤は入れない）に設定
-       - "土日休み": 平日のみ勤務契約（土日休み・祝日は勤務可）に設定
-       - "土日祝休み": 土日および祝日をすべて休みにする契約に設定
-       - "制限解除": 日勤専従・夜勤専従・シフト免除等を解除して通常勤務に戻す
+     * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "西村", "N15"）
+     * item: 変更する契約項目（以下の数値項目5種または契約プリセット7種から1つ選択）
+       - "maxWorkDays": 月間最大【勤務】日数の上限（「月N日までの勤務」「月N日以下」の制限。value 数値例: 10, デフォルト値: 個別上限なし）
+       - "minWorkDays": 月間最低【勤務】日数の下限（「月間最小勤務日数をN日に」「月N日以上勤務」、最低勤務日数の免除・ゼロ化なら 0。value 数値例: 0, デフォルト値: 病棟全体の最低勤務日数14日）
+       - "minDaysOff": 月間最低【公休（休み）】日数の下限（「月N日以上休み」「最低公休をN日に」。value 数値例: 12, デフォルト値: 病棟全体の最低公休日数9日）
+       - "maxConsecutiveDays": 個人別の最大連続勤務日数の上限（「N連勤まで」。value 数値例: 3, デフォルト値: 病棟全体の最大連勤日数5日）
+       - "maxNight": 個人別の月間夜勤回数の上限（「月N回までの夜勤」。value 数値例: 4, デフォルト値: 病棟全体の月間夜勤上限8回）
+       - "日勤専従": 日勤のみ勤務（準夜・深夜免除、value 不要）
+       - "夜勤専従": 夜勤のみ勤務（日勤免除、value 不要）
+       - "深夜勤免除": 深夜勤(N)のみ免除（value 不要）
+       - "準夜勤免除": 準夜勤(E)のみ免除（value 不要）
+       - "土日休み": 平日のみ勤務契約・土日公休固定（value 不要）
+       - "土日祝休み": 土日および祝日公休固定契約（value 不要）
+       - "制限解除": シフト免除や個人日数制限を解除して標準契約に戻す（value 不要）
    - 任意引数:
-     * value: 日数または回数（"maxWorkDays" / "minWorkDays" / "minDaysOff" / "maxConsecutiveDays" / "maxNight" の数値。下限をなくす・ゼロにする場合は 0）
-   args例: { "nurseNameOrId": "西村", "item": "日勤専従" } / { "nurseNameOrId": "福田", "item": "maxNight", "value": 3 }
+     * value: 数値項目（"maxWorkDays" | "minWorkDays" | "minDaysOff" | "maxConsecutiveDays" | "maxNight"）を選択した場合の設定数値（数値、数値例: 10, デフォルト値: プリセット選択時は不要）
+   - 引数例: { "nurseNameOrId": "西村", "item": "maxWorkDays", "value": 12 } / { "nurseNameOrId": "西村", "item": "minWorkDays", "value": 0 } / { "nurseNameOrId": "西村", "item": "日勤専従" }
 2. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
 指示: 「西村さんを日勤専従にして」
 出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"日勤専従"}}]}
 
-指示: 「村上さんは夜勤専従にして、月の勤務日数は11日以内にして」
-出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"村上","item":"夜勤専従"}},{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"村上","item":"maxWorkDays","value":11}}]}
+指示: 「西村さんは月12日までの勤務にして」
+出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"maxWorkDays","value":12}}]}
 
-指示: 「西村さんは育児休業中なので、月の最低勤務日数をゼロにして」
-出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"minWorkDays","value":0}}]}
-
-指示: 「福田さんの月間夜勤上限を3回までにして」
-出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"福田","item":"maxNight","value":3}}]}
-
-指示: 「原田さんは月の休みを11日以上にして、準夜勤は免除にして」
-出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"原田","item":"minDaysOff","value":11}},{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"原田","item":"準夜勤免除"}}]}
-
-指示: 「三浦さんは3連勤までにして、深夜勤は免除にして」
-出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"三浦","item":"maxConsecutiveDays","value":3}},{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"三浦","item":"深夜勤免除"}}]}
+指示: 「西村さんの月間最低勤務日数を8日に変更して」
+出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"minWorkDays","value":8}}]}
 
 指示: 「村上さんの8日を確定の休みにして」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
-const STAFF_REQUEST_STAGE2_PROMPT = `あなたは「staff_request (特定スタッフ個人の希望休・期間休職・シフト固定・特定シフト禁止・個人契約条件)」専用のツール抽出AI (Turn 2) です。
+const STAFF_REQUEST_STAGE2_PROMPT = `あなたは「staff_request (特定スタッフ個人のカレンダー希望・シフト固定/禁止・個人契約条件)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（特定スタッフ個人の日別/期間シフト希望・シフト禁止・個人契約条件）に厳密に合致する指示のみを抽出してください。
-・他カテゴリの指示は無視し、このカテゴリに該当する操作が1つもなければ "none" を出力してください。
+【基本ルール】
+・特定スタッフ個人の単日/期間/曜日シフト希望・禁止・個人契約条件に厳密に合致する指示のみを抽出してください。
+・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+・シフト記号(shift)には "O"(公休), "W"(勤務:シフトお任せ出勤), "D"(日勤), "EN"(夜勤帯), "E"(準夜勤), "N"(深夜勤) または追加シフト名・エイリアス記号を指定できます。
 
-【単日指定と期間指定の使い分けルール】
-・対象月は11月(1日〜30日)です。「11/14」のような表記は「11月14日 (14日)」を意味します。
-・1日だけの指定（例:「8日を休みに」「11/8を休みに」）には単日用の "add_request" / "forbid_shift" (引数: day) を使います。
-・「〜まで」「〜から〜まで」「〜以降」のような複数日の期間指定には期間用の "add_request_range" / "forbid_shift_range" (引数: startDay, endDay ※片方のみの指定も可) を使います。
-  - 開始日の記載がない「11/14まで出勤できない」「10日まで休み」は endDay のみ指定 (endDay: 14)
-  - 終了日の記載がない「24日以降休み」は startDay のみ指定 (startDay: 24)
-  - 「11/6から11/11まで休み」は両方指定 (startDay: 6, endDay: 11)
-
-【staff_request に属するツール一覧】
-※シフト・シフトグループ記号の対応:
-  - "O": 休み・公休
-  - "W": 勤務（日勤・準夜・深夜などシフト種別お任せで出勤）
-  - "D": 日勤
-  - "EN": 夜勤（準夜または深夜の夜勤帯）
-  - "E": 準夜・準夜勤
-  - "N": 深夜・深夜勤
-1. "add_request": 特定の看護師の「単日(day=1〜30)」を公休("O")・勤務("W")・日勤("D")・夜勤("EN")・準夜("E")・深夜("N")に固定または希望追加する
-   args: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
-2. "add_request_range": 特定の看護師の「複数日の期間(startDay〜endDay、片方省略可)」を公休("O")・勤務("W")・日勤("D")・夜勤("EN")・準夜("E")・深夜("N")に一括で固定または希望追加する
-   - 必須引数: nurseNameOrId, shift ("O" | "W" | "D" | "EN" | "E" | "N"), isHard
-   - 任意引数:
-     * startDay: 開始日
-     * endDay: 終了日
-   args例: { "nurseNameOrId": "福田", "endDay": 14, "shift": "O", "isHard": true } / { "nurseNameOrId": "三浦", "startDay": 24, "shift": "O", "isHard": true } / { "nurseNameOrId": "村上", "startDay": 6, "endDay": 11, "shift": "O", "isHard": true }
-3. "add_calendar_request": 特定の看護師の「特定の曜日（日〜土）」または「祝日（11/3文化の日・11/23勤労感謝の日）」のシフトを一括で固定・指定する
-   - 必須引数: nurseNameOrId, shift ("O" | "W" | "D" | "EN" | "E" | "N")
-   - 任意引数:
-     * daysOfWeek: 対象曜日の配列（"日" | "月" | "火" | "水" | "木" | "金" | "土"）
-     * holidays: 祝日の扱い ("include" | "exclude" | "only")
-     * onlyMatchedDaysWork: 指定日以外をすべて公休(O)にする場合は true を指定
-   args例: { "nurseNameOrId": "村上", "daysOfWeek": ["火", "金"], "shift": "W", "onlyMatchedDaysWork": true } / { "nurseNameOrId": "西村", "daysOfWeek": ["日", "土"], "holidays": "include", "shift": "O" }
-4. "forbid_shift": 特定の看護師の「特定の単日(day=1〜30が明示されている場合のみ)」の指定シフト（省略時は夜勤 ["E", "N"]）を禁止する
-   args: { "nurseNameOrId": "原田", "day": 19 }
-5. "forbid_shift_range": 特定の看護師の「複数日の期間(startDay〜endDayが明示されている場合のみ)」の指定シフト（省略時は夜勤 ["E", "N"]）を禁止する
-   args: { "nurseNameOrId": "原田", "startDay": 19, "endDay": 23 }
-6. "set_nurse_contract": 特定の看護師個人の月間を通じた基本の働き方・勤務契約条件を変更する
-   args例: { "nurseNameOrId": "西村", "item": "日勤専従" } / { "nurseNameOrId": "福田", "item": "maxNight", "value": 3 }
-7. "none": 上記ツールの定義に合致しない場合、または対象スタッフ名・日付が不明な場合
-   args: {}
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "add_request": 特定の看護師の単日(day=1〜30)を指定シフトに確定固定(isHard: true)またはソフト希望(isHard: false)として設定する
+   - 必須引数: nurseNameOrId (例: "村上"), day (数値 1〜30、数値例: 8), shift (例: "O"), isHard (真偽値、例: true, デフォルト値: true)
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "村上", "day": 8, "shift": "O", "isHard": true }
+2. "add_request_range": 特定の看護師の複数日の期間(startDay〜endDay)を指定シフトに一括で固定または希望設定する
+   - 必須引数: nurseNameOrId (例: "村上"), startDay (開始日 1〜30、「〇日まで」なら 1), endDay (終了日 1〜30、「〇日以降」なら 30), shift (例: "O"), isHard (真偽値、例: true, デフォルト値: true)
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "村上", "startDay": 1, "endDay": 10, "shift": "O", "isHard": true }
+3. "add_calendar_request": 特定の看護師の曜日（日〜土）または祝日のシフトを一括で固定・指定する
+   - 必須引数: nurseNameOrId (例: "高木"), daysOfWeek ("日"〜"土" の配列、例: ["月", "木"], デフォルト値: []), shift ("O"=公休 | "W"=勤務 | "D"=日勤 等、例: "W")
+   - 任意引数: holidays ("include" | "exclude" | "only", デフォルト値: 曜日のみ), onlyMatchedDaysWork (指定曜日以外をすべて公休Oにする場合は true、例: true, デフォルト値: false)
+   - 引数例: { "nurseNameOrId": "高木", "daysOfWeek": ["月", "木"], "shift": "W", "onlyMatchedDaysWork": true }
+4. "forbid_shift": 特定の看護師の単日(day=1〜30)における特定の勤務シフトを禁止する（※公休Oにする場合は "add_request" を使うこと）
+   - 必須引数: nurseNameOrId (例: "原田"), day (数値 1〜30、数値例: 19), shifts (禁止シフトの配列、例: ["E", "N"])
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "原田", "day": 19, "shifts": ["E", "N"] }
+5. "forbid_shift_range": 特定の看護師の複数日の期間(startDay〜endDay)における特定の勤務シフトを禁止する（※公休Oにする場合は "add_request_range" を使うこと）
+   - 必須引数: nurseNameOrId (例: "原田"), startDay (開始日 1〜30、例: 19), endDay (終了日 1〜30、例: 23), shifts (禁止シフトの配列、例: ["E", "N"])
+   - 任意引数: なし
+   - 引数例: { "nurseNameOrId": "原田", "startDay": 19, "endDay": 23, "shifts": ["E", "N"] }
+6. "set_nurse_contract": 特定の看護師個人の月間を通じた働き方契約・数値条件を変更する
+   - 必須引数: nurseNameOrId (例: "西村"), item ("maxWorkDays"=月間最大勤務日数上限 | "minWorkDays"=月間最低勤務日数下限 | "minDaysOff"=月間最低公休日数 | "maxConsecutiveDays"=個人最大連勤日数 | "maxNight"=個人月間夜勤上限 | "日勤専従" | "夜勤専従" | "深夜勤免除" | "準夜勤免除" | "土日休み" | "土日祝休み" | "制限解除")
+   - 任意引数: value (数値項目の日数・回数、数値例: 10, デフォルト値: プリセット選択時は不要)
+   - 引数例: { "nurseNameOrId": "西村", "item": "日勤専従" }
+7. "none": 上記ツールの定義に合致しない場合
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
 指示: 「村上さんの8日を確定の休み(O)にして」
 出力: {"tools":[{"tool_name":"add_request","args":{"nurseNameOrId":"村上","day":8,"shift":"O","isHard":true}}]}
 
-指示: 「西村さんの3日を日勤に固定して」
-出力: {"tools":[{"tool_name":"add_request","args":{"nurseNameOrId":"西村","day":3,"shift":"D","isHard":true}}]}
-
-指示: 「福田さんが体調不良で11/14まで出勤できないので休みにして」
-出力: {"tools":[{"tool_name":"add_request_range","args":{"nurseNameOrId":"福田","endDay":14,"shift":"O","isHard":true}}]}
-
-指示: 「三浦さんは火曜と金曜だけ勤務にして」
-出力: {"tools":[{"tool_name":"add_calendar_request","args":{"nurseNameOrId":"三浦","daysOfWeek":["火","金"],"shift":"W","onlyMatchedDaysWork":true}}]}
-
 指示: 「西村さんを日勤専従にして」
 出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"日勤専従"}}]}
 
-指示: 「最大連勤を3日に変更して」
+指示: 「最大連勤を4日に変更して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 const WARD_COVERAGE_AND_PARAM_BRANCHES = [
@@ -957,17 +921,8 @@ const WARD_COVERAGE_AND_PARAM_BRANCHES = [
           "minMonthlyDaysOff",
           "minMonthlyWorkDays",
           "maxMonthlyNightShifts",
-          "minLeadersDay",
-          "minLeadersEvening",
-          "minLeadersNight",
-          "minIcuDay",
-          "minIcuEvening",
-          "minIcuNight",
-          "maxNewcomersNight",
-          "minTeamMembersDay",
           "maxMonthlyOvertimeHours",
           "maxAnnualOvertimeHours",
-          "staffCount",
         ],
       },
       paramValue: { type: "number" },
@@ -1005,23 +960,10 @@ const WARD_TRANSITION_AND_RULE_BRANCHES = [
       ruleName: {
         type: "string",
         enum: [
-          "forbidNightToDay",
-          "forbidEveningToDay",
-          "forbidEveningToNight",
-          "forbidNightToEvening",
-          "forbidDayToNight",
-          "forbidEveningToEvening",
-          "forbidNightToNight",
           "maxConsecutiveNight2",
-          "requireOffAfterNight",
-          "enforcePrevMonthCarryover",
-          "enforceSkillCoverage",
-          "enforceNewcomerNightLimit",
           "requireWeekendOff",
-          "enforceNgPairs",
           "enforcePreceptorPairs",
-          "enforceTeamBalance",
-          "enforceHardRequests",
+          "enforcePrevMonthCarryover",
           "enforce36Agreement",
           "preserveCurrentSchedule",
         ],
@@ -1102,41 +1044,45 @@ export const WARD_CONFIG_TOOLS_SCHEMA = {
 const WARD_COVERAGE_AND_PARAM_STAGE2_PROMPT = `あなたは「ward_coverage_and_param (病棟全体の数値パラメータ・必要人数・特定日の人数変更・夜勤回数の平準化)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（病棟全体の数値パラメータ・特定日の必要人数変更・夜勤平準化）に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
-・個人名のシフト・契約変更や、2日間のシフト遷移ルールは無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+【基本ルール】
+・病棟全体の数値パラメータ・特定日の必要人数変更・夜勤平準化に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
+・個人別のシフトや契約変更、2日間のシフト遷移ルール、特定属性やスキル別の人数指定は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
 
-【ward_coverage_and_param に属するツール一覧】
-1. "set_param": 病棟全体の数値設定を変更する
-   - "maxConsecutiveWorkDays": 最大連勤日数（何日連続まで働けるかの上限。例: 4）
-   - "minMonthlyDaysOff": 月間最低公休日数（月あたりの休みの最低日数。例: 10）
-   - "minMonthlyWorkDays": 月間最低勤務日数（月あたりの出勤の最低日数・ノルマ。例: 10）
-   - "maxMonthlyNightShifts": 月間夜勤回数上限（月あたりの夜勤の最大回数。例: 7）
-   - "weekdayDayStaff": 平日日勤の必要人数 (例: 11)
-   - "weekendDayStaff": 土日日勤の必要人数 (例: 8)
-   - "eveningStaff": 準夜勤の必要人数 (例: 3)
-   - "nightStaff": 深夜勤の必要人数 (例: 3)
-   - "minLeadersDay" / "minLeadersEvening" / "minLeadersNight": 日勤/準夜/深夜のリーダー最低人数
-   - "minIcuDay" / "minIcuEvening" / "minIcuNight": 日勤/準夜/深夜の救急・重症対応最低人数
-   - "minTeamMembersDay": 固定チームナーシング(A班・B班)の日勤最低人数 (例: 3)
-   - "maxAnnualOvertimeHours": 36協定の年間時間外（残業）上限 (例: 360)
-   - "maxMonthlyOvertimeHours": 36協定の月間時間外（残業）上限 (例: 45)
-2. "level_night_shifts": スキル毎・役割毎に月間の夜勤回数(準夜・深夜)を平準化（均等化）する
-   args: { "groupBy": "role_and_skill" }
-3. "add_date_coverage": 特定のカレンダー日付(day=1〜30)の病棟全体の必要人数(minStaff名以上)を変更する
-   args: { "day": 15, "shift": "D", "minStaff": 12 }
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "set_param": 病棟全体の基本数値パラメータを変更する
+   - 必須引数:
+     * paramName: 変更するパラメータ名（以下から1つ選択）
+       - "maxConsecutiveWorkDays": 最大連勤日数（数値例: 4, デフォルト値: 5）
+       - "minMonthlyDaysOff": 月間最低公休日数（数値例: 10, デフォルト値: 9）
+       - "minMonthlyWorkDays": 月間最低勤務日数（数値例: 14, デフォルト値: 14）
+       - "maxMonthlyNightShifts": 月間夜勤回数上限（数値例: 6, デフォルト値: 8）
+       - "weekdayDayStaff": 平日日勤の必要人数（数値例: 12, デフォルト値: 10）
+       - "weekendDayStaff": 土日日勤の必要人数（数値例: 7, デフォルト値: 6）
+       - "eveningStaff": 準夜勤の必要人数（数値例: 4, デフォルト値: 4）
+       - "nightStaff": 深夜勤の必要人数（数値例: 4, デフォルト値: 4）
+       - "maxAnnualOvertimeHours": 36協定の年間時間外（残業）上限時間（数値例: 300, デフォルト値: 360）
+       - "maxMonthlyOvertimeHours": 36協定の月間時間外（残業）上限時間（数値例: 40, デフォルト値: 45）
+     * paramValue: 設定する数値（数値、数値例: 4）
+   - 任意引数: なし
+   - 引数例: { "paramName": "maxConsecutiveWorkDays", "paramValue": 4 }
+2. "level_night_shifts": スキル・役割ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
+   - 必須引数:
+     * groupBy: 平準化のグループ単位（"role_and_skill"=役割とスキルの両方 | "role"=役割ごと | "skill"=スキルごと | "all"=全員一律、例: "role_and_skill", デフォルト値: "role_and_skill"）
+   - 任意引数: なし
+   - 引数例: { "groupBy": "role_and_skill" }
+3. "add_date_coverage": 特定のカレンダー日付(day=1〜30)における病棟全体の必要人数(minStaff名以上)を変更する
+   - 必須引数:
+     * day: 対象日（数値 1〜30、数値例: 15）
+     * shift: 対象シフト（"D"=日勤 | "E"=準夜勤 | "N"=深夜勤、例: "D"）
+     * minStaff: その日の最低必要人数（数値、数値例: 12）
+   - 任意引数: なし
+   - 引数例: { "day": 15, "shift": "D", "minStaff": 12 }
 4. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
-指示: 「病棟全体の最大連勤を3日に変更して」
-出力: {"tools":[{"tool_name":"set_param","args":{"paramName":"maxConsecutiveWorkDays","paramValue":3}}]}
-
-指示: 「役割やスキルグループごとの月間夜勤回数の偏りをなくして均等化して」
-出力: {"tools":[{"tool_name":"level_night_shifts","args":{"groupBy":"role_and_skill"}}]}
-
-指示: 「18日の日勤の必要人数を11人以上にして」
-出力: {"tools":[{"tool_name":"add_date_coverage","args":{"day":18,"shift":"D","minStaff":11}}]}
+指示: 「病棟全体の最大連勤を4日に変更して」
+出力: {"tools":[{"tool_name":"set_param","args":{"paramName":"maxConsecutiveWorkDays","paramValue":4}}]}
 
 指示: 「準夜勤の翌日に日勤を入れるシフト並びを禁止して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
@@ -1144,99 +1090,85 @@ const WARD_COVERAGE_AND_PARAM_STAGE2_PROMPT = `あなたは「ward_coverage_and_
 const WARD_TRANSITION_AND_RULE_STAGE2_PROMPT = `あなたは「ward_transition_and_rule (病棟全体のシフト遷移マトリクス・2日間の並び順禁止/必須・全体ルールON/OFF)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（2日間のシフト並び順・連続可能性の禁止/許可/必須、および病棟全体ルールのON/OFF）に厳密に合致する指示のみを抽出してください。
+【基本ルール】
+・2日間のシフト並び順（前日➔翌日の禁止・許可・必須）には "set_shift_transition"、病棟全体ルールのON/OFFには "toggle_rule" を使用し、厳密に合致する指示のみを抽出してください。
 ・数値パラメータの変更や個人別の指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
 
-【ward_transition_and_rule に属するツール一覧】
-1. "set_shift_transition": 2日間のシフト並び順・連続可能性（前日 fromShift ➔ 翌日 toShift）を汎用的に禁止("forbid")・許可("allow")・必須("require")に設定する
-   - fromShift: "D" (日勤), "E" (準夜勤), "N" (深夜勤)
-   - toShift: "D" (日勤), "E" (準夜勤), "N" (深夜勤), "O" (公休・休み)
-   - policy: "forbid" (禁止する), "allow" (許可する/禁止解除), "require" (必須にする、例: N ➔ O を require)
-   args例: { "fromShift": "N", "toShift": "O", "policy": "require" } / { "fromShift": "D", "toShift": "N", "policy": "forbid" } / { "fromShift": "E", "toShift": "E", "policy": "forbid" }
-2. "toggle_rule": 病棟全体ルールを有効(true)・無効(false)に切り替える
-   - "requireOffAfterNight": 深夜勤の翌日は必ず休みにするルール
-   - "forbidDayToNight": 日勤→翌日深夜勤（日深夜）の禁止ルール
-   - "forbidEveningToEvening": 連続準夜勤（準夜→翌日準夜 E→E）の禁止ルール
-   - "forbidNightToNight": 連続深夜勤（深夜→翌日深夜 N→N）の禁止ルール
-   - "forbidNightToDay" / "forbidEveningToDay" / "forbidEveningToNight" / "forbidNightToEvening": 各シフト遷移禁止ルール
-   - "maxConsecutiveNight2": 深夜勤3連続の禁止(2連続まで)
-   - "enforcePreceptorPairs": プリセプター同行夜勤ルール
-   - "enforceTeamBalance": 固定チームナーシング / 固定チーム均等配置ルール
-   - "requireWeekendOff": 週末休みの確保ルール
-   - "enforceNgPairs": 相性NGペアの同シフト禁止ルール
-   - "enforceSkillCoverage": スキルごとの最低配置人数必須ルール
-   - "enforceNewcomerNightLimit": 夜勤の新人人数上限ルール
-   - "enforcePrevMonthCarryover": 前月末シフトからの連続性引き継ぎルール
-   - "enforce36Agreement": 36協定（残業時間上限）の遵守ルール
-   - "preserveCurrentSchedule": 微調整モード（既存シフト表からの変更最小化）
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "set_shift_transition": 2日間のシフト並び順（前日 fromShift ➔ 翌日 toShift）を禁止("forbid")・許可("allow")・必須("require")に設定する
+   - 必須引数:
+     * fromShift: 前日のシフト記号（"D"=日勤 | "E"=準夜勤 | "N"=深夜勤、例: "E"）
+     * toShift: 翌日のシフト記号（"D"=日勤 | "E"=準夜勤 | "N"=深夜勤 | "O"=公休、例: "D"）
+     * policy: 遷移ポリシー（"forbid"=禁止 | "allow"=許可 | "require"=必須［例: 深夜勤の翌日は必ず公休にする場合は fromShift:"N", toShift:"O", policy:"require"］、例: "forbid"）
+   - 任意引数: なし
+   - 引数例: { "fromShift": "E", "toShift": "D", "policy": "forbid" } / { "fromShift": "N", "toShift": "O", "policy": "require" }
+2. "toggle_rule": 病棟全体ルールを有効(true)または無効(false)に切り替える
+   - 必須引数:
+     * ruleName: 切り替えるルール名（以下から1つ選択）
+       - "maxConsecutiveNight2": 深夜勤3連続の禁止・2連続まで（デフォルト値: true）
+       - "requireWeekendOff": 週末公休の確保ルール（デフォルト値: true）
+       - "enforcePreceptorPairs": プリセプター同行夜勤ルール（デフォルト値: false）
+       - "enforcePrevMonthCarryover": 前月末シフトからの連続性引き継ぎルール（デフォルト値: true）
+       - "enforce36Agreement": 36協定（残業時間上限）の遵守ルール（デフォルト値: true）
+       - "preserveCurrentSchedule": 微調整モード・既存シフト表からの変更最小化（デフォルト値: true）
+     * ruleEnabled: 有効化するなら true、無効化するなら false（真偽値、例: true）
+   - 任意引数: なし
+   - 引数例: { "ruleName": "enforcePreceptorPairs", "ruleEnabled": true }
 3. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
-指示: 「深夜勤の翌日は必ず公休にするルールを有効にして」
-出力: {"tools":[{"tool_name":"set_shift_transition","args":{"fromShift":"N","toShift":"O","policy":"require"}}]}
-
 指示: 「準夜勤の翌日に日勤を入れるシフト並びを禁止して」
 出力: {"tools":[{"tool_name":"set_shift_transition","args":{"fromShift":"E","toShift":"D","policy":"forbid"}}]}
 
-指示: 「連続深夜勤を禁止して1回ずつにして」
-出力: {"tools":[{"tool_name":"set_shift_transition","args":{"fromShift":"N","toShift":"N","policy":"forbid"}}]}
+指示: 「深夜勤の翌日は必ず休みにするルールを有効にして」
+出力: {"tools":[{"tool_name":"set_shift_transition","args":{"fromShift":"N","toShift":"O","policy":"require"}}]}
 
-指示: 「固定チーム均等配置を有効にして」
-出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"enforceTeamBalance","ruleEnabled":true}}]}
+指示: 「プリセプター同行夜勤ルールを有効にして」
+出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"enforcePreceptorPairs","ruleEnabled":true}}]}
 
-指示: 「週末休みの確保ルールをOFFにして」
-出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"requireWeekendOff","ruleEnabled":false}}]}
-
-指示: 「病棟全体の最大連勤を3日に変更して」
+指示: 「病棟全体の最大連勤を4日に変更して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 const WARD_CONFIG_STAGE2_PROMPT = `あなたは「ward_config (病棟全体の数値パラメータ・シフト遷移ルール・全体ルールON/OFF・夜勤平準化・特定日の必要人数)」専用のツール抽出AI (Turn 2) です。
 ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【抽出の基本原則】
-・下記ツール一覧の定義（病棟全体の数値パラメータ・シフト遷移ルール・全体ルールのON/OFF・夜勤平準化・特定日の必要人数）に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
-・他カテゴリの指示（特定スタッフ個人の休日・シフト指定など）は無視し、このカテゴリに該当する操作が1つもなければ "none" を出力してください。
+【基本ルール】
+・病棟全体の数値パラメータ・シフト遷移ルール・全体ルールON/OFF・夜勤平準化・特定日の必要人数に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
+・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
 
-【ward_config に属するツール一覧】
-1. "set_param": 病棟全体の数値設定を変更する
-   - "maxConsecutiveWorkDays": 最大連勤日数
-   - "minMonthlyDaysOff": 月間最低公休日数
-   - "minMonthlyWorkDays": 月間最低勤務日数
-   - "maxMonthlyNightShifts": 月間夜勤回数上限
-   - "weekdayDayStaff" / "weekendDayStaff" / "eveningStaff" / "nightStaff": 各シフトの必要人数
-   - "minLeadersDay" / "minLeadersEvening" / "minLeadersNight": リーダー最低人数
-   - "minIcuDay" / "minIcuEvening" / "minIcuNight": 救急・重症対応最低人数
-   - "minTeamMembersDay": 固定チームナーシング(A班・B班)の日勤最低人数
-   - "maxAnnualOvertimeHours" / "maxMonthlyOvertimeHours": 36協定の時間外上限
-2. "toggle_rule": 病棟全体ルールを有効(true)・無効(false)に切り替える
-   - "requireOffAfterNight" / "forbidDayToNight" / "forbidEveningToEvening" / "forbidNightToNight" / "forbidNightToDay" / "forbidEveningToDay" / "forbidEveningToNight" / "forbidNightToEvening" / "maxConsecutiveNight2" / "enforcePreceptorPairs" / "enforceTeamBalance" / "requireWeekendOff" / "enforceNgPairs" / "enforceSkillCoverage" / "enforceNewcomerNightLimit" / "enforcePrevMonthCarryover" / "enforce36Agreement" / "preserveCurrentSchedule"
-3. "set_shift_transition": 2日間のシフト並び順・連続可能性（前日 fromShift ➔ 翌日 toShift）を禁止("forbid")・許可("allow")・必須("require")に設定する
-4. "level_night_shifts": スキル毎・役割毎に月間の夜勤回数(準夜・深夜)を平準化（均等化）する
-   args: { "groupBy": "role_and_skill" }
-5. "add_date_coverage": 特定のカレンダー日付(day=1〜30)の病棟全体の必要人数(minStaff名以上)を変更する
-   args: { "day": 18, "shift": "D", "minStaff": 11 }
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "set_param": 病棟全体の基本数値パラメータを変更する
+   - 必須引数: paramName ("maxConsecutiveWorkDays" | "minMonthlyDaysOff" | "minMonthlyWorkDays" | "maxMonthlyNightShifts" | "weekdayDayStaff" | "weekendDayStaff" | "eveningStaff" | "nightStaff" | "maxAnnualOvertimeHours" | "maxMonthlyOvertimeHours", 例: "maxConsecutiveWorkDays"), paramValue (設定する数値、数値例: 4)
+   - 任意引数: なし
+   - 引数例: { "paramName": "maxConsecutiveWorkDays", "paramValue": 4 }
+2. "set_shift_transition": 2日間のシフト並び順（前日 fromShift ➔ 翌日 toShift）を禁止("forbid")・許可("allow")・必須("require")に設定する
+   - 必須引数: fromShift ("D" | "E" | "N", 例: "E"), toShift ("D" | "E" | "N" | "O", 例: "D"), policy ("forbid" | "allow" | "require", 例: "forbid")
+   - 任意引数: なし
+   - 引数例: { "fromShift": "E", "toShift": "D", "policy": "forbid" }
+3. "toggle_rule": 病棟全体ルールを有効(true)または無効(false)に切り替える
+   - 必須引数: ruleName ("maxConsecutiveNight2" | "requireWeekendOff" | "enforcePreceptorPairs" | "enforcePrevMonthCarryover" | "enforce36Agreement" | "preserveCurrentSchedule", 例: "enforcePreceptorPairs"), ruleEnabled (真偽値、例: true)
+   - 任意引数: なし
+   - 引数例: { "ruleName": "enforcePreceptorPairs", "ruleEnabled": true }
+4. "level_night_shifts": スキル・役割ごとに月間の夜勤回数(準夜・深夜)を平準化（均等化）する
+   - 必須引数: groupBy ("role_and_skill" | "role" | "skill" | "all", 例: "role_and_skill", デフォルト値: "role_and_skill")
+   - 任意引数: なし
+   - 引数例: { "groupBy": "role_and_skill" }
+5. "add_date_coverage": 特定のカレンダー日付(day=1〜30)における病棟全体の必要人数(minStaff名以上)を変更する
+   - 必須引数: day (対象日 1〜30、数値例: 15), shift ("D" | "E" | "N", 例: "D"), minStaff (最低必要人数、数値例: 12)
+   - 任意引数: なし
+   - 引数例: { "day": 15, "shift": "D", "minStaff": 12 }
 6. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
-指示: 「役割やスキルグループごとの月間夜勤回数の偏りをなくして均等化して」
-出力: {"tools":[{"tool_name":"level_night_shifts","args":{"groupBy":"role_and_skill"}}]}
+指示: 「病棟全体の最大連勤を4日に変更して」
+出力: {"tools":[{"tool_name":"set_param","args":{"paramName":"maxConsecutiveWorkDays","paramValue":4}}]}
 
-指示: 「深夜勤の翌日は必ず公休にするルールを有効にして」
-出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"requireOffAfterNight","ruleEnabled":true}}]}
+指示: 「プリセプター同行夜勤ルールを有効にして」
+出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"enforcePreceptorPairs","ruleEnabled":true}}]}
 
-指示: 「固定チーム均等配置を有効にして」
-出力: {"tools":[{"tool_name":"toggle_rule","args":{"ruleName":"enforceTeamBalance","ruleEnabled":true}}]}
-
-指示: 「病棟全体の最大連勤を3日に変更して」
-出力: {"tools":[{"tool_name":"set_param","args":{"paramName":"maxConsecutiveWorkDays","paramValue":3}}]}
-
-指示: 「18日の日勤の必要人数を11人以上にして」
-出力: {"tools":[{"tool_name":"add_date_coverage","args":{"day":18,"shift":"D","minStaff":11}}]}
-
-指示: 「オリエンテーションというシフトを追加して」
+指示: 「委員会というシフトを追加して」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
 
 export const SYSTEM_ACTION_TOOLS_SCHEMA = {
@@ -1262,21 +1194,25 @@ export const SYSTEM_ACTION_TOOLS_SCHEMA = {
 };
 
 const SYSTEM_ACTION_STAGE2_PROMPT = `あなたは「system_action (ルール全クリア・初期状態リセット・矛盾デモ注入・矛盾診断・再計算)」専用のツール抽出AI (Turn 2) です。
-ユーザーの指示から、実行すべきツール(tool_name)をJSONで出力してください。
+ユーザーの指示から、このカテゴリに該当するツール(tool_name)と引数(args)のリストをJSONで出力してください。
 
-【system_action に属するツール一覧】
-1. "clear_custom_rules": 追加したカスタムルールをすべて解除する
-   args: {}
+【基本ルール】
+・カスタムルールの全クリア・初期設定へのリセット・矛盾デモ注入・矛盾診断・シフト再最適化に厳密に合致する指示のみを抽出してください。
+・他カテゴリの指示は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
+
+【ツール一覧（各引数の意味・数値例・デフォルト値）】
+1. "clear_custom_rules": 追加したカスタムルールおよび追加シフト枠をすべて解除する
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 2. "reset_default": すべての設定を初期状態にリセットする
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 3. "inject_conflict_demo": 矛盾デモシナリオを注入する
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 4. "diagnose_conflict": 矛盾チェック・シフトが組めない原因の診断を行う
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 5. "solve_only": 条件を変えずにシフトを再最適化する
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 6. "none": 上記ツールの定義に合致しない場合
-   args: {}
+   - 必須引数: なし / 任意引数: なし / 引数例: {}
 
 【Few-shot 例】
 指示: 「追加したカスタム制約をすべてクリアして」
@@ -1338,7 +1274,7 @@ const STAGE2_CATEGORY_CONFIGS: Record<
 
 /**
  * Builds a concise, category-specific dynamic dictionary (active shifts, shift aliases, custom shifts,
- * registered skills, and matched nurse profiles) to inject into Turn 2 prompts so Gemini Nano has
+ * default attributes + registered skills, and matched nurse profiles) to inject into Turn 2 prompts so Gemini Nano has
  * exact domain context without polluting the static system prompt.
  */
 export function buildCategoryDynamicDictionary(
@@ -1348,14 +1284,16 @@ export function buildCategoryDynamicDictionary(
 ): string {
   const aliases = state.shiftAliases ?? createDefaultShiftAliases();
   const customShifts = state.customShiftDefs ?? [];
-  const skills = state.skillDefs ?? createDefaultSkillDefs(state.config);
+  const skills = state.skillDefs ?? createDefaultSkillDefs();
+
+  const defaultAttributeSummary = `指定可能な属性・スキル: ${ALL_STAFF_ATTRIBUTE_DEF.label}(${ALL_STAFF_ATTRIBUTE_DEF.code}), ${skills
+    .map((s) => `${s.label}(${s.code})`)
+    .join(", ")}`;
 
   const shiftEntries = [
     `O:公休`,
     `W:勤務(全出勤お任せ)`,
-    `D:日勤(日A/日B含む)`,
-    `D_A:日勤A`,
-    `D_B:日勤B`,
+    `D:日勤`,
     `EN:夜勤(準夜・深夜)`,
     `E:準夜勤`,
     `N:深夜勤`,
@@ -1377,7 +1315,7 @@ export function buildCategoryDynamicDictionary(
   const nurseLine =
     matchedNurses.length > 0
       ? `対象スタッフ候補: ${matchedNurses
-          .map((n) => `${n.id}:${n.name}(${ROLE_LABELS[n.role]})`)
+          .map((n) => `${n.id}:${n.name}(${getRoleLabel(n.role, skills)})`)
           .join(", ")}`
       : "";
 
@@ -1400,11 +1338,16 @@ export function buildCategoryDynamicDictionary(
   }
 
   if (category === "skill_and_pair") {
+    const targetShiftEntries = [
+      `D:日勤`,
+      `E:準夜勤`,
+      `N:深夜勤`,
+      `night_both:夜勤両方`,
+      ...customShifts.map((cs) => `${cs.code}:${cs.label}(${cs.shortLabel})`),
+    ];
     return [
-      `【対象シフト記号(targetShift)】 D_A:日勤Group A(日A), D_B:日勤Group B(日B), D_each_group:日勤の各グループ両方, D:日勤全体, E:準夜勤, N:深夜勤, night_both:夜勤両方`,
-      `【指定可能な属性(attribute)】 所属班: A班, B班 / 役割: 新人, 中堅, リーダー / 登録済みスキル: ${skills
-        .map((s) => `${s.label}(${s.shortLabel ?? s.code})`)
-        .join(", ")}`,
+      `【対象シフト記号(targetShift)】 ${targetShiftEntries.join(", ")}`,
+      `【指定可能な属性(attribute / target)】 ${defaultAttributeSummary}`,
       nurseLine,
     ]
       .filter(Boolean)
@@ -1412,24 +1355,16 @@ export function buildCategoryDynamicDictionary(
   }
 
   if (category === "custom_shift") {
-    return customShifts.length > 0
-      ? `【登録済み追加シフト辞書】 ${customShifts
-          .map((cs) => `${cs.label}(${cs.shortLabel}, 所属:${cs.baseShift ?? "D"})`)
-          .join(", ")}`
-      : `【登録済み追加シフト辞書】 なし`;
+    const shiftDict =
+      customShifts.length > 0
+        ? `【登録済み追加シフト辞書】 ${customShifts
+            .map((cs) => `${cs.label}(${cs.shortLabel}, 所属:${cs.baseShift ?? "D"})`)
+            .join(", ")}`
+        : `【登録済み追加シフト辞書】 なし`;
+    return [shiftDict, `【指定可能な対象属性(targetRole)】 ${defaultAttributeSummary}`].join("\n");
   }
 
   return "";
-}
-
-function getSiblingFallbackCategory(
-  category: ExecutableToolCategory
-): ExecutableToolCategory | null {
-  if (category === "staff_calendar") return "staff_contract";
-  if (category === "staff_contract") return "staff_calendar";
-  if (category === "ward_coverage_and_param") return "ward_transition_and_rule";
-  if (category === "ward_transition_and_rule") return "ward_coverage_and_param";
-  return null;
 }
 
 /**
@@ -1464,9 +1399,7 @@ export function verifyExecutionAgainstRequest(params: {
     missingRoutes.length === 0;
 
   const summaryJa = verified
-    ? repairedRoutes.length > 0
-      ? `✅ 依頼内容の整合確認OK（カテゴリ自動補完 ${repairedRoutes.length}件 ➔ 適用 ${appliedLogs.length}件）`
-      : `✅ 依頼内容の整合確認OK（計画 ${routes.length}ルート ➔ 適用 ${appliedLogs.length}件）`
+    ? `✅ 依頼内容の整合確認OK（計画 ${routes.length}ルート ➔ 適用 ${appliedLogs.length}件）`
     : `⚠️ 依頼内容の一部または全部が未反映（計画 ${routes.length}ルート / 適用 ${appliedLogs.length}件 / 未対応 ${missingRoutes.length}件）`;
 
   return {
@@ -1515,7 +1448,7 @@ function normalizeActiveShifts(
     .map((s) => String(s || "").trim())
     .filter((s) => s.length > 0)
     .map((s) => {
-      if (s === "D" || s === "D_A" || s === "D_B" || s === "E" || s === "N") return s;
+      if (s === "D" || s === "E" || s === "N") return s;
       const custom = customDefs.find(
         (d) => d.code === s || d.label === s || d.shortLabel === s
       );
@@ -1532,33 +1465,23 @@ function resolveTargetShiftsFromArg(
 ): {
   targetShift: string;
   shifts: ShiftCode[];
-} {
+} | null {
   const fromArray = normalizeActiveShifts(rawShifts, state);
   if (fromArray && fromArray.length > 0) {
     return {
       targetShift:
-        fromArray.length === 2 && fromArray.includes("D_A") && fromArray.includes("D_B")
-          ? "D_each_group"
-          : fromArray.length === 2 && fromArray.includes("E") && fromArray.includes("N")
-            ? "night_both"
-            : fromArray[0]!,
+        fromArray.length === 2 && fromArray.includes("E") && fromArray.includes("N")
+          ? "night_both"
+          : fromArray[0]!,
       shifts: fromArray,
     };
   }
-  const s = String(rawTargetShift || "D")
+  const s = String(rawTargetShift || "")
     .trim()
     .replace(/^[「『]|[」』]$/g, "")
     .replace(/シフト$/g, "")
     .trim();
-  if (/^D_A$|日A|Group\s*A|グループ\s*A|日勤\s*A/i.test(s)) {
-    return { targetShift: "D_A", shifts: ["D_A"] };
-  }
-  if (/^D_B$|日B|Group\s*B|グループ\s*B|日勤\s*B/i.test(s)) {
-    return { targetShift: "D_B", shifts: ["D_B"] };
-  }
-  if (/^D_each_group$|各グループ|各班/i.test(s)) {
-    return { targetShift: "D_each_group", shifts: ["D_A", "D_B"] };
-  }
+  if (!s) return null;
   if (/^night_both$|夜勤両方|準夜・深夜/i.test(s)) {
     return { targetShift: "night_both", shifts: ["E", "N"] };
   }
@@ -1571,23 +1494,26 @@ function resolveTargetShiftsFromArg(
   if (/^D$|^日勤$|^日$/i.test(s)) {
     return { targetShift: "D", shifts: ["D"] };
   }
-  if (s) {
-    const customDefs = state?.customShiftDefs ?? [];
-    const existing = customDefs.find(
-      (d) =>
-        d.code === s ||
-        d.label === s ||
-        d.shortLabel === s ||
-        d.label.includes(s) ||
-        s.includes(d.label)
-    );
-    if (existing) {
-      return { targetShift: existing.code, shifts: [existing.code] };
-    }
-    const inferred = inferShortLabelAndCode(s, customDefs);
-    return { targetShift: inferred.code, shifts: [inferred.code] };
+  const customDefs = state?.customShiftDefs ?? [];
+  const existing = customDefs.find(
+    (d) =>
+      d.code === s ||
+      d.label === s ||
+      d.shortLabel === s ||
+      d.label.includes(s) ||
+      s.includes(d.label)
+  );
+  if (existing) {
+    return { targetShift: existing.code, shifts: [existing.code] };
   }
-  return { targetShift: "D", shifts: ["D"] };
+  const aliases = state?.shiftAliases ?? createDefaultShiftAliases(customDefs);
+  const matchedAlias = aliases.find(
+    (al) => al.code === s || al.label === s || al.shortLabel === s
+  );
+  if (matchedAlias) {
+    return { targetShift: matchedAlias.code, shifts: [...matchedAlias.shifts] };
+  }
+  return { targetShift: s, shifts: [s as ShiftCode] };
 }
 
 function resolveShiftCodeOrAliasFromInput(
@@ -1605,8 +1531,6 @@ function resolveShiftCodeOrAliasFromInput(
     s === "O" ||
     s === "W" ||
     s === "D" ||
-    s === "D_A" ||
-    s === "D_B" ||
     s === "EN" ||
     s === "E" ||
     s === "N"
@@ -1616,8 +1540,6 @@ function resolveShiftCodeOrAliasFromInput(
   if (/^公休$|^休み$|^休$/i.test(s)) return "O";
   if (/^勤務$|^出勤$/i.test(s)) return "W";
   if (/^日勤$/i.test(s)) return "D";
-  if (/^日A$|^日勤A$/i.test(s)) return "D_A";
-  if (/^日B$|^日勤B$/i.test(s)) return "D_B";
   if (/^夜勤$|^準深$/i.test(s)) return "EN";
   if (/^準夜$|^準夜勤$/i.test(s)) return "E";
   if (/^深夜$|^深夜勤$/i.test(s)) return "N";
@@ -1650,43 +1572,100 @@ export function convertStage2ToolToOperation(
 ): ChatConstraintOperation | null {
   const name = toolCall.tool_name;
   const a = toolCall.args ?? {};
-  const defaultCustomShiftName =
-    a.shiftName || state.customShiftDefs?.[0]?.label || "新人研修";
+  const rawShiftName =
+    typeof a.shiftName === "string" && a.shiftName.trim().length > 0
+      ? a.shiftName.trim()
+      : undefined;
 
   switch (name) {
     case "add_custom_shift": {
+      if (!rawShiftName) return null;
       const baseShift: BaseShiftCode | undefined =
         a.baseShift === "D" || a.baseShift === "E" || a.baseShift === "N" || a.baseShift === "O"
           ? a.baseShift
           : undefined;
       return {
         op: "add_custom_shift",
-        shiftName: defaultCustomShiftName,
+        shiftName: rawShiftName,
         shortLabel: typeof a.shortLabel === "string" ? a.shortLabel : undefined,
         baseShift,
       };
     }
     case "add_shift_quota": {
-      const cnt = typeof a.count === "number" ? a.count : 2;
+      if (!rawShiftName) return null;
+      const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+      const rawTargetAttr =
+        typeof a.targetRole === "string" && a.targetRole.trim().length > 0
+          ? a.targetRole.trim()
+          : typeof a.attribute === "string" && a.attribute.trim().length > 0
+            ? a.attribute.trim()
+            : undefined;
+      let targetRole: string | undefined;
+      if (rawTargetAttr) {
+        const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
+        targetRole = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      }
+      const nurseNameOrId =
+        typeof a.nurseNameOrId === "string" && a.nurseNameOrId.trim().length > 0
+          ? a.nurseNameOrId.trim()
+          : undefined;
+      if (!targetRole && !nurseNameOrId) return null;
+      const minCount =
+        typeof a.minCount === "number"
+          ? a.minCount
+          : typeof a.count === "number"
+            ? a.count
+            : undefined;
+      const maxCount =
+        typeof a.maxCount === "number"
+          ? a.maxCount
+          : typeof a.count === "number"
+            ? a.count
+            : undefined;
+      if (minCount === undefined && maxCount === undefined) return null;
       return {
         op: "add_shift_quota",
-        shiftName: defaultCustomShiftName,
-        targetRole: a.targetRole || "newcomer",
-        minCount: cnt,
-        maxCount: cnt,
+        shiftName: rawShiftName,
+        nurseNameOrId,
+        targetRole,
+        attribute: targetRole,
+        minCount,
+        maxCount,
       };
     }
     case "add_shift_prerequisite": {
-      const cnt = typeof a.count === "number" ? a.count : 2;
+      if (!rawShiftName) return null;
+      const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+      const rawTargetAttr =
+        typeof a.targetRole === "string" && a.targetRole.trim().length > 0
+          ? a.targetRole.trim()
+          : typeof a.attribute === "string" && a.attribute.trim().length > 0
+            ? a.attribute.trim()
+            : undefined;
+      let targetRole: string | undefined;
+      if (rawTargetAttr) {
+        const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
+        targetRole = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      }
+      const cnt =
+        typeof a.count === "number"
+          ? a.count
+          : typeof a.prereqMinCount === "number"
+            ? a.prereqMinCount
+            : undefined;
+      if (!targetRole || cnt === undefined) return null;
+      const restrictedShifts = normalizeActiveShifts(a.restrictedShifts, state) ?? ["E", "N"];
       return {
         op: "add_shift_prerequisite",
-        shiftName: defaultCustomShiftName,
-        targetRole: a.targetRole || "newcomer",
+        shiftName: rawShiftName,
+        targetRole,
+        attribute: targetRole,
         prereqMinCount: cnt,
-        restrictedShifts: ["E", "N"],
+        restrictedShifts,
       };
     }
     case "add_shift_day_restriction": {
+      if (!rawShiftName) return null;
       const hasDateRange = typeof a.startDay === "number" || typeof a.endDay === "number";
       const rawStart =
         typeof a.startDay === "number"
@@ -1703,45 +1682,74 @@ export function convertStage2ToolToOperation(
       const allowedDays =
         a.dayRestriction === "weekend_only"
           ? [0, 6]
-          : a.dayRestriction === "weekday_only" || !hasDateRange
+          : a.dayRestriction === "weekday_only"
             ? [1, 2, 3, 4, 5]
             : undefined;
+      if (!hasDateRange && !allowedDays) return null;
       return {
         op: "add_shift_day_restriction",
-        shiftName: defaultCustomShiftName,
+        shiftName: rawShiftName,
         allowedDaysOfWeek: allowedDays,
         startDay: rawStart !== undefined ? Math.min(rawStart, rawEnd!) : undefined,
         endDay: rawEnd !== undefined ? Math.max(rawStart!, rawEnd) : undefined,
       };
     }
     case "add_daily_shift_cap": {
-      const cap =
-        typeof a.maxStaffPerDay === "number"
-          ? a.maxStaffPerDay
-          : typeof a.minStaffPerDay === "number"
+      if (!rawShiftName) return null;
+      let minStaff: number | undefined;
+      let maxStaff: number | undefined;
+      if (typeof a.staffCount === "number") {
+        const cnt = a.staffCount;
+        if (a.boundType === "exact") {
+          minStaff = cnt;
+          maxStaff = cnt;
+        } else if (a.boundType === "min") {
+          minStaff = cnt;
+        } else {
+          maxStaff = cnt;
+        }
+      } else {
+        const rawMin =
+          typeof a.minStaffPerDay === "number"
             ? a.minStaffPerDay
-            : 2;
-      const minStaff =
-        typeof a.minStaffPerDay === "number" ? a.minStaffPerDay : undefined;
-      const targetRole: NurseRole | "all" | undefined =
-        a.targetRole === "newcomer" ||
-        a.targetRole === "mid" ||
-        a.targetRole === "leader" ||
-        a.targetRole === "all"
-          ? a.targetRole
-          : undefined;
+            : typeof a.minStaff === "number"
+              ? a.minStaff
+              : undefined;
+        minStaff = rawMin !== undefined && rawMin > 0 ? rawMin : undefined;
+        maxStaff =
+          typeof a.maxStaffPerDay === "number"
+            ? a.maxStaffPerDay
+            : typeof a.maxStaff === "number"
+              ? a.maxStaff
+              : undefined;
+      }
+      if (minStaff === undefined && maxStaff === undefined) return null;
+      const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+      const rawTargetAttr =
+        typeof a.targetRole === "string" && a.targetRole.trim().length > 0
+          ? a.targetRole.trim()
+          : typeof a.attribute === "string" && a.attribute.trim().length > 0
+            ? a.attribute.trim()
+            : undefined;
+      let targetRole: string | undefined;
+      if (rawTargetAttr) {
+        const resolved = resolveAttributeCodeAndLabel(rawTargetAttr, activeSkills);
+        targetRole = resolved.isUnknownCustomSkill ? rawTargetAttr : resolved.code;
+      }
       return {
         op: "add_daily_shift_cap",
-        shiftName: defaultCustomShiftName,
+        shiftName: rawShiftName,
         minStaff,
-        maxStaff: cap,
+        maxStaff,
         targetRole,
+        attribute: targetRole,
       };
     }
     case "allow_prev_month_shift":
+      if (!rawShiftName) return null;
       return {
         op: "allow_prev_month_shift",
-        shiftName: defaultCustomShiftName,
+        shiftName: rawShiftName,
         includePrevMonth: true,
       };
     case "level_night_shifts":
@@ -1757,7 +1765,7 @@ export function convertStage2ToolToOperation(
         op: "add_ng_pair",
         nurseNameOrId: String(a.nurseA),
         nurseBNameOrId: String(a.nurseB),
-        shifts: normalizeActiveShifts(a.shifts),
+        shifts: normalizeActiveShifts(a.shifts, state),
       };
     case "add_preceptor_pair": {
       if (!a.newcomerNurse || !a.mentorNurse) return null;
@@ -1765,17 +1773,15 @@ export function convertStage2ToolToOperation(
         op: "add_preceptor_pair",
         nurseNameOrId: String(a.newcomerNurse),
         nurseBNameOrId: String(a.mentorNurse),
-        shifts: normalizeActiveShifts(a.shifts),
+        shifts: normalizeActiveShifts(a.shifts, state),
       };
     }
     case "add_skill_def": {
       if (!a.skillName) return null;
       let substitutesFor: NurseSkill | undefined;
       if (typeof a.substitutesFor === "string" && a.substitutesFor.trim()) {
-        const activeSkills = state.skillDefs ?? createDefaultSkillDefs(state.config);
+        const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
         substitutesFor = inferSkillCodeAndLabel(a.substitutesFor, activeSkills).code;
-      } else if (a.substitutesForLeader === true) {
-        substitutesFor = "leader_cap";
       }
       return {
         op: "add_skill_def",
@@ -1795,15 +1801,21 @@ export function convertStage2ToolToOperation(
     case "update_nurse_skill": {
       if (!a.skillName) return null;
       const rawTarget = String(a.target || "").trim();
-      let targetRole: NurseRole | "all" | undefined;
+      let targetRole: string | undefined;
       let nurseNameOrId: string | undefined;
       if (rawTarget) {
-        const cleanedRole = rawTarget.replace(/スタッフ|看護師|全員|層|たち/g, "").trim();
-        if (/^中堅$|^mid$/i.test(cleanedRole)) targetRole = "mid";
-        else if (/^リーダー$|^leader$/i.test(cleanedRole)) targetRole = "leader";
-        else if (/^新人$|^newcomer$/i.test(cleanedRole)) targetRole = "newcomer";
-        else if (/^全員$|^all$|^全$/i.test(rawTarget)) targetRole = "all";
-        else nurseNameOrId = rawTarget;
+        if (/^全員$|^all$|^全$/i.test(rawTarget)) {
+          targetRole = "all";
+        } else {
+          const cleanedAttr = rawTarget.replace(/スタッフ|看護師|全員|層|たち/g, "").trim();
+          const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+          const resolved = resolveAttributeCodeAndLabel(cleanedAttr || rawTarget, activeSkills);
+          if (!resolved.isUnknownCustomSkill && !resolveNurseFromText(rawTarget, state.nurses)) {
+            targetRole = resolved.code;
+          } else {
+            nurseNameOrId = rawTarget;
+          }
+        }
       }
       return {
         op: "update_nurse_skill",
@@ -1811,22 +1823,25 @@ export function convertStage2ToolToOperation(
         skillAction: a.action === "remove" ? "remove" : "add",
         nurseNameOrId,
         targetRole,
+        attribute: targetRole,
       };
     }
     case "set_staffing_rule": {
       if (!a.attribute && !a.skillName && !a.targetRole) return null;
       const rawAttr = String(a.attribute || a.skillName || a.targetRole || "all").trim();
-      const activeSkills = state.skillDefs ?? createDefaultSkillDefs(state.config);
+      const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
       const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const attrValue = resolvedAttr.isUnknownCustomSkill ? rawAttr : resolvedAttr.code;
-      const { targetShift, shifts } = resolveTargetShiftsFromArg(
+      const resolvedTarget = resolveTargetShiftsFromArg(
         a.targetShift || a.shiftName || a.shift,
         a.shifts,
         state
       );
+      if (!resolvedTarget) return null;
+      const { targetShift, shifts } = resolvedTarget;
       const minCount = typeof a.minCount === "number" ? a.minCount : undefined;
       const maxCount = typeof a.maxCount === "number" ? a.maxCount : undefined;
-      const onlyWhenShort = a.onlyWhenShort === true ? true : undefined;
+      if (minCount === undefined && maxCount === undefined) return null;
 
       return {
         op: "set_staffing_rule",
@@ -1835,7 +1850,6 @@ export function convertStage2ToolToOperation(
         attribute: attrValue,
         minCount,
         maxCount,
-        onlyWhenShort,
       };
     }
     case "set_nurse_contract": {
@@ -1856,6 +1870,13 @@ export function convertStage2ToolToOperation(
       const isMaxWorkDays = item === "maxWorkDays" || item === "月間最大勤務日数";
       const isMaxConsecDays = item === "maxConsecutiveDays" || item === "最大連勤日数";
 
+      if (
+        (isMaxNight || isMinDaysOff || isMinWorkDays || isMaxWorkDays || isMaxConsecDays) &&
+        val === undefined
+      ) {
+        return null;
+      }
+
       const forbiddenShifts: ActiveShiftCode[] | undefined =
         isNightShiftOnly
           ? ["D"]
@@ -1865,9 +1886,8 @@ export function convertStage2ToolToOperation(
               ? ["E"]
               : isAllowAll || isDayShiftOnly
                 ? []
-                : normalizeActiveShifts(a.forbiddenShifts)?.filter(
-                    (s): s is ActiveShiftCode =>
-                      s === "D" || s === "D_A" || s === "D_B" || s === "E" || s === "N"
+                : normalizeActiveShifts(a.forbiddenShifts, state)?.filter(
+                    (s): s is ActiveShiftCode => s === "D" || s === "E" || s === "N"
                   );
       return {
         op: "set_nurse_contract",
@@ -1882,7 +1902,7 @@ export function convertStage2ToolToOperation(
                 : undefined,
         maxMonthlyNightShifts:
           isMaxNight
-            ? (val ?? 0)
+            ? val
             : typeof a.maxNight === "number"
               ? a.maxNight
               : undefined,
@@ -1894,19 +1914,19 @@ export function convertStage2ToolToOperation(
               : undefined,
         minMonthlyWorkDays:
           isMinWorkDays
-            ? (val ?? 0)
+            ? val
             : typeof a.minWorkDays === "number"
               ? a.minWorkDays
               : undefined,
         maxMonthlyWorkDays:
           isMaxWorkDays
-            ? (val ?? 10)
+            ? val
             : typeof a.maxWorkDays === "number"
               ? a.maxWorkDays
               : undefined,
         maxConsecutiveWorkDays:
           isMaxConsecDays
-            ? (val ?? 3)
+            ? val
             : typeof a.maxConsecutiveDays === "number"
               ? a.maxConsecutiveDays
               : undefined,
@@ -2014,7 +2034,7 @@ export function convertStage2ToolToOperation(
       if (!a.nurseNameOrId) return null;
       const days = resolveDaysFromToolArgs(a, state.config.numDays);
       if (days.length === 0) return null;
-      const forbidShifts = normalizeActiveShifts(a.shifts) ?? ["E", "N"];
+      const forbidShifts = normalizeActiveShifts(a.shifts, state) ?? ["E", "N"];
       return {
         op: "forbid_shift",
         nurseNameOrId: String(a.nurseNameOrId),
@@ -2024,12 +2044,18 @@ export function convertStage2ToolToOperation(
       };
     }
     case "add_date_coverage":
-      if (typeof a.day !== "number") return null;
+      if (
+        typeof a.day !== "number" ||
+        typeof a.minStaff !== "number" ||
+        (a.shift !== "D" && a.shift !== "E" && a.shift !== "N")
+      ) {
+        return null;
+      }
       return {
         op: "add_date_coverage",
         day: a.day,
-        shift: a.shift || "D",
-        minStaff: typeof a.minStaff === "number" ? a.minStaff : 10,
+        shift: a.shift,
+        minStaff: a.minStaff,
       };
     case "set_param":
       if (!a.paramName || typeof a.paramValue !== "number") return null;
@@ -2251,23 +2277,26 @@ export function resolveNurseFromText(
  */
 function buildCompactStatePrompt(state: NurseSchedulingState): string {
   const { config, nurses, customRules } = state;
-  const activeSkills = state.skillDefs ?? createDefaultSkillDefs(config);
+  const activeSkills = state.skillDefs ?? createDefaultSkillDefs();
+  const transMatrix = getShiftTransitionMatrix(config);
   const sampleNurses = nurses
     .slice(0, 12)
-    .map((n) => `${n.id}:${n.name}(${n.role === "leader" ? "リーダー" : n.role === "newcomer" ? "新人" : "中堅"})`)
+    .map((n) => `${n.id}:${n.name}(${getRoleLabel(n.role, activeSkills)})`)
     .join(", ");
   const skillSummary = activeSkills
-    .map(
-      (s) =>
-        `${s.label}(${s.shortLabel}${s.substitutesFor === "leader_cap" ? ":リーダー代行可" : ""})`
-    )
+    .map((s) => {
+      const subTarget = s.substitutesFor
+        ? getSkillMeta(s.substitutesFor, activeSkills).label
+        : null;
+      return `${s.label}(${s.shortLabel}${subTarget ? `:${subTarget}代行可` : ""})`;
+    })
     .join(", ");
 
   return [
     `対象月:${config.year}年${config.month}月(1〜${config.numDays}日), 看護師:${nurses.length}名(${sampleNurses} 他)`,
     `現在の設定: 平日日勤=${config.weekdayDayStaff}名, 土日日勤=${config.weekendDayStaff}名, 準夜=${config.eveningStaff}名, 深夜=${config.nightStaff}名`,
     `最大連勤=${config.maxConsecutiveWorkDays}日, 月間最低公休=${config.minMonthlyDaysOff}日, 月間夜勤上限=${config.maxMonthlyNightShifts}回`,
-    `前月引継=${config.enforcePrevMonthCarryover ? "ON" : "OFF"}, スキル配置必須=${config.enforceSkillCoverage ? "ON" : "OFF"}, 深夜明け公休必須=${config.requireOffAfterNight ? "ON" : "OFF"}, プリセプター同行夜勤=${config.enforcePreceptorPairs ? "ON" : "OFF"}, 固定チーム均等=${config.enforceTeamBalance ? "ON" : "OFF"}, 相性NGペア禁止=${config.enforceNgPairs ? "ON" : "OFF"}, 週末公休=${config.requireWeekendOff ? "ON" : "OFF"}`,
+    `前月引継=${config.enforcePrevMonthCarryover ? "ON" : "OFF"}, スキル配置必須=${config.enforceSkillCoverage ? "ON" : "OFF"}, 深夜明け公休必須=${transMatrix.N.O === "require" ? "ON" : "OFF"}, プリセプター同行夜勤=${config.enforcePreceptorPairs ? "ON" : "OFF"}, 相性NGペア禁止=${config.enforceNgPairs ? "ON" : "OFF"}, 週末公休=${config.requireWeekendOff ? "ON" : "OFF"}`,
     `登録済みスキル定義: ${skillSummary || "なし"}`,
     `追加カスタムルール数:${customRules.filter((r) => r.enabled).length}件`,
   ].join("\n");
@@ -2738,7 +2767,11 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         const routeOps: ChatConstraintOperation[] = [];
         try {
           const catConfig = STAGE2_CATEGORY_CONFIGS[category];
-          const dynamicDict = buildCategoryDynamicDictionary(category, state, instruction);
+          const dynamicDict = buildCategoryDynamicDictionary(
+            category,
+            state,
+            `${userMessage} ${instruction}`
+          );
           const dictNote = dynamicDict ? `${dynamicDict}\n` : "";
           const historyNote =
             recentTurnHistory.length > 0
@@ -2747,8 +2780,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           const effectiveInstruction =
             activeRoutes.length > 1
               ? instruction
-              : Array.isArray(stage1.routes) && instruction && instruction !== userMessage
-                ? `${userMessage}（計画: ${instruction}）`
+              : recentTurnHistory.length > 0 && instruction && instruction !== userMessage
+                ? `${userMessage}（文脈補完: ${instruction}）`
                 : userMessage;
           const stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
           const t2Start = performance.now();
@@ -2826,29 +2859,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         const { category, instruction } = route;
         const extractedForRoute = await runTurn2CategoryExtractor(category, instruction);
 
-        // ==================== STEP 3: POST-TURN-2 VERIFICATION & SIBLING RECOVERY ====================
+        // ==================== STEP 3: POST-TURN-2 VERIFICATION ====================
         if (extractedForRoute.length === 0 && !stage2SystemIntent) {
-          let recovered = false;
-          const siblingCategory = getSiblingFallbackCategory(category);
-          if (
-            siblingCategory &&
-            !activeRoutes.some((r) => r.category === siblingCategory)
-          ) {
-            const recoveredOps = await runTurn2CategoryExtractor(
-              siblingCategory,
-              instruction
-            );
-            if (recoveredOps.length > 0) {
-              recovered = true;
-              repairedRoutes.push(
-                `${category} ➔ ${siblingCategory} ("${instruction}")`
-              );
-            }
-          }
-          if (!recovered) {
-            missingRouteLabels.push(`${category}("${instruction}")`);
-            unsupportedRouteInstructions.push(instruction);
-          }
+          missingRouteLabels.push(`${category}("${instruction}")`);
+          unsupportedRouteInstructions.push(instruction);
         }
       }
 
@@ -2894,7 +2908,12 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         // treat as unsupported/unapplicable and convey clearly why it cannot be done.
         if (previewAppliedLogs.length === 0) {
           const unresolvedNurses = operations
-            .flatMap((o) => [o.nurseNameOrId, o.nurseBNameOrId])
+            .flatMap((o) => {
+              const names: Array<string | undefined> = [];
+              if ("nurseNameOrId" in o) names.push(o.nurseNameOrId);
+              if ("nurseBNameOrId" in o) names.push(o.nurseBNameOrId);
+              return names;
+            })
             .filter((q): q is string => Boolean(q && !resolveNurseFromText(q, state.nurses)));
           const refusalMsg =
             unresolvedNurses.length > 0
@@ -3033,9 +3052,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             `1. スキル・資格の追加・削除・リーダー代行設定・スタッフへの付与:`,
             `   例: 「感染管理スキルを追加して救急の代わりになれるようにして」「小児対応スキルを追加して日勤に1名以上配置して」「緩和ケアスキルを削除して」「村上さんに感染管理スキルを付与して」`,
             `2. カスタムシフト・研修ルールの追加: 新シフトの追加、必要回数、夜勤の先行条件、曜日・期間制限、1日あたり配置人数、前月実績の算入`,
-            `   例: 「オリエンテーションを追加して、新人は3回受けるまで夜勤不可にして」「平日のみで1日最大3名まで」「前月までの受講分も含めてよい」`,
-            `3. サブシフト/グループ別の配置人数ルール・夜勤回数の平準化・ペア制限（相性NG / プリセプター同行夜勤）:`,
-            `   例: 「日勤Group Bにリーダーを2人以上にして」「役割やスキルごとに夜勤回数を均等化して」「N11とN18をNGペアにして」「プリセプター同行夜勤をONにして」`,
+            `   例: 「安全講習を追加して、新人は1回受けるまで夜勤不可にして」「院内勉強会を平日のみで1日最大2名まで」`,
+            `3. シフト別の属性配置人数ルール・夜勤回数の平準化・ペア制限（相性NG / プリセプター同行夜勤）:`,
+            `   例: 「日勤にA班を3人以上配置して」「役割やスキルごとに夜勤回数を均等化して」「N11とN18をNGペアにして」「プリセプター同行夜勤をONにして」`,
             `4. 個別スタッフの希望休・期間休職・曜日パターン・個人契約（日勤専従・夜勤専従・個人別夜勤上限・公休数）・特定日の人数変更:`,
             `   例: 「村上さんの8日を確定の休みにして」「西村さんを日勤専従にして」「福田さんの月間夜勤上限を3回にして」「18日の日勤を11人以上にして」`,
             `5. 病棟全体の基本ルール・シフト遷移マトリクス設定: 最大連勤日数、深夜明け公休必須、2日間のシフト並び順禁止、固定チームナーシング均等配置(A班/B班)、36協定上限`,
@@ -3064,7 +3083,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               `一次判定メモ: ${lastStage1Response || "ご指定の操作は本システムでは未対応です。"}`,
               ``,
               `【本システムで対応可能な機能カテゴリ】`,
-              `・スキル定義の追加/削除/代行設定、およびサブシフト・グループ別の配置人数ルール`,
+              `・スキル定義の追加/削除/代行設定、およびシフト別のスキル・属性配置人数ルール`,
               `・追加シフト（研修・委員会等）の定義、開催期間・曜日制限、1日あたり配置人数、受講回数・夜勤先行条件`,
               `・個人別の希望休・期間休職・曜日パターン、および個人別の勤務契約（日勤専従・夜勤専従・連勤上限・月間勤務日数や夜勤回数の上限/下限）`,
               `・病棟全体の必要人数、最大連勤日数、シフト遷移禁止/必須ルール、夜勤回数の平準化、矛盾診断`,
@@ -3352,41 +3371,25 @@ function inferShortLabelAndCode(
     .replace(/^[「『]|[」』]$/g, "")
     .replace(/シフト$/g, "")
     .trim();
-  const label = clean || "研修";
-
-  let shortLabel = "研";
-  let preferredCode = "T";
-  if (/新人研修|研修/.test(label)) {
-    shortLabel = "研";
-    preferredCode = "T";
-  } else if (/委員会/.test(label)) {
-    shortLabel = "委";
-    preferredCode = "C";
-  } else if (/勉強会|学習/.test(label)) {
-    shortLabel = "勉";
-    preferredCode = "S";
-  } else if (/出張|学会/.test(label)) {
-    shortLabel = "出";
-    preferredCode = "B";
-  } else if (/オリエン/.test(label)) {
-    shortLabel = "オリ";
-    preferredCode = "OR";
-  } else {
-    shortLabel = label.slice(0, 1);
-    preferredCode = `CS${existingDefs.length + 1}`;
-  }
+  const label = clean;
 
   const existing = existingDefs.find(
-    (d) => d.label === label || d.shortLabel === shortLabel || d.code === preferredCode
+    (d) => d.code === clean || d.label === label || d.shortLabel === label
   );
   if (existing) {
     return { code: existing.code, shortLabel: existing.shortLabel, label: existing.label };
   }
 
+  const shortLabel = label.slice(0, 1) || "C";
+  const preferredCode =
+    /^[A-Za-z0-9_]+$/.test(clean) && !["D", "E", "N", "O", "W", "EN"].includes(clean)
+      ? clean
+      : `CS${existingDefs.length + 1}`;
+
   let code = preferredCode;
   let seq = 1;
   while (
-    ["D", "E", "N", "O"].includes(code) ||
+    ["D", "E", "N", "O", "W", "EN"].includes(code) ||
     existingDefs.some((d) => d.code === code)
   ) {
     code = `CS${seq++}`;
@@ -3395,65 +3398,55 @@ function inferShortLabelAndCode(
   return { code, shortLabel, label };
 }
 
+function resolveExistingShiftCode(
+  rawShiftName: string | undefined,
+  existingDefs: readonly CustomShiftDef[]
+): ShiftCode | null {
+  if (!rawShiftName) return null;
+  const clean = rawShiftName
+    .trim()
+    .replace(/^[「『]|[」』]$/g, "")
+    .replace(/シフト$/g, "")
+    .trim();
+  if (!clean) return null;
+  if (clean === "D" || clean === "E" || clean === "N" || clean === "O") {
+    return clean;
+  }
+  const existing = existingDefs.find(
+    (d) =>
+      d.code === clean ||
+      d.label === clean ||
+      d.shortLabel === clean ||
+      d.label.includes(clean) ||
+      clean.includes(d.label)
+  );
+  return existing ? existing.code : null;
+}
+
 function inferSkillCodeAndLabel(
   rawSkillName: string,
   existingDefs: readonly SkillDefinition[]
-): { code: NurseSkill; shortLabel: string; label: string; defaultSubstitutesFor?: NurseSkill } {
+): { code: NurseSkill; shortLabel: string; label: string } {
   const clean = rawSkillName
     .trim()
-    .replace(/^[「『]|[」』]$/g, "")
+    .replace(/^[「『"']|[」』"']$/g, "")
+    .replace(/\([^)]*\)|（[^）]*）/g, "")
     .replace(/スキル|資格/g, "")
     .trim();
-  const label = clean || "追加スキル";
+  const label = clean;
 
-  const byExisting = existingDefs.find(
-    (d) => d.code === clean || d.label === label || d.shortLabel === label
-  );
-  if (byExisting) {
+  const byExisting = findSkillOrAttributeDef(clean, existingDefs);
+  if (byExisting && byExisting.code !== "all") {
     return {
       code: byExisting.code,
       shortLabel: byExisting.shortLabel ?? byExisting.label.slice(0, 2),
       label: byExisting.label,
-      defaultSubstitutesFor: byExisting.substitutesFor,
     };
-  }
-
-  if (/副リーダー|サブリーダー|準リーダー|リーダー代行|^sub_leader$/i.test(label)) {
-    return {
-      code: "sub_leader",
-      shortLabel: "副リ",
-      label: "副リーダー",
-      defaultSubstitutesFor: "leader_cap",
-    };
-  }
-  if (/^リーダー$|リーダー可|^leader(_cap)?$/i.test(label)) {
-    return { code: "leader_cap", shortLabel: "リ", label: "リーダー" };
-  }
-  if (/救急|ICU|\bER\b|^icu_er$/i.test(label)) {
-    return { code: "icu_er", shortLabel: "救", label: "救急・ICU" };
-  }
-  if (/呼吸器|^ventilator$/i.test(label)) {
-    return { code: "ventilator", shortLabel: "呼", label: "人工呼吸器" };
-  }
-  if (/透析/.test(label)) {
-    return { code: "dialysis", shortLabel: "透", label: "透析管理" };
-  }
-  if (/小児/.test(label)) {
-    return { code: "pediatric", shortLabel: "小", label: "小児対応" };
-  }
-  if (/認知症/.test(label)) {
-    return { code: "dementia", shortLabel: "認", label: "認知症ケア" };
-  }
-  if (/感染/.test(label)) {
-    return { code: "infection", shortLabel: "感", label: "感染管理" };
-  }
-  if (/緩和|看取り/.test(label)) {
-    return { code: "palliative", shortLabel: "緩", label: "緩和ケア" };
   }
 
   const shortLabel = label.slice(0, 2);
   let seq = existingDefs.length + 1;
-  let code = `skill_${seq}`;
+  let code = /^[a-z0-9_]+$/i.test(clean) ? clean : `skill_${seq}`;
   while (existingDefs.some((d) => d.code === code)) {
     seq++;
     code = `skill_${seq}`;
@@ -3471,74 +3464,35 @@ function resolveAttributeCodeAndLabel(
   isSkill: boolean;
   isUnknownCustomSkill: boolean;
 } {
-  const s = rawAttribute.trim();
-  if (/^team_A$|^A$|^A班$|^Group\s*A$|^グループ\s*A$|^A\s*グループ$|^属性A/i.test(s)) {
-    return {
-      code: "team_A",
-      label: "A班(Group A)",
-      shortLabel: "A班",
-      isSkill: false,
-      isUnknownCustomSkill: false,
-    };
-  }
-  if (/^team_B$|^B$|^B班$|^Group\s*B$|^グループ\s*B$|^B\s*グループ$|^属性B/i.test(s)) {
-    return {
-      code: "team_B",
-      label: "B班(Group B)",
-      shortLabel: "B班",
-      isSkill: false,
-      isUnknownCustomSkill: false,
-    };
-  }
-  if (/^newcomer$|^新人$|新人スタッフ|新人看護師/i.test(s)) {
-    return {
-      code: "newcomer",
-      label: "新人",
-      shortLabel: "新",
-      isSkill: false,
-      isUnknownCustomSkill: false,
-    };
-  }
-  if (/^mid$|^中堅$|中堅スタッフ|中堅看護師/i.test(s)) {
-    return {
-      code: "mid",
-      label: "中堅",
-      shortLabel: "中",
-      isSkill: false,
-      isUnknownCustomSkill: false,
-    };
-  }
-  if (/^all$|^全員$|^全体$/i.test(s)) {
-    return {
-      code: "all",
-      label: "全スタッフ",
-      shortLabel: "全",
-      isSkill: false,
-      isUnknownCustomSkill: false,
-    };
-  }
+  const rawTrimmed = rawAttribute
+    .trim()
+    .replace(/^[「『"']|[」』"']$/g, "")
+    .trim();
+  const s = rawTrimmed.replace(/\([^)]*\)|（[^）]*）/g, "").trim() || rawTrimmed;
 
-  const existing = existingSkillDefs.find(
-    (d) => d.code === s || d.label === s || d.shortLabel === s
-  );
-  if (existing) {
+  const matched =
+    findSkillOrAttributeDef(rawTrimmed, existingSkillDefs) ??
+    findSkillOrAttributeDef(s, existingSkillDefs);
+  if (matched) {
+    const isSkill =
+      matched.code !== "all" &&
+      ("category" in matched ? (matched.category ?? "skill") === "skill" : true);
     return {
-      code: existing.code,
-      label: existing.label,
-      shortLabel: existing.shortLabel ?? existing.label.slice(0, 2),
-      isSkill: true,
+      code: matched.code,
+      label: matched.label,
+      shortLabel: matched.shortLabel ?? matched.label.slice(0, 2),
+      isSkill,
       isUnknownCustomSkill: false,
     };
   }
 
   const inferred = inferSkillCodeAndLabel(s, existingSkillDefs);
-  const isKnownPreset = !inferred.code.startsWith("skill_");
   return {
     code: inferred.code,
     label: inferred.label,
     shortLabel: inferred.shortLabel,
     isSkill: true,
-    isUnknownCustomSkill: !isKnownPreset,
+    isUnknownCustomSkill: true,
   };
 }
 
@@ -3560,7 +3514,7 @@ export function applyChatOperationsToState(
     customRules: [...state.customRules],
     customShiftDefs: [...(state.customShiftDefs ?? [])],
     shiftAliases: [...(state.shiftAliases ?? createDefaultShiftAliases())],
-    skillDefs: [...(state.skillDefs ?? createDefaultSkillDefs(state.config))],
+    skillDefs: [...(state.skillDefs ?? createDefaultSkillDefs())],
   };
   const appliedLogs: string[] = [];
 
@@ -3576,14 +3530,15 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "add_skill_def" && op.skillName) {
-      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs(nextState.config);
-      const { code, shortLabel, label, defaultSubstitutesFor } = inferSkillCodeAndLabel(
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
+      const { code, shortLabel, label } = inferSkillCodeAndLabel(
         op.skillName,
         activeSkills
       );
+      if (!label) continue;
       const substitutesFor = op.substitutesFor
         ? inferSkillCodeAndLabel(op.substitutesFor, activeSkills).code
-        : defaultSubstitutesFor;
+        : undefined;
       const minDay = typeof op.skillMinDay === "number" ? Math.max(0, Math.round(op.skillMinDay)) : 0;
       const minEvening =
         typeof op.skillMinEvening === "number" ? Math.max(0, Math.round(op.skillMinEvening)) : 0;
@@ -3597,16 +3552,18 @@ export function applyChatOperationsToState(
         code,
         label,
         shortLabel: op.skillShortLabel?.trim() || shortLabel,
+        category: "skill",
         substitutesFor,
         minDay,
         minEvening,
         minNight,
-        builtIn: code === "leader_cap" || code === "icu_er" || code === "ventilator",
+        builtIn: false,
       };
       if (existingIdx >= 0) {
         activeSkills[existingIdx] = {
           ...activeSkills[existingIdx],
           ...newSkillDef,
+          builtIn: activeSkills[existingIdx]?.builtIn ?? false,
         };
       } else {
         activeSkills.push(newSkillDef);
@@ -3630,13 +3587,14 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "remove_skill_def" && op.skillName) {
-      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs(nextState.config);
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
       const { code, label } = inferSkillCodeAndLabel(op.skillName, activeSkills);
       const targetDef = activeSkills.find(
         (s) => s.code === code || s.label === label || s.label.includes(op.skillName!)
       );
-      const targetCode = targetDef?.code ?? code;
-      const targetLabel = targetDef?.label ?? label;
+      if (!targetDef) continue;
+      const targetCode = targetDef.code;
+      const targetLabel = targetDef.label;
 
       nextState.skillDefs = activeSkills.filter((s) => s.code !== targetCode);
       nextState.nurses = nextState.nurses.map((n) =>
@@ -3651,36 +3609,28 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "update_nurse_skill" && op.skillName) {
-      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs(nextState.config);
-      const { code, shortLabel, label, defaultSubstitutesFor } = inferSkillCodeAndLabel(
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
+      const { code, shortLabel, label } = inferSkillCodeAndLabel(
         op.skillName,
         activeSkills
       );
       if (!activeSkills.some((s) => s.code === code)) {
-        activeSkills.push({
-          code,
-          label,
-          shortLabel,
-          substitutesFor: defaultSubstitutesFor,
-          minDay: 0,
-          minEvening: 0,
-          minNight: 0,
-        });
-        nextState.skillDefs = activeSkills;
+        continue;
       }
       const action = op.skillAction === "remove" ? "remove" : "add";
       const targetNurse = op.nurseNameOrId
         ? resolveNurseFromText(op.nurseNameOrId, nextState.nurses)
         : null;
+      const targetAttr = op.attribute || op.targetRole;
       let countChanged = 0;
 
       nextState.nurses = nextState.nurses.map((n) => {
         const isMatch = targetNurse
           ? n.id === targetNurse.id
-          : op.targetRole === "all"
+          : targetAttr === "all"
             ? true
-            : op.targetRole
-              ? n.role === op.targetRole
+            : targetAttr
+              ? doesNurseMatchAttribute(n, targetAttr, activeSkills)
               : false;
         if (!isMatch) return n;
         if (action === "add" && !n.skills.includes(code)) {
@@ -3694,12 +3644,15 @@ export function applyChatOperationsToState(
         return n;
       });
 
+      const resolvedTargetMeta = targetAttr
+        ? resolveAttributeCodeAndLabel(targetAttr, activeSkills)
+        : null;
       const whoLabel = targetNurse
         ? `${targetNurse.name}(${targetNurse.id})`
-        : op.targetRole === "all"
+        : targetAttr === "all"
           ? `スタッフ全員(${countChanged}名)`
-          : op.targetRole
-            ? `${ROLE_LABELS[op.targetRole]}(${countChanged}名)`
+          : resolvedTargetMeta
+            ? `${resolvedTargetMeta.label}(${countChanged}名)`
             : `対象スタッフ(${countChanged}名)`;
       appliedLogs.push(
         `スタッフスキル変更: ${whoLabel} にスキル「${label}(${shortLabel})」を${
@@ -3710,31 +3663,22 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "set_staffing_rule") {
-      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs(nextState.config);
-      const rawAttr = op.attribute || op.skillName || op.targetRole || "all";
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
+      const rawAttr = op.attribute || op.skillName || op.targetRole;
+      if (!rawAttr) continue;
       const resolved = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
-      const { targetShift, shifts } = resolveTargetShiftsFromArg(
+      const resolvedTarget = resolveTargetShiftsFromArg(
         op.targetShift || op.shiftName || op.shift,
         op.shifts,
         nextState
       );
+      if (!resolvedTarget) continue;
+      const { shifts } = resolvedTarget;
       const minCount =
         typeof op.minCount === "number" ? Math.max(0, Math.round(op.minCount)) : undefined;
       const maxCount =
         typeof op.maxCount === "number" ? Math.max(0, Math.round(op.maxCount)) : undefined;
-      const onlyWhenShort = op.onlyWhenShort === true ? true : undefined;
-
-      if (resolved.isSkill && !activeSkills.some((s) => s.code === resolved.code)) {
-        activeSkills.push({
-          code: resolved.code,
-          label: resolved.label,
-          shortLabel: resolved.shortLabel,
-          minDay: 0,
-          minEvening: 0,
-          minNight: 0,
-        });
-        nextState.skillDefs = activeSkills;
-      }
+      if (minCount === undefined && maxCount === undefined) continue;
 
       const shiftLabels = shifts
         .map((s) => getShiftMeta(s, nextState.customShiftDefs, nextState.shiftAliases).label)
@@ -3743,9 +3687,6 @@ export function applyChatOperationsToState(
       if (typeof minCount === "number") boundParts.push(`下限${minCount}名以上`);
       if (typeof maxCount === "number") {
         boundParts.push(maxCount === 0 ? "上限0名(配置禁止)" : `上限${maxCount}名以下`);
-      }
-      if (onlyWhenShort) {
-        boundParts.push("不足時ヘルプのみ(調整済ペナルティ適用)");
       }
       const boundDesc = boundParts.length > 0 ? boundParts.join(" / ") : "配置ルール";
 
@@ -3770,7 +3711,6 @@ export function applyChatOperationsToState(
         attribute: resolved.code,
         minCount,
         maxCount,
-        onlyWhenShort,
         description: `グループ/スキル人数ルール: [${shiftLabels}] の「${resolved.label}」を ${boundDesc} に設定`,
       };
       nextState.customRules.push(rule);
@@ -3831,47 +3771,17 @@ export function applyChatOperationsToState(
           }
           if (typeof op.holidaysOff === "boolean") {
             updated.holidaysOff = op.holidaysOff || undefined;
+            if (op.holidaysOff) {
+              changes.push(op.weekdayOnly ? "土日祝休み" : "祝日休み");
+            } else {
+              nextState.customRules = nextState.customRules.filter(
+                (r) => !r.id.startsWith(`contract_hol_${targetNurse.id}_`)
+              );
+              changes.push("祝日休み解除");
+            }
           }
           return updated;
         });
-        if (op.holidaysOff === true) {
-          const holidayDays = resolveDaysBySelector(
-            nextState.config.year,
-            nextState.config.month,
-            nextState.config.numDays,
-            { kind: "pattern", holidays: "only" }
-          );
-          if (holidayDays.length > 0) {
-            const holSet = new Set(holidayDays);
-            nextState.customRules = nextState.customRules.filter(
-              (r) =>
-                !(
-                  r.kind === "pin_shift" &&
-                  r.nurseId === targetNurse.id &&
-                  r.day &&
-                  holSet.has(r.day)
-                )
-            );
-            for (const d of holidayDays) {
-              nextState.customRules.push({
-                id: `contract_hol_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
-                kind: "pin_shift",
-                enabled: true,
-                nurseId: targetNurse.id,
-                day: d,
-                shift: "O",
-                description: `${nextState.config.month}/${d}(祝): ${targetNurse.name}(${targetNurse.id}) を「公休(O)」に固定 (土日祝休み契約)`,
-              });
-            }
-          }
-          changes.push(
-            `土日祝休み(祝日:${holidayDays.map((d) => `${nextState.config.month}/${d}`).join("・")}休)`
-          );
-        } else if (op.holidaysOff === false) {
-          nextState.customRules = nextState.customRules.filter(
-            (r) => !(r.id.startsWith("contract_hol_") && r.nurseId === targetNurse.id)
-          );
-        }
         if (changes.length > 0) {
           appliedLogs.push(
             `個別勤務契約変更: ${targetNurse.name}(${targetNurse.id}) を [${changes.join(" / ")}] に設定しました`
@@ -3885,38 +3795,12 @@ export function applyChatOperationsToState(
       const from = op.fromShift;
       const to = op.toShift;
       const policy = op.transitionPolicy;
-      const forbid = policy === "forbid";
-      const require = policy === "require";
-      let desc = "";
-
-      if (from === "N" && to === "O") {
-        nextState.config.requireOffAfterNight = require || forbid;
-        desc = `「深夜勤の翌日は必ず公休にする(深→休必須)」を ${nextState.config.requireOffAfterNight ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "N" && to === "D") {
-        nextState.config.forbidNightToDay = forbid;
-        desc = `「深夜勤→翌日日勤の禁止(深→日)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "E" && to === "D") {
-        nextState.config.forbidEveningToDay = forbid;
-        desc = `「準夜勤→翌日日勤の禁止(準→日)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "E" && to === "N") {
-        nextState.config.forbidEveningToNight = forbid;
-        desc = `「準夜勤→翌日深夜勤の禁止(準→深)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "N" && to === "E") {
-        nextState.config.forbidNightToEvening = forbid;
-        desc = `「深夜勤→翌日準夜勤の禁止(深→準)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "D" && to === "N") {
-        nextState.config.forbidDayToNight = forbid;
-        desc = `「日勤→翌日深夜勤(日深夜)の禁止(日→深)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "E" && to === "E") {
-        nextState.config.forbidEveningToEvening = forbid;
-        desc = `「連続準夜勤の禁止(準→準)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      } else if (from === "N" && to === "N") {
-        nextState.config.forbidNightToNight = forbid;
-        desc = `「連続深夜勤の禁止(深→深)」を ${forbid ? "有効(ON)" : "無効(OFF)"} に変更しました`;
-      }
-      if (desc) {
-        appliedLogs.push(desc);
-      }
+      nextState.config = applyShiftTransitionToConfig(nextState.config, from, to, policy);
+      const policyLabel =
+        policy === "forbid" ? "禁止" : policy === "require" ? "必須" : "許可";
+      appliedLogs.push(
+        `シフト遷移設定: 「${SHIFT_LABELS[from]}(${from}) → 翌日${SHIFT_LABELS[to]}(${to})」を ${policyLabel} に変更しました`
+      );
       continue;
     }
 
@@ -3929,12 +3813,12 @@ export function applyChatOperationsToState(
           nurseA: nA.id,
           nurseB: nB.id,
           type: "preceptor",
+          enabled: true,
           shifts: targetShifts,
           isHard: typeof op.isHard === "boolean" ? op.isHard : undefined,
           penaltyWeight: typeof op.penaltyWeight === "number" ? op.penaltyWeight : undefined,
           reason: "チャット指示によるプリセプター指導ペア設定",
         });
-        nextState.config.enforcePreceptorPairs = true;
         appliedLogs.push(
           `プリセプター指導ペア追加: ${nA.name}(${nA.id}) × ${nB.name}(${nB.id}) の同行シフト([${targetShifts.join("/")}])を有効化しました`
         );
@@ -3961,13 +3845,15 @@ export function applyChatOperationsToState(
         maxConsecutiveWorkDays: undefined,
         forbiddenShifts: undefined,
         weekdayOnly: undefined,
+        holidaysOff: undefined,
       }));
       appliedLogs.push("追加された個別カスタム制約および追加シフト種別をすべて解除しました");
       continue;
     }
 
     if (op.op === "add_custom_shift" && (op.shiftName || op.shift)) {
-      const rawName = op.shiftName || op.shift || "新人研修";
+      const rawName = (op.shiftName || op.shift || "").trim();
+      if (!rawName) continue;
       const { code: inferredCode, shortLabel, label } = inferShortLabelAndCode(
         rawName,
         nextState.customShiftDefs
@@ -4005,7 +3891,8 @@ export function applyChatOperationsToState(
           includedInAliases,
           timeRange,
           colorClass: "shift-custom",
-          countsAsWorkDay: baseShift !== "O",
+          countsAsWorkDay:
+            typeof op.countsAsWorkDay === "boolean" ? op.countsAsWorkDay : baseShift !== "O",
           overtimeHoursPerShift: baseShift === "O" ? 0 : 0.5,
         });
         nextState.shiftAliases = createDefaultShiftAliases(nextState.customShiftDefs);
@@ -4023,42 +3910,35 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "add_shift_quota") {
-      const rawShiftName = op.shiftName || op.shift || "新人研修";
-      let shiftCode: ShiftCode = "D";
-      if (["D", "E", "N", "O"].includes(rawShiftName)) {
-        shiftCode = rawShiftName as ShiftCode;
-      } else {
-        const { code, shortLabel, label } = inferShortLabelAndCode(
-          rawShiftName,
-          nextState.customShiftDefs
-        );
-        if (!nextState.customShiftDefs.some((d) => d.code === code)) {
-          nextState.customShiftDefs.push({
-            code,
-            shortLabel,
-            label,
-            timeRange: "09:00–17:00",
-            colorClass: "shift-custom",
-            countsAsWorkDay: true,
-            overtimeHoursPerShift: 0.5,
-          });
-          appliedLogs.push(
-            `新しいシフト種別「${shortLabel}: ${label} (09:00–17:00)」を追加しました`
-          );
-        }
-        shiftCode = code;
-      }
+      const shiftCode = resolveExistingShiftCode(
+        op.shiftName || op.shift,
+        nextState.customShiftDefs
+      );
+      if (!shiftCode) continue;
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
       const nurse = op.nurseNameOrId
         ? resolveNurseFromText(op.nurseNameOrId, nextState.nurses)
         : null;
-      const targetRole: NurseRole | "all" | undefined = nurse
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
+      const rawAttr = nurse ? undefined : op.targetRole || op.attribute;
+      if (!nurse && !rawAttr) continue;
+
+      const resolvedAttr = rawAttr
+        ? resolveAttributeCodeAndLabel(rawAttr, activeSkills)
+        : null;
+      const targetRole = nurse
         ? undefined
-        : op.targetRole || "newcomer";
+        : rawAttr === "all"
+          ? "all"
+          : resolvedAttr && !resolvedAttr.isUnknownCustomSkill
+            ? resolvedAttr.code
+            : rawAttr;
 
       const minCount = typeof op.minCount === "number" ? Math.round(op.minCount) : undefined;
       const maxCount = typeof op.maxCount === "number" ? Math.round(op.maxCount) : undefined;
+      if (minCount === undefined && maxCount === undefined) continue;
+
       const countText =
         minCount !== undefined && maxCount !== undefined && minCount === maxCount
           ? `ちょうど${minCount}回`
@@ -4066,15 +3946,13 @@ export function applyChatOperationsToState(
             ? `${minCount}〜${maxCount}回`
             : minCount !== undefined
               ? `${minCount}回以上`
-              : maxCount !== undefined
-                ? `${maxCount}回以下`
-                : "2回";
+              : `${maxCount}回以下`;
 
       const targetLabel = nurse
         ? `${nurse.name}(${nurse.id})`
         : targetRole === "all"
           ? "スタッフ全員"
-          : `${ROLE_LABELS[targetRole ?? "newcomer"]}全員`;
+          : `${resolvedAttr?.label ?? getRoleLabel(String(targetRole), activeSkills)}全員`;
 
       // Replace any previous quota rule for the same target and shift
       nextState.customRules = nextState.customRules.filter(
@@ -4082,7 +3960,7 @@ export function applyChatOperationsToState(
           !(
             r.kind === "shift_count_quota" &&
             r.shift === shiftCode &&
-            r.targetRole === targetRole &&
+            (r.targetRole || r.attribute) === targetRole &&
             r.nurseId === nurse?.id
           )
       );
@@ -4093,9 +3971,10 @@ export function applyChatOperationsToState(
         enabled: true,
         nurseId: nurse?.id,
         targetRole,
+        attribute: targetRole,
         shift: shiftCode,
-        minCount: minCount ?? (maxCount === undefined ? 2 : undefined),
-        maxCount: maxCount ?? (minCount === undefined ? 2 : undefined),
+        minCount,
+        maxCount,
         description: `${targetLabel}は「${meta.label}」を月${countText}取得する`,
       };
       nextState.customRules.push(rule);
@@ -4104,35 +3983,11 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "add_shift_day_restriction") {
-      const rawShiftName =
-        op.shiftName ||
-        op.shift ||
-        nextState.customShiftDefs[0]?.label ||
-        "新人研修";
-      let shiftCode: ShiftCode = "D";
-      if (["D", "E", "N", "O"].includes(rawShiftName)) {
-        shiftCode = rawShiftName as ShiftCode;
-      } else {
-        const { code, shortLabel, label } = inferShortLabelAndCode(
-          rawShiftName,
-          nextState.customShiftDefs
-        );
-        if (!nextState.customShiftDefs.some((d) => d.code === code)) {
-          nextState.customShiftDefs.push({
-            code,
-            shortLabel,
-            label,
-            timeRange: "09:00–17:00",
-            colorClass: "shift-custom",
-            countsAsWorkDay: true,
-            overtimeHoursPerShift: 0.5,
-          });
-          appliedLogs.push(
-            `新しいシフト種別「${shortLabel}: ${label} (09:00–17:00)」を追加しました`
-          );
-        }
-        shiftCode = code;
-      }
+      const shiftCode = resolveExistingShiftCode(
+        op.shiftName || op.shift,
+        nextState.customShiftDefs
+      );
+      if (!shiftCode) continue;
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
       const hasDateBounds =
@@ -4148,9 +4003,9 @@ export function applyChatOperationsToState(
       const allowedDays =
         op.allowedDaysOfWeek && op.allowedDaysOfWeek.length > 0
           ? op.allowedDaysOfWeek
-          : !hasDateBounds
-            ? [1, 2, 3, 4, 5]
-            : undefined;
+          : undefined;
+      if (!hasDateBounds && !allowedDays) continue;
+
       const dowNames = ["日", "月", "火", "水", "木", "金", "土"];
       const descParts: string[] = [];
       if (startDay !== undefined || endDay !== undefined) {
@@ -4173,7 +4028,7 @@ export function applyChatOperationsToState(
             : `${allowedDays.map((d) => `${dowNames[d]}曜`).join("・")}のみ`
         );
       }
-      const restrictionLabel = descParts.join("・") || "平日(月〜金)のみ";
+      const restrictionLabel = descParts.join("・");
 
       nextState.customRules = nextState.customRules.filter(
         (r) => !(r.kind === "shift_day_restriction" && r.shift === shiftCode)
@@ -4195,58 +4050,45 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "add_shift_prerequisite") {
-      const rawShiftName =
-        op.shiftName ||
-        op.prereqShift ||
-        op.shift ||
-        nextState.customShiftDefs[0]?.label ||
-        "新人研修";
-      let prereqCode: ShiftCode = "T";
-      if (["D", "E", "N", "O"].includes(rawShiftName)) {
-        prereqCode = rawShiftName as ShiftCode;
-      } else {
-        const { code, shortLabel, label } = inferShortLabelAndCode(
-          rawShiftName,
-          nextState.customShiftDefs
-        );
-        if (!nextState.customShiftDefs.some((d) => d.code === code)) {
-          nextState.customShiftDefs.push({
-            code,
-            shortLabel,
-            label,
-            timeRange: "09:00–17:00",
-            colorClass: "shift-custom",
-            countsAsWorkDay: true,
-            overtimeHoursPerShift: 0.5,
-          });
-          appliedLogs.push(
-            `新しいシフト種別「${shortLabel}: ${label} (09:00–17:00)」を追加しました`
-          );
-        }
-        prereqCode = code;
-      }
+      const prereqCode = resolveExistingShiftCode(
+        op.shiftName || op.prereqShift || op.shift,
+        nextState.customShiftDefs
+      );
+      if (!prereqCode) continue;
 
       const meta = getShiftMeta(prereqCode, nextState.customShiftDefs);
-      const targetRole: NurseRole | "all" = op.targetRole || "newcomer";
-      const kReq =
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
+      const rawAttr = op.targetRole || op.attribute;
+      const rawK =
         typeof op.prereqMinCount === "number"
-          ? Math.max(1, Math.round(op.prereqMinCount))
+          ? op.prereqMinCount
           : typeof op.minCount === "number"
-            ? Math.max(1, Math.round(op.minCount))
-            : 2;
+            ? op.minCount
+            : undefined;
+      if (!rawAttr || rawK === undefined) continue;
+      const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
+      const targetRole =
+        rawAttr === "all"
+          ? "all"
+          : !resolvedAttr.isUnknownCustomSkill
+            ? resolvedAttr.code
+            : rawAttr;
+      const kReq = Math.max(1, Math.round(rawK));
       const restricted: ShiftCode[] =
         op.restrictedShifts && op.restrictedShifts.length > 0
           ? op.restrictedShifts
           : ["E", "N"];
       const targetLabel =
-        targetRole === "all" ? "スタッフ全員" : `${ROLE_LABELS[targetRole]}全員`;
+        targetRole === "all"
+          ? "スタッフ全員"
+          : `${resolvedAttr.label || getRoleLabel(targetRole, activeSkills)}全員`;
 
       nextState.customRules = nextState.customRules.filter(
         (r) =>
           !(
             r.kind === "shift_prerequisite" &&
             r.prereqShift === prereqCode &&
-            r.targetRole === targetRole
+            (r.targetRole || r.attribute) === targetRole
           )
       );
 
@@ -4255,6 +4097,7 @@ export function applyChatOperationsToState(
         kind: "shift_prerequisite",
         enabled: true,
         targetRole,
+        attribute: targetRole,
         prereqShift: prereqCode,
         prereqMinCount: kReq,
         restrictedShifts: restricted,
@@ -4266,44 +4109,34 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "add_daily_shift_cap") {
-      const rawShiftName =
-        op.shiftName ||
-        op.shift ||
-        nextState.customShiftDefs[0]?.label ||
-        "新人研修";
-      let shiftCode: ShiftCode = "T";
-      if (["D", "E", "N", "O"].includes(rawShiftName)) {
-        shiftCode = rawShiftName as ShiftCode;
-      } else {
-        const { code, shortLabel, label } = inferShortLabelAndCode(
-          rawShiftName,
-          nextState.customShiftDefs
-        );
-        if (!nextState.customShiftDefs.some((d) => d.code === code)) {
-          nextState.customShiftDefs.push({
-            code,
-            shortLabel,
-            label,
-            timeRange: "09:00–17:00",
-            colorClass: "shift-custom",
-            countsAsWorkDay: true,
-            overtimeHoursPerShift: 0.5,
-          });
-          appliedLogs.push(
-            `新しいシフト種別「${shortLabel}: ${label} (09:00–17:00)」を追加しました`
-          );
-        }
-        shiftCode = code;
-      }
+      const shiftCode = resolveExistingShiftCode(
+        op.shiftName || op.shift,
+        nextState.customShiftDefs
+      );
+      if (!shiftCode) continue;
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
       const maxStaff =
-        typeof op.maxStaff === "number" ? Math.max(1, Math.round(op.maxStaff)) : 2;
+        typeof op.maxStaff === "number" ? Math.max(0, Math.round(op.maxStaff)) : undefined;
       const minStaff =
         typeof op.minStaff === "number" ? Math.max(0, Math.round(op.minStaff)) : undefined;
-      const targetRole = op.targetRole;
+      if (minStaff === undefined && maxStaff === undefined) continue;
+      const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
+      const rawAttr = op.targetRole || op.attribute;
+      const resolvedAttr = rawAttr
+        ? resolveAttributeCodeAndLabel(rawAttr, activeSkills)
+        : null;
+      const targetRole = !rawAttr
+        ? undefined
+        : rawAttr === "all"
+          ? "all"
+          : resolvedAttr && !resolvedAttr.isUnknownCustomSkill
+            ? resolvedAttr.code
+            : rawAttr;
       const rolePrefix =
-        targetRole && targetRole !== "all" ? `${ROLE_LABELS[targetRole]}` : "";
+        targetRole && targetRole !== "all"
+          ? `${resolvedAttr?.label ?? getRoleLabel(targetRole, activeSkills)}`
+          : "";
 
       nextState.customRules = nextState.customRules.filter(
         (r) => !(r.kind === "daily_shift_cap" && r.shift === shiftCode)
@@ -4311,9 +4144,11 @@ export function applyChatOperationsToState(
 
       const desc =
         typeof minStaff === "number" && minStaff > 0
-          ? minStaff === maxStaff
+          ? maxStaff !== undefined && minStaff === maxStaff
             ? `1日あたり配置人数ルール: 「${meta.label}」に毎日${rolePrefix}${maxStaff}名をアサイン`
-            : `1日あたり配置人数ルール: 「${meta.label}」に毎日${rolePrefix}${minStaff}〜${maxStaff}名を配置`
+            : maxStaff !== undefined
+              ? `1日あたり配置人数ルール: 「${meta.label}」に毎日${rolePrefix}${minStaff}〜${maxStaff}名を配置`
+              : `1日あたり配置人数ルール: 「${meta.label}」に毎日${rolePrefix}${minStaff}名以上を配置`
           : `1日あたり人数上限ルール: 「${meta.label}」は1日に${rolePrefix}最大${maxStaff}名まで`;
 
       const rule: CustomConstraintRule = {
@@ -4322,6 +4157,7 @@ export function applyChatOperationsToState(
         enabled: true,
         shift: shiftCode,
         targetRole,
+        attribute: targetRole,
         minStaff,
         maxStaff,
         description: desc,
@@ -4332,35 +4168,11 @@ export function applyChatOperationsToState(
     }
 
     if (op.op === "allow_prev_month_shift") {
-      const rawShiftName =
-        op.shiftName ||
-        op.shift ||
-        nextState.customShiftDefs[0]?.label ||
-        "新人研修";
-      let shiftCode: ShiftCode = "T";
-      if (["D", "E", "N", "O"].includes(rawShiftName)) {
-        shiftCode = rawShiftName as ShiftCode;
-      } else {
-        const { code, shortLabel, label } = inferShortLabelAndCode(
-          rawShiftName,
-          nextState.customShiftDefs
-        );
-        if (!nextState.customShiftDefs.some((d) => d.code === code)) {
-          nextState.customShiftDefs.push({
-            code,
-            shortLabel,
-            label,
-            timeRange: "09:00–17:00",
-            colorClass: "shift-custom",
-            countsAsWorkDay: true,
-            overtimeHoursPerShift: 0.5,
-          });
-          appliedLogs.push(
-            `新しいシフト種別「${shortLabel}: ${label} (09:00–17:00)」を追加しました`
-          );
-        }
-        shiftCode = code;
-      }
+      const shiftCode = resolveExistingShiftCode(
+        op.shiftName || op.shift,
+        nextState.customShiftDefs
+      );
+      if (!shiftCode) continue;
 
       const meta = getShiftMeta(shiftCode, nextState.customShiftDefs);
       nextState.customRules = nextState.customRules.map((r) => {
@@ -4415,27 +4227,6 @@ export function applyChatOperationsToState(
         appliedLogs.push(`スタッフ人数を ${clamped}名 に変更し、プロフィール・前月シフト・希望を再生成しました`);
       } else {
         (nextState.config as any)[op.paramName] = val;
-        if (nextState.skillDefs) {
-          nextState.skillDefs = nextState.skillDefs.map((s) => {
-            if (s.code === "leader_cap") {
-              return {
-                ...s,
-                minDay: nextState.config.minLeadersDay,
-                minEvening: nextState.config.minLeadersEvening,
-                minNight: nextState.config.minLeadersNight,
-              };
-            }
-            if (s.code === "icu_er") {
-              return {
-                ...s,
-                minDay: nextState.config.minIcuDay,
-                minEvening: nextState.config.minIcuEvening,
-                minNight: nextState.config.minIcuNight,
-              };
-            }
-            return s;
-          });
-        }
         const paramLabels: Record<string, string> = {
           weekdayDayStaff: "平日・日勤の必要人数",
           weekendDayStaff: "土日・日勤の必要人数",
@@ -4445,14 +4236,6 @@ export function applyChatOperationsToState(
           minMonthlyDaysOff: "月間最低公休日数",
           minMonthlyWorkDays: "月間最低勤務日数",
           maxMonthlyNightShifts: "月間夜勤(準夜+深夜)上限回数",
-          minLeadersDay: "日勤リーダー最低人数",
-          minLeadersEvening: "準夜勤リーダー最低人数",
-          minLeadersNight: "深夜勤リーダー最低人数",
-          minIcuDay: "日勤 救急・ICUスキル最低人数",
-          minIcuEvening: "準夜勤 救急・ICUスキル最低人数",
-          minIcuNight: "深夜勤 救急・ICUスキル最低人数",
-          minTeamMembersDay: "日勤の各チーム(A班・B班)最低人数",
-          maxNewcomersNight: "夜勤帯の新人上限人数",
           maxMonthlyOvertimeHours: "36協定 当月時間外労働上限(h)",
           maxAnnualOvertimeHours: "36協定 年間(12ヶ月)時間外労働上限(h)",
         };
@@ -4464,20 +4247,10 @@ export function applyChatOperationsToState(
     if (op.op === "toggle_rule" && op.ruleName && typeof op.ruleEnabled === "boolean") {
       (nextState.config as any)[op.ruleName] = op.ruleEnabled;
       const ruleLabels: Record<string, string> = {
-        forbidNightToDay: "深夜勤→翌日日勤の禁止",
-        forbidEveningToDay: "準夜勤→翌日日勤の禁止",
-        forbidEveningToNight: "準夜勤→翌日深夜勤の禁止",
-        forbidNightToEvening: "深夜勤→翌日準夜勤の禁止",
-        forbidDayToNight: "日勤→翌日深夜勤(日深夜)の禁止",
-        forbidEveningToEvening: "連続準夜勤(準→準)の禁止",
-        forbidNightToNight: "連続深夜勤(深→深)の禁止",
         maxConsecutiveNight2: "深夜勤3連続の禁止(2連続まで)",
-        requireOffAfterNight: "深夜勤の翌日は必ず公休にする(連続深夜勤禁止)",
         enforcePrevMonthCarryover: "前月末シフトからの連続性・連勤引き継ぎ",
-        enforceSkillCoverage: "スキルごとの最低配置人数必須ルール",
-        enforceNewcomerNightLimit: "準夜・深夜の新人人数上限ルール",
+        enforceSkillCoverage: "スキル・属性ごとの配置人数ルール",
         enforcePreceptorPairs: "プリセプター同行夜勤(新人の夜勤時に指導者も同シフト配置)",
-        enforceTeamBalance: "固定チームナーシング均等配置(日勤にA班・B班それぞれ最低人数確保)",
         requireWeekendOff: "週末(土日)最低2日公休確保ルール",
         enforceNgPairs: "相性NGペアの同シフト回避ルール",
         enforceHardRequests: "確定希望休(ハード制約)の厳守",
@@ -4511,17 +4284,13 @@ export function applyChatOperationsToState(
               ? "勤務(シフトお任せ)"
               : shift === "D"
                 ? "日勤(D)"
-                : shift === "D_A"
-                  ? "日勤A(日A)"
-                  : shift === "D_B"
-                    ? "日勤B(日B)"
-                    : shift === "EN"
-                      ? "夜勤(準夜・深夜)"
-                      : shift === "E"
-                        ? "準夜勤(E)"
-                        : shift === "N"
-                          ? "深夜勤(N)"
-                          : `${customOrAliasMeta.label}(${customOrAliasMeta.shortLabel})`;
+                : shift === "EN"
+                  ? "夜勤(準夜・深夜)"
+                  : shift === "E"
+                    ? "準夜勤(E)"
+                    : shift === "N"
+                      ? "深夜勤(N)"
+                      : `${customOrAliasMeta.label}(${customOrAliasMeta.shortLabel})`;
         const reasonLabel = op.reason || "チャット指示";
         if (isHard) {
           // Remove any existing pin_shift rules for the same nurse on those days so re-pinning replaces cleanly
@@ -4672,6 +4441,14 @@ export function applyChatOperationsToState(
                 targetShifts.includes("N")
               ? "同夜勤(準夜・深夜)"
               : `[${targetShifts.join("/")}] シフト`;
+        nextState.customRules = nextState.customRules.filter(
+          (r) =>
+            !(
+              r.kind === "ng_pair_custom" &&
+              ((r.nurseId === nA.id && r.nurseBId === nB.id) ||
+                (r.nurseId === nB.id && r.nurseBId === nA.id))
+            )
+        );
         const rule: CustomConstraintRule = {
           id: `chat_ng_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           kind: "ng_pair_custom",

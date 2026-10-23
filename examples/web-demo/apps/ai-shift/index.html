@@ -152,21 +152,21 @@
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="シフトの種類に新人研修を追加して、新人は新人研修を2回受けないと夜勤ができない。研修は平日のみにして"
+              data-prompt="『院内勉強会』という日勤扱いのシフト枠を作って、平日に1日2名まで入れるようにして"
             >
-              🎓 新人研修(平日のみ)を追加し、2回受講後のみ夜勤可にする
+              🎓 院内勉強会シフト(平日のみ・1日2名まで)を追加する
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="スキルを追加したい。副リーダー。リーダーの代わりになれる。"
+              data-prompt="『特定行為研修修了』スキルを登録して、救急・ICUの代わりになれるようにして"
             >
-              🎖️ スキル追加：副リーダー（リーダー代行可）
+              🎖️ スキル追加：特定行為研修修了（救急・ICU代行可）
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="スキル毎に、夜勤の数を平準化したい"
+              data-prompt="役割やスキルグループごとの月間夜勤回数の偏りをなくして均等化して"
             >
               ⚖️ スキル・役割ごとに夜勤回数を平準化する
             </button>
@@ -605,7 +605,7 @@
                 <h3>🔄 3. 前月引き継ぎ ＆ シフト遷移マトリクス</h3>
               </div>
               <p class="constraint-card-desc">
-                前日シフト（行）から翌日シフト（列）への遷移ルールです。マトリクスのセルをクリックすると「○ 許可 / ✕ 禁止 / ◎ 必須」を直接切り替えられます。
+                前日シフト（行）から翌日シフト（列）への2日間の遷移ルールです。マトリクスのセルをクリックすると「○ 許可 / ✕ 禁止 / ◎ 必須」を直接切り替えられます。
               </p>
               <div id="shift-transition-matrix" class="transition-matrix-wrap"></div>
               <div class="constraint-toggles-list">
@@ -614,53 +614,28 @@
                   <span><strong>前月末のシフト・連勤日数を引き継ぐ</strong>（月初の連勤超過や深夜明け日勤を防止）</span>
                 </label>
                 <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-forbidNightToDay" checked />
-                  <span>深夜勤 → 翌日勤（<code>深 → 日</code>）を禁止</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-forbidEveningToDay" checked />
-                  <span>準夜勤 → 翌日勤（<code>準 → 日</code>）を禁止</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-forbidEveningToNight" checked />
-                  <span>準夜勤 → 翌深夜勤（<code>準 → 深</code>）を禁止</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-forbidNightToEvening" checked />
-                  <span>深夜勤 → 翌準夜勤（<code>深 → 準</code>）を禁止</span>
-                </label>
-                <label class="checkbox-row">
                   <input type="checkbox" id="cfg-forbidThreeConsecutiveNights" checked />
                   <span>深夜勤の3日連続（<code>深 → 深 → 深</code>）を禁止</span>
-                </label>
-                <label class="checkbox-row highlight-row">
-                  <input type="checkbox" id="cfg-requireOffAfterNight" />
-                  <span><strong>深夜勤の翌日は必ず公休にする</strong>（<code>深 → 休</code> を強制・連続深夜勤を禁止）</span>
                 </label>
               </div>
             </div>
 
-            <!-- Card 4: Skill & Leader Mix -->
+            <!-- Card 4: Skill & Pair Rules -->
             <div class="constraint-card">
               <div class="constraint-card-header">
-                <h3>🎓 4. リーダー・救急配置・チーム均等・プリセプター同行</h3>
+                <h3>🎓 4. スキル・属性配置 ＆ ペア・週末・希望休ルール</h3>
               </div>
+              <p class="constraint-card-desc">
+                スキル・属性ごとの日別下限・上限人数の適用有無、プリセプター同行、相性NGペア、週末公休、確定希望休の全体ルールです。（各スキル・役割・班の下限・上限人数は下の「5. スキル・属性定義」で一括設定できます）
+              </p>
               <div class="constraint-toggles-list">
-                <label class="checkbox-row">
+                <label class="checkbox-row highlight-row">
                   <input type="checkbox" id="cfg-enforceSkillCoverage" checked />
-                  <span>各シフトにリーダー資格者（代行スキル含む）・救急対応者を必須配置する</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-enforceNewcomerNightLimit" checked />
-                  <span>準夜勤・深夜勤の新人配置を上限以下に制限する</span>
+                  <span><strong>各シフトのスキル・属性別 配置人数ルール（下限・上限）を有効にする</strong></span>
                 </label>
                 <label class="checkbox-row highlight-row">
                   <input type="checkbox" id="cfg-enforcePreceptorPairs" />
                   <span><strong>プリセプター同行夜勤</strong>（新人の準夜・深夜時に指導ペアの先輩も同シフト配置）</span>
-                </label>
-                <label class="checkbox-row highlight-row">
-                  <input type="checkbox" id="cfg-enforceTeamBalance" />
-                  <span><strong>固定チームナーシング均等配置</strong>（日勤にA班・B班それぞれ最低人数以上を配置）</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceNgPairs" checked />
@@ -675,50 +650,16 @@
                   <span>スタッフの確定希望休を厳守する</span>
                 </label>
               </div>
-              <div class="constraint-form-grid">
-                <label class="form-field">
-                  <span>日勤 リーダー最低数</span>
-                  <input type="number" id="cfg-minLeadersDay" min="0" max="6" value="2" />
-                </label>
-                <label class="form-field">
-                  <span>準夜 リーダー最低数</span>
-                  <input type="number" id="cfg-minLeadersEvening" min="0" max="4" value="1" />
-                </label>
-                <label class="form-field">
-                  <span>深夜 リーダー最低数</span>
-                  <input type="number" id="cfg-minLeadersNight" min="0" max="4" value="1" />
-                </label>
-                <label class="form-field">
-                  <span>日勤 救急(ICU)最低数</span>
-                  <input type="number" id="cfg-minIcuDay" min="0" max="6" value="2" />
-                </label>
-                <label class="form-field">
-                  <span>準夜 救急(ICU)最低数</span>
-                  <input type="number" id="cfg-minIcuEvening" min="0" max="4" value="1" />
-                </label>
-                <label class="form-field">
-                  <span>深夜 救急(ICU)最低数</span>
-                  <input type="number" id="cfg-minIcuNight" min="0" max="4" value="1" />
-                </label>
-                <label class="form-field">
-                  <span>夜勤 新人上限人数</span>
-                  <input type="number" id="cfg-maxNewcomersNight" min="0" max="4" value="1" />
-                </label>
-                <label class="form-field">
-                  <span>日勤 A/B各班最低数</span>
-                  <input type="number" id="cfg-minTeamMembersDay" min="1" max="8" value="3" />
-                </label>
-              </div>
             </div>
           </div>
 
-          <!-- Card 5: Dynamic Skill Definitions Management (Add / Remove / Substitute Skills) -->
+          <!-- Card 5: Unified Skill, Role & Group Definitions Management -->
           <div class="custom-rules-card" style="margin-top: 1rem;">
             <div class="custom-rules-header">
               <div>
-                <h3>🎖️ 5. スキル・資格定義の追加・削除・リーダー代行設定</h3>
+                <h3>🎖️ 5. スキル・役割・グループ定義 ＆ 各シフト配置人数（下限・上限）</h3>
                 <p class="constraint-card-desc">
-                  病棟独自のスキル（例：「副リーダー」「透析管理」「小児対応」など）を追加・削除できます。「リーダーの代行可」に設定したスキル保有者は、各シフトのリーダー必須人数にカウントされます。
+                  スキル・資格（「リーダー」「救急・ICU」「副リーダー」等）や役割・班属性（「新人」「A班」「B班」等）の定義と、各シフト帯（日勤・準夜・深夜）の最低配置人数・上限人数を一元管理できます。
                 </p>
               </div>
             </div>
@@ -1023,10 +964,8 @@
                 <select id="cell-pattern-shift" class="toolbar-select">
                   <option value="O">休 (公休)</option>
                   <option value="W">勤 (出勤お任せ: 全勤務)</option>
-                  <option value="D">日 (日勤お任せ: 日A/日B)</option>
+                  <option value="D">日 (日勤)</option>
                   <option value="EN">夜 (夜勤お任せ: 準/深)</option>
-                  <option value="D_A">日A (日勤A)</option>
-                  <option value="D_B">日B (日勤B)</option>
                   <option value="E">準 (準夜勤)</option>
                   <option value="N">深 (深夜勤)</option>
                 </select>

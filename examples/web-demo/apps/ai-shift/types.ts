@@ -8,18 +8,16 @@ export type BaseShiftCode = (typeof BASE_SHIFT_CODES)[number];
 /**
  * Built-in shift & shift-group codes:
  * - "D", "E", "N", "O": base ODEN shifts
- * - "D_A", "D_B": day shift sub-groups (Group A / Group B)
- * - "W": Work shift group (勤務全般 = D | D_A | D_B | E | N | working custom shifts)
+ * - "W": Work shift group (勤務全般 = D | E | N | working custom shifts)
  * - "EN": Night shift group (夜勤全般 = E | N | night custom shifts)
  */
-export type BuiltInShiftCode = BaseShiftCode | "D_A" | "D_B" | "W" | "EN";
+export type BuiltInShiftCode = BaseShiftCode | "W" | "EN";
 /**
- * ShiftCode supports standard ODEN codes ("D" | "E" | "N" | "O"), built-in Day shift
- * sub-groups ("D_A" for 日A / Group A, "D_B" for 日B / Group B), shift groups ("W" for 勤務,
+ * ShiftCode supports standard ODEN codes ("D" | "E" | "N" | "O"), shift groups ("W" for 勤務,
  * "EN" for 夜勤), as well as dynamically added custom shift codes (e.g. "T" for 新人研修).
  */
 export type ShiftCode = BuiltInShiftCode | (string & {});
-export type ActiveShiftCode = "D" | "D_A" | "D_B" | "E" | "N";
+export type ActiveShiftCode = "D" | "E" | "N";
 
 export interface ShiftMetaInfo {
   code: ShiftCode;
@@ -70,22 +68,6 @@ export const SHIFT_META: Record<BuiltInShiftCode, ShiftMetaInfo> = {
     colorClass: "shift-D",
     colorKey: "D",
   },
-  D_A: {
-    code: "D_A",
-    label: "日勤A (Group A)",
-    shortLabel: "日A",
-    timeRange: "08:30–17:00",
-    colorClass: "shift-D_A",
-    colorKey: "D_A",
-  },
-  D_B: {
-    code: "D_B",
-    label: "日勤B (Group B)",
-    shortLabel: "日B",
-    timeRange: "08:30–17:00",
-    colorClass: "shift-D_B",
-    colorKey: "D_B",
-  },
   E: {
     code: "E",
     label: "準夜勤 (Evening)",
@@ -128,15 +110,20 @@ export const SHIFT_META: Record<BuiltInShiftCode, ShiftMetaInfo> = {
   },
 };
 
-export function isDaySubgroupShift(code: ShiftCode): boolean {
-  return code === "D" || code === "D_A" || code === "D_B";
-}
+export const SHIFT_LABELS: Record<BuiltInShiftCode, string> = {
+  D: SHIFT_META.D.label,
+  E: SHIFT_META.E.label,
+  N: SHIFT_META.N.label,
+  O: SHIFT_META.O.label,
+  W: SHIFT_META.W.label,
+  EN: SHIFT_META.EN.label,
+};
 
 export function getBaseOdenShift(
   code: ShiftCode,
   customShiftDefs?: readonly CustomShiftDef[]
 ): BaseShiftCode {
-  if (code === "D" || code === "D_A" || code === "D_B" || code === "W") return "D";
+  if (code === "D" || code === "W") return "D";
   if (code === "E" || code === "EN") return "E";
   if (code === "N") return "N";
   if (code === "O") return "O";
@@ -176,7 +163,7 @@ export function createDefaultShiftAliases(
       code: "W",
       label: "勤務 (シフトお任せ)",
       shortLabel: "勤",
-      shifts: ["D", "D_A", "D_B", "E", "N", ...customWorkCodes],
+      shifts: ["D", "E", "N", ...customWorkCodes],
       timeRange: "出勤枠(日/準/深)",
       colorClass: "shift-D",
       builtIn: true,
@@ -194,7 +181,7 @@ export function createDefaultShiftAliases(
       code: "D",
       label: "日勤 (Day)",
       shortLabel: "日",
-      shifts: ["D", "D_A", "D_B", ...customDayCodes],
+      shifts: ["D", ...customDayCodes],
       timeRange: "08:30–17:00",
       colorClass: "shift-D",
       builtIn: true,
@@ -376,78 +363,27 @@ export function resolveDaysBySelector(
 }
 
 /**
- * Resolves a calendar pattern (either a structured spec or a Japanese pattern string
- * such as "土日", "土日祝", "祝日", "平日", "水・金", "月曜・木曜")
+ * Resolves a structured calendar pattern (`CalendarDayPatternSpec`)
  * into 1-indexed day numbers (1..numDays) for the given year & month.
  */
 export function resolveCalendarDaysByPattern(
   year: number,
   month: number,
   numDays: number,
-  pattern: string | CalendarDayPatternSpec
+  pattern: CalendarDayPatternSpec
 ): number[] {
-  if (typeof pattern !== "string") {
-    const dowSet = new Set<number>(pattern.daysOfWeek ?? []);
-    const days: number[] = [];
-    for (let d = 1; d <= numDays; d++) {
-      const dow = new Date(year, month - 1, d).getDay();
-      const isHol = isJapaneseHoliday(year, month, d);
-      let matched = false;
-      if (pattern.onlyHolidays) {
-        matched = isHol;
-      } else {
-        if (dowSet.has(dow)) matched = true;
-        if (pattern.includeHolidays && isHol) matched = true;
-        if (pattern.excludeHolidays && isHol) matched = false;
-      }
-      if (matched) days.push(d);
-    }
-    return days;
-  }
-
-  const s = pattern.trim();
-  if (!s) return [];
-
-  const hasWeekendAndHoliday = /土日祝|週末.*祝|休日すべて/.test(s);
-  const hasWeekendOnly = !hasWeekendAndHoliday && /土日|週末/.test(s);
-  const hasHolidayOnly = !hasWeekendAndHoliday && /祝日|祭日/.test(s);
-  const hasWeekdayOnly = /平日/.test(s);
-  const excludeHolidays = /祝日.*除|祝日は?(OK|可|出勤)/.test(s);
-
-  const specificDows = new Set<number>();
-  const dowMap: Array<[RegExp, number]> = [
-    [/日曜|(?<![月火水木金土])日(?=[曜・,、\s]|$)/, 0],
-    [/月曜|月(?=[曜・,、\s火水木金土日]|$)/, 1],
-    [/火曜|火(?=[曜・,、\s月水木金土日]|$)/, 2],
-    [/水曜|水(?=[曜・,、\s月火木金土日]|$)/, 3],
-    [/木曜|木(?=[曜・,、\s月火水金土日]|$)/, 4],
-    [/金曜|金(?=[曜・,、\s月火水木土日]|$)/, 5],
-    [/土曜|(?<!土)土(?=[曜・,、\s日]|$)/, 6],
-  ];
-  if (!hasWeekendAndHoliday && !hasWeekendOnly && !hasWeekdayOnly) {
-    for (const [re, dNum] of dowMap) {
-      if (re.test(s)) specificDows.add(dNum);
-    }
-  }
-
+  const dowSet = new Set<number>(pattern.daysOfWeek ?? []);
   const days: number[] = [];
   for (let d = 1; d <= numDays; d++) {
     const dow = new Date(year, month - 1, d).getDay();
     const isHol = isJapaneseHoliday(year, month, d);
     let matched = false;
-    if (hasWeekendAndHoliday) {
-      matched = dow === 0 || dow === 6 || isHol;
-    } else if (hasWeekendOnly) {
-      matched = dow === 0 || dow === 6;
-    } else if (hasHolidayOnly) {
+    if (pattern.onlyHolidays) {
       matched = isHol;
-    } else if (hasWeekdayOnly) {
-      matched = dow >= 1 && dow <= 5 && !isHol;
-    } else if (specificDows.size > 0) {
-      matched = specificDows.has(dow);
-    }
-    if (matched && excludeHolidays && isHol) {
-      matched = false;
+    } else {
+      if (dowSet.has(dow)) matched = true;
+      if (pattern.includeHolidays && isHol) matched = true;
+      if (pattern.excludeHolidays && isHol) matched = false;
     }
     if (matched) days.push(d);
   }
@@ -494,35 +430,27 @@ export function getShiftMeta(
   };
 }
 
-export type NurseRole = "leader" | "mid" | "newcomer";
+export type NurseRole = "leader" | "mid" | "newcomer" | (string & {});
 
-export const ROLE_LABELS: Record<NurseRole, string> = {
-  leader: "リーダー・主任",
-  mid: "中堅",
-  newcomer: "新人",
-};
-
-export type BaseNurseSkill = "leader_cap" | "icu_er" | "ventilator";
-export type NurseSkill = BaseNurseSkill | (string & {});
+export type NurseSkill = string;
 
 export interface SkillDefinition {
   code: NurseSkill;
   label: string;
   shortLabel?: string;
   badge?: string;
+  aliases?: readonly string[];
+  category?: "skill" | "role" | "group";
   minDay: number;
   minEvening: number;
   minNight: number;
+  maxDay?: number;
+  maxEvening?: number;
+  maxNight?: number;
   /** Optional target skill code that this skill can substitute for (e.g. "leader_cap" for "副リーダー") */
   substitutesFor?: NurseSkill;
   builtIn?: boolean;
 }
-
-export const SKILL_LABELS: Record<BaseNurseSkill, { label: string; badge: string }> = {
-  leader_cap: { label: "リーダー業務可", badge: "👑リーダー" },
-  icu_er: { label: "救急・重症対応", badge: "🚑救急/ICU" },
-  ventilator: { label: "人工呼吸器管理", badge: "🫁呼吸器" },
-};
 
 export function getSkillMeta(
   code: NurseSkill,
@@ -535,91 +463,113 @@ export function getSkillMeta(
       badge: found.badge || `🎖️${found.shortLabel || found.label}`,
     };
   }
-  if (code in SKILL_LABELS) {
-    return SKILL_LABELS[code as BaseNurseSkill];
-  }
   return { label: code, badge: `🎖️${code}` };
 }
 
-export function createDefaultSkillDefs(config?: Partial<NurseScheduleConfig>): SkillDefinition[] {
-  return [
-    {
-      code: "leader_cap",
-      label: "リーダー業務可",
-      shortLabel: "リ",
-      badge: "👑リーダー",
-      minDay: config?.minLeadersDay ?? 2,
-      minEvening: config?.minLeadersEvening ?? 1,
-      minNight: config?.minLeadersNight ?? 1,
-      builtIn: true,
-    },
-    {
-      code: "icu_er",
-      label: "救急・重症対応",
-      shortLabel: "救",
-      badge: "🚑救急/ICU",
-      minDay: config?.minIcuDay ?? 2,
-      minEvening: config?.minIcuEvening ?? 1,
-      minNight: config?.minIcuNight ?? 1,
-      builtIn: true,
-    },
-    {
-      code: "ventilator",
-      label: "人工呼吸器管理",
-      shortLabel: "呼",
-      badge: "🫁呼吸器",
-      minDay: 0,
-      minEvening: 0,
-      minNight: 0,
-      builtIn: true,
-    },
-  ];
+export function getRoleLabel(
+  role: string,
+  skillDefs?: readonly SkillDefinition[]
+): string {
+  const found = skillDefs?.find((d) => d.code === role);
+  return found?.label ?? role;
+}
+
+export interface DefaultAttributeDef {
+  code: string;
+  label: string;
+  shortLabel: string;
+  aliases: readonly string[];
+}
+
+export const ALL_STAFF_ATTRIBUTE_DEF: DefaultAttributeDef = {
+  code: "all",
+  label: "全スタッフ",
+  shortLabel: "全",
+  aliases: ["all", "全員", "全体", "全スタッフ", "全"],
+};
+
+export const DEFAULT_ATTRIBUTE_DEFS: readonly DefaultAttributeDef[] = [
+  ALL_STAFF_ATTRIBUTE_DEF,
+];
+
+export function stripTrailingParenLabel(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^[「『"']|[」』"']$/g, "")
+    .replace(/\s*[（(][^）)]*[）)]$/, "")
+    .trim();
+}
+
+export function findSkillOrAttributeDef(
+  raw: string,
+  skillDefs?: readonly SkillDefinition[]
+): SkillDefinition | DefaultAttributeDef | undefined {
+  const trimmed = raw.trim().replace(/^[「『"']|[」』"']$/g, "").trim();
+  const stripped = stripTrailingParenLabel(trimmed);
+  const candidates = [trimmed, stripped].map((x) => x.toLowerCase()).filter(Boolean);
+  if (candidates.length === 0) return undefined;
+  if (
+    candidates.includes(ALL_STAFF_ATTRIBUTE_DEF.code.toLowerCase()) ||
+    candidates.includes(ALL_STAFF_ATTRIBUTE_DEF.label.toLowerCase()) ||
+    candidates.includes(ALL_STAFF_ATTRIBUTE_DEF.shortLabel.toLowerCase()) ||
+    ALL_STAFF_ATTRIBUTE_DEF.aliases.some((a) => candidates.includes(a.toLowerCase()))
+  ) {
+    return ALL_STAFF_ATTRIBUTE_DEF;
+  }
+  if (!skillDefs || skillDefs.length === 0) return undefined;
+  const byCode = skillDefs.find((def) => candidates.includes(def.code.toLowerCase()));
+  if (byCode) return byCode;
+  const byLabel = skillDefs.find(
+    (def) =>
+      candidates.includes(def.label.toLowerCase()) ||
+      Boolean(def.shortLabel && candidates.includes(def.shortLabel.toLowerCase()))
+  );
+  if (byLabel) return byLabel;
+  return skillDefs.find(
+    (def) => def.aliases?.some((a) => candidates.includes(a.toLowerCase())) ?? false
+  );
 }
 
 /**
- * Checks whether a nurse holds `targetSkillCode` directly OR holds a skill that substitutes for `targetSkillCode`
- * (e.g. holding "sub_leader" with `substitutesFor: "leader_cap"`).
+ * Checks whether a nurse holds `targetSkillCode` directly, matches role/group attribute,
+ * OR holds a skill that substitutes for `targetSkillCode`.
  */
 export function doesNurseSatisfySkill(
   nurse: NurseProfile,
   targetSkillCode: NurseSkill,
   skillDefs?: readonly SkillDefinition[]
 ): boolean {
-  if (nurse.skills.includes(targetSkillCode)) return true;
+  const cleaned = stripTrailingParenLabel(String(targetSkillCode));
+  const matchedDef = findSkillOrAttributeDef(String(targetSkillCode), skillDefs);
+  const resolvedCode = matchedDef ? matchedDef.code : cleaned;
+  if (resolvedCode === "all") return true;
+  if (
+    nurse.skills.includes(resolvedCode) ||
+    nurse.skills.includes(targetSkillCode) ||
+    nurse.role === resolvedCode ||
+    nurse.team === resolvedCode ||
+    (nurse.team && `team_${nurse.team}` === resolvedCode)
+  ) {
+    return true;
+  }
   if (!skillDefs || skillDefs.length === 0) return false;
   return nurse.skills.some((heldCode) => {
     const def = skillDefs.find((d) => d.code === heldCode);
-    return def?.substitutesFor === targetSkillCode;
+    return def?.substitutesFor === resolvedCode || def?.substitutesFor === targetSkillCode;
   });
 }
 
 /**
- * Checks whether a nurse matches a unified attribute code/label:
- * - "all" / "全員": all nurses
- * - "team_A" / "A" / "A班": nurses in Team A (`nurse.team === "A"`)
- * - "team_B" / "B" / "B班": nurses in Team B (`nurse.team === "B"`)
- * - "newcomer" / "新人": newcomer role (`nurse.role === "newcomer"`)
- * - "mid" / "中堅": mid-career role (`nurse.role === "mid"`)
- * - "role_leader" / "主任": leader role (`nurse.role === "leader"`)
- * - any skill code or label in `skillDefs` (via `doesNurseSatisfySkill`)
+ * Checks whether a nurse matches a unified attribute code/label resolved via `ALL_STAFF_ATTRIBUTE_DEF` or `skillDefs`.
  */
 export function doesNurseMatchAttribute(
   nurse: NurseProfile,
   attribute: string,
   skillDefs?: readonly SkillDefinition[]
 ): boolean {
-  const norm = attribute.trim();
-  if (!norm || norm === "all" || norm === "全員" || norm === "全体") return true;
-  if (norm === "team_A" || norm === "A" || norm === "A班" || norm === "Group A" || norm === "グループA") {
-    return nurse.team === "A";
-  }
-  if (norm === "team_B" || norm === "B" || norm === "B班" || norm === "Group B" || norm === "グループB") {
-    return nurse.team === "B";
-  }
-  if (norm === "newcomer" || norm === "新人") return nurse.role === "newcomer";
-  if (norm === "mid" || norm === "中堅") return nurse.role === "mid";
-  if (norm === "role_leader" || norm === "主任") return nurse.role === "leader";
-  return doesNurseSatisfySkill(nurse, norm, skillDefs);
+  const norm = stripTrailingParenLabel(attribute);
+  if (!norm) return true;
+  return doesNurseSatisfySkill(nurse, attribute, skillDefs);
 }
 
 export const PREV_MONTH_DAYS = 7;
@@ -847,6 +797,8 @@ export interface NurseProfile {
 export interface PairRelation {
   id?: string;
   type: "ng_pair" | "preceptor";
+  /** Whether this pair relation is individually enabled (default true; if false, only active when ward-wide toggle is enabled) */
+  enabled?: boolean;
   nurseA: string; // Nurse ID
   nurseB: string; // Nurse ID
   /** Target shifts where the pair constraint applies (defaults to ["E", "N"] if omitted) */
@@ -896,16 +848,14 @@ export interface CustomConstraintRule {
   nurseBId?: string;
   /** Explicit subset of nurse IDs (e.g. 新人1 group vs 新人2 group) */
   nurseIds?: string[];
-  targetRole?: NurseRole | "all";
+  targetRole?: NurseRole | "all" | (string & {});
   day?: number; // 1..numDays
   shift?: ShiftCode;
   forbidShifts?: ShiftCode[];
-  /** Target shifts for pair rules (`ng_pair_custom`) or unified staffing rules (`staffing_rule`), e.g. ["D_A"], ["D_B"], ["D_A", "D_B"], ["E", "N"], or custom shift codes */
+  /** Target shifts for pair rules (`ng_pair_custom`) or unified staffing rules (`staffing_rule`), e.g. ["D"], ["E", "N"], or custom shift codes */
   shifts?: ShiftCode[];
   /** Target nurse attribute/skill/role/team for `staffing_rule` (e.g. "all", "team_A", "team_B", "newcomer", "leader_cap", "icu_er") */
   attribute?: string;
-  /** When true, assigning nurses matching `attribute` to `shifts` incurs a calibrated soft penalty (used for cross-team help only when short) */
-  onlyWhenShort?: boolean;
   minStaff?: number;
   maxStaff?: number;
   maxNight?: number;
@@ -927,6 +877,26 @@ export interface CustomConstraintRule {
   levelGroupBy?: "role_and_skill" | "role" | "skill" | "all";
 }
 
+export type ShiftTransitionPolicy = "allow" | "forbid" | "require";
+
+export type ShiftTransitionMatrix = Record<
+  "D" | "E" | "N",
+  Record<"D" | "E" | "N" | "O", ShiftTransitionPolicy>
+>;
+
+/**
+ * Returns the standard 3-shift default transition matrix:
+ * - Evening -> Day (`E -> D`), Evening -> Night (`E -> N`), Night -> Day (`N -> D`), Night -> Evening (`N -> E`) are forbidden.
+ * - All other 2-day transitions are allowed by default.
+ */
+export function createDefaultShiftTransitions(): ShiftTransitionMatrix {
+  return {
+    D: { D: "allow", E: "allow", N: "allow", O: "allow" },
+    E: { D: "forbid", E: "allow", N: "forbid", O: "allow" },
+    N: { D: "forbid", E: "forbid", N: "allow", O: "allow" },
+  };
+}
+
 export interface NurseScheduleConfig {
   year: number;
   month: number; // 1..12
@@ -940,34 +910,15 @@ export interface NurseScheduleConfig {
   eveningStaff: number; // default 3
   nightStaff: number; // default 3
 
-  // 2. Skill & Role Coverage per Shift
+  // 2. Skill & Attribute Coverage Toggle
   enforceSkillCoverage: boolean;
-  minLeadersDay: number; // default 2
-  minLeadersEvening: number; // default 1
-  minLeadersNight: number; // default 1
-  minIcuDay: number; // default 2
-  minIcuEvening: number; // default 1
-  minIcuNight: number; // default 1
-  enforceNewcomerNightLimit: boolean;
-  maxNewcomersNight: number; // default 1 per E/N shift
 
-  // 3. 3-Shift Transition & Previous Month Carryover Rules
+  // 3. 3-Shift Transition Matrix & Previous Month Carryover Rules
   enforcePrevMonthCarryover: boolean;
-  forbidNightToDay: boolean; // N -> D forbidden
-  forbidEveningToDay: boolean; // E -> D forbidden
-  forbidEveningToNight: boolean; // E -> N forbidden
-  forbidNightToEvening: boolean; // N -> E forbidden
-  /** 日勤→翌日深夜勤（日深夜 D -> N）の禁止 */
-  forbidDayToNight?: boolean;
-  /** 連続準夜勤（準夜→翌日準夜 E -> E）の禁止 */
-  forbidEveningToEvening?: boolean;
-  /** 連続深夜勤（深夜→翌日深夜 N -> N）の禁止（深夜は単発1回のみ可） */
-  forbidNightToNight?: boolean;
+  shiftTransitions: ShiftTransitionMatrix;
   maxConsecutiveNight2: boolean; // N -> N -> N forbidden (at most 2 consecutive N)
-  /** 深夜勤明けの翌日は必ず公休にする（連続深夜勤 N -> N も禁止し N -> O を必須化） */
-  requireOffAfterNight?: boolean;
 
-  // 4. Monthly & Consecutive Workload Rules + 36 Agreement (36協定)
+  // 4. Monthly & Consecutive Workload Rules + Pair Rules
   maxConsecutiveWorkDays: number; // default 5 (window of 6 days <= 5)
   minMonthlyDaysOff: number; // default 9 days off
   minMonthlyWorkDays: number; // default 14 work days
@@ -976,9 +927,6 @@ export interface NurseScheduleConfig {
   enforceNgPairs: boolean; // NG pairs cannot share E or N shifts on the same day
   /** プリセプター同行夜勤（新人が夜勤に入る日は指導ペアの先輩も同シフトに配置） */
   enforcePreceptorPairs?: boolean;
-  /** 固定チームナーシング（A班・B班）の日勤帯均等配置 */
-  enforceTeamBalance?: boolean;
-  minTeamMembersDay?: number; // default 3 per team on Day shift
   enforceHardRequests: boolean; // Hard day-off / shift requests enforced
 
   // 5. 36協定（時間外労働の月間上限・直近1年累計上限）
@@ -992,51 +940,35 @@ export interface NurseScheduleConfig {
 
   /**
    * 7. ソフト制約化＆重み設定 (`softRuleWeights`):
-   * 指定された基本ルールキー（例: "requireWeekendOff", "enforceSkillCoverage", "enforcePreceptorPairs", "enforceNgPairs", "enforceTeamBalance", "maxConsecutiveWorkDays", "maxMonthlyNightShifts" 等）に
+   * 指定された基本ルールキー（例: "requireWeekendOff", "enforceSkillCoverage", "enforcePreceptorPairs", "enforceNgPairs", "shiftTransitions", "maxConsecutiveWorkDays", "maxMonthlyNightShifts" 等）に
    * 正の数値（ペナルティ重み w > 0）が設定されている場合、その基本ルールはハード制約ではなくスラック重み w のソフト制約として動作する。
    */
   softRuleWeights?: Record<string, number>;
 }
 
-export type ShiftTransitionPolicy = "allow" | "forbid" | "require";
-
-export type ShiftTransitionMatrix = Record<
-  "D" | "E" | "N",
-  Record<"D" | "E" | "N" | "O", ShiftTransitionPolicy>
->;
-
 /**
- * Builds the 3×4 Shift Transition Matrix (`fromShift` in `D | E | N` -> `toShift` in `D | E | N | O`)
- * synchronized with `NurseScheduleConfig`.
+ * Returns the 3×4 Shift Transition Matrix (`fromShift` in `D | E | N` -> `toShift` in `D | E | N | O`)
+ * from `NurseScheduleConfig`.
  */
 export function getShiftTransitionMatrix(
   config: NurseScheduleConfig
 ): ShiftTransitionMatrix {
-  const nReqOff = Boolean(
-    config.requireOffAfterNight ||
-      (config.forbidNightToDay &&
-        config.forbidNightToEvening &&
-        config.forbidNightToNight)
-  );
+  const base = config.shiftTransitions ?? createDefaultShiftTransitions();
+  const normalizeRow = (row: Record<"D" | "E" | "N" | "O", ShiftTransitionPolicy>) => {
+    const reqOff =
+      row.O === "require" ||
+      (row.D === "forbid" && row.E === "forbid" && row.N === "forbid");
+    return {
+      D: reqOff || row.D === "forbid" ? ("forbid" as const) : ("allow" as const),
+      E: reqOff || row.E === "forbid" ? ("forbid" as const) : ("allow" as const),
+      N: reqOff || row.N === "forbid" ? ("forbid" as const) : ("allow" as const),
+      O: reqOff ? ("require" as const) : ("allow" as const),
+    };
+  };
   return {
-    D: {
-      D: "allow",
-      E: "allow",
-      N: config.forbidDayToNight ? "forbid" : "allow",
-      O: "allow",
-    },
-    E: {
-      D: config.forbidEveningToDay ? "forbid" : "allow",
-      E: config.forbidEveningToEvening ? "forbid" : "allow",
-      N: config.forbidEveningToNight ? "forbid" : "allow",
-      O: "allow",
-    },
-    N: {
-      D: nReqOff || config.forbidNightToDay ? "forbid" : "allow",
-      E: nReqOff || config.forbidNightToEvening ? "forbid" : "allow",
-      N: nReqOff || config.forbidNightToNight ? "forbid" : "allow",
-      O: nReqOff ? "require" : "allow",
-    },
+    D: normalizeRow(base.D),
+    E: normalizeRow(base.E),
+    N: normalizeRow(base.N),
   };
 }
 
@@ -1050,41 +982,37 @@ export function applyShiftTransitionToConfig(
   toShift: "D" | "E" | "N" | "O",
   policy: ShiftTransitionPolicy
 ): NurseScheduleConfig {
-  const next: NurseScheduleConfig = { ...config };
-  const isForbid = policy === "forbid";
-  const isRequire = policy === "require";
+  const current = getShiftTransitionMatrix(config);
+  const nextRow = { ...current[fromShift] };
 
-  if (fromShift === "N" && toShift === "O") {
-    next.requireOffAfterNight = isRequire;
-    if (isRequire) {
-      next.forbidNightToDay = true;
-      next.forbidNightToEvening = true;
-      next.forbidNightToNight = true;
+  if (toShift === "O") {
+    if (policy === "require") {
+      nextRow.O = "require";
+      nextRow.D = "forbid";
+      nextRow.E = "forbid";
+      nextRow.N = "forbid";
+    } else {
+      nextRow.O = "allow";
+      if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
+        nextRow.N = "allow";
+      }
     }
-    return next;
-  }
-
-  if (fromShift === "N") {
+  } else {
+    nextRow[toShift] = policy === "forbid" ? "forbid" : "allow";
     if (policy === "allow") {
-      next.requireOffAfterNight = false;
+      nextRow.O = "allow";
+    } else if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
+      nextRow.O = "require";
     }
-    if (toShift === "D") next.forbidNightToDay = isForbid;
-    else if (toShift === "E") next.forbidNightToEvening = isForbid;
-    else if (toShift === "N") next.forbidNightToNight = isForbid;
-    return next;
   }
 
-  if (fromShift === "E") {
-    if (toShift === "D") next.forbidEveningToDay = isForbid;
-    else if (toShift === "E") next.forbidEveningToEvening = isForbid;
-    else if (toShift === "N") next.forbidEveningToNight = isForbid;
-    return next;
-  }
-
-  if (fromShift === "D" && toShift === "N") {
-    next.forbidDayToNight = isForbid;
-  }
-  return next;
+  return {
+    ...config,
+    shiftTransitions: {
+      ...current,
+      [fromShift]: nextRow,
+    },
+  };
 }
 
 export interface NurseSchedulingState {
@@ -1220,118 +1148,84 @@ export interface WashiSolveOutcome {
   errorMessage?: string;
 }
 
-/**
- * Structured operation extracted by Gemini Nano from user chat messages
- */
-export interface ChatConstraintOperation {
-  op:
-    | "set_param"
-    | "toggle_rule"
-    | "add_request"
-    | "forbid_shift"
-    | "add_date_coverage"
-    | "add_daily_shift_cap"
-    | "add_ng_pair"
-    | "add_preceptor_pair"
-    | "add_custom_shift"
-    | "add_shift_quota"
-    | "add_shift_day_restriction"
-    | "add_shift_prerequisite"
-    | "allow_prev_month_shift"
-    | "level_night_shifts"
-    | "add_skill_def"
-    | "remove_skill_def"
-    | "update_nurse_skill"
-    | "set_staffing_rule"
-    | "set_nurse_contract"
-    | "set_shift_transition"
-    | "clear_custom_rules"
-    | "inject_conflict_demo"
-    | "reset_default";
-  paramName?:
-    | "weekdayDayStaff"
-    | "weekendDayStaff"
-    | "eveningStaff"
-    | "nightStaff"
-    | "maxConsecutiveWorkDays"
-    | "minMonthlyDaysOff"
-    | "minMonthlyWorkDays"
-    | "maxMonthlyNightShifts"
-    | "minLeadersDay"
-    | "minLeadersEvening"
-    | "minLeadersNight"
-    | "minIcuDay"
-    | "minIcuEvening"
-    | "minIcuNight"
-    | "maxNewcomersNight"
-    | "minTeamMembersDay"
-    | "maxMonthlyOvertimeHours"
-    | "maxAnnualOvertimeHours"
-    | "staffCount";
-  paramValue?: number;
-  ruleName?:
-    | "forbidNightToDay"
-    | "forbidEveningToDay"
-    | "forbidEveningToNight"
-    | "forbidNightToEvening"
-    | "forbidDayToNight"
-    | "forbidEveningToEvening"
-    | "forbidNightToNight"
-    | "maxConsecutiveNight2"
-    | "requireOffAfterNight"
-    | "enforcePrevMonthCarryover"
-    | "enforceSkillCoverage"
-    | "enforceNewcomerNightLimit"
-    | "requireWeekendOff"
-    | "enforceNgPairs"
-    | "enforcePreceptorPairs"
-    | "enforceTeamBalance"
-    | "enforceHardRequests"
-    | "enforce36Agreement"
-    | "preserveCurrentSchedule";
-  ruleEnabled?: boolean;
-  /** Shift transition fields for `set_shift_transition` */
-  fromShift?: "D" | "E" | "N";
-  toShift?: "D" | "E" | "N" | "O";
-  transitionPolicy?: "forbid" | "allow" | "require";
-  nurseNameOrId?: string;
-  nurseBNameOrId?: string;
-  nurseIds?: string[];
-  targetRole?: NurseRole | "all";
+export type WardNumericParamName =
+  | "weekdayDayStaff"
+  | "weekendDayStaff"
+  | "eveningStaff"
+  | "nightStaff"
+  | "maxConsecutiveWorkDays"
+  | "minMonthlyDaysOff"
+  | "minMonthlyWorkDays"
+  | "maxMonthlyNightShifts"
+  | "maxMonthlyOvertimeHours"
+  | "maxAnnualOvertimeHours"
+  | "staffCount";
+
+export type WardBooleanRuleName =
+  | "maxConsecutiveNight2"
+  | "enforcePrevMonthCarryover"
+  | "enforceSkillCoverage"
+  | "requireWeekendOff"
+  | "enforceNgPairs"
+  | "enforcePreceptorPairs"
+  | "enforceHardRequests"
+  | "enforce36Agreement"
+  | "preserveCurrentSchedule";
+
+export interface SetParamOperation {
+  op: "set_param";
+  paramName: WardNumericParamName;
+  paramValue: number;
+}
+
+export interface ToggleRuleOperation {
+  op: "toggle_rule";
+  ruleName: WardBooleanRuleName;
+  ruleEnabled: boolean;
+}
+
+export interface SetShiftTransitionOperation {
+  op: "set_shift_transition";
+  fromShift: "D" | "E" | "N";
+  toShift: "D" | "E" | "N" | "O";
+  transitionPolicy: "forbid" | "allow" | "require";
+}
+
+export interface LevelNightShiftsOperation {
+  op: "level_night_shifts";
+  levelGroupBy?: "role_and_skill" | "role" | "skill" | "all";
+}
+
+export interface AddDateCoverageOperation {
+  op: "add_date_coverage";
+  day: number;
+  shift: "D" | "E" | "N";
+  minStaff: number;
+}
+
+export interface AddRequestOperation {
+  op: "add_request";
+  nurseNameOrId: string;
   day?: number;
   days?: number[];
-  shift?: ShiftCode;
-  baseShift?: BaseShiftCode;
-  includedInAliases?: string[];
-  shiftName?: string;
-  shortLabel?: string;
+  shift: ShiftCode;
+  isHard?: boolean;
+  onlyMatchedDaysWork?: boolean;
+  isCalendarPattern?: boolean;
+  reason?: string;
+}
+
+export interface ForbidShiftOperation {
+  op: "forbid_shift";
+  nurseNameOrId: string;
+  day?: number;
+  days?: number[];
   forbidShifts?: ShiftCode[];
-  shifts?: ShiftCode[];
-  targetShift?: string;
-  attribute?: string;
-  onlyWhenShort?: boolean;
-  minStaff?: number;
-  maxStaff?: number;
-  minCount?: number;
-  maxCount?: number;
-  includePrevMonth?: boolean;
-  allowedDaysOfWeek?: number[];
-  startDay?: number;
-  endDay?: number;
-  prereqShift?: ShiftCode;
-  prereqMinCount?: number;
-  restrictedShifts?: ShiftCode[];
-  levelGroupBy?: "role_and_skill" | "role" | "skill" | "all";
-  /** Skill management fields */
-  skillName?: string;
-  skillCode?: string;
-  skillShortLabel?: string;
-  substitutesFor?: string;
-  skillMinDay?: number;
-  skillMinEvening?: number;
-  skillMinNight?: number;
-  skillAction?: "add" | "remove";
-  /** Individual nurse contract fields */
+}
+
+export interface SetNurseContractOperation {
+  op: "set_nurse_contract";
+  nurseNameOrId: string;
   nightOk?: boolean;
   maxMonthlyNightShifts?: number;
   minMonthlyDaysOff?: number;
@@ -1341,12 +1235,159 @@ export interface ChatConstraintOperation {
   forbiddenShifts?: ActiveShiftCode[];
   weekdayOnly?: boolean;
   holidaysOff?: boolean;
-  onlyMatchedDaysWork?: boolean;
-  isCalendarPattern?: boolean;
+}
+
+export interface AddSkillDefOperation {
+  op: "add_skill_def";
+  skillName: string;
+  skillShortLabel?: string;
+  substitutesFor?: NurseSkill;
+  skillMinDay?: number;
+  skillMinEvening?: number;
+  skillMinNight?: number;
+}
+
+export interface RemoveSkillDefOperation {
+  op: "remove_skill_def";
+  skillName: string;
+}
+
+export interface UpdateNurseSkillOperation {
+  op: "update_nurse_skill";
+  skillName: string;
+  skillAction: "add" | "remove";
+  nurseNameOrId?: string;
+  targetRole?: string;
+  attribute?: string;
+}
+
+export interface SetStaffingRuleOperation {
+  op: "set_staffing_rule";
+  targetShift: string;
+  shifts?: ShiftCode[];
+  attribute: string;
+  minCount?: number;
+  maxCount?: number;
   isHard?: boolean;
   penaltyWeight?: number;
-  reason?: string;
 }
+
+export interface AddNgPairOperation {
+  op: "add_ng_pair";
+  nurseNameOrId: string;
+  nurseBNameOrId: string;
+  shifts?: ShiftCode[];
+  isHard?: boolean;
+  penaltyWeight?: number;
+}
+
+export interface AddPreceptorPairOperation {
+  op: "add_preceptor_pair";
+  nurseNameOrId: string;
+  nurseBNameOrId: string;
+  shifts?: ShiftCode[];
+  isHard?: boolean;
+  penaltyWeight?: number;
+}
+
+export interface AddCustomShiftOperation {
+  op: "add_custom_shift";
+  shiftName: string;
+  shortLabel?: string;
+  shift?: ShiftCode;
+  baseShift?: BaseShiftCode;
+  countsAsWorkDay?: boolean;
+  includedInAliases?: string[];
+}
+
+export interface AddShiftQuotaOperation {
+  op: "add_shift_quota";
+  shiftName: string;
+  shift?: ShiftCode;
+  nurseNameOrId?: string;
+  targetRole?: string;
+  attribute?: string;
+  minCount?: number;
+  maxCount?: number;
+}
+
+export interface AddShiftPrerequisiteOperation {
+  op: "add_shift_prerequisite";
+  shiftName: string;
+  prereqShift?: ShiftCode;
+  shift?: ShiftCode;
+  targetRole: string;
+  attribute?: string;
+  prereqMinCount: number;
+  restrictedShifts?: ShiftCode[];
+}
+
+export interface AddShiftDayRestrictionOperation {
+  op: "add_shift_day_restriction";
+  shiftName: string;
+  shift?: ShiftCode;
+  allowedDaysOfWeek?: number[];
+  startDay?: number;
+  endDay?: number;
+}
+
+export interface AddDailyShiftCapOperation {
+  op: "add_daily_shift_cap";
+  shiftName: string;
+  shift?: ShiftCode;
+  minStaff?: number;
+  maxStaff?: number;
+  targetRole?: string;
+  attribute?: string;
+}
+
+export interface AllowPrevMonthShiftOperation {
+  op: "allow_prev_month_shift";
+  shiftName: string;
+  shift?: ShiftCode;
+  includePrevMonth?: boolean;
+}
+
+export interface ClearCustomRulesOperation {
+  op: "clear_custom_rules";
+}
+
+export interface InjectConflictDemoOperation {
+  op: "inject_conflict_demo";
+}
+
+export interface ResetDefaultOperation {
+  op: "reset_default";
+}
+
+/**
+ * Discriminated union of structured operations extracted from user chat messages.
+ * Each operation `op` strictly defines its own required and optional parameters.
+ */
+export type ChatConstraintOperation =
+  | SetParamOperation
+  | ToggleRuleOperation
+  | SetShiftTransitionOperation
+  | LevelNightShiftsOperation
+  | AddDateCoverageOperation
+  | AddRequestOperation
+  | ForbidShiftOperation
+  | SetNurseContractOperation
+  | AddSkillDefOperation
+  | RemoveSkillDefOperation
+  | UpdateNurseSkillOperation
+  | SetStaffingRuleOperation
+  | AddNgPairOperation
+  | AddPreceptorPairOperation
+  | AddCustomShiftOperation
+  | AddShiftQuotaOperation
+  | AddShiftPrerequisiteOperation
+  | AddShiftDayRestrictionOperation
+  | AddDailyShiftCapOperation
+  | AllowPrevMonthShiftOperation
+  | ClearCustomRulesOperation
+  | InjectConflictDemoOperation
+  | ResetDefaultOperation;
 
 export interface LlmCallTrace {
   step: "turn1_router" | "turn2_extractor" | "turn3_consultation_stream";
@@ -1438,3 +1479,115 @@ export interface AiShiftTrajectoryExport {
   };
   turns: TrajectoryTurnRecord[];
 }
+
+/**
+ * Removes a custom shift definition (`shiftCode`) and cascades the deletion across
+ * `shiftAliases`, `customRules`, `preferences`, `relations`, and nurse history.
+ */
+export function removeCustomShiftFromState(
+  state: NurseSchedulingState,
+  shiftCode: string
+): NurseSchedulingState {
+  const nextCustom = state.customShiftDefs.filter((d) => d.code !== shiftCode);
+  const defaultAliases = createDefaultShiftAliases(nextCustom);
+  const customNonBuiltInAliases = (state.shiftAliases ?? [])
+    .filter((a) => !a.builtIn && a.code !== shiftCode)
+    .map((a) => ({
+      ...a,
+      shifts: a.shifts.filter((s) => s !== shiftCode),
+    }))
+    .filter((a) => a.shifts.length > 0);
+
+  const nextRules: CustomConstraintRule[] = [];
+  for (const r of state.customRules) {
+    if (r.shift === shiftCode || r.prereqShift === shiftCode) continue;
+    let nextRule: CustomConstraintRule = r;
+    if (Array.isArray(r.shifts) && r.shifts.includes(shiftCode)) {
+      const filtered = r.shifts.filter((s) => s !== shiftCode);
+      if (r.shifts.length > 0 && filtered.length === 0) continue;
+      nextRule = { ...nextRule, shifts: filtered };
+    }
+    if (Array.isArray(r.restrictedShifts) && r.restrictedShifts.includes(shiftCode)) {
+      const filtered = r.restrictedShifts.filter((s) => s !== shiftCode);
+      if (r.restrictedShifts.length > 0 && filtered.length === 0) continue;
+      nextRule = { ...nextRule, restrictedShifts: filtered };
+    }
+    if (Array.isArray(r.forbidShifts) && r.forbidShifts.includes(shiftCode)) {
+      const filtered = r.forbidShifts.filter((s) => s !== shiftCode);
+      if (r.forbidShifts.length > 0 && filtered.length === 0) continue;
+      nextRule = { ...nextRule, forbidShifts: filtered };
+    }
+    nextRules.push(nextRule);
+  }
+
+  const nextRelations: StaffPairRelation[] = [];
+  for (const rel of state.relations) {
+    if (Array.isArray(rel.shifts) && rel.shifts.includes(shiftCode)) {
+      const filtered = rel.shifts.filter((s) => s !== shiftCode);
+      if (rel.shifts.length > 0 && filtered.length === 0) continue;
+      nextRelations.push({ ...rel, shifts: filtered });
+    } else {
+      nextRelations.push(rel);
+    }
+  }
+
+  return {
+    ...state,
+    customShiftDefs: nextCustom,
+    shiftAliases: [...defaultAliases, ...customNonBuiltInAliases],
+    customRules: nextRules,
+    preferences: state.preferences.filter((p) => p.shift !== shiftCode),
+    relations: nextRelations,
+    nurses: state.nurses.map((n) => {
+      const nextPrevShifts = n.prevMonthShifts.includes(shiftCode)
+        ? n.prevMonthShifts.map((s) => (s === shiftCode ? "O" : s))
+        : n.prevMonthShifts;
+      let nextPrevCompleted = n.prevCompletedShifts;
+      if (nextPrevCompleted && shiftCode in nextPrevCompleted) {
+        const { [shiftCode]: _removed, ...rest } = nextPrevCompleted;
+        nextPrevCompleted = rest;
+      }
+      if (nextPrevShifts === n.prevMonthShifts && nextPrevCompleted === n.prevCompletedShifts) {
+        return n;
+      }
+      return {
+        ...n,
+        prevMonthShifts: nextPrevShifts,
+        prevCompletedShifts: nextPrevCompleted,
+      };
+    }),
+  };
+}
+
+/**
+ * Clears all individual contract overrides for `nurseId` and removes any legacy
+ * `contract_hol_<nurseId>_*` holiday-pin rules from `customRules`.
+ */
+export function clearNurseContractFromState(
+  state: NurseSchedulingState,
+  nurseId: string,
+  options?: { resetNightOk?: boolean }
+): NurseSchedulingState {
+  const holPrefix = `contract_hol_${nurseId}_`;
+  return {
+    ...state,
+    nurses: state.nurses.map((n) =>
+      n.id === nurseId
+        ? {
+            ...n,
+            ...(options?.resetNightOk ? { nightOk: true } : {}),
+            minMonthlyWorkDays: undefined,
+            maxMonthlyWorkDays: undefined,
+            minMonthlyDaysOff: undefined,
+            maxMonthlyNightShifts: undefined,
+            maxConsecutiveWorkDays: undefined,
+            forbiddenShifts: undefined,
+            weekdayOnly: undefined,
+            holidaysOff: undefined,
+          }
+        : n
+    ),
+    customRules: state.customRules.filter((r) => !r.id.startsWith(holPrefix)),
+  };
+}
+
