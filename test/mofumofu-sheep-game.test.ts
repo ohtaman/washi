@@ -23,7 +23,14 @@ import {
   getPrologueSlidesLocalized,
   getStageLocalized,
 } from "../examples/web-demo/games/demon-castle-shift/i18n-data.js";
+import {
+  loadCampaignStage,
+  loadEndlessStage,
+  resetSaveDataForTest,
+  switchCastleLanguage,
+} from "../examples/web-demo/games/demon-castle-shift/main.js";
 import { CAMPAIGN_STAGES as CASTLE_STAGES } from "../examples/web-demo/games/demon-castle-shift/stages.js";
+import { applyStaticTranslations as applySheepStaticTranslations } from "../examples/web-demo/games/mofumofu-sheep/main.js";
 
 describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
   it("has 12 progressive campaign stages (4 tiny tutorials + 8 optimization puzzles)", () => {
@@ -199,42 +206,278 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(getDayLabel(0, "zh")).toBe("周一");
     const castleMainTs = readFileSync(resolve(gamesRoot, "demon-castle-shift/main.ts"), "utf8");
     expect(castleMainTs).not.toContain("周${dayName}");
+  });
 
-    // 6. Every static button in Demon Castle Shift & Mofumofu Sheep HTML is localized in applyStaticTranslations()
-    const castleStaticButtons = [
-      "btn-title-start",
-      "btn-title-continue",
-      "btn-title-roster",
-      "btn-title-help",
-      "btn-back-title",
-      "btn-roster",
-      "btn-help",
-      "btn-hint-one",
-      "btn-reset",
-      "btn-dispatch",
-      "btn-op-skip",
-      "btn-op-finish",
-      "btn-op-next-cut",
-      "btn-prologue-skip",
-      "btn-prologue-prev",
-      "btn-prologue-next",
-      "grimoire-close-btn",
-    ];
-    for (const btnId of castleStaticButtons) {
-      expect(castleMainTs).toMatch(new RegExp(`setText\\(\\s*"${btnId}"`));
+  it("switches static UI buttons, tooltips, aria-labels, wax seals, and #stage-heading to en and zh", async () => {
+    interface MockElement {
+      id: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      open: boolean;
+      dataset: Record<string, string>;
+      classList: {
+        toggle: () => void;
+        add: () => void;
+        remove: () => void;
+      };
+      setAttribute: (attr: string, val: string) => void;
+      getAttribute: (attr: string) => string | null;
     }
 
-    const sheepMainTs = readFileSync(resolve(gamesRoot, "mofumofu-sheep/main.ts"), "utf8");
-    const sheepStaticButtons = [
-      "btnShowOptimal.textContent",
-      "btnNextStage.textContent",
-      "btnUndoLabel.textContent",
-      "btnRestartLabel.textContent",
-      "btnHintLabel.textContent",
-      "btnNewRandomLabel.textContent",
-    ];
-    for (const prop of sheepStaticButtons) {
-      expect(sheepMainTs).toContain(prop);
+    const createHtmlMockDocument = (html: string) => {
+      const byId = new Map<string, MockElement>();
+      const langBtns: MockElement[] = [];
+      const waxSeals: MockElement[] = [];
+      const closeBtns: MockElement[] = [];
+      const bgmBtns: MockElement[] = [];
+
+      const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+      for (const match of html.matchAll(tagRegex)) {
+        const attrsRaw = match[2];
+        const attrs = new Map<string, string>();
+        for (const attrMatch of attrsRaw.matchAll(
+          /([a-zA-Z0-9_-]+)(?:="([^"]*)")?/g
+        )) {
+          attrs.set(attrMatch[1], attrMatch[2] ?? "");
+        }
+        const id = attrs.get("id") ?? "";
+        const cls = attrs.get("class") ?? "";
+        const hasWaxSeal = cls.split(/\s+/).includes("grimoire-wax-seal");
+        const hasCloseDialog = attrs.has("data-close-dialog");
+        const hasLangBtn = attrs.has("data-lang-btn");
+        const hasBgmToggle = attrs.has("data-bgm-toggle");
+
+        if (!id && !hasWaxSeal && !hasCloseDialog && !hasLangBtn && !hasBgmToggle) {
+          continue;
+        }
+
+        const el: MockElement = {
+          id,
+          textContent: "__JA_INITIAL__",
+          innerHTML: "__JA_INITIAL__",
+          title: attrs.get("title") ?? "__JA_TITLE__",
+          hidden: attrs.has("hidden"),
+          open: false,
+          dataset: hasLangBtn ? { langBtn: attrs.get("data-lang-btn") ?? "" } : {},
+          classList: {
+            toggle: () => {},
+            add: () => {},
+            remove: () => {},
+          },
+          setAttribute: (attr: string, val: string) => {
+            attrs.set(attr, val);
+          },
+          getAttribute: (attr: string) => attrs.get(attr) ?? null,
+        };
+
+        if (id) byId.set(id, el);
+        if (hasWaxSeal) waxSeals.push(el);
+        if (hasCloseDialog) closeBtns.push(el);
+        if (hasLangBtn) langBtns.push(el);
+        if (hasBgmToggle) bgmBtns.push(el);
+      }
+
+      return {
+        documentElement: { lang: "ja" },
+        title: "",
+        getElementById: (id: string) => byId.get(id) ?? null,
+        querySelectorAll: (selector: string) => {
+          if (selector === "[data-lang-btn]") return langBtns;
+          if (selector === ".grimoire-wax-seal") return waxSeals;
+          if (selector === "[data-close-dialog]") return closeBtns;
+          if (selector === "[data-bgm-toggle]") return bgmBtns;
+          return [];
+        },
+        byId,
+        waxSeals,
+        closeBtns,
+      };
+    };
+
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const castleHtml = readFileSync(resolve(gamesRoot, "demon-castle-shift/index.html"), "utf8");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    try {
+      // --- 1. Demon Castle Shift behavioral DOM localization ---
+      const castleDoc = createHtmlMockDocument(castleHtml);
+      (globalThis as { document?: unknown }).document = castleDoc;
+
+      resetSaveDataForTest();
+      await loadCampaignStage(0, false);
+
+      switchCastleLanguage("en");
+      expect(castleDoc.documentElement.lang).toBe("en");
+      expect(castleDoc.title).toContain("Demon Castle 24h Guard Shift");
+      expect(castleDoc.byId.get("btn-title-start")?.textContent).toBe("Start New Game");
+      expect(castleDoc.byId.get("btn-title-continue")?.textContent).toBe("Continue");
+      expect(castleDoc.byId.get("btn-title-roster")?.textContent).toBe("📖 Guard Grimoire");
+      expect(castleDoc.byId.get("btn-title-help")?.textContent).toBe("How to Play");
+      expect(castleDoc.byId.get("btn-back-title")?.textContent).toBe("← Title");
+      expect(castleDoc.byId.get("btn-back-title")?.title).toBe("Back to Title Screen");
+      expect(castleDoc.byId.get("btn-roster")?.textContent).toBe("📖 Grimoire");
+      expect(castleDoc.byId.get("btn-roster")?.title).toBe(
+        "Grimoire of all 20 Demon Castle guards and pair affinities"
+      );
+      expect(castleDoc.byId.get("btn-help")?.textContent).toBe("Rules");
+      expect(castleDoc.byId.get("btn-hint-one")?.textContent).toBe("💡 Hint");
+      expect(castleDoc.byId.get("btn-hint-one")?.title).toBe("Fill 1 cell from the model shift");
+      expect(castleDoc.byId.get("btn-reset")?.textContent).toBe("Clear All");
+      expect(castleDoc.byId.get("dialogue-box")?.title).toBe(
+        "Click to reveal full message or advance"
+      );
+      expect(castleDoc.byId.get("btn-dispatch")?.textContent).toBe("⚔️ Guard with This Shift");
+      expect(castleDoc.byId.get("btn-op-skip")?.textContent).toBe("Skip ⏭");
+      expect(castleDoc.byId.get("op-stage-viewport")?.title).toBe("Click to advance");
+      expect(castleDoc.byId.get("btn-op-finish")?.textContent).toBe("Begin Story");
+      expect(castleDoc.byId.get("btn-op-next-cut")?.textContent).toBe("Next ▶");
+      expect(castleDoc.byId.get("btn-prologue-skip")?.textContent).toBe("Skip ⏭");
+      expect(castleDoc.byId.get("btn-prologue-prev")?.textContent).toBe("Prev");
+      expect(castleDoc.byId.get("btn-prologue-next")?.textContent).toBe("Next");
+      expect(castleDoc.byId.get("grimoire-close-btn")?.textContent).toBe("✕ Close Tome");
+      expect(castleDoc.waxSeals.length).toBeGreaterThanOrEqual(1);
+      for (const seal of castleDoc.waxSeals) {
+        expect(seal.textContent).toBe("Seal");
+      }
+      expect(castleDoc.closeBtns.length).toBeGreaterThanOrEqual(3);
+      for (const closeBtn of castleDoc.closeBtns) {
+        expect(closeBtn.getAttribute("aria-label")).toBe("Close");
+      }
+      expect(castleDoc.byId.get("stage-heading")?.textContent).toBe(
+        getStageLocalized(CASTLE_STAGES[0], "en").title
+      );
+
+      switchCastleLanguage("zh");
+      expect(castleDoc.documentElement.lang).toBe("zh");
+      expect(castleDoc.title).toContain("魔王城的24小时警备排班");
+      expect(castleDoc.byId.get("btn-title-start")?.textContent).toBe("从头开始游玩");
+      expect(castleDoc.byId.get("btn-title-continue")?.textContent).toBe("继续游戏");
+      expect(castleDoc.byId.get("btn-title-roster")?.textContent).toBe("📖 警备队名鉴");
+      expect(castleDoc.byId.get("btn-title-help")?.textContent).toBe("玩法说明");
+      expect(castleDoc.byId.get("btn-back-title")?.textContent).toBe("← 标题");
+      expect(castleDoc.byId.get("btn-back-title")?.title).toBe("返回标题画面");
+      expect(castleDoc.byId.get("btn-roster")?.textContent).toBe("📖 名鉴");
+      expect(castleDoc.byId.get("btn-roster")?.title).toBe(
+        "魔王城全20名成员名鉴与搭档相性一览"
+      );
+      expect(castleDoc.byId.get("btn-help")?.textContent).toBe("规则");
+      expect(castleDoc.byId.get("btn-hint-one")?.textContent).toBe("💡 提示");
+      expect(castleDoc.byId.get("btn-hint-one")?.title).toBe("填入1格示范排班");
+      expect(castleDoc.byId.get("btn-reset")?.textContent).toBe("清空重排");
+      expect(castleDoc.byId.get("dialogue-box")?.title).toBe("点击显示完整信息或继续");
+      expect(castleDoc.byId.get("btn-dispatch")?.textContent).toBe("⚔️ 按此班表出击警备");
+      expect(castleDoc.byId.get("btn-op-skip")?.textContent).toBe("跳过 ⏭");
+      expect(castleDoc.byId.get("op-stage-viewport")?.title).toBe("点击继续");
+      expect(castleDoc.byId.get("btn-op-finish")?.textContent).toBe("开始物语");
+      expect(castleDoc.byId.get("btn-op-next-cut")?.textContent).toBe("下一步 ▶");
+      expect(castleDoc.byId.get("btn-prologue-skip")?.textContent).toBe("跳过 ⏭");
+      expect(castleDoc.byId.get("btn-prologue-prev")?.textContent).toBe("上一页");
+      expect(castleDoc.byId.get("btn-prologue-next")?.textContent).toBe("下一步");
+      expect(castleDoc.byId.get("grimoire-close-btn")?.textContent).toBe("✕ 合上书卷");
+      for (const seal of castleDoc.waxSeals) {
+        expect(seal.textContent).toBe("印");
+      }
+      for (const closeBtn of castleDoc.closeBtns) {
+        expect(closeBtn.getAttribute("aria-label")).toBe("关闭");
+      }
+      expect(castleDoc.byId.get("stage-heading")?.textContent).toBe(
+        getStageLocalized(CASTLE_STAGES[0], "zh").title
+      );
+
+      // Verify #stage-heading on Endless stage (includes localized difficulty suffix)
+      await loadEndlessStage(6, false);
+      switchCastleLanguage("en");
+      const endlessHeadingEn = castleDoc.byId.get("stage-heading")?.textContent ?? "";
+      expect(endlessHeadingEn).toContain("Main Gate Shift");
+      expect(endlessHeadingEn).toContain("(Difficulty: Standard (5 Guards))");
+      expect(endlessHeadingEn).not.toContain("難易度");
+
+      switchCastleLanguage("zh");
+      const endlessHeadingZh = castleDoc.byId.get("stage-heading")?.textContent ?? "";
+      expect(endlessHeadingZh).toContain("正门防卫排班");
+      expect(endlessHeadingZh).toContain("（难度：标准（5人值班））");
+      expect(endlessHeadingZh).not.toContain("難易度");
+
+      // --- 2. Mofumofu Sheep behavioral DOM localization ---
+      const sheepDoc = createHtmlMockDocument(sheepHtml);
+      (globalThis as { document?: unknown }).document = sheepDoc;
+
+      applySheepStaticTranslations("en");
+      expect(sheepDoc.documentElement.lang).toBe("en");
+      expect(sheepDoc.title).toContain("Fluffy Sheep Pasture");
+      expect(sheepDoc.byId.get("back-link")?.textContent).toBe("← Portal");
+      expect(sheepDoc.byId.get("back-link")?.title).toBe("Back to Game Portal");
+      expect(sheepDoc.byId.get("total-stars-badge")?.title).toBe("Cleared stages");
+      expect(sheepDoc.byId.get("btn-show-optimal")?.textContent).toBe("✨ View Model Solution");
+      expect(sheepDoc.byId.get("btn-next-stage")?.textContent).toBe("Next Stage ▶");
+      expect(sheepDoc.byId.get("stage-strip")?.getAttribute("aria-label")).toBe("Stage Selection");
+      expect(sheepDoc.byId.get("board-grid")?.getAttribute("aria-label")).toBe(
+        "Pasture Puzzle Board"
+      );
+      expect(sheepDoc.byId.get("btn-undo-label")?.textContent).toBe("Undo");
+      expect(sheepDoc.byId.get("btn-undo")?.title).toBe("Undo 1 move (Z key)");
+      expect(sheepDoc.byId.get("btn-restart-label")?.textContent).toBe("Restart");
+      expect(sheepDoc.byId.get("btn-restart")?.title).toBe("Restart stage (R key)");
+      expect(sheepDoc.byId.get("btn-hint-label")?.textContent).toBe("1-Move Hint");
+      expect(sheepDoc.byId.get("btn-hint")?.title).toBe(
+        "Highlight the next recommended move on the board (H key)"
+      );
+      expect(sheepDoc.byId.get("btn-new-random-label")?.textContent).toBe("Another Pasture");
+      expect(sheepDoc.byId.get("btn-new-random")?.title).toBe("Move to another pasture");
+      expect(sheepDoc.byId.get("legend-sheep")?.title).toBe(
+        "Sheep (+2 pts, protect from wolves)"
+      );
+      expect(sheepDoc.byId.get("legend-grass")?.title).toBe("Meadow (+1 pt)");
+      expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("Wild Strawberry (+5 pts)");
+      expect(sheepDoc.byId.get("legend-mushroom")?.title).toBe(
+        "Poison Mushroom (-5 pts, can be covered with a fence)"
+      );
+      expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
+        "Stone Bridge (+1 pt, passable, cannot place fence)"
+      );
+      expect(sheepDoc.byId.get("legend-wall")?.textContent).toBe("💧🪨 Wall");
+      expect(sheepDoc.byId.get("legend-wall")?.title).toBe(
+        "Water & Rock (impassable natural wall)"
+      );
+
+      applySheepStaticTranslations("zh");
+      expect(sheepDoc.documentElement.lang).toBe("zh");
+      expect(sheepDoc.title).toContain("毛茸茸绵羊围牧场");
+      expect(sheepDoc.byId.get("back-link")?.textContent).toBe("← 返回列表");
+      expect(sheepDoc.byId.get("back-link")?.title).toBe("返回游戏列表");
+      expect(sheepDoc.byId.get("total-stars-badge")?.title).toBe("已通关关卡数");
+      expect(sheepDoc.byId.get("btn-show-optimal")?.textContent).toBe("✨ 查看示范解答");
+      expect(sheepDoc.byId.get("btn-next-stage")?.textContent).toBe("下一关 ▶");
+      expect(sheepDoc.byId.get("stage-strip")?.getAttribute("aria-label")).toBe("关卡选择");
+      expect(sheepDoc.byId.get("board-grid")?.getAttribute("aria-label")).toBe("牧场解谜棋盘");
+      expect(sheepDoc.byId.get("btn-undo-label")?.textContent).toBe("撤销一步");
+      expect(sheepDoc.byId.get("btn-undo")?.title).toBe("撤销一步 (Z键)");
+      expect(sheepDoc.byId.get("btn-restart-label")?.textContent).toBe("重新开始");
+      expect(sheepDoc.byId.get("btn-restart")?.title).toBe("从头重新开始 (R键)");
+      expect(sheepDoc.byId.get("btn-hint-label")?.textContent).toBe("一步提示");
+      expect(sheepDoc.byId.get("btn-hint")?.title).toBe("在棋盘上高亮提示下一步操作 (H键)");
+      expect(sheepDoc.byId.get("btn-new-random-label")?.textContent).toBe("换一个牧场");
+      expect(sheepDoc.byId.get("btn-new-random")?.title).toBe("前往另一个牧场");
+      expect(sheepDoc.byId.get("legend-sheep")?.title).toBe("绵羊（+2分・保护对象）");
+      expect(sheepDoc.byId.get("legend-grass")?.title).toBe("草地（+1分）");
+      expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("野草莓（+5分）");
+      expect(sheepDoc.byId.get("legend-mushroom")?.title).toBe("毒蘑菇（-5分・可用栅栏盖住）");
+      expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
+        "石桥（+1分・可通行・不可放栅栏）"
+      );
+      expect(sheepDoc.byId.get("legend-wall")?.textContent).toBe("💧🪨 障碍墙");
+      expect(sheepDoc.byId.get("legend-wall")?.title).toBe(
+        "水池与岩石（不可通行的天然墙壁）"
+      );
+    } finally {
+      if (prevDocument === undefined) {
+        delete (globalThis as { document?: unknown }).document;
+      } else {
+        (globalThis as { document?: unknown }).document = prevDocument;
+      }
     }
   });
 

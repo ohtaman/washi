@@ -686,7 +686,10 @@ async function loadStage(
   failedAttemptsThisStage =
     saveData.stageFailedAttempts[retryKey] ?? saveData.stageRetryCounts[retryKey] ?? 0;
 
-  const hasDom = typeof document !== "undefined" && Boolean(document.getElementById("stage-progress-nav"));
+  const hasDom =
+    typeof window !== "undefined" &&
+    typeof document !== "undefined" &&
+    Boolean(document.getElementById("stage-progress-nav"));
   if (hasDom) {
     renderStageProgressNav();
     renderStageHeading();
@@ -698,6 +701,9 @@ async function loadStage(
     }
   } else {
     currentEvaluation = evaluateSchedule(currentStage, currentSchedule);
+    if (typeof document !== "undefined") {
+      renderStageHeading();
+    }
   }
 
   if (!cachedOptimalResult) {
@@ -3934,6 +3940,43 @@ function applyStaticTranslations(): void {
 // Bootstrap & Event Listeners
 // ============================================================================
 
+export function switchCastleLanguage(next: GameLang): void {
+  currentLang = next;
+  setGameLang(next);
+  if (typeof document === "undefined") return;
+  applyStaticTranslations();
+  renderStageHeading();
+  if (
+    typeof window !== "undefined" &&
+    document.getElementById("stage-progress-nav") &&
+    document.getElementById("shift-grid-table")
+  ) {
+    renderStageProgressNav();
+    refreshEvaluationAndBoard(true);
+  }
+
+  const titleScreen = document.getElementById("title-screen");
+  if (titleScreen && !titleScreen.hidden && document.getElementById("game-app")) {
+    showTitleScreen();
+  }
+  const opDialog = document.getElementById("opening-movie-dialog") as HTMLDialogElement | null;
+  if (opDialog?.open) {
+    renderOpeningCut(opCutIndex);
+  }
+  const prologueDialog = document.getElementById("prologue-dialog") as HTMLDialogElement | null;
+  if (prologueDialog?.open) {
+    renderPrologueSlide();
+  }
+  const briefingDialog = document.getElementById("briefing-dialog") as HTMLDialogElement | null;
+  if (briefingDialog?.open) {
+    openBriefingDialog(currentStage);
+  }
+  const rosterDialog = document.getElementById("roster-dialog") as HTMLDialogElement | null;
+  if (rosterDialog?.open) {
+    openRosterDialog();
+  }
+}
+
 function initGame(): void {
   setupDialogLightDismiss();
   applyStaticTranslations();
@@ -3942,32 +3985,7 @@ function initGame(): void {
     btn.addEventListener("click", () => {
       const next = btn.dataset.langBtn as GameLang | undefined;
       if (!next || next === currentLang) return;
-      currentLang = next;
-      setGameLang(next);
-      applyStaticTranslations();
-      renderStageProgressNav();
-      refreshEvaluationAndBoard(true);
-
-      const titleScreen = document.getElementById("title-screen");
-      if (titleScreen && !titleScreen.hidden) {
-        showTitleScreen();
-      }
-      const opDialog = document.getElementById("opening-movie-dialog") as HTMLDialogElement | null;
-      if (opDialog?.open) {
-        renderOpeningCut(opCutIndex);
-      }
-      const prologueDialog = document.getElementById("prologue-dialog") as HTMLDialogElement | null;
-      if (prologueDialog?.open) {
-        renderPrologueSlide();
-      }
-      const briefingDialog = document.getElementById("briefing-dialog") as HTMLDialogElement | null;
-      if (briefingDialog?.open) {
-        openBriefingDialog(currentStage);
-      }
-      const rosterDialog = document.getElementById("roster-dialog") as HTMLDialogElement | null;
-      if (rosterDialog?.open) {
-        openRosterDialog();
-      }
+      switchCastleLanguage(next);
     });
   });
 
