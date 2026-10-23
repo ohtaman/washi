@@ -49,7 +49,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(state.config.numDays).toBe(30);
 
     const t0 = performance.now();
-    const res = await solveNurseScheduleWithWashi(state, { timeLimit: 10.0 });
+    const res = await solveNurseScheduleWithWashi(state);
     const elapsed = performance.now() - t0;
 
     console.log(
@@ -145,7 +145,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(updatedState.config.maxConsecutiveWorkDays).toBe(4);
 
     const res = await solveNurseScheduleWithWashi(updatedState);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.schedule!["N01"][11]).toBe("O"); // Day 12 is 0-indexed 11
     // Verify N04 and N06 never share E or N on the same day
@@ -253,7 +253,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(updatedState.customShiftDefs[0]?.label).toBe("新人研修");
 
     const res = await solveNurseScheduleWithWashi(updatedState);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -281,7 +281,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(n04.yearly36Stats.prev11MonthsOvertimeHours).toBe(318);
 
     const res = await solveNurseScheduleWithWashi(baseState);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     const n04Summary = res.evaluation!.nurseSummaries["N04"]!;
     expect(n04Summary.projectedAnnualOvertimeHours).toBeLessThanOrEqual(
       baseState.config.maxAnnualOvertimeHours
@@ -348,7 +348,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
     // Solve with WaSHI (HiGHS) and verify all three domain rules hold in the schedule!
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -438,7 +438,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
     // Solve with WaSHI (HiGHS) and verify all group & daily cap constraints hold
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -876,7 +876,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
       // Verify final solved schedule satisfies all constraints and levels night shifts per role
       const res = await solveNurseScheduleWithWashi(state);
-      expect(["Optimal", "Feasible"]).toContain(res.status);
+      expect(res.status).toBe("Optimal");
       expect(res.validatedByWashi).toBe(true);
       expect(res.evaluation?.valid).toBe(true);
 
@@ -929,7 +929,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(state.nurses.find((n) => n.id === "N06")?.maxMonthlyNightShifts).toBe(3);
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
 
@@ -1034,11 +1034,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       );
       expect(plan.intentType).toBe("modify_and_solve");
       expect(plan.operations.length).toBe(1);
-      expect(plan.operations[0]?.op).toBe("add_request");
-      expect(["N09", "小林"]).toContain(plan.operations[0]?.nurseNameOrId);
-      expect(plan.operations[0]?.days).toEqual(
-        Array.from({ length: 17 }, (_, i) => i + 1)
-      );
+      const firstOp = plan.operations[0];
+      expect(firstOp?.op).toBe("add_request");
+      if (firstOp?.op === "add_request") {
+        expect(["N09", "小林"]).toContain(firstOp.nurseNameOrId);
+        expect(firstOp.days).toEqual(
+          Array.from({ length: 17 }, (_, i) => i + 1)
+        );
+      }
 
       const { updatedState, appliedLogs } = applyChatOperationsToState(state, plan.operations);
       // Should emit a single concise range summary instead of 17 individual lines
@@ -1069,8 +1072,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
   it("minimizes cell perturbations (99%+ retention) when fine-tuning an existing schedule with referenceSchedule", async () => {
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
-    const initialOutcome = await solveNurseScheduleWithWashi(baseState, { timeLimit: 10.0 });
-    expect(["Optimal", "Feasible"]).toContain(initialOutcome.status);
+    const initialOutcome = await solveNurseScheduleWithWashi(baseState);
+    expect(initialOutcome.status).toBe("Optimal");
     const initialSchedule = initialOutcome.schedule!;
 
     // Pick a day where N01 (佐藤 美咲) is working (not "O") and pin that day to "O" (公休)
@@ -1090,9 +1093,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
     const tweakedOutcome = await solveNurseScheduleWithWashi(updatedState, {
       referenceSchedule: initialSchedule,
-      timeLimit: 10.0,
     });
-    expect(["Optimal", "Feasible"]).toContain(tweakedOutcome.status);
+    expect(tweakedOutcome.status).toBe("Optimal");
     expect(tweakedOutcome.validatedByWashi).toBe(true);
     expect(tweakedOutcome.schedule!["N01"]![workDayIdx]).toBe("O");
 
@@ -1166,7 +1168,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(state.nurses.find((n) => n.id === "N09")?.minMonthlyWorkDays).toBe(8);
 
     const outcome = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(outcome.status);
+    expect(outcome.status).toBe("Optimal");
     expect(outcome.validatedByWashi).toBe(true);
     expect(outcome.evaluation?.valid).toBe(true);
 
@@ -1234,7 +1236,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     state = updatedState;
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -1302,7 +1304,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const csCode = matsuriDef!.code;
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -1347,7 +1349,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(state.nurses.find((n) => n.id === "N27")?.minMonthlyWorkDays).toBe(0);
 
     const resResolved = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(resResolved.status);
+    expect(resResolved.status).toBe("Optimal");
     expect(resResolved.validatedByWashi).toBe(true);
     expect(resResolved.evaluation?.valid).toBe(true);
     expect(resResolved.evaluation!.nurseSummaries["N27"]!.totalWorkDays).toBeLessThanOrEqual(12);
@@ -1431,7 +1433,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(state.config.shiftTransitions.D.N).toBe("forbid");
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -1549,7 +1551,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     state = applied.updatedState;
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -1704,7 +1706,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     };
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.validatedByWashi).toBe(true);
     expect(res.evaluation?.valid).toBe(true);
     expect(res.evaluation?.violations).toEqual([]);
@@ -2187,7 +2189,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
   it("formats final consultation report strictly with nurse-relevant shift outcomes and without solver internal jargon", async () => {
     const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
     const baseSolve = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(baseSolve.status);
+    expect(baseSolve.status).toBe("Optimal");
 
     const applied = applyChatOperationsToState(state, [
       { op: "add_request", nurseNameOrId: "N01", day: 12, shift: "O", isHard: true },
@@ -2195,7 +2197,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const nextSolve = await solveNurseScheduleWithWashi(applied.updatedState, {
       referenceSchedule: baseSolve.schedule,
     });
-    expect(["Optimal", "Feasible"]).toContain(nextSolve.status);
+    expect(nextSolve.status).toBe("Optimal");
 
     const g = globalThis as any;
     const origLM = g.LanguageModel;
@@ -2297,8 +2299,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       state
     );
-    expect(opStaffingIcu).not.toBeNull();
-    expect(opStaffingIcu!.shifts).toEqual([c1Def.code]);
+    expect(opStaffingIcu?.op).toBe("set_staffing_rule");
+    if (opStaffingIcu?.op === "set_staffing_rule") {
+      expect(opStaffingIcu.shifts).toEqual([c1Def.code]);
+    }
 
     const applied2 = applyChatOperationsToState(state, [
       {
@@ -2325,7 +2329,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     state = applied2.updatedState;
 
     const res = await solveNurseScheduleWithWashi(state);
-    expect(["Optimal", "Feasible"]).toContain(res.status);
+    expect(res.status).toBe("Optimal");
     expect(res.evaluation?.valid).toBe(true);
 
     // On days 10, 11, 12, exactly 2 nurses must be assigned to c1Def.code, and at least 1 must hold icu_er and at least 1 must hold leader_cap
@@ -2404,7 +2408,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       ],
     };
     const softRes = await solveNurseScheduleWithWashi(softWeightedState);
-    expect(["Optimal", "Feasible"]).toContain(softRes.status);
+    expect(softRes.status).toBe("Optimal");
     expect(softRes.schedule!["N01"]![13]).toBe("O");
     // Hard rules are all valid, while the compromised soft rule is recorded with isSoft: true
     expect(softRes.evaluation?.valid).toBe(true);
@@ -2444,7 +2448,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       customRules: [...baseState.customRules, ...leaderOffRules],
     };
     const ldrSoftRes = await solveNurseScheduleWithWashi(leaderSoftConfigState);
-    expect(["Optimal", "Feasible"]).toContain(ldrSoftRes.status);
+    expect(ldrSoftRes.status).toBe("Optimal");
     expect(ldrSoftRes.evaluation?.valid).toBe(true);
     expect(
       ldrSoftRes.evaluation?.violations.some(
@@ -2469,10 +2473,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       baseState
     );
-    expect(opFlipCheck1).not.toBeNull();
-    expect(opFlipCheck1!.targetShift).toBe("D");
-    expect(opFlipCheck1!.shifts).toEqual(["D"]);
-    expect(opFlipCheck1!.attribute).toBe("team_A");
+    expect(opFlipCheck1?.op).toBe("set_staffing_rule");
+    if (opFlipCheck1?.op === "set_staffing_rule") {
+      expect(opFlipCheck1.targetShift).toBe("D");
+      expect(opFlipCheck1.shifts).toEqual(["D"]);
+      expect(opFlipCheck1.attribute).toBe("team_A");
+    }
     const stateAfterFlipCheck1 = applyChatOperationsToState(baseState, [opFlipCheck1!]).updatedState;
     const ruleFlip1 = stateAfterFlipCheck1.customRules.find((r) => r.kind === "staffing_rule")!;
     expect(ruleFlip1.shifts).toEqual(["D"]);
@@ -2486,10 +2492,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       baseState
     );
-    expect(opFlipCheck2).not.toBeNull();
-    expect(opFlipCheck2!.targetShift).toBe("E");
-    expect(opFlipCheck2!.shifts).toEqual(["E"]);
-    expect(opFlipCheck2!.attribute).toBe("team_B");
+    expect(opFlipCheck2?.op).toBe("set_staffing_rule");
+    if (opFlipCheck2?.op === "set_staffing_rule") {
+      expect(opFlipCheck2.targetShift).toBe("E");
+      expect(opFlipCheck2.shifts).toEqual(["E"]);
+      expect(opFlipCheck2.attribute).toBe("team_B");
+    }
     const stateAfterFlipCheck2 = applyChatOperationsToState(baseState, [opFlipCheck2!]).updatedState;
     const ruleFlip2 = stateAfterFlipCheck2.customRules.find((r) => r.kind === "staffing_rule")!;
     expect(ruleFlip2.shifts).toEqual(["E"]);
@@ -2631,7 +2639,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
     ]).updatedState;
     const staffingSoftRes = await solveNurseScheduleWithWashi(unheldStaffingSoftState);
-    expect(["Optimal", "Feasible"]).toContain(staffingSoftRes.status);
+    expect(staffingSoftRes.status).toBe("Optimal");
     expect(
       staffingSoftRes.evaluation?.violations.some(
         (v) => v.id.startsWith("staffing_min_") && v.isSoft === true
@@ -2650,7 +2658,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
     // 3. evaluateNurseSchedule resolves shift aliases in daily_shift_cap
     const baselineSolved = await solveNurseScheduleWithWashi(baseState);
-    expect(["Optimal", "Feasible"]).toContain(baselineSolved.status);
+    expect(baselineSolved.status).toBe("Optimal");
     const dayAliasCapState: typeof baseState = {
       ...baseState,
       customRules: [
@@ -2705,9 +2713,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       baseState
     );
-    expect(skillSubOp).not.toBeNull();
-    expect(skillSubOp!.substitutesFor).toBe("leader_cap");
-    expect(skillSubOp!.skillMinDay).toBeUndefined();
+    expect(skillSubOp?.op).toBe("add_skill_def");
+    if (skillSubOp?.op === "add_skill_def") {
+      expect(skillSubOp.substitutesFor).toBe("leader_cap");
+      expect(skillSubOp.skillMinDay).toBeUndefined();
+    }
 
     // 2. add_shift_quota / add_daily_shift_cap / update_nurse_skill accept team_A ("A班") or skills ("救急・重症対応") uniformly
     const quotaTeamOp = convertStage2ToolToOperation(
@@ -2717,9 +2727,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       baseState
     );
-    expect(quotaTeamOp).not.toBeNull();
-    expect(quotaTeamOp!.targetRole).toBe("team_A");
-    expect(quotaTeamOp!.attribute).toBe("team_A");
+    expect(quotaTeamOp?.op).toBe("add_shift_quota");
+    if (quotaTeamOp?.op === "add_shift_quota") {
+      expect(quotaTeamOp.targetRole).toBe("team_A");
+      expect(quotaTeamOp.attribute).toBe("team_A");
+    }
 
     const grantTeamSkillOp = convertStage2ToolToOperation(
       {
@@ -2728,8 +2740,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       baseState
     );
-    expect(grantTeamSkillOp).not.toBeNull();
-    expect(grantTeamSkillOp!.targetRole).toBe("team_B");
+    expect(grantTeamSkillOp?.op).toBe("update_nurse_skill");
+    if (grantTeamSkillOp?.op === "update_nurse_skill") {
+      expect(grantTeamSkillOp.targetRole).toBe("team_B");
+    }
 
     const applied = applyChatOperationsToState(baseState, [
       skillSubOp!,
@@ -2753,7 +2767,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
 
     // Solver should enforce quota on A班 (team === "A") nurses for カンファレンス
     const solved = await solveNurseScheduleWithWashi(applied);
-    expect(["Optimal", "Feasible"]).toContain(solved.status);
+    expect(solved.status).toBe("Optimal");
     expect(solved.evaluation?.valid).toBe(true);
     const confCode = applied.customShiftDefs![0]!.code;
     for (const n of applied.nurses.filter((nurse) => nurse.team === "A")) {
@@ -2832,25 +2846,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
         holidaysOff: true,
       },
     ]).updatedState;
-    // Simulate a legacy contract_hol_N02_3 rule alongside nurse.holidaysOff = true
-    const holWithLegacyPinState = {
-      ...holState,
-      customRules: [
-        ...holState.customRules,
-        {
-          id: "contract_hol_N02_3",
-          kind: "pin_shift" as const,
-          enabled: true,
-          nurseId: "N02",
-          day: 3,
-          shift: "O",
-          description: "11/3(文化の日): N02 祝日休み",
-        },
-      ],
-    };
     // Evaluator detects holiday work if N02 is manually placed on D on Nov 3 (Culture Day)
     const baselineSolved = await solveNurseScheduleWithWashi(baseState);
-    expect(["Optimal", "Feasible"]).toContain(baselineSolved.status);
+    expect(baselineSolved.status).toBe("Optimal");
     const manualHolWorkSchedule = {
       ...baselineSolved.schedule!,
       N02: baselineSolved.schedule!["N02"]!.map((s, idx) => (idx === 2 ? "D" : s)),
@@ -2858,16 +2856,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     const holEval = evaluateNurseSchedule(holState, manualHolWorkSchedule);
     expect(holEval.violations.some((v) => v.id === "holidays_off_N02_d3")).toBe(true);
 
-    // Clearing N02's contract removes both holidaysOff and legacy contract_hol_N02_* rules
-    const clearedHolState = clearNurseContractFromState(holWithLegacyPinState, "N02");
+    // Clearing N02's contract removes holidaysOff on NurseProfile
+    const clearedHolState = clearNurseContractFromState(holState, "N02");
     expect(clearedHolState.nurses.find((n) => n.id === "N02")?.holidaysOff).toBeUndefined();
-    expect(clearedHolState.customRules.some((r) => r.id.startsWith("contract_hol_N02_"))).toBe(false);
     // Pinning N02 to work on Nov 3 now succeeds
     const workOnHolAfterClear = applyChatOperationsToState(clearedHolState, [
       { op: "add_request", nurseNameOrId: "N02", day: 3, shift: "D", isHard: true },
     ]).updatedState;
     const solvedAfterClear = await solveNurseScheduleWithWashi(workOnHolAfterClear);
-    expect(["Optimal", "Feasible"]).toContain(solvedAfterClear.status);
+    expect(solvedAfterClear.status).toBe("Optimal");
     expect(solvedAfterClear.schedule!["N02"]![2]).toBe("D");
 
     // 3. removeCustomShiftFromState cascades deletion across staffing_rule.shifts, prereqShift, restrictedShifts, forbidShifts, and preferences
@@ -2881,6 +2878,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       },
       {
         op: "set_staffing_rule",
+        targetShift: "OUT_D",
         attribute: "all",
         shifts: ["OUT_D"],
         minCount: 1,
@@ -2918,7 +2916,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     expect(cascadeAfter.preferences.some((p) => p.shift === "OUT_D")).toBe(false);
 
     const solvedAfterCascade = await solveNurseScheduleWithWashi(cascadeAfter);
-    expect(["Optimal", "Feasible"]).toContain(solvedAfterCascade.status);
+    expect(solvedAfterCascade.status).toBe("Optimal");
     expect(solvedAfterCascade.evaluation?.valid).toBe(true);
 
     // 4. Quota cumulative bound when includePrevMonth exceeds maxCount is infeasible in both model and evaluator
@@ -3007,7 +3005,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
     );
     expect(evalN2.violations.some((v) => v.id === "max_consec_N2_N02_d4")).toBe(true);
 
-    // 4. Cascade skill deletion into dependent staffing rules and substitutesFor references
+    // 4. Skill removal clears substitutesFor within skillDefs without cross-domain customRules deletion (honest infeasibility)
     const withCustomSkillState = applyChatOperationsToState(baseState, [
       { op: "add_skill_def", skillName: "透析管理" },
       { op: "add_skill_def", skillName: "透析サブ", substitutesFor: "透析管理" },
@@ -3019,10 +3017,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS + Z
       { op: "remove_skill_def", skillName: "透析管理" },
     ]).updatedState;
     expect(afterSkillRemoved.skillDefs!.some((s) => s.code === dialysisCode)).toBe(false);
-    expect(afterSkillRemoved.customRules.some((r) => r.attribute === dialysisCode)).toBe(false);
+    expect(afterSkillRemoved.customRules.some((r) => r.attribute === dialysisCode)).toBe(true);
     expect(
       afterSkillRemoved.skillDefs!.find((s) => s.label === "透析サブ")?.substitutesFor
     ).toBeUndefined();
+    const zeroHolderAfterRemove = await solveNurseScheduleWithWashi(afterSkillRemoved);
+    expect(zeroHolderAfterRemove.status).toBe("Infeasible");
 
     // 5. Preserve daily_shift_cap rules across distinct target groups on the same shift
     const multiTargetCapState = applyChatOperationsToState(baseState, [

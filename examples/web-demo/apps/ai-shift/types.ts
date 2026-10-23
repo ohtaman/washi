@@ -1280,13 +1280,9 @@ export interface UpdateNurseSkillOperation {
 
 export interface SetStaffingRuleOperation {
   op: "set_staffing_rule";
-  targetShift?: string;
-  shiftName?: string;
-  shift?: ShiftCode;
+  targetShift: string;
   shifts?: ShiftCode[];
-  attribute?: string;
-  skillName?: string;
-  targetRole?: string;
+  attribute: string;
   minCount?: number;
   maxCount?: number;
   isHard?: boolean;
@@ -1340,7 +1336,6 @@ export interface AddShiftPrerequisiteOperation {
   targetRole: string;
   attribute?: string;
   prereqMinCount: number;
-  minCount?: number;
   restrictedShifts?: ShiftCode[];
 }
 
@@ -1582,15 +1577,13 @@ export function removeCustomShiftFromState(
 }
 
 /**
- * Clears all individual contract overrides for `nurseId` and removes any legacy
- * `contract_hol_<nurseId>_*` holiday-pin rules from `customRules`.
+ * Clears all individual contract overrides for `nurseId`.
  */
 export function clearNurseContractFromState(
   state: NurseSchedulingState,
   nurseId: string,
   options?: { resetNightOk?: boolean }
 ): NurseSchedulingState {
-  const holPrefix = `contract_hol_${nurseId}_`;
   return {
     ...state,
     nurses: state.nurses.map((n) =>
@@ -1609,7 +1602,6 @@ export function clearNurseContractFromState(
           }
         : n
     ),
-    customRules: state.customRules.filter((r) => !r.id.startsWith(holPrefix)),
   };
 }
 

@@ -3608,9 +3608,6 @@ export function applyChatOperationsToState(
           ? { ...n, skills: n.skills.filter((sk) => sk !== targetCode) }
           : n
       );
-      nextState.customRules = nextState.customRules.filter(
-        (r) => r.attribute !== targetCode && (r.targetRole as string | undefined) !== targetCode
-      );
       appliedLogs.push(
         `スキル削除: 「${targetLabel}」をスキル定義および全スタッフの保有スキルから削除しました`
       );
@@ -3673,11 +3670,11 @@ export function applyChatOperationsToState(
 
     if (op.op === "set_staffing_rule") {
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
-      const rawAttr = op.attribute || op.skillName || op.targetRole;
+      const rawAttr = op.attribute;
       if (!rawAttr) continue;
       const resolved = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const resolvedTarget = resolveTargetShiftsFromArg(
-        op.targetShift || op.shiftName || op.shift,
+        op.targetShift,
         op.shifts,
         nextState
       );
@@ -3783,9 +3780,6 @@ export function applyChatOperationsToState(
             if (op.holidaysOff) {
               changes.push(op.weekdayOnly ? "土日祝休み" : "祝日休み");
             } else {
-              nextState.customRules = nextState.customRules.filter(
-                (r) => !r.id.startsWith(`contract_hol_${targetNurse.id}_`)
-              );
               changes.push("祝日休み解除");
             }
           }
@@ -4068,12 +4062,7 @@ export function applyChatOperationsToState(
       const meta = getShiftMeta(prereqCode, nextState.customShiftDefs);
       const activeSkills = nextState.skillDefs ?? createDefaultSkillDefs();
       const rawAttr = op.targetRole || op.attribute;
-      const rawK =
-        typeof op.prereqMinCount === "number"
-          ? op.prereqMinCount
-          : typeof op.minCount === "number"
-            ? op.minCount
-            : undefined;
+      const rawK = typeof op.prereqMinCount === "number" ? op.prereqMinCount : undefined;
       if (!rawAttr || rawK === undefined) continue;
       const resolvedAttr = resolveAttributeCodeAndLabel(rawAttr, activeSkills);
       const targetRole =

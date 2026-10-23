@@ -225,52 +225,6 @@ export function getRequiredDailyCoverage(
   return req;
 }
 
-const SOFT_RULE_KEY_ALIASES: Record<string, readonly string[]> = {
-  consecutive: ["consecutive", "maxConsecutiveWorkDays"],
-  maxConsecutiveWorkDays: ["maxConsecutiveWorkDays", "consecutive"],
-  monthlyDaysOff: ["monthlyDaysOff", "minMonthlyDaysOff"],
-  minMonthlyDaysOff: ["minMonthlyDaysOff", "monthlyDaysOff"],
-  minMonthlyWorkDays: ["minMonthlyWorkDays", "monthlyDaysOff"],
-  monthlyNightCap: ["monthlyNightCap", "maxMonthlyNightShifts"],
-  maxMonthlyNightShifts: ["maxMonthlyNightShifts", "monthlyNightCap"],
-  dailyCoverage: ["dailyCoverage", "coverage"],
-  coverage: ["coverage", "dailyCoverage"],
-};
-
-function resolveSoftRuleWeight(
-  softRuleWeights: Record<string, number> | undefined,
-  ruleKey: string | undefined,
-  constraintName?: string
-): number | undefined {
-  if (!softRuleWeights) return undefined;
-  const candidates: string[] = [];
-  if (ruleKey) {
-    const aliases = SOFT_RULE_KEY_ALIASES[ruleKey];
-    if (aliases) {
-      candidates.push(...aliases);
-    } else {
-      candidates.push(ruleKey);
-    }
-    if (ruleKey.startsWith("trans_")) {
-      candidates.push("shiftTransitions");
-    }
-  }
-  if (constraintName) {
-    if (constraintName.startsWith("carryover_")) {
-      candidates.push("enforcePrevMonthCarryover");
-    } else if (constraintName.startsWith("trans_")) {
-      candidates.push("shiftTransitions");
-    }
-  }
-  for (const k of candidates) {
-    const w = softRuleWeights[k];
-    if (typeof w === "number" && w > 0) {
-      return w;
-    }
-  }
-  return undefined;
-}
-
 /**
  * Builds the algebraic WaSHI Model (LP/MIP with HiGHS) for the 1-month 3-shift nurse scheduling problem.
  */
@@ -311,11 +265,12 @@ export function buildNurseWashiModel(
     meta: ConstraintMeta
   ) => {
     const c = rawConstraint as Constraint;
-    const configSoftW = resolveSoftRuleWeight(
-      config.softRuleWeights,
-      meta.ruleKey,
-      meta.name
-    );
+    const configSoftW =
+      meta.ruleKey &&
+      typeof config.softRuleWeights?.[meta.ruleKey] === "number" &&
+      config.softRuleWeights[meta.ruleKey]! > 0
+        ? config.softRuleWeights[meta.ruleKey]!
+        : undefined;
     const effectiveSoftWeight =
       meta.isHard === false
         ? typeof meta.softWeight === "number" && meta.softWeight > 0
@@ -838,7 +793,7 @@ export function buildNurseWashiModel(
         {
           name: `consec_work_${nurse.id}_d${startDay}_to_d${endDay}`,
           category: "consecutive",
-          ruleKey: "maxConsecutiveWorkDays",
+          ruleKey: "consecutive",
           labelJa: `最大${maxConsec}連勤制限: ${nurse.name}(${nurse.id}) の ${config.month}/${startDay}〜${config.month}/${endDay}（${windowSize}日間）で最低1日は公休が必要`,
           relatedNurseIds: [nurse.id],
           relatedDay: startDay,
@@ -873,7 +828,7 @@ export function buildNurseWashiModel(
         {
           name: `monthly_off_min_${nurse.id}`,
           category: "monthly",
-          ruleKey: "minMonthlyDaysOff",
+          ruleKey: "monthlyDaysOff",
           labelJa: `月間最低公休数(${effectiveMinOff}日以上): ${nurse.name}(${nurse.id}) の月間勤務日数は最大${maxWorkDays}日まで`,
           relatedNurseIds: [nurse.id],
           relaxSuggestion: `月間最低公休日数（現在:${effectiveMinOff}日）を1日減らすか、日別の必要人数を緩和してください。`,
@@ -923,7 +878,7 @@ export function buildNurseWashiModel(
           {
             name: `monthly_night_max_${nurse.id}`,
             category: "monthly",
-            ruleKey: "maxMonthlyNightShifts",
+            ruleKey: "monthlyNightCap",
             labelJa: `月間夜勤上限(${effectiveMaxNight}回以下): ${nurse.name}(${nurse.id}) の準夜＋深夜合計は月${effectiveMaxNight}回まで`,
             relatedNurseIds: [nurse.id],
             relaxSuggestion: `月間夜勤上限（現在:${effectiveMaxNight}回）を増やすか、準夜・深夜の必要人数を緩和してください。`,
@@ -1755,9 +1710,7 @@ export function evaluateNurseSchedule(
     if (item.isSoft === undefined) {
       if (options?.customRule?.isHard === false) {
         item.isSoft = true;
-      } else if (
-        (resolveSoftRuleWeight(config.softRuleWeights, options?.ruleKey, item.id) ?? 0) > 0
-      ) {
+      } else if (options?.ruleKey && (config.softRuleWeights?.[options.ruleKey] ?? 0) > 0) {
         item.isSoft = true;
       }
     }
@@ -1830,7 +1783,7 @@ export function evaluateNurseSchedule(
             day: d,
             message: `${config.month}/${d} ${sMeta.label}の人数不足（配置:${counts[s]}名 / 必要:${required[s]}名）`,
           },
-          { ruleKey: "coverage" }
+          { ruleKey: "dailyCoverage" }
         );
       }
     }
@@ -2346,7 +2299,7 @@ export function evaluateNurseSchedule(
           nurseId: nurse.id,
           message: `${nurse.name}: ${msg}`,
         },
-        { ruleKey: "monthlyDaysOff" }
+        { ruleKey: "minMonthlyWorkDays" }
       );
     }
 
