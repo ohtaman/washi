@@ -1351,12 +1351,22 @@ function renderShiftAliasesList(): void {
     }
     baseSelect.addEventListener("change", () => {
       const nextBase = baseSelect.value as "D" | "E" | "N" | "O";
+      const nextTimeRange =
+        nextBase === "E"
+          ? "16:30–01:00"
+          : nextBase === "N"
+            ? "00:30–09:00"
+            : nextBase === "O"
+              ? "終日 (休暇)"
+              : "09:00–17:00";
       const nextCustom = appState.customShiftDefs.map((d) =>
         d.code === cs.code
           ? {
               ...d,
               baseShift: nextBase,
+              timeRange: nextTimeRange,
               countsAsWorkDay: nextBase !== "O",
+              overtimeHoursPerShift: nextBase === "O" ? 0 : 0.5,
             }
           : d
       );
@@ -2993,18 +3003,24 @@ function setupEventListeners(): void {
         includedInAliases,
       },
     ]);
+    if (appliedLogs.length === 0) {
+      appendChatMessage({
+        role: "system",
+        senderLabel: "⚠️ カスタムシフト追加エラー",
+        initialText: `指定されたコード「${rawCode || rawLabel}」は予約コード（D/E/N/O/W/EN）または既存のカスタムシフトと重複しているため追加できません。別のコードを指定してください。`,
+      });
+      return;
+    }
     appState = updatedState;
     codeInput.value = "";
     shortInput.value = "";
     labelInput.value = "";
     renderAllViews();
-    if (appliedLogs.length > 0) {
-      appendChatMessage({
-        role: "system",
-        senderLabel: "🏷️ カスタムシフト追加",
-        initialText: appliedLogs.map((l) => `- ${l}`).join("\n"),
-      });
-    }
+    appendChatMessage({
+      role: "system",
+      senderLabel: "🏷️ カスタムシフト追加",
+      initialText: appliedLogs.map((l) => `- ${l}`).join("\n"),
+    });
     void runWashiOptimization();
   });
 

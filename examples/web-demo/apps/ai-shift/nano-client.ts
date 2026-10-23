@@ -3688,17 +3688,33 @@ export function applyChatOperationsToState(
         "O",
         "W",
         "EN",
-        ...(nextState.shiftAliases ?? []).map((a) => a.code),
+        ...(nextState.shiftAliases ?? []).flatMap((a) => [a.code, a.code.toUpperCase()]),
       ]);
-      const rawExplicit = op.shift?.trim() ?? "";
-      const canUseExplicit =
-        Boolean(op.shiftName) &&
-        rawExplicit.length > 0 &&
-        rawExplicit !== op.shiftName!.trim() &&
-        /^[A-Za-z0-9_]+$/.test(rawExplicit) &&
-        !reservedCodes.has(rawExplicit) &&
-        !reservedCodes.has(rawExplicit.toUpperCase());
-      let code = canUseExplicit ? rawExplicit : inferredCode;
+      if (reservedCodes.has(label) || reservedCodes.has(label.toUpperCase())) {
+        continue;
+      }
+      const existingByLabel = nextState.customShiftDefs.find((d) => d.label === label);
+      const rawExplicit = op.shiftName ? (op.shift?.trim() ?? "") : "";
+      if (rawExplicit.length > 0) {
+        const isInvalidOrReserved =
+          !/^[A-Za-z0-9_]+$/.test(rawExplicit) ||
+          reservedCodes.has(rawExplicit) ||
+          reservedCodes.has(rawExplicit.toUpperCase());
+        const collidesWithOtherCustomShift = nextState.customShiftDefs.some(
+          (d) => d.code.toUpperCase() === rawExplicit.toUpperCase() && d.label !== label
+        );
+        const conflictsWithExistingLabelCode =
+          Boolean(existingByLabel) &&
+          existingByLabel!.code.toUpperCase() !== rawExplicit.toUpperCase();
+        if (
+          isInvalidOrReserved ||
+          collidesWithOtherCustomShift ||
+          conflictsWithExistingLabelCode
+        ) {
+          continue;
+        }
+      }
+      let code = rawExplicit.length > 0 ? rawExplicit : (existingByLabel?.code ?? inferredCode);
       const finalShort = op.shortLabel?.trim() || shortLabel;
       const baseShift: BaseShiftCode = op.baseShift ?? "D";
       const includedInAliases = Array.isArray(op.includedInAliases)
@@ -3715,15 +3731,12 @@ export function applyChatOperationsToState(
       const countsAsWorkDay =
         typeof op.countsAsWorkDay === "boolean" ? op.countsAsWorkDay : baseShift !== "O";
       const overtimeHoursPerShift = baseShift === "O" ? 0 : 0.5;
-      const existing = nextState.customShiftDefs.find(
-        (d) => d.label === label || (canUseExplicit && d.code === code)
-      );
-      if (!existing) {
+      if (!existingByLabel) {
         let seq = 1;
         while (
           reservedCodes.has(code) ||
           reservedCodes.has(code.toUpperCase()) ||
-          nextState.customShiftDefs.some((d) => d.code === code)
+          nextState.customShiftDefs.some((d) => d.code.toUpperCase() === code.toUpperCase())
         ) {
           code = `CS${nextState.customShiftDefs.length + seq}`;
           seq++;
@@ -3744,19 +3757,19 @@ export function applyChatOperationsToState(
           `新しいシフト種別「${finalShort}: ${label} (${timeRange}, 所属:${baseShift})」を追加しました`
         );
       } else {
-        existing.baseShift = baseShift;
-        existing.timeRange = timeRange;
-        existing.countsAsWorkDay = countsAsWorkDay;
-        existing.overtimeHoursPerShift = overtimeHoursPerShift;
+        existingByLabel.baseShift = baseShift;
+        existingByLabel.timeRange = timeRange;
+        existingByLabel.countsAsWorkDay = countsAsWorkDay;
+        existingByLabel.overtimeHoursPerShift = overtimeHoursPerShift;
         if (op.shortLabel?.trim()) {
-          existing.shortLabel = op.shortLabel.trim();
+          existingByLabel.shortLabel = op.shortLabel.trim();
         }
         if (includedInAliases !== undefined) {
-          existing.includedInAliases = includedInAliases;
+          existingByLabel.includedInAliases = includedInAliases;
         }
         nextState.shiftAliases = createDefaultShiftAliases(nextState.customShiftDefs);
         appliedLogs.push(
-          `シフト種別「${existing.shortLabel}: ${existing.label} (${existing.timeRange}, 所属:${baseShift})」を更新しました`
+          `シフト種別「${existingByLabel.shortLabel}: ${existingByLabel.label} (${existingByLabel.timeRange}, 所属:${baseShift})」を更新しました`
         );
       }
       continue;

@@ -3140,14 +3140,13 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     ).toBe(false);
     expect(unknownRequestExec.appliedLogs.length).toBe(0);
 
-    // 3. Reject reserved shift codes and normalize baseShift metadata on custom shift reclassification (4358960706, 4358960698)
+    // 3. Reject reserved shift codes and duplicate custom shift codes, and normalize baseShift metadata on reclassification (4358960706, 4358960698)
     const reservedShiftExec = applyChatOperationsToState(baseState, [
       { op: "add_custom_shift", shiftName: "偽日勤", shift: "D", shortLabel: "偽" },
       { op: "add_custom_shift", shiftName: "偽夜勤枠", shift: "EN", shortLabel: "偽夜" },
     ]);
-    expect((reservedShiftExec.updatedState.customShiftDefs ?? []).length).toBe(2);
-    expect(reservedShiftExec.updatedState.customShiftDefs![0].code).toBe("CS1");
-    expect(reservedShiftExec.updatedState.customShiftDefs![1].code).toBe("CS2");
+    expect((reservedShiftExec.updatedState.customShiftDefs ?? []).length).toBe(0);
+    expect(reservedShiftExec.appliedLogs.length).toBe(0);
 
     const addedOffCustom = applyChatOperationsToState(baseState, [
       { op: "add_custom_shift", shiftName: "学会出張", shift: "CONF", shortLabel: "学", baseShift: "O" },
@@ -3156,6 +3155,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(offDef.baseShift).toBe("O");
     expect(offDef.countsAsWorkDay).toBe(false);
     expect(offDef.timeRange).toBe("終日 (休暇)");
+
+    // Reject duplicate custom shift code used by another shift name
+    const dupCodeExec = applyChatOperationsToState(addedOffCustom, [
+      { op: "add_custom_shift", shiftName: "院内会議", shift: "CONF", shortLabel: "会" },
+    ]);
+    expect(dupCodeExec.updatedState.customShiftDefs!.length).toBe(1);
+    expect(dupCodeExec.updatedState.customShiftDefs![0].label).toBe("学会出張");
+    expect(dupCodeExec.appliedLogs.length).toBe(0);
 
     const reclassifiedToNight = applyChatOperationsToState(addedOffCustom, [
       { op: "add_custom_shift", shiftName: "学会出張", baseShift: "N" },
@@ -3262,5 +3269,41 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // Soft rule must never appear as a hard conflict in diagnosis
     const softRule = rangedConflictState.customRules.find((r) => r.isHard === false)!;
     expect(diagRanged.conflicts.some((c) => c.name.includes(softRule.id))).toBe(false);
+
+    // 8. Check weekend-off violations in evaluateNurseSchedule (4362414343)
+    const allWorkSched: Record<string, string[]> = {};
+    for (const n of baseState.nurses) {
+      allWorkSched[n.id] = new Array(baseState.config.numDays).fill("D");
+    }
+    const evalWeekendHard = evaluateNurseSchedule(baseState, allWorkSched);
+    expect(
+      evalWeekendHard.violations.some((v) => v.id === "weekend_off_N01" && !v.isSoft)
+    ).toBe(true);
+    const evalWeekendSoft = evaluateNurseSchedule(
+      {
+        ...baseState,
+        config: {
+          ...baseState.config,
+          softRuleWeights: { requireWeekendOff: 20 },
+        },
+      },
+      allWorkSched
+    );
+    expect(
+      evalWeekendSoft.violations.some((v) => v.id === "weekend_off_N01" && v.isSoft === true)
+    ).toBe(true);
+
+    // 9. Diagnose monthly shift_count_quota infeasibility in explicit diagnosis (4362414355)
+    const quotaInfeasibleState = applyChatOperationsToState(baseState, [
+      {
+        op: "add_shift_quota",
+        shiftName: "D",
+        nurseNameOrId: "N01",
+        minCount: 31,
+      },
+    ]).updatedState;
+    const diagQuota = await diagnoseNurseScheduleWithHiGHS(quotaInfeasibleState);
+    expect(diagQuota.status).toBe("Unsat");
+    expect(diagQuota.conflicts.some((c) => c.name.startsWith("quota_min_"))).toBe(true);
   });
 });
