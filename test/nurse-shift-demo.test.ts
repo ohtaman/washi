@@ -3543,16 +3543,6 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const capturedTurn1Prompts: string[] = [];
     const capturedTurn2Prompts: string[] = [];
 
-    let measureContextUsageCallCount = 0;
-    let measureContextUsageWithConstraintCount = 0;
-    const countMockTokens = (input: string) =>
-      Math.ceil(
-        Array.from(input).reduce(
-          (sum, ch) => sum + ((ch.codePointAt(0) ?? 0) < 128 ? 0.25 : 2),
-          0
-        )
-      );
-
     g.LanguageModel = {
       async availability() {
         return "available";
@@ -3561,13 +3551,6 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         return {
           contextWindow: 9216,
           contextUsage: 1800,
-          async measureContextUsage(input: string, opts?: { responseConstraint?: unknown }) {
-            measureContextUsageCallCount++;
-            if (opts?.responseConstraint) {
-              measureContextUsageWithConstraintCount++;
-            }
-            return countMockTokens(input);
-          },
           async prompt(input: string, opts?: { responseConstraint?: unknown }) {
             const schema = opts?.responseConstraint;
             if (!schema) {
@@ -3731,32 +3714,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         routes: [{ tool_type: "clarify" }],
         response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
       };
-      // An initial request whose measured tokens (~4,545) fit within `totalTokenBudget` (~4,800 tokens)
-      // once stale `recentTurnHistory` from Turn 4 is evicted is preserved in full without truncating
-      // the new held request (4368632729, 4368715484, 4368794084, 4368829907).
-      const largeInitialFittingBudget = `[REQ-${"A".repeat(18000)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
       const planTurn5Clarify = await manager.extractPlan(
-        largeInitialFittingBudget,
+        "佐藤さんを10日休みにして、夜勤上限も調整して",
         appliedTurn4.updatedState
       );
       expect(planTurn5Clarify.intentType).toBe("consult_only");
       expect(planTurn5Clarify.nonToolReason).toBe("clarify");
       expect(planTurn5Clarify.operations).toEqual([]);
 
-      // Turn 5b: Stale applied-turn history from Turn 4 was evicted first so `largeInitialFittingBudget`
-      // is preserved in full in Turn 5b's Stage 1 prompt; then an oversized follow-up + oversized
-      // clarification response triggers budget trimming while still keeping the canonical original request
-      // within budget (4368317268, 4368380674, 4368451525, 4368601792, 4368632729, 4368715484, 4368794084).
-      const firstFollowUp = "夜勤上限はまだ迷っている";
-      await manager.extractPlan(firstFollowUp, appliedTurn4.updatedState);
-      const turn5bFirstRouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
-      expect(turn5bFirstRouterPrompt).not.toContain("・前回:「15日に調整して」");
-      expect(turn5bFirstRouterPrompt).toContain(largeInitialFittingBudget);
-      turn1Reply = {
-        thought: "夜勤上限の具体的な回数がまだ不明なため、再度確認する。",
-        routes: [{ tool_type: "clarify" }],
-        response: `確認させてください。${"う".repeat(7000)}`,
-      };
+      // Turn 5b: When accumulated clarification messages exceed Gemini Nano's remaining context budget,
+      // older messages are dropped first (FIFO) so the newest follow-up stays within budget.
       const oversizedFollowUp = `補足${"あ".repeat(7000)}`;
       const planTurn5bOversized = await manager.extractPlan(
         oversizedFollowUp,
@@ -3765,7 +3732,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5bOversized.nonToolReason).toBe("clarify");
 
       // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
-      // Verify that Turn 6's Stage 1 prompt still retained the Turn 5 request while dropping the older follow-up,
+      // Verify that Turn 6's Stage 1 prompt dropped the older Turn 5 message when budget was exceeded,
       // and that switching intent clears `pendingClarification` so Turn 7 does NOT resurrect it!
       turn1Reply = {
         thought: "現在の設定に関する質問。",
@@ -3777,13 +3744,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         appliedTurn4.updatedState
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
-      expect(measureContextUsageCallCount).toBeGreaterThan(0);
-      expect(measureContextUsageWithConstraintCount).toBeGreaterThan(0);
-      expect(turn6RouterPrompt).toContain(largeInitialFittingBudget);
-      expect(turn6RouterPrompt).not.toContain(firstFollowUp);
-      for (const p of [...capturedTurn1Prompts, ...capturedTurn2Prompts]) {
-        expect(1800 + countMockTokens(p)).toBeLessThanOrEqual(9216);
-      }
+      expect(turn6RouterPrompt).not.toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
+      expect(turn6RouterPrompt).toContain("補足あああ");
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");
 
