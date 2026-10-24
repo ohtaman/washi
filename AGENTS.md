@@ -20,17 +20,21 @@ This document defines the standards and instructions for automated and human cod
 
 ## 2. Core Philosophy: Scope Discipline & Anti-Over-Engineering
 
-Preventing unnecessary complexity and scope creep is a top priority during review:
+Preventing unnecessary complexity and scope creep is a top priority during review—both for the PR author and for the reviewer:
 
-1. **Single-Responsibility PRs (Scope Creep Check)**:
+1. **Single-Responsibility PRs (Author Scope Creep Check)**:
    - Compare the changed files and logic against the stated goal of the PR (and linked Issue, if any).
    - **Action**: If the PR includes unrelated features, opportunistic wide-scale refactorings, or tangential changes that depart from the original objective, **explicitly ask the author to revert those changes and extract them into a separate PR**.
-2. **Guard Against Over-Engineering (YAGNI & KISS)**:
+2. **Review Strictly Within the PR's Stated Intent (No Reviewer-Induced Scope Creep)**:
+   - Evaluate the PR strictly against its stated objective, linked Issue, and the code actually modified or directly impacted by the diff.
+   - **Do NOT expand the scope of the PR** during review by requesting new features, broader architectural redesigns, fixes for pre-existing unrelated issues in surrounding code, or handling of hypothetical edge cases that lie outside the PR's stated goal.
+   - If you notice a valid pre-existing bug or a worthwhile follow-up enhancement outside the PR's scope, do **not** flag it as a `[Blocker]` or require it to be fixed in the current PR; at most, note it briefly as an optional follow-up Issue.
+3. **Guard Against Over-Engineering (YAGNI & KISS)**:
    - Reject premature abstractions, speculative configuration options, or complex class hierarchies built for hypothetical future requirements.
    - Prefer simple, direct, and readable TypeScript over clever or overly generic patterns.
    - Check if a new helper, wrapper, or abstraction is only used once; if so, prefer inlining unless it significantly improves clarity.
-3. **Favor Incremental Code Health**:
-   - Follow Google's Engineering Practices standard: approve once the PR demonstrably improves the overall code health of the system, even if it isn't "perfect." Do not block merges over subjective `[Nit]` items.
+4. **Favor Incremental Code Health**:
+   - Follow Google's Engineering Practices standard: approve once the PR demonstrably improves the overall code health of the system within its intended scope, even if it isn't "perfect." Do not block merges over subjective `[Nit]` items or out-of-scope follow-ups.
 
 ---
 
