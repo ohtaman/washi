@@ -2396,6 +2396,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
     const totalTokenBudget = getPendingClarificationTokenBudget();
     while (
+      recentTurnHistory.length > 0 &&
+      (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) >
+        totalTokenBudget
+    ) {
+      recentTurnHistory.shift();
+    }
+    while (
       pendingClarification.messages.length > 2 &&
       (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) >
         totalTokenBudget

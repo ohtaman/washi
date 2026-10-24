@@ -3727,12 +3727,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         routes: [{ tool_type: "clarify" }],
         response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
       };
-      // An initial request whose measured tokens (~4,500) nearly fill the shared budget (~5,000 tokens)
-      // when paired with a short question is preserved in full on the next turn without premature 50% truncation (4368632729).
-      // And when a subsequent turn produces a huge clarification question so `followUpTokenBudget <= 0` and
-      // the follow-up is popped, `lastQuestion` is trimmed further so the remaining 1-message candidate
-      // still stays strictly within `totalTokenBudget` while preserving `largeInitialFittingBudget` (4368715484).
-      const largeInitialFittingBudget = `[REQ-${"A".repeat(17500)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
+      // An initial request whose measured tokens (~4,800) fit within `totalTokenBudget` (~5,000 tokens)
+      // once stale `recentTurnHistory` from Turn 4 is evicted is preserved in full without truncating
+      // the new held request (4368632729, 4368715484, 4368794084).
+      const largeInitialFittingBudget = `[REQ-${"A".repeat(19000)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
       const planTurn5Clarify = await manager.extractPlan(
         largeInitialFittingBudget,
         appliedTurn4.updatedState
@@ -3741,13 +3739,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5Clarify.nonToolReason).toBe("clarify");
       expect(planTurn5Clarify.operations).toEqual([]);
 
-      // Turn 5b: First follow-up is small, so `largeInitialFittingBudget` is still preserved in full
-      // in Turn 5b's Stage 1 prompt; then an oversized follow-up + oversized clarification response
-      // triggers budget trimming while still keeping the canonical original request within budget
-      // (4368317268, 4368380674, 4368451525, 4368601792, 4368632729).
+      // Turn 5b: Stale applied-turn history from Turn 4 was evicted first so `largeInitialFittingBudget`
+      // is preserved in full in Turn 5b's Stage 1 prompt; then an oversized follow-up + oversized
+      // clarification response triggers budget trimming while still keeping the canonical original request
+      // within budget (4368317268, 4368380674, 4368451525, 4368601792, 4368632729, 4368715484, 4368794084).
       const firstFollowUp = "夜勤上限はまだ迷っている";
       await manager.extractPlan(firstFollowUp, appliedTurn4.updatedState);
       const turn5bFirstRouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(turn5bFirstRouterPrompt).not.toContain("・前回:「15日に調整して」");
       expect(turn5bFirstRouterPrompt).toContain(largeInitialFittingBudget);
       turn1Reply = {
         thought: "夜勤上限の具体的な回数がまだ不明なため、再度確認する。",
