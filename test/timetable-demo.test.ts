@@ -12,6 +12,7 @@ import {
 import {
   applyTimetableChatOperationsToState,
   convertToolCallToTimetableOperation,
+  createTimetableGeminiNanoManager,
   resolveCourseFromText,
   resolveProfessorFromText,
   resolveRoomFromText,
@@ -561,5 +562,48 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(c12Changes[0].prevPeriod).toBe(1);
     expect(c12Changes[0].nextDay).toBe("Wed");
     expect(c12Changes[0].nextPeriod).toBe(3);
+
+    // 6. Multi-session `course_precedence` requires every scheduled session of C12 to precede or match C15's day
+    const { updatedState: badPrecState } = applyTimetableChatOperationsToState(baseState, [
+      { op: "pin_course_slot", courseId: "C12", days: ["Mon", "Fri"], periods: [2], isHard: true },
+      { op: "pin_course_slot", courseId: "C15", days: ["Thu"], periods: [2], isHard: true },
+      {
+        op: "add_course_relation_rule",
+        kind: "course_precedence",
+        courseId: "C12",
+        secondCourseId: "C15",
+        isHard: true,
+      },
+    ]);
+    const badPrecRes = await solveTimetableWithWashi(badPrecState);
+    expect(badPrecRes.status).toBe("Infeasible");
+    expect(badPrecRes.rawConflictNames.some((n) => n.startsWith("custom_prec_"))).toBe(true);
+
+    // 7. `streamConsultationReply` produces localized output in `en` and `zh`
+    const mgr = createTimetableGeminiNanoManager();
+    let enText = "";
+    for await (const chunk of mgr.streamConsultationReply(
+      "Optimize",
+      ["Pinned C15"],
+      baseState,
+      forbidTypeRes,
+      undefined,
+      "en"
+    )) {
+      enText += chunk;
+    }
+    expect(enText).toContain("[Solve Result]");
+    let zhText = "";
+    for await (const chunk of mgr.streamConsultationReply(
+      "优化",
+      ["已固定 C15"],
+      baseState,
+      forbidTypeRes,
+      undefined,
+      "zh"
+    )) {
+      zhText += chunk;
+    }
+    expect(zhText).toContain("【求解结果】");
   }, 30_000);
 });

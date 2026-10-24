@@ -821,23 +821,29 @@ export function buildTimetableWashiModel(
       const c2 = courseMap.get(rule.secondCourseId);
       if (!c1 || !c2) continue;
 
-      // Average/first day index of c1 <= day index of c2 (0=Mon .. 4=Fri)
-      const dayTerms1: LinExpr[] = [];
-      const dayTerms2: LinExpr[] = [];
+      // Enforce latest scheduled day index of c1 <= earliest scheduled day index of c2 (0=Mon .. 4=Fri)
+      const maxDayC1 = m.continuous(`prec_max_${rule.id}`, { lb: 0, ub: 4 });
+      const minDayC2 = m.continuous(`prec_min_${rule.id}`, { lb: 0, ub: 4 });
       DAYS_OF_WEEK.forEach((d, dayIdx) => {
-        const coeff1 = dayIdx / Math.max(1, c1.sessionsPerWeek);
-        const coeff2 = dayIdx / Math.max(1, c2.sessionsPerWeek);
         for (const p of PERIODS) {
-          for (const v of slotVarsByCourse(c1.id, d, p)) {
-            dayTerms1.push(v.mul(coeff1));
+          const slotVars1 = slotVarsByCourse(c1.id, d, p);
+          if (slotVars1.length > 0 && dayIdx > 0) {
+            m.constraint(
+              expr`${dayIdx} * ${sum(slotVars1)} - ${maxDayC1} <= 0`,
+              `prec_lb1_${rule.id}_${d}_P${p}`
+            );
           }
-          for (const v of slotVarsByCourse(c2.id, d, p)) {
-            dayTerms2.push(v.mul(coeff2));
+          const slotVars2 = slotVarsByCourse(c2.id, d, p);
+          if (slotVars2.length > 0 && dayIdx < 4) {
+            m.constraint(
+              expr`${minDayC2} + ${4 - dayIdx} * ${sum(slotVars2)} <= 4`,
+              `prec_ub2_${rule.id}_${d}_P${p}`
+            );
           }
         }
       });
       registerSoftOrHard(
-        sum(dayTerms1).sub(sum(dayTerms2)),
+        maxDayC1.sub(minDayC2),
         "<=",
         0,
         {

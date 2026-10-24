@@ -68,6 +68,7 @@ let activeCrossFilter: { kind: "prof" | "room"; id: string } | null = null;
 
 let isSolving = false;
 let pendingSolveRequested = false;
+let pendingSolveWaiters: Array<(res: WashiTimetableSolveOutcome | null) => void> = [];
 let activeSolveAbortController: AbortController | null = null;
 let activeChatAbortController: AbortController | null = null;
 
@@ -1410,7 +1411,9 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
 async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
   if (isSolving) {
     pendingSolveRequested = true;
-    return null;
+    return new Promise<WashiTimetableSolveOutcome | null>((resolve) => {
+      pendingSolveWaiters.push(resolve);
+    });
   }
   isSolving = true;
   pendingSolveRequested = false;
@@ -1445,7 +1448,15 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
     $("btn-abort-solve").hidden = true;
     if (pendingSolveRequested) {
       pendingSolveRequested = false;
-      void triggerSolve();
+      const waiters = pendingSolveWaiters.splice(0);
+      void triggerSolve().then(
+        (queuedRes) => {
+          for (const resolve of waiters) resolve(queuedRes);
+        },
+        () => {
+          for (const resolve of waiters) resolve(null);
+        }
+      );
     }
   }
   return outcome;
@@ -1774,9 +1785,15 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       return;
     }
 
-    const plan = await nanoManager.extractPlan(trimmed, appState, chatAbort.signal, (ev) => {
-      renderSafeMarkdown(assistantMsg.bodyEl, ev.activeLabel);
-    });
+    const plan = await nanoManager.extractPlan(
+      trimmed,
+      appState,
+      chatAbort.signal,
+      (ev) => {
+        renderSafeMarkdown(assistantMsg.bodyEl, ev.activeLabel);
+      },
+      activeLang
+    );
 
     const { updatedState, appliedLogs } = applyTimetableChatOperationsToState(
       appState,
@@ -1836,7 +1853,8 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       appliedLogs,
       appState,
       outcome,
-      chatAbort.signal
+      chatAbort.signal,
+      activeLang
     )) {
       streamedText += delta;
       renderSafeMarkdown(assistantMsg.bodyEl, streamedText);

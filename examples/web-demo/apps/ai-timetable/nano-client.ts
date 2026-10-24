@@ -6,6 +6,9 @@ import {
   COURSE_PROFILE_I18N,
   PROFESSOR_PROFILE_I18N,
   ROOM_PROFILE_I18N,
+  formatConstraintMetaI18n,
+  pickTimetableLang,
+  type TimetableLang,
 } from "./i18n.js";
 import {
   DAYS_OF_WEEK,
@@ -45,28 +48,35 @@ export interface TimetableGeminiNanoManager {
   getStatus(): GeminiNanoStatus;
   getDownloadProgress(): number | null;
   getLastConsultTrace(): LlmCallTrace | null;
-  initialize(onProgress?: (pct: number) => void): Promise<GeminiNanoStatus>;
+  initialize(onProgress?: (pct: number) => void, lang?: TimetableLang): Promise<GeminiNanoStatus>;
   extractPlan(
     userMessage: string,
     state: TimetableState,
     signal?: AbortSignal,
-    onProgress?: (event: ChatExtractProgressEvent) => void
+    onProgress?: (event: ChatExtractProgressEvent) => void,
+    lang?: TimetableLang
   ): Promise<ParsedTimetableChatPlan>;
   streamConsultationReply(
     userMessage: string,
     appliedSummary: string[],
     state: TimetableState,
     outcome: WashiTimetableSolveOutcome | null,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    lang?: TimetableLang
   ): AsyncIterable<string>;
   resetConversation(): Promise<void>;
   destroy(): void;
 }
 
-const LANGUAGE_MODEL_JA_OPTIONS = {
-  expectedInputs: [{ type: "text", languages: ["ja", "en"] }],
-  expectedOutputs: [{ type: "text", languages: ["ja"] }],
-};
+function buildLanguageModelOptions(lang: TimetableLang = "ja") {
+  const outputs = Array.from(new Set([lang, "ja", "en", "zh"]));
+  return {
+    expectedInputs: [{ type: "text", languages: ["ja", "en", "zh"] }],
+    expectedOutputs: [{ type: "text", languages: outputs }],
+  };
+}
+
+const LANGUAGE_MODEL_JA_OPTIONS = buildLanguageModelOptions("ja");
 
 interface LanguageModelSessionLike {
   prompt(input: string, options?: { responseConstraint?: unknown; signal?: AbortSignal }): Promise<string>;
@@ -148,12 +158,14 @@ export async function checkGeminiNanoAvailability(): Promise<GeminiNanoStatus> {
 async function createSessionWithFallback(
   api: LanguageModelFactoryLike,
   systemPrompt: string,
-  monitorFn?: (m: unknown) => void
+  monitorFn?: (m: unknown) => void,
+  lang: TimetableLang = "ja"
 ): Promise<LanguageModelSessionLike> {
   const baseWithMonitor = monitorFn ? { monitor: monitorFn } : {};
+  const langOptions = buildLanguageModelOptions(lang);
   try {
     return await api.create({
-      ...LANGUAGE_MODEL_JA_OPTIONS,
+      ...langOptions,
       temperature: 0.1,
       topK: 1,
       initialPrompts: [{ role: "system", content: systemPrompt }],
@@ -162,7 +174,7 @@ async function createSessionWithFallback(
   } catch {
     try {
       return await api.create({
-        ...LANGUAGE_MODEL_JA_OPTIONS,
+        ...langOptions,
         initialPrompts: [{ role: "system", content: systemPrompt }],
         ...baseWithMonitor,
       });
@@ -435,9 +447,9 @@ const EXTRACTOR_SYSTEM_PROMPT = `あなたは大学の時間割編成（Universi
 ・course_no_overlap と course_precedence では secondCourse が必須。
 ・isHard を省略した場合はハード制約(true)として扱われる。`;
 
-const CONSULT_SYSTEM_PROMPT = `あなたは大学の教務課を支援する「大学時間割編成 AI Copilot」です。
-プロンプトで渡された実行結果（適用された条件変更、WaSHI × HiGHS ソルバーの最適化結果、または衝突している制約条件の診断結果）に基づき、簡潔でわかりやすい日本語の Markdown（箇条書き中心、3〜6行程度）で回答してください。
-・数理ソルバーの内部変数名などはそのまま出さず、科目名・教員名・教室名・曜日時限を使って説明してください。`;
+const CONSULT_SYSTEM_PROMPT = `You are the "University Course Timetabling AI Copilot" assisting academic affairs staff and faculty.
+Based on the execution summary provided in the prompt (applied rule changes, WaSHI × HiGHS solver optimization outcome, or conflicting constraint diagnosis), reply concisely in Markdown (bullet points, 3–6 lines) in the language explicitly requested at the end of the prompt (Japanese, English, or Simplified Chinese).
+- Do not expose internal solver variable names; always refer to courses, professors, rooms, days, and periods by their human-readable names.`;
 
 export interface RawStage2ToolCall {
   tool_name: string;
@@ -1085,6 +1097,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
   let downloadProgress: number | null = null;
   let extractorBaseSession: LanguageModelSessionLike | null = null;
   let consultBaseSession: LanguageModelSessionLike | null = null;
+  let consultSessionLang: TimetableLang = "ja";
   let lastConsultTrace: LlmCallTrace | null = null;
 
   return {
@@ -1098,7 +1111,10 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       return lastConsultTrace;
     },
 
-    async initialize(onProgress?: (pct: number) => void): Promise<GeminiNanoStatus> {
+    async initialize(
+      onProgress?: (pct: number) => void,
+      lang: TimetableLang = "ja"
+    ): Promise<GeminiNanoStatus> {
       const avail = await checkGeminiNanoAvailability();
       currentStatus = avail;
       if (avail === "unavailable") return "unavailable";
@@ -1131,15 +1147,25 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           extractorBaseSession = await createSessionWithFallback(
             api,
             EXTRACTOR_SYSTEM_PROMPT,
-            monitorFn
+            monitorFn,
+            lang
           );
         }
-        if (!consultBaseSession) {
+        if (!consultBaseSession || consultSessionLang !== lang) {
+          if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
+            try {
+              consultBaseSession.destroy();
+            } catch {
+              // Ignore
+            }
+          }
           consultBaseSession = await createSessionWithFallback(
             api,
             CONSULT_SYSTEM_PROMPT,
-            monitorFn
+            monitorFn,
+            lang
           );
+          consultSessionLang = lang;
         }
 
         currentStatus = "available";
@@ -1156,18 +1182,29 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       userMessage: string,
       state: TimetableState,
       signal?: AbortSignal,
-      onProgress?: (event: ChatExtractProgressEvent) => void
+      onProgress?: (event: ChatExtractProgressEvent) => void,
+      lang: TimetableLang = "ja"
     ): Promise<ParsedTimetableChatPlan> {
       if (!extractorBaseSession) {
-        const initStatus = await this.initialize();
+        const initStatus = await this.initialize(undefined, lang);
         if (initStatus !== "available" || !extractorBaseSession) {
-          throw new Error("Gemini Nano (LanguageModel API) が利用できません。");
+          throw new Error(
+            pickTimetableLang(lang, {
+              ja: "Gemini Nano (LanguageModel API) が利用できません。",
+              en: "Gemini Nano (LanguageModel API) is unavailable.",
+              zh: "Gemini Nano (LanguageModel API) 不可用。",
+            })
+          );
         }
       }
 
       onProgress?.({
         phase: "turn1_start",
-        activeLabel: "⏳ Gemini Nano で時間割条件を構造化しています…",
+        activeLabel: pickTimetableLang(lang, {
+          ja: "⏳ Gemini Nano で時間割条件を構造化しています…",
+          en: "⏳ Structuring timetable constraints with Gemini Nano…",
+          zh: "⏳ 正在通过 Gemini Nano 结构化排课条件…",
+        }),
       });
 
       const session =
@@ -1212,7 +1249,11 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
 
         onProgress?.({
           phase: "turn2_done",
-          activeLabel: `✅ ${operations.length}件の時間割条件を抽出しました`,
+          activeLabel: pickTimetableLang(lang, {
+            ja: `✅ ${operations.length}件の時間割条件を抽出しました`,
+            en: `✅ Extracted ${operations.length} timetable operation(s)`,
+            zh: `✅ 已提取 ${operations.length} 项排课条件`,
+          }),
         });
 
         const intentType: ParsedTimetableChatPlan["intentType"] =
@@ -1247,43 +1288,95 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       appliedSummary: string[],
       state: TimetableState,
       outcome: WashiTimetableSolveOutcome | null,
-      signal?: AbortSignal
+      signal?: AbortSignal,
+      lang: TimetableLang = "ja"
     ): AsyncIterable<string> {
       const summaryLines: string[] = [];
       if (appliedSummary.length > 0) {
-        summaryLines.push(`【適用した条件変更 (${appliedSummary.length}件)】`);
+        summaryLines.push(
+          pickTimetableLang(lang, {
+            ja: `【適用した条件変更 (${appliedSummary.length}件)】`,
+            en: `[Applied Constraint Changes (${appliedSummary.length})]`,
+            zh: `【已应用的条件变更 (${appliedSummary.length}项)】`,
+          })
+        );
         for (const s of appliedSummary) summaryLines.push(`・${s}`);
       }
       if (outcome) {
         if (outcome.status === "Optimal" || outcome.status === "Feasible") {
           const ev = outcome.evaluation;
           const diff = outcome.diffFromPrevious;
+          const sessionCount = outcome.timetable?.sessions.length ?? 0;
           summaryLines.push(
-            `【求解結果】ステータス=${outcome.status} (${outcome.solveTimeMs}ms), 対象=${state.courses.length}科目(計${outcome.timetable?.sessions.length ?? 0}コマ)`
+            pickTimetableLang(lang, {
+              ja: `【求解結果】ステータス=${outcome.status} (${outcome.solveTimeMs}ms), 対象=${state.courses.length}科目(計${sessionCount}コマ)`,
+              en: `[Solve Result] Status=${outcome.status} (${outcome.solveTimeMs}ms), Courses=${state.courses.length} (${sessionCount} sessions)`,
+              zh: `【求解结果】状态=${outcome.status} (${outcome.solveTimeMs}ms), 课程=${state.courses.length}门(共${sessionCount}节)`,
+            })
           );
           if (ev) {
             summaryLines.push(
-              `・ハード制約違反: ${ev.hardViolationCount}件 / 学生の空きコマ(中空き)合計: ${ev.softPenaltyCount}コマ`
+              pickTimetableLang(lang, {
+                ja: `・ハード制約違反: ${ev.hardViolationCount}件 / 学生の空きコマ(中空き)合計: ${ev.softPenaltyCount}コマ`,
+                en: `・Hard violations: ${ev.hardViolationCount} / Student hollow gaps: ${ev.softPenaltyCount}`,
+                zh: `・硬约束违反: ${ev.hardViolationCount}项 / 学生空堂合计: ${ev.softPenaltyCount}节`,
+              })
             );
           }
           if (diff && diff.totalSessions > 0) {
             summaryLines.push(
-              `・前回の時間割からの変更: ${diff.changedSessionsCount}コマのみ変更 (維持率 ${diff.retentionRatePct}%)`
+              pickTimetableLang(lang, {
+                ja: `・前回の時間割からの変更: ${diff.changedSessionsCount}コマのみ変更 (維持率 ${diff.retentionRatePct}%)`,
+                en: `・Changes from previous timetable: ${diff.changedSessionsCount} session(s) moved (retention ${diff.retentionRatePct}%)`,
+                zh: `・较上一版课表变动: 仅调整 ${diff.changedSessionsCount} 节课 (保留率 ${diff.retentionRatePct}%)`,
+              })
             );
           }
         } else if (outcome.status === "Infeasible") {
           summaryLines.push(
-            `【⚠️ 時間割を組めません (Infeasible)】衝突している制約 (${outcome.conflicts.length}件):`
+            pickTimetableLang(lang, {
+              ja: `【⚠️ 時間割を組めません (Infeasible)】衝突している制約 (${outcome.conflicts.length}件):`,
+              en: `[⚠️ Timetable Infeasible] Conflicting constraints (${outcome.conflicts.length}):`,
+              zh: `【⚠️ 无法排出课表 (Infeasible)】冲突约束 (${outcome.conflicts.length}项):`,
+            })
           );
           for (const c of outcome.conflicts.slice(0, 6)) {
+            const loc = formatConstraintMetaI18n(c, state, lang);
+            const hintPrefix = pickTimetableLang(lang, {
+              ja: "解決案",
+              en: "Suggestion",
+              zh: "解决建议",
+            });
             summaryLines.push(
-              `・${c.labelJa}${c.relaxSuggestion ? ` (解決案: ${c.relaxSuggestion})` : ""}`
+              `・${loc.label}${loc.relaxSuggestion ? ` (${hintPrefix}: ${loc.relaxSuggestion})` : ""}`
             );
           }
         }
       }
 
-      const fullPrompt = `${summaryLines.join("\n")}\n\nユーザーの発言: 「${userMessage}」\n上記の結果に基づき、教務担当者・教員にわかりやすく簡潔に回答してください。`;
+      const fullPrompt = pickTimetableLang(lang, {
+        ja: `${summaryLines.join("\n")}\n\nユーザーの発言: 「${userMessage}」\n上記の結果に基づき、教務担当者・教員にわかりやすく簡潔に日本語で回答してください。`,
+        en: `${summaryLines.join("\n")}\n\nUser request: "${userMessage}"\nBased on the results above, reply concisely and clearly in English for academic affairs staff and faculty.`,
+        zh: `${summaryLines.join("\n")}\n\n用户指令: “${userMessage}”\n请根据上述结果，用简体中文向教务人员与教师简洁清晰地说明。`,
+      });
+
+      const api = getLanguageModelApi();
+      if (api && (!consultBaseSession || consultSessionLang !== lang)) {
+        try {
+          if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
+            consultBaseSession.destroy();
+          }
+          consultBaseSession = await createSessionWithFallback(
+            api,
+            CONSULT_SYSTEM_PROMPT,
+            undefined,
+            lang
+          );
+          consultSessionLang = lang;
+        } catch {
+          // Keep existing or null
+        }
+      }
 
       if (!consultBaseSession) {
         yield summaryLines.join("\n");
