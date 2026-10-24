@@ -2304,6 +2304,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let lastStage1Response: string = "";
   let lastUnappliedInstructions: string[] = [];
   let recentTurnHistory: string[] = [];
+  let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2311,6 +2312,26 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     if (recentTurnHistory.length > 2) {
       recentTurnHistory = recentTurnHistory.slice(-2);
     }
+  }
+
+  function recordPendingClarification(msg: string, question: string): void {
+    if (pendingClarification) {
+      pendingClarification.messages.push(msg);
+      pendingClarification.lastQuestion = question;
+    } else {
+      pendingClarification = {
+        messages: [msg],
+        lastQuestion: question,
+      };
+    }
+  }
+
+  function getCombinedHistoryLines(): string[] {
+    if (!pendingClarification) {
+      return [...recentTurnHistory];
+    }
+    const pendingLine = `・前回(未適用・回答待ち):「${pendingClarification.messages.join(" / ")}」➔ 聞き返し: ${pendingClarification.lastQuestion}`;
+    return [...recentTurnHistory, pendingLine];
   }
 
   function readSessionTokenUsage(session: any): { usage: number; quota: number } | null {
@@ -2456,10 +2477,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         (state.customShiftDefs?.length ?? 0) > 0 || state.customRules.length > 0;
       if (hadCustomState && !hasCurrentCustom) {
         recentTurnHistory = [];
+        pendingClarification = null;
         hadCustomState = false;
       } else if (hasCurrentCustom) {
         hadCustomState = true;
       }
+
+      const historyLinesForTurn = getCombinedHistoryLines();
 
       // ==================== TURN 1: STAGE 1 ROUTER (tool_types + response) ====================
       onProgress?.({
@@ -2476,8 +2500,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       try {
         const routerContextLines = [
           `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
-          ...(recentTurnHistory.length > 0
-            ? [`【直近の対話履歴】`, ...recentTurnHistory]
+          ...(historyLinesForTurn.length > 0
+            ? [`【直近の対話履歴】`, ...historyLinesForTurn]
             : []),
         ];
         const routerPrompt = `${routerContextLines.join("\n")}\n\nユーザーの発話: 「${userMessage}」`;
@@ -2596,7 +2620,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               `⏸️ Step 3 (Hold): 確認事項があるためツール実行を保留しユーザーの回答を待機`
             );
           }
-          appendTurnHistory(`・前回(未適用・回答待ち):「${userMessage}」➔ 聞き返し: ${stage1Response}`);
+          recordPendingClarification(userMessage, stage1Response);
         }
         return {
           intentType: "consult_only",
@@ -2641,17 +2665,17 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           const dynamicDict = buildCategoryDynamicDictionary(
             category,
             workingState,
-            `${userMessage} ${instruction} ${recentTurnHistory.join(" ")}`
+            `${userMessage} ${instruction} ${historyLinesForTurn.join(" ")}`
           );
           const dictNote = dynamicDict ? `${dynamicDict}\n` : "";
           const historyNote =
-            recentTurnHistory.length > 0
-              ? `【直近の対話履歴】\n${recentTurnHistory.join("\n")}\n`
+            historyLinesForTurn.length > 0
+              ? `【直近の対話履歴】\n${historyLinesForTurn.join("\n")}\n`
               : "";
           const effectiveInstruction =
             activeRoutes.length > 1
               ? instruction
-              : recentTurnHistory.length > 0 && instruction && instruction !== userMessage
+              : historyLinesForTurn.length > 0 && instruction && instruction !== userMessage
                 ? `${userMessage}（文脈補完: ${instruction}）`
                 : userMessage;
           const stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
@@ -2741,29 +2765,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       }
 
       if (operations.length > 0) {
-        let previewAppliedLogs: string[] = [];
-        if (operations.some((o) => o.op === "reset_default" || o.op === "clear_custom_rules")) {
-          recentTurnHistory = [];
-          hadCustomState = false;
-          previewAppliedLogs = ["リセット/クリア実行"];
-        } else {
-          const previewApplied = applyChatOperationsToState(state, operations);
-          previewAppliedLogs = previewApplied.appliedLogs;
-          if (previewApplied.appliedLogs.length > 0) {
-            recentTurnHistory = recentTurnHistory.filter(
-              (line) => !line.includes("未適用・回答待ち")
-            );
-            appendTurnHistory(
-              `・前回:「${userMessage}」➔ 適用済: ${previewApplied.appliedLogs.join(" / ")}`
-            );
-          }
-          if (
-            (previewApplied.updatedState.customShiftDefs?.length ?? 0) > 0 ||
-            previewApplied.updatedState.customRules.length > 0
-          ) {
-            hadCustomState = true;
-          }
-        }
+        const isResetOrClear = operations.some(
+          (o) => o.op === "reset_default" || o.op === "clear_custom_rules"
+        );
+        const previewApplied = isResetOrClear
+          ? { updatedState: state, appliedLogs: ["リセット/クリア実行"] }
+          : applyChatOperationsToState(state, operations);
+        const previewAppliedLogs = previewApplied.appliedLogs;
 
         const verificationResult = verifyExecutionAgainstRequest({
           userMessage,
@@ -2780,6 +2788,33 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           stage1Response,
           routerTrace: [...routerTrace],
         });
+
+        // If a held clarification request is being resumed, do not apply partial operations or clear the held request
+        // unless every resumed route succeeded (`missingRouteLabels.length === 0`).
+        if (!isResetOrClear && pendingClarification !== null && missingRouteLabels.length > 0) {
+          const unresolvedText =
+            unsupportedRouteInstructions.length > 0
+              ? unsupportedRouteInstructions.join("・")
+              : missingRouteLabels.join("・");
+          const holdMsg = `「${unresolvedText}」について、具体的な設定内容（日数・回数・対象など）を教えていただけますか？`;
+          lastNonToolReason = "clarify";
+          lastStage1Response = holdMsg;
+          recordPendingClarification(userMessage, holdMsg);
+          routerTrace.push(
+            `⏸️ Step 3 (Hold): 未解決の項目が残っているため一括適用を保留 (${missingRouteLabels.join(", ")})`
+          );
+          return {
+            intentType: "consult_only",
+            nonToolReason: "clarify",
+            operations: [],
+            summaryJa: holdMsg,
+            stage1Thought,
+            stage1Response: holdMsg,
+            routerTrace,
+            verificationResult,
+            llmCalls,
+          };
+        }
 
         // If extracted operations produced zero applicable changes (e.g. non-existent nurse name in roster),
         // treat as unsupported/unapplicable and convey clearly why it cannot be done.
@@ -2811,6 +2846,25 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             verificationResult,
             llmCalls,
           };
+        }
+
+        if (isResetOrClear) {
+          recentTurnHistory = [];
+          pendingClarification = null;
+          hadCustomState = false;
+        } else {
+          if (missingRouteLabels.length === 0) {
+            pendingClarification = null;
+          }
+          appendTurnHistory(
+            `・前回:「${userMessage}」➔ 適用済: ${previewAppliedLogs.join(" / ")}`
+          );
+          if (
+            (previewApplied.updatedState.customShiftDefs?.length ?? 0) > 0 ||
+            previewApplied.updatedState.customRules.length > 0
+          ) {
+            hadCustomState = true;
+          }
         }
 
         lastNonToolReason = null;
@@ -2874,7 +2928,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           `⚠️ Step 3 (Verification): 対応するツールが存在しないため未対応(unsupported)と判定`
         );
       } else if (fallbackReason === "clarify") {
-        appendTurnHistory(`・前回(未適用・回答待ち):「${userMessage}」➔ 聞き返し: ${stage1Response}`);
+        recordPendingClarification(userMessage, stage1Response);
       }
       return {
         intentType: "consult_only",

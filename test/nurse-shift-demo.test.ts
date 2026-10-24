@@ -3621,8 +3621,61 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const consultTrace1 = manager.getLastConsultTrace();
       expect(consultTrace1?.userPrompt).toContain("回答待ちのため一括保留");
 
-      // Turn 2: User answers "勤務下限は15日"
-      // Turn 1 receives the `前回(未適用・回答待ち)` history and routes BOTH staff_calendar and staff_contract
+      // Turn 2: User replies with another vague message ("勤務下限は少し減らして"), triggering a 2nd clarification round (4367076840)
+      turn1Reply = {
+        thought: "『少し減らして』では具体的な日数が不明なため再度聞き返す。",
+        routes: [{ tool_type: "clarify" }],
+        response: "月間最低勤務日数を具体的に何日にするか教えていただけますか？",
+      };
+      const planTurn2Vague = await manager.extractPlan("勤務下限は少し減らして", state);
+      expect(planTurn2Vague.intentType).toBe("consult_only");
+      expect(planTurn2Vague.nonToolReason).toBe("clarify");
+      expect(planTurn2Vague.operations).toEqual([]);
+
+      // Turn 3: User replies ("やっぱり調整して"), Turn 1 optimistically emits both routes without a question mark,
+      // but Stage 2 for staff_contract returns "none" because no number was given (4367076838).
+      // Step 3 must NOT apply the partial staff_calendar operation and must NOT clear the held request!
+      turn1Reply = {
+        thought: "保留リクエストとあわせて実行を試みる。",
+        routes: [
+          {
+            tool_type: "staff_calendar",
+            instruction: "田中さんを9日から15日まで公休(O)にする",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最低勤務日数を調整する",
+          },
+        ],
+        response: "田中さんの9日から15日までを公休にし、月間最低勤務日数を調整します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CALENDAR_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "add_request_range",
+                args: {
+                  nurseNameOrId: "田中",
+                  startDay: 9,
+                  endDay: 15,
+                  shift: "O",
+                  isHard: true,
+                },
+              },
+            ],
+          },
+        ],
+        [STAFF_CONTRACT_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
+      ]);
+      const planTurn3Partial = await manager.extractPlan("やっぱり調整して", state);
+      expect(planTurn3Partial.intentType).toBe("consult_only");
+      expect(planTurn3Partial.nonToolReason).toBe("clarify");
+      expect(planTurn3Partial.operations).toEqual([]);
+
+      // Turn 4: User answers "勤務下限は15日" after 3 clarification rounds (4367076838, 4367076840)
+      // The original request from Turn 1 must still be retained in the canonical pending entry!
       turn1Reply = {
         thought:
           "前回の未適用リクエスト（田中さんの9日〜15日の公休）と今回の回答（月間最低勤務日数を15日）を統合して実行する。",
@@ -3673,19 +3726,19 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         ],
       ]);
 
-      const planTurn2 = await manager.extractPlan("勤務下限は15日", state);
-      expect(capturedTurn1Prompts[1]).toContain(
-        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。」"
+      const planTurn4 = await manager.extractPlan("勤務下限は15日", state);
+      expect(capturedTurn1Prompts[3]).toContain(
+        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / 勤務下限は少し減らして / やっぱり調整して」"
       );
-      expect(planTurn2.intentType).toBe("modify_and_solve");
+      expect(planTurn4.intentType).toBe("modify_and_solve");
       // 1 ranged add_request operation (days 9..15) + 1 set_nurse_contract operation = 2 operations
-      expect(planTurn2.operations.length).toBe(2);
-      const appliedTurn2 = applyChatOperationsToState(state, planTurn2.operations);
-      const tanaka = appliedTurn2.updatedState.nurses.find((n) => n.id === "N04")!;
+      expect(planTurn4.operations.length).toBe(2);
+      const appliedTurn4 = applyChatOperationsToState(state, planTurn4.operations);
+      const tanaka = appliedTurn4.updatedState.nurses.find((n) => n.id === "N04")!;
       expect(tanaka.minMonthlyWorkDays).toBe(15);
       for (let d = 9; d <= 15; d++) {
         expect(
-          appliedTurn2.updatedState.customRules.some(
+          appliedTurn4.updatedState.customRules.some(
             (r) => r.kind === "pin_shift" && r.nurseId === "N04" && r.day === d && r.shift === "O"
           )
         ).toBe(true);
