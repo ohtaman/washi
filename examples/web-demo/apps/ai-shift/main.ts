@@ -1150,7 +1150,7 @@ function renderSoftRuleWeightsList(): void {
         label: `遷移必須 (${shiftShortJa[fromShift]}→${shiftShortJa[reqTarget]})`,
       });
     } else {
-      for (const toShift of ["D", "E", "N"] as const) {
+      for (const toShift of ["D", "E", "N", "O"] as const) {
         if (rowPolicies[toShift] === "forbid") {
           items.push({
             key: `trans_${fromShift}_${toShift}`,

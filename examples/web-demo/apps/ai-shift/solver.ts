@@ -647,6 +647,20 @@ export function buildNurseWashiModel(
               );
             }
           }
+          if (rowPolicy.O === "forbid") {
+            addTrackedConstraint(
+              expr`${sum(getNurseDayWorkVars(nurse.id, 0))} >= 1`,
+              {
+                name: `carryover_${prevBase}_to_O_${nurse.id}_d1`,
+                category: "carryover",
+                ruleKey: `trans_${prevBase}_O`,
+                labelJa: `前月引き継ぎ: ${nurse.name}(${nurse.id}) は前月末日が${SHIFT_LABEL_JA[prevBase]}のため、${config.month}/1の公休(O)は禁止`,
+                relatedNurseIds: [nurse.id],
+                relatedDay: 1,
+                relaxSuggestion: `${nurse.name}さんの${config.month}/1の固定シフトを解除するか、前月引き継ぎ制約を緩和してください。`,
+              }
+            );
+          }
         }
       }
 
@@ -745,6 +759,23 @@ export function buildNurseWashiModel(
                 }
               );
             }
+          }
+          if (rowPolicy.O === "forbid") {
+            const nextWorkVars = getNurseDayWorkVars(nurse.id, nextIdx);
+            addTrackedConstraint(
+              nextWorkVars.length > 0
+                ? expr`${sum(fromVars)} - ${sum(nextWorkVars)} <= 0`
+                : expr`${sum(fromVars)} <= 0`,
+              {
+                name: `trans_${fromShift}_to_O_${nurse.id}_d${d}`,
+                category: "transition",
+                ruleKey: `trans_${fromShift}_O`,
+                labelJa: `シフト遷移禁止(${SHIFT_SHORT_JA[fromShift]}→休): ${nurse.name}(${nurse.id}) の ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]} → ${config.month}/${d + 1}公休(O) は禁止`,
+                relatedNurseIds: [nurse.id],
+                relatedDay: d,
+                relaxSuggestion: `${nurse.name}さんの${config.month}/${d}〜${d + 1}の固定シフト指定またはシフト遷移マトリクスを見直してください。`,
+              }
+            );
           }
         }
       }
@@ -1199,11 +1230,36 @@ export function buildNurseWashiModel(
       const nurse = nurseById.get(rule.nurseId);
       if (!nurse) continue;
       const idx = rule.day - 1;
-      const forbiddenVars: Var[] = [];
+      const forbiddenVarSet = new Set<Var>();
+      let forbidsOrdinaryOff = false;
       for (const s of rule.forbidShifts) {
-        forbiddenVars.push(...getShiftVarsForNurseDay(s, nurse.id, idx));
+        if (resolveShiftSelector(s, state).includes("O")) {
+          forbidsOrdinaryOff = true;
+        }
+        for (const v of getShiftVarsForNurseDay(s, nurse.id, idx)) {
+          forbiddenVarSet.add(v);
+        }
       }
-      if (forbiddenVars.length > 0) {
+      const forbiddenVars = Array.from(forbiddenVarSet);
+      if (forbidsOrdinaryOff) {
+        const allDayVars: Var[] = [
+          ...getNurseDayWorkVars(nurse.id, idx),
+          ...filterActiveVars(
+            customShiftDefs
+              .filter((cs) => getCustomShiftBase(cs) === "O")
+              .map((cs) => vCustom[cs.code][nurse.id][idx])
+          ),
+        ];
+        const allowedVars = allDayVars.filter((v) => !forbiddenVarSet.has(v));
+        addRuleConstraint(expr`${sum(allowedVars)} >= 1`, {
+          name: `custom_forbid_${rule.id}_${nurse.id}_d${rule.day}`,
+          category: "custom",
+          labelJa: `${rule.description}`,
+          relatedNurseIds: [nurse.id],
+          relatedDay: rule.day,
+          relaxSuggestion: `追加された禁止ルール「${rule.description}」を解除してください。`,
+        });
+      } else if (forbiddenVars.length > 0) {
         addRuleConstraint(expr`${sum(forbiddenVars)} <= 0`, {
           name: `custom_forbid_${rule.id}_${nurse.id}_d${rule.day}`,
           category: "custom",
@@ -2098,7 +2154,7 @@ export function evaluateNurseSchedule(
             { ruleKey: `trans_${prevBase}_${reqTarget}` }
           );
         }
-      } else if (currBase !== "O" && rowPolicies[currBase] === "forbid") {
+      } else if (rowPolicies[currBase] === "forbid") {
         const msg = `${config.month}/${d}: 禁止シフト遷移（${SHIFT_LABELS[prevBase]}${prevShift} → ${SHIFT_LABELS[currBase]}${curr}）`;
         nurseViolations.push(msg);
         pushViolation(

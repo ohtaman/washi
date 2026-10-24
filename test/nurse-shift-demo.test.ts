@@ -3349,5 +3349,52 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(n01Summary.totalOffDays).toBe(5);
     expect(n01Summary.totalWorkDays).toBe(25);
     expect(n01Summary.totalNightShifts).toBe(5);
+
+    // 12. Preserve and enforce forbidden transitions to off days (toShift: "O", policy: "forbid") (4363684476)
+    const configForbidEO = applyShiftTransitionToConfig(baseState.config, "E", "O", "forbid");
+    const matrixEO = getShiftTransitionMatrix(configForbidEO);
+    expect(matrixEO.E.O).toBe("forbid");
+    const stateForbidEO = { ...baseState, config: configForbidEO };
+    const builtForbidEO = buildNurseWashiModel(stateForbidEO);
+    expect(builtForbidEO.constraintMeta.get("trans_E_to_O_N01_d1")?.ruleKey).toBe("trans_E_O");
+    const evalForbidEO = evaluateNurseSchedule(stateForbidEO, {
+      ...allWorkSched,
+      N01: ["E", "O", ...new Array(28).fill("D")],
+    });
+    expect(evalForbidEO.violations.some((v) => v.id === "trans_EO_N01_d2")).toBe(true);
+
+    // 13. Enforce forbidding the implicit off assignment ("O") in forbid_shift rules (4363684483)
+    const stateForbidOff = {
+      ...baseState,
+      customRules: [
+        ...baseState.customRules,
+        {
+          id: "forbid_off_d1",
+          kind: "forbid_shift" as const,
+          description: "N01 11/1 公休禁止",
+          nurseId: "N01",
+          day: 1,
+          forbidShifts: ["O"],
+          enabled: true,
+        },
+      ],
+    };
+    const builtForbidOff = buildNurseWashiModel(stateForbidOff);
+    expect(builtForbidOff.constraintMeta.has("custom_forbid_forbid_off_d1_N01_d1")).toBe(true);
+
+    // 14. Do not reset existing skill requirements or category on duplicate add_skill_def (4363684493)
+    const afterDupSkill = applyChatOperationsToState(baseState, [
+      { op: "add_skill_def", skillName: "リーダー業務可" },
+      { op: "add_skill_def", skillName: "新人" },
+    ]).updatedState;
+    const leaderSkill = afterDupSkill.skillDefs?.find((s) => s.code === "leader_cap");
+    expect(leaderSkill?.minDay).toBe(2);
+    expect(leaderSkill?.minEvening).toBe(1);
+    expect(leaderSkill?.minNight).toBe(1);
+    expect(leaderSkill?.builtIn).toBe(true);
+    const newcomerSkill = afterDupSkill.skillDefs?.find((s) => s.code === "newcomer");
+    expect(newcomerSkill?.category).toBe("role");
+    expect(newcomerSkill?.maxEvening).toBe(1);
+    expect(newcomerSkill?.maxNight).toBe(1);
   });
 });

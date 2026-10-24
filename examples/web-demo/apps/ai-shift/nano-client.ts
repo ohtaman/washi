@@ -3359,35 +3359,40 @@ export function applyChatOperationsToState(
         activeSkills
       );
       if (!label) continue;
-      const substitutesFor = op.substitutesFor
-        ? inferSkillCodeAndLabel(op.substitutesFor, activeSkills).code
-        : undefined;
-      const minDay = typeof op.skillMinDay === "number" ? Math.max(0, Math.round(op.skillMinDay)) : 0;
-      const minEvening =
-        typeof op.skillMinEvening === "number" ? Math.max(0, Math.round(op.skillMinEvening)) : 0;
-      const minNight =
-        typeof op.skillMinNight === "number" ? Math.max(0, Math.round(op.skillMinNight)) : 0;
-
       const existingIdx = activeSkills.findIndex(
         (s) => s.code === code || s.label === label
       );
+      const existing = existingIdx >= 0 ? activeSkills[existingIdx] : undefined;
+      const substitutesFor = op.substitutesFor
+        ? inferSkillCodeAndLabel(op.substitutesFor, activeSkills).code
+        : existing?.substitutesFor;
+      const minDay =
+        typeof op.skillMinDay === "number"
+          ? Math.max(0, Math.round(op.skillMinDay))
+          : (existing?.minDay ?? 0);
+      const minEvening =
+        typeof op.skillMinEvening === "number"
+          ? Math.max(0, Math.round(op.skillMinEvening))
+          : (existing?.minEvening ?? 0);
+      const minNight =
+        typeof op.skillMinNight === "number"
+          ? Math.max(0, Math.round(op.skillMinNight))
+          : (existing?.minNight ?? 0);
+
       const newSkillDef: SkillDefinition = {
-        code,
-        label,
-        shortLabel: op.skillShortLabel?.trim() || shortLabel,
-        category: "skill",
+        ...(existing ?? {}),
+        code: existing?.code ?? code,
+        label: existing?.label ?? label,
+        shortLabel: op.skillShortLabel?.trim() || existing?.shortLabel || shortLabel,
+        category: existing?.category ?? "skill",
         substitutesFor,
         minDay,
         minEvening,
         minNight,
-        builtIn: false,
+        builtIn: existing?.builtIn ?? false,
       };
       if (existingIdx >= 0) {
-        activeSkills[existingIdx] = {
-          ...activeSkills[existingIdx],
-          ...newSkillDef,
-          builtIn: activeSkills[existingIdx]?.builtIn ?? false,
-        };
+        activeSkills[existingIdx] = newSkillDef;
       } else {
         activeSkills.push(newSkillDef);
       }

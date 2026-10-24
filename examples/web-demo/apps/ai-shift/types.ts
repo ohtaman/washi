@@ -945,7 +945,9 @@ export function getShiftTransitionMatrix(
     const explicitReq = (["D", "E", "N", "O"] as const).find((k) => row[k] === "require");
     const reqTarget =
       explicitReq ??
-      (row.D === "forbid" && row.E === "forbid" && row.N === "forbid" ? "O" : undefined);
+      (row.D === "forbid" && row.E === "forbid" && row.N === "forbid" && row.O !== "forbid"
+        ? "O"
+        : undefined);
     if (reqTarget) {
       return {
         D: reqTarget === "D" ? ("require" as const) : ("forbid" as const),
@@ -958,7 +960,7 @@ export function getShiftTransitionMatrix(
       D: row.D === "forbid" ? ("forbid" as const) : ("allow" as const),
       E: row.E === "forbid" ? ("forbid" as const) : ("allow" as const),
       N: row.N === "forbid" ? ("forbid" as const) : ("allow" as const),
-      O: "allow" as const,
+      O: row.O === "forbid" ? ("forbid" as const) : ("allow" as const),
     };
   };
   return {
@@ -985,7 +987,12 @@ export function applyShiftTransitionToConfig(
     for (const k of ["D", "E", "N", "O"] as const) {
       nextRow[k] = k === toShift ? "require" : "forbid";
     }
-  } else if (toShift === "O") {
+  } else if (toShift === "O" && policy === "allow") {
+    for (const k of ["D", "E", "N", "O"] as const) {
+      if (nextRow[k] === "require") {
+        nextRow[k] = "allow";
+      }
+    }
     nextRow.O = "allow";
     if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
       nextRow.N = "allow";
@@ -997,10 +1004,17 @@ export function applyShiftTransitionToConfig(
       }
     }
     nextRow[toShift] = policy === "forbid" ? "forbid" : "allow";
-    if (policy === "allow") {
-      nextRow.O = "allow";
-    } else if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
-      nextRow.O = "require";
+    if (toShift !== "O") {
+      if (policy === "allow") {
+        if (nextRow.O === "require") nextRow.O = "allow";
+      } else if (
+        nextRow.D === "forbid" &&
+        nextRow.E === "forbid" &&
+        nextRow.N === "forbid" &&
+        nextRow.O !== "forbid"
+      ) {
+        nextRow.O = "require";
+      }
     }
   }
 
