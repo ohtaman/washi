@@ -1190,22 +1190,36 @@ function collectViolatedSlacks(
  */
 export async function diagnoseTimetableWithHiGHS(
   state: TimetableState,
-  options?: { signal?: AbortSignal }
-): Promise<{ status: string; conflicts: ConstraintMeta[]; rawNames: string[] }> {
+  options?: { signal?: AbortSignal; timeLimit?: number }
+): Promise<{ status: "Sat" | "Unsat" | "Unknown"; conflicts: ConstraintMeta[]; rawNames: string[] }> {
   const found = new Map<string, ConstraintMeta>();
+  const timeLimit = options?.timeLimit ?? 1.5;
 
   const pass1 = buildTimetableWashiModel(state, {
     elasticWeightMode: "prefer_structural",
   });
-  await pass1.model.solve({ timeLimit: 1.5, signal: options?.signal });
-  if ((pass1.model.objectiveValue ?? 0) > 1e-4) {
+  const status1 = await pass1.model.solve({ timeLimit, signal: options?.signal });
+  const obj1 = pass1.model.objectiveValue;
+
+  if (status1 === "Optimal" && obj1 !== null && obj1 !== undefined && obj1 <= 1e-4) {
+    return {
+      status: "Sat",
+      conflicts: [],
+      rawNames: [],
+    };
+  }
+
+  if (status1 === "Optimal" && obj1 !== null && obj1 !== undefined && obj1 > 1e-4) {
     collectViolatedSlacks(pass1.elasticSlacks, found);
 
     const pass2 = buildTimetableWashiModel(state, {
       elasticWeightMode: "prefer_user",
     });
-    await pass2.model.solve({ timeLimit: 1.5, signal: options?.signal });
-    collectViolatedSlacks(pass2.elasticSlacks, found);
+    const status2 = await pass2.model.solve({ timeLimit, signal: options?.signal });
+    const obj2 = pass2.model.objectiveValue;
+    if (status2 === "Optimal" && obj2 !== null && obj2 !== undefined && obj2 > 1e-4) {
+      collectViolatedSlacks(pass2.elasticSlacks, found);
+    }
 
     const conflicts = Array.from(found.values());
     return {
@@ -1216,7 +1230,7 @@ export async function diagnoseTimetableWithHiGHS(
   }
 
   return {
-    status: "Sat",
+    status: "Unknown",
     conflicts: [],
     rawNames: [],
   };
@@ -1508,6 +1522,10 @@ export async function solveTimetableWithWashi(
         modelCodePreview,
         conflicts: diag.conflicts,
         rawConflictNames: diag.rawNames,
+        errorMessage:
+          diag.status === "Unknown"
+            ? "Conflict diagnosis did not reach optimality within the time limit."
+            : undefined,
       };
     } catch (diagErr: unknown) {
       return {
@@ -1524,7 +1542,7 @@ export async function solveTimetableWithWashi(
         evaluation: null,
         lpPreview,
         modelCodePreview,
-        conflicts: Array.from(constraintMeta.values()).slice(0, 5),
+        conflicts: [],
         rawConflictNames: [],
         errorMessage: diagErr instanceof Error ? diagErr.message : String(diagErr),
       };

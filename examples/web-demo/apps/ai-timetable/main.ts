@@ -1390,6 +1390,11 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
     });
     conflictAlert.hidden = false;
     conflictList.replaceChildren();
+    if (outcome.conflicts.length === 0 && outcome.errorMessage) {
+      const li = document.createElement("li");
+      li.textContent = outcome.errorMessage;
+      conflictList.appendChild(li);
+    }
     for (const c of outcome.conflicts) {
       const loc = formatConstraintMetaI18n(c, appState, activeLang);
       const li = document.createElement("li");
@@ -2026,7 +2031,7 @@ function wireEvents(): void {
           zh: "✅ 一致性检查通过: 当前所有排课约束条件均无矛盾（可满足: Sat）。",
         })
       );
-    } else {
+    } else if (diag.status === "Unsat") {
       const listMd = diag.conflicts
         .map((c) => `- **${formatConstraintMetaI18n(c, appState, activeLang).label}**`)
         .join("\n");
@@ -2036,6 +2041,15 @@ function wireEvents(): void {
           ja: `🚨 整合性チェック結果: ${diag.conflicts.length}件の制約が衝突しています。\n${listMd}`,
           en: `🚨 Feasibility Check: ${diag.conflicts.length} conflicting constraints detected.\n${listMd}`,
           zh: `🚨 一致性检查结果: 检测到 ${diag.conflicts.length} 项约束冲突。\n${listMd}`,
+        })
+      );
+    } else {
+      appendChatMessage(
+        "system",
+        pickTimetableLang(activeLang, {
+          ja: "⚠️ 整合性チェックが制限時間内に最適解まで完了しませんでした（判定保留: Unknown）。",
+          en: "⚠️ Feasibility check did not reach a proven result within the time limit (Unknown).",
+          zh: "⚠️ 一致性检查未能在时限内得出确定结论（未知: Unknown）。",
         })
       );
     }
@@ -2148,8 +2162,10 @@ function wireEvents(): void {
     void triggerSolve();
   });
   $("btn-reset-default-config").addEventListener("click", () => {
-    appState = generateTimetableState();
-    currentTimetable = null;
+    appState = {
+      ...appState,
+      config: generateTimetableState({ seed: appState.config.seed }).config,
+    };
     void triggerSolve();
   });
   $("btn-diagnose-conflict").addEventListener("click", () => {

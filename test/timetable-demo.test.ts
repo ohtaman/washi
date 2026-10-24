@@ -159,6 +159,9 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
 
   it("diagnoses all 3 conflict scenarios (prof_impossible_day, room_double_book, pc_lab_overload) with HiGHS Elastic Relaxation", async () => {
     const baseState = generateTimetableState();
+    const satDiag = await diagnoseTimetableWithHiGHS(baseState);
+    expect(satDiag.status).toBe("Sat");
+    expect(satDiag.conflicts).toEqual([]);
 
     for (const scenario of [
       "prof_impossible_day",
