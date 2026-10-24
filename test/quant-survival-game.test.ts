@@ -303,6 +303,21 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     expect(portalHtml).not.toContain("QP");
     expect(portalHtml).not.toContain("MILP");
 
+    // 3b. Game UI files must not expose "WaSHI-QP" or solver/algorithm names
+    for (const gameUiPath of [
+      "quant-survival/index.html",
+      "quant-survival/main.ts",
+      "quant-survival/regimes.ts",
+    ]) {
+      const uiContent = readFileSync(resolve(gamesRoot, gameUiPath), "utf8");
+      expect(uiContent, `${gameUiPath} should not contain WaSHI-QP`).not.toContain("WaSHI-QP");
+      expect(uiContent, `${gameUiPath} should not contain 二次計画法`).not.toContain("二次計画法");
+      expect(uiContent, `${gameUiPath} should not contain マーコウィッツ`).not.toContain(
+        "マーコウィッツ"
+      );
+      expect(uiContent, `${gameUiPath} should not contain Markowitz`).not.toContain("Markowitz");
+    }
+
     // 4. Theory page has ja, en, zh sections and distinguishes quarter-end shortfall estimate from intra-quarter barrier
     expect(quantTheoryHtml).toContain('data-lang-section="ja"');
     expect(quantTheoryHtml).toContain('data-lang-section="en"');
@@ -630,7 +645,7 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     const zhText = formatLiquidationDetail("zh", bothLiquidatedSim);
 
     expect(jaText).toContain(`DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
-    expect(enText).toContain(`WaSHI-QP also liquidated on DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
+    expect(enText).toContain(`RIVAL also liquidated on DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
     expect(zhText).toContain(`第 ${bothLiquidatedSim.aiLiquidatedDay} 日触发强平`);
   });
 });

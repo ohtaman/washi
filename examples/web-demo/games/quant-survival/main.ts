@@ -94,7 +94,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     pageTitle: "QUANT SURVIVAL | クオンツ運用サバイバル",
     backLink: "← ゲーム一覧",
     backLinkTitle: "ゲーム一覧へ戻る",
-    brandSubtitle: "vs WaSHI-QP エンドレス運用バトル",
+    brandSubtitle: "エンドレス運用サバイバル",
     recordTitle: "自己ベスト記録（最高到達期・最高総資産）",
     langGroupAria: "Language",
     helpBtn: "? ルール",
@@ -104,7 +104,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     scoreboardAria: "運用資産スコアボード",
     quarterLabel: "CURRENT QUARTER",
     youLabel: "YOUR FUND (AUM)",
-    aiLabel: "RIVAL: WaSHI-QP",
+    aiLabel: "RIVAL FUND (AUM)",
     floorLabel: "LIQUIDATION FLOOR",
     floorSub: "これ未満で即ロスカット退場",
     allocPanelAria: "ポートフォリオ配分パネル",
@@ -121,9 +121,9 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     labelRuinProb: "期末フロア割れ確率 (参考値)",
     labelExpReturn: "期待リターン (E[R])",
     chartFrontierTitle: "リスク・リターン平面 ＆ 効率的フロンティア",
-    chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
+    chartFrontierLegend: "● YOU   ◆ RIVAL",
     frontierSvgAria: "効率的フロンティアとリスク・リターンプロット",
-    chartBattleTitle: "60営業日 リアルタイム資産推移 (YOU vs WaSHI-QP)",
+    chartBattleTitle: "60営業日 リアルタイム資産推移 (YOU vs RIVAL)",
     battleSvgAria: "60営業日リアルタイム資産推移チャート",
     defaultTicker:
       "配分を調整して [MARKET OPEN] を押すと、60日間の市場シミュレーションが始まります。",
@@ -140,7 +140,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
         <li><strong>ロスカット退場（LIQUIDATION FLOOR）</strong>：期中の資産または期末資産が「破綻ライン」を割り込むと即ゲームオーバーです。</li>
         <li><strong>破綻確率を下げるコツ（逆相関ヘッジ）</strong>：高リターン銘柄（TECHやQNTX）だけに集中投資すると、暴落イベントで簡単に破綻します。相関係数がマイナス（青色）の銘柄（GOLDやDFNSなど）を組み合わせると、期待リターンを高く保ったまま破綻確率だけを劇的に引き下げられます。</li>
         <li><strong>期末フロア割れ確率（参考値）</strong>：期末リターンを正規分布で近似し、破綻ラインを下回る確率を見積もった目安です。期中の一時的な下落やニュースショックは含まないため、実際に退場する確率はこれより高くなります。</li>
-        <li><strong>ライバル WaSHI-QP</strong>：ブラウザ内の二次計画法ソルバーが毎期あなたの開始資産と同額から最小分散ポートフォリオを構築して並走します。毎期イコールコンディションの60日間勝負で、破綻せずにどこまで資産を伸ばせるか競いましょう。</li>
+        <li><strong>ライバルファンド（RIVAL）</strong>：毎期あなたの開始資産と同額から、最小分散ポートフォリオを組んで並走します。毎期イコールコンディションの60日間勝負で、破綻せずにどこまで資産を伸ばせるか競いましょう。</li>
       </ul>
     `,
   },
@@ -148,7 +148,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     pageTitle: "QUANT SURVIVAL | Endless Portfolio Duel",
     backLink: "← Games",
     backLinkTitle: "Back to Game Portal",
-    brandSubtitle: "vs WaSHI-QP Endless AUM Duel",
+    brandSubtitle: "Endless Fund Survival Duel",
     recordTitle: "Personal best record (Highest Quarter & Peak AUM)",
     langGroupAria: "Language",
     helpBtn: "? Rules",
@@ -158,7 +158,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     scoreboardAria: "Asset Under Management Scoreboard",
     quarterLabel: "CURRENT QUARTER",
     youLabel: "YOUR FUND (AUM)",
-    aiLabel: "RIVAL: WaSHI-QP",
+    aiLabel: "RIVAL FUND (AUM)",
     floorLabel: "LIQUIDATION FLOOR",
     floorSub: "Falling below this line ends your run",
     allocPanelAria: "Portfolio Allocation Controls",
@@ -175,9 +175,9 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     labelRuinProb: "QUARTER-END SHORTFALL PROB. (ESTIMATE)",
     labelExpReturn: "EXPECTED RETURN (E[R])",
     chartFrontierTitle: "Risk-Return Plane & Efficient Frontier",
-    chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
+    chartFrontierLegend: "● YOU   ◆ RIVAL",
     frontierSvgAria: "Risk-Return Efficient Frontier Plot",
-    chartBattleTitle: "60-Day Live AUM Battle (YOU vs WaSHI-QP)",
+    chartBattleTitle: "60-Day Live AUM Battle (YOU vs RIVAL)",
     battleSvgAria: "60-Day Live Asset Battle Chart",
     defaultTicker:
       "Tune your weights and press [MARKET OPEN] to launch the 60-day market simulation.",
@@ -194,7 +194,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
         <li><strong>Liquidation Floor</strong>: If your fund drops below the red liquidation floor during or at the end of the 60-day quarter, you are liquidated (Game Over).</li>
         <li><strong>Correlation Hedging</strong>: Going 100% into a single high-return asset invites disaster when macro shocks hit. Combine negatively correlated assets (highlighted in blue, such as TECH + GOLD or NRGY) to slash ruin probability while preserving upside.</li>
         <li><strong>Quarter-End Shortfall Probability (Estimate)</strong>: A normal approximation of the chance that your quarter-end return finishes below the floor. It ignores intra-quarter dips and news shocks, so your actual liquidation risk is higher than this gauge.</li>
-        <li><strong>Rival WaSHI-QP</strong>: Every quarter starts as an equal-AUM 60-day duel against a live quadratic optimizer solving for minimum portfolio variance.</li>
+        <li><strong>Rival Fund (RIVAL)</strong>: Every quarter starts as an equal-AUM 60-day duel against a rival fund running a minimum-variance portfolio.</li>
       </ul>
     `,
   },
@@ -202,7 +202,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     pageTitle: "QUANT SURVIVAL | 量化生存战",
     backLink: "← 游戏列表",
     backLinkTitle: "返回游戏列表",
-    brandSubtitle: "vs WaSHI-QP 无尽资产管理对决",
+    brandSubtitle: "无尽资产管理对决",
     recordTitle: "个人最佳记录（最高到达季度与最高总资产）",
     langGroupAria: "Language",
     helpBtn: "? 规则",
@@ -212,7 +212,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     scoreboardAria: "基金管理规模记分板",
     quarterLabel: "CURRENT QUARTER",
     youLabel: "YOUR FUND (AUM)",
-    aiLabel: "RIVAL: WaSHI-QP",
+    aiLabel: "RIVAL FUND (AUM)",
     floorLabel: "LIQUIDATION FLOOR",
     floorSub: "跌破此强平线即刻爆仓出局",
     allocPanelAria: "投资组合权重控制面板",
@@ -229,9 +229,9 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     labelRuinProb: "季末跌破强平线概率（参考值）",
     labelExpReturn: "预期收益率 (E[R])",
     chartFrontierTitle: "风险收益平面与有效前沿",
-    chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
+    chartFrontierLegend: "● YOU   ◆ RIVAL",
     frontierSvgAria: "有效前沿与风险收益散点图",
-    chartBattleTitle: "60交易日 实时净值对决 (YOU vs WaSHI-QP)",
+    chartBattleTitle: "60交易日 实时净值对决 (YOU vs RIVAL)",
     battleSvgAria: "60交易日实时净值对决图表",
     defaultTicker: "调整资产权重后点击 [MARKET OPEN] 启动60交易日市场行情模拟。",
     executeBtn: "▶ MARKET OPEN (开始60日行情对决)",
@@ -247,7 +247,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
         <li><strong>强平爆仓线（Liquidation Floor）</strong>：若盘中或季末净值跌破红色强平线，基金即刻清盘出局。</li>
         <li><strong>利用负相关对冲风险</strong>：重仓单一高收益资产极易在市场冲击中爆仓。搭配相关系数为负（蓝色标记，如TECH搭配GOLD或DFNS）的资产，可以在保持预期回报的同时大幅压低爆仓概率。</li>
         <li><strong>季末跌破强平线概率（参考值）</strong>：以正态分布近似季末收益率，估算其低于强平线的概率。该数值不包含季度中途的暂时下跌与新闻冲击，因此实际出局概率会高于此仪表。</li>
-        <li><strong>对手 WaSHI-QP</strong>：每季度均从与你相同的起始净值出发，与浏览器内实时求解最小方差投资组合的对手展开公平的60日对决。</li>
+        <li><strong>对手基金（RIVAL）</strong>：每季度均从与你相同的起始净值出发，与构建最小方差组合的对手基金展开公平的60日对决。</li>
       </ul>
     `,
   },
@@ -515,10 +515,10 @@ function renderScoreboard(): void {
     const recEn = duelWins + duelLosses > 0 ? ` (${duelWins}W-${duelLosses}L)` : "";
     pDeltaEl.textContent =
       currentLang === "ja"
-        ? `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M${recJa}`
+        ? `vs RIVAL: ${sign}${diff.toFixed(1)}M${recJa}`
         : currentLang === "zh"
-          ? `对比 WaSHI-QP: ${sign}${diff.toFixed(1)}M${recZh}`
-          : `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M${recEn}`;
+          ? `对比 RIVAL: ${sign}${diff.toFixed(1)}M${recZh}`
+          : `vs RIVAL: ${sign}${diff.toFixed(1)}M${recEn}`;
   }
 
   const aAumEl = document.getElementById("hud-ai-aum");
@@ -562,19 +562,19 @@ export function formatLiquidationDetail(
   const aiDay = sim.aiLiquidatedDay ?? sim.days;
   if (lang === "ja") {
     const aiNote = sim.aiLiquidated
-      ? `WaSHI-QP も DAY ${aiDay} にロスカット (${aRetStr})`
-      : `WaSHI-QP 今期損益: ${aRetStr}`;
+      ? `RIVAL も DAY ${aiDay} にロスカット (${aRetStr})`
+      : `RIVAL 今期損益: ${aRetStr}`;
     return `DAY ${day} に資産が破綻ライン ${floor} を割り込みました (期中最安値 ${minAum})。${aiNote}`;
   }
   if (lang === "zh") {
     const aiNote = sim.aiLiquidated
-      ? `WaSHI-QP 亦于第 ${aiDay} 日触发强平 (${aRetStr})`
-      : `WaSHI-QP 本季收益: ${aRetStr}`;
+      ? `RIVAL 亦于第 ${aiDay} 日触发强平 (${aRetStr})`
+      : `RIVAL 本季收益: ${aRetStr}`;
     return `第 ${day} 个交易日净值跌破强平线 ${floor}（季内最低 ${minAum}）。${aiNote}`;
   }
   const aiNote = sim.aiLiquidated
-    ? `WaSHI-QP also liquidated on DAY ${aiDay} (${aRetStr})`
-    : `WaSHI-QP return: ${aRetStr}`;
+    ? `RIVAL also liquidated on DAY ${aiDay} (${aRetStr})`
+    : `RIVAL return: ${aRetStr}`;
   return `AUM fell below the liquidation floor ${floor} on DAY ${day} (intra-quarter low ${minAum}). ${aiNote}`;
 }
 
@@ -806,7 +806,7 @@ function renderTelemetryAndCharts(): void {
 
   const aiRuinEl = document.getElementById("metric-ai-ruin-compare");
   if (aiRuinEl) {
-    aiRuinEl.textContent = `WaSHI-QP: ${aiRuinPct.toFixed(1)}%`;
+    aiRuinEl.textContent = `RIVAL: ${aiRuinPct.toFixed(1)}%`;
   }
 
   const barEl = document.getElementById("ruin-prob-bar");
@@ -833,7 +833,7 @@ function renderTelemetryAndCharts(): void {
 
   const aiRetEl = document.getElementById("metric-ai-return-compare");
   if (aiRetEl) {
-    aiRetEl.textContent = `WaSHI-QP: ${formatSignedPct(aiMetrics.expectedReturn)}`;
+    aiRetEl.textContent = `RIVAL: ${formatSignedPct(aiMetrics.expectedReturn)}`;
   }
 
   const volRowEl = document.getElementById("metric-vol-row");
@@ -918,7 +918,7 @@ function renderFrontierSvg(
     <line x1="${padL}" y1="${targetY.toFixed(1)}" x2="${w - padR}" y2="${targetY.toFixed(1)}" stroke="rgba(56,189,248,0.28)" stroke-dasharray="3 3" />
     <path d="${frontierPath}" fill="none" stroke="#10b981" stroke-width="2" opacity="0.8" />
     ${assetDots}
-    <!-- Rival WaSHI-QP Diamond -->
+    <!-- Rival Diamond -->
     <polygon points="${ax},${Number(ay) - 6} ${Number(ax) + 6},${ay} ${ax},${Number(ay) + 6} ${Number(ax) - 6},${ay}" fill="#f59e0b" stroke="#080d19" stroke-width="1.2" />
     <!-- Player Circle -->
     <circle cx="${px}" cy="${py}" r="6" fill="#38bdf8" stroke="#e0f2fe" stroke-width="1.8" />
@@ -1031,7 +1031,7 @@ async function loadQuarter(quarter: number): Promise<void> {
   playerWeights = new Array<number>(n).fill(1 / n);
   frontierPoints = computeEfficientFrontier(regime, 9);
 
-  // Solve Rival WaSHI-QP optimal portfolio
+  // Solve Rival minimum-variance portfolio
   const solved = await solveQuantOptimalPortfolio(regime);
   // Discard results from a superseded load (e.g. a reset issued while this solve was pending)
   if (token !== loadToken) return;
@@ -1183,20 +1183,20 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
     const beatAi = sim.aiLiquidated || sim.playerReturn >= sim.aiReturn;
     titleEl.textContent =
       currentLang === "ja"
-        ? `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT WaSHI-QP" : "SURVIVED QUARTER"}`
+        ? `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT RIVAL" : "SURVIVED QUARTER"}`
         : currentLang === "zh"
-          ? `Q${currentQuarter} 存活成功 · ${beatAi ? "击败 WaSHI-QP" : "顺利过关"}`
-          : `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT WaSHI-QP" : "QUARTER CLEARED"}`;
+          ? `Q${currentQuarter} 存活成功 · ${beatAi ? "击败 RIVAL" : "顺利过关"}`
+          : `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT RIVAL" : "QUARTER CLEARED"}`;
     const aiDay = sim.aiLiquidatedDay ?? sim.days;
     const aiSummaryJa = sim.aiLiquidated
-      ? `WaSHI-QP: DAY ${aiDay} ロスカット脱落 (${aRetStr})`
-      : `WaSHI-QP: ${aRetStr} (総資産 ${formatMoney(aiAum)})`;
+      ? `RIVAL: DAY ${aiDay} ロスカット脱落 (${aRetStr})`
+      : `RIVAL: ${aRetStr} (総資産 ${formatMoney(aiAum)})`;
     const aiSummaryZh = sim.aiLiquidated
-      ? `WaSHI-QP: 第 ${aiDay} 日触发强平 (${aRetStr})`
-      : `WaSHI-QP: ${aRetStr} (总资产 ${formatMoney(aiAum)})`;
+      ? `RIVAL: 第 ${aiDay} 日触发强平 (${aRetStr})`
+      : `RIVAL: ${aRetStr} (总资产 ${formatMoney(aiAum)})`;
     const aiSummaryEn = sim.aiLiquidated
-      ? `WaSHI-QP: LIQUIDATED DAY ${aiDay} (${aRetStr})`
-      : `WaSHI-QP: ${aRetStr} (AUM ${formatMoney(aiAum)})`;
+      ? `RIVAL: LIQUIDATED DAY ${aiDay} (${aRetStr})`
+      : `RIVAL: ${aRetStr} (AUM ${formatMoney(aiAum)})`;
     detailEl.textContent =
       currentLang === "ja"
         ? `あなた: ${pRetStr} (総資産 ${formatMoney(playerAum)}) ／ ${aiSummaryJa}`
@@ -1213,7 +1213,7 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
     const breakdown = currentRegime.assets
       .map((a, idx) => `${a.ticker} ${Math.round((aiOptimal?.weights[idx] ?? 0) * 100)}%`)
       .join(" · ");
-    aiWeightsEl.textContent = `WaSHI-QP Portfolio: ${breakdown}`;
+    aiWeightsEl.textContent = `RIVAL Portfolio: ${breakdown}`;
   }
 }
 
