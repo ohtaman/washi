@@ -3848,6 +3848,106 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       );
       expect(planTurn7SolveOnly.intentType).toBe("solve_only");
 
+      // Turn 8a: Grouped same-category route (Stage 1 combines an explicit clause and a vague clause into one
+      // `staff_contract` route) where Stage 2 emits `[valid_tool, { tool_name: "none" }]` (4367202773).
+      // Step 3 must treat the grouped route as unresolved and hold the entire batch instead of applying the explicit clause alone.
+      turn1Reply = {
+        thought: "田中さんの最大勤務日数12日と最低勤務日数調整を1つのstaff_contractルートにまとめる。",
+        routes: [
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最大勤務日数を12日にし、勤務下限も調整する",
+          },
+        ],
+        response: "田中さんの月間最大勤務日数を12日にし、勤務下限も調整します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "maxWorkDays", value: 12 },
+              },
+              { tool_name: "none", args: {} },
+            ],
+          },
+        ],
+      ]);
+      const planTurn8aGroupedNone = await manager.extractPlan(
+        "田中さんの最大勤務日数を12日にして、勤務下限も調整して",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn8aGroupedNone.intentType).toBe("consult_only");
+      expect(planTurn8aGroupedNone.nonToolReason).toBe("clarify");
+      expect(planTurn8aGroupedNone.operations).toEqual([]);
+      expect(planTurn8aGroupedNone.verificationResult?.missingRoutes).toEqual([
+        'staff_contract("田中さんの月間最大勤務日数を12日にし、勤務下限も調整する")',
+      ]);
+
+      // Turn 8b: Same grouped route where Stage 2 emits a valid tool plus an unconvertible tool call
+      // (numeric item without `value`). Must also hold the batch (4367202773).
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "maxWorkDays", value: 12 },
+              },
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "minWorkDays" },
+              },
+            ],
+          },
+        ],
+      ]);
+      const planTurn8bGroupedUnconvertible = await manager.extractPlan(
+        "やっぱり調整して",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn8bGroupedUnconvertible.intentType).toBe("consult_only");
+      expect(planTurn8bGroupedUnconvertible.nonToolReason).toBe("clarify");
+      expect(planTurn8bGroupedUnconvertible.operations).toEqual([]);
+
+      // Turn 8c: User supplies the missing minimum ("最低勤務日数は8日"), resolving both clauses in the grouped route!
+      turn1Reply = {
+        thought: "保留されていた最大勤務日数12日と今回の回答の最低勤務日数8日を統合する。",
+        routes: [
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最大勤務日数を12日にし、月間最低勤務日数を8日に設定する",
+          },
+        ],
+        response: "田中さんの月間最大勤務日数を12日、月間最低勤務日数を8日に設定します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "maxWorkDays", value: 12 },
+              },
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "minWorkDays", value: 8 },
+              },
+            ],
+          },
+        ],
+      ]);
+      const planTurn8cResolved = await manager.extractPlan(
+        "最低勤務日数は8日",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn8cResolved.intentType).toBe("modify_and_solve");
+      expect(planTurn8cResolved.operations.length).toBe(2);
+
       manager.destroy();
     } finally {
       g.LanguageModel = origLM;

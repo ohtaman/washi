@@ -124,7 +124,7 @@ export const STAGE1_ROUTER_SCHEMA = {
         {
           type: "array",
           minItems: 1,
-          maxItems: 3,
+          maxItems: 5,
           items: {
             type: "object",
             required: ["tool_type", "instruction"],
@@ -177,9 +177,9 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 1. "thought" (思考・プランニング):
    ・【文脈補完】直近の対話履歴がある場合、省略されている主語（どのシフト名・スキル名・スタッフ名に対する指示か）を特定する。特に直前の履歴が「前回(未適用・回答待ち)」となっている場合は、前回の指示内容はまだ1件も適用されていないため、前回の未適用指示と今回のユーザーの回答をすべて統合して計画を立てること。
    ・【意図の整理】ユーザーの要望が、個人カレンダー（特定日・期間・曜日/祝日）なのか、個人の月間契約条件（月間日数・夜勤回数・連勤上限・シフト免除）なのか、病棟全体の設定なのか、追加シフト枠やスキル・ペア設定なのかを整理する。また「1日あたりの配置人数」と「個人別の月間回数」を混同しないように区別する。
-   ・【タスク分解】1つの発話に複数カテゴリの要求が含まれる場合はカテゴリごとに分割し、同じカテゴリに属する複数条件は1つのルートにまとめる計画を立てる。ただし複数の要求のうち1つでも具体的な数値や対象が欠けていて聞き返しが必要な場合は、一部のツールだけを実行せず必ず全体を保留して単独の [{"tool_type":"clarify"}] とする。
+   ・【タスク分解】1つの発話に複数の条件が含まれる場合は、異なるカテゴリだけでなく同じカテゴリに属する複数条件であっても1つにまとめず、原則として1条件につき1つのルート（{ "tool_type": "...", "instruction": "..." }）に分割する計画を立てる（※ custom_shift の追加と実施条件のみ1ルートにまとめる）。また複数の要求のうち1つでも具体的な数値や対象が欠けていて聞き返しが必要な場合は、一部のツールだけを実行せず必ず全体を保留して単独の [{"tool_type":"clarify"}] とする。
 2. "routes" (カテゴリ別ルート配列):
-   ・ツール実行カテゴリ(1〜7)に該当する場合は、各カテゴリごとに { "tool_type": "...", "instruction": "..." } を出力する。
+   ・ツール実行カテゴリ(1〜7)に該当する場合は、各条件ごとに { "tool_type": "...", "instruction": "..." } を出力する。
    ・重要: "instruction" には、直前の履歴から補完した対象名と、ユーザーが実際に指示した内容のみを簡潔に書くこと（「〜だけ出勤」「〜のみ」等の条件表現や日付・人数・回数などの数値は省略せず維持し、言及されていない項目は推測・追加しないこと。また日付を書く際は月番号「11月」と日番号の混同を防ぐため「11月」を省いて「1日から18日まで」「16日から18日までの3日間」のように日番号のみで記載すること）。
    ・非ツールカテゴリ（"question", "unsupported", "clarify"）に該当する場合は、単独の [{ "tool_type": "..." }] として出力する。
 3. "response" (一次返答):
@@ -794,7 +794,7 @@ const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定ス�
 【基本ルール】
 ・特定スタッフ個人の月間契約条件・シフト免除・月間日数や夜勤回数の上限/下限に厳密に合致する指示のみを抽出してください。
 ・特定の日付や曜日の指定、病棟全体のルール変更は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
-・具体的な数値や契約種別が明示されていない曖昧な指示（「勤務下限を調整する」「日数を変更する」「夜勤を減らす」など具体的な数値がないもの）に対して、0などの数値を推測・補完してはいけません。具体的な数値や契約名が指示文にない場合は必ず "none" を出力してください。
+・具体的な数値や契約種別が明示されていない曖昧な指示（「勤務下限を調整する」「日数を変更する」「夜勤を減らす」など具体的な数値がないもの）に対して、0などの数値を推測・補完してはいけません。具体的な数値や契約名が指示文にない場合は必ず "none" を出力してください。また1つの指示文に複数の条件が含まれていて、その中に具体的な数値や契約種別が欠けている曖昧な条件が含まれる場合も、曖昧な条件を省略せず必ずその条件に対応する {"tool_name":"none","args":{}} を tools 配列に含めて出力してください。
 ・「勤務日数（働く日数）」と「公休日数（休む日数）」を混同しないでください：
   * 勤務日数の上限（「月N日までの勤務」「月N日以下勤務」）➔ item: "maxWorkDays"
   * 勤務日数の下限（「月間最小勤務日数をN日に」「最低勤務日数を0日に」）➔ item: "minWorkDays"
@@ -959,7 +959,7 @@ const WARD_COVERAGE_AND_PARAM_STAGE2_PROMPT = `あなたは「ward_coverage_and_
 
 【基本ルール】
 ・病棟全体の数値パラメータ・特定日の必要人数変更・夜勤平準化に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
-・具体的な数値が明示されていない曖昧な指示（「人数を調整する」「連勤を減らす」など具体的な数値がないもの）に対して、数値を推測・補完してはいけません。具体的な数値が指示文にない場合は必ず "none" を出力してください。
+・具体的な数値が明示されていない曖昧な指示（「人数を調整する」「連勤を減らす」など具体的な数値がないもの）に対して、数値を推測・補完してはいけません。具体的な数値が指示文にない場合は必ず "none" を出力してください。また1つの指示文に複数の条件が含まれていて、その中に具体的な数値が欠けている曖昧な条件が含まれる場合も、曖昧な条件を省略せず必ずその条件に対応する {"tool_name":"none","args":{}} を tools 配列に含めて出力してください。
 ・個人別のシフトや契約変更、2日間のシフト遷移ルール、特定属性やスキル別の人数指定は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
 
 【ツール一覧（各引数の意味・数値例・デフォルト値）】
@@ -2651,6 +2651,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       ): Promise<{
         routeOps: ChatConstraintOperation[];
         routeSystemIntent: "diagnose_conflict" | "solve_only" | null;
+        hasUnresolvedToolCall: boolean;
       }> => {
         onProgress?.({
           phase: "turn2_start",
@@ -2666,6 +2667,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
         const routeOps: ChatConstraintOperation[] = [];
         let routeSystemIntent: "diagnose_conflict" | "solve_only" | null = null;
+        let hasUnresolvedToolCall = false;
         try {
           const catConfig = STAGE2_CATEGORY_CONFIGS[category];
           const dynamicDict = buildCategoryDynamicDictionary(
@@ -2719,7 +2721,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               : [];
 
           for (const tc of toolList) {
-            if (!tc || tc.tool_name === "none") continue;
+            if (!tc || tc.tool_name === "none") {
+              hasUnresolvedToolCall = true;
+              continue;
+            }
             if (tc.tool_name === "diagnose_conflict" || tc.tool_name === "solve_only") {
               routeSystemIntent = tc.tool_name;
               stage2SystemIntent = tc.tool_name;
@@ -2737,6 +2742,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               routerTrace.push(
                 `🛠️ Turn 2 (${category}): ${tc.tool_name}(${JSON.stringify(tc.args ?? {})})`
               );
+            } else {
+              hasUnresolvedToolCall = true;
             }
           }
           onProgress?.({
@@ -2756,7 +2763,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             } catch (_) {}
           }
         }
-        return { routeOps, routeSystemIntent };
+        return { routeOps, routeSystemIntent, hasUnresolvedToolCall };
       };
 
       for (let rIdx = 0; rIdx < activeRoutes.length; rIdx++) {
@@ -2766,6 +2773,12 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
         // ==================== STEP 3: POST-TURN-2 VERIFICATION ====================
         if (extractedForRoute.routeOps.length === 0 && !extractedForRoute.routeSystemIntent) {
+          missingRouteLabels.push(`${category}("${instruction}")`);
+          unsupportedRouteInstructions.push(instruction);
+        } else if (extractedForRoute.hasUnresolvedToolCall) {
+          // A grouped route can be partially resolved: Stage 2 emitted at least one valid operation but also
+          // returned `none` or an unconvertible tool call for another clause. Treat the whole route as unresolved
+          // so the All-or-Nothing hold below applies instead of executing the explicit clause alone.
           missingRouteLabels.push(`${category}("${instruction}")`);
           unsupportedRouteInstructions.push(instruction);
         }
