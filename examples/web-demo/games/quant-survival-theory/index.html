@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>『QUANT SURVIVAL』の数理モデル解説 — 破綻確率の最小化と凸二次計画法（QP）によるポートフォリオ最適化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-page: #070c16;
+        --card-bg: #0f172a;
+        --border-subtle: rgba(148, 163, 184, 0.2);
+        --accent-cyan: #38bdf8;
+        --accent-cyan-soft: rgba(56, 189, 248, 0.12);
+        --accent-gold: #f59e0b;
+        --accent-gold-soft: rgba(245, 158, 11, 0.12);
+        --accent-emerald: #10b981;
+        --accent-emerald-soft: rgba(16, 185, 129, 0.12);
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --code-bg: #050811;
+        --code-text: #e2e8f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg-page);
+        color: var(--text-main);
+        font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
+        line-height: 1.8;
+        padding: 2rem 1.25rem 5rem;
+      }
+
+      .article-shell {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+
+      .topnav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .topnav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: var(--text-main);
+        background: var(--card-bg);
+        border: 1px solid var(--border-subtle);
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+      }
+
+      .nav-btn:hover {
+        border-color: var(--accent-cyan);
+        color: var(--accent-cyan);
+      }
+
+      .nav-btn.primary {
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+        color: #fff;
+        border-color: #7dd3fc;
+      }
+
+      .lang-switch {
+        display: inline-flex;
+        align-items: center;
+        background: var(--card-bg);
+        border: 1px solid var(--border-subtle);
+        border-radius: 999px;
+        padding: 0.18rem;
+        gap: 0.15rem;
+      }
+
+      .lang-btn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.28rem 0.68rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .lang-btn.is-active {
+        background: var(--accent-cyan);
+        color: #04101c;
+      }
+
+      .hero-card {
+        background: linear-gradient(135deg, rgba(14, 116, 144, 0.22) 0%, rgba(15, 23, 42, 0.96) 100%);
+        border: 1.5px solid rgba(56, 189, 248, 0.4);
+        border-radius: 24px;
+        padding: 2.2rem 2rem;
+        margin-bottom: 2rem;
+      }
+
+      .hero-eyebrow {
+        display: inline-block;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #7dd3fc;
+        background: rgba(56, 189, 248, 0.14);
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        padding: 0.2rem 0.75rem;
+        border-radius: 999px;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-card h1 {
+        font-size: clamp(1.45rem, 3.2vw, 2.05rem);
+        line-height: 1.35;
+        margin: 0 0 0.9rem;
+        color: #f8fafc;
+      }
+
+      .hero-card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+      }
+
+      .section-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-subtle);
+        border-radius: 20px;
+        padding: 1.9rem 2rem;
+        margin-bottom: 1.6rem;
+      }
+
+      .section-card h2 {
+        font-size: 1.3rem;
+        color: #e0f2fe;
+        margin: 0 0 1rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .section-card h3 {
+        font-size: 1.05rem;
+        color: #bae6fd;
+        margin: 1.4rem 0 0.5rem;
+      }
+
+      .section-card p {
+        margin: 0 0 1rem;
+        color: #cbd5e1;
+      }
+
+      .math-box {
+        background: #080d1a;
+        border-left: 4px solid var(--accent-cyan);
+        border-radius: 0 12px 12px 0;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0 1.25rem;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        color: #e2e8f0;
+        overflow-x: auto;
+      }
+
+      .math-box .math-title {
+        font-family: "Inter", "Noto Sans JP", sans-serif;
+        font-weight: 800;
+        font-size: 0.82rem;
+        color: var(--accent-cyan);
+        margin-bottom: 0.35rem;
+        display: block;
+      }
+
+      .callout {
+        border-radius: 14px;
+        padding: 1.1rem 1.3rem;
+        margin: 1.1rem 0;
+        font-size: 0.92rem;
+      }
+
+      .callout.cyan {
+        background: var(--accent-cyan-soft);
+        border: 1px solid rgba(56, 189, 248, 0.38);
+        color: #e0f2fe;
+      }
+
+      .callout.gold {
+        background: var(--accent-gold-soft);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: #fef3c7;
+      }
+
+      .callout.emerald {
+        background: var(--accent-emerald-soft);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #d1fae5;
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+
+      table.mapping-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.25rem;
+        font-size: 0.88rem;
+      }
+
+      table.mapping-table th,
+      table.mapping-table td {
+        border: 1px solid var(--border-subtle);
+        padding: 0.65rem 0.85rem;
+        text-align: left;
+      }
+
+      table.mapping-table th {
+        background: rgba(255, 255, 255, 0.04);
+        color: #e0f2fe;
+        font-weight: 700;
+      }
+
+      pre.code-block {
+        background: var(--code-bg);
+        color: var(--code-text);
+        border: 1px solid var(--border-subtle);
+        padding: 1.15rem 1.35rem;
+        border-radius: 14px;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.84rem;
+        line-height: 1.65;
+        margin: 1rem 0;
+      }
+
+      .footer-cta {
+        text-align: center;
+        margin-top: 2.2rem;
+        display: flex;
+        justify-content: center;
+        gap: 0.85rem;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="article-shell">
+      <nav class="topnav">
+        <a href="../index.html" class="nav-btn" id="nav-back">← ゲーム一覧へ戻る</a>
+        <div class="topnav-right">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <a href="../mofumofu-sheep-theory/" class="nav-btn" id="nav-other-theory">
+            🐑 牧場囲いパズルの解説記事へ
+          </a>
+          <a href="../quant-survival/" class="nav-btn primary" id="nav-play">
+            📈 ゲームをプレイする ▶
+          </a>
+        </div>
+      </nav>
+
+      <!-- =====================================================================
+           JAPANESE ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="ja">
+        <header class="hero-card">
+          <span class="hero-eyebrow">凸二次計画法（Convex QP）＆ 確率的リスク管理モデリング解説</span>
+          <h1>
+            『QUANT SURVIVAL』の裏側：<br />
+            破綻確率の最小化（Safety-First基準）とマーコウィッツの平均・分散モデル
+          </h1>
+          <p>
+            対象読者：線形計画・二次計画および確率統計の基礎（期待値・分散・共分散）に関心のある方。<br />
+            初期資金 <code>$100M</code> から毎期の市場ショックを乗り越えて資産を複利成長させる『QUANT SURVIVAL』が、どのように<strong>破綻確率（Ruin Probability）</strong>を定式化し、ライバルAI <code>WaSHI-QP</code> がブラウザ内で<strong>凸二次計画問題（Convex QP）</strong>を解いているのかを解説します。
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. なぜ「一番儲かる銘柄に100%集中投資」すると必ず破綻するのか</h2>
+          <p>
+            1ラウンド限りのギャンブルであれば、期待リターンが最大の銘柄（たとえば <code>TECH: 期待リターン +16%, ボラティリティ 24%</code>）に資金を100%投じる戦略でも勝てるかもしれません。しかし、資産が毎期引き継がれる<strong>エンドレス複利サバイバル</strong>では事情が一変します。
+          </p>
+          <p>
+            仮に1四半期あたりのロスカット退場（破綻）確率が <code>18%</code> あるポートフォリオを組み続けた場合、10四半期後まで生き残れる確率は次のように急減します。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">複数期にまたがる生存確率の減衰</span>
+            P(10期生存) = (1 - 0.18)^10 ≈ 0.137 (わずか 13.7%)
+          </div>
+
+          <p>
+            一方、逆相関のヘッジ資産を組み合わせて1期あたりの破綻確率を <code>1.2%</code> まで引き下げれば、10期生存確率は <code>(1 - 0.012)^10 ≈ 88.6%</code> となり、複利効果によって着実に資産を拡大できます。これは年金基金・機関投資家・ヘッジファンドが直面する実務課題そのものです。
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>2. ロイの Safety-First 基準と「破綻確率の最小化」</h2>
+          <p>
+            投資対象となる <code>N</code> 個の資産に対する投資比率（ウェイト）を決定変数ベクトル <code>w = (w_1, ..., w_N)^T</code> と置きます。空売りなし（<code>w_i &gt;= 0</code>）かつ全額投資（<code>Σ w_i = 1</code>）のとき、ポートフォリオ全体の期待リターン <code>μ_p(w)</code> と分散 <code>σ_p^2(w)</code> は次式で与えられます。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">ポートフォリオの期待リターンと分散（二次形式）</span>
+            μ_p(w) = Σ_{i=1..N} w_i * μ_i = μ^T w<br />
+            σ_p^2(w) = Σ_{i=1..N} Σ_{j=1..N} w_i * w_j * Σ_{ij} = w^T Σ w
+          </div>
+
+          <p>
+            ここで <code>Σ_{ij} = σ_i * σ_j * ρ_{ij}</code> は資産 <code>i</code> と資産 <code>j</code> の共分散、<code>ρ_{ij} ∈ [-1, 1]</code> は相関係数です。
+          </p>
+          <p>
+            今期のロスカット退場ライン（許容下限リターン）を <code>r_floor</code>（例：<code>-5.5%</code>）としたとき、ポートフォリオ収益率 <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> が <code>r_floor</code> を下回る<strong>破綻確率（Ruin Probability）</strong>は、標準正規分布の累積分布関数 <code>Φ(z)</code> を用いて次のように表せます。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">破綻確率 P_ruin(w) と Safety-First 比率</span>
+            SF(w) = (μ_p(w) - r_floor) / σ_p(w)<br />
+            P_ruin(w) = Pr(R_p &lt;= r_floor) = Φ(-SF(w))
+          </div>
+
+          <div class="callout cyan">
+            <strong>💡 破綻確率の最小化と「二次計画法（QP）」の関係</strong>
+            標準正規分布の累積分布関数 <code>Φ(-z)</code> は <code>z</code> に関して厳密に単調減少します。したがって、期待リターンを <code>μ^T w = μ_target</code> と<strong>等式で固定した</strong>条件下では、<strong>破綻確率 <code>P_ruin(w)</code> を最小化することは、分母の分散 <code>w^T Σ w</code> を最小化する凸二次計画問題（マーコウィッツの平均・分散モデル）と数学的に同値</strong>になります。<br />
+            一方、ゲーム内の <code>WaSHI-QP</code> は <code>μ^T w &gt;= μ_target</code>（下限付き）の制約で分散を最小化しています。この場合は分子 <code>μ_p - r_floor</code> もポートフォリオごとに変わるため、分散がわずかに大きくても期待リターンが高く、破綻確率はより低いポートフォリオが存在し得ます。つまり <code>WaSHI-QP</code> は「破綻確率の厳密な最小化」ではなく、<strong>目標リターンを満たす最小分散ポートフォリオ</strong>というベンチマークです。
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>3. 逆相関ヘッジ（ρ &lt; 0）がリスクを消し去る仕組み</h2>
+          <p>
+            2資産（例：<code>TECH</code> と <code>GOLD</code>）の分散展開式を見ると、なぜ相関係数 <code>ρ_{12} &lt; 0</code> のペアを混ぜると破綻確率が激減するのかが一目でわかります。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">2資産ポートフォリオの分散</span>
+            σ_p^2 = w_1^2 * σ_1^2 + w_2^2 * σ_2^2 + 2 * w_1 * w_2 * σ_1 * σ_2 * ρ_{12}
+          </div>
+
+          <p>
+            第3項の交差項 <code>2 w_1 w_2 σ_1 σ_2 ρ_{12}</code> に注目してください。<code>TECH</code> と <code>GOLD</code> のように相関係数が負（例：<code>ρ_{12} = -0.62</code>）である場合、この交差項が<strong>大きなマイナスの値</strong>となり、各資産が本来持っていた変動リスク <code>σ_1^2, σ_2^2</code> を内側から相殺します。
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>ポートフォリオ配分例（Q1）</th>
+                <th>期待リターン <code>μ_p</code></th>
+                <th>変動リスク <code>σ_p</code></th>
+                <th>破綻確率 <code>P_ruin</code></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>TECH 100%</code>（一点集中）</td>
+                <td><code>+16.0%</code></td>
+                <td><code>24.0%</code></td>
+                <td><strong><code>18.5%</code>（危険）</strong></td>
+              </tr>
+              <tr>
+                <td><code>TECH 45% + DFNS 30% + GOLD 25%</code>（逆相関ブレンド）</td>
+                <td><code>+12.8%</code></td>
+                <td><strong><code>8.6%</code></strong></td>
+                <td><strong><code>1.7%</code>（安全）</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section-card">
+          <h2>4. WaSHI + HiGHS による凸二次計画問題（QP）の実装</h2>
+          <p>
+            ゲーム内のライバル <code>WaSHI-QP</code> は、毎期のスタート時に以下の凸二次計画問題をブラウザ内の HiGHS ソルバーで実際に解いています。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">WaSHI-QP の最適化モデル</span>
+            minimize &nbsp;&nbsp; Σ_{i=1..N} Σ_{j=1..N} Σ_{ij} * w_i * w_j &nbsp;-&nbsp; ε * Σ_{i=1..N} μ_i * w_i<br />
+            subject to &nbsp; Σ_{i=1..N} w_i == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(全額投資制約)<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{i=1..N} μ_i * w_i &gt;= μ_target &nbsp;(目標期待リターン制約)<br />
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 0 &lt;= w_i &lt;= w_max &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(空売り禁止・単一銘柄集中上限)
+          </div>
+
+          <pre class="code-block"><code>const model = new Model(`QuantQP_Q${regime.quarter}`);
+const wVars = regime.assets.map((_, i) =&gt;
+  model.continuous(`w_${i}`, { lb: 0, ub: regime.maxWeightPerAsset })
+);
+
+// 1. 全額投資制約: sum(w_i) == 1
+model.constraint(sum(wVars).eq(1), "full_investment");
+
+// 2. 目標期待リターン制約: sum(mu_i * w_i) &gt;= targetReturn
+const returnTerms = wVars.map((v, i) =&gt; v.mul(regime.assets[i].expectedReturn));
+model.constraint(sum(returnTerms).ge(target), "target_return");
+
+// 3. 二次目的関数: ポートフォリオ分散 w^T Sigma w の最小化
+let quadObj = wVars[0].mul(wVars[0]).mul(regime.covariance[0][0]);
+for (let i = 0; i &lt; n; i++) {
+  for (let j = i; j &lt; n; j++) {
+    if (i === 0 &amp;&amp; j === 0) continue;
+    const coeff = i === j ? regime.covariance[i][j] : 2 * regime.covariance[i][j];
+    if (Math.abs(coeff) &gt; 1e-9) {
+      quadObj = quadObj.add(wVars[i].mul(wVars[j]).mul(coeff));
+    }
+  }
+}
+model.objective(minimize(quadObj));
+await model.solve(HiGHS);</code></pre>
+        </section>
+
+        <section class="section-card">
+          <h2>5. コレスキー分解による60営業日の相関相場シミュレーション</h2>
+          <p>
+            <code>[MARKET OPEN]</code> を押した後に走る60営業日のチャートバトルでは、各銘柄がバラバラに乱数で動くのではなく、共分散行列 <code>Σ</code> の<strong>コレスキー分解（Cholesky Decomposition: <code>Σ = L L^T</code>）</strong>を使って相関付きの多次元正規乱数を生成しています。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">相関を持つ日次リターンベクトルの生成</span>
+            r_t = (1 / 60) * μ + (1 / √60) * L * z_t + shock_t &nbsp;&nbsp;(z_t ~ N(0, I))
+          </div>
+
+          <p>
+            これにより、ハイテク株が急落するショック日には逆相関のゴールドや防衛株が実際に買われて反発するという、理論通りのヘッジ効果がリアルタイムの波形として再現されます。
+          </p>
+
+          <div class="footer-cta">
+            <a href="../quant-survival/" class="nav-btn primary">📈 『QUANT SURVIVAL』をプレイする ▶</a>
+            <a href="../demon-castle-shift-theory/" class="nav-btn">🏰 『魔王城の24時間警備シフト』の解説記事を読む →</a>
+            <a href="../mofumofu-sheep-theory/" class="nav-btn">🐑 『もふもふ羊の牧場囲い』の解説記事を読む →</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- =====================================================================
+           ENGLISH ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="en" hidden>
+        <header class="hero-card">
+          <span class="hero-eyebrow">Convex Quadratic Programming (QP) &amp; Stochastic Risk Modeling Guide</span>
+          <h1>
+            Behind "QUANT SURVIVAL":<br />
+            Minimizing Ruin Probability via Roy's Safety-First Criterion and Markowitz QP
+          </h1>
+          <p>
+            Target Audience: Readers interested in mathematical optimization (LP/QP) and quantitative portfolio theory.<br />
+            This article explains how "QUANT SURVIVAL" formulates <strong>Ruin Probability</strong> across an endless compounding survival run, and how the rival AI <code>WaSHI-QP</code> solves a live <strong>Convex Quadratic Program (QP)</strong> in the browser using HiGHS.
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. Why Going 100% into the Highest-Return Asset Leads to Ruin</h2>
+          <p>
+            In a single-shot gamble, putting 100% of your capital into the asset with the highest expected return (such as <code>TECH: +16% expected return, 24% volatility</code>) might pay off. In an <strong>endless compounding survival game</strong> where capital carries over from quarter to quarter, that strategy is a mathematical trap.
+          </p>
+          <p>
+            If your portfolio carries an <code>18%</code> probability of breaching the liquidation floor each quarter, your probability of surviving 10 consecutive quarters decays exponentially:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Multi-Quarter Survival Probability Decay</span>
+            P(Survive 10 Quarters) = (1 - 0.18)^10 ≈ 0.137 (only 13.7%)
+          </div>
+
+          <p>
+            By contrast, blending negatively correlated hedge assets to compress single-quarter ruin probability down to <code>1.2%</code> raises 10-quarter survival probability to <code>(1 - 0.012)^10 ≈ 88.6%</code>, allowing compound growth to work in your favor.
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>2. Roy's Safety-First Criterion and Ruin Probability</h2>
+          <p>
+            Let <code>w = (w_1, ..., w_N)^T</code> denote the portfolio weights across <code>N</code> investable assets, subject to no short-selling (<code>w_i &gt;= 0</code>) and full investment (<code>Σ w_i = 1</code>). The portfolio expected return <code>μ_p(w)</code> and variance <code>σ_p^2(w)</code> are:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Portfolio Expected Return and Quadratic Variance</span>
+            μ_p(w) = Σ_{i=1..N} w_i * μ_i = μ^T w<br />
+            σ_p^2(w) = Σ_{i=1..N} Σ_{j=1..N} w_i * w_j * Σ_{ij} = w^T Σ w
+          </div>
+
+          <p>
+            Given a quarterly liquidation floor <code>r_floor</code> (for example, <code>-5.5%</code>), the probability that the quarterly return <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> falls below <code>r_floor</code> is given by the standard normal CDF <code>Φ(z)</code>:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Ruin Probability P_ruin(w) and Safety-First Ratio</span>
+            SF(w) = (μ_p(w) - r_floor) / σ_p(w)<br />
+            P_ruin(w) = Pr(R_p &lt;= r_floor) = Φ(-SF(w))
+          </div>
+
+          <div class="callout cyan">
+            <strong>💡 Relationship to Markowitz Minimum-Variance QP</strong>
+            Because <code>Φ(-z)</code> is strictly decreasing in <code>z</code>, minimizing the ruin probability <code>P_ruin(w)</code> while the expected return is <strong>fixed by equality</strong> (<code>μ^T w = μ_target</code>) is mathematically equivalent to <strong>minimizing the quadratic variance <code>w^T Σ w</code></strong> via Convex Quadratic Programming.<br />
+            The in-game <code>WaSHI-QP</code>, however, minimizes variance under the inequality <code>μ^T w &gt;= μ_target</code>. There the numerator <code>μ_p - r_floor</code> also varies across feasible portfolios, so a portfolio with slightly higher variance but higher expected return can have a lower shortfall probability. <code>WaSHI-QP</code> is therefore a <strong>minimum-variance benchmark under a return floor</strong>, not an exact Safety-First optimizer.
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>3. How Negative Correlation (ρ &lt; 0) Cancels Volatility</h2>
+          <p>
+            Expanding the variance of a two-asset portfolio reveals why pairing negatively correlated assets (such as <code>TECH</code> and <code>GOLD</code> with <code>ρ_{12} = -0.62</code>) dramatically reduces ruin probability:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Two-Asset Variance Expansion</span>
+            σ_p^2 = w_1^2 * σ_1^2 + w_2^2 * σ_2^2 + 2 * w_1 * w_2 * σ_1 * σ_2 * ρ_{12}
+          </div>
+
+          <p>
+            When <code>ρ_{12} &lt; 0</code>, the cross-covariance term <code>2 w_1 w_2 σ_1 σ_2 ρ_{12}</code> is negative, subtracting directly from the standalone variances of the individual assets.
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>4. Solving the Convex QP in the Browser with WaSHI + HiGHS</h2>
+          <p>
+            At the start of every quarter, the rival engine <code>WaSHI-QP</code> formulates and solves the following Convex Quadratic Program using WaSHI and HiGHS:
+          </p>
+
+          <pre class="code-block"><code>const model = new Model(`QuantQP_Q${regime.quarter}`);
+const wVars = regime.assets.map((_, i) =&gt;
+  model.continuous(`w_${i}`, { lb: 0, ub: regime.maxWeightPerAsset })
+);
+
+// 1. Full investment constraint: sum(w_i) == 1
+model.constraint(sum(wVars).eq(1), "full_investment");
+
+// 2. Target expected return constraint: sum(mu_i * w_i) &gt;= targetReturn
+const returnTerms = wVars.map((v, i) =&gt; v.mul(regime.assets[i].expectedReturn));
+model.constraint(sum(returnTerms).ge(target), "target_return");
+
+// 3. Quadratic objective: minimize portfolio variance w^T Sigma w
+let quadObj = wVars[0].mul(wVars[0]).mul(regime.covariance[0][0]);
+for (let i = 0; i &lt; n; i++) {
+  for (let j = i; j &lt; n; j++) {
+    if (i === 0 &amp;&amp; j === 0) continue;
+    const coeff = i === j ? regime.covariance[i][j] : 2 * regime.covariance[i][j];
+    if (Math.abs(coeff) &gt; 1e-9) {
+      quadObj = quadObj.add(wVars[i].mul(wVars[j]).mul(coeff));
+    }
+  }
+}
+model.objective(minimize(quadObj));
+await model.solve(HiGHS);</code></pre>
+        </section>
+
+        <section class="section-card">
+          <h2>5. Correlated 60-Day Market Simulation via Cholesky Factorization</h2>
+          <p>
+            To ensure that negatively correlated assets genuinely move in opposite directions during the 60-day live chart race, the simulator computes the Cholesky decomposition <code>Σ = L L^T</code> of the covariance matrix and generates daily return vectors as:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Correlated Daily Return Generation</span>
+            r_t = (1 / 60) * μ + (1 / √60) * L * z_t + shock_t &nbsp;&nbsp;(z_t ~ N(0, I))
+          </div>
+
+          <div class="footer-cta">
+            <a href="../quant-survival/" class="nav-btn primary">📈 Play "QUANT SURVIVAL" ▶</a>
+            <a href="../demon-castle-shift-theory/" class="nav-btn">🏰 Read "Demon Castle Guard Shift" Article →</a>
+            <a href="../mofumofu-sheep-theory/" class="nav-btn">🐑 Read "Fluffy Sheep Pasture Enclosure" Article →</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- =====================================================================
+           CHINESE ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="zh" hidden>
+        <header class="hero-card">
+          <span class="hero-eyebrow">凸二次规划（Convex QP）与随机风险管理建模解说</span>
+          <h1>
+            《量化生存战 QUANT SURVIVAL》背后的数学模型：<br />
+            爆仓概率最小化（Safety-First准则）与马科维茨均值-方差模型
+          </h1>
+          <p>
+            目标读者：对线性规划、二次规划及概率统计基础（期望值、方差、协方差）感兴趣的读者。<br />
+            本文将解析《量化生存战》如何将<strong>爆仓概率（Ruin Probability）</strong>转化为数学模型，以及对手 <code>WaSHI-QP</code> 如何在浏览器内使用 HiGHS 实时求解<strong>凸二次规划问题（Convex QP）</strong>。
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. 为什么“全仓单一最高收益资产”在复利生存战中必然爆仓</h2>
+          <p>
+            如果只赌一局，全仓预期回报最高的资产（例如 <code>TECH：预期收益 +16%，波动率 24%</code>）或许能靠运气取胜。但在净值逐季复利累积的<strong>无尽生存模式</strong>中，若单季触发强平爆仓线的概率为 <code>18%</code>，连续存活10个季度的概率将迅速衰减：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">多季度存活概率的指数衰减</span>
+            P(存活10个季度) = (1 - 0.18)^10 ≈ 0.137 (仅 13.7%)
+          </div>
+
+          <p>
+            反之，若利用负相关资产进行对冲，将单季爆仓概率压缩至 <code>1.2%</code>，连续10个季度的存活率将提升至 <code>(1 - 0.012)^10 ≈ 88.6%</code>，从而稳健享受复利增长。
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>2. Roy 的 Safety-First 准则与爆仓概率最小化</h2>
+          <p>
+            设 <code>N</code> 项资产的权重向量为 <code>w = (w_1, ..., w_N)^T</code>（满足禁空令 <code>w_i &gt;= 0</code> 与满仓约束 <code>Σ w_i = 1</code>）。投资组合的预期收益率 <code>μ_p(w)</code> 与方差 <code>σ_p^2(w)</code> 为：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">投资组合预期收益与二次型方差</span>
+            μ_p(w) = Σ_{i=1..N} w_i * μ_i = μ^T w<br />
+            σ_p^2(w) = Σ_{i=1..N} Σ_{j=1..N} w_i * w_j * Σ_{ij} = w^T Σ w
+          </div>
+
+          <p>
+            设本季强平爆仓线为 <code>r_floor</code>（例如 <code>-5.5%</code>），则组合收益率 <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> 跌破 <code>r_floor</code> 的<strong>爆仓概率</strong>可通过标准正态分布累积分布函数 <code>Φ(z)</code> 表示为：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">爆仓概率 P_ruin(w) 与 Safety-First 比率</span>
+            SF(w) = (μ_p(w) - r_floor) / σ_p(w)<br />
+            P_ruin(w) = Pr(R_p &lt;= r_floor) = Φ(-SF(w))
+          </div>
+
+          <div class="callout cyan">
+            <strong>💡 最小化爆仓概率与凸二次规划（QP）的关系</strong>
+            由于 <code>Φ(-z)</code> 关于 <code>z</code> 严格单调递减，在以<strong>等式固定</strong>预期收益（<code>μ^T w = μ_target</code>）的条件下，<strong>最小化爆仓概率 <code>P_ruin(w)</code> 在数学上等价于最小化投资组合方差 <code>w^T Σ w</code>（马科维茨均值-方差模型）</strong>。<br />
+            而游戏中的 <code>WaSHI-QP</code> 是在不等式 <code>μ^T w &gt;= μ_target</code> 约束下最小化方差。此时分子 <code>μ_p - r_floor</code> 也会随组合变化，方差略大但预期收益更高的组合可能拥有更低的爆仓概率。因此 <code>WaSHI-QP</code> 是<strong>满足收益下限的最小方差基准</strong>，而非严格的 Safety-First 最优解。
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>3. 负相关对冲（ρ &lt; 0）如何抵消波动风险</h2>
+          <p>
+            展开两项资产的方差公式即可看出，当相关系数 <code>ρ_{12} &lt; 0</code>（如 <code>TECH</code> 与 <code>GOLD</code> 的相关系数为 <code>-0.62</code>）时，交叉项 <code>2 w_1 w_2 σ_1 σ_2 ρ_{12}</code> 为负值，能够直接抵消单一资产自身的波动方差：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">双资产组合方差展开式</span>
+            σ_p^2 = w_1^2 * σ_1^2 + w_2^2 * σ_2^2 + 2 * w_1 * w_2 * σ_1 * σ_2 * ρ_{12}
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>4. 使用 WaSHI + HiGHS 在浏览器内求解凸二次规划（QP）</h2>
+          <p>
+            每个季度开始时，对手 <code>WaSHI-QP</code> 都会在浏览器内构建并求解如下凸二次规划模型：
+          </p>
+
+          <pre class="code-block"><code>const model = new Model(`QuantQP_Q${regime.quarter}`);
+const wVars = regime.assets.map((_, i) =&gt;
+  model.continuous(`w_${i}`, { lb: 0, ub: regime.maxWeightPerAsset })
+);
+
+// 1. 满仓约束: sum(w_i) == 1
+model.constraint(sum(wVars).eq(1), "full_investment");
+
+// 2. 目标预期收益约束: sum(mu_i * w_i) &gt;= targetReturn
+const returnTerms = wVars.map((v, i) =&gt; v.mul(regime.assets[i].expectedReturn));
+model.constraint(sum(returnTerms).ge(target), "target_return");
+
+// 3. 二次目标函数: 最小化投资组合方差 w^T Sigma w
+let quadObj = wVars[0].mul(wVars[0]).mul(regime.covariance[0][0]);
+for (let i = 0; i &lt; n; i++) {
+  for (let j = i; j &lt; n; j++) {
+    if (i === 0 &amp;&amp; j === 0) continue;
+    const coeff = i === j ? regime.covariance[i][j] : 2 * regime.covariance[i][j];
+    if (Math.abs(coeff) &gt; 1e-9) {
+      quadObj = quadObj.add(wVars[i].mul(wVars[j]).mul(coeff));
+    }
+  }
+}
+model.objective(minimize(quadObj));
+await model.solve(HiGHS);</code></pre>
+        </section>
+
+        <section class="section-card">
+          <h2>5. 基于 Cholesky 分解的60交易日相关性行情模拟</h2>
+          <p>
+            为了在60交易日的实时行情动画中真实还原资产间的正负相关性，模拟器对协方差矩阵进行 <strong>Cholesky 分解（<code>Σ = L L^T</code>）</strong>，按如下公式生成每日收益率向量：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">带相关性的日度收益率生成公式</span>
+            r_t = (1 / 60) * μ + (1 / √60) * L * z_t + shock_t &nbsp;&nbsp;(z_t ~ N(0, I))
+          </div>
+
+          <div class="footer-cta">
+            <a href="../quant-survival/" class="nav-btn primary">📈 游玩《量化生存战 QUANT SURVIVAL》 ▶</a>
+            <a href="../demon-castle-shift-theory/" class="nav-btn">🏰 阅读《魔王城24小时警备排班》解说文章 →</a>
+            <a href="../mofumofu-sheep-theory/" class="nav-btn">🐑 阅读《毛茸茸绵羊的牧场围栏》解说文章 →</a>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script type="module">
+      import { getGameLang, setGameLang, pickLang } from "../i18n.ts";
+
+      const NAV_TEXT = {
+        ja: {
+          pageTitle:
+            "『QUANT SURVIVAL』の数理モデル解説 — 破綻確率の最小化と凸二次計画法（QP）によるポートフォリオ最適化",
+          back: "← ゲーム一覧へ戻る",
+          other: "🐑 牧場囲いパズルの解説記事へ",
+          play: "📈 ゲームをプレイする ▶",
+        },
+        en: {
+          pageTitle:
+            'Behind "QUANT SURVIVAL" — Minimizing Ruin Probability via Convex Quadratic Programming (QP)',
+          back: "← Back to Games",
+          other: "🐑 Read Pasture Puzzle Article",
+          play: "📈 Play Game ▶",
+        },
+        zh: {
+          pageTitle:
+            "《量化生存战 QUANT SURVIVAL》数学模型解说 — 爆仓概率最小化与凸二次规划（QP）",
+          back: "← 返回游戏列表",
+          other: "🐑 阅读牧场围栏解说文章",
+          play: "📈 开始游戏 ▶",
+        },
+      };
+
+      function applyTheoryLang(lang) {
+        setGameLang(lang);
+        const t = pickLang(lang, NAV_TEXT);
+        document.title = t.pageTitle;
+        document.getElementById("nav-back").textContent = t.back;
+        document.getElementById("nav-other-theory").textContent = t.other;
+        document.getElementById("nav-play").textContent = t.play;
+
+        document.querySelectorAll("[data-lang-section]").forEach((sec) => {
+          sec.hidden = sec.getAttribute("data-lang-section") !== lang;
+        });
+
+        document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
+        });
+      }
+
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const lang = btn.getAttribute("data-lang-btn");
+          if (lang === "ja" || lang === "en" || lang === "zh") {
+            applyTheoryLang(lang);
+          }
+        });
+      });
+
+      applyTheoryLang(getGameLang());
+    </script>
+  </body>
+</html>
