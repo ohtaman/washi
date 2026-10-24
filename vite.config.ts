@@ -24,6 +24,27 @@ function discoverGameInputs(baseDir: string): Record<string, string> {
   return inputs;
 }
 
+function discoverAppInputs(baseDir: string): Record<string, string> {
+  const appsRoot = resolve(baseDir, "examples/web-demo/apps");
+  const inputs: Record<string, string> = {};
+  if (!existsSync(appsRoot)) return inputs;
+
+  const hubIndex = resolve(appsRoot, "index.html");
+  if (existsSync(hubIndex)) {
+    inputs["apps-hub"] = hubIndex;
+  }
+
+  for (const entry of readdirSync(appsRoot, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      const appIndex = resolve(appsRoot, entry.name, "index.html");
+      if (existsSync(appIndex)) {
+        inputs[`app-${entry.name}`] = appIndex;
+      }
+    }
+  }
+  return inputs;
+}
+
 function z3DemoAssets(): Plugin {
   const z3JsPath = fileURLToPath(new URL("./z3-built.js", import.meta.resolve("z3-solver")));
   const z3WasmPath = fileURLToPath(new URL("./z3-built.wasm", import.meta.resolve("z3-solver")));
@@ -76,7 +97,6 @@ export default defineConfig({
   server: {
     port: 5173,
     headers: {
-      // Cross-origin isolation headers if needed
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
     },
@@ -93,14 +113,9 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "examples/web-demo/index.html"),
         demo: resolve(import.meta.dirname, "examples/web-demo/demo/index.html"),
-        apps: resolve(import.meta.dirname, "examples/web-demo/apps/index.html"),
-        aiShift: resolve(
-          import.meta.dirname,
-          "examples/web-demo/apps/ai-shift/index.html",
-        ),
+        ...discoverAppInputs(import.meta.dirname),
         ...discoverGameInputs(import.meta.dirname),
       },
     },
   },
 });
-
