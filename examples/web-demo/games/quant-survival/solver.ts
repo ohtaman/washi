@@ -76,6 +76,56 @@ export function normalizeWeights(rawWeights: number[], maxCap = 1.0): number[] {
   return w;
 }
 
+/**
+ * Converts a weight vector into integer percentages (0..100) that sum to exactly 100
+ * while respecting the per-asset cap, using the Largest Remainder (Hamilton) method.
+ */
+export function roundWeightsToHundred(rawWeights: number[], maxCap = 1.0): number[] {
+  const n = rawWeights.length;
+  if (n === 0) return [];
+  const continuous = normalizeWeights(rawWeights, maxCap);
+  const capPct = Math.max(Math.ceil(100 / n), Math.round(maxCap * 100));
+
+  const scaled = continuous.map((w) => Math.min(capPct, Math.max(0, w * 100)));
+  const floors = scaled.map((v) => Math.floor(v));
+  let remainder = 100 - floors.reduce((a, b) => a + b, 0);
+
+  const order = scaled
+    .map((v, idx) => ({ idx, frac: v - floors[idx] }))
+    .sort((a, b) => b.frac - a.frac || a.idx - b.idx);
+
+  for (const item of order) {
+    if (remainder <= 0) break;
+    if (floors[item.idx] < capPct) {
+      floors[item.idx] += 1;
+      remainder -= 1;
+    }
+  }
+
+  // In case cap clamping left any residual points, distribute across any non-capped slots
+  while (remainder > 0) {
+    let progressed = false;
+    for (let i = 0; i < n && remainder > 0; i++) {
+      if (floors[i] < capPct) {
+        floors[i] += 1;
+        remainder -= 1;
+        progressed = true;
+      }
+    }
+    if (!progressed) break;
+  }
+
+  return floors;
+}
+
+/**
+ * Quantizes portfolio weights to 1% increments (0.01 steps) summing to 1.00 so that
+ * UI slider percentages and evaluated portfolio weights match 1-to-1.
+ */
+export function quantizeWeightsToPercent(rawWeights: number[], maxCap = 1.0): number[] {
+  return roundWeightsToHundred(rawWeights, maxCap).map((pct) => pct / 100);
+}
+
 export function computePortfolioMetrics(
   regime: QuarterRegime,
   weights: number[]

@@ -8,6 +8,8 @@ import {
   computePortfolioMetrics,
   evaluateFundTrack,
   normalCdf,
+  quantizeWeightsToPercent,
+  roundWeightsToHundred,
   simulateQuarterMarket,
   solveQuantOptimalPortfolio,
 } from "../examples/web-demo/games/quant-survival/solver.js";
@@ -654,5 +656,30 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     expect(jaText).toContain(`DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
     expect(enText).toContain(`RIVAL also liquidated on DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
     expect(zhText).toContain(`第 ${bothLiquidatedSim.aiLiquidatedDay} 日触发强平`);
+  });
+
+  it("preserves an exact 100% total in displayed percentages and quantized weights across 4, 5, and 6-asset regimes", () => {
+    // 6-asset equal allocation (Q4/Q5): 100 / 6 = 16.666...% => [17, 17, 17, 17, 16, 16] = 100%
+    const sixEqual = roundWeightsToHundred(new Array(6).fill(1 / 6), 0.5);
+    expect(sixEqual).toEqual([17, 17, 17, 17, 16, 16]);
+    expect(sixEqual.reduce((a, b) => a + b, 0)).toBe(100);
+
+    for (let q = 1; q <= 8; q++) {
+      const reg = getQuarterRegime(q);
+      const n = reg.assets.length;
+      const cap = reg.maxWeightPerAsset;
+      const capPct = Math.round(cap * 100);
+
+      const eqPcts = roundWeightsToHundred(new Array(n).fill(1 / n), cap);
+      expect(eqPcts.reduce((a, b) => a + b, 0)).toBe(100);
+      for (const p of eqPcts) {
+        expect(p).toBeGreaterThanOrEqual(0);
+        expect(p).toBeLessThanOrEqual(capPct);
+      }
+
+      const eqWeights = quantizeWeightsToPercent(new Array(n).fill(1 / n), cap);
+      expect(eqWeights.reduce((a, b) => a + b, 0)).toBeCloseTo(1.0, 8);
+      expect(eqWeights.map((w) => Math.round(w * 100))).toEqual(eqPcts);
+    }
   });
 });

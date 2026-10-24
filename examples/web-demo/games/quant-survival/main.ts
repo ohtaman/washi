@@ -9,7 +9,8 @@ import {
 import {
   computeEfficientFrontier,
   computePortfolioMetrics,
-  normalizeWeights,
+  quantizeWeightsToPercent,
+  roundWeightsToHundred,
   simulateQuarterMarket,
   solveQuantOptimalPortfolio,
 } from "./solver.js";
@@ -622,7 +623,7 @@ function adjustSingleWeight(index: number, newWeightRaw: number): void {
     }
   }
 
-  playerWeights = normalizeWeights(next, cap);
+  playerWeights = quantizeWeightsToPercent(next, cap);
   renderAssetList();
   renderTelemetryAndCharts();
 }
@@ -633,10 +634,11 @@ function renderAssetList(): void {
   if (!container) return;
 
   const capPct = Math.round(currentRegime.maxWeightPerAsset * 100);
+  const displayPcts = roundWeightsToHundred(playerWeights, currentRegime.maxWeightPerAsset);
   const rowsHtml = currentRegime.assets
     .map((asset, i) => {
       const loc = getLocalizedAsset(asset, currentLang);
-      const wPct = Math.round((playerWeights[i] ?? 0) * 100);
+      const wPct = displayPcts[i] ?? 0;
       const hedgeBadge = findStrongestNegativeCorrPeer(i);
       const muLabel =
         currentLang === "ja"
@@ -1028,7 +1030,10 @@ async function loadQuarter(quarter: number): Promise<void> {
 
   const regime = currentRegime;
   const n = regime.assets.length;
-  playerWeights = new Array<number>(n).fill(1 / n);
+  playerWeights = quantizeWeightsToPercent(
+    new Array<number>(n).fill(1 / n),
+    regime.maxWeightPerAsset
+  );
   frontierPoints = computeEfficientFrontier(regime, 9);
 
   // Solve Rival minimum-variance portfolio
@@ -1210,8 +1215,9 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
   }
 
   if (aiOptimal) {
+    const aiPcts = roundWeightsToHundred(aiOptimal.weights, currentRegime.maxWeightPerAsset);
     const breakdown = currentRegime.assets
-      .map((a, idx) => `${a.ticker} ${Math.round((aiOptimal?.weights[idx] ?? 0) * 100)}%`)
+      .map((a, idx) => `${a.ticker} ${aiPcts[idx] ?? 0}%`)
       .join(" · ");
     aiWeightsEl.textContent = `RIVAL Portfolio: ${breakdown}`;
   }
@@ -1233,7 +1239,10 @@ function initDomEvents(): void {
   btnEqual?.addEventListener("click", () => {
     if (isSimulating) return;
     const n = currentRegime.assets.length;
-    playerWeights = new Array<number>(n).fill(1 / n);
+    playerWeights = quantizeWeightsToPercent(
+      new Array<number>(n).fill(1 / n),
+      currentRegime.maxWeightPerAsset
+    );
     renderAssetList();
     renderTelemetryAndCharts();
   });
@@ -1249,7 +1258,7 @@ function initDomEvents(): void {
       return 0.12;
     });
     if (raw.length === n) {
-      playerWeights = normalizeWeights(raw, currentRegime.maxWeightPerAsset);
+      playerWeights = quantizeWeightsToPercent(raw, currentRegime.maxWeightPerAsset);
       renderAssetList();
       renderTelemetryAndCharts();
     }
