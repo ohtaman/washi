@@ -812,6 +812,14 @@ function renderTimetableBoard(): void {
 
           const isUnavailDay = prof.unavailableDays.includes(d);
           const unavailSlot = prof.unavailableSlots.find((u) => u.day === d && u.period === p);
+          const customForbidRule = appState.customRules.find(
+            (r) =>
+              r.enabled &&
+              r.kind === "forbid_slot" &&
+              r.professorId === prof.id &&
+              (!r.days || r.days.includes(d)) &&
+              (!r.periods || r.periods.includes(p))
+          );
 
           if (assigned) {
             const c = courseMap.get(assigned.courseId)!;
@@ -845,7 +853,7 @@ function renderTimetableBoard(): void {
               openSlotInspectorDialog(d, p, assigned);
             });
             td.appendChild(btn);
-          } else if (isUnavailDay || unavailSlot) {
+          } else if (isUnavailDay || unavailSlot || customForbidRule) {
             td.classList.add("matrix-slot-unavail");
             td.textContent = isUnavailDay ? ui.matrixUnavailDay : ui.matrixUnavailSlot;
             td.title = isUnavailDay
@@ -854,7 +862,9 @@ function renderTimetableBoard(): void {
                   en: `${pI18n.name}: Unavailable on ${DAY_FULL_I18N.en[d]}`,
                   zh: `${pI18n.name}: ${DAY_FULL_I18N.zh[d]}不可出勤`,
                 })
-              : `${pI18n.name}: ${formatSlotReasonI18n(unavailSlot?.reason, activeLang)}`;
+              : unavailSlot
+                ? `${pI18n.name}: ${formatSlotReasonI18n(unavailSlot.reason, activeLang)}`
+                : formatCustomRuleI18n(customForbidRule!, appState, activeLang);
           }
 
           tr.appendChild(td);

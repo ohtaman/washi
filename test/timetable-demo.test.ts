@@ -642,6 +642,14 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     const hardProfRes = await solveTimetableWithWashi(hardProfState);
     expect(hardProfRes.status).toBe("Infeasible");
 
+    // Disabling or removing the custom unavailability rule restores feasibility without stale profile mutations
+    const clearedProfState = {
+      ...hardProfState,
+      customRules: hardProfState.customRules.filter((r) => r.professorId !== "P01"),
+    };
+    const clearedProfRes = await solveTimetableWithWashi(clearedProfState);
+    expect(clearedProfRes.status).toBe("Optimal");
+
     const { appliedLogs: zhLogs } = applyTimetableChatOperationsToState(
       baseState,
       [{ op: "pin_course_slot", courseId: "C15", days: ["Tue"], periods: [2], isHard: true }],

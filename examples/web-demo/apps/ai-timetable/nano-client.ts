@@ -946,25 +946,6 @@ export function applyTimetableChatOperationsToState(
       }
 
       if (!op.exclusiveAvailable) {
-        if (op.periods.length === 5) {
-          for (const d of op.days) {
-            if (!prof.unavailableDays.includes(d)) {
-              prof.unavailableDays.push(d);
-            }
-          }
-        } else {
-          for (const d of op.days) {
-            for (const p of op.periods) {
-              if (!prof.unavailableSlots.some((s) => s.day === d && s.period === p)) {
-                prof.unavailableSlots.push({
-                  day: d,
-                  period: p,
-                  reason: "チャットNG指定",
-                });
-              }
-            }
-          }
-        }
         const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} を出講不可(NG)に設定しました`;
         pushProfessorForbidRules(true, desc);
         appliedLogs.push(
@@ -975,21 +956,6 @@ export function applyTimetableChatOperationsToState(
           })
         );
       } else {
-        const allowedDays = new Set(op.days);
-        const allowedPeriods = new Set(op.periods);
-        prof.unavailableDays = DAYS_OF_WEEK.filter((d) => !allowedDays.has(d));
-        prof.unavailableSlots = [];
-        for (const d of op.days) {
-          for (const p of PERIODS) {
-            if (!allowedPeriods.has(p)) {
-              prof.unavailableSlots.push({
-                day: d,
-                period: p,
-                reason: "出講可能枠外(チャット設定)",
-              });
-            }
-          }
-        }
         const desc = `${prof.name}(${prof.id}) の出講可能枠を【${dayText}の${pText}のみ】に設定しました`;
         pushProfessorForbidRules(true, desc);
         appliedLogs.push(
