@@ -3721,7 +3721,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5Clarify.operations).toEqual([]);
 
       // Turn 5b: If a huge follow-up causes the combined pending messages to exceed Gemini Nano's
-      // 9,216-token context budget, older entries are dropped so the prompt stays within budget (4368317268).
+      // 9,216-token context budget, older follow-ups are dropped and the oversized follow-up is trimmed
+      // while preserving the canonical original request (4368317268, 4368380674).
+      const firstFollowUp = "夜勤上限はまだ迷っている";
+      await manager.extractPlan(firstFollowUp, appliedTurn4.updatedState);
       const oversizedFollowUp = `補足${"あ".repeat(7000)}`;
       const planTurn5bOversized = await manager.extractPlan(
         oversizedFollowUp,
@@ -3730,7 +3733,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5bOversized.nonToolReason).toBe("clarify");
 
       // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
-      // Must clear `pendingClarification` so Turn 7 does NOT resurrect the abandoned Turn 5 request!
+      // Verify that Turn 6's Stage 1 prompt still retained the original Turn 5 request while dropping the older follow-up,
+      // and that switching intent clears `pendingClarification` so Turn 7 does NOT resurrect it!
       turn1Reply = {
         thought: "現在の設定に関する質問。",
         routes: [{ tool_type: "question" }],
@@ -3741,7 +3745,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         appliedTurn4.updatedState
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
-      expect(turn6RouterPrompt).not.toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
+      expect(turn6RouterPrompt).toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
+      expect(turn6RouterPrompt).not.toContain(firstFollowUp);
+      expect(turn6RouterPrompt.length).toBeLessThan(7500);
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");
 

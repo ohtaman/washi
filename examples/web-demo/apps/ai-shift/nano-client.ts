@@ -2322,21 +2322,25 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
   function recordPendingClarification(msg: string, question: string): void {
     const budget = getPendingClarificationCharBudget();
-    const boundedMsg = msg.length > budget ? msg.slice(-budget) : msg;
     const boundedQuestion = question.length > budget ? question.slice(-budget) : question;
     if (pendingClarification) {
-      pendingClarification.messages.push(boundedMsg);
+      const original = pendingClarification.messages[0]!;
+      const followUpBudget = Math.max(1, budget - original.length - 3);
+      const boundedFollowUp =
+        msg.length > followUpBudget ? msg.slice(-followUpBudget) : msg;
+      pendingClarification.messages.push(boundedFollowUp);
       while (
-        pendingClarification.messages.length > 1 &&
+        pendingClarification.messages.length > 2 &&
         pendingClarification.messages.join(" / ").length > budget
       ) {
-        const removeIdx = pendingClarification.messages.length > 2 ? 1 : 0;
-        pendingClarification.messages.splice(removeIdx, 1);
+        pendingClarification.messages.splice(1, 1);
       }
       pendingClarification.lastQuestion = boundedQuestion;
     } else {
+      const maxInitialLen = Math.floor(budget / 2);
+      const boundedInitial = msg.length > maxInitialLen ? msg.slice(-maxInitialLen) : msg;
       pendingClarification = {
-        messages: [boundedMsg],
+        messages: [boundedInitial],
         lastQuestion: boundedQuestion,
       };
     }
