@@ -274,12 +274,13 @@ export async function solveQuantOptimalPortfolio(
   const targetSatisfied = fallback.metrics.expectedReturn >= target - 1e-4;
   const isFeasible =
     fallback.metrics.isNormalized && fallback.metrics.isWithinCap && targetSatisfied;
+  const isOptimal = isFeasible && fallback.converged;
   return {
-    status: isFeasible ? "Optimal" : solverStatus === "Error" ? "Infeasible" : solverStatus,
+    status: isOptimal ? "Optimal" : !isFeasible ? "Infeasible" : solverStatus,
     weights: fallback.weights,
     metrics: fallback.metrics,
     solveTimeMs: Math.max(0.1, t1 - t0),
-    verified: isFeasible,
+    verified: isOptimal,
   };
 }
 
@@ -314,71 +315,204 @@ function computeMaxReturnPortfolio(regime: QuarterRegime): {
 }
 
 /**
- * Fast augmented-Lagrangian projected-gradient solver used for plotting the continuous
- * Efficient Frontier curve synchronously in the UI without spawning N separate worker calls.
+ * Computes the KKT stationarity residual of `w` on the capped simplex C for objective
+ *   w^T Sigma w - linearScale * mu^T w
+ * defined as ||P_C(w - stepSize * grad(w)) - w||_inf / stepSize.
  */
-export function computeAnalyticalMinimumVariancePortfolio(
+function computeCappedSimplexKktResidual(
   regime: QuarterRegime,
-  targetReturn: number
-): { weights: number[]; metrics: PortfolioMetrics } {
+  w: number[],
+  linearScale: number,
+  stepSize: number
+): number {
+  const n = regime.assets.length;
+  const finalGrad = new Array<number>(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    let sg = 0;
+    for (let j = 0; j < n; j++) {
+      sg += 2 * regime.covariance[i][j] * w[j];
+    }
+    finalGrad[i] = sg - linearScale * regime.assets[i].expectedReturn;
+  }
+  const projectedStep = projectOntoCappedSimplex(
+    w.map((wi, i) => wi - stepSize * finalGrad[i]),
+    regime.maxWeightPerAsset
+  );
+  let kktResidual = 0;
+  for (let i = 0; i < n; i++) {
+    const res = Math.abs(projectedStep[i] - w[i]) / stepSize;
+    if (res > kktResidual) kktResidual = res;
+  }
+  return kktResidual;
+}
+
+/**
+ * Solves the inner strictly convex QP subproblem on the capped simplex:
+ *   min_{w in C} w^T Sigma w - linearScale * mu^T w
+ * via accelerated projected gradient (FISTA) with Lipschitz step 1 / L.
+ */
+function solveCappedSimplexQP(
+  regime: QuarterRegime,
+  linearScale: number,
+  initialWeights?: number[]
+): { weights: number[]; expectedReturn: number; kktResidual: number; stepSize: number } {
   const n = regime.assets.length;
   const cap = regime.maxWeightPerAsset;
-  const { weights: maxRetWeights, maxReturn } = computeMaxReturnPortfolio(regime);
 
-  // If the requested target exceeds the maximum return achievable on the capped simplex,
-  // return the highest-return feasible portfolio (whose expectedReturn < targetReturn).
-  if (targetReturn >= maxReturn - 1e-7) {
-    const metrics = computePortfolioMetrics(regime, maxRetWeights);
-    return { weights: maxRetWeights, metrics };
-  }
-
-  let w = new Array<number>(n).fill(1 / n);
-
-  // Augmented Lagrangian multiplier for targetReturn constraint: sum(mu_i * w_i) >= targetReturn
-  let lambda = 0;
-  const rho = 40;
-  const lr = 0.05;
-  for (let step = 0; step < 360; step++) {
-    let curRet = 0;
-    for (let i = 0; i < n; i++) {
-      curRet += w[i] * regime.assets[i].expectedReturn;
+  // Lipschitz constant of gradient 2 * Sigma * w is bounded by 2 * ||Sigma||_inf
+  let maxRowSum = 0;
+  for (let i = 0; i < n; i++) {
+    let rowSum = 0;
+    for (let j = 0; j < n; j++) {
+      rowSum += Math.abs(regime.covariance[i][j]);
     }
-    const violation = targetReturn - curRet;
-    const activeDual = Math.max(0, lambda + rho * violation);
+    if (rowSum > maxRowSum) maxRowSum = rowSum;
+  }
+  const stepSize = 1 / Math.max(1e-6, 2 * maxRowSum);
 
+  let w = initialWeights ? initialWeights.slice() : new Array<number>(n).fill(1 / n);
+  let y = w.slice();
+  let t = 1;
+
+  for (let iter = 0; iter < 240; iter++) {
     const grad = new Array<number>(n).fill(0);
     for (let i = 0; i < n; i++) {
       let sg = 0;
       for (let j = 0; j < n; j++) {
-        sg += 2 * regime.covariance[i][j] * w[j];
+        sg += 2 * regime.covariance[i][j] * y[j];
       }
-      grad[i] = sg - activeDual * regime.assets[i].expectedReturn;
+      grad[i] = sg - linearScale * regime.assets[i].expectedReturn;
     }
 
-    const next = w.map((wi, i) => wi - lr * grad[i]);
-    w = projectOntoCappedSimplex(next, cap);
+    const wNext = projectOntoCappedSimplex(
+      y.map((yi, i) => yi - stepSize * grad[i]),
+      cap
+    );
 
-    if (step % 15 === 14) {
-      let updatedRet = 0;
-      for (let i = 0; i < n; i++) {
-        updatedRet += w[i] * regime.assets[i].expectedReturn;
-      }
-      lambda = Math.max(0, lambda + rho * (targetReturn - updatedRet));
+    // Adaptive gradient-mapping restart when momentum opposes descent
+    let dot = 0;
+    let diffNorm = 0;
+    for (let i = 0; i < n; i++) {
+      const dw = wNext[i] - w[i];
+      dot += (y[i] - wNext[i]) * dw;
+      diffNorm = Math.max(diffNorm, Math.abs(dw));
     }
+    if (diffNorm < 1e-12) {
+      w = wNext;
+      break;
+    }
+
+    const tNext = dot > 0 ? 1 : 0.5 * (1 + Math.sqrt(1 + 4 * t * t));
+    const beta = dot > 0 ? 0 : (t - 1) / tNext;
+    for (let i = 0; i < n; i++) {
+      y[i] = wNext[i] + beta * (wNext[i] - w[i]);
+    }
+    w = wNext;
+    t = tNext;
   }
 
-  // Exact convex feasibility repair onto { w in CappedSimplex : mu^T w >= targetReturn }
-  let finalRet = 0;
+  let expectedReturn = 0;
   for (let i = 0; i < n; i++) {
-    finalRet += w[i] * regime.assets[i].expectedReturn;
+    expectedReturn += w[i] * regime.assets[i].expectedReturn;
   }
-  if (finalRet < targetReturn && maxReturn > finalRet + 1e-12) {
-    const alpha = Math.min(1, (targetReturn - finalRet) / (maxReturn - finalRet));
+  const kktResidual = computeCappedSimplexKktResidual(regime, w, linearScale, stepSize);
+
+  return { weights: w, expectedReturn, kktResidual, stepSize };
+}
+
+/**
+ * Exact Lagrangian dual-bisection + FISTA solver for the minimum-variance portfolio
+ * on the capped simplex subject to mu^T w >= targetReturn.
+ * Used both for plotting the continuous Efficient Frontier curve synchronously
+ * and as a verified KKT-optimal fallback when the WASM solver is unavailable.
+ */
+export function computeAnalyticalMinimumVariancePortfolio(
+  regime: QuarterRegime,
+  targetReturn: number
+): { weights: number[]; metrics: PortfolioMetrics; converged: boolean } {
+  const TIE_BREAKER = 1e-4;
+  const { weights: maxRetWeights, maxReturn } = computeMaxReturnPortfolio(regime);
+
+  // If the requested target exceeds the maximum return achievable on the capped simplex,
+  // the problem is infeasible; return the highest-return boundary portfolio with converged = false.
+  if (targetReturn > maxReturn + 1e-7) {
+    const metrics = computePortfolioMetrics(regime, maxRetWeights);
+    return { weights: maxRetWeights, metrics, converged: false };
+  }
+
+  // If targetReturn is right at the upper boundary of the capped simplex, maxRetWeights is optimal.
+  if (targetReturn >= maxReturn - 1e-7) {
+    const metrics = computePortfolioMetrics(regime, maxRetWeights);
+    return { weights: maxRetWeights, metrics, converged: true };
+  }
+
+  // 1. Check unconstrained-return minimum-variance portfolio (lambda = 0)
+  const baseSol = solveCappedSimplexQP(regime, TIE_BREAKER);
+  if (baseSol.expectedReturn >= targetReturn - 1e-7) {
+    const metrics = computePortfolioMetrics(regime, baseSol.weights);
+    return {
+      weights: baseSol.weights,
+      metrics,
+      converged: baseSol.kktResidual <= 1e-4,
+    };
+  }
+
+  // 2. Bracket the active dual multiplier lambda > 0 where mu^T w*(lambda) >= targetReturn
+  let lambdaLow = 0;
+  let lambdaHigh = 0.25;
+  let warmWeights = baseSol.weights;
+  let highSol = solveCappedSimplexQP(regime, TIE_BREAKER + lambdaHigh, warmWeights);
+  for (let expand = 0; expand < 24 && highSol.expectedReturn < targetReturn; expand++) {
+    lambdaLow = lambdaHigh;
+    lambdaHigh *= 2;
+    warmWeights = highSol.weights;
+    highSol = solveCappedSimplexQP(regime, TIE_BREAKER + lambdaHigh, warmWeights);
+  }
+
+  // 3. Bisect on lambda in [lambdaLow, lambdaHigh] so mu^T w*(lambda) == targetReturn
+  let bestSol = highSol;
+  let bestLambda = lambdaHigh;
+  for (let iter = 0; iter < 32; iter++) {
+    const lambdaMid = 0.5 * (lambdaLow + lambdaHigh);
+    const midSol = solveCappedSimplexQP(regime, TIE_BREAKER + lambdaMid, warmWeights);
+    warmWeights = midSol.weights;
+    bestSol = midSol;
+    bestLambda = lambdaMid;
+    if (Math.abs(midSol.expectedReturn - targetReturn) <= 1e-8) {
+      break;
+    }
+    if (midSol.expectedReturn >= targetReturn) {
+      lambdaHigh = lambdaMid;
+    } else {
+      lambdaLow = lambdaMid;
+    }
+  }
+
+  let w = bestSol.weights;
+  if (bestSol.expectedReturn < targetReturn && maxReturn > bestSol.expectedReturn + 1e-12) {
+    const alpha = Math.min(
+      1,
+      (targetReturn - bestSol.expectedReturn) / (maxReturn - bestSol.expectedReturn)
+    );
     w = w.map((wi, i) => (1 - alpha) * wi + alpha * maxRetWeights[i]);
   }
 
   const metrics = computePortfolioMetrics(regime, w);
-  return { weights: w, metrics };
+  const finalKktResidual = computeCappedSimplexKktResidual(
+    regime,
+    w,
+    TIE_BREAKER + bestLambda,
+    bestSol.stepSize
+  );
+  const returnGap = Math.abs(metrics.expectedReturn - targetReturn);
+  const converged =
+    metrics.isNormalized &&
+    metrics.isWithinCap &&
+    metrics.expectedReturn >= targetReturn - 1e-5 &&
+    returnGap <= 1e-4 &&
+    finalKktResidual <= 1e-4;
+
+  return { weights: w, metrics, converged };
 }
 
 function projectOntoCappedSimplex(v: number[], cap: number): number[] {
@@ -386,7 +520,7 @@ function projectOntoCappedSimplex(v: number[], cap: number): number[] {
   const effectiveCap = Math.max(1 / n, cap);
   let low = Math.min(...v) - 1;
   let high = Math.max(...v) + 1;
-  for (let iter = 0; iter < 32; iter++) {
+  for (let iter = 0; iter < 48; iter++) {
     const mid = 0.5 * (low + high);
     let s = 0;
     for (let i = 0; i < n; i++) {

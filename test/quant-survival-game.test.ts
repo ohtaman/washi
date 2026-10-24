@@ -262,12 +262,24 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     // Analytical fallback must satisfy feasible Q1 targetReturn (10.5%) as well as high feasible targets (14%, 16%)
     for (const target of [q1.targetReturn, 0.14, 0.16]) {
       const fallbackFeasible = computeAnalyticalMinimumVariancePortfolio(q1, target);
+      expect(fallbackFeasible.converged).toBe(true);
       expect(fallbackFeasible.metrics.expectedReturn).toBeGreaterThanOrEqual(target - 1e-4);
       expect(fallbackFeasible.metrics.isNormalized).toBe(true);
       expect(fallbackFeasible.metrics.isWithinCap).toBe(true);
     }
 
-    // Unachievable targetReturn (e.g. 50%) must NOT be marked Optimal / verified: true
+    // Across Q1..Q6 (including Q5's 6-asset regime), the analytical KKT solver must converge
+    // to the exact minimum-variance optimum matching HiGHS QP
+    for (let q = 1; q <= 6; q++) {
+      const reg = getQuarterRegime(q);
+      const qpOpt = await solveQuantOptimalPortfolio(reg);
+      const analyticalOpt = computeAnalyticalMinimumVariancePortfolio(reg, reg.targetReturn);
+      expect(analyticalOpt.converged).toBe(true);
+      expect(analyticalOpt.metrics.variance).toBeCloseTo(qpOpt.metrics.variance, 5);
+    }
+
+    // Unachievable targetReturn (e.g. 50%) must NOT be marked converged / Optimal / verified: true
+    expect(computeAnalyticalMinimumVariancePortfolio(q1, 0.5).converged).toBe(false);
     const impossibleResult = await solveQuantOptimalPortfolio(q1, 0.5);
     expect(impossibleResult.status).toBe("Infeasible");
     expect(impossibleResult.verified).toBe(false);
