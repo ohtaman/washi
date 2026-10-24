@@ -13,23 +13,20 @@ hero:
       text: はじめに
       link: /ja/getting-started/
     - theme: alt
-      text: ドキュメント
-      link: /ja/guide/variables
-    - theme: alt
-      text: Playground ↗
-      link: https://ohtaman.github.io/washi/demo/
+      text: ショーケース
+      link: /ja/showcase/
 
 features:
   - icon: ✍️
     title: 代数的なモデル記述 (expr)
     details: タグ付きテンプレート（expr`30 * ${x} + 50 * ${y} <= 40`）や内積（dot）・総和（sum）により、${...} を型付きの変数参照として直接バインドして定式化。
     link: /ja/guide/expressions
-    linkText: 数式の記述ガイド
+    linkText: 数式の記述
   - icon: ⚙️
     title: ソルバーアダプター機構
     details: 共通のモデリング API から標準搭載の HiGHS（LP/MIP/凸QP）およびオプションの Z3（SMT・論理制約・競合診断）、GLPK を切り替え可能。
     link: /ja/solvers/
-    linkText: ソルバー比較
+    linkText: ソルバー
   - icon: 🌐
     title: WebAssembly によるローカル実行
     details: Python バックエンドや C/C++ のネイティブビルドなしで Node.js やブラウザの Web Worker 上で動作。静的アセットとして配信でき、ブラウザ内 LLM とも連携可能。
@@ -39,7 +36,7 @@ features:
     title: 矛盾制約の特定 (unsatCore)
     details: 名前付き制約と Z3 アダプターを用いて、実行不可能（Infeasible）なモデルの矛盾する制約の部分集合（unsatCore）を抽出。
     link: /ja/guide/unsat-core
-    linkText: Unsat Core 診断ガイド
+    linkText: 競合制約診断 (Unsat Core)
 ---
 
 <div style="max-width: 800px; margin: 40px auto;">

@@ -763,3 +763,120 @@
   white-space: nowrap;
 }
 
+/* ==========================================================================
+   Showcase Hub Page (/showcase/)
+   ========================================================================== */
+.washi-showcase {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
+}
+
+.washi-showcase-lead {
+  font-size: 1.05rem;
+  color: var(--vp-c-text-2);
+  margin: 8px 0 28px !important;
+  line-height: 1.65;
+}
+
+.washi-showcase-section {
+  margin-top: 36px;
+}
+
+.washi-showcase-section h2 {
+  margin-top: 0 !important;
+  margin-bottom: 16px !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.washi-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+}
+
+.washi-showcase-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg-soft);
+  text-decoration: none !important;
+  color: var(--vp-c-text-1) !important;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.washi-showcase-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.washi-showcase-card.is-primary {
+  border-color: rgba(225, 29, 72, 0.35);
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.06) 0%, var(--vp-c-bg-soft) 100%);
+}
+
+.washi-showcase-card.is-primary:hover {
+  border-color: #e11d48;
+}
+
+.washi-showcase-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.washi-showcase-icon {
+  font-size: 1.85rem;
+  line-height: 1;
+}
+
+.washi-showcase-badge {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  border: 1px solid var(--vp-c-divider);
+}
+
+.washi-showcase-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--vp-c-text-1);
+  margin: 0 0 8px !important;
+}
+
+.washi-showcase-desc {
+  font-size: 0.9rem;
+  color: var(--vp-c-text-2);
+  line-height: 1.6;
+  margin: 0 0 16px !important;
+}
+
+.washi-showcase-cta {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--vp-c-brand-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.washi-showcase-card.is-primary .washi-showcase-cta {
+  color: #e11d48;
+}
+
+

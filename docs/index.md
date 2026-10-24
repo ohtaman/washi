@@ -10,26 +10,23 @@ hero:
     alt: WaSHI Emblem
   actions:
     - theme: brand
-      text: Get Started
+      text: Getting Started
       link: /getting-started/
     - theme: alt
-      text: Documentation
-      link: /guide/variables
-    - theme: alt
-      text: Live Playground ↗
-      link: https://ohtaman.github.io/washi/demo/
+      text: Showcase
+      link: /showcase/
 
 features:
   - icon: ✍️
     title: Algebraic Modeling (expr)
     details: Write infix formulas (expr`30 * ${x} + 50 * ${y} <= 40`), vector dot products (dot), and summations (sum) while binding ${...} directly as typed Var references.
     link: /guide/expressions
-    linkText: Expressions Guide
+    linkText: Expressions
   - icon: ⚙️
     title: Pluggable Solver Adapters
     details: Use a common modeling API across the built-in HiGHS engine (LP, MIP, convex QP) and optional adapters for Z3 (SMT, logic, unsat cores) and GLPK.
     link: /solvers/
-    linkText: Solvers Matrix
+    linkText: Solvers
   - icon: 🌐
     title: WebAssembly & Local Execution
     details: Solve in Node.js, Bun, Deno, or browser Web Workers without Python services or native C/C++ builds—deployable as static assets and composable with in-browser LLMs.
