@@ -4,6 +4,8 @@ import {
   injectTimetableConflictScenario,
 } from "../examples/web-demo/apps/ai-timetable/generator.js";
 import {
+  buildTimetableWashiModel,
+  computeTimetableDiff,
   diagnoseTimetableWithHiGHS,
   solveTimetableWithWashi,
 } from "../examples/web-demo/apps/ai-timetable/solver.js";
@@ -454,5 +456,110 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         expect(ruleIds.has(c.relatedRuleId!)).toBe(true);
       }
     }
+  }, 30_000);
+
+  it("handles room-type forbids, collision-free rule IDs, soft professor unavailability, reverse consecutive pairs, and slot-based diff matching", async () => {
+    const baseState = generateTimetableState();
+
+    // 1. Multiple custom rules created in the same synchronous call receive unique IDs and pass validateIntegrity()
+    const { updatedState: multiRuleState } = applyTimetableChatOperationsToState(baseState, [
+      { op: "forbid_course_slot", courseId: "C16", days: ["Mon"], periods: [1], isHard: true },
+      { op: "forbid_course_slot", courseId: "C16", days: ["Fri"], periods: [5], isHard: true },
+      { op: "set_course_room_rule", courseId: "C15", mode: "forbid", roomType: "seminar", isHard: true },
+      { op: "set_course_room_rule", courseId: "C15", mode: "forbid", roomType: "pc_lab", isHard: true },
+    ]);
+    const ruleIds = multiRuleState.customRules.map((r) => r.id);
+    expect(new Set(ruleIds).size).toBe(ruleIds.length);
+    const builtMulti = buildTimetableWashiModel(multiRuleState);
+    expect(() => builtMulti.model.validateIntegrity()).not.toThrow();
+
+    // 2. Room-type forbid (`forbid_room` with `roomType` only) is enforced by the solver
+    // Pin C21 (enrollment 28, normally fits in seminar R201/R202 or medium R102/R103) and forbid all seminar rooms
+    const { updatedState: forbidTypeState } = applyTimetableChatOperationsToState(baseState, [
+      { op: "set_course_room_rule", courseId: "C21", mode: "forbid", roomType: "seminar", isHard: true },
+    ]);
+    const forbidTypeRes = await solveTimetableWithWashi(forbidTypeState);
+    expect(forbidTypeRes.status).toBe("Optimal");
+    const c21Sessions = forbidTypeRes.timetable!.byCourse["C21"];
+    expect(c21Sessions.length).toBe(1);
+    const assignedRoom = forbidTypeState.rooms.find((r) => r.id === c21Sessions[0].roomId)!;
+    expect(assignedRoom.roomType).not.toBe("seminar");
+
+    // 3. Soft professor unavailability (`isHard: false`) adds soft custom rule(s) instead of hard unavailableDays
+    const { updatedState: softProfState } = applyTimetableChatOperationsToState(baseState, [
+      {
+        op: "set_professor_unavailability",
+        professorId: "P01",
+        days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
+        periods: [1, 2, 3, 4, 5],
+        exclusiveAvailable: false,
+        isHard: false,
+      },
+    ]);
+    const p01After = softProfState.professors.find((p) => p.id === "P01")!;
+    const p01Before = baseState.professors.find((p) => p.id === "P01")!;
+    expect(p01After.unavailableDays).toEqual(p01Before.unavailableDays);
+    expect(p01After.unavailableSlots).toEqual(p01Before.unavailableSlots);
+    expect(
+      softProfState.customRules.some(
+        (r) => r.kind === "forbid_slot" && r.professorId === "P01" && r.isHard === false
+      )
+    ).toBe(true);
+    const softProfRes = await solveTimetableWithWashi(softProfState);
+    expect(softProfRes.status).toBe("Optimal");
+
+    // 4. Two-course `course_consecutive` accepts either orientation (Course B at P2 followed by Course A at P3)
+    const { updatedState: revConsecState } = applyTimetableChatOperationsToState(baseState, [
+      { op: "pin_course_slot", courseId: "C16", days: ["Wed"], periods: [2], isHard: true },
+      { op: "pin_course_slot", courseId: "C15", days: ["Wed"], periods: [3], isHard: true },
+      {
+        op: "add_course_relation_rule",
+        kind: "course_consecutive",
+        courseId: "C15",
+        secondCourseId: "C16",
+        isHard: true,
+      },
+    ]);
+    const revConsecRes = await solveTimetableWithWashi(revConsecState);
+    expect(revConsecRes.status).toBe("Optimal");
+    expect(
+      revConsecRes.timetable!.byCourse["C16"].some((s) => s.day === "Wed" && s.period === 2)
+    ).toBe(true);
+    expect(
+      revConsecRes.timetable!.byCourse["C15"].some((s) => s.day === "Wed" && s.period === 3)
+    ).toBe(true);
+
+    // 5. `computeTimetableDiff` matches retained sessions by slot rather than list index
+    const baseSol = forbidTypeRes.timetable!;
+    const c12Prev = baseSol.byCourse["C12"];
+    expect(c12Prev.length).toBe(2);
+    // Construct two artificial solutions for C12: [Mon P1 R101, Tue P2 R101] -> [Tue P2 R101, Wed P3 R101]
+    const prevSol = {
+      ...baseSol,
+      byCourse: {
+        ...baseSol.byCourse,
+        C12: [
+          { courseId: "C12", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" },
+          { courseId: "C12", sessionIndex: 1, day: "Tue" as const, period: 2 as const, roomId: "R101" },
+        ],
+      },
+    };
+    const nextSol = {
+      ...baseSol,
+      byCourse: {
+        ...baseSol.byCourse,
+        C12: [
+          { courseId: "C12", sessionIndex: 0, day: "Tue" as const, period: 2 as const, roomId: "R101" },
+          { courseId: "C12", sessionIndex: 1, day: "Wed" as const, period: 3 as const, roomId: "R101" },
+        ],
+      },
+    };
+    const diff = computeTimetableDiff(baseState, prevSol, nextSol)!;
+    const c12Changes = diff.changes.filter((ch) => ch.courseId === "C12");
+    expect(c12Changes.length).toBe(1);
+    expect(c12Changes[0].prevDay).toBe("Mon");
+    expect(c12Changes[0].prevPeriod).toBe(1);
+    expect(c12Changes[0].nextDay).toBe("Wed");
+    expect(c12Changes[0].nextPeriod).toBe(3);
   }, 30_000);
 });

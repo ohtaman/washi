@@ -688,8 +688,8 @@ export function formatCustomRuleI18n(
 
   if (rule.kind === "course_consecutive") {
     return lang === "en"
-      ? `Consecutive Periods: Schedule "${c1Short}" in 2 adjacent periods on the same day`
-      : `同日连排指定: 将《${c1Short}》的2节课排在同一天的相邻连续节次`;
+      ? `Consecutive Periods: Schedule "${c1Short}"${c2 ? ` & "${c2Short}"` : ""} in adjacent periods on the same day`
+      : `同日连排指定: 将《${c1Short}》${c2 ? `与《${c2Short}》` : "的2节课"}排在同一天的相邻连续节次`;
   }
 
   if (rule.kind === "course_same_day") {

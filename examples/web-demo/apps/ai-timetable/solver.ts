@@ -659,31 +659,44 @@ export function buildTimetableWashiModel(
           weight
         );
       }
-    } else if (rule.kind === "forbid_room" && rule.courseId && rule.roomId) {
+    } else if (
+      rule.kind === "forbid_room" &&
+      rule.courseId &&
+      (rule.roomId || rule.roomType)
+    ) {
       const c = courseMap.get(rule.courseId);
-      if (!c || !roomMap.has(rule.roomId)) continue;
-      const disVars: Var[] = [];
-      for (const d of DAYS_OF_WEEK) {
-        for (const p of PERIODS) {
-          disVars.push(vAssign[c.id][d][p][rule.roomId]);
+      if (!c) continue;
+      const forbiddenRooms = rooms.filter((r) => {
+        if (rule.roomId) return r.id === rule.roomId;
+        if (rule.roomType) return r.roomType === rule.roomType;
+        return false;
+      });
+      if (forbiddenRooms.length > 0) {
+        const disVars: Var[] = [];
+        for (const d of DAYS_OF_WEEK) {
+          for (const p of PERIODS) {
+            for (const r of forbiddenRooms) {
+              disVars.push(vAssign[c.id][d][p][r.id]);
+            }
+          }
         }
+        registerSoftOrHard(
+          sum(disVars),
+          "<=",
+          0,
+          {
+            name: `custom_forbid_room_${rule.id}`,
+            relatedRuleId: rule.id,
+            category: "custom",
+            labelJa: `追加ルール(教室禁止): ${rule.description}`,
+            relatedCourseIds: [c.id],
+            relatedRoomIds: forbiddenRooms.map((r) => r.id),
+            relaxSuggestion: `教室禁止ルール「${rule.description}」を解除してください。`,
+          },
+          isHard,
+          weight
+        );
       }
-      registerSoftOrHard(
-        sum(disVars),
-        "<=",
-        0,
-        {
-          name: `custom_forbid_room_${rule.id}`,
-          relatedRuleId: rule.id,
-          category: "custom",
-          labelJa: `追加ルール(教室禁止): ${rule.description}`,
-          relatedCourseIds: [c.id],
-          relatedRoomIds: [rule.roomId],
-          relaxSuggestion: `教室禁止ルール「${rule.description}」を解除してください。`,
-        },
-        isHard,
-        weight
-      );
     } else if (
       rule.kind === "course_no_overlap" &&
       rule.courseId &&
@@ -721,25 +734,31 @@ export function buildTimetableWashiModel(
       const c2 = rule.secondCourseId ? courseMap.get(rule.secondCourseId) : c1;
       if (!c1 || !c2) continue;
 
-      // Require that on whichever day c1 is scheduled, c1 and c2 occupy adjacent periods (p, p+1).
-      // Formulate via indicator variables z_{d,p} for p in 1..4 where both (d,p) and (d,p+1) are active:
+      // Require that on whichever day c1 and c2 are scheduled consecutively, they occupy adjacent periods (p, p+1) in either order.
       const pairIndicators: Var[] = [];
       for (const d of DAYS_OF_WEEK) {
         for (let pIdx = 0; pIdx < PERIODS.length - 1; pIdx++) {
           const pA = PERIODS[pIdx];
           const pB = PERIODS[pIdx + 1];
-          const z = m.binary(`consec_${rule.id}_${d}_P${pA}`);
-          pairIndicators.push(z);
           if (c1.id === c2.id) {
+            const z = m.binary(`consec_${rule.id}_${d}_P${pA}`);
+            pairIndicators.push(z);
             const varsA = slotVarsByCourse(c1.id, d, pA);
             const varsB = slotVarsByCourse(c1.id, d, pB);
             m.constraint(expr`${z} - ${sum(varsA)} <= 0`, `consec_ubA_${rule.id}_${d}_P${pA}`);
             m.constraint(expr`${z} - ${sum(varsB)} <= 0`, `consec_ubB_${rule.id}_${d}_P${pA}`);
           } else {
+            const zFwd = m.binary(`consec_fwd_${rule.id}_${d}_P${pA}`);
+            const zRev = m.binary(`consec_rev_${rule.id}_${d}_P${pA}`);
+            pairIndicators.push(zFwd, zRev);
             const vars1A = slotVarsByCourse(c1.id, d, pA);
             const vars2B = slotVarsByCourse(c2.id, d, pB);
-            m.constraint(expr`${z} - ${sum(vars1A)} <= 0`, `consec_ub1_${rule.id}_${d}_P${pA}`);
-            m.constraint(expr`${z} - ${sum(vars2B)} <= 0`, `consec_ub2_${rule.id}_${d}_P${pA}`);
+            m.constraint(expr`${zFwd} - ${sum(vars1A)} <= 0`, `consec_ub1F_${rule.id}_${d}_P${pA}`);
+            m.constraint(expr`${zFwd} - ${sum(vars2B)} <= 0`, `consec_ub2F_${rule.id}_${d}_P${pA}`);
+            const vars2A = slotVarsByCourse(c2.id, d, pA);
+            const vars1B = slotVarsByCourse(c1.id, d, pB);
+            m.constraint(expr`${zRev} - ${sum(vars2A)} <= 0`, `consec_ub2R_${rule.id}_${d}_P${pA}`);
+            m.constraint(expr`${zRev} - ${sum(vars1B)} <= 0`, `consec_ub1R_${rule.id}_${d}_P${pA}`);
           }
         }
       }
@@ -1207,24 +1226,47 @@ export function computeTimetableDiff(
   const changes: TimetableCellDiff[] = [];
   let totalSessions = 0;
 
+  const sortBySlot = (a: AssignedSession, b: AssignedSession): number => {
+    const slotDiff =
+      DAYS_OF_WEEK.indexOf(a.day) * 10 +
+      a.period -
+      (DAYS_OF_WEEK.indexOf(b.day) * 10 + b.period);
+    if (slotDiff !== 0) return slotDiff;
+    return a.roomId.localeCompare(b.roomId);
+  };
+
   for (const c of state.courses) {
-    const prevList = [...(prev.byCourse[c.id] ?? [])].sort(
-      (a, b) => DAYS_OF_WEEK.indexOf(a.day) * 10 + a.period - (DAYS_OF_WEEK.indexOf(b.day) * 10 + b.period)
-    );
-    const nextList = [...(next.byCourse[c.id] ?? [])].sort(
-      (a, b) => DAYS_OF_WEEK.indexOf(a.day) * 10 + a.period - (DAYS_OF_WEEK.indexOf(b.day) * 10 + b.period)
-    );
-    const count = Math.max(prevList.length, nextList.length);
-    for (let i = 0; i < count; i++) {
-      totalSessions++;
-      const pS = prevList[i];
-      const nS = nextList[i];
-      if (!pS || !nS) continue;
-      if (pS.day !== nS.day || pS.period !== nS.period || pS.roomId !== nS.roomId) {
+    const unmatchedPrev = [...(prev.byCourse[c.id] ?? [])].sort(sortBySlot);
+    const unmatchedNext = [...(next.byCourse[c.id] ?? [])].sort(sortBySlot);
+
+    // 1. First match exact (day, period, roomId) retentions so unchanged sessions of multi-session courses are never miscounted as moved
+    for (let i = unmatchedPrev.length - 1; i >= 0; i--) {
+      const pS = unmatchedPrev[i];
+      const exactIdx = unmatchedNext.findIndex(
+        (nS) => nS.day === pS.day && nS.period === pS.period && nS.roomId === pS.roomId
+      );
+      if (exactIdx !== -1) {
+        unmatchedPrev.splice(i, 1);
+        unmatchedNext.splice(exactIdx, 1);
+        totalSessions++;
+      }
+    }
+
+    // 2. Next match same-(day, period) room-only changes
+    let diffSeq = 0;
+    for (let i = unmatchedPrev.length - 1; i >= 0; i--) {
+      const pS = unmatchedPrev[i];
+      const sameSlotIdx = unmatchedNext.findIndex(
+        (nS) => nS.day === pS.day && nS.period === pS.period
+      );
+      if (sameSlotIdx !== -1) {
+        const [nS] = unmatchedNext.splice(sameSlotIdx, 1);
+        unmatchedPrev.splice(i, 1);
+        totalSessions++;
         changes.push({
           courseId: c.id,
           courseTitle: courseMap.get(c.id)?.shortTitle ?? c.id,
-          sessionIndex: i,
+          sessionIndex: diffSeq++,
           prevDay: pS.day,
           prevPeriod: pS.period,
           prevRoomId: pS.roomId,
@@ -1233,6 +1275,28 @@ export function computeTimetableDiff(
           nextRoomId: nS.roomId,
         });
       }
+    }
+
+    // 3. Pair any remaining unmatched sessions in chronological order
+    unmatchedPrev.sort(sortBySlot);
+    unmatchedNext.sort(sortBySlot);
+    const count = Math.max(unmatchedPrev.length, unmatchedNext.length);
+    for (let i = 0; i < count; i++) {
+      totalSessions++;
+      const pS = unmatchedPrev[i];
+      const nS = unmatchedNext[i];
+      if (!pS || !nS) continue;
+      changes.push({
+        courseId: c.id,
+        courseTitle: courseMap.get(c.id)?.shortTitle ?? c.id,
+        sessionIndex: diffSeq++,
+        prevDay: pS.day,
+        prevPeriod: pS.period,
+        prevRoomId: pS.roomId,
+        nextDay: nS.day,
+        nextPeriod: nS.period,
+        nextRoomId: nS.roomId,
+      });
     }
   }
 

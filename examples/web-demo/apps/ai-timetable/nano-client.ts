@@ -692,6 +692,20 @@ export function convertToolCallToTimetableOperation(
   }
 }
 
+let customRuleSeq = 0;
+function nextCustomRuleId(
+  prefix: string,
+  existingRules: readonly CustomTimetableRule[]
+): string {
+  const existingIds = new Set(existingRules.map((r) => r.id));
+  let candidate = "";
+  do {
+    customRuleSeq += 1;
+    candidate = `${prefix}_${Date.now()}_${customRuleSeq}`;
+  } while (existingIds.has(candidate));
+  return candidate;
+}
+
 /**
  * Applies a list of `ChatTimetableOperation` items to `TimetableState` with strict argument fidelity.
  */
@@ -756,7 +770,10 @@ export function applyTimetableChatOperationsToState(
           : `${op.days.map((d) => DAY_LABELS_JA[d]).join("・")}曜 ${op.periods.join("・")}限`;
       const desc = `「${course.title}(${course.id})」を ${slotText}${roomText} に${op.isHard ? "固定" : "希望配置"}`;
       const rule: CustomTimetableRule = {
-        id: `pin_${course.id}_${op.days.join("-")}_P${op.periods.join("-")}_${Date.now()}`,
+        id: nextCustomRuleId(
+          `pin_${course.id}_${op.days.join("-")}_P${op.periods.join("-")}`,
+          nextState.customRules
+        ),
         kind: "pin_slot",
         enabled: true,
         isHard: op.isHard,
@@ -779,7 +796,7 @@ export function applyTimetableChatOperationsToState(
         op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
       const desc = `「${course.title}(${course.id})」の ${dayText} ${periodText} 配置を${op.isHard ? "禁止" : "なるべく回避"}`;
       const rule: CustomTimetableRule = {
-        id: `forbid_${course.id}_${Date.now()}`,
+        id: nextCustomRuleId(`forbid_${course.id}`, nextState.customRules),
         kind: "forbid_slot",
         enabled: true,
         isHard: op.isHard,
@@ -796,6 +813,59 @@ export function applyTimetableChatOperationsToState(
     if (op.op === "set_professor_unavailability") {
       const prof = nextState.professors.find((p) => p.id === op.professorId);
       if (!prof) continue;
+
+      if (!op.isHard) {
+        if (op.exclusiveAvailable) {
+          const allowedDays = new Set(op.days);
+          const allowedPeriods = new Set(op.periods);
+          const disallowedDays = DAYS_OF_WEEK.filter((d) => !allowedDays.has(d));
+          const disallowedPeriods = PERIODS.filter((p) => !allowedPeriods.has(p));
+          const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
+          const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
+          const desc = `${prof.name}(${prof.id}) の出講をなるべく【${dayText}の${pText}】に限定(ソフト希望)`;
+          if (disallowedDays.length > 0) {
+            nextState.customRules.push({
+              id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
+              kind: "forbid_slot",
+              enabled: true,
+              isHard: false,
+              professorId: prof.id,
+              days: disallowedDays,
+              periods: [...PERIODS],
+              description: desc,
+            });
+          }
+          if (disallowedPeriods.length > 0) {
+            nextState.customRules.push({
+              id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
+              kind: "forbid_slot",
+              enabled: true,
+              isHard: false,
+              professorId: prof.id,
+              days: [...op.days],
+              periods: disallowedPeriods,
+              description: desc,
+            });
+          }
+          appliedLogs.push(desc);
+        } else {
+          const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
+          const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
+          const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} の担当をなるべく回避(ソフト希望)`;
+          nextState.customRules.push({
+            id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
+            kind: "forbid_slot",
+            enabled: true,
+            isHard: false,
+            professorId: prof.id,
+            days: [...op.days],
+            periods: [...op.periods],
+            description: desc,
+          });
+          appliedLogs.push(desc);
+        }
+        continue;
+      }
 
       if (op.exclusiveAvailable) {
         // Only the specified (days, periods) are available -> all other days are unavailable, and on specified days other periods are unavailable
@@ -881,7 +951,7 @@ export function applyTimetableChatOperationsToState(
           ? `「${course.title}(${course.id})」の使用教室を ${targetName} に限定`
           : `「${course.title}(${course.id})」での ${targetName} の使用を禁止`;
       const rule: CustomTimetableRule = {
-        id: `room_${op.mode}_${course.id}_${Date.now()}`,
+        id: nextCustomRuleId(`room_${op.mode}_${course.id}`, nextState.customRules),
         kind: op.mode === "require" ? "require_room" : "forbid_room",
         enabled: true,
         isHard: op.isHard,
@@ -920,7 +990,7 @@ export function applyTimetableChatOperationsToState(
       }
 
       const rule: CustomTimetableRule = {
-        id: `rel_${op.kind}_${c1.id}_${Date.now()}`,
+        id: nextCustomRuleId(`rel_${op.kind}_${c1.id}`, nextState.customRules),
         kind: op.kind,
         enabled: true,
         isHard: op.isHard,
@@ -941,7 +1011,7 @@ export function applyTimetableChatOperationsToState(
       const reasonText = op.reason ? ` (${op.reason})` : "";
       const desc = `教室閉鎖: ${room.name}(${room.id}) は ${dayText}${pText} 使用不可${reasonText}`;
       const rule: CustomTimetableRule = {
-        id: `closure_${room.id}_${Date.now()}`,
+        id: nextCustomRuleId(`closure_${room.id}`, nextState.customRules),
         kind: "room_closure",
         enabled: true,
         isHard: true,

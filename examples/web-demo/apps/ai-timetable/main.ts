@@ -2153,7 +2153,12 @@ function wireEvents(): void {
           op: "add_course_relation_rule",
           kind,
           courseId: c1Id,
-          secondCourseId: kind === "course_no_overlap" ? c2Id : undefined,
+          secondCourseId:
+            (kind === "course_no_overlap" || kind === "course_same_day") &&
+            c2Id &&
+            c2Id !== c1Id
+              ? c2Id
+              : undefined,
           isHard: true,
         },
       ]);
