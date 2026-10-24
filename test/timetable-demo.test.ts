@@ -605,5 +605,48 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       zhText += chunk;
     }
     expect(zhText).toContain("【求解结果】");
+
+    // 8. Hard `set_professor_unavailability` is enforced even when `config.enforceProfessorAvailability` is disabled
+    const noProfPolicyState = {
+      ...baseState,
+      config: {
+        ...baseState.config,
+        enforceProfessorAvailability: false,
+        enforceAdjunctDayRestrictions: false,
+      },
+    };
+    const { updatedState: hardProfState, appliedLogs: enLogs } =
+      applyTimetableChatOperationsToState(
+        noProfPolicyState,
+        [
+          {
+            op: "set_professor_unavailability",
+            professorId: "P01",
+            days: ["Mon", "Tue", "Wed", "Thu"],
+            periods: [1, 2, 3, 4, 5],
+            exclusiveAvailable: false,
+            isHard: true,
+          },
+          {
+            op: "pin_course_slot",
+            courseId: "C15",
+            days: ["Mon"],
+            periods: [2],
+            isHard: true,
+          },
+        ],
+        "en"
+      );
+    expect(enLogs[0]).toContain("Marked Mon/Tue/Wed/Thu (All Day) as unavailable (NG)");
+    expect(enLogs[1]).toContain('Pin "Mathematical Optimization (C15)" to Mon P2');
+    const hardProfRes = await solveTimetableWithWashi(hardProfState);
+    expect(hardProfRes.status).toBe("Infeasible");
+
+    const { appliedLogs: zhLogs } = applyTimetableChatOperationsToState(
+      baseState,
+      [{ op: "pin_course_slot", courseId: "C15", days: ["Tue"], periods: [2], isHard: true }],
+      "zh"
+    );
+    expect(zhLogs[0]).toContain("将《数学规划与优化 (C15)》固定在 周二第2节");
   }, 30_000);
 });

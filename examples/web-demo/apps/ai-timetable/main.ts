@@ -1749,12 +1749,14 @@ export function applyTimetableLang(lang: TimetableLang): void {
 }
 
 async function handleChatSubmit(userMessage: string): Promise<void> {
+  if (activeChatAbortController) return;
   const trimmed = userMessage.trim();
   if (!trimmed) return;
 
   appendChatMessage("user", trimmed);
   const inputEl = $<HTMLTextAreaElement>("chat-input");
   inputEl.value = "";
+  inputEl.disabled = true;
 
   const sendBtn = $<HTMLButtonElement>("btn-chat-send");
   const abortBtn = $<HTMLButtonElement>("btn-chat-abort");
@@ -1797,7 +1799,8 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
 
     const { updatedState, appliedLogs } = applyTimetableChatOperationsToState(
       appState,
-      plan.operations
+      plan.operations,
+      activeLang
     );
     appState = updatedState;
 
@@ -1888,6 +1891,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       })
     );
   } finally {
+    inputEl.disabled = false;
     sendBtn.disabled = false;
     abortBtn.hidden = true;
     activeChatAbortController = null;

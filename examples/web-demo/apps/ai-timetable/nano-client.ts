@@ -4,9 +4,13 @@ import {
 } from "./generator.js";
 import {
   COURSE_PROFILE_I18N,
+  DAY_SHORT_I18N,
   PROFESSOR_PROFILE_I18N,
   ROOM_PROFILE_I18N,
   formatConstraintMetaI18n,
+  formatCustomRuleI18n,
+  formatPeriodI18n,
+  getProfessorI18n,
   pickTimetableLang,
   type TimetableLang,
 } from "./i18n.js";
@@ -723,7 +727,8 @@ function nextCustomRuleId(
  */
 export function applyTimetableChatOperationsToState(
   state: TimetableState,
-  operations: readonly ChatTimetableOperation[]
+  operations: readonly ChatTimetableOperation[],
+  lang: TimetableLang = "ja"
 ): { updatedState: TimetableState; appliedLogs: string[] } {
   let nextState: TimetableState = {
     ...state,
@@ -749,25 +754,59 @@ export function applyTimetableChatOperationsToState(
   for (const op of operations) {
     if (op.op === "reset_all") {
       nextState = generateTimetableState({ seed: nextState.config.seed });
-      appliedLogs.push("すべての時間割設定・追加ルールを初期状態にリセットしました");
+      appliedLogs.push(
+        pickTimetableLang(lang, {
+          ja: "すべての時間割設定・追加ルールを初期状態にリセットしました",
+          en: "Reset all timetable settings and custom rules to defaults",
+          zh: "已将所有课表设置与自定义规则重置为初始状态",
+        })
+      );
       continue;
     }
 
     if (op.op === "clear_custom_rules") {
       nextState.customRules = [];
-      appliedLogs.push("個別に追加されたカスタムルールをすべて解除しました");
+      appliedLogs.push(
+        pickTimetableLang(lang, {
+          ja: "個別に追加されたカスタムルールをすべて解除しました",
+          en: "Cleared all custom timetable rules",
+          zh: "已清除所有单独添加的自定义规则",
+        })
+      );
       continue;
     }
 
     if (op.op === "inject_conflict_demo") {
       const injected = injectTimetableConflictScenario(nextState, op.scenario);
       nextState = injected.updatedState;
-      appliedLogs.push(injected.descriptionJa);
+      appliedLogs.push(
+        pickTimetableLang(lang, {
+          ja: injected.descriptionJa,
+          en:
+            op.scenario === "room_double_book"
+              ? 'Pinned both large compulsory courses "Intro to CS (C01)" and "Linear Algebra I (C02)" (>130 students) to Tue P2 in Hall 101 (Large) (room & Y1 compulsory conflict).'
+              : op.scenario === "prof_impossible_day"
+                ? 'Pinned adjunct lecturer Mr. Kobayashi\'s (Tue/Thu only) course "Information Security (C18)" to Mon P3.'
+                : "Pinned 3 PC-lab-required courses (C05, C06, C19) simultaneously to Mon P2 when only 2 PC labs (301 & 302) exist.",
+          zh:
+            op.scenario === "room_double_book"
+              ? "已将两门超130人的大一必修课《计算机科学导论(C01)》与《线性代数I(C02)》同时强制固定在【周二第2节・101大阶梯教室】（教室冲突＆大一必修冲突）。"
+              : op.scenario === "prof_impossible_day"
+                ? "已将仅周二、周四可出勤的兼职讲师（小林老师）负责的《信息安全(C18)》强制固定在【周一第3节】。"
+                : "在仅有2间PC机房（301・302）的情况下，将3门必须使用PC机房的课程（C05, C06, C19）同时强制固定在【周一第2节】。",
+        })
+      );
       continue;
     }
 
     if (op.op === "solve_or_diagnose") {
-      appliedLogs.push("現在の条件で時間割の再最適化・整合性チェックを実行します");
+      appliedLogs.push(
+        pickTimetableLang(lang, {
+          ja: "現在の条件で時間割の再最適化・整合性チェックを実行します",
+          en: "Re-optimizing and checking timetable consistency under current rules",
+          zh: "按当前条件重新优化课表并执行一致性检查",
+        })
+      );
       continue;
     }
 
@@ -796,7 +835,7 @@ export function applyTimetableChatOperationsToState(
         description: desc,
       };
       nextState.customRules.push(rule);
-      appliedLogs.push(desc);
+      appliedLogs.push(formatCustomRuleI18n(rule, nextState, lang));
       continue;
     }
 
@@ -818,7 +857,7 @@ export function applyTimetableChatOperationsToState(
         description: desc,
       };
       nextState.customRules.push(rule);
-      appliedLogs.push(desc);
+      appliedLogs.push(formatCustomRuleI18n(rule, nextState, lang));
       continue;
     }
 
@@ -828,20 +867,27 @@ export function applyTimetableChatOperationsToState(
 
       const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
       const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
+      const profLabelI18n = `${getProfessorI18n(prof, lang).name} (${prof.id})`;
+      const daysI18n = op.days.map((d) => DAY_SHORT_I18N[lang][d]).join("/");
+      const periodsI18n =
+        op.periods.length === 5
+          ? lang === "en"
+            ? "All Day"
+            : "全天"
+          : op.periods.map((p) => formatPeriodI18n(p, lang)).join("/");
 
-      if (!op.isHard) {
+      const pushProfessorForbidRules = (isHard: boolean, desc: string): void => {
         if (op.exclusiveAvailable) {
           const allowedDays = new Set(op.days);
           const allowedPeriods = new Set(op.periods);
           const disallowedDays = DAYS_OF_WEEK.filter((d) => !allowedDays.has(d));
           const disallowedPeriods = PERIODS.filter((p) => !allowedPeriods.has(p));
-          const desc = `${prof.name}(${prof.id}) の出講をなるべく【${dayText}の${pText}】に限定(ソフト希望)`;
           if (disallowedDays.length > 0) {
             nextState.customRules.push({
               id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
               kind: "forbid_slot",
               enabled: true,
-              isHard: false,
+              isHard,
               professorId: prof.id,
               days: disallowedDays,
               periods: [...PERIODS],
@@ -853,27 +899,48 @@ export function applyTimetableChatOperationsToState(
               id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
               kind: "forbid_slot",
               enabled: true,
-              isHard: false,
+              isHard,
               professorId: prof.id,
               days: [...op.days],
               periods: disallowedPeriods,
               description: desc,
             });
           }
-          appliedLogs.push(desc);
         } else {
-          const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} の担当をなるべく回避(ソフト希望)`;
           nextState.customRules.push({
             id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
             kind: "forbid_slot",
             enabled: true,
-            isHard: false,
+            isHard,
             professorId: prof.id,
             days: [...op.days],
             periods: [...op.periods],
             description: desc,
           });
-          appliedLogs.push(desc);
+        }
+      };
+
+      if (!op.isHard) {
+        if (op.exclusiveAvailable) {
+          const desc = `${prof.name}(${prof.id}) の出講をなるべく【${dayText}の${pText}】に限定(ソフト希望)`;
+          pushProfessorForbidRules(false, desc);
+          appliedLogs.push(
+            pickTimetableLang(lang, {
+              ja: desc,
+              en: `Prefer scheduling ${profLabelI18n} only on ${daysI18n} (${periodsI18n}) (soft preference)`,
+              zh: `尽量将 ${profLabelI18n} 的授课限制在【${daysI18n} ${periodsI18n}】(软性偏好)`,
+            })
+          );
+        } else {
+          const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} の担当をなるべく回避(ソフト希望)`;
+          pushProfessorForbidRules(false, desc);
+          appliedLogs.push(
+            pickTimetableLang(lang, {
+              ja: desc,
+              en: `Prefer avoiding ${daysI18n} (${periodsI18n}) for ${profLabelI18n} (soft preference)`,
+              zh: `尽量避免安排 ${profLabelI18n} 在 ${daysI18n} (${periodsI18n}) 授课(软性偏好)`,
+            })
+          );
         }
         continue;
       }
@@ -898,7 +965,15 @@ export function applyTimetableChatOperationsToState(
             }
           }
         }
-        appliedLogs.push(`${prof.name}(${prof.id}) の ${dayText}${pText} を出講不可(NG)に設定しました`);
+        const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} を出講不可(NG)に設定しました`;
+        pushProfessorForbidRules(true, desc);
+        appliedLogs.push(
+          pickTimetableLang(lang, {
+            ja: desc,
+            en: `Marked ${daysI18n} (${periodsI18n}) as unavailable (NG) for ${profLabelI18n}`,
+            zh: `已将 ${profLabelI18n} 的 ${daysI18n} (${periodsI18n}) 设为不可出勤(NG)`,
+          })
+        );
       } else {
         const allowedDays = new Set(op.days);
         const allowedPeriods = new Set(op.periods);
@@ -915,8 +990,14 @@ export function applyTimetableChatOperationsToState(
             }
           }
         }
+        const desc = `${prof.name}(${prof.id}) の出講可能枠を【${dayText}の${pText}のみ】に設定しました`;
+        pushProfessorForbidRules(true, desc);
         appliedLogs.push(
-          `${prof.name}(${prof.id}) の出講可能枠を【${dayText}の${pText}のみ】に設定しました`
+          pickTimetableLang(lang, {
+            ja: desc,
+            en: `Restricted ${profLabelI18n}'s available slots to ${daysI18n} (${periodsI18n}) only`,
+            zh: `已将 ${profLabelI18n} 的可出勤时段设为【仅限 ${daysI18n} ${periodsI18n}】`,
+          })
         );
       }
       continue;
@@ -925,21 +1006,38 @@ export function applyTimetableChatOperationsToState(
     if (op.op === "set_professor_preference") {
       const prof = nextState.professors.find((p) => p.id === op.professorId);
       if (!prof) continue;
-      const parts: string[] = [];
+      const partsJa: string[] = [];
+      const partsEn: string[] = [];
+      const partsZh: string[] = [];
       if (typeof op.avoidPeriod1 === "boolean") {
         prof.avoidPeriod1 = op.avoidPeriod1;
-        parts.push(`1限回避=${op.avoidPeriod1 ? "ON" : "OFF"}`);
+        const flag = op.avoidPeriod1 ? "ON" : "OFF";
+        partsJa.push(`1限回避=${flag}`);
+        partsEn.push(`Avoid P1=${flag}`);
+        partsZh.push(`避免第1节=${flag}`);
       }
       if (typeof op.avoidPeriod5 === "boolean") {
         prof.avoidPeriod5 = op.avoidPeriod5;
-        parts.push(`5限回避=${op.avoidPeriod5 ? "ON" : "OFF"}`);
+        const flag = op.avoidPeriod5 ? "ON" : "OFF";
+        partsJa.push(`5限回避=${flag}`);
+        partsEn.push(`Avoid P5=${flag}`);
+        partsZh.push(`避免第5节=${flag}`);
       }
       if (typeof op.maxSessionsPerDay === "number") {
         prof.maxSessionsPerDay = op.maxSessionsPerDay;
-        parts.push(`1日上限=${op.maxSessionsPerDay}コマ`);
+        partsJa.push(`1日上限=${op.maxSessionsPerDay}コマ`);
+        partsEn.push(`Daily Max=${op.maxSessionsPerDay}`);
+        partsZh.push(`单日上限=${op.maxSessionsPerDay}节`);
       }
-      if (parts.length > 0) {
-        appliedLogs.push(`${prof.name}(${prof.id}) の担当条件を更新 (${parts.join(" / ")})`);
+      if (partsJa.length > 0) {
+        const profI18n = getProfessorI18n(prof, lang);
+        appliedLogs.push(
+          pickTimetableLang(lang, {
+            ja: `${prof.name}(${prof.id}) の担当条件を更新 (${partsJa.join(" / ")})`,
+            en: `Updated preferences for ${profI18n.name} (${prof.id}) (${partsEn.join(" / ")})`,
+            zh: `已更新 ${profI18n.name} (${prof.id}) 的授课偏好 (${partsZh.join(" / ")})`,
+          })
+        );
       }
       continue;
     }
@@ -968,7 +1066,7 @@ export function applyTimetableChatOperationsToState(
         description: desc,
       };
       nextState.customRules.push(rule);
-      appliedLogs.push(desc);
+      appliedLogs.push(formatCustomRuleI18n(rule, nextState, lang));
       continue;
     }
 
@@ -1006,7 +1104,7 @@ export function applyTimetableChatOperationsToState(
         description: desc,
       };
       nextState.customRules.push(rule);
-      appliedLogs.push(desc);
+      appliedLogs.push(formatCustomRuleI18n(rule, nextState, lang));
       continue;
     }
 
@@ -1028,7 +1126,7 @@ export function applyTimetableChatOperationsToState(
         description: desc,
       };
       nextState.customRules.push(rule);
-      appliedLogs.push(desc);
+      appliedLogs.push(formatCustomRuleI18n(rule, nextState, lang));
       continue;
     }
 
@@ -1042,19 +1140,67 @@ export function applyTimetableChatOperationsToState(
       } else {
         continue;
       }
-      const labels: Record<string, string> = {
-        maxProfessorConsecutivePeriods: "教員の最大連続講義コマ数",
-        maxProfessorSessionsPerDay: "教員の1日最大担当コマ数",
-        maxCohortCompulsoryPerDay: "学生(各学年)の1日最大必修・選択必修コマ数",
-        enforceRoomCapacity: "教室定員制約の厳守",
-        enforceRoomEquipment: "教室設備(PC演習室等)制約の厳守",
-        enforceCohortNoOverlap: "学年別カリキュラム重複禁止",
-        enforceProfessorAvailability: "教員都合NG枠の厳守",
-        forbidSameCourseSameDay: "週2コマ科目の同日開講防止",
-        enforceMaxConsecutivePeriods: "教員連続講義上限の適用",
-        preserveCurrentTimetable: "微調整モード(既存時間割の維持)",
+      const labels: Record<string, { ja: string; en: string; zh: string }> = {
+        maxProfessorConsecutivePeriods: {
+          ja: "教員の最大連続講義コマ数",
+          en: "Max consecutive periods for faculty",
+          zh: "教师最大连续授课节数",
+        },
+        maxProfessorSessionsPerDay: {
+          ja: "教員の1日最大担当コマ数",
+          en: "Max daily sessions for faculty",
+          zh: "教师单日最大授课节数",
+        },
+        maxCohortCompulsoryPerDay: {
+          ja: "学生(各学年)の1日最大必修・選択必修コマ数",
+          en: "Max daily compulsory/core sessions per cohort",
+          zh: "各年级学生单日最大必修/限选节数",
+        },
+        enforceRoomCapacity: {
+          ja: "教室定員制約の厳守",
+          en: "Enforce room capacity limits",
+          zh: "严格遵守教室容量限制",
+        },
+        enforceRoomEquipment: {
+          ja: "教室設備(PC演習室等)制約の厳守",
+          en: "Enforce room equipment (PC lab) requirements",
+          zh: "严格遵守教室设备(PC机房等)要求",
+        },
+        enforceCohortNoOverlap: {
+          ja: "学年別カリキュラム重複禁止",
+          en: "Enforce cohort curriculum no-overlap",
+          zh: "禁止同年级必修课程时间重叠",
+        },
+        enforceProfessorAvailability: {
+          ja: "教員都合NG枠の厳守",
+          en: "Enforce faculty unavailable (NG) slots",
+          zh: "严格遵守教师不可出勤(NG)时段",
+        },
+        forbidSameCourseSameDay: {
+          ja: "週2コマ科目の同日開講防止",
+          en: "Prevent multi-session courses on the same day",
+          zh: "防止周2次课排在同一天",
+        },
+        enforceMaxConsecutivePeriods: {
+          ja: "教員連続講義上限の適用",
+          en: "Enforce faculty consecutive period limit",
+          zh: "启用教师连续授课上限",
+        },
+        preserveCurrentTimetable: {
+          ja: "微調整モード(既存時間割の維持)",
+          en: "Minimal perturbation mode (preserve current timetable)",
+          zh: "微调模式(尽量保持现有课表)",
+        },
       };
-      appliedLogs.push(`${labels[pName] ?? pName} を ${String(pVal)} に変更しました`);
+      const labelObj = labels[pName];
+      const labelText = labelObj ? pickTimetableLang(lang, labelObj) : pName;
+      appliedLogs.push(
+        pickTimetableLang(lang, {
+          ja: `${labelText} を ${String(pVal)} に変更しました`,
+          en: `Set ${labelText} to ${String(pVal)}`,
+          zh: `已将「${labelText}」设为 ${String(pVal)}`,
+        })
+      );
       continue;
     }
   }
