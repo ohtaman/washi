@@ -1578,3 +1578,84 @@ export function clearNurseContractFromState(
   };
 }
 
+/**
+ * Reconciles cell-level `pin_shift`, `forbid_shift`, and hard `preferences` when pinning `shift`
+ * for `nurseId` on `daySet`.
+ */
+export function reconcileCellRulesForPin(
+  state: NurseSchedulingState,
+  nurseId: string,
+  daySet: ReadonlySet<number>,
+  shift: ShiftCode
+): Pick<NurseSchedulingState, "customRules" | "preferences"> {
+  const pinnedResolved = new Set(resolveShiftSelector(shift, state));
+  const customRules: CustomConstraintRule[] = [];
+  for (const r of state.customRules) {
+    if (r.nurseId === nurseId && r.day !== undefined && daySet.has(r.day)) {
+      if (r.kind === "pin_shift") {
+        continue;
+      }
+      if (r.kind === "forbid_shift" && r.forbidShifts) {
+        const remaining = r.forbidShifts.filter(
+          (fs) => !resolveShiftSelector(fs, state).some((c) => pinnedResolved.has(c))
+        );
+        if (remaining.length === 0) continue;
+        customRules.push({ ...r, forbidShifts: remaining });
+        continue;
+      }
+    }
+    customRules.push(r);
+  }
+  const preferences = state.preferences.filter(
+    (p) =>
+      !(
+        p.nurseId === nurseId &&
+        daySet.has(p.day) &&
+        p.isHard &&
+        !resolveShiftSelector(p.shift, state).some((c) => pinnedResolved.has(c))
+      )
+  );
+  return { customRules, preferences };
+}
+
+/**
+ * Reconciles cell-level `forbid_shift`, `pin_shift`, and hard `preferences` when forbidding
+ * `forbidShifts` for `nurseId` on `daySet`.
+ */
+export function reconcileCellRulesForForbid(
+  state: NurseSchedulingState,
+  nurseId: string,
+  daySet: ReadonlySet<number>,
+  forbidShifts: readonly ShiftCode[]
+): Pick<NurseSchedulingState, "customRules" | "preferences"> {
+  const forbiddenResolved = new Set(
+    forbidShifts.flatMap((fs) => resolveShiftSelector(fs, state))
+  );
+  const customRules = state.customRules.filter((r) => {
+    if (r.nurseId !== nurseId || r.day === undefined || !daySet.has(r.day)) {
+      return true;
+    }
+    if (r.kind === "forbid_shift") {
+      return false;
+    }
+    if (
+      r.kind === "pin_shift" &&
+      r.shift &&
+      resolveShiftSelector(r.shift, state).every((c) => forbiddenResolved.has(c))
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const preferences = state.preferences.filter(
+    (p) =>
+      !(
+        p.nurseId === nurseId &&
+        daySet.has(p.day) &&
+        p.isHard &&
+        resolveShiftSelector(p.shift, state).every((c) => forbiddenResolved.has(c))
+      )
+  );
+  return { customRules, preferences };
+}
+

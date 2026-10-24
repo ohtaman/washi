@@ -16,6 +16,8 @@ import {
   getShiftMeta,
   getShiftTransitionMatrix,
   getSkillMeta,
+  reconcileCellRulesForForbid,
+  reconcileCellRulesForPin,
   removeCustomShiftFromState,
   resolveCalendarDaysByPattern,
   resolveDaysBySelector,
@@ -1292,21 +1294,24 @@ function resolveDaysFromToolArgs(a: Record<string, any>, numDays: number): numbe
 function normalizeActiveShifts(
   raw: unknown,
   state?: NurseSchedulingState
-): ShiftCode[] | undefined {
+): ShiftCode[] | null | undefined {
   if (!Array.isArray(raw)) return undefined;
-  const customDefs = state?.customShiftDefs ?? [];
-  const valid = raw
-    .map((s) => String(s || "").trim())
-    .filter((s) => s.length > 0)
-    .map((s) => {
-      if (s === "D" || s === "E" || s === "N") return s;
-      const custom = customDefs.find(
-        (d) => d.code === s || d.label === s || d.shortLabel === s
-      );
-      if (custom) return custom.code;
-      return s;
-    });
-  return valid.length > 0 ? Array.from(new Set(valid)) : undefined;
+  const items = raw
+    .map((s) => String(s ?? "").trim())
+    .filter((s) => s.length > 0);
+  if (items.length === 0) return undefined;
+
+  const resolved: ShiftCode[] = [];
+  for (const item of items) {
+    if (/^night_both$|夜勤両方|準夜・深夜/i.test(item)) {
+      resolved.push("E", "N");
+      continue;
+    }
+    const code = resolveShiftCodeOrAliasFromInput(item, state);
+    if (!code) return null;
+    resolved.push(code);
+  }
+  return resolved.length > 0 ? Array.from(new Set(resolved)) : undefined;
 }
 
 function resolveTargetShiftsFromArg(
@@ -1318,6 +1323,7 @@ function resolveTargetShiftsFromArg(
   shifts: ShiftCode[];
 } | null {
   const fromArray = normalizeActiveShifts(rawShifts, state);
+  if (fromArray === null) return null;
   if (fromArray && fromArray.length > 0) {
     return {
       targetShift:
@@ -1345,6 +1351,9 @@ function resolveTargetShiftsFromArg(
   if (/^D$|^日勤$|^日$/i.test(s)) {
     return { targetShift: "D", shifts: ["D"] };
   }
+  if (/^O$|^公休$|^休み$|^休$/i.test(s)) {
+    return { targetShift: "O", shifts: ["O"] };
+  }
   const customDefs = state?.customShiftDefs ?? [];
   const existing = customDefs.find(
     (d) =>
@@ -1364,12 +1373,12 @@ function resolveTargetShiftsFromArg(
   if (matchedAlias) {
     return { targetShift: matchedAlias.code, shifts: [...matchedAlias.shifts] };
   }
-  return { targetShift: s, shifts: [s as ShiftCode] };
+  return null;
 }
 
 function resolveShiftCodeOrAliasFromInput(
   rawShift: unknown,
-  state: NurseSchedulingState
+  state?: NurseSchedulingState
 ): ShiftCode | null {
   if (!rawShift) return "O";
   const s = String(rawShift)
@@ -1390,22 +1399,24 @@ function resolveShiftCodeOrAliasFromInput(
   }
   if (/^公休$|^休み$|^休$/i.test(s)) return "O";
   if (/^勤務$|^出勤$/i.test(s)) return "W";
-  if (/^日勤$/i.test(s)) return "D";
+  if (/^日勤$|^日$/i.test(s)) return "D";
   if (/^夜勤$|^準深$/i.test(s)) return "EN";
   if (/^準夜$|^準夜勤$/i.test(s)) return "E";
   if (/^深夜$|^深夜勤$/i.test(s)) return "N";
 
-  for (const cs of state.customShiftDefs ?? []) {
+  const customDefs = state?.customShiftDefs ?? [];
+  for (const cs of customDefs) {
     if (
       cs.code === s ||
       cs.label === s ||
       cs.shortLabel === s ||
+      cs.label.includes(s) ||
       s.includes(cs.label)
     ) {
       return cs.code;
     }
   }
-  for (const al of state.shiftAliases ?? createDefaultShiftAliases()) {
+  for (const al of state?.shiftAliases ?? createDefaultShiftAliases(customDefs)) {
     if (al.code === s || al.label === s || al.shortLabel === s) {
       return al.code;
     }
@@ -1500,13 +1511,14 @@ export function convertStage2ToolToOperation(
             ? a.prereqMinCount
             : undefined;
       if (!attribute || cnt === undefined) return null;
-      const restrictedShifts = normalizeActiveShifts(a.restrictedShifts, state) ?? ["E", "N"];
+      const restrictedShifts = normalizeActiveShifts(a.restrictedShifts, state);
+      if (restrictedShifts === null) return null;
       return {
         op: "add_shift_prerequisite",
         shiftName: rawShiftName,
         attribute,
         prereqMinCount: cnt,
-        restrictedShifts,
+        restrictedShifts: restrictedShifts ?? ["E", "N"],
       };
     }
     case "add_shift_day_restriction": {
@@ -1601,21 +1613,26 @@ export function convertStage2ToolToOperation(
       };
     case "none":
       return null;
-    case "add_ng_pair":
+    case "add_ng_pair": {
       if (!a.nurseA || !a.nurseB) return null;
+      const shifts = normalizeActiveShifts(a.shifts, state);
+      if (shifts === null) return null;
       return {
         op: "add_ng_pair",
         nurseNameOrId: String(a.nurseA),
         nurseBNameOrId: String(a.nurseB),
-        shifts: normalizeActiveShifts(a.shifts, state),
+        shifts,
       };
+    }
     case "add_preceptor_pair": {
       if (!a.newcomerNurse || !a.mentorNurse) return null;
+      const shifts = normalizeActiveShifts(a.shifts, state);
+      if (shifts === null) return null;
       return {
         op: "add_preceptor_pair",
         nurseNameOrId: String(a.newcomerNurse),
         nurseBNameOrId: String(a.mentorNurse),
-        shifts: normalizeActiveShifts(a.shifts, state),
+        shifts,
       };
     }
     case "add_skill_def": {
@@ -1718,6 +1735,11 @@ export function convertStage2ToolToOperation(
         return null;
       }
 
+      const rawForbiddenShifts =
+        isNightShiftOnly || isForbidLateNight || isForbidEvening || isAllowAll || isDayShiftOnly
+          ? undefined
+          : normalizeActiveShifts(a.forbiddenShifts, state);
+      if (rawForbiddenShifts === null) return null;
       const forbiddenShifts: ActiveShiftCode[] | undefined =
         isNightShiftOnly
           ? ["D"]
@@ -1727,7 +1749,7 @@ export function convertStage2ToolToOperation(
               ? ["E"]
               : isAllowAll || isDayShiftOnly
                 ? []
-                : normalizeActiveShifts(a.forbiddenShifts, state)?.filter(
+                : rawForbiddenShifts?.filter(
                     (s): s is ActiveShiftCode => s === "D" || s === "E" || s === "N"
                   );
       return {
@@ -1882,13 +1904,14 @@ export function convertStage2ToolToOperation(
       if (!a.nurseNameOrId) return null;
       const days = resolveDaysFromToolArgs(a, state.config.numDays);
       if (days.length === 0) return null;
-      const forbidShifts = normalizeActiveShifts(a.shifts, state) ?? ["E", "N"];
+      const forbidShifts = normalizeActiveShifts(a.shifts, state);
+      if (forbidShifts === null) return null;
       return {
         op: "forbid_shift",
         nurseNameOrId: String(a.nurseNameOrId),
         day: days[0],
         days: days.length > 1 ? days : undefined,
-        forbidShifts,
+        forbidShifts: forbidShifts ?? ["E", "N"],
       };
     }
     case "add_date_coverage":
@@ -3636,7 +3659,9 @@ export function applyChatOperationsToState(
       const nA = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
       const nB = resolveNurseFromText(op.nurseBNameOrId, nextState.nurses);
       if (nA && nB && nA.id !== nB.id) {
-        const targetShifts: ShiftCode[] = op.shifts?.length ? op.shifts : ["E", "N"];
+        const resolvedShifts = normalizeActiveShifts(op.shifts, nextState);
+        if (resolvedShifts === null) continue;
+        const targetShifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
         nextState.relations.push({
           id: `chat_preceptor_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           nurseA: nA.id,
@@ -3938,10 +3963,9 @@ export function applyChatOperationsToState(
             ? resolvedAttr.code
             : rawAttr;
       const kReq = Math.max(1, Math.round(rawK));
-      const restricted: ShiftCode[] =
-        op.restrictedShifts && op.restrictedShifts.length > 0
-          ? op.restrictedShifts
-          : ["E", "N"];
+      const resolvedRestricted = normalizeActiveShifts(op.restrictedShifts, nextState);
+      if (resolvedRestricted === null) continue;
+      const restricted: ShiftCode[] = resolvedRestricted ?? ["E", "N"];
       const targetLabel =
         attribute === "all"
           ? "スタッフ全員"
@@ -4164,11 +4188,10 @@ export function applyChatOperationsToState(
                       : `${customOrAliasMeta.label}(${customOrAliasMeta.shortLabel})`;
         const reasonLabel = op.reason || "チャット指示";
         if (isHard) {
-          // Remove any existing pin_shift rules for the same nurse on those days so re-pinning replaces cleanly
           const daySet = new Set(days);
-          nextState.customRules = nextState.customRules.filter(
-            (r) => !(r.kind === "pin_shift" && r.nurseId === nurse.id && r.day && daySet.has(r.day))
-          );
+          const reconciledPin = reconcileCellRulesForPin(nextState, nurse.id, daySet, shift);
+          nextState.customRules = reconciledPin.customRules;
+          nextState.preferences = reconciledPin.preferences;
           for (const d of days) {
             const rule: CustomConstraintRule = {
               id: `chat_pin_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
@@ -4188,10 +4211,9 @@ export function applyChatOperationsToState(
               if (!daySet.has(d)) otherDays.push(d);
             }
             const otherSet = new Set(otherDays);
-            nextState.customRules = nextState.customRules.filter(
-              (r) =>
-                !(r.kind === "pin_shift" && r.nurseId === nurse.id && r.day && otherSet.has(r.day))
-            );
+            const reconciledOther = reconcileCellRulesForPin(nextState, nurse.id, otherSet, "O");
+            nextState.customRules = reconciledOther.customRules;
+            nextState.preferences = reconciledOther.preferences;
             for (const d of otherDays) {
               nextState.customRules.push({
                 id: `chat_pin_off_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
@@ -4249,11 +4271,13 @@ export function applyChatOperationsToState(
         new Set(rawDays.filter((d) => d >= 1 && d <= nextState.config.numDays))
       ).sort((a, b) => a - b);
       if (nurse && days.length > 0) {
-        const shifts: ShiftCode[] = op.forbidShifts?.length ? op.forbidShifts : ["E", "N"];
+        const resolvedShifts = normalizeActiveShifts(op.forbidShifts, nextState);
+        if (resolvedShifts === null) continue;
+        const shifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
         const daySet = new Set(days);
-        nextState.customRules = nextState.customRules.filter(
-          (r) => !(r.kind === "forbid_shift" && r.nurseId === nurse.id && r.day && daySet.has(r.day))
-        );
+        const reconciledForbid = reconcileCellRulesForForbid(nextState, nurse.id, daySet, shifts);
+        nextState.customRules = reconciledForbid.customRules;
+        nextState.preferences = reconciledForbid.preferences;
         for (const d of days) {
           const rule: CustomConstraintRule = {
             id: `chat_forbid_${Date.now()}_${d}_${Math.random().toString(36).slice(2, 6)}`,
@@ -4303,7 +4327,9 @@ export function applyChatOperationsToState(
       const nA = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
       const nB = resolveNurseFromText(op.nurseBNameOrId, nextState.nurses);
       if (nA && nB && nA.id !== nB.id) {
-        const targetShifts: ShiftCode[] = op.shifts?.length ? op.shifts : ["E", "N"];
+        const resolvedShifts = normalizeActiveShifts(op.shifts, nextState);
+        if (resolvedShifts === null) continue;
+        const targetShifts: ShiftCode[] = resolvedShifts ?? ["E", "N"];
         const shiftDesc =
           targetShifts.length === 3
             ? "全シフト(日勤・準夜・深夜)"

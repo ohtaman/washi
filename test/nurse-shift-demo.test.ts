@@ -3448,5 +3448,86 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const workMaxViol = evalWorkMax.violations.find((v) => v.id === "work_max_N01");
     expect(workMaxViol).toBeDefined();
     expect(Boolean(workMaxViol?.isSoft)).toBe(false);
+
+    // 18. Reconcile conflicting cell rules on chat add_request and forbid_shift (4366186922)
+    const stateWithCellForbidAndHardPref = {
+      ...baseState,
+      customRules: [
+        ...baseState.customRules,
+        {
+          id: "forbid_n01_d5",
+          kind: "forbid_shift" as const,
+          enabled: true,
+          nurseId: "N01",
+          day: 5,
+          forbidShifts: ["D", "E"],
+          description: "N01 day 5 forbid D/E",
+        },
+      ],
+      preferences: [
+        ...baseState.preferences,
+        {
+          id: "hard_pref_n01_d5_o",
+          nurseId: "N01",
+          day: 5,
+          shift: "O",
+          isHard: true,
+          reason: "Hard off preference",
+        },
+      ],
+    };
+    const afterChatPinD = applyChatOperationsToState(stateWithCellForbidAndHardPref, [
+      { op: "add_request", nurseNameOrId: "N01", day: 5, shift: "D", isHard: true },
+    ]).updatedState;
+    const remForbidD5 = afterChatPinD.customRules.find((r) => r.id === "forbid_n01_d5");
+    expect(remForbidD5?.forbidShifts).toEqual(["E"]);
+    expect(afterChatPinD.preferences.some((p) => p.id === "hard_pref_n01_d5_o")).toBe(false);
+
+    const afterChatForbidD = applyChatOperationsToState(afterChatPinD, [
+      { op: "forbid_shift", nurseNameOrId: "N01", day: 5, forbidShifts: ["D"] },
+    ]).updatedState;
+    expect(
+      afterChatForbidD.customRules.some(
+        (r) => r.kind === "pin_shift" && r.nurseId === "N01" && r.day === 5 && r.shift === "D"
+      )
+    ).toBe(false);
+
+    // 19. Reject unresolved shifts in array-based tool operations (4366186925)
+    expect(
+      convertStage2ToolToOperation(
+        {
+          tool_name: "forbid_shift_day",
+          args: { nurseNameOrId: "N01", day: 5, shifts: ["UNKNOWN_SHIFT"] },
+        },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        {
+          tool_name: "add_ng_pair",
+          args: { nurseA: "N01", nurseB: "N02", shifts: ["D", "TYPO_SHIFT"] },
+        },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        {
+          tool_name: "add_preceptor_pair",
+          args: { newcomerNurse: "N20", mentorNurse: "N01", shifts: ["TYPO_SHIFT"] },
+        },
+        baseState
+      )
+    ).toBeNull();
+    expect(
+      convertStage2ToolToOperation(
+        {
+          tool_name: "set_staffing_rule",
+          args: { attribute: "leader", targetShift: "UNKNOWN_SHIFT", minCount: 1 },
+        },
+        baseState
+      )
+    ).toBeNull();
   });
 });

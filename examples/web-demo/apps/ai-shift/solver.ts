@@ -374,17 +374,13 @@ export function buildNurseWashiModel(
     for (const cs of customShiftDefs) {
       vCustom[cs.code][nurse.id] = [];
     }
-    const makeShiftVar = (name: string): Var =>
-      !onlyDays && elasticMode
-        ? m.continuous(name, { lb: 0, ub: 1 })
-        : m.binary(name);
     for (let d = 1; d <= numDays; d++) {
       if (isDayIncluded(d)) {
-        vD[nurse.id].push(makeShiftVar(`D_${nurse.id}_d${d}`));
-        vE[nurse.id].push(makeShiftVar(`E_${nurse.id}_d${d}`));
-        vN[nurse.id].push(makeShiftVar(`N_${nurse.id}_d${d}`));
+        vD[nurse.id].push(m.binary(`D_${nurse.id}_d${d}`));
+        vE[nurse.id].push(m.binary(`E_${nurse.id}_d${d}`));
+        vN[nurse.id].push(m.binary(`N_${nurse.id}_d${d}`));
         for (const cs of customShiftDefs) {
-          vCustom[cs.code][nurse.id].push(makeShiftVar(`C_${cs.code}_${nurse.id}_d${d}`));
+          vCustom[cs.code][nurse.id].push(m.binary(`C_${cs.code}_${nurse.id}_d${d}`));
         }
       } else {
         // Placeholder reference when day is omitted in subset check
@@ -3069,29 +3065,41 @@ export async function diagnoseNurseScheduleWithHiGHS(
     (options?.assumeInfeasibleFromMip || hasFullMonthCustomRules) &&
     candidateDays.size < state.config.numDays
   ) {
-    const pass1Full = buildNurseWashiModel(state, {
-      solver: "highs",
-      elasticWeightMode: "prefer_structural",
-    });
-    await pass1Full.model.solve({ timeLimit: 1.5, signal: options?.signal });
-    if ((pass1Full.model.objectiveValue ?? 0) > 1e-4) {
-      const found = new Map<string, ConstraintMeta>();
-      collectViolatedSlacks(pass1Full.elasticSlacks, found);
-
-      const pass2Full = buildNurseWashiModel(state, {
-        solver: "highs",
-        elasticWeightMode: "prefer_user",
+    let needsFullElastic = Boolean(options?.assumeInfeasibleFromMip);
+    if (!needsFullElastic) {
+      const checkFull = buildNurseWashiModel(state, { solver: "highs" });
+      const checkStatus = await checkFull.model.solve({
+        timeLimit: 2.0,
+        relGap: 1.0,
+        signal: options?.signal,
       });
-      await pass2Full.model.solve({ timeLimit: 1.5, signal: options?.signal });
-      collectViolatedSlacks(pass2Full.elasticSlacks, found);
+      needsFullElastic = !(checkStatus === "Optimal" || checkFull.model.hasPrimalSolution);
+    }
+    if (needsFullElastic) {
+      const pass1Full = buildNurseWashiModel(state, {
+        solver: "highs",
+        elasticWeightMode: "prefer_structural",
+      });
+      await pass1Full.model.solve({ timeLimit: 1.5, signal: options?.signal });
+      if ((pass1Full.model.objectiveValue ?? 0) > 1e-4) {
+        const found = new Map<string, ConstraintMeta>();
+        collectViolatedSlacks(pass1Full.elasticSlacks, found);
 
-      const conflicts = Array.from(found.values());
-      if (conflicts.length > 0) {
-        return {
-          status: "Unsat",
-          conflicts,
-          rawNames: conflicts.map((c) => c.name),
-        };
+        const pass2Full = buildNurseWashiModel(state, {
+          solver: "highs",
+          elasticWeightMode: "prefer_user",
+        });
+        await pass2Full.model.solve({ timeLimit: 1.5, signal: options?.signal });
+        collectViolatedSlacks(pass2Full.elasticSlacks, found);
+
+        const conflicts = Array.from(found.values());
+        if (conflicts.length > 0) {
+          return {
+            status: "Unsat",
+            conflicts,
+            rawNames: conflicts.map((c) => c.name),
+          };
+        }
       }
     }
   }

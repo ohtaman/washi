@@ -12,6 +12,7 @@ import {
   getShiftMeta,
   getShiftTransitionMatrix,
   getSkillMeta,
+  reconcileCellRulesForPin,
   removeCustomShiftFromState,
   resolveDaysBySelector,
   SHIFT_META,
@@ -2445,30 +2446,7 @@ function applyCellShiftChoice(
     ]);
     appState = updatedState;
   } else if (mode === "forbid") {
-    const forbiddenResolved = new Set(resolveShiftSelector(shift, appState));
-    const cleanedState: NurseSchedulingState = {
-      ...appState,
-      customRules: appState.customRules.filter(
-        (r) =>
-          !(
-            r.kind === "pin_shift" &&
-            r.nurseId === nurseId &&
-            r.day === day &&
-            r.shift &&
-            resolveShiftSelector(r.shift, appState).every((c) => forbiddenResolved.has(c))
-          )
-      ),
-      preferences: appState.preferences.filter(
-        (p) =>
-          !(
-            p.nurseId === nurseId &&
-            p.day === day &&
-            p.isHard &&
-            resolveShiftSelector(p.shift, appState).every((c) => forbiddenResolved.has(c))
-          )
-      ),
-    };
-    const { updatedState } = applyChatOperationsToState(cleanedState, [
+    const { updatedState } = applyChatOperationsToState(appState, [
       {
         op: "forbid_shift",
         nurseNameOrId: nurseId,
@@ -2503,31 +2481,7 @@ function pinNurseCellShift(nurseId: string, day: number, shift: ShiftCode, trigg
     currentEvaluation = evaluateNurseSchedule(appState, currentSchedule);
   }
 
-  const pinnedResolved = new Set(resolveShiftSelector(shift, appState));
-  const filteredRules: CustomConstraintRule[] = [];
-  for (const r of appState.customRules) {
-    if (r.kind === "pin_shift" && r.nurseId === nurseId && r.day === day) {
-      continue;
-    }
-    if (r.kind === "forbid_shift" && r.nurseId === nurseId && r.day === day && r.forbidShifts) {
-      const remaining = r.forbidShifts.filter(
-        (fs) => !resolveShiftSelector(fs, appState).some((c) => pinnedResolved.has(c))
-      );
-      if (remaining.length === 0) continue;
-      filteredRules.push({ ...r, forbidShifts: remaining });
-      continue;
-    }
-    filteredRules.push(r);
-  }
-  const filteredPrefs = appState.preferences.filter(
-    (p) =>
-      !(
-        p.nurseId === nurseId &&
-        p.day === day &&
-        p.isHard &&
-        !resolveShiftSelector(p.shift, appState).some((c) => pinnedResolved.has(c))
-      )
-  );
+  const reconciled = reconcileCellRulesForPin(appState, nurseId, new Set([day]), shift);
   const shiftMeta = getShiftMeta(shift, appState.customShiftDefs);
   const newRule: CustomConstraintRule = {
     id: `pin_${nurseId}_d${day}_${Date.now()}`,
@@ -2540,8 +2494,8 @@ function pinNurseCellShift(nurseId: string, day: number, shift: ShiftCode, trigg
   };
   appState = {
     ...appState,
-    customRules: [...filteredRules, newRule],
-    preferences: filteredPrefs,
+    customRules: [...reconciled.customRules, newRule],
+    preferences: reconciled.preferences,
   };
 
   renderAllViews();
