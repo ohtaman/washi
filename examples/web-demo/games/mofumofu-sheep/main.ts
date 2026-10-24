@@ -45,39 +45,54 @@ if (typeof window !== "undefined") {
 
 const STORAGE_KEY = "washi_mofumofu_sheep_cleared_v3";
 const TUTORIAL_STAGE_COUNT = 4;
+const CANONICAL_STAGE_ID_RE = /^stage-([1-9]\d*)$/;
 
-interface ProgressState {
+export interface ProgressState {
   clearedByStageId: Record<string, boolean>;
   highestUnlockedStage: number;
 }
 
-function loadProgress(): ProgressState {
-  const defaultMax = TUTORIAL_STAGE_COUNT;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return {
-        clearedByStageId: {},
-        highestUnlockedStage: defaultMax,
-      };
+export function countCanonicalClearedStages(
+  clearedByStageId: Record<string, boolean>
+): number {
+  let count = 0;
+  for (const [id, cleared] of Object.entries(clearedByStageId)) {
+    if (cleared === true && CANONICAL_STAGE_ID_RE.test(id)) {
+      count++;
     }
+  }
+  return count;
+}
+
+export function parseProgressState(raw: string | null): ProgressState {
+  const defaultMax = TUTORIAL_STAGE_COUNT;
+  if (!raw) {
+    return {
+      clearedByStageId: {},
+      highestUnlockedStage: defaultMax,
+    };
+  }
+  try {
     const parsed = JSON.parse(raw) as Partial<ProgressState>;
-    const clearedByStageId = parsed.clearedByStageId ?? {};
+    const rawCleared = parsed.clearedByStageId ?? {};
+    const clearedByStageId: Record<string, boolean> = {};
     let maxFromCleared = defaultMax;
-    for (const [id, cleared] of Object.entries(clearedByStageId)) {
-      if (!cleared) continue;
-      const m = id.match(/^stage-(\d+)$/);
+    for (const [id, cleared] of Object.entries(rawCleared)) {
+      if (cleared !== true) continue;
+      const m = id.match(CANONICAL_STAGE_ID_RE);
       if (m) {
+        clearedByStageId[id] = true;
         maxFromCleared = Math.max(maxFromCleared, Number(m[1]) + 1);
       }
     }
+    const savedUnlocked =
+      typeof parsed.highestUnlockedStage === "number" &&
+      Number.isFinite(parsed.highestUnlockedStage)
+        ? Math.floor(parsed.highestUnlockedStage)
+        : defaultMax;
     return {
       clearedByStageId,
-      highestUnlockedStage: Math.max(
-        defaultMax,
-        parsed.highestUnlockedStage ?? defaultMax,
-        maxFromCleared
-      ),
+      highestUnlockedStage: Math.max(defaultMax, savedUnlocked, maxFromCleared),
     };
   } catch {
     return {
@@ -87,9 +102,17 @@ function loadProgress(): ProgressState {
   }
 }
 
-function saveProgress(progress: ProgressState): void {
+function loadProgress(): ProgressState {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    return parseProgressState(localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return parseProgressState(null);
+  }
+}
+
+function saveProgress(progressState: ProgressState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progressState));
   } catch {
     // Ignore storage errors in private browsing
   }
@@ -623,22 +646,27 @@ function getAvailableBoardWidth(): number | undefined {
   return viewportBound;
 }
 
+function getMaxUnlockedStage(): number {
+  return Math.max(TUTORIAL_STAGE_COUNT, progress.highestUnlockedStage);
+}
+
 function renderStageNav(): void {
   const totalStarsTextEl = getEl<HTMLElement>("total-stars-text");
-  const clearedCount = Object.values(progress.clearedByStageId).filter(Boolean).length;
+  const clearedCount = countCanonicalClearedStages(progress.clearedByStageId);
   totalStarsTextEl.textContent = `${clearedCount} CLEAR`;
 
-  const maxStageNum = Math.max(
-    TUTORIAL_STAGE_COUNT,
-    progress.highestUnlockedStage,
-    currentStage.stageNumber
-  );
+  const maxUnlockedStage = getMaxUnlockedStage();
+  const maxStageNum = Math.max(maxUnlockedStage, currentStage.stageNumber);
 
   const prevBtn = getEl<HTMLButtonElement>("btn-stage-prev");
   prevBtn.disabled = currentStage.stageNumber <= 1;
 
+  const nextBtn = getEl<HTMLButtonElement>("btn-stage-next");
+  nextBtn.disabled = currentStage.stageNumber >= maxUnlockedStage;
+
   const selectEl = getEl<HTMLSelectElement>("stage-select");
   selectEl.innerHTML = "";
+  if (typeof document.createElement !== "function") return;
   for (let num = 1; num <= maxStageNum; num++) {
     const stageId = `stage-${num}`;
     const isCleared = Boolean(progress.clearedByStageId[stageId]);
@@ -713,12 +741,14 @@ function renderHud(): void {
   // Fence dots & remaining count
   const remaining = Math.max(0, currentStage.maxFences - currentEval.fencesUsed);
   fenceDotsEl.innerHTML = "";
-  for (let i = 0; i < currentStage.maxFences; i++) {
-    const dot = document.createElement("span");
-    dot.className = "fence-dot";
-    if (i >= remaining) dot.classList.add("used");
-    dot.textContent = "🪵";
-    fenceDotsEl.appendChild(dot);
+  if (typeof document.createElement === "function") {
+    for (let i = 0; i < currentStage.maxFences; i++) {
+      const dot = document.createElement("span");
+      dot.className = "fence-dot";
+      if (i >= remaining) dot.classList.add("used");
+      dot.textContent = "🪵";
+      fenceDotsEl.appendChild(dot);
+    }
   }
   fenceCountTextEl.textContent = pickLang(currentLang, {
     ja: `残り ${remaining} / ${currentStage.maxFences}`,
@@ -799,7 +829,9 @@ function renderHud(): void {
       zh: `牧场得分 ${currentEval.pastureScore} / 目标 ${targetScore} pt 达成`,
     });
     btnShowOptimal.hidden = true;
-    btnNextStage.hidden = false;
+    const canAdvanceNext =
+      !showingModelAnswer || currentStage.stageNumber < getMaxUnlockedStage();
+    btnNextStage.hidden = !canAdvanceNext;
     btnNextStage.textContent = pickLang(currentLang, {
       ja: `Stage ${currentStage.stageNumber + 1} へ進む ▶`,
       en: `Proceed to Stage ${currentStage.stageNumber + 1} ▶`,
@@ -856,9 +888,10 @@ function renderBoard(): void {
   const cellSize = computeCellSize(rows, cols, getAvailableBoardWidth());
   const cleared = isStageCleared();
 
+  boardGridEl.innerHTML = "";
+  if (typeof document.createElement !== "function") return;
   boardGridEl.style.setProperty("--cell-size", `${cellSize}px`);
   boardGridEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
-  boardGridEl.innerHTML = "";
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -1084,11 +1117,6 @@ async function loadStage(
   wasClearedBeforeMove = false;
   showingModelAnswer = false;
 
-  if (stage.stageNumber > progress.highestUnlockedStage) {
-    progress.highestUnlockedStage = stage.stageNumber;
-    saveProgress(progress);
-  }
-
   updateEvaluationAndRender(false);
 
   if (cachedOptimal) {
@@ -1117,6 +1145,40 @@ export async function loadStageByNumber(stageNumber: number): Promise<void> {
   await loadStage(stage, precomputedOptimal);
 }
 
+export async function stepStage(delta: -1 | 1): Promise<boolean> {
+  const maxUnlockedStage = getMaxUnlockedStage();
+  const targetNum = currentStage.stageNumber + delta;
+  if (targetNum < 1 || targetNum > maxUnlockedStage) {
+    return false;
+  }
+  await loadStageByNumber(targetNum);
+  return true;
+}
+
+export function resetSheepProgressForTest(raw: string | null = null): void {
+  const next = parseProgressState(raw);
+  progress.clearedByStageId = next.clearedByStageId;
+  progress.highestUnlockedStage = next.highestUnlockedStage;
+  saveProgress(progress);
+}
+
+export function getSheepProgressState(): ProgressState {
+  return {
+    clearedByStageId: { ...progress.clearedByStageId },
+    highestUnlockedStage: progress.highestUnlockedStage,
+  };
+}
+
+export function getCurrentStageNumber(): number {
+  return currentStage.stageNumber;
+}
+
+export function applyFencesForTest(fences: FenceGrid): void {
+  currentFences = cloneFences(fences);
+  showingModelAnswer = false;
+  updateEvaluationAndRender(false);
+}
+
 // Event Listeners
 if (typeof document !== "undefined" && document.getElementById("board-grid")) {
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
@@ -1132,19 +1194,21 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
   });
 
   getEl<HTMLButtonElement>("btn-stage-prev").addEventListener("click", () => {
-    if (currentStage.stageNumber > 1) {
-      void loadStageByNumber(currentStage.stageNumber - 1);
-    }
+    void stepStage(-1);
   });
 
   getEl<HTMLButtonElement>("btn-stage-next").addEventListener("click", () => {
-    void loadStageByNumber(currentStage.stageNumber + 1);
+    void stepStage(1);
   });
 
   const stageSelect = getEl<HTMLSelectElement>("stage-select");
   stageSelect.addEventListener("change", () => {
     const selected = Number(stageSelect.value);
-    if (Number.isFinite(selected) && selected >= 1) {
+    if (
+      Number.isFinite(selected) &&
+      selected >= 1 &&
+      selected <= getMaxUnlockedStage()
+    ) {
       void loadStageByNumber(selected);
     }
   });
@@ -1182,7 +1246,7 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
   });
   getEl<HTMLButtonElement>("btn-show-optimal").addEventListener("click", handleShowOptimal);
   getEl<HTMLButtonElement>("btn-next-stage").addEventListener("click", () => {
-    void loadStageByNumber(currentStage.stageNumber + 1);
+    void stepStage(1);
   });
 
   window.addEventListener("keydown", (ev: KeyboardEvent) => {

@@ -32,7 +32,17 @@ import {
   switchCastleLanguage,
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
 import { CAMPAIGN_STAGES as CASTLE_STAGES } from "../examples/web-demo/games/demon-castle-shift/stages.js";
-import { applyStaticTranslations as applySheepStaticTranslations } from "../examples/web-demo/games/mofumofu-sheep/main.js";
+import {
+  applyFencesForTest,
+  applyStaticTranslations as applySheepStaticTranslations,
+  countCanonicalClearedStages,
+  getCurrentStageNumber,
+  getSheepProgressState,
+  loadStageByNumber,
+  parseProgressState,
+  resetSheepProgressForTest,
+  stepStage,
+} from "../examples/web-demo/games/mofumofu-sheep/main.js";
 
 describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
   it("has 12 progressive campaign stages (4 tiny tutorials + 8 optimization puzzles)", () => {
@@ -612,5 +622,116 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     const mobile10CellSize = computeCellSize(10, 10, 299, 7);
     expect(mobile10CellSize).toBe(23);
     expect(10 * mobile10CellSize + 9 * 7).toBeLessThanOrEqual(299);
+  });
+
+  it("excludes legacy random-* keys from clear counts and stops next-stage navigation at the unlock boundary", async () => {
+    const legacySavedJson = JSON.stringify({
+      clearedByStageId: {
+        "stage-1": true,
+        "stage-2": true,
+        "random-1001": true,
+        "random-fallback-1": true,
+      },
+    });
+    const parsed = parseProgressState(legacySavedJson);
+    expect(parsed.clearedByStageId).toEqual({
+      "stage-1": true,
+      "stage-2": true,
+    });
+    expect(countCanonicalClearedStages(parsed.clearedByStageId)).toBe(2);
+    // Tutorial stages 1..4 are unlocked by default
+    expect(parsed.highestUnlockedStage).toBe(4);
+
+    // Setup lightweight DOM from mofumofu-sheep/index.html to verify navigation and clear badge
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const byId = new Map<
+      string,
+      {
+        id: string;
+        textContent: string;
+        innerHTML: string;
+        title: string;
+        hidden: boolean;
+        disabled: boolean;
+        className: string;
+        classList: {
+          toggle: () => void;
+          add: () => void;
+          remove: () => void;
+        };
+        setAttribute: () => void;
+        getAttribute: () => string | null;
+      }
+    >();
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+    for (const match of sheepHtml.matchAll(tagRegex)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      const id = idMatch[1];
+      byId.set(id, {
+        id,
+        textContent: "",
+        innerHTML: "",
+        title: "",
+        hidden: false,
+        disabled: false,
+        className: "",
+        classList: {
+          toggle: () => {},
+          add: () => {},
+          remove: () => {},
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+      });
+    }
+
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    try {
+      (globalThis as { document?: unknown }).document = {
+        documentElement: { lang: "ja" },
+        title: "",
+        getElementById: (id: string) => byId.get(id) ?? null,
+        querySelectorAll: () => [],
+      };
+
+      resetSheepProgressForTest(legacySavedJson);
+      await loadStageByNumber(1);
+      expect(byId.get("total-stars-text")?.textContent).toBe("2 CLEAR");
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(false);
+
+      // Step to Stage 4 (the initial tutorial unlock boundary)
+      await loadStageByNumber(4);
+      expect(getCurrentStageNumber()).toBe(4);
+      expect(getSheepProgressState().highestUnlockedStage).toBe(4);
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(true);
+
+      // Attempting to step past the unlock boundary must be rejected and must not unlock Stage 5
+      const steppedLocked = await stepStage(1);
+      expect(steppedLocked).toBe(false);
+      expect(getCurrentStageNumber()).toBe(4);
+      expect(getSheepProgressState().highestUnlockedStage).toBe(4);
+
+      // Legitimately clearing Stage 4 unlocks Stage 5 and enables the next arrow
+      const stage4 = CAMPAIGN_STAGES[3];
+      const opt4 = await solveOptimalPasture(stage4);
+      applyFencesForTest(opt4.optimalFences);
+      expect(getSheepProgressState().highestUnlockedStage).toBe(5);
+      expect(byId.get("total-stars-text")?.textContent).toBe("3 CLEAR");
+      expect(byId.get("btn-stage-next")?.disabled).toBe(false);
+
+      const steppedUnlocked = await stepStage(1);
+      expect(steppedUnlocked).toBe(true);
+      expect(getCurrentStageNumber()).toBe(5);
+    } finally {
+      if (prevDocument === undefined) {
+        delete (globalThis as { document?: unknown }).document;
+      } else {
+        (globalThis as { document?: unknown }).document = prevDocument;
+      }
+    }
   });
 });
