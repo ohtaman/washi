@@ -167,64 +167,27 @@ body {
   font-size: 1.08rem;
 }
 
-/* Stage Selector Strip */
-.stage-strip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 4px 2px;
-  scrollbar-width: thin;
-}
-
-.stage-pill {
-  flex: 1 0 auto;
-  min-width: 54px;
-  background: rgba(255, 250, 240, 0.9);
-  border: 2px solid #dccab0;
-  border-radius: 12px;
-  padding: 5px 8px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
+.help-pill-btn {
+  appearance: none;
+  border: 2px solid #99d17b;
+  background: linear-gradient(180deg, #f4fbe8, #e3f5c8);
+  color: #2f5e16;
   font-family: inherit;
-  color: var(--text-main);
-  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
-}
-
-.stage-pill:hover {
-  transform: translateY(-1px);
-  border-color: var(--wood-mid);
-  background: #fffdf8;
-}
-
-.stage-pill.active {
-  background: linear-gradient(180deg, #65b741, #4d9630);
-  border-color: #36711f;
-  color: #fff;
-  box-shadow: 0 3px 10px rgba(77, 150, 48, 0.32);
-}
-
-.stage-pill.cleared:not(.active) {
-  background: #f4fbe8;
-  border-color: #99d17b;
-}
-
-.stage-pill-num {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 5px rgba(77, 150, 48, 0.14);
+  transition: transform 0.12s ease, background 0.12s ease;
 }
 
-.stage-pill-stars {
-  font-size: 0.68rem;
-  letter-spacing: 1px;
-  color: #d97706;
-}
-
-.stage-pill.active .stage-pill-stars {
-  color: #fde047;
+.help-pill-btn:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(180deg, #f9fdef, #eaf8d3);
 }
 
 /* Main Puzzle Card */
@@ -240,31 +203,109 @@ body {
   gap: 12px;
 }
 
-/* Stage Header */
+/* Stage Header & Compact Level Stepper */
 .stage-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 8px;
-  border-bottom: 2px dashed #eadcc5;
-  padding-bottom: 8px;
+  gap: 10px;
+}
+
+.stage-nav-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f5ece0;
+  border: 2px solid #dfd0b8;
+  border-radius: 999px;
+  padding: 3px 5px;
+}
+
+.stage-step-btn {
+  appearance: none;
+  border: 1px solid #d5c2a5;
+  background: #fffdf8;
+  color: var(--wood-dark);
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, transform 0.12s ease, opacity 0.12s ease;
+}
+
+.stage-step-btn:hover:not(:disabled) {
+  background: #f0e2ca;
+  transform: scale(1.05);
+}
+
+.stage-step-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.stage-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stage-badge {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.stage-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: var(--wood-dark);
+  color: #fff8eb;
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 800;
+  padding: 5px 26px 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  background-image: linear-gradient(45deg, transparent 50%, #fde68a 50%),
+    linear-gradient(135deg, #fde68a 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 52%,
+    calc(100% - 9px) 52%;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+
+.stage-select:hover {
+  background-color: #704c35;
 }
 
 .stage-title-group {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
-.stage-badge {
-  background: var(--wood-dark);
-  color: #fff8eb;
-  font-size: 0.72rem;
+.tutorial-chip {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border: 1.5px solid #4ade80;
+  color: #166534;
+  font-size: 0.75rem;
   font-weight: 800;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
-  letter-spacing: 0.04em;
 }
 
 .stage-title-group h2 {
@@ -273,10 +314,35 @@ body {
   color: var(--wood-dark);
 }
 
+/* Prominent Guide / Mission Callout Banner */
+.guide-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 16px;
+  padding: 10px 14px;
+  box-shadow: 0 3px 10px rgba(245, 158, 11, 0.12);
+}
+
+.guide-banner.is-tutorial {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-color: #22c55e;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
+}
+
+.guide-banner-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
 .stage-oneliner {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 0.94rem;
+  font-weight: 800;
+  color: #3b2818;
+  line-height: 1.45;
 }
 
 /* HUD Bar */
@@ -431,9 +497,9 @@ body {
   background: linear-gradient(180deg, #d3f3a7 0%, #b8e482 100%);
 }
 
-.board-cell.tile-mushroom {
-  background: linear-gradient(180deg, #ded1e8 0%, #cbb8dc 100%);
-  border-color: rgba(126, 87, 162, 0.45);
+.board-cell.tile-pit {
+  background: linear-gradient(180deg, #dbc7b0 0%, #c1a383 100%);
+  border-color: rgba(120, 83, 50, 0.48);
 }
 
 .board-cell.tile-bridge {
@@ -531,7 +597,7 @@ body {
 }
 
 .cell-score-tag.score-minus {
-  background: rgba(126, 34, 206, 0.88);
+  background: rgba(124, 45, 18, 0.88);
   color: #fff;
 }
 
@@ -550,6 +616,23 @@ body {
   outline: 3px solid #f59e0b;
   outline-offset: 2px;
   animation: spotlightPulse 1s ease-in-out infinite;
+}
+
+.cell-invite-tag {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ea580c;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.45);
+  pointer-events: none;
+  z-index: 4;
 }
 
 .board-cell.hint-remove {
@@ -744,9 +827,146 @@ body {
 }
 
 .legend-chip.chip-minus {
-  background: #faf5ff;
-  border-color: #e9d5ff;
-  color: #6b21a8;
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #7c2d12;
+}
+
+/* How-to-Play & Tutorial Picker Modal Dialog */
+.rules-dialog {
+  margin: auto;
+  width: min(92vw, 540px);
+  border: 3px solid var(--wood-mid);
+  border-radius: 24px;
+  background: #fffdf7;
+  color: var(--text-main);
+  padding: 0;
+  box-shadow: 0 20px 48px rgba(45, 28, 15, 0.35);
+}
+
+.rules-dialog::backdrop {
+  background-color: rgba(32, 22, 14, 0.52);
+  backdrop-filter: blur(3px);
+}
+
+.rules-dialog-inner {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rules-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px dashed #eadcc5;
+  padding-bottom: 10px;
+}
+
+.rules-dialog-header h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--wood-dark);
+}
+
+.rules-close-btn {
+  appearance: none;
+  border: 1px solid #dfd0b8;
+  background: #f5ece0;
+  color: var(--wood-dark);
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.rules-close-btn:hover {
+  background: #eadbc0;
+}
+
+.rules-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rule-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f9f3e6;
+  border: 1.5px solid #e6d6bc;
+  border-radius: 14px;
+  padding: 10px 14px;
+}
+
+.rule-card-icon {
+  font-size: 1.55rem;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+
+.rule-card-body strong {
+  display: block;
+  font-size: 0.92rem;
+  color: var(--wood-dark);
+  margin-bottom: 2px;
+}
+
+.rule-card-body p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.rules-tutorials-box {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rules-tutorials-heading {
+  font-size: 0.85rem;
+  color: #166534;
+}
+
+.rules-tutorial-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.tutorial-jump-btn {
+  appearance: none;
+  border: 1.5px solid #86efac;
+  background: #fff;
+  color: #14532d;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+
+.tutorial-jump-btn:hover {
+  background: #dcfce7;
+  transform: translateY(-1px);
+}
+
+.rules-dialog-footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
 }
 
 /* Keyframe Animations */

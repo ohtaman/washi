@@ -1,7 +1,7 @@
 export type TileType =
   | "grass" // 🌱 草地 (+1)
   | "strawberry" // 🍓 野いちご (+5)
-  | "mushroom" // 🍄 どくキノコ (-5)
+  | "pit" // 🕳️ 穴ぼこ (-5)
   | "bridge" // 🌉 石橋 (+1, 柵を置けない)
   | "water" // 💧 池・川 (通行不可・天然の壁)
   | "rock" // 🪨 岩 (通行不可・天然の壁)
@@ -39,10 +39,10 @@ export const TILE_META: Record<TileType, TileMeta> = {
     passable: true,
     canPlaceFence: true,
   },
-  mushroom: {
-    type: "mushroom",
-    label: "どくキノコ",
-    emoji: "🍄",
+  pit: {
+    type: "pit",
+    label: "穴ぼこ",
+    emoji: "🕳️",
     score: -5,
     passable: true,
     canPlaceFence: true,
@@ -107,7 +107,7 @@ export interface PastureEvaluation {
     sheepCount: number;
     grassCount: number;
     strawberryCount: number;
-    mushroomCount: number;
+    pitCount: number;
   };
   /** ヒツジから到達可能なマス一覧 */
   sheepReachable: boolean[][];

@@ -13,8 +13,9 @@ import {
 } from "./solver.js";
 import {
   CAMPAIGN_STAGES,
-  generateVerifiedPastureStage,
   getLocalizedStageText,
+  getStageByNumber,
+  getStageTitleByNumber,
 } from "./stages.js";
 import {
   TILE_META,
@@ -43,21 +44,46 @@ if (typeof window !== "undefined") {
 }
 
 const STORAGE_KEY = "washi_mofumofu_sheep_cleared_v3";
+const TUTORIAL_STAGE_COUNT = 4;
 
 interface ProgressState {
   clearedByStageId: Record<string, boolean>;
+  highestUnlockedStage: number;
 }
 
 function loadProgress(): ProgressState {
+  const defaultMax = TUTORIAL_STAGE_COUNT;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { clearedByStageId: {} };
+    if (!raw) {
+      return {
+        clearedByStageId: {},
+        highestUnlockedStage: defaultMax,
+      };
+    }
     const parsed = JSON.parse(raw) as Partial<ProgressState>;
+    const clearedByStageId = parsed.clearedByStageId ?? {};
+    let maxFromCleared = defaultMax;
+    for (const [id, cleared] of Object.entries(clearedByStageId)) {
+      if (!cleared) continue;
+      const m = id.match(/^stage-(\d+)$/);
+      if (m) {
+        maxFromCleared = Math.max(maxFromCleared, Number(m[1]) + 1);
+      }
+    }
     return {
-      clearedByStageId: parsed.clearedByStageId ?? {},
+      clearedByStageId,
+      highestUnlockedStage: Math.max(
+        defaultMax,
+        parsed.highestUnlockedStage ?? defaultMax,
+        maxFromCleared
+      ),
     };
   } catch {
-    return { clearedByStageId: {} };
+    return {
+      clearedByStageId: {},
+      highestUnlockedStage: defaultMax,
+    };
   }
 }
 
@@ -140,7 +166,6 @@ function playClearChime(): void {
 // Application State
 const progress = loadProgress();
 let currentLang: GameLang = getGameLang();
-let currentStageIndex = 0; // 0..11 = campaign, 12 = EX random
 let currentStage: StagePuzzle = CAMPAIGN_STAGES[0];
 let currentFences: FenceGrid = createEmptyFences(
   currentStage.grid.length,
@@ -226,12 +251,71 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
       zh: "牧场栅栏谜题",
     })
   );
+  setText(
+    "btn-open-rules-label",
+    pickLang(currentLang, {
+      ja: "遊び方",
+      en: "How to Play",
+      zh: "玩法说明",
+    })
+  );
+  setTitle(
+    "btn-open-rules",
+    pickLang(currentLang, {
+      ja: "遊び方とチュートリアルを見る",
+      en: "View rules and tutorials",
+      zh: "查看玩法说明与新手教程",
+    })
+  );
   setTitle(
     "total-stars-badge",
     pickLang(currentLang, {
       ja: "クリア済みステージ数",
       en: "Cleared stages",
       zh: "已通关关卡数",
+    })
+  );
+
+  setAttr(
+    "stage-strip",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "ステージ選択",
+      en: "Stage Selection",
+      zh: "关卡选择",
+    })
+  );
+  const prevLabel = pickLang(currentLang, {
+    ja: "前のステージへ",
+    en: "Previous Stage",
+    zh: "上一关",
+  });
+  setTitle("btn-stage-prev", prevLabel);
+  setAttr("btn-stage-prev", "aria-label", prevLabel);
+
+  const nextLabel = pickLang(currentLang, {
+    ja: "次のステージへ",
+    en: "Next Stage",
+    zh: "下一关",
+  });
+  setTitle("btn-stage-next", nextLabel);
+  setAttr("btn-stage-next", "aria-label", nextLabel);
+
+  setAttr(
+    "stage-select",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "ステージ番号を選択",
+      en: "Select stage number",
+      zh: "选择关卡编号",
+    })
+  );
+  setTitle(
+    "stage-select",
+    pickLang(currentLang, {
+      ja: "到達済みステージへ移動",
+      en: "Jump to reached stage",
+      zh: "跳转到已到达关卡",
     })
   );
 
@@ -266,15 +350,6 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
       ja: "次のステージへ ▶",
       en: "Next Stage ▶",
       zh: "下一关 ▶",
-    })
-  );
-  setAttr(
-    "stage-strip",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "ステージ選択",
-      en: "Stage Selection",
-      zh: "关卡选择",
     })
   );
   setAttr(
@@ -350,23 +425,6 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
     })
   );
 
-  setText(
-    "btn-new-random-label",
-    pickLang(currentLang, {
-      ja: "ちがう牧場へ",
-      en: "Another Pasture",
-      zh: "换一个牧场",
-    })
-  );
-  setTitle(
-    "btn-new-random",
-    pickLang(currentLang, {
-      ja: "ちがう牧場へ移動する",
-      en: "Move to another pasture",
-      zh: "前往另一个牧场",
-    })
-  );
-
   setTitle(
     "legend-sheep",
     pickLang(currentLang, {
@@ -392,11 +450,11 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
     })
   );
   setTitle(
-    "legend-mushroom",
+    "legend-pit",
     pickLang(currentLang, {
-      ja: "どくキノコ（-5点・柵で潰せる）",
-      en: "Poison Mushroom (-5 pts, can be covered with a fence)",
-      zh: "毒蘑菇（-5分・可用栅栏盖住）",
+      ja: "穴ぼこ（-5点・丸太の柵で塞げる）",
+      en: "Pitfall (-5 pts, can be plugged with a fence)",
+      zh: "坑洞（-5分・可用木桩栅栏填平）",
     })
   );
   setHtml(
@@ -432,9 +490,113 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
     })
   );
 
+  // Rules Modal Translations
+  setText(
+    "rules-dialog-title",
+    pickLang(currentLang, {
+      ja: "🐑 遊び方ガイド",
+      en: "🐑 How to Play",
+      zh: "🐑 玩法说明",
+    })
+  );
+  setAttr(
+    "btn-close-rules",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "閉じる",
+      en: "Close",
+      zh: "关闭",
+    })
+  );
+  setText(
+    "rule-step1-title",
+    pickLang(currentLang, {
+      ja: "1. マスをタップして柵🪵を置く",
+      en: "1. Tap Cells to Place Fences 🪵",
+      zh: "1. 点击格子放置木栅栏🪵",
+    })
+  );
+  setText(
+    "rule-step1-desc",
+    pickLang(currentLang, {
+      ja: "オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵🪵を置いて遮断します。もう一度タップすると柵を外せます。",
+      en: "Block all paths from wolves 🐺 to sheep 🐑 by placing wooden fences 🪵. Tap a fenced cell again to remove the fence.",
+      zh: "在通道上放置木栅栏🪵，阻断野狼🐺通往绵羊🐑的所有路线。再次点击即可移除栅栏。",
+    })
+  );
+  setText(
+    "rule-step2-title",
+    pickLang(currentLang, {
+      ja: "2. 広いまきばを作って目標スコア達成",
+      en: "2. Enclose a Rich Pasture to Reach the Goal",
+      zh: "2. 围出广阔牧场以达成目标得分",
+    })
+  );
+  setText(
+    "rule-step2-desc",
+    pickLang(currentLang, {
+      ja: "オオカミを防いだ状態で、ヒツジ🐑が歩いて行ける範囲（安全なまきば）の合計得点が「クリア目標」に届けばステージクリアです。",
+      en: "Once the sheep are safe, the total score of all tiles reachable by 🐑 (🌱+1, 🍓+5) must meet or exceed the Target Score to clear the stage.",
+      zh: "在确保安全的前提下，让绵羊🐑可步行的安全牧场总分（🌱+1、🍓+5）达到目标得分即可过关。",
+    })
+  );
+  setText(
+    "rule-step3-title",
+    pickLang(currentLang, {
+      ja: "3. 石橋🌉と穴ぼこ🕳️の仕掛け",
+      en: "3. Stone Bridges 🌉 and Pitfalls 🕳️",
+      zh: "3. 石桥🌉与坑洞🕳️机关",
+    })
+  );
+  setText(
+    "rule-step3-desc",
+    pickLang(currentLang, {
+      ja: "🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に丸太の柵🪵を打ち込めば穴が埋まって壁になります。",
+      en: "🌉 Stone bridges are passable but cannot hold fences. 🕳️ Pitfalls (-5 pts) lower your score if enclosed, but driving a fence 🪵 directly into a pit plugs it and blocks wolves.",
+      zh: "🌉石桥可通行但不能放栅栏。🕳️坑洞（-5分）留在牧场内会扣分，但直接在正上方打入木栅栏🪵即可填平坑洞并充当围墙。",
+    })
+  );
+  setText(
+    "rules-tutorials-heading",
+    pickLang(currentLang, {
+      ja: "🔰 基本ルールを学ぶチュートリアル（Stage 1〜4）",
+      en: "🔰 Interactive Tutorials (Stages 1–4)",
+      zh: "🔰 学习基础规则的新手教程（Stage 1〜4）",
+    })
+  );
+  setText(
+    "btn-rules-start",
+    pickLang(currentLang, {
+      ja: "わかった・パズルに戻る",
+      en: "Got It · Back to Puzzle",
+      zh: "明白了・返回解谜",
+    })
+  );
+
+  renderTutorialButtonsInDialog();
+
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.langBtn === currentLang);
   });
+}
+
+function renderTutorialButtonsInDialog(): void {
+  const gridEl = document.getElementById("rules-tutorial-grid");
+  if (!gridEl || typeof document.createElement !== "function") return;
+  gridEl.innerHTML = "";
+  for (let num = 1; num <= TUTORIAL_STAGE_COUNT; num++) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tutorial-jump-btn";
+    const title = getStageTitleByNumber(num, currentLang);
+    btn.textContent = `Stage ${num}: ${title}`;
+    btn.addEventListener("click", () => {
+      const dialog = getEl<HTMLDialogElement>("rules-dialog");
+      if (dialog.open) dialog.close();
+      void loadStageByNumber(num);
+    });
+    gridEl.appendChild(btn);
+  }
 }
 
 function getTargetScore(): number {
@@ -461,70 +623,43 @@ function getAvailableBoardWidth(): number | undefined {
   return viewportBound;
 }
 
-function renderStageStrip(): void {
-  const stageStripEl = getEl<HTMLElement>("stage-strip");
+function renderStageNav(): void {
   const totalStarsTextEl = getEl<HTMLElement>("total-stars-text");
-  stageStripEl.innerHTML = "";
+  const clearedCount = Object.values(progress.clearedByStageId).filter(Boolean).length;
+  totalStarsTextEl.textContent = `${clearedCount} CLEAR`;
 
-  let clearedCount = 0;
-  for (const st of CAMPAIGN_STAGES) {
-    if (progress.clearedByStageId[st.id]) clearedCount++;
+  const maxStageNum = Math.max(
+    TUTORIAL_STAGE_COUNT,
+    progress.highestUnlockedStage,
+    currentStage.stageNumber
+  );
+
+  const prevBtn = getEl<HTMLButtonElement>("btn-stage-prev");
+  prevBtn.disabled = currentStage.stageNumber <= 1;
+
+  const selectEl = getEl<HTMLSelectElement>("stage-select");
+  selectEl.innerHTML = "";
+  for (let num = 1; num <= maxStageNum; num++) {
+    const stageId = `stage-${num}`;
+    const isCleared = Boolean(progress.clearedByStageId[stageId]);
+    const title = getStageTitleByNumber(num, currentLang);
+    const opt = document.createElement("option");
+    opt.value = String(num);
+    const starMark = isCleared ? " ★" : "";
+    const tutPrefix =
+      num <= TUTORIAL_STAGE_COUNT
+        ? pickLang(currentLang, {
+            ja: ` [チュートリアル ${num}/${TUTORIAL_STAGE_COUNT}]`,
+            en: ` [Tutorial ${num}/${TUTORIAL_STAGE_COUNT}]`,
+            zh: ` [教程 ${num}/${TUTORIAL_STAGE_COUNT}]`,
+          })
+        : "";
+    opt.textContent = `STAGE ${num}: ${title}${tutPrefix}${starMark}`;
+    if (num === currentStage.stageNumber) {
+      opt.selected = true;
+    }
+    selectEl.appendChild(opt);
   }
-  totalStarsTextEl.textContent = `${clearedCount} / ${CAMPAIGN_STAGES.length} CLEAR`;
-
-  CAMPAIGN_STAGES.forEach((st, idx) => {
-    const isCleared = Boolean(progress.clearedByStageId[st.id]);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "stage-pill";
-    if (idx === currentStageIndex) btn.classList.add("active");
-    if (isCleared) btn.classList.add("cleared");
-
-    const numSpan = document.createElement("span");
-    numSpan.className = "stage-pill-num";
-    numSpan.textContent = `${st.stageNumber}`;
-
-    const starSpan = document.createElement("span");
-    starSpan.className = "stage-pill-stars";
-    starSpan.textContent = isCleared
-      ? "★ CLEAR"
-      : pickLang(currentLang, {
-          ja: `目標 ${st.targetScore}`,
-          en: `Goal ${st.targetScore}`,
-          zh: `目标 ${st.targetScore}`,
-        });
-
-    btn.append(numSpan, starSpan);
-    btn.addEventListener("click", () => {
-      void loadStageByIndex(idx);
-    });
-    stageStripEl.appendChild(btn);
-  });
-
-  // Extra Stage button
-  const exBtn = document.createElement("button");
-  exBtn.type = "button";
-  exBtn.className = "stage-pill";
-  if (currentStageIndex === CAMPAIGN_STAGES.length) exBtn.classList.add("active");
-  const exNum = document.createElement("span");
-  exNum.className = "stage-pill-num";
-  exNum.textContent = pickLang(currentLang, {
-    ja: "🌿 番外",
-    en: "🌿 Extra",
-    zh: "🌿 番外",
-  });
-  const exSub = document.createElement("span");
-  exSub.className = "stage-pill-stars";
-  exSub.textContent = pickLang(currentLang, {
-    ja: "おかわり",
-    en: "Bonus",
-    zh: "加餐牧场",
-  });
-  exBtn.append(exNum, exSub);
-  exBtn.addEventListener("click", () => {
-    void loadRandomStage();
-  });
-  stageStripEl.appendChild(exBtn);
 }
 
 function renderHud(): void {
@@ -546,10 +681,31 @@ function renderHud(): void {
   const btnUndo = getEl<HTMLButtonElement>("btn-undo");
   const btnRestart = getEl<HTMLButtonElement>("btn-restart");
   const btnHint = getEl<HTMLButtonElement>("btn-hint");
-  const btnNewRandom = getEl<HTMLButtonElement>("btn-new-random");
 
-  const isEx = currentStageIndex >= CAMPAIGN_STAGES.length;
-  stageBadgeEl.textContent = isEx ? "EXTRA" : `STAGE ${currentStage.stageNumber}`;
+  const isTutorial = currentStage.stageNumber <= TUTORIAL_STAGE_COUNT;
+  stageBadgeEl.textContent = `STAGE ${currentStage.stageNumber}`;
+
+  const tutorialChipEl = document.getElementById("tutorial-chip");
+  if (tutorialChipEl) {
+    tutorialChipEl.hidden = !isTutorial;
+    if (isTutorial) {
+      tutorialChipEl.textContent = pickLang(currentLang, {
+        ja: `🔰 チュートリアル ${currentStage.stageNumber}/${TUTORIAL_STAGE_COUNT}`,
+        en: `🔰 Tutorial ${currentStage.stageNumber}/${TUTORIAL_STAGE_COUNT}`,
+        zh: `🔰 新手教程 ${currentStage.stageNumber}/${TUTORIAL_STAGE_COUNT}`,
+      });
+    }
+  }
+
+  const guideBannerEl = document.getElementById("guide-banner");
+  const guideIconEl = document.getElementById("guide-banner-icon");
+  if (guideBannerEl) {
+    guideBannerEl.classList.toggle("is-tutorial", isTutorial);
+  }
+  if (guideIconEl) {
+    guideIconEl.textContent = isTutorial ? "🔰" : "🐑";
+  }
+
   const localizedStage = getLocalizedStageText(currentStage, currentLang);
   stageTitleEl.textContent = localizedStage.title;
   stageOneLinerEl.textContent = localizedStage.oneLiner;
@@ -579,8 +735,8 @@ function renderHud(): void {
     zh: `${displayCurrent} / 目标 ${targetScore} pt`,
   });
 
-  const optMushrooms = cachedOptimal?.optimalEvaluation.breakdown.mushroomCount ?? 0;
-  const hasAvoidableMushroom = currentEval.breakdown.mushroomCount > optMushrooms;
+  const optPits = cachedOptimal?.optimalEvaluation.breakdown.pitCount ?? 0;
+  const hasAvoidablePit = currentEval.breakdown.pitCount > optPits;
 
   // Safety & Target status pill
   if (cleared) {
@@ -594,12 +750,12 @@ function renderHud(): void {
   } else if (currentEval.isSafe) {
     const diff = targetScore - currentEval.pastureScore;
     hudStatusPillEl.className = "hud-pill status-shortfall";
-    statusIconEl.textContent = hasAvoidableMushroom ? "🍄" : "🍓";
-    statusTextEl.textContent = hasAvoidableMushroom
+    statusIconEl.textContent = hasAvoidablePit ? "🕳️" : "🍓";
+    statusTextEl.textContent = hasAvoidablePit
       ? pickLang(currentLang, {
-          ja: `毒キノコ混入中（あと +${diff} pt）`,
-          en: `Poison mushroom inside (+${diff} pt needed)`,
-          zh: `混入毒蘑菇（还差 +${diff} pt）`,
+          ja: `穴ぼこ混入中（あと +${diff} pt）`,
+          en: `Pitfall inside (+${diff} pt needed)`,
+          zh: `包含坑洞（还差 +${diff} pt）`,
         })
       : pickLang(currentLang, {
           ja: `目標まであと +${diff} pt`,
@@ -620,7 +776,6 @@ function renderHud(): void {
   btnUndo.disabled = undoStack.length === 0;
   btnRestart.disabled = currentEval.fencesUsed === 0 && undoStack.length === 0;
   btnHint.disabled = solverFailed;
-  btnNewRandom.hidden = !isEx;
 
   // Inline Clear / Shortfall Banner
   if (cleared) {
@@ -645,41 +800,26 @@ function renderHud(): void {
     });
     btnShowOptimal.hidden = true;
     btnNextStage.hidden = false;
-
-    if (isEx) {
-      btnNextStage.textContent = pickLang(currentLang, {
-        ja: "🌿 次の牧場へ進む ▶",
-        en: "🌿 Next Pasture ▶",
-        zh: "🌿 前往下一个牧场 ▶",
-      });
-    } else if (currentStageIndex < CAMPAIGN_STAGES.length - 1) {
-      btnNextStage.textContent = pickLang(currentLang, {
-        ja: `Stage ${currentStage.stageNumber + 1} へ進む ▶`,
-        en: `Proceed to Stage ${currentStage.stageNumber + 1} ▶`,
-        zh: `前往 Stage ${currentStage.stageNumber + 1} ▶`,
-      });
-    } else {
-      btnNextStage.textContent = pickLang(currentLang, {
-        ja: "🌿 番外・おかわり牧場へ ▶",
-        en: "🌿 Extra Bonus Pasture ▶",
-        zh: "🌿 前往番外加餐牧场 ▶",
-      });
-    }
+    btnNextStage.textContent = pickLang(currentLang, {
+      ja: `Stage ${currentStage.stageNumber + 1} へ進む ▶`,
+      en: `Proceed to Stage ${currentStage.stageNumber + 1} ▶`,
+      zh: `前往 Stage ${currentStage.stageNumber + 1} ▶`,
+    });
   } else if (currentEval.isSafe) {
     const diff = targetScore - currentEval.pastureScore;
     clearBannerEl.hidden = false;
     clearBannerEl.className = "clear-banner banner-shortfall";
-    clearStarsEl.textContent = hasAvoidableMushroom ? "🍄" : "🍓";
+    clearStarsEl.textContent = hasAvoidablePit ? "🕳️" : "🍓";
     clearHeadlineEl.textContent = pickLang(currentLang, {
       ja: `オオカミは防げたけれど、目標スコアまであと +${diff} pt 必要です`,
       en: `The sheep are safe from wolves, but you need +${diff} more pt to reach the goal`,
       zh: `虽然挡住了恶狼，但距离目标得分还需要 +${diff} pt`,
     });
-    clearSubtextEl.textContent = hasAvoidableMushroom
+    clearSubtextEl.textContent = hasAvoidablePit
       ? pickLang(currentLang, {
-          ja: `現在 ${currentEval.pastureScore} pt / クリア目標 ${targetScore} pt — まきばに🍄どくキノコ（-5点）が入っています。柵で毒を消すか仕切りましょう`,
-          en: `Current ${currentEval.pastureScore} pt / Goal ${targetScore} pt — A poison mushroom 🍄 (-5 pts) is inside the pasture. Cover it with a fence or wall it off`,
-          zh: `当前 ${currentEval.pastureScore} pt / 目标 ${targetScore} pt — 牧场内混入了🍄毒蘑菇（-5分），请用栅栏盖住或隔开它`,
+          ja: `現在 ${currentEval.pastureScore} pt / クリア目標 ${targetScore} pt — まきばに🕳️穴ぼこ（-5点）が入っています。真上に柵を打ち込んで埋めるか外へ仕切りましょう`,
+          en: `Current ${currentEval.pastureScore} pt / Goal ${targetScore} pt — A pitfall 🕳️ (-5 pts) is inside the pasture. Plug it with a fence post or wall it off`,
+          zh: `当前 ${currentEval.pastureScore} pt / 目标 ${targetScore} pt — 牧场内包含了🕳️坑洞（-5分），请在正上方打入栅栏填平或将其隔在外面`,
         })
       : pickLang(currentLang, {
           ja: `現在 ${currentEval.pastureScore} pt / クリア目標 ${targetScore} pt — 柵の位置を工夫して、もっと🍓や🌱を取り込みましょう`,
@@ -746,14 +886,22 @@ function renderBoard(): void {
         cellBtn.classList.add("wolf-territory");
       }
 
-      // Wordless Stage 1 invitation pulse when 0 fences are placed
-      if (
+      // Stage 1 invitation pulse + floating callout when 0 fences are placed
+      const isStage1Invite =
         currentStage.id === "stage-1" &&
         currentEval.fencesUsed === 0 &&
         r === 1 &&
-        c === 1
-      ) {
+        c === 1;
+      if (isStage1Invite) {
         cellBtn.classList.add("invite-pulse");
+        const inviteTag = document.createElement("span");
+        inviteTag.className = "cell-invite-tag";
+        inviteTag.textContent = pickLang(currentLang, {
+          ja: "👆 タップ",
+          en: "👆 Tap",
+          zh: "👆 点击",
+        });
+        cellBtn.appendChild(inviteTag);
       }
 
       // 1-cell spotlight hint (only when player explicitly presses Hint)
@@ -770,8 +918,8 @@ function renderBoard(): void {
       emojiSpan.textContent = hasFence ? "🪵" : meta.emoji;
       cellBtn.appendChild(emojiSpan);
 
-      // Show what tile is underneath a placed fence (if it's a strawberry or mushroom)
-      if (hasFence && (tile === "strawberry" || tile === "mushroom")) {
+      // Show what tile is underneath a placed fence (if it's a strawberry or pitfall)
+      if (hasFence && (tile === "strawberry" || tile === "pit")) {
         const under = document.createElement("span");
         under.className = "cell-under-badge";
         under.textContent = meta.emoji;
@@ -781,7 +929,7 @@ function renderBoard(): void {
         tag.className = "cell-score-tag score-plus";
         tag.textContent = "+5";
         cellBtn.appendChild(tag);
-      } else if (!hasFence && tile === "mushroom") {
+      } else if (!hasFence && tile === "pit") {
         const tag = document.createElement("span");
         tag.className = "cell-score-tag score-minus";
         tag.textContent = "-5";
@@ -799,8 +947,16 @@ function renderBoard(): void {
 
 function recordProgressIfCleared(): void {
   if (!isStageCleared() || showingModelAnswer) return;
+  let changed = false;
   if (!progress.clearedByStageId[currentStage.id]) {
     progress.clearedByStageId[currentStage.id] = true;
+    changed = true;
+  }
+  if (currentStage.stageNumber + 1 > progress.highestUnlockedStage) {
+    progress.highestUnlockedStage = currentStage.stageNumber + 1;
+    changed = true;
+  }
+  if (changed) {
     saveProgress(progress);
   }
 }
@@ -819,7 +975,7 @@ function updateEvaluationAndRender(playCelebrationIfNewlyCleared = true): void {
   }
 
   wasClearedBeforeMove = cleared;
-  renderStageStrip();
+  renderStageNav();
   renderHud();
   renderBoard();
 }
@@ -914,19 +1070,30 @@ function handleShowOptimal(): void {
   updateEvaluationAndRender(true);
 }
 
-async function loadStage(stage: StagePuzzle, index: number): Promise<void> {
+async function loadStage(
+  stage: StagePuzzle,
+  precomputedOptimal: OptimalPastureResult | null = null
+): Promise<void> {
   const myToken = ++solveToken;
-  currentStageIndex = index;
   currentStage = stage;
   currentFences = createEmptyFences(stage.grid.length, stage.grid[0].length);
   undoStack = [];
-  cachedOptimal = null;
+  cachedOptimal = selectVerifiedOptimal(precomputedOptimal);
   solverFailed = false;
   activeHint = null;
   wasClearedBeforeMove = false;
   showingModelAnswer = false;
 
+  if (stage.stageNumber > progress.highestUnlockedStage) {
+    progress.highestUnlockedStage = stage.stageNumber;
+    saveProgress(progress);
+  }
+
   updateEvaluationAndRender(false);
+
+  if (cachedOptimal) {
+    return;
+  }
 
   try {
     const solved = await solveOptimalPasture(stage);
@@ -942,22 +1109,12 @@ async function loadStage(stage: StagePuzzle, index: number): Promise<void> {
   updateEvaluationAndRender(false);
 }
 
-async function loadStageByIndex(index: number): Promise<void> {
-  const clamped = Math.max(0, Math.min(CAMPAIGN_STAGES.length - 1, index));
-  await loadStage(CAMPAIGN_STAGES[clamped], clamped);
-}
-
-async function loadRandomStage(): Promise<void> {
-  const btnNewRandom = getEl<HTMLButtonElement>("btn-new-random");
+export async function loadStageByNumber(stageNumber: number): Promise<void> {
+  const targetNum = Math.max(1, Math.floor(stageNumber));
   const myToken = ++solveToken;
-  btnNewRandom.disabled = true;
-  try {
-    const randomStage = await generateVerifiedPastureStage(Date.now());
-    if (myToken !== solveToken) return;
-    await loadStage(randomStage, CAMPAIGN_STAGES.length);
-  } finally {
-    btnNewRandom.disabled = false;
-  }
+  const { stage, precomputedOptimal } = await getStageByNumber(targetNum);
+  if (myToken !== solveToken) return;
+  await loadStage(stage, precomputedOptimal);
 }
 
 // Event Listeners
@@ -967,11 +1124,56 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
       const lang = btn.dataset.langBtn as GameLang;
       if (lang === "ja" || lang === "en" || lang === "zh") {
         applyStaticTranslations(lang);
-        renderStageStrip();
+        renderStageNav();
         renderHud();
+        renderBoard();
       }
     });
   });
+
+  getEl<HTMLButtonElement>("btn-stage-prev").addEventListener("click", () => {
+    if (currentStage.stageNumber > 1) {
+      void loadStageByNumber(currentStage.stageNumber - 1);
+    }
+  });
+
+  getEl<HTMLButtonElement>("btn-stage-next").addEventListener("click", () => {
+    void loadStageByNumber(currentStage.stageNumber + 1);
+  });
+
+  const stageSelect = getEl<HTMLSelectElement>("stage-select");
+  stageSelect.addEventListener("change", () => {
+    const selected = Number(stageSelect.value);
+    if (Number.isFinite(selected) && selected >= 1) {
+      void loadStageByNumber(selected);
+    }
+  });
+
+  const rulesDialog = getEl<HTMLDialogElement>("rules-dialog");
+  getEl<HTMLButtonElement>("btn-open-rules").addEventListener("click", () => {
+    renderTutorialButtonsInDialog();
+    rulesDialog.showModal();
+  });
+  getEl<HTMLButtonElement>("btn-close-rules").addEventListener("click", () => {
+    rulesDialog.close();
+  });
+  getEl<HTMLButtonElement>("btn-rules-start").addEventListener("click", () => {
+    rulesDialog.close();
+  });
+  // Fallback for browsers without declarative <dialog closedby="any"> support
+  if (typeof HTMLDialogElement !== "undefined" && !("closedBy" in HTMLDialogElement.prototype)) {
+    rulesDialog.addEventListener("click", (event: MouseEvent) => {
+      if (event.target !== rulesDialog) return;
+      const rect = rulesDialog.getBoundingClientRect();
+      const isDialogContent =
+        rect.top <= event.clientY &&
+        event.clientY <= rect.top + rect.height &&
+        rect.left <= event.clientX &&
+        event.clientX <= rect.left + rect.width;
+      if (isDialogContent) return;
+      rulesDialog.close();
+    });
+  }
 
   getEl<HTMLButtonElement>("btn-undo").addEventListener("click", handleUndo);
   getEl<HTMLButtonElement>("btn-restart").addEventListener("click", handleRestart);
@@ -979,15 +1181,8 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     void handleHint();
   });
   getEl<HTMLButtonElement>("btn-show-optimal").addEventListener("click", handleShowOptimal);
-  getEl<HTMLButtonElement>("btn-new-random").addEventListener("click", () => {
-    void loadRandomStage();
-  });
   getEl<HTMLButtonElement>("btn-next-stage").addEventListener("click", () => {
-    if (currentStageIndex < CAMPAIGN_STAGES.length - 1) {
-      void loadStageByIndex(currentStageIndex + 1);
-    } else {
-      void loadRandomStage();
-    }
+    void loadStageByNumber(currentStage.stageNumber + 1);
   });
 
   window.addEventListener("keydown", (ev: KeyboardEvent) => {
@@ -1013,5 +1208,5 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
 
   // Initialize language & start directly in Stage 1
   applyStaticTranslations();
-  void loadStageByIndex(0);
+  void loadStageByNumber(1);
 }

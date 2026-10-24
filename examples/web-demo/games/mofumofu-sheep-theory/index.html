@@ -362,7 +362,7 @@
           <h1>『もふもふ羊の牧場囲い』の裏側：<br />最小点カット問題から「予算制約付き・最大重み連結領域問題」へ</h1>
           <p>
             対象読者：混合整数線形計画（MIP）の基礎（二値変数・線形不等式・目的関数）をご存じの方。<br />
-            一見ほのぼのとした「柵でヒツジを囲うパズル」が、グラフ理論の<strong>最小点カット問題</strong>を土台にしつつ、どのように「どくキノコ（負の重み）」や「孤立領域の排除（連結性）」を線形制約として定式化しているのかを解説します。
+            一見ほのぼのとした「柵でヒツジを囲うパズル」が、グラフ理論の<strong>最小点カット問題</strong>を土台にしつつ、どのように「穴ぼこ（負の重み）」や「孤立領域の排除（連結性）」を線形制約として定式化しているのかを解説します。
           </p>
         </header>
 
@@ -405,11 +405,11 @@
                 <td>正の利得を持つ通常頂点（柵を置くと通行不可）</td>
               </tr>
               <tr>
-                <td>🍄 どくキノコ</td>
+                <td>🕳️ 穴ぼこ</td>
                 <td><code>V_fence ⊂ V</code></td>
                 <td><strong>可能</strong></td>
                 <td><strong><code>-5</code></strong></td>
-                <td><strong>負の重み</strong>を持つ頂点（牧場に入ると減点、柵で潰せる）</td>
+                <td><strong>負の重み</strong>を持つ頂点（牧場に入ると減点、真上に丸太の柵を打ち込んで塞げる）</td>
               </tr>
               <tr>
                 <td>🌉 石橋</td>
@@ -436,7 +436,7 @@
         <section class="section-card">
           <h2>2. もし「最小何本で守れるか」だけなら？（最小 s-t 点カット問題）</h2>
           <p>
-            まずはスコア（いちごやキノコ）を一旦忘れ、<strong>「最小何本の柵でオオカミ <code>W</code> とヒツジ <code>S</code> を分断できるか？」</strong>という部分問題だけを取り出してみます。
+            まずはスコア（いちごや穴ぼこ）を一旦忘れ、<strong>「最小何本の柵でオオカミ <code>W</code> とヒツジ <code>S</code> を分断できるか？」</strong>という部分問題だけを取り出してみます。
           </p>
           <p>
             通常の最小カット問題はグラフの「辺（Edge）」を切りますが、このパズルでは「マス（頂点 Vertex）」の上に柵を置いて通行止めにするため、グラフ理論における<strong>最小 <code>s-t</code> 点カット問題（Minimum Vertex Cut）</strong>に対応します。
@@ -458,8 +458,8 @@
               1本で塞げる狭い通路があっても、あえて2本の柵を使って手前の分岐を抑えた方が、その奥にある野いちご畑（<code>🍓 +5</code>）を牧場に取り込める場合があります。つまり「どの方向の戦線に柵予算 <code>K</code> を投資するか」という<strong>ナップサック問題的なトレードオフ</strong>が絡みます。
             </li>
             <li>
-              <strong>負の重み「🍄 どくキノコ（<code>-5</code> 点）」の存在</strong>：<br />
-              オオカミが全くいない袋小路であっても、そこに <code>🍄 (-5)</code> があれば、余った柵を1本使ってその袋小路を切り離す（あるいは <code>🍄</code> の真上に柵を置いて潰す）ことでスコアが <code>+5</code> 点改善します。逆に、<code>🍄 (-5)</code> のさらに奥に <code>🍓×3 (+15)</code> が眠っていれば、<strong>あえて毒キノコを牧場内に残して奥へ道をつなぐ</strong>方が得になります（Stage 7『毒を喰らわば皿まで』）。
+              <strong>負の重み「🕳️ 穴ぼこ（<code>-5</code> 点）」の存在</strong>：<br />
+              オオカミが全くいない袋小路であっても、そこに <code>🕳️ (-5)</code> があれば、余った柵を1本使ってその袋小路を切り離す（あるいは <code>🕳️</code> の真上に丸太の柵を打ち込んで穴を塞ぐ）ことでスコアが <code>+5</code> 点改善します。逆に、<code>🕳️ (-5)</code> のさらに奥に <code>🍓×3 (+15)</code> が眠っていれば、<strong>あえて穴ぼこを塞がず奥へ道をつなぐ</strong>方が得になります（Stage 7『穴ぼこの向こう側』）。
             </li>
           </ol>
         </section>
@@ -505,9 +505,9 @@
               ヒツジ（<code>r_s = 1</code>）から始まる道の途中で一度も柵（<code>f_v = 1</code>）が置かれないままオオカミ（<code>r_w = 0</code>）に到達すると、<code>1 = r_s &lt;= … &lt;= r_w = 0</code> となって制約違反（Infeasible）になります。つまり、<strong>すべての侵入経路のどこかに必ず <code>f_v = 1</code> を置かなければ実行可能解になりません</strong>。
             </li>
             <li>
-              <strong>役割B（どくキノコ <code>🍄 -5</code> のつまみ食い防止）</strong>：<br />
-              もしこの制約がなければ、ソルバーは「正の得点マス（<code>🍓 +5</code>）だけ <code>r_v = 1</code> にし、牧場の真ん中にあるどくキノコ（<code>🍄 -5</code>）は都合よく <code>r_v = 0</code> にする」という抜け道を使えてしまいます。<br />
-              しかしフラッド制約があるため、牧場（<code>r_u = 1</code>）に隣接するどくキノコ <code>v</code> は、<strong>柵を置いて潰す（<code>f_v = 1, r_v = 0</code>）か、牧場に含めて <code>-5</code> 点を受け入れる（<code>f_v = 0, r_v = 1</code>）かの二択</strong>を厳密に迫られます。
+              <strong>役割B（穴ぼこ <code>🕳️ -5</code> のつまみ食い防止）</strong>：<br />
+              もしこの制約がなければ、ソルバーは「正の得点マス（<code>🍓 +5</code>）だけ <code>r_v = 1</code> にし、牧場の真ん中にある穴ぼこ（<code>🕳️ -5</code>）は都合よく <code>r_v = 0</code> にする」という抜け道を使えてしまいます。<br />
+              しかしフラッド制約があるため、牧場（<code>r_u = 1</code>）に隣接する穴ぼこ <code>v</code> は、<strong>丸太の柵を打ち込んで塞ぐ（<code>f_v = 1, r_v = 0</code>）か、牧場に含めて <code>-5</code> 点を受け入れる（<code>f_v = 0, r_v = 1</code>）かの二択</strong>を厳密に迫られます。
             </li>
           </ul>
         </section>
@@ -651,7 +651,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           <h1>Behind "Fluffy Sheep Pasture Enclosure":<br />From Minimum Vertex Cut to Budgeted Maximum-Weight Connected Subgraph</h1>
           <p>
             Target Audience: Readers familiar with the basics of Mixed-Integer Linear Programming (binary variables, linear inequalities, and objective functions).<br />
-            This article explains how a cozy puzzle about enclosing sheep with wooden fences builds upon the classic <strong>Minimum s-t Vertex Cut</strong> problem while formulating negative-weight tiles (poison mushrooms) and strict region connectivity using linear constraints.
+            This article explains how a cozy puzzle about enclosing sheep with wooden fences builds upon the classic <strong>Minimum s-t Vertex Cut</strong> problem while formulating negative-weight tiles (pitfalls) and strict region connectivity using linear constraints.
           </p>
         </header>
 
@@ -694,11 +694,11 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <td>Positive-reward vertices (impassable when a fence is placed)</td>
               </tr>
               <tr>
-                <td>🍄 Poison Mushroom</td>
+                <td>🕳️ Pitfall</td>
                 <td><code>V_fence ⊂ V</code></td>
                 <td><strong>Yes</strong></td>
                 <td><strong><code>-5</code></strong></td>
-                <td><strong>Negative-weight</strong> vertex (penalizes score if enclosed; can be crushed by a fence)</td>
+                <td><strong>Negative-weight</strong> vertex (penalizes score if enclosed; can be plugged by driving a fence post into it)</td>
               </tr>
               <tr>
                 <td>🌉 Stone Bridge</td>
@@ -747,8 +747,8 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
               Even when a narrow choke point can be sealed with 1 fence, spending 2 fences further forward to hold a branch junction may capture a rich strawberry patch (<code>🍓 +5</code>) beyond it. Deciding where to invest the fence budget <code>K</code> introduces a <strong>knapsack-like trade-off</strong> across multiple fronts.
             </li>
             <li>
-              <strong>Negative Weights from Poison Mushrooms (<code>🍄 -5</code>)</strong>:<br />
-              Even in a dead-end corridor with no wolves, if a poison mushroom <code>🍄 (-5)</code> lies connected to the pasture, spending a fence to seal off that corridor—or placing a fence directly on top of the mushroom to crush it—improves the score by <code>+5</code>. Conversely, if three strawberries (<code>+15</code>) lie behind a mushroom (<code>-5</code>), <strong>deliberately leaving the mushroom inside the pasture to keep the path open</strong> yields a net gain of <code>+10</code> (as seen in Stage 7).
+              <strong>Negative Weights from Pitfalls (<code>🕳️ -5</code>)</strong>:<br />
+              Even in a dead-end corridor with no wolves, if a pitfall <code>🕳️ (-5)</code> lies connected to the pasture, spending a fence to seal off that corridor—or driving a fence post directly into the pit to plug it—improves the score by <code>+5</code>. Conversely, if three strawberries (<code>+15</code>) lie behind a pitfall (<code>-5</code>), <strong>deliberately leaving the pitfall open inside the pasture to keep the path open</strong> yields a net gain of <code>+10</code> (as seen in Stage 7).
             </li>
           </ol>
         </section>
@@ -794,8 +794,8 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
               If any open path from a sheep (<code>r_s = 1</code>) reaches a wolf (<code>r_w = 0</code>) without encountering a fence (<code>f_v = 1</code>), chaining the inequality along the path yields <code>1 = r_s &lt;= … &lt;= r_w = 0</code>, which is infeasible. Thus every wolf-to-sheep path must contain at least one fence.
             </li>
             <li>
-              <strong>Role B (Preventing Cherry-Picking Around Poison Mushrooms)</strong>:<br />
-              Without this constraint, an optimizer could set <code>r_v = 1</code> on positive tiles (<code>🍓 +5</code>) while arbitrarily setting <code>r_v = 0</code> on an unfenced poison mushroom (<code>🍄 -5</code>) right next to the sheep. Because of the flood constraint, any mushroom adjacent to the pasture forces a strict choice: <strong>spend a fence to crush/block it (<code>f_v = 1, r_v = 0</code>) or include it in the pasture and accept the <code>-5</code> penalty (<code>f_v = 0, r_v = 1</code>)</strong>.
+              <strong>Role B (Preventing Cherry-Picking Around Pitfalls)</strong>:<br />
+              Without this constraint, an optimizer could set <code>r_v = 1</code> on positive tiles (<code>🍓 +5</code>) while arbitrarily setting <code>r_v = 0</code> on an unfenced pitfall (<code>🕳️ -5</code>) right next to the sheep. Because of the flood constraint, any pitfall adjacent to the pasture forces a strict choice: <strong>spend a fence post to plug/block it (<code>f_v = 1, r_v = 0</code>) or include it in the pasture and accept the <code>-5</code> penalty (<code>f_v = 0, r_v = 1</code>)</strong>.
             </li>
           </ul>
         </section>
@@ -938,7 +938,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           <h1>《毛茸茸绵羊的牧场围栏》背后的数学模型：<br />从最小点割问题到“带预算约束的最大权连通子图问题”</h1>
           <p>
             适合读者：了解混合整数线性规划（MIP）基础（0-1变量、线性不等式与目标函数）的读者。<br />
-            本文将解说这款看似轻松治愈的“用木栅栏围住小羊”的益智游戏，是如何以图论中的<strong>最小点割问题</strong>为基础，将“毒蘑菇（负权重）”与“排除孤立飞地（连通性约束）”转化为严格的线性约束的。
+            本文将解说这款看似轻松治愈的“用木栅栏围住小羊”的益智游戏，是如何以图论中的<strong>最小点割问题</strong>为基础，将“坑洞（负权重）”与“排除孤立飞地（连通性约束）”转化为严格的线性约束的。
           </p>
         </header>
 
@@ -981,11 +981,11 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <td>正收益普通顶点（放置栅栏后不可通行）</td>
               </tr>
               <tr>
-                <td>🍄 毒蘑菇</td>
+                <td>🕳️ 坑洞</td>
                 <td><code>V_fence ⊂ V</code></td>
                 <td><strong>可以</strong></td>
                 <td><strong><code>-5</code></strong></td>
-                <td><strong>负权重</strong>顶点（纳入牧场会扣分，可直接放栅栏压掉）</td>
+                <td><strong>负权重</strong>顶点（纳入牧场会扣分，可直接打入木桩栅栏将其填平）</td>
               </tr>
               <tr>
                 <td>🌉 石桥</td>
@@ -1012,7 +1012,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
         <section class="section-card">
           <h2>2. 如果只问“最少几根栅栏能守住”？（最小 s-t 点割问题）</h2>
           <p>
-            我们先暂时忽略草莓与毒蘑菇的分数，只考虑子问题：<strong>“最少需要几根栅栏才能将野狼 <code>W</code> 与绵羊 <code>S</code> 完全隔开？”</strong>
+            我们先暂时忽略草莓与坑洞的分数，只考虑子问题：<strong>“最少需要几根栅栏才能将野狼 <code>W</code> 与绵羊 <code>S</code> 完全隔开？”</strong>
           </p>
           <p>
             标准的最小割问题切断的是图中的“边（Edge）”，而本作是在“格子（顶点 Vertex）”上放置栅栏阻断通行，因此在图论中对应<strong>最小 <code>s-t</code> 点割问题（Minimum Vertex Cut）</strong>。
@@ -1034,8 +1034,8 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
               即使某条狭窄通道只需1根栅栏就能封死，有时主动消耗2根栅栏把防线推到前方分叉口，反而能将后方的野草莓田（<code>🍓 +5</code>）纳入牧场。也就是说，玩家需要在不同防线之间权衡如何分配有限的栅栏预算 <code>K</code>。
             </li>
             <li>
-              <strong>负权重地形“🍄 毒蘑菇（<code>-5</code> 分）”的取舍</strong>：<br />
-              即使某个死胡同里根本没有野狼，只要里面有 <code>🍄 (-5)</code>，用1根富余的栅栏把死胡同隔开（或者直接把栅栏放在 <code>🍄</code> 上将其压掉）就能让总分提高 <code>+5</code> 分。反过来，如果 <code>🍄 (-5)</code> 的更深处藏着 <code>🍓×3 (+15)</code>，那么<strong>故意保留毒蘑菇不压掉、穿过它去拿深处的草莓</strong>反而能净赚 <code>+10</code> 分（如第7关）。
+              <strong>负权重地形“🕳️ 坑洞（<code>-5</code> 分）”的取舍</strong>：<br />
+              即使某个死胡同里根本没有野狼，只要里面有 <code>🕳️ (-5)</code>，用1根富余的栅栏把死胡同隔开（或者直接在 <code>🕳️</code> 上打入木桩栅栏将其填平）就能让总分提高 <code>+5</code> 分。反过来，如果 <code>🕳️ (-5)</code> 的更深处藏着 <code>🍓×3 (+15)</code>，那么<strong>故意保留坑洞不封死、跨过它去拿深处的草莓</strong>反而能净赚 <code>+10</code> 分（如第7关）。
             </li>
           </ol>
         </section>
@@ -1081,9 +1081,9 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
               如果从绵羊（<code>r_s = 1</code>）出发的某条路径在到达野狼（<code>r_w = 0</code>）之前没有任何一格放置栅栏（<code>f_v = 1</code>），沿路径串联不等式就会得到 <code>1 = r_s &lt;= … &lt;= r_w = 0</code>，从而导致模型无解（Infeasible）。因此所有入侵路径上都必须至少放置1根栅栏。
             </li>
             <li>
-              <strong>作用 B（防止跳过毒蘑菇 <code>🍄 -5</code> 只捡正分格）</strong>：<br />
-              如果没有这条约束，求解器就会只把草莓（<code>🍓 +5</code>）设为 <code>r_v = 1</code>，而把牧场中间没放栅栏的毒蘑菇（<code>🍄 -5</code>）偷偷设为 <code>r_v = 0</code>。<br />
-              有了漫延约束后，任何与牧场（<code>r_u = 1</code>）相邻的毒蘑菇 <code>v</code> 都必须二选一：<strong>要么花1根栅栏压掉它（<code>f_v = 1, r_v = 0</code>），要么将它纳入牧场并接受 <code>-5</code> 分（<code>f_v = 0, r_v = 1</code>）</strong>。
+              <strong>作用 B（防止跳过坑洞 <code>🕳️ -5</code> 只捡正分格）</strong>：<br />
+              如果没有这条约束，求解器就会只把草莓（<code>🍓 +5</code>）设为 <code>r_v = 1</code>，而把牧场中间没放栅栏的坑洞（<code>🕳️ -5</code>）偷偷设为 <code>r_v = 0</code>。<br />
+              有了漫延约束后，任何与牧场（<code>r_u = 1</code>）相邻的坑洞 <code>v</code> 都必须二选一：<strong>要么花1根木桩栅栏填平它（<code>f_v = 1, r_v = 0</code>），要么将它纳入牧场并接受 <code>-5</code> 分（<code>f_v = 0, r_v = 1</code>）</strong>。
             </li>
           </ul>
         </section>

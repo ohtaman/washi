@@ -97,7 +97,7 @@ aside: false
       </div>
       <div class="washi-showcase-title">毛茸茸绵羊的牧场围栏</div>
       <p class="washi-showcase-desc">
-        仅用有限数量的木栅栏阻断饥饿野狼的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓并避开毒蘑菇。
+        仅用有限数量的木栅栏阻断饥饿野狼的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓并填平或避开坑洞。
       </p>
     </div>
     <span class="washi-showcase-cta">开始游戏 →</span>

@@ -14,7 +14,9 @@ import type { OptimalPastureResult } from "../examples/web-demo/games/mofumofu-s
 import {
   CAMPAIGN_STAGES,
   generateVerifiedPastureStage,
+  getDifficultySpecForStage,
   getLocalizedStageText,
+  getStageByNumber,
 } from "../examples/web-demo/games/mofumofu-sheep/stages.js";
 import {
   getDayLabel,
@@ -67,23 +69,23 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(opt.optimalScore).toBe(7);
   });
 
-  it("verifies Stage 6 requires placing a double-duty fence directly on the poison mushroom (1, 2)", async () => {
+  it("verifies Stage 6 requires placing a double-duty fence post directly into the pitfall (1, 2)", async () => {
     const stage6 = CAMPAIGN_STAGES[5];
     const opt = await solveOptimalPasture(stage6);
-    expect(opt.optimalFences[1][2]).toBe(true); // crushes M(1, 2) while blocking the upper path
-    expect(opt.optimalEvaluation.breakdown.mushroomCount).toBe(0);
+    expect(opt.optimalFences[1][2]).toBe(true); // plugs P(1, 2) while blocking the upper path
+    expect(opt.optimalEvaluation.breakdown.pitCount).toBe(0);
     expect(opt.optimalScore).toBe(26);
   });
 
-  it("verifies Stage 7 Twist: optimal solution walks THROUGH the poison mushroom (2, 4) instead of crushing it", async () => {
+  it("verifies Stage 7 Twist: optimal solution walks THROUGH the pitfall (2, 4) instead of plugging it", async () => {
     const stage7 = CAMPAIGN_STAGES[6];
     const opt = await solveOptimalPasture(stage7);
-    expect(opt.optimalFences[2][4]).toBe(false); // do NOT crush M(2, 4)
+    expect(opt.optimalFences[2][4]).toBe(false); // do NOT plug P(2, 4)
     expect(opt.optimalFences[3][5]).toBe(true); // block at (3, 5) while keeping the East Sanctuary open
-    expect(opt.optimalEvaluation.breakdown.mushroomCount).toBe(1); // intentionally accepts -5 to gain +15
+    expect(opt.optimalEvaluation.breakdown.pitCount).toBe(1); // intentionally accepts -5 to gain +15
     expect(opt.optimalScore).toBe(26);
 
-    // Verify that naively crushing M(2, 4) is safe but fails the stage targetScore (16 < 26)
+    // Verify that naively plugging P(2, 4) is safe but fails the stage targetScore (16 < 26)
     const naiveFences = createEmptyFences(stage7.grid.length, stage7.grid[0].length);
     naiveFences[0][2] = true;
     naiveFences[2][4] = true;
@@ -112,15 +114,26 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(subHint.targetCell).toEqual({ row: 1, col: 3 });
   });
 
-  it("generates guaranteed-solvable random pasture stages verified by HiGHS", async () => {
-    for (const seed of [101, 202, 303]) {
-      const stage = await generateVerifiedPastureStage(seed);
-      const optimalResult = await solveOptimalPasture(stage);
+  it("generates deterministic, progressive stages (7x7 -> 8x8 -> 9x9 -> 10x10 cap) that can be revisited by stageNumber", async () => {
+    expect(getDifficultySpecForStage(13)).toMatchObject({ rows: 7, cols: 7 });
+    expect(getDifficultySpecForStage(19)).toMatchObject({ rows: 8, cols: 8 });
+    expect(getDifficultySpecForStage(25)).toMatchObject({ rows: 9, cols: 9 });
+    expect(getDifficultySpecForStage(31)).toMatchObject({ rows: 10, cols: 10 });
+
+    for (const stageNum of [13, 19, 25, 31]) {
+      const stageA = await generateVerifiedPastureStage(stageNum);
+      const stageB = (await getStageByNumber(stageNum)).stage;
+      expect(stageA.id).toBe(`stage-${stageNum}`);
+      expect(stageA.stageNumber).toBe(stageNum);
+      expect(stageB.grid).toEqual(stageA.grid);
+      expect(stageB.targetScore).toBe(stageA.targetScore);
+
+      const optimalResult = await solveOptimalPasture(stageA);
       expect(optimalResult.status).toBe("Optimal");
       expect(optimalResult.verified).toBe(true);
-      expect(optimalResult.optimalScore).toBe(stage.targetScore);
+      expect(optimalResult.optimalScore).toBe(stageA.targetScore);
 
-      const check = evaluatePasture(stage, optimalResult.optimalFences);
+      const check = evaluatePasture(stageA, optimalResult.optimalFences);
       expect(check.isSafe).toBe(true);
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
@@ -495,15 +508,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("btn-hint")?.title).toBe(
         "Highlight the next recommended move on the board (H key)"
       );
-      expect(sheepDoc.byId.get("btn-new-random-label")?.textContent).toBe("Another Pasture");
-      expect(sheepDoc.byId.get("btn-new-random")?.title).toBe("Move to another pasture");
       expect(sheepDoc.byId.get("legend-sheep")?.title).toBe(
         "Sheep (+2 pts, protect from wolves)"
       );
       expect(sheepDoc.byId.get("legend-grass")?.title).toBe("Meadow (+1 pt)");
       expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("Wild Strawberry (+5 pts)");
-      expect(sheepDoc.byId.get("legend-mushroom")?.title).toBe(
-        "Poison Mushroom (-5 pts, can be covered with a fence)"
+      expect(sheepDoc.byId.get("legend-pit")?.title).toBe(
+        "Pitfall (-5 pts, can be plugged with a fence)"
       );
       expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
         "Stone Bridge (+1 pt, passable, cannot place fence)"
@@ -537,12 +548,10 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("btn-restart")?.title).toBe("从头重新开始 (R键)");
       expect(sheepDoc.byId.get("btn-hint-label")?.textContent).toBe("一步提示");
       expect(sheepDoc.byId.get("btn-hint")?.title).toBe("在棋盘上高亮提示下一步操作 (H键)");
-      expect(sheepDoc.byId.get("btn-new-random-label")?.textContent).toBe("换一个牧场");
-      expect(sheepDoc.byId.get("btn-new-random")?.title).toBe("前往另一个牧场");
       expect(sheepDoc.byId.get("legend-sheep")?.title).toBe("绵羊（+2分・保护对象）");
       expect(sheepDoc.byId.get("legend-grass")?.title).toBe("草地（+1分）");
       expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("野草莓（+5分）");
-      expect(sheepDoc.byId.get("legend-mushroom")?.title).toBe("毒蘑菇（-5分・可用栅栏盖住）");
+      expect(sheepDoc.byId.get("legend-pit")?.title).toBe("坑洞（-5分・可用木桩栅栏填平）");
       expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
         "石桥（+1分・可通行・不可放栅栏）"
       );
@@ -589,14 +598,19 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(hint.targetCell).toEqual({ row: 0, col: 1 });
   });
 
-  it("scales cell size to fit narrow 375px mobile viewports for 7x7 boards without overflowing", () => {
+  it("scales cell size to fit narrow 375px mobile viewports for 7x7 and 10x10 boards without overflowing", () => {
     // Desktop / unconstrained fallback preserves ideal cell sizes
     expect(computeCellSize(3, 4)).toBe(88);
     expect(computeCellSize(7, 7)).toBe(60);
+    expect(computeCellSize(10, 10)).toBe(44);
 
     // 375px mobile viewport (~299px available inner board width): 7 * cellSize + 6 * 7 <= 299
     const mobileCellSize = computeCellSize(7, 7, 299, 7);
     expect(mobileCellSize).toBe(36);
     expect(7 * mobileCellSize + 6 * 7).toBeLessThanOrEqual(299);
+
+    const mobile10CellSize = computeCellSize(10, 10, 299, 7);
+    expect(mobile10CellSize).toBe(23);
+    expect(10 * mobile10CellSize + 9 * 7).toBeLessThanOrEqual(299);
   });
 });
