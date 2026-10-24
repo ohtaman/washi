@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="app-shell">
-      <!-- Top Bar: Title + Cleared Count + Language Switcher + Back Link -->
+      <!-- Top Bar: Title + Rules Button + Cleared Count + Language Switcher + Back Link -->
       <header class="topbar">
         <div class="brand">
           <a href="../index.html" class="back-link" id="back-link" title="ゲーム一覧へ戻る">← 一覧</a>
@@ -24,9 +24,17 @@
         </div>
 
         <div class="topbar-stats">
+          <button
+            type="button"
+            class="help-pill-btn"
+            id="btn-open-rules"
+            title="遊び方とチュートリアルを見る"
+          >
+            ❓ <span id="btn-open-rules-label">遊び方</span>
+          </button>
           <div class="star-counter" id="total-stars-badge" title="クリア済みステージ数">
             <span class="star-icon">★</span>
-            <span id="total-stars-text">0 / 12 CLEAR</span>
+            <span id="total-stars-text">0 CLEAR</span>
           </div>
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
@@ -36,17 +44,49 @@
         </div>
       </header>
 
-      <!-- Stage Selector Strip (1..12 + EX Random) -->
-      <nav class="stage-strip" id="stage-strip" aria-label="ステージ選択"></nav>
-
       <!-- Main Puzzle Card -->
       <main class="puzzle-card">
-        <!-- Stage Header (Title + 1-line rule hint) -->
+        <!-- Unified Stage Header & Level Stepper (No cluttered 1..13 strip) -->
         <div class="stage-header">
+          <nav class="stage-nav-bar" id="stage-strip" aria-label="ステージ選択">
+            <button
+              type="button"
+              class="stage-step-btn"
+              id="btn-stage-prev"
+              title="前のステージへ"
+              aria-label="前のステージへ"
+            >
+              ◀
+            </button>
+            <div class="stage-select-wrap">
+              <span class="stage-badge" id="stage-badge">STAGE 1</span>
+              <select
+                class="stage-select"
+                id="stage-select"
+                aria-label="ステージ番号を選択"
+                title="到達済みステージへ移動"
+              ></select>
+            </div>
+            <button
+              type="button"
+              class="stage-step-btn"
+              id="btn-stage-next"
+              title="次のステージへ"
+              aria-label="次のステージへ"
+            >
+              ▶
+            </button>
+          </nav>
+
           <div class="stage-title-group">
-            <span class="stage-badge" id="stage-badge">STAGE 1</span>
+            <span class="tutorial-chip" id="tutorial-chip">🔰 チュートリアル 1/4</span>
             <h2 id="stage-title">はじめての柵</h2>
           </div>
+        </div>
+
+        <!-- Prominent Guide / Mission Callout Banner -->
+        <div class="guide-banner" id="guide-banner">
+          <span class="guide-banner-icon" id="guide-banner-icon">🐑</span>
           <p class="stage-oneliner" id="stage-oneliner">
             マスをタップして柵🪵を置き、🐺から🐑を守ろう
           </p>
@@ -100,7 +140,7 @@
           </div>
         </div>
 
-        <!-- Puzzle Control Bar (Undo / Restart / Hint / Random) -->
+        <!-- Puzzle Control Bar (Undo / Restart / Hint) -->
         <div class="controls-bar">
           <div class="controls-left">
             <button
@@ -132,29 +172,87 @@
             >
               💡 <span id="btn-hint-label">1手ヒント</span> <kbd>H</kbd>
             </button>
-            <button
-              type="button"
-              class="btn btn-tool"
-              id="btn-new-random"
-              hidden
-              title="ちがう牧場へ移動する"
-            >
-              🌿 <span id="btn-new-random-label">ちがう牧場へ</span>
-            </button>
           </div>
         </div>
 
-        <!-- Minimal Visual Icon Legend (No prose) -->
+        <!-- Minimal Visual Icon Legend -->
         <footer class="legend-strip" id="legend-strip" aria-label="タイル得点一覧">
           <span class="legend-chip" id="legend-sheep" title="ヒツジ（+2点・守る対象）">🐑 +2</span>
           <span class="legend-chip" id="legend-grass" title="草地（+1点）">🌱 +1</span>
           <span class="legend-chip chip-plus" id="legend-strawberry" title="野いちご（+5点）">🍓 +5</span>
-          <span class="legend-chip chip-minus" id="legend-mushroom" title="どくキノコ（-5点・柵で潰せる）">🍄 -5</span>
+          <span class="legend-chip chip-minus" id="legend-pit" title="穴ぼこ（-5点・丸太の柵で塞げる）">🕳️ -5</span>
           <span class="legend-chip chip-bridge" id="legend-bridge" title="石橋（+1点・通り抜け可・柵は置けない）">🌉 +1 <small>(柵×)</small></span>
           <span class="legend-chip chip-wall" id="legend-wall" title="水辺・岩（通り抜け不可の壁）">💧🪨 壁</span>
         </footer>
       </main>
     </div>
+
+    <!-- Light-Dismiss How-to-Play & Tutorial Picker Dialog -->
+    <dialog
+      class="rules-dialog"
+      id="rules-dialog"
+      closedby="any"
+      aria-labelledby="rules-dialog-title"
+    >
+      <div class="rules-dialog-inner">
+        <div class="rules-dialog-header">
+          <h2 id="rules-dialog-title">🐑 遊び方ガイド</h2>
+          <button
+            type="button"
+            class="rules-close-btn"
+            id="btn-close-rules"
+            aria-label="閉じる"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="rules-steps">
+          <div class="rule-card">
+            <div class="rule-card-icon">🪵</div>
+            <div class="rule-card-body">
+              <strong id="rule-step1-title">1. マスをタップして柵🪵を置く</strong>
+              <p id="rule-step1-desc">
+                オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵🪵を置いて遮断します。もう一度タップすると柵を外せます。
+              </p>
+            </div>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-card-icon">🍓</div>
+            <div class="rule-card-body">
+              <strong id="rule-step2-title">2. 広いまきばを作って目標スコア達成</strong>
+              <p id="rule-step2-desc">
+                オオカミを防いだ状態で、ヒツジ🐑が歩いて行ける範囲（安全なまきば）の合計得点が「クリア目標」に届けばステージクリアです。
+              </p>
+            </div>
+          </div>
+
+          <div class="rule-card">
+            <div class="rule-card-icon">🕳️</div>
+            <div class="rule-card-body">
+              <strong id="rule-step3-title">3. 石橋🌉と穴ぼこ🕳️の仕掛け</strong>
+              <p id="rule-step3-desc">
+                🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に丸太の柵🪵を打ち込めば穴が埋まって壁になります。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rules-tutorials-box">
+          <strong class="rules-tutorials-heading" id="rules-tutorials-heading">
+            🔰 基本ルールを学ぶチュートリアル（Stage 1〜4）
+          </strong>
+          <div class="rules-tutorial-grid" id="rules-tutorial-grid"></div>
+        </div>
+
+        <div class="rules-dialog-footer">
+          <button type="button" class="btn btn-next" id="btn-rules-start">
+            わかった・パズルに戻る
+          </button>
+        </div>
+      </div>
+    </dialog>
 
     <script type="module" src="./main.ts"></script>
   </body>

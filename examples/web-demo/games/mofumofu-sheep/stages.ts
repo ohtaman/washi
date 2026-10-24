@@ -1,12 +1,12 @@
 import type { GameLang } from "../i18n.js";
 import { solveOptimalPasture, evaluatePasture } from "./solver.js";
-import { TILE_META, type StagePuzzle, type TileType } from "./types.js";
+import { TILE_META, type OptimalPastureResult, type StagePuzzle, type TileType } from "./types.js";
 
 /**
  * Compact stage DSL legend:
  * - '.' : grass (+1)
  * - 'I' : strawberry (+5)
- * - 'M' : mushroom (-5)
+ * - 'P' : pit (-5)
  * - 'B' : bridge (+1, passable, cannot place fence)
  * - '~' : water (impassable)
  * - 'R' : rock (impassable)
@@ -16,7 +16,7 @@ import { TILE_META, type StagePuzzle, type TileType } from "./types.js";
 const CHAR_TO_TILE: Record<string, TileType> = {
   ".": "grass",
   I: "strawberry",
-  M: "mushroom",
+  P: "pit",
   B: "bridge",
   "~": "water",
   R: "rock",
@@ -85,18 +85,18 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ ~ ~ . .",
     ]),
   },
-  // Stage 4 [Introduce: どくキノコ 🍄 / 4x5・柵2本]
+  // Stage 4 [Introduce: 穴ぼこ 🕳️ / 4x5・柵2本]
   {
     id: "stage-4",
     stageNumber: 4,
-    title: "どくキノコ退治",
-    oneLiner: "🍄(-5点)がまきばに入ると減点になるよ。🍄の真上に柵🪵を置いて毒を消そう",
+    title: "穴ぼこ埋め",
+    oneLiner: "🕳️穴ぼこ(-5点)がまきばに入ると減点になるよ。🕳️の真上に丸太の柵🪵を打ち込んで穴を塞ごう",
     maxFences: 2,
     targetScore: 16,
     grid: parseGrid([
       "W . ~ S I",
       "~ . . . .",
-      "~ ~ ~ M I",
+      "~ ~ ~ P I",
       "~ ~ ~ ~ ~",
     ]),
   },
@@ -121,34 +121,34 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ I . . I",
     ]),
   },
-  // Stage 6 [Twist: 一石二鳥のキノコ潰し / 5x5・柵2本]
+  // Stage 6 [Twist: 一石二鳥の杭打ち / 5x5・柵2本]
   {
     id: "stage-6",
     stageNumber: 6,
-    title: "一石二鳥の柵",
-    oneLiner: "🍄(-5)の上に直接柵🪵を置けば、🐺の侵入阻止と毒消しを同時に達成できるよ",
+    title: "一石二鳥の杭打ち",
+    oneLiner: "🕳️(-5)の真上に丸太の柵🪵を打ち込めば、穴埋めと🐺の侵入阻止を同時に達成できるよ",
     maxFences: 2,
     targetScore: 26,
     grid: parseGrid([
       "W B . ~ I",
-      "B . M . .",
+      "B . P . .",
       ". ~ R . S",
       ". . B R .",
       "~ I . . I",
     ]),
   },
-  // Stage 7 [Twist: 毒を喰らわば皿まで / 5x6・柵3本]
+  // Stage 7 [Twist: 穴ぼこの向こう側 / 5x6・柵3本]
   {
     id: "stage-7",
     stageNumber: 7,
-    title: "毒を喰らわば皿まで",
-    oneLiner: "東の🍄(-5)を柵で潰すと奥の🍓畑に届かない。あえて毒を通す逆転の発想で挑もう",
+    title: "穴ぼこの向こう側",
+    oneLiner: "東の🕳️(-5)を柵で塞ぐと奥の🍓畑に届かない。あえて通路を残して奥へ進む逆転の発想で挑もう",
     maxFences: 3,
     targetScore: 26,
     grid: parseGrid([
       "W B . . ~ I",
       "~ ~ R . ~ I",
-      "~ I . S M I",
+      "~ I . S P I",
       "~ ~ R . ~ .",
       "W B . I ~ W",
     ]),
@@ -171,7 +171,7 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
   },
 
   // ===========================================================================
-  // Chapter 3: 本格パズル＆総決算（Stage 9〜12: 6x6 / 6x7 / 7x7）
+  // Chapter 3: さらなる広がり（Stage 9〜12: 6x6 / 6x7 / 7x7）
   // ===========================================================================
 
   // Stage 9 [Develop: 2匹のヒツジの合流 / 6x6・柵3本]
@@ -191,21 +191,21 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ I ~ . B W",
     ]),
   },
-  // Stage 10 [Develop: キノコの森の選別 / 6x6・柵4本]
+  // Stage 10 [Develop: 穴ぼこだらけの丘 / 6x6・柵4本]
   {
     id: "stage-10",
     stageNumber: 10,
-    title: "キノコの森の選別",
-    oneLiner: "3つの🍄(-5)がある森。柵で潰すキノコと、切り離すキノコを見極めよう",
+    title: "穴ぼこだらけの丘",
+    oneLiner: "3つの🕳️(-5)がある丘。丸太で直接埋める穴と、柵の外へ切り離す穴を見極めよう",
     maxFences: 4,
     targetScore: 25,
     grid: parseGrid([
       "W B . ~ I .",
-      "B . M . . I",
+      "B . P . . I",
       "I . R S R ~",
-      "~ R . . M I",
+      "~ R . . P I",
       "B . B ~ . .",
-      "W B . ~ M I",
+      "W B . ~ P I",
     ]),
   },
   // Stage 11 [Develop: 三方からの包囲網 / 6x7・柵4本]
@@ -219,26 +219,26 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
     grid: parseGrid([
       "W B . ~ I . W",
       "B . . . ~ . B",
-      "I . R S . M .",
+      "I . R S . P .",
       "~ R . B R . I",
       "B . . S ~ . .",
       "W B ~ I . I ~",
     ]),
   },
-  // Stage 12 [Conclude: 最終問題・黄金のまきば / 7x7・柵5本]
+  // Stage 12 [Develop: 黄金のまきば / 7x7・柵5本]
   {
     id: "stage-12",
     stageNumber: 12,
     title: "黄金のまきば",
-    oneLiner: "最終問題。5本の柵すべてを使い切り、満点の黄金牧場を完成させよう",
+    oneLiner: "5本の柵すべてを使い切り、満点の黄金牧場を完成させよう",
     maxFences: 5,
     targetScore: 28,
     grid: parseGrid([
       "W B . ~ I . W",
       "B . . I R ~ B",
-      "I . R S I M .",
+      "I . R S I P .",
       "~ . B R B . I",
-      "I M . S I . ~",
+      "I P . S I . ~",
       "B ~ R I . . B",
       "W . I ~ I B W",
     ]),
@@ -281,12 +281,12 @@ const STAGE_I18N: Record<
   },
   "stage-4": {
     en: {
-      title: "Clearing Poison Mushrooms",
-      oneLiner: "Enclosing a 🍄 (-5 pt) lowers your score. Place a fence 🪵 directly on 🍄 to crush it",
+      title: "Plugging the Pitfall",
+      oneLiner: "Leaving a pitfall 🕳️ (-5 pt) inside the pasture lowers your score. Drive a wooden fence 🪵 right into 🕳️ to plug it",
     },
     zh: {
-      title: "清除毒蘑菇",
-      oneLiner: "若将🍄(-5分)圈入牧场会扣分。直接在🍄正上方放置栅栏🪵即可将其消除",
+      title: "填平坑洞",
+      oneLiner: "若将🕳️坑洞(-5分)圈入牧场会扣分。直接在🕳️正上方打入木栅栏🪵即可把坑填平",
     },
   },
   "stage-5": {
@@ -301,22 +301,22 @@ const STAGE_I18N: Record<
   },
   "stage-6": {
     en: {
-      title: "Two Birds with One Fence",
-      oneLiner: "Placing a fence 🪵 directly on 🍄 (-5) blocks 🐺 and removes the poison at the same time",
+      title: "Two Birds with One Post",
+      oneLiner: "Driving a fence 🪵 directly into 🕳️ (-5) plugs the pit and blocks 🐺 at the same time",
     },
     zh: {
-      title: "一举两得的栅栏",
-      oneLiner: "直接把栅栏🪵放在🍄(-5)上，就能同时阻挡🐺并消除毒蘑菇",
+      title: "一举两得的木桩",
+      oneLiner: "直接把木栅栏🪵打进🕳️(-5)里，就能同时填平坑洞并阻挡🐺",
     },
   },
   "stage-7": {
     en: {
-      title: "Through the Poison",
-      oneLiner: "Crushing the east 🍄 (-5) cuts off the 🍓 orchard behind it. Dare to walk through the poison",
+      title: "Beyond the Pitfall",
+      oneLiner: "Plugging the east 🕳️ (-5) cuts off the 🍓 orchard behind it. Leave the path open to claim the orchard",
     },
     zh: {
       title: "舍小取大",
-      oneLiner: "如果用栅栏压掉东侧的🍄(-5)，就拿不到深处的🍓田。试着保留通道穿过它吧",
+      oneLiner: "如果用栅栏封住东侧的🕳️(-5)，就拿不到深处的🍓田。试着保留通道跨过去吧",
     },
   },
   "stage-8": {
@@ -341,12 +341,12 @@ const STAGE_I18N: Record<
   },
   "stage-10": {
     en: {
-      title: "Mushroom Forest Triage",
-      oneLiner: "Three 🍄 (-5) lie in the woods. Decide which mushrooms to crush and which to wall off",
+      title: "Pitfall Hill Triage",
+      oneLiner: "Three 🕳️ (-5) dot the hill. Decide which pits to plug directly with a post and which to wall off",
     },
     zh: {
-      title: "蘑菇森林的取舍",
-      oneLiner: "森林里有3个🍄(-5)。仔细分辨哪些该直接压掉、哪些该隔在外面吧",
+      title: "坑洞山丘的取舍",
+      oneLiner: "山丘上有3个🕳️(-5)。仔细分辨哪些该直接打桩填平、哪些该隔在牧场外吧",
     },
   },
   "stage-11": {
@@ -362,14 +362,40 @@ const STAGE_I18N: Record<
   "stage-12": {
     en: {
       title: "Golden Meadow",
-      oneLiner: "Final stage. Use all 5 fences wisely to complete the highest-scoring golden pasture",
+      oneLiner: "Use all 5 fences wisely to complete the highest-scoring golden pasture",
     },
     zh: {
       title: "黄金牧场",
-      oneLiner: "最终关卡。充分利用全部5根栅栏，完成最高分的黄金牧场吧",
+      oneLiner: "充分利用全部5根栅栏，完成最高分的黄金牧场吧",
     },
   },
 };
+
+const GENERATED_STAGE_THEMES: readonly { ja: string; en: string; zh: string }[] = [
+  { ja: "風わたる高原牧場", en: "Windy Highland Pasture", zh: "微风高原牧场" },
+  { ja: "石橋の渓谷", en: "Stone Bridge Valley", zh: "石桥溪谷" },
+  { ja: "いちご薫る深森", en: "Strawberry Deepwoods", zh: "草莓深林" },
+  { ja: "霧晴れる大草原", en: "Misty Grand Meadow", zh: "雾霁大草原" },
+  { ja: "岩山の回廊", en: "Rocky Crag Corridor", zh: "岩山回廊" },
+  { ja: "せせらぎの果樹園", en: "Brookside Orchard", zh: "溪畔果园" },
+  { ja: "星降る夜のまきば", en: "Starlit Night Pasture", zh: "星夜牧场" },
+  { ja: "陽だまりの丘陵", en: "Sunlit Hills", zh: "暖阳丘陵" },
+  { ja: "迷宮の石畳", en: "Labyrinth Causeway", zh: "迷宫石道" },
+  { ja: "双子川のほとり", en: "Twin Riverbanks", zh: "双子河畔" },
+  { ja: "古の石垣牧場", en: "Ancient Stonewall Meadow", zh: "古石垣牧场" },
+  { ja: "天空の黄金牧場", en: "Skyward Golden Pasture", zh: "天空黄金牧场" },
+];
+
+export function getStageTitleByNumber(stageNumber: number, lang: GameLang): string {
+  if (stageNumber >= 1 && stageNumber <= CAMPAIGN_STAGES.length) {
+    const st = CAMPAIGN_STAGES[stageNumber - 1];
+    if (lang === "ja") return st.title;
+    return STAGE_I18N[st.id]?.[lang]?.title ?? st.title;
+  }
+  const themeIdx =
+    Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
+  return GENERATED_STAGE_THEMES[themeIdx][lang];
+}
 
 export function getLocalizedStageText(
   stage: StagePuzzle,
@@ -382,22 +408,23 @@ export function getLocalizedStageText(
   if (entry) {
     return entry;
   }
-  const numMatch = stage.title.match(/#(\d+)/);
-  const numStr = numMatch ? `#${numMatch[1]}` : "";
+  const themeIdx =
+    Math.abs(stage.stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
+  const theme = GENERATED_STAGE_THEMES[themeIdx];
   if (lang === "en") {
     return {
-      title: `Breezy Extra Meadow ${numStr}`.trim(),
-      oneLiner: `Reach the target score using at most ${stage.maxFences} fences`,
+      title: theme.en,
+      oneLiner: `Block 🐺 with up to ${stage.maxFences} fences and reach the target score of ${stage.targetScore} pt`,
     };
   }
   return {
-    title: `微风额外牧场 ${numStr}`.trim(),
-    oneLiner: `使用最多 ${stage.maxFences} 根栅栏达成目标分数吧`,
+    title: theme.zh,
+    oneLiner: `使用最多 ${stage.maxFences} 根栅栏阻挡🐺，达成 ${stage.targetScore} pt 的目标分数吧`,
   };
 }
 
 /**
- * Deterministic PRNG (Mulberry32) for reproducible random stage generation.
+ * Deterministic PRNG (Mulberry32) for reproducible procedural stage generation.
  */
 function createRng(seed: number): () => number {
   let state = seed >>> 0;
@@ -409,116 +436,308 @@ function createRng(seed: number): () => number {
   };
 }
 
+export interface StageDifficultySpec {
+  rows: number;
+  cols: number;
+  wolfCount: number;
+  sheepCount: number;
+  maxFences: number;
+}
+
 /**
- * Generates a brand-new 6x6 puzzle board and verifies with HiGHS that:
+ * Progressive level scaling schedule:
+ * Rises smoothly from Stage 13 (7x7) through 8x8 and 9x9 up to the 10x10 cap (8-10 fences, 4 wolves).
+ */
+export function getDifficultySpecForStage(stageNumber: number): StageDifficultySpec {
+  if (stageNumber <= 15) {
+    return {
+      rows: 7,
+      cols: 7,
+      wolfCount: stageNumber === 13 ? 3 : 4,
+      sheepCount: 2,
+      maxFences: stageNumber === 13 ? 5 : 6,
+    };
+  }
+  if (stageNumber <= 18) {
+    return {
+      rows: 7,
+      cols: 8,
+      wolfCount: 4,
+      sheepCount: 2,
+      maxFences: 6,
+    };
+  }
+  if (stageNumber <= 21) {
+    return {
+      rows: 8,
+      cols: 8,
+      wolfCount: 4,
+      sheepCount: stageNumber >= 20 ? 3 : 2,
+      maxFences: stageNumber === 19 ? 6 : 7,
+    };
+  }
+  if (stageNumber <= 24) {
+    return {
+      rows: 8,
+      cols: 9,
+      wolfCount: 4,
+      sheepCount: 3,
+      maxFences: stageNumber === 22 ? 7 : 8,
+    };
+  }
+  if (stageNumber <= 27) {
+    return {
+      rows: 9,
+      cols: 9,
+      wolfCount: 4,
+      sheepCount: 3,
+      maxFences: 8,
+    };
+  }
+  if (stageNumber <= 30) {
+    return {
+      rows: 9,
+      cols: 10,
+      wolfCount: 4,
+      sheepCount: 3,
+      maxFences: stageNumber === 28 ? 8 : 9,
+    };
+  }
+  return {
+    rows: 10,
+    cols: 10,
+    wolfCount: 4,
+    sheepCount: 3,
+    maxFences: 8 + (stageNumber % 3), // 8, 9, or 10 fences
+  };
+}
+
+/**
+ * Derives a deterministic 32-bit seed from a stage number so that every generated stage
+ * has a fixed layout that the player can revisit at any time.
+ */
+export function getSeedForStageNumber(stageNumber: number): number {
+  return (Math.imul(stageNumber >>> 0, 0x9e3779b1) ^ 0x85ebca6b) >>> 0;
+}
+
+const generatedStageCache = new Map<
+  number,
+  { stage: StagePuzzle; optimal: OptimalPastureResult | null }
+>();
+
+const inFlightStagePromises = new Map<number, Promise<StagePuzzle>>();
+
+/**
+ * Generates a deterministic puzzle board for a given `stageNumber` (or seed) and verifies with HiGHS that:
  * 1. Without fences, the wolves can reach the sheep.
- * 2. Wolves have adjacent bridges so trivial 1-fence spawn caging is prevented.
+ * 2. Wolves have adjacent stone bridges so trivial 1-fence spawn caging is prevented.
  * 3. With `maxFences`, HiGHS finds a proven Optimal solution and sets `targetScore = optimalScore`.
  */
-export async function generateVerifiedPastureStage(seed = Date.now()): Promise<StagePuzzle> {
-  const rows = 6;
-  const cols = 6;
+export async function generateVerifiedPastureStage(
+  stageNumberOrSeed = CAMPAIGN_STAGES.length + 1
+): Promise<StagePuzzle> {
+  const stageNumber = Math.max(CAMPAIGN_STAGES.length + 1, Math.floor(stageNumberOrSeed));
+  const cached = generatedStageCache.get(stageNumber);
+  if (cached) {
+    return cached.stage;
+  }
 
-  for (let attempt = 0; attempt < 32; attempt++) {
-    const rng = createRng(seed + attempt * 9973);
-    const grid: TileType[][] = Array.from({ length: rows }, () =>
-      Array.from({ length: cols }, () => "grass" as TileType)
-    );
+  const inFlight = inFlightStagePromises.get(stageNumber);
+  if (inFlight) {
+    return inFlight;
+  }
 
-    // Place 1 or 2 sheep near the center
-    const s1r = 2 + Math.floor(rng() * 2);
-    const s1c = 2 + Math.floor(rng() * 2);
-    grid[s1r][s1c] = "sheep";
-    if (rng() < 0.5) {
-      const s2r = s1r === 2 ? 3 : 2;
-      const s2c = s1c === 2 ? 3 : 2;
-      grid[s2r][s2c] = "sheep";
-    }
+  const generationPromise = (async (): Promise<StagePuzzle> => {
+    const spec = getDifficultySpecForStage(stageNumber);
+    const { rows, cols, wolfCount, sheepCount } = spec;
+    const baseSeed = getSeedForStageNumber(stageNumber);
+    const themeIdx =
+      Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
+    const theme = GENERATED_STAGE_THEMES[themeIdx];
 
-    // Place 2 or 3 wolves on outer corners with two adjacent bridges so spawn-caging is impossible
-    const corners: [number, number, number, number, number, number][] = [
-      [0, 0, 0, 1, 1, 0],
-      [0, cols - 1, 0, cols - 2, 1, cols - 1],
-      [rows - 1, 0, rows - 1, 1, rows - 2, 0],
-      [rows - 1, cols - 1, rows - 1, cols - 2, rows - 2, cols - 1],
-    ];
-    for (let i = corners.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const tmp = corners[i];
-      corners[i] = corners[j];
-      corners[j] = tmp;
-    }
-    const wolfCount = rng() < 0.45 ? 2 : 3;
-    for (let w = 0; w < wolfCount; w++) {
-      const [wr, wc, b1r, b1c, b2r, b2c] = corners[w];
-      grid[wr][wc] = "wolf";
-      grid[b1r][b1c] = "bridge";
-      grid[b2r][b2c] = "bridge";
-    }
+    const centerR = (rows - 1) / 2;
+    const centerC = (cols - 1) / 2;
 
-    // Sprinkle natural obstacles and items on remaining cells
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (grid[r][c] !== "grass") continue;
-        const distCenter = Math.abs(r - 2.5) + Math.abs(c - 2.5);
-        const roll = rng();
-        if (distCenter >= 1.5 && roll < 0.17) {
-          grid[r][c] = "water";
-        } else if (distCenter >= 1.5 && roll < 0.28) {
-          grid[r][c] = "rock";
-        } else if (roll < 0.35) {
-          grid[r][c] = "bridge";
-        } else if (roll < 0.52) {
-          grid[r][c] = "strawberry";
-        } else if (roll < 0.63) {
-          grid[r][c] = "mushroom";
+    for (let attempt = 0; attempt < 36; attempt++) {
+      const rng = createRng(baseSeed + attempt * 9973);
+      const grid: TileType[][] = Array.from({ length: rows }, () =>
+        Array.from({ length: cols }, () => "grass" as TileType)
+      );
+
+      // 1. Place sheep near the center region
+      const midR = Math.floor(rows / 2) - 1;
+      const midC = Math.floor(cols / 2) - 1;
+      const candidateSheepSpots: [number, number][] = [
+        [midR, midC],
+        [midR + 1, midC + 1],
+        [midR, midC + 1],
+        [midR + 1, midC],
+      ];
+      for (let i = candidateSheepSpots.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const tmp = candidateSheepSpots[i];
+        candidateSheepSpots[i] = candidateSheepSpots[j];
+        candidateSheepSpots[j] = tmp;
+      }
+      for (let s = 0; s < Math.min(sheepCount, candidateSheepSpots.length); s++) {
+        const [sr, sc] = candidateSheepSpots[s];
+        grid[sr][sc] = "sheep";
+      }
+
+      // 2. Place wolves on outer corners with adjacent stone bridges
+      const spawnSlots: { wolf: [number, number]; bridges: [number, number][] }[] = [
+        {
+          wolf: [0, 0],
+          bridges: [
+            [0, 1],
+            [1, 0],
+          ],
+        },
+        {
+          wolf: [0, cols - 1],
+          bridges: [
+            [0, cols - 2],
+            [1, cols - 1],
+          ],
+        },
+        {
+          wolf: [rows - 1, 0],
+          bridges: [
+            [rows - 1, 1],
+            [rows - 2, 0],
+          ],
+        },
+        {
+          wolf: [rows - 1, cols - 1],
+          bridges: [
+            [rows - 1, cols - 2],
+            [rows - 2, cols - 1],
+          ],
+        },
+      ];
+
+      for (let i = spawnSlots.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const tmp = spawnSlots[i];
+        spawnSlots[i] = spawnSlots[j];
+        spawnSlots[j] = tmp;
+      }
+
+      const activeWolves = Math.min(wolfCount, spawnSlots.length);
+      for (let w = 0; w < activeWolves; w++) {
+        const slot = spawnSlots[w];
+        grid[slot.wolf[0]][slot.wolf[1]] = "wolf";
+        for (const [br, bc] of slot.bridges) {
+          if (grid[br]?.[bc] === "grass") {
+            grid[br][bc] = "bridge";
+          }
         }
+      }
+
+      // 3. Sprinkle natural rock/water maze formations, bridges, strawberries, and pitfalls
+      const isLarge = rows >= 8 || cols >= 8;
+      const waterCut = isLarge ? 0.21 : 0.17;
+      const rockCut = isLarge ? 0.37 : 0.29;
+      const bridgeCut = isLarge ? 0.43 : 0.36;
+      const strawberryCut = isLarge ? 0.61 : 0.53;
+      const pitCut = isLarge ? 0.72 : 0.64;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c] !== "grass") continue;
+          const distCenter = Math.abs(r - centerR) + Math.abs(c - centerC);
+          const roll = rng();
+          if (distCenter >= 1.8 && roll < waterCut) {
+            grid[r][c] = "water";
+          } else if (distCenter >= 1.8 && roll < rockCut) {
+            grid[r][c] = "rock";
+          } else if (roll < bridgeCut) {
+            grid[r][c] = "bridge";
+          } else if (roll < strawberryCut) {
+            grid[r][c] = "strawberry";
+          } else if (roll < pitCut) {
+            grid[r][c] = "pit";
+          }
+        }
+      }
+
+      const candidate: StagePuzzle = {
+        id: `stage-${stageNumber}`,
+        stageNumber,
+        title: theme.ja,
+        oneLiner: `${spec.maxFences}本の柵で🐺の侵入を防ぎ、目標スコアを達成しよう`,
+        maxFences: spec.maxFences,
+        targetScore: 20,
+        grid,
+      };
+
+      const emptyEval = evaluatePasture(
+        candidate,
+        Array.from({ length: rows }, () => Array.from({ length: cols }, () => false))
+      );
+      if (emptyEval.isSafe) continue;
+      if (emptyEval.pastureTileCount < 14) continue;
+
+      const solved = await solveOptimalPasture(candidate);
+      const minRequiredFences = Math.max(3, Math.min(5, spec.maxFences - 2));
+      if (
+        solved.status === "Optimal" &&
+        solved.verified &&
+        solved.optimalFenceCount >= minRequiredFences &&
+        solved.optimalEvaluation.pastureTileCount >= 8 &&
+        solved.optimalScore >= 20
+      ) {
+        candidate.maxFences = solved.optimalFenceCount;
+        candidate.targetScore = solved.optimalScore;
+        candidate.oneLiner = `${candidate.maxFences}本の柵で🐺の侵入を防ぎ、目標スコア ${candidate.targetScore} pt を達成しよう`;
+        generatedStageCache.set(stageNumber, { stage: candidate, optimal: solved });
+        return candidate;
       }
     }
 
-    const maxFences = wolfCount === 2 ? 3 : 4;
-    const candidate: StagePuzzle = {
-      id: `random-${seed}-${attempt}`,
-      stageNumber: CAMPAIGN_STAGES.length + 1,
-      title: `風そよぐおかわり牧場 #${String(seed % 1000).padStart(3, "0")}`,
-      oneLiner: `${maxFences}本の柵でクリア目標スコアを達成しよう`,
-      maxFences,
-      targetScore: 20,
-      grid,
+    const fallback: StagePuzzle = {
+      ...CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1],
+      id: `stage-${stageNumber}`,
+      stageNumber,
+      title: theme.ja,
     };
+    const fallbackSolved = await solveOptimalPasture(fallback);
+    const verifiedFallbackOpt =
+      fallbackSolved.status === "Optimal" && fallbackSolved.verified
+        ? fallbackSolved
+        : null;
+    generatedStageCache.set(stageNumber, {
+      stage: fallback,
+      optimal: verifiedFallbackOpt,
+    });
+    return fallback;
+  })();
 
-    const emptyEval = evaluatePasture(
-      candidate,
-      Array.from({ length: rows }, () => Array.from({ length: cols }, () => false))
-    );
-    if (emptyEval.isSafe) continue;
-
-    const solved = await solveOptimalPasture(candidate);
-    if (
-      solved.status === "Optimal" &&
-      solved.verified &&
-      solved.optimalFenceCount >= 2 &&
-      solved.optimalEvaluation.pastureTileCount >= 8 &&
-      solved.optimalScore >= 20
-    ) {
-      candidate.targetScore = solved.optimalScore;
-      return candidate;
-    }
+  inFlightStagePromises.set(stageNumber, generationPromise);
+  try {
+    return await generationPromise;
+  } finally {
+    inFlightStagePromises.delete(stageNumber);
   }
+}
 
-  return {
-    ...CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1],
-    id: `random-fallback-${seed}`,
-    stageNumber: CAMPAIGN_STAGES.length + 1,
-    title: `風そよぐおかわり牧場 #${String(seed % 1000).padStart(3, "0")}`,
-  };
+export async function getStageByNumber(
+  stageNumber: number
+): Promise<{ stage: StagePuzzle; precomputedOptimal: OptimalPastureResult | null }> {
+  const num = Math.max(1, Math.floor(stageNumber));
+  if (num <= CAMPAIGN_STAGES.length) {
+    return { stage: CAMPAIGN_STAGES[num - 1], precomputedOptimal: null };
+  }
+  const stage = await generateVerifiedPastureStage(num);
+  const cached = generatedStageCache.get(num);
+  return { stage, precomputedOptimal: cached?.optimal ?? null };
 }
 
 export function countStageTiles(stage: StagePuzzle): Record<TileType, number> {
   const counts: Record<TileType, number> = {
     grass: 0,
     strawberry: 0,
-    mushroom: 0,
+    pit: 0,
     bridge: 0,
     water: 0,
     rock: 0,

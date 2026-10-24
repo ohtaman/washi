@@ -131,7 +131,7 @@ export function evaluatePasture(stage: StagePuzzle, fences: FenceGrid): PastureE
     sheepCount: 0,
     grassCount: 0,
     strawberryCount: 0,
-    mushroomCount: 0,
+    pitCount: 0,
   };
 
   for (let r = 0; r < rows; r++) {
@@ -143,7 +143,7 @@ export function evaluatePasture(stage: StagePuzzle, fences: FenceGrid): PastureE
       if (tile === "sheep") breakdown.sheepCount++;
       else if (tile === "grass" || tile === "bridge") breakdown.grassCount++;
       else if (tile === "strawberry") breakdown.strawberryCount++;
-      else if (tile === "mushroom") breakdown.mushroomCount++;
+      else if (tile === "pit") breakdown.pitCount++;
     }
   }
 
@@ -402,8 +402,8 @@ export function resolveTargetScore(
 }
 
 /**
- * Computes the responsive board cell size (in px) so that even a 7×7 grid fits
- * comfortably inside mobile viewports (e.g. 375px wide) without clipping.
+ * Computes the responsive board cell size (in px) so that even up to a 10×10 grid fits
+ * comfortably inside desktop and mobile viewports (e.g. 375px wide) without clipping.
  */
 export function computeCellSize(
   rows: number,
@@ -412,7 +412,20 @@ export function computeCellSize(
   gapPx = 7
 ): number {
   const maxDim = Math.max(rows, cols);
-  const ideal = maxDim <= 4 ? 88 : maxDim === 5 ? 76 : maxDim === 6 ? 68 : 60;
+  const ideal =
+    maxDim <= 4
+      ? 88
+      : maxDim === 5
+        ? 76
+        : maxDim === 6
+          ? 68
+          : maxDim === 7
+            ? 60
+            : maxDim === 8
+              ? 54
+              : maxDim === 9
+                ? 48
+                : 44;
   if (
     typeof availableWidthPx !== "number" ||
     !Number.isFinite(availableWidthPx) ||
@@ -422,7 +435,7 @@ export function computeCellSize(
     return ideal;
   }
   const fitWidth = Math.floor((availableWidthPx - Math.max(0, cols - 1) * gapPx) / cols);
-  return Math.max(34, Math.min(ideal, fitWidth));
+  return Math.max(22, Math.min(ideal, fitWidth));
 }
 
 /**

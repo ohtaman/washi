@@ -14,7 +14,9 @@ import type { OptimalPastureResult } from "../examples/web-demo/games/mofumofu-s
 import {
   CAMPAIGN_STAGES,
   generateVerifiedPastureStage,
+  getDifficultySpecForStage,
   getLocalizedStageText,
+  getStageByNumber,
 } from "../examples/web-demo/games/mofumofu-sheep/stages.js";
 import {
   getDayLabel,
@@ -30,7 +32,13 @@ import {
   switchCastleLanguage,
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
 import { CAMPAIGN_STAGES as CASTLE_STAGES } from "../examples/web-demo/games/demon-castle-shift/stages.js";
-import { applyStaticTranslations as applySheepStaticTranslations } from "../examples/web-demo/games/mofumofu-sheep/main.js";
+import {
+  applyStaticTranslations as applySheepStaticTranslations,
+  countCanonicalClearedStages,
+  loadStageByNumber,
+  parseProgressState,
+  stepStage,
+} from "../examples/web-demo/games/mofumofu-sheep/main.js";
 
 describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
   it("has 12 progressive campaign stages (4 tiny tutorials + 8 optimization puzzles)", () => {
@@ -67,23 +75,23 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(opt.optimalScore).toBe(7);
   });
 
-  it("verifies Stage 6 requires placing a double-duty fence directly on the poison mushroom (1, 2)", async () => {
+  it("verifies Stage 6 requires placing a double-duty fence post directly into the pitfall (1, 2)", async () => {
     const stage6 = CAMPAIGN_STAGES[5];
     const opt = await solveOptimalPasture(stage6);
-    expect(opt.optimalFences[1][2]).toBe(true); // crushes M(1, 2) while blocking the upper path
-    expect(opt.optimalEvaluation.breakdown.mushroomCount).toBe(0);
+    expect(opt.optimalFences[1][2]).toBe(true); // plugs P(1, 2) while blocking the upper path
+    expect(opt.optimalEvaluation.breakdown.pitCount).toBe(0);
     expect(opt.optimalScore).toBe(26);
   });
 
-  it("verifies Stage 7 Twist: optimal solution walks THROUGH the poison mushroom (2, 4) instead of crushing it", async () => {
+  it("verifies Stage 7 Twist: optimal solution walks THROUGH the pitfall (2, 4) instead of plugging it", async () => {
     const stage7 = CAMPAIGN_STAGES[6];
     const opt = await solveOptimalPasture(stage7);
-    expect(opt.optimalFences[2][4]).toBe(false); // do NOT crush M(2, 4)
+    expect(opt.optimalFences[2][4]).toBe(false); // do NOT plug P(2, 4)
     expect(opt.optimalFences[3][5]).toBe(true); // block at (3, 5) while keeping the East Sanctuary open
-    expect(opt.optimalEvaluation.breakdown.mushroomCount).toBe(1); // intentionally accepts -5 to gain +15
+    expect(opt.optimalEvaluation.breakdown.pitCount).toBe(1); // intentionally accepts -5 to gain +15
     expect(opt.optimalScore).toBe(26);
 
-    // Verify that naively crushing M(2, 4) is safe but fails the stage targetScore (16 < 26)
+    // Verify that naively plugging P(2, 4) is safe but fails the stage targetScore (16 < 26)
     const naiveFences = createEmptyFences(stage7.grid.length, stage7.grid[0].length);
     naiveFences[0][2] = true;
     naiveFences[2][4] = true;
@@ -112,18 +120,49 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(subHint.targetCell).toEqual({ row: 1, col: 3 });
   });
 
-  it("generates guaranteed-solvable random pasture stages verified by HiGHS", async () => {
-    for (const seed of [101, 202, 303]) {
-      const stage = await generateVerifiedPastureStage(seed);
-      const optimalResult = await solveOptimalPasture(stage);
+  it("generates deterministic, progressive stages (7x7 -> 8x8 -> 9x9 -> 10x10 cap) that can be revisited by stageNumber", async () => {
+    expect(getDifficultySpecForStage(13)).toMatchObject({ rows: 7, cols: 7 });
+    expect(getDifficultySpecForStage(19)).toMatchObject({ rows: 8, cols: 8 });
+    expect(getDifficultySpecForStage(25)).toMatchObject({ rows: 9, cols: 9 });
+    expect(getDifficultySpecForStage(31)).toMatchObject({ rows: 10, cols: 10 });
+
+    for (const stageNum of [13, 19, 25, 31]) {
+      const spec = getDifficultySpecForStage(stageNum);
+      const stageA = await generateVerifiedPastureStage(stageNum);
+      const { stage: stageB, precomputedOptimal } = await getStageByNumber(stageNum);
+      expect(stageA.id).toBe(`stage-${stageNum}`);
+      expect(stageA.stageNumber).toBe(stageNum);
+      expect(stageA.grid.length).toBe(spec.rows);
+      expect(stageA.grid[0].length).toBe(spec.cols);
+      expect(stageB.grid).toEqual(stageA.grid);
+      expect(stageB.targetScore).toBe(stageA.targetScore);
+      expect(precomputedOptimal?.verified).toBe(true);
+
+      const optimalResult = await solveOptimalPasture(stageA);
       expect(optimalResult.status).toBe("Optimal");
       expect(optimalResult.verified).toBe(true);
-      expect(optimalResult.optimalScore).toBe(stage.targetScore);
+      expect(optimalResult.optimalScore).toBe(stageA.targetScore);
 
-      const check = evaluatePasture(stage, optimalResult.optimalFences);
+      const check = evaluatePasture(stageA, optimalResult.optimalFences);
       expect(check.isSafe).toBe(true);
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
+
+    // When all 36 candidate attempts are rejected (e.g., degenerate PRNG output filling the outer ring with water),
+    // fallback stage + verified optimal solution are still cached so revisiting does not re-run generation.
+    const imulSpy = vi.spyOn(Math, "imul").mockReturnValue(0);
+    try {
+      const exhaustedStage = await generateVerifiedPastureStage(99);
+      expect(exhaustedStage.id).toBe("stage-99");
+      expect(exhaustedStage.grid).toEqual(CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1].grid);
+    } finally {
+      imulSpy.mockRestore();
+    }
+    const { stage: cachedFallback, precomputedOptimal: cachedFallbackOpt } =
+      await getStageByNumber(99);
+    expect(cachedFallback.id).toBe("stage-99");
+    expect(cachedFallback.grid).toEqual(CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1].grid);
+    expect(cachedFallbackOpt?.verified).toBe(true);
   });
 
   it("enforces editorial & i18n rules across Portal, Games, and Theory Articles (no 核心, no ！, no algorithm names on Portal, full ja/en/zh)", () => {
@@ -224,6 +263,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       };
       setAttribute: (attr: string, val: string) => void;
       getAttribute: (attr: string) => string | null;
+      appendChild: () => void;
     }
 
     const createHtmlMockDocument = (html: string) => {
@@ -296,6 +336,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
             attrs.set(attr, val);
           },
           getAttribute: (attr: string) => attrs.get(attr) ?? null,
+          appendChild: () => {},
         };
 
         allElements.push(el);
@@ -313,6 +354,18 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       return {
         documentElement: { lang: "ja" },
         title: "",
+        createElement: () => ({
+          type: "",
+          className: "",
+          disabled: false,
+          textContent: "",
+          value: "",
+          selected: false,
+          dataset: {},
+          classList: { toggle: () => {}, add: () => {}, remove: () => {} },
+          addEventListener: () => {},
+          appendChild: () => {},
+        }),
         getElementById: (id: string) => byId.get(id) ?? null,
         querySelectorAll: (selector: string) => {
           if (selector === "[data-lang-btn]") return langBtns;
@@ -495,15 +548,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("btn-hint")?.title).toBe(
         "Highlight the next recommended move on the board (H key)"
       );
-      expect(sheepDoc.byId.get("btn-new-random-label")?.textContent).toBe("Another Pasture");
-      expect(sheepDoc.byId.get("btn-new-random")?.title).toBe("Move to another pasture");
       expect(sheepDoc.byId.get("legend-sheep")?.title).toBe(
         "Sheep (+2 pts, protect from wolves)"
       );
       expect(sheepDoc.byId.get("legend-grass")?.title).toBe("Meadow (+1 pt)");
       expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("Wild Strawberry (+5 pts)");
-      expect(sheepDoc.byId.get("legend-mushroom")?.title).toBe(
-        "Poison Mushroom (-5 pts, can be covered with a fence)"
+      expect(sheepDoc.byId.get("legend-pit")?.title).toBe(
+        "Pitfall (-5 pts, can be plugged with a fence)"
       );
       expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
         "Stone Bridge (+1 pt, passable, cannot place fence)"
@@ -537,12 +588,10 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("btn-restart")?.title).toBe("从头重新开始 (R键)");
       expect(sheepDoc.byId.get("btn-hint-label")?.textContent).toBe("一步提示");
       expect(sheepDoc.byId.get("btn-hint")?.title).toBe("在棋盘上高亮提示下一步操作 (H键)");
-      expect(sheepDoc.byId.get("btn-new-random-label")?.textContent).toBe("换一个牧场");
-      expect(sheepDoc.byId.get("btn-new-random")?.title).toBe("前往另一个牧场");
       expect(sheepDoc.byId.get("legend-sheep")?.title).toBe("绵羊（+2分・保护对象）");
       expect(sheepDoc.byId.get("legend-grass")?.title).toBe("草地（+1分）");
       expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("野草莓（+5分）");
-      expect(sheepDoc.byId.get("legend-mushroom")?.title).toBe("毒蘑菇（-5分・可用栅栏盖住）");
+      expect(sheepDoc.byId.get("legend-pit")?.title).toBe("坑洞（-5分・可用木桩栅栏填平）");
       expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
         "石桥（+1分・可通行・不可放栅栏）"
       );
@@ -589,14 +638,227 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(hint.targetCell).toEqual({ row: 0, col: 1 });
   });
 
-  it("scales cell size to fit narrow 375px mobile viewports for 7x7 boards without overflowing", () => {
+  it("scales cell size to fit narrow 375px mobile viewports for 7x7 and 10x10 boards without overflowing", () => {
     // Desktop / unconstrained fallback preserves ideal cell sizes
     expect(computeCellSize(3, 4)).toBe(88);
     expect(computeCellSize(7, 7)).toBe(60);
+    expect(computeCellSize(10, 10)).toBe(44);
 
     // 375px mobile viewport (~299px available inner board width): 7 * cellSize + 6 * 7 <= 299
     const mobileCellSize = computeCellSize(7, 7, 299, 7);
     expect(mobileCellSize).toBe(36);
     expect(7 * mobileCellSize + 6 * 7).toBeLessThanOrEqual(299);
+
+    const mobile10CellSize = computeCellSize(10, 10, 299, 7);
+    expect(mobile10CellSize).toBe(23);
+    expect(10 * mobile10CellSize + 9 * 7).toBeLessThanOrEqual(299);
+  });
+
+  it("excludes legacy random-* keys from clear counts and stops next-stage navigation at the unlock boundary", async () => {
+    const legacySavedJson = JSON.stringify({
+      clearedByStageId: {
+        "stage-1": true,
+        "stage-2": true,
+        "random-1001": true,
+        "random-fallback-1": true,
+      },
+    });
+    const parsed = parseProgressState(legacySavedJson);
+    expect(parsed.clearedByStageId).toEqual({
+      "stage-1": true,
+      "stage-2": true,
+    });
+    expect(countCanonicalClearedStages(parsed.clearedByStageId)).toBe(2);
+    // Tutorial stages 1..4 are unlocked by default
+    expect(parsed.highestUnlockedStage).toBe(4);
+
+    interface TestDomNode {
+      id: string;
+      type: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      value: string;
+      selected: boolean;
+      className: string;
+      dataset: Record<string, string>;
+      style: {
+        gridTemplateColumns: string;
+        setProperty: () => void;
+      };
+      children: TestDomNode[];
+      classList: {
+        toggle: () => void;
+        add: () => void;
+        remove: () => void;
+      };
+      setAttribute: () => void;
+      getAttribute: () => string | null;
+      appendChild: (child: TestDomNode) => void;
+      addEventListener: (event: string, cb: () => void) => void;
+      click: () => void;
+    }
+
+    const makeNode = (id = ""): TestDomNode => {
+      const listeners = new Map<string, (() => void)[]>();
+      const node: TestDomNode = {
+        id,
+        type: "",
+        textContent: "",
+        innerHTML: "",
+        title: "",
+        hidden: false,
+        disabled: false,
+        value: "",
+        selected: false,
+        className: "",
+        dataset: {},
+        style: {
+          gridTemplateColumns: "",
+          setProperty: () => {},
+        },
+        children: [],
+        classList: {
+          toggle: () => {},
+          add: () => {},
+          remove: () => {},
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: (child: TestDomNode) => {
+          node.children.push(child);
+        },
+        addEventListener: (event: string, cb: () => void) => {
+          const list = listeners.get(event) ?? [];
+          list.push(cb);
+          listeners.set(event, list);
+        },
+        click: () => {
+          for (const cb of listeners.get("click") ?? []) {
+            cb();
+          }
+        },
+      };
+      return node;
+    };
+
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const byId = new Map<string, TestDomNode>();
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+    for (const match of sheepHtml.matchAll(tagRegex)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      const id = idMatch[1];
+      byId.set(id, makeNode(id));
+    }
+    const boardGridEl = byId.get("board-grid");
+    if (boardGridEl) {
+      Object.defineProperty(boardGridEl, "innerHTML", {
+        get: () => "",
+        set: () => {
+          boardGridEl.children = [];
+        },
+      });
+    }
+
+    const storageMap = new Map<string, string>();
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
+    try {
+      (globalThis as { localStorage?: unknown }).localStorage = {
+        getItem: (k: string) => storageMap.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          storageMap.set(k, v);
+        },
+        removeItem: (k: string) => {
+          storageMap.delete(k);
+        },
+      };
+      (globalThis as { document?: unknown }).document = {
+        documentElement: { lang: "ja" },
+        title: "",
+        createElement: () => makeNode(),
+        getElementById: (id: string) => byId.get(id) ?? null,
+        querySelectorAll: () => [],
+      };
+
+      storageMap.set("washi_mofumofu_sheep_cleared_v3", legacySavedJson);
+      await loadStageByNumber(1);
+      expect(byId.get("total-stars-text")?.textContent).toBe("2 CLEAR");
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(false);
+
+      // Step to Stage 4 (the initial tutorial unlock boundary)
+      await loadStageByNumber(4);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 4");
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(true);
+
+      // Attempting to step past the unlock boundary must be rejected and must not unlock Stage 5
+      const steppedLocked = await stepStage(1);
+      expect(steppedLocked).toBe(false);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 4");
+
+      // Legitimately clearing Stage 4 by clicking its optimal cells unlocks Stage 5 and enables the next arrow
+      const stage4 = CAMPAIGN_STAGES[3];
+      const opt4 = await solveOptimalPasture(stage4);
+      for (let r = 0; r < stage4.grid.length; r++) {
+        for (let c = 0; c < stage4.grid[0].length; c++) {
+          if (!opt4.optimalFences[r][c]) continue;
+          const cellBtn = byId
+            .get("board-grid")
+            ?.children.find(
+              (ch) => ch.dataset.row === String(r) && ch.dataset.col === String(c)
+            );
+          cellBtn?.click();
+        }
+      }
+      expect(byId.get("total-stars-text")?.textContent).toBe("3 CLEAR");
+      expect(byId.get("btn-stage-next")?.disabled).toBe(false);
+
+      const steppedUnlocked = await stepStage(1);
+      expect(steppedUnlocked).toBe(true);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 5");
+
+      // Verify rapid repeated navigation into an uncached generated stage (Stage 14) disables controls while loading
+      storageMap.set(
+        "washi_mofumofu_sheep_cleared_v3",
+        JSON.stringify({
+          clearedByStageId: { "stage-13": true },
+          highestUnlockedStage: 15,
+        })
+      );
+      await loadStageByNumber(13);
+      const firstStepPromise = stepStage(1);
+      // While Stage 14 generation is in flight, navigation and rules buttons are disabled and duplicate/tutorial jumps are rejected
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(true);
+      expect(byId.get("stage-select")?.disabled).toBe(true);
+      expect(byId.get("btn-open-rules")?.disabled).toBe(true);
+      const duplicateStep = await stepStage(1);
+      expect(duplicateStep).toBe(false);
+      await loadStageByNumber(1);
+      expect(await firstStepPromise).toBe(true);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 14");
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(false);
+      expect(byId.get("stage-select")?.disabled).toBe(false);
+      expect(byId.get("btn-open-rules")?.disabled).toBe(false);
+    } finally {
+      if (prevDocument === undefined) {
+        delete (globalThis as { document?: unknown }).document;
+      } else {
+        (globalThis as { document?: unknown }).document = prevDocument;
+      }
+      if (prevStorage === undefined) {
+        delete (globalThis as { localStorage?: unknown }).localStorage;
+      } else {
+        (globalThis as { localStorage?: unknown }).localStorage;
+        (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
+      }
+    }
   });
 });
