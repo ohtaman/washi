@@ -3720,6 +3720,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5Clarify.nonToolReason).toBe("clarify");
       expect(planTurn5Clarify.operations).toEqual([]);
 
+      // Turn 5b: If a huge follow-up causes the combined pending messages to exceed Gemini Nano's
+      // 9,216-token context budget, older entries are dropped so the prompt stays within budget (4368317268).
+      const oversizedFollowUp = `補足${"あ".repeat(7000)}`;
+      const planTurn5bOversized = await manager.extractPlan(
+        oversizedFollowUp,
+        appliedTurn4.updatedState
+      );
+      expect(planTurn5bOversized.nonToolReason).toBe("clarify");
+
       // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
       // Must clear `pendingClarification` so Turn 7 does NOT resurrect the abandoned Turn 5 request!
       turn1Reply = {
@@ -3731,6 +3740,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         "現在の夜勤上限はいくつ？",
         appliedTurn4.updatedState
       );
+      const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(turn6RouterPrompt).not.toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");
 

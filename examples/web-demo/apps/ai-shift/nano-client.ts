@@ -2300,7 +2300,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let lastUnappliedInstructions: string[] = [];
   let recentTurnHistory: string[] = [];
   let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
-  const MAX_PENDING_CLARIFICATION_CHARS = 2000;
+  // Chrome Built-in AI (Gemini Nano / LanguageModel API) default contextWindow is 9,216 tokens.
+  const GEMINI_NANO_CONTEXT_WINDOW_TOKENS = 9216;
+  const RESERVED_PROMPT_AND_OUTPUT_TOKENS = 2216;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2310,20 +2312,32 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     }
   }
 
+  function getPendingClarificationCharBudget(): number {
+    const tokenInfo = readSessionTokenUsage(routerBaseSession);
+    if (tokenInfo && tokenInfo.quota > tokenInfo.usage) {
+      return Math.max(1000, tokenInfo.quota - tokenInfo.usage - 500);
+    }
+    return GEMINI_NANO_CONTEXT_WINDOW_TOKENS - RESERVED_PROMPT_AND_OUTPUT_TOKENS;
+  }
+
   function recordPendingClarification(msg: string, question: string): void {
+    const budget = getPendingClarificationCharBudget();
+    const boundedMsg = msg.length > budget ? msg.slice(-budget) : msg;
+    const boundedQuestion = question.length > budget ? question.slice(-budget) : question;
     if (pendingClarification) {
-      pendingClarification.messages.push(msg);
+      pendingClarification.messages.push(boundedMsg);
       while (
-        pendingClarification.messages.length > 2 &&
-        pendingClarification.messages.join(" / ").length > MAX_PENDING_CLARIFICATION_CHARS
+        pendingClarification.messages.length > 1 &&
+        pendingClarification.messages.join(" / ").length > budget
       ) {
-        pendingClarification.messages.splice(1, 1);
+        const removeIdx = pendingClarification.messages.length > 2 ? 1 : 0;
+        pendingClarification.messages.splice(removeIdx, 1);
       }
-      pendingClarification.lastQuestion = question;
+      pendingClarification.lastQuestion = boundedQuestion;
     } else {
       pendingClarification = {
-        messages: [msg],
-        lastQuestion: question,
+        messages: [boundedMsg],
+        lastQuestion: boundedQuestion,
       };
     }
   }
