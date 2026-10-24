@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/washi-logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
+    <title>『大学時間割編成 AI Copilot』の数理モデル解説 — 4次元0-1整数計画（UCTP）とAI×ソルバー連携</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-page: #0b1120;
+        --card-bg: #131c31;
+        --border-subtle: rgba(56, 189, 248, 0.26);
+        --gold: #f6c453;
+        --gold-soft: rgba(246, 196, 83, 0.12);
+        --cyan: #38bdf8;
+        --cyan-soft: rgba(56, 189, 248, 0.12);
+        --rose: #fb7185;
+        --rose-soft: rgba(251, 113, 133, 0.12);
+        --text-main: #f1f5f9;
+        --text-muted: #cbd5e1;
+        --code-bg: #070b14;
+        --code-text: #e2e8f0;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(circle at top, #1e293b 0%, #0b1120 70%);
+        color: var(--text-main);
+        font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
+        line-height: 1.8;
+        padding: 2rem 1.25rem 5rem;
+      }
+
+      .article-shell {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .topnav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .topnav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: var(--text-main);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.48rem 0.95rem;
+        border-radius: 999px;
+      }
+
+      .nav-btn:hover {
+        border-color: var(--cyan);
+        color: var(--cyan);
+      }
+
+      .nav-btn.primary {
+        background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+        color: #fff;
+        border-color: #fda4af;
+      }
+
+      .lang-switch {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 999px;
+        padding: 0.18rem;
+        gap: 0.15rem;
+      }
+
+      .lang-btn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.28rem 0.68rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+
+      .lang-btn.is-active {
+        background: var(--cyan);
+        color: #0b1120;
+      }
+
+      .hero-card {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+        border: 2px solid var(--cyan);
+        border-radius: 24px;
+        padding: 2.2rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+      }
+
+      .hero-eyebrow {
+        display: inline-block;
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: #0b1120;
+        background: var(--cyan);
+        padding: 0.2rem 0.75rem;
+        border-radius: 999px;
+        margin-bottom: 0.75rem;
+      }
+
+      .hero-card h1 {
+        font-size: clamp(1.42rem, 3.1vw, 2rem);
+        line-height: 1.38;
+        margin: 0 0 0.9rem;
+        color: #e0f2fe;
+      }
+
+      .hero-card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+      }
+
+      .section-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-subtle);
+        border-radius: 20px;
+        padding: 1.9rem 2rem;
+        margin-bottom: 1.6rem;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+      }
+
+      .section-card h2 {
+        font-size: 1.3rem;
+        color: var(--cyan);
+        margin: 0 0 1rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+      }
+
+      .section-card h3 {
+        font-size: 1.06rem;
+        color: #fde68a;
+        margin: 1.4rem 0 0.5rem;
+      }
+
+      .section-card p {
+        margin: 0 0 1rem;
+      }
+
+      .math-box {
+        background: rgba(7, 11, 20, 0.82);
+        border-left: 4px solid var(--cyan);
+        border-radius: 0 12px 12px 0;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0 1.25rem;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        color: #e0f2fe;
+        overflow-x: auto;
+      }
+
+      .math-box .math-title {
+        font-family: "Inter", "Noto Sans JP", sans-serif;
+        font-weight: 800;
+        font-size: 0.84rem;
+        color: var(--cyan);
+        margin-bottom: 0.35rem;
+        display: block;
+      }
+
+      .callout {
+        border-radius: 14px;
+        padding: 1.1rem 1.3rem;
+        margin: 1.1rem 0;
+        font-size: 0.93rem;
+      }
+
+      .callout.gold {
+        background: var(--gold-soft);
+        border: 1px solid rgba(246, 196, 83, 0.5);
+        color: #fef3c7;
+      }
+
+      .callout.cyan {
+        background: var(--cyan-soft);
+        border: 1px solid rgba(56, 189, 248, 0.5);
+        color: #e0f2fe;
+      }
+
+      .callout.rose {
+        background: var(--rose-soft);
+        border: 1px solid rgba(251, 113, 133, 0.5);
+        color: #ffe4e6;
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 0.3rem;
+      }
+
+      table.mapping-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.25rem;
+        font-size: 0.88rem;
+      }
+
+      table.mapping-table th,
+      table.mapping-table td {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        padding: 0.65rem 0.85rem;
+        text-align: left;
+      }
+
+      table.mapping-table th {
+        background: rgba(56, 189, 248, 0.14);
+        color: #bae6fd;
+        font-weight: 800;
+      }
+
+      pre.code-block {
+        background: var(--code-bg);
+        color: var(--code-text);
+        padding: 1.15rem 1.35rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.84rem;
+        line-height: 1.62;
+        margin: 1rem 0;
+      }
+
+      .footer-cta {
+        text-align: center;
+        margin-top: 2.2rem;
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="article-shell">
+      <nav class="topnav">
+        <a href="../index.html" class="nav-btn" id="nav-back">← アプリ一覧へ戻る</a>
+        <div class="topnav-right">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <a href="../ai-shift/" class="nav-btn" id="nav-other-app">🏥 ナーススケジューリング AI へ</a>
+          <a href="../ai-timetable/" class="nav-btn primary" id="nav-open-app">🎓 時間割 AI Copilot を開く ▶</a>
+        </div>
+      </nav>
+
+      <!-- =====================================================================
+           JAPANESE ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="ja">
+        <header class="hero-card">
+          <span class="hero-eyebrow">数理最適化（MILP）× ローカルAI 解説記事</span>
+          <h1>『大学時間割編成 AI Copilot』の裏側：<br />4次元0-1整数計画問題（UCTP）と複数枚連動パズルの定式化</h1>
+          <p>
+            対象読者：混合整数線形計画（MILP）およびAIエージェントによる構造化入力に関心のある方。<br />
+            なぜ大学の時間割は「1枚の表」ではなく<strong>学年別（4枚）・教員別（10名）・教室別（7室）の複数枚が裏で同時に絡み合うNP困難問題</strong>になるのか、そして<strong>Gemini Nano（構造化抽出）× WaSHI / HiGHS（厳密求解・矛盾診断）</strong>がどのように連携しているのかを解説します。
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. なぜ「大学の時間割」は複数枚が裏で連動して解けなくなるのか？</h2>
+          <p>
+            オペレーションズ・リサーチ（OR）において、<strong>大学時間割編成問題（University Course Timetabling Problem; UCTP）</strong>はナース・スケジューリング問題（NSP）と並び、国際コンペティション（ITC-2007等）が開催され続ける代表的な実務組合せ最適化問題です。
+          </p>
+          <p>
+            小学校のクラス時間割なら「1クラス＝1枚の表」の中で完結しますが、大学の学部時間割では<strong>「1年〜4年の学生カリキュラム（4枚の時間割）」「専任・非常勤10名の教員スケジュール」「定員・PC設備の異なる7つの講義室・演習室」</strong>がすべて共通の曜日・時限（週25枠）を奪い合います。ある学年の1コマを動かした瞬間、同じ先生が担当する他学年のゼミや、同じ大講義室を使う別科目が玉突きで衝突します。
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>アプリ上の要素</th>
+                <th>実務の大学時間割（UCTP）での意味</th>
+                <th>数理モデル上の表現</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>開講科目 <code>c ∈ C</code>（全25科目・計30コマ）</td>
+                <td>週1コマまたは週2コマ開講される講義・PC演習・ゼミ</td>
+                <td>週間必要コマ数 <code>S_c ∈ {1, 2}</code>、履修者数 <code>Enr_c</code></td>
+              </tr>
+              <tr>
+                <td>曜日 <code>d ∈ D</code>・時限 <code>p ∈ P</code>・教室 <code>r ∈ R</code></td>
+                <td>月〜金（5日）× 1〜5限（計25枠）× 7室の講義室/PC室</td>
+                <td>4次元0-1決定変数 <code>x_{c,d,p,r} ∈ {0, 1}</code>（計4,375個）</td>
+              </tr>
+              <tr>
+                <td>学年別4枚の時間割（1年〜4年）</td>
+                <td>各学年の必修・選択必修カリキュラム（Curriculum）</td>
+                <td>学年 <code>k</code> のコア科目集合 <code>Core_k</code> の同時開講禁止</td>
+              </tr>
+              <tr>
+                <td>非常勤講師の出講可能曜日・教授会NG枠</td>
+                <td>「小林先生は火・木のみ」「水曜5限は教授会」等の個別制約</td>
+                <td>該当枠の決定変数和を <code>0</code> に固定するハード制約</td>
+              </tr>
+              <tr>
+                <td>PC演習室必須・大講義室定員制約</td>
+                <td>プログラミング演習はPC端末必須、130名講義は大講義室のみ</td>
+                <td>不適合教室 <code>r ∉ R_c</code> への割当を禁止（<code>x_{c,d,p,r} = 0</code>）</td>
+              </tr>
+              <tr>
+                <td>学生の「空きコマ（中空き）」の最小化</td>
+                <td>1限と3限に必修があり2限が空く「中空き」の解消</td>
+                <td>補助連続変数 <code>gap_{k,d,p} &gt;= 0</code> によるソフト制約ペナルティ</td>
+              </tr>
+              <tr>
+                <td>解なし（Infeasible）時の衝突ルール診断</td>
+                <td>条件の詰め込みすぎで時間割が組めない原因の特定</td>
+                <td>二段階スラック緩和（Elastic Relaxation）による極小衝突集合の抽出</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section-card">
+          <h2>2. 4次元二値決定変数と基本ハード制約の定式化</h2>
+          <p>
+            科目集合を <code>C</code>（25科目）、曜日集合を <code>D = {Mon, Tue, Wed, Thu, Fri}</code>、時限集合を <code>P = {1, 2, 3, 4, 5}</code>、教室集合を <code>R</code>（7室）とします。科目 <code>c</code> を曜日 <code>d</code>・時限 <code>p</code>・教室 <code>r</code> に割り当てるとき <code>1</code>、そうでないとき <code>0</code> をとる二値決定変数 <code>x_{c,d,p,r} ∈ {0, 1}</code> を定義します。
+          </p>
+          <p>
+            また表記を簡潔にするため、科目 <code>c</code> が枠 <code>(d, p)</code> のいずれかの教室で開講されるかを表す射影式を <code>u_{c,d,p} = Σ_{r ∈ R} x_{c,d,p,r}</code> と置きます。
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">大学時間割編成問題（UCTP）の基本ハード制約群</span>
+            (1) 週間必要コマ数: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{d ∈ D} Σ_{p ∈ P} Σ_{r ∈ R} x_{c,d,p,r} == S_c &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀c ∈ C)<br />
+            (2) 1枠につき高々1教室: &nbsp;&nbsp;&nbsp; u_{c,d,p} = Σ_{r ∈ R} x_{c,d,p,r} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀c, d, p)<br />
+            (3) 教室定員・設備適合: &nbsp;&nbsp;&nbsp; Σ_{d ∈ D} Σ_{p ∈ P} Σ_{r ∉ R_c} x_{c,d,p,r} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;(∀c ∈ C)<br />
+            (4) 教室の同時使用禁止: &nbsp;&nbsp;&nbsp; Σ_{c ∈ C} x_{c,d,p,r} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀r ∈ R, d ∈ D, p ∈ P)<br />
+            (5) 教員の同時担当禁止: &nbsp;&nbsp;&nbsp; Σ_{c ∈ C_{prof}} u_{c,d,p} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀prof, d ∈ D, p ∈ P)<br />
+            (6) 学年カリキュラム重複禁止: Σ_{c ∈ Core_k} u_{c,d,p} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀k ∈ {Y1..Y4}, d, p)<br />
+            (7) 非常勤・教員NG枠禁止: &nbsp; Σ_{c ∈ C_{prof}} u_{c,d,p} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀(prof, d, p) ∈ Unavail)
+          </div>
+
+          <div class="callout cyan">
+            <strong>💡 なぜ「学年別」「教員別」「教室別」の3つのビューが同じ解から同時に描けるのか</strong>
+            決定変数 <code>x_{c,d,p,r}</code> を学年 <code>k</code> でスライスすれば「学年別の4枚の時間割」になり、教員 <code>prof</code> でスライスすれば「教員別×25コマ一覧表」（式(5)により各マス高々1科目）、教室 <code>r</code> でスライスすれば「教室別×25コマ一覧表」（式(4)により各マス高々1科目）になります。つまり<strong>3種類の時間割ビューはすべて同じ4次元テンソル <code>x_{c,d,p,r}</code> の異なる断面（射影）</strong>です。
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>3. 現場特有のカリキュラム条件の線形化</h2>
+          <h3>(A) 週2コマ科目の「同日・連続時限開講」（<code>course_consecutive</code>）</h3>
+          <p>
+            通常、週2コマの講義（例：『線形代数学I』『アルゴリズム』）は学習効果のため別々の曜日に分散させます（<code>Σ_{p ∈ P} u_{c,d,p} &lt;= 1</code>）。しかし『ソフトウェア設計演習（C12）』のようなプログラミング演習では、<strong>「同じ曜日の連続する2時限（例：火曜2〜3限）にまとめて実施したい」</strong>という要望が頻繁に出ます。
+          </p>
+          <p>
+            これをMILPで表現するため、「曜日 <code>d</code> の時限 <code>p</code> と <code>p+1</code> の両方で開講されたとき <code>1</code> になる補助二値変数 <code>z_{d,p} ∈ {0, 1}</code>（<code>p ∈ {1, 2, 3, 4}</code>）」を導入し、以下の線形不等式で連続開講を強制します：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">同日連続2コマ開講の線形化（p ∈ {1, 2, 3, 4}）</span>
+            (a) z_{d,p} - u_{c,d,p} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ D, p ∈ {1..4}) : p限に開講されないなら z_{d,p} = 0<br />
+            (b) z_{d,p} - u_{c,d,p+1} &lt;= 0 &nbsp;&nbsp;&nbsp;(∀d ∈ D, p ∈ {1..4}) : (p+1)限に開講されないなら z_{d,p} = 0<br />
+            (c) Σ_{d ∈ D} Σ_{p=1}^{4} z_{d,p} &gt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: いずれかの曜日・隣接時限ペアで必ず連続開講する
+          </div>
+
+          <h3>(B) 学生の「空きコマ（中空き）」最小化の線形化</h3>
+          <p>
+            学生にとって「1限と3限に必修授業があり、2限が1コマだけ空いてしまう（中空き）」時間割は不評です。各学年 <code>k</code>・曜日 <code>d</code>・中間時限 <code>p ∈ {2, 3, 4}</code> について、前後の時限 <code>p-1</code> と <code>p+1</code> の両方にコア科目があるのに <code>p</code> 限が空いているときだけ <code>1</code> 以上になる連続スラック変数 <code>gap_{k,d,p} &gt;= 0</code> を導入します：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">中空き（Hollow Gap）検出不等式と目的関数ペナルティ</span>
+            Σ_{c ∈ Core_k} u_{c,d,p-1} + Σ_{c ∈ Core_k} u_{c,d,p+1} - Σ_{c ∈ Core_k} u_{c,d,p} - gap_{k,d,p} &lt;= 1<br />
+            目的関数項: &nbsp; minimize &nbsp; Σ_{k,d,p} W_{gap} * gap_{k,d,p}
+          </div>
+
+          <h3>(C) 微調整モード（Minimal Perturbation：既存時間割の維持）</h3>
+          <p>
+            運用中の時間割に対して「佐藤先生の金曜午後をNGにして」と1つ条件を追加したとき、関係ない科目の曜日まで全面シャッフルされてしまうと教務現場は大混乱します。微調整モードがONのときは、直前の時間割解で割り当てられていた枠 <code>(c, d^*, p^*, r^*)</code> に対して<strong>負の目的関数報酬（<code>-6 * u_{c,d^*,p^*} - 2 * x_{c,d^*,p^*,r^*}</code>）</strong>を与えることで、変更が必要な最小限のコマだけを移動させます。
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>4. Gemini Nano（構造化抽出）× WaSHI（二段階スラック緩和による矛盾診断）</h2>
+          <p>
+            このデモでは、LLMに「時間割そのもの」を作らせることは一切していません。4,400変数の組合せ制約をLLMの推論だけで解かせると、教室の定員オーバーや非常勤講師のダブルブッキングが必ず発生するからです。代わりに役割を明確に分離しています：
+          </p>
+          <ol>
+            <li>
+              <strong>Chrome Built-in AI（Gemini Nano / <code>LanguageModel</code> API）</strong>：自然言語の要望（「非常勤の小林先生は火・木の午後しか来られないようにして」等）を、<code>responseConstraint</code>（JSON Schema強制）によって型安全な操作コマンド（<code>set_professor_unavailability</code> 等）へ変換します。
+            </li>
+            <li>
+              <strong>WaSHI + HiGHS（WebAssembly MILPソルバー）</strong>：抽出された操作を数理モデルに反映し、約250ミリ秒で厳密最適解を求め、<code>model.validateSolution()</code> で全1,601本の制約違反が <code>0</code> であることを検算します。
+            </li>
+            <li>
+              <strong>解なし（Infeasible）時の自動矛盾診断（Elastic Relaxation）</strong>：もし「火・木のみ出講可の小林先生の科目を月曜3限に固定」のような矛盾した要望が来た場合、すべてのハード制約に非負スラック変数 <code>s_i &gt;= 0</code> を入れた緩和モデルを2通りの重み（Pass 1: 追加ルール優先緩和、Pass 2: 基本ルール優先緩和）で解き、<strong>どのルールとどのルールが正面衝突しているか</strong>を数理的に特定して提示します。
+            </li>
+          </ol>
+
+          <pre class="code-block"><code>// WaSHI による 4次元時間割モデル (UCTP) と 二段階スラック緩和診断の骨格
+const m = new Model("UniversityCourseTimetabling_UCTP", { solver: "highs" });
+
+// 1. 4次元0-1決定変数 x[course][day][period][room]
+for (const c of courses) {
+  for (const d of ["Mon", "Tue", "Wed", "Thu", "Fri"]) {
+    for (const p of [1, 2, 3, 4, 5]) {
+      for (const r of rooms) {
+        x[c.id][d][p][r.id] = m.binary(`x_${c.id}_${d}_P${p}_${r.id}`);
+      }
+    }
+  }
+}
+
+// 2. 教室重複禁止・教員同時担当禁止・学年カリキュラム重複禁止・個別ルールを追加
+m.constraint(expr`${sum(roomSlotVars)} &lt;= 1`, `room_excl_${r.id}_${d}_P${p}`);
+
+// 3. 求解と検算 (Infeasible 時は Elastic Relaxation で衝突ルールを特定)
+const status = await m.solve({ timeLimit: 4.0, relGap: 0.001 });
+const report = m.validateSolution();</code></pre>
+
+          <div class="footer-cta">
+            <a href="../ai-timetable/" class="nav-btn primary">🎓 『大学時間割編成 AI Copilot』を体験する ▶</a>
+            <a href="../ai-shift/" class="nav-btn">🏥 『ナーススケジューリング AI Copilot』を開く →</a>
+            <a href="../../games/" class="nav-btn">🎮 数理最適化パズルゲーム一覧へ →</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- =====================================================================
+           ENGLISH ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="en" hidden>
+        <header class="hero-card">
+          <span class="hero-eyebrow">Mathematical Optimization (MILP) × On-Device AI Guide</span>
+          <h1>Behind "University Course Timetabling AI Copilot":<br />4D 0-1 MILP Formulation (UCTP) &amp; Coupled Multi-Board Scheduling</h1>
+          <p>
+            Target Audience: Readers interested in Mixed-Integer Linear Programming (MILP) and neuro-symbolic AI copilot architectures.<br />
+            This article explains why university course timetabling cannot be solved on a single grid—requiring simultaneous coordination across <strong>4 student cohort boards, 10 professor schedules, and 7 specialized rooms</strong>—and how <strong>Chrome Built-in AI (Gemini Nano) + WaSHI (HiGHS)</strong> solve and diagnose it in the browser.
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. Why University Timetabling Requires Multiple Coupled Boards (UCTP)</h2>
+          <p>
+            In Operations Research (OR), the <strong>University Course Timetabling Problem (UCTP)</strong>—standardized in benchmarks such as the International Timetabling Competition (ITC-2007 Curriculum-Based Track)—is one of the most heavily studied NP-hard scheduling problems alongside the Nurse Scheduling Problem (NSP).
+          </p>
+          <p>
+            Unlike an elementary school homeroom where one class stays together in one room, a university department timetable couples three distinct dimensions across 25 weekly periods (Mon–Fri × Periods 1–5): <strong>4 student cohorts (Years 1–4), 10 faculty members (8 full-time + 2 adjuncts), and 7 heterogeneous rooms (large lecture halls, medium rooms, PC labs, and seminar rooms)</strong>. Moving a single lecture immediately ripples across other cohorts taught by the same professor and other courses competing for the same lecture hall or PC lab.
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>App Element</th>
+                <th>Real-World Academic Scheduling Meaning</th>
+                <th>Mathematical Model Representation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Courses <code>c ∈ C</code> (25 courses, 30 weekly sessions)</td>
+                <td>Lectures, PC labs, and seminars requiring 1 or 2 sessions/week</td>
+                <td>Required weekly sessions <code>S_c ∈ {1, 2}</code>, enrollment <code>Enr_c</code></td>
+              </tr>
+              <tr>
+                <td>Day <code>d ∈ D</code>, Period <code>p ∈ P</code>, Room <code>r ∈ R</code></td>
+                <td>5 days × 5 periods (25 slots) × 7 rooms</td>
+                <td>4D binary decision variables <code>x_{c,d,p,r} ∈ {0, 1}</code> (4,375 vars)</td>
+              </tr>
+              <tr>
+                <td>4 Cohort Timetables (Year 1 – Year 4)</td>
+                <td>Compulsory &amp; core elective curriculum per student year</td>
+                <td>Non-overlapping core curriculum constraints for each cohort <code>Core_k</code></td>
+              </tr>
+              <tr>
+                <td>Adjunct Day Limits &amp; Faculty Meeting NG Slots</td>
+                <td>"Adjunct Prof. Kobayashi only on Tue/Thu", "Faculty meeting Wed P5"</td>
+                <td>Hard zero-fixing constraints on unavailable <code>(prof, d, p)</code> slots</td>
+              </tr>
+              <tr>
+                <td>PC Lab Equipment &amp; Hall Capacity Limits</td>
+                <td>Programming labs require PC rooms; 130-student classes need Large Hall</td>
+                <td>Forbid incompatible rooms <code>r ∉ R_c</code> (<code>x_{c,d,p,r} = 0</code>)</td>
+              </tr>
+              <tr>
+                <td>Student Hollow Gap ("Idle Bridge Period") Penalty</td>
+                <td>Avoiding isolated empty periods between compulsory classes on the same day</td>
+                <td>Continuous slack variable <code>gap_{k,d,p} &gt;= 0</code> in the objective</td>
+              </tr>
+              <tr>
+                <td>Infeasible Conflict Diagnosis (IIS)</td>
+                <td>Pinpointing exact contradictory rules when no valid timetable exists</td>
+                <td>Two-pass Elastic Constraint Relaxation via HiGHS</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section-card">
+          <h2>2. 4D Binary Decision Variables and Core Structural Constraints</h2>
+          <p>
+            Let <code>C</code> be the set of 25 courses, <code>D = {Mon, Tue, Wed, Thu, Fri}</code> be the days, <code>P = {1, 2, 3, 4, 5}</code> be the periods, and <code>R</code> be the 7 rooms. We define a 4D binary variable <code>x_{c,d,p,r} ∈ {0, 1}</code> equal to <code>1</code> if and only if course <code>c</code> is assigned to day <code>d</code>, period <code>p</code>, and room <code>r</code>.
+          </p>
+          <p>
+            Defining the slot projection <code>u_{c,d,p} = Σ_{r ∈ R} x_{c,d,p,r} ∈ {0, 1}</code>, the core structural constraints are:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Core Structural Hard Constraints for UCTP</span>
+            (1) Weekly Required Sessions: &nbsp; Σ_{d ∈ D} Σ_{p ∈ P} Σ_{r ∈ R} x_{c,d,p,r} == S_c &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀c ∈ C)<br />
+            (2) Single Room per Slot: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; u_{c,d,p} = Σ_{r ∈ R} x_{c,d,p,r} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀c, d, p)<br />
+            (3) Room Capacity &amp; Equipment: &nbsp; Σ_{d ∈ D} Σ_{p ∈ P} Σ_{r ∉ R_c} x_{c,d,p,r} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;(∀c ∈ C)<br />
+            (4) Room Exclusivity: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{c ∈ C} x_{c,d,p,r} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀r ∈ R, d ∈ D, p ∈ P)<br />
+            (5) Professor No-Overlap: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{c ∈ C_{prof}} u_{c,d,p} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀prof, d ∈ D, p ∈ P)<br />
+            (6) Cohort Curriculum Overlap: &nbsp; Σ_{c ∈ Core_k} u_{c,d,p} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀k ∈ {Y1..Y4}, d, p)<br />
+            (7) Professor Unavailability: &nbsp; Σ_{c ∈ C_{prof}} u_{c,d,p} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀(prof, d, p) ∈ Unavail)
+          </div>
+
+          <div class="callout cyan">
+            <strong>💡 Three Views of a Single 4D Tensor</strong>
+            Slicing <code>x_{c,d,p,r}</code> by student cohort <code>k</code> produces the <strong>4 Cohort Boards</strong>; slicing by professor <code>prof</code> produces the <strong>10 Professors × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 5); slicing by room <code>r</code> produces the <strong>7 Rooms × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 4).
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>3. Linearizing Pedagogical &amp; Operational Rules</h2>
+          <h3>(A) Consecutive Double-Period Lab Sessions (<code>course_consecutive</code>)</h3>
+          <p>
+            While 2-session lecture courses are normally spread across different days (<code>Σ_{p ∈ P} u_{c,d,p} &lt;= 1</code>), hands-on courses like "Software Design Lab (C12)" often require <strong>two consecutive periods on the same day</strong> (e.g., Tue Periods 2–3). We introduce binary indicator variables <code>z_{d,p} ∈ {0, 1}</code> for <code>p ∈ {1, 2, 3, 4}</code>:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Linearization of Same-Day Consecutive Sessions (p ∈ {1, 2, 3, 4})</span>
+            (a) z_{d,p} - u_{c,d,p} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ D, p ∈ {1..4}) : If inactive at period p, z_{d,p} = 0<br />
+            (b) z_{d,p} - u_{c,d,p+1} &lt;= 0 &nbsp;&nbsp;&nbsp;(∀d ∈ D, p ∈ {1..4}) : If inactive at period p+1, z_{d,p} = 0<br />
+            (c) Σ_{d ∈ D} Σ_{p=1}^{4} z_{d,p} &gt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: At least one adjacent pair (p, p+1) must be active
+          </div>
+
+          <h3>(B) Penalizing Student Hollow Gaps ("Idle Bridge Periods")</h3>
+          <p>
+            To prevent students from having a compulsory class in Period 1, an empty Period 2, and another compulsory class in Period 3, we introduce a non-negative continuous slack variable <code>gap_{k,d,p} &gt;= 0</code> for each intermediate period <code>p ∈ {2, 3, 4}</code>:
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">Hollow Gap Detection Inequality and Objective Penalty</span>
+            Σ_{c ∈ Core_k} u_{c,d,p-1} + Σ_{c ∈ Core_k} u_{c,d,p+1} - Σ_{c ∈ Core_k} u_{c,d,p} - gap_{k,d,p} &lt;= 1<br />
+            Objective Term: &nbsp; minimize &nbsp; Σ_{k,d,p} W_{gap} * gap_{k,d,p}
+          </div>
+
+          <h3>(C) Minimal Perturbation Mode (Preserving Existing Assignments)</h3>
+          <p>
+            When an academic affairs officer adds a single rule mid-planning, reshuffling the entire university timetable is disruptive. When Minimal Perturbation Mode is enabled, each previously assigned session <code>(c, d^*, p^*, r^*)</code> receives a negative objective reward (<code>-6 * u_{c,d^*,p^*} - 2 * x_{c,d^*,p^*,r^*}</code>), keeping unchanged courses in place unless mathematically required to move.
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>4. Neuro-Symbolic Architecture: Gemini Nano + WaSHI (HiGHS)</h2>
+          <p>
+            Instead of asking an LLM to guess a timetable (which inevitably violates room capacities or double-books faculty), the copilot separates natural-language understanding from combinatorial optimization:
+          </p>
+          <ol>
+            <li>
+              <strong>Chrome Built-in AI (Gemini Nano / <code>LanguageModel</code> API)</strong>: Parses unstructured faculty requests into schema-validated tool calls via <code>responseConstraint</code>.
+            </li>
+            <li>
+              <strong>WaSHI + HiGHS (WASM MILP Solver)</strong>: Solves the 4,420-variable, 1,601-constraint MILP to optimality in ~250 ms and verifies zero constraint violations via <code>model.validateSolution()</code>.
+            </li>
+            <li>
+              <strong>Two-Pass Elastic Conflict Diagnosis</strong>: When user rules conflict (<code>Infeasible</code>), WaSHI relaxes every hard constraint with non-negative slacks under two complementary weight profiles (<code>prefer_structural</code> and <code>prefer_user</code>) to isolate the exact colliding constraints.
+            </li>
+          </ol>
+
+          <div class="footer-cta">
+            <a href="../ai-timetable/" class="nav-btn primary">🎓 Open "University Timetabling AI Copilot" ▶</a>
+            <a href="../ai-shift/" class="nav-btn">🏥 Open "Nurse Scheduling AI Copilot" →</a>
+            <a href="../../games/" class="nav-btn">🎮 Browse Optimization Puzzle Games →</a>
+          </div>
+        </section>
+      </div>
+
+      <!-- =====================================================================
+           CHINESE ARTICLE
+           ===================================================================== -->
+      <div data-lang-section="zh" hidden>
+        <header class="hero-card">
+          <span class="hero-eyebrow">数学规划（MILP）× 端侧 AI 建模解说</span>
+          <h1>《大学排课 AI Copilot》背后的数学模型：<br />四维 0-1 混合整数规划（UCTP）与多表联动排课架构</h1>
+          <p>
+            适合读者：对混合整数线性规划（MILP）及神经符号（Neuro-Symbolic）AI 助手架构感兴趣的读者。<br />
+            本文将解说为什么大学课表无法用“单张表格”解决，而是需要<strong>4个年级课表、10位教师课表与7间专业教室</strong>在底层同时联动的 NP-Hard 组合优化问题，以及 <strong>Chrome 内置 Gemini Nano + WaSHI (HiGHS)</strong> 如何在浏览器端实现秒级求解与冲突诊断。
+          </p>
+        </header>
+
+        <section class="section-card">
+          <h2>1. 为什么“大学排课”不能只看一张表？（UCTP 的多维耦合结构）</h2>
+          <p>
+            在运筹学（OR）领域，<strong>大学课程排课问题（University Course Timetabling Problem; UCTP）</strong>与护士排班问题（NSP）并列为最经典的实务组合优化难题，国际排课竞赛（如 ITC-2007）长期围绕该问题展开研究。
+          </p>
+          <p>
+            与中小学固定班级课表不同，大学院系排课需要在每周25个时段（周一至周五 × 第1〜5节）内，同时协调<strong>“大一至大四共4张年级课表”、“8名专任教师与2名外聘兼职讲师的出勤时间”以及“容量与设备各异的7间教室（大阶梯教室、中型教室、PC机房、研讨室）”</strong>。只要挪动某一年级的一门课，同一位教授负责的其他年级课程或共用同一机房的实验课就会发生连锁碰撞。
+          </p>
+
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>应用内要素</th>
+                <th>高校教务排课（UCTP）中的实际含义</th>
+                <th>数学模型中的表达方式</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>开课科目 <code>c ∈ C</code>（25门课・共30节）</td>
+                <td>每周1节或2节的理论课、PC上机实验课、研讨课</td>
+                <td>每周所需课时 <code>S_c ∈ {1, 2}</code>，选课人数 <code>Enr_c</code></td>
+              </tr>
+              <tr>
+                <td>星期 <code>d ∈ D</code>・节次 <code>p ∈ P</code>・教室 <code>r ∈ R</code></td>
+                <td>周一至周五（5天）× 第1〜5节（25格）× 7间教室</td>
+                <td>四维 0-1 决策变量 <code>x_{c,d,p,r} ∈ {0, 1}</code>（共4,375个）</td>
+              </tr>
+              <tr>
+                <td>4张年级课表同屏显示（大一至大四）</td>
+                <td>各年级的必修与限选培养方案（Curriculum）</td>
+                <td>同一年级核心课程集合 <code>Core_k</code> 的同时段互斥约束</td>
+              </tr>
+              <tr>
+                <td>外聘讲师可出勤日・教研会议禁排时段</td>
+                <td>“小林老师仅周二/周四可来”、“周三第5节固定开会”等</td>
+                <td>将对应时段决策变量之和固定为 <code>0</code> 的硬约束</td>
+              </tr>
+              <tr>
+                <td>PC机房设备要求・大教室容量限制</td>
+                <td>编程实验必须在PC机房，130人大课必须排在101大教室</td>
+                <td>禁止分配至不满足条件的教室 <code>r ∉ R_c</code>（<code>x_{c,d,p,r} = 0</code>）</td>
+              </tr>
+              <tr>
+                <td>减少学生“空堂（中间空课）”</td>
+                <td>避免同日第1节和第3节有必修课而第2节孤立空堂</td>
+                <td>引入连续辅助变量 <code>gap_{k,d,p} &gt;= 0</code> 的软约束惩罚项</td>
+              </tr>
+              <tr>
+                <td>无解（Infeasible）时的冲突规则诊断</td>
+                <td>当排课条件互相矛盾时，自动定位哪几条规则发生冲突</td>
+                <td>基于 HiGHS 的两阶段弹性松弛（Elastic Relaxation）诊断</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="section-card">
+          <h2>2. 四维 0-1 决策变量与核心硬约束建模</h2>
+          <p>
+            设课程集合为 <code>C</code>（25门），星期集合为 <code>D = {Mon, Tue, Wed, Thu, Fri}</code>，节次集合为 <code>P = {1, 2, 3, 4, 5}</code>，教室集合为 <code>R</code>（7间）。定义四维 0-1 变量 <code>x_{c,d,p,r} ∈ {0, 1}</code>：当课程 <code>c</code> 被排在星期 <code>d</code>、第 <code>p</code> 节、教室 <code>r</code> 时取 <code>1</code>，否则取 <code>0</code>。
+          </p>
+          <p>
+            记时段投影表达式为 <code>u_{c,d,p} = Σ_{r ∈ R} x_{c,d,p,r} ∈ {0, 1}</code>，核心硬约束如下：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">大学排课问题（UCTP）核心硬约束方程组</span>
+            (1) 每周必修课时数: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{d ∈ D} Σ_{p ∈ P} Σ_{r ∈ R} x_{c,d,p,r} == S_c &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀c ∈ C)<br />
+            (2) 单时段最多一间教室: &nbsp; u_{c,d,p} = Σ_{r ∈ R} x_{c,d,p,r} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀c, d, p)<br />
+            (3) 教室容量与设备匹配: &nbsp; Σ_{d ∈ D} Σ_{p ∈ P} Σ_{r ∉ R_c} x_{c,d,p,r} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;(∀c ∈ C)<br />
+            (4) 教室独占（不撞课）: &nbsp; Σ_{c ∈ C} x_{c,d,p,r} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀r ∈ R, d ∈ D, p ∈ P)<br />
+            (5) 教师同时段不分身: &nbsp;&nbsp;&nbsp; Σ_{c ∈ C_{prof}} u_{c,d,p} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀prof, d ∈ D, p ∈ P)<br />
+            (6) 年级必修课不冲突: &nbsp;&nbsp;&nbsp; Σ_{c ∈ Core_k} u_{c,d,p} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀k ∈ {Y1..Y4}, d, p)<br />
+            (7) 教师禁排日与禁排格: &nbsp; Σ_{c ∈ C_{prof}} u_{c,d,p} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀(prof, d, p) ∈ Unavail)
+          </div>
+
+          <div class="callout cyan">
+            <strong>💡 同一个四维张量的三种切片视图</strong>
+            将四维解张量 <code>x_{c,d,p,r}</code> 按年级 <code>k</code> 切片即可渲染<strong>“按年级4张同屏课表”</strong>；按教师 <code>prof</code> 切片即可得到<strong>“10位教师 × 25时段矩阵”</strong>（约束5保证每格最多1门课）；按教室 <code>r</code> 切片即可得到<strong>“7间教室 × 25时段矩阵”</strong>（约束4保证每间教室同一时段最多1门课）。
+          </div>
+        </section>
+
+        <section class="section-card">
+          <h2>3. 教务现场特殊规则的线性化技巧</h2>
+          <h3>(A) 周2节实验课的“同日连排”（<code>course_consecutive</code>）</h3>
+          <p>
+            像《软件设计实验（C12）》这样的上机课，往往需要<strong>在同一天的相邻两节（如周二第2〜3节）连排</strong>。我们引入辅助 0-1 变量 <code>z_{d,p} ∈ {0, 1}</code>（<code>p ∈ {1, 2, 3, 4}</code>），用3组线性不等式精确表达连排要求：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">同日相邻两节连排的线性化（p ∈ {1, 2, 3, 4}）</span>
+            (a) z_{d,p} - u_{c,d,p} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ D, p ∈ {1..4}) : 若第 p 节未排课，则 z_{d,p} = 0<br />
+            (b) z_{d,p} - u_{c,d,p+1} &lt;= 0 &nbsp;&nbsp;&nbsp;(∀d ∈ D, p ∈ {1..4}) : 若第 p+1 节未排课，则 z_{d,p} = 0<br />
+            (c) Σ_{d ∈ D} Σ_{p=1}^{4} z_{d,p} &gt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 至少在某一天的某对相邻节次 (p, p+1) 连排
+          </div>
+
+          <h3>(B) 学生“中间空堂（Hollow Gap）”惩罚的线性化</h3>
+          <p>
+            为避免学生同一天第1节和第3节有必修课而第2节空堂，对每个中间节次 <code>p ∈ {2, 3, 4}</code> 引入非负连续松弛变量 <code>gap_{k,d,p} &gt;= 0</code>：
+          </p>
+
+          <div class="math-box">
+            <span class="math-title">中间空堂检测不等式与目标函数惩罚项</span>
+            Σ_{c ∈ Core_k} u_{c,d,p-1} + Σ_{c ∈ Core_k} u_{c,d,p+1} - Σ_{c ∈ Core_k} u_{c,d,p} - gap_{k,d,p} &lt;= 1<br />
+            目标函数项: &nbsp; minimize &nbsp; Σ_{k,d,p} W_{gap} * gap_{k,d,p}
+          </div>
+
+          <h3>(C) 微调模式（Minimal Perturbation：最大化保留既有课表）</h3>
+          <p>
+            当教务老师在已有课表上追加一条新要求时，若开启“微调模式”，模型会对上一版课表中已排定的位置 <code>(c, d^*, p^*, r^*)</code> 赋予<strong>负目标函数奖励（<code>-6 * u_{c,d^*,p^*} - 2 * x_{c,d^*,p^*,r^*}</code>）</strong>，从而在满足新约束的前提下仅移动最少数量的课程。
+          </p>
+        </section>
+
+        <section class="section-card">
+          <h2>4. 端侧 Gemini Nano（结构化提取）× WaSHI（两阶段弹性冲突诊断）</h2>
+          <p>
+            本应用没有让大语言模型直接“猜”课表，而是将自然语言理解与严格数学规划解耦：
+          </p>
+          <ol>
+            <li>
+              <strong>Chrome 内置 AI（Gemini Nano / <code>LanguageModel</code> API）</strong>：利用 <code>responseConstraint</code>（JSON Schema 约束解码）将自然语言指令转化为类型安全的排课操作指令。
+            </li>
+            <li>
+              <strong>WaSHI + HiGHS（WASM 求解器）</strong>：在约 250 毫秒内求解含 4,420 个变量、1,601 条约束的 MILP 模型，并通过 <code>model.validateSolution()</code> 独立验算所有约束零违反。
+            </li>
+            <li>
+              <strong>两阶段弹性松弛冲突诊断（Elastic Relaxation）</strong>：当排课条件发生矛盾（<code>Infeasible</code>）时，WaSHI 自动为所有硬约束添加非负松弛变量并按两种权重策略求解，精准定位发生碰撞的规则组合。
+            </li>
+          </ol>
+
+          <div class="footer-cta">
+            <a href="../ai-timetable/" class="nav-btn primary">🎓 打开《大学排课 AI Copilot》 ▶</a>
+            <a href="../ai-shift/" class="nav-btn">🏥 打开《护士排班 AI Copilot》 →</a>
+            <a href="../../games/" class="nav-btn">🎮 浏览数理优化益智游戏 →</a>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script type="module">
+      import { getGameLang, setGameLang, pickLang } from "../../games/i18n.ts";
+
+      const NAV_TEXT = {
+        ja: {
+          title: "『大学時間割編成 AI Copilot』の数理モデル解説 — 4次元0-1整数計画（UCTP）とAI×ソルバー連携",
+          back: "← アプリ一覧へ戻る",
+          other: "🏥 ナーススケジューリング AI へ",
+          open: "🎓 時間割 AI Copilot を開く ▶",
+        },
+        en: {
+          title: 'Behind "University Course Timetabling AI Copilot" — 4D 0-1 MILP (UCTP) & On-Device AI',
+          back: "← Back to Apps",
+          other: "🏥 Nurse Scheduling AI",
+          open: "🎓 Open Timetable Copilot ▶",
+        },
+        zh: {
+          title: "《大学排课 AI Copilot》数学模型解说 — 四维 0-1 规划（UCTP）与端侧 AI 协同",
+          back: "← 返回应用一览",
+          other: "🏥 护士排班 AI Copilot",
+          open: "🎓 打开大学排课 AI ▶",
+        },
+      };
+
+      function applyLang(lang) {
+        setGameLang(lang);
+        const t = pickLang(lang, NAV_TEXT);
+        document.title = t.title;
+        document.getElementById("nav-back").textContent = t.back;
+        document.getElementById("nav-other-app").textContent = t.other;
+        document.getElementById("nav-open-app").textContent = t.open;
+
+        document.querySelectorAll("[data-lang-section]").forEach((sec) => {
+          sec.hidden = sec.getAttribute("data-lang-section") !== lang;
+        });
+        document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
+        });
+      }
+
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const lang = btn.getAttribute("data-lang-btn");
+          if (lang === "ja" || lang === "en" || lang === "zh") {
+            applyLang(lang);
+          }
+        });
+      });
+
+      applyLang(getGameLang());
+    </script>
+  </body>
+</html>

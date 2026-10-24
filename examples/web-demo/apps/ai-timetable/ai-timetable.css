@@ -1,0 +1,552 @@
+@import "../ai-shift/ai-shift.css";
+
+:root {
+  --course-comp-bg: #dbeafe;
+  --course-comp-fg: #1e40af;
+  --course-comp-border: #93c5fd;
+
+  --course-core-bg: #fef3c7;
+  --course-core-fg: #92400e;
+  --course-core-border: #fcd34d;
+
+  --course-lab-bg: #d1fae5;
+  --course-lab-fg: #065f46;
+  --course-lab-border: #6ee7b7;
+
+  --course-elec-bg: #ede9fe;
+  --course-elec-fg: #5b21b6;
+  --course-elec-border: #c4b5fd;
+
+  --course-sem-bg: #fce7f3;
+  --course-sem-fg: #9d174d;
+  --course-sem-border: #f9a8d4;
+}
+
+[data-theme="dark"] {
+  --course-comp-bg: rgba(37, 99, 235, 0.28);
+  --course-comp-fg: #93c5fd;
+  --course-comp-border: rgba(96, 165, 250, 0.48);
+
+  --course-core-bg: rgba(217, 119, 6, 0.28);
+  --course-core-fg: #fcd34d;
+  --course-core-border: rgba(251, 191, 36, 0.48);
+
+  --course-lab-bg: rgba(16, 185, 129, 0.28);
+  --course-lab-fg: #6ee7b7;
+  --course-lab-border: rgba(52, 211, 153, 0.5);
+
+  --course-elec-bg: rgba(124, 58, 237, 0.32);
+  --course-elec-fg: #ddd6fe;
+  --course-elec-border: rgba(167, 139, 250, 0.5);
+
+  --course-sem-bg: rgba(219, 39, 119, 0.28);
+  --course-sem-fg: #fbcfe8;
+  --course-sem-border: rgba(244, 114, 182, 0.48);
+}
+
+/* Timetable Matrix Grid */
+.timetable-grid-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.74rem;
+}
+
+.timetable-grid-table th,
+.timetable-grid-table td {
+  border-right: 1px solid var(--border-hairline);
+  border-bottom: 1px solid var(--border-hairline);
+  vertical-align: top;
+  padding: 6px;
+}
+
+.timetable-grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--bg-surface-elevated);
+  font-weight: 700;
+  text-align: center;
+  padding: 8px 6px;
+}
+
+.timetable-period-col {
+  width: 96px;
+  min-width: 96px;
+  background: var(--bg-surface-elevated);
+  text-align: center !important;
+  vertical-align: middle !important;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.period-num-label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-sumi);
+  display: block;
+}
+
+.period-time-label {
+  font-size: 0.65rem;
+  color: var(--text-sumi-secondary);
+  font-family: var(--font-mono, monospace);
+}
+
+.timetable-slot-cell {
+  min-width: 175px;
+  width: 19%;
+  background: var(--bg-surface);
+  transition: background 0.12s ease;
+}
+
+.timetable-slot-cell:hover {
+  background: var(--bg-surface-elevated);
+}
+
+.slot-cards-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.course-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 7px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  transition: transform 0.1s ease, box-shadow 0.12s ease;
+  position: relative;
+}
+
+.course-session-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+}
+
+.course-compulsory {
+  background: var(--course-comp-bg);
+  color: var(--course-comp-fg);
+  border-color: var(--course-comp-border);
+}
+
+.course-elective-core {
+  background: var(--course-core-bg);
+  color: var(--course-core-fg);
+  border-color: var(--course-core-border);
+}
+
+.course-lab {
+  background: var(--course-lab-bg);
+  color: var(--course-lab-fg);
+  border-color: var(--course-lab-border);
+}
+
+.course-elective {
+  background: var(--course-elec-bg);
+  color: var(--course-elec-fg);
+  border-color: var(--course-elec-border);
+}
+
+.course-seminar {
+  background: var(--course-sem-bg);
+  color: var(--course-sem-fg);
+  border-color: var(--course-sem-border);
+}
+
+.card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.card-course-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  font-size: 0.66rem;
+  opacity: 0.9;
+}
+
+.card-room-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.63rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.12);
+}
+
+[data-theme="dark"] .card-room-pill {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.slot-empty-hint {
+  font-size: 0.66rem;
+  color: var(--text-sumi-muted);
+  text-align: center;
+  padding: 10px 4px;
+  border: 1px dashed var(--border-hairline);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.slot-empty-hint:hover {
+  border-color: #e11d48;
+  color: var(--text-sumi);
+}
+
+.slot-unavail-badge {
+  font-size: 0.66rem;
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px dashed rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+[data-theme="dark"] .slot-unavail-badge {
+  color: #f87171;
+}
+
+.kpi-pills-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kpi-mini-pill {
+  font-size: 0.71rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-sumi-secondary);
+}
+
+/* ==================== MULTI-VIEW TIMETABLE WORKSPACE ==================== */
+.view-mode-switcher {
+  display: inline-flex;
+  border-radius: 8px;
+  padding: 2px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  gap: 2px;
+}
+
+.view-mode-btn {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-sumi-secondary);
+  font-size: 0.73rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-mode-btn.active {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+.cross-highlight-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 16px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 0.71rem;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.cross-bar-label {
+  font-weight: 700;
+  color: var(--text-sumi-secondary);
+  white-space: nowrap;
+}
+
+.cross-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-surface-elevated);
+  color: var(--text-sumi);
+  font-size: 0.69rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s ease;
+}
+
+.cross-chip:hover,
+.cross-chip.active {
+  border-color: #e11d48;
+  background: rgba(225, 29, 72, 0.14);
+  color: #e11d48;
+}
+
+[data-theme="dark"] .cross-chip:hover,
+[data-theme="dark"] .cross-chip.active {
+  color: #fb7185;
+}
+
+/* View 1: 4-Board Multi-Cohort Grid (2x2) */
+.multi-boards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(440px, 1fr));
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+@media (max-width: 1280px) {
+  .multi-boards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cohort-board-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.cohort-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--bg-surface-elevated);
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 0.77rem;
+  font-weight: 700;
+}
+
+.cohort-board-meta {
+  font-size: 0.69rem;
+  font-weight: 600;
+  color: var(--text-sumi-secondary);
+}
+
+.mini-timetable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.69rem;
+}
+
+.mini-timetable th,
+.mini-timetable td {
+  border-right: 1px solid var(--border-hairline);
+  border-bottom: 1px solid var(--border-hairline);
+  padding: 3px 4px;
+  vertical-align: top;
+}
+
+.mini-timetable th:last-child,
+.mini-timetable td:last-child {
+  border-right: none;
+}
+
+.mini-timetable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mini-timetable thead th {
+  background: var(--bg-surface-elevated);
+  text-align: center;
+  font-weight: 700;
+  padding: 4px;
+  font-size: 0.68rem;
+}
+
+.mini-period-th {
+  width: 42px;
+  text-align: center !important;
+  vertical-align: middle !important;
+  background: var(--bg-surface-elevated);
+  font-weight: 700;
+  font-size: 0.67rem;
+  color: var(--text-sumi-secondary);
+}
+
+.mini-slot-td {
+  height: 44px;
+  position: relative;
+}
+
+/* Cross-table linking states */
+.course-session-card.is-cross-dimmed {
+  opacity: 0.22;
+  filter: grayscale(0.5);
+}
+
+.course-session-card.is-cross-highlighted {
+  box-shadow: 0 0 0 2px #e11d48, 0 4px 12px rgba(225, 29, 72, 0.25) !important;
+  transform: scale(1.02);
+  z-index: 3;
+}
+
+.mini-slot-empty {
+  width: 100%;
+  height: 100%;
+  min-height: 36px;
+  border: 1px dashed transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: transparent;
+  font-size: 0.62rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-slot-empty:hover {
+  border-color: var(--border-hairline);
+  color: var(--text-sumi-muted);
+  background: var(--bg-surface-elevated);
+}
+
+/* View 2 & 3: 25-Slot Full Matrix (Professors x 25 slots, Rooms x 25 slots) */
+.matrix-25-wrap {
+  padding: 0;
+}
+
+.matrix-day-group-th {
+  text-align: center !important;
+  font-weight: 800 !important;
+  font-size: 0.72rem;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.matrix-day-divider {
+  border-right: 2px solid var(--border-hairline) !important;
+}
+
+.matrix-slot-cell {
+  min-width: 42px;
+  max-width: 52px;
+  height: 40px;
+  padding: 2px !important;
+  vertical-align: middle !important;
+  position: relative;
+}
+
+.matrix-slot-unavail {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(148, 163, 184, 0.12),
+    rgba(148, 163, 184, 0.12) 5px,
+    rgba(239, 68, 68, 0.07) 5px,
+    rgba(239, 68, 68, 0.07) 10px
+  );
+  color: var(--text-sumi-muted);
+  font-size: 0.61rem;
+  font-weight: 600;
+}
+
+.matrix-course-btn {
+  width: 100%;
+  height: 36px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  padding: 2px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.15;
+  transition: transform 0.1s ease;
+}
+
+.matrix-course-btn:hover {
+  transform: scale(1.06);
+  z-index: 2;
+}
+
+.matrix-course-code {
+  font-size: 0.63rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+
+.matrix-course-sub {
+  font-size: 0.57rem;
+  opacity: 0.88;
+  white-space: nowrap;
+}
+
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.lang-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-sumi-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.lang-btn:hover {
+  color: var(--text-sumi);
+}
+
+.lang-btn.is-active {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+
+.chat-op-pill.chat-op-pill-rejected {
+  color: #dc2626;
+  word-break: break-all;
+}
+
+[data-theme="dark"] .chat-op-pill.chat-op-pill-rejected {
+  color: #f87171;
+}

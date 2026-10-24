@@ -153,21 +153,74 @@
         font-size: 0.95rem;
         border: 1.5px solid #bae6fd;
       }
+      .card-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 0.65rem;
+      }
+      .theory-btn {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+        padding: 0.6rem 1rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: #bae6fd;
+        font-weight: 800;
+        font-size: 0.84rem;
+        border: 1px solid rgba(56, 189, 248, 0.45);
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+      .theory-btn:hover {
+        background: rgba(56, 189, 248, 0.16);
+        border-color: var(--accent);
+        color: #fff;
+      }
+      .lang-switch {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 999px;
+        padding: 0.18rem;
+        gap: 0.15rem;
+      }
+      .lang-btn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.28rem 0.68rem;
+        border-radius: 999px;
+        cursor: pointer;
+      }
+      .lang-btn.is-active {
+        background: var(--accent);
+        color: #0b1120;
+      }
     </style>
   </head>
   <body>
     <div class="hub-container">
       <header class="hub-topbar">
-        <a href="../" class="back-btn">← WaSHI トップページへ戻る</a>
+        <a href="../" class="back-btn" id="apps-back-top">← WaSHI トップページへ戻る</a>
         <div class="hub-nav-group">
-          <a href="../demo/" class="back-btn">📐 数理モデル Playground</a>
-          <a href="../games/" class="back-btn">🎮 ゲーム・ショーケース</a>
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <a href="../demo/" class="back-btn" id="apps-nav-demo">📐 数理モデル Playground</a>
+          <a href="../games/" class="back-btn" id="apps-nav-games">🎮 ゲーム・ショーケース</a>
         </div>
       </header>
 
       <section class="hub-hero">
-        <h1>🏥 WaSHI 実務アプリケーション・ショーケース</h1>
-        <p>
+        <h1 id="apps-hero-title">🏥 WaSHI 実務アプリケーション・ショーケース</h1>
+        <p id="apps-hero-sub">
           WebAssembly 数理最適化ソルバー（HiGHS）とブラウザ内蔵 AI（Gemini Nano / LanguageModel API）を組み合わせ、サーバー通信ゼロ・完全ローカルで動作する実務意思決定・スケジューリングアプリ集です。
         </p>
       </section>
@@ -176,14 +229,38 @@
         <article class="app-card">
           <div class="app-thumb">
             <div class="app-icon-hero">🏥 🤖</div>
-            <span class="app-tag">Gemini Nano × HiGHS MILP（30名×1ヶ月・3交代制＋36協定＋矛盾診断）</span>
+            <span class="app-tag" id="app1-tag">Gemini Nano × HiGHS MILP（30名×1ヶ月・3交代制＋36協定＋矛盾診断）</span>
           </div>
           <div class="app-body">
-            <h2>ナーススケジューリング AI Copilot</h2>
-            <p>
+            <h2 id="app1-title">ナーススケジューリング AI Copilot</h2>
+            <p id="app1-desc">
               自然な日本語チャットで「山本さんは日勤専従にして」「伊藤さんはパートで月10日まで・3連勤まで」「深夜の翌日は必ず休みに」と伝えるだけで、Gemini Nano が条件を抽出し、WaSHI (HiGHS) が30名×30日間の3交代シフト表を1秒で最適化・矛盾診断します。
             </p>
-            <a href="./ai-shift/" class="open-btn">アプリを開く</a>
+            <div class="card-actions">
+              <a href="./ai-shift/" class="open-btn" id="app1-open">アプリを開く</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="app-card">
+          <div
+            class="app-thumb"
+            style="background: linear-gradient(135deg, #0f172a 0%, #312e81 55%, #4f46e5 100%);"
+          >
+            <div class="app-icon-hero">🎓 📅</div>
+            <span class="app-tag" id="app2-tag">
+              Gemini Nano × HiGHS MILP（25科目・30コマ×7教室×10教員＋矛盾診断）
+            </span>
+          </div>
+          <div class="app-body">
+            <h2 id="app2-title">大学時間割編成 AI Copilot (UCTP)</h2>
+            <p id="app2-desc">
+              「非常勤の小林先生は火・木の午後しか来られない」「数理最適化を火曜2限・101大講義室に固定」「機械学習と自然言語処理は裏番組として被せないで」「SW設計演習の2コマは同日連続時限で」など、教務課・教授陣のドロドロした個別条件を Gemini Nano で構造化し、WaSHI (HiGHS) で一発編成・矛盾診断します。
+            </p>
+            <div class="card-actions">
+              <a href="./ai-timetable/" class="open-btn" id="app2-open">アプリを開く</a>
+              <a href="./ai-timetable-theory/" class="theory-btn" id="app2-theory">解説記事を読む</a>
+            </div>
           </div>
         </article>
 
@@ -193,18 +270,132 @@
             style="background: linear-gradient(135deg, #0f172a, #1e293b);"
           >
             <div class="app-icon-hero">🚚 📦</div>
-            <span class="app-tag" style="border-color: rgba(255,255,255,0.3); color: #cbd5e1;">
+            <span class="app-tag" id="app3-tag" style="border-color: rgba(255,255,255,0.3); color: #cbd5e1;">
               🛠️ 企画中（Coming Soon）
             </span>
           </div>
           <div class="app-body">
-            <h2>配送ルート＆庫内ピッキング最適化 Copilot</h2>
-            <p>
+            <h2 id="app3-title">配送ルート＆庫内ピッキング最適化 Copilot</h2>
+            <p id="app3-desc">
               時間枠制約や車両積載量、現場の突発的な変更指示をローカルAIで取り込み、ブラウザ内で配送計画を再最適化するデモアプリ。
             </p>
           </div>
         </article>
       </main>
     </div>
+
+    <script type="module">
+      import { getGameLang, setGameLang, pickLang } from "../games/i18n.ts";
+
+      const APPS_TEXT = {
+        ja: {
+          pageTitle: "WaSHI 実務アプリケーション・ショーケース",
+          backTop: "← WaSHI トップページへ戻る",
+          navDemo: "📐 数理モデル Playground",
+          navGames: "🎮 ゲーム・ショーケース",
+          heroTitle: "🏥 WaSHI 実務アプリケーション・ショーケース",
+          heroSub:
+            "WebAssembly 数理最適化ソルバー（HiGHS）とブラウザ内蔵 AI（Gemini Nano / LanguageModel API）を組み合わせ、サーバー通信ゼロ・完全ローカルで動作する実務意思決定・スケジューリングアプリ集です。",
+          app1Tag: "Gemini Nano × HiGHS MILP（30名×1ヶ月・3交代制＋36協定＋矛盾診断）",
+          app1Title: "ナーススケジューリング AI Copilot",
+          app1Desc:
+            "自然な日本語チャットで「山本さんは日勤専従にして」「伊藤さんはパートで月10日まで・3連勤まで」「深夜の翌日は必ず休みに」と伝えるだけで、Gemini Nano が条件を抽出し、WaSHI (HiGHS) が30名×30日間の3交代シフト表を1秒で最適化・矛盾診断します。",
+          app2Tag: "Gemini Nano × HiGHS MILP（25科目・30コマ×7教室×10教員＋矛盾診断）",
+          app2Title: "大学時間割編成 AI Copilot (UCTP)",
+          app2Desc:
+            "「非常勤の小林先生は火・木の午後しか来られない」「数理最適化を火曜2限・101大講義室に固定」「機械学習と自然言語処理は裏番組として被せないで」「SW設計演習の2コマは同日連続時限で」など、教務課・教授陣のドロドロした個別条件を Gemini Nano で構造化し、WaSHI (HiGHS) で一発編成・矛盾診断します。",
+          app3Tag: "🛠️ 企画中（Coming Soon）",
+          app3Title: "配送ルート＆庫内ピッキング最適化 Copilot",
+          app3Desc:
+            "時間枠制約や車両積載量、現場の突発的な変更指示をローカルAIで取り込み、ブラウザ内で配送計画を再最適化するデモアプリ。",
+          openBtn: "アプリを開く",
+          theoryBtn: "解説記事を読む",
+        },
+        en: {
+          pageTitle: "WaSHI Real-World Applications Showcase",
+          backTop: "← Back to WaSHI Home",
+          navDemo: "📐 Modeling Playground",
+          navGames: "🎮 Puzzle Games Showcase",
+          heroTitle: "🏥 WaSHI Real-World Applications Showcase",
+          heroSub:
+            "Zero-server, 100% client-side decision support and scheduling applications combining WebAssembly mathematical optimization (HiGHS) with Chrome Built-in AI (Gemini Nano / LanguageModel API).",
+          app1Tag: "Gemini Nano × HiGHS MILP (30 Nurses × 30 Days, 3-Shift + Conflict Diagnosis)",
+          app1Title: "Nurse Scheduling AI Copilot",
+          app1Desc:
+            "Express complex ward staffing and labor rules in natural language. Gemini Nano extracts structured operations and WaSHI (HiGHS) optimizes a 30-nurse × 30-day 3-shift roster and diagnoses conflicts in under a second.",
+          app2Tag: "Gemini Nano × HiGHS MILP (25 Courses / 30 Sessions × 7 Rooms × 10 Faculty + IIS)",
+          app2Title: "University Course Timetabling AI Copilot (UCTP)",
+          app2Desc:
+            "Coordinate 4 student cohort timetables (Years 1–4), 10 faculty schedules (including adjunct day limits), and 7 specialized rooms simultaneously. Add natural-language constraints via Gemini Nano and solve or diagnose conflicts with WaSHI (HiGHS).",
+          app3Tag: "🛠️ Coming Soon",
+          app3Title: "Vehicle Routing & Warehouse Picking Copilot",
+          app3Desc:
+            "An upcoming client-side optimization copilot for time-windowed delivery routing and warehouse order batching.",
+          openBtn: "Open App",
+          theoryBtn: "Read Article",
+        },
+        zh: {
+          pageTitle: "WaSHI 实务应用展示中心",
+          backTop: "← 返回 WaSHI 首页",
+          navDemo: "📐 数学建模 Playground",
+          navGames: "🎮 益智游戏展示",
+          heroTitle: "🏥 WaSHI 实务应用展示中心",
+          heroSub:
+            "结合 WebAssembly 数学规划求解器（HiGHS）与浏览器内置 AI（Gemini Nano / LanguageModel API），无需服务器、100% 在本地浏览器运行的智能排班与排课决策应用。",
+          app1Tag: "Gemini Nano × HiGHS MILP（30名护士×30天・三班倒＋冲突诊断）",
+          app1Title: "护士排班 AI Copilot",
+          app1Desc:
+            "通过自然语言对话输入排班要求与劳务规则，由 Gemini Nano 提取结构化指令，WaSHI (HiGHS) 在1秒内完成30人×30天三班倒排班优化与无解冲突诊断。",
+          app2Tag: "Gemini Nano × HiGHS MILP（25门课程・30课时×7间教室×10位教师＋冲突诊断）",
+          app2Title: "大学排课 AI Copilot (UCTP)",
+          app2Desc:
+            "同时协调大一至大四4张年级课表、10位专任/外聘教师出勤表与7间专业教室。支持通过自然语言添加“外聘讲师仅周二周四下午可排”、“软件设计实验两节连排”等复杂约束，并由 WaSHI (HiGHS) 秒级求解与诊断冲突。",
+          app3Tag: "🛠️ 企划中（Coming Soon）",
+          app3Title: "配送路径与仓库拣货优化 Copilot",
+          app3Desc:
+            "支持通过端侧 AI 导入时间窗约束、车辆载重与临时变更指令，在浏览器内实时重优化配送计划。",
+          openBtn: "打开应用",
+          theoryBtn: "阅读解说文章",
+        },
+      };
+
+      function applyAppsLang(lang) {
+        setGameLang(lang);
+        const t = pickLang(lang, APPS_TEXT);
+        document.title = t.pageTitle;
+        document.getElementById("apps-back-top").textContent = t.backTop;
+        document.getElementById("apps-nav-demo").textContent = t.navDemo;
+        document.getElementById("apps-nav-games").textContent = t.navGames;
+        document.getElementById("apps-hero-title").textContent = t.heroTitle;
+        document.getElementById("apps-hero-sub").textContent = t.heroSub;
+        document.getElementById("app1-tag").textContent = t.app1Tag;
+        document.getElementById("app1-title").textContent = t.app1Title;
+        document.getElementById("app1-desc").textContent = t.app1Desc;
+        document.getElementById("app1-open").textContent = t.openBtn;
+        document.getElementById("app2-tag").textContent = t.app2Tag;
+        document.getElementById("app2-title").textContent = t.app2Title;
+        document.getElementById("app2-desc").textContent = t.app2Desc;
+        document.getElementById("app2-open").textContent = t.openBtn;
+        document.getElementById("app2-theory").textContent = t.theoryBtn;
+        document.getElementById("app3-tag").textContent = t.app3Tag;
+        document.getElementById("app3-title").textContent = t.app3Title;
+        document.getElementById("app3-desc").textContent = t.app3Desc;
+
+        document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
+        });
+      }
+
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const lang = btn.getAttribute("data-lang-btn");
+          if (lang === "ja" || lang === "en" || lang === "zh") {
+            applyAppsLang(lang);
+          }
+        });
+      });
+
+      applyAppsLang(getGameLang());
+    </script>
   </body>
 </html>
