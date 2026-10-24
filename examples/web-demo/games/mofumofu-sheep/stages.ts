@@ -446,7 +446,7 @@ export interface StageDifficultySpec {
 
 /**
  * Progressive level scaling schedule:
- * Rises smoothly from Stage 13 (7x7) through 8x8 and 9x9 up to the 10x10 cap (8-10 fences, up to 6 wolves).
+ * Rises smoothly from Stage 13 (7x7) through 8x8 and 9x9 up to the 10x10 cap (8-10 fences, 4 wolves).
  */
 export function getDifficultySpecForStage(stageNumber: number): StageDifficultySpec {
   if (stageNumber <= 15) {

@@ -147,6 +147,22 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(check.isSafe).toBe(true);
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
+
+    // When all 36 candidate attempts are rejected (e.g., degenerate PRNG output filling the outer ring with water),
+    // fallback stage + verified optimal solution are still cached so revisiting does not re-run generation.
+    const imulSpy = vi.spyOn(Math, "imul").mockReturnValue(0);
+    try {
+      const exhaustedStage = await generateVerifiedPastureStage(99);
+      expect(exhaustedStage.id).toBe("stage-99");
+      expect(exhaustedStage.grid).toEqual(CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1].grid);
+    } finally {
+      imulSpy.mockRestore();
+    }
+    const { stage: cachedFallback, precomputedOptimal: cachedFallbackOpt } =
+      await getStageByNumber(99);
+    expect(cachedFallback.id).toBe("stage-99");
+    expect(cachedFallback.grid).toEqual(CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1].grid);
+    expect(cachedFallbackOpt?.verified).toBe(true);
   });
 
   it("enforces editorial & i18n rules across Portal, Games, and Theory Articles (no 核心, no ！, no algorithm names on Portal, full ja/en/zh)", () => {
