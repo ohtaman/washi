@@ -3727,10 +3727,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         routes: [{ tool_type: "clarify" }],
         response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
       };
-      // An initial request whose measured tokens (~4,800) fit within `totalTokenBudget` (~5,000 tokens)
+      // An initial request whose measured tokens (~4,545) fit within `totalTokenBudget` (~4,800 tokens)
       // once stale `recentTurnHistory` from Turn 4 is evicted is preserved in full without truncating
-      // the new held request (4368632729, 4368715484, 4368794084).
-      const largeInitialFittingBudget = `[REQ-${"A".repeat(19000)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
+      // the new held request (4368632729, 4368715484, 4368794084, 4368829907).
+      const largeInitialFittingBudget = `[REQ-${"A".repeat(18000)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
       const planTurn5Clarify = await manager.extractPlan(
         largeInitialFittingBudget,
         appliedTurn4.updatedState
@@ -3776,8 +3776,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(measureContextUsageCallCount).toBeGreaterThan(0);
       expect(turn6RouterPrompt).toContain(largeInitialFittingBudget);
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
-      const turn6PromptTokens = countMockTokens(turn6RouterPrompt);
-      expect(1800 + turn6PromptTokens).toBeLessThanOrEqual(9216);
+      for (const p of capturedTurn1Prompts) {
+        expect(1800 + countMockTokens(p)).toBeLessThanOrEqual(9216);
+      }
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");
 

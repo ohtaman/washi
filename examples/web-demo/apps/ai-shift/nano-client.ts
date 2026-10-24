@@ -2302,7 +2302,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
   // Chrome Built-in AI (Gemini Nano / LanguageModel API) default contextWindow is 9,216 tokens.
   const GEMINI_NANO_CONTEXT_WINDOW_TOKENS = 9216;
-  const RESERVED_PROMPT_AND_OUTPUT_TOKENS = 4216;
+  const RESERVED_PROMPT_AND_OUTPUT_TOKENS = 4416;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2310,6 +2310,15 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     if (recentTurnHistory.length > 2) {
       recentTurnHistory = recentTurnHistory.slice(-2);
     }
+  }
+
+  function getTurnInputTokenBudget(): number {
+    const defaultTurnBudget = GEMINI_NANO_CONTEXT_WINDOW_TOKENS - 2300;
+    const tokenInfo = readSessionTokenUsage(routerBaseSession);
+    if (tokenInfo && tokenInfo.quota > tokenInfo.usage) {
+      return Math.max(800, tokenInfo.quota - tokenInfo.usage - 500);
+    }
+    return defaultTurnBudget;
   }
 
   function getPendingClarificationTokenBudget(): number {
@@ -2379,22 +2388,11 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     return candidate;
   }
 
-  async function recordPendingClarification(
-    msg: string,
-    question: string,
-    state: NurseSchedulingState
+  async function enforcePendingClarificationBudget(
+    state: NurseSchedulingState,
+    totalTokenBudget: number
   ): Promise<void> {
-    if (pendingClarification) {
-      pendingClarification.messages.push(msg);
-      pendingClarification.lastQuestion = question;
-    } else {
-      pendingClarification = {
-        messages: [msg],
-        lastQuestion: question,
-      };
-    }
-
-    const totalTokenBudget = getPendingClarificationTokenBudget();
+    if (!pendingClarification) return;
     while (
       recentTurnHistory.length > 0 &&
       (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) >
@@ -2510,6 +2508,24 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         }
       }
     }
+  }
+
+  async function recordPendingClarification(
+    msg: string,
+    question: string,
+    state: NurseSchedulingState
+  ): Promise<void> {
+    if (pendingClarification) {
+      pendingClarification.messages.push(msg);
+      pendingClarification.lastQuestion = question;
+    } else {
+      pendingClarification = {
+        messages: [msg],
+        lastQuestion: question,
+      };
+    }
+
+    await enforcePendingClarificationBudget(state, getPendingClarificationTokenBudget());
   }
 
   function getCombinedHistoryLines(): string[] {
@@ -2668,6 +2684,21 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         hadCustomState = true;
       }
 
+      const turnInputBudget = getTurnInputTokenBudget();
+      const maxTurnUserTokens = pendingClarification
+        ? Math.max(200, Math.floor(turnInputBudget * 0.25))
+        : Math.max(500, turnInputBudget - 500);
+      const boundedUserMessage = await trimTailToTokenBudget(userMessage, maxTurnUserTokens);
+      if (pendingClarification) {
+        const userSuffixTokens = await measureTextTokens(
+          `\n\nユーザーの発話: 「${boundedUserMessage}」`
+        );
+        await enforcePendingClarificationBudget(
+          state,
+          Math.max(300, turnInputBudget - userSuffixTokens - 10)
+        );
+      }
+
       const historyLinesForTurn = getCombinedHistoryLines();
 
       // ==================== TURN 1: STAGE 1 ROUTER (tool_types + response) ====================
@@ -2690,7 +2721,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             ? [`【直近の対話履歴】`, ...historyLinesForTurn]
             : []),
         ];
-        const routerPrompt = `${routerContextLines.join("\n")}\n\nユーザーの発話: 「${userMessage}」`;
+        const routerPrompt = `${routerContextLines.join("\n")}\n\nユーザーの発話: 「${boundedUserMessage}」`;
         const t1Start = performance.now();
         let rawStage1 = "";
         let parseErr: string | undefined;
