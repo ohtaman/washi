@@ -3544,6 +3544,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const capturedTurn2Prompts: string[] = [];
 
     let measureContextUsageCallCount = 0;
+    let measureContextUsageWithConstraintCount = 0;
     const countMockTokens = (input: string) =>
       Math.ceil(
         Array.from(input).reduce(
@@ -3560,8 +3561,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         return {
           contextWindow: 9216,
           contextUsage: 1800,
-          async measureContextUsage(input: string) {
+          async measureContextUsage(input: string, opts?: { responseConstraint?: unknown }) {
             measureContextUsageCallCount++;
+            if (opts?.responseConstraint) {
+              measureContextUsageWithConstraintCount++;
+            }
             return countMockTokens(input);
           },
           async prompt(input: string, opts?: { responseConstraint?: unknown }) {
@@ -3774,9 +3778,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(measureContextUsageCallCount).toBeGreaterThan(0);
+      expect(measureContextUsageWithConstraintCount).toBeGreaterThan(0);
       expect(turn6RouterPrompt).toContain(largeInitialFittingBudget);
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
-      for (const p of capturedTurn1Prompts) {
+      for (const p of [...capturedTurn1Prompts, ...capturedTurn2Prompts]) {
         expect(1800 + countMockTokens(p)).toBeLessThanOrEqual(9216);
       }
       expect(planTurn6Question.intentType).toBe("consult_only");

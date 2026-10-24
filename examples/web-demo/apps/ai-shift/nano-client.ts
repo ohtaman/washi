@@ -2312,9 +2312,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     }
   }
 
-  function getTurnInputTokenBudget(): number {
+  function getTurnInputTokenBudget(session: any = routerBaseSession): number {
     const defaultTurnBudget = GEMINI_NANO_CONTEXT_WINDOW_TOKENS - 2300;
-    const tokenInfo = readSessionTokenUsage(routerBaseSession);
+    const tokenInfo = readSessionTokenUsage(session);
     if (tokenInfo && tokenInfo.quota > tokenInfo.usage) {
       return Math.max(800, tokenInfo.quota - tokenInfo.usage - 500);
     }
@@ -2349,19 +2349,26 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     ].join("\n");
   }
 
-  async function measureTextTokens(text: string): Promise<number> {
-    if (routerBaseSession) {
+  async function measureTextTokens(
+    text: string,
+    session: any = routerBaseSession,
+    responseConstraint: unknown = STAGE1_ROUTER_SCHEMA
+  ): Promise<number> {
+    if (session) {
       const fn =
-        typeof routerBaseSession.measureContextUsage === "function"
-          ? routerBaseSession.measureContextUsage
-          : typeof routerBaseSession.measureInputUsage === "function"
-            ? routerBaseSession.measureInputUsage
-            : typeof routerBaseSession.countPromptTokens === "function"
-              ? routerBaseSession.countPromptTokens
+        typeof session.measureContextUsage === "function"
+          ? session.measureContextUsage
+          : typeof session.measureInputUsage === "function"
+            ? session.measureInputUsage
+            : typeof session.countPromptTokens === "function"
+              ? session.countPromptTokens
               : null;
       if (fn) {
         try {
-          const measured = Number(await fn.call(routerBaseSession, text));
+          const opts = responseConstraint !== undefined ? { responseConstraint } : undefined;
+          const measured = Number(
+            opts !== undefined ? await fn.call(session, text, opts) : await fn.call(session, text)
+          );
           if (Number.isFinite(measured) && measured > 0) {
             return measured;
           }
@@ -2373,17 +2380,25 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     return Math.max(1, Array.from(text).length * 2);
   }
 
-  async function trimTailToTokenBudget(text: string, maxTokens: number): Promise<string> {
+  async function trimTailToTokenBudget(
+    text: string,
+    maxTokens: number,
+    session: any = routerBaseSession,
+    responseConstraint: unknown = STAGE1_ROUTER_SCHEMA
+  ): Promise<string> {
     const budget = Math.max(1, maxTokens);
     let cps = Array.from(text);
     if (cps.length === 0) return "";
     let candidate = text;
-    let tokens = await measureTextTokens(candidate);
+    let tokens = await measureTextTokens(candidate, session, responseConstraint);
     while (cps.length > 1 && tokens > budget) {
-      const nextLen = Math.max(1, Math.min(cps.length - 1, Math.floor((cps.length * budget) / tokens)));
+      const nextLen = Math.max(
+        1,
+        Math.min(cps.length - 1, Math.floor((cps.length * budget) / tokens))
+      );
       cps = cps.slice(-nextLen);
       candidate = cps.join("");
-      tokens = await measureTextTokens(candidate);
+      tokens = await measureTextTokens(candidate, session, responseConstraint);
     }
     return candidate;
   }
@@ -2871,23 +2886,74 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         const routeOps: ChatConstraintOperation[] = [];
         try {
           const catConfig = STAGE2_CATEGORY_CONFIGS[category];
+          const stage2Budget = getTurnInputTokenBudget(catBranch);
           const dynamicDict = buildCategoryDynamicDictionary(
             category,
             workingState,
-            `${userMessage} ${instruction} ${historyLinesForTurn.join(" ")}`
+            `${boundedUserMessage} ${instruction} ${historyLinesForTurn.join(" ")}`
           );
           const dictNote = dynamicDict ? `${dynamicDict}\n` : "";
-          const historyNote =
-            historyLinesForTurn.length > 0
-              ? `【直近の対話履歴】\n${historyLinesForTurn.join("\n")}\n`
-              : "";
-          const effectiveInstruction =
+          const rawEffectiveInstruction =
             activeRoutes.length > 1
               ? instruction
-              : historyLinesForTurn.length > 0 && instruction && instruction !== userMessage
-                ? `${userMessage}（文脈補完: ${instruction}）`
-                : userMessage;
-          const stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
+              : historyLinesForTurn.length > 0 && instruction && instruction !== boundedUserMessage
+                ? `${boundedUserMessage}（文脈補完: ${instruction}）`
+                : boundedUserMessage;
+          const baseStage2Tokens = await measureTextTokens(
+            `${dictNote}ユーザーの指示: 「」`,
+            catBranch,
+            catConfig.schema
+          );
+          const effectiveInstruction = await trimTailToTokenBudget(
+            rawEffectiveInstruction,
+            Math.max(100, stage2Budget - baseStage2Tokens - 20),
+            catBranch,
+            catConfig.schema
+          );
+          const stage2HistoryLines = [...historyLinesForTurn];
+          let historyNote =
+            stage2HistoryLines.length > 0
+              ? `【直近の対話履歴】\n${stage2HistoryLines.join("\n")}\n`
+              : "";
+          let stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
+          while (
+            stage2HistoryLines.length > 1 &&
+            (await measureTextTokens(stage2Input, catBranch, catConfig.schema)) > stage2Budget
+          ) {
+            stage2HistoryLines.shift();
+            historyNote = `【直近の対話履歴】\n${stage2HistoryLines.join("\n")}\n`;
+            stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
+          }
+          if (
+            stage2HistoryLines.length === 1 &&
+            (await measureTextTokens(stage2Input, catBranch, catConfig.schema)) > stage2Budget
+          ) {
+            const nonHistoryTokens = await measureTextTokens(
+              `${dictNote}【直近の対話履歴】\n\nユーザーの指示: 「${effectiveInstruction}」`,
+              catBranch,
+              catConfig.schema
+            );
+            const remainingHistoryBudget = stage2Budget - nonHistoryTokens - 10;
+            if (remainingHistoryBudget <= 20) {
+              historyNote = "";
+            } else {
+              const trimmedLine = await trimTailToTokenBudget(
+                stage2HistoryLines[0]!,
+                remainingHistoryBudget,
+                catBranch,
+                catConfig.schema
+              );
+              historyNote = `【直近の対話履歴】\n${trimmedLine}\n`;
+            }
+            stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
+            if (
+              historyNote &&
+              (await measureTextTokens(stage2Input, catBranch, catConfig.schema)) > stage2Budget
+            ) {
+              historyNote = "";
+              stage2Input = `${dictNote}ユーザーの指示: 「${effectiveInstruction}」`;
+            }
+          }
           const t2Start = performance.now();
           let rawStage2 = "";
           let parsedStage2: any = null;
