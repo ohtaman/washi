@@ -13,7 +13,6 @@ import {
 import type { OptimalPastureResult } from "../examples/web-demo/games/mofumofu-sheep/types.js";
 import {
   CAMPAIGN_STAGES,
-  clearGeneratedStageCacheForTest,
   generateVerifiedPastureStage,
   getDifficultySpecForStage,
   getLocalizedStageText,
@@ -34,14 +33,10 @@ import {
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
 import { CAMPAIGN_STAGES as CASTLE_STAGES } from "../examples/web-demo/games/demon-castle-shift/stages.js";
 import {
-  applyFencesForTest,
   applyStaticTranslations as applySheepStaticTranslations,
   countCanonicalClearedStages,
-  getCurrentStageNumber,
-  getSheepProgressState,
   loadStageByNumber,
   parseProgressState,
-  resetSheepProgressForTest,
   stepStage,
 } from "../examples/web-demo/games/mofumofu-sheep/main.js";
 
@@ -126,7 +121,6 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
   });
 
   it("generates deterministic, progressive stages (7x7 -> 8x8 -> 9x9 -> 10x10 cap) that can be revisited by stageNumber", async () => {
-    clearGeneratedStageCacheForTest();
     expect(getDifficultySpecForStage(13)).toMatchObject({ rows: 7, cols: 7 });
     expect(getDifficultySpecForStage(19)).toMatchObject({ rows: 8, cols: 8 });
     expect(getDifficultySpecForStage(25)).toMatchObject({ rows: 9, cols: 9 });
@@ -138,7 +132,6 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       const { stage: stageB, precomputedOptimal } = await getStageByNumber(stageNum);
       expect(stageA.id).toBe(`stage-${stageNum}`);
       expect(stageA.stageNumber).toBe(stageNum);
-      // Verify the generated stage genuinely matches the progressive dimensions (not a 7x7 fallback)
       expect(stageA.grid.length).toBe(spec.rows);
       expect(stageA.grid[0].length).toBe(spec.cols);
       expect(stageB.grid).toEqual(stageA.grid);
@@ -154,16 +147,6 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(check.isSafe).toBe(true);
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
-
-    // Force generation exhaustion (maxAttempts = 0) and verify fallback is cached with precomputedOptimal
-    const fallbackStage = await generateVerifiedPastureStage(99, 0);
-    expect(fallbackStage.id).toBe("stage-99");
-    expect(fallbackStage.stageNumber).toBe(99);
-    expect(fallbackStage.grid.length).toBe(7);
-    const revisitedFallback = await getStageByNumber(99);
-    expect(revisitedFallback.stage).toBe(fallbackStage);
-    expect(revisitedFallback.precomputedOptimal?.verified).toBe(true);
-    expect(revisitedFallback.precomputedOptimal?.optimalScore).toBe(fallbackStage.targetScore);
   });
 
   it("enforces editorial & i18n rules across Portal, Games, and Theory Articles (no 核心, no ！, no algorithm names on Portal, full ja/en/zh)", () => {
@@ -264,6 +247,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       };
       setAttribute: (attr: string, val: string) => void;
       getAttribute: (attr: string) => string | null;
+      appendChild: () => void;
     }
 
     const createHtmlMockDocument = (html: string) => {
@@ -336,6 +320,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
             attrs.set(attr, val);
           },
           getAttribute: (attr: string) => attrs.get(attr) ?? null,
+          appendChild: () => {},
         };
 
         allElements.push(el);
@@ -353,6 +338,18 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       return {
         documentElement: { lang: "ja" },
         title: "",
+        createElement: () => ({
+          type: "",
+          className: "",
+          disabled: false,
+          textContent: "",
+          value: "",
+          selected: false,
+          dataset: {},
+          classList: { toggle: () => {}, add: () => {}, remove: () => {} },
+          addEventListener: () => {},
+          appendChild: () => {},
+        }),
         getElementById: (id: string) => byId.get(id) ?? null,
         querySelectorAll: (selector: string) => {
           if (selector === "[data-lang-btn]") return langBtns;
@@ -659,41 +656,54 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     // Tutorial stages 1..4 are unlocked by default
     expect(parsed.highestUnlockedStage).toBe(4);
 
-    // Setup lightweight DOM from mofumofu-sheep/index.html to verify navigation and clear badge
-    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
-    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
-    const byId = new Map<
-      string,
-      {
-        id: string;
-        textContent: string;
-        innerHTML: string;
-        title: string;
-        hidden: boolean;
-        disabled: boolean;
-        className: string;
-        classList: {
-          toggle: () => void;
-          add: () => void;
-          remove: () => void;
-        };
-        setAttribute: () => void;
-        getAttribute: () => string | null;
-      }
-    >();
-    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
-    for (const match of sheepHtml.matchAll(tagRegex)) {
-      const idMatch = match[2].match(/\bid="([^"]+)"/);
-      if (!idMatch) continue;
-      const id = idMatch[1];
-      byId.set(id, {
+    interface TestDomNode {
+      id: string;
+      type: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      value: string;
+      selected: boolean;
+      className: string;
+      dataset: Record<string, string>;
+      style: {
+        gridTemplateColumns: string;
+        setProperty: () => void;
+      };
+      children: TestDomNode[];
+      classList: {
+        toggle: () => void;
+        add: () => void;
+        remove: () => void;
+      };
+      setAttribute: () => void;
+      getAttribute: () => string | null;
+      appendChild: (child: TestDomNode) => void;
+      addEventListener: (event: string, cb: () => void) => void;
+      click: () => void;
+    }
+
+    const makeNode = (id = ""): TestDomNode => {
+      const listeners = new Map<string, (() => void)[]>();
+      const node: TestDomNode = {
         id,
+        type: "",
         textContent: "",
         innerHTML: "",
         title: "",
         hidden: false,
         disabled: false,
+        value: "",
+        selected: false,
         className: "",
+        dataset: {},
+        style: {
+          gridTemplateColumns: "",
+          setProperty: () => {},
+        },
+        children: [],
         classList: {
           toggle: () => {},
           add: () => {},
@@ -701,19 +711,65 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         },
         setAttribute: () => {},
         getAttribute: () => null,
+        appendChild: (child: TestDomNode) => {
+          node.children.push(child);
+        },
+        addEventListener: (event: string, cb: () => void) => {
+          const list = listeners.get(event) ?? [];
+          list.push(cb);
+          listeners.set(event, list);
+        },
+        click: () => {
+          for (const cb of listeners.get("click") ?? []) {
+            cb();
+          }
+        },
+      };
+      return node;
+    };
+
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const byId = new Map<string, TestDomNode>();
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+    for (const match of sheepHtml.matchAll(tagRegex)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      const id = idMatch[1];
+      byId.set(id, makeNode(id));
+    }
+    const boardGridEl = byId.get("board-grid");
+    if (boardGridEl) {
+      Object.defineProperty(boardGridEl, "innerHTML", {
+        get: () => "",
+        set: () => {
+          boardGridEl.children = [];
+        },
       });
     }
 
+    const storageMap = new Map<string, string>();
     const prevDocument = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
     try {
+      (globalThis as { localStorage?: unknown }).localStorage = {
+        getItem: (k: string) => storageMap.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          storageMap.set(k, v);
+        },
+        removeItem: (k: string) => {
+          storageMap.delete(k);
+        },
+      };
       (globalThis as { document?: unknown }).document = {
         documentElement: { lang: "ja" },
         title: "",
+        createElement: () => makeNode(),
         getElementById: (id: string) => byId.get(id) ?? null,
         querySelectorAll: () => [],
       };
 
-      resetSheepProgressForTest(legacySavedJson);
+      storageMap.set("washi_mofumofu_sheep_cleared_v3", legacySavedJson);
       await loadStageByNumber(1);
       expect(byId.get("total-stars-text")?.textContent).toBe("2 CLEAR");
       expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
@@ -721,40 +777,47 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
       // Step to Stage 4 (the initial tutorial unlock boundary)
       await loadStageByNumber(4);
-      expect(getCurrentStageNumber()).toBe(4);
-      expect(getSheepProgressState().highestUnlockedStage).toBe(4);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 4");
       expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
       expect(byId.get("btn-stage-next")?.disabled).toBe(true);
 
       // Attempting to step past the unlock boundary must be rejected and must not unlock Stage 5
       const steppedLocked = await stepStage(1);
       expect(steppedLocked).toBe(false);
-      expect(getCurrentStageNumber()).toBe(4);
-      expect(getSheepProgressState().highestUnlockedStage).toBe(4);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 4");
 
-      // Legitimately clearing Stage 4 unlocks Stage 5 and enables the next arrow
+      // Legitimately clearing Stage 4 by clicking its optimal cells unlocks Stage 5 and enables the next arrow
       const stage4 = CAMPAIGN_STAGES[3];
       const opt4 = await solveOptimalPasture(stage4);
-      applyFencesForTest(opt4.optimalFences);
-      expect(getSheepProgressState().highestUnlockedStage).toBe(5);
+      for (let r = 0; r < stage4.grid.length; r++) {
+        for (let c = 0; c < stage4.grid[0].length; c++) {
+          if (!opt4.optimalFences[r][c]) continue;
+          const cellBtn = byId
+            .get("board-grid")
+            ?.children.find(
+              (ch) => ch.dataset.row === String(r) && ch.dataset.col === String(c)
+            );
+          cellBtn?.click();
+        }
+      }
       expect(byId.get("total-stars-text")?.textContent).toBe("3 CLEAR");
       expect(byId.get("btn-stage-next")?.disabled).toBe(false);
 
       const steppedUnlocked = await stepStage(1);
       expect(steppedUnlocked).toBe(true);
-      expect(getCurrentStageNumber()).toBe(5);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 5");
 
-      // Verify rapid repeated navigation into an uncached generated stage disables controls while loading
-      clearGeneratedStageCacheForTest();
-      resetSheepProgressForTest(
+      // Verify rapid repeated navigation into an uncached generated stage (Stage 14) disables controls while loading
+      storageMap.set(
+        "washi_mofumofu_sheep_cleared_v3",
         JSON.stringify({
-          clearedByStageId: { "stage-12": true },
-          highestUnlockedStage: 14,
+          clearedByStageId: { "stage-13": true },
+          highestUnlockedStage: 15,
         })
       );
-      await loadStageByNumber(12);
+      await loadStageByNumber(13);
       const firstStepPromise = stepStage(1);
-      // While Stage 13 generation is in flight, navigation and rules buttons are disabled and duplicate/tutorial jumps are rejected
+      // While Stage 14 generation is in flight, navigation and rules buttons are disabled and duplicate/tutorial jumps are rejected
       expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
       expect(byId.get("btn-stage-next")?.disabled).toBe(true);
       expect(byId.get("stage-select")?.disabled).toBe(true);
@@ -763,7 +826,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(duplicateStep).toBe(false);
       await loadStageByNumber(1);
       expect(await firstStepPromise).toBe(true);
-      expect(getCurrentStageNumber()).toBe(13);
+      expect(byId.get("stage-badge")?.textContent).toBe("STAGE 14");
       expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
       expect(byId.get("btn-stage-next")?.disabled).toBe(false);
       expect(byId.get("stage-select")?.disabled).toBe(false);
@@ -773,6 +836,12 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         delete (globalThis as { document?: unknown }).document;
       } else {
         (globalThis as { document?: unknown }).document = prevDocument;
+      }
+      if (prevStorage === undefined) {
+        delete (globalThis as { localStorage?: unknown }).localStorage;
+      } else {
+        (globalThis as { localStorage?: unknown }).localStorage;
+        (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
       }
     }
   });

@@ -102,6 +102,8 @@ export function parseProgressState(raw: string | null): ProgressState {
   }
 }
 
+let storageWritable = true;
+
 function loadProgress(): ProgressState {
   try {
     return parseProgressState(localStorage.getItem(STORAGE_KEY));
@@ -110,11 +112,24 @@ function loadProgress(): ProgressState {
   }
 }
 
+function syncProgressFromStorage(): void {
+  if (!storageWritable) return;
+  try {
+    if (typeof localStorage !== "undefined" && typeof localStorage.getItem === "function") {
+      const next = parseProgressState(localStorage.getItem(STORAGE_KEY));
+      progress.clearedByStageId = next.clearedByStageId;
+      progress.highestUnlockedStage = next.highestUnlockedStage;
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 function saveProgress(progressState: ProgressState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progressState));
   } catch {
-    // Ignore storage errors in private browsing
+    storageWritable = false;
   }
 }
 
@@ -607,7 +622,7 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
 
 function renderTutorialButtonsInDialog(): void {
   const gridEl = document.getElementById("rules-tutorial-grid");
-  if (!gridEl || typeof document.createElement !== "function") return;
+  if (!gridEl) return;
   gridEl.innerHTML = "";
   for (let num = 1; num <= TUTORIAL_STAGE_COUNT; num++) {
     const btn = document.createElement("button");
@@ -676,7 +691,6 @@ function renderStageNav(): void {
     openRulesBtn.disabled = isStageLoading;
   }
   renderTutorialButtonsInDialog();
-  if (typeof document.createElement !== "function") return;
   for (let num = 1; num <= maxStageNum; num++) {
     const stageId = `stage-${num}`;
     const isCleared = Boolean(progress.clearedByStageId[stageId]);
@@ -751,14 +765,12 @@ function renderHud(): void {
   // Fence dots & remaining count
   const remaining = Math.max(0, currentStage.maxFences - currentEval.fencesUsed);
   fenceDotsEl.innerHTML = "";
-  if (typeof document.createElement === "function") {
-    for (let i = 0; i < currentStage.maxFences; i++) {
-      const dot = document.createElement("span");
-      dot.className = "fence-dot";
-      if (i >= remaining) dot.classList.add("used");
-      dot.textContent = "🪵";
-      fenceDotsEl.appendChild(dot);
-    }
+  for (let i = 0; i < currentStage.maxFences; i++) {
+    const dot = document.createElement("span");
+    dot.className = "fence-dot";
+    if (i >= remaining) dot.classList.add("used");
+    dot.textContent = "🪵";
+    fenceDotsEl.appendChild(dot);
   }
   fenceCountTextEl.textContent = pickLang(currentLang, {
     ja: `残り ${remaining} / ${currentStage.maxFences}`,
@@ -899,10 +911,9 @@ function renderBoard(): void {
   const cellSize = computeCellSize(rows, cols, getAvailableBoardWidth());
   const cleared = isStageCleared();
 
-  boardGridEl.innerHTML = "";
-  if (typeof document.createElement !== "function") return;
   boardGridEl.style.setProperty("--cell-size", `${cellSize}px`);
   boardGridEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
+  boardGridEl.innerHTML = "";
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -1152,6 +1163,7 @@ export async function loadStageByNumber(stageNumber: number): Promise<void> {
   if (isStageLoading && inFlightLoadPromise) {
     return inFlightLoadPromise;
   }
+  syncProgressFromStorage();
   const targetNum = Math.max(1, Math.floor(stageNumber));
   const myToken = ++solveToken;
   isStageLoading = true;
@@ -1180,6 +1192,7 @@ export async function stepStage(delta: -1 | 1): Promise<boolean> {
   if (isStageLoading) {
     return false;
   }
+  syncProgressFromStorage();
   const maxUnlockedStage = getMaxUnlockedStage();
   const targetNum = currentStage.stageNumber + delta;
   if (targetNum < 1 || targetNum > maxUnlockedStage) {
@@ -1187,30 +1200,6 @@ export async function stepStage(delta: -1 | 1): Promise<boolean> {
   }
   await loadStageByNumber(targetNum);
   return true;
-}
-
-export function resetSheepProgressForTest(raw: string | null = null): void {
-  const next = parseProgressState(raw);
-  progress.clearedByStageId = next.clearedByStageId;
-  progress.highestUnlockedStage = next.highestUnlockedStage;
-  saveProgress(progress);
-}
-
-export function getSheepProgressState(): ProgressState {
-  return {
-    clearedByStageId: { ...progress.clearedByStageId },
-    highestUnlockedStage: progress.highestUnlockedStage,
-  };
-}
-
-export function getCurrentStageNumber(): number {
-  return currentStage.stageNumber;
-}
-
-export function applyFencesForTest(fences: FenceGrid): void {
-  currentFences = cloneFences(fences);
-  showingModelAnswer = false;
-  updateEvaluationAndRender(false);
 }
 
 // Event Listeners

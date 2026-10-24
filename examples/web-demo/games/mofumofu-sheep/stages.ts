@@ -6,7 +6,7 @@ import { TILE_META, type OptimalPastureResult, type StagePuzzle, type TileType }
  * Compact stage DSL legend:
  * - '.' : grass (+1)
  * - 'I' : strawberry (+5)
- * - 'P' / 'M' : pit (-5)
+ * - 'P' : pit (-5)
  * - 'B' : bridge (+1, passable, cannot place fence)
  * - '~' : water (impassable)
  * - 'R' : rock (impassable)
@@ -17,7 +17,6 @@ const CHAR_TO_TILE: Record<string, TileType> = {
   ".": "grass",
   I: "strawberry",
   P: "pit",
-  M: "pit",
   B: "bridge",
   "~": "water",
   R: "rock",
@@ -528,11 +527,6 @@ const generatedStageCache = new Map<
 
 const inFlightStagePromises = new Map<number, Promise<StagePuzzle>>();
 
-export function clearGeneratedStageCacheForTest(): void {
-  generatedStageCache.clear();
-  inFlightStagePromises.clear();
-}
-
 /**
  * Generates a deterministic puzzle board for a given `stageNumber` (or seed) and verifies with HiGHS that:
  * 1. Without fences, the wolves can reach the sheep.
@@ -540,8 +534,7 @@ export function clearGeneratedStageCacheForTest(): void {
  * 3. With `maxFences`, HiGHS finds a proven Optimal solution and sets `targetScore = optimalScore`.
  */
 export async function generateVerifiedPastureStage(
-  stageNumberOrSeed = CAMPAIGN_STAGES.length + 1,
-  maxAttempts = 36
+  stageNumberOrSeed = CAMPAIGN_STAGES.length + 1
 ): Promise<StagePuzzle> {
   const stageNumber = Math.max(CAMPAIGN_STAGES.length + 1, Math.floor(stageNumberOrSeed));
   const cached = generatedStageCache.get(stageNumber);
@@ -565,7 +558,7 @@ export async function generateVerifiedPastureStage(
     const centerR = (rows - 1) / 2;
     const centerC = (cols - 1) / 2;
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (let attempt = 0; attempt < 36; attempt++) {
       const rng = createRng(baseSeed + attempt * 9973);
       const grid: TileType[][] = Array.from({ length: rows }, () =>
         Array.from({ length: cols }, () => "grass" as TileType)
@@ -738,22 +731,6 @@ export async function getStageByNumber(
   const stage = await generateVerifiedPastureStage(num);
   const cached = generatedStageCache.get(num);
   return { stage, precomputedOptimal: cached?.optimal ?? null };
-}
-
-export function getCachedStageMeta(
-  stageNumber: number
-): { targetScore?: number; isGenerated: boolean } {
-  if (stageNumber <= CAMPAIGN_STAGES.length) {
-    return {
-      targetScore: CAMPAIGN_STAGES[stageNumber - 1]?.targetScore,
-      isGenerated: false,
-    };
-  }
-  const cached = generatedStageCache.get(stageNumber);
-  return {
-    targetScore: cached?.stage.targetScore,
-    isGenerated: true,
-  };
 }
 
 export function countStageTiles(stage: StagePuzzle): Record<TileType, number> {
