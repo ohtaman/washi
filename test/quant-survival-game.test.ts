@@ -572,12 +572,19 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
   });
 
   it("evaluates player and rival tracks symmetrically via evaluateFundTrack (including intra-quarter floor breach and recovery)", () => {
+    // 60 days of constant drift (0.16 / 60) must yield the exact 16.0% quarterly return shown on the UI
+    const steadyQuarter = Array.from({ length: 60 }, () => [0.16 / 60]);
+    const steadyTrack = evaluateFundTrack(steadyQuarter, [1.0], 100, -0.055);
+    expect(steadyTrack.totalReturn).toBeCloseTo(0.16, 8);
+    expect(steadyTrack.endAum).toBeCloseTo(116.0, 6);
+    expect(steadyTrack.liquidated).toBe(false);
+
     // 3-day synthetic market where asset 0 drops -8% on day 1 (breaching -5% floor) and rallies +12% on day 2
     const dailyReturns = [[-0.08], [0.12], [0.01]];
     const track = evaluateFundTrack(dailyReturns, [1.0], 100, -0.05);
     expect(track.liquidationAumFloor).toBeCloseTo(95.0, 6);
     expect(track.minAum).toBeCloseTo(92.0, 6);
-    expect(track.endAum).toBeGreaterThan(100.0);
+    expect(track.endAum).toBeCloseTo(105.0, 6);
     expect(track.liquidated).toBe(true);
     expect(track.liquidatedDay).toBe(1);
 

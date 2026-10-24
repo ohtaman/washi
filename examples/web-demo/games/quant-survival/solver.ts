@@ -369,8 +369,9 @@ class SeededRng {
 
 /**
  * Evaluates a single fund's 60-day AUM trajectory against a given sequence of daily asset returns.
- * Applies the exact same compounding and intra-quarter / quarter-end barrier liquidation logic
- * regardless of whether the fund is managed by the player or the rival optimizer.
+ * Accumulates the daily portfolio return increments over the 60-day quarter so that the no-shock
+ * terminal return distribution matches the Markowitz quarterly model N(w^T mu, w^T Sigma w),
+ * and applies the barrier liquidation rule identically to every participant.
  */
 export function evaluateFundTrack(
   dailyAssetReturns: number[][],
@@ -395,7 +396,7 @@ export function evaluateFundTrack(
       dayRet += (weights[i] ?? 0) * assetReturns[i];
     }
 
-    cumReturn = (1 + cumReturn) * (1 + dayRet) - 1;
+    cumReturn += dayRet;
     const aum = startAum * (1 + cumReturn);
     aumSeries.push(aum);
 
