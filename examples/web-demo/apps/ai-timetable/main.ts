@@ -2172,7 +2172,9 @@ function wireEvents(): void {
           kind,
           courseId: c1Id,
           secondCourseId:
-            (kind === "course_no_overlap" || kind === "course_same_day") &&
+            (kind === "course_no_overlap" ||
+              kind === "course_consecutive" ||
+              kind === "course_same_day") &&
             c2Id &&
             c2Id !== c1Id
               ? c2Id

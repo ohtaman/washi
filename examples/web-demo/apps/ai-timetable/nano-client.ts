@@ -826,14 +826,15 @@ export function applyTimetableChatOperationsToState(
       const prof = nextState.professors.find((p) => p.id === op.professorId);
       if (!prof) continue;
 
+      const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
+      const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
+
       if (!op.isHard) {
         if (op.exclusiveAvailable) {
           const allowedDays = new Set(op.days);
           const allowedPeriods = new Set(op.periods);
           const disallowedDays = DAYS_OF_WEEK.filter((d) => !allowedDays.has(d));
           const disallowedPeriods = PERIODS.filter((p) => !allowedPeriods.has(p));
-          const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
-          const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
           const desc = `${prof.name}(${prof.id}) の出講をなるべく【${dayText}の${pText}】に限定(ソフト希望)`;
           if (disallowedDays.length > 0) {
             nextState.customRules.push({
@@ -861,8 +862,6 @@ export function applyTimetableChatOperationsToState(
           }
           appliedLogs.push(desc);
         } else {
-          const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
-          const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
           const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} の担当をなるべく回避(ソフト希望)`;
           nextState.customRules.push({
             id: nextCustomRuleId(`forbid_prof_${prof.id}`, nextState.customRules),
@@ -879,28 +878,7 @@ export function applyTimetableChatOperationsToState(
         continue;
       }
 
-      if (op.exclusiveAvailable) {
-        // Only the specified (days, periods) are available -> all other days are unavailable, and on specified days other periods are unavailable
-        const allowedDays = new Set(op.days);
-        const allowedPeriods = new Set(op.periods);
-        prof.unavailableDays = DAYS_OF_WEEK.filter((d) => !allowedDays.has(d));
-        prof.unavailableSlots = [];
-        for (const d of op.days) {
-          for (const p of PERIODS) {
-            if (!allowedPeriods.has(p)) {
-              prof.unavailableSlots.push({
-                day: d,
-                period: p,
-                reason: "出講可能枠外(チャット設定)",
-              });
-            }
-          }
-        }
-        const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
-        const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
-        const desc = `${prof.name}(${prof.id}) の出講可能枠を【${dayText}の${pText}のみ】に設定しました`;
-        appliedLogs.push(desc);
-      } else {
+      if (!op.exclusiveAvailable) {
         if (op.periods.length === 5) {
           for (const d of op.days) {
             if (!prof.unavailableDays.includes(d)) {
@@ -920,9 +898,26 @@ export function applyTimetableChatOperationsToState(
             }
           }
         }
-        const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
-        const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
         appliedLogs.push(`${prof.name}(${prof.id}) の ${dayText}${pText} を出講不可(NG)に設定しました`);
+      } else {
+        const allowedDays = new Set(op.days);
+        const allowedPeriods = new Set(op.periods);
+        prof.unavailableDays = DAYS_OF_WEEK.filter((d) => !allowedDays.has(d));
+        prof.unavailableSlots = [];
+        for (const d of op.days) {
+          for (const p of PERIODS) {
+            if (!allowedPeriods.has(p)) {
+              prof.unavailableSlots.push({
+                day: d,
+                period: p,
+                reason: "出講可能枠外(チャット設定)",
+              });
+            }
+          }
+        }
+        appliedLogs.push(
+          `${prof.name}(${prof.id}) の出講可能枠を【${dayText}の${pText}のみ】に設定しました`
+        );
       }
       continue;
     }
