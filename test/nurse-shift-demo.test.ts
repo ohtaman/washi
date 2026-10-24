@@ -3238,8 +3238,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       },
     };
     const builtSoftNO = buildNurseWashiModel(stateSoftNO);
-    expect(builtSoftNO.constraintMeta.get("trans_N_to_Off_N01_d1")?.isHard).toBe(false);
-    expect(builtSoftNO.constraintMeta.get("trans_N_to_Off_N01_d1")?.ruleKey).toBe("trans_N_O");
+    expect(builtSoftNO.constraintMeta.get("trans_N_to_Req_O_N01_d1")?.isHard).toBe(false);
+    expect(builtSoftNO.constraintMeta.get("trans_N_to_Req_O_N01_d1")?.ruleKey).toBe("trans_N_O");
     expect(builtSoftNO.constraintMeta.has("trans_N_to_D_N01_d1")).toBe(false);
     expect(builtSoftNO.constraintMeta.has("trans_N_to_E_N01_d1")).toBe(false);
     expect(builtSoftNO.constraintMeta.has("trans_N_to_N_N01_d1")).toBe(false);
@@ -3382,17 +3382,18 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const builtForbidOff = buildNurseWashiModel(stateForbidOff);
     expect(builtForbidOff.constraintMeta.has("custom_forbid_forbid_off_d1_N01_d1")).toBe(true);
 
-    // 14. Do not reset existing skill requirements or category on duplicate add_skill_def (4363684493)
-    const afterDupSkill = applyChatOperationsToState(baseState, [
+    // 14. Reject duplicate add_skill_def without mutating existing skill requirements or category (4363684493)
+    const dupSkillResult = applyChatOperationsToState(baseState, [
       { op: "add_skill_def", skillName: "リーダー業務可" },
       { op: "add_skill_def", skillName: "新人" },
-    ]).updatedState;
-    const leaderSkill = afterDupSkill.skillDefs?.find((s) => s.code === "leader_cap");
+    ]);
+    expect(dupSkillResult.appliedLogs).toHaveLength(0);
+    const leaderSkill = dupSkillResult.updatedState.skillDefs?.find((s) => s.code === "leader_cap");
     expect(leaderSkill?.minDay).toBe(2);
     expect(leaderSkill?.minEvening).toBe(1);
     expect(leaderSkill?.minNight).toBe(1);
     expect(leaderSkill?.builtIn).toBe(true);
-    const newcomerSkill = afterDupSkill.skillDefs?.find((s) => s.code === "newcomer");
+    const newcomerSkill = dupSkillResult.updatedState.skillDefs?.find((s) => s.code === "newcomer");
     expect(newcomerSkill?.category).toBe("role");
     expect(newcomerSkill?.maxEvening).toBe(1);
     expect(newcomerSkill?.maxNight).toBe(1);

@@ -933,6 +933,8 @@ export interface NurseScheduleConfig {
   softRuleWeights?: Record<string, number>;
 }
 
+const ALL_TRANS_COLS = ["D", "E", "N", "O"] as const;
+
 /**
  * Returns the 3×4 Shift Transition Matrix (`fromShift` in `D | E | N` -> `toShift` in `D | E | N | O`)
  * from `NurseScheduleConfig`.
@@ -942,12 +944,7 @@ export function getShiftTransitionMatrix(
 ): ShiftTransitionMatrix {
   const base = config.shiftTransitions ?? createDefaultShiftTransitions();
   const normalizeRow = (row: Record<"D" | "E" | "N" | "O", ShiftTransitionPolicy>) => {
-    const explicitReq = (["D", "E", "N", "O"] as const).find((k) => row[k] === "require");
-    const reqTarget =
-      explicitReq ??
-      (row.D === "forbid" && row.E === "forbid" && row.N === "forbid" && row.O !== "forbid"
-        ? "O"
-        : undefined);
+    const reqTarget = ALL_TRANS_COLS.find((k) => row[k] === "require");
     if (reqTarget) {
       return {
         D: reqTarget === "D" ? ("require" as const) : ("forbid" as const),
@@ -981,41 +978,24 @@ export function applyShiftTransitionToConfig(
   policy: ShiftTransitionPolicy
 ): NurseScheduleConfig {
   const current = getShiftTransitionMatrix(config);
+  const defaultRow = createDefaultShiftTransitions()[fromShift];
   const nextRow = { ...current[fromShift] };
 
   if (policy === "require") {
-    for (const k of ["D", "E", "N", "O"] as const) {
+    for (const k of ALL_TRANS_COLS) {
       nextRow[k] = k === toShift ? "require" : "forbid";
     }
-  } else if (toShift === "O" && policy === "allow") {
-    for (const k of ["D", "E", "N", "O"] as const) {
-      if (nextRow[k] === "require") {
-        nextRow[k] = "allow";
-      }
-    }
-    nextRow.O = "allow";
-    if (nextRow.D === "forbid" && nextRow.E === "forbid" && nextRow.N === "forbid") {
-      nextRow.N = "allow";
+  } else if (policy === "allow" && nextRow[toShift] === "require") {
+    for (const k of ALL_TRANS_COLS) {
+      nextRow[k] = k === toShift ? "allow" : defaultRow[k] === "forbid" ? "forbid" : "allow";
     }
   } else {
-    for (const k of ["D", "E", "N", "O"] as const) {
+    for (const k of ALL_TRANS_COLS) {
       if (nextRow[k] === "require") {
         nextRow[k] = "allow";
       }
     }
     nextRow[toShift] = policy === "forbid" ? "forbid" : "allow";
-    if (toShift !== "O") {
-      if (policy === "allow") {
-        if (nextRow.O === "require") nextRow.O = "allow";
-      } else if (
-        nextRow.D === "forbid" &&
-        nextRow.E === "forbid" &&
-        nextRow.N === "forbid" &&
-        nextRow.O !== "forbid"
-      ) {
-        nextRow.O = "require";
-      }
-    }
   }
 
   return {

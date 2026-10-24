@@ -3362,40 +3362,33 @@ export function applyChatOperationsToState(
       const existingIdx = activeSkills.findIndex(
         (s) => s.code === code || s.label === label
       );
-      const existing = existingIdx >= 0 ? activeSkills[existingIdx] : undefined;
+      if (existingIdx >= 0 || findSkillOrAttributeDef(op.skillName, activeSkills)) {
+        continue;
+      }
       const substitutesFor = op.substitutesFor
         ? inferSkillCodeAndLabel(op.substitutesFor, activeSkills).code
-        : existing?.substitutesFor;
+        : undefined;
       const minDay =
-        typeof op.skillMinDay === "number"
-          ? Math.max(0, Math.round(op.skillMinDay))
-          : (existing?.minDay ?? 0);
+        typeof op.skillMinDay === "number" ? Math.max(0, Math.round(op.skillMinDay)) : 0;
       const minEvening =
         typeof op.skillMinEvening === "number"
           ? Math.max(0, Math.round(op.skillMinEvening))
-          : (existing?.minEvening ?? 0);
+          : 0;
       const minNight =
-        typeof op.skillMinNight === "number"
-          ? Math.max(0, Math.round(op.skillMinNight))
-          : (existing?.minNight ?? 0);
+        typeof op.skillMinNight === "number" ? Math.max(0, Math.round(op.skillMinNight)) : 0;
 
       const newSkillDef: SkillDefinition = {
-        ...(existing ?? {}),
-        code: existing?.code ?? code,
-        label: existing?.label ?? label,
-        shortLabel: op.skillShortLabel?.trim() || existing?.shortLabel || shortLabel,
-        category: existing?.category ?? "skill",
+        code,
+        label,
+        shortLabel: op.skillShortLabel?.trim() || shortLabel,
+        category: "skill",
         substitutesFor,
         minDay,
         minEvening,
         minNight,
-        builtIn: existing?.builtIn ?? false,
+        builtIn: false,
       };
-      if (existingIdx >= 0) {
-        activeSkills[existingIdx] = newSkillDef;
-      } else {
-        activeSkills.push(newSkillDef);
-      }
+      activeSkills.push(newSkillDef);
       nextState.skillDefs = activeSkills;
 
       const subTargetMeta = substitutesFor
