@@ -3543,6 +3543,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const capturedTurn1Prompts: string[] = [];
     const capturedTurn2Prompts: string[] = [];
 
+    let measureContextUsageCallCount = 0;
+
     g.LanguageModel = {
       async availability() {
         return "available";
@@ -3551,7 +3553,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         return {
           contextWindow: 9216,
           contextUsage: 1800,
-          async measureInputUsage(input: string) {
+          async measureContextUsage(input: string) {
+            measureContextUsageCallCount++;
             return Array.from(input).length * 2;
           },
           async prompt(input: string, opts?: { responseConstraint?: unknown }) {
@@ -3755,6 +3758,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         appliedTurn4.updatedState
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(measureContextUsageCallCount).toBeGreaterThan(0);
       expect(turn6RouterPrompt).toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
       const turn6PromptTokens = Array.from(turn6RouterPrompt).length * 2;

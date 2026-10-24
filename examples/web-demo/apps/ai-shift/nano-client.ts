@@ -2328,14 +2328,28 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     return `・前回(未適用・回答待ち):「${entry.messages.join(" / ")}」➔ 聞き返し: ${entry.lastQuestion}`;
   }
 
+  function buildCandidateContextPrompt(
+    entry: { messages: string[]; lastQuestion: string },
+    state: NurseSchedulingState
+  ): string {
+    return [
+      `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
+      `【直近の対話履歴】`,
+      ...recentTurnHistory,
+      formatPendingClarificationLine(entry),
+    ].join("\n");
+  }
+
   async function measureTextTokens(text: string): Promise<number> {
     if (routerBaseSession) {
       const fn =
-        typeof routerBaseSession.measureInputUsage === "function"
-          ? routerBaseSession.measureInputUsage
-          : typeof routerBaseSession.countPromptTokens === "function"
-            ? routerBaseSession.countPromptTokens
-            : null;
+        typeof routerBaseSession.measureContextUsage === "function"
+          ? routerBaseSession.measureContextUsage
+          : typeof routerBaseSession.measureInputUsage === "function"
+            ? routerBaseSession.measureInputUsage
+            : typeof routerBaseSession.countPromptTokens === "function"
+              ? routerBaseSession.countPromptTokens
+              : null;
       if (fn) {
         try {
           const measured = Number(await fn.call(routerBaseSession, text));
@@ -2368,13 +2382,27 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     return candidate;
   }
 
-  async function recordPendingClarification(msg: string, question: string): Promise<void> {
+  async function recordPendingClarification(
+    msg: string,
+    question: string,
+    state: NurseSchedulingState
+  ): Promise<void> {
     const totalTokenBudget = getPendingClarificationTokenBudget();
-    const labelTokens = await measureTextTokens("・前回(未適用・回答待ち):「」➔ 聞き返し: ");
+    const headerAndHistoryTokens = await measureTextTokens(
+      [
+        `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
+        `【直近の対話履歴】`,
+        ...recentTurnHistory,
+        "・前回(未適用・回答待ち):「」➔ 聞き返し: ",
+      ].join("\n")
+    );
     const questionTokenBudget = Math.max(30, Math.floor(totalTokenBudget * 0.25));
     const boundedQuestion = await trimTailToTokenBudget(question, questionTokenBudget);
     const questionTokens = await measureTextTokens(boundedQuestion);
-    const messagesTokenBudget = Math.max(60, totalTokenBudget - questionTokens - labelTokens - 10);
+    const messagesTokenBudget = Math.max(
+      60,
+      totalTokenBudget - questionTokens - headerAndHistoryTokens - 10
+    );
     const maxInitialTokens = Math.max(20, Math.floor(messagesTokenBudget / 2));
 
     if (pendingClarification) {
@@ -2390,20 +2418,24 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       pendingClarification.lastQuestion = boundedQuestion;
       while (
         pendingClarification.messages.length > 2 &&
-        (await measureTextTokens(formatPendingClarificationLine(pendingClarification))) >
+        (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) >
           totalTokenBudget
       ) {
         pendingClarification.messages.splice(1, 1);
       }
       if (pendingClarification.messages.length === 2) {
-        let lineTokens = await measureTextTokens(formatPendingClarificationLine(pendingClarification));
+        let promptTokens = await measureTextTokens(
+          buildCandidateContextPrompt(pendingClarification, state)
+        );
         let followCps = Array.from(pendingClarification.messages[1]!);
-        while (followCps.length > 1 && lineTokens > totalTokenBudget) {
-          const excess = lineTokens - totalTokenBudget;
+        while (followCps.length > 1 && promptTokens > totalTokenBudget) {
+          const excess = promptTokens - totalTokenBudget;
           const dropCount = Math.max(1, Math.ceil(excess / 2));
           followCps = followCps.slice(Math.min(followCps.length - 1, dropCount));
           pendingClarification.messages[1] = followCps.join("");
-          lineTokens = await measureTextTokens(formatPendingClarificationLine(pendingClarification));
+          promptTokens = await measureTextTokens(
+            buildCandidateContextPrompt(pendingClarification, state)
+          );
         }
       }
     } else {
@@ -2697,7 +2729,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             : "question";
         lastNonToolReason = reason;
         if (reason === "clarify") {
-          await recordPendingClarification(userMessage, stage1Response);
+          await recordPendingClarification(userMessage, stage1Response, state);
         } else if (!stage1RoutingFailed) {
           // Only a genuine intent switch abandons the held request; a failed/aborted/unparseable
           // Stage 1 call synthesizes a fallback `question` route and must keep it for a retry.
@@ -2981,7 +3013,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           `⚠️ Step 3 (Verification): 対応するツールが存在しないため未対応(unsupported)と判定`
         );
       } else if (fallbackReason === "clarify") {
-        await recordPendingClarification(userMessage, stage1Response);
+        await recordPendingClarification(userMessage, stage1Response, state);
       } else {
         pendingClarification = null;
       }
