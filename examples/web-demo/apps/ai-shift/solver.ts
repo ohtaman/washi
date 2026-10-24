@@ -374,13 +374,17 @@ export function buildNurseWashiModel(
     for (const cs of customShiftDefs) {
       vCustom[cs.code][nurse.id] = [];
     }
+    const makeShiftVar = (name: string): Var =>
+      !onlyDays && elasticMode
+        ? m.continuous(name, { lb: 0, ub: 1 })
+        : m.binary(name);
     for (let d = 1; d <= numDays; d++) {
       if (isDayIncluded(d)) {
-        vD[nurse.id].push(m.binary(`D_${nurse.id}_d${d}`));
-        vE[nurse.id].push(m.binary(`E_${nurse.id}_d${d}`));
-        vN[nurse.id].push(m.binary(`N_${nurse.id}_d${d}`));
+        vD[nurse.id].push(makeShiftVar(`D_${nurse.id}_d${d}`));
+        vE[nurse.id].push(makeShiftVar(`E_${nurse.id}_d${d}`));
+        vN[nurse.id].push(makeShiftVar(`N_${nurse.id}_d${d}`));
         for (const cs of customShiftDefs) {
-          vCustom[cs.code][nurse.id].push(m.binary(`C_${cs.code}_${nurse.id}_d${d}`));
+          vCustom[cs.code][nurse.id].push(makeShiftVar(`C_${cs.code}_${nurse.id}_d${d}`));
         }
       } else {
         // Placeholder reference when day is omitted in subset check
@@ -812,7 +816,7 @@ export function buildNurseWashiModel(
       }
 
       const effectiveMinOff = nurse.minMonthlyDaysOff ?? config.minMonthlyDaysOff;
-      const maxWorkDays = Math.max(0, numDays - effectiveMinOff);
+      const maxWorkDays = numDays - effectiveMinOff;
       addTrackedConstraint(
         expr`${sum(allWorkVars)} <= ${maxWorkDays}`,
         {
@@ -2047,15 +2051,12 @@ export function evaluateNurseSchedule(
     if (typeof nurse.maxMonthlyWorkDays === "number" && totalWorkDays > nurse.maxMonthlyWorkDays) {
       const msg = `月間勤務日数超過（${totalWorkDays}日 / 上限${nurse.maxMonthlyWorkDays}日）`;
       nurseViolations.push(msg);
-      pushViolation(
-        {
-          id: `work_max_${nurse.id}`,
-          category: "monthly",
-          nurseId: nurse.id,
-          message: `${nurse.name}: ${msg}`,
-        },
-        { ruleKey: "monthlyDaysOff" }
-      );
+      pushViolation({
+        id: `work_max_${nurse.id}`,
+        category: "monthly",
+        nurseId: nurse.id,
+        message: `${nurse.name}: ${msg}`,
+      });
     }
 
     const effectiveMinWork = nurse.minMonthlyWorkDays ?? config.minMonthlyWorkDays;
@@ -2663,8 +2664,8 @@ function buildAggregateMonthlyHiGHSModel(
     const nurseNightVars = getNurseAggNightVars(nurse.id);
 
     const effectiveMinOff = nurse.minMonthlyDaysOff ?? config.minMonthlyDaysOff;
-    const maxWorkByOff = Math.max(0, numDays - effectiveMinOff);
-    addTracked(expr`${sum(nurseWorkVars)} <= ${maxWorkDaysCap(maxWorkByOff)}`, {
+    const maxWorkByOff = Math.round(numDays - effectiveMinOff);
+    addTracked(expr`${sum(nurseWorkVars)} <= ${maxWorkByOff}`, {
       name: `monthly_off_min_${nurse.id}`,
       category: "monthly",
       labelJa: `月間最低公休数(${effectiveMinOff}日以上): ${nurse.name}(${nurse.id}) の月間勤務日数は最大${maxWorkByOff}日まで`,

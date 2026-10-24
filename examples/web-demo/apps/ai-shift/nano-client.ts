@@ -8,6 +8,7 @@ import {
   CONTRACT_PRESETS,
   SHIFT_LABELS,
   applyShiftTransitionToConfig,
+  clearNurseContractFromState,
   createDefaultShiftAliases,
   doesNurseMatchAttribute,
   doesNurseSatisfySkill,
@@ -1732,6 +1733,7 @@ export function convertStage2ToolToOperation(
       return {
         op: "set_nurse_contract",
         nurseNameOrId: String(a.nurseNameOrId),
+        resetContract: isAllowAll ? true : undefined,
         nightOk:
           isDayShiftOnly
             ? false
@@ -3547,10 +3549,14 @@ export function applyChatOperationsToState(
       const targetNurse = resolveNurseFromText(op.nurseNameOrId, nextState.nurses);
       if (targetNurse) {
         const changes: string[] = [];
+        if (op.resetContract) {
+          nextState = clearNurseContractFromState(nextState, targetNurse.id);
+          changes.push("制限解除(標準契約に復帰)");
+        }
         nextState.nurses = nextState.nurses.map((n) => {
           if (n.id !== targetNurse.id) return n;
           const updated = { ...n };
-          if (typeof op.nightOk === "boolean") {
+          if (typeof op.nightOk === "boolean" && !op.resetContract) {
             updated.nightOk = op.nightOk;
             changes.push(op.nightOk ? "夜勤可" : "日勤専従(夜勤免除)");
           }
@@ -3559,7 +3565,7 @@ export function applyChatOperationsToState(
             changes.push(`月間夜勤上限=${updated.maxMonthlyNightShifts}回`);
           }
           if (typeof op.minMonthlyDaysOff === "number") {
-            updated.minMonthlyDaysOff = Math.max(4, Math.round(op.minMonthlyDaysOff));
+            updated.minMonthlyDaysOff = Math.max(0, Math.round(op.minMonthlyDaysOff));
             changes.push(`月間最低公休=${updated.minMonthlyDaysOff}日`);
           }
           if (typeof op.minMonthlyWorkDays === "number") {
@@ -3574,7 +3580,7 @@ export function applyChatOperationsToState(
             updated.maxConsecutiveWorkDays = Math.max(1, Math.round(op.maxConsecutiveWorkDays));
             changes.push(`最大連勤=${updated.maxConsecutiveWorkDays}連勤`);
           }
-          if (Array.isArray(op.forbiddenShifts)) {
+          if (Array.isArray(op.forbiddenShifts) && !op.resetContract) {
             if (op.forbiddenShifts.length === 0) {
               updated.forbiddenShifts = undefined;
             } else {
@@ -3588,13 +3594,13 @@ export function applyChatOperationsToState(
               }
             }
           }
-          if (typeof op.weekdayOnly === "boolean") {
+          if (typeof op.weekdayOnly === "boolean" && !op.resetContract) {
             updated.weekdayOnly = op.weekdayOnly || undefined;
             if (op.weekdayOnly && !op.holidaysOff) {
               changes.push("平日のみ勤務(土日休)");
             }
           }
-          if (typeof op.holidaysOff === "boolean") {
+          if (typeof op.holidaysOff === "boolean" && !op.resetContract) {
             updated.holidaysOff = op.holidaysOff || undefined;
             if (op.holidaysOff) {
               changes.push(op.weekdayOnly ? "土日祝休み" : "祝日休み");

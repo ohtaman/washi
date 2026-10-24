@@ -1216,6 +1216,7 @@ export interface ForbidShiftOperation {
 export interface SetNurseContractOperation {
   op: "set_nurse_contract";
   nurseNameOrId: string;
+  resetContract?: boolean;
   nightOk?: boolean;
   maxMonthlyNightShifts?: number;
   minMonthlyDaysOff?: number;
@@ -1555,6 +1556,8 @@ export function clearNurseContractFromState(
 ): NurseSchedulingState {
   return {
     ...state,
+    customRules: state.customRules.filter((r) => !r.id.startsWith(`pin_hol_${nurseId}_`)),
+    preferences: state.preferences.filter((p) => !p.id.startsWith(`pref_hol_${nurseId}_`)),
     nurses: state.nurses.map((n) =>
       n.id === nurseId
         ? {

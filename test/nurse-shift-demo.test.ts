@@ -3397,5 +3397,56 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(newcomerSkill?.category).toBe("role");
     expect(newcomerSkill?.maxEvening).toBe(1);
     expect(newcomerSkill?.maxNight).toBe(1);
+
+    // 15. Clear numeric limits when set_nurse_contract item is "制限解除" (4365514172)
+    const stateWithCappedContract = applyChatOperationsToState(baseState, [
+      convertStage2ToolToOperation(
+        {
+          tool_name: "set_nurse_contract",
+          args: { nurseNameOrId: "N01", item: "maxWorkDays", value: 10 },
+        },
+        baseState
+      )!,
+    ]).updatedState;
+    expect(stateWithCappedContract.nurses.find((n) => n.id === "N01")?.maxMonthlyWorkDays).toBe(10);
+    const resetContractOp = convertStage2ToolToOperation(
+      {
+        tool_name: "set_nurse_contract",
+        args: { nurseNameOrId: "N01", item: "制限解除" },
+      },
+      stateWithCappedContract
+    )!;
+    const afterContractReset = applyChatOperationsToState(
+      stateWithCappedContract,
+      [resetContractOp]
+    ).updatedState;
+    expect(afterContractReset.nurses.find((n) => n.id === "N01")?.maxMonthlyWorkDays).toBeUndefined();
+
+    // 16. Preserve impossible minMonthlyDaysOff (> numDays) as infeasible (4365514178)
+    const stateImpossibleOff = {
+      ...baseState,
+      nurses: baseState.nurses.map((n) =>
+        n.id === "N01" ? { ...n, minMonthlyDaysOff: 31, minMonthlyWorkDays: 0 } : n
+      ),
+    };
+    const diagImpossibleOff = await diagnoseNurseScheduleWithHiGHS(stateImpossibleOff);
+    expect(diagImpossibleOff.status).toBe("Unsat");
+    expect(diagImpossibleOff.rawNames).toContain("monthly_off_min_N01");
+
+    // 17. Keep individual maxMonthlyWorkDays hard in evaluation when monthlyDaysOff is soft (4365514183)
+    const stateSoftDaysOffWithCap = {
+      ...baseState,
+      config: {
+        ...baseState.config,
+        softRuleWeights: { monthlyDaysOff: 30 },
+      },
+      nurses: baseState.nurses.map((n) =>
+        n.id === "N01" ? { ...n, maxMonthlyWorkDays: 10 } : n
+      ),
+    };
+    const evalWorkMax = evaluateNurseSchedule(stateSoftDaysOffWithCap, allWorkSched);
+    const workMaxViol = evalWorkMax.violations.find((v) => v.id === "work_max_N01");
+    expect(workMaxViol).toBeDefined();
+    expect(Boolean(workMaxViol?.isSoft)).toBe(false);
   });
 });
