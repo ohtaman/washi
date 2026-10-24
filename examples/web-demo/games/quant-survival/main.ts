@@ -596,7 +596,7 @@ function findStrongestNegativeCorrPeer(assetIndex: number): string {
 }
 
 function adjustSingleWeight(index: number, newWeightRaw: number): void {
-  if (isSimulating) return;
+  if (isSimulating || isLoadingQuarter) return;
   const n = currentRegime.assets.length;
   const cap = currentRegime.maxWeightPerAsset;
   const targetW = Math.min(cap, Math.max(0, newWeightRaw));
@@ -1036,6 +1036,14 @@ async function loadQuarter(quarter: number): Promise<void> {
   );
   frontierPoints = computeEfficientFrontier(regime, 9);
 
+  // Render the new quarter's assets and scoreboard immediately so stale rows from the
+  // previous quarter never remain visible while the rival solve is pending.
+  renderRecordBadge();
+  renderScoreboard();
+  renderAssetList();
+  renderCorrelationMatrix();
+  renderTelemetryAndCharts();
+
   // Solve Rival minimum-variance portfolio
   const solved = await solveQuantOptimalPortfolio(regime);
   // Discard results from a superseded load (e.g. a reset issued while this solve was pending)
@@ -1237,7 +1245,7 @@ function initDomEvents(): void {
 
   const btnEqual = document.getElementById("btn-equal-weight");
   btnEqual?.addEventListener("click", () => {
-    if (isSimulating) return;
+    if (isSimulating || isLoadingQuarter) return;
     const n = currentRegime.assets.length;
     playerWeights = quantizeWeightsToPercent(
       new Array<number>(n).fill(1 / n),
@@ -1249,7 +1257,7 @@ function initDomEvents(): void {
 
   const btnHedge = document.getElementById("btn-balance-hedge");
   btnHedge?.addEventListener("click", () => {
-    if (isSimulating) return;
+    if (isSimulating || isLoadingQuarter) return;
     const n = currentRegime.assets.length;
     const raw = currentRegime.assets.map((a) => {
       if (a.id === "tech" || a.id === "frontier") return 0.28;
