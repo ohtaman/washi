@@ -124,7 +124,7 @@ export const STAGE1_ROUTER_SCHEMA = {
         {
           type: "array",
           minItems: 1,
-          maxItems: 5,
+          maxItems: 3,
           items: {
             type: "object",
             required: ["tool_type", "instruction"],
@@ -177,9 +177,9 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 1. "thought" (思考・プランニング):
    ・【文脈補完】直近の対話履歴がある場合、省略されている主語（どのシフト名・スキル名・スタッフ名に対する指示か）を特定する。特に直前の履歴が「前回(未適用・回答待ち)」となっている場合は、前回の指示内容はまだ1件も適用されていないため、前回の未適用指示と今回のユーザーの回答をすべて統合して計画を立てること。
    ・【意図の整理】ユーザーの要望が、個人カレンダー（特定日・期間・曜日/祝日）なのか、個人の月間契約条件（月間日数・夜勤回数・連勤上限・シフト免除）なのか、病棟全体の設定なのか、追加シフト枠やスキル・ペア設定なのかを整理する。また「1日あたりの配置人数」と「個人別の月間回数」を混同しないように区別する。
-   ・【タスク分解】1つの発話に複数の条件が含まれる場合は、異なるカテゴリだけでなく同じカテゴリに属する複数条件であっても1つにまとめず、原則として1条件につき1つのルート（{ "tool_type": "...", "instruction": "..." }）に分割する計画を立てる（※ custom_shift の追加と実施条件のみ1ルートにまとめる）。また複数の要求のうち1つでも具体的な数値や対象が欠けていて聞き返しが必要な場合は、一部のツールだけを実行せず必ず全体を保留して単独の [{"tool_type":"clarify"}] とする。
+   ・【タスク分解】1つの発話に複数カテゴリの要求が含まれる場合はカテゴリごとに分割し、同じカテゴリに属する複数条件は1つのルートにまとめる計画を立てる。ただし複数の要求のうち1つでも具体的な数値や対象が欠けていて聞き返しが必要な場合は、一部のツールだけを実行せず必ず全体を保留して単独の [{"tool_type":"clarify"}] とする。
 2. "routes" (カテゴリ別ルート配列):
-   ・ツール実行カテゴリ(1〜7)に該当する場合は、各条件ごとに { "tool_type": "...", "instruction": "..." } を出力する。
+   ・ツール実行カテゴリ(1〜7)に該当する場合は、各カテゴリごとに { "tool_type": "...", "instruction": "..." } を出力する。
    ・重要: "instruction" には、直前の履歴から補完した対象名と、ユーザーが実際に指示した内容のみを簡潔に書くこと（「〜だけ出勤」「〜のみ」等の条件表現や日付・人数・回数などの数値は省略せず維持し、言及されていない項目は推測・追加しないこと。また日付を書く際は月番号「11月」と日番号の混同を防ぐため「11月」を省いて「1日から18日まで」「16日から18日までの3日間」のように日番号のみで記載すること）。
    ・非ツールカテゴリ（"question", "unsupported", "clarify"）に該当する場合は、単独の [{ "tool_type": "..." }] として出力する。
 3. "response" (一次返答):
@@ -794,7 +794,6 @@ const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定ス�
 【基本ルール】
 ・特定スタッフ個人の月間契約条件・シフト免除・月間日数や夜勤回数の上限/下限に厳密に合致する指示のみを抽出してください。
 ・特定の日付や曜日の指定、病棟全体のルール変更は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
-・具体的な数値や契約種別が明示されていない曖昧な指示（「勤務下限を調整する」「日数を変更する」「夜勤を減らす」など具体的な数値がないもの）に対して、0などの数値を推測・補完してはいけません。具体的な数値や契約名が指示文にない場合は必ず "none" を出力してください。また1つの指示文に複数の条件が含まれていて、その中に具体的な数値や契約種別が欠けている曖昧な条件が含まれる場合も、曖昧な条件を省略せず必ずその条件に対応する {"tool_name":"none","args":{}} を tools 配列に含めて出力してください。
 ・「勤務日数（働く日数）」と「公休日数（休む日数）」を混同しないでください：
   * 勤務日数の上限（「月N日までの勤務」「月N日以下勤務」）➔ item: "maxWorkDays"
   * 勤務日数の下限（「月間最小勤務日数をN日に」「最低勤務日数を0日に」）➔ item: "minWorkDays"
@@ -806,7 +805,7 @@ const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定ス�
      * nurseNameOrId: 対象看護師の氏名またはID（文字列、例: "西村", "N15"）
      * item: 変更する契約項目（以下の数値項目5種または契約プリセット7種から1つ選択）
        - "maxWorkDays": 月間最大【勤務】日数の上限（「月N日までの勤務」「月N日以下」の制限。value 数値例: 10, デフォルト値: 個別上限なし）
-       - "minWorkDays": 月間最低【勤務】日数の下限（「月間最小勤務日数をN日に」「月N日以上勤務」など具体的な日数Nが指定された場合のみ。「0日」または「最低勤務日数の免除」と明言された場合のみ 0。value 数値例: 8, デフォルト値: 病棟全体の最低勤務日数14日）
+       - "minWorkDays": 月間最低【勤務】日数の下限（「月間最小勤務日数をN日に」「月N日以上勤務」、最低勤務日数の免除・ゼロ化なら 0。value 数値例: 0, デフォルト値: 病棟全体の最低勤務日数14日）
        - "minDaysOff": 月間最低【公休（休み）】日数の下限（「月N日以上休み」「最低公休をN日に」。value 数値例: 12, デフォルト値: 病棟全体の最低公休日数9日）
        - "maxConsecutiveDays": 個人別の最大連続勤務日数の上限（「N連勤まで」。value 数値例: 3, デフォルト値: 病棟全体の最大連勤日数5日）
        - "maxNight": 個人別の月間夜勤回数の上限（「月N回までの夜勤」。value 数値例: 4, デフォルト値: 病棟全体の月間夜勤上限8回）
@@ -819,7 +818,7 @@ const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定ス�
        - "制限解除": シフト免除や個人日数制限を解除して標準契約に戻す（value 不要）
    - 任意引数:
      * value: 数値項目（"maxWorkDays" | "minWorkDays" | "minDaysOff" | "maxConsecutiveDays" | "maxNight"）を選択した場合の設定数値（数値、数値例: 10, デフォルト値: プリセット選択時は不要）
-   - 引数例: { "nurseNameOrId": "西村", "item": "maxWorkDays", "value": 12 } / { "nurseNameOrId": "西村", "item": "minWorkDays", "value": 8 } / { "nurseNameOrId": "西村", "item": "日勤専従" }
+   - 引数例: { "nurseNameOrId": "西村", "item": "maxWorkDays", "value": 12 } / { "nurseNameOrId": "西村", "item": "minWorkDays", "value": 0 } / { "nurseNameOrId": "西村", "item": "日勤専従" }
 2. "none": 上記ツールの定義に合致しない場合
    - 必須引数: なし / 任意引数: なし / 引数例: {}
 
@@ -832,9 +831,6 @@ const STAFF_CONTRACT_STAGE2_PROMPT = `あなたは「staff_contract (特定ス�
 
 指示: 「西村さんの月間最低勤務日数を8日に変更して」
 出力: {"tools":[{"tool_name":"set_nurse_contract","args":{"nurseNameOrId":"西村","item":"minWorkDays","value":8}}]}
-
-指示: 「田中さんの月間勤務下限を調整する」
-出力: {"tools":[{"tool_name":"none","args":{}}]}
 
 指示: 「村上さんの8日を確定の休みにして」
 出力: {"tools":[{"tool_name":"none","args":{}}]}`;
@@ -959,7 +955,6 @@ const WARD_COVERAGE_AND_PARAM_STAGE2_PROMPT = `あなたは「ward_coverage_and_
 
 【基本ルール】
 ・病棟全体の数値パラメータ・特定日の必要人数変更・夜勤平準化に厳密に合致し、ユーザーが明示的に指示した項目のみを抽出してください。
-・具体的な数値が明示されていない曖昧な指示（「人数を調整する」「連勤を減らす」など具体的な数値がないもの）に対して、数値を推測・補完してはいけません。具体的な数値が指示文にない場合は必ず "none" を出力してください。また1つの指示文に複数の条件が含まれていて、その中に具体的な数値が欠けている曖昧な条件が含まれる場合も、曖昧な条件を省略せず必ずその条件に対応する {"tool_name":"none","args":{}} を tools 配列に含めて出力してください。
 ・個人別のシフトや契約変更、2日間のシフト遷移ルール、特定属性やスキル別の人数指定は無視し、該当する操作が1つもなければ必ず "none" を出力してください。
 
 【ツール一覧（各引数の意味・数値例・デフォルト値）】
@@ -2648,11 +2643,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       const runTurn2CategoryExtractor = async (
         category: ExecutableToolCategory,
         instruction: string
-      ): Promise<{
-        routeOps: ChatConstraintOperation[];
-        routeSystemIntent: "diagnose_conflict" | "solve_only" | null;
-        hasUnresolvedToolCall: boolean;
-      }> => {
+      ): Promise<ChatConstraintOperation[]> => {
         onProgress?.({
           phase: "turn2_start",
           activeLabel: "⏳ 設定を更新しています…",
@@ -2666,8 +2657,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             : baseCatSession;
 
         const routeOps: ChatConstraintOperation[] = [];
-        let routeSystemIntent: "diagnose_conflict" | "solve_only" | null = null;
-        let hasUnresolvedToolCall = false;
         try {
           const catConfig = STAGE2_CATEGORY_CONFIGS[category];
           const dynamicDict = buildCategoryDynamicDictionary(
@@ -2721,12 +2710,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               : [];
 
           for (const tc of toolList) {
-            if (!tc || tc.tool_name === "none") {
-              hasUnresolvedToolCall = true;
-              continue;
-            }
+            if (!tc || tc.tool_name === "none") continue;
             if (tc.tool_name === "diagnose_conflict" || tc.tool_name === "solve_only") {
-              routeSystemIntent = tc.tool_name;
               stage2SystemIntent = tc.tool_name;
               routerTrace.push(`🛠️ Turn 2 (${category}): ${tc.tool_name}()`);
               continue;
@@ -2742,8 +2727,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
               routerTrace.push(
                 `🛠️ Turn 2 (${category}): ${tc.tool_name}(${JSON.stringify(tc.args ?? {})})`
               );
-            } else {
-              hasUnresolvedToolCall = true;
             }
           }
           onProgress?.({
@@ -2763,7 +2746,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             } catch (_) {}
           }
         }
-        return { routeOps, routeSystemIntent, hasUnresolvedToolCall };
+        return routeOps;
       };
 
       for (let rIdx = 0; rIdx < activeRoutes.length; rIdx++) {
@@ -2772,29 +2755,35 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         const extractedForRoute = await runTurn2CategoryExtractor(category, instruction);
 
         // ==================== STEP 3: POST-TURN-2 VERIFICATION ====================
-        if (extractedForRoute.routeOps.length === 0 && !extractedForRoute.routeSystemIntent) {
-          missingRouteLabels.push(`${category}("${instruction}")`);
-          unsupportedRouteInstructions.push(instruction);
-        } else if (extractedForRoute.hasUnresolvedToolCall) {
-          // A grouped route can be partially resolved: Stage 2 emitted at least one valid operation but also
-          // returned `none` or an unconvertible tool call for another clause. Treat the whole route as unresolved
-          // so the All-or-Nothing hold below applies instead of executing the explicit clause alone.
+        if (extractedForRoute.length === 0 && !stage2SystemIntent) {
           missingRouteLabels.push(`${category}("${instruction}")`);
           unsupportedRouteInstructions.push(instruction);
         }
       }
 
-      if (operations.length > 0 || stage2SystemIntent !== null) {
-        const isResetOrClear = operations.some(
-          (o) => o.op === "reset_default" || o.op === "clear_custom_rules"
-        );
-        const previewApplied =
-          operations.length === 0
-            ? { updatedState: state, appliedLogs: [] as string[] }
-            : isResetOrClear
-              ? { updatedState: state, appliedLogs: ["リセット/クリア実行"] }
-              : applyChatOperationsToState(state, operations);
-        const previewAppliedLogs = previewApplied.appliedLogs;
+      if (operations.length > 0) {
+        let previewAppliedLogs: string[] = [];
+        if (operations.some((o) => o.op === "reset_default" || o.op === "clear_custom_rules")) {
+          recentTurnHistory = [];
+          pendingClarification = null;
+          hadCustomState = false;
+          previewAppliedLogs = ["リセット/クリア実行"];
+        } else {
+          const previewApplied = applyChatOperationsToState(state, operations);
+          previewAppliedLogs = previewApplied.appliedLogs;
+          if (previewApplied.appliedLogs.length > 0) {
+            pendingClarification = null;
+            appendTurnHistory(
+              `・前回:「${userMessage}」➔ 適用済: ${previewApplied.appliedLogs.join(" / ")}`
+            );
+          }
+          if (
+            (previewApplied.updatedState.customShiftDefs?.length ?? 0) > 0 ||
+            previewApplied.updatedState.customRules.length > 0
+          ) {
+            hadCustomState = true;
+          }
+        }
 
         const verificationResult = verifyExecutionAgainstRequest({
           userMessage,
@@ -2811,49 +2800,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           stage1Response,
           routerTrace: [...routerTrace],
         });
-
-        // Hold whenever a planned batch has unresolved routes (`missingRouteLabels.length > 0`),
-        // including on the first attempt, on resumed clarification batches, and on reset/clear or system-intent batches.
-        if (missingRouteLabels.length > 0) {
-          const unresolvedText =
-            unsupportedRouteInstructions.length > 0
-              ? unsupportedRouteInstructions.join("・")
-              : missingRouteLabels.join("・");
-          const holdMsg = `「${unresolvedText}」について、具体的な設定内容（日数・回数・対象など）を教えていただけますか？`;
-          lastNonToolReason = "clarify";
-          lastStage1Response = holdMsg;
-          lastUnappliedInstructions = [...unsupportedRouteInstructions];
-          recordPendingClarification(userMessage, holdMsg);
-          routerTrace.push(
-            `⏸️ Step 3 (Hold): 未解決の項目が残っているため一括適用を保留 (${missingRouteLabels.join(", ")})`
-          );
-          return {
-            intentType: "consult_only",
-            nonToolReason: "clarify",
-            operations: [],
-            summaryJa: holdMsg,
-            stage1Thought,
-            stage1Response: holdMsg,
-            routerTrace,
-            verificationResult,
-            llmCalls,
-          };
-        }
-
-        if (operations.length === 0 && stage2SystemIntent) {
-          pendingClarification = null;
-          lastNonToolReason = null;
-          lastUnappliedInstructions = [];
-          return {
-            intentType: stage2SystemIntent,
-            operations: [],
-            summaryJa: stage1Response,
-            stage1Thought,
-            stage1Response,
-            routerTrace,
-            llmCalls,
-          };
-        }
 
         // If extracted operations produced zero applicable changes (e.g. non-existent nurse name in roster),
         // treat as unsupported/unapplicable and convey clearly why it cannot be done.
@@ -2888,25 +2834,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           };
         }
 
-        if (isResetOrClear) {
-          recentTurnHistory = [];
-          pendingClarification = null;
-          hadCustomState = false;
-        } else {
-          pendingClarification = null;
-          appendTurnHistory(
-            `・前回:「${userMessage}」➔ 適用済: ${previewAppliedLogs.join(" / ")}`
-          );
-          if (
-            (previewApplied.updatedState.customShiftDefs?.length ?? 0) > 0 ||
-            previewApplied.updatedState.customRules.length > 0
-          ) {
-            hadCustomState = true;
-          }
-        }
-
         lastNonToolReason = null;
-        lastUnappliedInstructions = [];
+        lastUnappliedInstructions = [...unsupportedRouteInstructions];
+        if (unsupportedRouteInstructions.length > 0) {
+          routerTrace.push(
+            `⚠️ Step 3 (Verification): 一部未対応の指示を除外 (${unsupportedRouteInstructions.join(" / ")})`
+          );
+        }
 
         return {
           intentType: "modify_and_solve",
@@ -2916,6 +2850,21 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           stage1Response,
           routerTrace,
           verificationResult,
+          llmCalls,
+        };
+      }
+
+      if (stage2SystemIntent) {
+        pendingClarification = null;
+        lastNonToolReason = null;
+        lastUnappliedInstructions = [];
+        return {
+          intentType: stage2SystemIntent,
+          operations: [],
+          summaryJa: stage1Response,
+          stage1Thought,
+          stage1Response,
+          routerTrace,
           llmCalls,
         };
       }
