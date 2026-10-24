@@ -2146,8 +2146,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const trace3 = manager.getLastConsultTrace();
       expect(trace3?.userPrompt).toContain("病棟名簿に存在しないため");
 
-      // Mode 4: Composite request with 1 supported operation + 1 unsupported operation
+      // Mode 4: Composite request with 1 resolved operation + 1 unresolved route
       // ("N01の12日を確定の休みにして、夜勤の仮眠休憩を90分にして")
+      // Under Option A (All-or-Nothing Hold), incomplete batches with unresolved routes are held before applying operations.
       turn1Reply = {
         thought: "N01の12日公休固定と、夜勤の仮眠休憩90分設定の複合指示。",
         routes: [
@@ -2178,14 +2179,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         [WARD_TRANSITION_AND_RULE_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
       ]);
       consultReplyText =
-        "・佐藤 美咲(N01)さんの11/12を公休(O)に固定しました。\n・夜勤の仮眠休憩時間の設定には対応していないため適用していません。";
+        "「夜勤の仮眠休憩を90分に設定する」について確認が必要なため、N01さんの11/12公休とあわせて設定を一旦保留しました。";
 
       const plan4 = await manager.extractPlan(
         "N01の12日を確定の休みにして、夜勤の仮眠休憩を90分にして",
         state
       );
-      expect(plan4.intentType).toBe("modify_and_solve");
-      expect(plan4.operations.length).toBe(1);
+      expect(plan4.intentType).toBe("consult_only");
+      expect(plan4.nonToolReason).toBe("clarify");
+      expect(plan4.operations).toEqual([]);
       expect(plan4.verificationResult?.verified).toBe(false);
       expect(plan4.verificationResult?.appliedCount).toBe(1);
       expect(plan4.verificationResult?.missingRoutes).toEqual([
@@ -2193,6 +2195,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       ]);
 
       const applied4 = applyChatOperationsToState(state, plan4.operations);
+      expect(applied4.appliedLogs).toEqual([]);
       let reply4 = "";
       for await (const chunk of manager.streamConsultationReply(
         "N01の12日を確定の休みにして、夜勤の仮眠休憩を90分にして",
@@ -2202,9 +2205,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       )) {
         reply4 += chunk;
       }
-      expect(reply4).toContain("対応していないため");
+      expect(reply4).toContain("一旦保留");
       const trace4 = manager.getLastConsultTrace();
-      expect(trace4?.userPrompt).toContain("【⚠️ 未対応のため適用できなかった指示】");
+      expect(trace4?.userPrompt).toContain("回答待ちのため一括保留");
       expect(trace4?.userPrompt).toContain("夜勤の仮眠休憩を90分に設定する");
 
       manager.destroy();
@@ -3529,5 +3532,425 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         baseState
       )
     ).toBeNull();
+  });
+
+  it("holds all tool execution when clarification is needed (Option A) and executes all held + answered operations in the next turn", async () => {
+    const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 202611 });
+    const g = globalThis as Record<string, unknown>;
+    const origLM = g.LanguageModel;
+
+    let turn1Reply: Record<string, unknown> | null = null;
+    let turn2RepliesBySchema = new Map<unknown, unknown>();
+    let consultReplyText = "";
+    const capturedTurn1Prompts: string[] = [];
+    const capturedTurn2Prompts: string[] = [];
+
+    g.LanguageModel = {
+      async availability() {
+        return "available";
+      },
+      async create() {
+        return {
+          async prompt(input: string, opts?: { responseConstraint?: unknown }) {
+            const schema = opts?.responseConstraint;
+            if (!schema) {
+              return consultReplyText;
+            }
+            if (schema === STAGE1_ROUTER_SCHEMA) {
+              capturedTurn1Prompts.push(input);
+              return JSON.stringify(turn1Reply);
+            }
+            if (turn2RepliesBySchema.has(schema)) {
+              capturedTurn2Prompts.push(input);
+              return JSON.stringify(turn2RepliesBySchema.get(schema));
+            }
+            return JSON.stringify({ tools: [{ tool_name: "none", args: {} }] });
+          },
+          async clone() {
+            return this;
+          },
+          destroy() {},
+        };
+      },
+    };
+
+    try {
+      const manager = createGeminiNanoManager();
+      await manager.initialize();
+
+      // Turn 1: User says "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。"
+      // Even if the 3B router emits routes for staff_calendar + staff_contract while asking a clarifying question in `response`,
+      // Option A must hold ALL tool execution (`operations: []`, `intentType: "consult_only"`, `nonToolReason: "clarify"`).
+      turn1Reply = {
+        thought:
+          "田中さんの9日から15日までの公休指定と、月間最低勤務日数の調整。勤務下限の具体的な数値が不明なため聞き返す。",
+        routes: [
+          {
+            tool_type: "staff_calendar",
+            instruction: "田中さんを9日から15日まで休ませる",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間勤務下限を調整する",
+          },
+        ],
+        response:
+          "田中さんを9日から15日まで休ませ、月間勤務下限を調整します。勤務下限の具体的な調整内容を教えていただけますでしょうか？",
+      };
+      consultReplyText =
+        "田中さんの9日〜15日の公休とあわせて一括設定するため、月間最低勤務日数を何日に調整するか教えてください。";
+
+      const planTurn1 = await manager.extractPlan(
+        "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。",
+        state
+      );
+      expect(planTurn1.intentType).toBe("consult_only");
+      expect(planTurn1.nonToolReason).toBe("clarify");
+      expect(planTurn1.operations).toEqual([]);
+      expect(planTurn1.routerTrace.some((t) => t.includes("Step 3 (Hold)"))).toBe(true);
+      // Turn 2 extractors must NOT have been called during the held turn
+      expect(capturedTurn2Prompts.length).toBe(0);
+
+      let consultOut1 = "";
+      for await (const chunk of manager.streamConsultationReply(
+        "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。",
+        [],
+        state,
+        null
+      )) {
+        consultOut1 += chunk;
+      }
+      expect(consultOut1).toContain("何日に調整するか教えてください");
+      const consultTrace1 = manager.getLastConsultTrace();
+      expect(consultTrace1?.userPrompt).toContain("回答待ちのため一括保留");
+
+      // Turn 2: User replies with another vague message ("勤務下限は少し減らして"), triggering a 2nd clarification round (4367076840)
+      turn1Reply = {
+        thought: "『少し減らして』では具体的な日数が不明なため再度聞き返す。",
+        routes: [{ tool_type: "clarify" }],
+        response: "月間最低勤務日数を具体的に何日にするか教えていただけますか？",
+      };
+      const planTurn2Vague = await manager.extractPlan("勤務下限は少し減らして", state);
+      expect(planTurn2Vague.intentType).toBe("consult_only");
+      expect(planTurn2Vague.nonToolReason).toBe("clarify");
+      expect(planTurn2Vague.operations).toEqual([]);
+
+      // Turn 3: User replies ("やっぱり調整して"), Turn 1 optimistically emits both routes without a question mark,
+      // but Stage 2 for staff_contract returns "none" because no number was given (4367076838).
+      // Step 3 must NOT apply the partial staff_calendar operation and must NOT clear the held request!
+      turn1Reply = {
+        thought: "保留リクエストとあわせて実行を試みる。",
+        routes: [
+          {
+            tool_type: "staff_calendar",
+            instruction: "田中さんを9日から15日まで公休(O)にする",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最低勤務日数を調整する",
+          },
+        ],
+        response: "田中さんの9日から15日までを公休にし、月間最低勤務日数を調整します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CALENDAR_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "add_request_range",
+                args: {
+                  nurseNameOrId: "田中",
+                  startDay: 9,
+                  endDay: 15,
+                  shift: "O",
+                  isHard: true,
+                },
+              },
+            ],
+          },
+        ],
+        [STAFF_CONTRACT_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
+      ]);
+      const planTurn3Partial = await manager.extractPlan("やっぱり調整して", state);
+      expect(planTurn3Partial.intentType).toBe("consult_only");
+      expect(planTurn3Partial.nonToolReason).toBe("clarify");
+      expect(planTurn3Partial.operations).toEqual([]);
+
+      // Turn 3b: Resumed batch containing reset/clear (`clear_custom_rules`) plus an unresolved route (4367105726)
+      // Must hold the batch, return zero operations, and preserve the pending clarification!
+      turn1Reply = {
+        thought: "追加ルールクリアと勤務下限調整の複合。",
+        routes: [
+          {
+            tool_type: "system_action",
+            instruction: "追加ルールをすべてクリアする",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最低勤務日数を調整する",
+          },
+        ],
+        response: "追加ルールをクリアし、田中さんの月間最低勤務日数を調整します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          SYSTEM_ACTION_TOOLS_SCHEMA,
+          { tools: [{ tool_name: "clear_custom_rules", args: {} }] },
+        ],
+        [STAFF_CONTRACT_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
+      ]);
+      const planTurn3bResetPartial = await manager.extractPlan(
+        "ルールをクリアして勤務下限も調整して",
+        state
+      );
+      expect(planTurn3bResetPartial.intentType).toBe("consult_only");
+      expect(planTurn3bResetPartial.nonToolReason).toBe("clarify");
+      expect(planTurn3bResetPartial.operations).toEqual([]);
+
+      // Turn 4: User answers "勤務下限は15日" after 4 clarification rounds (4367076838, 4367076840, 4367105726)
+      // The original request from Turn 1 must still be retained in the canonical pending entry!
+      turn1Reply = {
+        thought:
+          "前回の未適用リクエスト（田中さんの9日〜15日の公休）と今回の回答（月間最低勤務日数を15日）を統合して実行する。",
+        routes: [
+          {
+            tool_type: "staff_calendar",
+            instruction: "田中さんを9日から15日まで公休(O)にする",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最低勤務日数を15日に設定する",
+          },
+        ],
+        response: "田中さんの9日から15日までを公休にし、月間最低勤務日数を15日に設定します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CALENDAR_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "add_request_range",
+                args: {
+                  nurseNameOrId: "田中",
+                  startDay: 9,
+                  endDay: 15,
+                  shift: "O",
+                  isHard: true,
+                },
+              },
+            ],
+          },
+        ],
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: {
+                  nurseNameOrId: "田中",
+                  item: "minWorkDays",
+                  value: 15,
+                },
+              },
+            ],
+          },
+        ],
+      ]);
+
+      const planTurn4 = await manager.extractPlan("勤務下限は15日", state);
+      expect(capturedTurn1Prompts[4]).toContain(
+        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / 勤務下限は少し減らして / やっぱり調整して / ルールをクリアして勤務下限も調整して」"
+      );
+      expect(planTurn4.intentType).toBe("modify_and_solve");
+      // 1 ranged add_request operation (days 9..15) + 1 set_nurse_contract operation = 2 operations
+      expect(planTurn4.operations.length).toBe(2);
+      const appliedTurn4 = applyChatOperationsToState(state, planTurn4.operations);
+      const tanaka = appliedTurn4.updatedState.nurses.find((n) => n.id === "N04")!;
+      expect(tanaka.minMonthlyWorkDays).toBe(15);
+      for (let d = 9; d <= 15; d++) {
+        expect(
+          appliedTurn4.updatedState.customRules.some(
+            (r) => r.kind === "pin_shift" && r.nurseId === "N04" && r.day === d && r.shift === "O"
+          )
+        ).toBe(true);
+      }
+
+      // Turn 5: First-attempt incomplete batch (`pendingClarification === null`) where Stage 1 does NOT phrase `response` as a question,
+      // and Stage 2 returns `none` for one route (4367105726). Must hold the batch!
+      turn1Reply = {
+        thought: "佐藤さんの10日公休と夜勤上限調整。",
+        routes: [
+          {
+            tool_type: "staff_calendar",
+            instruction: "佐藤さんを10日に公休(O)にする",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "佐藤さんの夜勤上限を調整する",
+          },
+        ],
+        response: "佐藤さんを10日に公休にし、夜勤上限を調整します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CALENDAR_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "add_request",
+                args: { nurseNameOrId: "佐藤", day: 10, shift: "O", isHard: true },
+              },
+            ],
+          },
+        ],
+        [STAFF_CONTRACT_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
+      ]);
+      const planTurn5InitialIncomplete = await manager.extractPlan(
+        "佐藤さんを10日休みにして、夜勤上限も調整して",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn5InitialIncomplete.intentType).toBe("consult_only");
+      expect(planTurn5InitialIncomplete.nonToolReason).toBe("clarify");
+      expect(planTurn5InitialIncomplete.operations).toEqual([]);
+
+      // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
+      // Must clear `pendingClarification` so Turn 7 does NOT resurrect the abandoned Turn 5 request!
+      turn1Reply = {
+        thought: "現在の設定に関する質問。",
+        routes: [{ tool_type: "question" }],
+        response: "現在の月間夜勤上限は8回です。",
+      };
+      const planTurn6Question = await manager.extractPlan(
+        "現在の夜勤上限はいくつ？",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn6Question.intentType).toBe("consult_only");
+      expect(planTurn6Question.nonToolReason).toBe("question");
+
+      // Turn 7: Subsequent turn prompt must NOT contain `前回(未適用・回答待ち)` (4367105728)
+      turn1Reply = {
+        thought: "シフト再計算のみを実行する。",
+        routes: [{ tool_type: "system_action", instruction: "シフトを再計算する" }],
+        response: "シフトを再計算します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [SYSTEM_ACTION_TOOLS_SCHEMA, { tools: [{ tool_name: "solve_only", args: {} }] }],
+      ]);
+      const planTurn7SolveOnly = await manager.extractPlan(
+        "シフトを再計算して",
+        appliedTurn4.updatedState
+      );
+      expect(capturedTurn1Prompts[capturedTurn1Prompts.length - 1]).not.toContain(
+        "前回(未適用・回答待ち)"
+      );
+      expect(planTurn7SolveOnly.intentType).toBe("solve_only");
+
+      // Turn 8a: Grouped same-category route (Stage 1 combines an explicit clause and a vague clause into one
+      // `staff_contract` route) where Stage 2 emits `[valid_tool, { tool_name: "none" }]` (4367202773).
+      // Step 3 must treat the grouped route as unresolved and hold the entire batch instead of applying the explicit clause alone.
+      turn1Reply = {
+        thought: "田中さんの最大勤務日数12日と最低勤務日数調整を1つのstaff_contractルートにまとめる。",
+        routes: [
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最大勤務日数を12日にし、勤務下限も調整する",
+          },
+        ],
+        response: "田中さんの月間最大勤務日数を12日にし、勤務下限も調整します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "maxWorkDays", value: 12 },
+              },
+              { tool_name: "none", args: {} },
+            ],
+          },
+        ],
+      ]);
+      const planTurn8aGroupedNone = await manager.extractPlan(
+        "田中さんの最大勤務日数を12日にして、勤務下限も調整して",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn8aGroupedNone.intentType).toBe("consult_only");
+      expect(planTurn8aGroupedNone.nonToolReason).toBe("clarify");
+      expect(planTurn8aGroupedNone.operations).toEqual([]);
+      expect(planTurn8aGroupedNone.verificationResult?.missingRoutes).toEqual([
+        'staff_contract("田中さんの月間最大勤務日数を12日にし、勤務下限も調整する")',
+      ]);
+
+      // Turn 8b: Same grouped route where Stage 2 emits a valid tool plus an unconvertible tool call
+      // (numeric item without `value`). Must also hold the batch (4367202773).
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "maxWorkDays", value: 12 },
+              },
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "minWorkDays" },
+              },
+            ],
+          },
+        ],
+      ]);
+      const planTurn8bGroupedUnconvertible = await manager.extractPlan(
+        "やっぱり調整して",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn8bGroupedUnconvertible.intentType).toBe("consult_only");
+      expect(planTurn8bGroupedUnconvertible.nonToolReason).toBe("clarify");
+      expect(planTurn8bGroupedUnconvertible.operations).toEqual([]);
+
+      // Turn 8c: User supplies the missing minimum ("最低勤務日数は8日"), resolving both clauses in the grouped route!
+      turn1Reply = {
+        thought: "保留されていた最大勤務日数12日と今回の回答の最低勤務日数8日を統合する。",
+        routes: [
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最大勤務日数を12日にし、月間最低勤務日数を8日に設定する",
+          },
+        ],
+        response: "田中さんの月間最大勤務日数を12日、月間最低勤務日数を8日に設定します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "maxWorkDays", value: 12 },
+              },
+              {
+                tool_name: "set_nurse_contract",
+                args: { nurseNameOrId: "田中", item: "minWorkDays", value: 8 },
+              },
+            ],
+          },
+        ],
+      ]);
+      const planTurn8cResolved = await manager.extractPlan(
+        "最低勤務日数は8日",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn8cResolved.intentType).toBe("modify_and_solve");
+      expect(planTurn8cResolved.operations.length).toBe(2);
+
+      manager.destroy();
+    } finally {
+      g.LanguageModel = origLM;
+    }
   });
 });
