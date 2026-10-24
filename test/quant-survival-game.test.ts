@@ -15,7 +15,11 @@ import {
   getLocalizedRegimeText,
   getQuarterRegime,
 } from "../examples/web-demo/games/quant-survival/regimes.js";
-import { applyQuantStaticTranslations } from "../examples/web-demo/games/quant-survival/main.js";
+import {
+  applyQuantStaticTranslations,
+  formatLiquidationDetail,
+  resolveDisplayedFloorAum,
+} from "../examples/web-demo/games/quant-survival/main.js";
 
 describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
   it("computes accurate standard normal CDF values for ruin probability calculation", () => {
@@ -135,6 +139,11 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     expect(simA.playerEndAum).toBeCloseTo(simB.playerEndAum, 8);
     expect(simA.playerReturn).toBeCloseTo(simA.aiReturn, 8);
     expect(simA.shocks.length).toBeGreaterThanOrEqual(1);
+
+    // After the quarter, the scoreboard must keep showing the floor that was applied
+    // (quarter-start $100M * (1 - 5.5%) = $94.5M), not one recomputed from the ending AUM
+    expect(resolveDisplayedFloorAum(100, regime, null)).toBeCloseTo(94.5, 8);
+    expect(resolveDisplayedFloorAum(110, regime, simA)).toBeCloseTo(94.5, 8);
   });
 
   it("liquidates on any intra-quarter floor breach and rejects infeasible targets", async () => {
@@ -166,6 +175,33 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     }
     // The gauge is a terminal-return estimate, so paths that breach and recover must exist
     expect(sawIntraQuarterOnlyBreach).toBe(true);
+
+    // The liquidation banner must report the actual breach day and intra-quarter low,
+    // not attribute the breach to the (recovered) quarter-end values
+    let recovered: ReturnType<typeof simulateQuarterMarket> | null = null;
+    for (let s = 1; s <= 300 && !recovered; s++) {
+      const sim = simulateQuarterMarket({
+        regime: q1,
+        playerWeights: allTech,
+        aiWeights: hedged,
+        playerStartAum: 100,
+        aiStartAum: 100,
+        seed: s * 7919,
+      });
+      if (sim.playerLiquidated && sim.playerEndAum >= sim.liquidationAumFloor) recovered = sim;
+    }
+    expect(recovered).not.toBeNull();
+    if (recovered) {
+      const floorAum = recovered.liquidationAumFloor;
+      const firstBreachDay = recovered.playerAumSeries.findIndex((v) => v < floorAum);
+      expect(recovered.playerLiquidatedDay).toBe(firstBreachDay);
+      const en = formatLiquidationDetail("en", recovered);
+      expect(en).toContain(`DAY ${firstBreachDay}`);
+      expect(en).toContain(`$${Math.min(...recovered.playerAumSeries).toFixed(1)}M`);
+      expect(en).toContain("$94.5M");
+      expect(formatLiquidationDetail("ja", recovered)).toContain(`DAY ${firstBreachDay}`);
+      expect(formatLiquidationDetail("zh", recovered)).toContain(`第 ${firstBreachDay} 个交易日`);
+    }
 
     // Analytical fallback must satisfy feasible Q1 targetReturn (10.5%)
     const fallbackFeasible = computeAnalyticalMinimumVariancePortfolio(q1, q1.targetReturn);

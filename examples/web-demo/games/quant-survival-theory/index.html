@@ -349,8 +349,9 @@
           </div>
 
           <div class="callout cyan">
-            <strong>💡 なぜ破綻確率の最小化が「二次計画法（QP）」に帰着するのか</strong>
-            標準正規分布の累積分布関数 <code>Φ(-z)</code> は <code>z</code> に関して厳密に単調減少します。したがって、目標期待リターン <code>μ^T w = μ_target</code> を固定した条件下で<strong>破綻確率 <code>P_ruin(w)</code> を最小化することは、分母の分散 <code>w^T Σ w</code> を最小化する凸二次計画問題（マーコウィッツの平均・分散モデル）と数学的に同値</strong>になります。
+            <strong>💡 破綻確率の最小化と「二次計画法（QP）」の関係</strong>
+            標準正規分布の累積分布関数 <code>Φ(-z)</code> は <code>z</code> に関して厳密に単調減少します。したがって、期待リターンを <code>μ^T w = μ_target</code> と<strong>等式で固定した</strong>条件下では、<strong>破綻確率 <code>P_ruin(w)</code> を最小化することは、分母の分散 <code>w^T Σ w</code> を最小化する凸二次計画問題（マーコウィッツの平均・分散モデル）と数学的に同値</strong>になります。<br />
+            一方、ゲーム内の <code>WaSHI-QP</code> は <code>μ^T w &gt;= μ_target</code>（下限付き）の制約で分散を最小化しています。この場合は分子 <code>μ_p - r_floor</code> もポートフォリオごとに変わるため、分散がわずかに大きくても期待リターンが高く、破綻確率はより低いポートフォリオが存在し得ます。つまり <code>WaSHI-QP</code> は「破綻確率の厳密な最小化」ではなく、<strong>目標リターンを満たす最小分散ポートフォリオ</strong>というベンチマークです。
           </div>
         </section>
 
@@ -517,8 +518,9 @@ await model.solve(HiGHS);</code></pre>
           </div>
 
           <div class="callout cyan">
-            <strong>💡 Equivalence to Markowitz Minimum-Variance QP</strong>
-            Because <code>Φ(-z)</code> is strictly decreasing in <code>z</code>, minimizing the ruin probability <code>P_ruin(w)</code> for any target expected return <code>μ^T w &gt;= μ_target</code> is mathematically equivalent to <strong>minimizing the quadratic variance <code>w^T Σ w</code></strong> via Convex Quadratic Programming.
+            <strong>💡 Relationship to Markowitz Minimum-Variance QP</strong>
+            Because <code>Φ(-z)</code> is strictly decreasing in <code>z</code>, minimizing the ruin probability <code>P_ruin(w)</code> while the expected return is <strong>fixed by equality</strong> (<code>μ^T w = μ_target</code>) is mathematically equivalent to <strong>minimizing the quadratic variance <code>w^T Σ w</code></strong> via Convex Quadratic Programming.<br />
+            The in-game <code>WaSHI-QP</code>, however, minimizes variance under the inequality <code>μ^T w &gt;= μ_target</code>. There the numerator <code>μ_p - r_floor</code> also varies across feasible portfolios, so a portfolio with slightly higher variance but higher expected return can have a lower shortfall probability. <code>WaSHI-QP</code> is therefore a <strong>minimum-variance benchmark under a return floor</strong>, not an exact Safety-First optimizer.
           </div>
         </section>
 
@@ -645,8 +647,9 @@ await model.solve(HiGHS);</code></pre>
           </div>
 
           <div class="callout cyan">
-            <strong>💡 为什么最小化爆仓概率等价于凸二次规划（QP）</strong>
-            由于 <code>Φ(-z)</code> 关于 <code>z</code> 严格单调递减，在给定目标预期收益 <code>μ^T w &gt;= μ_target</code> 的条件下，<strong>最小化爆仓概率 <code>P_ruin(w)</code> 在数学上完全等价于最小化投资组合方差 <code>w^T Σ w</code>（马科维茨均值-方差模型）</strong>。
+            <strong>💡 最小化爆仓概率与凸二次规划（QP）的关系</strong>
+            由于 <code>Φ(-z)</code> 关于 <code>z</code> 严格单调递减，在以<strong>等式固定</strong>预期收益（<code>μ^T w = μ_target</code>）的条件下，<strong>最小化爆仓概率 <code>P_ruin(w)</code> 在数学上等价于最小化投资组合方差 <code>w^T Σ w</code>（马科维茨均值-方差模型）</strong>。<br />
+            而游戏中的 <code>WaSHI-QP</code> 是在不等式 <code>μ^T w &gt;= μ_target</code> 约束下最小化方差。此时分子 <code>μ_p - r_floor</code> 也会随组合变化，方差略大但预期收益更高的组合可能拥有更低的爆仓概率。因此 <code>WaSHI-QP</code> 是<strong>满足收益下限的最小方差基准</strong>，而非严格的 Safety-First 最优解。
           </div>
         </section>
 

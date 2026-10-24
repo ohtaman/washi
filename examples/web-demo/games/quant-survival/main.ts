@@ -465,9 +465,43 @@ function renderScoreboard(): void {
 
   const floorValEl = document.getElementById("hud-floor-value");
   if (floorValEl) {
-    const floorAum = playerAum * (1 + currentRegime.liquidationFloor);
+    const floorAum = resolveDisplayedFloorAum(playerAum, currentRegime, lastSimulation);
     floorValEl.textContent = `${formatSignedPct(currentRegime.liquidationFloor)} (${formatMoney(floorAum)})`;
   }
+}
+
+/**
+ * The liquidation floor shown on the scoreboard. After a quarter has been simulated,
+ * `playerAum` already holds the quarter-end AUM, so the floor that was actually applied
+ * (based on quarter-start AUM) must be taken from the simulation result.
+ */
+export function resolveDisplayedFloorAum(
+  currentAum: number,
+  regime: QuarterRegime,
+  sim: MarketSimulationResult | null
+): number {
+  return sim ? sim.liquidationAumFloor : currentAum * (1 + regime.liquidationFloor);
+}
+
+/**
+ * Describes a liquidation using the actual breach event (first day below the floor and the
+ * lowest AUM reached), since a path can breach intra-quarter and still finish above the floor.
+ */
+export function formatLiquidationDetail(
+  lang: GameLang,
+  sim: MarketSimulationResult
+): string {
+  const day = sim.playerLiquidatedDay ?? sim.days;
+  const floor = formatMoney(sim.liquidationAumFloor);
+  const minAum = formatMoney(sim.playerMinAum);
+  const aRetStr = formatSignedPct(sim.aiReturn);
+  if (lang === "ja") {
+    return `DAY ${day} に資産が破綻ライン ${floor} を割り込みました (期中最安値 ${minAum})。WaSHI-QP 今期損益: ${aRetStr}`;
+  }
+  if (lang === "zh") {
+    return `第 ${day} 个交易日净值跌破强平线 ${floor}（季内最低 ${minAum}）。WaSHI-QP 本季收益: ${aRetStr}`;
+  }
+  return `AUM fell below the liquidation floor ${floor} on DAY ${day} (intra-quarter low ${minAum}). WaSHI-QP return: ${aRetStr}`;
 }
 
 function findStrongestNegativeCorrPeer(assetIndex: number): string {
@@ -1039,12 +1073,7 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
         : currentLang === "zh"
           ? `LIQUIDATED — Q${currentQuarter} 触发强平出局`
           : `LIQUIDATED — Q${currentQuarter} Margin Call`;
-    detailEl.textContent =
-      currentLang === "ja"
-        ? `今期損益 ${pRetStr} (最終資産 ${formatMoney(playerAum)}) が破綻ラインを下回りました。WaSHI-QP 今期損益: ${aRetStr}`
-        : currentLang === "zh"
-          ? `本季收益 ${pRetStr} (最终资产 ${formatMoney(playerAum)}) 跌破强平线。WaSHI-QP 本季收益: ${aRetStr}`
-          : `Quarter return ${pRetStr} (End AUM ${formatMoney(playerAum)}) breached the liquidation floor. WaSHI-QP return: ${aRetStr}`;
+    detailEl.textContent = formatLiquidationDetail(currentLang, sim);
 
     if (btnExec) btnExec.hidden = true;
     if (btnNext) btnNext.hidden = true;
