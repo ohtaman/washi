@@ -3544,6 +3544,13 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const capturedTurn2Prompts: string[] = [];
 
     let measureContextUsageCallCount = 0;
+    const countMockTokens = (input: string) =>
+      Math.ceil(
+        Array.from(input).reduce(
+          (sum, ch) => sum + ((ch.codePointAt(0) ?? 0) < 128 ? 0.25 : 2),
+          0
+        )
+      );
 
     g.LanguageModel = {
       async availability() {
@@ -3555,7 +3562,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           contextUsage: 1800,
           async measureContextUsage(input: string) {
             measureContextUsageCallCount++;
-            return Array.from(input).length * 2;
+            return countMockTokens(input);
           },
           async prompt(input: string, opts?: { responseConstraint?: unknown }) {
             const schema = opts?.responseConstraint;
@@ -3720,8 +3727,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         routes: [{ tool_type: "clarify" }],
         response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
       };
+      const asciiTaggedOriginal = `[REQ-${"A".repeat(2500)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
       const planTurn5Clarify = await manager.extractPlan(
-        "佐藤さんを10日休みにして、夜勤上限も調整して",
+        asciiTaggedOriginal,
         appliedTurn4.updatedState
       );
       expect(planTurn5Clarify.intentType).toBe("consult_only");
@@ -3730,7 +3738,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       // Turn 5b: If both a huge follow-up and a huge clarification response occur, the combined
       // pending entry (messages + question + labels) stays within Gemini Nano's single shared
-      // 9,216-token context budget while preserving the canonical original request (4368317268, 4368380674, 4368451525).
+      // 9,216-token context budget while preserving the canonical original request (including its
+      // leading ASCII prefix that has >2,500 chars but <700 tokens) (4368317268, 4368380674, 4368451525, 4368601792).
       const firstFollowUp = "夜勤上限はまだ迷っている";
       await manager.extractPlan(firstFollowUp, appliedTurn4.updatedState);
       turn1Reply = {
@@ -3746,7 +3755,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5bOversized.nonToolReason).toBe("clarify");
 
       // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
-      // Verify that Turn 6's Stage 1 prompt still retained the original Turn 5 request while dropping the older follow-up,
+      // Verify that Turn 6's Stage 1 prompt still retained the full original Turn 5 request while dropping the older follow-up,
       // and that switching intent clears `pendingClarification` so Turn 7 does NOT resurrect it!
       turn1Reply = {
         thought: "現在の設定に関する質問。",
@@ -3759,9 +3768,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(measureContextUsageCallCount).toBeGreaterThan(0);
-      expect(turn6RouterPrompt).toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
+      expect(turn6RouterPrompt).toContain(asciiTaggedOriginal);
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
-      const turn6PromptTokens = Array.from(turn6RouterPrompt).length * 2;
+      const turn6PromptTokens = countMockTokens(turn6RouterPrompt);
       expect(1800 + turn6PromptTokens).toBeLessThanOrEqual(9216);
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");

@@ -2368,10 +2368,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     const budget = Math.max(1, maxTokens);
     let cps = Array.from(text);
     if (cps.length === 0) return "";
-    if (cps.length > budget) {
-      cps = cps.slice(-budget);
-    }
-    let candidate = cps.join("");
+    let candidate = text;
     let tokens = await measureTextTokens(candidate);
     while (cps.length > 1 && tokens > budget) {
       const nextLen = Math.max(1, Math.min(cps.length - 1, Math.floor((cps.length * budget) / tokens)));
