@@ -2473,6 +2473,36 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         pendingClarification.messages.pop();
       }
     }
+
+    if (pendingClarification.messages.length === 1) {
+      let promptTokens = await measureTextTokens(
+        buildCandidateContextPrompt(pendingClarification, state)
+      );
+      if (promptTokens > totalTokenBudget && pendingClarification.lastQuestion.length > 0) {
+        let qCps = Array.from(pendingClarification.lastQuestion);
+        while (qCps.length > 0 && promptTokens > totalTokenBudget) {
+          const excess = promptTokens - totalTokenBudget;
+          const dropCount = Math.max(1, Math.ceil(excess / 2));
+          qCps = dropCount >= qCps.length ? [] : qCps.slice(dropCount);
+          pendingClarification.lastQuestion = qCps.join("");
+          promptTokens = await measureTextTokens(
+            buildCandidateContextPrompt(pendingClarification, state)
+          );
+        }
+      }
+      if (promptTokens > totalTokenBudget) {
+        let origCps = Array.from(pendingClarification.messages[0]!);
+        while (origCps.length > 1 && promptTokens > totalTokenBudget) {
+          const excess = promptTokens - totalTokenBudget;
+          const dropCount = Math.max(1, Math.ceil(excess / 2));
+          origCps = origCps.slice(Math.min(origCps.length - 1, dropCount));
+          pendingClarification.messages[0] = origCps.join("");
+          promptTokens = await measureTextTokens(
+            buildCandidateContextPrompt(pendingClarification, state)
+          );
+        }
+      }
+    }
   }
 
   function getCombinedHistoryLines(): string[] {

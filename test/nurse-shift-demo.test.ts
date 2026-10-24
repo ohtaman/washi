@@ -3727,10 +3727,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         routes: [{ tool_type: "clarify" }],
         response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
       };
-      // An initial request whose measured tokens (~2,800) exceed 50% of the message budget
-      // but fit within the full shared budget (~5,000 tokens) is preserved in full on the
-      // next turn without premature 50% truncation (4368632729).
-      const largeInitialFittingBudget = `[REQ-${"A".repeat(11000)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
+      // An initial request whose measured tokens (~4,500) nearly fill the shared budget (~5,000 tokens)
+      // when paired with a short question is preserved in full on the next turn without premature 50% truncation (4368632729).
+      // And when a subsequent turn produces a huge clarification question so `followUpTokenBudget <= 0` and
+      // the follow-up is popped, `lastQuestion` is trimmed further so the remaining 1-message candidate
+      // still stays strictly within `totalTokenBudget` while preserving `largeInitialFittingBudget` (4368715484).
+      const largeInitialFittingBudget = `[REQ-${"A".repeat(17500)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
       const planTurn5Clarify = await manager.extractPlan(
         largeInitialFittingBudget,
         appliedTurn4.updatedState
