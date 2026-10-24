@@ -53,20 +53,6 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <span class="washi-showcase-cta">Open App →</span>
   </a>
 
-  <a href="https://ohtaman.github.io/washi/apps/ai-timetable/" class="washi-showcase-card">
-    <div>
-      <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">🎓</span>
-        <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
-      </div>
-      <div class="washi-showcase-title">AI University Timetabling Copilot (UCTP)</div>
-      <p class="washi-showcase-desc">
-        University Course Timetabling scheduler combining on-device Gemini Nano for faculty/curriculum constraint extraction with WaSHI (HiGHS MILP) for room, equipment, cohort, and conflict diagnosis.
-      </p>
-    </div>
-    <span class="washi-showcase-cta">Open App →</span>
-  </a>
-
   <a href="https://ohtaman.github.io/washi/apps/" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
@@ -93,11 +79,11 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🏰</span>
-        <span class="washi-showcase-badge">MILP Shift Puzzle</span>
+        <span class="washi-showcase-badge">Castle Defense Shift Puzzle</span>
       </div>
-      <div class="washi-showcase-title">Demon Castle 24h Shift Puzzle</div>
+      <div class="washi-showcase-title">Demon Castle 24-Hour Guard Shift</div>
       <p class="washi-showcase-desc">
-        Assign quirky monsters to 24-hour castle guard shifts while satisfying labor rules and personal requests, backed by real-time WaSHI MILP verification and hints.
+        Work alongside Chief Tactician Lilith to defend the Demon Castle from the Hero's advancing army day and night while respecting each guard's preferred hours and rest rules.
       </p>
     </div>
     <span class="washi-showcase-cta">Play Game →</span>
@@ -107,11 +93,11 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🐑</span>
-        <span class="washi-showcase-badge">Scheduling Puzzle</span>
+        <span class="washi-showcase-badge">Pasture Enclosure Puzzle</span>
       </div>
-      <div class="washi-showcase-title">Mofumofu Sheep Shearing Puzzle</div>
+      <div class="washi-showcase-title">Fluffy Sheep Pasture Enclosure</div>
       <p class="washi-showcase-desc">
-        Optimize sheep shearing schedules and resource constraints in an interactive puzzle powered by WaSHI.
+        Block hungry wolves using a limited number of wooden fences while maximizing wild strawberries and avoiding poison mushrooms inside the safe pasture where Moko the sheep can roam.
       </p>
     </div>
     <span class="washi-showcase-cta">Play Game →</span>

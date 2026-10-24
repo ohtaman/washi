@@ -507,6 +507,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
   it("maintains unified nav, hero actions, and showcase hub pages across EN, JA, and ZH", async () => {
     const vpConfigModule = await import("../docs/.vitepress/config.mts");
     const vpConfig = vpConfigModule.default;
+    const viteConfigModule = await import("../vite.config.ts");
+    const viteInputs = new Set<string>(
+      Object.values(
+        (viteConfigModule.default.build?.rollupOptions?.input ?? {}) as Record<string, string>
+      )
+    );
 
     const expectedLocales = [
       {
@@ -518,6 +524,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         gettingStartedLink: "/getting-started/",
         showcaseText: "Showcase",
         showcaseLink: "/showcase/",
+        sheepTitle: "Fluffy Sheep Pasture Enclosure",
       },
       {
         key: "ja",
@@ -528,6 +535,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         gettingStartedLink: "/ja/getting-started/",
         showcaseText: "ショーケース",
         showcaseLink: "/ja/showcase/",
+        sheepTitle: "もふもふ羊の牧場囲い",
       },
       {
         key: "zh",
@@ -538,6 +546,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         gettingStartedLink: "/zh/getting-started/",
         showcaseText: "案例展示",
         showcaseLink: "/zh/showcase/",
+        sheepTitle: "毛茸茸绵羊的牧场围栏",
       },
     ] as const;
 
@@ -577,12 +586,38 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       const showcasePath = path.resolve(process.cwd(), loc.showcaseFile);
       expect(fs.existsSync(showcasePath), `Missing ${loc.showcaseFile}`).toBe(true);
       const showcaseRaw = fs.readFileSync(showcasePath, "utf-8");
-      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/demo/");
-      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/apps/ai-shift/");
-      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/apps/");
-      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/games/demon-castle-shift/");
-      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/games/mofumofu-sheep/");
-      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/games/");
+      expect(showcaseRaw).toContain(loc.sheepTitle);
+
+      const hrefs = Array.from(
+        showcaseRaw.matchAll(/href="(https:\/\/ohtaman\.github\.io\/washi\/[^"]+)"/g),
+        (m) => m[1]
+      );
+      expect(hrefs).toEqual([
+        "https://ohtaman.github.io/washi/demo/",
+        "https://ohtaman.github.io/washi/apps/ai-shift/",
+        "https://ohtaman.github.io/washi/apps/",
+        "https://ohtaman.github.io/washi/games/demon-castle-shift/",
+        "https://ohtaman.github.io/washi/games/mofumofu-sheep/",
+        "https://ohtaman.github.io/washi/games/",
+      ]);
+
+      for (const href of hrefs) {
+        const subpath = href.replace("https://ohtaman.github.io/washi/", "");
+        const expectedEntryHtml = path.resolve(
+          process.cwd(),
+          "examples/web-demo",
+          subpath,
+          "index.html"
+        );
+        expect(
+          fs.existsSync(expectedEntryHtml),
+          `Showcase link ${href} in ${loc.showcaseFile} points to missing ${expectedEntryHtml}`
+        ).toBe(true);
+        expect(
+          viteInputs.has(expectedEntryHtml),
+          `Showcase link ${href} in ${loc.showcaseFile} is not built by vite.config.ts`
+        ).toBe(true);
+      }
     }
   });
 });

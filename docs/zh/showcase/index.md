@@ -53,20 +53,6 @@ aside: false
     <span class="washi-showcase-cta">打开应用 →</span>
   </a>
 
-  <a href="https://ohtaman.github.io/washi/apps/ai-timetable/" class="washi-showcase-card">
-    <div>
-      <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">🎓</span>
-        <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
-      </div>
-      <div class="washi-showcase-title">高校排课 AI 助手 (UCTP)</div>
-      <p class="washi-showcase-desc">
-        结合浏览器内置 Gemini Nano 提取教师出讲时间、机房设备、教室容量与年级必修防冲突等复杂规则，利用 WaSHI × HiGHS 实现高校课程表自动排课与冲突诊断。
-      </p>
-    </div>
-    <span class="washi-showcase-cta">打开应用 →</span>
-  </a>
-
   <a href="https://ohtaman.github.io/washi/apps/" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
@@ -93,11 +79,11 @@ aside: false
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🏰</span>
-        <span class="washi-showcase-badge">MILP Shift Puzzle</span>
+        <span class="washi-showcase-badge">据点防卫排班益智游戏</span>
       </div>
-      <div class="washi-showcase-title">魔王城 24 小时排班解谜</div>
+      <div class="washi-showcase-title">魔王城24小时警备排班</div>
       <p class="washi-showcase-desc">
-        在满足魔物值班需求与守卫规则的前提下完成 24 小时排班表，由 WaSHI 求解器提供实时可行性验证与提示。
+        与参谋莉莉丝一起，从昼夜不停进军的勇者军手中守卫魔王城的排班解谜游戏。兼顾每位成员擅长的时段与休息规则，在不让任何人过度劳累的前提下守住城门。
       </p>
     </div>
     <span class="washi-showcase-cta">开始游戏 →</span>
@@ -107,11 +93,11 @@ aside: false
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🐑</span>
-        <span class="washi-showcase-badge">Scheduling Puzzle</span>
+        <span class="washi-showcase-badge">牧场围栏益智游戏</span>
       </div>
-      <div class="washi-showcase-title">毛茸茸绵羊剪毛解谜</div>
+      <div class="washi-showcase-title">毛茸茸绵羊的牧场围栏</div>
       <p class="washi-showcase-desc">
-        在交互式解谜中优化绵羊剪毛顺序与日程资源约束。
+        仅用有限数量的木栅栏阻断饥饿野狼的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓并避开毒蘑菇。
       </p>
     </div>
     <span class="washi-showcase-cta">开始游戏 →</span>

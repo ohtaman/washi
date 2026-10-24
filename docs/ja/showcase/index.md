@@ -53,20 +53,6 @@ aside: false
     <span class="washi-showcase-cta">アプリを開く →</span>
   </a>
 
-  <a href="https://ohtaman.github.io/washi/apps/ai-timetable/" class="washi-showcase-card">
-    <div>
-      <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">🎓</span>
-        <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
-      </div>
-      <div class="washi-showcase-title">大学時間割編成 AI Copilot (UCTP)</div>
-      <p class="washi-showcase-desc">
-        非常勤講師の出講可能枠、PC演習室や大講義室の設備・定員制約、学年別カリキュラム重複禁止、裏番組回避などの複雑な条件を Gemini Nano で抽出し、WaSHI × HiGHS で一括編成・矛盾診断する時間割コパイロット。
-      </p>
-    </div>
-    <span class="washi-showcase-cta">アプリを開く →</span>
-  </a>
-
   <a href="https://ohtaman.github.io/washi/apps/" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
@@ -93,11 +79,11 @@ aside: false
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🏰</span>
-        <span class="washi-showcase-badge">MILP Shift Puzzle</span>
+        <span class="washi-showcase-badge">拠点防衛シフトパズル</span>
       </div>
-      <div class="washi-showcase-title">魔王城24時間シフトパズル</div>
+      <div class="washi-showcase-title">魔王城の24時間警備シフト</div>
       <p class="washi-showcase-desc">
-        個性豊かなモンスターたちの希望と警備条件を満たしてシフト表を完成させるパズルゲーム。WaSHI のソルバーがリアルタイムに判定・ヒントを算出します。
+        昼夜を問わず進軍してくる勇者軍から、参謀リリスと共に魔王城を守り抜くシフト編成パズル。各メンバーの得意な時間帯と休息を守りながらシフトを組んで城を守り抜きます。
       </p>
     </div>
     <span class="washi-showcase-cta">ゲームをプレイ →</span>
@@ -107,11 +93,11 @@ aside: false
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🐑</span>
-        <span class="washi-showcase-badge">Scheduling Puzzle</span>
+        <span class="washi-showcase-badge">まきばの柵パズル</span>
       </div>
-      <div class="washi-showcase-title">もふもふ羊の毛刈りパズル</div>
+      <div class="washi-showcase-title">もふもふ羊の牧場囲い</div>
       <p class="washi-showcase-desc">
-        羊たちの毛刈り順序やスケジュール制約を最適化するインタラクティブパズル。
+        限られた本数の木の柵だけで腹ペコオオカミの侵入ルートを遮断しつつ、ヒツジのモコたちが歩ける「安全なまきば」の野いちごを最大化し、どくキノコを避ける囲い込みパズル。
       </p>
     </div>
     <span class="washi-showcase-cta">ゲームをプレイ →</span>
