@@ -311,7 +311,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 25-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 26-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
@@ -327,7 +327,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enPages).toHaveLength(25);
+    expect(enPages).toHaveLength(26);
+    expect(enPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enPages);
     expect(zhPages).toEqual(enPages);
   });
@@ -500,6 +501,88 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     for (const key of requiredSearchKeys) {
       const matches = configContent.match(new RegExp(`\\b${key}:`, "g")) ?? [];
       expect(matches.length, `Expected search translation key '${key}' in both ja and zh`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("maintains unified nav, hero actions, and showcase hub pages across EN, JA, and ZH", async () => {
+    const vpConfigModule = await import("../docs/.vitepress/config.mts");
+    const vpConfig = vpConfigModule.default;
+
+    const expectedLocales = [
+      {
+        key: "root",
+        prefix: "",
+        homeFile: "docs/index.md",
+        showcaseFile: "docs/showcase/index.md",
+        gettingStartedText: "Getting Started",
+        gettingStartedLink: "/getting-started/",
+        showcaseText: "Showcase",
+        showcaseLink: "/showcase/",
+      },
+      {
+        key: "ja",
+        prefix: "/ja",
+        homeFile: "docs/ja/index.md",
+        showcaseFile: "docs/ja/showcase/index.md",
+        gettingStartedText: "はじめに",
+        gettingStartedLink: "/ja/getting-started/",
+        showcaseText: "ショーケース",
+        showcaseLink: "/ja/showcase/",
+      },
+      {
+        key: "zh",
+        prefix: "/zh",
+        homeFile: "docs/zh/index.md",
+        showcaseFile: "docs/zh/showcase/index.md",
+        gettingStartedText: "快速入门",
+        gettingStartedLink: "/zh/getting-started/",
+        showcaseText: "案例展示",
+        showcaseLink: "/zh/showcase/",
+      },
+    ] as const;
+
+    for (const loc of expectedLocales) {
+      const localeConfig = vpConfig.locales?.[loc.key];
+      const nav = localeConfig?.themeConfig?.nav ?? [];
+      expect(nav.map((item: { text: string; link: string }) => ({ text: item.text, link: item.link }))).toEqual([
+        { text: loc.gettingStartedText, link: loc.gettingStartedLink },
+        { text: loc.showcaseText, link: loc.showcaseLink },
+      ]);
+
+      const gsRegex = new RegExp(nav[0].activeMatch);
+      const showcaseRegex = new RegExp(nav[1].activeMatch);
+      for (const docSection of ["getting-started/", "guide/variables", "solvers/", "examples/production"]) {
+        expect(gsRegex.test(`${loc.prefix}/${docSection}`)).toBe(true);
+        expect(showcaseRegex.test(`${loc.prefix}/${docSection}`)).toBe(false);
+      }
+      expect(showcaseRegex.test(`${loc.prefix}/showcase/`)).toBe(true);
+      expect(gsRegex.test(`${loc.prefix}/showcase/`)).toBe(false);
+      expect(gsRegex.test(`${loc.prefix || "/"}`)).toBe(false);
+      expect(showcaseRegex.test(`${loc.prefix || "/"}`)).toBe(false);
+
+      const homeRaw = fs.readFileSync(path.resolve(process.cwd(), loc.homeFile), "utf-8");
+      const actionsBlockMatch = homeRaw.match(/actions:\n([\s\S]*?)\n\nfeatures:/);
+      expect(actionsBlockMatch, `Missing actions block in ${loc.homeFile}`).not.toBeNull();
+      const actionTexts = Array.from(
+        actionsBlockMatch![1].matchAll(/^\s*text:\s*(.+)$/gm),
+        (m) => m[1].trim()
+      );
+      const actionLinks = Array.from(
+        actionsBlockMatch![1].matchAll(/^\s*link:\s*(.+)$/gm),
+        (m) => m[1].trim()
+      );
+      expect(actionTexts).toEqual([loc.gettingStartedText, loc.showcaseText]);
+      expect(actionLinks).toEqual([loc.gettingStartedLink, loc.showcaseLink]);
+
+      const showcasePath = path.resolve(process.cwd(), loc.showcaseFile);
+      expect(fs.existsSync(showcasePath), `Missing ${loc.showcaseFile}`).toBe(true);
+      const showcaseRaw = fs.readFileSync(showcasePath, "utf-8");
+      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/demo/");
+      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/apps/ai-shift/");
+      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/apps/");
+      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/games/demon-castle-shift/");
+      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/games/mofumofu-sheep/");
+      expect(showcaseRaw).toContain("https://ohtaman.github.io/washi/games/");
     }
   });
 });

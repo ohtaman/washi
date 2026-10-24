@@ -125,13 +125,12 @@ export default withMermaid(
       description: "Intuitive Mathematical Optimization & Algebraic Modeler for TypeScript & JavaScript",
       themeConfig: {
         nav: [
-          { text: "Getting Started", link: "/getting-started/" },
-          { text: "Guide", link: "/guide/variables" },
-          { text: "Solvers", link: "/solvers/" },
-          { text: "Examples", link: "/examples/" },
-          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
-          { text: "Apps ↗", link: "https://ohtaman.github.io/washi/apps/" },
-          { text: "Games ↗", link: "https://ohtaman.github.io/washi/games/" },
+          {
+            text: "Getting Started",
+            link: "/getting-started/",
+            activeMatch: "^/(?:getting-started|guide|solvers|examples)/",
+          },
+          { text: "Showcase", link: "/showcase/", activeMatch: "^/showcase/" },
         ],
         sidebar: [
           {
@@ -154,7 +153,7 @@ export default withMermaid(
             ],
           },
           {
-            text: "Solvers Matrix",
+            text: "Solvers",
             items: [
               { text: "Overview & Comparison", link: "/solvers/" },
               { text: "HiGHS (Built-in default)", link: "/solvers/highs" },
@@ -189,13 +188,12 @@ export default withMermaid(
       description: "TypeScript & JavaScript 向け直感的数理最適化モデラー",
       themeConfig: {
         nav: [
-          { text: "はじめに", link: "/ja/getting-started/" },
-          { text: "ガイド", link: "/ja/guide/variables" },
-          { text: "ソルバー", link: "/ja/solvers/" },
-          { text: "実践例", link: "/ja/examples/" },
-          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
-          { text: "アプリ ↗", link: "https://ohtaman.github.io/washi/apps/" },
-          { text: "ゲーム ↗", link: "https://ohtaman.github.io/washi/games/" },
+          {
+            text: "はじめに",
+            link: "/ja/getting-started/",
+            activeMatch: "^/ja/(?:getting-started|guide|solvers|examples)/",
+          },
+          { text: "ショーケース", link: "/ja/showcase/", activeMatch: "^/ja/showcase/" },
         ],
         sidebar: [
           {
@@ -218,7 +216,7 @@ export default withMermaid(
             ],
           },
           {
-            text: "ソルバー詳細",
+            text: "ソルバー",
             items: [
               { text: "ソルバー比較と概要", link: "/ja/solvers/" },
               { text: "HiGHS (標準ソルバー)", link: "/ja/solvers/highs" },
@@ -228,7 +226,7 @@ export default withMermaid(
             ],
           },
           {
-            text: "実践例・サンプル",
+            text: "実践例",
             items: [
               { text: "一覧・逆引きインデックス", link: "/ja/examples/" },
               { text: "生産計画問題 (LP/MIP)", link: "/ja/examples/production" },
@@ -270,13 +268,12 @@ export default withMermaid(
       description: "适用于 TypeScript/JavaScript 的现代代数建模与数理优化系统",
       themeConfig: {
         nav: [
-          { text: "快速入门", link: "/zh/getting-started/" },
-          { text: "指南", link: "/zh/guide/variables" },
-          { text: "求解器", link: "/zh/solvers/" },
-          { text: "示例", link: "/zh/examples/" },
-          { text: "Playground ↗", link: "https://ohtaman.github.io/washi/demo/" },
-          { text: "应用 ↗", link: "https://ohtaman.github.io/washi/apps/" },
-          { text: "Games ↗", link: "https://ohtaman.github.io/washi/games/" },
+          {
+            text: "快速入门",
+            link: "/zh/getting-started/",
+            activeMatch: "^/zh/(?:getting-started|guide|solvers|examples)/",
+          },
+          { text: "案例展示", link: "/zh/showcase/", activeMatch: "^/zh/showcase/" },
         ],
         sidebar: [
           {
@@ -299,7 +296,7 @@ export default withMermaid(
             ],
           },
           {
-            text: "求解器矩阵",
+            text: "求解器",
             items: [
               { text: "概览与对比", link: "/zh/solvers/" },
               { text: "HiGHS (内置默认)", link: "/zh/solvers/highs" },
@@ -309,7 +306,7 @@ export default withMermaid(
             ],
           },
           {
-            text: "实际案例与代码示例",
+            text: "示例",
             items: [
               { text: "案例总览与 API 索引", link: "/zh/examples/" },
               { text: "生产计划问题 (LP/MIP)", link: "/zh/examples/production" },
