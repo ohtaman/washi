@@ -2621,6 +2621,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             );
           }
           recordPendingClarification(userMessage, stage1Response);
+        } else {
+          pendingClarification = null;
         }
         return {
           intentType: "consult_only",
@@ -2646,7 +2648,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       const runTurn2CategoryExtractor = async (
         category: ExecutableToolCategory,
         instruction: string
-      ): Promise<ChatConstraintOperation[]> => {
+      ): Promise<{
+        routeOps: ChatConstraintOperation[];
+        routeSystemIntent: "diagnose_conflict" | "solve_only" | null;
+      }> => {
         onProgress?.({
           phase: "turn2_start",
           activeLabel: "⏳ 設定を更新しています…",
@@ -2660,6 +2665,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             : baseCatSession;
 
         const routeOps: ChatConstraintOperation[] = [];
+        let routeSystemIntent: "diagnose_conflict" | "solve_only" | null = null;
         try {
           const catConfig = STAGE2_CATEGORY_CONFIGS[category];
           const dynamicDict = buildCategoryDynamicDictionary(
@@ -2715,6 +2721,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           for (const tc of toolList) {
             if (!tc || tc.tool_name === "none") continue;
             if (tc.tool_name === "diagnose_conflict" || tc.tool_name === "solve_only") {
+              routeSystemIntent = tc.tool_name;
               stage2SystemIntent = tc.tool_name;
               routerTrace.push(`🛠️ Turn 2 (${category}): ${tc.tool_name}()`);
               continue;
@@ -2749,7 +2756,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             } catch (_) {}
           }
         }
-        return routeOps;
+        return { routeOps, routeSystemIntent };
       };
 
       for (let rIdx = 0; rIdx < activeRoutes.length; rIdx++) {
@@ -2758,19 +2765,22 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         const extractedForRoute = await runTurn2CategoryExtractor(category, instruction);
 
         // ==================== STEP 3: POST-TURN-2 VERIFICATION ====================
-        if (extractedForRoute.length === 0 && !stage2SystemIntent) {
+        if (extractedForRoute.routeOps.length === 0 && !extractedForRoute.routeSystemIntent) {
           missingRouteLabels.push(`${category}("${instruction}")`);
           unsupportedRouteInstructions.push(instruction);
         }
       }
 
-      if (operations.length > 0) {
+      if (operations.length > 0 || stage2SystemIntent !== null) {
         const isResetOrClear = operations.some(
           (o) => o.op === "reset_default" || o.op === "clear_custom_rules"
         );
-        const previewApplied = isResetOrClear
-          ? { updatedState: state, appliedLogs: ["リセット/クリア実行"] }
-          : applyChatOperationsToState(state, operations);
+        const previewApplied =
+          operations.length === 0
+            ? { updatedState: state, appliedLogs: [] as string[] }
+            : isResetOrClear
+              ? { updatedState: state, appliedLogs: ["リセット/クリア実行"] }
+              : applyChatOperationsToState(state, operations);
         const previewAppliedLogs = previewApplied.appliedLogs;
 
         const verificationResult = verifyExecutionAgainstRequest({
@@ -2789,9 +2799,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           routerTrace: [...routerTrace],
         });
 
-        // If a held clarification request is being resumed, do not apply partial operations or clear the held request
-        // unless every resumed route succeeded (`missingRouteLabels.length === 0`).
-        if (!isResetOrClear && pendingClarification !== null && missingRouteLabels.length > 0) {
+        // Hold whenever a planned batch has unresolved routes (`missingRouteLabels.length > 0`),
+        // including on the first attempt, on resumed clarification batches, and on reset/clear or system-intent batches.
+        if (missingRouteLabels.length > 0) {
           const unresolvedText =
             unsupportedRouteInstructions.length > 0
               ? unsupportedRouteInstructions.join("・")
@@ -2799,6 +2809,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           const holdMsg = `「${unresolvedText}」について、具体的な設定内容（日数・回数・対象など）を教えていただけますか？`;
           lastNonToolReason = "clarify";
           lastStage1Response = holdMsg;
+          lastUnappliedInstructions = [...unsupportedRouteInstructions];
           recordPendingClarification(userMessage, holdMsg);
           routerTrace.push(
             `⏸️ Step 3 (Hold): 未解決の項目が残っているため一括適用を保留 (${missingRouteLabels.join(", ")})`
@@ -2812,6 +2823,21 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             stage1Response: holdMsg,
             routerTrace,
             verificationResult,
+            llmCalls,
+          };
+        }
+
+        if (operations.length === 0 && stage2SystemIntent) {
+          pendingClarification = null;
+          lastNonToolReason = null;
+          lastUnappliedInstructions = [];
+          return {
+            intentType: stage2SystemIntent,
+            operations: [],
+            summaryJa: stage1Response,
+            stage1Thought,
+            stage1Response,
+            routerTrace,
             llmCalls,
           };
         }
@@ -2831,6 +2857,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             unresolvedNurses.length > 0
               ? `指定されたスタッフ名（「${Array.from(new Set(unresolvedNurses)).join("・")}」）が病棟名簿に存在しないため、設定を変更できません。`
               : `ご指定の操作（「${userMessage}」）は適用対象が見つからないか本システムでは未対応のため、設定を変更できません。`;
+          pendingClarification = null;
           lastNonToolReason = "unsupported";
           lastStage1Response = refusalMsg;
           lastUnappliedInstructions = [...unsupportedRouteInstructions];
@@ -2853,9 +2880,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           pendingClarification = null;
           hadCustomState = false;
         } else {
-          if (missingRouteLabels.length === 0) {
-            pendingClarification = null;
-          }
+          pendingClarification = null;
           appendTurnHistory(
             `・前回:「${userMessage}」➔ 適用済: ${previewAppliedLogs.join(" / ")}`
           );
@@ -2868,12 +2893,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         }
 
         lastNonToolReason = null;
-        lastUnappliedInstructions = [...unsupportedRouteInstructions];
-        if (unsupportedRouteInstructions.length > 0) {
-          routerTrace.push(
-            `⚠️ Step 3 (Verification): 一部未対応の指示を除外 (${unsupportedRouteInstructions.join(" / ")})`
-          );
-        }
+        lastUnappliedInstructions = [];
 
         return {
           intentType: "modify_and_solve",
@@ -2883,20 +2903,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           stage1Response,
           routerTrace,
           verificationResult,
-          llmCalls,
-        };
-      }
-
-      if (stage2SystemIntent) {
-        lastNonToolReason = null;
-        lastUnappliedInstructions = [];
-        return {
-          intentType: stage2SystemIntent,
-          operations: [],
-          summaryJa: stage1Response,
-          stage1Thought,
-          stage1Response,
-          routerTrace,
           llmCalls,
         };
       }
@@ -2923,12 +2929,15 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           ? `ご指定の操作（「${userMessage}」）に対応する設定項目・ツールがないため、本システムでは未対応です。`
           : stage1Response;
       if (fallbackReason === "unsupported" && activeRoutes.length > 0) {
+        pendingClarification = null;
         lastStage1Response = finalSummaryJa;
         routerTrace.push(
           `⚠️ Step 3 (Verification): 対応するツールが存在しないため未対応(unsupported)と判定`
         );
       } else if (fallbackReason === "clarify") {
         recordPendingClarification(userMessage, stage1Response);
+      } else {
+        pendingClarification = null;
       }
       return {
         intentType: "consult_only",
@@ -3253,6 +3262,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
     async resetConversation(): Promise<void> {
       recentTurnHistory = [];
+      pendingClarification = null;
       hadCustomState = false;
       if (
         activeConsultSession &&
@@ -3269,6 +3279,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     },
 
     destroy() {
+      recentTurnHistory = [];
+      pendingClarification = null;
       const allSessions = [
         activeConsultSession,
         consultBaseSession,
