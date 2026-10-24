@@ -13,33 +13,30 @@ hero:
       text: 快速入门
       link: /zh/getting-started/
     - theme: alt
-      text: 文档指南
-      link: /zh/guide/variables
-    - theme: alt
-      text: 在线演练场 ↗
-      link: https://ohtaman.github.io/washi/demo/
+      text: 案例展示
+      link: /zh/showcase/
 
 features:
   - icon: ✍️
     title: 代数模型构建 (expr)
     details: 使用标签模板（expr`30 * ${x} + 50 * ${y} <= 40`）、向量点积（dot）与求和（sum），将 ${...} 直接绑定为强类型的变量对象引用。
     link: /zh/guide/expressions
-    linkText: 表达式指南
+    linkText: 数学表达式
   - icon: ⚙️
     title: 可插拔求解器适配器
     details: 通过统一的建模 API 调用内置默认的 HiGHS（LP/MIP/凸QP）以及可选的 Z3（SMT 逻辑与冲突诊断）和 GLPK 插件。
     link: /zh/solvers/
-    linkText: 求解器矩阵
+    linkText: 求解器
   - icon: 🌐
     title: WebAssembly 本地执行
     details: 无需单独的 Python 服务或 C/C++ 本地编译即可在 Node.js 或浏览器 Web Worker 中求解，支持作为静态资源部署并与浏览器端 LLM 协同。
     link: /zh/getting-started/runtimes
-    linkText: 运行时环境
+    linkText: 运行时环境配置
   - icon: 🔍
     title: 冲突约束诊断 (unsatCore)
     details: 借助命名约束与 Z3 适配器提取不可行模型的冲突约束子集（unsatCore），定位相互矛盾的约束条件。
     link: /zh/guide/unsat-core
-    linkText: Unsat Core 诊断
+    linkText: 不可行冲突诊断 (Unsat Core)
 ---
 
 <div style="max-width: 800px; margin: 40px auto;">
