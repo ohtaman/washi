@@ -2302,7 +2302,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
   // Chrome Built-in AI (Gemini Nano / LanguageModel API) default contextWindow is 9,216 tokens.
   const GEMINI_NANO_CONTEXT_WINDOW_TOKENS = 9216;
-  const RESERVED_PROMPT_AND_OUTPUT_TOKENS = 2216;
+  const RESERVED_PROMPT_AND_OUTPUT_TOKENS = 4216;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2312,41 +2312,102 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     }
   }
 
-  function getPendingClarificationCharBudget(): number {
+  function getPendingClarificationTokenBudget(): number {
+    const defaultBudget = GEMINI_NANO_CONTEXT_WINDOW_TOKENS - RESERVED_PROMPT_AND_OUTPUT_TOKENS;
     const tokenInfo = readSessionTokenUsage(routerBaseSession);
     if (tokenInfo && tokenInfo.quota > tokenInfo.usage) {
-      return Math.max(1000, tokenInfo.quota - tokenInfo.usage - 500);
+      return Math.max(500, Math.min(defaultBudget, tokenInfo.quota - tokenInfo.usage - 1500));
     }
-    return GEMINI_NANO_CONTEXT_WINDOW_TOKENS - RESERVED_PROMPT_AND_OUTPUT_TOKENS;
+    return defaultBudget;
   }
 
-  function recordPendingClarification(msg: string, question: string): void {
-    const budget = getPendingClarificationCharBudget();
-    const labelOverhead = 32;
-    const questionBudget = Math.max(50, Math.floor(budget * 0.25));
-    const boundedQuestion =
-      question.length > questionBudget ? question.slice(-questionBudget) : question;
-    const messagesBudget = Math.max(100, budget - boundedQuestion.length - labelOverhead);
-    const maxInitialLen = Math.floor(messagesBudget / 2);
-    if (pendingClarification) {
-      if (pendingClarification.messages[0]!.length > maxInitialLen) {
-        pendingClarification.messages[0] =
-          pendingClarification.messages[0]!.slice(-maxInitialLen);
+  function formatPendingClarificationLine(entry: {
+    messages: string[];
+    lastQuestion: string;
+  }): string {
+    return `・前回(未適用・回答待ち):「${entry.messages.join(" / ")}」➔ 聞き返し: ${entry.lastQuestion}`;
+  }
+
+  async function measureTextTokens(text: string): Promise<number> {
+    if (routerBaseSession) {
+      const fn =
+        typeof routerBaseSession.measureInputUsage === "function"
+          ? routerBaseSession.measureInputUsage
+          : typeof routerBaseSession.countPromptTokens === "function"
+            ? routerBaseSession.countPromptTokens
+            : null;
+      if (fn) {
+        try {
+          const measured = Number(await fn.call(routerBaseSession, text));
+          if (Number.isFinite(measured) && measured > 0) {
+            return measured;
+          }
+        } catch (_) {}
       }
-      const original = pendingClarification.messages[0]!;
-      const followUpBudget = Math.max(1, messagesBudget - original.length - 3);
-      const boundedFollowUp =
-        msg.length > followUpBudget ? msg.slice(-followUpBudget) : msg;
+    }
+    // Conservative fallback when session token-measurement API is unavailable:
+    // assume 2 tokens per Unicode code point so CJK / emoji text never exceeds contextWindow.
+    return Math.max(1, Array.from(text).length * 2);
+  }
+
+  async function trimTailToTokenBudget(text: string, maxTokens: number): Promise<string> {
+    const budget = Math.max(1, maxTokens);
+    let cps = Array.from(text);
+    if (cps.length === 0) return "";
+    if (cps.length > budget) {
+      cps = cps.slice(-budget);
+    }
+    let candidate = cps.join("");
+    let tokens = await measureTextTokens(candidate);
+    while (cps.length > 1 && tokens > budget) {
+      const nextLen = Math.max(1, Math.min(cps.length - 1, Math.floor((cps.length * budget) / tokens)));
+      cps = cps.slice(-nextLen);
+      candidate = cps.join("");
+      tokens = await measureTextTokens(candidate);
+    }
+    return candidate;
+  }
+
+  async function recordPendingClarification(msg: string, question: string): Promise<void> {
+    const totalTokenBudget = getPendingClarificationTokenBudget();
+    const labelTokens = await measureTextTokens("・前回(未適用・回答待ち):「」➔ 聞き返し: ");
+    const questionTokenBudget = Math.max(30, Math.floor(totalTokenBudget * 0.25));
+    const boundedQuestion = await trimTailToTokenBudget(question, questionTokenBudget);
+    const questionTokens = await measureTextTokens(boundedQuestion);
+    const messagesTokenBudget = Math.max(60, totalTokenBudget - questionTokens - labelTokens - 10);
+    const maxInitialTokens = Math.max(20, Math.floor(messagesTokenBudget / 2));
+
+    if (pendingClarification) {
+      pendingClarification.messages[0] = await trimTailToTokenBudget(
+        pendingClarification.messages[0]!,
+        maxInitialTokens
+      );
+      const origTokens = await measureTextTokens(pendingClarification.messages[0]!);
+      const sepTokens = await measureTextTokens(" / ");
+      const followUpTokenBudget = Math.max(10, messagesTokenBudget - origTokens - sepTokens);
+      const boundedFollowUp = await trimTailToTokenBudget(msg, followUpTokenBudget);
       pendingClarification.messages.push(boundedFollowUp);
+      pendingClarification.lastQuestion = boundedQuestion;
       while (
         pendingClarification.messages.length > 2 &&
-        pendingClarification.messages.join(" / ").length > messagesBudget
+        (await measureTextTokens(formatPendingClarificationLine(pendingClarification))) >
+          totalTokenBudget
       ) {
         pendingClarification.messages.splice(1, 1);
       }
-      pendingClarification.lastQuestion = boundedQuestion;
+      if (pendingClarification.messages.length === 2) {
+        let lineTokens = await measureTextTokens(formatPendingClarificationLine(pendingClarification));
+        let followCps = Array.from(pendingClarification.messages[1]!);
+        while (followCps.length > 1 && lineTokens > totalTokenBudget) {
+          const excess = lineTokens - totalTokenBudget;
+          const dropCount = Math.max(1, Math.ceil(excess / 2));
+          followCps = followCps.slice(Math.min(followCps.length - 1, dropCount));
+          pendingClarification.messages[1] = followCps.join("");
+          lineTokens = await measureTextTokens(formatPendingClarificationLine(pendingClarification));
+        }
+      }
     } else {
-      const boundedInitial = msg.length > maxInitialLen ? msg.slice(-maxInitialLen) : msg;
+      const boundedInitial = await trimTailToTokenBudget(msg, maxInitialTokens);
       pendingClarification = {
         messages: [boundedInitial],
         lastQuestion: boundedQuestion,
@@ -2358,8 +2419,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     if (!pendingClarification) {
       return [...recentTurnHistory];
     }
-    const pendingLine = `・前回(未適用・回答待ち):「${pendingClarification.messages.join(" / ")}」➔ 聞き返し: ${pendingClarification.lastQuestion}`;
-    return [...recentTurnHistory, pendingLine];
+    return [...recentTurnHistory, formatPendingClarificationLine(pendingClarification)];
   }
 
   function readSessionTokenUsage(session: any): { usage: number; quota: number } | null {
@@ -2637,7 +2697,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             : "question";
         lastNonToolReason = reason;
         if (reason === "clarify") {
-          recordPendingClarification(userMessage, stage1Response);
+          await recordPendingClarification(userMessage, stage1Response);
         } else if (!stage1RoutingFailed) {
           // Only a genuine intent switch abandons the held request; a failed/aborted/unparseable
           // Stage 1 call synthesizes a fallback `question` route and must keep it for a retry.
@@ -2921,7 +2981,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           `⚠️ Step 3 (Verification): 対応するツールが存在しないため未対応(unsupported)と判定`
         );
       } else if (fallbackReason === "clarify") {
-        recordPendingClarification(userMessage, stage1Response);
+        await recordPendingClarification(userMessage, stage1Response);
       } else {
         pendingClarification = null;
       }

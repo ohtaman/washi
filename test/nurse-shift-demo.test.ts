@@ -3549,6 +3549,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       },
       async create() {
         return {
+          contextWindow: 9216,
+          contextUsage: 1800,
+          async measureInputUsage(input: string) {
+            return Array.from(input).length * 2;
+          },
           async prompt(input: string, opts?: { responseConstraint?: unknown }) {
             const schema = opts?.responseConstraint;
             if (!schema) {
@@ -3752,7 +3757,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(turn6RouterPrompt).toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
-      expect(turn6RouterPrompt.length).toBeLessThan(7500);
+      const turn6PromptTokens = Array.from(turn6RouterPrompt).length * 2;
+      expect(1800 + turn6PromptTokens).toBeLessThanOrEqual(9216);
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");
 
