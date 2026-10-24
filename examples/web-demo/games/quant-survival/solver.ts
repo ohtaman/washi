@@ -284,6 +284,36 @@ export async function solveQuantOptimalPortfolio(
 }
 
 /**
+ * Computes the portfolio on the capped simplex { sum w_i = 1, 0 <= w_i <= cap }
+ * that achieves the maximum possible expected return (greedy allocation in descending mu_i order).
+ */
+function computeMaxReturnPortfolio(regime: QuarterRegime): {
+  weights: number[];
+  maxReturn: number;
+} {
+  const n = regime.assets.length;
+  const effectiveCap = Math.max(1 / n, regime.maxWeightPerAsset);
+  const order = regime.assets
+    .map((a, idx) => ({ idx, mu: a.expectedReturn }))
+    .sort((a, b) => b.mu - a.mu || a.idx - b.idx);
+
+  const weights = new Array<number>(n).fill(0);
+  let rem = 1.0;
+  for (const item of order) {
+    if (rem <= 0) break;
+    const alloc = Math.min(effectiveCap, rem);
+    weights[item.idx] = alloc;
+    rem -= alloc;
+  }
+
+  let maxReturn = 0;
+  for (let i = 0; i < n; i++) {
+    maxReturn += weights[i] * regime.assets[i].expectedReturn;
+  }
+  return { weights, maxReturn };
+}
+
+/**
  * Fast augmented-Lagrangian projected-gradient solver used for plotting the continuous
  * Efficient Frontier curve synchronously in the UI without spawning N separate worker calls.
  */
@@ -293,6 +323,15 @@ export function computeAnalyticalMinimumVariancePortfolio(
 ): { weights: number[]; metrics: PortfolioMetrics } {
   const n = regime.assets.length;
   const cap = regime.maxWeightPerAsset;
+  const { weights: maxRetWeights, maxReturn } = computeMaxReturnPortfolio(regime);
+
+  // If the requested target exceeds the maximum return achievable on the capped simplex,
+  // return the highest-return feasible portfolio (whose expectedReturn < targetReturn).
+  if (targetReturn >= maxReturn - 1e-7) {
+    const metrics = computePortfolioMetrics(regime, maxRetWeights);
+    return { weights: maxRetWeights, metrics };
+  }
+
   let w = new Array<number>(n).fill(1 / n);
 
   // Augmented Lagrangian multiplier for targetReturn constraint: sum(mu_i * w_i) >= targetReturn
@@ -326,6 +365,16 @@ export function computeAnalyticalMinimumVariancePortfolio(
       }
       lambda = Math.max(0, lambda + rho * (targetReturn - updatedRet));
     }
+  }
+
+  // Exact convex feasibility repair onto { w in CappedSimplex : mu^T w >= targetReturn }
+  let finalRet = 0;
+  for (let i = 0; i < n; i++) {
+    finalRet += w[i] * regime.assets[i].expectedReturn;
+  }
+  if (finalRet < targetReturn && maxReturn > finalRet + 1e-12) {
+    const alpha = Math.min(1, (targetReturn - finalRet) / (maxReturn - finalRet));
+    w = w.map((wi, i) => (1 - alpha) * wi + alpha * maxRetWeights[i]);
   }
 
   const metrics = computePortfolioMetrics(regime, w);

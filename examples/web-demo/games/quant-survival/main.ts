@@ -595,7 +595,7 @@ function findStrongestNegativeCorrPeer(assetIndex: number): string {
   return `vs ${peer.ticker} ${minCorr.toFixed(2)}`;
 }
 
-function adjustSingleWeight(index: number, newWeightRaw: number): void {
+export function adjustSingleWeight(index: number, newWeightRaw: number): void {
   if (isSimulating || isLoadingQuarter) return;
   const n = currentRegime.assets.length;
   const cap = currentRegime.maxWeightPerAsset;
@@ -624,8 +624,37 @@ function adjustSingleWeight(index: number, newWeightRaw: number): void {
   }
 
   playerWeights = quantizeWeightsToPercent(next, cap);
-  renderAssetList();
+  syncAssetWeightControls();
   renderTelemetryAndCharts();
+}
+
+/**
+ * Updates existing slider values and percentage labels in place without replacing
+ * `container.innerHTML`, keeping `<input type="range">` elements mounted during drag gestures.
+ */
+function syncAssetWeightControls(): void {
+  if (typeof document === "undefined") return;
+  const container = document.getElementById("asset-list");
+  if (!container || typeof container.querySelectorAll !== "function") return;
+
+  const sliders = Array.from(container.querySelectorAll("[data-slider-idx]"));
+  if (sliders.length !== currentRegime.assets.length) {
+    renderAssetList();
+    return;
+  }
+
+  const displayPcts = roundWeightsToHundred(playerWeights, currentRegime.maxWeightPerAsset);
+  for (const slider of sliders) {
+    const idx = Number(slider.getAttribute("data-slider-idx"));
+    const wPct = displayPcts[idx] ?? 0;
+    (slider as HTMLInputElement).value = String(wPct);
+    slider.setAttribute("value", String(wPct));
+  }
+  for (const pctEl of container.querySelectorAll("[data-pct-idx]")) {
+    const idx = Number(pctEl.getAttribute("data-pct-idx"));
+    const wPct = displayPcts[idx] ?? 0;
+    pctEl.textContent = `${wPct}%`;
+  }
 }
 
 function renderAssetList(): void {
@@ -691,7 +720,7 @@ function renderAssetList(): void {
               aria-label="${sliderAria}"
             />
             <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="0.05" aria-label="${incAria}" title="${incAria}">+</button>
-            <span class="weight-pct">${wPct}%</span>
+            <span class="weight-pct" data-pct-idx="${i}">${wPct}%</span>
           </div>
           <div class="asset-role-line">
             <span>${loc.roleDesc}</span>
@@ -1251,7 +1280,7 @@ function initDomEvents(): void {
       new Array<number>(n).fill(1 / n),
       currentRegime.maxWeightPerAsset
     );
-    renderAssetList();
+    syncAssetWeightControls();
     renderTelemetryAndCharts();
   });
 
@@ -1267,7 +1296,7 @@ function initDomEvents(): void {
     });
     if (raw.length === n) {
       playerWeights = quantizeWeightsToPercent(raw, currentRegime.maxWeightPerAsset);
-      renderAssetList();
+      syncAssetWeightControls();
       renderTelemetryAndCharts();
     }
   });

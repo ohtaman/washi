@@ -19,6 +19,7 @@ import {
   getQuarterRegime,
 } from "../examples/web-demo/games/quant-survival/regimes.js";
 import {
+  adjustSingleWeight,
   advanceQuarter,
   applyQuantStaticTranslations,
   formatLiquidationDetail,
@@ -258,11 +259,13 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
       expect(formatLiquidationDetail("zh", recovered)).toContain(`第 ${firstBreachDay} 个交易日`);
     }
 
-    // Analytical fallback must satisfy feasible Q1 targetReturn (10.5%)
-    const fallbackFeasible = computeAnalyticalMinimumVariancePortfolio(q1, q1.targetReturn);
-    expect(fallbackFeasible.metrics.expectedReturn).toBeGreaterThanOrEqual(q1.targetReturn - 1e-4);
-    expect(fallbackFeasible.metrics.isNormalized).toBe(true);
-    expect(fallbackFeasible.metrics.isWithinCap).toBe(true);
+    // Analytical fallback must satisfy feasible Q1 targetReturn (10.5%) as well as high feasible targets (14%, 16%)
+    for (const target of [q1.targetReturn, 0.14, 0.16]) {
+      const fallbackFeasible = computeAnalyticalMinimumVariancePortfolio(q1, target);
+      expect(fallbackFeasible.metrics.expectedReturn).toBeGreaterThanOrEqual(target - 1e-4);
+      expect(fallbackFeasible.metrics.isNormalized).toBe(true);
+      expect(fallbackFeasible.metrics.isWithinCap).toBe(true);
+    }
 
     // Unachievable targetReturn (e.g. 50%) must NOT be marked Optimal / verified: true
     const impossibleResult = await solveQuantOptimalPortfolio(q1, 0.5);
@@ -680,6 +683,62 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
       const eqWeights = quantizeWeightsToPercent(new Array(n).fill(1 / n), cap);
       expect(eqWeights.reduce((a, b) => a + b, 0)).toBeCloseTo(1.0, 8);
       expect(eqWeights.map((w) => Math.round(w * 100))).toEqual(eqPcts);
+    }
+  });
+
+  it("updates mounted range sliders in place across a multi-event drag without replacing asset-list innerHTML", () => {
+    const n = getQuantGameState().aiWeightsLength ?? 5;
+    const sliders = Array.from({ length: n }, (_, idx) => ({
+      value: "20",
+      setAttribute: function (attr: string, val: string) {
+        if (attr === "value") this.value = val;
+      },
+      getAttribute: (attr: string) => (attr === "data-slider-idx" ? String(idx) : null),
+    }));
+    const pctLabels = Array.from({ length: n }, (_, idx) => ({
+      textContent: "20%",
+      getAttribute: (attr: string) => (attr === "data-pct-idx" ? String(idx) : null),
+    }));
+
+    let innerHtmlRebuilds = 0;
+    const assetListContainer = {
+      get innerHTML() {
+        return "";
+      },
+      set innerHTML(_v: string) {
+        innerHtmlRebuilds += 1;
+      },
+      querySelectorAll: (selector: string) => {
+        if (selector === "[data-slider-idx]") return sliders;
+        if (selector === "[data-pct-idx]") return pctLabels;
+        return [];
+      },
+    };
+
+    const g = globalThis as { document?: unknown };
+    const prevDoc = g.document;
+    try {
+      g.document = {
+        documentElement: { lang: "en" },
+        title: "",
+        getElementById: (id: string) => (id === "asset-list" ? assetListContainer : null),
+        querySelectorAll: () => [],
+      };
+
+      // Simulate a continuous drag sequence on asset 0: 30% -> 40% -> 50%
+      adjustSingleWeight(0, 0.3);
+      adjustSingleWeight(0, 0.4);
+      adjustSingleWeight(0, 0.5);
+
+      // The range inputs must remain mounted (zero innerHTML rebuilds during drag)
+      expect(innerHtmlRebuilds).toBe(0);
+      expect(sliders[0].value).toBe("50");
+      expect(pctLabels[0].textContent).toBe("50%");
+      const totalDisplayed = sliders.reduce((acc, s) => acc + Number(s.value), 0);
+      expect(totalDisplayed).toBe(100);
+    } finally {
+      if (prevDoc === undefined) delete g.document;
+      else g.document = prevDoc;
     }
   });
 });
