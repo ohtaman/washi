@@ -2300,7 +2300,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let lastUnappliedInstructions: string[] = [];
   let recentTurnHistory: string[] = [];
   let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
-  const MAX_PENDING_CLARIFICATION_FOLLOW_UPS = 2;
+  const MAX_PENDING_CLARIFICATION_CHARS = 2000;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2312,13 +2312,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
   function recordPendingClarification(msg: string, question: string): void {
     if (pendingClarification) {
-      // Keep the canonical original request plus the most recent follow-ups, mirroring the
-      // `recentTurnHistory` cap, so repeated clarification rounds cannot grow the prompt without bound.
-      const [original, ...followUps] = pendingClarification.messages;
-      pendingClarification.messages = [
-        original!,
-        ...[...followUps, msg].slice(-MAX_PENDING_CLARIFICATION_FOLLOW_UPS),
-      ];
+      pendingClarification.messages.push(msg);
+      while (
+        pendingClarification.messages.length > 2 &&
+        pendingClarification.messages.join(" / ").length > MAX_PENDING_CLARIFICATION_CHARS
+      ) {
+        pendingClarification.messages.splice(1, 1);
+      }
       pendingClarification.lastQuestion = question;
     } else {
       pendingClarification = {
@@ -2585,12 +2585,6 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         }
       }
 
-      const isStage1AskingClarification =
-        nonToolCategories.includes("clarify") ||
-        (!nonToolCategories.includes("question") &&
-          !nonToolCategories.includes("unsupported") &&
-          /[？?]|教えていただけます|教えてくださ|でしょうか/.test(stage1Response));
-
       const traceLabels =
         activeRoutes.length > 0
           ? activeRoutes.map((r) => `${r.category}("${r.instruction}")`)
@@ -2602,28 +2596,21 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       onProgress?.({
         phase: "turn1_done",
         activeLabel:
-          activeRoutes.length > 0 && !isStage1AskingClarification
+          activeRoutes.length > 0
             ? "⏳ 設定を更新しています…"
             : "⏳ 結果をまとめています…",
         stage1Response,
         routerTrace: [...routerTrace],
       });
 
-      if (activeRoutes.length === 0 || isStage1AskingClarification) {
-        const reason: NonToolCategory = isStage1AskingClarification
-          ? "clarify"
-          : nonToolCategories.includes("unsupported")
-            ? "unsupported"
-            : nonToolCategories.includes("clarify")
-              ? "clarify"
-              : "question";
+      if (activeRoutes.length === 0) {
+        const reason: NonToolCategory = nonToolCategories.includes("unsupported")
+          ? "unsupported"
+          : nonToolCategories.includes("clarify")
+            ? "clarify"
+            : "question";
         lastNonToolReason = reason;
         if (reason === "clarify") {
-          if (activeRoutes.length > 0) {
-            routerTrace.push(
-              `⏸️ Step 3 (Hold): 確認事項があるためツール実行を保留しユーザーの回答を待機`
-            );
-          }
           recordPendingClarification(userMessage, stage1Response);
         } else if (!stage1RoutingFailed) {
           // Only a genuine intent switch abandons the held request; a failed/aborted/unparseable

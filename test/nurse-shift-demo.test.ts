@@ -3577,23 +3577,13 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       await manager.initialize();
 
       // Turn 1: User says "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。"
-      // Even if the 3B router emits routes for staff_calendar + staff_contract while asking a clarifying question in `response`,
-      // Option A must hold ALL tool execution (`operations: []`, `intentType: "consult_only"`, `nonToolReason: "clarify"`).
+      // Stage 1 routes to `clarify` because the target minimum workday count is missing, holding all tool execution.
       turn1Reply = {
         thought:
-          "田中さんの9日から15日までの公休指定と、月間最低勤務日数の調整。勤務下限の具体的な数値が不明なため聞き返す。",
-        routes: [
-          {
-            tool_type: "staff_calendar",
-            instruction: "田中さんを9日から15日まで休ませる",
-          },
-          {
-            tool_type: "staff_contract",
-            instruction: "田中さんの月間勤務下限を調整する",
-          },
-        ],
+          "田中さんの9日から15日までの公休指定と、月間最低勤務日数の調整。勤務下限の具体的な数値が不明なため clarify で聞き返す。",
+        routes: [{ tool_type: "clarify" }],
         response:
-          "田中さんを9日から15日まで休ませ、月間勤務下限を調整します。勤務下限の具体的な調整内容を教えていただけますでしょうか？",
+          "田中さんの9日から15日までの公休とあわせて設定するため、月間最低勤務日数を何日に調整するか教えていただけますでしょうか？",
       };
       consultReplyText =
         "田中さんの9日〜15日の公休とあわせて一括設定するため、月間最低勤務日数を何日に調整するか教えてください。";
@@ -3605,7 +3595,6 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn1.intentType).toBe("consult_only");
       expect(planTurn1.nonToolReason).toBe("clarify");
       expect(planTurn1.operations).toEqual([]);
-      expect(planTurn1.routerTrace.some((t) => t.includes("Step 3 (Hold)"))).toBe(true);
       // Turn 2 extractors must NOT have been called during the held turn
       expect(capturedTurn2Prompts.length).toBe(0);
 
@@ -3633,8 +3622,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn2Vague.nonToolReason).toBe("clarify");
       expect(planTurn2Vague.operations).toEqual([]);
 
-      // Turns 2b/2c: Two more vague follow-ups. The pending entry keeps the canonical original request plus only the
-      // two most recent follow-ups, so repeated rounds cannot grow the prompt without bound (4368219500).
+      // Turns 2b/2c: Two more clarification follow-ups. All accumulated messages are preserved in order.
       const planTurn2b = await manager.extractPlan("まだ決めていない", state);
       expect(planTurn2b.nonToolReason).toBe("clarify");
       const planTurn2c = await manager.extractPlan("やっぱり少しだけ", state);
@@ -3648,7 +3636,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       turn1RawOutput = null;
 
       // Turn 4: User answers "勤務下限は15日" after repeated clarification rounds and a failed routing attempt (4367076840)
-      // The original request from Turn 1 must still be retained in the canonical pending entry!
+      // All accumulated clarification messages from Turn 1 onward must be retained in the pending entry!
       turn1Reply = {
         thought:
           "前回の未適用リクエスト（田中さんの9日〜15日の公休）と今回の回答（月間最低勤務日数を15日）を統合して実行する。",
@@ -3702,9 +3690,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const planTurn4 = await manager.extractPlan("勤務下限は15日", state);
       const turn4RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(turn4RouterPrompt).toContain(
-        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / まだ決めていない / やっぱり少しだけ」"
+        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / 勤務下限は少し減らして / まだ決めていない / やっぱり少しだけ」"
       );
-      expect(turn4RouterPrompt).not.toContain("勤務下限は少し減らして");
       expect(planTurn4.intentType).toBe("modify_and_solve");
       // 1 ranged add_request operation (days 9..15) + 1 set_nurse_contract operation = 2 operations
       expect(planTurn4.operations.length).toBe(2);
