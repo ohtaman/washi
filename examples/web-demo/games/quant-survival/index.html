@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QUANT SURVIVAL | クオンツ運用サバイバル</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="quant-shell">
+      <!-- Top Bar -->
+      <header class="quant-topbar">
+        <div class="topbar-left">
+          <a href="../" id="back-link" class="btn-terminal" title="ゲーム一覧へ戻る">
+            ← ゲーム一覧
+          </a>
+          <div class="brand-block">
+            <span class="brand-badge">QUANT SURVIVAL</span>
+            <span id="brand-subtitle" class="brand-subtitle">
+              エンドレス運用サバイバル
+            </span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div
+            id="best-record-badge"
+            class="record-pill"
+            title="自己ベスト記録（最高到達期・最高総資産）"
+          >
+            🏆 BEST: Q1 · $100.0M
+          </div>
+          <div id="lang-switch-group" class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <button
+            id="btn-help"
+            type="button"
+            class="btn-terminal"
+            title="遊び方と破綻確率の仕組み"
+          >
+            ? ルール
+          </button>
+          <button
+            id="btn-new-run"
+            type="button"
+            class="btn-terminal"
+            title="初期資産$100Mから新しく始める"
+          >
+            ↻ リセット
+          </button>
+        </div>
+      </header>
+
+      <!-- Live Compounding Scoreboard Strip -->
+      <section
+        id="scoreboard-strip"
+        class="scoreboard-strip"
+        aria-label="Asset Under Management Scoreboard"
+      >
+        <div class="score-card regime-card">
+          <div class="score-eyebrow">
+            <span id="hud-quarter-label">CURRENT QUARTER</span>
+            <span id="hud-cap-badge" class="cap-pill">MAX 100%/銘柄</span>
+          </div>
+          <h1 id="hud-regime-title" class="regime-title">Q1: 金利警戒とAI選別相場</h1>
+          <p id="hud-regime-forecast" class="regime-forecast">
+            TECHは高利回りだが変動が激しい。逆相関のGOLDやDFNSを組み合わせ、破綻確率を抑えて運用せよ。
+          </p>
+        </div>
+
+        <div class="score-card aum-card you-card">
+          <div class="score-eyebrow">
+            <span class="dot-you"></span>
+            <span id="hud-you-label">YOUR FUND (AUM)</span>
+          </div>
+          <div id="hud-player-aum" class="aum-value">$100.0M</div>
+          <div id="hud-player-delta" class="aum-sub">初期資金 $100.0M (複利引継)</div>
+        </div>
+
+        <div class="score-card aum-card ai-card">
+          <div class="score-eyebrow">
+            <span class="dot-ai"></span>
+            <span id="hud-ai-label">RIVAL FUND (AUM)</span>
+          </div>
+          <div id="hud-ai-aum" class="aum-value">$100.0M</div>
+          <div id="hud-ai-persona" class="aum-sub">RIVAL // 最小分散モデル</div>
+        </div>
+
+        <div class="score-card aum-card floor-card">
+          <div class="score-eyebrow">
+            <span class="dot-floor"></span>
+            <span id="hud-floor-label">LIQUIDATION FLOOR</span>
+          </div>
+          <div id="hud-floor-value" class="aum-value floor-text">-5.5% ($94.5M)</div>
+          <div id="hud-floor-sub" class="aum-sub">これ未満で即ロスカット退場</div>
+        </div>
+      </section>
+
+      <!-- Main Workspace Grid -->
+      <main class="workspace-grid">
+        <!-- LEFT PANEL: Asset Allocation & Correlation Matrix -->
+        <section
+          id="allocation-panel"
+          class="terminal-panel allocation-panel"
+          aria-label="Portfolio Allocation Controls"
+        >
+          <div class="panel-header">
+            <div>
+              <h2 id="alloc-heading" class="panel-title">1. ポートフォリオ配分 (合計 100%)</h2>
+              <p id="alloc-sub" class="panel-sub">
+                スライダーを動かすと自動で合計100%に正規化されます
+              </p>
+            </div>
+            <div class="preset-actions">
+              <button
+                id="btn-equal-weight"
+                type="button"
+                class="btn-chip"
+                title="全銘柄に均等配分する"
+              >
+                均等配分
+              </button>
+              <button
+                id="btn-balance-hedge"
+                type="button"
+                class="btn-chip accent"
+                title="逆相関ペアを組み合わせたバランス配分を試す"
+              >
+                逆相関ブレンド
+              </button>
+            </div>
+          </div>
+
+          <div id="asset-list" class="asset-list" role="list" aria-label="Investable Assets">
+            <!-- Populated dynamically by main.ts -->
+          </div>
+
+          <div class="corr-section">
+            <div class="corr-header">
+              <h3 id="corr-heading" class="corr-title">
+                資産間相関係数マトリクス (青 = 逆相関ヘッジ効果大)
+              </h3>
+            </div>
+            <div
+              id="corr-matrix-container"
+              class="corr-matrix-container"
+              aria-label="Asset Correlation Matrix"
+            >
+              <!-- Populated dynamically by main.ts -->
+            </div>
+          </div>
+        </section>
+
+        <!-- RIGHT PANEL: Risk Telemetry, Efficient Frontier & 60-Day Market Race -->
+        <section
+          id="telemetry-panel"
+          class="terminal-panel telemetry-panel"
+          aria-label="Risk Telemetry and Market Simulation"
+        >
+          <!-- Real-Time Risk Gauges -->
+          <div class="risk-gauges-grid">
+            <div class="gauge-box ruin-gauge-box">
+              <div class="gauge-top">
+                <span id="label-ruin-prob" class="gauge-label">期末フロア割れ確率 (参考値)</span>
+                <span id="badge-ruin-status" class="risk-status-pill safe">SAFE</span>
+              </div>
+              <div class="ruin-main-row">
+                <span id="metric-ruin-prob" class="gauge-big-num">1.8%</span>
+                <span id="metric-ai-ruin-compare" class="gauge-compare">
+                  RIVAL: 1.2%
+                </span>
+              </div>
+              <div class="prob-bar-track" aria-hidden="true">
+                <div id="ruin-prob-bar" class="prob-bar-fill" style="width: 9%"></div>
+              </div>
+            </div>
+
+            <div class="gauge-box">
+              <div class="gauge-top">
+                <span id="label-exp-return" class="gauge-label">期待リターン (E[R])</span>
+                <span id="metric-target-badge" class="target-pill">目標 +10.5%</span>
+              </div>
+              <div class="ruin-main-row">
+                <span id="metric-exp-return" class="gauge-num">+11.2%</span>
+                <span id="metric-ai-return-compare" class="gauge-compare">
+                  RIVAL: +10.5%
+                </span>
+              </div>
+              <div id="metric-vol-row" class="gauge-sub">
+                変動リスク (σ): 8.4% / Sharpe: 0.98
+              </div>
+            </div>
+          </div>
+
+          <!-- Dual Visual Stage: Frontier Radar + 60-Day Live Battle Chart -->
+          <div class="charts-grid">
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <span id="chart-frontier-title" class="chart-title">
+                  リスク・リターン平面 ＆ 効率的フロンティア
+                </span>
+                <span id="chart-frontier-legend" class="chart-legend">
+                  ● YOU &nbsp; ◆ RIVAL
+                </span>
+              </div>
+              <svg
+                id="frontier-svg"
+                class="terminal-svg"
+                viewBox="0 0 360 190"
+                role="img"
+                aria-label="Risk-Return Efficient Frontier Plot"
+              ></svg>
+            </div>
+
+            <div class="chart-card">
+              <div class="chart-card-header">
+                <span id="chart-battle-title" class="chart-title">
+                  60営業日 リアルタイム資産推移 (YOU vs RIVAL)
+                </span>
+                <span id="chart-day-counter" class="chart-day-badge">DAY 0 / 60</span>
+              </div>
+              <svg
+                id="battle-svg"
+                class="terminal-svg"
+                viewBox="0 0 420 190"
+                role="img"
+                aria-label="60-Day Live Asset Battle Chart"
+              ></svg>
+            </div>
+          </div>
+
+          <!-- Market News Ticker & Battle Outcome Banner -->
+          <div id="news-ticker" class="news-ticker" aria-live="polite">
+            <span class="ticker-tag">TERMINAL</span>
+            <span id="news-ticker-text" class="ticker-text">
+              配分を調整して [MARKET OPEN] を押すと、60日間の市場シミュレーションが始まります。
+            </span>
+          </div>
+
+          <!-- Outcome & Action Dock -->
+          <div id="outcome-banner" class="outcome-banner" hidden>
+            <div class="outcome-main">
+              <div id="outcome-title" class="outcome-title">Q1 SURVIVED</div>
+              <div id="outcome-detail" class="outcome-detail"></div>
+            </div>
+            <div id="outcome-ai-weights" class="outcome-ai-weights"></div>
+          </div>
+
+          <div class="action-dock">
+            <button id="btn-execute" type="button" class="btn-execute">
+              ▶ MARKET OPEN (60日間バトル開始)
+            </button>
+            <button id="btn-next-quarter" type="button" class="btn-next-quarter" hidden>
+              次の四半期へ進む ▶
+            </button>
+            <button id="btn-retry-run" type="button" class="btn-retry-run" hidden>
+              ↻ 初期資金 $100M から再挑戦
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Rules Modal Dialog (Modern Web Guidance: closedby="any" + showModal() + backdrop click fallback) -->
+    <dialog id="help-dialog" class="terminal-dialog" closedby="any" aria-labelledby="help-dialog-title">
+      <div class="dialog-inner">
+        <header class="dialog-header">
+          <h2 id="help-dialog-title">QUANT SURVIVAL — ルールと生き残り方</h2>
+          <button
+            id="btn-close-help"
+            type="button"
+            class="btn-dialog-close"
+            data-close-dialog="help-dialog"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </header>
+        <div id="help-dialog-body" class="dialog-body">
+          <!-- Populated dynamically by main.ts -->
+        </div>
+        <footer class="dialog-footer">
+          <button id="btn-help-ok" type="button" class="btn-execute btn-sm">
+            閉じる
+          </button>
+        </footer>
+      </div>
+    </dialog>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
