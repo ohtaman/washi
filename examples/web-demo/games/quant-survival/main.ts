@@ -264,6 +264,32 @@ let frontierPoints: FrontierPoint[] = [];
 let isSimulating = false;
 let lastSimulation: MarketSimulationResult | null = null;
 let animTimerId: number | null = null;
+let isLoadingQuarter = false;
+let loadToken = 0;
+
+/**
+ * Advances to the next quarter. Ignored while a quarter is loading or simulating so that
+ * repeated clicks cannot skip quarters.
+ */
+export function advanceQuarter(): Promise<void> {
+  if (isLoadingQuarter || isSimulating) return Promise.resolve();
+  return loadQuarter(currentQuarter + 1);
+}
+
+/** Returns the quarter and rival portfolio currently in effect (for UI state checks). */
+export function getQuantGameState(): {
+  quarter: number;
+  regimeId: string;
+  aiWeightsLength: number | null;
+  isLoading: boolean;
+} {
+  return {
+    quarter: currentQuarter,
+    regimeId: currentRegime.id,
+    aiWeightsLength: aiOptimal ? aiOptimal.weights.length : null,
+    isLoading: isLoadingQuarter,
+  };
+}
 
 function loadRecord(): SaveRecord {
   if (typeof window === "undefined") {
@@ -932,17 +958,35 @@ async function loadQuarter(quarter: number): Promise<void> {
     window.clearInterval(animTimerId);
     animTimerId = null;
   }
+  const token = ++loadToken;
+  isLoadingQuarter = true;
   isSimulating = false;
   lastSimulation = null;
+  aiOptimal = null;
   currentQuarter = quarter;
   currentRegime = getQuarterRegime(quarter);
 
-  const n = currentRegime.assets.length;
+  // Lock navigation and execution until the rival solve for this quarter completes
+  if (typeof document !== "undefined") {
+    const btnNext = document.getElementById("btn-next-quarter");
+    if (btnNext) btnNext.hidden = true;
+    const btnRetry = document.getElementById("btn-retry-run");
+    if (btnRetry) btnRetry.hidden = true;
+    const btnExecLock = document.getElementById("btn-execute") as HTMLButtonElement | null;
+    if (btnExecLock) btnExecLock.disabled = true;
+  }
+
+  const regime = currentRegime;
+  const n = regime.assets.length;
   playerWeights = new Array<number>(n).fill(1 / n);
-  frontierPoints = computeEfficientFrontier(currentRegime, 9);
+  frontierPoints = computeEfficientFrontier(regime, 9);
 
   // Solve Rival WaSHI-QP optimal portfolio
-  aiOptimal = await solveQuantOptimalPortfolio(currentRegime);
+  const solved = await solveQuantOptimalPortfolio(regime);
+  // Discard results from a superseded load (e.g. a reset issued while this solve was pending)
+  if (token !== loadToken) return;
+  aiOptimal = solved;
+  isLoadingQuarter = false;
 
   if (typeof document !== "undefined") {
     const outcomeBanner = document.getElementById("outcome-banner");
@@ -976,7 +1020,7 @@ async function loadQuarter(quarter: number): Promise<void> {
 }
 
 async function runMarketSimulation(): Promise<void> {
-  if (isSimulating) return;
+  if (isSimulating || isLoadingQuarter) return;
   isSimulating = true;
 
   if (!aiOptimal) {
@@ -1151,7 +1195,7 @@ function initDomEvents(): void {
 
   const btnNext = document.getElementById("btn-next-quarter");
   btnNext?.addEventListener("click", () => {
-    void loadQuarter(currentQuarter + 1);
+    void advanceQuarter();
   });
 
   const startFreshRun = () => {

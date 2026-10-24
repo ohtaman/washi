@@ -423,7 +423,8 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
       }
       triggeredShocks.push({
         day,
-        headline: shock.headline,
+        headline: shockDirection > 0 ? shock.headline : shock.reversedHeadline,
+        reversed: shockDirection < 0,
         playerImpact: pShock,
         aiImpact: aShock,
       });

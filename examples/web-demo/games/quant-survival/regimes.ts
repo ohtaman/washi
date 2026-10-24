@@ -183,6 +183,11 @@ const REGIME_TEMPLATES: Array<{
           en: "Hawkish central bank signal sparks tech sell-off and safe-haven inflow",
           zh: "央行释放鹰派信号：科技股承压，资金涌入黄金与防卫板块",
         },
+        reversedHeadline: {
+          ja: "中央銀行がハト派に転換：ハイテク株が買われ、ゴールドと防衛株から資金流出",
+          en: "Dovish central bank pivot lifts tech as money leaves safe havens",
+          zh: "央行转向鸽派：科技股走强，资金撤离黄金与防卫板块",
+        },
         assetImpulses: [-0.055, 0.03, 0.042, 0.006],
       },
       {
@@ -192,6 +197,11 @@ const REGIME_TEMPLATES: Array<{
           ja: "次世代AIチップ受注が予想超え：半導体セクターが急反発",
           en: "Next-gen AI chip orders beat estimates; semiconductor sector rebounds",
           zh: "下一代AI芯片订单超预期：半导体板块强劲反弹",
+        },
+        reversedHeadline: {
+          ja: "次世代AIチップ受注が予想割れ：半導体セクターが急落し、ゴールドに資金",
+          en: "Next-gen AI chip orders miss estimates; semiconductors slide as gold firms",
+          zh: "下一代AI芯片订单不及预期：半导体板块下挫，黄金走强",
         },
         assetImpulses: [0.062, 0.01, -0.022, 0.002],
       },
@@ -236,6 +246,11 @@ const REGIME_TEMPLATES: Array<{
           en: "Maritime chokepoint disruption sends energy surging while tech slides",
           zh: "海峡航运受阻：能源期货飙升，科技股回落",
         },
+        reversedHeadline: {
+          ja: "海峡輸送ルートが早期復旧：エネルギー先物が急落しハイテク株が反発",
+          en: "Maritime chokepoint reopens early; energy futures tumble and tech rebounds",
+          zh: "海峡航运提前恢复：能源期货大跌，科技股反弹",
+        },
         assetImpulses: [-0.052, 0.068, 0.032, 0.028, -0.005],
       },
       {
@@ -245,6 +260,11 @@ const REGIME_TEMPLATES: Array<{
           ja: "戦略備蓄の協調放出が決定：資源高が一服しグロース株が買い戻される",
           en: "Coordinated strategic reserve release cools oil and lifts growth stocks",
           zh: "多国联合释放战略储备：资源价格回落，成长股迎来买盘",
+        },
+        reversedHeadline: {
+          ja: "戦略備蓄の協調放出が見送り：資源高が再燃しグロース株が売られる",
+          en: "Strategic reserve release shelved; oil rallies again and growth stocks sell off",
+          zh: "多国联合释放战略储备计划搁置：资源价格再度走高，成长股遭抛售",
         },
         assetImpulses: [0.058, -0.038, 0.008, -0.015, 0.008],
       },
@@ -289,6 +309,11 @@ const REGIME_TEMPLATES: Array<{
           en: "Defense grid spending doubles; DFNS and GOLD rally as TECH pulls back",
           zh: "关键基建防卫预算翻倍：DFNS与GOLD走强，TECH遭遇获利了结",
         },
+        reversedHeadline: {
+          ja: "重要インフラ防衛予算が削減：DFNSとGOLDが売られ、TECHに資金が回帰",
+          en: "Defense grid budget cut; DFNS and GOLD slip as money rotates back into TECH",
+          zh: "关键基建防卫预算削减：DFNS与GOLD走弱，资金回流TECH",
+        },
         assetImpulses: [-0.048, 0.058, 0.025, 0.038, 0.005],
       },
       {
@@ -298,6 +323,11 @@ const REGIME_TEMPLATES: Array<{
           ja: "ソブリンクラウド大型契約が成立：TECHとDFNSが同時上昇",
           en: "Sovereign cloud mega-contract signed; TECH and DFNS advance together",
           zh: "主权云大型合同落地：TECH与DFNS携手上涨",
+        },
+        reversedHeadline: {
+          ja: "ソブリンクラウド大型契約が白紙撤回：TECHとDFNSが同時下落",
+          en: "Sovereign cloud mega-contract cancelled; TECH and DFNS fall together",
+          zh: "主权云大型合同被撤销：TECH与DFNS同步下跌",
         },
         assetImpulses: [0.055, 0.032, -0.015, -0.018, 0.004],
       },
@@ -343,6 +373,11 @@ const REGIME_TEMPLATES: Array<{
           en: "Quant flash deleveraging hits QNTX and TECH while GOLD spikes",
           zh: "算法交易连锁去杠杆冲击QNTX与TECH，GOLD逆势大涨",
         },
+        reversedHeadline: {
+          ja: "アルゴリズム取引の連鎖買い戻しでQNTX・TECHが急騰、GOLDが急落",
+          en: "Quant short-covering cascade lifts QNTX and TECH while GOLD drops",
+          zh: "算法交易连锁回补推升QNTX与TECH，GOLD大跌",
+        },
         assetImpulses: [-0.078, -0.045, 0.028, 0.035, 0.058, 0.008],
       },
       {
@@ -352,6 +387,11 @@ const REGIME_TEMPLATES: Array<{
           ja: "量子暗号通信の実用化に成功：QNTXがストップ高水準へ急伸",
           en: "Quantum encryption milestone achieved; QNTX surges on institutional buying",
           zh: "量子加密通信实现商用突破：机构大举买入推动QNTX飙升",
+        },
+        reversedHeadline: {
+          ja: "量子暗号通信の実証試験が失敗：機関投資家の売りでQNTXが急落",
+          en: "Quantum encryption trial fails; QNTX slumps on institutional selling",
+          zh: "量子加密通信验证失败：机构抛售致QNTX大跌",
         },
         assetImpulses: [0.095, 0.048, -0.015, 0.012, -0.025, 0.002],
       },
@@ -397,6 +437,11 @@ const REGIME_TEMPLATES: Array<{
           en: "Short-term credit squeeze hammers high-beta assets as GOLD and DFNS rally",
           zh: "短期信贷市场紧缩：高贝塔资产急挫，GOLD与DFNS全面走高",
         },
+        reversedHeadline: {
+          ja: "短期金融市場の信用不安が後退：高ベータ株が急反発しGOLD・DFNSが反落",
+          en: "Short-term credit fears ease; high-beta assets rebound as GOLD and DFNS retreat",
+          zh: "短期信贷担忧缓解：高贝塔资产反弹，GOLD与DFNS回落",
+        },
         assetImpulses: [-0.082, -0.055, 0.032, 0.045, 0.062, 0.01],
       },
       {
@@ -406,6 +451,11 @@ const REGIME_TEMPLATES: Array<{
           ja: "緊急流動性供給オペが発動：リスク資産が急速に切り返す",
           en: "Emergency liquidity facility announced; risk assets stage a sharp rebound",
           zh: "紧急流动性注入启动：风险资产强势V型反弹",
+        },
+        reversedHeadline: {
+          ja: "緊急流動性供給オペが見送り：リスク資産が一段安",
+          en: "Emergency liquidity facility withheld; risk assets slide further",
+          zh: "紧急流动性注入计划落空：风险资产进一步下跌",
         },
         assetImpulses: [0.092, 0.06, 0.025, 0.015, -0.02, 0.004],
       },

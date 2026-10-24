@@ -22,6 +22,8 @@ export interface MarketShockSpec {
   id: string;
   day: number; // Trading day (1..60) when shock can trigger
   headline: LocalizedText;
+  /** Headline shown when the shock fires in the reversed direction (impulses * -0.65) */
+  reversedHeadline: LocalizedText;
   /** Asset return impulse vector (same length as regime.assets) */
   assetImpulses: number[];
 }
@@ -77,6 +79,8 @@ export interface FrontierPoint {
 export interface TriggeredShock {
   day: number;
   headline: Record<GameLang, string>;
+  /** true when the shock fired in the reversed direction */
+  reversed: boolean;
   playerImpact: number;
   aiImpact: number;
 }

@@ -16,8 +16,10 @@ import {
   getQuarterRegime,
 } from "../examples/web-demo/games/quant-survival/regimes.js";
 import {
+  advanceQuarter,
   applyQuantStaticTranslations,
   formatLiquidationDetail,
+  getQuantGameState,
   resolveDisplayedFloorAum,
 } from "../examples/web-demo/games/quant-survival/main.js";
 
@@ -175,6 +177,38 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     }
     // The gauge is a terminal-return estimate, so paths that breach and recover must exist
     expect(sawIntraQuarterOnlyBreach).toBe(true);
+
+    // News headlines must describe the direction of the impulse actually applied
+    let sawReversed = false;
+    let sawForward = false;
+    for (const q of [1, 2, 3, 4, 5]) {
+      const regime = getQuarterRegime(q);
+      const w = new Array<number>(regime.assets.length).fill(0);
+      w[0] = 1; // all-in on asset 0 so the sign of playerImpact reveals the applied direction
+      for (let s = 1; s <= 40; s++) {
+        const sim = simulateQuarterMarket({
+          regime,
+          playerWeights: w,
+          aiWeights: w,
+          playerStartAum: 100,
+          aiStartAum: 100,
+          seed: s * 104729 + q,
+        });
+        for (const fired of sim.shocks) {
+          const spec = regime.candidateShocks.find((c) => c.day === fired.day);
+          expect(spec).toBeDefined();
+          if (!spec) continue;
+          const forwardImpact = spec.assetImpulses[0];
+          const appliedForward = Math.sign(fired.playerImpact) === Math.sign(forwardImpact);
+          expect(fired.reversed).toBe(!appliedForward);
+          expect(fired.headline).toEqual(appliedForward ? spec.headline : spec.reversedHeadline);
+          if (appliedForward) sawForward = true;
+          else sawReversed = true;
+        }
+      }
+    }
+    expect(sawForward).toBe(true);
+    expect(sawReversed).toBe(true);
 
     // The liquidation banner must report the actual breach day and intra-quarter low,
     // not attribute the breach to the (recovered) quarter-end values
@@ -400,5 +434,20 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
         (globalThis as { document?: unknown }).document = prevDocument;
       }
     }
+  });
+
+  it("ignores repeated next-quarter requests while the rival solve is pending", async () => {
+    expect(getQuantGameState().quarter).toBe(1);
+    // Double-click on "Advance to Next Quarter" before the first solve resolves
+    const first = advanceQuarter();
+    const second = advanceQuarter();
+    expect(getQuantGameState().isLoading).toBe(true);
+    await Promise.all([first, second]);
+
+    const state = getQuantGameState();
+    expect(state.quarter).toBe(2);
+    expect(state.regimeId).toBe(getQuarterRegime(2).id);
+    expect(state.aiWeightsLength).toBe(getQuarterRegime(2).assets.length);
+    expect(state.isLoading).toBe(false);
   });
 });
