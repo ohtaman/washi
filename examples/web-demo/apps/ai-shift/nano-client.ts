@@ -2442,39 +2442,36 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         messagesTokenBudget
       );
     } else {
-      const sepTokens = await measureTextTokens(" / ");
-      const followUpTokens = await measureTextTokens(pendingClarification.messages[1]!);
-      const maxOrigTokens = Math.max(
-        20,
-        messagesTokenBudget -
-          Math.min(followUpTokens, Math.floor(messagesTokenBudget / 2)) -
-          sepTokens
-      );
-      pendingClarification.messages[0] = await trimTailToTokenBudget(
-        pendingClarification.messages[0]!,
-        maxOrigTokens
-      );
       const origTokens = await measureTextTokens(pendingClarification.messages[0]!);
-      const followUpTokenBudget = Math.max(10, messagesTokenBudget - origTokens - sepTokens);
-      pendingClarification.messages[1] = await trimTailToTokenBudget(
-        pendingClarification.messages[1]!,
-        followUpTokenBudget
-      );
+      const sepTokens = await measureTextTokens(" / ");
+      const followUpTokenBudget = messagesTokenBudget - origTokens - sepTokens;
+      if (followUpTokenBudget <= 0) {
+        pendingClarification.messages.pop();
+      } else {
+        pendingClarification.messages[1] = await trimTailToTokenBudget(
+          pendingClarification.messages[1]!,
+          followUpTokenBudget
+        );
+      }
     }
 
-    const lastIdx = pendingClarification.messages.length - 1;
-    let promptTokens = await measureTextTokens(
-      buildCandidateContextPrompt(pendingClarification, state)
-    );
-    let lastCps = Array.from(pendingClarification.messages[lastIdx]!);
-    while (lastCps.length > 1 && promptTokens > totalTokenBudget) {
-      const excess = promptTokens - totalTokenBudget;
-      const dropCount = Math.max(1, Math.ceil(excess / 2));
-      lastCps = lastCps.slice(Math.min(lastCps.length - 1, dropCount));
-      pendingClarification.messages[lastIdx] = lastCps.join("");
-      promptTokens = await measureTextTokens(
+    if (pendingClarification.messages.length === 2) {
+      let promptTokens = await measureTextTokens(
         buildCandidateContextPrompt(pendingClarification, state)
       );
+      let lastCps = Array.from(pendingClarification.messages[1]!);
+      while (lastCps.length > 1 && promptTokens > totalTokenBudget) {
+        const excess = promptTokens - totalTokenBudget;
+        const dropCount = Math.max(1, Math.ceil(excess / 2));
+        lastCps = lastCps.slice(Math.min(lastCps.length - 1, dropCount));
+        pendingClarification.messages[1] = lastCps.join("");
+        promptTokens = await measureTextTokens(
+          buildCandidateContextPrompt(pendingClarification, state)
+        );
+      }
+      if (promptTokens > totalTokenBudget) {
+        pendingClarification.messages.pop();
+      }
     }
   }
 

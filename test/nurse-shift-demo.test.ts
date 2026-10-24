@@ -3773,7 +3773,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(measureContextUsageCallCount).toBeGreaterThan(0);
-      expect(turn6RouterPrompt).toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
+      expect(turn6RouterPrompt).toContain(largeInitialFittingBudget);
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
       const turn6PromptTokens = countMockTokens(turn6RouterPrompt);
       expect(1800 + turn6PromptTokens).toBeLessThanOrEqual(9216);
