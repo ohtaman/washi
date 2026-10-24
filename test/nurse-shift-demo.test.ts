@@ -3720,11 +3720,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5Clarify.nonToolReason).toBe("clarify");
       expect(planTurn5Clarify.operations).toEqual([]);
 
-      // Turn 5b: If a huge follow-up causes the combined pending messages to exceed Gemini Nano's
-      // 9,216-token context budget, older follow-ups are dropped and the oversized follow-up is trimmed
-      // while preserving the canonical original request (4368317268, 4368380674).
+      // Turn 5b: If both a huge follow-up and a huge clarification response occur, the combined
+      // pending entry (messages + question + labels) stays within Gemini Nano's single shared
+      // 9,216-token context budget while preserving the canonical original request (4368317268, 4368380674, 4368451525).
       const firstFollowUp = "夜勤上限はまだ迷っている";
       await manager.extractPlan(firstFollowUp, appliedTurn4.updatedState);
+      turn1Reply = {
+        thought: "夜勤上限の具体的な回数がまだ不明なため、再度確認する。",
+        routes: [{ tool_type: "clarify" }],
+        response: `確認させてください。${"う".repeat(7000)}`,
+      };
       const oversizedFollowUp = `補足${"あ".repeat(7000)}`;
       const planTurn5bOversized = await manager.extractPlan(
         oversizedFollowUp,

@@ -2322,22 +2322,30 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
   function recordPendingClarification(msg: string, question: string): void {
     const budget = getPendingClarificationCharBudget();
-    const boundedQuestion = question.length > budget ? question.slice(-budget) : question;
+    const labelOverhead = 32;
+    const questionBudget = Math.max(50, Math.floor(budget * 0.25));
+    const boundedQuestion =
+      question.length > questionBudget ? question.slice(-questionBudget) : question;
+    const messagesBudget = Math.max(100, budget - boundedQuestion.length - labelOverhead);
+    const maxInitialLen = Math.floor(messagesBudget / 2);
     if (pendingClarification) {
+      if (pendingClarification.messages[0]!.length > maxInitialLen) {
+        pendingClarification.messages[0] =
+          pendingClarification.messages[0]!.slice(-maxInitialLen);
+      }
       const original = pendingClarification.messages[0]!;
-      const followUpBudget = Math.max(1, budget - original.length - 3);
+      const followUpBudget = Math.max(1, messagesBudget - original.length - 3);
       const boundedFollowUp =
         msg.length > followUpBudget ? msg.slice(-followUpBudget) : msg;
       pendingClarification.messages.push(boundedFollowUp);
       while (
         pendingClarification.messages.length > 2 &&
-        pendingClarification.messages.join(" / ").length > budget
+        pendingClarification.messages.join(" / ").length > messagesBudget
       ) {
         pendingClarification.messages.splice(1, 1);
       }
       pendingClarification.lastQuestion = boundedQuestion;
     } else {
-      const maxInitialLen = Math.floor(budget / 2);
       const boundedInitial = msg.length > maxInitialLen ? msg.slice(-maxInitialLen) : msg;
       pendingClarification = {
         messages: [boundedInitial],
