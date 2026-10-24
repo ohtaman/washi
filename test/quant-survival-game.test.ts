@@ -6,6 +6,7 @@ import {
   computeAnalyticalMinimumVariancePortfolio,
   computeEfficientFrontier,
   computePortfolioMetrics,
+  evaluateFundTrack,
   normalCdf,
   simulateQuarterMarket,
   solveQuantOptimalPortfolio,
@@ -553,5 +554,83 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
       if (prevWin === undefined) delete g.window;
       else g.window = prevWin;
     }
+  });
+
+  it("evaluates player and rival tracks symmetrically via evaluateFundTrack (including intra-quarter floor breach and recovery)", () => {
+    // 3-day synthetic market where asset 0 drops -8% on day 1 (breaching -5% floor) and rallies +12% on day 2
+    const dailyReturns = [[-0.08], [0.12], [0.01]];
+    const track = evaluateFundTrack(dailyReturns, [1.0], 100, -0.05);
+    expect(track.liquidationAumFloor).toBeCloseTo(95.0, 6);
+    expect(track.minAum).toBeCloseTo(92.0, 6);
+    expect(track.endAum).toBeGreaterThan(100.0);
+    expect(track.liquidated).toBe(true);
+    expect(track.liquidatedDay).toBe(1);
+
+    // Verify simulateQuarterMarket applies the exact same barrier liquidation logic to both player and rival
+    const q1 = getQuarterRegime(1);
+    const n = q1.assets.length;
+    const allTech = new Array<number>(n).fill(0);
+    allTech[0] = 1.0;
+
+    let foundIntraQuarterRecovery = false;
+    for (let seed = 1; seed <= 120; seed++) {
+      const sim = simulateQuarterMarket({
+        regime: q1,
+        playerWeights: allTech,
+        aiWeights: allTech,
+        playerStartAum: 100,
+        aiStartAum: 100,
+        seed,
+      });
+      expect(sim.aiAumSeries).toEqual(sim.playerAumSeries);
+      expect(sim.aiLiquidated).toBe(sim.playerLiquidated);
+      expect(sim.aiLiquidatedDay).toBe(sim.playerLiquidatedDay);
+
+      if (sim.aiLiquidated && sim.aiEndAum >= sim.liquidationAumFloor) {
+        foundIntraQuarterRecovery = true;
+        expect(sim.aiLiquidatedDay).not.toBeNull();
+      }
+    }
+    expect(foundIntraQuarterRecovery).toBe(true);
+  });
+
+  it("resets rival starting AUM to match the player's current AUM at the start of each quarter", async () => {
+    await advanceQuarter();
+    const afterAdvance = getQuantGameState();
+    expect(afterAdvance.playerAum).toBeGreaterThan(0);
+    expect(afterAdvance.aiAum).toBe(afterAdvance.playerAum);
+  });
+
+  it("reports rival liquidation day when both or rival breach the floor", () => {
+    const q1 = getQuarterRegime(1);
+    const n = q1.assets.length;
+    const allTech = new Array<number>(n).fill(0);
+    allTech[0] = 1.0;
+
+    let bothLiquidatedSim = null;
+    for (let seed = 1; seed <= 50; seed++) {
+      const candidate = simulateQuarterMarket({
+        regime: q1,
+        playerWeights: allTech,
+        aiWeights: allTech,
+        playerStartAum: 100,
+        aiStartAum: 100,
+        seed,
+      });
+      if (candidate.playerLiquidated && candidate.aiLiquidated) {
+        bothLiquidatedSim = candidate;
+        break;
+      }
+    }
+    expect(bothLiquidatedSim).not.toBeNull();
+    if (!bothLiquidatedSim) return;
+
+    const jaText = formatLiquidationDetail("ja", bothLiquidatedSim);
+    const enText = formatLiquidationDetail("en", bothLiquidatedSim);
+    const zhText = formatLiquidationDetail("zh", bothLiquidatedSim);
+
+    expect(jaText).toContain(`DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
+    expect(enText).toContain(`WaSHI-QP also liquidated on DAY ${bothLiquidatedSim.aiLiquidatedDay}`);
+    expect(zhText).toContain(`第 ${bothLiquidatedSim.aiLiquidatedDay} 日触发强平`);
   });
 });

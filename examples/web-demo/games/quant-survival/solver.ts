@@ -1,6 +1,7 @@
 import { HiGHS, Model, minimize, sum } from "../../../../src/index.js";
 import type {
   FrontierPoint,
+  FundTrackResult,
   MarketSimulationInput,
   MarketSimulationResult,
   PortfolioMetrics,
@@ -366,6 +367,65 @@ class SeededRng {
   }
 }
 
+/**
+ * Evaluates a single fund's 60-day AUM trajectory against a given sequence of daily asset returns.
+ * Applies the exact same compounding and intra-quarter / quarter-end barrier liquidation logic
+ * regardless of whether the fund is managed by the player or the rival optimizer.
+ */
+export function evaluateFundTrack(
+  dailyAssetReturns: number[][],
+  weights: number[],
+  startAum: number,
+  liquidationFloor: number
+): FundTrackResult {
+  const days = dailyAssetReturns.length;
+  const aumSeries: number[] = [startAum];
+  const liquidationAumFloor = startAum * (1 + liquidationFloor);
+
+  let cumReturn = 0;
+  let peakAum = startAum;
+  let minAum = startAum;
+  let maxDrawdown = 0;
+  let liquidatedDay: number | null = null;
+
+  for (let d = 0; d < days; d++) {
+    const assetReturns = dailyAssetReturns[d];
+    let dayRet = 0;
+    for (let i = 0; i < assetReturns.length; i++) {
+      dayRet += (weights[i] ?? 0) * assetReturns[i];
+    }
+
+    cumReturn = (1 + cumReturn) * (1 + dayRet) - 1;
+    const aum = startAum * (1 + cumReturn);
+    aumSeries.push(aum);
+
+    if (aum > peakAum) peakAum = aum;
+    if (aum < minAum) minAum = aum;
+
+    const dd = (aum - peakAum) / peakAum;
+    if (dd < maxDrawdown) maxDrawdown = dd;
+
+    if (liquidatedDay === null && aum < liquidationAumFloor) {
+      liquidatedDay = d + 1;
+    }
+  }
+
+  const endAum = aumSeries[days];
+  const liquidated = endAum < liquidationAumFloor || liquidatedDay !== null;
+
+  return {
+    startAum,
+    endAum,
+    minAum,
+    aumSeries,
+    totalReturn: cumReturn,
+    maxDrawdown,
+    liquidationAumFloor,
+    liquidated,
+    liquidatedDay,
+  };
+}
+
 export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimulationResult {
   const { regime, playerWeights, aiWeights, playerStartAum, aiStartAum } = input;
   const days = 60;
@@ -376,26 +436,13 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
   const dailyScale = 1 / Math.sqrt(days);
   const dailyDrift = regime.assets.map((a) => a.expectedReturn / days);
 
-  // Pick 1 or 2 macro shocks from the regime's candidate shocks
+  // Pick candidate macro shocks indexed by trading day
   const activeShocks = new Map<number, (typeof regime.candidateShocks)[number]>();
   for (const shock of regime.candidateShocks) {
     activeShocks.set(shock.day, shock);
   }
 
-  const playerAumSeries: number[] = [playerStartAum];
-  const aiAumSeries: number[] = [aiStartAum];
-  const liquidationAumFloor = playerStartAum * (1 + regime.liquidationFloor);
-
-  let playerCumReturn = 0;
-  let aiCumReturn = 0;
-  let playerPeakAum = playerStartAum;
-  let aiPeakAum = aiStartAum;
-  let playerMaxDrawdown = 0;
-  let aiMaxDrawdown = 0;
-  let playerMinAum = playerStartAum;
-  let aiMinAum = aiStartAum;
-  let playerLiquidatedDay: number | null = null;
-
+  const dailyAssetReturns: number[][] = [];
   const triggeredShocks: TriggeredShock[] = [];
 
   for (let day = 1; day <= days; day++) {
@@ -430,59 +477,39 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
       });
     }
 
-    let pDayRet = 0;
-    let aDayRet = 0;
-    for (let i = 0; i < n; i++) {
-      pDayRet += (playerWeights[i] ?? 0) * assetDailyReturns[i];
-      aDayRet += (aiWeights[i] ?? 0) * assetDailyReturns[i];
-    }
-
-    playerCumReturn = (1 + playerCumReturn) * (1 + pDayRet) - 1;
-    aiCumReturn = (1 + aiCumReturn) * (1 + aDayRet) - 1;
-
-    const pAum = playerStartAum * (1 + playerCumReturn);
-    const aAum = aiStartAum * (1 + aiCumReturn);
-
-    playerAumSeries.push(pAum);
-    aiAumSeries.push(aAum);
-
-    if (pAum > playerPeakAum) playerPeakAum = pAum;
-    if (aAum > aiPeakAum) aiPeakAum = aAum;
-    if (pAum < playerMinAum) playerMinAum = pAum;
-    if (aAum < aiMinAum) aiMinAum = aAum;
-
-    const pDd = (pAum - playerPeakAum) / playerPeakAum;
-    const aDd = (aAum - aiPeakAum) / aiPeakAum;
-    if (pDd < playerMaxDrawdown) playerMaxDrawdown = pDd;
-    if (aDd < aiMaxDrawdown) aiMaxDrawdown = aDd;
-
-    if (playerLiquidatedDay === null && pAum < liquidationAumFloor) {
-      playerLiquidatedDay = day;
-    }
+    dailyAssetReturns.push(assetDailyReturns);
   }
 
-  const playerEndAum = playerAumSeries[days];
-  const aiEndAum = aiAumSeries[days];
-  const playerLiquidated =
-    playerEndAum < liquidationAumFloor || playerLiquidatedDay !== null;
-  const aiLiquidated = aiEndAum < aiStartAum * (1 + regime.liquidationFloor);
+  const playerTrack = evaluateFundTrack(
+    dailyAssetReturns,
+    playerWeights,
+    playerStartAum,
+    regime.liquidationFloor
+  );
+  const aiTrack = evaluateFundTrack(
+    dailyAssetReturns,
+    aiWeights,
+    aiStartAum,
+    regime.liquidationFloor
+  );
 
   return {
     days,
-    playerAumSeries,
-    aiAumSeries,
-    liquidationAumFloor,
-    playerReturn: playerCumReturn,
-    aiReturn: aiCumReturn,
-    playerEndAum,
-    aiEndAum,
-    playerMinAum,
-    aiMinAum,
-    playerMaxDrawdown,
-    aiMaxDrawdown,
-    playerLiquidated,
-    playerLiquidatedDay,
-    aiLiquidated,
+    playerAumSeries: playerTrack.aumSeries,
+    aiAumSeries: aiTrack.aumSeries,
+    liquidationAumFloor: playerTrack.liquidationAumFloor,
+    playerReturn: playerTrack.totalReturn,
+    aiReturn: aiTrack.totalReturn,
+    playerEndAum: playerTrack.endAum,
+    aiEndAum: aiTrack.endAum,
+    playerMinAum: playerTrack.minAum,
+    aiMinAum: aiTrack.minAum,
+    playerMaxDrawdown: playerTrack.maxDrawdown,
+    aiMaxDrawdown: aiTrack.maxDrawdown,
+    playerLiquidated: playerTrack.liquidated,
+    playerLiquidatedDay: playerTrack.liquidatedDay,
+    aiLiquidated: aiTrack.liquidated,
+    aiLiquidatedDay: aiTrack.liquidatedDay,
     shocks: triggeredShocks,
   };
 }

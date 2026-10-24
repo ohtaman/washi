@@ -85,6 +85,18 @@ export interface TriggeredShock {
   aiImpact: number;
 }
 
+export interface FundTrackResult {
+  startAum: number;
+  endAum: number;
+  minAum: number;
+  aumSeries: number[];
+  totalReturn: number;
+  maxDrawdown: number;
+  liquidationAumFloor: number;
+  liquidated: boolean;
+  liquidatedDay: number | null;
+}
+
 export interface MarketSimulationInput {
   regime: QuarterRegime;
   playerWeights: number[];
@@ -110,5 +122,6 @@ export interface MarketSimulationResult {
   playerLiquidated: boolean;
   playerLiquidatedDay: number | null;
   aiLiquidated: boolean;
+  aiLiquidatedDay: number | null;
   shocks: TriggeredShock[];
 }

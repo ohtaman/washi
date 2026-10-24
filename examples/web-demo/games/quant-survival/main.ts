@@ -140,7 +140,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
         <li><strong>ロスカット退場（LIQUIDATION FLOOR）</strong>：期中の資産または期末資産が「破綻ライン」を割り込むと即ゲームオーバーです。</li>
         <li><strong>破綻確率を下げるコツ（逆相関ヘッジ）</strong>：高リターン銘柄（TECHやQNTX）だけに集中投資すると、暴落イベントで簡単に破綻します。相関係数がマイナス（青色）の銘柄（GOLDやDFNSなど）を組み合わせると、期待リターンを高く保ったまま破綻確率だけを劇的に引き下げられます。</li>
         <li><strong>期末フロア割れ確率（参考値）</strong>：期末リターンを正規分布で近似し、破綻ラインを下回る確率を見積もった目安です。期中の一時的な下落やニュースショックは含まないため、実際に退場する確率はこれより高くなります。</li>
-        <li><strong>ライバル WaSHI-QP</strong>：ブラウザ内の二次計画法ソルバーが毎期リアルタイムに最小分散ポートフォリオを構築して並走します。破綻せずにどこまで資産を伸ばせるか競いましょう。</li>
+        <li><strong>ライバル WaSHI-QP</strong>：ブラウザ内の二次計画法ソルバーが毎期あなたの開始資産と同額から最小分散ポートフォリオを構築して並走します。毎期イコールコンディションの60日間勝負で、破綻せずにどこまで資産を伸ばせるか競いましょう。</li>
       </ul>
     `,
   },
@@ -194,7 +194,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
         <li><strong>Liquidation Floor</strong>: If your fund drops below the red liquidation floor during or at the end of the 60-day quarter, you are liquidated (Game Over).</li>
         <li><strong>Correlation Hedging</strong>: Going 100% into a single high-return asset invites disaster when macro shocks hit. Combine negatively correlated assets (highlighted in blue, such as TECH + GOLD or NRGY) to slash ruin probability while preserving upside.</li>
         <li><strong>Quarter-End Shortfall Probability (Estimate)</strong>: A normal approximation of the chance that your quarter-end return finishes below the floor. It ignores intra-quarter dips and news shocks, so your actual liquidation risk is higher than this gauge.</li>
-        <li><strong>Rival WaSHI-QP</strong>: Compete side-by-side against a live quadratic optimizer solving for minimum portfolio variance each quarter.</li>
+        <li><strong>Rival WaSHI-QP</strong>: Every quarter starts as an equal-AUM 60-day duel against a live quadratic optimizer solving for minimum portfolio variance.</li>
       </ul>
     `,
   },
@@ -247,7 +247,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
         <li><strong>强平爆仓线（Liquidation Floor）</strong>：若盘中或季末净值跌破红色强平线，基金即刻清盘出局。</li>
         <li><strong>利用负相关对冲风险</strong>：重仓单一高收益资产极易在市场冲击中爆仓。搭配相关系数为负（蓝色标记，如TECH搭配GOLD或DFNS）的资产，可以在保持预期回报的同时大幅压低爆仓概率。</li>
         <li><strong>季末跌破强平线概率（参考值）</strong>：以正态分布近似季末收益率，估算其低于强平线的概率。该数值不包含季度中途的暂时下跌与新闻冲击，因此实际出局概率会高于此仪表。</li>
-        <li><strong>对手 WaSHI-QP</strong>：与浏览器内实时求解最小方差投资组合的对手同台竞技，挑战最高存活季度与最高资产规模。</li>
+        <li><strong>对手 WaSHI-QP</strong>：每季度均从与你相同的起始净值出发，与浏览器内实时求解最小方差投资组合的对手展开公平的60日对决。</li>
       </ul>
     `,
   },
@@ -257,6 +257,8 @@ let currentLang: GameLang = getGameLang();
 let currentQuarter = 1;
 let playerAum = 100.0;
 let aiAum = 100.0;
+let duelWins = 0;
+let duelLosses = 0;
 let currentRegime: QuarterRegime = getQuarterRegime(1);
 let playerWeights: number[] = [];
 let aiOptimal: QuantOptimalResult | null = null;
@@ -289,12 +291,20 @@ export function getQuantGameState(): {
   regimeId: string;
   aiWeightsLength: number | null;
   isLoading: boolean;
+  playerAum: number;
+  aiAum: number;
+  duelWins: number;
+  duelLosses: number;
 } {
   return {
     quarter: currentQuarter,
     regimeId: currentRegime.id,
     aiWeightsLength: aiOptimal ? aiOptimal.weights.length : null,
     isLoading: isLoadingQuarter,
+    playerAum,
+    aiAum,
+    duelWins,
+    duelLosses,
   };
 }
 
@@ -500,12 +510,15 @@ function renderScoreboard(): void {
   if (pDeltaEl) {
     const diff = playerAum - aiAum;
     const sign = diff >= 0 ? "+" : "";
+    const recJa = duelWins + duelLosses > 0 ? ` (${duelWins}勝${duelLosses}敗)` : "";
+    const recZh = duelWins + duelLosses > 0 ? ` (${duelWins}胜${duelLosses}负)` : "";
+    const recEn = duelWins + duelLosses > 0 ? ` (${duelWins}W-${duelLosses}L)` : "";
     pDeltaEl.textContent =
       currentLang === "ja"
-        ? `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M`
+        ? `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M${recJa}`
         : currentLang === "zh"
-          ? `对比 WaSHI-QP: ${sign}${diff.toFixed(1)}M`
-          : `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M`;
+          ? `对比 WaSHI-QP: ${sign}${diff.toFixed(1)}M${recZh}`
+          : `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M${recEn}`;
   }
 
   const aAumEl = document.getElementById("hud-ai-aum");
@@ -546,13 +559,23 @@ export function formatLiquidationDetail(
   const floor = formatMoney(sim.liquidationAumFloor);
   const minAum = formatMoney(sim.playerMinAum);
   const aRetStr = formatSignedPct(sim.aiReturn);
+  const aiDay = sim.aiLiquidatedDay ?? sim.days;
   if (lang === "ja") {
-    return `DAY ${day} に資産が破綻ライン ${floor} を割り込みました (期中最安値 ${minAum})。WaSHI-QP 今期損益: ${aRetStr}`;
+    const aiNote = sim.aiLiquidated
+      ? `WaSHI-QP も DAY ${aiDay} にロスカット (${aRetStr})`
+      : `WaSHI-QP 今期損益: ${aRetStr}`;
+    return `DAY ${day} に資産が破綻ライン ${floor} を割り込みました (期中最安値 ${minAum})。${aiNote}`;
   }
   if (lang === "zh") {
-    return `第 ${day} 个交易日净值跌破强平线 ${floor}（季内最低 ${minAum}）。WaSHI-QP 本季收益: ${aRetStr}`;
+    const aiNote = sim.aiLiquidated
+      ? `WaSHI-QP 亦于第 ${aiDay} 日触发强平 (${aRetStr})`
+      : `WaSHI-QP 本季收益: ${aRetStr}`;
+    return `第 ${day} 个交易日净值跌破强平线 ${floor}（季内最低 ${minAum}）。${aiNote}`;
   }
-  return `AUM fell below the liquidation floor ${floor} on DAY ${day} (intra-quarter low ${minAum}). WaSHI-QP return: ${aRetStr}`;
+  const aiNote = sim.aiLiquidated
+    ? `WaSHI-QP also liquidated on DAY ${aiDay} (${aRetStr})`
+    : `WaSHI-QP return: ${aRetStr}`;
+  return `AUM fell below the liquidation floor ${floor} on DAY ${day} (intra-quarter low ${minAum}). ${aiNote}`;
 }
 
 function findStrongestNegativeCorrPeer(assetIndex: number): string {
@@ -990,6 +1013,8 @@ async function loadQuarter(quarter: number): Promise<void> {
   aiOptimal = null;
   currentQuarter = quarter;
   currentRegime = getQuarterRegime(quarter);
+  // Every quarter starts as an equal-condition 60-day duel from the player's current AUM
+  aiAum = playerAum;
 
   // Lock navigation and execution until the rival solve for this quarter completes
   if (typeof document !== "undefined") {
@@ -1072,9 +1097,14 @@ async function runMarketSimulation(): Promise<void> {
   const finishSimulation = () => {
     isSimulating = false;
     playerAum = Math.max(0, Number(sim.playerEndAum.toFixed(2)));
-    aiAum = Math.max(10, Number(sim.aiEndAum.toFixed(2)));
+    aiAum = Math.max(0, Number(sim.aiEndAum.toFixed(2)));
 
     if (!sim.playerLiquidated) {
+      if (sim.aiLiquidated || sim.playerReturn >= sim.aiReturn) {
+        duelWins += 1;
+      } else {
+        duelLosses += 1;
+      }
       saveRecord(currentQuarter + 1, playerAum);
     } else {
       saveRecord(currentQuarter, Math.max(playerAum, sim.playerAumSeries[0]));
@@ -1142,7 +1172,7 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
       currentLang === "ja"
         ? `LIQUIDATED — Q${currentQuarter} ロスカット退場`
         : currentLang === "zh"
-          ? `LIQUIDATED — Q${currentQuarter} 触发强平出局`
+           ? `LIQUIDATED — Q${currentQuarter} 触发强平出局`
           : `LIQUIDATED — Q${currentQuarter} Margin Call`;
     detailEl.textContent = formatLiquidationDetail(currentLang, sim);
 
@@ -1150,19 +1180,29 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
     if (btnNext) btnNext.hidden = true;
     if (btnRetry) btnRetry.hidden = false;
   } else {
-    const beatAi = sim.playerReturn >= sim.aiReturn;
+    const beatAi = sim.aiLiquidated || sim.playerReturn >= sim.aiReturn;
     titleEl.textContent =
       currentLang === "ja"
         ? `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT WaSHI-QP" : "SURVIVED QUARTER"}`
         : currentLang === "zh"
           ? `Q${currentQuarter} 存活成功 · ${beatAi ? "击败 WaSHI-QP" : "顺利过关"}`
           : `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT WaSHI-QP" : "QUARTER CLEARED"}`;
+    const aiDay = sim.aiLiquidatedDay ?? sim.days;
+    const aiSummaryJa = sim.aiLiquidated
+      ? `WaSHI-QP: DAY ${aiDay} ロスカット脱落 (${aRetStr})`
+      : `WaSHI-QP: ${aRetStr} (総資産 ${formatMoney(aiAum)})`;
+    const aiSummaryZh = sim.aiLiquidated
+      ? `WaSHI-QP: 第 ${aiDay} 日触发强平 (${aRetStr})`
+      : `WaSHI-QP: ${aRetStr} (总资产 ${formatMoney(aiAum)})`;
+    const aiSummaryEn = sim.aiLiquidated
+      ? `WaSHI-QP: LIQUIDATED DAY ${aiDay} (${aRetStr})`
+      : `WaSHI-QP: ${aRetStr} (AUM ${formatMoney(aiAum)})`;
     detailEl.textContent =
       currentLang === "ja"
-        ? `あなた: ${pRetStr} (総資産 ${formatMoney(playerAum)}) ／ WaSHI-QP: ${aRetStr} (総資産 ${formatMoney(aiAum)})`
+        ? `あなた: ${pRetStr} (総資産 ${formatMoney(playerAum)}) ／ ${aiSummaryJa}`
         : currentLang === "zh"
-          ? `你的收益: ${pRetStr} (总资产 ${formatMoney(playerAum)}) ／ WaSHI-QP: ${aRetStr} (总资产 ${formatMoney(aiAum)})`
-          : `YOU: ${pRetStr} (AUM ${formatMoney(playerAum)}) / WaSHI-QP: ${aRetStr} (AUM ${formatMoney(aiAum)})`;
+          ? `你的收益: ${pRetStr} (总资产 ${formatMoney(playerAum)}) ／ ${aiSummaryZh}`
+          : `YOU: ${pRetStr} (AUM ${formatMoney(playerAum)}) / ${aiSummaryEn}`;
 
     if (btnExec) btnExec.hidden = true;
     if (btnNext) btnNext.hidden = false;
@@ -1228,6 +1268,8 @@ function initDomEvents(): void {
   const startFreshRun = () => {
     playerAum = 100.0;
     aiAum = 100.0;
+    duelWins = 0;
+    duelLosses = 0;
     void loadQuarter(1);
   };
 
