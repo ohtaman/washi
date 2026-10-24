@@ -2384,7 +2384,32 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     question: string,
     state: NurseSchedulingState
   ): Promise<void> {
+    if (pendingClarification) {
+      pendingClarification.messages.push(msg);
+      pendingClarification.lastQuestion = question;
+    } else {
+      pendingClarification = {
+        messages: [msg],
+        lastQuestion: question,
+      };
+    }
+
     const totalTokenBudget = getPendingClarificationTokenBudget();
+    while (
+      pendingClarification.messages.length > 2 &&
+      (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) >
+        totalTokenBudget
+    ) {
+      pendingClarification.messages.splice(1, 1);
+    }
+
+    if (
+      (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) <=
+      totalTokenBudget
+    ) {
+      return;
+    }
+
     const headerAndHistoryTokens = await measureTextTokens(
       [
         `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
@@ -2394,53 +2419,62 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       ].join("\n")
     );
     const questionTokenBudget = Math.max(30, Math.floor(totalTokenBudget * 0.25));
-    const boundedQuestion = await trimTailToTokenBudget(question, questionTokenBudget);
-    const questionTokens = await measureTextTokens(boundedQuestion);
+    pendingClarification.lastQuestion = await trimTailToTokenBudget(
+      pendingClarification.lastQuestion,
+      questionTokenBudget
+    );
+    if (
+      (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) <=
+      totalTokenBudget
+    ) {
+      return;
+    }
+
+    const questionTokens = await measureTextTokens(pendingClarification.lastQuestion);
     const messagesTokenBudget = Math.max(
       60,
       totalTokenBudget - questionTokens - headerAndHistoryTokens - 10
     );
-    const maxInitialTokens = Math.max(20, Math.floor(messagesTokenBudget / 2));
 
-    if (pendingClarification) {
+    if (pendingClarification.messages.length === 1) {
       pendingClarification.messages[0] = await trimTailToTokenBudget(
         pendingClarification.messages[0]!,
-        maxInitialTokens
+        messagesTokenBudget
+      );
+    } else {
+      const sepTokens = await measureTextTokens(" / ");
+      const followUpTokens = await measureTextTokens(pendingClarification.messages[1]!);
+      const maxOrigTokens = Math.max(
+        20,
+        messagesTokenBudget -
+          Math.min(followUpTokens, Math.floor(messagesTokenBudget / 2)) -
+          sepTokens
+      );
+      pendingClarification.messages[0] = await trimTailToTokenBudget(
+        pendingClarification.messages[0]!,
+        maxOrigTokens
       );
       const origTokens = await measureTextTokens(pendingClarification.messages[0]!);
-      const sepTokens = await measureTextTokens(" / ");
       const followUpTokenBudget = Math.max(10, messagesTokenBudget - origTokens - sepTokens);
-      const boundedFollowUp = await trimTailToTokenBudget(msg, followUpTokenBudget);
-      pendingClarification.messages.push(boundedFollowUp);
-      pendingClarification.lastQuestion = boundedQuestion;
-      while (
-        pendingClarification.messages.length > 2 &&
-        (await measureTextTokens(buildCandidateContextPrompt(pendingClarification, state))) >
-          totalTokenBudget
-      ) {
-        pendingClarification.messages.splice(1, 1);
-      }
-      if (pendingClarification.messages.length === 2) {
-        let promptTokens = await measureTextTokens(
-          buildCandidateContextPrompt(pendingClarification, state)
-        );
-        let followCps = Array.from(pendingClarification.messages[1]!);
-        while (followCps.length > 1 && promptTokens > totalTokenBudget) {
-          const excess = promptTokens - totalTokenBudget;
-          const dropCount = Math.max(1, Math.ceil(excess / 2));
-          followCps = followCps.slice(Math.min(followCps.length - 1, dropCount));
-          pendingClarification.messages[1] = followCps.join("");
-          promptTokens = await measureTextTokens(
-            buildCandidateContextPrompt(pendingClarification, state)
-          );
-        }
-      }
-    } else {
-      const boundedInitial = await trimTailToTokenBudget(msg, maxInitialTokens);
-      pendingClarification = {
-        messages: [boundedInitial],
-        lastQuestion: boundedQuestion,
-      };
+      pendingClarification.messages[1] = await trimTailToTokenBudget(
+        pendingClarification.messages[1]!,
+        followUpTokenBudget
+      );
+    }
+
+    const lastIdx = pendingClarification.messages.length - 1;
+    let promptTokens = await measureTextTokens(
+      buildCandidateContextPrompt(pendingClarification, state)
+    );
+    let lastCps = Array.from(pendingClarification.messages[lastIdx]!);
+    while (lastCps.length > 1 && promptTokens > totalTokenBudget) {
+      const excess = promptTokens - totalTokenBudget;
+      const dropCount = Math.max(1, Math.ceil(excess / 2));
+      lastCps = lastCps.slice(Math.min(lastCps.length - 1, dropCount));
+      pendingClarification.messages[lastIdx] = lastCps.join("");
+      promptTokens = await measureTextTokens(
+        buildCandidateContextPrompt(pendingClarification, state)
+      );
     }
   }
 

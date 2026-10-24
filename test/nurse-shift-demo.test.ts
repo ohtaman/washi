@@ -3727,21 +3727,26 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         routes: [{ tool_type: "clarify" }],
         response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
       };
-      const asciiTaggedOriginal = `[REQ-${"A".repeat(2500)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
+      // An initial request whose measured tokens (~2,800) exceed 50% of the message budget
+      // but fit within the full shared budget (~5,000 tokens) is preserved in full on the
+      // next turn without premature 50% truncation (4368632729).
+      const largeInitialFittingBudget = `[REQ-${"A".repeat(11000)}] 佐藤さんを10日休みにして、夜勤上限も調整して`;
       const planTurn5Clarify = await manager.extractPlan(
-        asciiTaggedOriginal,
+        largeInitialFittingBudget,
         appliedTurn4.updatedState
       );
       expect(planTurn5Clarify.intentType).toBe("consult_only");
       expect(planTurn5Clarify.nonToolReason).toBe("clarify");
       expect(planTurn5Clarify.operations).toEqual([]);
 
-      // Turn 5b: If both a huge follow-up and a huge clarification response occur, the combined
-      // pending entry (messages + question + labels) stays within Gemini Nano's single shared
-      // 9,216-token context budget while preserving the canonical original request (including its
-      // leading ASCII prefix that has >2,500 chars but <700 tokens) (4368317268, 4368380674, 4368451525, 4368601792).
+      // Turn 5b: First follow-up is small, so `largeInitialFittingBudget` is still preserved in full
+      // in Turn 5b's Stage 1 prompt; then an oversized follow-up + oversized clarification response
+      // triggers budget trimming while still keeping the canonical original request within budget
+      // (4368317268, 4368380674, 4368451525, 4368601792, 4368632729).
       const firstFollowUp = "夜勤上限はまだ迷っている";
       await manager.extractPlan(firstFollowUp, appliedTurn4.updatedState);
+      const turn5bFirstRouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(turn5bFirstRouterPrompt).toContain(largeInitialFittingBudget);
       turn1Reply = {
         thought: "夜勤上限の具体的な回数がまだ不明なため、再度確認する。",
         routes: [{ tool_type: "clarify" }],
@@ -3755,7 +3760,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn5bOversized.nonToolReason).toBe("clarify");
 
       // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
-      // Verify that Turn 6's Stage 1 prompt still retained the full original Turn 5 request while dropping the older follow-up,
+      // Verify that Turn 6's Stage 1 prompt still retained the Turn 5 request while dropping the older follow-up,
       // and that switching intent clears `pendingClarification` so Turn 7 does NOT resurrect it!
       turn1Reply = {
         thought: "現在の設定に関する質問。",
@@ -3768,7 +3773,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(measureContextUsageCallCount).toBeGreaterThan(0);
-      expect(turn6RouterPrompt).toContain(asciiTaggedOriginal);
+      expect(turn6RouterPrompt).toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
       expect(turn6RouterPrompt).not.toContain(firstFollowUp);
       const turn6PromptTokens = countMockTokens(turn6RouterPrompt);
       expect(1800 + turn6PromptTokens).toBeLessThanOrEqual(9216);
