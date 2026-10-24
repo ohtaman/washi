@@ -310,21 +310,21 @@
             1ラウンド限りのギャンブルであれば、期待リターンが最大の銘柄（たとえば <code>TECH: 期待リターン +16%, ボラティリティ 24%</code>）に資金を100%投じる戦略でも勝てるかもしれません。しかし、資産が毎期引き継がれる<strong>エンドレス複利サバイバル</strong>では事情が一変します。
           </p>
           <p>
-            仮に1四半期あたりのロスカット退場（破綻）確率が <code>18%</code> あるポートフォリオを組み続けた場合、10四半期後まで生き残れる確率は次のように急減します。
+            期末リターンの正規近似モデルにおいて、1四半期あたりの<strong>期末フロア割れ確率（理論目安）</strong>が <code>18%</code> あるポートフォリオを組み続けた場合、期末判定だけでも10四半期後まで生き残れる確率は次のように急減します（さらに実際のゲームでは期中の日次変動やニュースショックでも即ロスカットとなるため、実際の生存率はこれよりさらに低くなります）。
           </p>
 
           <div class="math-box">
-            <span class="math-title">複数期にまたがる生存確率の減衰</span>
-            P(10期生存) = (1 - 0.18)^10 ≈ 0.137 (わずか 13.7%)
+            <span class="math-title">複数期にまたがる期末非割れ確率の減衰（正規近似モデル）</span>
+            P(10期連続で期末フロア以上) = (1 - 0.18)^10 ≈ 0.137 (わずか 13.7%)
           </div>
 
           <p>
-            一方、逆相関のヘッジ資産を組み合わせて1期あたりの破綻確率を <code>1.2%</code> まで引き下げれば、10期生存確率は <code>(1 - 0.012)^10 ≈ 88.6%</code> となり、複利効果によって着実に資産を拡大できます。これは年金基金・機関投資家・ヘッジファンドが直面する実務課題そのものです。
+            一方、逆相関のヘッジ資産を組み合わせて1期あたりの期末フロア割れ確率（理論目安）を <code>1.2%</code> まで引き下げれば、10期連続で期末フロアを維持できる確率は <code>(1 - 0.012)^10 ≈ 88.6%</code> まで高まり、期中のドローダウンも抑制されて複利効果で着実に資産を拡大できます。これは年金基金・機関投資家・ヘッジファンドが直面する実務課題そのものです。
           </p>
         </section>
 
         <section class="section-card">
-          <h2>2. ロイの Safety-First 基準と「破綻確率の最小化」</h2>
+          <h2>2. ロイの Safety-First 基準と「期末フロア割れ確率（理論目安）」</h2>
           <p>
             投資対象となる <code>N</code> 個の資産に対する投資比率（ウェイト）を決定変数ベクトル <code>w = (w_1, ..., w_N)^T</code> と置きます。空売りなし（<code>w_i &gt;= 0</code>）かつ全額投資（<code>Σ w_i = 1</code>）のとき、ポートフォリオ全体の期待リターン <code>μ_p(w)</code> と分散 <code>σ_p^2(w)</code> は次式で与えられます。
           </p>
@@ -339,11 +339,11 @@
             ここで <code>Σ_{ij} = σ_i * σ_j * ρ_{ij}</code> は資産 <code>i</code> と資産 <code>j</code> の共分散、<code>ρ_{ij} ∈ [-1, 1]</code> は相関係数です。
           </p>
           <p>
-            今期のロスカット退場ライン（許容下限リターン）を <code>r_floor</code>（例：<code>-5.5%</code>）としたとき、ポートフォリオ収益率 <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> が <code>r_floor</code> を下回る<strong>破綻確率（Ruin Probability）</strong>は、標準正規分布の累積分布関数 <code>Φ(z)</code> を用いて次のように表せます。
+            今期のロスカット退場ライン（許容下限リターン）を <code>r_floor</code>（例：<code>-5.5%</code>）としたとき、期末のポートフォリオ収益率を正規分布 <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> で近似した場合に期末リターンが <code>r_floor</code> を下回る<strong>期末フロア割れ確率（ゲーム内ゲージの参考値）</strong>は、標準正規分布の累積分布関数 <code>Φ(z)</code> を用いて次のように表せます（なお、実際の60営業日シミュレーションでは期中の日次バリア判定とニュースショックが加わるため、実効的な退場リスクはこの期末正規近似値より高くなります）。
           </p>
 
           <div class="math-box">
-            <span class="math-title">破綻確率 P_ruin(w) と Safety-First 比率</span>
+            <span class="math-title">期末フロア割れ確率 P_ruin(w)（正規近似）と Safety-First 比率</span>
             SF(w) = (μ_p(w) - r_floor) / σ_p(w)<br />
             P_ruin(w) = Pr(R_p &lt;= r_floor) = Φ(-SF(w))
           </div>
@@ -376,7 +376,7 @@
                 <th>ポートフォリオ配分例（Q1）</th>
                 <th>期待リターン <code>μ_p</code></th>
                 <th>変動リスク <code>σ_p</code></th>
-                <th>破綻確率 <code>P_ruin</code></th>
+                <th>期末フロア割れ確率 <code>P_ruin</code>（参考値）</th>
               </tr>
             </thead>
             <tbody>
@@ -482,21 +482,21 @@ await model.solve(HiGHS);</code></pre>
             In a single-shot gamble, putting 100% of your capital into the asset with the highest expected return (such as <code>TECH: +16% expected return, 24% volatility</code>) might pay off. In an <strong>endless compounding survival game</strong> where capital carries over from quarter to quarter, that strategy is a mathematical trap.
           </p>
           <p>
-            If your portfolio carries an <code>18%</code> probability of breaching the liquidation floor each quarter, your probability of surviving 10 consecutive quarters decays exponentially:
+            Under the normal terminal-return approximation, if your portfolio carries an <code>18%</code> <strong>quarter-end shortfall probability (estimate)</strong> each quarter, the probability of finishing above the floor across 10 consecutive quarters decays exponentially (and because the actual game also liquidates on intra-quarter daily barrier breaches and discrete macro shocks, true multi-quarter survival is lower still):
           </p>
 
           <div class="math-box">
-            <span class="math-title">Multi-Quarter Survival Probability Decay</span>
-            P(Survive 10 Quarters) = (1 - 0.18)^10 ≈ 0.137 (only 13.7%)
+            <span class="math-title">Multi-Quarter Terminal Non-Shortfall Decay (Normal Approximation)</span>
+            P(Finish Above Floor for 10 Quarters) = (1 - 0.18)^10 ≈ 0.137 (only 13.7%)
           </div>
 
           <p>
-            By contrast, blending negatively correlated hedge assets to compress single-quarter ruin probability down to <code>1.2%</code> raises 10-quarter survival probability to <code>(1 - 0.012)^10 ≈ 88.6%</code>, allowing compound growth to work in your favor.
+            By contrast, blending negatively correlated hedge assets to compress the quarter-end shortfall estimate down to <code>1.2%</code> raises the 10-quarter terminal non-shortfall benchmark to <code>(1 - 0.012)^10 ≈ 88.6%</code> while also cushioning intra-quarter drawdowns so compound growth can work in your favor.
           </p>
         </section>
 
         <section class="section-card">
-          <h2>2. Roy's Safety-First Criterion and Ruin Probability</h2>
+          <h2>2. Roy's Safety-First Criterion and Quarter-End Shortfall Probability</h2>
           <p>
             Let <code>w = (w_1, ..., w_N)^T</code> denote the portfolio weights across <code>N</code> investable assets, subject to no short-selling (<code>w_i &gt;= 0</code>) and full investment (<code>Σ w_i = 1</code>). The portfolio expected return <code>μ_p(w)</code> and variance <code>σ_p^2(w)</code> are:
           </p>
@@ -508,11 +508,11 @@ await model.solve(HiGHS);</code></pre>
           </div>
 
           <p>
-            Given a quarterly liquidation floor <code>r_floor</code> (for example, <code>-5.5%</code>), the probability that the quarterly return <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> falls below <code>r_floor</code> is given by the standard normal CDF <code>Φ(z)</code>:
+            Given a quarterly liquidation floor <code>r_floor</code> (for example, <code>-5.5%</code>), approximating the quarter-end portfolio return as <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> yields the <strong>quarter-end shortfall probability estimate</strong> shown on the in-game gauge via the standard normal CDF <code>Φ(z)</code> (note that the live 60-day market simulation also enforces an intra-quarter daily barrier and discrete news shocks, so actual liquidation risk exceeds this terminal normal estimate):
           </p>
 
           <div class="math-box">
-            <span class="math-title">Ruin Probability P_ruin(w) and Safety-First Ratio</span>
+            <span class="math-title">Quarter-End Shortfall Estimate P_ruin(w) and Safety-First Ratio</span>
             SF(w) = (μ_p(w) - r_floor) / σ_p(w)<br />
             P_ruin(w) = Pr(R_p &lt;= r_floor) = Φ(-SF(w))
           </div>
@@ -611,21 +611,21 @@ await model.solve(HiGHS);</code></pre>
         <section class="section-card">
           <h2>1. 为什么“全仓单一最高收益资产”在复利生存战中必然爆仓</h2>
           <p>
-            如果只赌一局，全仓预期回报最高的资产（例如 <code>TECH：预期收益 +16%，波动率 24%</code>）或许能靠运气取胜。但在净值逐季复利累积的<strong>无尽生存模式</strong>中，若单季触发强平爆仓线的概率为 <code>18%</code>，连续存活10个季度的概率将迅速衰减：
+            如果只赌一局，全仓预期回报最高的资产（例如 <code>TECH：预期收益 +16%，波动率 24%</code>）或许能靠运气取胜。但在净值逐季复利累积的<strong>无尽生存模式</strong>中，按季末收益率的正态近似估算，若单季<strong>季末跌破强平线概率（参考值）</strong>为 <code>18%</code>，仅按季末判定计算的连续10个季度不跌破强平线的概率就将迅速衰减（而在实际游戏中，盘中日度跌破强平线或突发宏观冲击也会立即触发强平，因此实际存活率会更低）：
           </p>
 
           <div class="math-box">
-            <span class="math-title">多季度存活概率的指数衰减</span>
-            P(存活10个季度) = (1 - 0.18)^10 ≈ 0.137 (仅 13.7%)
+            <span class="math-title">多季度季末不跌破强平线概率的衰减（正态近似）</span>
+            P(连续10个季度季末高于强平线) = (1 - 0.18)^10 ≈ 0.137 (仅 13.7%)
           </div>
 
           <p>
-            反之，若利用负相关资产进行对冲，将单季爆仓概率压缩至 <code>1.2%</code>，连续10个季度的存活率将提升至 <code>(1 - 0.012)^10 ≈ 88.6%</code>，从而稳健享受复利增长。
+            反之，若利用负相关资产进行对冲，将单季季末跌破强平线概率（参考值）压缩至 <code>1.2%</code>，连续10个季度季末维持在强平线之上的基准概率将提升至 <code>(1 - 0.012)^10 ≈ 88.6%</code>，同时大幅缓解盘中回撤，稳健享受复利增长。
           </p>
         </section>
 
         <section class="section-card">
-          <h2>2. Roy 的 Safety-First 准则与爆仓概率最小化</h2>
+          <h2>2. Roy 的 Safety-First 准则与季末跌破强平线概率</h2>
           <p>
             设 <code>N</code> 项资产的权重向量为 <code>w = (w_1, ..., w_N)^T</code>（满足禁空令 <code>w_i &gt;= 0</code> 与满仓约束 <code>Σ w_i = 1</code>）。投资组合的预期收益率 <code>μ_p(w)</code> 与方差 <code>σ_p^2(w)</code> 为：
           </p>
@@ -637,11 +637,11 @@ await model.solve(HiGHS);</code></pre>
           </div>
 
           <p>
-            设本季强平爆仓线为 <code>r_floor</code>（例如 <code>-5.5%</code>），则组合收益率 <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> 跌破 <code>r_floor</code> 的<strong>爆仓概率</strong>可通过标准正态分布累积分布函数 <code>Φ(z)</code> 表示为：
+            设本季强平爆仓线为 <code>r_floor</code>（例如 <code>-5.5%</code>），将季末组合收益率以正态分布 <code>R_p ~ N(μ_p(w), σ_p^2(w))</code> 近似时，季末跌破 <code>r_floor</code> 的<strong>季末跌破强平线概率（游戏内仪表参考值）</strong>可通过标准正态分布累积分布函数 <code>Φ(z)</code> 表示为（注：实际60个交易日模拟还包含盘中日度强平判定与新闻冲击，因此实际出局风险高于该季末正态近似值）：
           </p>
 
           <div class="math-box">
-            <span class="math-title">爆仓概率 P_ruin(w) 与 Safety-First 比率</span>
+            <span class="math-title">季末跌破强平线概率 P_ruin(w)（正态近似）与 Safety-First 比率</span>
             SF(w) = (μ_p(w) - r_floor) / σ_p(w)<br />
             P_ruin(w) = Pr(R_p &lt;= r_floor) = Φ(-SF(w))
           </div>

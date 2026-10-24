@@ -302,10 +302,13 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     expect(portalHtml).not.toContain("QP");
     expect(portalHtml).not.toContain("MILP");
 
-    // 4. Theory page has ja, en, zh sections
+    // 4. Theory page has ja, en, zh sections and distinguishes quarter-end shortfall estimate from intra-quarter barrier
     expect(quantTheoryHtml).toContain('data-lang-section="ja"');
     expect(quantTheoryHtml).toContain('data-lang-section="en"');
     expect(quantTheoryHtml).toContain('data-lang-section="zh"');
+    expect(quantTheoryHtml).toContain("期末フロア割れ確率");
+    expect(quantTheoryHtml).toContain("quarter-end shortfall probability (estimate)");
+    expect(quantTheoryHtml).toContain("季末跌破强平线概率");
 
     // 5. Regime & asset localization
     const q1 = getQuarterRegime(1);
