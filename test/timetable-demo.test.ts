@@ -469,7 +469,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     const { updatedState: multiRuleState } = applyTimetableChatOperationsToState(baseState, [
       { op: "forbid_course_slot", courseId: "C16", days: ["Mon"], periods: [1], isHard: true },
       { op: "forbid_course_slot", courseId: "C16", days: ["Fri"], periods: [5], isHard: true },
-      { op: "set_course_room_rule", courseId: "C15", mode: "forbid", roomType: "seminar", isHard: true },
+      { op: "set_course_room_rule", courseId: "C15", mode: "forbid", roomType: "seminar_room", isHard: true },
       { op: "set_course_room_rule", courseId: "C15", mode: "forbid", roomType: "pc_lab", isHard: true },
     ]);
     const ruleIds = multiRuleState.customRules.map((r) => r.id);
@@ -478,16 +478,16 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(() => builtMulti.model.validateIntegrity()).not.toThrow();
 
     // 2. Room-type forbid (`forbid_room` with `roomType` only) is enforced by the solver
-    // Pin C21 (enrollment 28, normally fits in seminar R201/R202 or medium R102/R103) and forbid all seminar rooms
+    // C23 (Optimization Seminar, preferredRoomIds: ["R401"] which is seminar_room) is moved out of seminar_room when forbidden
     const { updatedState: forbidTypeState } = applyTimetableChatOperationsToState(baseState, [
-      { op: "set_course_room_rule", courseId: "C21", mode: "forbid", roomType: "seminar", isHard: true },
+      { op: "set_course_room_rule", courseId: "C23", mode: "forbid", roomType: "seminar_room", isHard: true },
     ]);
     const forbidTypeRes = await solveTimetableWithWashi(forbidTypeState);
     expect(forbidTypeRes.status).toBe("Optimal");
-    const c21Sessions = forbidTypeRes.timetable!.byCourse["C21"];
-    expect(c21Sessions.length).toBe(1);
-    const assignedRoom = forbidTypeState.rooms.find((r) => r.id === c21Sessions[0].roomId)!;
-    expect(assignedRoom.roomType).not.toBe("seminar");
+    const c23Sessions = forbidTypeRes.timetable!.byCourse["C23"];
+    expect(c23Sessions.length).toBe(1);
+    const assignedRoom = forbidTypeState.rooms.find((r) => r.id === c23Sessions[0].roomId)!;
+    expect(assignedRoom.roomType).not.toBe("seminar_room");
 
     // 3. Soft professor unavailability (`isHard: false`) adds soft custom rule(s) instead of hard unavailableDays
     const { updatedState: softProfState } = applyTimetableChatOperationsToState(baseState, [

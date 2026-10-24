@@ -815,6 +815,7 @@ function renderTimetableBoard(): void {
           const customForbidRule = appState.customRules.find(
             (r) =>
               r.enabled &&
+              r.isHard !== false &&
               r.kind === "forbid_slot" &&
               r.professorId === prof.id &&
               (!r.days || r.days.includes(d)) &&
