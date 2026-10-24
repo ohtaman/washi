@@ -2300,6 +2300,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let lastUnappliedInstructions: string[] = [];
   let recentTurnHistory: string[] = [];
   let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
+  const MAX_PENDING_CLARIFICATION_FOLLOW_UPS = 2;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2311,7 +2312,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
   function recordPendingClarification(msg: string, question: string): void {
     if (pendingClarification) {
-      pendingClarification.messages.push(msg);
+      // Keep the canonical original request plus the most recent follow-ups, mirroring the
+      // `recentTurnHistory` cap, so repeated clarification rounds cannot grow the prompt without bound.
+      const [original, ...followUps] = pendingClarification.messages;
+      pendingClarification.messages = [
+        original!,
+        ...[...followUps, msg].slice(-MAX_PENDING_CLARIFICATION_FOLLOW_UPS),
+      ];
       pendingClarification.lastQuestion = question;
     } else {
       pendingClarification = {
@@ -2492,6 +2499,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           : routerBaseSession;
 
       let stage1: Stage1RouterResult;
+      let stage1RoutingFailed = false;
       try {
         const routerContextLines = [
           `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
@@ -2511,6 +2519,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           stage1 = JSON.parse(rawStage1.trim()) as Stage1RouterResult;
         } catch (err: any) {
           parseErr = err?.message ?? String(err);
+          stage1RoutingFailed = true;
           stage1 = { response: rawStage1 || userMessage, routes: [{ tool_type: "question" }] };
         }
         const t1Duration = Math.max(1, Math.round(performance.now() - t1Start));
@@ -2616,7 +2625,9 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             );
           }
           recordPendingClarification(userMessage, stage1Response);
-        } else {
+        } else if (!stage1RoutingFailed) {
+          // Only a genuine intent switch abandons the held request; a failed/aborted/unparseable
+          // Stage 1 call synthesizes a fallback `question` route and must keep it for a retry.
           pendingClarification = null;
         }
         return {

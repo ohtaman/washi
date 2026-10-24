@@ -3537,6 +3537,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const origLM = g.LanguageModel;
 
     let turn1Reply: Record<string, unknown> | null = null;
+    let turn1RawOutput: string | null = null;
     let turn2RepliesBySchema = new Map<unknown, unknown>();
     let consultReplyText = "";
     const capturedTurn1Prompts: string[] = [];
@@ -3555,7 +3556,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
             }
             if (schema === STAGE1_ROUTER_SCHEMA) {
               capturedTurn1Prompts.push(input);
-              return JSON.stringify(turn1Reply);
+              return turn1RawOutput ?? JSON.stringify(turn1Reply);
             }
             if (turn2RepliesBySchema.has(schema)) {
               capturedTurn2Prompts.push(input);
@@ -3632,7 +3633,21 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planTurn2Vague.nonToolReason).toBe("clarify");
       expect(planTurn2Vague.operations).toEqual([]);
 
-      // Turn 4: User answers "勤務下限は15日" after 2 clarification rounds (4367076840)
+      // Turns 2b/2c: Two more vague follow-ups. The pending entry keeps the canonical original request plus only the
+      // two most recent follow-ups, so repeated rounds cannot grow the prompt without bound (4368219500).
+      const planTurn2b = await manager.extractPlan("まだ決めていない", state);
+      expect(planTurn2b.nonToolReason).toBe("clarify");
+      const planTurn2c = await manager.extractPlan("やっぱり少しだけ", state);
+      expect(planTurn2c.nonToolReason).toBe("clarify");
+
+      // Turn 2d: Stage 1 output cannot be parsed while the user is answering the held request. The synthetic
+      // fallback `question` route must NOT be treated as an intent switch, so the pending entry is retained (4368219493).
+      turn1RawOutput = "not a json response";
+      const planTurn2dRouterFailure = await manager.extractPlan("勤務下限は", state);
+      expect(planTurn2dRouterFailure.operations).toEqual([]);
+      turn1RawOutput = null;
+
+      // Turn 4: User answers "勤務下限は15日" after repeated clarification rounds and a failed routing attempt (4367076840)
       // The original request from Turn 1 must still be retained in the canonical pending entry!
       turn1Reply = {
         thought:
@@ -3685,9 +3700,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       ]);
 
       const planTurn4 = await manager.extractPlan("勤務下限は15日", state);
-      expect(capturedTurn1Prompts[2]).toContain(
-        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / 勤務下限は少し減らして」"
+      const turn4RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(turn4RouterPrompt).toContain(
+        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / まだ決めていない / やっぱり少しだけ」"
       );
+      expect(turn4RouterPrompt).not.toContain("勤務下限は少し減らして");
       expect(planTurn4.intentType).toBe("modify_and_solve");
       // 1 ranged add_request operation (days 9..15) + 1 set_nurse_contract operation = 2 operations
       expect(planTurn4.operations.length).toBe(2);
