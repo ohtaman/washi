@@ -118,7 +118,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     corrHeading: "資産間相関係数マトリクス (青 = 逆相関ヘッジ効果大)",
     corrMatrixAria: "資産間相関係数マトリクス",
     telemetryPanelAria: "リスク計器盤と市場シミュレーション",
-    labelRuinProb: "今期の破綻確率 (RUIN PROB)",
+    labelRuinProb: "期末フロア割れ確率 (参考値)",
     labelExpReturn: "期待リターン (E[R])",
     chartFrontierTitle: "リスク・リターン平面 ＆ 効率的フロンティア",
     chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
@@ -139,6 +139,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
       <ul>
         <li><strong>ロスカット退場（LIQUIDATION FLOOR）</strong>：期中の資産または期末資産が「破綻ライン」を割り込むと即ゲームオーバーです。</li>
         <li><strong>破綻確率を下げるコツ（逆相関ヘッジ）</strong>：高リターン銘柄（TECHやQNTX）だけに集中投資すると、暴落イベントで簡単に破綻します。相関係数がマイナス（青色）の銘柄（GOLDやDFNSなど）を組み合わせると、期待リターンを高く保ったまま破綻確率だけを劇的に引き下げられます。</li>
+        <li><strong>期末フロア割れ確率（参考値）</strong>：期末リターンを正規分布で近似し、破綻ラインを下回る確率を見積もった目安です。期中の一時的な下落やニュースショックは含まないため、実際に退場する確率はこれより高くなります。</li>
         <li><strong>ライバル WaSHI-QP</strong>：ブラウザ内の二次計画法ソルバーが毎期リアルタイムに最小分散ポートフォリオを構築して並走します。破綻せずにどこまで資産を伸ばせるか競いましょう。</li>
       </ul>
     `,
@@ -171,7 +172,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     corrHeading: "Asset Correlation Matrix (Blue = Negative Correlation Hedge)",
     corrMatrixAria: "Asset Correlation Matrix",
     telemetryPanelAria: "Risk Telemetry and Market Simulation",
-    labelRuinProb: "QUARTER RUIN PROBABILITY",
+    labelRuinProb: "QUARTER-END SHORTFALL PROB. (ESTIMATE)",
     labelExpReturn: "EXPECTED RETURN (E[R])",
     chartFrontierTitle: "Risk-Return Plane & Efficient Frontier",
     chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
@@ -192,6 +193,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
       <ul>
         <li><strong>Liquidation Floor</strong>: If your fund drops below the red liquidation floor during or at the end of the 60-day quarter, you are liquidated (Game Over).</li>
         <li><strong>Correlation Hedging</strong>: Going 100% into a single high-return asset invites disaster when macro shocks hit. Combine negatively correlated assets (highlighted in blue, such as TECH + GOLD or NRGY) to slash ruin probability while preserving upside.</li>
+        <li><strong>Quarter-End Shortfall Probability (Estimate)</strong>: A normal approximation of the chance that your quarter-end return finishes below the floor. It ignores intra-quarter dips and news shocks, so your actual liquidation risk is higher than this gauge.</li>
         <li><strong>Rival WaSHI-QP</strong>: Compete side-by-side against a live quadratic optimizer solving for minimum portfolio variance each quarter.</li>
       </ul>
     `,
@@ -224,7 +226,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     corrHeading: "资产相关系数矩阵 (蓝色 = 强负相关对冲效应)",
     corrMatrixAria: "资产相关系数矩阵",
     telemetryPanelAria: "风险仪表与市场模拟",
-    labelRuinProb: "本季爆仓概率 (RUIN PROB)",
+    labelRuinProb: "季末跌破强平线概率（参考值）",
     labelExpReturn: "预期收益率 (E[R])",
     chartFrontierTitle: "风险收益平面与有效前沿",
     chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
@@ -244,6 +246,7 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
       <ul>
         <li><strong>强平爆仓线（Liquidation Floor）</strong>：若盘中或季末净值跌破红色强平线，基金即刻清盘出局。</li>
         <li><strong>利用负相关对冲风险</strong>：重仓单一高收益资产极易在市场冲击中爆仓。搭配相关系数为负（蓝色标记，如TECH搭配GOLD或DFNS）的资产，可以在保持预期回报的同时大幅压低爆仓概率。</li>
+        <li><strong>季末跌破强平线概率（参考值）</strong>：以正态分布近似季末收益率，估算其低于强平线的概率。该数值不包含季度中途的暂时下跌与新闻冲击，因此实际出局概率会高于此仪表。</li>
         <li><strong>对手 WaSHI-QP</strong>：与浏览器内实时求解最小方差投资组合的对手同台竞技，挑战最高存活季度与最高资产规模。</li>
       </ul>
     `,
@@ -534,6 +537,24 @@ function renderAssetList(): void {
             ? `预期+${(asset.expectedReturn * 100).toFixed(1)}%`
             : `E[R] +${(asset.expectedReturn * 100).toFixed(1)}%`;
       const volLabel = `σ ${(asset.volatility * 100).toFixed(1)}%`;
+      const decAria =
+        currentLang === "ja"
+          ? `${asset.ticker}（${loc.name}）の配分を5%減らす`
+          : currentLang === "zh"
+            ? `减少 ${asset.ticker}（${loc.name}）权重 5%`
+            : `Decrease ${asset.ticker} (${loc.name}) weight by 5%`;
+      const sliderAria =
+        currentLang === "ja"
+          ? `${asset.ticker}（${loc.name}）の配分比率`
+          : currentLang === "zh"
+            ? `${asset.ticker}（${loc.name}）配置权重`
+            : `${asset.ticker} (${loc.name}) portfolio weight`;
+      const incAria =
+        currentLang === "ja"
+          ? `${asset.ticker}（${loc.name}）の配分を5%増やす`
+          : currentLang === "zh"
+            ? `增加 ${asset.ticker}（${loc.name}）权重 5%`
+            : `Increase ${asset.ticker} (${loc.name}) weight by 5%`;
 
       return `
         <div class="asset-row" role="listitem">
@@ -548,7 +569,7 @@ function renderAssetList(): void {
             </div>
           </div>
           <div class="asset-controls-row">
-            <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="-0.05" aria-label="Decrease ${asset.ticker}">-</button>
+            <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="-0.05" aria-label="${decAria}" title="${decAria}">-</button>
             <input
               type="range"
               class="weight-slider"
@@ -557,9 +578,9 @@ function renderAssetList(): void {
               step="1"
               value="${wPct}"
               data-slider-idx="${i}"
-              aria-label="${asset.ticker} Weight"
+              aria-label="${sliderAria}"
             />
-            <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="0.05" aria-label="Increase ${asset.ticker}">+</button>
+            <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="0.05" aria-label="${incAria}" title="${incAria}">+</button>
             <span class="weight-pct">${wPct}%</span>
           </div>
           <div class="asset-role-line">

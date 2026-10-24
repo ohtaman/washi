@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   choleskyDecompose,
+  computeAnalyticalMinimumVariancePortfolio,
   computeEfficientFrontier,
   computePortfolioMetrics,
   normalCdf,
@@ -134,6 +135,48 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     expect(simA.playerEndAum).toBeCloseTo(simB.playerEndAum, 8);
     expect(simA.playerReturn).toBeCloseTo(simA.aiReturn, 8);
     expect(simA.shocks.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("liquidates on any intra-quarter floor breach and rejects infeasible targets", async () => {
+    const q1 = getQuarterRegime(1);
+    const n = q1.assets.length;
+    const allTech = new Array<number>(n).fill(0);
+    allTech[0] = 1;
+    const hedged = new Array<number>(n).fill(0);
+    hedged[0] = 0.45;
+    hedged[1] = 0.3;
+    hedged[2] = 0.25;
+
+    let sawIntraQuarterOnlyBreach = false;
+    for (let s = 1; s <= 300; s++) {
+      const sim = simulateQuarterMarket({
+        regime: q1,
+        playerWeights: allTech,
+        aiWeights: hedged,
+        playerStartAum: 100,
+        aiStartAum: 100,
+        seed: s * 7919,
+      });
+      // Liquidation is a barrier event: any daily AUM observation below the floor ends the run
+      const breached = sim.playerAumSeries.some((v) => v < sim.liquidationAumFloor);
+      expect(sim.playerLiquidated).toBe(breached);
+      if (breached && sim.playerEndAum >= sim.liquidationAumFloor) {
+        sawIntraQuarterOnlyBreach = true;
+      }
+    }
+    // The gauge is a terminal-return estimate, so paths that breach and recover must exist
+    expect(sawIntraQuarterOnlyBreach).toBe(true);
+
+    // Analytical fallback must satisfy feasible Q1 targetReturn (10.5%)
+    const fallbackFeasible = computeAnalyticalMinimumVariancePortfolio(q1, q1.targetReturn);
+    expect(fallbackFeasible.metrics.expectedReturn).toBeGreaterThanOrEqual(q1.targetReturn - 1e-4);
+    expect(fallbackFeasible.metrics.isNormalized).toBe(true);
+    expect(fallbackFeasible.metrics.isWithinCap).toBe(true);
+
+    // Unachievable targetReturn (e.g. 50%) must NOT be marked Optimal / verified: true
+    const impossibleResult = await solveQuantOptimalPortfolio(q1, 0.5);
+    expect(impossibleResult.status).toBe("Infeasible");
+    expect(impossibleResult.verified).toBe(false);
   });
 
   it("enforces editorial & i18n rules across Portal, Quant Survival, and Theory Article (no 核心, no ！, no algorithm names on Portal, full ja/en/zh)", () => {
@@ -279,6 +322,11 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
       expect(mockDoc.title).toContain("QUANT SURVIVAL");
       expect(byId.get("back-link")?.textContent).toBe("← Games");
       expect(byId.get("btn-execute")?.textContent).toContain("MARKET OPEN");
+      expect(byId.get("label-ruin-prob")?.textContent).toContain("ESTIMATE");
+      const assetListHtmlEn = byId.get("asset-list")?.innerHTML ?? "";
+      expect(assetListHtmlEn).toContain("Decrease TECH");
+      expect(assetListHtmlEn).toContain("portfolio weight");
+      expect(assetListHtmlEn).not.toMatch(/[ぁ-んァ-ヶ]/);
       for (const el of allElements) {
         expect(el.getAttribute("aria-label") ?? "", `en aria-label on #${el.id}`).not.toMatch(
           /[ぁ-んァ-ヶ]/
@@ -291,6 +339,11 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
       expect(mockDoc.documentElement.lang).toBe("zh");
       expect(mockDoc.title).toContain("量化生存战");
       expect(byId.get("back-link")?.textContent).toBe("← 游戏列表");
+      const assetListHtmlZh = byId.get("asset-list")?.innerHTML ?? "";
+      expect(assetListHtmlZh).toContain("减少 TECH");
+      expect(assetListHtmlZh).toContain("配置权重");
+      expect(assetListHtmlZh).not.toContain("Decrease ");
+      expect(assetListHtmlZh).not.toMatch(/[ぁ-んァ-ヶ]/);
       for (const el of allElements) {
         expect(el.getAttribute("aria-label") ?? "", `zh aria-label on #${el.id}`).not.toMatch(
           /[ぁ-んァ-ヶ]/
@@ -298,6 +351,12 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
         expect(el.getAttribute("alt") ?? "", `zh alt on #${el.id}`).not.toMatch(/[ぁ-んァ-ヶ]/);
         expect(el.title, `zh title on #${el.id}`).not.toMatch(/[ぁ-んァ-ヶ]/);
       }
+
+      applyQuantStaticTranslations("ja");
+      const assetListHtmlJa = byId.get("asset-list")?.innerHTML ?? "";
+      expect(assetListHtmlJa).toContain("の配分を5%減らす");
+      expect(assetListHtmlJa).toContain("の配分比率");
+      expect(assetListHtmlJa).not.toContain("Decrease ");
     } finally {
       if (prevDocument === undefined) {
         delete (globalThis as { document?: unknown }).document;

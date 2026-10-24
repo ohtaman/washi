@@ -185,40 +185,56 @@ export async function solveQuantOptimalPortfolio(
 
   model.objective(minimize(quadObj));
 
+  let solverStatus = "Error";
   try {
     const status = await model.solve(HiGHS);
+    solverStatus = status;
     const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
 
     if (status === "Optimal") {
       const rawWeights = wVars.map((v) => v.value ?? 0);
       const weights = normalizeWeights(rawWeights, regime.maxWeightPerAsset);
       const metrics = computePortfolioMetrics(regime, weights);
+      const targetSatisfied = metrics.expectedReturn >= target - 1e-4;
       return {
         status: "Optimal",
         weights,
         metrics,
         solveTimeMs: Math.max(0.1, t1 - t0),
-        verified: metrics.isNormalized && metrics.isWithinCap,
+        verified: metrics.isNormalized && metrics.isWithinCap && targetSatisfied,
+      };
+    }
+    if (status === "Infeasible") {
+      const fallback = computeAnalyticalMinimumVariancePortfolio(regime, target);
+      return {
+        status: "Infeasible",
+        weights: fallback.weights,
+        metrics: fallback.metrics,
+        solveTimeMs: Math.max(0.1, t1 - t0),
+        verified: false,
       };
     }
   } catch {
-    // Fall back to analytical grid search if WASM solver fails in constrained env
+    // Fall back to analytical projected-gradient solver if WASM solver fails in constrained env
   }
 
   const fallback = computeAnalyticalMinimumVariancePortfolio(regime, target);
   const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const targetSatisfied = fallback.metrics.expectedReturn >= target - 1e-4;
+  const isFeasible =
+    fallback.metrics.isNormalized && fallback.metrics.isWithinCap && targetSatisfied;
   return {
-    status: "Optimal",
+    status: isFeasible ? "Optimal" : solverStatus === "Error" ? "Infeasible" : solverStatus,
     weights: fallback.weights,
     metrics: fallback.metrics,
     solveTimeMs: Math.max(0.1, t1 - t0),
-    verified: true,
+    verified: isFeasible,
   };
 }
 
 /**
- * Fast projected-gradient solver used for plotting the continuous Efficient Frontier curve
- * synchronously in the UI without spawning N separate worker calls.
+ * Fast augmented-Lagrangian projected-gradient solver used for plotting the continuous
+ * Efficient Frontier curve synchronously in the UI without spawning N separate worker calls.
  */
 export function computeAnalyticalMinimumVariancePortfolio(
   regime: QuarterRegime,
@@ -228,14 +244,17 @@ export function computeAnalyticalMinimumVariancePortfolio(
   const cap = regime.maxWeightPerAsset;
   let w = new Array<number>(n).fill(1 / n);
 
-  // Projected gradient descent with penalty on targetReturn violation
-  const lr = 0.08;
-  for (let step = 0; step < 260; step++) {
+  // Augmented Lagrangian multiplier for targetReturn constraint: sum(mu_i * w_i) >= targetReturn
+  let lambda = 0;
+  const rho = 40;
+  const lr = 0.05;
+  for (let step = 0; step < 360; step++) {
     let curRet = 0;
     for (let i = 0; i < n; i++) {
       curRet += w[i] * regime.assets[i].expectedReturn;
     }
-    const retShortfall = Math.max(0, targetReturn - curRet);
+    const violation = targetReturn - curRet;
+    const activeDual = Math.max(0, lambda + rho * violation);
 
     const grad = new Array<number>(n).fill(0);
     for (let i = 0; i < n; i++) {
@@ -243,12 +262,19 @@ export function computeAnalyticalMinimumVariancePortfolio(
       for (let j = 0; j < n; j++) {
         sg += 2 * regime.covariance[i][j] * w[j];
       }
-      // Penalty gradient for target return
-      grad[i] = sg - 18 * retShortfall * regime.assets[i].expectedReturn;
+      grad[i] = sg - activeDual * regime.assets[i].expectedReturn;
     }
 
     const next = w.map((wi, i) => wi - lr * grad[i]);
     w = projectOntoCappedSimplex(next, cap);
+
+    if (step % 15 === 14) {
+      let updatedRet = 0;
+      for (let i = 0; i < n; i++) {
+        updatedRet += w[i] * regime.assets[i].expectedReturn;
+      }
+      lambda = Math.max(0, lambda + rho * (targetReturn - updatedRet));
+    }
   }
 
   const metrics = computePortfolioMetrics(regime, w);
