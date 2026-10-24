@@ -20,7 +20,9 @@ import {
   applyQuantStaticTranslations,
   formatLiquidationDetail,
   getQuantGameState,
+  latestRevealedShock,
   resolveDisplayedFloorAum,
+  startMarketSimulation,
 } from "../examples/web-demo/games/quant-survival/main.js";
 
 describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
@@ -209,6 +211,22 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     }
     expect(sawForward).toBe(true);
     expect(sawReversed).toBe(true);
+
+    // The ticker only reveals shocks the animation has reached (announced within 1 day)
+    const q1Sim = simulateQuarterMarket({
+      regime: q1,
+      playerWeights: allTech,
+      aiWeights: hedged,
+      playerStartAum: 100,
+      aiStartAum: 100,
+      seed: 31337,
+    });
+    const [firstShock, secondShock] = q1Sim.shocks; // Q1 shocks fire on day 22 and 44
+    expect(latestRevealedShock(q1Sim, 0)).toBeNull();
+    expect(latestRevealedShock(q1Sim, 20)).toBeNull();
+    expect(latestRevealedShock(q1Sim, 21)?.day).toBe(firstShock.day);
+    expect(latestRevealedShock(q1Sim, 42)?.day).toBe(firstShock.day);
+    expect(latestRevealedShock(q1Sim, 60)?.day).toBe(secondShock.day);
 
     // The liquidation banner must report the actual breach day and intra-quarter low,
     // not attribute the breach to the (recovered) quarter-end values
@@ -449,5 +467,88 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     expect(state.regimeId).toBe(getQuarterRegime(2).id);
     expect(state.aiWeightsLength).toBe(getQuarterRegime(2).assets.length);
     expect(state.isLoading).toBe(false);
+  });
+
+  it("keeps the outcome hidden when the language is switched during the 60-day animation", async () => {
+    interface FakeEl {
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      className: string;
+      style: Record<string, string>;
+      classList: { toggle: () => void };
+      setAttribute: () => void;
+      getAttribute: () => null;
+    }
+    const els = new Map<string, FakeEl>();
+    const el = (id: string): FakeEl => {
+      let e = els.get(id);
+      if (!e) {
+        e = {
+          textContent: "",
+          innerHTML: "",
+          title: "",
+          hidden: id === "outcome-banner" || id === "btn-next-quarter" || id === "btn-retry-run",
+          disabled: false,
+          className: "",
+          style: {},
+          classList: { toggle: () => {} },
+          setAttribute: () => {},
+          getAttribute: () => null,
+        };
+        els.set(id, e);
+      }
+      return e;
+    };
+    const mockDoc = {
+      documentElement: { lang: "ja" },
+      title: "",
+      getElementById: el,
+      querySelectorAll: () => [],
+    };
+    let tick: (() => void) | null = null;
+    const mockWin = {
+      setInterval: (cb: () => void) => {
+        tick = cb;
+        return 1;
+      },
+      clearInterval: () => {
+        tick = null;
+      },
+    };
+
+    const g = globalThis as { document?: unknown; window?: unknown };
+    const prevDoc = g.document;
+    const prevWin = g.window;
+    try {
+      g.document = mockDoc;
+      g.window = mockWin;
+
+      await startMarketSimulation();
+      expect(tick).not.toBeNull();
+
+      // Switch language before the animation reaches any shock or the end
+      applyQuantStaticTranslations("en");
+      expect(el("outcome-banner").hidden).toBe(true);
+      expect(el("btn-next-quarter").hidden).toBe(true);
+      expect(el("btn-retry-run").hidden).toBe(true);
+      expect(el("news-ticker-text").textContent).toContain("MARKET OPEN");
+      expect(el("btn-execute").textContent).toContain("MARKET RUNNING");
+
+      // Finish the animation: the outcome is revealed only now
+      for (let i = 0; i < 40 && tick; i++) tick();
+      expect(tick).toBeNull();
+      expect(el("outcome-banner").hidden).toBe(false);
+      expect(
+        el("btn-next-quarter").hidden === false || el("btn-retry-run").hidden === false
+      ).toBe(true);
+    } finally {
+      if (prevDoc === undefined) delete g.document;
+      else g.document = prevDoc;
+      if (prevWin === undefined) delete g.window;
+      else g.window = prevWin;
+    }
   });
 });

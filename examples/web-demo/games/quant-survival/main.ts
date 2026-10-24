@@ -266,6 +266,8 @@ let lastSimulation: MarketSimulationResult | null = null;
 let animTimerId: number | null = null;
 let isLoadingQuarter = false;
 let loadToken = 0;
+/** Last trading day rendered by the running 60-day animation */
+let animDay = 0;
 
 /**
  * Advances to the next quarter. Ignored while a quarter is loading or simulating so that
@@ -274,6 +276,11 @@ let loadToken = 0;
 export function advanceQuarter(): Promise<void> {
   if (isLoadingQuarter || isSimulating) return Promise.resolve();
   return loadQuarter(currentQuarter + 1);
+}
+
+/** Starts the 60-day market simulation for the current quarter (MARKET OPEN button). */
+export function startMarketSimulation(): Promise<void> {
+  return runMarketSimulation();
 }
 
 /** Returns the quarter and rival portfolio currently in effect (for UI state checks). */
@@ -400,13 +407,15 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
   setElText("chart-battle-title", t.chartBattleTitle);
   setElAria("battle-svg", t.battleSvgAria);
 
-  if (!isSimulating && !lastSimulation) {
+  if (!lastSimulation) {
     setElText("news-ticker-text", t.defaultTicker);
-  } else if (lastSimulation && lastSimulation.shocks.length > 0) {
-    const lastShock = lastSimulation.shocks[lastSimulation.shocks.length - 1];
+  } else {
+    // While the 60-day animation is running, only reveal shocks the animation has reached
+    const revealedDay = isSimulating ? animDay : lastSimulation.days;
+    const shock = latestRevealedShock(lastSimulation, revealedDay);
     setElText(
       "news-ticker-text",
-      `[DAY ${lastShock.day}] ${pickLang(lang, lastShock.headline)}`
+      shock ? `[DAY ${shock.day}] ${pickLang(lang, shock.headline)}` : t.defaultTicker
     );
   }
 
@@ -435,9 +444,25 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
   renderAssetList();
   renderCorrelationMatrix();
   renderTelemetryAndCharts();
-  if (lastSimulation) {
+  // Never reveal the outcome before the running animation finishes
+  if (lastSimulation && !isSimulating) {
     showOutcomeBanner(lastSimulation);
   }
+}
+
+/**
+ * The most recent shock already shown by the animation at `revealedDay`. The animation
+ * advances 2 days per frame and announces shocks within 1 day of the current frame.
+ */
+export function latestRevealedShock(
+  sim: MarketSimulationResult,
+  revealedDay: number
+): MarketSimulationResult["shocks"][number] | null {
+  let latest: MarketSimulationResult["shocks"][number] | null = null;
+  for (const shock of sim.shocks) {
+    if (shock.day <= revealedDay + 1) latest = shock;
+  }
+  return latest;
 }
 
 function renderRecordBadge(): void {
@@ -1022,6 +1047,7 @@ async function loadQuarter(quarter: number): Promise<void> {
 async function runMarketSimulation(): Promise<void> {
   if (isSimulating || isLoadingQuarter) return;
   isSimulating = true;
+  animDay = 0;
 
   if (!aiOptimal) {
     aiOptimal = await solveQuantOptimalPortfolio(currentRegime);
@@ -1067,6 +1093,7 @@ async function runMarketSimulation(): Promise<void> {
   animTimerId = window.setInterval(() => {
     day += 2;
     if (day > sim.days) day = sim.days;
+    animDay = day;
 
     const dayCounter = document.getElementById("chart-day-counter");
     if (dayCounter) dayCounter.textContent = `DAY ${day} / ${sim.days}`;
@@ -1190,7 +1217,7 @@ function initDomEvents(): void {
 
   const btnExec = document.getElementById("btn-execute");
   btnExec?.addEventListener("click", () => {
-    void runMarketSimulation();
+    void startMarketSimulation();
   });
 
   const btnNext = document.getElementById("btn-next-quarter");
