@@ -203,7 +203,6 @@ let wasClearedBeforeMove = false;
 let showingModelAnswer = false;
 let solveToken = 0;
 let isStageLoading = false;
-let inFlightLoadTarget: number | null = null;
 let inFlightLoadPromise: Promise<void> | null = null;
 
 function getEl<T extends HTMLElement>(id: string): T {
@@ -614,9 +613,11 @@ function renderTutorialButtonsInDialog(): void {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tutorial-jump-btn";
+    btn.disabled = isStageLoading;
     const title = getStageTitleByNumber(num, currentLang);
     btn.textContent = `Stage ${num}: ${title}`;
     btn.addEventListener("click", () => {
+      if (isStageLoading) return;
       const dialog = getEl<HTMLDialogElement>("rules-dialog");
       if (dialog.open) dialog.close();
       void loadStageByNumber(num);
@@ -670,6 +671,11 @@ function renderStageNav(): void {
   const selectEl = getEl<HTMLSelectElement>("stage-select");
   selectEl.disabled = isStageLoading;
   selectEl.innerHTML = "";
+  const openRulesBtn = document.getElementById("btn-open-rules") as HTMLButtonElement | null;
+  if (openRulesBtn) {
+    openRulesBtn.disabled = isStageLoading;
+  }
+  renderTutorialButtonsInDialog();
   if (typeof document.createElement !== "function") return;
   for (let num = 1; num <= maxStageNum; num++) {
     const stageId = `stage-${num}`;
@@ -1143,13 +1149,12 @@ async function loadStage(
 }
 
 export async function loadStageByNumber(stageNumber: number): Promise<void> {
-  const targetNum = Math.max(1, Math.floor(stageNumber));
-  if (isStageLoading && inFlightLoadTarget === targetNum && inFlightLoadPromise) {
+  if (isStageLoading && inFlightLoadPromise) {
     return inFlightLoadPromise;
   }
+  const targetNum = Math.max(1, Math.floor(stageNumber));
   const myToken = ++solveToken;
   isStageLoading = true;
-  inFlightLoadTarget = targetNum;
   renderStageNav();
   renderHud();
 
@@ -1161,7 +1166,6 @@ export async function loadStageByNumber(stageNumber: number): Promise<void> {
     } finally {
       if (myToken === solveToken) {
         isStageLoading = false;
-        inFlightLoadTarget = null;
         inFlightLoadPromise = null;
         renderStageNav();
         renderHud();

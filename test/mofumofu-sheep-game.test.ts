@@ -754,17 +754,20 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       );
       await loadStageByNumber(12);
       const firstStepPromise = stepStage(1);
-      // While Stage 13 generation is in flight, navigation buttons are disabled and duplicate stepStage is rejected
+      // While Stage 13 generation is in flight, navigation and rules buttons are disabled and duplicate/tutorial jumps are rejected
       expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
       expect(byId.get("btn-stage-next")?.disabled).toBe(true);
       expect(byId.get("stage-select")?.disabled).toBe(true);
+      expect(byId.get("btn-open-rules")?.disabled).toBe(true);
       const duplicateStep = await stepStage(1);
       expect(duplicateStep).toBe(false);
+      await loadStageByNumber(1);
       expect(await firstStepPromise).toBe(true);
       expect(getCurrentStageNumber()).toBe(13);
       expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
       expect(byId.get("btn-stage-next")?.disabled).toBe(false);
       expect(byId.get("stage-select")?.disabled).toBe(false);
+      expect(byId.get("btn-open-rules")?.disabled).toBe(false);
     } finally {
       if (prevDocument === undefined) {
         delete (globalThis as { document?: unknown }).document;
