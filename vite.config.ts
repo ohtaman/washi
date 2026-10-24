@@ -93,6 +93,11 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "examples/web-demo/index.html"),
         demo: resolve(import.meta.dirname, "examples/web-demo/demo/index.html"),
+        apps: resolve(import.meta.dirname, "examples/web-demo/apps/index.html"),
+        aiShift: resolve(
+          import.meta.dirname,
+          "examples/web-demo/apps/ai-shift/index.html",
+        ),
         ...discoverGameInputs(import.meta.dirname),
       },
     },

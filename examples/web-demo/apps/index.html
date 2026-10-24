@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/washi-logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/washi-logo.png" />
+    <title>WaSHI 実務アプリケーション・ショーケース</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&family=Noto+Sans+JP:wght@400;600;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-dark: #0b1120;
+        --card-bg: rgba(17, 25, 46, 0.9);
+        --accent: #38bdf8;
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Inter", "Noto Sans JP", sans-serif;
+        background: radial-gradient(circle at top, #172554 0%, #0b1120 70%);
+        color: var(--text-main);
+        padding: 2rem 1.25rem 4rem;
+      }
+      .hub-container {
+        max-width: 1040px;
+        margin: 0 auto;
+      }
+      .hub-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+      .hub-nav-group {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .back-btn {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        padding: 0.45rem 0.95rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .back-btn:hover {
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .hub-hero {
+        text-align: center;
+        margin-bottom: 2.5rem;
+      }
+      .hub-hero h1 {
+        font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+        margin: 0.4rem 0 0.6rem;
+        color: #e0f2fe;
+      }
+      .hub-hero p {
+        margin: 0 auto;
+        max-width: 680px;
+        color: var(--text-muted);
+        font-size: 0.96rem;
+        line-height: 1.65;
+      }
+      .apps-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+      }
+      .app-card {
+        background: var(--card-bg);
+        border: 1.5px solid rgba(56, 189, 248, 0.42);
+        border-radius: 20px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.48);
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+      }
+      .app-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 22px 48px rgba(56, 189, 248, 0.2);
+      }
+      .app-card.coming-soon {
+        border-color: rgba(255, 255, 255, 0.12);
+        opacity: 0.72;
+      }
+      .app-thumb {
+        height: 170px;
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 55%, #0284c7 100%);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 1.1rem;
+      }
+      .app-icon-hero {
+        font-size: 3rem;
+        line-height: 1;
+      }
+      .app-tag {
+        align-self: flex-start;
+        background: rgba(11, 17, 32, 0.85);
+        border: 1px solid var(--accent);
+        color: #bae6fd;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.22rem 0.68rem;
+        border-radius: 999px;
+      }
+      .app-body {
+        padding: 1.25rem 1.35rem 1.4rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+      }
+      .app-body h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.22rem;
+      }
+      .app-body p {
+        margin: 0 0 1.25rem;
+        color: var(--text-muted);
+        font-size: 0.88rem;
+        line-height: 1.65;
+        flex: 1;
+      }
+      .open-btn {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+        padding: 0.75rem 1.25rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 60%, #4f46e5 100%);
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.95rem;
+        border: 1.5px solid #bae6fd;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="hub-container">
+      <header class="hub-topbar">
+        <a href="../" class="back-btn">← WaSHI トップページへ戻る</a>
+        <div class="hub-nav-group">
+          <a href="../demo/" class="back-btn">📐 数理モデル Playground</a>
+          <a href="../games/" class="back-btn">🎮 ゲーム・ショーケース</a>
+        </div>
+      </header>
+
+      <section class="hub-hero">
+        <h1>🏥 WaSHI 実務アプリケーション・ショーケース</h1>
+        <p>
+          WebAssembly 数理最適化ソルバー（HiGHS）とブラウザ内蔵 AI（Gemini Nano / LanguageModel API）を組み合わせ、サーバー通信ゼロ・完全ローカルで動作する実務意思決定・スケジューリングアプリ集です。
+        </p>
+      </section>
+
+      <main class="apps-grid">
+        <article class="app-card">
+          <div class="app-thumb">
+            <div class="app-icon-hero">🏥 🤖</div>
+            <span class="app-tag">Gemini Nano × HiGHS MILP（30名×1ヶ月・3交代制＋36協定＋矛盾診断）</span>
+          </div>
+          <div class="app-body">
+            <h2>ナーススケジューリング AI Copilot</h2>
+            <p>
+              自然な日本語チャットで「山本さんは日勤専従にして」「伊藤さんはパートで月10日まで・3連勤まで」「深夜の翌日は必ず休みに」と伝えるだけで、Gemini Nano が条件を抽出し、WaSHI (HiGHS) が30名×30日間の3交代シフト表を1秒で最適化・矛盾診断します。
+            </p>
+            <a href="./ai-shift/" class="open-btn">アプリを開く</a>
+          </div>
+        </article>
+
+        <article class="app-card coming-soon">
+          <div
+            class="app-thumb"
+            style="background: linear-gradient(135deg, #0f172a, #1e293b);"
+          >
+            <div class="app-icon-hero">🚚 📦</div>
+            <span class="app-tag" style="border-color: rgba(255,255,255,0.3); color: #cbd5e1;">
+              🛠️ 企画中（Coming Soon）
+            </span>
+          </div>
+          <div class="app-body">
+            <h2>配送ルート＆庫内ピッキング最適化 Copilot</h2>
+            <p>
+              時間枠制約や車両積載量、現場の突発的な変更指示をローカルAIで取り込み、ブラウザ内で配送計画を再最適化するデモアプリ。
+            </p>
+          </div>
+        </article>
+      </main>
+    </div>
+  </body>
+</html>
