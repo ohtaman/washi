@@ -481,7 +481,7 @@ export function getDifficultySpecForStage(stageNumber: number): StageDifficultyS
     return {
       rows: 8,
       cols: 9,
-      wolfCount: stageNumber >= 23 ? 5 : 4,
+      wolfCount: 4,
       sheepCount: 3,
       maxFences: stageNumber === 22 ? 7 : 8,
     };
@@ -490,7 +490,7 @@ export function getDifficultySpecForStage(stageNumber: number): StageDifficultyS
     return {
       rows: 9,
       cols: 9,
-      wolfCount: 5,
+      wolfCount: 4,
       sheepCount: 3,
       maxFences: 8,
     };
@@ -499,7 +499,7 @@ export function getDifficultySpecForStage(stageNumber: number): StageDifficultyS
     return {
       rows: 9,
       cols: 10,
-      wolfCount: 5,
+      wolfCount: 4,
       sheepCount: 3,
       maxFences: stageNumber === 28 ? 8 : 9,
     };
@@ -507,7 +507,7 @@ export function getDifficultySpecForStage(stageNumber: number): StageDifficultyS
   return {
     rows: 10,
     cols: 10,
-    wolfCount: stageNumber % 2 === 0 ? 6 : 5,
+    wolfCount: 4,
     sheepCount: 3,
     maxFences: 8 + (stageNumber % 3), // 8, 9, or 10 fences
   };
@@ -523,8 +523,15 @@ export function getSeedForStageNumber(stageNumber: number): number {
 
 const generatedStageCache = new Map<
   number,
-  { stage: StagePuzzle; optimal: OptimalPastureResult }
+  { stage: StagePuzzle; optimal: OptimalPastureResult | null }
 >();
+
+const inFlightStagePromises = new Map<number, Promise<StagePuzzle>>();
+
+export function clearGeneratedStageCacheForTest(): void {
+  generatedStageCache.clear();
+  inFlightStagePromises.clear();
+}
 
 /**
  * Generates a deterministic puzzle board for a given `stageNumber` (or seed) and verifies with HiGHS that:
@@ -533,7 +540,8 @@ const generatedStageCache = new Map<
  * 3. With `maxFences`, HiGHS finds a proven Optimal solution and sets `targetScore = optimalScore`.
  */
 export async function generateVerifiedPastureStage(
-  stageNumberOrSeed = CAMPAIGN_STAGES.length + 1
+  stageNumberOrSeed = CAMPAIGN_STAGES.length + 1,
+  maxAttempts = 36
 ): Promise<StagePuzzle> {
   const stageNumber = Math.max(CAMPAIGN_STAGES.length + 1, Math.floor(stageNumberOrSeed));
   const cached = generatedStageCache.get(stageNumber);
@@ -541,199 +549,183 @@ export async function generateVerifiedPastureStage(
     return cached.stage;
   }
 
-  const spec = getDifficultySpecForStage(stageNumber);
-  const { rows, cols, wolfCount, sheepCount } = spec;
-  const baseSeed = getSeedForStageNumber(stageNumber);
-  const themeIdx = Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
-  const theme = GENERATED_STAGE_THEMES[themeIdx];
+  const inFlight = inFlightStagePromises.get(stageNumber);
+  if (inFlight) {
+    return inFlight;
+  }
 
-  const centerR = (rows - 1) / 2;
-  const centerC = (cols - 1) / 2;
+  const generationPromise = (async (): Promise<StagePuzzle> => {
+    const spec = getDifficultySpecForStage(stageNumber);
+    const { rows, cols, wolfCount, sheepCount } = spec;
+    const baseSeed = getSeedForStageNumber(stageNumber);
+    const themeIdx =
+      Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
+    const theme = GENERATED_STAGE_THEMES[themeIdx];
 
-  for (let attempt = 0; attempt < 36; attempt++) {
-    const rng = createRng(baseSeed + attempt * 9973);
-    const grid: TileType[][] = Array.from({ length: rows }, () =>
-      Array.from({ length: cols }, () => "grass" as TileType)
-    );
+    const centerR = (rows - 1) / 2;
+    const centerC = (cols - 1) / 2;
 
-    // 1. Place sheep near the center region
-    const midR = Math.floor(rows / 2) - 1;
-    const midC = Math.floor(cols / 2) - 1;
-    const candidateSheepSpots: [number, number][] = [
-      [midR, midC],
-      [midR + 1, midC + 1],
-      [midR, midC + 1],
-      [midR + 1, midC],
-    ];
-    for (let i = candidateSheepSpots.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const tmp = candidateSheepSpots[i];
-      candidateSheepSpots[i] = candidateSheepSpots[j];
-      candidateSheepSpots[j] = tmp;
-    }
-    for (let s = 0; s < Math.min(sheepCount, candidateSheepSpots.length); s++) {
-      const [sr, sc] = candidateSheepSpots[s];
-      grid[sr][sc] = "sheep";
-    }
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const rng = createRng(baseSeed + attempt * 9973);
+      const grid: TileType[][] = Array.from({ length: rows }, () =>
+        Array.from({ length: cols }, () => "grass" as TileType)
+      );
 
-    // 2. Place wolves on outer corners and mid-edges with adjacent stone bridges
-    const midEdgeR = Math.floor(rows / 2);
-    const midEdgeC = Math.floor(cols / 2);
-    const spawnSlots: { wolf: [number, number]; bridges: [number, number][] }[] = [
-      {
-        wolf: [0, 0],
-        bridges: [
-          [0, 1],
-          [1, 0],
-        ],
-      },
-      {
-        wolf: [0, cols - 1],
-        bridges: [
-          [0, cols - 2],
-          [1, cols - 1],
-        ],
-      },
-      {
-        wolf: [rows - 1, 0],
-        bridges: [
-          [rows - 1, 1],
-          [rows - 2, 0],
-        ],
-      },
-      {
-        wolf: [rows - 1, cols - 1],
-        bridges: [
-          [rows - 1, cols - 2],
-          [rows - 2, cols - 1],
-        ],
-      },
-    ];
-    if (cols >= 8) {
-      spawnSlots.push(
+      // 1. Place sheep near the center region
+      const midR = Math.floor(rows / 2) - 1;
+      const midC = Math.floor(cols / 2) - 1;
+      const candidateSheepSpots: [number, number][] = [
+        [midR, midC],
+        [midR + 1, midC + 1],
+        [midR, midC + 1],
+        [midR + 1, midC],
+      ];
+      for (let i = candidateSheepSpots.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const tmp = candidateSheepSpots[i];
+        candidateSheepSpots[i] = candidateSheepSpots[j];
+        candidateSheepSpots[j] = tmp;
+      }
+      for (let s = 0; s < Math.min(sheepCount, candidateSheepSpots.length); s++) {
+        const [sr, sc] = candidateSheepSpots[s];
+        grid[sr][sc] = "sheep";
+      }
+
+      // 2. Place wolves on outer corners with adjacent stone bridges
+      const spawnSlots: { wolf: [number, number]; bridges: [number, number][] }[] = [
         {
-          wolf: [0, midEdgeC],
+          wolf: [0, 0],
           bridges: [
-            [0, midEdgeC - 1],
-            [1, midEdgeC],
+            [0, 1],
+            [1, 0],
           ],
         },
         {
-          wolf: [rows - 1, midEdgeC],
+          wolf: [0, cols - 1],
           bridges: [
-            [rows - 1, midEdgeC + 1],
-            [rows - 2, midEdgeC],
-          ],
-        }
-      );
-    }
-    if (rows >= 9) {
-      spawnSlots.push(
-        {
-          wolf: [midEdgeR, 0],
-          bridges: [
-            [midEdgeR, 1],
-            [midEdgeR - 1, 0],
+            [0, cols - 2],
+            [1, cols - 1],
           ],
         },
         {
-          wolf: [midEdgeR, cols - 1],
+          wolf: [rows - 1, 0],
           bridges: [
-            [midEdgeR, cols - 2],
-            [midEdgeR + 1, cols - 1],
+            [rows - 1, 1],
+            [rows - 2, 0],
           ],
+        },
+        {
+          wolf: [rows - 1, cols - 1],
+          bridges: [
+            [rows - 1, cols - 2],
+            [rows - 2, cols - 1],
+          ],
+        },
+      ];
+
+      for (let i = spawnSlots.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        const tmp = spawnSlots[i];
+        spawnSlots[i] = spawnSlots[j];
+        spawnSlots[j] = tmp;
+      }
+
+      const activeWolves = Math.min(wolfCount, spawnSlots.length);
+      for (let w = 0; w < activeWolves; w++) {
+        const slot = spawnSlots[w];
+        grid[slot.wolf[0]][slot.wolf[1]] = "wolf";
+        for (const [br, bc] of slot.bridges) {
+          if (grid[br]?.[bc] === "grass") {
+            grid[br][bc] = "bridge";
+          }
         }
+      }
+
+      // 3. Sprinkle natural rock/water maze formations, bridges, strawberries, and pitfalls
+      const isLarge = rows >= 8 || cols >= 8;
+      const waterCut = isLarge ? 0.21 : 0.17;
+      const rockCut = isLarge ? 0.37 : 0.29;
+      const bridgeCut = isLarge ? 0.43 : 0.36;
+      const strawberryCut = isLarge ? 0.61 : 0.53;
+      const pitCut = isLarge ? 0.72 : 0.64;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (grid[r][c] !== "grass") continue;
+          const distCenter = Math.abs(r - centerR) + Math.abs(c - centerC);
+          const roll = rng();
+          if (distCenter >= 1.8 && roll < waterCut) {
+            grid[r][c] = "water";
+          } else if (distCenter >= 1.8 && roll < rockCut) {
+            grid[r][c] = "rock";
+          } else if (roll < bridgeCut) {
+            grid[r][c] = "bridge";
+          } else if (roll < strawberryCut) {
+            grid[r][c] = "strawberry";
+          } else if (roll < pitCut) {
+            grid[r][c] = "pit";
+          }
+        }
+      }
+
+      const candidate: StagePuzzle = {
+        id: `stage-${stageNumber}`,
+        stageNumber,
+        title: theme.ja,
+        oneLiner: `${spec.maxFences}本の柵で🐺の侵入を防ぎ、目標スコアを達成しよう`,
+        maxFences: spec.maxFences,
+        targetScore: 20,
+        grid,
+      };
+
+      const emptyEval = evaluatePasture(
+        candidate,
+        Array.from({ length: rows }, () => Array.from({ length: cols }, () => false))
       );
-    }
+      if (emptyEval.isSafe) continue;
+      if (emptyEval.pastureTileCount < 14) continue;
 
-    for (let i = spawnSlots.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      const tmp = spawnSlots[i];
-      spawnSlots[i] = spawnSlots[j];
-      spawnSlots[j] = tmp;
-    }
-
-    const activeWolves = Math.min(wolfCount, spawnSlots.length);
-    for (let w = 0; w < activeWolves; w++) {
-      const slot = spawnSlots[w];
-      grid[slot.wolf[0]][slot.wolf[1]] = "wolf";
-      for (const [br, bc] of slot.bridges) {
-        if (grid[br]?.[bc] === "grass") {
-          grid[br][bc] = "bridge";
-        }
+      const solved = await solveOptimalPasture(candidate);
+      const minRequiredFences = Math.max(3, Math.min(5, spec.maxFences - 2));
+      if (
+        solved.status === "Optimal" &&
+        solved.verified &&
+        solved.optimalFenceCount >= minRequiredFences &&
+        solved.optimalEvaluation.pastureTileCount >= 8 &&
+        solved.optimalScore >= 20
+      ) {
+        candidate.maxFences = solved.optimalFenceCount;
+        candidate.targetScore = solved.optimalScore;
+        candidate.oneLiner = `${candidate.maxFences}本の柵で🐺の侵入を防ぎ、目標スコア ${candidate.targetScore} pt を達成しよう`;
+        generatedStageCache.set(stageNumber, { stage: candidate, optimal: solved });
+        return candidate;
       }
     }
 
-    // 3. Sprinkle natural rock/water maze formations, bridges, strawberries, and pitfalls
-    // Higher wall density on 8x8..10x10 creates tactical valleys/chokepoints and keeps MILP fast
-    const isLarge = rows >= 8 || cols >= 8;
-    const waterCut = isLarge ? 0.21 : 0.17;
-    const rockCut = isLarge ? 0.38 : 0.29;
-    const bridgeCut = isLarge ? 0.45 : 0.36;
-    const strawberryCut = isLarge ? 0.62 : 0.53;
-    const pitCut = isLarge ? 0.73 : 0.64;
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (grid[r][c] !== "grass") continue;
-        const distCenter = Math.abs(r - centerR) + Math.abs(c - centerC);
-        const roll = rng();
-        if (distCenter >= 1.8 && roll < waterCut) {
-          grid[r][c] = "water";
-        } else if (distCenter >= 1.8 && roll < rockCut) {
-          grid[r][c] = "rock";
-        } else if (roll < bridgeCut) {
-          grid[r][c] = "bridge";
-        } else if (roll < strawberryCut) {
-          grid[r][c] = "strawberry";
-        } else if (roll < pitCut) {
-          grid[r][c] = "pit";
-        }
-      }
-    }
-
-    const candidate: StagePuzzle = {
+    const fallback: StagePuzzle = {
+      ...CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1],
       id: `stage-${stageNumber}`,
       stageNumber,
       title: theme.ja,
-      oneLiner: `${spec.maxFences}本の柵で🐺の侵入を防ぎ、目標スコアを達成しよう`,
-      maxFences: spec.maxFences,
-      targetScore: 20,
-      grid,
     };
+    const fallbackSolved = await solveOptimalPasture(fallback);
+    const verifiedFallbackOpt =
+      fallbackSolved.status === "Optimal" && fallbackSolved.verified
+        ? fallbackSolved
+        : null;
+    generatedStageCache.set(stageNumber, {
+      stage: fallback,
+      optimal: verifiedFallbackOpt,
+    });
+    return fallback;
+  })();
 
-    const emptyEval = evaluatePasture(
-      candidate,
-      Array.from({ length: rows }, () => Array.from({ length: cols }, () => false))
-    );
-    if (emptyEval.isSafe) continue;
-    // Fast pre-check: ensure sheep can reach a wide connected area before invoking MILP
-    if (emptyEval.pastureTileCount < Math.floor(rows * cols * 0.38)) continue;
-
-    const solved = await solveOptimalPasture(candidate);
-    const minRequiredFences = Math.max(3, spec.maxFences - 2);
-    if (
-      solved.status === "Optimal" &&
-      solved.verified &&
-      solved.optimalFenceCount >= minRequiredFences &&
-      solved.optimalEvaluation.pastureTileCount >= Math.max(8, Math.floor(rows * cols * 0.22)) &&
-      solved.optimalScore >= 22
-    ) {
-      candidate.maxFences = solved.optimalFenceCount;
-      candidate.targetScore = solved.optimalScore;
-      candidate.oneLiner = `${candidate.maxFences}本の柵で🐺の侵入を防ぎ、目標スコア ${candidate.targetScore} pt を達成しよう`;
-      generatedStageCache.set(stageNumber, { stage: candidate, optimal: solved });
-      return candidate;
-    }
+  inFlightStagePromises.set(stageNumber, generationPromise);
+  try {
+    return await generationPromise;
+  } finally {
+    inFlightStagePromises.delete(stageNumber);
   }
-
-  const fallback: StagePuzzle = {
-    ...CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1],
-    id: `stage-${stageNumber}`,
-    stageNumber,
-    title: theme.ja,
-  };
-  return fallback;
 }
 
 export async function getStageByNumber(

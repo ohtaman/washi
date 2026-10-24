@@ -202,6 +202,9 @@ let activeHint: HintDiagnosis | null = null;
 let wasClearedBeforeMove = false;
 let showingModelAnswer = false;
 let solveToken = 0;
+let isStageLoading = false;
+let inFlightLoadTarget: number | null = null;
+let inFlightLoadPromise: Promise<void> | null = null;
 
 function getEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -659,12 +662,13 @@ function renderStageNav(): void {
   const maxStageNum = Math.max(maxUnlockedStage, currentStage.stageNumber);
 
   const prevBtn = getEl<HTMLButtonElement>("btn-stage-prev");
-  prevBtn.disabled = currentStage.stageNumber <= 1;
+  prevBtn.disabled = isStageLoading || currentStage.stageNumber <= 1;
 
   const nextBtn = getEl<HTMLButtonElement>("btn-stage-next");
-  nextBtn.disabled = currentStage.stageNumber >= maxUnlockedStage;
+  nextBtn.disabled = isStageLoading || currentStage.stageNumber >= maxUnlockedStage;
 
   const selectEl = getEl<HTMLSelectElement>("stage-select");
+  selectEl.disabled = isStageLoading;
   selectEl.innerHTML = "";
   if (typeof document.createElement !== "function") return;
   for (let num = 1; num <= maxStageNum; num++) {
@@ -832,6 +836,7 @@ function renderHud(): void {
     const canAdvanceNext =
       !showingModelAnswer || currentStage.stageNumber < getMaxUnlockedStage();
     btnNextStage.hidden = !canAdvanceNext;
+    btnNextStage.disabled = isStageLoading;
     btnNextStage.textContent = pickLang(currentLang, {
       ja: `Stage ${currentStage.stageNumber + 1} へ進む ▶`,
       en: `Proceed to Stage ${currentStage.stageNumber + 1} ▶`,
@@ -1105,9 +1110,9 @@ function handleShowOptimal(): void {
 
 async function loadStage(
   stage: StagePuzzle,
-  precomputedOptimal: OptimalPastureResult | null = null
+  precomputedOptimal: OptimalPastureResult | null = null,
+  myToken = ++solveToken
 ): Promise<void> {
-  const myToken = ++solveToken;
   currentStage = stage;
   currentFences = createEmptyFences(stage.grid.length, stage.grid[0].length);
   undoStack = [];
@@ -1139,13 +1144,38 @@ async function loadStage(
 
 export async function loadStageByNumber(stageNumber: number): Promise<void> {
   const targetNum = Math.max(1, Math.floor(stageNumber));
+  if (isStageLoading && inFlightLoadTarget === targetNum && inFlightLoadPromise) {
+    return inFlightLoadPromise;
+  }
   const myToken = ++solveToken;
-  const { stage, precomputedOptimal } = await getStageByNumber(targetNum);
-  if (myToken !== solveToken) return;
-  await loadStage(stage, precomputedOptimal);
+  isStageLoading = true;
+  inFlightLoadTarget = targetNum;
+  renderStageNav();
+  renderHud();
+
+  const promise = (async () => {
+    try {
+      const { stage, precomputedOptimal } = await getStageByNumber(targetNum);
+      if (myToken !== solveToken) return;
+      await loadStage(stage, precomputedOptimal, myToken);
+    } finally {
+      if (myToken === solveToken) {
+        isStageLoading = false;
+        inFlightLoadTarget = null;
+        inFlightLoadPromise = null;
+        renderStageNav();
+        renderHud();
+      }
+    }
+  })();
+  inFlightLoadPromise = promise;
+  return promise;
 }
 
 export async function stepStage(delta: -1 | 1): Promise<boolean> {
+  if (isStageLoading) {
+    return false;
+  }
   const maxUnlockedStage = getMaxUnlockedStage();
   const targetNum = currentStage.stageNumber + delta;
   if (targetNum < 1 || targetNum > maxUnlockedStage) {

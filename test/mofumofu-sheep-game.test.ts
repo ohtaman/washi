@@ -13,6 +13,7 @@ import {
 import type { OptimalPastureResult } from "../examples/web-demo/games/mofumofu-sheep/types.js";
 import {
   CAMPAIGN_STAGES,
+  clearGeneratedStageCacheForTest,
   generateVerifiedPastureStage,
   getDifficultySpecForStage,
   getLocalizedStageText,
@@ -125,18 +126,24 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
   });
 
   it("generates deterministic, progressive stages (7x7 -> 8x8 -> 9x9 -> 10x10 cap) that can be revisited by stageNumber", async () => {
+    clearGeneratedStageCacheForTest();
     expect(getDifficultySpecForStage(13)).toMatchObject({ rows: 7, cols: 7 });
     expect(getDifficultySpecForStage(19)).toMatchObject({ rows: 8, cols: 8 });
     expect(getDifficultySpecForStage(25)).toMatchObject({ rows: 9, cols: 9 });
     expect(getDifficultySpecForStage(31)).toMatchObject({ rows: 10, cols: 10 });
 
     for (const stageNum of [13, 19, 25, 31]) {
+      const spec = getDifficultySpecForStage(stageNum);
       const stageA = await generateVerifiedPastureStage(stageNum);
-      const stageB = (await getStageByNumber(stageNum)).stage;
+      const { stage: stageB, precomputedOptimal } = await getStageByNumber(stageNum);
       expect(stageA.id).toBe(`stage-${stageNum}`);
       expect(stageA.stageNumber).toBe(stageNum);
+      // Verify the generated stage genuinely matches the progressive dimensions (not a 7x7 fallback)
+      expect(stageA.grid.length).toBe(spec.rows);
+      expect(stageA.grid[0].length).toBe(spec.cols);
       expect(stageB.grid).toEqual(stageA.grid);
       expect(stageB.targetScore).toBe(stageA.targetScore);
+      expect(precomputedOptimal?.verified).toBe(true);
 
       const optimalResult = await solveOptimalPasture(stageA);
       expect(optimalResult.status).toBe("Optimal");
@@ -147,6 +154,16 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(check.isSafe).toBe(true);
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
+
+    // Force generation exhaustion (maxAttempts = 0) and verify fallback is cached with precomputedOptimal
+    const fallbackStage = await generateVerifiedPastureStage(99, 0);
+    expect(fallbackStage.id).toBe("stage-99");
+    expect(fallbackStage.stageNumber).toBe(99);
+    expect(fallbackStage.grid.length).toBe(7);
+    const revisitedFallback = await getStageByNumber(99);
+    expect(revisitedFallback.stage).toBe(fallbackStage);
+    expect(revisitedFallback.precomputedOptimal?.verified).toBe(true);
+    expect(revisitedFallback.precomputedOptimal?.optimalScore).toBe(fallbackStage.targetScore);
   });
 
   it("enforces editorial & i18n rules across Portal, Games, and Theory Articles (no 核心, no ！, no algorithm names on Portal, full ja/en/zh)", () => {
@@ -726,6 +743,28 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       const steppedUnlocked = await stepStage(1);
       expect(steppedUnlocked).toBe(true);
       expect(getCurrentStageNumber()).toBe(5);
+
+      // Verify rapid repeated navigation into an uncached generated stage disables controls while loading
+      clearGeneratedStageCacheForTest();
+      resetSheepProgressForTest(
+        JSON.stringify({
+          clearedByStageId: { "stage-12": true },
+          highestUnlockedStage: 14,
+        })
+      );
+      await loadStageByNumber(12);
+      const firstStepPromise = stepStage(1);
+      // While Stage 13 generation is in flight, navigation buttons are disabled and duplicate stepStage is rejected
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(true);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(true);
+      expect(byId.get("stage-select")?.disabled).toBe(true);
+      const duplicateStep = await stepStage(1);
+      expect(duplicateStep).toBe(false);
+      expect(await firstStepPromise).toBe(true);
+      expect(getCurrentStageNumber()).toBe(13);
+      expect(byId.get("btn-stage-prev")?.disabled).toBe(false);
+      expect(byId.get("btn-stage-next")?.disabled).toBe(false);
+      expect(byId.get("stage-select")?.disabled).toBe(false);
     } finally {
       if (prevDocument === undefined) {
         delete (globalThis as { document?: unknown }).document;
