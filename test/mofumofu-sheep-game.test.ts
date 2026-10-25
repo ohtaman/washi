@@ -35,8 +35,10 @@ import { CAMPAIGN_STAGES as CASTLE_STAGES } from "../examples/web-demo/games/dem
 import {
   applyStaticTranslations as applySheepStaticTranslations,
   countCanonicalClearedStages,
+  getResumeStageNumber,
   loadStageByNumber,
   parseProgressState,
+  renderStageNav,
   stepStage,
 } from "../examples/web-demo/games/mofumofu-sheep/main.js";
 
@@ -817,6 +819,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         }
       }
       expect(byId.get("total-stars-text")?.textContent).toBe("3 CLEAR");
+      expect(byId.get("total-score-text")?.textContent).toBe("· 16 pt");
       expect(byId.get("btn-stage-next")?.disabled).toBe(false);
 
       const steppedUnlocked = await stepStage(1);
@@ -859,6 +862,149 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         (globalThis as { localStorage?: unknown }).localStorage;
         (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
       }
+    }
+  });
+
+  it("determines resume stage number from cleared progress and restores total scores", async () => {
+    // 1. Fresh state: start at tutorial Stage 1
+    const fresh = parseProgressState(null);
+    expect(getResumeStageNumber(fresh)).toBe(1);
+    expect(fresh.totalScore).toBe(0);
+
+    // 2. Cleared Stage 1: resume at Stage 2
+    const afterStage1 = parseProgressState(
+      JSON.stringify({
+        clearedByStageId: { "stage-1": true },
+        highestUnlockedStage: 4,
+        stageScores: { "stage-1": 7 },
+      })
+    );
+    expect(getResumeStageNumber(afterStage1)).toBe(2);
+    expect(afterStage1.totalScore).toBe(7);
+
+    // 3. Completed all 4 tutorial stages (1-4): skip tutorials by default and resume at Stage 5
+    const clearedTutorials = parseProgressState(
+      JSON.stringify({
+        clearedByStageId: {
+          "stage-1": true,
+          "stage-2": true,
+          "stage-3": true,
+          "stage-4": true,
+        },
+        highestUnlockedStage: 5,
+        stageScores: {
+          "stage-1": 7,
+          "stage-2": 9,
+          "stage-3": 6,
+          "stage-4": 12,
+        },
+      })
+    );
+    expect(getResumeStageNumber(clearedTutorials)).toBe(5);
+    expect(clearedTutorials.totalScore).toBe(34);
+
+    // 4. Completed up to Stage 6: resume at Stage 7
+    const clearedUpTo6 = parseProgressState(
+      JSON.stringify({
+        clearedByStageId: {
+          "stage-1": true,
+          "stage-2": true,
+          "stage-3": true,
+          "stage-4": true,
+          "stage-5": true,
+          "stage-6": true,
+        },
+        highestUnlockedStage: 7,
+      })
+    );
+    expect(getResumeStageNumber(clearedUpTo6)).toBe(7);
+
+    // 5. DOM-level verification exercising the production renderStageNav renderer
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const testDom = new Map<string, {
+      id: string;
+      textContent: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      innerHTML: string;
+      children: unknown[];
+      appendChild: (c: unknown) => void;
+      setAttribute: () => void;
+      getAttribute: () => string | null;
+      classList: { toggle: () => void };
+    }>();
+
+    const makeTestNode = (id: string) => {
+      const node = {
+        id,
+        textContent: "",
+        title: "",
+        hidden: false,
+        disabled: false,
+        innerHTML: "",
+        children: [] as unknown[],
+        dataset: {} as Record<string, string>,
+        style: {
+          setProperty: () => {},
+          gridTemplateColumns: "",
+        },
+        appendChild: (child: unknown) => {
+          node.children.push(child);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        addEventListener: () => {},
+        classList: {
+          toggle: () => void 0,
+          add: () => void 0,
+          remove: () => void 0,
+        },
+      };
+      return node;
+    };
+
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+    for (const match of sheepHtml.matchAll(tagRegex)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      testDom.set(idMatch[1], makeTestNode(idMatch[1]));
+    }
+
+    const prevDoc = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
+    const storeMap = new Map<string, string>();
+    storeMap.set("washi_mofumofu_sheep_cleared_v3", JSON.stringify(clearedTutorials));
+
+    try {
+      (globalThis as { document?: unknown }).document = {
+        getElementById: (id: string) => testDom.get(id) ?? null,
+        querySelectorAll: () => [],
+        createElement: (tag: string) => makeTestNode(tag),
+      };
+      (globalThis as { localStorage?: unknown }).localStorage = {
+        getItem: (k: string) => storeMap.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          storeMap.set(k, v);
+        },
+      };
+
+      // Step stage or load stage to sync storage and trigger production renderStageNav
+      await loadStageByNumber(5);
+      renderStageNav();
+
+      const scoreNode = testDom.get("total-score-text");
+      const starsNode = testDom.get("total-stars-text");
+      expect(scoreNode).toBeDefined();
+      expect(scoreNode?.textContent).toBe("· 34 pt");
+      expect(scoreNode?.hidden).toBe(false);
+      expect(starsNode?.textContent).toBe("4 CLEAR");
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document?: unknown }).document = prevDoc;
+      if (prevStorage === undefined) delete (globalThis as { localStorage?: unknown }).localStorage;
+      else (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
     }
   });
 });

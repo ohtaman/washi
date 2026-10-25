@@ -19,13 +19,17 @@ import {
   getQuarterRegime,
 } from "../examples/web-demo/games/quant-survival/regimes.js";
 import {
+  ACTIVE_RUN_STORAGE_KEY,
   adjustSingleWeight,
   advanceQuarter,
   applyQuantStaticTranslations,
+  clearActiveRunState,
   formatLiquidationDetail,
   getQuantGameState,
   latestRevealedShock,
+  loadActiveRunState,
   resolveDisplayedFloorAum,
+  saveActiveRunState,
   startMarketSimulation,
 } from "../examples/web-demo/games/quant-survival/main.js";
 
@@ -751,6 +755,50 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP)", () => {
     } finally {
       if (prevDoc === undefined) delete g.document;
       else g.document = prevDoc;
+    }
+  });
+
+  it("persists active fund progression (quarter & AUM score) to resume without forcing fresh restarts", () => {
+    const store = new Map<string, string>();
+    const g = globalThis as { window?: unknown };
+    const prevWin = g.window;
+    try {
+      g.window = {
+        localStorage: {
+          getItem: (key: string) => store.get(key) ?? null,
+          setItem: (key: string, val: string) => {
+            store.set(key, val);
+          },
+          removeItem: (key: string) => {
+            store.delete(key);
+          },
+        },
+      };
+
+      // 1. Initial state has no active run
+      expect(loadActiveRunState()).toBeNull();
+
+      // 2. Survived Q1 with compounded AUM: active run is persisted
+      saveActiveRunState({
+        quarter: 2,
+        playerAum: 114.5,
+        aiAum: 108.2,
+        duelWins: 1,
+        duelLosses: 0,
+      });
+
+      const restored = loadActiveRunState();
+      expect(restored).not.toBeNull();
+      expect(restored?.quarter).toBe(2);
+      expect(restored?.playerAum).toBe(114.5);
+      expect(restored?.duelWins).toBe(1);
+
+      // 3. Clear on liquidation or new run resets state
+      clearActiveRunState();
+      expect(loadActiveRunState()).toBeNull();
+    } finally {
+      if (prevWin === undefined) delete g.window;
+      else g.window = prevWin;
     }
   });
 });

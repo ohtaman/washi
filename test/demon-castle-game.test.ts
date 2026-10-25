@@ -31,12 +31,14 @@ import {
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
 import {
   getActiveStageStateForTest,
+  hasSavedProgress,
   isEndlessModeUnlocked,
   loadCampaignStage,
   loadEndlessStage,
   recordStageBreachFailure,
   recordStageVictory,
   resetSaveDataForTest,
+  type SaveData,
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
 
 describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", () => {
@@ -391,5 +393,49 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(mobile768Block).toMatch(/\.shift-btn\s*\{[^}]*min-width:\s*44px;/);
     expect(mobile768Block).toMatch(/\.board-container\s*\{[^}]*padding-bottom:\s*5rem;/);
     expect(mobile768Block).toMatch(/\.shift-matrix thead th\.col-monster\s*\{[^}]*width:\s*168px;/);
+  });
+
+  it("detects saved player progress to skip title and movie when resuming by default", () => {
+    const emptySave: SaveData = {
+      unlockedStageIndex: 0,
+      highestUnlockedWeek: 1,
+      clearedRanks: {},
+      playHistory: [],
+      stageRetryCounts: {},
+      stageFailedAttempts: {},
+      unlockAllDemo: false,
+      openingMovieSeen: false,
+    };
+    expect(hasSavedProgress(emptySave)).toBe(false);
+
+    const clearedWeek1Save: SaveData = {
+      ...emptySave,
+      unlockedStageIndex: 1,
+      highestUnlockedWeek: 2,
+      clearedRanks: { "week-1": "S" },
+      playHistory: [
+        {
+          weekNumber: 1,
+          rank: "S",
+          scoreRatio: 1.0,
+          hintsUsed: 0,
+          failedAttempts: 0,
+        },
+      ],
+      openingMovieSeen: true,
+    };
+    expect(hasSavedProgress(clearedWeek1Save)).toBe(true);
+
+    const movieOnlySave: SaveData = {
+      ...emptySave,
+      openingMovieSeen: true,
+    };
+    expect(hasSavedProgress(movieOnlySave)).toBe(true);
+
+    const endlessSave: SaveData = {
+      ...emptySave,
+      highestUnlockedWeek: 6,
+    };
+    expect(hasSavedProgress(endlessSave)).toBe(true);
   });
 });

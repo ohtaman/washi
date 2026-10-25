@@ -72,7 +72,7 @@ let currentLang: GameLang = getGameLang();
 // Persistent Save State
 // ============================================================================
 
-interface SaveData {
+export interface SaveData {
   unlockedStageIndex: number;
   highestUnlockedWeek: number;
   clearedRanks: Record<string, "S" | "A" | "B">;
@@ -80,9 +80,20 @@ interface SaveData {
   stageRetryCounts: Record<string, number>;
   stageFailedAttempts: Record<string, number>;
   unlockAllDemo: boolean;
+  openingMovieSeen?: boolean;
 }
 
 const SAVE_STORAGE_KEY = "demon_castle_guard_shift_save_v2";
+
+export function hasSavedProgress(data: SaveData): boolean {
+  return (
+    Boolean(data.openingMovieSeen) ||
+    data.highestUnlockedWeek > 1 ||
+    data.unlockedStageIndex > 0 ||
+    Object.keys(data.clearedRanks).length > 0 ||
+    data.playHistory.length > 0
+  );
+}
 
 function loadSaveData(): SaveData {
   try {
@@ -111,6 +122,7 @@ function loadSaveData(): SaveData {
         stageRetryCounts,
         stageFailedAttempts,
         unlockAllDemo: Boolean(parsed.unlockAllDemo),
+        openingMovieSeen: Boolean(parsed.openingMovieSeen),
       };
     }
   } catch {
@@ -124,6 +136,7 @@ function loadSaveData(): SaveData {
     stageRetryCounts: {},
     stageFailedAttempts: {},
     unlockAllDemo: false,
+    openingMovieSeen: false,
   };
 }
 
@@ -479,6 +492,8 @@ function openOpeningMovieDialog(proceedToPrologueAfter: boolean): void {
 
 function finishOpeningMovie(): void {
   clearOpeningMovieTimer();
+  saveData.openingMovieSeen = true;
+  persistSaveData(saveData);
   const dialog = getEl<HTMLDialogElement>("opening-movie-dialog");
   const shouldOpenPrologue = opProceedToPrologueAfter;
   opProceedToPrologueAfter = false;
@@ -2140,6 +2155,7 @@ export function recordStageVictory(remainingHp: number, maxHp: number): "S" | "A
     },
   ];
   saveData.stageFailedAttempts[retryKey] = 0;
+  saveData.openingMovieSeen = true;
   persistSaveData(saveData);
   return rank;
 }
@@ -4049,6 +4065,21 @@ export function switchCastleLanguage(next: GameLang): void {
   }
 }
 
+export function resumeGameFromSave(): void {
+  soundEngine.setSceneTrack("prologue");
+  syncAudioButtonUi();
+  if (saveData.highestUnlockedWeek > CAMPAIGN_STAGES.length) {
+    const titleScreen = getEl<HTMLElement>("title-screen");
+    const gameApp = getEl<HTMLElement>("game-app");
+    titleScreen.hidden = true;
+    gameApp.hidden = false;
+    void loadEndlessStage(saveData.highestUnlockedWeek, true);
+    return;
+  }
+  const resumeIdx = Math.min(saveData.unlockedStageIndex, CAMPAIGN_STAGES.length - 1);
+  enterGameScreen(resumeIdx, true);
+}
+
 function initGame(): void {
   setupDialogLightDismiss();
   applyStaticTranslations();
@@ -4064,7 +4095,11 @@ function initGame(): void {
   getEl<HTMLButtonElement>("btn-title-start").addEventListener("click", () => {
     soundEngine.playClick("day");
     enterGameScreen(0, false);
-    openOpeningMovieDialog(true);
+    if (!saveData.openingMovieSeen) {
+      openOpeningMovieDialog(true);
+    } else {
+      openPrologueDialog();
+    }
   });
 
   getEl<HTMLButtonElement>("btn-title-roster").addEventListener("click", () => {
@@ -4099,18 +4134,7 @@ function initGame(): void {
 
   getEl<HTMLButtonElement>("btn-title-continue").addEventListener("click", () => {
     soundEngine.playClick("day");
-    soundEngine.setSceneTrack("prologue");
-    syncAudioButtonUi();
-    if (saveData.highestUnlockedWeek > CAMPAIGN_STAGES.length) {
-      const titleScreen = getEl<HTMLElement>("title-screen");
-      const gameApp = getEl<HTMLElement>("game-app");
-      titleScreen.hidden = true;
-      gameApp.hidden = false;
-      void loadEndlessStage(saveData.highestUnlockedWeek, true);
-      return;
-    }
-    const resumeIdx = Math.min(saveData.unlockedStageIndex, CAMPAIGN_STAGES.length - 1);
-    enterGameScreen(resumeIdx, true);
+    resumeGameFromSave();
   });
 
   getEl<HTMLButtonElement>("btn-title-help").addEventListener("click", () => {
@@ -4237,7 +4261,11 @@ function initGame(): void {
     void openDispatchResultDialog();
   });
 
-  showTitleScreen();
+  if (hasSavedProgress(saveData)) {
+    resumeGameFromSave();
+  } else {
+    showTitleScreen();
+  }
 }
 
 if (typeof document !== "undefined" && document.getElementById("title-screen")) {
