@@ -38,6 +38,7 @@ import {
   getResumeStageNumber,
   loadStageByNumber,
   parseProgressState,
+  renderStageNav,
   stepStage,
 } from "../examples/web-demo/games/mofumofu-sheep/main.js";
 
@@ -864,7 +865,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     }
   });
 
-  it("determines resume stage number from cleared progress and restores total scores", () => {
+  it("determines resume stage number from cleared progress and restores total scores", async () => {
     // 1. Fresh state: start at tutorial Stage 1
     const fresh = parseProgressState(null);
     expect(getResumeStageNumber(fresh)).toBe(1);
@@ -918,30 +919,92 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     );
     expect(getResumeStageNumber(clearedUpTo6)).toBe(7);
 
-    // 5. DOM-level verification of visible badge total score text
-    const prevDoc = (globalThis as { document?: unknown }).document;
-    const scoreTextNode = { textContent: "", hidden: true };
-    const starsTextNode = { textContent: "", hidden: false };
-    const badgeNode = { title: "" };
-    try {
-      (globalThis as { document?: unknown }).document = {
-        getElementById: (id: string) => {
-          if (id === "total-score-text") return scoreTextNode;
-          if (id === "total-stars-text") return starsTextNode;
-          if (id === "total-stars-badge") return badgeNode;
-          return null;
+    // 5. DOM-level verification exercising the production renderStageNav renderer
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const testDom = new Map<string, {
+      id: string;
+      textContent: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      innerHTML: string;
+      children: unknown[];
+      appendChild: (c: unknown) => void;
+      setAttribute: () => void;
+      getAttribute: () => string | null;
+      classList: { toggle: () => void };
+    }>();
+
+    const makeTestNode = (id: string) => {
+      const node = {
+        id,
+        textContent: "",
+        title: "",
+        hidden: false,
+        disabled: false,
+        innerHTML: "",
+        children: [] as unknown[],
+        dataset: {} as Record<string, string>,
+        style: {
+          setProperty: () => {},
+          gridTemplateColumns: "",
+        },
+        appendChild: (child: unknown) => {
+          node.children.push(child);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        addEventListener: () => {},
+        classList: {
+          toggle: () => void 0,
+          add: () => void 0,
+          remove: () => void 0,
         },
       };
-      // When score is positive, total-score-text is visible
-      if (clearedTutorials.totalScore && clearedTutorials.totalScore > 0) {
-        scoreTextNode.textContent = `· ${clearedTutorials.totalScore} pt`;
-        scoreTextNode.hidden = false;
-      }
-      expect(scoreTextNode.textContent).toBe("· 34 pt");
-      expect(scoreTextNode.hidden).toBe(false);
+      return node;
+    };
+
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+    for (const match of sheepHtml.matchAll(tagRegex)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      testDom.set(idMatch[1], makeTestNode(idMatch[1]));
+    }
+
+    const prevDoc = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
+    const storeMap = new Map<string, string>();
+    storeMap.set("washi_mofumofu_sheep_cleared_v3", JSON.stringify(clearedTutorials));
+
+    try {
+      (globalThis as { document?: unknown }).document = {
+        getElementById: (id: string) => testDom.get(id) ?? null,
+        querySelectorAll: () => [],
+        createElement: (tag: string) => makeTestNode(tag),
+      };
+      (globalThis as { localStorage?: unknown }).localStorage = {
+        getItem: (k: string) => storeMap.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          storeMap.set(k, v);
+        },
+      };
+
+      // Step stage or load stage to sync storage and trigger production renderStageNav
+      await loadStageByNumber(5);
+      renderStageNav();
+
+      const scoreNode = testDom.get("total-score-text");
+      const starsNode = testDom.get("total-stars-text");
+      expect(scoreNode).toBeDefined();
+      expect(scoreNode?.textContent).toBe("· 34 pt");
+      expect(scoreNode?.hidden).toBe(false);
+      expect(starsNode?.textContent).toBe("4 CLEAR");
     } finally {
       if (prevDoc === undefined) delete (globalThis as { document?: unknown }).document;
       else (globalThis as { document?: unknown }).document = prevDoc;
+      if (prevStorage === undefined) delete (globalThis as { localStorage?: unknown }).localStorage;
+      else (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
     }
   });
 });

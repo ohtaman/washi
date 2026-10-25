@@ -719,7 +719,7 @@ function getMaxUnlockedStage(): number {
   return Math.max(TUTORIAL_STAGE_COUNT, progress.highestUnlockedStage);
 }
 
-function renderStageNav(): void {
+export function renderStageNav(): void {
   const totalStarsTextEl = getEl<HTMLElement>("total-stars-text");
   const clearedCount = countCanonicalClearedStages(progress.clearedByStageId);
   totalStarsTextEl.textContent = `${clearedCount} CLEAR`;
