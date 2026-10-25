@@ -588,21 +588,33 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       const showcaseRaw = fs.readFileSync(showcasePath, "utf-8");
       expect(showcaseRaw).toContain(loc.sheepTitle);
 
-      const hrefs = Array.from(
-        showcaseRaw.matchAll(/href="(https:\/\/ohtaman\.github\.io\/washi\/[^"]+)"/g),
+      const cardAnchors = Array.from(
+        showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-card[^"]*"[^>]*)>/g),
         (m) => m[1]
       );
+      expect(cardAnchors).toHaveLength(6);
+
+      const hrefs = cardAnchors.map((attrs) => {
+        const hrefMatch = attrs.match(/\bhref="([^"]+)"/);
+        const targetMatch = attrs.match(/\btarget="([^"]+)"/);
+        expect(hrefMatch, `Missing href in showcase card <a ${attrs}>`).not.toBeNull();
+        expect(
+          targetMatch?.[1],
+          `Showcase card <a ${attrs}> in ${loc.showcaseFile} must set target="_self" to bypass VitePress SPA router 404 interception`
+        ).toBe("_self");
+        return hrefMatch![1];
+      });
       expect(hrefs).toEqual([
-        "https://ohtaman.github.io/washi/demo/",
-        "https://ohtaman.github.io/washi/apps/ai-shift/",
-        "https://ohtaman.github.io/washi/apps/",
-        "https://ohtaman.github.io/washi/games/demon-castle-shift/",
-        "https://ohtaman.github.io/washi/games/mofumofu-sheep/",
-        "https://ohtaman.github.io/washi/games/",
+        "/washi/demo/",
+        "/washi/apps/ai-shift/",
+        "/washi/apps/",
+        "/washi/games/demon-castle-shift/",
+        "/washi/games/mofumofu-sheep/",
+        "/washi/games/",
       ]);
 
       for (const href of hrefs) {
-        const subpath = href.replace("https://ohtaman.github.io/washi/", "");
+        const subpath = href.replace(/^\/washi\//, "");
         const expectedEntryHtml = path.resolve(
           process.cwd(),
           "examples/web-demo",
@@ -619,5 +631,57 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         ).toBe(true);
       }
     }
+
+    for (const componentFile of [
+      "docs/.vitepress/theme/components/CodeRunner.vue",
+      "docs/.vitepress/theme/components/EcommerceCouponDemo.vue",
+      "docs/.vitepress/theme/components/PortfolioQpDemo.vue",
+      "docs/.vitepress/theme/components/ShiftSchedulingDemo.vue",
+    ]) {
+      const compRaw = fs.readFileSync(path.resolve(process.cwd(), componentFile), "utf-8");
+      const playgroundAnchors = Array.from(
+        compRaw.matchAll(/<a\s+([\s\S]*?class="playground-link"[\s\S]*?)>/g),
+        (m) => m[1]
+      );
+      expect(playgroundAnchors.length, `Expected .playground-link anchor in ${componentFile}`).toBeGreaterThan(0);
+      for (const attrs of playgroundAnchors) {
+        expect(
+          attrs,
+          `Playground link in ${componentFile} must include target="_self" to bypass VitePress SPA router`
+        ).toMatch(/\btarget="_self"/);
+      }
+    }
+
+    const themeIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "docs/.vitepress/theme/index.ts"),
+      "utf-8"
+    );
+    expect(themeIndexRaw).toContain("router.onBeforeRouteChange");
+    expect(themeIndexRaw).toMatch(/demo\|apps\|games/);
+
+    const gamesIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/games/index.html"),
+      "utf-8"
+    );
+    expect(gamesIndexRaw).toContain('id="portal-back-showcase"');
+
+    const appsIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/apps/index.html"),
+      "utf-8"
+    );
+    expect(appsIndexRaw).toContain('id="apps-back-showcase"');
+
+    const demoIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/demo/index.html"),
+      "utf-8"
+    );
+    expect(demoIndexRaw).toContain('data-i18n="navShowcase"');
+    expect(demoIndexRaw).toContain('id="nav-showcase"');
+
+    const appTsRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/src/ui/app.ts"),
+      "utf-8"
+    );
+    expect(appTsRaw).toContain('navShowcase.setAttribute("href", locale === "ja" ? "../ja/showcase/" : "../showcase/")');
   });
 });

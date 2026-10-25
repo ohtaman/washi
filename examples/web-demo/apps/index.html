@@ -206,7 +206,10 @@
   <body>
     <div class="hub-container">
       <header class="hub-topbar">
-        <a href="../" class="back-btn" id="apps-back-top">← WaSHI トップページへ戻る</a>
+        <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+          <a href="../showcase/" class="back-btn" id="apps-back-showcase">✨ ショーケースへ戻る</a>
+          <a href="../" class="back-btn" id="apps-back-top">📖 ドキュメント</a>
+        </div>
         <div class="hub-nav-group">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -290,7 +293,8 @@
       const APPS_TEXT = {
         ja: {
           pageTitle: "WaSHI 実務アプリケーション・ショーケース",
-          backTop: "← WaSHI トップページへ戻る",
+          backShowcase: "✨ ショーケースへ戻る",
+          backTop: "📖 ドキュメント",
           navDemo: "📐 数理モデル Playground",
           navGames: "🎮 ゲーム・ショーケース",
           heroTitle: "🏥 WaSHI 実務アプリケーション・ショーケース",
@@ -313,7 +317,8 @@
         },
         en: {
           pageTitle: "WaSHI Real-World Applications Showcase",
-          backTop: "← Back to WaSHI Home",
+          backShowcase: "✨ Back to Showcase",
+          backTop: "📖 Documentation",
           navDemo: "📐 Modeling Playground",
           navGames: "🎮 Puzzle Games Showcase",
           heroTitle: "🏥 WaSHI Real-World Applications Showcase",
@@ -336,7 +341,8 @@
         },
         zh: {
           pageTitle: "WaSHI 实务应用展示中心",
-          backTop: "← 返回 WaSHI 首页",
+          backShowcase: "✨ 返回案例展示",
+          backTop: "📖 文档首页",
           navDemo: "📐 数学建模 Playground",
           navGames: "🎮 益智游戏展示",
           heroTitle: "🏥 WaSHI 实务应用展示中心",
@@ -363,7 +369,16 @@
         setGameLang(lang);
         const t = pickLang(lang, APPS_TEXT);
         document.title = t.pageTitle;
-        document.getElementById("apps-back-top").textContent = t.backTop;
+        const showcaseLink = document.getElementById("apps-back-showcase");
+        if (showcaseLink) {
+          showcaseLink.textContent = t.backShowcase;
+          showcaseLink.href = lang === "ja" ? "../ja/showcase/" : lang === "zh" ? "../zh/showcase/" : "../showcase/";
+        }
+        const topLink = document.getElementById("apps-back-top");
+        if (topLink) {
+          topLink.textContent = t.backTop;
+          topLink.href = lang === "ja" ? "../ja/" : lang === "zh" ? "../zh/" : "../";
+        }
         document.getElementById("apps-nav-demo").textContent = t.navDemo;
         document.getElementById("apps-nav-games").textContent = t.navGames;
         document.getElementById("apps-hero-title").textContent = t.heroTitle;

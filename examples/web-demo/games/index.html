@@ -209,7 +209,10 @@
   <body>
     <div class="hub-container">
       <header class="hub-topbar">
-        <a href="../" class="back-btn" id="portal-back-top">← トップページへ戻る</a>
+        <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+          <a href="../showcase/" class="back-btn" id="portal-back-showcase">✨ ショーケースへ戻る</a>
+          <a href="../" class="back-btn" id="portal-back-top">📖 ドキュメント</a>
+        </div>
         <div class="hub-topbar-right">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -347,7 +350,8 @@
       const PORTAL_TEXT = {
         ja: {
           pageTitle: "ブラウザパズルゲーム一覧",
-          backTop: "← トップページへ戻る",
+          backShowcase: "✨ ショーケースへ戻る",
+          backTop: "📖 ドキュメント",
           navApps: "🏥 実用アプリ一覧へ",
           navDemo: "📐 Playground へ",
           heroTitle: "🎮 ブラウザパズルゲーム一覧",
@@ -370,7 +374,8 @@
         },
         en: {
           pageTitle: "Browser Puzzle Games",
-          backTop: "← Back to Home",
+          backShowcase: "✨ Back to Showcase",
+          backTop: "📖 Documentation",
           navApps: "🏥 Practical Apps",
           navDemo: "📐 Playground",
           heroTitle: "🎮 Browser Puzzle Games",
@@ -393,7 +398,8 @@
         },
         zh: {
           pageTitle: "网页益智游戏一览",
-          backTop: "← 返回首页",
+          backShowcase: "✨ 返回案例展示",
+          backTop: "📖 文档首页",
           navApps: "🏥 实用应用展示",
           navDemo: "📐 Playground",
           heroTitle: "🎮 网页益智游戏一览",
@@ -420,7 +426,16 @@
         setGameLang(lang);
         const t = pickLang(lang, PORTAL_TEXT);
         document.title = t.pageTitle;
-        document.getElementById("portal-back-top").textContent = t.backTop;
+        const showcaseLink = document.getElementById("portal-back-showcase");
+        if (showcaseLink) {
+          showcaseLink.textContent = t.backShowcase;
+          showcaseLink.href = lang === "ja" ? "../ja/showcase/" : lang === "zh" ? "../zh/showcase/" : "../showcase/";
+        }
+        const topLink = document.getElementById("portal-back-top");
+        if (topLink) {
+          topLink.textContent = t.backTop;
+          topLink.href = lang === "ja" ? "../ja/" : lang === "zh" ? "../zh/" : "../";
+        }
         document.getElementById("portal-nav-apps").textContent = t.navApps;
         document.getElementById("portal-nav-demo").textContent = t.navDemo;
         document.getElementById("portal-hero-title").textContent = t.heroTitle;

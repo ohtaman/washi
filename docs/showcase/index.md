@@ -17,7 +17,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
 ## ⚡ Playground
 
 <div class="washi-showcase-grid">
-  <a href="https://ohtaman.github.io/washi/demo/" class="washi-showcase-card is-primary">
+  <a href="/washi/demo/" target="_self" class="washi-showcase-card is-primary">
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">⚡</span>
@@ -39,7 +39,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
 ## 🏥 Applications
 
 <div class="washi-showcase-grid">
-  <a href="https://ohtaman.github.io/washi/apps/ai-shift/" class="washi-showcase-card">
+  <a href="/washi/apps/ai-shift/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🏥</span>
@@ -53,7 +53,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <span class="washi-showcase-cta">Open App →</span>
   </a>
 
-  <a href="https://ohtaman.github.io/washi/apps/" class="washi-showcase-card">
+  <a href="/washi/apps/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">📂</span>
@@ -75,7 +75,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
 ## 🎮 Optimization Games
 
 <div class="washi-showcase-grid">
-  <a href="https://ohtaman.github.io/washi/games/demon-castle-shift/" class="washi-showcase-card">
+  <a href="/washi/games/demon-castle-shift/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🏰</span>
@@ -89,7 +89,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <span class="washi-showcase-cta">Play Game →</span>
   </a>
 
-  <a href="https://ohtaman.github.io/washi/games/mofumofu-sheep/" class="washi-showcase-card">
+  <a href="/washi/games/mofumofu-sheep/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🐑</span>
@@ -103,7 +103,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <span class="washi-showcase-cta">Play Game →</span>
   </a>
 
-  <a href="https://ohtaman.github.io/washi/games/" class="washi-showcase-card">
+  <a href="/washi/games/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
         <span class="washi-showcase-icon">🕹️</span>

@@ -115,6 +115,19 @@ export function initApp() {
       }
     });
 
+    const navDocs = document.getElementById("nav-back-docs");
+    if (navDocs) {
+      navDocs.setAttribute("href", locale === "ja" ? "../ja/" : "../");
+    }
+    const navShowcase = document.getElementById("nav-showcase");
+    if (navShowcase) {
+      navShowcase.setAttribute("href", locale === "ja" ? "../ja/showcase/" : "../showcase/");
+    }
+    const navBrandLogo = document.getElementById("nav-brand-logo");
+    if (navBrandLogo) {
+      navBrandLogo.setAttribute("href", locale === "ja" ? "../ja/" : "../");
+    }
+
     populatePresetOptions(locale);
     renderVisualizer();
   }

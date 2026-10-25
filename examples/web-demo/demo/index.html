@@ -28,7 +28,7 @@
     <!-- Header -->
     <header class="app-header">
       <div class="brand">
-        <a href="../" title="Return to Documentation Home" style="text-decoration: none; display: flex; align-items: center; gap: 12px;" aria-label="WaSHI Home">
+        <a href="../" id="nav-brand-logo" title="Return to Documentation Home" style="text-decoration: none; display: flex; align-items: center; gap: 12px;" aria-label="WaSHI Home">
           <img src="/washi/washi-header.svg" alt="WaSHI" style="height: 38px; width: auto;" onerror="this.onerror=null; this.src='/washi-header.svg';" />
           <span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; background: var(--color-hi-light); color: var(--color-hi); font-family: var(--font-mono); font-weight: 600; border: 1px solid var(--color-hi-border);">Playground</span>
           <span class="brand-title" style="display: none;">WaSHI Playground</span>
@@ -37,9 +37,15 @@
 
       <div class="header-status">
         <!-- Back to Project Docs -->
-        <a href="../" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
+        <a href="../" id="nav-back-docs" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;">
           <span>←</span>
           <span data-i18n="backToDocs">Documentation</span>
+        </a>
+
+        <!-- Showcase Link -->
+        <a href="../showcase/" id="nav-showcase" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;" title="WaSHI Showcase Hub">
+          <span>✨</span>
+          <span data-i18n="navShowcase">Showcase</span>
         </a>
 
         <!-- Apps Showcase Link -->
