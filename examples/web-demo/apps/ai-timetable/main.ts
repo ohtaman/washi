@@ -1587,6 +1587,7 @@ function wireEmptyStateButtons(): void {
 function handleGenerateSample(): void {
   appState = generateTimetableState();
   currentTimetable = null;
+  currentEvaluation = null;
   lastSolveOutcome = null;
   renderAll();
   appendChatMessage(
@@ -1610,6 +1611,7 @@ function handleClearToBlank(): void {
   if (!confirmed) return;
   appState = createBlankTimetableState();
   currentTimetable = null;
+  currentEvaluation = null;
   lastSolveOutcome = null;
   renderAll();
   appendChatMessage(
@@ -1689,6 +1691,7 @@ function executeCsvImport(): void {
     customRules: [],
   };
   currentTimetable = null;
+  currentEvaluation = null;
   lastSolveOutcome = null;
   $<HTMLDialogElement>("csv-import-dialog").close();
   renderAll();
@@ -2368,6 +2371,7 @@ function wireEvents(): void {
   $("btn-reset-clean").addEventListener("click", () => {
     appState = generateTimetableState();
     currentTimetable = null;
+    currentEvaluation = null;
     appendChatMessage(
       "system",
       pickTimetableLang(activeLang, {
