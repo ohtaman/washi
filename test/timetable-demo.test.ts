@@ -722,17 +722,18 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       const mgrJa = createTimetableGeminiNanoManager();
       const stJa = await mgrJa.initialize(undefined, "ja");
       expect(stJa).toBe("available");
-      expect(receivedAvailOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
       expect(receivedCreateOpts.length).toBe(2);
-      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
+      // Extractor declares Japanese in expectedOutputs to attest replyJa/schema outputs
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
       expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["en", "ja"] }]);
+      // Consultation session targets Japanese
+      expect(receivedCreateOpts[1].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
 
-      // Language switch: re-initializing with English recreates both extractor and consult sessions
+      // Language switch: re-initializing with English recreates consult session with English outputs
       const stSwitched = await mgrJa.initialize(undefined, "en");
       expect(stSwitched).toBe("available");
-      expect(receivedCreateOpts.length).toBe(4);
+      expect(receivedCreateOpts.length).toBe(3);
       expect(receivedCreateOpts[2].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
-      expect(receivedCreateOpts[3].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrJa.destroy();
 
       // Retains existing sessions until replacement creation succeeds, but rejects stale sessions for wrong language
@@ -799,9 +800,9 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       const mgrEn = createTimetableGeminiNanoManager();
       const stEn = await mgrEn.initialize(undefined, "en");
       expect(stEn).toBe("available");
-      expect(receivedAvailOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       expect(receivedCreateOpts.length).toBe(2);
-      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
+      expect(receivedCreateOpts[1].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrEn.destroy();
 
       // 3. Languages unsupported by Chrome (e.g. "zh") are honestly reported as unavailable without fake options

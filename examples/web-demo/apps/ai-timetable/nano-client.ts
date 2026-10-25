@@ -82,7 +82,14 @@ export function isChromeSupportedTimetableLang(
   return (CHROME_SUPPORTED_TIMETABLE_LANGS as readonly string[]).includes(lang);
 }
 
-function buildLanguageModelOptions(lang: ChromeSupportedTimetableLang) {
+export function buildExtractorLanguageModelOptions() {
+  return {
+    expectedInputs: [{ type: "text", languages: ["en", "ja"] }],
+    expectedOutputs: [{ type: "text", languages: ["ja", "en"] }],
+  };
+}
+
+export function buildConsultLanguageModelOptions(lang: ChromeSupportedTimetableLang) {
   return {
     expectedInputs: [{ type: "text", languages: ["en", "ja"] }],
     expectedOutputs: [{ type: "text", languages: [lang] }],
@@ -138,13 +145,33 @@ export async function checkGeminiNanoAvailability(
 
   if (typeof api.availability === "function") {
     try {
-      const langOptions = buildLanguageModelOptions(lang);
-      const statusWithLang = normalizeAvailabilityString(
-        await api.availability(langOptions)
+      const consultOptions = buildConsultLanguageModelOptions(lang);
+      const statusConsult = normalizeAvailabilityString(
+        await api.availability(consultOptions)
       );
-      if (statusWithLang) {
-        return statusWithLang;
+      if (statusConsult === "unavailable") {
+        return "unavailable";
       }
+
+      const extractorOptions = buildExtractorLanguageModelOptions();
+      const statusExtractor = normalizeAvailabilityString(
+        await api.availability(extractorOptions)
+      );
+      if (statusExtractor === "unavailable") {
+        return "unavailable";
+      }
+
+      if (statusConsult && statusExtractor) {
+        if (statusConsult === "downloading" || statusExtractor === "downloading") {
+          return "downloading";
+        }
+        if (statusConsult === "downloadable" || statusExtractor === "downloadable") {
+          return "downloadable";
+        }
+        return "available";
+      }
+      if (statusConsult) return statusConsult;
+      if (statusExtractor) return statusExtractor;
     } catch {
       // Fall through to legacy/default check on older Chrome
     }
@@ -175,13 +202,13 @@ export async function checkGeminiNanoAvailability(
 async function createLanguageModelSession(
   api: LanguageModelFactoryLike,
   systemPrompt: string,
-  monitorFn?: (m: unknown) => void,
-  lang: ChromeSupportedTimetableLang = isChromeSupportedTimetableLang(getTimetableLang())
-    ? (getTimetableLang() as ChromeSupportedTimetableLang)
-    : "en"
+  langOptions: {
+    expectedInputs: readonly { type: string; languages: readonly string[] }[];
+    expectedOutputs: readonly { type: string; languages: readonly string[] }[];
+  },
+  monitorFn?: (m: unknown) => void
 ): Promise<LanguageModelSessionLike> {
   const baseWithMonitor = monitorFn ? { monitor: monitorFn } : {};
-  const langOptions = buildLanguageModelOptions(lang);
   try {
     return await api.create({
       ...langOptions,
@@ -1269,12 +1296,12 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
             });
           };
 
-          if (!extractorBaseSession || extractorSessionLang !== lang) {
+          if (!extractorBaseSession) {
             const nextExtractor = await createLanguageModelSession(
               api,
               EXTRACTOR_SYSTEM_PROMPT,
-              monitorFn,
-              lang
+              buildExtractorLanguageModelOptions(),
+              monitorFn
             );
             if (mySeq !== initSeq) {
               try {
@@ -1292,14 +1319,13 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               }
             }
             extractorBaseSession = nextExtractor;
-            extractorSessionLang = lang;
           }
           if (!consultBaseSession || consultSessionLang !== lang) {
             const nextConsult = await createLanguageModelSession(
               api,
               CONSULT_SYSTEM_PROMPT,
-              monitorFn,
-              lang
+              buildConsultLanguageModelOptions(lang),
+              monitorFn
             );
             if (mySeq !== initSeq) {
               try {
@@ -1341,9 +1367,9 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       onProgress?: (event: ChatExtractProgressEvent) => void,
       lang: TimetableLang = getTimetableLang()
     ): Promise<ParsedTimetableChatPlan> {
-      if (!extractorBaseSession || extractorSessionLang !== lang) {
+      if (!extractorBaseSession || currentStatus !== "available") {
         const initStatus = await this.initialize(undefined, lang);
-        if (initStatus !== "available" || !extractorBaseSession || extractorSessionLang !== lang) {
+        if (initStatus !== "available" || !extractorBaseSession) {
           throw new Error(
             pickTimetableLang(lang, {
               ja: "Gemini Nano (LanguageModel API) が利用できません。",
@@ -1527,8 +1553,8 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           const nextConsult = await createLanguageModelSession(
             api,
             CONSULT_SYSTEM_PROMPT,
-            undefined,
-            lang
+            buildConsultLanguageModelOptions(lang),
+            undefined
           );
           if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
             try {
