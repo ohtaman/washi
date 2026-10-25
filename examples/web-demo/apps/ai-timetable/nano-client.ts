@@ -73,11 +73,19 @@ export interface TimetableGeminiNanoManager {
   destroy(): void;
 }
 
-function buildLanguageModelOptions(lang: TimetableLang = getTimetableLang()) {
-  const outputLang = lang === "ja" ? "ja" : "en";
+export const CHROME_SUPPORTED_TIMETABLE_LANGS = ["ja", "en"] as const;
+export type ChromeSupportedTimetableLang = (typeof CHROME_SUPPORTED_TIMETABLE_LANGS)[number];
+
+export function isChromeSupportedTimetableLang(
+  lang: TimetableLang
+): lang is ChromeSupportedTimetableLang {
+  return (CHROME_SUPPORTED_TIMETABLE_LANGS as readonly string[]).includes(lang);
+}
+
+function buildLanguageModelOptions(lang: ChromeSupportedTimetableLang) {
   return {
     expectedInputs: [{ type: "text", languages: ["en", "ja"] }],
-    expectedOutputs: [{ type: "text", languages: [outputLang] }],
+    expectedOutputs: [{ type: "text", languages: [lang] }],
   };
 }
 
@@ -122,6 +130,9 @@ function normalizeAvailabilityString(raw: unknown): GeminiNanoStatus | null {
 export async function checkGeminiNanoAvailability(
   lang: TimetableLang = getTimetableLang()
 ): Promise<GeminiNanoStatus> {
+  if (!isChromeSupportedTimetableLang(lang)) {
+    return "unavailable";
+  }
   const api = getLanguageModelApi();
   if (!api) return "unavailable";
 
@@ -165,7 +176,9 @@ async function createLanguageModelSession(
   api: LanguageModelFactoryLike,
   systemPrompt: string,
   monitorFn?: (m: unknown) => void,
-  lang: TimetableLang = getTimetableLang()
+  lang: ChromeSupportedTimetableLang = isChromeSupportedTimetableLang(getTimetableLang())
+    ? (getTimetableLang() as ChromeSupportedTimetableLang)
+    : "en"
 ): Promise<LanguageModelSessionLike> {
   const baseWithMonitor = monitorFn ? { monitor: monitorFn } : {};
   const langOptions = buildLanguageModelOptions(lang);
@@ -1202,6 +1215,8 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
   let consultBaseSession: LanguageModelSessionLike | null = null;
   let consultSessionLang: TimetableLang = getTimetableLang();
   let lastConsultTrace: LlmCallTrace | null = null;
+  let initSeq = 0;
+  let initChain: Promise<GeminiNanoStatus> = Promise.resolve("unavailable");
 
   return {
     getStatus() {
@@ -1218,77 +1233,105 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       onProgress?: (pct: number) => void,
       lang: TimetableLang = getTimetableLang()
     ): Promise<GeminiNanoStatus> {
-      const avail = await checkGeminiNanoAvailability(lang);
-      currentStatus = avail;
-      if (avail === "unavailable") return "unavailable";
+      const runInit = async (): Promise<GeminiNanoStatus> => {
+        const mySeq = ++initSeq;
+        if (!isChromeSupportedTimetableLang(lang)) {
+          currentStatus = "unavailable";
+          return "unavailable";
+        }
 
-      const api = getLanguageModelApi();
-      if (!api) {
-        currentStatus = "unavailable";
-        return "unavailable";
-      }
+        const avail = await checkGeminiNanoAvailability(lang);
+        if (mySeq !== initSeq) return currentStatus;
+        currentStatus = avail;
+        if (avail === "unavailable") return "unavailable";
 
-      try {
-        const monitorFn = (m: unknown) => {
-          const emitter = m as {
-            addEventListener?: (
-              ev: string,
-              cb: (e: { loaded?: number }) => void
-            ) => void;
+        const api = getLanguageModelApi();
+        if (!api) {
+          currentStatus = "unavailable";
+          return "unavailable";
+        }
+
+        try {
+          const monitorFn = (m: unknown) => {
+            const emitter = m as {
+              addEventListener?: (
+                ev: string,
+                cb: (e: { loaded?: number }) => void
+              ) => void;
+            };
+            emitter?.addEventListener?.("downloadprogress", (e) => {
+              if (typeof e?.loaded === "number") {
+                currentStatus = "downloading";
+                const pct = Math.round(e.loaded * 100);
+                downloadProgress = pct;
+                onProgress?.(pct);
+              }
+            });
           };
-          emitter?.addEventListener?.("downloadprogress", (e) => {
-            if (typeof e?.loaded === "number") {
-              currentStatus = "downloading";
-              const pct = Math.round(e.loaded * 100);
-              downloadProgress = pct;
-              onProgress?.(pct);
-            }
-          });
-        };
 
-        if (!extractorBaseSession || extractorSessionLang !== lang) {
-          const nextExtractor = await createLanguageModelSession(
-            api,
-            EXTRACTOR_SYSTEM_PROMPT,
-            monitorFn,
-            lang
-          );
-          if (extractorBaseSession && typeof extractorBaseSession.destroy === "function") {
-            try {
-              extractorBaseSession.destroy();
-            } catch {
-              // Ignore
+          if (!extractorBaseSession || extractorSessionLang !== lang) {
+            const nextExtractor = await createLanguageModelSession(
+              api,
+              EXTRACTOR_SYSTEM_PROMPT,
+              monitorFn,
+              lang
+            );
+            if (mySeq !== initSeq) {
+              try {
+                nextExtractor.destroy?.();
+              } catch {
+                // Ignore
+              }
+              return currentStatus;
             }
-          }
-          extractorBaseSession = nextExtractor;
-          extractorSessionLang = lang;
-        }
-        if (!consultBaseSession || consultSessionLang !== lang) {
-          const nextConsult = await createLanguageModelSession(
-            api,
-            CONSULT_SYSTEM_PROMPT,
-            monitorFn,
-            lang
-          );
-          if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
-            try {
-              consultBaseSession.destroy();
-            } catch {
-              // Ignore
+            if (extractorBaseSession && typeof extractorBaseSession.destroy === "function") {
+              try {
+                extractorBaseSession.destroy();
+              } catch {
+                // Ignore
+              }
             }
+            extractorBaseSession = nextExtractor;
+            extractorSessionLang = lang;
           }
-          consultBaseSession = nextConsult;
-          consultSessionLang = lang;
-        }
+          if (!consultBaseSession || consultSessionLang !== lang) {
+            const nextConsult = await createLanguageModelSession(
+              api,
+              CONSULT_SYSTEM_PROMPT,
+              monitorFn,
+              lang
+            );
+            if (mySeq !== initSeq) {
+              try {
+                nextConsult.destroy?.();
+              } catch {
+                // Ignore
+              }
+              return currentStatus;
+            }
+            if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
+              try {
+                consultBaseSession.destroy();
+              } catch {
+                // Ignore
+              }
+            }
+            consultBaseSession = nextConsult;
+            consultSessionLang = lang;
+          }
 
-        currentStatus = "available";
-        downloadProgress = 100;
-        return "available";
-      } catch (err) {
-        console.warn("Failed to initialize Gemini Nano session:", err);
-        currentStatus = await checkGeminiNanoAvailability(lang);
-        return currentStatus;
-      }
+          currentStatus = "available";
+          downloadProgress = 100;
+          return "available";
+        } catch (err) {
+          console.warn("Failed to initialize Gemini Nano session:", err);
+          currentStatus = "unavailable";
+          return "unavailable";
+        }
+      };
+
+      initChain = initChain.catch(() => "unavailable").then(runInit);
+      return await initChain;
     },
 
     async extractPlan(
@@ -1300,7 +1343,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
     ): Promise<ParsedTimetableChatPlan> {
       if (!extractorBaseSession || extractorSessionLang !== lang) {
         const initStatus = await this.initialize(undefined, lang);
-        if (initStatus !== "available" || !extractorBaseSession) {
+        if (initStatus !== "available" || !extractorBaseSession || extractorSessionLang !== lang) {
           throw new Error(
             pickTimetableLang(lang, {
               ja: "Gemini Nano (LanguageModel API) が利用できません。",
@@ -1473,6 +1516,11 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         zh: `${summaryLines.join("\n")}\n\n用户指令: “${userMessage}”\n请根据上述结果，用简体中文向教务人员与教师简洁清晰地说明。`,
       });
 
+      if (!isChromeSupportedTimetableLang(lang)) {
+        yield summaryLines.join("\n");
+        return;
+      }
+
       const api = getLanguageModelApi();
       if (api && (!consultBaseSession || consultSessionLang !== lang)) {
         try {
@@ -1496,7 +1544,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         }
       }
 
-      if (!consultBaseSession) {
+      if (!consultBaseSession || consultSessionLang !== lang) {
         yield summaryLines.join("\n");
         return;
       }
@@ -1555,6 +1603,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
     },
 
     destroy() {
+      initSeq += 1;
       for (const s of [extractorBaseSession, consultBaseSession]) {
         if (s && typeof s.destroy === "function") {
           try {
@@ -1566,6 +1615,8 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       }
       extractorBaseSession = null;
       consultBaseSession = null;
+      currentStatus = "unavailable";
+      downloadProgress = null;
     },
   };
 }

@@ -11,6 +11,7 @@ import {
 } from "../examples/web-demo/apps/ai-timetable/solver.js";
 import {
   applyTimetableChatOperationsToState,
+  checkGeminiNanoAvailability,
   convertToolCallToTimetableOperation,
   createTimetableGeminiNanoManager,
   resolveCourseFromText,
@@ -734,9 +735,10 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedCreateOpts[3].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrJa.destroy();
 
-      // Retains existing sessions until replacement creation succeeds
+      // Retains existing sessions until replacement creation succeeds, but rejects stale sessions for wrong language
       let shouldFailCreate = false;
       let sessionDestroyCount = 0;
+      let promptCallCount = 0;
       const mgrRetain = createTimetableGeminiNanoManager();
       const origCreate = (globalThis as any).LanguageModel.create;
       (globalThis as any).LanguageModel.create = async (opts: any) => {
@@ -745,9 +747,14 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         }
         const s = await origCreate(opts);
         const origDestroy = s.destroy;
+        const origPrompt = s.prompt;
         s.destroy = () => {
           sessionDestroyCount += 1;
           origDestroy?.call(s);
+        };
+        s.prompt = async (...args: any[]) => {
+          promptCallCount += 1;
+          return origPrompt ? origPrompt.apply(s, args) : "{}";
         };
         return s;
       };
@@ -755,11 +762,32 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       await mgrRetain.initialize(undefined, "ja");
       expect(sessionDestroyCount).toBe(0);
 
-      // Simulate failure on language switch
+      // Simulate failure on language switch to English
       shouldFailCreate = true;
-      await mgrRetain.initialize(undefined, "en");
+      const failStatus = await mgrRetain.initialize(undefined, "en");
+      expect(failStatus).toBe("unavailable");
       // Old sessions must not be destroyed when creation of replacement rejects
       expect(sessionDestroyCount).toBe(0);
+
+      // Operations in the failed language ("en") must reject or bypass without calling the stale Japanese session
+      const sampleState = generateTimetableState();
+      await expect(
+        mgrRetain.extractPlan("Fix course C01", sampleState, undefined, undefined, "en")
+      ).rejects.toThrow();
+      expect(promptCallCount).toBe(0);
+
+      // Consultation in the failed language must yield summary without prompting the stale session
+      const consultChunks: string[] = [];
+      for await (const chunk of mgrRetain.streamConsultationReply(
+        "Fix course C01",
+        sampleState,
+        null,
+        undefined,
+        "en"
+      )) {
+        consultChunks.push(chunk);
+      }
+      expect(promptCallCount).toBe(0);
 
       (globalThis as any).LanguageModel.create = origCreate;
       mgrRetain.destroy();
@@ -776,14 +804,29 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrEn.destroy();
 
-      // 3. When timetable language is unsupported by Chrome (e.g. "zh"), specifies supported "en" output
+      // 3. Languages unsupported by Chrome (e.g. "zh") are honestly reported as unavailable without fake options
       receivedCreateOpts.length = 0;
+      const availZh = await checkGeminiNanoAvailability("zh");
+      expect(availZh).toBe("unavailable");
       const mgrZh = createTimetableGeminiNanoManager();
       const stZh = await mgrZh.initialize(undefined, "zh");
-      expect(stZh).toBe("available");
-      expect(receivedCreateOpts.length).toBe(2);
-      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
+      expect(stZh).toBe("unavailable");
+      expect(receivedCreateOpts.length).toBe(0);
       mgrZh.destroy();
+
+      // 4. Serializes overlapping language-model initialization cleanly
+      receivedCreateOpts.length = 0;
+      const mgrRace = createTimetableGeminiNanoManager();
+      const [raceSt1, raceSt2] = await Promise.all([
+        mgrRace.initialize(undefined, "ja"),
+        mgrRace.initialize(undefined, "en"),
+      ]);
+      expect(raceSt2).toBe("available");
+      // The final active sessions should be English ("en")
+      expect(receivedCreateOpts[receivedCreateOpts.length - 1].expectedOutputs).toEqual([
+        { type: "text", languages: ["en"] },
+      ]);
+      mgrRace.destroy();
     } finally {
       (globalThis as any).LanguageModel = prevLM;
     }
