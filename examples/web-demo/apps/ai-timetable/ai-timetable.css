@@ -912,3 +912,16 @@
   color: var(--text-sumi-secondary);
   line-height: 1.35;
 }
+
+/* Disabled toolbar & action buttons */
+.btn-solve-primary:disabled,
+.btn-toolbar-outline:disabled,
+.btn-step-try:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.tutorial-banner[hidden] {
+  display: none !important;
+}

@@ -602,15 +602,15 @@ function renderTimetableBoard(): void {
                 zh: "使用示例数据体验 (推荐)",
               })}</h4>
               <p>${pickTimetableLang(activeLang, {
-                ja: "情報科学科の教員10名・教室7室・25科目を一括生成し、0.2秒での自動編成と対話的調整をすぐに体験できます。",
-                en: "Generate 10 CS faculty members, 7 rooms, and 25 courses with one click to test auto-scheduling immediately.",
-                zh: "一键生成计算机系10位教师、7间教室与25门课程，即刻体验0.2秒自动排课与交互调整。",
+                ja: "情報科学科の教員10名・教室7室・25科目を一括生成し、一覧の確認と制約設定を経て時間割を編成します。",
+                en: "Load 10 CS faculty, 7 rooms, and 25 courses, review the roster in Step 1, configure constraints, and then schedule.",
+                zh: "一键载入计算机系10位教师、7间教室与25门课程，在第1步确认列表并配置规则后进行排课。",
               })}</p>
               <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-                ✨ ${pickTimetableLang(activeLang, {
-                  ja: "サンプルデータを生成して編成する",
-                  en: "Generate & Schedule Sample",
-                  zh: "生成并编排示例数据",
+                🎲 ${pickTimetableLang(activeLang, {
+                  ja: "サンプルデータを読み込んで一覧を確認 (Step 1へ)",
+                  en: "Load Sample Data & Review (Go to Step 1)",
+                  zh: "载入示例数据并查看列表 (前往第1步)",
                 })}
               </button>
             </div>
@@ -1722,6 +1722,7 @@ function updateStatusBlankUI(): void {
       en: "No data loaded (0 courses / 0 profs / 0 rooms) — Please import CSV or generate sample data",
       zh: "未加载数据 (0门课程 / 0位教师 / 0间教室) — 请导入CSV或生成示例数据",
     });
+    $("tutorial-banner").hidden = true;
   } else {
     badge.textContent = pickTimetableLang(activeLang, {
       ja: "未編成",
@@ -1735,6 +1736,69 @@ function updateStatusBlankUI(): void {
     });
   }
   solveTimeEl.textContent = "-- ms";
+}
+
+function updateToolbarButtonsState(): void {
+  const hasCoursesAndRooms = appState.courses.length > 0 && appState.rooms.length > 0;
+  const hasAnyData = appState.courses.length > 0 || appState.professors.length > 0 || appState.rooms.length > 0;
+  const isScheduled = !!currentTimetable;
+
+  const btnSolve = document.getElementById("btn-solve-washi") as HTMLButtonElement | null;
+  const btnCheck = document.getElementById("btn-check-current") as HTMLButtonElement | null;
+  const btnExport = document.getElementById("btn-export-csvs") as HTMLButtonElement | null;
+  const btnClear = document.getElementById("btn-clear-blank") as HTMLButtonElement | null;
+  const btnReset = document.getElementById("btn-reset-clean") as HTMLButtonElement | null;
+
+  if (btnSolve) {
+    btnSolve.disabled = isSolving || !hasCoursesAndRooms;
+    btnSolve.title = !hasCoursesAndRooms
+      ? pickTimetableLang(activeLang, {
+          ja: "データを読み込むと時間割の最適化を実行できます",
+          en: "Load data before solving",
+          zh: "载入数据后可执行优化",
+        })
+      : isScheduled
+      ? pickTimetableLang(activeLang, {
+          ja: "現在の制約と条件で時間割を再最適化します",
+          en: "Re-optimize timetable with current constraints",
+          zh: "按当前约束条件重新优化课表",
+        })
+      : pickTimetableLang(activeLang, {
+          ja: "登録されたデータと制約で時間割を自動編成します",
+          en: "Auto-schedule timetable with registered data",
+          zh: "按已录入数据与规则自动排课",
+        });
+  }
+
+  if (btnCheck) {
+    btnCheck.disabled = isSolving || !hasCoursesAndRooms;
+    btnCheck.title = !hasCoursesAndRooms
+      ? pickTimetableLang(activeLang, {
+          ja: "データを読み込むと制約条件の矛盾チェックを実行できます",
+          en: "Load data before checking constraints",
+          zh: "载入数据后可检查约束冲突",
+        })
+      : UI_TEXT_I18N[activeLang].btnCheckCurrentTitle;
+  }
+
+  if (btnExport) {
+    btnExport.disabled = !hasAnyData;
+  }
+
+  if (btnClear) {
+    btnClear.disabled = !hasAnyData && !isScheduled;
+  }
+
+  if (btnReset) {
+    btnReset.disabled = !hasCoursesAndRooms;
+  }
+
+  const tutStep1 = document.getElementById("btn-tut-step1") as HTMLButtonElement | null;
+  const tutStep2 = document.getElementById("btn-tut-step2") as HTMLButtonElement | null;
+  const tutStep3 = document.getElementById("btn-tut-step3") as HTMLButtonElement | null;
+  if (tutStep1) tutStep1.disabled = !hasCoursesAndRooms;
+  if (tutStep2) tutStep2.disabled = !hasCoursesAndRooms;
+  if (tutStep3) tutStep3.disabled = !hasCoursesAndRooms;
 }
 
 function renderPromptCatalogDialog(lang: TimetableLang): void {
@@ -1788,6 +1852,7 @@ function renderAll(): void {
   if (!currentTimetable) {
     updateStatusBlankUI();
   }
+  updateToolbarButtonsState();
 }
 
 function wireEmptyStateButtons(): void {
@@ -1836,6 +1901,7 @@ function handleClearToBlank(): void {
   currentTimetable = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
+  $("tutorial-banner").hidden = true;
   renderAll();
   appendChatMessage(
     "assistant",
@@ -1981,6 +2047,7 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
   badge.className = "status-pill status-solving";
   badge.textContent = UI_TEXT_I18N[activeLang].statusSolving;
   $("btn-abort-solve").hidden = false;
+  updateToolbarButtonsState();
 
   let outcome: WashiTimetableSolveOutcome | null = null;
   const wasUnscheduled = !currentTimetable;
@@ -2014,6 +2081,7 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
     isSolving = false;
     activeSolveAbortController = null;
     $("btn-abort-solve").hidden = true;
+    updateToolbarButtonsState();
     if (pendingSolveRequested) {
       pendingSolveRequested = false;
       const waiters = pendingSolveWaiters.splice(0);
@@ -2204,6 +2272,7 @@ export function applyTimetableLang(lang: TimetableLang): void {
   $("btn-check-current").title = ui.btnCheckCurrentTitle;
   setText("btn-reset-clean", ui.btnResetClean);
   $("btn-reset-clean").title = ui.btnResetCleanTitle;
+  updateToolbarButtonsState();
 
   // Conflict banner
   setText("conflict-banner-title", ui.conflictBannerTitle);
@@ -2534,7 +2603,14 @@ function wireEvents(): void {
   // Tutorial Step 1: Pin C15 (数理最適化) to Tue Period 2 in R101
   $("btn-tut-step1").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      appState = generateTimetableState();
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
+          en: "To try the tutorial, please load sample data or schedule a timetable first.",
+          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+        })
+      );
+      return;
     }
     const res = applyTimetableChatOperationsToState(appState, [
       {
@@ -2562,7 +2638,14 @@ function wireEvents(): void {
   // Tutorial Step 2: Consecutive sessions for C12 (ソフトウェア設計演習)
   $("btn-tut-step2").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      appState = generateTimetableState();
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
+          en: "To try the tutorial, please load sample data or schedule a timetable first.",
+          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+        })
+      );
+      return;
     }
     const res = applyTimetableChatOperationsToState(appState, [
       {
@@ -2588,7 +2671,14 @@ function wireEvents(): void {
   // Tutorial Step 3: Inject conflict scenario
   $("btn-tut-step3").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      appState = generateTimetableState();
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
+          en: "To try the tutorial, please load sample data or schedule a timetable first.",
+          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+        })
+      );
+      return;
     }
     const sc = $<HTMLSelectElement>("select-conflict-scenario").value as
       | "prof_impossible_day"
