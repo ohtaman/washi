@@ -18,6 +18,26 @@ export type TimetableLang = "ja" | "en" | "zh";
 
 export const TIMETABLE_LANG_STORAGE_KEY = "washi_games_lang";
 
+export function detectBrowserTimetableLang(
+  nav?: { languages?: readonly string[]; language?: string }
+): TimetableLang {
+  const navObj = nav ?? (typeof navigator !== "undefined" ? navigator : undefined);
+  if (navObj) {
+    const list = navObj.languages?.length
+      ? navObj.languages
+      : navObj.language
+        ? [navObj.language]
+        : [];
+    for (const raw of list) {
+      const lower = raw.toLowerCase();
+      if (lower.startsWith("ja")) return "ja";
+      if (lower.startsWith("zh")) return "zh";
+      if (lower.startsWith("en")) return "en";
+    }
+  }
+  return "en";
+}
+
 export function getTimetableLang(): TimetableLang {
   if (typeof window !== "undefined") {
     try {
@@ -36,8 +56,9 @@ export function getTimetableLang(): TimetableLang {
     } catch {
       // Ignore
     }
+    return detectBrowserTimetableLang();
   }
-  return "ja";
+  return "en";
 }
 
 export function setTimetableLang(lang: TimetableLang): void {

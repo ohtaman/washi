@@ -1790,7 +1790,11 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
   const assistantMsg = appendChatMessage("assistant", analyzingText);
 
   try {
-    const nanoStatus = nanoManager.getStatus();
+    let nanoStatus = nanoManager.getStatus();
+    if (nanoStatus !== "available") {
+      nanoStatus = await nanoManager.initialize(undefined, activeLang);
+      updateNanoStatusUI(nanoStatus);
+    }
     if (nanoStatus !== "available") {
       renderSafeMarkdown(
         assistantMsg.bodyEl,
@@ -1921,6 +1925,9 @@ function wireEvents(): void {
       const lang = btn.dataset.langBtn as TimetableLang | undefined;
       if (lang === "ja" || lang === "en" || lang === "zh") {
         applyTimetableLang(lang);
+        void nanoManager
+          .initialize((pct) => updateNanoStatusUI("downloading", pct), lang)
+          .then((st) => updateNanoStatusUI(st));
       }
     });
   });
@@ -2281,7 +2288,10 @@ function wireEvents(): void {
   );
   const recheckNano = async () => {
     updateNanoStatusUI("downloading", 0);
-    const st = await nanoManager.initialize((pct) => updateNanoStatusUI("downloading", pct));
+    const st = await nanoManager.initialize(
+      (pct) => updateNanoStatusUI("downloading", pct),
+      activeLang
+    );
     updateNanoStatusUI(st);
   };
   $("btn-retry-nano").addEventListener("click", () => void recheckNano());
@@ -2328,7 +2338,7 @@ async function initApp(): Promise<void> {
   applyTimetableLang(activeLang);
 
   void nanoManager
-    .initialize((pct) => updateNanoStatusUI("downloading", pct))
+    .initialize((pct) => updateNanoStatusUI("downloading", pct), activeLang)
     .then((status) => updateNanoStatusUI(status));
 
   await triggerSolve();

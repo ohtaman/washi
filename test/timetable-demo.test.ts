@@ -11,6 +11,7 @@ import {
 } from "../examples/web-demo/apps/ai-timetable/solver.js";
 import {
   applyTimetableChatOperationsToState,
+  checkGeminiNanoAvailability,
   convertToolCallToTimetableOperation,
   createTimetableGeminiNanoManager,
   resolveCourseFromText,
@@ -22,8 +23,10 @@ import {
   PROFESSOR_PROFILE_I18N,
   ROOM_PROFILE_I18N,
   UI_TEXT_I18N,
+  detectBrowserTimetableLang,
   formatConstraintMetaI18n,
   formatCustomRuleI18n,
+  getTimetableLang,
 } from "../examples/web-demo/apps/ai-timetable/i18n.js";
 import {
   resolveDayToken,
@@ -660,4 +663,206 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     );
     expect(zhLogs[0]).toContain("将《数学规划与优化 (C15)》固定在 周二第2节");
   }, 30_000);
+
+  it("supports Chrome 148+ LanguageModel API with supported languages only ([de, en, es, fr, ja]) and requires output language", async () => {
+    const prevLM = (globalThis as any).LanguageModel;
+    const CHROME_SUPPORTED_LANGUAGES = ["de", "en", "es", "fr", "ja"];
+
+    try {
+      const receivedAvailOpts: any[] = [];
+      const receivedCreateOpts: any[] = [];
+      (globalThis as any).LanguageModel = {
+        async availability(opts?: any) {
+          receivedAvailOpts.push(opts);
+          if (!opts?.expectedOutputs || opts.expectedOutputs.length === 0) {
+            throw new Error(
+              "No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [de, en, es, fr, ja]"
+            );
+          }
+          for (const item of [...(opts.expectedInputs ?? []), ...opts.expectedOutputs]) {
+            for (const lang of item.languages ?? []) {
+              if (!CHROME_SUPPORTED_LANGUAGES.includes(lang)) {
+                throw new Error(
+                  `Unsupported LanguageModel API languages were specified (${lang}), and the request was aborted. API calls must only specify supported languages: [de, en, es, fr, ja]`
+                );
+              }
+            }
+          }
+          return "available";
+        },
+        async create(opts?: any) {
+          if (!opts?.expectedOutputs || opts.expectedOutputs.length === 0) {
+            throw new Error(
+              "No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [de, en, es, fr, ja]"
+            );
+          }
+          for (const item of [...(opts.expectedInputs ?? []), ...opts.expectedOutputs]) {
+            for (const lang of item.languages ?? []) {
+              if (!CHROME_SUPPORTED_LANGUAGES.includes(lang)) {
+                throw new Error(
+                  `Unsupported LanguageModel API languages were specified (${lang}), and the request was aborted. API calls must only specify supported languages: [de, en, es, fr, ja]`
+                );
+              }
+            }
+          }
+          receivedCreateOpts.push(opts);
+          return {
+            async clone() {
+              return this;
+            },
+            async prompt() {
+              return "{}";
+            },
+            destroy() {},
+          };
+        },
+      };
+
+      // 1. Japanese initialization
+      const mgrJa = createTimetableGeminiNanoManager();
+      const stJa = await mgrJa.initialize(undefined, "ja");
+      expect(stJa).toBe("available");
+      expect(receivedCreateOpts.length).toBe(2);
+      // Extractor declares Japanese in expectedOutputs to attest replyJa/schema outputs
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
+      expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["en", "ja"] }]);
+      // Consultation session targets Japanese
+      expect(receivedCreateOpts[1].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
+
+      // Language switch: re-initializing with English recreates consult session with English outputs
+      const stSwitched = await mgrJa.initialize(undefined, "en");
+      expect(stSwitched).toBe("available");
+      expect(receivedCreateOpts.length).toBe(3);
+      expect(receivedCreateOpts[2].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
+      mgrJa.destroy();
+
+      // Retains existing sessions until replacement creation succeeds, but rejects stale sessions for wrong language
+      let shouldFailCreate = false;
+      let sessionDestroyCount = 0;
+      let promptCallCount = 0;
+      const mgrRetain = createTimetableGeminiNanoManager();
+      const origCreate = (globalThis as any).LanguageModel.create;
+      (globalThis as any).LanguageModel.create = async (opts: any) => {
+        if (shouldFailCreate) {
+          throw new Error("Simulated creation failure during language switch");
+        }
+        const s = await origCreate(opts);
+        const origDestroy = s.destroy;
+        const origPrompt = s.prompt;
+        s.destroy = () => {
+          sessionDestroyCount += 1;
+          origDestroy?.call(s);
+        };
+        s.prompt = async (...args: any[]) => {
+          promptCallCount += 1;
+          return origPrompt ? origPrompt.apply(s, args) : "{}";
+        };
+        return s;
+      };
+
+      await mgrRetain.initialize(undefined, "ja");
+      expect(sessionDestroyCount).toBe(0);
+
+      // Simulate failure on language switch to English
+      shouldFailCreate = true;
+      const failStatus = await mgrRetain.initialize(undefined, "en");
+      expect(failStatus).toBe("unavailable");
+      // Old sessions must not be destroyed when creation of replacement rejects
+      expect(sessionDestroyCount).toBe(0);
+
+      // Operations in the failed language ("en") must reject or bypass without calling the stale Japanese session
+      const sampleState = generateTimetableState();
+      await expect(
+        mgrRetain.extractPlan("Fix course C01", sampleState, undefined, undefined, "en")
+      ).rejects.toThrow();
+      expect(promptCallCount).toBe(0);
+
+      // Consultation in the failed language must yield summary without prompting the stale session
+      const consultChunks: string[] = [];
+      for await (const chunk of mgrRetain.streamConsultationReply(
+        "Fix course C01",
+        sampleState,
+        null,
+        undefined,
+        "en"
+      )) {
+        consultChunks.push(chunk);
+      }
+      expect(promptCallCount).toBe(0);
+
+      (globalThis as any).LanguageModel.create = origCreate;
+      mgrRetain.destroy();
+      expect(sessionDestroyCount).toBe(2);
+
+      // 2. English initialization
+      receivedAvailOpts.length = 0;
+      receivedCreateOpts.length = 0;
+      const mgrEn = createTimetableGeminiNanoManager();
+      const stEn = await mgrEn.initialize(undefined, "en");
+      expect(stEn).toBe("available");
+      expect(receivedCreateOpts.length).toBe(2);
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
+      expect(receivedCreateOpts[1].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
+      mgrEn.destroy();
+
+      // 3. Languages unsupported by Chrome (e.g. "zh") are honestly reported as unavailable without fake options
+      receivedCreateOpts.length = 0;
+      const availZh = await checkGeminiNanoAvailability("zh");
+      expect(availZh).toBe("unavailable");
+      const mgrZh = createTimetableGeminiNanoManager();
+      const stZh = await mgrZh.initialize(undefined, "zh");
+      expect(stZh).toBe("unavailable");
+      expect(receivedCreateOpts.length).toBe(0);
+      mgrZh.destroy();
+
+      // 4. Serializes overlapping language-model initialization cleanly
+      receivedCreateOpts.length = 0;
+      const mgrRace = createTimetableGeminiNanoManager();
+      const [raceSt1, raceSt2] = await Promise.all([
+        mgrRace.initialize(undefined, "ja"),
+        mgrRace.initialize(undefined, "en"),
+      ]);
+      expect(raceSt2).toBe("available");
+      // The final active sessions should be English ("en")
+      expect(receivedCreateOpts[receivedCreateOpts.length - 1].expectedOutputs).toEqual([
+        { type: "text", languages: ["en"] },
+      ]);
+      mgrRace.destroy();
+
+      // 5. Does not fall through to optionless availability() when language-specific availability is unavailable
+      let optionlessAvailCalled = false;
+      const prevAvail = (globalThis as any).LanguageModel.availability;
+      (globalThis as any).LanguageModel.availability = async (opts?: any) => {
+        if (!opts) {
+          optionlessAvailCalled = true;
+          return "available";
+        }
+        return "unavailable";
+      };
+      const unavailEn = await checkGeminiNanoAvailability("en");
+      expect(unavailEn).toBe("unavailable");
+      expect(optionlessAvailCalled).toBe(false);
+      (globalThis as any).LanguageModel.availability = prevAvail;
+    } finally {
+      (globalThis as any).LanguageModel = prevLM;
+    }
+  });
+
+  it("detects default timetable language from browser settings without defaulting to ja", () => {
+    // 1. Japanese browser settings -> "ja"
+    expect(detectBrowserTimetableLang({ language: "ja-JP" })).toBe("ja");
+    expect(detectBrowserTimetableLang({ languages: ["ja", "en-US"] })).toBe("ja");
+
+    // 2. Chinese browser settings -> "zh"
+    expect(detectBrowserTimetableLang({ language: "zh-CN" })).toBe("zh");
+    expect(detectBrowserTimetableLang({ languages: ["zh-TW", "en"] })).toBe("zh");
+
+    // 3. English or other languages -> defaults to "en", never "ja"
+    expect(detectBrowserTimetableLang({ language: "en-US" })).toBe("en");
+    expect(detectBrowserTimetableLang({ languages: ["en", "ja"] })).toBe("en");
+    expect(detectBrowserTimetableLang({ language: "de-DE" })).toBe("en");
+    expect(detectBrowserTimetableLang({ language: "fr-FR" })).toBe("en");
+    expect(detectBrowserTimetableLang({ languages: [] })).toBe("en");
+    expect(detectBrowserTimetableLang({})).toBe("en");
+  });
 });
