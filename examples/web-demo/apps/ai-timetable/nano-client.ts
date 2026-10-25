@@ -120,14 +120,17 @@ function normalizeAvailabilityString(raw: unknown): GeminiNanoStatus | null {
   return null;
 }
 
-export async function checkGeminiNanoAvailability(): Promise<GeminiNanoStatus> {
+export async function checkGeminiNanoAvailability(
+  lang: TimetableLang = "ja"
+): Promise<GeminiNanoStatus> {
   const api = getLanguageModelApi();
   if (!api) return "unavailable";
 
   if (typeof api.availability === "function") {
     try {
+      const langOptions = buildLanguageModelOptions(lang);
       const statusWithLang = normalizeAvailabilityString(
-        await api.availability(LANGUAGE_MODEL_JA_OPTIONS)
+        await api.availability(langOptions)
       );
       if (statusWithLang && statusWithLang !== "unavailable") {
         return statusWithLang;
@@ -1215,7 +1218,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       onProgress?: (pct: number) => void,
       lang: TimetableLang = "ja"
     ): Promise<GeminiNanoStatus> {
-      const avail = await checkGeminiNanoAvailability();
+      const avail = await checkGeminiNanoAvailability(lang);
       currentStatus = avail;
       if (avail === "unavailable") return "unavailable";
 
@@ -1273,7 +1276,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         return "available";
       } catch (err) {
         console.warn("Failed to initialize Gemini Nano session:", err);
-        currentStatus = await checkGeminiNanoAvailability();
+        currentStatus = await checkGeminiNanoAvailability(lang);
         return currentStatus;
       }
     },

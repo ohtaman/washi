@@ -666,9 +666,11 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     const CHROME_SUPPORTED_LANGUAGES = ["de", "en", "es", "fr", "ja"];
 
     try {
+      const receivedAvailOpts: any[] = [];
       const receivedCreateOpts: any[] = [];
       (globalThis as any).LanguageModel = {
         async availability(opts?: any) {
+          receivedAvailOpts.push(opts);
           if (!opts?.expectedOutputs || opts.expectedOutputs.length === 0) {
             throw new Error(
               "No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [de, en, es, fr, ja]"
@@ -717,16 +719,19 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       const mgrJa = createTimetableGeminiNanoManager();
       const stJa = await mgrJa.initialize(undefined, "ja");
       expect(stJa).toBe("available");
+      expect(receivedAvailOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
       expect(receivedCreateOpts.length).toBe(2);
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
       expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
       mgrJa.destroy();
 
       // 2. English initialization
+      receivedAvailOpts.length = 0;
       receivedCreateOpts.length = 0;
       const mgrEn = createTimetableGeminiNanoManager();
       const stEn = await mgrEn.initialize(undefined, "en");
       expect(stEn).toBe("available");
+      expect(receivedAvailOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       expect(receivedCreateOpts.length).toBe(2);
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrEn.destroy();
