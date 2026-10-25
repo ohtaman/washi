@@ -11,7 +11,7 @@ This document defines the standards and instructions for automated and human cod
 - **English Only**: All PR titles, descriptions, review summaries, inline comments, and commit messages MUST be written in clear, professional **English**.
 - **Constructive & Objective Tone**: Critique the code, not the author. Explain *why* something is an issue and provide concrete, actionable code suggestions where possible.
 - **Severity Prefixes**: Prefix every inline review comment to make expectations clear:
-  - `[Blocker]` / `[Bug]`: Must be fixed before merging. **Strict Threshold**: ONLY use for verifiable regressions against `main`, broken builds/types/tests, mathematical solver errors, or security vulnerabilities introduced by the diff.
+  - `[Blocker]` / `[Bug]`: Must be fixed before merging. **Strict Threshold**: ONLY use for verifiable regressions against `main`, functional correctness defects introduced by new code, broken builds/types/tests, mathematical solver errors, or security vulnerabilities introduced by the diff.
     - **Never** classify the following as `[Blocker]` or `[Bug]`: speculative "what-if" edge cases outside the PR's stated intent, test mock fidelity or fake object structure (as long as tests reliably pass), stylistic preferences, or non-critical enhancements.
   - `[Scope]` / `[Design]`: Architectural concerns, over-engineering, or out-of-scope changes that should be simplified or extracted into a separate PR.
   - `[Suggestion]`: Optional improvements for readability, minor edge-case handling, or performance. Non-blocking; author may decline or defer.
@@ -130,5 +130,5 @@ When addressing review comments, simplifying a PR, or reporting that a PR is "me
    - When fixing a category of issue within the PR's scope (e.g., untranslated UI text, `title` / `aria-label` / `alt` attributes, status mappings, or boundary checks), never patch only the single element or line mentioned by the user or reviewer.
    - Audit the entire affected file/surface (e.g., all elements in `index.html` and dynamic renderers) and enforce it with an **exhaustive behavioral/invariant test** (such as scanning all DOM elements for remaining untranslated text or invalid states) rather than brittle source-code substring checks (`expect(src).toContain(...)`).
 7. **Pre-Screen Every Commit Against Section 4 Before Pushing**:
-   - Review fixes frequently trigger secondary review rounds when test harnesses or helpers take shortcuts. Before pushing any commit, verify that the new diff introduces **zero** `any` or `as unknown as ...` assertions (Section 4.B), **zero** source-substring-only tests in place of behavioral tests (Section 4.C), and **zero** collateral changes outside the PR scope (Section 2).
+   - Review fixes frequently trigger secondary review rounds when test harnesses or helpers take shortcuts. Before pushing any commit, verify that the new diff introduces **zero unjustified** `any` or `as unknown as ...` assertions (Section 4.B), **zero** source-substring-only tests in place of behavioral tests (Section 4.C), and **zero** collateral changes outside the PR scope (Section 2).
 
