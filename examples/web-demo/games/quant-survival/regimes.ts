@@ -456,9 +456,9 @@ const LEVEL_TEMPLATES: Array<{
   maxWeightPerAsset: number;
   shocks: MarketShockSpec[];
 }> = [
-  // Level 1: 3 assets (SP500, BOND, GOLD) — Pick up to 2
+  // Level 1: 3 assets (SP500, BOND, GOLD) — Pick up to 3
   {
-    maxPicks: 2,
+    maxPicks: 3,
     newAssetKeys: ["sp500", "bond", "gold"],
     title: {
       ja: "Level 1: 投資の基本と守りの盾",
@@ -466,18 +466,18 @@ const LEVEL_TEMPLATES: Array<{
       zh: "第1关：投资基础与防御之盾",
     },
     forecast: {
-      ja: "株と国債・金の王道バランス。株式単体だと急落で破綻する。国債や金と組み合わせて生き残れ。",
-      en: "The classic equity, bond, and gold balance. Pure equities risk liquidation on drawdowns. Blend to survive.",
-      zh: "股票、国债与黄金的经典平衡。全仓股票易遭遇强平，搭配国债或黄金稳健求生。",
+      ja: "株と国債・金の王道バランス。3銘柄を自在に配分し、守りを固めながらAI（基礎アロケーター）を上回れ。",
+      en: "The classic equity, bond, and gold balance. Blend all 3 assets to shield drawdowns and outperform the foundation allocator.",
+      zh: "股票、国债与黄金的经典平衡。合理配置3只资产，在抵御回撤的同时超越基础配置模型。",
     },
     rivalPersona: {
       ja: "WaSHI-QP // 基礎アロケーター",
       en: "WaSHI-QP // Foundation Allocator",
       zh: "WaSHI-QP // 基础资产配置模型",
     },
-    targetReturn: 0.08,
-    liquidationFloor: -0.055,
-    maxWeightPerAsset: 0.9,
+    targetReturn: 0.07,
+    liquidationFloor: -0.075,
+    maxWeightPerAsset: 0.85,
     shocks: [
       {
         id: "l1-pullback",
@@ -511,9 +511,9 @@ const LEVEL_TEMPLATES: Array<{
       },
     ],
   },
-  // Level 2: +TECH, +PHARMA — Pick up to 3
+  // Level 2: +TECH, +PHARMA — Pick up to 4
   {
-    maxPicks: 3,
+    maxPicks: 4,
     newAssetKeys: ["tech", "pharma"],
     title: {
       ja: "Level 2: セクター分散（攻めと守り）",
@@ -521,17 +521,17 @@ const LEVEL_TEMPLATES: Array<{
       zh: "第2关：行业轮动（进攻与防御）",
     },
     forecast: {
-      ja: "ハイテクETF（攻め）と製薬ETF（守り）がアンロック! 業界ごとの性格を見極めて3銘柄を選定せよ。",
-      en: "Tech (growth offense) and Pharma (defensive anchor) unlocked! Pick up to 3 sectors.",
-      zh: "科技行业ETF（进攻）与制药行业ETF（防御）解锁! 选出最多3只资产构建组合。",
+      ja: "ハイテクETF（攻め）と製薬ETF（守り）がアンロック! 業界ごとの性格を見極めて4銘柄を選定せよ。",
+      en: "Tech (growth offense) and Pharma (defensive anchor) unlocked! Pick up to 4 sectors.",
+      zh: "科技行业ETF（进攻）与制药行业ETF（防御）解锁! 选出最多4只资产构建组合。",
     },
     rivalPersona: {
       ja: "WaSHI-QP // セクター・バランサー",
       en: "WaSHI-QP // Sector Balancer",
       zh: "WaSHI-QP // 行业平衡引擎",
     },
-    targetReturn: 0.105,
-    liquidationFloor: -0.055,
+    targetReturn: 0.09,
+    liquidationFloor: -0.065,
     maxWeightPerAsset: 0.75,
     shocks: [
       {
@@ -566,9 +566,9 @@ const LEVEL_TEMPLATES: Array<{
       },
     ],
   },
-  // Level 3: +NV-AI, +CLOUD, +DEFENSE — Pick up to 4
+  // Level 3: +NV-AI, +CLOUD, +DEFENSE — Pick up to 5
   {
-    maxPicks: 4,
+    maxPicks: 5,
     newAssetKeys: ["nv-ai", "cloud", "defense"],
     title: {
       ja: "Level 3: 個別株解禁! ハイリターンの誘惑",
@@ -585,8 +585,8 @@ const LEVEL_TEMPLATES: Array<{
       en: "WaSHI-QP // Single-Stock Covariance Solver",
       zh: "WaSHI-QP // 个股协方差优化器",
     },
-    targetReturn: 0.125,
-    liquidationFloor: -0.052,
+    targetReturn: 0.115,
+    liquidationFloor: -0.058,
     maxWeightPerAsset: 0.6,
     shocks: [
       {
@@ -627,9 +627,9 @@ const LEVEL_TEMPLATES: Array<{
       },
     ],
   },
-  // Level 4: +ENERGY, +BANK — Pick up to 5
+  // Level 4: +ENERGY, +BANK — Pick up to 6
   {
-    maxPicks: 5,
+    maxPicks: 6,
     newAssetKeys: ["energy", "bank"],
     title: {
       ja: "Level 4: インフレ＆金利ショック対抗",
@@ -647,7 +647,7 @@ const LEVEL_TEMPLATES: Array<{
       zh: "WaSHI-QP // 宏观周期对冲模型",
     },
     targetReturn: 0.125,
-    liquidationFloor: -0.05,
+    liquidationFloor: -0.052,
     maxWeightPerAsset: 0.5,
     shocks: [
       {
@@ -688,9 +688,9 @@ const LEVEL_TEMPLATES: Array<{
       },
     ],
   },
-  // Level 5: +QNTX, +REIT — Pick up to 6
+  // Level 5: +QNTX, +REIT — Pick up to 7
   {
-    maxPicks: 6,
+    maxPicks: 7,
     newAssetKeys: ["qntx", "reit"],
     title: {
       ja: "Level 5: クオンツ・マスター（全12銘柄）",
@@ -698,16 +698,16 @@ const LEVEL_TEMPLATES: Array<{
       zh: "第5关：量化大师（全12只标的资产）",
     },
     forecast: {
-      ja: "量子新興ディープテック(QNTX)とREITが解禁。12銘柄のプールから厳選した6社で究極のポートフォリオを構築せよ。",
+      ja: "量子新興ディープテック(QNTX)とREITが解禁。12銘柄のプールから厳選した7社で究極のポートフォリオを構築せよ。",
       en: "Quantum Deep-Tech (QNTX) and REITs unlocked. Build an all-weather masterpiece from 12 assets.",
-      zh: "量子前沿硬科技(QNTX)与不动产信托REIT解锁。从12只资产池中精选6只打造无懈可击的全天候组合。",
+      zh: "量子前沿硬科技(QNTX)与不动产信托REIT解锁。从12只资产池中精选7只打造无懈可击的全天候组合。",
     },
     rivalPersona: {
       ja: "WaSHI-QP // クオンツ・グランドマスター",
       en: "WaSHI-QP // Quant Grandmaster",
       zh: "WaSHI-QP // 量化特级大师",
     },
-    targetReturn: 0.145,
+    targetReturn: 0.14,
     liquidationFloor: -0.048,
     maxWeightPerAsset: 0.45,
     shocks: [
@@ -776,7 +776,7 @@ export function getLevelSpec(level: number): LevelSpec {
 
   // Level 6+: Procedural Endless Scaling
   const cycle = lvl - 5;
-  const maxPicks = Math.min(8, 6 + Math.floor(cycle * 0.5));
+  const maxPicks = Math.min(8, 7 + Math.floor(cycle * 0.5));
   const newAssetA = getProceduralAsset(lvl, 0);
   const newAssetB = getProceduralAsset(lvl, 1);
   const newAssetIds = [newAssetA.id, newAssetB.id];

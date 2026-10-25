@@ -300,11 +300,12 @@ let currentLevel = 1;
 let highestLevel = 1;
 let playerAum = 100.0;
 let aiAum = 100.0;
+let stageStartAum = 100.0;
 let peakAum = 100.0;
-let selectedAssetIds: string[] = ["sp500", "bond"];
+let selectedAssetIds: string[] = ["sp500", "bond", "gold"];
 let currentLevelSpec: LevelSpec = getLevelSpec(1);
 let currentRegime: QuarterRegime = buildSubsetRegime(1, selectedAssetIds);
-let playerWeights: number[] = [0.6, 0.4];
+let playerWeights: number[] = [0.5, 0.3, 0.2];
 let aiOptimal: QuantOptimalResult | null = null;
 let aiOptimalRegimeKey: string | null = null;
 let currentSolveGeneration = 0;
@@ -321,8 +322,9 @@ function loadSaveState(): void {
     const parsed = JSON.parse(raw) as Partial<GameSaveState>;
     currentLevel = Math.max(1, Number(parsed.currentLevel) || 1);
     highestLevel = Math.max(currentLevel, Number(parsed.highestLevel) || currentLevel);
-    playerAum = Math.max(10.0, Number(parsed.playerAum) || 100.0);
-    aiAum = Math.max(10.0, Number(parsed.aiAum) || 100.0);
+    stageStartAum = Math.max(10.0, Number(parsed.stageStartAum) || Number(parsed.playerAum) || 100.0);
+    playerAum = stageStartAum;
+    aiAum = stageStartAum;
     peakAum = Math.max(playerAum, Number(parsed.peakAum) || playerAum);
 
     currentLevelSpec = getLevelSpec(currentLevel);
@@ -351,6 +353,7 @@ function saveGameState(): void {
     highestLevel,
     playerAum,
     aiAum,
+    stageStartAum,
     peakAum: Math.max(peakAum, playerAum),
     selectedAssetIds,
   };
@@ -365,10 +368,11 @@ function resetToFreshRun(): void {
   currentLevel = 1;
   playerAum = 100.0;
   aiAum = 100.0;
+  stageStartAum = 100.0;
   currentLevelSpec = getLevelSpec(1);
-  selectedAssetIds = ["sp500", "bond"];
+  selectedAssetIds = ["sp500", "bond", "gold"];
   currentRegime = buildSubsetRegime(1, selectedAssetIds);
-  playerWeights = [0.6, 0.4];
+  playerWeights = [0.5, 0.3, 0.2];
   lastSimulation = null;
   saveGameState();
   refreshRegimeAndSolvers();
@@ -1093,8 +1097,8 @@ async function runMarketSimulation(): Promise<void> {
     regime: currentRegime,
     playerWeights,
     aiWeights,
-    playerStartAum: playerAum,
-    aiStartAum: aiAum,
+    playerStartAum: stageStartAum,
+    aiStartAum: stageStartAum,
   });
 
   lastSimulation = result;
@@ -1162,7 +1166,7 @@ function onSimulationComplete(sim: MarketSimulationResult): void {
   showOutcomeBanner(sim);
   saveGameState();
 
-  const isWin = !sim.playerLiquidated && sim.playerEndAum >= sim.aiEndAum;
+  const isWin = !sim.playerLiquidated && (sim.playerReturn >= sim.aiReturn || sim.aiLiquidated);
   if (isWin) {
     // Show unlock modal if next level has new assets
     showUnlockDialog(currentLevel + 1);
@@ -1180,7 +1184,7 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
   if (!banner || !titleEl || !detailEl || !weightsEl) return;
   banner.hidden = false;
 
-  const playerWon = !sim.playerLiquidated && sim.playerEndAum >= sim.aiEndAum;
+  const playerWon = !sim.playerLiquidated && (sim.playerReturn >= sim.aiReturn || sim.aiLiquidated);
   const playerDied = sim.playerLiquidated;
 
   if (playerDied) {
@@ -1297,6 +1301,11 @@ function advanceToNextLevel(): void {
   highestLevel = Math.max(highestLevel, currentLevel);
   currentLevelSpec = getLevelSpec(currentLevel);
 
+  // Equal starting AUM for both player and rival in the new stage
+  stageStartAum = playerAum;
+  aiAum = playerAum;
+  lastSimulation = null;
+
   // Auto-pick newly unlocked assets if room permits, otherwise keep current picks
   const newAssetId = currentLevelSpec.newAssetIds[0];
   if (newAssetId && !selectedAssetIds.includes(newAssetId)) {
@@ -1312,13 +1321,24 @@ function advanceToNextLevel(): void {
   if (banner) banner.hidden = true;
   const btnNext = document.getElementById("btn-next-quarter");
   if (btnNext) btnNext.hidden = true;
+  const ghostLegend = document.getElementById("chart-ghost-legend");
+  if (ghostLegend) ghostLegend.hidden = true;
 }
 
 function retryCurrentLevel(): void {
+  // Fair retry from the stage's initial capital for both player and AI
+  playerAum = stageStartAum;
+  aiAum = stageStartAum;
+  lastSimulation = null;
+
   const banner = document.getElementById("outcome-banner");
   if (banner) banner.hidden = true;
   const btnRetry = document.getElementById("btn-retry-run");
   if (btnRetry) btnRetry.hidden = true;
+  const ghostLegend = document.getElementById("chart-ghost-legend");
+  if (ghostLegend) ghostLegend.hidden = true;
+
+  saveGameState();
   refreshRegimeAndSolvers();
 }
 

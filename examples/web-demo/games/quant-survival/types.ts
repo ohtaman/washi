@@ -146,6 +146,7 @@ export interface GameSaveState {
   highestLevel: number;
   playerAum: number;
   aiAum: number;
+  stageStartAum?: number;
   selectedAssetIds: string[];
   bestQuarter?: number;
   peakAum?: number;

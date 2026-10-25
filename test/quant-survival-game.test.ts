@@ -51,22 +51,22 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
   it("supports progressive asset pool unlock and procedural generation across Levels 1..15", () => {
     const l1 = getLevelSpec(1);
     expect(l1.unlockedAssetIds).toEqual(["sp500", "bond", "gold"]);
-    expect(l1.maxPicks).toBe(2);
+    expect(l1.maxPicks).toBe(3);
 
     const l2 = getLevelSpec(2);
     expect(l2.unlockedAssetIds).toContain("tech");
     expect(l2.unlockedAssetIds).toContain("pharma");
-    expect(l2.maxPicks).toBe(3);
+    expect(l2.maxPicks).toBe(4);
 
     const l3 = getLevelSpec(3);
     expect(l3.unlockedAssetIds).toContain("nv-ai");
     expect(l3.unlockedAssetIds).toContain("cloud");
     expect(l3.unlockedAssetIds).toContain("defense");
-    expect(l3.maxPicks).toBe(4);
+    expect(l3.maxPicks).toBe(5);
 
     const l5 = getLevelSpec(5);
     expect(l5.unlockedAssetIds.length).toBe(12);
-    expect(l5.maxPicks).toBe(6);
+    expect(l5.maxPicks).toBe(7);
 
     // Level 6+: Procedural assets generated dynamically
     const l6 = getLevelSpec(6);
