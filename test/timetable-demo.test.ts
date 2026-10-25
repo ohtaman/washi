@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  createBlankTimetableState,
   generateTimetableState,
   injectTimetableConflictScenario,
 } from "../examples/web-demo/apps/ai-timetable/generator.js";
@@ -972,5 +973,40 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     } finally {
       (globalThis as any).LanguageModel = prevLM;
     }
+  });
+
+  test("supports multi-step onboarding workflow: blank state -> master data inspection -> solve -> AI refinement", async () => {
+    // 1. Initial blank state has zero master entities
+    const blank = createBlankTimetableState();
+    expect(blank.courses).toHaveLength(0);
+    expect(blank.professors).toHaveLength(0);
+    expect(blank.rooms).toHaveLength(0);
+
+    // 2. Sample data generation populates complete computer science department benchmark
+    const loaded = generateTimetableState();
+    expect(loaded.professors).toHaveLength(10);
+    expect(loaded.rooms).toHaveLength(7);
+    expect(loaded.courses).toHaveLength(25);
+    const totalSessions = loaded.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
+    expect(totalSessions).toBe(30);
+
+    // 3. Multi-language UI text integrity for catalog management and step progression
+    for (const lang of ["ja", "en", "zh"] as const) {
+      const ui = UI_TEXT_I18N[lang];
+      expect(ui.catMgmtTitle.length).toBeGreaterThan(0);
+      expect(ui.catMgmtDesc.length).toBeGreaterThan(0);
+      expect(ui.btnCatGenerate.length).toBeGreaterThan(0);
+      expect(ui.btnCatImportCsv.length).toBeGreaterThan(0);
+      expect(ui.btnCatGoConstraints.length).toBeGreaterThan(0);
+      expect(ui.btnCatGoTimetable.length).toBeGreaterThan(0);
+      expect(ui.constraintsWorkflowMsg.length).toBeGreaterThan(0);
+      expect(ui.btnConstraintsGoTimetable.length).toBeGreaterThan(0);
+    }
+
+    // 4. Executing solve from loaded master data yields Optimal solution
+    const outcome = await solveTimetableWithWashi(loaded);
+    expect(outcome.status).toBe("Optimal");
+    expect(outcome.timetable?.sessions).toHaveLength(30);
+    expect(outcome.conflicts).toHaveLength(0);
   });
 });
