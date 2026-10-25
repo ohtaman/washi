@@ -672,7 +672,7 @@ function renderTimetableBoard(): void {
       emptyStateEl.innerHTML = `
         <div class="data-preview-card">
           <div class="data-preview-header">
-            <span class="dp-badge">STEP 2</span>
+            <span class="dp-badge">STEP 3</span>
             <h3>${pickTimetableLang(activeLang, {
               ja: `基礎データの準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}コマ）`,
               en: `Data Ready: ${profCount} Profs / ${roomCount} Rooms / ${courseCount} Courses (${totalSessions} sessions)`,
