@@ -426,6 +426,12 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     };
     expect(hasSavedProgress(clearedWeek1Save)).toBe(true);
 
+    const movieOnlySave: SaveData = {
+      ...emptySave,
+      openingMovieSeen: true,
+    };
+    expect(hasSavedProgress(movieOnlySave)).toBe(true);
+
     const endlessSave: SaveData = {
       ...emptySave,
       highestUnlockedWeek: 6,

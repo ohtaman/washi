@@ -87,6 +87,7 @@ const SAVE_STORAGE_KEY = "demon_castle_guard_shift_save_v2";
 
 export function hasSavedProgress(data: SaveData): boolean {
   return (
+    Boolean(data.openingMovieSeen) ||
     data.highestUnlockedWeek > 1 ||
     data.unlockedStageIndex > 0 ||
     Object.keys(data.clearedRanks).length > 0 ||
@@ -4094,7 +4095,11 @@ function initGame(): void {
   getEl<HTMLButtonElement>("btn-title-start").addEventListener("click", () => {
     soundEngine.playClick("day");
     enterGameScreen(0, false);
-    openOpeningMovieDialog(true);
+    if (!saveData.openingMovieSeen) {
+      openOpeningMovieDialog(true);
+    } else {
+      openPrologueDialog();
+    }
   });
 
   getEl<HTMLButtonElement>("btn-title-roster").addEventListener("click", () => {

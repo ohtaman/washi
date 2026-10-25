@@ -725,6 +725,17 @@ function renderStageNav(): void {
   totalStarsTextEl.textContent = `${clearedCount} CLEAR`;
 
   const totalScore = progress.totalScore ?? 0;
+  const totalScoreTextEl = document.getElementById("total-score-text");
+  if (totalScoreTextEl) {
+    if (totalScore > 0) {
+      totalScoreTextEl.textContent = `· ${totalScore} pt`;
+      totalScoreTextEl.hidden = false;
+    } else {
+      totalScoreTextEl.textContent = "";
+      totalScoreTextEl.hidden = true;
+    }
+  }
+
   const totalStarsBadgeEl = document.getElementById("total-stars-badge");
   if (totalStarsBadgeEl) {
     if (totalScore > 0) {

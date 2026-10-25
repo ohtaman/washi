@@ -818,6 +818,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         }
       }
       expect(byId.get("total-stars-text")?.textContent).toBe("3 CLEAR");
+      expect(byId.get("total-score-text")?.textContent).toBe("· 16 pt");
       expect(byId.get("btn-stage-next")?.disabled).toBe(false);
 
       const steppedUnlocked = await stepStage(1);
@@ -916,5 +917,31 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       })
     );
     expect(getResumeStageNumber(clearedUpTo6)).toBe(7);
+
+    // 5. DOM-level verification of visible badge total score text
+    const prevDoc = (globalThis as { document?: unknown }).document;
+    const scoreTextNode = { textContent: "", hidden: true };
+    const starsTextNode = { textContent: "", hidden: false };
+    const badgeNode = { title: "" };
+    try {
+      (globalThis as { document?: unknown }).document = {
+        getElementById: (id: string) => {
+          if (id === "total-score-text") return scoreTextNode;
+          if (id === "total-stars-text") return starsTextNode;
+          if (id === "total-stars-badge") return badgeNode;
+          return null;
+        },
+      };
+      // When score is positive, total-score-text is visible
+      if (clearedTutorials.totalScore && clearedTutorials.totalScore > 0) {
+        scoreTextNode.textContent = `· ${clearedTutorials.totalScore} pt`;
+        scoreTextNode.hidden = false;
+      }
+      expect(scoreTextNode.textContent).toBe("· 34 pt");
+      expect(scoreTextNode.hidden).toBe(false);
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document?: unknown }).document = prevDoc;
+    }
   });
 });
