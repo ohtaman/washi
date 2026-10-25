@@ -651,3 +651,181 @@
   border-color: rgba(16, 185, 129, 0.3);
   color: #10b981;
 }
+
+/* Blank Slate Onboarding Workflow & Preview */
+.empty-state-workflow,
+.data-preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.5rem 1.8rem;
+  margin: 0.75rem 0.5rem 1rem;
+  background: var(--bg-surface-elevated);
+  border: 1.5px solid var(--border-hairline);
+  border-radius: 12px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+}
+
+.workflow-header h3,
+.data-preview-header h3 {
+  margin: 0.3rem 0 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.workflow-header p,
+.data-preview-header p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-sumi-secondary);
+}
+
+.workflow-badge,
+.dp-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 9999px;
+  background: var(--primary-accent);
+  color: #ffffff;
+  letter-spacing: 0.05em;
+}
+
+.workflow-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 0.3rem;
+}
+
+.workflow-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.workflow-card.highlighted {
+  border: 2px solid var(--primary-accent);
+  background: rgba(37, 99, 235, 0.03);
+}
+
+.wf-card-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.workflow-card h4 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.workflow-card p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-sumi-secondary);
+  flex-grow: 1;
+}
+
+.data-preview-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.9rem;
+}
+
+.dp-summary-box {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+}
+
+.dp-summary-box h4 {
+  margin: 0.2rem 0 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dp-summary-box ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-sumi-secondary);
+}
+
+.data-preview-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 0.4rem;
+}
+
+/* Prompt Catalog Dialog & Categories */
+.prompt-category-group {
+  margin-bottom: 1.2rem;
+}
+
+.prompt-category-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.prompt-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.6rem;
+}
+
+.prompt-catalog-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.prompt-catalog-item:hover {
+  border-color: var(--primary-accent);
+  background: var(--bg-surface-elevated);
+  transform: translateY(-1px);
+}
+
+.prompt-catalog-text {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--primary-accent);
+}
+
+.prompt-catalog-desc {
+  font-size: 0.75rem;
+  color: var(--text-sumi-secondary);
+  line-height: 1.35;
+}

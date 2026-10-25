@@ -229,6 +229,14 @@
               >
                 💡 要望例
               </button>
+              <button
+                type="button"
+                class="btn-examples-trigger"
+                id="btn-open-prompt-catalog"
+                title="Gemini Nanoで使える全8カテゴリの指示・質問プロンプト集を表示します"
+              >
+                📖 プロンプト集
+              </button>
               <label id="lbl-auto-solve" class="auto-solve-toggle" title="条件変更時に自動で最適化を実行します">
                 <input type="checkbox" id="chk-auto-solve-on-chat" checked />
                 <span id="txt-auto-solve">自動再計算</span>
@@ -1005,6 +1013,30 @@
               閉じる
             </button>
           </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- ==================== MODAL 5: PROMPT CATALOG DIALOG ==================== -->
+    <dialog id="prompt-catalog-dialog" class="shift-dialog" closedby="any" aria-labelledby="prompt-catalog-dialog-title" style="max-width: 860px; width: 94vw;">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h3 id="prompt-catalog-dialog-title">🤖 Gemini Nano 想定質問・指示プロンプト集 (8カテゴリ)</h3>
+          <button type="button" id="btn-close-prompt-catalog" class="dialog-close-btn" aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div class="dialog-body" style="max-height: 72vh; overflow-y: auto;">
+          <p id="prompt-catalog-intro" style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+            Gemini Nano が自然言語から正確に構造化（JSON toolCalls）して WaSHI × HiGHS ソルバーに渡せる代表的な指示例です。クリックするとチャット入力欄に自動入力されます。
+          </p>
+
+          <div id="prompt-catalog-categories-container"></div>
+        </div>
+        <div class="dialog-footer">
+          <button type="button" id="btn-close-prompt-catalog-bottom" class="btn-xs-outline">
+            閉じる
+          </button>
         </div>
       </div>
     </dialog>

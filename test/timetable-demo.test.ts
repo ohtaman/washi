@@ -11,9 +11,12 @@ import {
 } from "../examples/web-demo/apps/ai-timetable/solver.js";
 import {
   applyTimetableChatOperationsToState,
+  buildCompactStateCatalogPrompt,
+  buildUltraCompactCatalogPrompt,
   checkGeminiNanoAvailability,
   convertToolCallToTimetableOperation,
   createTimetableGeminiNanoManager,
+  repairTruncatedJson,
   resolveCourseFromText,
   resolveProfessorFromText,
   resolveRoomFromText,
@@ -864,5 +867,110 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(detectBrowserTimetableLang({ language: "fr-FR" })).toBe("en");
     expect(detectBrowserTimetableLang({ languages: [] })).toBe("en");
     expect(detectBrowserTimetableLang({})).toBe("en");
+  });
+
+  it("recovers gracefully from LLM output limits truncation and repairs truncated JSON", async () => {
+    // 1. repairTruncatedJson handles valid JSON untouched
+    expect(repairTruncatedJson('{"intentType":"modify_and_solve","toolCalls":[]}')).toBe(
+      '{"intentType":"modify_and_solve","toolCalls":[]}'
+    );
+    expect(repairTruncatedJson("")).toBe("{}");
+    expect(repairTruncatedJson("   ")).toBe("{}");
+
+    // 2. repairTruncatedJson repairs unclosed string inside object
+    const unclosedStr = '{"thought":"佐藤先生の月曜';
+    const repStr = repairTruncatedJson(unclosedStr);
+    expect(() => JSON.parse(repStr)).not.toThrow();
+    expect(JSON.parse(repStr).thought).toBe("佐藤先生の月曜");
+
+    // 3. repairTruncatedJson repairs truncated nested arrays and objects
+    const truncatedNested =
+      '{"intentType":"modify_and_solve","toolCalls":[{"tool_name":"set_professor_unavailability","args":{"professor":"P01","days":["Mon"]';
+    const repNested = repairTruncatedJson(truncatedNested);
+    expect(() => JSON.parse(repNested)).not.toThrow();
+    const parsedNested = JSON.parse(repNested);
+    expect(parsedNested.intentType).toBe("modify_and_solve");
+    expect(parsedNested.toolCalls[0].tool_name).toBe("set_professor_unavailability");
+    expect(parsedNested.toolCalls[0].args.professor).toBe("P01");
+    expect(parsedNested.toolCalls[0].args.days).toEqual(["Mon"]);
+
+    // 4. repairTruncatedJson repairs trailing comma and trailing colon
+    expect(() => JSON.parse(repairTruncatedJson('{"tool_name":'))).not.toThrow();
+    expect(() => JSON.parse(repairTruncatedJson('{"intentType":"consult_only",'))).not.toThrow();
+
+    // 5. buildCompactStateCatalogPrompt and buildUltraCompactCatalogPrompt
+    const state = generateTimetableState();
+    const compactPrompt = buildCompactStateCatalogPrompt(state);
+    expect(compactPrompt).toContain("C01:情報科学概論(週1,担当:P07)");
+    expect(compactPrompt).not.toContain("履修135名"); // Pruned to save tokens
+    expect(compactPrompt).toContain("P01:佐藤 健一");
+    expect(compactPrompt).toContain("R101:101大講義室");
+
+    const ultraCompactPrompt = buildUltraCompactCatalogPrompt(state);
+    expect(ultraCompactPrompt).toContain("C01:情報科学概論(P07)");
+    expect(ultraCompactPrompt).not.toContain("現在の全体設定"); // Omitted in ultra-compact retry
+
+    // Empty state (blank slate) produces clean placeholders
+    const blankState = { ...state, courses: [], professors: [], rooms: [] };
+    expect(buildCompactStateCatalogPrompt(blankState)).toContain("【登録科目一覧】(なし)");
+    expect(buildUltraCompactCatalogPrompt(blankState)).toContain("【登録科目一覧】(なし)");
+
+    // 6. extractPlan recovers when prompt() throws output limits exceeded error
+    const prevLM = (globalThis as any).LanguageModel;
+    try {
+      let promptCallCount = 0;
+      const promptsReceived: string[] = [];
+      (globalThis as any).LanguageModel = {
+        async availability() {
+          return "available";
+        },
+        async create() {
+          return {
+            async clone() {
+              return {
+                async prompt(promptText: string) {
+                  promptCallCount += 1;
+                  promptsReceived.push(promptText);
+                  if (promptCallCount === 1) {
+                    throw new Error("The response exceeded output limits and was truncated.");
+                  }
+                  return JSON.stringify({
+                    intentType: "modify_and_solve",
+                    toolCalls: [
+                      {
+                        tool_name: "set_professor_unavailability",
+                        args: {
+                          professor: "P01",
+                          days: ["Mon"],
+                          periods: [1, 2, 3, 4, 5],
+                          exclusiveAvailable: false,
+                          isHard: true,
+                        },
+                      },
+                    ],
+                  });
+                },
+                destroy() {},
+              };
+            },
+            destroy() {},
+          };
+        },
+      };
+
+      const mgr = createTimetableGeminiNanoManager();
+      await mgr.initialize(undefined, "ja");
+      const plan = await mgr.extractPlan("佐藤先生は月曜休み", state, undefined, undefined, "ja");
+
+      // Verify that retry occurred with ultra-compact prompt
+      expect(promptCallCount).toBe(2);
+      expect(promptsReceived[0]).toContain("週1,担当:P07"); // Initial compact prompt
+      expect(promptsReceived[1]).toContain("C01:情報科学概論(P07)"); // Ultra-compact retry prompt
+      expect(plan.operations.length).toBe(1);
+      expect(plan.operations[0].op).toBe("set_professor_unavailability");
+      mgr.destroy();
+    } finally {
+      (globalThis as any).LanguageModel = prevLM;
+    }
   });
 });
