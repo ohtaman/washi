@@ -209,10 +209,7 @@
   <body>
     <div class="hub-container">
       <header class="hub-topbar">
-        <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-          <a href="../showcase/" class="back-btn" id="portal-back-showcase">✨ ショーケースへ戻る</a>
-          <a href="../" class="back-btn" id="portal-back-top">📖 ドキュメント</a>
-        </div>
+        <a href="../" class="back-btn" id="portal-back-top">← トップページへ戻る</a>
         <div class="hub-topbar-right">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -297,43 +294,16 @@
         <article class="game-card">
           <div
             class="game-thumb"
-            style="
-              background:
-                radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.25), transparent 55%),
-                linear-gradient(135deg, #060b16 0%, #0f172a 60%, #1e293b 100%);
-              justify-content: space-between;
-              align-items: center;
-              flex-direction: column;
-            "
+            style="background: linear-gradient(135deg, #091325, #0e2a47); justify-content: flex-end; align-items: flex-start;"
           >
-            <div
-              style="
-                width: 100%;
-                max-width: 240px;
-                background: rgba(8, 13, 25, 0.88);
-                border: 1px solid rgba(56, 189, 248, 0.45);
-                border-radius: 12px;
-                padding: 0.65rem 0.85rem;
-                font-family: ui-monospace, SFMono-Regular, monospace;
-                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
-              "
-            >
-              <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #38bdf8; font-weight: 800; margin-bottom: 0.3rem;">
-                <span>QUANT SURVIVAL</span>
-                <span style="color: #34d399;">RUIN 1.4%</span>
-              </div>
-              <svg viewBox="0 0 180 46" style="width: 100%; height: 42px; display: block;">
-                <line x1="0" y1="38" x2="180" y2="38" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="3 2" />
-                <path d="M2,30 L34,26 L68,29 L102,20 L138,16 L178,12" fill="none" stroke="#f59e0b" stroke-width="2" />
-                <path d="M2,30 L34,22 L68,25 L102,14 L138,11 L178,5" fill="none" stroke="#38bdf8" stroke-width="2.4" />
-              </svg>
-            </div>
-            <span class="game-tag" id="card3-tag">ファンド運用サバイバル</span>
+            <span class="game-tag" id="card3-tag" style="border-color: rgba(56, 189, 248, 0.45); color: #7dd3fc;">
+              クオンツ運用サバイバル
+            </span>
           </div>
           <div class="game-body">
-            <h2 id="card3-title">QUANT SURVIVAL — クオンツ運用サバイバル</h2>
+            <h2 id="card3-title">クオンツ・サバイバル</h2>
             <p id="card3-desc">
-              初期資金100億円からスタートし、毎期襲いかかる市場ショックでロスカット退場になる確率を抑えながら資産を複利で増やし続けるエンドレス運用ゲーム。逆の動きをする銘柄を組み合わせてリスクを相殺し、並走するライバルと総資産を競います。
+              初期資金100Mからスタートし、銘柄の組み合わせと逆相関を活かしてライバルAIと競い合う運用サバイバルゲーム。
             </p>
             <div class="card-actions">
               <a href="./quant-survival/" class="play-btn" id="card3-play">ゲームをプレイする</a>
@@ -350,8 +320,7 @@
       const PORTAL_TEXT = {
         ja: {
           pageTitle: "ブラウザパズルゲーム一覧",
-          backShowcase: "✨ ショーケースへ戻る",
-          backTop: "📖 ドキュメント",
+          backTop: "← トップページへ戻る",
           navApps: "🏥 実用アプリ一覧へ",
           navDemo: "📐 Playground へ",
           heroTitle: "🎮 ブラウザパズルゲーム一覧",
@@ -367,15 +336,14 @@
             "限られた本数の木の柵🪵だけで腹ペコオオカミ🐺の侵入ルートを遮断しつつ、ヒツジのモコたちが歩ける「安全なまきば」の野いちご🍓を最大化し、穴ぼこ🕳️を埋めたり避けたりする囲い込みパズル。",
           playBtn: "ゲームをプレイする",
           theoryBtn: "解説記事を読む",
-          card3Tag: "ファンド運用サバイバル",
-          card3Title: "QUANT SURVIVAL — クオンツ運用サバイバル",
+          card3Tag: "クオンツ運用サバイバル",
+          card3Title: "クオンツ・サバイバル",
           card3Desc:
-            "初期資金100億円からスタートし、毎期襲いかかる市場ショックでロスカット退場になる確率を抑えながら資産を複利で増やし続けるエンドレス運用ゲーム。逆の動きをする銘柄を組み合わせてリスクを相殺し、並走するライバルと総資産を競います。",
+            "初期資金100Mからスタートし、銘柄の組み合わせと逆相関を活かしてライバルAIと競い合う運用サバイバルゲーム。",
         },
         en: {
           pageTitle: "Browser Puzzle Games",
-          backShowcase: "✨ Back to Showcase",
-          backTop: "📖 Documentation",
+          backTop: "← Back to Home",
           navApps: "🏥 Practical Apps",
           navDemo: "📐 Playground",
           heroTitle: "🎮 Browser Puzzle Games",
@@ -391,15 +359,14 @@
             "Block hungry wolves 🐺 using a limited number of wooden fences 🪵 while maximizing wild strawberries 🍓 and plugging or avoiding pitfalls 🕳️ inside the safe pasture where Moko the sheep can roam.",
           playBtn: "Play Game",
           theoryBtn: "Read Article",
-          card3Tag: "Fund Survival Game",
-          card3Title: "QUANT SURVIVAL — Portfolio Duel",
+          card3Tag: "Quant Survival Game",
+          card3Title: "Quant Survival",
           card3Desc:
-            "Start with $100M in capital and compound your assets quarter after quarter while keeping your probability of hitting the liquidation floor low. Blend negatively correlated assets to hedge market shocks and outlast your rival engine.",
+            "Manage a hedge fund starting from $100M, drafting assets and exploiting negative correlations to outperform rival AI.",
         },
         zh: {
           pageTitle: "网页益智游戏一览",
-          backShowcase: "✨ 返回案例展示",
-          backTop: "📖 文档首页",
+          backTop: "← 返回首页",
           navApps: "🏥 实用应用展示",
           navDemo: "📐 Playground",
           heroTitle: "🎮 网页益智游戏一览",
@@ -415,10 +382,10 @@
             "仅用有限数量的木栅栏🪵阻断饥饿野狼🐺的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓🍓并填平或避开坑洞🕳️。",
           playBtn: "开始游戏",
           theoryBtn: "阅读解说文章",
-          card3Tag: "基金运营生存游戏",
-          card3Title: "QUANT SURVIVAL — 量化生存战",
+          card3Tag: "量化生存对决",
+          card3Title: "量化生存战",
           card3Desc:
-            "从100亿初始资金出发，在每个季度的随机市场冲击下压低爆仓概率并实现资产复利增长的无尽运营游戏。巧妙搭配负相关资产对冲波动风险，与同台竞技的对手比拼总资产规模。",
+            "从1亿美元初始资金起步，通过精选标的与负相关对冲在多轮行情中战胜量化AI的资产管理游戏。",
         },
       };
 
@@ -426,16 +393,7 @@
         setGameLang(lang);
         const t = pickLang(lang, PORTAL_TEXT);
         document.title = t.pageTitle;
-        const showcaseLink = document.getElementById("portal-back-showcase");
-        if (showcaseLink) {
-          showcaseLink.textContent = t.backShowcase;
-          showcaseLink.href = lang === "ja" ? "../ja/showcase/" : lang === "zh" ? "../zh/showcase/" : "../showcase/";
-        }
-        const topLink = document.getElementById("portal-back-top");
-        if (topLink) {
-          topLink.textContent = t.backTop;
-          topLink.href = lang === "ja" ? "../ja/" : lang === "zh" ? "../zh/" : "../";
-        }
+        document.getElementById("portal-back-top").textContent = t.backTop;
         document.getElementById("portal-nav-apps").textContent = t.navApps;
         document.getElementById("portal-nav-demo").textContent = t.navDemo;
         document.getElementById("portal-hero-title").textContent = t.heroTitle;
@@ -453,8 +411,10 @@
         document.getElementById("card3-tag").textContent = t.card3Tag;
         document.getElementById("card3-title").textContent = t.card3Title;
         document.getElementById("card3-desc").textContent = t.card3Desc;
-        document.getElementById("card3-play").textContent = t.playBtn;
-        document.getElementById("card3-theory").textContent = t.theoryBtn;
+        const c3Play = document.getElementById("card3-play");
+        if (c3Play) c3Play.textContent = t.playBtn;
+        const c3Theory = document.getElementById("card3-theory");
+        if (c3Theory) c3Theory.textContent = t.theoryBtn;
 
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);

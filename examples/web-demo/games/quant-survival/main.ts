@@ -2,20 +2,24 @@
 import { setHighsWasmUrl } from "../../../../src/index.js";
 import { getGameLang, pickLang, setGameLang, type GameLang } from "../i18n.js";
 import {
+  buildSubsetRegime,
+  getAssetSpecById,
+  getLevelSpec,
   getLocalizedAsset,
   getLocalizedRegimeText,
-  getQuarterRegime,
 } from "./regimes.js";
 import {
   computeEfficientFrontier,
   computePortfolioMetrics,
-  quantizeWeightsToPercent,
-  roundWeightsToHundred,
+  normalizeWeights,
   simulateQuarterMarket,
   solveQuantOptimalPortfolio,
 } from "./solver.js";
 import type {
+  AssetSpec,
   FrontierPoint,
+  GameSaveState,
+  LevelSpec,
   MarketSimulationResult,
   QuantOptimalResult,
   QuarterRegime,
@@ -37,21 +41,7 @@ if (typeof window !== "undefined") {
   setHighsWasmUrl(wasmUrl);
 }
 
-const STORAGE_KEY = "washi_quant_survival_record_v1";
-export const ACTIVE_RUN_STORAGE_KEY = "washi_quant_survival_active_run_v1";
-
-interface SaveRecord {
-  bestQuarter: number;
-  peakAum: number;
-}
-
-export interface ActiveRunState {
-  quarter: number;
-  playerAum: number;
-  aiAum: number;
-  duelWins: number;
-  duelLosses: number;
-}
+const STORAGE_KEY = "washi_quant_survival_save_v2";
 
 interface StaticStrings {
   pageTitle: string;
@@ -70,14 +60,14 @@ interface StaticStrings {
   aiLabel: string;
   floorLabel: string;
   floorSub: string;
-  allocPanelAria: string;
+  universeHeading: string;
+  universeSub: string;
   allocHeading: string;
   allocSub: string;
   equalBtn: string;
   equalBtnTitle: string;
   hedgeBtn: string;
   hedgeBtnTitle: string;
-  assetListAria: string;
   corrHeading: string;
   corrMatrixAria: string;
   telemetryPanelAria: string;
@@ -88,6 +78,7 @@ interface StaticStrings {
   frontierSvgAria: string;
   chartBattleTitle: string;
   battleSvgAria: string;
+  ghostLegendText: string;
   defaultTicker: string;
   executeBtn: string;
   executingBtn: string;
@@ -97,6 +88,8 @@ interface StaticStrings {
   helpDialogCloseAria: string;
   helpDialogOk: string;
   helpDialogHtml: string;
+  unlockDialogTitle: string;
+  unlockDialogOk: string;
 }
 
 const UI_TEXT: Record<GameLang, StaticStrings> = {
@@ -104,292 +97,246 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     pageTitle: "QUANT SURVIVAL | クオンツ運用サバイバル",
     backLink: "← ゲーム一覧",
     backLinkTitle: "ゲーム一覧へ戻る",
-    brandSubtitle: "エンドレス運用サバイバル",
-    recordTitle: "自己ベスト記録（最高到達期・最高総資産）",
+    brandSubtitle: "vs WaSHI-QP エンドレス運用バトル",
+    recordTitle: "自己ベスト記録（最高到達ステージ・最高総資産）",
     langGroupAria: "Language",
     helpBtn: "? ルール",
-    helpBtnTitle: "遊び方と破綻確率の仕組み",
+    helpBtnTitle: "遊び方とレベルアップの仕組み",
     newRunBtn: "↻ リセット",
-    newRunBtnTitle: "初期資産$100Mから新しく始める",
+    newRunBtnTitle: "初期資金$100MからLevel 1を再開",
     scoreboardAria: "運用資産スコアボード",
-    quarterLabel: "CURRENT QUARTER",
+    quarterLabel: "CURRENT LEVEL",
     youLabel: "YOUR FUND (AUM)",
-    aiLabel: "RIVAL FUND (AUM)",
+    aiLabel: "RIVAL: WaSHI-QP",
     floorLabel: "LIQUIDATION FLOOR",
     floorSub: "これ未満で即ロスカット退場",
-    allocPanelAria: "ポートフォリオ配分パネル",
-    allocHeading: "1. ポートフォリオ配分 (合計 100%)",
+    universeHeading: "1. 銘柄プールから選択 (DRAFT)",
+    universeSub: "アンロックされた銘柄から組み入れたい銘柄をタップして選択してください",
+    allocHeading: "2. 選択銘柄の配分 (合計 100%)",
     allocSub: "スライダーを動かすと自動で合計100%に正規化されます",
     equalBtn: "均等配分",
-    equalBtnTitle: "全銘柄に均等配分する",
+    equalBtnTitle: "選択銘柄に均等配分する",
     hedgeBtn: "逆相関ブレンド",
     hedgeBtnTitle: "逆相関ペアを組み合わせたバランス配分を試す",
-    assetListAria: "投資対象銘柄リスト",
-    corrHeading: "資産間相関係数マトリクス (青 = 逆相関ヘッジ効果大)",
+    corrHeading: "選択銘柄の相関係数マトリクス (青 = 逆相関ヘッジ効果大)",
     corrMatrixAria: "資産間相関係数マトリクス",
     telemetryPanelAria: "リスク計器盤と市場シミュレーション",
-    labelRuinProb: "期末フロア割れ確率 (参考値)",
+    labelRuinProb: "今期の破綻確率 (RUIN PROB)",
     labelExpReturn: "期待リターン (E[R])",
     chartFrontierTitle: "リスク・リターン平面 ＆ 効率的フロンティア",
-    chartFrontierLegend: "● YOU   ◆ RIVAL",
+    chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
     frontierSvgAria: "効率的フロンティアとリスク・リターンプロット",
-    chartBattleTitle: "60営業日 リアルタイム資産推移 (YOU vs RIVAL)",
+    chartBattleTitle: "60営業日 リアルタイム資産推移 (YOU vs WaSHI-QP)",
     battleSvgAria: "60営業日リアルタイム資産推移チャート",
+    ghostLegendText: "単体100%全ツッパ比較",
     defaultTicker:
-      "配分を調整して [MARKET OPEN] を押すと、60日間の市場シミュレーションが始まります。",
+      "銘柄を選択して配分を調整し、[MARKET OPEN] を押すと60日間の市場シミュレーションが始まります。",
     executeBtn: "▶ MARKET OPEN (60日間バトル開始)",
     executingBtn: "⏳ MARKET RUNNING (60日間取引中...)",
-    nextQuarterBtn: "次の四半期へ進む ▶",
-    retryRunBtn: "↻ 初期資金 $100M から再挑戦",
+    nextQuarterBtn: "次のレベルへ進む ▶",
+    retryRunBtn: "↻ このレベルを再挑戦",
     helpDialogTitle: "QUANT SURVIVAL — ルールと生き残り方",
     helpDialogCloseAria: "閉じる",
     helpDialogOk: "閉じる",
     helpDialogHtml: `
-      <p>あなたはクオンツファンドの運用責任者です。初期資金 <strong>$100.0M</strong> からスタートし、毎期（60営業日）の市場ショックを乗り越えて資産を複利で増やし続けます。</p>
+      <p>あなたはクオンツファンドの運用責任者です。初期資金 <strong>$100.0M</strong> からスタートし、毎期（60営業日）ライバルAI（WaSHI-QP）と競い合います。</p>
       <ul>
-        <li><strong>ロスカット退場（LIQUIDATION FLOOR）</strong>：期中の資産または期末資産が「破綻ライン」を割り込むと即ゲームオーバーです。</li>
-        <li><strong>破綻確率を下げるコツ（逆相関ヘッジ）</strong>：高リターン銘柄（TECHやQNTX）だけに集中投資すると、暴落イベントで簡単に破綻します。相関係数がマイナス（青色）の銘柄（GOLDやDFNSなど）を組み合わせると、期待リターンを高く保ったまま破綻確率だけを劇的に引き下げられます。</li>
-        <li><strong>期末フロア割れ確率（参考値）</strong>：期末リターンを正規分布で近似し、破綻ラインを下回る確率を見積もった目安です。期中の一時的な下落やニュースショックは含まないため、実際に退場する確率はこれより高くなります。</li>
-        <li><strong>ライバルファンド（RIVAL）</strong>：毎期あなたの開始資産と同額から、最小分散ポートフォリオを組んで並走します。毎期イコールコンディションの60日間勝負で、破綻せずにどこまで資産を伸ばせるか競いましょう。</li>
+        <li><strong>銘柄アンロックと選択（ドラフト）</strong>：最初はS&P500や国債など3銘柄から始まります。レベルをクリアするごとに「AI半導体株」「防衛株」「エネルギー株」などの個別株やテーマ資産が次々とアンロックされます。</li>
+        <li><strong>勝利条件</strong>：① 破綻ライン（-5%前後）を割らずに生存、② 期末資産でライバルAIを上回ると<strong>レベルクリア! 新銘柄が解放</strong>されます。</li>
+        <li><strong>分散の威力（もしもチャート）</strong>：高リターン個別株だけに全ツッパすると、暴落イベントで一発退場になります。国債や金、ディフェンシブ株と組み合わせることで、破綻を防ぎながらAIに勝つポートフォリオを構築しましょう。</li>
       </ul>
     `,
+    unlockDialogTitle: "✨ LEVEL CLEAR & 新銘柄アンロック!",
+    unlockDialogOk: "次のステージへ挑む ▶",
   },
   en: {
     pageTitle: "QUANT SURVIVAL | Endless Portfolio Duel",
     backLink: "← Games",
     backLinkTitle: "Back to Game Portal",
-    brandSubtitle: "Endless Fund Survival Duel",
-    recordTitle: "Personal best record (Highest Quarter & Peak AUM)",
+    brandSubtitle: "vs WaSHI-QP Endless AUM Duel",
+    recordTitle: "Best record (Highest Level & Peak AUM)",
     langGroupAria: "Language",
     helpBtn: "? Rules",
-    helpBtnTitle: "How to play and compress ruin probability",
+    helpBtnTitle: "How to play and progress",
     newRunBtn: "↻ Reset",
-    newRunBtnTitle: "Start a fresh run from $100M AUM",
+    newRunBtnTitle: "Restart fresh from Level 1 ($100M)",
     scoreboardAria: "Asset Under Management Scoreboard",
-    quarterLabel: "CURRENT QUARTER",
+    quarterLabel: "CURRENT LEVEL",
     youLabel: "YOUR FUND (AUM)",
-    aiLabel: "RIVAL FUND (AUM)",
+    aiLabel: "RIVAL: WaSHI-QP",
     floorLabel: "LIQUIDATION FLOOR",
-    floorSub: "Falling below this line ends your run",
-    allocPanelAria: "Portfolio Allocation Controls",
-    allocHeading: "1. Portfolio Weights (Total 100%)",
+    floorSub: "Breaching this floor ends your run",
+    universeHeading: "1. Select from Universe Pool (DRAFT)",
+    universeSub: "Tap unlocked assets to include them in your active portfolio",
+    allocHeading: "2. Active Portfolio Weights (Total 100%)",
     allocSub: "Adjusting any slider automatically rebalances total weights to 100%",
     equalBtn: "Equal Weight",
-    equalBtnTitle: "Distribute capital equally across all assets",
+    equalBtnTitle: "Distribute capital equally across selected assets",
     hedgeBtn: "Hedge Blend",
     hedgeBtnTitle: "Try a balanced blend of negatively correlated assets",
-    assetListAria: "Investable Assets",
-    corrHeading: "Asset Correlation Matrix (Blue = Negative Correlation Hedge)",
+    corrHeading: "Asset Correlation Matrix (Blue = Strong Negative Hedge)",
     corrMatrixAria: "Asset Correlation Matrix",
     telemetryPanelAria: "Risk Telemetry and Market Simulation",
-    labelRuinProb: "QUARTER-END SHORTFALL PROB. (ESTIMATE)",
+    labelRuinProb: "LEVEL RUIN PROBABILITY",
     labelExpReturn: "EXPECTED RETURN (E[R])",
     chartFrontierTitle: "Risk-Return Plane & Efficient Frontier",
-    chartFrontierLegend: "● YOU   ◆ RIVAL",
+    chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
     frontierSvgAria: "Risk-Return Efficient Frontier Plot",
-    chartBattleTitle: "60-Day Live AUM Battle (YOU vs RIVAL)",
+    chartBattleTitle: "60-Day Live AUM Battle (YOU vs WaSHI-QP)",
     battleSvgAria: "60-Day Live Asset Battle Chart",
+    ghostLegendText: "100% Single-Stock Benchmark",
     defaultTicker:
-      "Tune your weights and press [MARKET OPEN] to launch the 60-day market simulation.",
+      "Pick your assets, adjust weights, and click [MARKET OPEN] to launch the 60-day battle.",
     executeBtn: "▶ MARKET OPEN (Launch 60-Day Battle)",
     executingBtn: "⏳ MARKET RUNNING (Simulating 60 Days...)",
-    nextQuarterBtn: "Advance to Next Quarter ▶",
-    retryRunBtn: "↻ Start New Run from $100M",
-    helpDialogTitle: "QUANT SURVIVAL — Rules & Survival Guide",
+    nextQuarterBtn: "Advance to Next Level ▶",
+    retryRunBtn: "↻ Retry This Level",
+    helpDialogTitle: "QUANT SURVIVAL — Rules & Mechanics",
     helpDialogCloseAria: "Close",
     helpDialogOk: "Got It",
     helpDialogHtml: `
-      <p>You manage a quantitative hedge fund starting with <strong>$100.0M</strong> AUM. Compound your capital quarter after quarter without breaching the liquidation floor.</p>
+      <p>Manage a quantitative hedge fund starting with <strong>$100.0M</strong> AUM. Compete head-to-head against WaSHI-QP across escalating market levels.</p>
       <ul>
-        <li><strong>Liquidation Floor</strong>: If your fund drops below the red liquidation floor during or at the end of the 60-day quarter, you are liquidated (Game Over).</li>
-        <li><strong>Correlation Hedging</strong>: Going 100% into a single high-return asset invites disaster when macro shocks hit. Combine negatively correlated assets (highlighted in blue, such as TECH + GOLD or NRGY) to slash ruin probability while preserving upside.</li>
-        <li><strong>Quarter-End Shortfall Probability (Estimate)</strong>: A normal approximation of the chance that your quarter-end return finishes below the floor. It ignores intra-quarter dips and news shocks, so your actual liquidation risk is higher than this gauge.</li>
-        <li><strong>Rival Fund (RIVAL)</strong>: Every quarter starts as an equal-AUM 60-day duel against a rival fund running a minimum-variance portfolio.</li>
+        <li><strong>Unlock & Draft Assets</strong>: Begin with core broad-market assets. As you clear levels, hot single stocks (AI Semis, Cloud, Defense) and macro hedges unlock into your pool.</li>
+        <li><strong>Win Conditions</strong>: ① Avoid breaching the liquidation floor (-5% drawdown), and ② outperform rival WaSHI-QP in final AUM to <strong>clear the level and unlock new assets</strong>.</li>
+        <li><strong>Ghost Benchmark</strong>: Going 100% all-in on volatile single stocks often leads to sudden liquidation. Blend safe havens to protect your capital while beating the benchmark.</li>
       </ul>
     `,
+    unlockDialogTitle: "✨ LEVEL CLEAR & ASSETS UNLOCKED!",
+    unlockDialogOk: "Advance to Next Stage ▶",
   },
   zh: {
     pageTitle: "QUANT SURVIVAL | 量化生存战",
     backLink: "← 游戏列表",
     backLinkTitle: "返回游戏列表",
-    brandSubtitle: "无尽资产管理对决",
-    recordTitle: "个人最佳记录（最高到达季度与最高总资产）",
+    brandSubtitle: "vs WaSHI-QP 无尽资产管理对决",
+    recordTitle: "最佳记录（最高到达关卡与最高资产）",
     langGroupAria: "Language",
     helpBtn: "? 规则",
-    helpBtnTitle: "玩法说明与降低爆仓概率技巧",
+    helpBtnTitle: "玩法说明与进阶机制",
     newRunBtn: "↻ 重置",
-    newRunBtnTitle: "从初始资金$100M重新开始",
+    newRunBtnTitle: "从初始资金$100M重新开始第1关",
     scoreboardAria: "基金管理规模记分板",
-    quarterLabel: "CURRENT QUARTER",
+    quarterLabel: "CURRENT LEVEL",
     youLabel: "YOUR FUND (AUM)",
-    aiLabel: "RIVAL FUND (AUM)",
+    aiLabel: "RIVAL: WaSHI-QP",
     floorLabel: "LIQUIDATION FLOOR",
-    floorSub: "跌破此强平线即刻爆仓出局",
-    allocPanelAria: "投资组合权重控制面板",
-    allocHeading: "1. 投资组合配置 (合计 100%)",
+    floorSub: "跌破此强平线即刻出局",
+    universeHeading: "1. 从标的池精选资产 (DRAFT)",
+    universeSub: "点击已解锁资产将其纳入当前投资组合",
+    allocHeading: "2. 选中资产权重配置 (合计 100%)",
     allocSub: "拖动滑块时会自动将总权重归一化为100%",
     equalBtn: "均等配置",
-    equalBtnTitle: "将资金平均分配至所有资产",
+    equalBtnTitle: "将资金平均分配至选中资产",
     hedgeBtn: "负相关对冲",
     hedgeBtnTitle: "尝试结合负相关资产的对冲配置",
-    assetListAria: "可投资资产列表",
-    corrHeading: "资产相关系数矩阵 (蓝色 = 强负相关对冲效应)",
+    corrHeading: "选中资产相关系数矩阵 (蓝色 = 强负相关对冲)",
     corrMatrixAria: "资产相关系数矩阵",
     telemetryPanelAria: "风险仪表与市场模拟",
-    labelRuinProb: "季末跌破强平线概率（参考值）",
+    labelRuinProb: "本关爆仓概率 (RUIN PROB)",
     labelExpReturn: "预期收益率 (E[R])",
     chartFrontierTitle: "风险收益平面与有效前沿",
-    chartFrontierLegend: "● YOU   ◆ RIVAL",
+    chartFrontierLegend: "● YOU   ◆ WaSHI-QP",
     frontierSvgAria: "有效前沿与风险收益散点图",
-    chartBattleTitle: "60交易日 实时净值对决 (YOU vs RIVAL)",
+    chartBattleTitle: "60交易日 实时净值对决 (YOU vs WaSHI-QP)",
     battleSvgAria: "60交易日实时净值对决图表",
-    defaultTicker: "调整资产权重后点击 [MARKET OPEN] 启动60交易日市场行情模拟。",
+    ghostLegendText: "100%全仓单资产对照",
+    defaultTicker: "精选资产并调整权重后，点击 [MARKET OPEN] 开启60交易日行情对决。",
     executeBtn: "▶ MARKET OPEN (开始60日行情对决)",
     executingBtn: "⏳ MARKET RUNNING (60日行情模拟中...)",
-    nextQuarterBtn: "进入下一季度 ▶",
-    retryRunBtn: "↻ 从初始资金 $100M 重新挑战",
-    helpDialogTitle: "量化生存战 — 游戏规则与生存指南",
+    nextQuarterBtn: "进入下一关 ▶",
+    retryRunBtn: "↻ 重新挑战本关",
+    helpDialogTitle: "量化生存战 — 游戏规则与晋级指南",
     helpDialogCloseAria: "关闭",
     helpDialogOk: "明白了",
     helpDialogHtml: `
-      <p>你将作为量化基金经理，从 <strong>$100.0M</strong> 初始资金出发，在每个季度（60个交易日）的随机宏观冲击下实现复利增长。</p>
+      <p>管理从 <strong>$100.0M</strong> 起步的量化基金，在不断升级的市场中与WaSHI-QP正面对决。</p>
       <ul>
-        <li><strong>强平爆仓线（Liquidation Floor）</strong>：若盘中或季末净值跌破红色强平线，基金即刻清盘出局。</li>
-        <li><strong>利用负相关对冲风险</strong>：重仓单一高收益资产极易在市场冲击中爆仓。搭配相关系数为负（蓝色标记，如TECH搭配GOLD或DFNS）的资产，可以在保持预期回报的同时大幅压低爆仓概率。</li>
-        <li><strong>季末跌破强平线概率（参考值）</strong>：以正态分布近似季末收益率，估算其低于强平线的概率。该数值不包含季度中途的暂时下跌与新闻冲击，因此实际出局概率会高于此仪表。</li>
-        <li><strong>对手基金（RIVAL）</strong>：每季度均从与你相同的起始净值出发，与构建最小方差组合的对手基金展开公平的60日对决。</li>
+        <li><strong>解锁与自选标的</strong>：从大盘和国债起步，随着通关逐级解锁热门个股（AI半导体、云计算、军工）及大宗商品。</li>
+        <li><strong>通关条件</strong>：① 盘中与期末不跌破强平线，② 期末资产超越对手WaSHI-QP，即可<strong>通关并解锁新资产</strong>!</li>
+        <li><strong>单资产爆仓对照</strong>：100%全仓高波个股往往在宏观冲击中直接爆仓。巧妙搭配避险资产，实现稳定超额回报。</li>
       </ul>
     `,
+    unlockDialogTitle: "✨ 恭喜通关! 新资产已解锁!",
+    unlockDialogOk: "挑战下一关 ▶",
   },
 };
 
 let currentLang: GameLang = getGameLang();
-let currentQuarter = 1;
+let currentLevel = 1;
+let highestLevel = 1;
 let playerAum = 100.0;
 let aiAum = 100.0;
-let duelWins = 0;
-let duelLosses = 0;
-let currentRegime: QuarterRegime = getQuarterRegime(1);
-let playerWeights: number[] = [];
+let peakAum = 100.0;
+let selectedAssetIds: string[] = ["sp500", "bond"];
+let currentLevelSpec: LevelSpec = getLevelSpec(1);
+let currentRegime: QuarterRegime = buildSubsetRegime(1, selectedAssetIds);
+let playerWeights: number[] = [0.6, 0.4];
 let aiOptimal: QuantOptimalResult | null = null;
 let frontierPoints: FrontierPoint[] = [];
 let isSimulating = false;
 let lastSimulation: MarketSimulationResult | null = null;
 let animTimerId: number | null = null;
-let isLoadingQuarter = false;
-let loadToken = 0;
-/** Last trading day rendered by the running 60-day animation */
-let animDay = 0;
 
-/**
- * Advances to the next quarter. Ignored while a quarter is loading or simulating so that
- * repeated clicks cannot skip quarters.
- */
-export function advanceQuarter(): Promise<void> {
-  if (isLoadingQuarter || isSimulating) return Promise.resolve();
-  return loadQuarter(currentQuarter + 1);
-}
-
-/** Starts the 60-day market simulation for the current quarter (MARKET OPEN button). */
-export function startMarketSimulation(): Promise<void> {
-  return runMarketSimulation();
-}
-
-/** Returns the quarter and rival portfolio currently in effect (for UI state checks). */
-export function getQuantGameState(): {
-  quarter: number;
-  regimeId: string;
-  aiWeightsLength: number | null;
-  isLoading: boolean;
-  playerAum: number;
-  aiAum: number;
-  duelWins: number;
-  duelLosses: number;
-} {
-  return {
-    quarter: currentQuarter,
-    regimeId: currentRegime.id,
-    aiWeightsLength: aiOptimal ? aiOptimal.weights.length : null,
-    isLoading: isLoadingQuarter,
-    playerAum,
-    aiAum,
-    duelWins,
-    duelLosses,
-  };
-}
-
-function loadRecord(): SaveRecord {
-  if (typeof window === "undefined") {
-    return { bestQuarter: 1, peakAum: 100.0 };
-  }
+function loadSaveState(): void {
+  if (typeof window === "undefined") return;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { bestQuarter: 1, peakAum: 100.0 };
-    const parsed = JSON.parse(raw) as Partial<SaveRecord>;
-    return {
-      bestQuarter: Math.max(1, Number(parsed.bestQuarter) || 1),
-      peakAum: Math.max(100.0, Number(parsed.peakAum) || 100.0),
-    };
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Partial<GameSaveState>;
+    currentLevel = Math.max(1, Number(parsed.currentLevel) || 1);
+    highestLevel = Math.max(currentLevel, Number(parsed.highestLevel) || currentLevel);
+    playerAum = Math.max(10.0, Number(parsed.playerAum) || 100.0);
+    aiAum = Math.max(10.0, Number(parsed.aiAum) || 100.0);
+    peakAum = Math.max(playerAum, Number(parsed.peakAum) || playerAum);
+
+    currentLevelSpec = getLevelSpec(currentLevel);
+    if (Array.isArray(parsed.selectedAssetIds) && parsed.selectedAssetIds.length > 0) {
+      // Filter out any IDs not yet unlocked at this level
+      const valid = parsed.selectedAssetIds.filter((id) =>
+        currentLevelSpec.unlockedAssetIds.includes(id)
+      );
+      if (valid.length > 0) {
+        selectedAssetIds = valid.slice(0, currentLevelSpec.maxPicks);
+      } else {
+        selectedAssetIds = currentLevelSpec.unlockedAssetIds.slice(0, currentLevelSpec.maxPicks);
+      }
+    } else {
+      selectedAssetIds = currentLevelSpec.unlockedAssetIds.slice(0, currentLevelSpec.maxPicks);
+    }
   } catch {
-    return { bestQuarter: 1, peakAum: 100.0 };
+    // Keep defaults on read error
   }
 }
 
-function saveRecord(quarter: number, aum: number): SaveRecord {
-  const prev = loadRecord();
-  const next: SaveRecord = {
-    bestQuarter: Math.max(prev.bestQuarter, quarter),
-    peakAum: Math.max(prev.peakAum, aum),
+function saveGameState(): void {
+  if (typeof window === "undefined") return;
+  const state: GameSaveState = {
+    currentLevel,
+    highestLevel,
+    playerAum,
+    aiAum,
+    peakAum: Math.max(peakAum, playerAum),
+    selectedAssetIds,
   };
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // Ignore storage errors
-    }
-  }
-  return next;
-}
-
-export function loadActiveRunState(): ActiveRunState | null {
-  if (typeof window === "undefined") return null;
   try {
-    const raw = window.localStorage.getItem(ACTIVE_RUN_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<ActiveRunState>;
-    const quarter = Number(parsed.quarter);
-    const playerAum = Number(parsed.playerAum);
-    if (!Number.isFinite(quarter) || quarter < 1 || !Number.isFinite(playerAum) || playerAum <= 0) {
-      return null;
-    }
-    return {
-      quarter: Math.floor(quarter),
-      playerAum: Math.max(0, Number(playerAum.toFixed(2))),
-      aiAum: Math.max(0, Number(Number(parsed.aiAum ?? 100).toFixed(2))),
-      duelWins: Math.max(0, Math.floor(Number(parsed.duelWins ?? 0))),
-      duelLosses: Math.max(0, Math.floor(Number(parsed.duelLosses ?? 0))),
-    };
-  } catch {
-    return null;
-  }
-}
-
-export function saveActiveRunState(state: ActiveRunState): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(ACTIVE_RUN_STORAGE_KEY, JSON.stringify(state));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Ignore storage errors
   }
 }
 
-export function clearActiveRunState(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
-  } catch {
-    // Ignore storage errors
-  }
+function resetToFreshRun(): void {
+  currentLevel = 1;
+  playerAum = 100.0;
+  aiAum = 100.0;
+  currentLevelSpec = getLevelSpec(1);
+  selectedAssetIds = ["sp500", "bond"];
+  currentRegime = buildSubsetRegime(1, selectedAssetIds);
+  playerWeights = [0.6, 0.4];
+  lastSimulation = null;
+  saveGameState();
+  refreshRegimeAndSolvers();
 }
 
 function formatMoney(millions: number): string {
@@ -409,9 +356,8 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
   setGameLang(lang);
   if (typeof document === "undefined") return;
 
-  // Ensure document.documentElement.lang is exact lang code ("ja" | "en" | "zh")
   if (document.documentElement) {
-    document.documentElement.lang = lang;
+    document.documentElement.lang = lang === "zh" ? "zh-CN" : lang;
   }
 
   const t = pickLang(lang, UI_TEXT);
@@ -450,12 +396,12 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
   setElText("hud-floor-label", t.floorLabel);
   setElText("hud-floor-sub", t.floorSub);
 
-  setElAria("allocation-panel", t.allocPanelAria);
+  setElText("universe-heading", t.universeHeading);
+  setElText("universe-sub", t.universeSub);
   setElText("alloc-heading", t.allocHeading);
   setElText("alloc-sub", t.allocSub);
   setElText("btn-equal-weight", t.equalBtn, t.equalBtnTitle);
   setElText("btn-balance-hedge", t.hedgeBtn, t.hedgeBtnTitle);
-  setElAria("asset-list", t.assetListAria);
   setElText("corr-heading", t.corrHeading);
   setElAria("corr-matrix-container", t.corrMatrixAria);
 
@@ -467,17 +413,10 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
   setElAria("frontier-svg", t.frontierSvgAria);
   setElText("chart-battle-title", t.chartBattleTitle);
   setElAria("battle-svg", t.battleSvgAria);
+  setElText("ghost-legend-text", t.ghostLegendText);
 
-  if (!lastSimulation) {
+  if (!isSimulating && !lastSimulation) {
     setElText("news-ticker-text", t.defaultTicker);
-  } else {
-    // While the 60-day animation is running, only reveal shocks the animation has reached
-    const revealedDay = isSimulating ? animDay : lastSimulation.days;
-    const shock = latestRevealedShock(lastSimulation, revealedDay);
-    setElText(
-      "news-ticker-text",
-      shock ? `[DAY ${shock.day}] ${pickLang(lang, shock.headline)}` : t.defaultTicker
-    );
   }
 
   setElText("btn-execute", isSimulating ? t.executingBtn : t.executeBtn);
@@ -491,6 +430,9 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
     helpBody.innerHTML = t.helpDialogHtml;
   }
 
+  setElText("unlock-dialog-title", t.unlockDialogTitle);
+  setElText("btn-unlock-ok", t.unlockDialogOk);
+
   for (const closeBtn of document.querySelectorAll("[data-close-dialog]")) {
     closeBtn.setAttribute("aria-label", t.helpDialogCloseAria);
   }
@@ -502,36 +444,20 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
 
   renderRecordBadge();
   renderScoreboard();
+  renderUniversePicker();
   renderAssetList();
   renderCorrelationMatrix();
   renderTelemetryAndCharts();
-  // Never reveal the outcome before the running animation finishes
-  if (lastSimulation && !isSimulating) {
+  if (lastSimulation) {
     showOutcomeBanner(lastSimulation);
   }
-}
-
-/**
- * The most recent shock already shown by the animation at `revealedDay`. The animation
- * advances 2 days per frame and announces shocks within 1 day of the current frame.
- */
-export function latestRevealedShock(
-  sim: MarketSimulationResult,
-  revealedDay: number
-): MarketSimulationResult["shocks"][number] | null {
-  let latest: MarketSimulationResult["shocks"][number] | null = null;
-  for (const shock of sim.shocks) {
-    if (shock.day <= revealedDay + 1) latest = shock;
-  }
-  return latest;
 }
 
 function renderRecordBadge(): void {
   if (typeof document === "undefined") return;
   const el = document.getElementById("best-record-badge");
   if (!el) return;
-  const rec = loadRecord();
-  el.textContent = `🏆 BEST: Q${rec.bestQuarter} · ${formatMoney(rec.peakAum)}`;
+  el.textContent = `🏆 BEST: Lv.${highestLevel} · ${formatMoney(peakAum)}`;
 }
 
 function renderScoreboard(): void {
@@ -561,15 +487,7 @@ function renderScoreboard(): void {
   if (pDeltaEl) {
     const diff = playerAum - aiAum;
     const sign = diff >= 0 ? "+" : "";
-    const recJa = duelWins + duelLosses > 0 ? ` (${duelWins}勝${duelLosses}敗)` : "";
-    const recZh = duelWins + duelLosses > 0 ? ` (${duelWins}胜${duelLosses}负)` : "";
-    const recEn = duelWins + duelLosses > 0 ? ` (${duelWins}W-${duelLosses}L)` : "";
-    pDeltaEl.textContent =
-      currentLang === "ja"
-        ? `vs RIVAL: ${sign}${diff.toFixed(1)}M${recJa}`
-        : currentLang === "zh"
-          ? `对比 RIVAL: ${sign}${diff.toFixed(1)}M${recZh}`
-          : `vs RIVAL: ${sign}${diff.toFixed(1)}M${recEn}`;
+    pDeltaEl.textContent = `vs WaSHI-QP: ${sign}${diff.toFixed(1)}M`;
   }
 
   const aAumEl = document.getElementById("hud-ai-aum");
@@ -580,73 +498,171 @@ function renderScoreboard(): void {
 
   const floorValEl = document.getElementById("hud-floor-value");
   if (floorValEl) {
-    const floorAum = resolveDisplayedFloorAum(playerAum, currentRegime, lastSimulation);
+    const floorAum = playerAum * (1 + currentRegime.liquidationFloor);
     floorValEl.textContent = `${formatSignedPct(currentRegime.liquidationFloor)} (${formatMoney(floorAum)})`;
   }
 }
 
-/**
- * The liquidation floor shown on the scoreboard. After a quarter has been simulated,
- * `playerAum` already holds the quarter-end AUM, so the floor that was actually applied
- * (based on quarter-start AUM) must be taken from the simulation result.
- */
-export function resolveDisplayedFloorAum(
-  currentAum: number,
-  regime: QuarterRegime,
-  sim: MarketSimulationResult | null
-): number {
-  return sim ? sim.liquidationAumFloor : currentAum * (1 + regime.liquidationFloor);
+function renderUniversePicker(): void {
+  if (typeof document === "undefined" || typeof document.createElement !== "function") return;
+  const container = document.getElementById("universe-grid");
+  const counterEl = document.getElementById("universe-pick-counter");
+  if (!container) return;
+
+  const maxPicks = currentLevelSpec.maxPicks;
+  const currentCount = selectedAssetIds.length;
+  if (counterEl) {
+    counterEl.textContent =
+      currentLang === "ja"
+        ? `選択: ${currentCount} / ${maxPicks} 銘柄`
+        : currentLang === "zh"
+          ? `已选: ${currentCount} / ${maxPicks} 标的`
+          : `SELECTED: ${currentCount} / ${maxPicks} ASSETS`;
+  }
+
+  container.innerHTML = "";
+  const isMaxReached = currentCount >= maxPicks;
+
+  for (const assetId of currentLevelSpec.unlockedAssetIds) {
+    const asset = getAssetSpecById(assetId, currentLevel + 1);
+    const loc = getLocalizedAsset(asset, currentLang);
+    const isSelected = selectedAssetIds.includes(assetId);
+    const isNew = currentLevelSpec.newAssetIds.includes(assetId);
+    const isDisabled = !isSelected && isMaxReached;
+
+    const card = document.createElement("div");
+    card.className = `universe-card ${isSelected ? "is-selected" : ""} ${isDisabled ? "is-disabled" : ""}`;
+    card.setAttribute("role", "button");
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    card.title = `${loc.name} — ${loc.roleDesc}`;
+
+    card.innerHTML = `
+      ${isNew ? '<span class="badge-new-asset">✨NEW</span>' : ""}
+      <div class="card-top-row">
+        <span class="card-ticker" style="color: ${asset.color}">${asset.ticker}</span>
+        <span class="card-category-pill">${asset.category}</span>
+      </div>
+      <div class="card-name">${loc.name}</div>
+      <div class="card-stats">
+        <span class="stat-ret" title="期待リターン E[R]">${formatSignedPct(asset.expectedReturn)}</span>
+        <span class="stat-vol" title="ボラティリティ σ">σ${(asset.volatility * 100).toFixed(0)}%</span>
+      </div>
+    `;
+
+    card.addEventListener("click", () => {
+      if (isSimulating) return;
+      toggleAssetSelection(assetId);
+    });
+
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (isSimulating) return;
+        toggleAssetSelection(assetId);
+      }
+    });
+
+    container.appendChild(card);
+  }
 }
 
-/**
- * Describes a liquidation using the actual breach event (first day below the floor and the
- * lowest AUM reached), since a path can breach intra-quarter and still finish above the floor.
- */
-export function formatLiquidationDetail(
-  lang: GameLang,
-  sim: MarketSimulationResult
-): string {
-  const day = sim.playerLiquidatedDay ?? sim.days;
-  const floor = formatMoney(sim.liquidationAumFloor);
-  const minAum = formatMoney(sim.playerMinAum);
-  const aRetStr = formatSignedPct(sim.aiReturn);
-  const aiDay = sim.aiLiquidatedDay ?? sim.days;
-  if (lang === "ja") {
-    const aiNote = sim.aiLiquidated
-      ? `RIVAL も DAY ${aiDay} にロスカット (${aRetStr})`
-      : `RIVAL 今期損益: ${aRetStr}`;
-    return `DAY ${day} に資産が破綻ライン ${floor} を割り込みました (期中最安値 ${minAum})。${aiNote}`;
+function toggleAssetSelection(assetId: string): void {
+  const idx = selectedAssetIds.indexOf(assetId);
+  if (idx >= 0) {
+    // Do not allow deselecting if it is the last asset
+    if (selectedAssetIds.length <= 1) return;
+    selectedAssetIds.splice(idx, 1);
+  } else {
+    if (selectedAssetIds.length >= currentLevelSpec.maxPicks) return;
+    selectedAssetIds.push(assetId);
   }
-  if (lang === "zh") {
-    const aiNote = sim.aiLiquidated
-      ? `RIVAL 亦于第 ${aiDay} 日触发强平 (${aRetStr})`
-      : `RIVAL 本季收益: ${aRetStr}`;
-    return `第 ${day} 个交易日净值跌破强平线 ${floor}（季内最低 ${minAum}）。${aiNote}`;
-  }
-  const aiNote = sim.aiLiquidated
-    ? `RIVAL also liquidated on DAY ${aiDay} (${aRetStr})`
-    : `RIVAL return: ${aRetStr}`;
-  return `AUM fell below the liquidation floor ${floor} on DAY ${day} (intra-quarter low ${minAum}). ${aiNote}`;
+
+  saveGameState();
+  refreshRegimeAndSolvers();
 }
 
-function findStrongestNegativeCorrPeer(assetIndex: number): string {
-  const row = currentRegime.correlation[assetIndex];
-  let bestJ = -1;
-  let minCorr = 0;
-  for (let j = 0; j < row.length; j++) {
-    if (j === assetIndex) continue;
-    if (row[j] < minCorr) {
-      minCorr = row[j];
-      bestJ = j;
+function refreshRegimeAndSolvers(): void {
+  currentRegime = buildSubsetRegime(currentLevel, selectedAssetIds);
+  playerWeights = normalizeWeights(
+    new Array<number>(currentRegime.assets.length).fill(1 / currentRegime.assets.length),
+    currentRegime.maxWeightPerAsset
+  );
+
+  renderScoreboard();
+  renderUniversePicker();
+  renderAssetList();
+  renderCorrelationMatrix();
+
+  // Async solve QP for AI rival and pre-calculate efficient frontier
+  solveQuantOptimalPortfolio(currentRegime)
+    .then((res) => {
+      aiOptimal = res;
+      frontierPoints = computeEfficientFrontier(currentRegime, 9);
+      renderTelemetryAndCharts();
+    })
+    .catch(() => {
+      // Fallback handles gracefully
+    });
+}
+
+function renderAssetList(): void {
+  if (typeof document === "undefined" || typeof document.createElement !== "function") return;
+  const listEl = document.getElementById("asset-list");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+
+  const n = currentRegime.assets.length;
+  currentRegime.assets.forEach((asset, idx) => {
+    const loc = getLocalizedAsset(asset, currentLang);
+    const weight = playerWeights[idx] ?? 0;
+    const weightPct = (weight * 100).toFixed(1);
+
+    const row = document.createElement("div");
+    row.className = "asset-row";
+    row.innerHTML = `
+      <div class="asset-row-top">
+        <div class="asset-meta">
+          <span class="asset-color-swatch" style="background: ${asset.color}"></span>
+          <span class="asset-ticker">${asset.ticker}</span>
+          <span class="asset-name">${loc.name}</span>
+        </div>
+        <div class="asset-metrics-badge">
+          <span class="badge-ret" title="期待リターン">${formatSignedPct(asset.expectedReturn)}</span>
+          <span class="badge-vol" title="ボラティリティ (リスク)">σ ${(asset.volatility * 100).toFixed(0)}%</span>
+          <span class="asset-weight-value" id="weight-val-${idx}">${weightPct}%</span>
+        </div>
+      </div>
+      <div class="slider-track-wrap">
+        <input
+          type="range"
+          class="weight-slider"
+          id="slider-${idx}"
+          min="0"
+          max="${Math.round(currentRegime.maxWeightPerAsset * 100)}"
+          step="1"
+          value="${Math.round(weight * 100)}"
+          aria-label="${asset.ticker} 投資比率スライダー"
+          ${isSimulating ? "disabled" : ""}
+        />
+      </div>
+      <div class="asset-desc-sub">${loc.roleDesc}</div>
+    `;
+
+    const slider = row.querySelector(`#slider-${idx}`) as HTMLInputElement;
+    if (slider) {
+      slider.addEventListener("input", (e) => {
+        const val = Number((e.target as HTMLInputElement).value) / 100;
+        adjustSingleWeight(idx, val);
+      });
     }
-  }
-  if (bestJ < 0 || minCorr > -0.2) return "";
-  const peer = currentRegime.assets[bestJ];
-  return `vs ${peer.ticker} ${minCorr.toFixed(2)}`;
+
+    listEl.appendChild(row);
+  });
 }
 
-export function adjustSingleWeight(index: number, newWeightRaw: number): void {
-  if (isSimulating || isLoadingQuarter) return;
+function adjustSingleWeight(index: number, newWeightRaw: number): void {
+  if (isSimulating) return;
   const n = currentRegime.assets.length;
   const cap = currentRegime.maxWeightPerAsset;
   const targetW = Math.min(cap, Math.max(0, newWeightRaw));
@@ -662,249 +678,119 @@ export function adjustSingleWeight(index: number, newWeightRaw: number): void {
   }
 
   next[index] = targetW;
-  const rem = Math.max(0, 1 - targetW);
-  if (othersSum > 1e-6) {
-    for (const j of othersIndices) {
-      next[j] = (next[j] / othersSum) * rem;
-    }
-  } else {
-    for (const j of othersIndices) {
-      next[j] = rem / othersIndices.length;
+  const remainder = 1.0 - targetW;
+
+  if (othersIndices.length > 0) {
+    if (othersSum > 1e-6) {
+      for (const j of othersIndices) {
+        next[j] = (next[j] / othersSum) * remainder;
+      }
+    } else {
+      const share = remainder / othersIndices.length;
+      for (const j of othersIndices) {
+        next[j] = share;
+      }
     }
   }
 
-  playerWeights = quantizeWeightsToPercent(next, cap);
-  syncAssetWeightControls();
+  playerWeights = normalizeWeights(next, cap);
+  updateWeightDisplays();
   renderTelemetryAndCharts();
 }
 
-/**
- * Updates existing slider values and percentage labels in place without replacing
- * `container.innerHTML`, keeping `<input type="range">` elements mounted during drag gestures.
- */
-function syncAssetWeightControls(): void {
-  if (typeof document === "undefined") return;
-  const container = document.getElementById("asset-list");
-  if (!container || typeof container.querySelectorAll !== "function") return;
-
-  const sliders = Array.from(container.querySelectorAll("[data-slider-idx]"));
-  if (sliders.length !== currentRegime.assets.length) {
-    renderAssetList();
-    return;
-  }
-
-  const displayPcts = roundWeightsToHundred(playerWeights, currentRegime.maxWeightPerAsset);
-  for (const slider of sliders) {
-    const idx = Number(slider.getAttribute("data-slider-idx"));
-    const wPct = displayPcts[idx] ?? 0;
-    (slider as HTMLInputElement).value = String(wPct);
-    slider.setAttribute("value", String(wPct));
-  }
-  for (const pctEl of container.querySelectorAll("[data-pct-idx]")) {
-    const idx = Number(pctEl.getAttribute("data-pct-idx"));
-    const wPct = displayPcts[idx] ?? 0;
-    pctEl.textContent = `${wPct}%`;
-  }
-}
-
-function renderAssetList(): void {
-  if (typeof document === "undefined") return;
-  const container = document.getElementById("asset-list");
-  if (!container) return;
-
-  const capPct = Math.round(currentRegime.maxWeightPerAsset * 100);
-  const displayPcts = roundWeightsToHundred(playerWeights, currentRegime.maxWeightPerAsset);
-  const rowsHtml = currentRegime.assets
-    .map((asset, i) => {
-      const loc = getLocalizedAsset(asset, currentLang);
-      const wPct = displayPcts[i] ?? 0;
-      const hedgeBadge = findStrongestNegativeCorrPeer(i);
-      const muLabel =
-        currentLang === "ja"
-          ? `期待+${(asset.expectedReturn * 100).toFixed(1)}%`
-          : currentLang === "zh"
-            ? `预期+${(asset.expectedReturn * 100).toFixed(1)}%`
-            : `E[R] +${(asset.expectedReturn * 100).toFixed(1)}%`;
-      const volLabel = `σ ${(asset.volatility * 100).toFixed(1)}%`;
-      const decAria =
-        currentLang === "ja"
-          ? `${asset.ticker}（${loc.name}）の配分を5%減らす`
-          : currentLang === "zh"
-            ? `减少 ${asset.ticker}（${loc.name}）权重 5%`
-            : `Decrease ${asset.ticker} (${loc.name}) weight by 5%`;
-      const sliderAria =
-        currentLang === "ja"
-          ? `${asset.ticker}（${loc.name}）の配分比率`
-          : currentLang === "zh"
-            ? `${asset.ticker}（${loc.name}）配置权重`
-            : `${asset.ticker} (${loc.name}) portfolio weight`;
-      const incAria =
-        currentLang === "ja"
-          ? `${asset.ticker}（${loc.name}）の配分を5%増やす`
-          : currentLang === "zh"
-            ? `增加 ${asset.ticker}（${loc.name}）权重 5%`
-            : `Increase ${asset.ticker} (${loc.name}) weight by 5%`;
-
-      return `
-        <div class="asset-row" role="listitem">
-          <div class="asset-row-top">
-            <div class="asset-id-cluster">
-              <span class="ticker-badge" style="background:${asset.color}">${asset.ticker}</span>
-              <span class="asset-name">${loc.name}</span>
-            </div>
-            <div class="asset-stats-badges">
-              <span class="stat-mu">${muLabel}</span>
-              <span class="stat-vol">${volLabel}</span>
-            </div>
-          </div>
-          <div class="asset-controls-row">
-            <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="-0.05" aria-label="${decAria}" title="${decAria}">-</button>
-            <input
-              type="range"
-              class="weight-slider"
-              min="0"
-              max="${capPct}"
-              step="1"
-              value="${wPct}"
-              data-slider-idx="${i}"
-              aria-label="${sliderAria}"
-            />
-            <button type="button" class="btn-step" data-step-idx="${i}" data-step-delta="0.05" aria-label="${incAria}" title="${incAria}">+</button>
-            <span class="weight-pct" data-pct-idx="${i}">${wPct}%</span>
-          </div>
-          <div class="asset-role-line">
-            <span>${loc.roleDesc}</span>
-            ${hedgeBadge ? `<span class="hedge-chip">${hedgeBadge}</span>` : ""}
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-
-  container.innerHTML = rowsHtml;
-
-  if (typeof container.querySelectorAll === "function") {
-    for (const slider of container.querySelectorAll("[data-slider-idx]")) {
-      slider.addEventListener("input", (e) => {
-        const idx = Number((e.currentTarget as HTMLElement).getAttribute("data-slider-idx"));
-        const val = Number((e.currentTarget as HTMLInputElement).value) / 100;
-        adjustSingleWeight(idx, val);
-      });
-    }
-    for (const btn of container.querySelectorAll("[data-step-idx]")) {
-      btn.addEventListener("click", (e) => {
-        const el = e.currentTarget as HTMLElement;
-        const idx = Number(el.getAttribute("data-step-idx"));
-        const delta = Number(el.getAttribute("data-step-delta"));
-        adjustSingleWeight(idx, (playerWeights[idx] ?? 0) + delta);
-      });
-    }
-  }
+function updateWeightDisplays(): void {
+  playerWeights.forEach((w, i) => {
+    const valEl = document.getElementById(`weight-val-${i}`);
+    if (valEl) valEl.textContent = `${(w * 100).toFixed(1)}%`;
+    const slider = document.getElementById(`slider-${i}`) as HTMLInputElement;
+    if (slider) slider.value = String(Math.round(w * 100));
+  });
 }
 
 function renderCorrelationMatrix(): void {
-  if (typeof document === "undefined") return;
+  if (typeof document === "undefined" || typeof document.createElement !== "function") return;
   const container = document.getElementById("corr-matrix-container");
   if (!container) return;
+  container.innerHTML = "";
 
   const assets = currentRegime.assets;
+  const n = assets.length;
   const corr = currentRegime.correlation;
 
-  let html = `<table class="corr-table"><thead><tr><th></th>`;
-  for (const a of assets) {
-    html += `<th>${a.ticker}</th>`;
-  }
-  html += `</tr></thead><tbody>`;
+  const table = document.createElement("table");
+  table.className = "corr-table";
 
-  for (let i = 0; i < assets.length; i++) {
-    html += `<tr><th>${assets[i].ticker}</th>`;
-    for (let j = 0; j < assets.length; j++) {
-      const val = corr[i][j];
-      let bg = "transparent";
-      let color = "#cbd5e1";
-      if (i === j) {
-        bg = "rgba(148, 163, 184, 0.1)";
-        color = "#64748b";
-      } else if (val <= -0.45) {
-        bg = "rgba(56, 189, 248, 0.25)";
-        color = "#7dd3fc";
-      } else if (val < -0.15) {
-        bg = "rgba(56, 189, 248, 0.12)";
-        color = "#bae6fd";
-      } else if (val >= 0.4) {
-        bg = "rgba(244, 63, 94, 0.2)";
-        color = "#fda4af";
-      }
-      html += `<td style="background:${bg};color:${color}">${val.toFixed(2)}</td>`;
-    }
-    html += `</tr>`;
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  headRow.innerHTML = `<th class="corr-corner">R</th>`;
+  for (let j = 0; j < n; j++) {
+    headRow.innerHTML += `<th style="color: ${assets[j].color}">${assets[j].ticker}</th>`;
   }
-  html += `</tbody></table>`;
-  container.innerHTML = html;
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  for (let i = 0; i < n; i++) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<th style="color: ${assets[i].color}">${assets[i].ticker}</th>`;
+    for (let j = 0; j < n; j++) {
+      const val = corr[i][j];
+      const td = document.createElement("td");
+      const valText = val >= 0 ? `+${val.toFixed(2)}` : val.toFixed(2);
+      td.textContent = valText;
+
+      if (i === j) {
+        td.className = "corr-cell diag";
+      } else if (val < -0.3) {
+        td.className = "corr-cell strong-neg";
+        td.title = "強い逆相関：リスク圧縮効果が極めて高い";
+      } else if (val < 0) {
+        td.className = "corr-cell mod-neg";
+      } else if (val > 0.6) {
+        td.className = "corr-cell strong-pos";
+      } else {
+        td.className = "corr-cell neutral";
+      }
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.appendChild(tbody);
+  container.appendChild(table);
 }
 
 function renderTelemetryAndCharts(): void {
   if (typeof document === "undefined") return;
   const pMetrics = computePortfolioMetrics(currentRegime, playerWeights);
-  const aiMetrics = aiOptimal?.metrics ?? computePortfolioMetrics(currentRegime, playerWeights);
-
-  const ruinPct = pMetrics.ruinProbability * 100;
-  const aiRuinPct = aiMetrics.ruinProbability * 100;
 
   const ruinEl = document.getElementById("metric-ruin-prob");
   if (ruinEl) {
-    ruinEl.textContent = `${ruinPct.toFixed(1)}%`;
-    if (ruinEl.style) {
-      ruinEl.style.color =
-        ruinPct <= 3.0 ? "#34d399" : ruinPct <= 10.0 ? "#fbbf24" : "#fb7185";
+    ruinEl.textContent = `${(pMetrics.ruinProbability * 100).toFixed(1)}%`;
+  }
+
+  const ruinBadge = document.getElementById("badge-ruin-status");
+  if (ruinBadge) {
+    if (pMetrics.ruinProbability < 0.05) {
+      ruinBadge.textContent = "SAFE";
+      ruinBadge.className = "risk-status-pill safe";
+    } else if (pMetrics.ruinProbability < 0.15) {
+      ruinBadge.textContent = "MODERATE";
+      ruinBadge.className = "risk-status-pill mod";
+    } else {
+      ruinBadge.textContent = "HIGH DANGER";
+      ruinBadge.className = "risk-status-pill danger";
     }
   }
 
-  const badgeEl = document.getElementById("badge-ruin-status");
-  if (badgeEl) {
-    if (ruinPct <= 3.0) {
-      badgeEl.className = "risk-status-pill safe";
-      badgeEl.textContent =
-        currentLang === "ja" ? "SAFE (低リスク)" : currentLang === "zh" ? "SAFE (安全)" : "SAFE";
-    } else if (ruinPct <= 10.0) {
-      badgeEl.className = "risk-status-pill caution";
-      badgeEl.textContent =
-        currentLang === "ja"
-          ? "CAUTION (注意)"
-          : currentLang === "zh"
-            ? "CAUTION (警戒)"
-            : "CAUTION";
-    } else {
-      badgeEl.className = "risk-status-pill danger";
-      badgeEl.textContent =
-        currentLang === "ja"
-          ? "DANGER (危険)"
-          : currentLang === "zh"
-            ? "DANGER (高危)"
-            : "DANGER";
-    }
+  const ruinBar = document.getElementById("ruin-prob-bar");
+  if (ruinBar && ruinBar.style) {
+    const pct = Math.min(100, Math.max(2, pMetrics.ruinProbability * 250));
+    ruinBar.style.width = `${pct}%`;
   }
 
   const aiRuinEl = document.getElementById("metric-ai-ruin-compare");
-  if (aiRuinEl) {
-    aiRuinEl.textContent = `RIVAL: ${aiRuinPct.toFixed(1)}%`;
-  }
-
-  const barEl = document.getElementById("ruin-prob-bar");
-  if (barEl) {
-    const widthPct = Math.min(100, Math.max(3, ruinPct * 3.2));
-    barEl.setAttribute("style", `width: ${widthPct.toFixed(1)}%`);
-  }
-
-  const targetBadge = document.getElementById("metric-target-badge");
-  if (targetBadge) {
-    const tPct = (currentRegime.targetReturn * 100).toFixed(1);
-    targetBadge.textContent =
-      currentLang === "ja"
-        ? `目標 +${tPct}%`
-        : currentLang === "zh"
-          ? `目标 +${tPct}%`
-          : `TARGET +${tPct}%`;
+  if (aiRuinEl && aiOptimal) {
+    aiRuinEl.textContent = `WaSHI-QP: ${(aiOptimal.metrics.ruinProbability * 100).toFixed(1)}%`;
   }
 
   const expRetEl = document.getElementById("metric-exp-return");
@@ -912,528 +798,608 @@ function renderTelemetryAndCharts(): void {
     expRetEl.textContent = formatSignedPct(pMetrics.expectedReturn);
   }
 
+  const targetBadge = document.getElementById("metric-target-badge");
+  if (targetBadge) {
+    targetBadge.textContent = `目標 ${formatSignedPct(currentRegime.targetReturn)}`;
+    targetBadge.className =
+      pMetrics.expectedReturn >= currentRegime.targetReturn
+        ? "target-pill achieved"
+        : "target-pill";
+  }
+
   const aiRetEl = document.getElementById("metric-ai-return-compare");
-  if (aiRetEl) {
-    aiRetEl.textContent = `RIVAL: ${formatSignedPct(aiMetrics.expectedReturn)}`;
+  if (aiRetEl && aiOptimal) {
+    aiRetEl.textContent = `WaSHI-QP: ${formatSignedPct(aiOptimal.metrics.expectedReturn)}`;
   }
 
   const volRowEl = document.getElementById("metric-vol-row");
   if (volRowEl) {
-    const volPct = (pMetrics.volatility * 100).toFixed(1);
-    const sharpe = pMetrics.sharpeRatio.toFixed(2);
-    volRowEl.textContent =
-      currentLang === "ja"
-        ? `変動リスク (σ): ${volPct}% / Sharpe: ${sharpe}`
-        : currentLang === "zh"
-          ? `波动率 (σ): ${volPct}% / 夏普比率: ${sharpe}`
-          : `Volatility (σ): ${volPct}% / Sharpe: ${sharpe}`;
+    volRowEl.textContent = `変動リスク (σ): ${(pMetrics.volatility * 100).toFixed(1)}% / Sharpe: ${pMetrics.sharpeRatio.toFixed(2)}`;
   }
 
-  renderFrontierSvg(pMetrics, aiMetrics);
+  renderFrontierSvg(pMetrics);
   if (!isSimulating && !lastSimulation) {
-    renderBattleSvgPreview();
+    renderIdleBattleSvg();
   }
 }
 
-function renderFrontierSvg(
-  pMetrics: ReturnType<typeof computePortfolioMetrics>,
-  aiMetrics: ReturnType<typeof computePortfolioMetrics>
-): void {
+function renderFrontierSvg(pMetrics: { volatility: number; expectedReturn: number }): void {
   const svg = document.getElementById("frontier-svg");
   if (!svg) return;
 
   const w = 360;
   const h = 190;
-  const padL = 42;
-  const padR = 18;
-  const padT = 16;
+  const padL = 44;
+  const padR = 20;
+  const padT = 20;
+  const padB = 30;
+
+  const minX = 0.02;
+  const maxX = 0.32;
+  const minY = 0.02;
+  const maxY = 0.28;
+
+  const toX = (v: number) => padL + ((v - minX) / (maxX - minX)) * (w - padL - padR);
+  const toY = (r: number) => h - padB - ((r - minY) / (maxY - minY)) * (h - padT - padB);
+
+  let pathD = "";
+  if (frontierPoints.length > 0) {
+    pathD = frontierPoints
+      .map((pt, i) => `${i === 0 ? "M" : "L"} ${toX(pt.volatility).toFixed(1)} ${toY(pt.expectedReturn).toFixed(1)}`)
+      .join(" ");
+  }
+
+  let assetDots = "";
+  currentRegime.assets.forEach((a) => {
+    const ax = toX(a.volatility);
+    const ay = toY(a.expectedReturn);
+    assetDots += `
+      <circle cx="${ax}" cy="${ay}" r="3.5" fill="${a.color}" opacity="0.8" />
+      <text x="${ax + 5}" y="${ay - 4}" fill="${a.color}" font-size="8.5" font-family="JetBrains Mono">${a.ticker}</text>
+    `;
+  });
+
+  const px = toX(pMetrics.volatility);
+  const py = toY(pMetrics.expectedReturn);
+
+  let aiDot = "";
+  if (aiOptimal) {
+    const ax = toX(aiOptimal.metrics.volatility);
+    const ay = toY(aiOptimal.metrics.expectedReturn);
+    aiDot = `<polygon points="${ax},${ay - 6} ${ax + 6},${ay} ${ax},${ay + 6} ${ax - 6},${ay}" fill="#fbbf24" stroke="#000" stroke-width="1.2" />`;
+  }
+
+  svg.innerHTML = `
+    <!-- Grid -->
+    <line x1="${padL}" y1="${toY(0.05)}" x2="${w - padR}" y2="${toY(0.05)}" stroke="rgba(148,163,184,0.12)" />
+    <line x1="${padL}" y1="${toY(0.10)}" x2="${w - padR}" y2="${toY(0.10)}" stroke="rgba(148,163,184,0.12)" />
+    <line x1="${padL}" y1="${toY(0.15)}" x2="${w - padR}" y2="${toY(0.15)}" stroke="rgba(148,163,184,0.12)" />
+    <line x1="${padL}" y1="${toY(0.20)}" x2="${w - padR}" y2="${toY(0.20)}" stroke="rgba(148,163,184,0.12)" />
+    <!-- Axes -->
+    <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="rgba(148,163,184,0.3)" />
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${h - padB}" stroke="rgba(148,163,184,0.3)" />
+    <!-- Axis Labels -->
+    <text x="${padL - 6}" y="${toY(0.05) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">5%</text>
+    <text x="${padL - 6}" y="${toY(0.10) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">10%</text>
+    <text x="${padL - 6}" y="${toY(0.15) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">15%</text>
+    <text x="${padL - 6}" y="${toY(0.20) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">20%</text>
+    <text x="${w - padR}" y="${h - padB + 16}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">リスク σ →</text>
+    <text x="${padL}" y="${padT - 6}" fill="#64748b" font-size="9" font-family="JetBrains Mono">↑ E[R]</text>
+    <!-- Frontier curve -->
+    ${pathD ? `<path d="${pathD}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3,3" opacity="0.65" />` : ""}
+    <!-- Asset Scatter -->
+    ${assetDots}
+    <!-- AI Optimal Diamond -->
+    ${aiDot}
+    <!-- Player Dot -->
+    <circle cx="${px}" cy="${py}" r="6" fill="#38bdf8" stroke="#ffffff" stroke-width="2" />
+  `;
+}
+
+function renderIdleBattleSvg(): void {
+  const svg = document.getElementById("battle-svg");
+  if (!svg) return;
+  const w = 420;
+  const h = 190;
+  svg.innerHTML = `
+    <rect width="${w}" height="${h}" fill="transparent" />
+    <text x="${w / 2}" y="${h / 2 - 6}" fill="#64748b" font-size="12" text-anchor="middle" font-family="JetBrains Mono">
+      60-DAY LIVE AUM SIMULATION
+    </text>
+    <text x="${w / 2}" y="${h / 2 + 14}" fill="#475569" font-size="10" text-anchor="middle">
+      [MARKET OPEN] を押すとレースがスタートします
+    </text>
+  `;
+}
+
+function renderBattleSvgFrame(
+  sim: MarketSimulationResult,
+  dayLimit: number
+): void {
+  const svg = document.getElementById("battle-svg");
+  if (!svg) return;
+
+  const w = 420;
+  const h = 190;
+  const padL = 50;
+  const padR = 20;
+  const padT = 20;
   const padB = 26;
 
-  const allVols = [
-    ...currentRegime.assets.map((a) => a.volatility),
-    ...frontierPoints.map((p) => p.volatility),
-    pMetrics.volatility,
-    aiMetrics.volatility,
-  ];
-  const allRets = [
-    ...currentRegime.assets.map((a) => a.expectedReturn),
-    ...frontierPoints.map((p) => p.expectedReturn),
-    pMetrics.expectedReturn,
-    aiMetrics.expectedReturn,
-  ];
+  const pSeries = sim.playerAumSeries.slice(0, dayLimit + 1);
+  const aSeries = sim.aiAumSeries.slice(0, dayLimit + 1);
+  const gSeries = sim.ghostSeries ? sim.ghostSeries.aumSeries.slice(0, dayLimit + 1) : [];
 
-  const minVol = Math.max(0, Math.min(...allVols) - 0.02);
-  const maxVol = Math.max(...allVols) + 0.03;
-  const minRet = Math.min(...allRets) - 0.015;
-  const maxRet = Math.max(...allRets) + 0.02;
+  let minAum = Math.min(...pSeries, ...aSeries, sim.liquidationAumFloor * 0.98);
+  let maxAum = Math.max(...pSeries, ...aSeries, playerAum * 1.05);
+  if (gSeries.length > 0) {
+    minAum = Math.min(minAum, ...gSeries);
+    maxAum = Math.max(maxAum, ...gSeries);
+  }
+  minAum = Math.floor(minAum / 5) * 5;
+  maxAum = Math.ceil(maxAum / 5) * 5;
 
-  const xOf = (vol: number) =>
-    padL + ((vol - minVol) / Math.max(1e-6, maxVol - minVol)) * (w - padL - padR);
-  const yOf = (ret: number) =>
-    h - padB - ((ret - minRet) / Math.max(1e-6, maxRet - minRet)) * (h - padT - padB);
+  const toX = (d: number) => padL + (d / 60) * (w - padL - padR);
+  const toY = (a: number) => h - padB - ((a - minAum) / (maxAum - minAum || 1)) * (h - padT - padB);
 
-  const frontierPath = frontierPoints
-    .map((pt, idx) => `${idx === 0 ? "M" : "L"}${xOf(pt.volatility).toFixed(1)},${yOf(pt.expectedReturn).toFixed(1)}`)
-    .join(" ");
+  const floorY = toY(sim.liquidationAumFloor);
 
-  const targetY = yOf(currentRegime.targetReturn);
+  const toPathD = (series: number[]) =>
+    series.map((val, d) => `${d === 0 ? "M" : "L"} ${toX(d).toFixed(1)} ${toY(val).toFixed(1)}`).join(" ");
 
-  const assetDots = currentRegime.assets
-    .map((a) => {
-      const cx = xOf(a.volatility).toFixed(1);
-      const cy = yOf(a.expectedReturn).toFixed(1);
-      return `
-        <circle cx="${cx}" cy="${cy}" r="3.5" fill="${a.color}" opacity="0.85" />
-        <text x="${Number(cx) + 5}" y="${Number(cy) + 3}" fill="#94a3b8" font-size="8.5" font-family="JetBrains Mono">${a.ticker}</text>
+  const pPath = toPathD(pSeries);
+  const aPath = toPathD(aSeries);
+  const gPath = gSeries.length > 0 ? toPathD(gSeries) : "";
+
+  let shockMarkers = "";
+  sim.shocks.forEach((s) => {
+    if (s.day <= dayLimit) {
+      const sx = toX(s.day);
+      shockMarkers += `
+        <line x1="${sx}" y1="${padT}" x2="${sx}" y2="${h - padB}" stroke="#f43f5e" stroke-width="1" stroke-dasharray="2,2" opacity="0.6" />
+        <polygon points="${sx - 4},${padT} ${sx + 4},${padT} ${sx},${padT + 6}" fill="#f43f5e" />
       `;
-    })
-    .join("");
-
-  const px = xOf(pMetrics.volatility).toFixed(1);
-  const py = yOf(pMetrics.expectedReturn).toFixed(1);
-  const ax = xOf(aiMetrics.volatility).toFixed(1);
-  const ay = yOf(aiMetrics.expectedReturn).toFixed(1);
-
-  svg.innerHTML = `
-    <rect x="${padL}" y="${padT}" width="${w - padL - padR}" height="${h - padT - padB}" fill="#0b1324" rx="6" />
-    <line x1="${padL}" y1="${targetY.toFixed(1)}" x2="${w - padR}" y2="${targetY.toFixed(1)}" stroke="rgba(56,189,248,0.28)" stroke-dasharray="3 3" />
-    <path d="${frontierPath}" fill="none" stroke="#10b981" stroke-width="2" opacity="0.8" />
-    ${assetDots}
-    <!-- Rival Diamond -->
-    <polygon points="${ax},${Number(ay) - 6} ${Number(ax) + 6},${ay} ${ax},${Number(ay) + 6} ${Number(ax) - 6},${ay}" fill="#f59e0b" stroke="#080d19" stroke-width="1.2" />
-    <!-- Player Circle -->
-    <circle cx="${px}" cy="${py}" r="6" fill="#38bdf8" stroke="#e0f2fe" stroke-width="1.8" />
-    <text x="${padL + 4}" y="${h - 7}" fill="#64748b" font-size="9" font-family="JetBrains Mono">Risk (σ) →</text>
-    <text x="6" y="${padT + 10}" fill="#64748b" font-size="9" font-family="JetBrains Mono">E[R]</text>
-  `;
-}
-
-function renderBattleSvgPreview(): void {
-  const svg = document.getElementById("battle-svg");
-  if (!svg) return;
-  const w = 420;
-  const h = 190;
-  const padL = 46;
-  const padR = 16;
-  const padT = 16;
-  const padB = 24;
-
-  const startY = padT + (h - padT - padB) * 0.48;
-  const floorY = padT + (h - padT - padB) * 0.82;
-  const floorAum = playerAum * (1 + currentRegime.liquidationFloor);
-
-  svg.innerHTML = `
-    <rect x="${padL}" y="${padT}" width="${w - padL - padR}" height="${h - padT - padB}" fill="#0b1324" rx="6" />
-    <line x1="${padL}" y1="${startY.toFixed(1)}" x2="${w - padR}" y2="${startY.toFixed(1)}" stroke="rgba(148,163,184,0.25)" stroke-dasharray="3 3" />
-    <line x1="${padL}" y1="${floorY.toFixed(1)}" x2="${w - padR}" y2="${floorY.toFixed(1)}" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="4 3" />
-    <text x="${padL + 6}" y="${(floorY - 5).toFixed(1)}" fill="#fb7185" font-size="9" font-family="JetBrains Mono">LIQUIDATION FLOOR (${formatMoney(floorAum)})</text>
-    <text x="${padL + 6}" y="${(startY - 6).toFixed(1)}" fill="#94a3b8" font-size="9" font-family="JetBrains Mono">START ${formatMoney(playerAum)}</text>
-  `;
-}
-
-function renderBattleSvgFrame(sim: MarketSimulationResult, dayStep: number): void {
-  const svg = document.getElementById("battle-svg");
-  if (!svg) return;
-
-  const w = 420;
-  const h = 190;
-  const padL = 46;
-  const padR = 16;
-  const padT = 16;
-  const padB = 24;
-
-  const pSlice = sim.playerAumSeries.slice(0, dayStep + 1);
-  const aSlice = sim.aiAumSeries.slice(0, dayStep + 1);
-
-  const allVals = [
-    ...sim.playerAumSeries,
-    ...sim.aiAumSeries,
-    sim.liquidationAumFloor * 0.985,
-  ];
-  const minVal = Math.min(...allVals);
-  const maxVal = Math.max(...allVals, sim.playerAumSeries[0] * 1.08);
-
-  const xOf = (d: number) => padL + (d / sim.days) * (w - padL - padR);
-  const yOf = (val: number) =>
-    h - padB - ((val - minVal) / Math.max(1e-6, maxVal - minVal)) * (h - padT - padB);
-
-  const pPath = pSlice
-    .map((v, idx) => `${idx === 0 ? "M" : "L"}${xOf(idx).toFixed(1)},${yOf(v).toFixed(1)}`)
-    .join(" ");
-  const aPath = aSlice
-    .map((v, idx) => `${idx === 0 ? "M" : "L"}${xOf(idx).toFixed(1)},${yOf(v).toFixed(1)}`)
-    .join(" ");
-
-  const floorY = yOf(sim.liquidationAumFloor);
-  const startY = yOf(sim.playerAumSeries[0]);
-  const lastPx = xOf(dayStep).toFixed(1);
-  const lastPy = yOf(pSlice[pSlice.length - 1]).toFixed(1);
-  const lastAy = yOf(aSlice[aSlice.length - 1]).toFixed(1);
-
-  svg.innerHTML = `
-    <rect x="${padL}" y="${padT}" width="${w - padL - padR}" height="${h - padT - padB}" fill="#0b1324" rx="6" />
-    <line x1="${padL}" y1="${startY.toFixed(1)}" x2="${w - padR}" y2="${startY.toFixed(1)}" stroke="rgba(148,163,184,0.2)" stroke-dasharray="3 3" />
-    <line x1="${padL}" y1="${floorY.toFixed(1)}" x2="${w - padR}" y2="${floorY.toFixed(1)}" stroke="#f43f5e" stroke-width="1.6" stroke-dasharray="4 3" />
-    <path d="${aPath}" fill="none" stroke="#f59e0b" stroke-width="2" />
-    <path d="${pPath}" fill="none" stroke="#38bdf8" stroke-width="2.5" />
-    <circle cx="${lastPx}" cy="${lastAy}" r="3.5" fill="#f59e0b" />
-    <circle cx="${lastPx}" cy="${lastPy}" r="4.5" fill="#38bdf8" stroke="#fff" stroke-width="1.2" />
-    <text x="4" y="${floorY.toFixed(1)}" fill="#fb7185" font-size="8.5" font-family="JetBrains Mono">FLOOR</text>
-  `;
-}
-
-async function loadQuarter(quarter: number): Promise<void> {
-  if (animTimerId !== null && typeof window !== "undefined") {
-    window.clearInterval(animTimerId);
-    animTimerId = null;
-  }
-  const token = ++loadToken;
-  isLoadingQuarter = true;
-  isSimulating = false;
-  lastSimulation = null;
-  aiOptimal = null;
-  currentQuarter = quarter;
-  currentRegime = getQuarterRegime(quarter);
-  // Every quarter starts as an equal-condition 60-day duel from the player's current AUM
-  aiAum = playerAum;
-
-  // Lock navigation and execution until the rival solve for this quarter completes
-  if (typeof document !== "undefined") {
-    const btnNext = document.getElementById("btn-next-quarter");
-    if (btnNext) btnNext.hidden = true;
-    const btnRetry = document.getElementById("btn-retry-run");
-    if (btnRetry) btnRetry.hidden = true;
-    const btnExecLock = document.getElementById("btn-execute") as HTMLButtonElement | null;
-    if (btnExecLock) btnExecLock.disabled = true;
-  }
-
-  const regime = currentRegime;
-  const n = regime.assets.length;
-  playerWeights = quantizeWeightsToPercent(
-    new Array<number>(n).fill(1 / n),
-    regime.maxWeightPerAsset
-  );
-  frontierPoints = computeEfficientFrontier(regime, 9);
-
-  // Render the new quarter's assets and scoreboard immediately so stale rows from the
-  // previous quarter never remain visible while the rival solve is pending.
-  renderRecordBadge();
-  renderScoreboard();
-  renderAssetList();
-  renderCorrelationMatrix();
-  renderTelemetryAndCharts();
-
-  // Solve Rival minimum-variance portfolio
-  const solved = await solveQuantOptimalPortfolio(regime);
-  // Discard results from a superseded load (e.g. a reset issued while this solve was pending)
-  if (token !== loadToken) return;
-  aiOptimal = solved;
-  isLoadingQuarter = false;
-
-  if (typeof document !== "undefined") {
-    const outcomeBanner = document.getElementById("outcome-banner");
-    if (outcomeBanner) outcomeBanner.hidden = true;
-
-    const btnExec = document.getElementById("btn-execute") as HTMLButtonElement | null;
-    if (btnExec) {
-      btnExec.hidden = false;
-      btnExec.disabled = false;
-      btnExec.textContent = pickLang(currentLang, UI_TEXT).executeBtn;
     }
+  });
 
-    const btnNext = document.getElementById("btn-next-quarter");
-    if (btnNext) btnNext.hidden = true;
+  const curDay = dayLimit;
+  const pCurY = toY(pSeries[curDay]);
+  const aCurY = toY(aSeries[curDay]);
+  const pCurX = toX(curDay);
 
-    const btnRetry = document.getElementById("btn-retry-run");
-    if (btnRetry) btnRetry.hidden = true;
+  svg.innerHTML = `
+    <!-- Floor Danger Zone -->
+    <rect x="${padL}" y="${floorY}" width="${w - padL - padR}" height="${h - padB - floorY}" fill="rgba(244,63,94,0.12)" />
+    <line x1="${padL}" y1="${floorY}" x2="${w - padR}" y2="${floorY}" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3,3" />
+    <text x="${w - padR - 4}" y="${floorY - 4}" fill="#f43f5e" font-size="8.5" text-anchor="end" font-family="JetBrains Mono">
+      FLOOR ${formatMoney(sim.liquidationAumFloor)}
+    </text>
 
-    const dayCounter = document.getElementById("chart-day-counter");
-    if (dayCounter) dayCounter.textContent = "DAY 0 / 60";
+    <!-- Axes & Labels -->
+    <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="rgba(148,163,184,0.2)" />
+    <text x="${padL - 6}" y="${toY(playerAum) + 3}" fill="#64748b" font-size="8.5" text-anchor="end" font-family="JetBrains Mono">
+      ${formatMoney(playerAum)}
+    </text>
+    <text x="${toX(1)}" y="${h - 8}" fill="#64748b" font-size="8.5" font-family="JetBrains Mono">D1</text>
+    <text x="${toX(30)}" y="${h - 8}" fill="#64748b" font-size="8.5" text-anchor="middle" font-family="JetBrains Mono">D30</text>
+    <text x="${toX(60)}" y="${h - 8}" fill="#64748b" font-size="8.5" text-anchor="end" font-family="JetBrains Mono">D60</text>
 
-    const tickerText = document.getElementById("news-ticker-text");
-    if (tickerText) tickerText.textContent = pickLang(currentLang, UI_TEXT).defaultTicker;
+    <!-- Shocks -->
+    ${shockMarkers}
+
+    <!-- Ghost Single-Stock Trajectory (Dashed Red) -->
+    ${gPath ? `<path d="${gPath}" fill="none" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="3,3" opacity="0.65" />` : ""}
+
+    <!-- Rival AI Trajectory (Amber) -->
+    <path d="${aPath}" fill="none" stroke="#fbbf24" stroke-width="2.2" stroke-linecap="round" />
+    <circle cx="${pCurX}" cy="${aCurY}" r="3.5" fill="#fbbf24" />
+
+    <!-- Player Trajectory (Cyan) -->
+    <path d="${pPath}" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+    <circle cx="${pCurX}" cy="${pCurY}" r="4.5" fill="#38bdf8" stroke="#ffffff" stroke-width="1.5" />
+  `;
+
+  const counterEl = document.getElementById("chart-day-counter");
+  if (counterEl) {
+    counterEl.textContent = `DAY ${curDay} / 60`;
   }
-
-  renderRecordBadge();
-  renderScoreboard();
-  renderAssetList();
-  renderCorrelationMatrix();
-  renderTelemetryAndCharts();
 }
 
 async function runMarketSimulation(): Promise<void> {
-  if (isSimulating || isLoadingQuarter) return;
+  if (isSimulating) return;
   isSimulating = true;
-  animDay = 0;
+  lastSimulation = null;
 
-  if (!aiOptimal) {
-    aiOptimal = await solveQuantOptimalPortfolio(currentRegime);
-  }
+  const btnExec = document.getElementById("btn-execute") as HTMLButtonElement;
+  const btnNext = document.getElementById("btn-next-quarter");
+  const btnRetry = document.getElementById("btn-retry-run");
+  const banner = document.getElementById("outcome-banner");
+  const ghostLegend = document.getElementById("chart-ghost-legend");
 
-  const sim = simulateQuarterMarket({
-    regime: currentRegime,
-    playerWeights,
-    aiWeights: aiOptimal.weights,
-    playerStartAum: playerAum,
-    aiStartAum: aiAum,
-  });
-  lastSimulation = sim;
-
-  const btnExec = document.getElementById("btn-execute") as HTMLButtonElement | null;
   if (btnExec) {
     btnExec.disabled = true;
     btnExec.textContent = pickLang(currentLang, UI_TEXT).executingBtn;
   }
+  if (btnNext) btnNext.hidden = true;
+  if (btnRetry) btnRetry.hidden = true;
+  if (banner) banner.hidden = true;
+  if (ghostLegend) ghostLegend.hidden = true;
 
-  let day = 0;
-  const finishSimulation = () => {
-    isSimulating = false;
-    playerAum = Math.max(0, Number(sim.playerEndAum.toFixed(2)));
-    aiAum = Math.max(0, Number(sim.aiEndAum.toFixed(2)));
+  // Ensure AI weights are ready
+  let aiWeights = currentRegime.assets.map(() => 1 / currentRegime.assets.length);
+  if (aiOptimal && aiOptimal.weights.length === currentRegime.assets.length) {
+    aiWeights = aiOptimal.weights;
+  } else {
+    const solved = await solveQuantOptimalPortfolio(currentRegime);
+    aiOptimal = solved;
+    aiWeights = solved.weights;
+  }
 
-    if (!sim.playerLiquidated) {
-      if (sim.aiLiquidated || sim.playerReturn >= sim.aiReturn) {
-        duelWins += 1;
-      } else {
-        duelLosses += 1;
-      }
-      saveRecord(currentQuarter + 1, playerAum);
-      saveActiveRunState({
-        quarter: currentQuarter + 1,
-        playerAum,
-        aiAum,
-        duelWins,
-        duelLosses,
-      });
-    } else {
-      saveRecord(currentQuarter, Math.max(playerAum, sim.playerAumSeries[0]));
-      clearActiveRunState();
-    }
+  const result = simulateQuarterMarket({
+    regime: currentRegime,
+    playerWeights,
+    aiWeights,
+    playerStartAum: playerAum,
+    aiStartAum: aiAum,
+  });
 
-    renderRecordBadge();
-    renderScoreboard();
-    showOutcomeBanner(sim);
-  };
+  lastSimulation = result;
 
-  if (typeof window === "undefined") {
-    finishSimulation();
-    return;
+  // Animate 60 days smoothly over ~2.4 seconds
+  let currentDay = 0;
+  const stepInterval = 40;
+
+  if (animTimerId !== null) {
+    window.clearInterval(animTimerId);
   }
 
   animTimerId = window.setInterval(() => {
-    day += 2;
-    if (day > sim.days) day = sim.days;
-    animDay = day;
+    currentDay += 1;
+    renderBattleSvgFrame(result, currentDay);
 
-    const dayCounter = document.getElementById("chart-day-counter");
-    if (dayCounter) dayCounter.textContent = `DAY ${day} / ${sim.days}`;
-
-    renderBattleSvgFrame(sim, day);
-
-    const hitShock = sim.shocks.find((s) => Math.abs(s.day - day) <= 1);
+    const hitShock = result.shocks.find((s) => s.day === currentDay);
     if (hitShock) {
-      const tickerText = document.getElementById("news-ticker-text");
-      if (tickerText) {
-        const msg = pickLang(currentLang, hitShock.headline);
-        tickerText.textContent = `[DAY ${hitShock.day}] ${msg}`;
+      const tickerEl = document.getElementById("news-ticker-text");
+      if (tickerEl) {
+        tickerEl.textContent = `[DAY ${hitShock.day} SHOCK] ${pickLang(currentLang, hitShock.headline)}`;
       }
     }
 
-    if (day >= sim.days) {
+    if (currentDay >= result.days) {
       if (animTimerId !== null) {
         window.clearInterval(animTimerId);
         animTimerId = null;
       }
-      finishSimulation();
+      isSimulating = false;
+      if (btnExec) {
+        btnExec.disabled = false;
+        btnExec.textContent = pickLang(currentLang, UI_TEXT).executeBtn;
+      }
+      onSimulationComplete(result);
     }
-  }, 45);
+  }, stepInterval);
+}
+
+function onSimulationComplete(sim: MarketSimulationResult): void {
+  playerAum = Math.max(0, sim.playerEndAum);
+  aiAum = Math.max(0, sim.aiEndAum);
+  peakAum = Math.max(peakAum, playerAum);
+
+  const ghostLegend = document.getElementById("chart-ghost-legend");
+  const ghostLegendText = document.getElementById("ghost-legend-text");
+  if (ghostLegend && sim.ghostSeries) {
+    ghostLegend.hidden = false;
+    if (ghostLegendText) {
+      const ghostStatus = sim.ghostSeries.liquidatedDay
+        ? `[D${sim.ghostSeries.liquidatedDay}で即死退場]`
+        : `[期末: ${formatMoney(sim.ghostSeries.aumSeries[sim.days])}]`;
+      ghostLegendText.textContent = `${pickLang(currentLang, sim.ghostSeries.label)} ${ghostStatus}`;
+    }
+  }
+
+  renderScoreboard();
+  renderRecordBadge();
+  showOutcomeBanner(sim);
+  saveGameState();
+
+  const isWin = !sim.playerLiquidated && sim.playerEndAum >= sim.aiEndAum;
+  if (isWin) {
+    // Show unlock modal if next level has new assets
+    showUnlockDialog(currentLevel + 1);
+  }
 }
 
 function showOutcomeBanner(sim: MarketSimulationResult): void {
-  if (typeof document === "undefined") return;
   const banner = document.getElementById("outcome-banner");
   const titleEl = document.getElementById("outcome-title");
   const detailEl = document.getElementById("outcome-detail");
-  const aiWeightsEl = document.getElementById("outcome-ai-weights");
-  const btnExec = document.getElementById("btn-execute");
+  const weightsEl = document.getElementById("outcome-ai-weights");
   const btnNext = document.getElementById("btn-next-quarter");
   const btnRetry = document.getElementById("btn-retry-run");
 
-  if (!banner || !titleEl || !detailEl || !aiWeightsEl) return;
-
+  if (!banner || !titleEl || !detailEl || !weightsEl) return;
   banner.hidden = false;
-  banner.classList.toggle("liquidated", sim.playerLiquidated);
 
-  const pRetStr = formatSignedPct(sim.playerReturn);
-  const aRetStr = formatSignedPct(sim.aiReturn);
+  const playerWon = !sim.playerLiquidated && sim.playerEndAum >= sim.aiEndAum;
+  const playerDied = sim.playerLiquidated;
 
-  if (sim.playerLiquidated) {
+  if (playerDied) {
+    banner.className = "outcome-banner liquidated";
     titleEl.textContent =
       currentLang === "ja"
-        ? `LIQUIDATED — Q${currentQuarter} ロスカット退場`
+        ? `LEVEL ${currentLevel}: ロスカット破綻 (LIQUIDATED)`
         : currentLang === "zh"
-           ? `LIQUIDATED — Q${currentQuarter} 触发强平出局`
-          : `LIQUIDATED — Q${currentQuarter} Margin Call`;
-    detailEl.textContent = formatLiquidationDetail(currentLang, sim);
-
-    if (btnExec) btnExec.hidden = true;
-    if (btnNext) btnNext.hidden = true;
-    if (btnRetry) btnRetry.hidden = false;
-  } else {
-    const beatAi = sim.aiLiquidated || sim.playerReturn >= sim.aiReturn;
-    titleEl.textContent =
-      currentLang === "ja"
-        ? `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT RIVAL" : "SURVIVED QUARTER"}`
-        : currentLang === "zh"
-          ? `Q${currentQuarter} 存活成功 · ${beatAi ? "击败 RIVAL" : "顺利过关"}`
-          : `Q${currentQuarter} SURVIVED · ${beatAi ? "YOU BEAT RIVAL" : "QUARTER CLEARED"}`;
-    const aiDay = sim.aiLiquidatedDay ?? sim.days;
-    const aiSummaryJa = sim.aiLiquidated
-      ? `RIVAL: DAY ${aiDay} ロスカット脱落 (${aRetStr})`
-      : `RIVAL: ${aRetStr} (総資産 ${formatMoney(aiAum)})`;
-    const aiSummaryZh = sim.aiLiquidated
-      ? `RIVAL: 第 ${aiDay} 日触发强平 (${aRetStr})`
-      : `RIVAL: ${aRetStr} (总资产 ${formatMoney(aiAum)})`;
-    const aiSummaryEn = sim.aiLiquidated
-      ? `RIVAL: LIQUIDATED DAY ${aiDay} (${aRetStr})`
-      : `RIVAL: ${aRetStr} (AUM ${formatMoney(aiAum)})`;
+          ? `第 ${currentLevel} 关：强平爆仓 (LIQUIDATED)`
+          : `LEVEL ${currentLevel}: LIQUIDATED (GAME OVER)`;
     detailEl.textContent =
       currentLang === "ja"
-        ? `あなた: ${pRetStr} (総資産 ${formatMoney(playerAum)}) ／ ${aiSummaryJa}`
+        ? `Day ${sim.playerLiquidatedDay ?? 60} にロスカットライン (${formatMoney(sim.liquidationAumFloor)}) を割り込みました。守りの資産（BONDやGOLD）を混ぜて再挑戦しましょう。`
         : currentLang === "zh"
-          ? `你的收益: ${pRetStr} (总资产 ${formatMoney(playerAum)}) ／ ${aiSummaryZh}`
-          : `YOU: ${pRetStr} (AUM ${formatMoney(playerAum)}) / ${aiSummaryEn}`;
+          ? `在第 ${sim.playerLiquidatedDay ?? 60} 交易日跌破强平线 (${formatMoney(sim.liquidationAumFloor)})。请搭配避险资产（国债或黄金）重试。`
+          : `Fund breached the liquidation floor (${formatMoney(sim.liquidationAumFloor)}) on Day ${sim.playerLiquidatedDay ?? 60}. Incorporate defensive anchors like Bonds or Gold to stabilize variance.`;
 
-    if (btnExec) btnExec.hidden = true;
+    if (btnRetry) btnRetry.hidden = false;
+    if (btnNext) btnNext.hidden = true;
+  } else if (playerWon) {
+    banner.className = "outcome-banner survived";
+    titleEl.textContent =
+      currentLang === "ja"
+        ? `🏆 LEVEL ${currentLevel} クリア! WaSHI-QP に勝利!`
+        : currentLang === "zh"
+          ? `🏆 第 ${currentLevel} 关通关! 战胜 WaSHI-QP!`
+          : `🏆 LEVEL ${currentLevel} CLEARED! Defeated WaSHI-QP!`;
+    const delta = sim.playerEndAum - sim.aiEndAum;
+    detailEl.textContent =
+      currentLang === "ja"
+        ? `あなたの運用益 ${formatSignedPct(sim.playerReturn)} (${formatMoney(sim.playerEndAum)}) が AI の ${formatSignedPct(sim.aiReturn)} を上回りました (+${formatMoney(delta)})! 新銘柄が解放されます。`
+        : currentLang === "zh"
+          ? `您的回报率 ${formatSignedPct(sim.playerReturn)} (${formatMoney(sim.playerEndAum)}) 超越了 AI 的 ${formatSignedPct(sim.aiReturn)} (+${formatMoney(delta)})! 已解锁全新标的。`
+          : `Your quarterly return of ${formatSignedPct(sim.playerReturn)} (${formatMoney(sim.playerEndAum)}) beat AI's ${formatSignedPct(sim.aiReturn)} (+${formatMoney(delta)})! New assets unlocked.`;
+
     if (btnNext) btnNext.hidden = false;
     if (btnRetry) btnRetry.hidden = true;
+  } else {
+    banner.className = "outcome-banner survived";
+    titleEl.textContent =
+      currentLang === "ja"
+        ? `LEVEL ${currentLevel}: 生存したが AI に惜敗…`
+        : currentLang === "zh"
+          ? `第 ${currentLevel} 关：存活但收益落后于 AI`
+          : `LEVEL ${currentLevel}: Survived but Underperformed AI`;
+    detailEl.textContent =
+      currentLang === "ja"
+        ? `破綻は回避しましたが、AI (WaSHI-QP) の期末資産 (${formatMoney(sim.aiEndAum)}) に届きませんでした。銘柄の組み合わせを工夫して再挑戦してみましょう。`
+        : currentLang === "zh"
+          ? `成功规避了爆仓，但期末资产未超越 AI (${formatMoney(sim.aiEndAum)})。请优化持仓组合再次挑战。`
+          : `Survived without liquidation, but final AUM lagged behind WaSHI-QP (${formatMoney(sim.aiEndAum)}). Tune your asset selection and retry!`;
+
+    if (btnRetry) btnRetry.hidden = false;
+    if (btnNext) btnNext.hidden = true;
   }
 
   if (aiOptimal) {
-    const aiPcts = roundWeightsToHundred(aiOptimal.weights, currentRegime.maxWeightPerAsset);
-    const breakdown = currentRegime.assets
-      .map((a, idx) => `${a.ticker} ${aiPcts[idx] ?? 0}%`)
+    const aiItems = currentRegime.assets
+      .map((a, i) => `${a.ticker}: ${(aiOptimal!.weights[i] * 100).toFixed(0)}%`)
       .join(" · ");
-    aiWeightsEl.textContent = `RIVAL Portfolio: ${breakdown}`;
+    weightsEl.textContent = `WaSHI-QP 最適配分: [ ${aiItems} ]`;
   }
 }
 
-function initDomEvents(): void {
-  if (typeof document === "undefined") return;
+function showUnlockDialog(nextLvl: number): void {
+  const dialog = document.getElementById("unlock-dialog") as HTMLDialogElement;
+  const body = document.getElementById("unlock-dialog-body");
+  if (!dialog || !body) return;
 
-  for (const btn of document.querySelectorAll("[data-lang-btn]")) {
-    btn.addEventListener("click", () => {
-      const lang = btn.getAttribute("data-lang-btn");
-      if (lang === "ja" || lang === "en" || lang === "zh") {
-        applyQuantStaticTranslations(lang);
+  const nextSpec = getLevelSpec(nextLvl);
+  if (nextSpec.newAssetIds.length === 0) return;
+
+  let newCardsHtml = '<div class="unlock-asset-grid">';
+  for (const id of nextSpec.newAssetIds) {
+    const asset = getAssetSpecById(id, nextLvl + 1);
+    const loc = getLocalizedAsset(asset, currentLang);
+    newCardsHtml += `
+      <div class="unlock-asset-card">
+        <div class="unlock-asset-header">
+          <span class="unlock-asset-ticker" style="color: ${asset.color}">${asset.ticker}</span>
+          <span class="card-category-pill">${asset.category}</span>
+        </div>
+        <div class="unlock-asset-name">${loc.name}</div>
+        <div class="card-stats">
+          <span class="stat-ret">E[R]: ${formatSignedPct(asset.expectedReturn)}</span>
+          <span class="stat-vol">σ: ${(asset.volatility * 100).toFixed(0)}%</span>
+        </div>
+        <div class="unlock-asset-desc">${loc.roleDesc}</div>
+      </div>
+    `;
+  }
+  newCardsHtml += "</div>";
+
+  const descText =
+    currentLang === "ja"
+      ? `<p>おめでとうございます! <strong>Level ${currentLevel}</strong> を見事にクリアしました!<br>
+         次の <strong>Level ${nextLvl}</strong> では、以下の新銘柄がアンロックされ、銘柄プールから最大 <strong>${nextSpec.maxPicks} 銘柄</strong> を選択できるようになります!</p>`
+      : currentLang === "zh"
+        ? `<p>恭喜通关! 您已成功攻克 <strong>第 ${currentLevel} 关</strong>!<br>
+           在全新的 <strong>第 ${nextLvl} 关</strong> 中，以下新标的已加入资产池，可选持仓上限提升至 <strong>${nextSpec.maxPicks} 只</strong>!</p>`
+        : `<p>Congratulations! You conquered <strong>Level ${currentLevel}</strong>!<br>
+           In <strong>Level ${nextLvl}</strong>, the following new assets are unlocked and you can select up to <strong>${nextSpec.maxPicks} assets</strong>!</p>`;
+
+  body.innerHTML = `${descText}${newCardsHtml}`;
+
+  if (typeof dialog.showModal === "function") {
+    dialog.showModal();
+  }
+}
+
+function advanceToNextLevel(): void {
+  currentLevel += 1;
+  highestLevel = Math.max(highestLevel, currentLevel);
+  currentLevelSpec = getLevelSpec(currentLevel);
+
+  // Auto-pick newly unlocked assets if room permits, otherwise keep current picks
+  const newAssetId = currentLevelSpec.newAssetIds[0];
+  if (newAssetId && !selectedAssetIds.includes(newAssetId)) {
+    if (selectedAssetIds.length < currentLevelSpec.maxPicks) {
+      selectedAssetIds.push(newAssetId);
+    }
+  }
+
+  saveGameState();
+  refreshRegimeAndSolvers();
+
+  const banner = document.getElementById("outcome-banner");
+  if (banner) banner.hidden = true;
+  const btnNext = document.getElementById("btn-next-quarter");
+  if (btnNext) btnNext.hidden = true;
+}
+
+function retryCurrentLevel(): void {
+  const banner = document.getElementById("outcome-banner");
+  if (banner) banner.hidden = true;
+  const btnRetry = document.getElementById("btn-retry-run");
+  if (btnRetry) btnRetry.hidden = true;
+  refreshRegimeAndSolvers();
+}
+
+function setupEventListeners(): void {
+  const btnExec = document.getElementById("btn-execute");
+  if (btnExec) btnExec.addEventListener("click", runMarketSimulation);
+
+  const btnNext = document.getElementById("btn-next-quarter");
+  if (btnNext) btnNext.addEventListener("click", advanceToNextLevel);
+
+  const btnRetry = document.getElementById("btn-retry-run");
+  if (btnRetry) btnRetry.addEventListener("click", retryCurrentLevel);
+
+  const btnNewRun = document.getElementById("btn-new-run");
+  if (btnNewRun) {
+    btnNewRun.addEventListener("click", () => {
+      const msg =
+        currentLang === "ja"
+          ? "初期資金 $100M、Level 1 から新しくやり直しますか？"
+          : currentLang === "zh"
+            ? "确定要从初始资金 $100M 重新开始第1关吗？"
+            : "Reset progress and restart fresh from Level 1 ($100M)?";
+      if (typeof window !== "undefined" && window.confirm && window.confirm(msg)) {
+        resetToFreshRun();
       }
     });
   }
 
   const btnEqual = document.getElementById("btn-equal-weight");
-  btnEqual?.addEventListener("click", () => {
-    if (isSimulating || isLoadingQuarter) return;
-    const n = currentRegime.assets.length;
-    playerWeights = quantizeWeightsToPercent(
-      new Array<number>(n).fill(1 / n),
-      currentRegime.maxWeightPerAsset
-    );
-    syncAssetWeightControls();
-    renderTelemetryAndCharts();
-  });
+  if (btnEqual) {
+    btnEqual.addEventListener("click", () => {
+      if (isSimulating) return;
+      const n = currentRegime.assets.length;
+      playerWeights = normalizeWeights(
+        new Array<number>(n).fill(1 / n),
+        currentRegime.maxWeightPerAsset
+      );
+      updateWeightDisplays();
+      renderTelemetryAndCharts();
+    });
+  }
 
   const btnHedge = document.getElementById("btn-balance-hedge");
-  btnHedge?.addEventListener("click", () => {
-    if (isSimulating || isLoadingQuarter) return;
-    const n = currentRegime.assets.length;
-    const raw = currentRegime.assets.map((a) => {
-      if (a.id === "tech" || a.id === "frontier") return 0.28;
-      if (a.id === "gold" || a.id === "defense") return 0.28;
-      if (a.id === "energy") return 0.22;
-      return 0.12;
-    });
-    if (raw.length === n) {
-      playerWeights = quantizeWeightsToPercent(raw, currentRegime.maxWeightPerAsset);
-      syncAssetWeightControls();
+  if (btnHedge) {
+    btnHedge.addEventListener("click", () => {
+      if (isSimulating) return;
+      const n = currentRegime.assets.length;
+      const weights = new Array<number>(n).fill(0);
+      let bondOrGoldIdx = -1;
+      let stockIdx = -1;
+
+      currentRegime.assets.forEach((a, i) => {
+        if (a.category === "broad" && a.id === "bond") bondOrGoldIdx = i;
+        else if (a.category === "commodity" && bondOrGoldIdx < 0) bondOrGoldIdx = i;
+        else if (stockIdx < 0) stockIdx = i;
+      });
+
+      if (bondOrGoldIdx >= 0 && stockIdx >= 0) {
+        weights[bondOrGoldIdx] = 0.45;
+        weights[stockIdx] = 0.55;
+      } else {
+        weights.fill(1 / n);
+      }
+
+      playerWeights = normalizeWeights(weights, currentRegime.maxWeightPerAsset);
+      updateWeightDisplays();
       renderTelemetryAndCharts();
-    }
-  });
+    });
+  }
 
-  const btnExec = document.getElementById("btn-execute");
-  btnExec?.addEventListener("click", () => {
-    void startMarketSimulation();
-  });
+  for (const btn of document.querySelectorAll("[data-lang-btn]")) {
+    btn.addEventListener("click", () => {
+      const lang = btn.getAttribute("data-lang-btn") as GameLang;
+      if (lang) applyQuantStaticTranslations(lang);
+    });
+  }
 
-  const btnNext = document.getElementById("btn-next-quarter");
-  btnNext?.addEventListener("click", () => {
-    void advanceQuarter();
-  });
-
-  const startFreshRun = () => {
-    clearActiveRunState();
-    playerAum = 100.0;
-    aiAum = 100.0;
-    duelWins = 0;
-    duelLosses = 0;
-    void loadQuarter(1);
-  };
-
-  const btnRetry = document.getElementById("btn-retry-run");
-  btnRetry?.addEventListener("click", startFreshRun);
-
-  const btnNewRun = document.getElementById("btn-new-run");
-  btnNewRun?.addEventListener("click", startFreshRun);
-
-  const helpDialog = document.getElementById("help-dialog") as HTMLDialogElement | null;
+  // Dialog open / close handlers
   const btnHelp = document.getElementById("btn-help");
-  const btnCloseHelp = document.getElementById("btn-close-help");
-  const btnHelpOk = document.getElementById("btn-help-ok");
+  const helpDialog = document.getElementById("help-dialog") as HTMLDialogElement;
+  if (btnHelp && helpDialog) {
+    btnHelp.addEventListener("click", () => {
+      if (typeof helpDialog.showModal === "function") {
+        helpDialog.showModal();
+      }
+    });
+  }
 
-  btnHelp?.addEventListener("click", () => {
-    if (helpDialog && typeof helpDialog.showModal === "function") {
-      helpDialog.showModal();
-    }
-  });
+  const unlockDialog = document.getElementById("unlock-dialog") as HTMLDialogElement;
+  const btnUnlockOk = document.getElementById("btn-unlock-ok");
+  if (btnUnlockOk && unlockDialog) {
+    btnUnlockOk.addEventListener("click", () => {
+      unlockDialog.close();
+      advanceToNextLevel();
+    });
+  }
 
-  const closeHelp = () => {
-    if (helpDialog && typeof helpDialog.close === "function") {
-      helpDialog.close();
-    }
-  };
-  btnCloseHelp?.addEventListener("click", closeHelp);
-  btnHelpOk?.addEventListener("click", closeHelp);
+  for (const btn of document.querySelectorAll("[data-close-dialog]")) {
+    btn.addEventListener("click", () => {
+      const targetId = btn.getAttribute("data-close-dialog");
+      if (targetId) {
+        const dlg = document.getElementById(targetId) as HTMLDialogElement;
+        if (dlg && typeof dlg.close === "function") dlg.close();
+      }
+    });
+  }
 
-  // Fallback for browsers without native <dialog closedby="any"> support
-  if (
-    helpDialog &&
-    typeof HTMLDialogElement !== "undefined" &&
-    !("closedBy" in HTMLDialogElement.prototype)
-  ) {
-    helpDialog.addEventListener("click", (event: MouseEvent) => {
-      if (event.target !== helpDialog) return;
-      const rect = helpDialog.getBoundingClientRect();
-      const isDialogContent =
-        rect.top <= event.clientY &&
-        event.clientY <= rect.top + rect.height &&
-        rect.left <= event.clientX &&
-        event.clientX <= rect.left + rect.width;
-      if (isDialogContent) return;
-      helpDialog.close();
+  // Backdrop click fallback
+  for (const dlg of document.querySelectorAll("dialog")) {
+    dlg.addEventListener("click", (e) => {
+      const rect = dlg.getBoundingClientRect();
+      const inDialog =
+        rect.top <= e.clientY &&
+        e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX &&
+        e.clientX <= rect.left + rect.width;
+      if (!inDialog && typeof dlg.close === "function") {
+        dlg.close();
+      }
     });
   }
 }
 
-if (typeof window !== "undefined" && typeof document !== "undefined") {
-  initDomEvents();
+// Initialization on DOMContentLoaded
+if (typeof document !== "undefined") {
+  loadSaveState();
+  currentRegime = buildSubsetRegime(currentLevel, selectedAssetIds);
+  playerWeights = normalizeWeights(
+    new Array<number>(currentRegime.assets.length).fill(1 / currentRegime.assets.length),
+    currentRegime.maxWeightPerAsset
+  );
+
+  setupEventListeners();
   applyQuantStaticTranslations(currentLang);
-  const activeRun = loadActiveRunState();
-  if (activeRun && activeRun.quarter > 1 && activeRun.playerAum > 0) {
-    playerAum = activeRun.playerAum;
-    aiAum = activeRun.aiAum;
-    duelWins = activeRun.duelWins;
-    duelLosses = activeRun.duelLosses;
-    void loadQuarter(activeRun.quarter);
-  } else {
-    void loadQuarter(1);
-  }
+
+  solveQuantOptimalPortfolio(currentRegime)
+    .then((res) => {
+      aiOptimal = res;
+      frontierPoints = computeEfficientFrontier(currentRegime, 9);
+      renderTelemetryAndCharts();
+    })
+    .catch(() => {
+      // Fallback handles gracefully
+    });
 }

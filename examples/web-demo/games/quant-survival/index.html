@@ -23,7 +23,7 @@
           <div class="brand-block">
             <span class="brand-badge">QUANT SURVIVAL</span>
             <span id="brand-subtitle" class="brand-subtitle">
-              エンドレス運用サバイバル
+              vs WaSHI-QP エンドレス運用バトル
             </span>
           </div>
         </div>
@@ -32,9 +32,9 @@
           <div
             id="best-record-badge"
             class="record-pill"
-            title="自己ベスト記録（最高到達期・最高総資産）"
+            title="到達記録（最高到達ステージ・最高総資産）"
           >
-            🏆 BEST: Q1 · $100.0M
+            🏆 BEST: Level 1 · $100.0M
           </div>
           <div id="lang-switch-group" class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -45,7 +45,7 @@
             id="btn-help"
             type="button"
             class="btn-terminal"
-            title="遊び方と破綻確率の仕組み"
+            title="遊び方とルールの仕組み"
           >
             ? ルール
           </button>
@@ -53,7 +53,7 @@
             id="btn-new-run"
             type="button"
             class="btn-terminal"
-            title="初期資産$100Mから新しく始める"
+            title="初期資金$100MからLevel 1を再開"
           >
             ↻ リセット
           </button>
@@ -68,12 +68,12 @@
       >
         <div class="score-card regime-card">
           <div class="score-eyebrow">
-            <span id="hud-quarter-label">CURRENT QUARTER</span>
-            <span id="hud-cap-badge" class="cap-pill">MAX 100%/銘柄</span>
+            <span id="hud-quarter-label">CURRENT LEVEL</span>
+            <span id="hud-cap-badge" class="cap-pill">MAX 90%/銘柄</span>
           </div>
-          <h1 id="hud-regime-title" class="regime-title">Q1: 金利警戒とAI選別相場</h1>
+          <h1 id="hud-regime-title" class="regime-title">Level 1: 投資の基本と守りの盾</h1>
           <p id="hud-regime-forecast" class="regime-forecast">
-            TECHは高利回りだが変動が激しい。逆相関のGOLDやDFNSを組み合わせ、破綻確率を抑えて運用せよ。
+            株と国債・金の王道バランス。株式単体だと急落で破綻する。国債や金と組み合わせて生き残れ。
           </p>
         </div>
 
@@ -89,10 +89,10 @@
         <div class="score-card aum-card ai-card">
           <div class="score-eyebrow">
             <span class="dot-ai"></span>
-            <span id="hud-ai-label">RIVAL FUND (AUM)</span>
+            <span id="hud-ai-label">RIVAL: WaSHI-QP</span>
           </div>
           <div id="hud-ai-aum" class="aum-value">$100.0M</div>
-          <div id="hud-ai-persona" class="aum-sub">RIVAL // 最小分散モデル</div>
+          <div id="hud-ai-persona" class="aum-sub">WaSHI-QP // 基礎アロケーター</div>
         </div>
 
         <div class="score-card aum-card floor-card">
@@ -107,47 +107,69 @@
 
       <!-- Main Workspace Grid -->
       <main class="workspace-grid">
-        <!-- LEFT PANEL: Asset Allocation & Correlation Matrix -->
+        <!-- LEFT PANEL: Universe Picker, Asset Allocation & Correlation Matrix -->
         <section
           id="allocation-panel"
           class="terminal-panel allocation-panel"
           aria-label="Portfolio Allocation Controls"
         >
-          <div class="panel-header">
-            <div>
-              <h2 id="alloc-heading" class="panel-title">1. ポートフォリオ配分 (合計 100%)</h2>
-              <p id="alloc-sub" class="panel-sub">
-                スライダーを動かすと自動で合計100%に正規化されます
-              </p>
+          <!-- 1. UNIVERSE PICKER -->
+          <div class="universe-section">
+            <div class="panel-header">
+              <div>
+                <h2 id="universe-heading" class="panel-title">1. 銘柄プールから選択 (DRAFT)</h2>
+                <p id="universe-sub" class="panel-sub">
+                  アンロックされた銘柄から組み入れたい銘柄をタップして選択してください
+                </p>
+              </div>
+              <div class="picker-status-block">
+                <span id="universe-pick-counter" class="badge-pick-count">選択: 2 / 2</span>
+              </div>
             </div>
-            <div class="preset-actions">
-              <button
-                id="btn-equal-weight"
-                type="button"
-                class="btn-chip"
-                title="全銘柄に均等配分する"
-              >
-                均等配分
-              </button>
-              <button
-                id="btn-balance-hedge"
-                type="button"
-                class="btn-chip accent"
-                title="逆相関ペアを組み合わせたバランス配分を試す"
-              >
-                逆相関ブレンド
-              </button>
+            <div id="universe-grid" class="universe-grid" role="group" aria-label="Available Asset Pool">
+              <!-- Populated dynamically by main.ts -->
             </div>
           </div>
 
-          <div id="asset-list" class="asset-list" role="list" aria-label="Investable Assets">
-            <!-- Populated dynamically by main.ts -->
+          <!-- 2. ALLOCATION SLIDERS -->
+          <div class="allocation-section">
+            <div class="panel-header">
+              <div>
+                <h2 id="alloc-heading" class="panel-title">2. 選択銘柄の配分 (合計 100%)</h2>
+                <p id="alloc-sub" class="panel-sub">
+                  スライダーを動かすと自動で合計100%に正規化されます
+                </p>
+              </div>
+              <div class="preset-actions">
+                <button
+                  id="btn-equal-weight"
+                  type="button"
+                  class="btn-chip"
+                  title="選択銘柄に均等配分する"
+                >
+                  均等配分
+                </button>
+                <button
+                  id="btn-balance-hedge"
+                  type="button"
+                  class="btn-chip accent"
+                  title="逆相関ペアを組み合わせたバランス配分を試す"
+                >
+                  逆相関ブレンド
+                </button>
+              </div>
+            </div>
+
+            <div id="asset-list" class="asset-list" role="list" aria-label="Investable Assets">
+              <!-- Populated dynamically by main.ts -->
+            </div>
           </div>
 
+          <!-- 3. CORRELATION MATRIX -->
           <div class="corr-section">
             <div class="corr-header">
               <h3 id="corr-heading" class="corr-title">
-                資産間相関係数マトリクス (青 = 逆相関ヘッジ効果大)
+                選択銘柄の相関係数マトリクス (青 = 逆相関ヘッジ効果大)
               </h3>
             </div>
             <div
@@ -170,13 +192,13 @@
           <div class="risk-gauges-grid">
             <div class="gauge-box ruin-gauge-box">
               <div class="gauge-top">
-                <span id="label-ruin-prob" class="gauge-label">期末フロア割れ確率 (参考値)</span>
+                <span id="label-ruin-prob" class="gauge-label">今期の破綻確率 (RUIN PROB)</span>
                 <span id="badge-ruin-status" class="risk-status-pill safe">SAFE</span>
               </div>
               <div class="ruin-main-row">
                 <span id="metric-ruin-prob" class="gauge-big-num">1.8%</span>
                 <span id="metric-ai-ruin-compare" class="gauge-compare">
-                  RIVAL: 1.2%
+                  WaSHI-QP: 1.2%
                 </span>
               </div>
               <div class="prob-bar-track" aria-hidden="true">
@@ -187,16 +209,16 @@
             <div class="gauge-box">
               <div class="gauge-top">
                 <span id="label-exp-return" class="gauge-label">期待リターン (E[R])</span>
-                <span id="metric-target-badge" class="target-pill">目標 +10.5%</span>
+                <span id="metric-target-badge" class="target-pill">目標 +8.0%</span>
               </div>
               <div class="ruin-main-row">
-                <span id="metric-exp-return" class="gauge-num">+11.2%</span>
+                <span id="metric-exp-return" class="gauge-num">+9.5%</span>
                 <span id="metric-ai-return-compare" class="gauge-compare">
-                  RIVAL: +10.5%
+                  WaSHI-QP: +8.5%
                 </span>
               </div>
               <div id="metric-vol-row" class="gauge-sub">
-                変動リスク (σ): 8.4% / Sharpe: 0.98
+                変動リスク (σ): 7.2% / Sharpe: 0.90
               </div>
             </div>
           </div>
@@ -209,7 +231,7 @@
                   リスク・リターン平面 ＆ 効率的フロンティア
                 </span>
                 <span id="chart-frontier-legend" class="chart-legend">
-                  ● YOU &nbsp; ◆ RIVAL
+                  ● YOU &nbsp; ◆ WaSHI-QP
                 </span>
               </div>
               <svg
@@ -224,7 +246,7 @@
             <div class="chart-card">
               <div class="chart-card-header">
                 <span id="chart-battle-title" class="chart-title">
-                  60営業日 リアルタイム資産推移 (YOU vs RIVAL)
+                  60営業日 リアルタイム資産推移 (YOU vs WaSHI-QP)
                 </span>
                 <span id="chart-day-counter" class="chart-day-badge">DAY 0 / 60</span>
               </div>
@@ -235,6 +257,10 @@
                 role="img"
                 aria-label="60-Day Live Asset Battle Chart"
               ></svg>
+              <div id="chart-ghost-legend" class="chart-ghost-legend" hidden>
+                <span class="ghost-legend-line"></span>
+                <span id="ghost-legend-text">単体100%全ツッパ比較</span>
+              </div>
             </div>
           </div>
 
@@ -242,14 +268,14 @@
           <div id="news-ticker" class="news-ticker" aria-live="polite">
             <span class="ticker-tag">TERMINAL</span>
             <span id="news-ticker-text" class="ticker-text">
-              配分を調整して [MARKET OPEN] を押すと、60日間の市場シミュレーションが始まります。
+              銘柄を選択して配分を調整し、[MARKET OPEN] を押すと60日間の市場シミュレーションが始まります。
             </span>
           </div>
 
           <!-- Outcome & Action Dock -->
           <div id="outcome-banner" class="outcome-banner" hidden>
             <div class="outcome-main">
-              <div id="outcome-title" class="outcome-title">Q1 SURVIVED</div>
+              <div id="outcome-title" class="outcome-title">LEVEL 1 CLEARED!</div>
               <div id="outcome-detail" class="outcome-detail"></div>
             </div>
             <div id="outcome-ai-weights" class="outcome-ai-weights"></div>
@@ -260,17 +286,43 @@
               ▶ MARKET OPEN (60日間バトル開始)
             </button>
             <button id="btn-next-quarter" type="button" class="btn-next-quarter" hidden>
-              次の四半期へ進む ▶
+              次のレベルへ進む ▶
             </button>
             <button id="btn-retry-run" type="button" class="btn-retry-run" hidden>
-              ↻ 初期資金 $100M から再挑戦
+              ↻ このレベルを再挑戦
             </button>
           </div>
         </section>
       </main>
     </div>
 
-    <!-- Rules Modal Dialog (Modern Web Guidance: closedby="any" + showModal() + backdrop click fallback) -->
+    <!-- Level Clear & New Asset Unlock Dialog -->
+    <dialog id="unlock-dialog" class="terminal-dialog" closedby="any" aria-labelledby="unlock-dialog-title">
+      <div class="dialog-inner">
+        <header class="dialog-header">
+          <h2 id="unlock-dialog-title">✨ LEVEL CLEAR & ASSETS UNLOCKED!</h2>
+          <button
+            id="btn-close-unlock"
+            type="button"
+            class="btn-dialog-close"
+            data-close-dialog="unlock-dialog"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </header>
+        <div id="unlock-dialog-body" class="dialog-body">
+          <!-- Populated dynamically by main.ts -->
+        </div>
+        <footer class="dialog-footer">
+          <button id="btn-unlock-ok" type="button" class="btn-execute btn-sm">
+            次のステージへ挑む ▶
+          </button>
+        </footer>
+      </div>
+    </dialog>
+
+    <!-- Rules Modal Dialog -->
     <dialog id="help-dialog" class="terminal-dialog" closedby="any" aria-labelledby="help-dialog-title">
       <div class="dialog-inner">
         <header class="dialog-header">
