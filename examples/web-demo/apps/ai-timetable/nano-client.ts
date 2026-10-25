@@ -73,10 +73,10 @@ export interface TimetableGeminiNanoManager {
 }
 
 function buildLanguageModelOptions(lang: TimetableLang = "ja") {
-  const outputs = Array.from(new Set([lang, "ja", "en", "zh"]));
+  const outputLang = lang === "en" ? "en" : "ja";
   return {
-    expectedInputs: [{ type: "text", languages: ["ja", "en", "zh"] }],
-    expectedOutputs: [{ type: "text", languages: outputs }],
+    expectedInputs: [{ type: "text", languages: ["ja", "en"] }],
+    expectedOutputs: [{ type: "text", languages: [outputLang] }],
   };
 }
 
@@ -176,18 +176,11 @@ async function createSessionWithFallback(
       ...baseWithMonitor,
     });
   } catch {
-    try {
-      return await api.create({
-        ...langOptions,
-        initialPrompts: [{ role: "system", content: systemPrompt }],
-        ...baseWithMonitor,
-      });
-    } catch {
-      return await api.create({
-        initialPrompts: [{ role: "system", content: systemPrompt }],
-        ...baseWithMonitor,
-      });
-    }
+    return await api.create({
+      ...langOptions,
+      initialPrompts: [{ role: "system", content: systemPrompt }],
+      ...baseWithMonitor,
+    });
   }
 }
 

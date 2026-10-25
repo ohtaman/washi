@@ -660,4 +660,87 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     );
     expect(zhLogs[0]).toContain("将《数学规划与优化 (C15)》固定在 周二第2节");
   }, 30_000);
+
+  it("supports Chrome 148+ LanguageModel API with supported languages only ([de, en, es, fr, ja]) and requires output language", async () => {
+    const prevLM = (globalThis as any).LanguageModel;
+    const CHROME_SUPPORTED_LANGUAGES = ["de", "en", "es", "fr", "ja"];
+
+    try {
+      const receivedCreateOpts: any[] = [];
+      (globalThis as any).LanguageModel = {
+        async availability(opts?: any) {
+          if (!opts?.expectedOutputs || opts.expectedOutputs.length === 0) {
+            throw new Error(
+              "No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [de, en, es, fr, ja]"
+            );
+          }
+          for (const item of [...(opts.expectedInputs ?? []), ...opts.expectedOutputs]) {
+            for (const lang of item.languages ?? []) {
+              if (!CHROME_SUPPORTED_LANGUAGES.includes(lang)) {
+                throw new Error(
+                  `Unsupported LanguageModel API languages were specified (${lang}), and the request was aborted. API calls must only specify supported languages: [de, en, es, fr, ja]`
+                );
+              }
+            }
+          }
+          return "available";
+        },
+        async create(opts?: any) {
+          if (!opts?.expectedOutputs || opts.expectedOutputs.length === 0) {
+            throw new Error(
+              "No output language was specified in a LanguageModel API request. An output language should be specified to ensure optimal output quality and properly attest to output safety. Please specify a supported output language code: [de, en, es, fr, ja]"
+            );
+          }
+          for (const item of [...(opts.expectedInputs ?? []), ...opts.expectedOutputs]) {
+            for (const lang of item.languages ?? []) {
+              if (!CHROME_SUPPORTED_LANGUAGES.includes(lang)) {
+                throw new Error(
+                  `Unsupported LanguageModel API languages were specified (${lang}), and the request was aborted. API calls must only specify supported languages: [de, en, es, fr, ja]`
+                );
+              }
+            }
+          }
+          receivedCreateOpts.push(opts);
+          return {
+            async clone() {
+              return this;
+            },
+            async prompt() {
+              return "{}";
+            },
+            destroy() {},
+          };
+        },
+      };
+
+      // 1. Japanese initialization
+      const mgrJa = createTimetableGeminiNanoManager();
+      const stJa = await mgrJa.initialize(undefined, "ja");
+      expect(stJa).toBe("available");
+      expect(receivedCreateOpts.length).toBe(2);
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
+      expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
+      mgrJa.destroy();
+
+      // 2. English initialization
+      receivedCreateOpts.length = 0;
+      const mgrEn = createTimetableGeminiNanoManager();
+      const stEn = await mgrEn.initialize(undefined, "en");
+      expect(stEn).toBe("available");
+      expect(receivedCreateOpts.length).toBe(2);
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
+      mgrEn.destroy();
+
+      // 3. Fallback when lang is not "en" (e.g. "zh") defaults to "ja" supported language
+      receivedCreateOpts.length = 0;
+      const mgrZh = createTimetableGeminiNanoManager();
+      const stZh = await mgrZh.initialize(undefined, "zh");
+      expect(stZh).toBe("available");
+      expect(receivedCreateOpts.length).toBe(2);
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
+      mgrZh.destroy();
+    } finally {
+      (globalThis as any).LanguageModel = prevLM;
+    }
+  });
 });

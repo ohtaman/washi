@@ -2281,7 +2281,10 @@ function wireEvents(): void {
   );
   const recheckNano = async () => {
     updateNanoStatusUI("downloading", 0);
-    const st = await nanoManager.initialize((pct) => updateNanoStatusUI("downloading", pct));
+    const st = await nanoManager.initialize(
+      (pct) => updateNanoStatusUI("downloading", pct),
+      activeLang
+    );
     updateNanoStatusUI(st);
   };
   $("btn-retry-nano").addEventListener("click", () => void recheckNano());
@@ -2328,7 +2331,7 @@ async function initApp(): Promise<void> {
   applyTimetableLang(activeLang);
 
   void nanoManager
-    .initialize((pct) => updateNanoStatusUI("downloading", pct))
+    .initialize((pct) => updateNanoStatusUI("downloading", pct), activeLang)
     .then((status) => updateNanoStatusUI(status));
 
   await triggerSolve();
