@@ -142,11 +142,11 @@ export async function checkGeminiNanoAvailability(
       const statusWithLang = normalizeAvailabilityString(
         await api.availability(langOptions)
       );
-      if (statusWithLang && statusWithLang !== "unavailable") {
+      if (statusWithLang) {
         return statusWithLang;
       }
     } catch {
-      // Fall through
+      // Fall through to legacy/default check on older Chrome
     }
     try {
       const statusDefault = normalizeAvailabilityString(await api.availability());

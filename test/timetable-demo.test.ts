@@ -827,6 +827,21 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         { type: "text", languages: ["en"] },
       ]);
       mgrRace.destroy();
+
+      // 5. Does not fall through to optionless availability() when language-specific availability is unavailable
+      let optionlessAvailCalled = false;
+      const prevAvail = (globalThis as any).LanguageModel.availability;
+      (globalThis as any).LanguageModel.availability = async (opts?: any) => {
+        if (!opts) {
+          optionlessAvailCalled = true;
+          return "available";
+        }
+        return "unavailable";
+      };
+      const unavailEn = await checkGeminiNanoAvailability("en");
+      expect(unavailEn).toBe("unavailable");
+      expect(optionlessAvailCalled).toBe(false);
+      (globalThis as any).LanguageModel.availability = prevAvail;
     } finally {
       (globalThis as any).LanguageModel = prevLM;
     }
