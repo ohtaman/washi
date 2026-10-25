@@ -11,10 +11,11 @@ This document defines the standards and instructions for automated and human cod
 - **English Only**: All PR titles, descriptions, review summaries, inline comments, and commit messages MUST be written in clear, professional **English**.
 - **Constructive & Objective Tone**: Critique the code, not the author. Explain *why* something is an issue and provide concrete, actionable code suggestions where possible.
 - **Severity Prefixes**: Prefix every inline review comment to make expectations clear:
-  - `[Blocker]` / `[Bug]`: Must be fixed before merging (e.g., correctness bugs, mathematical formulation errors, regressions, broken builds/exports, security issues, missing critical tests).
+  - `[Blocker]` / `[Bug]`: Must be fixed before merging. **Strict Threshold**: ONLY use for verifiable regressions against `main`, functional correctness defects introduced by new code, broken builds/types/tests, mathematical solver errors, or security vulnerabilities introduced by the diff.
+    - **Never** classify the following as `[Blocker]` or `[Bug]`: speculative "what-if" edge cases outside the PR's stated intent, test mock fidelity or fake object structure (as long as tests reliably pass), stylistic preferences, or non-critical enhancements.
   - `[Scope]` / `[Design]`: Architectural concerns, over-engineering, or out-of-scope changes that should be simplified or extracted into a separate PR.
-  - `[Suggestion]`: Recommended improvements for readability, edge-case coverage, or performance, though open to discussion.
-  - `[Nit]`: Minor stylistic, naming, or documentation polish. Non-blocking.
+  - `[Suggestion]`: Optional improvements for readability, minor edge-case handling, or performance. Non-blocking; author may decline or defer.
+  - `[Nit]`: Minor stylistic, naming, or documentation polish. Strictly non-blocking.
 
 ---
 
@@ -35,6 +36,11 @@ Preventing unnecessary complexity and scope creep is a top priority during revie
    - Check if a new helper, wrapper, or abstraction is only used once; if so, prefer inlining unless it significantly improves clarity.
 4. **Favor Incremental Code Health**:
    - Follow Google's Engineering Practices standard: approve once the PR demonstrably improves the overall code health of the system within its intended scope, even if it isn't "perfect." Do not block merges over subjective `[Nit]` items or out-of-scope follow-ups.
+5. **High Bar for Review Comments (Anti-Nitpicking & Pragmatism)**:
+   - Automated and human reviewers must NOT comment merely to have something to say.
+   - Do NOT demand extra defensive layers, state machines, or fallbacks for low-probability hypothetical edge cases ("what if the user does X and then Y before Z?"). Simple, robust code covering the intended workflow is vastly superior to complex defensive code.
+   - Do NOT nitpick test harness fidelity or fake objects (e.g., DOM or browser API mocks) in demo apps or auxiliary code as long as tests are deterministic, green, and test the intended behavior.
+   - If the PR fulfills its stated goal, passes all tests, and introduces no regressions on `main`, the default verdict MUST be **Approve**.
 
 ---
 
@@ -45,6 +51,8 @@ Because reviews run on **every push** to an open PR:
 - **Focus on New Changes**: On follow-up pushes, focus primarily on the newly pushed commits and whether previously raised `[Blocker]` or `[Scope]` issues have been resolved.
 - **Avoid Repetitive Noise**: Do not re-post identical comments on unchanged lines that were already flagged in earlier review rounds.
 - **Verify Fixes Holistically**: When a push addresses an earlier review comment, verify that the fix actually resolves the root cause without introducing new edge-case bugs or breaking adjacent logic.
+- **Consolidate Pattern Findings Up Front (No Drip-Feed Reviews)**: When flagging a pattern-level issue (e.g., missing localization, accessibility attributes, validation, or error handling), enumerate all affected instances within the PR's scope in a single comment on the initial pass rather than surfacing one new instance per push.
+- **No Post-Fix Goalpost Shifting**: On follow-up pushes (`synchronize`), restrict new comments to bugs/regressions introduced by the newly pushed commits or incomplete fixes of previously raised threads. Do not open brand-new findings on pre-existing lines or adjacent attributes that were already present in earlier commits.
 
 ---
 
@@ -64,8 +72,9 @@ Pay special attention to mathematical and logical soundness:
 
 ### C. Tests & Verification
 - **Behavior-Driven Tests**: Every bug fix or new feature MUST include automated tests that would fail without the change.
-- **Edge-Case Coverage**: Check that tests cover boundary inputs, invalid inputs (error throwing), and non-trivial execution paths—not just the happy path.
+- **Edge-Case Coverage for Core Domain**: Check boundary inputs and error paths for core solver, parsing, and math algorithms. For UI demos, games, or example integrations, lightweight behavioral tests covering the happy path and primary user flows are sufficient.
 - **Independent Expected Values**: Ensure test assertions verify independent expected values rather than merely mirroring the implementation's internal calculation.
+- **Pragmatic Test Mocks**: Never require full DOM or browser API simulation in unit tests when simple synthetic objects or state asserts adequately verify the logic.
 
 ### D. Security & Dependencies
 - **Minimal Dependencies**: Flag any new runtime dependencies unless strictly necessary and discussed.
@@ -98,16 +107,27 @@ Structure each PR review response concisely in English using the following forma
 
 When addressing review comments, simplifying a PR, or reporting that a PR is "merge-ready", coding agents MUST follow these verification rules:
 
-1. **Never Equate "Zero New Bot Findings on Latest Push" with "All Threads Resolved"**:
+1. **Critical Triage of Review Comments (Do NOT Blindly Implement Every Comment)**:
+   - Automated reviewers (e.g., Codex) frequently speculate about edge cases or request deeper mock fidelity that strays from the PR's purpose.
+   - **Triage before coding**:
+     - **Genuine Blocker / Regression**: Fix directly and cleanly with minimal diff.
+     - **Speculative Edge Cases / Pedantic Mock Demands / Out-of-Scope Requests**: Do NOT write complex defensive branching, convoluted mock setups, or sprawling helper code to appease the bot. Instead, classify the finding as **Intentionally Deferred / Out of Scope** (e.g., `"Deferred: Speculative edge case outside the PR's stated intent; kept simple per YAGNI (AGENTS.md Section 2)"`) and reply directly on the review thread.
+     - `[Suggestion]` and `[Nit]` items are non-blocking. Only address them if the fix is trivial (1–2 lines) and does not increase complexity.
+2. **Never Equate "Zero New Bot Findings on Latest Push" with "All Threads Resolved"**:
    - Automated reviewers (e.g., Codex) only inspect the latest push and may stop re-reporting older unresolved threads.
    - Before claiming a PR is ready, enumerate **all** review comments across the PR timeline and explicitly classify each one as:
      - **Fixed** (cite the exact file/line and the regression test on the current `HEAD`), or
      - **Intentionally Deferred / Won't Fix** (cite the reason, scope boundary, or follow-up Issue, and leave a clear reply on the PR).
-2. **Audit Against Historical Review Comments After Any Reset, Rebase, or Simplification**:
+3. **Audit Against Historical Review Comments After Any Reset, Rebase, or Simplification**:
    - Whenever a branch is reset, rebased, or simplified to remove over-engineering, previously applied fixes can easily be dropped.
    - After any branch rewrite, re-verify every historical review finding against the **current `HEAD` code and the diff from the target base ref or merge-base (e.g., `git diff <base-ref>...HEAD`, resolving `<base-ref>` dynamically to `main`, `origin/main`, or the PR base commit available in the checkout)**—never rely on memory of what was fixed in an earlier, discarded commit.
-3. **Check Symmetric Entrypoints & Execution Paths**:
-   - When fixing a bug in one method or solver backend, systematically check symmetric entrypoints and branches (e.g., `solve()` vs. `check()`, `sat` vs. `unsat`, `<=` vs. `>=`, `HiGHS` vs. `GLPK` vs. `Z3`) so fixes are never applied to only half of a parallel code path.
-4. **Reproduce Every Reported Bug with a Test on `HEAD`**:
-   - Never claim a review finding is fixed without an automated test in the current branch that reproduces the exact scenario from the review comment and passes on `HEAD`.
+4. **Check Symmetric Entrypoints & Execution Paths (Core Domain Only)**:
+   - When fixing a bug in core solver methods or public model APIs, systematically check symmetric entrypoints and branches (e.g., `solve()` vs. `check()`, `sat` vs. `unsat`, `<=` vs. `>=`, `HiGHS` vs. `GLPK` vs. `Z3`) so fixes are not applied to only half of a parallel code path. Do not force artificial symmetry onto asymmetric utility or demo UI code.
+5. **Reproduce Verifiable Bugs with a Test on `HEAD`**:
+   - For genuine functional bugs or regressions within the PR's core scope, write an automated regression test on `HEAD`.
+   - Do NOT construct elaborate mock frameworks for speculative or non-reproducible reviewer scenarios.
+6. **Sweep the Entire Surface Class for Systemic Pattern Issues (Prevent Review Whack-a-Mole)**:
+   - When fixing a systemic category of issue within the PR's scope (e.g., broad localization rollouts, public status mappings), audit the affected surface once rather than patching one line per push. For isolated or single-element fixes, a focused behavioral test is completely sufficient; do not demand exhaustive whole-DOM scans or elaborate test harnesses.
+7. **Pre-Screen Every Commit Against Section 4 Before Pushing**:
+   - Review fixes frequently trigger secondary review rounds when test harnesses or helpers take shortcuts. Before pushing any commit, verify that the new diff introduces **zero unjustified** `any` or `as unknown as ...` assertions (Section 4.B), **zero** source-substring-only tests in place of behavioral tests (Section 4.C), and **zero** collateral changes outside the PR scope (Section 2).
 
