@@ -1034,6 +1034,15 @@ export interface TimetableUiStrings {
   trajCopyBtn: string;
   trajDownloadBtn: string;
   trajClearBtn: string;
+
+  promptCatalogBtn: string;
+  promptCatalogTitle: string;
+  promptCatalogIntro: string;
+  promptCatalogCloseBtn: string;
+  promptCatalogCategories: Array<{
+    title: string;
+    items: Array<{ label: string; desc: string; prompt: string }>;
+  }>;
 }
 
 export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
@@ -1282,6 +1291,169 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     trajCopyBtn: "📋 JSONをクリップボードにコピー",
     trajDownloadBtn: "📥 JSONファイルを保存 (.json)",
     trajClearBtn: "🗑️ ログをクリア",
+
+    promptCatalogBtn: "📖 プロンプト集",
+    promptCatalogTitle: "🤖 Gemini Nano 想定質問・指示プロンプト集 (8カテゴリ)",
+    promptCatalogIntro:
+      "Gemini Nano が自然言語から正確に構造化（JSON toolCalls）して WaSHI × HiGHS ソルバーに渡せる代表的な指示例です。クリックするとチャット入力欄に自動入力されます。",
+    promptCatalogCloseBtn: "閉じる",
+    promptCatalogCategories: [
+      {
+        title: "👨‍🏫 1. 教員の出講都合・出講制限",
+        items: [
+          {
+            label: "佐藤先生は月曜日休みにして",
+            desc: "特定教員の特定曜日を終日出講NGにします",
+            prompt: "佐藤先生(P01)は月曜日を終日出講不可(NG)に設定して",
+          },
+          {
+            label: "小林先生は火・木の午後(3〜5限)のみ可能にする",
+            desc: "非常勤講師の来校可能枠を限定します",
+            prompt: "非常勤の小林先生(P09)は火曜と木曜の午後(3〜5限)しか来られないように設定して",
+          },
+          {
+            label: "鈴木先生の1限・5限回避希望を設定",
+            desc: "教員の1限・5限回避のソフト希望（全曜日）を設定します",
+            prompt: "鈴木先生(P02)は1限と5限のコマをなるべく避けるように設定して",
+          },
+          {
+            label: "高橋先生の1日上限を2コマに制限",
+            desc: "特定教員の1日担当コマ数の上限を変更します",
+            prompt: "高橋先生(P03)の1日最大担当コマ数を2コマまでに制限して",
+          },
+        ],
+      },
+      {
+        title: "📌 2. 授業の配置・固定（ピン留め）",
+        items: [
+          {
+            label: "数理最適化(C15)を火曜2限・101大講義室に固定",
+            desc: "指定科目を特定の曜日・時限・教室に強制固定します",
+            prompt: "数理最適化(C15)を火曜2限の101大講義室(R101)に固定して、時間割を再最適化して",
+          },
+          {
+            label: "機械学習(C16)の2コマを火2・木2に固定",
+            desc: "週2コマ科目を指定の2スロットに固定します",
+            prompt: "機械学習(C16)の週2コマを火曜2限と木曜2限に固定して",
+          },
+          {
+            label: "情報科学概論(C01)を月曜1限に配置",
+            desc: "1年次必修のキックオフ講義を固定します",
+            prompt: "情報科学概論(C01)を月曜1限に配置して",
+          },
+        ],
+      },
+      {
+        title: "🚫 3. 開講禁止枠・裏番組（重複）回避",
+        items: [
+          {
+            label: "機械学習(C16)と自然言語処理(C17)の裏番組を禁止",
+            desc: "2科目を同一曜日・時限に開講させない制約を追加します",
+            prompt: "機械学習(C16)と自然言語処理(C17)は両方履修する学生が多いので、同じ曜日・時限に被せないで",
+          },
+          {
+            label: "情報セキュリティ(C18)は月1・金5を避けて",
+            desc: "科目の特定曜日・時限への配置を禁止します",
+            prompt: "情報セキュリティ(C18)は月曜1限と金曜5限を避けて配置して",
+          },
+          {
+            label: "プログラミング演習A(C05)を金曜NGに",
+            desc: "科目の特定曜日終日配置を禁止します",
+            prompt: "プログラミング入門演習A(C05)を金曜日に配置しないで",
+          },
+        ],
+      },
+      {
+        title: "🔗 4. 連続コマ・履修順序（先行関係）",
+        items: [
+          {
+            label: "ソフトウェア設計演習(C12)の2コマを連続開講",
+            desc: "週2コマを同日の連続時限（例: 2-3限）にまとめて配置します",
+            prompt: "ソフトウェア設計演習(C12)の週2コマは、同じ曜日の連続する時限(2コマ連続)にまとめて開講して",
+          },
+          {
+            label: "演習A(C05)を演習B(C06)より前または同日に開講",
+            desc: "先行科目と後続科目のカリキュラム順序を守らせます",
+            prompt: "プログラミング入門演習A(C05)は演習B(C06)と同じ曜日か、それより前の曜日に開講して",
+          },
+        ],
+      },
+      {
+        title: "🏫 5. 教室・設備・メンテ閉鎖",
+        items: [
+          {
+            label: "ソフトウェア設計演習(C12)にPC演習室を必須指定",
+            desc: "端末設備が必要な講義にPC演習室を義務付けます",
+            prompt: "ソフトウェア設計演習(C12)はPC演習室(pc_lab)を必ず使わせて",
+          },
+          {
+            label: "数理最適化ゼミ(C23)をゼミ室限定に",
+            desc: "少人数ゼミにゼミ室を割り当て大教室を空けます",
+            prompt: "数理最適化ゼミ(C23)は大講義室を使わないで、ゼミ室にして",
+          },
+          {
+            label: "301 PC演習室Aを木曜午後にメンテ閉鎖",
+            desc: "定期保守や行事による特定時限の教室閉鎖を登録します",
+            prompt: "301 PC演習室A(R301)は木曜日の午後(3〜5限)にネットワーク機器メンテナンスで閉鎖して",
+          },
+        ],
+      },
+      {
+        title: "⚖️ 6. 全体ポリシー・上限設定の変更",
+        items: [
+          {
+            label: "教員の連続講義を禁止(最大1コマ)に変更",
+            desc: "全教員の連続講義ポリシーを厳格化します",
+            prompt: "教員の連続講義上限を2コマから1コマ(連続講義なし)に変更して組み直して",
+          },
+          {
+            label: "教員の1日上限を2コマに変更",
+            desc: "教員の1日負担を全体的に緩和します",
+            prompt: "教員の1日最大講義コマ数を2コマに変更して",
+          },
+          {
+            label: "微調整モード(既存時間割の維持)をON",
+            desc: "既存のコマ配置を可能な限り変更せずに解きます",
+            prompt: "微調整モード(既存の時間割をなるべく維持)をONにして",
+          },
+        ],
+      },
+      {
+        title: "💥 7. 矛盾診断・トラブルシューティング",
+        items: [
+          {
+            label: "非常勤講師のNG曜日に固定して矛盾診断",
+            desc: "出講不可日との矛盾を注入し、WaSHI (HiGHS) の原因特定を検証します",
+            prompt: "火曜と木曜しか来られない非常勤の小林先生の情報セキュリティ(C18)を月曜3限に固定するとどうなるか矛盾診断して",
+          },
+          {
+            label: "大講義室ダブルブッキングの矛盾を診断",
+            desc: "定員と教室重複による解なし(Infeasible)を診断します",
+            prompt: "130名超の1年必修2科目を両方「火曜2限・101大講義室」に固定して矛盾診断して",
+          },
+          {
+            label: "PC演習室不足の矛盾を診断",
+            desc: "設備不足による矛盾を診断します",
+            prompt: "PC演習室が2室しかないのにPC必須3科目を「月曜2限」に同時固定して診断して",
+          },
+        ],
+      },
+      {
+        title: "↩️ 8. ルールのリセット・解除",
+        items: [
+          {
+            label: "追加ルールをすべて解除する",
+            desc: "個別に追加した固定や禁止をリセットします",
+            prompt: "個別に追加したカスタムルールをすべて解除して",
+          },
+          {
+            label: "全体を初期状態に完全リセットする",
+            desc: "時間割・設定・追加ルールをすべて初期化します",
+            prompt: "すべての時間割設定・追加ルールを初期状態にリセットして",
+          },
+        ],
+      },
+    ],
   } as TimetableUiStrings & { cfgMaxConsecutiveHtml?: string },
 
   en: {
@@ -1529,6 +1701,169 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     trajCopyBtn: "📋 Copy JSON to Clipboard",
     trajDownloadBtn: "📥 Download JSON (.json)",
     trajClearBtn: "🗑️ Clear Log",
+
+    promptCatalogBtn: "📖 Prompt Catalog",
+    promptCatalogTitle: "🤖 Gemini Nano Expected Questions & Prompt Catalog (8 Categories)",
+    promptCatalogIntro:
+      "Representative natural-language requests accurately parsed into JSON tool calls by Gemini Nano for the WaSHI × HiGHS solver. Click any item to populate the chat input.",
+    promptCatalogCloseBtn: "Close",
+    promptCatalogCategories: [
+      {
+        title: "👨‍🏫 1. Faculty Availability & Day Restrictions",
+        items: [
+          {
+            label: "Give Prof. Sato Mondays Off",
+            desc: "Marks all Monday slots as unavailable (NG) for Prof. Sato",
+            prompt: "Mark all Monday periods as unavailable (NG) for Prof. Sato (P01)",
+          },
+          {
+            label: "Restrict Adjunct Mr. Kobayashi to Tue/Thu Afternoon",
+            desc: "Restricts part-time lecturer slots to Tue/Thu P3-P5 only",
+            prompt: "Restrict adjunct lecturer Mr. Kobayashi (P09) to Tue and Thu afternoon (P3-P5) only",
+          },
+          {
+            label: "Set Period 1 & Period 5 Avoidance for Prof. Suzuki",
+            desc: "Soft preference avoiding early and late periods",
+            prompt: "Set preferences for Prof. Suzuki (P02) to avoid Period 1 and Period 5",
+          },
+          {
+            label: "Limit Prof. Takahashi to 2 Daily Sessions",
+            desc: "Caps maximum teaching sessions per day",
+            prompt: "Limit Prof. Takahashi (P03) to a maximum of 2 sessions per day",
+          },
+        ],
+      },
+      {
+        title: "📌 2. Course Slot Pinning",
+        items: [
+          {
+            label: "Pin Optimization (C15) to Tue P2 in Hall 101",
+            desc: "Locks course to a specific day, period, and lecture hall",
+            prompt: "Pin Mathematical Optimization (C15) to Tue P2 in Hall 101 (R101)",
+          },
+          {
+            label: "Pin Machine Learning (C16) to Tue P2 and Thu P2",
+            desc: "Locks two-session course to specific slots",
+            prompt: "Pin Machine Learning (C16) sessions to Tue P2 and Thu P2",
+          },
+          {
+            label: "Pin Intro to CS (C01) to Mon P1",
+            desc: "Schedules first-year compulsory kickoff course",
+            prompt: "Schedule Introduction to Computer Science (C01) on Mon P1",
+          },
+        ],
+      },
+      {
+        title: "🚫 3. Slot Forbids & Overlap Prevention",
+        items: [
+          {
+            label: "Prevent Overlap between ML (C16) and NLP (C17)",
+            desc: "Prevents scheduling two courses at the same day/period",
+            prompt: "Prevent time overlap between Machine Learning (C16) and Natural Language Processing (C17)",
+          },
+          {
+            label: "Avoid Mon P1 & Fri P5 for Information Security (C18)",
+            desc: "Forbids specific slots for a course",
+            prompt: "Forbid Mon P1 and Fri P5 for Information Security (C18)",
+          },
+          {
+            label: "Forbid Friday for Programming Lab A (C05)",
+            desc: "Forbids an entire day for a course",
+            prompt: "Do not schedule Introductory Programming Lab A (C05) on Friday",
+          },
+        ],
+      },
+      {
+        title: "🔗 4. Consecutive Sessions & Curriculum Precedence",
+        items: [
+          {
+            label: "Schedule SW Design Lab (C12) in Back-to-Back Slots",
+            desc: "Groups 2 sessions into consecutive periods on the same day",
+            prompt: "Schedule both sessions of Software Design Lab (C12) in consecutive periods on the same day",
+          },
+          {
+            label: "Require Programming Lab A (C05) on or before Lab B (C06)",
+            desc: "Enforces prerequisite calendar sequence",
+            prompt: "Schedule Introductory Programming Lab A (C05) on the same day or earlier in the week than Lab B (C06)",
+          },
+        ],
+      },
+      {
+        title: "🏫 5. Room, Equipment & Maintenance Closures",
+        items: [
+          {
+            label: "Require PC Lab for SW Design Lab (C12)",
+            desc: "Enforces specialized computer equipment requirements",
+            prompt: "Require a PC lab (pc_lab) for Software Design Lab (C12)",
+          },
+          {
+            label: "Restrict Seminar (C23) to Seminar Rooms",
+            desc: "Frees large halls by assigning small seminar rooms",
+            prompt: "Forbid large lecture halls for Optimization Seminar (C23) and use a seminar room",
+          },
+          {
+            label: "Close PC Lab A (R301) on Thu Afternoon for Maintenance",
+            desc: "Temporarily locks a room for maintenance or exams",
+            prompt: "Close 301 PC Lab A (R301) on Thursday afternoon (P3-P5) for network maintenance",
+          },
+        ],
+      },
+      {
+        title: "⚖️ 6. Global Policy Settings",
+        items: [
+          {
+            label: "Forbid Consecutive Sessions for Faculty (Max 1)",
+            desc: "Tightens faculty fatigue policy",
+            prompt: "Set maximum consecutive periods for faculty to 1 and re-solve",
+          },
+          {
+            label: "Set Faculty Daily Max to 2 Sessions",
+            desc: "Lowers faculty workload per day",
+            prompt: "Set maximum daily sessions for faculty to 2",
+          },
+          {
+            label: "Turn on Minimal Perturbation Mode",
+            desc: "Preserves current timetable assignments as much as possible",
+            prompt: "Turn on minimal perturbation mode to preserve the current timetable",
+          },
+        ],
+      },
+      {
+        title: "💥 7. Conflict Diagnosis & Troubleshooting",
+        items: [
+          {
+            label: "Diagnose Adjunct Lecturer Slot Conflict",
+            desc: "Pins adjunct course on unavailable day and runs IIS diagnosis",
+            prompt: "Pin adjunct lecturer Kobayashi's course (C18) to Mon P3 and diagnose conflicting constraints",
+          },
+          {
+            label: "Diagnose Lecture Hall Double-Booking",
+            desc: "Pins two large compulsory courses to the same room/slot",
+            prompt: "Inject room double-booking conflict demo and diagnose",
+          },
+          {
+            label: "Diagnose PC Lab Capacity Overload",
+            desc: "Pins 3 lab courses simultaneously when only 2 labs exist",
+            prompt: "Inject PC lab overload conflict demo and diagnose",
+          },
+        ],
+      },
+      {
+        title: "↩️ 8. Rule Resets & Clear",
+        items: [
+          {
+            label: "Clear All Custom Rules",
+            desc: "Removes all custom pins, forbids, and relation rules",
+            prompt: "Clear all custom timetable rules",
+          },
+          {
+            label: "Reset Timetable & Settings to Defaults",
+            desc: "Completely resets state back to factory defaults",
+            prompt: "Reset all timetable settings and custom rules to defaults",
+          },
+        ],
+      },
+    ],
   },
 
   zh: {
@@ -1771,5 +2106,168 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     trajCopyBtn: "📋 复制 JSON 到剪贴板",
     trajDownloadBtn: "📥 下载 JSON 文件 (.json)",
     trajClearBtn: "🗑️ 清空日志",
+
+    promptCatalogBtn: "📖 指令示例库",
+    promptCatalogTitle: "🤖 Gemini Nano 预期指令与提问示例库 (8个分类)",
+    promptCatalogIntro:
+      "Gemini Nano 可准确结构化为 JSON toolCalls 并交由 WaSHI × HiGHS 求解器处理的典型指令示例。点击任意项即可自动填入对话框。",
+    promptCatalogCloseBtn: "关闭",
+    promptCatalogCategories: [
+      {
+        title: "👨‍🏫 1. 教师出勤限制与偏好",
+        items: [
+          {
+            label: "给佐藤教授周一排休",
+            desc: "将佐藤教授 (P01) 的周一全天设为不可出勤 (NG)",
+            prompt: "将佐藤教授(P01)的周一全天设为不可出勤(NG)",
+          },
+          {
+            label: "限制兼职小林老师仅周二・周四下午排课",
+            desc: "限制兼职讲师仅在周二・周四第3~5节上课",
+            prompt: "将兼职讲师小林老师(P09)的授课时间限制在周二和周四下午(3~5节)",
+          },
+          {
+            label: "设置铃木教授避开第1节与第5节",
+            desc: "设置避开早晚节次的软性排课偏好",
+            prompt: "尽量避免给铃木教授(P02)排第1节与第5节课",
+          },
+          {
+            label: "限制高桥教授单日最多2节课",
+            desc: "设置教师单日最大授课节数上限",
+            prompt: "将高桥教授(P03)单日最大授课节数限制为2节",
+          },
+        ],
+      },
+      {
+        title: "📌 2. 课程时段与教室固定 (Pin)",
+        items: [
+          {
+            label: "将《数理最优化》固定在周二第2节・101大教室",
+            desc: "强制将指定课程锁定到特定星期、节次与大讲堂",
+            prompt: "将数理最优化(C15)固定在周二第2节・101大讲堂(R101)",
+          },
+          {
+            label: "将《机器学习》2节课分别固定在周二2节与周四2节",
+            desc: "将周多节课程锁定到具体的多个时段",
+            prompt: "将机器学习(C16)的两节课分别固定在周二第2节与周四第2节",
+          },
+          {
+            label: "将《计算机导论》排在周一第1节",
+            desc: "固定大一开学必修课时段",
+            prompt: "将计算机科学导论(C01)安排在周一第1节",
+          },
+        ],
+      },
+      {
+        title: "🚫 3. 禁排时段与防课程时间冲突",
+        items: [
+          {
+            label: "禁止《机器学习》与《自然语言处理》同时间开课",
+            desc: "防止同选率高的两门课排在相同星期和节次",
+            prompt: "机器学习(C16)与自然语言处理(C17)选课重叠较多，请禁止时间冲突",
+          },
+          {
+            label: "《信息安全》避开周一第1节与周五第5节",
+            desc: "禁止特定课程排在指定时段",
+            prompt: "信息安全(C18)避开周一第1节与周五第5节排课",
+          },
+          {
+            label: "《编程实验A》周五不排课",
+            desc: "禁止课程排在特定星期的全天时段",
+            prompt: "程序设计入门实验A(C05)周五不要排课",
+          },
+        ],
+      },
+      {
+        title: "🔗 4. 连堂授课与修读顺序 (先行约束)",
+        items: [
+          {
+            label: "《软件设计实验》连排2节课",
+            desc: "将同门课程的多节课连续安排在同一天的相邻节次",
+            prompt: "将软件设计实验(C12)的每周2节课连排在同一天的连续节次",
+          },
+          {
+            label: "《实验A》安排在《实验B》同天或之前",
+            desc: "确保修读先后的课程序列约束",
+            prompt: "程序设计入门实验A(C05)必须排在实验B(C06)相同星期或更早的星期",
+          },
+        ],
+      },
+      {
+        title: "🏫 5. 教室设备要求与维护封停",
+        items: [
+          {
+            label: "《软件设计实验》必须使用PC机房",
+            desc: "满足实验课对电脑设备的强制要求",
+            prompt: "软件设计实验(C12)必须使用PC机房(pc_lab)",
+          },
+          {
+            label: "《最优化研讨课》改用研讨室，腾出大教室",
+            desc: "小班研讨课转入专用研讨室",
+            prompt: "数理最优化研讨班(C23)不要占用大教室，请使用研讨室",
+          },
+          {
+            label: "301 PC机房周四下午网络维护关闭",
+            desc: "因设备检修或考试封停指定教室时段",
+            prompt: "301 PC演练室A(R301)周四下午(3~5节)进行网络维护，设置为封停不可用",
+          },
+        ],
+      },
+      {
+        title: "⚖️ 6. 全局排课策略与上限配置",
+        items: [
+          {
+            label: "禁止教师连堂授课 (最大连续1节)",
+            desc: "提高教师疲劳控制策略标准",
+            prompt: "将教师最大连续讲课节数上限设为1节",
+          },
+          {
+            label: "将教师单日授课上限设为2节",
+            desc: "缓解教师单日教学负荷",
+            prompt: "将教师单日最大授课节数设为2节",
+          },
+          {
+            label: "开启微调模式 (尽量保持现有排课不变)",
+            desc: "在现有排课基础上做最小扰动微调",
+            prompt: "开启微调模式，尽量保留现有课表布局进行调整",
+          },
+        ],
+      },
+      {
+        title: "💥 7. 冲突诊断与故障排查演示",
+        items: [
+          {
+            label: "诊断兼职教师出勤冲突",
+            desc: "在兼职讲师不可出勤日排课，验证 WaSHI (HiGHS) 冲突归因",
+            prompt: "将仅周二周四可出勤的小林老师的课(C18)强制排在周一第3节，并诊断冲突",
+          },
+          {
+            label: "诊断大讲堂双重占用冲突",
+            desc: "将两门超百人必修大课同时安排在同一教室",
+            prompt: "注入大阶梯教室双重排课冲突演示并诊断",
+          },
+          {
+            label: "诊断PC机房容量超负荷冲突",
+            desc: "在仅有2间机房的情况下同时安排3门机房课",
+            prompt: "注入PC机房容量不足冲突演示并诊断",
+          },
+        ],
+      },
+      {
+        title: "↩️ 8. 规则重置与初始化",
+        items: [
+          {
+            label: "清除所有自定义追加规则",
+            desc: "一键清空用户手动追加的固定与禁排规则",
+            prompt: "清除所有自定义排课规则",
+          },
+          {
+            label: "完全重置所有课表与全局设置",
+            desc: "恢复到出厂默认课表与初始参数",
+            prompt: "将所有排课设置与自定义规则重置为初始状态",
+          },
+        ],
+      },
+    ],
   },
 };

@@ -122,6 +122,15 @@ function setHtml(id: string, html: string): void {
   if (el) el.innerHTML = html;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildTrajectoryExport(): AiTimetableTrajectoryExport {
   return {
     exportedAt: new Date().toISOString(),
@@ -684,14 +693,14 @@ function renderTimetableBoard(): void {
               })}</h4>
               <ul>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `専任教員: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => p.name).slice(0, 3).join("、")} など計${profCount - adjunctCount}名`,
-                  en: `Full-time: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => p.name).slice(0, 3).join(", ")}, etc.`,
-                  zh: `专任教师: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => p.name).slice(0, 3).join("、")} 等共${profCount - adjunctCount}位`,
+                  ja: `専任教員: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} など計${profCount - adjunctCount}名`,
+                  en: `Full-time: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join(", ")}, etc.`,
+                  zh: `专任教师: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} 等共${profCount - adjunctCount}位`,
                 })}</li>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `非常勤・曜日制限: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${p.name}(制限あり)`).join("、") || "特になし"}`,
-                  en: `Part-time / Day limits: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${p.name} (restricted)`).join(", ") || "None"}`,
-                  zh: `兼职/时间限制: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${p.name}(受限)`).join("、") || "无"}`,
+                  ja: `非常勤・曜日制限: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(制限あり)`).join("、") || "特になし"}`,
+                  en: `Part-time / Day limits: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)} (restricted)`).join(", ") || "None"}`,
+                  zh: `兼职/时间限制: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(受限)`).join("、") || "无"}`,
                 })}</li>
               </ul>
             </div>
@@ -703,14 +712,14 @@ function renderTimetableBoard(): void {
               })}</h4>
               <ul>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `講義室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${r.name}(定員${r.capacity})`).join("、")}`,
-                  en: `Lecture Halls: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${r.name} (cap ${r.capacity})`).join(", ")}`,
-                  zh: `讲堂教室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${r.name}(容纳${r.capacity}人)`).join("、")}`,
+                  ja: `講義室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)}(定員${r.capacity})`).join("、")}`,
+                  en: `Lecture Halls: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)} (cap ${r.capacity})`).join(", ")}`,
+                  zh: `讲堂教室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)}(容纳${r.capacity}人)`).join("、")}`,
                 })}</li>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `PC演習室・ゼミ室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => r.name).join("、")}`,
-                  en: `PC Labs & Seminars: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => r.name).join(", ")}`,
-                  zh: `机房与研讨室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => r.name).join("、")}`,
+                  ja: `PC演習室・ゼミ室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
+                  en: `PC Labs & Seminars: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join(", ")}`,
+                  zh: `机房与研讨室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
                 })}</li>
               </ul>
             </div>
@@ -1692,6 +1701,48 @@ function updateStatusBlankUI(): void {
   solveTimeEl.textContent = "-- ms";
 }
 
+function renderPromptCatalogDialog(lang: TimetableLang): void {
+  const container = document.getElementById("prompt-catalog-categories-container");
+  if (!container) return;
+  const ui = UI_TEXT_I18N[lang];
+  setText("prompt-catalog-dialog-title", ui.promptCatalogTitle);
+  setText("prompt-catalog-intro", ui.promptCatalogIntro);
+  setText("btn-close-prompt-catalog-bottom", ui.promptCatalogCloseBtn);
+
+  const html = ui.promptCatalogCategories
+    .map(
+      (cat) => `
+    <div class="prompt-category-group">
+      <div class="prompt-category-title">${escapeHtml(cat.title)}</div>
+      <div class="prompt-catalog-grid">
+        ${cat.items
+          .map(
+            (item) => `
+          <button type="button" class="prompt-catalog-item" data-prompt="${escapeHtml(item.prompt)}">
+            <span class="prompt-catalog-text">${escapeHtml(item.label)}</span>
+            <span class="prompt-catalog-desc">${escapeHtml(item.desc)}</span>
+          </button>`
+          )
+          .join("")}
+      </div>
+    </div>`
+    )
+    .join("");
+
+  container.innerHTML = html;
+
+  container.querySelectorAll<HTMLButtonElement>(".prompt-catalog-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const p = btn.dataset.prompt;
+      if (p) {
+        $<HTMLTextAreaElement>("chat-input").value = p;
+        $<HTMLDialogElement>("prompt-catalog-dialog").close();
+        $<HTMLTextAreaElement>("chat-input").focus();
+      }
+    });
+  });
+}
+
 function renderAll(): void {
   renderTimetableBoard();
   renderCustomRulesAndSettings();
@@ -1998,6 +2049,8 @@ export function applyTimetableLang(lang: TimetableLang): void {
     "btn-close-slot-dialog",
     "btn-close-nano-dialog",
     "btn-close-trajectory-dialog",
+    "btn-close-prompt-catalog",
+    "btn-close-csv-import",
   ]) {
     const closeBtn = document.getElementById(closeBtnId);
     if (closeBtn) closeBtn.setAttribute("aria-label", ui.dialogCloseLabel);
@@ -2066,6 +2119,8 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("chat-input-label", ui.chatInputLabel);
   $<HTMLTextAreaElement>("chat-input").placeholder = ui.chatPlaceholder;
   setText("btn-examples-trigger", ui.btnExamples);
+  setText("btn-open-prompt-catalog", ui.promptCatalogBtn);
+  renderPromptCatalogDialog(lang);
   setText("txt-auto-solve", ui.autoSolveLabel);
   $("lbl-auto-solve").title = ui.autoSolveTitle;
   setText("btn-chat-abort", ui.btnChatAbort);
@@ -2886,16 +2941,6 @@ function wireEvents(): void {
   });
   $("btn-close-prompt-catalog-bottom")?.addEventListener("click", () => {
     $<HTMLDialogElement>("prompt-catalog-dialog").close();
-  });
-  document.querySelectorAll<HTMLButtonElement>(".prompt-catalog-item").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const p = btn.dataset.prompt;
-      if (p) {
-        $<HTMLTextAreaElement>("chat-input").value = p;
-        $<HTMLDialogElement>("prompt-catalog-dialog").close();
-        $<HTMLTextAreaElement>("chat-input").focus();
-      }
-    });
   });
 }
 

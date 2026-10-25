@@ -1561,16 +1561,39 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           intentType?: ParsedTimetableChatPlan["intentType"];
           toolCalls?: RawStage2ToolCall[];
           replyJa?: string;
-        } = {};
+        };
 
         try {
           parsed = JSON.parse(rawJson.trim());
         } catch {
-          const repaired = repairTruncatedJson(rawJson);
-          try {
-            parsed = JSON.parse(repaired);
-          } catch {
-            parsed = {};
+          // If initial output was truncated or invalid JSON, attempt a clean retry with ultra-compact catalog.
+          // Never execute a repaired partial prefix of tool calls, as it silently drops requested operations.
+          const isInitialAttempt = usedPrompt !== `${buildUltraCompactCatalogPrompt(state)}\n\n指示: 「${userMessage}」`;
+          if (isInitialAttempt && !signal?.aborted) {
+            if (shouldDestroy && typeof session.destroy === "function") {
+              try {
+                session.destroy();
+              } catch {
+                // Ignore
+              }
+            }
+            const fresh = await getFreshExtractorSession();
+            session = fresh.session;
+            shouldDestroy = fresh.shouldDestroy;
+            usedPrompt = `${buildUltraCompactCatalogPrompt(state)}\n\n指示: 「${userMessage}」`;
+            rawJson = await session.prompt(usedPrompt, {
+              responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
+              signal,
+            });
+            parsed = JSON.parse(rawJson.trim());
+          } else {
+            throw new Error(
+              pickTimetableLang(lang, {
+                ja: "モデルの出力が途中で途切れました。指示を短く分割して再度お試しください。",
+                en: "The model response was truncated or invalid. Please split your request into shorter prompts.",
+                zh: "模型输出被截断或格式无效。请将指令缩短或拆分后重试。",
+              })
+            );
           }
         }
 
