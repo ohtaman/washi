@@ -10,6 +10,8 @@ import {
   parseCsvRows,
   parseProfessorsCsv,
   parseRoomsCsv,
+  parseSlotToken,
+  validateTimetableDataset,
 } from "../examples/web-demo/apps/ai-timetable/csv-handler";
 import {
   createBlankTimetableState,
@@ -37,6 +39,7 @@ describe("Timetable CSV Handler & Blank Slate Mode", () => {
     // Professors
     const profsCsv = exportProfessorsCsv(defaultState.professors);
     expect(profsCsv).toContain("id,name,title");
+    expect(profsCsv).toContain("unavailableSlots");
     expect(profsCsv).toContain("P01");
     const parsedProfs = parseProfessorsCsv(profsCsv);
     expect(parsedProfs.errors).toHaveLength(0);
@@ -44,6 +47,14 @@ describe("Timetable CSV Handler & Blank Slate Mode", () => {
     const p1 = parsedProfs.professors.find((p) => p.id === "P01");
     expect(p1?.name).toBe("佐藤 健一");
     expect(p1?.employment).toBe("full_time");
+    expect(p1?.unavailableSlots).toEqual([
+      { day: "Wed", period: 5, reason: "学部長・教授会定例" },
+    ]);
+    const p2 = parsedProfs.professors.find((p) => p.id === "P02");
+    expect(p2?.unavailableSlots).toEqual([
+      { day: "Wed", period: 5, reason: "教授会定例" },
+      { day: "Mon", period: 1, reason: "共同研究定例ミーティング" },
+    ]);
 
     // Rooms
     const roomsCsv = exportRoomsCsv(defaultState.rooms);
@@ -99,5 +110,52 @@ multiline"
     expect(rows[1][1]).toBe("Smith, John");
     expect(rows[1][2]).toBe('Hello "World"\nmultiline');
     expect(rows[2][1]).toBe("Tanaka");
+  });
+
+  it("parses unavailable slot tokens in various Japanese and English formats", () => {
+    expect(parseSlotToken("Wed-5(教授会定例)")).toEqual({
+      day: "Wed",
+      period: 5,
+      reason: "教授会定例",
+    });
+    expect(parseSlotToken("水曜5限")).toEqual({
+      day: "Wed",
+      period: 5,
+    });
+    expect(parseSlotToken("Mon-1 (Meeting)")).toEqual({
+      day: "Mon",
+      period: 1,
+      reason: "Meeting",
+    });
+    expect(parseSlotToken("金:3")).toEqual({
+      day: "Fri",
+      period: 3,
+    });
+    expect(parseSlotToken("invalid")).toBeNull();
+  });
+
+  it("validates cross-dataset references regardless of loading order", () => {
+    const defaultState = generateTimetableState();
+    const validErrors = validateTimetableDataset(
+      defaultState.professors,
+      defaultState.rooms,
+      defaultState.courses
+    );
+    expect(validErrors).toHaveLength(0);
+
+    // Mismatched professor reference
+    const badCourses = [
+      {
+        ...defaultState.courses[0],
+        professorId: "P_NONEXISTENT",
+      },
+    ];
+    const errors = validateTimetableDataset(
+      defaultState.professors,
+      defaultState.rooms,
+      badCourses
+    );
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors[0]).toContain("P_NONEXISTENT");
   });
 });

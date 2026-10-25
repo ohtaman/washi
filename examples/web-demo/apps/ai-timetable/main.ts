@@ -50,6 +50,7 @@ import {
   parseCoursesCsv,
   parseProfessorsCsv,
   parseRoomsCsv,
+  validateTimetableDataset,
 } from "./csv-handler";
 import {
   diagnoseTimetableWithHiGHS,
@@ -1666,23 +1667,47 @@ function openCsvDialog(): void {
 
 function checkImportReadiness(): void {
   const ready = Boolean(pendingCsvProfs && pendingCsvRooms && pendingCsvCourses);
-  $<HTMLButtonElement>("btn-execute-csv-import").disabled = !ready;
   const feedbackEl = $("csv-import-feedback");
-  if (ready) {
-    feedbackEl.hidden = false;
-    feedbackEl.className = "csv-feedback-box is-success";
-    feedbackEl.textContent = pickTimetableLang(activeLang, {
-      ja: `準備完了: 教員 ${pendingCsvProfs!.length}名、教室 ${pendingCsvRooms!.length}室、科目 ${pendingCsvCourses!.length}科目をインポート可能です。`,
-      en: `Ready: Can import ${pendingCsvProfs!.length} profs, ${pendingCsvRooms!.length} rooms, and ${pendingCsvCourses!.length} courses.`,
-      zh: `就绪: 可导入 ${pendingCsvProfs!.length}位教师、${pendingCsvRooms!.length}间教室、${pendingCsvCourses!.length}门课程。`,
-    });
-  } else {
+  if (!ready) {
+    $<HTMLButtonElement>("btn-execute-csv-import").disabled = true;
     feedbackEl.hidden = true;
+    return;
   }
+
+  const crossErrors = validateTimetableDataset(
+    pendingCsvProfs!,
+    pendingCsvRooms!,
+    pendingCsvCourses!
+  );
+  if (crossErrors.length > 0) {
+    feedbackEl.hidden = false;
+    feedbackEl.className = "csv-feedback-box is-error";
+    feedbackEl.textContent = `❌ 参照整合性エラー:\n` + crossErrors.join("\n");
+    $<HTMLButtonElement>("btn-execute-csv-import").disabled = true;
+    return;
+  }
+
+  $<HTMLButtonElement>("btn-execute-csv-import").disabled = false;
+  feedbackEl.hidden = false;
+  feedbackEl.className = "csv-feedback-box is-success";
+  feedbackEl.textContent = pickTimetableLang(activeLang, {
+    ja: `準備完了: 教員 ${pendingCsvProfs!.length}名、教室 ${pendingCsvRooms!.length}室、科目 ${pendingCsvCourses!.length}科目をインポート可能です。`,
+    en: `Ready: Can import ${pendingCsvProfs!.length} profs, ${pendingCsvRooms!.length} rooms, and ${pendingCsvCourses!.length} courses.`,
+    zh: `就绪: 可导入 ${pendingCsvProfs!.length}位教师、${pendingCsvRooms!.length}间教室、${pendingCsvCourses!.length}门课程。`,
+  });
 }
 
 function executeCsvImport(): void {
   if (!pendingCsvProfs || !pendingCsvRooms || !pendingCsvCourses) return;
+  const crossErrors = validateTimetableDataset(
+    pendingCsvProfs,
+    pendingCsvRooms,
+    pendingCsvCourses
+  );
+  if (crossErrors.length > 0) {
+    alert(crossErrors.join("\n"));
+    return;
+  }
   appState = {
     ...createBlankTimetableState(),
     professors: pendingCsvProfs,
@@ -2696,7 +2721,7 @@ function wireEvents(): void {
     file.text().then((text) => {
       const knownIds = pendingCsvProfs
         ? new Set(pendingCsvProfs.map((p) => p.id))
-        : new Set(appState.professors.map((p) => p.id));
+        : undefined;
       const res = parseCoursesCsv(text, knownIds);
       const stEl = $("file-status-courses");
       if (res.errors.length > 0 || res.courses.length === 0) {
@@ -2720,11 +2745,7 @@ async function initApp(): Promise<void> {
 
   appendChatMessage(
     "assistant",
-    pickTimetableLang(activeLang, {
-      ja: `👋 **大学時間割編成 AI Copilot へようこそ！**\n\n現在は**白紙モード**です。時間割を作成するには、まず以下のいずれかでデータを準備してください：\n1. **「✨ サンプル生成」**: 教員10名・教室7室・25科目の典型的な工学部データを自動生成します。\n2. **「📂 CSV読込」**: お手元の教員・教室・科目のCSVファイルを読み込みます（サンプルCSVもダウンロード可能）。\n\nデータが読み込まれたら、**「⚡ 時間割を自動編成」** を押すことで WaSHI (HiGHS) が制約を満たす最適なコマ配置を一括探索します。`,
-      en: `👋 **Welcome to the University Course Timetabling AI Copilot!**\n\nStarting in **Blank Slate mode**. Prepare your data:\n1. **"✨ Generate Sample"**: Create 10 profs, 7 rooms, and 25 courses.\n2. **"📂 Import CSV"**: Load your own CSV files (templates available).\n\nOnce loaded, click **"Auto-Schedule Timetable"** to optimize!`,
-      zh: `👋 **欢迎使用大学课表编排 AI Copilot！**\n\n当前处于**空白模式**。请准备数据：\n1. **“✨ 生成示例”**：自动生成10位教师、7间教室与25门课程。\n2. **“📂 导入CSV”**：导入您自己的CSV文件。\n\n准备好后点击“自动编排课表”开始优化！`,
-    }),
+    UI_TEXT_I18N[activeLang].chatWelcomeMarkdown,
     undefined,
     true
   );

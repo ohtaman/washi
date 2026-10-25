@@ -8,6 +8,7 @@ import {
   type RoomProfile,
   type RoomType,
   type TimetableDay,
+  type TimetablePeriod,
 } from "./types";
 import {
   createDefaultCourses,
@@ -89,6 +90,25 @@ function parseDayToken(token: string): TimetableDay | null {
   return null;
 }
 
+export function parseSlotToken(token: string): {
+  day: TimetableDay;
+  period: TimetablePeriod;
+  reason?: string;
+} | null {
+  const trimmed = token.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(
+    /^([A-Za-z]+|[月火水木金](?:曜)?(?:日)?)[-_:\s]*([1-5])(?:限)?(?:\s*[\(（](.*)[\)）])?$/
+  );
+  if (!match) return null;
+  const day = parseDayToken(match[1]);
+  if (!day) return null;
+  const period = Number(match[2]) as TimetablePeriod;
+  if (period < 1 || period > 5) return null;
+  const reason = match[3]?.trim();
+  return { day, period, ...(reason ? { reason } : {}) };
+}
+
 function parseCohortToken(token: string): CohortId | null {
   const t = token.trim().toUpperCase();
   if (t === "Y1" || t === "1" || t === "1年" || t === "1年次" || t === "B1") return "Y1";
@@ -144,6 +164,14 @@ export function parseProfessorsCsv(csvText: string): {
   const titleIdx = headers.findIndex((h) => h === "title" || h === "役職" || h === "職階");
   const empIdx = headers.findIndex((h) => h === "employment" || h === "雇用形態" || h === "身分" || h === "区分");
   const unavailIdx = headers.findIndex((h) => h === "unavailabledays" || h === "不可曜日" || h === "出講不可曜日" || h === "ng曜日");
+  const slotIdx = headers.findIndex(
+    (h) =>
+      h === "unavailableslots" ||
+      h === "不可コマ" ||
+      h === "出講不可コマ" ||
+      h === "ngコマ" ||
+      h === "不可スロット"
+  );
   const p1Idx = headers.findIndex((h) => h === "avoidperiod1" || h === "1限回避" || h === "1限ng");
   const p5Idx = headers.findIndex((h) => h === "avoidperiod5" || h === "5限回避" || h === "5限ng");
   const maxIdx = headers.findIndex((h) => h === "maxsessionsperday" || h === "1日最大コマ数" || h === "最大コマ");
@@ -183,6 +211,17 @@ export function parseProfessorsCsv(csvText: string): {
       }
     }
 
+    const unavailableSlots: Array<{ day: TimetableDay; period: TimetablePeriod; reason?: string }> = [];
+    if (slotIdx !== -1 && row[slotIdx]) {
+      const tokens = row[slotIdx].split(";");
+      for (const tok of tokens) {
+        const slot = parseSlotToken(tok);
+        if (slot) {
+          unavailableSlots.push(slot);
+        }
+      }
+    }
+
     const avoidP1 =
       p1Idx !== -1 && row[p1Idx]
         ? ["true", "1", "yes", "要", "回避"].includes(row[p1Idx].trim().toLowerCase())
@@ -204,7 +243,7 @@ export function parseProfessorsCsv(csvText: string): {
       employment,
       specialty: "",
       unavailableDays,
-      unavailableSlots: [],
+      unavailableSlots,
       avoidPeriod1: avoidP1,
       avoidPeriod5: avoidP5,
       maxSessionsPerDay: maxSessions,
@@ -407,6 +446,7 @@ export function exportProfessorsCsv(professors: ProfessorProfile[]): string {
     "title",
     "employment",
     "unavailableDays",
+    "unavailableSlots",
     "avoidPeriod1",
     "avoidPeriod5",
     "maxSessionsPerDay",
@@ -417,6 +457,11 @@ export function exportProfessorsCsv(professors: ProfessorProfile[]): string {
     escapeCsv(p.title),
     escapeCsv(p.employment),
     escapeCsv(p.unavailableDays.join(";")),
+    escapeCsv(
+      p.unavailableSlots
+        .map((s) => `${s.day}-${s.period}${s.reason ? `(${s.reason})` : ""}`)
+        .join(";")
+    ),
     escapeCsv(p.avoidPeriod1),
     escapeCsv(p.avoidPeriod5),
     escapeCsv(p.maxSessionsPerDay),
@@ -472,4 +517,31 @@ export function getSampleRoomsCsv(): string {
 
 export function getSampleCoursesCsv(): string {
   return exportCoursesCsv(createDefaultCourses());
+}
+
+export function validateTimetableDataset(
+  professors: ProfessorProfile[],
+  rooms: RoomProfile[],
+  courses: CourseProfile[]
+): string[] {
+  const errors: string[] = [];
+  const profIdSet = new Set(professors.map((p) => p.id));
+
+  if (professors.length === 0) {
+    errors.push("教員データが空です (1名以上必要です)");
+  }
+  if (rooms.length === 0) {
+    errors.push("教室データが空です (1室以上必要です)");
+  }
+  if (courses.length === 0) {
+    errors.push("科目データが空です (1科目以上必要です)");
+  }
+
+  for (const c of courses) {
+    if (!profIdSet.has(c.professorId)) {
+      errors.push(`科目「${c.title}」(${c.id}): 担当教員ID '${c.professorId}' が教員リストに存在しません`);
+    }
+  }
+
+  return errors;
 }
