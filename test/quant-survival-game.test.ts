@@ -116,6 +116,36 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
     }
   });
 
+  it("accurately reports Infeasible status and verified: false when constraints are mathematically unsatisfiable", async () => {
+    // Single asset BOND has expected return ~0.045, far below the requested target of 0.20
+    const bondRegime = buildSubsetRegime(1, ["bond"]);
+    const infeasibleRes = await solveQuantOptimalPortfolio(bondRegime, 0.20);
+    expect(infeasibleRes.status).toBe("Infeasible");
+    expect(infeasibleRes.verified).toBe(false);
+
+    // Single asset with maxWeightPerAsset = 0.50 (cannot sum to 1.0 without violating cap)
+    const cappedRegime = {
+      ...bondRegime,
+      maxWeightPerAsset: 0.50,
+    };
+    const capViolationRes = await solveQuantOptimalPortfolio(cappedRegime);
+    expect(capViolationRes.status).toBe("Infeasible");
+    expect(capViolationRes.verified).toBe(false);
+  });
+
+  it("emits reversed headlines matching reversed shock impulses", () => {
+    // Verify that every configured shock across all levels provides a distinct reversedHeadline
+    for (let lvl = 1; lvl <= 10; lvl++) {
+      const spec = getLevelSpec(lvl);
+      for (const shock of spec.candidateShocks) {
+        expect(shock.reversedHeadline, `reversedHeadline on level ${lvl} shock ${shock.id}`).toBeDefined();
+        expect(shock.reversedHeadline!.ja).not.toBe(shock.headline.ja);
+        expect(shock.reversedHeadline!.en).not.toBe(shock.headline.en);
+        expect(shock.reversedHeadline!.zh).not.toBe(shock.headline.zh);
+      }
+    }
+  });
+
   it("computes a monotonically increasing Efficient Frontier curve", () => {
     const regime = getQuarterRegime(2);
     const frontier = computeEfficientFrontier(regime, 7);

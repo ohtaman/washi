@@ -148,6 +148,17 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     `,
     unlockDialogTitle: "✨ LEVEL CLEAR & 新銘柄アンロック!",
     unlockDialogOk: "次のステージへ挑む ▶",
+    statExpReturnTitle: "期待リターン E[R]",
+    statVolTitle: "ボラティリティ σ",
+    statRetBadgeTitle: "期待リターン",
+    statVolBadgeTitle: "ボラティリティ (リスク)",
+    sliderAriaSuffix: "投資比率スライダー",
+    corrStrongNegTooltip: "強い逆相関：リスク圧縮効果が極めて高い",
+    targetBadgePrefix: "目標",
+    metricVolLabel: "変動リスク (σ)",
+    frontierAxisRisk: "リスク σ →",
+    idleChartSub: "[MARKET OPEN] を押すとレースがスタートします",
+    aiOptimalPrefix: "WaSHI-QP 最適配分",
   },
   en: {
     pageTitle: "QUANT SURVIVAL | Endless Portfolio Duel",
@@ -204,6 +215,17 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     `,
     unlockDialogTitle: "✨ LEVEL CLEAR & ASSETS UNLOCKED!",
     unlockDialogOk: "Advance to Next Stage ▶",
+    statExpReturnTitle: "Expected Return E[R]",
+    statVolTitle: "Volatility σ",
+    statRetBadgeTitle: "Expected Return",
+    statVolBadgeTitle: "Volatility (Risk)",
+    sliderAriaSuffix: "allocation slider",
+    corrStrongNegTooltip: "Strong negative correlation: high portfolio risk reduction",
+    targetBadgePrefix: "TARGET",
+    metricVolLabel: "Portfolio Volatility (σ)",
+    frontierAxisRisk: "Risk σ →",
+    idleChartSub: "Click [MARKET OPEN] to start the simulation duel",
+    aiOptimalPrefix: "WaSHI-QP Optimal Allocation",
   },
   zh: {
     pageTitle: "QUANT SURVIVAL | 量化生存战",
@@ -259,6 +281,17 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     `,
     unlockDialogTitle: "✨ 恭喜通关! 新资产已解锁!",
     unlockDialogOk: "挑战下一关 ▶",
+    statExpReturnTitle: "预期收益率 E[R]",
+    statVolTitle: "波动率 σ",
+    statRetBadgeTitle: "预期收益率",
+    statVolBadgeTitle: "波动率 (风险)",
+    sliderAriaSuffix: "配置权重滑块",
+    corrStrongNegTooltip: "强负相关：资产对冲与分散风险效果极佳",
+    targetBadgePrefix: "目标",
+    metricVolLabel: "组合波动率 (σ)",
+    frontierAxisRisk: "风险 σ →",
+    idleChartSub: "点击 [MARKET OPEN] 开始净值模拟对决",
+    aiOptimalPrefix: "WaSHI-QP 最优资产配置",
   },
 };
 
@@ -273,6 +306,8 @@ let currentLevelSpec: LevelSpec = getLevelSpec(1);
 let currentRegime: QuarterRegime = buildSubsetRegime(1, selectedAssetIds);
 let playerWeights: number[] = [0.6, 0.4];
 let aiOptimal: QuantOptimalResult | null = null;
+let aiOptimalRegimeKey: string | null = null;
+let currentSolveGeneration = 0;
 let frontierPoints: FrontierPoint[] = [];
 let isSimulating = false;
 let lastSimulation: MarketSimulationResult | null = null;
@@ -498,8 +533,12 @@ function renderScoreboard(): void {
 
   const floorValEl = document.getElementById("hud-floor-value");
   if (floorValEl) {
-    const floorAum = playerAum * (1 + currentRegime.liquidationFloor);
-    floorValEl.textContent = `${formatSignedPct(currentRegime.liquidationFloor)} (${formatMoney(floorAum)})`;
+    if (lastSimulation) {
+      floorValEl.textContent = `${formatSignedPct(lastSimulation.regime.liquidationFloor)} (${formatMoney(lastSimulation.liquidationAumFloor)})`;
+    } else {
+      const floorAum = playerAum * (1 + currentRegime.liquidationFloor);
+      floorValEl.textContent = `${formatSignedPct(currentRegime.liquidationFloor)} (${formatMoney(floorAum)})`;
+    }
   }
 }
 
@@ -537,6 +576,7 @@ function renderUniversePicker(): void {
     card.setAttribute("aria-pressed", isSelected ? "true" : "false");
     card.title = `${loc.name} — ${loc.roleDesc}`;
 
+    const t = pickLang(currentLang, UI_TEXT);
     card.innerHTML = `
       ${isNew ? '<span class="badge-new-asset">✨NEW</span>' : ""}
       <div class="card-top-row">
@@ -545,8 +585,8 @@ function renderUniversePicker(): void {
       </div>
       <div class="card-name">${loc.name}</div>
       <div class="card-stats">
-        <span class="stat-ret" title="期待リターン E[R]">${formatSignedPct(asset.expectedReturn)}</span>
-        <span class="stat-vol" title="ボラティリティ σ">σ${(asset.volatility * 100).toFixed(0)}%</span>
+        <span class="stat-ret" title="${t.statExpReturnTitle}">${formatSignedPct(asset.expectedReturn)}</span>
+        <span class="stat-vol" title="${t.statVolTitle}">σ${(asset.volatility * 100).toFixed(0)}%</span>
       </div>
     `;
 
@@ -583,7 +623,14 @@ function toggleAssetSelection(assetId: string): void {
 }
 
 function refreshRegimeAndSolvers(): void {
+  const solveGen = ++currentSolveGeneration;
   currentRegime = buildSubsetRegime(currentLevel, selectedAssetIds);
+  const regimeKey = `${currentLevel}:${currentRegime.selectedAssetIds.join(",")}`;
+
+  // Invalidate cached AI optimal so old draft weights are never reused
+  aiOptimal = null;
+  aiOptimalRegimeKey = null;
+
   playerWeights = normalizeWeights(
     new Array<number>(currentRegime.assets.length).fill(1 / currentRegime.assets.length),
     currentRegime.maxWeightPerAsset
@@ -597,7 +644,9 @@ function refreshRegimeAndSolvers(): void {
   // Async solve QP for AI rival and pre-calculate efficient frontier
   solveQuantOptimalPortfolio(currentRegime)
     .then((res) => {
+      if (solveGen !== currentSolveGeneration) return;
       aiOptimal = res;
+      aiOptimalRegimeKey = regimeKey;
       frontierPoints = computeEfficientFrontier(currentRegime, 9);
       renderTelemetryAndCharts();
     })
@@ -613,6 +662,7 @@ function renderAssetList(): void {
   listEl.innerHTML = "";
 
   const n = currentRegime.assets.length;
+  const t = pickLang(currentLang, UI_TEXT);
   currentRegime.assets.forEach((asset, idx) => {
     const loc = getLocalizedAsset(asset, currentLang);
     const weight = playerWeights[idx] ?? 0;
@@ -628,8 +678,8 @@ function renderAssetList(): void {
           <span class="asset-name">${loc.name}</span>
         </div>
         <div class="asset-metrics-badge">
-          <span class="badge-ret" title="期待リターン">${formatSignedPct(asset.expectedReturn)}</span>
-          <span class="badge-vol" title="ボラティリティ (リスク)">σ ${(asset.volatility * 100).toFixed(0)}%</span>
+          <span class="badge-ret" title="${t.statRetBadgeTitle}">${formatSignedPct(asset.expectedReturn)}</span>
+          <span class="badge-vol" title="${t.statVolBadgeTitle}">σ ${(asset.volatility * 100).toFixed(0)}%</span>
           <span class="asset-weight-value" id="weight-val-${idx}">${weightPct}%</span>
         </div>
       </div>
@@ -642,7 +692,7 @@ function renderAssetList(): void {
           max="${Math.round(currentRegime.maxWeightPerAsset * 100)}"
           step="1"
           value="${Math.round(weight * 100)}"
-          aria-label="${asset.ticker} 投資比率スライダー"
+          aria-label="${asset.ticker} ${t.sliderAriaSuffix}"
           ${isSimulating ? "disabled" : ""}
         />
       </div>
@@ -743,7 +793,7 @@ function renderCorrelationMatrix(): void {
         td.className = "corr-cell diag";
       } else if (val < -0.3) {
         td.className = "corr-cell strong-neg";
-        td.title = "強い逆相関：リスク圧縮効果が極めて高い";
+        td.title = pickLang(currentLang, UI_TEXT).corrStrongNegTooltip;
       } else if (val < 0) {
         td.className = "corr-cell mod-neg";
       } else if (val > 0.6) {
@@ -798,9 +848,10 @@ function renderTelemetryAndCharts(): void {
     expRetEl.textContent = formatSignedPct(pMetrics.expectedReturn);
   }
 
+  const t = pickLang(currentLang, UI_TEXT);
   const targetBadge = document.getElementById("metric-target-badge");
   if (targetBadge) {
-    targetBadge.textContent = `目標 ${formatSignedPct(currentRegime.targetReturn)}`;
+    targetBadge.textContent = `${t.targetBadgePrefix} ${formatSignedPct(currentRegime.targetReturn)}`;
     targetBadge.className =
       pMetrics.expectedReturn >= currentRegime.targetReturn
         ? "target-pill achieved"
@@ -814,7 +865,7 @@ function renderTelemetryAndCharts(): void {
 
   const volRowEl = document.getElementById("metric-vol-row");
   if (volRowEl) {
-    volRowEl.textContent = `変動リスク (σ): ${(pMetrics.volatility * 100).toFixed(1)}% / Sharpe: ${pMetrics.sharpeRatio.toFixed(2)}`;
+    volRowEl.textContent = `${t.metricVolLabel}: ${(pMetrics.volatility * 100).toFixed(1)}% / Sharpe: ${pMetrics.sharpeRatio.toFixed(2)}`;
   }
 
   renderFrontierSvg(pMetrics);
@@ -883,7 +934,7 @@ function renderFrontierSvg(pMetrics: { volatility: number; expectedReturn: numbe
     <text x="${padL - 6}" y="${toY(0.10) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">10%</text>
     <text x="${padL - 6}" y="${toY(0.15) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">15%</text>
     <text x="${padL - 6}" y="${toY(0.20) + 3}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">20%</text>
-    <text x="${w - padR}" y="${h - padB + 16}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">リスク σ →</text>
+    <text x="${w - padR}" y="${h - padB + 16}" fill="#64748b" font-size="9" text-anchor="end" font-family="JetBrains Mono">${pickLang(currentLang, UI_TEXT).frontierAxisRisk}</text>
     <text x="${padL}" y="${padT - 6}" fill="#64748b" font-size="9" font-family="JetBrains Mono">↑ E[R]</text>
     <!-- Frontier curve -->
     ${pathD ? `<path d="${pathD}" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3,3" opacity="0.65" />` : ""}
@@ -907,7 +958,7 @@ function renderIdleBattleSvg(): void {
       60-DAY LIVE AUM SIMULATION
     </text>
     <text x="${w / 2}" y="${h / 2 + 14}" fill="#475569" font-size="10" text-anchor="middle">
-      [MARKET OPEN] を押すとレースがスタートします
+      ${pickLang(currentLang, UI_TEXT).idleChartSub}
     </text>
   `;
 }
@@ -1025,13 +1076,15 @@ async function runMarketSimulation(): Promise<void> {
   if (banner) banner.hidden = true;
   if (ghostLegend) ghostLegend.hidden = true;
 
-  // Ensure AI weights are ready
-  let aiWeights = currentRegime.assets.map(() => 1 / currentRegime.assets.length);
-  if (aiOptimal && aiOptimal.weights.length === currentRegime.assets.length) {
+  // Ensure AI weights are ready for the active draft
+  const currentKey = `${currentLevel}:${currentRegime.selectedAssetIds.join(",")}`;
+  let aiWeights: number[];
+  if (aiOptimal && aiOptimalRegimeKey === currentKey) {
     aiWeights = aiOptimal.weights;
   } else {
     const solved = await solveQuantOptimalPortfolio(currentRegime);
     aiOptimal = solved;
+    aiOptimalRegimeKey = currentKey;
     aiWeights = solved.weights;
   }
 
@@ -1091,8 +1144,14 @@ function onSimulationComplete(sim: MarketSimulationResult): void {
     ghostLegend.hidden = false;
     if (ghostLegendText) {
       const ghostStatus = sim.ghostSeries.liquidatedDay
-        ? `[D${sim.ghostSeries.liquidatedDay}で即死退場]`
-        : `[期末: ${formatMoney(sim.ghostSeries.aumSeries[sim.days])}]`;
+        ? (currentLang === "ja"
+            ? `[D${sim.ghostSeries.liquidatedDay}で即死退場]`
+            : currentLang === "zh"
+              ? `[第${sim.ghostSeries.liquidatedDay}日爆仓出局]`
+              : `[Liquidated on Day ${sim.ghostSeries.liquidatedDay}]`)
+        : (currentLang === "en"
+            ? `[Ending: ${formatMoney(sim.ghostSeries.aumSeries[sim.days])}]`
+            : `[期末: ${formatMoney(sim.ghostSeries.aumSeries[sim.days])}]`);
       ghostLegendText.textContent = `${pickLang(currentLang, sim.ghostSeries.label)} ${ghostStatus}`;
     }
   }
@@ -1181,7 +1240,8 @@ function showOutcomeBanner(sim: MarketSimulationResult): void {
     const aiItems = currentRegime.assets
       .map((a, i) => `${a.ticker}: ${(aiOptimal!.weights[i] * 100).toFixed(0)}%`)
       .join(" · ");
-    weightsEl.textContent = `WaSHI-QP 最適配分: [ ${aiItems} ]`;
+    const prefix = pickLang(currentLang, UI_TEXT).aiOptimalPrefix;
+    weightsEl.textContent = `${prefix}: [ ${aiItems} ]`;
   }
 }
 

@@ -26,6 +26,7 @@ export interface MarketShockSpec {
   id: string;
   day: number; // Trading day (1..60) when shock can trigger
   headline: LocalizedText;
+  reversedHeadline?: LocalizedText;
   /** Map of asset ID to shock return impulse */
   assetImpulses: Record<string, number>;
 }

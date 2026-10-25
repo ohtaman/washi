@@ -193,26 +193,40 @@ export async function solveQuantOptimalPortfolio(
       const rawWeights = wVars.map((v) => v.value ?? 0);
       const weights = normalizeWeights(rawWeights, regime.maxWeightPerAsset);
       const metrics = computePortfolioMetrics(regime, weights);
+      const targetSatisfied = metrics.expectedReturn >= target - 1e-4;
       return {
         status: "Optimal",
         weights,
         metrics,
         solveTimeMs: Math.max(0.1, t1 - t0),
-        verified: metrics.isNormalized && metrics.isWithinCap,
+        verified: metrics.isNormalized && metrics.isWithinCap && targetSatisfied,
+      };
+    }
+    if (status === "Infeasible") {
+      const fallback = computeAnalyticalMinimumVariancePortfolio(regime, target);
+      return {
+        status: "Infeasible",
+        weights: fallback.weights,
+        metrics: fallback.metrics,
+        solveTimeMs: Math.max(0.1, t1 - t0),
+        verified: false,
       };
     }
   } catch {
-    // Fall back to analytical grid search if WASM solver fails in constrained env
+    // Fall back to analytical solver if WASM solver fails in constrained env
   }
 
   const fallback = computeAnalyticalMinimumVariancePortfolio(regime, target);
   const t1 = typeof performance !== "undefined" ? performance.now() : Date.now();
+  const targetSatisfied = fallback.metrics.expectedReturn >= target - 1e-4;
+  const isFeasible =
+    fallback.metrics.isNormalized && fallback.metrics.isWithinCap && targetSatisfied;
   return {
-    status: "Optimal",
+    status: isFeasible ? "Optimal" : "Infeasible",
     weights: fallback.weights,
     metrics: fallback.metrics,
     solveTimeMs: Math.max(0.1, t1 - t0),
-    verified: true,
+    verified: isFeasible,
   };
 }
 
@@ -404,7 +418,8 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
 
     const shock = activeShocks.get(day);
     if (shock) {
-      const shockDirection = rng.next() < 0.75 ? 1 : -0.65;
+      const isReversal = rng.next() >= 0.75;
+      const shockDirection = isReversal ? -0.65 : 1.0;
       let pShock = 0;
       let aShock = 0;
       for (let i = 0; i < n; i++) {
@@ -414,9 +429,13 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
         pShock += (playerWeights[i] ?? 0) * imp;
         aShock += (aiWeights[i] ?? 0) * imp;
       }
+      const headline =
+        isReversal && shock.reversedHeadline
+          ? shock.reversedHeadline
+          : shock.headline;
       triggeredShocks.push({
         day,
-        headline: shock.headline,
+        headline,
         playerImpact: pShock,
         aiImpact: aShock,
       });

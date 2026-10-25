@@ -487,6 +487,11 @@ const LEVEL_TEMPLATES: Array<{
           en: "Equity profit-taking pullback sparks safe-haven bid in Bonds and Gold",
           zh: "股市获利了结回踩：避险资金涌入国债与黄金",
         },
+        reversedHeadline: {
+          ja: "リスク選好の回復で株式市場が反発：国債とゴールドから資金が流出",
+          en: "Risk-on sentiment lifts equities; capital rotates out of Bonds and Gold",
+          zh: "风险偏好显著回暖股票受追捧：避险资金从国债与黄金流出",
+        },
         assetImpulses: { sp500: -0.05, bond: 0.015, gold: 0.035 },
       },
       {
@@ -496,6 +501,11 @@ const LEVEL_TEMPLATES: Array<{
           ja: "景気指標が予想を上回り堅調：株式市場が買い戻される",
           en: "Economic indicators beat estimates; equity markets rebound strongly",
           zh: "经济数据超预期向好：股票市场迎来强劲反弹",
+        },
+        reversedHeadline: {
+          ja: "景気減速への警戒感が高まる：株式市場が軟調となり安全資産が下支え",
+          en: "Economic growth concerns mount; equities weaken as safe havens find support",
+          zh: "经济增长放缓担忧升温：股票市场走弱，避险资产获得支撑",
         },
         assetImpulses: { sp500: 0.045, bond: -0.005, gold: -0.015 },
       },
@@ -532,6 +542,11 @@ const LEVEL_TEMPLATES: Array<{
           en: "Rising rate fears hit Tech while Pharma and Gold hold steady",
           zh: "长期利率攀升担忧拖累科技板块，制药与黄金发挥护盘作用",
         },
+        reversedHeadline: {
+          ja: "長期金利の急低下でハイテク株が反騰：安全資産からの巻き戻しが進む",
+          en: "Plunging bond yields ignite Tech breakout; defensive havens consolidate",
+          zh: "长期利率大幅回落驱动科技板块暴涨：避险资产遭遇多头止盈",
+        },
         assetImpulses: { tech: -0.065, sp500: -0.035, pharma: 0.015, gold: 0.025, bond: -0.005 },
       },
       {
@@ -541,6 +556,11 @@ const LEVEL_TEMPLATES: Array<{
           ja: "革新的な新薬承認とAIクラウド需要急増：ハイテクと製薬が揃って上昇",
           en: "Breakthrough drug approvals and AI demand lift Tech and Pharma together",
           zh: "突破性新药获批叠加AI算力需求旺盛：科技与制药板块携手走高",
+        },
+        reversedHeadline: {
+          ja: "新薬治験の遅延とIT投資の様子見：ハイテクと製薬が揃って調整",
+          en: "Clinical drug trial delays and IT capex pause dampen Tech and Pharma",
+          zh: "新药审批阶段性受阻叠加企业IT开支审慎：科技与医药双双回调整理",
         },
         assetImpulses: { tech: 0.06, pharma: 0.04, sp500: 0.035, gold: -0.02, bond: 0.0 },
       },
@@ -577,6 +597,11 @@ const LEVEL_TEMPLATES: Array<{
           en: "Geopolitical flashpoint: NV-AI and Tech stumble as Defense (DFNS) and Gold soar",
           zh: "突发地缘政治局势紧张：NV-AI与科技股回调，防务股(DFNS)与黄金逆市飙升",
         },
+        reversedHeadline: {
+          ja: "地政学的緊張の緩和：半導体(NV-AI)が急反発、防衛株とGOLDが反落",
+          en: "Geopolitical de-escalation: NV-AI and Tech rebound as Defense and Gold cool off",
+          zh: "地缘紧张局势显著缓和：半导体(NV-AI)强劲反弹，防务与黄金冲高回落",
+        },
         assetImpulses: {
           "nv-ai": -0.08, tech: -0.055, cloud: -0.045, defense: 0.07, gold: 0.045, bond: 0.01,
           sp500: -0.035, pharma: 0.01,
@@ -589,6 +614,11 @@ const LEVEL_TEMPLATES: Array<{
           ja: "ハイパースケーラーの設備投資倍増：AI半導体とクラウド株が急伸",
           en: "Hyperscaler capex boom fuels massive rallies in NV-AI and Cloud titans",
           zh: "超大规模云厂商资本开支翻倍：AI半导体与云计算巨头狂飙",
+        },
+        reversedHeadline: {
+          ja: "大手クラウドの投資見直し発表：高マルチプルのAI半導体・クラウド株が急反落",
+          en: "Cloud capex guidance trimmed: High-multiple AI and Cloud stocks pull back",
+          zh: "云巨头资本开支指引趋于保守：高估值AI半导体与云计算板块大幅回踩",
         },
         assetImpulses: {
           "nv-ai": 0.095, cloud: 0.065, tech: 0.05, defense: 0.005, gold: -0.025, bond: -0.005,
@@ -628,6 +658,11 @@ const LEVEL_TEMPLATES: Array<{
           en: "OPEC supply cuts & freight bottlenecks: Energy (NRGY) surges, growth tech pulls back",
           zh: "主要产油国减产与供应链受阻：能源股(NRGY)暴涨，高估值成长股承压",
         },
+        reversedHeadline: {
+          ja: "原油増産と物流正常化：エネルギー株が急反落しグロース株に安堵買い",
+          en: "Crude supply expansion & freight easing: Energy slides as Growth Tech rebounds",
+          zh: "原油供应增加与物流改善：能源股回落，科技成长股迎来修复买盘",
+        },
         assetImpulses: {
           energy: 0.085, bank: 0.03, gold: 0.03, "nv-ai": -0.06, tech: -0.045, cloud: -0.035,
           sp500: -0.02, bond: -0.01, defense: 0.02, pharma: 0.005,
@@ -640,6 +675,11 @@ const LEVEL_TEMPLATES: Array<{
           ja: "インフレ沈静化とソフトランディング期待：全セクターで広範な買い戻し",
           en: "Cooling inflation prints ignite broad-based soft landing rally across all sectors",
           zh: "通胀数据超预期降温推升软着陆预期：全市场各行业迎来普涨买盘",
+        },
+        reversedHeadline: {
+          ja: "インフレ再燃サプライズ：景気後退懸念から全セクターに手仕舞い売り",
+          en: "Hot inflation surprise triggers stagflation fears: Broad selling across sectors",
+          zh: "通胀抬头数据超预期：滞胀与衰退担忧升温，全行业遭受获利了结",
         },
         assetImpulses: {
           sp500: 0.045, "nv-ai": 0.07, cloud: 0.05, tech: 0.05, bank: 0.035, energy: -0.02,
@@ -679,6 +719,11 @@ const LEVEL_TEMPLATES: Array<{
           en: "Cascading algo sell-off: High-beta QNTX and NV-AI slide; REIT, Gold and Bonds shield the fund",
           zh: "算法连环去杠杆冲击：高贝塔QNTX与NV-AI下挫，REIT、黄金与国债筑牢防线",
         },
+        reversedHeadline: {
+          ja: "猛烈なショートスクイーズ：高ベータ株(QNTX/NV-AI)が急騰、安全資産から資金流出",
+          en: "Violent short squeeze: High-beta QNTX and NV-AI surge as capital exits defensive havens",
+          zh: "逼空行情全面引爆：高贝塔QNTX与NV-AI暴涨，资金从避险资产撤离",
+        },
         assetImpulses: {
           qntx: -0.09, "nv-ai": -0.075, tech: -0.05, cloud: -0.04, sp500: -0.03,
           reit: 0.03, gold: 0.05, bond: 0.015, defense: 0.035, pharma: 0.02, energy: 0.01, bank: -0.01,
@@ -691,6 +736,11 @@ const LEVEL_TEMPLATES: Array<{
           ja: "量子商用化と全セクター協調高：QNTXがストップ高水準、リスク資産が爆発的反発",
           en: "Commercial quantum milestone sparks euphoric rally across technology and risk assets",
           zh: "量子商用重大突破引爆市场狂欢：QNTX飙升带动整体风险资产强劲收官",
+        },
+        reversedHeadline: {
+          ja: "量子商用化マイルストーン延期：投機的テック銘柄が大幅反落",
+          en: "Quantum commercialization milestone delayed: Speculative tech slides sharply",
+          zh: "量子商用关键节点推迟：投机性硬科技板块遭遇沉重回调",
         },
         assetImpulses: {
           qntx: 0.12, "nv-ai": 0.08, cloud: 0.06, tech: 0.055, sp500: 0.04,
@@ -780,6 +830,11 @@ export function getLevelSpec(level: number): LevelSpec {
           en: `Global capital flow rotation: ${tShockA.ticker} rallies as traditional assets consolidate`,
           zh: `全球资金流向轮动：资金大举建仓${tShockA.ticker}，传统资产窄幅震荡`,
         },
+        reversedHeadline: {
+          ja: `投機的過熱の調整売り：${tShockA.ticker}が急落し、伝統的資産へ資金が回帰`,
+          en: `Speculative cooling: ${tShockA.ticker} pulls back as capital returns to traditional assets`,
+          zh: `投机情绪降温回调：${tShockA.ticker}下挫，资金重新回流传统资产`,
+        },
         assetImpulses: {
           [newAssetA.id]: 0.08,
           [newAssetB.id]: -0.04,
@@ -795,6 +850,11 @@ export function getLevelSpec(level: number): LevelSpec {
           ja: `産業エコシステムの技術革新：${tShockB.ticker}が急伸し市場全体のリスク選好が回復`,
           en: `Industrial ecosystem innovation: ${tShockB.ticker} surges, lifting broad market sentiment`,
           zh: `产业链技术革新落地：${tShockB.ticker}强势领涨，全市场风险偏好显著回暖`,
+        },
+        reversedHeadline: {
+          ja: `産業エコシステムの規制懸念：${tShockB.ticker}が下落し市場全体でリスクオフ姿勢が強まる`,
+          en: `Regulatory headwinds hit ${tShockB.ticker}, dragging down market risk sentiment`,
+          zh: `行业监管风向收紧：${tShockB.ticker}回调走低，全市场风险偏好降温`,
         },
         assetImpulses: {
           [newAssetA.id]: 0.03,
@@ -884,6 +944,7 @@ export function buildSubsetRegime(
     id: s.id,
     day: s.day,
     headline: s.headline,
+    reversedHeadline: s.reversedHeadline,
     assetImpulses: { ...s.assetImpulses },
   }));
 
