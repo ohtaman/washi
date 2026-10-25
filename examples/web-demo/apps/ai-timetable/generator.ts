@@ -616,6 +616,22 @@ export function generateTimetableState(
 }
 
 /**
+ * Creates an empty/blank timetable state (no courses, rooms, or professors)
+ * Used as the default starting state or when the user clears/resets to blank.
+ */
+export function createBlankTimetableState(
+  configOverrides?: Partial<TimetableConfig>
+): TimetableState {
+  return {
+    config: createDefaultTimetableConfig(configOverrides),
+    rooms: [],
+    professors: [],
+    courses: [],
+    customRules: [],
+  };
+}
+
+/**
  * Injects a realistic conflict scenario to showcase WaSHI (HiGHS) conflict diagnosis (Elastic IIS).
  */
 export function injectTimetableConflictScenario(

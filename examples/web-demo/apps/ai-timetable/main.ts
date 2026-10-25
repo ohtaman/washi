@@ -36,9 +36,21 @@ import {
   type TimetableLang,
 } from "./i18n";
 import {
+  createBlankTimetableState,
   generateTimetableState,
   injectTimetableConflictScenario,
 } from "./generator";
+import {
+  exportCoursesCsv,
+  exportProfessorsCsv,
+  exportRoomsCsv,
+  getSampleCoursesCsv,
+  getSampleProfessorsCsv,
+  getSampleRoomsCsv,
+  parseCoursesCsv,
+  parseProfessorsCsv,
+  parseRoomsCsv,
+} from "./csv-handler";
 import {
   diagnoseTimetableWithHiGHS,
   solveTimetableWithWashi,
@@ -58,7 +70,8 @@ declare global {
 }
 
 let activeLang: TimetableLang = getTimetableLang();
-let appState: TimetableState = generateTimetableState();
+// Start with blank slate mode: empty courses, rooms, and professors until generated or CSV-imported
+let appState: TimetableState = createBlankTimetableState();
 let currentTimetable: WeeklyTimetableSolution | null = null;
 let currentEvaluation: TimetableEvaluationReport | null = null;
 let lastSolveOutcome: WashiTimetableSolveOutcome | null = null;
@@ -74,6 +87,21 @@ let activeChatAbortController: AbortController | null = null;
 
 const nanoManager = createTimetableGeminiNanoManager();
 const trajectoryTurns: TrajectoryTurnRecord[] = [];
+
+// Buffered CSV profiles awaiting import confirmation
+let pendingCsvProfs: typeof appState.professors | null = null;
+let pendingCsvRooms: typeof appState.rooms | null = null;
+let pendingCsvCourses: typeof appState.courses | null = null;
+
+function downloadTextFile(filename: string, content: string, mime = "text/csv;charset=utf-8"): void {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function $<T extends HTMLElement = HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -530,6 +558,82 @@ function renderCrossHighlightBar(): void {
 function renderTimetableBoard(): void {
   renderCrossHighlightBar();
   const ui = UI_TEXT_I18N[activeLang];
+
+  const emptyStateEl = document.getElementById("empty-timetable-state");
+  const emptyIconEl = document.getElementById("empty-state-icon");
+  const emptyTitleEl = document.getElementById("empty-state-title");
+  const emptyDescEl = document.getElementById("empty-state-desc");
+  const emptyActionsEl = document.getElementById("empty-state-actions");
+
+  if (appState.courses.length === 0) {
+    if (emptyStateEl) {
+      emptyStateEl.hidden = false;
+      if (emptyIconEl) emptyIconEl.textContent = "📄";
+      if (emptyTitleEl) {
+        emptyTitleEl.textContent = pickTimetableLang(activeLang, {
+          ja: "時間割データがありません（白紙モード）",
+          en: "No Timetable Data (Blank Slate Mode)",
+          zh: "暂无课表数据（空白模式）",
+        });
+      }
+      if (emptyDescEl) {
+        emptyDescEl.textContent = pickTimetableLang(activeLang, {
+          ja: "現在、教員・教室・科目のデータが登録されていません。CSVファイルを読み込むか、「サンプル生成」でデータを作成してください。",
+          en: "No professors, rooms, or courses are registered. Import CSV files or click 'Generate Sample Data' to begin.",
+          zh: "当前未注册教师、教室和课程数据。请导入CSV文件或点击“生成示例数据”开始。",
+        });
+      }
+      if (emptyActionsEl) {
+        emptyActionsEl.innerHTML = `
+          <button type="button" id="btn-empty-generate" class="btn-solve-primary">
+            ✨ ${pickTimetableLang(activeLang, { ja: "サンプルデータを生成 (Generate)", en: "Generate Sample Data", zh: "生成示例数据" })}
+          </button>
+          <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
+            📂 ${pickTimetableLang(activeLang, { ja: "CSVファイルを読み込む", en: "Import CSV Files", zh: "导入CSV文件" })}
+          </button>
+          <button type="button" id="btn-empty-samples" class="btn-toolbar-outline">
+            📥 ${pickTimetableLang(activeLang, { ja: "サンプルCSVをダウンロード", en: "Download Sample CSVs", zh: "下载示例CSV" })}
+          </button>
+        `;
+        wireEmptyStateButtons();
+      }
+    }
+  } else if (!currentTimetable) {
+    if (emptyStateEl) {
+      emptyStateEl.hidden = false;
+      if (emptyIconEl) emptyIconEl.textContent = "🧩";
+      if (emptyTitleEl) {
+        emptyTitleEl.textContent = pickTimetableLang(activeLang, {
+          ja: `データ準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（未編成）`,
+          en: `Data Ready: ${appState.professors.length} Profs / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (Unscheduled)`,
+          zh: `数据已就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (未编排)`,
+        });
+      }
+      if (emptyDescEl) {
+        emptyDescEl.textContent = pickTimetableLang(activeLang, {
+          ja: "「📚 科目・教員・教室一覧」タブで各教員の出講条件や教室設備を確認できます。準備ができたら「⚡ 時間割を自動編成」をクリックしてください。",
+          en: "Review professor availability and room specs in the Catalog tab. When ready, click 'Auto-Schedule Timetable' to run optimization.",
+          zh: "可在“基础数据列表”查看教师出讲条件与教室。准备好后点击“自动编排课表”开始求解。",
+        });
+      }
+      if (emptyActionsEl) {
+        emptyActionsEl.innerHTML = `
+          <button type="button" id="btn-empty-solve" class="btn-solve-primary">
+            ⚡ ${pickTimetableLang(activeLang, { ja: "時間割を自動編成 (Optimize)", en: "Auto-Schedule Timetable", zh: "自动编排课表" })}
+          </button>
+          <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
+            📚 ${pickTimetableLang(activeLang, { ja: "教員・教室・科目を確認", en: "Review Catalog", zh: "查看基础数据" })}
+          </button>
+          <button type="button" id="btn-empty-clear" class="btn-toolbar-outline">
+            🗑️ ${pickTimetableLang(activeLang, { ja: "白紙に戻す", en: "Clear to Blank", zh: "清空为白纸" })}
+          </button>
+        `;
+        wireEmptyStateButtons();
+      }
+    }
+  } else {
+    if (emptyStateEl) emptyStateEl.hidden = true;
+  }
 
   const cohortsGrid = $("view-cohorts-grid");
   const matrixWrap = $("view-matrix-wrap");
@@ -1424,7 +1528,192 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
   }
 }
 
+function updateStatusBlankUI(): void {
+  const badge = $("kpi-status-badge");
+  const summaryText = $("kpi-summary-text");
+  const solveTimeEl = $("kpi-solve-time");
+  const conflictAlert = $("conflict-alert");
+  conflictAlert.hidden = true;
+
+  badge.className = "status-pill status-idle";
+  if (appState.courses.length === 0) {
+    badge.textContent = pickTimetableLang(activeLang, {
+      ja: "白紙モード",
+      en: "Blank Slate",
+      zh: "空白模式",
+    });
+    summaryText.textContent = pickTimetableLang(activeLang, {
+      ja: "データ未読み込み (0科目 / 0教員 / 0教室) — CSVインポートまたはサンプル生成を行ってください",
+      en: "No data loaded (0 courses / 0 profs / 0 rooms) — Please import CSV or generate sample data",
+      zh: "未加载数据 (0门课程 / 0位教师 / 0间教室) — 请导入CSV或生成示例数据",
+    });
+  } else {
+    badge.textContent = pickTimetableLang(activeLang, {
+      ja: "未編成",
+      en: "Unscheduled",
+      zh: "未编排",
+    });
+    summaryText.textContent = pickTimetableLang(activeLang, {
+      ja: `データ準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目 — 「⚡ 時間割を自動編成」を押してください`,
+      en: `Data ready: ${appState.professors.length} Profs / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses — Click 'Auto-Schedule Timetable'`,
+      zh: `数据已就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 — 请点击“自动编排课表”`,
+    });
+  }
+  solveTimeEl.textContent = "-- ms";
+}
+
+function renderAll(): void {
+  renderTimetableBoard();
+  renderCustomRulesAndSettings();
+  renderCatalogTables();
+  populateSelectOptions();
+  syncTrajectoryUI();
+  if (!currentTimetable) {
+    updateStatusBlankUI();
+  }
+}
+
+function wireEmptyStateButtons(): void {
+  document.getElementById("btn-empty-generate")?.addEventListener("click", handleGenerateSample);
+  document.getElementById("btn-empty-csv")?.addEventListener("click", openCsvDialog);
+  document.getElementById("btn-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
+  document.getElementById("btn-empty-solve")?.addEventListener("click", () => void triggerSolve());
+  document.getElementById("btn-empty-view-catalog")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-catalog").click();
+  });
+  document.getElementById("btn-empty-clear")?.addEventListener("click", handleClearToBlank);
+}
+
+function handleGenerateSample(): void {
+  appState = generateTimetableState();
+  currentTimetable = null;
+  lastSolveOutcome = null;
+  renderAll();
+  appendChatMessage(
+    "assistant",
+    pickTimetableLang(activeLang, {
+      ja: `✨ **サンプルデータを生成しました**\n- **教員**: ${appState.professors.length}名（佐藤教授・鈴木准教授・非常勤の小林先生など）\n- **教室**: ${appState.rooms.length}室（101大講義室・PC演習室A/Bなど）\n- **科目**: ${appState.courses.length}科目（30コマ分）\n\n右上の「📚 科目・教員・教室一覧」タブで条件を確認できます。準備ができたら上の **「⚡ 時間割を自動編成」** ボタンを押して最適化を実行してください！`,
+      en: `✨ **Sample Data Generated**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}\n\nReview them in the Catalog tab. When ready, click **"Auto-Schedule Timetable"**!`,
+      zh: `✨ **已生成示例数据**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门\n\n请在基础数据标签页确认。准备好后点击“自动编排课表”开始求解！`,
+    })
+  );
+}
+
+function handleClearToBlank(): void {
+  const confirmed = confirm(
+    pickTimetableLang(activeLang, {
+      ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
+      en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
+      zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
+    })
+  );
+  if (!confirmed) return;
+  appState = createBlankTimetableState();
+  currentTimetable = null;
+  lastSolveOutcome = null;
+  renderAll();
+  appendChatMessage(
+    "assistant",
+    pickTimetableLang(activeLang, {
+      ja: "🗑️ 時間割データをクリアし、**白紙モード**に戻しました。「✨ サンプル生成」または「📂 CSV読込」でデータをセットしてください。",
+      en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
+      zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
+    })
+  );
+}
+
+function handleExportAllCsvs(): void {
+  if (appState.courses.length === 0 && appState.professors.length === 0 && appState.rooms.length === 0) {
+    alert(
+      pickTimetableLang(activeLang, {
+        ja: "エクスポートするデータがありません（白紙状態です）。",
+        en: "No data to export (currently blank).",
+        zh: "暂无可导出的数据（当前为空）。",
+      })
+    );
+    return;
+  }
+  downloadTextFile("professors.csv", exportProfessorsCsv(appState.professors));
+  downloadTextFile("rooms.csv", exportRoomsCsv(appState.rooms));
+  downloadTextFile("courses.csv", exportCoursesCsv(appState.courses));
+}
+
+function handleDownloadAllSamples(): void {
+  downloadTextFile("professors_sample.csv", getSampleProfessorsCsv());
+  downloadTextFile("rooms_sample.csv", getSampleRoomsCsv());
+  downloadTextFile("courses_sample.csv", getSampleCoursesCsv());
+}
+
+function openCsvDialog(): void {
+  pendingCsvProfs = null;
+  pendingCsvRooms = null;
+  pendingCsvCourses = null;
+  $<HTMLInputElement>("file-input-profs").value = "";
+  $<HTMLInputElement>("file-input-rooms").value = "";
+  $<HTMLInputElement>("file-input-courses").value = "";
+  setText("file-status-profs", "未選択");
+  $("file-status-profs").className = "csv-file-status";
+  setText("file-status-rooms", "未選択");
+  $("file-status-rooms").className = "csv-file-status";
+  setText("file-status-courses", "未選択");
+  $("file-status-courses").className = "csv-file-status";
+  $("csv-import-feedback").hidden = true;
+  $<HTMLButtonElement>("btn-execute-csv-import").disabled = true;
+  $<HTMLDialogElement>("csv-import-dialog").showModal();
+}
+
+function checkImportReadiness(): void {
+  const ready = Boolean(pendingCsvProfs && pendingCsvRooms && pendingCsvCourses);
+  $<HTMLButtonElement>("btn-execute-csv-import").disabled = !ready;
+  const feedbackEl = $("csv-import-feedback");
+  if (ready) {
+    feedbackEl.hidden = false;
+    feedbackEl.className = "csv-feedback-box is-success";
+    feedbackEl.textContent = pickTimetableLang(activeLang, {
+      ja: `準備完了: 教員 ${pendingCsvProfs!.length}名、教室 ${pendingCsvRooms!.length}室、科目 ${pendingCsvCourses!.length}科目をインポート可能です。`,
+      en: `Ready: Can import ${pendingCsvProfs!.length} profs, ${pendingCsvRooms!.length} rooms, and ${pendingCsvCourses!.length} courses.`,
+      zh: `就绪: 可导入 ${pendingCsvProfs!.length}位教师、${pendingCsvRooms!.length}间教室、${pendingCsvCourses!.length}门课程。`,
+    });
+  } else {
+    feedbackEl.hidden = true;
+  }
+}
+
+function executeCsvImport(): void {
+  if (!pendingCsvProfs || !pendingCsvRooms || !pendingCsvCourses) return;
+  appState = {
+    ...createBlankTimetableState(),
+    professors: pendingCsvProfs,
+    rooms: pendingCsvRooms,
+    courses: pendingCsvCourses,
+    customRules: [],
+  };
+  currentTimetable = null;
+  lastSolveOutcome = null;
+  $<HTMLDialogElement>("csv-import-dialog").close();
+  renderAll();
+  appendChatMessage(
+    "assistant",
+    pickTimetableLang(activeLang, {
+      ja: `📂 **CSVデータを正常にインポートしました**\n- **教員**: ${appState.professors.length}名\n- **教室**: ${appState.rooms.length}室\n- **科目**: ${appState.courses.length}科目\n\n右側の「📚 科目・教員・教室一覧」タブでインポート内容を確認できます。準備ができたら **「⚡ 時間割を自動編成」** ボタンを押してください！`,
+      en: `📂 **CSV Data Successfully Imported**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}\n\nReview the data in the Catalog tab, then click **"Auto-Schedule Timetable"**!`,
+      zh: `📂 **CSV数据导入成功**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门\n\n请在基础数据标签页确认，之后点击“自动编排课表”！`,
+    })
+  );
+}
+
 async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
+  if (appState.courses.length === 0 || appState.rooms.length === 0) {
+    alert(
+      pickTimetableLang(activeLang, {
+        ja: "科目または教室が登録されていません。CSVを読み込むか、「サンプル生成」でデータを作成してください。",
+        en: "No courses or rooms registered. Please import CSVs or generate sample data first.",
+        zh: "未注册课程或教室。请先导入CSV或生成示例数据。",
+      })
+    );
+    return null;
+  }
+
   if (isSolving) {
     pendingSolveRequested = true;
     return new Promise<WashiTimetableSolveOutcome | null>((resolve) => {
@@ -1955,6 +2244,9 @@ function wireEvents(): void {
 
   // Tutorial Step 1: Pin C15 (数理最適化) to Tue Period 2 in R101
   $("btn-tut-step1").addEventListener("click", () => {
+    if (appState.courses.length === 0) {
+      appState = generateTimetableState();
+    }
     const res = applyTimetableChatOperationsToState(appState, [
       {
         op: "pin_course_slot",
@@ -1980,6 +2272,9 @@ function wireEvents(): void {
 
   // Tutorial Step 2: Consecutive sessions for C12 (ソフトウェア設計演習)
   $("btn-tut-step2").addEventListener("click", () => {
+    if (appState.courses.length === 0) {
+      appState = generateTimetableState();
+    }
     const res = applyTimetableChatOperationsToState(appState, [
       {
         op: "add_course_relation_rule",
@@ -2003,6 +2298,9 @@ function wireEvents(): void {
 
   // Tutorial Step 3: Inject conflict scenario
   $("btn-tut-step3").addEventListener("click", () => {
+    if (appState.courses.length === 0) {
+      appState = generateTimetableState();
+    }
     const sc = $<HTMLSelectElement>("select-conflict-scenario").value as
       | "prof_impossible_day"
       | "room_double_book"
@@ -2022,6 +2320,11 @@ function wireEvents(): void {
   });
 
   // Action bar buttons
+  $("btn-generate-sample").addEventListener("click", handleGenerateSample);
+  $("btn-open-csv-dialog").addEventListener("click", openCsvDialog);
+  $("btn-export-csvs").addEventListener("click", handleExportAllCsvs);
+  $("btn-clear-blank").addEventListener("click", handleClearToBlank);
+
   $("btn-solve-washi").addEventListener("click", () => {
     void triggerSolve();
   });
@@ -2323,6 +2626,89 @@ function wireEvents(): void {
     trajectoryTurns.length = 0;
     syncTrajectoryUI();
   });
+
+  // CSV Dialog events
+  $("btn-close-csv-dialog").addEventListener("click", () => {
+    $<HTMLDialogElement>("csv-import-dialog").close();
+  });
+  $("btn-close-csv-dialog-cancel").addEventListener("click", () => {
+    $<HTMLDialogElement>("csv-import-dialog").close();
+  });
+  $("btn-dl-sample-profs").addEventListener("click", () => {
+    downloadTextFile("professors_sample.csv", getSampleProfessorsCsv());
+  });
+  $("btn-dl-sample-rooms").addEventListener("click", () => {
+    downloadTextFile("rooms_sample.csv", getSampleRoomsCsv());
+  });
+  $("btn-dl-sample-courses").addEventListener("click", () => {
+    downloadTextFile("courses_sample.csv", getSampleCoursesCsv());
+  });
+  $("btn-dl-all-samples").addEventListener("click", handleDownloadAllSamples);
+
+  $("file-input-profs").addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    file.text().then((text) => {
+      const res = parseProfessorsCsv(text);
+      const stEl = $("file-status-profs");
+      if (res.errors.length > 0 || res.professors.length === 0) {
+        stEl.textContent = `❌ ${res.errors.join(", ") || "有効な教員データがありません"}`;
+        stEl.className = "csv-file-status is-error";
+        pendingCsvProfs = null;
+      } else {
+        stEl.textContent = `✅ ${res.professors.length}名の教員データを読み込み`;
+        stEl.className = "csv-file-status is-ready";
+        pendingCsvProfs = res.professors;
+      }
+      checkImportReadiness();
+    });
+  });
+
+  $("file-input-rooms").addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    file.text().then((text) => {
+      const res = parseRoomsCsv(text);
+      const stEl = $("file-status-rooms");
+      if (res.errors.length > 0 || res.rooms.length === 0) {
+        stEl.textContent = `❌ ${res.errors.join(", ") || "有効な教室データがありません"}`;
+        stEl.className = "csv-file-status is-error";
+        pendingCsvRooms = null;
+      } else {
+        stEl.textContent = `✅ ${res.rooms.length}室の教室データを読み込み`;
+        stEl.className = "csv-file-status is-ready";
+        pendingCsvRooms = res.rooms;
+      }
+      checkImportReadiness();
+    });
+  });
+
+  $("file-input-courses").addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    file.text().then((text) => {
+      const knownIds = pendingCsvProfs
+        ? new Set(pendingCsvProfs.map((p) => p.id))
+        : new Set(appState.professors.map((p) => p.id));
+      const res = parseCoursesCsv(text, knownIds);
+      const stEl = $("file-status-courses");
+      if (res.errors.length > 0 || res.courses.length === 0) {
+        stEl.textContent = `❌ ${res.errors.join(", ") || "有効な科目データがありません"}`;
+        stEl.className = "csv-file-status is-error";
+        pendingCsvCourses = null;
+      } else {
+        stEl.textContent = `✅ ${res.courses.length}科目のデータを読み込み`;
+        stEl.className = "csv-file-status is-ready";
+        pendingCsvCourses = res.courses;
+      }
+      checkImportReadiness();
+    });
+  });
+
+  $("btn-execute-csv-import").addEventListener("click", executeCsvImport);
 }
 
 async function initApp(): Promise<void> {
@@ -2330,7 +2716,11 @@ async function initApp(): Promise<void> {
 
   appendChatMessage(
     "assistant",
-    UI_TEXT_I18N[activeLang].chatWelcomeMarkdown,
+    pickTimetableLang(activeLang, {
+      ja: `👋 **大学時間割編成 AI Copilot へようこそ！**\n\n現在は**白紙モード**です。時間割を作成するには、まず以下のいずれかでデータを準備してください：\n1. **「✨ サンプル生成」**: 教員10名・教室7室・25科目の典型的な工学部データを自動生成します。\n2. **「📂 CSV読込」**: お手元の教員・教室・科目のCSVファイルを読み込みます（サンプルCSVもダウンロード可能）。\n\nデータが読み込まれたら、**「⚡ 時間割を自動編成」** を押すことで WaSHI (HiGHS) が制約を満たす最適なコマ配置を一括探索します。`,
+      en: `👋 **Welcome to the University Course Timetabling AI Copilot!**\n\nStarting in **Blank Slate mode**. Prepare your data:\n1. **"✨ Generate Sample"**: Create 10 profs, 7 rooms, and 25 courses.\n2. **"📂 Import CSV"**: Load your own CSV files (templates available).\n\nOnce loaded, click **"Auto-Schedule Timetable"** to optimize!`,
+      zh: `👋 **欢迎使用大学课表编排 AI Copilot！**\n\n当前处于**空白模式**。请准备数据：\n1. **“✨ 生成示例”**：自动生成10位教师、7间教室与25门课程。\n2. **“📂 导入CSV”**：导入您自己的CSV文件。\n\n准备好后点击“自动编排课表”开始优化！`,
+    }),
     undefined,
     true
   );
@@ -2341,7 +2731,7 @@ async function initApp(): Promise<void> {
     .initialize((pct) => updateNanoStatusUI("downloading", pct), activeLang)
     .then((status) => updateNanoStatusUI(status));
 
-  await triggerSolve();
+  renderAll();
 }
 
 if (typeof document !== "undefined") {

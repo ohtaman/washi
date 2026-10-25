@@ -1383,6 +1383,33 @@ export async function solveTimetableWithWashi(
   const useRef =
     state.config.preserveCurrentTimetable !== false && Boolean(options?.referenceTimetable);
 
+  if (state.courses.length === 0 || state.rooms.length === 0) {
+    const emptySolution: WeeklyTimetableSolution = {
+      bySlot: {},
+      byCourse: {},
+      sessions: [],
+    };
+    return {
+      status: "Optimal",
+      objectiveValue: 0,
+      buildTimeMs: 0,
+      solveTimeMs: 0,
+      totalTimeMs: 0,
+      numVariables: 0,
+      numConstraints: 0,
+      validatedByWashi: true,
+      maxViolation: 0,
+      timetable: emptySolution,
+      evaluation: evaluateTimetableSolution(
+        state,
+        emptySolution,
+        useRef ? options?.referenceTimetable : null
+      ),
+      lpStringPreview: "// 空の時間割 (科目または教室が登録されていません)",
+      washiCodeSnippet: "// 空の時間割",
+    };
+  }
+
   const { model, vAssign, constraintMeta } = buildTimetableWashiModel(state, {
     referenceTimetable: useRef ? options?.referenceTimetable : null,
   });
