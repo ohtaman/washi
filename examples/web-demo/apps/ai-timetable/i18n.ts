@@ -1063,12 +1063,12 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     chatSenderAssistant: "🤖 時間割編成 AI Copilot",
     chatSenderSystem: "ℹ️ システム",
     chatWelcomeMarkdown:
-      "こんにちは！**大学時間割編成 AI Copilot (UCTP)** です。\n" +
-      "情報科学部の **全25科目（週30コマ）・10名の教員（専任8名・非常勤2名）・7室の講義室/PC演習室** の時間割を、WaSHI (HiGHS) で厳密に最適化します。\n\n" +
-      "- 「**数理最適化を火曜2限・101大講義室に固定して**」\n" +
-      "- 「**非常勤の小林先生は火曜と木曜の午後(3〜5限)しか来られないようにして**」\n" +
-      "- 「**機械学習と自然言語処理は同じ時限に被せないで**」\n\n" +
-      "など、下の「💡 要望例」や自由入力からお気軽にお試しください！",
+      "👋 **大学時間割編成 AI Copilot (UCTP) へようこそ！**\n\n" +
+      "現在は**白紙モード**です。時間割を作成するには、まず以下のいずれかでデータを準備してください：\n" +
+      "1. **「✨ サンプル生成」**: 教員10名・教室7室・25科目の典型的な工学部データを自動生成します。\n" +
+      "2. **「📂 CSV読込」**: お手元の教員・教室・科目のCSVファイルを読み込みます（サンプルCSVもダウンロード可能）。\n\n" +
+      "データが読み込まれたら、**「⚡ 時間割を自動編成」** を押すことで WaSHI (HiGHS) が制約を満たす最適なコマ配置を一括探索します。\n" +
+      "「数理最適化を火曜2限に固定して」「小林先生は火曜・木曜午後のみ」などの自然言語指示による条件調整も可能です！",
 
     popoverHeader: "💡 クリックして入力欄にセット（教務・教員要望例）",
     promptChips: [
@@ -1310,12 +1310,11 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     chatSenderAssistant: "🤖 Timetabling AI Copilot",
     chatSenderSystem: "ℹ️ System",
     chatWelcomeMarkdown:
-      "Welcome to the **University Course Timetabling AI Copilot (UCTP)**!\n" +
-      "We optimize **all 25 courses (30 weekly sessions), 10 faculty members (8 full-time + 2 adjuncts), and 7 lecture halls / PC labs** simultaneously using **WaSHI (HiGHS)**.\n\n" +
-      "- **\"Pin Mathematical Optimization (C15) to Tue P2 in Hall 101\"**\n" +
-      "- **\"Adjunct Prof. Kobayashi can only teach on Tue and Thu afternoons (P3–P5)\"**\n" +
-      "- **\"Do not overlap Machine Learning (C16) and NLP (C17) in the same slot\"**\n\n" +
-      "Click **💡 Examples** below or type any scheduling request!",
+      "👋 **Welcome to the University Course Timetabling AI Copilot (UCTP)!**\n\n" +
+      "Starting in **Blank Slate mode**. Prepare your data using one of the following:\n" +
+      "1. **\"✨ Generate Sample\"**: Automatically create a realistic dataset with 10 professors, 7 lecture halls/labs, and 25 courses.\n" +
+      "2. **\"📂 Import CSV\"**: Load your own separate CSV files for professors, rooms, and courses (downloadable templates available).\n\n" +
+      "Once loaded, click **\"Auto-Schedule Timetable\"** to optimize using **WaSHI (HiGHS)**. You can also chat to add custom constraints!",
 
     popoverHeader: "💡 Click an example request to populate the chat box",
     promptChips: [
@@ -1558,12 +1557,11 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     chatSenderAssistant: "🤖 排课 AI Copilot",
     chatSenderSystem: "ℹ️ 系统通知",
     chatWelcomeMarkdown:
-      "您好！我是 **大学排课 AI Copilot (UCTP)**。\n" +
-      "使用 WaSHI (HiGHS) 在浏览器本地为您严格优化信息科学学院的 **全部25门课程（每周30节课）・10位教师（8名专任＋2名外聘）・7间教室/PC机房** 课表。\n\n" +
-      "- 「**将数学规划固定在周二第2节・101大阶梯教室**」\n" +
-      "- 「**外聘的小林老师设为仅周二和周四下午(第3〜5节)可出勤**」\n" +
-      "- 「**机器学习与自然语言处理不要排在同一时段**」\n\n" +
-      "欢迎点击下方「💡 示例指令」或直接输入您的排课需求！",
+      "👋 **欢迎使用大学课表编排 AI Copilot (UCTP)！**\n\n" +
+      "当前处于**空白模式**。请通过以下方式之一准备排课基础数据：\n" +
+      "1. **“✨ 生成示例”**：自动生成包含10位教师、7间教室与25门课程的典型工学院数据。\n" +
+      "2. **“📂 导入CSV”**：分别导入教师、教室与课程的CSV文件（提供模板下载）。\n\n" +
+      "数据就绪后，点击**“⚡ 自动编排课表”**即可通过 WaSHI (HiGHS) 求解最佳课表方案。您也可以通过对话追加各类排课约束！",
 
     popoverHeader: "💡 点击示例指令填入输入框（教务・教师排课需求示例）",
     promptChips: [

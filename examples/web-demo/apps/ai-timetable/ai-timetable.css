@@ -550,3 +550,104 @@
 [data-theme="dark"] .chat-op-pill.chat-op-pill-rejected {
   color: #f87171;
 }
+
+/* Empty / Blank Timetable Welcome Card */
+.empty-timetable-card {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.5rem 1.8rem;
+  margin: 0.75rem 0.5rem 1rem;
+  background: var(--bg-surface-elevated);
+  border: 1.5px dashed var(--border-hairline);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.empty-state-icon {
+  font-size: 2.8rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.empty-state-content h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.empty-state-content p {
+  margin: 0 0 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-sumi-secondary);
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* CSV Dialog Styles */
+.csv-upload-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.csv-upload-item {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.csv-upload-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.csv-file-input {
+  font-size: 0.82rem;
+  color: var(--text-sumi);
+}
+
+.csv-file-status {
+  font-size: 0.76rem;
+  color: var(--text-sumi-secondary);
+}
+
+.csv-file-status.is-ready {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.csv-file-status.is-error {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.csv-feedback-box {
+  padding: 0.65rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+.csv-feedback-box.is-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
