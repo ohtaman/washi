@@ -175,9 +175,9 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 以下の順序でJSON（thought ➔ routes ➔ response）を出力してください：
 
 1. "thought" (思考・プランニング):
-   ・【文脈補完】直近の対話履歴がある場合、省略されている主語（どのシフト名・スキル名・スタッフ名に対する指示か）を特定する。
+   ・【文脈補完】直近の対話履歴がある場合、省略されている主語（どのシフト名・スキル名・スタッフ名に対する指示か）を特定する。特に直前の履歴が「前回(未適用・回答待ち)」となっている場合は、前回の指示内容はまだ1件も適用されていないため、前回の未適用指示と今回のユーザーの回答をすべて統合して計画を立てること。
    ・【意図の整理】ユーザーの要望が、個人カレンダー（特定日・期間・曜日/祝日）なのか、個人の月間契約条件（月間日数・夜勤回数・連勤上限・シフト免除）なのか、病棟全体の設定なのか、追加シフト枠やスキル・ペア設定なのかを整理する。また「1日あたりの配置人数」と「個人別の月間回数」を混同しないように区別する。
-   ・【タスク分解】1つの発話に複数カテゴリの要求が含まれる場合はカテゴリごとに分割し、同じカテゴリに属する複数条件は1つのルートにまとめる計画を立てる。
+   ・【タスク分解】1つの発話に複数カテゴリの要求が含まれる場合はカテゴリごとに分割し、同じカテゴリに属する複数条件は1つのルートにまとめる計画を立てる。ただし複数の要求のうち1つでも具体的な数値や対象が欠けていて聞き返しが必要な場合は、一部のツールだけを実行せず必ず全体を保留して単独の [{"tool_type":"clarify"}] とする。
 2. "routes" (カテゴリ別ルート配列):
    ・ツール実行カテゴリ(1〜7)に該当する場合は、各カテゴリごとに { "tool_type": "...", "instruction": "..." } を出力する。
    ・重要: "instruction" には、直前の履歴から補完した対象名と、ユーザーが実際に指示した内容のみを簡潔に書くこと（「〜だけ出勤」「〜のみ」等の条件表現や日付・人数・回数などの数値は省略せず維持し、言及されていない項目は推測・追加しないこと。また日付を書く際は月番号「11月」と日番号の混同を防ぐため「11月」を省いて「1日から18日まで」「16日から18日までの3日間」のように日番号のみで記載すること）。
@@ -207,7 +207,7 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 9. "unsupported" (それ以外・システム未対応の要求):
    シフトの開始・終了時刻の変更、給与・夜勤手当の計算、病床数の変更、他病棟からの応援要請など、上記1〜7のいずれの機能でも実現できない要求。response では未対応である旨のみを簡潔に述べ、存在しない機能は案内しないこと
 10. "clarify" (不明・情報不足で聞き返しが必要):
-   「休ませて」「誰か夜勤を減らして」「スキルを変えて」のように、直近の対話履歴を見ても対象スタッフ名・日付・どの設定項目をいくつにするか等の必須情報が欠けていて特定できない発話。response で不足している情報を具体的に聞き返すこと
+   「休ませて」「誰か夜勤を減らして」「スキルを変えて」「勤務下限も調整して」のように、直近の対話履歴を見ても対象スタッフ名・日付・どの設定項目をいくつ（何日・何人・何回）にするか等の必須情報が欠けていて特定できない発話。複数の要望のうち1つでも具体的な数値や対象が欠けている場合（「9日から15日まで休ませて、勤務下限も調整して」など）は、一部のツールだけを実行せず必ず全体を保留して単独の [{"tool_type":"clarify"}] とし、response で不足している情報を具体的に聞き返すこと
 
 【Few-shot 例】
 ユーザー: 「なにができる？」
@@ -229,7 +229,14 @@ const STAGE1_ROUTER_SYSTEM_PROMPT = `あなたは病院の3交代ナーススケ
 出力: {"thought":"シフトの開始・終了時刻の変更はシステム未対応のため unsupported とする。","routes":[{"tool_type":"unsupported"}],"response":"シフトの開始・終了時刻の変更には対応していません。"}
 
 ユーザー: 「来週休ませて」
-出力: {"thought":"誰の・何月何日の休み希望かが不明で履歴からも特定できないため clarify で聞き返す。","routes":[{"tool_type":"clarify"}],"response":"どなたの・何月何日（または何日〜何日）を公休にするか教えていただけますか？"}`;
+出力: {"thought":"誰の・何月何日の休み希望かが不明で履歴からも特定できないため clarify で聞き返す。","routes":[{"tool_type":"clarify"}],"response":"どなたの・何月何日（または何日〜何日）を公休にするか教えていただけますか？"}
+
+ユーザー: 「田中さんは9日から15日まで休ませてあげて。勤務下限も調整して」
+出力: {"thought":"前半は田中さんの9日〜15日の公休指定だが、後半の『勤務下限も調整して』に具体的な日数が指定されておらず履歴からも特定できない。一部だけ実行せず clarify で具体的な日数を聞き返す。","routes":[{"tool_type":"clarify"}],"response":"田中さんの9日から15日までの公休とあわせて設定するため、月間最低勤務日数を何日に調整するか教えていただけますか？"}
+
+（直近の対話履歴に「前回(未適用・回答待ち):「田中さんは9日から15日まで休ませてあげて。勤務下限も調整して」」がある状態で）
+ユーザー: 「勤務下限は15日」
+出力: {"thought":"直前の履歴が未適用・回答待ちであるため、保留されていた田中さんの9日から15日までの公休(staff_calendar)と、今回回答された月間最低勤務日数15日への変更(staff_contract)を統合して両方実行する。","routes":[{"tool_type":"staff_calendar","instruction":"田中さんを9日から15日まで公休(O)にする"},{"tool_type":"staff_contract","instruction":"田中さんの月間最低勤務日数を15日に設定する"}],"response":"田中さんの9日から15日までを公休にし、月間最低勤務日数を15日に設定します。"}`;
 
 /**
  * Helper to build a single tool branch for `anyOf` in Stage 2 schemas.
@@ -2292,6 +2299,10 @@ export function createGeminiNanoManager(): GeminiNanoManager {
   let lastStage1Response: string = "";
   let lastUnappliedInstructions: string[] = [];
   let recentTurnHistory: string[] = [];
+  let pendingClarification: { messages: string[]; lastQuestion: string } | null = null;
+  // Chrome Built-in AI (Gemini Nano / LanguageModel API) default contextWindow is 9,216 tokens.
+  const GEMINI_NANO_CONTEXT_WINDOW_TOKENS = 9216;
+  const RESERVED_PROMPT_AND_OUTPUT_TOKENS = 2216;
   let hadCustomState = false;
 
   function appendTurnHistory(line: string): void {
@@ -2299,6 +2310,41 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     if (recentTurnHistory.length > 2) {
       recentTurnHistory = recentTurnHistory.slice(-2);
     }
+  }
+
+  function getPendingClarificationCharBudget(): number {
+    const tokenInfo = readSessionTokenUsage(routerBaseSession);
+    if (tokenInfo && tokenInfo.quota > tokenInfo.usage) {
+      return Math.max(1000, tokenInfo.quota - tokenInfo.usage - 500);
+    }
+    return GEMINI_NANO_CONTEXT_WINDOW_TOKENS - RESERVED_PROMPT_AND_OUTPUT_TOKENS;
+  }
+
+  function recordPendingClarification(msg: string, question: string): void {
+    const budget = getPendingClarificationCharBudget();
+    if (pendingClarification) {
+      pendingClarification.messages.push(msg);
+      while (
+        pendingClarification.messages.length > 1 &&
+        pendingClarification.messages.join(" / ").length > budget
+      ) {
+        pendingClarification.messages.shift();
+      }
+      pendingClarification.lastQuestion = question;
+    } else {
+      pendingClarification = {
+        messages: [msg],
+        lastQuestion: question,
+      };
+    }
+  }
+
+  function getCombinedHistoryLines(): string[] {
+    if (!pendingClarification) {
+      return [...recentTurnHistory];
+    }
+    const pendingLine = `・前回(未適用・回答待ち):「${pendingClarification.messages.join(" / ")}」➔ 聞き返し: ${pendingClarification.lastQuestion}`;
+    return [...recentTurnHistory, pendingLine];
   }
 
   function readSessionTokenUsage(session: any): { usage: number; quota: number } | null {
@@ -2444,10 +2490,13 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         (state.customShiftDefs?.length ?? 0) > 0 || state.customRules.length > 0;
       if (hadCustomState && !hasCurrentCustom) {
         recentTurnHistory = [];
+        pendingClarification = null;
         hadCustomState = false;
       } else if (hasCurrentCustom) {
         hadCustomState = true;
       }
+
+      const historyLinesForTurn = getCombinedHistoryLines();
 
       // ==================== TURN 1: STAGE 1 ROUTER (tool_types + response) ====================
       onProgress?.({
@@ -2461,11 +2510,12 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           : routerBaseSession;
 
       let stage1: Stage1RouterResult;
+      let stage1RoutingFailed = false;
       try {
         const routerContextLines = [
           `対象月:${state.config.year}年${state.config.month}月(1〜${state.config.numDays}日)`,
-          ...(recentTurnHistory.length > 0
-            ? [`【直近の対話履歴】`, ...recentTurnHistory]
+          ...(historyLinesForTurn.length > 0
+            ? [`【直近の対話履歴】`, ...historyLinesForTurn]
             : []),
         ];
         const routerPrompt = `${routerContextLines.join("\n")}\n\nユーザーの発話: 「${userMessage}」`;
@@ -2480,6 +2530,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           stage1 = JSON.parse(rawStage1.trim()) as Stage1RouterResult;
         } catch (err: any) {
           parseErr = err?.message ?? String(err);
+          stage1RoutingFailed = true;
           stage1 = { response: rawStage1 || userMessage, routes: [{ tool_type: "question" }] };
         }
         const t1Duration = Math.max(1, Math.round(performance.now() - t1Start));
@@ -2571,7 +2622,11 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             : "question";
         lastNonToolReason = reason;
         if (reason === "clarify") {
-          appendTurnHistory(`・前回:「${userMessage}」➔ 聞き返し: ${stage1Response}`);
+          recordPendingClarification(userMessage, stage1Response);
+        } else if (!stage1RoutingFailed) {
+          // Only a genuine intent switch abandons the held request; a failed/aborted/unparseable
+          // Stage 1 call synthesizes a fallback `question` route and must keep it for a retry.
+          pendingClarification = null;
         }
         return {
           intentType: "consult_only",
@@ -2616,17 +2671,17 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           const dynamicDict = buildCategoryDynamicDictionary(
             category,
             workingState,
-            `${userMessage} ${instruction}`
+            `${userMessage} ${instruction} ${historyLinesForTurn.join(" ")}`
           );
           const dictNote = dynamicDict ? `${dynamicDict}\n` : "";
           const historyNote =
-            recentTurnHistory.length > 0
-              ? `【直近の対話履歴】\n${recentTurnHistory.join("\n")}\n`
+            historyLinesForTurn.length > 0
+              ? `【直近の対話履歴】\n${historyLinesForTurn.join("\n")}\n`
               : "";
           const effectiveInstruction =
             activeRoutes.length > 1
               ? instruction
-              : recentTurnHistory.length > 0 && instruction && instruction !== userMessage
+              : historyLinesForTurn.length > 0 && instruction && instruction !== userMessage
                 ? `${userMessage}（文脈補完: ${instruction}）`
                 : userMessage;
           const stage2Input = `${dictNote}${historyNote}ユーザーの指示: 「${effectiveInstruction}」`;
@@ -2719,12 +2774,14 @@ export function createGeminiNanoManager(): GeminiNanoManager {
         let previewAppliedLogs: string[] = [];
         if (operations.some((o) => o.op === "reset_default" || o.op === "clear_custom_rules")) {
           recentTurnHistory = [];
+          pendingClarification = null;
           hadCustomState = false;
           previewAppliedLogs = ["リセット/クリア実行"];
         } else {
           const previewApplied = applyChatOperationsToState(state, operations);
           previewAppliedLogs = previewApplied.appliedLogs;
           if (previewApplied.appliedLogs.length > 0) {
+            pendingClarification = null;
             appendTurnHistory(
               `・前回:「${userMessage}」➔ 適用済: ${previewApplied.appliedLogs.join(" / ")}`
             );
@@ -2768,6 +2825,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
             unresolvedNurses.length > 0
               ? `指定されたスタッフ名（「${Array.from(new Set(unresolvedNurses)).join("・")}」）が病棟名簿に存在しないため、設定を変更できません。`
               : `ご指定の操作（「${userMessage}」）は適用対象が見つからないか本システムでは未対応のため、設定を変更できません。`;
+          pendingClarification = null;
           lastNonToolReason = "unsupported";
           lastStage1Response = refusalMsg;
           lastUnappliedInstructions = [...unsupportedRouteInstructions];
@@ -2806,6 +2864,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
       }
 
       if (stage2SystemIntent) {
+        pendingClarification = null;
         lastNonToolReason = null;
         lastUnappliedInstructions = [];
         return {
@@ -2841,12 +2900,15 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           ? `ご指定の操作（「${userMessage}」）に対応する設定項目・ツールがないため、本システムでは未対応です。`
           : stage1Response;
       if (fallbackReason === "unsupported" && activeRoutes.length > 0) {
+        pendingClarification = null;
         lastStage1Response = finalSummaryJa;
         routerTrace.push(
           `⚠️ Step 3 (Verification): 対応するツールが存在しないため未対応(unsupported)と判定`
         );
       } else if (fallbackReason === "clarify") {
-        appendTurnHistory(`・前回:「${userMessage}」➔ 聞き返し: ${stage1Response}`);
+        recordPendingClarification(userMessage, stage1Response);
+      } else {
+        pendingClarification = null;
       }
       return {
         intentType: "consult_only",
@@ -2945,14 +3007,14 @@ export function createGeminiNanoManager(): GeminiNanoManager {
           } else if (lastNonToolReason === "clarify") {
             fullPrompt = [
               `【情報不足・確認が必要な指示に対する回答指示】`,
-              `実行ステータス: 設定変更 0件（未適用） / シフト再計算（ソルバー実行）: スキップ（未実行）`,
+              `実行ステータス: 設定変更 0件（回答待ちのため一括保留） / シフト再計算（ソルバー実行）: スキップ（未実行）`,
               `ユーザーの発言: 「${userMessage}」`,
               `一次判定メモ: ${lastStage1Response || "設定変更に必要な対象・日付・数値が不足しています。"}`,
               ``,
               `【現在の病棟設定】`,
               buildCompactStatePrompt(state),
               ``,
-              `ユーザーの指示には、設定を変更するために必要な情報（誰の・何月何日の希望か、どの設定項目をいくつにするか等）が不足しているため、設定変更およびシフト再計算（ソルバー実行）をスキップしました。どの情報を教えてもらえれば設定できるかを簡潔に聞き返してください。`,
+              `ユーザーの指示には、設定を変更するために必要な情報（誰の・何月何日の希望か、どの設定項目をいくつにするか等）が不足しているため、すべての設定変更およびシフト再計算（ソルバー実行）を一旦保留しました。「一次判定メモ」の内容に沿って、不足している情報を教えていただければ今回の要望とあわせて一括で設定・再計算する旨を簡潔に聞き返してください。`,
             ].join("\n");
           } else {
             fullPrompt = [
@@ -3171,6 +3233,7 @@ export function createGeminiNanoManager(): GeminiNanoManager {
 
     async resetConversation(): Promise<void> {
       recentTurnHistory = [];
+      pendingClarification = null;
       hadCustomState = false;
       if (
         activeConsultSession &&
@@ -3187,6 +3250,8 @@ export function createGeminiNanoManager(): GeminiNanoManager {
     },
 
     destroy() {
+      recentTurnHistory = [];
+      pendingClarification = null;
       const allSessions = [
         activeConsultSession,
         consultBaseSession,

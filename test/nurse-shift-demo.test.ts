@@ -3530,4 +3530,246 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       )
     ).toBeNull();
   });
+
+  it("holds all tool execution when clarification is needed (Option A) and executes all held + answered operations in the next turn", async () => {
+    const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 202611 });
+    const g = globalThis as Record<string, unknown>;
+    const origLM = g.LanguageModel;
+
+    let turn1Reply: Record<string, unknown> | null = null;
+    let turn1RawOutput: string | null = null;
+    let turn2RepliesBySchema = new Map<unknown, unknown>();
+    let consultReplyText = "";
+    const capturedTurn1Prompts: string[] = [];
+    const capturedTurn2Prompts: string[] = [];
+
+    g.LanguageModel = {
+      async availability() {
+        return "available";
+      },
+      async create() {
+        return {
+          contextWindow: 9216,
+          contextUsage: 1800,
+          async prompt(input: string, opts?: { responseConstraint?: unknown }) {
+            const schema = opts?.responseConstraint;
+            if (!schema) {
+              return consultReplyText;
+            }
+            if (schema === STAGE1_ROUTER_SCHEMA) {
+              capturedTurn1Prompts.push(input);
+              return turn1RawOutput ?? JSON.stringify(turn1Reply);
+            }
+            if (turn2RepliesBySchema.has(schema)) {
+              capturedTurn2Prompts.push(input);
+              return JSON.stringify(turn2RepliesBySchema.get(schema));
+            }
+            return JSON.stringify({ tools: [{ tool_name: "none", args: {} }] });
+          },
+          async clone() {
+            return this;
+          },
+          destroy() {},
+        };
+      },
+    };
+
+    try {
+      const manager = createGeminiNanoManager();
+      await manager.initialize();
+
+      // Turn 1: User says "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。"
+      // Stage 1 routes to `clarify` because the target minimum workday count is missing, holding all tool execution.
+      turn1Reply = {
+        thought:
+          "田中さんの9日から15日までの公休指定と、月間最低勤務日数の調整。勤務下限の具体的な数値が不明なため clarify で聞き返す。",
+        routes: [{ tool_type: "clarify" }],
+        response:
+          "田中さんの9日から15日までの公休とあわせて設定するため、月間最低勤務日数を何日に調整するか教えていただけますでしょうか？",
+      };
+      consultReplyText =
+        "田中さんの9日〜15日の公休とあわせて一括設定するため、月間最低勤務日数を何日に調整するか教えてください。";
+
+      const planTurn1 = await manager.extractPlan(
+        "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。",
+        state
+      );
+      expect(planTurn1.intentType).toBe("consult_only");
+      expect(planTurn1.nonToolReason).toBe("clarify");
+      expect(planTurn1.operations).toEqual([]);
+      // Turn 2 extractors must NOT have been called during the held turn
+      expect(capturedTurn2Prompts.length).toBe(0);
+
+      let consultOut1 = "";
+      for await (const chunk of manager.streamConsultationReply(
+        "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。",
+        [],
+        state,
+        null
+      )) {
+        consultOut1 += chunk;
+      }
+      expect(consultOut1).toContain("何日に調整するか教えてください");
+      const consultTrace1 = manager.getLastConsultTrace();
+      expect(consultTrace1?.userPrompt).toContain("回答待ちのため一括保留");
+
+      // Turn 2: User replies with another vague message ("勤務下限は少し減らして"), triggering a 2nd clarification round (4367076840)
+      turn1Reply = {
+        thought: "『少し減らして』では具体的な日数が不明なため再度聞き返す。",
+        routes: [{ tool_type: "clarify" }],
+        response: "月間最低勤務日数を具体的に何日にするか教えていただけますか？",
+      };
+      const planTurn2Vague = await manager.extractPlan("勤務下限は少し減らして", state);
+      expect(planTurn2Vague.intentType).toBe("consult_only");
+      expect(planTurn2Vague.nonToolReason).toBe("clarify");
+      expect(planTurn2Vague.operations).toEqual([]);
+
+      // Turns 2b/2c: Two more clarification follow-ups. All accumulated messages are preserved in order.
+      const planTurn2b = await manager.extractPlan("まだ決めていない", state);
+      expect(planTurn2b.nonToolReason).toBe("clarify");
+      const planTurn2c = await manager.extractPlan("やっぱり少しだけ", state);
+      expect(planTurn2c.nonToolReason).toBe("clarify");
+
+      // Turn 2d: Stage 1 output cannot be parsed while the user is answering the held request. The synthetic
+      // fallback `question` route must NOT be treated as an intent switch, so the pending entry is retained (4368219493).
+      turn1RawOutput = "not a json response";
+      const planTurn2dRouterFailure = await manager.extractPlan("勤務下限は", state);
+      expect(planTurn2dRouterFailure.operations).toEqual([]);
+      turn1RawOutput = null;
+
+      // Turn 4: User answers "勤務下限は15日" after repeated clarification rounds and a failed routing attempt (4367076840)
+      // All accumulated clarification messages from Turn 1 onward must be retained in the pending entry!
+      turn1Reply = {
+        thought:
+          "前回の未適用リクエスト（田中さんの9日〜15日の公休）と今回の回答（月間最低勤務日数を15日）を統合して実行する。",
+        routes: [
+          {
+            tool_type: "staff_calendar",
+            instruction: "田中さんを9日から15日まで公休(O)にする",
+          },
+          {
+            tool_type: "staff_contract",
+            instruction: "田中さんの月間最低勤務日数を15日に設定する",
+          },
+        ],
+        response: "田中さんの9日から15日までを公休にし、月間最低勤務日数を15日に設定します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [
+          STAFF_CALENDAR_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "add_request_range",
+                args: {
+                  nurseNameOrId: "田中",
+                  startDay: 9,
+                  endDay: 15,
+                  shift: "O",
+                  isHard: true,
+                },
+              },
+            ],
+          },
+        ],
+        [
+          STAFF_CONTRACT_TOOLS_SCHEMA,
+          {
+            tools: [
+              {
+                tool_name: "set_nurse_contract",
+                args: {
+                  nurseNameOrId: "田中",
+                  item: "minWorkDays",
+                  value: 15,
+                },
+              },
+            ],
+          },
+        ],
+      ]);
+
+      const planTurn4 = await manager.extractPlan("勤務下限は15日", state);
+      const turn4RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(turn4RouterPrompt).toContain(
+        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / 勤務下限は少し減らして / まだ決めていない / やっぱり少しだけ」"
+      );
+      expect(planTurn4.intentType).toBe("modify_and_solve");
+      // 1 ranged add_request operation (days 9..15) + 1 set_nurse_contract operation = 2 operations
+      expect(planTurn4.operations.length).toBe(2);
+      const appliedTurn4 = applyChatOperationsToState(state, planTurn4.operations);
+      const tanaka = appliedTurn4.updatedState.nurses.find((n) => n.id === "N04")!;
+      expect(tanaka.minMonthlyWorkDays).toBe(15);
+      for (let d = 9; d <= 15; d++) {
+        expect(
+          appliedTurn4.updatedState.customRules.some(
+            (r) => r.kind === "pin_shift" && r.nurseId === "N04" && r.day === d && r.shift === "O"
+          )
+        ).toBe(true);
+      }
+
+      // Turn 5: Stage 1 asks for clarification on a new request, recording a new pending clarification.
+      turn1Reply = {
+        thought: "佐藤さんの10日公休は具体的だが、夜勤上限の調整回数が不明なため聞き返す。",
+        routes: [{ tool_type: "clarify" }],
+        response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
+      };
+      const planTurn5Clarify = await manager.extractPlan(
+        "佐藤さんを10日休みにして、夜勤上限も調整して",
+        appliedTurn4.updatedState
+      );
+      expect(planTurn5Clarify.intentType).toBe("consult_only");
+      expect(planTurn5Clarify.nonToolReason).toBe("clarify");
+      expect(planTurn5Clarify.operations).toEqual([]);
+
+      // Turn 5b: When accumulated clarification messages exceed Gemini Nano's remaining context budget,
+      // older messages are dropped first (FIFO) so the newest follow-up stays within budget.
+      const oversizedFollowUp = `補足${"あ".repeat(7000)}`;
+      const planTurn5bOversized = await manager.extractPlan(
+        oversizedFollowUp,
+        appliedTurn4.updatedState
+      );
+      expect(planTurn5bOversized.nonToolReason).toBe("clarify");
+
+      // Turn 6: User abandons the pending clarification by switching intent (asking a question, 4367105728).
+      // Verify that Turn 6's Stage 1 prompt dropped the older Turn 5 message when budget was exceeded,
+      // and that switching intent clears `pendingClarification` so Turn 7 does NOT resurrect it!
+      turn1Reply = {
+        thought: "現在の設定に関する質問。",
+        routes: [{ tool_type: "question" }],
+        response: "現在の月間夜勤上限は8回です。",
+      };
+      const planTurn6Question = await manager.extractPlan(
+        "現在の夜勤上限はいくつ？",
+        appliedTurn4.updatedState
+      );
+      const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
+      expect(turn6RouterPrompt).not.toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
+      expect(turn6RouterPrompt).toContain("補足あああ");
+      expect(planTurn6Question.intentType).toBe("consult_only");
+      expect(planTurn6Question.nonToolReason).toBe("question");
+
+      // Turn 7: Subsequent turn prompt must NOT contain `前回(未適用・回答待ち)` (4367105728)
+      turn1Reply = {
+        thought: "シフト再計算のみを実行する。",
+        routes: [{ tool_type: "system_action", instruction: "シフトを再計算する" }],
+        response: "シフトを再計算します。",
+      };
+      turn2RepliesBySchema = new Map([
+        [SYSTEM_ACTION_TOOLS_SCHEMA, { tools: [{ tool_name: "solve_only", args: {} }] }],
+      ]);
+      const planTurn7SolveOnly = await manager.extractPlan(
+        "シフトを再計算して",
+        appliedTurn4.updatedState
+      );
+      expect(capturedTurn1Prompts[capturedTurn1Prompts.length - 1]).not.toContain(
+        "前回(未適用・回答待ち)"
+      );
+      expect(planTurn7SolveOnly.intentType).toBe("solve_only");
+
+      manager.destroy();
+    } finally {
+      g.LanguageModel = origLM;
+    }
+  });
 });
