@@ -21,6 +21,20 @@ export function getGameLang(): GameLang {
     } catch {
       // Ignore storage errors
     }
+    try {
+      const navLang = (window.navigator?.language || "").toLowerCase();
+      if (navLang.startsWith("zh")) {
+        return "zh";
+      }
+      if (navLang.startsWith("ja")) {
+        return "ja";
+      }
+      if (navLang.startsWith("en")) {
+        return "en";
+      }
+    } catch {
+      // Ignore navigator errors
+    }
   }
   return "ja";
 }

@@ -1,5 +1,11 @@
 import { pickLang, type GameLang } from "../i18n.js";
-import type { AssetSpec, MarketShockSpec, QuarterRegime } from "./types.js";
+import type {
+  AssetCategory,
+  AssetSpec,
+  LevelSpec,
+  MarketShockSpec,
+  QuarterRegime,
+} from "./types.js";
 
 function buildCovariance(vols: number[], corr: number[][]): number[][] {
   const n = vols.length;
@@ -8,509 +14,982 @@ function buildCovariance(vols: number[], corr: number[][]): number[][] {
     const row: number[] = [];
     for (let j = 0; j < n; j++) {
       const val = vols[i] * vols[j] * corr[i][j];
-      row.push(i === j ? val + 1e-6 : val);
+      row.push(i === j ? val + 1e-5 : val);
     }
     cov.push(row);
   }
   return cov;
 }
 
-const BASE_ASSETS: Record<string, AssetSpec> = {
-  tech: {
-    id: "tech",
-    ticker: "TECH",
+export const CORE_ASSETS: Record<string, AssetSpec> = {
+  sp500: {
+    id: "sp500",
+    ticker: "SP500",
     color: "#38bdf8",
-    expectedReturn: 0.16,
-    volatility: 0.24,
+    category: "broad",
+    unlockedAtLevel: 1,
+    expectedReturn: 0.1,
+    volatility: 0.16,
     name: {
-      ja: "AI・半導体グロース",
-      en: "AI & Semiconductor Growth",
-      zh: "AI与半导体成长股",
+      ja: "米国株全体 (S&P500)",
+      en: "US Broad Market (S&P500)",
+      zh: "美股大盘 (标普500)",
     },
     roleDesc: {
-      ja: "高リターンだが金利急騰や景気後退で大きく売られる主力株",
-      en: "High expected return, but vulnerable to rate hikes and demand shocks",
-      zh: "高预期回报，但在加息与需求冲击下波动剧烈",
-    },
-  },
-  defense: {
-    id: "defense",
-    ticker: "DFNS",
-    color: "#a78bfa",
-    expectedReturn: 0.11,
-    volatility: 0.15,
-    name: {
-      ja: "防衛・重電インフラ",
-      en: "Defense & Grid Infra",
-      zh: "防卫与重电基建",
-    },
-    roleDesc: {
-      ja: "地政学リスクや供給網寸断に強く、テック株と逆相関になりやすい",
-      en: "Resilient during geopolitical and supply shocks; offsets tech drawdowns",
-      zh: "在地缘风险与供应链冲击下表现稳健，与科技股呈负相关",
-    },
-  },
-  gold: {
-    id: "gold",
-    ticker: "GOLD",
-    color: "#facc15",
-    expectedReturn: 0.08,
-    volatility: 0.12,
-    name: {
-      ja: "ゴールド・危機ヘッジ",
-      en: "Gold Safe-Haven Hedge",
-      zh: "黄金避险资产",
-    },
-    roleDesc: {
-      ja: "株式急落時に買われる強力な逆相関ヘッジ資産",
-      en: "Strong negative correlation with equities during market panics",
-      zh: "在股市暴跌时上涨的强力负相关避险资产",
+      ja: "米国市場の成長を反映する王道コア資産。中程度のリスク・リターン",
+      en: "Core equity index reflecting overall US growth. Balanced risk-reward",
+      zh: "代表美股整体成长的基石资产，中等风险收益",
     },
   },
   bond: {
     id: "bond",
     ticker: "BOND",
     color: "#94a3b8",
+    category: "broad",
+    unlockedAtLevel: 1,
     expectedReturn: 0.045,
-    volatility: 0.045,
+    volatility: 0.04,
     name: {
-      ja: "短期ソブリン国債",
-      en: "Short Sovereign Bond",
-      zh: "短期主权国债",
+      ja: "米国短期国債 (守りの盾)",
+      en: "Short US Treasury (Safety Shield)",
+      zh: "短期美债 (防御之盾)",
     },
     roleDesc: {
-      ja: "変動が極めて小さい安全資産。入れすぎると目標リターンに届かない",
-      en: "Ultra-low volatility anchor, though too low-yield alone",
-      zh: "波动极低的安全资产，但单独持有难以达到目标收益",
+      ja: "変動が極めて小さい安全資産。暴落時に資産を守る盾となる",
+      en: "Ultra-low volatility anchor protecting capital during equity pullbacks",
+      zh: "极低波动的安全资产，在股市回撤时充当防御护盾",
+    },
+  },
+  gold: {
+    id: "gold",
+    ticker: "GOLD",
+    color: "#facc15",
+    category: "commodity",
+    unlockedAtLevel: 1,
+    expectedReturn: 0.085,
+    volatility: 0.12,
+    name: {
+      ja: "ゴールド (金ヘッジ)",
+      en: "Gold Safe-Haven (Hedge)",
+      zh: "黄金避险 (对冲)",
+    },
+    roleDesc: {
+      ja: "有事の金。株式が急落した時に逃避資金が流入して値上がりする",
+      en: "Classic flight-to-safety asset that tends to rise when equities drop",
+      zh: "经典避险资产，当股市暴跌时往往吸引避险资金上涨",
+    },
+  },
+  tech: {
+    id: "tech",
+    ticker: "TECH",
+    color: "#60a5fa",
+    category: "sector",
+    unlockedAtLevel: 2,
+    expectedReturn: 0.16,
+    volatility: 0.22,
+    name: {
+      ja: "情報技術セクターETF",
+      en: "Tech Sector ETF",
+      zh: "信息技术行业ETF",
+    },
+    roleDesc: {
+      ja: "高成長を牽引する攻めの主力セクター。好況期に強いが金利急騰に弱い",
+      en: "Leading growth sector. Surges in expansions but sensitive to rate hikes",
+      zh: "引领成长的主力进攻板块，牛市领涨但对利率敏感",
+    },
+  },
+  pharma: {
+    id: "pharma",
+    ticker: "PHARMA",
+    color: "#34d399",
+    category: "sector",
+    unlockedAtLevel: 2,
+    expectedReturn: 0.105,
+    volatility: 0.13,
+    name: {
+      ja: "ヘルスケア・製薬ETF",
+      en: "Healthcare & Pharma ETF",
+      zh: "医疗保健与制药ETF",
+    },
+    roleDesc: {
+      ja: "不況時でも需要が落ちないディフェンシブセクター。手堅い収益源",
+      en: "Recession-resilient defensive sector with steady non-cyclical cash flows",
+      zh: "经济下行期需求稳固的防御板块，现金流充沛稳健",
+    },
+  },
+  "nv-ai": {
+    id: "nv-ai",
+    ticker: "NV-AI",
+    color: "#ec4899",
+    category: "stock",
+    unlockedAtLevel: 3,
+    expectedReturn: 0.22,
+    volatility: 0.3,
+    name: {
+      ja: "AI半導体株 (NV-AI)",
+      en: "AI Semiconductor Stock",
+      zh: "AI半导体龙头股",
+    },
+    roleDesc: {
+      ja: "爆発的な成長力を持つ大砲個別株。ただし決算ショックや急落の猛毒も",
+      en: "Explosive growth engine stock. Carries steep standalone drawdown risk",
+      zh: "具备爆发性成长潜力的大牛股，但也伴随剧烈回调风险",
+    },
+  },
+  cloud: {
+    id: "cloud",
+    ticker: "CLOUD",
+    color: "#818cf8",
+    category: "stock",
+    unlockedAtLevel: 3,
+    expectedReturn: 0.155,
+    volatility: 0.19,
+    name: {
+      ja: "巨大クラウド株 (CLOUD)",
+      en: "Mega Cloud Titan",
+      zh: "云计算巨头股",
+    },
+    roleDesc: {
+      ja: "世界中のITインフラを握る巨大個別株。堅実な複利成長が見込める",
+      en: "Dominant enterprise infrastructure giant with consistent cash flow",
+      zh: "掌握全球企业IT基建的科技巨头，长期复利成长稳健",
+    },
+  },
+  defense: {
+    id: "defense",
+    ticker: "DFNS",
+    color: "#a78bfa",
+    category: "stock",
+    unlockedAtLevel: 3,
+    expectedReturn: 0.12,
+    volatility: 0.15,
+    name: {
+      ja: "防衛・重電株 (DFNS)",
+      en: "Defense & Heavy Grid",
+      zh: "防务与重工军工股",
+    },
+    roleDesc: {
+      ja: "地政学リスクや予算拡大で買われ、ハイテク株と逆の動きをしやすい",
+      en: "Beneficiary of geopolitical tensions and sovereign infrastructure budgets",
+      zh: "受益于地缘政治预算增加，常与科技股呈负相关走势",
     },
   },
   energy: {
     id: "energy",
     ticker: "NRGY",
     color: "#fb923c",
-    expectedReturn: 0.135,
-    volatility: 0.21,
+    category: "stock",
+    unlockedAtLevel: 4,
+    expectedReturn: 0.145,
+    volatility: 0.22,
     name: {
-      ja: "資源・エネルギー先物",
-      en: "Energy & Commodities",
-      zh: "能源与大宗商品",
+      ja: "石油・エネルギー株 (NRGY)",
+      en: "Energy & Petroleum",
+      zh: "石油与能源巨头",
     },
     roleDesc: {
-      ja: "インフレ・資源高騰局面で急騰し、コスト増で苦しむハイテク株をヘッジ",
-      en: "Surges during inflation spikes, hedging rate-sensitive growth stocks",
-      zh: "在通胀与资源紧缺时飙升，可对冲受成本挤压的成长股",
+      ja: "資源高騰・インフレ局面で急騰し、コスト増で苦しむグロース株をヘッジ",
+      en: "Surges during inflation and commodity spikes, hedging input costs",
+      zh: "在通胀与大宗商品上涨时爆发，对冲成长股的成本压力",
     },
   },
-  frontier: {
-    id: "frontier",
-    ticker: "QNTX",
-    color: "#f43f5e",
-    expectedReturn: 0.22,
-    volatility: 0.34,
+  bank: {
+    id: "bank",
+    ticker: "BANK",
+    color: "#f59e0b",
+    category: "stock",
+    unlockedAtLevel: 4,
+    expectedReturn: 0.115,
+    volatility: 0.17,
     name: {
-      ja: "量子・フロンティア資産",
-      en: "Quantum Frontier Alpha",
-      zh: "量子前沿高波资产",
+      ja: "大手メガバンク株 (BANK)",
+      en: "Global Mega Bank",
+      zh: "全球大型商业银行",
     },
     roleDesc: {
-      ja: "爆発的な期待リターンを持つが、単体保有は破綻リスクが極めて高い",
-      en: "Explosive upside potential, but extreme standalone ruin probability",
-      zh: "具备爆发性预期收益，但重仓持有极易触发爆仓线",
+      ja: "金利上昇局面で利ざやが拡大して利益が増える金融の主力株",
+      en: "Profits from widening net interest margins when interest rates climb",
+      zh: "在加息周期利差扩大利润丰厚的金融主力股",
+    },
+  },
+  qntx: {
+    id: "qntx",
+    ticker: "QNTX",
+    color: "#f43f5e",
+    category: "stock",
+    unlockedAtLevel: 5,
+    expectedReturn: 0.26,
+    volatility: 0.36,
+    name: {
+      ja: "量子新興ディープテック (QNTX)",
+      en: "Quantum Deep-Tech Frontier",
+      zh: "量子前沿硬科技新星",
+    },
+    roleDesc: {
+      ja: "未来の覇権を握る超ハイリスク株。単体保有は危険だが分散に混ぜると爆発力",
+      en: "High-octane deep-tech alpha. Devastating if unhedged, powerful in blend",
+      zh: "未来颠覆性硬科技高波资产，单独重仓极易爆仓，分散搭配收益极高",
+    },
+  },
+  reit: {
+    id: "reit",
+    ticker: "REIT",
+    color: "#2dd4bf",
+    category: "alt",
+    unlockedAtLevel: 5,
+    expectedReturn: 0.095,
+    volatility: 0.15,
+    name: {
+      ja: "グローバル不動産投信 (REIT)",
+      en: "Global Real Estate REIT",
+      zh: "全球不动产信托REIT",
+    },
+    roleDesc: {
+      ja: "商業ビルやデータセンターからの賃料収入。株式とは異なる値動きで安定寄与",
+      en: "Steady cash flows from prime data centers and commercial properties",
+      zh: "来自优质数据中心与商用地产的稳定租金收入，走势独立于普通股市",
     },
   },
 };
 
-function cloneAssetWithMods(
-  base: AssetSpec,
-  expectedReturn: number,
-  volatility: number
-): AssetSpec {
+export const CORE_CORRELATION_MATRIX: Record<string, Record<string, number>> = {
+  sp500: {
+    sp500: 1.0, bond: -0.18, gold: -0.25, tech: 0.88, pharma: 0.55,
+    "nv-ai": 0.76, cloud: 0.82, defense: 0.28, energy: 0.35, bank: 0.65, qntx: 0.68, reit: 0.52,
+  },
+  bond: {
+    sp500: -0.18, bond: 1.0, gold: 0.22, tech: -0.22, pharma: 0.12,
+    "nv-ai": -0.28, cloud: -0.18, defense: 0.05, energy: -0.25, bank: -0.1, qntx: -0.3, reit: 0.25,
+  },
+  gold: {
+    sp500: -0.25, bond: 0.22, gold: 1.0, tech: -0.38, pharma: 0.08,
+    "nv-ai": -0.45, cloud: -0.32, defense: 0.22, energy: 0.32, bank: -0.05, qntx: -0.5, reit: 0.18,
+  },
+  tech: {
+    sp500: 0.88, bond: -0.22, gold: -0.38, tech: 1.0, pharma: 0.32,
+    "nv-ai": 0.86, cloud: 0.9, defense: 0.12, energy: 0.15, bank: 0.45, qntx: 0.78, reit: 0.38,
+  },
+  pharma: {
+    sp500: 0.55, bond: 0.12, gold: 0.08, tech: 0.32, pharma: 1.0,
+    "nv-ai": 0.22, cloud: 0.35, defense: 0.3, energy: 0.1, bank: 0.38, qntx: 0.15, reit: 0.42,
+  },
+  "nv-ai": {
+    sp500: 0.76, bond: -0.28, gold: -0.45, tech: 0.86, pharma: 0.22,
+    "nv-ai": 1.0, cloud: 0.8, defense: -0.05, energy: 0.08, bank: 0.35, qntx: 0.82, reit: 0.25,
+  },
+  cloud: {
+    sp500: 0.82, bond: -0.18, gold: -0.32, tech: 0.9, pharma: 0.35,
+    "nv-ai": 0.8, cloud: 1.0, defense: 0.15, energy: 0.18, bank: 0.48, qntx: 0.72, reit: 0.35,
+  },
+  defense: {
+    sp500: 0.28, bond: 0.05, gold: 0.22, tech: 0.12, pharma: 0.3,
+    "nv-ai": -0.05, cloud: 0.15, defense: 1.0, energy: 0.35, bank: 0.42, qntx: -0.1, reit: 0.28,
+  },
+  energy: {
+    sp500: 0.35, bond: -0.25, gold: 0.32, tech: 0.15, pharma: 0.1,
+    "nv-ai": 0.08, cloud: 0.18, defense: 0.35, energy: 1.0, bank: 0.52, qntx: 0.05, reit: 0.2,
+  },
+  bank: {
+    sp500: 0.65, bond: -0.1, gold: -0.05, tech: 0.45, pharma: 0.38,
+    "nv-ai": 0.35, cloud: 0.48, defense: 0.42, energy: 0.52, bank: 1.0, qntx: 0.3, reit: 0.45,
+  },
+  qntx: {
+    sp500: 0.68, bond: -0.3, gold: -0.5, tech: 0.78, pharma: 0.15,
+    "nv-ai": 0.82, cloud: 0.72, defense: -0.1, energy: 0.05, bank: 0.3, qntx: 1.0, reit: 0.18,
+  },
+  reit: {
+    sp500: 0.52, bond: 0.25, gold: 0.18, tech: 0.38, pharma: 0.42,
+    "nv-ai": 0.25, cloud: 0.35, defense: 0.28, energy: 0.2, bank: 0.45, qntx: 0.18, reit: 1.0,
+  },
+};
+
+/**
+ * Procedural asset templates for endless Level 6 and beyond
+ */
+interface ProceduralTemplate {
+  ticker: string;
+  category: AssetCategory;
+  name: { ja: string; en: string; zh: string };
+  roleDesc: { ja: string; en: string; zh: string };
+  color: string;
+  expectedReturn: number;
+  volatility: number;
+  baseFactor: number; // Factor loading onto broad market (SP500)
+}
+
+const PROCEDURAL_CATALOG: ProceduralTemplate[] = [
+  {
+    ticker: "SPACE",
+    category: "stock",
+    color: "#c084fc",
+    expectedReturn: 0.24,
+    volatility: 0.33,
+    baseFactor: 0.7,
+    name: { ja: "民間宇宙開発 (SPACE)", en: "Commercial Space Exploration", zh: "商业航天探索股" },
+    roleDesc: {
+      ja: "衛星網と軌道輸送の開拓者。超ハイリスクだが莫大な潜在アップサイド",
+      en: "Orbital launch & satellite networks. High risk with tremendous upside",
+      zh: "卫星网络与商业发射领航者，风险极高但潜在收益巨大",
+    },
+  },
+  {
+    ticker: "CYBER",
+    category: "stock",
+    color: "#38bdf8",
+    expectedReturn: 0.17,
+    volatility: 0.21,
+    baseFactor: 0.65,
+    name: { ja: "サイバーセキュリティ (CYBER)", en: "Cyber Defense Infrastructure", zh: "网络安全基础设施" },
+    roleDesc: {
+      ja: "クラウド侵入や国家支援ハッキング対策。不況時でも削られないIT予算",
+      en: "Mission-critical security spending resilient across economic cycles",
+      zh: "抵御网络攻击的刚需安全支出，经济下行期预算依然坚挺",
+    },
+  },
+  {
+    ticker: "FUSION",
+    category: "stock",
+    color: "#4ade80",
+    expectedReturn: 0.21,
+    volatility: 0.29,
+    baseFactor: 0.55,
+    name: { ja: "核融合クリーン電力 (FUSION)", en: "Clean Fusion Energy", zh: "受控核聚变清洁能源" },
+    roleDesc: {
+      ja: "次世代脱炭素ベースロード電力。実験成功ニュースで急伸する未来株",
+      en: "Next-gen zero-carbon baseload energy pioneer with breakthrough upside",
+      zh: "下一代零碳基荷能源先驱，突破性试验驱动高弹性收益",
+    },
+  },
+  {
+    ticker: "BIO-G",
+    category: "stock",
+    color: "#f472b6",
+    expectedReturn: 0.27,
+    volatility: 0.38,
+    baseFactor: 0.35,
+    name: { ja: "遺伝子編集バイオ (BIO-G)", en: "Gene-Editing Bio Alpha", zh: "基因编辑生物科技" },
+    roleDesc: {
+      ja: "希少疾患治療薬の臨床試験で株価が乱高下する超高ベータ個別株",
+      en: "Clinical trial catalyst driver with immense volatility and low equity beta",
+      zh: "临床试验结果驱动的超高波生物医药，与传统大盘相关度较低",
+    },
+  },
+  {
+    ticker: "RARE",
+    category: "commodity",
+    color: "#fbbf24",
+    expectedReturn: 0.15,
+    volatility: 0.24,
+    baseFactor: 0.4,
+    name: { ja: "レアアース・重要鉱物 (RARE)", en: "Critical Rare Earth Metals", zh: "稀土与关键战略矿物" },
+    roleDesc: {
+      ja: "EVと防衛産業に必須の戦略資源。供給網デカップリングで価格高騰",
+      en: "Strategic minerals powering EVs and defense. Rallies on supply choke points",
+      zh: "新能源与军工关键战略金属，在地缘封锁与断供时大涨",
+    },
+  },
+  {
+    ticker: "EM-BND",
+    category: "alt",
+    color: "#a3e635",
+    expectedReturn: 0.088,
+    volatility: 0.11,
+    baseFactor: 0.1,
+    name: { ja: "高利回り新興国債 (EM-BND)", en: "Emerging Sovereign Bond", zh: "新兴市场高收益主权债" },
+    roleDesc: {
+      ja: "米ドル建て高利回り債券。分散効果が高く、着実なインカムゲインを提供",
+      en: "High-yielding USD-denominated sovereign paper providing steady coupons",
+      zh: "美元计价新兴市场高息主权债，具备良好分散效应和票息收益",
+    },
+  },
+  {
+    ticker: "AUTO-EV",
+    category: "stock",
+    color: "#22d3ee",
+    expectedReturn: 0.19,
+    volatility: 0.26,
+    baseFactor: 0.6,
+    name: { ja: "自動運転ロボタクシー (AUTO-EV)", en: "Autonomous Mobility AI", zh: "自动驾驶移动出行" },
+    roleDesc: {
+      ja: "都市交通の自動化を担う新世代モビリティ。ハイテクと消費の中間特性",
+      en: "Autonomous fleet operator blending deep-learning AI with consumer mobility",
+      zh: "将AI与出行深度结合的下一代运营商，兼具科技与消费属性",
+    },
+  },
+];
+
+export function getProceduralAsset(level: number, subIndex: number): AssetSpec {
+  const seed = (level - 6) * 2 + subIndex;
+  const tpl = PROCEDURAL_CATALOG[seed % PROCEDURAL_CATALOG.length];
+  const cycle = Math.floor(seed / PROCEDURAL_CATALOG.length);
+  const suffix = cycle > 0 ? `-${cycle + 1}` : "";
+  const id = `${tpl.ticker.toLowerCase()}${suffix.toLowerCase()}`;
+
+  const returnMod = Math.min(0.04, cycle * 0.008);
+  const volMod = 1 + Math.min(0.25, cycle * 0.05);
+
   return {
-    ...base,
-    expectedReturn,
-    volatility,
+    id,
+    ticker: `${tpl.ticker}${suffix}`,
+    color: tpl.color,
+    category: tpl.category,
+    unlockedAtLevel: level,
+    expectedReturn: Number((tpl.expectedReturn + returnMod).toFixed(4)),
+    volatility: Number((tpl.volatility * volMod).toFixed(4)),
+    name: {
+      ja: `${tpl.name.ja}${suffix}`,
+      en: `${tpl.name.en}${suffix}`,
+      zh: `${tpl.name.zh}${suffix}`,
+    },
+    roleDesc: tpl.roleDesc,
   };
 }
 
-const REGIME_TEMPLATES: Array<{
+const LEVEL_TEMPLATES: Array<{
+  maxPicks: number;
+  newAssetKeys: string[];
   title: { ja: string; en: string; zh: string };
   forecast: { ja: string; en: string; zh: string };
   rivalPersona: { ja: string; en: string; zh: string };
-  assetKeys: Array<keyof typeof BASE_ASSETS>;
-  returns: number[];
-  vols: number[];
-  corr: number[][];
   targetReturn: number;
   liquidationFloor: number;
   maxWeightPerAsset: number;
   shocks: MarketShockSpec[];
 }> = [
-  // Q1: 4 assets — Classic Tech vs Gold/Defense negative correlation intro
+  // Level 1: 3 assets (SP500, BOND, GOLD) — Pick up to 2
   {
+    maxPicks: 2,
+    newAssetKeys: ["sp500", "bond", "gold"],
     title: {
-      ja: "金利警戒とAI選別相場",
-      en: "Rate Watch & AI Rotation",
-      zh: "利率警戒与AI轮动行情",
+      ja: "Level 1: 投資の基本と守りの盾",
+      en: "Level 1: Investment Foundations & Shield",
+      zh: "第1关：投资基础与防御之盾",
     },
     forecast: {
-      ja: "TECHは高利回りだが変動が激しい。逆相関のGOLDやDFNSを組み合わせ、破綻確率を抑えて運用せよ。",
-      en: "TECH offers high upside with steep volatility. Blend negatively correlated GOLD and DFNS to compress ruin risk.",
-      zh: "TECH收益高但波动剧烈。搭配负相关的GOLD与DFNS以压低爆仓概率。",
+      ja: "株と国債・金の王道バランス。株式単体だと急落で破綻する。国債や金と組み合わせて生き残れ。",
+      en: "The classic equity, bond, and gold balance. Pure equities risk liquidation on drawdowns. Blend to survive.",
+      zh: "股票、国债与黄金的经典平衡。全仓股票易遭遇强平，搭配国债或黄金稳健求生。",
     },
     rivalPersona: {
-      ja: "RIVAL // 最小分散モデル v1",
-      en: "RIVAL // Min-Variance Desk v1",
-      zh: "RIVAL // 最小方差模型 v1",
+      ja: "WaSHI-QP // 基礎アロケーター",
+      en: "WaSHI-QP // Foundation Allocator",
+      zh: "WaSHI-QP // 基础资产配置模型",
     },
-    assetKeys: ["tech", "defense", "gold", "bond"],
-    returns: [0.16, 0.115, 0.085, 0.045],
-    vols: [0.24, 0.15, 0.12, 0.04],
-    corr: [
-      [1.0, -0.35, -0.62, -0.15],
-      [-0.35, 1.0, 0.1, 0.05],
-      [-0.62, 0.1, 1.0, 0.2],
-      [-0.15, 0.05, 0.2, 1.0],
-    ],
-    targetReturn: 0.105,
+    targetReturn: 0.08,
     liquidationFloor: -0.055,
-    maxWeightPerAsset: 1.0,
+    maxWeightPerAsset: 0.9,
     shocks: [
       {
-        id: "q1-rate-scare",
-        day: 22,
+        id: "l1-pullback",
+        day: 24,
         headline: {
-          ja: "中央銀行がタカ派発言：ハイテク株に売り、ゴールドと防衛株に逃避資金",
-          en: "Hawkish central bank signal sparks tech sell-off and safe-haven inflow",
-          zh: "央行释放鹰派信号：科技股承压，资金涌入黄金与防卫板块",
+          ja: "利益確定売りで株式市場が反落：国債とゴールドに逃避資金が流入",
+          en: "Equity profit-taking pullback sparks safe-haven bid in Bonds and Gold",
+          zh: "股市获利了结回踩：避险资金涌入国债与黄金",
         },
         reversedHeadline: {
-          ja: "中央銀行がハト派に転換：ハイテク株が買われ、ゴールドと防衛株から資金流出",
-          en: "Dovish central bank pivot lifts tech as money leaves safe havens",
-          zh: "央行转向鸽派：科技股走强，资金撤离黄金与防卫板块",
+          ja: "リスク選好の回復で株式市場が反発：国債とゴールドから資金が流出",
+          en: "Risk-on sentiment lifts equities; capital rotates out of Bonds and Gold",
+          zh: "风险偏好显著回暖股票受追捧：避险资金从国债与黄金流出",
         },
-        assetImpulses: [-0.055, 0.03, 0.042, 0.006],
+        assetImpulses: { sp500: -0.05, bond: 0.015, gold: 0.035 },
       },
       {
-        id: "q1-ai-rally",
-        day: 44,
+        id: "l1-rally",
+        day: 45,
         headline: {
-          ja: "次世代AIチップ受注が予想超え：半導体セクターが急反発",
-          en: "Next-gen AI chip orders beat estimates; semiconductor sector rebounds",
-          zh: "下一代AI芯片订单超预期：半导体板块强劲反弹",
+          ja: "景気指標が予想を上回り堅調：株式市場が買い戻される",
+          en: "Economic indicators beat estimates; equity markets rebound strongly",
+          zh: "经济数据超预期向好：股票市场迎来强劲反弹",
         },
         reversedHeadline: {
-          ja: "次世代AIチップ受注が予想割れ：半導体セクターが急落し、ゴールドに資金",
-          en: "Next-gen AI chip orders miss estimates; semiconductors slide as gold firms",
-          zh: "下一代AI芯片订单不及预期：半导体板块下挫，黄金走强",
+          ja: "景気減速への警戒感が高まる：株式市場が軟調となり安全資産が下支え",
+          en: "Economic growth concerns mount; equities weaken as safe havens find support",
+          zh: "经济增长放缓担忧升温：股票市场走弱，避险资产获得支撑",
         },
-        assetImpulses: [0.062, 0.01, -0.022, 0.002],
+        assetImpulses: { sp500: 0.045, bond: -0.005, gold: -0.015 },
       },
     ],
   },
-  // Q2: 5 assets — Energy Supply Shock & Inflation Hedge
+  // Level 2: +TECH, +PHARMA — Pick up to 3
   {
+    maxPicks: 3,
+    newAssetKeys: ["tech", "pharma"],
     title: {
-      ja: "資源インフレと供給網ショック",
-      en: "Commodity Inflation & Supply Shock",
-      zh: "资源通胀与供应链冲击",
+      ja: "Level 2: セクター分散（攻めと守り）",
+      en: "Level 2: Sector Rotation (Offense & Defense)",
+      zh: "第2关：行业轮动（进攻与防御）",
     },
     forecast: {
-      ja: "原油・資源価格が乱高下中。NRGYとTECHの強い逆相関（-0.55）を活かしてインフレ波を乗り切れ。",
-      en: "Energy prices are whipsawing. Exploit the strong negative correlation (-0.55) between NRGY and TECH.",
-      zh: "能源价格剧烈震荡。利用NRGY与TECH的强负相关（-0.55）对冲通胀冲击。",
+      ja: "ハイテクETF（攻め）と製薬ETF（守り）がアンロック! 業界ごとの性格を見極めて3銘柄を選定せよ。",
+      en: "Tech (growth offense) and Pharma (defensive anchor) unlocked! Pick up to 3 sectors.",
+      zh: "科技行业ETF（进攻）与制药行业ETF（防御）解锁! 选出最多3只资产构建组合。",
     },
     rivalPersona: {
-      ja: "RIVAL // インフレヘッジモデル",
-      en: "RIVAL // Inflation-Hedge Desk",
-      zh: "RIVAL // 通胀对冲模型",
+      ja: "WaSHI-QP // セクター・バランサー",
+      en: "WaSHI-QP // Sector Balancer",
+      zh: "WaSHI-QP // 行业平衡引擎",
     },
-    assetKeys: ["tech", "energy", "defense", "gold", "bond"],
-    returns: [0.165, 0.145, 0.115, 0.085, 0.045],
-    vols: [0.25, 0.22, 0.15, 0.125, 0.045],
-    corr: [
-      [1.0, -0.55, -0.3, -0.5, -0.2],
-      [-0.55, 1.0, 0.25, 0.3, -0.15],
-      [-0.3, 0.25, 1.0, 0.1, 0.05],
-      [-0.5, 0.3, 0.1, 1.0, 0.15],
-      [-0.2, -0.15, 0.05, 0.15, 1.0],
-    ],
-    targetReturn: 0.115,
+    targetReturn: 0.105,
     liquidationFloor: -0.055,
     maxWeightPerAsset: 0.75,
     shocks: [
       {
-        id: "q2-strait-blockade",
-        day: 19,
+        id: "l2-rate-fear",
+        day: 20,
         headline: {
-          ja: "海峡輸送ルートが停滞：エネルギー先物が急騰しハイテク株が下落",
-          en: "Maritime chokepoint disruption sends energy surging while tech slides",
-          zh: "海峡航运受阻：能源期货飙升，科技股回落",
+          ja: "長期金利の上昇懸念：ハイテク株が下落するも製薬と金がポートフォリオを下支え",
+          en: "Rising rate fears hit Tech while Pharma and Gold hold steady",
+          zh: "长期利率攀升担忧拖累科技板块，制药与黄金发挥护盘作用",
         },
         reversedHeadline: {
-          ja: "海峡輸送ルートが早期復旧：エネルギー先物が急落しハイテク株が反発",
-          en: "Maritime chokepoint reopens early; energy futures tumble and tech rebounds",
-          zh: "海峡航运提前恢复：能源期货大跌，科技股反弹",
+          ja: "長期金利の急低下でハイテク株が反騰：安全資産からの巻き戻しが進む",
+          en: "Plunging bond yields ignite Tech breakout; defensive havens consolidate",
+          zh: "长期利率大幅回落驱动科技板块暴涨：避险资产遭遇多头止盈",
         },
-        assetImpulses: [-0.052, 0.068, 0.032, 0.028, -0.005],
+        assetImpulses: { tech: -0.065, sp500: -0.035, pharma: 0.015, gold: 0.025, bond: -0.005 },
       },
       {
-        id: "q2-inventory-release",
-        day: 41,
+        id: "l2-innovation",
+        day: 42,
         headline: {
-          ja: "戦略備蓄の協調放出が決定：資源高が一服しグロース株が買い戻される",
-          en: "Coordinated strategic reserve release cools oil and lifts growth stocks",
-          zh: "多国联合释放战略储备：资源价格回落，成长股迎来买盘",
+          ja: "革新的な新薬承認とAIクラウド需要急増：ハイテクと製薬が揃って上昇",
+          en: "Breakthrough drug approvals and AI demand lift Tech and Pharma together",
+          zh: "突破性新药获批叠加AI算力需求旺盛：科技与制药板块携手走高",
         },
         reversedHeadline: {
-          ja: "戦略備蓄の協調放出が見送り：資源高が再燃しグロース株が売られる",
-          en: "Strategic reserve release shelved; oil rallies again and growth stocks sell off",
-          zh: "多国联合释放战略储备计划搁置：资源价格再度走高，成长股遭抛售",
+          ja: "新薬治験の遅延とIT投資の様子見：ハイテクと製薬が揃って調整",
+          en: "Clinical drug trial delays and IT capex pause dampen Tech and Pharma",
+          zh: "新药审批阶段性受阻叠加企业IT开支审慎：科技与医药双双回调整理",
         },
-        assetImpulses: [0.058, -0.038, 0.008, -0.015, 0.008],
+        assetImpulses: { tech: 0.06, pharma: 0.04, sp500: 0.035, gold: -0.02, bond: 0.0 },
       },
     ],
   },
-  // Q3: 5 assets — Tighter Concentration Cap & Geopolitical Volatility
+  // Level 3: +NV-AI, +CLOUD, +DEFENSE — Pick up to 4
   {
+    maxPicks: 4,
+    newAssetKeys: ["nv-ai", "cloud", "defense"],
     title: {
-      ja: "地政学緊張とセクター集中規制",
-      en: "Geopolitical Tension & Concentration Cap",
-      zh: "地缘紧张与持仓上限监管",
+      ja: "Level 3: 個別株解禁! ハイリターンの誘惑",
+      en: "Level 3: Single Stocks Unlocked! High Alpha",
+      zh: "第3关：个股解锁! 高超额收益的诱惑",
     },
     forecast: {
-      ja: "リスク管理委員会により1銘柄あたり最大55%の上限が発動。3銘柄以上の多角化が必須となる。",
-      en: "Risk committee enforces a 55% single-asset cap. Multi-asset diversification is mandatory.",
-      zh: "风控委员会启用单资产55%持仓上限，必须构建多资产对冲组合。",
+      ja: "AI半導体株(NV-AI)など尖った個別株が登場。爆発的リターンだが、防衛株や債券でヘッジしないと即死する。",
+      en: "High-octane single stocks like NV-AI enter the arena. Immense upside, but needs defense to avoid ruin.",
+      zh: "AI半导体等高弹性个股重磅上线。预期回报极高，但务必搭配防务或债券对冲尾部风险。",
     },
     rivalPersona: {
-      ja: "RIVAL // 分散制約モデル",
-      en: "RIVAL // Diversified Risk Desk",
-      zh: "RIVAL // 分散风控模型",
+      ja: "WaSHI-QP // 個別株共分散オプティマイザ",
+      en: "WaSHI-QP // Single-Stock Covariance Solver",
+      zh: "WaSHI-QP // 个股协方差优化器",
     },
-    assetKeys: ["tech", "defense", "energy", "gold", "bond"],
-    returns: [0.175, 0.14, 0.135, 0.09, 0.045],
-    vols: [0.27, 0.17, 0.21, 0.13, 0.045],
-    corr: [
-      [1.0, -0.48, -0.42, -0.58, -0.1],
-      [-0.48, 1.0, 0.2, 0.22, 0.05],
-      [-0.42, 0.2, 1.0, 0.25, -0.1],
-      [-0.58, 0.22, 0.25, 1.0, 0.2],
-      [-0.1, 0.05, -0.1, 0.2, 1.0],
-    ],
-    targetReturn: 0.12,
+    targetReturn: 0.125,
     liquidationFloor: -0.052,
-    maxWeightPerAsset: 0.55,
+    maxWeightPerAsset: 0.6,
     shocks: [
       {
-        id: "q3-cyber-grid",
-        day: 24,
+        id: "l3-geopolitical",
+        day: 22,
         headline: {
-          ja: "重要インフラ防衛予算が倍増：DFNSとGOLDが買われ、TECHは利益確定売り",
-          en: "Defense grid spending doubles; DFNS and GOLD rally as TECH pulls back",
-          zh: "关键基建防卫预算翻倍：DFNS与GOLD走强，TECH遭遇获利了结",
+          ja: "地政学リスクの突発：NV-AIとTECHが急落、防衛株(DFNS)とGOLDが急騰",
+          en: "Geopolitical flashpoint: NV-AI and Tech stumble as Defense (DFNS) and Gold soar",
+          zh: "突发地缘政治局势紧张：NV-AI与科技股回调，防务股(DFNS)与黄金逆市飙升",
         },
         reversedHeadline: {
-          ja: "重要インフラ防衛予算が削減：DFNSとGOLDが売られ、TECHに資金が回帰",
-          en: "Defense grid budget cut; DFNS and GOLD slip as money rotates back into TECH",
-          zh: "关键基建防卫预算削减：DFNS与GOLD走弱，资金回流TECH",
+          ja: "地政学的緊張の緩和：半導体(NV-AI)が急反発、防衛株とGOLDが反落",
+          en: "Geopolitical de-escalation: NV-AI and Tech rebound as Defense and Gold cool off",
+          zh: "地缘紧张局势显著缓和：半导体(NV-AI)强劲反弹，防务与黄金冲高回落",
         },
-        assetImpulses: [-0.048, 0.058, 0.025, 0.038, 0.005],
+        assetImpulses: {
+          "nv-ai": -0.08, tech: -0.055, cloud: -0.045, defense: 0.07, gold: 0.045, bond: 0.01,
+          sp500: -0.035, pharma: 0.01,
+        },
       },
       {
-        id: "q3-cloud-boom",
-        day: 46,
+        id: "l3-datacenter",
+        day: 44,
         headline: {
-          ja: "ソブリンクラウド大型契約が成立：TECHとDFNSが同時上昇",
-          en: "Sovereign cloud mega-contract signed; TECH and DFNS advance together",
-          zh: "主权云大型合同落地：TECH与DFNS携手上涨",
+          ja: "ハイパースケーラーの設備投資倍増：AI半導体とクラウド株が急伸",
+          en: "Hyperscaler capex boom fuels massive rallies in NV-AI and Cloud titans",
+          zh: "超大规模云厂商资本开支翻倍：AI半导体与云计算巨头狂飙",
         },
         reversedHeadline: {
-          ja: "ソブリンクラウド大型契約が白紙撤回：TECHとDFNSが同時下落",
-          en: "Sovereign cloud mega-contract cancelled; TECH and DFNS fall together",
-          zh: "主权云大型合同被撤销：TECH与DFNS同步下跌",
+          ja: "大手クラウドの投資見直し発表：高マルチプルのAI半導体・クラウド株が急反落",
+          en: "Cloud capex guidance trimmed: High-multiple AI and Cloud stocks pull back",
+          zh: "云巨头资本开支指引趋于保守：高估值AI半导体与云计算板块大幅回踩",
         },
-        assetImpulses: [0.055, 0.032, -0.015, -0.018, 0.004],
+        assetImpulses: {
+          "nv-ai": 0.095, cloud: 0.065, tech: 0.05, defense: 0.005, gold: -0.025, bond: -0.005,
+          sp500: 0.04, pharma: -0.01,
+        },
       },
     ],
   },
-  // Q4: 6 assets — Quantum Frontier Alpha unlocked
+  // Level 4: +ENERGY, +BANK — Pick up to 5
   {
+    maxPicks: 5,
+    newAssetKeys: ["energy", "bank"],
     title: {
-      ja: "量子フロンティア解禁と乱高下相場",
-      en: "Quantum Frontier Boom & Whiplash",
-      zh: "量子前沿解禁与剧烈震荡期",
+      ja: "Level 4: インフレ＆金利ショック対抗",
+      en: "Level 4: Inflation & Interest Rate Shock",
+      zh: "第4关：通胀与利率冲击对决",
     },
     forecast: {
-      ja: "超高リターン銘柄QNTX（+22%）が市場に登場。ただし単体ボラティリティは34%。GOLD・DFNSで厳重にヘッジせよ。",
-      en: "High-octane QNTX (+22% expected return, 34% volatility) enters the market. Hedge its tail risk carefully.",
-      zh: "高回报资产QNTX（预期+22%，波动率34%）上市。务必用避险资产严格对冲尾部风险。",
+      ja: "原油急騰と金利高止まり。エネルギー株と銀行株を組み入れ、マクロ環境の激変を制覇せよ。",
+      en: "Surging oil and sticky rates. Integrate Energy and Banks to navigate macro turbulence.",
+      zh: "原油价格大涨与高利率长期化。纳入能源与银行股，化解宏观激变冲击。",
     },
     rivalPersona: {
-      ja: "RIVAL // テールリスク抑制モデル",
-      en: "RIVAL // Tail-Risk Desk",
-      zh: "RIVAL // 尾部风险抑制模型",
+      ja: "WaSHI-QP // マクロレジーム・ヘッジャー",
+      en: "WaSHI-QP // Macro Regime Hedger",
+      zh: "WaSHI-QP // 宏观周期对冲模型",
     },
-    assetKeys: ["frontier", "tech", "energy", "defense", "gold", "bond"],
-    returns: [0.22, 0.165, 0.14, 0.125, 0.095, 0.048],
-    vols: [0.34, 0.25, 0.21, 0.16, 0.135, 0.045],
-    corr: [
-      [1.0, 0.55, -0.35, -0.42, -0.65, -0.15],
-      [0.55, 1.0, -0.45, -0.35, -0.55, -0.1],
-      [-0.35, -0.45, 1.0, 0.2, 0.25, -0.1],
-      [-0.42, -0.35, 0.2, 1.0, 0.2, 0.05],
-      [-0.65, -0.55, 0.25, 0.2, 1.0, 0.2],
-      [-0.15, -0.1, -0.1, 0.05, 0.2, 1.0],
-    ],
-    targetReturn: 0.135,
+    targetReturn: 0.125,
     liquidationFloor: -0.05,
     maxWeightPerAsset: 0.5,
     shocks: [
       {
-        id: "q4-quantum-flash",
-        day: 18,
+        id: "l4-supply-shock",
+        day: 19,
         headline: {
-          ja: "アルゴリズム取引の連鎖売りでQNTX・TECHが急落、GOLDが急騰",
-          en: "Quant flash deleveraging hits QNTX and TECH while GOLD spikes",
-          zh: "算法交易连锁去杠杆冲击QNTX与TECH，GOLD逆势大涨",
+          ja: "産油国の減産合意とサプライチェーン混乱：エネルギー(NRGY)が急騰、グロース株に逆風",
+          en: "OPEC supply cuts & freight bottlenecks: Energy (NRGY) surges, growth tech pulls back",
+          zh: "主要产油国减产与供应链受阻：能源股(NRGY)暴涨，高估值成长股承压",
         },
         reversedHeadline: {
-          ja: "アルゴリズム取引の連鎖買い戻しでQNTX・TECHが急騰、GOLDが急落",
-          en: "Quant short-covering cascade lifts QNTX and TECH while GOLD drops",
-          zh: "算法交易连锁回补推升QNTX与TECH，GOLD大跌",
+          ja: "原油増産と物流正常化：エネルギー株が急反落しグロース株に安堵買い",
+          en: "Crude supply expansion & freight easing: Energy slides as Growth Tech rebounds",
+          zh: "原油供应增加与物流改善：能源股回落，科技成长股迎来修复买盘",
         },
-        assetImpulses: [-0.078, -0.045, 0.028, 0.035, 0.058, 0.008],
+        assetImpulses: {
+          energy: 0.085, bank: 0.03, gold: 0.03, "nv-ai": -0.06, tech: -0.045, cloud: -0.035,
+          sp500: -0.02, bond: -0.01, defense: 0.02, pharma: 0.005,
+        },
       },
       {
-        id: "q4-breakthrough",
-        day: 40,
+        id: "l4-soft-landing",
+        day: 41,
         headline: {
-          ja: "量子暗号通信の実用化に成功：QNTXがストップ高水準へ急伸",
-          en: "Quantum encryption milestone achieved; QNTX surges on institutional buying",
-          zh: "量子加密通信实现商用突破：机构大举买入推动QNTX飙升",
+          ja: "インフレ沈静化とソフトランディング期待：全セクターで広範な買い戻し",
+          en: "Cooling inflation prints ignite broad-based soft landing rally across all sectors",
+          zh: "通胀数据超预期降温推升软着陆预期：全市场各行业迎来普涨买盘",
         },
         reversedHeadline: {
-          ja: "量子暗号通信の実証試験が失敗：機関投資家の売りでQNTXが急落",
-          en: "Quantum encryption trial fails; QNTX slumps on institutional selling",
-          zh: "量子加密通信验证失败：机构抛售致QNTX大跌",
+          ja: "インフレ再燃サプライズ：景気後退懸念から全セクターに手仕舞い売り",
+          en: "Hot inflation surprise triggers stagflation fears: Broad selling across sectors",
+          zh: "通胀抬头数据超预期：滞胀与衰退担忧升温，全行业遭受获利了结",
         },
-        assetImpulses: [0.095, 0.048, -0.015, 0.012, -0.025, 0.002],
+        assetImpulses: {
+          sp500: 0.045, "nv-ai": 0.07, cloud: 0.05, tech: 0.05, bank: 0.035, energy: -0.02,
+          defense: 0.01, pharma: 0.02, gold: -0.015, bond: 0.01,
+        },
       },
     ],
   },
-  // Q5: Liquidity Crunch
+  // Level 5: +QNTX, +REIT — Pick up to 6
   {
+    maxPicks: 6,
+    newAssetKeys: ["qntx", "reit"],
     title: {
-      ja: "流動性逼迫とボラティリティ・ストーム",
-      en: "Liquidity Crunch & Volatility Storm",
-      zh: "流动性紧缩与波动率风暴",
+      ja: "Level 5: クオンツ・マスター（全12銘柄）",
+      en: "Level 5: Quant Master (Full 12-Asset Universe)",
+      zh: "第5关：量化大师（全12只标的资产）",
     },
     forecast: {
-      ja: "全市場の変動幅が拡大し、1銘柄上限は45%に制限。相関行列のマイナス要素を総動員して生き残れ。",
-      en: "Market-wide volatility widens and single-asset cap tightens to 45%. Use every negative correlation pair to survive.",
-      zh: "全市场波动率扩大，单资产上限收紧至45%。充分利用负相关资产对冲求生。",
+      ja: "量子新興ディープテック(QNTX)とREITが解禁。12銘柄のプールから厳選した6社で究極のポートフォリオを構築せよ。",
+      en: "Quantum Deep-Tech (QNTX) and REITs unlocked. Build an all-weather masterpiece from 12 assets.",
+      zh: "量子前沿硬科技(QNTX)与不动产信托REIT解锁。从12只资产池中精选6只打造无懈可击的全天候组合。",
     },
     rivalPersona: {
-      ja: "RIVAL // クオンツ・マスター v5",
-      en: "RIVAL // Quant Master v5",
-      zh: "RIVAL // 量化大师 v5",
+      ja: "WaSHI-QP // クオンツ・グランドマスター",
+      en: "WaSHI-QP // Quant Grandmaster",
+      zh: "WaSHI-QP // 量化特级大师",
     },
-    assetKeys: ["frontier", "tech", "energy", "defense", "gold", "bond"],
-    returns: [0.235, 0.175, 0.15, 0.135, 0.10, 0.05],
-    vols: [0.36, 0.27, 0.23, 0.17, 0.14, 0.045],
-    corr: [
-      [1.0, 0.5, -0.4, -0.45, -0.66, -0.15],
-      [0.5, 1.0, -0.48, -0.38, -0.58, -0.1],
-      [-0.4, -0.48, 1.0, 0.22, 0.28, -0.1],
-      [-0.45, -0.38, 0.22, 1.0, 0.22, 0.05],
-      [-0.66, -0.58, 0.28, 0.22, 1.0, 0.22],
-      [-0.15, -0.1, -0.1, 0.05, 0.22, 1.0],
-    ],
-    targetReturn: 0.142,
+    targetReturn: 0.145,
     liquidationFloor: -0.048,
     maxWeightPerAsset: 0.45,
     shocks: [
       {
-        id: "q5-credit-squeeze",
+        id: "l5-quantum-flash",
         day: 21,
         headline: {
-          ja: "短期金融市場で信用収縮：高ベータ株が急落しGOLD・DFNSが全面高",
-          en: "Short-term credit squeeze hammers high-beta assets as GOLD and DFNS rally",
-          zh: "短期信贷市场紧缩：高贝塔资产急挫，GOLD与DFNS全面走高",
+          ja: "アルゴリズム連鎖急落：高ベータ株(QNTX/NV-AI)が急落し、REIT・GOLD・国債が強靭に防衛",
+          en: "Cascading algo sell-off: High-beta QNTX and NV-AI slide; REIT, Gold and Bonds shield the fund",
+          zh: "算法连环去杠杆冲击：高贝塔QNTX与NV-AI下挫，REIT、黄金与国债筑牢防线",
         },
         reversedHeadline: {
-          ja: "短期金融市場の信用不安が後退：高ベータ株が急反発しGOLD・DFNSが反落",
-          en: "Short-term credit fears ease; high-beta assets rebound as GOLD and DFNS retreat",
-          zh: "短期信贷担忧缓解：高贝塔资产反弹，GOLD与DFNS回落",
+          ja: "猛烈なショートスクイーズ：高ベータ株(QNTX/NV-AI)が急騰、安全資産から資金流出",
+          en: "Violent short squeeze: High-beta QNTX and NV-AI surge as capital exits defensive havens",
+          zh: "逼空行情全面引爆：高贝塔QNTX与NV-AI暴涨，资金从避险资产撤离",
         },
-        assetImpulses: [-0.082, -0.055, 0.032, 0.045, 0.062, 0.01],
+        assetImpulses: {
+          qntx: -0.09, "nv-ai": -0.075, tech: -0.05, cloud: -0.04, sp500: -0.03,
+          reit: 0.03, gold: 0.05, bond: 0.015, defense: 0.035, pharma: 0.02, energy: 0.01, bank: -0.01,
+        },
       },
       {
-        id: "q5-global-stimulus",
+        id: "l5-breakthrough",
         day: 43,
         headline: {
-          ja: "緊急流動性供給オペが発動：リスク資産が急速に切り返す",
-          en: "Emergency liquidity facility announced; risk assets stage a sharp rebound",
-          zh: "紧急流动性注入启动：风险资产强势V型反弹",
+          ja: "量子商用化と全セクター協調高：QNTXがストップ高水準、リスク資産が爆発的反発",
+          en: "Commercial quantum milestone sparks euphoric rally across technology and risk assets",
+          zh: "量子商用重大突破引爆市场狂欢：QNTX飙升带动整体风险资产强劲收官",
         },
         reversedHeadline: {
-          ja: "緊急流動性供給オペが見送り：リスク資産が一段安",
-          en: "Emergency liquidity facility withheld; risk assets slide further",
-          zh: "紧急流动性注入计划落空：风险资产进一步下跌",
+          ja: "量子商用化マイルストーン延期：投機的テック銘柄が大幅反落",
+          en: "Quantum commercialization milestone delayed: Speculative tech slides sharply",
+          zh: "量子商用关键节点推迟：投机性硬科技板块遭遇沉重回调",
         },
-        assetImpulses: [0.092, 0.06, 0.025, 0.015, -0.02, 0.004],
+        assetImpulses: {
+          qntx: 0.12, "nv-ai": 0.08, cloud: 0.06, tech: 0.055, sp500: 0.04,
+          bank: 0.025, energy: 0.015, defense: 0.01, pharma: 0.015, reit: 0.02, gold: -0.02, bond: -0.005,
+        },
       },
     ],
   },
 ];
 
-export function getQuarterRegime(quarter: number): QuarterRegime {
-  const q = Math.max(1, Math.floor(quarter));
-  const idx = (q - 1) % REGIME_TEMPLATES.length;
-  const cycle = Math.floor((q - 1) / REGIME_TEMPLATES.length);
-  const tpl = REGIME_TEMPLATES[idx];
+export function getLevelSpec(level: number): LevelSpec {
+  const lvl = Math.max(1, Math.floor(level));
+  if (lvl <= 5) {
+    const tpl = LEVEL_TEMPLATES[lvl - 1];
+    const unlockedAssetIds: string[] = [];
+    for (let i = 0; i < lvl; i++) {
+      unlockedAssetIds.push(...LEVEL_TEMPLATES[i].newAssetKeys);
+    }
+    return {
+      level: lvl,
+      title: tpl.title,
+      forecast: tpl.forecast,
+      rivalPersona: tpl.rivalPersona,
+      maxPicks: tpl.maxPicks,
+      targetReturn: tpl.targetReturn,
+      liquidationFloor: tpl.liquidationFloor,
+      maxWeightPerAsset: tpl.maxWeightPerAsset,
+      newAssetIds: tpl.newAssetKeys,
+      unlockedAssetIds,
+      candidateShocks: tpl.shocks,
+    };
+  }
 
-  // Progressive endless scaling for cycles beyond Q5
-  const returnBoost = Math.min(0.04, cycle * 0.008);
-  const volBoost = 1 + Math.min(0.35, cycle * 0.06);
-  const assets = tpl.assetKeys.map((key, i) =>
-    cloneAssetWithMods(
-      BASE_ASSETS[key],
-      Number((tpl.returns[i] + returnBoost).toFixed(4)),
-      Number((tpl.vols[i] * volBoost).toFixed(4))
-    )
-  );
+  // Level 6+: Procedural Endless Scaling
+  const cycle = lvl - 5;
+  const maxPicks = Math.min(8, 6 + Math.floor(cycle * 0.5));
+  const newAssetA = getProceduralAsset(lvl, 0);
+  const newAssetB = getProceduralAsset(lvl, 1);
+  const newAssetIds = [newAssetA.id, newAssetB.id];
 
-  const vols = assets.map((a) => a.volatility);
-  const covariance = buildCovariance(vols, tpl.corr);
-  const targetReturn = Number((tpl.targetReturn + returnBoost * 0.75).toFixed(4));
-  const liquidationFloor = Number(
-    Math.min(-0.038, tpl.liquidationFloor + cycle * 0.002).toFixed(4)
-  );
-  const maxWeightPerAsset =
-    cycle === 0 ? tpl.maxWeightPerAsset : Math.max(0.4, tpl.maxWeightPerAsset - cycle * 0.05);
+  // Accumulate all previous assets up to level 5 plus all procedural assets up to this level
+  const unlockedAssetIds: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    unlockedAssetIds.push(...LEVEL_TEMPLATES[i].newAssetKeys);
+  }
+  for (let l = 6; l <= lvl; l++) {
+    unlockedAssetIds.push(getProceduralAsset(l, 0).id, getProceduralAsset(l, 1).id);
+  }
 
-  const suffixJa = cycle > 0 ? ` (Cycle ${cycle + 1})` : "";
-  const suffixEn = cycle > 0 ? ` (Cycle ${cycle + 1})` : "";
-  const suffixZh = cycle > 0 ? ` (第${cycle + 1}周期)` : "";
+  const retBonus = Math.min(0.03, cycle * 0.006);
+  const targetReturn = Number((0.145 + retBonus).toFixed(4));
+  const liquidationFloor = Number(Math.min(-0.04, -0.048 + cycle * 0.001).toFixed(4));
+  const maxWeightPerAsset = 0.4;
+
+  const tShockA = getProceduralAsset(lvl, 0);
+  const tShockB = getProceduralAsset(lvl, 1);
 
   return {
-    id: `quarter-${q}`,
-    quarter: q,
+    level: lvl,
     title: {
-      ja: `Q${q}: ${tpl.title.ja}${suffixJa}`,
-      en: `Q${q}: ${tpl.title.en}${suffixEn}`,
-      zh: `Q${q}: ${tpl.title.zh}${suffixZh}`,
+      ja: `Level ${lvl}: 無限フロンティア (新銘柄: ${newAssetA.ticker}, ${newAssetB.ticker})`,
+      en: `Level ${lvl}: Infinite Frontier (New: ${newAssetA.ticker}, ${newAssetB.ticker})`,
+      zh: `第${lvl}关：无尽前沿 (新增: ${newAssetA.ticker}, ${newAssetB.ticker})`,
     },
-    forecast: tpl.forecast,
-    rivalPersona: tpl.rivalPersona,
-    assets,
-    correlation: tpl.corr.map((r) => r.slice()),
-    covariance,
+    forecast: {
+      ja: `全${unlockedAssetIds.length}銘柄から精鋭${maxPicks}銘柄を選別せよ。多様化が進む市場でライバルAIを圧倒する配分を導き出せ。`,
+      en: `Select up to ${maxPicks} gems from ${unlockedAssetIds.length} available assets. Master diversification to outpace rival AI.`,
+      zh: `从全部${unlockedAssetIds.length}只资产中精选${maxPicks}只最强标的。在高度分散的市场中战胜量化AI。`,
+    },
+    rivalPersona: {
+      ja: `WaSHI-QP // クオンツ・インフィニティ (Lv.${lvl})`,
+      en: `WaSHI-QP // Quant Infinity (Lv.${lvl})`,
+      zh: `WaSHI-QP // 量化无尽引擎 (第${lvl}代)`,
+    },
+    maxPicks,
     targetReturn,
     liquidationFloor,
     maxWeightPerAsset,
-    candidateShocks: tpl.shocks,
+    newAssetIds,
+    unlockedAssetIds,
+    candidateShocks: [
+      {
+        id: `l${lvl}-macro-whipsaw`,
+        day: 20,
+        headline: {
+          ja: `グローバル資本フロー急変：${tShockA.ticker}に投機的資金が殺到し、伝統的資産が一時調整`,
+          en: `Global capital flow rotation: ${tShockA.ticker} rallies as traditional assets consolidate`,
+          zh: `全球资金流向轮动：资金大举建仓${tShockA.ticker}，传统资产窄幅震荡`,
+        },
+        reversedHeadline: {
+          ja: `投機的過熱の調整売り：${tShockA.ticker}が急落し、伝統的資産へ資金が回帰`,
+          en: `Speculative cooling: ${tShockA.ticker} pulls back as capital returns to traditional assets`,
+          zh: `投机情绪降温回调：${tShockA.ticker}下挫，资金重新回流传统资产`,
+        },
+        assetImpulses: {
+          [newAssetA.id]: 0.08,
+          [newAssetB.id]: -0.04,
+          sp500: -0.02,
+          bond: 0.01,
+          gold: 0.025,
+        },
+      },
+      {
+        id: `l${lvl}-sector-breakthrough`,
+        day: 42,
+        headline: {
+          ja: `産業エコシステムの技術革新：${tShockB.ticker}が急伸し市場全体のリスク選好が回復`,
+          en: `Industrial ecosystem innovation: ${tShockB.ticker} surges, lifting broad market sentiment`,
+          zh: `产业链技术革新落地：${tShockB.ticker}强势领涨，全市场风险偏好显著回暖`,
+        },
+        reversedHeadline: {
+          ja: `産業エコシステムの規制懸念：${tShockB.ticker}が下落し市場全体でリスクオフ姿勢が強まる`,
+          en: `Regulatory headwinds hit ${tShockB.ticker}, dragging down market risk sentiment`,
+          zh: `行业监管风向收紧：${tShockB.ticker}回调走低，全市场风险偏好降温`,
+        },
+        assetImpulses: {
+          [newAssetA.id]: 0.03,
+          [newAssetB.id]: 0.09,
+          sp500: 0.035,
+          gold: -0.015,
+        },
+      },
+    ],
   };
+}
+
+export function getAssetSpecById(id: string, maxLevel = 100): AssetSpec {
+  if (CORE_ASSETS[id]) {
+    return CORE_ASSETS[id];
+  }
+  // Search in procedural assets up to maxLevel
+  for (let lvl = 6; lvl <= maxLevel; lvl++) {
+    const a0 = getProceduralAsset(lvl, 0);
+    if (a0.id === id) return a0;
+    const a1 = getProceduralAsset(lvl, 1);
+    if (a1.id === id) return a1;
+  }
+  // Fallback generic stock
+  return {
+    id,
+    ticker: id.toUpperCase(),
+    color: "#64748b",
+    category: "stock",
+    unlockedAtLevel: 1,
+    expectedReturn: 0.12,
+    volatility: 0.2,
+    name: { ja: id, en: id, zh: id },
+    roleDesc: { ja: "投資対象銘柄", en: "Investable Asset", zh: "投资标的资产" },
+  };
+}
+
+/**
+ * Computes pairwise correlation between any two asset IDs
+ * Positive definiteness is mathematically guaranteed via single-factor model projection.
+ */
+export function getPairwiseCorrelation(idA: string, idB: string): number {
+  if (idA === idB) return 1.0;
+  if (CORE_CORRELATION_MATRIX[idA] && CORE_CORRELATION_MATRIX[idA][idB] !== undefined) {
+    return CORE_CORRELATION_MATRIX[idA][idB];
+  }
+  if (CORE_CORRELATION_MATRIX[idB] && CORE_CORRELATION_MATRIX[idB][idA] !== undefined) {
+    return CORE_CORRELATION_MATRIX[idB][idA];
+  }
+
+  // Factor loading model for procedural assets: r_ij = beta_i * beta_j
+  const specA = getAssetSpecById(idA);
+  const specB = getAssetSpecById(idB);
+  const factorA = specA.category === "broad" ? 0.8 : specA.category === "commodity" ? -0.2 : 0.65;
+  const factorB = specB.category === "broad" ? 0.8 : specB.category === "commodity" ? -0.2 : 0.65;
+  const baseCorr = factorA * factorB;
+  return Number(Math.max(-0.65, Math.min(0.85, baseCorr)).toFixed(3));
+}
+
+/**
+ * Builds an active QuarterRegime containing ONLY the selected subset of assets
+ * Covariance matrix is symmetric and strictly positive-definite.
+ */
+export function buildSubsetRegime(
+  level: number,
+  selectedAssetIds: string[]
+): QuarterRegime {
+  const lvlSpec = getLevelSpec(level);
+  const validIds = selectedAssetIds.length > 0 ? selectedAssetIds : lvlSpec.unlockedAssetIds.slice(0, lvlSpec.maxPicks);
+  const assets = validIds.map((id) => getAssetSpecById(id, Math.max(level + 1, 10)));
+  const n = assets.length;
+
+  const correlation: number[][] = [];
+  for (let i = 0; i < n; i++) {
+    const row: number[] = [];
+    for (let j = 0; j < n; j++) {
+      row.push(getPairwiseCorrelation(assets[i].id, assets[j].id));
+    }
+    correlation.push(row);
+  }
+
+  const vols = assets.map((a) => a.volatility);
+  const covariance = buildCovariance(vols, correlation);
+
+  // Adapt candidate shocks to the subset asset impulse map
+  const adaptedShocks: MarketShockSpec[] = lvlSpec.candidateShocks.map((s) => ({
+    id: s.id,
+    day: s.day,
+    headline: s.headline,
+    reversedHeadline: s.reversedHeadline,
+    assetImpulses: { ...s.assetImpulses },
+  }));
+
+  return {
+    id: `level-${level}`,
+    quarter: level,
+    level,
+    title: lvlSpec.title,
+    forecast: lvlSpec.forecast,
+    rivalPersona: lvlSpec.rivalPersona,
+    assets,
+    correlation,
+    covariance,
+    targetReturn: lvlSpec.targetReturn,
+    liquidationFloor: lvlSpec.liquidationFloor,
+    maxWeightPerAsset: lvlSpec.maxWeightPerAsset,
+    candidateShocks: adaptedShocks,
+    selectedAssetIds: validIds,
+  };
+}
+
+/**
+ * Backward compatibility alias: getQuarterRegime(quarter)
+ */
+export function getQuarterRegime(quarter: number): QuarterRegime {
+  const spec = getLevelSpec(quarter);
+  // Sort available assets by expectedReturn descending to provide a rich feasible frontier
+  const allAssets = spec.unlockedAssetIds.map((id) => getAssetSpecById(id, quarter + 1));
+  allAssets.sort((a, b) => b.expectedReturn - a.expectedReturn);
+
+  // Take top growth assets and at least one defensive anchor (bond or gold or defensive stock)
+  const defensive =
+    allAssets.find((a) => a.id === "bond") ||
+    allAssets.find((a) => a.id === "gold") ||
+    allAssets[allAssets.length - 1];
+
+  const top = allAssets.slice(0, spec.maxPicks - 1);
+  const picks = top.map((a) => a.id);
+  if (defensive && !picks.includes(defensive.id)) {
+    picks.push(defensive.id);
+  } else if (allAssets[spec.maxPicks - 1]) {
+    picks.push(allAssets[spec.maxPicks - 1].id);
+  }
+
+  return buildSubsetRegime(quarter, picks);
 }
 
 export function getLocalizedRegimeText(
