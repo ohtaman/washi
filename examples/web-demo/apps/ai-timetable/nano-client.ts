@@ -1247,6 +1247,12 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         };
 
         if (!extractorBaseSession || extractorSessionLang !== lang) {
+          const nextExtractor = await createSessionWithFallback(
+            api,
+            EXTRACTOR_SYSTEM_PROMPT,
+            monitorFn,
+            lang
+          );
           if (extractorBaseSession && typeof extractorBaseSession.destroy === "function") {
             try {
               extractorBaseSession.destroy();
@@ -1254,15 +1260,16 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               // Ignore
             }
           }
-          extractorBaseSession = await createSessionWithFallback(
-            api,
-            EXTRACTOR_SYSTEM_PROMPT,
-            monitorFn,
-            lang
-          );
+          extractorBaseSession = nextExtractor;
           extractorSessionLang = lang;
         }
         if (!consultBaseSession || consultSessionLang !== lang) {
+          const nextConsult = await createSessionWithFallback(
+            api,
+            CONSULT_SYSTEM_PROMPT,
+            monitorFn,
+            lang
+          );
           if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
             try {
               consultBaseSession.destroy();
@@ -1270,12 +1277,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               // Ignore
             }
           }
-          consultBaseSession = await createSessionWithFallback(
-            api,
-            CONSULT_SYSTEM_PROMPT,
-            monitorFn,
-            lang
-          );
+          consultBaseSession = nextConsult;
           consultSessionLang = lang;
         }
 
@@ -1474,15 +1476,20 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       const api = getLanguageModelApi();
       if (api && (!consultBaseSession || consultSessionLang !== lang)) {
         try {
-          if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
-            consultBaseSession.destroy();
-          }
-          consultBaseSession = await createSessionWithFallback(
+          const nextConsult = await createSessionWithFallback(
             api,
             CONSULT_SYSTEM_PROMPT,
             undefined,
             lang
           );
+          if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
+            try {
+              consultBaseSession.destroy();
+            } catch {
+              // Ignore
+            }
+          }
+          consultBaseSession = nextConsult;
           consultSessionLang = lang;
         } catch {
           // Keep existing or null

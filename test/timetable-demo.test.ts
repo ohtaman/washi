@@ -734,6 +734,37 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedCreateOpts[3].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrJa.destroy();
 
+      // Retains existing sessions until replacement creation succeeds
+      let shouldFailCreate = false;
+      let sessionDestroyCount = 0;
+      const mgrRetain = createTimetableGeminiNanoManager();
+      const origCreate = (globalThis as any).LanguageModel.create;
+      (globalThis as any).LanguageModel.create = async (opts: any) => {
+        if (shouldFailCreate) {
+          throw new Error("Simulated creation failure during language switch");
+        }
+        const s = await origCreate(opts);
+        const origDestroy = s.destroy;
+        s.destroy = () => {
+          sessionDestroyCount += 1;
+          origDestroy?.call(s);
+        };
+        return s;
+      };
+
+      await mgrRetain.initialize(undefined, "ja");
+      expect(sessionDestroyCount).toBe(0);
+
+      // Simulate failure on language switch
+      shouldFailCreate = true;
+      await mgrRetain.initialize(undefined, "en");
+      // Old sessions must not be destroyed when creation of replacement rejects
+      expect(sessionDestroyCount).toBe(0);
+
+      (globalThis as any).LanguageModel.create = origCreate;
+      mgrRetain.destroy();
+      expect(sessionDestroyCount).toBe(2);
+
       // 2. English initialization
       receivedAvailOpts.length = 0;
       receivedCreateOpts.length = 0;
