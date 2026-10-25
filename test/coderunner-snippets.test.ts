@@ -676,5 +676,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       "utf-8"
     );
     expect(demoIndexRaw).toContain('data-i18n="navShowcase"');
+    expect(demoIndexRaw).toContain('id="nav-showcase"');
+
+    const appTsRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/src/ui/app.ts"),
+      "utf-8"
+    );
+    expect(appTsRaw).toContain('navShowcase.setAttribute("href", locale === "ja" ? "../ja/showcase/" : "../showcase/")');
   });
 });
