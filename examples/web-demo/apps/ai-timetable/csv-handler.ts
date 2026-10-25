@@ -185,6 +185,7 @@ export function parseProfessorsCsv(csvText: string): {
 
   const professors: ProfessorProfile[] = [];
   const errors: string[] = [];
+  const seenIds = new Set<string>();
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -194,6 +195,11 @@ export function parseProfessorsCsv(csvText: string): {
       errors.push(`行 ${r + 1}: IDまたは氏名が空です`);
       continue;
     }
+    if (seenIds.has(id)) {
+      errors.push(`行 ${r + 1}: 教員ID '${id}' が重複しています`);
+      continue;
+    }
+    seenIds.add(id);
 
     const title = titleIdx !== -1 && row[titleIdx] ? row[titleIdx].trim() : "講師";
     const empRaw = empIdx !== -1 && row[empIdx] ? row[empIdx].trim().toLowerCase() : "";
@@ -282,6 +288,7 @@ export function parseRoomsCsv(csvText: string): {
 
   const rooms: RoomProfile[] = [];
   const errors: string[] = [];
+  const seenIds = new Set<string>();
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -293,6 +300,11 @@ export function parseRoomsCsv(csvText: string): {
       errors.push(`行 ${r + 1}: ID, 教室名, または有効な定員(正の数値)がありません`);
       continue;
     }
+    if (seenIds.has(id)) {
+      errors.push(`行 ${r + 1}: 教室ID '${id}' が重複しています`);
+      continue;
+    }
+    seenIds.add(id);
 
     const roomType = typeIdx !== -1 && row[typeIdx] ? parseRoomTypeToken(row[typeIdx]) : "medium_room";
     const equipment: RoomEquipment[] = [];
@@ -357,6 +369,7 @@ export function parseCoursesCsv(
 
   const courses: CourseProfile[] = [];
   const errors: string[] = [];
+  const seenIds = new Set<string>();
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -368,6 +381,12 @@ export function parseCoursesCsv(
       errors.push(`行 ${r + 1}: ID, 科目名, または担当教員IDが空です`);
       continue;
     }
+
+    if (seenIds.has(id)) {
+      errors.push(`行 ${r + 1}: 科目ID '${id}' が重複しています`);
+      continue;
+    }
+    seenIds.add(id);
 
     if (knownProfIds && knownProfIds.size > 0 && !knownProfIds.has(professorId)) {
       errors.push(`行 ${r + 1} (${title}): 教員ID '${professorId}' は教員リストに存在しません`);
@@ -525,7 +544,6 @@ export function validateTimetableDataset(
   courses: CourseProfile[]
 ): string[] {
   const errors: string[] = [];
-  const profIdSet = new Set(professors.map((p) => p.id));
 
   if (professors.length === 0) {
     errors.push("教員データが空です (1名以上必要です)");
@@ -537,7 +555,35 @@ export function validateTimetableDataset(
     errors.push("科目データが空です (1科目以上必要です)");
   }
 
+  // Check unique IDs for professors
+  const profIdSet = new Set<string>();
+  for (const p of professors) {
+    if (profIdSet.has(p.id)) {
+      errors.push(`教員ID '${p.id}' が重複しています (${p.name})`);
+    } else {
+      profIdSet.add(p.id);
+    }
+  }
+
+  // Check unique IDs for rooms
+  const roomIdSet = new Set<string>();
+  for (const r of rooms) {
+    if (roomIdSet.has(r.id)) {
+      errors.push(`教室ID '${r.id}' が重複しています (${r.name})`);
+    } else {
+      roomIdSet.add(r.id);
+    }
+  }
+
+  // Check unique IDs for courses and reference integrity
+  const courseIdSet = new Set<string>();
   for (const c of courses) {
+    if (courseIdSet.has(c.id)) {
+      errors.push(`科目ID '${c.id}' が重複しています (${c.title})`);
+    } else {
+      courseIdSet.add(c.id);
+    }
+
     if (!profIdSet.has(c.professorId)) {
       errors.push(`科目「${c.title}」(${c.id}): 担当教員ID '${c.professorId}' が教員リストに存在しません`);
     }

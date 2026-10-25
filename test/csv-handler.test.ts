@@ -158,4 +158,45 @@ multiline"
     expect(errors.length).toBeGreaterThan(0);
     expect(errors[0]).toContain("P_NONEXISTENT");
   });
+
+  it("rejects duplicate IDs in individual CSV parsers and dataset validation", () => {
+    const dupProfCsv = `
+id,name
+P01,佐藤 健一
+P01,佐藤 健二
+`.trim();
+    const profRes = parseProfessorsCsv(dupProfCsv);
+    expect(profRes.errors.length).toBeGreaterThan(0);
+    expect(profRes.errors[0]).toContain("重複");
+
+    const dupRoomCsv = `
+id,name,capacity
+R101,101講義室,100
+R101,101講義室B,100
+`.trim();
+    const roomRes = parseRoomsCsv(dupRoomCsv);
+    expect(roomRes.errors.length).toBeGreaterThan(0);
+    expect(roomRes.errors[0]).toContain("重複");
+
+    const dupCourseCsv = `
+id,title,professorId
+C01,アルゴリズム,P01
+C01,データ構造,P01
+`.trim();
+    const courseRes = parseCoursesCsv(dupCourseCsv);
+    expect(courseRes.errors.length).toBeGreaterThan(0);
+    expect(courseRes.errors[0]).toContain("重複");
+
+    const defaultState = generateTimetableState();
+    const dupCourseDataset = [
+      ...defaultState.courses,
+      { ...defaultState.courses[0] },
+    ];
+    const dsErrors = validateTimetableDataset(
+      defaultState.professors,
+      defaultState.rooms,
+      dupCourseDataset
+    );
+    expect(dsErrors.some((e) => e.includes("重複"))).toBe(true);
+  });
 });
