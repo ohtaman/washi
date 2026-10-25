@@ -50,6 +50,8 @@ const CANONICAL_STAGE_ID_RE = /^stage-([1-9]\d*)$/;
 export interface ProgressState {
   clearedByStageId: Record<string, boolean>;
   highestUnlockedStage: number;
+  stageScores?: Record<string, number>;
+  totalScore?: number;
 }
 
 export function countCanonicalClearedStages(
@@ -64,12 +66,36 @@ export function countCanonicalClearedStages(
   return count;
 }
 
+export function getResumeStageNumber(progressState: ProgressState): number {
+  const clearedCount = countCanonicalClearedStages(progressState.clearedByStageId);
+  if (clearedCount === 0) {
+    return 1;
+  }
+  const maxUnlocked = Math.max(
+    TUTORIAL_STAGE_COUNT,
+    typeof progressState.highestUnlockedStage === "number" &&
+      Number.isFinite(progressState.highestUnlockedStage)
+      ? Math.floor(progressState.highestUnlockedStage)
+      : TUTORIAL_STAGE_COUNT
+  );
+  // Resume from the first uncleared stage up to the highest unlocked stage
+  for (let s = 1; s <= maxUnlocked; s++) {
+    if (!progressState.clearedByStageId[`stage-${s}`]) {
+      return s;
+    }
+  }
+  // If all unlocked stages are cleared, stay at the latest unlocked stage
+  return maxUnlocked;
+}
+
 export function parseProgressState(raw: string | null): ProgressState {
   const defaultMax = TUTORIAL_STAGE_COUNT;
   if (!raw) {
     return {
       clearedByStageId: {},
       highestUnlockedStage: defaultMax,
+      stageScores: {},
+      totalScore: 0,
     };
   }
   try {
@@ -90,14 +116,36 @@ export function parseProgressState(raw: string | null): ProgressState {
       Number.isFinite(parsed.highestUnlockedStage)
         ? Math.floor(parsed.highestUnlockedStage)
         : defaultMax;
+
+    const rawScores = parsed.stageScores && typeof parsed.stageScores === "object"
+      ? parsed.stageScores
+      : {};
+    const stageScores: Record<string, number> = {};
+    let computedTotal = 0;
+    for (const [id, sc] of Object.entries(rawScores)) {
+      if (typeof sc === "number" && Number.isFinite(sc) && CANONICAL_STAGE_ID_RE.test(id)) {
+        const rounded = Math.round(sc);
+        stageScores[id] = rounded;
+        computedTotal += rounded;
+      }
+    }
+    const totalScore =
+      typeof parsed.totalScore === "number" && Number.isFinite(parsed.totalScore)
+        ? Math.max(parsed.totalScore, computedTotal)
+        : computedTotal;
+
     return {
       clearedByStageId,
       highestUnlockedStage: Math.max(defaultMax, savedUnlocked, maxFromCleared),
+      stageScores,
+      totalScore,
     };
   } catch {
     return {
       clearedByStageId: {},
       highestUnlockedStage: defaultMax,
+      stageScores: {},
+      totalScore: 0,
     };
   }
 }
@@ -119,6 +167,8 @@ function syncProgressFromStorage(): void {
       const next = parseProgressState(localStorage.getItem(STORAGE_KEY));
       progress.clearedByStageId = next.clearedByStageId;
       progress.highestUnlockedStage = next.highestUnlockedStage;
+      progress.stageScores = next.stageScores;
+      progress.totalScore = next.totalScore;
     }
   } catch {
     // Ignore storage errors
@@ -674,6 +724,24 @@ function renderStageNav(): void {
   const clearedCount = countCanonicalClearedStages(progress.clearedByStageId);
   totalStarsTextEl.textContent = `${clearedCount} CLEAR`;
 
+  const totalScore = progress.totalScore ?? 0;
+  const totalStarsBadgeEl = document.getElementById("total-stars-badge");
+  if (totalStarsBadgeEl) {
+    if (totalScore > 0) {
+      totalStarsBadgeEl.title = pickLang(currentLang, {
+        ja: `クリア済みステージ数: ${clearedCount}（合計スコア: ${totalScore} pt）`,
+        en: `Cleared Stages: ${clearedCount} (Total Score: ${totalScore} pt)`,
+        zh: `通关关卡数: ${clearedCount}（总得分: ${totalScore} pt）`,
+      });
+    } else {
+      totalStarsBadgeEl.title = pickLang(currentLang, {
+        ja: "クリア済みステージ数",
+        en: "Cleared Stages",
+        zh: "通关关卡数",
+      });
+    }
+  }
+
   const maxUnlockedStage = getMaxUnlockedStage();
   const maxStageNum = Math.max(maxUnlockedStage, currentStage.stageNumber);
 
@@ -1011,6 +1079,23 @@ function recordProgressIfCleared(): void {
     progress.highestUnlockedStage = currentStage.stageNumber + 1;
     changed = true;
   }
+
+  // Record stage score and aggregate total score across all cleared stages
+  if (!progress.stageScores) {
+    progress.stageScores = {};
+  }
+  const stageScore = currentEval.pastureScore;
+  const prevScore = progress.stageScores[currentStage.id] ?? -Infinity;
+  if (stageScore > prevScore) {
+    progress.stageScores[currentStage.id] = stageScore;
+    let sum = 0;
+    for (const sc of Object.values(progress.stageScores)) {
+      sum += sc;
+    }
+    progress.totalScore = sum;
+    changed = true;
+  }
+
   if (changed) {
     saveProgress(progress);
   }
@@ -1293,7 +1378,8 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     renderBoard();
   });
 
-  // Initialize language & start directly in Stage 1
+  // Initialize language & resume progression or start directly in Stage 1
   applyStaticTranslations();
-  void loadStageByNumber(1);
+  const resumeStage = getResumeStageNumber(progress);
+  void loadStageByNumber(resumeStage);
 }

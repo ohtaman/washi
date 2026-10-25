@@ -35,6 +35,7 @@ import { CAMPAIGN_STAGES as CASTLE_STAGES } from "../examples/web-demo/games/dem
 import {
   applyStaticTranslations as applySheepStaticTranslations,
   countCanonicalClearedStages,
+  getResumeStageNumber,
   loadStageByNumber,
   parseProgressState,
   stepStage,
@@ -860,5 +861,60 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
       }
     }
+  });
+
+  it("determines resume stage number from cleared progress and restores total scores", () => {
+    // 1. Fresh state: start at tutorial Stage 1
+    const fresh = parseProgressState(null);
+    expect(getResumeStageNumber(fresh)).toBe(1);
+    expect(fresh.totalScore).toBe(0);
+
+    // 2. Cleared Stage 1: resume at Stage 2
+    const afterStage1 = parseProgressState(
+      JSON.stringify({
+        clearedByStageId: { "stage-1": true },
+        highestUnlockedStage: 4,
+        stageScores: { "stage-1": 7 },
+      })
+    );
+    expect(getResumeStageNumber(afterStage1)).toBe(2);
+    expect(afterStage1.totalScore).toBe(7);
+
+    // 3. Completed all 4 tutorial stages (1-4): skip tutorials by default and resume at Stage 5
+    const clearedTutorials = parseProgressState(
+      JSON.stringify({
+        clearedByStageId: {
+          "stage-1": true,
+          "stage-2": true,
+          "stage-3": true,
+          "stage-4": true,
+        },
+        highestUnlockedStage: 5,
+        stageScores: {
+          "stage-1": 7,
+          "stage-2": 9,
+          "stage-3": 6,
+          "stage-4": 12,
+        },
+      })
+    );
+    expect(getResumeStageNumber(clearedTutorials)).toBe(5);
+    expect(clearedTutorials.totalScore).toBe(34);
+
+    // 4. Completed up to Stage 6: resume at Stage 7
+    const clearedUpTo6 = parseProgressState(
+      JSON.stringify({
+        clearedByStageId: {
+          "stage-1": true,
+          "stage-2": true,
+          "stage-3": true,
+          "stage-4": true,
+          "stage-5": true,
+          "stage-6": true,
+        },
+        highestUnlockedStage: 7,
+      })
+    );
+    expect(getResumeStageNumber(clearedUpTo6)).toBe(7);
   });
 });

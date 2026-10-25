@@ -38,10 +38,19 @@ if (typeof window !== "undefined") {
 }
 
 const STORAGE_KEY = "washi_quant_survival_record_v1";
+export const ACTIVE_RUN_STORAGE_KEY = "washi_quant_survival_active_run_v1";
 
 interface SaveRecord {
   bestQuarter: number;
   peakAum: number;
+}
+
+export interface ActiveRunState {
+  quarter: number;
+  playerAum: number;
+  aiAum: number;
+  duelWins: number;
+  duelLosses: number;
 }
 
 interface StaticStrings {
@@ -340,6 +349,47 @@ function saveRecord(quarter: number, aum: number): SaveRecord {
     }
   }
   return next;
+}
+
+export function loadActiveRunState(): ActiveRunState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_RUN_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ActiveRunState>;
+    const quarter = Number(parsed.quarter);
+    const playerAum = Number(parsed.playerAum);
+    if (!Number.isFinite(quarter) || quarter < 1 || !Number.isFinite(playerAum) || playerAum <= 0) {
+      return null;
+    }
+    return {
+      quarter: Math.floor(quarter),
+      playerAum: Math.max(0, Number(playerAum.toFixed(2))),
+      aiAum: Math.max(0, Number(Number(parsed.aiAum ?? 100).toFixed(2))),
+      duelWins: Math.max(0, Math.floor(Number(parsed.duelWins ?? 0))),
+      duelLosses: Math.max(0, Math.floor(Number(parsed.duelLosses ?? 0))),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveRunState(state: ActiveRunState): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ACTIVE_RUN_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function clearActiveRunState(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(ACTIVE_RUN_STORAGE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 function formatMoney(millions: number): string {
@@ -1148,8 +1198,16 @@ async function runMarketSimulation(): Promise<void> {
         duelLosses += 1;
       }
       saveRecord(currentQuarter + 1, playerAum);
+      saveActiveRunState({
+        quarter: currentQuarter + 1,
+        playerAum,
+        aiAum,
+        duelWins,
+        duelLosses,
+      });
     } else {
       saveRecord(currentQuarter, Math.max(playerAum, sim.playerAumSeries[0]));
+      clearActiveRunState();
     }
 
     renderRecordBadge();
@@ -1312,6 +1370,7 @@ function initDomEvents(): void {
   });
 
   const startFreshRun = () => {
+    clearActiveRunState();
     playerAum = 100.0;
     aiAum = 100.0;
     duelWins = 0;
@@ -1367,5 +1426,14 @@ function initDomEvents(): void {
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   initDomEvents();
   applyQuantStaticTranslations(currentLang);
-  void loadQuarter(1);
+  const activeRun = loadActiveRunState();
+  if (activeRun && activeRun.quarter > 1 && activeRun.playerAum > 0) {
+    playerAum = activeRun.playerAum;
+    aiAum = activeRun.aiAum;
+    duelWins = activeRun.duelWins;
+    duelLosses = activeRun.duelLosses;
+    void loadQuarter(activeRun.quarter);
+  } else {
+    void loadQuarter(1);
+  }
 }
