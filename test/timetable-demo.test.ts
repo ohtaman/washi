@@ -725,6 +725,13 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedCreateOpts.length).toBe(2);
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
       expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["en", "ja"] }]);
+
+      // Language switch: re-initializing with English recreates both extractor and consult sessions
+      const stSwitched = await mgrJa.initialize(undefined, "en");
+      expect(stSwitched).toBe("available");
+      expect(receivedCreateOpts.length).toBe(4);
+      expect(receivedCreateOpts[2].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
+      expect(receivedCreateOpts[3].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrJa.destroy();
 
       // 2. English initialization

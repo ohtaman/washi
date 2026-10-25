@@ -1198,6 +1198,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
   let currentStatus: GeminiNanoStatus = "unavailable";
   let downloadProgress: number | null = null;
   let extractorBaseSession: LanguageModelSessionLike | null = null;
+  let extractorSessionLang: TimetableLang = getTimetableLang();
   let consultBaseSession: LanguageModelSessionLike | null = null;
   let consultSessionLang: TimetableLang = getTimetableLang();
   let lastConsultTrace: LlmCallTrace | null = null;
@@ -1245,13 +1246,21 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           });
         };
 
-        if (!extractorBaseSession) {
+        if (!extractorBaseSession || extractorSessionLang !== lang) {
+          if (extractorBaseSession && typeof extractorBaseSession.destroy === "function") {
+            try {
+              extractorBaseSession.destroy();
+            } catch {
+              // Ignore
+            }
+          }
           extractorBaseSession = await createSessionWithFallback(
             api,
             EXTRACTOR_SYSTEM_PROMPT,
             monitorFn,
             lang
           );
+          extractorSessionLang = lang;
         }
         if (!consultBaseSession || consultSessionLang !== lang) {
           if (consultBaseSession && typeof consultBaseSession.destroy === "function") {
@@ -1287,7 +1296,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       onProgress?: (event: ChatExtractProgressEvent) => void,
       lang: TimetableLang = getTimetableLang()
     ): Promise<ParsedTimetableChatPlan> {
-      if (!extractorBaseSession) {
+      if (!extractorBaseSession || extractorSessionLang !== lang) {
         const initStatus = await this.initialize(undefined, lang);
         if (initStatus !== "available" || !extractorBaseSession) {
           throw new Error(
