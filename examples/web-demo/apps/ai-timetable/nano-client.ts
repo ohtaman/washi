@@ -357,7 +357,7 @@ export function resolveDaysFromInput(raw: unknown): TimetableDay[] | null {
 
 export const TIMETABLE_EXTRACTION_SCHEMA = {
   type: "object",
-  required: ["thought", "intentType", "toolCalls", "replyJa"],
+  required: ["intentType", "toolCalls"],
   properties: {
     thought: { type: "string" },
     intentType: {
@@ -484,7 +484,11 @@ const EXTRACTOR_SYSTEM_PROMPT = `あなたは大学の時間割編成（Universi
 ・days は ["Mon","Tue","Wed","Thu","Fri"] の配列、periods は 1〜5 の整数配列で、どちらも必ず明示する（終日なら periods:[1,2,3,4,5]、全曜日なら days に5曜日すべてを列挙）。
 ・set_course_room_rule の mode、add_course_relation_rule の relationKind、inject_conflict_demo の scenario は必須。
 ・course_no_overlap と course_precedence では secondCourse が必須。
-・isHard を省略した場合はハード制約(true)として扱われる。`;
+・isHard を省略した場合はハード制約(true)として扱われる。
+
+【出力トークン節約とダミー呼び出し禁止の厳密なルール】
+・toolCalls にはユーザーの指示に対応する必要なツールのみを含めてください。不要なツールや重複するダミー呼び出し（特に solve_or_diagnose の無駄な連続重複など）は決して含めないでください。変更操作がない場合は空配列 [] にしてください。
+・thought や replyJa は出力上限超過(Truncation)を防ぐため、1文以内の極めて簡潔な記述にするか省略してください。`;
 
 const CONSULT_SYSTEM_PROMPT = `You are the "University Course Timetabling AI Copilot" assisting academic affairs staff and faculty.
 Based on the execution summary provided in the prompt (applied rule changes, WaSHI × HiGHS solver optimization outcome, or conflicting constraint diagnosis), reply concisely in Markdown (bullet points, 3–6 lines) in the language explicitly requested at the end of the prompt (Japanese, English, or Simplified Chinese).
@@ -1209,28 +1213,125 @@ export function applyTimetableChatOperationsToState(
   return { updatedState: nextState, appliedLogs };
 }
 
-function buildCompactStateCatalogPrompt(state: TimetableState): string {
-  const courseList = state.courses
-    .map(
-      (c) =>
-        `${c.id}:${c.title}(${c.cohorts.join("/")},週${c.sessionsPerWeek}コマ,履修${c.enrollment}名,担当:${c.professorId})`
-    )
-    .join(", ");
-  const profList = state.professors
-    .map(
-      (p) =>
-        `${p.id}:${p.name}(${p.title}${p.unavailableDays.length > 0 ? `,不可:${p.unavailableDays.map((d) => DAY_LABELS_JA[d]).join("")}` : ""})`
-    )
-    .join(", ");
-  const roomList = state.rooms
-    .map((r) => `${r.id}:${r.name}(定員${r.capacity},${ROOM_TYPE_LABELS_JA[r.roomType]})`)
-    .join(", ");
+/**
+ * Attempts to repair JSON truncated by LLM output limits (e.g. unclosed quotes, brackets, dangling keys).
+ */
+export function repairTruncatedJson(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "{}";
+  try {
+    JSON.parse(trimmed);
+    return trimmed;
+  } catch {
+    // Attempt repair below
+  }
+
+  let inString = false;
+  let escape = false;
+  const stack: ("{" | "[")[] = [];
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (!inString) {
+      if (ch === "{" || ch === "[") {
+        stack.push(ch);
+      } else if (ch === "}") {
+        if (stack.length > 0 && stack[stack.length - 1] === "{") {
+          stack.pop();
+        }
+      } else if (ch === "]") {
+        if (stack.length > 0 && stack[stack.length - 1] === "[") {
+          stack.pop();
+        }
+      }
+    }
+  }
+
+  let repaired = trimmed;
+  if (inString) {
+    repaired += '"';
+  }
+
+  // Clean trailing commas or incomplete key-value pairs before closing containers
+  repaired = repaired.replace(/,\s*$/, "").replace(/:\s*$/, ": null");
+
+  while (stack.length > 0) {
+    const last = stack.pop();
+    repaired = repaired.replace(/,\s*$/, "").replace(/:\s*$/, ": null");
+    if (last === "{") {
+      repaired += "}";
+    } else if (last === "[") {
+      repaired += "]";
+    }
+  }
+
+  try {
+    JSON.parse(repaired);
+    return repaired;
+  } catch {
+    return "{}";
+  }
+}
+
+export function buildCompactStateCatalogPrompt(state: TimetableState): string {
+  const courseList =
+    state.courses.length > 0
+      ? state.courses
+          .map((c) => `${c.id}:${c.title}(週${c.sessionsPerWeek},担当:${c.professorId})`)
+          .join(", ")
+      : "(なし)";
+  const profList =
+    state.professors.length > 0
+      ? state.professors
+          .map(
+            (p) =>
+              `${p.id}:${p.name}(${p.title}${p.unavailableDays.length > 0 ? `,不可:${p.unavailableDays.map((d) => DAY_LABELS_JA[d]).join("")}` : ""})`
+          )
+          .join(", ")
+      : "(なし)";
+  const roomList =
+    state.rooms.length > 0
+      ? state.rooms
+          .map((r) => `${r.id}:${r.name}(${ROOM_TYPE_LABELS_JA[r.roomType]})`)
+          .join(", ")
+      : "(なし)";
 
   return [
     `【登録科目一覧】${courseList}`,
     `【教員一覧】${profList}`,
     `【教室一覧】${roomList}`,
     `【現在の全体設定】教員連続上限=${state.config.maxProfessorConsecutivePeriods}コマ, 教員1日上限=${state.config.maxProfessorSessionsPerDay}コマ, 週2コマ同日禁止=${state.config.forbidSameCourseSameDay ? "ON" : "OFF"}`,
+  ].join("\n");
+}
+
+export function buildUltraCompactCatalogPrompt(state: TimetableState): string {
+  const courseList =
+    state.courses.length > 0
+      ? state.courses.map((c) => `${c.id}:${c.title}(${c.professorId})`).join(", ")
+      : "(なし)";
+  const profList =
+    state.professors.length > 0
+      ? state.professors.map((p) => `${p.id}:${p.name}`).join(", ")
+      : "(なし)";
+  const roomList =
+    state.rooms.length > 0 ? state.rooms.map((r) => `${r.id}:${r.name}`).join(", ") : "(なし)";
+
+  return [
+    `【登録科目一覧】${courseList}`,
+    `【教員一覧】${profList}`,
+    `【教室一覧】${roomList}`,
   ].join("\n");
 }
 
@@ -1389,25 +1490,89 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         }),
       });
 
-      const session =
-        typeof extractorBaseSession.clone === "function"
-          ? await extractorBaseSession.clone()
-          : extractorBaseSession;
+      const getFreshExtractorSession = async (): Promise<{
+        session: LanguageModelSessionLike;
+        shouldDestroy: boolean;
+      }> => {
+        if (extractorBaseSession && typeof extractorBaseSession.clone === "function") {
+          try {
+            const cloned = await extractorBaseSession.clone();
+            if (cloned !== extractorBaseSession) {
+              return { session: cloned, shouldDestroy: true };
+            }
+            return { session: cloned, shouldDestroy: false };
+          } catch {
+            // Clone failed, fall back to fresh session
+          }
+        }
+        const api = getLanguageModelApi();
+        if (!api) {
+          throw new Error("LanguageModel API is unavailable");
+        }
+        const fresh = await createLanguageModelSession(
+          api,
+          EXTRACTOR_SYSTEM_PROMPT,
+          buildExtractorLanguageModelOptions()
+        );
+        return { session: fresh, shouldDestroy: true };
+      };
 
+      let { session, shouldDestroy } = await getFreshExtractorSession();
       const t0 = performance.now();
-      const userPrompt = `${buildCompactStateCatalogPrompt(state)}\n\nユーザーの指示: 「${userMessage}」`;
+      let usedPrompt = `${buildCompactStateCatalogPrompt(state)}\n\nユーザーの指示: 「${userMessage}」`;
+      let rawJson = "";
+
       try {
-        const rawJson = await session.prompt(userPrompt, {
-          responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
-          signal,
-        });
+        try {
+          rawJson = await session.prompt(usedPrompt, {
+            responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
+            signal,
+          });
+        } catch (promptErr: unknown) {
+          const errStr = String(promptErr).toLowerCase();
+          const isTruncated =
+            errStr.includes("exceeded output limits") ||
+            errStr.includes("truncated") ||
+            errStr.includes("quota");
+          if (isTruncated && !signal?.aborted) {
+            if (shouldDestroy && typeof session.destroy === "function") {
+              try {
+                session.destroy();
+              } catch {
+                // Ignore
+              }
+            }
+            const fresh = await getFreshExtractorSession();
+            session = fresh.session;
+            shouldDestroy = fresh.shouldDestroy;
+            usedPrompt = `${buildUltraCompactCatalogPrompt(state)}\n\n指示: 「${userMessage}」`;
+            rawJson = await session.prompt(usedPrompt, {
+              responseConstraint: TIMETABLE_EXTRACTION_SCHEMA,
+              signal,
+            });
+          } else {
+            throw promptErr;
+          }
+        }
+
         const durationMs = Math.max(1, Math.round(performance.now() - t0));
-        const parsed = JSON.parse(rawJson.trim()) as {
+        let parsed: {
           thought?: string;
           intentType?: ParsedTimetableChatPlan["intentType"];
           toolCalls?: RawStage2ToolCall[];
           replyJa?: string;
-        };
+        } = {};
+
+        try {
+          parsed = JSON.parse(rawJson.trim());
+        } catch {
+          const repaired = repairTruncatedJson(rawJson);
+          try {
+            parsed = JSON.parse(repaired);
+          } catch {
+            parsed = {};
+          }
+        }
 
         const operations: ChatTimetableOperation[] = [];
         const rejectedToolCalls: RawStage2ToolCall[] = [];
@@ -1423,7 +1588,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         const trace: LlmCallTrace = {
           stage: "structured_extraction",
           systemPrompt: EXTRACTOR_SYSTEM_PROMPT,
-          userPrompt,
+          userPrompt: usedPrompt,
           schema: TIMETABLE_EXTRACTION_SCHEMA,
           rawOutput: rawJson,
           durationMs,
@@ -1455,7 +1620,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           llmTraces: [trace],
         };
       } finally {
-        if (session !== extractorBaseSession && typeof session.destroy === "function") {
+        if (shouldDestroy && typeof session.destroy === "function") {
           try {
             session.destroy();
           } catch {
@@ -1575,10 +1740,37 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         return;
       }
 
-      const session =
-        typeof consultBaseSession.clone === "function"
-          ? await consultBaseSession.clone()
-          : consultBaseSession;
+      const getFreshConsultSession = async (): Promise<{
+        session: LanguageModelSessionLike;
+        shouldDestroy: boolean;
+      }> => {
+        if (consultBaseSession && typeof consultBaseSession.clone === "function") {
+          try {
+            const cloned = await consultBaseSession.clone();
+            if (cloned !== consultBaseSession) {
+              return { session: cloned, shouldDestroy: true };
+            }
+            return { session: cloned, shouldDestroy: false };
+          } catch {
+            // Clone failed, fall back
+          }
+        }
+        if (!api) {
+          return { session: consultBaseSession, shouldDestroy: false };
+        }
+        try {
+          const fresh = await createLanguageModelSession(
+            api,
+            CONSULT_SYSTEM_PROMPT,
+            buildConsultLanguageModelOptions(lang)
+          );
+          return { session: fresh, shouldDestroy: true };
+        } catch {
+          return { session: consultBaseSession, shouldDestroy: false };
+        }
+      };
+
+      const { session, shouldDestroy } = await getFreshConsultSession();
       const t0 = performance.now();
       let accumulated = "";
       try {
@@ -1614,7 +1806,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           rawOutput: accumulated,
           durationMs: Math.max(1, Math.round(performance.now() - t0)),
         };
-        if (session !== consultBaseSession && typeof session.destroy === "function") {
+        if (shouldDestroy && typeof session.destroy === "function") {
           try {
             session.destroy();
           } catch {

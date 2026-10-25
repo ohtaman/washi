@@ -569,68 +569,197 @@ function renderTimetableBoard(): void {
   if (appState.courses.length === 0) {
     if (emptyStateEl) {
       emptyStateEl.hidden = false;
-      if (emptyIconEl) emptyIconEl.textContent = "📄";
-      if (emptyTitleEl) {
-        emptyTitleEl.textContent = pickTimetableLang(activeLang, {
-          ja: "時間割データがありません（白紙モード）",
-          en: "No Timetable Data (Blank Slate Mode)",
-          zh: "暂无课表数据（空白模式）",
-        });
-      }
-      if (emptyDescEl) {
-        emptyDescEl.textContent = pickTimetableLang(activeLang, {
-          ja: "現在、教員・教室・科目のデータが登録されていません。CSVファイルを読み込むか、「サンプル生成」でデータを作成してください。",
-          en: "No professors, rooms, or courses are registered. Import CSV files or click 'Generate Sample Data' to begin.",
-          zh: "当前未注册教师、教室和课程数据。请导入CSV文件或点击“生成示例数据”开始。",
-        });
-      }
-      if (emptyActionsEl) {
-        emptyActionsEl.innerHTML = `
-          <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-            ✨ ${pickTimetableLang(activeLang, { ja: "サンプルデータを生成 (Generate)", en: "Generate Sample Data", zh: "生成示例数据" })}
-          </button>
-          <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
-            📂 ${pickTimetableLang(activeLang, { ja: "CSVファイルを読み込む", en: "Import CSV Files", zh: "导入CSV文件" })}
-          </button>
-          <button type="button" id="btn-empty-samples" class="btn-toolbar-outline">
-            📥 ${pickTimetableLang(activeLang, { ja: "サンプルCSVをダウンロード", en: "Download Sample CSVs", zh: "下载示例CSV" })}
-          </button>
-        `;
-        wireEmptyStateButtons();
-      }
+      emptyStateEl.innerHTML = `
+        <div class="empty-state-workflow">
+          <div class="workflow-header">
+            <span class="workflow-badge">STEP 1</span>
+            <h3>${pickTimetableLang(activeLang, {
+              ja: "大学時間割編成の始め方（白紙モード）",
+              en: "Getting Started with Timetabling (Blank Slate)",
+              zh: "大学排课指南（空白模式）",
+            })}</h3>
+            <p>${pickTimetableLang(activeLang, {
+              ja: "大学の時間割編成は、教員一覧・教室一覧・開講科目の3つの基礎データを揃えることから始まります。以下のいずれかの方法でデータをセットしてください。",
+              en: "University timetabling starts with preparing faculty rosters, classrooms, and course curriculum data. Choose an option below to begin.",
+              zh: "大学排课始于准备教师、教室和开课计划三大基础数据。请选择以下任意方式载入数据。",
+            })}</p>
+          </div>
+          <div class="workflow-cards-grid">
+            <div class="workflow-card highlighted">
+              <div class="wf-card-icon">✨</div>
+              <h4>${pickTimetableLang(activeLang, {
+                ja: "サンプルデータで体験する (推奨)",
+                en: "Start with Sample Data (Recommended)",
+                zh: "使用示例数据体验 (推荐)",
+              })}</h4>
+              <p>${pickTimetableLang(activeLang, {
+                ja: "情報科学科の教員10名・教室7室・25科目を一括生成し、0.2秒での自動編成と対話的調整をすぐに体験できます。",
+                en: "Generate 10 CS faculty members, 7 rooms, and 25 courses with one click to test auto-scheduling immediately.",
+                zh: "一键生成计算机系10位教师、7间教室与25门课程，即刻体验0.2秒自动排课与交互调整。",
+              })}</p>
+              <button type="button" id="btn-empty-generate" class="btn-solve-primary">
+                ✨ ${pickTimetableLang(activeLang, {
+                  ja: "サンプルデータを生成して編成する",
+                  en: "Generate & Schedule Sample",
+                  zh: "生成并编排示例数据",
+                })}
+              </button>
+            </div>
+            <div class="workflow-card">
+              <div class="wf-card-icon">📂</div>
+              <h4>${pickTimetableLang(activeLang, {
+                ja: "手持ちのCSVを読み込む",
+                en: "Import Your CSV Files",
+                zh: "导入已有CSV文件",
+              })}</h4>
+              <p>${pickTimetableLang(activeLang, {
+                ja: "professors.csv / rooms.csv / courses.csv の3ファイルをインポートして自前のデータで時間割を作成します。",
+                en: "Import professors.csv, rooms.csv, and courses.csv to schedule your own university curriculum.",
+                zh: "导入教师、教室与课程3份CSV文件，为自己的课程方案排课。",
+              })}</p>
+              <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
+                📂 ${pickTimetableLang(activeLang, {
+                  ja: "CSV読込ダイアログを開く",
+                  en: "Open CSV Dialog",
+                  zh: "打开CSV导入窗口",
+                })}
+              </button>
+            </div>
+            <div class="workflow-card">
+              <div class="wf-card-icon">📥</div>
+              <h4>${pickTimetableLang(activeLang, {
+                ja: "CSVテンプレートを取得",
+                en: "Download Templates",
+                zh: "获取CSV模板",
+              })}</h4>
+              <p>${pickTimetableLang(activeLang, {
+                ja: "CSVの列名（ID・氏名・出講NG日・教室定員・履修学年等）を確認できるテンプレートを保存します。",
+                en: "Download sample CSV templates to check column headers (IDs, names, unavailable days, room capacities, cohorts).",
+                zh: "下载CSV模板以查阅表头格式（编号、姓名、不可出勤日、容量、年级等）。",
+              })}</p>
+              <button type="button" id="btn-empty-samples" class="btn-toolbar-outline">
+                📥 ${pickTimetableLang(activeLang, {
+                  ja: "サンプルCSVをダウンロード",
+                  en: "Download Sample CSVs",
+                  zh: "下载示例CSV",
+                })}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+      wireEmptyStateButtons();
     }
   } else if (!currentTimetable) {
     if (emptyStateEl) {
       emptyStateEl.hidden = false;
-      if (emptyIconEl) emptyIconEl.textContent = "🧩";
-      if (emptyTitleEl) {
-        emptyTitleEl.textContent = pickTimetableLang(activeLang, {
-          ja: `データ準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（未編成）`,
-          en: `Data Ready: ${appState.professors.length} Profs / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (Unscheduled)`,
-          zh: `数据已就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (未编排)`,
-        });
-      }
-      if (emptyDescEl) {
-        emptyDescEl.textContent = pickTimetableLang(activeLang, {
-          ja: "「📚 科目・教員・教室一覧」タブで各教員の出講条件や教室設備を確認できます。準備ができたら「⚡ 時間割を自動編成」をクリックしてください。",
-          en: "Review professor availability and room specs in the Catalog tab. When ready, click 'Auto-Schedule Timetable' to run optimization.",
-          zh: "可在“基础数据列表”查看教师出讲条件与教室。准备好后点击“自动编排课表”开始求解。",
-        });
-      }
-      if (emptyActionsEl) {
-        emptyActionsEl.innerHTML = `
-          <button type="button" id="btn-empty-solve" class="btn-solve-primary">
-            ⚡ ${pickTimetableLang(activeLang, { ja: "時間割を自動編成 (Optimize)", en: "Auto-Schedule Timetable", zh: "自动编排课表" })}
-          </button>
-          <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
-            📚 ${pickTimetableLang(activeLang, { ja: "教員・教室・科目を確認", en: "Review Catalog", zh: "查看基础数据" })}
-          </button>
-          <button type="button" id="btn-empty-clear" class="btn-toolbar-outline">
-            🗑️ ${pickTimetableLang(activeLang, { ja: "白紙に戻す", en: "Clear to Blank", zh: "清空为白纸" })}
-          </button>
-        `;
-        wireEmptyStateButtons();
-      }
+      const totalSessions = appState.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
+      const profCount = appState.professors.length;
+      const roomCount = appState.rooms.length;
+      const courseCount = appState.courses.length;
+      const adjunctCount = appState.professors.filter((p) => p.employment === "adjunct").length;
+      const pcLabCourseCount = appState.courses.filter((c) => c.requiredRoomType === "pc_lab").length;
+
+      emptyStateEl.innerHTML = `
+        <div class="data-preview-card">
+          <div class="data-preview-header">
+            <span class="dp-badge">STEP 2</span>
+            <h3>${pickTimetableLang(activeLang, {
+              ja: `基礎データの準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}コマ）`,
+              en: `Data Ready: ${profCount} Profs / ${roomCount} Rooms / ${courseCount} Courses (${totalSessions} sessions)`,
+              zh: `基础数据就绪: ${profCount}位教师 / ${roomCount}间教室 / ${courseCount}门课程 (共${totalSessions}节)`,
+            })}</h3>
+            <p>${pickTimetableLang(activeLang, {
+              ja: "教員名簿・教室設備・開講科目がセットされました。内容を確認し、下の「⚡ 時間割を自動編成する」を押すと WaSHI × HiGHS が全学年・全教員・全教室の時間割を一括最適化します。",
+              en: "Faculty roster, classrooms, and curriculum are loaded. Review the details below. Click 'Auto-Schedule Timetable' to run WaSHI × HiGHS MIP optimization.",
+              zh: "教师名册、教室与课程已载入。确认以下概要后，点击“自动编排课表”，WaSHI × HiGHS 混合整数规划求解器将一键优化全局排课。",
+            })}</p>
+          </div>
+          <div class="data-preview-summary-grid">
+            <div class="dp-summary-box">
+              <h4>👨‍🏫 ${pickTimetableLang(activeLang, {
+                ja: `教員一覧 (${profCount}名)`,
+                en: `Faculty (${profCount})`,
+                zh: `教师名单 (${profCount}位)`,
+              })}</h4>
+              <ul>
+                <li>${pickTimetableLang(activeLang, {
+                  ja: `専任教員: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => p.name).slice(0, 3).join("、")} など計${profCount - adjunctCount}名`,
+                  en: `Full-time: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => p.name).slice(0, 3).join(", ")}, etc.`,
+                  zh: `专任教师: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => p.name).slice(0, 3).join("、")} 等共${profCount - adjunctCount}位`,
+                })}</li>
+                <li>${pickTimetableLang(activeLang, {
+                  ja: `非常勤・曜日制限: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${p.name}(制限あり)`).join("、") || "特になし"}`,
+                  en: `Part-time / Day limits: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${p.name} (restricted)`).join(", ") || "None"}`,
+                  zh: `兼职/时间限制: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${p.name}(受限)`).join("、") || "无"}`,
+                })}</li>
+              </ul>
+            </div>
+            <div class="dp-summary-box">
+              <h4>🏫 ${pickTimetableLang(activeLang, {
+                ja: `教室設備 (${roomCount}室)`,
+                en: `Classrooms (${roomCount})`,
+                zh: `教室配置 (${roomCount}间)`,
+              })}</h4>
+              <ul>
+                <li>${pickTimetableLang(activeLang, {
+                  ja: `講義室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${r.name}(定員${r.capacity})`).join("、")}`,
+                  en: `Lecture Halls: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${r.name} (cap ${r.capacity})`).join(", ")}`,
+                  zh: `讲堂教室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${r.name}(容纳${r.capacity}人)`).join("、")}`,
+                })}</li>
+                <li>${pickTimetableLang(activeLang, {
+                  ja: `PC演習室・ゼミ室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => r.name).join("、")}`,
+                  en: `PC Labs & Seminars: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => r.name).join(", ")}`,
+                  zh: `机房与研讨室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => r.name).join("、")}`,
+                })}</li>
+              </ul>
+            </div>
+            <div class="dp-summary-box">
+              <h4>📚 ${pickTimetableLang(activeLang, {
+                ja: `開講科目 (${courseCount}科目)`,
+                en: `Curriculum (${courseCount})`,
+                zh: `开课计划 (${courseCount}门)`,
+              })}</h4>
+              <ul>
+                <li>${pickTimetableLang(activeLang, {
+                  ja: `週コマ数合計: ${totalSessions}コマ (1〜4年次)`,
+                  en: `Total sessions: ${totalSessions} slots across Y1-Y4`,
+                  zh: `总授课节数: ${totalSessions}节 (覆盖1~4年级)`,
+                })}</li>
+                <li>${pickTimetableLang(activeLang, {
+                  ja: `設備条件: PC演習室必須 ${pcLabCourseCount}科目、週2コマ科目 ${appState.courses.filter((c) => c.sessionsPerWeek > 1).length}科目`,
+                  en: `Equipment req: PC lab required for ${pcLabCourseCount} courses`,
+                  zh: `设备要求: 机房必须 ${pcLabCourseCount}门`,
+                })}</li>
+              </ul>
+            </div>
+          </div>
+          <div class="data-preview-actions">
+            <button type="button" id="btn-empty-solve" class="btn-solve-primary">
+              ⚡ ${pickTimetableLang(activeLang, {
+                ja: "時間割を自動編成する (0.2秒)",
+                en: "Auto-Schedule Timetable (0.2s)",
+                zh: "自动编排课表 (0.2秒)",
+              })}
+            </button>
+            <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
+              📚 ${pickTimetableLang(activeLang, {
+                ja: "教員・教室・科目の全一覧を確認 (Tab 3)",
+                en: "Review Detailed Catalog (Tab 3)",
+                zh: "查看完整数据列表 (Tab 3)",
+              })}
+            </button>
+            <button type="button" id="btn-empty-clear" class="btn-toolbar-outline">
+              🗑️ ${pickTimetableLang(activeLang, {
+                ja: "白紙に戻す",
+                en: "Clear to Blank",
+                zh: "清空为白纸",
+              })}
+            </button>
+          </div>
+        </div>
+      `;
+      wireEmptyStateButtons();
     }
   } else {
     if (emptyStateEl) emptyStateEl.hidden = true;
@@ -1585,7 +1714,7 @@ function wireEmptyStateButtons(): void {
   document.getElementById("btn-empty-clear")?.addEventListener("click", handleClearToBlank);
 }
 
-function handleGenerateSample(): void {
+async function handleGenerateSample(): Promise<void> {
   appState = generateTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
@@ -1594,11 +1723,12 @@ function handleGenerateSample(): void {
   appendChatMessage(
     "assistant",
     pickTimetableLang(activeLang, {
-      ja: `✨ **サンプルデータを生成しました**\n- **教員**: ${appState.professors.length}名（佐藤教授・鈴木准教授・非常勤の小林先生など）\n- **教室**: ${appState.rooms.length}室（101大講義室・PC演習室A/Bなど）\n- **科目**: ${appState.courses.length}科目（30コマ分）\n\n右上の「📚 科目・教員・教室一覧」タブで条件を確認できます。準備ができたら上の **「⚡ 時間割を自動編成」** ボタンを押して最適化を実行してください！`,
-      en: `✨ **Sample Data Generated**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}\n\nReview them in the Catalog tab. When ready, click **"Auto-Schedule Timetable"**!`,
-      zh: `✨ **已生成示例数据**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门\n\n请在基础数据标签页确认。准备好后点击“自动编排课表”开始求解！`,
+      ja: `✨ **サンプルデータを生成し、初期時間割を自動編成します...**\n- **教員**: ${appState.professors.length}名（佐藤教授・鈴木准教授・非常勤の小林先生など）\n- **教室**: ${appState.rooms.length}室（101大講義室・PC演習室A/Bなど）\n- **科目**: ${appState.courses.length}科目（30コマ分）\n\n数理最適化ソルバー (WaSHI × HiGHS) で全学年・全教員・全教室の矛盾のない時間割を計算中...`,
+      en: `✨ **Generated sample data and scheduling timetable...**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}`,
+      zh: `✨ **已生成示例数据并正在自动编排课表...**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门`,
     })
   );
+  await triggerSolve();
 }
 
 function handleClearToBlank(): void {
@@ -2219,14 +2349,22 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
     syncTrajectoryUI();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    renderSafeMarkdown(
-      assistantMsg.bodyEl,
-      pickTimetableLang(activeLang, {
-        ja: `⚠️ エラーが発生しました: ${msg}`,
-        en: `⚠️ Error: ${msg}`,
-        zh: `⚠️ 发生错误: ${msg}`,
-      })
-    );
+    const isTruncated =
+      msg.toLowerCase().includes("output limits") ||
+      msg.toLowerCase().includes("truncated") ||
+      msg.toLowerCase().includes("quota");
+    const formattedError = isTruncated
+      ? pickTimetableLang(activeLang, {
+          ja: "⚠️ Gemini Nano の出力トークン上限（4096トークン制限）に達しました。短めの指示に分割して入力するか、右側の「追加ルール・設定」タブから直接ルールを編集してください。",
+          en: "⚠️ Gemini Nano reached its output token limit. Please try a shorter request or configure rules directly in the Custom Rules tab.",
+          zh: "⚠️ 达到 Gemini Nano 输出 Token 上限。请尝试更简短的指令，或直接在右侧「规则设置」标签页中编辑。",
+        })
+      : pickTimetableLang(activeLang, {
+          ja: `⚠️ エラーが発生しました: ${msg}`,
+          en: `⚠️ Error: ${msg}`,
+          zh: `⚠️ 发生错误: ${msg}`,
+        });
+    renderSafeMarkdown(assistantMsg.bodyEl, formattedError);
   } finally {
     inputEl.disabled = false;
     sendBtn.disabled = false;
@@ -2738,6 +2876,27 @@ function wireEvents(): void {
   });
 
   $("btn-execute-csv-import").addEventListener("click", executeCsvImport);
+  // Prompt catalog modal
+  const openPromptCatalog = () => {
+    $<HTMLDialogElement>("prompt-catalog-dialog").showModal();
+  };
+  $("btn-open-prompt-catalog")?.addEventListener("click", openPromptCatalog);
+  $("btn-close-prompt-catalog")?.addEventListener("click", () => {
+    $<HTMLDialogElement>("prompt-catalog-dialog").close();
+  });
+  $("btn-close-prompt-catalog-bottom")?.addEventListener("click", () => {
+    $<HTMLDialogElement>("prompt-catalog-dialog").close();
+  });
+  document.querySelectorAll<HTMLButtonElement>(".prompt-catalog-item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const p = btn.dataset.prompt;
+      if (p) {
+        $<HTMLTextAreaElement>("chat-input").value = p;
+        $<HTMLDialogElement>("prompt-catalog-dialog").close();
+        $<HTMLTextAreaElement>("chat-input").focus();
+      }
+    });
+  });
 }
 
 async function initApp(): Promise<void> {
