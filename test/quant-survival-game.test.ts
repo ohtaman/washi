@@ -181,6 +181,8 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
     expect(simA.days).toBe(60);
     expect(simA.playerAumSeries.length).toBe(61);
     expect(simA.aiAumSeries.length).toBe(61);
+    expect(simA.liquidationAumFloor).toBeCloseTo(100 * (1 + regime.liquidationFloor), 4);
+    expect(simA.liquidationFloorRate).toBeCloseTo(regime.liquidationFloor, 4);
     expect(simA.playerEndAum).toBeCloseTo(simB.playerEndAum, 8);
     expect(simA.playerReturn).toBeCloseTo(simA.aiReturn, 8);
     expect(simA.shocks.length).toBeGreaterThanOrEqual(1);

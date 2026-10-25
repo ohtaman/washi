@@ -125,6 +125,7 @@ export interface MarketSimulationResult {
   playerAumSeries: number[];
   aiAumSeries: number[];
   liquidationAumFloor: number;
+  liquidationFloorRate: number;
   playerReturn: number;
   aiReturn: number;
   playerEndAum: number;

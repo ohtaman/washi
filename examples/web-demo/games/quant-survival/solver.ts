@@ -490,6 +490,7 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
     playerAumSeries,
     aiAumSeries,
     liquidationAumFloor,
+    liquidationFloorRate: regime.liquidationFloor,
     playerReturn: playerCumReturn,
     aiReturn: aiCumReturn,
     playerEndAum,

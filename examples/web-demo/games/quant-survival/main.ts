@@ -534,7 +534,8 @@ function renderScoreboard(): void {
   const floorValEl = document.getElementById("hud-floor-value");
   if (floorValEl) {
     if (lastSimulation) {
-      floorValEl.textContent = `${formatSignedPct(lastSimulation.regime.liquidationFloor)} (${formatMoney(lastSimulation.liquidationAumFloor)})`;
+      const floorRate = lastSimulation.liquidationFloorRate ?? currentRegime.liquidationFloor;
+      floorValEl.textContent = `${formatSignedPct(floorRate)} (${formatMoney(lastSimulation.liquidationAumFloor)})`;
     } else {
       const floorAum = playerAum * (1 + currentRegime.liquidationFloor);
       floorValEl.textContent = `${formatSignedPct(currentRegime.liquidationFloor)} (${formatMoney(floorAum)})`;
