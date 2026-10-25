@@ -753,12 +753,19 @@ function renderTimetableBoard(): void {
             </button>
             <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
               📚 ${pickTimetableLang(activeLang, {
-                ja: "教員・教室・科目の全一覧を確認 (Tab 3)",
-                en: "Review Detailed Catalog (Tab 3)",
-                zh: "查看完整数据列表 (Tab 3)",
+                ja: "教員・教室・科目の全一覧を確認 (Step 1)",
+                en: "Review Detailed Catalog (Step 1)",
+                zh: "查看完整数据列表 (Step 1)",
               })}
             </button>
-            <button type="button" id="btn-empty-clear" class="btn-toolbar-outline">
+            <button type="button" id="btn-empty-view-constraints" class="btn-toolbar-outline">
+              ⚖️ ${pickTimetableLang(activeLang, {
+                ja: "制約・ルールを確認 (Step 2)",
+                en: "Review Constraints (Step 2)",
+                zh: "查看约束规则 (Step 2)",
+              })}
+            </button>
+            <button type="button" id="btn-empty-clear" class="btn-xs-outline" style="color: var(--danger-text, #ef4444);">
               🗑️ ${pickTimetableLang(activeLang, {
                 ja: "白紙に戻す",
                 en: "Clear to Blank",
@@ -1251,6 +1258,11 @@ function renderTimetableBoard(): void {
 
 function renderCustomRulesAndSettings(): void {
   const ui = UI_TEXT_I18N[activeLang];
+  const workflowBanner = $("constraints-workflow-banner");
+  if (workflowBanner) {
+    workflowBanner.hidden = !(appState.courses.length > 0 && !currentTimetable);
+  }
+
   const listEl = $("custom-rules-list");
   listEl.replaceChildren();
 
@@ -1349,6 +1361,30 @@ function renderCustomRulesAndSettings(): void {
 
 function renderCatalogTables(): void {
   const ui = UI_TEXT_I18N[activeLang];
+  const isBlank = appState.courses.length === 0;
+
+  const emptyCard = $("cat-empty-state-card");
+  const tablesContainer = $("cat-tables-container");
+  const nextBanner = $("cat-next-step-banner");
+
+  if (emptyCard) emptyCard.hidden = !isBlank;
+  if (tablesContainer) tablesContainer.hidden = isBlank;
+  if (nextBanner) {
+    nextBanner.hidden = isBlank;
+    if (!isBlank) {
+      const totalSessions = appState.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
+      setText(
+        "cat-next-step-message",
+        pickTimetableLang(activeLang, {
+          ja: `✅ 基礎データの準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（計${totalSessions}コマ）。内容を確認したら、次は「制約・ルール設定」で条件を確認するか、「時間割ボード」で自動編成を実行してください。`,
+          en: `✅ Baseline data ready: ${appState.professors.length} Faculty / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (${totalSessions} sessions). Review tables below, then inspect constraints or proceed to Timetable Board to schedule.`,
+          zh: `✅ 基础数据就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (共${totalSessions}节)。核对无误后请前往“约束与规则设置”调整条件，或前往“课表看板”一键自动排课。`,
+        })
+      );
+    }
+  }
+
+  if (isBlank) return;
 
   // Update table headers
   const profHeadRow = $("cat-prof-thead-row");
@@ -1755,31 +1791,36 @@ function renderAll(): void {
 }
 
 function wireEmptyStateButtons(): void {
-  document.getElementById("btn-empty-generate")?.addEventListener("click", handleGenerateSample);
+  document.getElementById("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(true));
   document.getElementById("btn-empty-csv")?.addEventListener("click", openCsvDialog);
   document.getElementById("btn-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
   document.getElementById("btn-empty-solve")?.addEventListener("click", () => void triggerSolve());
   document.getElementById("btn-empty-view-catalog")?.addEventListener("click", () => {
     $<HTMLButtonElement>("tab-btn-catalog").click();
   });
+  document.getElementById("btn-empty-view-constraints")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-constraints").click();
+  });
   document.getElementById("btn-empty-clear")?.addEventListener("click", handleClearToBlank);
 }
 
-async function handleGenerateSample(): Promise<void> {
+function handleGenerateSample(autoSwitchToCatalog = true): void {
   appState = generateTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
   renderAll();
+  if (autoSwitchToCatalog) {
+    $<HTMLButtonElement>("tab-btn-catalog").click();
+  }
   appendChatMessage(
     "assistant",
     pickTimetableLang(activeLang, {
-      ja: `✨ **サンプルデータを生成し、初期時間割を自動編成します...**\n- **教員**: ${appState.professors.length}名（佐藤教授・鈴木准教授・非常勤の小林先生など）\n- **教室**: ${appState.rooms.length}室（101大講義室・PC演習室A/Bなど）\n- **科目**: ${appState.courses.length}科目（30コマ分）\n\n数理最適化ソルバー (WaSHI × HiGHS) で全学年・全教員・全教室の矛盾のない時間割を計算中...`,
-      en: `✨ **Generated sample data and scheduling timetable...**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}`,
-      zh: `✨ **已生成示例数据并正在自动编排课表...**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门`,
+      ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「科目・教員・教室一覧」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のステップ**:\n1. 「⚖️ 制約・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
+      en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Curriculum & Resources" tab.\n\n**Next Steps**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
+      zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“科目・教师・教室一览”标签页查看名册、设备与开课计划。\n\n**后续步骤**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
     })
   );
-  await triggerSolve();
 }
 
 function handleClearToBlank(): void {
@@ -1901,6 +1942,7 @@ function executeCsvImport(): void {
   lastSolveOutcome = null;
   $<HTMLDialogElement>("csv-import-dialog").close();
   renderAll();
+  $<HTMLButtonElement>("tab-btn-catalog").click();
   appendChatMessage(
     "assistant",
     pickTimetableLang(activeLang, {
@@ -1941,6 +1983,7 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
   $("btn-abort-solve").hidden = false;
 
   let outcome: WashiTimetableSolveOutcome | null = null;
+  const wasUnscheduled = !currentTimetable;
   try {
     outcome = await solveTimetableWithWashi(appState, {
       signal: abortCtrl.signal,
@@ -1950,6 +1993,17 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
     if (outcome.timetable) {
       currentTimetable = outcome.timetable;
       currentEvaluation = outcome.evaluation;
+      if (wasUnscheduled) {
+        $<HTMLButtonElement>("tab-btn-timetable").click();
+        appendChatMessage(
+          "assistant",
+          pickTimetableLang(activeLang, {
+            ja: "🎉 **時間割を自動編成しました！**\n全学年・全教員・全教室に矛盾のない時間割が配置されました。\n\nここからAIチャットに『佐藤先生は月曜日休みに設定して』『機械学習と自然言語処理を被せないで』などと入力して、柔軟に要望を追加・調整できます。",
+            en: "🎉 **Timetable automatically scheduled!**\nA feasible, conflict-free schedule has been generated across cohorts, faculty, and rooms.\n\nYou can now chat with AI Copilot (e.g. 'Set Prof. Sato unavailable on Mondays') to fine-tune requests.",
+            zh: "🎉 **课表已自动编排完成！**\n已成功为全学年、全教师、全教室编排无冲突最优课表。\n\n您现在可以在AI聊天中输入“将佐藤老师周一设为休息日”等指令进行个性化微调。",
+          })
+        );
+      }
     }
     updateStatusAndConflictsUI(outcome);
     renderTimetableBoard();
@@ -2186,6 +2240,8 @@ export function applyTimetableLang(lang: TimetableLang): void {
   $("lbl-diff-toggle").title = ui.diffToggleTitle;
 
   // Tab 2 rules & config
+  setText("constraints-workflow-message", ui.constraintsWorkflowMsg);
+  setText("btn-constraints-go-timetable", ui.btnConstraintsGoTimetable);
   setText("custom-rules-title", ui.customRulesTitle);
   setText("custom-rules-desc", ui.customRulesDesc);
   setText("btn-apply-config-solve", ui.btnApplyConfigSolve);
@@ -2223,7 +2279,19 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("dev-inspector-summary", ui.devInspectorSummary);
   setText("btn-diagnose-conflict", ui.btnDiagnoseSingle);
 
-  // Tab 3 catalog titles
+  // Tab 3 catalog management & titles
+  setText("cat-mgmt-badge", ui.catMgmtBadge);
+  setText("cat-mgmt-title", ui.catMgmtTitle);
+  setText("cat-mgmt-desc", ui.catMgmtDesc);
+  setText("btn-cat-generate-sample", ui.btnCatGenerate);
+  setText("btn-cat-import-csv", ui.btnCatImportCsv);
+  setText("btn-cat-download-samples", ui.btnCatDownloadSamples);
+  setText("btn-cat-clear-blank", ui.btnCatClearBlank);
+  setText("cat-empty-title", ui.catEmptyTitle);
+  setText("cat-empty-desc", ui.catEmptyDesc);
+  setText("btn-cat-go-constraints", ui.btnCatGoConstraints);
+  setText("btn-cat-go-timetable", ui.btnCatGoTimetable);
+
   setText("cat-prof-title", ui.catProfTitle);
   setText("cat-prof-desc", ui.catProfDesc);
   setText("cat-room-title", ui.catRoomTitle);
@@ -2941,6 +3009,23 @@ function wireEvents(): void {
   });
   $("btn-close-prompt-catalog-bottom")?.addEventListener("click", () => {
     $<HTMLDialogElement>("prompt-catalog-dialog").close();
+  });
+
+  // Tab 3 Catalog management & navigation buttons
+  $("btn-cat-generate-sample")?.addEventListener("click", () => handleGenerateSample(false));
+  $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
+  $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
+  $("btn-cat-clear-blank")?.addEventListener("click", handleClearToBlank);
+  $("btn-cat-go-constraints")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-constraints").click();
+  });
+  $("btn-cat-go-timetable")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-timetable").click();
+  });
+
+  // Tab 2 workflow banner button
+  $("btn-constraints-go-timetable")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-timetable").click();
   });
 }
 
