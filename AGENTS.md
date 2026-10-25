@@ -126,9 +126,8 @@ When addressing review comments, simplifying a PR, or reporting that a PR is "me
 5. **Reproduce Verifiable Bugs with a Test on `HEAD`**:
    - For genuine functional bugs or regressions within the PR's core scope, write an automated regression test on `HEAD`.
    - Do NOT construct elaborate mock frameworks for speculative or non-reproducible reviewer scenarios.
-6. **Sweep the Entire Surface Class When Fixing a Pattern Issue (Prevent Review Whack-a-Mole)**:
-   - When fixing a category of issue within the PR's scope (e.g., untranslated UI text, `title` / `aria-label` / `alt` attributes, status mappings, or boundary checks), never patch only the single element or line mentioned by the user or reviewer.
-   - Audit the entire affected file/surface (e.g., all elements in `index.html` and dynamic renderers) and enforce it with an **exhaustive behavioral/invariant test** (such as scanning all DOM elements for remaining untranslated text or invalid states) rather than brittle source-code substring checks (`expect(src).toContain(...)`).
+6. **Sweep the Entire Surface Class for Systemic Pattern Issues (Prevent Review Whack-a-Mole)**:
+   - When fixing a systemic category of issue within the PR's scope (e.g., broad localization rollouts, public status mappings), audit the affected surface once rather than patching one line per push. For isolated or single-element fixes, a focused behavioral test is completely sufficient; do not demand exhaustive whole-DOM scans or elaborate test harnesses.
 7. **Pre-Screen Every Commit Against Section 4 Before Pushing**:
    - Review fixes frequently trigger secondary review rounds when test harnesses or helpers take shortcuts. Before pushing any commit, verify that the new diff introduces **zero unjustified** `any` or `as unknown as ...` assertions (Section 4.B), **zero** source-substring-only tests in place of behavioral tests (Section 4.C), and **zero** collateral changes outside the PR scope (Section 2).
 
