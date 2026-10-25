@@ -46,6 +46,7 @@ export interface TranslationDict {
   unsatCoreTitle: string;
   unsatCoreDesc: string;
   backToDocs: string;
+  navShowcase: string;
 }
 
 export const translations: Record<Locale, TranslationDict> = {
@@ -91,6 +92,7 @@ export const translations: Record<Locale, TranslationDict> = {
     unsatCoreTitle: "Conflicting Constraints Detected (Unsat Core):",
     unsatCoreDesc: "The model has no feasible solution. The solver identified the following subset of incompatible constraints (unsat core):",
     backToDocs: "Documentation",
+    navShowcase: "Showcase",
   },
   ja: {
     headerSubtitle: "数理最適化モデラー",
@@ -134,6 +136,7 @@ export const translations: Record<Locale, TranslationDict> = {
     unsatCoreTitle: "矛盾制約を検出（Unsat Core）:",
     unsatCoreDesc: "モデルに実行可能解が存在しません。ソルバーは矛盾を引き起こしている制約の部分集合（Unsat Core）を特定しました:",
     backToDocs: "ドキュメント",
+    navShowcase: "ショーケース",
   },
 };
 

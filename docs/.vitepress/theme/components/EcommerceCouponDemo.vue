@@ -386,7 +386,7 @@ onMounted(() => {
     </div>
 
     <div class="washi-app-footer">
-      <a href="/washi/demo/?preset=cart_coupon" class="playground-link">
+      <a href="/washi/demo/?preset=cart_coupon" target="_self" class="playground-link">
         {{ isJa ? "Playground でコードを編集する →" : isZh ? "在 Playground 中编辑代码 →" : "Edit Code in Playground →" }}
       </a>
     </div>

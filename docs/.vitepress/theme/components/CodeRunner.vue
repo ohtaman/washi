@@ -160,6 +160,7 @@ onMounted(() => {
       <a
         v-if="preset"
         :href="`/washi/demo/?preset=${preset}`"
+        target="_self"
         class="playground-link"
         style="margin-left: auto;"
       >
