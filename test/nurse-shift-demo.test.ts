@@ -30,7 +30,9 @@ import {
   convertStage2ToolToOperation,
   createGeminiNanoManager,
   STAGE1_ROUTER_SCHEMA,
+  STAGE1_ROUTER_SYSTEM_PROMPT,
   CUSTOM_SHIFT_TOOLS_SCHEMA,
+  CUSTOM_SHIFT_STAGE2_PROMPT,
   SKILL_AND_PAIR_TOOLS_SCHEMA,
   STAFF_CALENDAR_TOOLS_SCHEMA,
   STAFF_CONTRACT_TOOLS_SCHEMA,
@@ -3771,5 +3773,59 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     } finally {
       g.LanguageModel = origLM;
     }
+  });
+
+  it("distinguishes headcount units ('名','人') from frequency quota ('回') in custom shift prompts and operations", () => {
+    // 1. Verify router prompt explicitly guides disambiguation of daily headcount from monthly quota
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("1日あたりの配置人数（名・人）");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("個人別の月間回数（回）");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("リーダー業務可は1日最大1名までに制限する");
+    // Ensure test scenario terms ('シフトA', 'シフト A') are NOT hardcoded in few-shot examples
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).not.toContain("シフトA");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).not.toContain("シフト A");
+
+    // 2. Verify stage 2 custom shift prompt strictly assigns headcount units ('名','人') to add_daily_shift_cap
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("助数詞（名・人 vs 回）による配置人数と月間ノルマの厳密な区別");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("add_daily_shift_cap");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("add_shift_quota");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).not.toContain("シフトA");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).not.toContain("シフト A");
+
+    // 3. Verify tool call conversion: '新人は2名まで' (boundType: 'max', staffCount: 2, attribute: 'newcomer')
+    // correctly creates a daily_shift_cap rule with maxStaff=2 rather than a monthly shift_count_quota
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 202611 });
+    const withCustomShift = applyChatOperationsToState(baseState, [
+      { op: "add_custom_shift", shiftName: "シフトA", shift: "CS1", shortLabel: "シ", baseShift: "D" },
+    ]).updatedState;
+
+    const opCap = convertStage2ToolToOperation(
+      {
+        tool_name: "add_daily_shift_cap",
+        args: {
+          shiftName: "シフトA",
+          attribute: "newcomer",
+          boundType: "max",
+          staffCount: 2,
+        },
+      },
+      withCustomShift
+    );
+    expect(opCap).not.toBeNull();
+    expect(opCap?.op).toBe("add_daily_shift_cap");
+    if (opCap?.op === "add_daily_shift_cap") {
+      expect(opCap.maxStaff).toBe(2);
+      expect(opCap.minStaff).toBeUndefined();
+      expect(opCap.attribute).toBe("newcomer");
+    }
+
+    const appliedState = applyChatOperationsToState(withCustomShift, [opCap!]).updatedState;
+    const rule = appliedState.customRules.find(
+      (r) => r.kind === "daily_shift_cap" && r.shift === "CS1" && r.attribute === "newcomer"
+    );
+    expect(rule).toBeDefined();
+    expect(rule?.maxStaff).toBe(2);
+    expect(rule?.minStaff).toBeUndefined();
+    // Invariant: it must NEVER create a shift_count_quota rule
+    expect(appliedState.customRules.some((r) => r.kind === "shift_count_quota")).toBe(false);
   });
 });
