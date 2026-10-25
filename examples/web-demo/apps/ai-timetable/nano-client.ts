@@ -11,6 +11,7 @@ import {
   formatCustomRuleI18n,
   formatPeriodI18n,
   getProfessorI18n,
+  getTimetableLang,
   pickTimetableLang,
   type TimetableLang,
 } from "./i18n.js";
@@ -72,15 +73,13 @@ export interface TimetableGeminiNanoManager {
   destroy(): void;
 }
 
-function buildLanguageModelOptions(lang: TimetableLang = "ja") {
-  const outputLang = lang === "en" ? "en" : "ja";
+function buildLanguageModelOptions(lang: TimetableLang = getTimetableLang()) {
+  const outputLang = lang === "ja" ? "ja" : "en";
   return {
-    expectedInputs: [{ type: "text", languages: ["ja", "en"] }],
+    expectedInputs: [{ type: "text", languages: ["en", "ja"] }],
     expectedOutputs: [{ type: "text", languages: [outputLang] }],
   };
 }
-
-const LANGUAGE_MODEL_JA_OPTIONS = buildLanguageModelOptions("ja");
 
 interface LanguageModelSessionLike {
   prompt(input: string, options?: { responseConstraint?: unknown; signal?: AbortSignal }): Promise<string>;
@@ -121,7 +120,7 @@ function normalizeAvailabilityString(raw: unknown): GeminiNanoStatus | null {
 }
 
 export async function checkGeminiNanoAvailability(
-  lang: TimetableLang = "ja"
+  lang: TimetableLang = getTimetableLang()
 ): Promise<GeminiNanoStatus> {
   const api = getLanguageModelApi();
   if (!api) return "unavailable";
@@ -166,7 +165,7 @@ async function createSessionWithFallback(
   api: LanguageModelFactoryLike,
   systemPrompt: string,
   monitorFn?: (m: unknown) => void,
-  lang: TimetableLang = "ja"
+  lang: TimetableLang = getTimetableLang()
 ): Promise<LanguageModelSessionLike> {
   const baseWithMonitor = monitorFn ? { monitor: monitorFn } : {};
   const langOptions = buildLanguageModelOptions(lang);
@@ -724,7 +723,7 @@ function nextCustomRuleId(
 export function applyTimetableChatOperationsToState(
   state: TimetableState,
   operations: readonly ChatTimetableOperation[],
-  lang: TimetableLang = "ja"
+  lang: TimetableLang = getTimetableLang()
 ): { updatedState: TimetableState; appliedLogs: string[] } {
   let nextState: TimetableState = {
     ...state,
@@ -1200,7 +1199,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
   let downloadProgress: number | null = null;
   let extractorBaseSession: LanguageModelSessionLike | null = null;
   let consultBaseSession: LanguageModelSessionLike | null = null;
-  let consultSessionLang: TimetableLang = "ja";
+  let consultSessionLang: TimetableLang = getTimetableLang();
   let lastConsultTrace: LlmCallTrace | null = null;
 
   return {
@@ -1216,7 +1215,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
 
     async initialize(
       onProgress?: (pct: number) => void,
-      lang: TimetableLang = "ja"
+      lang: TimetableLang = getTimetableLang()
     ): Promise<GeminiNanoStatus> {
       const avail = await checkGeminiNanoAvailability(lang);
       currentStatus = avail;
@@ -1286,7 +1285,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       state: TimetableState,
       signal?: AbortSignal,
       onProgress?: (event: ChatExtractProgressEvent) => void,
-      lang: TimetableLang = "ja"
+      lang: TimetableLang = getTimetableLang()
     ): Promise<ParsedTimetableChatPlan> {
       if (!extractorBaseSession) {
         const initStatus = await this.initialize(undefined, lang);
@@ -1392,7 +1391,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       state: TimetableState,
       outcome: WashiTimetableSolveOutcome | null,
       signal?: AbortSignal,
-      lang: TimetableLang = "ja"
+      lang: TimetableLang = getTimetableLang()
     ): AsyncIterable<string> {
       const summaryLines: string[] = [];
       if (appliedSummary.length > 0) {

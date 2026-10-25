@@ -22,8 +22,10 @@ import {
   PROFESSOR_PROFILE_I18N,
   ROOM_PROFILE_I18N,
   UI_TEXT_I18N,
+  detectBrowserTimetableLang,
   formatConstraintMetaI18n,
   formatCustomRuleI18n,
+  getTimetableLang,
 } from "../examples/web-demo/apps/ai-timetable/i18n.js";
 import {
   resolveDayToken,
@@ -722,7 +724,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedAvailOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
       expect(receivedCreateOpts.length).toBe(2);
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
-      expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["ja", "en"] }]);
+      expect(receivedCreateOpts[0].expectedInputs).toEqual([{ type: "text", languages: ["en", "ja"] }]);
       mgrJa.destroy();
 
       // 2. English initialization
@@ -736,16 +738,34 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrEn.destroy();
 
-      // 3. Fallback when lang is not "en" (e.g. "zh") defaults to "ja" supported language
+      // 3. Fallback when lang is not "ja" (e.g. "zh") maps to supported "en" output
       receivedCreateOpts.length = 0;
       const mgrZh = createTimetableGeminiNanoManager();
       const stZh = await mgrZh.initialize(undefined, "zh");
       expect(stZh).toBe("available");
       expect(receivedCreateOpts.length).toBe(2);
-      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["ja"] }]);
+      expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrZh.destroy();
     } finally {
       (globalThis as any).LanguageModel = prevLM;
     }
+  });
+
+  it("detects default timetable language from browser settings without defaulting to ja", () => {
+    // 1. Japanese browser settings -> "ja"
+    expect(detectBrowserTimetableLang({ language: "ja-JP" })).toBe("ja");
+    expect(detectBrowserTimetableLang({ languages: ["ja", "en-US"] })).toBe("ja");
+
+    // 2. Chinese browser settings -> "zh"
+    expect(detectBrowserTimetableLang({ language: "zh-CN" })).toBe("zh");
+    expect(detectBrowserTimetableLang({ languages: ["zh-TW", "en"] })).toBe("zh");
+
+    // 3. English or other languages -> defaults to "en", never "ja"
+    expect(detectBrowserTimetableLang({ language: "en-US" })).toBe("en");
+    expect(detectBrowserTimetableLang({ languages: ["en", "ja"] })).toBe("en");
+    expect(detectBrowserTimetableLang({ language: "de-DE" })).toBe("en");
+    expect(detectBrowserTimetableLang({ language: "fr-FR" })).toBe("en");
+    expect(detectBrowserTimetableLang({ languages: [] })).toBe("en");
+    expect(detectBrowserTimetableLang({})).toBe("en");
   });
 });
