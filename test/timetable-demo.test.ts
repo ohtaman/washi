@@ -776,7 +776,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(receivedCreateOpts[0].expectedOutputs).toEqual([{ type: "text", languages: ["en"] }]);
       mgrEn.destroy();
 
-      // 3. Fallback when lang is not "ja" (e.g. "zh") maps to supported "en" output
+      // 3. When timetable language is unsupported by Chrome (e.g. "zh"), specifies supported "en" output
       receivedCreateOpts.length = 0;
       const mgrZh = createTimetableGeminiNanoManager();
       const stZh = await mgrZh.initialize(undefined, "zh");

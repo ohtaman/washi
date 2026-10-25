@@ -161,7 +161,7 @@ export async function checkGeminiNanoAvailability(
   return "unavailable";
 }
 
-async function createSessionWithFallback(
+async function createLanguageModelSession(
   api: LanguageModelFactoryLike,
   systemPrompt: string,
   monitorFn?: (m: unknown) => void,
@@ -1247,7 +1247,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         };
 
         if (!extractorBaseSession || extractorSessionLang !== lang) {
-          const nextExtractor = await createSessionWithFallback(
+          const nextExtractor = await createLanguageModelSession(
             api,
             EXTRACTOR_SYSTEM_PROMPT,
             monitorFn,
@@ -1264,7 +1264,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           extractorSessionLang = lang;
         }
         if (!consultBaseSession || consultSessionLang !== lang) {
-          const nextConsult = await createSessionWithFallback(
+          const nextConsult = await createLanguageModelSession(
             api,
             CONSULT_SYSTEM_PROMPT,
             monitorFn,
@@ -1476,7 +1476,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       const api = getLanguageModelApi();
       if (api && (!consultBaseSession || consultSessionLang !== lang)) {
         try {
-          const nextConsult = await createSessionWithFallback(
+          const nextConsult = await createLanguageModelSession(
             api,
             CONSULT_SYSTEM_PROMPT,
             undefined,
