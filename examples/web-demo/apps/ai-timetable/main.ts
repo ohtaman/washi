@@ -2019,7 +2019,37 @@ function executeCsvImport(): void {
   );
 }
 
+function readConfigFromForm(): void {
+  const el = document.getElementById("cfg-enforceRoomCapacity");
+  if (!el) return;
+  const c = appState.config;
+  c.enforceRoomCapacity = $<HTMLInputElement>("cfg-enforceRoomCapacity").checked;
+  c.enforceRoomEquipment = $<HTMLInputElement>("cfg-enforceRoomEquipment").checked;
+  c.enforceCohortNoOverlap = $<HTMLInputElement>("cfg-enforceCohortNoOverlap").checked;
+  c.forbidSameCourseSameDay = $<HTMLInputElement>("cfg-forbidSameCourseSameDay").checked;
+  c.enforceAdjunctDayRestrictions = $<HTMLInputElement>(
+    "cfg-enforceAdjunctDayRestrictions"
+  ).checked;
+  c.enforceProfessorAvailability = $<HTMLInputElement>(
+    "cfg-enforceProfessorAvailability"
+  ).checked;
+  c.enforceMaxConsecutivePeriods = $<HTMLInputElement>(
+    "cfg-enforceMaxConsecutivePeriods"
+  ).checked;
+  c.maxProfessorConsecutivePeriods = Number(
+    $<HTMLInputElement>("cfg-maxProfessorConsecutivePeriods").value
+  );
+  c.maxProfessorSessionsPerDay = Number(
+    $<HTMLInputElement>("cfg-maxProfessorSessionsPerDay").value
+  );
+  c.maxCohortCompulsoryPerDay = Number(
+    $<HTMLInputElement>("cfg-maxCohortCompulsoryPerDay").value
+  );
+  c.weightCohortIdleGaps = Number($<HTMLInputElement>("cfg-weightCohortIdleGaps").value);
+}
+
 async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
+  readConfigFromForm();
   if (appState.courses.length === 0 || appState.rooms.length === 0) {
     alert(
       pickTimetableLang(activeLang, {
@@ -2820,33 +2850,24 @@ function wireEvents(): void {
     appState.config.preserveCurrentTimetable = (e.target as HTMLInputElement).checked;
   });
 
-  // Tab 2 Config checkboxes & inputs
-  const readConfigFromForm = () => {
-    const c = appState.config;
-    c.enforceRoomCapacity = $<HTMLInputElement>("cfg-enforceRoomCapacity").checked;
-    c.enforceRoomEquipment = $<HTMLInputElement>("cfg-enforceRoomEquipment").checked;
-    c.enforceCohortNoOverlap = $<HTMLInputElement>("cfg-enforceCohortNoOverlap").checked;
-    c.forbidSameCourseSameDay = $<HTMLInputElement>("cfg-forbidSameCourseSameDay").checked;
-    c.enforceAdjunctDayRestrictions = $<HTMLInputElement>(
-      "cfg-enforceAdjunctDayRestrictions"
-    ).checked;
-    c.enforceProfessorAvailability = $<HTMLInputElement>(
-      "cfg-enforceProfessorAvailability"
-    ).checked;
-    c.enforceMaxConsecutivePeriods = $<HTMLInputElement>(
-      "cfg-enforceMaxConsecutivePeriods"
-    ).checked;
-    c.maxProfessorConsecutivePeriods = Number(
-      $<HTMLInputElement>("cfg-maxProfessorConsecutivePeriods").value
-    );
-    c.maxProfessorSessionsPerDay = Number(
-      $<HTMLInputElement>("cfg-maxProfessorSessionsPerDay").value
-    );
-    c.maxCohortCompulsoryPerDay = Number(
-      $<HTMLInputElement>("cfg-maxCohortCompulsoryPerDay").value
-    );
-    c.weightCohortIdleGaps = Number($<HTMLInputElement>("cfg-weightCohortIdleGaps").value);
-  };
+  // Tab 2 Config checkboxes & inputs: sync into appState.config immediately on change
+  [
+    "cfg-enforceRoomCapacity",
+    "cfg-enforceRoomEquipment",
+    "cfg-enforceCohortNoOverlap",
+    "cfg-forbidSameCourseSameDay",
+    "cfg-enforceAdjunctDayRestrictions",
+    "cfg-enforceProfessorAvailability",
+    "cfg-enforceMaxConsecutivePeriods",
+    "cfg-maxProfessorConsecutivePeriods",
+    "cfg-maxProfessorSessionsPerDay",
+    "cfg-maxCohortCompulsoryPerDay",
+    "cfg-weightCohortIdleGaps",
+  ].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", () => {
+      readConfigFromForm();
+    });
+  });
 
   $("btn-apply-config-solve").addEventListener("click", () => {
     readConfigFromForm();
@@ -3115,6 +3136,7 @@ function wireEvents(): void {
 
   // Tab 2 workflow banner button
   $("btn-constraints-go-timetable")?.addEventListener("click", () => {
+    readConfigFromForm();
     $<HTMLButtonElement>("tab-btn-timetable").click();
   });
 }
