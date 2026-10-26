@@ -1138,7 +1138,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnChatAbort: "⏹ 停止",
     btnChatSend: "送信",
 
-    tutorialTitle: "🔰 クイックガイド：3ステップで体験するAI大学時間割編成 (UCTP)",
+    tutorialTitle: "🔰 クイックガイド：AI大学時間割編成 (UCTP) の主要機能",
     tutorialClose: "✕ 閉じる",
     step1Title: "複数枚の時間割が連動する様子を見る・固定する",
     step1DescHtml:
@@ -1175,9 +1175,9 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnAskAiConflict: "🤖 AIに解決策を聞く",
     conflictAskPrompt: "現在の時間割が組めない原因と、どの条件を緩めればよいか教えて",
 
-    tabTimetable: "📅 多元時間割ボード (4学年 × 10教員 × 7教室)",
+    tabTimetable: "📅 時間割ボード (4学年 × 10教員 × 7教室)",
     tabConstraints: "⚙️ 条件・ルール設定",
-    tabCatalog: "📚 科目・教員・教室一覧 (25科目 / 10教員 / 7教室)",
+    tabCatalog: "📚 基礎データ (教員・教室・科目)",
 
     viewCohortsBtn: "🎓 学年別 4枚同時表示 (1年〜4年)",
     viewProfsBtn: "👨‍🏫 教員別 × 25コマ一覧表 (10名)",
@@ -1470,24 +1470,24 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
       },
     ],
 
-    catMgmtBadge: "STEP 1",
+    catMgmtBadge: "基礎データ",
     catMgmtTitle: "大学基礎データ管理（教員・教室・科目）",
     catMgmtDesc:
-      "時間割編成の基礎となる教員名簿・教室設備・開講科目を管理します。サンプルデータを生成するか、CSVファイルから取り込んでください。",
+      "時間割編成の基礎となる教員名簿・教室設備・開講科目です。",
     btnCatGenerate: "🎲 サンプルデータを読み込む",
     btnCatImportCsv: "📂 CSVインポート",
     btnCatDownloadSamples: "📥 CSVテンプレート",
     btnCatClearBlank: "🗑️ 白紙に戻す",
-    catEmptyTitle: "教員・教室・科目が登録されていません（白紙状態）",
+    catEmptyTitle: "大学時間割の編成を始める（基礎データの登録）",
     catEmptyDesc:
-      "上の「🎲 サンプルデータを読み込む」をクリックして大学モデル（10教員・7教室・25科目）をセットするか、「📂 CSVインポート」から独自データを読み込んでください。",
+      "時間割を自動編成するには、まず教員名簿・教室設備・開講科目が必要です。下のボタンからサンプルデータを読み込むか、CSVファイルをインポートしてください。",
     catNextStepMsg:
-      "✅ 基礎データの準備完了。内容を確認したら、次は「制約・ルール設定」で条件を確認するか、「時間割ボード」で自動編成を実行してください。",
-    btnCatGoConstraints: "👉 ⚖️ 制約・ルール設定を確認 (Step 2)",
-    btnCatGoTimetable: "⚡ 📅 時間割ボードへ進む (Step 3)",
+      "✅ 基礎データの準備完了。このまま時間割を自動編成するか、条件・ルール設定を確認してください。",
+    btnCatGoConstraints: "👉 ⚙️ 条件・ルール設定を確認",
+    btnCatGoTimetable: "⚡ 📅 時間割ボードで自動編成",
     constraintsWorkflowMsg:
-      "制約・基本ルール（教室定員、PC演習室必須、教員の連続コマ数上限など）を確認・調整したら、「📅 時間割ボード」に進んで自動編成を実行してください。",
-    btnConstraintsGoTimetable: "⚡ 📅 時間割ボードへ進む (最適化を実行)",
+      "制約条件や教員の連続講義上限などを確認・調整したら、「📅 時間割ボード」で自動編成を実行してください。",
+    btnConstraintsGoTimetable: "⚡ 📅 時間割ボードで自動編成",
   } as TimetableUiStrings & { cfgMaxConsecutiveHtml?: string },
 
   en: {
@@ -1566,7 +1566,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnChatAbort: "⏹ Stop",
     btnChatSend: "Send",
 
-    tutorialTitle: "🔰 Quick Guide: Experience AI University Course Timetabling (UCTP) in 3 Steps",
+    tutorialTitle: "🔰 Quick Guide: Key Features of AI University Timetabling (UCTP)",
     tutorialClose: "✕ Close",
     step1Title: "Inspect Coupled Multi-Boards & Pin a Course",
     step1DescHtml:
@@ -1603,9 +1603,9 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnAskAiConflict: "🤖 Ask AI How to Resolve",
     conflictAskPrompt: "Explain why the current timetable is infeasible and which rule we should relax",
 
-    tabTimetable: "📅 Multi-View Timetable Board (4 Cohorts × 10 Faculty × 7 Rooms)",
-    tabConstraints: "⚙️ Rules & Parameters",
-    tabCatalog: "📚 Courses, Faculty & Rooms (25 Courses / 10 Faculty / 7 Rooms)",
+    tabTimetable: "📅 Timetable Board (4 Cohorts × 10 Faculty × 7 Rooms)",
+    tabConstraints: "⚙️ Constraints & Rules",
+    tabCatalog: "📚 Master Data (Faculty, Rooms, Courses)",
 
     viewCohortsBtn: "🎓 4 Student Cohorts (Y1–Y4 Grid)",
     viewProfsBtn: "👨‍🏫 10 Faculty × 25 Slots Matrix",
@@ -1899,24 +1899,24 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
       },
     ],
 
-    catMgmtBadge: "STEP 1",
-    catMgmtTitle: "University Baseline Data (Faculty, Classrooms & Curriculum)",
+    catMgmtBadge: "Master Data",
+    catMgmtTitle: "University Master Data (Faculty, Classrooms & Curriculum)",
     catMgmtDesc:
-      "Manage master rosters, facilities, and courses for timetabling. Generate sample data or import from CSV files.",
+      "Master rosters, facilities, and courses for university course timetabling.",
     btnCatGenerate: "🎲 Load Sample Data",
     btnCatImportCsv: "📂 Import CSV",
     btnCatDownloadSamples: "📥 Download CSV Templates",
     btnCatClearBlank: "🗑️ Clear to Blank",
-    catEmptyTitle: "No Faculty, Classrooms, or Courses Loaded (Blank Slate)",
+    catEmptyTitle: "Get Started with University Timetabling (Master Data)",
     catEmptyDesc:
-      "Click '🎲 Load Sample Data' above to load the computer science department benchmark (10 faculty, 7 rooms, 25 courses), or import your own CSVs.",
+      "To auto-schedule timetables, baseline faculty, classroom, and course data are required. Load sample benchmark data below or import your own CSVs.",
     catNextStepMsg:
-      "✅ Baseline data is ready. Review the tables below, then inspect constraints or proceed to the Timetable Board to schedule.",
-    btnCatGoConstraints: "👉 ⚖️ Review Constraints (Step 2)",
-    btnCatGoTimetable: "⚡ 📅 Go to Timetable Board (Step 3)",
+      "✅ Baseline data is ready. You can auto-schedule now or inspect constraints.",
+    btnCatGoConstraints: "👉 ⚙️ Review Constraints",
+    btnCatGoTimetable: "⚡ 📅 Auto-Schedule on Timetable Board",
     constraintsWorkflowMsg:
       "Review or customize rules (capacities, PC lab requirements, max consecutive periods), then proceed to the Timetable Board to auto-schedule.",
-    btnConstraintsGoTimetable: "⚡ 📅 Go to Timetable Board (Run Optimizer)",
+    btnConstraintsGoTimetable: "⚡ 📅 Auto-Schedule on Timetable Board",
   },
 
   zh: {
@@ -1994,7 +1994,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnChatAbort: "⏹ 停止",
     btnChatSend: "发送",
 
-    tutorialTitle: "🔰 快速指南：3步体验 AI 大学排课优化 (UCTP)",
+    tutorialTitle: "🔰 快速指南：大学排课 AI Copilot 核心功能体验",
     tutorialClose: "✕ 关闭",
     step1Title: "查看多张课表底层联动・点击固定课程",
     step1DescHtml:
@@ -2031,9 +2031,9 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnAskAiConflict: "🤖 询问 AI 解决方案",
     conflictAskPrompt: "请告诉我当前无法排课的原因，以及应该放宽哪条限制",
 
-    tabTimetable: "📅 多维联动课表看板 (4年级 × 10教师 × 7教室)",
+    tabTimetable: "📅 课表看板 (4年级 × 10教师 × 7教室)",
     tabConstraints: "⚙️ 约束与规则设置",
-    tabCatalog: "📚 课程・教师・教室名录 (25门课 / 10位教师 / 7间教室)",
+    tabCatalog: "📚 基础数据 (教师・教室・课程)",
 
     viewCohortsBtn: "🎓 按年级 4张同屏显示 (大一〜大四)",
     viewProfsBtn: "👨‍🏫 按教师 × 25时段矩阵 (10名)",
@@ -2323,23 +2323,23 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
       },
     ],
 
-    catMgmtBadge: "STEP 1",
+    catMgmtBadge: "基础数据",
     catMgmtTitle: "大学基础数据管理 (教师・教室・课程)",
     catMgmtDesc:
-      "管理排课所需的基础教师名册、教室设备和开课课程。可一键生成示例数据或通过CSV导入自有数据。",
+      "排课所需的基础教师名册、教室设备和开课课程。",
     btnCatGenerate: "🎲 载入示例数据",
     btnCatImportCsv: "📂 CSV导入",
     btnCatDownloadSamples: "📥 下载CSV模板",
     btnCatClearBlank: "🗑️ 恢复为空白",
-    catEmptyTitle: "暂无教师、教室或课程数据 (空白状态)",
+    catEmptyTitle: "开始大学排课（录入基础数据）",
     catEmptyDesc:
-      "请点击上方“🎲 载入示例数据”加载信息学部基准模型（10位教师、7间教室、25门课程），或通过“📂 CSV导入”载入自定义数据。",
+      "自动排课需要先录入教师、教室及课程数据。请点击下方按钮载入示例基准数据，或导入自有CSV文件。",
     catNextStepMsg:
-      "✅ 基础数据准备就绪。核对以下名录后，请前往“约束与规则设置”调整条件，或前往“课表看板”一键自动排课。",
-    btnCatGoConstraints: "👉 ⚖️ 查看约束规则 (Step 2)",
-    btnCatGoTimetable: "⚡ 📅 前往课表看板 (Step 3)",
+      "✅ 基础数据准备就绪。可直接自动排课或前往约束设置核对条件。",
+    btnCatGoConstraints: "👉 ⚙️ 查看约束规则",
+    btnCatGoTimetable: "⚡ 📅 前往课表看板自动排课",
     constraintsWorkflowMsg:
       "确认或调整规则（教室容量、机房要求、教师最大连续节数等）后，请前往“课表看板”执行自动优化排课。",
-    btnConstraintsGoTimetable: "⚡ 📅 前往课表看板 (执行优化)",
+    btnConstraintsGoTimetable: "⚡ 📅 前往课表看板自动排课",
   },
 };
