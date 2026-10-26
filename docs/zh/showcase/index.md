@@ -53,18 +53,18 @@ aside: false
     <span class="washi-showcase-cta">打开应用 →</span>
   </a>
 
-  <a href="/washi/apps/" target="_self" class="washi-showcase-card">
+  <a href="/washi/apps/ai-timetable/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">📂</span>
-        <span class="washi-showcase-badge">Apps Hub</span>
+        <span class="washi-showcase-icon">🎓</span>
+        <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
       </div>
-      <div class="washi-showcase-title">全部实际应用</div>
+      <div class="washi-showcase-title">大学排课 AI Copilot (UCTP)</div>
       <p class="washi-showcase-desc">
-        浏览基于 WaSHI 与浏览器端 WebAssembly 求解器构建的业务决策与排班应用合集。
+        同时协调大一至大四4张年级课表、10位专任/外聘教师出勤表与7间专业教室。支持通过 Gemini Nano 自然语言添加复杂排课约束，并由 WaSHI (HiGHS) 秒级求解与诊断冲突。附带算法与定式化原理解析。
       </p>
     </div>
-    <span class="washi-showcase-cta">查看应用列表 →</span>
+    <span class="washi-showcase-cta">打开应用 →</span>
   </a>
 </div>
 
@@ -103,18 +103,18 @@ aside: false
     <span class="washi-showcase-cta">开始游戏 →</span>
   </a>
 
-  <a href="/washi/games/" target="_self" class="washi-showcase-card">
+  <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">🕹️</span>
-        <span class="washi-showcase-badge">Games Hub</span>
+        <span class="washi-showcase-icon">📈</span>
+        <span class="washi-showcase-badge">凸二次规划资产配置</span>
       </div>
-      <div class="washi-showcase-title">全部优化解谜游戏</div>
+      <div class="washi-showcase-title">QUANT SURVIVAL — 量化生存战</div>
       <p class="washi-showcase-desc">
-        浏览将 WaSHI 数理优化融入玩法机制的浏览器端解谜游戏合集。
+        从100亿初始资金出发，在随机市场冲击下压低爆仓概率并实现资产复利增长的无尽运营游戏。巧妙搭配负相关资产对冲波动风险，与基于 WaSHI 凸二次规划求解器的对手比拼总资产规模。
       </p>
     </div>
-    <span class="washi-showcase-cta">查看游戏列表 →</span>
+    <span class="washi-showcase-cta">开始游戏 →</span>
   </a>
 </div>
 

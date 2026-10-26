@@ -53,18 +53,18 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <span class="washi-showcase-cta">Open App →</span>
   </a>
 
-  <a href="/washi/apps/" target="_self" class="washi-showcase-card">
+  <a href="/washi/apps/ai-timetable/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">📂</span>
-        <span class="washi-showcase-badge">Apps Hub</span>
+        <span class="washi-showcase-icon">🎓</span>
+        <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
       </div>
-      <div class="washi-showcase-title">All Practical Applications</div>
+      <div class="washi-showcase-title">AI University Timetabling Copilot (UCTP)</div>
       <p class="washi-showcase-desc">
-        Browse the collection of browser-local scheduling and decision-support applications powered by WaSHI.
+        Simultaneously coordinate 4 student cohort timetables, 10 faculty schedules (including adjunct day limits), and 7 specialized rooms. Add natural-language constraints via on-device Gemini Nano and solve or diagnose conflicts with WaSHI (HiGHS). Includes companion theory article.
       </p>
     </div>
-    <span class="washi-showcase-cta">View All Apps →</span>
+    <span class="washi-showcase-cta">Open App →</span>
   </a>
 </div>
 
@@ -103,18 +103,18 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     <span class="washi-showcase-cta">Play Game →</span>
   </a>
 
-  <a href="/washi/games/" target="_self" class="washi-showcase-card">
+  <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">🕹️</span>
-        <span class="washi-showcase-badge">Games Hub</span>
+        <span class="washi-showcase-icon">📈</span>
+        <span class="washi-showcase-badge">Convex QP Portfolio Duel</span>
       </div>
-      <div class="washi-showcase-title">All Optimization Games</div>
+      <div class="washi-showcase-title">QUANT SURVIVAL — Portfolio Duel</div>
       <p class="washi-showcase-desc">
-        Explore all interactive mathematical optimization puzzle games powered by WaSHI in the browser.
+        Start with $100M and compound your assets quarter after quarter while keeping ruin probability low. Blend negatively correlated assets to hedge market shocks and outlast your rival engine powered by WaSHI QP solver.
       </p>
     </div>
-    <span class="washi-showcase-cta">View All Games →</span>
+    <span class="washi-showcase-cta">Play Game →</span>
   </a>
 </div>
 

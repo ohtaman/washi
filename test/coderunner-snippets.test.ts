@@ -607,10 +607,10 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(hrefs).toEqual([
         "/washi/demo/",
         "/washi/apps/ai-shift/",
-        "/washi/apps/",
+        "/washi/apps/ai-timetable/",
         "/washi/games/demon-castle-shift/",
         "/washi/games/mofumofu-sheep/",
-        "/washi/games/",
+        "/washi/games/quant-survival/",
       ]);
 
       for (const href of hrefs) {

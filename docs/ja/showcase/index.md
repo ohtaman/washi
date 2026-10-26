@@ -53,18 +53,18 @@ aside: false
     <span class="washi-showcase-cta">アプリを開く →</span>
   </a>
 
-  <a href="/washi/apps/" target="_self" class="washi-showcase-card">
+  <a href="/washi/apps/ai-timetable/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">📂</span>
-        <span class="washi-showcase-badge">Apps Hub</span>
+        <span class="washi-showcase-icon">🎓</span>
+        <span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
       </div>
-      <div class="washi-showcase-title">実務アプリケーション一覧</div>
+      <div class="washi-showcase-title">大学時間割編成 AI Copilot (UCTP)</div>
       <p class="washi-showcase-desc">
-        WaSHI とブラウザ内 WebAssembly ソルバーを活用した実務意思決定・スケジューリングアプリのショーケース一覧。
+        「非常勤の小林先生は火・木の午後しか来られない」「SW設計演習は同日連続時限で」などの教務条件を Gemini Nano で構造化し、WaSHI (HiGHS) で4学年×7教室×10教員の時間割を一発編成・矛盾診断。解説記事付き。
       </p>
     </div>
-    <span class="washi-showcase-cta">アプリ一覧を見る →</span>
+    <span class="washi-showcase-cta">アプリを開く →</span>
   </a>
 </div>
 
@@ -103,18 +103,18 @@ aside: false
     <span class="washi-showcase-cta">ゲームをプレイ →</span>
   </a>
 
-  <a href="/washi/games/" target="_self" class="washi-showcase-card">
+  <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-card">
     <div>
       <div class="washi-showcase-card-top">
-        <span class="washi-showcase-icon">🕹️</span>
-        <span class="washi-showcase-badge">Games Hub</span>
+        <span class="washi-showcase-icon">📈</span>
+        <span class="washi-showcase-badge">凸2次計画・ポートフォリオ最適化</span>
       </div>
-      <div class="washi-showcase-title">パズルゲーム一覧</div>
+      <div class="washi-showcase-title">QUANT SURVIVAL — クオンツ運用サバイバル</div>
       <p class="washi-showcase-desc">
-        WaSHI の数理最適化をゲームメカニクスに組み込んだブラウザパズルゲームのショーケース一覧。
+        初期資金100億円からスタートし、毎期襲いかかる市場ショックでロスカット退場になる確率を抑えながら資産を複利で増やすサバイバル。逆相関銘柄を組み合わせてリスクを相殺し、凸二次計画ソルバー WaSHI-QP と総資産を競います。
       </p>
     </div>
-    <span class="washi-showcase-cta">ゲーム一覧を見る →</span>
+    <span class="washi-showcase-cta">ゲームをプレイ →</span>
   </a>
 </div>
 

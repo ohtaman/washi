@@ -310,7 +310,7 @@
 
         <nav class="header-links">
           <a href="./demo/" class="header-btn">Playground ↗</a>
-          <a href="./games/" class="header-btn">Games ↗</a>
+          <a href="https://ohtaman.github.io/washi/showcase/" target="_blank" rel="noopener" class="header-btn">Showcase ↗</a>
           <a href="https://ohtaman.github.io/washi/" target="_blank" rel="noopener" class="header-btn">Docs ↗</a>
           <a href="https://github.com/ohtaman/washi" target="_blank" rel="noopener" class="header-btn">GitHub ↗</a>
         </nav>
@@ -351,6 +351,52 @@
         </div>
       </section>
 
+      <!-- Section: Real-World Applications -->
+      <section class="portal-section">
+        <h2 class="section-heading">Real-World Decision Support Applications</h2>
+        <div class="cards-grid">
+          <a href="./apps/ai-shift/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🏥</span>
+              </div>
+              <div class="card-title">ナーススケジューリング AI Copilot</div>
+              <p class="card-desc">
+                自然言語指示から Gemini Nano が希望条件を抽出し、WaSHI (HiGHS MILP) が30名×1ヶ月の3交代シフト表をローカルで最適化・矛盾診断。
+              </p>
+            </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">Gemini Nano</span>
+                <span class="card-tag">HiGHS</span>
+                <span class="card-tag">MILP</span>
+              </div>
+              <span class="card-cta">AI シフト表を開く →</span>
+            </div>
+          </a>
+
+          <a href="./apps/ai-timetable/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🎓</span>
+              </div>
+              <div class="card-title">大学時間割編成 AI Copilot (UCTP)</div>
+              <p class="card-desc">
+                4学年・10教員・7教室の複雑な時間割条件を Gemini Nano で構造化し、WaSHI (HiGHS) で一括求解・矛盾診断（Elastic Relaxation）。
+              </p>
+            </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">Gemini Nano</span>
+                <span class="card-tag">HiGHS</span>
+                <span class="card-tag">UCTP</span>
+              </div>
+              <span class="card-cta">AI 時間割を開く →</span>
+            </div>
+          </a>
+        </div>
+      </section>
+
       <!-- Section: Interactive Games -->
       <section class="portal-section">
         <h2 class="section-heading">Optimization Puzzle Games</h2>
@@ -375,6 +421,25 @@
             </div>
           </a>
 
+          <a href="./games/mofumofu-sheep/" class="portal-card">
+            <div>
+              <div class="card-header">
+                <span class="card-icon">🐑</span>
+              </div>
+              <div class="card-title">もふもふ羊の牧場囲い</div>
+              <p class="card-desc">
+                限られた木の柵でオオカミを遮断しつつ、ヒツジのモコが歩ける安全な牧場の野いちごを最大化する囲い込みパズル。
+              </p>
+            </div>
+            <div>
+              <div class="card-tags">
+                <span class="card-tag">HiGHS</span>
+                <span class="card-tag">Enclosure Puzzle</span>
+              </div>
+              <span class="card-cta">もふもふ羊をプレイ →</span>
+            </div>
+          </a>
+
           <a href="./games/quant-survival/" class="portal-card">
             <div>
               <div class="card-header">
@@ -392,25 +457,6 @@
                 <span class="card-tag">Portfolio</span>
               </div>
               <span class="card-cta">QUANT SURVIVAL をプレイ →</span>
-            </div>
-          </a>
-
-          <a href="./games/" class="portal-card">
-            <div>
-              <div class="card-header">
-                <span class="card-icon">🕹️</span>
-              </div>
-              <div class="card-title">Games Showcase Hub</div>
-              <p class="card-desc">
-                WaSHI の数理最適化を活用したインタラクティブゲームのショーケース一覧。
-              </p>
-            </div>
-            <div>
-              <div class="card-tags">
-                <span class="card-tag">Gaming</span>
-                <span class="card-tag">Math Programming</span>
-              </div>
-              <span class="card-cta">Games 一覧を見る →</span>
             </div>
           </a>
         </div>
