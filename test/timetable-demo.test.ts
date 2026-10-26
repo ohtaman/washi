@@ -1116,7 +1116,10 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         expect(ui.btnCatGoTimetable.length).toBeGreaterThan(0);
         expect(ui.constraintsWorkflowMsg.length).toBeGreaterThan(0);
         expect(ui.btnConstraintsGoTimetable.length).toBeGreaterThan(0);
+        expect(ui.chatWelcomeMarkdown.length).toBeGreaterThan(0);
       }
+      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("時間割を初期編成します");
+      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("時間割ボード");
 
       // 5. Step 3: Triggering solve transitions state from unscheduled (null) to scheduled (Optimal)
       const outcome = await triggerSolve();
