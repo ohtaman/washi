@@ -2049,7 +2049,6 @@ function readConfigFromForm(): void {
 }
 
 async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
-  readConfigFromForm();
   if (appState.courses.length === 0 || appState.rooms.length === 0) {
     alert(
       pickTimetableLang(activeLang, {
