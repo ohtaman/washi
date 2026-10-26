@@ -2300,12 +2300,15 @@ export function applyTimetableLang(lang: TimetableLang): void {
   // Tutorial banner
   setText("tutorial-title-text", ui.tutorialTitle);
   setText("btn-close-tutorial", ui.tutorialClose);
+  setText("step1-badge", ui.step1Badge);
   setText("step1-title", ui.step1Title);
   setHtml("step1-desc", ui.step1DescHtml);
   setText("btn-tut-step1", ui.step1Btn);
+  setText("step2-badge", ui.step2Badge);
   setText("step2-title", ui.step2Title);
   setHtml("step2-desc", ui.step2DescHtml);
   setText("btn-tut-step2", ui.step2Btn);
+  setText("step3-badge", ui.step3Badge);
   setText("step3-title", ui.step3Title);
   setHtml("step3-desc", ui.step3DescHtml);
   $("select-conflict-scenario").setAttribute("aria-label", ui.step3SelectAria);
@@ -2407,6 +2410,11 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("btn-cat-clear-blank", ui.btnCatClearBlank);
   setText("cat-empty-title", ui.catEmptyTitle);
   setText("cat-empty-desc", ui.catEmptyDesc);
+  setText("cat-empty-gen-main", ui.catEmptyGenMain);
+  setText("cat-empty-gen-sub", ui.catEmptyGenSub);
+  setText("cat-empty-import-main", ui.catEmptyImportMain);
+  setText("cat-empty-import-sub", ui.catEmptyImportSub);
+  setText("btn-cat-empty-samples", ui.catEmptySamplesBtn);
   setText("btn-cat-go-constraints", ui.btnCatGoConstraints);
   setText("btn-cat-go-timetable", ui.btnCatGoTimetable);
 

@@ -280,7 +280,7 @@
           <div class="tutorial-steps-grid">
             <div class="tutorial-step-card">
               <div class="step-badge-row">
-                <span class="step-num">体験 1</span>
+                <span class="step-num" id="step1-badge">体験 1</span>
                 <strong id="step1-title">複数枚の時間割が連動する様子を見る・固定する</strong>
               </div>
               <p id="step1-desc">
@@ -293,7 +293,7 @@
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
-                <span class="step-num">体験 2</span>
+                <span class="step-num" id="step2-badge">体験 2</span>
                 <strong id="step2-title">教員の都合や連続コマ条件を追加して再編成</strong>
               </div>
               <p id="step2-desc">
@@ -306,7 +306,7 @@
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
-                <span class="step-num">体験 3</span>
+                <span class="step-num" id="step3-badge">体験 3</span>
                 <strong id="step3-title">時間割が組めない原因を自動診断（IIS/Conflict）</strong>
               </div>
               <p id="step3-desc">
@@ -777,12 +777,12 @@
             </p>
             <div class="onboarding-hero-actions">
               <button type="button" id="btn-cat-empty-generate" class="btn-hero-primary">
-                <span class="btn-hero-main">🎲 サンプルデータを読み込む</span>
-                <span class="btn-hero-sub">情報科学科モデル (10教員・7教室・25科目・計30コマ)</span>
+                <span class="btn-hero-main" id="cat-empty-gen-main">🎲 サンプルデータを読み込む</span>
+                <span class="btn-hero-sub" id="cat-empty-gen-sub">情報科学科モデル (10教員・7教室・25科目・計30コマ)</span>
               </button>
               <button type="button" id="btn-cat-empty-import" class="btn-hero-outline">
-                <span class="btn-hero-main">📂 CSVファイルからインポート</span>
-                <span class="btn-hero-sub">お手元の教員・教室・科目のCSVデータを取り込む</span>
+                <span class="btn-hero-main" id="cat-empty-import-main">📂 CSVファイルからインポート</span>
+                <span class="btn-hero-sub" id="cat-empty-import-sub">お手元の教員・教室・科目のCSVデータを取り込む</span>
               </button>
             </div>
             <div class="onboarding-hero-footer">
