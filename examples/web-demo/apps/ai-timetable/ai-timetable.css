@@ -925,3 +925,129 @@
 .tutorial-banner[hidden] {
   display: none !important;
 }
+
+/* Master Data Onboarding Hero */
+.catalog-onboarding-hero {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
+  padding: 2.4rem 2rem;
+  margin: 1.5rem auto;
+  max-width: 680px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.onboarding-hero-icon {
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+
+.catalog-onboarding-hero h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.catalog-onboarding-hero p {
+  margin: 0 0 1.2rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--text-sumi-secondary);
+  max-width: 540px;
+}
+
+.onboarding-hero-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.btn-hero-primary,
+.btn-hero-outline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem 1.4rem;
+  border-radius: 10px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 250px;
+  text-align: center;
+}
+
+.btn-hero-primary {
+  background: var(--primary-accent);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.btn-hero-primary:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.btn-hero-outline {
+  background: var(--bg-surface);
+  color: var(--text-sumi);
+  border: 1px solid var(--border-hairline);
+}
+
+.btn-hero-outline:hover {
+  background: var(--bg-surface-elevated);
+  border-color: var(--primary-accent);
+  transform: translateY(-1px);
+}
+
+.btn-hero-main {
+  display: block;
+  font-size: 1rem;
+}
+
+.btn-hero-sub {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 400;
+  opacity: 0.88;
+}
+
+.onboarding-hero-footer {
+  margin-top: 0.8rem;
+}
+
+.btn-link-subtle {
+  background: none;
+  border: none;
+  color: var(--text-sumi-secondary);
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+}
+
+.btn-link-subtle:hover {
+  color: var(--primary-accent);
+}
+
+.toolbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: var(--border-hairline);
+  margin: 0 0.3rem;
+  vertical-align: middle;
+}
