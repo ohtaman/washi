@@ -1043,6 +1043,21 @@ export interface TimetableUiStrings {
     title: string;
     items: Array<{ label: string; desc: string; prompt: string }>;
   }>;
+
+  catMgmtBadge: string;
+  catMgmtTitle: string;
+  catMgmtDesc: string;
+  btnCatGenerate: string;
+  btnCatImportCsv: string;
+  btnCatDownloadSamples: string;
+  btnCatClearBlank: string;
+  catEmptyTitle: string;
+  catEmptyDesc: string;
+  catNextStepMsg: string;
+  btnCatGoConstraints: string;
+  btnCatGoTimetable: string;
+  constraintsWorkflowMsg: string;
+  btnConstraintsGoTimetable: string;
 }
 
 export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
@@ -1074,10 +1089,10 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     chatWelcomeMarkdown:
       "👋 **大学時間割編成 AI Copilot (UCTP) へようこそ！**\n\n" +
       "現在は**白紙モード**です。時間割を作成するには、まず以下のいずれかでデータを準備してください：\n" +
-      "1. **「✨ サンプル生成」**: 教員10名・教室7室・25科目の典型的な工学部データを自動生成し、時間割を初期編成します。\n" +
+      "1. **「✨ サンプル生成」**: 教員10名・教室7室・25科目の典型的な工学部データを基礎台帳にセットします。\n" +
       "2. **「📂 CSV読込」**: お手元の教員・教室・科目のCSVファイルを読み込みます（サンプルCSVもダウンロード可能）。\n\n" +
-      "データが読み込まれたら、**「⚡ 時間割を自動編成」** を押すことで WaSHI (HiGHS) が制約を満たす最適なコマ配置を一括探索します。\n" +
-      "「数理最適化を火曜2限に固定して」「小林先生は火曜・木曜午後のみ」などの自然言語指示による条件調整も可能です。入力欄下の **「📖 プロンプト集」** から全8カテゴリの想定質問・指示例をご確認いただけます！",
+      "基礎データ確認後、**「📅 時間割ボード」**で**「⚡ 時間割を自動編成」**を押すと、WaSHI (HiGHS) が制約を満たす最適なコマ配置を一括探索します。\n" +
+      "編成後は「数理最適化を火曜2限に固定して」「小林先生は火曜・木曜午後のみ」などの自然言語指示による条件調整も可能です。入力欄下の **「📖 プロンプト集」** から全8カテゴリの想定質問・指示例をご確認いただけます！",
 
     popoverHeader: "💡 クリックして入力欄にセット（教務・教員要望例）",
     promptChips: [
@@ -1454,6 +1469,25 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
         ],
       },
     ],
+
+    catMgmtBadge: "STEP 1",
+    catMgmtTitle: "大学基礎データ管理（教員・教室・科目）",
+    catMgmtDesc:
+      "時間割編成の基礎となる教員名簿・教室設備・開講科目を管理します。サンプルデータを生成するか、CSVファイルから取り込んでください。",
+    btnCatGenerate: "🎲 サンプルデータを読み込む",
+    btnCatImportCsv: "📂 CSVインポート",
+    btnCatDownloadSamples: "📥 CSVテンプレート",
+    btnCatClearBlank: "🗑️ 白紙に戻す",
+    catEmptyTitle: "教員・教室・科目が登録されていません（白紙状態）",
+    catEmptyDesc:
+      "上の「🎲 サンプルデータを読み込む」をクリックして大学モデル（10教員・7教室・25科目）をセットするか、「📂 CSVインポート」から独自データを読み込んでください。",
+    catNextStepMsg:
+      "✅ 基礎データの準備完了。内容を確認したら、次は「制約・ルール設定」で条件を確認するか、「時間割ボード」で自動編成を実行してください。",
+    btnCatGoConstraints: "👉 ⚖️ 制約・ルール設定を確認 (Step 2)",
+    btnCatGoTimetable: "⚡ 📅 時間割ボードへ進む (Step 3)",
+    constraintsWorkflowMsg:
+      "制約・基本ルール（教室定員、PC演習室必須、教員の連続コマ数上限など）を確認・調整したら、「📅 時間割ボード」に進んで自動編成を実行してください。",
+    btnConstraintsGoTimetable: "⚡ 📅 時間割ボードへ進む (最適化を実行)",
   } as TimetableUiStrings & { cfgMaxConsecutiveHtml?: string },
 
   en: {
@@ -1864,6 +1898,25 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
         ],
       },
     ],
+
+    catMgmtBadge: "STEP 1",
+    catMgmtTitle: "University Baseline Data (Faculty, Classrooms & Curriculum)",
+    catMgmtDesc:
+      "Manage master rosters, facilities, and courses for timetabling. Generate sample data or import from CSV files.",
+    btnCatGenerate: "🎲 Load Sample Data",
+    btnCatImportCsv: "📂 Import CSV",
+    btnCatDownloadSamples: "📥 Download CSV Templates",
+    btnCatClearBlank: "🗑️ Clear to Blank",
+    catEmptyTitle: "No Faculty, Classrooms, or Courses Loaded (Blank Slate)",
+    catEmptyDesc:
+      "Click '🎲 Load Sample Data' above to load the computer science department benchmark (10 faculty, 7 rooms, 25 courses), or import your own CSVs.",
+    catNextStepMsg:
+      "✅ Baseline data is ready. Review the tables below, then inspect constraints or proceed to the Timetable Board to schedule.",
+    btnCatGoConstraints: "👉 ⚖️ Review Constraints (Step 2)",
+    btnCatGoTimetable: "⚡ 📅 Go to Timetable Board (Step 3)",
+    constraintsWorkflowMsg:
+      "Review or customize rules (capacities, PC lab requirements, max consecutive periods), then proceed to the Timetable Board to auto-schedule.",
+    btnConstraintsGoTimetable: "⚡ 📅 Go to Timetable Board (Run Optimizer)",
   },
 
   zh: {
@@ -2269,5 +2322,24 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
         ],
       },
     ],
+
+    catMgmtBadge: "STEP 1",
+    catMgmtTitle: "大学基础数据管理 (教师・教室・课程)",
+    catMgmtDesc:
+      "管理排课所需的基础教师名册、教室设备和开课课程。可一键生成示例数据或通过CSV导入自有数据。",
+    btnCatGenerate: "🎲 载入示例数据",
+    btnCatImportCsv: "📂 CSV导入",
+    btnCatDownloadSamples: "📥 下载CSV模板",
+    btnCatClearBlank: "🗑️ 恢复为空白",
+    catEmptyTitle: "暂无教师、教室或课程数据 (空白状态)",
+    catEmptyDesc:
+      "请点击上方“🎲 载入示例数据”加载信息学部基准模型（10位教师、7间教室、25门课程），或通过“📂 CSV导入”载入自定义数据。",
+    catNextStepMsg:
+      "✅ 基础数据准备就绪。核对以下名录后，请前往“约束与规则设置”调整条件，或前往“课表看板”一键自动排课。",
+    btnCatGoConstraints: "👉 ⚖️ 查看约束规则 (Step 2)",
+    btnCatGoTimetable: "⚡ 📅 前往课表看板 (Step 3)",
+    constraintsWorkflowMsg:
+      "确认或调整规则（教室容量、机房要求、教师最大连续节数等）后，请前往“课表看板”执行自动优化排课。",
+    btnConstraintsGoTimetable: "⚡ 📅 前往课表看板 (执行优化)",
   },
 };

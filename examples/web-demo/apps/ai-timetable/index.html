@@ -262,8 +262,8 @@
 
       <!-- ==================== RIGHT PANE: TUTORIAL, STATUS, TIMETABLE & SETTINGS ==================== -->
       <section id="results-pane-sec" class="results-pane" aria-label="Timetable Workspace">
-        <!-- Interactive 3-Step Tutorial Banner -->
-        <div id="tutorial-banner" class="tutorial-banner">
+        <!-- Interactive 3-Step Tutorial Banner (hidden by default during initial blank onboarding) -->
+        <div id="tutorial-banner" class="tutorial-banner" hidden>
           <div class="tutorial-header">
             <div class="tutorial-title">
               <span id="tutorial-title-text">🔰 クイックガイド：3ステップで体験するAI大学時間割編成 (UCTP)</span>
@@ -544,16 +544,19 @@
             <div class="empty-state-content">
               <h3 id="empty-state-title">時間割データがありません（白紙モード）</h3>
               <p id="empty-state-desc">
-                現在、教員・教室・科目のデータが登録されていません。CSVファイルを読み込むか、「サンプル生成」でデータを作成してください。
+                現在、教員・教室・科目のデータが登録されていません。まずは「📚 科目・教員・教室一覧」タブで基礎データを生成またはCSVインポートしてください。
               </p>
               <div class="empty-state-actions" id="empty-state-actions">
                 <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-                  ✨ サンプルデータを生成 (Generate)
+                  🎲 サンプルデータを読み込んで一覧を確認 (Step 1へ)
                 </button>
                 <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
                   📂 CSVファイルを読み込む
                 </button>
-                <button type="button" id="btn-empty-samples" class="btn-toolbar-outline">
+                <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
+                  📚 科目・教員・教室一覧を開く
+                </button>
+                <button type="button" id="btn-empty-samples" class="btn-xs-outline">
                   📥 サンプルCSVをダウンロード
                 </button>
               </div>
@@ -581,6 +584,19 @@
           class="results-tab-panel"
           hidden
         >
+          <!-- STEP 2 ガイダンスバナー (未編成時) -->
+          <div id="constraints-workflow-banner" class="catalog-next-banner" style="margin-bottom: 0.75rem;" hidden>
+            <div class="catalog-next-text">
+              <span class="dp-badge" style="margin-right: 0.5rem;">STEP 2</span>
+              <span id="constraints-workflow-message">制約・基本ルール（教室定員、PC演習室必須、教員の連続コマ数上限など）を確認・調整したら、「📅 時間割ボード」に進んで自動編成を実行してください。</span>
+            </div>
+            <div class="catalog-next-actions">
+              <button type="button" id="btn-constraints-go-timetable" class="btn-solve-primary">
+                ⚡ 📅 時間割ボードへ進む (最適化を実行)
+              </button>
+            </div>
+          </div>
+
           <div class="custom-rules-card">
             <div class="custom-rules-header">
               <div>
@@ -754,65 +770,118 @@
           hidden
           style="overflow-y: auto; padding: 14px 16px; gap: 14px;"
         >
-          <div class="custom-rules-card">
-            <h3 id="cat-prof-title">👨‍🏫 教員一覧 ＆ 出講条件・割当コマ集計 (10名)</h3>
-            <p id="cat-prof-desc" class="constraint-card-desc">
-              各教員の出講不可曜日・NG時限・1限/5限回避希望、および現在の時間割における割当結果です。
-            </p>
-            <div class="staff-table-wrap">
-              <table class="staff-profile-table">
-                <thead>
-                  <tr id="cat-prof-thead-row">
-                    <th>ID</th>
-                    <th>教員氏名</th>
-                    <th>職位・区分</th>
-                    <th>専門分野</th>
-                    <th>出講不可曜日・NG枠</th>
-                    <th>時間帯希望・上限</th>
-                    <th>現在の割当実績</th>
-                  </tr>
-                </thead>
-                <tbody id="catalog-prof-tbody"></tbody>
-              </table>
+          <!-- STEP 1 基礎データ管理バー -->
+          <div class="catalog-management-card">
+            <div class="catalog-mgmt-header">
+              <div class="catalog-mgmt-title-group">
+                <span class="dp-badge" id="cat-mgmt-badge">STEP 1</span>
+                <h3 id="cat-mgmt-title">大学基礎データ管理（教員・教室・科目）</h3>
+                <p id="cat-mgmt-desc">時間割編成の基礎となる教員名簿・教室設備・開講科目を管理します。サンプルデータを生成するか、CSVファイルから取り込んでください。</p>
+              </div>
+              <div class="catalog-mgmt-actions">
+                <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary">
+                  🎲 サンプルデータを読み込む
+                </button>
+                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline">
+                  📂 CSVインポート
+                </button>
+                <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="教員・教室・科目のサンプルCSVファイルをダウンロード">
+                  📥 CSVテンプレート
+                </button>
+                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="登録データをすべてクリアして白紙状態に戻す">
+                  🗑️ 白紙に戻す
+                </button>
+              </div>
+            </div>
+
+            <!-- 次のステップ（制約確認・時間割ボード）へのナビゲーションバナー -->
+            <div id="cat-next-step-banner" class="catalog-next-banner" hidden>
+              <div class="catalog-next-text">
+                <span id="cat-next-step-message">✅ 基礎データの準備完了。内容を確認したら、次は「制約・ルール設定」で条件を確認するか、「時間割ボード」で自動編成を実行してください。</span>
+              </div>
+              <div class="catalog-next-actions">
+                <button type="button" id="btn-cat-go-constraints" class="btn-toolbar-outline">
+                  👉 ⚖️ 制約・ルール設定を確認 (Step 2)
+                </button>
+                <button type="button" id="btn-cat-go-timetable" class="btn-solve-primary">
+                  ⚡ 📅 時間割ボードへ進む (Step 3)
+                </button>
+              </div>
             </div>
           </div>
 
-          <div class="custom-rules-card">
-            <h3 id="cat-room-title">🏫 講義室・演習室一覧 ＆ 設備・稼働率 (7室)</h3>
-            <div class="staff-table-wrap">
-              <table class="staff-profile-table">
-                <thead>
-                  <tr id="cat-room-thead-row">
-                    <th>ID</th>
-                    <th>教室名</th>
-                    <th>種別・場所</th>
-                    <th>定員</th>
-                    <th>備付設備</th>
-                    <th>週間稼働率 (25枠中)</th>
-                  </tr>
-                </thead>
-                <tbody id="catalog-room-tbody"></tbody>
-              </table>
+          <!-- 白紙時の案内カード -->
+          <div id="cat-empty-state-card" class="empty-timetable-card" hidden>
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-content">
+              <h3 id="cat-empty-title">教員・教室・科目が登録されていません（白紙状態）</h3>
+              <p id="cat-empty-desc">
+                上の「🎲 サンプルデータを読み込む」をクリックして大学モデル（10教員・7教室・25科目）をセットするか、「📂 CSVインポート」から独自データを読み込んでください。
+              </p>
             </div>
           </div>
 
-          <div class="custom-rules-card">
-            <h3 id="cat-course-title">📚 開講科目一覧 (全25科目・計30コマ)</h3>
-            <div class="staff-table-wrap">
-              <table class="staff-profile-table">
-                <thead>
-                  <tr id="cat-course-thead-row">
-                    <th>ID</th>
-                    <th>科目名</th>
-                    <th>対象学年・区分</th>
-                    <th>担当教員</th>
-                    <th>履修者数・週コマ数</th>
-                    <th>必須設備・教室条件</th>
-                    <th>現在の割当枠・教室</th>
-                  </tr>
-                </thead>
-                <tbody id="catalog-course-tbody"></tbody>
-              </table>
+          <div id="cat-tables-container" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="custom-rules-card">
+              <h3 id="cat-prof-title">👨‍🏫 教員一覧 ＆ 出講条件・割当コマ集計 (10名)</h3>
+              <p id="cat-prof-desc" class="constraint-card-desc">
+                各教員の出講不可曜日・NG時限・1限/5限回避希望、および現在の時間割における割当結果です。
+              </p>
+              <div class="staff-table-wrap">
+                <table class="staff-profile-table">
+                  <thead>
+                    <tr id="cat-prof-thead-row">
+                      <th>ID</th>
+                      <th>教員氏名</th>
+                      <th>職位・区分</th>
+                      <th>専門分野</th>
+                      <th>出講不可曜日・NG枠</th>
+                      <th>時間帯希望・上限</th>
+                      <th>現在の割当実績</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catalog-prof-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="custom-rules-card">
+              <h3 id="cat-room-title">🏫 講義室・演習室一覧 ＆ 設備・稼働率 (7室)</h3>
+              <div class="staff-table-wrap">
+                <table class="staff-profile-table">
+                  <thead>
+                    <tr id="cat-room-thead-row">
+                      <th>ID</th>
+                      <th>教室名</th>
+                      <th>種別・場所</th>
+                      <th>定員</th>
+                      <th>備付設備</th>
+                      <th>週間稼働率 (25枠中)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catalog-room-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="custom-rules-card">
+              <h3 id="cat-course-title">📚 開講科目一覧 (全25科目・計30コマ)</h3>
+              <div class="staff-table-wrap">
+                <table class="staff-profile-table">
+                  <thead>
+                    <tr id="cat-course-thead-row">
+                      <th>ID</th>
+                      <th>科目名</th>
+                      <th>対象学年・区分</th>
+                      <th>担当教員</th>
+                      <th>履修者数・週コマ数</th>
+                      <th>必須設備・教室条件</th>
+                      <th>現在の割当枠・教室</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catalog-course-tbody"></tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

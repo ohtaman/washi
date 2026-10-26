@@ -776,6 +776,89 @@
   padding-top: 0.4rem;
 }
 
+/* Catalog Management Header & Step Progression */
+.catalog-management-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.catalog-mgmt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.catalog-mgmt-title-group {
+  flex: 1 1 320px;
+}
+
+.catalog-mgmt-title-group h3 {
+  margin: 0.25rem 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.catalog-mgmt-title-group p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text-sumi-secondary);
+}
+
+.catalog-mgmt-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn-cat-danger {
+  color: var(--danger-text, #ef4444) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn-cat-danger:hover {
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.catalog-next-banner {
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.catalog-next-text {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-sumi);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 280px;
+}
+
+.catalog-next-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 /* Prompt Catalog Dialog & Categories */
 .prompt-category-group {
   margin-bottom: 1.2rem;
@@ -828,4 +911,17 @@
   font-size: 0.75rem;
   color: var(--text-sumi-secondary);
   line-height: 1.35;
+}
+
+/* Disabled toolbar & action buttons */
+.btn-solve-primary:disabled,
+.btn-toolbar-outline:disabled,
+.btn-step-try:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.tutorial-banner[hidden] {
+  display: none !important;
 }

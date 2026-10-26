@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  createBlankTimetableState,
   generateTimetableState,
   injectTimetableConflictScenario,
 } from "../examples/web-demo/apps/ai-timetable/generator.js";
@@ -971,6 +972,193 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       mgr.destroy();
     } finally {
       (globalThis as any).LanguageModel = prevLM;
+    }
+  });
+
+  test("supports multi-step onboarding workflow: blank state -> master data inspection -> solve -> AI refinement", async () => {
+    const {
+      getAppState,
+      getCurrentTimetable,
+      handleClearToBlank,
+      handleGenerateSample,
+      readConfigFromForm,
+      triggerSolve,
+      updateToolbarButtonsState,
+    } = await import("../examples/web-demo/apps/ai-timetable/main.js");
+
+    // Setup lightweight mock DOM document to drive UI buttons and form synchronization
+    const elements = new Map<string, any>();
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => ({
+      id,
+      disabled: false,
+      hidden: false,
+      value: "",
+      checked: false,
+      textContent: "",
+      title: "",
+      className: "",
+      innerHTML: "",
+      style: {} as Record<string, string>,
+      children: [],
+      options: [],
+      click: () => {},
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      appendChild: () => {},
+      append: () => {},
+      prepend: () => {},
+      remove: () => {},
+      replaceChildren: () => {},
+      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+      dataset: {},
+      ...initialProps,
+    });
+    const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
+      const el = createMockElement(id, initialProps);
+      elements.set(id, el);
+      return el;
+    };
+
+    const btnSolve = registerMock("btn-solve-washi");
+    const btnCheck = registerMock("btn-check-current");
+    const btnExport = registerMock("btn-export-csvs");
+    const btnClear = registerMock("btn-clear-blank");
+    const btnReset = registerMock("btn-reset-clean");
+    const tutBanner = registerMock("tutorial-banner");
+    registerMock("kpi-status-badge");
+    registerMock("kpi-summary-text");
+    registerMock("kpi-solve-time");
+    registerMock("conflict-alert");
+    registerMock("btn-abort-solve");
+    registerMock("timetable-empty-state");
+    registerMock("btn-tut-step1");
+    registerMock("btn-tut-step2");
+    registerMock("btn-tut-step3");
+
+    // Form inputs for Step 2
+    const cfgCapacity = registerMock("cfg-enforceRoomCapacity", { checked: true });
+    const cfgEquipment = registerMock("cfg-enforceRoomEquipment", { checked: true });
+    registerMock("cfg-enforceCohortNoOverlap", { checked: true });
+    registerMock("cfg-forbidSameCourseSameDay", { checked: true });
+    registerMock("cfg-enforceAdjunctDayRestrictions", { checked: true });
+    registerMock("cfg-enforceProfessorAvailability", { checked: true });
+    registerMock("cfg-enforceMaxConsecutivePeriods", { checked: true });
+    registerMock("cfg-maxProfessorConsecutivePeriods", { value: "2" });
+    const cfgSessionsPerDay = registerMock("cfg-maxProfessorSessionsPerDay", { value: "3" });
+    registerMock("cfg-maxCohortCompulsoryPerDay", { value: "4" });
+    registerMock("cfg-weightCohortIdleGaps", { value: "25" });
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => {
+        if (!elements.has(id)) {
+          registerMock(id);
+        }
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      createElement: (tag: string) => createMockElement(`tag_${tag}`),
+      createTextNode: (text: string) => createMockElement("text", { textContent: text }),
+    };
+
+    try {
+      // 1. Initial blank slate: start fresh via UI handler
+      handleClearToBlank(true);
+      const blank = getAppState();
+      expect(blank.courses).toHaveLength(0);
+      expect(blank.professors).toHaveLength(0);
+      expect(blank.rooms).toHaveLength(0);
+      expect(getCurrentTimetable()).toBeNull();
+
+      updateToolbarButtonsState();
+      expect(btnSolve.disabled).toBe(true);
+      expect(btnCheck.disabled).toBe(true);
+      expect(btnClear.disabled).toBe(true);
+
+      // 2. Step 1: Loading sample data via handler populates master data WITHOUT auto-solving
+      handleGenerateSample(false);
+      const loaded = getAppState();
+      expect(loaded.professors).toHaveLength(10);
+      expect(loaded.rooms).toHaveLength(7);
+      expect(loaded.courses).toHaveLength(25);
+      const totalSessions = loaded.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
+      expect(totalSessions).toBe(30);
+
+      // Verify that sample generation does NOT auto-solve: timetable must remain unscheduled (null)
+      expect(getCurrentTimetable()).toBeNull();
+
+      updateToolbarButtonsState();
+      expect(btnSolve.disabled).toBe(false);
+      expect(btnCheck.disabled).toBe(false);
+
+      // 3. Step 2: Modifying configuration inputs and verifying readConfigFromForm() synchronization
+      cfgEquipment.checked = false;
+      cfgSessionsPerDay.value = "2";
+      readConfigFromForm();
+      expect(getAppState().config.enforceRoomEquipment).toBe(false);
+      expect(getAppState().config.maxProfessorSessionsPerDay).toBe(2);
+
+      // Restore setting for optimal solve
+      cfgEquipment.checked = true;
+      readConfigFromForm();
+      expect(getAppState().config.enforceRoomEquipment).toBe(true);
+
+      // 4. Multi-language UI text integrity for catalog management and step progression
+      for (const lang of ["ja", "en", "zh"] as const) {
+        const ui = UI_TEXT_I18N[lang];
+        expect(ui.catMgmtTitle.length).toBeGreaterThan(0);
+        expect(ui.catMgmtDesc.length).toBeGreaterThan(0);
+        expect(ui.btnCatGenerate.length).toBeGreaterThan(0);
+        expect(ui.btnCatImportCsv.length).toBeGreaterThan(0);
+        expect(ui.btnCatGoConstraints.length).toBeGreaterThan(0);
+        expect(ui.btnCatGoTimetable.length).toBeGreaterThan(0);
+        expect(ui.constraintsWorkflowMsg.length).toBeGreaterThan(0);
+        expect(ui.btnConstraintsGoTimetable.length).toBeGreaterThan(0);
+        expect(ui.chatWelcomeMarkdown.length).toBeGreaterThan(0);
+      }
+      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("時間割を初期編成します");
+      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("時間割ボード");
+
+      // 5. Step 3: Triggering solve transitions state from unscheduled (null) to scheduled (Optimal)
+      const outcome = await triggerSolve();
+      expect(outcome).not.toBeNull();
+      expect(outcome?.status).toBe("Optimal");
+      expect(getCurrentTimetable()).not.toBeNull();
+      expect(getCurrentTimetable()?.sessions).toHaveLength(30);
+      expect(outcome?.conflicts).toHaveLength(0);
+
+      // 6. Confirmation safety: click events and non-boolean arguments must NOT bypass confirm dialog
+      let confirmResult = false;
+      let confirmCallCount = 0;
+      (globalThis as any).confirm = (_msg: string) => {
+        confirmCallCount++;
+        return confirmResult;
+      };
+
+      // Verify state currently has courses loaded
+      expect(getAppState().courses.length).toBeGreaterThan(0);
+
+      // When called with MouseEvent-like object (as passed by addEventListener directly), confirm must be prompted
+      handleClearToBlank({ type: "click" } as any);
+      expect(confirmCallCount).toBe(1);
+      expect(getAppState().courses.length).toBeGreaterThan(0); // not cleared because confirm returned false
+
+      // When called without arguments, confirm must also be prompted
+      handleClearToBlank();
+      expect(confirmCallCount).toBe(2);
+      expect(getAppState().courses.length).toBeGreaterThan(0);
+
+      // When confirm returns true, clear proceeds
+      confirmResult = true;
+      handleClearToBlank();
+      expect(confirmCallCount).toBe(3);
+      expect(getAppState().courses).toHaveLength(0);
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+      delete (globalThis as any).confirm;
     }
   });
 });

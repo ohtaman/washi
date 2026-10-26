@@ -602,15 +602,15 @@ function renderTimetableBoard(): void {
                 zh: "使用示例数据体验 (推荐)",
               })}</h4>
               <p>${pickTimetableLang(activeLang, {
-                ja: "情報科学科の教員10名・教室7室・25科目を一括生成し、0.2秒での自動編成と対話的調整をすぐに体験できます。",
-                en: "Generate 10 CS faculty members, 7 rooms, and 25 courses with one click to test auto-scheduling immediately.",
-                zh: "一键生成计算机系10位教师、7间教室与25门课程，即刻体验0.2秒自动排课与交互调整。",
+                ja: "情報科学科の教員10名・教室7室・25科目を一括生成し、一覧の確認と制約設定を経て時間割を編成します。",
+                en: "Load 10 CS faculty, 7 rooms, and 25 courses, review the roster in Step 1, configure constraints, and then schedule.",
+                zh: "一键载入计算机系10位教师、7间教室与25门课程，在第1步确认列表并配置规则后进行排课。",
               })}</p>
               <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-                ✨ ${pickTimetableLang(activeLang, {
-                  ja: "サンプルデータを生成して編成する",
-                  en: "Generate & Schedule Sample",
-                  zh: "生成并编排示例数据",
+                🎲 ${pickTimetableLang(activeLang, {
+                  ja: "サンプルデータを読み込んで一覧を確認 (Step 1へ)",
+                  en: "Load Sample Data & Review (Go to Step 1)",
+                  zh: "载入示例数据并查看列表 (前往第1步)",
                 })}
               </button>
             </div>
@@ -672,7 +672,7 @@ function renderTimetableBoard(): void {
       emptyStateEl.innerHTML = `
         <div class="data-preview-card">
           <div class="data-preview-header">
-            <span class="dp-badge">STEP 2</span>
+            <span class="dp-badge">STEP 3</span>
             <h3>${pickTimetableLang(activeLang, {
               ja: `基礎データの準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}コマ）`,
               en: `Data Ready: ${profCount} Profs / ${roomCount} Rooms / ${courseCount} Courses (${totalSessions} sessions)`,
@@ -753,12 +753,19 @@ function renderTimetableBoard(): void {
             </button>
             <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
               📚 ${pickTimetableLang(activeLang, {
-                ja: "教員・教室・科目の全一覧を確認 (Tab 3)",
-                en: "Review Detailed Catalog (Tab 3)",
-                zh: "查看完整数据列表 (Tab 3)",
+                ja: "教員・教室・科目の全一覧を確認 (Step 1)",
+                en: "Review Detailed Catalog (Step 1)",
+                zh: "查看完整数据列表 (Step 1)",
               })}
             </button>
-            <button type="button" id="btn-empty-clear" class="btn-toolbar-outline">
+            <button type="button" id="btn-empty-view-constraints" class="btn-toolbar-outline">
+              ⚖️ ${pickTimetableLang(activeLang, {
+                ja: "制約・ルールを確認 (Step 2)",
+                en: "Review Constraints (Step 2)",
+                zh: "查看约束规则 (Step 2)",
+              })}
+            </button>
+            <button type="button" id="btn-empty-clear" class="btn-xs-outline" style="color: var(--danger-text, #ef4444);">
               🗑️ ${pickTimetableLang(activeLang, {
                 ja: "白紙に戻す",
                 en: "Clear to Blank",
@@ -1251,6 +1258,11 @@ function renderTimetableBoard(): void {
 
 function renderCustomRulesAndSettings(): void {
   const ui = UI_TEXT_I18N[activeLang];
+  const workflowBanner = $("constraints-workflow-banner");
+  if (workflowBanner) {
+    workflowBanner.hidden = !(appState.courses.length > 0 && !currentTimetable);
+  }
+
   const listEl = $("custom-rules-list");
   listEl.replaceChildren();
 
@@ -1349,6 +1361,30 @@ function renderCustomRulesAndSettings(): void {
 
 function renderCatalogTables(): void {
   const ui = UI_TEXT_I18N[activeLang];
+  const isBlank = appState.courses.length === 0;
+
+  const emptyCard = $("cat-empty-state-card");
+  const tablesContainer = $("cat-tables-container");
+  const nextBanner = $("cat-next-step-banner");
+
+  if (emptyCard) emptyCard.hidden = !isBlank;
+  if (tablesContainer) tablesContainer.hidden = isBlank;
+  if (nextBanner) {
+    nextBanner.hidden = isBlank;
+    if (!isBlank) {
+      const totalSessions = appState.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
+      setText(
+        "cat-next-step-message",
+        pickTimetableLang(activeLang, {
+          ja: `✅ 基礎データの準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（計${totalSessions}コマ）。内容を確認したら、次は「制約・ルール設定」で条件を確認するか、「時間割ボード」で自動編成を実行してください。`,
+          en: `✅ Baseline data ready: ${appState.professors.length} Faculty / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (${totalSessions} sessions). Review tables below, then inspect constraints or proceed to Timetable Board to schedule.`,
+          zh: `✅ 基础数据就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (共${totalSessions}节)。核对无误后请前往“约束与规则设置”调整条件，或前往“课表看板”一键自动排课。`,
+        })
+      );
+    }
+  }
+
+  if (isBlank) return;
 
   // Update table headers
   const profHeadRow = $("cat-prof-thead-row");
@@ -1686,6 +1722,7 @@ function updateStatusBlankUI(): void {
       en: "No data loaded (0 courses / 0 profs / 0 rooms) — Please import CSV or generate sample data",
       zh: "未加载数据 (0门课程 / 0位教师 / 0间教室) — 请导入CSV或生成示例数据",
     });
+    $("tutorial-banner").hidden = true;
   } else {
     badge.textContent = pickTimetableLang(activeLang, {
       ja: "未編成",
@@ -1699,6 +1736,70 @@ function updateStatusBlankUI(): void {
     });
   }
   solveTimeEl.textContent = "-- ms";
+}
+
+export function updateToolbarButtonsState(): void {
+  if (typeof document === "undefined") return;
+  const hasCoursesAndRooms = appState.courses.length > 0 && appState.rooms.length > 0;
+  const hasAnyData = appState.courses.length > 0 || appState.professors.length > 0 || appState.rooms.length > 0;
+  const isScheduled = !!currentTimetable;
+
+  const btnSolve = document.getElementById("btn-solve-washi") as HTMLButtonElement | null;
+  const btnCheck = document.getElementById("btn-check-current") as HTMLButtonElement | null;
+  const btnExport = document.getElementById("btn-export-csvs") as HTMLButtonElement | null;
+  const btnClear = document.getElementById("btn-clear-blank") as HTMLButtonElement | null;
+  const btnReset = document.getElementById("btn-reset-clean") as HTMLButtonElement | null;
+
+  if (btnSolve) {
+    btnSolve.disabled = isSolving || !hasCoursesAndRooms;
+    btnSolve.title = !hasCoursesAndRooms
+      ? pickTimetableLang(activeLang, {
+          ja: "データを読み込むと時間割の最適化を実行できます",
+          en: "Load data before solving",
+          zh: "载入数据后可执行优化",
+        })
+      : isScheduled
+      ? pickTimetableLang(activeLang, {
+          ja: "現在の制約と条件で時間割を再最適化します",
+          en: "Re-optimize timetable with current constraints",
+          zh: "按当前约束条件重新优化课表",
+        })
+      : pickTimetableLang(activeLang, {
+          ja: "登録されたデータと制約で時間割を自動編成します",
+          en: "Auto-schedule timetable with registered data",
+          zh: "按已录入数据与规则自动排课",
+        });
+  }
+
+  if (btnCheck) {
+    btnCheck.disabled = isSolving || !hasCoursesAndRooms;
+    btnCheck.title = !hasCoursesAndRooms
+      ? pickTimetableLang(activeLang, {
+          ja: "データを読み込むと制約条件の矛盾チェックを実行できます",
+          en: "Load data before checking constraints",
+          zh: "载入数据后可检查约束冲突",
+        })
+      : UI_TEXT_I18N[activeLang].btnCheckCurrentTitle;
+  }
+
+  if (btnExport) {
+    btnExport.disabled = !hasAnyData;
+  }
+
+  if (btnClear) {
+    btnClear.disabled = !hasAnyData && !isScheduled;
+  }
+
+  if (btnReset) {
+    btnReset.disabled = !hasCoursesAndRooms;
+  }
+
+  const tutStep1 = document.getElementById("btn-tut-step1") as HTMLButtonElement | null;
+  const tutStep2 = document.getElementById("btn-tut-step2") as HTMLButtonElement | null;
+  const tutStep3 = document.getElementById("btn-tut-step3") as HTMLButtonElement | null;
+  if (tutStep1) tutStep1.disabled = !hasCoursesAndRooms;
+  if (tutStep2) tutStep2.disabled = !hasCoursesAndRooms;
+  if (tutStep3) tutStep3.disabled = !hasCoursesAndRooms;
 }
 
 function renderPromptCatalogDialog(lang: TimetableLang): void {
@@ -1752,58 +1853,80 @@ function renderAll(): void {
   if (!currentTimetable) {
     updateStatusBlankUI();
   }
+  updateToolbarButtonsState();
 }
 
 function wireEmptyStateButtons(): void {
-  document.getElementById("btn-empty-generate")?.addEventListener("click", handleGenerateSample);
+  document.getElementById("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(true));
   document.getElementById("btn-empty-csv")?.addEventListener("click", openCsvDialog);
   document.getElementById("btn-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
   document.getElementById("btn-empty-solve")?.addEventListener("click", () => void triggerSolve());
   document.getElementById("btn-empty-view-catalog")?.addEventListener("click", () => {
     $<HTMLButtonElement>("tab-btn-catalog").click();
   });
-  document.getElementById("btn-empty-clear")?.addEventListener("click", handleClearToBlank);
+  document.getElementById("btn-empty-view-constraints")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-constraints").click();
+  });
+  document.getElementById("btn-empty-clear")?.addEventListener("click", () => handleClearToBlank());
 }
 
-async function handleGenerateSample(): Promise<void> {
+export function handleGenerateSample(autoSwitchToCatalog = true): void {
   appState = generateTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
-  renderAll();
-  appendChatMessage(
-    "assistant",
-    pickTimetableLang(activeLang, {
-      ja: `✨ **サンプルデータを生成し、初期時間割を自動編成します...**\n- **教員**: ${appState.professors.length}名（佐藤教授・鈴木准教授・非常勤の小林先生など）\n- **教室**: ${appState.rooms.length}室（101大講義室・PC演習室A/Bなど）\n- **科目**: ${appState.courses.length}科目（30コマ分）\n\n数理最適化ソルバー (WaSHI × HiGHS) で全学年・全教員・全教室の矛盾のない時間割を計算中...`,
-      en: `✨ **Generated sample data and scheduling timetable...**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}`,
-      zh: `✨ **已生成示例数据并正在自动编排课表...**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门`,
-    })
-  );
-  await triggerSolve();
+  if (typeof document !== "undefined") {
+    renderAll();
+    if (autoSwitchToCatalog) {
+      $<HTMLButtonElement>("tab-btn-catalog").click();
+    }
+    appendChatMessage(
+      "assistant",
+      pickTimetableLang(activeLang, {
+        ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「科目・教員・教室一覧」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のステップ**:\n1. 「⚖️ 制約・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
+        en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Curriculum & Resources" tab.\n\n**Next Steps**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
+        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“科目・教师・教室一览”标签页查看名册、设备与开课计划。\n\n**后续步骤**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
+      })
+    );
+  }
 }
 
-function handleClearToBlank(): void {
-  const confirmed = confirm(
-    pickTimetableLang(activeLang, {
-      ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
-      en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
-      zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
-    })
-  );
+export function handleClearToBlank(skipConfirm: boolean | unknown = false): void {
+  const confirmFn =
+    typeof confirm === "function"
+      ? confirm
+      : typeof window !== "undefined" && typeof (window as any).confirm === "function"
+        ? (window as any).confirm
+        : null;
+  const confirmed =
+    skipConfirm === true ||
+    (confirmFn
+      ? confirmFn(
+          pickTimetableLang(activeLang, {
+            ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
+            en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
+            zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
+          })
+        )
+      : true);
   if (!confirmed) return;
   appState = createBlankTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
-  renderAll();
-  appendChatMessage(
-    "assistant",
-    pickTimetableLang(activeLang, {
-      ja: "🗑️ 時間割データをクリアし、**白紙モード**に戻しました。「✨ サンプル生成」または「📂 CSV読込」でデータをセットしてください。",
-      en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
-      zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
-    })
-  );
+  if (typeof document !== "undefined") {
+    const banner = document.getElementById("tutorial-banner");
+    if (banner) banner.hidden = true;
+    renderAll();
+    appendChatMessage(
+      "assistant",
+      pickTimetableLang(activeLang, {
+        ja: "🗑️ 時間割データをクリアし、**白紙モード**に戻しました。「✨ サンプル生成」または「📂 CSV読込」でデータをセットしてください。",
+        en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
+        zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
+      })
+    );
+  }
 }
 
 function handleExportAllCsvs(): void {
@@ -1901,6 +2024,7 @@ function executeCsvImport(): void {
   lastSolveOutcome = null;
   $<HTMLDialogElement>("csv-import-dialog").close();
   renderAll();
+  $<HTMLButtonElement>("tab-btn-catalog").click();
   appendChatMessage(
     "assistant",
     pickTimetableLang(activeLang, {
@@ -1911,15 +2035,47 @@ function executeCsvImport(): void {
   );
 }
 
-async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
+export function readConfigFromForm(): void {
+  if (typeof document === "undefined") return;
+  const el = document.getElementById("cfg-enforceRoomCapacity");
+  if (!el) return;
+  const c = appState.config;
+  c.enforceRoomCapacity = $<HTMLInputElement>("cfg-enforceRoomCapacity").checked;
+  c.enforceRoomEquipment = $<HTMLInputElement>("cfg-enforceRoomEquipment").checked;
+  c.enforceCohortNoOverlap = $<HTMLInputElement>("cfg-enforceCohortNoOverlap").checked;
+  c.forbidSameCourseSameDay = $<HTMLInputElement>("cfg-forbidSameCourseSameDay").checked;
+  c.enforceAdjunctDayRestrictions = $<HTMLInputElement>(
+    "cfg-enforceAdjunctDayRestrictions"
+  ).checked;
+  c.enforceProfessorAvailability = $<HTMLInputElement>(
+    "cfg-enforceProfessorAvailability"
+  ).checked;
+  c.enforceMaxConsecutivePeriods = $<HTMLInputElement>(
+    "cfg-enforceMaxConsecutivePeriods"
+  ).checked;
+  c.maxProfessorConsecutivePeriods = Number(
+    $<HTMLInputElement>("cfg-maxProfessorConsecutivePeriods").value
+  );
+  c.maxProfessorSessionsPerDay = Number(
+    $<HTMLInputElement>("cfg-maxProfessorSessionsPerDay").value
+  );
+  c.maxCohortCompulsoryPerDay = Number(
+    $<HTMLInputElement>("cfg-maxCohortCompulsoryPerDay").value
+  );
+  c.weightCohortIdleGaps = Number($<HTMLInputElement>("cfg-weightCohortIdleGaps").value);
+}
+
+export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
   if (appState.courses.length === 0 || appState.rooms.length === 0) {
-    alert(
-      pickTimetableLang(activeLang, {
-        ja: "科目または教室が登録されていません。CSVを読み込むか、「サンプル生成」でデータを作成してください。",
-        en: "No courses or rooms registered. Please import CSVs or generate sample data first.",
-        zh: "未注册课程或教室。请先导入CSV或生成示例数据。",
-      })
-    );
+    if (typeof alert === "function") {
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "科目または教室が登録されていません。CSVを読み込むか、「サンプル生成」でデータを作成してください。",
+          en: "No courses or rooms registered. Please import CSVs or generate sample data first.",
+          zh: "未注册课程或教室。请先导入CSV或生成示例数据。",
+        })
+      );
+    }
     return null;
   }
 
@@ -1939,8 +2095,10 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
   badge.className = "status-pill status-solving";
   badge.textContent = UI_TEXT_I18N[activeLang].statusSolving;
   $("btn-abort-solve").hidden = false;
+  updateToolbarButtonsState();
 
   let outcome: WashiTimetableSolveOutcome | null = null;
+  const wasUnscheduled = !currentTimetable;
   try {
     outcome = await solveTimetableWithWashi(appState, {
       signal: abortCtrl.signal,
@@ -1950,6 +2108,17 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
     if (outcome.timetable) {
       currentTimetable = outcome.timetable;
       currentEvaluation = outcome.evaluation;
+      if (wasUnscheduled) {
+        $<HTMLButtonElement>("tab-btn-timetable").click();
+        appendChatMessage(
+          "assistant",
+          pickTimetableLang(activeLang, {
+            ja: "🎉 **時間割を自動編成しました！**\n全学年・全教員・全教室に矛盾のない時間割が配置されました。\n\nここからAIチャットに『佐藤先生は月曜日休みに設定して』『機械学習と自然言語処理を被せないで』などと入力して、柔軟に要望を追加・調整できます。",
+            en: "🎉 **Timetable automatically scheduled!**\nA feasible, conflict-free schedule has been generated across cohorts, faculty, and rooms.\n\nYou can now chat with AI Copilot (e.g. 'Set Prof. Sato unavailable on Mondays') to fine-tune requests.",
+            zh: "🎉 **课表已自动编排完成！**\n已成功为全学年、全教师、全教室编排无冲突最优课表。\n\n您现在可以在AI聊天中输入“将佐藤老师周一设为休息日”等指令进行个性化微调。",
+          })
+        );
+      }
     }
     updateStatusAndConflictsUI(outcome);
     renderTimetableBoard();
@@ -1960,6 +2129,7 @@ async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
     isSolving = false;
     activeSolveAbortController = null;
     $("btn-abort-solve").hidden = true;
+    updateToolbarButtonsState();
     if (pendingSolveRequested) {
       pendingSolveRequested = false;
       const waiters = pendingSolveWaiters.splice(0);
@@ -2150,6 +2320,7 @@ export function applyTimetableLang(lang: TimetableLang): void {
   $("btn-check-current").title = ui.btnCheckCurrentTitle;
   setText("btn-reset-clean", ui.btnResetClean);
   $("btn-reset-clean").title = ui.btnResetCleanTitle;
+  updateToolbarButtonsState();
 
   // Conflict banner
   setText("conflict-banner-title", ui.conflictBannerTitle);
@@ -2186,6 +2357,8 @@ export function applyTimetableLang(lang: TimetableLang): void {
   $("lbl-diff-toggle").title = ui.diffToggleTitle;
 
   // Tab 2 rules & config
+  setText("constraints-workflow-message", ui.constraintsWorkflowMsg);
+  setText("btn-constraints-go-timetable", ui.btnConstraintsGoTimetable);
   setText("custom-rules-title", ui.customRulesTitle);
   setText("custom-rules-desc", ui.customRulesDesc);
   setText("btn-apply-config-solve", ui.btnApplyConfigSolve);
@@ -2223,7 +2396,19 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("dev-inspector-summary", ui.devInspectorSummary);
   setText("btn-diagnose-conflict", ui.btnDiagnoseSingle);
 
-  // Tab 3 catalog titles
+  // Tab 3 catalog management & titles
+  setText("cat-mgmt-badge", ui.catMgmtBadge);
+  setText("cat-mgmt-title", ui.catMgmtTitle);
+  setText("cat-mgmt-desc", ui.catMgmtDesc);
+  setText("btn-cat-generate-sample", ui.btnCatGenerate);
+  setText("btn-cat-import-csv", ui.btnCatImportCsv);
+  setText("btn-cat-download-samples", ui.btnCatDownloadSamples);
+  setText("btn-cat-clear-blank", ui.btnCatClearBlank);
+  setText("cat-empty-title", ui.catEmptyTitle);
+  setText("cat-empty-desc", ui.catEmptyDesc);
+  setText("btn-cat-go-constraints", ui.btnCatGoConstraints);
+  setText("btn-cat-go-timetable", ui.btnCatGoTimetable);
+
   setText("cat-prof-title", ui.catProfTitle);
   setText("cat-prof-desc", ui.catProfDesc);
   setText("cat-room-title", ui.catRoomTitle);
@@ -2466,7 +2651,14 @@ function wireEvents(): void {
   // Tutorial Step 1: Pin C15 (数理最適化) to Tue Period 2 in R101
   $("btn-tut-step1").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      appState = generateTimetableState();
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
+          en: "To try the tutorial, please load sample data or schedule a timetable first.",
+          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+        })
+      );
+      return;
     }
     const res = applyTimetableChatOperationsToState(appState, [
       {
@@ -2494,7 +2686,14 @@ function wireEvents(): void {
   // Tutorial Step 2: Consecutive sessions for C12 (ソフトウェア設計演習)
   $("btn-tut-step2").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      appState = generateTimetableState();
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
+          en: "To try the tutorial, please load sample data or schedule a timetable first.",
+          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+        })
+      );
+      return;
     }
     const res = applyTimetableChatOperationsToState(appState, [
       {
@@ -2520,7 +2719,14 @@ function wireEvents(): void {
   // Tutorial Step 3: Inject conflict scenario
   $("btn-tut-step3").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      appState = generateTimetableState();
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
+          en: "To try the tutorial, please load sample data or schedule a timetable first.",
+          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+        })
+      );
+      return;
     }
     const sc = $<HTMLSelectElement>("select-conflict-scenario").value as
       | "prof_impossible_day"
@@ -2541,10 +2747,10 @@ function wireEvents(): void {
   });
 
   // Action bar buttons
-  $("btn-generate-sample").addEventListener("click", handleGenerateSample);
+  $("btn-generate-sample").addEventListener("click", () => handleGenerateSample());
   $("btn-open-csv-dialog").addEventListener("click", openCsvDialog);
   $("btn-export-csvs").addEventListener("click", handleExportAllCsvs);
-  $("btn-clear-blank").addEventListener("click", handleClearToBlank);
+  $("btn-clear-blank").addEventListener("click", () => handleClearToBlank());
 
   $("btn-solve-washi").addEventListener("click", () => {
     void triggerSolve();
@@ -2662,33 +2868,24 @@ function wireEvents(): void {
     appState.config.preserveCurrentTimetable = (e.target as HTMLInputElement).checked;
   });
 
-  // Tab 2 Config checkboxes & inputs
-  const readConfigFromForm = () => {
-    const c = appState.config;
-    c.enforceRoomCapacity = $<HTMLInputElement>("cfg-enforceRoomCapacity").checked;
-    c.enforceRoomEquipment = $<HTMLInputElement>("cfg-enforceRoomEquipment").checked;
-    c.enforceCohortNoOverlap = $<HTMLInputElement>("cfg-enforceCohortNoOverlap").checked;
-    c.forbidSameCourseSameDay = $<HTMLInputElement>("cfg-forbidSameCourseSameDay").checked;
-    c.enforceAdjunctDayRestrictions = $<HTMLInputElement>(
-      "cfg-enforceAdjunctDayRestrictions"
-    ).checked;
-    c.enforceProfessorAvailability = $<HTMLInputElement>(
-      "cfg-enforceProfessorAvailability"
-    ).checked;
-    c.enforceMaxConsecutivePeriods = $<HTMLInputElement>(
-      "cfg-enforceMaxConsecutivePeriods"
-    ).checked;
-    c.maxProfessorConsecutivePeriods = Number(
-      $<HTMLInputElement>("cfg-maxProfessorConsecutivePeriods").value
-    );
-    c.maxProfessorSessionsPerDay = Number(
-      $<HTMLInputElement>("cfg-maxProfessorSessionsPerDay").value
-    );
-    c.maxCohortCompulsoryPerDay = Number(
-      $<HTMLInputElement>("cfg-maxCohortCompulsoryPerDay").value
-    );
-    c.weightCohortIdleGaps = Number($<HTMLInputElement>("cfg-weightCohortIdleGaps").value);
-  };
+  // Tab 2 Config checkboxes & inputs: sync into appState.config immediately on change
+  [
+    "cfg-enforceRoomCapacity",
+    "cfg-enforceRoomEquipment",
+    "cfg-enforceCohortNoOverlap",
+    "cfg-forbidSameCourseSameDay",
+    "cfg-enforceAdjunctDayRestrictions",
+    "cfg-enforceProfessorAvailability",
+    "cfg-enforceMaxConsecutivePeriods",
+    "cfg-maxProfessorConsecutivePeriods",
+    "cfg-maxProfessorSessionsPerDay",
+    "cfg-maxCohortCompulsoryPerDay",
+    "cfg-weightCohortIdleGaps",
+  ].forEach((id) => {
+    document.getElementById(id)?.addEventListener("change", () => {
+      readConfigFromForm();
+    });
+  });
 
   $("btn-apply-config-solve").addEventListener("click", () => {
     readConfigFromForm();
@@ -2942,6 +3139,24 @@ function wireEvents(): void {
   $("btn-close-prompt-catalog-bottom")?.addEventListener("click", () => {
     $<HTMLDialogElement>("prompt-catalog-dialog").close();
   });
+
+  // Tab 3 Catalog management & navigation buttons
+  $("btn-cat-generate-sample")?.addEventListener("click", () => handleGenerateSample(false));
+  $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
+  $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
+  $("btn-cat-clear-blank")?.addEventListener("click", () => handleClearToBlank());
+  $("btn-cat-go-constraints")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-constraints").click();
+  });
+  $("btn-cat-go-timetable")?.addEventListener("click", () => {
+    $<HTMLButtonElement>("tab-btn-timetable").click();
+  });
+
+  // Tab 2 workflow banner button
+  $("btn-constraints-go-timetable")?.addEventListener("click", () => {
+    readConfigFromForm();
+    $<HTMLButtonElement>("tab-btn-timetable").click();
+  });
 }
 
 async function initApp(): Promise<void> {
@@ -2965,4 +3180,20 @@ async function initApp(): Promise<void> {
 
 if (typeof document !== "undefined") {
   void initApp();
+}
+
+export function getAppState(): TimetableState {
+  return appState;
+}
+
+export function setAppState(s: TimetableState): void {
+  appState = s;
+}
+
+export function getCurrentTimetable(): WeeklyTimetableSolution | null {
+  return currentTimetable;
+}
+
+export function setCurrentTimetable(t: WeeklyTimetableSolution | null): void {
+  currentTimetable = t;
 }
