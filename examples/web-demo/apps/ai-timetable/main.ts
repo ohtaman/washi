@@ -1738,7 +1738,8 @@ function updateStatusBlankUI(): void {
   solveTimeEl.textContent = "-- ms";
 }
 
-function updateToolbarButtonsState(): void {
+export function updateToolbarButtonsState(): void {
+  if (typeof document === "undefined") return;
   const hasCoursesAndRooms = appState.courses.length > 0 && appState.rooms.length > 0;
   const hasAnyData = appState.courses.length > 0 || appState.professors.length > 0 || appState.rooms.length > 0;
   const isScheduled = !!currentTimetable;
@@ -1869,48 +1870,57 @@ function wireEmptyStateButtons(): void {
   document.getElementById("btn-empty-clear")?.addEventListener("click", handleClearToBlank);
 }
 
-function handleGenerateSample(autoSwitchToCatalog = true): void {
+export function handleGenerateSample(autoSwitchToCatalog = true): void {
   appState = generateTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
-  renderAll();
-  if (autoSwitchToCatalog) {
-    $<HTMLButtonElement>("tab-btn-catalog").click();
+  if (typeof document !== "undefined") {
+    renderAll();
+    if (autoSwitchToCatalog) {
+      $<HTMLButtonElement>("tab-btn-catalog").click();
+    }
+    appendChatMessage(
+      "assistant",
+      pickTimetableLang(activeLang, {
+        ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「科目・教員・教室一覧」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のステップ**:\n1. 「⚖️ 制約・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
+        en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Curriculum & Resources" tab.\n\n**Next Steps**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
+        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“科目・教师・教室一览”标签页查看名册、设备与开课计划。\n\n**后续步骤**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
+      })
+    );
   }
-  appendChatMessage(
-    "assistant",
-    pickTimetableLang(activeLang, {
-      ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「科目・教員・教室一覧」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のステップ**:\n1. 「⚖️ 制約・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
-      en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Curriculum & Resources" tab.\n\n**Next Steps**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
-      zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“科目・教师・教室一览”标签页查看名册、设备与开课计划。\n\n**后续步骤**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
-    })
-  );
 }
 
-function handleClearToBlank(): void {
-  const confirmed = confirm(
-    pickTimetableLang(activeLang, {
-      ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
-      en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
-      zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
-    })
-  );
+export function handleClearToBlank(skipConfirm = false): void {
+  const confirmed =
+    skipConfirm ||
+    (typeof window !== "undefined" && typeof confirm === "function"
+      ? confirm(
+          pickTimetableLang(activeLang, {
+            ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
+            en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
+            zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
+          })
+        )
+      : true);
   if (!confirmed) return;
   appState = createBlankTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
-  $("tutorial-banner").hidden = true;
-  renderAll();
-  appendChatMessage(
-    "assistant",
-    pickTimetableLang(activeLang, {
-      ja: "🗑️ 時間割データをクリアし、**白紙モード**に戻しました。「✨ サンプル生成」または「📂 CSV読込」でデータをセットしてください。",
-      en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
-      zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
-    })
-  );
+  if (typeof document !== "undefined") {
+    const banner = document.getElementById("tutorial-banner");
+    if (banner) banner.hidden = true;
+    renderAll();
+    appendChatMessage(
+      "assistant",
+      pickTimetableLang(activeLang, {
+        ja: "🗑️ 時間割データをクリアし、**白紙モード**に戻しました。「✨ サンプル生成」または「📂 CSV読込」でデータをセットしてください。",
+        en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
+        zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
+      })
+    );
+  }
 }
 
 function handleExportAllCsvs(): void {
@@ -2019,7 +2029,8 @@ function executeCsvImport(): void {
   );
 }
 
-function readConfigFromForm(): void {
+export function readConfigFromForm(): void {
+  if (typeof document === "undefined") return;
   const el = document.getElementById("cfg-enforceRoomCapacity");
   if (!el) return;
   const c = appState.config;
@@ -2048,15 +2059,17 @@ function readConfigFromForm(): void {
   c.weightCohortIdleGaps = Number($<HTMLInputElement>("cfg-weightCohortIdleGaps").value);
 }
 
-async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
+export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null> {
   if (appState.courses.length === 0 || appState.rooms.length === 0) {
-    alert(
-      pickTimetableLang(activeLang, {
-        ja: "科目または教室が登録されていません。CSVを読み込むか、「サンプル生成」でデータを作成してください。",
-        en: "No courses or rooms registered. Please import CSVs or generate sample data first.",
-        zh: "未注册课程或教室。请先导入CSV或生成示例数据。",
-      })
-    );
+    if (typeof alert === "function") {
+      alert(
+        pickTimetableLang(activeLang, {
+          ja: "科目または教室が登録されていません。CSVを読み込むか、「サンプル生成」でデータを作成してください。",
+          en: "No courses or rooms registered. Please import CSVs or generate sample data first.",
+          zh: "未注册课程或教室。请先导入CSV或生成示例数据。",
+        })
+      );
+    }
     return null;
   }
 
@@ -3161,4 +3174,20 @@ async function initApp(): Promise<void> {
 
 if (typeof document !== "undefined") {
   void initApp();
+}
+
+export function getAppState(): TimetableState {
+  return appState;
+}
+
+export function setAppState(s: TimetableState): void {
+  appState = s;
+}
+
+export function getCurrentTimetable(): WeeklyTimetableSolution | null {
+  return currentTimetable;
+}
+
+export function setCurrentTimetable(t: WeeklyTimetableSolution | null): void {
+  currentTimetable = t;
 }
