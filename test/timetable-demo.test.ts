@@ -1125,9 +1125,37 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(getCurrentTimetable()).not.toBeNull();
       expect(getCurrentTimetable()?.sessions).toHaveLength(30);
       expect(outcome?.conflicts).toHaveLength(0);
+
+      // 6. Confirmation safety: click events and non-boolean arguments must NOT bypass confirm dialog
+      let confirmResult = false;
+      let confirmCallCount = 0;
+      (globalThis as any).confirm = (_msg: string) => {
+        confirmCallCount++;
+        return confirmResult;
+      };
+
+      // Verify state currently has courses loaded
+      expect(getAppState().courses.length).toBeGreaterThan(0);
+
+      // When called with MouseEvent-like object (as passed by addEventListener directly), confirm must be prompted
+      handleClearToBlank({ type: "click" } as any);
+      expect(confirmCallCount).toBe(1);
+      expect(getAppState().courses.length).toBeGreaterThan(0); // not cleared because confirm returned false
+
+      // When called without arguments, confirm must also be prompted
+      handleClearToBlank();
+      expect(confirmCallCount).toBe(2);
+      expect(getAppState().courses.length).toBeGreaterThan(0);
+
+      // When confirm returns true, clear proceeds
+      confirmResult = true;
+      handleClearToBlank();
+      expect(confirmCallCount).toBe(3);
+      expect(getAppState().courses).toHaveLength(0);
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;
+      delete (globalThis as any).confirm;
     }
   });
 });

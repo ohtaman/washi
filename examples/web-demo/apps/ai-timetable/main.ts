@@ -1867,7 +1867,7 @@ function wireEmptyStateButtons(): void {
   document.getElementById("btn-empty-view-constraints")?.addEventListener("click", () => {
     $<HTMLButtonElement>("tab-btn-constraints").click();
   });
-  document.getElementById("btn-empty-clear")?.addEventListener("click", handleClearToBlank);
+  document.getElementById("btn-empty-clear")?.addEventListener("click", () => handleClearToBlank());
 }
 
 export function handleGenerateSample(autoSwitchToCatalog = true): void {
@@ -1891,11 +1891,17 @@ export function handleGenerateSample(autoSwitchToCatalog = true): void {
   }
 }
 
-export function handleClearToBlank(skipConfirm = false): void {
+export function handleClearToBlank(skipConfirm: boolean | unknown = false): void {
+  const confirmFn =
+    typeof confirm === "function"
+      ? confirm
+      : typeof window !== "undefined" && typeof (window as any).confirm === "function"
+        ? (window as any).confirm
+        : null;
   const confirmed =
-    skipConfirm ||
-    (typeof window !== "undefined" && typeof confirm === "function"
-      ? confirm(
+    skipConfirm === true ||
+    (confirmFn
+      ? confirmFn(
           pickTimetableLang(activeLang, {
             ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
             en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
@@ -2741,10 +2747,10 @@ function wireEvents(): void {
   });
 
   // Action bar buttons
-  $("btn-generate-sample").addEventListener("click", handleGenerateSample);
+  $("btn-generate-sample").addEventListener("click", () => handleGenerateSample());
   $("btn-open-csv-dialog").addEventListener("click", openCsvDialog);
   $("btn-export-csvs").addEventListener("click", handleExportAllCsvs);
-  $("btn-clear-blank").addEventListener("click", handleClearToBlank);
+  $("btn-clear-blank").addEventListener("click", () => handleClearToBlank());
 
   $("btn-solve-washi").addEventListener("click", () => {
     void triggerSolve();
@@ -3138,7 +3144,7 @@ function wireEvents(): void {
   $("btn-cat-generate-sample")?.addEventListener("click", () => handleGenerateSample(false));
   $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
   $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
-  $("btn-cat-clear-blank")?.addEventListener("click", handleClearToBlank);
+  $("btn-cat-clear-blank")?.addEventListener("click", () => handleClearToBlank());
   $("btn-cat-go-constraints")?.addEventListener("click", () => {
     $<HTMLButtonElement>("tab-btn-constraints").click();
   });
