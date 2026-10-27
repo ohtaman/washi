@@ -588,23 +588,42 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       const showcaseRaw = fs.readFileSync(showcasePath, "utf-8");
       expect(showcaseRaw).toContain(loc.sheepTitle);
 
-      const cardAnchors = Array.from(
-        showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-card[^"]*"[^>]*)>/g),
+      const cardDivs = Array.from(
+        showcaseRaw.matchAll(/<div\s+([^>]*\bclass="washi-showcase-card(?:\s+[^"]*)?"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(cardAnchors).toHaveLength(6);
+      expect(cardDivs).toHaveLength(6);
 
-      const hrefs = cardAnchors.map((attrs) => {
-        const hrefMatch = attrs.match(/\bhref="([^"]+)"/);
+      const ctaAnchors = Array.from(
+        showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-cta"[^>]*)>/g),
+        (m) => m[1]
+      );
+      expect(ctaAnchors).toHaveLength(6);
+
+      const theoryAnchors = Array.from(
+        showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-theory-btn"[^>]*)>/g),
+        (m) => m[1]
+      );
+      expect(theoryAnchors).toHaveLength(4);
+
+      const allShowcaseAnchors = Array.from(
+        showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-(?:cta|theory-btn|title-link)"[^>]*)>/g),
+        (m) => m[1]
+      );
+      for (const attrs of allShowcaseAnchors) {
         const targetMatch = attrs.match(/\btarget="([^"]+)"/);
-        expect(hrefMatch, `Missing href in showcase card <a ${attrs}>`).not.toBeNull();
         expect(
           targetMatch?.[1],
-          `Showcase card <a ${attrs}> in ${loc.showcaseFile} must set target="_self" to bypass VitePress SPA router 404 interception`
+          `Showcase anchor <a ${attrs}> in ${loc.showcaseFile} must set target="_self" to bypass VitePress SPA router 404 interception`
         ).toBe("_self");
+      }
+
+      const primaryHrefs = ctaAnchors.map((attrs) => {
+        const hrefMatch = attrs.match(/\bhref="([^"]+)"/);
+        expect(hrefMatch, `Missing href in showcase CTA <a ${attrs}>`).not.toBeNull();
         return hrefMatch![1];
       });
-      expect(hrefs).toEqual([
+      expect(primaryHrefs).toEqual([
         "/washi/demo/",
         "/washi/apps/ai-shift/",
         "/washi/apps/ai-timetable/",
@@ -613,7 +632,19 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         "/washi/games/quant-survival/",
       ]);
 
-      for (const href of hrefs) {
+      const theoryHrefs = theoryAnchors.map((attrs) => {
+        const hrefMatch = attrs.match(/\bhref="([^"]+)"/);
+        expect(hrefMatch, `Missing href in showcase theory CTA <a ${attrs}>`).not.toBeNull();
+        return hrefMatch![1];
+      });
+      expect(theoryHrefs).toEqual([
+        "/washi/apps/ai-timetable-theory/",
+        "/washi/games/demon-castle-shift-theory/",
+        "/washi/games/mofumofu-sheep-theory/",
+        "/washi/games/quant-survival-theory/",
+      ]);
+
+      for (const href of [...primaryHrefs, ...theoryHrefs]) {
         const subpath = href.replace(/^\/washi\//, "");
         const expectedEntryHtml = path.resolve(
           process.cwd(),

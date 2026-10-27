@@ -859,11 +859,30 @@
   margin: 0 0 8px !important;
 }
 
+.washi-showcase-title-link {
+  color: inherit !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease;
+}
+
+.washi-showcase-title-link:hover {
+  color: var(--vp-c-brand-1) !important;
+}
+
 .washi-showcase-desc {
   font-size: 0.9rem;
   color: var(--vp-c-text-2);
   line-height: 1.6;
   margin: 0 0 16px !important;
+}
+
+.washi-showcase-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
 }
 
 .washi-showcase-cta {
@@ -873,10 +892,35 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  text-decoration: none !important;
+}
+
+.washi-showcase-cta:hover {
+  text-decoration: underline !important;
 }
 
 .washi-showcase-card.is-primary .washi-showcase-cta {
   color: #e11d48;
+}
+
+.washi-showcase-theory-btn {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--vp-c-text-2) !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none !important;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--vp-c-divider);
+  background: var(--vp-c-bg);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.washi-showcase-theory-btn:hover {
+  color: var(--vp-c-brand-1) !important;
+  border-color: var(--vp-c-brand-1);
 }
 
 
