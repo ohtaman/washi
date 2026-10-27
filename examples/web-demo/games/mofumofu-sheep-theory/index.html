@@ -302,8 +302,21 @@
       }
 
       .mcell.fence {
-        background: #9c6334;
-        border-color: #593315;
+        background: #cce89c;
+        border: 2px solid #5a3818;
+      }
+
+      .fence-svg {
+        width: 1em;
+        height: 1em;
+        display: inline-block;
+        vertical-align: -0.15em;
+      }
+
+      .mcell.fence .fence-svg {
+        width: 22px;
+        height: 22px;
+        vertical-align: middle;
       }
 
       .mcell.safe {
@@ -472,7 +485,7 @@
 
           <div class="math-box">
             <span class="math-title">二値決定変数（Binary Decision Variables）</span>
-            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : マス v に柵🪵を置くなら 1、置かないなら 0<br />
+            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : マス v に木の柵を置くなら 1、置かないなら 0<br />
             r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : マス v が「ヒツジの安全な牧場」に含まれるなら 1
           </div>
 
@@ -528,9 +541,9 @@
                 <div class="mcell bad" title="柵の向こう側なのに r_v = 1 にされてしまう">🍓</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell">🌱</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell safe">🌱</div>
@@ -539,7 +552,7 @@
                 <div class="mcell safe">🍓</div>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
-                右上の 🍓 は柵🪵と水辺💧でヒツジから完全に切り離されているのに、<code>r_v = 1</code> にしてもフラッド制約 <code>r_u &lt;= r_v + f_v</code> に違反しない。
+                右上の 🍓 は木の柵と水辺💧でヒツジから完全に切り離されているのに、<code>r_v = 1</code> にしてもフラッド制約 <code>r_u &lt;= r_v + f_v</code> に違反しない。
               </p>
             </div>
 
@@ -552,9 +565,9 @@
                 <div class="mcell" title="ヒツジからフローが届かないため r_v = 0 になる">🍓</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell">🌱</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell safe">🌱</div>
@@ -762,7 +775,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
 
           <div class="math-box">
             <span class="math-title">Binary Decision Variables</span>
-            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 1 if a wooden fence 🪵 is placed on cell v, 0 otherwise<br />
+            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 1 if a wooden fence is placed on cell v, 0 otherwise<br />
             r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : 1 if cell v is part of the sheep's safe pasture, 0 otherwise
           </div>
 
@@ -817,9 +830,9 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <div class="mcell bad" title="Set to r_v = 1 even though it is behind a fence">🍓</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell">🌱</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell safe">🌱</div>
@@ -828,7 +841,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <div class="mcell safe">🍓</div>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
-                The top-right 🍓 is completely walled off from the sheep by a fence 🪵 and water 💧, yet setting <code>r_v = 1</code> there does not violate <code>r_u &lt;= r_v + f_v</code>.
+                The top-right 🍓 is completely walled off from the sheep by a fence and water 💧, yet setting <code>r_v = 1</code> there does not violate <code>r_u &lt;= r_v + f_v</code>.
               </p>
             </div>
 
@@ -841,9 +854,9 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <div class="mcell" title="Forced to r_v = 0 because no flow from the sheep can reach it">🍓</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell">🌱</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell safe">🌱</div>
@@ -1050,7 +1063,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
 
           <div class="math-box">
             <span class="math-title">0-1 决策变量（Binary Decision Variables）</span>
-            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 在格子 v 放置栅栏🪵则为 1，否则为 0<br />
+            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 在格子 v 放置栅栏则为 1，否则为 0<br />
             r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : 格子 v 属于“绵羊的安全牧场”则为 1，否则为 0
           </div>
 
@@ -1106,9 +1119,9 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <div class="mcell bad" title="明明被栅栏隔在外面，却被设成了 r_v = 1">🍓</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell">🌱</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell safe">🌱</div>
@@ -1117,7 +1130,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <div class="mcell safe">🍓</div>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.4rem 0 0;">
-                右上角的 🍓 已被栅栏🪵和水域💧完全隔绝在绵羊不可达之处，但将其设为 <code>r_v = 1</code> 并不违反 <code>r_u &lt;= r_v + f_v</code>。
+                右上角的 🍓 已被栅栏和水域💧完全隔绝在绵羊不可达之处，但将其设为 <code>r_v = 1</code> 并不违反 <code>r_u &lt;= r_v + f_v</code>。
               </p>
             </div>
 
@@ -1130,9 +1143,9 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
                 <div class="mcell" title="来自绵羊的网络流无法到达，因此被强制为 r_v = 0">🍓</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell">🌱</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
-                <div class="mcell fence">🪵</div>
+                <div class="mcell fence"><svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/><rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/></svg></div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell wall">💧</div>
                 <div class="mcell safe">🌱</div>

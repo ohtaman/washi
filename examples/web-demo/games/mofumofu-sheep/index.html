@@ -26,6 +26,16 @@
         <div class="topbar-stats">
           <button
             type="button"
+            class="help-pill-btn btn-audio"
+            id="btn-bgm-toggle"
+            data-bgm-toggle
+            aria-pressed="false"
+            title="BGMの再生/停止"
+          >
+            <span id="bgm-btn-text">🔇 BGM: OFF</span>
+          </button>
+          <button
+            type="button"
             class="help-pill-btn"
             id="btn-open-rules"
             title="遊び方とチュートリアルを見る"
@@ -89,7 +99,7 @@
         <div class="guide-banner" id="guide-banner">
           <span class="guide-banner-icon" id="guide-banner-icon">🐑</span>
           <p class="stage-oneliner" id="stage-oneliner">
-            マスをタップして柵🪵を置き、🐺から🐑を守ろう
+            マスをタップして柵を置き、🐺から🐑を守ろう
           </p>
         </div>
 
@@ -210,11 +220,22 @@
 
         <div class="rules-steps">
           <div class="rule-card">
-            <div class="rule-card-icon">🪵</div>
+            <div class="rule-card-icon" id="rule-fence-icon">
+              <svg class="fence-svg" viewBox="0 0 32 32" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 7 L9 3 L12 7 L12 29 L6 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6" stroke-linejoin="round"/>
+                <path d="M20 7 L23 3 L26 7 L26 29 L20 29 Z" fill="#b9783f" stroke="#4a2508" stroke-width="1.6" stroke-linejoin="round"/>
+                <rect x="3" y="9" width="26" height="5" rx="1.2" fill="#d29054" stroke="#4a2508" stroke-width="1.6"/>
+                <rect x="3" y="18" width="26" height="5" rx="1.2" fill="#c48348" stroke="#4a2508" stroke-width="1.6"/>
+                <circle cx="9" cy="11.5" r="0.9" fill="#4a2508"/>
+                <circle cx="23" cy="11.5" r="0.9" fill="#4a2508"/>
+                <circle cx="9" cy="20.5" r="0.9" fill="#4a2508"/>
+                <circle cx="23" cy="20.5" r="0.9" fill="#4a2508"/>
+              </svg>
+            </div>
             <div class="rule-card-body">
-              <strong id="rule-step1-title">1. マスをタップして柵🪵を置く</strong>
+              <strong id="rule-step1-title">1. マスをタップして柵を置く</strong>
               <p id="rule-step1-desc">
-                オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵🪵を置いて遮断します。もう一度タップすると柵を外せます。
+                オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵を置いて遮断します。もう一度タップすると柵を外せます。
               </p>
             </div>
           </div>
@@ -234,7 +255,7 @@
             <div class="rule-card-body">
               <strong id="rule-step3-title">3. 石橋🌉と穴ぼこ🕳️の仕掛け</strong>
               <p id="rule-step3-desc">
-                🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に丸太の柵🪵を打ち込めば穴が埋まって壁になります。
+                🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に木の柵を打ち込めば穴が埋まって壁になります。
               </p>
             </div>
           </div>

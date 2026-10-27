@@ -47,7 +47,7 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
     id: "stage-1",
     stageNumber: 1,
     title: "はじめての柵",
-    oneLiner: "マスをタップして柵🪵を置き、🐺から🐑を守ろう",
+    oneLiner: "マスをタップして柵を置き、🐺から🐑を守ろう",
     maxFences: 1,
     targetScore: 7,
     grid: parseGrid([
@@ -90,7 +90,7 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
     id: "stage-4",
     stageNumber: 4,
     title: "穴ぼこ埋め",
-    oneLiner: "🕳️穴ぼこ(-5点)がまきばに入ると減点になるよ。🕳️の真上に丸太の柵🪵を打ち込んで穴を塞ごう",
+    oneLiner: "🕳️穴ぼこ(-5点)がまきばに入ると減点になるよ。🕳️の真上に木の柵を打ち込んで穴を塞ごう",
     maxFences: 2,
     targetScore: 16,
     grid: parseGrid([
@@ -126,7 +126,7 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
     id: "stage-6",
     stageNumber: 6,
     title: "一石二鳥の杭打ち",
-    oneLiner: "🕳️(-5)の真上に丸太の柵🪵を打ち込めば、穴埋めと🐺の侵入阻止を同時に達成できるよ",
+    oneLiner: "🕳️(-5)の真上に木の柵を打ち込めば、穴埋めと🐺の侵入阻止を同時に達成できるよ",
     maxFences: 2,
     targetScore: 26,
     grid: parseGrid([
@@ -252,11 +252,11 @@ const STAGE_I18N: Record<
   "stage-1": {
     en: {
       title: "First Fence",
-      oneLiner: "Tap a cell to place a fence 🪵 and protect 🐑 from 🐺",
+      oneLiner: "Tap a cell to place a fence and protect 🐑 from 🐺",
     },
     zh: {
       title: "第一道栅栏",
-      oneLiner: "点击格子放置栅栏🪵，保护🐑免受🐺袭击",
+      oneLiner: "点击格子放置栅栏，保护🐑免受🐺袭击",
     },
   },
   "stage-2": {
@@ -282,11 +282,11 @@ const STAGE_I18N: Record<
   "stage-4": {
     en: {
       title: "Plugging the Pitfall",
-      oneLiner: "Leaving a pitfall 🕳️ (-5 pt) inside the pasture lowers your score. Drive a wooden fence 🪵 right into 🕳️ to plug it",
+      oneLiner: "Leaving a pitfall 🕳️ (-5 pt) inside the pasture lowers your score. Drive a wooden fence right into 🕳️ to plug it",
     },
     zh: {
       title: "填平坑洞",
-      oneLiner: "若将🕳️坑洞(-5分)圈入牧场会扣分。直接在🕳️正上方打入木栅栏🪵即可把坑填平",
+      oneLiner: "若将🕳️坑洞(-5分)圈入牧场会扣分。直接在🕳️正上方打入木栅栏即可把坑填平",
     },
   },
   "stage-5": {
@@ -302,11 +302,11 @@ const STAGE_I18N: Record<
   "stage-6": {
     en: {
       title: "Two Birds with One Post",
-      oneLiner: "Driving a fence 🪵 directly into 🕳️ (-5) plugs the pit and blocks 🐺 at the same time",
+      oneLiner: "Driving a fence directly into 🕳️ (-5) plugs the pit and blocks 🐺 at the same time",
     },
     zh: {
       title: "一举两得的木桩",
-      oneLiner: "直接把木栅栏🪵打进🕳️(-5)里，就能同时填平坑洞并阻挡🐺",
+      oneLiner: "直接把木栅栏打进🕳️(-5)里，就能同时填平坑洞并阻挡🐺",
     },
   },
   "stage-7": {

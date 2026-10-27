@@ -9,15 +9,15 @@ export type PastureBgmTrack = "meadow" | "victory";
 
 export class PastureAudioEngine {
   private ctx: AudioContext | null = null;
-  private isPlaying = false;
-  private isMuted = true;
+  private isBgmPlaying = false;
+  private isMuted = false;
   private track: PastureBgmTrack = "meadow";
   private timer: number | null = null;
   private step = 0;
   private nextTime = 0;
 
   public get playing(): boolean {
-    return this.isPlaying && !this.isMuted;
+    return this.isBgmPlaying && !this.isMuted;
   }
 
   private ensureCtx(): AudioContext | null {
@@ -35,7 +35,7 @@ export class PastureAudioEngine {
   }
 
   public toggleBgm(): boolean {
-    if (this.isPlaying) {
+    if (this.isBgmPlaying) {
       this.stopBgm();
       return false;
     }
@@ -46,7 +46,7 @@ export class PastureAudioEngine {
   public setTrack(track: PastureBgmTrack): void {
     const prev = this.track;
     this.track = track;
-    if (this.isPlaying && prev !== track) {
+    if (this.isBgmPlaying && prev !== track) {
       this.startBgm(track);
     }
   }
@@ -59,16 +59,15 @@ export class PastureAudioEngine {
       this.timer = null;
     }
     this.track = track;
-    this.isPlaying = true;
-    this.isMuted = false;
+    this.isBgmPlaying = true;
     this.step = 0;
     this.nextTime = ctx.currentTime + 0.04;
 
     const tick = () => {
-      if (!this.isPlaying || this.isMuted) return;
+      if (!this.isBgmPlaying || this.isMuted) return;
       const c = this.ensureCtx();
       if (!c) return;
-      const stepSec = this.track === "victory" ? 0.16 : 0.21;
+      const stepSec = this.track === "victory" ? 0.17 : 0.22;
       if (this.nextTime < c.currentTime - 0.1) {
         this.nextTime = c.currentTime + 0.02;
       }
@@ -84,8 +83,7 @@ export class PastureAudioEngine {
   }
 
   public stopBgm(): void {
-    this.isPlaying = false;
-    this.isMuted = true;
+    this.isBgmPlaying = false;
     if (this.timer !== null) {
       window.clearInterval(this.timer);
       this.timer = null;
@@ -93,8 +91,36 @@ export class PastureAudioEngine {
   }
 
   private scheduleStep(ctx: AudioContext, step: number, time: number, stepSec: number): void {
-    // Pastoral F-major / C-major acoustic melody loop (32 steps)
     const s = step % 32;
+
+    if (this.track === "victory") {
+      // Celebratory cheerful C-major fanfare loop (32 steps)
+      const victoryBass: readonly number[] = [
+        261.63, 0, 329.63, 0, 392.0, 0, 523.25, 0, // C4 - E4 - G4 - C5
+        220.0, 0, 261.63, 0, 349.23, 0, 440.0, 0,  // A3 - C4 - F4 - A4
+        196.0, 0, 246.94, 0, 293.66, 0, 392.0, 0,  // G3 - B3 - D4 - G4
+        261.63, 0, 329.63, 0, 392.0, 0, 523.25, 0, // C4 - E4 - G4 - C5
+      ];
+      const victoryMelody: readonly number[] = [
+        523.25, 0, 523.25, 659.25, 783.99, 0, 1046.5, 0,
+        880.0, 0, 783.99, 659.25, 698.46, 0, 783.99, 0,
+        783.99, 0, 880.0, 987.77, 1046.5, 0, 1174.66, 0,
+        1046.5, 0, 783.99, 0, 1046.5, 0, 0, 0,
+      ];
+
+      const bFreq = victoryBass[s];
+      if (bFreq > 0) {
+        this.playWarmPluck(ctx, bFreq, time, stepSec * 1.5, 0.038, "triangle");
+      }
+      const mFreq = victoryMelody[s];
+      if (mFreq > 0) {
+        this.playWarmPluck(ctx, mFreq, time, stepSec * 1.3, 0.045, "sine");
+        this.playWarmPluck(ctx, mFreq * 0.5, time, stepSec * 1.2, 0.022, "triangle");
+      }
+      return;
+    }
+
+    // Pastoral F-major / C-major acoustic melody loop (32 steps)
     const bassLine: readonly number[] = [
       174.61, 0, 261.63, 0, 220.0, 0, 261.63, 0, // F3 - C4 - A3 - C4
       233.08, 0, 293.66, 0, 196.0, 0, 261.63, 0, // Bb3 - D4 - G3 - C4
@@ -179,6 +205,16 @@ export class PastureAudioEngine {
     const now = ctx.currentTime;
     this.playWarmPluck(ctx, 210, now, 0.12, 0.06, "sawtooth");
     this.playWarmPluck(ctx, 165, now + 0.09, 0.18, 0.06, "sawtooth");
+  }
+
+  /** Shortfall alert when safe from wolves but below targetScore */
+  public playShortfall(): void {
+    if (this.isMuted) return;
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    this.playWarmPluck(ctx, 392, now, 0.11, 0.05, "sine");
+    this.playWarmPluck(ctx, 349.23, now + 0.08, 0.14, 0.05, "sine");
   }
 }
 
