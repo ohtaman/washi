@@ -400,6 +400,7 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
   let playerMinAum = playerStartAum;
   let aiMinAum = aiStartAum;
   let playerLiquidatedDay: number | null = null;
+  let aiLiquidatedDay: number | null = null;
   let ghostLiquidatedDay: number | null = null;
 
   const triggeredShocks: TriggeredShock[] = [];
@@ -449,41 +450,75 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
     }
     const gDayRet = assetDailyReturns[ghostIdx];
 
-    playerCumReturn = (1 + playerCumReturn) * (1 + pDayRet) - 1;
-    aiCumReturn = (1 + aiCumReturn) * (1 + aDayRet) - 1;
-    ghostCumReturn = (1 + ghostCumReturn) * (1 + gDayRet) - 1;
+    // Player fund evolution: halts and freezes on liquidation day
+    if (playerLiquidatedDay === null) {
+      playerCumReturn = (1 + playerCumReturn) * (1 + pDayRet) - 1;
+      const pAum = playerStartAum * (1 + playerCumReturn);
+      if (pAum < liquidationAumFloor) {
+        playerLiquidatedDay = day;
+        const frozenAum = Math.min(pAum, liquidationAumFloor);
+        playerAumSeries.push(frozenAum);
+        playerCumReturn = (frozenAum - playerStartAum) / playerStartAum;
+      } else {
+        playerAumSeries.push(pAum);
+      }
+    } else {
+      playerAumSeries.push(playerAumSeries[playerAumSeries.length - 1]);
+    }
 
-    const pAum = playerStartAum * (1 + playerCumReturn);
-    const aAum = aiStartAum * (1 + aiCumReturn);
-    const gAum = playerStartAum * (1 + ghostCumReturn);
+    // AI fund evolution: halts and freezes if floor breached or if player was already liquidated
+    const aiFloor = aiStartAum * (1 + regime.liquidationFloor);
+    if (aiLiquidatedDay === null && (playerLiquidatedDay === null || playerLiquidatedDay === day)) {
+      aiCumReturn = (1 + aiCumReturn) * (1 + aDayRet) - 1;
+      const aAum = aiStartAum * (1 + aiCumReturn);
+      if (aAum < aiFloor) {
+        aiLiquidatedDay = day;
+        const frozenAum = Math.min(aAum, aiFloor);
+        aiAumSeries.push(frozenAum);
+        aiCumReturn = (frozenAum - aiStartAum) / aiStartAum;
+      } else {
+        aiAumSeries.push(aAum);
+      }
+    } else {
+      aiAumSeries.push(aiAumSeries[aiAumSeries.length - 1]);
+    }
 
-    playerAumSeries.push(pAum);
-    aiAumSeries.push(aAum);
-    ghostAumSeries.push(gAum);
+    // Ghost benchmark evolution: halts and freezes if floor breached or if player was already liquidated
+    if (ghostLiquidatedDay === null && (playerLiquidatedDay === null || playerLiquidatedDay === day)) {
+      ghostCumReturn = (1 + ghostCumReturn) * (1 + gDayRet) - 1;
+      const gAum = playerStartAum * (1 + ghostCumReturn);
+      if (gAum < liquidationAumFloor) {
+        ghostLiquidatedDay = day;
+        ghostAumSeries.push(Math.min(gAum, liquidationAumFloor));
+      } else {
+        ghostAumSeries.push(gAum);
+      }
+    } else {
+      ghostAumSeries.push(ghostAumSeries[ghostAumSeries.length - 1]);
+    }
 
-    if (pAum > playerPeakAum) playerPeakAum = pAum;
-    if (aAum > aiPeakAum) aiPeakAum = aAum;
-    if (pAum < playerMinAum) playerMinAum = pAum;
-    if (aAum < aiMinAum) aiMinAum = aAum;
+    const curPAum = playerAumSeries[playerAumSeries.length - 1];
+    const curAAum = aiAumSeries[aiAumSeries.length - 1];
+    if (curPAum > playerPeakAum) playerPeakAum = curPAum;
+    if (curAAum > aiPeakAum) aiPeakAum = curAAum;
+    if (curPAum < playerMinAum) playerMinAum = curPAum;
+    if (curAAum < aiMinAum) aiMinAum = curAAum;
 
-    const pDd = (pAum - playerPeakAum) / playerPeakAum;
-    const aDd = (aAum - aiPeakAum) / aiPeakAum;
+    const pDd = (curPAum - playerPeakAum) / playerPeakAum;
+    const aDd = (curAAum - aiPeakAum) / aiPeakAum;
     if (pDd < playerMaxDrawdown) playerMaxDrawdown = pDd;
     if (aDd < aiMaxDrawdown) aiMaxDrawdown = aDd;
-
-    if (playerLiquidatedDay === null && pAum < liquidationAumFloor) {
-      playerLiquidatedDay = day;
-    }
-    if (ghostLiquidatedDay === null && gAum < liquidationAumFloor) {
-      ghostLiquidatedDay = day;
-    }
   }
 
-  const playerEndAum = playerAumSeries[days];
-  const aiEndAum = aiAumSeries[days];
+  const effectiveEndDay =
+    playerLiquidatedDay !== null ? playerLiquidatedDay : days;
+  const playerEndAum = playerAumSeries[effectiveEndDay];
+  const aiEndAum = aiAumSeries[effectiveEndDay];
   const playerLiquidated =
     playerEndAum < liquidationAumFloor || playerLiquidatedDay !== null;
-  const aiLiquidated = aiEndAum < aiStartAum * (1 + regime.liquidationFloor);
+  const aiLiquidated =
+    aiEndAum < aiStartAum * (1 + regime.liquidationFloor) ||
+    (aiLiquidatedDay !== null && aiLiquidatedDay <= effectiveEndDay);
 
   return {
     days,

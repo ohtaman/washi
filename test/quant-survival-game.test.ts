@@ -10,6 +10,7 @@ import {
   solveQuantOptimalPortfolio,
 } from "../examples/web-demo/games/quant-survival/solver.js";
 import {
+  autoPickLevelAssets,
   buildSubsetRegime,
   getLevelSpec,
   getLocalizedAsset,
@@ -51,22 +52,22 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
   it("supports progressive asset pool unlock and procedural generation across Levels 1..15", () => {
     const l1 = getLevelSpec(1);
     expect(l1.unlockedAssetIds).toEqual(["sp500", "bond", "gold"]);
-    expect(l1.maxPicks).toBe(2);
+    expect(l1.maxPicks).toBe(3);
 
     const l2 = getLevelSpec(2);
     expect(l2.unlockedAssetIds).toContain("tech");
     expect(l2.unlockedAssetIds).toContain("pharma");
-    expect(l2.maxPicks).toBe(3);
+    expect(l2.maxPicks).toBe(4);
 
     const l3 = getLevelSpec(3);
     expect(l3.unlockedAssetIds).toContain("nv-ai");
     expect(l3.unlockedAssetIds).toContain("cloud");
     expect(l3.unlockedAssetIds).toContain("defense");
-    expect(l3.maxPicks).toBe(4);
+    expect(l3.maxPicks).toBe(5);
 
     const l5 = getLevelSpec(5);
     expect(l5.unlockedAssetIds.length).toBe(12);
-    expect(l5.maxPicks).toBe(6);
+    expect(l5.maxPicks).toBe(7);
 
     // Level 6+: Procedural assets generated dynamically
     const l6 = getLevelSpec(6);
@@ -339,6 +340,8 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
       expect(mockDoc.title).toContain("QUANT SURVIVAL");
       expect(byId.get("back-link")?.textContent).toBe("← Games");
       expect(byId.get("btn-execute")?.textContent).toContain("MARKET OPEN");
+      expect(byId.get("frontier-guide-text")?.textContent).toContain("How to Read Chart");
+      expect(byId.get("strategy-tip-text")?.innerHTML).toContain("Strategy Tip");
       for (const el of allElements) {
         expect(el.getAttribute("aria-label") ?? "", `en aria-label on #${el.id}`).not.toMatch(
           /[ぁ-んァ-ヶ]/
@@ -351,6 +354,8 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
       expect(mockDoc.documentElement.lang).toBe("zh-CN");
       expect(mockDoc.title).toContain("量化生存战");
       expect(byId.get("back-link")?.textContent).toBe("← 游戏列表");
+      expect(byId.get("frontier-guide-text")?.textContent).toContain("图表解读");
+      expect(byId.get("strategy-tip-text")?.innerHTML).toContain("通关指南");
       for (const el of allElements) {
         expect(el.getAttribute("aria-label") ?? "", `zh aria-label on #${el.id}`).not.toMatch(
           /[ぁ-んァ-ヶ]/
@@ -365,5 +370,67 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
         (globalThis as { document?: unknown }).document = prevDocument;
       }
     }
+  });
+
+  it("immediately freezes player AUM series at liquidation level upon breaching liquidation floor", () => {
+    const regime = getQuarterRegime(1);
+    // 100% in stock with tight floor guarantees liquidation on day 24 shock
+    const aggressiveWeights = [1.0, 0, 0];
+    const customRegime = {
+      ...regime,
+      liquidationFloor: -0.02, // very tight -2% floor
+    };
+
+    const sim = simulateQuarterMarket({
+      regime: customRegime,
+      playerWeights: aggressiveWeights,
+      aiWeights: [0.33, 0.33, 0.34],
+      playerStartAum: 100,
+      aiStartAum: 100,
+      seed: 12345,
+    });
+
+    expect(sim.playerLiquidated).toBe(true);
+    expect(sim.playerLiquidatedDay).not.toBeNull();
+    const liqDay = sim.playerLiquidatedDay!;
+    expect(liqDay).toBeGreaterThan(0);
+    expect(liqDay).toBeLessThanOrEqual(60);
+
+    // All days after liquidation day must stay frozen at the liquidated level (no resurrection/rebound)
+    const liqAum = sim.playerAumSeries[liqDay];
+    expect(liqAum).toBeLessThanOrEqual(sim.liquidationAumFloor);
+    for (let d = liqDay; d <= 60; d++) {
+      expect(sim.playerAumSeries[d]).toBe(liqAum);
+    }
+    expect(sim.playerEndAum).toBe(liqAum);
+
+    // AI state must freeze at the liquidation day stopping point so scoreboard/banner match the halted chart
+    const aiLiqAum = sim.aiAumSeries[liqDay];
+    expect(sim.aiEndAum).toBe(aiLiqAum);
+    for (let d = liqDay; d <= 60; d++) {
+      expect(sim.aiAumSeries[d]).toBe(aiLiqAum);
+    }
+  });
+
+  it("prioritizes newly unlocked assets over older fillers when expanding portfolio picks via autoPickLevelAssets", () => {
+    // 1. Level 2 -> Level 3 transition: 4 assets held (sp500, bond, gold, tech), Level 3 maxPicks is 5
+    // Level 3 introduces newAssetIds: ["nv-ai", "cloud", "defense"] while "pharma" was unselected in Level 2
+    const l3Spec = getLevelSpec(3);
+    const selectedL3 = autoPickLevelAssets(["sp500", "bond", "gold", "tech"], l3Spec);
+
+    expect(selectedL3).toHaveLength(5);
+    // Newly unlocked NV-AI must be prioritized in the 5th slot, not older unpicked pharma
+    expect(selectedL3[4]).toBe("nv-ai");
+    expect(selectedL3).toContain("nv-ai");
+    expect(selectedL3).not.toContain("pharma");
+
+    // 2. Fresh Level 1 run: empty picks auto-fills all 3 Level 1 assets
+    const l1Spec = getLevelSpec(1);
+    const freshL1 = autoPickLevelAssets([], l1Spec);
+    expect(freshL1).toEqual(["sp500", "bond", "gold"]);
+
+    // 3. Legacy save state with only 2 picks in Level 1: auto-completes to 3 assets including gold
+    const legacyL1 = autoPickLevelAssets(["sp500", "bond"], l1Spec);
+    expect(legacyL1).toEqual(["sp500", "bond", "gold"]);
   });
 });
