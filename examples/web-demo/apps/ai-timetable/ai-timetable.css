@@ -1051,3 +1051,48 @@
   margin: 0 0.3rem;
   vertical-align: middle;
 }
+
+/* ==================== DRAG & DROP FOR TIMETABLE SESSIONS ==================== */
+.course-session-card[draggable="true"],
+.matrix-course-btn[draggable="true"] {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.course-session-card[draggable="true"]:active,
+.matrix-course-btn[draggable="true"]:active,
+.course-session-card.is-dragging,
+.matrix-course-btn.is-dragging {
+  cursor: grabbing;
+}
+
+.course-session-card.is-dragging,
+.matrix-course-btn.is-dragging {
+  opacity: 0.42;
+  transform: scale(0.96);
+  outline: 2px dashed var(--primary-accent, #2563eb);
+  outline-offset: 1px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.mini-slot-td.is-drag-target,
+.matrix-slot-cell.is-drag-target {
+  background-color: rgba(37, 99, 235, 0.14) !important;
+  outline: 2px dashed var(--primary-accent, #2563eb) !important;
+  outline-offset: -2px;
+  transition: background-color 0.12s ease, outline-color 0.12s ease;
+}
+
+.matrix-slot-cell.is-drag-invalid {
+  background-color: rgba(239, 68, 68, 0.14) !important;
+  outline: 2px dashed #ef4444 !important;
+  outline-offset: -2px;
+  cursor: not-allowed;
+}
+
+.mini-slot-td.is-drag-target .mini-slot-empty {
+  border-color: var(--primary-accent, #2563eb);
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--primary-accent, #2563eb);
+}

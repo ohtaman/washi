@@ -94,6 +94,26 @@ let pendingCsvProfs: typeof appState.professors | null = null;
 let pendingCsvRooms: typeof appState.rooms | null = null;
 let pendingCsvCourses: typeof appState.courses | null = null;
 
+// Drag and drop state for timetable sessions
+export interface TimetableDragPayload {
+  courseId: string;
+  sessionIndex: number;
+  fromDay: TimetableDay;
+  fromPeriod: TimetablePeriod;
+  fromRoomId: string;
+  fromProfId: string;
+  sourceView: TimetableBoardViewMode;
+}
+
+let activeDragPayload: TimetableDragPayload | null = null;
+let isDraggingJustFinished = false;
+
+function cleanupDragTargets(): void {
+  document.querySelectorAll(".is-drag-target, .is-drag-invalid, .is-dragging").forEach((el) => {
+    el.classList.remove("is-drag-target", "is-drag-invalid", "is-dragging");
+  });
+}
+
 function downloadTextFile(filename: string, content: string, mime = "text/csv;charset=utf-8"): void {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -873,6 +893,34 @@ function renderTimetableBoard(): void {
         for (const day of DAYS_OF_WEEK) {
           const td = document.createElement("td");
           td.className = "mini-slot-td";
+          td.dataset.day = day;
+          td.dataset.period = String(period);
+          td.dataset.cohortId = cohort.id;
+
+          td.addEventListener("dragover", (e) => {
+            if (!activeDragPayload) return;
+            e.preventDefault();
+            if (e.dataTransfer) {
+              e.dataTransfer.dropEffect = "move";
+            }
+            td.classList.add("is-drag-target");
+          });
+
+          td.addEventListener("dragleave", (e) => {
+            if (!td.contains(e.relatedTarget as Node)) {
+              td.classList.remove("is-drag-target");
+            }
+          });
+
+          td.addEventListener("drop", (e) => {
+            e.preventDefault();
+            td.classList.remove("is-drag-target");
+            if (!activeDragPayload) return;
+            const payload = activeDragPayload;
+            activeDragPayload = null;
+            cleanupDragTargets();
+            void applyDropMove(payload, day, period);
+          });
 
           const slotSessions = (currentTimetable?.bySlot[`${day}_${period}`] ?? []).filter(
             (s) => {
@@ -901,6 +949,43 @@ function renderTimetableBoard(): void {
               btn.dataset.courseId = course.id;
               btn.dataset.profId = course.professorId;
               btn.dataset.roomId = s.roomId;
+              btn.dataset.sessionIndex = String(s.sessionIndex);
+              btn.dataset.day = day;
+              btn.dataset.period = String(period);
+              btn.dataset.cohortId = cohort.id;
+              btn.draggable = true;
+
+              btn.title = pickTimetableLang(activeLang, {
+                ja: `${cI18n.title} (ドラッグして移動 / クリックで設定)`,
+                en: `${cI18n.title} (Drag to move / Click to configure)`,
+                zh: `${cI18n.title} (拖拽以移动 / 点击以配置)`,
+              });
+
+              btn.addEventListener("dragstart", (e) => {
+                activeDragPayload = {
+                  courseId: course.id,
+                  sessionIndex: s.sessionIndex,
+                  fromDay: day,
+                  fromPeriod: period,
+                  fromRoomId: s.roomId,
+                  fromProfId: course.professorId,
+                  sourceView: "cohorts_4",
+                };
+                btn.classList.add("is-dragging");
+                if (e.dataTransfer) {
+                  e.dataTransfer.setData("text/plain", course.id);
+                  e.dataTransfer.effectAllowed = "move";
+                }
+              });
+
+              btn.addEventListener("dragend", () => {
+                btn.classList.remove("is-dragging");
+                cleanupDragTargets();
+                isDraggingJustFinished = true;
+                setTimeout(() => {
+                  isDraggingJustFinished = false;
+                }, 100);
+              });
 
               const slotCourseKey = `${course.id}_${day}_${period}`;
               if (pinnedCourseSlots.has(slotCourseKey)) {
@@ -940,6 +1025,7 @@ function renderTimetableBoard(): void {
 
               btn.append(topRow, titleRow, metaRow);
               btn.addEventListener("click", () => {
+                if (isDraggingJustFinished) return;
                 openSlotInspectorDialog(day, period, s);
               });
               stack.appendChild(btn);
@@ -956,6 +1042,7 @@ function renderTimetableBoard(): void {
               zh: `将${cohortI18n.shortLabel}课程固定在 ${formatSlotI18n(day, period, activeLang)}`,
             });
             emptyBtn.addEventListener("click", () => {
+              if (isDraggingJustFinished) return;
               openSlotInspectorDialog(day, period, null);
             });
             td.appendChild(emptyBtn);
@@ -1053,6 +1140,9 @@ function renderTimetableBoard(): void {
         for (const p of PERIODS) {
           const td = document.createElement("td");
           td.className = `matrix-slot-cell ${p === 5 ? "matrix-day-divider" : ""}`;
+          td.dataset.day = d;
+          td.dataset.period = String(p);
+          td.dataset.profId = prof.id;
 
           const assigned = (currentTimetable?.bySlot[`${d}_${p}`] ?? []).find((s) =>
             profCourseIds.has(s.courseId)
@@ -1069,6 +1159,36 @@ function renderTimetableBoard(): void {
               (!r.days || r.days.includes(d)) &&
               (!r.periods || r.periods.includes(p))
           );
+          const isSlotBlocked = Boolean(isUnavailDay || unavailSlot || customForbidRule);
+
+          td.addEventListener("dragover", (e) => {
+            if (!activeDragPayload) return;
+            if (activeDragPayload.fromProfId !== prof.id || isSlotBlocked) {
+              if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+              td.classList.add("is-drag-invalid");
+              return;
+            }
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+            td.classList.add("is-drag-target");
+          });
+
+          td.addEventListener("dragleave", (e) => {
+            if (!td.contains(e.relatedTarget as Node)) {
+              td.classList.remove("is-drag-target", "is-drag-invalid");
+            }
+          });
+
+          td.addEventListener("drop", (e) => {
+            e.preventDefault();
+            td.classList.remove("is-drag-target", "is-drag-invalid");
+            if (!activeDragPayload) return;
+            if (activeDragPayload.fromProfId !== prof.id || isSlotBlocked) return;
+            const payload = activeDragPayload;
+            activeDragPayload = null;
+            cleanupDragTargets();
+            void applyDropMove(payload, d, p);
+          });
 
           if (assigned) {
             const c = courseMap.get(assigned.courseId)!;
@@ -1082,6 +1202,10 @@ function renderTimetableBoard(): void {
             btn.dataset.courseId = c.id;
             btn.dataset.profId = prof.id;
             btn.dataset.roomId = assigned.roomId;
+            btn.dataset.sessionIndex = String(assigned.sessionIndex);
+            btn.dataset.day = d;
+            btn.dataset.period = String(p);
+            btn.draggable = true;
 
             if (pinnedCourseSlots.has(`${c.id}_${d}_${p}`)) {
               btn.classList.add("cell-pinned-outline");
@@ -1097,8 +1221,36 @@ function renderTimetableBoard(): void {
             subSpan.className = "matrix-course-sub";
             subSpan.textContent = `${c.cohorts.join("/")}[${rI18n?.shortName ?? assigned.roomId}]`;
             btn.append(codeSpan, subSpan);
-            btn.title = `${formatSlotI18n(d, p, activeLang)}: ${cI18n.title} (${c.cohorts.join("/")} · ${rI18n?.name ?? ""})`;
+            btn.title = `${formatSlotI18n(d, p, activeLang)}: ${cI18n.title} (${c.cohorts.join("/")} · ${rI18n?.name ?? ""}) ${pickTimetableLang(activeLang, { ja: "(ドラッグして移動 / クリックで設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+
+            btn.addEventListener("dragstart", (e) => {
+              activeDragPayload = {
+                courseId: c.id,
+                sessionIndex: assigned.sessionIndex,
+                fromDay: d,
+                fromPeriod: p,
+                fromRoomId: assigned.roomId,
+                fromProfId: prof.id,
+                sourceView: "professors_matrix",
+              };
+              btn.classList.add("is-dragging");
+              if (e.dataTransfer) {
+                e.dataTransfer.setData("text/plain", c.id);
+                e.dataTransfer.effectAllowed = "move";
+              }
+            });
+
+            btn.addEventListener("dragend", () => {
+              btn.classList.remove("is-dragging");
+              cleanupDragTargets();
+              isDraggingJustFinished = true;
+              setTimeout(() => {
+                isDraggingJustFinished = false;
+              }, 100);
+            });
+
             btn.addEventListener("click", () => {
+              if (isDraggingJustFinished) return;
               openSlotInspectorDialog(d, p, assigned);
             });
             td.appendChild(btn);
@@ -1161,6 +1313,9 @@ function renderTimetableBoard(): void {
         for (const p of PERIODS) {
           const td = document.createElement("td");
           td.className = `matrix-slot-cell ${p === 5 ? "matrix-day-divider" : ""}`;
+          td.dataset.day = d;
+          td.dataset.period = String(p);
+          td.dataset.roomId = room.id;
 
           const assigned = currentTimetable?.bySlotAndRoom[`${d}_${p}_${room.id}`];
           const isClosed = appState.customRules.some(
@@ -1171,6 +1326,35 @@ function renderTimetableBoard(): void {
               (!r.days || r.days.includes(d)) &&
               (!r.periods || r.periods.includes(p))
           );
+
+          td.addEventListener("dragover", (e) => {
+            if (!activeDragPayload) return;
+            if (isClosed) {
+              if (e.dataTransfer) e.dataTransfer.dropEffect = "none";
+              td.classList.add("is-drag-invalid");
+              return;
+            }
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+            td.classList.add("is-drag-target");
+          });
+
+          td.addEventListener("dragleave", (e) => {
+            if (!td.contains(e.relatedTarget as Node)) {
+              td.classList.remove("is-drag-target", "is-drag-invalid");
+            }
+          });
+
+          td.addEventListener("drop", (e) => {
+            e.preventDefault();
+            td.classList.remove("is-drag-target", "is-drag-invalid");
+            if (!activeDragPayload) return;
+            if (isClosed) return;
+            const payload = activeDragPayload;
+            activeDragPayload = null;
+            cleanupDragTargets();
+            void applyDropMove(payload, d, p, room.id);
+          });
 
           if (assigned) {
             const c = courseMap.get(assigned.courseId)!;
@@ -1184,6 +1368,10 @@ function renderTimetableBoard(): void {
             btn.dataset.courseId = c.id;
             btn.dataset.profId = c.professorId;
             btn.dataset.roomId = room.id;
+            btn.dataset.sessionIndex = String(assigned.sessionIndex);
+            btn.dataset.day = d;
+            btn.dataset.period = String(p);
+            btn.draggable = true;
 
             if (pinnedCourseSlots.has(`${c.id}_${d}_${p}`)) {
               btn.classList.add("cell-pinned-outline");
@@ -1199,8 +1387,36 @@ function renderTimetableBoard(): void {
             subSpan.className = "matrix-course-sub";
             subSpan.textContent = `${c.cohorts.join("/")}·${pI18n?.shortName ?? ""} (${c.enrollment})`;
             btn.append(codeSpan, subSpan);
-            btn.title = `${formatSlotI18n(d, p, activeLang)} [${rI18n.name}]: ${cI18n.title} (${c.enrollment}/${room.capacity})`;
+            btn.title = `${formatSlotI18n(d, p, activeLang)} [${rI18n.name}]: ${cI18n.title} (${c.enrollment}/${room.capacity}) ${pickTimetableLang(activeLang, { ja: "(ドラッグして移動 / クリックで設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+
+            btn.addEventListener("dragstart", (e) => {
+              activeDragPayload = {
+                courseId: c.id,
+                sessionIndex: assigned.sessionIndex,
+                fromDay: d,
+                fromPeriod: p,
+                fromRoomId: room.id,
+                fromProfId: c.professorId,
+                sourceView: "rooms_matrix",
+              };
+              btn.classList.add("is-dragging");
+              if (e.dataTransfer) {
+                e.dataTransfer.setData("text/plain", c.id);
+                e.dataTransfer.effectAllowed = "move";
+              }
+            });
+
+            btn.addEventListener("dragend", () => {
+              btn.classList.remove("is-dragging");
+              cleanupDragTargets();
+              isDraggingJustFinished = true;
+              setTimeout(() => {
+                isDraggingJustFinished = false;
+              }, 100);
+            });
+
             btn.addEventListener("click", () => {
+              if (isDraggingJustFinished) return;
               openSlotInspectorDialog(d, p, assigned);
             });
             td.appendChild(btn);
@@ -2147,6 +2363,74 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
   return outcome;
 }
 
+export async function applyDropMove(
+  payload: TimetableDragPayload,
+  toDay: TimetableDay,
+  toPeriod: TimetablePeriod,
+  toRoomId?: string
+): Promise<void> {
+  if (
+    payload.fromDay === toDay &&
+    payload.fromPeriod === toPeriod &&
+    (!toRoomId || toRoomId === payload.fromRoomId)
+  ) {
+    return;
+  }
+
+  const course = appState.courses.find((c) => c.id === payload.courseId);
+  if (!course) return;
+
+  // Unpin previous rules matching the source slot or course
+  if (course.sessionsPerWeek === 1) {
+    appState.customRules = appState.customRules.filter(
+      (r) => !(r.kind === "pin_slot" && r.courseId === course.id)
+    );
+  } else {
+    appState.customRules = appState.customRules.filter(
+      (r) =>
+        !(
+          r.kind === "pin_slot" &&
+          r.courseId === course.id &&
+          r.days?.includes(payload.fromDay) &&
+          r.periods?.includes(payload.fromPeriod)
+        )
+    );
+  }
+
+  const targetRoom = toRoomId ? appState.rooms.find((r) => r.id === toRoomId) : undefined;
+  const courseI18n = getCourseI18n(course, activeLang);
+  const slotText = formatSlotI18n(toDay, toPeriod, activeLang);
+  const roomText = targetRoom ? ` (${targetRoom.name})` : "";
+
+  const desc = pickTimetableLang(activeLang, {
+    ja: `「${course.title}(${course.id})」を ${slotText}${roomText} に固定 (ドラッグ移動)`,
+    en: `Pin "${course.title}(${course.id})" to ${slotText}${roomText} (Drag & Drop)`,
+    zh: `将《${course.title}(${course.id})》固定在 ${slotText}${roomText} (拖拽移动)`,
+  });
+
+  const newRule: CustomTimetableRule = {
+    id: `pin_${course.id}_${toDay}_P${toPeriod}_${Date.now()}`,
+    kind: "pin_slot",
+    enabled: true,
+    isHard: true,
+    courseId: course.id,
+    days: [toDay],
+    periods: [toPeriod],
+    roomId: targetRoom?.id,
+    description: desc,
+  };
+  appState.customRules.push(newRule);
+
+  const moveMsg = pickTimetableLang(activeLang, {
+    ja: `📌 **ドラッグ＆ドロップ移動**: 「${courseI18n.title}」を **${slotText}${roomText}** に固定して時間割を再編成します。`,
+    en: `📌 **Drag & Drop**: Pinned **${courseI18n.title}** to **${slotText}${roomText}** and re-optimizing timetable.`,
+    zh: `📌 **拖拽移动**: 已将《${courseI18n.title}》固定在 **${slotText}${roomText}**，正在重新编排课表。`,
+  });
+  appendChatMessage("assistant", moveMsg);
+
+  await triggerSolve();
+}
+
 function openSlotInspectorDialog(
   day: TimetableDay,
   period: TimetablePeriod,
@@ -2875,6 +3159,12 @@ function wireEvents(): void {
   });
   $("chk-preserve-timetable").addEventListener("change", (e) => {
     appState.config.preserveCurrentTimetable = (e.target as HTMLInputElement).checked;
+  });
+
+  // Drag and drop global cancellation & cleanup
+  window.addEventListener("dragend", () => {
+    cleanupDragTargets();
+    activeDragPayload = null;
   });
 
   // Tab 2 Config checkboxes & inputs: sync into appState.config immediately on change
