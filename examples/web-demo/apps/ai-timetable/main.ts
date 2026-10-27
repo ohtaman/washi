@@ -1148,8 +1148,16 @@ function renderTimetableBoard(): void {
             profCourseIds.has(s.courseId)
           );
 
-          const isUnavailDay = prof.unavailableDays.includes(d);
-          const unavailSlot = prof.unavailableSlots.find((u) => u.day === d && u.period === p);
+          const enforceDays =
+            prof.employment === "adjunct"
+              ? appState.config.enforceAdjunctDayRestrictions
+              : appState.config.enforceProfessorAvailability;
+          const enforceSlots = appState.config.enforceProfessorAvailability;
+
+          const isUnavailDay = Boolean(enforceDays && prof.unavailableDays.includes(d));
+          const unavailSlot = enforceSlots
+            ? prof.unavailableSlots.find((u) => u.day === d && u.period === p)
+            : undefined;
           const customForbidRule = appState.customRules.find(
             (r) =>
               r.enabled &&

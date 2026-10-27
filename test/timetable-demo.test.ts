@@ -1390,6 +1390,30 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         (s) => s.day === c02TargetDay && s.period === 3
       );
       expect(hasSessionOnTargetDay).toBe(true);
+
+      // 6. When enforceProfessorAvailability is disabled, professor unavailable slots are not blocked
+      const stateForRelaxedAvail = getAppState();
+      stateForRelaxedAvail.config.enforceProfessorAvailability = false;
+
+      // P01 has Wed P5 as unavailable slot in master profile
+      const p01Session = tt5.sessions.find((s) => s.courseId === "C02" && s.day === c02TargetDay)!;
+      await applyDropMove(
+        {
+          courseId: "C02",
+          sessionIndex: p01Session.sessionIndex,
+          fromDay: p01Session.day,
+          fromPeriod: p01Session.period,
+          fromRoomId: p01Session.roomId,
+          fromProfId: "P01",
+          sourceView: "professors_matrix",
+        },
+        "Wed",
+        5
+      );
+
+      const tt6 = getCurrentTimetable()!;
+      const c02AtWedP5 = tt6.sessions.find((s) => s.courseId === "C02" && s.day === "Wed" && s.period === 5);
+      expect(c02AtWedP5).toBeDefined();
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;
