@@ -1176,4 +1176,247 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       delete (globalThis as any).confirm;
     }
   });
+
+  test("supports drag-and-drop pinning and re-optimization across timetable slots", async () => {
+    const {
+      getAppState,
+      getCurrentTimetable,
+      handleGenerateSample,
+      applyDropMove,
+      triggerSolve,
+    } = await import("../examples/web-demo/apps/ai-timetable/main.js");
+
+    const elements = new Map<string, any>();
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => ({
+      id,
+      disabled: false,
+      hidden: false,
+      value: "",
+      checked: false,
+      textContent: "",
+      title: "",
+      className: "",
+      innerHTML: "",
+      style: {} as Record<string, string>,
+      children: [],
+      options: [],
+      click: () => {},
+      addEventListener: () => {},
+      setAttribute: () => {},
+      getAttribute: () => null,
+      appendChild: () => {},
+      append: () => {},
+      prepend: () => {},
+      remove: () => {},
+      replaceChildren: () => {},
+      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+      dataset: {},
+      ...initialProps,
+    });
+    const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
+      const el = createMockElement(id, initialProps);
+      elements.set(id, el);
+      return el;
+    };
+
+    registerMock("kpi-status-badge");
+    registerMock("kpi-summary-text");
+    registerMock("kpi-solve-time");
+    registerMock("conflict-alert");
+    registerMock("btn-abort-solve");
+    registerMock("chat-messages");
+    registerMock("view-cohorts-grid");
+    registerMock("view-matrix-wrap");
+    registerMock("chk-highlight-diff", { checked: false });
+    registerMock("matrix-25-thead");
+    registerMock("matrix-25-tbody");
+    registerMock("matrix-25-tfoot");
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => {
+        if (!elements.has(id)) {
+          registerMock(id);
+        }
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      createElement: (tag: string) => createMockElement(`tag_${tag}`),
+      createTextNode: (text: string) => createMockElement("text", { textContent: text }),
+    };
+
+    try {
+      // 1. Generate sample and solve initial timetable
+      handleGenerateSample(false);
+      const initialOutcome = await triggerSolve();
+      expect(initialOutcome?.status).toBe("Optimal");
+      const tt1 = getCurrentTimetable()!;
+      expect(tt1).not.toBeNull();
+
+      // Pick a single-session course (e.g. C01)
+      const c01Session = tt1.sessions.find((s) => s.courseId === "C01")!;
+      expect(c01Session).toBeDefined();
+      const origDay = c01Session.day;
+      const origPeriod = c01Session.period;
+
+      // Choose a different target slot
+      const targetDay: typeof origDay = origDay === "Mon" ? "Wed" : "Mon";
+      const targetPeriod: typeof origPeriod = origPeriod === 1 ? 3 : 1;
+
+      // 2. Perform drag-and-drop move
+      await applyDropMove(
+        {
+          courseId: "C01",
+          sessionIndex: c01Session.sessionIndex,
+          fromDay: origDay,
+          fromPeriod: origPeriod,
+          fromRoomId: c01Session.roomId,
+          fromProfId: "P07",
+          sourceView: "cohorts_4",
+        },
+        targetDay,
+        targetPeriod
+      );
+
+      // Verify custom rule was added
+      const stateAfterMove1 = getAppState();
+      const pinRule1 = stateAfterMove1.customRules.find(
+        (r) => r.kind === "pin_slot" && r.courseId === "C01"
+      );
+      expect(pinRule1).toBeDefined();
+      expect(pinRule1?.days).toEqual([targetDay]);
+      expect(pinRule1?.periods).toEqual([targetPeriod]);
+
+      // Verify timetable was re-optimized and C01 is at the target slot
+      const tt2 = getCurrentTimetable()!;
+      expect(tt2).not.toBeNull();
+      const movedC01 = tt2.sessions.find((s) => s.courseId === "C01")!;
+      expect(movedC01.day).toBe(targetDay);
+      expect(movedC01.period).toBe(targetPeriod);
+
+      // 3. Move it again to a third slot: verify old pin is replaced rather than causing double-pin conflicts
+      const thirdDay: typeof origDay = "Fri";
+      const thirdPeriod: typeof origPeriod = 4;
+      await applyDropMove(
+        {
+          courseId: "C01",
+          sessionIndex: movedC01.sessionIndex,
+          fromDay: targetDay,
+          fromPeriod: targetPeriod,
+          fromRoomId: movedC01.roomId,
+          fromProfId: "P07",
+          sourceView: "cohorts_4",
+        },
+        thirdDay,
+        thirdPeriod
+      );
+
+      const stateAfterMove2 = getAppState();
+      const c01Pins = stateAfterMove2.customRules.filter(
+        (r) => r.kind === "pin_slot" && r.courseId === "C01"
+      );
+      expect(c01Pins).toHaveLength(1);
+      expect(c01Pins[0].days).toEqual([thirdDay]);
+      expect(c01Pins[0].periods).toEqual([thirdPeriod]);
+
+      const tt3 = getCurrentTimetable()!;
+      const thirdC01 = tt3.sessions.find((s) => s.courseId === "C01")!;
+      expect(thirdC01.day).toBe(thirdDay);
+      expect(thirdC01.period).toBe(thirdPeriod);
+
+      // 4. Room matrix drag-and-drop: move to specific room R101 (large hall) and slot
+      const r101RoomId = "R101";
+      await applyDropMove(
+        {
+          courseId: "C01",
+          sessionIndex: thirdC01.sessionIndex,
+          fromDay: thirdDay,
+          fromPeriod: thirdPeriod,
+          fromRoomId: thirdC01.roomId,
+          fromProfId: "P07",
+          sourceView: "rooms_matrix",
+        },
+        "Mon",
+        2,
+        r101RoomId
+      );
+
+      const stateAfterMove3 = getAppState();
+      const roomPin = stateAfterMove3.customRules.find(
+        (r) => r.kind === "pin_slot" && r.courseId === "C01"
+      );
+      expect(roomPin).toBeDefined();
+      expect(roomPin?.roomId).toBe(r101RoomId);
+      expect(roomPin?.days).toEqual(["Mon"]);
+      expect(roomPin?.periods).toEqual([2]);
+
+      const tt4 = getCurrentTimetable()!;
+      const r101C01 = tt4.sessions.find((s) => s.courseId === "C01")!;
+      expect(r101C01.day).toBe("Mon");
+      expect(r101C01.period).toBe(2);
+      expect(r101C01.roomId).toBe(r101RoomId);
+
+      // 5. Multi-session course: move 1 session of C02 (sessionsPerWeek = 2) without removing the other
+      const c02Sessions = tt4.sessions.filter((s) => s.courseId === "C02");
+      expect(c02Sessions).toHaveLength(2);
+      const sessionToMove = c02Sessions[0];
+      const otherSession = c02Sessions[1];
+
+      // Pick target day not colliding with otherSession's day
+      const targetDaysAvailable = (["Tue", "Wed", "Thu", "Fri"] as const).filter(
+        (d) => d !== otherSession.day && d !== sessionToMove.day
+      );
+      const c02TargetDay = targetDaysAvailable[0];
+
+      await applyDropMove(
+        {
+          courseId: "C02",
+          sessionIndex: sessionToMove.sessionIndex,
+          fromDay: sessionToMove.day,
+          fromPeriod: sessionToMove.period,
+          fromRoomId: sessionToMove.roomId,
+          fromProfId: "P01",
+          sourceView: "cohorts_4",
+        },
+        c02TargetDay,
+        3
+      );
+
+      const tt5 = getCurrentTimetable()!;
+      const c02SessionsAfter = tt5.sessions.filter((s) => s.courseId === "C02");
+      expect(c02SessionsAfter).toHaveLength(2);
+      const hasSessionOnTargetDay = c02SessionsAfter.some(
+        (s) => s.day === c02TargetDay && s.period === 3
+      );
+      expect(hasSessionOnTargetDay).toBe(true);
+
+      // 6. When enforceProfessorAvailability is disabled, professor unavailable slots are not blocked
+      const stateForRelaxedAvail = getAppState();
+      stateForRelaxedAvail.config.enforceProfessorAvailability = false;
+
+      // P01 has Wed P5 as unavailable slot in master profile
+      const p01Session = tt5.sessions.find((s) => s.courseId === "C02" && s.day === c02TargetDay)!;
+      await applyDropMove(
+        {
+          courseId: "C02",
+          sessionIndex: p01Session.sessionIndex,
+          fromDay: p01Session.day,
+          fromPeriod: p01Session.period,
+          fromRoomId: p01Session.roomId,
+          fromProfId: "P01",
+          sourceView: "professors_matrix",
+        },
+        "Wed",
+        5
+      );
+
+      const tt6 = getCurrentTimetable()!;
+      const c02AtWedP5 = tt6.sessions.find((s) => s.courseId === "C02" && s.day === "Wed" && s.period === 5);
+      expect(c02AtWedP5).toBeDefined();
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  });
 });

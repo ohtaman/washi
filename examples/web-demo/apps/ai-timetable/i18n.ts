@@ -1151,7 +1151,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     step1Badge: "体験 1",
     step1Title: "複数枚の時間割が連動する様子を見る・固定する",
     step1DescHtml:
-      "<strong>4学年分の時間割（4枚）</strong>と<strong>10名の教員別・7室の教室別マトリクス</strong>が裏で全て連動しています。コマをクリックして固定できます。",
+      "<strong>4学年分の時間割（4枚）</strong>と<strong>10名の教員別・7室の教室別マトリクス</strong>が裏で全て連動しています。コマをドラッグ＆ドロップして別時限に移動するか、クリックして固定できます。",
     step1Btn: "👆 試す：「数理最適化」を火曜2限・101大講義室に固定",
     step2Badge: "体験 2",
     step2Title: "教員の都合や連続コマ条件を追加して再編成",
@@ -1587,7 +1587,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     step1Badge: "Demo 1",
     step1Title: "Inspect Coupled Multi-Boards & Pin a Course",
     step1DescHtml:
-      "<strong>4 Student Cohort Timetables (Y1–Y4)</strong>, <strong>10 Faculty Schedules</strong>, and <strong>7 Room Schedules</strong> are all coupled underneath. Click any slot to pin.",
+      "<strong>4 Student Cohort Timetables (Y1–Y4)</strong>, <strong>10 Faculty Schedules</strong>, and <strong>7 Room Schedules</strong> are all coupled underneath. Drag & drop any session to move, or click to pin.",
     step1Btn: '👆 Try: Pin "Math Optimization" to Tue P2 in Hall 101',
     step2Badge: "Demo 2",
     step2Title: "Add Faculty Availability or Consecutive Lab Rules",
@@ -2023,7 +2023,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     step1Badge: "体验 1",
     step1Title: "查看多张课表底层联动・点击固定课程",
     step1DescHtml:
-      "<strong>4个年级的课表（4张）</strong>与<strong>10位教师课表・7间教室矩阵</strong>在底层全部实时联动。点击任意课程格即可固定。",
+      "<strong>4个年级的课表（4张）</strong>与<strong>10位教师课表・7间教室矩阵</strong>在底层全部实时联动。可直接拖拽课程卡片至目标节次，或点击以固定。",
     step1Btn: "👆 试试：将《数学规划》固定在周二第2节・101大阶梯教室",
     step2Badge: "体验 2",
     step2Title: "添加教师出勤限制或实验课连排条件",
