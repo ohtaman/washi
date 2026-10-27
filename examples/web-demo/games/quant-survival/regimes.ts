@@ -867,6 +867,42 @@ export function getLevelSpec(level: number): LevelSpec {
   };
 }
 
+/**
+ * Automatically populates asset picks up to spec.maxPicks,
+ * prioritizing newly unlocked assets for the current level first,
+ * then falling back to any remaining unlocked assets.
+ */
+export function autoPickLevelAssets(
+  currentPicks: string[],
+  spec: LevelSpec
+): string[] {
+  const picks: string[] = [];
+  for (const id of currentPicks) {
+    if (picks.length >= spec.maxPicks) break;
+    if (spec.unlockedAssetIds.includes(id) && !picks.includes(id)) {
+      picks.push(id);
+    }
+  }
+
+  // 1. Prioritize newly unlocked assets for this level
+  for (const id of spec.newAssetIds) {
+    if (picks.length >= spec.maxPicks) break;
+    if (!picks.includes(id)) {
+      picks.push(id);
+    }
+  }
+
+  // 2. Fill remaining capacity with any older unlocked assets
+  for (const id of spec.unlockedAssetIds) {
+    if (picks.length >= spec.maxPicks) break;
+    if (!picks.includes(id)) {
+      picks.push(id);
+    }
+  }
+
+  return picks.slice(0, spec.maxPicks);
+}
+
 export function getAssetSpecById(id: string, maxLevel = 100): AssetSpec {
   if (CORE_ASSETS[id]) {
     return CORE_ASSETS[id];

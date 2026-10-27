@@ -10,6 +10,7 @@ import {
   solveQuantOptimalPortfolio,
 } from "../examples/web-demo/games/quant-survival/solver.js";
 import {
+  autoPickLevelAssets,
   buildSubsetRegime,
   getLevelSpec,
   getLocalizedAsset,
@@ -404,30 +405,25 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
     expect(sim.playerEndAum).toBe(liqAum);
   });
 
-  it("prioritizes newly unlocked assets over older fillers when expanding portfolio picks", () => {
-    // Simulate transitioning from Level 2 (4 assets chosen: sp500, bond, gold, tech) to Level 3 (maxPicks: 5)
-    // Level 3 has newAssetIds: ["nv-ai", "cloud", "defense"] and older unpicked asset: "pharma"
+  it("prioritizes newly unlocked assets over older fillers when expanding portfolio picks via autoPickLevelAssets", () => {
+    // 1. Level 2 -> Level 3 transition: 4 assets held (sp500, bond, gold, tech), Level 3 maxPicks is 5
+    // Level 3 introduces newAssetIds: ["nv-ai", "cloud", "defense"] while "pharma" was unselected in Level 2
     const l3Spec = getLevelSpec(3);
-    const selected = ["sp500", "bond", "gold", "tech"];
+    const selectedL3 = autoPickLevelAssets(["sp500", "bond", "gold", "tech"], l3Spec);
 
-    // Auto-pick logic mimicking advanceToNextLevel & loadSaveState
-    for (const id of l3Spec.newAssetIds) {
-      if (selected.length >= l3Spec.maxPicks) break;
-      if (!selected.includes(id)) {
-        selected.push(id);
-      }
-    }
-    for (const id of l3Spec.unlockedAssetIds) {
-      if (selected.length >= l3Spec.maxPicks) break;
-      if (!selected.includes(id)) {
-        selected.push(id);
-      }
-    }
+    expect(selectedL3).toHaveLength(5);
+    // Newly unlocked NV-AI must be prioritized in the 5th slot, not older unpicked pharma
+    expect(selectedL3[4]).toBe("nv-ai");
+    expect(selectedL3).toContain("nv-ai");
+    expect(selectedL3).not.toContain("pharma");
 
-    expect(selected).toHaveLength(5);
-    // Newly unlocked NV-AI must be selected in the 5th slot, not older unpicked pharma
-    expect(selected[4]).toBe("nv-ai");
-    expect(selected).toContain("nv-ai");
-    expect(selected).not.toContain("pharma");
+    // 2. Fresh Level 1 run: empty picks auto-fills all 3 Level 1 assets
+    const l1Spec = getLevelSpec(1);
+    const freshL1 = autoPickLevelAssets([], l1Spec);
+    expect(freshL1).toEqual(["sp500", "bond", "gold"]);
+
+    // 3. Legacy save state with only 2 picks in Level 1: auto-completes to 3 assets including gold
+    const legacyL1 = autoPickLevelAssets(["sp500", "bond"], l1Spec);
+    expect(legacyL1).toEqual(["sp500", "bond", "gold"]);
   });
 });
