@@ -456,7 +456,7 @@ const report = m.validateSolution();</code></pre>
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 『大学時間割編成 AI Copilot』を体験する ▶</a>
             <a href="../ai-shift/" class="nav-btn">🏥 『ナーススケジューリング AI Copilot』を開く →</a>
-            <a href="../../games/" class="nav-btn">🎮 数理最適化パズルゲーム一覧へ →</a>
+            <a href="../../ja/showcase/" class="nav-btn" data-cta-showcase="ja">✨ ショーケース一覧へ →</a>
           </div>
         </section>
       </div>
@@ -608,7 +608,7 @@ const report = m.validateSolution();</code></pre>
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 Open "University Timetabling AI Copilot" ▶</a>
             <a href="../ai-shift/" class="nav-btn">🏥 Open "Nurse Scheduling AI Copilot" →</a>
-            <a href="../../games/" class="nav-btn">🎮 Browse Optimization Puzzle Games →</a>
+            <a href="../../showcase/" class="nav-btn" data-cta-showcase="en">✨ Browse All Showcase Demos →</a>
           </div>
         </section>
       </div>
@@ -760,7 +760,7 @@ const report = m.validateSolution();</code></pre>
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 打开《大学排课 AI Copilot》 ▶</a>
             <a href="../ai-shift/" class="nav-btn">🏥 打开《护士排班 AI Copilot》 →</a>
-            <a href="../../games/" class="nav-btn">🎮 浏览数理优化益智游戏 →</a>
+            <a href="../../zh/showcase/" class="nav-btn" data-cta-showcase="zh">✨ 浏览全部案例展示 →</a>
           </div>
         </section>
       </div>
@@ -816,6 +816,16 @@ const report = m.validateSolution();</code></pre>
       });
 
       applyLang(getGameLang());
+
+      const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      if (isDev && !window.location.pathname.startsWith("/washi")) {
+        const ctaJa = document.querySelector('[data-cta-showcase="ja"]');
+        if (ctaJa) ctaJa.href = "https://ohtaman.github.io/washi/ja/showcase/";
+        const ctaEn = document.querySelector('[data-cta-showcase="en"]');
+        if (ctaEn) ctaEn.href = "https://ohtaman.github.io/washi/showcase/";
+        const ctaZh = document.querySelector('[data-cta-showcase="zh"]');
+        if (ctaZh) ctaZh.href = "https://ohtaman.github.io/washi/zh/showcase/";
+      }
     </script>
   </body>
 </html>
