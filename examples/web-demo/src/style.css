@@ -38,8 +38,8 @@
   --border-focus: #c23b22;
 
   /* タイポグラフィ */
-  --font-serif: 'Noto Serif JP', serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-sans: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  --font-serif: var(--font-sans);
   --font-mono: 'JetBrains Mono', 'Menlo', monospace;
 
   /* 角丸と陰影 */
@@ -209,7 +209,7 @@ body {
 }
 
 .brand-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-sumi);
@@ -611,7 +611,7 @@ body {
 }
 
 .section-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 0.98rem;
   font-weight: 700;
   color: var(--text-sumi);
@@ -799,7 +799,7 @@ body {
 }
 
 .docs-container h2 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.3rem;
   color: var(--text-sumi);
   margin-bottom: 8px;
@@ -816,7 +816,7 @@ body {
 }
 
 .docs-section h3 {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 1.05rem;
   color: var(--color-hi);
   margin-bottom: 12px;

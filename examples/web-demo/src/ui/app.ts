@@ -29,6 +29,69 @@ const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
   },
 };
 
+function stripComments(code: string): string {
+  return code
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+}
+
+export function replaceSolverInCode(code: string, solverName: "highs" | "glpk" | "z3"): string {
+  let hasReplaced = false;
+
+  // 1. Replace inside Model constructor object literal: new Model({ ... solver: "..." }) or new Model("name", { ... solver: "..." })
+  if (/new\s+Model\s*\([^{)]*\{[^}]*?solver\s*:\s*["'][a-zA-Z0-9_-]+["']/.test(code)) {
+    code = code.replace(
+      /(new\s+Model\s*\([^{)]*\{[\s\S]*?solver\s*:\s*["'])[a-zA-Z0-9_-]+(["'])/g,
+      `$1${solverName}$2`
+    );
+    hasReplaced = true;
+  }
+
+  // 2. Replace inside solve() / check() call options: .solve({ solver: "..." }) or .check({ solver: "..." })
+  if (/\.(?:solve|check)\s*\([^{)]*\{[^}]*?solver\s*:\s*["'][a-zA-Z0-9_-]+["']/.test(code)) {
+    code = code.replace(
+      /(\.(?:solve|check)\s*\([^{)]*\{[\s\S]*?solver\s*:\s*["'])[a-zA-Z0-9_-]+(["'])/g,
+      `$1${solverName}$2`
+    );
+    hasReplaced = true;
+  }
+
+  if (hasReplaced) {
+    return code;
+  }
+
+  // 3. Fallback: If new Model({ ... }) exists without solver property
+  if (/new\s+Model\s*\(\s*\{/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*\{)/, `$1 solver: "${solverName}",`);
+  } else if (/new\s+Model\s*\(\s*(["'`][^"'`]+["'`])\s*,\s*\{/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*["'`][^"'`]+["'`]\s*,\s*\{)/, `$1 solver: "${solverName}",`);
+  } else if (/new\s+Model\s*\(\s*(["'`][^"'`]+["'`])\s*\)/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*["'`][^"'`]+["'`]\s*)\)/, `$1, { solver: "${solverName}" })`);
+  } else if (/new\s+Model\s*\(\s*\)/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*)\)/, `$1{ solver: "${solverName}" })`);
+  }
+
+  return code;
+}
+
+export function detectSolverInCode(code: string): ("highs" | "glpk" | "z3") | null {
+  // Strip comments first so comments mentioning solvers are not misdetected
+  const stripped = stripComments(code);
+
+  const modelMatch = stripped.match(/new\s+Model\s*\([^{)]*\{[^}]*?solver\s*:\s*["'](highs|glpk|z3)["']/i);
+  if (modelMatch) {
+    return modelMatch[1].toLowerCase() as "highs" | "glpk" | "z3";
+  }
+
+  const callMatch = stripped.match(/\.(?:solve|check)\s*\([^{)]*\{[^}]*?solver\s*:\s*["'](highs|glpk|z3)["']/i);
+  if (callMatch) {
+    return callMatch[1].toLowerCase() as "highs" | "glpk" | "z3";
+  }
+
+  const generalMatch = stripped.match(/solver\s*:\s*["'](highs|glpk|z3)["']/i);
+  return generalMatch ? (generalMatch[1].toLowerCase() as "highs" | "glpk" | "z3") : null;
+}
+
 export function initApp() {
   initTheme();
   registerZ3Solver();
@@ -177,6 +240,24 @@ export function initApp() {
   const solverBadgeText = document.getElementById("solver-badge-text") as HTMLSpanElement | null;
   let currentSolver: "highs" | "glpk" | "z3" = "highs";
 
+  function updateCodeSolver(solverName: "highs" | "glpk" | "z3") {
+    const updated = replaceSolverInCode(codeTextarea.value, solverName);
+    if (updated !== codeTextarea.value) {
+      codeTextarea.value = updated;
+      updateLineNumbers();
+    }
+  }
+
+  function syncSolverFromCode() {
+    const detected = detectSolverInCode(codeTextarea.value);
+    if (detected && currentSolver !== detected) {
+      if (solverSelect && solverSelect.value !== detected) {
+        solverSelect.value = detected;
+      }
+      updateSolver(detected);
+    }
+  }
+
   function updateSolver(solverName: "highs" | "glpk" | "z3") {
     currentSolver = solverName;
     setDefaultSolver(solverName);
@@ -196,12 +277,17 @@ export function initApp() {
 
   if (solverSelect) {
     solverSelect.addEventListener("change", () => {
-      updateSolver(solverSelect.value as "highs" | "glpk" | "z3");
+      const selected = solverSelect.value as "highs" | "glpk" | "z3";
+      updateSolver(selected);
+      updateCodeSolver(selected);
     });
   }
 
   // Editor events
-  codeTextarea.addEventListener("input", updateLineNumbers);
+  codeTextarea.addEventListener("input", () => {
+    updateLineNumbers();
+    syncSolverFromCode();
+  });
   codeTextarea.addEventListener("scroll", () => {
     lineNumbers.scrollTop = codeTextarea.scrollTop;
   });
