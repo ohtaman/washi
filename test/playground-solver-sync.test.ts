@@ -61,6 +61,23 @@ const res = await m.check({ solver: "z3" });`;
     expect(updated).not.toContain('solver: "z3"');
     expect(detectSolverInCode(updated)).toBe("highs");
   });
+
+  it("does not misdetect or overwrite comments mentioning solver options", () => {
+    const codeWithComments = `// Tip: solver: "z3" can be used for SMT diagnosis
+/* Note: solver: "glpk" is available for LP/MIP */
+const m = new Model({ name: "DietProblem", sense: "Minimize", solver: "highs" });
+const status = await m.solve();`;
+
+    // Should detect "highs", not "z3" or "glpk" from comments
+    expect(detectSolverInCode(codeWithComments)).toBe("highs");
+
+    // When replaced with glpk, comments should remain intact
+    const updated = replaceSolverInCode(codeWithComments, "glpk");
+    expect(updated).toContain('// Tip: solver: "z3" can be used for SMT diagnosis');
+    expect(updated).toContain('/* Note: solver: "glpk" is available for LP/MIP */');
+    expect(updated).toContain('const m = new Model({ name: "DietProblem", sense: "Minimize", solver: "glpk" });');
+    expect(detectSolverInCode(updated)).toBe("glpk");
+  });
 });
 
 describe("Playground Typography (Mincho / Serif Removal)", () => {
