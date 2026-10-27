@@ -403,4 +403,31 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
     }
     expect(sim.playerEndAum).toBe(liqAum);
   });
+
+  it("prioritizes newly unlocked assets over older fillers when expanding portfolio picks", () => {
+    // Simulate transitioning from Level 2 (4 assets chosen: sp500, bond, gold, tech) to Level 3 (maxPicks: 5)
+    // Level 3 has newAssetIds: ["nv-ai", "cloud", "defense"] and older unpicked asset: "pharma"
+    const l3Spec = getLevelSpec(3);
+    const selected = ["sp500", "bond", "gold", "tech"];
+
+    // Auto-pick logic mimicking advanceToNextLevel & loadSaveState
+    for (const id of l3Spec.newAssetIds) {
+      if (selected.length >= l3Spec.maxPicks) break;
+      if (!selected.includes(id)) {
+        selected.push(id);
+      }
+    }
+    for (const id of l3Spec.unlockedAssetIds) {
+      if (selected.length >= l3Spec.maxPicks) break;
+      if (!selected.includes(id)) {
+        selected.push(id);
+      }
+    }
+
+    expect(selected).toHaveLength(5);
+    // Newly unlocked NV-AI must be selected in the 5th slot, not older unpicked pharma
+    expect(selected[4]).toBe("nv-ai");
+    expect(selected).toContain("nv-ai");
+    expect(selected).not.toContain("pharma");
+  });
 });

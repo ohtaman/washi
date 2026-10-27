@@ -399,7 +399,14 @@ function loadSaveState(): void {
         currentLevelSpec.unlockedAssetIds.includes(id)
       );
     }
-    // Auto-fill up to maxPicks from unlockedAssetIds if under capacity
+    // Prioritize newly unlocked assets for this level first
+    for (const id of currentLevelSpec.newAssetIds) {
+      if (picks.length >= currentLevelSpec.maxPicks) break;
+      if (!picks.includes(id)) {
+        picks.push(id);
+      }
+    }
+    // Then fill any remaining capacity from all unlocked assets
     for (const id of currentLevelSpec.unlockedAssetIds) {
       if (picks.length >= currentLevelSpec.maxPicks) break;
       if (!picks.includes(id)) {
@@ -1401,7 +1408,15 @@ function advanceToNextLevel(): void {
   aiAum = playerAum;
   lastSimulation = null;
 
-  // Auto-pick newly unlocked assets if room permits up to maxPicks
+  // Auto-pick newly unlocked assets for this level first
+  for (const id of currentLevelSpec.newAssetIds) {
+    if (selectedAssetIds.length >= currentLevelSpec.maxPicks) break;
+    if (!selectedAssetIds.includes(id)) {
+      selectedAssetIds.push(id);
+    }
+  }
+
+  // Then fill any remaining slots up to maxPicks from all unlocked assets
   for (const id of currentLevelSpec.unlockedAssetIds) {
     if (selectedAssetIds.length >= currentLevelSpec.maxPicks) break;
     if (!selectedAssetIds.includes(id)) {
