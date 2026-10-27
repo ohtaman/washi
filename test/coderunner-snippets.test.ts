@@ -600,6 +600,24 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       );
       expect(ctaAnchors).toHaveLength(6);
 
+      const thumbImgs = Array.from(
+        showcaseRaw.matchAll(/<img\s+([^>]*class="washi-showcase-thumb-img"[^>]*)>/g),
+        (m) => m[1]
+      );
+      expect(thumbImgs).toHaveLength(6);
+      for (const imgAttrs of thumbImgs) {
+        const srcMatch = imgAttrs.match(/\bsrc="([^"]+)"/);
+        expect(srcMatch, `Missing src in showcase thumbnail <img ${imgAttrs}>`).not.toBeNull();
+        const src = srcMatch![1];
+        expect(src).toMatch(/^\/showcase\/thumb-[a-z0-9-]+\.png$/);
+        const subpath = src.replace(/^\//, "");
+        const expectedFile = path.resolve(process.cwd(), "docs/public", subpath);
+        expect(
+          fs.existsSync(expectedFile),
+          `Showcase image ${src} in ${loc.showcaseFile} missing at ${expectedFile}`
+        ).toBe(true);
+      }
+
       const theoryAnchors = Array.from(
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-theory-btn"[^>]*)>/g),
         (m) => m[1]
