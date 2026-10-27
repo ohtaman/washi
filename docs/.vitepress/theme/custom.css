@@ -921,19 +921,19 @@
 }
 
 .washi-showcase-actions {
-  position: relative;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 14px;
+  pointer-events: none;
 }
 
 .washi-showcase-cta {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--vp-c-brand-1);
@@ -954,6 +954,7 @@
 .washi-showcase-theory-btn {
   position: relative;
   z-index: 2;
+  pointer-events: auto;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--vp-c-text-2) !important;
