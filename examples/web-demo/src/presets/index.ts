@@ -31,7 +31,7 @@ export const EXAMPLES: ExampleModel[] = [
     visualizer: "summary",
     code: `// --- Production Planning (Chairs & Tables) ---
 // Maximize profit under carpentry and finishing hours constraints.
-const m = new Model({ name: "ProductionPlanning", sense: "Maximize" });
+const m = new Model({ name: "ProductionPlanning", sense: "Maximize", solver: "highs" });
 
 // Decision variables (integer quantities >= 0)
 const chairs = m.integer("chairs", { lb: 0 });
@@ -70,7 +70,7 @@ console.log("Tables to produce:", tables.value);
     visualizer: "summary",
     code: `// --- 0-1 Knapsack Selection Problem ---
 // Maximize total item value within backpack weight capacity.
-const m = new Model({ name: "KnapsackProblem", sense: "Maximize" });
+const m = new Model({ name: "KnapsackProblem", sense: "Maximize", solver: "highs" });
 
 const items = [
   { name: "Laptop",       weight: 3, value: 50 },
@@ -119,7 +119,7 @@ items.forEach(it => {
     visualizer: "matrix",
     code: `// --- Transportation & Distribution Network (2D Matrix) ---
 // 3 Factories (Tokyo, Nagoya, Osaka) -> 4 Regional Stores (North, East, West, South)
-const m = new Model({ name: "TransportationNetwork", sense: "Minimize" });
+const m = new Model({ name: "TransportationNetwork", sense: "Minimize", solver: "highs" });
 
 const factories = ["Tokyo", "Nagoya", "Osaka"];
 const supplies = { Tokyo: 120, Nagoya: 100, Osaka: 80 };
@@ -184,7 +184,7 @@ for (const f of factories) {
     visualizer: "summary",
     code: `// --- Diet Problem & LP Sensitivity Analysis (Duals, Slacks, Reduced Costs) ---
 // Minimize daily menu cost while meeting nutritional requirements, then inspect duals.
-const m = new Model({ name: "DietSensitivity", sense: "Minimize" });
+const m = new Model({ name: "DietSensitivity", sense: "Minimize", solver: "highs" });
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -237,7 +237,7 @@ for (const c of [cCal, cProt, cCalc, cIron]) {
     visualizer: "roster",
     code: `// --- Staff Shift Scheduling (Weekly Roster Optimization) ---
 // Assign 5 staff across Mon..Sun meeting coverage, senior duty, and day-off requests.
-const m = new Model({ name: "WeeklyShiftRoster", sense: "Minimize" });
+const m = new Model({ name: "WeeklyShiftRoster", sense: "Minimize", solver: "highs" });
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const requiredCoverage = { Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2 };
@@ -310,7 +310,7 @@ console.log("Optimal Weekly Payroll: $" + m.objectiveValue);
     code: `// --- E-Commerce Cart & Coupon Optimizer (Indicator Constraints) ---
 // Base cart subtotal is $242 (Tech subtotal: $210).
 // Can adding a $10 USB-C cable unlock the $45-off ($250+ tier) coupon for a lower net total?
-const m = new Model({ name: "CartCouponOptimizer", sense: "Minimize" });
+const m = new Model({ name: "CartCouponOptimizer", sense: "Minimize", solver: "highs" });
 
 const baseCartSubtotal = 242;
 const baseTechSubtotal = 210;
@@ -378,7 +378,7 @@ coupons.forEach(c => {
     visualizer: "summary",
     code: `// --- Markowitz Portfolio Optimization (Convex QP) ---
 // Minimize portfolio variance risk subject to capital and target return constraints.
-const m = new Model({ name: "PortfolioOptimization", sense: "Minimize" });
+const m = new Model({ name: "PortfolioOptimization", sense: "Minimize", solver: "highs" });
 
 // 1. Asset universe and expected returns
 const assets = ["Tech", "Bonds", "GlobalEq", "RealEstate", "Gold"];

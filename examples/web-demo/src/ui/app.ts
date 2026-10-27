@@ -29,6 +29,26 @@ const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
   },
 };
 
+export function replaceSolverInCode(code: string, solverName: "highs" | "glpk" | "z3"): string {
+  if (/solver\s*:\s*["'][a-zA-Z0-9_-]+["']/.test(code)) {
+    return code.replace(/solver\s*:\s*["'][a-zA-Z0-9_-]+["']/g, `solver: "${solverName}"`);
+  } else if (/new\s+Model\s*\(\s*\{/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*\{)/, `$1 solver: "${solverName}",`);
+  } else if (/new\s+Model\s*\(\s*(["'`][^"'`]+["'`])\s*,\s*\{/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*["'`][^"'`]+["'`]\s*,\s*\{)/, `$1 solver: "${solverName}",`);
+  } else if (/new\s+Model\s*\(\s*(["'`][^"'`]+["'`])\s*\)/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*["'`][^"'`]+["'`]\s*)\)/, `$1, { solver: "${solverName}" })`);
+  } else if (/new\s+Model\s*\(\s*\)/.test(code)) {
+    return code.replace(/(new\s+Model\s*\(\s*)\)/, `$1{ solver: "${solverName}" })`);
+  }
+  return code;
+}
+
+export function detectSolverInCode(code: string): ("highs" | "glpk" | "z3") | null {
+  const match = code.match(/solver\s*:\s*["'](highs|glpk|z3)["']/i);
+  return match ? (match[1].toLowerCase() as "highs" | "glpk" | "z3") : null;
+}
+
 export function initApp() {
   initTheme();
   registerZ3Solver();
@@ -177,6 +197,24 @@ export function initApp() {
   const solverBadgeText = document.getElementById("solver-badge-text") as HTMLSpanElement | null;
   let currentSolver: "highs" | "glpk" | "z3" = "highs";
 
+  function updateCodeSolver(solverName: "highs" | "glpk" | "z3") {
+    const updated = replaceSolverInCode(codeTextarea.value, solverName);
+    if (updated !== codeTextarea.value) {
+      codeTextarea.value = updated;
+      updateLineNumbers();
+    }
+  }
+
+  function syncSolverFromCode() {
+    const detected = detectSolverInCode(codeTextarea.value);
+    if (detected && currentSolver !== detected) {
+      if (solverSelect && solverSelect.value !== detected) {
+        solverSelect.value = detected;
+      }
+      updateSolver(detected);
+    }
+  }
+
   function updateSolver(solverName: "highs" | "glpk" | "z3") {
     currentSolver = solverName;
     setDefaultSolver(solverName);
@@ -196,12 +234,17 @@ export function initApp() {
 
   if (solverSelect) {
     solverSelect.addEventListener("change", () => {
-      updateSolver(solverSelect.value as "highs" | "glpk" | "z3");
+      const selected = solverSelect.value as "highs" | "glpk" | "z3";
+      updateSolver(selected);
+      updateCodeSolver(selected);
     });
   }
 
   // Editor events
-  codeTextarea.addEventListener("input", updateLineNumbers);
+  codeTextarea.addEventListener("input", () => {
+    updateLineNumbers();
+    syncSolverFromCode();
+  });
   codeTextarea.addEventListener("scroll", () => {
     lineNumbers.scrollTop = codeTextarea.scrollTop;
   });
