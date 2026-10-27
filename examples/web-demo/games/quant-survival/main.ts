@@ -88,6 +88,8 @@ interface StaticStrings {
   helpDialogCloseAria: string;
   helpDialogOk: string;
   helpDialogHtml: string;
+  strategyTipHtml: string;
+  frontierGuideText: string;
   unlockDialogTitle: string;
   unlockDialogOk: string;
 }
@@ -139,13 +141,34 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     helpDialogCloseAria: "閉じる",
     helpDialogOk: "閉じる",
     helpDialogHtml: `
+      <h3>1. ルールと勝利条件</h3>
       <p>あなたはクオンツファンドの運用責任者です。初期資金 <strong>$100.0M</strong> からスタートし、毎期（60営業日）ライバルAI（WaSHI-QP）と競い合います。</p>
       <ul>
-        <li><strong>銘柄アンロックと選択（ドラフト）</strong>：最初はS&P500や国債など3銘柄から始まります。レベルをクリアするごとに「AI半導体株」「防衛株」「エネルギー株」などの個別株やテーマ資産が次々とアンロックされます。</li>
-        <li><strong>勝利条件</strong>：① 破綻ライン（-5%前後）を割らずに生存、② 期末資産でライバルAIを上回ると<strong>レベルクリア! 新銘柄が解放</strong>されます。</li>
-        <li><strong>分散の威力（もしもチャート）</strong>：高リターン個別株だけに全ツッパすると、暴落イベントで一発退場になります。国債や金、ディフェンシブ株と組み合わせることで、破綻を防ぎながらAIに勝つポートフォリオを構築しましょう。</li>
+        <li><strong>ロスカット即死</strong>：途中の暴落などで資産がロスカットライン（約 -7.5%）を割ると、その瞬間に<strong>運用停止・即死退場（ゲームオーバー）</strong>になります。</li>
+        <li><strong>ステージクリア</strong>：① 60日間ロスカットされずに生存し、② 期末資産でライバルAIを上回れば<strong>クリア! 次のステージへ進み新銘柄が解放</strong>されます。</li>
+      </ul>
+
+      <h3>2. 勝つための配分セオリー（何が正解？）</h3>
+      <ul>
+        <li><strong>株式100%全ツッパはNG</strong>：リターンを狙って株や個別株だけに全額賭けると、途中の暴落ショックで一発ロスカットになります。</li>
+        <li><strong>逆相関ヘッジを混ぜる</strong>：相関係数マトリクスで「青色」に光る資産（例: 株式に対して国債や金）は、株が下落した時に逆行高してファンドを守ってくれます。</li>
+        <li><strong>黄金比率の目安</strong>：株式・成長株に50〜70%、国債や金に20〜30%程度を配分すると、<strong>「破綻確率（RUIN PROB）」をほぼ0%に保ったまま</strong>AIの期待リターンを上回ることができます。</li>
+      </ul>
+
+      <h3>3. 効率的フロンティア ＆ リスク・リターン平面の見方</h3>
+      <ul>
+        <li><strong>横軸（リスク σ）</strong>：ポートフォリオの価格のブレ幅。左に行くほど値動きが穏やかで安全です。</li>
+        <li><strong>縦軸（期待リターン E[R]）</strong>：ポートフォリオの年間見込み収益率。上に行くほど高リターンです。</li>
+        <li><strong>点線の曲線（効率的フロンティア）</strong>：現代ポートフォリオ理論に基づく「これ以上リスクを下げてリターンを上げることはできない」という<strong>理想の限界ライン</strong>です。逆相関の資産をうまく組み合わせると、曲線が左上へ大きく膨らみます。</li>
+        <li><strong>● YOU（青丸）</strong>：あなたの現在のポートフォリオ。</li>
+        <li><strong>◆ WaSHI-QP（黄ダイヤ）</strong>：ライバルAI。凸二次計画法（Convex QP）によってフロンティア線上の最適点にいます。</li>
+        <li><strong>操作のコツ</strong>：スライダーを動かして、青丸（●）を点線のフロンティアに近づけつつ、黄ダイヤ（◆）より高い位置に持っていくのが勝利への最短ルートです!</li>
       </ul>
     `,
+    strategyTipHtml:
+      "<strong>💡 攻略のヒント</strong>: 株式100%だと途中の暴落ショックで即ロスカット退場します。相関係数マトリクスで青い「逆相関」の資産（国債や金）を20〜30%混ぜることで、破綻確率をほぼ0%に抑えつつAIの目標リターンを上回ることができます!",
+    frontierGuideText:
+      "【グラフの見方】横軸: リスクσ（価格のブレ幅・左ほど安全） / 縦軸: 期待リターンE[R]（見込み収益率・上ほど高リターン） / 点線: 効率的フロンティア（これ以上リスクを抑えられない理想の限界曲線）。スライダーで青い●を点線に近づけ、AI(◆)より上を狙うのがセオリーです。",
     unlockDialogTitle: "✨ LEVEL CLEAR & 新銘柄アンロック!",
     unlockDialogOk: "次のステージへ挑む ▶",
     statExpReturnTitle: "期待リターン E[R]",
@@ -206,13 +229,34 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     helpDialogCloseAria: "Close",
     helpDialogOk: "Got It",
     helpDialogHtml: `
-      <p>Manage a quantitative hedge fund starting with <strong>$100.0M</strong> AUM. Compete head-to-head against WaSHI-QP across escalating market levels.</p>
+      <h3>1. Objectives & Win Conditions</h3>
+      <p>You manage a quantitative portfolio starting with <strong>$100.0M</strong> AUM. Each quarter (60 trading days), you compete against rival algorithm WaSHI-QP.</p>
       <ul>
-        <li><strong>Unlock & Draft Assets</strong>: Begin with core broad-market assets. As you clear levels, hot single stocks (AI Semis, Cloud, Defense) and macro hedges unlock into your pool.</li>
-        <li><strong>Win Conditions</strong>: ① Avoid breaching the liquidation floor (-5% drawdown), and ② outperform rival WaSHI-QP in final AUM to <strong>clear the level and unlock new assets</strong>.</li>
-        <li><strong>Ghost Benchmark</strong>: Going 100% all-in on volatile single stocks often leads to sudden liquidation. Blend safe havens to protect your capital while beating the benchmark.</li>
+        <li><strong>Instant Liquidation</strong>: If fund capital falls below the liquidation floor (~ -7.5% drawdown) on any trading day, your fund is <strong>instantly liquidated and the run ends immediately</strong>.</li>
+        <li><strong>Stage Clear</strong>: Survive the full 60 days without liquidation AND finish with higher ending AUM than WaSHI-QP to <strong>advance and unlock new assets</strong>!</li>
+      </ul>
+
+      <h3>2. The Winning Strategy (What is the right move?)</h3>
+      <ul>
+        <li><strong>Avoid 100% in a Single Asset</strong>: Concentrating all capital into stocks causes catastrophic liquidation when market pullback shocks hit.</li>
+        <li><strong>Hedge with Negative Correlation</strong>: Assets highlighted in blue in the Correlation Matrix (e.g. Bonds and Gold vs Equities) rise or stay resilient when stocks plunge, buffering drawdowns.</li>
+        <li><strong>Balanced Allocation Recipe</strong>: Allocating 50–70% to growth equities and 20–30% to bonds/gold keeps <strong>Ruin Probability near 0%</strong> while comfortably beating AI's expected return.</li>
+      </ul>
+
+      <h3>3. Understanding the Risk-Return Plane & Efficient Frontier</h3>
+      <ul>
+        <li><strong>Horizontal Axis (Risk σ)</strong>: Volatility / standard deviation of returns. Further left is safer and calmer.</li>
+        <li><strong>Vertical Axis (Expected Return E[R])</strong>: Projected annual return. Higher means greater earnings potential.</li>
+        <li><strong>Dashed Curve (Efficient Frontier)</strong>: The mathematical boundary of optimal portfolios from Modern Portfolio Theory. Portfolios cannot beat this boundary. Combining negatively correlated assets bends this curve toward the upper-left (higher return, lower risk).</li>
+        <li><strong>● YOU (Blue dot)</strong>: Your current active portfolio.</li>
+        <li><strong>◆ WaSHI-QP (Amber diamond)</strong>: Rival AI, computed via convex Quadratic Programming (QP) to sit on the optimal frontier point.</li>
+        <li><strong>Tactical Goal</strong>: Move the sliders to pull your blue dot (●) close to the dashed frontier line while positioning it slightly higher than the yellow diamond (◆)!</li>
       </ul>
     `,
+    strategyTipHtml:
+      "<strong>💡 Strategy Tip</strong>: 100% in equities triggers instant liquidation during mid-quarter shocks. Blending 20–30% in negatively correlated assets (Bonds or Gold) cushions drawdowns and suppresses ruin risk, helping you beat AI reliably!",
+    frontierGuideText:
+      "[How to Read Chart] X-axis: Risk σ (volatility, left is safer) / Y-axis: Expected Return E[R] (higher is better) / Dashed curve: Efficient Frontier (the optimal boundary where risk is minimized for each return level). Move sliders to pull your blue dot (●) toward the frontier curve and above AI (◆)!",
     unlockDialogTitle: "✨ LEVEL CLEAR & ASSETS UNLOCKED!",
     unlockDialogOk: "Advance to Next Stage ▶",
     statExpReturnTitle: "Expected Return E[R]",
@@ -272,13 +316,34 @@ const UI_TEXT: Record<GameLang, StaticStrings> = {
     helpDialogCloseAria: "关闭",
     helpDialogOk: "明白了",
     helpDialogHtml: `
-      <p>管理从 <strong>$100.0M</strong> 起步的量化基金，在不断升级的市场中与WaSHI-QP正面对决。</p>
+      <h3>1. 游戏目标与通关规则</h3>
+      <p>您担任量化对冲基金主管，初始管理规模 <strong>$100.0M</strong>。每个季度（60个交易日）与量化AI模型 WaSHI-QP 展开净值对决。</p>
       <ul>
-        <li><strong>解锁与自选标的</strong>：从大盘和国债起步，随着通关逐级解锁热门个股（AI半导体、云计算、军工）及大宗商品。</li>
-        <li><strong>通关条件</strong>：① 盘中与期末不跌破强平线，② 期末资产超越对手WaSHI-QP，即可<strong>通关并解锁新资产</strong>!</li>
-        <li><strong>单资产爆仓对照</strong>：100%全仓高波个股往往在宏观冲击中直接爆仓。巧妙搭配避险资产，实现稳定超额回报。</li>
+        <li><strong>盘中即刻强平</strong>：一旦净值在任意交易日跌破强平底线（约 -7.5% 回撤），基金将<strong>即刻强平并终止模拟（游戏结束）</strong>。</li>
+        <li><strong>通关晋级</strong>：① 60交易日内未被强平且平稳存活，② 期末资产超越对手 WaSHI-QP，即可<strong>通关并解锁全新标的资产</strong>!</li>
+      </ul>
+
+      <h3>2. 通关制胜策略（怎样的配置才算正确？）</h3>
+      <ul>
+        <li><strong>切忌100%全仓单一高波资产</strong>：全仓股票或热门个股在遭遇突发黑天鹅或回调冲击时，极易直接击穿强平线。</li>
+        <li><strong>善用负相关资产对冲</strong>：在相关系数矩阵中显示为蓝色的资产对（如股票与国债、黄金），在股票暴跌时会逆市上扬或提供坚实缓冲。</li>
+        <li><strong>黄金配置比例参考</strong>：将50%〜70%配置于成长股票，20%〜30%配置于国债或黄金，可在将<strong>爆仓概率（RUIN PROB）压低至接近0%</strong>的同时，稳稳超越AI的目标收益率。</li>
+      </ul>
+
+      <h3>3. 风险收益平面与有效前沿解读</h3>
+      <ul>
+        <li><strong>横轴（风险 σ）</strong>：组合净值波动率。越偏左代表走势越平稳安全。</li>
+        <li><strong>纵轴（预期回报 E[R]）</strong>：组合年化预期收益率。越偏上代表潜在回报越高。</li>
+        <li><strong>虚线（有效前沿边界）</strong>：源于现代资产组合理论（MPT）的最优边界曲线，代表给定风险下的极限收益。引入负相关资产会让曲线向左上方大幅拱起。</li>
+        <li><strong>● YOU（蓝色圆点）</strong>：您当前的实际投资组合位置。</li>
+        <li><strong>◆ WaSHI-QP（黄色菱形）</strong>：竞争对手AI，通过凸二次规划（QP）精确求解定位在最优有效前沿曲线上。</li>
+        <li><strong>操作要领</strong>：拖动滑块，让蓝色圆点(●)贴近虚线前沿，并保持在黄色菱形(◆)的上方即可锁定胜局!</li>
       </ul>
     `,
+    strategyTipHtml:
+      "<strong>💡 通关指南</strong>: 若100%全仓股票，遭遇突发回撤冲击时会直接触发强平出局。结合相关系数矩阵中显示为蓝色的负相关避险资产（国债或黄金）20%〜30%，可在将爆仓风险降至极低的同时稳定超越AI!",
+    frontierGuideText:
+      "【图表解读】横轴：风险σ（波动率，越偏左越稳健）/ 纵轴：预期回报E[R]（年化见顶收益，越偏上越高）/ 虚线：有效前沿（同等风险下收益最大化的理想极限曲线）。调节滑块将蓝色圆点(●)推向虚线边界并超越AI(◆)是获胜关键!",
     unlockDialogTitle: "✨ 恭喜通关! 新资产已解锁!",
     unlockDialogOk: "挑战下一关 ▶",
     statExpReturnTitle: "预期收益率 E[R]",
@@ -328,19 +393,20 @@ function loadSaveState(): void {
     peakAum = Math.max(playerAum, Number(parsed.peakAum) || playerAum);
 
     currentLevelSpec = getLevelSpec(currentLevel);
+    let picks: string[] = [];
     if (Array.isArray(parsed.selectedAssetIds) && parsed.selectedAssetIds.length > 0) {
-      // Filter out any IDs not yet unlocked at this level
-      const valid = parsed.selectedAssetIds.filter((id) =>
+      picks = parsed.selectedAssetIds.filter((id) =>
         currentLevelSpec.unlockedAssetIds.includes(id)
       );
-      if (valid.length > 0) {
-        selectedAssetIds = valid.slice(0, currentLevelSpec.maxPicks);
-      } else {
-        selectedAssetIds = currentLevelSpec.unlockedAssetIds.slice(0, currentLevelSpec.maxPicks);
-      }
-    } else {
-      selectedAssetIds = currentLevelSpec.unlockedAssetIds.slice(0, currentLevelSpec.maxPicks);
     }
+    // Auto-fill up to maxPicks from unlockedAssetIds if under capacity
+    for (const id of currentLevelSpec.unlockedAssetIds) {
+      if (picks.length >= currentLevelSpec.maxPicks) break;
+      if (!picks.includes(id)) {
+        picks.push(id);
+      }
+    }
+    selectedAssetIds = picks.slice(0, currentLevelSpec.maxPicks);
   } catch {
     // Keep defaults on read error
   }
@@ -450,9 +516,15 @@ export function applyQuantStaticTranslations(lang: GameLang): void {
   setElText("chart-frontier-title", t.chartFrontierTitle);
   setElText("chart-frontier-legend", t.chartFrontierLegend);
   setElAria("frontier-svg", t.frontierSvgAria);
+  setElText("frontier-guide-text", t.frontierGuideText);
   setElText("chart-battle-title", t.chartBattleTitle);
   setElAria("battle-svg", t.battleSvgAria);
   setElText("ghost-legend-text", t.ghostLegendText);
+
+  const tipEl = document.getElementById("strategy-tip-text");
+  if (tipEl) {
+    tipEl.innerHTML = t.strategyTipHtml;
+  }
 
   if (!isSimulating && !lastSimulation) {
     setElText("news-ticker-text", t.defaultTicker);
@@ -1053,11 +1125,29 @@ function renderBattleSvgFrame(
     <!-- Player Trajectory (Cyan) -->
     <path d="${pPath}" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
     <circle cx="${pCurX}" cy="${pCurY}" r="4.5" fill="#38bdf8" stroke="#ffffff" stroke-width="1.5" />
+
+    <!-- Liquidation Callout Badge -->
+    ${sim.playerLiquidated && dayLimit >= (sim.playerLiquidatedDay ?? 60)
+      ? `
+      <g transform="translate(${Math.min(w - padR - 75, Math.max(padL + 5, pCurX - 35))}, ${Math.max(padT + 12, pCurY - 20)})">
+        <rect x="0" y="0" width="75" height="18" rx="4" fill="#dc2626" opacity="0.95" />
+        <text x="37.5" y="12" fill="#ffffff" font-size="8.5" font-weight="bold" text-anchor="middle" font-family="JetBrains Mono">
+          💥 LIQUIDATED
+        </text>
+      </g>
+      `
+      : ""}
   `;
 
   const counterEl = document.getElementById("chart-day-counter");
   if (counterEl) {
-    counterEl.textContent = `DAY ${curDay} / 60`;
+    if (sim.playerLiquidated && dayLimit >= (sim.playerLiquidatedDay ?? 60)) {
+      counterEl.textContent = `DAY ${curDay} / 60 [LIQUIDATED]`;
+      counterEl.classList.add("liquidated-badge");
+    } else {
+      counterEl.textContent = `DAY ${curDay} / 60`;
+      counterEl.classList.remove("liquidated-badge");
+    }
   }
 }
 
@@ -1123,7 +1213,12 @@ async function runMarketSimulation(): Promise<void> {
       }
     }
 
-    if (currentDay >= result.days) {
+    const hitPlayerLiquidation =
+      result.playerLiquidated &&
+      result.playerLiquidatedDay !== null &&
+      currentDay >= result.playerLiquidatedDay;
+
+    if (hitPlayerLiquidation || currentDay >= result.days) {
       if (animTimerId !== null) {
         window.clearInterval(animTimerId);
         animTimerId = null;
@@ -1306,11 +1401,11 @@ function advanceToNextLevel(): void {
   aiAum = playerAum;
   lastSimulation = null;
 
-  // Auto-pick newly unlocked assets if room permits, otherwise keep current picks
-  const newAssetId = currentLevelSpec.newAssetIds[0];
-  if (newAssetId && !selectedAssetIds.includes(newAssetId)) {
-    if (selectedAssetIds.length < currentLevelSpec.maxPicks) {
-      selectedAssetIds.push(newAssetId);
+  // Auto-pick newly unlocked assets if room permits up to maxPicks
+  for (const id of currentLevelSpec.unlockedAssetIds) {
+    if (selectedAssetIds.length >= currentLevelSpec.maxPicks) break;
+    if (!selectedAssetIds.includes(id)) {
+      selectedAssetIds.push(id);
     }
   }
 

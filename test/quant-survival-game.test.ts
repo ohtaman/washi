@@ -339,6 +339,8 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
       expect(mockDoc.title).toContain("QUANT SURVIVAL");
       expect(byId.get("back-link")?.textContent).toBe("← Games");
       expect(byId.get("btn-execute")?.textContent).toContain("MARKET OPEN");
+      expect(byId.get("frontier-guide-text")?.textContent).toContain("How to Read Chart");
+      expect(byId.get("strategy-tip-text")?.innerHTML).toContain("Strategy Tip");
       for (const el of allElements) {
         expect(el.getAttribute("aria-label") ?? "", `en aria-label on #${el.id}`).not.toMatch(
           /[ぁ-んァ-ヶ]/
@@ -351,6 +353,8 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
       expect(mockDoc.documentElement.lang).toBe("zh-CN");
       expect(mockDoc.title).toContain("量化生存战");
       expect(byId.get("back-link")?.textContent).toBe("← 游戏列表");
+      expect(byId.get("frontier-guide-text")?.textContent).toContain("图表解读");
+      expect(byId.get("strategy-tip-text")?.innerHTML).toContain("通关指南");
       for (const el of allElements) {
         expect(el.getAttribute("aria-label") ?? "", `zh aria-label on #${el.id}`).not.toMatch(
           /[ぁ-んァ-ヶ]/
@@ -365,5 +369,38 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
         (globalThis as { document?: unknown }).document = prevDocument;
       }
     }
+  });
+
+  it("immediately freezes player AUM series at liquidation level upon breaching liquidation floor", () => {
+    const regime = getQuarterRegime(1);
+    // 100% in stock with tight floor guarantees liquidation on day 24 shock
+    const aggressiveWeights = [1.0, 0, 0];
+    const customRegime = {
+      ...regime,
+      liquidationFloor: -0.02, // very tight -2% floor
+    };
+
+    const sim = simulateQuarterMarket({
+      regime: customRegime,
+      playerWeights: aggressiveWeights,
+      aiWeights: [0.33, 0.33, 0.34],
+      playerStartAum: 100,
+      aiStartAum: 100,
+      seed: 12345,
+    });
+
+    expect(sim.playerLiquidated).toBe(true);
+    expect(sim.playerLiquidatedDay).not.toBeNull();
+    const liqDay = sim.playerLiquidatedDay!;
+    expect(liqDay).toBeGreaterThan(0);
+    expect(liqDay).toBeLessThanOrEqual(60);
+
+    // All days after liquidation day must stay frozen at the liquidated level (no resurrection/rebound)
+    const liqAum = sim.playerAumSeries[liqDay];
+    expect(liqAum).toBeLessThanOrEqual(sim.liquidationAumFloor);
+    for (let d = liqDay; d <= 60; d++) {
+      expect(sim.playerAumSeries[d]).toBe(liqAum);
+    }
+    expect(sim.playerEndAum).toBe(liqAum);
   });
 });
