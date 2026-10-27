@@ -196,6 +196,19 @@ body {
   background: linear-gradient(180deg, #f9fdef, #eaf8d3);
 }
 
+.btn-audio {
+  color: #5a3e1b;
+  border-color: #d1b892;
+  background: linear-gradient(180deg, #fdfaf4, #f4e9d5);
+}
+
+.btn-audio[aria-pressed="true"] {
+  border-color: #65a30d;
+  background: linear-gradient(180deg, #ecfccb, #d9f99d);
+  color: #365314;
+  box-shadow: 0 0 10px rgba(132, 204, 22, 0.35);
+}
+
 /* Main Puzzle Card */
 .puzzle-card {
   background: var(--card-bg);
@@ -384,13 +397,44 @@ body {
 
 .fence-dot {
   font-size: 0.95rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: transform 0.18s ease, opacity 0.18s ease;
 }
 
 .fence-dot.used {
-  opacity: 0.25;
+  opacity: 0.22;
   transform: scale(0.82);
   filter: grayscale(1);
+}
+
+/* Wood Fence SVG Icon */
+.fence-svg {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.15em;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2));
+}
+
+.cell-emoji .fence-svg {
+  width: calc(var(--cell-size) * 0.62);
+  height: calc(var(--cell-size) * 0.62);
+  vertical-align: middle;
+}
+
+.fence-dot .fence-svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  vertical-align: middle;
+}
+
+.rule-card-icon .fence-svg {
+  width: 2.2rem;
+  height: 2.2rem;
+  vertical-align: middle;
 }
 
 .hud-value {
@@ -566,11 +610,11 @@ body {
 
 /* Placed Fence styling */
 .board-cell.has-fence {
-  background: linear-gradient(180deg, #b07543 0%, #875329 100%);
-  border: 2px solid #593315;
+  background: linear-gradient(180deg, #cce89c 0%, #a4c965 100%);
+  border: 2px solid #5a3818;
   box-shadow:
-    0 4px 0 #593315,
-    inset 0 2px 4px rgba(255, 232, 201, 0.45);
+    0 4px 0 #4a280c,
+    inset 0 2px 6px rgba(255, 255, 255, 0.55);
   animation: fencePop 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 

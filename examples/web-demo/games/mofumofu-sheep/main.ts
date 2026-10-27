@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 import { setHighsWasmUrl } from "../../../../src/index.js";
+import { pastureAudio } from "./audio.js";
+import { FENCE_SVG } from "./fence-icon.js";
 import { getGameLang, pickLang, setGameLang, type GameLang } from "../i18n.js";
 import {
   cloneFences,
@@ -183,72 +185,51 @@ function saveProgress(progressState: ProgressState): void {
   }
 }
 
-// Lightweight synthesized sound effects (Juice)
-let audioCtx: AudioContext | null = null;
-function getAudio(): AudioContext | null {
-  try {
-    if (!audioCtx) {
-      const Ctx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (Ctx) audioCtx = new Ctx();
-    }
-    if (audioCtx && audioCtx.state === "suspended") {
-      void audioCtx.resume();
-    }
-    return audioCtx;
-  } catch {
-    return null;
-  }
-}
-
-function playTone(
-  freq: number,
-  durationMs: number,
-  type: OscillatorType = "triangle",
-  gainVal = 0.08
-): void {
-  const ctx = getAudio();
-  if (!ctx) return;
-  try {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(gainVal, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + durationMs / 1000);
-  } catch {
-    // Ignore audio errors
-  }
-}
-
+// Sound effects and BGM (Juice & Atmosphere)
 function playFencePlaceSound(): void {
-  playTone(320, 75, "triangle", 0.1);
-  setTimeout(() => playTone(480, 90, "triangle", 0.08), 35);
+  pastureAudio.playFenceTap(true);
 }
 
 function playFenceRemoveSound(): void {
-  playTone(360, 70, "sine", 0.07);
+  pastureAudio.playFenceTap(false);
 }
 
 function playRejectSound(): void {
-  playTone(150, 110, "sawtooth", 0.05);
+  pastureAudio.playAlert();
 }
 
 function playShortfallSound(): void {
-  playTone(392, 110, "sine", 0.08);
-  setTimeout(() => playTone(349.23, 140, "sine", 0.08), 90);
+  pastureAudio.playShortfall();
 }
 
 function playClearChime(): void {
-  const notes = [523.25, 659.25, 783.99, 1046.5];
-  notes.forEach((n, idx) => {
-    setTimeout(() => playTone(n, 180, "triangle", 0.09), idx * 75);
-  });
+  pastureAudio.playSafeChime();
+}
+
+function syncAudioButtonUi(): void {
+  const playing = pastureAudio.playing;
+  const btn = document.getElementById("btn-bgm-toggle");
+  const textEl = document.getElementById("bgm-btn-text");
+  if (!btn || !textEl) return;
+  btn.setAttribute("aria-pressed", String(playing));
+  textEl.textContent = playing
+    ? "🔊 BGM: ON"
+    : pickLang(currentLang, {
+        ja: "🔇 BGM: OFF",
+        en: "🔇 BGM: OFF",
+        zh: "🔇 BGM: OFF",
+      });
+  btn.title = playing
+    ? pickLang(currentLang, {
+        ja: "BGMを停止（クリックでOFF）",
+        en: "Stop BGM (Click to mute)",
+        zh: "停止BGM（点击静音）",
+      })
+    : pickLang(currentLang, {
+        ja: "BGMを再生（クリックでON）",
+        en: "Play BGM (Click to enable)",
+        zh: "播放BGM（点击开启）",
+      });
 }
 
 // Application State
@@ -601,17 +582,17 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
   setText(
     "rule-step1-title",
     pickLang(currentLang, {
-      ja: "1. マスをタップして柵🪵を置く",
-      en: "1. Tap Cells to Place Fences 🪵",
-      zh: "1. 点击格子放置木栅栏🪵",
+      ja: "1. マスをタップして柵を置く",
+      en: "1. Tap Cells to Place Fences",
+      zh: "1. 点击格子放置木栅栏",
     })
   );
   setText(
     "rule-step1-desc",
     pickLang(currentLang, {
-      ja: "オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵🪵を置いて遮断します。もう一度タップすると柵を外せます。",
-      en: "Block all paths from wolves 🐺 to sheep 🐑 by placing wooden fences 🪵. Tap a fenced cell again to remove the fence.",
-      zh: "在通道上放置木栅栏🪵，阻断野狼🐺通往绵羊🐑的所有路线。再次点击即可移除栅栏。",
+      ja: "オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵を置いて遮断します。もう一度タップすると柵を外せます。",
+      en: "Block all paths from wolves 🐺 to sheep 🐑 by placing wooden fences. Tap a fenced cell again to remove the fence.",
+      zh: "在通道上放置木栅栏，阻断野狼🐺通往绵羊🐑的所有路线。再次点击即可移除栅栏。",
     })
   );
   setText(
@@ -641,9 +622,9 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
   setText(
     "rule-step3-desc",
     pickLang(currentLang, {
-      ja: "🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に丸太の柵🪵を打ち込めば穴が埋まって壁になります。",
-      en: "🌉 Stone bridges are passable but cannot hold fences. 🕳️ Pitfalls (-5 pts) lower your score if enclosed, but driving a fence 🪵 directly into a pit plugs it and blocks wolves.",
-      zh: "🌉石桥可通行但不能放栅栏。🕳️坑洞（-5分）留在牧场内会扣分，但直接在正上方打入木栅栏🪵即可填平坑洞并充当围墙。",
+      ja: "🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に木の柵を打ち込めば穴が埋まって壁になります。",
+      en: "🌉 Stone bridges are passable but cannot hold fences. 🕳️ Pitfalls (-5 pts) lower your score if enclosed, but driving a fence directly into a pit plugs it and blocks wolves.",
+      zh: "🌉石桥可通行但不能放栅栏。🕳️坑洞（-5分）留在牧场内会扣分，但直接在正上方打入木栅栏即可填平坑洞并充当围墙。",
     })
   );
   setText(
@@ -668,6 +649,8 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.langBtn === currentLang);
   });
+
+  syncAudioButtonUi();
 }
 
 function renderTutorialButtonsInDialog(): void {
@@ -848,7 +831,7 @@ function renderHud(): void {
     const dot = document.createElement("span");
     dot.className = "fence-dot";
     if (i >= remaining) dot.classList.add("used");
-    dot.textContent = "🪵";
+    dot.innerHTML = FENCE_SVG;
     fenceDotsEl.appendChild(dot);
   }
   fenceCountTextEl.textContent = pickLang(currentLang, {
@@ -1049,7 +1032,11 @@ function renderBoard(): void {
 
       const emojiSpan = document.createElement("span");
       emojiSpan.className = "cell-emoji";
-      emojiSpan.textContent = hasFence ? "🪵" : meta.emoji;
+      if (hasFence) {
+        emojiSpan.innerHTML = FENCE_SVG;
+      } else {
+        emojiSpan.textContent = meta.emoji;
+      }
       cellBtn.appendChild(emojiSpan);
 
       // Show what tile is underneath a placed fence (if it's a strawberry or pitfall)
@@ -1120,9 +1107,13 @@ function updateEvaluationAndRender(playCelebrationIfNewlyCleared = true): void {
     recordProgressIfCleared();
     if (playCelebrationIfNewlyCleared && !wasClearedBeforeMove) {
       playClearChime();
+      pastureAudio.setTrack("victory");
     }
-  } else if (playCelebrationIfNewlyCleared && currentEval.isSafe) {
-    playShortfallSound();
+  } else {
+    pastureAudio.setTrack("meadow");
+    if (playCelebrationIfNewlyCleared && currentEval.isSafe) {
+      playShortfallSound();
+    }
   }
 
   wasClearedBeforeMove = cleared;
@@ -1202,7 +1193,7 @@ async function handleHint(): Promise<void> {
     if (myToken !== solveToken || currentFences !== fencesSnapshot) return;
     activeHint = diagnosis;
     renderBoard();
-    playTone(587.33, 110, "sine", 0.08);
+    pastureAudio.playHint();
   } catch {
     if (myToken !== solveToken) return;
     solverFailed = true;
@@ -1234,6 +1225,7 @@ async function loadStage(
   activeHint = null;
   wasClearedBeforeMove = false;
   showingModelAnswer = false;
+  pastureAudio.setTrack("meadow");
 
   updateEvaluationAndRender(false);
 
@@ -1333,6 +1325,13 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
   });
 
   const rulesDialog = getEl<HTMLDialogElement>("rules-dialog");
+  const bgmBtn = document.getElementById("btn-bgm-toggle");
+  if (bgmBtn) {
+    bgmBtn.addEventListener("click", () => {
+      pastureAudio.toggleBgm();
+      syncAudioButtonUi();
+    });
+  }
   getEl<HTMLButtonElement>("btn-open-rules").addEventListener("click", () => {
     renderTutorialButtonsInDialog();
     rulesDialog.showModal();

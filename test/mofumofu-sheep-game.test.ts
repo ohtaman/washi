@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { FENCE_SVG } from "../examples/web-demo/games/mofumofu-sheep/fence-icon.js";
+import { pastureAudio } from "../examples/web-demo/games/mofumofu-sheep/audio.js";
 import {
   computeCellSize,
   createEmptyFences,
@@ -1005,6 +1007,147 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       else (globalThis as { document?: unknown }).document = prevDoc;
       if (prevStorage === undefined) delete (globalThis as { localStorage?: unknown }).localStorage;
       else (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
+    }
+  });
+
+  it("replaces log emoji with authentic wooden fence SVG and integrates BGM toggle button", () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const theoryHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep-theory/index.html"), "utf8");
+    const portalHtml = readFileSync(resolve(gamesRoot, "index.html"), "utf8");
+
+    // 1. Verify log emoji (🪵) is completely removed from HTML files
+    expect(sheepHtml).not.toContain("🪵");
+    expect(theoryHtml).not.toContain("🪵");
+    expect(portalHtml).not.toContain("🪵");
+
+    // 2. Verify authentic wooden fence SVG contains picket posts and rails
+    expect(FENCE_SVG).toContain("fence-svg");
+    expect(FENCE_SVG).toContain("<svg");
+    expect(FENCE_SVG).toContain("rect");
+    expect(FENCE_SVG).toContain("path");
+
+    // 3. Verify topbar contains BGM toggle button
+    expect(sheepHtml).toContain('id="btn-bgm-toggle"');
+    expect(sheepHtml).toContain("data-bgm-toggle");
+    expect(sheepHtml).toContain("BGM: OFF");
+
+    // 4. Verify PastureAudioEngine toggle and track switching work cleanly
+    expect(pastureAudio.playing).toBe(false);
+    pastureAudio.setTrack("meadow");
+    pastureAudio.setTrack("victory");
+    pastureAudio.playFenceTap(true);
+    pastureAudio.playFenceTap(false);
+    pastureAudio.playAlert();
+    pastureAudio.playShortfall();
+    pastureAudio.playSafeChime();
+    pastureAudio.playHint();
+
+    // 5. Verify no orphaned playTone references exist in mofumofu-sheep/main.ts
+    const mainTs = readFileSync(resolve(gamesRoot, "mofumofu-sheep/main.ts"), "utf8");
+    expect(mainTs).not.toContain("playTone(");
+    expect(mainTs).toContain("pastureAudio.playHint()");
+  });
+
+  it("exercises BGM toggle button interaction and UI synchronization", () => {
+    class FakeAudioContext {
+      currentTime = 0;
+      state = "running";
+      destination = {};
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: { setValueAtTime: () => {} },
+          connect: () => {},
+          start: () => {},
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            linearRampToValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+        };
+      }
+      resume = async () => {};
+    }
+
+    const prevWin = (globalThis as { window?: unknown }).window;
+    const prevDoc = (globalThis as { document?: unknown }).document;
+
+    const btn = {
+      id: "btn-bgm-toggle",
+      attrs: new Map<string, string>(),
+      setAttribute(k: string, v: string) {
+        this.attrs.set(k, v);
+      },
+      getAttribute(k: string) {
+        return this.attrs.get(k) ?? null;
+      },
+      title: "",
+    };
+    const textEl = {
+      id: "bgm-btn-text",
+      textContent: "🔇 BGM: OFF",
+    };
+
+    const fakeWindow = {
+      AudioContext: FakeAudioContext,
+      setInterval: () => 1,
+      clearInterval: () => {},
+    };
+
+    try {
+      (globalThis as { window?: unknown }).window = fakeWindow;
+      (globalThis as { document?: unknown }).document = {
+        documentElement: { lang: "ja" },
+        title: "",
+        querySelectorAll: () => [],
+        getElementById: (id: string) => {
+          if (id === "btn-bgm-toggle") return btn;
+          if (id === "bgm-btn-text") return textEl;
+          return null;
+        },
+      };
+
+      // 1. Initial state: OFF
+      pastureAudio.stopBgm();
+      applySheepStaticTranslations("ja");
+      expect(pastureAudio.playing).toBe(false);
+      expect(btn.getAttribute("aria-pressed")).toBe("false");
+      expect(textEl.textContent).toContain("BGM: OFF");
+
+      // 2. Toggle BGM ON
+      const started = pastureAudio.toggleBgm();
+      expect(started).toBe(true);
+      expect(pastureAudio.playing).toBe(true);
+      applySheepStaticTranslations("ja");
+      expect(btn.getAttribute("aria-pressed")).toBe("true");
+      expect(textEl.textContent).toBe("🔊 BGM: ON");
+
+      // 3. Multilingual title updates
+      applySheepStaticTranslations("en");
+      expect(btn.title).toContain("Stop BGM");
+      applySheepStaticTranslations("zh");
+      expect(btn.title).toContain("停止BGM");
+
+      // 4. Toggle BGM OFF
+      const stopped = pastureAudio.toggleBgm();
+      expect(stopped).toBe(false);
+      expect(pastureAudio.playing).toBe(false);
+      applySheepStaticTranslations("en");
+      expect(btn.getAttribute("aria-pressed")).toBe("false");
+      expect(btn.title).toContain("Play BGM");
+    } finally {
+      pastureAudio.stopBgm();
+      if (prevWin === undefined) delete (globalThis as { window?: unknown }).window;
+      else (globalThis as { window?: unknown }).window = prevWin;
+      if (prevDoc === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document?: unknown }).document = prevDoc;
     }
   });
 });
