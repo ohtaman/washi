@@ -632,20 +632,22 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         "/washi/games/quant-survival/",
       ]);
 
+      const langParam = loc.key === "root" ? "en" : loc.key;
       const theoryHrefs = theoryAnchors.map((attrs) => {
         const hrefMatch = attrs.match(/\bhref="([^"]+)"/);
         expect(hrefMatch, `Missing href in showcase theory CTA <a ${attrs}>`).not.toBeNull();
         return hrefMatch![1];
       });
       expect(theoryHrefs).toEqual([
-        "/washi/apps/ai-timetable-theory/",
-        "/washi/games/demon-castle-shift-theory/",
-        "/washi/games/mofumofu-sheep-theory/",
-        "/washi/games/quant-survival-theory/",
+        `/washi/apps/ai-timetable-theory/?lang=${langParam}`,
+        `/washi/games/demon-castle-shift-theory/?lang=${langParam}`,
+        `/washi/games/mofumofu-sheep-theory/?lang=${langParam}`,
+        `/washi/games/quant-survival-theory/?lang=${langParam}`,
       ]);
 
       for (const href of [...primaryHrefs, ...theoryHrefs]) {
-        const subpath = href.replace(/^\/washi\//, "");
+        const cleanHref = href.split("?")[0];
+        const subpath = cleanHref.replace(/^\/washi\//, "");
         const expectedEntryHtml = path.resolve(
           process.cwd(),
           "examples/web-demo",

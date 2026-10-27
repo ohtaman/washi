@@ -76,7 +76,7 @@ aside: false
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/apps/ai-timetable/" target="_self" class="washi-showcase-cta">アプリを開く →</a>
-      <a href="/washi/apps/ai-timetable-theory/" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
+      <a href="/washi/apps/ai-timetable-theory/?lang=ja" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
     </div>
   </div>
 </div>
@@ -103,7 +103,7 @@ aside: false
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/games/demon-castle-shift/" target="_self" class="washi-showcase-cta">ゲームをプレイ →</a>
-      <a href="/washi/games/demon-castle-shift-theory/" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
+      <a href="/washi/games/demon-castle-shift-theory/?lang=ja" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
     </div>
   </div>
 
@@ -122,7 +122,7 @@ aside: false
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/games/mofumofu-sheep/" target="_self" class="washi-showcase-cta">ゲームをプレイ →</a>
-      <a href="/washi/games/mofumofu-sheep-theory/" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
+      <a href="/washi/games/mofumofu-sheep-theory/?lang=ja" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
     </div>
   </div>
 
@@ -141,7 +141,7 @@ aside: false
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-cta">ゲームをプレイ →</a>
-      <a href="/washi/games/quant-survival-theory/" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
+      <a href="/washi/games/quant-survival-theory/?lang=ja" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
     </div>
   </div>
 </div>

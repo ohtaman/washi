@@ -76,7 +76,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/apps/ai-timetable/" target="_self" class="washi-showcase-cta">Open App →</a>
-      <a href="/washi/apps/ai-timetable-theory/" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
+      <a href="/washi/apps/ai-timetable-theory/?lang=en" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
     </div>
   </div>
 </div>
@@ -103,7 +103,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/games/demon-castle-shift/" target="_self" class="washi-showcase-cta">Play Game →</a>
-      <a href="/washi/games/demon-castle-shift-theory/" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
+      <a href="/washi/games/demon-castle-shift-theory/?lang=en" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
     </div>
   </div>
 
@@ -122,7 +122,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/games/mofumofu-sheep/" target="_self" class="washi-showcase-cta">Play Game →</a>
-      <a href="/washi/games/mofumofu-sheep-theory/" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
+      <a href="/washi/games/mofumofu-sheep-theory/?lang=en" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
     </div>
   </div>
 
@@ -141,7 +141,7 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
     </div>
     <div class="washi-showcase-actions">
       <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-cta">Play Game →</a>
-      <a href="/washi/games/quant-survival-theory/" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
+      <a href="/washi/games/quant-survival-theory/?lang=en" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
     </div>
   </div>
 </div>
