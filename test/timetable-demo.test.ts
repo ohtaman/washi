@@ -1108,6 +1108,19 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       // 4. Multi-language UI text integrity for catalog management and step progression
       for (const lang of ["ja", "en", "zh"] as const) {
         const ui = UI_TEXT_I18N[lang];
+        expect(ui.catEmptyTitle.length).toBeGreaterThan(0);
+        expect(ui.catEmptyDesc.length).toBeGreaterThan(0);
+        expect(ui.catEmptyGenMain.length).toBeGreaterThan(0);
+        expect(ui.catEmptyGenSub.length).toBeGreaterThan(0);
+        expect(ui.catEmptyImportMain.length).toBeGreaterThan(0);
+        expect(ui.catEmptyImportSub.length).toBeGreaterThan(0);
+        expect(ui.catEmptySamplesBtn.length).toBeGreaterThan(0);
+        expect(ui.step1Badge.length).toBeGreaterThan(0);
+        expect(ui.step2Badge.length).toBeGreaterThan(0);
+        expect(ui.step3Badge.length).toBeGreaterThan(0);
+        expect(ui.step1Badge).not.toMatch(/^STEP \d$/);
+        expect(ui.step2Badge).not.toMatch(/^STEP \d$/);
+        expect(ui.step3Badge).not.toMatch(/^STEP \d$/);
         expect(ui.catMgmtTitle.length).toBeGreaterThan(0);
         expect(ui.catMgmtDesc.length).toBeGreaterThan(0);
         expect(ui.btnCatGenerate.length).toBeGreaterThan(0);
@@ -1117,6 +1130,8 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         expect(ui.constraintsWorkflowMsg.length).toBeGreaterThan(0);
         expect(ui.btnConstraintsGoTimetable.length).toBeGreaterThan(0);
         expect(ui.chatWelcomeMarkdown.length).toBeGreaterThan(0);
+        expect(ui.btnCatGoConstraints).not.toContain("Step 2");
+        expect(ui.btnCatGoTimetable).not.toContain("Step 3");
       }
       expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("時間割を初期編成します");
       expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("時間割ボード");

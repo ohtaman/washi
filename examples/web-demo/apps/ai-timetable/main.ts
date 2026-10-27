@@ -581,36 +581,35 @@ function renderTimetableBoard(): void {
       emptyStateEl.innerHTML = `
         <div class="empty-state-workflow">
           <div class="workflow-header">
-            <span class="workflow-badge">STEP 1</span>
             <h3>${pickTimetableLang(activeLang, {
-              ja: "大学時間割編成の始め方（白紙モード）",
-              en: "Getting Started with Timetabling (Blank Slate)",
-              zh: "大学排课指南（空白模式）",
+              ja: "時間割データがありません（白紙モード）",
+              en: "No Timetable Data (Blank Slate)",
+              zh: "暂无排课数据（空白模式）",
             })}</h3>
             <p>${pickTimetableLang(activeLang, {
-              ja: "大学の時間割編成は、教員一覧・教室一覧・開講科目の3つの基礎データを揃えることから始まります。以下のいずれかの方法でデータをセットしてください。",
-              en: "University timetabling starts with preparing faculty rosters, classrooms, and course curriculum data. Choose an option below to begin.",
-              zh: "大学排课始于准备教师、教室和开课计划三大基础数据。请选择以下任意方式载入数据。",
+              ja: "時間割を自動編成するには、まず教員名簿・教室設備・開講科目が必要です。「基礎データ」タブで登録してください。",
+              en: "University timetabling requires faculty, classrooms, and courses. Please set up baseline data in the Master Data tab.",
+              zh: "排课需要先录入教师、教室及课程数据。请前往“基础数据”标签页进行配置。",
             })}</p>
           </div>
           <div class="workflow-cards-grid">
             <div class="workflow-card highlighted">
-              <div class="wf-card-icon">✨</div>
+              <div class="wf-card-icon">📚</div>
               <h4>${pickTimetableLang(activeLang, {
-                ja: "サンプルデータで体験する (推奨)",
-                en: "Start with Sample Data (Recommended)",
-                zh: "使用示例数据体验 (推荐)",
+                ja: "基礎データ管理を開く (推奨)",
+                en: "Open Master Data (Recommended)",
+                zh: "打开基础数据管理 (推荐)",
               })}</h4>
               <p>${pickTimetableLang(activeLang, {
-                ja: "情報科学科の教員10名・教室7室・25科目を一括生成し、一覧の確認と制約設定を経て時間割を編成します。",
-                en: "Load 10 CS faculty, 7 rooms, and 25 courses, review the roster in Step 1, configure constraints, and then schedule.",
-                zh: "一键载入计算机系10位教师、7间教室与25门课程，在第1步确认列表并配置规则后进行排课。",
+                ja: "教員・教室・科目の登録画面を開き、サンプルデータを読み込むかCSVファイルをインポートします。",
+                en: "Open the master data catalog to load benchmark sample data or import your own CSVs.",
+                zh: "打开基础数据名册，载入示例数据或导入自有CSV文件。",
               })}</p>
-              <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-                🎲 ${pickTimetableLang(activeLang, {
-                  ja: "サンプルデータを読み込んで一覧を確認 (Step 1へ)",
-                  en: "Load Sample Data & Review (Go to Step 1)",
-                  zh: "载入示例数据并查看列表 (前往第1步)",
+              <button type="button" id="btn-empty-view-catalog" class="btn-solve-primary">
+                📚 ${pickTimetableLang(activeLang, {
+                  ja: "基礎データ管理を開く",
+                  en: "Open Master Data",
+                  zh: "打开基础数据管理",
                 })}
               </button>
             </div>
@@ -672,16 +671,15 @@ function renderTimetableBoard(): void {
       emptyStateEl.innerHTML = `
         <div class="data-preview-card">
           <div class="data-preview-header">
-            <span class="dp-badge">STEP 3</span>
             <h3>${pickTimetableLang(activeLang, {
               ja: `基礎データの準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}コマ）`,
               en: `Data Ready: ${profCount} Profs / ${roomCount} Rooms / ${courseCount} Courses (${totalSessions} sessions)`,
               zh: `基础数据就绪: ${profCount}位教师 / ${roomCount}间教室 / ${courseCount}门课程 (共${totalSessions}节)`,
             })}</h3>
             <p>${pickTimetableLang(activeLang, {
-              ja: "教員名簿・教室設備・開講科目がセットされました。内容を確認し、下の「⚡ 時間割を自動編成する」を押すと WaSHI × HiGHS が全学年・全教員・全教室の時間割を一括最適化します。",
-              en: "Faculty roster, classrooms, and curriculum are loaded. Review the details below. Click 'Auto-Schedule Timetable' to run WaSHI × HiGHS MIP optimization.",
-              zh: "教师名册、教室与课程已载入。确认以下概要后，点击“自动编排课表”，WaSHI × HiGHS 混合整数规划求解器将一键优化全局排课。",
+              ja: "教員名簿・教室設備・開講科目がセットされました。下の「⚡ 時間割を自動編成する」を押すと WaSHI × HiGHS が全学年・全教員・全教室の時間割を一括最適化します。",
+              en: "Faculty roster, classrooms, and curriculum are loaded. Click 'Auto-Schedule Timetable' to run WaSHI × HiGHS MIP optimization.",
+              zh: "教师名册、教室与课程已载入。点击“自动编排课表”，WaSHI × HiGHS 混合整数规划求解器将一键优化全局排课。",
             })}</p>
           </div>
           <div class="data-preview-summary-grid">
@@ -746,23 +744,23 @@ function renderTimetableBoard(): void {
           <div class="data-preview-actions">
             <button type="button" id="btn-empty-solve" class="btn-solve-primary">
               ⚡ ${pickTimetableLang(activeLang, {
-                ja: "時間割を自動編成する (0.2秒)",
-                en: "Auto-Schedule Timetable (0.2s)",
-                zh: "自动编排课表 (0.2秒)",
+                ja: "時間割を自動編成する",
+                en: "Auto-Schedule Timetable",
+                zh: "自动编排课表",
               })}
             </button>
             <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
               📚 ${pickTimetableLang(activeLang, {
-                ja: "教員・教室・科目の全一覧を確認 (Step 1)",
-                en: "Review Detailed Catalog (Step 1)",
-                zh: "查看完整数据列表 (Step 1)",
+                ja: "基礎データ一覧を確認",
+                en: "Review Master Data",
+                zh: "查看基础数据列表",
               })}
             </button>
             <button type="button" id="btn-empty-view-constraints" class="btn-toolbar-outline">
-              ⚖️ ${pickTimetableLang(activeLang, {
-                ja: "制約・ルールを確認 (Step 2)",
-                en: "Review Constraints (Step 2)",
-                zh: "查看约束规则 (Step 2)",
+              ⚙️ ${pickTimetableLang(activeLang, {
+                ja: "条件・ルール設定を確認",
+                en: "Review Constraints",
+                zh: "查看约束规则",
               })}
             </button>
             <button type="button" id="btn-empty-clear" class="btn-xs-outline" style="color: var(--danger-text, #ef4444);">
@@ -1364,10 +1362,12 @@ function renderCatalogTables(): void {
   const isBlank = appState.courses.length === 0;
 
   const emptyCard = $("cat-empty-state-card");
+  const mgmtCard = $("cat-mgmt-card");
   const tablesContainer = $("cat-tables-container");
   const nextBanner = $("cat-next-step-banner");
 
   if (emptyCard) emptyCard.hidden = !isBlank;
+  if (mgmtCard) mgmtCard.hidden = isBlank;
   if (tablesContainer) tablesContainer.hidden = isBlank;
   if (nextBanner) {
     nextBanner.hidden = isBlank;
@@ -1376,9 +1376,9 @@ function renderCatalogTables(): void {
       setText(
         "cat-next-step-message",
         pickTimetableLang(activeLang, {
-          ja: `✅ 基礎データの準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（計${totalSessions}コマ）。内容を確認したら、次は「制約・ルール設定」で条件を確認するか、「時間割ボード」で自動編成を実行してください。`,
-          en: `✅ Baseline data ready: ${appState.professors.length} Faculty / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (${totalSessions} sessions). Review tables below, then inspect constraints or proceed to Timetable Board to schedule.`,
-          zh: `✅ 基础数据就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (共${totalSessions}节)。核对无误后请前往“约束与规则设置”调整条件，或前往“课表看板”一键自动排课。`,
+          ja: `✅ 基礎データ準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（計${totalSessions}コマ）。このまま時間割を自動編成するか、条件・ルール設定を確認してください。`,
+          en: `✅ Baseline data ready: ${appState.professors.length} Faculty / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (${totalSessions} sessions). You can auto-schedule now or inspect constraints.`,
+          zh: `✅ 基础数据就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (共${totalSessions}节)。可直接自动排课或前往约束设置核对条件。`,
         })
       );
     }
@@ -1710,20 +1710,21 @@ function updateStatusBlankUI(): void {
   const conflictAlert = $("conflict-alert");
   conflictAlert.hidden = true;
 
-  badge.className = "status-pill status-idle";
   if (appState.courses.length === 0) {
+    badge.className = "status-pill status-idle";
     badge.textContent = pickTimetableLang(activeLang, {
-      ja: "白紙モード",
-      en: "Blank Slate",
-      zh: "空白模式",
+      ja: "未登録",
+      en: "Blank",
+      zh: "未录入",
     });
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: "データ未読み込み (0科目 / 0教員 / 0教室) — CSVインポートまたはサンプル生成を行ってください",
-      en: "No data loaded (0 courses / 0 profs / 0 rooms) — Please import CSV or generate sample data",
-      zh: "未加载数据 (0门课程 / 0位教师 / 0间教室) — 请导入CSV或生成示例数据",
+      ja: "基礎データ（教員・教室・科目）を登録すると時間割を自動編成できます",
+      en: "Register master data (faculty, rooms, courses) to auto-schedule timetables",
+      zh: "录入基础数据（教师、教室、课程）后即可自动排课",
     });
     $("tutorial-banner").hidden = true;
   } else {
+    badge.className = "status-pill status-active";
     badge.textContent = pickTimetableLang(activeLang, {
       ja: "未編成",
       en: "Unscheduled",
@@ -1857,7 +1858,7 @@ function renderAll(): void {
 }
 
 function wireEmptyStateButtons(): void {
-  document.getElementById("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(true));
+  document.getElementById("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(false));
   document.getElementById("btn-empty-csv")?.addEventListener("click", openCsvDialog);
   document.getElementById("btn-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
   document.getElementById("btn-empty-solve")?.addEventListener("click", () => void triggerSolve());
@@ -1870,7 +1871,7 @@ function wireEmptyStateButtons(): void {
   document.getElementById("btn-empty-clear")?.addEventListener("click", () => handleClearToBlank());
 }
 
-export function handleGenerateSample(autoSwitchToCatalog = true): void {
+export function handleGenerateSample(autoSwitchToCatalog = false): void {
   appState = generateTimetableState();
   currentTimetable = null;
   currentEvaluation = null;
@@ -1883,9 +1884,9 @@ export function handleGenerateSample(autoSwitchToCatalog = true): void {
     appendChatMessage(
       "assistant",
       pickTimetableLang(activeLang, {
-        ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「科目・教員・教室一覧」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のステップ**:\n1. 「⚖️ 制約・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
-        en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Curriculum & Resources" tab.\n\n**Next Steps**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
-        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“科目・教师・教室一览”标签页查看名册、设备与开课计划。\n\n**后续步骤**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
+        ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「基礎データ」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のアクション**:\n1. 「⚙️ 条件・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
+        en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Master Data" tab.\n\n**Next Actions**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
+        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“基础数据”标签页查看名册、设备与开课计划。\n\n**后续操作**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
       })
     );
   }
@@ -2299,12 +2300,15 @@ export function applyTimetableLang(lang: TimetableLang): void {
   // Tutorial banner
   setText("tutorial-title-text", ui.tutorialTitle);
   setText("btn-close-tutorial", ui.tutorialClose);
+  setText("step1-badge", ui.step1Badge);
   setText("step1-title", ui.step1Title);
   setHtml("step1-desc", ui.step1DescHtml);
   setText("btn-tut-step1", ui.step1Btn);
+  setText("step2-badge", ui.step2Badge);
   setText("step2-title", ui.step2Title);
   setHtml("step2-desc", ui.step2DescHtml);
   setText("btn-tut-step2", ui.step2Btn);
+  setText("step3-badge", ui.step3Badge);
   setText("step3-title", ui.step3Title);
   setHtml("step3-desc", ui.step3DescHtml);
   $("select-conflict-scenario").setAttribute("aria-label", ui.step3SelectAria);
@@ -2406,6 +2410,11 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("btn-cat-clear-blank", ui.btnCatClearBlank);
   setText("cat-empty-title", ui.catEmptyTitle);
   setText("cat-empty-desc", ui.catEmptyDesc);
+  setText("cat-empty-gen-main", ui.catEmptyGenMain);
+  setText("cat-empty-gen-sub", ui.catEmptyGenSub);
+  setText("cat-empty-import-main", ui.catEmptyImportMain);
+  setText("cat-empty-import-sub", ui.catEmptyImportSub);
+  setText("btn-cat-empty-samples", ui.catEmptySamplesBtn);
   setText("btn-cat-go-constraints", ui.btnCatGoConstraints);
   setText("btn-cat-go-timetable", ui.btnCatGoTimetable);
 
@@ -3140,22 +3149,32 @@ function wireEvents(): void {
     $<HTMLDialogElement>("prompt-catalog-dialog").close();
   });
 
-  // Tab 3 Catalog management & navigation buttons
+  // Master Data (Catalog) management & navigation buttons
+  $("btn-cat-empty-generate")?.addEventListener("click", () => handleGenerateSample(false));
+  $("btn-cat-empty-import")?.addEventListener("click", openCsvDialog);
+  $("btn-cat-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
+
   $("btn-cat-generate-sample")?.addEventListener("click", () => handleGenerateSample(false));
   $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
   $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
   $("btn-cat-clear-blank")?.addEventListener("click", () => handleClearToBlank());
   $("btn-cat-go-constraints")?.addEventListener("click", () => {
-    $<HTMLButtonElement>("tab-btn-constraints").click();
+    switchTab("constraints");
   });
   $("btn-cat-go-timetable")?.addEventListener("click", () => {
-    $<HTMLButtonElement>("tab-btn-timetable").click();
+    switchTab("timetable");
+    if (appState.courses.length > 0 && appState.rooms.length > 0 && !currentTimetable) {
+      void triggerSolve();
+    }
   });
 
-  // Tab 2 workflow banner button
+  // Constraints workflow banner button
   $("btn-constraints-go-timetable")?.addEventListener("click", () => {
     readConfigFromForm();
-    $<HTMLButtonElement>("tab-btn-timetable").click();
+    switchTab("timetable");
+    if (appState.courses.length > 0 && appState.rooms.length > 0 && !currentTimetable) {
+      void triggerSolve();
+    }
   });
 }
 
@@ -3176,6 +3195,14 @@ async function initApp(): Promise<void> {
     .then((status) => updateNanoStatusUI(status));
 
   renderAll();
+
+  if (appState.courses.length === 0) {
+    switchTab("catalog");
+  } else if (currentTimetable) {
+    switchTab("timetable");
+  } else {
+    switchTab("catalog");
+  }
 }
 
 if (typeof document !== "undefined") {
