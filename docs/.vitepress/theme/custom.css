@@ -797,35 +797,68 @@
 .washi-showcase-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 18px;
+  gap: 20px;
 }
 
 .washi-showcase-card {
+  position: relative;
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 22px 24px;
-  border-radius: 12px;
+  padding: 0;
+  border-radius: 14px;
   border: 1px solid var(--vp-c-divider);
   background: var(--vp-c-bg-soft);
   text-decoration: none !important;
   color: var(--vp-c-text-1) !important;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  overflow: hidden;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .washi-showcase-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   border-color: var(--vp-c-brand-1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
 }
 
 .washi-showcase-card.is-primary {
   border-color: rgba(225, 29, 72, 0.35);
-  background: linear-gradient(135deg, rgba(225, 29, 72, 0.06) 0%, var(--vp-c-bg-soft) 100%);
+  background: linear-gradient(180deg, rgba(225, 29, 72, 0.04) 0%, var(--vp-c-bg-soft) 100%);
 }
 
 .washi-showcase-card.is-primary:hover {
   border-color: #e11d48;
+}
+
+.washi-showcase-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--vp-c-bg);
+  overflow: hidden;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.washi-showcase-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.washi-showcase-card:hover .washi-showcase-thumb-img {
+  transform: scale(1.03);
+}
+
+.washi-showcase-card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: 1;
+  padding: 18px 20px 20px;
 }
 
 .washi-showcase-card-top {
@@ -865,8 +898,19 @@
   transition: color 0.15s ease;
 }
 
-.washi-showcase-title-link:hover {
+.washi-showcase-title-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.washi-showcase-card:hover .washi-showcase-title-link {
   color: var(--vp-c-brand-1) !important;
+}
+
+.washi-showcase-card.is-primary:hover .washi-showcase-title-link {
+  color: #e11d48 !important;
 }
 
 .washi-showcase-desc {
@@ -883,9 +927,13 @@
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 14px;
+  pointer-events: none;
 }
 
 .washi-showcase-cta {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
   font-size: 0.88rem;
   font-weight: 600;
   color: var(--vp-c-brand-1);
@@ -904,6 +952,9 @@
 }
 
 .washi-showcase-theory-btn {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--vp-c-text-2) !important;
