@@ -466,9 +466,9 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
       playerAumSeries.push(playerAumSeries[playerAumSeries.length - 1]);
     }
 
-    // AI fund evolution: halts and freezes if floor breached
+    // AI fund evolution: halts and freezes if floor breached or if player was already liquidated
     const aiFloor = aiStartAum * (1 + regime.liquidationFloor);
-    if (aiLiquidatedDay === null) {
+    if (aiLiquidatedDay === null && (playerLiquidatedDay === null || playerLiquidatedDay === day)) {
       aiCumReturn = (1 + aiCumReturn) * (1 + aDayRet) - 1;
       const aAum = aiStartAum * (1 + aiCumReturn);
       if (aAum < aiFloor) {
@@ -483,8 +483,8 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
       aiAumSeries.push(aiAumSeries[aiAumSeries.length - 1]);
     }
 
-    // Ghost benchmark evolution
-    if (ghostLiquidatedDay === null) {
+    // Ghost benchmark evolution: halts and freezes if floor breached or if player was already liquidated
+    if (ghostLiquidatedDay === null && (playerLiquidatedDay === null || playerLiquidatedDay === day)) {
       ghostCumReturn = (1 + ghostCumReturn) * (1 + gDayRet) - 1;
       const gAum = playerStartAum * (1 + ghostCumReturn);
       if (gAum < liquidationAumFloor) {
@@ -510,12 +510,15 @@ export function simulateQuarterMarket(input: MarketSimulationInput): MarketSimul
     if (aDd < aiMaxDrawdown) aiMaxDrawdown = aDd;
   }
 
-  const playerEndAum = playerAumSeries[days];
-  const aiEndAum = aiAumSeries[days];
+  const effectiveEndDay =
+    playerLiquidatedDay !== null ? playerLiquidatedDay : days;
+  const playerEndAum = playerAumSeries[effectiveEndDay];
+  const aiEndAum = aiAumSeries[effectiveEndDay];
   const playerLiquidated =
     playerEndAum < liquidationAumFloor || playerLiquidatedDay !== null;
   const aiLiquidated =
-    aiEndAum < aiStartAum * (1 + regime.liquidationFloor) || aiLiquidatedDay !== null;
+    aiEndAum < aiStartAum * (1 + regime.liquidationFloor) ||
+    (aiLiquidatedDay !== null && aiLiquidatedDay <= effectiveEndDay);
 
   return {
     days,

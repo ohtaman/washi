@@ -403,6 +403,13 @@ describe("Quant Survival Portfolio Game (HiGHS Convex QP & Progressive Unlocks)"
       expect(sim.playerAumSeries[d]).toBe(liqAum);
     }
     expect(sim.playerEndAum).toBe(liqAum);
+
+    // AI state must freeze at the liquidation day stopping point so scoreboard/banner match the halted chart
+    const aiLiqAum = sim.aiAumSeries[liqDay];
+    expect(sim.aiEndAum).toBe(aiLiqAum);
+    for (let d = liqDay; d <= 60; d++) {
+      expect(sim.aiAumSeries[d]).toBe(aiLiqAum);
+    }
   });
 
   it("prioritizes newly unlocked assets over older fillers when expanding portfolio picks via autoPickLevelAssets", () => {
