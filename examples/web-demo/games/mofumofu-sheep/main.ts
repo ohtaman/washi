@@ -649,6 +649,8 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.langBtn === currentLang);
   });
+
+  syncAudioButtonUi();
 }
 
 function renderTutorialButtonsInDialog(): void {
@@ -670,8 +672,6 @@ function renderTutorialButtonsInDialog(): void {
     });
     gridEl.appendChild(btn);
   }
-
-  syncAudioButtonUi();
 }
 
 function getTargetScore(): number {

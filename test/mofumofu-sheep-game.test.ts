@@ -1048,4 +1048,106 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(mainTs).not.toContain("playTone(");
     expect(mainTs).toContain("pastureAudio.playHint()");
   });
+
+  it("exercises BGM toggle button interaction and UI synchronization", () => {
+    class FakeAudioContext {
+      currentTime = 0;
+      state = "running";
+      destination = {};
+      createOscillator() {
+        return {
+          type: "sine",
+          frequency: { setValueAtTime: () => {} },
+          connect: () => {},
+          start: () => {},
+          stop: () => {},
+        };
+      }
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime: () => {},
+            linearRampToValueAtTime: () => {},
+            exponentialRampToValueAtTime: () => {},
+          },
+          connect: () => {},
+        };
+      }
+      resume = async () => {};
+    }
+
+    const prevWin = (globalThis as { window?: unknown }).window;
+    const prevDoc = (globalThis as { document?: unknown }).document;
+
+    const btn = {
+      id: "btn-bgm-toggle",
+      attrs: new Map<string, string>(),
+      setAttribute(k: string, v: string) {
+        this.attrs.set(k, v);
+      },
+      getAttribute(k: string) {
+        return this.attrs.get(k) ?? null;
+      },
+      title: "",
+    };
+    const textEl = {
+      id: "bgm-btn-text",
+      textContent: "🔇 BGM: OFF",
+    };
+
+    const fakeWindow = {
+      AudioContext: FakeAudioContext,
+      setInterval: () => 1,
+      clearInterval: () => {},
+    };
+
+    try {
+      (globalThis as { window?: unknown }).window = fakeWindow;
+      (globalThis as { document?: unknown }).document = {
+        documentElement: { lang: "ja" },
+        title: "",
+        querySelectorAll: () => [],
+        getElementById: (id: string) => {
+          if (id === "btn-bgm-toggle") return btn;
+          if (id === "bgm-btn-text") return textEl;
+          return null;
+        },
+      };
+
+      // 1. Initial state: OFF
+      pastureAudio.stopBgm();
+      applySheepStaticTranslations("ja");
+      expect(pastureAudio.playing).toBe(false);
+      expect(btn.getAttribute("aria-pressed")).toBe("false");
+      expect(textEl.textContent).toContain("BGM: OFF");
+
+      // 2. Toggle BGM ON
+      const started = pastureAudio.toggleBgm();
+      expect(started).toBe(true);
+      expect(pastureAudio.playing).toBe(true);
+      applySheepStaticTranslations("ja");
+      expect(btn.getAttribute("aria-pressed")).toBe("true");
+      expect(textEl.textContent).toBe("🔊 BGM: ON");
+
+      // 3. Multilingual title updates
+      applySheepStaticTranslations("en");
+      expect(btn.title).toContain("Stop BGM");
+      applySheepStaticTranslations("zh");
+      expect(btn.title).toContain("停止BGM");
+
+      // 4. Toggle BGM OFF
+      const stopped = pastureAudio.toggleBgm();
+      expect(stopped).toBe(false);
+      expect(pastureAudio.playing).toBe(false);
+      applySheepStaticTranslations("en");
+      expect(btn.getAttribute("aria-pressed")).toBe("false");
+      expect(btn.title).toContain("Play BGM");
+    } finally {
+      pastureAudio.stopBgm();
+      if (prevWin === undefined) delete (globalThis as { window?: unknown }).window;
+      else (globalThis as { window?: unknown }).window = prevWin;
+      if (prevDoc === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document?: unknown }).document = prevDoc;
+    }
+  });
 });
