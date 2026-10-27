@@ -197,6 +197,16 @@ export class PastureAudioEngine {
     });
   }
 
+  /** Gentle warm chime when a hint is revealed */
+  public playHint(): void {
+    if (this.isMuted) return;
+    const ctx = this.ensureCtx();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    this.playWarmPluck(ctx, 587.33, now, 0.12, 0.06, "sine");
+    this.playWarmPluck(ctx, 880.0, now + 0.05, 0.18, 0.05, "sine");
+  }
+
   /** Low comical alert when wolf reaches sheep or cannot place fence */
   public playAlert(): void {
     if (this.isMuted) return;

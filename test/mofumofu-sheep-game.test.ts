@@ -1041,5 +1041,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     pastureAudio.playAlert();
     pastureAudio.playShortfall();
     pastureAudio.playSafeChime();
+    pastureAudio.playHint();
+
+    // 5. Verify no orphaned playTone references exist in mofumofu-sheep/main.ts
+    const mainTs = readFileSync(resolve(gamesRoot, "mofumofu-sheep/main.ts"), "utf8");
+    expect(mainTs).not.toContain("playTone(");
+    expect(mainTs).toContain("pastureAudio.playHint()");
   });
 });

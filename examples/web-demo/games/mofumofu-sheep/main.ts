@@ -1193,7 +1193,7 @@ async function handleHint(): Promise<void> {
     if (myToken !== solveToken || currentFences !== fencesSnapshot) return;
     activeHint = diagnosis;
     renderBoard();
-    playTone(587.33, 110, "sine", 0.08);
+    pastureAudio.playHint();
   } catch {
     if (myToken !== solveToken) return;
     solverFailed = true;
