@@ -123,12 +123,20 @@
                 </p>
               </div>
               <div class="picker-status-block">
-                <span id="universe-pick-counter" class="badge-pick-count">選択: 2 / 2</span>
+                <span id="universe-pick-counter" class="badge-pick-count">選択: 3 / 3</span>
               </div>
             </div>
             <div id="universe-grid" class="universe-grid" role="group" aria-label="Available Asset Pool">
               <!-- Populated dynamically by main.ts -->
             </div>
+          </div>
+
+          <!-- Strategy Tip Banner -->
+          <div id="strategy-tip-banner" class="strategy-tip-banner">
+            <span class="tip-icon">💡</span>
+            <span id="strategy-tip-text" class="tip-text">
+              <strong>攻略のヒント</strong>: 株式100%だと途中の暴落ショックで即ロスカット退場します。相関係数マトリクスで青い「逆相関」の資産（国債や金）を20〜30%混ぜることで、破綻確率をほぼ0%に抑えつつAIの目標リターンを上回ることができます!
+            </span>
           </div>
 
           <!-- 2. ALLOCATION SLIDERS -->
@@ -241,6 +249,12 @@
                 role="img"
                 aria-label="Risk-Return Efficient Frontier Plot"
               ></svg>
+              <div class="chart-guide-note">
+                <span class="guide-note-badge">? 見方</span>
+                <span id="frontier-guide-text" class="guide-note-text">
+                  【グラフの見方】横軸: リスクσ（価格のブレ幅・左ほど安全） / 縦軸: 期待リターンE[R]（見込み収益率・上ほど高リターン） / 点線: 効率的フロンティア（これ以上リスクを抑えられない理想の限界曲線）。スライダーで青い●を点線に近づけ、AI(◆)より上を狙うのがセオリーです。
+                </span>
+              </div>
             </div>
 
             <div class="chart-card">
