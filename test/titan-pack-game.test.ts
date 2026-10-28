@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Model } from "../src/index.js";
 import {
   generateStagePuzzle,
   getStageSpec,
@@ -74,7 +75,8 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       const { cols, rows, parts, solution, spec } = puzzle;
       const totalBoardArea = cols * rows;
 
-      // 1. Solution parts count matches inventory parts count
+      // 1. Solution parts count matches inventory parts count and matches targetPieces
+      expect(parts.length).toBe(spec.targetPieces);
       expect(solution.length).toBe(parts.length);
 
       // 2. Exact zero scrap: total parts area must equal total board area
@@ -122,4 +124,33 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       expect(puzzleAgain.parts.map((p) => p.id)).toEqual(puzzle.parts.map((p) => p.id));
     });
   }
+
+  it("formulates and solves 2D packing with public Washi MILP API with HiGHS", async () => {
+    const puzzle = generateStagePuzzle(1);
+    const { cols: plateW, rows: plateH, parts } = puzzle;
+    const m = new Model("TitanPacking2D");
+    const M = Math.max(plateW, plateH) + 1;
+
+    // Fixed orientation coordinates for validation
+    const x = parts.map((p, i) => m.continuous(`x_${i}`, { lb: 0, ub: plateW - p.origW }));
+    const y = parts.map((p, i) => m.continuous(`y_${i}`, { lb: 0, ub: plateH - p.origH }));
+
+    for (let i = 0; i < parts.length; i++) {
+      for (let j = i + 1; j < parts.length; j++) {
+        const d1 = m.binary(`d_${i}_${j}_left`);
+        const d2 = m.binary(`d_${i}_${j}_right`);
+        const d3 = m.binary(`d_${i}_${j}_below`);
+        const d4 = m.binary(`d_${i}_${j}_above`);
+
+        m.constraint(x[i].add(parts[i].origW).sub(x[j]).add(d1.mul(M)).le(M));
+        m.constraint(x[j].add(parts[j].origW).sub(x[i]).add(d2.mul(M)).le(M));
+        m.constraint(y[i].add(parts[i].origH).sub(y[j]).add(d3.mul(M)).le(M));
+        m.constraint(y[j].add(parts[j].origH).sub(y[i]).add(d4.mul(M)).le(M));
+        m.constraint(d1.add(d2).add(d3).add(d4).ge(1));
+      }
+    }
+
+    const status = await m.solve({ solver: "highs" });
+    expect(status).toBe("Optimal");
+  });
 });

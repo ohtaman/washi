@@ -688,7 +688,7 @@
         </div>
 
         <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-wrap: wrap;">
-          <button class="btn btn-solver" id="btn-solve">⚡ Washiで最適配置を解く</button>
+          <button class="btn btn-solver" id="btn-solve" title="生成時に計算された完全配置（ゼロ端材・断層なし）を展開します">💡 設計図を展開</button>
           <button class="btn btn-ghost" id="btn-theory">📖 数理モデル解説</button>
           <button class="btn btn-primary" id="btn-execute">⚡ CUT EXECUTE (一括切断)</button>
         </div>
@@ -849,12 +849,12 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
           return buildPuzzleResult(stageNum, spec, cols, rows, blocks, rng);
         }
 
-        // Multi-Scale Interlocking Generator
-        for (let attempt = 0; attempt < 60; attempt++) {
+        // Multi-Scale Interlocking & Core Partition
+        for (let attempt = 0; attempt < 100; attempt++) {
           const minW = Math.max(1, Math.floor(cols * 0.18));
-          const maxW = Math.max(minW + 1, Math.floor(cols * 0.42));
+          const maxW = Math.max(minW + 1, Math.floor(cols * 0.38));
           const minH = Math.max(1, Math.floor(rows * 0.18));
-          const maxH = Math.max(minH + 1, Math.floor(rows * 0.42));
+          const maxH = Math.max(minH + 1, Math.floor(rows * 0.38));
 
           const wL = minW + Math.floor(rng() * (maxW - minW + 1));
           const wR = minW + Math.floor(rng() * (maxW - minW + 1));
@@ -870,71 +870,103 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
             { col: cols - wR, row: 0, w: wR, h: rows - hB },
             { col: wL, row: rows - hB, w: cols - wL, h: hB },
             { col: 0, row: hT, w: wL, h: rows - hT },
+            { col: wL, row: hT, w: centerW, h: centerH },
           ];
 
-          // Center Core Partition
-          if (centerW >= 5 && centerH >= 5) {
-            const splitW = Math.floor(centerW / 2);
-            const splitH = Math.floor(centerH / 2);
-            blocks.push(
-              { col: wL, row: hT, w: splitW, h: centerH },
-              { col: wL + splitW, row: hT, w: centerW - splitW, h: splitH },
-              { col: wL + splitW, row: hT + splitH, w: centerW - splitW, h: centerH - splitH }
-            );
-          } else if (centerW >= 3 && centerH >= 2) {
-            const splitW = 1 + Math.floor(rng() * (centerW - 2));
-            blocks.push(
-              { col: wL, row: hT, w: splitW, h: centerH },
-              { col: wL + splitW, row: hT, w: centerW - splitW, h: centerH }
-            );
-          } else {
-            blocks.push({ col: wL, row: hT, w: centerW, h: centerH });
-          }
+          if (hasFaultLines(cols, rows, blocks)) continue;
 
-          // Subdivide largest blocks to reach target pieces
+          let stuck = false;
           let subAttempts = 0;
-          while (blocks.length < targetPieces && subAttempts++ < 30) {
-            blocks.sort((a, b) => b.w * b.h - a.w * a.h);
-            const big = blocks[0];
-            if (big.w < 4 && big.h < 4) break;
+          while (blocks.length < targetPieces && subAttempts++ < 60) {
+            const candidates = [];
+            for (let idx = 0; idx < blocks.length; idx++) {
+              const b = blocks[idx];
+              if (b.w >= 2) {
+                const splitPoints = b.w >= 4 ? [Math.floor(b.w / 2), 2] : [1];
+                for (const s of splitPoints) {
+                  if (s > 0 && b.w - s > 0) {
+                    const b1 = { col: b.col, row: b.row, w: s, h: b.h };
+                    const b2 = { col: b.col + s, row: b.row, w: b.w - s, h: b.h };
+                    const test = [...blocks.slice(0, idx), b1, b2, ...blocks.slice(idx + 1)];
+                    if (!hasFaultLines(cols, rows, test)) {
+                      candidates.push({ idx, b1, b2, area: b.w * b.h });
+                    }
+                  }
+                }
+              }
+              if (b.h >= 2) {
+                const splitPoints = b.h >= 4 ? [Math.floor(b.h / 2), 2] : [1];
+                for (const s of splitPoints) {
+                  if (s > 0 && b.h - s > 0) {
+                    const b1 = { col: b.col, row: b.row, w: b.w, h: s };
+                    const b2 = { col: b.col + s, row: b.row, w: b.w, h: b.h - s };
+                    const test = [...blocks.slice(0, idx), b1, b2, ...blocks.slice(idx + 1)];
+                    if (!hasFaultLines(cols, rows, test)) {
+                      candidates.push({ idx, b1, b2, area: b.w * b.h });
+                    }
+                  }
+                }
+              }
+            }
 
-            let splitOk = false;
-            if (big.w >= big.h && big.w >= 4) {
-              const split = Math.floor(big.w / 2);
-              const b1 = { col: big.col, row: big.row, w: split, h: big.h };
-              const b2 = { col: big.col + split, row: big.row, w: big.w - split, h: big.h };
-              const testBlocks = [b1, b2, ...blocks.slice(1)];
-              if (!hasFaultLines(cols, rows, testBlocks)) {
-                blocks = testBlocks;
-                splitOk = true;
-              }
+            if (candidates.length === 0) {
+              stuck = true;
+              break;
             }
-            if (!splitOk && big.h >= 4) {
-              const split = Math.floor(big.h / 2);
-              const b1 = { col: big.col, row: big.row, w: big.w, h: split };
-              const b2 = { col: big.col, row: big.row + split, w: big.w, h: big.h - split };
-              const testBlocks = [b1, b2, ...blocks.slice(1)];
-              if (!hasFaultLines(cols, rows, testBlocks)) {
-                blocks = testBlocks;
-                splitOk = true;
-              }
-            }
-            if (!splitOk) break;
+
+            candidates.sort((x, y) => y.area - x.area);
+            const chosen = candidates[Math.floor(rng() * Math.min(3, candidates.length))];
+            blocks = [
+              ...blocks.slice(0, chosen.idx),
+              chosen.b1,
+              chosen.b2,
+              ...blocks.slice(chosen.idx + 1),
+            ];
           }
 
-          if (!hasFaultLines(cols, rows, blocks)) {
+          if (!stuck && blocks.length === targetPieces && !hasFaultLines(cols, rows, blocks)) {
             return buildPuzzleResult(stageNum, spec, cols, rows, blocks, rng);
           }
         }
 
-        // Guaranteed fallback layout
-        const fallbackBlocks = [
+        // Guaranteed fallback layout with exact targetPieces
+        let fallbackBlocks = [
           { col: 0, row: 0, w: cols - 2, h: 2 },
           { col: cols - 2, row: 0, w: 2, h: rows - 2 },
           { col: 2, row: rows - 2, w: cols - 2, h: 2 },
           { col: 0, row: 2, w: 2, h: rows - 2 },
           { col: 2, row: 2, w: cols - 4, h: rows - 4 },
         ];
+        while (fallbackBlocks.length < targetPieces) {
+          fallbackBlocks.sort((a, b) => b.w * b.h - a.w * a.h);
+          let splitApplied = false;
+          for (let i = 0; i < fallbackBlocks.length; i++) {
+            const b = fallbackBlocks[i];
+            if (b.w >= 2) {
+              const s = Math.floor(b.w / 2);
+              const b1 = { col: b.col, row: b.row, w: s, h: b.h };
+              const b2 = { col: b.col + s, row: b.row, w: b.w - s, h: b.h };
+              const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
+              if (!hasFaultLines(cols, rows, test)) {
+                fallbackBlocks = test;
+                splitApplied = true;
+                break;
+              }
+            }
+            if (b.h >= 2) {
+              const s = Math.floor(b.h / 2);
+              const b1 = { col: b.col, row: b.row, w: b.w, h: s };
+              const b2 = { col: b.col + s, row: b.row, w: b.w, h: b.h - s };
+              const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
+              if (!hasFaultLines(cols, rows, test)) {
+                fallbackBlocks = test;
+                splitApplied = true;
+                break;
+              }
+            }
+          }
+          if (!splitApplied) break;
+        }
         return buildPuzzleResult(stageNum, spec, cols, rows, fallbackBlocks, rng);
       }
 
@@ -1304,7 +1336,7 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
         activePartId = null;
         isRotated = false;
         sndWin();
-        setDroneMsg("⚡ Washi MILP 最適化完了！厳密解を展開したぞ！", true);
+        setDroneMsg("💡 完全な設計図（ゼロ端材・断層なし）を展開したぞ！数理モデルの詳細は解説記事を見てくれ！", true);
         render();
       };
 
@@ -1319,20 +1351,27 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
           return;
         }
 
-        if (usedArea === totalArea) {
-          const scan = document.getElementById("laser-scan");
-          scan.classList.remove("active");
-          void scan.offsetWidth;
-          scan.classList.add("active");
-
-          sndWin();
-          setTimeout(() => {
-            document.getElementById("modal-win").classList.add("open");
-          }, 600);
-        } else {
+        if (usedArea !== totalArea) {
           sndError();
           setDroneMsg(`端材が ${totalArea - usedArea} マス残っているぞ！隙間ゼロを目指せ！`);
+          return;
         }
+
+        if (hasFaultLines(currentPuzzle.cols, currentPuzzle.rows, placedParts)) {
+          sndError();
+          setDroneMsg("⚠️ 貫通断層（フォールトライン）が検知されたぞ！板金を噛み合わせて強度を保て！");
+          return;
+        }
+
+        const scan = document.getElementById("laser-scan");
+        scan.classList.remove("active");
+        void scan.offsetWidth;
+        scan.classList.add("active");
+
+        sndWin();
+        setTimeout(() => {
+          document.getElementById("modal-win").classList.add("open");
+        }, 600);
       };
 
       document.getElementById("btn-modal-next").onclick = () => {

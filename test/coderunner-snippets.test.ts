@@ -592,19 +592,19 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         showcaseRaw.matchAll(/<div\s+([^>]*\bclass="washi-showcase-card(?:\s+[^"]*)?"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(cardDivs).toHaveLength(5);
+      expect(cardDivs).toHaveLength(6);
 
       const ctaAnchors = Array.from(
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-cta"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(ctaAnchors).toHaveLength(5);
+      expect(ctaAnchors).toHaveLength(6);
 
       const thumbImgs = Array.from(
         showcaseRaw.matchAll(/<img\s+([^>]*class="washi-showcase-thumb-img"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(thumbImgs).toHaveLength(5);
+      expect(thumbImgs).toHaveLength(6);
       for (const imgAttrs of thumbImgs) {
         const srcMatch = imgAttrs.match(/\bsrc="([^"]+)"/);
         expect(srcMatch, `Missing src in showcase thumbnail <img ${imgAttrs}>`).not.toBeNull();
@@ -622,7 +622,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-theory-btn"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(theoryAnchors).toHaveLength(3);
+      expect(theoryAnchors).toHaveLength(4);
 
       const allShowcaseAnchors = Array.from(
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-(?:cta|theory-btn|title-link)"[^>]*)>/g),

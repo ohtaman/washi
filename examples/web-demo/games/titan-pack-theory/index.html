@@ -243,28 +243,28 @@
 const model = new Model("TitanPacking2D");
 const M = Math.max(plateW, plateH) + 1;
 
-// 1. 各パーツの座標変数
-const x = parts.map((p, i) => model.addVar({ lb: 0, ub: plateW - p.w, name: `x_${i}` }));
-const y = parts.map((p, i) => model.addVar({ lb: 0, ub: plateH - p.h, name: `y_${i}` }));
+// 1. 各パーツの座標変数 (連続変数)
+const x = parts.map((p, i) => model.continuous(`x_${i}`, { lb: 0, ub: plateW - p.w }));
+const y = parts.map((p, i) => model.continuous(`y_${i}`, { lb: 0, ub: plateH - p.h }));
 
 // 2. ペアごとの非重複制約 (Big-M)
 for (let i = 0; i &lt; parts.length; i++) {
   for (let j = i + 1; j &lt; parts.length; j++) {
-    const d1 = model.addVar({ type: "binary", name: `d_${i}_${j}_left` });
-    const d2 = model.addVar({ type: "binary", name: `d_${i}_${j}_right` });
-    const d3 = model.addVar({ type: "binary", name: `d_${i}_${j}_below` });
-    const d4 = model.addVar({ type: "binary", name: `d_${i}_${j}_above` });
+    const d1 = model.binary(`d_${i}_${j}_left`);
+    const d2 = model.binary(`d_${i}_${j}_right`);
+    const d3 = model.binary(`d_${i}_${j}_below`);
+    const d4 = model.binary(`d_${i}_${j}_above`);
 
-    model.addConstr(x[i].add(parts[i].w).sub(x[j]).sub(M * (1 - d1)).le(0));
-    model.addConstr(x[j].add(parts[j].w).sub(x[i]).sub(M * (1 - d2)).le(0));
-    model.addConstr(y[i].add(parts[i].h).sub(y[j]).sub(M * (1 - d3)).le(0));
-    model.addConstr(y[j].add(parts[j].h).sub(y[i]).sub(M * (1 - d4)).le(0));
-    model.addConstr(d1.add(d2).add(d3).add(d4).ge(1));
+    model.constraint(x[i].add(parts[i].w).sub(x[j]).add(d1.mul(M)).le(M));
+    model.constraint(x[j].add(parts[j].w).sub(x[i]).add(d2.mul(M)).le(M));
+    model.constraint(y[i].add(parts[i].h).sub(y[j]).add(d3.mul(M)).le(M));
+    model.constraint(y[j].add(parts[j].h).sub(y[i]).add(d4.mul(M)).le(M));
+    model.constraint(d1.add(d2).add(d3).add(d4).ge(1));
   }
 }
 
-const solution = await model.solve({ backend: "highs" });
-console.log("Status:", solution.status);</code></pre>
+const status = await model.solve({ solver: "highs" });
+console.log("Status:", status);</code></pre>
         </section>
       </main>
     </div>
@@ -279,6 +279,17 @@ console.log("Status:", solution.status);</code></pre>
           navShowcase: "✨ ショーケース",
           title: "『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化",
           lead: "最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。",
+          sec1Title: "1. 2次元パッキング問題（2D Packing Problem）とは",
+          sec1P1: "2次元パッキング問題は、与えられた母材プレート（長方形のシート）の中に、異なる寸法を持つ複数の長方形パーツを「互いに重ならず」「はみ出さず」配置する組合せ最適化問題です。板金加工、木工、半導体フロアプランニングなど実産業で広く応用されています。",
+          sec1P2: "すべてのパーツを隙間なくぴったり詰め込み、端材（材料ロス）を 0% にできるか判定する問題は NP 困難であることが知られています。",
+          sec2Title: "2. 幾何学的非重複制約の線形化（Big-M 定式化）",
+          sec2P1: "2つの長方形パーツ i と j（位置 (x_i, y_i)、幅 w_i、高さ h_i）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：",
+          sec2P2: "混合整数線形計画法（MILP）では、4つのバイナリ変数 δ_{ij,1}, δ_{ij,2}, δ_{ij,3}, δ_{ij,4} ∈ {0, 1} と十分大きな定数 M を用いて以下のように線形制約へ変換します：",
+          sec3Title: "3. 断層禁止（Fault-Line Free）の幾何学的保証",
+          sec3P1: "単にパーツを長方形に分割するだけでは、端から端まで貫通する直線（ギロチン切断線）が生じ、パズルが「ただの小分けの寄せ集め」になってしまいます。",
+          sec3P2: "TITAN PACK では、すべての垂直境界および水平境界について、少なくとも1つのパーツがその境界を跨ぐ構造を保証する Multi-Scale Interlocking & Core Partitioning アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。",
+          sec4Title: "4. WaSHI による実装コード例",
+          sec4P1: "TypeScript 数理最適化モデリングライブラリ @ohtaman/washi を使ってこの 2D パッキングモデルを構築するコードは以下の通りです：",
         },
         en: {
           navPlay: "🎮 Play Game",
@@ -286,6 +297,17 @@ console.log("Status:", solution.status);</code></pre>
           navShowcase: "✨ Showcase",
           title: "Mathematical Foundations of TITAN PACK — 2D Strip Packing & MILP Linearization",
           lead: "Explore the Mixed-Integer Linear Programming (MILP) formulation of 2D Strip / Bin Packing behind TITAN PACK, along with the multi-scale interlocking algorithms that guarantee zero-fault-line solutions.",
+          sec1Title: "1. What is the 2D Packing Problem?",
+          sec1P1: "The 2D Packing Problem is a combinatorial optimization challenge where rectangular parts of various dimensions must be placed inside a bounding sheet or plate without overlapping or exceeding boundary limits. It has extensive real-world applications in sheet-metal manufacturing, woodworking, cutting-stock layouts, and VLSI floorplanning.",
+          sec1P2: "Deciding whether a set of items can be packed with zero scrap (100% material efficiency) without void is known to be strongly NP-hard.",
+          sec2Title: "2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)",
+          sec2P1: "The condition that two rectangles i and j (placed at (x_i, y_i) with dimensions w_i, h_i) do not overlap is inherently disjunctive (connected by logical OR):",
+          sec2P2: "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables and a sufficiently large constant M:",
+          sec3Title: "3. Geometric Guarantees for Fault-Line-Free Layouts",
+          sec3P1: "If a rectangle is naively sliced with full-width or full-height cuts, continuous fault lines (guillotine cuts) emerge, degrading structural rigidity and breaking the puzzle into trivial independent sub-puzzles.",
+          sec3P2: "TITAN PACK uses a Multi-Scale Interlocking & Core Partitioning algorithm that guarantees every interior grid line is crossed by at least one overlapping metal girder, ensuring an interlocking puzzle with zero continuous fault lines across all campaign and endless stages.",
+          sec4Title: "4. Implementation with WaSHI",
+          sec4P1: "Here is how to formulate and solve this 2D packing model using the @ohtaman/washi TypeScript mathematical modeling library:",
         },
         zh: {
           navPlay: "🎮 开始游戏",
@@ -293,6 +315,17 @@ console.log("Status:", solution.status);</code></pre>
           navShowcase: "✨ 案例展示",
           title: "《TITAN PACK》数理模型解说 — 二维装箱问题与非重叠约束的线性化",
           lead: "深入解析《TITAN PACK》背后的混合整数线性规划（MILP）二维装箱模型，以及保证绝无通断层、有机咬合的几何算法原理。",
+          sec1Title: "1. 什么是二维装箱问题（2D Packing Problem）？",
+          sec1P1: "二维装箱问题是在给定的母材矩形板材内，将多个不同尺寸的矩形零件紧凑排列且彼此互不重叠、不超出边界的组合优化问题。该问题在钣金激光加工、木料开料裁切、芯片布局规划等工业领域有着广泛应用。",
+          sec1P2: "判断给定零件集合能否完全填满矩形母材、实现 0% 边角料浪费的判定问题已被证明属于强 NP 难问题。",
+          sec2Title: "2. 几何非重叠约束的线性化（Big-M 定式化）",
+          sec2P1: "两个矩形零件 i 与 j（坐标为 (x_i, y_i)，尺寸为 w_i × h_i）互不重叠的充要条件在逻辑上是由“逻辑或（OR）”连接的析取条件：",
+          sec2P2: "在混合整数线性规划（MILP）中，我们引入四个 0-1 二进制决策变量以及充分大的常数 M，将其转化为一组线性不等式：",
+          sec3Title: "3. 杜绝通断层（Fault-Line Free）的几何保证",
+          sec3P1: "如果单纯将板材做横平竖直的切分，很容易产生贯穿整块板材的直线（一刀切分型线），使得拼图退化为若干彼此独立的简单小拼图，也削弱了零件咬合的力学强度。",
+          sec3P2: "《TITAN PACK》采用多尺度互锁式核心分割算法，确保每一条内部水平与垂直网格线上都至少有一个零件跨线咬合，从而自动生成宛如鲁班锁般紧密啮合的高质量关卡。",
+          sec4Title: "4. 使用 WaSHI 进行模型构建的代码示例",
+          sec4P1: "使用 TypeScript 数理优化建模库 @ohtaman/washi 构建并求解该二维装箱模型的标准代码如下：",
         }
       };
 
@@ -304,6 +337,17 @@ console.log("Status:", solution.status);</code></pre>
         document.getElementById("t-nav-showcase").textContent = t.navShowcase;
         document.getElementById("t-title").textContent = t.title;
         document.getElementById("t-lead").textContent = t.lead;
+        document.getElementById("t-sec1-title").textContent = t.sec1Title;
+        document.getElementById("t-sec1-p1").textContent = t.sec1P1;
+        document.getElementById("t-sec1-p2").textContent = t.sec1P2;
+        document.getElementById("t-sec2-title").textContent = t.sec2Title;
+        document.getElementById("t-sec2-p1").textContent = t.sec2P1;
+        document.getElementById("t-sec2-p2").textContent = t.sec2P2;
+        document.getElementById("t-sec3-title").textContent = t.sec3Title;
+        document.getElementById("t-sec3-p1").textContent = t.sec3P1;
+        document.getElementById("t-sec3-p2").textContent = t.sec3P2;
+        document.getElementById("t-sec4-title").textContent = t.sec4Title;
+        document.getElementById("t-sec4-p1").textContent = t.sec4P1;
 
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);

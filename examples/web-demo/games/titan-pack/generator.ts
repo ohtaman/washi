@@ -118,11 +118,11 @@ export function generateStagePuzzle(stageNum: number): PuzzleResult {
   }
 
   // Multi-Scale Interlocking & Core Partition
-  for (let attempt = 0; attempt < 60; attempt++) {
+  for (let attempt = 0; attempt < 100; attempt++) {
     const minW = Math.max(1, Math.floor(cols * 0.18));
-    const maxW = Math.max(minW + 1, Math.floor(cols * 0.42));
+    const maxW = Math.max(minW + 1, Math.floor(cols * 0.38));
     const minH = Math.max(1, Math.floor(rows * 0.18));
-    const maxH = Math.max(minH + 1, Math.floor(rows * 0.42));
+    const maxH = Math.max(minH + 1, Math.floor(rows * 0.38));
 
     const wL = minW + Math.floor(rng() * (maxW - minW + 1));
     const wR = minW + Math.floor(rng() * (maxW - minW + 1));
@@ -138,71 +138,111 @@ export function generateStagePuzzle(stageNum: number): PuzzleResult {
       { col: cols - wR, row: 0, w: wR, h: rows - hB },
       { col: wL, row: rows - hB, w: cols - wL, h: hB },
       { col: 0, row: hT, w: wL, h: rows - hT },
+      { col: wL, row: hT, w: centerW, h: centerH },
     ];
 
-    // Center Core Partition
-    if (centerW >= 5 && centerH >= 5) {
-      const splitW = Math.floor(centerW / 2);
-      const splitH = Math.floor(centerH / 2);
-      blocks.push(
-        { col: wL, row: hT, w: splitW, h: centerH },
-        { col: wL + splitW, row: hT, w: centerW - splitW, h: splitH },
-        { col: wL + splitW, row: hT + splitH, w: centerW - splitW, h: centerH - splitH }
-      );
-    } else if (centerW >= 3 && centerH >= 2) {
-      const splitW = 1 + Math.floor(rng() * (centerW - 2));
-      blocks.push(
-        { col: wL, row: hT, w: splitW, h: centerH },
-        { col: wL + splitW, row: hT, w: centerW - splitW, h: centerH }
-      );
-    } else {
-      blocks.push({ col: wL, row: hT, w: centerW, h: centerH });
-    }
+    if (hasFaultLines(cols, rows, blocks)) continue;
 
-    // Subdivide largest blocks to reach target pieces
+    let stuck = false;
     let subAttempts = 0;
-    while (blocks.length < targetPieces && subAttempts++ < 30) {
-      blocks.sort((a, b) => b.w * b.h - a.w * a.h);
-      const big = blocks[0];
-      if (big.w < 4 && big.h < 4) break;
+    while (blocks.length < targetPieces && subAttempts++ < 60) {
+      interface CandidateSplit {
+        idx: number;
+        b1: PlacedBlock;
+        b2: PlacedBlock;
+        area: number;
+      }
+      const candidates: CandidateSplit[] = [];
 
-      let splitOk = false;
-      if (big.w >= big.h && big.w >= 4) {
-        const split = Math.floor(big.w / 2);
-        const b1: PlacedBlock = { col: big.col, row: big.row, w: split, h: big.h };
-        const b2: PlacedBlock = { col: big.col + split, row: big.row, w: big.w - split, h: big.h };
-        const testBlocks = [b1, b2, ...blocks.slice(1)];
-        if (!hasFaultLines(cols, rows, testBlocks)) {
-          blocks = testBlocks;
-          splitOk = true;
+      for (let idx = 0; idx < blocks.length; idx++) {
+        const b = blocks[idx];
+        if (b.w >= 2) {
+          const splitPoints = b.w >= 4 ? [Math.floor(b.w / 2), 2] : [1];
+          for (const s of splitPoints) {
+            if (s > 0 && b.w - s > 0) {
+              const b1: PlacedBlock = { col: b.col, row: b.row, w: s, h: b.h };
+              const b2: PlacedBlock = { col: b.col + s, row: b.row, w: b.w - s, h: b.h };
+              const test = [...blocks.slice(0, idx), b1, b2, ...blocks.slice(idx + 1)];
+              if (!hasFaultLines(cols, rows, test)) {
+                candidates.push({ idx, b1, b2, area: b.w * b.h });
+              }
+            }
+          }
+        }
+        if (b.h >= 2) {
+          const splitPoints = b.h >= 4 ? [Math.floor(b.h / 2), 2] : [1];
+          for (const s of splitPoints) {
+            if (s > 0 && b.h - s > 0) {
+              const b1: PlacedBlock = { col: b.col, row: b.row, w: b.w, h: s };
+              const b2: PlacedBlock = { col: b.col, row: b.row + s, w: b.w, h: b.h - s };
+              const test = [...blocks.slice(0, idx), b1, b2, ...blocks.slice(idx + 1)];
+              if (!hasFaultLines(cols, rows, test)) {
+                candidates.push({ idx, b1, b2, area: b.w * b.h });
+              }
+            }
+          }
         }
       }
-      if (!splitOk && big.h >= 4) {
-        const split = Math.floor(big.h / 2);
-        const b1: PlacedBlock = { col: big.col, row: big.row, w: big.w, h: split };
-        const b2: PlacedBlock = { col: big.col, row: big.row + split, w: big.w, h: big.h - split };
-        const testBlocks = [b1, b2, ...blocks.slice(1)];
-        if (!hasFaultLines(cols, rows, testBlocks)) {
-          blocks = testBlocks;
-          splitOk = true;
-        }
+
+      if (candidates.length === 0) {
+        stuck = true;
+        break;
       }
-      if (!splitOk) break;
+
+      candidates.sort((x, y) => y.area - x.area);
+      const chosen = candidates[Math.floor(rng() * Math.min(3, candidates.length))];
+      blocks = [
+        ...blocks.slice(0, chosen.idx),
+        chosen.b1,
+        chosen.b2,
+        ...blocks.slice(chosen.idx + 1),
+      ];
     }
 
-    if (!hasFaultLines(cols, rows, blocks)) {
+    if (!stuck && blocks.length === targetPieces && !hasFaultLines(cols, rows, blocks)) {
       return buildPuzzleResult(stageNum, spec, cols, rows, blocks, rng);
     }
   }
 
-  // Guaranteed fallback layout
-  const fallbackBlocks: PlacedBlock[] = [
+  // Guaranteed fallback layout with exact targetPieces
+  let fallbackBlocks: PlacedBlock[] = [
     { col: 0, row: 0, w: cols - 2, h: 2 },
     { col: cols - 2, row: 0, w: 2, h: rows - 2 },
     { col: 2, row: rows - 2, w: cols - 2, h: 2 },
     { col: 0, row: 2, w: 2, h: rows - 2 },
     { col: 2, row: 2, w: cols - 4, h: rows - 4 },
   ];
+  while (fallbackBlocks.length < targetPieces) {
+    fallbackBlocks.sort((a, b) => b.w * b.h - a.w * a.h);
+    let splitApplied = false;
+    for (let i = 0; i < fallbackBlocks.length; i++) {
+      const b = fallbackBlocks[i];
+      if (b.w >= 2) {
+        const s = Math.floor(b.w / 2);
+        const b1: PlacedBlock = { col: b.col, row: b.row, w: s, h: b.h };
+        const b2: PlacedBlock = { col: b.col + s, row: b.row, w: b.w - s, h: b.h };
+        const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
+        if (!hasFaultLines(cols, rows, test)) {
+          fallbackBlocks = test;
+          splitApplied = true;
+          break;
+        }
+      }
+      if (b.h >= 2) {
+        const s = Math.floor(b.h / 2);
+        const b1: PlacedBlock = { col: b.col, row: b.row, w: b.w, h: s };
+        const b2: PlacedBlock = { col: b.col, row: b.row + s, w: b.w, h: b.h - s };
+        const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
+        if (!hasFaultLines(cols, rows, test)) {
+          fallbackBlocks = test;
+          splitApplied = true;
+          break;
+        }
+      }
+    }
+    if (!splitApplied) break;
+  }
+  return buildPuzzleResult(stageNum, spec, cols, rows, fallbackBlocks, rng);
   return buildPuzzleResult(stageNum, spec, cols, rows, fallbackBlocks, rng);
 }
 

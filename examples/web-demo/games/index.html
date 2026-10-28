@@ -452,6 +452,16 @@
         document.getElementById("card2-desc").textContent = t.card2Desc;
         document.getElementById("card2-play").textContent = t.playBtn;
         document.getElementById("card2-theory").textContent = t.theoryBtn;
+        const card3Tag = document.getElementById("card3-tag");
+        if (card3Tag) card3Tag.textContent = t.card3Tag;
+        const card3Title = document.getElementById("card3-title");
+        if (card3Title) card3Title.textContent = t.card3Title;
+        const card3Desc = document.getElementById("card3-desc");
+        if (card3Desc) card3Desc.textContent = t.card3Desc;
+        const card3Play = document.getElementById("card3-play");
+        if (card3Play) card3Play.textContent = t.playBtn;
+        const card3Theory = document.getElementById("card3-theory");
+        if (card3Theory) card3Theory.textContent = t.theoryBtn;
 
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
