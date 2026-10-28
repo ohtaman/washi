@@ -913,6 +913,29 @@
   line-height: 1.35;
 }
 
+/* Primary Action Button (Red signature accent #e11d48) */
+.btn-solve-primary {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: #e11d48;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 4px rgba(225, 29, 72, 0.3);
+}
+
+.btn-solve-primary:hover:not(:disabled) {
+  background: #be123c;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(225, 29, 72, 0.4);
+}
+
 /* Disabled toolbar & action buttons */
 .btn-solve-primary:disabled,
 .btn-toolbar-outline:disabled,
@@ -920,6 +943,21 @@
   opacity: 0.45;
   cursor: not-allowed;
   pointer-events: auto;
+  box-shadow: none;
+  transform: none;
+}
+
+.cat-table-empty-row {
+  background: var(--bg-surface);
+}
+
+.cat-table-empty-cell {
+  text-align: center;
+  padding: 2.4rem 1rem !important;
+  color: var(--text-sumi-secondary);
+  font-size: 0.88rem;
+  font-style: italic;
+  background: var(--bg-surface);
 }
 
 .tutorial-banner[hidden] {

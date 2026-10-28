@@ -1072,6 +1072,14 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(blank.rooms).toHaveLength(0);
       expect(getCurrentTimetable()).toBeNull();
 
+      // Master data catalog on blank state: red prominent button and empty counts
+      const catGenBtn = elements.get("btn-cat-generate-sample");
+      expect(catGenBtn.className).toBe("btn-solve-primary");
+      expect(catGenBtn.textContent).toContain("Sample Data");
+      expect(elements.get("btn-cat-clear-blank").hidden).toBe(true);
+      expect(elements.get("cat-next-step-banner").hidden).toBe(true);
+      expect(elements.get("cat-prof-title").textContent).toContain("0");
+
       updateToolbarButtonsState();
       expect(btnSolve.disabled).toBe(true);
       expect(btnCheck.disabled).toBe(true);
@@ -1085,6 +1093,13 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(loaded.courses).toHaveLength(25);
       const totalSessions = loaded.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
       expect(totalSessions).toBe(30);
+
+      // Catalog view updates after sample generation: normal outline button, clear button shown, 10 professors
+      expect(catGenBtn.className).toBe("btn-toolbar-outline");
+      expect(catGenBtn.textContent).toContain("Regenerate");
+      expect(elements.get("btn-cat-clear-blank").hidden).toBe(false);
+      expect(elements.get("cat-next-step-banner").hidden).toBe(false);
+      expect(elements.get("cat-prof-title").textContent).toContain("10");
 
       // Verify that sample generation does NOT auto-solve: timetable must remain unscheduled (null)
       expect(getCurrentTimetable()).toBeNull();

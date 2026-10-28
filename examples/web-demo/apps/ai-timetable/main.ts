@@ -1361,14 +1361,43 @@ function renderCatalogTables(): void {
   const ui = UI_TEXT_I18N[activeLang];
   const isBlank = appState.courses.length === 0;
 
-  const emptyCard = $("cat-empty-state-card");
   const mgmtCard = $("cat-mgmt-card");
   const tablesContainer = $("cat-tables-container");
   const nextBanner = $("cat-next-step-banner");
+  const clearBlankBtn = $("btn-cat-clear-blank");
+  const genBtn = $<HTMLButtonElement>("btn-cat-generate-sample");
 
-  if (emptyCard) emptyCard.hidden = !isBlank;
-  if (mgmtCard) mgmtCard.hidden = isBlank;
-  if (tablesContainer) tablesContainer.hidden = isBlank;
+  if (mgmtCard) mgmtCard.hidden = false;
+  if (tablesContainer) tablesContainer.hidden = false;
+
+  if (genBtn) {
+    if (isBlank) {
+      genBtn.className = "btn-solve-primary";
+      genBtn.textContent = ui.btnCatGenerate;
+      genBtn.title = pickTimetableLang(activeLang, {
+        ja: "情報科学科モデル（10教員・7教室・25科目・計30コマ）のサンプルデータを読み込みます",
+        en: "Load sample CS department benchmark data (10 faculty, 7 rooms, 25 courses / 30 slots)",
+        zh: "载入计算机系示例数据（10位教师・7间教室・25门课・计30节）",
+      });
+    } else {
+      genBtn.className = "btn-toolbar-outline";
+      genBtn.textContent = pickTimetableLang(activeLang, {
+        ja: "🎲 サンプル再生成",
+        en: "🎲 Regenerate Sample",
+        zh: "🎲 重新生成示例",
+      });
+      genBtn.title = pickTimetableLang(activeLang, {
+        ja: "教員10名・教室7室・25科目のサンプルデータを再生成します",
+        en: "Regenerate benchmark sample data (10 faculty, 7 rooms, 25 courses)",
+        zh: "重新生成示例数据（10位教师・7间教室・25门课）",
+      });
+    }
+  }
+
+  if (clearBlankBtn) {
+    clearBlankBtn.hidden = isBlank;
+  }
+
   if (nextBanner) {
     nextBanner.hidden = isBlank;
     if (!isBlank) {
@@ -1383,8 +1412,6 @@ function renderCatalogTables(): void {
       );
     }
   }
-
-  if (isBlank) return;
 
   // Update table headers
   const profHeadRow = $("cat-prof-thead-row");
@@ -1411,9 +1438,82 @@ function renderCatalogTables(): void {
     courseHeadRow.appendChild(th);
   }
 
-  // 1. Professors
+  // Titles with counts or (未登録)
+  setText(
+    "cat-prof-title",
+    pickTimetableLang(activeLang, {
+      ja: `👨‍🏫 教員一覧 ＆ 出講条件・割当コマ集計 (${isBlank ? "0名" : `${appState.professors.length}名`})`,
+      en: `👨‍🏫 Faculty Roster, Availability & Assigned Load (${isBlank ? "0 Faculty" : `${appState.professors.length} Faculty`})`,
+      zh: `👨‍🏫 教师名录、出勤条件与排课统计 (${isBlank ? "0名" : `${appState.professors.length}名`})`,
+    })
+  );
+  setText(
+    "cat-room-title",
+    pickTimetableLang(activeLang, {
+      ja: `🏫 講義室・演習室一覧 ＆ 設備・稼働率 (${isBlank ? "0室" : `${appState.rooms.length}室`})`,
+      en: `🏫 Classrooms & Computer Labs (${isBlank ? "0 Rooms" : `${appState.rooms.length} Rooms`})`,
+      zh: `🏫 讲义教室与实验机房名录 (${isBlank ? "0间" : `${appState.rooms.length}间`})`,
+    })
+  );
+  setText(
+    "cat-course-title",
+    pickTimetableLang(activeLang, {
+      ja: `📖 開講科目・カリキュラム一覧 (${isBlank ? "0科目" : `${appState.courses.length}科目`})`,
+      en: `📖 Course Offerings & Curriculum (${isBlank ? "0 Courses" : `${appState.courses.length} Courses`})`,
+      zh: `📖 开课科目与培养计划 (${isBlank ? "0门" : `${appState.courses.length}门`})`,
+    })
+  );
+
   const profTbody = $("catalog-prof-tbody");
   profTbody.replaceChildren();
+  const roomTbody = $("catalog-room-tbody");
+  roomTbody.replaceChildren();
+  const courseTbody = $("catalog-course-tbody");
+  courseTbody.replaceChildren();
+
+  if (isBlank) {
+    const pTr = document.createElement("tr");
+    pTr.className = "cat-table-empty-row";
+    const pTd = document.createElement("td");
+    pTd.colSpan = ui.catProfHeaders.length;
+    pTd.className = "cat-table-empty-cell";
+    pTd.textContent = pickTimetableLang(activeLang, {
+      ja: "教員データが登録されていません。上の「🎲 サンプルデータを読み込む」または「📂 CSVインポート」で登録してください。",
+      en: 'No faculty data registered. Click "🎲 Load Sample Data" or "📂 Import CSV" above to register.',
+      zh: "未录入教师数据。请点击上方的“🎲 载入示例数据”或“📂 CSV导入”进行录入。",
+    });
+    pTr.appendChild(pTd);
+    profTbody.appendChild(pTr);
+
+    const rTr = document.createElement("tr");
+    rTr.className = "cat-table-empty-row";
+    const rTd = document.createElement("td");
+    rTd.colSpan = ui.catRoomHeaders.length;
+    rTd.className = "cat-table-empty-cell";
+    rTd.textContent = pickTimetableLang(activeLang, {
+      ja: "講義室・演習室データが登録されていません。",
+      en: "No classroom or computer lab data registered.",
+      zh: "未录入讲义教室与实验机房数据。",
+    });
+    rTr.appendChild(rTd);
+    roomTbody.appendChild(rTr);
+
+    const cTr = document.createElement("tr");
+    cTr.className = "cat-table-empty-row";
+    const cTd = document.createElement("td");
+    cTd.colSpan = ui.catCourseHeaders.length;
+    cTd.className = "cat-table-empty-cell";
+    cTd.textContent = pickTimetableLang(activeLang, {
+      ja: "開講科目データが登録されていません。",
+      en: "No course or curriculum data registered.",
+      zh: "未录入开课科目与培养计划数据。",
+    });
+    cTr.appendChild(cTd);
+    courseTbody.appendChild(cTr);
+    return;
+  }
+
+  // 1. Professors
   for (const p of appState.professors) {
     const pI18n = getProfessorI18n(p, activeLang);
     const tr = document.createElement("tr");
@@ -1508,8 +1608,6 @@ function renderCatalogTables(): void {
   }
 
   // 2. Rooms
-  const roomTbody = $("catalog-room-tbody");
-  roomTbody.replaceChildren();
   for (const r of appState.rooms) {
     const rI18n = getRoomI18n(r, activeLang);
     const tr = document.createElement("tr");
@@ -1551,8 +1649,6 @@ function renderCatalogTables(): void {
   }
 
   // 3. Courses
-  const courseTbody = $("catalog-course-tbody");
-  courseTbody.replaceChildren();
   const profMap = new Map(appState.professors.map((p) => [p.id, p]));
   const roomMap = new Map(appState.rooms.map((r) => [r.id, r]));
 
@@ -3150,10 +3246,6 @@ function wireEvents(): void {
   });
 
   // Master Data (Catalog) management & navigation buttons
-  $("btn-cat-empty-generate")?.addEventListener("click", () => handleGenerateSample(false));
-  $("btn-cat-empty-import")?.addEventListener("click", openCsvDialog);
-  $("btn-cat-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
-
   $("btn-cat-generate-sample")?.addEventListener("click", () => handleGenerateSample(false));
   $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
   $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
