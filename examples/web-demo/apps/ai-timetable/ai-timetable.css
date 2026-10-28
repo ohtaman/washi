@@ -106,17 +106,68 @@
 }
 
 .slot-cards-stack {
+  height: 62px;
+  max-height: 62px;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  justify-content: stretch;
+  gap: 2px;
+  box-sizing: border-box;
+}
+
+.slot-cards-stack.is-multi-session {
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: 2px;
+  justify-content: space-between;
+}
+
+.slot-cards-stack.is-multi-session .course-session-card {
+  height: 29px;
+  min-height: 29px;
+  max-height: 29px;
+  padding: 2px 4px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.slot-cards-stack.is-multi-session .card-top-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.6rem;
+  max-width: 45%;
+  flex-shrink: 0;
+}
+
+.slot-cards-stack.is-multi-session .card-course-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.slot-cards-stack.is-multi-session .card-meta-row {
+  display: none;
 }
 
 .course-session-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 5px 7px;
-  border-radius: 7px;
+  justify-content: space-between;
+  height: 100%;
+  min-height: 62px;
+  max-height: 62px;
+  box-sizing: border-box;
+  gap: 1px;
+  padding: 4px 6px;
+  border-radius: 6px;
   border: 1px solid transparent;
   cursor: pointer;
   text-align: left;
@@ -124,6 +175,7 @@
   font-family: inherit;
   transition: transform 0.1s ease, box-shadow 0.12s ease;
   position: relative;
+  overflow: hidden;
 }
 
 .course-session-card:hover {
@@ -166,15 +218,21 @@
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  font-size: 0.65rem;
+  font-size: 0.63rem;
   font-weight: 700;
   opacity: 0.92;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .card-course-title {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .card-meta-row {
@@ -182,8 +240,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  font-size: 0.66rem;
+  font-size: 0.63rem;
   opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .card-room-pill {
@@ -387,17 +447,29 @@
 }
 
 .mini-period-th {
-  width: 42px;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  height: 68px;
+  min-height: 68px;
+  max-height: 68px;
+  box-sizing: border-box;
   text-align: center !important;
   vertical-align: middle !important;
   background: var(--bg-surface-elevated);
   font-weight: 700;
   font-size: 0.67rem;
   color: var(--text-sumi-secondary);
+  padding: 2px 3px;
 }
 
 .mini-slot-td {
-  height: 44px;
+  height: 68px;
+  min-height: 68px;
+  max-height: 68px;
+  box-sizing: border-box;
+  padding: 2px 3px;
+  vertical-align: middle;
   position: relative;
 }
 
@@ -416,9 +488,11 @@
 .mini-slot-empty {
   width: 100%;
   height: 100%;
-  min-height: 36px;
+  min-height: 62px;
+  max-height: 62px;
+  box-sizing: border-box;
   border: 1px dashed transparent;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
   color: transparent;
   font-size: 0.62rem;
@@ -960,8 +1034,103 @@
   background: var(--bg-surface);
 }
 
+/* ==================== TUTORIAL BANNER (TOP WORKFLOW GUIDE) ==================== */
+.tutorial-banner {
+  padding: 10px 16px;
+  background: var(--bg-surface-elevated);
+  border-bottom: 1px solid var(--border-hairline);
+  flex-shrink: 0;
+}
+
 .tutorial-banner[hidden] {
   display: none !important;
+}
+
+.tutorial-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.tutorial-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.tutorial-close-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-sumi-secondary);
+  font-size: 0.72rem;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+.tutorial-close-btn:hover {
+  color: var(--text-sumi);
+}
+
+.tutorial-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tutorial-step-card {
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.step-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+}
+
+.step-num {
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(225, 29, 72, 0.12);
+  color: #e11d48;
+  font-family: var(--font-mono, monospace);
+}
+
+.tutorial-step-card p {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-sumi-secondary);
+}
+
+.btn-step-try {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(225, 29, 72, 0.35);
+  background: rgba(225, 29, 72, 0.06);
+  color: #e11d48;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .btn-step-try {
+  color: #fb7185;
+}
+
+.btn-step-try:hover {
+  background: rgba(225, 29, 72, 0.14);
 }
 
 /* Master Data Onboarding Hero */

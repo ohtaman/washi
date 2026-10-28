@@ -1061,11 +1061,6 @@ export interface TimetableUiStrings {
   catEmptyImportMain: string;
   catEmptyImportSub: string;
   catEmptySamplesBtn: string;
-  catNextStepMsg: string;
-  btnCatGoConstraints: string;
-  btnCatGoTimetable: string;
-  constraintsWorkflowMsg: string;
-  btnConstraintsGoTimetable: string;
 }
 
 export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
@@ -1146,22 +1141,22 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnChatAbort: "⏹ 停止",
     btnChatSend: "送信",
 
-    tutorialTitle: "🔰 クイックガイド：AI大学時間割編成 (UCTP) の主要機能",
+    tutorialTitle: "🔰 クイックガイド：3ステップで体験するAI大学時間割編成 (UCTP)",
     tutorialClose: "✕ 閉じる",
-    step1Badge: "体験 1",
-    step1Title: "複数枚の時間割が連動する様子を見る・固定する",
+    step1Badge: "STEP 1",
+    step1Title: "基礎データを確認・読み込む",
     step1DescHtml:
-      "<strong>4学年分の時間割（4枚）</strong>と<strong>10名の教員別・7室の教室別マトリクス</strong>が裏で全て連動しています。コマをドラッグ＆ドロップして別時限に移動するか、クリックして固定できます。",
-    step1Btn: "👆 試す：「数理最適化」を火曜2限・101大講義室に固定",
-    step2Badge: "体験 2",
-    step2Title: "教員の都合や連続コマ条件を追加して再編成",
+      "まずは教員・教室・科目のマスタデータを登録します。「🎲 サンプル生成」または「📂 CSV読込」で準備できます（表内のセル直接編集も可能）。",
+    step1Btn: "🎲 試す：サンプルデータを読み込む",
+    step2Badge: "STEP 2",
+    step2Title: "条件設定やAI相談で調整",
     step2DescHtml:
-      "「非常勤の先生は火・木の午後のみ」「演習2コマは連続時限で」など現場の複雑な条件を入れて1秒で再計算します。",
+      "「⚙️ 条件・ルール設定」タブやチャット欄で、出講枠・連続コマ・PC演習室などの現場ルールを追加・調整できます。",
     step2Btn: "🔗 試す：「SW設計演習(週2コマ)」を同日連続時限に指定",
-    step3Badge: "体験 3",
-    step3Title: "時間割が組めない原因を自動診断（IIS/Conflict）",
+    step3Badge: "STEP 3",
+    step3Title: "時間割の自動編成・調整・矛盾診断",
     step3DescHtml:
-      "教室不足や非常勤講師の出講不可曜日との衝突など、解なし(Infeasible)の原因をWaSHI (HiGHS) が特定します。",
+      "「⚡ 時間割を自動編成」で4学年・教員・教室を一括最適化。コマをドラッグ移動したり、衝突原因の自動診断(IIS)を体験できます。",
     step3SelectAria: "わざと追加する矛盾シナリオ",
     step3Opt1: "デモ例1: 非常勤(火・木のみ)の小林先生の科目を月曜3限に強制固定",
     step3Opt2: "デモ例2: 130名超の1年必修2科目を両方「火曜2限・101大講義室」に固定",
@@ -1497,13 +1492,6 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     catEmptyImportMain: "📂 CSVファイルからインポート",
     catEmptyImportSub: "お手元の教員・教室・科目のCSVデータを取り込む",
     catEmptySamplesBtn: "📥 サンプルCSVの雛形をダウンロード",
-    catNextStepMsg:
-      "✅ 基礎データの準備完了。このまま時間割を自動編成するか、条件・ルール設定を確認してください。",
-    btnCatGoConstraints: "👉 ⚙️ 条件・ルール設定を確認",
-    btnCatGoTimetable: "⚡ 📅 時間割ボードで自動編成",
-    constraintsWorkflowMsg:
-      "制約条件や教員の連続講義上限などを確認・調整したら、「📅 時間割ボード」で自動編成を実行してください。",
-    btnConstraintsGoTimetable: "⚡ 📅 時間割ボードで自動編成",
   } as TimetableUiStrings & { cfgMaxConsecutiveHtml?: string },
 
   en: {
@@ -1582,22 +1570,22 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnChatAbort: "⏹ Stop",
     btnChatSend: "Send",
 
-    tutorialTitle: "🔰 Quick Guide: Key Features of AI University Timetabling (UCTP)",
+    tutorialTitle: "🔰 Quick Guide: 3-Step Walkthrough for AI University Timetabling (UCTP)",
     tutorialClose: "✕ Close",
-    step1Badge: "Demo 1",
-    step1Title: "Inspect Coupled Multi-Boards & Pin a Course",
+    step1Badge: "STEP 1",
+    step1Title: "Review & Load Master Data",
     step1DescHtml:
-      "<strong>4 Student Cohort Timetables (Y1–Y4)</strong>, <strong>10 Faculty Schedules</strong>, and <strong>7 Room Schedules</strong> are all coupled underneath. Drag & drop any session to move, or click to pin.",
-    step1Btn: '👆 Try: Pin "Math Optimization" to Tue P2 in Hall 101',
-    step2Badge: "Demo 2",
-    step2Title: "Add Faculty Availability or Consecutive Lab Rules",
+      "Prepare faculty, room, and course master data first via <strong>🎲 Generate Samples</strong> or <strong>📂 Import CSV</strong> (cells can also be edited directly in the tables).",
+    step1Btn: "🎲 Try: Load Sample Data",
+    step2Badge: "STEP 2",
+    step2Title: "Configure Rules & Consult AI",
     step2DescHtml:
-      'Add real-world academic constraints like "Adjunct faculty only Tue/Thu PM" or "2-period consecutive lab" and re-solve in under a second.',
-    step2Btn: '🔗 Try: Require "SW Design Lab (2 sessions)" in consecutive periods',
-    step3Badge: "Demo 3",
-    step3Title: "Auto-Diagnose Infeasible Conflicts (IIS / Elastic Relaxation)",
+      "Configure academic constraints such as instructor availability, consecutive lab periods, and PC room requirements in the <strong>⚙️ Rules</strong> tab or chat.",
+    step2Btn: '🔗 Try: Require "SW Design Lab (2 sessions)" in Consecutive Periods',
+    step3Badge: "STEP 3",
+    step3Title: "Auto-Schedule, Drag & Diagnose",
     step3DescHtml:
-      "When rules contradict (e.g. room double-booking or adjunct unavailable day), WaSHI (HiGHS) pinpoints the exact conflicting constraints.",
+      "Optimize across 4 cohorts, faculty, and rooms simultaneously. Drag & drop sessions or auto-diagnose infeasible conflicts with WaSHI IIS.",
     step3SelectAria: "Select a conflict scenario to inject",
     step3Opt1: "Demo 1: Pin Tue/Thu-only Adjunct Prof. Kobayashi's course to Mon P3",
     step3Opt2: "Demo 2: Pin two 130+ student Y1 courses both to Tue P2 in Hall 101",
@@ -1934,13 +1922,6 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     catEmptyImportMain: "📂 Import from CSV Files",
     catEmptyImportSub: "Upload your faculty, classroom, and course CSV files",
     catEmptySamplesBtn: "📥 Download Sample CSV Templates",
-    catNextStepMsg:
-      "✅ Baseline data is ready. You can auto-schedule now or inspect constraints.",
-    btnCatGoConstraints: "👉 ⚙️ Review Constraints",
-    btnCatGoTimetable: "⚡ 📅 Auto-Schedule on Timetable Board",
-    constraintsWorkflowMsg:
-      "Review or customize rules (capacities, PC lab requirements, max consecutive periods), then proceed to the Timetable Board to auto-schedule.",
-    btnConstraintsGoTimetable: "⚡ 📅 Auto-Schedule on Timetable Board",
   },
 
   zh: {
@@ -2018,22 +1999,22 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     btnChatAbort: "⏹ 停止",
     btnChatSend: "发送",
 
-    tutorialTitle: "🔰 快速指南：大学排课 AI Copilot 核心功能体验",
+    tutorialTitle: "🔰 快速指南：三步体验 AI 大学排课 (UCTP)",
     tutorialClose: "✕ 关闭",
-    step1Badge: "体验 1",
-    step1Title: "查看多张课表底层联动・点击固定课程",
+    step1Badge: "STEP 1",
+    step1Title: "查看与导入基础数据",
     step1DescHtml:
-      "<strong>4个年级的课表（4张）</strong>与<strong>10位教师课表・7间教室矩阵</strong>在底层全部实时联动。可直接拖拽课程卡片至目标节次，或点击以固定。",
-    step1Btn: "👆 试试：将《数学规划》固定在周二第2节・101大阶梯教室",
-    step2Badge: "体验 2",
-    step2Title: "添加教师出勤限制或实验课连排条件",
+      "首先准备教师、教室与课程基础数据。可通过 <strong>🎲 生成示例</strong> 或 <strong>📂 导入 CSV</strong> 录入（也可直接在表格单元格中编辑）。",
+    step1Btn: "🎲 试试：加载示例数据",
+    step2Badge: "STEP 2",
+    step2Title: "调整规则约束与 AI 咨询",
     step2DescHtml:
-      "加入“外聘教师仅周二/四下午可来”、“实验课两节连排”等复杂约束，1秒内重新计算全局最优解。",
+      "在「⚙️ 规则设置」标签页或对话栏中，添加教师出勤时段、连排实验、机房要求等实际业务约束。",
     step2Btn: "🔗 试试：将《软件设计实验(周2节)》设为同日连排",
-    step3Badge: "体验 3",
-    step3Title: "自动诊断无法排课的冲突原因 (IIS / Conflict)",
+    step3Badge: "STEP 3",
+    step3Title: "自动排课・拖拽调整・矛盾诊断",
     step3DescHtml:
-      "当教室容量不足或与外聘讲师禁排日冲突导致无解(Infeasible)时，WaSHI (HiGHS) 自动定位冲突规则。",
+      "一键全局优化4个年级、教师及教室课表。可拖拽调整节次，或体验 WaSHI 冲突自动诊断 (IIS)。",
     step3SelectAria: "选择要注入的冲突演示场景",
     step3Opt1: "演示1: 将仅周二/四可出勤的外聘小林老师的课程强制固定在周一第3节",
     step3Opt2: "演示2: 将两门130人以上的大一必修课同时固定在“周二第2节・101大阶梯教室”",
@@ -2366,12 +2347,5 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     catEmptyImportMain: "📂 从 CSV 文件导入",
     catEmptyImportSub: "导入自有的教师、教室与课程 CSV 数据",
     catEmptySamplesBtn: "📥 下载示例 CSV 模板",
-    catNextStepMsg:
-      "✅ 基础数据准备就绪。可直接自动排课或前往约束设置核对条件。",
-    btnCatGoConstraints: "👉 ⚙️ 查看约束规则",
-    btnCatGoTimetable: "⚡ 📅 前往课表看板自动排课",
-    constraintsWorkflowMsg:
-      "确认或调整规则（教室容量、机房要求、教师最大连续节数等）后，请前往“课表看板”执行自动优化排课。",
-    btnConstraintsGoTimetable: "⚡ 📅 前往课表看板自动排课",
   },
 };

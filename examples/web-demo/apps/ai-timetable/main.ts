@@ -181,7 +181,7 @@ function syncTrajectoryUI(): void {
   }
 }
 
-function switchTab(tabName: "timetable" | "constraints" | "catalog"): void {
+export function switchTab(tabName: "timetable" | "constraints" | "catalog"): void {
   const tabBtns = document.querySelectorAll<HTMLButtonElement>(".results-tab-btn");
   tabBtns.forEach((b) => {
     const active = b.dataset.tab === tabName;
@@ -931,7 +931,10 @@ function renderTimetableBoard(): void {
 
           if (slotSessions.length > 0) {
             const stack = document.createElement("div");
-            stack.className = "slot-cards-stack";
+            stack.className =
+              slotSessions.length > 1
+                ? "slot-cards-stack is-multi-session"
+                : "slot-cards-stack";
 
             for (const s of slotSessions) {
               const course = courseMap.get(s.courseId);
@@ -1478,12 +1481,14 @@ function renderTimetableBoard(): void {
   applyCrossHighlightClasses();
 }
 
+function shouldAutoSolveOnUpdate(): boolean {
+  if (!currentTimetable) return false;
+  const autoChk = document.getElementById("chk-auto-solve-on-chat") as HTMLInputElement | null;
+  return autoChk ? autoChk.checked : true;
+}
+
 function renderCustomRulesAndSettings(): void {
   const ui = UI_TEXT_I18N[activeLang];
-  const workflowBanner = $("constraints-workflow-banner");
-  if (workflowBanner) {
-    workflowBanner.hidden = !(appState.courses.length > 0 && !currentTimetable);
-  }
 
   const listEl = $("custom-rules-list");
   listEl.replaceChildren();
@@ -1515,7 +1520,9 @@ function renderCustomRulesAndSettings(): void {
       chk.checked = rule.enabled;
       chk.addEventListener("change", () => {
         rule.enabled = chk.checked;
-        void triggerSolve();
+        if (currentTimetable && shouldAutoSolveOnUpdate()) {
+          void triggerSolve();
+        }
       });
 
       const badgeSpan = document.createElement("span");
@@ -1539,7 +1546,9 @@ function renderCustomRulesAndSettings(): void {
       toggleHardBtn.addEventListener("click", () => {
         rule.isHard = rule.isHard === false;
         renderCustomRulesAndSettings();
-        void triggerSolve();
+        if (currentTimetable && shouldAutoSolveOnUpdate()) {
+          void triggerSolve();
+        }
       });
 
       const delBtn = document.createElement("button");
@@ -1549,7 +1558,9 @@ function renderCustomRulesAndSettings(): void {
       delBtn.addEventListener("click", () => {
         appState.customRules = appState.customRules.filter((r) => r.id !== rule.id);
         renderCustomRulesAndSettings();
-        void triggerSolve();
+        if (currentTimetable && shouldAutoSolveOnUpdate()) {
+          void triggerSolve();
+        }
       });
 
       right.append(toggleHardBtn, delBtn);
@@ -1587,7 +1598,6 @@ function renderCatalogTables(): void {
 
   const mgmtCard = $("cat-mgmt-card");
   const tablesContainer = $("cat-tables-container");
-  const nextBanner = $("cat-next-step-banner");
   const clearBlankBtn = $("btn-cat-clear-blank");
   const genBtn = $<HTMLButtonElement>("btn-cat-generate-sample");
 
@@ -1620,21 +1630,6 @@ function renderCatalogTables(): void {
 
   if (clearBlankBtn) {
     clearBlankBtn.hidden = isBlank;
-  }
-
-  if (nextBanner) {
-    nextBanner.hidden = isBlank;
-    if (!isBlank) {
-      const totalSessions = appState.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
-      setText(
-        "cat-next-step-message",
-        pickTimetableLang(activeLang, {
-          ja: `✅ 基礎データ準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目（計${totalSessions}コマ）。このまま時間割を自動編成するか、条件・ルール設定を確認してください。`,
-          en: `✅ Baseline data ready: ${appState.professors.length} Faculty / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses (${totalSessions} sessions). You can auto-schedule now or inspect constraints.`,
-          zh: `✅ 基础数据就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 (共${totalSessions}节)。可直接自动排课或前往约束设置核对条件。`,
-        })
-      );
-    }
   }
 
   // Update table headers
@@ -2042,7 +2037,6 @@ function updateStatusBlankUI(): void {
       en: "Register master data (faculty, rooms, courses) to auto-schedule timetables",
       zh: "录入基础数据（教师、教室、课程）后即可自动排课",
     });
-    $("tutorial-banner").hidden = true;
   } else {
     badge.className = "status-pill status-active";
     badge.textContent = pickTimetableLang(activeLang, {
@@ -2118,9 +2112,9 @@ export function updateToolbarButtonsState(): void {
   const tutStep1 = document.getElementById("btn-tut-step1") as HTMLButtonElement | null;
   const tutStep2 = document.getElementById("btn-tut-step2") as HTMLButtonElement | null;
   const tutStep3 = document.getElementById("btn-tut-step3") as HTMLButtonElement | null;
-  if (tutStep1) tutStep1.disabled = !hasCoursesAndRooms;
-  if (tutStep2) tutStep2.disabled = !hasCoursesAndRooms;
-  if (tutStep3) tutStep3.disabled = !hasCoursesAndRooms;
+  if (tutStep1) tutStep1.disabled = false;
+  if (tutStep2) tutStep2.disabled = false;
+  if (tutStep3) tutStep3.disabled = false;
 }
 
 function renderPromptCatalogDialog(lang: TimetableLang): void {
@@ -2236,8 +2230,6 @@ export function handleClearToBlank(skipConfirm: boolean | unknown = false): void
   currentEvaluation = null;
   lastSolveOutcome = null;
   if (typeof document !== "undefined") {
-    const banner = document.getElementById("tutorial-banner");
-    if (banner) banner.hidden = true;
     renderAll();
     appendChatMessage(
       "assistant",
@@ -2749,8 +2741,6 @@ export function applyTimetableLang(lang: TimetableLang): void {
   $("lbl-diff-toggle").title = ui.diffToggleTitle;
 
   // Tab 2 rules & config
-  setText("constraints-workflow-message", ui.constraintsWorkflowMsg);
-  setText("btn-constraints-go-timetable", ui.btnConstraintsGoTimetable);
   setText("custom-rules-title", ui.customRulesTitle);
   setText("custom-rules-desc", ui.customRulesDesc);
   setText("btn-apply-config-solve", ui.btnApplyConfigSolve);
@@ -2803,8 +2793,6 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("cat-empty-import-main", ui.catEmptyImportMain);
   setText("cat-empty-import-sub", ui.catEmptyImportSub);
   setText("btn-cat-empty-samples", ui.catEmptySamplesBtn);
-  setText("btn-cat-go-constraints", ui.btnCatGoConstraints);
-  setText("btn-cat-go-timetable", ui.btnCatGoTimetable);
 
   setText("cat-prof-title", ui.catProfTitle);
   setText("cat-prof-desc", ui.catProfDesc);
@@ -3045,49 +3033,40 @@ function wireEvents(): void {
     $("tutorial-banner").hidden = true;
   });
 
-  // Tutorial Step 1: Pin C15 (数理最適化) to Tue Period 2 in R101
+  // Tutorial Step 1: Review & Load Master Data
   $("btn-tut-step1").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      alert(
+      handleGenerateSample(false);
+      appendChatMessage(
+        "assistant",
         pickTimetableLang(activeLang, {
-          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
-          en: "To try the tutorial, please load sample data or schedule a timetable first.",
-          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+          ja: "🎲 サンプルデータを読み込みました（10教員 / 7教室 / 25科目）。続いてSTEP 2で条件を確認するか、STEP 3で「⚡ 時間割を自動編成」を実行してください。",
+          en: "🎲 Loaded sample data (10 faculty, 7 rooms, 25 courses). Next, check rules in STEP 2 or click '⚡ Auto-Schedule' in STEP 3.",
+          zh: "🎲 已加载示例数据（10位教师、7间教室、25门课程）。接下来可在 STEP 2 查看规则，或在 STEP 3 点击「⚡ 自动排课」。",
         })
       );
       return;
     }
-    const res = applyTimetableChatOperationsToState(appState, [
-      {
-        op: "pin_course_slot",
-        courseId: "C15",
-        days: ["Tue"],
-        periods: [2],
-        roomId: "R101",
-        isHard: true,
-      },
-    ]);
-    appState = res.updatedState;
+    switchTab("catalog");
     appendChatMessage(
-      "system",
+      "assistant",
       pickTimetableLang(activeLang, {
-        ja: "📌 チュートリアル STEP 1: 「数理最適化(C15)」を火曜2限・101大講義室(R101)に固定して再計算します。",
-        en: '📌 Tutorial STEP 1: Pinned "Mathematical Optimization (C15)" to Tue P2 in Hall 101 (R101) and re-optimizing.',
-        zh: "📌 指南 STEP 1: 已将《数学规划(C15)》固定在周二第2节・101大阶梯教室(R101)并重新优化。",
-      }),
-      res.appliedLogs
+        ja: `ℹ️ 基礎データはすでに登録されています（${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目）。「⚙️ 条件・ルール設定」または「⚡ 時間割を自動編成」に進んでください。`,
+        en: `ℹ️ Master data is already loaded (${appState.professors.length} faculty, ${appState.rooms.length} rooms, ${appState.courses.length} courses). Proceed to Rules or click Auto-Schedule.`,
+        zh: `ℹ️ 基础数据已存在（${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程）。请前往规则设置或点击自动排课。`,
+      })
     );
-    void triggerSolve();
   });
 
   // Tutorial Step 2: Consecutive sessions for C12 (ソフトウェア設計演習)
   $("btn-tut-step2").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      alert(
+      appendChatMessage(
+        "assistant",
         pickTimetableLang(activeLang, {
-          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
-          en: "To try the tutorial, please load sample data or schedule a timetable first.",
-          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+          ja: "チュートリアルを試すには、まずSTEP 1で「🎲 サンプルデータを読み込む」を実行してください。",
+          en: "To try the tutorial, please load sample data in STEP 1 first.",
+          zh: "体验演示前，请先在 STEP 1 中点击「🎲 载入示例数据」。",
         })
       );
       return;
@@ -3101,26 +3080,41 @@ function wireEvents(): void {
       },
     ]);
     appState = res.updatedState;
-    appendChatMessage(
-      "system",
-      pickTimetableLang(activeLang, {
-        ja: "🔗 チュートリアル STEP 2: 「ソフトウェア設計演習(C12・週2コマ)」を同じ曜日の連続する時限(2コマ連続)に指定して再計算します。",
-        en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)" and re-optimizing.',
-        zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12・周2节)》设为同日相邻节次连排并重新求解。",
-      }),
-      res.appliedLogs
-    );
-    void triggerSolve();
+    renderCustomRulesAndSettings();
+    switchTab("constraints");
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      appendChatMessage(
+        "system",
+        pickTimetableLang(activeLang, {
+          ja: "🔗 チュートリアル STEP 2: 「ソフトウェア設計演習(C12・週2コマ)」を同じ曜日の連続する時限(2コマ連続)に指定して再計算します。",
+          en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)" and re-optimizing.',
+          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12・周2节)》设为同日相邻节次连排并重新求解。",
+        }),
+        res.appliedLogs
+      );
+      void triggerSolve();
+    } else {
+      appendChatMessage(
+        "system",
+        pickTimetableLang(activeLang, {
+          ja: "🔗 チュートリアル STEP 2: 「ソフトウェア設計演習(C12・週2コマ)」を同日連続時限ルールに追加しました。「⚡ 時間割を自動編成」を押すと最適化が実行されます。",
+          en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)". Click "⚡ Auto-Schedule" when ready.',
+          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12・周2节)》追加为同日连排规则。请点击「⚡ 自动排课」执行求解。",
+        }),
+        res.appliedLogs
+      );
+    }
   });
 
   // Tutorial Step 3: Inject conflict scenario
   $("btn-tut-step3").addEventListener("click", () => {
     if (appState.courses.length === 0) {
-      alert(
+      appendChatMessage(
+        "assistant",
         pickTimetableLang(activeLang, {
-          ja: "チュートリアルを試すには、まずサンプルデータを読み込むか時間割を自動編成してください。",
-          en: "To try the tutorial, please load sample data or schedule a timetable first.",
-          zh: "体验快速指南前，请先载入示例数据或进行排课。",
+          ja: "チュートリアルを試すには、まずSTEP 1で「🎲 サンプルデータを読み込む」を実行してください。",
+          en: "To try the tutorial, please load sample data in STEP 1 first.",
+          zh: "体验演示前，请先在 STEP 1 中点击「🎲 载入示例数据」。",
         })
       );
       return;
@@ -3131,6 +3125,7 @@ function wireEvents(): void {
       | "pc_lab_overload";
     const injected = injectTimetableConflictScenario(appState, sc);
     appState = injected.updatedState;
+    switchTab("timetable");
     appendChatMessage(
       "system",
       pickTimetableLang(activeLang, {
@@ -3299,7 +3294,10 @@ function wireEvents(): void {
       ...appState,
       config: generateTimetableState({ seed: appState.config.seed }).config,
     };
-    void triggerSolve();
+    renderCustomRulesAndSettings();
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      void triggerSolve();
+    }
   });
   $("btn-diagnose-conflict").addEventListener("click", () => {
     $("btn-check-current").click();
@@ -3347,7 +3345,10 @@ function wireEvents(): void {
       ]);
       appState = res.updatedState;
     }
-    void triggerSolve();
+    renderCustomRulesAndSettings();
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      void triggerSolve();
+    }
   });
 
   // Slot Inspector Dialog actions
@@ -3364,7 +3365,11 @@ function wireEvents(): void {
     ]);
     appState = res.updatedState;
     $<HTMLDialogElement>("slot-inspector-dialog").close();
-    void triggerSolve();
+    renderCustomRulesAndSettings();
+    renderAll();
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      void triggerSolve();
+    }
   });
   $("btn-dialog-forbid-course").addEventListener("click", () => {
     const courseId = $<HTMLSelectElement>("dialog-select-course").value;
@@ -3375,13 +3380,21 @@ function wireEvents(): void {
     ]);
     appState = res.updatedState;
     $<HTMLDialogElement>("slot-inspector-dialog").close();
-    void triggerSolve();
+    renderCustomRulesAndSettings();
+    renderAll();
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      void triggerSolve();
+    }
   });
   $("btn-dialog-clear-course-rules").addEventListener("click", () => {
     const courseId = $<HTMLSelectElement>("dialog-select-course").value;
     appState.customRules = appState.customRules.filter((r) => r.courseId !== courseId);
     $<HTMLDialogElement>("slot-inspector-dialog").close();
-    void triggerSolve();
+    renderCustomRulesAndSettings();
+    renderAll();
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      void triggerSolve();
+    }
   });
 
   // Chat events
@@ -3548,24 +3561,6 @@ function wireEvents(): void {
   $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
   $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
   $("btn-cat-clear-blank")?.addEventListener("click", () => handleClearToBlank());
-  $("btn-cat-go-constraints")?.addEventListener("click", () => {
-    switchTab("constraints");
-  });
-  $("btn-cat-go-timetable")?.addEventListener("click", () => {
-    switchTab("timetable");
-    if (appState.courses.length > 0 && appState.rooms.length > 0 && !currentTimetable) {
-      void triggerSolve();
-    }
-  });
-
-  // Constraints workflow banner button
-  $("btn-constraints-go-timetable")?.addEventListener("click", () => {
-    readConfigFromForm();
-    switchTab("timetable");
-    if (appState.courses.length > 0 && appState.rooms.length > 0 && !currentTimetable) {
-      void triggerSolve();
-    }
-  });
 }
 
 async function initApp(): Promise<void> {

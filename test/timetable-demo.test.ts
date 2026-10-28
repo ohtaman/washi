@@ -984,36 +984,46 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       readConfigFromForm,
       triggerSolve,
       updateToolbarButtonsState,
+      switchTab,
     } = await import("../examples/web-demo/apps/ai-timetable/main.js");
 
     // Setup lightweight mock DOM document to drive UI buttons and form synchronization
     const elements = new Map<string, any>();
-    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => ({
-      id,
-      disabled: false,
-      hidden: false,
-      value: "",
-      checked: false,
-      textContent: "",
-      title: "",
-      className: "",
-      innerHTML: "",
-      style: {} as Record<string, string>,
-      children: [],
-      options: [],
-      click: () => {},
-      addEventListener: () => {},
-      setAttribute: () => {},
-      getAttribute: () => null,
-      appendChild: () => {},
-      append: () => {},
-      prepend: () => {},
-      remove: () => {},
-      replaceChildren: () => {},
-      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
-      dataset: {},
-      ...initialProps,
-    });
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => {
+      const listeners: Record<string, ((e?: any) => void)[]> = {};
+      return {
+        id,
+        disabled: false,
+        hidden: false,
+        value: "",
+        checked: false,
+        textContent: "",
+        title: "",
+        className: "",
+        innerHTML: "",
+        style: {} as Record<string, string>,
+        children: [],
+        options: [],
+        listeners,
+        click() {
+          listeners["click"]?.forEach((fn) => fn());
+        },
+        addEventListener(evt: string, fn: (e?: any) => void) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: () => {},
+        append: () => {},
+        prepend: () => {},
+        remove: () => {},
+        replaceChildren: () => {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        dataset: {},
+        ...initialProps,
+      };
+    };
     const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
       const el = createMockElement(id, initialProps);
       elements.set(id, el);
@@ -1077,7 +1087,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(catGenBtn.className).toBe("btn-solve-primary");
       expect(catGenBtn.textContent).toContain("Sample Data");
       expect(elements.get("btn-cat-clear-blank").hidden).toBe(true);
-      expect(elements.get("cat-next-step-banner").hidden).toBe(true);
+      expect(elements.get("tutorial-banner").hidden).toBe(false);
       expect(elements.get("cat-prof-title").textContent).toContain("0");
 
       updateToolbarButtonsState();
@@ -1098,11 +1108,17 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(catGenBtn.className).toBe("btn-toolbar-outline");
       expect(catGenBtn.textContent).toContain("Regenerate");
       expect(elements.get("btn-cat-clear-blank").hidden).toBe(false);
-      expect(elements.get("cat-next-step-banner").hidden).toBe(false);
+      expect(elements.get("tutorial-banner").hidden).toBe(false);
       expect(elements.get("cat-prof-title").textContent).toContain("10");
 
       // Verify that sample generation does NOT auto-solve: timetable must remain unscheduled (null)
       expect(getCurrentTimetable()).toBeNull();
+
+      // Verify switchTab correctly activates the "catalog" tab and hides other panels
+      switchTab("catalog");
+      expect(elements.get("tab-panel-catalog").hidden).toBe(false);
+      expect(elements.get("tab-panel-timetable").hidden).toBe(true);
+      expect(elements.get("tab-panel-constraints").hidden).toBe(true);
 
       updateToolbarButtonsState();
       expect(btnSolve.disabled).toBe(false);
@@ -1130,23 +1146,14 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         expect(ui.catEmptyImportMain.length).toBeGreaterThan(0);
         expect(ui.catEmptyImportSub.length).toBeGreaterThan(0);
         expect(ui.catEmptySamplesBtn.length).toBeGreaterThan(0);
-        expect(ui.step1Badge.length).toBeGreaterThan(0);
-        expect(ui.step2Badge.length).toBeGreaterThan(0);
-        expect(ui.step3Badge.length).toBeGreaterThan(0);
-        expect(ui.step1Badge).not.toMatch(/^STEP \d$/);
-        expect(ui.step2Badge).not.toMatch(/^STEP \d$/);
-        expect(ui.step3Badge).not.toMatch(/^STEP \d$/);
+        expect(ui.step1Badge).toBe("STEP 1");
+        expect(ui.step2Badge).toBe("STEP 2");
+        expect(ui.step3Badge).toBe("STEP 3");
         expect(ui.catMgmtTitle.length).toBeGreaterThan(0);
         expect(ui.catMgmtDesc.length).toBeGreaterThan(0);
         expect(ui.btnCatGenerate.length).toBeGreaterThan(0);
         expect(ui.btnCatImportCsv.length).toBeGreaterThan(0);
-        expect(ui.btnCatGoConstraints.length).toBeGreaterThan(0);
-        expect(ui.btnCatGoTimetable.length).toBeGreaterThan(0);
-        expect(ui.constraintsWorkflowMsg.length).toBeGreaterThan(0);
-        expect(ui.btnConstraintsGoTimetable.length).toBeGreaterThan(0);
         expect(ui.chatWelcomeMarkdown.length).toBeGreaterThan(0);
-        expect(ui.btnCatGoConstraints).not.toContain("Step 2");
-        expect(ui.btnCatGoTimetable).not.toContain("Step 3");
       }
       expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("時間割を初期編成します");
       expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("時間割ボード");
@@ -1202,32 +1209,41 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     } = await import("../examples/web-demo/apps/ai-timetable/main.js");
 
     const elements = new Map<string, any>();
-    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => ({
-      id,
-      disabled: false,
-      hidden: false,
-      value: "",
-      checked: false,
-      textContent: "",
-      title: "",
-      className: "",
-      innerHTML: "",
-      style: {} as Record<string, string>,
-      children: [],
-      options: [],
-      click: () => {},
-      addEventListener: () => {},
-      setAttribute: () => {},
-      getAttribute: () => null,
-      appendChild: () => {},
-      append: () => {},
-      prepend: () => {},
-      remove: () => {},
-      replaceChildren: () => {},
-      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
-      dataset: {},
-      ...initialProps,
-    });
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => {
+      const listeners: Record<string, ((e?: any) => void)[]> = {};
+      return {
+        id,
+        disabled: false,
+        hidden: false,
+        value: "",
+        checked: false,
+        textContent: "",
+        title: "",
+        className: "",
+        innerHTML: "",
+        style: {} as Record<string, string>,
+        children: [],
+        options: [],
+        listeners,
+        click() {
+          listeners["click"]?.forEach((fn) => fn());
+        },
+        addEventListener(evt: string, fn: (e?: any) => void) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: () => {},
+        append: () => {},
+        prepend: () => {},
+        remove: () => {},
+        replaceChildren: () => {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        dataset: {},
+        ...initialProps,
+      };
+    };
     const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
       const el = createMockElement(id, initialProps);
       elements.set(id, el);
