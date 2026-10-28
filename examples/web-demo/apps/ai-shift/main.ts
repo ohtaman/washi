@@ -3023,7 +3023,7 @@ function handleExportCsvs(): void {
 }
 
 function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): void {
-  currentSeed = 202611;
+  currentSeed += 7;
   appState = generateNurseSchedulingState({
     year: appState.config.year,
     month: appState.config.month,
@@ -3254,10 +3254,6 @@ function setupEventListeners(): void {
   $("btn-generate-sample")?.addEventListener("click", () => handleGenerateSample(30));
   $("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(30));
   $("btn-cat-generate-sample")?.addEventListener("click", () => {
-    const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
-    handleGenerateSample(c);
-  });
-  $("btn-regenerate-staff")?.addEventListener("click", () => {
     const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
     handleGenerateSample(c);
   });
@@ -3529,27 +3525,6 @@ function setupEventListeners(): void {
       void runWashiOptimization();
     });
   }
-
-  $("btn-regenerate-staff").addEventListener("click", () => {
-    const countInput = $("input-staff-count") as HTMLInputElement;
-    const count = Math.max(15, Math.min(36, Number(countInput.value) || 30));
-    countInput.value = String(count);
-    currentSeed += 7;
-    currentSchedule = null;
-    currentEvaluation = null;
-    appState = generateNurseSchedulingState({
-      year: appState.config.year,
-      month: appState.config.month,
-      staffCount: count,
-      seed: currentSeed,
-    });
-    appendChatMessage({
-      role: "system",
-      senderLabel: "🎲 スタッフ再生成",
-      initialText: `看護師 ${count}名（スキル・相性ペア・前月シフト・希望シフト）を新しく自動生成し、最適化しました。`,
-    });
-    void runWashiOptimization();
-  });
 
   // Conflict Alert buttons
   $("btn-clear-custom-conflicts").addEventListener("click", () => {

@@ -424,4 +424,22 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(html).toContain("id=\"constraints-next-step-banner\"");
     expect(html).toContain("id=\"btn-constraints-go-schedule\"");
   });
+
+  it("ensures all DOM elements queried by $() in ai-shift main.ts exist in index.html", () => {
+    const mainTs = fs.readFileSync("examples/web-demo/apps/ai-shift/main.ts", "utf8");
+    const html = fs.readFileSync("examples/web-demo/apps/ai-shift/index.html", "utf8");
+
+    const idRegex = /\$\(\s*["']([^"']+)["']\s*\)/g;
+    let match: RegExpExecArray | null;
+    const missing: string[] = [];
+
+    while ((match = idRegex.exec(mainTs)) !== null) {
+      const id = match[1];
+      if (!html.includes(`id="${id}"`) && !html.includes(`id='${id}'`)) {
+        missing.push(id);
+      }
+    }
+
+    expect([...new Set(missing)]).toEqual([]);
+  });
 });
