@@ -678,8 +678,20 @@ body.ai-shift-body {
 
 .tutorial-steps-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+@media (max-width: 1100px) {
+  .tutorial-steps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .tutorial-steps-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tutorial-step-card {
@@ -2022,3 +2034,89 @@ body.ai-shift-body {
   margin: 0 4px;
 }
 
+
+
+/* Master Data Management Card & Next-Step Banners (aligned with ai-timetable) */
+.catalog-management-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: 10px;
+  padding: 1.1rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.catalog-mgmt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.catalog-mgmt-title-group {
+  flex: 1 1 320px;
+}
+
+.catalog-mgmt-title-group h3 {
+  margin: 0.25rem 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+.catalog-mgmt-title-group p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text-sumi-secondary);
+}
+
+.catalog-mgmt-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.catalog-next-banner {
+  background: rgba(225, 29, 72, 0.05);
+  border: 1px solid rgba(225, 29, 72, 0.25);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.catalog-next-text {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--text-sumi);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 280px;
+}
+
+.catalog-next-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dp-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(225, 29, 72, 0.12);
+  color: #e11d48;
+  letter-spacing: 0.04em;
+}

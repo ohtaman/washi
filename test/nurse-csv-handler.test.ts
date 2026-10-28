@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { describe, it, expect } from "vitest";
 import {
   exportNursesCsv,
@@ -352,5 +353,75 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(parsed.nurses).toHaveLength(1);
     expect(parsed.nurses[0].id).toBe("N01");
     expect(parsed.nurses[0].name).toBe("BOM看護師");
+  });
+
+  it("initializes blank state with pre-populated baseline ward constraints", () => {
+    const blank = createBlankNurseSchedulingState();
+    expect(blank.nurses).toHaveLength(0);
+    expect(blank.preferences).toHaveLength(0);
+    expect(blank.relations).toHaveLength(0);
+    expect(blank.customRules).toHaveLength(0);
+
+    // Basic ward constraints must be pre-populated
+    expect(blank.config.weekdayDayStaff).toBe(10);
+    expect(blank.config.weekendDayStaff).toBe(7);
+    expect(blank.config.eveningStaff).toBe(3);
+    expect(blank.config.nightStaff).toBe(3);
+    expect(blank.config.maxConsecutiveWorkDays).toBe(5);
+    expect(blank.config.minMonthlyDaysOff).toBe(9);
+    expect(blank.config.maxMonthlyNightShifts).toBe(8);
+    expect(blank.config.enforce36Agreement).toBe(true);
+    expect(blank.config.shiftTransitions).toBeDefined();
+    expect(blank.skillDefs.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("verifies 4-step tutorial workflow and tab layout alignment with ai-timetable", () => {
+    const html = fs.readFileSync("examples/web-demo/apps/ai-shift/index.html", "utf8");
+
+    // 1. 4-step tutorial banner
+    expect(html).toContain("STEP 1");
+    expect(html).toContain("STEP 2");
+    expect(html).toContain("STEP 3");
+    expect(html).toContain("STEP 4");
+    expect(html).toContain("id=\"btn-tut-step1\"");
+    expect(html).toContain("id=\"btn-tut-step2\"");
+    expect(html).toContain("id=\"btn-tut-step3\"");
+    expect(html).toContain("id=\"btn-tut-step4\"");
+
+    // 2. Tab button ordering: Master Data -> Constraints -> Schedule
+    const staffBtnIdx = html.indexOf("id=\"tab-btn-staff\"");
+    const constraintsBtnIdx = html.indexOf("id=\"tab-btn-constraints\"");
+    const scheduleBtnIdx = html.indexOf("id=\"tab-btn-schedule\"");
+    expect(staffBtnIdx).toBeGreaterThan(-1);
+    expect(constraintsBtnIdx).toBeGreaterThan(staffBtnIdx);
+    expect(scheduleBtnIdx).toBeGreaterThan(constraintsBtnIdx);
+
+    // Initial active tab button is staff
+    const staffBtnSnippet = html.slice(staffBtnIdx - 50, staffBtnIdx + 150);
+    expect(staffBtnSnippet).toContain("results-tab-btn active");
+
+    // 3. Tab panel ordering: staff (visible) -> constraints (hidden) -> schedule (hidden)
+    const staffPanelIdx = html.indexOf("id=\"tab-panel-staff\"");
+    const constraintsPanelIdx = html.indexOf("id=\"tab-panel-constraints\"");
+    const schedulePanelIdx = html.indexOf("id=\"tab-panel-schedule\"");
+    expect(staffPanelIdx).toBeGreaterThan(-1);
+    expect(constraintsPanelIdx).toBeGreaterThan(staffPanelIdx);
+    expect(schedulePanelIdx).toBeGreaterThan(constraintsPanelIdx);
+
+    const staffPanelSnippet = html.slice(staffPanelIdx, staffPanelIdx + 250);
+    expect(staffPanelSnippet).not.toContain("hidden");
+
+    const constraintsPanelSnippet = html.slice(constraintsPanelIdx, constraintsPanelIdx + 250);
+    expect(constraintsPanelSnippet).toContain("hidden");
+
+    const schedulePanelSnippet = html.slice(schedulePanelIdx, schedulePanelIdx + 250);
+    expect(schedulePanelSnippet).toContain("hidden");
+
+    // 4. Workflow step progression buttons exist
+    expect(html).toContain("id=\"staff-next-step-banner\"");
+    expect(html).toContain("id=\"btn-cat-go-constraints\"");
+    expect(html).toContain("id=\"btn-cat-go-schedule\"");
+    expect(html).toContain("id=\"constraints-next-step-banner\"");
+    expect(html).toContain("id=\"btn-constraints-go-schedule\"");
   });
 });

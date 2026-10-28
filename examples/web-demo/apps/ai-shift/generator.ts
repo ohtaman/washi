@@ -726,7 +726,7 @@ export function createBlankNurseSchedulingState(
   configOverrides?: Partial<NurseScheduleConfig>
 ): NurseSchedulingState {
   const config = createDefaultConfig({
-    staffCount: 0,
+    staffCount: 30,
     ...configOverrides,
   });
   return {
