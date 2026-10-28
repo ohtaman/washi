@@ -181,7 +181,7 @@ function syncTrajectoryUI(): void {
   }
 }
 
-function switchTab(tabName: "timetable" | "constraints" | "catalog"): void {
+export function switchTab(tabName: "timetable" | "constraints" | "catalog"): void {
   const tabBtns = document.querySelectorAll<HTMLButtonElement>(".results-tab-btn");
   tabBtns.forEach((b) => {
     const active = b.dataset.tab === tabName;
@@ -3047,7 +3047,7 @@ function wireEvents(): void {
       );
       return;
     }
-    switchTab("cat");
+    switchTab("catalog");
     appendChatMessage(
       "assistant",
       pickTimetableLang(activeLang, {

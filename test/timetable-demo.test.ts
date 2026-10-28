@@ -984,36 +984,46 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       readConfigFromForm,
       triggerSolve,
       updateToolbarButtonsState,
+      switchTab,
     } = await import("../examples/web-demo/apps/ai-timetable/main.js");
 
     // Setup lightweight mock DOM document to drive UI buttons and form synchronization
     const elements = new Map<string, any>();
-    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => ({
-      id,
-      disabled: false,
-      hidden: false,
-      value: "",
-      checked: false,
-      textContent: "",
-      title: "",
-      className: "",
-      innerHTML: "",
-      style: {} as Record<string, string>,
-      children: [],
-      options: [],
-      click: () => {},
-      addEventListener: () => {},
-      setAttribute: () => {},
-      getAttribute: () => null,
-      appendChild: () => {},
-      append: () => {},
-      prepend: () => {},
-      remove: () => {},
-      replaceChildren: () => {},
-      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
-      dataset: {},
-      ...initialProps,
-    });
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => {
+      const listeners: Record<string, ((e?: any) => void)[]> = {};
+      return {
+        id,
+        disabled: false,
+        hidden: false,
+        value: "",
+        checked: false,
+        textContent: "",
+        title: "",
+        className: "",
+        innerHTML: "",
+        style: {} as Record<string, string>,
+        children: [],
+        options: [],
+        listeners,
+        click() {
+          listeners["click"]?.forEach((fn) => fn());
+        },
+        addEventListener(evt: string, fn: (e?: any) => void) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: () => {},
+        append: () => {},
+        prepend: () => {},
+        remove: () => {},
+        replaceChildren: () => {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        dataset: {},
+        ...initialProps,
+      };
+    };
     const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
       const el = createMockElement(id, initialProps);
       elements.set(id, el);
@@ -1104,6 +1114,12 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       // Verify that sample generation does NOT auto-solve: timetable must remain unscheduled (null)
       expect(getCurrentTimetable()).toBeNull();
 
+      // Verify switchTab correctly activates the "catalog" tab and hides other panels
+      switchTab("catalog");
+      expect(elements.get("tab-panel-catalog").hidden).toBe(false);
+      expect(elements.get("tab-panel-timetable").hidden).toBe(true);
+      expect(elements.get("tab-panel-constraints").hidden).toBe(true);
+
       updateToolbarButtonsState();
       expect(btnSolve.disabled).toBe(false);
       expect(btnCheck.disabled).toBe(false);
@@ -1193,32 +1209,41 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     } = await import("../examples/web-demo/apps/ai-timetable/main.js");
 
     const elements = new Map<string, any>();
-    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => ({
-      id,
-      disabled: false,
-      hidden: false,
-      value: "",
-      checked: false,
-      textContent: "",
-      title: "",
-      className: "",
-      innerHTML: "",
-      style: {} as Record<string, string>,
-      children: [],
-      options: [],
-      click: () => {},
-      addEventListener: () => {},
-      setAttribute: () => {},
-      getAttribute: () => null,
-      appendChild: () => {},
-      append: () => {},
-      prepend: () => {},
-      remove: () => {},
-      replaceChildren: () => {},
-      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
-      dataset: {},
-      ...initialProps,
-    });
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => {
+      const listeners: Record<string, ((e?: any) => void)[]> = {};
+      return {
+        id,
+        disabled: false,
+        hidden: false,
+        value: "",
+        checked: false,
+        textContent: "",
+        title: "",
+        className: "",
+        innerHTML: "",
+        style: {} as Record<string, string>,
+        children: [],
+        options: [],
+        listeners,
+        click() {
+          listeners["click"]?.forEach((fn) => fn());
+        },
+        addEventListener(evt: string, fn: (e?: any) => void) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: () => {},
+        append: () => {},
+        prepend: () => {},
+        remove: () => {},
+        replaceChildren: () => {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        dataset: {},
+        ...initialProps,
+      };
+    };
     const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
       const el = createMockElement(id, initialProps);
       elements.set(id, el);
