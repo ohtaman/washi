@@ -364,7 +364,7 @@
             </button>
 
             <button type="button" id="btn-solve-washi" class="btn-solve-primary">
-              ⚡ シフトを再最適化
+              ⚡ シフトを自動作成
             </button>
 
             <button
@@ -383,6 +383,24 @@
               title="追加した固定ルールや矛盾シナリオをリセットして初期状態に戻します"
             >
               ↩ リセット
+            </button>
+
+            <span class="toolbar-divider" aria-hidden="true"></span>
+
+            <button type="button" id="btn-generate-sample" class="btn-toolbar-outline" title="30名・3交代制のサンプルデータを生成します">
+              ✨ サンプル生成
+            </button>
+
+            <button type="button" id="btn-open-csv-dialog" class="btn-toolbar-outline" title="看護師名簿・希望・相性のCSVファイルを読み込みます">
+              📂 CSV読込
+            </button>
+
+            <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="現在の看護師名簿・希望・相性をCSVファイルで保存します">
+              📥 CSV出力
+            </button>
+
+            <button type="button" id="btn-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="シフト・スタッフ・希望をすべてクリアして白紙に戻します">
+              🗑️ 白紙化
             </button>
           </div>
         </div>
@@ -487,6 +505,28 @@
                 <option value="mid">中堅層のみ</option>
                 <option value="newcomer">🔰 新人のみ</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Empty / Blank Schedule Welcome Banner -->
+          <div id="empty-schedule-state" class="empty-schedule-card" hidden>
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-content">
+              <h3 id="empty-state-title">シフトデータがありません（白紙モード）</h3>
+              <p id="empty-state-desc">
+                現在、スタッフ名簿が登録されていません。まずは「✨ サンプル生成」でサンプルデータをセットするか、「📂 CSV読込」でCSVファイルをインポートしてください。
+              </p>
+              <div class="empty-state-actions">
+                <button type="button" id="btn-empty-generate" class="btn-solve-primary">
+                  ✨ サンプルデータを生成 (30名)
+                </button>
+                <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
+                  📂 CSVファイルを読み込む
+                </button>
+                <button type="button" id="btn-empty-samples" class="btn-xs-outline">
+                  📥 サンプルCSVをダウンロード
+                </button>
+              </div>
             </div>
           </div>
 
@@ -872,7 +912,13 @@
                     aria-label="スタッフ人数"
                   />
                   <button type="button" id="btn-regenerate-staff" class="btn-solve-primary">
-                    🎲 スタッフ・希望を自動再生成
+                    🎲 サンプル再生成
+                  </button>
+                  <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline">
+                    📂 CSVインポート
+                  </button>
+                  <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="スタッフ・希望・相性のサンプルCSVをダウンロード">
+                    📥 CSVテンプレート
                   </button>
                 </div>
               </div>
@@ -1148,6 +1194,70 @@
             </button>
             <button type="button" id="btn-save-nurse-contract" class="btn-solve-primary">
               💾 保存して再計算
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- ==================== MODAL: CSV IMPORT DIALOG ==================== -->
+    <dialog id="csv-import-dialog" class="shift-dialog" closedby="any" aria-labelledby="csv-dialog-title" style="max-width: 680px; width: 92vw;">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h3 id="csv-dialog-title">📂 CSVファイルの読み込み (スタッフ名簿・希望・相性)</h3>
+          <button type="button" id="btn-close-csv-dialog" class="dialog-close-btn" aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div class="dialog-body">
+          <p id="csv-dlg-intro" style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
+            看護師名簿・シフト希望・相性ペアの3つのCSVファイルを読み込みます。手元にCSVがない場合は各「📥 サンプル」ボタンでテンプレートをダウンロードできます。
+          </p>
+
+          <div class="csv-upload-grid">
+            <!-- 1. 看護師名簿CSV -->
+            <div class="csv-upload-item">
+              <div class="csv-upload-header">
+                <strong>👥 1. 看護師名簿CSV (nurses.csv)</strong>
+                <button type="button" id="btn-dl-sample-nurses" class="btn-link-inline">📥 サンプル</button>
+              </div>
+              <input type="file" id="file-input-nurses" accept=".csv,text/csv" class="csv-file-input" />
+              <div id="file-status-nurses" class="csv-file-status">未選択</div>
+            </div>
+
+            <!-- 2. シフト希望CSV -->
+            <div class="csv-upload-item">
+              <div class="csv-upload-header">
+                <strong>📋 2. シフト希望CSV (requests.csv)</strong>
+                <button type="button" id="btn-dl-sample-requests" class="btn-link-inline">📥 サンプル</button>
+              </div>
+              <input type="file" id="file-input-requests" accept=".csv,text/csv" class="csv-file-input" />
+              <div id="file-status-requests" class="csv-file-status">未選択</div>
+            </div>
+
+            <!-- 3. 相性・ペアCSV -->
+            <div class="csv-upload-item">
+              <div class="csv-upload-header">
+                <strong>🤝 3. 相性・ペア制約CSV (relations.csv)</strong>
+                <button type="button" id="btn-dl-sample-relations" class="btn-link-inline">📥 サンプル</button>
+              </div>
+              <input type="file" id="file-input-relations" accept=".csv,text/csv" class="csv-file-input" />
+              <div id="file-status-relations" class="csv-file-status">未選択</div>
+            </div>
+          </div>
+
+          <div id="csv-import-feedback" class="csv-feedback-box" hidden></div>
+        </div>
+        <div class="dialog-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+          <button type="button" id="btn-dl-all-samples" class="btn-xs-outline">
+            📥 サンプルCSV一括ダウンロード
+          </button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button type="button" id="btn-execute-csv-import" class="btn-solve-primary" disabled>
+              📥 インポートを実行してセット
+            </button>
+            <button type="button" id="btn-close-csv-dialog-cancel" class="btn-xs-outline">
+              閉じる
             </button>
           </div>
         </div>

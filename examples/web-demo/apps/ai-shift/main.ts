@@ -34,6 +34,7 @@ import {
   type WashiSolveOutcome,
 } from "./types";
 import {
+  createBlankNurseSchedulingState,
   createDefaultConfig,
   createDefaultSkillDefs,
   generateNurseSchedulingState,
@@ -41,6 +42,18 @@ import {
   injectConflictScenario,
   WEEKDAY_NAMES_JA,
 } from "./generator";
+import {
+  exportNursesCsv,
+  exportRelationsCsv,
+  exportRequestsCsv,
+  getSampleNursesCsv,
+  getSampleRelationsCsv,
+  getSampleRequestsCsv,
+  parseNursesCsv,
+  parseRelationsCsv,
+  parseRequestsCsv,
+  validateNurseDataset,
+} from "./csv-handler";
 import {
   diagnoseNurseScheduleWithHiGHS,
   evaluateNurseSchedule,
@@ -55,17 +68,17 @@ import {
   type GeminiNanoStatus,
 } from "./nano-client";
 
-// Application State
+// Application State - Start in blank slate mode (empty nurses and schedule until generated or CSV-imported)
 let currentSeed = 202611;
-let appState: NurseSchedulingState = generateNurseSchedulingState({
-  year: 2026,
-  month: 11,
-  staffCount: 30,
-  seed: currentSeed,
-});
+let appState: NurseSchedulingState = createBlankNurseSchedulingState();
 let currentSchedule: MonthlyScheduleMap | null = null;
 let currentEvaluation: ScheduleEvaluationReport | null = null;
 let lastSolveOutcome: WashiSolveOutcome | null = null;
+
+// Pending CSV staging objects
+let pendingCsvNurses: NurseProfile[] | null = null;
+let pendingCsvRequests: ShiftPreference[] | null = null;
+let pendingCsvRelations: PairRelation[] | null = null;
 
 // Single-flight solver concurrency & cancellation state
 let isSolving = false;
@@ -514,10 +527,18 @@ function renderStatusAndConflictBar(): void {
   abortSolveBtn.hidden = true;
   solveBtn.disabled = false;
 
+  if (appState.nurses.length === 0) {
+    statusBadge.classList.add("status-idle");
+    statusBadge.textContent = "白紙モード";
+    summaryTextEl.textContent = "スタッフデータが未登録です。「✨ サンプル生成」または「📂 CSV読込」を行ってください";
+    solveTimeEl.textContent = "-- ms";
+    return;
+  }
+
   if (!lastSolveOutcome) {
     statusBadge.classList.add("status-idle");
-    statusBadge.textContent = "待機中";
-    summaryTextEl.textContent = "「⚡ シフトを再最適化」を押すと計算を開始します";
+    statusBadge.textContent = "準備完了";
+    summaryTextEl.textContent = `${appState.nurses.length}名のデータが読み込まれています。「⚡ シフトを自動作成」を押して最適化してください`;
     solveTimeEl.textContent = "-- ms";
     return;
   }
@@ -638,6 +659,14 @@ function renderScheduleMatrix(): void {
   thead.replaceChildren();
   tbody.replaceChildren();
   tfoot.replaceChildren();
+
+  const emptyStateEl = document.getElementById("empty-schedule-state");
+  if (emptyStateEl) {
+    emptyStateEl.hidden = appState.nurses.length > 0;
+  }
+  if (appState.nurses.length === 0) {
+    return;
+  }
 
   const { config, nurses, preferences, customRules, customShiftDefs } = appState;
   const numDays = config.numDays;
@@ -1848,6 +1877,28 @@ function renderStaffProfilesTab(): void {
   relList.replaceChildren();
   tbody.replaceChildren();
 
+  if (appState.nurses.length === 0) {
+    const emptyRel = document.createElement("div");
+    emptyRel.style.color = "var(--text-sumi-secondary)";
+    emptyRel.style.fontSize = "0.85rem";
+    emptyRel.style.padding = "0.5rem 0";
+    emptyRel.textContent = "現在、スタッフおよびペア制約は登録されていません（白紙モード）。";
+    relList.appendChild(emptyRel);
+
+    const emptyTr = document.createElement("tr");
+    const emptyTd = document.createElement("td");
+    emptyTd.colSpan = 8;
+    emptyTd.style.textAlign = "center";
+    emptyTd.style.padding = "2.5rem 1rem";
+    emptyTd.style.color = "var(--text-sumi-secondary)";
+    emptyTd.innerHTML =
+      `📄 <strong>スタッフデータが未登録です（白紙モード）</strong><br>` +
+      `<span style="font-size: 0.82rem; margin-top: 0.4rem; display: inline-block;">上の「🎲 サンプル再生成」ボタンを押すか、「📂 CSVインポート」で名簿ファイルを読み込んでください。</span>`;
+    emptyTr.appendChild(emptyTd);
+    tbody.appendChild(emptyTr);
+    return;
+  }
+
   const nurseById = new Map(appState.nurses.map((n) => [n.id, n]));
 
   for (const rel of appState.relations) {
@@ -2134,6 +2185,18 @@ function renderAllViews(): void {
 
 // ==================== SINGLE-FLIGHT COALESCE SOLVER RUNNER (NEVER FREEZES OR DROPS) ====================
 async function runWashiOptimization(): Promise<WashiSolveOutcome | null> {
+  if (appState.nurses.length === 0) {
+    appendChatMessage({
+      role: "assistant",
+      senderLabel: "🏥 AI シフト相談",
+      initialText:
+        "⚠️ **スタッフデータが未登録です（白紙モード）**\n" +
+        "まずは右上の **「✨ サンプル生成」** を押して30名のサンプルデータを読み込むか、**「📂 CSV読込」** からお手元の名簿CSVを取り込んでください。",
+    });
+    renderAllViews();
+    return null;
+  }
+
   if (activeSolvePromise) {
     // Coalesce: request a fresh solve of the latest state, abort the superseded HiGHS solve,
     // and return the shared in-flight promise so callers await the latest coalesced outcome.
@@ -2778,6 +2841,203 @@ async function handleChatSubmit(userText: string): Promise<void> {
   }
 }
 
+// ==================== CSV IMPORT / EXPORT / BLANK SLATE HELPERS ====================
+function downloadTextFile(filename: string, content: string): void {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function openCsvDialog(): void {
+  pendingCsvNurses = null;
+  pendingCsvRequests = null;
+  pendingCsvRelations = null;
+
+  const inputNurses = document.getElementById("file-input-nurses") as HTMLInputElement | null;
+  const inputReqs = document.getElementById("file-input-requests") as HTMLInputElement | null;
+  const inputRels = document.getElementById("file-input-relations") as HTMLInputElement | null;
+  if (inputNurses) inputNurses.value = "";
+  if (inputReqs) inputReqs.value = "";
+  if (inputRels) inputRels.value = "";
+
+  const stN = document.getElementById("file-status-nurses");
+  const stReq = document.getElementById("file-status-requests");
+  const stRel = document.getElementById("file-status-relations");
+  if (stN) {
+    stN.textContent = "未選択";
+    stN.className = "csv-file-status";
+  }
+  if (stReq) {
+    stReq.textContent = "未選択";
+    stReq.className = "csv-file-status";
+  }
+  if (stRel) {
+    stRel.textContent = "未選択";
+    stRel.className = "csv-file-status";
+  }
+
+  const feedbackEl = document.getElementById("csv-import-feedback");
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  const execBtn = document.getElementById("btn-execute-csv-import") as HTMLButtonElement | null;
+  if (execBtn) execBtn.disabled = true;
+
+  const dialog = document.getElementById("csv-import-dialog") as HTMLDialogElement | null;
+  if (dialog) dialog.showModal();
+}
+
+function checkImportReadiness(): void {
+  const feedbackEl = document.getElementById("csv-import-feedback");
+  const execBtn = document.getElementById("btn-execute-csv-import") as HTMLButtonElement | null;
+
+  if (!pendingCsvNurses || pendingCsvNurses.length === 0) {
+    if (execBtn) execBtn.disabled = true;
+    if (feedbackEl) feedbackEl.hidden = true;
+    return;
+  }
+
+  const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
+  const validation = validateNurseDataset(
+    pendingCsvNurses,
+    pendingCsvRequests ?? [],
+    pendingCsvRelations ?? [],
+    appState.config.numDays,
+    customCodes
+  );
+
+  if (!validation.valid) {
+    if (execBtn) execBtn.disabled = true;
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "csv-feedback-box";
+      feedbackEl.innerHTML = `⚠️ <strong>データの不整合を検出しました:</strong><br>${validation.errors.join("<br>")}`;
+    }
+    return;
+  }
+
+  if (execBtn) execBtn.disabled = false;
+  if (feedbackEl) {
+    feedbackEl.hidden = false;
+    feedbackEl.className = "csv-feedback-box is-success";
+    const reqCount = pendingCsvRequests?.length ?? 0;
+    const relCount = pendingCsvRelations?.length ?? 0;
+    feedbackEl.innerHTML = `✅ <strong>インポート準備完了:</strong> 看護師 ${pendingCsvNurses.length}名、希望 ${reqCount}件、ペア ${relCount}件`;
+  }
+}
+
+function executeCsvImport(): void {
+  if (!pendingCsvNurses || pendingCsvNurses.length === 0) return;
+
+  appState = {
+    ...createBlankNurseSchedulingState({
+      year: appState.config.year,
+      month: appState.config.month,
+      numDays: appState.config.numDays,
+      staffCount: pendingCsvNurses.length,
+    }),
+    nurses: pendingCsvNurses,
+    preferences: pendingCsvRequests ?? [],
+    relations: pendingCsvRelations ?? [],
+    customRules: [],
+  };
+
+  currentSchedule = null;
+  currentEvaluation = null;
+  lastSolveOutcome = null;
+
+  const dialog = document.getElementById("csv-import-dialog") as HTMLDialogElement | null;
+  if (dialog) dialog.close();
+
+  renderAllViews();
+  switchTab("schedule");
+
+  appendChatMessage({
+    role: "assistant",
+    senderLabel: "🏥 AI シフト相談",
+    initialText:
+      `📂 **CSVデータを正常にインポートしました**\n` +
+      `- **看護師名簿**: ${appState.nurses.length}名\n` +
+      `- **シフト希望**: ${appState.preferences.length}件\n` +
+      `- **相性・ペア制約**: ${appState.relations.length}件\n\n` +
+      `右上の **「⚡ シフトを自動作成」** ボタンを押すと最適化計算を開始します！`,
+  });
+}
+
+function handleDownloadAllSamples(): void {
+  downloadTextFile("nurses_sample.csv", getSampleNursesCsv());
+  setTimeout(() => {
+    downloadTextFile("requests_sample.csv", getSampleRequestsCsv());
+  }, 200);
+  setTimeout(() => {
+    downloadTextFile("relations_sample.csv", getSampleRelationsCsv());
+  }, 400);
+}
+
+function handleExportCsvs(): void {
+  if (appState.nurses.length === 0) {
+    alert("エクスポートするスタッフデータがありません。");
+    return;
+  }
+  downloadTextFile("nurses.csv", exportNursesCsv(appState.nurses));
+  setTimeout(() => {
+    downloadTextFile("requests.csv", exportRequestsCsv(appState.preferences));
+  }, 200);
+  setTimeout(() => {
+    downloadTextFile("relations.csv", exportRelationsCsv(appState.relations));
+  }, 400);
+}
+
+function handleGenerateSample(staffCount = 30): void {
+  currentSeed = 202611;
+  appState = generateNurseSchedulingState({
+    year: appState.config.year,
+    month: appState.config.month,
+    staffCount,
+    seed: currentSeed,
+  });
+  currentSchedule = null;
+  currentEvaluation = null;
+  lastSolveOutcome = null;
+
+  renderAllViews();
+  switchTab("schedule");
+
+  appendChatMessage({
+    role: "assistant",
+    senderLabel: "🏥 AI シフト相談",
+    initialText:
+      `✨ **${staffCount}名・3交代制のサンプルデータを生成しました**\n` +
+      `- スタッフ名簿、前月末シフト、スキル、希望休、相性ペアがセットされました。\n` +
+      `- 右上の **「⚡ シフトを自動作成」** ボタンを押すと最適化計算を実行します！`,
+  });
+}
+
+function handleClearBlank(): void {
+  appState = createBlankNurseSchedulingState({
+    year: appState.config.year,
+    month: appState.config.month,
+    numDays: appState.config.numDays,
+  });
+  currentSchedule = null;
+  currentEvaluation = null;
+  lastSolveOutcome = null;
+
+  renderAllViews();
+  switchTab("schedule");
+
+  appendChatMessage({
+    role: "assistant",
+    senderLabel: "🏥 AI シフト相談",
+    initialText: "🗑️ **シフト・スタッフデータをすべてクリアして白紙状態に戻しました。**",
+  });
+}
+
 // ==================== INITIALIZATION & EVENT LISTENERS ====================
 function setupEventListeners(): void {
   // Theme toggle
@@ -2809,6 +3069,7 @@ function setupEventListeners(): void {
 
   // Step 1: Pin Sato-san's Day 12 to Off and re-optimize
   $("btn-tut-step1").addEventListener("click", () => {
+    if (appState.nurses.length === 0) handleGenerateSample(30);
     switchTab("schedule");
     pinNurseCellShift("N01", 12, "O", true);
     appendChatMessage({
@@ -2821,6 +3082,7 @@ function setupEventListeners(): void {
 
   // Step 2: Change max consecutive work days to 4 and re-optimize
   $("btn-tut-step2").addEventListener("click", () => {
+    if (appState.nurses.length === 0) handleGenerateSample(30);
     switchTab("schedule");
     appState = {
       ...appState,
@@ -2841,6 +3103,7 @@ function setupEventListeners(): void {
 
   // Step 3: Trigger selected conflict demo scenario and diagnose with WaSHI (HiGHS)
   $("btn-tut-step3").addEventListener("click", () => {
+    if (appState.nurses.length === 0) handleGenerateSample(30);
     switchTab("schedule");
     const scenario = (($("select-conflict-scenario") as HTMLSelectElement | null)?.value ??
       "carryover_clash") as "leader_shortage" | "carryover_clash" | "overload_day";
@@ -2913,6 +3176,15 @@ function setupEventListeners(): void {
     currentSchedule = null;
     currentEvaluation = null;
     void nanoManager.resetConversation();
+    if (appState.nurses.length === 0) {
+      appState = createBlankNurseSchedulingState({
+        year: appState.config.year,
+        month: appState.config.month,
+        numDays: appState.config.numDays,
+      });
+      renderAllViews();
+      return;
+    }
     appState = generateNurseSchedulingState({
       year: appState.config.year,
       month: appState.config.month,
@@ -2923,8 +3195,140 @@ function setupEventListeners(): void {
     void runWashiOptimization();
   };
 
-  $("btn-reset-clean").addEventListener("click", resetToCleanState);
-  $("btn-reset-default-config").addEventListener("click", resetToCleanState);
+  $("btn-reset-clean")?.addEventListener("click", resetToCleanState);
+  $("btn-reset-default-config")?.addEventListener("click", resetToCleanState);
+
+  // Top Action Bar & Empty State CSV / Sample / Clear Actions
+  $("btn-generate-sample")?.addEventListener("click", () => handleGenerateSample(30));
+  $("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(30));
+  $("btn-cat-generate-sample")?.addEventListener("click", () => {
+    const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
+    handleGenerateSample(c);
+  });
+  $("btn-regenerate-staff")?.addEventListener("click", () => {
+    const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
+    handleGenerateSample(c);
+  });
+
+  $("btn-open-csv-dialog")?.addEventListener("click", openCsvDialog);
+  $("btn-empty-csv")?.addEventListener("click", openCsvDialog);
+  $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
+
+  $("btn-export-csvs")?.addEventListener("click", handleExportCsvs);
+  $("btn-clear-blank")?.addEventListener("click", handleClearBlank);
+
+  // CSV Dialog Events
+  $("btn-close-csv-dialog")?.addEventListener("click", () => {
+    ($("csv-import-dialog") as HTMLDialogElement | null)?.close();
+  });
+  $("btn-close-csv-dialog-cancel")?.addEventListener("click", () => {
+    ($("csv-import-dialog") as HTMLDialogElement | null)?.close();
+  });
+  $("btn-dl-sample-nurses")?.addEventListener("click", () => {
+    downloadTextFile("nurses_sample.csv", getSampleNursesCsv());
+  });
+  $("btn-dl-sample-requests")?.addEventListener("click", () => {
+    downloadTextFile("requests_sample.csv", getSampleRequestsCsv());
+  });
+  $("btn-dl-sample-relations")?.addEventListener("click", () => {
+    downloadTextFile("relations_sample.csv", getSampleRelationsCsv());
+  });
+  $("btn-dl-all-samples")?.addEventListener("click", handleDownloadAllSamples);
+  $("btn-empty-samples")?.addEventListener("click", handleDownloadAllSamples);
+  $("btn-cat-download-samples")?.addEventListener("click", handleDownloadAllSamples);
+
+  $("btn-execute-csv-import")?.addEventListener("click", executeCsvImport);
+
+  $("file-input-nurses")?.addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const st = $("file-status-nurses");
+    if (!file) {
+      pendingCsvNurses = null;
+      st.textContent = "未選択";
+      st.className = "csv-file-status";
+      checkImportReadiness();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result ?? "");
+      const parsed = parseNursesCsv(text);
+      if (parsed.errors.length > 0) {
+        pendingCsvNurses = null;
+        st.textContent = `❌ ${parsed.errors[0]}`;
+        st.className = "csv-file-status is-error";
+      } else {
+        pendingCsvNurses = parsed.nurses;
+        st.textContent = `✅ ${parsed.nurses.length}名 読み込み完了`;
+        st.className = "csv-file-status is-ready";
+      }
+      checkImportReadiness();
+    };
+    reader.readAsText(file, "utf-8");
+  });
+
+  $("file-input-requests")?.addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const st = $("file-status-requests");
+    if (!file) {
+      pendingCsvRequests = null;
+      st.textContent = "未選択";
+      st.className = "csv-file-status";
+      checkImportReadiness();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result ?? "");
+      const knownIds = pendingCsvNurses ? new Set(pendingCsvNurses.map((n) => n.id)) : undefined;
+      const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
+      const parsed = parseRequestsCsv(text, knownIds, customCodes);
+      if (parsed.errors.length > 0) {
+        pendingCsvRequests = null;
+        st.textContent = `❌ ${parsed.errors[0]}`;
+        st.className = "csv-file-status is-error";
+      } else {
+        pendingCsvRequests = parsed.preferences;
+        st.textContent = `✅ ${parsed.preferences.length}件 読み込み完了`;
+        st.className = "csv-file-status is-ready";
+      }
+      checkImportReadiness();
+    };
+    reader.readAsText(file, "utf-8");
+  });
+
+  $("file-input-relations")?.addEventListener("change", (e) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    const st = $("file-status-relations");
+    if (!file) {
+      pendingCsvRelations = null;
+      st.textContent = "未選択";
+      st.className = "csv-file-status";
+      checkImportReadiness();
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = String(ev.target?.result ?? "");
+      const knownIds = pendingCsvNurses ? new Set(pendingCsvNurses.map((n) => n.id)) : undefined;
+      const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
+      const parsed = parseRelationsCsv(text, knownIds, customCodes);
+      if (parsed.errors.length > 0) {
+        pendingCsvRelations = null;
+        st.textContent = `❌ ${parsed.errors[0]}`;
+        st.className = "csv-file-status is-error";
+      } else {
+        pendingCsvRelations = parsed.relations;
+        st.textContent = `✅ ${parsed.relations.length}件 読み込み完了`;
+        st.className = "csv-file-status is-ready";
+      }
+      checkImportReadiness();
+    };
+    reader.readAsText(file, "utf-8");
+  });
 
   $("btn-add-skill-def").addEventListener("click", () => {
     const nameInput = $("input-new-skill-name") as HTMLInputElement;
@@ -3410,9 +3814,10 @@ async function bootstrap(): Promise<void> {
     role: "assistant",
     senderLabel: "🏥 AI シフト相談",
     initialText:
-      "### 30名・3交代制（日/準/深/休）の1ヶ月シフトを作成しました\n" +
-      "- まずは右上の **「🔰 クイックガイド（STEP 1〜3）」** のボタンを押して体験してみてください。\n" +
-      "- チャットで条件を追加したいときは、下の **「💡 質問例」** ボタンから選ぶか、自由に入力してください。",
+      "### 🏥 ナーススケジューリング AI Copilot (白紙モード)\n" +
+      "- 現在スタッフデータは未登録です。\n" +
+      "- 上の **「✨ サンプル生成」** ボタンで30名の標準データをセットするか、**「📂 CSV読込」** からお手元の名簿を取り込んでください。\n" +
+      "- データ読み込み後、**「⚡ シフトを自動作成」** ボタンを押すと1ヶ月のシフトを最適化します。",
   });
 
   // Check LanguageModel availability and pre-warm session if already available
@@ -3422,7 +3827,8 @@ async function bootstrap(): Promise<void> {
       void checkAndInitNano(true);
     }
   });
-  await runWashiOptimization();
+
+  renderAllViews();
 }
 
 void bootstrap();

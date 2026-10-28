@@ -1,6 +1,7 @@
 import {
   PREV_MONTH_DAYS,
   applyShiftTransitionToConfig,
+  createDefaultShiftAliases,
   createDefaultShiftTransitions,
   type CustomConstraintRule,
   type NurseProfile,
@@ -716,3 +717,27 @@ export function injectConflictScenario(
     descriptionJa: `${targetDay}日にリーダー資格者${offLeaders.length}名が院外研修で一斉に確定休（O）となったため、同日のリーダー必須配置（日勤2名＋準夜1名＋深夜1名＝計4名必要、残りリーダー2名のみ）が満たせず矛盾が発生します。`,
   };
 }
+
+/**
+ * Creates an empty/blank nurse scheduling state (no nurses, relations, preferences, or custom rules).
+ * Used as the default starting state (blank slate) or when clearing the workspace.
+ */
+export function createBlankNurseSchedulingState(
+  configOverrides?: Partial<NurseScheduleConfig>
+): NurseSchedulingState {
+  const config = createDefaultConfig({
+    staffCount: 0,
+    ...configOverrides,
+  });
+  return {
+    config,
+    nurses: [],
+    relations: [],
+    preferences: [],
+    customRules: [],
+    customShiftDefs: [],
+    shiftAliases: createDefaultShiftAliases(),
+    skillDefs: createDefaultSkillDefs(),
+  };
+}
+
