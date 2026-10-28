@@ -768,32 +768,8 @@
           class="results-tab-panel"
           style="overflow-y: auto; padding: 14px 16px; gap: 14px;"
         >
-          <!-- 白紙時の案内ヒーローカード (未登録時に表示) -->
-          <div id="cat-empty-state-card" class="catalog-onboarding-hero">
-            <div class="onboarding-hero-icon">🎓</div>
-            <h3 id="cat-empty-title">大学時間割の編成を始める（基礎データの登録）</h3>
-            <p id="cat-empty-desc">
-              時間割を自動編成するには、まず教員名簿・教室設備・開講科目が必要です。下のボタンからサンプルデータを読み込むか、CSVファイルをインポートしてください。
-            </p>
-            <div class="onboarding-hero-actions">
-              <button type="button" id="btn-cat-empty-generate" class="btn-hero-primary">
-                <span class="btn-hero-main" id="cat-empty-gen-main">🎲 サンプルデータを読み込む</span>
-                <span class="btn-hero-sub" id="cat-empty-gen-sub">情報科学科モデル (10教員・7教室・25科目・計30コマ)</span>
-              </button>
-              <button type="button" id="btn-cat-empty-import" class="btn-hero-outline">
-                <span class="btn-hero-main" id="cat-empty-import-main">📂 CSVファイルからインポート</span>
-                <span class="btn-hero-sub" id="cat-empty-import-sub">お手元の教員・教室・科目のCSVデータを取り込む</span>
-              </button>
-            </div>
-            <div class="onboarding-hero-footer">
-              <button type="button" id="btn-cat-empty-samples" class="btn-link-subtle">
-                📥 サンプルCSVの雛形をダウンロード
-              </button>
-            </div>
-          </div>
-
-          <!-- 登録済みデータの管理バー (データ登録時に表示) -->
-          <div id="cat-mgmt-card" class="catalog-management-card" hidden>
+          <!-- 基礎データ管理バー -->
+          <div id="cat-mgmt-card" class="catalog-management-card">
             <div class="catalog-mgmt-header">
               <div class="catalog-mgmt-title-group">
                 <span class="dp-badge" id="cat-mgmt-badge">基礎データ</span>
@@ -801,23 +777,23 @@
                 <p id="cat-mgmt-desc">時間割編成の基礎となる教員名簿・教室設備・開講科目です。</p>
               </div>
               <div class="catalog-mgmt-actions">
-                <button type="button" id="btn-cat-generate-sample" class="btn-toolbar-outline" title="教員10名・教室7室・25科目のサンプルデータを再生成します">
-                  🎲 サンプル再生成
+                <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary" title="情報科学科モデル（10教員・7教室・25科目・計30コマ）のサンプルデータを読み込みます">
+                  🎲 サンプルデータを読み込む
                 </button>
-                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline">
+                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="教員・教室・科目のCSVファイルを読み込みます">
                   📂 CSVインポート
                 </button>
                 <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="教員・教室・科目のサンプルCSVファイルをダウンロード">
                   📥 CSVテンプレート
                 </button>
-                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="登録データをすべてクリアして白紙状態に戻す">
+                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="登録データをすべてクリアして白紙状態に戻す" hidden>
                   🗑️ 白紙に戻す
                 </button>
               </div>
             </div>
 
             <!-- 次のステップ（制約確認・時間割ボード）へのナビゲーションバナー -->
-            <div id="cat-next-step-banner" class="catalog-next-banner">
+            <div id="cat-next-step-banner" class="catalog-next-banner" hidden>
               <div class="catalog-next-text">
                 <span id="cat-next-step-message">✅ 基礎データの準備完了。このまま時間割を自動編成するか、条件・ルール設定を確認してください。</span>
               </div>
