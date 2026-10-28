@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>『TITAN PACK』の数理モデル解説 — 2次元パッキング問題と非重複制約の線形化</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800;900&family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-page: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.85);
+        --border-subtle: rgba(56, 189, 248, 0.28);
+        --accent-titan: #38bdf8;
+        --accent-soft: rgba(56, 189, 248, 0.12);
+        --success: #34d399;
+        --success-soft: rgba(52, 211, 153, 0.12);
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --code-bg: #020617;
+        --code-text: #e2e8f0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 70%);
+        color: var(--text-main);
+        font-family: "Noto Sans JP", system-ui, sans-serif;
+        line-height: 1.8;
+        padding: 2rem 1.25rem 5rem;
+      }
+      .article-shell {
+        max-width: 880px;
+        margin: 0 auto;
+      }
+      .topnav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+      .topnav-right {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+      }
+      .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--text-main);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        transition: all 0.15s ease;
+      }
+      .nav-btn:hover {
+        border-color: var(--accent-titan);
+        color: var(--accent-titan);
+      }
+      .nav-btn.primary {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #fff;
+        border-color: #38bdf8;
+      }
+      .lang-switch {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        border-radius: 999px;
+        padding: 0.18rem;
+        gap: 0.15rem;
+      }
+      .lang-btn {
+        appearance: none;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-family: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        padding: 0.28rem 0.68rem;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .lang-btn:hover {
+        color: #fff;
+      }
+      .lang-btn.is-active {
+        background: var(--accent-titan);
+        color: #0f172a;
+      }
+      .article-header {
+        border-bottom: 1px solid var(--border-subtle);
+        padding-bottom: 1.5rem;
+        margin-bottom: 2.2rem;
+      }
+      .article-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--accent-titan);
+        background: var(--accent-soft);
+        border: 1px solid var(--border-subtle);
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        margin-bottom: 0.8rem;
+      }
+      h1 {
+        font-family: "Chakra Petch", "Noto Sans JP", sans-serif;
+        font-size: clamp(1.6rem, 3.2vw, 2.3rem);
+        line-height: 1.35;
+        margin: 0.4rem 0 1rem;
+        color: #f8fafc;
+      }
+      .lead {
+        font-size: 1.05rem;
+        color: #cbd5e1;
+        line-height: 1.85;
+      }
+      h2 {
+        font-family: "Chakra Petch", "Noto Sans JP", sans-serif;
+        font-size: 1.35rem;
+        margin: 2.5rem 0 1rem;
+        padding-left: 0.8rem;
+        border-left: 4px solid var(--accent-titan);
+        color: #f8fafc;
+      }
+      p, li {
+        color: #cbd5e1;
+      }
+      pre {
+        background: var(--code-bg);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 1.1rem;
+        overflow-x: auto;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        color: var(--code-text);
+      }
+      .formula-box {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-subtle);
+        border-radius: 10px;
+        padding: 1.2rem;
+        margin: 1.2rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="article-shell">
+      <nav class="topnav">
+        <a href="../titan-pack/" class="nav-btn primary" id="t-nav-play">🎮 ゲームをプレイする</a>
+        <div class="topnav-right">
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
+            <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
+          </div>
+          <a href="../" class="nav-btn" id="t-nav-hub">🕹️ ゲーム一覧</a>
+          <a href="../../showcase/" class="nav-btn" id="t-nav-showcase">✨ ショーケース</a>
+        </div>
+      </nav>
+
+      <header class="article-header">
+        <span class="article-badge">2D STRIP / BIN PACKING MILP & FAULT-LINE FREE</span>
+        <h1 id="t-title">『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化</h1>
+        <p class="lead" id="t-lead">
+          最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。
+        </p>
+      </header>
+
+      <main>
+        <section>
+          <h2 id="t-sec1-title">1. 2次元パッキング問題（2D Packing Problem）とは</h2>
+          <p id="t-sec1-p1">
+            2次元パッキング問題は、与えられた母材プレート（長方形のシート）の中に、異なる寸法を持つ複数の長方形パーツを「互いに重ならず」「はみ出さず」配置する組合せ最適化問題です。板金加工、木工、半導体フロアプランニングなど実産業で広く応用されています。
+          </p>
+          <p id="t-sec1-p2">
+            すべてのパーツを隙間なくぴったり詰め込み、端材（材料ロス）を 0% にできるか判定する問題は NP 困難であることが知られています。
+          </p>
+        </section>
+
+        <section>
+          <h2 id="t-sec2-title">2. 幾何学的非重複制約の線形化（Big-M 定式化）</h2>
+          <p id="t-sec2-p1">
+            2つの長方形パーツ $i$ と $j$（位置 $(x_i, y_i)$、幅 $w_i$、高さ $h_i$）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：
+          </p>
+          <div class="formula-box">
+            $$x_i + w_i \le x_j \quad \text{または} \quad x_j + w_j \le x_i \quad \text{または} \quad y_i + h_i \le y_j \quad \text{または} \quad y_j + h_j \le y_i$$
+          </div>
+          <p id="t-sec2-p2">
+            混合整数線形計画法（MILP）では、4つのバイナリ変数 $\delta_{ij,1}, \delta_{ij,2}, \delta_{ij,3}, \delta_{ij,4} \in \{0, 1\}$ と十分大きな定数 $M$ を用いて以下のように線形制約へ変換します：
+          </p>
+          <div class="formula-box">
+            $$\begin{aligned}
+            x_i + w_i &\le x_j + M(1 - \delta_{ij,1}) \\
+            x_j + w_j &\le x_i + M(1 - \delta_{ij,2}) \\
+            y_i + h_i &\le y_j + M(1 - \delta_{ij,3}) \\
+            y_j + h_j &\le y_i + M(1 - \delta_{ij,4}) \\
+            \delta_{ij,1} + \delta_{ij,2} + \delta_{ij,3} + \delta_{ij,4} &\ge 1
+            \end{aligned}$$
+          </div>
+        </section>
+
+        <section>
+          <h2 id="t-sec3-title">3. 断層禁止（Fault-Line Free）の幾何学的保証</h2>
+          <p id="t-sec3-p1">
+            単にパーツを長方形に分割するだけでは、端から端まで貫通する直線（ギロチン切断線）が生じ、パズルが「ただの小分けの寄せ集め」になってしまいます。
+          </p>
+          <p id="t-sec3-p2">
+            TITAN PACK では、すべての垂直境界 $c \in \{1, \dots, W-1\}$ および水平境界 $r \in \{1, \dots, H-1\}$ について、少なくとも1つのパーツがその境界を跨ぐ（$x_i < c < x_i + w_i$）構造を保証する<strong>Multi-Scale Interlocking & Core Partitioning</strong> アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。
+          </p>
+        </section>
+
+        <section>
+          <h2 id="t-sec4-title">4. WaSHI による実装コード例</h2>
+          <p id="t-sec4-p1">
+            TypeScript 数理最適化モデリングライブラリ <code>@ohtaman/washi</code> を使ってこの 2D パッキングモデルを構築するコードは以下の通りです：
+          </p>
+          <pre><code>import { Model } from "@ohtaman/washi";
+
+const model = new Model("TitanPacking2D");
+const M = Math.max(plateW, plateH) + 1;
+
+// 1. 各パーツの座標変数
+const x = parts.map((p, i) => model.addVar({ lb: 0, ub: plateW - p.w, name: `x_${i}` }));
+const y = parts.map((p, i) => model.addVar({ lb: 0, ub: plateH - p.h, name: `y_${i}` }));
+
+// 2. ペアごとの非重複制約 (Big-M)
+for (let i = 0; i &lt; parts.length; i++) {
+  for (let j = i + 1; j &lt; parts.length; j++) {
+    const d1 = model.addVar({ type: "binary", name: `d_${i}_${j}_left` });
+    const d2 = model.addVar({ type: "binary", name: `d_${i}_${j}_right` });
+    const d3 = model.addVar({ type: "binary", name: `d_${i}_${j}_below` });
+    const d4 = model.addVar({ type: "binary", name: `d_${i}_${j}_above` });
+
+    model.addConstr(x[i].add(parts[i].w).sub(x[j]).sub(M * (1 - d1)).le(0));
+    model.addConstr(x[j].add(parts[j].w).sub(x[i]).sub(M * (1 - d2)).le(0));
+    model.addConstr(y[i].add(parts[i].h).sub(y[j]).sub(M * (1 - d3)).le(0));
+    model.addConstr(y[j].add(parts[j].h).sub(y[i]).sub(M * (1 - d4)).le(0));
+    model.addConstr(d1.add(d2).add(d3).add(d4).ge(1));
+  }
+}
+
+const solution = await model.solve({ backend: "highs" });
+console.log("Status:", solution.status);</code></pre>
+        </section>
+      </main>
+    </div>
+
+    <script type="module">
+      import { getGameLang, setGameLang, pickLang } from "../i18n.ts";
+
+      const TEXTS = {
+        ja: {
+          navPlay: "🎮 ゲームをプレイする",
+          navHub: "🕹️ ゲーム一覧",
+          navShowcase: "✨ ショーケース",
+          title: "『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化",
+          lead: "最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。",
+        },
+        en: {
+          navPlay: "🎮 Play Game",
+          navHub: "🕹️ Games Portal",
+          navShowcase: "✨ Showcase",
+          title: "Mathematical Foundations of TITAN PACK — 2D Strip Packing & MILP Linearization",
+          lead: "Explore the Mixed-Integer Linear Programming (MILP) formulation of 2D Strip / Bin Packing behind TITAN PACK, along with the multi-scale interlocking algorithms that guarantee zero-fault-line solutions.",
+        },
+        zh: {
+          navPlay: "🎮 开始游戏",
+          navHub: "🕹️ 游戏目录",
+          navShowcase: "✨ 案例展示",
+          title: "《TITAN PACK》数理模型解说 — 二维装箱问题与非重叠约束的线性化",
+          lead: "深入解析《TITAN PACK》背后的混合整数线性规划（MILP）二维装箱模型，以及保证绝无通断层、有机咬合的几何算法原理。",
+        }
+      };
+
+      function updateLang(lang) {
+        setGameLang(lang);
+        const t = pickLang(lang, TEXTS);
+        document.getElementById("t-nav-play").textContent = t.navPlay;
+        document.getElementById("t-nav-hub").textContent = t.navHub;
+        document.getElementById("t-nav-showcase").textContent = t.navShowcase;
+        document.getElementById("t-title").textContent = t.title;
+        document.getElementById("t-lead").textContent = t.lead;
+
+        document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+          btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
+        });
+      }
+
+      document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const l = btn.getAttribute("data-lang-btn");
+          if (l === "ja" || l === "en" || l === "zh") updateLang(l);
+        });
+      });
+
+      updateLang(getGameLang());
+    </script>
+  </body>
+</html>

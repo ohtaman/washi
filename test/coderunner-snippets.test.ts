@@ -647,6 +647,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         "/washi/apps/ai-timetable/",
         "/washi/games/demon-castle-shift/",
         "/washi/games/mofumofu-sheep/",
+        "/washi/games/titan-pack/",
       ]);
 
       const langParam = loc.key === "root" ? "en" : loc.key;
@@ -659,6 +660,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         `/washi/apps/ai-timetable-theory/?lang=${langParam}`,
         `/washi/games/demon-castle-shift-theory/?lang=${langParam}`,
         `/washi/games/mofumofu-sheep-theory/?lang=${langParam}`,
+        `/washi/games/titan-pack-theory/?lang=${langParam}`,
       ]);
 
       for (const href of [...primaryHrefs, ...theoryHrefs]) {

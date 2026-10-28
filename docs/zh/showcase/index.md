@@ -150,6 +150,29 @@ aside: false
       </div>
     </div>
   </div>
+  <div class="washi-showcase-card">
+    <div class="washi-showcase-thumb">
+      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK — 精密钛合金板金解谜" class="washi-showcase-thumb-img" loading="lazy" />
+    </div>
+    <div class="washi-showcase-card-body">
+      <div>
+        <div class="washi-showcase-card-top">
+          <span class="washi-showcase-icon">⚡</span>
+          <span class="washi-showcase-badge">二维装箱 MILP</span>
+        </div>
+        <div class="washi-showcase-title">
+          <a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK — 精密钛合金板金解谜</a>
+        </div>
+        <p class="washi-showcase-desc">
+          在最尖端钛合金加工车间，与质检无人机UNIT-74一起将订单零件严丝合缝地填满母材平板。达成零边角料废料与零通断层的一刀切完美切割。
+        </p>
+      </div>
+      <div class="washi-showcase-actions">
+        <a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-cta">开始游戏 →</a>
+        <a href="/washi/games/titan-pack-theory/?lang=zh" target="_self" class="washi-showcase-theory-btn">📖 阅读解说文章 →</a>
+      </div>
+    </div>
+  </div>
 </div>
 
 </div>
