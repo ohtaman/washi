@@ -592,19 +592,19 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         showcaseRaw.matchAll(/<div\s+([^>]*\bclass="washi-showcase-card(?:\s+[^"]*)?"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(cardDivs).toHaveLength(6);
+      expect(cardDivs).toHaveLength(5);
 
       const ctaAnchors = Array.from(
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-cta"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(ctaAnchors).toHaveLength(6);
+      expect(ctaAnchors).toHaveLength(5);
 
       const thumbImgs = Array.from(
         showcaseRaw.matchAll(/<img\s+([^>]*class="washi-showcase-thumb-img"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(thumbImgs).toHaveLength(6);
+      expect(thumbImgs).toHaveLength(5);
       for (const imgAttrs of thumbImgs) {
         const srcMatch = imgAttrs.match(/\bsrc="([^"]+)"/);
         expect(srcMatch, `Missing src in showcase thumbnail <img ${imgAttrs}>`).not.toBeNull();
@@ -622,7 +622,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-theory-btn"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(theoryAnchors).toHaveLength(4);
+      expect(theoryAnchors).toHaveLength(3);
 
       const allShowcaseAnchors = Array.from(
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-(?:cta|theory-btn|title-link)"[^>]*)>/g),
@@ -647,7 +647,6 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         "/washi/apps/ai-timetable/",
         "/washi/games/demon-castle-shift/",
         "/washi/games/mofumofu-sheep/",
-        "/washi/games/quant-survival/",
       ]);
 
       const langParam = loc.key === "root" ? "en" : loc.key;
@@ -660,7 +659,6 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         `/washi/apps/ai-timetable-theory/?lang=${langParam}`,
         `/washi/games/demon-castle-shift-theory/?lang=${langParam}`,
         `/washi/games/mofumofu-sheep-theory/?lang=${langParam}`,
-        `/washi/games/quant-survival-theory/?lang=${langParam}`,
       ]);
 
       for (const href of [...primaryHrefs, ...theoryHrefs]) {

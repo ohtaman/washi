@@ -150,30 +150,6 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       </div>
     </div>
   </div>
-
-  <div class="washi-showcase-card">
-    <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-quant-survival.png" alt="QUANT SURVIVAL — Portfolio Duel" class="washi-showcase-thumb-img" loading="lazy" />
-    </div>
-    <div class="washi-showcase-card-body">
-      <div>
-        <div class="washi-showcase-card-top">
-          <span class="washi-showcase-icon">📈</span>
-          <span class="washi-showcase-badge">Convex QP Portfolio Duel</span>
-        </div>
-        <div class="washi-showcase-title">
-          <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-title-link">QUANT SURVIVAL — Portfolio Duel</a>
-        </div>
-        <p class="washi-showcase-desc">
-          Start with $100M and compound your assets quarter after quarter while keeping ruin probability low. Blend negatively correlated assets to hedge market shocks and outlast your rival engine powered by WaSHI QP solver.
-        </p>
-      </div>
-      <div class="washi-showcase-actions">
-        <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-cta">Play Game →</a>
-        <a href="/washi/games/quant-survival-theory/?lang=en" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
-      </div>
-    </div>
-  </div>
 </div>
 
 </div>

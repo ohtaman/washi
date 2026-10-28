@@ -150,30 +150,6 @@ aside: false
       </div>
     </div>
   </div>
-
-  <div class="washi-showcase-card">
-    <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-quant-survival.png" alt="QUANT SURVIVAL — クオンツ運用サバイバル" class="washi-showcase-thumb-img" loading="lazy" />
-    </div>
-    <div class="washi-showcase-card-body">
-      <div>
-        <div class="washi-showcase-card-top">
-          <span class="washi-showcase-icon">📈</span>
-          <span class="washi-showcase-badge">凸2次計画・ポートフォリオ最適化</span>
-        </div>
-        <div class="washi-showcase-title">
-          <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-title-link">QUANT SURVIVAL — クオンツ運用サバイバル</a>
-        </div>
-        <p class="washi-showcase-desc">
-          初期資金100億円からスタートし、毎期襲いかかる市場ショックでロスカット退場になる確率を抑えながら資産を複利で増やすサバイバル。逆相関銘柄を組み合わせてリスクを相殺し、凸二次計画ソルバー WaSHI-QP と総資産を競います。
-        </p>
-      </div>
-      <div class="washi-showcase-actions">
-        <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-cta">ゲームをプレイ →</a>
-        <a href="/washi/games/quant-survival-theory/?lang=ja" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
-      </div>
-    </div>
-  </div>
 </div>
 
 </div>

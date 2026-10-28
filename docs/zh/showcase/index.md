@@ -150,30 +150,6 @@ aside: false
       </div>
     </div>
   </div>
-
-  <div class="washi-showcase-card">
-    <div class="washi-showcase-thumb">
-      <img src="/showcase/thumb-quant-survival.png" alt="QUANT SURVIVAL — 量化生存战" class="washi-showcase-thumb-img" loading="lazy" />
-    </div>
-    <div class="washi-showcase-card-body">
-      <div>
-        <div class="washi-showcase-card-top">
-          <span class="washi-showcase-icon">📈</span>
-          <span class="washi-showcase-badge">凸二次规划资产配置</span>
-        </div>
-        <div class="washi-showcase-title">
-          <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-title-link">QUANT SURVIVAL — 量化生存战</a>
-        </div>
-        <p class="washi-showcase-desc">
-          从100亿初始资金出发，在随机市场冲击下压低爆仓概率并实现资产复利增长的无尽运营游戏。巧妙搭配负相关资产对冲波动风险，与基于 WaSHI 凸二次规划求解器的对手比拼总资产规模。
-        </p>
-      </div>
-      <div class="washi-showcase-actions">
-        <a href="/washi/games/quant-survival/" target="_self" class="washi-showcase-cta">开始游戏 →</a>
-        <a href="/washi/games/quant-survival-theory/?lang=zh" target="_self" class="washi-showcase-theory-btn">📖 阅读解说文章 →</a>
-      </div>
-    </div>
-  </div>
 </div>
 
 </div>
