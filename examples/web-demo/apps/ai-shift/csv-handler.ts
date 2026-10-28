@@ -488,11 +488,15 @@ export function parseRelationsCsv(
     }
 
     const type = typeRaw.includes("preceptor") || typeRaw.includes("指導") ? "preceptor" : "ng_pair";
-    const shiftsRaw = getCol(row, "shifts", "対象シフト", "シフト") ?? "E;N";
-    const shiftTokens = shiftsRaw
-      .split(/[;,]/)
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const shiftsRaw = getCol(row, "shifts", "対象シフト", "シフト");
+    const rawTokens = shiftsRaw
+      ? shiftsRaw
+          .split(/[;,]/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    // Default to standard night shifts (E;N) if the cell is omitted or empty
+    const shiftTokens = rawTokens.length > 0 ? rawTokens : ["E", "N"];
     const shifts: ShiftCode[] = [];
     let hasUnknownShift = false;
     for (const st of shiftTokens) {
@@ -569,7 +573,9 @@ export function validateNurseDataset(
     if (rel.nurseA === rel.nurseB) {
       errors.push(`自己ペア制約 "${rel.nurseA}" は無効です。`);
     }
-    if (rel.shifts) {
+    if (!rel.shifts || rel.shifts.length === 0) {
+      errors.push(`ペア制約 "${rel.nurseA} × ${rel.nurseB}" の対象シフトが空です。`);
+    } else {
       for (const s of rel.shifts) {
         if (!parseShiftToken(s, customShiftCodes)) {
           errors.push(`ペア制約の対象シフト "${s}" は無効または未定義です。`);

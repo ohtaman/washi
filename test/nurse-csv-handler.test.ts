@@ -280,4 +280,68 @@ N01,7,D,0,正常日勤
     expect(val.valid).toBe(false);
     expect(val.errors.some((e) => e.includes("INVALID_CODE"))).toBe(true);
   });
+
+  it("defaults empty relation shifts cell to ['E', 'N'] and rejects empty shift lists", () => {
+    // 1. Omitted or empty shifts column defaults to E;N
+    const relsWithBlankShifts = `
+type,nurseA,nurseB,shifts,isHard,reason
+ng_pair,N01,N02,,1,相性NG
+preceptor,N03,N04,"  ",1,指導ペア
+`.trim();
+
+    const parsed = parseRelationsCsv(relsWithBlankShifts);
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.relations).toHaveLength(2);
+    expect(parsed.relations[0].shifts).toEqual(["E", "N"]);
+    expect(parsed.relations[1].shifts).toEqual(["E", "N"]);
+
+    // 2. Full-dataset validation flags any relation with empty shifts
+    const nurses = [
+      {
+        id: "N01",
+        name: "看護師1",
+        kana: "カンゴシ1",
+        skills: ["leader_cap" as const],
+        nightOk: true,
+        yearsExp: 5,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        yearly36Stats: {
+          past11MonthsOvertimeHours: 120,
+          currentMonthOvertimeHours: 0,
+          annualProjectedHours: 120,
+          specialExtensionMonthsCount: 0,
+        },
+      },
+      {
+        id: "N02",
+        name: "看護師2",
+        kana: "カンゴシ2",
+        skills: [] as const,
+        nightOk: true,
+        yearsExp: 3,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        yearly36Stats: {
+          past11MonthsOvertimeHours: 80,
+          currentMonthOvertimeHours: 0,
+          annualProjectedHours: 80,
+          specialExtensionMonthsCount: 0,
+        },
+      },
+    ];
+
+    const invalidRel = [
+      {
+        id: "rel_empty",
+        type: "ng_pair" as const,
+        nurseA: "N01",
+        nurseB: "N02",
+        shifts: [],
+        reason: "空シフト",
+      },
+    ];
+
+    const val = validateNurseDataset(nurses, [], invalidRel, 30);
+    expect(val.valid).toBe(false);
+    expect(val.errors.some((e) => e.includes("対象シフトが空です"))).toBe(true);
+  });
 });
