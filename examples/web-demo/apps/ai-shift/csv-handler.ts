@@ -11,7 +11,8 @@ import { generateNurseSchedulingState } from "./generator.js";
 // RFC 4180 compliant CSV line tokenizer
 export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+  const cleanText = text.replace(/^\uFEFF/, "");
+  const lines = cleanText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
   let currentRow: string[] = [];
   let currentField = "";
   let inQuotes = false;
@@ -78,7 +79,7 @@ export function escapeCsv(value: unknown): string {
 }
 
 export function normalizeHeader(h: string): string {
-  return h.toLowerCase().replace(/[\s_\-（）()・/]/g, "");
+  return h.replace(/^\uFEFF/, "").toLowerCase().replace(/[\s_\-（）()・/]/g, "");
 }
 
 export function parseBooleanToken(token: string | undefined, defaultVal = false): boolean {

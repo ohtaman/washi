@@ -344,4 +344,13 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(val.valid).toBe(false);
     expect(val.errors.some((e) => e.includes("対象シフトが空です"))).toBe(true);
   });
+
+  it("strips UTF-8 BOM from CSV text and column headers properly", () => {
+    const bomCsv = "\uFEFFid,name,skills,nightOk,yearsExp\nN01,BOM看護師,leader,true,5\n";
+    const parsed = parseNursesCsv(bomCsv);
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.nurses).toHaveLength(1);
+    expect(parsed.nurses[0].id).toBe("N01");
+    expect(parsed.nurses[0].name).toBe("BOM看護師");
+  });
 });
