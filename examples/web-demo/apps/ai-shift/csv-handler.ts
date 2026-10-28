@@ -89,16 +89,34 @@ export function parseBooleanToken(token: string | undefined, defaultVal = false)
   return defaultVal;
 }
 
-export function parseShiftToken(token: string | undefined): ShiftCode {
-  if (!token) return "O";
-  const t = token.trim().toUpperCase();
-  if (t === "D" || token.includes("日勤") || token === "日") return "D";
-  if (t === "E" || token.includes("準夜") || token === "準") return "E";
-  if (t === "N" || token.includes("深夜") || token === "深") return "N";
-  if (t === "O" || token.includes("公休") || token.includes("休") || token === "休") return "O";
-  if (t === "W" || token.includes("勤務") || token === "勤") return "W";
-  if (t === "EN" || token.includes("夜勤") || token === "夜") return "EN";
-  return token.trim();
+export const BUILTIN_SHIFT_CODES: ReadonlySet<string> = new Set([
+  "D",
+  "E",
+  "N",
+  "O",
+  "W",
+  "EN",
+]);
+
+export function parseShiftToken(
+  token: string | undefined,
+  customShiftCodes?: ReadonlySet<string>
+): ShiftCode | null {
+  if (!token) return null;
+  const trimmed = token.trim();
+  if (!trimmed) return null;
+  const upper = trimmed.toUpperCase();
+  if (BUILTIN_SHIFT_CODES.has(upper)) return upper as ShiftCode;
+  if (upper === "日" || upper === "日勤") return "D";
+  if (upper === "準" || upper === "準夜" || upper === "準夜勤") return "E";
+  if (upper === "深" || upper === "深夜" || upper === "深夜勤") return "N";
+  if (upper === "休" || upper === "公休" || upper === "休み") return "O";
+  if (upper === "勤" || upper === "勤務") return "W";
+  if (upper === "夜" || upper === "夜勤") return "EN";
+  if (customShiftCodes && customShiftCodes.has(trimmed)) {
+    return trimmed;
+  }
+  return null;
 }
 
 export function parseSkillToken(token: string): NurseSkill | null {
@@ -246,7 +264,19 @@ export function parseNursesCsv(text: string): {
     const prevMonthShiftsRaw = getCol(row, "prevmonthshifts", "前月最終勤務", "前月末シフト") ?? "";
     let prevMonthShifts: ShiftCode[] = [];
     if (prevMonthShiftsRaw) {
-      prevMonthShifts = prevMonthShiftsRaw.split(/[;,]/).map((s) => parseShiftToken(s));
+      const tokens = prevMonthShiftsRaw
+        .split(/[;,]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      for (const tok of tokens) {
+        const parsed = parseShiftToken(tok);
+        if (parsed) {
+          prevMonthShifts.push(parsed);
+        } else {
+          warnings.push(`行 ${r + 1}: 前月シフト "${tok}" は未定義のため公休(O)として扱いました。`);
+          prevMonthShifts.push("O");
+        }
+      }
     }
     while (prevMonthShifts.length < 7) {
       prevMonthShifts.unshift("O");
@@ -301,7 +331,8 @@ export function exportRequestsCsv(preferences: ShiftPreference[]): string {
 
 export function parseRequestsCsv(
   text: string,
-  knownNurseIds?: Set<string>
+  knownNurseIds?: Set<string>,
+  customShiftCodes?: ReadonlySet<string>
 ): {
   preferences: ShiftPreference[];
   errors: string[];
@@ -354,7 +385,14 @@ export function parseRequestsCsv(
       continue;
     }
 
-    const shift = parseShiftToken(shiftRaw);
+    const shift = parseShiftToken(shiftRaw, customShiftCodes);
+    if (!shift) {
+      errors.push(
+        `行 ${r + 1}: 不明なシフトコード "${shiftRaw}" です (D/日勤, E/準夜, N/深夜, O/公休, W/勤務, EN/夜勤 を指定してください)。`
+      );
+      continue;
+    }
+
     const isHard = parseBooleanToken(getCol(row, "ishard", "確定フラグ", "確定", "必須"), false);
     const reason = getCol(row, "reason", "理由", "備考") ?? (isHard ? "確定希望" : "希望シフト");
 
@@ -390,7 +428,8 @@ export function exportRelationsCsv(relations: PairRelation[]): string {
 
 export function parseRelationsCsv(
   text: string,
-  knownNurseIds?: Set<string>
+  knownNurseIds?: Set<string>,
+  customShiftCodes?: ReadonlySet<string>
 ): {
   relations: PairRelation[];
   errors: string[];
@@ -450,7 +489,23 @@ export function parseRelationsCsv(
 
     const type = typeRaw.includes("preceptor") || typeRaw.includes("指導") ? "preceptor" : "ng_pair";
     const shiftsRaw = getCol(row, "shifts", "対象シフト", "シフト") ?? "E;N";
-    const shifts = shiftsRaw.split(/[;,]/).map((s) => parseShiftToken(s));
+    const shiftTokens = shiftsRaw
+      .split(/[;,]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const shifts: ShiftCode[] = [];
+    let hasUnknownShift = false;
+    for (const st of shiftTokens) {
+      const parsed = parseShiftToken(st, customShiftCodes);
+      if (!parsed) {
+        errors.push(`行 ${r + 1}: ペア制約に対象外または不明なシフトコード "${st}" が含まれています。`);
+        hasUnknownShift = true;
+        break;
+      }
+      shifts.push(parsed);
+    }
+    if (hasUnknownShift) continue;
+
     const isHard = parseBooleanToken(getCol(row, "ishard", "確定フラグ", "必須"), true);
     const reason = getCol(row, "reason", "理由", "備考") ?? (type === "preceptor" ? "プリセプター指導ペア" : "相性NGペア");
 
@@ -476,7 +531,8 @@ export function validateNurseDataset(
   nurses: NurseProfile[],
   preferences: ShiftPreference[],
   relations: PairRelation[],
-  numDays = 30
+  numDays = 30,
+  customShiftCodes?: ReadonlySet<string>
 ): { valid: boolean; errors: string[]; warnings: string[] } {
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -498,6 +554,9 @@ export function validateNurseDataset(
     if (pref.day < 1 || pref.day > numDays) {
       errors.push(`希望シフトの日付 "${pref.day}" は月の日数(1〜${numDays})の範囲外です。`);
     }
+    if (!parseShiftToken(pref.shift, customShiftCodes)) {
+      errors.push(`希望シフトのシフトコード "${pref.shift}" は無効または未定義です。`);
+    }
   }
 
   for (const rel of relations) {
@@ -509,6 +568,13 @@ export function validateNurseDataset(
     }
     if (rel.nurseA === rel.nurseB) {
       errors.push(`自己ペア制約 "${rel.nurseA}" は無効です。`);
+    }
+    if (rel.shifts) {
+      for (const s of rel.shifts) {
+        if (!parseShiftToken(s, customShiftCodes)) {
+          errors.push(`ペア制約の対象シフト "${s}" は無効または未定義です。`);
+        }
+      }
     }
   }
 

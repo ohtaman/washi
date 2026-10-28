@@ -2902,11 +2902,13 @@ function checkImportReadiness(): void {
     return;
   }
 
+  const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
   const validation = validateNurseDataset(
     pendingCsvNurses,
     pendingCsvRequests ?? [],
     pendingCsvRelations ?? [],
-    appState.config.numDays
+    appState.config.numDays,
+    customCodes
   );
 
   if (!validation.valid) {
@@ -3281,7 +3283,8 @@ function setupEventListeners(): void {
     reader.onload = (ev) => {
       const text = String(ev.target?.result ?? "");
       const knownIds = pendingCsvNurses ? new Set(pendingCsvNurses.map((n) => n.id)) : undefined;
-      const parsed = parseRequestsCsv(text, knownIds);
+      const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
+      const parsed = parseRequestsCsv(text, knownIds, customCodes);
       if (parsed.errors.length > 0) {
         pendingCsvRequests = null;
         st.textContent = `❌ ${parsed.errors[0]}`;
@@ -3311,7 +3314,8 @@ function setupEventListeners(): void {
     reader.onload = (ev) => {
       const text = String(ev.target?.result ?? "");
       const knownIds = pendingCsvNurses ? new Set(pendingCsvNurses.map((n) => n.id)) : undefined;
-      const parsed = parseRelationsCsv(text, knownIds);
+      const customCodes = new Set((appState.customShiftDefs ?? []).map((c) => c.code));
+      const parsed = parseRelationsCsv(text, knownIds, customCodes);
       if (parsed.errors.length > 0) {
         pendingCsvRelations = null;
         st.textContent = `❌ ${parsed.errors[0]}`;

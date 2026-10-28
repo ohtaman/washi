@@ -222,4 +222,62 @@ N01,
     expect(parsed.nurses).toHaveLength(0);
     expect(parsed.warnings.length).toBeGreaterThan(0);
   });
+
+  it("rejects unknown or invalid shift tokens during CSV import and validation", () => {
+    const invalidShiftCsv = `
+nurseId,day,shift,isHard,reason
+N01,5,DN,1,タイポシフト
+N01,6,UNKNOWN,0,無効シフト
+N01,7,D,0,正常日勤
+`.trim();
+
+    const parsed = parseRequestsCsv(invalidShiftCsv);
+    expect(parsed.errors.length).toBe(2);
+    expect(parsed.errors[0]).toContain('不明なシフトコード "DN"');
+    expect(parsed.errors[1]).toContain('不明なシフトコード "UNKNOWN"');
+    expect(parsed.preferences).toHaveLength(1);
+    expect(parsed.preferences[0].shift).toBe("D");
+
+    // Allows custom shift codes when explicitly registered
+    const customAllowed = parseRequestsCsv(
+      "nurseId,day,shift,isHard,reason\nN01,5,T,1,研修シフト",
+      undefined,
+      new Set(["T"])
+    );
+    expect(customAllowed.errors).toHaveLength(0);
+    expect(customAllowed.preferences).toHaveLength(1);
+    expect(customAllowed.preferences[0].shift).toBe("T");
+
+    // Dataset validation also catches invalid shift codes
+    const nurses = [
+      {
+        id: "N01",
+        name: "看護師1",
+        kana: "カンゴシ1",
+        skills: ["leader_cap" as const],
+        nightOk: true,
+        yearsExp: 5,
+        prevMonthShifts: ["O", "D", "D", "E", "N", "O", "D"] as const,
+        yearly36Stats: {
+          past11MonthsOvertimeHours: 120,
+          currentMonthOvertimeHours: 0,
+          annualProjectedHours: 120,
+          specialExtensionMonthsCount: 0,
+        },
+      },
+    ];
+    const invalidPref = [
+      {
+        id: "p_err",
+        nurseId: "N01",
+        day: 5,
+        shift: "INVALID_CODE",
+        isHard: true,
+        reason: "テスト",
+      },
+    ];
+    const val = validateNurseDataset(nurses, invalidPref, [], 30);
+    expect(val.valid).toBe(false);
+    expect(val.errors.some((e) => e.includes("INVALID_CODE"))).toBe(true);
+  });
 });
