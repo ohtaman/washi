@@ -1545,6 +1545,22 @@ export function evaluateNurseSchedule(
   const dailySummaries: DailySlotSummary[] = [];
   const nurseSummaries: Record<string, NurseMonthlySummary> = {};
 
+  if (nurses.length === 0) {
+    return {
+      valid: true,
+      hardViolationsCount: 0,
+      softPenaltyTotal: 0,
+      violations: [],
+      dailySummaries: [],
+      nurseSummaries: {},
+      satisfactionRatePct: 100,
+      overtimeCompliance: {
+        allNursesCompliant: true,
+        violatingNurses: [],
+      },
+    };
+  }
+
   const nurseById = new Map(nurses.map((n) => [n.id, n]));
   const activeSkillDefs = state.skillDefs ?? createDefaultSkillDefs();
   const transMatrix = getShiftTransitionMatrix(config);
@@ -3188,6 +3204,24 @@ export async function solveNurseScheduleWithWashi(
   }
 ): Promise<WashiSolveOutcome> {
   const t0 = performance.now();
+
+  if (state.nurses.length === 0) {
+    const emptySchedule: MonthlyScheduleMap = {};
+    return {
+      status: "Optimal",
+      solverUsed: "HiGHS (WASM)",
+      buildTimeMs: 0,
+      solveTimeMs: 0,
+      numVariables: 0,
+      numConstraints: 0,
+      objectiveValue: 0,
+      schedule: emptySchedule,
+      evaluation: evaluateNurseSchedule(state, emptySchedule),
+      conflictAnalysis: null,
+      washiCodePreview: "// (スタッフデータが未登録です。サンプル生成またはCSVインポートを行ってください。)",
+      lpPreview: "// (Empty model)",
+    };
+  }
   const useRefSchedule =
     state.config.preserveCurrentSchedule !== false && Boolean(options?.referenceSchedule);
   const { model, vD, vE, vN, vCustom, constraintMeta } = buildNurseWashiModel(state, {
