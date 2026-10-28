@@ -1077,7 +1077,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(catGenBtn.className).toBe("btn-solve-primary");
       expect(catGenBtn.textContent).toContain("Sample Data");
       expect(elements.get("btn-cat-clear-blank").hidden).toBe(true);
-      expect(elements.get("cat-next-step-banner").hidden).toBe(true);
+      expect(elements.get("tutorial-banner").hidden).toBe(false);
       expect(elements.get("cat-prof-title").textContent).toContain("0");
 
       updateToolbarButtonsState();
@@ -1098,7 +1098,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(catGenBtn.className).toBe("btn-toolbar-outline");
       expect(catGenBtn.textContent).toContain("Regenerate");
       expect(elements.get("btn-cat-clear-blank").hidden).toBe(false);
-      expect(elements.get("cat-next-step-banner").hidden).toBe(false);
+      expect(elements.get("tutorial-banner").hidden).toBe(false);
       expect(elements.get("cat-prof-title").textContent).toContain("10");
 
       // Verify that sample generation does NOT auto-solve: timetable must remain unscheduled (null)
@@ -1130,23 +1130,14 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         expect(ui.catEmptyImportMain.length).toBeGreaterThan(0);
         expect(ui.catEmptyImportSub.length).toBeGreaterThan(0);
         expect(ui.catEmptySamplesBtn.length).toBeGreaterThan(0);
-        expect(ui.step1Badge.length).toBeGreaterThan(0);
-        expect(ui.step2Badge.length).toBeGreaterThan(0);
-        expect(ui.step3Badge.length).toBeGreaterThan(0);
-        expect(ui.step1Badge).not.toMatch(/^STEP \d$/);
-        expect(ui.step2Badge).not.toMatch(/^STEP \d$/);
-        expect(ui.step3Badge).not.toMatch(/^STEP \d$/);
+        expect(ui.step1Badge).toBe("STEP 1");
+        expect(ui.step2Badge).toBe("STEP 2");
+        expect(ui.step3Badge).toBe("STEP 3");
         expect(ui.catMgmtTitle.length).toBeGreaterThan(0);
         expect(ui.catMgmtDesc.length).toBeGreaterThan(0);
         expect(ui.btnCatGenerate.length).toBeGreaterThan(0);
         expect(ui.btnCatImportCsv.length).toBeGreaterThan(0);
-        expect(ui.btnCatGoConstraints.length).toBeGreaterThan(0);
-        expect(ui.btnCatGoTimetable.length).toBeGreaterThan(0);
-        expect(ui.constraintsWorkflowMsg.length).toBeGreaterThan(0);
-        expect(ui.btnConstraintsGoTimetable.length).toBeGreaterThan(0);
         expect(ui.chatWelcomeMarkdown.length).toBeGreaterThan(0);
-        expect(ui.btnCatGoConstraints).not.toContain("Step 2");
-        expect(ui.btnCatGoTimetable).not.toContain("Step 3");
       }
       expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("時間割を初期編成します");
       expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("時間割ボード");

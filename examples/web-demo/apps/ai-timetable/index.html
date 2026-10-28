@@ -262,11 +262,11 @@
 
       <!-- ==================== RIGHT PANE: TUTORIAL, STATUS, TIMETABLE & SETTINGS ==================== -->
       <section id="results-pane-sec" class="results-pane" aria-label="Timetable Workspace">
-        <!-- Interactive Tutorial Banner (hidden by default during initial blank onboarding) -->
-        <div id="tutorial-banner" class="tutorial-banner" hidden>
+        <!-- Interactive 3-Step Workflow Guide (Dismissible) -->
+        <div id="tutorial-banner" class="tutorial-banner">
           <div class="tutorial-header">
             <div class="tutorial-title">
-              <span id="tutorial-title-text">🔰 クイックガイド：AI大学時間割編成 (UCTP) の主要機能</span>
+              <span id="tutorial-title-text">🔰 クイックガイド：3ステップで体験するAI大学時間割編成 (UCTP)</span>
             </div>
             <button
               type="button"
@@ -280,24 +280,24 @@
           <div class="tutorial-steps-grid">
             <div class="tutorial-step-card">
               <div class="step-badge-row">
-                <span class="step-num" id="step1-badge">体験 1</span>
-                <strong id="step1-title">複数枚の時間割が連動する様子を見る・固定する</strong>
+                <span class="step-num" id="step1-badge">STEP 1</span>
+                <strong id="step1-title">基礎データを確認・読み込む</strong>
               </div>
               <p id="step1-desc">
-                <strong>4学年分の時間割（4枚）</strong>と<strong>10名の教員別・7室の教室別マトリクス</strong>が裏で全て連動しています。コマをドラッグ＆ドロップして別時限に移動するか、クリックして固定できます。
+                まずは教員・教室・科目のマスタデータを登録します。「🎲 サンプル生成」または「📂 CSV読込」で準備できます（表内のセル直接編集も可能）。
               </p>
               <button type="button" id="btn-tut-step1" class="btn-step-try">
-                👆 試す：「数理最適化」を火曜2限・101大講義室に固定
+                🎲 試す：サンプルデータを読み込む
               </button>
             </div>
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
-                <span class="step-num" id="step2-badge">体験 2</span>
-                <strong id="step2-title">教員の都合や連続コマ条件を追加して再編成</strong>
+                <span class="step-num" id="step2-badge">STEP 2</span>
+                <strong id="step2-title">条件設定やAI相談で調整</strong>
               </div>
               <p id="step2-desc">
-                「非常勤の先生は火・木の午後のみ」「演習2コマは連続時限で」など現場の複雑な条件を入れて1秒で再計算します。
+                「⚙️ 条件・ルール設定」タブやチャット欄で、出講枠・連続コマ・PC演習室などの現場ルールを追加・調整できます。
               </p>
               <button type="button" id="btn-tut-step2" class="btn-step-try">
                 🔗 試す：「SW設計演習(週2コマ)」を同日連続時限に指定
@@ -306,11 +306,11 @@
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
-                <span class="step-num" id="step3-badge">体験 3</span>
-                <strong id="step3-title">時間割が組めない原因を自動診断（IIS/Conflict）</strong>
+                <span class="step-num" id="step3-badge">STEP 3</span>
+                <strong id="step3-title">時間割の自動編成・調整・矛盾診断</strong>
               </div>
               <p id="step3-desc">
-                教室不足や非常勤講師の出講不可曜日との衝突など、解なし(Infeasible)の原因をWaSHI (HiGHS) が特定します。
+                「⚡ 時間割を自動編成」で4学年・教員・教室を一括最適化。コマをドラッグ移動したり、衝突原因の自動診断(IIS)を体験できます。
               </p>
               <div class="conflict-quick-group" style="margin-bottom: 6px;">
                 <select
@@ -584,18 +584,6 @@
           class="results-tab-panel"
           hidden
         >
-          <!-- ガイダンスバナー (未編成時) -->
-          <div id="constraints-workflow-banner" class="catalog-next-banner" style="margin-bottom: 0.75rem;" hidden>
-            <div class="catalog-next-text">
-              <span id="constraints-workflow-message">制約・基本ルール（教室定員、PC演習室必須、教員の連続コマ数上限など）を確認・調整したら、「📅 時間割ボード」に進んで自動編成を実行してください。</span>
-            </div>
-            <div class="catalog-next-actions">
-              <button type="button" id="btn-constraints-go-timetable" class="btn-solve-primary">
-                ⚡ 📅 時間割ボードで自動編成
-              </button>
-            </div>
-          </div>
-
           <div class="custom-rules-card">
             <div class="custom-rules-header">
               <div>
@@ -788,21 +776,6 @@
                 </button>
                 <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="登録データをすべてクリアして白紙状態に戻す" hidden>
                   🗑️ 白紙に戻す
-                </button>
-              </div>
-            </div>
-
-            <!-- 次のステップ（制約確認・時間割ボード）へのナビゲーションバナー -->
-            <div id="cat-next-step-banner" class="catalog-next-banner" hidden>
-              <div class="catalog-next-text">
-                <span id="cat-next-step-message">✅ 基礎データの準備完了。このまま時間割を自動編成するか、条件・ルール設定を確認してください。</span>
-              </div>
-              <div class="catalog-next-actions">
-                <button type="button" id="btn-cat-go-timetable" class="btn-solve-primary">
-                  ⚡ 📅 時間割ボードで自動編成
-                </button>
-                <button type="button" id="btn-cat-go-constraints" class="btn-toolbar-outline">
-                  👉 ⚙️ 条件・ルール設定を確認
                 </button>
               </div>
             </div>
