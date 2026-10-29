@@ -3892,4 +3892,27 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     );
     expect(hardCovViolations.length).toBe(0);
   });
+
+  it("includes day-type active dates in conflict diagnosis for mid-week starting months", async () => {
+    // June 2026 starts on Monday (June 1, 2, 3 are all Mon, Tue, Wed; first weekend is June 6-7)
+    const juneState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 6 });
+    const impossibleWeekendRule = {
+      id: "rule_impossible_weekend",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "土日深夜勤はリーダー15名以上必要（不可能な人数）",
+      shifts: ["N" as const],
+      attribute: "leader",
+      dayType: "weekend" as const,
+      minCount: 15,
+      isHard: true,
+    };
+    const stateWithRule = {
+      ...juneState,
+      customRules: [impossibleWeekendRule],
+    };
+    const diag = await diagnoseNurseScheduleWithHiGHS(stateWithRule);
+    expect(diag.status).toBe("Unsat");
+    expect(diag.conflicts.some((c) => c.name.includes("rule_impossible_weekend"))).toBe(true);
+  });
 });

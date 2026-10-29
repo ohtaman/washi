@@ -3397,8 +3397,28 @@ function setupEventListeners(): void {
     updateSolveStatusBadge("idle");
   };
 
+  const resetToDefaultConfig = () => {
+    currentSchedule = null;
+    currentEvaluation = null;
+    lastSolveOutcome = null;
+    void nanoManager.resetConversation();
+    appState = {
+      ...appState,
+      config: createDefaultConfig({
+        year: appState.config.year,
+        month: appState.config.month,
+        numDays: appState.config.numDays,
+        staffCount: appState.nurses.length,
+      }),
+      customRules: createDefaultStaffingRules(appState.nurses.length),
+    };
+    syncConfigInputsFromState();
+    renderAllViews();
+    updateSolveStatusBadge("idle");
+  };
+
   $("btn-reset-clean")?.addEventListener("click", resetToCleanState);
-  $("btn-reset-default-config")?.addEventListener("click", resetToCleanState);
+  $("btn-reset-default-config")?.addEventListener("click", resetToDefaultConfig);
 
   // Sentence Rule Builder & Weight Select Listeners
   $("btn-add-sentence-rule")?.addEventListener("click", handleAddSentenceRule);

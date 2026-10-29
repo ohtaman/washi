@@ -3043,6 +3043,13 @@ export async function diagnoseNurseScheduleWithHiGHS(
       addDayWithNeighbors(sDay);
       addDayWithNeighbors(eDay);
     }
+    if (r.kind === "staffing_rule") {
+      for (let d = 1; d <= state.config.numDays; d++) {
+        if (isStaffingRuleApplicableOnDay(r, d, state.config)) {
+          candidateDays.add(d);
+        }
+      }
+    }
     if (Array.isArray(r.allowedDaysOfWeek) && r.allowedDaysOfWeek.length > 0) {
       for (let d = 1; d <= state.config.numDays; d++) {
         const dow = getDayOfWeek(state.config.year, state.config.month, d);
