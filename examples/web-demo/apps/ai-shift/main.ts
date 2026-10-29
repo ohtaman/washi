@@ -3388,13 +3388,10 @@ function setupEventListeners(): void {
       updateSolveStatusBadge("idle");
       return;
     }
-    appState = generateNurseSchedulingState({
-      year: appState.config.year,
-      month: appState.config.month,
-      staffCount: appState.nurses.length,
-      seed: currentSeed,
-    });
-    appState.customRules = createDefaultStaffingRules(appState.nurses.length);
+    appState = {
+      ...appState,
+      customRules: createDefaultStaffingRules(appState.nurses.length),
+    };
     syncConfigInputsFromState();
     renderAllViews();
     updateSolveStatusBadge("idle");

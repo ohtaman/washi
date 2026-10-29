@@ -3870,5 +3870,26 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(sundayViolations.length).toBe(0);
     expect(holidayViolations.length).toBe(0);
     expect(mondayViolations.length).toBe(1);
+
+    // Soft all-staff rule must not produce hard coverage violations
+    const softAllStaffRule = {
+      id: "rule_soft_all_staff",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "日勤は全員で10名（努力目標）",
+      shifts: ["D" as const],
+      attribute: "all",
+      isHard: false,
+      minCount: 10,
+    };
+    const stateWithSoftAllStaff = {
+      ...state,
+      customRules: [softAllStaffRule],
+    };
+    const softEval = evaluateNurseSchedule(stateWithSoftAllStaff, emptySchedule);
+    const hardCovViolations = softEval.violations.filter(
+      (v) => v.category === "coverage" && v.id.startsWith("cov_D_")
+    );
+    expect(hardCovViolations.length).toBe(0);
   });
 });

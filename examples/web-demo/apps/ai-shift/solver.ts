@@ -238,6 +238,7 @@ export function getRequiredDailyCoverage(
 
   for (const rule of customRules) {
     if (rule.attribute && rule.attribute !== "all") continue;
+    if (rule.isHard === false) continue;
     if (!isStaffingRuleApplicableOnDay(rule, day, config)) continue;
     if (rule.shifts && typeof rule.minCount === "number") {
       for (const s of rule.shifts) {
@@ -1672,6 +1673,15 @@ export function evaluateNurseSchedule(
     });
 
     for (const s of ["D", "E", "N"] as const) {
+      if (config.enforceSkillCoverage) {
+        const hasRule = customRules.some((r) => {
+          if (r.attribute && r.attribute !== "all") return false;
+          if (!r.shifts?.includes(s)) return false;
+          if (typeof r.minCount !== "number" || r.minCount <= 0) return false;
+          return isStaffingRuleApplicableOnDay(r, d, config);
+        });
+        if (hasRule) continue;
+      }
       if (counts[s] < required[s]) {
         const sMeta = getShiftMeta(s, customShiftDefs);
         pushViolation(
