@@ -1167,25 +1167,68 @@ function renderShiftTransitionMatrix(): void {
     for (const c of cols) {
       const td = document.createElement("td");
       const rule: TransitionRuleType = matrix[r.key][c.key];
+      const transKey = `trans_${r.key}_${c.key}`;
+      const curW = appState.config.softRuleWeights?.[transKey] ?? 0;
+      const isSoft = curW > 0;
+
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = `trans-cell-btn trans-${rule}`;
+      btn.className = `trans-cell-btn trans-${rule}${isSoft ? " trans-soft" : ""}`;
       btn.textContent =
-        rule === "forbid" ? "✕ 禁止" : rule === "require" ? "◎ 必須" : "○ 許可";
+        rule === "forbid"
+          ? isSoft
+            ? "⚖️ 回避"
+            : "✕ 禁止"
+          : rule === "require"
+            ? isSoft
+              ? "⚖️ なるべく"
+              : "◎ 必須"
+            : "○ 許可";
 
-      btn.title = `クリックで「${r.key} ➔ ${c.key}」の遷移ルールを切り替え`;
+      btn.title = `クリックで「${r.key} ➔ ${c.key}」の遷移ルールを切り替え（許可 ➔ 必須/禁止(ハード) ➔ 回避(ソフト) ➔ 許可）`;
       btn.addEventListener("click", () => {
-        const nextRule: TransitionRuleType =
-          c.key === "O"
-            ? rule === "require"
-              ? "allow"
-              : "require"
-            : rule === "forbid"
-              ? "allow"
-              : "forbid";
+        let nextRule: TransitionRuleType = rule;
+        let nextSoftWeight = 0;
+
+        if (c.key === "O") {
+          // require cycle: allow -> require (hard) -> require (soft) -> allow
+          if (rule === "allow") {
+            nextRule = "require";
+            nextSoftWeight = 0;
+          } else if (rule === "require" && !isSoft) {
+            nextRule = "require";
+            nextSoftWeight = 30;
+          } else {
+            nextRule = "allow";
+            nextSoftWeight = 0;
+          }
+        } else {
+          // forbid cycle: allow -> forbid (hard) -> forbid (soft) -> allow
+          if (rule === "allow") {
+            nextRule = "forbid";
+            nextSoftWeight = 0;
+          } else if (rule === "forbid" && !isSoft) {
+            nextRule = "forbid";
+            nextSoftWeight = 30;
+          } else {
+            nextRule = "allow";
+            nextSoftWeight = 0;
+          }
+        }
+
+        const nextWeights = { ...(appState.config.softRuleWeights ?? {}) };
+        if (nextSoftWeight > 0) {
+          nextWeights[transKey] = nextSoftWeight;
+        } else {
+          delete nextWeights[transKey];
+        }
+
+        const nextConfig = applyShiftTransitionToConfig(appState.config, r.key, c.key, nextRule);
+        nextConfig.softRuleWeights = nextWeights;
+
         appState = {
           ...appState,
-          config: applyShiftTransitionToConfig(appState.config, r.key, c.key, nextRule),
+          config: nextConfig,
         };
         syncConfigInputsFromState();
         void runWashiOptimization();
@@ -1760,12 +1803,39 @@ function renderSkillDefsList(): void {
       void runWashiOptimization();
     };
 
+    const hardSelect = document.createElement("select");
+    hardSelect.className = "toolbar-select";
+    hardSelect.style.height = "26px";
+    hardSelect.style.fontSize = "0.75rem";
+    hardSelect.style.padding = "0 0.3rem";
+    const skillKey = `skill_${s.code}`;
+    const curW = appState.config.softRuleWeights?.[skillKey] ?? 0;
+    hardSelect.innerHTML = `
+      <option value="0" ${curW === 0 ? "selected" : ""}>🔒 必須</option>
+      <option value="15" ${curW === 15 ? "selected" : ""}>⚖️ 弱 (15)</option>
+      <option value="30" ${curW === 30 ? "selected" : ""}>⚖️ 中 (30)</option>
+      <option value="60" ${curW === 60 ? "selected" : ""}>⚖️ 強 (60)</option>
+    `;
+    hardSelect.title = `「${s.label}」の人数制約のハード/ソフト切り替え`;
+    hardSelect.addEventListener("change", () => {
+      const w = Number(hardSelect.value) || 0;
+      const nextW = { ...(appState.config.softRuleWeights ?? {}) };
+      if (w > 0) nextW[skillKey] = w;
+      else delete nextW[skillKey];
+      appState = {
+        ...appState,
+        config: { ...appState.config, softRuleWeights: nextW },
+      };
+      void runWashiOptimization();
+    });
+
     actionsWrap.append(
       makeBoundInput("日≥", s.minDay ?? 0, (v) => updateSkillBound({ minDay: v ?? 0 })),
       makeBoundInput("準≥", s.minEvening ?? 0, (v) => updateSkillBound({ minEvening: v ?? 0 })),
       makeBoundInput("深≥", s.minNight ?? 0, (v) => updateSkillBound({ minNight: v ?? 0 })),
       makeBoundInput("準≤", s.maxEvening, (v) => updateSkillBound({ maxEvening: v }), true),
-      makeBoundInput("深≤", s.maxNight, (v) => updateSkillBound({ maxNight: v }), true)
+      makeBoundInput("深≤", s.maxNight, (v) => updateSkillBound({ maxNight: v }), true),
+      hardSelect
     );
 
     const delBtn = document.createElement("button");

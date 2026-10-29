@@ -1866,6 +1866,11 @@ body.ai-shift-body {
   border-color: rgba(245, 158, 11, 0.45);
 }
 
+.trans-soft {
+  border-style: dashed !important;
+  opacity: 0.92;
+}
+
 [data-theme="dark"] .trans-require {
   color: #fbbf24;
 }
