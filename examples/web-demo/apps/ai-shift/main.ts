@@ -40,6 +40,8 @@ import {
   generateNurseSchedulingState,
   getDayOfWeek,
   injectConflictScenario,
+  MAX_STAFF_COUNT,
+  MIN_STAFF_COUNT,
   WEEKDAY_NAMES_JA,
 } from "./generator";
 import {
@@ -3023,7 +3025,10 @@ function handleExportCsvs(): void {
 }
 
 function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): void {
-  const normalizedCount = Math.max(15, Math.min(36, Math.floor(staffCount) || 30));
+  const normalizedCount = Math.max(
+    MIN_STAFF_COUNT,
+    Math.min(MAX_STAFF_COUNT, Math.floor(staffCount) || 30)
+  );
   const countInput = document.getElementById("input-staff-count") as HTMLInputElement | null;
   if (countInput) {
     countInput.value = String(normalizedCount);

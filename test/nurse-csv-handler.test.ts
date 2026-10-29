@@ -15,6 +15,8 @@ import {
 import {
   createBlankNurseSchedulingState,
   generateNurseSchedulingState,
+  MAX_STAFF_COUNT,
+  MIN_STAFF_COUNT,
 } from "../examples/web-demo/apps/ai-shift/generator";
 import { solveNurseScheduleWithWashi } from "../examples/web-demo/apps/ai-shift/solver";
 
@@ -444,17 +446,17 @@ preceptor,N03,N04,"  ",1,指導ペア
   });
 
   it("clamps out-of-range staffCount when generating nurse scheduling state to avoid infeasible coverage ratios", () => {
-    // Exceeding catalog length (e.g. 100) must clamp to max 36
+    // Exceeding supported maximum (e.g. 100) must clamp to MAX_STAFF_COUNT (36)
     const stateOver = generateNurseSchedulingState({ staffCount: 100 });
-    expect(stateOver.nurses.length).toBe(36);
-    expect(stateOver.config.staffCount).toBe(36);
-    expect(stateOver.config.weekdayDayStaff).toBe(Math.round((36 * 10) / 30)); // 12
-    expect(stateOver.config.eveningStaff).toBe(Math.round((36 * 3) / 30)); // 4
-    expect(stateOver.config.nightStaff).toBe(Math.round((36 * 3) / 30)); // 4
+    expect(stateOver.nurses.length).toBe(MAX_STAFF_COUNT);
+    expect(stateOver.config.staffCount).toBe(MAX_STAFF_COUNT);
+    expect(stateOver.config.weekdayDayStaff).toBe(Math.round((MAX_STAFF_COUNT * 10) / 30)); // 12
+    expect(stateOver.config.eveningStaff).toBe(Math.round((MAX_STAFF_COUNT * 3) / 30)); // 4
+    expect(stateOver.config.nightStaff).toBe(Math.round((MAX_STAFF_COUNT * 3) / 30)); // 4
 
-    // Below minimum (e.g. 5) must clamp to min 15
+    // Below supported minimum (e.g. 5) must clamp to MIN_STAFF_COUNT (15)
     const stateUnder = generateNurseSchedulingState({ staffCount: 5 });
-    expect(stateUnder.nurses.length).toBe(15);
-    expect(stateUnder.config.staffCount).toBe(15);
+    expect(stateUnder.nurses.length).toBe(MIN_STAFF_COUNT);
+    expect(stateUnder.config.staffCount).toBe(MIN_STAFF_COUNT);
   });
 });
