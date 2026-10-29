@@ -330,55 +330,23 @@ export function buildTimetableWashiModel(
     }
   }
 
-  // 5. Student Cohort Compulsory / Core Curriculum No-Overlap
+  // 5. Student Cohort Curriculum No-Overlap
   if (config.enforceCohortNoOverlap) {
     for (const cohort of STUDENT_COHORTS) {
-      // Compulsory and elective_core courses for this cohort must not overlap!
-      const coreCourses = courses.filter(
-        (c) =>
-          c.cohorts.includes(cohort.id) &&
-          (c.category === "compulsory" || c.category === "elective_core")
-      );
-      if (coreCourses.length <= 1) continue;
+      // Courses for this cohort must not overlap in the same slot!
+      const cohortCourses = courses.filter((c) => c.cohorts.includes(cohort.id));
+      if (cohortCourses.length <= 1) continue;
 
       for (const d of DAYS_OF_WEEK) {
         for (const p of PERIODS) {
-          const cohortSlotVars = coreCourses.flatMap((c) => slotVarsByCourse(c.id, d, p));
+          const cohortSlotVars = cohortCourses.flatMap((c) => slotVarsByCourse(c.id, d, p));
           registerConstraint(sum(cohortSlotVars), "<=", 1, {
             name: `cohort_excl_${cohort.id}_${d}_P${p}`,
             category: "cohort_conflict",
-            labelJa: `学年カリキュラム重複禁止: ${cohort.label} の必修・選択必修科目は ${formatSlotJa(d, p)} に重複配置できません`,
-            relatedCourseIds: coreCourses.map((c) => c.id),
-            relaxSuggestion: `${cohort.shortLabel}の必修・選択必修科目が同じ曜日・時限に複数固定されていないか確認してください。`,
+            labelJa: `学年カリキュラム重複禁止: ${cohort.label} の科目は ${formatSlotJa(d, p)} に重複配置できません`,
+            relatedCourseIds: cohortCourses.map((c) => c.id),
+            relaxSuggestion: `${cohort.shortLabel}の科目が同じ曜日・時限に複数固定されていないか確認してください。`,
           });
-        }
-      }
-
-      // Also lab exercises C05 & C06 are split classes for Y1 so they CAN run in parallel or different slots,
-      // but a compulsory lecture for Y1 cannot overlap with Y1 lab exercises!
-      const yCompulsory = courses.filter(
-        (c) => c.cohorts.includes(cohort.id) && c.category === "compulsory"
-      );
-      const yLabs = courses.filter(
-        (c) => c.cohorts.includes(cohort.id) && c.category === "lab_exercise"
-      );
-      if (yCompulsory.length > 0 && yLabs.length > 0) {
-        for (const d of DAYS_OF_WEEK) {
-          for (const p of PERIODS) {
-            for (const lab of yLabs) {
-              const vars = [
-                ...yCompulsory.flatMap((c) => slotVarsByCourse(c.id, d, p)),
-                ...slotVarsByCourse(lab.id, d, p),
-              ];
-              registerConstraint(sum(vars), "<=", 1, {
-                name: `cohort_lab_excl_${cohort.id}_${lab.id}_${d}_P${p}`,
-                category: "cohort_conflict",
-                labelJa: `学年必修と演習の重複禁止: ${cohort.shortLabel}の必修科目と「${lab.shortTitle}」は ${formatSlotJa(d, p)} に重複できません`,
-                relatedCourseIds: [...yCompulsory.map((c) => c.id), lab.id],
-                relaxSuggestion: `${cohort.shortLabel}の必修講義と「${lab.shortTitle}」の時限をずらしてください。`,
-              });
-            }
-          }
         }
       }
     }

@@ -237,10 +237,6 @@
               >
                 📖 プロンプト集
               </button>
-              <label id="lbl-auto-solve" class="auto-solve-toggle" title="条件変更時に自動で最適化を実行します">
-                <input type="checkbox" id="chk-auto-solve-on-chat" checked />
-                <span id="txt-auto-solve">自動再計算</span>
-              </label>
             </div>
             <div class="chat-submit-group">
               <button
@@ -356,6 +352,11 @@
               ⚡ 時間割を自動編成
             </button>
 
+            <label id="lbl-auto-solve" class="auto-solve-toggle" title="条件変更時に自動で最適化を実行します">
+              <input type="checkbox" id="chk-auto-solve-on-chat" checked />
+              <span id="txt-auto-solve">自動再計算</span>
+            </label>
+
             <button
               type="button"
               id="btn-check-current"
@@ -412,18 +413,18 @@
           <ul id="conflict-list" class="conflict-list"></ul>
         </div>
 
-        <!-- 3-Tab Navigation Bar: Master Data -> Constraints -> Timetable -->
+        <!-- 3-Tab Navigation Bar: Timetable -> Constraints -> Master Data -->
         <div class="results-tabs-bar" role="tablist" aria-label="Tabs">
           <button
             type="button"
             role="tab"
-            id="tab-btn-catalog"
+            id="tab-btn-timetable"
             class="results-tab-btn active"
             aria-selected="true"
-            aria-controls="tab-panel-catalog"
-            data-tab="catalog"
+            aria-controls="tab-panel-timetable"
+            data-tab="timetable"
           >
-            <span id="tab-txt-catalog">📚 基礎データ (教員・教室・科目)</span>
+            <span id="tab-txt-timetable">📅 時間割ボード</span>
           </button>
           <button
             type="button"
@@ -435,55 +436,35 @@
             data-tab="constraints"
           >
             <span id="tab-txt-constraints">⚙️ 条件・ルール設定</span>
-            <span id="badge-custom-rules" class="tab-count-badge" hidden>0</span>
           </button>
           <button
             type="button"
             role="tab"
-            id="tab-btn-timetable"
+            id="tab-btn-catalog"
             class="results-tab-btn"
             aria-selected="false"
-            aria-controls="tab-panel-timetable"
-            data-tab="timetable"
+            aria-controls="tab-panel-catalog"
+            data-tab="catalog"
           >
-            <span id="tab-txt-timetable">📅 時間割ボード</span>
+            <span id="tab-txt-catalog">📚 基礎データ (教員・教室・科目)</span>
           </button>
         </div>
 
-        <!-- ==================== TAB 3: TIMETABLE BOARDS ==================== -->
+        <!-- ==================== TAB 1: TIMETABLE BOARDS ==================== -->
         <div
           id="tab-panel-timetable"
           role="tabpanel"
           aria-labelledby="tab-btn-timetable"
           class="results-tab-panel"
-          hidden
         >
           <div class="schedule-controls-bar">
-            <div class="view-mode-switcher" role="group" aria-label="View Mode">
-              <button
-                type="button"
-                class="view-mode-btn active"
-                data-view-mode="cohorts_4"
-                id="btn-view-cohorts"
-              >
-                🎓 学年別 4枚同時表示 (1年〜4年)
-              </button>
-              <button
-                type="button"
-                class="view-mode-btn"
-                data-view-mode="professors_matrix"
-                id="btn-view-profs"
-              >
-                👨‍🏫 教員別 × 25コマ一覧表 (10名)
-              </button>
-              <button
-                type="button"
-                class="view-mode-btn"
-                data-view-mode="rooms_matrix"
-                id="btn-view-rooms"
-              >
-                🏫 教室別 × 25コマ一覧表 (7室)
-              </button>
+            <div class="view-mode-selector-wrap">
+              <label for="select-view-mode" class="sr-only" id="lbl-view-mode">表示切替</label>
+              <select id="select-view-mode" class="toolbar-select view-mode-select">
+                <option value="cohorts_4" id="opt-view-cohorts">🎓 学年別 (1年〜4年 4枚同時)</option>
+                <option value="professors_matrix" id="opt-view-profs">👨‍🏫 教員別マトリクス (10名 × 25コマ)</option>
+                <option value="rooms_matrix" id="opt-view-rooms">🏛️ 教室別マトリクス (7室 × 25コマ)</option>
+              </select>
             </div>
 
             <div class="schedule-legend">
@@ -587,14 +568,17 @@
           <div class="custom-rules-card">
             <div class="custom-rules-header">
               <div>
-                <h3 id="custom-rules-title">📌 個別に追加・固定された時間割ルール</h3>
+                <div class="custom-rules-title-row" style="display: flex; align-items: center; gap: 8px;">
+                  <h3 id="custom-rules-title">📌 個別に追加・固定された時間割ルール</h3>
+                  <span id="badge-custom-rules" class="tab-count-badge" hidden>0</span>
+                </div>
                 <p id="custom-rules-desc" class="constraint-card-desc">
                   時間割ボードのクリックやAIチャット、または下のフォームから追加された個別制約です。チェックボックスでON/OFF、ハード/ソフトの切り替えや削除ができます。
                 </p>
               </div>
               <div class="custom-rules-actions">
-                <button type="button" id="btn-apply-config-solve" class="btn-solve-primary">
-                  ⚡ 設定変更を反映して再計算
+                <button type="button" id="btn-apply-config-save" class="btn-toolbar-outline">
+                  <span id="txt-apply-config-save">💾 設定を保存</span>
                 </button>
                 <button type="button" id="btn-reset-default-config" class="btn-toolbar-outline">
                   ↩ 初期設定に戻す
@@ -666,17 +650,17 @@
                 大学時間割編成(UCTP)における物理的・教務的ハード制約の有効/無効を設定します。
               </p>
               <div class="constraint-toggles-list">
-                <label class="checkbox-row highlight-row">
+                <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceRoomCapacity" checked />
                   <span id="lbl-cfg-roomcap"><strong>教室定員の厳守</strong>（履修者数が教室定員を超える割当を禁止）</span>
                 </label>
-                <label class="checkbox-row highlight-row">
+                <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceRoomEquipment" checked />
                   <span id="lbl-cfg-roomequip"><strong>教室設備・PC演習室要件の厳守</strong>（プログラミング・DS演習はPC演習室必須等）</span>
                 </label>
-                <label class="checkbox-row highlight-row">
+                <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceCohortNoOverlap" checked />
-                  <span id="lbl-cfg-cohort"><strong>学年別の必修・選択必修カリキュラム重複禁止</strong>（同一学年の必修同士・演習との重複を禁止）</span>
+                  <span id="lbl-cfg-cohort"><strong>学年別の開講科目重複禁止</strong>（同一学年の科目が同じコマに重複配置されるのを禁止）</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-forbidSameCourseSameDay" checked />
@@ -694,11 +678,11 @@
                 専任・非常勤講師の出講不可枠の遵守、連続講義上限、および目的関数のソフトペナルティ重みを設定します。
               </p>
               <div class="constraint-toggles-list">
-                <label class="checkbox-row highlight-row">
+                <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceAdjunctDayRestrictions" checked />
                   <span id="lbl-cfg-adjunct"><strong>非常勤講師の出講可能曜日を厳守</strong>（小林先生:火木のみ / 加藤先生:水金のみ）</span>
                 </label>
-                <label class="checkbox-row highlight-row">
+                <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceProfessorAvailability" checked />
                   <span id="lbl-cfg-profavail"><strong>教員の都合NG枠（教授会・委員会・通院等）を厳守</strong></span>
                 </label>

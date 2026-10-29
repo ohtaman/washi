@@ -53,7 +53,9 @@ import {
   validateTimetableDataset,
 } from "./csv-handler";
 import {
+  buildTimetableWashiModel,
   diagnoseTimetableWithHiGHS,
+  generateTimetableWashiCodePreview,
   solveTimetableWithWashi,
 } from "./solver";
 import {
@@ -588,6 +590,11 @@ function renderCrossHighlightBar(): void {
 function renderTimetableBoard(): void {
   renderCrossHighlightBar();
   const ui = UI_TEXT_I18N[activeLang];
+
+  const viewSelect = document.getElementById("select-view-mode") as HTMLSelectElement | null;
+  if (viewSelect && viewSelect.value !== activeViewMode) {
+    viewSelect.value = activeViewMode;
+  }
 
   const emptyStateEl = document.getElementById("empty-timetable-state");
   const emptyIconEl = document.getElementById("empty-state-icon");
@@ -1938,6 +1945,51 @@ function renderCatalogTables(): void {
   }
 }
 
+export function updateDeveloperModelInspector(): void {
+  const codeBox = document.getElementById("washi-code-preview");
+  const lpBox = document.getElementById("washi-lp-preview");
+  const statsBadge = document.getElementById("lp-stats-badge");
+  if (!codeBox || !lpBox || !statsBadge) return;
+
+  if (appState.courses.length === 0) {
+    codeBox.textContent = pickTimetableLang(activeLang, {
+      ja: "// 基礎データが未登録（白紙）のため、WaSHI数理モデルはまだ構築されていません。\n// 「✨ サンプル生成」または「📂 CSV読込」でデータを登録すると、ここに自動生成コードが表示されます。",
+      en: "// Timetable data is blank. WaSHI mathematical model is not built yet.\n// Generate sample data or import CSV to inspect the TypeScript model code.",
+      zh: "// 基础数据为空，WaSHI数学模型尚未构建。\n// 请点击“生成示例”或“导入CSV”后查看自动生成的代码。",
+    });
+    lpBox.textContent = pickTimetableLang(activeLang, {
+      ja: "\\ CPLEX LP preview is empty (no courses loaded)",
+      en: "\\ CPLEX LP preview is empty (no courses loaded)",
+      zh: "\\ CPLEX LP preview is empty (no courses loaded)",
+    });
+    statsBadge.textContent = "0 vars / 0 constraints";
+    return;
+  }
+
+  try {
+    const { model } = buildTimetableWashiModel(appState, {
+      referenceTimetable: appState.config.preserveCurrentTimetable ? currentTimetable : null,
+    });
+    model.validateIntegrity();
+    const lpFull = model.toLpString();
+    const lpLines = lpFull.split("\n");
+    const lpPreview =
+      lpLines.length > 140
+        ? lpLines.slice(0, 120).join("\n") +
+          `\n... (${lpLines.length - 140} lines omitted) ...\n` +
+          lpLines.slice(-20).join("\n")
+        : lpFull;
+
+    const numVars = model.variables.length;
+    const numConstrs = model.constraints.length;
+    statsBadge.textContent = `${numVars} vars / ${numConstrs} constraints`;
+    lpBox.textContent = lpPreview;
+    codeBox.textContent = generateTimetableWashiCodePreview(appState);
+  } catch (err) {
+    console.warn("Failed to generate model inspector preview:", err);
+  }
+}
+
 function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
   const ui = UI_TEXT_I18N[activeLang];
   const badge = $("kpi-status-badge");
@@ -2169,6 +2221,7 @@ function renderAll(): void {
     updateStatusBlankUI();
   }
   updateToolbarButtonsState();
+  updateDeveloperModelInspector();
 }
 
 function wireEmptyStateButtons(): void {
@@ -2720,6 +2773,9 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("btn-view-cohorts", ui.viewCohortsBtn);
   setText("btn-view-profs", ui.viewProfsBtn);
   setText("btn-view-rooms", ui.viewRoomsBtn);
+  setText("opt-view-cohorts", ui.viewCohortsBtn);
+  setText("opt-view-profs", ui.viewProfsBtn);
+  setText("opt-view-rooms", ui.viewRoomsBtn);
 
   const cats = CATEGORY_I18N[lang];
   setText("leg-badge-comp", cats.compulsory.shortLabel);
@@ -2743,7 +2799,9 @@ export function applyTimetableLang(lang: TimetableLang): void {
   // Tab 2 rules & config
   setText("custom-rules-title", ui.customRulesTitle);
   setText("custom-rules-desc", ui.customRulesDesc);
-  setText("btn-apply-config-solve", ui.btnApplyConfigSolve);
+  setText("btn-apply-config-save", ui.btnApplyConfigSave);
+  setText("txt-apply-config-save", ui.btnApplyConfigSave);
+  setText("btn-apply-config-solve", ui.btnApplyConfigSave);
   setText("btn-reset-default-config", ui.btnResetDefaultConfig);
   setText("lbl-new-rule-kind", ui.newRuleKindLabel);
   setText("opt-rule-pin", ui.newRuleKindPin);
@@ -3242,6 +3300,14 @@ function wireEvents(): void {
   });
 
   // View mode switcher & toggles on Tab 1
+  $<HTMLSelectElement>("select-view-mode")?.addEventListener("change", (e) => {
+    const mode = (e.target as HTMLSelectElement).value as TimetableBoardViewMode;
+    if (mode) {
+      activeViewMode = mode;
+      renderTimetableBoard();
+    }
+  });
+
   document.querySelectorAll<HTMLButtonElement>(".view-mode-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const mode = btn.dataset.viewMode as TimetableBoardViewMode | undefined;
@@ -3285,22 +3351,36 @@ function wireEvents(): void {
     });
   });
 
-  $("btn-apply-config-solve").addEventListener("click", () => {
+  const handleSaveConfig = () => {
     readConfigFromForm();
-    void triggerSolve();
-  });
+    renderCustomRulesAndSettings();
+    updateDeveloperModelInspector();
+    if (currentTimetable && shouldAutoSolveOnUpdate()) {
+      void triggerSolve();
+    }
+  };
+  document.getElementById("btn-apply-config-save")?.addEventListener("click", handleSaveConfig);
+  document.getElementById("btn-apply-config-solve")?.addEventListener("click", handleSaveConfig);
+
   $("btn-reset-default-config").addEventListener("click", () => {
     appState = {
       ...appState,
       config: generateTimetableState({ seed: appState.config.seed }).config,
     };
     renderCustomRulesAndSettings();
+    updateDeveloperModelInspector();
     if (currentTimetable && shouldAutoSolveOnUpdate()) {
       void triggerSolve();
     }
   });
   $("btn-diagnose-conflict").addEventListener("click", () => {
     $("btn-check-current").click();
+  });
+
+  document.querySelector(".dev-inspector-details")?.addEventListener("toggle", (e) => {
+    if ((e.target as HTMLDetailsElement).open) {
+      updateDeveloperModelInspector();
+    }
   });
 
   // Custom rule builder on Tab 2
@@ -3581,13 +3661,7 @@ async function initApp(): Promise<void> {
 
   renderAll();
 
-  if (appState.courses.length === 0) {
-    switchTab("catalog");
-  } else if (currentTimetable) {
-    switchTab("timetable");
-  } else {
-    switchTab("catalog");
-  }
+  switchTab("timetable");
 }
 
 if (typeof document !== "undefined") {
