@@ -209,6 +209,26 @@ export function getRequiredDailyCoverage(
     N: config.nightStaff,
   };
 
+  const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, day));
+  for (const rule of customRules) {
+    if (!rule.enabled || rule.isHard === false || rule.kind !== "staffing_rule") continue;
+    if (rule.attribute && rule.attribute !== "all") continue;
+    if (rule.dayType && rule.dayType !== "all") {
+      if (rule.dayType === "weekday" && (dow === 0 || dow === 6 || isHol)) continue;
+      if (rule.dayType === "weekend" && (dow !== 0 && dow !== 6)) continue;
+      if (rule.dayType === "holiday" && !isHol) continue;
+      if (rule.dayType === "weekend_holiday" && (dow !== 0 && dow !== 6 && !isHol)) continue;
+      if (rule.dayType.startsWith("dow:") && dow !== Number(rule.dayType.split(":")[1])) continue;
+    }
+    if (rule.shifts && typeof rule.minCount === "number") {
+      for (const s of rule.shifts) {
+        if (s === "D") req.D = rule.minCount;
+        else if (s === "E") req.E = rule.minCount;
+        else if (s === "N") req.N = rule.minCount;
+      }
+    }
+  }
+
   for (const rule of customRules) {
     if (
       rule.enabled &&
@@ -1192,6 +1212,14 @@ export function buildNurseWashiModel(
         if (typeof rule.endDay === "number" && d > rule.endDay) continue;
         const dow = getDayOfWeek(config.year, config.month, d);
         if (allowedDow && !allowedDow.has(dow)) continue;
+        if (rule.dayType && rule.dayType !== "all") {
+          const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, d));
+          if (rule.dayType === "weekday" && (dow === 0 || dow === 6 || isHol)) continue;
+          if (rule.dayType === "weekend" && (dow !== 0 && dow !== 6)) continue;
+          if (rule.dayType === "holiday" && !isHol) continue;
+          if (rule.dayType === "weekend_holiday" && (dow !== 0 && dow !== 6 && !isHol)) continue;
+          if (rule.dayType.startsWith("dow:") && dow !== Number(rule.dayType.split(":")[1])) continue;
+        }
         const idx = d - 1;
         for (const s of rule.shifts) {
           if (!isDayAllowedForShift(d, s)) continue;

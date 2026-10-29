@@ -248,10 +248,6 @@
               >
                 💡 質問例
               </button>
-              <label class="auto-solve-toggle" title="条件変更時に自動で最適化を実行します">
-                <input type="checkbox" id="chk-auto-solve-on-chat" checked />
-                <span>自動再計算</span>
-              </label>
             </div>
             <div class="chat-submit-group">
               <button
@@ -368,6 +364,11 @@
               ⚡ シフトを自動作成
             </button>
 
+            <label class="auto-solve-toggle" title="シフト固定やチャット相談時に自動で最適化を再計算します" style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.84rem; cursor: pointer;">
+              <input type="checkbox" id="chk-auto-solve-on-chat" checked />
+              <span>自動再計算</span>
+            </label>
+
             <button
               type="button"
               id="btn-check-current"
@@ -381,27 +382,9 @@
               type="button"
               id="btn-reset-clean"
               class="btn-toolbar-outline"
-              title="追加した固定ルールや矛盾シナリオをリセットして初期状態に戻します"
+              title="シフト表を空にし、追加した固定ルールを初期状態に戻します"
             >
               ↩ リセット
-            </button>
-
-            <span class="toolbar-divider" aria-hidden="true"></span>
-
-            <button type="button" id="btn-generate-sample" class="btn-toolbar-outline" title="30名・3交代制のサンプルデータを生成します">
-              ✨ サンプル生成
-            </button>
-
-            <button type="button" id="btn-open-csv-dialog" class="btn-toolbar-outline" title="看護師名簿・希望・相性のCSVファイルを読み込みます">
-              📂 CSV読込
-            </button>
-
-            <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="現在の看護師名簿・希望・相性をCSVファイルで保存します">
-              📥 CSV出力
-            </button>
-
-            <button type="button" id="btn-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="シフト・スタッフ・希望をすべてクリアして白紙に戻します">
-              🗑️ 白紙化
             </button>
           </div>
         </div>
@@ -424,14 +407,25 @@
           <ul id="conflict-list" class="conflict-list"></ul>
         </div>
 
-        <!-- Clean 3-Tab Navigation Bar (Aligned with ai-timetable: Master Data -> Constraints -> Schedule) -->
+        <!-- Clean 3-Tab Navigation Bar (Schedule: Tab 1 -> Staff: Tab 2 -> Constraints: Tab 3) -->
         <div class="results-tabs-bar" role="tablist" aria-label="表示切替タブ">
           <button
             type="button"
             role="tab"
-            id="tab-btn-staff"
+            id="tab-btn-schedule"
             class="results-tab-btn active"
             aria-selected="true"
+            aria-controls="tab-panel-schedule"
+            data-tab="schedule"
+          >
+            📅 1ヶ月シフト表
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-btn-staff"
+            class="results-tab-btn"
+            aria-selected="false"
             aria-controls="tab-panel-staff"
             data-tab="staff"
           >
@@ -448,28 +442,97 @@
           >
             ⚙️ 条件・ルール設定 <span id="badge-custom-rules" class="tab-count-badge" hidden>0</span>
           </button>
-          <button
-            type="button"
-            role="tab"
-            id="tab-btn-schedule"
-            class="results-tab-btn"
-            aria-selected="false"
-            aria-controls="tab-panel-schedule"
-            data-tab="schedule"
-          >
-            📅 1ヶ月シフト表
-          </button>
         </div>
 
-        <!-- ==================== TAB 1: MASTER DATA (STAFF & COMPATIBILITY) ==================== -->
+        <!-- ==================== TAB 1: 1-MONTH SHIFT MATRIX ==================== -->
+        <div
+          id="tab-panel-schedule"
+          role="tabpanel"
+          aria-labelledby="tab-btn-schedule"
+          class="results-tab-panel"
+        >
+          <div class="schedule-controls-bar">
+            <div class="schedule-legend" id="schedule-legend">
+              <span class="legend-item"><span class="shift-badge shift-D">日</span> 日勤</span>
+              <span class="legend-item"><span class="shift-badge shift-E">準</span> 準夜勤</span>
+              <span class="legend-item"><span class="shift-badge shift-N">深</span> 深夜勤</span>
+              <span class="legend-item"><span class="shift-badge shift-O">休</span> 公休</span>
+              <span class="legend-divider">|</span>
+              <span class="legend-item"><span class="req-dot req-hard-dot"></span> 確定希望</span>
+              <span class="legend-item"><span class="req-dot req-soft-dot"></span> 希望</span>
+              <span class="legend-item"><span class="pin-sample-box"></span> 固定中</span>
+            </div>
+
+            <div class="schedule-filters">
+              <label
+                class="prev-days-toggle"
+                title="ONのとき、再最適化時に現在のシフト表からの変更マス数を最小化します（OFFにするとゼロベースで全体を再作成します）"
+              >
+                <input type="checkbox" id="chk-preserve-schedule" checked />
+                <span>🔒 微調整モード(既存シフト維持)</span>
+              </label>
+              <label
+                class="prev-days-toggle"
+                title="前回のシフト表から変更されたマス目をオレンジ枠でハイライト表示します"
+              >
+                <input type="checkbox" id="chk-highlight-diff" checked />
+                <span>✨ 変更箇所を表示</span>
+              </label>
+              <label class="prev-days-toggle">
+                <input type="checkbox" id="chk-show-all-prev" />
+                <span>前月7日間をすべて表示</span>
+              </label>
+              <label for="filter-role" class="filter-label">表示:</label>
+              <select id="filter-role" class="toolbar-select">
+                <option value="all">全員 (30名)</option>
+                <option value="leader">★ リーダー層のみ</option>
+                <option value="mid">中堅層のみ</option>
+                <option value="newcomer">🔰 新人のみ</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Empty / Blank Schedule Welcome Banner -->
+          <div id="empty-schedule-state" class="empty-schedule-card" hidden>
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-content">
+              <h3 id="empty-state-title">シフトデータがありません（白紙モード）</h3>
+              <p id="empty-state-desc">
+                現在、スタッフ名簿が登録されていません。まずは「👥 基礎データ」タブでサンプルデータをセットするか、「📂 CSV読込」でCSVファイルをインポートしてください。
+              </p>
+              <div class="empty-state-actions">
+                <button type="button" id="btn-empty-generate" class="btn-solve-primary">
+                  ✨ サンプルデータを生成 (30名)
+                </button>
+                <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
+                  📂 CSVファイルを読み込む
+                </button>
+                <button type="button" id="btn-empty-samples" class="btn-xs-outline">
+                  📥 サンプルCSVをダウンロード
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="schedule-table-container">
+            <table class="schedule-matrix-table" id="schedule-matrix-table">
+              <thead id="schedule-thead"></thead>
+              <tbody id="schedule-tbody"></tbody>
+              <tfoot id="schedule-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- ==================== TAB 2: MASTER DATA (STAFF & COMPATIBILITY) ==================== -->
         <div
           id="tab-panel-staff"
           role="tabpanel"
           aria-labelledby="tab-btn-staff"
           class="results-tab-panel"
+          hidden
         >
           <div class="staff-tab-top">
-            <!-- 基礎データ管理バー (ai-timetableと同様のcatalog-management-card) -->
+            <!-- 基礎データ管理バー -->
             <div id="staff-mgmt-card" class="catalog-management-card">
               <div class="catalog-mgmt-header">
                 <div class="catalog-mgmt-title-group">
@@ -494,26 +557,11 @@
                   <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="スタッフ・希望・相性のCSVファイルを読み込みます">
                     📂 CSVインポート
                   </button>
+                  <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="現在の看護師名簿・希望・相性をCSVファイルで保存します">
+                    📥 CSV出力
+                  </button>
                   <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="CSVテンプレートをダウンロード">
-                    📥 CSVテンプレート
-                  </button>
-                  <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="データをすべてクリアして白紙状態に戻す" hidden>
-                    🗑️ 白紙に戻す
-                  </button>
-                </div>
-              </div>
-
-              <!-- 次のステップ（制約確認・シフト自動作成）へのナビゲーションバナー -->
-              <div id="staff-next-step-banner" class="catalog-next-banner" hidden>
-                <div class="catalog-next-text">
-                  <span id="staff-next-step-message">✅ 基礎データの準備完了。このままシフトを自動作成するか、条件・ルール設定を確認してください。</span>
-                </div>
-                <div class="catalog-next-actions">
-                  <button type="button" id="btn-cat-go-constraints" class="btn-toolbar-outline">
-                    ⚙️ 制約・ルールを確認 (Step 2)
-                  </button>
-                  <button type="button" id="btn-cat-go-schedule" class="btn-solve-primary">
-                    ⚡ シフトを自動作成 (Step 3)
+                    📋 テンプレート
                   </button>
                 </div>
               </div>
@@ -551,7 +599,7 @@
           </div>
         </div>
 
-        <!-- ==================== TAB 2: CONSTRAINTS & SETTINGS ==================== -->
+        <!-- ==================== TAB 3: CONSTRAINTS & SETTINGS ==================== -->
         <div
           id="tab-panel-constraints"
           role="tabpanel"
@@ -559,44 +607,13 @@
           class="results-tab-panel"
           hidden
         >
-          <!-- Next Step Banner to Guide to Shift Generation -->
-          <div id="constraints-next-step-banner" class="catalog-next-banner" style="margin-bottom: 12px;">
-            <div class="catalog-next-text">
-              <strong>✅ 制約の確認・調整が完了したら、シフトを自動作成しましょう</strong>
-              <span style="font-size: 0.85rem; color: var(--text-muted); display: block;">基本制約や勤務要件を確認したら、数理最適化（WaSHI / HiGHS）を実行して1ヶ月分の最適シフトを編成します。</span>
-            </div>
-            <div class="catalog-next-actions">
-              <button type="button" id="btn-constraints-go-schedule" class="btn-solve-primary">
-                ⚡ シフトを自動作成 (Step 3) →
-              </button>
-            </div>
-          </div>
-
-          <!-- Conflict Simulation Card for Demo Testing -->
-          <div class="conflict-scenario-card" style="background: var(--surface-2); border: 1px dashed var(--border-color); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-            <div style="font-size: 0.85rem; color: var(--text-color);">
-              <strong>💥 矛盾診断シナリオをテスト：</strong>
-              <span style="color: var(--text-muted);">わざと充足不可能な制約を追加し、WaSHIのIIS矛盾診断を検証できます。</span>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <select id="select-conflict-scenario" class="form-select" style="padding: 4px 8px; font-size: 0.85rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--surface-1); color: var(--text-color);">
-                <option value="carryover_clash">前月引き継ぎ矛盾 (前月深夜勤 + 1日日勤固定)</option>
-                <option value="leader_shortage">リーダー不足矛盾 (全リーダーの同日夜勤禁止)</option>
-                <option value="overload_day">必要人数過多矛盾 (必要人数が在籍数を上回る)</option>
-              </select>
-              <button type="button" id="btn-test-conflict-scenario" class="btn-toolbar-outline" style="font-size: 0.85rem;">
-                🧪 矛盾を注入してテスト
-              </button>
-            </div>
-          </div>
-
           <!-- Custom Rules & Manual Overrides Section (Top of Settings so user immediately sees pinned rules) -->
           <div class="custom-rules-card">
             <div class="custom-rules-header">
               <div>
-                <h3>📌 個別に追加・固定されたルール</h3>
+                <h3>📌 シフト固定 ＆ チャットで追加された個別ルール</h3>
                 <p class="constraint-card-desc">
-                  シフト表のマス目クリックやAIチャットで追加された固定ルールです。
+                  シフト表のマス目（セル）をクリックして固定したシフトや、画面左下のAIチャットで追加された個別ルールの一覧です。不要なルールは削除できます。
                 </p>
               </div>
               <div class="custom-rules-actions">
@@ -612,31 +629,72 @@
           </div>
 
           <div class="constraints-grid">
-            <!-- Card 1: Daily Coverage -->
-            <div class="constraint-card">
+            <!-- Card 1: Daily Coverage & Staffing Rules with Sentence Builder -->
+            <div class="constraint-card" style="grid-column: 1 / -1;">
               <div class="constraint-card-header">
-                <h3>🏥 1. 毎日の必要人数 (3交代)</h3>
+                <h3>🏥 1. 必要人数・人員配置ルール（シフト別・曜日別・スキル別）</h3>
               </div>
               <p class="constraint-card-desc">
-                日勤・準夜勤・深夜勤それぞれで毎日最低限配置する人数です。
+                シフト帯（日勤・準夜・深夜）、曜日区分（平日・土日・祝日・土日祝など）、スキルや属性ごとの必要人数ルールです。各ルールごとに必須（ハード制約）か、なるべく（ソフト制約・重み）かを設定できます。
               </p>
-              <div class="constraint-form-grid">
-                <label class="form-field">
-                  <span>平日 日勤 (日)</span>
-                  <input type="number" id="cfg-weekdayDayStaff" min="4" max="20" value="10" />
-                </label>
-                <label class="form-field">
-                  <span>土日 日勤 (日)</span>
-                  <input type="number" id="cfg-weekendDayStaff" min="3" max="18" value="7" />
-                </label>
-                <label class="form-field">
-                  <span>毎日 準夜勤 (準)</span>
-                  <input type="number" id="cfg-eveningStaff" min="2" max="10" value="3" />
-                </label>
-                <label class="form-field">
-                  <span>毎日 深夜勤 (深)</span>
-                  <input type="number" id="cfg-nightStaff" min="2" max="10" value="3" />
-                </label>
+
+              <!-- Active Staffing Rules List -->
+              <div id="staffing-rules-list" class="custom-rules-list" style="margin-bottom: 0.75rem;"></div>
+
+              <!-- Sentence Builder -->
+              <div class="sentence-builder-card">
+                <div class="sentence-builder-header">
+                  <strong>➕ 文章型ルールビルダー</strong>
+                  <span class="sentence-builder-desc">「 」の中を選択して「＋ルールを追加」を押すと、人員配置ルールを自由に追加できます</span>
+                </div>
+                <div class="sentence-builder-row">
+                  <span class="sentence-token">「</span>
+                  <select id="builder-shift" class="toolbar-select builder-select" aria-label="シフト">
+                    <option value="D">日勤 (D)</option>
+                    <option value="E">準夜勤 (E)</option>
+                    <option value="N">深夜勤 (N)</option>
+                    <option value="D,E,N">全勤務 (日・準・深)</option>
+                  </select>
+                  <span class="sentence-token">」は「</span>
+                  <select id="builder-day-type" class="toolbar-select builder-select" aria-label="曜日区分">
+                    <option value="all">毎日</option>
+                    <option value="weekday">平日</option>
+                    <option value="weekend">土日</option>
+                    <option value="holiday">祝日</option>
+                    <option value="weekend_holiday">土日祝</option>
+                    <option value="dow:1">月曜日</option>
+                    <option value="dow:2">火曜日</option>
+                    <option value="dow:3">水曜日</option>
+                    <option value="dow:4">木曜日</option>
+                    <option value="dow:5">金曜日</option>
+                    <option value="dow:6">土曜日</option>
+                    <option value="dow:0">日曜日</option>
+                  </select>
+                  <span class="sentence-token">」に「</span>
+                  <select id="builder-attribute" class="toolbar-select builder-select" aria-label="スキル・役割">
+                    <option value="all">全員</option>
+                    <option value="leader_cap">★ リーダー</option>
+                    <option value="icu_er">救 救急・ICU</option>
+                    <option value="newcomer">🔰 新人</option>
+                    <option value="team_A">🅰️ A班</option>
+                    <option value="team_B">🅱️ B班</option>
+                  </select>
+                  <span class="sentence-token">」の人が「</span>
+                  <input type="number" id="builder-min-count" class="toolbar-num-input builder-input-num" min="0" max="30" value="1" placeholder="下限" aria-label="最低人数" />
+                  <span class="sentence-token">人」以上「</span>
+                  <input type="number" id="builder-max-count" class="toolbar-num-input builder-input-num" min="0" max="30" placeholder="上限" aria-label="上限人数(任意)" />
+                  <span class="sentence-token">人」以下である必要がある 【</span>
+                  <select id="builder-hardness" class="toolbar-select builder-select" aria-label="制約タイプ">
+                    <option value="hard">🔒 必須 (ハード)</option>
+                    <option value="soft:15">⚖️ なるべく (重み:弱 15)</option>
+                    <option value="soft:30" selected>⚖️ なるべく (重み:中 30)</option>
+                    <option value="soft:60">⚖️ なるべく (重み:強 60)</option>
+                  </select>
+                  <span class="sentence-token">】</span>
+                  <button type="button" id="btn-add-sentence-rule" class="btn-solve-primary" style="margin-left: 0.5rem; height: 32px;">
+                    ＋ ルールを追加
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -649,24 +707,56 @@
                 スタッフ1人あたりの連続勤務上限、月間公休・夜勤回数、および直近11ヶ月累計を含めた36協定（時間外労働上限）です。
               </p>
               <div class="constraint-toggles-list">
-                <label class="checkbox-row highlight-row">
-                  <input type="checkbox" id="cfg-enforce36Agreement" checked />
-                  <span><strong>36協定（月間・直近1年間累計の時間外上限）を厳守する</strong></span>
-                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0;">
+                  <label class="checkbox-row highlight-row" style="margin: 0; flex: 1;">
+                    <input type="checkbox" id="cfg-enforce36Agreement" checked />
+                    <span><strong>36協定（月間・直近1年間累計の時間外上限）を遵守</strong></span>
+                  </label>
+                  <select id="sel-weight-enforce36Agreement" class="toolbar-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須 (ハード)</option>
+                    <option value="15">⚖️ なるべく (重み:弱 15)</option>
+                    <option value="40">⚖️ なるべく (重み:中 40)</option>
+                    <option value="90">⚖️ なるべく (重み:強 90)</option>
+                  </select>
+                </div>
               </div>
               <div class="constraint-form-grid">
-                <label class="form-field">
-                  <span>最大連勤日数 (連勤上限)</span>
-                  <input type="number" id="cfg-maxConsecutiveWorkDays" min="2" max="10" value="5" />
-                </label>
-                <label class="form-field">
-                  <span>月間 最低公休日数</span>
-                  <input type="number" id="cfg-minMonthlyDaysOff" min="4" max="16" value="9" />
-                </label>
-                <label class="form-field">
-                  <span>月間 夜勤(準+深)上限</span>
-                  <input type="number" id="cfg-maxMonthlyNightShifts" min="2" max="16" value="8" />
-                </label>
+                <div class="form-field-with-hardness">
+                  <label class="form-field">
+                    <span>最大連勤日数 (連勤上限)</span>
+                    <input type="number" id="cfg-maxConsecutiveWorkDays" min="2" max="10" value="5" />
+                  </label>
+                  <select id="sel-weight-consecutive" class="toolbar-select hardness-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40">⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
+                <div class="form-field-with-hardness">
+                  <label class="form-field">
+                    <span>月間 最低公休日数</span>
+                    <input type="number" id="cfg-minMonthlyDaysOff" min="4" max="16" value="9" />
+                  </label>
+                  <select id="sel-weight-monthlyDaysOff" class="toolbar-select hardness-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40">⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
+                <div class="form-field-with-hardness">
+                  <label class="form-field">
+                    <span>月間 夜勤(準+深)上限</span>
+                    <input type="number" id="cfg-maxMonthlyNightShifts" min="2" max="16" value="8" />
+                  </label>
+                  <select id="sel-weight-monthlyNightCap" class="toolbar-select hardness-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40">⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
                 <label class="form-field">
                   <span>月間 最低勤務日数</span>
                   <input type="number" id="cfg-minMonthlyWorkDays" min="0" max="24" value="14" />
@@ -692,10 +782,18 @@
               </p>
               <div id="shift-transition-matrix" class="transition-matrix-wrap"></div>
               <div class="constraint-toggles-list">
-                <label class="checkbox-row highlight-row">
-                  <input type="checkbox" id="cfg-enforcePrevMonthCarryover" checked />
-                  <span><strong>前月末のシフト・連勤日数を引き継ぐ</strong>（月初の連勤超過や深夜明け日勤を防止）</span>
-                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0;">
+                  <label class="checkbox-row highlight-row" style="margin: 0; flex: 1;">
+                    <input type="checkbox" id="cfg-enforcePrevMonthCarryover" checked />
+                    <span><strong>前月末のシフト・連勤日数を引き継ぐ</strong>（連勤超過や深夜明け日勤を防止）</span>
+                  </label>
+                  <select id="sel-weight-enforcePrevMonthCarryover" class="toolbar-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須 (ハード)</option>
+                    <option value="15">⚖️ なるべく (重み:弱 15)</option>
+                    <option value="40">⚖️ なるべく (重み:中 40)</option>
+                    <option value="90">⚖️ なるべく (重み:強 90)</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -705,29 +803,61 @@
                 <h3>🎓 4. スキル・属性配置 ＆ ペア・週末・希望休ルール</h3>
               </div>
               <p class="constraint-card-desc">
-                スキル・属性ごとの日別下限・上限人数の適用有無、プリセプター同行、相性NGペア、週末公休、確定希望休の全体ルールです。（各スキル・役割・班の下限・上限人数は下の「5. スキル・属性定義」で一括設定できます）
+                プリセプター同行、相性NGペア、週末公休、確定希望休の全体ルールです。
               </p>
               <div class="constraint-toggles-list">
                 <label class="checkbox-row highlight-row">
                   <input type="checkbox" id="cfg-enforceSkillCoverage" checked />
-                  <span><strong>各シフトのスキル・属性別 配置人数ルール（下限・上限）を有効にする</strong></span>
+                  <span><strong>各シフトの人員配置ルール（Card 1）を有効にする</strong></span>
                 </label>
-                <label class="checkbox-row highlight-row">
-                  <input type="checkbox" id="cfg-enforcePreceptorPairs" />
-                  <span><strong>プリセプター同行夜勤</strong>（新人の準夜・深夜時に指導ペアの先輩も同シフト配置）</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-enforceNgPairs" checked />
-                  <span>相性NGペアの同一夜勤（準夜・深夜）同時配置を禁止</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-enforceWeekendOff" checked />
-                  <span>週末休みの確保（月間で土日の公休を確保）</span>
-                </label>
-                <label class="checkbox-row">
-                  <input type="checkbox" id="cfg-enforceHardRequests" checked />
-                  <span>スタッフの確定希望休を厳守する</span>
-                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0;">
+                  <label class="checkbox-row highlight-row" style="margin: 0; flex: 1;">
+                    <input type="checkbox" id="cfg-enforcePreceptorPairs" />
+                    <span><strong>プリセプター同行夜勤</strong>（新人の夜勤時に先輩も同シフト配置）</span>
+                  </label>
+                  <select id="sel-weight-enforcePreceptorPairs" class="toolbar-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40" selected>⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0;">
+                  <label class="checkbox-row" style="margin: 0; flex: 1;">
+                    <input type="checkbox" id="cfg-enforceNgPairs" checked />
+                    <span>相性NGペアの同一夜勤（準夜・深夜）同時配置を禁止</span>
+                  </label>
+                  <select id="sel-weight-enforceNgPairs" class="toolbar-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40">⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0;">
+                  <label class="checkbox-row" style="margin: 0; flex: 1;">
+                    <input type="checkbox" id="cfg-enforceWeekendOff" checked />
+                    <span>週末休みの確保（月間で土日の公休を確保）</span>
+                  </label>
+                  <select id="sel-weight-requireWeekendOff" class="toolbar-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40">⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 0;">
+                  <label class="checkbox-row" style="margin: 0; flex: 1;">
+                    <input type="checkbox" id="cfg-enforceHardRequests" checked />
+                    <span>スタッフの確定希望休を厳守する</span>
+                  </label>
+                  <select id="sel-weight-enforceHardRequests" class="toolbar-select" style="height: 28px; font-size: 0.78rem;">
+                    <option value="0">🔒 必須</option>
+                    <option value="15">⚖️ 弱(15)</option>
+                    <option value="40">⚖️ 中(40)</option>
+                    <option value="90">⚖️ 強(90)</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -856,54 +986,6 @@
                 ＋ カスタムシフト追加
               </button>
             </div>
-
-            <!-- Skill / Attribute Staffing Rule for Custom Shifts & Sub-Shifts -->
-            <div
-              class="skill-add-bar"
-              style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-top: 0.65rem; padding-top: 0.65rem; border-top: 1px dashed var(--border-subtle);"
-            >
-              <label class="form-field" style="flex: 1 1 150px;">
-                <span>対象シフト（カスタムシフト可）</span>
-                <select id="select-staffing-shift" class="toolbar-select" style="height: 32px;"></select>
-              </label>
-              <label class="form-field" style="flex: 1 1 150px;">
-                <span>対象スキル・属性</span>
-                <select id="select-staffing-attr" class="toolbar-select" style="height: 32px;"></select>
-              </label>
-              <label class="form-field" style="width: 78px;">
-                <span>最低人数</span>
-                <input type="number" id="input-staffing-min" min="0" max="15" placeholder="例: 1" />
-              </label>
-              <label class="form-field" style="width: 78px;">
-                <span>上限人数</span>
-                <input type="number" id="input-staffing-max" min="0" max="15" placeholder="任意" />
-              </label>
-              <label class="form-field" style="width: 145px;">
-                <span>制約種別・重み</span>
-                <select id="select-staffing-hardness" class="toolbar-select" style="height: 32px;">
-                  <option value="hard">🔒 必須 (ハード)</option>
-                  <option value="soft:15">⚖️ なるべく (重み:15)</option>
-                  <option value="soft:40">⚖️ なるべく (重み:40)</option>
-                  <option value="soft:90">⚖️ なるべく (重み:90)</option>
-                </select>
-              </label>
-              <button type="button" id="btn-add-staffing-rule" class="btn-solve-primary" style="height: 32px;">
-                ＋ シフト別スキル人数ルール追加
-              </button>
-            </div>
-          </div>
-
-          <!-- Card 7: Unified Hard / Soft & Weight Configuration for Basic Ward Rules -->
-          <div class="custom-rules-card" style="margin-top: 1rem;">
-            <div class="custom-rules-header">
-              <div>
-                <h3>⚖️ 7. 病棟基本ルールのハード制約 ／ ソフト制約（重み）切り替え</h3>
-                <p class="constraint-card-desc">
-                  各ルールを「🔒 必須（ハード制約：違反すると解なし）」にするか、「⚖️ なるべく遵守（ソフト制約：どうしても満たせない場合はペナルティ重みに応じて緩和）」にするかを設定できます。
-                </p>
-              </div>
-            </div>
-            <div id="soft-rule-weights-list" class="constraint-form-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.5rem;"></div>
           </div>
 
           <!-- Optional Collapsible Developer Inspector -->
@@ -926,89 +1008,7 @@
           </details>
         </div>
 
-        <!-- ==================== TAB 3: 30 STAFF PROFILES & COMPATIBILITY ==================== -->
 
-        <!-- ==================== TAB 3: 1-MONTH SHIFT MATRIX ==================== -->
-        <div
-          id="tab-panel-schedule"
-          role="tabpanel"
-          aria-labelledby="tab-btn-schedule"
-          class="results-tab-panel"
-          hidden
-        >
-          <div class="schedule-controls-bar">
-            <div class="schedule-legend" id="schedule-legend">
-              <span class="legend-item"><span class="shift-badge shift-D">日</span> 日勤</span>
-              <span class="legend-item"><span class="shift-badge shift-E">準</span> 準夜勤</span>
-              <span class="legend-item"><span class="shift-badge shift-N">深</span> 深夜勤</span>
-              <span class="legend-item"><span class="shift-badge shift-O">休</span> 公休</span>
-              <span class="legend-divider">|</span>
-              <span class="legend-item"><span class="req-dot req-hard-dot"></span> 確定希望</span>
-              <span class="legend-item"><span class="req-dot req-soft-dot"></span> 希望</span>
-              <span class="legend-item"><span class="pin-sample-box"></span> 固定中</span>
-            </div>
-
-            <div class="schedule-filters">
-              <label
-                class="prev-days-toggle"
-                title="ONのとき、再最適化時に現在のシフト表からの変更マス数を最小化します（OFFにするとゼロベースで全体を再作成します）"
-              >
-                <input type="checkbox" id="chk-preserve-schedule" checked />
-                <span>🔒 微調整モード(既存シフト維持)</span>
-              </label>
-              <label
-                class="prev-days-toggle"
-                title="前回のシフト表から変更されたマス目をオレンジ枠でハイライト表示します"
-              >
-                <input type="checkbox" id="chk-highlight-diff" checked />
-                <span>✨ 変更箇所を表示</span>
-              </label>
-              <label class="prev-days-toggle">
-                <input type="checkbox" id="chk-show-all-prev" />
-                <span>前月7日間をすべて表示</span>
-              </label>
-              <label for="filter-role" class="filter-label">表示:</label>
-              <select id="filter-role" class="toolbar-select">
-                <option value="all">全員 (30名)</option>
-                <option value="leader">★ リーダー層のみ</option>
-                <option value="mid">中堅層のみ</option>
-                <option value="newcomer">🔰 新人のみ</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Empty / Blank Schedule Welcome Banner -->
-          <div id="empty-schedule-state" class="empty-schedule-card" hidden>
-            <div class="empty-state-icon">📋</div>
-            <div class="empty-state-content">
-              <h3 id="empty-state-title">シフトデータがありません（白紙モード）</h3>
-              <p id="empty-state-desc">
-                現在、スタッフ名簿が登録されていません。まずは「✨ サンプル生成」でサンプルデータをセットするか、「📂 CSV読込」でCSVファイルをインポートしてください。
-              </p>
-              <div class="empty-state-actions">
-                <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-                  ✨ サンプルデータを生成 (30名)
-                </button>
-                <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
-                  📂 CSVファイルを読み込む
-                </button>
-                <button type="button" id="btn-empty-samples" class="btn-xs-outline">
-                  📥 サンプルCSVをダウンロード
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="schedule-table-container">
-            <table class="schedule-matrix-table" id="schedule-matrix-table">
-              <thead id="schedule-thead"></thead>
-              <tbody id="schedule-tbody"></tbody>
-              <tfoot id="schedule-tfoot"></tfoot>
-            </table>
-          </div>
-        </div>
-
-        <!-- ==================== TAB 2: CONSTRAINTS & SETTINGS ==================== -->
       </section>
     </main>
 

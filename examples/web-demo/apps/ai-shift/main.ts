@@ -37,6 +37,7 @@ import {
   createBlankNurseSchedulingState,
   createDefaultConfig,
   createDefaultSkillDefs,
+  createDefaultStaffingRules,
   generateNurseSchedulingState,
   getDayOfWeek,
   injectConflictScenario,
@@ -70,9 +71,10 @@ import {
   type GeminiNanoStatus,
 } from "./nano-client";
 
-// Application State - Start in blank slate mode (empty nurses and schedule until generated or CSV-imported)
+// Application State - Start with default 30 nurses and empty schedule until user clicks solve
 let currentSeed = 202611;
-let appState: NurseSchedulingState = createBlankNurseSchedulingState();
+let appState: NurseSchedulingState = generateNurseSchedulingState();
+appState.customRules = createDefaultStaffingRules(30);
 let currentSchedule: MonthlyScheduleMap | null = null;
 let currentEvaluation: ScheduleEvaluationReport | null = null;
 let lastSolveOutcome: WashiSolveOutcome | null = null;
@@ -843,6 +845,7 @@ function renderScheduleMatrix(): void {
     }
 
     // Current Month 30 Days Cells
+    const isScheduleEmpty = currentSchedule === null;
     const rowShifts = currentSchedule?.[nurse.id] ?? [];
     for (let d = 1; d <= numDays; d++) {
       const dow = getDayOfWeek(config.year, config.month, d);
@@ -850,23 +853,44 @@ function renderScheduleMatrix(): void {
       const td = document.createElement("td");
       td.className = `day-col ${dow === 0 || dow === 6 || holidayName ? "day-col-weekend" : ""}`;
 
-      const shift: ShiftCode = rowShifts[d - 1] ?? "O";
-      const shiftMeta = getShiftMeta(shift, customShiftDefs);
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = `shift-cell-btn shift-${shiftMeta.colorKey}`;
-      btn.textContent = shiftMeta.shortLabel;
 
       const key = `${nurse.id}_${d}`;
       const pref = prefMap.get(key);
       const pin = pinMap.get(key);
       const hasViolation = violationCellSet.has(key);
 
-      const tooltipParts: string[] = [
-        `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
-          holidayName ? `・祝日:${holidayName}` : ""
-        }): ${shiftMeta.label}`,
-      ];
+      let tooltipParts: string[];
+
+      if (isScheduleEmpty) {
+        btn.className = "shift-cell-btn shift-cell-empty";
+        btn.textContent = "-";
+        tooltipParts = [
+          `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
+            holidayName ? `・祝日:${holidayName}` : ""
+          }): シフト未作成 (クリックで固定)`,
+        ];
+      } else {
+        const shift: ShiftCode = rowShifts[d - 1] ?? "O";
+        const shiftMeta = getShiftMeta(shift, customShiftDefs);
+        btn.className = `shift-cell-btn shift-${shiftMeta.colorKey}`;
+        btn.textContent = shiftMeta.shortLabel;
+        tooltipParts = [
+          `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
+            holidayName ? `・祝日:${holidayName}` : ""
+          }): ${shiftMeta.label}`,
+        ];
+
+        const diffEntry = diffCellMap.get(key);
+        if (diffEntry) {
+          btn.classList.add("cell-diff-changed");
+          const prevMeta = getShiftMeta(diffEntry.prevShift, customShiftDefs);
+          tooltipParts.push(
+            `🔄 前回から変更: ${prevMeta.label}(${prevMeta.shortLabel}) ➔ ${shiftMeta.label}(${shiftMeta.shortLabel})`
+          );
+        }
+      }
 
       if (pref) {
         const prefMeta = getShiftMeta(pref.shift, customShiftDefs);
@@ -881,15 +905,6 @@ function renderScheduleMatrix(): void {
       if (pin) {
         btn.classList.add("cell-pinned-outline");
         tooltipParts.push(`📌 ${pin.description}`);
-      }
-
-      const diffEntry = diffCellMap.get(key);
-      if (diffEntry) {
-        btn.classList.add("cell-diff-changed");
-        const prevMeta = getShiftMeta(diffEntry.prevShift, customShiftDefs);
-        tooltipParts.push(
-          `🔄 前回から変更: ${prevMeta.label}(${prevMeta.shortLabel}) ➔ ${shiftMeta.label}(${shiftMeta.shortLabel})`
-        );
       }
 
       if (hasViolation) {
@@ -907,47 +922,67 @@ function renderScheduleMatrix(): void {
     }
 
     // 4 summary columns: 夜勤 (E+N), 公休 (O), 連勤, 36協定(年間累計)
-    const summary = currentEvaluation?.nurseSummaries[nurse.id];
-    const counts = summary?.counts ?? { D: 0, E: 0, N: 0, O: 0 };
-    const nightTotal = summary?.totalNightShifts ?? ((counts.E ?? 0) + (counts.N ?? 0));
-    const offTotal = summary?.totalOffDays ?? (counts.O ?? 0);
-    const maxStreak = summary?.maxConsecutiveWork ?? 0;
+    if (isScheduleEmpty) {
+      const tdNight = document.createElement("td");
+      tdNight.className = "stat-col";
+      tdNight.textContent = "--";
 
-    const tdNight = document.createElement("td");
-    tdNight.className = "stat-col";
-    tdNight.textContent = `${nightTotal}回`;
-    const effectiveMaxNight = nurse.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
-    if (nightTotal > effectiveMaxNight) tdNight.classList.add("cov-short");
+      const tdOff = document.createElement("td");
+      tdOff.className = "stat-col";
+      tdOff.textContent = "--";
 
-    const tdOff = document.createElement("td");
-    tdOff.className = "stat-col";
-    tdOff.textContent = `${offTotal}日`;
-    const effectiveMinOff = nurse.minMonthlyDaysOff ?? config.minMonthlyDaysOff;
-    if (offTotal < effectiveMinOff) tdOff.classList.add("cov-short");
+      const tdStreak = document.createElement("td");
+      tdStreak.className = "stat-col";
+      tdStreak.textContent = "--";
 
-    const tdStreak = document.createElement("td");
-    tdStreak.className = "stat-col";
-    tdStreak.textContent = `${maxStreak}連`;
-    const effectiveMaxConsec = nurse.maxConsecutiveWorkDays ?? config.maxConsecutiveWorkDays;
-    if (maxStreak > effectiveMaxConsec) tdStreak.classList.add("cov-short");
+      const td36 = document.createElement("td");
+      td36.className = "stat-col";
+      td36.textContent = "--";
 
-    const td36 = document.createElement("td");
-    td36.className = "stat-col";
-    const projAnnual =
-      summary?.projectedAnnualOvertimeHours ?? nurse.yearly36Stats.prev11MonthsOvertimeHours;
-    const monthOt = summary?.estMonthOvertimeHours ?? 0;
-    td36.textContent = `${Math.round(projAnnual)}h`;
-    td36.title = `直近11ヶ月累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h + 当月見込: ${monthOt}h = 年間計 ${projAnnual}h (上限 ${config.maxAnnualOvertimeHours}h)`;
-    if (
-      config.enforce36Agreement &&
-      (projAnnual > config.maxAnnualOvertimeHours || monthOt > config.maxMonthlyOvertimeHours)
-    ) {
-      td36.classList.add("cov-short");
-    } else if (summary?.is36Warning) {
-      td36.classList.add("stat-36-warn");
+      tr.append(tdNight, tdOff, tdStreak, td36);
+    } else {
+      const summary = currentEvaluation?.nurseSummaries[nurse.id];
+      const counts = summary?.counts ?? { D: 0, E: 0, N: 0, O: 0 };
+      const nightTotal = summary?.totalNightShifts ?? ((counts.E ?? 0) + (counts.N ?? 0));
+      const offTotal = summary?.totalOffDays ?? (counts.O ?? 0);
+      const maxStreak = summary?.maxConsecutiveWork ?? 0;
+
+      const tdNight = document.createElement("td");
+      tdNight.className = "stat-col";
+      tdNight.textContent = `${nightTotal}回`;
+      const effectiveMaxNight = nurse.maxMonthlyNightShifts ?? config.maxMonthlyNightShifts;
+      if (nightTotal > effectiveMaxNight) tdNight.classList.add("cov-short");
+
+      const tdOff = document.createElement("td");
+      tdOff.className = "stat-col";
+      tdOff.textContent = `${offTotal}日`;
+      const effectiveMinOff = nurse.minMonthlyDaysOff ?? config.minMonthlyDaysOff;
+      if (offTotal < effectiveMinOff) tdOff.classList.add("cov-short");
+
+      const tdStreak = document.createElement("td");
+      tdStreak.className = "stat-col";
+      tdStreak.textContent = `${maxStreak}連`;
+      const effectiveMaxConsec = nurse.maxConsecutiveWorkDays ?? config.maxConsecutiveWorkDays;
+      if (maxStreak > effectiveMaxConsec) tdStreak.classList.add("cov-short");
+
+      const td36 = document.createElement("td");
+      td36.className = "stat-col";
+      const projAnnual =
+        summary?.projectedAnnualOvertimeHours ?? nurse.yearly36Stats.prev11MonthsOvertimeHours;
+      const monthOt = summary?.estMonthOvertimeHours ?? 0;
+      td36.textContent = `${Math.round(projAnnual)}h`;
+      td36.title = `直近11ヶ月累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h + 当月見込: ${monthOt}h = 年間計 ${projAnnual}h (上限 ${config.maxAnnualOvertimeHours}h)`;
+      if (
+        config.enforce36Agreement &&
+        (projAnnual > config.maxAnnualOvertimeHours || monthOt > config.maxMonthlyOvertimeHours)
+      ) {
+        td36.classList.add("cov-short");
+      } else if (summary?.is36Warning) {
+        td36.classList.add("stat-36-warn");
+      }
+
+      tr.append(tdNight, tdOff, tdStreak, td36);
     }
-
-    tr.append(tdNight, tdOff, tdStreak, td36);
     tbody.appendChild(tr);
   }
 
@@ -961,7 +996,7 @@ function renderScheduleMatrix(): void {
       label: "☀️ 日勤計 (必要:平日" + config.weekdayDayStaff + "/土日" + config.weekendDayStaff + ")",
       renderDay: (idx) => {
         const ds = dailySummaries[idx];
-        if (!ds) return { text: "-", ok: true, title: "" };
+        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "シフト未作成" };
         return {
           text: String(ds.counts.D),
           ok: ds.counts.D >= ds.required.D,
@@ -973,7 +1008,7 @@ function renderScheduleMatrix(): void {
       label: `🌆 準夜勤 (必要:${config.eveningStaff}名)`,
       renderDay: (idx) => {
         const ds = dailySummaries[idx];
-        if (!ds) return { text: "-", ok: true, title: "" };
+        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "シフト未作成" };
         return {
           text: String(ds.counts.E),
           ok: ds.counts.E >= ds.required.E,
@@ -985,7 +1020,7 @@ function renderScheduleMatrix(): void {
       label: `🌙 深夜勤 (必要:${config.nightStaff}名)`,
       renderDay: (idx) => {
         const ds = dailySummaries[idx];
-        if (!ds) return { text: "-", ok: true, title: "" };
+        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "シフト未作成" };
         return {
           text: String(ds.counts.N),
           ok: ds.counts.N >= ds.required.N,
@@ -1026,35 +1061,62 @@ function renderScheduleMatrix(): void {
 }
 
 // ==================== TAB 2: CONSTRAINTS & CUSTOM RULES UI ====================
+function syncWeightSelect(id: string, key: string): void {
+  const sel = document.getElementById(id) as HTMLSelectElement | null;
+  if (!sel) return;
+  const w = appState.config.softRuleWeights?.[key] ?? 0;
+  sel.value = String(w);
+}
+
 function syncConfigInputsFromState(): void {
   const c = appState.config;
-  ($("cfg-weekdayDayStaff") as HTMLInputElement).value = String(c.weekdayDayStaff);
-  ($("cfg-weekendDayStaff") as HTMLInputElement).value = String(c.weekendDayStaff);
-  ($("cfg-eveningStaff") as HTMLInputElement).value = String(c.eveningStaff);
-  ($("cfg-nightStaff") as HTMLInputElement).value = String(c.nightStaff);
+  const setVal = (id: string, val: string | number) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.value = String(val);
+  };
+  const setChecked = (id: string, val: boolean) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) el.checked = val;
+  };
 
-  ($("cfg-enforceSkillCoverage") as HTMLInputElement).checked = c.enforceSkillCoverage;
-  ($("cfg-enforcePreceptorPairs") as HTMLInputElement).checked = Boolean(c.enforcePreceptorPairs);
+  setVal("cfg-weekdayDayStaff", c.weekdayDayStaff);
+  setVal("cfg-weekendDayStaff", c.weekendDayStaff);
+  setVal("cfg-eveningStaff", c.eveningStaff);
+  setVal("cfg-nightStaff", c.nightStaff);
 
-  ($("cfg-enforcePrevMonthCarryover") as HTMLInputElement).checked = c.enforcePrevMonthCarryover;
+  setChecked("cfg-enforceSkillCoverage", c.enforceSkillCoverage);
+  setChecked("cfg-enforcePreceptorPairs", Boolean(c.enforcePreceptorPairs));
+  setChecked("cfg-enforcePrevMonthCarryover", c.enforcePrevMonthCarryover);
+  setChecked("cfg-enforce36Agreement", c.enforce36Agreement);
+  setChecked("cfg-enforceWeekendOff", c.requireWeekendOff);
+  setChecked("cfg-enforceNgPairs", c.enforceNgPairs);
+  setChecked("cfg-enforceHardRequests", c.enforceHardRequests);
 
-  ($("cfg-maxConsecutiveWorkDays") as HTMLInputElement).value = String(c.maxConsecutiveWorkDays);
-  ($("cfg-minMonthlyDaysOff") as HTMLInputElement).value = String(c.minMonthlyDaysOff);
-  ($("cfg-minMonthlyWorkDays") as HTMLInputElement).value = String(c.minMonthlyWorkDays);
-  ($("cfg-maxMonthlyNightShifts") as HTMLInputElement).value = String(c.maxMonthlyNightShifts);
-  ($("cfg-enforce36Agreement") as HTMLInputElement).checked = c.enforce36Agreement;
-  ($("cfg-maxMonthlyOvertimeHours") as HTMLInputElement).value = String(c.maxMonthlyOvertimeHours);
-  ($("cfg-maxAnnualOvertimeHours") as HTMLInputElement).value = String(c.maxAnnualOvertimeHours);
+  setVal("cfg-maxConsecutiveWorkDays", c.maxConsecutiveWorkDays);
+  setVal("cfg-minMonthlyDaysOff", c.minMonthlyDaysOff);
+  setVal("cfg-minMonthlyWorkDays", c.minMonthlyWorkDays);
+  setVal("cfg-maxMonthlyNightShifts", c.maxMonthlyNightShifts);
+  setVal("cfg-maxMonthlyOvertimeHours", c.maxMonthlyOvertimeHours);
+  setVal("cfg-maxAnnualOvertimeHours", c.maxAnnualOvertimeHours);
 
-  ($("cfg-enforceWeekendOff") as HTMLInputElement).checked = c.requireWeekendOff;
-  ($("cfg-enforceNgPairs") as HTMLInputElement).checked = c.enforceNgPairs;
-  ($("cfg-enforceHardRequests") as HTMLInputElement).checked = c.enforceHardRequests;
+  syncWeightSelect("sel-weight-enforce36Agreement", "enforce36Agreement");
+  syncWeightSelect("sel-weight-consecutive", "consecutive");
+  syncWeightSelect("sel-weight-monthlyDaysOff", "monthlyDaysOff");
+  syncWeightSelect("sel-weight-monthlyNightCap", "monthlyNightCap");
+  syncWeightSelect("sel-weight-enforcePrevMonthCarryover", "enforcePrevMonthCarryover");
+  syncWeightSelect("sel-weight-enforcePreceptorPairs", "enforcePreceptorPairs");
+  syncWeightSelect("sel-weight-enforceNgPairs", "enforceNgPairs");
+  syncWeightSelect("sel-weight-requireWeekendOff", "requireWeekendOff");
+  syncWeightSelect("sel-weight-enforceHardRequests", "enforceHardRequests");
+
   const preserveEl = document.getElementById("chk-preserve-schedule") as HTMLInputElement | null;
   if (preserveEl) {
     preserveEl.checked = c.preserveCurrentSchedule !== false;
   }
 
   renderShiftTransitionMatrix();
+  renderStaffingRulesList();
+  populateBuilderOptions();
   renderCustomRulesList();
   renderSkillDefsList();
   renderShiftAliasesList();
@@ -1152,178 +1214,257 @@ function formatCustomShiftBaseAndAliases(cs: CustomShiftDef): string {
   return `${baseText} / ${aliasText}`;
 }
 
-function renderSoftRuleWeightsList(): void {
-  const listEl = document.getElementById("soft-rule-weights-list");
+function renderStaffingRulesList(): void {
+  const listEl = document.getElementById("staffing-rules-list");
   if (!listEl) return;
   listEl.replaceChildren();
 
-  const items: Array<{ key: string; label: string }> = [
-    { key: "consecutive", label: "最大連勤日数上限" },
-    { key: "monthlyDaysOff", label: "月間最低公休日数" },
-    { key: "monthlyNightCap", label: "月間夜勤(準+深)上限" },
-    { key: "enforcePreceptorPairs", label: "プリセプター同行夜勤" },
-    { key: "enforceNgPairs", label: "相性NGペアの同シフト回避" },
-    { key: "requireWeekendOff", label: "週末(土日)最低2日公休" },
-    { key: "enforceHardRequests", label: "確定希望休の遵守" },
-    { key: "enforce36Agreement", label: "36協定 時間外労働上限" },
-  ];
-
-  // Dynamically add active shift transitions from shiftTransitions matrix
-  const transMatrix = getShiftTransitionMatrix(appState.config);
-  const shiftShortJa: Record<string, string> = { D: "日", E: "準", N: "深", O: "休" };
-  for (const fromShift of ["D", "E", "N"] as const) {
-    const rowPolicies = transMatrix[fromShift];
-    const reqTarget = (["D", "E", "N", "O"] as const).find(
-      (t) => rowPolicies[t] === "require"
-    );
-    if (reqTarget) {
-      items.push({
-        key: `trans_${fromShift}_${reqTarget}`,
-        label: `遷移必須 (${shiftShortJa[fromShift]}→${shiftShortJa[reqTarget]})`,
-      });
-    } else {
-      for (const toShift of ["D", "E", "N", "O"] as const) {
-        if (rowPolicies[toShift] === "forbid") {
-          items.push({
-            key: `trans_${fromShift}_${toShift}`,
-            label: `遷移禁止 (${shiftShortJa[fromShift]}→${shiftShortJa[toShift]})`,
-          });
-        }
-      }
-    }
+  const staffingRules = appState.customRules.filter((r) => r.kind === "staffing_rule");
+  if (staffingRules.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "constraint-card-desc";
+    empty.textContent =
+      "現在、人員配置ルールはありません。下の文章型ルールビルダーから「＋ルールを追加」してください。";
+    listEl.appendChild(empty);
+    return;
   }
 
-  // Dynamically add active skill/attribute coverage definitions from skillDefs
-  for (const sd of appState.skillDefs ?? createDefaultSkillDefs()) {
-    const hasBound =
-      sd.minDay > 0 ||
-      sd.minEvening > 0 ||
-      sd.minNight > 0 ||
-      typeof sd.maxDay === "number" ||
-      typeof sd.maxEvening === "number" ||
-      typeof sd.maxNight === "number";
-    if (hasBound) {
-      items.push({
-        key: `skill_${sd.code}`,
-        label: `配置人数: ${sd.label}`,
-      });
-    }
-  }
+  for (const rule of staffingRules) {
+    const row = document.createElement("div");
+    row.className = "custom-rule-item";
 
-  const weights = appState.config.softRuleWeights ?? {};
+    const label = document.createElement("label");
+    label.className = "checkbox-row";
+    const chk = document.createElement("input");
+    chk.type = "checkbox";
+    chk.checked = rule.enabled;
+    chk.addEventListener("change", () => {
+      rule.enabled = chk.checked;
+      void runWashiOptimization();
+    });
+    const text = document.createElement("span");
+    text.textContent = `🏥 ${rule.description}`;
+    label.append(chk, text);
 
-  for (const item of items) {
-    const field = document.createElement("label");
-    field.className = "form-field";
-    const span = document.createElement("span");
-    span.textContent = item.label;
+    const actionsWrap = document.createElement("div");
+    actionsWrap.style.display = "flex";
+    actionsWrap.style.alignItems = "center";
+    actionsWrap.style.gap = "0.35rem";
 
-    const sel = document.createElement("select");
-    sel.className = "toolbar-select";
-    sel.style.height = "30px";
-    sel.style.fontSize = "0.78rem";
-    const curW = weights[item.key] ?? 0;
-    const options: Array<{ val: string; text: string }> = [
-      { val: "0", text: "🔒 必須 (ハード制約)" },
-      { val: "15", text: "⚖️ なるべく (重み:弱 15)" },
-      { val: "40", text: "⚖️ なるべく (重み:中 40)" },
-      { val: "90", text: "⚖️ なるべく (重み:強 90)" },
+    const hardSelect = document.createElement("select");
+    hardSelect.className = "toolbar-select";
+    hardSelect.style.height = "26px";
+    hardSelect.style.fontSize = "0.74rem";
+    const curHard = rule.isHard !== false;
+    const curW = rule.penaltyWeight ?? 30;
+    const curVal = curHard ? "hard" : `soft:${curW}`;
+    const hOpts = [
+      { val: "hard", label: "🔒 必須(ハード)" },
+      { val: "soft:15", label: "⚖️ 弱(15)" },
+      { val: "soft:30", label: "⚖️ 中(30)" },
+      { val: "soft:60", label: "⚖️ 強(60)" },
     ];
-    for (const opt of options) {
+    for (const o of hOpts) {
+      const opt = document.createElement("option");
+      opt.value = o.val;
+      opt.textContent = o.label;
+      if (o.val === curVal) opt.selected = true;
+      hardSelect.appendChild(opt);
+    }
+    if (!curHard && !hOpts.some((o) => o.val === curVal)) {
+      const customOpt = document.createElement("option");
+      customOpt.value = curVal;
+      customOpt.textContent = `⚖️ 重み:${curW}`;
+      customOpt.selected = true;
+      hardSelect.appendChild(customOpt);
+    }
+    hardSelect.addEventListener("change", () => {
+      const v = hardSelect.value;
+      const isHard = v === "hard";
+      const w = isHard ? undefined : Number(v.split(":")[1]) || 30;
+      rule.isHard = isHard ? undefined : false;
+      rule.penaltyWeight = w;
+      void runWashiOptimization();
+    });
+    actionsWrap.appendChild(hardSelect);
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "btn-xs-outline";
+    delBtn.textContent = "削除";
+    delBtn.addEventListener("click", () => {
+      appState = {
+        ...appState,
+        customRules: appState.customRules.filter((r) => r.id !== rule.id),
+      };
+      renderAllViews();
+      void runWashiOptimization();
+    });
+    actionsWrap.appendChild(delBtn);
+
+    row.append(label, actionsWrap);
+    listEl.appendChild(row);
+  }
+}
+
+function populateBuilderOptions(): void {
+  const shiftSelect = document.getElementById("builder-shift") as HTMLSelectElement | null;
+  const attrSelect = document.getElementById("builder-attribute") as HTMLSelectElement | null;
+  if (shiftSelect) {
+    const curVal = shiftSelect.value || "D";
+    shiftSelect.replaceChildren();
+    const baseOpts = [
+      { val: "D", text: "日勤 (D)" },
+      { val: "E", text: "準夜勤 (E)" },
+      { val: "N", text: "深夜勤 (N)" },
+      { val: "D,E,N", text: "全勤務 (日・準・深)" },
+    ];
+    for (const opt of baseOpts) {
       const o = document.createElement("option");
       o.value = opt.val;
       o.textContent = opt.text;
-      if (Number(opt.val) === curW) o.selected = true;
-      sel.appendChild(o);
+      if (opt.val === curVal) o.selected = true;
+      shiftSelect.appendChild(o);
     }
-    if (curW > 0 && !options.some((o) => Number(o.val) === curW)) {
-      const customOpt = document.createElement("option");
-      customOpt.value = String(curW);
-      customOpt.textContent = `⚖️ なるべく (重み:${curW})`;
-      customOpt.selected = true;
-      sel.appendChild(customOpt);
+    for (const cs of appState.customShiftDefs ?? []) {
+      const o = document.createElement("option");
+      o.value = cs.code;
+      o.textContent = `${cs.label} (${cs.shortLabel})`;
+      if (cs.code === curVal) o.selected = true;
+      shiftSelect.appendChild(o);
     }
+  }
 
-    sel.addEventListener("change", () => {
-      const w = Number(sel.value) || 0;
-      const nextWeights = { ...(appState.config.softRuleWeights ?? {}) };
-      if (w > 0) {
-        nextWeights[item.key] = w;
-      } else {
-        delete nextWeights[item.key];
+  if (attrSelect) {
+    const curVal = attrSelect.value || "all";
+    attrSelect.replaceChildren();
+    const baseAttrs = [
+      { val: "all", text: "全員" },
+      { val: "leader_cap", text: "★ リーダー" },
+      { val: "icu_er", text: "救 救急・ICU" },
+      { val: "newcomer", text: "🔰 新人" },
+      { val: "team_A", text: "🅰️ A班" },
+      { val: "team_B", text: "🅱️ B班" },
+    ];
+    for (const opt of baseAttrs) {
+      const o = document.createElement("option");
+      o.value = opt.val;
+      o.textContent = opt.text;
+      if (opt.val === curVal) o.selected = true;
+      attrSelect.appendChild(o);
+    }
+    for (const s of appState.skillDefs ?? []) {
+      if (!baseAttrs.some((b) => b.val === s.code)) {
+        const o = document.createElement("option");
+        o.value = s.code;
+        o.textContent = s.label;
+        if (s.code === curVal) o.selected = true;
+        attrSelect.appendChild(o);
       }
-      appState = {
-        ...appState,
-        config: {
-          ...appState.config,
-          softRuleWeights: nextWeights,
-        },
-      };
-      void runWashiOptimization();
-    });
-
-    field.append(span, sel);
-    listEl.appendChild(field);
+    }
   }
 }
 
-function populateStaffingRuleSelectors(): void {
-  const shiftSel = document.getElementById("select-staffing-shift") as HTMLSelectElement | null;
-  const attrSel = document.getElementById("select-staffing-attr") as HTMLSelectElement | null;
-  if (shiftSel) {
-    const prevVal = shiftSel.value;
-    shiftSel.replaceChildren();
-    const baseOpts: Array<{ value: string; label: string }> = [
-      { value: "D", label: "日勤 (D)" },
-      { value: "E", label: "準夜勤 (E)" },
-      { value: "N", label: "深夜勤 (N)" },
-      { value: "night_both", label: "夜勤両方 (準夜・深夜)" },
-    ];
-    for (const cs of appState.customShiftDefs ?? []) {
-      baseOpts.unshift({
-        value: cs.code,
-        label: `🏷️ カスタム: ${cs.label} (${cs.shortLabel})`,
-      });
-    }
-    for (const o of baseOpts) {
-      const opt = document.createElement("option");
-      opt.value = o.value;
-      opt.textContent = o.label;
-      if (o.value === prevVal) opt.selected = true;
-      shiftSel.appendChild(opt);
-    }
+function handleAddSentenceRule(): void {
+  const shiftSelect = document.getElementById("builder-shift") as HTMLSelectElement | null;
+  const dayTypeSelect = document.getElementById("builder-day-type") as HTMLSelectElement | null;
+  const attrSelect = document.getElementById("builder-attribute") as HTMLSelectElement | null;
+  const minInput = document.getElementById("builder-min-count") as HTMLInputElement | null;
+  const maxInput = document.getElementById("builder-max-count") as HTMLInputElement | null;
+  const hardnessSelect = document.getElementById("builder-hardness") as HTMLSelectElement | null;
+
+  if (!shiftSelect || !dayTypeSelect || !attrSelect) return;
+
+  const rawShift = shiftSelect.value;
+  const shifts: ShiftCode[] = rawShift.includes(",")
+    ? (rawShift.split(",") as ShiftCode[])
+    : [rawShift as ShiftCode];
+
+  const dayType = dayTypeSelect.value;
+  const attribute = attrSelect.value;
+  const minCount = minInput?.value !== "" && minInput?.value !== undefined ? Number(minInput.value) : undefined;
+  const maxCount = maxInput?.value !== "" && maxInput?.value !== undefined ? Number(maxInput.value) : undefined;
+
+  if (minCount === undefined && maxCount === undefined) {
+    alert("最低人数または上限人数のいずれかを指定してください。");
+    return;
   }
-  if (attrSel) {
-    const prevAttr = attrSel.value;
-    attrSel.replaceChildren();
-    const activeSkills = appState.skillDefs ?? createDefaultSkillDefs();
-    const attrOpts: Array<{ value: string; label: string }> = [
-      ...activeSkills.map((sk) => {
-        const catPrefix =
-          sk.category === "role" ? "👤 役割" : sk.category === "group" ? "👥 班" : "🎖️ スキル";
-        return {
-          value: sk.code,
-          label: `${catPrefix}: ${sk.label} (${sk.shortLabel})`,
-        };
-      }),
-      {
-        value: ALL_STAFF_ATTRIBUTE_DEF.code,
-        label: `属性: ${ALL_STAFF_ATTRIBUTE_DEF.label} (${ALL_STAFF_ATTRIBUTE_DEF.shortLabel})`,
-      },
-    ];
-    for (const o of attrOpts) {
-      const opt = document.createElement("option");
-      opt.value = o.value;
-      opt.textContent = o.label;
-      if (o.value === prevAttr) opt.selected = true;
-      attrSel.appendChild(opt);
-    }
-  }
+
+  const hardnessVal = hardnessSelect?.value ?? "hard";
+  const isHard = hardnessVal === "hard";
+  const penaltyWeight = isHard ? undefined : Number(hardnessVal.split(":")[1]) || 30;
+
+  const shiftLabel =
+    rawShift === "D"
+      ? "日勤"
+      : rawShift === "E"
+        ? "準夜勤"
+        : rawShift === "N"
+          ? "深夜勤"
+          : "全勤務";
+
+  const dayTypeLabel =
+    dayType === "all"
+      ? "毎日"
+      : dayType === "weekday"
+        ? "平日"
+        : dayType === "weekend"
+          ? "土日"
+          : dayType === "holiday"
+            ? "祝日"
+            : dayType === "weekend_holiday"
+              ? "土日祝"
+              : dayType.startsWith("dow:")
+                ? `${WEEKDAY_NAMES_JA[Number(dayType.split(":")[1])]}曜日`
+                : dayType;
+
+  const attrLabel =
+    attribute === "all"
+      ? "全員"
+      : attribute === "leader_cap"
+        ? "リーダー"
+        : attribute === "icu_er"
+          ? "救急・ICU"
+          : attribute === "newcomer"
+            ? "新人"
+            : attribute === "team_A"
+              ? "A班"
+              : attribute === "team_B"
+                ? "B班"
+                : attribute;
+
+  const boundsText =
+    minCount !== undefined && maxCount !== undefined
+      ? `${minCount}人以上${maxCount}人以下`
+      : minCount !== undefined
+        ? `${minCount}人以上`
+        : `${maxCount}人以下`;
+
+  const hardnessText = isHard ? "必須" : `なるべく(重み${penaltyWeight})`;
+
+  const newRule: CustomConstraintRule = {
+    id: `staffing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    kind: "staffing_rule",
+    enabled: true,
+    isHard: isHard ? undefined : false,
+    penaltyWeight,
+    dayType,
+    shifts,
+    attribute,
+    minCount,
+    maxCount,
+    description: `「${shiftLabel}」は「${dayTypeLabel}」に「${attrLabel}」が「${boundsText}」 (${hardnessText})`,
+  };
+
+  appState = {
+    ...appState,
+    customRules: [...appState.customRules, newRule],
+  };
+  renderAllViews();
+  void runWashiOptimization();
 }
 
 function renderShiftAliasesList(): void {
-  populateStaffingRuleSelectors();
-  renderSoftRuleWeightsList();
   const listEl = document.getElementById("shift-aliases-list");
   if (!listEl) return;
   listEl.replaceChildren();
@@ -1475,28 +1616,53 @@ function readNumInput(id: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function readWeightSelect(id: string, key: string, targetWeights: Record<string, number>): void {
+  const sel = document.getElementById(id) as HTMLSelectElement | null;
+  if (!sel) return;
+  const w = Number(sel.value) || 0;
+  if (w > 0) targetWeights[key] = w;
+  else delete targetWeights[key];
+}
+
 function readConfigInputsToState(): void {
   const preserveEl = document.getElementById("chk-preserve-schedule") as HTMLInputElement | null;
+  const isChecked = (id: string, fallback = false): boolean => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    return el ? el.checked : fallback;
+  };
+
+  const nextWeights: Record<string, number> = { ...(appState.config.softRuleWeights ?? {}) };
+  readWeightSelect("sel-weight-enforce36Agreement", "enforce36Agreement", nextWeights);
+  readWeightSelect("sel-weight-consecutive", "consecutive", nextWeights);
+  readWeightSelect("sel-weight-monthlyDaysOff", "monthlyDaysOff", nextWeights);
+  readWeightSelect("sel-weight-monthlyNightCap", "monthlyNightCap", nextWeights);
+  readWeightSelect("sel-weight-enforcePrevMonthCarryover", "enforcePrevMonthCarryover", nextWeights);
+  readWeightSelect("sel-weight-enforcePreceptorPairs", "enforcePreceptorPairs", nextWeights);
+  readWeightSelect("sel-weight-enforceNgPairs", "enforceNgPairs", nextWeights);
+  readWeightSelect("sel-weight-requireWeekendOff", "requireWeekendOff", nextWeights);
+  readWeightSelect("sel-weight-enforceHardRequests", "enforceHardRequests", nextWeights);
+
   const c: NurseScheduleConfig = {
     ...appState.config,
     preserveCurrentSchedule: preserveEl ? preserveEl.checked : appState.config.preserveCurrentSchedule !== false,
-    weekdayDayStaff: readNumInput("cfg-weekdayDayStaff", 10),
-    weekendDayStaff: readNumInput("cfg-weekendDayStaff", 7),
-    eveningStaff: readNumInput("cfg-eveningStaff", 3),
-    nightStaff: readNumInput("cfg-nightStaff", 3),
-    enforceSkillCoverage: ($("cfg-enforceSkillCoverage") as HTMLInputElement).checked,
-    enforcePreceptorPairs: ($("cfg-enforcePreceptorPairs") as HTMLInputElement).checked,
-    enforcePrevMonthCarryover: ($("cfg-enforcePrevMonthCarryover") as HTMLInputElement).checked,
+    weekdayDayStaff: readNumInput("cfg-weekdayDayStaff", appState.config.weekdayDayStaff ?? 10),
+    weekendDayStaff: readNumInput("cfg-weekendDayStaff", appState.config.weekendDayStaff ?? 7),
+    eveningStaff: readNumInput("cfg-eveningStaff", appState.config.eveningStaff ?? 3),
+    nightStaff: readNumInput("cfg-nightStaff", appState.config.nightStaff ?? 3),
+    enforceSkillCoverage: isChecked("cfg-enforceSkillCoverage", true),
+    enforcePreceptorPairs: isChecked("cfg-enforcePreceptorPairs", false),
+    enforcePrevMonthCarryover: isChecked("cfg-enforcePrevMonthCarryover", true),
     maxConsecutiveWorkDays: readNumInput("cfg-maxConsecutiveWorkDays", 5),
     minMonthlyDaysOff: readNumInput("cfg-minMonthlyDaysOff", 9),
     minMonthlyWorkDays: readNumInput("cfg-minMonthlyWorkDays", 14),
     maxMonthlyNightShifts: readNumInput("cfg-maxMonthlyNightShifts", 8),
-    enforce36Agreement: ($("cfg-enforce36Agreement") as HTMLInputElement).checked,
+    enforce36Agreement: isChecked("cfg-enforce36Agreement", true),
     maxMonthlyOvertimeHours: readNumInput("cfg-maxMonthlyOvertimeHours", 45),
     maxAnnualOvertimeHours: readNumInput("cfg-maxAnnualOvertimeHours", 360),
-    requireWeekendOff: ($("cfg-enforceWeekendOff") as HTMLInputElement).checked,
-    enforceNgPairs: ($("cfg-enforceNgPairs") as HTMLInputElement).checked,
-    enforceHardRequests: ($("cfg-enforceHardRequests") as HTMLInputElement).checked,
+    requireWeekendOff: isChecked("cfg-enforceWeekendOff", true),
+    enforceNgPairs: isChecked("cfg-enforceNgPairs", true),
+    enforceHardRequests: isChecked("cfg-enforceHardRequests", true),
+    softRuleWeights: nextWeights,
   };
   appState = { ...appState, config: c };
 }
@@ -1635,15 +1801,17 @@ function renderCustomRulesList(): void {
       Boolean(n.weekdayOnly) ||
       Boolean(n.holidaysOff)
   );
+
+  const individualRules = appState.customRules.filter((r) => r.kind !== "staffing_rule");
   if (
-    appState.customRules.length === 0 &&
+    individualRules.length === 0 &&
     customShifts.length === 0 &&
     nursesWithContractOverrides.length === 0
   ) {
     const empty = document.createElement("div");
     empty.className = "constraint-card-desc";
     empty.textContent =
-      "現在、追加された個別固定ルール・カスタムシフトはありません（シフト表のマス目クリックや左のAIチャットで追加できます）。";
+      "現在、追加された個別固定ルールはありません（シフト表のマス目クリックや画面左下のAIチャットで追加できます）。";
     listEl.appendChild(empty);
     return;
   }
@@ -1741,7 +1909,7 @@ function renderCustomRulesList(): void {
   const displayGroups: RuleDisplayGroup[] = [];
   const groupedIndexMap = new Map<string, number>();
 
-  for (const rule of appState.customRules) {
+  for (const rule of individualRules) {
     if (
       (rule.kind === "pin_shift" && rule.nurseId && typeof rule.day === "number" && rule.shift) ||
       (rule.kind === "forbid_shift" && rule.nurseId && typeof rule.day === "number")
@@ -3040,6 +3208,7 @@ function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): vo
     staffCount: normalizedCount,
     seed: currentSeed,
   });
+  appState.customRules = createDefaultStaffingRules(normalizedCount);
   currentSchedule = null;
   currentEvaluation = null;
   lastSolveOutcome = null;
@@ -3146,41 +3315,6 @@ function setupEventListeners(): void {
     }
   });
 
-  // Workflow Next-Step Banners & Conflict Demo Button
-  $("btn-cat-go-constraints")?.addEventListener("click", () => {
-    switchTab("constraints");
-  });
-
-  $("btn-cat-go-schedule")?.addEventListener("click", () => {
-    switchTab("schedule");
-    readConfigInputsToState();
-    void runWashiOptimization();
-  });
-
-  $("btn-constraints-go-schedule")?.addEventListener("click", () => {
-    switchTab("schedule");
-    readConfigInputsToState();
-    void runWashiOptimization();
-  });
-
-  $("btn-test-conflict-scenario")?.addEventListener("click", () => {
-    if (appState.nurses.length === 0) handleGenerateSample(30, true);
-    switchTab("schedule");
-    const scenario = (($("select-conflict-scenario") as HTMLSelectElement | null)?.value ??
-      "carryover_clash") as "leader_shortage" | "carryover_clash" | "overload_day";
-    const { updatedState, descriptionJa } = injectConflictScenario(appState, scenario);
-    appState = updatedState;
-    syncConfigInputsFromState();
-    appendChatMessage({
-      role: "system",
-      senderLabel: "🧪 矛盾診断テスト",
-      initialText:
-        `### 💥 デモ用の矛盾ルールを追加しました\n` +
-        `- ${descriptionJa}\n` +
-        `- 右上の赤いアラートに、**WaSHI (HiGHS)** が特定した衝突原因が表示されています。**「✨ 衝突している追加ルールを解除して解決」** を押すと元の正常なシフトに戻ります。\n`,
-    });
-    void runWashiOptimization();
-  });
 
   // Tabs switching
   const tabBtns = document.querySelectorAll<HTMLButtonElement>(".results-tab-btn");
@@ -3214,6 +3348,9 @@ function setupEventListeners(): void {
 
   // Top action bar buttons
   $("btn-solve-washi").addEventListener("click", () => {
+    if (appState.nurses.length === 0) {
+      handleGenerateSample(30, false);
+    }
     readConfigInputsToState();
     switchTab("schedule");
     void runWashiOptimization();
@@ -3237,6 +3374,7 @@ function setupEventListeners(): void {
   const resetToCleanState = () => {
     currentSchedule = null;
     currentEvaluation = null;
+    lastSolveOutcome = null;
     void nanoManager.resetConversation();
     if (appState.nurses.length === 0) {
       appState = createBlankNurseSchedulingState({
@@ -3245,6 +3383,7 @@ function setupEventListeners(): void {
         numDays: appState.config.numDays,
       });
       renderAllViews();
+      updateSolveStatusBadge("idle");
       return;
     }
     appState = generateNurseSchedulingState({
@@ -3253,28 +3392,45 @@ function setupEventListeners(): void {
       staffCount: appState.nurses.length,
       seed: currentSeed,
     });
+    appState.customRules = createDefaultStaffingRules(appState.nurses.length);
     syncConfigInputsFromState();
-    void runWashiOptimization();
+    renderAllViews();
+    updateSolveStatusBadge("idle");
   };
 
   $("btn-reset-clean")?.addEventListener("click", resetToCleanState);
   $("btn-reset-default-config")?.addEventListener("click", resetToCleanState);
 
-  // Top Action Bar & Empty State CSV / Sample / Clear Actions
-  $("btn-generate-sample")?.addEventListener("click", () => handleGenerateSample(30));
+  // Sentence Rule Builder & Weight Select Listeners
+  $("btn-add-sentence-rule")?.addEventListener("click", handleAddSentenceRule);
+  const weightSelectIds = [
+    "sel-weight-enforce36Agreement",
+    "sel-weight-consecutive",
+    "sel-weight-monthlyDaysOff",
+    "sel-weight-monthlyNightCap",
+    "sel-weight-enforcePrevMonthCarryover",
+    "sel-weight-enforcePreceptorPairs",
+    "sel-weight-enforceNgPairs",
+    "sel-weight-requireWeekendOff",
+    "sel-weight-enforceHardRequests",
+  ];
+  for (const id of weightSelectIds) {
+    document.getElementById(id)?.addEventListener("change", () => {
+      readConfigInputsToState();
+      void runWashiOptimization();
+    });
+  }
+
+  // Top Action Bar & Empty State CSV / Sample Actions
   $("btn-empty-generate")?.addEventListener("click", () => handleGenerateSample(30));
   $("btn-cat-generate-sample")?.addEventListener("click", () => {
     const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
     handleGenerateSample(c);
   });
 
-  $("btn-open-csv-dialog")?.addEventListener("click", openCsvDialog);
   $("btn-empty-csv")?.addEventListener("click", openCsvDialog);
   $("btn-cat-import-csv")?.addEventListener("click", openCsvDialog);
-
   $("btn-export-csvs")?.addEventListener("click", handleExportCsvs);
-  $("btn-clear-blank")?.addEventListener("click", handleClearBlank);
-  $("btn-cat-clear-blank")?.addEventListener("click", handleClearBlank);
 
   // CSV Dialog Events
   $("btn-close-csv-dialog")?.addEventListener("click", () => {
@@ -3491,50 +3647,6 @@ function setupEventListeners(): void {
     void runWashiOptimization();
   });
 
-  const btnAddStaffingRule = document.getElementById("btn-add-staffing-rule");
-  if (btnAddStaffingRule) {
-    btnAddStaffingRule.addEventListener("click", () => {
-      const shiftSel = $("select-staffing-shift") as HTMLSelectElement;
-      const attrSel = $("select-staffing-attr") as HTMLSelectElement;
-      const minIn = $("input-staffing-min") as HTMLInputElement;
-      const maxIn = $("input-staffing-max") as HTMLInputElement;
-      const hardSel = $("select-staffing-hardness") as HTMLSelectElement;
-
-      const targetShift = shiftSel.value || "D";
-      const attribute = attrSel.value || "leader_cap";
-      const minVal = minIn.value.trim() !== "" ? Number(minIn.value) : undefined;
-      const maxVal = maxIn.value.trim() !== "" ? Number(maxIn.value) : undefined;
-      if (minVal === undefined && maxVal === undefined) return;
-
-      const hardVal = hardSel.value || "hard";
-      const isHard = hardVal === "hard";
-      const penaltyWeight = isHard ? undefined : Number(hardVal.split(":")[1]) || 40;
-
-      const { updatedState, appliedLogs } = applyChatOperationsToState(appState, [
-        {
-          op: "set_staffing_rule",
-          targetShift,
-          attribute,
-          minCount: minVal,
-          maxCount: maxVal,
-          isHard: isHard ? undefined : false,
-          penaltyWeight,
-        },
-      ]);
-      appState = updatedState;
-      minIn.value = "";
-      maxIn.value = "";
-      renderAllViews();
-      if (appliedLogs.length > 0) {
-        appendChatMessage({
-          role: "system",
-          senderLabel: "🎖️ シフト別スキル人数ルール追加",
-          initialText: appliedLogs.map((l) => `- ${l}`).join("\n"),
-        });
-      }
-      void runWashiOptimization();
-    });
-  }
 
   // Conflict Alert buttons
   $("btn-clear-custom-conflicts").addEventListener("click", () => {
@@ -3848,18 +3960,17 @@ async function bootstrap(): Promise<void> {
   setupEventListeners();
   syncConfigInputsFromState();
 
-  switchTab("staff");
+  switchTab("schedule");
 
   appendChatMessage({
     role: "assistant",
     senderLabel: "🏥 AI シフト相談",
     initialText:
-      "### 🏥 ナーススケジューリング AI Copilot (白紙モード)\n" +
-      "大学時間割と同様に、**①データ準備 → ②制約調整 → ③シフト自動作成 → ④AI相談・個別調整** の手順で進めます。\n\n" +
-      "1. **データ準備**: まずは「✨ サンプル生成」で標準30名のデータをセットするか、「📂 CSV読込」から名簿を取り込みます。\n" +
-      "2. **制約調整**: 「⚙️ 条件・ルール設定」タブにあらかじめ基本的な人員基準や連勤制限が設定されています。必要に応じて調整できます。\n" +
-      "3. **シフト自動作成**: 「⚡ シフトを自動作成」ボタンを押すと、数理最適化ソルバー（HiGHS）が最適な勤務割を編成します。\n" +
-      "4. **AI相談・調整**: シフト表のマス目クリックやこのチャットで、個別希望の追加や微調整ができます。",
+      "### 🏥 ナーススケジューリング AI Copilot へようこそ\n" +
+      "1ヶ月分の病棟シフト表を数理最適化（WaSHI / HiGHS）で瞬時に自動作成・調整できます。\n\n" +
+      "1. **シフト自動作成**: 上部の **「⚡ シフトを自動作成」** をクリックすると、30名の最適シフトが一括編成されます。\n" +
+      "2. **個別調整・固定**: 表のマス目を直接クリックするか、このチャットで「鈴木さんの15日を日勤にして」のように指示すると固定できます。\n" +
+      "3. **基礎データ & ルール変更**: 「👥 基礎データ」タブでCSV入出力や名簿管理、「⚙️ 条件・ルール設定」タブで必要人数や36協定・連勤上限などをカスタマイズできます。",
   });
 
   // Check LanguageModel availability and pre-warm session if already available
