@@ -1243,7 +1243,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     cfgRoomEquipHtml:
       "<strong>教室設備・PC演習室要件の厳守</strong>（プログラミング・DS演習はPC演習室必須等）",
     cfgCohortNoOverlapHtml:
-      "<strong>学年別の必修・選択必修カリキュラム重複禁止</strong>（同一学年の必修同士・演習との重複を禁止）",
+      "<strong>学年別の開講科目重複禁止</strong>（同一学年の科目が同じコマに重複配置されるのを禁止）",
     cfgForbidSameDayHtml:
       "<strong>週2コマ科目の同日開講防止</strong>（個別指定がない限り週2コマ科目は別々の曜日に分散配置）",
 
@@ -1674,7 +1674,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     cfgRoomEquipHtml:
       "<strong>Enforce Room Equipment & PC Lab Requirements</strong> (Programming/DS labs require PC rooms)",
     cfgCohortNoOverlapHtml:
-      "<strong>Forbid Cohort Compulsory/Core Overlaps</strong> (Compulsory & core courses for the same year cannot overlap)",
+      "<strong>Forbid Overlap Across All Cohort Courses</strong> (Prevent scheduling multiple courses for the same cohort in the same slot)",
     cfgForbidSameDayHtml:
       "<strong>Spread 2-Session Courses Across Different Days</strong> (Unless overridden by a consecutive/same-day rule)",
 
@@ -2103,7 +2103,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     cfgRoomEquipHtml:
       "<strong>严格遵守教室设备与PC机房要求</strong>（编程实验与数据科学实验必须排在PC机房）",
     cfgCohortNoOverlapHtml:
-      "<strong>禁止同一年级必修/限选课冲突</strong>（同一年级的必修课之间、必修与实验课之间不得重叠）",
+      "<strong>同一年级全部课程禁止同时开讲</strong>（同一年级的必修、选修及实验课程均不得在相同时段冲突）",
     cfgForbidSameDayHtml:
       "<strong>防止周2节课程排在同一天</strong>（除非另有连排/同日规则，否则分散在不同星期）",
 

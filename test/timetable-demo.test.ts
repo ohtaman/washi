@@ -380,6 +380,8 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(diag.conflicts.length).toBeGreaterThan(0);
     for (const lang of ["ja", "en", "zh"] as const) {
       expect(UI_TEXT_I18N[lang].promptChips.length).toBe(8);
+      expect(UI_TEXT_I18N[lang].btnApplyConfigSave.length).toBeGreaterThan(0);
+      expect(UI_TEXT_I18N[lang].cfgCohortNoOverlapHtml.length).toBeGreaterThan(0);
       const formatted = formatConstraintMetaI18n(diag.conflicts[0], updatedState, lang);
       expect(formatted.label.length).toBeGreaterThan(0);
     }
