@@ -8,6 +8,7 @@ import {
   buildNurseWashiModel,
   evaluateNurseSchedule,
   getPrevMonthTailWorkStreak,
+  getRequiredDailyCoverage,
   isStaffingRuleApplicableOnDay,
   solveNurseScheduleWithWashi,
   diagnoseNurseScheduleWithHiGHS,
@@ -3914,5 +3915,57 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const diag = await diagnoseNurseScheduleWithHiGHS(stateWithRule);
     expect(diag.status).toBe("Unsat");
     expect(diag.conflicts.some((c) => c.name.includes("rule_impossible_weekend"))).toBe(true);
+  });
+
+  it("honors enforceSkillCoverage toggle and preserves hard date_coverage beside staffing rules", () => {
+    const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
+    const staffingRule = {
+      id: "rule_staffing_d_12",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "平日日勤は全員で12名",
+      shifts: ["D" as const],
+      attribute: "all",
+      dayType: "weekday" as const,
+      minCount: 12,
+      isHard: true,
+    };
+    const dateCoverageRule = {
+      id: "rule_date_cov_15",
+      kind: "date_coverage" as const,
+      enabled: true,
+      description: "11月2日日勤は18名必要",
+      shift: "D" as const,
+      day: 2,
+      minStaff: 18,
+      isHard: true,
+    };
+
+    const stateWithRules = {
+      ...state,
+      customRules: [staffingRule, dateCoverageRule],
+    };
+
+    // When enforceSkillCoverage is true, staffing rule applies to Day 2 (Monday)
+    const reqWithStaffing = getRequiredDailyCoverage({ ...stateWithRules, customRules: [staffingRule] }, 2);
+    expect(reqWithStaffing.D).toBe(12);
+
+    // When enforceSkillCoverage is false, staffing rule is ignored
+    const reqWithoutStaffing = getRequiredDailyCoverage({
+      ...stateWithRules,
+      config: { ...state.config, enforceSkillCoverage: false },
+      customRules: [staffingRule],
+    }, 2);
+    expect(reqWithoutStaffing.D).toBe(state.config.weekdayDayStaff);
+
+    // When date_coverage is present on Day 2, it overrides both base and staffing rule to 18
+    const reqWithDateCov = getRequiredDailyCoverage(stateWithRules, 2);
+    expect(reqWithDateCov.D).toBe(18);
+
+    // Model building must retain the cov_D_d2 constraint with requirement 18
+    const washiModel = buildNurseWashiModel(stateWithRules, { solver: "highs" });
+    const covMeta = washiModel.constraintMeta.get("cov_D_d2");
+    expect(covMeta).toBeDefined();
+    expect(covMeta?.labelJa).toContain("18名");
   });
 });

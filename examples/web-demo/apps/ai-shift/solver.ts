@@ -236,15 +236,17 @@ export function getRequiredDailyCoverage(
     N: config.nightStaff,
   };
 
-  for (const rule of customRules) {
-    if (rule.attribute && rule.attribute !== "all") continue;
-    if (rule.isHard === false) continue;
-    if (!isStaffingRuleApplicableOnDay(rule, day, config)) continue;
-    if (rule.shifts && typeof rule.minCount === "number") {
-      for (const s of rule.shifts) {
-        if (s === "D") req.D = rule.minCount;
-        else if (s === "E") req.E = rule.minCount;
-        else if (s === "N") req.N = rule.minCount;
+  if (config.enforceSkillCoverage) {
+    for (const rule of customRules) {
+      if (rule.attribute && rule.attribute !== "all") continue;
+      if (rule.isHard === false) continue;
+      if (!isStaffingRuleApplicableOnDay(rule, day, config)) continue;
+      if (rule.shifts && typeof rule.minCount === "number") {
+        for (const s of rule.shifts) {
+          if (s === "D") req.D = rule.minCount;
+          else if (s === "E") req.E = rule.minCount;
+          else if (s === "N") req.N = rule.minCount;
+        }
       }
     }
   }
@@ -977,7 +979,10 @@ export function buildNurseWashiModel(
     const req = getRequiredDailyCoverage(state, d);
 
     for (const s of ["D", "E", "N"] as const) {
-      if (config.enforceSkillCoverage) {
+      const hasDateCoverage = customRules.some(
+        (r) => r.enabled && r.isHard !== false && r.kind === "date_coverage" && r.day === d && r.shift === s
+      );
+      if (config.enforceSkillCoverage && !hasDateCoverage) {
         const hasRule = customRules.some((r) => {
           if (r.attribute && r.attribute !== "all") return false;
           if (!r.shifts?.includes(s)) return false;
@@ -1673,7 +1678,10 @@ export function evaluateNurseSchedule(
     });
 
     for (const s of ["D", "E", "N"] as const) {
-      if (config.enforceSkillCoverage) {
+      const hasDateCoverage = customRules.some(
+        (r) => r.enabled && r.isHard !== false && r.kind === "date_coverage" && r.day === d && r.shift === s
+      );
+      if (config.enforceSkillCoverage && !hasDateCoverage) {
         const hasRule = customRules.some((r) => {
           if (r.attribute && r.attribute !== "all") return false;
           if (!r.shifts?.includes(s)) return false;
