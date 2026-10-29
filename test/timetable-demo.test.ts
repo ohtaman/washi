@@ -75,6 +75,18 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       }
     }
 
+    // Verify student cohort curriculum no-overlap:
+    // No cohort should have more than 1 course session in the same slot (day, period)
+    const cohortSlots: Record<string, Set<string>> = { Y1: new Set(), Y2: new Set(), Y3: new Set(), Y4: new Set() };
+    for (const session of res.timetable!.sessions) {
+      const course = state.courses.find((c) => c.id === session.courseId)!;
+      for (const cohortId of course.cohorts) {
+        const slotKey = `${session.day}_P${session.period}`;
+        expect(cohortSlots[cohortId].has(slotKey)).toBe(false);
+        cohortSlots[cohortId].add(slotKey);
+      }
+    }
+
     // Verify PC lab courses (C05, C06, C12, C19, C20) are strictly assigned to PC labs (R301 or R302)
     for (const cId of ["C05", "C06", "C12", "C19", "C20"]) {
       const assigned = res.timetable!.byCourse[cId];

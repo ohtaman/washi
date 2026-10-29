@@ -967,6 +967,7 @@ export interface TimetableUiStrings {
   customRulesTitle: string;
   customRulesDesc: string;
   customRulesEmpty: string;
+  btnApplyConfigSave: string;
   btnApplyConfigSolve: string;
   btnResetDefaultConfig: string;
   tagHardRule: string;
@@ -1213,7 +1214,8 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     customRulesDesc:
       "時間割ボードのクリックやAIチャット、または下のフォームから追加された個別制約です。チェックボックスでON/OFF、ハード/ソフトの切り替えや削除ができます。",
     customRulesEmpty: "現在、個別に追加されたカスタムルールはありません。",
-    btnApplyConfigSolve: "⚡ 設定変更を反映して再計算",
+    btnApplyConfigSave: "💾 設定を保存",
+    btnApplyConfigSolve: "💾 設定を保存",
     btnResetDefaultConfig: "↩ 初期設定に戻す",
     tagHardRule: "🔒 ハード必須",
     tagSoftRule: "⚖️ ソフト希望",
@@ -1642,7 +1644,8 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     customRulesDesc:
       "Rules added by clicking slots, chatting with AI, or using the builder below. Toggle ON/OFF, switch between Hard/Soft, or delete.",
     customRulesEmpty: "No custom rules are currently added.",
-    btnApplyConfigSolve: "⚡ Apply Settings & Re-Solve",
+    btnApplyConfigSave: "💾 Save Settings",
+    btnApplyConfigSolve: "💾 Save Settings",
     btnResetDefaultConfig: "↩ Restore Defaults",
     tagHardRule: "🔒 Hard Rule",
     tagSoftRule: "⚖️ Soft Pref",
@@ -2071,7 +2074,8 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     customRulesDesc:
       "通过点击课表、AI 对话或下方表单追加的个性化排课约束。可随时勾选启用/停用、切换硬约束/软约束或删除。",
     customRulesEmpty: "当前没有单独追加的自定义规则。",
-    btnApplyConfigSolve: "⚡ 应用设置并重新求解",
+    btnApplyConfigSave: "💾 保存设置",
+    btnApplyConfigSolve: "💾 保存设置",
     btnResetDefaultConfig: "↩ 恢复默认设置",
     tagHardRule: "🔒 硬约束必选",
     tagSoftRule: "⚖️ 软约束偏好",

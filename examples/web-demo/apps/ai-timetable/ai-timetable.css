@@ -305,6 +305,44 @@
 }
 
 /* ==================== MULTI-VIEW TIMETABLE WORKSPACE ==================== */
+.view-mode-selector-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.view-mode-select {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
+  color: var(--text-sumi);
+  cursor: pointer;
+}
+.view-mode-select:focus {
+  outline: none;
+  border-color: var(--accent-washi-primary, #6366f1);
+}
+
+.action-buttons-right .auto-solve-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-sumi-secondary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-surface);
+  user-select: none;
+}
+.action-buttons-right .auto-solve-toggle:hover {
+  background: var(--bg-surface-elevated);
+  color: var(--text-sumi);
+}
+
 .view-mode-switcher {
   display: inline-flex;
   border-radius: 8px;
@@ -326,7 +364,7 @@
 }
 
 .view-mode-btn.active {
-  background: #e11d48;
+  background: var(--accent-washi-primary, #6366f1);
   color: #ffffff;
 }
 
