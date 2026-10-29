@@ -3023,11 +3023,16 @@ function handleExportCsvs(): void {
 }
 
 function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): void {
+  const normalizedCount = Math.max(15, Math.min(36, Math.floor(staffCount) || 30));
+  const countInput = document.getElementById("input-staff-count") as HTMLInputElement | null;
+  if (countInput) {
+    countInput.value = String(normalizedCount);
+  }
   currentSeed += 7;
   appState = generateNurseSchedulingState({
     year: appState.config.year,
     month: appState.config.month,
-    staffCount,
+    staffCount: normalizedCount,
     seed: currentSeed,
   });
   currentSchedule = null;
@@ -3045,7 +3050,7 @@ function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): vo
     role: "assistant",
     senderLabel: "🏥 AI シフト相談",
     initialText:
-      `✨ **${staffCount}名・3交代制の基礎データをセットしました**\n` +
+      `✨ **${normalizedCount}名・3交代制の基礎データをセットしました**\n` +
       `「基礎データ」タブで看護師名簿・スキル・前月末実績・希望シフト・相性ペアを確認できます。\n\n` +
       `**次のステップ**:\n` +
       `1. 「⚙️ 条件・ルール設定」タブで必要出勤人数（日勤/準夜/深夜）・連勤上限・夜勤ルール等を確認・調整\n` +

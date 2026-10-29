@@ -442,4 +442,19 @@ preceptor,N03,N04,"  ",1,指導ペア
 
     expect([...new Set(missing)]).toEqual([]);
   });
+
+  it("clamps out-of-range staffCount when generating nurse scheduling state to avoid infeasible coverage ratios", () => {
+    // Exceeding catalog length (e.g. 100) must clamp to max 36
+    const stateOver = generateNurseSchedulingState({ staffCount: 100 });
+    expect(stateOver.nurses.length).toBe(36);
+    expect(stateOver.config.staffCount).toBe(36);
+    expect(stateOver.config.weekdayDayStaff).toBe(Math.round((36 * 10) / 30)); // 12
+    expect(stateOver.config.eveningStaff).toBe(Math.round((36 * 3) / 30)); // 4
+    expect(stateOver.config.nightStaff).toBe(Math.round((36 * 3) / 30)); // 4
+
+    // Below minimum (e.g. 5) must clamp to min 15
+    const stateUnder = generateNurseSchedulingState({ staffCount: 5 });
+    expect(stateUnder.nurses.length).toBe(15);
+    expect(stateUnder.config.staffCount).toBe(15);
+  });
 });

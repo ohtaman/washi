@@ -391,9 +391,23 @@ function generatePrevMonthTail(
 export function generateNurseSchedulingState(
   configOverrides?: Partial<NurseScheduleConfig>
 ): NurseSchedulingState {
-  const config = createDefaultConfig(configOverrides);
+  const normalizedOverrides = configOverrides
+    ? {
+        ...configOverrides,
+        ...(configOverrides.staffCount !== undefined
+          ? {
+              staffCount: Math.min(
+                Math.max(15, Math.floor(configOverrides.staffCount) || 30),
+                NURSE_CATALOG.length
+              ),
+            }
+          : {}),
+      }
+    : undefined;
+  const config = createDefaultConfig(normalizedOverrides);
   const rand = createPrng(config.seed);
   const count = Math.min(Math.max(15, config.staffCount), NURSE_CATALOG.length);
+  config.staffCount = count;
 
   const nurses: NurseProfile[] = [];
   // Role breakdown for ~30 nurses:
