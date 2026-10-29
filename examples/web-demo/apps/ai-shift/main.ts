@@ -673,6 +673,7 @@ function renderScheduleMatrix(): void {
   }
 
   const { config, nurses, preferences, customRules, customShiftDefs } = appState;
+  const isScheduleEmpty = currentSchedule === null;
   const numDays = config.numDays;
   const totalPrevLen = nurses[0]?.prevMonthShifts.length ?? 7;
   const showAllPrev = ($("chk-show-all-prev") as HTMLInputElement).checked;
@@ -845,7 +846,6 @@ function renderScheduleMatrix(): void {
     }
 
     // Current Month 30 Days Cells
-    const isScheduleEmpty = currentSchedule === null;
     const rowShifts = currentSchedule?.[nurse.id] ?? [];
     for (let d = 1; d <= numDays; d++) {
       const dow = getDayOfWeek(config.year, config.month, d);
@@ -1610,7 +1610,9 @@ function renderShiftAliasesList(): void {
 }
 
 function readNumInput(id: string, fallback: number): number {
-  const raw = ($(id) as HTMLInputElement).value.trim();
+  const el = document.getElementById(id) as HTMLInputElement | null;
+  if (!el) return fallback;
+  const raw = el.value.trim();
   if (raw === "") return fallback;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;

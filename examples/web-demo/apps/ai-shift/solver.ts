@@ -211,7 +211,7 @@ export function getRequiredDailyCoverage(
 
   const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, day));
   for (const rule of customRules) {
-    if (!rule.enabled || rule.isHard === false || rule.kind !== "staffing_rule") continue;
+    if (!rule.enabled || rule.kind !== "staffing_rule") continue;
     if (rule.attribute && rule.attribute !== "all") continue;
     if (rule.dayType && rule.dayType !== "all") {
       if (rule.dayType === "weekday" && (dow === 0 || dow === 6 || isHol)) continue;
@@ -957,6 +957,28 @@ export function buildNurseWashiModel(
     const req = getRequiredDailyCoverage(state, d);
 
     for (const s of ["D", "E", "N"] as const) {
+      if (config.enforceSkillCoverage) {
+        const hasRule = customRules.some((r) => {
+          if (!r.enabled || r.kind !== "staffing_rule") return false;
+          if (r.attribute && r.attribute !== "all") return false;
+          if (!r.shifts?.includes(s)) return false;
+          if (typeof r.minCount !== "number" || r.minCount <= 0) return false;
+          if (typeof r.startDay === "number" && d < r.startDay) return false;
+          if (typeof r.endDay === "number" && d > r.endDay) return false;
+          if (r.allowedDaysOfWeek?.length && !r.allowedDaysOfWeek.includes(dow)) return false;
+          if (r.dayType && r.dayType !== "all") {
+            const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, d));
+            if (r.dayType === "weekday" && (dow === 0 || dow === 6 || isHol)) return false;
+            if (r.dayType === "weekend" && (dow !== 0 && dow !== 6)) return false;
+            if (r.dayType === "holiday" && !isHol) return false;
+            if (r.dayType === "weekend_holiday" && (dow !== 0 && dow !== 6 && !isHol)) return false;
+            if (r.dayType.startsWith("dow:") && dow !== Number(r.dayType.split(":")[1])) return false;
+          }
+          return true;
+        });
+        if (hasRule) continue;
+      }
+
       const dayVars = nurses.flatMap((n) => getShiftVarsForNurseDay(s, n.id, idx));
       addTrackedConstraint(expr`${sum(dayVars)} >= ${req[s]}`, {
         name: `cov_${s}_d${d}`,
@@ -1199,6 +1221,7 @@ export function buildNurseWashiModel(
         relaxSuggestion: `追加された禁止ルール「${rule.description}」を解除してください。`,
       });
     } else if (rule.kind === "staffing_rule" && rule.shifts?.length) {
+      if (!config.enforceSkillCoverage) continue;
       const attr = rule.attribute ?? "all";
       const matchingNurses = nurses.filter((n) =>
         doesNurseMatchAttribute(n, attr, activeSkillDefs)
