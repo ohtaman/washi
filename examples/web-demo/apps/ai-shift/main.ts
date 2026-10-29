@@ -40,6 +40,8 @@ import {
   generateNurseSchedulingState,
   getDayOfWeek,
   injectConflictScenario,
+  MAX_STAFF_COUNT,
+  MIN_STAFF_COUNT,
   WEEKDAY_NAMES_JA,
 } from "./generator";
 import {
@@ -1877,7 +1879,24 @@ function renderStaffProfilesTab(): void {
   relList.replaceChildren();
   tbody.replaceChildren();
 
+  const staffBadge = document.getElementById("badge-staff-count");
+  if (staffBadge) {
+    staffBadge.textContent = String(appState.nurses.length);
+  }
+
+  const catGenBtn = document.getElementById("btn-cat-generate-sample");
+  const catClearBtn = document.getElementById("btn-cat-clear-blank");
+  const nextBanner = document.getElementById("staff-next-step-banner");
+  const nextMsg = document.getElementById("staff-next-step-message");
+
   if (appState.nurses.length === 0) {
+    if (catGenBtn) {
+      catGenBtn.className = "btn-solve-primary";
+      catGenBtn.textContent = "🎲 サンプルデータを読み込む";
+    }
+    if (catClearBtn) catClearBtn.hidden = true;
+    if (nextBanner) nextBanner.hidden = true;
+
     const emptyRel = document.createElement("div");
     emptyRel.style.color = "var(--text-sumi-secondary)";
     emptyRel.style.fontSize = "0.85rem";
@@ -1893,10 +1912,22 @@ function renderStaffProfilesTab(): void {
     emptyTd.style.color = "var(--text-sumi-secondary)";
     emptyTd.innerHTML =
       `📄 <strong>スタッフデータが未登録です（白紙モード）</strong><br>` +
-      `<span style="font-size: 0.82rem; margin-top: 0.4rem; display: inline-block;">上の「🎲 サンプル再生成」ボタンを押すか、「📂 CSVインポート」で名簿ファイルを読み込んでください。</span>`;
+      `<span style="font-size: 0.82rem; margin-top: 0.4rem; display: inline-block;">上の「🎲 サンプルデータを読み込む」ボタンを押すか、「📂 CSVインポート」で名簿ファイルを読み込んでください。</span>`;
     emptyTr.appendChild(emptyTd);
     tbody.appendChild(emptyTr);
     return;
+  }
+
+  if (catGenBtn) {
+    catGenBtn.className = "btn-toolbar-outline";
+    catGenBtn.textContent = "🎲 サンプル再生成";
+  }
+  if (catClearBtn) catClearBtn.hidden = false;
+  if (nextBanner) {
+    nextBanner.hidden = false;
+    if (nextMsg) {
+      nextMsg.textContent = `✅ 基礎データの準備完了（${appState.nurses.length}名）。「⚙️ 条件・ルール設定」で制約を確認・調整するか、「⚡ シフトを自動作成」でシフトを編成してください。`;
+    }
   }
 
   const nurseById = new Map(appState.nurses.map((n) => [n.id, n]));
@@ -2993,12 +3024,20 @@ function handleExportCsvs(): void {
   }, 400);
 }
 
-function handleGenerateSample(staffCount = 30): void {
-  currentSeed = 202611;
+function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): void {
+  const normalizedCount = Math.max(
+    MIN_STAFF_COUNT,
+    Math.min(MAX_STAFF_COUNT, Math.floor(staffCount) || 30)
+  );
+  const countInput = document.getElementById("input-staff-count") as HTMLInputElement | null;
+  if (countInput) {
+    countInput.value = String(normalizedCount);
+  }
+  currentSeed += 7;
   appState = generateNurseSchedulingState({
     year: appState.config.year,
     month: appState.config.month,
-    staffCount,
+    staffCount: normalizedCount,
     seed: currentSeed,
   });
   currentSchedule = null;
@@ -3006,15 +3045,22 @@ function handleGenerateSample(staffCount = 30): void {
   lastSolveOutcome = null;
 
   renderAllViews();
-  switchTab("schedule");
+  if (autoSwitchToSchedule) {
+    switchTab("schedule");
+  } else {
+    switchTab("staff");
+  }
 
   appendChatMessage({
     role: "assistant",
     senderLabel: "🏥 AI シフト相談",
     initialText:
-      `✨ **${staffCount}名・3交代制のサンプルデータを生成しました**\n` +
-      `- スタッフ名簿、前月末シフト、スキル、希望休、相性ペアがセットされました。\n` +
-      `- 右上の **「⚡ シフトを自動作成」** ボタンを押すと最適化計算を実行します！`,
+      `✨ **${normalizedCount}名・3交代制の基礎データをセットしました**\n` +
+      `「基礎データ」タブで看護師名簿・スキル・前月末実績・希望シフト・相性ペアを確認できます。\n\n` +
+      `**次のステップ**:\n` +
+      `1. 「⚙️ 条件・ルール設定」タブで必要出勤人数（日勤/準夜/深夜）・連勤上限・夜勤ルール等を確認・調整\n` +
+      `2. 「⚡ シフトを自動作成」ボタンを押してシフトを一括最適化（HiGHS）\n` +
+      `3. シフト表の完成後、このチャットで個別の調整や相談ができます。`,
   });
 }
 
@@ -3029,7 +3075,7 @@ function handleClearBlank(): void {
   lastSolveOutcome = null;
 
   renderAllViews();
-  switchTab("schedule");
+  switchTab("staff");
 
   appendChatMessage({
     role: "assistant",
@@ -3067,43 +3113,58 @@ function setupEventListeners(): void {
     tutorialBanner.hidden = true;
   });
 
-  // Step 1: Pin Sato-san's Day 12 to Off and re-optimize
-  $("btn-tut-step1").addEventListener("click", () => {
-    if (appState.nurses.length === 0) handleGenerateSample(30);
-    switchTab("schedule");
-    pinNurseCellShift("N01", 12, "O", true);
-    appendChatMessage({
-      role: "system",
-      senderLabel: "🔰 STEP 1 実行",
-      initialText:
-        "佐藤 美咲さん (N01) の 11/12 を「公休 (休)」に固定し、シフト全体を再最適化しました（12日のマスに赤い枠が付いています）。",
-    });
+  // 4-Step Interactive Tutorial Workflow Buttons
+  // Step 1: Generate sample data or load CSV (stays on staff master data tab)
+  $("btn-tut-step1")?.addEventListener("click", () => {
+    handleGenerateSample(30, false);
+    switchTab("staff");
   });
 
-  // Step 2: Change max consecutive work days to 4 and re-optimize
-  $("btn-tut-step2").addEventListener("click", () => {
-    if (appState.nurses.length === 0) handleGenerateSample(30);
-    switchTab("schedule");
-    appState = {
-      ...appState,
-      config: {
-        ...appState.config,
-        maxConsecutiveWorkDays: 4,
-      },
-    };
-    syncConfigInputsFromState();
-    appendChatMessage({
-      role: "system",
-      senderLabel: "🔰 STEP 2 実行",
-      initialText:
-        "最大連続勤務日数を「5連勤 ➔ 4連勤まで」に厳格化して、30名全員の1ヶ月シフトを再作成しました。",
-    });
+  // Step 2: Review and tweak constraints (switches to constraints tab)
+  $("btn-tut-step2")?.addEventListener("click", () => {
+    switchTab("constraints");
+  });
+
+  // Step 3: Auto-solve nurse schedule (switches to schedule tab and optimizes)
+  $("btn-tut-step3")?.addEventListener("click", () => {
+    if (appState.nurses.length === 0) {
+      handleGenerateSample(30, true);
+    } else {
+      switchTab("schedule");
+    }
+    readConfigInputsToState();
     void runWashiOptimization();
   });
 
-  // Step 3: Trigger selected conflict demo scenario and diagnose with WaSHI (HiGHS)
-  $("btn-tut-step3").addEventListener("click", () => {
-    if (appState.nurses.length === 0) handleGenerateSample(30);
+  // Step 4: AI consultation and fine-tuning (switches to schedule and focuses chat)
+  $("btn-tut-step4")?.addEventListener("click", () => {
+    switchTab("schedule");
+    const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
+    if (chatInput) {
+      chatInput.value = "佐藤さんの15日を「休」にして、夜勤回数のバランスを再調整して";
+      chatInput.focus();
+    }
+  });
+
+  // Workflow Next-Step Banners & Conflict Demo Button
+  $("btn-cat-go-constraints")?.addEventListener("click", () => {
+    switchTab("constraints");
+  });
+
+  $("btn-cat-go-schedule")?.addEventListener("click", () => {
+    switchTab("schedule");
+    readConfigInputsToState();
+    void runWashiOptimization();
+  });
+
+  $("btn-constraints-go-schedule")?.addEventListener("click", () => {
+    switchTab("schedule");
+    readConfigInputsToState();
+    void runWashiOptimization();
+  });
+
+  $("btn-test-conflict-scenario")?.addEventListener("click", () => {
+    if (appState.nurses.length === 0) handleGenerateSample(30, true);
     switchTab("schedule");
     const scenario = (($("select-conflict-scenario") as HTMLSelectElement | null)?.value ??
       "carryover_clash") as "leader_shortage" | "carryover_clash" | "overload_day";
@@ -3112,11 +3173,11 @@ function setupEventListeners(): void {
     syncConfigInputsFromState();
     appendChatMessage({
       role: "system",
-      senderLabel: "🧪 STEP 3（わざと矛盾ルールを追加するデモ）",
+      senderLabel: "🧪 矛盾診断テスト",
       initialText:
         `### 💥 デモ用の矛盾ルールを追加しました\n` +
         `- ${descriptionJa}\n` +
-        `- 右上の赤いアラートに、**WaSHI (HiGHS)** が特定した衝突原因が表示されています。**「✨ 衝突している追加ルールを解除して解決」** を押すと元の正常なシフトに戻ります。`,
+        `- 右上の赤いアラートに、**WaSHI (HiGHS)** が特定した衝突原因が表示されています。**「✨ 衝突している追加ルールを解除して解決」** を押すと元の正常なシフトに戻ります。\n`,
     });
     void runWashiOptimization();
   });
@@ -3154,6 +3215,7 @@ function setupEventListeners(): void {
   // Top action bar buttons
   $("btn-solve-washi").addEventListener("click", () => {
     readConfigInputsToState();
+    switchTab("schedule");
     void runWashiOptimization();
   });
 
@@ -3205,10 +3267,6 @@ function setupEventListeners(): void {
     const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
     handleGenerateSample(c);
   });
-  $("btn-regenerate-staff")?.addEventListener("click", () => {
-    const c = Number(($("input-staff-count") as HTMLInputElement | null)?.value) || 30;
-    handleGenerateSample(c);
-  });
 
   $("btn-open-csv-dialog")?.addEventListener("click", openCsvDialog);
   $("btn-empty-csv")?.addEventListener("click", openCsvDialog);
@@ -3216,6 +3274,7 @@ function setupEventListeners(): void {
 
   $("btn-export-csvs")?.addEventListener("click", handleExportCsvs);
   $("btn-clear-blank")?.addEventListener("click", handleClearBlank);
+  $("btn-cat-clear-blank")?.addEventListener("click", handleClearBlank);
 
   // CSV Dialog Events
   $("btn-close-csv-dialog")?.addEventListener("click", () => {
@@ -3476,27 +3535,6 @@ function setupEventListeners(): void {
       void runWashiOptimization();
     });
   }
-
-  $("btn-regenerate-staff").addEventListener("click", () => {
-    const countInput = $("input-staff-count") as HTMLInputElement;
-    const count = Math.max(15, Math.min(36, Number(countInput.value) || 30));
-    countInput.value = String(count);
-    currentSeed += 7;
-    currentSchedule = null;
-    currentEvaluation = null;
-    appState = generateNurseSchedulingState({
-      year: appState.config.year,
-      month: appState.config.month,
-      staffCount: count,
-      seed: currentSeed,
-    });
-    appendChatMessage({
-      role: "system",
-      senderLabel: "🎲 スタッフ再生成",
-      initialText: `看護師 ${count}名（スキル・相性ペア・前月シフト・希望シフト）を新しく自動生成し、最適化しました。`,
-    });
-    void runWashiOptimization();
-  });
 
   // Conflict Alert buttons
   $("btn-clear-custom-conflicts").addEventListener("click", () => {
@@ -3810,14 +3848,18 @@ async function bootstrap(): Promise<void> {
   setupEventListeners();
   syncConfigInputsFromState();
 
+  switchTab("staff");
+
   appendChatMessage({
     role: "assistant",
     senderLabel: "🏥 AI シフト相談",
     initialText:
       "### 🏥 ナーススケジューリング AI Copilot (白紙モード)\n" +
-      "- 現在スタッフデータは未登録です。\n" +
-      "- 上の **「✨ サンプル生成」** ボタンで30名の標準データをセットするか、**「📂 CSV読込」** からお手元の名簿を取り込んでください。\n" +
-      "- データ読み込み後、**「⚡ シフトを自動作成」** ボタンを押すと1ヶ月のシフトを最適化します。",
+      "大学時間割と同様に、**①データ準備 → ②制約調整 → ③シフト自動作成 → ④AI相談・個別調整** の手順で進めます。\n\n" +
+      "1. **データ準備**: まずは「✨ サンプル生成」で標準30名のデータをセットするか、「📂 CSV読込」から名簿を取り込みます。\n" +
+      "2. **制約調整**: 「⚙️ 条件・ルール設定」タブにあらかじめ基本的な人員基準や連勤制限が設定されています。必要に応じて調整できます。\n" +
+      "3. **シフト自動作成**: 「⚡ シフトを自動作成」ボタンを押すと、数理最適化ソルバー（HiGHS）が最適な勤務割を編成します。\n" +
+      "4. **AI相談・調整**: シフト表のマス目クリックやこのチャットで、個別希望の追加や微調整ができます。",
   });
 
   // Check LanguageModel availability and pre-warm session if already available

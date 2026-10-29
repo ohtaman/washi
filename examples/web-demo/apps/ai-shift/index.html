@@ -273,11 +273,11 @@
 
       <!-- ==================== RIGHT PANE: TUTORIAL, STATUS, SCHEDULE & SETTINGS ==================== -->
       <section class="results-pane" aria-label="設定および最適化結果">
-        <!-- Interactive 3-Step Tutorial Banner (Dismissible) -->
+        <!-- Interactive 4-Step Tutorial Banner (Dismissible) -->
         <div id="tutorial-banner" class="tutorial-banner">
           <div class="tutorial-header">
             <div class="tutorial-title">
-              <span>🔰 クイックガイド：3ステップで体験するAIナーススケジューリング</span>
+              <span>🔰 ナーススケジューリングの手順：データ準備からAI調整までの流れ</span>
             </div>
             <button
               type="button"
@@ -292,51 +292,52 @@
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num">STEP 1</span>
-                <strong>シフト表を見る・手動で固定する</strong>
+                <strong>データ準備 (名簿・希望・相性)</strong>
               </div>
               <p>
-                グレー列が<strong>前月末のシフト</strong>、白い列が<strong>今月のシフト（日/準/深/休）</strong>です。マス目をクリックするとシフトを固定できます。
+                はじめは白紙です。「✨ サンプル生成」で標準30名分の名簿・希望・相性を生成するか、「📂 CSV読込」でお手元の名簿を取り込みます。
               </p>
               <button type="button" id="btn-tut-step1" class="btn-step-try">
-                👆 試す：佐藤さんの12日を「休」に固定
+                ✨ 試す：30名のサンプルを生成
               </button>
             </div>
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num">STEP 2</span>
-                <strong>ルール変更やAI相談で再作成</strong>
+                <strong>制約・ルールの確認 & 調整</strong>
               </div>
               <p>
-                左のチャット欄や「⚙️ 条件・ルール設定」タブから、連勤上限や夜勤回数・NGペアを変更して1秒で再最適化できます。
+                日勤/準夜/深夜の必要人数、最大5連勤、夜勤月8回、36協定などの基本制約があらかじめ設定されています。現場の方針に合わせて調整します。
               </p>
               <button type="button" id="btn-tut-step2" class="btn-step-try">
-                🏃 試す：最大連勤を「4連勤まで」に変更
+                ⚙️ 試す：制約・ルール設定を開く
               </button>
             </div>
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num">STEP 3</span>
-                <strong>シフトが組めない原因を自動診断（デモ）</strong>
+                <strong>シフト自動作成 (HiGHS最適化)</strong>
               </div>
               <p>
-                わざと無理な条件を追加して「解なし」にし、WaSHI (HiGHS) が衝突原因を特定する様子を試せます。
+                データと制約が整ったら「⚡ シフトを自動作成」を押します。数理最適化（WaSHI / HiGHS）が全制約を満たす1ヶ月分の最適シフトを数秒で編成します。
               </p>
-              <div class="conflict-quick-group" style="margin-bottom: 6px;">
-                <select
-                  id="select-conflict-scenario"
-                  class="toolbar-select"
-                  style="width: 100%;"
-                  aria-label="わざと追加する矛盾シナリオ"
-                >
-                  <option value="carryover_clash">デモ例1: 前月深夜明けの佐藤さんに1日日勤を強制</option>
-                  <option value="leader_shortage">デモ例2: 15日にリーダー資格者全員へ公休を強制</option>
-                  <option value="overload_day">デモ例3: 15日の必要人数を物理的上限以上に設定</option>
-                </select>
-              </div>
               <button type="button" id="btn-tut-step3" class="btn-step-try">
-                💥 試す：わざと矛盾ルールを追加して診断する
+                ⚡ 試す：シフトを自動作成する
+              </button>
+            </div>
+
+            <div class="tutorial-step-card">
+              <div class="step-badge-row">
+                <span class="step-num">STEP 4</span>
+                <strong>個別調整 (AIチャット・固定)</strong>
+              </div>
+              <p>
+                完成したシフト表のセルをクリックして個別固定したり、左のAIチャットで「佐藤さんの15日を休みに」「連勤を減らして」など柔軟に調整できます。
+              </p>
+              <button type="button" id="btn-tut-step4" class="btn-step-try">
+                🤖 試す：AI相談例をチャットに入力
               </button>
             </div>
           </div>
@@ -423,18 +424,18 @@
           <ul id="conflict-list" class="conflict-list"></ul>
         </div>
 
-        <!-- Clean 3-Tab Navigation Bar -->
+        <!-- Clean 3-Tab Navigation Bar (Aligned with ai-timetable: Master Data -> Constraints -> Schedule) -->
         <div class="results-tabs-bar" role="tablist" aria-label="表示切替タブ">
           <button
             type="button"
             role="tab"
-            id="tab-btn-schedule"
+            id="tab-btn-staff"
             class="results-tab-btn active"
             aria-selected="true"
-            aria-controls="tab-panel-schedule"
-            data-tab="schedule"
+            aria-controls="tab-panel-staff"
+            data-tab="staff"
           >
-            📅 1ヶ月シフト表
+            👥 基礎データ (スタッフ名簿・相性) (<span id="badge-staff-count">0</span>名)
           </button>
           <button
             type="button"
@@ -450,91 +451,102 @@
           <button
             type="button"
             role="tab"
-            id="tab-btn-staff"
+            id="tab-btn-schedule"
             class="results-tab-btn"
             aria-selected="false"
-            aria-controls="tab-panel-staff"
-            data-tab="staff"
+            aria-controls="tab-panel-schedule"
+            data-tab="schedule"
           >
-            👥 スタッフ名簿・相性 (<span id="badge-staff-count">30</span>名)
+            📅 1ヶ月シフト表
           </button>
         </div>
 
-        <!-- ==================== TAB 1: 1-MONTH SHIFT MATRIX ==================== -->
+        <!-- ==================== TAB 1: MASTER DATA (STAFF & COMPATIBILITY) ==================== -->
         <div
-          id="tab-panel-schedule"
+          id="tab-panel-staff"
           role="tabpanel"
-          aria-labelledby="tab-btn-schedule"
+          aria-labelledby="tab-btn-staff"
           class="results-tab-panel"
         >
-          <div class="schedule-controls-bar">
-            <div class="schedule-legend" id="schedule-legend">
-              <span class="legend-item"><span class="shift-badge shift-D">日</span> 日勤</span>
-              <span class="legend-item"><span class="shift-badge shift-E">準</span> 準夜勤</span>
-              <span class="legend-item"><span class="shift-badge shift-N">深</span> 深夜勤</span>
-              <span class="legend-item"><span class="shift-badge shift-O">休</span> 公休</span>
-              <span class="legend-divider">|</span>
-              <span class="legend-item"><span class="req-dot req-hard-dot"></span> 確定希望</span>
-              <span class="legend-item"><span class="req-dot req-soft-dot"></span> 希望</span>
-              <span class="legend-item"><span class="pin-sample-box"></span> 固定中</span>
-            </div>
+          <div class="staff-tab-top">
+            <!-- 基礎データ管理バー (ai-timetableと同様のcatalog-management-card) -->
+            <div id="staff-mgmt-card" class="catalog-management-card">
+              <div class="catalog-mgmt-header">
+                <div class="catalog-mgmt-title-group">
+                  <span class="dp-badge" id="staff-mgmt-badge">基礎データ</span>
+                  <h3>👥 看護師名簿・前月実績・希望シフト・相性ペア</h3>
+                  <p>シフト編成の基礎となるスタッフデータです。人数を指定してサンプルを生成するか、CSVファイルから取り込みます。</p>
+                </div>
+                <div class="catalog-mgmt-actions">
+                  <label for="input-staff-count" class="toolbar-mini-label">人数:</label>
+                  <input
+                    type="number"
+                    id="input-staff-count"
+                    class="toolbar-num-input"
+                    min="15"
+                    max="36"
+                    value="30"
+                    aria-label="スタッフ人数"
+                  />
+                  <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary" title="30名・3交代制の標準サンプルデータを読み込みます">
+                    🎲 サンプルデータを読み込む
+                  </button>
+                  <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="スタッフ・希望・相性のCSVファイルを読み込みます">
+                    📂 CSVインポート
+                  </button>
+                  <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="CSVテンプレートをダウンロード">
+                    📥 CSVテンプレート
+                  </button>
+                  <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="データをすべてクリアして白紙状態に戻す" hidden>
+                    🗑️ 白紙に戻す
+                  </button>
+                </div>
+              </div>
 
-            <div class="schedule-filters">
-              <label
-                class="prev-days-toggle"
-                title="ONのとき、再最適化時に現在のシフト表からの変更マス数を最小化します（OFFにするとゼロベースで全体を再作成します）"
-              >
-                <input type="checkbox" id="chk-preserve-schedule" checked />
-                <span>🔒 微調整モード(既存シフト維持)</span>
-              </label>
-              <label
-                class="prev-days-toggle"
-                title="前回のシフト表から変更されたマス目をオレンジ枠でハイライト表示します"
-              >
-                <input type="checkbox" id="chk-highlight-diff" checked />
-                <span>✨ 変更箇所を表示</span>
-              </label>
-              <label class="prev-days-toggle">
-                <input type="checkbox" id="chk-show-all-prev" />
-                <span>前月7日間をすべて表示</span>
-              </label>
-              <label for="filter-role" class="filter-label">表示:</label>
-              <select id="filter-role" class="toolbar-select">
-                <option value="all">全員 (30名)</option>
-                <option value="leader">★ リーダー層のみ</option>
-                <option value="mid">中堅層のみ</option>
-                <option value="newcomer">🔰 新人のみ</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Empty / Blank Schedule Welcome Banner -->
-          <div id="empty-schedule-state" class="empty-schedule-card" hidden>
-            <div class="empty-state-icon">📋</div>
-            <div class="empty-state-content">
-              <h3 id="empty-state-title">シフトデータがありません（白紙モード）</h3>
-              <p id="empty-state-desc">
-                現在、スタッフ名簿が登録されていません。まずは「✨ サンプル生成」でサンプルデータをセットするか、「📂 CSV読込」でCSVファイルをインポートしてください。
-              </p>
-              <div class="empty-state-actions">
-                <button type="button" id="btn-empty-generate" class="btn-solve-primary">
-                  ✨ サンプルデータを生成 (30名)
-                </button>
-                <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
-                  📂 CSVファイルを読み込む
-                </button>
-                <button type="button" id="btn-empty-samples" class="btn-xs-outline">
-                  📥 サンプルCSVをダウンロード
-                </button>
+              <!-- 次のステップ（制約確認・シフト自動作成）へのナビゲーションバナー -->
+              <div id="staff-next-step-banner" class="catalog-next-banner" hidden>
+                <div class="catalog-next-text">
+                  <span id="staff-next-step-message">✅ 基礎データの準備完了。このままシフトを自動作成するか、条件・ルール設定を確認してください。</span>
+                </div>
+                <div class="catalog-next-actions">
+                  <button type="button" id="btn-cat-go-constraints" class="btn-toolbar-outline">
+                    ⚙️ 制約・ルールを確認 (Step 2)
+                  </button>
+                  <button type="button" id="btn-cat-go-schedule" class="btn-solve-primary">
+                    ⚡ シフトを自動作成 (Step 3)
+                  </button>
+                </div>
               </div>
             </div>
+
+            <div class="relations-card" style="margin-top: 10px;">
+              <div class="custom-rules-header">
+                <div>
+                  <h3>🤝 相性ペア（NGペア ＆ プリセプター指導ペア）</h3>
+                  <p class="constraint-card-desc">
+                    少人数夜勤での同席回避（相性NG）や新人×先輩の同時夜勤（指導ペア）の個別設定です。
+                  </p>
+                </div>
+              </div>
+              <div id="relations-list" class="relations-badges-wrap"></div>
+            </div>
           </div>
 
-          <div class="schedule-table-container">
-            <table class="schedule-matrix-table" id="schedule-matrix-table">
-              <thead id="schedule-thead"></thead>
-              <tbody id="schedule-tbody"></tbody>
-              <tfoot id="schedule-tfoot"></tfoot>
+          <div class="staff-table-wrap">
+            <table class="staff-profile-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>氏名</th>
+                  <th>チーム / 区分</th>
+                  <th>スキル・勤務形態</th>
+                  <th>前月末7日間シフト</th>
+                  <th>直近11ヶ月累計 (36協定)</th>
+                  <th>今月の希望シフト</th>
+                  <th>今月の実績・年間36協定見込</th>
+                </tr>
+              </thead>
+              <tbody id="staff-profile-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -547,6 +559,37 @@
           class="results-tab-panel"
           hidden
         >
+          <!-- Next Step Banner to Guide to Shift Generation -->
+          <div id="constraints-next-step-banner" class="catalog-next-banner" style="margin-bottom: 12px;">
+            <div class="catalog-next-text">
+              <strong>✅ 制約の確認・調整が完了したら、シフトを自動作成しましょう</strong>
+              <span style="font-size: 0.85rem; color: var(--text-muted); display: block;">基本制約や勤務要件を確認したら、数理最適化（WaSHI / HiGHS）を実行して1ヶ月分の最適シフトを編成します。</span>
+            </div>
+            <div class="catalog-next-actions">
+              <button type="button" id="btn-constraints-go-schedule" class="btn-solve-primary">
+                ⚡ シフトを自動作成 (Step 3) →
+              </button>
+            </div>
+          </div>
+
+          <!-- Conflict Simulation Card for Demo Testing -->
+          <div class="conflict-scenario-card" style="background: var(--surface-2); border: 1px dashed var(--border-color); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="font-size: 0.85rem; color: var(--text-color);">
+              <strong>💥 矛盾診断シナリオをテスト：</strong>
+              <span style="color: var(--text-muted);">わざと充足不可能な制約を追加し、WaSHIのIIS矛盾診断を検証できます。</span>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <select id="select-conflict-scenario" class="form-select" style="padding: 4px 8px; font-size: 0.85rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--surface-1); color: var(--text-color);">
+                <option value="carryover_clash">前月引き継ぎ矛盾 (前月深夜勤 + 1日日勤固定)</option>
+                <option value="leader_shortage">リーダー不足矛盾 (全リーダーの同日夜勤禁止)</option>
+                <option value="overload_day">必要人数過多矛盾 (必要人数が在籍数を上回る)</option>
+              </select>
+              <button type="button" id="btn-test-conflict-scenario" class="btn-toolbar-outline" style="font-size: 0.85rem;">
+                🧪 矛盾を注入してテスト
+              </button>
+            </div>
+          </div>
+
           <!-- Custom Rules & Manual Overrides Section (Top of Settings so user immediately sees pinned rules) -->
           <div class="custom-rules-card">
             <div class="custom-rules-header">
@@ -884,66 +927,88 @@
         </div>
 
         <!-- ==================== TAB 3: 30 STAFF PROFILES & COMPATIBILITY ==================== -->
+
+        <!-- ==================== TAB 3: 1-MONTH SHIFT MATRIX ==================== -->
         <div
-          id="tab-panel-staff"
+          id="tab-panel-schedule"
           role="tabpanel"
-          aria-labelledby="tab-btn-staff"
+          aria-labelledby="tab-btn-schedule"
           class="results-tab-panel"
           hidden
         >
-          <div class="staff-tab-top">
-            <div class="relations-card">
-              <div class="custom-rules-header">
-                <div>
-                  <h3>🤝 スタッフ構成・相性ペア（NGペア ＆ プリセプター指導ペア）</h3>
-                  <p class="constraint-card-desc">
-                    乱数シードから自動生成されたスタッフ・スキル・前月実績・希望シフトです。人数を変えて再生成できます。
-                  </p>
-                </div>
-                <div class="staff-regen-group">
-                  <label for="input-staff-count" class="toolbar-mini-label">スタッフ人数:</label>
-                  <input
-                    type="number"
-                    id="input-staff-count"
-                    class="toolbar-num-input"
-                    min="15"
-                    max="36"
-                    value="30"
-                    aria-label="スタッフ人数"
-                  />
-                  <button type="button" id="btn-regenerate-staff" class="btn-solve-primary">
-                    🎲 サンプル再生成
-                  </button>
-                  <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline">
-                    📂 CSVインポート
-                  </button>
-                  <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="スタッフ・希望・相性のサンプルCSVをダウンロード">
-                    📥 CSVテンプレート
-                  </button>
-                </div>
-              </div>
-              <div id="relations-list" class="relations-badges-wrap"></div>
+          <div class="schedule-controls-bar">
+            <div class="schedule-legend" id="schedule-legend">
+              <span class="legend-item"><span class="shift-badge shift-D">日</span> 日勤</span>
+              <span class="legend-item"><span class="shift-badge shift-E">準</span> 準夜勤</span>
+              <span class="legend-item"><span class="shift-badge shift-N">深</span> 深夜勤</span>
+              <span class="legend-item"><span class="shift-badge shift-O">休</span> 公休</span>
+              <span class="legend-divider">|</span>
+              <span class="legend-item"><span class="req-dot req-hard-dot"></span> 確定希望</span>
+              <span class="legend-item"><span class="req-dot req-soft-dot"></span> 希望</span>
+              <span class="legend-item"><span class="pin-sample-box"></span> 固定中</span>
+            </div>
+
+            <div class="schedule-filters">
+              <label
+                class="prev-days-toggle"
+                title="ONのとき、再最適化時に現在のシフト表からの変更マス数を最小化します（OFFにするとゼロベースで全体を再作成します）"
+              >
+                <input type="checkbox" id="chk-preserve-schedule" checked />
+                <span>🔒 微調整モード(既存シフト維持)</span>
+              </label>
+              <label
+                class="prev-days-toggle"
+                title="前回のシフト表から変更されたマス目をオレンジ枠でハイライト表示します"
+              >
+                <input type="checkbox" id="chk-highlight-diff" checked />
+                <span>✨ 変更箇所を表示</span>
+              </label>
+              <label class="prev-days-toggle">
+                <input type="checkbox" id="chk-show-all-prev" />
+                <span>前月7日間をすべて表示</span>
+              </label>
+              <label for="filter-role" class="filter-label">表示:</label>
+              <select id="filter-role" class="toolbar-select">
+                <option value="all">全員 (30名)</option>
+                <option value="leader">★ リーダー層のみ</option>
+                <option value="mid">中堅層のみ</option>
+                <option value="newcomer">🔰 新人のみ</option>
+              </select>
             </div>
           </div>
 
-          <div class="staff-table-wrap">
-            <table class="staff-profile-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>氏名</th>
-                  <th>チーム / 区分</th>
-                  <th>スキル・勤務形態</th>
-                  <th>前月末7日間シフト</th>
-                  <th>直近11ヶ月累計 (36協定)</th>
-                  <th>今月の希望シフト</th>
-                  <th>今月の実績・年間36協定見込</th>
-                </tr>
-              </thead>
-              <tbody id="staff-profile-tbody"></tbody>
+          <!-- Empty / Blank Schedule Welcome Banner -->
+          <div id="empty-schedule-state" class="empty-schedule-card" hidden>
+            <div class="empty-state-icon">📋</div>
+            <div class="empty-state-content">
+              <h3 id="empty-state-title">シフトデータがありません（白紙モード）</h3>
+              <p id="empty-state-desc">
+                現在、スタッフ名簿が登録されていません。まずは「✨ サンプル生成」でサンプルデータをセットするか、「📂 CSV読込」でCSVファイルをインポートしてください。
+              </p>
+              <div class="empty-state-actions">
+                <button type="button" id="btn-empty-generate" class="btn-solve-primary">
+                  ✨ サンプルデータを生成 (30名)
+                </button>
+                <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
+                  📂 CSVファイルを読み込む
+                </button>
+                <button type="button" id="btn-empty-samples" class="btn-xs-outline">
+                  📥 サンプルCSVをダウンロード
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="schedule-table-container">
+            <table class="schedule-matrix-table" id="schedule-matrix-table">
+              <thead id="schedule-thead"></thead>
+              <tbody id="schedule-tbody"></tbody>
+              <tfoot id="schedule-tfoot"></tfoot>
             </table>
           </div>
         </div>
+
+        <!-- ==================== TAB 2: CONSTRAINTS & SETTINGS ==================== -->
       </section>
     </main>
 

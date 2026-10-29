@@ -14,6 +14,9 @@ import {
   type SkillDefinition,
 } from "./types.js";
 
+export const MIN_STAFF_COUNT = 15;
+export const MAX_STAFF_COUNT = 36;
+
 /**
  * Creates the initial demo skill, role, and group attribute definitions (`SkillDefinition[]`).
  * All domain attributes (clinical skills, staff roles, and ward teams) are represented uniformly
@@ -391,9 +394,23 @@ function generatePrevMonthTail(
 export function generateNurseSchedulingState(
   configOverrides?: Partial<NurseScheduleConfig>
 ): NurseSchedulingState {
-  const config = createDefaultConfig(configOverrides);
+  const normalizedOverrides = configOverrides
+    ? {
+        ...configOverrides,
+        ...(configOverrides.staffCount !== undefined
+          ? {
+              staffCount: Math.min(
+                Math.max(MIN_STAFF_COUNT, Math.floor(configOverrides.staffCount) || 30),
+                MAX_STAFF_COUNT
+              ),
+            }
+          : {}),
+      }
+    : undefined;
+  const config = createDefaultConfig(normalizedOverrides);
   const rand = createPrng(config.seed);
-  const count = Math.min(Math.max(15, config.staffCount), NURSE_CATALOG.length);
+  const count = Math.min(Math.max(MIN_STAFF_COUNT, config.staffCount), MAX_STAFF_COUNT);
+  config.staffCount = count;
 
   const nurses: NurseProfile[] = [];
   // Role breakdown for ~30 nurses:
@@ -726,7 +743,7 @@ export function createBlankNurseSchedulingState(
   configOverrides?: Partial<NurseScheduleConfig>
 ): NurseSchedulingState {
   const config = createDefaultConfig({
-    staffCount: 0,
+    staffCount: 30,
     ...configOverrides,
   });
   return {
