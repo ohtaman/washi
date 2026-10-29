@@ -150,6 +150,29 @@ aside: false
       </div>
     </div>
   </div>
+  <div class="washi-showcase-card">
+    <div class="washi-showcase-thumb">
+      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK — 精密チタン板金パズル" class="washi-showcase-thumb-img" loading="lazy" />
+    </div>
+    <div class="washi-showcase-card-body">
+      <div>
+        <div class="washi-showcase-card-top">
+          <span class="washi-showcase-icon">⚡</span>
+          <span class="washi-showcase-badge">2次元パッキング MILP</span>
+        </div>
+        <div class="washi-showcase-title">
+          <a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK — 精密チタン板金パズル</a>
+        </div>
+        <p class="washi-showcase-desc">
+          最先端チタン工場で、検査ドローン「チタノ助」と共に注文パーツを母材に隙間なく敷き詰める2次元パッキングパズル。断層（fault line）を一切残さず、端材ロス0%の完全一括切断を目指します。
+        </p>
+      </div>
+      <div class="washi-showcase-actions">
+        <a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-cta">ゲームをプレイ →</a>
+        <a href="/washi/games/titan-pack-theory/?lang=ja" target="_self" class="washi-showcase-theory-btn">📖 解説記事を読む →</a>
+      </div>
+    </div>
+  </div>
 </div>
 
 </div>

@@ -150,6 +150,29 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       </div>
     </div>
   </div>
+  <div class="washi-showcase-card">
+    <div class="washi-showcase-thumb">
+      <img src="/showcase/thumb-titan-pack.png" alt="TITAN PACK — Precision Sheet Metal Puzzle" class="washi-showcase-thumb-img" loading="lazy" />
+    </div>
+    <div class="washi-showcase-card-body">
+      <div>
+        <div class="washi-showcase-card-top">
+          <span class="washi-showcase-icon">⚡</span>
+          <span class="washi-showcase-badge">2D Strip Packing MILP</span>
+        </div>
+        <div class="washi-showcase-title">
+          <a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK — Precision 2D Packing</a>
+        </div>
+        <p class="washi-showcase-desc">
+          Pack ordered metal parts into a titanium matrix plate with zero scrap void and zero fault lines alongside inspection drone UNIT-74. Experience true 2D cutting-stock MILP optimization.
+        </p>
+      </div>
+      <div class="washi-showcase-actions">
+        <a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-cta">Play Game →</a>
+        <a href="/washi/games/titan-pack-theory/?lang=en" target="_self" class="washi-showcase-theory-btn">📖 Theory Article →</a>
+      </div>
+    </div>
+  </div>
 </div>
 
 </div>

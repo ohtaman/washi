@@ -293,6 +293,56 @@
             </div>
           </div>
         </article>
+        <article class="game-card">
+          <div
+            class="game-thumb"
+            style="
+              background:
+                radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.25), transparent 55%),
+                linear-gradient(135deg, #090d16 0%, #0f172a 60%, #1e293b 100%);
+              justify-content: space-between;
+              align-items: center;
+              flex-direction: column;
+            "
+          >
+            <div
+              style="
+                width: 100%;
+                max-width: 240px;
+                background: rgba(15, 23, 42, 0.92);
+                border: 1px solid rgba(56, 189, 248, 0.45);
+                border-radius: 12px;
+                padding: 0.65rem 0.85rem;
+                font-family: ui-monospace, SFMono-Regular, monospace;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+              "
+            >
+              <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: #38bdf8; font-weight: 800; margin-bottom: 0.3rem;">
+                <span>TITAN PACK</span>
+                <span style="color: #10b981;">ZERO SCRAP</span>
+              </div>
+              <svg viewBox="0 0 180 46" style="width: 100%; height: 42px; display: block;">
+                <rect x="2" y="2" width="56" height="24" rx="2" fill="#0284c7" stroke="#38bdf8" stroke-width="1" />
+                <rect x="60" y="2" width="76" height="14" rx="2" fill="#059669" stroke="#34d399" stroke-width="1" />
+                <rect x="138" y="2" width="40" height="42" rx="2" fill="#d97706" stroke="#fbbf24" stroke-width="1" />
+                <rect x="2" y="28" width="94" height="16" rx="2" fill="#7c3aed" stroke="#a78bfa" stroke-width="1" />
+                <rect x="98" y="18" width="38" height="26" rx="2" fill="#db2777" stroke="#f472b6" stroke-width="1" />
+                <line x1="0" y1="2" x2="180" y2="2" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="4 2" />
+              </svg>
+            </div>
+            <span class="game-tag" id="card3-tag">精密チタン板金パズル</span>
+          </div>
+          <div class="game-body">
+            <h2 id="card3-title">TITAN PACK — 精密チタン板金パズル</h2>
+            <p id="card3-desc">
+              最先端チタン工場で、検査ドローン「チタノ助」と共に注文パーツを母材に隙間なく敷き詰める2次元パッキングパズル。断層（fault line）を一切残さず、端材ロス0%の完全一括切断を目指します。
+            </p>
+            <div class="card-actions">
+              <a href="./titan-pack/" class="play-btn" id="card3-play">ゲームをプレイする</a>
+              <a href="./titan-pack-theory/" class="theory-btn" id="card3-theory">数理モデル解説</a>
+            </div>
+          </div>
+        </article>
       </main>
     </div>
 
@@ -319,6 +369,10 @@
             "限られた本数の木の柵だけで腹ペコオオカミ🐺の侵入ルートを遮断しつつ、ヒツジのモコたちが歩ける「安全なまきば」の野いちご🍓を最大化し、穴ぼこ🕳️を埋めたり避けたりする囲い込みパズル。",
           playBtn: "ゲームをプレイする",
           theoryBtn: "解説記事を読む",
+          card3Tag: "精密チタン板金パズル",
+          card3Title: "TITAN PACK — 精密チタン板金パズル",
+          card3Desc:
+            "最先端チタン工場で、検査ドローン「チタノ助」と共に注文パーツを母材に隙間なく敷き詰める2次元パッキングパズル。断層（fault line）を一切残さず、端材ロス0%の完全一括切断を目指します。",
         },
         en: {
           pageTitle: "Browser Puzzle Games",
@@ -339,6 +393,10 @@
             "Block hungry wolves 🐺 using a limited number of wooden fences while maximizing wild strawberries 🍓 and plugging or avoiding pitfalls 🕳️ inside the safe pasture where Moko the sheep can roam.",
           playBtn: "Play Game",
           theoryBtn: "Read Article",
+          card3Tag: "Precision Sheet Metal Puzzle",
+          card3Title: "TITAN PACK — Precision 2D Packing",
+          card3Desc:
+            "Pack ordered metal parts into a titanium matrix plate with zero scrap void and zero fault lines alongside inspection drone UNIT-74. Experience true 2D cutting-stock optimization.",
         },
         zh: {
           pageTitle: "网页益智游戏一览",
@@ -359,6 +417,10 @@
             "仅用有限数量的木栅栏阻断饥饿野狼🐺的入侵路线，同时让小羊莫可能够散步的安全牧场包含尽可能多的野草莓🍓并填平或避开坑洞🕳️。",
           playBtn: "开始游戏",
           theoryBtn: "阅读解说文章",
+          card3Tag: "精密钛合金板金益智游戏",
+          card3Title: "TITAN PACK — 精密钛合金板金解谜",
+          card3Desc:
+            "在最尖端钛合金加工车间，与质检无人机UNIT-74一起将订单零件严丝合缝地填满母材平板。达成零边角料废料与零通断层的一刀切完美切割。",
         },
       };
 
@@ -390,6 +452,16 @@
         document.getElementById("card2-desc").textContent = t.card2Desc;
         document.getElementById("card2-play").textContent = t.playBtn;
         document.getElementById("card2-theory").textContent = t.theoryBtn;
+        const card3Tag = document.getElementById("card3-tag");
+        if (card3Tag) card3Tag.textContent = t.card3Tag;
+        const card3Title = document.getElementById("card3-title");
+        if (card3Title) card3Title.textContent = t.card3Title;
+        const card3Desc = document.getElementById("card3-desc");
+        if (card3Desc) card3Desc.textContent = t.card3Desc;
+        const card3Play = document.getElementById("card3-play");
+        if (card3Play) card3Play.textContent = t.playBtn;
+        const card3Theory = document.getElementById("card3-theory");
+        if (card3Theory) card3Theory.textContent = t.theoryBtn;
 
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
