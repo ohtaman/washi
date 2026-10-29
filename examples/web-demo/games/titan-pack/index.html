@@ -899,7 +899,7 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
                 for (const s of splitPoints) {
                   if (s > 0 && b.h - s > 0) {
                     const b1 = { col: b.col, row: b.row, w: b.w, h: s };
-                    const b2 = { col: b.col + s, row: b.row, w: b.w, h: b.h - s };
+                    const b2 = { col: b.col, row: b.row + s, w: b.w, h: b.h - s };
                     const test = [...blocks.slice(0, idx), b1, b2, ...blocks.slice(idx + 1)];
                     if (!hasFaultLines(cols, rows, test)) {
                       candidates.push({ idx, b1, b2, area: b.w * b.h });
@@ -956,7 +956,7 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
             if (b.h >= 2) {
               const s = Math.floor(b.h / 2);
               const b1 = { col: b.col, row: b.row, w: b.w, h: s };
-              const b2 = { col: b.col + s, row: b.row, w: b.w, h: b.h - s };
+              const b2 = { col: b.col, row: b.row + s, w: b.w, h: b.h - s };
               const test = [...fallbackBlocks.slice(0, i), b1, b2, ...fallbackBlocks.slice(i + 1)];
               if (!hasFaultLines(cols, rows, test)) {
                 fallbackBlocks = test;

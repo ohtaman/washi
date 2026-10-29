@@ -204,22 +204,24 @@
         <section>
           <h2 id="t-sec2-title">2. 幾何学的非重複制約の線形化（Big-M 定式化）</h2>
           <p id="t-sec2-p1">
-            2つの長方形パーツ $i$ と $j$（位置 $(x_i, y_i)$、幅 $w_i$、高さ $h_i$）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：
+            2つの長方形パーツ i と j（位置 (x<sub>i</sub>, y<sub>i</sub>)、幅 w<sub>i</sub>、高さ h<sub>i</sub>）が互いに重ならないための条件は、本来「論理和（OR）」を含む非線形な条件です：
           </p>
-          <div class="formula-box">
-            $$x_i + w_i \le x_j \quad \text{または} \quad x_j + w_j \le x_i \quad \text{または} \quad y_i + h_i \le y_j \quad \text{または} \quad y_j + h_j \le y_i$$
+          <div class="formula-box" style="text-align: center; font-size: 0.95rem;">
+            <code>x<sub>i</sub> + w<sub>i</sub> ≤ x<sub>j</sub> &nbsp;∨&nbsp; x<sub>j</sub> + w<sub>j</sub> ≤ x<sub>i</sub> &nbsp;∨&nbsp; y<sub>i</sub> + h<sub>i</sub> ≤ y<sub>j</sub> &nbsp;∨&nbsp; y<sub>j</sub> + h<sub>j</sub> ≤ y<sub>i</sub></code>
           </div>
           <p id="t-sec2-p2">
-            混合整数線形計画法（MILP）では、4つのバイナリ変数 $\delta_{ij,1}, \delta_{ij,2}, \delta_{ij,3}, \delta_{ij,4} \in \{0, 1\}$ と十分大きな定数 $M$ を用いて以下のように線形制約へ変換します：
+            混合整数線形計画法（MILP）では、4つのバイナリ変数 δ<sub>ij,1</sub>, δ<sub>ij,2</sub>, δ<sub>ij,3</sub>, δ<sub>ij,4</sub> ∈ {0, 1} と十分大きな定数 M を用いて以下のように線形制約へ変換します：
           </p>
           <div class="formula-box">
-            $$\begin{aligned}
-            x_i + w_i &\le x_j + M(1 - \delta_{ij,1}) \\
-            x_j + w_j &\le x_i + M(1 - \delta_{ij,2}) \\
-            y_i + h_i &\le y_j + M(1 - \delta_{ij,3}) \\
-            y_j + h_j &\le y_i + M(1 - \delta_{ij,4}) \\
-            \delta_{ij,1} + \delta_{ij,2} + \delta_{ij,3} + \delta_{ij,4} &\ge 1
-            \end{aligned}$$
+            <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.92rem; padding: 0.3rem 0.8rem;">
+              <div><code>x<sub>i</sub> + w<sub>i</sub> ≤ x<sub>j</sub> + M(1 − δ<sub>ij,1</sub>)</code></div>
+              <div><code>x<sub>j</sub> + w<sub>j</sub> ≤ x<sub>i</sub> + M(1 − δ<sub>ij,2</sub>)</code></div>
+              <div><code>y<sub>i</sub> + h<sub>i</sub> ≤ y<sub>j</sub> + M(1 − δ<sub>ij,3</sub>)</code></div>
+              <div><code>y<sub>j</sub> + h<sub>j</sub> ≤ y<sub>i</sub> + M(1 − δ<sub>ij,4</sub>)</code></div>
+              <div style="margin-top: 0.4rem; color: #38bdf8; font-weight: bold;">
+                <code>δ<sub>ij,1</sub> + δ<sub>ij,2</sub> + δ<sub>ij,3</sub> + δ<sub>ij,4</sub> ≥ 1</code>
+              </div>
+            </div>
           </div>
         </section>
 
