@@ -8,6 +8,7 @@ import {
   buildNurseWashiModel,
   evaluateNurseSchedule,
   getPrevMonthTailWorkStreak,
+  isStaffingRuleApplicableOnDay,
   solveNurseScheduleWithWashi,
   diagnoseNurseScheduleWithHiGHS,
 } from "../examples/web-demo/apps/ai-shift/solver.js";
@@ -3827,5 +3828,47 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(rule?.minStaff).toBeUndefined();
     // Invariant: it must NEVER create a shift_count_quota rule
     expect(appliedState.customRules.some((r) => r.kind === "shift_count_quota")).toBe(false);
+  });
+
+  it("evaluates day-type staffing rules consistently between model building and schedule evaluation", () => {
+    const state = generateNurseSchedulingState({ staffCount: 10, year: 2026, month: 11 }); // Nov 1: Sun, Nov 2: Mon, Nov 3: Holiday (Culture Day)
+    const weekdayRule = {
+      id: "rule_weekday_staffing",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "平日日勤はリーダー2名以上",
+      shifts: ["D" as const],
+      attribute: "leader",
+      dayType: "weekday" as const,
+      minCount: 2,
+    };
+
+    // Nov 1 is Sunday (dow=0) -> weekdayRule not applicable
+    expect(isStaffingRuleApplicableOnDay(weekdayRule, 1, state.config)).toBe(false);
+    // Nov 2 is Monday (dow=1) -> weekdayRule applicable
+    expect(isStaffingRuleApplicableOnDay(weekdayRule, 2, state.config)).toBe(true);
+    // Nov 3 is Culture Day (Holiday) -> weekdayRule not applicable
+    expect(isStaffingRuleApplicableOnDay(weekdayRule, 3, state.config)).toBe(false);
+
+    // Empty schedule (all OFF)
+    const emptySchedule: Record<string, any[]> = {};
+    for (const n of state.nurses) {
+      emptySchedule[n.id] = new Array(state.config.numDays).fill("O");
+    }
+
+    const stateWithRule = {
+      ...state,
+      customRules: [weekdayRule],
+    };
+
+    const evalResult = evaluateNurseSchedule(stateWithRule, emptySchedule);
+    // On Day 1 (Sunday) and Day 3 (Holiday), weekdayRule must NOT fire a violation
+    const sundayViolations = evalResult.violations.filter((v) => v.day === 1 && v.id.includes("rule_weekday_staffing"));
+    const holidayViolations = evalResult.violations.filter((v) => v.day === 3 && v.id.includes("rule_weekday_staffing"));
+    const mondayViolations = evalResult.violations.filter((v) => v.day === 2 && v.id.includes("rule_weekday_staffing"));
+
+    expect(sundayViolations.length).toBe(0);
+    expect(holidayViolations.length).toBe(0);
+    expect(mondayViolations.length).toBe(1);
   });
 });
