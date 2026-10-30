@@ -189,6 +189,33 @@ export function isNurseTargetedByRule(
   }
   return doesNurseMatchAttribute(nurse, attr, skillDefs);
 }
+/**
+ * Evaluates whether a custom staffing rule is active and applicable on a given calendar day,
+ * checking date bounds (startDay/endDay), allowedDaysOfWeek, and dayType (weekday, weekend, holiday, etc.).
+ */
+export function isStaffingRuleApplicableOnDay(
+  rule: CustomConstraintRule,
+  day: number,
+  config: NurseScheduleConfig
+): boolean {
+  if (!rule.enabled || rule.kind !== "staffing_rule") return false;
+  if (typeof rule.startDay === "number" && day < rule.startDay) return false;
+  if (typeof rule.endDay === "number" && day > rule.endDay) return false;
+
+  const dow = getDayOfWeek(config.year, config.month, day);
+  if (rule.allowedDaysOfWeek?.length && !rule.allowedDaysOfWeek.includes(dow)) return false;
+
+  if (rule.dayType && rule.dayType !== "all") {
+    const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, day));
+    if (rule.dayType === "weekday" && (dow === 0 || dow === 6 || isHol)) return false;
+    if (rule.dayType === "weekend" && (dow !== 0 && dow !== 6)) return false;
+    if (rule.dayType === "holiday" && !isHol) return false;
+    if (rule.dayType === "weekend_holiday" && (dow !== 0 && dow !== 6 && !isHol)) return false;
+    if (rule.dayType.startsWith("dow:") && dow !== Number(rule.dayType.split(":")[1])) return false;
+  }
+
+  return true;
+}
 
 /**
  * Computes the required daily headcount for Day/Evening/Night shifts on a given day (1..numDays),
@@ -208,6 +235,21 @@ export function getRequiredDailyCoverage(
     E: config.eveningStaff,
     N: config.nightStaff,
   };
+
+  if (config.enforceSkillCoverage) {
+    for (const rule of customRules) {
+      if (rule.attribute && rule.attribute !== "all") continue;
+      if (rule.isHard === false) continue;
+      if (!isStaffingRuleApplicableOnDay(rule, day, config)) continue;
+      if (rule.shifts && typeof rule.minCount === "number") {
+        for (const s of rule.shifts) {
+          if (s === "D") req.D = rule.minCount;
+          else if (s === "E") req.E = rule.minCount;
+          else if (s === "N") req.N = rule.minCount;
+        }
+      }
+    }
+  }
 
   for (const rule of customRules) {
     if (
@@ -937,6 +979,19 @@ export function buildNurseWashiModel(
     const req = getRequiredDailyCoverage(state, d);
 
     for (const s of ["D", "E", "N"] as const) {
+      const hasDateCoverage = customRules.some(
+        (r) => r.enabled && r.isHard !== false && r.kind === "date_coverage" && r.day === d && r.shift === s
+      );
+      if (config.enforceSkillCoverage && !hasDateCoverage) {
+        const hasRule = customRules.some((r) => {
+          if (r.attribute && r.attribute !== "all") return false;
+          if (!r.shifts?.includes(s)) return false;
+          if (typeof r.minCount !== "number" || r.minCount <= 0) return false;
+          return isStaffingRuleApplicableOnDay(r, d, config);
+        });
+        if (hasRule) continue;
+      }
+
       const dayVars = nurses.flatMap((n) => getShiftVarsForNurseDay(s, n.id, idx));
       addTrackedConstraint(expr`${sum(dayVars)} >= ${req[s]}`, {
         name: `cov_${s}_d${d}`,
@@ -976,12 +1031,9 @@ export function buildNurseWashiModel(
 
         const hasStaffingOverride = (s: ActiveShiftCode, bound: "min" | "max") =>
           customRules.some((r) => {
-            if (!r.enabled || r.kind !== "staffing_rule") return false;
             if ((r.attribute ?? "all") !== sd.code) return false;
             if (!r.shifts?.includes(s)) return false;
-            if (typeof r.startDay === "number" && d < r.startDay) return false;
-            if (typeof r.endDay === "number" && d > r.endDay) return false;
-            if (r.allowedDaysOfWeek?.length && !r.allowedDaysOfWeek.includes(dow)) return false;
+            if (!isStaffingRuleApplicableOnDay(r, d, config)) return false;
             return bound === "min"
               ? typeof r.minCount === "number"
               : typeof r.maxCount === "number";
@@ -1179,19 +1231,14 @@ export function buildNurseWashiModel(
         relaxSuggestion: `追加された禁止ルール「${rule.description}」を解除してください。`,
       });
     } else if (rule.kind === "staffing_rule" && rule.shifts?.length) {
+      if (!config.enforceSkillCoverage) continue;
       const attr = rule.attribute ?? "all";
       const matchingNurses = nurses.filter((n) =>
         doesNurseMatchAttribute(n, attr, activeSkillDefs)
       );
-      const allowedDow = rule.allowedDaysOfWeek?.length
-        ? new Set(rule.allowedDaysOfWeek)
-        : null;
       for (let d = 1; d <= numDays; d++) {
         if (!isDayIncluded(d)) continue;
-        if (typeof rule.startDay === "number" && d < rule.startDay) continue;
-        if (typeof rule.endDay === "number" && d > rule.endDay) continue;
-        const dow = getDayOfWeek(config.year, config.month, d);
-        if (allowedDow && !allowedDow.has(dow)) continue;
+        if (!isStaffingRuleApplicableOnDay(rule, d, config)) continue;
         const idx = d - 1;
         for (const s of rule.shifts) {
           if (!isDayAllowedForShift(d, s)) continue;
@@ -1631,6 +1678,18 @@ export function evaluateNurseSchedule(
     });
 
     for (const s of ["D", "E", "N"] as const) {
+      const hasDateCoverage = customRules.some(
+        (r) => r.enabled && r.isHard !== false && r.kind === "date_coverage" && r.day === d && r.shift === s
+      );
+      if (config.enforceSkillCoverage && !hasDateCoverage) {
+        const hasRule = customRules.some((r) => {
+          if (r.attribute && r.attribute !== "all") return false;
+          if (!r.shifts?.includes(s)) return false;
+          if (typeof r.minCount !== "number" || r.minCount <= 0) return false;
+          return isStaffingRuleApplicableOnDay(r, d, config);
+        });
+        if (hasRule) continue;
+      }
       if (counts[s] < required[s]) {
         const sMeta = getShiftMeta(s, customShiftDefs);
         pushViolation(
@@ -1669,14 +1728,11 @@ export function evaluateNurseSchedule(
 
         for (const { s, sLabel, minVal, maxVal } of shiftBounds) {
           const overriddenMin = customRules.some((r) => {
-            if (!r.enabled || r.kind !== "staffing_rule" || r.attribute !== sd.code) return false;
+            if ((r.attribute ?? "all") !== sd.code) return false;
             if (typeof r.minCount !== "number") return false;
             const rShifts = r.shifts?.length ? r.shifts : ["D"];
             if (!rShifts.includes(s)) return false;
-            const okStart = typeof r.startDay !== "number" || d >= r.startDay;
-            const okEnd = typeof r.endDay !== "number" || d <= r.endDay;
-            const okDow = !r.allowedDaysOfWeek?.length || r.allowedDaysOfWeek.includes(dow);
-            return okStart && okEnd && okDow;
+            return isStaffingRuleApplicableOnDay(r, d, config);
           });
           if (minVal > 0 && !overriddenMin && sdCounts[s] < minVal) {
             pushViolation(
@@ -1691,14 +1747,11 @@ export function evaluateNurseSchedule(
           }
 
           const overriddenMax = customRules.some((r) => {
-            if (!r.enabled || r.kind !== "staffing_rule" || r.attribute !== sd.code) return false;
+            if ((r.attribute ?? "all") !== sd.code) return false;
             if (typeof r.maxCount !== "number") return false;
             const rShifts = r.shifts?.length ? r.shifts : ["D"];
             if (!rShifts.includes(s)) return false;
-            const okStart = typeof r.startDay !== "number" || d >= r.startDay;
-            const okEnd = typeof r.endDay !== "number" || d <= r.endDay;
-            const okDow = !r.allowedDaysOfWeek?.length || r.allowedDaysOfWeek.includes(dow);
-            return okStart && okEnd && okDow;
+            return isStaffingRuleApplicableOnDay(r, d, config);
           });
           if (typeof maxVal === "number" && maxVal >= 0 && !overriddenMax && sdCounts[s] > maxVal) {
             pushViolation(
@@ -1767,10 +1820,8 @@ export function evaluateNurseSchedule(
           );
         }
       } else if (rule.enabled && rule.kind === "staffing_rule") {
-        const okStart = typeof rule.startDay !== "number" || d >= rule.startDay;
-        const okEnd = typeof rule.endDay !== "number" || d <= rule.endDay;
-        const okDow = !rule.allowedDaysOfWeek?.length || rule.allowedDaysOfWeek.includes(dow);
-        if (!okStart || !okEnd || !okDow) continue;
+        if (!config.enforceSkillCoverage) continue;
+        if (!isStaffingRuleApplicableOnDay(rule, d, config)) continue;
         const targetShifts: ShiftCode[] = rule.shifts?.length ? rule.shifts : ["D"];
         const attr = rule.attribute ?? "all";
         const matchedNurses = nurses.filter((n) =>
@@ -2999,6 +3050,13 @@ export async function diagnoseNurseScheduleWithHiGHS(
       }
       addDayWithNeighbors(sDay);
       addDayWithNeighbors(eDay);
+    }
+    if (r.kind === "staffing_rule") {
+      for (let d = 1; d <= state.config.numDays; d++) {
+        if (isStaffingRuleApplicableOnDay(r, d, state.config)) {
+          candidateDays.add(d);
+        }
+      }
     }
     if (Array.isArray(r.allowedDaysOfWeek) && r.allowedDaysOfWeek.length > 0) {
       for (let d = 1; d <= state.config.numDays; d++) {

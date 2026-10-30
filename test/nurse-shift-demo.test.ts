@@ -8,6 +8,8 @@ import {
   buildNurseWashiModel,
   evaluateNurseSchedule,
   getPrevMonthTailWorkStreak,
+  getRequiredDailyCoverage,
+  isStaffingRuleApplicableOnDay,
   solveNurseScheduleWithWashi,
   diagnoseNurseScheduleWithHiGHS,
 } from "../examples/web-demo/apps/ai-shift/solver.js";
@@ -3827,5 +3829,143 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(rule?.minStaff).toBeUndefined();
     // Invariant: it must NEVER create a shift_count_quota rule
     expect(appliedState.customRules.some((r) => r.kind === "shift_count_quota")).toBe(false);
+  });
+
+  it("evaluates day-type staffing rules consistently between model building and schedule evaluation", () => {
+    const state = generateNurseSchedulingState({ staffCount: 10, year: 2026, month: 11 }); // Nov 1: Sun, Nov 2: Mon, Nov 3: Holiday (Culture Day)
+    const weekdayRule = {
+      id: "rule_weekday_staffing",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "平日日勤はリーダー2名以上",
+      shifts: ["D" as const],
+      attribute: "leader",
+      dayType: "weekday" as const,
+      minCount: 2,
+    };
+
+    // Nov 1 is Sunday (dow=0) -> weekdayRule not applicable
+    expect(isStaffingRuleApplicableOnDay(weekdayRule, 1, state.config)).toBe(false);
+    // Nov 2 is Monday (dow=1) -> weekdayRule applicable
+    expect(isStaffingRuleApplicableOnDay(weekdayRule, 2, state.config)).toBe(true);
+    // Nov 3 is Culture Day (Holiday) -> weekdayRule not applicable
+    expect(isStaffingRuleApplicableOnDay(weekdayRule, 3, state.config)).toBe(false);
+
+    // Empty schedule (all OFF)
+    const emptySchedule: Record<string, any[]> = {};
+    for (const n of state.nurses) {
+      emptySchedule[n.id] = new Array(state.config.numDays).fill("O");
+    }
+
+    const stateWithRule = {
+      ...state,
+      customRules: [weekdayRule],
+    };
+
+    const evalResult = evaluateNurseSchedule(stateWithRule, emptySchedule);
+    // On Day 1 (Sunday) and Day 3 (Holiday), weekdayRule must NOT fire a violation
+    const sundayViolations = evalResult.violations.filter((v) => v.day === 1 && v.id.includes("rule_weekday_staffing"));
+    const holidayViolations = evalResult.violations.filter((v) => v.day === 3 && v.id.includes("rule_weekday_staffing"));
+    const mondayViolations = evalResult.violations.filter((v) => v.day === 2 && v.id.includes("rule_weekday_staffing"));
+
+    expect(sundayViolations.length).toBe(0);
+    expect(holidayViolations.length).toBe(0);
+    expect(mondayViolations.length).toBe(1);
+
+    // Soft all-staff rule must not produce hard coverage violations
+    const softAllStaffRule = {
+      id: "rule_soft_all_staff",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "日勤は全員で10名（努力目標）",
+      shifts: ["D" as const],
+      attribute: "all",
+      isHard: false,
+      minCount: 10,
+    };
+    const stateWithSoftAllStaff = {
+      ...state,
+      customRules: [softAllStaffRule],
+    };
+    const softEval = evaluateNurseSchedule(stateWithSoftAllStaff, emptySchedule);
+    const hardCovViolations = softEval.violations.filter(
+      (v) => v.category === "coverage" && v.id.startsWith("cov_D_")
+    );
+    expect(hardCovViolations.length).toBe(0);
+  });
+
+  it("includes day-type active dates in conflict diagnosis for mid-week starting months", async () => {
+    // June 2026 starts on Monday (June 1, 2, 3 are all Mon, Tue, Wed; first weekend is June 6-7)
+    const juneState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 6 });
+    const impossibleWeekendRule = {
+      id: "rule_impossible_weekend",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "土日深夜勤はリーダー15名以上必要（不可能な人数）",
+      shifts: ["N" as const],
+      attribute: "leader",
+      dayType: "weekend" as const,
+      minCount: 15,
+      isHard: true,
+    };
+    const stateWithRule = {
+      ...juneState,
+      customRules: [impossibleWeekendRule],
+    };
+    const diag = await diagnoseNurseScheduleWithHiGHS(stateWithRule);
+    expect(diag.status).toBe("Unsat");
+    expect(diag.conflicts.some((c) => c.name.includes("rule_impossible_weekend"))).toBe(true);
+  });
+
+  it("honors enforceSkillCoverage toggle and preserves hard date_coverage beside staffing rules", () => {
+    const state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
+    const staffingRule = {
+      id: "rule_staffing_d_12",
+      kind: "staffing_rule" as const,
+      enabled: true,
+      description: "平日日勤は全員で12名",
+      shifts: ["D" as const],
+      attribute: "all",
+      dayType: "weekday" as const,
+      minCount: 12,
+      isHard: true,
+    };
+    const dateCoverageRule = {
+      id: "rule_date_cov_15",
+      kind: "date_coverage" as const,
+      enabled: true,
+      description: "11月2日日勤は18名必要",
+      shift: "D" as const,
+      day: 2,
+      minStaff: 18,
+      isHard: true,
+    };
+
+    const stateWithRules = {
+      ...state,
+      customRules: [staffingRule, dateCoverageRule],
+    };
+
+    // When enforceSkillCoverage is true, staffing rule applies to Day 2 (Monday)
+    const reqWithStaffing = getRequiredDailyCoverage({ ...stateWithRules, customRules: [staffingRule] }, 2);
+    expect(reqWithStaffing.D).toBe(12);
+
+    // When enforceSkillCoverage is false, staffing rule is ignored
+    const reqWithoutStaffing = getRequiredDailyCoverage({
+      ...stateWithRules,
+      config: { ...state.config, enforceSkillCoverage: false },
+      customRules: [staffingRule],
+    }, 2);
+    expect(reqWithoutStaffing.D).toBe(state.config.weekdayDayStaff);
+
+    // When date_coverage is present on Day 2, it overrides both base and staffing rule to 18
+    const reqWithDateCov = getRequiredDailyCoverage(stateWithRules, 2);
+    expect(reqWithDateCov.D).toBe(18);
+
+    // Model building must retain the cov_D_d2 constraint with requirement 18
+    const washiModel = buildNurseWashiModel(stateWithRules, { solver: "highs" });
+    const covMeta = washiModel.constraintMeta.get("cov_D_d2");
+    expect(covMeta).toBeDefined();
+    expect(covMeta?.labelJa).toContain("18名");
   });
 });

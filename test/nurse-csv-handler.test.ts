@@ -14,11 +14,15 @@ import {
 } from "../examples/web-demo/apps/ai-shift/csv-handler";
 import {
   createBlankNurseSchedulingState,
+  createDefaultStaffingRules,
   generateNurseSchedulingState,
   MAX_STAFF_COUNT,
   MIN_STAFF_COUNT,
 } from "../examples/web-demo/apps/ai-shift/generator";
-import { solveNurseScheduleWithWashi } from "../examples/web-demo/apps/ai-shift/solver";
+import {
+  getRequiredDailyCoverage,
+  solveNurseScheduleWithWashi,
+} from "../examples/web-demo/apps/ai-shift/solver";
 
 describe("Nurse Scheduling CSV Handler & Blank Slate Mode", () => {
   it("initializes a valid blank nurse scheduling state and safely handles solve without crashing", async () => {
@@ -377,7 +381,7 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(blank.skillDefs.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("verifies 4-step tutorial workflow and tab layout alignment with ai-timetable", () => {
+  it("verifies 4-step tutorial workflow and tab layout alignment with shift matrix first", () => {
     const html = fs.readFileSync("examples/web-demo/apps/ai-shift/index.html", "utf8");
 
     // 1. 4-step tutorial banner
@@ -390,41 +394,44 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(html).toContain("id=\"btn-tut-step3\"");
     expect(html).toContain("id=\"btn-tut-step4\"");
 
-    // 2. Tab button ordering: Master Data -> Constraints -> Schedule
+    // 2. Tab button ordering: Schedule -> Staff -> Constraints
+    const scheduleBtnIdx = html.indexOf("id=\"tab-btn-schedule\"");
     const staffBtnIdx = html.indexOf("id=\"tab-btn-staff\"");
     const constraintsBtnIdx = html.indexOf("id=\"tab-btn-constraints\"");
-    const scheduleBtnIdx = html.indexOf("id=\"tab-btn-schedule\"");
-    expect(staffBtnIdx).toBeGreaterThan(-1);
+    expect(scheduleBtnIdx).toBeGreaterThan(-1);
+    expect(staffBtnIdx).toBeGreaterThan(scheduleBtnIdx);
     expect(constraintsBtnIdx).toBeGreaterThan(staffBtnIdx);
-    expect(scheduleBtnIdx).toBeGreaterThan(constraintsBtnIdx);
 
-    // Initial active tab button is staff
-    const staffBtnSnippet = html.slice(staffBtnIdx - 50, staffBtnIdx + 150);
-    expect(staffBtnSnippet).toContain("results-tab-btn active");
+    // Initial active tab button is schedule
+    const scheduleBtnSnippet = html.slice(scheduleBtnIdx - 50, scheduleBtnIdx + 150);
+    expect(scheduleBtnSnippet).toContain("results-tab-btn active");
 
-    // 3. Tab panel ordering: staff (visible) -> constraints (hidden) -> schedule (hidden)
+    // 3. Tab panel ordering: schedule (visible) -> staff (hidden) -> constraints (hidden)
+    const schedulePanelIdx = html.indexOf("id=\"tab-panel-schedule\"");
     const staffPanelIdx = html.indexOf("id=\"tab-panel-staff\"");
     const constraintsPanelIdx = html.indexOf("id=\"tab-panel-constraints\"");
-    const schedulePanelIdx = html.indexOf("id=\"tab-panel-schedule\"");
-    expect(staffPanelIdx).toBeGreaterThan(-1);
+    expect(schedulePanelIdx).toBeGreaterThan(-1);
+    expect(staffPanelIdx).toBeGreaterThan(schedulePanelIdx);
     expect(constraintsPanelIdx).toBeGreaterThan(staffPanelIdx);
-    expect(schedulePanelIdx).toBeGreaterThan(constraintsPanelIdx);
+
+    const schedulePanelSnippet = html.slice(schedulePanelIdx, schedulePanelIdx + 250);
+    expect(schedulePanelSnippet).not.toContain("hidden");
 
     const staffPanelSnippet = html.slice(staffPanelIdx, staffPanelIdx + 250);
-    expect(staffPanelSnippet).not.toContain("hidden");
+    expect(staffPanelSnippet).toContain("hidden");
 
     const constraintsPanelSnippet = html.slice(constraintsPanelIdx, constraintsPanelIdx + 250);
     expect(constraintsPanelSnippet).toContain("hidden");
 
-    const schedulePanelSnippet = html.slice(schedulePanelIdx, schedulePanelIdx + 250);
-    expect(schedulePanelSnippet).toContain("hidden");
-
-    // 4. Workflow step progression buttons exist
-    expect(html).toContain("id=\"staff-next-step-banner\"");
-    expect(html).toContain("id=\"btn-cat-go-constraints\"");
-    expect(html).toContain("id=\"btn-cat-go-schedule\"");
-    expect(html).toContain("id=\"constraints-next-step-banner\"");
-    expect(html).toContain("id=\"btn-constraints-go-schedule\"");
+    // 4. Sentence builder and rule elements exist
+    expect(html).toContain("id=\"staffing-rules-list\"");
+    expect(html).toContain("id=\"btn-add-sentence-rule\"");
+    expect(html).toContain("id=\"builder-shift\"");
+    expect(html).toContain("id=\"builder-day-type\"");
+    expect(html).toContain("id=\"builder-attribute\"");
+    expect(html).toContain("id=\"builder-min-count\"");
+    expect(html).toContain("id=\"builder-max-count\"");
+    expect(html).toContain("id=\"builder-hardness\"");
   });
 
   it("ensures all DOM elements queried by $() in ai-shift main.ts exist in index.html", () => {
@@ -458,5 +465,42 @@ preceptor,N03,N04,"  ",1,指導ペア
     const stateUnder = generateNurseSchedulingState({ staffCount: 5 });
     expect(stateUnder.nurses.length).toBe(MIN_STAFF_COUNT);
     expect(stateUnder.config.staffCount).toBe(MIN_STAFF_COUNT);
+  });
+
+  it("creates default staffing rules and verifies coverage differentiation by dayType", () => {
+    const rules = createDefaultStaffingRules(30);
+    expect(rules.length).toBeGreaterThanOrEqual(7);
+
+    const weekdayDayRule = rules.find((r) => r.shifts?.includes("D") && r.dayType === "weekday");
+    expect(weekdayDayRule).toBeDefined();
+    expect(weekdayDayRule?.minCount).toBe(10);
+
+    const weekendDayRule = rules.find(
+      (r) => r.shifts?.includes("D") && r.dayType === "weekend_holiday"
+    );
+    expect(weekendDayRule).toBeDefined();
+    expect(weekendDayRule?.minCount).toBe(7);
+
+    // Verify getRequiredDailyCoverage respects staffing_rule dayType differentiation
+    const state = generateNurseSchedulingState({
+      year: 2026,
+      month: 11,
+      staffCount: 30,
+    });
+    state.customRules = rules;
+    // 2026-11-01 is Sunday (dow: 0), 2026-11-02 is Monday (dow: 1, weekday), 2026-11-03 is Culture Day (Holiday)
+    const sundayCov = getRequiredDailyCoverage(state, 1);
+    const mondayCov = getRequiredDailyCoverage(state, 2);
+    const holidayCov = getRequiredDailyCoverage(state, 3);
+
+    expect(sundayCov.D).toBe(7);
+    expect(sundayCov.E).toBe(3);
+    expect(sundayCov.N).toBe(3);
+
+    expect(mondayCov.D).toBe(10);
+    expect(mondayCov.E).toBe(3);
+    expect(mondayCov.N).toBe(3);
+
+    expect(holidayCov.D).toBe(7);
   });
 });

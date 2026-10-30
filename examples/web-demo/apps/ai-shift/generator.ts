@@ -617,6 +617,111 @@ export function generateNurseSchedulingState(
 }
 
 /**
+ * Creates default staffing coverage rules (shift-, day-type-, and skill-level requirements).
+ */
+export function createDefaultStaffingRules(
+  staffCount: number = 30
+): CustomConstraintRule[] {
+  const dayWeekday = Math.max(4, Math.round((staffCount / 30) * 10));
+  const dayWeekend = Math.max(3, Math.round((staffCount / 30) * 7));
+  const eveStaff = Math.max(2, Math.round((staffCount / 30) * 3));
+  const nightStaff = Math.max(2, Math.round((staffCount / 30) * 3));
+
+  return [
+    {
+      id: "default_staffing_day_weekday",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "weekday",
+      shifts: ["D"],
+      attribute: "all",
+      minCount: dayWeekday,
+      description: `日勤は平日に全員が${dayWeekday}人以上 (必須)`,
+    },
+    {
+      id: "default_staffing_day_weekend",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "weekend_holiday",
+      shifts: ["D"],
+      attribute: "all",
+      minCount: dayWeekend,
+      description: `日勤は土日祝に全員が${dayWeekend}人以上 (必須)`,
+    },
+    {
+      id: "default_staffing_eve",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "all",
+      shifts: ["E"],
+      attribute: "all",
+      minCount: eveStaff,
+      maxCount: eveStaff,
+      description: `準夜勤は毎日に全員が${eveStaff}人以上${eveStaff}人以下 (必須)`,
+    },
+    {
+      id: "default_staffing_night",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "all",
+      shifts: ["N"],
+      attribute: "all",
+      minCount: nightStaff,
+      maxCount: nightStaff,
+      description: `深夜勤は毎日に全員が${nightStaff}人以上${nightStaff}人以下 (必須)`,
+    },
+    {
+      id: "default_staffing_leader_day",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "all",
+      shifts: ["D"],
+      attribute: "leader_cap",
+      minCount: 2,
+      description: `日勤は毎日にリーダーが2人以上 (必須)`,
+    },
+    {
+      id: "default_staffing_leader_eve",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "all",
+      shifts: ["E"],
+      attribute: "leader_cap",
+      minCount: 1,
+      description: `準夜勤は毎日にリーダーが1人以上 (必須)`,
+    },
+    {
+      id: "default_staffing_leader_night",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "all",
+      shifts: ["N"],
+      attribute: "leader_cap",
+      minCount: 1,
+      description: `深夜勤は毎日にリーダーが1人以上 (必須)`,
+    },
+    {
+      id: "default_staffing_newcomer_night",
+      kind: "staffing_rule",
+      enabled: true,
+      isHard: true,
+      dayType: "all",
+      shifts: ["N"],
+      attribute: "newcomer",
+      maxCount: 1,
+      description: `深夜勤は毎日に新人が1人以下 (必須)`,
+    },
+  ];
+}
+
+/**
  * Injects a realistic nurse scheduling conflict into the state so the user can experience
  * WaSHI (HiGHS Infeasible detection + Elastic conflict diagnosis) and consult Gemini Nano.
  */

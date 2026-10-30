@@ -827,6 +827,14 @@ export type CustomConstraintKind =
   | "shift_prerequisite"
   | "level_night_shifts";
 
+export type StaffingDayType =
+  | "all"
+  | "weekday"
+  | "weekend"
+  | "holiday"
+  | "weekend_holiday"
+  | string;
+
 export interface CustomConstraintRule {
   id: string;
   kind: CustomConstraintKind;
@@ -845,6 +853,8 @@ export interface CustomConstraintRule {
   shifts?: ShiftCode[];
   /** Target nurse attribute/skill for `staffing_rule`, `shift_count_quota`, `daily_shift_cap`, `shift_prerequisite` (e.g. "all", "team_A", "team_B", "newcomer", "leader_cap", "icu_er") */
   attribute?: string;
+  /** Day type category for staffing rules ("all" | "weekday" | "weekend" | "holiday" | "weekend_holiday" | "dow:0".."dow:6") */
+  dayType?: StaffingDayType;
   minStaff?: number;
   maxStaff?: number;
   minCount?: number;

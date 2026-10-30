@@ -1866,6 +1866,11 @@ body.ai-shift-body {
   border-color: rgba(245, 158, 11, 0.45);
 }
 
+.trans-soft {
+  border-style: dashed !important;
+  opacity: 0.92;
+}
+
 [data-theme="dark"] .trans-require {
   color: #fbbf24;
 }
@@ -2120,3 +2125,92 @@ body.ai-shift-body {
   color: #e11d48;
   letter-spacing: 0.04em;
 }
+
+/* ==================== SENTENCE BUILDER & STAFFING RULES STYLES ==================== */
+.sentence-builder-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+}
+
+.sentence-builder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.sentence-builder-header strong {
+  font-size: 0.82rem;
+  color: var(--text-sumi);
+}
+
+.sentence-builder-desc {
+  font-size: 0.72rem;
+  color: var(--text-sumi-secondary);
+}
+
+.sentence-builder-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-size: 0.82rem;
+  line-height: 2;
+  color: var(--text-sumi);
+}
+
+.sentence-token {
+  font-weight: 600;
+  color: var(--text-sumi-secondary);
+}
+
+.builder-select {
+  height: 30px;
+  padding: 2px 8px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-sumi);
+}
+
+.builder-input-num {
+  width: 54px;
+  height: 30px;
+  padding: 2px 6px;
+  font-size: 0.82rem;
+  text-align: center;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  color: var(--text-sumi);
+}
+
+.form-field-with-hardness {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-field-with-hardness .form-field {
+  flex: 1;
+}
+
+.form-field-with-hardness .hardness-select {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.shift-cell-empty {
+  color: var(--text-sumi-disabled, #94a3b8);
+  background-color: var(--bg-surface-elevated, #f8fafc);
+  font-weight: normal;
+  text-align: center;
+}
+
