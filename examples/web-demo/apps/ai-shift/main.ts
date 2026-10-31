@@ -2146,7 +2146,7 @@ function renderStaffProfilesTab(): void {
 
     const emptyTr = document.createElement("tr");
     const emptyTd = document.createElement("td");
-    emptyTd.colSpan = 8;
+    emptyTd.colSpan = 7;
     emptyTd.style.textAlign = "center";
     emptyTd.style.padding = "2.5rem 1rem";
     emptyTd.style.color = "var(--text-sumi-secondary)";
@@ -2248,20 +2248,33 @@ function renderStaffProfilesTab(): void {
     tdName.textContent = `${nurse.name} (${nurse.yearsExp}年目)`;
 
     const allSkillDefs = appState.skillDefs ?? createDefaultSkillDefs();
-    const heldGroupAndRoleLabels = allSkillDefs
-      .filter((sd) => (sd.category === "group" || sd.category === "role") && nurse.skills.includes(sd.code))
-      .map((sd) => sd.shortLabel || sd.label);
-    const tdRole = document.createElement("td");
-    tdRole.textContent = heldGroupAndRoleLabels.join(" / ");
-
-    const tdSkills = document.createElement("td");
+    const tdAttributes = document.createElement("td");
     const skillsWrap = document.createElement("div");
     skillsWrap.style.display = "flex";
     skillsWrap.style.flexWrap = "wrap";
     skillsWrap.style.gap = "0.25rem";
     skillsWrap.style.alignItems = "center";
 
-    const activeSkillDefs = (appState.skillDefs ?? createDefaultSkillDefs()).filter(
+    // 1. Group & Role badges (所属・区分)
+    const groupAndRoleDefs = allSkillDefs.filter(
+      (sd) => (sd.category === "group" || sd.category === "role") && nurse.skills.includes(sd.code)
+    );
+    for (const sd of groupAndRoleDefs) {
+      const badge = document.createElement("span");
+      badge.className = "role-pill";
+      badge.style.fontWeight = "600";
+      badge.textContent = sd.badge || sd.shortLabel || sd.label;
+      skillsWrap.appendChild(badge);
+    }
+    if (nurse.subRoleLabel) {
+      const subBadge = document.createElement("span");
+      subBadge.className = "role-pill";
+      subBadge.textContent = nurse.subRoleLabel;
+      skillsWrap.appendChild(subBadge);
+    }
+
+    // 2. Skill toggles (臨床スキル)
+    const activeSkillDefs = allSkillDefs.filter(
       (sd) => (sd.category ?? "skill") === "skill"
     );
     for (const sd of activeSkillDefs) {
@@ -2383,7 +2396,7 @@ function renderStaffProfilesTab(): void {
     });
     skillsWrap.appendChild(editContractBtn);
 
-    tdSkills.appendChild(skillsWrap);
+    tdAttributes.appendChild(skillsWrap);
 
     const tdPrev = document.createElement("td");
     const streak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts, appState.customShiftDefs);
@@ -2427,7 +2440,7 @@ function renderStaffProfilesTab(): void {
       tdStats.textContent = "-";
     }
 
-    tr.append(tdId, tdName, tdRole, tdSkills, tdPrev, td36, tdPrefs, tdStats);
+    tr.append(tdId, tdName, tdAttributes, tdPrev, td36, tdPrefs, tdStats);
     tbody.appendChild(tr);
   }
 }
