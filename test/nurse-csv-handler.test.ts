@@ -422,6 +422,7 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(html).toContain("id=\"btn-tut-step2\"");
     expect(html).toContain("id=\"btn-tut-step3\"");
     expect(html).toContain("id=\"btn-tut-step4\"");
+    expect(html).toContain("id=\"tutorial-banner\" class=\"tutorial-banner\" hidden");
 
     // 2. Tab button ordering: Schedule -> Staff -> Constraints
     const scheduleBtnIdx = html.indexOf("id=\"tab-btn-schedule\"");
