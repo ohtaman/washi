@@ -1,6 +1,9 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { Model } from "../src/index.js";
 import {
+  computeTitanCellSize,
   generateStagePuzzle,
   getStageSpec,
   hasFaultLines,
@@ -152,5 +155,70 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
 
     const status = await m.solve({ solver: "highs" });
     expect(status).toBe("Optimal");
+  });
+
+  describe("Mobile & Touch Responsiveness", () => {
+    it("dynamically computes cell sizes that prevent horizontal overflow on narrow mobile screens (375px)", () => {
+      // 375px mobile device: availableWidth ~ 310px after layout margins & panel padding
+      const mobileAvailW = 310;
+      const mobileAvailH = 340;
+      const stagesToCheck = [1, 4, 7, 10, 20];
+
+      for (const stage of stagesToCheck) {
+        const spec = getStageSpec(stage);
+        const cellSize = computeTitanCellSize(spec.cols, spec.rows, mobileAvailW, mobileAvailH, 20);
+
+        // 1. Minimum cell size is at least 18px for tap readability and touch accessibility
+        expect(cellSize).toBeGreaterThanOrEqual(18);
+
+        // 2. Maximum cell size never exceeds 54px
+        expect(cellSize).toBeLessThanOrEqual(54);
+
+        // 3. Mathematical zero-overflow guarantee: board width (cols * cellSize + padding) fits in availableWidth
+        const plateTotalWidth = spec.cols * cellSize + 20;
+        expect(plateTotalWidth).toBeLessThanOrEqual(mobileAvailW);
+      }
+    });
+
+    it("clamps cell sizes properly under extreme viewport boundaries", () => {
+      // Extremely large screen (4K desktop 3840px): max clamp 54px
+      const desktopLarge = computeTitanCellSize(6, 4, 2000, 1600);
+      expect(desktopLarge).toBe(54);
+
+      // Extremely tiny screen (240px watch or folded display): min clamp 18px
+      const tinyWatch = computeTitanCellSize(14, 9, 200, 200);
+      expect(tinyWatch).toBe(18);
+    });
+
+    it("verifies mobile HTML and CSS accessibility and viewport integration in index.html", () => {
+      const htmlPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/index.html");
+      const html = fs.readFileSync(htmlPath, "utf-8");
+
+      // 1. Mobile viewport and safe-area adjustments
+      expect(html).toContain("min-height: 100dvh");
+      expect(html).toContain("env(safe-area-inset-bottom)");
+      expect(html).toContain("touch-action: manipulation");
+
+      // 2. Responsive breakpoints
+      expect(html).toContain("@media (max-width: 860px)");
+      expect(html).toContain("@media (max-width: 640px)");
+
+      // 3. Touch target sizing (min 44px for accessibility on cards/buttons)
+      expect(html).toContain("min-height: 44px");
+
+      // 4. Mobile horizontal scroll inventory tray
+      expect(html).toContain("scroll-snap-type: x mandatory");
+      expect(html).toContain("-webkit-overflow-scrolling: touch");
+
+      // 5. Dedicated active part controls for mobile
+      expect(html).toContain("id=\"active-banner\"");
+      expect(html).toContain("id=\"btn-active-rotate\"");
+      expect(html).toContain("id=\"btn-active-cancel\"");
+      expect(html).toContain("class=\"footbar-actions\"");
+
+      // 6. Dynamic updateCellSize on resize and orientationchange
+      expect(html).toContain("window.addEventListener(\"resize\", updateCellSize)");
+      expect(html).toContain("window.addEventListener(\"orientationchange\", updateCellSize)");
+    });
   });
 });

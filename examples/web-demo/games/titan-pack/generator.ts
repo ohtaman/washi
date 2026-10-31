@@ -57,6 +57,27 @@ export function mulberry32(a: number): () => number {
   };
 }
 
+/**
+ * Computes optimal cell size (px) for the titanium sheet plate grid.
+ * Dynamically adapts to narrow mobile viewports (e.g. 375px or 320px screen width)
+ * and stage grid dimensions (cols x rows) so the plate never clips or overflows.
+ * Clamps result between minCell (18px) and maxCell (54px).
+ */
+export function computeTitanCellSize(
+  cols: number,
+  rows: number,
+  availableWidth: number = 600,
+  availableHeight: number = 480,
+  paddingAndBorder: number = 20,
+): number {
+  const usableW = Math.max(80, availableWidth - paddingAndBorder);
+  const usableH = Math.max(80, availableHeight - paddingAndBorder);
+  const cellW = Math.floor(usableW / Math.max(1, cols));
+  const cellH = Math.floor(usableH / Math.max(1, rows));
+  const size = Math.min(cellW, cellH);
+  return Math.max(18, Math.min(54, size));
+}
+
 // Fault-Line Check: true if any line cuts continuously from edge to edge
 export function hasFaultLines(cols: number, rows: number, blocks: PlacedBlock[]): boolean {
   for (let c = 1; c < cols; c++) {
