@@ -1150,4 +1150,36 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       else (globalThis as { document?: unknown }).document = prevDoc;
     }
   });
+
+  it("enforces mobile-responsive CSS layout, viewport height scaling, and touch manipulation properties", () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
+
+    // 1. Verify touch action & safe-area in root body and cells
+    expect(styleCss).toContain("touch-action: manipulation;");
+    expect(styleCss).toContain("min-height: 100dvh;");
+    expect(styleCss).toContain("env(safe-area-inset-bottom)");
+    expect(styleCss).toContain("-webkit-tap-highlight-color: transparent;");
+
+    // 2. Verify 3-column compact horizontal HUD on mobile (not stacked 1fr)
+    expect(styleCss).toContain("@media (max-width: 640px)");
+    expect(styleCss).toContain("grid-template-columns: repeat(3, 1fr);");
+    expect(styleCss).not.toMatch(/@media \(max-width: 640px\)[\s\S]*?\.hud-bar\s*\{\s*grid-template-columns:\s*1fr;\s*\}/);
+
+    // 3. Verify desktop keyboard shortcut badges are hidden on mobile
+    expect(styleCss).toContain(".btn kbd {\n    display: none;\n  }");
+
+    // 4. Verify extra-narrow mobile and landscape media queries exist
+    expect(styleCss).toContain("@media (max-width: 380px)");
+    expect(styleCss).toContain("@media (max-height: 520px) and (orientation: landscape)");
+
+    // 5. Verify dynamic cell size scaling with height constraint
+    // When width is generous (600px) but height is restricted (210px for 7x7):
+    const constrainedHeightCell = computeCellSize(7, 7, 600, 7, 210);
+    expect(constrainedHeightCell).toBe(24);
+    expect(7 * constrainedHeightCell + 6 * 7).toBeLessThanOrEqual(210);
+
+    // Unconstrained height falls back to width-only computation
+    expect(computeCellSize(7, 7, 299, 7)).toBe(36);
+  });
 });
