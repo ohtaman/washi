@@ -36,14 +36,17 @@
       body {
         margin: 0;
         min-height: 100vh;
+        min-height: 100dvh;
         background: var(--bg-gradient);
         font-family: "Chakra Petch", "Noto Sans JP", sans-serif;
         color: var(--text-dark);
-        padding: 1rem 1rem 2.5rem;
+        padding: 1rem 1rem max(2rem, env(safe-area-inset-bottom));
         display: flex;
         flex-direction: column;
         align-items: center;
         user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
       }
       .app-wrapper {
         width: 100%;
@@ -282,6 +285,7 @@
         cursor: pointer;
         position: relative;
         transition: background 0.1s ease;
+        touch-action: manipulation;
       }
       .sheet-cell:hover {
         background: #1e293b;
@@ -310,6 +314,7 @@
         z-index: 10;
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
         overflow: hidden;
+        touch-action: manipulation;
       }
       .placed-block:hover {
         filter: brightness(1.18);
@@ -569,6 +574,177 @@
         0% { transform: translateY(-100%); }
         100% { transform: translateY(100%); }
       }
+
+      /* Footbar Actions Group */
+      .footbar-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-left: auto;
+        flex-wrap: wrap;
+      }
+
+      /* Active Part Banner (Mobile & Touch Accessible) */
+      .active-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(2, 132, 199, 0.12);
+        border: 1px solid rgba(2, 132, 199, 0.35);
+        border-radius: 8px;
+        padding: 0.35rem 0.75rem;
+        margin-bottom: 0.65rem;
+        animation: fadeIn 0.15s ease-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .active-banner-badge {
+        font-family: "JetBrains Mono", monospace;
+        font-weight: 900;
+        font-size: 0.85rem;
+        color: var(--accent-titan);
+      }
+      .active-banner-dim {
+        font-size: 0.78rem;
+        color: var(--text-sub);
+        font-weight: 700;
+      }
+      .active-btn {
+        padding: 0.3rem 0.65rem;
+        min-height: 36px;
+        font-size: 0.76rem;
+      }
+
+      /* Mobile & Touch Responsiveness */
+      @media (max-width: 860px) {
+        body {
+          padding: 0.5rem 0.5rem max(1.2rem, env(safe-area-inset-bottom));
+        }
+        .main-grid {
+          gap: 0.8rem;
+        }
+        .panel {
+          padding: 0.85rem;
+          border-radius: 12px;
+        }
+        .board-viewport {
+          min-height: 260px;
+          padding: 0.85rem 0.4rem;
+        }
+        .inventory-tray {
+          flex-direction: row;
+          overflow-x: auto;
+          overflow-y: hidden;
+          max-height: none;
+          padding-bottom: 0.45rem;
+          padding-right: 0;
+          gap: 0.5rem;
+          -webkit-overflow-scrolling: touch;
+          scroll-snap-type: x mandatory;
+        }
+        .item-card {
+          flex: 0 0 auto;
+          min-width: 140px;
+          padding: 0.5rem 0.65rem;
+          scroll-snap-align: start;
+          min-height: 44px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        header {
+          padding: 0.6rem 0.8rem;
+          gap: 0.6rem;
+          margin-bottom: 0.6rem;
+          border-radius: 10px;
+        }
+        h1 {
+          font-size: 1.25rem;
+        }
+        .subtitle {
+          font-size: 0.72rem;
+        }
+        .mascot-cluster {
+          padding: 0.3rem 0.6rem;
+          gap: 0.5rem;
+        }
+        .drone-svg {
+          width: 36px;
+          height: 36px;
+        }
+        .drone-msg {
+          max-width: 170px;
+          font-size: 0.7rem;
+        }
+        .stage-nav-cluster {
+          padding: 0.25rem 0.45rem;
+          gap: 0.35rem;
+        }
+        .nav-arrow-btn {
+          width: 38px;
+          height: 38px;
+          min-width: 38px;
+          min-height: 38px;
+        }
+        .stage-counter {
+          min-width: 90px;
+        }
+        .stage-title {
+          font-size: 0.92rem;
+        }
+        .action-footbar {
+          padding: 0.75rem 0.85rem;
+          gap: 0.75rem;
+        }
+        .stats-cluster {
+          gap: 0.6rem;
+          width: 100%;
+          justify-content: space-between;
+        }
+        .stat-label {
+          font-size: 0.58rem;
+        }
+        .stat-val {
+          font-size: 0.95rem;
+        }
+        .footbar-actions {
+          width: 100%;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-left: 0;
+        }
+        .btn {
+          min-height: 44px;
+          padding: 0.55rem 0.8rem;
+          font-size: 0.8rem;
+          touch-action: manipulation;
+        }
+        #btn-execute {
+          width: 100%;
+          justify-content: center;
+          font-size: 0.92rem;
+        }
+        #btn-solve,
+        #btn-theory {
+          flex: 1 1 calc(50% - 0.25rem);
+          justify-content: center;
+          font-size: 0.76rem;
+        }
+        .modal-box {
+          padding: 1.25rem 1rem;
+          max-width: 95vw;
+          border-radius: 12px;
+        }
+        .modal-title {
+          font-size: 1.15rem;
+        }
+        .modal-text {
+          font-size: 0.82rem;
+        }
+      }
     </style>
   </head>
   <body>
@@ -621,7 +797,7 @@
 
       <main class="main-grid">
         <!-- Titanium Sheet Plate Viewport -->
-        <section class="panel">
+        <section class="panel board-panel">
           <div class="panel-head">
             <span class="panel-title">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -633,7 +809,18 @@
             <span class="meta-indicator" id="board-meta">PLATE: 6 × 4</span>
           </div>
 
-          <div class="board-viewport">
+          <div class="active-banner" id="active-banner" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="active-banner-badge" id="active-banner-badge">TITAN-A</span>
+              <span class="active-banner-dim" id="active-banner-dim">3 × 2</span>
+            </div>
+            <div style="display: flex; gap: 0.4rem; align-items: center;">
+              <button type="button" class="btn btn-ghost active-btn" id="btn-active-rotate">⟳ 回転</button>
+              <button type="button" class="btn btn-ghost active-btn" id="btn-active-cancel" title="選択解除">✕ 解除</button>
+            </div>
+          </div>
+
+          <div class="board-viewport" id="board-viewport">
             <div class="laser-cut-sweep" id="laser-scan"></div>
             <div class="sheet-metal" id="board-plate">
               <!-- Cells injected by JS -->
@@ -659,7 +846,7 @@
 
           <div style="margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid rgba(148,163,184,0.25);">
             <div style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.45rem;">
-              TIP: <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">R</kbd> 回転 / <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">Z</kbd> 取消 / <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">ESC</kbd> 選択解除
+              TIP: <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">R</kbd> 回転 / <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">Z</kbd> 取消（スマホ: パーツ再タップで回転）
             </div>
             <div style="display: flex; gap: 0.5rem;">
               <button class="btn btn-ghost" id="btn-rotate-active" style="flex: 1;">⟳ 90° 回転 (R)</button>
@@ -687,7 +874,7 @@
           </div>
         </div>
 
-        <div style="display: flex; gap: 0.5rem; align-items: center; margin-left: auto; flex-wrap: wrap;">
+        <div class="footbar-actions">
           <button class="btn btn-solver" id="btn-solve" title="生成時に計算された完全配置（ゼロ端材・断層なし）を展開します">💡 設計図を展開</button>
           <button class="btn btn-ghost" id="btn-theory">📖 数理モデル解説</button>
           <button class="btn btn-primary" id="btn-execute">⚡ CUT EXECUTE (一括切断)</button>
@@ -1018,6 +1205,26 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
         }
       }
 
+      // Compute Titan Cell Size dynamically for mobile and desktop screens
+      function computeTitanCellSize(cols, rows, availableWidth = 600, availableHeight = 480, paddingAndBorder = 20) {
+        const usableW = Math.max(80, availableWidth - paddingAndBorder);
+        const usableH = Math.max(80, availableHeight - paddingAndBorder);
+        const cellW = Math.floor(usableW / Math.max(1, cols));
+        const cellH = Math.floor(usableH / Math.max(1, rows));
+        const size = Math.min(cellW, cellH);
+        return Math.max(18, Math.min(54, size));
+      }
+
+      function updateCellSize() {
+        if (!currentPuzzle) return;
+        const viewport = document.getElementById("board-viewport");
+        const availW = viewport && viewport.clientWidth > 0 ? viewport.clientWidth : window.innerWidth;
+        const isMobile = window.innerWidth <= 860;
+        const availH = isMobile ? Math.min(360, window.innerHeight * 0.45) : 460;
+        const dynamicCellSize = computeTitanCellSize(currentPuzzle.cols, currentPuzzle.rows, availW, availH);
+        document.documentElement.style.setProperty("--cell-size", `${dynamicCellSize}px`);
+      }
+
       function loadStage(num) {
         currentStageNum = Math.max(1, num);
         currentPuzzle = generateStagePuzzle(currentStageNum);
@@ -1026,12 +1233,7 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
         placedParts = [];
 
         // Dynamically compute optimal cell size for the viewport
-        const maxViewportW = 600;
-        const maxViewportH = 460;
-        const cellW = Math.floor(maxViewportW / currentPuzzle.cols);
-        const cellH = Math.floor(maxViewportH / currentPuzzle.rows);
-        const dynamicCellSize = Math.max(26, Math.min(54, Math.min(cellW, cellH)));
-        document.documentElement.style.setProperty("--cell-size", `${dynamicCellSize}px`);
+        updateCellSize();
 
         // Update header UI
         document.getElementById("stage-display").textContent = `STAGE ${String(currentStageNum).padStart(2, "0")}`;
@@ -1142,6 +1344,16 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
         }
       });
 
+      window.addEventListener("resize", updateCellSize);
+      window.addEventListener("orientationchange", updateCellSize);
+
+      document.getElementById("btn-active-rotate").onclick = toggleRotate;
+      document.getElementById("btn-active-cancel").onclick = () => {
+        activePartId = null;
+        isRotated = false;
+        render();
+      };
+
       document.getElementById("btn-rotate-active").onclick = toggleRotate;
       document.getElementById("btn-undo").onclick = undoLastPlacement;
       document.getElementById("btn-reset").onclick = () => {
@@ -1166,6 +1378,19 @@ delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
 
       function render() {
         document.getElementById("board-meta").textContent = `PLATE: ${currentPuzzle.cols} × ${currentPuzzle.rows} (${currentPuzzle.cols * currentPuzzle.rows} BLOCKS)`;
+
+        // Update Active Part Banner (Mobile & Touch Accessible)
+        const activeBanner = document.getElementById("active-banner");
+        if (activePartId) {
+          const activePart = getPartDef(activePartId);
+          const curW = isRotated ? activePart.h : activePart.w;
+          const curH = isRotated ? activePart.w : activePart.h;
+          document.getElementById("active-banner-badge").textContent = `${activePart.name} (${activePart.id})`;
+          document.getElementById("active-banner-dim").textContent = `${curW} × ${curH}${isRotated ? " (回転中)" : ""}`;
+          activeBanner.style.display = "flex";
+        } else {
+          activeBanner.style.display = "none";
+        }
 
         // 1. Inventory Tray
         const tray = document.getElementById("inventory-tray");
