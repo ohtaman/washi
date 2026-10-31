@@ -567,7 +567,15 @@ export function doesNurseMatchAttribute(
   skillDefs?: readonly SkillDefinition[]
 ): boolean {
   const norm = stripTrailingParenLabel(attribute);
-  if (!norm) return true;
+  if (!norm || norm === "all") return true;
+  if (norm.includes(",") || norm.includes("|")) {
+    const parts = norm
+      .split(/[,|]/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return true;
+    return parts.some((part) => doesNurseMatchAttribute(nurse, part, skillDefs));
+  }
   return doesNurseSatisfySkill(nurse, attribute, skillDefs);
 }
 
@@ -863,6 +871,8 @@ export interface CustomConstraintRule {
   includePrevMonth?: boolean;
   /** Allowed days of week (0=Sun..6=Sat), e.g., [1,2,3,4,5] for weekdays only ("研修は平日のみ") */
   allowedDaysOfWeek?: number[];
+  /** Whether holidays are included when evaluating days of week for rules */
+  includeHolidays?: boolean;
   /** Optional start day of the month (1..numDays) for date-bounded rules (`shift_day_restriction`, `daily_shift_cap`, `staffing_rule`) */
   startDay?: number;
   /** Optional end day of the month (1..numDays) for date-bounded rules (`shift_day_restriction`, `daily_shift_cap`, `staffing_rule`) */

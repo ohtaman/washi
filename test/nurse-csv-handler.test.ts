@@ -461,6 +461,12 @@ preceptor,N03,N04,"  ",1,指導ペア
     expect(html).toContain("id=\"builder-min-count\"");
     expect(html).toContain("id=\"builder-max-count\"");
     expect(html).toContain("id=\"builder-hardness\"");
+
+    // 5. Auto-solve toggle exists and starts unchecked (OFF by default)
+    expect(html).toContain("id=\"chk-auto-solve-on-chat\"");
+    const autoSolveIdx = html.indexOf("id=\"chk-auto-solve-on-chat\"");
+    const autoSolveSnippet = html.slice(autoSolveIdx, autoSolveIdx + 50);
+    expect(autoSolveSnippet).not.toContain("checked");
   });
 
   it("ensures all DOM elements queried by $() in ai-shift main.ts exist in index.html", () => {
