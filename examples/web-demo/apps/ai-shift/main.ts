@@ -1362,6 +1362,7 @@ function renderStaffingRulesList(): void {
 }
 
 function populateBuilderOptions(): void {
+  const shiftSelect = document.getElementById("builder-shift") as HTMLSelectElement | null;
   const customShiftGroup = document.getElementById(
     "builder-optgroup-custom-shifts"
   ) as HTMLOptGroupElement | null;
@@ -1370,13 +1371,19 @@ function populateBuilderOptions(): void {
     "builder-custom-attrs-chips"
   ) as HTMLDivElement | null;
 
+  const curShiftVal = shiftSelect?.value;
+
   if (customShiftGroup) {
     customShiftGroup.replaceChildren();
     for (const cs of appState.customShiftDefs ?? []) {
       const o = document.createElement("option");
       o.value = cs.code;
       o.textContent = `${cs.label} (${cs.shortLabel})`;
+      if (cs.code === curShiftVal) o.selected = true;
       customShiftGroup.appendChild(o);
+    }
+    if (shiftSelect && curShiftVal) {
+      shiftSelect.value = curShiftVal;
     }
   }
 
