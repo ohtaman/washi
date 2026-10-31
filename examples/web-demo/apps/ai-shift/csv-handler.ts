@@ -128,13 +128,14 @@ export function parseSkillToken(token: string): NurseSkill | null {
     return t as NurseSkill;
   }
   // Japanese alias mappings
-  if (t.includes("リーダー")) return "leader_cap";
-  if (t.includes("救急") || t.includes("重症") || t.includes("ICU")) return "icu_er";
-  if (t.includes("呼吸器")) return "ventilator";
-  if (t.includes("チームA") || t.includes("Aチーム")) return "team_A";
-  if (t.includes("チームB") || t.includes("Bチーム")) return "team_B";
+  if (t.includes("リーダー") || t === "リ") return "leader_cap";
+  if (t.includes("救急") || t.includes("重症") || t.includes("ICU") || t === "救") return "icu_er";
+  if (t.includes("呼吸器") || t === "呼") return "ventilator";
+  if (t.includes("チームA") || t.includes("Aチーム") || t.includes("A班")) return "team_A";
+  if (t.includes("チームB") || t.includes("Bチーム") || t.includes("B班")) return "team_B";
   if (t.includes("新人")) return "newcomer";
   if (t.includes("中堅")) return "mid";
+  if (t.includes("主任")) return "leader";
   return t as NurseSkill;
 }
 
@@ -232,7 +233,18 @@ export function parseNursesCsv(text: string): {
     seenIds.add(id);
 
     const kana = getCol(row, "kana", "フリガナ", "ふりがな", "かな") ?? name;
-    const skillsRaw = getCol(row, "skills", "スキル", "保有スキル") ?? "";
+    const skillsRaw =
+      getCol(
+        row,
+        "skills",
+        "スキル",
+        "保有スキル",
+        "所属属性タグ",
+        "属性タグ",
+        "所属属性",
+        "属性",
+        "タグ"
+      ) ?? "";
     const skills: NurseSkill[] = skillsRaw
       ? (skillsRaw
           .split(/[;,]/)
