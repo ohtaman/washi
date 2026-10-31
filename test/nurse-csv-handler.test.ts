@@ -230,6 +230,35 @@ N01,
     expect(parsed.warnings.length).toBeGreaterThan(0);
   });
 
+  it("parses nurses CSV with '所属・属性タグ' header and Japanese attribute tokens", () => {
+    const csv = `
+id,氏名,フリガナ,所属・属性タグ,経験年数,契約形態,夜勤可,月間夜勤上限,最小公休数,最小勤務日数,最大勤務日数,最大連勤日数,平日のみ,祝日休み,前月末7日間シフト
+N01,佐藤 美咲,サトウ ミサキ,A班;主任;リーダー;救急;呼吸器,8,full_time,1,4,8,20,22,5,0,0,D;D;O;D;E;N;O
+N02,田中 健一,タナカ ケンイチ,B班;新人;リ;救;呼,1,full_time,1,2,9,18,20,4,0,0,O;D;D;O;D;E;N
+`.trim();
+
+    const parsed = parseNursesCsv(csv);
+    expect(parsed.errors).toHaveLength(0);
+    expect(parsed.nurses).toHaveLength(2);
+
+    const n1 = parsed.nurses[0];
+    expect(n1.id).toBe("N01");
+    expect(n1.name).toBe("佐藤 美咲");
+    expect(n1.skills).toContain("team_A");
+    expect(n1.skills).toContain("leader");
+    expect(n1.skills).toContain("leader_cap");
+    expect(n1.skills).toContain("icu_er");
+    expect(n1.skills).toContain("ventilator");
+
+    const n2 = parsed.nurses[1];
+    expect(n2.id).toBe("N02");
+    expect(n2.skills).toContain("team_B");
+    expect(n2.skills).toContain("newcomer");
+    expect(n2.skills).toContain("leader_cap");
+    expect(n2.skills).toContain("icu_er");
+    expect(n2.skills).toContain("ventilator");
+  });
+
   it("rejects unknown or invalid shift tokens during CSV import and validation", () => {
     const invalidShiftCsv = `
 nurseId,day,shift,isHard,reason
