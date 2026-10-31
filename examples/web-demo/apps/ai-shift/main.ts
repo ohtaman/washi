@@ -93,6 +93,17 @@ let activeChatAbortController: AbortController | null = null;
 let selectedCellContext: { nurseId: string; day: number } | null = null;
 let editingContractNurseId: string | null = null;
 
+function isAutoSolveEnabled(): boolean {
+  const el = document.getElementById("chk-auto-solve-on-chat") as HTMLInputElement | null;
+  return Boolean(el?.checked);
+}
+
+function triggerAutoOptimizationIfNeeded(): void {
+  if (isAutoSolveEnabled() && currentSchedule !== null) {
+    void runWashiOptimization();
+  }
+}
+
 const nanoManager = createGeminiNanoManager();
 const trajectoryTurns: TrajectoryTurnRecord[] = [];
 
@@ -1231,7 +1242,7 @@ function renderShiftTransitionMatrix(): void {
           config: nextConfig,
         };
         syncConfigInputsFromState();
-        void runWashiOptimization();
+        triggerAutoOptimizationIfNeeded();
       });
       td.appendChild(btn);
       tr.appendChild(td);
@@ -1327,7 +1338,7 @@ function renderStaffingRulesList(): void {
       const w = isHard ? undefined : Number(v.split(":")[1]) || 30;
       rule.isHard = isHard ? undefined : false;
       rule.penaltyWeight = w;
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     actionsWrap.appendChild(hardSelect);
 
@@ -1341,7 +1352,7 @@ function renderStaffingRulesList(): void {
         customRules: appState.customRules.filter((r) => r.id !== rule.id),
       };
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     actionsWrap.appendChild(delBtn);
 
@@ -1593,7 +1604,7 @@ function renderShiftAliasesList(): void {
         shiftAliases: createDefaultShiftAliases(nextCustom),
       };
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     controlsWrap.appendChild(baseSelect);
 
@@ -1624,7 +1635,7 @@ function renderShiftAliasesList(): void {
           shiftAliases: createDefaultShiftAliases(nextCustom),
         };
         renderAllViews();
-        void runWashiOptimization();
+        triggerAutoOptimizationIfNeeded();
       });
       controlsWrap.appendChild(btn);
     }
@@ -1643,7 +1654,7 @@ function renderShiftAliasesList(): void {
         currentSchedule = cleanedSchedule;
       }
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     controlsWrap.appendChild(delBtn);
 
@@ -1800,7 +1811,7 @@ function renderSkillDefsList(): void {
       );
       appState = { ...appState, skillDefs: nextSkills };
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     };
 
     const hardSelect = document.createElement("select");
@@ -1826,7 +1837,7 @@ function renderSkillDefsList(): void {
         ...appState,
         config: { ...appState.config, softRuleWeights: nextW },
       };
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
 
     actionsWrap.append(
@@ -1848,7 +1859,7 @@ function renderSkillDefsList(): void {
       ]);
       appState = updatedState;
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     actionsWrap.appendChild(delBtn);
 
@@ -1932,7 +1943,7 @@ function renderCustomRulesList(): void {
     delBtn.addEventListener("click", () => {
       appState = clearNurseContractFromState(appState, nurse.id);
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
 
     row.append(info, delBtn);
@@ -1966,7 +1977,7 @@ function renderCustomRulesList(): void {
         currentSchedule = cleanedSchedule;
       }
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
 
     row.append(info, delBtn);
@@ -2039,7 +2050,7 @@ function renderCustomRulesList(): void {
       for (const r of grp.rules) {
         r.enabled = chk.checked;
       }
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     const text = document.createElement("span");
     text.textContent = `📌 ${grp.description}`;
@@ -2087,7 +2098,7 @@ function renderCustomRulesList(): void {
           r.isHard = isHard ? undefined : false;
           r.penaltyWeight = w;
         }
-        void runWashiOptimization();
+        triggerAutoOptimizationIfNeeded();
       });
       actionsWrap.appendChild(hardSelect);
     }
@@ -2103,7 +2114,7 @@ function renderCustomRulesList(): void {
         customRules: appState.customRules.filter((r) => !idSet.has(r.id)),
       };
       renderCustomRulesList();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     actionsWrap.appendChild(delBtn);
 
@@ -2214,7 +2225,7 @@ function renderStaffProfilesTab(): void {
       const w = isHard ? undefined : Number(v.split(":")[1]) || 40;
       rel.isHard = isHard ? undefined : false;
       rel.penaltyWeight = w;
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     pill.appendChild(hardSelect);
 
@@ -2229,7 +2240,7 @@ function renderStaffProfilesTab(): void {
           relations: appState.relations.filter((r) => r.id !== rel.id),
         };
         renderStaffProfilesTab();
-        void runWashiOptimization();
+        triggerAutoOptimizationIfNeeded();
       });
       pill.appendChild(delBtn);
     }
@@ -2309,7 +2320,7 @@ function renderStaffProfilesTab(): void {
           ),
         };
         renderAllViews();
-        void runWashiOptimization();
+        triggerAutoOptimizationIfNeeded();
       });
       skillsWrap.appendChild(skillBtn);
     }
@@ -2335,7 +2346,7 @@ function renderStaffProfilesTab(): void {
         ),
       };
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     skillsWrap.appendChild(contractBtn);
 
@@ -2808,7 +2819,7 @@ function applyCellShiftChoice(
 
   renderAllViews();
   if (triggerSolve) {
-    void runWashiOptimization();
+    triggerAutoOptimizationIfNeeded();
   }
 }
 
@@ -2847,7 +2858,7 @@ function pinNurseCellShift(nurseId: string, day: number, shift: ShiftCode, trigg
 
   renderAllViews();
   if (triggerSolve) {
-    void runWashiOptimization();
+    triggerAutoOptimizationIfNeeded();
   }
 }
 
@@ -3874,7 +3885,7 @@ function setupEventListeners(): void {
     appState = updatedState;
     cellDialog.close();
     renderAllViews();
-    void runWashiOptimization();
+    triggerAutoOptimizationIfNeeded();
   });
 
   $("btn-unpin-cell").addEventListener("click", () => {
@@ -3891,7 +3902,7 @@ function setupEventListeners(): void {
       };
       cellDialog.close();
       renderAllViews();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     }
   });
 
@@ -3922,7 +3933,7 @@ function setupEventListeners(): void {
     appState = clearNurseContractFromState(appState, targetId, { resetNightOk: true });
     contractDialog.close();
     renderAllViews();
-    void runWashiOptimization();
+    triggerAutoOptimizationIfNeeded();
   });
 
   $("btn-save-nurse-contract").addEventListener("click", () => {
@@ -3969,7 +3980,7 @@ function setupEventListeners(): void {
     appState = updatedState;
     contractDialog.close();
     renderAllViews();
-    void runWashiOptimization();
+    triggerAutoOptimizationIfNeeded();
   });
 
   // Fallback for browsers that do not yet support `<dialog closedby="any">`
