@@ -469,13 +469,16 @@ function syncAudioButtonUi(): void {
   const playing = soundEngine.playing;
   document.querySelectorAll<HTMLButtonElement>("[data-bgm-toggle]").forEach((btn) => {
     btn.setAttribute("aria-pressed", String(playing));
-    btn.textContent = playing
-      ? "🔊 BGM: ON"
-      : pickLang(currentLang, {
-          ja: "🔇 BGM: OFF（クリックで音楽ON）",
-          en: "🔇 BGM: OFF (Click for Music)",
-          zh: "🔇 BGM: OFF（点击开启音乐）",
-        });
+    if (playing) {
+      btn.innerHTML = `<span class="btn-audio-short">🔊 BGM: ON</span>`;
+    } else {
+      const extra = pickLang(currentLang, {
+        ja: "（クリックで音楽ON）",
+        en: " (Click for Music)",
+        zh: "（点击开启音乐）",
+      });
+      btn.innerHTML = `<span class="btn-audio-short">🔇 BGM: OFF</span><span class="btn-audio-extra">${extra}</span>`;
+    }
   });
 }
 

@@ -395,6 +395,48 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(mobile768Block).toMatch(/\.shift-matrix thead th\.col-monster\s*\{[^}]*width:\s*168px;/);
   });
 
+  it("verifies mobile smartphone adaptations across title, navigation, modals, and battle scenes", () => {
+    const cssPath = resolve(__dirname, "../examples/web-demo/games/demon-castle-shift/style.css");
+    const css = readFileSync(cssPath, "utf-8");
+    const htmlPath = resolve(__dirname, "../examples/web-demo/games/demon-castle-shift/index.html");
+    const html = readFileSync(htmlPath, "utf-8");
+
+    // 1. General dialog viewport containment & scrollability
+    expect(css).toMatch(/\.game-dialog\s*\{[^}]*max-height:\s*90dvh;/);
+    expect(css).toMatch(/\.game-dialog\s*\{[^}]*overflow-y:\s*auto;/);
+
+    // 2. Audio button contains short & extra spans for responsive display
+    expect(html).toContain('class="btn-audio-short"');
+    expect(html).toContain('class="btn-audio-extra"');
+
+    const mobile768BlockMatch = css.match(/@media\s*\(max-width:\s*768px\)\s*\{([\s\S]*?)\n\}\n\n@media/);
+    expect(mobile768BlockMatch).toBeTruthy();
+    const mobile768Block = mobile768BlockMatch![1];
+
+    expect(mobile768Block).toMatch(/\.btn-audio\s+\.btn-audio-extra\s*\{[^}]*display:\s*none;/);
+
+    // 3. Title screen buttons adapt to fluid full-width on mobile without fixed 320px blowout
+    expect(mobile768Block).toMatch(/\.btn-title-primary\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/);
+    expect(mobile768Block).toMatch(/\.btn-title-secondary\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/);
+
+    // 4. Horizontal scroll for stage navigation pills on narrow viewports
+    expect(mobile768Block).toMatch(/\.stage-progress-nav\s*\{[^}]*overflow-x:\s*auto;/);
+
+    // 5. Grimoire roster adapts to single-column card layout on mobile
+    expect(mobile768Block).toMatch(/\.grimoire-pages-grid\s*\{[^}]*grid-template-columns:\s*1fr;/);
+
+    // 6. Full-screen battle cutscene switches versus display to single column on mobile
+    expect(mobile768Block).toMatch(/\.battle-cutin-versus\s*\{[^}]*grid-template-columns:\s*1fr;/);
+    expect(mobile768Block).toMatch(/\.result-hero-actions\s*\{[^}]*flex-direction:\s*column;/);
+
+    // 7. Extra narrow mobile viewports (<= 420px) scale monster column width and touch targets
+    const mobile420BlockMatch = css.match(/@media\s*\(max-width:\s*420px\)\s*\{([\s\S]*?)\n\}\n\n/);
+    expect(mobile420BlockMatch).toBeTruthy();
+    const mobile420Block = mobile420BlockMatch![1];
+    expect(mobile420Block).toMatch(/\.shift-matrix thead th\.col-monster\s*\{[^}]*width:\s*150px;/);
+    expect(mobile420Block).toMatch(/\.shift-btn\s*\{[^}]*min-width:\s*42px;/);
+  });
+
   it("detects saved player progress to skip title and movie when resuming by default", () => {
     const emptySave: SaveData = {
       unlockedStageIndex: 0,
