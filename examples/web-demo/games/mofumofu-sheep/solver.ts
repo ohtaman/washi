@@ -409,7 +409,8 @@ export function computeCellSize(
   rows: number,
   cols: number,
   availableWidthPx?: number,
-  gapPx = 7
+  gapPx = 7,
+  availableHeightPx?: number
 ): number {
   const maxDim = Math.max(rows, cols);
   const ideal =
@@ -426,16 +427,26 @@ export function computeCellSize(
               : maxDim === 9
                 ? 48
                 : 44;
+  let size = ideal;
   if (
-    typeof availableWidthPx !== "number" ||
-    !Number.isFinite(availableWidthPx) ||
-    availableWidthPx <= 0 ||
-    cols <= 0
+    typeof availableWidthPx === "number" &&
+    Number.isFinite(availableWidthPx) &&
+    availableWidthPx > 0 &&
+    cols > 0
   ) {
-    return ideal;
+    const fitWidth = Math.floor((availableWidthPx - Math.max(0, cols - 1) * gapPx) / cols);
+    size = Math.min(size, fitWidth);
   }
-  const fitWidth = Math.floor((availableWidthPx - Math.max(0, cols - 1) * gapPx) / cols);
-  return Math.max(22, Math.min(ideal, fitWidth));
+  if (
+    typeof availableHeightPx === "number" &&
+    Number.isFinite(availableHeightPx) &&
+    availableHeightPx > 0 &&
+    rows > 0
+  ) {
+    const fitHeight = Math.floor((availableHeightPx - Math.max(0, rows - 1) * gapPx) / rows);
+    size = Math.min(size, fitHeight);
+  }
+  return Math.max(22, size);
 }
 
 /**
