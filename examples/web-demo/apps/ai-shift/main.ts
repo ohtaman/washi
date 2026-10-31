@@ -1294,7 +1294,7 @@ function renderStaffingRulesList(): void {
     chk.checked = rule.enabled;
     chk.addEventListener("change", () => {
       rule.enabled = chk.checked;
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
     const text = document.createElement("span");
     text.textContent = `🏥 ${rule.description}`;
@@ -1362,44 +1362,36 @@ function renderStaffingRulesList(): void {
 }
 
 function populateBuilderOptions(): void {
-  const shiftSelect = document.getElementById("builder-shift") as HTMLSelectElement | null;
+  const customShiftGroup = document.getElementById(
+    "builder-optgroup-custom-shifts"
+  ) as HTMLOptGroupElement | null;
   const attrSelect = document.getElementById("builder-attribute") as HTMLSelectElement | null;
-  if (shiftSelect) {
-    const curVal = shiftSelect.value || "D";
-    shiftSelect.replaceChildren();
-    const baseOpts = [
-      { val: "D", text: "日勤 (D)" },
-      { val: "E", text: "準夜勤 (E)" },
-      { val: "N", text: "深夜勤 (N)" },
-      { val: "D,E,N", text: "全勤務 (日・準・深)" },
-    ];
-    for (const opt of baseOpts) {
-      const o = document.createElement("option");
-      o.value = opt.val;
-      o.textContent = opt.text;
-      if (opt.val === curVal) o.selected = true;
-      shiftSelect.appendChild(o);
-    }
+  const customAttrsChips = document.getElementById(
+    "builder-custom-attrs-chips"
+  ) as HTMLDivElement | null;
+
+  if (customShiftGroup) {
+    customShiftGroup.replaceChildren();
     for (const cs of appState.customShiftDefs ?? []) {
       const o = document.createElement("option");
       o.value = cs.code;
       o.textContent = `${cs.label} (${cs.shortLabel})`;
-      if (cs.code === curVal) o.selected = true;
-      shiftSelect.appendChild(o);
+      customShiftGroup.appendChild(o);
     }
   }
+
+  const baseAttrs = [
+    { val: "all", text: "全員" },
+    { val: "leader_cap", text: "★ リーダー" },
+    { val: "icu_er", text: "救 救急・ICU" },
+    { val: "newcomer", text: "🔰 新人" },
+    { val: "team_A", text: "🅰️ A班" },
+    { val: "team_B", text: "🅱️ B班" },
+  ];
 
   if (attrSelect) {
     const curVal = attrSelect.value || "all";
     attrSelect.replaceChildren();
-    const baseAttrs = [
-      { val: "all", text: "全員" },
-      { val: "leader_cap", text: "★ リーダー" },
-      { val: "icu_er", text: "救 救急・ICU" },
-      { val: "newcomer", text: "🔰 新人" },
-      { val: "team_A", text: "🅰️ A班" },
-      { val: "team_B", text: "🅱️ B班" },
-    ];
     for (const opt of baseAttrs) {
       const o = document.createElement("option");
       o.value = opt.val;
@@ -1416,6 +1408,46 @@ function populateBuilderOptions(): void {
         attrSelect.appendChild(o);
       }
     }
+    const customOpt = document.createElement("option");
+    customOpt.value = "custom";
+    customOpt.textContent = "🏷️ 複数属性を選択 (OR指定)...";
+    if (curVal === "custom") customOpt.selected = true;
+    attrSelect.appendChild(customOpt);
+  }
+
+  if (customAttrsChips) {
+    const checkedCodes = new Set(
+      Array.from(
+        customAttrsChips.querySelectorAll<HTMLInputElement>(".chk-builder-attr:checked")
+      ).map((el) => el.value)
+    );
+    if (checkedCodes.size === 0) {
+      checkedCodes.add("leader_cap");
+    }
+    customAttrsChips.replaceChildren();
+    const allAvailableAttrs = [
+      ...baseAttrs.filter((b) => b.val !== "all"),
+      ...(appState.skillDefs ?? [])
+        .filter((s) => !baseAttrs.some((b) => b.val === s.code))
+        .map((s) => ({ val: s.code, text: s.label })),
+    ];
+    for (const attr of allAvailableAttrs) {
+      const lbl = document.createElement("label");
+      lbl.style.display = "inline-flex";
+      lbl.style.alignItems = "center";
+      lbl.style.gap = "4px";
+      lbl.style.cursor = "pointer";
+      lbl.style.fontSize = "0.78rem";
+      const chk = document.createElement("input");
+      chk.type = "checkbox";
+      chk.className = "chk-builder-attr";
+      chk.value = attr.val;
+      chk.checked = checkedCodes.has(attr.val);
+      const span = document.createElement("span");
+      span.textContent = attr.text;
+      lbl.append(chk, span);
+      customAttrsChips.appendChild(lbl);
+    }
   }
 }
 
@@ -1430,14 +1462,109 @@ function handleAddSentenceRule(): void {
   if (!shiftSelect || !dayTypeSelect || !attrSelect) return;
 
   const rawShift = shiftSelect.value;
-  const shifts: ShiftCode[] = rawShift.includes(",")
-    ? (rawShift.split(",") as ShiftCode[])
-    : [rawShift as ShiftCode];
+  const shifts: ShiftCode[] =
+    rawShift === "EN"
+      ? ["E", "N"]
+      : rawShift.includes(",")
+        ? (rawShift.split(",") as ShiftCode[])
+        : [rawShift as ShiftCode];
 
-  const dayType = dayTypeSelect.value;
-  const attribute = attrSelect.value;
-  const minCount = minInput?.value !== "" && minInput?.value !== undefined ? Number(minInput.value) : undefined;
-  const maxCount = maxInput?.value !== "" && maxInput?.value !== undefined ? Number(maxInput.value) : undefined;
+  let shiftLabel = "";
+  if (rawShift === "D") shiftLabel = "日勤";
+  else if (rawShift === "E") shiftLabel = "準夜勤";
+  else if (rawShift === "N") shiftLabel = "深夜勤";
+  else if (rawShift === "EN") shiftLabel = "夜勤帯 (準夜・深夜)";
+  else if (rawShift === "D,E,N") shiftLabel = "全勤務";
+  else if (rawShift === "O") shiftLabel = "公休";
+  else {
+    const cs = (appState.customShiftDefs ?? []).find((c) => c.code === rawShift);
+    shiftLabel = cs ? `${cs.label} (${cs.shortLabel})` : rawShift;
+  }
+
+  const rawDayType = dayTypeSelect.value;
+  let dayType = rawDayType;
+  let allowedDaysOfWeek: number[] | undefined;
+  let includeHolidays: boolean | undefined;
+  let dayTypeLabel = "";
+
+  if (rawDayType === "custom") {
+    const checkedDows = Array.from(
+      document.querySelectorAll<HTMLInputElement>(".chk-builder-dow:checked")
+    ).map((el) => Number(el.value));
+    const isHolChecked = Boolean(
+      (document.getElementById("chk-builder-holiday") as HTMLInputElement | null)?.checked
+    );
+
+    if (checkedDows.length === 0 && !isHolChecked) {
+      alert("対象の曜日または祝日を少なくとも1つ選択してください。");
+      return;
+    }
+
+    allowedDaysOfWeek = checkedDows;
+    includeHolidays = isHolChecked;
+    dayType = "custom";
+
+    const dowNames = checkedDows.map((d) => WEEKDAY_NAMES_JA[d]);
+    if (dowNames.length > 0 && isHolChecked) {
+      dayTypeLabel = `${dowNames.join("・")}・祝日`;
+    } else if (dowNames.length > 0) {
+      dayTypeLabel = `${dowNames.join("・")}曜日`;
+    } else {
+      dayTypeLabel = "祝日のみ";
+    }
+  } else {
+    dayTypeLabel =
+      rawDayType === "all"
+        ? "毎日"
+        : rawDayType === "weekday"
+          ? "平日"
+          : rawDayType === "weekend"
+            ? "土日"
+            : rawDayType === "holiday"
+              ? "祝日"
+              : rawDayType === "weekend_holiday"
+                ? "土日祝"
+                : rawDayType.startsWith("dow:")
+                  ? `${WEEKDAY_NAMES_JA[Number(rawDayType.split(":")[1])]}曜日`
+                  : rawDayType;
+  }
+
+  const rawAttr = attrSelect.value;
+  let attribute = rawAttr;
+  let attrLabel = "";
+
+  const attrLabelMap: Record<string, string> = {
+    all: "全員",
+    leader_cap: "リーダー",
+    icu_er: "救急・ICU",
+    newcomer: "新人",
+    team_A: "A班",
+    team_B: "B班",
+  };
+  for (const s of appState.skillDefs ?? []) {
+    attrLabelMap[s.code] = s.label;
+  }
+
+  if (rawAttr === "custom") {
+    const checkedAttrs = Array.from(
+      document.querySelectorAll<HTMLInputElement>(".chk-builder-attr:checked")
+    ).map((el) => el.value);
+
+    if (checkedAttrs.length === 0) {
+      alert("対象の属性を少なくとも1つ選択してください。");
+      return;
+    }
+
+    attribute = checkedAttrs.join(",");
+    attrLabel = checkedAttrs.map((code) => attrLabelMap[code] ?? code).join(" または ");
+  } else {
+    attrLabel = attrLabelMap[rawAttr] ?? rawAttr;
+  }
+
+  const minCount =
+    minInput?.value !== "" && minInput?.value !== undefined ? Number(minInput.value) : undefined;
+  const maxCount =
+    maxInput?.value !== "" && maxInput?.value !== undefined ? Number(maxInput.value) : undefined;
 
   if (minCount === undefined && maxCount === undefined) {
     alert("最低人数または上限人数のいずれかを指定してください。");
@@ -1447,45 +1574,6 @@ function handleAddSentenceRule(): void {
   const hardnessVal = hardnessSelect?.value ?? "hard";
   const isHard = hardnessVal === "hard";
   const penaltyWeight = isHard ? undefined : Number(hardnessVal.split(":")[1]) || 30;
-
-  const shiftLabel =
-    rawShift === "D"
-      ? "日勤"
-      : rawShift === "E"
-        ? "準夜勤"
-        : rawShift === "N"
-          ? "深夜勤"
-          : "全勤務";
-
-  const dayTypeLabel =
-    dayType === "all"
-      ? "毎日"
-      : dayType === "weekday"
-        ? "平日"
-        : dayType === "weekend"
-          ? "土日"
-          : dayType === "holiday"
-            ? "祝日"
-            : dayType === "weekend_holiday"
-              ? "土日祝"
-              : dayType.startsWith("dow:")
-                ? `${WEEKDAY_NAMES_JA[Number(dayType.split(":")[1])]}曜日`
-                : dayType;
-
-  const attrLabel =
-    attribute === "all"
-      ? "全員"
-      : attribute === "leader_cap"
-        ? "リーダー"
-        : attribute === "icu_er"
-          ? "救急・ICU"
-          : attribute === "newcomer"
-            ? "新人"
-            : attribute === "team_A"
-              ? "A班"
-              : attribute === "team_B"
-                ? "B班"
-                : attribute;
 
   const boundsText =
     minCount !== undefined && maxCount !== undefined
@@ -1503,6 +1591,8 @@ function handleAddSentenceRule(): void {
     isHard: isHard ? undefined : false,
     penaltyWeight,
     dayType,
+    allowedDaysOfWeek,
+    includeHolidays,
     shifts,
     attribute,
     minCount,
@@ -1515,7 +1605,7 @@ function handleAddSentenceRule(): void {
     customRules: [...appState.customRules, newRule],
   };
   renderAllViews();
-  void runWashiOptimization();
+  triggerAutoOptimizationIfNeeded();
 }
 
 function renderShiftAliasesList(): void {
@@ -3516,6 +3606,73 @@ function setupEventListeners(): void {
 
   // Sentence Rule Builder & Weight Select Listeners
   $("btn-add-sentence-rule")?.addEventListener("click", handleAddSentenceRule);
+
+  const dayTypeSelect = $("builder-day-type") as HTMLSelectElement | null;
+  const attrSelect = $("builder-attribute") as HTMLSelectElement | null;
+  const customDaysRow = $("builder-custom-days-row");
+  const customAttrsRow = $("builder-custom-attrs-row");
+
+  dayTypeSelect?.addEventListener("change", () => {
+    if (customDaysRow) {
+      customDaysRow.hidden = dayTypeSelect.value !== "custom";
+    }
+  });
+
+  attrSelect?.addEventListener("change", () => {
+    if (customAttrsRow) {
+      customAttrsRow.hidden = attrSelect.value !== "custom";
+    }
+  });
+
+  const dowInputs = () =>
+    Array.from(document.querySelectorAll<HTMLInputElement>(".chk-builder-dow"));
+  const holInput = () =>
+    document.getElementById("chk-builder-holiday") as HTMLInputElement | null;
+
+  $("btn-preset-weekday")?.addEventListener("click", () => {
+    for (const el of dowInputs()) {
+      const v = Number(el.value);
+      el.checked = v >= 1 && v <= 5;
+    }
+    const h = holInput();
+    if (h) h.checked = false;
+  });
+
+  $("btn-preset-mwf")?.addEventListener("click", () => {
+    for (const el of dowInputs()) {
+      const v = Number(el.value);
+      el.checked = v === 1 || v === 3 || v === 5;
+    }
+    const h = holInput();
+    if (h) h.checked = false;
+  });
+
+  $("btn-preset-tt")?.addEventListener("click", () => {
+    for (const el of dowInputs()) {
+      const v = Number(el.value);
+      el.checked = v === 2 || v === 4;
+    }
+    const h = holInput();
+    if (h) h.checked = false;
+  });
+
+  $("btn-preset-weekend")?.addEventListener("click", () => {
+    for (const el of dowInputs()) {
+      const v = Number(el.value);
+      el.checked = v === 6 || v === 0;
+    }
+    const h = holInput();
+    if (h) h.checked = true;
+  });
+
+  $("btn-preset-all-days")?.addEventListener("click", () => {
+    for (const el of dowInputs()) {
+      el.checked = true;
+    }
+    const h = holInput();
+    if (h) h.checked = true;
+  });
+
   const weightSelectIds = [
     "sel-weight-enforce36Agreement",
     "sel-weight-consecutive",
@@ -3530,7 +3687,7 @@ function setupEventListeners(): void {
   for (const id of weightSelectIds) {
     document.getElementById(id)?.addEventListener("change", () => {
       readConfigInputsToState();
-      void runWashiOptimization();
+      triggerAutoOptimizationIfNeeded();
     });
   }
 

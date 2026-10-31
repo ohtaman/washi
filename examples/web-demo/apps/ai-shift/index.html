@@ -649,10 +649,16 @@
                 <div class="sentence-builder-row">
                   <span class="sentence-token">「</span>
                   <select id="builder-shift" class="toolbar-select builder-select" aria-label="シフト">
-                    <option value="D">日勤 (D)</option>
-                    <option value="E">準夜勤 (E)</option>
-                    <option value="N">深夜勤 (N)</option>
-                    <option value="D,E,N">全勤務 (日・準・深)</option>
+                    <optgroup label="📋 基本シフト・シフト帯">
+                      <option value="D">日勤 (D)</option>
+                      <option value="E">準夜勤 (E)</option>
+                      <option value="N">深夜勤 (N)</option>
+                      <option value="EN">夜勤帯 (準夜・深夜)</option>
+                      <option value="D,E,N">全勤務 (日・準・深)</option>
+                      <option value="O">公休 (O)</option>
+                    </optgroup>
+                    <optgroup label="✨ カスタムシフト" id="builder-optgroup-custom-shifts">
+                    </optgroup>
                   </select>
                   <span class="sentence-token">」は「</span>
                   <select id="builder-day-type" class="toolbar-select builder-select" aria-label="曜日区分">
@@ -668,6 +674,7 @@
                     <option value="dow:5">金曜日</option>
                     <option value="dow:6">土曜日</option>
                     <option value="dow:0">日曜日</option>
+                    <option value="custom">📅 複数曜日を選択 (OR指定)...</option>
                   </select>
                   <span class="sentence-token">」に「</span>
                   <select id="builder-attribute" class="toolbar-select builder-select" aria-label="スキル・役割">
@@ -677,6 +684,7 @@
                     <option value="newcomer">🔰 新人</option>
                     <option value="team_A">🅰️ A班</option>
                     <option value="team_B">🅱️ B班</option>
+                    <option value="custom">🏷️ 複数属性を選択 (OR指定)...</option>
                   </select>
                   <span class="sentence-token">」の人が「</span>
                   <input type="number" id="builder-min-count" class="toolbar-num-input builder-input-num" min="0" max="30" value="1" placeholder="下限" aria-label="最低人数" />
@@ -693,6 +701,32 @@
                   <button type="button" id="btn-add-sentence-rule" class="btn-solve-primary" style="margin-left: 0.5rem; height: 32px;">
                     ＋ ルールを追加
                   </button>
+                </div>
+
+                <!-- Custom Day-of-Week (OR) Row -->
+                <div id="builder-custom-days-row" class="builder-extra-row" hidden>
+                  <span style="font-weight: 600; color: var(--text-sumi-secondary);">対象曜日(OR):</span>
+                  <label><input type="checkbox" class="chk-builder-dow" value="1" checked />月</label>
+                  <label><input type="checkbox" class="chk-builder-dow" value="2" checked />火</label>
+                  <label><input type="checkbox" class="chk-builder-dow" value="3" checked />水</label>
+                  <label><input type="checkbox" class="chk-builder-dow" value="4" checked />木</label>
+                  <label><input type="checkbox" class="chk-builder-dow" value="5" checked />金</label>
+                  <label><input type="checkbox" class="chk-builder-dow" value="6" />土</label>
+                  <label><input type="checkbox" class="chk-builder-dow" value="0" />日</label>
+                  <label style="margin-left: 6px; font-weight: 600;"><input type="checkbox" id="chk-builder-holiday" />祝日を含める</label>
+                  <span style="margin-left: auto; display: flex; gap: 4px;">
+                    <button type="button" class="btn-extra-preset" id="btn-preset-weekday">平日</button>
+                    <button type="button" class="btn-extra-preset" id="btn-preset-mwf">月水金</button>
+                    <button type="button" class="btn-extra-preset" id="btn-preset-tt">火木</button>
+                    <button type="button" class="btn-extra-preset" id="btn-preset-weekend">土日祝</button>
+                    <button type="button" class="btn-extra-preset" id="btn-preset-all-days">全選択</button>
+                  </span>
+                </div>
+
+                <!-- Custom Attributes/Tags (OR) Row -->
+                <div id="builder-custom-attrs-row" class="builder-extra-row" hidden>
+                  <span style="font-weight: 600; color: var(--text-sumi-secondary);">対象属性(OR):</span>
+                  <div id="builder-custom-attrs-chips" style="display: inline-flex; flex-wrap: wrap; gap: 8px;"></div>
                 </div>
               </div>
             </div>
