@@ -840,6 +840,7 @@ function renderHud(): void {
   // Fence dots & remaining count
   const remaining = Math.max(0, currentStage.maxFences - currentEval.fencesUsed);
   fenceDotsEl.innerHTML = "";
+  fenceDotsEl.classList.toggle("dense", currentStage.maxFences > 5);
   for (let i = 0; i < currentStage.maxFences; i++) {
     const dot = document.createElement("span");
     dot.className = "fence-dot";

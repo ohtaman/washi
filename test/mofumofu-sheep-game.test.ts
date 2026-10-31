@@ -1161,9 +1161,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(styleCss).toContain("env(safe-area-inset-bottom)");
     expect(styleCss).toContain("-webkit-tap-highlight-color: transparent;");
 
-    // 2. Verify 3-column compact horizontal HUD on mobile (not stacked 1fr)
+    // 2. Verify 3-column compact horizontal HUD on mobile with minmax(0, 1fr) and wrapping fence dots
     expect(styleCss).toContain("@media (max-width: 640px)");
-    expect(styleCss).toContain("grid-template-columns: repeat(3, 1fr);");
+    expect(styleCss).toContain("grid-template-columns: repeat(3, minmax(0, 1fr));");
+    expect(styleCss).toContain("min-width: 0;");
+    expect(styleCss).toContain("overflow: hidden;");
+    expect(styleCss).toContain("flex-wrap: wrap;");
+    expect(styleCss).toContain(".fence-dots.dense .fence-dot .fence-svg");
     expect(styleCss).not.toMatch(/@media \(max-width: 640px\)[\s\S]*?\.hud-bar\s*\{\s*grid-template-columns:\s*1fr;\s*\}/);
 
     // 3. Verify desktop keyboard shortcut badges are hidden on mobile

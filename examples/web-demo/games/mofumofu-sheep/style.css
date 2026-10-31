@@ -1216,11 +1216,13 @@ body {
 
   /* 3-Column Compact Horizontal HUD (Zero Space Waste) */
   .hud-bar {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
   .hud-pill {
-    padding: 5px 6px;
+    min-width: 0;
+    overflow: hidden;
+    padding: 5px 4px;
     border-radius: 10px;
     flex-direction: column;
     align-items: center;
@@ -1231,24 +1233,38 @@ body {
   .hud-label {
     font-size: 0.66rem;
     line-height: 1.1;
+    white-space: normal;
+    word-break: break-word;
   }
   .hud-value {
-    font-size: 0.8rem;
-    line-height: 1.1;
+    font-size: 0.78rem;
+    line-height: 1.15;
+    white-space: normal;
+    word-break: break-word;
   }
   .fence-dots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 2px;
+    max-width: 100%;
   }
   .fence-dot .fence-svg {
-    width: 0.95rem;
-    height: 0.95rem;
+    width: 0.82rem;
+    height: 0.82rem;
+  }
+  .fence-dots.dense .fence-dot .fence-svg {
+    width: 0.72rem;
+    height: 0.72rem;
   }
   .status-icon {
     font-size: 0.95rem;
   }
   .status-text {
     font-size: 0.74rem;
-    line-height: 1.1;
+    line-height: 1.15;
+    white-space: normal;
+    word-break: break-word;
   }
 
   /* Touch-Optimized Board Stage */
@@ -1403,11 +1419,25 @@ body {
   .stage-oneliner {
     font-size: 0.78rem;
   }
+  .hud-pill {
+    padding: 4px 2px;
+  }
   .hud-label {
-    font-size: 0.62rem;
+    font-size: 0.6rem;
   }
   .hud-value {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+  }
+  .fence-dot .fence-svg {
+    width: 0.72rem;
+    height: 0.72rem;
+  }
+  .fence-dots.dense .fence-dot .fence-svg {
+    width: 0.64rem;
+    height: 0.64rem;
+  }
+  .status-text {
+    font-size: 0.68rem;
   }
   .btn {
     padding: 5px 8px;
