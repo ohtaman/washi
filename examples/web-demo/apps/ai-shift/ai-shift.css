@@ -2214,3 +2214,34 @@ body.ai-shift-body {
   text-align: center;
 }
 
+.builder-extra-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 6px 10px;
+  margin-top: 6px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 6px;
+  font-size: 0.78rem;
+}
+
+.builder-extra-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.builder-extra-row .btn-extra-preset {
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface-elevated);
+  cursor: pointer;
+}
+
+

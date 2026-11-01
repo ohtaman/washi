@@ -203,15 +203,33 @@ export function isStaffingRuleApplicableOnDay(
   if (typeof rule.endDay === "number" && day > rule.endDay) return false;
 
   const dow = getDayOfWeek(config.year, config.month, day);
-  if (rule.allowedDaysOfWeek?.length && !rule.allowedDaysOfWeek.includes(dow)) return false;
+  const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, day));
+
+  if (rule.allowedDaysOfWeek !== undefined || rule.includeHolidays !== undefined) {
+    const hasDows = (rule.allowedDaysOfWeek?.length ?? 0) > 0;
+    const dowMatches = hasDows && rule.allowedDaysOfWeek!.includes(dow);
+    const holMatches = Boolean(rule.includeHolidays && isHol);
+    if (rule.includeHolidays === true) {
+      if (!dowMatches && !holMatches) return false;
+    } else if (rule.includeHolidays === false) {
+      if (isHol || !dowMatches) return false;
+    } else if (hasDows && !dowMatches) {
+      return false;
+    }
+  }
 
   if (rule.dayType && rule.dayType !== "all") {
-    const isHol = Boolean(getJapaneseHolidayName(config.year, config.month, day));
-    if (rule.dayType === "weekday" && (dow === 0 || dow === 6 || isHol)) return false;
-    if (rule.dayType === "weekend" && (dow !== 0 && dow !== 6)) return false;
-    if (rule.dayType === "holiday" && !isHol) return false;
-    if (rule.dayType === "weekend_holiday" && (dow !== 0 && dow !== 6 && !isHol)) return false;
-    if (rule.dayType.startsWith("dow:") && dow !== Number(rule.dayType.split(":")[1])) return false;
+    const types = rule.dayType.split(",").map((t) => t.trim()).filter(Boolean);
+    const matchesAny = types.some((t) => {
+      if (t === "all" || t === "custom") return true;
+      if (t === "weekday") return dow !== 0 && dow !== 6 && !isHol;
+      if (t === "weekend") return dow === 0 || dow === 6;
+      if (t === "holiday") return isHol;
+      if (t === "weekend_holiday") return dow === 0 || dow === 6 || isHol;
+      if (t.startsWith("dow:")) return dow === Number(t.split(":")[1]);
+      return false;
+    });
+    if (!matchesAny) return false;
   }
 
   return true;
@@ -1242,14 +1260,12 @@ export function buildNurseWashiModel(
         const idx = d - 1;
         for (const s of rule.shifts) {
           if (!isDayAllowedForShift(d, s)) continue;
-          const vars = matchingNurses.flatMap((n) =>
-            getShiftVarsForNurseDay(s, n.id, idx)
-          );
+          const shiftExpr = expr`${sum(matchingNurses.map((n) => getShiftExpr(s, n.id, idx)))}`;
           const sLabel =
             SHIFT_LABEL_JA[s as ActiveShiftCode] ??
             getShiftMeta(s, customShiftDefs, state.shiftAliases).label;
           if (typeof rule.minCount === "number" && rule.minCount > 0) {
-            addRuleConstraint(expr`${sum(vars)} >= ${rule.minCount}`, {
+            addRuleConstraint(expr`${shiftExpr} >= ${rule.minCount}`, {
               name: `staffing_min_${rule.id}_${s}_d${d}`,
               category: "skill",
               labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} >= ${rule.minCount}名）`,
@@ -1257,8 +1273,8 @@ export function buildNurseWashiModel(
               relaxSuggestion: `配置ルール「${rule.description}」の必要人数（${rule.minCount}名）を緩和してください。`,
             });
           }
-          if (vars.length > 0 && typeof rule.maxCount === "number" && rule.maxCount >= 0) {
-            addRuleConstraint(expr`${sum(vars)} <= ${rule.maxCount}`, {
+          if (matchingNurses.length > 0 && typeof rule.maxCount === "number" && rule.maxCount >= 0) {
+            addRuleConstraint(expr`${shiftExpr} <= ${rule.maxCount}`, {
               name: `staffing_max_${rule.id}_${s}_d${d}`,
               category: "skill",
               labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} <= ${rule.maxCount}名）`,

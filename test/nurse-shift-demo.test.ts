@@ -16,6 +16,7 @@ import {
 import {
   clearNurseContractFromState,
   createDefaultShiftAliases,
+  doesNurseMatchAttribute,
   getEffectiveIncludedAliases,
   getJapaneseHolidayName,
   removeCustomShiftFromState,
@@ -3967,5 +3968,99 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const covMeta = washiModel.constraintMeta.get("cov_D_d2");
     expect(covMeta).toBeDefined();
     expect(covMeta?.labelJa).toContain("18名");
+  });
+
+  it("supports custom shifts, day selections (allowedDaysOfWeek / includeHolidays), and multi-attribute OR in staffing rules", () => {
+    const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
+
+    // 1. doesNurseMatchAttribute with comma-separated OR tokens
+    const leaderNurse = baseState.nurses.find((n) => n.skills.includes("leader_cap"))!;
+    const icuNurse = baseState.nurses.find((n) => n.skills.includes("icu_er") && !n.skills.includes("leader_cap"))!;
+    const plainNurse = baseState.nurses.find((n) => !n.skills.includes("leader_cap") && !n.skills.includes("icu_er"))!;
+
+    expect(doesNurseMatchAttribute(leaderNurse, "leader_cap,icu_er")).toBe(true);
+    expect(doesNurseMatchAttribute(icuNurse, "leader_cap,icu_er")).toBe(true);
+    expect(doesNurseMatchAttribute(plainNurse, "leader_cap,icu_er")).toBe(false);
+
+    // 2. isStaffingRuleApplicableOnDay with allowedDaysOfWeek and includeHolidays
+    // Nov 2, 2026 is Monday (regular)
+    // Nov 3, 2026 is Tuesday (文化の日 - Holiday)
+    // Nov 4, 2026 is Wednesday (regular)
+    // Nov 23, 2026 is Monday (勤労感謝の日 - Holiday)
+    const ruleMwfNoHol: CustomConstraintRule = {
+      id: "mwf_no_hol",
+      kind: "staffing_rule",
+      enabled: true,
+      description: "月水金 (祝日除く)",
+      shifts: ["D"],
+      attribute: "all",
+      dayType: "custom",
+      allowedDaysOfWeek: [1, 3, 5],
+      includeHolidays: false,
+      minCount: 2,
+    };
+    expect(isStaffingRuleApplicableOnDay(ruleMwfNoHol, 2, baseState.config)).toBe(true); // Nov 2 (Mon)
+    expect(isStaffingRuleApplicableOnDay(ruleMwfNoHol, 3, baseState.config)).toBe(false); // Nov 3 (Tue Holiday)
+    expect(isStaffingRuleApplicableOnDay(ruleMwfNoHol, 4, baseState.config)).toBe(true); // Nov 4 (Wed)
+    expect(isStaffingRuleApplicableOnDay(ruleMwfNoHol, 23, baseState.config)).toBe(false); // Nov 23 (Mon Holiday excluded)
+
+    const ruleMwfWithHol: CustomConstraintRule = {
+      ...ruleMwfNoHol,
+      id: "mwf_with_hol",
+      includeHolidays: true,
+    };
+    expect(isStaffingRuleApplicableOnDay(ruleMwfWithHol, 2, baseState.config)).toBe(true); // Nov 2 (Mon)
+    expect(isStaffingRuleApplicableOnDay(ruleMwfWithHol, 3, baseState.config)).toBe(true); // Nov 3 (Tue Holiday included)
+    expect(isStaffingRuleApplicableOnDay(ruleMwfWithHol, 23, baseState.config)).toBe(true); // Nov 23 (Mon Holiday included)
+
+    // 3. Staffing rule on Custom Shift and on 'O' (公休) with multi-attribute
+    const stateWithCustom: NurseSchedulingState = {
+      ...baseState,
+      customShiftDefs: [
+        {
+          code: "T",
+          shortLabel: "研",
+          label: "研修",
+          baseShift: "D",
+          timeBand: "day",
+          includedInAliases: ["W"],
+        },
+      ],
+      customRules: [
+        {
+          id: "rule_t_leader_icu",
+          kind: "staffing_rule",
+          enabled: true,
+          description: "研修Tは月水金にリーダーまたは救急が1名以上",
+          shifts: ["T"],
+          attribute: "leader_cap,icu_er",
+          dayType: "custom",
+          allowedDaysOfWeek: [1, 3, 5],
+          minCount: 1,
+          isHard: true,
+        },
+        {
+          id: "rule_off_weekend",
+          kind: "staffing_rule",
+          enabled: true,
+          description: "公休Oは土日に全員で5名以上",
+          shifts: ["O"],
+          attribute: "all",
+          dayType: "weekend",
+          minCount: 5,
+          isHard: true,
+        },
+      ],
+    };
+
+    const built = buildNurseWashiModel(stateWithCustom, { solver: "highs" });
+    const tConstraint = built.constraintMeta.get("staffing_min_rule_t_leader_icu_T_d2");
+    expect(tConstraint).toBeDefined();
+    expect(tConstraint?.labelJa).toContain("研修 (研) >= 1名");
+
+    const offConstraint = built.constraintMeta.get("staffing_min_rule_off_weekend_O_d1");
+    // Nov 1, 2026 is Sunday (weekend)
+    expect(offConstraint).toBeDefined();
+    expect(offConstraint?.labelJa).toContain("公休(O) >= 5名");
   });
 });
