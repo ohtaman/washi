@@ -538,7 +538,7 @@
                 <div class="catalog-mgmt-title-group">
                   <span class="dp-badge" id="staff-mgmt-badge">基礎データ</span>
                   <h3>👥 看護師名簿・前月実績・希望シフト・相性ペア</h3>
-                  <p>シフト編成の基礎となるスタッフデータです。人数を指定してサンプルを生成するか、CSVファイルから取り込みます。</p>
+                  <p class="catalog-mgmt-desc">シフト編成の基礎となるスタッフデータです。人数を指定してサンプルを生成するか、CSVファイルから取り込みます。</p>
                 </div>
                 <div class="catalog-mgmt-actions">
                   <label for="input-staff-count" class="toolbar-mini-label">人数:</label>
@@ -567,17 +567,23 @@
               </div>
             </div>
 
-            <div class="relations-card" style="margin-top: 10px;">
-              <div class="custom-rules-header">
-                <div>
-                  <h3>🤝 相性ペア（NGペア ＆ プリセプター指導ペア）</h3>
-                  <p class="constraint-card-desc">
-                    少人数夜勤での同席回避（相性NG）や新人×先輩の同時夜勤（指導ペア）の個別設定です。
-                  </p>
+            <!-- 相性ペア（折りたたみ可能なコンパクトカード） -->
+            <details id="relations-card" class="relations-card" open>
+              <summary class="relations-card-summary">
+                <div class="relations-summary-left">
+                  <span class="summary-icon">🤝</span>
+                  <strong>相性ペア（NGペア ＆ プリセプター指導ペア）</strong>
+                  <span id="badge-relations-count" class="tab-count-badge">0組</span>
                 </div>
+                <span class="relations-summary-hint">クリックで開閉</span>
+              </summary>
+              <div class="relations-card-body">
+                <p class="constraint-card-desc">
+                  少人数夜勤での同席回避（相性NG）や新人×先輩の同時夜勤（指導ペア）の個別設定です。
+                </p>
+                <div id="relations-list" class="relations-badges-wrap"></div>
               </div>
-              <div id="relations-list" class="relations-badges-wrap"></div>
-            </div>
+            </details>
           </div>
 
           <div class="staff-table-wrap">
