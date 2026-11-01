@@ -9,6 +9,9 @@ export default withMermaid(
   base: "/washi/",
   cleanUrls: true,
   lastUpdated: true,
+  sitemap: {
+    hostname: "https://ohtaman.github.io/washi/",
+  },
   markdown: {
     config(md) {
       // Block math: $$ ... $$
