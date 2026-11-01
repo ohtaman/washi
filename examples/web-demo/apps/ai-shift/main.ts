@@ -2232,12 +2232,17 @@ function renderStaffProfilesTab(): void {
     staffBadge.textContent = String(appState.nurses.length);
   }
 
+  const relCountBadge = document.getElementById("badge-relations-count");
+
   const catGenBtn = document.getElementById("btn-cat-generate-sample");
   const catClearBtn = document.getElementById("btn-cat-clear-blank");
   const nextBanner = document.getElementById("staff-next-step-banner");
   const nextMsg = document.getElementById("staff-next-step-message");
 
   if (appState.nurses.length === 0) {
+    if (relCountBadge) {
+      relCountBadge.textContent = "0組";
+    }
     if (catGenBtn) {
       catGenBtn.className = "btn-solve-primary";
       catGenBtn.textContent = "🎲 サンプルデータを読み込む";
@@ -2276,6 +2281,12 @@ function renderStaffProfilesTab(): void {
     if (nextMsg) {
       nextMsg.textContent = `✅ 基礎データの準備完了（${appState.nurses.length}名）。「⚙️ 条件・ルール設定」で制約を確認・調整するか、「⚡ シフトを自動作成」でシフトを編成してください。`;
     }
+  }
+
+  if (relCountBadge) {
+    const ngCount = appState.relations.filter((r) => r.type === "ng_pair").length;
+    const precCount = appState.relations.filter((r) => r.type === "preceptor").length;
+    relCountBadge.textContent = `${appState.relations.length}組 (NG:${ngCount} / 指導:${precCount})`;
   }
 
   const nurseById = new Map(appState.nurses.map((n) => [n.id, n]));

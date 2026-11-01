@@ -1572,29 +1572,189 @@ body.ai-shift-body {
   white-space: pre;
 }
 
-/* ==================== TAB 3: STAFF PROFILES ==================== */
+/* ==================== TAB 2: STAFF PROFILES & COMPATIBILITY ==================== */
 #tab-panel-staff {
   overflow-y: auto;
-  padding: 14px 16px;
-  gap: 12px;
+  padding: 8px 14px 12px;
+  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 
-.relations-badges-wrap {
+.staff-tab-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Compact Master Data Management Card in Staff Tab */
+#tab-panel-staff .catalog-management-card {
+  padding: 0.45rem 0.8rem;
+  gap: 0.35rem;
+  border-radius: 8px;
+}
+
+#tab-panel-staff .catalog-mgmt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+#tab-panel-staff .catalog-mgmt-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+
+#tab-panel-staff .catalog-mgmt-title-group h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-sumi);
+}
+
+#tab-panel-staff .catalog-mgmt-desc {
+  margin: 0;
+  font-size: 0.73rem;
+  color: var(--text-sumi-secondary);
+}
+
+#tab-panel-staff .catalog-mgmt-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+#tab-panel-staff .catalog-mgmt-actions .toolbar-mini-label {
+  font-size: 0.74rem;
+}
+
+#tab-panel-staff .catalog-mgmt-actions .toolbar-num-input {
+  height: 26px;
+  padding: 2px 6px;
+  font-size: 0.76rem;
+  width: 54px;
+}
+
+#tab-panel-staff .catalog-mgmt-actions .btn-solve-primary,
+#tab-panel-staff .catalog-mgmt-actions .btn-toolbar-outline {
+  padding: 3px 8px;
+  font-size: 0.74rem;
+  height: 26px;
+  border-radius: 6px;
+}
+
+/* Collapsible & Compact Relations Card */
+#tab-panel-staff .relations-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+.relations-card-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--bg-surface-elevated);
+  user-select: none;
+  list-style: none;
+}
+
+.relations-card-summary::-webkit-details-marker {
+  display: none;
+}
+
+.relations-summary-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.relations-summary-left strong {
+  font-size: 0.8rem;
+}
+
+.relations-summary-hint {
+  font-size: 0.7rem;
+  color: var(--text-sumi-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.relations-card-summary::after {
+  content: "▾";
+  font-size: 0.72rem;
+  color: var(--text-sumi-secondary);
+  transition: transform 0.15s ease;
+  margin-left: 6px;
+}
+
+.relations-card[open] > .relations-card-summary::after {
+  transform: rotate(180deg);
+}
+
+.relations-card-body {
+  padding: 5px 10px 7px;
+  border-top: 1px solid var(--border-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.relations-card-body .constraint-card-desc {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--text-sumi-secondary);
+}
+
+#tab-panel-staff .relations-badges-wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 5px;
+  max-height: 72px;
+  overflow-y: auto;
+  margin-top: 2px;
+  padding-right: 2px;
 }
 
 .relation-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 7px;
-  font-size: 0.74rem;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 0.71rem;
   border: 1px solid var(--border-hairline);
   background: var(--bg-surface-elevated);
+}
+
+.relation-pill .toolbar-select {
+  height: 22px !important;
+  font-size: 0.7rem !important;
+  padding: 0 4px !important;
+}
+
+.relation-pill .btn-xs-outline {
+  padding: 1px 5px !important;
+  font-size: 0.68rem !important;
+  height: 20px !important;
 }
 
 .relation-ng {
@@ -1607,11 +1767,15 @@ body.ai-shift-body {
   background: rgba(16, 185, 129, 0.08);
 }
 
+/* Maximized Staff Table Container with Sticky Header */
 .staff-table-wrap {
+  flex: 1 1 auto;
+  min-height: 280px;
   background: var(--bg-surface);
   border: 1px solid var(--border-hairline);
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: auto;
+  position: relative;
 }
 
 .staff-profile-table {
@@ -1622,7 +1786,7 @@ body.ai-shift-body {
 
 .staff-profile-table th,
 .staff-profile-table td {
-  padding: 7px 10px;
+  padding: 6px 9px;
   border-bottom: 1px solid var(--border-hairline);
   text-align: left;
 }
@@ -1632,6 +1796,8 @@ body.ai-shift-body {
   font-weight: 700;
   position: sticky;
   top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 var(--border-hairline);
 }
 
 /* ==================== DIALOG MODALS ==================== */
