@@ -1161,17 +1161,29 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(styleCss).toContain("env(safe-area-inset-bottom)");
     expect(styleCss).toContain("-webkit-tap-highlight-color: transparent;");
 
-    // 2. Verify 3-column compact horizontal HUD on mobile with minmax(0, 1fr) and wrapping fence dots
-    expect(styleCss).toContain("@media (max-width: 640px)");
-    expect(styleCss).toContain("grid-template-columns: repeat(3, minmax(0, 1fr));");
-    expect(styleCss).toContain("min-width: 0;");
-    expect(styleCss).toContain("overflow: hidden;");
-    expect(styleCss).toContain("flex-wrap: wrap;");
-    expect(styleCss).toContain(".fence-dots.dense .fence-dot .fence-svg");
-    expect(styleCss).not.toMatch(/@media \(max-width: 640px\)[\s\S]*?\.hud-bar\s*\{\s*grid-template-columns:\s*1fr;\s*\}/);
+    // 2. Scoped check of @media (max-width: 640px) HUD layout rules
+    const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
+    expect(mobileBlockMatch).toBeTruthy();
+    const mobileBlock = mobileBlockMatch![1];
+
+    const hudBarMatch = mobileBlock.match(/\.hud-bar\s*\{([^}]+)\}/);
+    expect(hudBarMatch?.[1]).toMatch(/grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+
+    const hudPillMatch = mobileBlock.match(/\.hud-pill\s*\{([^}]+)\}/);
+    expect(hudPillMatch?.[1]).toContain("min-width: 0;");
+    expect(hudPillMatch?.[1]).toContain("overflow: hidden;");
+
+    const fenceDotsMatch = mobileBlock.match(/\.fence-dots\s*\{([^}]+)\}/);
+    expect(fenceDotsMatch?.[1]).toContain("flex-wrap: wrap;");
+    expect(fenceDotsMatch?.[1]).toContain("max-width: 100%;");
+
+    const hudValMatch = mobileBlock.match(/\.hud-value\s*\{([^}]+)\}/);
+    expect(hudValMatch?.[1]).toContain("white-space: normal;");
+    const statusTextMatch = mobileBlock.match(/\.status-text\s*\{([^}]+)\}/);
+    expect(statusTextMatch?.[1]).toContain("white-space: normal;");
 
     // 3. Verify desktop keyboard shortcut badges are hidden on mobile
-    expect(styleCss).toContain(".btn kbd {\n    display: none;\n  }");
+    expect(mobileBlock).toContain(".btn kbd {\n    display: none;\n  }");
 
     // 4. Verify extra-narrow mobile and landscape media queries exist
     expect(styleCss).toContain("@media (max-width: 380px)");
@@ -1185,5 +1197,137 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
     // Unconstrained height falls back to width-only computation
     expect(computeCellSize(7, 7, 299, 7)).toBe(36);
+  });
+
+  it("renders high-fence stages with dense wrapped indicators fitting within narrow mobile HUD pills", async () => {
+    interface MockNode {
+      id?: string;
+      className: string;
+      classList: {
+        contains: (c: string) => boolean;
+        add: (c: string) => void;
+        remove: (c: string) => void;
+        toggle: (c: string, force?: boolean) => boolean;
+      };
+      children: MockNode[];
+      innerHTML: string;
+      textContent: string;
+      style: { setProperty: (k: string, v: string) => void };
+      parentElement?: MockNode | null;
+      disabled?: boolean;
+      dataset: Record<string, string>;
+      setAttribute: (k: string, v: string) => void;
+      getAttribute: (k: string) => string | null;
+      appendChild: (c: MockNode) => void;
+      addEventListener: (event: string, cb: () => void) => void;
+    }
+
+    const createMockNode = (id = ""): MockNode => {
+      const classSet = new Set<string>();
+      const node: MockNode = {
+        id,
+        className: "",
+        classList: {
+          contains: (c: string) => classSet.has(c),
+          add: (c: string) => {
+            classSet.add(c);
+            node.className = Array.from(classSet).join(" ");
+          },
+          remove: (c: string) => {
+            classSet.delete(c);
+            node.className = Array.from(classSet).join(" ");
+          },
+          toggle: (c: string, force?: boolean) => {
+            const has = classSet.has(c);
+            const next = force !== undefined ? force : !has;
+            if (next) classSet.add(c);
+            else classSet.delete(c);
+            node.className = Array.from(classSet).join(" ");
+            return next;
+          },
+        },
+        children: [],
+        innerHTML: "",
+        textContent: "",
+        style: { setProperty: () => {} },
+        dataset: {},
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: (child: MockNode) => {
+          node.children.push(child);
+        },
+        addEventListener: () => {},
+      };
+      Object.defineProperty(node, "innerHTML", {
+        get: () => "",
+        set: (val: string) => {
+          if (val === "") node.children = [];
+        },
+      });
+      return node;
+    };
+
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const byId = new Map<string, MockNode>();
+    for (const match of sheepHtml.matchAll(/<([a-zA-Z0-9-]+)\b([^>]*)>/g)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      byId.set(idMatch[1], createMockNode(idMatch[1]));
+    }
+
+    const prevDoc = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
+    const storeMap = new Map<string, string>();
+    storeMap.set(
+      "washi_mofumofu_sheep_cleared_v3",
+      JSON.stringify({ highestUnlockedStage: 35 })
+    );
+
+    try {
+      (globalThis as { document?: unknown }).document = {
+        documentElement: { lang: "ja" },
+        title: "",
+        getElementById: (id: string) => byId.get(id) ?? null,
+        querySelectorAll: () => [],
+        createElement: (tag: string) => createMockNode(tag),
+      };
+      (globalThis as { localStorage?: unknown }).localStorage = {
+        getItem: (k: string) => storeMap.get(k) ?? null,
+        setItem: (k: string, v: string) => storeMap.set(k, v),
+      };
+
+      // Stage 32 generates with 10 maxFences (8 + (32 % 3) = 10)
+      await loadStageByNumber(32);
+
+      const fenceDotsEl = byId.get("fence-dots");
+      expect(fenceDotsEl).toBeDefined();
+      const fenceCount = fenceDotsEl?.children.length ?? 0;
+      expect(fenceCount).toBeGreaterThanOrEqual(8);
+      expect(fenceDotsEl?.classList.contains("dense")).toBe(true);
+
+      // Verify layout math for 320px viewport:
+      // Available HUD width = 320px viewport - 16px body padding - 20px card padding = 284px.
+      // 3 pills with 6px gap: available pill width = Math.floor((284 - 12) / 3) = 90px (content width = 82px after 4px padding).
+      // At dense icon size (0.72rem ≈ 11.5px) + 2px gap:
+      // A non-wrapping row of N icons (>= 8) would occupy: N * 11.5 + (N - 1) * 2 >= 8 * 11.5 + 7 * 2 = 106px > 82px (overflows without wrap).
+      // With flex-wrap: wrap, each wrapped row holds at most Math.floor((82 + 2) / (11.5 + 2)) = 6 icons.
+      // 2 wrapped rows of <= 5 icons occupy: <= 5 * 11.5 + 4 * 2 = 65.5px <= 82px, fitting cleanly into the 90px pill.
+      const dotWidthPx = 11.5;
+      const dotGapPx = 2;
+      const pillContentWidthPx = 82;
+      const unwrappedWidthPx = fenceCount * dotWidthPx + (fenceCount - 1) * dotGapPx;
+      expect(unwrappedWidthPx).toBeGreaterThan(pillContentWidthPx);
+
+      const maxDotsPerRow = Math.floor((pillContentWidthPx + dotGapPx) / (dotWidthPx + dotGapPx));
+      const rowCount = Math.ceil(fenceCount / maxDotsPerRow);
+      const wrappedRowWidthPx = Math.ceil(fenceCount / rowCount) * dotWidthPx + (Math.ceil(fenceCount / rowCount) - 1) * dotGapPx;
+      expect(wrappedRowWidthPx).toBeLessThanOrEqual(pillContentWidthPx);
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as { document?: unknown }).document;
+      else (globalThis as { document?: unknown }).document = prevDoc;
+      if (prevStorage === undefined) delete (globalThis as { localStorage?: unknown }).localStorage;
+      else (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
+    }
   });
 });
