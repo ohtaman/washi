@@ -4540,8 +4540,8 @@ button.pair-chip:hover {
     display: none !important;
   }
 
-  /* Mobile Modal Dialogs (exclude fullscreen cinematic scenes) */
-  .game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog) {
+  /* Mobile Modal Dialogs (exclude fullscreen cinematic scenes & battle cutscene) */
+  .game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog):not(.is-fullscreen-battle) {
     width: min(96vw, 760px);
     max-height: 90vh;
     max-height: 90dvh;
@@ -4571,6 +4571,18 @@ button.pair-chip:hover {
     padding: 0;
     border-radius: 0;
     overflow: hidden;
+  }
+
+  .result-dialog.is-fullscreen-battle {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
   }
 
   .dialog-inner {
