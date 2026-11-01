@@ -2673,6 +2673,10 @@ export function applyTimetableLang(lang: TimetableLang): void {
     theoryLink.href = `../ai-timetable-theory/?lang=${lang}`;
   }
   setText("nav-link-apps", ui.navApps);
+  const appsLink = document.getElementById("nav-link-apps") as HTMLAnchorElement | null;
+  if (appsLink) {
+    appsLink.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
+  }
   setText("nav-link-aishift", ui.navAiShift);
   $("ai-timetable-theme-btn").title = ui.themeToggleTitle;
 

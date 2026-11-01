@@ -169,9 +169,8 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(cachedFallbackOpt?.verified).toBe(true);
   });
 
-  it("enforces editorial & i18n rules across Portal, Games, and Theory Articles (no 核心, no ！, no algorithm names on Portal, full ja/en/zh)", () => {
+  it("enforces editorial & i18n rules across Showcase, Games, and Theory Articles (no 核心, no ！, full ja/en/zh)", () => {
     const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
-    const portalHtml = readFileSync(resolve(gamesRoot, "index.html"), "utf8");
     const sheepTheoryHtml = readFileSync(
       resolve(gamesRoot, "mofumofu-sheep-theory/index.html"),
       "utf8"
@@ -187,7 +186,6 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
     // 2. None of the files contain full-width exclamation mark "！"
     const filesToCheck = [
-      "index.html",
       "mofumofu-sheep-theory/index.html",
       "demon-castle-shift-theory/index.html",
       "mofumofu-sheep/index.html",
@@ -206,14 +204,13 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(content, `${relPath} should not contain ！`).not.toContain("！");
     }
 
-    // 3. Portal hides specific algorithm names and uses "解説記事を読む" / "Read Article" / "阅读解说文章"
-    expect(portalHtml).toContain("解説記事を読む");
-    expect(portalHtml).toContain("Read Article");
-    expect(portalHtml).toContain("阅读解说文章");
-    expect(portalHtml).not.toContain("シフト最適化");
-    expect(portalHtml).not.toContain("最小カット");
-    expect(portalHtml).not.toContain("最大重み連結領域");
-    expect(portalHtml).not.toContain("MILP");
+    // 3. Showcase pages use "解説記事を読む" / "Theory Article" / "阅读解说文章"
+    const showcaseJa = readFileSync(resolve(__dirname, "../docs/ja/showcase/index.md"), "utf8");
+    const showcaseEn = readFileSync(resolve(__dirname, "../docs/showcase/index.md"), "utf8");
+    const showcaseZh = readFileSync(resolve(__dirname, "../docs/zh/showcase/index.md"), "utf8");
+    expect(showcaseJa).toContain("解説記事を読む");
+    expect(showcaseEn).toContain("Theory Article");
+    expect(showcaseZh).toContain("阅读解说文章");
 
     // 4. Both theory pages and both games provide ja, en, zh localization
     expect(sheepTheoryHtml).toContain('data-lang-section="ja"');
@@ -535,8 +532,8 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       applySheepStaticTranslations("en");
       expect(sheepDoc.documentElement.lang).toBe("en");
       expect(sheepDoc.title).toContain("Fluffy Sheep Pasture");
-      expect(sheepDoc.byId.get("back-link")?.textContent).toBe("← Portal");
-      expect(sheepDoc.byId.get("back-link")?.title).toBe("Back to Game Portal");
+      expect(sheepDoc.byId.get("back-link")?.textContent).toBe("← Showcase");
+      expect(sheepDoc.byId.get("back-link")?.title).toBe("Back to Showcase");
       expect(sheepDoc.byId.get("total-stars-badge")?.title).toBe("Cleared stages");
       expect(sheepDoc.byId.get("btn-show-optimal")?.textContent).toBe("✨ View Model Solution");
       expect(sheepDoc.byId.get("btn-next-stage")?.textContent).toBe("Next Stage ▶");
@@ -579,8 +576,8 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       applySheepStaticTranslations("zh");
       expect(sheepDoc.documentElement.lang).toBe("zh");
       expect(sheepDoc.title).toContain("毛茸茸绵羊围牧场");
-      expect(sheepDoc.byId.get("back-link")?.textContent).toBe("← 返回列表");
-      expect(sheepDoc.byId.get("back-link")?.title).toBe("返回游戏列表");
+      expect(sheepDoc.byId.get("back-link")?.textContent).toBe("← 案例展示");
+      expect(sheepDoc.byId.get("back-link")?.title).toBe("返回案例展示");
       expect(sheepDoc.byId.get("total-stars-badge")?.title).toBe("已通关关卡数");
       expect(sheepDoc.byId.get("btn-show-optimal")?.textContent).toBe("✨ 查看示范解答");
       expect(sheepDoc.byId.get("btn-next-stage")?.textContent).toBe("下一关 ▶");
@@ -1014,12 +1011,10 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
     const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
     const theoryHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep-theory/index.html"), "utf8");
-    const portalHtml = readFileSync(resolve(gamesRoot, "index.html"), "utf8");
 
     // 1. Verify log emoji (🪵) is completely removed from HTML files
     expect(sheepHtml).not.toContain("🪵");
     expect(theoryHtml).not.toContain("🪵");
-    expect(portalHtml).not.toContain("🪵");
 
     // 2. Verify authentic wooden fence SVG contains picket posts and rails
     expect(FENCE_SVG).toContain("fence-svg");

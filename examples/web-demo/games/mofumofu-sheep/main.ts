@@ -292,19 +292,27 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
   setText(
     "back-link",
     pickLang(currentLang, {
-      ja: "← 一覧",
-      en: "← Portal",
-      zh: "← 返回列表",
+      ja: "← ショーケース",
+      en: "← Showcase",
+      zh: "← 案例展示",
     })
   );
   setTitle(
     "back-link",
     pickLang(currentLang, {
-      ja: "ゲーム一覧へ戻る",
-      en: "Back to Game Portal",
-      zh: "返回游戏列表",
+      ja: "ショーケースへ戻る",
+      en: "Back to Showcase",
+      zh: "返回案例展示",
     })
   );
+  const backLink = document.getElementById("back-link") as HTMLAnchorElement | null;
+  if (backLink) {
+    backLink.href = pickLang(currentLang, {
+      ja: "../../ja/showcase/",
+      en: "../../showcase/",
+      zh: "../../zh/showcase/",
+    });
+  }
 
   setText(
     "app-title",

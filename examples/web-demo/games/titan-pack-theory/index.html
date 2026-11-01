@@ -177,8 +177,7 @@
             <button type="button" class="lang-btn" data-lang-btn="en">English</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../" class="nav-btn" id="t-nav-hub">🕹️ ゲーム一覧</a>
-          <a href="../../showcase/" class="nav-btn" id="t-nav-showcase">✨ ショーケース</a>
+          <a href="../../ja/showcase/" class="nav-btn" id="t-nav-showcase">✨ ショーケース</a>
         </div>
       </nav>
 
@@ -277,7 +276,6 @@ console.log("Status:", status);</code></pre>
       const TEXTS = {
         ja: {
           navPlay: "🎮 ゲームをプレイする",
-          navHub: "🕹️ ゲーム一覧",
           navShowcase: "✨ ショーケース",
           title: "『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化",
           lead: "最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。",
@@ -295,7 +293,6 @@ console.log("Status:", status);</code></pre>
         },
         en: {
           navPlay: "🎮 Play Game",
-          navHub: "🕹️ Games Portal",
           navShowcase: "✨ Showcase",
           title: "Mathematical Foundations of TITAN PACK — 2D Strip Packing & MILP Linearization",
           lead: "Explore the Mixed-Integer Linear Programming (MILP) formulation of 2D Strip / Bin Packing behind TITAN PACK, along with the multi-scale interlocking algorithms that guarantee zero-fault-line solutions.",
@@ -313,7 +310,6 @@ console.log("Status:", status);</code></pre>
         },
         zh: {
           navPlay: "🎮 开始游戏",
-          navHub: "🕹️ 游戏目录",
           navShowcase: "✨ 案例展示",
           title: "《TITAN PACK》数理模型解说 — 二维装箱问题与非重叠约束的线性化",
           lead: "深入解析《TITAN PACK》背后的混合整数线性规划（MILP）二维装箱模型，以及保证绝无通断层、有机咬合的几何算法原理。",
@@ -335,8 +331,11 @@ console.log("Status:", status);</code></pre>
         setGameLang(lang);
         const t = pickLang(lang, TEXTS);
         document.getElementById("t-nav-play").textContent = t.navPlay;
-        document.getElementById("t-nav-hub").textContent = t.navHub;
-        document.getElementById("t-nav-showcase").textContent = t.navShowcase;
+        const showcaseBtn = document.getElementById("t-nav-showcase");
+        if (showcaseBtn) {
+          showcaseBtn.textContent = t.navShowcase;
+          showcaseBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
+        }
         document.getElementById("t-title").textContent = t.title;
         document.getElementById("t-lead").textContent = t.lead;
         document.getElementById("t-sec1-title").textContent = t.sec1Title;
