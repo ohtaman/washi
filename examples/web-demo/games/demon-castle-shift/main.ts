@@ -465,7 +465,7 @@ function renderOpeningCut(index: number): void {
   }
 }
 
-function syncAudioButtonUi(): void {
+export function syncAudioButtonUi(): void {
   const playing = soundEngine.playing;
   document.querySelectorAll<HTMLButtonElement>("[data-bgm-toggle]").forEach((btn) => {
     btn.setAttribute("aria-pressed", String(playing));

@@ -38,6 +38,7 @@ import {
   recordStageBreachFailure,
   recordStageVictory,
   resetSaveDataForTest,
+  syncAudioButtonUi,
   type SaveData,
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
 
@@ -405,36 +406,124 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(css).toMatch(/\.game-dialog\s*\{[^}]*max-height:\s*90dvh;/);
     expect(css).toMatch(/\.game-dialog\s*\{[^}]*overflow-y:\s*auto;/);
 
-    // 2. Audio button contains short & extra spans for responsive display
+    // 2. Audio button HTML template contains short & extra spans for responsive display
     expect(html).toContain('class="btn-audio-short"');
     expect(html).toContain('class="btn-audio-extra"');
 
-    const mobile768BlockMatch = css.match(/@media\s*\(max-width:\s*768px\)\s*\{([\s\S]*?)\n\}\n\n@media/);
-    expect(mobile768BlockMatch).toBeTruthy();
-    const mobile768Block = mobile768BlockMatch![1];
+    // 3. Behavioral UI test for syncAudioButtonUi() DOM transformation & aria-pressed synchronization
+    const originalDocument = globalThis.document;
+    try {
+      type MockBtn = {
+        attributes: Record<string, string>;
+        innerHTML: string;
+        setAttribute: (k: string, v: string) => void;
+        getAttribute: (k: string) => string | undefined;
+      };
+      const mockButtons: MockBtn[] = [
+        {
+          attributes: { "data-bgm-toggle": "", "aria-pressed": "false" },
+          innerHTML: "",
+          setAttribute(k, v) { this.attributes[k] = String(v); },
+          getAttribute(k) { return this.attributes[k]; },
+        },
+      ];
+      // Synthetic DOM node matching [data-bgm-toggle] (justified test mock per AGENTS.md Section 4.B & 4.C)
+      globalThis.document = {
+        querySelectorAll: (sel: string) => (sel === "[data-bgm-toggle]" ? mockButtons : []),
+      } as unknown as Document;
 
-    expect(mobile768Block).toMatch(/\.btn-audio\s+\.btn-audio-extra\s*\{[^}]*display:\s*none;/);
+      syncAudioButtonUi();
+      expect(mockButtons[0].getAttribute("aria-pressed")).toBe("false");
+      expect(mockButtons[0].innerHTML).toContain('class="btn-audio-short"');
+      expect(mockButtons[0].innerHTML).toContain('class="btn-audio-extra"');
+      expect(mockButtons[0].innerHTML).toContain("🔇 BGM: OFF");
+      expect(mockButtons[0].innerHTML).toContain("（クリックで音楽ON）");
+    } finally {
+      globalThis.document = originalDocument;
+    }
 
-    // 3. Title screen buttons adapt to fluid full-width on mobile without fixed 320px blowout
-    expect(mobile768Block).toMatch(/\.btn-title-primary\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/);
-    expect(mobile768Block).toMatch(/\.btn-title-secondary\s*\{[^}]*min-width:\s*0;[^}]*width:\s*100%;/);
+    // 4. Cascade resolution engine: computes the winning CSS rule at representative viewport widths
+    function resolveEffectiveStyle(cssText: string, selector: string, property: string, viewportWidth: number): string | null {
+      const mqRegex = /@media\s*\((max-width:\s*(\d+)px)\)\s*\{([\s\S]*?\n\})\s*(?=@media|\s*$)/g;
+      const mediaBlocks: Array<{ maxWidth: number; startIndex: number; endIndex: number }> = [];
+      let m: RegExpExecArray | null;
+      while ((m = mqRegex.exec(cssText)) !== null) {
+        mediaBlocks.push({
+          maxWidth: parseInt(m[2], 10),
+          startIndex: m.index,
+          endIndex: m.index + m[0].length,
+        });
+      }
 
-    // 4. Horizontal scroll for stage navigation pills on narrow viewports
-    expect(mobile768Block).toMatch(/\.stage-progress-nav\s*\{[^}]*overflow-x:\s*auto;/);
+      const escapedSel = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const selRegex = new RegExp(escapedSel + "\\s*\\{([^}]+)\\}", "g");
+      const activeDeclarations: Array<{ index: number; value: string }> = [];
 
-    // 5. Grimoire roster adapts to single-column card layout on mobile
-    expect(mobile768Block).toMatch(/\.grimoire-pages-grid\s*\{[^}]*grid-template-columns:\s*1fr;/);
+      while ((m = selRegex.exec(cssText)) !== null) {
+        const declIndex = m.index;
+        const block = m[1];
+        const propRegex = new RegExp("(?:^|;)\\s*" + property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*:\\s*([^;]+);", "i");
+        const propMatch = block.match(propRegex);
+        if (!propMatch) continue;
 
-    // 6. Full-screen battle cutscene switches versus display to single column on mobile
-    expect(mobile768Block).toMatch(/\.battle-cutin-versus\s*\{[^}]*grid-template-columns:\s*1fr;/);
-    expect(mobile768Block).toMatch(/\.result-hero-actions\s*\{[^}]*flex-direction:\s*column;/);
+        const value = propMatch[1].trim();
+        const parentMq = mediaBlocks.find((mb) => declIndex >= mb.startIndex && declIndex <= mb.endIndex);
+        if (!parentMq) {
+          activeDeclarations.push({ index: declIndex, value });
+        } else if (viewportWidth <= parentMq.maxWidth) {
+          activeDeclarations.push({ index: declIndex, value });
+        }
+      }
 
-    // 7. Extra narrow mobile viewports (<= 420px) scale monster column width and touch targets
-    const mobile420BlockMatch = css.match(/@media\s*\(max-width:\s*420px\)\s*\{([\s\S]*?)\n\}\n\n/);
-    expect(mobile420BlockMatch).toBeTruthy();
-    const mobile420Block = mobile420BlockMatch![1];
-    expect(mobile420Block).toMatch(/\.shift-matrix thead th\.col-monster\s*\{[^}]*width:\s*150px;/);
-    expect(mobile420Block).toMatch(/\.shift-btn\s*\{[^}]*min-width:\s*42px;/);
+      if (activeDeclarations.length === 0) return null;
+      return activeDeclarations[activeDeclarations.length - 1].value;
+    }
+
+    // 5. Verify mobile override precedence over base declarations in CSS cascade
+    // Desktop layout (1200px) preserves multi-column, wide modal and full button widths
+    expect(resolveEffectiveStyle(css, ".grimoire-pages-grid", "grid-template-columns", 1200)).toBe("repeat(2, minmax(0, 1fr))");
+    expect(resolveEffectiveStyle(css, ".battle-cutin-versus", "grid-template-columns", 1200)).toBe("1fr auto 1fr");
+    expect(resolveEffectiveStyle(css, ".op-climax-btn", "min-width", 1200)).toBe("280px");
+    expect(resolveEffectiveStyle(css, ".battle-live-stage", "min-height", 1200)).toBe("clamp(390px, 60vh, 560px)");
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 1200)).toBe("240px");
+
+    // Tablet / Smartphone layout (768px): overrides base styles cleanly
+    expect(resolveEffectiveStyle(css, ".grimoire-pages-grid", "grid-template-columns", 768)).toBe("1fr");
+    expect(resolveEffectiveStyle(css, ".battle-cutin-versus", "grid-template-columns", 768)).toBe("1fr");
+    expect(resolveEffectiveStyle(css, ".op-climax-btn", "min-width", 768)).toBe("0");
+    expect(resolveEffectiveStyle(css, ".op-climax-btn", "width", 768)).toBe("100%");
+    expect(resolveEffectiveStyle(css, ".battle-live-stage", "min-height", 768)).toBe("clamp(320px, 48vh, 460px)");
+    expect(resolveEffectiveStyle(css, ".btn-title-primary", "width", 768)).toBe("100%");
+    expect(resolveEffectiveStyle(css, ".btn-title-primary", "min-width", 768)).toBe("0");
+    expect(resolveEffectiveStyle(css, ".stage-progress-nav", "overflow-x", 768)).toBe("auto");
+    expect(resolveEffectiveStyle(css, ".btn-audio .btn-audio-extra", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 768)).toBe("168px");
+    expect(resolveEffectiveStyle(css, ".shift-btn", "min-width", 768)).toBe("44px");
+
+    // Ultra-narrow mobile viewport (420px): further tightens matrix columns and touch target minimums
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("150px");
+    expect(resolveEffectiveStyle(css, ".shift-btn", "min-width", 420)).toBe("42px");
+
+    // 6. Explicit stylesheet order assertion guaranteeing media query overrides appear strictly after base rules
+    const mq768Index = css.lastIndexOf("@media (max-width: 768px)");
+    const mq420Index = css.lastIndexOf("@media (max-width: 420px)");
+    expect(mq768Index).toBeGreaterThan(0);
+    expect(mq420Index).toBeGreaterThan(mq768Index);
+
+    const baseSelectors = [
+      ".op-climax-btn",
+      ".battle-live-stage",
+      ".grimoire-pages-grid",
+      ".battle-cutin-versus",
+      ".result-hero-actions",
+      ".btn-title-primary",
+      ".stage-progress-nav",
+    ];
+    for (const sel of baseSelectors) {
+      const baseIndex = css.indexOf(sel);
+      expect(baseIndex).toBeGreaterThanOrEqual(0);
+      expect(baseIndex).toBeLessThan(mq768Index);
+    }
   });
 
   it("detects saved player progress to skip title and movie when resuming by default", () => {
