@@ -3671,11 +3671,19 @@ function applyStaticTranslations(): void {
   setText(
     "title-back-link",
     pickLang(currentLang, {
-      ja: "← ゲーム一覧へ",
-      en: "← Back to Games",
-      zh: "← 返回游戏列表",
+      ja: "← ショーケースへ",
+      en: "← Back to Showcase",
+      zh: "← 返回案例展示",
     })
   );
+  const backLink = document.getElementById("title-back-link") as HTMLAnchorElement | null;
+  if (backLink) {
+    backLink.href = pickLang(currentLang, {
+      ja: "../../ja/showcase/",
+      en: "../../showcase/",
+      zh: "../../zh/showcase/",
+    });
+  }
   setHtml(
     "title-catchphrase",
     pickLang(currentLang, {

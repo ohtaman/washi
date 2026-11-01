@@ -1070,7 +1070,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     headerTitle: "🎓 大学時間割編成 AI Copilot (UCTP)",
     btnTutorial: "🔰 使い方ガイド",
     btnTheory: "📖 解説記事",
-    navApps: "← Apps",
+    navApps: "← ショーケース",
     navAiShift: "🏥 AI Shift",
     themeToggleTitle: "ライト/ダークモード切替",
 
@@ -1501,7 +1501,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     headerTitle: "🎓 University Timetabling AI Copilot (UCTP)",
     btnTutorial: "🔰 Quick Guide",
     btnTheory: "📖 Theory Article",
-    navApps: "← Apps",
+    navApps: "← Showcase",
     navAiShift: "🏥 AI Shift",
     themeToggleTitle: "Toggle Light / Dark Theme",
 
@@ -1932,7 +1932,7 @@ export const UI_TEXT_I18N: Record<TimetableLang, TimetableUiStrings> = {
     headerTitle: "🎓 大学排课 AI Copilot (UCTP)",
     btnTutorial: "🔰 快速指南",
     btnTheory: "📖 原理解说",
-    navApps: "← 应用列表",
+    navApps: "← 案例展示",
     navAiShift: "🏥 护士排班",
     themeToggleTitle: "切换亮色/暗色主题",
 

@@ -273,7 +273,7 @@
   <body>
     <div class="article-shell">
       <nav class="topnav">
-        <a href="../index.html" class="nav-btn" id="nav-back">← ゲーム一覧へ戻る</a>
+        <a href="../../ja/showcase/" class="nav-btn" id="nav-back">← ショーケースへ戻る</a>
         <div class="topnav-right">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -829,19 +829,19 @@ m.constraint(
       const NAV_TEXT = {
         ja: {
           title: "『魔王城の24時間警備シフト』の数理モデル解説 — 勤務スケジューリング（NSP）と論理条件の線形化",
-          back: "← ゲーム一覧へ戻る",
+          back: "← ショーケースへ戻る",
           other: "🐑 牧場囲いパズルの解説記事へ",
           play: "🏰 パズルをプレイする ▶",
         },
         en: {
           title: 'Behind "Demon Castle 24-Hour Guard Shift" — Nurse Scheduling (NSP) and Linearization',
-          back: "← Back to Games",
+          back: "← Back to Showcase",
           other: "🐑 Sheep Pasture Article",
           play: "🏰 Play Puzzle ▶",
         },
         zh: {
           title: "《魔王城24小时警备排班》数学模型解说 — 排班优化（NSP）与逻辑条件线性化",
-          back: "← 返回游戏一览",
+          back: "← 返回案例展示",
           other: "🐑 牧场围栏解说文章",
           play: "🏰 开始解谜 ▶",
         },
@@ -851,7 +851,11 @@ m.constraint(
         setGameLang(lang);
         const t = pickLang(lang, NAV_TEXT);
         document.title = t.title;
-        document.getElementById("nav-back").textContent = t.back;
+        const backBtn = document.getElementById("nav-back");
+        if (backBtn) {
+          backBtn.textContent = t.back;
+          backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
+        }
         document.getElementById("nav-other-theory").textContent = t.other;
         document.getElementById("nav-play").textContent = t.play;
 

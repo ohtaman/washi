@@ -354,7 +354,7 @@
   <body>
     <div class="article-shell">
       <nav class="topnav">
-        <a href="../index.html" class="nav-btn" id="nav-back">← ゲーム一覧へ戻る</a>
+        <a href="../../ja/showcase/" class="nav-btn" id="nav-back">← ショーケースへ戻る</a>
         <div class="topnav-right">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -1238,19 +1238,19 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
       const NAV_TEXT = {
         ja: {
           title: "『もふもふ羊の牧場囲い』の数理モデル解説 — 最小カットから最大重み連結領域問題（MILP）へ",
-          back: "← ゲーム一覧へ戻る",
+          back: "← ショーケースへ戻る",
           other: "🏰 警備シフトの解説記事へ",
           play: "🐑 パズルをプレイする ▶",
         },
         en: {
           title: 'Behind "Fluffy Sheep Pasture Enclosure" — From Minimum Cut to Budgeted Connected Subgraph (MILP)',
-          back: "← Back to Games",
+          back: "← Back to Showcase",
           other: "🏰 Guard Shift Article",
           play: "🐑 Play Puzzle ▶",
         },
         zh: {
           title: "《毛茸茸绵羊的牧场围栏》数学模型解说 — 从最小割到最大权连通子图问题（MILP）",
-          back: "← 返回游戏一览",
+          back: "← 返回案例展示",
           other: "🏰 警备排班解说文章",
           play: "🐑 开始解谜 ▶",
         },
@@ -1260,7 +1260,11 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
         setGameLang(lang);
         const t = pickLang(lang, NAV_TEXT);
         document.title = t.title;
-        document.getElementById("nav-back").textContent = t.back;
+        const backBtn = document.getElementById("nav-back");
+        if (backBtn) {
+          backBtn.textContent = t.back;
+          backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
+        }
         document.getElementById("nav-other-theory").textContent = t.other;
         document.getElementById("nav-play").textContent = t.play;
 

@@ -8,11 +8,6 @@ function discoverGameInputs(baseDir: string): Record<string, string> {
   const inputs: Record<string, string> = {};
   if (!existsSync(gamesRoot)) return inputs;
 
-  const hubIndex = resolve(gamesRoot, "index.html");
-  if (existsSync(hubIndex)) {
-    inputs["games-hub"] = hubIndex;
-  }
-
   for (const entry of readdirSync(gamesRoot, { withFileTypes: true })) {
     if (entry.isDirectory()) {
       const gameIndex = resolve(gamesRoot, entry.name, "index.html");
@@ -28,11 +23,6 @@ function discoverAppInputs(baseDir: string): Record<string, string> {
   const appsRoot = resolve(baseDir, "examples/web-demo/apps");
   const inputs: Record<string, string> = {};
   if (!existsSync(appsRoot)) return inputs;
-
-  const hubIndex = resolve(appsRoot, "index.html");
-  if (existsSync(hubIndex)) {
-    inputs["apps-hub"] = hubIndex;
-  }
 
   for (const entry of readdirSync(appsRoot, { withFileTypes: true })) {
     if (entry.isDirectory()) {

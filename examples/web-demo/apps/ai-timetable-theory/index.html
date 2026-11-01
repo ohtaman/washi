@@ -273,7 +273,7 @@
   <body>
     <div class="article-shell">
       <nav class="topnav">
-        <a href="../index.html" class="nav-btn" id="nav-back">← アプリ一覧へ戻る</a>
+        <a href="../../ja/showcase/" class="nav-btn" id="nav-back">← ショーケースへ戻る</a>
         <div class="topnav-right">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
@@ -772,19 +772,19 @@ const report = m.validateSolution();</code></pre>
       const NAV_TEXT = {
         ja: {
           title: "『大学時間割編成 AI Copilot』の数理モデル解説 — 4次元0-1整数計画（UCTP）とAI×ソルバー連携",
-          back: "← アプリ一覧へ戻る",
+          back: "← ショーケースへ戻る",
           other: "🏥 ナーススケジューリング AI へ",
           open: "🎓 時間割 AI Copilot を開く ▶",
         },
         en: {
           title: 'Behind "University Course Timetabling AI Copilot" — 4D 0-1 MILP (UCTP) & On-Device AI',
-          back: "← Back to Apps",
+          back: "← Back to Showcase",
           other: "🏥 Nurse Scheduling AI",
           open: "🎓 Open Timetable Copilot ▶",
         },
         zh: {
           title: "《大学排课 AI Copilot》数学模型解说 — 四维 0-1 规划（UCTP）与端侧 AI 协同",
-          back: "← 返回应用一览",
+          back: "← 返回案例展示",
           other: "🏥 护士排班 AI Copilot",
           open: "🎓 打开大学排课 AI ▶",
         },
@@ -794,7 +794,11 @@ const report = m.validateSolution();</code></pre>
         setGameLang(lang);
         const t = pickLang(lang, NAV_TEXT);
         document.title = t.title;
-        document.getElementById("nav-back").textContent = t.back;
+        const backBtn = document.getElementById("nav-back");
+        if (backBtn) {
+          backBtn.textContent = t.back;
+          backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
+        }
         document.getElementById("nav-other-app").textContent = t.other;
         document.getElementById("nav-open-app").textContent = t.open;
 

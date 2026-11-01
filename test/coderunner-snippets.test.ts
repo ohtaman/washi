@@ -710,17 +710,30 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(themeIndexRaw).toContain("router.onBeforeRouteChange");
     expect(themeIndexRaw).toMatch(/demo\|apps\|games/);
 
-    const gamesIndexRaw = fs.readFileSync(
-      path.resolve(process.cwd(), "examples/web-demo/games/index.html"),
-      "utf-8"
-    );
-    expect(gamesIndexRaw).toContain('id="portal-back-showcase"');
+    // Old standalone games and apps hubs are removed in favor of unified showcase
+    expect(fs.existsSync(path.resolve(process.cwd(), "examples/web-demo/games/index.html"))).toBe(false);
+    expect(fs.existsSync(path.resolve(process.cwd(), "examples/web-demo/apps/index.html"))).toBe(false);
 
-    const appsIndexRaw = fs.readFileSync(
-      path.resolve(process.cwd(), "examples/web-demo/apps/index.html"),
+    const castleIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/games/demon-castle-shift/index.html"),
       "utf-8"
     );
-    expect(appsIndexRaw).toContain('id="apps-back-showcase"');
+    expect(castleIndexRaw).toContain('id="title-back-link"');
+    expect(castleIndexRaw).toContain('showcase');
+
+    const sheepIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/games/mofumofu-sheep/index.html"),
+      "utf-8"
+    );
+    expect(sheepIndexRaw).toContain('id="back-link"');
+    expect(sheepIndexRaw).toContain('showcase');
+
+    const timetableIndexRaw = fs.readFileSync(
+      path.resolve(process.cwd(), "examples/web-demo/apps/ai-timetable/index.html"),
+      "utf-8"
+    );
+    expect(timetableIndexRaw).toContain('id="nav-link-apps"');
+    expect(timetableIndexRaw).toContain('showcase');
 
     const demoIndexRaw = fs.readFileSync(
       path.resolve(process.cwd(), "examples/web-demo/demo/index.html"),
