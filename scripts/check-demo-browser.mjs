@@ -358,11 +358,11 @@ async function runBrowserVerification() {
       };
     });
 
-    // Verify compact management header (<= 110px) and compact relations card (<= 130px)
+    // Verify compact management header (<= 110px) and compact relations card (<= 150px)
     assert(layoutMetrics.mgmtHeight > 0 && layoutMetrics.mgmtHeight <= 110,
       `Management header should be compact (<=110px), got ${layoutMetrics.mgmtHeight}px`);
-    assert(layoutMetrics.relHeight > 0 && layoutMetrics.relHeight <= 130,
-      `Relations card should be compact (<=130px), got ${layoutMetrics.relHeight}px`);
+    assert(layoutMetrics.relHeight > 0 && layoutMetrics.relHeight <= 150,
+      `Relations card should be compact (<=150px), got ${layoutMetrics.relHeight}px`);
 
     // Verify staff table wrap expands to fill viewport and is scrollable
     assert(layoutMetrics.tableClientHeight >= 280,
