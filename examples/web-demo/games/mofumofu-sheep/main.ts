@@ -686,7 +686,7 @@ function getAvailableBoardWidth(): number | undefined {
   const stageEl = getEl<HTMLElement>("board-grid").parentElement;
   const viewportBound =
     typeof window !== "undefined" && window.innerWidth > 0
-      ? Math.max(200, window.innerWidth - 76)
+      ? Math.max(200, window.innerWidth - (window.innerWidth <= 480 ? 36 : 76))
       : undefined;
   if (stageEl && stageEl.clientWidth > 0) {
     const style = window.getComputedStyle(stageEl);
@@ -696,6 +696,19 @@ function getAvailableBoardWidth(): number | undefined {
     return viewportBound !== undefined ? Math.min(stageInner, viewportBound) : stageInner;
   }
   return viewportBound;
+}
+
+function getAvailableBoardHeight(): number | undefined {
+  if (typeof window === "undefined" || window.innerHeight <= 0) return undefined;
+  const isLandscape = window.innerWidth > window.innerHeight;
+  const isMobile = window.innerWidth <= 860 || window.innerHeight <= 600;
+  if (isLandscape && isMobile) {
+    return Math.max(160, window.innerHeight - 150);
+  }
+  if (isMobile) {
+    return Math.max(200, Math.floor(window.innerHeight * 0.48));
+  }
+  return undefined;
 }
 
 function getMaxUnlockedStage(): number {
@@ -827,6 +840,7 @@ function renderHud(): void {
   // Fence dots & remaining count
   const remaining = Math.max(0, currentStage.maxFences - currentEval.fencesUsed);
   fenceDotsEl.innerHTML = "";
+  fenceDotsEl.classList.toggle("dense", currentStage.maxFences > 5);
   for (let i = 0; i < currentStage.maxFences; i++) {
     const dot = document.createElement("span");
     dot.className = "fence-dot";
@@ -970,7 +984,13 @@ function renderBoard(): void {
   const boardGridEl = getEl<HTMLElement>("board-grid");
   const rows = currentStage.grid.length;
   const cols = currentStage.grid[0]?.length ?? 0;
-  const cellSize = computeCellSize(rows, cols, getAvailableBoardWidth());
+  const cellSize = computeCellSize(
+    rows,
+    cols,
+    getAvailableBoardWidth(),
+    7,
+    getAvailableBoardHeight()
+  );
   const cleared = isStageCleared();
 
   boardGridEl.style.setProperty("--cell-size", `${cellSize}px`);
@@ -1384,9 +1404,11 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     }
   });
 
-  window.addEventListener("resize", () => {
+  const handleViewportChange = () => {
     renderBoard();
-  });
+  };
+  window.addEventListener("resize", handleViewportChange);
+  window.addEventListener("orientationchange", handleViewportChange);
 
   // Initialize language & resume progression or start directly in Stage 1
   applyStaticTranslations();
