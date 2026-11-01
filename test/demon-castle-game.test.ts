@@ -462,11 +462,15 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
       while ((m = selRegex.exec(cssText)) !== null) {
         const declIndex = m.index;
         const block = m[1];
-        const propRegex = new RegExp("(?:^|;)\\s*" + property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*:\\s*([^;]+);", "i");
-        const propMatch = block.match(propRegex);
-        if (!propMatch) continue;
+        const propRegex = new RegExp("(?:^|[;\\n])\\s*" + property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*:\\s*([^;]+);", "gi");
+        let propMatch: RegExpExecArray | null;
+        let lastPropValue: string | null = null;
+        while ((propMatch = propRegex.exec(block)) !== null) {
+          lastPropValue = propMatch[1].trim();
+        }
+        if (!lastPropValue) continue;
 
-        const value = propMatch[1].trim();
+        const value = lastPropValue;
         const parentMq = mediaBlocks.find((mb) => declIndex >= mb.startIndex && declIndex <= mb.endIndex);
         if (!parentMq) {
           activeDeclarations.push({ index: declIndex, value });
@@ -499,6 +503,16 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".btn-audio .btn-audio-extra", "display", 768)).toBe("none");
     expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 768)).toBe("168px");
     expect(resolveEffectiveStyle(css, ".shift-btn", "min-width", 768)).toBe("44px");
+
+    // Fullscreen scenes (opening movie & prologue VN) preserve full viewport coverage on mobile
+    expect(resolveEffectiveStyle(css, ".op-movie-dialog", "max-height", 768)).toBe("100dvh");
+    expect(resolveEffectiveStyle(css, ".op-movie-dialog", "max-width", 768)).toBe("100vw");
+    expect(resolveEffectiveStyle(css, ".prologue-vn-dialog", "max-height", 768)).toBe("100dvh");
+    expect(resolveEffectiveStyle(css, ".prologue-vn-dialog", "max-width", 768)).toBe("100vw");
+
+    // Ordinary modal dialogs are bounded to 96vw and 90dvh
+    expect(resolveEffectiveStyle(css, ".game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog)", "max-height", 768)).toBe("90dvh");
+    expect(resolveEffectiveStyle(css, ".game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog)", "width", 768)).toBe("min(96vw, 760px)");
 
     // Ultra-narrow mobile viewport (420px): further tightens matrix columns and touch target minimums
     expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("150px");

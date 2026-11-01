@@ -4540,11 +4540,37 @@ button.pair-chip:hover {
     display: none !important;
   }
 
-  /* Mobile Modal Dialogs */
-  .game-dialog {
+  /* Mobile Modal Dialogs (exclude fullscreen cinematic scenes) */
+  .game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog) {
     width: min(96vw, 760px);
     max-height: 90vh;
     max-height: 90dvh;
+  }
+
+  .op-movie-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    overflow: hidden;
+  }
+
+  .prologue-vn-dialog {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    overflow: hidden;
   }
 
   .dialog-inner {
