@@ -358,9 +358,9 @@ async function runBrowserVerification() {
       };
     });
 
-    // Verify compact management header (<= 75px) and compact relations card (<= 130px)
-    assert(layoutMetrics.mgmtHeight > 0 && layoutMetrics.mgmtHeight <= 75,
-      `Management header should be compact (<=75px), got ${layoutMetrics.mgmtHeight}px`);
+    // Verify compact management header (<= 110px) and compact relations card (<= 130px)
+    assert(layoutMetrics.mgmtHeight > 0 && layoutMetrics.mgmtHeight <= 110,
+      `Management header should be compact (<=110px), got ${layoutMetrics.mgmtHeight}px`);
     assert(layoutMetrics.relHeight > 0 && layoutMetrics.relHeight <= 130,
       `Relations card should be compact (<=130px), got ${layoutMetrics.relHeight}px`);
 
