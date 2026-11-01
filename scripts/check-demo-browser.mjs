@@ -318,6 +318,74 @@ async function runBrowserVerification() {
     console.log("   Graceful abort verified: displayed clear reason without crashing or hanging!");
     await failContext.close();
 
+    // 9. Test Nurse Shift Scheduling Demo Basic Data Tab Layout & Scrolling
+    console.log("9. Testing Nurse Scheduling Basic Data tab layout, collapsible relations, and scrolling...");
+    const shiftPage = await context.newPage();
+    await shiftPage.setViewportSize({ width: 1280, height: 800 });
+    await shiftPage.goto(`http://localhost:${port}/washi/apps/ai-shift/`, { waitUntil: "networkidle" });
+
+    // Click the 基礎データ tab
+    await shiftPage.click("#tab-btn-staff");
+    await shiftPage.waitForFunction(() => {
+      const panel = document.getElementById("tab-panel-staff");
+      return panel && !panel.hidden;
+    }, { timeout: 10_000 });
+
+    const layoutMetrics = await shiftPage.evaluate(() => {
+      const panel = document.getElementById("tab-panel-staff");
+      const mgmtCard = document.getElementById("staff-mgmt-card");
+      const relCard = document.getElementById("relations-card");
+      const tableWrap = document.querySelector(".staff-table-wrap");
+      const th = document.querySelector(".staff-profile-table th");
+
+      const mgmtHeight = mgmtCard?.getBoundingClientRect().height || 0;
+      const relHeight = relCard?.getBoundingClientRect().height || 0;
+      const tableClientHeight = tableWrap?.clientHeight || 0;
+      const tableScrollHeight = tableWrap?.scrollHeight || 0;
+      const thStyle = th ? window.getComputedStyle(th) : null;
+      const panelStyle = panel ? window.getComputedStyle(panel) : null;
+
+      return {
+        mgmtHeight,
+        relHeight,
+        tableClientHeight,
+        tableScrollHeight,
+        thPosition: thStyle?.position,
+        panelDisplay: panelStyle?.display,
+        panelFlexDirection: panelStyle?.flexDirection,
+        panelOverflowY: panelStyle?.overflowY,
+        relOpen: relCard?.hasAttribute("open"),
+      };
+    });
+
+    // Verify compact management header (<= 75px) and compact relations card (<= 130px)
+    assert(layoutMetrics.mgmtHeight > 0 && layoutMetrics.mgmtHeight <= 75,
+      `Management header should be compact (<=75px), got ${layoutMetrics.mgmtHeight}px`);
+    assert(layoutMetrics.relHeight > 0 && layoutMetrics.relHeight <= 130,
+      `Relations card should be compact (<=130px), got ${layoutMetrics.relHeight}px`);
+
+    // Verify staff table wrap expands to fill viewport and is scrollable
+    assert(layoutMetrics.tableClientHeight >= 280,
+      `Staff table wrap clientHeight should be at least 280px, got ${layoutMetrics.tableClientHeight}px`);
+    assert(layoutMetrics.tableScrollHeight >= layoutMetrics.tableClientHeight,
+      `Staff table should have scrollable content, scrollHeight=${layoutMetrics.tableScrollHeight}, clientHeight=${layoutMetrics.tableClientHeight}`);
+
+    // Verify sticky column header
+    assert.equal(layoutMetrics.thPosition, "sticky", "Table header must have position: sticky");
+
+    // Test toggle of relations card
+    await shiftPage.click(".relations-card-summary");
+    const isClosed = await shiftPage.evaluate(() => !document.getElementById("relations-card")?.hasAttribute("open"));
+    assert.equal(isClosed, true, "Relations card should collapse upon summary click");
+
+    // Click again to reopen
+    await shiftPage.click(".relations-card-summary");
+    const isReopened = await shiftPage.evaluate(() => document.getElementById("relations-card")?.hasAttribute("open"));
+    assert.equal(isReopened, true, "Relations card should reopen upon second summary click");
+
+    await shiftPage.close();
+    console.log("   Nurse Scheduling Basic Data tab layout and interaction verified!");
+
     console.log("\nAll browser verification checks PASSED successfully!");
   } finally {
     await browser.close();

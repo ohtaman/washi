@@ -532,40 +532,4 @@ preceptor,N03,N04,"  ",1,指導ペア
 
     expect(holidayCov.D).toBe(7);
   });
-
-  it("verifies basic data tab compact header, collapsible relations card, and maximized table layout", () => {
-    const html = fs.readFileSync("examples/web-demo/apps/ai-shift/index.html", "utf8");
-    const css = fs.readFileSync("examples/web-demo/apps/ai-shift/ai-shift.css", "utf8");
-
-    // 1. Structure in index.html
-    expect(html).toContain('id="staff-mgmt-card" class="catalog-management-card"');
-    expect(html).toContain('id="relations-card" class="relations-card" open');
-    expect(html).toContain('class="relations-card-summary"');
-    expect(html).toContain('id="badge-relations-count"');
-    expect(html).toContain('id="relations-list" class="relations-badges-wrap"');
-    expect(html).toContain('class="staff-table-wrap"');
-    expect(html).toContain('class="staff-profile-table"');
-    expect(html).toContain('id="staff-profile-tbody"');
-
-    // 2. CSS Layout assertions for #tab-panel-staff and maximized table
-    expect(css).toMatch(/#tab-panel-staff\s*\{[^}]*overflow-y:\s*auto;/);
-    expect(css).toMatch(/#tab-panel-staff\s*\{[^}]*display:\s*flex;/);
-    expect(css).toMatch(/#tab-panel-staff\s*\{[^}]*flex-direction:\s*column;/);
-    expect(css).toMatch(/#tab-panel-staff\s*\{[^}]*flex:\s*1;/);
-
-    // 3. Compact header styles
-    expect(css).toMatch(/#tab-panel-staff \.catalog-management-card\s*\{[^}]*padding:\s*0\.45rem 0\.8rem;/);
-
-    // 4. Collapsible & bounded relations card styles
-    expect(css).toMatch(/\.relations-card-summary\s*\{[^}]*cursor:\s*pointer;/);
-    expect(css).toMatch(/#tab-panel-staff \.relations-badges-wrap\s*\{[^}]*max-height:\s*72px;/);
-    expect(css).toMatch(/#tab-panel-staff \.relations-badges-wrap\s*\{[^}]*overflow-y:\s*auto;/);
-
-    // 5. Staff table wrap fills available height with minimum safeguard and sticky header
-    expect(css).toMatch(/\.staff-table-wrap\s*\{[^}]*flex:\s*1 1 auto;/);
-    expect(css).toMatch(/\.staff-table-wrap\s*\{[^}]*min-height:\s*280px;/);
-    expect(css).toMatch(/\.staff-table-wrap\s*\{[^}]*overflow:\s*auto;/);
-    expect(css).toMatch(/\.staff-profile-table th\s*\{[^}]*position:\s*sticky;/);
-    expect(css).toMatch(/\.staff-profile-table th\s*\{[^}]*top:\s*0;/);
-  });
 });
