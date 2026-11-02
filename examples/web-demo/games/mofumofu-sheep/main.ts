@@ -1393,16 +1393,32 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
   const rulesDialog = getEl<HTMLDialogElement>("rules-dialog");
   const menuBtn = document.getElementById("btn-topbar-menu");
   const statsDropdown = document.getElementById("topbar-stats");
+  const menuBackdrop = document.getElementById("topbar-backdrop");
+
+  const closeMenu = () => {
+    statsDropdown?.classList.remove("is-open");
+    menuBtn?.setAttribute("aria-expanded", "false");
+    if (menuBackdrop) menuBackdrop.hidden = true;
+  };
+
   if (menuBtn && statsDropdown) {
     menuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const isOpen = statsDropdown.classList.toggle("is-open");
       menuBtn.setAttribute("aria-expanded", String(isOpen));
+      if (menuBackdrop) {
+        menuBackdrop.hidden = !isOpen;
+      }
     });
+    menuBackdrop?.addEventListener("click", closeMenu);
     document.addEventListener("click", (e) => {
       if (!statsDropdown.contains(e.target as Node) && e.target !== menuBtn) {
-        statsDropdown.classList.remove("is-open");
-        menuBtn.setAttribute("aria-expanded", "false");
+        closeMenu();
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && statsDropdown.classList.contains("is-open")) {
+        closeMenu();
       }
     });
   }
@@ -1415,8 +1431,7 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     });
   }
   getEl<HTMLButtonElement>("btn-open-rules").addEventListener("click", () => {
-    statsDropdown?.classList.remove("is-open");
-    menuBtn?.setAttribute("aria-expanded", "false");
+    closeMenu();
     renderTutorialButtonsInDialog();
     rulesDialog.showModal();
   });
