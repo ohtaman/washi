@@ -313,6 +313,43 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
       zh: "../../zh/showcase/",
     });
   }
+  const menuShowcaseLink = document.getElementById("menu-showcase-link") as HTMLAnchorElement | null;
+  if (menuShowcaseLink) {
+    menuShowcaseLink.href = backLink?.href ?? "../../ja/showcase/";
+  }
+  setTitle(
+    "menu-showcase-link",
+    pickLang(currentLang, {
+      ja: "ショーケースへ戻る",
+      en: "Back to Showcase",
+      zh: "返回案例展示",
+    })
+  );
+  setText(
+    "menu-back-label",
+    pickLang(currentLang, {
+      ja: "ショーケース",
+      en: "Showcase",
+      zh: "案例展示",
+    })
+  );
+  setTitle(
+    "btn-topbar-menu",
+    pickLang(currentLang, {
+      ja: "メニュー",
+      en: "Menu",
+      zh: "菜单",
+    })
+  );
+  setAttr(
+    "btn-topbar-menu",
+    "aria-label",
+    pickLang(currentLang, {
+      ja: "メニューを開く",
+      en: "Open menu",
+      zh: "打开菜单",
+    })
+  );
 
   setText(
     "app-title",
@@ -714,7 +751,8 @@ function getAvailableBoardHeight(): number | undefined {
     return Math.max(160, window.innerHeight - 150);
   }
   if (isMobile) {
-    return Math.max(200, Math.floor(window.innerHeight * 0.48));
+    const factor = window.innerHeight <= 700 ? 0.41 : 0.46;
+    return Math.max(190, Math.floor(window.innerHeight * factor));
   }
   return undefined;
 }
@@ -1353,6 +1391,22 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
   });
 
   const rulesDialog = getEl<HTMLDialogElement>("rules-dialog");
+  const menuBtn = document.getElementById("btn-topbar-menu");
+  const statsDropdown = document.getElementById("topbar-stats");
+  if (menuBtn && statsDropdown) {
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = statsDropdown.classList.toggle("is-open");
+      menuBtn.setAttribute("aria-expanded", String(isOpen));
+    });
+    document.addEventListener("click", (e) => {
+      if (!statsDropdown.contains(e.target as Node) && e.target !== menuBtn) {
+        statsDropdown.classList.remove("is-open");
+        menuBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
   const bgmBtn = document.getElementById("btn-bgm-toggle");
   if (bgmBtn) {
     bgmBtn.addEventListener("click", () => {
@@ -1361,6 +1415,8 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     });
   }
   getEl<HTMLButtonElement>("btn-open-rules").addEventListener("click", () => {
+    statsDropdown?.classList.remove("is-open");
+    menuBtn?.setAttribute("aria-expanded", "false");
     renderTutorialButtonsInDialog();
     rulesDialog.showModal();
   });

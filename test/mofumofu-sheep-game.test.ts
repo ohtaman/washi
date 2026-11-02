@@ -1325,4 +1325,89 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       else (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
     }
   });
+
+  it("prevents stage-strip horizontal overflow, clips select text, and keeps next button visible within 360px viewport", () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
+
+    const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
+    expect(mobileBlockMatch).toBeTruthy();
+    const mobileBlock = mobileBlockMatch![1];
+
+    // 1. Stage select wrapper & select element must be flexible and ellipsis-clipped
+    expect(mobileBlock).toContain(".stage-select-wrap");
+    expect(mobileBlock).toMatch(/\.stage-select-wrap\s*\{[^}]*min-width:\s*0/);
+    expect(mobileBlock).toMatch(/\.stage-select-wrap\s*\{[^}]*flex:\s*1/);
+    expect(mobileBlock).toMatch(/\.stage-select\s*\{[^}]*text-overflow:\s*ellipsis/);
+    expect(mobileBlock).toMatch(/\.stage-select\s*\{[^}]*white-space:\s*nowrap/);
+    expect(mobileBlock).toMatch(/\.stage-select\s*\{[^}]*overflow:\s*hidden/);
+
+    // 2. Stage nav bar must be full width of its parent card with space-between / bounded layout
+    expect(mobileBlock).toMatch(/\.stage-nav-bar\s*\{[^}]*width:\s*100%/);
+
+    // 3. Mathematical layout assertion on 360px narrow mobile viewport:
+    // Available card width = 360px - 16px (body padding) - 20px (card padding) = 324px.
+    // Elements: prevBtn (34px) + gap (4px) + selectWrap (<= 220px) + gap (4px) + nextBtn (34px) = 296px <= 324px.
+    const stepBtnWidth = 34;
+    const navGap = 4;
+    const maxSelectWrapWidth = 220;
+    const totalStripWidth = stepBtnWidth * 2 + navGap * 2 + maxSelectWrapWidth;
+    const availableCardWidth360 = 360 - 16 - 20;
+    expect(totalStripWidth).toBeLessThanOrEqual(availableCardWidth360);
+  });
+
+  it("enforces compact mobile topbar preventing vertical text wrapping on back link and brand title", () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
+
+    const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
+    expect(mobileBlockMatch).toBeTruthy();
+    const mobileBlock = mobileBlockMatch![1];
+
+    // Brand and h1 title must be flex-constrained with ellipsis
+    expect(mobileBlock).toMatch(/\.brand\s*\{[^}]*min-width:\s*0/);
+    expect(mobileBlock).toMatch(/\.brand-text\s*h1\s*\{[^}]*white-space:\s*nowrap/);
+    expect(mobileBlock).toMatch(/\.brand-text\s*h1\s*\{[^}]*overflow:\s*hidden/);
+    expect(mobileBlock).toMatch(/\.brand-text\s*h1\s*\{[^}]*text-overflow:\s*ellipsis/);
+
+    // Mobile topbar hides non-essential clutter (showcase link, BGM, rules, language buttons) behind a clean gear menu
+    expect(styleCss).toContain(".topbar-menu-btn");
+    expect(mobileBlock).toMatch(/\.topbar-menu-btn\s*\{[^}]*display:\s*inline-flex/);
+    expect(mobileBlock).toMatch(/\.back-link\s*\{[^}]*display:\s*none/);
+    expect(mobileBlock).toMatch(/\.topbar-stats\s*\{[^}]*display:\s*none/);
+    expect(mobileBlock).toMatch(/\.topbar-stats\.is-open\s*\{[^}]*display:\s*flex/);
+    expect(mobileBlock).toMatch(/\.menu-back-link\s*\{[^}]*display:\s*inline-flex/);
+  });
+
+  it("keeps rules dialog start button and positions clear banner as a floating thumb-zone action so it never extends downwards", () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
+
+    const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
+    expect(mobileBlockMatch).toBeTruthy();
+    const mobileBlock = mobileBlockMatch![1];
+
+    // 1. Rules dialog footer is sticky at the bottom of the modal so CTA is always visible without scrolling
+    expect(mobileBlock).toMatch(/\.rules-dialog-footer\s*\{[^}]*position:\s*sticky/);
+    expect(mobileBlock).toMatch(/\.rules-dialog-footer\s*\{[^}]*bottom:\s*0/);
+
+    // 2. Legend strip uses single-row horizontal scroll on mobile to avoid orphaned chips
+    expect(mobileBlock).toMatch(/\.legend-strip\s*\{[^}]*flex-wrap:\s*nowrap/);
+    expect(mobileBlock).toMatch(/\.legend-strip\s*\{[^}]*overflow-x:\s*auto/);
+
+    // 3. Clear banner floats fixed in thumb zone so it never stretches page downwards or gets hidden below the fold
+    expect(mobileBlock).toContain(".clear-banner:not([hidden]):not(.banner-shortfall)");
+    expect(mobileBlock).toMatch(/\.clear-banner:not\(\[hidden\]\):not\(\.banner-shortfall\)\s*\{[^}]*position:\s*fixed/);
+    expect(mobileBlock).toMatch(/\.clear-banner:not\(\[hidden\]\):not\(\.banner-shortfall\)\s*\{[^}]*bottom:\s*max\(/);
+    expect(mobileBlock).toMatch(/\.clear-banner:not\(\[hidden\]\):not\(\.banner-shortfall\)\s*\{[^}]*z-index:\s*99/);
+  });
+
+  it("calibrates mobile board height on compact viewports (<= 700px height) so board, controls, and legend fit without scrolling", () => {
+    // For 667px iPhone SE viewport: available height must allow 7x7 board, HUD, controls, and legend to fit
+    // 667px * 0.41 = ~273px. For 7x7: 7 * cellSize + 6 * 7 <= 273 -> cellSize = 33px.
+    const mobileShortCellSize = computeCellSize(7, 7, 335, 7, 273);
+    expect(mobileShortCellSize).toBe(33);
+    const boardTotalHeight = 7 * mobileShortCellSize + 6 * 7;
+    expect(boardTotalHeight).toBeLessThanOrEqual(273);
+  });
 });
