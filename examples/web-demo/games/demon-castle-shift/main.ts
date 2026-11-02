@@ -1860,15 +1860,17 @@ function openSynergyDialog(): void {
 function renderMobileStageNav(): void {
   const container = document.getElementById("mobile-stage-nav");
   if (!container) return;
-  container.innerHTML = CAMPAIGN_STAGES.map((s, idx) => {
-    const isUnlocked = idx <= saveData.unlockedStageIndex;
+  const campaignHtml = CAMPAIGN_STAGES.map((s, idx) => {
+    const isUnlocked =
+      saveData.unlockAllDemo ||
+      idx <= saveData.unlockedStageIndex ||
+      idx + 1 <= saveData.highestUnlockedWeek;
     const isCurrent = idx === currentStageIndex;
-    const loc = getStageLocalized(s, currentLang);
     const shortMonth = formatCastleCalendarMonthLocalized(s.weekNumber, true, currentLang);
     return `
       <button
         type="button"
-        class="stage-pill-btn ${isCurrent ? "is-current" : ""} ${isUnlocked ? "is-unlocked" : "is-locked"}"
+        class="stage-pill-btn ${isCurrent ? "is-current is-active" : ""} ${isUnlocked ? "is-unlocked" : "is-locked"}"
         data-stage-index="${idx}"
         ${isUnlocked ? "" : "disabled"}
       >
@@ -1878,13 +1880,43 @@ function renderMobileStageNav(): void {
     `;
   }).join("");
 
+  const endlessUnlocked = isEndlessModeUnlocked(saveData);
+  const isEndlessActive = currentStageIndex === -1;
+  const endlessWeek = isEndlessActive
+    ? currentStage.weekNumber
+    : Math.max(CAMPAIGN_STAGES.length + 1, saveData.highestUnlockedWeek);
+  const endlessMonth = formatCastleCalendarMonthLocalized(endlessWeek, true, currentLang);
+  const endlessBtnHtml = `
+    <button
+      type="button"
+      class="stage-pill-btn stage-pill-endless ${isEndlessActive ? "is-current is-active" : ""} ${endlessUnlocked ? "is-unlocked" : "is-locked"}"
+      data-stage-random="true"
+      ${endlessUnlocked ? "" : "disabled"}
+    >
+      <span>${endlessMonth}</span>
+      <span>${isEndlessActive ? "▶" : !endlessUnlocked ? "🔒" : ""}</span>
+    </button>
+  `;
+
+  container.innerHTML = campaignHtml + endlessBtnHtml;
+
   container.querySelectorAll<HTMLButtonElement>("[data-stage-index]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const idx = Number(btn.getAttribute("data-stage-index"));
       const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
       if (dlg) dlg.close();
+      soundEngine.playClick("day");
       void loadCampaignStage(idx, true);
     });
+  });
+
+  container.querySelector<HTMLButtonElement>("[data-stage-random]")?.addEventListener("click", () => {
+    if (!isEndlessModeUnlocked(saveData)) return;
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    soundEngine.playClick("night");
+    const targetWeek = Math.max(CAMPAIGN_STAGES.length + 1, saveData.highestUnlockedWeek);
+    void loadEndlessStage(targetWeek, true);
   });
 }
 
