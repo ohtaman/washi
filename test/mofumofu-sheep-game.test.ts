@@ -1412,23 +1412,193 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(mobileBlock).toMatch(/\.clear-banner\.banner-shortfall\s*\{[^}]*display:\s*none\s*!important/);
   });
 
-  it("integrates shortfall advice into guide-banner and controls-bar to eliminate vertical board overflow on mobile", () => {
+  it("integrates shortfall advice into guide-banner and controls-bar to eliminate vertical board overflow on mobile", async () => {
+    interface TestDomNode {
+      id: string;
+      type: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      value: string;
+      selected: boolean;
+      className: string;
+      dataset: Record<string, string>;
+      style: {
+        gridTemplateColumns: string;
+        setProperty: (prop: string, val: string) => void;
+      };
+      children: TestDomNode[];
+      classList: {
+        contains: (cls: string) => boolean;
+        toggle: (cls: string, force?: boolean) => boolean;
+        add: (...cls: string[]) => void;
+        remove: (...cls: string[]) => void;
+      };
+      setAttribute: (k: string, v: string) => void;
+      getAttribute: (k: string) => string | null;
+      appendChild: (child: TestDomNode) => void;
+      addEventListener: (event: string, cb: () => void) => void;
+      click: () => void;
+    }
+
+    const makeNode = (id = ""): TestDomNode => {
+      const listeners = new Map<string, (() => void)[]>();
+      const classes = new Set<string>();
+      const node: TestDomNode = {
+        id,
+        type: "",
+        textContent: "",
+        innerHTML: "",
+        title: "",
+        hidden: false,
+        disabled: false,
+        value: "",
+        selected: false,
+        className: "",
+        dataset: {},
+        style: {
+          gridTemplateColumns: "",
+          setProperty: () => {},
+        },
+        children: [],
+        classList: {
+          contains: (cls: string) => classes.has(cls),
+          toggle: (cls: string, force?: boolean) => {
+            const next = force !== undefined ? force : !classes.has(cls);
+            if (next) classes.add(cls); else classes.delete(cls);
+            node.className = Array.from(classes).join(" ");
+            return next;
+          },
+          add: (...cls: string[]) => {
+            cls.forEach((c) => classes.add(c));
+            node.className = Array.from(classes).join(" ");
+          },
+          remove: (...cls: string[]) => {
+            cls.forEach((c) => classes.delete(c));
+            node.className = Array.from(classes).join(" ");
+          },
+        },
+        setAttribute: (k: string, v: string) => {
+          if (k === "title") node.title = v;
+        },
+        getAttribute: (k: string) => (k === "title" ? node.title : null),
+        appendChild: (child: TestDomNode) => {
+          node.children.push(child);
+        },
+        addEventListener: (event: string, cb: () => void) => {
+          const list = listeners.get(event) ?? [];
+          list.push(cb);
+          listeners.set(event, list);
+        },
+        click: () => {
+          for (const cb of listeners.get("click") ?? []) {
+            cb();
+          }
+        },
+      };
+      return node;
+    };
+
     const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
     const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
     const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
-    const mainTs = readFileSync(resolve(gamesRoot, "mofumofu-sheep/main.ts"), "utf8");
 
-    // 1. In index.html, #btn-show-optimal is housed within .controls-right
+    // 1. Structure check: #btn-show-optimal is housed within .controls-right next to hint
     expect(sheepHtml).toMatch(/<div class="controls-right">[\s\S]*?<button[^>]*id="btn-show-optimal"/);
 
-    // 2. In style.css, .guide-banner.is-shortfall style exists for prominent alert without extra height
-    expect(styleCss).toContain(".guide-banner.is-shortfall");
-    expect(styleCss).toContain(".btn-optimal");
+    // 2. Mobile style check: .clear-banner.banner-shortfall is suppressed on mobile
+    const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
+    expect(mobileBlockMatch).toBeTruthy();
+    expect(mobileBlockMatch![1]).toMatch(/\.clear-banner\.banner-shortfall\s*\{[^}]*display:\s*none\s*!important/);
 
-    // 3. In main.ts, guide banner receives shortfall styling and one-liner advice
-    expect(mainTs).toContain('guideBannerEl.classList.toggle("is-shortfall", isShortfall)');
-    expect(mainTs).toContain("btnShowOptimal.hidden = false;");
-    expect(mainTs).toContain("btnHint.hidden = remaining === 0;");
+    // 3. Behavioral DOM test: load Stage 2, place suboptimal safe fence, and observe HUD & control transitions
+    const byId = new Map<string, TestDomNode>();
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*)>/g;
+    for (const match of sheepHtml.matchAll(tagRegex)) {
+      const idMatch = match[2].match(/\bid="([^"]+)"/);
+      if (!idMatch) continue;
+      const id = idMatch[1];
+      byId.set(id, makeNode(id));
+    }
+    const boardGridEl = byId.get("board-grid");
+    if (boardGridEl) {
+      Object.defineProperty(boardGridEl, "innerHTML", {
+        get: () => "",
+        set: () => {
+          boardGridEl.children = [];
+        },
+      });
+    }
+
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
+    const storageMap = new Map<string, string>();
+
+    try {
+      (globalThis as { localStorage?: unknown }).localStorage = {
+        getItem: (k: string) => storageMap.get(k) ?? null,
+        setItem: (k: string, v: string) => {
+          storageMap.set(k, v);
+        },
+        removeItem: (k: string) => {
+          storageMap.delete(k);
+        },
+      };
+      (globalThis as { document?: unknown }).document = {
+        documentElement: { lang: "ja" },
+        title: "",
+        createElement: () => makeNode(),
+        getElementById: (id: string) => byId.get(id) ?? null,
+        querySelectorAll: () => [],
+      };
+
+      applySheepStaticTranslations("ja");
+      await loadStageByNumber(2);
+
+      const guideBanner = byId.get("guide-banner");
+      const stageOneliner = byId.get("stage-oneliner");
+      const btnShowOptimal = byId.get("btn-show-optimal");
+      const btnHint = byId.get("btn-hint");
+
+      // Initial state: normal guide, optimal button hidden, hint button visible
+      expect(guideBanner?.classList.contains("is-shortfall")).toBe(false);
+      expect(stageOneliner?.textContent).toContain("🐑のすぐ隣で塞ぐと🍓に届かない");
+      expect(btnShowOptimal?.hidden).toBe(true);
+      expect(btnHint?.hidden).toBe(false);
+
+      // In Stage 2 ("いちごの丘"), sheep is at (1, 4), wolf is at (1, 0), strawberry at (1, 2).
+      // Placing the 1 allowed fence at (1, 3) blocks the wolf, but leaves out the strawberry:
+      // Score = 2 pt, targetScore = 8 pt -> isShortfall (isSafe && !cleared)!
+      const suboptimalCell = boardGridEl?.children.find(
+        (ch) => ch.dataset.row === "1" && ch.dataset.col === "3"
+      );
+      expect(suboptimalCell).toBeDefined();
+      suboptimalCell?.click();
+
+      // Behavioral assertion: Guide banner receives shortfall styling and dynamic guidance text
+      expect(guideBanner?.classList.contains("is-shortfall")).toBe(true);
+      expect(stageOneliner?.textContent).toBe("オオカミ防衛成功! 柵の位置を工夫してあと +6 pt 稼ごう");
+      expect(byId.get("guide-banner-icon")?.textContent).toBe("🍓");
+
+      // HUD status pill updates to shortfall status
+      expect(byId.get("status-text")?.textContent).toContain("目標まであと +6 pt");
+
+      // Controls bar replaces 1-move hint with model solution button when 0 fences remain
+      expect(btnShowOptimal?.hidden).toBe(false);
+      expect(btnHint?.hidden).toBe(true);
+
+      // Clicking Undo or untoggling the fence restores initial normal state
+      suboptimalCell?.click();
+      expect(guideBanner?.classList.contains("is-shortfall")).toBe(false);
+      expect(stageOneliner?.textContent).toContain("🐑のすぐ隣で塞ぐと🍓に届かない");
+      expect(btnShowOptimal?.hidden).toBe(true);
+      expect(btnHint?.hidden).toBe(false);
+    } finally {
+      (globalThis as { document?: unknown }).document = prevDocument;
+      (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
+    }
   });
 
   it("calibrates mobile board height on compact viewports (<= 700px height) so board, controls, and legend fit without scrolling", () => {
