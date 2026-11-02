@@ -1,7 +1,7 @@
 {
   "name": "@ohtaman/washi",
   "version": "0.5.0",
-  "description": "WaSHI: WebAssembly-backed, Solver-independent, High-level modeling Interface (LP, MIP, QP, SMT)",
+  "description": "WaSHI: WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming (LP, MIP, QP, SMT)",
   "type": "module",
   "main": "./dist/lib/washi.js",
   "module": "./dist/lib/washi.js",
@@ -87,14 +87,16 @@
   "keywords": [
     "optimization",
     "mathematical-programming",
+    "constraint-programming",
     "linear-programming",
     "mixed-integer-programming",
     "quadratic-programming",
-    "lp",
-    "mip",
-    "qp",
+    "smt",
+    "z3",
     "highs",
     "pulp",
+    "jump",
+    "operations-research",
     "wasm",
     "webassembly",
     "typescript"

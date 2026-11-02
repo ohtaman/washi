@@ -5,7 +5,8 @@ import katex from "katex";
 export default withMermaid(
   defineConfig({
   title: "WaSHI",
-  description: "WebAssembly-backed, Solver-independent, High-level modeling Interface (LP, MIP, QP, SMT)",
+  titleTemplate: ":title | WaSHI — Algebraic Modeler for Mathematical Optimization & Constraint Programming",
+  description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
   base: "/washi/",
   cleanUrls: true,
   lastUpdated: true,
@@ -117,6 +118,12 @@ export default withMermaid(
     ["link", { rel: "icon", href: "/washi/washi-logo.svg", type: "image/svg+xml" }],
     ["link", { rel: "alternate icon", href: "/washi/washi-logo.png", type: "image/png" }],
     ["meta", { name: "theme-color", content: "#3b82f6" }],
+    ["meta", { property: "og:type", content: "website" }],
+    ["meta", { property: "og:site_name", content: "WaSHI" }],
+    ["meta", { property: "og:image", content: "https://ohtaman.github.io/washi/washi-logo.png" }],
+    ["meta", { name: "twitter:card", content: "summary" }],
+    ["meta", { name: "twitter:image", content: "https://ohtaman.github.io/washi/washi-logo.png" }],
+    ["meta", { name: "keywords", content: "typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly" }],
     // Service Worker を読み込み
     ["script", { src: "/washi/coi-serviceworker.js" }],
   ],
@@ -125,7 +132,8 @@ export default withMermaid(
       label: "English",
       lang: "en",
       title: "WaSHI",
-      description: "Intuitive Mathematical Optimization & Algebraic Modeler for TypeScript & JavaScript",
+      titleTemplate: ":title | WaSHI — Algebraic Modeler for Mathematical Optimization & Constraint Programming",
+      description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
       themeConfig: {
         nav: [
           {
@@ -188,7 +196,8 @@ export default withMermaid(
       lang: "ja",
       link: "/ja/",
       title: "WaSHI",
-      description: "TypeScript & JavaScript 向け直感的数理最適化モデラー",
+      titleTemplate: ":title | WaSHI — 数理最適化と制約プログラミングのための代数モデラー",
+      description: "TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）",
       themeConfig: {
         nav: [
           {
@@ -268,7 +277,8 @@ export default withMermaid(
       lang: "zh-CN",
       link: "/zh/",
       title: "WaSHI",
-      description: "适用于 TypeScript/JavaScript 的现代代数建模与数理优化系统",
+      titleTemplate: ":title | WaSHI — 适用于数理优化与约束编程的代数建模器",
+      description: "适用于 TypeScript 与 JavaScript 的数理优化与约束编程代数建模器（LP, MIP, 凸QP, SMT）",
       themeConfig: {
         nav: [
           {

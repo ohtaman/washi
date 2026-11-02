@@ -2,11 +2,11 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - Algebraic Modeler for TypeScript &amp; JavaScript" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>Algebraic Modeling for TypeScript &amp; JavaScript</strong></p>
+  <p><strong>Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming</strong></p>
   <p>
-    <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
+    <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Convex Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
   </p>
   <p>
     <a href="./README.md">English</a> •
@@ -24,7 +24,7 @@
 
 ---
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) is an algebraic modeler for TypeScript and JavaScript, inspired by Python's **PuLP** and Julia's **JuMP**. Define variables, objectives, and arithmetic or logical constraints in application code. WaSHI constructs the model, translates it for a solver adapter, and maps results back to your variables. **HiGHS**, **Z3**, and **GLPK** perform the optimization or satisfiability checks.
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) is an algebraic modeler for mathematical optimization and constraint programming in TypeScript and JavaScript, inspired by Python's **PuLP** and Julia's **JuMP**. Define variables, objectives, and arithmetic or logical constraints in application code. WaSHI constructs the model, translates it for a solver adapter, and maps results back to your variables. **HiGHS**, **Z3**, and **GLPK** perform the optimization or satisfiability checks.
 
 HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provides Node.js and browser distributions, including WebAssembly assets. See the [browser integration guide](#-browser--web-worker-usage) for deployment requirements.
 

@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
-  text: "适用于 TypeScript 与 JavaScript 的代数建模器"
-  tagline: 基于 WebAssembly 的数理优化与 SMT 建模接口（LP, MIP, 凸QP, SMT）。在 TypeScript 中构建代数模型，并通过 HiGHS、Z3 与 GLPK 在本地求解。
+  text: "适用于数理优化与约束编程的代数建模器"
+  tagline: "Python PuLP 与 Julia JuMP 的 TypeScript 替代方案。使用直观的中缀数学表达式构建 LP、MIP、凸 QP 与 SMT 模型，基于 WebAssembly（HiGHS、Z3、GLPK）在客户端高效求解，无需 Python 服务或本地 C++ 依赖。"
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem

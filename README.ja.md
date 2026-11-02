@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - TypeScript / JavaScript のための数理最適化・代数モデラー" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - 数理最適化と制約プログラミングのための代数モデラー (TypeScript / JavaScript)" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>TypeScript / JavaScript のための代数モデラー</strong></p>
+  <p><strong>数理最適化と制約プログラミングのための代数モデラー</strong></p>
   <p>
     <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • SMT論理制約 &amp; 矛盾診断</em>
   </p>
@@ -24,7 +24,7 @@
 
 ---
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** や Julia の **JuMP** に着想を得た、TypeScript / JavaScript 向けの代数モデラーです。アプリケーションのコードで変数・目的関数・数値制約や論理制約を記述できます。WaSHI はモデルの構築、ソルバー向けの変換、変数への結果の反映を担当し、最適化や充足可能性の判定は **HiGHS**・**Z3**・**GLPK** が行います。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** や Julia の **JuMP** に着想を得た、数理最適化と制約プログラミングのための TypeScript / JavaScript 向け代数モデラーです。アプリケーションのコードで変数・目的関数・数値制約や論理制約を記述できます。WaSHI はモデルの構築、ソルバー向けの変換、変数への結果の反映を担当し、最適化や充足可能性の判定は **HiGHS**・**Z3**・**GLPK** が行います。
 
 HiGHS が標準ソルバーで、Z3 と GLPK は任意で追加するプラグインです。Node.js 用とブラウザ用の配布物に WebAssembly アセットを含みます。配信に必要な設定は[ブラウザでの利用方法](#-ブラウザ--web-worker-での利用方法)を参照してください。
 
