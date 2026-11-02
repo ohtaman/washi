@@ -1407,6 +1407,28 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(mobileBlock).toMatch(/\.clear-banner:not\(\[hidden\]\):not\(\.banner-shortfall\)\s*\{[^}]*position:\s*fixed/);
     expect(mobileBlock).toMatch(/\.clear-banner:not\(\[hidden\]\):not\(\.banner-shortfall\)\s*\{[^}]*bottom:\s*max\(/);
     expect(mobileBlock).toMatch(/\.clear-banner:not\(\[hidden\]\):not\(\.banner-shortfall\)\s*\{[^}]*z-index:\s*99/);
+
+    // 4. Inline shortfall banner is hidden on mobile to eliminate vertical height growth and prevent control-bar truncation
+    expect(mobileBlock).toMatch(/\.clear-banner\.banner-shortfall\s*\{[^}]*display:\s*none\s*!important/);
+  });
+
+  it("integrates shortfall advice into guide-banner and controls-bar to eliminate vertical board overflow on mobile", () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const sheepHtml = readFileSync(resolve(gamesRoot, "mofumofu-sheep/index.html"), "utf8");
+    const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
+    const mainTs = readFileSync(resolve(gamesRoot, "mofumofu-sheep/main.ts"), "utf8");
+
+    // 1. In index.html, #btn-show-optimal is housed within .controls-right
+    expect(sheepHtml).toMatch(/<div class="controls-right">[\s\S]*?<button[^>]*id="btn-show-optimal"/);
+
+    // 2. In style.css, .guide-banner.is-shortfall style exists for prominent alert without extra height
+    expect(styleCss).toContain(".guide-banner.is-shortfall");
+    expect(styleCss).toContain(".btn-optimal");
+
+    // 3. In main.ts, guide banner receives shortfall styling and one-liner advice
+    expect(mainTs).toContain('guideBannerEl.classList.toggle("is-shortfall", isShortfall)');
+    expect(mainTs).toContain("btnShowOptimal.hidden = false;");
+    expect(mainTs).toContain("btnHint.hidden = remaining === 0;");
   });
 
   it("calibrates mobile board height on compact viewports (<= 700px height) so board, controls, and legend fit without scrolling", () => {

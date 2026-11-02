@@ -376,6 +376,16 @@ body {
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.15);
 }
 
+.guide-banner.is-shortfall {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border-color: #ea580c;
+  box-shadow: 0 3px 10px rgba(234, 88, 12, 0.16);
+}
+
+.guide-banner.is-shortfall .stage-oneliner {
+  color: #9a3412;
+}
+
 .guide-banner-icon {
   font-size: 1.35rem;
   line-height: 1;
@@ -862,6 +872,16 @@ body {
   background: #fffbeb;
   border-color: #f59e0b;
   color: #92400e;
+}
+
+.btn-optimal {
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.btn-optimal:not(:disabled):hover {
+  background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
 }
 
 .btn-next {
@@ -1517,36 +1537,9 @@ body {
     box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
   }
 
-  /* Compact Inline Shortfall Banner on Mobile */
+  /* Shortfall guidance is integrated into top guide banner and controls bar to prevent vertical overflow */
   .clear-banner.banner-shortfall {
-    padding: 8px 12px;
-    border-radius: 12px;
-    gap: 8px;
-    flex-direction: column;
-    text-align: center;
-  }
-  .clear-banner.banner-shortfall .clear-banner-main {
-    justify-content: center;
-    gap: 8px;
-  }
-  .clear-banner.banner-shortfall .clear-stars {
-    font-size: 1.3rem;
-  }
-  .clear-banner.banner-shortfall .clear-copy strong {
-    font-size: 0.9rem;
-  }
-  .clear-banner.banner-shortfall .clear-copy span {
-    font-size: 0.75rem;
-  }
-  .clear-banner.banner-shortfall .clear-actions {
-    width: 100%;
-    justify-content: center;
-    gap: 6px;
-  }
-  .clear-banner.banner-shortfall .clear-actions .btn {
-    flex: 1;
-    justify-content: center;
-    min-height: 40px;
+    display: none !important;
   }
 
   /* Hide controls when stage is cleanly cleared to maximize thumb-zone priority for next-stage CTA */
