@@ -596,9 +596,13 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 768)).toBe("column");
     expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 420)).toBe("column");
 
-    // 12. Mobile topbar decluttering: hide lang switch during game, single-line pair strip
+    // 12. Mobile topbar decluttering: hide lang switch & persistent chrome during game, move synergies to modal
     expect(resolveEffectiveStyle(css, ".game-topbar .lang-switch", "display", 768)).toBe("none");
-    expect(resolveEffectiveStyle(css, ".pair-bonus-strip", "flex-wrap", 768)).toBe("nowrap");
+    expect(resolveEffectiveStyle(css, ".desktop-only-cluster", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".desktop-only-controls", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".mobile-topbar-cluster", "display", 768)).toBe("flex");
+    expect(resolveEffectiveStyle(css, ".mobile-topbar-cluster", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".pair-bonus-strip", "display", 768)).toBe("none");
 
     // 13. Mobile shift cell top-alignment and compact note badges to prevent vertical button offset
     expect(resolveEffectiveStyle(css, ".shift-cell", "vertical-align", 768)).toBe("top");

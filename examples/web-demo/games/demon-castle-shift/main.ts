@@ -1720,12 +1720,12 @@ function updateDefaultDockMessage(lastMove?: {
 
 function renderStageHeading(): void {
   const headingEl = document.getElementById("stage-heading");
-  if (!headingEl) return;
+  const mobileHeadingEl = document.getElementById("mobile-stage-heading");
   const locStage = getStageLocalized(currentStage, currentLang);
   const diffLabel = currentStage.difficultyTier
     ? getDifficultyLabelLocalized(currentStage.difficultyTier, currentLang)
     : currentStage.difficultyLabel;
-  headingEl.textContent =
+  const fullTitle =
     currentStageIndex >= 0
       ? locStage.title
       : `${locStage.title}${
@@ -1737,6 +1737,12 @@ function renderStageHeading(): void {
               })
             : ""
         }`;
+  if (headingEl) {
+    headingEl.textContent = fullTitle;
+  }
+  if (mobileHeadingEl) {
+    mobileHeadingEl.textContent = locStage.title;
+  }
 }
 
 function refreshEvaluationAndBoard(
@@ -1801,6 +1807,92 @@ function renderGoalTrackerAndHud(): void {
     dispatchBtn.classList.add("is-ready");
   } else {
     dispatchBtn.classList.remove("is-ready");
+  }
+}
+
+function renderSynergyDialogContent(): void {
+  const listEl = document.getElementById("synergy-dialog-list");
+  if (!listEl) return;
+  const activeRels = currentStage.activeRelations.filter(
+    (r) =>
+      currentStage.availableMonsters.includes(r.monsterA) &&
+      currentStage.availableMonsters.includes(r.monsterB)
+  );
+  if (activeRels.length === 0) {
+    listEl.innerHTML = `<p class="synergy-desc">${pickLang(currentLang, {
+      ja: "今月の当番メンバー間には特別な相性・同番NGはありません。",
+      en: "There are no special pair affinities among this month's on-duty guards.",
+      zh: "本月值班成员之间没有特殊的相性或排斥关系。",
+    })}</p>`;
+    return;
+  }
+  listEl.innerHTML = activeRels
+    .map((rel) => {
+      const mA = getMonsterLocalized(rel.monsterA, currentLang);
+      const mB = getMonsterLocalized(rel.monsterB, currentLang);
+      const locRel = getRelationLocalized(rel, currentLang);
+      const isPos = rel.moraleDelta >= 0;
+      const sign = isPos ? `+${rel.moraleDelta}` : `${rel.moraleDelta}`;
+      const badgeText = isPos
+        ? pickLang(currentLang, { ja: `相性◎ (+${rel.moraleDelta})`, en: `Synergy (+${rel.moraleDelta})`, zh: `默契 (+${rel.moraleDelta})` })
+        : pickLang(currentLang, { ja: `同番NG (${rel.moraleDelta})`, en: `Clash (${rel.moraleDelta})`, zh: `排斥 (${rel.moraleDelta})` });
+      return `
+        <div class="synergy-item-card ${isPos ? "is-positive" : "is-negative"}">
+          <div class="synergy-item-header">
+            <span>${mA.name} × ${mB.name}</span>
+            <span class="synergy-badge ${isPos ? "is-pos" : "is-neg"}">${badgeText}</span>
+          </div>
+          <p class="synergy-item-desc">${locRel.description}</p>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function openSynergyDialog(): void {
+  renderSynergyDialogContent();
+  const dlg = document.getElementById("synergy-dialog") as HTMLDialogElement | null;
+  if (dlg && !dlg.open) {
+    dlg.showModal();
+  }
+}
+
+function renderMobileStageNav(): void {
+  const container = document.getElementById("mobile-stage-nav");
+  if (!container) return;
+  container.innerHTML = CAMPAIGN_STAGES.map((s, idx) => {
+    const isUnlocked = idx <= saveData.unlockedStageIndex;
+    const isCurrent = idx === currentStageIndex;
+    const loc = getStageLocalized(s, currentLang);
+    const shortMonth = formatCastleCalendarMonthLocalized(s.weekNumber, true, currentLang);
+    return `
+      <button
+        type="button"
+        class="stage-pill-btn ${isCurrent ? "is-current" : ""} ${isUnlocked ? "is-unlocked" : "is-locked"}"
+        data-stage-index="${idx}"
+        ${isUnlocked ? "" : "disabled"}
+      >
+        <span>${shortMonth}</span>
+        <span>${isCurrent ? "▶" : ""}</span>
+      </button>
+    `;
+  }).join("");
+
+  container.querySelectorAll<HTMLButtonElement>("[data-stage-index]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-stage-index"));
+      const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+      if (dlg) dlg.close();
+      void loadCampaignStage(idx, true);
+    });
+  });
+}
+
+function openMobileMenuDialog(): void {
+  renderMobileStageNav();
+  const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+  if (dlg && !dlg.open) {
+    dlg.showModal();
   }
 }
 
@@ -3870,6 +3962,29 @@ function applyStaticTranslations(): void {
     })
   );
   setText("btn-reset", pickLang(currentLang, { ja: "🔄 リセット", en: "Clear All", zh: "清空重排" }));
+
+  // Mobile quick tools
+  const mobileHint = document.getElementById("btn-mobile-hint");
+  if (mobileHint) {
+    mobileHint.title = pickLang(currentLang, { ja: "ヒント（1マス配置）", en: "Hint (Fill 1 Cell)", zh: "提示（配置1格）" });
+    mobileHint.setAttribute("aria-label", pickLang(currentLang, { ja: "ヒント", en: "Hint", zh: "提示" }));
+  }
+  const mobileSynergy = document.getElementById("btn-mobile-synergy");
+  if (mobileSynergy) {
+    mobileSynergy.title = pickLang(currentLang, { ja: "相性・連携一覧", en: "Pair Affinities", zh: "相性一览" });
+    mobileSynergy.setAttribute("aria-label", pickLang(currentLang, { ja: "相性一覧", en: "Pair Affinities", zh: "相性一览" }));
+  }
+  const mobileMenu = document.getElementById("btn-mobile-menu");
+  if (mobileMenu) {
+    mobileMenu.title = pickLang(currentLang, { ja: "メニューを開く", en: "Open Menu", zh: "打开菜单" });
+    mobileMenu.setAttribute("aria-label", pickLang(currentLang, { ja: "メニュー", en: "Menu", zh: "菜单" }));
+  }
+  setText("mobile-menu-title", pickLang(currentLang, { ja: "⚙️ 作戦指令メニュー", en: "⚙️ Operations Menu", zh: "⚙️ 作战指令菜单" }));
+  setText("btn-mobile-menu-roster", pickLang(currentLang, { ja: "📖 警備隊名鑑", en: "📖 Guard Grimoire", zh: "📖 警备队名鉴" }));
+  setText("btn-mobile-menu-help", pickLang(currentLang, { ja: "📜 勤務ルール", en: "📜 Shift Rules", zh: "📜 勤务规则" }));
+  setText("btn-mobile-menu-synergy", pickLang(currentLang, { ja: "🤝 相性・連携", en: "🤝 Affinities", zh: "🤝 相性连携" }));
+  setText("btn-mobile-menu-title", pickLang(currentLang, { ja: "← タイトル画面へ戻る", en: "← Back to Title Screen", zh: "← 返回标题画面" }));
+  setText("synergy-dialog-title", pickLang(currentLang, { ja: "🤝 相性◎と同番NG一覧", en: "🤝 Guard Affinities & Clashes", zh: "🤝 相性与排斥一览" }));
   setTitle(
     "dialogue-box",
     pickLang(currentLang, {
@@ -4373,6 +4488,45 @@ function initGame(): void {
 
   getEl<HTMLButtonElement>("btn-hint-one").addEventListener("click", () => {
     void giveOneCellHint();
+  });
+
+  document.getElementById("btn-mobile-hint")?.addEventListener("click", () => {
+    void giveOneCellHint();
+  });
+
+  document.getElementById("btn-mobile-synergy")?.addEventListener("click", () => {
+    soundEngine.playClick("day");
+    openSynergyDialog();
+  });
+
+  document.getElementById("btn-mobile-menu")?.addEventListener("click", () => {
+    soundEngine.playClick("day");
+    openMobileMenuDialog();
+  });
+
+  document.getElementById("btn-mobile-menu-roster")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    openRosterDialog();
+  });
+
+  document.getElementById("btn-mobile-menu-help")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    (document.getElementById("help-dialog") as HTMLDialogElement | null)?.showModal();
+  });
+
+  document.getElementById("btn-mobile-menu-synergy")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    openSynergyDialog();
+  });
+
+  document.getElementById("btn-mobile-menu-title")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    soundEngine.playClick("off");
+    showTitleScreen();
   });
 
   getEl<HTMLButtonElement>("btn-reset").addEventListener("click", () => {
