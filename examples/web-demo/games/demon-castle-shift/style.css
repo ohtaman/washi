@@ -2147,9 +2147,11 @@ body {
   padding: 0;
   border: none;
   border-radius: 0;
+  background-color: var(--bg-deep);
   background:
     radial-gradient(circle at 50% 25%, rgba(28, 18, 52, 0.45) 0%, rgba(10, 7, 20, 0.96) 80%),
-    url("/games/demon-castle-shift/bg-castle-hall.jpg") center / cover no-repeat;
+    url("/games/demon-castle-shift/bg-castle-hall.jpg") center / cover no-repeat,
+    var(--bg-deep);
   overflow-y: auto;
 }
 
@@ -4326,9 +4328,17 @@ button.pair-chip:hover {
 
   .stage-pill-btn {
     white-space: nowrap;
-    padding: 0.22rem 0.45rem;
+    padding: 0.3rem 0.55rem;
     font-size: 0.72rem;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     flex-shrink: 0;
+  }
+
+  .stage-pill-diff {
+    display: none;
   }
 
   .topbar-controls {
@@ -4338,13 +4348,22 @@ button.pair-chip:hover {
   }
 
   .btn-glass {
-    padding: 0.25rem 0.48rem;
+    padding: 0.3rem 0.55rem;
     font-size: 0.74rem;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .lang-btn {
-    padding: 0.18rem 0.36rem;
+    padding: 0.25rem 0.45rem;
     font-size: 0.68rem;
+    min-height: 34px;
+    min-width: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .btn-audio .btn-audio-extra {
@@ -4374,18 +4393,24 @@ button.pair-chip:hover {
 
   .condition-summary-row {
     width: 100%;
-    gap: 0.25rem;
-    justify-content: flex-start;
+    gap: 0.3rem;
+    justify-content: space-between;
   }
 
   .cond-pill {
     font-size: 0.68rem;
     padding: 0.2rem 0.42rem;
+    flex: 1 1 auto;
+    text-align: center;
   }
 
   .condition-summary-row .btn-glass {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.45rem;
+    font-size: 0.72rem;
+    padding: 0.3rem 0.55rem;
+    min-height: 34px;
+    flex: 1 1 calc(50% - 0.4rem);
+    text-align: center;
+    justify-content: center;
   }
 
   .pair-bonus-strip {
@@ -4397,15 +4422,21 @@ button.pair-chip:hover {
     padding: 0.15rem 0.4rem;
   }
 
-  /* Mobile Workspace & Sticky Dock */
+  /* Mobile Workspace & Fixed Bottom Dock */
   .board-container {
     padding-bottom: 5rem;
   }
 
   .rpg-dialogue-dock {
+    position: fixed;
+    bottom: max(0.35rem, env(safe-area-inset-bottom));
+    left: 0.4rem;
+    right: 0.4rem;
+    max-width: calc(100vw - 0.8rem);
+    margin: 0 auto;
+    z-index: 30;
     grid-template-columns: minmax(0, 1fr) 124px;
     gap: 0.45rem;
-    bottom: max(0.35rem, env(safe-area-inset-bottom));
   }
 
   .dialogue-window {
@@ -4513,6 +4544,19 @@ button.pair-chip:hover {
   /* Accessible Touch Targets on Mobile Shift Cells */
   .shift-cell {
     padding: 0.25rem 0.3rem;
+  }
+
+  .tutorial-callout-bubble {
+    max-width: 100%;
+    width: 100%;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.68rem;
+    box-sizing: border-box;
+  }
+
+  .tutorial-callout-header {
+    flex-wrap: wrap;
+    gap: 0.2rem;
   }
 
   .shift-btn-group {
@@ -4654,8 +4698,12 @@ button.pair-chip:hover {
   }
 
   .grimoire-close-btn {
-    padding: 0.3rem 0.65rem;
+    padding: 0.4rem 0.75rem;
     font-size: 0.74rem;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .grimoire-pages-grid {
@@ -4815,6 +4863,7 @@ button.pair-chip:hover {
 
 @media (max-width: 420px) {
   .rpg-dialogue-dock {
+    position: fixed;
     grid-template-columns: minmax(0, 1fr) 104px;
     gap: 0.3rem;
   }
@@ -4839,30 +4888,51 @@ button.pair-chip:hover {
   }
 
   .shift-matrix thead th.col-monster {
-    width: 150px;
+    width: 118px;
     padding-left: 0.35rem;
   }
 
   .raid-row th {
-    width: 150px;
+    width: 118px;
     padding-left: 0.35rem;
   }
 
   .monster-row-th {
-    width: 150px;
+    width: 118px;
   }
 
   .monster-cell-header {
     gap: 0.25rem;
   }
 
-  .monster-avatar {
-    width: 28px;
-    height: 28px;
+  .monster-name-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.05rem;
   }
 
   .monster-name {
     font-size: 0.74rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .monster-work-counter {
+    font-size: 0.62rem;
+  }
+
+  .monster-post-chip {
+    display: none;
+  }
+
+  .monster-rule-mini {
+    display: none;
+  }
+
+  .monster-avatar {
+    width: 28px;
+    height: 28px;
   }
 
   .shift-btn-group {

@@ -778,18 +778,20 @@ function renderStageProgressNav(): void {
   const endlessTier = computeAdaptiveDifficultyTier(saveData.playHistory, endlessWeek);
   const endlessMonth = formatCastleCalendarMonthLocalized(endlessWeek, false, currentLang);
   const endlessDiff = getDifficultyLabelLocalized(endlessTier, currentLang);
-  const endlessLabel = pickLang(currentLang, {
-    ja: `${endlessMonth}（難易度：${endlessDiff}）`,
-    en: `${endlessMonth} (Difficulty: ${endlessDiff})`,
-    zh: `${endlessMonth}（难度：${endlessDiff}）`,
+  const endlessMonthSpan = `<span class="stage-pill-month">${endlessMonth}</span>`;
+  const diffLabel = pickLang(currentLang, {
+    ja: `（難易度：${endlessDiff}）`,
+    en: ` (Difficulty: ${endlessDiff})`,
+    zh: `（难度：${endlessDiff}）`,
   });
+  const endlessDiffSpan = `<span class="stage-pill-diff">${diffLabel}</span>`;
   const endlessTooltip = pickLang(currentLang, {
     ja: "ユーザーの警備履歴に応じて難易度が自動調整される翌月以降の編成",
     en: "Subsequent months with difficulty automatically adjusted to your defense history",
     zh: "根据您的警备记录自动调整难度的次月及后续排班",
   });
-  const randomBtnHtml = `<button type="button" class="stage-pill-btn ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" ${!endlessUnlocked ? "disabled" : ""} title="${endlessTooltip}">
-    <span>${endlessLabel}</span>
+  const randomBtnHtml = `<button type="button" class="stage-pill-btn stage-pill-endless ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" ${!endlessUnlocked ? "disabled" : ""} title="${endlessTooltip}">
+    <span>${endlessMonthSpan}${endlessDiffSpan}</span>
     ${!endlessUnlocked ? `<span>🔒</span>` : ""}
   </button>`;
 
@@ -3347,6 +3349,9 @@ async function openDispatchResultDialog(): Promise<void> {
 
   const finalArea = document.getElementById("battle-final-summary-area");
   if (!finalArea) return;
+
+  // Reset scroll to top of the dialog so results and action buttons are immediately in view
+  dialog.scrollTo({ top: 0, behavior: "instant" });
 
   if (remainingHp <= 0) {
     recordStageBreachFailure();
