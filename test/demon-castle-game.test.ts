@@ -31,6 +31,7 @@ import {
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
 import {
   getActiveStageStateForTest,
+  getNextCycleShift,
   hasSavedProgress,
   isEndlessModeUnlocked,
   loadCampaignStage,
@@ -41,6 +42,47 @@ import {
   syncAudioButtonUi,
   type SaveData,
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
+
+// Cascade resolution engine: computes the winning CSS rule at representative viewport widths
+function resolveEffectiveStyle(cssText: string, selector: string, property: string, viewportWidth: number): string | null {
+  const mqRegex = /@media\s*\((max-width:\s*(\d+)px)\)\s*\{([\s\S]*?\n\})\s*(?=@media|\s*$)/g;
+  const mediaBlocks: Array<{ maxWidth: number; startIndex: number; endIndex: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = mqRegex.exec(cssText)) !== null) {
+    mediaBlocks.push({
+      maxWidth: parseInt(m[2], 10),
+      startIndex: m.index,
+      endIndex: m.index + m[0].length,
+    });
+  }
+
+  const escapedSel = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const selRegex = new RegExp(escapedSel + "\\s*\\{([^}]+)\\}", "g");
+  const activeDeclarations: Array<{ index: number; value: string }> = [];
+
+  while ((m = selRegex.exec(cssText)) !== null) {
+    const declIndex = m.index;
+    const block = m[1];
+    const propRegex = new RegExp("(?:^|[;\\n])\\s*" + property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*:\\s*([^;]+);", "gi");
+    let propMatch: RegExpExecArray | null;
+    let lastPropValue: string | null = null;
+    while ((propMatch = propRegex.exec(block)) !== null) {
+      lastPropValue = propMatch[1].trim();
+    }
+    if (!lastPropValue) continue;
+
+    const value = lastPropValue;
+    const parentMq = mediaBlocks.find((mb) => declIndex >= mb.startIndex && declIndex <= mb.endIndex);
+    if (!parentMq) {
+      activeDeclarations.push({ index: declIndex, value });
+    } else if (viewportWidth <= parentMq.maxWidth) {
+      activeDeclarations.push({ index: declIndex, value });
+    }
+  }
+
+  if (activeDeclarations.length === 0) return null;
+  return activeDeclarations[activeDeclarations.length - 1].value;
+}
 
 describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", () => {
   for (const stage of CAMPAIGN_STAGES) {
@@ -442,48 +484,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
       globalThis.document = originalDocument;
     }
 
-    // 4. Cascade resolution engine: computes the winning CSS rule at representative viewport widths
-    function resolveEffectiveStyle(cssText: string, selector: string, property: string, viewportWidth: number): string | null {
-      const mqRegex = /@media\s*\((max-width:\s*(\d+)px)\)\s*\{([\s\S]*?\n\})\s*(?=@media|\s*$)/g;
-      const mediaBlocks: Array<{ maxWidth: number; startIndex: number; endIndex: number }> = [];
-      let m: RegExpExecArray | null;
-      while ((m = mqRegex.exec(cssText)) !== null) {
-        mediaBlocks.push({
-          maxWidth: parseInt(m[2], 10),
-          startIndex: m.index,
-          endIndex: m.index + m[0].length,
-        });
-      }
-
-      const escapedSel = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const selRegex = new RegExp(escapedSel + "\\s*\\{([^}]+)\\}", "g");
-      const activeDeclarations: Array<{ index: number; value: string }> = [];
-
-      while ((m = selRegex.exec(cssText)) !== null) {
-        const declIndex = m.index;
-        const block = m[1];
-        const propRegex = new RegExp("(?:^|[;\\n])\\s*" + property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\s*:\\s*([^;]+);", "gi");
-        let propMatch: RegExpExecArray | null;
-        let lastPropValue: string | null = null;
-        while ((propMatch = propRegex.exec(block)) !== null) {
-          lastPropValue = propMatch[1].trim();
-        }
-        if (!lastPropValue) continue;
-
-        const value = lastPropValue;
-        const parentMq = mediaBlocks.find((mb) => declIndex >= mb.startIndex && declIndex <= mb.endIndex);
-        if (!parentMq) {
-          activeDeclarations.push({ index: declIndex, value });
-        } else if (viewportWidth <= parentMq.maxWidth) {
-          activeDeclarations.push({ index: declIndex, value });
-        }
-      }
-
-      if (activeDeclarations.length === 0) return null;
-      return activeDeclarations[activeDeclarations.length - 1].value;
-    }
-
-    // 5. Verify mobile override precedence over base declarations in CSS cascade
+    // 4. Mobile override precedence over base declarations in CSS cascade
     // Desktop layout (1200px) preserves multi-column, wide modal and full button widths
     expect(resolveEffectiveStyle(css, ".grimoire-pages-grid", "grid-template-columns", 1200)).toBe("repeat(2, minmax(0, 1fr))");
     expect(resolveEffectiveStyle(css, ".battle-cutin-versus", "grid-template-columns", 1200)).toBe("1fr auto 1fr");
@@ -517,7 +518,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog):not(.is-fullscreen-battle)", "width", 768)).toBe("min(96vw, 760px)");
 
     // Ultra-narrow mobile viewport (420px): further tightens matrix columns and touch target minimums
-    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("150px");
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
     expect(resolveEffectiveStyle(css, ".shift-btn", "min-width", 420)).toBe("42px");
 
     // 6. Explicit stylesheet order assertion guaranteeing media query overrides appear strictly after base rules
@@ -540,6 +541,87 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
       expect(baseIndex).toBeGreaterThanOrEqual(0);
       expect(baseIndex).toBeLessThan(mq768Index);
     }
+  });
+
+  it("verifies enhanced smartphone responsiveness: fixed dock, opaque battle screen, compact 420px columns, and touch targets", () => {
+    const cssPath = resolve(__dirname, "../examples/web-demo/games/demon-castle-shift/style.css");
+    const css = readFileSync(cssPath, "utf-8");
+
+    // 1. Fixed dialogue dock on mobile (≤768px) so it stays anchored above safe area
+    expect(resolveEffectiveStyle(css, ".rpg-dialogue-dock", "position", 768)).toBe("fixed");
+    expect(resolveEffectiveStyle(css, ".rpg-dialogue-dock", "position", 420)).toBe("fixed");
+
+    // 2. Fullscreen battle dialog has opaque background-color fallback to prevent bleed-through
+    expect(css).toMatch(/\.result-dialog\.is-fullscreen-battle\s*\{[^}]*background-color:\s*(?:var\(--bg-deep\)|#0d0915);/);
+
+    // 3. Compact matrix first column on ultra-narrow phones (420px) to allow full 5-day week visibility without scroll
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".raid-row th", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".monster-row-th", "width", 420)).toBe("90px");
+
+    // 4. Tutorial callout bubble conforms to cell width on mobile without clipping
+    expect(resolveEffectiveStyle(css, ".tutorial-callout-bubble", "max-width", 768)).toBe("100%");
+
+    // 5. Touch target minimum heights for navigation, language, and modal close buttons
+    expect(resolveEffectiveStyle(css, ".lang-btn", "min-height", 768)).toBe("34px");
+    expect(resolveEffectiveStyle(css, ".stage-pill-btn", "min-height", 768)).toBe("34px");
+    expect(resolveEffectiveStyle(css, ".grimoire-close-btn", "min-height", 768)).toBe("36px");
+
+    // 6. Stage pill endless difficulty badge is hidden on mobile to avoid 200px+ button blowout
+    expect(resolveEffectiveStyle(css, ".stage-pill-diff", "display", 768)).toBe("none");
+
+    // 7. Mobile 1-cell cycle toggle button vs desktop 3-button group
+    expect(resolveEffectiveStyle(css, ".shift-cycle-btn", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".shift-btn-group", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".shift-cycle-btn", "display", 768)).toBe("flex");
+    expect(resolveEffectiveStyle(css, ".shift-cycle-btn", "min-height", 768)).toBe("44px");
+
+    // 8. Zero-scroll table elasticity: desktop has 620px min-width, mobile resets to 0
+    expect(resolveEffectiveStyle(css, ".shift-matrix", "min-width", 1024)).toBe("620px");
+    expect(resolveEffectiveStyle(css, ".shift-matrix", "min-width", 768)).toBe("0");
+
+    // 9. Slim first column on narrow phones (420px) to allow full 5-day week visibility without scroll
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".raid-row th", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".monster-row-th", "width", 420)).toBe("90px");
+
+    // 10. Raid row minimalism on mobile: hides verbose enemy title and switches to concise numeric pills
+    expect(resolveEffectiveStyle(css, ".raid-enemy-title", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".raid-label-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".raid-label-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".meter-text-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".meter-text-desktop", "display", 768)).toBe("none");
+
+    // 11. Vertical stacking of day/night powers on mobile to fit comfortably in 90px first column
+    expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 768)).toBe("column");
+    expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 420)).toBe("column");
+
+    // 12. Mobile topbar decluttering: hide lang switch & persistent chrome during game, move synergies to modal
+    expect(resolveEffectiveStyle(css, ".game-topbar .lang-switch", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".desktop-only-cluster", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".desktop-only-controls", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".mobile-topbar-cluster", "display", 768)).toBe("flex");
+    expect(resolveEffectiveStyle(css, ".mobile-topbar-cluster", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".pair-bonus-strip", "display", 768)).toBe("none");
+
+    // 13. Mobile shift cell top-alignment and compact note badges to prevent vertical button offset
+    expect(resolveEffectiveStyle(css, ".shift-cell", "vertical-align", 768)).toBe("top");
+    expect(resolveEffectiveStyle(css, ".locked-off-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".locked-off-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".cell-note-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".cell-note-mobile", "display", 1024)).toBe("none");
+  });
+
+  it("cycles shift states on mobile 1-cell toggle button correctly (off -> day -> night -> off)", () => {
+    // Normal cycle
+    expect(getNextCycleShift("off", false)).toBe("day");
+    expect(getNextCycleShift("day", false)).toBe("night");
+    expect(getNextCycleShift("night", false)).toBe("off");
+
+    // Full moon forbidden cycle (skips night)
+    expect(getNextCycleShift("off", true)).toBe("day");
+    expect(getNextCycleShift("day", true)).toBe("off");
+    expect(getNextCycleShift("night", true)).toBe("off");
   });
 
   it("detects saved player progress to skip title and movie when resuming by default", () => {

@@ -715,6 +715,30 @@ body {
   background: rgba(104, 118, 236, 0.05);
 }
 
+.raid-label-mobile {
+  display: none;
+}
+
+.meter-text-mobile {
+  display: none;
+}
+
+.locked-off-mobile {
+  display: none;
+}
+
+.cell-note-mobile {
+  display: none;
+}
+
+.pair-chip-mobile {
+  display: none;
+}
+
+.mobile-topbar-cluster {
+  display: none;
+}
+
 .raid-cell {
   text-align: center;
   padding: 0.28rem 0.4rem !important;
@@ -894,6 +918,10 @@ body {
   padding: 0.3rem 0.5rem;
   border-radius: 6px;
   border: 1px dashed rgba(176, 154, 218, 0.22);
+}
+
+.shift-cycle-btn {
+  display: none;
 }
 
 .shift-btn-group {
@@ -2147,9 +2175,11 @@ body {
   padding: 0;
   border: none;
   border-radius: 0;
+  background-color: var(--bg-deep);
   background:
     radial-gradient(circle at 50% 25%, rgba(28, 18, 52, 0.45) 0%, rgba(10, 7, 20, 0.96) 80%),
-    url("/games/demon-castle-shift/bg-castle-hall.jpg") center / cover no-repeat;
+    url("/games/demon-castle-shift/bg-castle-hall.jpg") center / cover no-repeat,
+    var(--bg-deep);
   overflow-y: auto;
 }
 
@@ -4301,21 +4331,76 @@ button.pair-chip:hover {
   }
 
   .game-topbar {
-    padding: 0.3rem 0.45rem;
-    gap: 0.35rem;
+    padding: 0.2rem 0.4rem;
+    gap: 0.25rem;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .desktop-only-cluster {
+    display: none;
+  }
+
+  .desktop-only-controls {
+    display: none;
+  }
+
+  .mobile-topbar-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mobile-stage-heading {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: var(--gold-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-action-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .btn-icon-round {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .game-topbar .lang-switch {
+    display: none;
   }
 
   .brand-cluster {
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.35rem;
+    width: auto;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    min-width: 0;
   }
 
   .stage-progress-nav {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     flex-wrap: nowrap;
-    max-width: calc(100% - 85px);
+    max-width: 100%;
     padding-bottom: 2px;
     scrollbar-width: none;
   }
@@ -4326,25 +4411,43 @@ button.pair-chip:hover {
 
   .stage-pill-btn {
     white-space: nowrap;
-    padding: 0.22rem 0.45rem;
-    font-size: 0.72rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.7rem;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
     flex-shrink: 0;
   }
 
+  .stage-pill-diff {
+    display: none;
+  }
+
   .topbar-controls {
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.25rem;
+    width: auto;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    gap: 0.2rem;
   }
 
   .btn-glass {
-    padding: 0.25rem 0.48rem;
+    padding: 0.3rem 0.55rem;
     font-size: 0.74rem;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .lang-btn {
-    padding: 0.18rem 0.36rem;
+    padding: 0.25rem 0.45rem;
     font-size: 0.68rem;
+    min-height: 34px;
+    min-width: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .btn-audio .btn-audio-extra {
@@ -4353,43 +4456,69 @@ button.pair-chip:hover {
 
   /* Mobile Board Header */
   .board-panel {
-    padding: 0.45rem 0.55rem;
+    padding: 0.35rem 0.45rem;
     border-radius: 10px;
   }
 
   .board-header {
-    margin-bottom: 0.35rem;
-    gap: 0.35rem;
+    margin-bottom: 0.2rem;
+    gap: 0.2rem;
   }
 
   .stage-title-block {
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.35rem;
+    display: none;
   }
 
   .stage-heading {
-    font-size: 0.88rem;
+    display: none;
   }
 
   .condition-summary-row {
     width: 100%;
-    gap: 0.25rem;
-    justify-content: flex-start;
+    gap: 0.2rem;
+    justify-content: space-between;
   }
 
   .cond-pill {
     font-size: 0.68rem;
-    padding: 0.2rem 0.42rem;
+    padding: 0.2rem 0.35rem;
+    flex: 1 1 auto;
+    text-align: center;
   }
 
-  .condition-summary-row .btn-glass {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.45rem;
+  .condition-summary-row #btn-hint-one {
+    display: none;
+  }
+
+  #btn-reset {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.4rem;
+    opacity: 0.9;
+    flex: 0 0 auto;
+    min-height: 30px;
   }
 
   .pair-bonus-strip {
-    gap: 0.25rem;
+    display: none;
+  }
+
+  .pair-bonus-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pair-chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+  }
+
+  .pair-chip-desktop {
+    display: none;
+  }
+
+  .pair-chip-mobile {
+    display: inline;
   }
 
   .pair-pill {
@@ -4397,15 +4526,21 @@ button.pair-chip:hover {
     padding: 0.15rem 0.4rem;
   }
 
-  /* Mobile Workspace & Sticky Dock */
+  /* Mobile Workspace & Fixed Bottom Dock */
   .board-container {
     padding-bottom: 5rem;
   }
 
   .rpg-dialogue-dock {
+    position: fixed;
+    bottom: max(0.35rem, env(safe-area-inset-bottom));
+    left: 0.4rem;
+    right: 0.4rem;
+    max-width: calc(100vw - 0.8rem);
+    margin: 0 auto;
+    z-index: 30;
     grid-template-columns: minmax(0, 1fr) 124px;
     gap: 0.45rem;
-    bottom: max(0.35rem, env(safe-area-inset-bottom));
   }
 
   .dialogue-window {
@@ -4472,6 +4607,20 @@ button.pair-chip:hover {
     font-size: 0.76rem;
   }
 
+  .col-monster-title {
+    display: block;
+    line-height: 1.2;
+  }
+
+  .col-monster-sub {
+    display: block;
+    font-size: 0.52rem;
+    font-weight: normal;
+    color: var(--text-dim);
+    line-height: 1.1;
+    margin-top: 1px;
+  }
+
   .raid-row th {
     width: 168px;
     padding-left: 0.45rem;
@@ -4510,16 +4659,190 @@ button.pair-chip:hover {
     padding: 0.02rem 0.25rem;
   }
 
+  /* Responsive Zero-Scroll Shift Matrix on Mobile */
+  .shift-matrix {
+    min-width: 0;
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .shift-matrix th,
+  .shift-matrix td {
+    padding: 0.2rem 0.15rem;
+  }
+
+  .shift-matrix thead th:not(.col-monster) {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.1rem;
+  }
+
+  /* Raid Row Mobile Minimalism */
+  .raid-enemy-title {
+    display: none;
+  }
+
+  .raid-label-desktop {
+    display: none;
+  }
+
+  .raid-label-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    font-weight: 700;
+    font-size: 0.76rem;
+  }
+
+  .meter-text-desktop {
+    display: none;
+  }
+
+  .meter-text-mobile {
+    display: inline;
+  }
+
+  .raid-row th {
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  .raid-cell {
+    padding: 0.16rem 0.08rem !important;
+    vertical-align: middle;
+  }
+
+  .raid-meters {
+    gap: 0.12rem;
+    flex-direction: column;
+  }
+
+  .meter-pill {
+    font-size: 0.62rem;
+    padding: 0.04rem 0.15rem;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .monster-power-compare {
+    flex-direction: column;
+    gap: 0.05rem;
+    font-size: 0.64rem;
+    line-height: 1.15;
+  }
+
   /* Accessible Touch Targets on Mobile Shift Cells */
   .shift-cell {
-    padding: 0.25rem 0.3rem;
+    padding: 0.12rem 0.08rem;
+    vertical-align: top;
+  }
+
+  .cell-locked-pto {
+    vertical-align: top;
+    padding: 0.12rem 0.08rem;
+  }
+
+  .locked-off-desktop {
+    display: none;
+  }
+
+  .locked-off-mobile {
+    display: inline;
+  }
+
+  .locked-off-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    font-size: 0.72rem;
+  }
+
+  .cell-note-desktop {
+    display: none;
+  }
+
+  .cell-note-mobile {
+    display: block;
+    font-size: 0.54rem;
+    line-height: 1.1;
+    margin-top: 2px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tutorial-callout-bubble {
+    max-width: 100%;
+    width: 100%;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.68rem;
+    box-sizing: border-box;
+  }
+
+  .tutorial-callout-header {
+    flex-wrap: wrap;
+    gap: 0.2rem;
   }
 
   .shift-btn-group {
-    min-width: 144px;
-    max-width: 156px;
-    gap: 0.15rem;
-    padding: 0.15rem;
+    display: none;
+  }
+
+  .shift-cycle-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    min-width: 36px;
+    padding: 0.2rem 0.1rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .shift-cycle-btn:active {
+    transform: scale(0.92);
+  }
+
+  .shift-cycle-btn.state-off {
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid rgba(71, 85, 105, 0.65);
+    color: #94a3b8;
+  }
+
+  .shift-cycle-btn.state-day {
+    background: rgba(180, 83, 9, 0.42);
+    border: 1px solid rgba(245, 158, 11, 0.85);
+    color: #fef08a;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+  }
+
+  .shift-cycle-btn.state-night {
+    background: rgba(67, 56, 202, 0.45);
+    border: 1px solid rgba(129, 140, 248, 0.85);
+    color: #e0e7ff;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+  }
+
+  .cycle-shift-icon {
+    font-size: 0.92rem;
+    line-height: 1;
+  }
+
+  .cycle-shift-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
   }
 
   .shift-btn {
@@ -4583,6 +4906,133 @@ button.pair-chip:hover {
     margin: 0;
     padding: 0;
     border-radius: 0;
+  }
+
+  /* Mobile Menu & Synergy Dialog Styles */
+  .mobile-menu-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+  }
+
+  .mobile-menu-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .mobile-menu-section-title {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .mobile-stage-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .mobile-stage-nav .stage-pill-btn {
+    flex: 1 1 calc(50% - 0.35rem);
+    justify-content: center;
+    font-size: 0.74rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .mobile-menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+  }
+
+  .mobile-menu-grid .btn-glass {
+    width: 100%;
+    min-height: 40px;
+    font-size: 0.76rem;
+    justify-content: center;
+  }
+
+  .btn-block {
+    width: 100%;
+    min-height: 40px;
+    font-size: 0.76rem;
+    justify-content: center;
+  }
+
+  .synergy-dialog-body {
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .synergy-desc {
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .synergy-dialog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .synergy-item-card {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.45rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .synergy-item-card.is-positive {
+    border-color: rgba(56, 201, 148, 0.4);
+    background: rgba(56, 201, 148, 0.08);
+  }
+
+  .synergy-item-card.is-negative {
+    border-color: rgba(244, 63, 94, 0.4);
+    background: rgba(244, 63, 94, 0.08);
+  }
+
+  .synergy-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+
+  .synergy-item-header .synergy-badge {
+    font-size: 0.72rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+  }
+
+  .synergy-badge.is-pos {
+    background: rgba(56, 201, 148, 0.2);
+    color: #4ade80;
+  }
+
+  .synergy-badge.is-neg {
+    background: rgba(244, 63, 94, 0.2);
+    color: #fb7185;
+  }
+
+  .synergy-item-desc {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.35;
+    margin: 0;
   }
 
   .dialog-inner {
@@ -4654,8 +5104,12 @@ button.pair-chip:hover {
   }
 
   .grimoire-close-btn {
-    padding: 0.3rem 0.65rem;
+    padding: 0.4rem 0.75rem;
     font-size: 0.74rem;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .grimoire-pages-grid {
@@ -4815,6 +5269,7 @@ button.pair-chip:hover {
 
 @media (max-width: 420px) {
   .rpg-dialogue-dock {
+    position: fixed;
     grid-template-columns: minmax(0, 1fr) 104px;
     gap: 0.3rem;
   }
@@ -4839,30 +5294,69 @@ button.pair-chip:hover {
   }
 
   .shift-matrix thead th.col-monster {
-    width: 150px;
-    padding-left: 0.35rem;
+    width: 90px;
+    max-width: 90px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
   }
 
   .raid-row th {
-    width: 150px;
-    padding-left: 0.35rem;
+    width: 90px;
+    max-width: 90px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.68rem;
   }
 
   .monster-row-th {
-    width: 150px;
+    width: 90px;
+    max-width: 90px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
   }
 
   .monster-cell-header {
-    gap: 0.25rem;
+    gap: 0.2rem;
+    padding: 0;
   }
 
-  .monster-avatar {
-    width: 28px;
-    height: 28px;
+  .monster-name-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
   }
 
   .monster-name {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .monster-work-counter {
+    font-size: 0.58rem;
+  }
+
+  .monster-power-compare {
+    flex-direction: column;
+    gap: 0;
+    font-size: 0.6rem;
+    line-height: 1.1;
+  }
+
+  .monster-post-chip {
+    display: none;
+  }
+
+  .monster-rule-mini {
+    display: none;
+  }
+
+  .monster-avatar {
+    width: 26px;
+    height: 26px;
   }
 
   .shift-btn-group {

@@ -778,18 +778,20 @@ function renderStageProgressNav(): void {
   const endlessTier = computeAdaptiveDifficultyTier(saveData.playHistory, endlessWeek);
   const endlessMonth = formatCastleCalendarMonthLocalized(endlessWeek, false, currentLang);
   const endlessDiff = getDifficultyLabelLocalized(endlessTier, currentLang);
-  const endlessLabel = pickLang(currentLang, {
-    ja: `${endlessMonth}（難易度：${endlessDiff}）`,
-    en: `${endlessMonth} (Difficulty: ${endlessDiff})`,
-    zh: `${endlessMonth}（难度：${endlessDiff}）`,
+  const endlessMonthSpan = `<span class="stage-pill-month">${endlessMonth}</span>`;
+  const diffLabel = pickLang(currentLang, {
+    ja: `（難易度：${endlessDiff}）`,
+    en: ` (Difficulty: ${endlessDiff})`,
+    zh: `（难度：${endlessDiff}）`,
   });
+  const endlessDiffSpan = `<span class="stage-pill-diff">${diffLabel}</span>`;
   const endlessTooltip = pickLang(currentLang, {
     ja: "ユーザーの警備履歴に応じて難易度が自動調整される翌月以降の編成",
     en: "Subsequent months with difficulty automatically adjusted to your defense history",
     zh: "根据您的警备记录自动调整难度的次月及后续排班",
   });
-  const randomBtnHtml = `<button type="button" class="stage-pill-btn ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" ${!endlessUnlocked ? "disabled" : ""} title="${endlessTooltip}">
-    <span>${endlessLabel}</span>
+  const randomBtnHtml = `<button type="button" class="stage-pill-btn stage-pill-endless ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" ${!endlessUnlocked ? "disabled" : ""} title="${endlessTooltip}">
+    <span>${endlessMonthSpan}${endlessDiffSpan}</span>
     ${!endlessUnlocked ? `<span>🔒</span>` : ""}
   </button>`;
 
@@ -966,6 +968,16 @@ function getActiveTutorialStep(): {
   return null;
 }
 
+export function getNextCycleShift(current: ShiftType, isFullMoonForbidden = false): ShiftType {
+  if (current === "off") {
+    return "day";
+  }
+  if (current === "day") {
+    return isFullMoonForbidden ? "off" : "night";
+  }
+  return "off";
+}
+
 function renderShiftMatrix(): void {
   const table = getEl<HTMLTableElement>("shift-grid-table");
   const days = getStageDays(currentStage);
@@ -999,11 +1011,17 @@ function renderShiftMatrix(): void {
     })
     .join("");
 
-  const memberColLabel = pickLang(currentLang, {
-    ja: "警備メンバー（クリックで詳細）",
-    en: "Guard Member (Click for info)",
-    zh: "警备成员（点击查看详情）",
+  const memberTitle = pickLang(currentLang, {
+    ja: "警備メンバー",
+    en: "Guard Members",
+    zh: "警备成员",
   });
+  const memberSub = pickLang(currentLang, {
+    ja: "（タップで詳細）",
+    en: "(Tap for details)",
+    zh: "（点击查看详情）",
+  });
+  const memberColLabel = `<span class="col-monster-title">${memberTitle}</span><span class="col-monster-sub">${memberSub}</span>`;
   const theadHtml = `
     <thead>
       <tr>
@@ -1013,7 +1031,12 @@ function renderShiftMatrix(): void {
     </thead>
   `;
 
-  const buildRaidRow = (shift: ActiveShiftType, label: string, rowClass: string): string => {
+  const buildRaidRow = (
+    shift: ActiveShiftType,
+    labelDesktop: string,
+    labelMobile: string,
+    rowClass: string
+  ): string => {
     const cellsHtml = days
       .map((d) => {
         const slotStatus = currentEvaluation.slotStatuses.find(
@@ -1042,21 +1065,27 @@ function renderShiftMatrix(): void {
           activeTutorial.day === d &&
           activeTutorial.targetShift === shift;
         const isDimmedRaid = activeTutorial && !isRelatedRaid;
-        const staffText = pickLang(currentLang, {
+        const staffTextDesktop = pickLang(currentLang, {
           ja: `人数 ${assignedMonsters.length}/${req.minStaff}`,
           en: `Staff ${assignedMonsters.length}/${req.minStaff}`,
           zh: `人数 ${assignedMonsters.length}/${req.minStaff}`,
         });
+        const staffTextMobile = pickLang(currentLang, {
+          ja: `${assignedMonsters.length}/${req.minStaff}人`,
+          en: `${assignedMonsters.length}/${req.minStaff}`,
+          zh: `${assignedMonsters.length}/${req.minStaff}人`,
+        });
         const staffPillHtml =
           req.minStaff > 1 || !staffMet
-            ? `<span class="meter-pill ${staffMet ? "ok" : "ng"}">${staffText}</span>`
+            ? `<span class="meter-pill ${staffMet ? "ok" : "ng"}"><span class="meter-text-desktop">${staffTextDesktop}</span><span class="meter-text-mobile">${staffTextMobile}</span></span>`
             : "";
         const locReq = getRequirementLocalized(req, currentLang);
-        const pwrText = pickLang(currentLang, {
+        const pwrTextDesktop = pickLang(currentLang, {
           ja: `防衛 ${currentPower} / 予測 ${expectedPower}`,
           en: `Def ${currentPower} / Est ${expectedPower}`,
           zh: `防卫 ${currentPower} / 预测 ${expectedPower}`,
         });
+        const pwrTextMobile = `${currentPower} / ${expectedPower}`;
 
         return `
           <td class="raid-cell ${cellStateClass} ${isRelatedRaid ? "is-tutorial-related-raid" : ""} ${isDimmedRaid ? "is-tutorial-dimmed-cell" : ""}">
@@ -1064,7 +1093,8 @@ function renderShiftMatrix(): void {
             <div class="raid-meters">
               ${staffPillHtml}
               <span class="meter-pill ${powerPillClass}">
-                ${pwrText}
+                <span class="meter-text-desktop">${pwrTextDesktop}</span>
+                <span class="meter-text-mobile">${pwrTextMobile}</span>
               </span>
             </div>
           </td>
@@ -1074,7 +1104,10 @@ function renderShiftMatrix(): void {
 
     return `
       <tr class="raid-row ${rowClass}">
-        <th scope="row">${label}</th>
+        <th scope="row">
+          <span class="raid-label-desktop">${labelDesktop}</span>
+          <span class="raid-label-mobile">${labelMobile}</span>
+        </th>
         ${cellsHtml}
       </tr>
     `;
@@ -1113,14 +1146,22 @@ function renderShiftMatrix(): void {
 
           if (reqOff) {
             const locReason = getRequestedOffReasonLocalized(reqOff.reason, mId, currentLang);
-            const offLabel = pickLang(currentLang, {
+            const offLabelDesktop = pickLang(currentLang, {
               ja: `指定休（${locReason}）`,
               en: `Off (${locReason})`,
               zh: `指定休（${locReason}）`,
             });
+            const offLabelMobile = pickLang(currentLang, {
+              ja: "指定休",
+              en: "Off",
+              zh: "指定休",
+            });
             return `
               <td class="shift-cell state-off cell-locked-pto ${isDimmedCell ? "is-tutorial-dimmed-cell" : ""}">
-                <span class="locked-off-label" title="${locReason}">${offLabel}</span>
+                <span class="locked-off-label" title="${locReason}">
+                  <span class="locked-off-desktop">${offLabelDesktop}</span>
+                  <span class="locked-off-mobile">${offLabelMobile}</span>
+                </span>
               </td>
             `;
           }
@@ -1178,36 +1219,68 @@ function renderShiftMatrix(): void {
             }
           }
 
-          let noteHtml = "";
+          let noteDesktop = "";
+          let noteMobile = "";
+          let noteClass = "";
           if (hasViolation) {
-            noteHtml = `<div class="cell-note is-error">${cellViolations[0]}</div>`;
+            noteDesktop = cellViolations[0];
+            noteMobile = "⚠️連勤NG";
+            noteClass = "is-error";
           } else if (activeConflictPartner) {
-            const cText = pickLang(currentLang, {
+            noteDesktop = pickLang(currentLang, {
               ja: `⚡${activeConflictPartner}と同番NG (-150)`,
               en: `⚡Clash w/ ${activeConflictPartner} (-150)`,
               zh: `⚡与${activeConflictPartner}排斥 (-150)`,
             });
-            noteHtml = `<div class="cell-note is-conflict">${cText}</div>`;
+            noteMobile = "⚡-150";
+            noteClass = "is-conflict";
           } else if (activeSynergyPartner) {
-            const sText = pickLang(currentLang, {
+            noteDesktop = pickLang(currentLang, {
               ja: `🤝${activeSynergyPartner}と連携 (+100)`,
               en: `🤝Synergy w/ ${activeSynergyPartner} (+100)`,
               zh: `🤝与${activeSynergyPartner}连携 (+100)`,
             });
-            noteHtml = `<div class="cell-note is-synergy">${sText}</div>`;
+            noteMobile = "🤝+100";
+            noteClass = "is-synergy";
           } else if (isFullMoonForbidden) {
-            const fmText = pickLang(currentLang, {
+            noteDesktop = pickLang(currentLang, {
               ja: "満月夜は不可",
               en: "No Full Moon Night",
               zh: "满月夜不可",
             });
-            noteHtml = `<div class="cell-note">${fmText}</div>`;
+            noteMobile = "🚫満月";
+            noteClass = "is-info";
           }
+
+          const noteHtml = noteDesktop
+            ? `<div class="cell-note ${noteClass}">
+                <span class="cell-note-desktop">${noteDesktop}</span>
+                <span class="cell-note-mobile">${noteMobile}</span>
+               </div>`
+            : "";
 
           const fmTitle = pickLang(currentLang, {
             ja: `満月の夜は${m.name}を夜番に配置できません`,
             en: `${m.name} cannot work Night shift on a Full Moon night`,
             zh: `满月之夜无法将${m.name}安排在夜班`,
+          });
+
+          const cycleLabel = pickLang(currentLang, {
+            ja: currentShift === "off" ? "休" : currentShift === "day" ? "昼" : "夜",
+            en: currentShift === "off" ? "Off" : currentShift === "day" ? "Day" : "Night",
+            zh: currentShift === "off" ? "休" : currentShift === "day" ? "昼" : "夜",
+          });
+          const cycleIcon = currentShift === "day" ? "☀️" : currentShift === "night" ? "🌙" : "";
+          const nextShiftPreview = getNextCycleShift(currentShift, isFullMoonForbidden);
+          const nextShiftLabel = pickLang(currentLang, {
+            ja: nextShiftPreview === "off" ? "休" : nextShiftPreview === "day" ? "昼" : "夜",
+            en: nextShiftPreview === "off" ? "Off" : nextShiftPreview === "day" ? "Day" : "Night",
+            zh: nextShiftPreview === "off" ? "休" : nextShiftPreview === "day" ? "昼" : "夜",
+          });
+          const cycleAriaLabel = pickLang(currentLang, {
+            ja: `${m.name} ${getDayLabel(d, currentLang)}: 現在 ${cycleLabel}（タップで ${nextShiftLabel} に切替）`,
+            en: `${m.name} ${getDayLabel(d, currentLang)}: Current ${cycleLabel} (Tap to change to ${nextShiftLabel})`,
+            zh: `${m.name} ${getDayLabel(d, currentLang)}: 当前 ${cycleLabel}（点击切换至 ${nextShiftLabel}）`,
           });
 
           return `
@@ -1240,6 +1313,19 @@ function renderShiftMatrix(): void {
                   ${isTutNight ? 'data-tutorial-target="true"' : ""}
                 >${nightBtnText}</button>
               </div>
+              <button
+                type="button"
+                class="shift-cycle-btn state-${currentShift}"
+                data-monster="${mId}"
+                data-day="${d}"
+                data-current-shift="${currentShift}"
+                data-full-moon-forbidden="${isFullMoonForbidden ? "true" : "false"}"
+                aria-label="${cycleAriaLabel}"
+                ${isTargetCell ? 'data-tutorial-target="true"' : ""}
+              >
+                ${cycleIcon ? `<span class="cycle-shift-icon">${cycleIcon}</span>` : ""}
+                <span class="cycle-shift-label">${cycleLabel}</span>
+              </button>
               ${noteHtml}
             </td>
           `;
@@ -1308,22 +1394,32 @@ function renderShiftMatrix(): void {
     })
     .join("");
 
-  const dayGuardLabel = pickLang(currentLang, {
+  const dayGuardLabelDesktop = pickLang(currentLang, {
     ja: "昼の警備",
     en: "Day Watch",
     zh: "白昼警备",
   });
-  const nightGuardLabel = pickLang(currentLang, {
+  const dayGuardLabelMobile = pickLang(currentLang, {
+    ja: "☀️ 昼",
+    en: "☀️ Day",
+    zh: "☀️ 昼",
+  });
+  const nightGuardLabelDesktop = pickLang(currentLang, {
     ja: "夜の警備",
     en: "Night Watch",
     zh: "夜间警备",
+  });
+  const nightGuardLabelMobile = pickLang(currentLang, {
+    ja: "🌙 夜",
+    en: "🌙 Night",
+    zh: "🌙 夜",
   });
 
   table.innerHTML = `
     ${theadHtml}
     <tbody>
-      ${buildRaidRow("day", dayGuardLabel, "raid-row-day")}
-      ${buildRaidRow("night", nightGuardLabel, "raid-row-night")}
+      ${buildRaidRow("day", dayGuardLabelDesktop, dayGuardLabelMobile, "raid-row-day")}
+      ${buildRaidRow("night", nightGuardLabelDesktop, nightGuardLabelMobile, "raid-row-night")}
       ${monsterRowsHtml}
     </tbody>
   `;
@@ -1358,6 +1454,21 @@ function renderShiftMatrix(): void {
       currentSchedule[mId][day] = shift;
       soundEngine.playClick(shift);
       refreshEvaluationAndBoard(true, { monsterId: mId, day, shift });
+    });
+  });
+
+  table.querySelectorAll<HTMLButtonElement>(".shift-cycle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      const mId = btn.dataset.monster as MonsterId;
+      const day = Number(btn.dataset.day) as DayIndex;
+      const isFmForbidden = btn.dataset.fullMoonForbidden === "true";
+      const currentShift = currentSchedule[mId][day];
+      const nextShift = getNextCycleShift(currentShift, isFmForbidden);
+
+      currentSchedule[mId][day] = nextShift;
+      soundEngine.playClick(nextShift);
+      refreshEvaluationAndBoard(true, { monsterId: mId, day, shift: nextShift });
     });
   });
 
@@ -1609,12 +1720,12 @@ function updateDefaultDockMessage(lastMove?: {
 
 function renderStageHeading(): void {
   const headingEl = document.getElementById("stage-heading");
-  if (!headingEl) return;
+  const mobileHeadingEl = document.getElementById("mobile-stage-heading");
   const locStage = getStageLocalized(currentStage, currentLang);
   const diffLabel = currentStage.difficultyTier
     ? getDifficultyLabelLocalized(currentStage.difficultyTier, currentLang)
     : currentStage.difficultyLabel;
-  headingEl.textContent =
+  const fullTitle =
     currentStageIndex >= 0
       ? locStage.title
       : `${locStage.title}${
@@ -1626,6 +1737,12 @@ function renderStageHeading(): void {
               })
             : ""
         }`;
+  if (headingEl) {
+    headingEl.textContent = fullTitle;
+  }
+  if (mobileHeadingEl) {
+    mobileHeadingEl.textContent = locStage.title;
+  }
 }
 
 function refreshEvaluationAndBoard(
@@ -1693,6 +1810,124 @@ function renderGoalTrackerAndHud(): void {
   }
 }
 
+function renderSynergyDialogContent(): void {
+  const listEl = document.getElementById("synergy-dialog-list");
+  if (!listEl) return;
+  const activeRels = currentStage.activeRelations.filter(
+    (r) =>
+      currentStage.availableMonsters.includes(r.monsterA) &&
+      currentStage.availableMonsters.includes(r.monsterB)
+  );
+  if (activeRels.length === 0) {
+    listEl.innerHTML = `<p class="synergy-desc">${pickLang(currentLang, {
+      ja: "今月の当番メンバー間には特別な相性・同番NGはありません。",
+      en: "There are no special pair affinities among this month's on-duty guards.",
+      zh: "本月值班成员之间没有特殊的相性或排斥关系。",
+    })}</p>`;
+    return;
+  }
+  listEl.innerHTML = activeRels
+    .map((rel) => {
+      const mA = getMonsterLocalized(rel.monsterA, currentLang);
+      const mB = getMonsterLocalized(rel.monsterB, currentLang);
+      const locRel = getRelationLocalized(rel, currentLang);
+      const isPos = rel.moraleDelta >= 0;
+      const sign = isPos ? `+${rel.moraleDelta}` : `${rel.moraleDelta}`;
+      const badgeText = isPos
+        ? pickLang(currentLang, { ja: `相性◎ (+${rel.moraleDelta})`, en: `Synergy (+${rel.moraleDelta})`, zh: `默契 (+${rel.moraleDelta})` })
+        : pickLang(currentLang, { ja: `同番NG (${rel.moraleDelta})`, en: `Clash (${rel.moraleDelta})`, zh: `排斥 (${rel.moraleDelta})` });
+      return `
+        <div class="synergy-item-card ${isPos ? "is-positive" : "is-negative"}">
+          <div class="synergy-item-header">
+            <span>${mA.name} × ${mB.name}</span>
+            <span class="synergy-badge ${isPos ? "is-pos" : "is-neg"}">${badgeText}</span>
+          </div>
+          <p class="synergy-item-desc">${locRel.description}</p>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function openSynergyDialog(): void {
+  renderSynergyDialogContent();
+  const dlg = document.getElementById("synergy-dialog") as HTMLDialogElement | null;
+  if (dlg && !dlg.open) {
+    dlg.showModal();
+  }
+}
+
+function renderMobileStageNav(): void {
+  const container = document.getElementById("mobile-stage-nav");
+  if (!container) return;
+  const campaignHtml = CAMPAIGN_STAGES.map((s, idx) => {
+    const isUnlocked =
+      saveData.unlockAllDemo ||
+      idx <= saveData.unlockedStageIndex ||
+      idx + 1 <= saveData.highestUnlockedWeek;
+    const isCurrent = idx === currentStageIndex;
+    const shortMonth = formatCastleCalendarMonthLocalized(s.weekNumber, true, currentLang);
+    return `
+      <button
+        type="button"
+        class="stage-pill-btn ${isCurrent ? "is-current is-active" : ""} ${isUnlocked ? "is-unlocked" : "is-locked"}"
+        data-stage-index="${idx}"
+        ${isUnlocked ? "" : "disabled"}
+      >
+        <span>${shortMonth}</span>
+        <span>${isCurrent ? "▶" : ""}</span>
+      </button>
+    `;
+  }).join("");
+
+  const endlessUnlocked = isEndlessModeUnlocked(saveData);
+  const isEndlessActive = currentStageIndex === -1;
+  const endlessWeek = isEndlessActive
+    ? currentStage.weekNumber
+    : Math.max(CAMPAIGN_STAGES.length + 1, saveData.highestUnlockedWeek);
+  const endlessMonth = formatCastleCalendarMonthLocalized(endlessWeek, true, currentLang);
+  const endlessBtnHtml = `
+    <button
+      type="button"
+      class="stage-pill-btn stage-pill-endless ${isEndlessActive ? "is-current is-active" : ""} ${endlessUnlocked ? "is-unlocked" : "is-locked"}"
+      data-stage-random="true"
+      ${endlessUnlocked ? "" : "disabled"}
+    >
+      <span>${endlessMonth}</span>
+      <span>${isEndlessActive ? "▶" : !endlessUnlocked ? "🔒" : ""}</span>
+    </button>
+  `;
+
+  container.innerHTML = campaignHtml + endlessBtnHtml;
+
+  container.querySelectorAll<HTMLButtonElement>("[data-stage-index]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.getAttribute("data-stage-index"));
+      const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+      if (dlg) dlg.close();
+      soundEngine.playClick("day");
+      void loadCampaignStage(idx, true);
+    });
+  });
+
+  container.querySelector<HTMLButtonElement>("[data-stage-random]")?.addEventListener("click", () => {
+    if (!isEndlessModeUnlocked(saveData)) return;
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    soundEngine.playClick("night");
+    const targetWeek = Math.max(CAMPAIGN_STAGES.length + 1, saveData.highestUnlockedWeek);
+    void loadEndlessStage(targetWeek, true);
+  });
+}
+
+function openMobileMenuDialog(): void {
+  renderMobileStageNav();
+  const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+  if (dlg && !dlg.open) {
+    dlg.showModal();
+  }
+}
+
 function renderPairBonusStrip(): void {
   const strip = getEl<HTMLElement>("pair-bonus-strip");
   const activeRels = currentStage.activeRelations.filter(
@@ -1711,10 +1946,11 @@ function renderPairBonusStrip(): void {
       const locRel = getRelationLocalized(rel, currentLang);
       const isPos = rel.moraleDelta >= 0;
       const sign = isPos ? `+${rel.moraleDelta}` : `${rel.moraleDelta}`;
-      const prefix = isPos
+      const prefixDesktop = isPos
         ? pickLang(currentLang, { ja: "🤝 相性◎", en: "🤝 Synergy", zh: "🤝 默契" })
         : pickLang(currentLang, { ja: "⚡ 同番NG", en: "⚡ Clash", zh: "⚡ 排斥" });
-      return `<button type="button" class="pair-chip ${isPos ? "is-positive" : "is-negative"}" data-rel-idx="${idx}" title="${locRel.description}">${prefix}: ${mA.name}×${mB.name} (${sign})</button>`;
+      const prefixMobile = isPos ? "🤝" : "⚡";
+      return `<button type="button" class="pair-chip ${isPos ? "is-positive" : "is-negative"}" data-rel-idx="${idx}" title="${locRel.description}"><span class="pair-chip-desktop">${prefixDesktop}: ${mA.name}×${mB.name} (${sign})</span><span class="pair-chip-mobile">${prefixMobile} ${mA.name}×${mB.name} (${sign})</span></button>`;
     })
     .join("");
 
@@ -3348,6 +3584,9 @@ async function openDispatchResultDialog(): Promise<void> {
   const finalArea = document.getElementById("battle-final-summary-area");
   if (!finalArea) return;
 
+  // Reset scroll to top of the dialog so results and action buttons are immediately in view
+  dialog.scrollTo({ top: 0, behavior: "instant" });
+
   if (remainingHp <= 0) {
     recordStageBreachFailure();
     soundEngine.setSceneTrack("gameover");
@@ -3754,7 +3993,30 @@ function applyStaticTranslations(): void {
       zh: "填入1格示范排班",
     })
   );
-  setText("btn-reset", pickLang(currentLang, { ja: "白紙に戻す", en: "Clear All", zh: "清空重排" }));
+  setText("btn-reset", pickLang(currentLang, { ja: "🔄 リセット", en: "Clear All", zh: "清空重排" }));
+
+  // Mobile quick tools
+  const mobileHint = document.getElementById("btn-mobile-hint");
+  if (mobileHint) {
+    mobileHint.title = pickLang(currentLang, { ja: "ヒント（1マス配置）", en: "Hint (Fill 1 Cell)", zh: "提示（配置1格）" });
+    mobileHint.setAttribute("aria-label", pickLang(currentLang, { ja: "ヒント", en: "Hint", zh: "提示" }));
+  }
+  const mobileSynergy = document.getElementById("btn-mobile-synergy");
+  if (mobileSynergy) {
+    mobileSynergy.title = pickLang(currentLang, { ja: "相性・連携一覧", en: "Pair Affinities", zh: "相性一览" });
+    mobileSynergy.setAttribute("aria-label", pickLang(currentLang, { ja: "相性一覧", en: "Pair Affinities", zh: "相性一览" }));
+  }
+  const mobileMenu = document.getElementById("btn-mobile-menu");
+  if (mobileMenu) {
+    mobileMenu.title = pickLang(currentLang, { ja: "メニューを開く", en: "Open Menu", zh: "打开菜单" });
+    mobileMenu.setAttribute("aria-label", pickLang(currentLang, { ja: "メニュー", en: "Menu", zh: "菜单" }));
+  }
+  setText("mobile-menu-title", pickLang(currentLang, { ja: "⚙️ 作戦指令メニュー", en: "⚙️ Operations Menu", zh: "⚙️ 作战指令菜单" }));
+  setText("btn-mobile-menu-roster", pickLang(currentLang, { ja: "📖 警備隊名鑑", en: "📖 Guard Grimoire", zh: "📖 警备队名鉴" }));
+  setText("btn-mobile-menu-help", pickLang(currentLang, { ja: "📜 勤務ルール", en: "📜 Shift Rules", zh: "📜 勤务规则" }));
+  setText("btn-mobile-menu-synergy", pickLang(currentLang, { ja: "🤝 相性・連携", en: "🤝 Affinities", zh: "🤝 相性连携" }));
+  setText("btn-mobile-menu-title", pickLang(currentLang, { ja: "← タイトル画面へ戻る", en: "← Back to Title Screen", zh: "← 返回标题画面" }));
+  setText("synergy-dialog-title", pickLang(currentLang, { ja: "🤝 相性◎と同番NG一覧", en: "🤝 Guard Affinities & Clashes", zh: "🤝 相性与排斥一览" }));
   setTitle(
     "dialogue-box",
     pickLang(currentLang, {
@@ -4258,6 +4520,45 @@ function initGame(): void {
 
   getEl<HTMLButtonElement>("btn-hint-one").addEventListener("click", () => {
     void giveOneCellHint();
+  });
+
+  document.getElementById("btn-mobile-hint")?.addEventListener("click", () => {
+    void giveOneCellHint();
+  });
+
+  document.getElementById("btn-mobile-synergy")?.addEventListener("click", () => {
+    soundEngine.playClick("day");
+    openSynergyDialog();
+  });
+
+  document.getElementById("btn-mobile-menu")?.addEventListener("click", () => {
+    soundEngine.playClick("day");
+    openMobileMenuDialog();
+  });
+
+  document.getElementById("btn-mobile-menu-roster")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    openRosterDialog();
+  });
+
+  document.getElementById("btn-mobile-menu-help")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    (document.getElementById("help-dialog") as HTMLDialogElement | null)?.showModal();
+  });
+
+  document.getElementById("btn-mobile-menu-synergy")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    openSynergyDialog();
+  });
+
+  document.getElementById("btn-mobile-menu-title")?.addEventListener("click", () => {
+    const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+    if (dlg) dlg.close();
+    soundEngine.playClick("off");
+    showTitleScreen();
   });
 
   getEl<HTMLButtonElement>("btn-reset").addEventListener("click", () => {

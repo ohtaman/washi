@@ -80,7 +80,8 @@
     <div id="game-app" class="game-shell" hidden>
       <!-- Top Bar -->
       <header class="game-topbar">
-        <div class="brand-cluster">
+        <!-- Desktop Brand & Stage Navigation (Hidden on Mobile) -->
+        <div class="brand-cluster desktop-only-cluster">
           <button id="btn-back-title" type="button" class="btn-glass btn-sm" title="タイトル画面へ戻る">
             ← タイトル
           </button>
@@ -89,7 +90,18 @@
           </nav>
         </div>
 
-        <div class="topbar-controls">
+        <!-- Mobile Stage Title & Quick Tools (Only Visible on Mobile) -->
+        <div class="mobile-topbar-cluster">
+          <span id="mobile-stage-heading" class="mobile-stage-heading">シフト読込中</span>
+          <div class="mobile-action-tools">
+            <button id="btn-mobile-hint" type="button" class="btn-glass btn-sm btn-icon-round" title="ヒント（1マス配置）" aria-label="ヒント">💡</button>
+            <button id="btn-mobile-synergy" type="button" class="btn-glass btn-sm btn-icon-round" title="相性・連携一覧" aria-label="相性一覧">🤝</button>
+            <button id="btn-mobile-menu" type="button" class="btn-glass btn-sm btn-icon-round" title="メニューを開く" aria-label="メニュー">⚙️</button>
+          </div>
+        </div>
+
+        <!-- Desktop Controls (Hidden on Mobile) -->
+        <div class="topbar-controls desktop-only-controls">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
@@ -126,7 +138,7 @@
                 💡 ヒント
               </button>
               <button id="btn-reset" type="button" class="btn-glass btn-sm">
-                白紙に戻す
+                🔄 リセット
               </button>
             </div>
           </div>
@@ -391,6 +403,66 @@
                 勇者軍は毎日決まった時間ではなく<strong>ランダムな時間帯に突如現れ（手薄な枠は特に狙われます）</strong>、<strong>1回でも城門を突破されたら防衛失敗</strong>となります。どの時間帯に来ても守り抜けるシフトを組みましょう。
               </p>
             </div>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         MOBILE QUICK MENU DIALOG
+         ===================================================================== -->
+    <dialog id="mobile-menu-dialog" class="game-dialog" closedby="any" aria-labelledby="mobile-menu-title">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h2 id="mobile-menu-title">⚙️ 作戦指令メニュー</h2>
+          <button type="button" class="btn-dialog-close" data-close-dialog="mobile-menu-dialog" aria-label="閉じる">✕</button>
+        </div>
+        <div class="dialog-body mobile-menu-body">
+          <div class="mobile-menu-section">
+            <h3 class="mobile-menu-section-title">📅 月・戦況選択</h3>
+            <div id="mobile-stage-nav" class="mobile-stage-nav">
+              <!-- Populated dynamically by main.ts -->
+            </div>
+          </div>
+          <div class="mobile-menu-section">
+            <h3 class="mobile-menu-section-title">📖 兵站・心得</h3>
+            <div class="mobile-menu-grid">
+              <button id="btn-mobile-menu-roster" type="button" class="btn-glass">
+                📖 警備隊名鑑
+              </button>
+              <button id="btn-mobile-menu-help" type="button" class="btn-glass">
+                📜 勤務ルール
+              </button>
+              <button id="btn-mobile-menu-synergy" type="button" class="btn-glass">
+                🤝 相性・連携
+              </button>
+              <button id="btn-mobile-menu-audio" type="button" class="btn-glass btn-audio" data-bgm-toggle aria-pressed="false">
+                <span class="btn-audio-short">🔇 BGM: OFF</span>
+              </button>
+            </div>
+          </div>
+          <div class="mobile-menu-section">
+            <button id="btn-mobile-menu-title" type="button" class="btn-glass btn-block">
+              ← タイトル画面へ戻る
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- =====================================================================
+         PAIR SYNERGIES DIALOG (FOR MOBILE QUICK ACCESS)
+         ===================================================================== -->
+    <dialog id="synergy-dialog" class="game-dialog" closedby="any" aria-labelledby="synergy-dialog-title">
+      <div class="dialog-inner">
+        <div class="dialog-header">
+          <h2 id="synergy-dialog-title">🤝 相性◎と同番NG一覧</h2>
+          <button type="button" class="btn-dialog-close" data-close-dialog="synergy-dialog" aria-label="閉じる">✕</button>
+        </div>
+        <div class="dialog-body synergy-dialog-body">
+          <p class="synergy-desc">今月の当番メンバーに関わる相性ペアです。同じ時間帯に並べると防衛力が変化します。</p>
+          <div id="synergy-dialog-list" class="synergy-dialog-list">
+            <!-- Populated dynamically by main.ts -->
           </div>
         </div>
       </div>
