@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
-  text: "TypeScript / JavaScript 向け代数モデラー"
-  tagline: WebAssembly ベースの数理最適化・SMT モデリングインターフェース（LP, MIP, 凸QP, SMT）。TypeScript でモデルを記述し、HiGHS・Z3・GLPK でローカル求解。
+  text: "数理最適化と制約プログラミングのための代数モデラー"
+  tagline: "PythonのPuLPやJuliaのJuMPのように直感的な数式で定式化できるTypeScript向け代数モデラー。WebAssembly（HiGHS・Z3・GLPK）を搭載し、Pythonサーバーやネイティブビルド不要でLP・混合整数計画法（MIP）・凸QP・SMTをブラウザやNode.jsで高速に求解します。"
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem

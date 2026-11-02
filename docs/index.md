@@ -3,8 +3,8 @@ layout: home
 
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
-  text: "Algebraic Modeler for TypeScript & JavaScript"
-  tagline: WebAssembly-backed, Solver-independent, High-level modeling Interface for LP, MIP, Convex QP, and SMT. Formulate models in TypeScript and solve locally with HiGHS, Z3, and GLPK.
+  text: "Algebraic Modeler for Mathematical Optimization & Constraint Programming"
+  tagline: "A TypeScript alternative to Python's PuLP and Julia's JuMP. Formulate LP, MIP, Convex QP, and SMT models with intuitive infix expressions and solve client-side via WebAssembly (HiGHS, Z3, GLPK) with zero Python or native C++ dependencies."
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem
