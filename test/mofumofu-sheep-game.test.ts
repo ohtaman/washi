@@ -152,6 +152,27 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
 
+    // Verify wolves are not exclusively locked into the 4 corners:
+    // across generated stages, diverse perimeter and edge positions must be utilized
+    let nonCornerWolfCount = 0;
+    for (const stageNum of [13, 19, 25, 27, 31]) {
+      const stage = await generateVerifiedPastureStage(stageNum);
+      const rows = stage.grid.length;
+      const cols = stage.grid[0].length;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (stage.grid[r][c] === "wolf") {
+            const isCorner =
+              (r === 0 || r === rows - 1) && (c === 0 || c === cols - 1);
+            if (!isCorner) {
+              nonCornerWolfCount++;
+            }
+          }
+        }
+      }
+    }
+    expect(nonCornerWolfCount).toBeGreaterThanOrEqual(5);
+
     // When all 36 candidate attempts are rejected (e.g., degenerate PRNG output filling the outer ring with water),
     // fallback stage + verified optimal solution are still cached so revisiting does not re-run generation.
     const imulSpy = vi.spyOn(Math, "imul").mockReturnValue(0);

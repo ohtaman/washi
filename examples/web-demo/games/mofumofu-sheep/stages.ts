@@ -527,6 +527,77 @@ const generatedStageCache = new Map<
 
 const inFlightStagePromises = new Map<number, Promise<StagePuzzle>>();
 
+interface WolfSpawnSlot {
+  wolf: [number, number];
+  bridges: [number, number][];
+}
+
+function getCandidateWolfSpawnSlots(rows: number, cols: number): WolfSpawnSlot[] {
+  const slots: WolfSpawnSlot[] = [];
+
+  const addSlot = (r: number, c: number) => {
+    const bridges: [number, number][] = [];
+    const deltas = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ];
+    for (const [dr, dc] of deltas) {
+      const nr = r + dr;
+      const nc = c + dc;
+      if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+        bridges.push([nr, nc]);
+      }
+    }
+    slots.push({ wolf: [r, c], bridges });
+  };
+
+  // 1. Four corners
+  addSlot(0, 0);
+  addSlot(0, cols - 1);
+  addSlot(rows - 1, 0);
+  addSlot(rows - 1, cols - 1);
+
+  // 2. Top and bottom edges (non-corner)
+  const midC = Math.floor(cols / 2);
+  addSlot(0, midC);
+  addSlot(rows - 1, midC);
+
+  if (cols >= 8) {
+    const q1C = Math.floor(cols / 3);
+    const q2C = cols - 1 - q1C;
+    if (q1C > 1 && q1C !== midC) {
+      addSlot(0, q1C);
+      addSlot(rows - 1, q1C);
+    }
+    if (q2C < cols - 2 && q2C !== midC && q2C !== q1C) {
+      addSlot(0, q2C);
+      addSlot(rows - 1, q2C);
+    }
+  }
+
+  // 3. Left and right edges (non-corner)
+  const midR = Math.floor(rows / 2);
+  addSlot(midR, 0);
+  addSlot(midR, cols - 1);
+
+  if (rows >= 8) {
+    const q1R = Math.floor(rows / 3);
+    const q2R = rows - 1 - q1R;
+    if (q1R > 1 && q1R !== midR) {
+      addSlot(q1R, 0);
+      addSlot(q1R, cols - 1);
+    }
+    if (q2R < rows - 2 && q2R !== midR && q2R !== q1R) {
+      addSlot(q2R, 0);
+      addSlot(q2R, cols - 1);
+    }
+  }
+
+  return slots;
+}
+
 /**
  * Generates a deterministic puzzle board for a given `stageNumber` (or seed) and verifies with HiGHS that:
  * 1. Without fences, the wolves can reach the sheep.
@@ -584,48 +655,36 @@ export async function generateVerifiedPastureStage(
         grid[sr][sc] = "sheep";
       }
 
-      // 2. Place wolves on outer corners with adjacent stone bridges
-      const spawnSlots: { wolf: [number, number]; bridges: [number, number][] }[] = [
-        {
-          wolf: [0, 0],
-          bridges: [
-            [0, 1],
-            [1, 0],
-          ],
-        },
-        {
-          wolf: [0, cols - 1],
-          bridges: [
-            [0, cols - 2],
-            [1, cols - 1],
-          ],
-        },
-        {
-          wolf: [rows - 1, 0],
-          bridges: [
-            [rows - 1, 1],
-            [rows - 2, 0],
-          ],
-        },
-        {
-          wolf: [rows - 1, cols - 1],
-          bridges: [
-            [rows - 1, cols - 2],
-            [rows - 2, cols - 1],
-          ],
-        },
-      ];
-
-      for (let i = spawnSlots.length - 1; i > 0; i--) {
+      // 2. Place wolves across diverse perimeter positions (edges & corners) with adjacent stone bridges
+      const candidateSlots = getCandidateWolfSpawnSlots(rows, cols);
+      for (let i = candidateSlots.length - 1; i > 0; i--) {
         const j = Math.floor(rng() * (i + 1));
-        const tmp = spawnSlots[i];
-        spawnSlots[i] = spawnSlots[j];
-        spawnSlots[j] = tmp;
+        const tmp = candidateSlots[i];
+        candidateSlots[i] = candidateSlots[j];
+        candidateSlots[j] = tmp;
       }
 
-      const activeWolves = Math.min(wolfCount, spawnSlots.length);
-      for (let w = 0; w < activeWolves; w++) {
-        const slot = spawnSlots[w];
+      const activeSlots: WolfSpawnSlot[] = [];
+      for (const slot of candidateSlots) {
+        if (activeSlots.length >= wolfCount) break;
+        const [wr, wc] = slot.wolf;
+        const tooClose = activeSlots.some(
+          (s) => Math.abs(s.wolf[0] - wr) + Math.abs(s.wolf[1] - wc) < 3
+        );
+        if (!tooClose) {
+          activeSlots.push(slot);
+        }
+      }
+      if (activeSlots.length < wolfCount) {
+        for (const slot of candidateSlots) {
+          if (activeSlots.length >= wolfCount) break;
+          if (!activeSlots.includes(slot)) {
+            activeSlots.push(slot);
+          }
+        }
+      }
+
+      for (const slot of activeSlots) {
         grid[slot.wolf[0]][slot.wolf[1]] = "wolf";
         for (const [br, bc] of slot.bridges) {
           if (grid[br]?.[bc] === "grass") {
