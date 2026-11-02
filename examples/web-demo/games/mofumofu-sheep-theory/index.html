@@ -197,6 +197,11 @@
         overflow-x: auto;
       }
 
+      .math-box .katex-display {
+        margin: 0.5rem 0;
+        text-align: left;
+      }
+
       .math-box .math-title {
         font-family: "Noto Sans JP", sans-serif;
         font-weight: 800;
@@ -480,47 +485,55 @@
         <section class="section-card">
           <h2>3. MILPによる定式化（1）：決定変数と「フラッド制約」</h2>
           <p>
-            それでは、このパズルを混合整数線形計画（MILP）として定式化していきましょう。通行可能な各マス <code>v ∈ V</code> に対して、以下の2種類の二値変数を導入します。
+            それでは、このパズルを混合整数線形計画（MILP）として定式化していきましょう。通行可能な各マス $v \in V$ に対して、以下の2種類の二値変数を導入します。
           </p>
 
           <div class="math-box">
             <span class="math-title">二値決定変数（Binary Decision Variables）</span>
-            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : マス v に木の柵を置くなら 1、置かないなら 0<br />
-            r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : マス v が「ヒツジの安全な牧場」に含まれるなら 1
+            $$
+            \begin{aligned}
+            f_v &\in \{0, 1\} \quad (\forall v \in V_{\text{fence}}) &&: \text{マス } v \text{ に木の柵を置くなら 1、置かないなら 0} \\
+            r_v &\in \{0, 1\} \quad (\forall v \in V) &&: \text{マス } v \text{ が「ヒツジの安全な牧場」に含まれるなら 1}
+            \end{aligned}
+            $$
           </div>
 
           <p>まず、自明な境界条件と柵の本数上限（予算制約）を書きます。</p>
 
           <div class="math-box">
             <span class="math-title">基本制約（起点・侵入源・排他・予算）</span>
-            (1) r_s == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀s ∈ S) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: ヒツジのいるマスは必ず牧場内<br />
-            (2) r_w == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀w ∈ W) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: オオカミのいるマスは絶対に牧場に入れてはならない<br />
-            (3) r_v + f_v &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀v ∈ V_fence) : 柵を置いたマス自体は牧場に含まれない<br />
-            (4) Σ_{v ∈ V_fence} f_v &lt;= K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 置ける柵は最大 K 本まで
+            $$
+            \begin{aligned}
+            &\text{(1) ヒツジ起点:} && r_s = 1 && (\forall s \in S) \\
+            &\text{(2) オオカミ侵入禁止:} && r_w = 0 && (\forall w \in W) \\
+            &\text{(3) 柵と牧場の排他:} && r_v + f_v \le 1 && (\forall v \in V_{\text{fence}}) \\
+            &\text{(4) 予算制約（柵上限）:} && \sum_{v \in V_{\text{fence}}} f_v \le K
+            \end{aligned}
+            $$
           </div>
 
           <h3>隣接マスへ牧場が広がる「フラッド制約（Flood / Cut Constraint）」</h3>
           <p>
-            次に、「ヒツジの牧場 <code>r_u = 1</code> の隣マス <code>v</code> に柵がなければ（<code>f_v = 0</code>）、その隣マス <code>v</code> も自動的に牧場と地続きになる（<code>r_v = 1</code>）」という物理法則を1本の線形不等式で表します。
+            次に、「ヒツジの牧場 $r_u = 1$ の隣マス $v$ に柵がなければ（$f_v = 0$）、その隣マス $v$ も自動的に牧場と地続きになる（$r_v = 1$）」という物理法則を1本の線形不等式で表します。
           </p>
 
           <div class="math-box">
             <span class="math-title">フラッド制約（すべての隣接ペア (u, v) ∈ E について）</span>
-            r_u - r_v - f_v &lt;= 0 &nbsp;&nbsp;&nbsp;（変形すると: &nbsp; r_u &lt;= r_v + f_v）
+            $$ r_u - r_v - f_v \le 0 \quad (\forall (u, v) \in E) \quad (\text{変形すると } r_u \le r_v + f_v) $$
           </div>
 
           <p>
-            このシンプルな不等式 <code>r_u &lt;= r_v + f_v</code> は、<strong>1本で2つの重要な役割</strong>を同時に果たします。
+            このシンプルな不等式 $r_u \le r_v + f_v$ は、<strong>1本で2つの重要な役割</strong>を同時に果たします。
           </p>
           <ul>
             <li>
               <strong>役割A（オオカミの完全遮断）</strong>：<br />
-              ヒツジ（<code>r_s = 1</code>）から始まる道の途中で一度も柵（<code>f_v = 1</code>）が置かれないままオオカミ（<code>r_w = 0</code>）に到達すると、<code>1 = r_s &lt;= … &lt;= r_w = 0</code> となって制約違反（Infeasible）になります。つまり、<strong>すべての侵入経路のどこかに必ず <code>f_v = 1</code> を置かなければ実行可能解になりません</strong>。
+              ヒツジ（$r_s = 1$）から始まる道の途中で一度も柵（$f_v = 1$）が置かれないままオオカミ（$r_w = 0$）に到達すると、$1 = r_s \le \dots \le r_w = 0$ となって制約違反（Infeasible）になります。つまり、<strong>すべての侵入経路のどこかに必ず $f_v = 1$ を置かなければ実行可能解になりません</strong>。
             </li>
             <li>
               <strong>役割B（穴ぼこ <code>🕳️ -5</code> のつまみ食い防止）</strong>：<br />
-              もしこの制約がなければ、ソルバーは「正の得点マス（<code>🍓 +5</code>）だけ <code>r_v = 1</code> にし、牧場の真ん中にある穴ぼこ（<code>🕳️ -5</code>）は都合よく <code>r_v = 0</code> にする」という抜け道を使えてしまいます。<br />
-              しかしフラッド制約があるため、牧場（<code>r_u = 1</code>）に隣接する穴ぼこ <code>v</code> は、<strong>丸太の柵を打ち込んで塞ぐ（<code>f_v = 1, r_v = 0</code>）か、牧場に含めて <code>-5</code> 点を受け入れる（<code>f_v = 0, r_v = 1</code>）かの二択</strong>を厳密に迫られます。
+              もしこの制約がなければ、ソルバーは「正の得点マス（<code>🍓 +5</code>）だけ $r_v = 1$ にし、牧場の真ん中にある穴ぼこ（<code>🕳️ -5</code>）は都合よく $r_v = 0$ にする」という抜け道を使えてしまいます。<br />
+              しかしフラッド制約があるため、牧場（$r_u = 1$）に隣接する穴ぼこ $v$ は、<strong>丸太の柵を打ち込んで塞ぐ（$f_v = 1, r_v = 0$）か、牧場に含めて $-5$ 点を受け入れる（$f_v = 0, r_v = 1$）かの二択</strong>を厳密に迫られます。
             </li>
           </ul>
         </section>
@@ -587,47 +600,51 @@
 
           <h3>解決策：単一品種ネットワークフロー（Single-Commodity Flow）</h3>
           <p>
-            「<code>r_v = 1</code> ならば、そのマス <code>v</code> はヒツジ <code>S</code> と実際にパスで繋がっていなければならない」という連結性を線形制約で表す定番の手法が、<strong>単一品種フロー保存則</strong>です。
+            「$r_v = 1$ ならば、そのマス $v$ はヒツジ $S$ と実際にパスで繋がっていなければならない」という連結性を線形制約で表す定番の手法が、<strong>単一品種フロー保存則</strong>です。
           </p>
           <p>
-            隣接する各マスの組に有向連続変数 <code>flow_{u→v} &gt;= 0</code>（マス <code>u</code> から隣マス <code>v</code> へ流す「水」の量）を用意し、以下の制約を加えます（<code>M = |V|</code> は通行可能マスの総数）：
+            隣接する各マスの組に有向連続変数 $\text{flow}_{u \to v} \ge 0$（マス $u$ から隣マス $v$ へ流す「水」の量）を用意し、以下の制約を加えます（$M = |V|$ は通行可能マスの総数）：
           </p>
 
           <div class="math-box">
             <span class="math-title">連結性を保証する単一品種フロー制約</span>
-            (5) 0 &lt;= flow_{u→v} &lt;= M * r_u &nbsp;&nbsp;(∀(u, v) ∈ E) : 牧場内のマス u からしか水を出せない<br />
-            (6) 0 &lt;= flow_{u→v} &lt;= M * r_v &nbsp;&nbsp;(∀(u, v) ∈ E) : 牧場内のマス v へしか水を流せない<br />
-            (7) Σ_{u} flow_{u→v} - Σ_{w} flow_{v→w} == r_v &nbsp;&nbsp;(∀v ∈ V \ S) : ヒツジ以外の各牧場マス(r_v = 1)で水をちょうど 1 単位消費する
+            $$
+            \begin{aligned}
+            &\text{(5) 流出上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in E) \\
+            &\text{(6) 流入上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in E) \\
+            &\text{(7) 需要消費:} && \sum_{u:(u,v) \in E} \text{flow}_{u \to v} - \sum_{w:(v,w) \in E} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S)
+            \end{aligned}
+            $$
           </div>
 
           <div class="callout purple">
             <strong>🔍 なぜこれで連結性が厳密に保証されるのか</strong>
-            ヒツジ以外のマス <code>v</code> を <code>r_v = 1</code> にするためには、式(7)より「どこかから <code>1</code> 単位の水が流れ込んでくる」必要があります。しかし式(5)・(6)より、水は <code>r = 1</code> のマス同士の間しか流れず、かつ水を新たに生み出せる（流入超過が許される）のは式(7)の対象外である<strong>ヒツジのマス <code>S</code> だけ</strong>です。<br />
-            したがって、ヒツジ <code>S</code> と柵なしで繋がっていない孤立ポケットには一滴も水が届かず、必ず <code>r_v = 0</code> になります。
+            ヒツジ以外のマス $v$ を $r_v = 1$ にするためには、式(7)より「どこかから $1$ 単位の水が流れ込んでくる」必要があります。しかし式(5)・(6)より、水は $r = 1$ のマス同士の間しか流れず、かつ水を新たに生み出せる（流入超過が許される）のは式(7)の対象外である<strong>ヒツジのマス $S$ だけ</strong>です。<br />
+            したがって、ヒツジ $S$ と柵なしで繋がっていない孤立ポケットには一滴も水が届かず、必ず $r_v = 0$ になります。
           </div>
         </section>
 
         <section class="section-card">
           <h2>5. 目的関数と「1手ヒント（部分固定再求解）」</h2>
           <p>
-            最後に目的関数です。「牧場の合計スコアを最大化する（第1優先）」とともに、同じスコアなら「使う柵の本数をできるだけ少なくする（第2優先）」という辞書式順序（Lexicographic Objective）を、重み係数 <code>100</code> を使って1本の線形目的関数にまとめています。
+            最後に目的関数です。「牧場の合計スコアを最大化する（第1優先）」とともに、同じスコアなら「使う柵の本数をできるだけ少なくする（第2優先）」という辞書式順序（Lexicographic Objective）を、重み係数 $100$ を使って1本の線形目的関数にまとめています。
           </p>
 
           <div class="math-box">
             <span class="math-title">目的関数（Objective Function）</span>
-            maximize &nbsp; Σ_{v ∈ V} (100 * w_v) * r_v &nbsp;-&nbsp; Σ_{v ∈ V_fence} 1 * f_v
+            $$ \max \quad \sum_{v \in V} (100 \cdot w_v) \cdot r_v - \sum_{v \in V_{\text{fence}}} 1 \cdot f_v $$
           </div>
 
           <p>
-            また、ゲーム内の<strong>「💡 1手ヒント」</strong>ボタンは、あらかじめ用意した固定の答えを見ているのではなく、<strong>プレイヤーが現在盤面に置いている柵集合 <code>F_cur</code> を <code>f_v == 1 (∀v ∈ F_cur)</code> として固定した上でリアルタイムに再求解</strong>しています：
+            また、ゲーム内の<strong>「💡 1手ヒント」</strong>ボタンは、あらかじめ用意した固定の答えを見ているのではなく、<strong>プレイヤーが現在盤面に置いている柵集合 $F_{\text{cur}}$ を $f_v = 1 \; (\forall v \in F_{\text{cur}})$ として固定した上でリアルタイムに再求解</strong>しています：
           </p>
           <ul>
             <li>
-              固定した状態での最適スコアが本来の理論値 <code>Z*</code> に届く場合：<br />
-              「現在の柵配置は正解ルートに乗っている」と判定し、残りの最適柵 <code>f_v* = 1 (v ∉ F_cur)</code> のうち1マスを盤面上で黄色く点滅させます。
+              固定した状態での最適スコアが本来の理論値 $Z^*$ に届く場合：<br />
+              「現在の柵配置は正解ルートに乗っている」と判定し、残りの最適柵 $f_v^* = 1 \; (v \notin F_{\text{cur}})$ のうち1マスを盤面上で黄色く点滅させます。
             </li>
             <li>
-              固定した状態では Infeasible（オオカミを防げない）または <code>Z*</code> 未満にしかならない場合：<br />
+              固定した状態では Infeasible（オオカミを防げない）または $Z^*$ 未満にしかならない場合：<br />
               「現在置いている柵の中に邪魔な柵がある」と判定し、外すべき柵のマスを赤く点滅させて教えてくれます。
             </li>
           </ul>
@@ -769,46 +786,54 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
         <section class="section-card">
           <h2>3. MILP Formulation (Part 1): Decision Variables and the Flood Constraint</h2>
           <p>
-            To formulate the puzzle as a Mixed-Integer Linear Program (MILP), we introduce two sets of binary decision variables over the passable cells <code>v ∈ V</code>:
+            To formulate the puzzle as a Mixed-Integer Linear Program (MILP), we introduce two sets of binary decision variables over the passable cells $v \in V$:
           </p>
 
           <div class="math-box">
             <span class="math-title">Binary Decision Variables</span>
-            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 1 if a wooden fence is placed on cell v, 0 otherwise<br />
-            r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : 1 if cell v is part of the sheep's safe pasture, 0 otherwise
+            $$
+            \begin{aligned}
+            f_v &\in \{0, 1\} \quad (\forall v \in V_{\text{fence}}) &&: 1 \text{ if a wooden fence is placed on cell } v\text{, 0 otherwise} \\
+            r_v &\in \{0, 1\} \quad (\forall v \in V) &&: 1 \text{ if cell } v \text{ is part of the sheep's safe pasture, 0 otherwise}
+            \end{aligned}
+            $$
           </div>
 
           <p>First, we state the boundary conditions, mutual exclusion, and the fence budget constraint:</p>
 
           <div class="math-box">
             <span class="math-title">Base Constraints (Sources, Hazards, Exclusion, and Budget)</span>
-            (1) r_s == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀s ∈ S) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: Every sheep cell is always inside the pasture<br />
-            (2) r_w == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀w ∈ W) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: No wolf cell may ever be inside the pasture<br />
-            (3) r_v + f_v &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀v ∈ V_fence) : A fenced cell cannot itself be part of the pasture<br />
-            (4) Σ_{v ∈ V_fence} f_v &lt;= K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: At most K fences can be placed
+            $$
+            \begin{aligned}
+            &\text{(1) Sheep Origin:} && r_s = 1 && (\forall s \in S) \\
+            &\text{(2) Wolf Exclusion:} && r_w = 0 && (\forall w \in W) \\
+            &\text{(3) Mutual Exclusion:} && r_v + f_v \le 1 && (\forall v \in V_{\text{fence}}) \\
+            &\text{(4) Fence Budget:} && \sum_{v \in V_{\text{fence}}} f_v \le K
+            \end{aligned}
+            $$
           </div>
 
           <h3>The Flood / Cut Constraint Across Adjacent Cells</h3>
           <p>
-            Next, we express the propagation rule: "If cell <code>u</code> is inside the pasture (<code>r_u = 1</code>) and its neighbor <code>v</code> has no fence (<code>f_v = 0</code>), then <code>v</code> must also be inside the pasture (<code>r_v = 1</code>)."
+            Next, we express the propagation rule: "If cell $u$ is inside the pasture ($r_u = 1$) and its neighbor $v$ has no fence ($f_v = 0$), then $v$ must also be inside the pasture ($r_v = 1$)."
           </p>
 
           <div class="math-box">
             <span class="math-title">Flood Constraint (for every ordered adjacent pair (u, v) ∈ E)</span>
-            r_u - r_v - f_v &lt;= 0 &nbsp;&nbsp;&nbsp;(equivalently: &nbsp; r_u &lt;= r_v + f_v)
+            $$ r_u - r_v - f_v \le 0 \quad (\forall (u, v) \in E) \quad (\text{equivalently: } r_u \le r_v + f_v) $$
           </div>
 
           <p>
-            This single linear inequality <code>r_u &lt;= r_v + f_v</code> simultaneously enforces two essential properties:
+            This single linear inequality $r_u \le r_v + f_v$ simultaneously enforces two essential properties:
           </p>
           <ul>
             <li>
               <strong>Role A (Complete Wolf Separation)</strong>:<br />
-              If any open path from a sheep (<code>r_s = 1</code>) reaches a wolf (<code>r_w = 0</code>) without encountering a fence (<code>f_v = 1</code>), chaining the inequality along the path yields <code>1 = r_s &lt;= … &lt;= r_w = 0</code>, which is infeasible. Thus every wolf-to-sheep path must contain at least one fence.
+              If any open path from a sheep ($r_s = 1$) reaches a wolf ($r_w = 0$) without encountering a fence ($f_v = 1$), chaining the inequality along the path yields $1 = r_s \le \dots \le r_w = 0$, which is infeasible. Thus every wolf-to-sheep path must contain at least one fence.
             </li>
             <li>
               <strong>Role B (Preventing Cherry-Picking Around Pitfalls)</strong>:<br />
-              Without this constraint, an optimizer could set <code>r_v = 1</code> on positive tiles (<code>🍓 +5</code>) while arbitrarily setting <code>r_v = 0</code> on an unfenced pitfall (<code>🕳️ -5</code>) right next to the sheep. Because of the flood constraint, any pitfall adjacent to the pasture forces a strict choice: <strong>spend a fence post to plug/block it (<code>f_v = 1, r_v = 0</code>) or include it in the pasture and accept the <code>-5</code> penalty (<code>f_v = 0, r_v = 1</code>)</strong>.
+              Without this constraint, an optimizer could set $r_v = 1$ on positive tiles (<code>🍓 +5</code>) while arbitrarily setting $r_v = 0$ on an unfenced pitfall (<code>🕳️ -5</code>) right next to the sheep. Because of the flood constraint, any pitfall adjacent to the pasture forces a strict choice: <strong>spend a fence post to plug/block it ($f_v = 1, r_v = 0$) or include it in the pasture and accept the $-5$ penalty ($f_v = 0, r_v = 1$)</strong>.
             </li>
           </ul>
         </section>
@@ -875,46 +900,50 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
 
           <h3>Solution: Single-Commodity Network Flow</h3>
           <p>
-            To guarantee that <code>r_v = 1</code> holds only if cell <code>v</code> is genuinely connected to at least one sheep in <code>S</code>, we add <strong>Single-Commodity Flow conservation</strong> constraints.
+            To guarantee that $r_v = 1$ holds only if cell $v$ is genuinely connected to at least one sheep in $S$, we add <strong>Single-Commodity Flow conservation</strong> constraints.
           </p>
           <p>
-            For each directed edge <code>(u, v) ∈ E</code>, we define a non-negative continuous variable <code>flow_{u→v} &gt;= 0</code> representing the amount of flow sent from <code>u</code> to <code>v</code> (where <code>M = |V|</code> is the total number of passable cells):
+            For each directed edge $(u, v) \in E$, we define a non-negative continuous variable $\text{flow}_{u \to v} \ge 0$ representing the amount of flow sent from $u$ to $v$ (where $M = |V|$ is the total number of passable cells):
           </p>
 
           <div class="math-box">
             <span class="math-title">Single-Commodity Flow Constraints for Connectivity</span>
-            (5) 0 &lt;= flow_{u→v} &lt;= M * r_u &nbsp;&nbsp;(∀(u, v) ∈ E) : Flow can only leave a cell u that is in the pasture<br />
-            (6) 0 &lt;= flow_{u→v} &lt;= M * r_v &nbsp;&nbsp;(∀(u, v) ∈ E) : Flow can only enter a cell v that is in the pasture<br />
-            (7) Σ_{u} flow_{u→v} - Σ_{w} flow_{v→w} == r_v &nbsp;&nbsp;(∀v ∈ V \ S) : Each non-sheep pasture cell (r_v = 1) consumes 1 unit of flow
+            $$
+            \begin{aligned}
+            &\text{(5) Outflow Bound:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in E) \\
+            &\text{(6) Inflow Bound:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in E) \\
+            &\text{(7) Net Consumption:} && \sum_{u:(u,v) \in E} \text{flow}_{u \to v} - \sum_{w:(v,w) \in E} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S)
+            \end{aligned}
+            $$
           </div>
 
           <div class="callout purple">
             <strong>🔍 Why This Strictly Guarantees Connectivity</strong>
-            By equation (7), any non-sheep cell with <code>r_v = 1</code> must consume 1 net unit of flow. By (5) and (6), flow can only travel through cells where <code>r = 1</code>, and the only nodes exempt from flow conservation (able to act as flow sources) are the <strong>sheep cells <code>S</code></strong>. Consequently, any pocket disconnected from the sheep receives zero flow and is forced to <code>r_v = 0</code>.
+            By equation (7), any non-sheep cell with $r_v = 1$ must consume 1 net unit of flow. By (5) and (6), flow can only travel through cells where $r = 1$, and the only nodes exempt from flow conservation (able to act as flow sources) are the <strong>sheep cells $S$</strong>. Consequently, any pocket disconnected from the sheep receives zero flow and is forced to $r_v = 0$.
           </div>
         </section>
 
         <section class="section-card">
           <h2>5. Objective Function and 1-Move Hint Diagnosis (Partial Fixing)</h2>
           <p>
-            Finally, we combine "maximizing total pasture score (primary objective)" and "using as few fences as possible among tied scores (secondary tie-breaker)" into a single linear objective using a lexicographic weight of <code>100</code>:
+            Finally, we combine "maximizing total pasture score (primary objective)" and "using as few fences as possible among tied scores (secondary tie-breaker)" into a single linear objective using a lexicographic weight of $100$:
           </p>
 
           <div class="math-box">
             <span class="math-title">Objective Function</span>
-            maximize &nbsp; Σ_{v ∈ V} (100 * w_v) * r_v &nbsp;-&nbsp; Σ_{v ∈ V_fence} 1 * f_v
+            $$ \max \quad \sum_{v \in V} (100 \cdot w_v) \cdot r_v - \sum_{v \in V_{\text{fence}}} 1 \cdot f_v $$
           </div>
 
           <p>
-            The in-game <strong>"💡 1-Move Hint"</strong> button does not merely look up a static answer key. Instead, it <strong>fixes the player's currently placed fences <code>F_cur</code> (<code>f_v == 1</code> for all <code>v ∈ F_cur</code>) and re-solves the MILP in real time</strong>:
+            The in-game <strong>"💡 1-Move Hint"</strong> button does not merely look up a static answer key. Instead, it <strong>fixes the player's currently placed fences $F_{\text{cur}}$ ($f_v = 1$ for all $v \in F_{\text{cur}}$) and re-solves the MILP in real time</strong>:
           </p>
           <ul>
             <li>
-              If the restricted problem is still Feasible and achieves the optimal target score <code>Z*</code>:<br />
-              The player's current fences are on a valid optimal path, so the game highlights one remaining unplaced fence <code>f_v* = 1 (v ∉ F_cur)</code> in yellow.
+              If the restricted problem is still Feasible and achieves the optimal target score $Z^*$:<br />
+              The player's current fences are on a valid optimal path, so the game highlights one remaining unplaced fence $f_v^* = 1 \; (v \notin F_{\text{cur}})$ in yellow.
             </li>
             <li>
-              If the restricted problem is Infeasible or its optimal objective falls short of <code>Z*</code>:<br />
+              If the restricted problem is Infeasible or its optimal objective falls short of $Z^*$:<br />
               At least one placed fence is blocking the optimal enclosure, so the game identifies that fence and highlights it in red for removal.
             </li>
           </ul>
@@ -1056,47 +1085,55 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
         <section class="section-card">
           <h2>3. MILP 建模（一）：决策变量与“漫延（Flood）约束”</h2>
           <p>
-            下面我们将该问题建立为混合整数线性规划（MILP）。对每个可通行格 <code>v ∈ V</code>，引入以下两类 0-1 决策变量：
+            下面我们将该问题建立为混合整数线性规划（MILP）。对每个可通行格 $v \in V$，引入以下两类 0-1 决策变量：
           </p>
 
           <div class="math-box">
             <span class="math-title">0-1 决策变量（Binary Decision Variables）</span>
-            f_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V_fence) &nbsp; : 在格子 v 放置栅栏则为 1，否则为 0<br />
-            r_v ∈ {0, 1} &nbsp;&nbsp;(∀v ∈ V) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; : 格子 v 属于“绵羊的安全牧场”则为 1，否则为 0
+            $$
+            \begin{aligned}
+            f_v &\in \{0, 1\} \quad (\forall v \in V_{\text{fence}}) &&: \text{在格子 } v \text{ 放置栅栏则为 1，否则为 0} \\
+            r_v &\in \{0, 1\} \quad (\forall v \in V) &&: \text{格子 } v \text{ 属于“绵羊的安全牧场”则为 1，否则为 0}
+            \end{aligned}
+            $$
           </div>
 
           <p>首先写出边界条件、互斥条件与栅栏预算上限：</p>
 
           <div class="math-box">
             <span class="math-title">基础约束（起点、入侵源、互斥与预算）</span>
-            (1) r_s == 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀s ∈ S) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 绵羊所在格必定属于牧场<br />
-            (2) r_w == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀w ∈ W) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 野狼所在格绝对不能属于牧场<br />
-            (3) r_v + f_v &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀v ∈ V_fence) : 放置了栅栏的格子本身不属于牧场<br />
-            (4) Σ_{v ∈ V_fence} f_v &lt;= K &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 最多只能放置 K 根栅栏
+            $$
+            \begin{aligned}
+            &\text{(1) 绵羊起点:} && r_s = 1 && (\forall s \in S) \\
+            &\text{(2) 野狼禁入:} && r_w = 0 && (\forall w \in W) \\
+            &\text{(3) 互斥约束:} && r_v + f_v \le 1 && (\forall v \in V_{\text{fence}}) \\
+            &\text{(4) 栅栏预算:} && \sum_{v \in V_{\text{fence}}} f_v \le K
+            \end{aligned}
+            $$
           </div>
 
           <h3>向相邻格子扩展的“漫延约束（Flood / Cut Constraint）”</h3>
           <p>
-            接着，用一条线性不等式刻画连通传播规律：“如果格子 <code>u</code> 在牧场内（<code>r_u = 1</code>），且相邻格子 <code>v</code> 没有放栅栏（<code>f_v = 0</code>），那么相邻格子 <code>v</code> 也必须自动属于牧场（<code>r_v = 1</code>）”。
+            接着，用一条线性不等式刻画连通传播规律：“如果格子 $u$ 在牧场内（$r_u = 1$），且相邻格子 $v$ 没有放栅栏（$f_v = 0$），那么相邻格子 $v$ 也必须自动属于牧场（$r_v = 1$）”。
           </p>
 
           <div class="math-box">
             <span class="math-title">漫延约束（对所有相邻有序对 (u, v) ∈ E）</span>
-            r_u - r_v - f_v &lt;= 0 &nbsp;&nbsp;&nbsp;（等价变形为: &nbsp; r_u &lt;= r_v + f_v）
+            $$ r_u - r_v - f_v \le 0 \quad (\forall (u, v) \in E) \quad (\text{等价变形为: } r_u \le r_v + f_v) $$
           </div>
 
           <p>
-            这条简洁的不等式 <code>r_u &lt;= r_v + f_v</code> 同时承担了<strong>两个重要作用</strong>：
+            这条简洁的不等式 $r_u \le r_v + f_v$ 同时承担了<strong>两个重要作用</strong>：
           </p>
           <ul>
             <li>
               <strong>作用 A（彻底阻断野狼）</strong>：<br />
-              如果从绵羊（<code>r_s = 1</code>）出发的某条路径在到达野狼（<code>r_w = 0</code>）之前没有任何一格放置栅栏（<code>f_v = 1</code>），沿路径串联不等式就会得到 <code>1 = r_s &lt;= … &lt;= r_w = 0</code>，从而导致模型无解（Infeasible）。因此所有入侵路径上都必须至少放置1根栅栏。
+              如果从绵羊（$r_s = 1$）出发的某条路径在到达野狼（$r_w = 0$）之前没有任何一格放置栅栏（$f_v = 1$），沿路径串联不等式就会得到 $1 = r_s \le \dots \le r_w = 0$，从而导致模型无解（Infeasible）。因此所有入侵路径上都必须至少放置1根栅栏。
             </li>
             <li>
               <strong>作用 B（防止跳过坑洞 <code>🕳️ -5</code> 只捡正分格）</strong>：<br />
-              如果没有这条约束，求解器就会只把草莓（<code>🍓 +5</code>）设为 <code>r_v = 1</code>，而把牧场中间没放栅栏的坑洞（<code>🕳️ -5</code>）偷偷设为 <code>r_v = 0</code>。<br />
-              有了漫延约束后，任何与牧场（<code>r_u = 1</code>）相邻的坑洞 <code>v</code> 都必须二选一：<strong>要么花1根木桩栅栏填平它（<code>f_v = 1, r_v = 0</code>），要么将它纳入牧场并接受 <code>-5</code> 分（<code>f_v = 0, r_v = 1</code>）</strong>。
+              如果没有这条约束，求解器就会只把草莓（<code>🍓 +5</code>）设为 $r_v = 1$，而把牧场中间没放栅栏的坑洞（<code>🕳️ -5</code>）偷偷设为 $r_v = 0$。<br />
+              有了漫延约束后，任何与牧场（$r_u = 1$）相邻的坑洞 $v$ 都必须二选一：<strong>要么花1根木桩栅栏填平它（$f_v = 1, r_v = 0$），要么将它纳入牧场并接受 $-5$ 分（$f_v = 0, r_v = 1$）</strong>。
             </li>
           </ul>
         </section>
@@ -1163,47 +1200,51 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
 
           <h3>解决方案：单商品网络流（Single-Commodity Flow）</h3>
           <p>
-            为了用线性约束严格表达“若 <code>r_v = 1</code>，则格子 <code>v</code> 必须与某只绵羊 <code>S</code> 存在真实连通路径”，标准做法是引入<strong>单商品流守恒约束</strong>。
+            为了用线性约束严格表达“若 $r_v = 1$，则格子 $v$ 必须与某只绵羊 $S$ 存在真实连通路径”，标准做法是引入<strong>单商品流守恒约束</strong>。
           </p>
           <p>
-            对每对相邻有向边 <code>(u, v) ∈ E</code> 引入非负连续变量 <code>flow_{u→v} &gt;= 0</code>（表示从格子 <code>u</code> 流向相邻格子 <code>v</code> 的“水量”，其中 <code>M = |V|</code> 为可通行格总数）：
+            对每对相邻有向边 $(u, v) \in E$ 引入非负连续变量 $\text{flow}_{u \to v} \ge 0$（表示从格子 $u$ 流向相邻格子 $v$ 的“水量”，其中 $M = |V|$ 为可通行格总数）：
           </p>
 
           <div class="math-box">
             <span class="math-title">保证连通性的单商品流约束</span>
-            (5) 0 &lt;= flow_{u→v} &lt;= M * r_u &nbsp;&nbsp;(∀(u, v) ∈ E) : 只有牧场内的格子 u 才能流出水<br />
-            (6) 0 &lt;= flow_{u→v} &lt;= M * r_v &nbsp;&nbsp;(∀(u, v) ∈ E) : 只有牧场内的格子 v 才能流入水<br />
-            (7) Σ_{u} flow_{u→v} - Σ_{w} flow_{v→w} == r_v &nbsp;&nbsp;(∀v ∈ V \ S) : 除绵羊外的每个牧场格(r_v = 1)恰好消耗 1 单位水
+            $$
+            \begin{aligned}
+            &\text{(5) 流出上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in E) \\
+            &\text{(6) 流入上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in E) \\
+            &\text{(7) 消耗守恒:} && \sum_{u:(u,v) \in E} \text{flow}_{u \to v} - \sum_{w:(v,w) \in E} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S)
+            \end{aligned}
+            $$
           </div>
 
           <div class="callout purple">
             <strong>🔍 为什么这能严格保证连通性</strong>
-            由式(7)可知，任何非绵羊格若想设为 <code>r_v = 1</code>，就必须有 <code>1</code> 单位的净水流注入该格。而由式(5)・(6)可知，水流只能在 <code>r = 1</code> 的格子之间传递，且全图中唯一不受式(7)约束、能够凭空产生水流的源点只有<strong>绵羊所在格 <code>S</code></strong>。<br />
-            因此，任何与绵羊被栅栏隔开的孤立区域都无法获得水流，其 <code>r_v</code> 必然被强制为 <code>0</code>。
+            由式(7)可知，任何非绵羊格若想设为 $r_v = 1$，就必须有 $1$ 单位的净水流注入该格。而由式(5)・(6)可知，水流只能在 $r = 1$ 的格子之间传递，且全图中唯一不受式(7)约束、能够凭空产生水流的源点只有<strong>绵羊所在格 $S$</strong>。<br />
+            因此，任何与绵羊被栅栏隔开的孤立区域都无法获得水流，其 $r_v$ 必然被强制为 $0$。
           </div>
         </section>
 
         <section class="section-card">
           <h2>5. 目标函数与“一步提示（部分固定重求解）”</h2>
           <p>
-            最后是目标函数。我们将“最大化牧场总得分（第一优先级）”与“同分时尽量少用栅栏（第二优先级）”通过字典序权重系数 <code>100</code> 合并为一条线性目标函数：
+            最后是目标函数。我们将“最大化牧场总得分（第一优先级）”与“同分时尽量少用栅栏（第二优先级）”通过字典序权重系数 $100$ 合并为一条线性目标函数：
           </p>
 
           <div class="math-box">
             <span class="math-title">目标函数（Objective Function）</span>
-            maximize &nbsp; Σ_{v ∈ V} (100 * w_v) * r_v &nbsp;-&nbsp; Σ_{v ∈ V_fence} 1 * f_v
+            $$ \max \quad \sum_{v \in V} (100 \cdot w_v) \cdot r_v - \sum_{v \in V_{\text{fence}}} 1 \cdot f_v $$
           </div>
 
           <p>
-            此外，游戏中的<strong>“💡 一步提示”</strong>按钮并不是简单读取预设答案，而是<strong>将玩家当前已在棋盘上放置的栅栏集合 <code>F_cur</code> 作为固定约束 <code>f_v == 1 (∀v ∈ F_cur)</code> 加入模型并实时重求解</strong>：
+            此外，游戏中的<strong>“💡 一步提示”</strong>按钮并不是简单读取预设答案，而是<strong>将玩家当前已在棋盘上放置的栅栏集合 $F_{\text{cur}}$ 作为固定约束 $f_v = 1 \; (\forall v \in F_{\text{cur}})$ 加入模型并实时重求解</strong>：
           </p>
           <ul>
             <li>
-              若固定当前栅栏后的最优得分仍能达到理论最优值 <code>Z*</code>：<br />
-              说明玩家当前的摆法走在正确的最优路线上，系统会从剩余未放的最优栅栏 <code>f_v* = 1 (v ∉ F_cur)</code> 中挑出1格在棋盘上以黄色高亮提示。
+              若固定当前栅栏后的最优得分仍能达到理论最优值 $Z^*$：<br />
+              说明玩家当前的摆法走在正确的最优路线上，系统会从剩余未放的最优栅栏 $f_v^* = 1 \; (v \notin F_{\text{cur}})$ 中挑出1格在棋盘上以黄色高亮提示。
             </li>
             <li>
-              若固定当前栅栏后无解（无法挡住野狼）或最优得分低于 <code>Z*</code>：<br />
+              若固定当前栅栏后无解（无法挡住野狼）或最优得分低于 $Z^*$：<br />
               说明玩家已放置的栅栏中存在阻碍最优解的错误栅栏，系统会找出该栅栏并以红色高亮提示玩家将其移除。
             </li>
           </ul>
@@ -1234,6 +1275,7 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
 
     <script type="module">
       import { getGameLang, setGameLang, pickLang } from "../i18n.ts";
+      import { renderMath } from "../../src/katex-init.ts";
 
       const NAV_TEXT = {
         ja: {
@@ -1274,6 +1316,8 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
         });
+
+        renderMath(document.querySelector(".article-shell") || document.body);
       }
 
       document.querySelectorAll("[data-lang-btn]").forEach((btn) => {

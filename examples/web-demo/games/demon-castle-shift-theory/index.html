@@ -188,6 +188,15 @@
         overflow-x: auto;
       }
 
+      .math-box .katex-display {
+        margin: 0.5rem 0;
+        text-align: left;
+      }
+
+      .math-box .katex {
+        color: #fef3c7;
+      }
+
       .math-box .math-title {
         font-family: "Noto Sans JP", sans-serif;
         font-weight: 800;
@@ -355,30 +364,34 @@
         <section class="section-card">
           <h2>2. 決定変数と労務制約の定式化</h2>
           <p>
-            計画対象の日集合を <code>D = {0, 1, …, T-1}</code>、出撃可能な魔物の集合を <code>M</code> とします。各魔物 <code>m ∈ M</code>・各日 <code>d ∈ D</code> に対して、昼番に入るかどうかの二値変数 <code>day_{m,d} ∈ {0, 1}</code> と、夜番に入るかどうかの二値変数 <code>night_{m,d} ∈ {0, 1}</code> を定義します（両方 <code>0</code> ならその日は「休み」です）。
+            計画対象の日集合を $D = \{0, 1, \dots, T-1\}$、出撃可能な魔物の集合を $M$ とします。各魔物 $m \in M$・各日 $d \in D$ に対して、昼番に入るかどうかの二値変数 $\text{day}_{m,d} \in \{0, 1\}$ と、夜番に入るかどうかの二値変数 $\text{night}_{m,d} \in \{0, 1\}$ を定義します（両方 $0$ ならその日は「休み」です）。
           </p>
 
           <div class="math-box">
             <span class="math-title">労務・インターバル制約（すべての魔物 m ∈ M について）</span>
-            (1) 1日1シフトまで: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; day_{m,d} + night_{m,d} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ D)<br />
-            (2) 夜番→翌日昼番の禁止: &nbsp;&nbsp; night_{m,d} + day_{m,d+1} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ {0, …, T-2})<br />
-            (3) 週あたり最大出勤日数: &nbsp;&nbsp; Σ_{d ∈ D} (day_{m,d} + night_{m,d}) &lt;= W_m<br />
-            (4) 指定休（希望休）: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; day_{m,d} + night_{m,d} == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀(m, d) ∈ OffRequests)
+            $$
+            \begin{aligned}
+            &\text{(1) 1日1シフトまで:} && \text{day}_{m,d} + \text{night}_{m,d} \le 1 && (\forall d \in D) \\
+            &\text{(2) 夜番}\to\text{翌日昼番の禁止:} && \text{night}_{m,d} + \text{day}_{m,d+1} \le 1 && (\forall d \in \{0, \dots, T-2\}) \\
+            &\text{(3) 週あたり最大出勤日数:} && \sum_{d \in D} (\text{day}_{m,d} + \text{night}_{m,d}) \le W_m \\
+            &\text{(4) 指定休（希望休）:} && \text{day}_{m,d} + \text{night}_{m,d} = 0 && (\forall (m, d) \in \text{OffRequests})
+            \end{aligned}
+            $$
           </div>
 
           <h3>最大連勤日数制約（スライディング・ウィンドウ法）</h3>
           <p>
-            たとえば「古竜ドラゴは最大 <code>L_m = 1</code> 連勤まで（＝1日働いたら翌日は必ず休み）」「ウェアウルフのフェンリルは最大 <code>L_m = 3</code> 連勤まで」といった連勤制限は、<strong>幅 <code>L_m + 1</code> 日のスライディング・ウィンドウ</strong>を1日ずつずらしながら、「連続するどの <code>L_m + 1</code> 日間を切り取っても、その中の出勤日数は最大 <code>L_m</code> 日以下である（＝最低1日は休みがある）」と書けます。
+            たとえば「古竜ドラゴは最大 $L_m = 1$ 連勤まで（＝1日働いたら翌日は必ず休み）」「ウェアウルフのフェンリルは最大 $L_m = 3$ 連勤まで」といった連勤制限は、<strong>幅 $L_m + 1$ 日のスライディング・ウィンドウ</strong>を1日ずつずらしながら、「連続するどの $L_m + 1$ 日間を切り取っても、その中の出勤日数は最大 $L_m$ 日以下である（＝最低1日は休みがある）」と書けます。
           </p>
 
           <div class="math-box">
             <span class="math-title">スライディング・ウィンドウによる連勤上限（幅 L_m + 1）</span>
-            Σ_{k = 0}^{L_m} (day_{m, start + k} + night_{m, start + k}) &lt;= L_m &nbsp;&nbsp;&nbsp;(∀start ∈ {0, …, T - L_m - 1})
+            $$ \sum_{k = 0}^{L_m} (\text{day}_{m, \text{start} + k} + \text{night}_{m, \text{start} + k}) \le L_m \quad (\forall \text{start} \in \{0, \dots, T - L_m - 1\}) $$
           </div>
 
           <div class="callout cyan">
             <strong>💡 なぜスライディング・ウィンドウが有効なのか</strong>
-            「何連勤目か」を数える状態変数や非線形な条件分岐を一切使わずに、純粋な線形不等式だけで任意の連勤上限 <code>L_m</code> を漏れなく表現できます。しかもLP緩和が比較的タイトになるため、MILPソルバーの分枝限定法が高速に収束します。
+            「何連勤目か」を数える状態変数や非線形な条件分岐を一切使わずに、純粋な線形不等式だけで任意の連勤上限 $L_m$ を漏れなく表現できます。しかもLP緩和が比較的タイトになるため、MILPソルバーの分枝限定法が高速に収束します。
           </div>
         </section>
 
@@ -388,16 +401,16 @@
             ゲーム中盤から登場する新米スライムのプルルには、<strong>「夜番に入るときは1人きりにせず、必ず他の誰かと一緒に配置しなければならない」</strong>というルールがあります（実務のシフト表でも「新人看護師は夜勤に単独配置しない」という全く同じ制約が頻出します）。
           </p>
           <p>
-            論理式で書くと「もし <code>night_{pururu, d} == 1</code> ならば、<code>Σ_{m ≠ pururu} night_{m, d} &gt;= 1</code>」という含意（Implication）になりますが、二値変数の性質を使うと、たった1本の線形不等式に変換できます。
+            論理式で書くと「もし $\text{night}_{\text{pururu}, d} = 1$ ならば、$\sum_{m \neq \text{pururu}} \text{night}_{m, d} \ge 1$」という含意（Implication）になりますが、二値変数の性質を使うと、たった1本の線形不等式に変換できます。
           </p>
 
           <div class="math-box">
             <span class="math-title">同伴配置（単独夜勤禁止）の線形不等式</span>
-            night_{pururu, d} - Σ_{m ∈ M \ {pururu}} night_{m, d} &lt;= 0 &nbsp;&nbsp;&nbsp;(∀d ∈ D)
+            $$ \text{night}_{\text{pururu}, d} - \sum_{m \in M \setminus \{\text{pururu}\}} \text{night}_{m, d} \le 0 \quad (\forall d \in D) $$
           </div>
 
           <p>
-            実際、他のメンバーが誰も夜番に入っていない（<code>Σ_{m ≠ pururu} night_{m, d} == 0</code>）ときは、<code>night_{pururu, d} &lt;= 0</code> となってプルルも配置できなくなり、逆に他の誰か1人でも夜番に入っていれば（和が <code>1</code> 以上）、<code>night_{pururu, d} &lt;= 1</code> となってプルルも配置可能になります。
+            実際、他のメンバーが誰も夜番に入っていない（$\sum_{m \neq \text{pururu}} \text{night}_{m, d} = 0$）ときは、$\text{night}_{\text{pururu}, d} \le 0$ となってプルルも配置できなくなり、逆に他の誰か1人でも夜番に入っていれば（和が $1$ 以上）、$\text{night}_{\text{pururu}, d} \le 1$ となってプルルも配置可能になります。
           </p>
         </section>
 
@@ -407,42 +420,50 @@
             さらにゲーム性を深めているのが、メンバー間の<strong>ペア相性（連携ボーナスと同番拒否）</strong>です。
           </p>
           <ul>
-            <li><strong>仲良し・連携ペア（<code>Δ_{A,B} &gt; 0</code>）</strong>：同じシフト <code>(d, s)</code> に <code>A</code> と <code>B</code> の両方が入ると、連携ボーナスで防衛力と士気が <code>+Δ_{A,B}</code> 上がる。</li>
-            <li><strong>不仲・同番拒否ペア（<code>Δ_{A,B} &lt; 0</code>）</strong>：同じシフトに <code>A</code> と <code>B</code> が一緒に入ると、反発して防衛力と士気が <code>Δ_{A,B}</code> 下がる。</li>
+            <li><strong>仲良し・連携ペア（$\Delta_{A,B} > 0$）</strong>：同じシフト $(d, s)$ に $A$ と $B$ の両方が入ると、連携ボーナスで防衛力と士気が $+\Delta_{A,B}$ 上がる。</li>
+            <li><strong>不仲・同番拒否ペア（$\Delta_{A,B} &lt; 0$）</strong>：同じシフトに $A$ と $B$ が一緒に入ると、反発して防衛力と士気が $\Delta_{A,B}$ 下がる。</li>
           </ul>
           <p>
-            これを素直に式にすると、<code>A</code> の配置変数 <code>x_{A,d,s}</code> と <code>B</code> の配置変数 <code>x_{B,d,s}</code> の<strong>積（二次項）<code>x_{A,d,s} * x_{B,d,s}</code></strong> が現れてしまい、そのままでは線形計画（MILP）になりません。
+            これを素直に式にすると、$A$ の配置変数 $x_{A,d,s}$ と $B$ の配置変数 $x_{B,d,s}$ の<strong>積（二次項）$x_{A,d,s} \cdot x_{B,d,s}$</strong> が現れてしまい、そのままでは線形計画（MILP）になりません。
           </p>
 
-          <h3>補助二値変数 <code>pair_{A,B,d,s} ∈ {0, 1}</code> による標準線形化（Fortet / McCormick 線形化）</h3>
+          <h3>補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ による標準線形化（Fortet / McCormick 線形化）</h3>
           <p>
-            そこで、「<code>A</code> と <code>B</code> が同じ枠 <code>(d, s)</code> に同時配置されたときだけ <code>1</code> になる補助二値変数 <code>pair_{A,B,d,s} ∈ {0, 1}</code>」を導入し、次の3本の線形不等式で積 <code>x_A * x_B</code> と完全に等価にします。
+            そこで、「$A$ と $B$ が同じ枠 $(d, s)$ に同時配置されたときだけ $1$ になる補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$」を導入し、次の3本の線形不等式で積 $x_A \cdot x_B$ と完全に等価にします。
           </p>
 
           <div class="math-box">
             <span class="math-title">二値変数の積 pair == x_A * x_B を表す3本の線形不等式</span>
-            (a) pair_{A,B,d,s} - x_{A,d,s} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: A がいない(0)なら pair も必ず 0<br />
-            (b) pair_{A,B,d,s} - x_{B,d,s} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: B がいない(0)なら pair も必ず 0<br />
-            (c) x_{A,d,s} + x_{B,d,s} - pair_{A,B,d,s} &lt;= 1 : A と B が両方いる(1+1=2)なら pair は必ず 1
+            $$
+            \begin{aligned}
+            \text{(a)} \quad & \text{pair}_{A,B,d,s} - x_{A,d,s} \le 0 && (\text{A が不在}(0)\text{なら pair}=0) \\
+            \text{(b)} \quad & \text{pair}_{A,B,d,s} - x_{B,d,s} \le 0 && (\text{B が不在}(0)\text{なら pair}=0) \\
+            \text{(c)} \quad & x_{A,d,s} + x_{B,d,s} - \text{pair}_{A,B,d,s} \le 1 && (\text{A, B 双方配置}(1+1=2)\text{なら pair}=1)
+            \end{aligned}
+            $$
           </div>
 
           <div class="callout gold">
             <strong>✨ 正のシナジーも負のペナルティもこの3本で厳密に表現できる理由</strong>
-            もし正のボーナス（<code>Δ_{A,B} &gt; 0</code>）だけなら式(a)・(b)の上界だけでも目的関数が自然に <code>pair = 1</code> を選びますが、負のペナルティ（<code>Δ_{A,B} &lt; 0</code>、不仲ペア）がある場合はソルバーがペナルティを逃れようとして <code>pair = 0</code> に下げようとします。そこに式(c)の下界 <code>pair &gt;= x_A + x_B - 1</code> があることで、<strong>「2人を同時に置いたら必ず <code>pair = 1</code> になって減点を受ける」</strong>ことが厳密に強制されます。
+            もし正のボーナス（$\Delta_{A,B} > 0$）だけなら式(a)・(b)の上界だけでも目的関数が自然に $\text{pair} = 1$ を選びますが、負のペナルティ（$\Delta_{A,B} &lt; 0$、不仲ペア）がある場合はソルバーがペナルティを逃れようとして $\text{pair} = 0$ に下げようとします。そこに式(c)の下界 $\text{pair} \ge x_A + x_B - 1$ があることで、<strong>「2人を同時に置いたら必ず $\text{pair} = 1$ になって減点を受ける」</strong>ことが厳密に強制されます。
           </div>
         </section>
 
         <section class="section-card">
           <h2>5. 防衛力被覆制約と「別解の列挙（No-Good Cut）」</h2>
           <p>
-            各時間帯 <code>(d, s)</code> において、個人の実効防衛力 <code>P_{m,s}</code> とペア相性補正の合計が必要防衛力 <code>R_{d,s}</code> 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します。
+            各時間帯 $(d, s)$ において、個人の実効防衛力 $P_{m,s}$ とペア相性補正の合計が必要防衛力 $R_{d,s}$ 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します。
           </p>
 
           <div class="math-box">
             <span class="math-title">各襲来枠 (d, s) の防衛力・最低人数制約と目的関数</span>
-            防衛力被覆: &nbsp; Σ_{m ∈ M} P_{m,s} * x_{m,d,s} + Σ_{(A,B)} Δ_{A,B} * pair_{A,B,d,s} &gt;= R_{d,s}<br />
-            最低人数: &nbsp;&nbsp;&nbsp; Σ_{m ∈ M} x_{m,d,s} &gt;= N_{d,s}<br />
-            目的関数: &nbsp;&nbsp;&nbsp; maximize &nbsp; 1000 + Σ_{d,s} ( Σ_{m} morale_{m,s} * x_{m,d,s} + Σ_{(A,B)} Δ_{A,B} * pair_{A,B,d,s} )
+            $$
+            \begin{aligned}
+            &\text{防衛力被覆:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{最低人数:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
+            &\text{目的関数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            \end{aligned}
+            $$
           </div>
 
           <h3>複数の最適シフト案を次々と提案する「No-Good Cut」</h3>
@@ -534,30 +555,34 @@ m.constraint(
         <section class="section-card">
           <h2>2. Decision Variables and Labor Rule Formulation</h2>
           <p>
-            Let <code>D = {0, 1, …, T-1}</code> denote the planning days and <code>M</code> denote the on-duty guard roster. For each guard <code>m ∈ M</code> and day <code>d ∈ D</code>, we define binary variables <code>day_{m,d} ∈ {0, 1}</code> and <code>night_{m,d} ∈ {0, 1}</code> (if both are <code>0</code>, guard <code>m</code> rests on day <code>d</code>).
+            Let $D = \{0, 1, \dots, T-1\}$ denote the planning days and $M$ denote the on-duty guard roster. For each guard $m \in M$ and day $d \in D$, we define binary variables $\text{day}_{m,d} \in \{0, 1\}$ and $\text{night}_{m,d} \in \{0, 1\}$ (if both are $0$, guard $m$ rests on day $d$).
           </p>
 
           <div class="math-box">
             <span class="math-title">Labor &amp; Rest Interval Constraints (for all m ∈ M)</span>
-            (1) At most 1 shift per day: &nbsp;&nbsp;&nbsp;&nbsp; day_{m,d} + night_{m,d} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ D)<br />
-            (2) No Night → Next-Morning Day: &nbsp; night_{m,d} + day_{m,d+1} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ {0, …, T-2})<br />
-            (3) Weekly shift cap: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{d ∈ D} (day_{m,d} + night_{m,d}) &lt;= W_m<br />
-            (4) Requested day off (PTO): &nbsp;&nbsp;&nbsp;&nbsp; day_{m,d} + night_{m,d} == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀(m, d) ∈ OffRequests)
+            $$
+            \begin{aligned}
+            &\text{(1) At most 1 shift per day:} && \text{day}_{m,d} + \text{night}_{m,d} \le 1 && (\forall d \in D) \\
+            &\text{(2) No Night}\to\text{Next Day:} && \text{night}_{m,d} + \text{day}_{m,d+1} \le 1 && (\forall d \in \{0, \dots, T-2\}) \\
+            &\text{(3) Weekly shift cap:} && \sum_{d \in D} (\text{day}_{m,d} + \text{night}_{m,d}) \le W_m \\
+            &\text{(4) Requested day off (PTO):} && \text{day}_{m,d} + \text{night}_{m,d} = 0 && (\forall (m, d) \in \text{OffRequests})
+            \end{aligned}
+            $$
           </div>
 
           <h3>Maximum Consecutive Working Days (Sliding-Window Formulation)</h3>
           <p>
-            To enforce rules such as "Elder Dragon Drago can work at most <code>L_m = 1</code> consecutive day (must rest the day after working)" or "Werewolf Fenrir can work at most <code>L_m = 3</code> consecutive days," we slide a <strong>window of length <code>L_m + 1</code> days</strong> across the horizon. Within every contiguous window of <code>L_m + 1</code> days, the guard can work at most <code>L_m</code> days (guaranteeing at least one rest day inside the window):
+            To enforce rules such as "Elder Dragon Drago can work at most $L_m = 1$ consecutive day (must rest the day after working)" or "Werewolf Fenrir can work at most $L_m = 3$ consecutive days," we slide a <strong>window of length $L_m + 1$ days</strong> across the horizon. Within every contiguous window of $L_m + 1$ days, the guard can work at most $L_m$ days (guaranteeing at least one rest day inside the window):
           </p>
 
           <div class="math-box">
             <span class="math-title">Sliding-Window Consecutive Work Limit (Window Width L_m + 1)</span>
-            Σ_{k = 0}^{L_m} (day_{m, start + k} + night_{m, start + k}) &lt;= L_m &nbsp;&nbsp;&nbsp;(∀start ∈ {0, …, T - L_m - 1})
+            $$ \sum_{k = 0}^{L_m} (\text{day}_{m, \text{start} + k} + \text{night}_{m, \text{start} + k}) \le L_m \quad (\forall \text{start} \in \{0, \dots, T - L_m - 1\}) $$
           </div>
 
           <div class="callout cyan">
             <strong>💡 Why the Sliding-Window Formulation Is Effective</strong>
-            It expresses arbitrary consecutive-day limits <code>L_m</code> using pure linear inequalities without auxiliary state counters or non-linear branching. It also yields a tight LP relaxation, allowing branch-and-bound solvers to converge rapidly.
+            It expresses arbitrary consecutive-day limits $L_m$ using pure linear inequalities without auxiliary state counters or non-linear branching. It also yields a tight LP relaxation, allowing branch-and-bound solvers to converge rapidly.
           </div>
         </section>
 
@@ -567,16 +592,16 @@ m.constraint(
             Rookie guards like Pururu the Slime have a supervision rule: <strong>"She cannot be assigned to a night shift alone; at least one other colleague must work the same night shift."</strong> (This mirrors hospital rostering rules where first-year nurses cannot staff a night ward solo.)
           </p>
           <p>
-            Logically, this is the implication <code>night_{pururu, d} == 1 ⇒ Σ_{m ≠ pururu} night_{m, d} &gt;= 1</code>. Because all variables are binary, it translates into a single linear inequality:
+            Logically, this is the implication $\text{night}_{\text{pururu}, d} = 1 \implies \sum_{m \neq \text{pururu}} \text{night}_{m, d} \ge 1$. Because all variables are binary, it translates into a single linear inequality:
           </p>
 
           <div class="math-box">
             <span class="math-title">Linear Inequality for Supervised Night Duty</span>
-            night_{pururu, d} - Σ_{m ∈ M \ {pururu}} night_{m, d} &lt;= 0 &nbsp;&nbsp;&nbsp;(∀d ∈ D)
+            $$ \text{night}_{\text{pururu}, d} - \sum_{m \in M \setminus \{\text{pururu}\}} \text{night}_{m, d} \le 0 \quad (\forall d \in D) $$
           </div>
 
           <p>
-            When no other guard is assigned to night duty on day <code>d</code> (the sum is <code>0</code>), the inequality forces <code>night_{pururu, d} &lt;= 0</code>. As soon as at least one colleague is assigned (the sum is <code>1</code> or more), <code>night_{pururu, d} &lt;= 1</code> allows Pururu to join the shift.
+            When no other guard is assigned to night duty on day $d$ (the sum is $0$), the inequality forces $\text{night}_{\text{pururu}, d} \le 0$. As soon as at least one colleague is assigned (the sum is $1$ or more), $\text{night}_{\text{pururu}, d} \le 1$ allows Pururu to join the shift.
           </p>
         </section>
 
@@ -586,42 +611,50 @@ m.constraint(
             Guard chemistry plays a central role in building a strong defense line:
           </p>
           <ul>
-            <li><strong>Synergy Pairs (<code>Δ_{A,B} &gt; 0</code>)</strong>: Assigning both <code>A</code> and <code>B</code> to the same slot <code>(d, s)</code> grants a <code>+Δ_{A,B}</code> (+100) teamwork bonus to defense power and morale.</li>
-            <li><strong>Incompatible Pairs (<code>Δ_{A,B} &lt; 0</code>)</strong>: Assigning both <code>A</code> and <code>B</code> to the same slot triggers a <code>Δ_{A,B}</code> (-150) conflict penalty.</li>
+            <li><strong>Synergy Pairs ($\Delta_{A,B} > 0$)</strong>: Assigning both $A$ and $B$ to the same slot $(d, s)$ grants a $+\Delta_{A,B}$ (+100) teamwork bonus to defense power and morale.</li>
+            <li><strong>Incompatible Pairs ($\Delta_{A,B} &lt; 0$)</strong>: Assigning both $A$ and $B$ to the same slot triggers a $\Delta_{A,B}$ (-150) conflict penalty.</li>
           </ul>
           <p>
-            Written directly, this introduces the <strong>quadratic product <code>x_{A,d,s} * x_{B,d,s}</code></strong> of two binary variables, which is non-linear.
+            Written directly, this introduces the <strong>quadratic product $x_{A,d,s} \cdot x_{B,d,s}$</strong> of two binary variables, which is non-linear.
           </p>
 
-          <h3>Standard Linearization via Auxiliary Binary Variable <code>pair_{A,B,d,s} ∈ {0, 1}</code> (Fortet / McCormick)</h3>
+          <h3>Standard Linearization via Auxiliary Binary Variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ (Fortet / McCormick)</h3>
           <p>
-            We introduce an auxiliary binary variable <code>pair_{A,B,d,s} ∈ {0, 1}</code> that equals <code>1</code> if and only if both <code>A</code> and <code>B</code> are assigned to slot <code>(d, s)</code>, governed by three linear inequalities:
+            We introduce an auxiliary binary variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ that equals $1$ if and only if both $A$ and $B$ are assigned to slot $(d, s)$, governed by three linear inequalities:
           </p>
 
           <div class="math-box">
             <span class="math-title">Three Linear Inequalities Enforcing pair == x_A * x_B</span>
-            (a) pair_{A,B,d,s} - x_{A,d,s} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: If A is absent (0), pair must be 0<br />
-            (b) pair_{A,B,d,s} - x_{B,d,s} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: If B is absent (0), pair must be 0<br />
-            (c) x_{A,d,s} + x_{B,d,s} - pair_{A,B,d,s} &lt;= 1 : If both A and B are present (1+1=2), pair must be 1
+            $$
+            \begin{aligned}
+            \text{(a)} \quad & \text{pair}_{A,B,d,s} - x_{A,d,s} \le 0 && (\text{if A is absent }(0)\text{, pair}=0) \\
+            \text{(b)} \quad & \text{pair}_{A,B,d,s} - x_{B,d,s} \le 0 && (\text{if B is absent }(0)\text{, pair}=0) \\
+            \text{(c)} \quad & x_{A,d,s} + x_{B,d,s} - \text{pair}_{A,B,d,s} \le 1 && (\text{if both present }(1+1=2)\text{, pair}=1)
+            \end{aligned}
+            $$
           </div>
 
           <div class="callout gold">
             <strong>✨ Why Both Upper and Lower Bounds Matter Here</strong>
-            For a positive synergy bonus (<code>Δ_{A,B} &gt; 0</code>), upper bounds (a) and (b) alone would suffice because maximization naturally pushes <code>pair</code> up to <code>1</code>. Conversely, for a negative conflict penalty (<code>Δ_{A,B} &lt; 0</code>), the solver tries to set <code>pair = 0</code> to dodge the penalty; inequality (c) provides the lower bound <code>pair &gt;= x_A + x_B - 1</code> that forces <code>pair = 1</code> whenever both guards share a slot.
+            For a positive synergy bonus ($\Delta_{A,B} > 0$), upper bounds (a) and (b) alone would suffice because maximization naturally pushes $\text{pair}$ up to $1$. Conversely, for a negative conflict penalty ($\Delta_{A,B} &lt; 0$), the solver tries to set $\text{pair} = 0$ to dodge the penalty; inequality (c) provides the lower bound $\text{pair} \ge x_A + x_B - 1$ that forces $\text{pair} = 1$ whenever both guards share a slot.
           </div>
         </section>
 
         <section class="section-card">
           <h2>5. Defense Coverage Constraints and Alternative Solutions (No-Good Cuts)</h2>
           <p>
-            In each slot <code>(d, s)</code>, the sum of individual effective defense powers <code>P_{m,s}</code> plus pairwise modifiers must cover the required power <code>R_{d,s}</code> and minimum headcount <code>N_{d,s}</code>, while maximizing total castle morale:
+            In each slot $(d, s)$, the sum of individual effective defense powers $P_{m,s}$ plus pairwise modifiers must cover the required power $R_{d,s}$ and minimum headcount $N_{d,s}$, while maximizing total castle morale:
           </p>
 
           <div class="math-box">
             <span class="math-title">Slot Coverage Constraints and Objective Function</span>
-            Defense Coverage: &nbsp; Σ_{m ∈ M} P_{m,s} * x_{m,d,s} + Σ_{(A,B)} Δ_{A,B} * pair_{A,B,d,s} &gt;= R_{d,s}<br />
-            Minimum Staff: &nbsp;&nbsp;&nbsp;&nbsp; Σ_{m ∈ M} x_{m,d,s} &gt;= N_{d,s}<br />
-            Objective: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; maximize &nbsp; 1000 + Σ_{d,s} ( Σ_{m} morale_{m,s} * x_{m,d,s} + Σ_{(A,B)} Δ_{A,B} * pair_{A,B,d,s} )
+            $$
+            \begin{aligned}
+            &\text{Defense Coverage:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{Minimum Staff:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
+            &\text{Objective:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            \end{aligned}
+            $$
           </div>
 
           <h3>Enumerating Alternative Rosters with a "No-Good Cut"</h3>
@@ -713,30 +746,34 @@ m.constraint(
         <section class="section-card">
           <h2>2. 决策变量与劳务规则的数学建模</h2>
           <p>
-            设计划周期的日期集合为 <code>D = {0, 1, …, T-1}</code>，可出勤的魔物集合为 <code>M</code>。对每位成员 <code>m ∈ M</code> 与每一天 <code>d ∈ D</code>，定义是否上白班的 0-1 变量 <code>day_{m,d} ∈ {0, 1}</code> 与是否上夜班的 0-1 变量 <code>night_{m,d} ∈ {0, 1}</code>（若两者均为 <code>0</code>，则当天为“休息”）。
+            设计划周期的日期集合为 $D = \{0, 1, \dots, T-1\}$，可出勤的魔物集合为 $M$。对每位成员 $m \in M$ 与每一天 $d \in D$，定义是否上白班的 0-1 变量 $\text{day}_{m,d} \in \{0, 1\}$ 与是否上夜班的 0-1 变量 $\text{night}_{m,d} \in \{0, 1\}$（若两者均为 $0$，则当天为“休息”）。
           </p>
 
           <div class="math-box">
             <span class="math-title">劳务与班次间隔约束（对所有成员 m ∈ M）</span>
-            (1) 每天最多一个班次: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; day_{m,d} + night_{m,d} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ D)<br />
-            (2) 禁止夜班次日接白班: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; night_{m,d} + day_{m,d+1} &lt;= 1 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀d ∈ {0, …, T-2})<br />
-            (3) 每周最大出勤天数: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Σ_{d ∈ D} (day_{m,d} + night_{m,d}) &lt;= W_m<br />
-            (4) 指定休假（固定排休）: &nbsp;&nbsp;&nbsp; day_{m,d} + night_{m,d} == 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(∀(m, d) ∈ OffRequests)
+            $$
+            \begin{aligned}
+            &\text{(1) 每天最多一个班次:} && \text{day}_{m,d} + \text{night}_{m,d} \le 1 && (\forall d \in D) \\
+            &\text{(2) 禁止夜班连白班:} && \text{night}_{m,d} + \text{day}_{m,d+1} \le 1 && (\forall d \in \{0, \dots, T-2\}) \\
+            &\text{(3) 周出勤上限天数:} && \sum_{d \in D} (\text{day}_{m,d} + \text{night}_{m,d}) \le W_m \\
+            &\text{(4) 指定休假（固定排休）:} && \text{day}_{m,d} + \text{night}_{m,d} = 0 && (\forall (m, d) \in \text{OffRequests})
+            \end{aligned}
+            $$
           </div>
 
           <h3>最大连续工作天数约束（滑动窗口法）</h3>
           <p>
-            例如“古龙德拉戈最多连续工作 <code>L_m = 1</code> 天（工作1天后次日必须休息）”、“狼人芬里尔最多连续工作 <code>L_m = 3</code> 天”这类限制，可以通过<strong>长度为 <code>L_m + 1</code> 天的滑动窗口（Sliding Window）</strong>逐日平移来表达：“在任意连续的 <code>L_m + 1</code> 天窗口内，出勤天数总和最多不超过 <code>L_m</code> 天（即窗口内至少有1天休息）”。
+            例如“古龙德拉戈最多连续工作 $L_m = 1$ 天（工作1天后次日必须休息）”、“狼人芬里尔最多连续工作 $L_m = 3$ 天”这类限制，可以通过<strong>长度为 $L_m + 1$ 天的滑动窗口（Sliding Window）</strong>逐日平移来表达：“在任意连续的 $L_m + 1$ 天窗口内，出勤天数总和最多不超过 $L_m$ 天（即窗口内至少有1天休息）”。
           </p>
 
           <div class="math-box">
             <span class="math-title">滑动窗口表达的连勤上限（窗口宽度 L_m + 1）</span>
-            Σ_{k = 0}^{L_m} (day_{m, start + k} + night_{m, start + k}) &lt;= L_m &nbsp;&nbsp;&nbsp;(∀start ∈ {0, …, T - L_m - 1})
+            $$ \sum_{k = 0}^{L_m} (\text{day}_{m, \text{start} + k} + \text{night}_{m, \text{start} + k}) \le L_m \quad (\forall \text{start} \in \{0, \dots, T - L_m - 1\}) $$
           </div>
 
           <div class="callout cyan">
             <strong>💡 为什么滑动窗口写法非常实用</strong>
-            它无需引入记录“当前是第几天连勤”的状态变量或非线性条件分支，仅用纯线性不等式就能严密表达任意连勤上限 <code>L_m</code>，且具有较紧的 LP 松弛界，有助于分支定界求解器快速收敛。
+            它无需引入记录“当前是第几天连勤”的状态变量或非线性条件分支，仅用纯线性不等式就能严密表达任意连勤上限 $L_m$，且具有较紧的 LP 松弛界，有助于分支定界求解器快速收敛。
           </div>
         </section>
 
@@ -746,16 +783,16 @@ m.constraint(
             游戏中期加入的新人史莱姆普露露有一条特殊规则：<strong>“安排夜班时不能让她独自一人，必须至少有一位其他同伴一起上夜班”</strong>（在医院排班中同样常见“新人护士不得单独值夜班”的带教约束）。
           </p>
           <p>
-            用逻辑式表示即蕴含关系：“若 <code>night_{pururu, d} == 1</code>，则 <code>Σ_{m ≠ pururu} night_{m, d} &gt;= 1</code>”。利用 0-1 变量的性质，只需一条线性不等式即可完成转换：
+            用逻辑式表示即蕴含关系：“若 $\text{night}_{\text{pururu}, d} = 1$，则 $\sum_{m \neq \text{pururu}} \text{night}_{m, d} \ge 1$”。利用 0-1 变量的性质，只需一条线性不等式即可完成转换：
           </p>
 
           <div class="math-box">
             <span class="math-title">同伴陪护（禁止单独夜班）的线性不等式</span>
-            night_{pururu, d} - Σ_{m ∈ M \ {pururu}} night_{m, d} &lt;= 0 &nbsp;&nbsp;&nbsp;(∀d ∈ D)
+            $$ \text{night}_{\text{pururu}, d} - \sum_{m \in M \setminus \{\text{pururu}\}} \text{night}_{m, d} \le 0 \quad (\forall d \in D) $$
           </div>
 
           <p>
-            当其他成员都没有安排当天夜班（求和为 <code>0</code>）时，不等式强制 <code>night_{pururu, d} &lt;= 0</code>，普露露无法单独排入夜班；反之只要有任意一位前辈在夜班（求和 <code>&gt;= 1</code>），<code>night_{pururu, d} &lt;= 1</code> 即允许普露露一同出勤。
+            当其他成员都没有安排当天夜班（求和为 $0$）时，不等式强制 $\text{night}_{\text{pururu}, d} \le 0$，普露露无法单独排入夜班；反之只要有任意一位前辈在夜班（求和 $\ge 1$），$\text{night}_{\text{pururu}, d} \le 1$ 即允许普露露一同出勤。
           </p>
         </section>
 
@@ -765,42 +802,50 @@ m.constraint(
             进一步丰富排班策略的是成员之间的<strong>搭档相性（协同加成与同班排斥）</strong>：
           </p>
           <ul>
-            <li><strong>默契搭档（<code>Δ_{A,B} &gt; 0</code>）</strong>：当 <code>A</code> 与 <code>B</code> 同时排入同一班次 <code>(d, s)</code> 时，触发协同加成，防卫力与士气提升 <code>+Δ_{A,B}</code>（+100）。</li>
-            <li><strong>不睦组合（<code>Δ_{A,B} &lt; 0</code>）</strong>：当 <code>A</code> 与 <code>B</code> 被排入同一班次时，因互相排斥导致防卫力与士气下降 <code>Δ_{A,B}</code>（-150）。</li>
+            <li><strong>默契搭档（$\Delta_{A,B} > 0$）</strong>：当 $A$ 与 $B$ 同时排入同一班次 $(d, s)$ 时，触发协同加成，防卫力与士气提升 $+\Delta_{A,B}$（+100）。</li>
+            <li><strong>不睦组合（$\Delta_{A,B} &lt; 0$）</strong>：当 $A$ 与 $B$ 被排入同一班次时，因互相排斥导致防卫力与士气下降 $\Delta_{A,B}$（-150）。</li>
           </ul>
           <p>
-            若直接写出数学表达式，会出现两个 0-1 变量的<strong>乘积项（二次项）<code>x_{A,d,s} * x_{B,d,s}</code></strong>，导致模型不再是线性规划。
+            若直接写出数学表达式，会出现两个 0-1 变量的<strong>乘积项（二次项）$x_{A,d,s} \cdot x_{B,d,s}$</strong>，导致模型不再是线性规划。
           </p>
 
-          <h3>引入辅助 0-1 变量 <code>pair_{A,B,d,s} ∈ {0, 1}</code> 的标准线性化（Fortet / McCormick 线性化）</h3>
+          <h3>引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ 的标准线性化（Fortet / McCormick 线性化）</h3>
           <p>
-            为此，我们引入辅助 0-1 变量 <code>pair_{A,B,d,s} ∈ {0, 1}</code>（仅当 <code>A</code> 与 <code>B</code> 同时排入班次 <code>(d, s)</code> 时取 <code>1</code>），并用以下3条线性不等式使其与乘积 <code>x_A * x_B</code> 完全等价：
+            为此，我们引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$（仅当 $A$ 与 $B$ 同时排入班次 $(d, s)$ 时取 $1$），并用以下3条线性不等式使其与乘积 $x_A \cdot x_B$ 完全等价：
           </p>
 
           <div class="math-box">
             <span class="math-title">等价表达 0-1 变量乘积 pair == x_A * x_B 的 3 条线性不等式</span>
-            (a) pair_{A,B,d,s} - x_{A,d,s} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 若 A 未出勤(0)，则 pair 必为 0<br />
-            (b) pair_{A,B,d,s} - x_{B,d,s} &lt;= 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: 若 B 未出勤(0)，则 pair 必为 0<br />
-            (c) x_{A,d,s} + x_{B,d,s} - pair_{A,B,d,s} &lt;= 1 : 若 A 与 B 同时出勤(1+1=2)，则 pair 必为 1
+            $$
+            \begin{aligned}
+            \text{(a)} \quad & \text{pair}_{A,B,d,s} - x_{A,d,s} \le 0 && (\text{若 A 未出勤}(0)\text{，则 pair 必为 } 0) \\
+            \text{(b)} \quad & \text{pair}_{A,B,d,s} - x_{B,d,s} \le 0 && (\text{若 B 未出勤}(0)\text{，则 pair 必为 } 0) \\
+            \text{(c)} \quad & x_{A,d,s} + x_{B,d,s} - \text{pair}_{A,B,d,s} \le 1 && (\text{若 A、B 均出勤}(1+1=2)\text{，则 pair 必为 } 1)
+            \end{aligned}
+            $$
           </div>
 
           <div class="callout gold">
             <strong>✨ 为什么正负相性都能由这 3 条不等式严密刻画</strong>
-            如果只有正加成（<code>Δ_{A,B} &gt; 0</code>），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 <code>pair</code> 推向 <code>1</code>；但当存在负惩罚（<code>Δ_{A,B} &lt; 0</code>，不睦组合）时，求解器会试图将 <code>pair</code> 设为 <code>0</code> 来逃避扣分。此时下界约束 (c) <code>pair &gt;= x_A + x_B - 1</code> 能够严格强制<strong>“只要两人同班，<code>pair</code> 就必须为 <code>1</code> 并扣除 150 点防卫力”</strong>。
+            如果只有正加成（$\Delta_{A,B} > 0$），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 $\text{pair}$ 推向 $1$；但当存在负惩罚（$\Delta_{A,B} &lt; 0$，不睦组合）时，求解器会试图将 $\text{pair}$ 设为 $0$ 来逃避扣分。此时下界约束 (c) $\text{pair} \ge x_A + x_B - 1$ 能够严格强制<strong>“只要两人同班，$\text{pair}$ 就必须为 $1$ 并扣除 150 点防卫力”</strong>。
           </div>
         </section>
 
         <section class="section-card">
           <h2>5. 防卫力覆盖约束与“多解枚举（No-Good Cut）”</h2>
           <p>
-            在每个时段 <code>(d, s)</code>，个人实际防卫力 <code>P_{m,s}</code> 与搭档相性修正之和必须达到所需防卫力 <code>R_{d,s}</code> 及最低人数 <code>N_{d,s}</code>（覆盖约束），并在此基础上最大化全周期的总士气（Morale）：
+            在每个时段 $(d, s)$，个人实际防卫力 $P_{m,s}$ 与搭档相性修正之和必须达到所需防卫力 $R_{d,s}$ 及最低人数 $N_{d,s}$（覆盖约束），并在此基础上最大化全周期的总士气（Morale）：
           </p>
 
           <div class="math-box">
             <span class="math-title">各班次 (d, s) 的防卫力/最低人数约束与目标函数</span>
-            防卫力覆盖: &nbsp; Σ_{m ∈ M} P_{m,s} * x_{m,d,s} + Σ_{(A,B)} Δ_{A,B} * pair_{A,B,d,s} &gt;= R_{d,s}<br />
-            最低人数: &nbsp;&nbsp;&nbsp; Σ_{m ∈ M} x_{m,d,s} &gt;= N_{d,s}<br />
-            目标函数: &nbsp;&nbsp;&nbsp; maximize &nbsp; 1000 + Σ_{d,s} ( Σ_{m} morale_{m,s} * x_{m,d,s} + Σ_{(A,B)} Δ_{A,B} * pair_{A,B,d,s} )
+            $$
+            \begin{aligned}
+            &\text{防卫力覆盖:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{最低人数:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
+            &\text{目标函数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            \end{aligned}
+            $$
           </div>
 
           <h3>生成不同最优排班方案的“No-Good Cut（整数割）”</h3>
@@ -825,6 +870,7 @@ m.constraint(
 
     <script type="module">
       import { getGameLang, setGameLang, pickLang } from "../i18n.ts";
+      import { renderMath } from "../../src/katex-init.ts";
 
       const NAV_TEXT = {
         ja: {
@@ -865,6 +911,8 @@ m.constraint(
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
         });
+
+        renderMath(document.querySelector(".article-shell") || document.body);
       }
 
       document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
