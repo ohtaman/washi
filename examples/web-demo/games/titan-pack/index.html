@@ -916,11 +916,11 @@
           </p>
           <pre style="background:#0f172a; color:#f8fafc; padding:0.9rem; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:0.78rem; overflow-x:auto;">
 // 2パーツ (i, j) が互いに重ならない条件
-x[i] + w[i] <= x[j] + M * (1 - delta[i][j][0])
-x[j] + w[j] <= x[i] + M * (1 - delta[i][j][1])
-y[i] + h[i] <= y[j] + M * (1 - delta[i][j][2])
-y[j] + h[j] <= y[i] + M * (1 - delta[i][j][3])
-delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] >= 1</pre>
+x[i] + w[i] &lt;= x[j] + M * (1 - delta[i][j][0])
+x[j] + w[j] &lt;= x[i] + M * (1 - delta[i][j][1])
+y[i] + h[i] &lt;= y[j] + M * (1 - delta[i][j][2])
+y[j] + h[j] &lt;= y[i] + M * (1 - delta[i][j][3])
+delta[i][j][0] + delta[i][j][1] + delta[i][j][2] + delta[i][j][3] &gt;= 1</pre>
           <p>
             このゲームの「⚡ Washiで最適配置を解く」機能は、まさにこの数理最適化アルゴリズムをバックボーンに動作しています。
           </p>

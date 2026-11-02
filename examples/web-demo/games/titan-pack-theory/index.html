@@ -159,11 +159,15 @@
         color: var(--code-text);
       }
       .formula-box {
-        background: rgba(15, 23, 42, 0.8);
+        background: rgba(15, 23, 42, 0.85);
         border: 1px solid var(--border-subtle);
         border-radius: 10px;
         padding: 1.2rem;
         margin: 1.2rem 0;
+        overflow-x: auto;
+      }
+      .formula-box .katex-display {
+        margin: 0.5rem 0;
       }
     </style>
   </head>
@@ -203,24 +207,24 @@
         <section>
           <h2 id="t-sec2-title">2. 幾何学的非重複制約の線形化（Big-M 定式化）</h2>
           <p id="t-sec2-p1">
-            2つの長方形パーツ i と j（位置 (x<sub>i</sub>, y<sub>i</sub>)、幅 w<sub>i</sub>、高さ h<sub>i</sub>）が互いに重ならないための条件は、本来「論理和（OR）」を含む非線形な条件です：
-          </p>
-          <div class="formula-box" style="text-align: center; font-size: 0.95rem;">
-            <code>x<sub>i</sub> + w<sub>i</sub> ≤ x<sub>j</sub> &nbsp;∨&nbsp; x<sub>j</sub> + w<sub>j</sub> ≤ x<sub>i</sub> &nbsp;∨&nbsp; y<sub>i</sub> + h<sub>i</sub> ≤ y<sub>j</sub> &nbsp;∨&nbsp; y<sub>j</sub> + h<sub>j</sub> ≤ y<sub>i</sub></code>
-          </div>
-          <p id="t-sec2-p2">
-            混合整数線形計画法（MILP）では、4つのバイナリ変数 δ<sub>ij,1</sub>, δ<sub>ij,2</sub>, δ<sub>ij,3</sub>, δ<sub>ij,4</sub> ∈ {0, 1} と十分大きな定数 M を用いて以下のように線形制約へ変換します：
+            2つの長方形パーツ $i$ と $j$（位置 $(x_i, y_i)$、幅 $w_i$、高さ $h_i$）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：
           </p>
           <div class="formula-box">
-            <div style="display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.92rem; padding: 0.3rem 0.8rem;">
-              <div><code>x<sub>i</sub> + w<sub>i</sub> ≤ x<sub>j</sub> + M(1 − δ<sub>ij,1</sub>)</code></div>
-              <div><code>x<sub>j</sub> + w<sub>j</sub> ≤ x<sub>i</sub> + M(1 − δ<sub>ij,2</sub>)</code></div>
-              <div><code>y<sub>i</sub> + h<sub>i</sub> ≤ y<sub>j</sub> + M(1 − δ<sub>ij,3</sub>)</code></div>
-              <div><code>y<sub>j</sub> + h<sub>j</sub> ≤ y<sub>i</sub> + M(1 − δ<sub>ij,4</sub>)</code></div>
-              <div style="margin-top: 0.4rem; color: #38bdf8; font-weight: bold;">
-                <code>δ<sub>ij,1</sub> + δ<sub>ij,2</sub> + δ<sub>ij,3</sub> + δ<sub>ij,4</sub> ≥ 1</code>
-              </div>
-            </div>
+            $$ (x_i + w_i \le x_j) \;\lor\; (x_j + w_j \le x_i) \;\lor\; (y_i + h_i \le y_j) \;\lor\; (y_j + h_j \le y_i) $$
+          </div>
+          <p id="t-sec2-p2">
+            混合整数線形計画法（MILP）では、4つのバイナリ変数 $\delta_{ij,1}, \delta_{ij,2}, \delta_{ij,3}, \delta_{ij,4} \in \{0, 1\}$ と十分大きな定数 $M$ を用いて以下のように線形制約へ変換します：
+          </p>
+          <div class="formula-box">
+            $$
+            \begin{aligned}
+            x_i + w_i &\le x_j + M(1 - \delta_{ij,1}) \\
+            x_j + w_j &\le x_i + M(1 - \delta_{ij,2}) \\
+            y_i + h_i &\le y_j + M(1 - \delta_{ij,3}) \\
+            y_j + h_j &\le y_i + M(1 - \delta_{ij,4}) \\
+            \delta_{ij,1} + \delta_{ij,2} + \delta_{ij,3} + \delta_{ij,4} &\ge 1 \quad (\delta_{ij,k} \in \{0, 1\})
+            \end{aligned}
+            $$
           </div>
         </section>
 
@@ -230,7 +234,7 @@
             単にパーツを長方形に分割するだけでは、端から端まで貫通する直線（ギロチン切断線）が生じ、パズルが「ただの小分けの寄せ集め」になってしまいます。
           </p>
           <p id="t-sec3-p2">
-            TITAN PACK では、すべての垂直境界 $c \in \{1, \dots, W-1\}$ および水平境界 $r \in \{1, \dots, H-1\}$ について、少なくとも1つのパーツがその境界を跨ぐ（$x_i < c < x_i + w_i$）構造を保証する<strong>Multi-Scale Interlocking & Core Partitioning</strong> アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。
+            TITAN PACK では、すべての垂直境界 $c \in \{1, \dots, W-1\}$ および水平境界 $r \in \{1, \dots, H-1\}$ について、少なくとも1つのパーツがその境界を跨ぐ（$x_i &lt; c &lt; x_i + w_i$）構造を保証する<strong>Multi-Scale Interlocking &amp; Core Partitioning</strong> アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。
           </p>
         </section>
 
@@ -272,6 +276,7 @@ console.log("Status:", status);</code></pre>
 
     <script type="module">
       import { getGameLang, setGameLang, pickLang } from "../i18n.ts";
+      import { renderMath } from "../../src/katex-init.ts";
 
       const TEXTS = {
         ja: {
@@ -283,11 +288,11 @@ console.log("Status:", status);</code></pre>
           sec1P1: "2次元パッキング問題は、与えられた母材プレート（長方形のシート）の中に、異なる寸法を持つ複数の長方形パーツを「互いに重ならず」「はみ出さず」配置する組合せ最適化問題です。板金加工、木工、半導体フロアプランニングなど実産業で広く応用されています。",
           sec1P2: "すべてのパーツを隙間なくぴったり詰め込み、端材（材料ロス）を 0% にできるか判定する問題は NP 困難であることが知られています。",
           sec2Title: "2. 幾何学的非重複制約の線形化（Big-M 定式化）",
-          sec2P1: "2つの長方形パーツ i と j（位置 (x_i, y_i)、幅 w_i、高さ h_i）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：",
-          sec2P2: "混合整数線形計画法（MILP）では、4つのバイナリ変数 δ_{ij,1}, δ_{ij,2}, δ_{ij,3}, δ_{ij,4} ∈ {0, 1} と十分大きな定数 M を用いて以下のように線形制約へ変換します：",
+          sec2P1: "2つの長方形パーツ $i$ と $j$（位置 $(x_i, y_i)$、幅 $w_i$、高さ $h_i$）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：",
+          sec2P2: "混合整数線形計画法（MILP）では、4つのバイナリ変数 $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ と十分大きな定数 $M$ を用いて以下のように線形制約へ変換します：",
           sec3Title: "3. 断層禁止（Fault-Line Free）の幾何学的保証",
           sec3P1: "単にパーツを長方形に分割するだけでは、端から端まで貫通する直線（ギロチン切断線）が生じ、パズルが「ただの小分けの寄せ集め」になってしまいます。",
-          sec3P2: "TITAN PACK では、すべての垂直境界および水平境界について、少なくとも1つのパーツがその境界を跨ぐ構造を保証する Multi-Scale Interlocking & Core Partitioning アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。",
+          sec3P2: "TITAN PACK では、すべての垂直境界 $c \\in \\{1, \\dots, W-1\\}$ および水平境界 $r \\in \\{1, \\dots, H-1\\}$ について、少なくとも1つのパーツがその境界を跨ぐ（$x_i < c < x_i + w_i$）構造を保証する Multi-Scale Interlocking & Core Partitioning アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。",
           sec4Title: "4. WaSHI による実装コード例",
           sec4P1: "TypeScript 数理最適化モデリングライブラリ @ohtaman/washi を使ってこの 2D パッキングモデルを構築するコードは以下の通りです：",
         },
@@ -300,11 +305,11 @@ console.log("Status:", status);</code></pre>
           sec1P1: "The 2D Packing Problem is a combinatorial optimization challenge where rectangular parts of various dimensions must be placed inside a bounding sheet or plate without overlapping or exceeding boundary limits. It has extensive real-world applications in sheet-metal manufacturing, woodworking, cutting-stock layouts, and VLSI floorplanning.",
           sec1P2: "Deciding whether a set of items can be packed with zero scrap (100% material efficiency) without void is known to be strongly NP-hard.",
           sec2Title: "2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)",
-          sec2P1: "The condition that two rectangles i and j (placed at (x_i, y_i) with dimensions w_i, h_i) do not overlap is inherently disjunctive (connected by logical OR):",
-          sec2P2: "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables and a sufficiently large constant M:",
+          sec2P1: "The condition that two rectangles $i$ and $j$ (placed at $(x_i, y_i)$ with dimensions $w_i \\times h_i$) do not overlap is inherently disjunctive (connected by logical OR):",
+          sec2P2: "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ and a sufficiently large constant $M$:",
           sec3Title: "3. Geometric Guarantees for Fault-Line-Free Layouts",
           sec3P1: "If a rectangle is naively sliced with full-width or full-height cuts, continuous fault lines (guillotine cuts) emerge, degrading structural rigidity and breaking the puzzle into trivial independent sub-puzzles.",
-          sec3P2: "TITAN PACK uses a Multi-Scale Interlocking & Core Partitioning algorithm that guarantees every interior grid line is crossed by at least one overlapping metal girder, ensuring an interlocking puzzle with zero continuous fault lines across all campaign and endless stages.",
+          sec3P2: "TITAN PACK uses a Multi-Scale Interlocking & Core Partitioning algorithm that guarantees every interior grid line $c \\in \\{1, \\dots, W-1\\}$ and $r \\in \\{1, \\dots, H-1\\}$ is crossed by at least one overlapping metal girder ($x_i < c < x_i + w_i$), ensuring an interlocking puzzle with zero continuous fault lines across all campaign and endless stages.",
           sec4Title: "4. Implementation with WaSHI",
           sec4P1: "Here is how to formulate and solve this 2D packing model using the @ohtaman/washi TypeScript mathematical modeling library:",
         },
@@ -317,11 +322,11 @@ console.log("Status:", status);</code></pre>
           sec1P1: "二维装箱问题是在给定的母材矩形板材内，将多个不同尺寸的矩形零件紧凑排列且彼此互不重叠、不超出边界的组合优化问题。该问题在钣金激光加工、木料开料裁切、芯片布局规划等工业领域有着广泛应用。",
           sec1P2: "判断给定零件集合能否完全填满矩形母材、实现 0% 边角料浪费的判定问题已被证明属于强 NP 难问题。",
           sec2Title: "2. 几何非重叠约束的线性化（Big-M 定式化）",
-          sec2P1: "两个矩形零件 i 与 j（坐标为 (x_i, y_i)，尺寸为 w_i × h_i）互不重叠的充要条件在逻辑上是由“逻辑或（OR）”连接的析取条件：",
-          sec2P2: "在混合整数线性规划（MILP）中，我们引入四个 0-1 二进制决策变量以及充分大的常数 M，将其转化为一组线性不等式：",
+          sec2P1: "两个矩形零件 $i$ 与 $j$（坐标为 $(x_i, y_i)$，尺寸为 $w_i \\times h_i$）互不重叠的充要条件在逻辑上是由“逻辑或（OR）”连接的析取条件：",
+          sec2P2: "在混合整数线性规划（MILP）中，我们引入四个 0-1 二进制决策变量 $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ 以及充分大的常数 $M$，将其转化为一组线性不等式：",
           sec3Title: "3. 杜绝通断层（Fault-Line Free）的几何保证",
           sec3P1: "如果单纯将板材做横平竖直的切分，很容易产生贯穿整块板材的直线（一刀切分型线），使得拼图退化为若干彼此独立的简单小拼图，也削弱了零件咬合的力学强度。",
-          sec3P2: "《TITAN PACK》采用多尺度互锁式核心分割算法，确保每一条内部水平与垂直网格线上都至少有一个零件跨线咬合，从而自动生成宛如鲁班锁般紧密啮合的高质量关卡。",
+          sec3P2: "《TITAN PACK》采用多尺度互锁式核心分割算法，确保每一条内部水平与垂直网格线 $c \\in \\{1, \\dots, W-1\\}$ 和 $r \\in \\{1, \\dots, H-1\\}$ 上都至少有一个零件跨线咬合（$x_i < c < x_i + w_i$），从而自动生成宛如鲁班锁般紧密啮合的高质量关卡。",
           sec4Title: "4. 使用 WaSHI 进行模型构建的代码示例",
           sec4P1: "使用 TypeScript 数理优化建模库 @ohtaman/washi 构建并求解该二维装箱模型的标准代码如下：",
         }
@@ -353,6 +358,8 @@ console.log("Status:", status);</code></pre>
         document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
           btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === lang);
         });
+
+        renderMath(document.querySelector(".article-shell") || document.body);
       }
 
       document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
