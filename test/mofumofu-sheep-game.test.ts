@@ -1370,6 +1370,10 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(mobileBlock).toMatch(/\.brand-text\s*h1\s*\{[^}]*overflow:\s*hidden/);
     expect(mobileBlock).toMatch(/\.brand-text\s*h1\s*\{[^}]*text-overflow:\s*ellipsis/);
 
+    // Desktop topbar shows progress actions while hiding mobile-only menu button
+    expect(styleCss).toMatch(/\.topbar-actions\s*\{[^}]*display:\s*flex/);
+    expect(styleCss).toMatch(/\.topbar-menu-btn\s*\{[^}]*display:\s*none/);
+
     // Mobile topbar hides non-essential clutter (showcase link, BGM, rules, language buttons) behind a clean gear menu
     expect(styleCss).toContain(".topbar-menu-btn");
     expect(mobileBlock).toMatch(/\.topbar-menu-btn\s*\{[^}]*display:\s*inline-flex/);
@@ -1386,6 +1390,9 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
     expect(mobileBlockMatch).toBeTruthy();
     const mobileBlock = mobileBlockMatch![1];
+
+    // Puzzle card disables backdrop-filter on mobile so fixed descendants anchor to the viewport
+    expect(mobileBlock).toMatch(/\.puzzle-card\s*\{[^}]*backdrop-filter:\s*none/);
 
     // 1. Rules dialog footer is sticky at the bottom of the modal so CTA is always visible without scrolling
     expect(mobileBlock).toMatch(/\.rules-dialog-footer\s*\{[^}]*position:\s*sticky/);

@@ -75,7 +75,9 @@ body {
 }
 
 .topbar-actions {
-  display: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .topbar-menu-btn {
@@ -1312,6 +1314,8 @@ body {
     padding: 10px 10px 12px;
     border-radius: 18px;
     gap: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* Stage Header: Row on Mobile */
