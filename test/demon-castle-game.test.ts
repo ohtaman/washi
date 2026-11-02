@@ -610,6 +610,22 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".locked-off-mobile", "display", 1024)).toBe("none");
     expect(resolveEffectiveStyle(css, ".cell-note-desktop", "display", 768)).toBe("none");
     expect(resolveEffectiveStyle(css, ".cell-note-mobile", "display", 1024)).toBe("none");
+
+    // 14. Mobile battle HUD decluttering and compact topbar (Issue with skip guidance popup & button clipping)
+    expect(resolveEffectiveStyle(css, ".battle-fs-topbar", "flex-wrap", 768)).toBe("nowrap");
+    expect(resolveEffectiveStyle(css, ".salamander-emblem", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".salamander-status-sub", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".hp-label-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".hp-label-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".battle-btn-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".battle-btn-mobile", "display", 1024)).toBe("none");
+
+    // 15. Accessible touch target and vertical containment for battle proceed buttons on mobile
+    expect(resolveEffectiveStyle(css, ".btn-battle-proceed", "min-height", 768)).toBe("44px");
+
+    // 16. Prominent golden primary CTA for next stage transition on victory screen
+    expect(resolveEffectiveStyle(css, ".result-primary-cta", "min-height", 768)).toBe("52px");
+    expect(resolveEffectiveStyle(css, ".result-primary-cta", "border-color", 768)).toBe("#fde68a");
   });
 
   it("cycles shift states on mobile 1-cell toggle button correctly (off -> day -> night -> off)", () => {
