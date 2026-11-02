@@ -584,6 +584,17 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
     expect(resolveEffectiveStyle(css, ".raid-row th", "width", 420)).toBe("90px");
     expect(resolveEffectiveStyle(css, ".monster-row-th", "width", 420)).toBe("90px");
+
+    // 10. Raid row minimalism on mobile: hides verbose enemy title and switches to concise numeric pills
+    expect(resolveEffectiveStyle(css, ".raid-enemy-title", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".raid-label-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".raid-label-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".meter-text-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".meter-text-desktop", "display", 768)).toBe("none");
+
+    // 11. Vertical stacking of day/night powers on mobile to fit comfortably in 90px first column
+    expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 768)).toBe("column");
+    expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 420)).toBe("column");
   });
 
   it("cycles shift states on mobile 1-cell toggle button correctly (off -> day -> night -> off)", () => {

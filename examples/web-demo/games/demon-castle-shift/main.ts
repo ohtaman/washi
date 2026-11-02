@@ -1025,7 +1025,12 @@ function renderShiftMatrix(): void {
     </thead>
   `;
 
-  const buildRaidRow = (shift: ActiveShiftType, label: string, rowClass: string): string => {
+  const buildRaidRow = (
+    shift: ActiveShiftType,
+    labelDesktop: string,
+    labelMobile: string,
+    rowClass: string
+  ): string => {
     const cellsHtml = days
       .map((d) => {
         const slotStatus = currentEvaluation.slotStatuses.find(
@@ -1054,21 +1059,27 @@ function renderShiftMatrix(): void {
           activeTutorial.day === d &&
           activeTutorial.targetShift === shift;
         const isDimmedRaid = activeTutorial && !isRelatedRaid;
-        const staffText = pickLang(currentLang, {
+        const staffTextDesktop = pickLang(currentLang, {
           ja: `人数 ${assignedMonsters.length}/${req.minStaff}`,
           en: `Staff ${assignedMonsters.length}/${req.minStaff}`,
           zh: `人数 ${assignedMonsters.length}/${req.minStaff}`,
         });
+        const staffTextMobile = pickLang(currentLang, {
+          ja: `${assignedMonsters.length}/${req.minStaff}人`,
+          en: `${assignedMonsters.length}/${req.minStaff}`,
+          zh: `${assignedMonsters.length}/${req.minStaff}人`,
+        });
         const staffPillHtml =
           req.minStaff > 1 || !staffMet
-            ? `<span class="meter-pill ${staffMet ? "ok" : "ng"}">${staffText}</span>`
+            ? `<span class="meter-pill ${staffMet ? "ok" : "ng"}"><span class="meter-text-desktop">${staffTextDesktop}</span><span class="meter-text-mobile">${staffTextMobile}</span></span>`
             : "";
         const locReq = getRequirementLocalized(req, currentLang);
-        const pwrText = pickLang(currentLang, {
+        const pwrTextDesktop = pickLang(currentLang, {
           ja: `防衛 ${currentPower} / 予測 ${expectedPower}`,
           en: `Def ${currentPower} / Est ${expectedPower}`,
           zh: `防卫 ${currentPower} / 预测 ${expectedPower}`,
         });
+        const pwrTextMobile = `${currentPower} / ${expectedPower}`;
 
         return `
           <td class="raid-cell ${cellStateClass} ${isRelatedRaid ? "is-tutorial-related-raid" : ""} ${isDimmedRaid ? "is-tutorial-dimmed-cell" : ""}">
@@ -1076,7 +1087,8 @@ function renderShiftMatrix(): void {
             <div class="raid-meters">
               ${staffPillHtml}
               <span class="meter-pill ${powerPillClass}">
-                ${pwrText}
+                <span class="meter-text-desktop">${pwrTextDesktop}</span>
+                <span class="meter-text-mobile">${pwrTextMobile}</span>
               </span>
             </div>
           </td>
@@ -1086,7 +1098,10 @@ function renderShiftMatrix(): void {
 
     return `
       <tr class="raid-row ${rowClass}">
-        <th scope="row">${label}</th>
+        <th scope="row">
+          <span class="raid-label-desktop">${labelDesktop}</span>
+          <span class="raid-label-mobile">${labelMobile}</span>
+        </th>
         ${cellsHtml}
       </tr>
     `;
@@ -1351,22 +1366,32 @@ function renderShiftMatrix(): void {
     })
     .join("");
 
-  const dayGuardLabel = pickLang(currentLang, {
+  const dayGuardLabelDesktop = pickLang(currentLang, {
     ja: "昼の警備",
     en: "Day Watch",
     zh: "白昼警备",
   });
-  const nightGuardLabel = pickLang(currentLang, {
+  const dayGuardLabelMobile = pickLang(currentLang, {
+    ja: "☀️ 昼",
+    en: "☀️ Day",
+    zh: "☀️ 昼",
+  });
+  const nightGuardLabelDesktop = pickLang(currentLang, {
     ja: "夜の警備",
     en: "Night Watch",
     zh: "夜间警备",
+  });
+  const nightGuardLabelMobile = pickLang(currentLang, {
+    ja: "🌙 夜",
+    en: "🌙 Night",
+    zh: "🌙 夜",
   });
 
   table.innerHTML = `
     ${theadHtml}
     <tbody>
-      ${buildRaidRow("day", dayGuardLabel, "raid-row-day")}
-      ${buildRaidRow("night", nightGuardLabel, "raid-row-night")}
+      ${buildRaidRow("day", dayGuardLabelDesktop, dayGuardLabelMobile, "raid-row-day")}
+      ${buildRaidRow("night", nightGuardLabelDesktop, nightGuardLabelMobile, "raid-row-night")}
       ${monsterRowsHtml}
     </tbody>
   `;

@@ -715,6 +715,14 @@ body {
   background: rgba(104, 118, 236, 0.05);
 }
 
+.raid-label-mobile {
+  display: none;
+}
+
+.meter-text-mobile {
+  display: none;
+}
+
 .raid-cell {
   text-align: center;
   padding: 0.28rem 0.4rem !important;
@@ -4562,6 +4570,61 @@ button.pair-chip:hover {
     padding: 0.25rem 0.1rem;
   }
 
+  /* Raid Row Mobile Minimalism */
+  .raid-enemy-title {
+    display: none;
+  }
+
+  .raid-label-desktop {
+    display: none;
+  }
+
+  .raid-label-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    font-weight: 700;
+    font-size: 0.76rem;
+  }
+
+  .meter-text-desktop {
+    display: none;
+  }
+
+  .meter-text-mobile {
+    display: inline;
+  }
+
+  .raid-row th {
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  .raid-cell {
+    padding: 0.16rem 0.08rem !important;
+    vertical-align: middle;
+  }
+
+  .raid-meters {
+    gap: 0.12rem;
+    flex-direction: column;
+  }
+
+  .meter-pill {
+    font-size: 0.62rem;
+    padding: 0.04rem 0.15rem;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .monster-power-compare {
+    flex-direction: column;
+    gap: 0.05rem;
+    font-size: 0.64rem;
+    line-height: 1.15;
+  }
+
   /* Accessible Touch Targets on Mobile Shift Cells */
   .shift-cell {
     padding: 0.2rem 0.15rem;
@@ -5001,6 +5064,13 @@ button.pair-chip:hover {
 
   .monster-work-counter {
     font-size: 0.62rem;
+  }
+
+  .monster-power-compare {
+    flex-direction: column;
+    gap: 0.05rem;
+    font-size: 0.62rem;
+    line-height: 1.15;
   }
 
   .monster-post-chip {
