@@ -723,6 +723,18 @@ body {
   display: none;
 }
 
+.locked-off-mobile {
+  display: none;
+}
+
+.cell-note-mobile {
+  display: none;
+}
+
+.pair-chip-mobile {
+  display: none;
+}
+
 .raid-cell {
   text-align: center;
   padding: 0.28rem 0.4rem !important;
@@ -4315,21 +4327,29 @@ button.pair-chip:hover {
   }
 
   .game-topbar {
-    padding: 0.3rem 0.45rem;
-    gap: 0.35rem;
+    padding: 0.25rem 0.4rem;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .game-topbar .lang-switch {
+    display: none;
   }
 
   .brand-cluster {
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.35rem;
+    width: auto;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    gap: 0.25rem;
+    min-width: 0;
   }
 
   .stage-progress-nav {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     flex-wrap: nowrap;
-    max-width: calc(100% - 85px);
+    max-width: 100%;
     padding-bottom: 2px;
     scrollbar-width: none;
   }
@@ -4340,12 +4360,12 @@ button.pair-chip:hover {
 
   .stage-pill-btn {
     white-space: nowrap;
-    padding: 0.3rem 0.55rem;
-    font-size: 0.72rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.7rem;
     min-height: 34px;
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.2rem;
     flex-shrink: 0;
   }
 
@@ -4354,9 +4374,10 @@ button.pair-chip:hover {
   }
 
   .topbar-controls {
-    width: 100%;
-    justify-content: space-between;
-    gap: 0.25rem;
+    width: auto;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    gap: 0.2rem;
   }
 
   .btn-glass {
@@ -4425,8 +4446,41 @@ button.pair-chip:hover {
     justify-content: center;
   }
 
+  #btn-reset {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.4rem;
+    opacity: 0.85;
+    flex: 0 0 auto;
+    min-height: 30px;
+  }
+
   .pair-bonus-strip {
+    display: flex;
+    overflow-x: auto;
+    flex-wrap: nowrap;
     gap: 0.25rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .pair-bonus-strip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pair-chip {
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+  }
+
+  .pair-chip-desktop {
+    display: none;
+  }
+
+  .pair-chip-mobile {
+    display: inline;
   }
 
   .pair-pill {
@@ -4513,6 +4567,20 @@ button.pair-chip:hover {
     width: 168px;
     padding-left: 0.45rem;
     font-size: 0.76rem;
+  }
+
+  .col-monster-title {
+    display: block;
+    line-height: 1.2;
+  }
+
+  .col-monster-sub {
+    display: block;
+    font-size: 0.52rem;
+    font-weight: normal;
+    color: var(--text-dim);
+    line-height: 1.1;
+    margin-top: 1px;
   }
 
   .raid-row th {
@@ -4627,7 +4695,46 @@ button.pair-chip:hover {
 
   /* Accessible Touch Targets on Mobile Shift Cells */
   .shift-cell {
-    padding: 0.2rem 0.15rem;
+    padding: 0.2rem 0.12rem;
+    vertical-align: top;
+  }
+
+  .cell-locked-pto {
+    vertical-align: top;
+    padding: 0.2rem 0.12rem;
+  }
+
+  .locked-off-desktop {
+    display: none;
+  }
+
+  .locked-off-mobile {
+    display: inline;
+  }
+
+  .locked-off-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 44px;
+    min-height: 44px;
+    font-size: 0.72rem;
+  }
+
+  .cell-note-desktop {
+    display: none;
+  }
+
+  .cell-note-mobile {
+    display: block;
+    font-size: 0.54rem;
+    line-height: 1.1;
+    margin-top: 2px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .tutorial-callout-bubble {

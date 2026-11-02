@@ -1011,11 +1011,17 @@ function renderShiftMatrix(): void {
     })
     .join("");
 
-  const memberColLabel = pickLang(currentLang, {
-    ja: "警備メンバー（クリックで詳細）",
-    en: "Guard Member (Click for info)",
-    zh: "警备成员（点击查看详情）",
+  const memberTitle = pickLang(currentLang, {
+    ja: "警備メンバー",
+    en: "Guard Members",
+    zh: "警备成员",
   });
+  const memberSub = pickLang(currentLang, {
+    ja: "（タップで詳細）",
+    en: "(Tap for details)",
+    zh: "（点击查看详情）",
+  });
+  const memberColLabel = `<span class="col-monster-title">${memberTitle}</span><span class="col-monster-sub">${memberSub}</span>`;
   const theadHtml = `
     <thead>
       <tr>
@@ -1140,14 +1146,22 @@ function renderShiftMatrix(): void {
 
           if (reqOff) {
             const locReason = getRequestedOffReasonLocalized(reqOff.reason, mId, currentLang);
-            const offLabel = pickLang(currentLang, {
+            const offLabelDesktop = pickLang(currentLang, {
               ja: `指定休（${locReason}）`,
               en: `Off (${locReason})`,
               zh: `指定休（${locReason}）`,
             });
+            const offLabelMobile = pickLang(currentLang, {
+              ja: "指定休",
+              en: "Off",
+              zh: "指定休",
+            });
             return `
               <td class="shift-cell state-off cell-locked-pto ${isDimmedCell ? "is-tutorial-dimmed-cell" : ""}">
-                <span class="locked-off-label" title="${locReason}">${offLabel}</span>
+                <span class="locked-off-label" title="${locReason}">
+                  <span class="locked-off-desktop">${offLabelDesktop}</span>
+                  <span class="locked-off-mobile">${offLabelMobile}</span>
+                </span>
               </td>
             `;
           }
@@ -1205,31 +1219,45 @@ function renderShiftMatrix(): void {
             }
           }
 
-          let noteHtml = "";
+          let noteDesktop = "";
+          let noteMobile = "";
+          let noteClass = "";
           if (hasViolation) {
-            noteHtml = `<div class="cell-note is-error">${cellViolations[0]}</div>`;
+            noteDesktop = cellViolations[0];
+            noteMobile = "⚠️連勤NG";
+            noteClass = "is-error";
           } else if (activeConflictPartner) {
-            const cText = pickLang(currentLang, {
+            noteDesktop = pickLang(currentLang, {
               ja: `⚡${activeConflictPartner}と同番NG (-150)`,
               en: `⚡Clash w/ ${activeConflictPartner} (-150)`,
               zh: `⚡与${activeConflictPartner}排斥 (-150)`,
             });
-            noteHtml = `<div class="cell-note is-conflict">${cText}</div>`;
+            noteMobile = "⚡-150";
+            noteClass = "is-conflict";
           } else if (activeSynergyPartner) {
-            const sText = pickLang(currentLang, {
+            noteDesktop = pickLang(currentLang, {
               ja: `🤝${activeSynergyPartner}と連携 (+100)`,
               en: `🤝Synergy w/ ${activeSynergyPartner} (+100)`,
               zh: `🤝与${activeSynergyPartner}连携 (+100)`,
             });
-            noteHtml = `<div class="cell-note is-synergy">${sText}</div>`;
+            noteMobile = "🤝+100";
+            noteClass = "is-synergy";
           } else if (isFullMoonForbidden) {
-            const fmText = pickLang(currentLang, {
+            noteDesktop = pickLang(currentLang, {
               ja: "満月夜は不可",
               en: "No Full Moon Night",
               zh: "满月夜不可",
             });
-            noteHtml = `<div class="cell-note">${fmText}</div>`;
+            noteMobile = "🚫満月";
+            noteClass = "is-info";
           }
+
+          const noteHtml = noteDesktop
+            ? `<div class="cell-note ${noteClass}">
+                <span class="cell-note-desktop">${noteDesktop}</span>
+                <span class="cell-note-mobile">${noteMobile}</span>
+               </div>`
+            : "";
 
           const fmTitle = pickLang(currentLang, {
             ja: `満月の夜は${m.name}を夜番に配置できません`,
@@ -1794,10 +1822,11 @@ function renderPairBonusStrip(): void {
       const locRel = getRelationLocalized(rel, currentLang);
       const isPos = rel.moraleDelta >= 0;
       const sign = isPos ? `+${rel.moraleDelta}` : `${rel.moraleDelta}`;
-      const prefix = isPos
+      const prefixDesktop = isPos
         ? pickLang(currentLang, { ja: "🤝 相性◎", en: "🤝 Synergy", zh: "🤝 默契" })
         : pickLang(currentLang, { ja: "⚡ 同番NG", en: "⚡ Clash", zh: "⚡ 排斥" });
-      return `<button type="button" class="pair-chip ${isPos ? "is-positive" : "is-negative"}" data-rel-idx="${idx}" title="${locRel.description}">${prefix}: ${mA.name}×${mB.name} (${sign})</button>`;
+      const prefixMobile = isPos ? "🤝" : "⚡";
+      return `<button type="button" class="pair-chip ${isPos ? "is-positive" : "is-negative"}" data-rel-idx="${idx}" title="${locRel.description}"><span class="pair-chip-desktop">${prefixDesktop}: ${mA.name}×${mB.name} (${sign})</span><span class="pair-chip-mobile">${prefixMobile} ${mA.name}×${mB.name} (${sign})</span></button>`;
     })
     .join("");
 
@@ -3840,7 +3869,7 @@ function applyStaticTranslations(): void {
       zh: "填入1格示范排班",
     })
   );
-  setText("btn-reset", pickLang(currentLang, { ja: "白紙に戻す", en: "Clear All", zh: "清空重排" }));
+  setText("btn-reset", pickLang(currentLang, { ja: "🔄 リセット", en: "Clear All", zh: "清空重排" }));
   setTitle(
     "dialogue-box",
     pickLang(currentLang, {

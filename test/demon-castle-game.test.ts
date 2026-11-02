@@ -595,6 +595,17 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     // 11. Vertical stacking of day/night powers on mobile to fit comfortably in 90px first column
     expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 768)).toBe("column");
     expect(resolveEffectiveStyle(css, ".monster-power-compare", "flex-direction", 420)).toBe("column");
+
+    // 12. Mobile topbar decluttering: hide lang switch during game, single-line pair strip
+    expect(resolveEffectiveStyle(css, ".game-topbar .lang-switch", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".pair-bonus-strip", "flex-wrap", 768)).toBe("nowrap");
+
+    // 13. Mobile shift cell top-alignment and compact note badges to prevent vertical button offset
+    expect(resolveEffectiveStyle(css, ".shift-cell", "vertical-align", 768)).toBe("top");
+    expect(resolveEffectiveStyle(css, ".locked-off-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".locked-off-mobile", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".cell-note-desktop", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".cell-note-mobile", "display", 1024)).toBe("none");
   });
 
   it("cycles shift states on mobile 1-cell toggle button correctly (off -> day -> night -> off)", () => {
