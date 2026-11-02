@@ -622,6 +622,10 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
 
     // 15. Accessible touch target and vertical containment for battle proceed buttons on mobile
     expect(resolveEffectiveStyle(css, ".btn-battle-proceed", "min-height", 768)).toBe("44px");
+
+    // 16. Prominent golden primary CTA for next stage transition on victory screen
+    expect(resolveEffectiveStyle(css, ".result-primary-cta", "min-height", 768)).toBe("52px");
+    expect(resolveEffectiveStyle(css, ".result-primary-cta", "border-color", 768)).toBe("#fde68a");
   });
 
   it("cycles shift states on mobile 1-cell toggle button correctly (off -> day -> night -> off)", () => {

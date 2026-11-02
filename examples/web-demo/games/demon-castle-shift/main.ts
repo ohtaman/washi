@@ -3735,19 +3735,29 @@ async function openDispatchResultDialog(): Promise<void> {
         <div class="result-hero-actions">
           ${
             hasNextCampaignStage
-              ? `<button id="btn-modal-next-stage" type="button" class="btn-dispatch result-primary-cta">
-                  ${pickLang(currentLang, {
-                    ja: `翌月（${formatCastleCalendarMonth(currentStageIndex + 2)}）の編成へ進む ▶`,
-                    en: `Next Month (${formatCastleCalendarMonth(currentStageIndex + 2)}) ▶`,
-                    zh: `前往下月（${formatCastleCalendarMonth(currentStageIndex + 2)}）排班 ▶`,
-                  })}
-                </button>`
+              ? (() => {
+                  const nextStageScenario = CAMPAIGN_STAGES[currentStageIndex + 1];
+                  const nextStageLoc = getLocalizedStage(nextStageScenario);
+                  return `<button id="btn-modal-next-stage" type="button" class="btn-dispatch result-primary-cta">
+                    <span class="btn-cta-main">${pickLang(currentLang, {
+                      ja: "次のステージへ進む ▶",
+                      en: "Proceed to Next Stage ▶",
+                      zh: "进入下一关 ▶",
+                    })}</span>
+                    <span class="btn-cta-sub">${nextStageLoc.title}</span>
+                  </button>`;
+                })()
               : `<button id="btn-modal-random-stage" type="button" class="btn-dispatch result-primary-cta">
-                  ${pickLang(currentLang, {
-                    ja: `翌月（${formatCastleCalendarMonth(nextWeekNumber)}・難易度：${nextAdaptiveLabel}）へ進む ▶`,
-                    en: `Next Month (${formatCastleCalendarMonth(nextWeekNumber)} / ${nextAdaptiveLabel}) ▶`,
-                    zh: `前往下月（${formatCastleCalendarMonth(nextWeekNumber)}・难度：${nextAdaptiveLabel}） ▶`,
-                  })}
+                  <span class="btn-cta-main">${pickLang(currentLang, {
+                    ja: "次のステージへ進む ▶",
+                    en: "Proceed to Next Stage ▶",
+                    zh: "进入下一关 ▶",
+                  })}</span>
+                  <span class="btn-cta-sub">${pickLang(currentLang, {
+                    ja: `${formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang)}（難易度：${nextAdaptiveLabel}）`,
+                    en: `${formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang)} (Difficulty: ${nextAdaptiveLabel})`,
+                    zh: `${formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang)} (难度: ${nextAdaptiveLabel})`,
+                  })}</span>
                 </button>`
           }
           <button id="btn-modal-back-title" type="button" class="btn-glass">
