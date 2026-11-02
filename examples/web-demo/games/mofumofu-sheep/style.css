@@ -64,12 +64,32 @@ body {
   padding: 8px 16px;
   box-shadow: 0 4px 14px rgba(91, 62, 43, 0.08);
   backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 200;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-menu-btn {
+  display: none;
+}
+
+.topbar-backdrop {
+  display: none;
+}
+
+.menu-back-link {
+  display: none;
 }
 
 .back-link {
@@ -214,6 +234,8 @@ body {
 
 /* Main Puzzle Card */
 .puzzle-card {
+  position: relative;
+  z-index: 1;
   background: var(--card-bg);
   border: 3px solid var(--card-border);
   border-radius: 24px;
@@ -1093,6 +1115,28 @@ body {
   }
 }
 
+@keyframes slideDownIn {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes popUpCelebration {
+  0% {
+    transform: translateY(30px) scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
 @keyframes safePulse {
   0% {
     transform: scale(0.96);
@@ -1113,31 +1157,135 @@ body {
     gap: 8px;
   }
 
-  /* Compact Mobile Topbar */
+  /* Compact Mobile Topbar: 1 Neat Row */
   .topbar {
-    padding: 6px 10px;
+    padding: 6px 12px;
     border-radius: 14px;
-    gap: 6px;
+    gap: 8px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 200;
   }
   .brand {
     gap: 6px;
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
   }
   .brand-avatar {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+  .brand-text {
+    min-width: 0;
+    flex: 1;
   }
   .brand-text h1 {
-    font-size: 0.94rem;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
   }
   .engine-tag {
-    font-size: 0.65rem;
+    display: none;
   }
   .back-link {
-    padding: 4px 7px;
-    font-size: 0.72rem;
+    display: none;
   }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .star-counter {
+    padding: 3px 8px;
+    font-size: 0.78rem;
+  }
+
+  .topbar-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    font-size: 1.05rem;
+    background: #f5ece0;
+    border: 1px solid #dfd0b8;
+    border-radius: 10px;
+    color: var(--wood-dark);
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: background 0.12s ease;
+  }
+  .topbar-menu-btn:hover,
+  .topbar-menu-btn[aria-expanded="true"] {
+    background: #eadbc0;
+  }
+
+  /* Mobile Dropdown Backdrop Overlay */
+  .topbar-backdrop:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 190;
+    background: rgba(45, 28, 15, 0.35);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    animation: fadeIn 0.15s ease;
+  }
+
+  /* Tucked Mobile Settings Dropdown */
   .topbar-stats {
-    gap: 4px;
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 8px;
+    z-index: 220;
+    background: #fffdf7;
+    border: 2px solid var(--wood-light);
+    border-radius: 14px;
+    padding: 10px;
+    box-shadow: 0 12px 36px rgba(45, 28, 15, 0.35), 0 2px 8px rgba(0, 0, 0, 0.1);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 175px;
+  }
+  .topbar-stats.is-open {
+    display: flex;
+    animation: slideDownIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .menu-back-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-decoration: none;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--wood-dark);
+    background: #f3ead8;
+    border: 1px solid #dfd0b4;
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .topbar-stats .help-pill-btn,
+  .topbar-stats .btn-audio {
+    width: 100%;
+    justify-content: center;
+    min-height: 34px;
+  }
+  .topbar-stats .lang-switch {
+    width: 100%;
+    justify-content: center;
   }
   .help-pill-btn,
   .btn-audio {
@@ -1166,6 +1314,8 @@ body {
     padding: 10px 10px 12px;
     border-radius: 18px;
     gap: 8px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* Stage Header: Row on Mobile */
@@ -1177,15 +1327,33 @@ body {
     flex-wrap: wrap;
   }
   .stage-nav-bar {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: 4px;
     padding: 2px 4px;
+    box-sizing: border-box;
   }
   .stage-step-btn {
     width: 34px;
     height: 34px;
     font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+  .stage-select-wrap {
+    flex: 1;
+    min-width: 0;
+    max-width: 220px;
+    display: flex;
+    justify-content: center;
   }
   .stage-select {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     padding: 4px 22px 4px 9px;
     font-size: 0.78rem;
   }
@@ -1299,44 +1467,109 @@ body {
     touch-action: manipulation;
   }
 
-  /* Full-Width Thumb-Friendly Clear Banner */
-  .clear-banner {
+  /* Floating Thumb-Zone Celebration Banner on Mobile */
+  .clear-banner:not([hidden]):not(.banner-shortfall) {
+    position: fixed;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 14px;
+    right: 14px;
+    z-index: 99;
+    padding: 14px 16px;
+    border-radius: 18px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.32), 0 2px 10px rgba(101, 163, 13, 0.25);
+    border: 3px solid #65a30d;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    animation: popUpCelebration 0.32s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .clear-banner-main {
+    justify-content: center;
+    gap: 8px;
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .clear-stars {
+    font-size: 1.6rem;
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .clear-copy {
+    text-align: center;
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .clear-copy strong {
+    font-size: 1.05rem;
+    color: #166534;
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .clear-copy span {
+    font-size: 0.82rem;
+    color: #15803d;
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .clear-actions {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .clear-banner:not([hidden]):not(.banner-shortfall) .btn-next {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1.05rem;
+    font-weight: 800;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+  }
+
+  /* Compact Inline Shortfall Banner on Mobile */
+  .clear-banner.banner-shortfall {
     padding: 8px 12px;
     border-radius: 12px;
     gap: 8px;
     flex-direction: column;
     text-align: center;
   }
-  .clear-banner-main {
+  .clear-banner.banner-shortfall .clear-banner-main {
     justify-content: center;
     gap: 8px;
   }
-  .clear-stars {
+  .clear-banner.banner-shortfall .clear-stars {
     font-size: 1.3rem;
   }
-  .clear-copy strong {
+  .clear-banner.banner-shortfall .clear-copy strong {
     font-size: 0.9rem;
   }
-  .clear-copy span {
+  .clear-banner.banner-shortfall .clear-copy span {
     font-size: 0.75rem;
   }
-  .clear-actions {
+  .clear-banner.banner-shortfall .clear-actions {
     width: 100%;
     justify-content: center;
     gap: 6px;
   }
-  .clear-actions .btn {
+  .clear-banner.banner-shortfall .clear-actions .btn {
     flex: 1;
     justify-content: center;
     min-height: 40px;
   }
 
+  /* Hide controls when stage is cleanly cleared to maximize thumb-zone priority for next-stage CTA */
+  .puzzle-card:has(.clear-banner:not([hidden]):not(.banner-shortfall)) .controls-bar {
+    display: none;
+  }
+
   /* Compact Legend */
   .legend-strip {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     padding-top: 3px;
+    padding-bottom: 2px;
     gap: 4px;
+    scrollbar-width: none;
+  }
+  .legend-strip::-webkit-scrollbar {
+    display: none;
   }
   .legend-chip {
+    flex-shrink: 0;
     font-size: 0.68rem;
     padding: 2px 6px;
   }
@@ -1346,13 +1579,22 @@ body {
     width: min(94vw, 540px);
     max-height: 88dvh;
     border-radius: 18px;
+    overflow: hidden;
   }
   .rules-dialog-inner {
-    padding: 14px 14px;
+    padding: 14px 14px 0;
     gap: 10px;
     max-height: 88dvh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+  .rules-dialog-footer {
+    position: sticky;
+    bottom: 0;
+    background: #fffdf7;
+    z-index: 10;
+    padding: 8px 0 max(12px, env(safe-area-inset-bottom));
+    border-top: 1px dashed var(--card-border);
   }
   .rules-dialog-header h2 {
     font-size: 1.05rem;

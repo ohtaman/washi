@@ -23,7 +23,27 @@
           </div>
         </div>
 
-        <div class="topbar-stats">
+        <div class="topbar-actions">
+          <div class="star-counter" id="total-stars-badge" title="クリア済みステージ数">
+            <span class="star-icon">★</span>
+            <span id="total-stars-text">0 CLEAR</span>
+            <span id="total-score-text" class="total-score-text"></span>
+          </div>
+
+          <button
+            type="button"
+            class="topbar-menu-btn"
+            id="btn-topbar-menu"
+            aria-label="メニューを開く"
+            aria-expanded="false"
+            title="メニュー"
+          >
+            ⚙️
+          </button>
+        </div>
+
+        <div class="topbar-stats" id="topbar-stats">
+          <a href="../../ja/showcase/" class="menu-back-link" id="menu-showcase-link" title="ショーケースへ戻る">🏠 <span id="menu-back-label">ショーケース</span></a>
           <button
             type="button"
             class="help-pill-btn btn-audio"
@@ -42,11 +62,6 @@
           >
             ❓ <span id="btn-open-rules-label">遊び方</span>
           </button>
-          <div class="star-counter" id="total-stars-badge" title="クリア済みステージ数">
-            <span class="star-icon">★</span>
-            <span id="total-stars-text">0 CLEAR</span>
-            <span id="total-score-text" class="total-score-text"></span>
-          </div>
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
@@ -54,6 +69,8 @@
           </div>
         </div>
       </header>
+
+      <div class="topbar-backdrop" id="topbar-backdrop" hidden></div>
 
       <!-- Main Puzzle Card -->
       <main class="puzzle-card">
