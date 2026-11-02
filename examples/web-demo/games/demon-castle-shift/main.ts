@@ -2434,7 +2434,7 @@ function renderHpOrbsHtml(remainingHp: number, maxHp: number, justLostIndex = -1
       `<span class="hp-orb ${isLost ? "is-lost" : ""} ${isJustShattered ? "is-just-shattered" : ""}"></span>`
     );
   }
-  const statusLabel =
+  const statusLabelDesktop =
     remainingHp > 0
       ? pickLang(currentLang, {
           ja: "城門無傷（全戦防衛必須）",
@@ -2446,7 +2446,19 @@ function renderHpOrbsHtml(remainingHp: number, maxHp: number, justLostIndex = -1
           en: "Gate Breached (Fallen)",
           zh: "城门被破（陷落）",
         });
-  return `<span class="castle-hp-orbs">${orbs.join("")} <span>${statusLabel}</span></span>`;
+  const statusLabelMobile =
+    remainingHp > 0
+      ? pickLang(currentLang, {
+          ja: "城門無傷",
+          en: "Gate Intact",
+          zh: "城门无伤",
+        })
+      : pickLang(currentLang, {
+          ja: "陥落",
+          en: "Breached",
+          zh: "陷落",
+        });
+  return `<span class="castle-hp-orbs">${orbs.join("")} <span class="hp-label-desktop">${statusLabelDesktop}</span><span class="hp-label-mobile">${statusLabelMobile}</span></span>`;
 }
 
 function renderBattleDefenderAvatarsHtml(outcome: SlotBattleOutcome): string {
@@ -2643,16 +2655,14 @@ async function openDispatchResultDialog(): Promise<void> {
         </div>
         <div class="battle-fs-top-controls">
           <div id="salamander-hp-box">${renderHpOrbsHtml(remainingHp, maxHp)}</div>
-          <button id="btn-battle-auto" type="button" class="btn-glass btn-sm" aria-pressed="false">${pickLang(currentLang, {
-            ja: "▶ 自動進行: OFF",
-            en: "▶ Auto: OFF",
-            zh: "▶ 自动推进: OFF",
-          })}</button>
-          <button id="btn-skip-battle-anim" type="button" class="btn-glass btn-sm">${pickLang(currentLang, {
-            ja: "結果までスキップ ⏭",
-            en: "Skip to Result ⏭",
-            zh: "跳至结果 ⏭",
-          })}</button>
+          <button id="btn-battle-auto" type="button" class="btn-glass btn-sm" aria-pressed="false">
+            <span class="battle-btn-desktop">${pickLang(currentLang, { ja: "▶ 自動進行: OFF", en: "▶ Auto: OFF", zh: "▶ 自动推进: OFF" })}</span>
+            <span class="battle-btn-mobile">${pickLang(currentLang, { ja: "▶ 自動: OFF", en: "▶ Auto: OFF", zh: "▶ 自动: OFF" })}</span>
+          </button>
+          <button id="btn-skip-battle-anim" type="button" class="btn-glass btn-sm">
+            <span class="battle-btn-desktop">${pickLang(currentLang, { ja: "結果までスキップ ⏭", en: "Skip to Result ⏭", zh: "跳至结果 ⏭" })}</span>
+            <span class="battle-btn-mobile">${pickLang(currentLang, { ja: "スキップ ⏭", en: "Skip ⏭", zh: "跳过 ⏭" })}</span>
+          </button>
         </div>
       </header>
 
@@ -2818,9 +2828,9 @@ async function openDispatchResultDialog(): Promise<void> {
   const autoBtn = document.getElementById("btn-battle-auto");
   const syncAutoBtnUi = () => {
     if (!autoBtn) return;
-    autoBtn.textContent = isAutoAdvance
-      ? pickLang(currentLang, { ja: "🔄 自動進行: ON", en: "🔄 Auto: ON", zh: "🔄 自动推进: ON" })
-      : pickLang(currentLang, { ja: "▶ 自動進行: OFF", en: "▶ Auto: OFF", zh: "▶ 自动推进: OFF" });
+    autoBtn.innerHTML = isAutoAdvance
+      ? `<span class="battle-btn-desktop">${pickLang(currentLang, { ja: "🔄 自動進行: ON", en: "🔄 Auto: ON", zh: "🔄 自动推进: ON" })}</span><span class="battle-btn-mobile">${pickLang(currentLang, { ja: "🔄 自動: ON", en: "🔄 Auto: ON", zh: "🔄 自动: ON" })}</span>`
+      : `<span class="battle-btn-desktop">${pickLang(currentLang, { ja: "▶ 自動進行: OFF", en: "▶ Auto: OFF", zh: "▶ 自动推进: OFF" })}</span><span class="battle-btn-mobile">${pickLang(currentLang, { ja: "▶ 自動: OFF", en: "▶ Auto: OFF", zh: "▶ 自动: OFF" })}</span>`;
     autoBtn.setAttribute("aria-pressed", isAutoAdvance ? "true" : "false");
     autoBtn.classList.toggle("is-active-speed", isAutoAdvance);
   };
