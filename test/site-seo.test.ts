@@ -152,4 +152,36 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(zhReadme).toContain("适用于数理优化与约束编程的代数建模器");
     expect(zhReadme).toContain("面向 TypeScript / JavaScript 的数理优化与约束编程代数建模器");
   });
+
+  it("verifies emitted HTML in dist/site and dist/demo contains configured SEO tags and localized titles", () => {
+    const siteDistPath = path.resolve(rootDir, "dist/site");
+    if (!fs.existsSync(siteDistPath)) {
+      return;
+    }
+
+    const enHtml = fs.readFileSync(path.resolve(siteDistPath, "index.html"), "utf-8");
+    expect(enHtml).toContain("<title>WaSHI | WaSHI — Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming</title>");
+    expect(enHtml).toContain('name="description" content="WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT)."');
+    expect(enHtml).toContain('property="og:type" content="website"');
+    expect(enHtml).toContain('property="og:site_name" content="WaSHI"');
+    expect(enHtml).toContain('property="og:image" content="https://ohtaman.github.io/washi/washi-logo.png"');
+    expect(enHtml).toContain('name="twitter:card" content="summary"');
+    expect(enHtml).toContain('name="twitter:image" content="https://ohtaman.github.io/washi/washi-logo.png"');
+    expect(enHtml).toContain('name="keywords" content="typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly"');
+
+    const jaHtml = fs.readFileSync(path.resolve(siteDistPath, "ja/index.html"), "utf-8");
+    expect(jaHtml).toContain("<title>WaSHI | WaSHI — 数理最適化と制約プログラミングのための代数モデラー</title>");
+    expect(jaHtml).toContain('name="description" content="TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）"');
+
+    const zhHtml = fs.readFileSync(path.resolve(siteDistPath, "zh/index.html"), "utf-8");
+    expect(zhHtml).toContain("<title>WaSHI | WaSHI — 适用于数理优化与约束编程的代数建模器</title>");
+    expect(zhHtml).toContain('name="description" content="适用于 TypeScript 与 JavaScript 的数理优化与约束编程代数建模器（LP, MIP, 凸QP, SMT）"');
+
+    const demoDistPath = path.resolve(rootDir, "dist/demo/index.html");
+    if (fs.existsSync(demoDistPath)) {
+      const demoHtml = fs.readFileSync(demoDistPath, "utf-8");
+      expect(demoHtml).toContain("<title>WaSHI — Browser Optimization & Constraint Programming Demos</title>");
+      expect(demoHtml).toContain("Interactive browser demos and playground for WaSHI: solve linear programming, nurse shift scheduling, and constraint games client-side with WebAssembly (HiGHS & Z3).");
+    }
+  });
 });
