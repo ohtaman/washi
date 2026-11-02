@@ -968,6 +968,16 @@ function getActiveTutorialStep(): {
   return null;
 }
 
+export function getNextCycleShift(current: ShiftType, isFullMoonForbidden = false): ShiftType {
+  if (current === "off") {
+    return "day";
+  }
+  if (current === "day") {
+    return isFullMoonForbidden ? "off" : "night";
+  }
+  return "off";
+}
+
 function renderShiftMatrix(): void {
   const table = getEl<HTMLTableElement>("shift-grid-table");
   const days = getStageDays(currentStage);
@@ -1212,6 +1222,24 @@ function renderShiftMatrix(): void {
             zh: `满月之夜无法将${m.name}安排在夜班`,
           });
 
+          const cycleLabel = pickLang(currentLang, {
+            ja: currentShift === "off" ? "休" : currentShift === "day" ? "昼" : "夜",
+            en: currentShift === "off" ? "Off" : currentShift === "day" ? "Day" : "Night",
+            zh: currentShift === "off" ? "休" : currentShift === "day" ? "昼" : "夜",
+          });
+          const cycleIcon = currentShift === "day" ? "☀️" : currentShift === "night" ? "🌙" : "";
+          const nextShiftPreview = getNextCycleShift(currentShift, isFullMoonForbidden);
+          const nextShiftLabel = pickLang(currentLang, {
+            ja: nextShiftPreview === "off" ? "休" : nextShiftPreview === "day" ? "昼" : "夜",
+            en: nextShiftPreview === "off" ? "Off" : nextShiftPreview === "day" ? "Day" : "Night",
+            zh: nextShiftPreview === "off" ? "休" : nextShiftPreview === "day" ? "昼" : "夜",
+          });
+          const cycleAriaLabel = pickLang(currentLang, {
+            ja: `${m.name} ${getDayLabel(d, currentLang)}: 現在 ${cycleLabel}（タップで ${nextShiftLabel} に切替）`,
+            en: `${m.name} ${getDayLabel(d, currentLang)}: Current ${cycleLabel} (Tap to change to ${nextShiftLabel})`,
+            zh: `${m.name} ${getDayLabel(d, currentLang)}: 当前 ${cycleLabel}（点击切换至 ${nextShiftLabel}）`,
+          });
+
           return `
             <td class="shift-cell state-${currentShift} ${hasViolation ? "has-violation" : ""} ${isTargetCell ? "is-tutorial-spotlight" : ""} ${isDimmedCell ? "is-tutorial-dimmed-cell" : ""}">
               ${tutorialCalloutHtml}
@@ -1242,6 +1270,19 @@ function renderShiftMatrix(): void {
                   ${isTutNight ? 'data-tutorial-target="true"' : ""}
                 >${nightBtnText}</button>
               </div>
+              <button
+                type="button"
+                class="shift-cycle-btn state-${currentShift}"
+                data-monster="${mId}"
+                data-day="${d}"
+                data-current-shift="${currentShift}"
+                data-full-moon-forbidden="${isFullMoonForbidden ? "true" : "false"}"
+                aria-label="${cycleAriaLabel}"
+                ${isTargetCell ? 'data-tutorial-target="true"' : ""}
+              >
+                ${cycleIcon ? `<span class="cycle-shift-icon">${cycleIcon}</span>` : ""}
+                <span class="cycle-shift-label">${cycleLabel}</span>
+              </button>
               ${noteHtml}
             </td>
           `;
@@ -1360,6 +1401,21 @@ function renderShiftMatrix(): void {
       currentSchedule[mId][day] = shift;
       soundEngine.playClick(shift);
       refreshEvaluationAndBoard(true, { monsterId: mId, day, shift });
+    });
+  });
+
+  table.querySelectorAll<HTMLButtonElement>(".shift-cycle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      const mId = btn.dataset.monster as MonsterId;
+      const day = Number(btn.dataset.day) as DayIndex;
+      const isFmForbidden = btn.dataset.fullMoonForbidden === "true";
+      const currentShift = currentSchedule[mId][day];
+      const nextShift = getNextCycleShift(currentShift, isFmForbidden);
+
+      currentSchedule[mId][day] = nextShift;
+      soundEngine.playClick(nextShift);
+      refreshEvaluationAndBoard(true, { monsterId: mId, day, shift: nextShift });
     });
   });
 

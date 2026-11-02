@@ -31,6 +31,7 @@ import {
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
 import {
   getActiveStageStateForTest,
+  getNextCycleShift,
   hasSavedProgress,
   isEndlessModeUnlocked,
   loadCampaignStage,
@@ -517,7 +518,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".game-dialog:not(.op-movie-dialog):not(.prologue-vn-dialog):not(.is-fullscreen-battle)", "width", 768)).toBe("min(96vw, 760px)");
 
     // Ultra-narrow mobile viewport (420px): further tightens matrix columns and touch target minimums
-    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("118px");
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
     expect(resolveEffectiveStyle(css, ".shift-btn", "min-width", 420)).toBe("42px");
 
     // 6. Explicit stylesheet order assertion guaranteeing media query overrides appear strictly after base rules
@@ -553,10 +554,10 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     // 2. Fullscreen battle dialog has opaque background-color fallback to prevent bleed-through
     expect(css).toMatch(/\.result-dialog\.is-fullscreen-battle\s*\{[^}]*background-color:\s*(?:var\(--bg-deep\)|#0d0915);/);
 
-    // 3. Compact matrix first column on ultra-narrow phones (420px) to allow multi-day visibility
-    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("118px");
-    expect(resolveEffectiveStyle(css, ".raid-row th", "width", 420)).toBe("118px");
-    expect(resolveEffectiveStyle(css, ".monster-row-th", "width", 420)).toBe("118px");
+    // 3. Compact matrix first column on ultra-narrow phones (420px) to allow full 5-day week visibility without scroll
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".raid-row th", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".monster-row-th", "width", 420)).toBe("90px");
 
     // 4. Tutorial callout bubble conforms to cell width on mobile without clipping
     expect(resolveEffectiveStyle(css, ".tutorial-callout-bubble", "max-width", 768)).toBe("100%");
@@ -568,6 +569,33 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
 
     // 6. Stage pill endless difficulty badge is hidden on mobile to avoid 200px+ button blowout
     expect(resolveEffectiveStyle(css, ".stage-pill-diff", "display", 768)).toBe("none");
+
+    // 7. Mobile 1-cell cycle toggle button vs desktop 3-button group
+    expect(resolveEffectiveStyle(css, ".shift-cycle-btn", "display", 1024)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".shift-btn-group", "display", 768)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".shift-cycle-btn", "display", 768)).toBe("flex");
+    expect(resolveEffectiveStyle(css, ".shift-cycle-btn", "min-height", 768)).toBe("44px");
+
+    // 8. Zero-scroll table elasticity: desktop has 620px min-width, mobile resets to 0
+    expect(resolveEffectiveStyle(css, ".shift-matrix", "min-width", 1024)).toBe("620px");
+    expect(resolveEffectiveStyle(css, ".shift-matrix", "min-width", 768)).toBe("0");
+
+    // 9. Slim first column on narrow phones (420px) to allow full 5-day week visibility without scroll
+    expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".raid-row th", "width", 420)).toBe("90px");
+    expect(resolveEffectiveStyle(css, ".monster-row-th", "width", 420)).toBe("90px");
+  });
+
+  it("cycles shift states on mobile 1-cell toggle button correctly (off -> day -> night -> off)", () => {
+    // Normal cycle
+    expect(getNextCycleShift("off", false)).toBe("day");
+    expect(getNextCycleShift("day", false)).toBe("night");
+    expect(getNextCycleShift("night", false)).toBe("off");
+
+    // Full moon forbidden cycle (skips night)
+    expect(getNextCycleShift("off", true)).toBe("day");
+    expect(getNextCycleShift("day", true)).toBe("off");
+    expect(getNextCycleShift("night", true)).toBe("off");
   });
 
   it("detects saved player progress to skip title and movie when resuming by default", () => {

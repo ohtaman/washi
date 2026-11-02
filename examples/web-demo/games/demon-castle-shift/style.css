@@ -896,6 +896,10 @@ body {
   border: 1px dashed rgba(176, 154, 218, 0.22);
 }
 
+.shift-cycle-btn {
+  display: none;
+}
+
 .shift-btn-group {
   display: inline-grid;
   grid-template-columns: repeat(3, 1fr);
@@ -4541,9 +4545,26 @@ button.pair-chip:hover {
     padding: 0.02rem 0.25rem;
   }
 
+  /* Responsive Zero-Scroll Shift Matrix on Mobile */
+  .shift-matrix {
+    min-width: 0;
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .shift-matrix th,
+  .shift-matrix td {
+    padding: 0.2rem 0.15rem;
+  }
+
+  .shift-matrix thead th:not(.col-monster) {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.1rem;
+  }
+
   /* Accessible Touch Targets on Mobile Shift Cells */
   .shift-cell {
-    padding: 0.25rem 0.3rem;
+    padding: 0.2rem 0.15rem;
   }
 
   .tutorial-callout-bubble {
@@ -4560,10 +4581,60 @@ button.pair-chip:hover {
   }
 
   .shift-btn-group {
-    min-width: 144px;
-    max-width: 156px;
-    gap: 0.15rem;
-    padding: 0.15rem;
+    display: none;
+  }
+
+  .shift-cycle-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    min-width: 36px;
+    padding: 0.2rem 0.1rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .shift-cycle-btn:active {
+    transform: scale(0.92);
+  }
+
+  .shift-cycle-btn.state-off {
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid rgba(71, 85, 105, 0.65);
+    color: #94a3b8;
+  }
+
+  .shift-cycle-btn.state-day {
+    background: rgba(180, 83, 9, 0.42);
+    border: 1px solid rgba(245, 158, 11, 0.85);
+    color: #fef08a;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.25);
+  }
+
+  .shift-cycle-btn.state-night {
+    background: rgba(67, 56, 202, 0.45);
+    border: 1px solid rgba(129, 140, 248, 0.85);
+    color: #e0e7ff;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+  }
+
+  .cycle-shift-icon {
+    font-size: 0.92rem;
+    line-height: 1;
+  }
+
+  .cycle-shift-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
   }
 
   .shift-btn {
@@ -4888,17 +4959,27 @@ button.pair-chip:hover {
   }
 
   .shift-matrix thead th.col-monster {
-    width: 118px;
-    padding-left: 0.35rem;
+    width: 90px;
+    max-width: 90px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
   }
 
   .raid-row th {
-    width: 118px;
-    padding-left: 0.35rem;
+    width: 90px;
+    max-width: 90px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    font-size: 0.68rem;
   }
 
   .monster-row-th {
-    width: 118px;
+    width: 90px;
+    max-width: 90px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
   }
 
   .monster-cell-header {
