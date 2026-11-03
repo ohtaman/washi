@@ -2530,21 +2530,78 @@ export async function applyDropMove(
   if (!course) return;
 
   // Unpin previous rules matching the source slot or course
-  if (course.sessionsPerWeek === 1) {
-    appState.customRules = appState.customRules.filter(
-      (r) => !(r.kind === "pin_slot" && r.courseId === course.id)
-    );
-  } else {
-    appState.customRules = appState.customRules.filter(
-      (r) =>
-        !(
-          r.kind === "pin_slot" &&
-          r.courseId === course.id &&
-          r.days?.includes(payload.fromDay) &&
-          r.periods?.includes(payload.fromPeriod)
-        )
-    );
+  const updatedRules: CustomTimetableRule[] = [];
+  let unpinnedCount = 0;
+
+  for (const r of appState.customRules) {
+    if (r.kind !== "pin_slot" || r.courseId !== course.id) {
+      updatedRules.push(r);
+      continue;
+    }
+
+    if (course.sessionsPerWeek === 1) {
+      // For single-session courses, unpin all prior slot pin rules for this course
+      unpinnedCount++;
+      continue;
+    }
+
+    // For multi-session courses, check if this rule covers the source slot
+    const matchesSource =
+      r.days?.includes(payload.fromDay) && r.periods?.includes(payload.fromPeriod);
+
+    if (!matchesSource) {
+      updatedRules.push(r);
+      continue;
+    }
+
+    // Matches source slot: handle composite rules (multiple days or periods)
+    const remainingDays = (r.days ?? []).filter((d) => d !== payload.fromDay);
+    const remainingPeriods = (r.periods ?? []).filter((p) => p !== payload.fromPeriod);
+
+    if ((r.days?.length ?? 0) > 1 && (r.periods?.length ?? 0) === 1) {
+      // Multiple days with 1 period: keep pin on the other days
+      unpinnedCount++;
+      const p = r.periods![0];
+      updatedRules.push({
+        ...r,
+        days: remainingDays,
+        description: pickTimetableLang(activeLang, {
+          ja: `「${course.title}(${course.id})」を ${remainingDays.map((d) => formatSlotI18n(d, p, "ja")).join("・")} に固定`,
+          en: `Pin "${course.title}(${course.id})" to ${remainingDays.map((d) => formatSlotI18n(d, p, "en")).join(", ")}`,
+          zh: `将《${course.title}(${course.id})》固定在 ${remainingDays.map((d) => formatSlotI18n(d, p, "zh")).join("、")}`,
+        }),
+      });
+    } else if ((r.periods?.length ?? 0) > 1 && (r.days?.length ?? 0) === 1) {
+      // Multiple periods with 1 day: keep pin on the other periods
+      unpinnedCount++;
+      const d = r.days![0];
+      updatedRules.push({
+        ...r,
+        periods: remainingPeriods,
+        description: pickTimetableLang(activeLang, {
+          ja: `「${course.title}(${course.id})」を ${remainingPeriods.map((p) => formatSlotI18n(d, p, "ja")).join("・")} に固定`,
+          en: `Pin "${course.title}(${course.id})" to ${remainingPeriods.map((p) => formatSlotI18n(d, p, "en")).join(", ")}`,
+          zh: `将《${course.title}(${course.id})》固定在 ${remainingPeriods.map((p) => formatSlotI18n(d, p, "zh")).join("、")}`,
+        }),
+      });
+    } else {
+      // Single slot pin rule: completely unpin it
+      unpinnedCount++;
+    }
   }
+
+  // Also remove any existing pin for this course at the exact target slot to prevent duplicates
+  appState.customRules = updatedRules.filter(
+    (r) =>
+      !(
+        r.kind === "pin_slot" &&
+        r.courseId === course.id &&
+        r.days?.length === 1 &&
+        r.days[0] === toDay &&
+        r.periods?.length === 1 &&
+        r.periods[0] === toPeriod
+      )
+  );
 
   const targetRoom = toRoomId ? appState.rooms.find((r) => r.id === toRoomId) : undefined;
   const courseI18n = getCourseI18n(course, activeLang);
@@ -2570,10 +2627,19 @@ export async function applyDropMove(
   };
   appState.customRules.push(newRule);
 
+  const unpinNotice =
+    unpinnedCount > 0
+      ? pickTimetableLang(activeLang, {
+          ja: ` (移動元の固定を解除)`,
+          en: ` (unpinned from source)`,
+          zh: ` (已解除原位置固定)`,
+        })
+      : "";
+
   const moveMsg = pickTimetableLang(activeLang, {
-    ja: `📌 **ドラッグ＆ドロップ移動**: 「${courseI18n.title}」を **${slotText}${roomText}** に固定して時間割を再編成します。`,
-    en: `📌 **Drag & Drop**: Pinned **${courseI18n.title}** to **${slotText}${roomText}** and re-optimizing timetable.`,
-    zh: `📌 **拖拽移动**: 已将《${courseI18n.title}》固定在 **${slotText}${roomText}**，正在重新编排课表。`,
+    ja: `📌 **ドラッグ＆ドロップ移動**: 「${courseI18n.title}」${unpinNotice}を **${slotText}${roomText}** に固定して時間割を再編成します。`,
+    en: `📌 **Drag & Drop**: Pinned **${courseI18n.title}**${unpinNotice} to **${slotText}${roomText}** and re-optimizing timetable.`,
+    zh: `📌 **拖拽移动**: 已将《${courseI18n.title}》${unpinNotice}固定在 **${slotText}${roomText}**，正在重新编排课表。`,
   });
   appendChatMessage("assistant", moveMsg);
 
