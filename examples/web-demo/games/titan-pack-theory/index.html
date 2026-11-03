@@ -195,17 +195,23 @@
         </div>
       </nav>
 
-      <header class="article-header">
-        <span class="article-badge">2D STRIP / BIN PACKING MILP & FAULT-LINE FREE</span>
-        <h1 id="t-title">『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化</h1>
-        <p class="lead" id="t-lead">
+      <article class="article-sheet">
+      <header class="book-header">
+        <div class="book-meta-bar">
+          <span class="badge badge-primary">2D STRIP / BIN PACKING MILP & FAULT-LINE FREE</span>
+          <span class="badge badge-point">MILP / PACKING</span>
+        </div>
+        <h1 class="book-title" id="t-title">『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化</h1>
+        <div class="book-lead-box" id="t-lead">
+          
           最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。
-        </p>
+        
+        </div>
       </header>
 
       <main>
         <section>
-          <h2 id="t-sec1-title">1. 2次元パッキング問題（2D Packing Problem）とは</h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span id="t-sec1-title">2次元パッキング問題（2D Packing Problem）とは</span></h2>
           <p id="t-sec1-p1">
             2次元パッキング問題は、与えられた母材プレート（長方形のシート）の中に、異なる寸法を持つ複数の長方形パーツを「互いに重ならず」「はみ出さず」配置する組合せ最適化問題です。板金加工、木工、半導体フロアプランニングなど実産業で広く応用されています。
           </p>
@@ -215,7 +221,7 @@
         </section>
 
         <section>
-          <h2 id="t-sec2-title">2. 幾何学的非重複制約の線形化（Big-M 定式化）</h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span id="t-sec2-title">幾何学的非重複制約の線形化（Big-M 定式化）</span></h2>
           <p id="t-sec2-p1">
             2つの長方形パーツ $i$ と $j$（位置 $(x_i, y_i)$、幅 $w_i$、高さ $h_i$）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：
           </p>
@@ -239,7 +245,7 @@
         </section>
 
         <section>
-          <h2 id="t-sec3-title">3. 断層禁止（Fault-Line Free）の幾何学的保証</h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span id="t-sec3-title">断層禁止（Fault-Line Free）の幾何学的保証</span></h2>
           <p id="t-sec3-p1">
             単にパーツを長方形に分割するだけでは、端から端まで貫通する直線（ギロチン切断線）が生じ、パズルが「ただの小分けの寄せ集め」になってしまいます。
           </p>
@@ -249,7 +255,7 @@
         </section>
 
         <section>
-          <h2 id="t-sec4-title">4. WaSHI による実装コード例</h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span id="t-sec4-title">WaSHI による実装コード例</span></h2>
           <p id="t-sec4-p1">
             TypeScript 数理最適化モデリングライブラリ <code>@ohtaman/washi</code> を使ってこの 2D パッキングモデルを構築するコードは以下の通りです：
           </p>

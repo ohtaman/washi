@@ -317,17 +317,20 @@
            JAPANESE ARTICLE
            ===================================================================== -->
       <div data-lang-section="ja">
-        <header class="hero-card">
-          <span class="hero-eyebrow">数理最適化（MILP）モデリング解説</span>
-          <h1>『魔王城の24時間警備シフト』の裏側：<br />勤務スケジューリング問題（NSP）と論理条件の線形化</h1>
-          <p>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">数理最適化（MILP）モデリング解説</span>
+            <span class="badge badge-point">MILP / NSP</span>
+          </div>
+          <h1 class="book-title">『魔王城の24時間警備シフト』の裏側：<br />勤務スケジューリング問題（NSP）と論理条件の線形化</h1>
+          <div class="book-lead-box">
             対象読者：混合整数線形計画（MIP）の基礎（二値変数・線形不等式・目的関数）をご存じの方。<br />
             現実の病院（ナース・スケジューリング）やコールセンター・警備現場で用いられる<strong>シフト最適化モデル</strong>が、ゲーム内の「夜勤明け日勤の禁止」「連勤上限」「ペア相性（二次項の線形化）」「単独夜勤の禁止」にどう1対1対応しているのかを解説します。
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. 警備シフトパズルと勤務スケジューリング問題（NSP）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>警備シフトパズルと勤務スケジューリング問題（NSP）</span></h2>
           <p>
             オペレーションズ・リサーチ（OR）の代表的な応用分野に<strong>ナース・スケジューリング問題（Nurse Scheduling Problem; NSP）</strong>や<strong>人員配置問題（Staff Rostering）</strong>があります。『魔王城の24時間警備シフト』は、この古典的かつ実用的なMILPモデルをそのままファンタジー世界の拠点防衛パズルに翻案したものです。
           </p>
@@ -380,8 +383,8 @@
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 決定変数と労務制約の定式化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>決定変数と労務制約の定式化</span></h2>
           <p>
             計画対象の日集合を $D = \{0, 1, \dots, T-1\}$、出撃可能な魔物の集合を $M$ とします。各魔物 $m \in M$・各日 $d \in D$ に対して、昼番に入るかどうかの二値変数 $\text{day}_{m,d} \in \{0, 1\}$ と、夜番に入るかどうかの二値変数 $\text{night}_{m,d} \in \{0, 1\}$ を定義します（両方 $0$ ならその日は「休み」です）。
           </p>
@@ -398,7 +401,7 @@
             $$
           </div>
 
-          <h3>最大連勤日数制約（スライディング・ウィンドウ法）</h3>
+          <h3 class="section-heading">最大連勤日数制約（スライディング・ウィンドウ法）</h3>
           <p>
             たとえば「古竜ドラゴは最大 $L_m = 1$ 連勤まで（＝1日働いたら翌日は必ず休み）」「ウェアウルフのフェンリルは最大 $L_m = 3$ 連勤まで」といった連勤制限は、<strong>幅 $L_m + 1$ 日のスライディング・ウィンドウ</strong>を1日ずつずらしながら、「連続するどの $L_m + 1$ 日間を切り取っても、その中の出勤日数は最大 $L_m$ 日以下である（＝最低1日は休みがある）」と書けます。
           </p>
@@ -414,8 +417,8 @@
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. 論理条件の線形化（1）：「新米スライムの夜間単独配置禁止」</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>論理条件の線形化（1）：「新米スライムの夜間単独配置禁止」</span></h2>
           <p>
             ゲーム中盤から登場する新米スライムのプルルには、<strong>「夜番に入るときは1人きりにせず、必ず他の誰かと一緒に配置しなければならない」</strong>というルールがあります（実務のシフト表でも「新人看護師は夜勤に単独配置しない」という全く同じ制約が頻出します）。
           </p>
@@ -433,8 +436,8 @@
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. 論理条件の線形化（2）：ペア相性（二次項 x_A * x_B）の線形化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>論理条件の線形化（2）：ペア相性（二次項 x_A * x_B）の線形化</span></h2>
           <p>
             さらにゲーム性を深めているのが、メンバー間の<strong>ペア相性（連携ボーナスと同番拒否）</strong>です。
           </p>
@@ -446,7 +449,7 @@
             これを素直に式にすると、$A$ の配置変数 $x_{A,d,s}$ と $B$ の配置変数 $x_{B,d,s}$ の<strong>積（二次項）$x_{A,d,s} \cdot x_{B,d,s}$</strong> が現れてしまい、そのままでは線形計画（MILP）になりません。
           </p>
 
-          <h3>補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ による標準線形化（Fortet / McCormick 線形化）</h3>
+          <h3 class="section-heading">補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ による標準線形化（Fortet / McCormick 線形化）</h3>
           <p>
             そこで、「$A$ と $B$ が同じ枠 $(d, s)$ に同時配置されたときだけ $1$ になる補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$」を導入し、次の3本の線形不等式で積 $x_A \cdot x_B$ と完全に等価にします。
           </p>
@@ -468,8 +471,8 @@
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>5. 防衛力被覆制約と「別解の列挙（No-Good Cut）」</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>防衛力被覆制約と「別解の列挙（No-Good Cut）」</span></h2>
           <p>
             各時間帯 $(d, s)$ において、個人の実効防衛力 $P_{m,s}$ とペア相性補正の合計が必要防衛力 $R_{d,s}$ 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します。
           </p>
@@ -485,7 +488,7 @@
             $$
           </div>
 
-          <h3>複数の最適シフト案を次々と提案する「No-Good Cut」</h3>
+          <h3 class="section-heading">複数の最適シフト案を次々と提案する「No-Good Cut」</h3>
           <p>
             実務でもゲームでも、「条件を満たすシフト表を1つだけでなく、別のパターンも見てみたい」という場面があります。すでに得られた解の <code>1</code> の変数集合を <code>S_1</code>、<code>0</code> の変数集合を <code>S_0</code> としたとき、以下の<strong>No-Good Cut（整数カット）</strong>を1本追加して再求解すると、直前のシフト表と最低1マス以上異なる次善解（または同点の別最適解）を瞬時に得ることができます。
           </p>
@@ -508,17 +511,20 @@ m.constraint(
            ENGLISH ARTICLE
            ===================================================================== -->
       <div data-lang-section="en" hidden>
-        <header class="hero-card">
-          <span class="hero-eyebrow">Mathematical Optimization (MILP) Formulation Guide</span>
-          <h1>Behind "Demon Castle 24-Hour Guard Shift":<br />Nurse Scheduling (NSP) and Linearization of Logical Rules</h1>
-          <p>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">Mathematical Optimization (MILP) Formulation Guide</span>
+            <span class="badge badge-point">MILP / NSP</span>
+          </div>
+          <h1 class="book-title">Behind "Demon Castle 24-Hour Guard Shift":<br />Nurse Scheduling (NSP) and Linearization of Logical Rules</h1>
+          <div class="book-lead-box">
             Target Audience: Readers familiar with the basics of Mixed-Integer Linear Programming (binary variables, linear inequalities, and objective functions).<br />
             This article explains how real-world <strong>staff rostering and nurse scheduling models</strong> map directly onto the game's mechanics: rest intervals after night shifts, consecutive work limits, rookie supervision rules, and McCormick linearization of pairwise synergies and conflicts.
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. Guard Shift Puzzle and the Nurse Scheduling Problem (NSP)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>Guard Shift Puzzle and the Nurse Scheduling Problem (NSP)</span></h2>
           <p>
             One of the most widely deployed applications of Operations Research (OR) is the <strong>Nurse Scheduling Problem (NSP)</strong> or <strong>Staff Rostering</strong>. "Demon Castle 24-Hour Guard Shift" adapts this practical MILP formulation into a fantasy castle defense puzzle.
           </p>
@@ -571,8 +577,8 @@ m.constraint(
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. Decision Variables and Labor Rule Formulation</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>Decision Variables and Labor Rule Formulation</span></h2>
           <p>
             Let $D = \{0, 1, \dots, T-1\}$ denote the planning days and $M$ denote the on-duty guard roster. For each guard $m \in M$ and day $d \in D$, we define binary variables $\text{day}_{m,d} \in \{0, 1\}$ and $\text{night}_{m,d} \in \{0, 1\}$ (if both are $0$, guard $m$ rests on day $d$).
           </p>
@@ -589,7 +595,7 @@ m.constraint(
             $$
           </div>
 
-          <h3>Maximum Consecutive Working Days (Sliding-Window Formulation)</h3>
+          <h3 class="section-heading">Maximum Consecutive Working Days (Sliding-Window Formulation)</h3>
           <p>
             To enforce rules such as "Elder Dragon Drago can work at most $L_m = 1$ consecutive day (must rest the day after working)" or "Werewolf Fenrir can work at most $L_m = 3$ consecutive days," we slide a <strong>window of length $L_m + 1$ days</strong> across the horizon. Within every contiguous window of $L_m + 1$ days, the guard can work at most $L_m$ days (guaranteeing at least one rest day inside the window):
           </p>
@@ -605,8 +611,8 @@ m.constraint(
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. Linearizing Logic (Part 1): Rookie Slime's "No Solo Night Duty"</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>Linearizing Logic (Part 1): Rookie Slime's "No Solo Night Duty"</span></h2>
           <p>
             Rookie guards like Pururu the Slime have a supervision rule: <strong>"She cannot be assigned to a night shift alone; at least one other colleague must work the same night shift."</strong> (This mirrors hospital rostering rules where first-year nurses cannot staff a night ward solo.)
           </p>
@@ -624,8 +630,8 @@ m.constraint(
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. Linearizing Logic (Part 2): Pairwise Synergies &amp; Conflicts (x_A * x_B)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>Linearizing Logic (Part 2): Pairwise Synergies &amp; Conflicts (x_A * x_B)</span></h2>
           <p>
             Guard chemistry plays a central role in building a strong defense line:
           </p>
@@ -637,7 +643,7 @@ m.constraint(
             Written directly, this introduces the <strong>quadratic product $x_{A,d,s} \cdot x_{B,d,s}$</strong> of two binary variables, which is non-linear.
           </p>
 
-          <h3>Standard Linearization via Auxiliary Binary Variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ (Fortet / McCormick)</h3>
+          <h3 class="section-heading">Standard Linearization via Auxiliary Binary Variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ (Fortet / McCormick)</h3>
           <p>
             We introduce an auxiliary binary variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ that equals $1$ if and only if both $A$ and $B$ are assigned to slot $(d, s)$, governed by three linear inequalities:
           </p>
@@ -659,8 +665,8 @@ m.constraint(
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>5. Defense Coverage Constraints and Alternative Solutions (No-Good Cuts)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>Defense Coverage Constraints and Alternative Solutions (No-Good Cuts)</span></h2>
           <p>
             In each slot $(d, s)$, the sum of individual effective defense powers $P_{m,s}$ plus pairwise modifiers must cover the required power $R_{d,s}$ and minimum headcount $N_{d,s}$, while maximizing total castle morale:
           </p>
@@ -676,7 +682,7 @@ m.constraint(
             $$
           </div>
 
-          <h3>Enumerating Alternative Rosters with a "No-Good Cut"</h3>
+          <h3 class="section-heading">Enumerating Alternative Rosters with a "No-Good Cut"</h3>
           <p>
             In both real-world scheduling and puzzle design, we often want to inspect alternative valid schedules. Given an existing binary solution with active ones <code>S_1</code> and zeros <code>S_0</code>, adding a single <strong>No-Good Cut (Canonical Integer Cut)</strong> excludes that exact assignment pattern and finds the next-best (or tied optimal) schedule differing in at least one cell:
           </p>
@@ -699,17 +705,20 @@ m.constraint(
            CHINESE ARTICLE
            ===================================================================== -->
       <div data-lang-section="zh" hidden>
-        <header class="hero-card">
-          <span class="hero-eyebrow">数学规划（MILP）建模解说</span>
-          <h1>《魔王城24小时警备排班》背后的数学模型：<br />护士排班问题（NSP）与逻辑条件的线性化</h1>
-          <p>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">数学规划（MILP）建模解说</span>
+            <span class="badge badge-point">MILP / NSP</span>
+          </div>
+          <h1 class="book-title">《魔王城24小时警备排班》背后的数学模型：<br />护士排班问题（NSP）与逻辑条件的线性化</h1>
+          <div class="book-lead-box">
             适合读者：了解混合整数线性规划（MIP）基础（0-1变量、线性不等式与目标函数）的读者。<br />
             本文将解说现实医院（护士排班）、客服中心与安保现场使用的<strong>排班优化模型</strong>，是如何与游戏中的“禁止夜班次日早班”、“连续出勤上限”、“新人禁止单独夜班”以及“搭档相性（二次项线性化）”一一对应的。
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. 警备排班解谜与护士排班问题（NSP）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>警备排班解谜与护士排班问题（NSP）</span></h2>
           <p>
             运筹学（OR）中最具代表性的应用领域之一便是<strong>护士排班问题（Nurse Scheduling Problem; NSP）</strong>与<strong>人员排班问题（Staff Rostering）</strong>。《魔王城24小时警备排班》正是将这一经典且实用的 MILP 模型改编成了奇幻世界背景下的据点防卫益智游戏。
           </p>
@@ -762,8 +771,8 @@ m.constraint(
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 决策变量与劳务规则的数学建模</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>决策变量与劳务规则的数学建模</span></h2>
           <p>
             设计划周期的日期集合为 $D = \{0, 1, \dots, T-1\}$，可出勤的魔物集合为 $M$。对每位成员 $m \in M$ 与每一天 $d \in D$，定义是否上白班的 0-1 变量 $\text{day}_{m,d} \in \{0, 1\}$ 与是否上夜班的 0-1 变量 $\text{night}_{m,d} \in \{0, 1\}$（若两者均为 $0$，则当天为“休息”）。
           </p>
@@ -780,7 +789,7 @@ m.constraint(
             $$
           </div>
 
-          <h3>最大连续工作天数约束（滑动窗口法）</h3>
+          <h3 class="section-heading">最大连续工作天数约束（滑动窗口法）</h3>
           <p>
             例如“古龙德拉戈最多连续工作 $L_m = 1$ 天（工作1天后次日必须休息）”、“狼人芬里尔最多连续工作 $L_m = 3$ 天”这类限制，可以通过<strong>长度为 $L_m + 1$ 天的滑动窗口（Sliding Window）</strong>逐日平移来表达：“在任意连续的 $L_m + 1$ 天窗口内，出勤天数总和最多不超过 $L_m$ 天（即窗口内至少有1天休息）”。
           </p>
@@ -796,8 +805,8 @@ m.constraint(
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. 逻辑条件的线性化（一）：“新人史莱姆禁止夜间单独值班”</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>逻辑条件的线性化（一）：“新人史莱姆禁止夜间单独值班”</span></h2>
           <p>
             游戏中期加入的新人史莱姆普露露有一条特殊规则：<strong>“安排夜班时不能让她独自一人，必须至少有一位其他同伴一起上夜班”</strong>（在医院排班中同样常见“新人护士不得单独值夜班”的带教约束）。
           </p>
@@ -815,8 +824,8 @@ m.constraint(
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. 逻辑条件的线性化（二）：搭档相性（二次项 x_A * x_B）的线性化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>逻辑条件的线性化（二）：搭档相性（二次项 x_A * x_B）的线性化</span></h2>
           <p>
             进一步丰富排班策略的是成员之间的<strong>搭档相性（协同加成与同班排斥）</strong>：
           </p>
@@ -828,7 +837,7 @@ m.constraint(
             若直接写出数学表达式，会出现两个 0-1 变量的<strong>乘积项（二次项）$x_{A,d,s} \cdot x_{B,d,s}$</strong>，导致模型不再是线性规划。
           </p>
 
-          <h3>引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ 的标准线性化（Fortet / McCormick 线性化）</h3>
+          <h3 class="section-heading">引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ 的标准线性化（Fortet / McCormick 线性化）</h3>
           <p>
             为此，我们引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$（仅当 $A$ 与 $B$ 同时排入班次 $(d, s)$ 时取 $1$），并用以下3条线性不等式使其与乘积 $x_A \cdot x_B$ 完全等价：
           </p>
@@ -850,8 +859,8 @@ m.constraint(
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>5. 防卫力覆盖约束与“多解枚举（No-Good Cut）”</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>防卫力覆盖约束与“多解枚举（No-Good Cut）”</span></h2>
           <p>
             在每个时段 $(d, s)$，个人实际防卫力 $P_{m,s}$ 与搭档相性修正之和必须达到所需防卫力 $R_{d,s}$ 及最低人数 $N_{d,s}$（覆盖约束），并在此基础上最大化全周期的总士气（Morale）：
           </p>
@@ -867,7 +876,7 @@ m.constraint(
             $$
           </div>
 
-          <h3>生成不同最优排班方案的“No-Good Cut（整数割）”</h3>
+          <h3 class="section-heading">生成不同最优排班方案的“No-Good Cut（整数割）”</h3>
           <p>
             无论在实际排班还是解谜中，我们常常希望看到不止一种可行排班方案。设已求得的某个解中取值为 <code>1</code> 的变量集合为 <code>S_1</code>，取值为 <code>0</code> 的变量集合为 <code>S_0</code>，只需向模型追加一条 <strong>No-Good Cut（整数割）</strong>并重新求解，即可排除刚才完全相同的排班表，立即求得至少有1格不同的另一组最优（或次优）排班方案：
           </p>
