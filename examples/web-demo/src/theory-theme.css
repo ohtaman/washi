@@ -520,6 +520,7 @@ code {
 }
 
 /* コードブロック */
+pre,
 pre.code-block,
 .code-window pre {
   background: var(--color-code-bg);
@@ -535,6 +536,7 @@ pre.code-block,
   box-shadow: var(--shadow-sm);
 }
 
+pre code,
 pre.code-block code,
 .code-window pre code {
   background: transparent;
