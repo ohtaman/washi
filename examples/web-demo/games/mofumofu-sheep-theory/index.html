@@ -21,6 +21,81 @@
         --color-accent-point-soft: #fef3c7;
         --color-accent-point-border: #fcd34d;
       }
+
+      /* 牧場グリッド図解 (Chapter 04: 単一品種フロー保存則) */
+      .diagram-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.25rem;
+        margin: 1.5rem 0;
+      }
+
+      .mini-board {
+        background: var(--color-surface-soft, #f4f2eb);
+        border: 2px solid var(--color-border, #e6e2d6);
+        border-radius: var(--radius-md, 10px);
+        padding: 1.25rem;
+        text-align: center;
+      }
+
+      .mini-board-title {
+        font-weight: 800;
+        font-size: 0.9rem;
+        color: var(--color-brand-primary, #3f7d20);
+        margin-bottom: 0.75rem;
+      }
+
+      .mini-cells {
+        display: inline-grid;
+        grid-template-columns: repeat(5, 42px);
+        gap: 5px;
+        margin: 0.4rem 0;
+      }
+
+      .mcell {
+        width: 42px;
+        height: 42px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        background: #c5ea99;
+        border: 1px solid #86b953;
+      }
+
+      .mcell.wall {
+        background: #6ec3f5;
+        border-color: #2f80c2;
+      }
+
+      .mcell.fence {
+        background: #cce89c;
+        border: 2px solid #5a3818;
+      }
+
+      .fence-svg {
+        width: 1em;
+        height: 1em;
+        display: inline-block;
+        vertical-align: -0.15em;
+      }
+
+      .mcell.fence .fence-svg {
+        width: 22px;
+        height: 22px;
+        vertical-align: middle;
+      }
+
+      .mcell.safe {
+        background: #ecfccb;
+        border: 2px solid #65a30d;
+      }
+
+      .mcell.bad {
+        background: #f3e8ff;
+        border: 2px dashed #9333ea;
+      }
     </style>
   </head>
   <body>
