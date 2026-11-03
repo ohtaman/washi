@@ -67,4 +67,16 @@ console.log(`Produce: ${desks.value} desks, ${chairs.value} chairs`);
 console.log(`Maximum Profit: $${m.objectiveValue}`);
 ```
 
+## Explore Documentation
+
+<div class="tip custom-block" style="padding-top: 8px;">
+
+- **Getting Started**: [Introduction & Installation](./getting-started/) · [AI Coding Agent Quick-Reference](./getting-started/ai-agents) · [Runtime Environments](./getting-started/runtimes) · [Cross-Origin Isolation](./getting-started/cross-origin)
+- **Modeling Guide**: [Variables & Bounds](./guide/variables) · [Expressions (expr, dot, sum)](./guide/expressions) · [Objective Functions](./guide/objectives) · [Constraints](./guide/constraints) · [Unsat Core Diagnosis](./guide/unsat-core)
+- **Solver Backends**: [HiGHS (Built-in)](./solvers/highs) · [Z3 (SMT)](./solvers/z3) · [GLPK (LP/MIP)](./solvers/glpk) · [Custom Solver Plugins](./solvers/custom-solver)
+- **Examples**: [Diet Problem & Sensitivity](./examples/diet-sensitivity) · [Production Planning](./examples/production) · [Knapsack](./examples/knapsack) · [Portfolio QP](./examples/portfolio-qp) · [Shift Scheduling](./examples/shift-scheduling) · [SMT Security](./examples/smt-security)
+- **Interactive Showcase**: [Apps & Games Showcase](./showcase/)
+
+</div>
+
 </div>

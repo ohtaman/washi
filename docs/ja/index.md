@@ -67,4 +67,16 @@ console.log(`生産量: 机=${desks.value}台, 椅子=${chairs.value}台`);
 console.log(`最大利益: $${m.objectiveValue}`);
 ```
 
+## ドキュメント一覧
+
+<div class="tip custom-block" style="padding-top: 8px;">
+
+- **はじめに**: [概要とインストール](./getting-started/) · [AI コーディングエージェント向けクイックリファレンス](./getting-started/ai-agents) · [ランタイム環境設定](./getting-started/runtimes) · [Cross-Origin Isolation 設定](./getting-started/cross-origin)
+- **モデリングガイド**: [変数と上下限](./guide/variables) · [数式の記述 (expr, dot, sum)](./guide/expressions) · [目的関数](./guide/objectives) · [制約条件](./guide/constraints) · [競合制約診断 (Unsat Core)](./guide/unsat-core)
+- **ソルバー接続**: [HiGHS (標準搭載)](./solvers/highs) · [Z3 (SMT)](./solvers/z3) · [GLPK (LP/MIP)](./solvers/glpk) · [カスタムソルバー実装](./solvers/custom-solver)
+- **定式化の具体例**: [献立問題と感度分析](./examples/diet-sensitivity) · [生産計画](./examples/production) · [ナップサック問題](./examples/knapsack) · [ポートフォリオ最適化 (QP)](./examples/portfolio-qp) · [シフトスケジューリング](./examples/shift-scheduling) · [SMT セキュリティポリシー検証](./examples/smt-security)
+- **インタラクティブアプリ**: [ショーケース一覧](./showcase/)
+
+</div>
+
 </div>

@@ -67,4 +67,16 @@ console.log(`生产方案: 桌子=${desks.value}, 椅子=${chairs.value}`);
 console.log(`最大利润: $${m.objectiveValue}`);
 ```
 
+## 文档导航
+
+<div class="tip custom-block" style="padding-top: 8px;">
+
+- **快速上手**: [简介与安装](./getting-started/) · [AI 编程助手快速参考](./getting-started/ai-agents) · [运行环境](./getting-started/runtimes) · [Cross-Origin 隔离配置](./getting-started/cross-origin)
+- **建模指南**: [变量与上下界](./guide/variables) · [表达式 (expr, dot, sum)](./guide/expressions) · [目标函数](./guide/objectives) · [约束条件](./guide/constraints) · [不可行冲突诊断 (Unsat Core)](./guide/unsat-core)
+- **求解器适配**: [HiGHS (内置)](./solvers/highs) · [Z3 (SMT)](./solvers/z3) · [GLPK (LP/MIP)](./solvers/glpk) · [自定义求解器适配器](./solvers/custom-solver)
+- **实战范例**: [饮食配方与敏感度分析](./examples/diet-sensitivity) · [生产规划](./examples/production) · [背包问题](./examples/knapsack) · [投资组合二次规划 (QP)](./examples/portfolio-qp) · [排班调度](./examples/shift-scheduling) · [SMT 安全策略验证](./examples/smt-security)
+- **交互式演示**: [应用与游戏展厅](./showcase/)
+
+</div>
+
 </div>
