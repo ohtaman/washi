@@ -25,7 +25,7 @@ WaSHI 并非在代码仓库内直接从 C++ 源码编译 HiGHS。而是从上游
 - **进度监控与中途取消（已支持）**：
   通过 HiGHS 内部的日志与中断钩子，WaSHI 提供实时进度回调（`onProgress`），并支持通过标准 `AbortSignal` 进行协作式中途取消。
 - **动态割平面 / 惰性约束（受 WASM 包装层限制暂不支持）**：
-  上游 WebAssembly 包装层出于 WASM ↔ JS 边界同步内存安全考虑，未公开底层原生回调类型 8（MIP lazy constraints）。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请采用**迭代求解循环（求解 $\to$ 检测违规 $\to$ `model.addConstraint(...)` $\to$ 重新求解）**的割平面法模式。
+  上游 WebAssembly 包装层出于 WASM ↔ JS 边界同步内存安全考虑，未公开底层原生回调类型 8（MIP lazy constraints）。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请采用**迭代求解循环（求解 $\to$ 检测违规 $\to$ `model.constraint(...)` $\to$ 重新求解）**的割平面法模式。
 
 ---
 

@@ -25,7 +25,7 @@ WaSHI does not compile HiGHS from C++ source in-tree. Instead, it packages and b
 - **Progress Monitoring & Cancellation (Supported)**:
   Through HiGHS's internal logging and interrupt hooks, WaSHI provides real-time progress callbacks (`onProgress`) and cooperative mid-solve cancellation via standard `AbortSignal`.
 - **Dynamic Cuts / Lazy Constraints (Not Supported in WASM Wrapper)**:
-  The upstream WebAssembly wrapper intentionally excludes low-level native callback type 8 (`MIP lazy constraints`) due to WASM-to-JS boundary and synchronous memory safety constraints. For problems requiring subtour elimination or Benders decomposition, use an **iterative cutting-plane loop** (solve $\to$ detect violation $\to$ `model.addConstraint(...)` $\to$ re-solve).
+  The upstream WebAssembly wrapper intentionally excludes low-level native callback type 8 (`MIP lazy constraints`) due to WASM-to-JS boundary and synchronous memory safety constraints. For problems requiring subtour elimination or Benders decomposition, use an **iterative cutting-plane loop** (solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve).
 
 ---
 

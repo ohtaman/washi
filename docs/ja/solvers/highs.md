@@ -25,7 +25,7 @@ WaSHI はリポジトリ内で HiGHS の C++ ソースから直接 WASM をビ�
 - **進捗監視と途中中断（対応済み）**:
   HiGHS の内部ロギングおよび割り込みフックと連携しており、リアルタイムの進捗通知（`onProgress`）や標準の `AbortSignal` を用いた協調的途中中断をサポートしています。
 - **動的カット生成・遅延制約（WASM ラッパー層の制約により非対応）**:
-  上流の WebAssembly ラッパーにおいて、ネイティブの callback type 8（MIP lazy constraints）は WASM ↔ JS 境界での同期メモリ安全性の観点から公開されていません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、**反復求解ループ（解く $\to$ 違反検出 $\to$ `model.addConstraint(...)` $\to$ 再求解）**による切除平面法のアプローチをご利用ください。
+  上流の WebAssembly ラッパーにおいて、ネイティブの callback type 8（MIP lazy constraints）は WASM ↔ JS 境界での同期メモリ安全性の観点から公開されていません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、**反復求解ループ（解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）**による切除平面法のアプローチをご利用ください。
 
 ---
 
