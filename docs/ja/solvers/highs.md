@@ -2,7 +2,7 @@
 
 **HiGHS** はエディンバラ大学を中心に開発されている高性能な数理最適化ソフトウェアです（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）における代表的なオープンソースソルバーとして広く利用されています。
 
-`@ohtaman/washi` では、公式 npm パッケージ [`highs`](https://www.npmjs.com/package/highs)（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）を通じて WebAssembly 上で完全動作し、Node.js・Web Worker・ブラウザ環境でゼロコンフィグで利用できます。
+`@ohtaman/washi` では、オープンソースの [`highs`](https://www.npmjs.com/package/highs) パッケージ（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)、Ophir Lojkine 氏による WebAssembly ポート）を通じて WebAssembly 上で完全動作し、Node.js・Web Worker・ブラウザ環境でゼロコンフィグで利用できます。
 
 ---
 
@@ -18,7 +18,7 @@
 
 ## アーキテクチャと WebAssembly ランタイム
 
-WaSHI はリポジトリ内で HiGHS の C++ ソースから直接 WASM をビルドしているわけではありません。上流の公式 npm パッケージ [`highs`](https://www.npmjs.com/package/highs)（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）が提供する WebAssembly バイナリ（`highs.wasm`）と JS ランタイムを抽出し、WaSHI の代数モデリング層、Web Worker 自動オフロード、および標準ソルバー抽象インターフェースでラップしてパッケージングしています。
+WaSHI はリポジトリ内で HiGHS の C++ ソースから直接 WASM をビルドしているわけではありません。上流の npm パッケージ [`highs`](https://www.npmjs.com/package/highs)（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）が提供する WebAssembly バイナリ（`highs.wasm`）と JS ランタイムを抽出し、WaSHI の代数モデリング層、Web Worker 自動オフロード、および標準ソルバー抽象インターフェースでラップしてパッケージングしています。
 
 ### コールバックと対話的制御
 

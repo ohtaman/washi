@@ -2,7 +2,7 @@
 
 **HiGHS** 是由爱丁堡大学研发的高性能数理优化软件（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)），公认为线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）领域的顶尖开源求解器。
 
-在 `@ohtaman/washi` 中，HiGHS 通过官方 [`highs`](https://www.npmjs.com/package/highs) 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）完全运行在 WebAssembly 环境中，在 Node.js、Web Worker 和浏览器环境中提供零配置执行能力。
+在 `@ohtaman/washi` 中，HiGHS 通过开源 [`highs`](https://www.npmjs.com/package/highs) 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)，由 Ophir Lojkine 开发的 WebAssembly 移植版本）完全运行在 WebAssembly 环境中，在 Node.js、Web Worker 和浏览器环境中提供零配置执行能力。
 
 ---
 
@@ -18,7 +18,7 @@
 
 ## 架构与 WebAssembly 运行时
 
-WaSHI 并非在代码仓库内直接从 C++ 源码编译 HiGHS。而是从上游官方 [`highs`](https://www.npmjs.com/package/highs) npm 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）中提取并打包 WebAssembly 二进制文件（`highs.wasm`）及其 JS 运行时，结合 WaSHI 的代数建模层、Web Worker 自动调度和标准求解器抽象接口进行分发。
+WaSHI 并非在代码仓库内直接从 C++ 源码编译 HiGHS。而是从上游 [`highs`](https://www.npmjs.com/package/highs) npm 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）中提取并打包 WebAssembly 二进制文件（`highs.wasm`）及其 JS 运行时，结合 WaSHI 的代数建模层、Web Worker 自动调度和标准求解器抽象接口进行分发。
 
 ### 回调与求解器交互控制
 

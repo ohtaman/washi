@@ -2,7 +2,7 @@
 
 **HiGHS** is high-performance mathematical optimization software developed at the University of Edinburgh ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
 
-In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly via the official [`highs`](https://www.npmjs.com/package/highs) package ([lovasoa/highs-js](https://github.com/lovasoa/highs-js)), providing zero-config execution across Node.js, Web Workers, and browsers.
+In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly via the open-source [`highs`](https://www.npmjs.com/package/highs) package ([lovasoa/highs-js](https://github.com/lovasoa/highs-js) by Ophir Lojkine), providing zero-config execution across Node.js, Web Workers, and browsers.
 
 ---
 
