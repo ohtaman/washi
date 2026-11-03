@@ -182,28 +182,39 @@
             <strong>✨ 正のシナジーも負のペナルティもこの3本で厳密に表現できる理由</strong>
             もし正のボーナス（$\Delta_{A,B} > 0$）だけなら式(a)・(b)の上界だけでも目的関数が自然に $\text{pair} = 1$ を選びますが、負のペナルティ（$\Delta_{A,B} &lt; 0$、不仲ペア）がある場合はソルバーがペナルティを逃れようとして $\text{pair} = 0$ に下げようとします。そこに式(c)の下界 $\text{pair} \ge x_A + x_B - 1$ があることで、<strong>「2人を同時に置いたら必ず $\text{pair} = 1$ になって減点を受ける」</strong>ことが厳密に強制されます。
           </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">💡 最適化の極意：補助変数 pair は連続変数 [0, 1] で十分！</div>
+            <div class="callout-content">
+              モデル上、$\text{pair}_{A,B,d,s}$ は「二値変数」として直感的に理解されますが、実はMILPソルバーに渡す際は <strong>連続変数（$0 \le \text{pair} \le 1$）として宣言しても完全に同じ動作</strong>をします。<br />
+              なぜなら、$x_A, x_B \in \{0, 1\}$ が確定した瞬間、式(a)(b)(c)によって $\text{pair}$ の取り得る値の範囲は単一の整数点（$0$ または $1$）に潰れるからです。分枝限定法でソルバーが探索すべき「整数変数の総数」を減らすことは、大規模な実務問題を高速に解くための鉄則です。
+            </div>
+          </div>
         </section>
 
         <section>
           <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>防衛力被覆制約と「別解の列挙（No-Good Cut）」</span></h2>
           <p>
-            各時間帯 $(d, s)$ において、個人の実効防衛力 $P_{m,s}$ とペア相性補正の合計が必要防衛力 $R_{d,s}$ 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します。
+            各時間帯 $(d, s)$ において、個人の実効防衛力 $P_{m,s}$ とペア相性補正の合計が必要防衛力 $R_{d,s}$ 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します（ここで $\{A, B\}$ はメンバーの非順序ペア $A &lt; B$ を表し、二重カウントを防ぎます）。
           </p>
 
           <div class="math-box">
             <span class="math-title">各襲来枠 (d, s) の防衛力・最低人数制約と目的関数</span>
             $$
             \begin{aligned}
-            &\text{防衛力被覆:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{防衛力被覆:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
             &\text{最低人数:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
-            &\text{目的関数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            &\text{目的関数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
             \end{aligned}
             $$
           </div>
 
           <h3 class="section-heading">複数の最適シフト案を次々と提案する「No-Good Cut」</h3>
           <p>
-            実務でもゲームでも、「条件を満たすシフト表を1つだけでなく、別のパターンも見てみたい」という場面があります。すでに得られた解の <code>1</code> の変数集合を <code>S_1</code>、<code>0</code> の変数集合を <code>S_0</code> としたとき、以下の<strong>No-Good Cut（整数カット）</strong>を1本追加して再求解すると、直前のシフト表と最低1マス以上異なる次善解（または同点の別最適解）を瞬時に得ることができます。
+            実務でもゲームでも、「条件を満たすシフト表を1つだけでなく、別のパターンも見てみたい」という場面があります。すでに得られた解の <code>1</code> の決定変数集合を <code>S_1</code>、<code>0</code> の決定変数集合を <code>S_0</code> としたとき、以下の<strong>No-Good Cut（整数カット）</strong>を1本追加して再求解すると、直前のシフト表と最低1マス以上異なる次善解（または同点の別最適解）を瞬時に得ることができます。
+          </p>
+          <p>
+            なお、カット対象の集合 $S_1, S_0$ には、補助変数 $\text{pair}$ を含めず<strong>主たる配置変数 $x_{m,d,s}$ のみを対象とする</strong>ことで、カット平面が冗長化せず最もタイトに働きます。
           </p>
 
           <pre class="code-block"><code>// 直前のシフト割当と完全に同一の0-1パターンだけを禁止する No-Good Cut
@@ -376,21 +387,29 @@ m.constraint(
             <strong>✨ Why Both Upper and Lower Bounds Matter Here</strong>
             For a positive synergy bonus ($\Delta_{A,B} > 0$), upper bounds (a) and (b) alone would suffice because maximization naturally pushes $\text{pair}$ up to $1$. Conversely, for a negative conflict penalty ($\Delta_{A,B} &lt; 0$), the solver tries to set $\text{pair} = 0$ to dodge the penalty; inequality (c) provides the lower bound $\text{pair} \ge x_A + x_B - 1$ that forces $\text{pair} = 1$ whenever both guards share a slot.
           </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">💡 Practitioner's Tip: Auxiliary pair Variables Can Be Continuous [0, 1]</div>
+            <div class="callout-content">
+              While $\text{pair}_{A,B,d,s}$ is conceptually thought of as a 0-1 binary variable, <strong>declaring it as a continuous variable $0 \le \text{pair} \le 1$ in the MILP solver produces identical results</strong>.<br />
+              Once $x_A, x_B \in \{0, 1\}$ are decided, inequalities (a)–(c) collapse the feasible range of $\text{pair}$ to a single integer point ($0$ or $1$). Reducing the number of integer variables that the solver must branch on is a fundamental rule for scaling combinatorial optimization models.
+            </div>
+          </div>
         </section>
 
         <section>
           <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>Defense Coverage Constraints and Alternative Solutions (No-Good Cuts)</span></h2>
           <p>
-            In each slot $(d, s)$, the sum of individual effective defense powers $P_{m,s}$ plus pairwise modifiers must cover the required power $R_{d,s}$ and minimum headcount $N_{d,s}$, while maximizing total castle morale:
+            In each slot $(d, s)$, the sum of individual effective defense powers $P_{m,s}$ plus pairwise modifiers must cover the required power $R_{d,s}$ and minimum headcount $N_{d,s}$, while maximizing total castle morale (summed over unordered pairs $\{A, B\} \subseteq M, A &lt; B$ to prevent duplicate counting):
           </p>
 
           <div class="math-box">
             <span class="math-title">Slot Coverage Constraints and Objective Function</span>
             $$
             \begin{aligned}
-            &\text{Defense Coverage:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{Defense Coverage:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
             &\text{Minimum Staff:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
-            &\text{Objective:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            &\text{Objective:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
             \end{aligned}
             $$
           </div>
@@ -398,6 +417,9 @@ m.constraint(
           <h3 class="section-heading">Enumerating Alternative Rosters with a "No-Good Cut"</h3>
           <p>
             In both real-world scheduling and puzzle design, we often want to inspect alternative valid schedules. Given an existing binary solution with active ones <code>S_1</code> and zeros <code>S_0</code>, adding a single <strong>No-Good Cut (Canonical Integer Cut)</strong> excludes that exact assignment pattern and finds the next-best (or tied optimal) schedule differing in at least one cell:
+          </p>
+          <p>
+            Crucially, the cut sets $S_1, S_0$ are constructed <strong>strictly from the primary decision variables $x_{m,d,s}$</strong> rather than auxiliary variables like $\text{pair}$, guaranteeing the tightest non-redundant cutting plane.
           </p>
 
           <pre class="code-block"><code>// No-Good Cut forbidding the exact previous 0-1 schedule assignment
@@ -570,21 +592,29 @@ m.constraint(
             <strong>✨ 为什么正负相性都能由这 3 条不等式严密刻画</strong>
             如果只有正加成（$\Delta_{A,B} > 0$），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 $\text{pair}$ 推向 $1$；但当存在负惩罚（$\Delta_{A,B} &lt; 0$，不睦组合）时，求解器会试图将 $\text{pair}$ 设为 $0$ 来逃避扣分。此时下界约束 (c) $\text{pair} \ge x_A + x_B - 1$ 能够严格强制<strong>“只要两人同班，$\text{pair}$ 就必须为 $1$ 并扣除 150 点防卫力”</strong>。
           </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">💡 优化建模秘籍：辅助变量 pair 声明为连续变量 [0, 1] 即可！</div>
+            <div class="callout-content">
+              在概念上，$\text{pair}_{A,B,d,s}$ 直观上是一个 0-1 二进制变量，但在实际交给 MILP 求解器时，<strong>完全可以将其声明为连续变量（$0 \le \text{pair} \le 1$）</strong>。<br />
+              因为只要主决策变量 $x_A, x_B \in \{0, 1\}$ 确定，根据约束 (a)(b)(c)，$\text{pair}$ 的可行域就会自动坍缩到单一的整数点（$0$ 或 $1$）。减少求解器在分支定界过程中需要分支的“整数变量总数”，是加速求解大规模实际排班问题的核心技巧。
+            </div>
+          </div>
         </section>
 
         <section>
           <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>防卫力覆盖约束与“多解枚举（No-Good Cut）”</span></h2>
           <p>
-            在每个时段 $(d, s)$，个人实际防卫力 $P_{m,s}$ 与搭档相性修正之和必须达到所需防卫力 $R_{d,s}$ 及最低人数 $N_{d,s}$（覆盖约束），并在此基础上最大化全周期的总士气（Morale）：
+            在每个时段 $(d, s)$，个人实际防卫力 $P_{m,s}$ 与搭档相性修正之和必须达到所需防卫力 $R_{d,s}$ 及最低人数 $N_{d,s}$（覆盖约束），并在此基础上最大化全周期的总士气（Morale）（式中 $\{A, B\}$ 表示无序成员对 $A &lt; B$，避免重复计算）：
           </p>
 
           <div class="math-box">
             <span class="math-title">各班次 (d, s) 的防卫力/最低人数约束与目标函数</span>
             $$
             \begin{aligned}
-            &\text{防卫力覆盖:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{防卫力覆盖:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
             &\text{最低人数:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
-            &\text{目标函数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            &\text{目标函数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
             \end{aligned}
             $$
           </div>
@@ -592,6 +622,9 @@ m.constraint(
           <h3 class="section-heading">生成不同最优排班方案的“No-Good Cut（整数割）”</h3>
           <p>
             无论在实际排班还是解谜中，我们常常希望看到不止一种可行排班方案。设已求得的某个解中取值为 <code>1</code> 的变量集合为 <code>S_1</code>，取值为 <code>0</code> 的变量集合为 <code>S_0</code>，只需向模型追加一条 <strong>No-Good Cut（整数割）</strong>并重新求解，即可排除刚才完全相同的排班表，立即求得至少有1格不同的另一组最优（或次优）排班方案：
+          </p>
+          <p>
+            值得注意的是，割平面集合 $S_1, S_0$ <strong>仅针对主排班决策变量 $x_{m,d,s}$</strong> 构建，排除辅助变量 $\text{pair}$，从而保证割平面的紧致性与无冗余。
           </p>
 
           <pre class="code-block"><code>// 仅禁止与上一组排班表完全相同的 0-1 组合的 No-Good Cut

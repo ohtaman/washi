@@ -63,13 +63,23 @@
           <div class="formula-box">
             $$
             \begin{aligned}
-            x_i + w_i &\le x_j + M(1 - \delta_{ij,1}) \\
-            x_j + w_j &\le x_i + M(1 - \delta_{ij,2}) \\
-            y_i + h_i &\le y_j + M(1 - \delta_{ij,3}) \\
-            y_j + h_j &\le y_i + M(1 - \delta_{ij,4}) \\
-            \delta_{ij,1} + \delta_{ij,2} + \delta_{ij,3} + \delta_{ij,4} &\ge 1 \quad (\delta_{ij,k} \in \{0, 1\})
+            &\min \quad 0 \quad (\text{材料ロス 0\% の実行可能配置を判定}) \\
+            &\text{s.t.} \\
+            &x_i + w_i \le x_j + W(1 - \delta_{ij,1}) \quad (\forall i &lt; j) \\
+            &x_j + w_j \le x_i + W(1 - \delta_{ij,2}) \quad (\forall i &lt; j) \\
+            &y_i + h_i \le y_j + H(1 - \delta_{ij,3}) \quad (\forall i &lt; j) \\
+            &y_j + h_j \le y_i + H(1 - \delta_{ij,4}) \quad (\forall i &lt; j) \\
+            &\delta_{ij,1} + \delta_{ij,2} + \delta_{ij,3} + \delta_{ij,4} \ge 1 \quad (\forall i &lt; j) \\
+            &0 \le x_i \le W - w_i, \quad 0 \le y_i \le H - h_i \quad (\forall i)
             \end{aligned}
             $$
+          </div>
+
+          <div class="callout callout-warn">
+            <div class="callout-header"><span id="t-warn-title">⚠️ なぜ Big-M を「とりあえず 999999」にしてはいけないのか？</span></div>
+            <div class="callout-content" id="t-warn-body">
+              初学者がよく犯すミスとして、$M$ に極端に大きな数値を設定してしまうケースがあります。Big-M が大きすぎると、(1) LP緩和の実行可能領域が広がりすぎて緩和値が極めて弱くなり、分枝限定法の探索ノード数が爆発する、(2) ソルバー内部の浮動小数点数の丸め誤差（トレランス $10^{-6}$）によって、実際には衝突しているのに「わずかに重なったまま整数解と誤認される」数値的不安定性を引き起こします。幅方向には母材幅 $M_x = W$、高さ方向には母材高 $M_y = H$ という理論上絶対に超えない最小のタイトな上界を設定するのが鉄則です。
+            </div>
           </div>
         </section>
 
@@ -134,10 +144,12 @@ console.log("Status:", status);</code></pre>
           sec1P2: "すべてのパーツを隙間なくぴったり詰め込み、端材（材料ロス）を 0% にできるか判定する問題は NP 困難であることが知られています。",
           sec2Title: "2. 幾何学的非重複制約の線形化（Big-M 定式化）",
           sec2P1: "2つの長方形パーツ $i$ と $j$（位置 $(x_i, y_i)$、幅 $w_i$、高さ $h_i$）が互いに重ならないための条件は、本来「排他的論理和（OR）」を含む非線形な条件です：",
-          sec2P2: "混合整数線形計画法（MILP）では、4つのバイナリ変数 $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ と十分大きな定数 $M$ を用いて以下のように線形制約へ変換します：",
+          sec2P2: "混合整数線形計画法（MILP）では、4つのバイナリ変数 $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ と母材寸法 $W, H$ に基づくタイトな定数を用いて以下のように線形制約へ変換します：",
+          warnTitle: "⚠️ なぜ Big-M を「とりあえず 999999」にしてはいけないのか？",
+          warnBody: "初学者がやりがちな失敗として、$M$ に極端に大きな数値を設定してしまうケースがあります。Big-M が大きすぎると、(1) LP緩和の実行可能領域が広がりすぎて緩和値が極めて弱くなり、分枝限定法の探索ノード数が爆発する、(2) ソルバー内部の浮動小数点数の丸め誤差（トレランス $10^{-6}$）によって、実際には衝突しているのに「わずかに重なったまま整数解と誤認される」数値的不安定性を引き起こします。幅方向には母材幅 $M_x = W$、高さ方向には母材高 $M_y = H$ という理論上絶対に超えない最小のタイトな上界を設定するのが鉄則です。",
           sec3Title: "3. 断層禁止（Fault-Line Free）の幾何学的保証",
           sec3P1: "単にパーツを長方形に分割するだけでは、端から端まで貫通する直線（ギロチン切断線）が生じ、パズルが「ただの小分けの寄せ集め」になってしまいます。",
-          sec3P2: "TITAN PACK では、すべての垂直境界 $c \\in \\{1, \\dots, W-1\\}$ および水平境界 $r \\in \\{1, \\dots, H-1\\}$ について、少なくとも1つのパーツがその境界を跨ぐ（$x_i < c < x_i + w_i$）構造を保証する Multi-Scale Interlocking & Core Partitioning アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています。",
+          sec3P2: "TITAN PACK では、すべての垂直境界 $c \\in \\{1, \\dots, W-1\\}$ および水平境界 $r \\in \\{1, \\dots, H-1\\}$ について、少なくとも1つのパーツがその境界を跨ぐ（$x_i < c < x_i + w_i$）構造を保証する Multi-Scale Interlocking & Core Partitioning アルゴリズムを採用し、知恵の輪のように有機的に噛み合う良問を無限に生成しています（なお、同一寸法パーツペアが存在する場合は $x_i \\le x_j$ のような順序固定制約＝対称性の排除を課すことで、分枝探索の無駄を劇的に削減できます）。",
           sec4Title: "4. WaSHI による実装コード例",
           sec4P1: "TypeScript 数理最適化モデリングライブラリ @ohtaman/washi を使ってこの 2D パッキングモデルを構築するコードは以下の通りです：",
         },
@@ -151,10 +163,12 @@ console.log("Status:", status);</code></pre>
           sec1P2: "Deciding whether a set of items can be packed with zero scrap (100% material efficiency) without void is known to be strongly NP-hard.",
           sec2Title: "2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)",
           sec2P1: "The condition that two rectangles $i$ and $j$ (placed at $(x_i, y_i)$ with dimensions $w_i \\times h_i$) do not overlap is inherently disjunctive (connected by logical OR):",
-          sec2P2: "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ and a sufficiently large constant $M$:",
+          sec2P2: "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ and tight axis-specific constants derived from plate dimensions $W, H$:",
+          warnTitle: "⚠️ Why Big-M Must Never Be Set to an Arbitrary '999999'",
+          warnBody: "Setting Big-M to an arbitrary large number is a notorious beginner trap. Oversized Big-M values (1) severely weaken the continuous LP relaxation bound, causing an exponential explosion in branch-and-bound nodes, and (2) trigger numerical instability where parts slightly overlap within floating-point tolerances ($10^{-6}$) and are falsely treated as feasible. Setting tight, provable upper bounds ($M_x = W$ and $M_y = H$) is an indispensable best practice in mathematical programming.",
           sec3Title: "3. Geometric Guarantees for Fault-Line-Free Layouts",
           sec3P1: "If a rectangle is naively sliced with full-width or full-height cuts, continuous fault lines (guillotine cuts) emerge, degrading structural rigidity and breaking the puzzle into trivial independent sub-puzzles.",
-          sec3P2: "TITAN PACK uses a Multi-Scale Interlocking & Core Partitioning algorithm that guarantees every interior grid line $c \\in \\{1, \\dots, W-1\\}$ and $r \\in \\{1, \\dots, H-1\\}$ is crossed by at least one overlapping metal girder ($x_i < c < x_i + w_i$), ensuring an interlocking puzzle with zero continuous fault lines across all campaign and endless stages.",
+          sec3P2: "TITAN PACK uses a Multi-Scale Interlocking & Core Partitioning algorithm that guarantees every interior grid line $c \\in \\{1, \\dots, W-1\\}$ and $r \\in \\{1, \\dots, H-1\\}$ is crossed by at least one overlapping metal girder ($x_i < c < x_i + w_i$), ensuring an interlocking puzzle with zero continuous fault lines (furthermore, when identical parts exist, adding symmetry-breaking constraints like $x_i \\le x_j$ eliminates redundant permutation branches in solver search).",
           sec4Title: "4. Implementation with WaSHI",
           sec4P1: "Here is how to formulate and solve this 2D packing model using the @ohtaman/washi TypeScript mathematical modeling library:",
         },
@@ -168,10 +182,12 @@ console.log("Status:", status);</code></pre>
           sec1P2: "判断给定零件集合能否完全填满矩形母材、实现 0% 边角料浪费的判定问题已被证明属于强 NP 难问题。",
           sec2Title: "2. 几何非重叠约束的线性化（Big-M 定式化）",
           sec2P1: "两个矩形零件 $i$ 与 $j$（坐标为 $(x_i, y_i)$，尺寸为 $w_i \\times h_i$）互不重叠的充要条件在逻辑上是由“逻辑或（OR）”连接的析取条件：",
-          sec2P2: "在混合整数线性规划（MILP）中，我们引入四个 0-1 二进制决策变量 $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ 以及充分大的常数 $M$，将其转化为一组线性不等式：",
+          sec2P2: "在混合整数线性规划（MILP）中，我们引入四个 0-1 二进制决策变量 $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ 以及由母材尺寸 $W, H$ 导出的紧致常数，将其转化为一组线性不等式：",
+          warnTitle: "⚠️ 为什么绝不能把 Big-M 随手设为“999999”？",
+          warnBody: "初学者常犯的典型错误是给 $M$ 赋予一个随意的极大数。过大的 Big-M 会导致：(1) LP 线性松弛的可行域过度膨胀，下界极度松散，导致分支定界树规模爆炸；(2) 在浮点容差（$10^{-6}$）的影响下，零件微小重叠却被求解器误判为无重叠的数值不稳定风险。在水平方向取母材宽 $M_x = W$、垂直方向取母材高 $M_y = H$ 作为理论最紧上界，是工业级建模的必遵铁则。",
           sec3Title: "3. 杜绝通断层（Fault-Line Free）的几何保证",
           sec3P1: "如果单纯将板材做横平竖直的切分，很容易产生贯穿整块板材的直线（一刀切分型线），使得拼图退化为若干彼此独立的简单小拼图，也削弱了零件咬合的力学强度。",
-          sec3P2: "《TITAN PACK》采用多尺度互锁式核心分割算法，确保每一条内部水平与垂直网格线 $c \\in \\{1, \\dots, W-1\\}$ 和 $r \\in \\{1, \\dots, H-1\\}$ 上都至少有一个零件跨线咬合（$x_i < c < x_i + w_i$），从而自动生成宛如鲁班锁般紧密啮合的高质量关卡。",
+          sec3P2: "《TITAN PACK》采用多尺度互锁式核心分割算法，确保每一条内部水平与垂直网格线 $c \\in \\{1, \\dots, W-1\\}$ 和 $r \\in \\{1, \\dots, H-1\\}$ 上都至少有一个零件跨线咬合（$x_i < c < x_i + w_i$），从而自动生成宛如鲁班锁般紧密啮合的高质量关卡（此外，对于相同规格的零件对，施加 $x_i \\le x_j$ 这类对称性破缺约束（Symmetry Breaking Constraints）可成倍削减搜索树的无谓冗余）。",
           sec4Title: "4. 使用 WaSHI 进行模型构建的代码示例",
           sec4P1: "使用 TypeScript 数理优化建模库 @ohtaman/washi 构建并求解该二维装箱模型的标准代码如下：",
         }
@@ -194,6 +210,10 @@ console.log("Status:", status);</code></pre>
         document.getElementById("t-sec2-title").textContent = t.sec2Title;
         document.getElementById("t-sec2-p1").textContent = t.sec2P1;
         document.getElementById("t-sec2-p2").textContent = t.sec2P2;
+        const warnTitle = document.getElementById("t-warn-title");
+        if (warnTitle && t.warnTitle) warnTitle.textContent = t.warnTitle;
+        const warnBody = document.getElementById("t-warn-body");
+        if (warnBody && t.warnBody) warnBody.textContent = t.warnBody;
         document.getElementById("t-sec3-title").textContent = t.sec3Title;
         document.getElementById("t-sec3-p1").textContent = t.sec3P1;
         document.getElementById("t-sec3-p2").textContent = t.sec3P2;

@@ -337,16 +337,17 @@
             「$r_v = 1$ ならば、そのマス $v$ はヒツジ $S$ と実際にパスで繋がっていなければならない」という連結性を線形制約で表す定番の手法が、<strong>単一品種フロー保存則</strong>です。
           </p>
           <p>
-            隣接する各マスの組に有向連続変数 $\text{flow}_{u \to v} \ge 0$（マス $u$ から隣マス $v$ へ流す「水」の量）を用意し、以下の制約を加えます（$M = |V|$ は通行可能マスの総数）：
+            隣接マスの有向アーク集合 $A = \{(u, v), (v, u) \mid \{u, v\} \in E\}$ 上に非負連続変数 $\text{flow}_{u \to v} \ge 0$（マス $u$ から隣マス $v$ へ流す「水」の量）を用意し、以下の制約を加えます（$M = |V|$ は通行可能マスの総数）：
           </p>
 
           <div class="math-box">
             <span class="math-title">連結性を保証する単一品種フロー制約</span>
             $$
             \begin{aligned}
-            &\text{(5) 流出上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in E) \\
-            &\text{(6) 流入上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in E) \\
-            &\text{(7) 需要消費:} && \sum_{u:(u,v) \in E} \text{flow}_{u \to v} - \sum_{w:(v,w) \in E} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S)
+            &\text{(5) 流出上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in A) \\
+            &\text{(6) 流入上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in A) \\
+            &\text{(7) 需要消費:} && \sum_{u:(u,v) \in A} \text{flow}_{u \to v} - \sum_{w:(v,w) \in A} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S) \\
+            &\text{(8) 水源供給:} && \sum_{s \in S} \left( \sum_{w:(s,w) \in A} \text{flow}_{s \to w} - \sum_{u:(u,s) \in A} \text{flow}_{u \to s} \right) = \sum_{v \in V \setminus S} r_v
             \end{aligned}
             $$
           </div>
@@ -355,6 +356,14 @@
             <strong>🔍 なぜこれで連結性が厳密に保証されるのか</strong>
             ヒツジ以外のマス $v$ を $r_v = 1$ にするためには、式(7)より「どこかから $1$ 単位の水が流れ込んでくる」必要があります。しかし式(5)・(6)より、水は $r = 1$ のマス同士の間しか流れず、かつ水を新たに生み出せる（流入超過が許される）のは式(7)の対象外である<strong>ヒツジのマス $S$ だけ</strong>です。<br />
             したがって、ヒツジ $S$ と柵なしで繋がっていない孤立ポケットには一滴も水が届かず、必ず $r_v = 0$ になります。
+          </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">💡 最適化の極意：Big-Mのタイトネスと大規模グラフにおける切断平面法</div>
+            <div class="callout-content">
+              <strong>Big-M のタイトネス</strong>：式(5)(6)の容量係数 $M$ は全マス数 $|V|$ で十分ですが、さらにタイトには「ヒツジから到達可能な最大マス数」や「柵の予算 $K$ 本で囲われ得る最大面積」で上界を絞ることで、LP緩和の質を高めることができます。<br />
+              <strong>大規模グラフにおける手法比較</strong>：単一品種フロー定式化（SCF）は有向アーク数（約 $4|V|$ 本）の連続変数を要しますが、本ゲームのような $10 \times 10$ 規模の盤面であれば、WASMソルバー（HiGHS）でも数ミリ秒で即座に求まります。一方で頂点数が数万〜数百万に達する実務のネットワーク設計問題では、連結性制約を初期状態では外しておき、分枝限定法の中で分離問題（Separation Problem）を解いて連結カットを動的に追加する<strong>切断平面法（Benders / Lazy Constraint Callback）</strong>が主流となります。
+            </div>
           </div>
         </section>
 
@@ -640,16 +649,17 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
             To guarantee that $r_v = 1$ holds only if cell $v$ is genuinely connected to at least one sheep in $S$, we add <strong>Single-Commodity Flow conservation</strong> constraints.
           </p>
           <p>
-            For each directed edge $(u, v) \in E$, we define a non-negative continuous variable $\text{flow}_{u \to v} \ge 0$ representing the amount of flow sent from $u$ to $v$ (where $M = |V|$ is the total number of passable cells):
+            Over the directed arc set $A = \{(u, v), (v, u) \mid \{u, v\} \in E\}$, we define a non-negative continuous variable $\text{flow}_{u \to v} \ge 0$ representing the amount of flow sent from $u$ to $v$ (where $M = |V|$ is the total number of passable cells):
           </p>
 
           <div class="math-box">
             <span class="math-title">Single-Commodity Flow Constraints for Connectivity</span>
             $$
             \begin{aligned}
-            &\text{(5) Outflow Bound:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in E) \\
-            &\text{(6) Inflow Bound:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in E) \\
-            &\text{(7) Net Consumption:} && \sum_{u:(u,v) \in E} \text{flow}_{u \to v} - \sum_{w:(v,w) \in E} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S)
+            &\text{(5) Outflow Bound:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in A) \\
+            &\text{(6) Inflow Bound:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in A) \\
+            &\text{(7) Net Consumption:} && \sum_{u:(u,v) \in A} \text{flow}_{u \to v} - \sum_{w:(v,w) \in A} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S) \\
+            &\text{(8) Source Supply:} && \sum_{s \in S} \left( \sum_{w:(s,w) \in A} \text{flow}_{s \to w} - \sum_{u:(u,s) \in A} \text{flow}_{u \to s} \right) = \sum_{v \in V \setminus S} r_v
             \end{aligned}
             $$
           </div>
@@ -657,6 +667,14 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           <div class="callout purple">
             <strong>🔍 Why This Strictly Guarantees Connectivity</strong>
             By equation (7), any non-sheep cell with $r_v = 1$ must consume 1 net unit of flow. By (5) and (6), flow can only travel through cells where $r = 1$, and the only nodes exempt from flow conservation (able to act as flow sources) are the <strong>sheep cells $S$</strong>. Consequently, any pocket disconnected from the sheep receives zero flow and is forced to $r_v = 0$.
+          </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">💡 Optimization Insight: Big-M Tightness and Cutting Plane Methods</div>
+            <div class="callout-content">
+              <strong>Big-M Tightness</strong>: While $M = |V|$ is valid in (5) and (6), bounding $M$ by the maximum reachable area under fence budget $K$ yields a tighter LP relaxation.<br />
+              <strong>Algorithmic Comparison</strong>: Single-Commodity Flow (SCF) introduces continuous variables for all directed arcs ($\approx 4|V|$), solving within milliseconds on $10 \times 10$ boards with WASM HiGHS. For massive real-world graphs ($|V| > 10^5$), the standard approach shifts to <strong>Cutting Plane / Benders decomposition</strong>, dynamically generating connectivity cuts via separation callbacks during branch-and-bound.
+            </div>
           </div>
         </section>
 
@@ -943,16 +961,17 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
             为了用线性约束严格表达“若 $r_v = 1$，则格子 $v$ 必须与某只绵羊 $S$ 存在真实连通路径”，标准做法是引入<strong>单商品流守恒约束</strong>。
           </p>
           <p>
-            对每对相邻有向边 $(u, v) \in E$ 引入非负连续变量 $\text{flow}_{u \to v} \ge 0$（表示从格子 $u$ 流向相邻格子 $v$ 的“水量”，其中 $M = |V|$ 为可通行格总数）：
+            在相邻格子的有向弧集 $A = \{(u, v), (v, u) \mid \{u, v\} \in E\}$ 上引入非负连续变量 $\text{flow}_{u \to v} \ge 0$（表示从格子 $u$ 流向相邻格子 $v$ 的“水量”，其中 $M = |V|$ 为可通行格总数）：
           </p>
 
           <div class="math-box">
             <span class="math-title">保证连通性的单商品流约束</span>
             $$
             \begin{aligned}
-            &\text{(5) 流出上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in E) \\
-            &\text{(6) 流入上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in E) \\
-            &\text{(7) 消耗守恒:} && \sum_{u:(u,v) \in E} \text{flow}_{u \to v} - \sum_{w:(v,w) \in E} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S)
+            &\text{(5) 流出上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_u && (\forall (u, v) \in A) \\
+            &\text{(6) 流入上限:} && 0 \le \text{flow}_{u \to v} \le M \cdot r_v && (\forall (u, v) \in A) \\
+            &\text{(7) 消耗守恒:} && \sum_{u:(u,v) \in A} \text{flow}_{u \to v} - \sum_{w:(v,w) \in A} \text{flow}_{v \to w} = r_v && (\forall v \in V \setminus S) \\
+            &\text{(8) 水源供给:} && \sum_{s \in S} \left( \sum_{w:(s,w) \in A} \text{flow}_{s \to w} - \sum_{u:(u,s) \in A} \text{flow}_{u \to s} \right) = \sum_{v \in V \setminus S} r_v
             \end{aligned}
             $$
           </div>
@@ -961,6 +980,14 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
             <strong>🔍 为什么这能严格保证连通性</strong>
             由式(7)可知，任何非绵羊格若想设为 $r_v = 1$，就必须有 $1$ 单位的净水流注入该格。而由式(5)・(6)可知，水流只能在 $r = 1$ 的格子之间传递，且全图中唯一不受式(7)约束、能够凭空产生水流的源点只有<strong>绵羊所在格 $S$</strong>。<br />
             因此，任何与绵羊被栅栏隔开的孤立区域都无法获得水流，其 $r_v$ 必然被强制为 $0$。
+          </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">💡 优化建模秘籍：Big-M 的紧度与大规模图上的割平面法</div>
+            <div class="callout-content">
+              <strong>Big-M 的紧度</strong>：式(5)(6)中容量上界 $M$ 设为全图总格数 $|V|$ 足以保证正确性；若进一步取“预算 $K$ 道栅栏最多能围住的最大可能面积”，则能提供更紧（tighter）的 LP 线性松弛，进一步提升分枝定界效率。<br />
+              <strong>算法选型权衡</strong>：单商品流（SCF）需要引入约 $4|V|$ 个连续变量，在类似本游戏 $10 \times 10$ 规模的轻量级场景下，WASM 版 HiGHS 仅需几毫秒即可瞬时求解。但在实际数万至数百万节点的巨型网络设计问题中，更常用的做法是在分枝定界过程中动态求解分离问题（Separation Problem）的<strong>割平面法（Benders / Lazy Constraint Callback）</strong>。
+            </div>
           </div>
         </section>
 

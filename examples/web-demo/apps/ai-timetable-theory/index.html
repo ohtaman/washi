@@ -190,6 +190,16 @@
             </li>
           </ol>
 
+          <div class="callout callout-point">
+            <div class="callout-header">🚀 さらなる大規模化への道：時間枠割当と教室割当の二段階分解（Benders分解的アプローチ）</div>
+            <div class="callout-content">
+              本デモの規模（30コマ・7教室）では4次元変数をそのままHiGHSに投入して約250msで瞬時に解けますが、学部全体で数百科目を超える総合大学の大規模問題では、問題を2段階に分解する階層的アプローチが極めて有効です：<br />
+              <strong>1. 第1段階（時間枠割当）</strong>：3次元変数 $u_{c,d,p}$ のみを用い、具体的な教室は一旦抽象化して「各時間枠 $(d, p)$ の必要教室数が総教室数（または定員区分別教室数）を超えない」という集約容量制約のもとでコマ割りを解く。<br />
+              <strong>2. 第2段階（教室マッチング）</strong>：コマ割りを固定した上で、各時間枠 $(d, p)$ ごとに二部マッチング（最大重み割り当て問題、あるいは輸送問題）を独立に解き、設備要件を満たす教室 $r$ を割り当てる。<br />
+              このように、問題の階層構造を見抜いて変数を分解することは、実務の大規模最適化における黄金律です。
+            </div>
+          </div>
+
           <pre class="code-block"><code>// WaSHI による 4次元時間割モデル (UCTP) と 二段階スラック緩和診断の骨格
 const m = new Model("UniversityCourseTimetabling_UCTP", { solver: "highs" });
 
@@ -378,6 +388,16 @@ const report = m.validateSolution();</code></pre>
             </li>
           </ol>
 
+          <div class="callout callout-point">
+            <div class="callout-header">🚀 Scaling to Campus-Wide Schedules: Two-Stage Time-Room Decomposition</div>
+            <div class="callout-content">
+              While our 30-course demo solves in ~250 ms using full 4D variables, university-wide timetables with hundreds of courses require hierarchical problem decomposition:<br />
+              <strong>Stage 1 (Timeslot Timetabling)</strong>: Solve slot assignments using 3D variables $u_{c,d,p}$ under aggregate room capacity constraints ($\le$ total available rooms per capacity tier).<br />
+              <strong>Stage 2 (Room Assignment)</strong>: Fix timeslots and solve independent bipartite matching / transportation problems for each time slot $(d, p)$ to allocate specific rooms $r$ satisfying equipment requirements.<br />
+              Exploiting hierarchical problem structures to project out high-dimensional variables is a golden rule in large-scale practical optimization.
+            </div>
+          </div>
+
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 Open "University Timetabling AI Copilot" ▶</a>
             <a href="../ai-shift/" class="nav-btn">🏥 Open "Nurse Scheduling AI Copilot" →</a>
@@ -544,6 +564,16 @@ const report = m.validateSolution();</code></pre>
               <strong>两阶段弹性松弛冲突诊断（Elastic Relaxation）</strong>：当排课条件发生矛盾（<code>Infeasible</code>）时，WaSHI 自动为所有硬约束添加非负松弛变量并按两种权重策略求解，精准定位发生碰撞的规则组合。
             </li>
           </ol>
+
+          <div class="callout callout-point">
+            <div class="callout-header">🚀 迈向全校级超大规模排课：时间与教室的两阶段分层求解</div>
+            <div class="callout-content">
+              虽然本演示包含的 30 门课程可在 250 毫秒内直接通过四维变量求解，但对于含数百门课程的综合大学而言，直接构建四维模型会导致变量数量达到数十万级。工业界通常采用两阶段层次分解策略：<br />
+              <strong>第一阶段（时间段编排）</strong>：仅使用三维变量 $u_{c,d,p}$，通过聚合容量约束（每个时段所需教室总数不超过可用教室总数）先行确定课程的时间分布。<br />
+              <strong>第二阶段（教室二分图匹配）</strong>：在时间段固定的前提下，针对每个时段 $(d, p)$ 独立求解带权二分匹配（或指派问题），为课程分配满足设备要求的具体教室 $r$。<br />
+              洞察问题的层次结构并对高维变量进行分解，是运筹优化在工业界规模化落地的核心法则。
+            </div>
+          </div>
 
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 打开《大学排课 AI Copilot》 ▶</a>
