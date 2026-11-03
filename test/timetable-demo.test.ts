@@ -1459,9 +1459,77 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       const tt6 = getCurrentTimetable()!;
       const c02AtWedP5 = tt6.sessions.find((s) => s.courseId === "C02" && s.day === "Wed" && s.period === 5);
       expect(c02AtWedP5).toBeDefined();
+
+      // 7. Composite multi-day pin rule decomposition & unpinning
+      // Create a composite rule pinning C02 to both Tue and Thu at period 2
+      const compositeRuleId = "composite_pin_c02_tue_thu";
+      getAppState().customRules = getAppState().customRules.filter((r) => r.courseId !== "C02");
+      getAppState().customRules.push({
+        id: compositeRuleId,
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C02",
+        days: ["Tue", "Thu"],
+        periods: [2],
+        description: "Composite pin C02 on Tue/Thu P2",
+      });
+
+      // Move the Tuesday session of C02 to Mon P2
+      await applyDropMove(
+        {
+          courseId: "C02",
+          sessionIndex: 0,
+          fromDay: "Tue",
+          fromPeriod: 2,
+          fromRoomId: "R101",
+          fromProfId: "P01",
+          sourceView: "cohorts_4",
+        },
+        "Mon",
+        2
+      );
+
+      const rulesAfterCompositeMove = getAppState().customRules.filter((r) => r.courseId === "C02");
+      // The composite rule should now have only ["Thu"] remaining
+      const retainedCompositeRule = rulesAfterCompositeMove.find((r) => r.id === compositeRuleId);
+      expect(retainedCompositeRule).toBeDefined();
+      expect(retainedCompositeRule?.days).toEqual(["Thu"]);
+      expect(retainedCompositeRule?.periods).toEqual([2]);
+
+      // A new pin rule should exist for Mon P2
+      const newMonPinRule = rulesAfterCompositeMove.find(
+        (r) => r.days?.includes("Mon") && r.periods?.includes(2)
+      );
+      expect(newMonPinRule).toBeDefined();
+
+      // 8. Prevent duplicate pin rule accumulation when dropping on the same target slot
+      const initialMonRulesCount = rulesAfterCompositeMove.filter(
+        (r) => r.days?.includes("Mon") && r.periods?.includes(2)
+      ).length;
+      expect(initialMonRulesCount).toBe(1);
+
+      // Trigger another drop to Mon P2 from Mon P2 (with different room or re-application)
+      await applyDropMove(
+        {
+          courseId: "C02",
+          sessionIndex: 0,
+          fromDay: "Thu",
+          fromPeriod: 2,
+          fromRoomId: "R101",
+          fromProfId: "P01",
+          sourceView: "cohorts_4",
+        },
+        "Mon",
+        2
+      );
+      const monRulesAfterReapply = getAppState().customRules.filter(
+        (r) => r.courseId === "C02" && r.days?.includes("Mon") && r.periods?.includes(2)
+      );
+      expect(monRulesAfterReapply).toHaveLength(1);
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;
     }
-  });
+  }, 30_000);
 });
