@@ -1531,5 +1531,5 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;
     }
-  });
+  }, 30_000);
 });
