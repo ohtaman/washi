@@ -162,6 +162,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     const enHtml = fs.readFileSync(path.resolve(siteDistPath, "index.html"), "utf-8");
     expect(enHtml).toContain("<title>WaSHI | WaSHI — Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming</title>");
     expect(enHtml).toContain('name="description" content="WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT)."');
+    expect(enHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/"');
+    expect(enHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/"');
     expect(enHtml).toContain('property="og:type" content="website"');
     expect(enHtml).toContain('property="og:site_name" content="WaSHI"');
     expect(enHtml).toContain('property="og:image" content="https://ohtaman.github.io/washi/washi-logo.png"');
@@ -172,10 +174,20 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     const jaHtml = fs.readFileSync(path.resolve(siteDistPath, "ja/index.html"), "utf-8");
     expect(jaHtml).toContain("<title>WaSHI | WaSHI — 数理最適化と制約プログラミングのための代数モデラー</title>");
     expect(jaHtml).toContain('name="description" content="TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）"');
+    expect(jaHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/ja/"');
+    expect(jaHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/ja/"');
 
     const zhHtml = fs.readFileSync(path.resolve(siteDistPath, "zh/index.html"), "utf-8");
     expect(zhHtml).toContain("<title>WaSHI | WaSHI — 适用于数理优化与约束编程的代数建模器</title>");
     expect(zhHtml).toContain('name="description" content="适用于 TypeScript 与 JavaScript 的数理优化与约束编程代数建模器（LP, MIP, 凸QP, SMT）"');
+    expect(zhHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/zh/"');
+    expect(zhHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/zh/"');
+
+    // Verify subpage canonical URLs
+    const subpageHtml = fs.readFileSync(path.resolve(siteDistPath, "getting-started/ai-agents.html"), "utf-8");
+    expect(subpageHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/getting-started/ai-agents"');
+    expect(subpageHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/getting-started/ai-agents"');
+    expect(subpageHtml).toContain('property="og:type" content="article"');
 
     const demoDistPath = path.resolve(rootDir, "dist/demo/index.html");
     if (fs.existsSync(demoDistPath)) {
