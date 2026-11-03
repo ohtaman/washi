@@ -12,24 +12,25 @@
     />
     <style>
       :root {
-        --bg-page: #0f172a;
-        --card-bg: rgba(30, 41, 59, 0.85);
-        --border-subtle: rgba(56, 189, 248, 0.28);
-        --accent-titan: #38bdf8;
-        --accent-soft: rgba(56, 189, 248, 0.12);
-        --success: #34d399;
-        --success-soft: rgba(52, 211, 153, 0.12);
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --code-bg: #020617;
-        --code-text: #e2e8f0;
+        --bg-page: #fbfaf5;
+        --card-bg: #ffffff;
+        --border-subtle: #e6e0d2;
+        --border-strong: #cfc8b6;
+        --accent-titan: #0284c7;
+        --accent-soft: #f0f9ff;
+        --success: #0d9488;
+        --success-soft: #f0fdfa;
+        --text-main: #242426;
+        --text-muted: #57585e;
+        --code-bg: #1e293b;
+        --code-text: #f1f5f9;
       }
       * {
         box-sizing: border-box;
       }
       body {
         margin: 0;
-        background: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 70%);
+        background: var(--bg-page);
         color: var(--text-main);
         font-family: "Noto Sans JP", system-ui, sans-serif;
         line-height: 1.8;
@@ -61,10 +62,11 @@
         font-weight: 700;
         font-size: 0.9rem;
         color: var(--text-main);
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: #ffffff;
+        border: 1px solid var(--border-subtle);
         padding: 0.5rem 1rem;
         border-radius: 999px;
+        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
         transition: all 0.15s ease;
       }
       .nav-btn:hover {
@@ -74,16 +76,17 @@
       .nav-btn.primary {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
         color: #fff;
-        border-color: #38bdf8;
+        border-color: #0284c7;
       }
       .lang-switch {
         display: inline-flex;
         align-items: center;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(56, 189, 248, 0.4);
+        background: #ffffff;
+        border: 1px solid var(--border-subtle);
         border-radius: 999px;
         padding: 0.18rem;
         gap: 0.15rem;
+        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
       }
       .lang-btn {
         appearance: none;
@@ -99,15 +102,15 @@
         transition: background 0.15s ease, color 0.15s ease;
       }
       .lang-btn:hover {
-        color: #fff;
+        color: var(--text-main);
       }
       .lang-btn.is-active {
         background: var(--accent-titan);
-        color: #0f172a;
+        color: #ffffff;
       }
       .article-header {
-        border-bottom: 1px solid var(--border-subtle);
-        padding-bottom: 1.5rem;
+        border-bottom: 2px dashed var(--border-subtle);
+        padding-bottom: 1.8rem;
         margin-bottom: 2.2rem;
       }
       .article-badge {
@@ -119,7 +122,7 @@
         font-weight: 800;
         color: var(--accent-titan);
         background: var(--accent-soft);
-        border: 1px solid var(--border-subtle);
+        border: 1px solid #bae6fd;
         padding: 0.25rem 0.75rem;
         border-radius: 999px;
         margin-bottom: 0.8rem;
@@ -129,27 +132,29 @@
         font-size: clamp(1.6rem, 3.2vw, 2.3rem);
         line-height: 1.35;
         margin: 0.4rem 0 1rem;
-        color: #f8fafc;
+        color: var(--text-main);
       }
       .lead {
         font-size: 1.05rem;
-        color: #cbd5e1;
+        color: var(--text-muted);
         line-height: 1.85;
       }
       h2 {
         font-family: "Chakra Petch", "Noto Sans JP", sans-serif;
         font-size: 1.35rem;
         margin: 2.5rem 0 1rem;
-        padding-left: 0.8rem;
+        padding: 0.6rem 0.8rem;
         border-left: 4px solid var(--accent-titan);
-        color: #f8fafc;
+        background: #fdfbf7;
+        border-radius: 0 8px 8px 0;
+        color: var(--text-main);
       }
       p, li {
-        color: #cbd5e1;
+        color: var(--text-main);
       }
       pre {
         background: var(--code-bg);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--border-subtle);
         border-radius: 10px;
         padding: 1.1rem;
         overflow-x: auto;
@@ -159,15 +164,20 @@
         color: var(--code-text);
       }
       .formula-box {
-        background: rgba(15, 23, 42, 0.85);
+        background: #fdfbf7;
         border: 1px solid var(--border-subtle);
+        border-left: 4px solid var(--accent-titan);
         border-radius: 10px;
         padding: 1.2rem;
         margin: 1.2rem 0;
         overflow-x: auto;
+        color: var(--text-main);
       }
       .formula-box .katex-display {
         margin: 0.5rem 0;
+      }
+      .formula-box .katex {
+        color: var(--text-main);
       }
     </style>
   </head>
@@ -177,8 +187,8 @@
         <a href="../titan-pack/" class="nav-btn primary" id="t-nav-play">🎮 ゲームをプレイする</a>
         <div class="topnav-right">
           <div class="lang-switch" role="group" aria-label="Language">
-            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
           <a href="../../ja/showcase/" class="nav-btn" id="t-nav-showcase">✨ ショーケース</a>

@@ -1,0 +1,1868 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="educational">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown 参考書風デザインシステム — サンプル＆スタイルガイド</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* ==========================================================================
+       1. デザイントークン & テーマ定義 (CSS Custom Properties)
+       ========================================================================== */
+
+    /* 共通トークン */
+    :root {
+      --font-body: "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-rounded: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", Consolas, Menlo, Courier, monospace;
+      --font-heading: var(--font-body);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2.25rem;
+      --space-2xl: 3.5rem;
+
+      --transition-base: 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* 言語別フォントファミリー */
+    html[lang="en"] {
+      --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-heading: var(--font-body);
+    }
+
+    html[lang="zh"] {
+      --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-heading: var(--font-body);
+    }
+
+    /* --------------------------------------------------------------------------
+       Theme A: 『図解入門・教科書』スタイル (Educational Book)
+       特徴: 温かいオフホワイト紙面、目に優しいコントラスト、親しみやすい丸み、明確な帯と枠線
+       -------------------------------------------------------------------------- */
+    html[data-theme="educational"] {
+      --color-bg-page: #f9f8f4;
+      --color-surface: #ffffff;
+      --color-surface-soft: #f4f2eb;
+      --color-border: #e6e2d6;
+      --color-border-strong: #cfc8b6;
+
+      --color-text-main: #242426;
+      --color-text-sub: #57585e;
+      --color-text-muted: #8b8d96;
+
+      --color-brand-primary: #1e40af;       /* 知的なロイヤルブルー */
+      --color-brand-primary-soft: #eff6ff;
+      --color-brand-secondary: #0d9488;     /* 爽やかなティールグリーン */
+      --color-brand-secondary-soft: #f0fdfa;
+
+      --color-accent-point: #f59e0b;       /* ポイント・要点 (アンバー/イエロー) */
+      --color-accent-point-soft: #fffbeb;
+      --color-accent-point-border: #fcd34d;
+
+      --color-accent-warn: #ef4444;        /* 注意・落とし穴 (レッド/ローズ) */
+      --color-accent-warn-soft: #fef2f2;
+      --color-accent-warn-border: #fca5a5;
+
+      --color-accent-column: #8b5cf6;      /* コラム・深掘り (バイオレット) */
+      --color-accent-column-soft: #f5f3ff;
+      --color-accent-column-border: #d8b4fe;
+
+      --color-accent-good: #10b981;        /* OK / 良い例 */
+      --color-accent-good-soft: #ecfdf5;
+      --color-accent-bad: #ef4444;         /* NG / 悪い例 */
+      --color-accent-bad-soft: #fef2f2;
+
+      --color-code-bg: #1e293b;
+      --color-code-text: #f1f5f9;
+
+      --color-marker-yellow: #fef08a;
+      --color-marker-pink: #fbcfe8;
+      --color-marker-cyan: #a5f3fc;
+
+      --shadow-sm: 0 1px 3px rgba(36, 36, 38, 0.05);
+      --shadow-md: 0 4px 12px rgba(36, 36, 38, 0.07);
+      --shadow-lg: 0 12px 28px rgba(36, 36, 38, 0.09);
+
+      --font-heading: var(--font-rounded);
+      --chapter-badge-bg: var(--color-brand-primary);
+      --chapter-badge-text: #ffffff;
+      --h2-border-style: solid;
+      --box-border-width: 2px;
+    }
+
+    /* --------------------------------------------------------------------------
+       Theme B: 『公式コンプリート攻略本』スタイル (Strategy Guide)
+       特徴: ゲームUI風、ダーク基調、ゴールド＆ネオンの装飾枠、クエストカードのような視覚効果
+       -------------------------------------------------------------------------- */
+    html[data-theme="strategy-guide"] {
+      --color-bg-page: #0d1117;
+      --color-surface: #161b22;
+      --color-surface-soft: #21262d;
+      --color-border: #30363d;
+      --color-border-strong: #d29922;
+
+      --color-text-main: #f0f6fc;
+      --color-text-sub: #c9d1d9;
+      --color-text-muted: #8b949e;
+
+      --color-brand-primary: #f59e0b;       /* ゴールド / 宝箱 */
+      --color-brand-primary-soft: rgba(245, 158, 11, 0.12);
+      --color-brand-secondary: #06b6d4;     /* マナ / シアン */
+      --color-brand-secondary-soft: rgba(6, 182, 212, 0.12);
+
+      --color-accent-point: #fbbf24;       /* 攻略のコツ */
+      --color-accent-point-soft: rgba(251, 191, 36, 0.12);
+      --color-accent-point-border: #f59e0b;
+
+      --color-accent-warn: #f43f5e;        /* ゲームオーバー・危険 */
+      --color-accent-warn-soft: rgba(244, 63, 94, 0.15);
+      --color-accent-warn-border: #f43f5e;
+
+      --color-accent-column: #a855f7;      /* モンスター図鑑・裏技 */
+      --color-accent-column-soft: rgba(168, 85, 247, 0.15);
+      --color-accent-column-border: #c084fc;
+
+      --color-accent-good: #34d399;
+      --color-accent-good-soft: rgba(52, 211, 153, 0.15);
+      --color-accent-bad: #f87171;
+      --color-accent-bad-soft: rgba(248, 113, 113, 0.15);
+
+      --color-code-bg: #090d13;
+      --color-code-text: #e6edf3;
+
+      --color-marker-yellow: rgba(251, 191, 36, 0.35);
+      --color-marker-pink: rgba(244, 63, 94, 0.35);
+      --color-marker-cyan: rgba(6, 182, 212, 0.35);
+
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.6);
+      --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.8), 0 0 20px rgba(245, 158, 11, 0.08);
+
+      --font-heading: var(--font-body);
+      --chapter-badge-bg: linear-gradient(135deg, #f59e0b, #d97706);
+      --chapter-badge-text: #0f172a;
+      --h2-border-style: double;
+      --box-border-width: 2px;
+    }
+
+    /* --------------------------------------------------------------------------
+       Theme C: 『モダン・テクニカルマガジン』スタイル (Modern Tech Magazine)
+       特徴: Stripe/Linear Docs風、ミニマルで高い情報密度、繊細なボーダーとハイセンスなタイポグラフィ
+       -------------------------------------------------------------------------- */
+    html[data-theme="modern-tech"] {
+      --color-bg-page: #fafafa;
+      --color-surface: #ffffff;
+      --color-surface-soft: #f4f4f5;
+      --color-border: #e4e4e7;
+      --color-border-strong: #a1a1aa;
+
+      --color-text-main: #09090b;
+      --color-text-sub: #52525b;
+      --color-text-muted: #71717a;
+
+      --color-brand-primary: #4f46e5;       /* インディゴ */
+      --color-brand-primary-soft: #eef2ff;
+      --color-brand-secondary: #0284c7;     /* スカイ */
+      --color-brand-secondary-soft: #f0f9ff;
+
+      --color-accent-point: #0284c7;       /* 重要なキー概念 */
+      --color-accent-point-soft: #f0f9ff;
+      --color-accent-point-border: #7dd3fc;
+
+      --color-accent-warn: #e11d48;        /* Breaking / 注意 */
+      --color-accent-warn-soft: #fff1f2;
+      --color-accent-warn-border: #fda4af;
+
+      --color-accent-column: #6366f1;      /* Deep Dive */
+      --color-accent-column-soft: #eef2ff;
+      --color-accent-column-border: #c7d2fe;
+
+      --color-accent-good: #059669;
+      --color-accent-good-soft: #ecfdf5;
+      --color-accent-bad: #e11d48;
+      --color-accent-bad-soft: #fff1f2;
+
+      --color-code-bg: #18181b;
+      --color-code-text: #fafafa;
+
+      --color-marker-yellow: #fef08a;
+      --color-marker-pink: #fce7f3;
+      --color-marker-cyan: #e0f2fe;
+
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.05);
+      --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+      --font-heading: var(--font-body);
+      --chapter-badge-bg: var(--color-surface-soft);
+      --chapter-badge-text: var(--color-brand-primary);
+      --h2-border-style: solid;
+      --box-border-width: 1px;
+    }
+
+    /* ==========================================================================
+       2. 基本レイアウト & リセット
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--color-bg-page);
+      color: var(--color-text-main);
+      font-family: var(--font-body);
+      line-height: 1.85;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color var(--transition-base), color var(--transition-base);
+    }
+
+    /* ツールバー（言語＆テーマ切り替え用ヘッダー） */
+    .showcase-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      backdrop-filter: blur(8px);
+      box-shadow: var(--shadow-sm);
+      padding: 0.75rem 1.25rem;
+    }
+
+    .toolbar-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .toolbar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .toolbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    /* 言語スイッチャー */
+    .lang-switcher {
+      display: inline-flex;
+      background: var(--color-surface-soft);
+      padding: 3px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      gap: 2px;
+    }
+
+    .lang-btn {
+      border: none;
+      background: transparent;
+      color: var(--color-text-sub);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      transition: all var(--transition-base);
+    }
+
+    .lang-btn:hover {
+      color: var(--color-text-main);
+    }
+
+    .lang-btn.active {
+      background: var(--color-surface);
+      color: var(--color-brand-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* テーマスイッチャー */
+    .theme-switcher {
+      display: inline-flex;
+      background: var(--color-surface-soft);
+      padding: 3px;
+      border-radius: var(--radius-full);
+      border: 1px solid var(--color-border);
+      gap: 2px;
+    }
+
+    .theme-btn {
+      border: none;
+      background: transparent;
+      color: var(--color-text-sub);
+      font-size: 0.825rem;
+      font-weight: 700;
+      padding: 0.35rem 0.85rem;
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all var(--transition-base);
+    }
+
+    .theme-btn:hover {
+      color: var(--color-text-main);
+    }
+
+    .theme-btn.active {
+      background: var(--color-surface);
+      color: var(--color-brand-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* 記事コンテナ（書籍の誌面・見開きを意識した幅と余白） */
+    .article-container {
+      max-width: 860px;
+      margin: 2.5rem auto 6rem;
+      padding: 0 1.5rem;
+    }
+
+    .article-sheet {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 3.5rem 3rem;
+      box-shadow: var(--shadow-md);
+      transition: all var(--transition-base);
+    }
+
+    @media (max-width: 768px) {
+      .article-container {
+        margin: 1rem auto 3rem;
+        padding: 0 0.75rem;
+      }
+      .article-sheet {
+        padding: 2rem 1.25rem;
+        border-radius: var(--radius-md);
+      }
+    }
+
+    /* 言語セクションの表示アニメーション */
+    [data-lang-section] {
+      animation: fadeInSection 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-lang-section][hidden] {
+      display: none !important;
+    }
+
+    @keyframes fadeInSection {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ==========================================================================
+       3. 参考書風タイポグラフィ & 見出しデザイン
+       ========================================================================== */
+
+    /* 記事ヘッダー (Book Cover / Article Lead) */
+    .book-header {
+      margin-bottom: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 2px dashed var(--color-border);
+    }
+
+    .book-meta-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.25rem 0.65rem;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.02em;
+    }
+
+    .badge-primary {
+      background: var(--color-brand-primary-soft);
+      color: var(--color-brand-primary);
+      border: 1px solid var(--color-brand-primary);
+    }
+
+    .badge-level {
+      background: var(--color-accent-point-soft);
+      color: var(--color-accent-point);
+      border: 1px solid var(--color-accent-point-border);
+    }
+
+    .badge-time {
+      background: var(--color-surface-soft);
+      color: var(--color-text-sub);
+      border: 1px solid var(--color-border);
+    }
+
+    .book-title {
+      font-family: var(--font-heading);
+      font-size: clamp(1.8rem, 4vw, 2.4rem);
+      font-weight: 900;
+      line-height: 1.35;
+      color: var(--color-text-main);
+      margin-bottom: 0.75rem;
+      letter-spacing: -0.01em;
+    }
+
+    .book-subtitle {
+      font-size: 1.1rem;
+      color: var(--color-text-sub);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    /* リード文ボックス（参考書のはじめに・概要） */
+    .book-lead-box {
+      background: var(--color-surface-soft);
+      border-left: 4px solid var(--color-brand-primary);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 1.25rem 1.5rem;
+      font-size: 0.95rem;
+      color: var(--color-text-sub);
+    }
+
+    .book-lead-box strong {
+      color: var(--color-text-main);
+    }
+
+    /* --- H2: 章見出し (Chapter Heading) --- */
+    h2.chapter-heading {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.4;
+      margin: 3.5rem 0 1.5rem;
+      padding-bottom: 0.65rem;
+      border-bottom: var(--box-border-width) var(--h2-border-style) var(--color-brand-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      position: relative;
+    }
+
+    /* チャプターバッジ (Chapter 01) */
+    .chapter-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--chapter-badge-bg);
+      color: var(--chapter-badge-text);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.3rem 0.65rem;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+    }
+
+    /* --- H3: 節見出し (Section Heading) --- */
+    h3.section-heading {
+      font-family: var(--font-heading);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin: 2.25rem 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--color-text-main);
+    }
+
+    h3.section-heading::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 1.25em;
+      background: var(--color-brand-secondary);
+      border-radius: var(--radius-full);
+      flex-shrink: 0;
+    }
+
+    /* 本文段落 */
+    p {
+      margin-bottom: 1.25rem;
+      color: var(--color-text-main);
+    }
+
+    /* マーカー蛍光ペン風ハイライト */
+    mark, .marker-yellow {
+      background: linear-gradient(transparent 55%, var(--color-marker-yellow) 55%);
+      font-weight: 700;
+      padding: 0 0.2em;
+    }
+
+    .marker-pink {
+      background: linear-gradient(transparent 55%, var(--color-marker-pink) 55%);
+      font-weight: 700;
+      padding: 0 0.2em;
+    }
+
+    .marker-cyan {
+      background: linear-gradient(transparent 55%, var(--color-marker-cyan) 55%);
+      font-weight: 700;
+      padding: 0 0.2em;
+    }
+
+    /* UI・キートップバッジ (<kbd>) */
+    kbd {
+      display: inline-flex;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-text-main);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-strong);
+      border-bottom: 3px solid var(--color-border-strong);
+      border-radius: var(--radius-sm);
+      padding: 0.15rem 0.5rem;
+      margin: 0 0.2rem;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+      white-space: nowrap;
+    }
+
+    /* ==========================================================================
+       4. 参考書特有のコンポーネント (Callouts / Boxes)
+       ========================================================================== */
+
+    /* コールアウト基本形状 */
+    .callout {
+      position: relative;
+      margin: 1.75rem 0;
+      padding: 1.25rem 1.5rem;
+      border-radius: var(--radius-md);
+      border: var(--box-border-width) solid transparent;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .callout-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-bottom: 0.65rem;
+      letter-spacing: 0.02em;
+    }
+
+    .callout-icon {
+      font-size: 1.15rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .callout-content {
+      font-size: 0.925rem;
+      line-height: 1.75;
+      color: var(--color-text-main);
+    }
+
+    .callout-content > :last-child {
+      margin-bottom: 0;
+    }
+
+    /* 1. Point Box (重要・ここがツボ！) */
+    .callout-point {
+      background: var(--color-accent-point-soft);
+      border-color: var(--color-accent-point-border);
+    }
+
+    .callout-point .callout-header {
+      color: var(--color-accent-point);
+    }
+
+    /* 2. Column Box (コラム・深掘り・背景情報) */
+    .callout-column {
+      background: var(--color-accent-column-soft);
+      border-color: var(--color-accent-column-border);
+      border-style: dashed;
+    }
+
+    .callout-column .callout-header {
+      color: var(--color-accent-column);
+    }
+
+    /* 3. Warning / Trap Box (落とし穴・注意！) */
+    .callout-warn {
+      background: var(--color-accent-warn-soft);
+      border-color: var(--color-accent-warn-border);
+    }
+
+    .callout-warn .callout-header {
+      color: var(--color-accent-warn);
+    }
+
+    /* ==========================================================================
+       5. 概念図解 & 構造化カード (Diagram & Key Question)
+       ========================================================================== */
+    .question-box {
+      margin: 1.75rem 0;
+      background: var(--color-surface-soft);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .question-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--color-brand-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .question-text {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-text-main);
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+
+    .question-answer {
+      font-size: 0.925rem;
+      color: var(--color-text-sub);
+      line-height: 1.7;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--color-border);
+    }
+
+    /* 概念図解ボックス (Visual Grid / ASCII Diagram) */
+    .diagram-card {
+      margin: 1.75rem 0;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .diagram-header {
+      font-size: 0.825rem;
+      font-weight: 700;
+      color: var(--color-text-sub);
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .diagram-body {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .diagram-col {
+      background: var(--color-surface-soft);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem;
+      text-align: center;
+    }
+
+    .diagram-col-title {
+      font-weight: 700;
+      color: var(--color-text-main);
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .diagram-canvas {
+      padding: 0.75rem;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      line-height: 1.4;
+      white-space: pre;
+      color: var(--color-text-sub);
+      font-size: 0.75rem;
+      overflow-x: auto;
+    }
+
+    /* ==========================================================================
+       6. 手順ステップ・フロー (Step Flow Timeline)
+       ========================================================================== */
+    .step-flow {
+      margin: 2rem 0;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      position: relative;
+      padding-left: 1.75rem;
+    }
+
+    .step-flow::before {
+      content: "";
+      position: absolute;
+      top: 1rem;
+      bottom: 1rem;
+      left: 14px;
+      width: 2px;
+      background: var(--color-border-strong);
+    }
+
+    .step-item {
+      position: relative;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .step-badge {
+      position: absolute;
+      top: 1.15rem;
+      left: -2.35rem;
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-full);
+      background: var(--color-brand-primary);
+      color: #ffffff;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .step-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-text-main);
+      margin-bottom: 0.5rem;
+    }
+
+    /* ==========================================================================
+       7. OK / NG (Before / After) 比較グリッド
+       ========================================================================== */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+      margin: 2rem 0;
+    }
+
+    .compare-card {
+      border-radius: var(--radius-md);
+      border: var(--box-border-width) solid transparent;
+      padding: 1.25rem;
+      background: var(--color-surface);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .compare-card.good {
+      background: var(--color-accent-good-soft);
+      border-color: var(--color-accent-good);
+    }
+
+    .compare-card.bad {
+      background: var(--color-accent-bad-soft);
+      border-color: var(--color-accent-bad);
+    }
+
+    .compare-header {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+
+    .compare-card.good .compare-header {
+      color: var(--color-accent-good);
+    }
+
+    .compare-card.bad .compare-header {
+      color: var(--color-accent-bad);
+    }
+
+    /* ==========================================================================
+       8. コードブロック & 数式ボックス
+       ========================================================================== */
+    .code-window {
+      margin: 1.75rem 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-md);
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.55rem 1rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+    }
+
+    .code-dots {
+      display: flex;
+      gap: 5px;
+    }
+
+    .code-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .code-title {
+      color: var(--color-code-text);
+      font-weight: 600;
+    }
+
+    pre code {
+      display: block;
+      padding: 1.25rem 1.25rem;
+      color: var(--color-code-text);
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      line-height: 1.65;
+      overflow-x: auto;
+    }
+
+    p code, li code {
+      font-family: var(--font-mono);
+      font-size: 0.875em;
+      background: var(--color-surface-soft);
+      color: var(--color-brand-primary);
+      border: 1px solid var(--color-border);
+      padding: 0.15em 0.4em;
+      border-radius: var(--radius-sm);
+    }
+
+    /* 数式ボックス (KaTeX / Formula Box) */
+    .formula-box {
+      margin: 1.75rem 0;
+      padding: 1.25rem 1.5rem;
+      background: var(--color-surface-soft);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      overflow-x: auto;
+    }
+
+    .formula-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--color-text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .formula-math {
+      font-family: "Cambria Math", "Latin Modern Math", KaTeX_Math, serif;
+      font-size: 1.2rem;
+      color: var(--color-text-main);
+      padding: 0.5rem 0;
+    }
+
+    /* テーブルデザイン */
+    .table-wrapper {
+      margin: 2rem 0;
+      overflow-x: auto;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      background: var(--color-surface-soft);
+      color: var(--color-text-main);
+      font-weight: 700;
+      padding: 0.85rem 1rem;
+      border-bottom: 2px solid var(--color-border);
+    }
+
+    td {
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text-sub);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background: var(--color-surface-soft);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 上部バー: 言語スイッチャー ＆ テーマスイッチャー -->
+  <header class="showcase-toolbar">
+    <div class="toolbar-inner">
+      <div class="toolbar-title">
+        <span>📖</span>
+        <span id="toolbar-title-text">Markdown 参考書風デザインシステム</span>
+      </div>
+      <div class="toolbar-controls">
+        <!-- 言語切替 (EN / JA / ZH) -->
+        <div class="lang-switcher" role="group" aria-label="Language">
+          <button type="button" class="lang-btn" data-lang-btn="en" onclick="setLang('en')">English</button>
+          <button type="button" class="lang-btn active" data-lang-btn="ja" onclick="setLang('ja')">日本語</button>
+          <button type="button" class="lang-btn" data-lang-btn="zh" onclick="setLang('zh')">中文</button>
+        </div>
+
+        <!-- テーマ切替 (3スタイル) -->
+        <div class="theme-switcher" role="group" aria-label="Theme">
+          <button type="button" class="theme-btn active" data-set-theme="educational" onclick="setTheme('educational')">
+            <span id="theme-btn-edu">📘 ① 図解入門</span>
+          </button>
+          <button type="button" class="theme-btn" data-set-theme="strategy-guide" onclick="setTheme('strategy-guide')">
+            <span id="theme-btn-strat">🎮 ② 攻略本</span>
+          </button>
+          <button type="button" class="theme-btn" data-set-theme="modern-tech" onclick="setTheme('modern-tech')">
+            <span id="theme-btn-mod">⚡ ③ モダン</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 記事メインコンテナ -->
+  <main class="article-container">
+    <article class="article-sheet">
+
+      <!-- ======================================================================
+           日本語版 (Japanese Section)
+           ====================================================================== -->
+      <div data-lang-section="ja">
+        <!-- 記事ヘッダー -->
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">GAME & ALGORITHM</span>
+            <span class="badge badge-level">★☆☆ 初中級</span>
+            <span class="badge badge-time">⏱ 読了目安: 7分</span>
+          </div>
+          <h1 class="book-title">最短経路探索と警備シフトの数理 — 迷路ゲームのAIはどう動いているのか？</h1>
+          <p class="book-subtitle">
+            ゲーム内で敵がプレイヤーを追い詰める仕組みから、24時間魔王城を守る警備シフトの最適化まで。身近なゲームを題材に「離散最適化」の面白さを図解します。
+          </p>
+          <div class="book-lead-box">
+            <strong>本書のねらい：</strong> 数式やコードばかりが並ぶと難しく見えがちなアルゴリズムを、<mark>「なぜその計算が必要なのか？」</mark>という直感的なイメージから段階的に解き明かします。各章のポイントと図解を追うだけで要点がスッキリ理解できます！
+          </div>
+        </header>
+
+        <!-- CHAPTER 1 -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 01</span>
+            <span>迷路の鬼ごっこ — ダイクストラ法からA*探索へ</span>
+          </h2>
+
+          <p>
+            アクションRPGやローグライクゲームで、モンスターが障害物を避けて主人公の元へ正確に歩いてくるシーンを思い浮かべてみてください。このとき敵AIの頭脳で行われているのが<span class="marker-yellow">「最短経路探索（Pathfinding）」</span>です。
+          </p>
+
+          <!-- 核心的な問いと解説ボックス (Question Box) -->
+          <div class="question-box">
+            <div class="question-label">
+              <span>KEY QUESTION</span>
+            </div>
+            <div class="question-text">
+              すべてのマスを順番に調べていけば最短経路は見つかるのに、なぜ「A*探索」が必要なのか？
+            </div>
+            <div class="question-answer">
+              幅優先探索のようにしらみつぶしに調べると、<strong>「ゴールとは正反対の方向」まで均等にマスを探索してしまう</strong>ため、マップが広大になると計算量が爆発します。そこで、「ゴールへの推測距離（ヒューリスティクス）」を加味して<strong>目的地の方向を集中的に探索する</strong>のが A*（A-star）探索です。
+            </div>
+          </div>
+
+          <!-- 探索範囲の視覚的対比 (Diagram Card) -->
+          <div class="diagram-card">
+            <div class="diagram-header">
+              <span>📊 探索領域の広がり方の違い（イメージ）</span>
+            </div>
+            <div class="diagram-body">
+              <div class="diagram-col">
+                <div class="diagram-col-title">幅優先探索 (全方位に拡散)</div>
+                <div class="diagram-canvas">    . . ◯ . .
+  . ◯ ◯ ◯ .
+◯ ◯ [S] ◯ ◯
+  . ◯ ◯ ◯ .      [G]
+    . . ◯ . .
+
+※ゴールに関係なく同心円状に探索</div>
+              </div>
+              <div class="diagram-col">
+                <div class="diagram-col-title">A* 探索 (ゴール方向へ集中)</div>
+                <div class="diagram-canvas">    . . . . .
+  . . . ◯ .
+. . [S] ◯ ◯ ◯
+  . . . ◯ ◯ ◯ [G]
+    . . . . ◯
+
+※ヒューリスティクスでゴール側へ絞り込み</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Point ボックス -->
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : A*探索の評価関数</span>
+            </div>
+            <div class="callout-content">
+              A*アルゴリズムは、各マス <kbd>n</kbd> におけるスコア <kbd>f(n)</kbd> が最も小さいマスから優先して探索を進めます：
+              <div class="formula-box" style="margin: 0.75rem 0 0.5rem; background: var(--color-surface);">
+                <div class="formula-math">f(n) = g(n) + h(n)</div>
+              </div>
+              <ul>
+                <li><strong>g(n)</strong>：スタート地点から現在地までの「実際の移動コスト」</li>
+                <li><strong>h(n)</strong>：現在地からゴールまでの「推定残りコスト（直線距離など）」</li>
+              </ul>
+            </div>
+          </div>
+
+          <p>
+            このように「目的地に向かう可能性が高いマス」を優先して調べるため、無駄な方向への探索を劇的に削減できるのが特徴です。
+          </p>
+        </section>
+
+        <!-- CHAPTER 2 -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 02</span>
+            <span>実装の3ステップ — 迷路探索の手順</span>
+          </h2>
+
+          <p>
+            実際にゲームエンジンやTypeScriptで経路探索を実装する際の流れを、3つのステップで整理してみましょう。
+          </p>
+
+          <!-- 手順ステップ・フロー -->
+          <div class="step-flow">
+            <div class="step-item">
+              <div class="step-badge">1</div>
+              <div class="step-title">グリッドをグラフデータに変換する</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                2次元配列のマップデータ（通行可能マス <kbd>0</kbd>、壁 <kbd>1</kbd>）から、隣接するノードの接続関係（エッジ）を構築します。
+              </p>
+            </div>
+
+            <div class="step-item">
+              <div class="step-badge">2</div>
+              <div class="step-title">優先度付きキュー（Priority Queue）で最短候補を取り出す</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                スコア <kbd>f(n)</kbd> の低い順に取り出せるデータ構造（二分ヒープなど）を使い、次に調べるマスを高速に決定します。
+              </p>
+            </div>
+
+            <div class="step-item">
+              <div class="step-badge">3</div>
+              <div class="step-title">ゴール到達後に親ノードを逆順トレースして経路復元</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                ゴール地点からスタートに向かって「どのマスから来たか（<kbd>cameFrom</kbd>）」を遡ることで、一本の移動ルートが完成します。
+              </p>
+            </div>
+          </div>
+
+          <!-- 良い例 / 悪い例 (OK / NG) 比較 -->
+          <h3 class="section-heading">よくある実装の比較</h3>
+          <p>探索ループ内でのデータ構造の選び方ひとつで、処理速度が100倍以上変わることがあります。</p>
+
+          <div class="compare-grid">
+            <div class="compare-card bad">
+              <div class="compare-header">
+                <span>✕ NG : 通常の配列で毎回 sort()</span>
+              </div>
+              <p style="font-size: 0.875rem; color: var(--color-text-sub); margin-bottom: 0.5rem;">
+                マスを追加するたびに <code>array.sort()</code> を呼ぶと計算量が <code>O(N log N)</code> となり、ノード数が増えると画面がカクつきます。
+              </p>
+              <kbd style="color: var(--color-accent-bad);">計算量: O(V² log V)</kbd>
+            </div>
+
+            <div class="compare-card good">
+              <div class="compare-header">
+                <span>◯ OK : 最小ヒープ (Binary Heap)</span>
+              </div>
+              <p style="font-size: 0.875rem; color: var(--color-text-sub); margin-bottom: 0.5rem;">
+                要素の挿入・最小値取り出しが <code>O(log N)</code> で完了するヒープを使うことで、巨大マップでも毎フレーム即座に計算できます。
+              </p>
+              <kbd style="color: var(--color-accent-good);">計算量: O(E + V log V)</kbd>
+            </div>
+          </div>
+        </section>
+
+        <!-- CHAPTER 3 -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 03</span>
+            <span>コードで見る探索アルゴリズム</span>
+          </h2>
+
+          <p>
+            TypeScriptによる実装の骨格です。キーボードの <kbd>F12</kbd> でコンソールを開き、開発モードで確認しながら動作をテストできます。
+          </p>
+
+          <!-- コードブロック -->
+          <div class="code-window">
+            <div class="code-header">
+              <div class="code-dots">
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+              </div>
+              <span class="code-title">pathfinder.ts</span>
+              <span>TypeScript</span>
+            </div>
+            <pre><code>// A* 探索のコアロジック
+export function findShortestPath(start: Node, goal: Node): Node[] {
+  const openSet = new MinHeap&lt;Node&gt;((a, b) =&gt; a.fScore - b.fScore);
+  const cameFrom = new Map&lt;Node, Node&gt;();
+
+  start.gScore = 0;
+  start.fScore = heuristic(start, goal);
+  openSet.push(start);
+
+  while (!openSet.isEmpty()) {
+    const current = openSet.pop()!;
+    if (current === goal) {
+      return reconstructPath(cameFrom, current); // 経路復元
+    }
+    // 隣接マスの探索とスコア更新...
+  }
+  return []; // 到達不能
+}</code></pre>
+          </div>
+
+          <!-- 注意点・落とし穴ボックス -->
+          <div class="callout callout-warn">
+            <div class="callout-header">
+              <span class="callout-icon">⚠️</span>
+              <span>CAUTION : ヒューリスティクス関数の選び方</span>
+            </div>
+            <div class="callout-content">
+              推定コスト <kbd>h(n)</kbd> が実際の距離よりも大きくなってしまうと、<strong>「最短であることが保証されない（Admissibilityの破綻）」</strong>という落とし穴があります。斜め移動のない4方向グリッドでは必ず<span class="marker-pink">マンハッタン距離</span>を使いましょう。
+            </div>
+          </div>
+        </section>
+
+        <!-- CHAPTER 4 -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 04</span>
+            <span>アルゴリズム比較表</span>
+          </h2>
+
+          <p>状況に応じたアルゴリズムの使い分けをまとめました：</p>
+
+          <!-- 参考書風テーブル -->
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>手法名</th>
+                  <th>計算量</th>
+                  <th>コスト重み</th>
+                  <th>最適なユースケース</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>幅優先探索 (BFS)</strong></td>
+                  <td><code>O(V + E)</code></td>
+                  <td>一律（1マス1歩）</td>
+                  <td>2Dグリッドの超高速・全方位探索</td>
+                </tr>
+                <tr>
+                  <td><strong>ダイクストラ法</strong></td>
+                  <td><code>O(E + V log V)</code></td>
+                  <td>変動（沼地や山道など）</td>
+                  <td>1対全拠点の最短経路、カーナビ</td>
+                </tr>
+                <tr>
+                  <td><strong>A* (A-star) 探索</strong></td>
+                  <td><code>O(b^d)</code></td>
+                  <td>ヒューリスティクス併用</td>
+                  <td>ゲームAI、1対1の特定ゴール探索</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- コラムボックス -->
+          <div class="callout callout-column">
+            <div class="callout-header">
+              <span class="callout-icon">📚</span>
+              <span>COLUMN : ゲームAIから数理最適化（MILP）への広がり</span>
+            </div>
+            <div class="callout-content">
+              単なる「1体の最短ルート」を超えて、「20人のキャラクターが互いにぶつからずに移動する」「魔王城のシフトで誰も過労死しないように人員を配置する」といった複合問題になると、単なる探索ではなく<strong>混合整数線形計画法（MILP）</strong>などの数理最適化ソルバー（HiGHSやGLPK）の出番になります。ルールを方程式にするだけで、コンピュータが自動的に最適解を見つけてくれる技術です！
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ======================================================================
+           英語版 (English Section)
+           ====================================================================== -->
+      <div data-lang-section="en" hidden>
+        <!-- Article Header -->
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">GAME & ALGORITHMS</span>
+            <span class="badge badge-level">★☆☆ Intermediate</span>
+            <span class="badge badge-time">⏱ Read time: 6 min</span>
+          </div>
+          <h1 class="book-title">Shortest Pathfinding & Guard Shifts — How Game AI Really Works</h1>
+          <p class="book-subtitle">
+            From how enemies intelligently hunt down players through dungeon obstacles to 24-hour guard shift scheduling in Demon Castle: An illustrated guide to the power of discrete optimization.
+          </p>
+          <div class="book-lead-box">
+            <strong>Guide Objective:</strong> When algorithms are presented only as dense formulas and code, they easily feel intimidating. Here, we unpack the core mechanics step-by-step from the foundational intuition of <mark>"Why do we compute it this way?"</mark>. Follow the visual diagrams and key takeaways to grasp the concepts effortlessly!
+          </div>
+        </header>
+
+        <!-- CHAPTER 1 (EN) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 01</span>
+            <span>Tag in the Labyrinth — From Dijkstra to A* Search</span>
+          </h2>
+
+          <p>
+            Picture an action RPG or roguelike dungeon crawler where monsters seamlessly navigate around trees, walls, and traps to pursue the player. Behind this behavior lies the fundamental technique of <span class="marker-yellow">Shortest Pathfinding</span>.
+          </p>
+
+          <!-- Key Question Box (EN) -->
+          <div class="question-box">
+            <div class="question-label">
+              <span>KEY QUESTION</span>
+            </div>
+            <div class="question-text">
+              If examining every grid tile sequentially guarantees finding the shortest route, why do we need A* search?
+            </div>
+            <div class="question-answer">
+              Exhaustive breadth-first search blindly expands outward in all directions—<strong>even directly away from the target</strong>. On large game maps, this causes state-space explosion. A* solves this by adding a "heuristic estimate" toward the destination, <strong>focusing exploration strictly toward the goal</strong>.
+            </div>
+          </div>
+
+          <!-- Diagram Card (EN) -->
+          <div class="diagram-card">
+            <div class="diagram-header">
+              <span>📊 Search Space Expansion Comparison</span>
+            </div>
+            <div class="diagram-body">
+              <div class="diagram-col">
+                <div class="diagram-col-title">Breadth-First Search (Omnidirectional)</div>
+                <div class="diagram-canvas">    . . ◯ . .
+  . ◯ ◯ ◯ .
+◯ ◯ [S] ◯ ◯
+  . ◯ ◯ ◯ .      [G]
+    . . ◯ . .
+
+* Expands radially regardless of goal</div>
+              </div>
+              <div class="diagram-col">
+                <div class="diagram-col-title">A* Search (Focused Directional)</div>
+                <div class="diagram-canvas">    . . . . .
+  . . . ◯ .
+. . [S] ◯ ◯ ◯
+  . . . ◯ ◯ ◯ [G]
+    . . . . ◯
+
+* Heuristic guides search toward goal</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Point Box (EN) -->
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT: The A* Evaluation Function</span>
+            </div>
+            <div class="callout-content">
+              The A* algorithm always prioritizes expanding the node <kbd>n</kbd> that has the lowest total evaluation score <kbd>f(n)</kbd>:
+              <div class="formula-box" style="margin: 0.75rem 0 0.5rem; background: var(--color-surface);">
+                <div class="formula-math">f(n) = g(n) + h(n)</div>
+              </div>
+              <ul>
+                <li><strong>g(n)</strong>: The exact cumulative movement cost from the start node to current node <kbd>n</kbd>.</li>
+                <li><strong>h(n)</strong>: The heuristic estimated remaining cost from node <kbd>n</kbd> to the goal.</li>
+              </ul>
+            </div>
+          </div>
+
+          <p>
+            By prioritizing tiles that are statistically closer to the destination, A* drastically prunes dead-end branches.
+          </p>
+        </section>
+
+        <!-- CHAPTER 2 (EN) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 02</span>
+            <span>Three Implementation Steps — The Search Pipeline</span>
+          </h2>
+
+          <p>
+            When building pathfinding in a custom game engine or TypeScript codebase, the architecture boils down to three sequential phases:
+          </p>
+
+          <!-- Step Flow (EN) -->
+          <div class="step-flow">
+            <div class="step-item">
+              <div class="step-badge">1</div>
+              <div class="step-title">Convert Grid Map to Graph Adjacency Data</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                Parse the 2D tile array (walkable tiles <kbd>0</kbd>, walls <kbd>1</kbd>) into neighbor graph edges.
+              </p>
+            </div>
+
+            <div class="step-item">
+              <div class="step-badge">2</div>
+              <div class="step-title">Extract Candidates via Priority Queue (Binary Heap)</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                Use an efficient min-heap data structure to pop the candidate with minimal <kbd>f(n)</kbd> in logarithmic time.
+              </p>
+            </div>
+
+            <div class="step-item">
+              <div class="step-badge">3</div>
+              <div class="step-title">Trace Back Parent Pointers Upon Reaching Goal</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                Follow the <kbd>cameFrom</kbd> mapping backwards from goal to start to produce the continuous movement path.
+              </p>
+            </div>
+          </div>
+
+          <!-- Comparison Card (EN) -->
+          <h3 class="section-heading">Data Structure Trade-off Comparison</h3>
+          <p>The choice of collection structure in your inner exploration loop can alter frame times by two orders of magnitude:</p>
+
+          <div class="compare-grid">
+            <div class="compare-card bad">
+              <div class="compare-header">
+                <span>✕ Bad: Re-sorting native Array on each push</span>
+              </div>
+              <p style="font-size: 0.875rem; color: var(--color-text-sub); margin-bottom: 0.5rem;">
+                Calling <code>array.sort()</code> repeatedly degrades complexity to <code>O(N log N)</code> per step, causing immediate frame drops.
+              </p>
+              <kbd style="color: var(--color-accent-bad);">Complexity: O(V² log V)</kbd>
+            </div>
+
+            <div class="compare-card good">
+              <div class="compare-header">
+                <span>◯ Good: Binary Min-Heap</span>
+              </div>
+              <p style="font-size: 0.875rem; color: var(--color-text-sub); margin-bottom: 0.5rem;">
+                Insertions and minimum extractions run in strict <code>O(log N)</code> time, maintaining a solid 60 FPS even across vast open maps.
+              </p>
+              <kbd style="color: var(--color-accent-good);">Complexity: O(E + V log V)</kbd>
+            </div>
+          </div>
+        </section>
+
+        <!-- CHAPTER 3 (EN) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 03</span>
+            <span>TypeScript Implementation Blueprint</span>
+          </h2>
+
+          <p>
+            Here is the clean backbone implementation. Hit <kbd>F12</kbd> in your browser to inspect live evaluations in the developer console.
+          </p>
+
+          <!-- Code Window (EN) -->
+          <div class="code-window">
+            <div class="code-header">
+              <div class="code-dots">
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+              </div>
+              <span class="code-title">pathfinder.ts</span>
+              <span>TypeScript</span>
+            </div>
+            <pre><code>// Core A* Search Routine
+export function findShortestPath(start: Node, goal: Node): Node[] {
+  const openSet = new MinHeap&lt;Node&gt;((a, b) =&gt; a.fScore - b.fScore);
+  const cameFrom = new Map&lt;Node, Node&gt;();
+
+  start.gScore = 0;
+  start.fScore = heuristic(start, goal);
+  openSet.push(start);
+
+  while (!openSet.isEmpty()) {
+    const current = openSet.pop()!;
+    if (current === goal) {
+      return reconstructPath(cameFrom, current); // Success
+    }
+    // Expand neighbors and update scores...
+  }
+  return []; // Unreachable target
+}</code></pre>
+          </div>
+
+          <!-- Caution Box (EN) -->
+          <div class="callout callout-warn">
+            <div class="callout-header">
+              <span class="callout-icon">⚠️</span>
+              <span>CAUTION: Admissibility of the Heuristic Function</span>
+            </div>
+            <div class="callout-content">
+              If your heuristic estimate <kbd>h(n)</kbd> ever exceeds the actual remaining distance, <strong>the algorithm loses its optimality guarantee</strong>. On 4-way orthogonal grid maps without diagonal steps, always choose <span class="marker-pink">Manhattan Distance</span>.
+            </div>
+          </div>
+        </section>
+
+        <!-- CHAPTER 4 (EN) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 04</span>
+            <span>Algorithm Decision Matrix</span>
+          </h2>
+
+          <p>Quick reference matrix for selecting the right search algorithm:</p>
+
+          <!-- Table (EN) -->
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Time Complexity</th>
+                  <th>Edge Cost Types</th>
+                  <th>Ideal Scenario</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Breadth-First (BFS)</strong></td>
+                  <td><code>O(V + E)</code></td>
+                  <td>Uniform (1 step per tile)</td>
+                  <td>Unweighted grid maps, omnidirectional scans</td>
+                </tr>
+                <tr>
+                  <td><strong>Dijkstra's Algorithm</strong></td>
+                  <td><code>O(E + V log V)</code></td>
+                  <td>Variable (mud, road, water)</td>
+                  <td>One-to-all shortest paths, route navigation</td>
+                </tr>
+                <tr>
+                  <td><strong>A* Search</strong></td>
+                  <td><code>O(b^d)</code></td>
+                  <td>Weighted with Heuristic</td>
+                  <td>Game AI, point-to-point single goal searches</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Column Box (EN) -->
+          <div class="callout callout-column">
+            <div class="callout-header">
+              <span class="callout-icon">📚</span>
+              <span>COLUMN: Scaling from Game AI to Discrete Optimization (MILP)</span>
+            </div>
+            <div class="callout-content">
+              When games evolve from single-unit navigation to complex coordination—such as "routing 20 squads without traffic jams" or "scheduling 24-hour guard shifts without staff burnout"—pathfinding alone is insufficient. This is where <strong>Mixed-Integer Linear Programming (MILP)</strong> solvers (like HiGHS and GLPK) shine: by declaring rules as mathematical equations, the solver computes the global optimum automatically!
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ======================================================================
+           中国語版 (Simplified Chinese Section)
+           ====================================================================== -->
+      <div data-lang-section="zh" hidden>
+        <!-- 文章头部 -->
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">游戏与算法</span>
+            <span class="badge badge-level">★☆☆ 进阶入门</span>
+            <span class="badge badge-time">⏱ 预计阅读: 6 分钟</span>
+          </div>
+          <h1 class="book-title">最短路径寻路与警卫排班的数学之美 — 游戏 AI 是如何运作的？</h1>
+          <p class="book-subtitle">
+            从动作游戏中怪物如何智能绕开地牢障碍物追逐玩家，到魔王城24小时守卫排班的全局最优解。以直观的游戏机制为切入点，图解离散优化的魅力。
+          </p>
+          <div class="book-lead-box">
+            <strong>本书导读：</strong> 当算法只充斥着冰冷的数学符号和冗长代码时，往往令人望而生畏。本指南抛开枯燥说教，从<mark>「为什么需要这样计算？」</mark>的直觉思考出发，通过直观的图解和关键问题助你轻松吃透核心思想！
+          </div>
+        </header>
+
+        <!-- 第一章 (ZH) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 01</span>
+            <span>迷宫追逐战 — 从 Dijkstra 到 A* 寻路</span>
+          </h2>
+
+          <p>
+            在动作 RPG 或肉鸽（Roguelike）游戏中，怪物总能灵巧地避开墙壁、陷阱直奔玩家而来。支撑这一智能行为的核心技术就是<span class="marker-yellow">「最短路径寻路算法（Pathfinding）」</span>。
+          </p>
+
+          <!-- 核心疑问卡片 (ZH) -->
+          <div class="question-box">
+            <div class="question-label">
+              <span>KEY QUESTION / 核心疑问</span>
+            </div>
+            <div class="question-text">
+              既然按顺序逐个检查每一个格子最终也能找到最短路径，为什么我们还需要 A* 算法？
+            </div>
+            <div class="question-answer">
+              广度优先搜索等全量扫描算法会无差别地向所有方向扩散——<strong>甚至包括背离目标的方向</strong>。在大型地图上，这会导致状态空间急剧爆炸。A* 算法通过引入「启发式估计值（Heuristic）」，<strong>将算力集中投向目标方向</strong>，从而大幅削减无效探索。
+            </div>
+          </div>
+
+          <!-- 图解卡片 (ZH) -->
+          <div class="diagram-card">
+            <div class="diagram-header">
+              <span>📊 搜索空间扩散范围对比</span>
+            </div>
+            <div class="diagram-body">
+              <div class="diagram-col">
+                <div class="diagram-col-title">广度优先搜索 (无差别同心圆扩散)</div>
+                <div class="diagram-canvas">    . . ◯ . .
+  . ◯ ◯ ◯ .
+◯ ◯ [S] ◯ ◯
+  . ◯ ◯ ◯ .      [G]
+    . . ◯ . .
+
+※ 不论终点方向，均匀向外扩散</div>
+              </div>
+              <div class="diagram-col">
+                <div class="diagram-col-title">A* 寻路 (启发式导向目标收敛)</div>
+                <div class="diagram-canvas">    . . . . .
+  . . . ◯ .
+. . [S] ◯ ◯ ◯
+  . . . ◯ ◯ ◯ [G]
+    . . . . ◯
+
+※ 借助估算代价大幅聚焦于目标侧</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 要点卡片 (ZH) -->
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : A* 算法的评估函数</span>
+            </div>
+            <div class="callout-content">
+              A* 算法在每一步探索中，总是优先挑选综合评分 <kbd>f(n)</kbd> 最小的节点 <kbd>n</kbd>：
+              <div class="formula-box" style="margin: 0.75rem 0 0.5rem; background: var(--color-surface);">
+                <div class="formula-math">f(n) = g(n) + h(n)</div>
+              </div>
+              <ul>
+                <li><strong>g(n)</strong>：从起点到当前节点 <kbd>n</kbd> 的「实际移动代价」</li>
+                <li><strong>h(n)</strong>：从节点 <kbd>n</kbd> 到终点的「启发式估计剩余代价（如直线或折线距离）」</li>
+              </ul>
+            </div>
+          </div>
+
+          <p>
+            正是凭借这种「朝目标靠近可能性更高」的优先机制，A* 规避了大量毫无意义的死胡同探索。
+          </p>
+        </section>
+
+        <!-- 第二章 (ZH) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 02</span>
+            <span>三步落地 — 迷宫寻路的核心流程</span>
+          </h2>
+
+          <p>
+            在游戏引擎或前端 TypeScript 中实现寻路算法时，整体流程可清晰划分为三个阶段：
+          </p>
+
+          <!-- 步骤流程 (ZH) -->
+          <div class="step-flow">
+            <div class="step-item">
+              <div class="step-badge">1</div>
+              <div class="step-title">将网格地图转换为图节点与连边</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                从二维数组地图数据（可通行地块 <kbd>0</kbd>、障碍墙体 <kbd>1</kbd>）构建相邻节点的邻接关系。
+              </p>
+            </div>
+
+            <div class="step-item">
+              <div class="step-badge">2</div>
+              <div class="step-title">利用优先队列（二叉堆）高效提取最小候选</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                通过二叉最小堆在对数时间内弹出 <kbd>f(n)</kbd> 最小的节点，极速决策下一个探索目标。
+              </p>
+            </div>
+
+            <div class="step-item">
+              <div class="step-badge">3</div>
+              <div class="step-title">到达终点后回溯父指针重建最优路径</div>
+              <p style="margin-bottom: 0; font-size: 0.925rem; color: var(--color-text-sub);">
+                从终点倒序遍历 <kbd>cameFrom</kbd> 映射表直抵起点，生成最终平滑的移动路线。
+              </p>
+            </div>
+          </div>
+
+          <!-- 方案对比 (ZH) -->
+          <h3 class="section-heading">数据结构选型对性能的影响</h3>
+          <p>内层探索循环中所使用的数据结构，往往会造成上百倍的性能差距：</p>
+
+          <div class="compare-grid">
+            <div class="compare-card bad">
+              <div class="compare-header">
+                <span>✕ NG : 每次向普通数组插入后调用 sort()</span>
+              </div>
+              <p style="font-size: 0.875rem; color: var(--color-text-sub); margin-bottom: 0.5rem;">
+                频繁调用 <code>array.sort()</code> 会使单步复杂度飙升至 <code>O(N log N)</code>，在大型地图上导致画面严重掉帧。
+              </p>
+              <kbd style="color: var(--color-accent-bad);">计算复杂度: O(V² log V)</kbd>
+            </div>
+
+            <div class="compare-card good">
+              <div class="compare-header">
+                <span>◯ OK : 最小二叉堆 (Binary Heap)</span>
+              </div>
+              <p style="font-size: 0.875rem; color: var(--color-text-sub); margin-bottom: 0.5rem;">
+                元素插入和提取最小值仅需 <code>O(log N)</code>，即使在千格大地图上也能稳健维持 60 FPS 实时计算。
+              </p>
+              <kbd style="color: var(--color-accent-good);">计算复杂度: O(E + V log V)</kbd>
+            </div>
+          </div>
+        </section>
+
+        <!-- 第三章 (ZH) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 03</span>
+            <span>TypeScript 代码实现精要</span>
+          </h2>
+
+          <p>
+            以下为 A* 算法的核心实现骨架。在浏览器中按下 <kbd>F12</kbd> 即可打开开发者控制台进行调试与验证。
+          </p>
+
+          <!-- 代码窗口 (ZH) -->
+          <div class="code-window">
+            <div class="code-header">
+              <div class="code-dots">
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+                <span class="code-dot"></span>
+              </div>
+              <span class="code-title">pathfinder.ts</span>
+              <span>TypeScript</span>
+            </div>
+            <pre><code>// A* 寻路核心逻辑
+export function findShortestPath(start: Node, goal: Node): Node[] {
+  const openSet = new MinHeap&lt;Node&gt;((a, b) =&gt; a.fScore - b.fScore);
+  const cameFrom = new Map&lt;Node, Node&gt;();
+
+  start.gScore = 0;
+  start.fScore = heuristic(start, goal);
+  openSet.push(start);
+
+  while (!openSet.isEmpty()) {
+    const current = openSet.pop()!;
+    if (current === goal) {
+      return reconstructPath(cameFrom, current); // 重建并返回路径
+    }
+    // 扩展相邻节点并更新代价分数...
+  }
+  return []; // 目标不可达
+}</code></pre>
+          </div>
+
+          <!-- 警示卡片 (ZH) -->
+          <div class="callout callout-warn">
+            <div class="callout-header">
+              <span class="callout-icon">⚠️</span>
+              <span>CAUTION : 启发式函数的「可采纳性（Admissibility）」</span>
+            </div>
+            <div class="callout-content">
+              若预估代价 <kbd>h(n)</kbd> 超过了实际物理距离，<strong>算法的最优性保证将被打破</strong>。在无对角线行进的正交四向网格中，务必采用<span class="marker-pink">曼哈顿距离（Manhattan Distance）</span>。
+            </div>
+          </div>
+        </section>
+
+        <!-- 第四章 (ZH) -->
+        <section>
+          <h2 class="chapter-heading">
+            <span class="chapter-badge">Chapter 04</span>
+            <span>经典算法特性对比表</span>
+          </h2>
+
+          <p>不同业务场景下的寻路方案选型参考：</p>
+
+          <!-- 表格 (ZH) -->
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>算法名称</th>
+                  <th>时间复杂度</th>
+                  <th>边权支持</th>
+                  <th>最佳适用场景</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>广度优先搜索 (BFS)</strong></td>
+                  <td><code>O(V + E)</code></td>
+                  <td>等权（每步代价为1）</td>
+                  <td>二维平坦网格的超快速全方位探测</td>
+                </tr>
+                <tr>
+                  <td><strong>Dijkstra 算法</strong></td>
+                  <td><code>O(E + V log V)</code></td>
+                  <td>任意正权重（泥地、道路）</td>
+                  <td>一对多单源最短路径、导航地图</td>
+                </tr>
+                <tr>
+                  <td><strong>A* (A-star) 寻路</strong></td>
+                  <td><code>O(b^d)</code></td>
+                  <td>启发式加权</td>
+                  <td>游戏 AI、点对点单一目标精确寻路</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 专栏卡片 (ZH) -->
+          <div class="callout callout-column">
+            <div class="callout-header">
+              <span class="callout-icon">📚</span>
+              <span>COLUMN : 从游戏 AI 延伸至数理规划（MILP）</span>
+            </div>
+            <div class="callout-content">
+              当问题从单一角色寻路扩展到「数十名士兵互不碰撞协同推进」或「魔王城24小时守卫排班且满足无人超时轮岗」等高维约束时，单靠几何寻路便力不从心。此时便需要<strong>混合整数线性规划（MILP）</strong>求解器（如 HiGHS 与 GLPK）登场：只需将规则编写为数学方程式，求解器便会自动在全球范围内计算出全局最优排班方案！
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </article>
+  </main>
+
+  <!-- 交互脚本: 言語切替 ＆ テーマ切替 -->
+  <script>
+    const I18N_TITLES = {
+      ja: {
+        toolbar: "Markdown 参考書風デザインシステム",
+        themeEdu: "📘 ① 図解入門",
+        themeStrat: "🎮 ② 攻略本",
+        themeMod: "⚡ ③ モダン"
+      },
+      en: {
+        toolbar: "Markdown Textbook Style System",
+        themeEdu: "📘 ① Educational",
+        themeStrat: "🎮 ② Strategy Guide",
+        themeMod: "⚡ ③ Modern Tech"
+      },
+      zh: {
+        toolbar: "Markdown 参考书风格设计系统",
+        themeEdu: "📘 ① 图解教科书",
+        themeStrat: "🎮 ② 攻略全书",
+        themeMod: "⚡ ③ 现代科技"
+      }
+    };
+
+    function setLang(lang) {
+      if (!['ja', 'en', 'zh'].includes(lang)) lang = 'ja';
+      document.documentElement.setAttribute('lang', lang);
+
+      // セクション表示切替
+      document.querySelectorAll('[data-lang-section]').forEach(sec => {
+        sec.hidden = sec.getAttribute('data-lang-section') !== lang;
+      });
+
+      // 言語ボタンのアクティブ状態
+      document.querySelectorAll('[data-lang-btn]').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-lang-btn') === lang);
+      });
+
+      // ツールバーテキストのローカライズ
+      const t = I18N_TITLES[lang] || I18N_TITLES.ja;
+      document.getElementById('toolbar-title-text').textContent = t.toolbar;
+      document.getElementById('theme-btn-edu').textContent = t.themeEdu;
+      document.getElementById('theme-btn-strat').textContent = t.themeStrat;
+      document.getElementById('theme-btn-mod').textContent = t.themeMod;
+
+      // URLハッシュ更新
+      history.replaceState(null, '', '#' + lang);
+    }
+
+    function setTheme(themeName) {
+      document.documentElement.setAttribute('data-theme', themeName);
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-set-theme') === themeName);
+      });
+    }
+
+    // 初期化: ハッシュから言語復元
+    window.addEventListener('DOMContentLoaded', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['ja', 'en', 'zh'].includes(hash)) {
+        setLang(hash);
+      }
+    });
+  </script>
+</body>
+</html>

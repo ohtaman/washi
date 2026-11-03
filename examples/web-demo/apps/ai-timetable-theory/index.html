@@ -14,19 +14,20 @@
     />
     <style>
       :root {
-        --bg-page: #0b1120;
-        --card-bg: #131c31;
-        --border-subtle: rgba(56, 189, 248, 0.26);
-        --gold: #f6c453;
-        --gold-soft: rgba(246, 196, 83, 0.12);
-        --cyan: #38bdf8;
-        --cyan-soft: rgba(56, 189, 248, 0.12);
-        --rose: #fb7185;
-        --rose-soft: rgba(251, 113, 133, 0.12);
-        --text-main: #f1f5f9;
-        --text-muted: #cbd5e1;
-        --code-bg: #070b14;
-        --code-text: #e2e8f0;
+        --bg-page: #fbfaf5;
+        --card-bg: #ffffff;
+        --border-subtle: #e6e0d2;
+        --border-strong: #cfc8b6;
+        --gold: #b45309;
+        --gold-soft: #fef3c7;
+        --cyan: #0284c7;
+        --cyan-soft: #f0f9ff;
+        --rose: #e11d48;
+        --rose-soft: #fff1f2;
+        --text-main: #242426;
+        --text-muted: #57585e;
+        --code-bg: #1e293b;
+        --code-text: #f1f5f9;
       }
 
       * {
@@ -35,7 +36,7 @@
 
       body {
         margin: 0;
-        background: radial-gradient(circle at top, #1e293b 0%, #0b1120 70%);
+        background: var(--bg-page);
         color: var(--text-main);
         font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
         line-height: 1.8;
@@ -71,10 +72,11 @@
         font-weight: 700;
         font-size: 0.88rem;
         color: var(--text-main);
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: #ffffff;
+        border: 1px solid var(--border-subtle);
         padding: 0.48rem 0.95rem;
         border-radius: 999px;
+        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
       }
 
       .nav-btn:hover {
@@ -83,19 +85,20 @@
       }
 
       .nav-btn.primary {
-        background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
         color: #fff;
-        border-color: #fda4af;
+        border-color: #0284c7;
       }
 
       .lang-switch {
         display: inline-flex;
         align-items: center;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(56, 189, 248, 0.4);
+        background: #ffffff;
+        border: 1px solid var(--border-subtle);
         border-radius: 999px;
         padding: 0.18rem;
         gap: 0.15rem;
+        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
       }
 
       .lang-btn {
@@ -113,24 +116,25 @@
 
       .lang-btn.is-active {
         background: var(--cyan);
-        color: #0b1120;
+        color: #ffffff;
       }
 
       .hero-card {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-        border: 2px solid var(--cyan);
+        background: linear-gradient(135deg, #f0f9ff 0%, #fefcf3 100%);
+        border: 2px solid #bae6fd;
         border-radius: 24px;
         padding: 2.2rem 2rem;
         margin-bottom: 2rem;
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+        box-shadow: 0 10px 28px rgba(2, 132, 199, 0.06);
       }
 
       .hero-eyebrow {
         display: inline-block;
         font-size: 0.78rem;
         font-weight: 800;
-        color: #0b1120;
-        background: var(--cyan);
+        color: var(--cyan);
+        background: var(--cyan-soft);
+        border: 1px solid #7dd3fc;
         padding: 0.2rem 0.75rem;
         border-radius: 999px;
         margin-bottom: 0.75rem;
@@ -140,7 +144,7 @@
         font-size: clamp(1.42rem, 3.1vw, 2rem);
         line-height: 1.38;
         margin: 0 0 0.9rem;
-        color: #e0f2fe;
+        color: #0f172a;
       }
 
       .hero-card p {
@@ -155,20 +159,33 @@
         border-radius: 20px;
         padding: 1.9rem 2rem;
         margin-bottom: 1.6rem;
-        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+        box-shadow: 0 4px 16px rgba(36, 36, 38, 0.05);
       }
 
       .section-card h2 {
         font-size: 1.3rem;
-        color: var(--cyan);
+        color: #0f172a;
         margin: 0 0 1rem;
         padding-bottom: 0.55rem;
-        border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+        border-bottom: 2px solid #e0f2fe;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .section-card h2::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 1.15em;
+        background: var(--cyan);
+        border-radius: 999px;
+        flex-shrink: 0;
       }
 
       .section-card h3 {
         font-size: 1.06rem;
-        color: #fde68a;
+        color: var(--cyan);
         margin: 1.4rem 0 0.5rem;
       }
 
@@ -177,14 +194,15 @@
       }
 
       .math-box {
-        background: rgba(7, 11, 20, 0.82);
+        background: #fdfbf7;
+        border: 1px solid var(--border-subtle);
         border-left: 4px solid var(--cyan);
         border-radius: 0 12px 12px 0;
         padding: 1rem 1.25rem;
         margin: 1rem 0 1.25rem;
         font-family: "JetBrains Mono", monospace;
         font-size: 0.9rem;
-        color: #e0f2fe;
+        color: var(--text-main);
         overflow-x: auto;
       }
 
@@ -194,7 +212,7 @@
       }
 
       .math-box .katex {
-        color: #e0f2fe;
+        color: var(--text-main);
       }
 
       .math-box .math-title {
@@ -215,20 +233,20 @@
 
       .callout.gold {
         background: var(--gold-soft);
-        border: 1px solid rgba(246, 196, 83, 0.5);
-        color: #fef3c7;
+        border: 1px solid #fcd34d;
+        color: #78350f;
       }
 
       .callout.cyan {
         background: var(--cyan-soft);
-        border: 1px solid rgba(56, 189, 248, 0.5);
-        color: #e0f2fe;
+        border: 1px solid #bae6fd;
+        color: #0369a1;
       }
 
       .callout.rose {
         background: var(--rose-soft);
-        border: 1px solid rgba(251, 113, 133, 0.5);
-        color: #ffe4e6;
+        border: 1px solid #fecdd3;
+        color: #9f1239;
       }
 
       .callout strong {
@@ -245,15 +263,16 @@
 
       table.mapping-table th,
       table.mapping-table td {
-        border: 1px solid rgba(255, 255, 255, 0.14);
+        border: 1px solid var(--border-subtle);
         padding: 0.65rem 0.85rem;
         text-align: left;
       }
 
       table.mapping-table th {
-        background: rgba(56, 189, 248, 0.14);
-        color: #bae6fd;
+        background: #fdfbf7;
+        color: var(--text-main);
         font-weight: 800;
+        border-bottom: 2px solid var(--border-subtle);
       }
 
       pre.code-block {
@@ -261,7 +280,7 @@
         color: var(--code-text);
         padding: 1.15rem 1.35rem;
         border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--border-subtle);
         overflow-x: auto;
         font-family: "JetBrains Mono", monospace;
         font-size: 0.84rem;
@@ -285,8 +304,8 @@
         <a href="../../ja/showcase/" class="nav-btn" id="nav-back">← ショーケースへ戻る</a>
         <div class="topnav-right">
           <div class="lang-switch" role="group" aria-label="Language">
-            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="en">English</button>
+            <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
           <a href="../ai-shift/" class="nav-btn" id="nav-other-app">🏥 ナーススケジューリング AI へ</a>
