@@ -460,6 +460,14 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
       zh: "✨ 查看示范解答",
     })
   );
+  setTitle(
+    "btn-show-optimal",
+    pickLang(currentLang, {
+      ja: "最適なお手本解答を表示します",
+      en: "Show optimal model solution",
+      zh: "显示示范解答",
+    })
+  );
   setText(
     "btn-next-stage",
     pickLang(currentLang, {
@@ -870,18 +878,42 @@ function renderHud(): void {
     }
   }
 
+  const targetScore = getTargetScore();
+  const cleared = isStageCleared();
+  const isShortfall = !cleared && currentEval.isSafe;
+  const diff = targetScore - currentEval.pastureScore;
+  const optPits = cachedOptimal?.optimalEvaluation.breakdown.pitCount ?? 0;
+  const hasAvoidablePit = currentEval.breakdown.pitCount > optPits;
+
   const guideBannerEl = document.getElementById("guide-banner");
   const guideIconEl = document.getElementById("guide-banner-icon");
   if (guideBannerEl) {
-    guideBannerEl.classList.toggle("is-tutorial", isTutorial);
+    guideBannerEl.classList.toggle("is-tutorial", isTutorial && !isShortfall);
+    guideBannerEl.classList.toggle("is-shortfall", isShortfall);
   }
   if (guideIconEl) {
-    guideIconEl.textContent = isTutorial ? "🔰" : "🐑";
+    guideIconEl.textContent = isShortfall
+      ? (hasAvoidablePit ? "🕳️" : "🍓")
+      : (isTutorial ? "🔰" : "🐑");
   }
 
   const localizedStage = getLocalizedStageText(currentStage, currentLang);
   stageTitleEl.textContent = localizedStage.title;
-  stageOneLinerEl.textContent = localizedStage.oneLiner;
+  if (isShortfall) {
+    stageOneLinerEl.textContent = hasAvoidablePit
+      ? pickLang(currentLang, {
+          ja: `オオカミ防衛成功! 🕳️穴ぼこを埋めるか仕切ってあと +${diff} pt 稼ごう`,
+          en: `Sheep safe! Plug or isolate the 🕳️ pitfall to reach +${diff} more pt`,
+          zh: `恶狼已阻挡! 请填平或隔开🕳️坑洞以追回 +${diff} pt`,
+        })
+      : pickLang(currentLang, {
+          ja: `オオカミ防衛成功! 柵の位置を工夫してあと +${diff} pt 稼ごう`,
+          en: `Sheep safe! Adjust fence positions to enclose +${diff} more pt`,
+          zh: `恶狼已阻挡! 请调整栅栏位置以追回 +${diff} pt`,
+        });
+  } else {
+    stageOneLinerEl.textContent = localizedStage.oneLiner;
+  }
 
   // Fence dots & remaining count
   const remaining = Math.max(0, currentStage.maxFences - currentEval.fencesUsed);
@@ -900,17 +932,12 @@ function renderHud(): void {
     zh: `剩余 ${remaining} / ${currentStage.maxFences}`,
   });
 
-  const targetScore = getTargetScore();
-  const cleared = isStageCleared();
   const displayCurrent = currentEval.isSafe ? `${currentEval.pastureScore}` : "—";
   scoreTextEl.textContent = pickLang(currentLang, {
     ja: `${displayCurrent} / 目標 ${targetScore} pt`,
     en: `${displayCurrent} / Goal ${targetScore} pt`,
     zh: `${displayCurrent} / 目标 ${targetScore} pt`,
   });
-
-  const optPits = cachedOptimal?.optimalEvaluation.breakdown.pitCount ?? 0;
-  const hasAvoidablePit = currentEval.breakdown.pitCount > optPits;
 
   // Safety & Target status pill
   if (cleared) {
@@ -922,7 +949,6 @@ function renderHud(): void {
       zh: "达成目标・STAGE CLEAR",
     });
   } else if (currentEval.isSafe) {
-    const diff = targetScore - currentEval.pastureScore;
     hudStatusPillEl.className = "hud-pill status-shortfall";
     statusIconEl.textContent = hasAvoidablePit ? "🕳️" : "🍓";
     statusTextEl.textContent = hasAvoidablePit
@@ -950,6 +976,13 @@ function renderHud(): void {
   btnUndo.disabled = undoStack.length === 0;
   btnRestart.disabled = currentEval.fencesUsed === 0 && undoStack.length === 0;
   btnHint.disabled = solverFailed;
+  if (isShortfall && cachedOptimal?.verified) {
+    btnShowOptimal.hidden = false;
+    btnHint.hidden = remaining === 0;
+  } else {
+    btnShowOptimal.hidden = true;
+    btnHint.hidden = false;
+  }
 
   // Inline Clear / Shortfall Banner
   if (cleared) {
