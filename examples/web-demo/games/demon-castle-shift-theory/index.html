@@ -184,10 +184,13 @@
           </div>
 
           <div class="callout callout-point">
-            <div class="callout-header">💡 最適化の極意：補助変数 pair は連続変数 [0, 1] で十分！</div>
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : 補助変数 pair の連続緩和（[0, 1] 区間）</span>
+            </div>
             <div class="callout-content">
-              モデル上、$\text{pair}_{A,B,d,s}$ は「二値変数」として直感的に理解されますが、実はMILPソルバーに渡す際は <strong>連続変数（$0 \le \text{pair} \le 1$）として宣言しても完全に同じ動作</strong>をします。<br />
-              なぜなら、$x_A, x_B \in \{0, 1\}$ が確定した瞬間、式(a)(b)(c)によって $\text{pair}$ の取り得る値の範囲は単一の整数点（$0$ または $1$）に潰れるからです。分枝限定法でソルバーが探索すべき「整数変数の総数」を減らすことは、大規模な実務問題を高速に解くための鉄則です。
+              モデル上、$\text{pair}_{A,B,d,s}$ は 0-1 二値変数として定式化されますが、MILPソルバーに渡す際は<strong>連続変数（$0 \le \text{pair} \le 1$）として宣言しても同一の整数解</strong>が得られます。<br />
+              主変数 $x_A, x_B \in \{0, 1\}$ が確定した時点で、制約式(a)(b)(c)によって $\text{pair}$ の取り得る範囲は自動的に単一の整数点（$0$ または $1$）に定まるためです。分枝限定法においてソルバーが探索する「整数変数の総数」を削減することは、大規模な組合せ最適化問題を高速に解くための定石です。
             </div>
           </div>
         </section>
@@ -389,10 +392,13 @@ m.constraint(
           </div>
 
           <div class="callout callout-point">
-            <div class="callout-header">💡 Practitioner's Tip: Auxiliary pair Variables Can Be Continuous [0, 1]</div>
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT: Continuous Relaxation of the Auxiliary pair Variable</span>
+            </div>
             <div class="callout-content">
-              While $\text{pair}_{A,B,d,s}$ is conceptually thought of as a 0-1 binary variable, <strong>declaring it as a continuous variable $0 \le \text{pair} \le 1$ in the MILP solver produces identical results</strong>.<br />
-              Once $x_A, x_B \in \{0, 1\}$ are decided, inequalities (a)–(c) collapse the feasible range of $\text{pair}$ to a single integer point ($0$ or $1$). Reducing the number of integer variables that the solver must branch on is a fundamental rule for scaling combinatorial optimization models.
+              While $\text{pair}_{A,B,d,s}$ is conceptually formulated as a 0-1 binary variable, <strong>declaring it as a continuous variable $0 \le \text{pair} \le 1$ in the MILP solver yields identical integer solutions</strong>.<br />
+              Once the binary variables $x_A, x_B \in \{0, 1\}$ are fixed, inequalities (a)–(c) collapse the feasible range of $\text{pair}$ to a single integer point ($0$ or $1$). Reducing the number of integer variables that the solver must branch on is a standard formulation technique for combinatorial optimization models.
             </div>
           </div>
         </section>
@@ -594,10 +600,13 @@ m.constraint(
           </div>
 
           <div class="callout callout-point">
-            <div class="callout-header">💡 优化建模秘籍：辅助变量 pair 声明为连续变量 [0, 1] 即可！</div>
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : 辅助变量 pair 的连续松弛（[0, 1] 区间）</span>
+            </div>
             <div class="callout-content">
-              在概念上，$\text{pair}_{A,B,d,s}$ 直观上是一个 0-1 二进制变量，但在实际交给 MILP 求解器时，<strong>完全可以将其声明为连续变量（$0 \le \text{pair} \le 1$）</strong>。<br />
-              因为只要主决策变量 $x_A, x_B \in \{0, 1\}$ 确定，根据约束 (a)(b)(c)，$\text{pair}$ 的可行域就会自动坍缩到单一的整数点（$0$ 或 $1$）。减少求解器在分支定界过程中需要分支的“整数变量总数”，是加速求解大规模实际排班问题的核心技巧。
+              在概念上，$\text{pair}_{A,B,d,s}$ 属于 0-1 二进制决策变量，但在交给 MILP 求解器时，<strong>将其声明为连续变量（$0 \le \text{pair} \le 1$）即可获得完全相同的整数解</strong>。<br />
+              因为只要主决策变量 $x_A, x_B \in \{0, 1\}$ 确定，根据约束 (a)(b)(c)，$\text{pair}$ 的可行域就会自动确定在单一的整数点（$0$ 或 $1$）。减少求解器在分支定界过程中需要分支的“整数变量总数”，是提升大规模实际排班问题求解效率的关键方法。
             </div>
           </div>
         </section>

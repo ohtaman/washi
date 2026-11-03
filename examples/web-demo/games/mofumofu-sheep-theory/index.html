@@ -359,10 +359,13 @@
           </div>
 
           <div class="callout callout-point">
-            <div class="callout-header">💡 最適化の極意：Big-Mのタイトネスと大規模グラフにおける切断平面法</div>
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : Big-M のタイトネスと切断平面法</span>
+            </div>
             <div class="callout-content">
-              <strong>Big-M のタイトネス</strong>：式(5)(6)の容量係数 $M$ は全マス数 $|V|$ で十分ですが、さらにタイトには「ヒツジから到達可能な最大マス数」や「柵の予算 $K$ 本で囲われ得る最大面積」で上界を絞ることで、LP緩和の質を高めることができます。<br />
-              <strong>大規模グラフにおける手法比較</strong>：単一品種フロー定式化（SCF）は有向アーク数（約 $4|V|$ 本）の連続変数を要しますが、本ゲームのような $10 \times 10$ 規模の盤面であれば、WASMソルバー（HiGHS）でも数ミリ秒で即座に求まります。一方で頂点数が数万〜数百万に達する実務のネットワーク設計問題では、連結性制約を初期状態では外しておき、分枝限定法の中で分離問題（Separation Problem）を解いて連結カットを動的に追加する<strong>切断平面法（Benders / Lazy Constraint Callback）</strong>が主流となります。
+              <strong>Big-M のタイトネス</strong>：式(5)(6)の容量係数 $M$ は全マス数 $|V|$ で十分ですが、さらに「ヒツジから到達可能な最大マス数」や「柵の予算 $K$ 本で囲われ得る最大面積」で上界を絞ることで、LP緩和の質を高めることができます。<br />
+              <strong>大規模グラフにおける手法比較</strong>：単一品種フロー定式化（SCF）は有向アーク数（約 $4|V|$ 本）の連続変数を要しますが、本ゲームのような $10 \times 10$ 規模の盤面であれば、WASMソルバー（HiGHS）でも数ミリ秒で即座に求まります。一方で頂点数が数万〜数百万に達する実務のネットワーク設計問題では、連結性制約を初期状態では外しておき、分枝限定法の中で分離問題（Separation Problem）を解いて連結カットを動的に追加する<strong>切断平面法（Benders / Lazy Constraint Callback）</strong>が広く用いられます。
             </div>
           </div>
         </section>
@@ -670,10 +673,13 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           </div>
 
           <div class="callout callout-point">
-            <div class="callout-header">💡 Optimization Insight: Big-M Tightness and Cutting Plane Methods</div>
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT: Big-M Tightness and Cutting Plane Methods</span>
+            </div>
             <div class="callout-content">
               <strong>Big-M Tightness</strong>: While $M = |V|$ is valid in (5) and (6), bounding $M$ by the maximum reachable area under fence budget $K$ yields a tighter LP relaxation.<br />
-              <strong>Algorithmic Comparison</strong>: Single-Commodity Flow (SCF) introduces continuous variables for all directed arcs ($\approx 4|V|$), solving within milliseconds on $10 \times 10$ boards with WASM HiGHS. For massive real-world graphs ($|V| > 10^5$), the standard approach shifts to <strong>Cutting Plane / Benders decomposition</strong>, dynamically generating connectivity cuts via separation callbacks during branch-and-bound.
+              <strong>Algorithmic Comparison</strong>: Single-Commodity Flow (SCF) introduces continuous variables for all directed arcs ($\approx 4|V|$), solving within milliseconds on $10 \times 10$ boards with WASM HiGHS. For large graphs ($|V| > 10^5$), the standard approach shifts to <strong>Cutting Plane / Benders decomposition</strong>, dynamically generating connectivity cuts via separation callbacks during branch-and-bound.
             </div>
           </div>
         </section>
@@ -983,10 +989,13 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           </div>
 
           <div class="callout callout-point">
-            <div class="callout-header">💡 优化建模秘籍：Big-M 的紧度与大规模图上的割平面法</div>
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : Big-M 紧度与大规模图上的割平面法</span>
+            </div>
             <div class="callout-content">
               <strong>Big-M 的紧度</strong>：式(5)(6)中容量上界 $M$ 设为全图总格数 $|V|$ 足以保证正确性；若进一步取“预算 $K$ 道栅栏最多能围住的最大可能面积”，则能提供更紧（tighter）的 LP 线性松弛，进一步提升分枝定界效率。<br />
-              <strong>算法选型权衡</strong>：单商品流（SCF）需要引入约 $4|V|$ 个连续变量，在类似本游戏 $10 \times 10$ 规模的轻量级场景下，WASM 版 HiGHS 仅需几毫秒即可瞬时求解。但在实际数万至数百万节点的巨型网络设计问题中，更常用的做法是在分枝定界过程中动态求解分离问题（Separation Problem）的<strong>割平面法（Benders / Lazy Constraint Callback）</strong>。
+              <strong>算法选型权衡</strong>：单商品流（SCF）需要引入约 $4|V|$ 个连续变量，在类似本游戏 $10 \times 10$ 规模的轻量级场景下，WASM 版 HiGHS 仅需几毫秒即可瞬时求解。但在实际数万至数百万节点的网络设计问题中，更常用的做法是在分枝定界过程中动态求解分离问题（Separation Problem）的<strong>割平面法（Benders / Lazy Constraint Callback）</strong>。
             </div>
           </div>
         </section>
