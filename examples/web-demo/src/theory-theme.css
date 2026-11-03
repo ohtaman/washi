@@ -14,7 +14,7 @@
   --radius-lg: 16px;
   --radius-full: 9999px;
 
-  --color-bg-page: #fbfaf5;
+  --color-bg-page: #f9f8f4;
   --color-surface: #ffffff;
   --color-surface-soft: #f4f2eb;
   --color-border: #e6e2d6;
@@ -29,17 +29,22 @@
   --color-brand-secondary: #0d9488;     /* 爽やかなティールグリーン */
   --color-brand-secondary-soft: #f0fdfa;
 
-  --color-accent-point: #b45309;       /* ポイント・要点 (アンバー) */
-  --color-accent-point-soft: #fef3c7;
+  --color-accent-point: #f59e0b;       /* ポイント・要点 (アンバー/イエロー) */
+  --color-accent-point-soft: #fffbeb;
   --color-accent-point-border: #fcd34d;
 
-  --color-accent-warn: #e11d48;        /* 注意・落とし穴 (ローズ) */
-  --color-accent-warn-soft: #fff1f2;
-  --color-accent-warn-border: #fda4af;
+  --color-accent-warn: #ef4444;        /* 注意・落とし穴 (レッド/ローズ) */
+  --color-accent-warn-soft: #fef2f2;
+  --color-accent-warn-border: #fca5a5;
 
-  --color-accent-column: #6366f1;      /* コラム・深掘り (インディゴ) */
-  --color-accent-column-soft: #eef2ff;
-  --color-accent-column-border: #c7d2fe;
+  --color-accent-column: #8b5cf6;      /* コラム・深掘り (バイオレット) */
+  --color-accent-column-soft: #f5f3ff;
+  --color-accent-column-border: #d8b4fe;
+
+  --color-accent-good: #10b981;        /* OK / 良い例 */
+  --color-accent-good-soft: #ecfdf5;
+  --color-accent-bad: #ef4444;         /* NG / 悪い例 */
+  --color-accent-bad-soft: #fef2f2;
 
   --color-accent-cyan: #0284c7;        /* スカイシアン */
   --color-accent-cyan-soft: #f0f9ff;

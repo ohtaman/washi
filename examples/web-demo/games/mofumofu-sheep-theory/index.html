@@ -12,16 +12,6 @@
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
     <style>
-      :root {
-        --color-brand-primary: #3f7d20;       /* フォレストグリーン */
-        --color-brand-primary-soft: #eef8e6;
-        --color-brand-secondary: #0d9488;     /* ティール */
-        --color-brand-secondary-soft: #f0fdfa;
-        --color-accent-point: #b45309;       /* アンバー */
-        --color-accent-point-soft: #fef3c7;
-        --color-accent-point-border: #fcd34d;
-      }
-
       /* 牧場グリッド図解 (Chapter 04: 単一品種フロー保存則) */
       .diagram-grid {
         display: grid;
@@ -108,7 +98,6 @@
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../demon-castle-shift-theory/" class="nav-btn" id="nav-other-theory">🏰 警備シフトの解説記事へ</a>
           <a href="../mofumofu-sheep/" class="nav-btn primary" id="nav-play">🐑 パズルをプレイする ▶</a>
         </div>
       </nav>
@@ -1032,19 +1021,16 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
         ja: {
           title: "『もふもふ羊の牧場囲い』の数理モデル解説 — 最小カットから最大重み連結領域問題（MILP）へ",
           back: "← ショーケースへ戻る",
-          other: "🏰 警備シフトの解説記事へ",
           play: "🐑 パズルをプレイする ▶",
         },
         en: {
           title: 'Behind "Fluffy Sheep Pasture Enclosure" — From Minimum Cut to Budgeted Connected Subgraph (MILP)',
           back: "← Back to Showcase",
-          other: "🏰 Guard Shift Article",
           play: "🐑 Play Puzzle ▶",
         },
         zh: {
           title: "《毛茸茸绵羊的牧场围栏》数学模型解说 — 从最小割到最大权连通子图问题（MILP）",
           back: "← 返回案例展示",
-          other: "🏰 警备排班解说文章",
           play: "🐑 开始解谜 ▶",
         },
       };
@@ -1058,7 +1044,6 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           backBtn.textContent = t.back;
           backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
         }
-        document.getElementById("nav-other-theory").textContent = t.other;
         document.getElementById("nav-play").textContent = t.play;
 
         document.querySelectorAll("[data-lang-section]").forEach((sec) => {

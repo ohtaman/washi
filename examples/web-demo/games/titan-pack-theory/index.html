@@ -11,29 +11,18 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
-    <style>
-      :root {
-        --color-brand-primary: #0284c7;       /* スカイシアン */
-        --color-brand-primary-soft: #f0f9ff;
-        --color-brand-secondary: #0d9488;     /* ティール */
-        --color-brand-secondary-soft: #f0fdfa;
-        --color-accent-point: #0284c7;
-        --color-accent-point-soft: #f0f9ff;
-        --color-accent-point-border: #7dd3fc;
-      }
-    </style>
   </head>
   <body>
     <div class="article-shell">
       <nav class="topnav">
-        <a href="../titan-pack/" class="nav-btn primary" id="t-nav-play">🎮 ゲームをプレイする</a>
+        <a href="../../ja/showcase/" class="nav-btn" id="t-nav-showcase">← ショーケースへ戻る</a>
         <div class="topnav-right">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn" data-lang-btn="en">English</button>
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../../ja/showcase/" class="nav-btn" id="t-nav-showcase">✨ ショーケース</a>
+          <a href="../titan-pack/" class="nav-btn primary" id="t-nav-play">🎮 ゲームをプレイする ▶</a>
         </div>
       </nav>
 
@@ -136,8 +125,8 @@ console.log("Status:", status);</code></pre>
 
       const TEXTS = {
         ja: {
-          navPlay: "🎮 ゲームをプレイする",
-          navShowcase: "✨ ショーケース",
+          navPlay: "🎮 ゲームをプレイする ▶",
+          navShowcase: "← ショーケースへ戻る",
           title: "『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化",
           lead: "最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。",
           sec1Title: "1. 2次元パッキング問題（2D Packing Problem）とは",
@@ -153,8 +142,8 @@ console.log("Status:", status);</code></pre>
           sec4P1: "TypeScript 数理最適化モデリングライブラリ @ohtaman/washi を使ってこの 2D パッキングモデルを構築するコードは以下の通りです：",
         },
         en: {
-          navPlay: "🎮 Play Game",
-          navShowcase: "✨ Showcase",
+          navPlay: "🎮 Play Game ▶",
+          navShowcase: "← Back to Showcase",
           title: "Mathematical Foundations of TITAN PACK — 2D Strip Packing & MILP Linearization",
           lead: "Explore the Mixed-Integer Linear Programming (MILP) formulation of 2D Strip / Bin Packing behind TITAN PACK, along with the multi-scale interlocking algorithms that guarantee zero-fault-line solutions.",
           sec1Title: "1. What is the 2D Packing Problem?",
@@ -170,8 +159,8 @@ console.log("Status:", status);</code></pre>
           sec4P1: "Here is how to formulate and solve this 2D packing model using the @ohtaman/washi TypeScript mathematical modeling library:",
         },
         zh: {
-          navPlay: "🎮 开始游戏",
-          navShowcase: "✨ 案例展示",
+          navPlay: "🎮 开始游戏 ▶",
+          navShowcase: "← 返回案例展示",
           title: "《TITAN PACK》数理模型解说 — 二维装箱问题与非重叠约束的线性化",
           lead: "深入解析《TITAN PACK》背后的混合整数线性规划（MILP）二维装箱模型，以及保证绝无通断层、有机咬合的几何算法原理。",
           sec1Title: "1. 什么是二维装箱问题（2D Packing Problem）？",

@@ -11,17 +11,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
-    <style>
-      :root {
-        --color-brand-primary: #b45309;       /* アンバー / ゴールド */
-        --color-brand-primary-soft: #fef3c7;
-        --color-brand-secondary: #0284c7;     /* シアン */
-        --color-brand-secondary-soft: #f0f9ff;
-        --color-accent-point: #b45309;
-        --color-accent-point-soft: #fef3c7;
-        --color-accent-point-border: #fcd34d;
-      }
-    </style>
   </head>
   <body>
     <div class="article-shell">
@@ -33,7 +22,6 @@
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../mofumofu-sheep-theory/" class="nav-btn" id="nav-other-theory">🐑 牧場囲いパズルの解説記事へ</a>
           <a href="../demon-castle-shift/" class="nav-btn primary" id="nav-play">🏰 パズルをプレイする ▶</a>
         </div>
       </nav>
@@ -629,19 +617,16 @@ m.constraint(
         ja: {
           title: "『魔王城の24時間警備シフト』の数理モデル解説 — 勤務スケジューリング（NSP）と論理条件の線形化",
           back: "← ショーケースへ戻る",
-          other: "🐑 牧場囲いパズルの解説記事へ",
           play: "🏰 パズルをプレイする ▶",
         },
         en: {
           title: 'Behind "Demon Castle 24-Hour Guard Shift" — Nurse Scheduling (NSP) and Linearization',
           back: "← Back to Showcase",
-          other: "🐑 Sheep Pasture Article",
           play: "🏰 Play Puzzle ▶",
         },
         zh: {
           title: "《魔王城24小时警备排班》数学模型解说 — 排班优化（NSP）与逻辑条件线性化",
           back: "← 返回案例展示",
-          other: "🐑 牧场围栏解说文章",
           play: "🏰 开始解谜 ▶",
         },
       };
@@ -655,7 +640,6 @@ m.constraint(
           backBtn.textContent = t.back;
           backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
         }
-        document.getElementById("nav-other-theory").textContent = t.other;
         document.getElementById("nav-play").textContent = t.play;
 
         document.querySelectorAll("[data-lang-section]").forEach((sec) => {

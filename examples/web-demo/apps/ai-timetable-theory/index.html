@@ -13,17 +13,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
-    <style>
-      :root {
-        --color-brand-primary: #1e40af;       /* ロイヤルブルー */
-        --color-brand-primary-soft: #eff6ff;
-        --color-brand-secondary: #0284c7;     /* スカイシアン */
-        --color-brand-secondary-soft: #f0f9ff;
-        --color-accent-point: #0284c7;
-        --color-accent-point-soft: #f0f9ff;
-        --color-accent-point-border: #7dd3fc;
-      }
-    </style>
   </head>
   <body>
     <div class="article-shell">
@@ -35,7 +24,6 @@
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../ai-shift/" class="nav-btn" id="nav-other-app">🏥 ナーススケジューリング AI へ</a>
           <a href="../ai-timetable/" class="nav-btn primary" id="nav-open-app">🎓 時間割 AI Copilot を開く ▶</a>
         </div>
       </nav>
@@ -574,19 +562,16 @@ const report = m.validateSolution();</code></pre>
         ja: {
           title: "『大学時間割編成 AI Copilot』の数理モデル解説 — 4次元0-1整数計画（UCTP）とAI×ソルバー連携",
           back: "← ショーケースへ戻る",
-          other: "🏥 ナーススケジューリング AI へ",
           open: "🎓 時間割 AI Copilot を開く ▶",
         },
         en: {
           title: 'Behind "University Course Timetabling AI Copilot" — 4D 0-1 MILP (UCTP) & On-Device AI',
           back: "← Back to Showcase",
-          other: "🏥 Nurse Scheduling AI",
           open: "🎓 Open Timetable Copilot ▶",
         },
         zh: {
           title: "《大学排课 AI Copilot》数学模型解说 — 四维 0-1 规划（UCTP）与端侧 AI 协同",
           back: "← 返回案例展示",
-          other: "🏥 护士排班 AI Copilot",
           open: "🎓 打开大学排课 AI ▶",
         },
       };
@@ -600,7 +585,6 @@ const report = m.validateSolution();</code></pre>
           backBtn.textContent = t.back;
           backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
         }
-        document.getElementById("nav-other-app").textContent = t.other;
         document.getElementById("nav-open-app").textContent = t.open;
 
         document.querySelectorAll("[data-lang-section]").forEach((sec) => {
