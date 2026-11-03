@@ -125,8 +125,13 @@
           </div>
 
           <div class="callout cyan">
-            <strong>💡 なぜスライディング・ウィンドウが有効なのか</strong>
-            「何連勤目か」を数える状態変数や非線形な条件分岐を一切使わずに、純粋な線形不等式だけで任意の連勤上限 $L_m$ を漏れなく表現できます。しかもLP緩和が比較的タイトになるため、MILPソルバーの分枝限定法が高速に収束します。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>スライディング・ウィンドウ定式化の利点</span>
+            </div>
+            <div class="callout-content">
+              「何連勤目か」を数える状態変数や非線形な条件分岐を一切使わずに、純粋な線形不等式だけで任意の連勤上限 $L_m$ を漏れなく表現できます。しかもLP緩和が比較的タイトになるため、MILPソルバーの分枝限定法が高速に収束します。
+            </div>
           </div>
         </section>
 
@@ -179,18 +184,24 @@
           </div>
 
           <div class="callout gold">
-            <strong>✨ 正のシナジーも負のペナルティもこの3本で厳密に表現できる理由</strong>
-            もし正のボーナス（$\Delta_{A,B} > 0$）だけなら式(a)・(b)の上界だけでも目的関数が自然に $\text{pair} = 1$ を選びますが、負のペナルティ（$\Delta_{A,B} &lt; 0$、不仲ペア）がある場合はソルバーがペナルティを逃れようとして $\text{pair} = 0$ に下げようとします。そこに式(c)の下界 $\text{pair} \ge x_A + x_B - 1$ があることで、<strong>「2人を同時に置いたら必ず $\text{pair} = 1$ になって減点を受ける」</strong>ことが厳密に強制されます。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>相性ボーナスとペナルティを同時に表現できる原理</span>
+            </div>
+            <div class="callout-content">
+              もし正のボーナス（$\Delta_{A,B} > 0$）だけなら式(a)・(b)の上界だけでも目的関数が自然に $\text{pair} = 1$ を選びますが、負のペナルティ（$\Delta_{A,B} &lt; 0$、不仲ペア）がある場合はソルバーがペナルティを逃れようとして $\text{pair} = 0$ に下げようとします。そこに式(c)の下界 $\text{pair} \ge x_A + x_B - 1$ があることで、<strong>「2人を同時に置いたら必ず $\text{pair} = 1$ になって減点を受ける」</strong>ことが厳密に強制されます。
+            </div>
           </div>
 
           <div class="callout callout-point">
             <div class="callout-header">
               <span class="callout-icon">💡</span>
-              <span>POINT : 補助変数 pair の連続緩和（[0, 1] 区間）</span>
+              <span>POINT : 補助変数 pair の連続緩和とソルバーの前処理（Presolve）</span>
             </div>
             <div class="callout-content">
-              モデル上、$\text{pair}_{A,B,d,s}$ は 0-1 二値変数として定式化されますが、MILPソルバーに渡す際は<strong>連続変数（$0 \le \text{pair} \le 1$）として宣言しても同一の整数解</strong>が得られます。<br />
-              主変数 $x_A, x_B \in \{0, 1\}$ が確定した時点で、制約式(a)(b)(c)によって $\text{pair}$ の取り得る範囲は自動的に単一の整数点（$0$ または $1$）に定まるためです。分枝限定法においてソルバーが探索する「整数変数の総数」を削減することは、大規模な組合せ最適化問題を高速に解くための定石です。
+              論理上、$\text{pair}_{A,B,d,s}$ は 0-1 二値変数として導入されますが、主変数 $x_A, x_B \in \{0, 1\}$ が決まれば制約式(a)(b)(c)によって値が自動的に単一の整数（$0$ または $1$）に定まる構造を持っています。<br />
+              そのため、モデル定義時に<strong>連続変数（$0 \le \text{pair} \le 1$）として宣言しても完全に同一の整数解</strong>が得られます。<br />
+              なお、HiGHS を含む近年の高性能 MILP ソルバーでは、前処理（Presolve）の「含意整数（Implied Integer）検出」により、二値変数として登録しても自動的に分枝探索対象から除外・簡略化されることが一般的です。それでも「どの変数が真に離散選択を担い、どの変数が従属的な補助変数か」を意識して定式化を整理することは、数理最適化の構造理解として有用です。
             </div>
           </div>
         </section>
@@ -333,8 +344,13 @@ m.constraint(
           </div>
 
           <div class="callout cyan">
-            <strong>💡 Why the Sliding-Window Formulation Is Effective</strong>
-            It expresses arbitrary consecutive-day limits $L_m$ using pure linear inequalities without auxiliary state counters or non-linear branching. It also yields a tight LP relaxation, allowing branch-and-bound solvers to converge rapidly.
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Why the Sliding-Window Formulation Is Effective</span>
+            </div>
+            <div class="callout-content">
+              It expresses arbitrary consecutive-day limits $L_m$ using pure linear inequalities without auxiliary state counters or non-linear branching. It also yields a tight LP relaxation, allowing branch-and-bound solvers to converge rapidly.
+            </div>
           </div>
         </section>
 
@@ -387,18 +403,24 @@ m.constraint(
           </div>
 
           <div class="callout gold">
-            <strong>✨ Why Both Upper and Lower Bounds Matter Here</strong>
-            For a positive synergy bonus ($\Delta_{A,B} > 0$), upper bounds (a) and (b) alone would suffice because maximization naturally pushes $\text{pair}$ up to $1$. Conversely, for a negative conflict penalty ($\Delta_{A,B} &lt; 0$), the solver tries to set $\text{pair} = 0$ to dodge the penalty; inequality (c) provides the lower bound $\text{pair} \ge x_A + x_B - 1$ that forces $\text{pair} = 1$ whenever both guards share a slot.
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Why Both Upper and Lower Bounds Matter Here</span>
+            </div>
+            <div class="callout-content">
+              For a positive synergy bonus ($\Delta_{A,B} > 0$), upper bounds (a) and (b) alone would suffice because maximization naturally pushes $\text{pair}$ up to $1$. Conversely, for a negative conflict penalty ($\Delta_{A,B} &lt; 0$), the solver tries to set $\text{pair} = 0$ to dodge the penalty; inequality (c) provides the lower bound $\text{pair} \ge x_A + x_B - 1$ that forces $\text{pair} = 1$ whenever both guards share a slot.
+            </div>
           </div>
 
           <div class="callout callout-point">
             <div class="callout-header">
               <span class="callout-icon">💡</span>
-              <span>POINT: Continuous Relaxation of the Auxiliary pair Variable</span>
+              <span>POINT: Continuous Relaxation of pair and Solver Presolve</span>
             </div>
             <div class="callout-content">
-              While $\text{pair}_{A,B,d,s}$ is conceptually formulated as a 0-1 binary variable, <strong>declaring it as a continuous variable $0 \le \text{pair} \le 1$ in the MILP solver yields identical integer solutions</strong>.<br />
-              Once the binary variables $x_A, x_B \in \{0, 1\}$ are fixed, inequalities (a)–(c) collapse the feasible range of $\text{pair}$ to a single integer point ($0$ or $1$). Reducing the number of integer variables that the solver must branch on is a standard formulation technique for combinatorial optimization models.
+              Conceptually, $\text{pair}_{A,B,d,s}$ is introduced as a binary decision variable, but once $x_A, x_B \in \{0, 1\}$ are fixed, inequalities (a)–(c) naturally force $\text{pair}$ to a single integer value ($0$ or $1$).<br />
+              Hence, <strong>declaring it as a continuous variable ($0 \le \text{pair} \le 1$) yields identical optimal solutions</strong>.<br />
+              In practice, modern MILP solvers like HiGHS feature aggressive Presolve routines (specifically, <em>implied integer detection</em>) that recognize such structural dependencies automatically and prune redundant branching candidates even if declared binary. Nonetheless, recognizing which variables drive core discrete decisions versus dependent auxiliary terms is an essential modeling discipline.
             </div>
           </div>
         </section>
@@ -541,8 +563,13 @@ m.constraint(
           </div>
 
           <div class="callout cyan">
-            <strong>💡 为什么滑动窗口写法非常实用</strong>
-            它无需引入记录“当前是第几天连勤”的状态变量或非线性条件分支，仅用纯线性不等式就能严密表达任意连勤上限 $L_m$，且具有较紧的 LP 松弛界，有助于分支定界求解器快速收敛。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>滑动窗口定式化的优势</span>
+            </div>
+            <div class="callout-content">
+              它无需引入记录“当前是第几天连勤”的状态变量或非线性条件分支，仅用纯线性不等式就能严密表达任意连勤上限 $L_m$，且具有较紧的 LP 松弛界，有助于分支定界求解器快速收敛。
+            </div>
           </div>
         </section>
 
@@ -595,18 +622,24 @@ m.constraint(
           </div>
 
           <div class="callout gold">
-            <strong>✨ 为什么正负相性都能由这 3 条不等式严密刻画</strong>
-            如果只有正加成（$\Delta_{A,B} > 0$），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 $\text{pair}$ 推向 $1$；但当存在负惩罚（$\Delta_{A,B} &lt; 0$，不睦组合）时，求解器会试图将 $\text{pair}$ 设为 $0$ 来逃避扣分。此时下界约束 (c) $\text{pair} \ge x_A + x_B - 1$ 能够严格强制<strong>“只要两人同班，$\text{pair}$ 就必须为 $1$ 并扣除 150 点防卫力”</strong>。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>同时刻画正负搭档相性的数学原理</span>
+            </div>
+            <div class="callout-content">
+              如果只有正加成（$\Delta_{A,B} > 0$），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 $\text{pair}$ 推向 $1$；但当存在负惩罚（$\Delta_{A,B} &lt; 0$，不睦组合）时，求解器会试图将 $\text{pair}$ 设为 $0$ 来逃避扣分。此时下界约束 (c) $\text{pair} \ge x_A + x_B - 1$ 能够严格强制<strong>“只要两人同班，$\text{pair}$ 就必须为 $1$ 并扣除 150 点防卫力”</strong>。
+            </div>
           </div>
 
           <div class="callout callout-point">
             <div class="callout-header">
               <span class="callout-icon">💡</span>
-              <span>POINT : 辅助变量 pair 的连续松弛（[0, 1] 区间）</span>
+              <span>POINT : 辅助变量 pair 的连续松弛与求解器预处理（Presolve）</span>
             </div>
             <div class="callout-content">
-              在概念上，$\text{pair}_{A,B,d,s}$ 属于 0-1 二进制决策变量，但在交给 MILP 求解器时，<strong>将其声明为连续变量（$0 \le \text{pair} \le 1$）即可获得完全相同的整数解</strong>。<br />
-              因为只要主决策变量 $x_A, x_B \in \{0, 1\}$ 确定，根据约束 (a)(b)(c)，$\text{pair}$ 的可行域就会自动确定在单一的整数点（$0$ 或 $1$）。减少求解器在分支定界过程中需要分支的“整数变量总数”，是提升大规模实际排班问题求解效率的关键方法。
+              在逻辑上，$\text{pair}_{A,B,d,s}$ 作为 0-1 二进制变量引入，但只要主决策变量 $x_A, x_B \in \{0, 1\}$ 确定，约束 (a)(b)(c) 就会自然将 $\text{pair}$ 唯一约束在单一整数值（$0$ 或 $1$）。<br />
+              因此在建模时<strong>将其声明为连续变量（$0 \le \text{pair} \le 1$）即可获得完全一致的整数解</strong>。<br />
+              值得一提的是，包括 HiGHS 在内的现代高性能 MILP 求解器均具备强大的预处理（Presolve）能力（例如含意整数检测 Implied Integer Detection），即使显式声明为二进制变量，求解器通常也会自动识别并将其从分支定界候选中剔除或代换。不过，清晰分辨哪些变量承担离散决策、哪些属于从属辅助变量，依然是深刻理解数理规划结构的重要素养。
             </div>
           </div>
         </section>

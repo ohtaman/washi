@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Theory Articles Textbook Theme (参考書風デザインシステム)
-   統一スタイルシート: 『図解入門・教科書』スタイル (Educational Book)
+   Theory Articles Textbook Theme (Educational Design System)
+   Unified Stylesheet: Educational Book Style
    ========================================================================== */
 
 :root {
@@ -24,29 +24,29 @@
   --color-text-sub: #57585e;
   --color-text-muted: #8b8d96;
 
-  --color-brand-primary: #1e40af;       /* 知的なロイヤルブルー */
+  --color-brand-primary: #1e40af;       /* Royal Blue */
   --color-brand-primary-soft: #eff6ff;
-  --color-brand-secondary: #0d9488;     /* 爽やかなティールグリーン */
+  --color-brand-secondary: #0d9488;     /* Teal Green */
   --color-brand-secondary-soft: #f0fdfa;
 
-  --color-accent-point: #f59e0b;       /* ポイント・要点 (アンバー/イエロー) */
+  --color-accent-point: #f59e0b;       /* Key Point (Amber / Yellow) */
   --color-accent-point-soft: #fffbeb;
   --color-accent-point-border: #fcd34d;
 
-  --color-accent-warn: #ef4444;        /* 注意・落とし穴 (レッド/ローズ) */
+  --color-accent-warn: #ef4444;        /* Caution / Pitfall (Red / Rose) */
   --color-accent-warn-soft: #fef2f2;
   --color-accent-warn-border: #fca5a5;
 
-  --color-accent-column: #8b5cf6;      /* コラム・深掘り (バイオレット) */
+  --color-accent-column: #8b5cf6;      /* Column / Deep Dive (Violet) */
   --color-accent-column-soft: #f5f3ff;
   --color-accent-column-border: #d8b4fe;
 
-  --color-accent-good: #10b981;        /* OK / 良い例 */
+  --color-accent-good: #10b981;        /* Good Example / Success (Emerald) */
   --color-accent-good-soft: #ecfdf5;
-  --color-accent-bad: #ef4444;         /* NG / 悪い例 */
+  --color-accent-bad: #ef4444;         /* Bad Example / Error (Rose) */
   --color-accent-bad-soft: #fef2f2;
 
-  --color-accent-cyan: #0284c7;        /* スカイシアン */
+  --color-accent-cyan: #0284c7;        /* Sky Cyan */
   --color-accent-cyan-soft: #f0f9ff;
   --color-accent-cyan-border: #7dd3fc;
 
@@ -70,7 +70,7 @@ html[lang="zh"] {
   --font-heading: var(--font-body);
 }
 
-/* 基本リセット */
+/* Base Resets */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -88,13 +88,13 @@ body {
   padding: 1.5rem 1rem 5rem;
 }
 
-/* 記事ラッパー */
+/* Article Shell */
 .article-shell {
   max-width: 900px;
   margin: 0 auto;
 }
 
-/* トップナビゲーション */
+/* Top Navigation */
 .topnav {
   display: flex;
   align-items: center;
@@ -143,7 +143,7 @@ body {
   color: #ffffff;
 }
 
-/* 言語スイッチャー */
+/* Language Switcher */
 .lang-switch {
   display: inline-flex;
   align-items: center;
@@ -180,7 +180,7 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-/* 記事本体シート (1枚の書籍紙面) */
+/* Article Sheet - Single Printed Book Page */
 .article-sheet {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -200,7 +200,7 @@ body {
   }
 }
 
-/* 記事ヘッダー (書籍の扉・見出し部) */
+/* Article Header - Title & Meta */
 .book-header {
   margin-bottom: 3rem;
   padding-bottom: 2rem;
@@ -280,7 +280,7 @@ body {
   color: var(--color-text-main);
 }
 
-/* 章・節・項の見出し（参考書スタイル） */
+/* Headings - Textbook Section Headers */
 h2.chapter-heading {
   font-family: var(--font-heading);
   font-size: 1.45rem;
@@ -349,7 +349,7 @@ h4.topic-heading::before {
   color: var(--color-brand-primary);
 }
 
-/* 本文段落 & リスト */
+/* Body Text & Lists */
 p {
   margin-bottom: 1.25rem;
   color: var(--color-text-main);
@@ -366,7 +366,7 @@ li {
   line-height: 1.75;
 }
 
-/* マーカーハイライト */
+/* Marker Highlights */
 mark, .marker-yellow {
   background: linear-gradient(transparent 55%, #fef08a 55%);
   font-weight: 700;
@@ -385,7 +385,7 @@ mark, .marker-yellow {
   padding: 0 0.2em;
 }
 
-/* UI・キートップバッジ */
+/* Keytop & UI Badges */
 kbd {
   display: inline-flex;
   align-items: center;
@@ -403,7 +403,7 @@ kbd {
   white-space: nowrap;
 }
 
-/* インラインコード */
+/* Inline Code */
 code {
   font-family: var(--font-mono);
   font-size: 0.875em;
@@ -414,7 +414,7 @@ code {
   border-radius: var(--radius-sm);
 }
 
-/* コールアウトボックス */
+/* Callout Boxes */
 .callout {
   position: relative;
   margin: 1.75rem 0;
@@ -422,6 +422,11 @@ code {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   box-shadow: var(--shadow-sm);
+}
+
+.callout strong:first-child {
+  display: block;
+  margin-bottom: 0.5rem;
 }
 
 .callout-header {
@@ -432,6 +437,13 @@ code {
   font-weight: 800;
   margin-bottom: 0.65rem;
   letter-spacing: 0.02em;
+}
+
+.callout-icon {
+  font-size: 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .callout-content {
@@ -452,18 +464,22 @@ code {
 }
 
 .callout.callout-point .callout-header,
+.callout.gold .callout-header,
 .callout.gold strong {
   color: var(--color-accent-point);
 }
 
 /* 2. Column Box */
-.callout.callout-column {
+.callout.callout-column,
+.callout.purple {
   background: var(--color-accent-column-soft);
   border-color: var(--color-accent-column-border);
   border-style: dashed;
 }
 
-.callout.callout-column .callout-header {
+.callout.callout-column .callout-header,
+.callout.purple .callout-header,
+.callout.purple strong {
   color: var(--color-accent-column);
 }
 
@@ -475,6 +491,7 @@ code {
 }
 
 .callout.callout-warn .callout-header,
+.callout.rose .callout-header,
 .callout.rose strong {
   color: var(--color-accent-warn);
 }
@@ -485,11 +502,23 @@ code {
   border-color: var(--color-accent-cyan-border);
 }
 
+.callout.cyan .callout-header,
 .callout.cyan strong {
   color: var(--color-accent-cyan);
 }
 
-/* 数式ボックス (KaTeX / Formula Box) */
+/* 5. Green / Ecology Box */
+.callout.green {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.callout.green .callout-header,
+.callout.green strong {
+  color: #059669;
+}
+
+/* Formula Box (KaTeX) */
 .math-box,
 .formula-box {
   margin: 1.75rem 0;
@@ -524,7 +553,7 @@ code {
   color: var(--color-text-main);
 }
 
-/* コードブロック */
+/* Code Block */
 pre,
 pre.code-block,
 .code-window pre {
@@ -551,7 +580,7 @@ pre.code-block code,
   font-size: inherit;
 }
 
-/* テーブルスタイル */
+/* Table Styles */
 .table-wrapper {
   margin: 2rem 0;
   overflow-x: auto;
@@ -595,7 +624,7 @@ table.mapping-table tr:hover td {
   background: var(--color-surface-soft);
 }
 
-/* フッターCTA */
+/* Footer CTA */
 .footer-cta {
   text-align: center;
   margin-top: 3.5rem;
@@ -607,7 +636,7 @@ table.mapping-table tr:hover td {
   flex-wrap: wrap;
 }
 
-/* 言語セクションの表示アニメーション */
+/* Language Section Animation */
 [data-lang-section] {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }

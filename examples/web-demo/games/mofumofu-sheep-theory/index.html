@@ -195,9 +195,14 @@
           </p>
 
           <div class="callout green">
-            <strong>💡 メンガーの定理（Menger's Theorem）とパズルの難易度設計</strong>
-            「オオカミ <code>W</code> からヒツジ <code>S</code> へ至る<strong>頂点素な（互いに柵設置可能マスを共有しない）経路の最大本数</strong>は、両者を分断するのに必要な<strong>柵の最小本数</strong>に等しい」という定理が成り立ちます。<br />
-            たとえば石橋 <code>🌉</code>（カット不能頂点）を介してオオカミの侵入路が3本に分岐していれば、オオカミの目の前を1本の柵で塞ぐことは原理的に不可能になります。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>メンガーの定理（Menger's Theorem）とパズルの難易度設計</span>
+            </div>
+            <div class="callout-content">
+              「オオカミ <code>W</code> からヒツジ <code>S</code> へ至る<strong>頂点素な（互いに柵設置可能マスを共有しない）経路の最大本数</strong>は、両者を分断するのに必要な<strong>柵の最小本数</strong>に等しい」という定理が成り立ちます。<br />
+              たとえば石橋 <code>🌉</code>（カット不能頂点）を介してオオカミの侵入路が3本に分岐していれば、オオカミの目の前を1本の柵で塞ぐことは原理的に不可能になります。
+            </div>
           </div>
 
           <h3 class="section-heading">なぜ単なる「最小カット問題」では終わらないのか</h3>
@@ -353,9 +358,14 @@
           </div>
 
           <div class="callout purple">
-            <strong>🔍 なぜこれで連結性が厳密に保証されるのか</strong>
-            ヒツジ以外のマス $v$ を $r_v = 1$ にするためには、式(7)より「どこかから $1$ 単位の水が流れ込んでくる」必要があります。しかし式(5)・(6)より、水は $r = 1$ のマス同士の間しか流れず、かつ水を新たに生み出せる（流入超過が許される）のは式(7)の対象外である<strong>ヒツジのマス $S$ だけ</strong>です。<br />
-            したがって、ヒツジ $S$ と柵なしで繋がっていない孤立ポケットには一滴も水が届かず、必ず $r_v = 0$ になります。
+            <div class="callout-header">
+              <span class="callout-icon">🔍</span>
+              <span>単一品種フローによる連結性保証の原理</span>
+            </div>
+            <div class="callout-content">
+              ヒツジ以外のマス $v$ を $r_v = 1$ にするためには、式(7)より「どこかから $1$ 単位の水が流れ込んでくる」必要があります。しかし式(5)・(6)より、水は $r = 1$ のマス同士の間しか流れず、かつ水を新たに生み出せる（流入超過が許される）のは式(7)の対象外である<strong>ヒツジのマス $S$ だけ</strong>です。<br />
+              したがって、ヒツジ $S$ と柵なしで繋がっていない孤立ポケットには一滴も水が届かず、必ず $r_v = 0$ になります。
+            </div>
           </div>
 
           <div class="callout callout-point">
@@ -511,9 +521,14 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           </p>
 
           <div class="callout green">
-            <strong>💡 Menger's Theorem and Level Design</strong>
-            By Menger's Theorem, the <strong>maximum number of vertex-disjoint paths</strong> (sharing no fenceable cells) between the wolves <code>W</code> and the sheep <code>S</code> equals the <strong>minimum number of fences</strong> needed to separate them.<br />
-            For example, if stone bridges <code>🌉</code> (uncuttable vertices) split a wolf's approach into three independent corridors, caging the wolf with a single fence right in front of its spawn is mathematically impossible.
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Menger's Theorem and Level Design</span>
+            </div>
+            <div class="callout-content">
+              By Menger's Theorem, the <strong>maximum number of vertex-disjoint paths</strong> (sharing no fenceable cells) between the wolves <code>W</code> and the sheep <code>S</code> equals the <strong>minimum number of fences</strong> needed to separate them.<br />
+              For example, if stone bridges <code>🌉</code> (uncuttable vertices) split a wolf's approach into three independent corridors, caging the wolf with a single fence right in front of its spawn is mathematically impossible.
+            </div>
           </div>
 
           <h3 class="section-heading">Why This Puzzle Goes Beyond a Pure Minimum Cut</h3>
@@ -668,8 +683,13 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           </div>
 
           <div class="callout purple">
-            <strong>🔍 Why This Strictly Guarantees Connectivity</strong>
-            By equation (7), any non-sheep cell with $r_v = 1$ must consume 1 net unit of flow. By (5) and (6), flow can only travel through cells where $r = 1$, and the only nodes exempt from flow conservation (able to act as flow sources) are the <strong>sheep cells $S$</strong>. Consequently, any pocket disconnected from the sheep receives zero flow and is forced to $r_v = 0$.
+            <div class="callout-header">
+              <span class="callout-icon">🔍</span>
+              <span>Why Single-Commodity Flow Guarantees Connectivity</span>
+            </div>
+            <div class="callout-content">
+              By equation (7), any non-sheep cell with $r_v = 1$ must consume 1 net unit of flow. By (5) and (6), flow can only travel through cells where $r = 1$, and the only nodes exempt from flow conservation (able to act as flow sources) are the <strong>sheep cells $S$</strong>. Consequently, any pocket disconnected from the sheep receives zero flow and is forced to $r_v = 0$.
+            </div>
           </div>
 
           <div class="callout callout-point">
@@ -825,9 +845,14 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           </p>
 
           <div class="callout green">
-            <strong>💡 门格尔定理（Menger's Theorem）与关卡设计</strong>
-            根据门格尔定理，“从野狼 <code>W</code> 到绵羊 <code>S</code> 之间<strong>顶点不相交（不共用任何可放栅栏格）的最大路径条数</strong>，严格等于将两者隔开所需的<strong>最少栅栏数</strong>”。<br />
-            例如，当野狼出生点旁通过石桥 <code>🌉</code>（不可放置栅栏的顶点）分叉出多条进攻路线时，玩家就无法用1根栅栏直接在野狼面前将其堵死。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>门格尔定理（Menger's Theorem）与关卡难度设计</span>
+            </div>
+            <div class="callout-content">
+              根据门格尔定理，“从野狼 <code>W</code> 到绵羊 <code>S</code> 之间<strong>顶点不相交（不共用任何可放栅栏格）的最大路径条数</strong>，严格等于将两者隔开所需的<strong>最少栅栏数</strong>”。<br />
+              例如，当野狼出生点旁通过石桥 <code>🌉</code>（不可放置栅栏的顶点）分叉出多条进攻路线时，玩家就无法用1根栅栏直接在野狼面前将其堵死。
+            </div>
           </div>
 
           <h3 class="section-heading">为什么它不只是一个简单的“最小割问题”</h3>
@@ -983,9 +1008,14 @@ model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code><
           </div>
 
           <div class="callout purple">
-            <strong>🔍 为什么这能严格保证连通性</strong>
-            由式(7)可知，任何非绵羊格若想设为 $r_v = 1$，就必须有 $1$ 单位的净水流注入该格。而由式(5)・(6)可知，水流只能在 $r = 1$ 的格子之间传递，且全图中唯一不受式(7)约束、能够凭空产生水流的源点只有<strong>绵羊所在格 $S$</strong>。<br />
-            因此，任何与绵羊被栅栏隔开的孤立区域都无法获得水流，其 $r_v$ 必然被强制为 $0$。
+            <div class="callout-header">
+              <span class="callout-icon">🔍</span>
+              <span>单商品流严格保证区域连通性的原理</span>
+            </div>
+            <div class="callout-content">
+              由式(7)可知，任何非绵羊格若想设为 $r_v = 1$，就必须有 $1$ 单位的净水流注入该格。而由式(5)・(6)可知，水流只能在 $r = 1$ 的格子之间传递，且全图中唯一不受式(7)约束、能够凭空产生水流的源点只有<strong>绵羊所在格 $S$</strong>。<br />
+              因此，任何与绵羊被栅栏隔开的孤立区域都无法获得水流，其 $r_v$ 必然被强制为 $0$。
+            </div>
           </div>
 
           <div class="callout callout-point">

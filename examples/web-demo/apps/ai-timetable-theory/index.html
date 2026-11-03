@@ -126,8 +126,13 @@
           </div>
 
           <div class="callout cyan">
-            <strong>💡 なぜ「学年別」「教員別」「教室別」の3つのビューが同じ解から同時に描けるのか</strong>
-            決定変数 $x_{c,d,p,r}$ を学年 $k$ でスライスすれば「学年別の4枚の時間割」になり、教員 $\text{prof}$ でスライスすれば「教員別×25コマ一覧表」（式(5)により各マス高々1科目）、教室 $r$ でスライスすれば「教室別×25コマ一覧表」（式(4)により各マス高々1科目）になります。つまり<strong>3種類の時間割ビューはすべて同じ4次元テンソル $x_{c,d,p,r}$ の異なる断面（射影）</strong>です。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>4次元テンソルの3つの断面（学年別・教員別・教室別）</span>
+            </div>
+            <div class="callout-content">
+              決定変数 $x_{c,d,p,r}$ を学年 $k$ でスライスすれば「学年別の4枚の時間割」になり、教員 $\text{prof}$ でスライスすれば「教員別×25コマ一覧表」（式(5)により各マス高々1科目）、教室 $r$ でスライスすれば「教室別×25コマ一覧表」（式(4)により各マス高々1科目）になります。つまり<strong>3種類の時間割ビューはすべて同じ4次元テンソル $x_{c,d,p,r}$ の異なる断面（射影）</strong>です。
+            </div>
           </div>
         </section>
 
@@ -330,8 +335,13 @@ const report = m.validateSolution();</code></pre>
           </div>
 
           <div class="callout cyan">
-            <strong>💡 Three Views of a Single 4D Tensor</strong>
-            Slicing $x_{c,d,p,r}$ by student cohort $k$ produces the <strong>4 Cohort Boards</strong>; slicing by professor $\text{prof}$ produces the <strong>10 Professors × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 5); slicing by room $r$ produces the <strong>7 Rooms × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 4).
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Three Views of a Single 4D Tensor</span>
+            </div>
+            <div class="callout-content">
+              Slicing $x_{c,d,p,r}$ by student cohort $k$ produces the <strong>4 Cohort Boards</strong>; slicing by professor $\text{prof}$ produces the <strong>10 Professors × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 5); slicing by room $r$ produces the <strong>7 Rooms × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 4).
+            </div>
           </div>
         </section>
 
@@ -510,8 +520,13 @@ const report = m.validateSolution();</code></pre>
           </div>
 
           <div class="callout cyan">
-            <strong>💡 同一个四维张量的三种切片视图</strong>
-            将四维解张量 $x_{c,d,p,r}$ 按年级 $k$ 切片即可渲染<strong>“按年级4张同屏课表”</strong>；按教师 $\text{prof}$ 切片即可得到<strong>“10位教师 × 25时段矩阵”</strong>（约束5保证每格最多1门课）；按教室 $r$ 切片即可得到<strong>“7间教室 × 25时段矩阵”</strong>（约束4保证每间教室同一时段最多1门课）。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>同一个四维张量的三种切片视图</span>
+            </div>
+            <div class="callout-content">
+              将四维解张量 $x_{c,d,p,r}$ 按年级 $k$ 切片即可渲染<strong>“按年级4张同屏课表”</strong>；按教师 $\text{prof}$ 切片即可得到<strong>“10位教师 × 25时段矩阵”</strong>（约束5保证每格最多1门课）；按教室 $r$ 切片即可得到<strong>“7间教室 × 25时段矩阵”</strong>（约束4保证每间教室同一时段最多1门课）。
+            </div>
           </div>
         </section>
 
