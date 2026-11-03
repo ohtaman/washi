@@ -385,6 +385,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         closeBtns,
         conditionRows,
         dialogueDocks,
+        logoImgs,
       };
     };
 
@@ -404,6 +405,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       switchCastleLanguage("en");
       expect(castleDoc.documentElement.lang).toBe("en");
       expect(castleDoc.title).toContain("Demon Castle 24h Guard Shift");
+      expect(castleDoc.logoImgs.length).toBeGreaterThanOrEqual(1);
+      for (const logo of castleDoc.logoImgs) {
+        expect(logo.getAttribute("src")).toBe("./title-logo-en.png");
+        expect(logo.getAttribute("alt")).toBe("Demon Castle 24h Guard Shift");
+      }
       expect(castleDoc.byId.get("btn-title-start")?.textContent).toBe("Start New Game");
       expect(castleDoc.byId.get("btn-title-continue")?.textContent).toBe("Continue");
       expect(castleDoc.byId.get("btn-title-roster")?.textContent).toBe("📖 Guard Grimoire");
@@ -464,6 +470,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       switchCastleLanguage("zh");
       expect(castleDoc.documentElement.lang).toBe("zh");
       expect(castleDoc.title).toContain("魔王城的24小时警备排班");
+      expect(castleDoc.logoImgs.length).toBeGreaterThanOrEqual(1);
+      for (const logo of castleDoc.logoImgs) {
+        expect(logo.getAttribute("src")).toBe("./title-logo-zh.png");
+        expect(logo.getAttribute("alt")).toBe("魔王城的24小时警备排班");
+      }
       expect(castleDoc.byId.get("btn-title-start")?.textContent).toBe("从头开始游玩");
       expect(castleDoc.byId.get("btn-title-continue")?.textContent).toBe("继续游戏");
       expect(castleDoc.byId.get("btn-title-roster")?.textContent).toBe("📖 警备队名鉴");

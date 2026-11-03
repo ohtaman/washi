@@ -96,8 +96,8 @@ flowchart LR
 ```
 
 ### 4.1 オープニングムービーとプロローグ（リリスからの1対1の語りかけ）
-- **背景透過タイトルロゴ（[`title-logo.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo.png)）**：
-  - タイトル画面およびオープニングのクライマックスでは、専用デザインの透過ロゴ画像を表示する。
+- **背景透過タイトルロゴ（[`title-logo.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo.png) / [`title-logo-en.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo-en.png) / [`title-logo-zh.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo-zh.png)）**：
+  - タイトル画面およびオープニングのクライマックスでは、言語設定（日本語・英語・簡体中文）に応じた専用デザインの透過ロゴ画像を表示する。
 - **シネマティック・オープニングムービー（全5カット・魔王の来歴は秘匿）**：
   - 「薄暮の魔王城」「進軍する人間の勇者隊」「魔王城の作戦室（城の奥深くで眠る魔王と仲間たち）」「正門に集う警備隊」「タイトルロゴ・クライマックス」の5カットを、カメラワーク（パン・ズーム）＋光粒子＋専用BGM＋字幕テロップ付きで再生する（オープニング時点では魔王の正体や来歴は伏せておく）。
 - **プロローグ（リリスがプレイヤーに直接話しかける形式）**：

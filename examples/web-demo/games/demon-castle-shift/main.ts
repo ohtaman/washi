@@ -4179,6 +4179,11 @@ function applyStaticTranslations(): void {
       })
     );
   });
+  const logoSrc = pickLang(currentLang, {
+    ja: "./title-logo.png",
+    en: "./title-logo-en.png",
+    zh: "./title-logo-zh.png",
+  });
   document
     .querySelectorAll<HTMLImageElement>(".title-logo-img, .op-climax-logo-img")
     .forEach((el) => {
@@ -4190,6 +4195,8 @@ function applyStaticTranslations(): void {
           zh: "魔王城的24小时警备排班",
         })
       );
+      el.setAttribute("src", logoSrc);
+      el.src = logoSrc;
     });
   setAttr(
     "dialogue-portrait",
