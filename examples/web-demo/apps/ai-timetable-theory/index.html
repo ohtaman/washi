@@ -12,289 +12,16 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="../../src/theory-theme.css" />
     <style>
       :root {
-        --bg-page: #fbfaf5;
-        --card-bg: #ffffff;
-        --border-subtle: #e6e0d2;
-        --border-strong: #cfc8b6;
-        --gold: #b45309;
-        --gold-soft: #fef3c7;
-        --cyan: #0284c7;
-        --cyan-soft: #f0f9ff;
-        --rose: #e11d48;
-        --rose-soft: #fff1f2;
-        --text-main: #242426;
-        --text-muted: #57585e;
-        --code-bg: #1e293b;
-        --code-text: #f1f5f9;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg-page);
-        color: var(--text-main);
-        font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
-        line-height: 1.8;
-        padding: 2rem 1.25rem 5rem;
-      }
-
-      .article-shell {
-        max-width: 900px;
-        margin: 0 auto;
-      }
-
-      .topnav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-      }
-
-      .topnav-right {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-
-      .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 0.88rem;
-        color: var(--text-main);
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        padding: 0.48rem 0.95rem;
-        border-radius: 999px;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-
-      .nav-btn:hover {
-        border-color: var(--cyan);
-        color: var(--cyan);
-      }
-
-      .nav-btn.primary {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #fff;
-        border-color: #0284c7;
-      }
-
-      .lang-switch {
-        display: inline-flex;
-        align-items: center;
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        border-radius: 999px;
-        padding: 0.18rem;
-        gap: 0.15rem;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-
-      .lang-btn {
-        appearance: none;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
-        font-family: inherit;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 0.28rem 0.68rem;
-        border-radius: 999px;
-        cursor: pointer;
-      }
-
-      .lang-btn.is-active {
-        background: var(--cyan);
-        color: #ffffff;
-      }
-
-      .hero-card {
-        background: linear-gradient(135deg, #f0f9ff 0%, #fefcf3 100%);
-        border: 2px solid #bae6fd;
-        border-radius: 24px;
-        padding: 2.2rem 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 28px rgba(2, 132, 199, 0.06);
-      }
-
-      .hero-eyebrow {
-        display: inline-block;
-        font-size: 0.78rem;
-        font-weight: 800;
-        color: var(--cyan);
-        background: var(--cyan-soft);
-        border: 1px solid #7dd3fc;
-        padding: 0.2rem 0.75rem;
-        border-radius: 999px;
-        margin-bottom: 0.75rem;
-      }
-
-      .hero-card h1 {
-        font-size: clamp(1.42rem, 3.1vw, 2rem);
-        line-height: 1.38;
-        margin: 0 0 0.9rem;
-        color: #0f172a;
-      }
-
-      .hero-card p {
-        margin: 0;
-        color: var(--text-muted);
-        font-size: 0.95rem;
-      }
-
-      .section-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-subtle);
-        border-radius: 20px;
-        padding: 1.9rem 2rem;
-        margin-bottom: 1.6rem;
-        box-shadow: 0 4px 16px rgba(36, 36, 38, 0.05);
-      }
-
-      .section-card h2 {
-        font-size: 1.3rem;
-        color: #0f172a;
-        margin: 0 0 1rem;
-        padding-bottom: 0.55rem;
-        border-bottom: 2px solid #e0f2fe;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .section-card h2::before {
-        content: "";
-        display: inline-block;
-        width: 6px;
-        height: 1.15em;
-        background: var(--cyan);
-        border-radius: 999px;
-        flex-shrink: 0;
-      }
-
-      .section-card h3 {
-        font-size: 1.06rem;
-        color: var(--cyan);
-        margin: 1.4rem 0 0.5rem;
-      }
-
-      .section-card p {
-        margin: 0 0 1rem;
-      }
-
-      .math-box {
-        background: #fdfbf7;
-        border: 1px solid var(--border-subtle);
-        border-left: 4px solid var(--cyan);
-        border-radius: 0 12px 12px 0;
-        padding: 1rem 1.25rem;
-        margin: 1rem 0 1.25rem;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.9rem;
-        color: var(--text-main);
-        overflow-x: auto;
-      }
-
-      .math-box .katex-display {
-        margin: 0.5rem 0;
-        text-align: left;
-      }
-
-      .math-box .katex {
-        color: var(--text-main);
-      }
-
-      .math-box .math-title {
-        font-family: "Inter", "Noto Sans JP", sans-serif;
-        font-weight: 800;
-        font-size: 0.84rem;
-        color: var(--cyan);
-        margin-bottom: 0.35rem;
-        display: block;
-      }
-
-      .callout {
-        border-radius: 14px;
-        padding: 1.1rem 1.3rem;
-        margin: 1.1rem 0;
-        font-size: 0.93rem;
-      }
-
-      .callout.gold {
-        background: var(--gold-soft);
-        border: 1px solid #fcd34d;
-        color: #78350f;
-      }
-
-      .callout.cyan {
-        background: var(--cyan-soft);
-        border: 1px solid #bae6fd;
-        color: #0369a1;
-      }
-
-      .callout.rose {
-        background: var(--rose-soft);
-        border: 1px solid #fecdd3;
-        color: #9f1239;
-      }
-
-      .callout strong {
-        display: block;
-        margin-bottom: 0.3rem;
-      }
-
-      table.mapping-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1rem 0 1.25rem;
-        font-size: 0.88rem;
-      }
-
-      table.mapping-table th,
-      table.mapping-table td {
-        border: 1px solid var(--border-subtle);
-        padding: 0.65rem 0.85rem;
-        text-align: left;
-      }
-
-      table.mapping-table th {
-        background: #fdfbf7;
-        color: var(--text-main);
-        font-weight: 800;
-        border-bottom: 2px solid var(--border-subtle);
-      }
-
-      pre.code-block {
-        background: var(--code-bg);
-        color: var(--code-text);
-        padding: 1.15rem 1.35rem;
-        border-radius: 14px;
-        border: 1px solid var(--border-subtle);
-        overflow-x: auto;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.84rem;
-        line-height: 1.62;
-        margin: 1rem 0;
-      }
-
-      .footer-cta {
-        text-align: center;
-        margin-top: 2.2rem;
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        flex-wrap: wrap;
+        --color-brand-primary: #1e40af;       /* ロイヤルブルー */
+        --color-brand-primary-soft: #eff6ff;
+        --color-brand-secondary: #0284c7;     /* スカイシアン */
+        --color-brand-secondary-soft: #f0f9ff;
+        --color-accent-point: #0284c7;
+        --color-accent-point-soft: #f0f9ff;
+        --color-accent-point-border: #7dd3fc;
       }
     </style>
   </head>
@@ -316,11 +43,11 @@
       <!-- =====================================================================
            JAPANESE ARTICLE
            ===================================================================== -->
-      <div data-lang-section="ja">
+      <div data-lang-section="ja" class="article-sheet">
         <header class="book-header">
           <div class="book-meta-bar">
             <span class="badge badge-primary">数理最適化（MILP）× ローカルAI 解説記事</span>
-            <span class="badge badge-point">MILP / UCTP</span>
+            <span class="badge badge-point">MILP</span>
           </div>
           <h1 class="book-title">『大学時間割編成 AI Copilot』の裏側：<br />4次元0-1整数計画問題（UCTP）と複数枚連動パズルの定式化</h1>
           <div class="book-lead-box">
@@ -507,11 +234,11 @@ const report = m.validateSolution();</code></pre>
       <!-- =====================================================================
            ENGLISH ARTICLE
            ===================================================================== -->
-      <div data-lang-section="en" hidden>
+      <div data-lang-section="en" class="article-sheet" hidden>
         <header class="book-header">
           <div class="book-meta-bar">
             <span class="badge badge-primary">Mathematical Optimization (MILP) × On-Device AI Guide</span>
-            <span class="badge badge-point">MILP / UCTP</span>
+            <span class="badge badge-point">MILP</span>
           </div>
           <h1 class="book-title">Behind "University Course Timetabling AI Copilot":<br />4D 0-1 MILP Formulation (UCTP) &amp; Coupled Multi-Board Scheduling</h1>
           <div class="book-lead-box">
@@ -674,11 +401,11 @@ const report = m.validateSolution();</code></pre>
       <!-- =====================================================================
            CHINESE ARTICLE
            ===================================================================== -->
-      <div data-lang-section="zh" hidden>
+      <div data-lang-section="zh" class="article-sheet" hidden>
         <header class="book-header">
           <div class="book-meta-bar">
             <span class="badge badge-primary">数学规划（MILP）× 端侧 AI 建模解说</span>
-            <span class="badge badge-point">MILP / UCTP</span>
+            <span class="badge badge-point">MILP</span>
           </div>
           <h1 class="book-title">《大学排课 AI Copilot》背后的数学模型：<br />四维 0-1 混合整数规划（UCTP）与多表联动排课架构</h1>
           <div class="book-lead-box">

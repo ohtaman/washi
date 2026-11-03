@@ -10,174 +10,16 @@
       href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800;900&family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="../../src/theory-theme.css" />
     <style>
       :root {
-        --bg-page: #fbfaf5;
-        --card-bg: #ffffff;
-        --border-subtle: #e6e0d2;
-        --border-strong: #cfc8b6;
-        --accent-titan: #0284c7;
-        --accent-soft: #f0f9ff;
-        --success: #0d9488;
-        --success-soft: #f0fdfa;
-        --text-main: #242426;
-        --text-muted: #57585e;
-        --code-bg: #1e293b;
-        --code-text: #f1f5f9;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        margin: 0;
-        background: var(--bg-page);
-        color: var(--text-main);
-        font-family: "Noto Sans JP", system-ui, sans-serif;
-        line-height: 1.8;
-        padding: 2rem 1.25rem 5rem;
-      }
-      .article-shell {
-        max-width: 880px;
-        margin: 0 auto;
-      }
-      .topnav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-      }
-      .topnav-right {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-      .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: var(--text-main);
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        padding: 0.5rem 1rem;
-        border-radius: 999px;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-        transition: all 0.15s ease;
-      }
-      .nav-btn:hover {
-        border-color: var(--accent-titan);
-        color: var(--accent-titan);
-      }
-      .nav-btn.primary {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #fff;
-        border-color: #0284c7;
-      }
-      .lang-switch {
-        display: inline-flex;
-        align-items: center;
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        border-radius: 999px;
-        padding: 0.18rem;
-        gap: 0.15rem;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-      .lang-btn {
-        appearance: none;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
-        font-family: inherit;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 0.28rem 0.68rem;
-        border-radius: 999px;
-        cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease;
-      }
-      .lang-btn:hover {
-        color: var(--text-main);
-      }
-      .lang-btn.is-active {
-        background: var(--accent-titan);
-        color: #ffffff;
-      }
-      .article-header {
-        border-bottom: 2px dashed var(--border-subtle);
-        padding-bottom: 1.8rem;
-        margin-bottom: 2.2rem;
-      }
-      .article-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: var(--accent-titan);
-        background: var(--accent-soft);
-        border: 1px solid #bae6fd;
-        padding: 0.25rem 0.75rem;
-        border-radius: 999px;
-        margin-bottom: 0.8rem;
-      }
-      h1 {
-        font-family: "Chakra Petch", "Noto Sans JP", sans-serif;
-        font-size: clamp(1.6rem, 3.2vw, 2.3rem);
-        line-height: 1.35;
-        margin: 0.4rem 0 1rem;
-        color: var(--text-main);
-      }
-      .lead {
-        font-size: 1.05rem;
-        color: var(--text-muted);
-        line-height: 1.85;
-      }
-      h2 {
-        font-family: "Chakra Petch", "Noto Sans JP", sans-serif;
-        font-size: 1.35rem;
-        margin: 2.5rem 0 1rem;
-        padding: 0.6rem 0.8rem;
-        border-left: 4px solid var(--accent-titan);
-        background: #fdfbf7;
-        border-radius: 0 8px 8px 0;
-        color: var(--text-main);
-      }
-      p, li {
-        color: var(--text-main);
-      }
-      pre {
-        background: var(--code-bg);
-        border: 1px solid var(--border-subtle);
-        border-radius: 10px;
-        padding: 1.1rem;
-        overflow-x: auto;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.82rem;
-        line-height: 1.6;
-        color: var(--code-text);
-      }
-      .formula-box {
-        background: #fdfbf7;
-        border: 1px solid var(--border-subtle);
-        border-left: 4px solid var(--accent-titan);
-        border-radius: 10px;
-        padding: 1.2rem;
-        margin: 1.2rem 0;
-        overflow-x: auto;
-        color: var(--text-main);
-      }
-      .formula-box .katex-display {
-        margin: 0.5rem 0;
-      }
-      .formula-box .katex {
-        color: var(--text-main);
+        --color-brand-primary: #0284c7;       /* スカイシアン */
+        --color-brand-primary-soft: #f0f9ff;
+        --color-brand-secondary: #0d9488;     /* ティール */
+        --color-brand-secondary-soft: #f0fdfa;
+        --color-accent-point: #0284c7;
+        --color-accent-point-soft: #f0f9ff;
+        --color-accent-point-border: #7dd3fc;
       }
     </style>
   </head>
@@ -196,20 +38,18 @@
       </nav>
 
       <article class="article-sheet">
-      <header class="book-header">
-        <div class="book-meta-bar">
-          <span class="badge badge-primary">2D STRIP / BIN PACKING MILP & FAULT-LINE FREE</span>
-          <span class="badge badge-point">MILP / PACKING</span>
-        </div>
-        <h1 class="book-title" id="t-title">『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化</h1>
-        <div class="book-lead-box" id="t-lead">
-          
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">2D STRIP / BIN PACKING MILP & FAULT-LINE FREE</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title" id="t-title">『TITAN PACK』の数理モデル解説 — 2次元板金パッキングと非重複制約の線形化</h1>
+          <div class="book-lead-box" id="t-lead">
+            
           最先端チタン板金のレーザー加工を題材としたパズルゲーム『TITAN PACK』の背後にある、混合整数線形計画法（MILP）による2次元ストリップパッキング問題の定式化と、知恵の輪のように噛み合う「断層ゼロ（Fault-Line Free）」アルゴリズムの仕組みを解説します。
         
-        </div>
-      </header>
-
-      <main>
+          </div>
+        </header>
         <section>
           <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span id="t-sec1-title">2次元パッキング問題（2D Packing Problem）とは</span></h2>
           <p id="t-sec1-p1">
@@ -287,7 +127,7 @@ for (let i = 0; i &lt; parts.length; i++) {
 const status = await model.solve({ solver: "highs" });
 console.log("Status:", status);</code></pre>
         </section>
-      </main>
+      </article>
     </div>
 
     <script type="module">
