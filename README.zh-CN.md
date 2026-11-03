@@ -62,9 +62,9 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 | 适配器 | 引擎许可证 | 支持的问题类型 | 引擎作用 | 集成方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| **HiGHS** | **MIT** | **LP, MIP, 凸QP** | 数值优化 | 默认内置 |
-| **Z3** | **MIT** | **SMT, SAT, 逻辑, MIP** | 可满足性检查、Unsat Core、优化 | 可选插件 (`@ohtaman/washi/solvers/z3`) |
-| **GLPK** | **GPL-3.0** | **LP, MIP** | 线性与混合整数优化 | 可选插件 (`@ohtaman/washi/solvers/glpk`) |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** (via [`highs`](https://www.npmjs.com/package/highs)) | **MIT** | **LP, MIP, 凸QP** | 数值优化 | 默认内置 |
+| **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, 逻辑, MIP** | 可满足性检查、Unsat Core、优化 | 可选插件 (`@ohtaman/washi/solvers/z3`) |
+| **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | 线性与混合整数优化 | 可选插件 (`@ohtaman/washi/solvers/glpk`) |
 | **Mock** | **MIT** | — | 为集成测试提供模拟响应 | 内置；不实际求解模型 |
 
 ---
@@ -491,6 +491,8 @@ node scripts/run-benchmarks.mjs --browser
 ## 📄 许可证
 
 - **`@ohtaman/washi`**: [MIT 许可证](./LICENSE)
-- **HiGHS**（默认求解器）: MIT 许可证
-- **Z3**（可选插件）: MIT 许可证
-- **GLPK**（可选插件）: GPL-3.0 许可证
+- **HiGHS**（默认求解器，通过 [`highs`](https://www.npmjs.com/package/highs) / [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）: MIT 许可证
+- **Z3**（可选插件，通过 [`z3-solver`](https://www.npmjs.com/package/z3-solver)）: MIT 许可证
+- **GLPK**（可选插件，通过 [`glpk.js`](https://www.npmjs.com/package/glpk.js)）: GPL-3.0 许可证
+
+有关内置及外部求解器的完整版权声明和许可信息，请参阅 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)。

@@ -1,15 +1,31 @@
 # HiGHS ソルバーエンジン
 
-**HiGHS** はエディンバラ大学を中心に開発されている高性能な数理最適化ソフトウェアです。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）における代表的なオープンソースソルバーとして広く利用されています。
+**HiGHS** はエディンバラ大学を中心に開発されている高性能な数理最適化ソフトウェアです（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）における代表的なオープンソースソルバーとして広く利用されています。
+
+`@ohtaman/washi` では、公式 npm パッケージ [`highs`](https://www.npmjs.com/package/highs)（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）を通じて WebAssembly 上で完全動作し、Node.js・Web Worker・ブラウザ環境でゼロコンフィグで利用できます。
 
 ---
 
 ## WaSHI における主な特徴
 
-- **標準搭載・ゼロコンフィグ**: `@ohtaman/washi` 本体に同梱されており、追加パッケージのインストールや C++ ビルドなしで即座に動作します。
+- **標準搭載・ゼロコンフィグ**: 上流の [`highs`](https://www.npmjs.com/package/highs) WASM 配布物を `@ohtaman/washi` に直接同梱しており、追加パッケージのインストールや C++ ビルドなしで即座に動作します。
 - **商用利用しやすい MIT ライセンス**: コアパッケージは 100% MIT ライセンスで提供されます。
 - **Web Worker バックグラウンド実行**: ブラウザ環境では自動的に専用 Web Worker を起動して計算を行うため、メインスレッド（UI）をブロックしません。
 - **ウォームスタート対応 (`initialValue`)**: 変数の初期値ヒント（`initialValue`）を HiGHS の `setSolution` に渡すウォームスタートをサポートしています。
+- **高速な WASM 実行**: Emscripten でコンパイルされた 32 ビット WebAssembly により、ネイティブに近い速度で動作します。
+
+---
+
+## アーキテクチャと WebAssembly ランタイム
+
+WaSHI はリポジトリ内で HiGHS の C++ ソースから直接 WASM をビルドしているわけではありません。上流の公式 npm パッケージ [`highs`](https://www.npmjs.com/package/highs)（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）が提供する WebAssembly バイナリ（`highs.wasm`）と JS ランタイムを抽出し、WaSHI の代数モデリング層、Web Worker 自動オフロード、および標準ソルバー抽象インターフェースでラップしてパッケージングしています。
+
+### コールバックと対話的制御
+
+- **進捗監視と途中中断（対応済み）**:
+  HiGHS の内部ロギングおよび割り込みフックと連携しており、リアルタイムの進捗通知（`onProgress`）や標準の `AbortSignal` を用いた協調的途中中断をサポートしています。
+- **動的カット生成・遅延制約（WASM ラッパー層の制約により非対応）**:
+  上流の WebAssembly ラッパーにおいて、ネイティブの callback type 8（MIP lazy constraints）は WASM ↔ JS 境界での同期メモリ安全性の観点から公開されていません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、**反復求解ループ（解く $\to$ 違反検出 $\to$ `model.addConstraint(...)` $\to$ 再求解）**による切除平面法のアプローチをご利用ください。
 
 ---
 

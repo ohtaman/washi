@@ -1,16 +1,31 @@
 # HiGHS 求解器引擎
 
-**HiGHS** 是由爱丁堡大学研发的高性能数理优化软件，公认为线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）领域的顶尖开源求解器。
+**HiGHS** 是由爱丁堡大学研发的高性能数理优化软件（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)），公认为线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）领域的顶尖开源求解器。
+
+在 `@ohtaman/washi` 中，HiGHS 通过官方 [`highs`](https://www.npmjs.com/package/highs) 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）完全运行在 WebAssembly 环境中，在 Node.js、Web Worker 和浏览器环境中提供零配置执行能力。
 
 ---
 
 ## 在 WaSHI 中的核心特性
 
-- **内置且零配置**：直接包含在 `@ohtaman/washi` 核心包中，无需安装额外依赖或进行 C++ 本地编译。
+- **内置且零配置**：直接打包上游 [`highs`](https://www.npmjs.com/package/highs) WASM 发行版本，无需安装额外依赖或进行 C++ 本地编译。
 - **宽松的 MIT 许可证**：核心包 100% 满足商业友好授权要求。
 - **Web Worker 后台多线程**：在浏览器环境中自动将高强度计算卸载至专用后台 Web Worker，避免阻塞 UI 渲染主线程。
 - **支持热启动（`initialValue`）**：支持将变量的初始值提示（`initialValue`）传递给 HiGHS 的 `setSolution` 进行热启动。
 - **高速 WASM 执行**：基于 Emscripten 编译的 32 位 WebAssembly，运行速度接近原生代码。
+
+---
+
+## 架构与 WebAssembly 运行时
+
+WaSHI 并非在代码仓库内直接从 C++ 源码编译 HiGHS。而是从上游官方 [`highs`](https://www.npmjs.com/package/highs) npm 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）中提取并打包 WebAssembly 二进制文件（`highs.wasm`）及其 JS 运行时，结合 WaSHI 的代数建模层、Web Worker 自动调度和标准求解器抽象接口进行分发。
+
+### 回调与求解器交互控制
+
+- **进度监控与中途取消（已支持）**：
+  通过 HiGHS 内部的日志与中断钩子，WaSHI 提供实时进度回调（`onProgress`），并支持通过标准 `AbortSignal` 进行协作式中途取消。
+- **动态割平面 / 惰性约束（受 WASM 包装层限制暂不支持）**：
+  上游 WebAssembly 包装层出于 WASM ↔ JS 边界同步内存安全考虑，未公开底层原生回调类型 8（MIP lazy constraints）。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请采用**迭代求解循环（求解 $\to$ 检测违规 $\to$ `model.addConstraint(...)` $\to$ 重新求解）**的割平面法模式。
 
 ---
 
