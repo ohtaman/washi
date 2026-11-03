@@ -12,291 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
-    <style>
-      :root {
-        --bg-page: #fbfaf5;
-        --card-bg: #ffffff;
-        --border-subtle: #e6e0d2;
-        --border-strong: #cfc8b6;
-        --gold: #b45309;
-        --gold-soft: #fef3c7;
-        --cyan: #0284c7;
-        --cyan-soft: #f0f9ff;
-        --rose: #e11d48;
-        --rose-soft: #fff1f2;
-        --text-main: #242426;
-        --text-muted: #57585e;
-        --code-bg: #1e293b;
-        --code-text: #f1f5f9;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg-page);
-        color: var(--text-main);
-        font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
-        line-height: 1.8;
-        padding: 2rem 1.25rem 5rem;
-      }
-
-      .article-shell {
-        max-width: 900px;
-        margin: 0 auto;
-      }
-
-      .topnav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-      }
-
-      .topnav-right {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-
-      .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 0.88rem;
-        color: var(--text-main);
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        padding: 0.48rem 0.95rem;
-        border-radius: 999px;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-
-      .nav-btn:hover {
-        border-color: var(--cyan);
-        color: var(--cyan);
-      }
-
-      .nav-btn.primary {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #fff;
-        border-color: #0284c7;
-      }
-
-      .lang-switch {
-        display: inline-flex;
-        align-items: center;
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        border-radius: 999px;
-        padding: 0.18rem;
-        gap: 0.15rem;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-
-      .lang-btn {
-        appearance: none;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
-        font-family: inherit;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 0.28rem 0.68rem;
-        border-radius: 999px;
-        cursor: pointer;
-      }
-
-      .lang-btn.is-active {
-        background: var(--cyan);
-        color: #ffffff;
-      }
-
-      .hero-card {
-        background: linear-gradient(135deg, #f0f9ff 0%, #fefcf3 100%);
-        border: 2px solid #bae6fd;
-        border-radius: 24px;
-        padding: 2.2rem 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 28px rgba(2, 132, 199, 0.06);
-      }
-
-      .hero-eyebrow {
-        display: inline-block;
-        font-size: 0.78rem;
-        font-weight: 800;
-        color: var(--cyan);
-        background: var(--cyan-soft);
-        border: 1px solid #7dd3fc;
-        padding: 0.2rem 0.75rem;
-        border-radius: 999px;
-        margin-bottom: 0.75rem;
-      }
-
-      .hero-card h1 {
-        font-size: clamp(1.42rem, 3.1vw, 2rem);
-        line-height: 1.38;
-        margin: 0 0 0.9rem;
-        color: #0f172a;
-      }
-
-      .hero-card p {
-        margin: 0;
-        color: var(--text-muted);
-        font-size: 0.95rem;
-      }
-
-      .section-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-subtle);
-        border-radius: 20px;
-        padding: 1.9rem 2rem;
-        margin-bottom: 1.6rem;
-        box-shadow: 0 4px 16px rgba(36, 36, 38, 0.05);
-      }
-
-      .section-card h2 {
-        font-size: 1.3rem;
-        color: #0f172a;
-        margin: 0 0 1rem;
-        padding-bottom: 0.55rem;
-        border-bottom: 2px solid #e0f2fe;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .section-card h2::before {
-        content: "";
-        display: inline-block;
-        width: 6px;
-        height: 1.15em;
-        background: var(--cyan);
-        border-radius: 999px;
-        flex-shrink: 0;
-      }
-
-      .section-card h3 {
-        font-size: 1.06rem;
-        color: var(--cyan);
-        margin: 1.4rem 0 0.5rem;
-      }
-
-      .section-card p {
-        margin: 0 0 1rem;
-      }
-
-      .math-box {
-        background: #fdfbf7;
-        border: 1px solid var(--border-subtle);
-        border-left: 4px solid var(--cyan);
-        border-radius: 0 12px 12px 0;
-        padding: 1rem 1.25rem;
-        margin: 1rem 0 1.25rem;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.9rem;
-        color: var(--text-main);
-        overflow-x: auto;
-      }
-
-      .math-box .katex-display {
-        margin: 0.5rem 0;
-        text-align: left;
-      }
-
-      .math-box .katex {
-        color: var(--text-main);
-      }
-
-      .math-box .math-title {
-        font-family: "Inter", "Noto Sans JP", sans-serif;
-        font-weight: 800;
-        font-size: 0.84rem;
-        color: var(--cyan);
-        margin-bottom: 0.35rem;
-        display: block;
-      }
-
-      .callout {
-        border-radius: 14px;
-        padding: 1.1rem 1.3rem;
-        margin: 1.1rem 0;
-        font-size: 0.93rem;
-      }
-
-      .callout.gold {
-        background: var(--gold-soft);
-        border: 1px solid #fcd34d;
-        color: #78350f;
-      }
-
-      .callout.cyan {
-        background: var(--cyan-soft);
-        border: 1px solid #bae6fd;
-        color: #0369a1;
-      }
-
-      .callout.rose {
-        background: var(--rose-soft);
-        border: 1px solid #fecdd3;
-        color: #9f1239;
-      }
-
-      .callout strong {
-        display: block;
-        margin-bottom: 0.3rem;
-      }
-
-      table.mapping-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1rem 0 1.25rem;
-        font-size: 0.88rem;
-      }
-
-      table.mapping-table th,
-      table.mapping-table td {
-        border: 1px solid var(--border-subtle);
-        padding: 0.65rem 0.85rem;
-        text-align: left;
-      }
-
-      table.mapping-table th {
-        background: #fdfbf7;
-        color: var(--text-main);
-        font-weight: 800;
-        border-bottom: 2px solid var(--border-subtle);
-      }
-
-      pre.code-block {
-        background: var(--code-bg);
-        color: var(--code-text);
-        padding: 1.15rem 1.35rem;
-        border-radius: 14px;
-        border: 1px solid var(--border-subtle);
-        overflow-x: auto;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.84rem;
-        line-height: 1.62;
-        margin: 1rem 0;
-      }
-
-      .footer-cta {
-        text-align: center;
-        margin-top: 2.2rem;
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-      }
-    </style>
+    <link rel="stylesheet" href="../../src/theory-theme.css" />
   </head>
   <body>
     <div class="article-shell">
@@ -308,7 +24,6 @@
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../ai-shift/" class="nav-btn" id="nav-other-app">🏥 ナーススケジューリング AI へ</a>
           <a href="../ai-timetable/" class="nav-btn primary" id="nav-open-app">🎓 時間割 AI Copilot を開く ▶</a>
         </div>
       </nav>
@@ -316,18 +31,21 @@
       <!-- =====================================================================
            JAPANESE ARTICLE
            ===================================================================== -->
-      <div data-lang-section="ja">
-        <header class="hero-card">
-          <span class="hero-eyebrow">数理最適化（MILP）× ローカルAI 解説記事</span>
-          <h1>『大学時間割編成 AI Copilot』の裏側：<br />4次元0-1整数計画問題（UCTP）と複数枚連動パズルの定式化</h1>
-          <p>
+      <div data-lang-section="ja" class="article-sheet">
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">数理最適化（MILP）× ローカルAI 解説記事</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title">『大学時間割編成 AI Copilot』の裏側：<br />4次元0-1整数計画問題（UCTP）と複数枚連動パズルの定式化</h1>
+          <div class="book-lead-box">
             対象読者：混合整数線形計画（MILP）およびAIエージェントによる構造化入力に関心のある方。<br />
             なぜ大学の時間割は「1枚の表」ではなく<strong>学年別（4枚）・教員別（10名）・教室別（7室）の複数枚が裏で同時に絡み合うNP困難問題</strong>になるのか、そして<strong>Gemini Nano（構造化抽出）× WaSHI / HiGHS（厳密求解・矛盾診断）</strong>がどのように連携しているのかを解説します。
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. なぜ「大学の時間割」は複数枚が裏で連動して解けなくなるのか？</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>なぜ「大学の時間割」は複数枚が裏で連動して解けなくなるのか？</span></h2>
           <p>
             オペレーションズ・リサーチ（OR）において、<strong>大学時間割編成問題（University Course Timetabling Problem; UCTP）</strong>はナース・スケジューリング問題（NSP）と並び、国際コンペティション（ITC-2007等）が開催され続ける代表的な実務組合せ最適化問題です。
           </p>
@@ -383,8 +101,8 @@
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 4次元二値決定変数と基本ハード制約の定式化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>4次元二値決定変数と基本ハード制約の定式化</span></h2>
           <p>
             科目集合を $C$（25科目）、曜日集合を $D = \{\text{Mon}, \text{Tue}, \text{Wed}, \text{Thu}, \text{Fri}\}$、時限集合を $P = \{1, 2, 3, 4, 5\}$、教室集合を $R$（7室）とします。科目 $c$ を曜日 $d$・時限 $p$・教室 $r$ に割り当てるとき $1$、そうでないとき $0$ をとる二値決定変数 $x_{c,d,p,r} \in \{0, 1\}$ を定義します。
           </p>
@@ -408,14 +126,19 @@
           </div>
 
           <div class="callout cyan">
-            <strong>💡 なぜ「学年別」「教員別」「教室別」の3つのビューが同じ解から同時に描けるのか</strong>
-            決定変数 $x_{c,d,p,r}$ を学年 $k$ でスライスすれば「学年別の4枚の時間割」になり、教員 $\text{prof}$ でスライスすれば「教員別×25コマ一覧表」（式(5)により各マス高々1科目）、教室 $r$ でスライスすれば「教室別×25コマ一覧表」（式(4)により各マス高々1科目）になります。つまり<strong>3種類の時間割ビューはすべて同じ4次元テンソル $x_{c,d,p,r}$ の異なる断面（射影）</strong>です。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>4次元テンソルの3つの断面（学年別・教員別・教室別）</span>
+            </div>
+            <div class="callout-content">
+              決定変数 $x_{c,d,p,r}$ を学年 $k$ でスライスすれば「学年別の4枚の時間割」になり、教員 $\text{prof}$ でスライスすれば「教員別×25コマ一覧表」（式(5)により各マス高々1科目）、教室 $r$ でスライスすれば「教室別×25コマ一覧表」（式(4)により各マス高々1科目）になります。つまり<strong>3種類の時間割ビューはすべて同じ4次元テンソル $x_{c,d,p,r}$ の異なる断面（射影）</strong>です。
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. 現場特有のカリキュラム条件の線形化</h2>
-          <h3>(A) 週2コマ科目の「同日・連続時限開講」（<code>course_consecutive</code>）</h3>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>現場特有のカリキュラム条件の線形化</span></h2>
+          <h3 class="section-heading">(A) 週2コマ科目の「同日・連続時限開講」（<code>course_consecutive</code>）</h3>
           <p>
             通常、週2コマの講義（例：『線形代数学I』『アルゴリズム』）は学習効果のため別々の曜日に分散させます（$\sum_{p \in P} u_{c,d,p} \le 1$）。しかし『ソフトウェア設計演習（C12）』のようなプログラミング演習では、<strong>「同じ曜日の連続する2時限（例：火曜2〜3限）にまとめて実施したい」</strong>という要望が頻繁に出ます。
           </p>
@@ -434,7 +157,7 @@
             $$
           </div>
 
-          <h3>(B) 学生の「空きコマ（中空き）」最小化の線形化</h3>
+          <h3 class="section-heading">(B) 学生の「空きコマ（中空き）」最小化の線形化</h3>
           <p>
             学生にとって「1限と3限に必修授業があり、2限が1コマだけ空いてしまう（中空き）」時間割は不評です。各学年 $k$・曜日 $d$・中間時限 $p \in \{2, 3, 4\}$ について、前後の時限 $p-1$ と $p+1$ の両方にコア科目があるのに $p$ 限が空いているときだけ $1$ 以上になる連続スラック変数 $\text{gap}_{k,d,p} \ge 0$ を導入します：
           </p>
@@ -449,14 +172,14 @@
             $$
           </div>
 
-          <h3>(C) 微調整モード（Minimal Perturbation：既存時間割の維持）</h3>
+          <h3 class="section-heading">(C) 微調整モード（Minimal Perturbation：既存時間割の維持）</h3>
           <p>
             運用中の時間割に対して「佐藤先生の金曜午後をNGにして」と1つ条件を追加したとき、関係ない科目の曜日まで全面シャッフルされてしまうと教務現場は大混乱します。微調整モードがONのときは、直前の時間割解で割り当てられていた枠 $(c, d^*, p^*, r^*)$ に対して<strong>負の目的関数報酬（$-6 \cdot u_{c,d^*,p^*} - 2 \cdot x_{c,d^*,p^*,r^*}$）</strong>を与えることで、変更が必要な最小限のコマだけを移動させます。
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. Gemini Nano（構造化抽出）× WaSHI（二段階スラック緩和による矛盾診断）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>Gemini Nano（構造化抽出）× WaSHI（二段階スラック緩和による矛盾診断）</span></h2>
           <p>
             このデモでは、LLMに「時間割そのもの」を作らせることは一切していません。4,400変数の組合せ制約をLLMの推論だけで解かせると、教室の定員オーバーや非常勤講師のダブルブッキングが必ず発生するからです。代わりに役割を明確に分離しています：
           </p>
@@ -471,6 +194,19 @@
               <strong>解なし（Infeasible）時の自動矛盾診断（Elastic Relaxation）</strong>：もし「火・木のみ出講可の小林先生の科目を月曜3限に固定」のような矛盾した要望が来た場合、すべてのハード制約に非負スラック変数 <code>s_i &gt;= 0</code> を入れた緩和モデルを2通りの重み（Pass 1: 追加ルール優先緩和、Pass 2: 基本ルール優先緩和）で解き、<strong>どのルールとどのルールが正面衝突しているか</strong>を数理的に特定して提示します。
             </li>
           </ol>
+
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : 大規模問題に対する二段階分解アプローチ（時間枠割当と教室割当）</span>
+            </div>
+            <div class="callout-content">
+              本デモの規模（30コマ・7教室）では4次元変数をそのままHiGHSに投入して約250msで瞬時に解けますが、学部全体で数百科目を超える総合大学の大規模問題では、問題を2段階に分解する階層的アプローチが有効です：<br />
+              <strong>1. 第1段階（時間枠割当）</strong>：3次元変数 $u_{c,d,p}$ のみを用い、具体的な教室は一旦抽象化して「各時間枠 $(d, p)$ の必要教室数が総教室数（または定員区分別教室数）を超えない」という集約容量制約のもとでコマ割りを解く。<br />
+              <strong>2. 第2段階（教室マッチング）</strong>：コマ割りを固定した上で、各時間枠 $(d, p)$ ごとに二部マッチング（最大重み割り当て問題、あるいは輸送問題）を独立に解き、設備要件を満たす教室 $r$ を割り当てる。<br />
+              このように、問題の階層構造を見抜いて変数を分解することは、実務の大規模最適化における重要な設計手法です。
+            </div>
+          </div>
 
           <pre class="code-block"><code>// WaSHI による 4次元時間割モデル (UCTP) と 二段階スラック緩和診断の骨格
 const m = new Model("UniversityCourseTimetabling_UCTP", { solver: "highs" });
@@ -504,18 +240,21 @@ const report = m.validateSolution();</code></pre>
       <!-- =====================================================================
            ENGLISH ARTICLE
            ===================================================================== -->
-      <div data-lang-section="en" hidden>
-        <header class="hero-card">
-          <span class="hero-eyebrow">Mathematical Optimization (MILP) × On-Device AI Guide</span>
-          <h1>Behind "University Course Timetabling AI Copilot":<br />4D 0-1 MILP Formulation (UCTP) &amp; Coupled Multi-Board Scheduling</h1>
-          <p>
+      <div data-lang-section="en" class="article-sheet" hidden>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">Mathematical Optimization (MILP) × On-Device AI Guide</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title">Behind "University Course Timetabling AI Copilot":<br />4D 0-1 MILP Formulation (UCTP) &amp; Coupled Multi-Board Scheduling</h1>
+          <div class="book-lead-box">
             Target Audience: Readers interested in Mixed-Integer Linear Programming (MILP) and neuro-symbolic AI copilot architectures.<br />
             This article explains why university course timetabling cannot be solved on a single grid—requiring simultaneous coordination across <strong>4 student cohort boards, 10 professor schedules, and 7 specialized rooms</strong>—and how <strong>Chrome Built-in AI (Gemini Nano) + WaSHI (HiGHS)</strong> solve and diagnose it in the browser.
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. Why University Timetabling Requires Multiple Coupled Boards (UCTP)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>Why University Timetabling Requires Multiple Coupled Boards (UCTP)</span></h2>
           <p>
             In Operations Research (OR), the <strong>University Course Timetabling Problem (UCTP)</strong>—standardized in benchmarks such as the International Timetabling Competition (ITC-2007 Curriculum-Based Track)—is one of the most heavily studied NP-hard scheduling problems alongside the Nurse Scheduling Problem (NSP).
           </p>
@@ -571,8 +310,8 @@ const report = m.validateSolution();</code></pre>
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 4D Binary Decision Variables and Core Structural Constraints</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>4D Binary Decision Variables and Core Structural Constraints</span></h2>
           <p>
             Let $C$ be the set of 25 courses, $D = \{\text{Mon}, \text{Tue}, \text{Wed}, \text{Thu}, \text{Fri}\}$ be the days, $P = \{1, 2, 3, 4, 5\}$ be the periods, and $R$ be the 7 rooms. We define a 4D binary variable $x_{c,d,p,r} \in \{0, 1\}$ equal to $1$ if and only if course $c$ is assigned to day $d$, period $p$, and room $r$.
           </p>
@@ -596,14 +335,19 @@ const report = m.validateSolution();</code></pre>
           </div>
 
           <div class="callout cyan">
-            <strong>💡 Three Views of a Single 4D Tensor</strong>
-            Slicing $x_{c,d,p,r}$ by student cohort $k$ produces the <strong>4 Cohort Boards</strong>; slicing by professor $\text{prof}$ produces the <strong>10 Professors × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 5); slicing by room $r$ produces the <strong>7 Rooms × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 4).
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Three Views of a Single 4D Tensor</span>
+            </div>
+            <div class="callout-content">
+              Slicing $x_{c,d,p,r}$ by student cohort $k$ produces the <strong>4 Cohort Boards</strong>; slicing by professor $\text{prof}$ produces the <strong>10 Professors × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 5); slicing by room $r$ produces the <strong>7 Rooms × 25 Slots Matrix</strong> (guaranteed at most 1 course per cell by Constraint 4).
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. Linearizing Pedagogical &amp; Operational Rules</h2>
-          <h3>(A) Consecutive Double-Period Lab Sessions (<code>course_consecutive</code>)</h3>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>Linearizing Pedagogical &amp; Operational Rules</span></h2>
+          <h3 class="section-heading">(A) Consecutive Double-Period Lab Sessions (<code>course_consecutive</code>)</h3>
           <p>
             While 2-session lecture courses are normally spread across different days ($\sum_{p \in P} u_{c,d,p} \le 1$), hands-on courses like "Software Design Lab (C12)" often require <strong>two consecutive periods on the same day</strong> (e.g., Tue Periods 2–3). We introduce binary indicator variables $z_{d,p} \in \{0, 1\}$ for $p \in \{1, 2, 3, 4\}$:
           </p>
@@ -619,7 +363,7 @@ const report = m.validateSolution();</code></pre>
             $$
           </div>
 
-          <h3>(B) Penalizing Student Hollow Gaps ("Idle Bridge Periods")</h3>
+          <h3 class="section-heading">(B) Penalizing Student Hollow Gaps ("Idle Bridge Periods")</h3>
           <p>
             To prevent students from having a compulsory class in Period 1, an empty Period 2, and another compulsory class in Period 3, we introduce a non-negative continuous slack variable $\text{gap}_{k,d,p} \ge 0$ for each intermediate period $p \in \{2, 3, 4\}$:
           </p>
@@ -634,14 +378,14 @@ const report = m.validateSolution();</code></pre>
             $$
           </div>
 
-          <h3>(C) Minimal Perturbation Mode (Preserving Existing Assignments)</h3>
+          <h3 class="section-heading">(C) Minimal Perturbation Mode (Preserving Existing Assignments)</h3>
           <p>
             When an academic affairs officer adds a single rule mid-planning, reshuffling the entire university timetable is disruptive. When Minimal Perturbation Mode is enabled, each previously assigned session $(c, d^*, p^*, r^*)$ receives a negative objective reward ($-6 \cdot u_{c,d^*,p^*} - 2 \cdot x_{c,d^*,p^*,r^*}$), keeping unchanged courses in place unless mathematically required to move.
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. Neuro-Symbolic Architecture: Gemini Nano + WaSHI (HiGHS)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>Neuro-Symbolic Architecture: Gemini Nano + WaSHI (HiGHS)</span></h2>
           <p>
             Instead of asking an LLM to guess a timetable (which inevitably violates room capacities or double-books faculty), the copilot separates natural-language understanding from combinatorial optimization:
           </p>
@@ -657,6 +401,19 @@ const report = m.validateSolution();</code></pre>
             </li>
           </ol>
 
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT: Two-Stage Decomposition for Large-Scale Timetabling</span>
+            </div>
+            <div class="callout-content">
+              While our 30-course demo solves in ~250 ms using full 4D variables, university-wide timetables with hundreds of courses benefit from hierarchical problem decomposition:<br />
+              <strong>Stage 1 (Timeslot Timetabling)</strong>: Solve slot assignments using 3D variables $u_{c,d,p}$ under aggregate room capacity constraints ($\le$ total available rooms per capacity tier).<br />
+              <strong>Stage 2 (Room Assignment)</strong>: Fix timeslots and solve independent bipartite matching / transportation problems for each time slot $(d, p)$ to allocate specific rooms $r$ satisfying equipment requirements.<br />
+              Exploiting hierarchical problem structures to project out high-dimensional variables is a key modeling strategy in large-scale practical optimization.
+            </div>
+          </div>
+
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 Open "University Timetabling AI Copilot" ▶</a>
             <a href="../ai-shift/" class="nav-btn">🏥 Open "Nurse Scheduling AI Copilot" →</a>
@@ -668,18 +425,21 @@ const report = m.validateSolution();</code></pre>
       <!-- =====================================================================
            CHINESE ARTICLE
            ===================================================================== -->
-      <div data-lang-section="zh" hidden>
-        <header class="hero-card">
-          <span class="hero-eyebrow">数学规划（MILP）× 端侧 AI 建模解说</span>
-          <h1>《大学排课 AI Copilot》背后的数学模型：<br />四维 0-1 混合整数规划（UCTP）与多表联动排课架构</h1>
-          <p>
+      <div data-lang-section="zh" class="article-sheet" hidden>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">数学规划（MILP）× 端侧 AI 建模解说</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title">《大学排课 AI Copilot》背后的数学模型：<br />四维 0-1 混合整数规划（UCTP）与多表联动排课架构</h1>
+          <div class="book-lead-box">
             适合读者：对混合整数线性规划（MILP）及神经符号（Neuro-Symbolic）AI 助手架构感兴趣的读者。<br />
             本文将解说为什么大学课表无法用“单张表格”解决，而是需要<strong>4个年级课表、10位教师课表与7间专业教室</strong>在底层同时联动的 NP-Hard 组合优化问题，以及 <strong>Chrome 内置 Gemini Nano + WaSHI (HiGHS)</strong> 如何在浏览器端实现秒级求解与冲突诊断。
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. 为什么“大学排课”不能只看一张表？（UCTP 的多维耦合结构）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>为什么“大学排课”不能只看一张表？（UCTP 的多维耦合结构）</span></h2>
           <p>
             在运筹学（OR）领域，<strong>大学课程排课问题（University Course Timetabling Problem; UCTP）</strong>与护士排班问题（NSP）并列为最经典的实务组合优化难题，国际排课竞赛（如 ITC-2007）长期围绕该问题展开研究。
           </p>
@@ -709,7 +469,7 @@ const report = m.validateSolution();</code></pre>
               <tr>
                 <td>4张年级课表同屏显示（大一至大四）</td>
                 <td>各年级的必修与限选培养方案（Curriculum）</td>
-                <td>同一年级核心课程集合 <code>Core_k</code> 的同时段互斥约束</td>
+                <td>同一年级必修课程集合 <code>Core_k</code> 的同时段互斥约束</td>
               </tr>
               <tr>
                 <td>外聘讲师可出勤日・教研会议禁排时段</td>
@@ -735,17 +495,17 @@ const report = m.validateSolution();</code></pre>
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 四维 0-1 决策变量与核心硬约束建模</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>四维 0-1 决策变量与关键硬约束建模</span></h2>
           <p>
             设课程集合为 $C$（25门），星期集合为 $D = \{\text{Mon}, \text{Tue}, \text{Wed}, \text{Thu}, \text{Fri}\}$，节次集合为 $P = \{1, 2, 3, 4, 5\}$，教室集合为 $R$（7间）。定义四维 0-1 变量 $x_{c,d,p,r} \in \{0, 1\}$：当课程 $c$ 被排在星期 $d$、第 $p$ 节、教室 $r$ 时取 $1$，否则取 $0$。
           </p>
           <p>
-            记时段投影表达式为 $u_{c,d,p} = \sum_{r \in R} x_{c,d,p,r} \in \{0, 1\}$，核心硬约束如下：
+            记时段投影表达式为 $u_{c,d,p} = \sum_{r \in R} x_{c,d,p,r} \in \{0, 1\}$，关键硬约束如下：
           </p>
 
           <div class="math-box">
-            <span class="math-title">大学排课问题（UCTP）核心硬约束方程组</span>
+            <span class="math-title">大学排课问题（UCTP）关键硬约束方程组</span>
             $$
             \begin{aligned}
             &\text{(1) 每周必修课时数:} && \sum_{d \in D} \sum_{p \in P} \sum_{r \in R} x_{c,d,p,r} = S_c && (\forall c \in C) \\
@@ -760,14 +520,19 @@ const report = m.validateSolution();</code></pre>
           </div>
 
           <div class="callout cyan">
-            <strong>💡 同一个四维张量的三种切片视图</strong>
-            将四维解张量 $x_{c,d,p,r}$ 按年级 $k$ 切片即可渲染<strong>“按年级4张同屏课表”</strong>；按教师 $\text{prof}$ 切片即可得到<strong>“10位教师 × 25时段矩阵”</strong>（约束5保证每格最多1门课）；按教室 $r$ 切片即可得到<strong>“7间教室 × 25时段矩阵”</strong>（约束4保证每间教室同一时段最多1门课）。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>同一个四维张量的三种切片视图</span>
+            </div>
+            <div class="callout-content">
+              将四维解张量 $x_{c,d,p,r}$ 按年级 $k$ 切片即可渲染<strong>“按年级4张同屏课表”</strong>；按教师 $\text{prof}$ 切片即可得到<strong>“10位教师 × 25时段矩阵”</strong>（约束5保证每格最多1门课）；按教室 $r$ 切片即可得到<strong>“7间教室 × 25时段矩阵”</strong>（约束4保证每间教室同一时段最多1门课）。
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. 教务现场特殊规则的线性化技巧</h2>
-          <h3>(A) 周2节实验课的“同日连排”（<code>course_consecutive</code>）</h3>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>教务现场特殊规则的线性化技巧</span></h2>
+          <h3 class="section-heading">(A) 周2节实验课的“同日连排”（<code>course_consecutive</code>）</h3>
           <p>
             像《软件设计实验（C12）》这样的上机课，往往需要<strong>在同一天的相邻两节（如周二第2〜3节）连排</strong>。我们引入辅助 0-1 变量 $z_{d,p} \in \{0, 1\}$（$p \in \{1, 2, 3, 4\}$），用3组线性不等式精确表达连排要求：
           </p>
@@ -783,7 +548,7 @@ const report = m.validateSolution();</code></pre>
             $$
           </div>
 
-          <h3>(B) 学生“中间空堂（Hollow Gap）”惩罚的线性化</h3>
+          <h3 class="section-heading">(B) 学生“中间空堂（Hollow Gap）”惩罚的线性化</h3>
           <p>
             为避免学生同一天第1节和第3节有必修课而第2节空堂，对每个中间节次 $p \in \{2, 3, 4\}$ 引入非负连续松弛变量 $\text{gap}_{k,d,p} \ge 0$：
           </p>
@@ -798,14 +563,14 @@ const report = m.validateSolution();</code></pre>
             $$
           </div>
 
-          <h3>(C) 微调模式（Minimal Perturbation：最大化保留既有课表）</h3>
+          <h3 class="section-heading">(C) 微调模式（Minimal Perturbation：最大化保留既有课表）</h3>
           <p>
             当教务老师在已有课表上追加一条新要求时，若开启“微调模式”，模型会对上一版课表中已排定的位置 $(c, d^*, p^*, r^*)$ 赋予<strong>负目标函数奖励（$-6 \cdot u_{c,d^*,p^*} - 2 \cdot x_{c,d^*,p^*,r^*}$）</strong>，从而在满足新约束的前提下仅移动最少数量的课程。
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. 端侧 Gemini Nano（结构化提取）× WaSHI（两阶段弹性冲突诊断）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>端侧 Gemini Nano（结构化提取）× WaSHI（两阶段弹性冲突诊断）</span></h2>
           <p>
             本应用没有让大语言模型直接“猜”课表，而是将自然语言理解与严格数学规划解耦：
           </p>
@@ -820,6 +585,19 @@ const report = m.validateSolution();</code></pre>
               <strong>两阶段弹性松弛冲突诊断（Elastic Relaxation）</strong>：当排课条件发生矛盾（<code>Infeasible</code>）时，WaSHI 自动为所有硬约束添加非负松弛变量并按两种权重策略求解，精准定位发生碰撞的规则组合。
             </li>
           </ol>
+
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : 大规模排课的两阶段分解方法（时间段编排与教室匹配）</span>
+            </div>
+            <div class="callout-content">
+              虽然本演示包含的 30 门课程可在 250 毫秒内直接通过四维变量求解，但对于含数百门课程的综合大学而言，直接构建四维模型会导致变量数量达到数十万级。通常可采用两阶段层次分解策略：<br />
+              <strong>第一阶段（时间段编排）</strong>：仅使用三维变量 $u_{c,d,p}$，通过聚合容量约束（每个时段所需教室总数不超过可用教室总数）先行确定课程的时间分布。<br />
+              <strong>第二阶段（教室二分图匹配）</strong>：在时间段固定的前提下，针对每个时段 $(d, p)$ 独立求解带权二分匹配（或指派问题），为课程分配满足设备要求的具体教室 $r$。<br />
+              洞察问题的层次结构并对高维变量进行分解，是运筹优化在工业界规模化落地的关键方法。
+            </div>
+          </div>
 
           <div class="footer-cta">
             <a href="../ai-timetable/" class="nav-btn primary">🎓 打开《大学排课 AI Copilot》 ▶</a>
@@ -838,19 +616,16 @@ const report = m.validateSolution();</code></pre>
         ja: {
           title: "『大学時間割編成 AI Copilot』の数理モデル解説 — 4次元0-1整数計画（UCTP）とAI×ソルバー連携",
           back: "← ショーケースへ戻る",
-          other: "🏥 ナーススケジューリング AI へ",
           open: "🎓 時間割 AI Copilot を開く ▶",
         },
         en: {
           title: 'Behind "University Course Timetabling AI Copilot" — 4D 0-1 MILP (UCTP) & On-Device AI',
           back: "← Back to Showcase",
-          other: "🏥 Nurse Scheduling AI",
           open: "🎓 Open Timetable Copilot ▶",
         },
         zh: {
           title: "《大学排课 AI Copilot》数学模型解说 — 四维 0-1 规划（UCTP）与端侧 AI 协同",
           back: "← 返回案例展示",
-          other: "🏥 护士排班 AI Copilot",
           open: "🎓 打开大学排课 AI ▶",
         },
       };
@@ -864,7 +639,6 @@ const report = m.validateSolution();</code></pre>
           backBtn.textContent = t.back;
           backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
         }
-        document.getElementById("nav-other-app").textContent = t.other;
         document.getElementById("nav-open-app").textContent = t.open;
 
         document.querySelectorAll("[data-lang-section]").forEach((sec) => {

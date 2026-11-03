@@ -10,293 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
-    <style>
-      :root {
-        --bg-page: #fbfaf5;
-        --card-bg: #ffffff;
-        --border-subtle: #e6e0d2;
-        --border-strong: #cfc8b6;
-        --gold: #b45309;
-        --gold-soft: #fef3c7;
-        --cyan: #0284c7;
-        --cyan-soft: #f0f9ff;
-        --rose: #e11d48;
-        --rose-soft: #fff1f2;
-        --text-main: #242426;
-        --text-muted: #57585e;
-        --code-bg: #1e293b;
-        --code-text: #f1f5f9;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      body {
-        margin: 0;
-        background: var(--bg-page);
-        color: var(--text-main);
-        font-family: "Noto Sans JP", system-ui, sans-serif;
-        line-height: 1.8;
-        padding: 2rem 1.25rem 5rem;
-      }
-
-      .article-shell {
-        max-width: 880px;
-        margin: 0 auto;
-      }
-
-      .topnav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-      }
-
-      .topnav-right {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        flex-wrap: wrap;
-      }
-
-      .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: var(--text-main);
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        padding: 0.5rem 1rem;
-        border-radius: 999px;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-
-      .nav-btn:hover {
-        border-color: var(--gold);
-        color: var(--gold);
-      }
-
-      .nav-btn.primary {
-        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
-        color: #fff;
-        border-color: #d97706;
-      }
-
-      .lang-switch {
-        display: inline-flex;
-        align-items: center;
-        background: #ffffff;
-        border: 1px solid var(--border-subtle);
-        border-radius: 999px;
-        padding: 0.18rem;
-        gap: 0.15rem;
-        box-shadow: 0 2px 6px rgba(43, 33, 24, 0.05);
-      }
-
-      .lang-btn {
-        appearance: none;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
-        font-family: inherit;
-        font-size: 0.78rem;
-        font-weight: 800;
-        padding: 0.28rem 0.68rem;
-        border-radius: 999px;
-        cursor: pointer;
-      }
-
-      .lang-btn.is-active {
-        background: var(--gold);
-        color: #ffffff;
-      }
-
-      .hero-card {
-        background: linear-gradient(135deg, #fefbf3 0%, #f7f1e3 100%);
-        border: 2px solid #e2d7c0;
-        border-radius: 24px;
-        padding: 2.2rem 2rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 10px 28px rgba(43, 33, 24, 0.06);
-      }
-
-      .hero-eyebrow {
-        display: inline-block;
-        font-size: 0.78rem;
-        font-weight: 800;
-        color: var(--gold);
-        background: var(--gold-soft);
-        border: 1px solid #fcd34d;
-        padding: 0.2rem 0.75rem;
-        border-radius: 999px;
-        margin-bottom: 0.75rem;
-      }
-
-      .hero-card h1 {
-        font-family: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
-        font-size: clamp(1.45rem, 3.2vw, 2.05rem);
-        line-height: 1.35;
-        margin: 0 0 0.9rem;
-        color: #1e1b18;
-      }
-
-      .hero-card p {
-        margin: 0;
-        color: var(--text-muted);
-        font-size: 0.96rem;
-      }
-
-      .section-card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-subtle);
-        border-radius: 20px;
-        padding: 1.9rem 2rem;
-        margin-bottom: 1.6rem;
-        box-shadow: 0 4px 16px rgba(36, 36, 38, 0.05);
-      }
-
-      .section-card h2 {
-        font-family: "M PLUS Rounded 1c", "Noto Sans JP", sans-serif;
-        font-size: 1.32rem;
-        color: #1e1b18;
-        margin: 0 0 1rem;
-        padding-bottom: 0.55rem;
-        border-bottom: 2px solid var(--gold-soft);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .section-card h2::before {
-        content: "";
-        display: inline-block;
-        width: 6px;
-        height: 1.15em;
-        background: var(--gold);
-        border-radius: 999px;
-        flex-shrink: 0;
-      }
-
-      .section-card h3 {
-        font-size: 1.06rem;
-        color: var(--gold);
-        margin: 1.4rem 0 0.5rem;
-      }
-
-      .section-card p {
-        margin: 0 0 1rem;
-      }
-
-      .math-box {
-        background: #fdfbf7;
-        border: 1px solid var(--border-subtle);
-        border-left: 4px solid var(--gold);
-        border-radius: 0 12px 12px 0;
-        padding: 1rem 1.25rem;
-        margin: 1rem 0 1.25rem;
-        font-family: "JetBrains Mono", "Hiragino Sans", monospace;
-        font-size: 0.92rem;
-        color: var(--text-main);
-        overflow-x: auto;
-      }
-
-      .math-box .katex-display {
-        margin: 0.5rem 0;
-        text-align: left;
-      }
-
-      .math-box .katex {
-        color: var(--text-main);
-      }
-
-      .math-box .math-title {
-        font-family: "Noto Sans JP", sans-serif;
-        font-weight: 800;
-        font-size: 0.84rem;
-        color: var(--gold);
-        margin-bottom: 0.35rem;
-        display: block;
-      }
-
-      .callout {
-        border-radius: 14px;
-        padding: 1.1rem 1.3rem;
-        margin: 1.1rem 0;
-        font-size: 0.93rem;
-      }
-
-      .callout.gold {
-        background: var(--gold-soft);
-        border: 1px solid #fcd34d;
-        color: #78350f;
-      }
-
-      .callout.cyan {
-        background: var(--cyan-soft);
-        border: 1px solid #bae6fd;
-        color: #0369a1;
-      }
-
-      .callout.rose {
-        background: var(--rose-soft);
-        border: 1px solid #fecdd3;
-        color: #9f1239;
-      }
-
-      .callout strong {
-        display: block;
-        margin-bottom: 0.3rem;
-      }
-
-      table.mapping-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 1rem 0 1.25rem;
-        font-size: 0.9rem;
-      }
-
-      table.mapping-table th,
-      table.mapping-table td {
-        border: 1px solid var(--border-subtle);
-        padding: 0.65rem 0.85rem;
-        text-align: left;
-      }
-
-      table.mapping-table th {
-        background: #fdfbf7;
-        color: var(--text-main);
-        font-weight: 800;
-        border-bottom: 2px solid var(--border-subtle);
-      }
-
-      pre.code-block {
-        background: var(--code-bg);
-        color: var(--code-text);
-        padding: 1.15rem 1.35rem;
-        border-radius: 14px;
-        border: 1px solid var(--border-subtle);
-        overflow-x: auto;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.85rem;
-        line-height: 1.65;
-        margin: 1rem 0;
-      }
-
-      .footer-cta {
-        text-align: center;
-        margin-top: 2.2rem;
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-      }
-    </style>
+    <link rel="stylesheet" href="../../src/theory-theme.css" />
   </head>
   <body>
     <div class="article-shell">
@@ -308,7 +22,6 @@
             <button type="button" class="lang-btn is-active" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
-          <a href="../mofumofu-sheep-theory/" class="nav-btn" id="nav-other-theory">🐑 牧場囲いパズルの解説記事へ</a>
           <a href="../demon-castle-shift/" class="nav-btn primary" id="nav-play">🏰 パズルをプレイする ▶</a>
         </div>
       </nav>
@@ -316,18 +29,21 @@
       <!-- =====================================================================
            JAPANESE ARTICLE
            ===================================================================== -->
-      <div data-lang-section="ja">
-        <header class="hero-card">
-          <span class="hero-eyebrow">数理最適化（MILP）モデリング解説</span>
-          <h1>『魔王城の24時間警備シフト』の裏側：<br />勤務スケジューリング問題（NSP）と論理条件の線形化</h1>
-          <p>
+      <div data-lang-section="ja" class="article-sheet">
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">数理最適化（MILP）モデリング解説</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title">『魔王城の24時間警備シフト』の裏側：<br />勤務スケジューリング問題（NSP）と論理条件の線形化</h1>
+          <div class="book-lead-box">
             対象読者：混合整数線形計画（MIP）の基礎（二値変数・線形不等式・目的関数）をご存じの方。<br />
             現実の病院（ナース・スケジューリング）やコールセンター・警備現場で用いられる<strong>シフト最適化モデル</strong>が、ゲーム内の「夜勤明け日勤の禁止」「連勤上限」「ペア相性（二次項の線形化）」「単独夜勤の禁止」にどう1対1対応しているのかを解説します。
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. 警備シフトパズルと勤務スケジューリング問題（NSP）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>警備シフトパズルと勤務スケジューリング問題（NSP）</span></h2>
           <p>
             オペレーションズ・リサーチ（OR）の代表的な応用分野に<strong>ナース・スケジューリング問題（Nurse Scheduling Problem; NSP）</strong>や<strong>人員配置問題（Staff Rostering）</strong>があります。『魔王城の24時間警備シフト』は、この古典的かつ実用的なMILPモデルをそのままファンタジー世界の拠点防衛パズルに翻案したものです。
           </p>
@@ -380,8 +96,8 @@
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 決定変数と労務制約の定式化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>決定変数と労務制約の定式化</span></h2>
           <p>
             計画対象の日集合を $D = \{0, 1, \dots, T-1\}$、出撃可能な魔物の集合を $M$ とします。各魔物 $m \in M$・各日 $d \in D$ に対して、昼番に入るかどうかの二値変数 $\text{day}_{m,d} \in \{0, 1\}$ と、夜番に入るかどうかの二値変数 $\text{night}_{m,d} \in \{0, 1\}$ を定義します（両方 $0$ ならその日は「休み」です）。
           </p>
@@ -398,7 +114,7 @@
             $$
           </div>
 
-          <h3>最大連勤日数制約（スライディング・ウィンドウ法）</h3>
+          <h3 class="section-heading">最大連勤日数制約（スライディング・ウィンドウ法）</h3>
           <p>
             たとえば「古竜ドラゴは最大 $L_m = 1$ 連勤まで（＝1日働いたら翌日は必ず休み）」「ウェアウルフのフェンリルは最大 $L_m = 3$ 連勤まで」といった連勤制限は、<strong>幅 $L_m + 1$ 日のスライディング・ウィンドウ</strong>を1日ずつずらしながら、「連続するどの $L_m + 1$ 日間を切り取っても、その中の出勤日数は最大 $L_m$ 日以下である（＝最低1日は休みがある）」と書けます。
           </p>
@@ -409,13 +125,18 @@
           </div>
 
           <div class="callout cyan">
-            <strong>💡 なぜスライディング・ウィンドウが有効なのか</strong>
-            「何連勤目か」を数える状態変数や非線形な条件分岐を一切使わずに、純粋な線形不等式だけで任意の連勤上限 $L_m$ を漏れなく表現できます。しかもLP緩和が比較的タイトになるため、MILPソルバーの分枝限定法が高速に収束します。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>スライディング・ウィンドウ定式化の利点</span>
+            </div>
+            <div class="callout-content">
+              「何連勤目か」を数える状態変数や非線形な条件分岐を一切使わずに、純粋な線形不等式だけで任意の連勤上限 $L_m$ を漏れなく表現できます。しかもLP緩和が比較的タイトになるため、MILPソルバーの分枝限定法が高速に収束します。
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. 論理条件の線形化（1）：「新米スライムの夜間単独配置禁止」</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>論理条件の線形化（1）：「新米スライムの夜間単独配置禁止」</span></h2>
           <p>
             ゲーム中盤から登場する新米スライムのプルルには、<strong>「夜番に入るときは1人きりにせず、必ず他の誰かと一緒に配置しなければならない」</strong>というルールがあります（実務のシフト表でも「新人看護師は夜勤に単独配置しない」という全く同じ制約が頻出します）。
           </p>
@@ -433,8 +154,8 @@
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. 論理条件の線形化（2）：ペア相性（二次項 x_A * x_B）の線形化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>論理条件の線形化（2）：ペア相性（二次項 x_A * x_B）の線形化</span></h2>
           <p>
             さらにゲーム性を深めているのが、メンバー間の<strong>ペア相性（連携ボーナスと同番拒否）</strong>です。
           </p>
@@ -446,7 +167,7 @@
             これを素直に式にすると、$A$ の配置変数 $x_{A,d,s}$ と $B$ の配置変数 $x_{B,d,s}$ の<strong>積（二次項）$x_{A,d,s} \cdot x_{B,d,s}$</strong> が現れてしまい、そのままでは線形計画（MILP）になりません。
           </p>
 
-          <h3>補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ による標準線形化（Fortet / McCormick 線形化）</h3>
+          <h3 class="section-heading">補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ による標準線形化（Fortet / McCormick 線形化）</h3>
           <p>
             そこで、「$A$ と $B$ が同じ枠 $(d, s)$ に同時配置されたときだけ $1$ になる補助二値変数 $\text{pair}_{A,B,d,s} \in \{0, 1\}$」を導入し、次の3本の線形不等式で積 $x_A \cdot x_B$ と完全に等価にします。
           </p>
@@ -463,31 +184,51 @@
           </div>
 
           <div class="callout gold">
-            <strong>✨ 正のシナジーも負のペナルティもこの3本で厳密に表現できる理由</strong>
-            もし正のボーナス（$\Delta_{A,B} > 0$）だけなら式(a)・(b)の上界だけでも目的関数が自然に $\text{pair} = 1$ を選びますが、負のペナルティ（$\Delta_{A,B} &lt; 0$、不仲ペア）がある場合はソルバーがペナルティを逃れようとして $\text{pair} = 0$ に下げようとします。そこに式(c)の下界 $\text{pair} \ge x_A + x_B - 1$ があることで、<strong>「2人を同時に置いたら必ず $\text{pair} = 1$ になって減点を受ける」</strong>ことが厳密に強制されます。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>相性ボーナスとペナルティを同時に表現できる原理</span>
+            </div>
+            <div class="callout-content">
+              もし正のボーナス（$\Delta_{A,B} > 0$）だけなら式(a)・(b)の上界だけでも目的関数が自然に $\text{pair} = 1$ を選びますが、負のペナルティ（$\Delta_{A,B} &lt; 0$、不仲ペア）がある場合はソルバーがペナルティを逃れようとして $\text{pair} = 0$ に下げようとします。そこに式(c)の下界 $\text{pair} \ge x_A + x_B - 1$ があることで、<strong>「2人を同時に置いたら必ず $\text{pair} = 1$ になって減点を受ける」</strong>ことが厳密に強制されます。
+            </div>
+          </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : 補助変数 pair の連続緩和とソルバーの前処理（Presolve）</span>
+            </div>
+            <div class="callout-content">
+              論理上、$\text{pair}_{A,B,d,s}$ は 0-1 二値変数として導入されますが、主変数 $x_A, x_B \in \{0, 1\}$ が決まれば制約式(a)(b)(c)によって値が自動的に単一の整数（$0$ または $1$）に定まる構造を持っています。<br />
+              そのため、モデル定義時に<strong>連続変数（$0 \le \text{pair} \le 1$）として宣言しても完全に同一の整数解</strong>が得られます。<br />
+              なお、HiGHS を含む近年の高性能 MILP ソルバーでは、前処理（Presolve）の「含意整数（Implied Integer）検出」により、二値変数として登録しても自動的に分枝探索対象から除外・簡略化されることが一般的です。それでも「どの変数が真に離散選択を担い、どの変数が従属的な補助変数か」を意識して定式化を整理することは、数理最適化の構造理解として有用です。
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>5. 防衛力被覆制約と「別解の列挙（No-Good Cut）」</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>防衛力被覆制約と「別解の列挙（No-Good Cut）」</span></h2>
           <p>
-            各時間帯 $(d, s)$ において、個人の実効防衛力 $P_{m,s}$ とペア相性補正の合計が必要防衛力 $R_{d,s}$ 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します。
+            各時間帯 $(d, s)$ において、個人の実効防衛力 $P_{m,s}$ とペア相性補正の合計が必要防衛力 $R_{d,s}$ 以上になるよう<strong>被覆制約（Covering Constraint）</strong>を課し、全期間を通じた魔王城の総士気（Morale）を最大化します（ここで $\{A, B\}$ はメンバーの非順序ペア $A &lt; B$ を表し、二重カウントを防ぎます）。
           </p>
 
           <div class="math-box">
             <span class="math-title">各襲来枠 (d, s) の防衛力・最低人数制約と目的関数</span>
             $$
             \begin{aligned}
-            &\text{防衛力被覆:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{防衛力被覆:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
             &\text{最低人数:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
-            &\text{目的関数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            &\text{目的関数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
             \end{aligned}
             $$
           </div>
 
-          <h3>複数の最適シフト案を次々と提案する「No-Good Cut」</h3>
+          <h3 class="section-heading">複数の最適シフト案を次々と提案する「No-Good Cut」</h3>
           <p>
-            実務でもゲームでも、「条件を満たすシフト表を1つだけでなく、別のパターンも見てみたい」という場面があります。すでに得られた解の <code>1</code> の変数集合を <code>S_1</code>、<code>0</code> の変数集合を <code>S_0</code> としたとき、以下の<strong>No-Good Cut（整数カット）</strong>を1本追加して再求解すると、直前のシフト表と最低1マス以上異なる次善解（または同点の別最適解）を瞬時に得ることができます。
+            実務でもゲームでも、「条件を満たすシフト表を1つだけでなく、別のパターンも見てみたい」という場面があります。すでに得られた解の <code>1</code> の決定変数集合を <code>S_1</code>、<code>0</code> の決定変数集合を <code>S_0</code> としたとき、以下の<strong>No-Good Cut（整数カット）</strong>を1本追加して再求解すると、直前のシフト表と最低1マス以上異なる次善解（または同点の別最適解）を瞬時に得ることができます。
+          </p>
+          <p>
+            なお、カット対象の集合 $S_1, S_0$ には、補助変数 $\text{pair}$ を含めず<strong>主たる配置変数 $x_{m,d,s}$ のみを対象とする</strong>ことで、カット平面が冗長化せず最もタイトに働きます。
           </p>
 
           <pre class="code-block"><code>// 直前のシフト割当と完全に同一の0-1パターンだけを禁止する No-Good Cut
@@ -507,18 +248,21 @@ m.constraint(
       <!-- =====================================================================
            ENGLISH ARTICLE
            ===================================================================== -->
-      <div data-lang-section="en" hidden>
-        <header class="hero-card">
-          <span class="hero-eyebrow">Mathematical Optimization (MILP) Formulation Guide</span>
-          <h1>Behind "Demon Castle 24-Hour Guard Shift":<br />Nurse Scheduling (NSP) and Linearization of Logical Rules</h1>
-          <p>
+      <div data-lang-section="en" class="article-sheet" hidden>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">Mathematical Optimization (MILP) Formulation Guide</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title">Behind "Demon Castle 24-Hour Guard Shift":<br />Nurse Scheduling (NSP) and Linearization of Logical Rules</h1>
+          <div class="book-lead-box">
             Target Audience: Readers familiar with the basics of Mixed-Integer Linear Programming (binary variables, linear inequalities, and objective functions).<br />
             This article explains how real-world <strong>staff rostering and nurse scheduling models</strong> map directly onto the game's mechanics: rest intervals after night shifts, consecutive work limits, rookie supervision rules, and McCormick linearization of pairwise synergies and conflicts.
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. Guard Shift Puzzle and the Nurse Scheduling Problem (NSP)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>Guard Shift Puzzle and the Nurse Scheduling Problem (NSP)</span></h2>
           <p>
             One of the most widely deployed applications of Operations Research (OR) is the <strong>Nurse Scheduling Problem (NSP)</strong> or <strong>Staff Rostering</strong>. "Demon Castle 24-Hour Guard Shift" adapts this practical MILP formulation into a fantasy castle defense puzzle.
           </p>
@@ -571,8 +315,8 @@ m.constraint(
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. Decision Variables and Labor Rule Formulation</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>Decision Variables and Labor Rule Formulation</span></h2>
           <p>
             Let $D = \{0, 1, \dots, T-1\}$ denote the planning days and $M$ denote the on-duty guard roster. For each guard $m \in M$ and day $d \in D$, we define binary variables $\text{day}_{m,d} \in \{0, 1\}$ and $\text{night}_{m,d} \in \{0, 1\}$ (if both are $0$, guard $m$ rests on day $d$).
           </p>
@@ -589,7 +333,7 @@ m.constraint(
             $$
           </div>
 
-          <h3>Maximum Consecutive Working Days (Sliding-Window Formulation)</h3>
+          <h3 class="section-heading">Maximum Consecutive Working Days (Sliding-Window Formulation)</h3>
           <p>
             To enforce rules such as "Elder Dragon Drago can work at most $L_m = 1$ consecutive day (must rest the day after working)" or "Werewolf Fenrir can work at most $L_m = 3$ consecutive days," we slide a <strong>window of length $L_m + 1$ days</strong> across the horizon. Within every contiguous window of $L_m + 1$ days, the guard can work at most $L_m$ days (guaranteeing at least one rest day inside the window):
           </p>
@@ -600,13 +344,18 @@ m.constraint(
           </div>
 
           <div class="callout cyan">
-            <strong>💡 Why the Sliding-Window Formulation Is Effective</strong>
-            It expresses arbitrary consecutive-day limits $L_m$ using pure linear inequalities without auxiliary state counters or non-linear branching. It also yields a tight LP relaxation, allowing branch-and-bound solvers to converge rapidly.
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Why the Sliding-Window Formulation Is Effective</span>
+            </div>
+            <div class="callout-content">
+              It expresses arbitrary consecutive-day limits $L_m$ using pure linear inequalities without auxiliary state counters or non-linear branching. It also yields a tight LP relaxation, allowing branch-and-bound solvers to converge rapidly.
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. Linearizing Logic (Part 1): Rookie Slime's "No Solo Night Duty"</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>Linearizing Logic (Part 1): Rookie Slime's "No Solo Night Duty"</span></h2>
           <p>
             Rookie guards like Pururu the Slime have a supervision rule: <strong>"She cannot be assigned to a night shift alone; at least one other colleague must work the same night shift."</strong> (This mirrors hospital rostering rules where first-year nurses cannot staff a night ward solo.)
           </p>
@@ -624,8 +373,8 @@ m.constraint(
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. Linearizing Logic (Part 2): Pairwise Synergies &amp; Conflicts (x_A * x_B)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>Linearizing Logic (Part 2): Pairwise Synergies &amp; Conflicts (x_A * x_B)</span></h2>
           <p>
             Guard chemistry plays a central role in building a strong defense line:
           </p>
@@ -637,7 +386,7 @@ m.constraint(
             Written directly, this introduces the <strong>quadratic product $x_{A,d,s} \cdot x_{B,d,s}$</strong> of two binary variables, which is non-linear.
           </p>
 
-          <h3>Standard Linearization via Auxiliary Binary Variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ (Fortet / McCormick)</h3>
+          <h3 class="section-heading">Standard Linearization via Auxiliary Binary Variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ (Fortet / McCormick)</h3>
           <p>
             We introduce an auxiliary binary variable $\text{pair}_{A,B,d,s} \in \{0, 1\}$ that equals $1$ if and only if both $A$ and $B$ are assigned to slot $(d, s)$, governed by three linear inequalities:
           </p>
@@ -654,31 +403,51 @@ m.constraint(
           </div>
 
           <div class="callout gold">
-            <strong>✨ Why Both Upper and Lower Bounds Matter Here</strong>
-            For a positive synergy bonus ($\Delta_{A,B} > 0$), upper bounds (a) and (b) alone would suffice because maximization naturally pushes $\text{pair}$ up to $1$. Conversely, for a negative conflict penalty ($\Delta_{A,B} &lt; 0$), the solver tries to set $\text{pair} = 0$ to dodge the penalty; inequality (c) provides the lower bound $\text{pair} \ge x_A + x_B - 1$ that forces $\text{pair} = 1$ whenever both guards share a slot.
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>Why Both Upper and Lower Bounds Matter Here</span>
+            </div>
+            <div class="callout-content">
+              For a positive synergy bonus ($\Delta_{A,B} > 0$), upper bounds (a) and (b) alone would suffice because maximization naturally pushes $\text{pair}$ up to $1$. Conversely, for a negative conflict penalty ($\Delta_{A,B} &lt; 0$), the solver tries to set $\text{pair} = 0$ to dodge the penalty; inequality (c) provides the lower bound $\text{pair} \ge x_A + x_B - 1$ that forces $\text{pair} = 1$ whenever both guards share a slot.
+            </div>
+          </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT: Continuous Relaxation of pair and Solver Presolve</span>
+            </div>
+            <div class="callout-content">
+              Conceptually, $\text{pair}_{A,B,d,s}$ is introduced as a binary decision variable, but once $x_A, x_B \in \{0, 1\}$ are fixed, inequalities (a)–(c) naturally force $\text{pair}$ to a single integer value ($0$ or $1$).<br />
+              Hence, <strong>declaring it as a continuous variable ($0 \le \text{pair} \le 1$) yields identical optimal solutions</strong>.<br />
+              In practice, modern MILP solvers like HiGHS feature aggressive Presolve routines (specifically, <em>implied integer detection</em>) that recognize such structural dependencies automatically and prune redundant branching candidates even if declared binary. Nonetheless, recognizing which variables drive core discrete decisions versus dependent auxiliary terms is an essential modeling discipline.
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>5. Defense Coverage Constraints and Alternative Solutions (No-Good Cuts)</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>Defense Coverage Constraints and Alternative Solutions (No-Good Cuts)</span></h2>
           <p>
-            In each slot $(d, s)$, the sum of individual effective defense powers $P_{m,s}$ plus pairwise modifiers must cover the required power $R_{d,s}$ and minimum headcount $N_{d,s}$, while maximizing total castle morale:
+            In each slot $(d, s)$, the sum of individual effective defense powers $P_{m,s}$ plus pairwise modifiers must cover the required power $R_{d,s}$ and minimum headcount $N_{d,s}$, while maximizing total castle morale (summed over unordered pairs $\{A, B\} \subseteq M, A &lt; B$ to prevent duplicate counting):
           </p>
 
           <div class="math-box">
             <span class="math-title">Slot Coverage Constraints and Objective Function</span>
             $$
             \begin{aligned}
-            &\text{Defense Coverage:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{Defense Coverage:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
             &\text{Minimum Staff:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
-            &\text{Objective:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            &\text{Objective:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
             \end{aligned}
             $$
           </div>
 
-          <h3>Enumerating Alternative Rosters with a "No-Good Cut"</h3>
+          <h3 class="section-heading">Enumerating Alternative Rosters with a "No-Good Cut"</h3>
           <p>
             In both real-world scheduling and puzzle design, we often want to inspect alternative valid schedules. Given an existing binary solution with active ones <code>S_1</code> and zeros <code>S_0</code>, adding a single <strong>No-Good Cut (Canonical Integer Cut)</strong> excludes that exact assignment pattern and finds the next-best (or tied optimal) schedule differing in at least one cell:
+          </p>
+          <p>
+            Crucially, the cut sets $S_1, S_0$ are constructed <strong>strictly from the primary decision variables $x_{m,d,s}$</strong> rather than auxiliary variables like $\text{pair}$, guaranteeing the tightest non-redundant cutting plane.
           </p>
 
           <pre class="code-block"><code>// No-Good Cut forbidding the exact previous 0-1 schedule assignment
@@ -698,18 +467,21 @@ m.constraint(
       <!-- =====================================================================
            CHINESE ARTICLE
            ===================================================================== -->
-      <div data-lang-section="zh" hidden>
-        <header class="hero-card">
-          <span class="hero-eyebrow">数学规划（MILP）建模解说</span>
-          <h1>《魔王城24小时警备排班》背后的数学模型：<br />护士排班问题（NSP）与逻辑条件的线性化</h1>
-          <p>
+      <div data-lang-section="zh" class="article-sheet" hidden>
+        <header class="book-header">
+          <div class="book-meta-bar">
+            <span class="badge badge-primary">数学规划（MILP）建模解说</span>
+            <span class="badge badge-point">MILP</span>
+          </div>
+          <h1 class="book-title">《魔王城24小时警备排班》背后的数学模型：<br />护士排班问题（NSP）与逻辑条件的线性化</h1>
+          <div class="book-lead-box">
             适合读者：了解混合整数线性规划（MIP）基础（0-1变量、线性不等式与目标函数）的读者。<br />
             本文将解说现实医院（护士排班）、客服中心与安保现场使用的<strong>排班优化模型</strong>，是如何与游戏中的“禁止夜班次日早班”、“连续出勤上限”、“新人禁止单独夜班”以及“搭档相性（二次项线性化）”一一对应的。
-          </p>
+          </div>
         </header>
 
-        <section class="section-card">
-          <h2>1. 警备排班解谜与护士排班问题（NSP）</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>警备排班解谜与护士排班问题（NSP）</span></h2>
           <p>
             运筹学（OR）中最具代表性的应用领域之一便是<strong>护士排班问题（Nurse Scheduling Problem; NSP）</strong>与<strong>人员排班问题（Staff Rostering）</strong>。《魔王城24小时警备排班》正是将这一经典且实用的 MILP 模型改编成了奇幻世界背景下的据点防卫益智游戏。
           </p>
@@ -762,8 +534,8 @@ m.constraint(
           </table>
         </section>
 
-        <section class="section-card">
-          <h2>2. 决策变量与劳务规则的数学建模</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>决策变量与劳务规则的数学建模</span></h2>
           <p>
             设计划周期的日期集合为 $D = \{0, 1, \dots, T-1\}$，可出勤的魔物集合为 $M$。对每位成员 $m \in M$ 与每一天 $d \in D$，定义是否上白班的 0-1 变量 $\text{day}_{m,d} \in \{0, 1\}$ 与是否上夜班的 0-1 变量 $\text{night}_{m,d} \in \{0, 1\}$（若两者均为 $0$，则当天为“休息”）。
           </p>
@@ -780,7 +552,7 @@ m.constraint(
             $$
           </div>
 
-          <h3>最大连续工作天数约束（滑动窗口法）</h3>
+          <h3 class="section-heading">最大连续工作天数约束（滑动窗口法）</h3>
           <p>
             例如“古龙德拉戈最多连续工作 $L_m = 1$ 天（工作1天后次日必须休息）”、“狼人芬里尔最多连续工作 $L_m = 3$ 天”这类限制，可以通过<strong>长度为 $L_m + 1$ 天的滑动窗口（Sliding Window）</strong>逐日平移来表达：“在任意连续的 $L_m + 1$ 天窗口内，出勤天数总和最多不超过 $L_m$ 天（即窗口内至少有1天休息）”。
           </p>
@@ -791,13 +563,18 @@ m.constraint(
           </div>
 
           <div class="callout cyan">
-            <strong>💡 为什么滑动窗口写法非常实用</strong>
-            它无需引入记录“当前是第几天连勤”的状态变量或非线性条件分支，仅用纯线性不等式就能严密表达任意连勤上限 $L_m$，且具有较紧的 LP 松弛界，有助于分支定界求解器快速收敛。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>滑动窗口定式化的优势</span>
+            </div>
+            <div class="callout-content">
+              它无需引入记录“当前是第几天连勤”的状态变量或非线性条件分支，仅用纯线性不等式就能严密表达任意连勤上限 $L_m$，且具有较紧的 LP 松弛界，有助于分支定界求解器快速收敛。
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>3. 逻辑条件的线性化（一）：“新人史莱姆禁止夜间单独值班”</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>逻辑条件的线性化（一）：“新人史莱姆禁止夜间单独值班”</span></h2>
           <p>
             游戏中期加入的新人史莱姆普露露有一条特殊规则：<strong>“安排夜班时不能让她独自一人，必须至少有一位其他同伴一起上夜班”</strong>（在医院排班中同样常见“新人护士不得单独值夜班”的带教约束）。
           </p>
@@ -815,8 +592,8 @@ m.constraint(
           </p>
         </section>
 
-        <section class="section-card">
-          <h2>4. 逻辑条件的线性化（二）：搭档相性（二次项 x_A * x_B）的线性化</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>逻辑条件的线性化（二）：搭档相性（二次项 x_A * x_B）的线性化</span></h2>
           <p>
             进一步丰富排班策略的是成员之间的<strong>搭档相性（协同加成与同班排斥）</strong>：
           </p>
@@ -828,7 +605,7 @@ m.constraint(
             若直接写出数学表达式，会出现两个 0-1 变量的<strong>乘积项（二次项）$x_{A,d,s} \cdot x_{B,d,s}$</strong>，导致模型不再是线性规划。
           </p>
 
-          <h3>引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ 的标准线性化（Fortet / McCormick 线性化）</h3>
+          <h3 class="section-heading">引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$ 的标准线性化（Fortet / McCormick 线性化）</h3>
           <p>
             为此，我们引入辅助 0-1 变量 $\text{pair}_{A,B,d,s} \in \{0, 1\}$（仅当 $A$ 与 $B$ 同时排入班次 $(d, s)$ 时取 $1$），并用以下3条线性不等式使其与乘积 $x_A \cdot x_B$ 完全等价：
           </p>
@@ -845,31 +622,51 @@ m.constraint(
           </div>
 
           <div class="callout gold">
-            <strong>✨ 为什么正负相性都能由这 3 条不等式严密刻画</strong>
-            如果只有正加成（$\Delta_{A,B} > 0$），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 $\text{pair}$ 推向 $1$；但当存在负惩罚（$\Delta_{A,B} &lt; 0$，不睦组合）时，求解器会试图将 $\text{pair}$ 设为 $0$ 来逃避扣分。此时下界约束 (c) $\text{pair} \ge x_A + x_B - 1$ 能够严格强制<strong>“只要两人同班，$\text{pair}$ 就必须为 $1$ 并扣除 150 点防卫力”</strong>。
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>同时刻画正负搭档相性的数学原理</span>
+            </div>
+            <div class="callout-content">
+              如果只有正加成（$\Delta_{A,B} > 0$），仅靠上界约束 (a)・(b)，最大化目标函数也会自动将 $\text{pair}$ 推向 $1$；但当存在负惩罚（$\Delta_{A,B} &lt; 0$，不睦组合）时，求解器会试图将 $\text{pair}$ 设为 $0$ 来逃避扣分。此时下界约束 (c) $\text{pair} \ge x_A + x_B - 1$ 能够严格强制<strong>“只要两人同班，$\text{pair}$ 就必须为 $1$ 并扣除 150 点防卫力”</strong>。
+            </div>
+          </div>
+
+          <div class="callout callout-point">
+            <div class="callout-header">
+              <span class="callout-icon">💡</span>
+              <span>POINT : 辅助变量 pair 的连续松弛与求解器预处理（Presolve）</span>
+            </div>
+            <div class="callout-content">
+              在逻辑上，$\text{pair}_{A,B,d,s}$ 作为 0-1 二进制变量引入，但只要主决策变量 $x_A, x_B \in \{0, 1\}$ 确定，约束 (a)(b)(c) 就会自然将 $\text{pair}$ 唯一约束在单一整数值（$0$ 或 $1$）。<br />
+              因此在建模时<strong>将其声明为连续变量（$0 \le \text{pair} \le 1$）即可获得完全一致的整数解</strong>。<br />
+              值得一提的是，包括 HiGHS 在内的现代高性能 MILP 求解器均具备强大的预处理（Presolve）能力（例如含意整数检测 Implied Integer Detection），即使显式声明为二进制变量，求解器通常也会自动识别并将其从分支定界候选中剔除或代换。不过，清晰分辨哪些变量承担离散决策、哪些属于从属辅助变量，依然是深刻理解数理规划结构的重要素养。
+            </div>
           </div>
         </section>
 
-        <section class="section-card">
-          <h2>5. 防卫力覆盖约束与“多解枚举（No-Good Cut）”</h2>
+        <section>
+          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>防卫力覆盖约束与“多解枚举（No-Good Cut）”</span></h2>
           <p>
-            在每个时段 $(d, s)$，个人实际防卫力 $P_{m,s}$ 与搭档相性修正之和必须达到所需防卫力 $R_{d,s}$ 及最低人数 $N_{d,s}$（覆盖约束），并在此基础上最大化全周期的总士气（Morale）：
+            在每个时段 $(d, s)$，个人实际防卫力 $P_{m,s}$ 与搭档相性修正之和必须达到所需防卫力 $R_{d,s}$ 及最低人数 $N_{d,s}$（覆盖约束），并在此基础上最大化全周期的总士气（Morale）（式中 $\{A, B\}$ 表示无序成员对 $A &lt; B$，避免重复计算）：
           </p>
 
           <div class="math-box">
             <span class="math-title">各班次 (d, s) 的防卫力/最低人数约束与目标函数</span>
             $$
             \begin{aligned}
-            &\text{防卫力覆盖:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
+            &\text{防卫力覆盖:} && \sum_{m \in M} P_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \ge R_{d,s} \\
             &\text{最低人数:} && \sum_{m \in M} x_{m,d,s} \ge N_{d,s} \\
-            &\text{目标函数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{(A,B)} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
+            &\text{目标函数:} && \max \quad 1000 + \sum_{d,s} \left( \sum_{m \in M} \text{morale}_{m,s} \cdot x_{m,d,s} + \sum_{\{A, B\} \subseteq M, A &lt; B} \Delta_{A,B} \cdot \text{pair}_{A,B,d,s} \right)
             \end{aligned}
             $$
           </div>
 
-          <h3>生成不同最优排班方案的“No-Good Cut（整数割）”</h3>
+          <h3 class="section-heading">生成不同最优排班方案的“No-Good Cut（整数割）”</h3>
           <p>
             无论在实际排班还是解谜中，我们常常希望看到不止一种可行排班方案。设已求得的某个解中取值为 <code>1</code> 的变量集合为 <code>S_1</code>，取值为 <code>0</code> 的变量集合为 <code>S_0</code>，只需向模型追加一条 <strong>No-Good Cut（整数割）</strong>并重新求解，即可排除刚才完全相同的排班表，立即求得至少有1格不同的另一组最优（或次优）排班方案：
+          </p>
+          <p>
+            值得注意的是，割平面集合 $S_1, S_0$ <strong>仅针对主排班决策变量 $x_{m,d,s}$</strong> 构建，排除辅助变量 $\text{pair}$，从而保证割平面的紧致性与无冗余。
           </p>
 
           <pre class="code-block"><code>// 仅禁止与上一组排班表完全相同的 0-1 组合的 No-Good Cut
@@ -895,19 +692,16 @@ m.constraint(
         ja: {
           title: "『魔王城の24時間警備シフト』の数理モデル解説 — 勤務スケジューリング（NSP）と論理条件の線形化",
           back: "← ショーケースへ戻る",
-          other: "🐑 牧場囲いパズルの解説記事へ",
           play: "🏰 パズルをプレイする ▶",
         },
         en: {
           title: 'Behind "Demon Castle 24-Hour Guard Shift" — Nurse Scheduling (NSP) and Linearization',
           back: "← Back to Showcase",
-          other: "🐑 Sheep Pasture Article",
           play: "🏰 Play Puzzle ▶",
         },
         zh: {
           title: "《魔王城24小时警备排班》数学模型解说 — 排班优化（NSP）与逻辑条件线性化",
           back: "← 返回案例展示",
-          other: "🐑 牧场围栏解说文章",
           play: "🏰 开始解谜 ▶",
         },
       };
@@ -921,7 +715,6 @@ m.constraint(
           backBtn.textContent = t.back;
           backBtn.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
         }
-        document.getElementById("nav-other-theory").textContent = t.other;
         document.getElementById("nav-play").textContent = t.play;
 
         document.querySelectorAll("[data-lang-section]").forEach((sec) => {
