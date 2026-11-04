@@ -34,7 +34,20 @@ class MockStorage implements Storage {
 
 class MockElement {
   tagName: string;
-  innerHTML = "";
+  private _innerHTML = "";
+  get innerHTML(): string {
+    return this._innerHTML;
+  }
+  set innerHTML(html: string) {
+    this._innerHTML = html;
+    this.children = [];
+    const matches = html.matchAll(/data-pf=["']([^"']+)["']/g);
+    for (const match of matches) {
+      const child = new MockElement("div");
+      child.dataset["pf"] = match[1];
+      this.children.push(child);
+    }
+  }
   textContent = "";
   hidden = false;
   disabled = false;
@@ -86,7 +99,7 @@ class MockElement {
   }
 
   querySelector(selector: string): MockElement | null {
-    const attrMatch = selector.match(/\[data-pf='([^']+)'\]/);
+    const attrMatch = selector.match(/\[data-pf=["']([^"']+)["']\]/);
     if (attrMatch) {
       return this.findChild((el) => el.dataset["pf"] === attrMatch[1]);
     }
@@ -275,9 +288,11 @@ describe("Puzzle Framework - Deterministic Seed", () => {
 
 describe("Puzzle Framework - Engine & Lifecycle", () => {
   let mockStorage: MockStorage;
+  let rootElement: MockElement;
 
   beforeEach(() => {
     mockStorage = new MockStorage();
+    rootElement = new MockElement("div");
 
     vi.stubGlobal("localStorage", mockStorage);
     vi.stubGlobal("window", {
@@ -358,5 +373,32 @@ describe("Puzzle Framework - Engine & Lifecycle", () => {
 
     const invalidRestored = definition.deserializeState!("invalid", stage);
     expect(invalidRestored).toBeNull();
+  });
+
+  it("enables restart button on restored in-progress board states", async () => {
+    const definition = createTestDefinition();
+    const storage = createStorageManager(definition.id);
+
+    // Save in-progress board state with item 0 selected
+    storage.saveBoardState(1, [0]);
+
+    const app = createPuzzleApp(definition);
+    app.mount(rootElement as unknown as HTMLElement);
+
+    // Give microtask time to mount and jump
+    await new Promise((r) => setTimeout(r, 10));
+
+    const btnRestart = rootElement.querySelector("[data-pf='btn-restart']") as MockElement;
+    expect(btnRestart.disabled).toBe(false);
+
+    // Trigger restart
+    btnRestart.click();
+    expect(btnRestart.disabled).toBe(true);
+
+    // Ensure storage board state was cleared
+    const progress = storage.loadProgress();
+    expect(progress.savedBoardState).toBeUndefined();
+
+    app.destroy();
   });
 });

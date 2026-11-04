@@ -21,6 +21,11 @@
   --pf-touch-target: 44px;
 }
 
+/* Ensure hidden attribute is strictly respected over explicit display rules */
+.pf-app-shell [hidden] {
+  display: none !important;
+}
+
 /* Base Shell Reset */
 .pf-app-shell {
   display: flex;

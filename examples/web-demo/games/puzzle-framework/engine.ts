@@ -41,6 +41,7 @@ export function createPuzzleApp<TState, TMove, TStageSpec>(
   let cachedOptimal: OptimalSolution<TMove> | null = null;
   let highlightedMove: TMove | null = null;
   let showingModelSolution = false;
+  let isRestoredBoard = false;
 
   const generatedStageCache = new Map<number, TStageSpec>();
 
@@ -150,8 +151,9 @@ export function createPuzzleApp<TState, TMove, TStageSpec>(
     updateInlineBanner(dom, evalResult, currentLang, isEndless);
 
     // Tool buttons state
+    const canRestart = undoStack.length > 0 || isRestoredBoard || showingModelSolution;
     dom.btnUndo.disabled = undoStack.length === 0 || showingModelSolution;
-    dom.btnRestart.disabled = undoStack.length === 0 && !showingModelSolution;
+    dom.btnRestart.disabled = !canRestart;
     dom.btnHint.hidden = !definition.solveOptimal;
     dom.btnHint.disabled = isSolving || evalResult.isCleared;
     dom.btnOptimal.hidden = !definition.solveOptimal || (!evalResult.isCleared && !cachedOptimal);
@@ -191,6 +193,7 @@ export function createPuzzleApp<TState, TMove, TStageSpec>(
     if (!currentStage || currentState === null) return;
     showingModelSolution = false;
     highlightedMove = null;
+    isRestoredBoard = false;
 
     // Push previous state onto undo stack
     undoStack.push(currentState);
@@ -259,6 +262,7 @@ export function createPuzzleApp<TState, TMove, TStageSpec>(
   const handleRestart = (): void => {
     if (!currentStage) return;
     undoStack = [];
+    isRestoredBoard = false;
     currentState = definition.createInitialState(currentStage);
     showingModelSolution = false;
     highlightedMove = null;
@@ -321,9 +325,16 @@ export function createPuzzleApp<TState, TMove, TStageSpec>(
       progress.savedBoardState.stageNumber === stageNum
     ) {
       const restored = definition.deserializeState(progress.savedBoardState.serialized, stage);
-      currentState = restored !== null ? restored : definition.createInitialState(stage);
+      if (restored !== null) {
+        currentState = restored;
+        isRestoredBoard = true;
+      } else {
+        currentState = definition.createInitialState(stage);
+        isRestoredBoard = false;
+      }
     } else {
       currentState = definition.createInitialState(stage);
+      isRestoredBoard = false;
     }
 
     progress.currentStageNumber = stageNum;
