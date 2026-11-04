@@ -137,7 +137,7 @@ export function initApp() {
       if (groupItems.length === 0) continue;
 
       const optgroup = document.createElement("optgroup");
-      optgroup.label = GROUP_LABELS[locale][grp];
+      optgroup.label = getGroupLabel(grp);
 
       for (const ex of groupItems) {
         const opt = document.createElement("option");
