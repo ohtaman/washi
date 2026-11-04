@@ -105,5 +105,18 @@ export {
   solveLpWithHighs,
   setHighsWasmUrl,
   getHighsWasmUrl,
+  Highs,
+  HighsModel,
+  HighsError,
+  HighsUnsupportedOptionError,
+  HIGHS_STATUS_NAMES,
+  HIGHS_CONSTANTS,
+  bindHighsFunctions,
+  type HighsEmscriptenModule,
+  type CreateHiGHSOptions,
+  type HighsBindings,
+  type HighsSolutionResult,
+  type HighsSolutionColumn,
+  type HighsSolutionRow,
 } from "./modeler/solvers/highs/index.js";
 

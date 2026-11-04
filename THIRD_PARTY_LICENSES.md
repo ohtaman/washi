@@ -9,15 +9,14 @@ Depending on the solver you choose at runtime, WaSHI interacts with the followin
 ## 1. HiGHS (Default Solver)
 
 - **Role**: Default Linear & Mixed-Integer Programming Engine (WebAssembly)
-- **Package**: [`highs`](https://www.npmjs.com/package/highs)
 - **License**: **MIT License**
-- **Upstream Repository**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS) / [lovasoa/highs-js](https://github.com/lovasoa/highs-js)
+- **Upstream Repository**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)
+- **Compilation**: Directly compiled from official upstream source to WebAssembly via native C API (`highs_c_api.h`)
 
 ```text
 MIT License
 
-Copyright (c) 2023 highs-js
-Copyright (c) 2026 HiGHS
+Copyright (c) 2026 ERGO-Code / HiGHS developers
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

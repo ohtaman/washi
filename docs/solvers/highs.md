@@ -2,23 +2,23 @@
 
 **HiGHS** is high-performance mathematical optimization software developed at the University of Edinburgh ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
 
-In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly via the open-source [`highs`](https://www.npmjs.com/package/highs) package ([lovasoa/highs-js](https://github.com/lovasoa/highs-js) by Ophir Lojkine), providing zero-config execution across Node.js, Web Workers, and browsers.
+In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly compiled directly from official upstream source ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)) using its native C API (`highs_c_api.h`), providing zero-config execution across Node.js, Web Workers, and browsers without third-party wrapper dependencies.
 
 ---
 
 ## Key Features in WaSHI
 
-- **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi` using the upstream [`highs`](https://www.npmjs.com/package/highs) WASM distribution. No separate peer dependency or C++ compiler required.
+- **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi` with zero external runtime dependencies. No separate peer dependency or C++ compiler required.
 - **Permissive MIT License**: 100% commercially friendly.
 - **Web Worker Multithreading**: Automatically offloads intensive solving to background Web Workers in browser environments to avoid freezing the UI thread.
 - **Warm-Start Support (`initialValue`)**: Supports passing variable primal initial value hints (`initialValue`) to HiGHS `setSolution` for warm starting.
-- **Fast WASM Execution**: Runs the upstream 32-bit WebAssembly binary at near-native speed.
+- **Fast WASM Execution**: Runs the directly compiled 32-bit WebAssembly binary at near-native speed.
 
 ---
 
 ## Architecture & WebAssembly Runtime
 
-WaSHI does not compile HiGHS from C++ source in-tree. Instead, it packages and bundles the WebAssembly binary (`highs.wasm`) and runtime provided by the upstream [`highs`](https://www.npmjs.com/package/highs) npm package ([lovasoa/highs-js](https://github.com/lovasoa/highs-js)), wrapping it with WaSHI's algebraic modeling layer, automatic Web Worker offloading, and standard solver abstractions.
+WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) with `-fwasm-exceptions` and single-threaded universal portability (`-DHIGHS_NO_DEFAULT_THREADS=ON`). By interfacing directly with HiGHS's native C API (`highs_c_api.h`), WaSHI achieves zero-copy solution extraction via typed array views on WebAssembly linear memory, rapid upstream release tracking, and a self-contained zero-dependency distribution.
 
 ### Callbacks & Solver Interactivity
 

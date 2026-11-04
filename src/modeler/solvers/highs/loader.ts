@@ -1,12 +1,19 @@
-import type { Highs, Model as HighsPersistentModel, SymbolDisposable } from "highs";
 import type { SolveOptions, SolveProgressEvent } from "../../types.js";
 import { getBundledWasmUrl } from "./assets.js";
 import { loadNodeHighs } from "./node-runtime.js";
+import {
+  Highs,
+  HighsModel as HighsPersistentModel,
+  HIGHS_STATUS_NAMES,
+  HIGHS_CONSTANTS,
+  HighsUnsupportedOptionError,
+} from "./driver.js";
 
 export const OFFICIAL_HIGHS_CDN_WASM_URL =
   "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.wasm";
 
-type HighsInstance = Highs;
+export type HighsInstance = Highs;
+export { HIGHS_STATUS_NAMES, HIGHS_CONSTANTS, HighsUnsupportedOptionError, Highs };
 
 let cachedHighsPromise: Promise<HighsInstance> | null = null;
 let cachedWasmKey: string | null = null;
@@ -186,27 +193,7 @@ export interface HighsIncumbentSnapshot {
   columns: RawHighsSolveResult["Columns"];
 }
 
-const HIGHS_STATUS_NAMES: Record<number, string> = {
-  0: "Not Set",
-  1: "Load error",
-  2: "Model error",
-  3: "Presolve error",
-  4: "Solve error",
-  5: "Postsolve error",
-  6: "Empty",
-  7: "Optimal",
-  8: "Infeasible",
-  9: "Primal infeasible or unbounded",
-  10: "Unbounded",
-  11: "Bound on objective reached",
-  12: "Target for objective reached",
-  13: "Time limit reached",
-  14: "Iteration limit reached",
-  15: "Unknown",
-  16: "Solution limit reached",
-  17: "Interrupted",
-  18: "Memory limit reached",
-};
+
 
 /**
  * Solve an LP formatted model using HiGHS WASM
@@ -307,7 +294,7 @@ export async function solveLpWithHighs(
   if (typeof highs.withModel === "function") {
     const result = highs.withModel(
       { format: "lp", data: lpString },
-      (m: SymbolDisposable<HighsPersistentModel>): RawHighsSolveResult => {
+      (m: HighsPersistentModel): RawHighsSolveResult => {
         if (objectiveOffset !== 0 && typeof m.changeObjectiveOffset === "function") {
           const baseOffset = typeof m.getObjectiveOffset === "function" ? m.getObjectiveOffset() : 0;
           m.changeObjectiveOffset(baseOffset + objectiveOffset);

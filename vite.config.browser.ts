@@ -1,9 +1,6 @@
 import { defineConfig } from "vite";
 import { resolve } from "node:path";
-import { createRequire } from "node:module";
 import { browserAssets } from "./build/distribution.js";
-
-const require = createRequire(import.meta.url);
 
 export default defineConfig(() => {
   const iife = process.env.WASHI_BROWSER_FORMAT === "iife";
@@ -45,8 +42,6 @@ export default defineConfig(() => {
   return {
     publicDir: false,
     plugins: [browserAssets(iife ? "iife" : "es", target)],
-    // The CJS runtime uses locateFile without a bundler-specific WASM import.
-    resolve: { alias: [{ find: /^highs$/, replacement: require.resolve("highs") }] },
     define: {
       global: "globalThis",
       process: "undefined",

@@ -336,7 +336,7 @@ async function loadWashiModules({ includeBrowser = false, rebuild } = {}) {
 
 function readPackageVersions() {
   const pkg = JSON.parse(readFileSync(path.join(repoRoot, "package.json"), "utf8"));
-  let highsVersion = pkg.dependencies?.highs ?? "unknown";
+  let highsVersion = "1.15.1";
   let glpkVersion =
     pkg.devDependencies?.["glpk.js"] ?? pkg.peerDependencies?.["glpk.js"] ?? "unknown";
   let playwrightVersion = pkg.devDependencies?.playwright ?? "unknown";
@@ -346,7 +346,7 @@ function readPackageVersions() {
     );
     highsVersion = highsPkg.version || highsVersion;
   } catch {
-    // fallback to package.json range
+    // fallback to default version
   }
   try {
     const glpkPkg = JSON.parse(

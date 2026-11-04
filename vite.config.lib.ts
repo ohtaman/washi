@@ -20,7 +20,6 @@ export default defineConfig({
     rollupOptions: {
       output: { chunkFileNames: "[name]-[hash].js" },
       external: [
-        "highs",
         "glpk.js",
         "glpk.js/node",
         "z3-solver",

@@ -2,23 +2,23 @@
 
 **HiGHS** 是由爱丁堡大学研发的高性能数理优化软件（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)），公认为线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）领域的顶尖开源求解器。
 
-在 `@ohtaman/washi` 中，HiGHS 通过开源 [`highs`](https://www.npmjs.com/package/highs) 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)，由 Ophir Lojkine 开发的 WebAssembly 移植版本）完全运行在 WebAssembly 环境中，在 Node.js、Web Worker 和浏览器环境中提供零配置执行能力。
+在 `@ohtaman/washi` 中，HiGHS 通过直接从官方上游源码（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）编译的 WebAssembly 以及原生 C API（`highs_c_api.h`）驱动程序运行，无需依赖任何第三方 npm 包装器，在 Node.js、Web Worker 和浏览器环境中提供零配置执行能力。
 
 ---
 
 ## 在 WaSHI 中的核心特性
 
-- **内置且零配置**：直接打包上游 [`highs`](https://www.npmjs.com/package/highs) WASM 发行版本，无需安装额外依赖或进行 C++ 本地编译。
+- **内置且零配置**：直接打包由官方 HiGHS 源码编译的 WebAssembly 分发包，零外部运行时依赖，无需安装额外依赖或进行 C++ 本地编译。
 - **宽松的 MIT 许可证**：核心包 100% 满足商业友好授权要求。
 - **Web Worker 后台多线程**：在浏览器环境中自动将高强度计算卸载至专用后台 Web Worker，避免阻塞 UI 渲染主线程。
 - **支持热启动（`initialValue`）**：支持将变量的初始值提示（`initialValue`）传递给 HiGHS 的 `setSolution` 进行热启动。
-- **高速 WASM 执行**：基于上游 32 位 WebAssembly 二进制产物，运行速度接近原生代码。
+- **高速 WASM 执行**：直接编译的 32 位 WebAssembly 二进制产物以接近原生的速度运行。
 
 ---
 
 ## 架构与 WebAssembly 运行时
 
-WaSHI 并非在代码仓库内直接从 C++ 源码编译 HiGHS。而是从上游 [`highs`](https://www.npmjs.com/package/highs) npm 软件包（[lovasoa/highs-js](https://github.com/lovasoa/highs-js)）中提取并打包 WebAssembly 二进制文件（`highs.wasm`）及其 JS 运行时，结合 WaSHI 的代数建模层、Web Worker 自动调度和标准求解器抽象接口进行分发。
+WaSHI 直接将官方 HiGHS C++ 源码编译为 WebAssembly（`highs.wasm`），开启 `-fwasm-exceptions` 并采用单线程通用运行架构（`-DHIGHS_NO_DEFAULT_THREADS=ON`）。通过直接对接 HiGHS 的原生 C API（`highs_c_api.h`），WaSHI 实现了基于 WebAssembly 线性内存 TypedArray 视图的零拷贝解提取、快速追踪上游版本，以及无额外依赖的独立分发。
 
 ### 回调与求解器交互控制
 

@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 
-const wasm = () => readFileSync(fileURLToPath(import.meta.resolve("highs/runtime")));
+const wasm = () => readFileSync(new URL("../public/highs.wasm", import.meta.url));
 const license = () => readFileSync(new URL("../public/highs.wasm.LICENSE", import.meta.url));
+const runtimeJs = () => readFileSync(new URL("../src/modeler/solvers/highs/runtime.js", import.meta.url));
 const z3Js = () => readFileSync(new URL("./z3-built.js", import.meta.resolve("z3-solver")));
 const z3Wasm = () => readFileSync(new URL("./z3-built.wasm", import.meta.resolve("z3-solver")));
 
@@ -29,8 +30,32 @@ export function packageAssets(): Plugin {
         'export function getBundledWasmUrl() { return new URL("./highs.wasm", import.meta.url).href; }\n' });
       this.emitFile({ type: "asset", fileName: "highs-worker-factory.js", source:
         'export function createHighsWorker() { return new Worker(new URL("./highs-worker.js", import.meta.url), { type: "module" }); }\n' });
+      this.emitFile({ type: "asset", fileName: "highs-runtime.js", source: runtimeJs() });
       this.emitFile({ type: "asset", fileName: "highs-node-runtime.js", source:
-        'export async function loadNodeHighs() { return (await import(/* webpackIgnore: true */ /* @vite-ignore */ "highs")).default; }\n' });
+        'export async function loadNodeHighs() {\n' +
+        '  const [{ default: createHiGHS }, { Highs }, { existsSync }, { fileURLToPath }] = await Promise.all([\n' +
+        '    import(/* webpackIgnore: true */ /* @vite-ignore */ "./highs-runtime.js"),\n' +
+        '    import(/* webpackIgnore: true */ /* @vite-ignore */ "./washi.js"),\n' +
+        '    import(/* webpackIgnore: true */ /* @vite-ignore */ "node:fs"),\n' +
+        '    import(/* webpackIgnore: true */ /* @vite-ignore */ "node:url"),\n' +
+        '  ]);\n' +
+        '  return async (options = {}) => {\n' +
+        '    let wasmPath;\n' +
+        '    try {\n' +
+        '      const candidate = fileURLToPath(new URL("./highs.wasm", import.meta.url));\n' +
+        '      if (existsSync(candidate)) wasmPath = candidate;\n' +
+        '    } catch {}\n' +
+        '    const locateFile = (file, dir) => options.locateFile ? options.locateFile(file, dir) : (file.endsWith(".wasm") && wasmPath ? wasmPath : (dir || "") + file);\n' +
+        '    const instantiateWasm = options.wasmBinary\n' +
+        '      ? (imports, successCallback) => {\n' +
+        '          WebAssembly.instantiate(options.wasmBinary, imports).then((res) => successCallback("instance" in res ? res.instance : res));\n' +
+        '          return {};\n' +
+        '        }\n' +
+        '      : options.instantiateWasm;\n' +
+        '    const module = await createHiGHS({ ...options, locateFile, ...(instantiateWasm ? { instantiateWasm } : {}) });\n' +
+        '    return new Highs(module);\n' +
+        '  };\n' +
+        '}\n' });
       this.emitFile({ type: "asset", fileName: "solvers/z3-assets.js", source:
         'export function getBundledZ3AssetUrls() { return { jsUrl: new URL("./z3-built.js", import.meta.url).href, wasmUrl: new URL("./z3-built.wasm", import.meta.url).href }; }\n' });
       this.emitFile({ type: "asset", fileName: "highs.wasm", source: wasm() });

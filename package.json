@@ -115,9 +115,7 @@
     "url": "https://github.com/ohtaman/washi/issues"
   },
   "homepage": "https://github.com/ohtaman/washi#readme",
-  "dependencies": {
-    "highs": "^1.15.3"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "glpk.js": "^5.0.0",
     "z3-solver": "^5.2.0"
