@@ -17,11 +17,9 @@ import {
 } from "./i18n.js";
 import {
   DAYS_OF_WEEK,
-  DAY_FULL_LABELS_JA,
-  DAY_LABELS_JA,
   PERIODS,
-  ROOM_TYPE_LABELS_JA,
-  formatSlotJa,
+  ROOM_TYPE_LABELS,
+  formatSlotEn,
   resolveDayToken,
   resolvePeriodNumbers,
   type ChatTimetableOperation,
@@ -278,6 +276,8 @@ export function resolveCourseFromText(
       ...c.aliases,
       ...(i18nEntry
         ? [
+            i18nEntry.ja.title,
+            i18nEntry.ja.shortTitle,
             i18nEntry.en.title,
             i18nEntry.en.shortTitle,
             i18nEntry.zh.title,
@@ -316,7 +316,7 @@ export function resolveProfessorFromText(
     // Honorific titles are not part of a person's name.
     (text) =>
       text.replace(
-        /准教授|非常勤講師|教授|講師|先生|さん|氏|副教授|外聘讲师|讲师|老师|Prof\.|Professor|Dr\./gi,
+        /(?:\u51C6\u6559\u6388|\u975E\u5E38\u52E4\u8B1B\u5E2B|\u6559\u6388|\u8B1B\u5E2B|\u5148\u751F|\u3055\u3093|\u6C0F|\u526F\u6559\u6388|\u5916\u8058\u8BB2\u5E08|\u8BB2\u5E08|\u8001\u5E08|Prof\.|Professor|Dr\.)/gi,
         ""
       )
   );
@@ -333,7 +333,14 @@ export function resolveRoomFromText(
       r.shortName,
       ...r.aliases,
       ...(i18nEntry
-        ? [i18nEntry.en.name, i18nEntry.en.shortName, i18nEntry.zh.name, i18nEntry.zh.shortName]
+        ? [
+            i18nEntry.ja.name,
+            i18nEntry.ja.shortName,
+            i18nEntry.en.name,
+            i18nEntry.en.shortName,
+            i18nEntry.zh.name,
+            i18nEntry.zh.shortName,
+          ]
         : []),
     ];
   });
@@ -453,42 +460,40 @@ export const TIMETABLE_EXTRACTION_SCHEMA = {
   },
 };
 
-const EXTRACTOR_SYSTEM_PROMPT = `あなたは大学の時間割編成（University Course Timetabling）AIコパイロットのプランナーです。
-教務課スタッフや教員からの自然言語の要望を解析し、JSON Schemaに従って toolCalls に変換してください。
+const EXTRACTOR_SYSTEM_PROMPT = `You are the planner for the University Course Timetabling (UCTP) AI Copilot.
+Parse natural language requests from academic affairs staff or faculty and convert them into structured toolCalls according to the JSON Schema.
 
-【利用可能なツール一覧】
-1. "pin_course_slot": 特定の科目(course)を特定の曜日(days)・時限(periods)、および任意の教室(room)に固定する。
-   例: 「数理最適化(C15)を火曜2限の101大講義室(R101)に固定して」 -> tool_name:"pin_course_slot", args:{course:"C15", days:["Tue"], periods:[2], room:"R101", isHard:true}
-   例: 「数理最適化(C15)の2コマを火曜2限と木曜2限に固定して」 -> tool_name:"pin_course_slot", args:{course:"C15", days:["Tue","Thu"], periods:[2], isHard:true}
-2. "forbid_course_slot": 特定の科目(course)を特定の曜日(days)・時限(periods)に配置禁止にする。
-   例: 「機械学習(C16)は月曜1限と金曜5限を避けて」 -> tool_name:"forbid_course_slot", args:{course:"C16", days:["Mon"], periods:[1], isHard:true} 等
-3. "set_professor_unavailability": 特定の教員(professor)のNG曜日・NG時限を設定、または「火曜と木曜だけ出講可能(exclusiveAvailable:true)」を設定する。
-   ・午前 = periods:[1,2]、午後 = periods:[3,4,5]、終日 = periods:[1,2,3,4,5]
-   例: 「非常勤の小林先生(P09)は火曜と木曜の午後(3〜5限)しか来られないようにして」 -> tool_name:"set_professor_unavailability", args:{professor:"P09", days:["Tue","Thu"], periods:[3,4,5], exclusiveAvailable:true, isHard:true}
-   例: 「佐藤先生(P01)は金曜の午後(3〜5限)をNGにして」 -> tool_name:"set_professor_unavailability", args:{professor:"P01", days:["Fri"], periods:[3,4,5], exclusiveAvailable:false, isHard:true}
-4. "set_professor_preference": 教員の1限回避(avoidPeriod1)・5限回避(avoidPeriod5)・1日最大担当コマ数(maxSessionsPerDay)を変更する。
-5. "set_course_room_rule": 科目の使用教室・教室種別を指定(mode:"require")または禁止(mode:"forbid")する。
-   roomType: "large_hall"(大講義室), "medium_room"(中講義室), "pc_lab"(PC演習室), "seminar_room"(ゼミ室)
-6. "add_course_relation_rule": 科目間の関係制約を追加する。
-   ・relationKind:"course_no_overlap": 2つの科目(course, secondCourse)を同じ曜日・時限に被せない（裏番組禁止）
-   ・relationKind:"course_consecutive": 週2コマの科目(course)または2科目を同じ曜日の連続する時限(例:2-3限, 3-4限)に連続配置する
-   ・relationKind:"course_same_day": 同じ曜日に配置する
-   ・relationKind:"course_precedence": course を secondCourse より前の曜日（または同日）に配置する
-7. "add_room_closure": 特定の教室(room)を特定の曜日(days)・時限(periods)にメンテナンスや行事で閉鎖(使用不可)にする。
-8. "set_config_param": 全体設定パラメータを変更する（maxProfessorConsecutivePeriods, maxProfessorSessionsPerDay 等）。
-9. "inject_conflict_demo": わざと矛盾シナリオ（"room_double_book" | "prof_impossible_day" | "pc_lab_overload"）を注入して診断する。
+[Available Tools]
+1. "pin_course_slot": Pin a specific course to specific days, periods, and optional room.
+   Example: "Pin C15 to Tue P2 in R101" -> tool_name:"pin_course_slot", args:{course:"C15", days:["Tue"], periods:[2], room:"R101", isHard:true}
+   Example: "Pin both sessions of C15 to Tue P2 and Thu P2" -> tool_name:"pin_course_slot", args:{course:"C15", days:["Tue","Thu"], periods:[2], isHard:true}
+2. "forbid_course_slot": Forbid scheduling a course on specific days/periods.
+   Example: "Avoid Mon P1 and Fri P5 for C16" -> tool_name:"forbid_course_slot", args:{course:"C16", days:["Mon"], periods:[1], isHard:true}
+3. "set_professor_unavailability": Set unavailable or exclusive available days/periods for a professor.
+   - Morning = periods:[1,2], Afternoon = periods:[3,4,5], All Day = periods:[1,2,3,4,5]
+   Example: "Adjunct Prof P09 is only available Tue and Thu afternoons (P3-P5)" -> tool_name:"set_professor_unavailability", args:{professor:"P09", days:["Tue","Thu"], periods:[3,4,5], exclusiveAvailable:true, isHard:true}
+   Example: "Prof P01 cannot teach Fri afternoons (P3-P5)" -> tool_name:"set_professor_unavailability", args:{professor:"P01", days:["Fri"], periods:[3,4,5], exclusiveAvailable:false, isHard:true}
+4. "set_professor_preference": Update professor preferences (avoidPeriod1, avoidPeriod5, maxSessionsPerDay).
+5. "set_course_room_rule": Specify (mode:"require") or forbid (mode:"forbid") a room or roomType for a course.
+   roomType: "large_hall", "medium_room", "pc_lab", "seminar_room"
+6. "add_course_relation_rule": Add inter-course relation constraints.
+   - relationKind:"course_no_overlap": Prevent two courses (course, secondCourse) from being scheduled in the same slot
+   - relationKind:"course_consecutive": Schedule 2 sessions of course (or course + secondCourse) in adjacent consecutive periods on the same day
+   - relationKind:"course_same_day": Schedule on the same day
+   - relationKind:"course_precedence": Schedule course on the same day or earlier than secondCourse
+7. "add_room_closure": Close a room for maintenance or events on specific days/periods.
+8. "set_config_param": Update global configuration parameters (maxProfessorConsecutivePeriods, maxProfessorSessionsPerDay, etc.).
+9. "inject_conflict_demo": Inject a deliberate conflict scenario ("room_double_book" | "prof_impossible_day" | "pc_lab_overload") for diagnosis.
 10. "clear_custom_rules" / "reset_all" / "solve_or_diagnose"
 
-【引数の厳密なルール（満たさない toolCall は適用されずに破棄されます）】
-・course / professor / room は登録一覧のID（例: C15, P09, R101）または登録名をそのまま指定する。
-・days は ["Mon","Tue","Wed","Thu","Fri"] の配列、periods は 1〜5 の整数配列で、どちらも必ず明示する（終日なら periods:[1,2,3,4,5]、全曜日なら days に5曜日すべてを列挙）。
-・set_course_room_rule の mode、add_course_relation_rule の relationKind、inject_conflict_demo の scenario は必須。
-・course_no_overlap と course_precedence では secondCourse が必須。
-・isHard を省略した場合はハード制約(true)として扱われる。
+[Strict Argument Rules]
+- course / professor / room must use registered IDs (e.g., C15, P09, R101) or exact names.
+- days must be an array from ["Mon","Tue","Wed","Thu","Fri"], periods an array of integers 1-5 (All Day = periods:[1,2,3,4,5]).
+- isHard defaults to true if omitted.
 
-【出力トークン節約とダミー呼び出し禁止の厳密なルール】
-・toolCalls にはユーザーの指示に対応する必要なツールのみを含めてください。不要なツールや重複するダミー呼び出し（特に solve_or_diagnose の無駄な連続重複など）は決して含めないでください。変更操作がない場合は空配列 [] にしてください。
-・thought や replyJa は出力上限超過(Truncation)を防ぐため、1文以内の極めて簡潔な記述にするか省略してください。`;
+[Token Economy Rules]
+- Include only required tools matching the user request. Do not include duplicate or dummy calls.
+- Keep thought and replyJa extremely brief (under 1 sentence) or omit to avoid output truncation.`;
 
 const CONSULT_SYSTEM_PROMPT = `You are the "University Course Timetabling AI Copilot" assisting academic affairs staff and faculty.
 Based on the execution summary provided in the prompt (applied rule changes, WaSHI × HiGHS solver optimization outcome, or conflicting constraint diagnosis), reply concisely in Markdown (bullet points, 3–6 lines) in the language explicitly requested at the end of the prompt (Japanese, English, or Simplified Chinese).
@@ -795,7 +800,7 @@ export function applyTimetableChatOperationsToState(
       nextState = generateTimetableState({ seed: nextState.config.seed });
       appliedLogs.push(
         pickTimetableLang(lang, {
-          ja: "すべての時間割設定・追加ルールを初期状態にリセットしました",
+          ja: "\u3059\u3079\u3066\u306E\u6642\u9593\u5272\u8A2D\u5B9A\u30FB\u8FFD\u52A0\u30EB\u30FC\u30EB\u3092\u521D\u671F\u72B6\u614B\u306B\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F",
           en: "Reset all timetable settings and custom rules to defaults",
           zh: "已将所有课表设置与自定义规则重置为初始状态",
         })
@@ -807,7 +812,7 @@ export function applyTimetableChatOperationsToState(
       nextState.customRules = [];
       appliedLogs.push(
         pickTimetableLang(lang, {
-          ja: "個別に追加されたカスタムルールをすべて解除しました",
+          ja: "\u500B\u5225\u306B\u8FFD\u52A0\u3055\u308C\u307F\u30AB\u30B9\u30BF\u30E0\u30EB\u30FC\u30EB\u3092\u3059\u3079\u3066\u89E3\u9664\u3057\u307E\u3057\u305F",
           en: "Cleared all custom timetable rules",
           zh: "已清除所有单独添加的自定义规则",
         })
@@ -829,10 +834,10 @@ export function applyTimetableChatOperationsToState(
                 : "Pinned 3 PC-lab-required courses (C05, C06, C19) simultaneously to Mon P2 when only 2 PC labs (301 & 302) exist.",
           zh:
             op.scenario === "room_double_book"
-              ? "已将两门超130人的大一必修课《计算机科学导论(C01)》与《线性代数I(C02)》同时强制固定在【周二第2节・101大阶梯教室】（教室冲突＆大一必修冲突）。"
+              ? "已将两门超130人的大一必修课《计算机科学导论(C01)》与《线性代数I(C02)》同时强制固定在【周二第2节 101大阶梯教室】（教室冲突＆大一必修冲突）。"
               : op.scenario === "prof_impossible_day"
                 ? "已将仅周二、周四可出勤的兼职讲师（小林老师）负责的《信息安全(C18)》强制固定在【周一第3节】。"
-                : "在仅有2间PC机房（301・302）的情况下，将3门必须使用PC机房的课程（C05, C06, C19）同时强制固定在【周一第2节】。",
+                : "在仅有2间PC机房(301/302)的情况下，将3门必须使用PC机房的课程（C05, C06, C19）同时强制固定在【周一第2节】。",
         })
       );
       continue;
@@ -841,7 +846,7 @@ export function applyTimetableChatOperationsToState(
     if (op.op === "solve_or_diagnose") {
       appliedLogs.push(
         pickTimetableLang(lang, {
-          ja: "現在の条件で時間割の再最適化・整合性チェックを実行します",
+          ja: "\u73FE\u5728\u306E\u6761\u4EF6\u3067\u6642\u9593\u5272\u306E\u518D\u6700\u9069\u5316\u30FB\u6574\u5408\u6027\u30C1\u3087\u30C3\u30AF\u3092\u5B9F\u884C\u3057\u307E\u3059",
           en: "Re-optimizing and checking timetable consistency under current rules",
           zh: "按当前条件重新优化课表并执行一致性检查",
         })
@@ -853,12 +858,12 @@ export function applyTimetableChatOperationsToState(
       const course = nextState.courses.find((c) => c.id === op.courseId);
       if (!course || op.days.length === 0 || op.periods.length === 0) continue;
       const room = op.roomId ? nextState.rooms.find((r) => r.id === op.roomId) : undefined;
-      const roomText = room ? `・${room.name}(${room.id})` : "";
+      const roomText = room ? ` in ${room.name} (${room.id})` : "";
       const slotText =
         op.days.length === 1 && op.periods.length === 1
-          ? formatSlotJa(op.days[0], op.periods[0])
-          : `${op.days.map((d) => DAY_LABELS_JA[d]).join("・")}曜 ${op.periods.join("・")}限`;
-      const desc = `「${course.title}(${course.id})」を ${slotText}${roomText} に${op.isHard ? "固定" : "希望配置"}`;
+          ? formatSlotEn(op.days[0], op.periods[0])
+          : `${op.days.join("/")} P${op.periods.join("/")}`;
+      const desc = `Pin "${course.title} (${course.id})" to ${slotText}${roomText} (${op.isHard ? "Hard" : "Soft"})`;
       const rule: CustomTimetableRule = {
         id: nextCustomRuleId(
           `pin_${course.id}_${op.days.join("-")}_P${op.periods.join("-")}`,
@@ -881,10 +886,10 @@ export function applyTimetableChatOperationsToState(
     if (op.op === "forbid_course_slot") {
       const course = nextState.courses.find((c) => c.id === op.courseId);
       if (!course) continue;
-      const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
+      const dayText = op.days.join("/");
       const periodText =
-        op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
-      const desc = `「${course.title}(${course.id})」の ${dayText} ${periodText} 配置を${op.isHard ? "禁止" : "なるべく回避"}`;
+        op.periods.length === 5 ? "All Day" : `P${op.periods.join("/")}`;
+      const desc = `Forbid "${course.title} (${course.id})" on ${dayText} ${periodText} (${op.isHard ? "Hard" : "Soft"})`;
       const rule: CustomTimetableRule = {
         id: nextCustomRuleId(`forbid_${course.id}`, nextState.customRules),
         kind: "forbid_slot",
@@ -904,8 +909,8 @@ export function applyTimetableChatOperationsToState(
       const prof = nextState.professors.find((p) => p.id === op.professorId);
       if (!prof) continue;
 
-      const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
-      const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
+      const dayText = op.days.join("/");
+      const pText = op.periods.length === 5 ? "All Day" : `P${op.periods.join("/")}`;
       const profLabelI18n = `${getProfessorI18n(prof, lang).name} (${prof.id})`;
       const daysI18n = op.days.map((d) => DAY_SHORT_I18N[lang][d]).join("/");
       const periodsI18n =
@@ -961,21 +966,21 @@ export function applyTimetableChatOperationsToState(
 
       if (!op.isHard) {
         if (op.exclusiveAvailable) {
-          const desc = `${prof.name}(${prof.id}) の出講をなるべく【${dayText}の${pText}】に限定(ソフト希望)`;
+          const desc = `${prof.name} (${prof.id}): prefer only ${dayText} ${pText} (Soft)`;
           pushProfessorForbidRules(false, desc);
           appliedLogs.push(
             pickTimetableLang(lang, {
-              ja: desc,
+              ja: `${prof.name}(${prof.id}) \\u306E\\u51FA\\u8B1B\\u3092\\u306A\\u308B\\u3079\\u304F\\u3010${daysI18n} ${periodsI18n}\\u3011\\u306B\\u9650\\u5B9A(\\u30BD\\u30D5\\u30C8\\u5E0C\\u671B)`,
               en: `Prefer scheduling ${profLabelI18n} only on ${daysI18n} (${periodsI18n}) (soft preference)`,
               zh: `尽量将 ${profLabelI18n} 的授课限制在【${daysI18n} ${periodsI18n}】(软性偏好)`,
             })
           );
         } else {
-          const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} の担当をなるべく回避(ソフト希望)`;
+          const desc = `${prof.name} (${prof.id}): avoid ${dayText} ${pText} (Soft)`;
           pushProfessorForbidRules(false, desc);
           appliedLogs.push(
             pickTimetableLang(lang, {
-              ja: desc,
+              ja: `${prof.name}(${prof.id}) \\u306E ${daysI18n} (${periodsI18n}) \\u306E\\u62C5\\u5F53\\u3092\\u306A\\u308B\\u3079\\u304F\\u56DE\\u907F(\\u30BD\\u30D5\\u30C8\\u5E0C\\u671B)`,
               en: `Prefer avoiding ${daysI18n} (${periodsI18n}) for ${profLabelI18n} (soft preference)`,
               zh: `尽量避免安排 ${profLabelI18n} 在 ${daysI18n} (${periodsI18n}) 授课(软性偏好)`,
             })
@@ -985,21 +990,21 @@ export function applyTimetableChatOperationsToState(
       }
 
       if (!op.exclusiveAvailable) {
-        const desc = `${prof.name}(${prof.id}) の ${dayText}${pText} を出講不可(NG)に設定しました`;
+        const desc = `${prof.name} (${prof.id}): marked ${dayText} ${pText} as unavailable (NG)`;
         pushProfessorForbidRules(true, desc);
         appliedLogs.push(
           pickTimetableLang(lang, {
-            ja: desc,
+            ja: `${prof.name}(${prof.id}) \\u306E ${daysI18n} (${periodsI18n}) \\u3092\\u51FA\\u8B1B\\u4E0D\\u53EF(NG)\\u306B\\u8A2D\\u5B9A\\u3057\\u307E\\u3057\\u305F`,
             en: `Marked ${daysI18n} (${periodsI18n}) as unavailable (NG) for ${profLabelI18n}`,
             zh: `已将 ${profLabelI18n} 的 ${daysI18n} (${periodsI18n}) 设为不可出勤(NG)`,
           })
         );
       } else {
-        const desc = `${prof.name}(${prof.id}) の出講可能枠を【${dayText}の${pText}のみ】に設定しました`;
+        const desc = `${prof.name} (${prof.id}): restricted to ${dayText} ${pText} only`;
         pushProfessorForbidRules(true, desc);
         appliedLogs.push(
           pickTimetableLang(lang, {
-            ja: desc,
+            ja: `${prof.name}(${prof.id}) \\u306E\\u51FA\\u8B1B\\u53EF\\u80FD\\u67A0\\u3092\\u3010${daysI18n} ${periodsI18n}\\u306E\\u307F\\u3011\\u306B\\u8A2D\\u5B9A\\u3057\\u307E\\u3057\\u305F`,
             en: `Restricted ${profLabelI18n}'s available slots to ${daysI18n} (${periodsI18n}) only`,
             zh: `已将 ${profLabelI18n} 的可出勤时段设为【仅限 ${daysI18n} ${periodsI18n}】`,
           })
@@ -1030,7 +1035,7 @@ export function applyTimetableChatOperationsToState(
       }
       if (typeof op.maxSessionsPerDay === "number") {
         prof.maxSessionsPerDay = op.maxSessionsPerDay;
-        partsJa.push(`1日上限=${op.maxSessionsPerDay}コマ`);
+        partsJa.push(`1\u65E5\u4E0A\u9650=${op.maxSessionsPerDay}\u30B3\u30DE`);
         partsEn.push(`Daily Max=${op.maxSessionsPerDay}`);
         partsZh.push(`单日上限=${op.maxSessionsPerDay}节`);
       }
@@ -1038,7 +1043,7 @@ export function applyTimetableChatOperationsToState(
         const profI18n = getProfessorI18n(prof, lang);
         appliedLogs.push(
           pickTimetableLang(lang, {
-            ja: `${prof.name}(${prof.id}) の担当条件を更新 (${partsJa.join(" / ")})`,
+            ja: `${prof.name}(${prof.id}) \u306E\u62C5\u5F53\u6761\u4EF6\u3092\u66F4\u65B0 (${partsJa.join(" / ")})`,
             en: `Updated preferences for ${profI18n.name} (${prof.id}) (${partsEn.join(" / ")})`,
             zh: `已更新 ${profI18n.name} (${prof.id}) 的授课偏好 (${partsZh.join(" / ")})`,
           })
@@ -1052,14 +1057,14 @@ export function applyTimetableChatOperationsToState(
       if (!course) continue;
       const room = op.roomId ? nextState.rooms.find((r) => r.id === op.roomId) : undefined;
       const targetName = room
-        ? `${room.name}(${room.id})`
+        ? `${room.name} (${room.id})`
         : op.roomType
-          ? ROOM_TYPE_LABELS_JA[op.roomType]
-          : "指定教室";
+          ? (ROOM_TYPE_LABELS[op.roomType] || op.roomType)
+          : "Designated Room";
       const desc =
         op.mode === "require"
-          ? `「${course.title}(${course.id})」の使用教室を ${targetName} に限定`
-          : `「${course.title}(${course.id})」での ${targetName} の使用を禁止`;
+          ? `Require room ${targetName} for "${course.title} (${course.id})"`
+          : `Forbid room ${targetName} for "${course.title} (${course.id})"`;
       const rule: CustomTimetableRule = {
         id: nextCustomRuleId(`room_${op.mode}_${course.id}`, nextState.customRules),
         kind: op.mode === "require" ? "require_room" : "forbid_room",
@@ -1084,17 +1089,17 @@ export function applyTimetableChatOperationsToState(
 
       let desc = "";
       if (op.kind === "course_no_overlap" && c2) {
-        desc = `同時開講禁止: 「${c1.shortTitle}(${c1.id})」と「${c2.shortTitle}(${c2.id})」を同じ曜日・時限に被せない`;
+        desc = `No Time Overlap: Do not schedule "${c1.shortTitle} (${c1.id})" and "${c2.shortTitle} (${c2.id})" in the same slot`;
       } else if (op.kind === "course_consecutive") {
         desc = c2
-          ? `連続コマ指定: 「${c1.shortTitle}」と「${c2.shortTitle}」を同日の連続時限に開講`
-          : `連続コマ指定: 「${c1.shortTitle}(${c1.id})」の2コマを同じ曜日の連続時限にまとめて開講`;
+          ? `Consecutive: Schedule "${c1.shortTitle}" & "${c2.shortTitle}" in adjacent periods`
+          : `Consecutive: Schedule 2 sessions of "${c1.shortTitle} (${c1.id})" in adjacent periods`;
       } else if (op.kind === "course_same_day") {
         desc = c2
-          ? `同日開講指定: 「${c1.shortTitle}」と「${c2.shortTitle}」を同じ曜日に開講`
-          : `同日開講指定: 「${c1.shortTitle}(${c1.id})」の複数コマを同じ曜日に開講`;
+          ? `Same Day: Schedule "${c1.shortTitle}" & "${c2.shortTitle}" on the same day`
+          : `Same Day: Schedule sessions of "${c1.shortTitle} (${c1.id})" on the same day`;
       } else if (op.kind === "course_precedence" && c2) {
-        desc = `カリキュラム順序: 「${c1.shortTitle}(${c1.id})」を「${c2.shortTitle}(${c2.id})」より前の曜日(または同日)に開講`;
+        desc = `Curriculum Order: Schedule "${c1.shortTitle} (${c1.id})" on the same day or earlier than "${c2.shortTitle} (${c2.id})"`;
       } else {
         continue;
       }
@@ -1116,10 +1121,10 @@ export function applyTimetableChatOperationsToState(
     if (op.op === "add_room_closure") {
       const room = nextState.rooms.find((r) => r.id === op.roomId);
       if (!room) continue;
-      const dayText = op.days.map((d) => DAY_LABELS_JA[d]).join("・") + "曜";
-      const pText = op.periods.length === 5 ? "終日" : `${op.periods.join("・")}限`;
+      const dayText = op.days.join("/");
+      const pText = op.periods.length === 5 ? "All Day" : `P${op.periods.join("/")}`;
       const reasonText = op.reason ? ` (${op.reason})` : "";
-      const desc = `教室閉鎖: ${room.name}(${room.id}) は ${dayText}${pText} 使用不可${reasonText}`;
+      const desc = `Room Closure: ${room.name} (${room.id}) unavailable on ${dayText} ${pText}${reasonText}`;
       const rule: CustomTimetableRule = {
         id: nextCustomRuleId(`closure_${room.id}`, nextState.customRules),
         kind: "room_closure",
@@ -1147,52 +1152,52 @@ export function applyTimetableChatOperationsToState(
       }
       const labels: Record<string, { ja: string; en: string; zh: string }> = {
         maxProfessorConsecutivePeriods: {
-          ja: "教員の最大連続講義コマ数",
+          ja: "\u6559\u54E1\u306E\u6700\u5927\u9023\u7D9A\u8B1B\u7FA9\u30B3\u30DE\u6570",
           en: "Max consecutive periods for faculty",
           zh: "教师最大连续授课节数",
         },
         maxProfessorSessionsPerDay: {
-          ja: "教員の1日最大担当コマ数",
+          ja: "\u6559\u54E1\u306E1\u65E5\u6700\u5927\u62C5\u5F53\u30B3\u30DE\u6570",
           en: "Max daily sessions for faculty",
           zh: "教师单日最大授课节数",
         },
         maxCohortCompulsoryPerDay: {
-          ja: "学生(各学年)の1日最大必修・選択必修コマ数",
+          ja: "\u5B66\u751F(\u5404\u5B66\u5E74)\u306E1\u65E5\u6700\u5927\u5FC5\u4FEE\u30FB\u9078\u629E\u5FC5\u4FEE\u30B3\u30DE\u6570",
           en: "Max daily compulsory/core sessions per cohort",
           zh: "各年级学生单日最大必修/限选节数",
         },
         enforceRoomCapacity: {
-          ja: "教室定員制約の厳守",
+          ja: "\u6559\u5BA4\u5B9A\u54E1\u5236\u7D04\u306E\u53B3\u5288",
           en: "Enforce room capacity limits",
           zh: "严格遵守教室容量限制",
         },
         enforceRoomEquipment: {
-          ja: "教室設備(PC演習室等)制約の厳守",
+          ja: "\u6559\u5BA4\u8A2D\u5099(PC\u6F14\u7FD2\u5BA4\u7B49)\u5236\u7D04\u306E\u53B3\u5288",
           en: "Enforce room equipment (PC lab) requirements",
           zh: "严格遵守教室设备(PC机房等)要求",
         },
         enforceCohortNoOverlap: {
-          ja: "学年別カリキュラム重複禁止",
+          ja: "\u5B66\u5E74\u5225\u30AB\u30EA\u30AD\u30E5\u30E9\u30E0\u91CD\u8907\u7981\u6B62",
           en: "Enforce cohort curriculum no-overlap",
           zh: "禁止同年级必修课程时间重叠",
         },
         enforceProfessorAvailability: {
-          ja: "教員都合NG枠の厳守",
+          ja: "\u6559\u54E1\u90FD\u5408NG\u67A0\u306E\u53B3\u5288",
           en: "Enforce faculty unavailable (NG) slots",
           zh: "严格遵守教师不可出勤(NG)时段",
         },
         forbidSameCourseSameDay: {
-          ja: "週2コマ科目の同日開講防止",
+          ja: "\u90312\u30B3\u30DE\u79D1\u76EE\u306E\u540C\u65E5\u958B\u8B1B\u9632\u6B62",
           en: "Prevent multi-session courses on the same day",
           zh: "防止周2次课排在同一天",
         },
         enforceMaxConsecutivePeriods: {
-          ja: "教員連続講義上限の適用",
+          ja: "\u6559\u54E1\u9023\u7D9A\u8B1B\u7FA9\u4E0A\u9650\u306E\u9069\u7528",
           en: "Enforce faculty consecutive period limit",
           zh: "启用教师连续授课上限",
         },
         preserveCurrentTimetable: {
-          ja: "微調整モード(既存時間割の維持)",
+          ja: "\u5FAE\u8ABF\u6574\u30E2\u30FC\u30C9(\u65E2\u5B58\u6642\u9593\u5272\u306E\u7DAD\u6301)",
           en: "Minimal perturbation mode (preserve current timetable)",
           zh: "微调模式(尽量保持现有课表)",
         },
@@ -1201,7 +1206,7 @@ export function applyTimetableChatOperationsToState(
       const labelText = labelObj ? pickTimetableLang(lang, labelObj) : pName;
       appliedLogs.push(
         pickTimetableLang(lang, {
-          ja: `${labelText} を ${String(pVal)} に変更しました`,
+          ja: `${labelText} \u3092 ${String(pVal)} \u306B\u5909\u66F4\u3057\u307E\u3057\u305F`,
           en: `Set ${labelText} to ${String(pVal)}`,
           zh: `已将「${labelText}」设为 ${String(pVal)}`,
         })
@@ -1289,30 +1294,30 @@ export function buildCompactStateCatalogPrompt(state: TimetableState): string {
   const courseList =
     state.courses.length > 0
       ? state.courses
-          .map((c) => `${c.id}:${c.title}(週${c.sessionsPerWeek},担当:${c.professorId})`)
+          .map((c) => `${c.id}:${c.title}(${c.sessionsPerWeek}/wk, Prof:${c.professorId})`)
           .join(", ")
-      : "(なし)";
+      : "(None)";
   const profList =
     state.professors.length > 0
       ? state.professors
           .map(
             (p) =>
-              `${p.id}:${p.name}(${p.title}${p.unavailableDays.length > 0 ? `,不可:${p.unavailableDays.map((d) => DAY_LABELS_JA[d]).join("")}` : ""})`
+              `${p.id}:${p.name}(${p.title}${p.unavailableDays.length > 0 ? `, unavail:${p.unavailableDays.join("")}` : ""})`
           )
           .join(", ")
-      : "(なし)";
+      : "(None)";
   const roomList =
     state.rooms.length > 0
       ? state.rooms
-          .map((r) => `${r.id}:${r.name}(${ROOM_TYPE_LABELS_JA[r.roomType]})`)
+          .map((r) => `${r.id}:${r.name}(${ROOM_TYPE_LABELS[r.roomType] || r.roomType})`)
           .join(", ")
-      : "(なし)";
+      : "(None)";
 
   return [
-    `【登録科目一覧】${courseList}`,
-    `【教員一覧】${profList}`,
-    `【教室一覧】${roomList}`,
-    `【現在の全体設定】教員連続上限=${state.config.maxProfessorConsecutivePeriods}コマ, 教員1日上限=${state.config.maxProfessorSessionsPerDay}コマ, 週2コマ同日禁止=${state.config.forbidSameCourseSameDay ? "ON" : "OFF"}`,
+    `[Courses] ${courseList}`,
+    `[Faculty] ${profList}`,
+    `[Rooms] ${roomList}`,
+    `[Current Configuration] Max consec=${state.config.maxProfessorConsecutivePeriods}, Max daily=${state.config.maxProfessorSessionsPerDay}, Forbid same-day=${state.config.forbidSameCourseSameDay ? "ON" : "OFF"}`,
   ].join("\n");
 }
 
@@ -1320,18 +1325,18 @@ export function buildUltraCompactCatalogPrompt(state: TimetableState): string {
   const courseList =
     state.courses.length > 0
       ? state.courses.map((c) => `${c.id}:${c.title}(${c.professorId})`).join(", ")
-      : "(なし)";
+      : "(None)";
   const profList =
     state.professors.length > 0
       ? state.professors.map((p) => `${p.id}:${p.name}`).join(", ")
-      : "(なし)";
+      : "(None)";
   const roomList =
-    state.rooms.length > 0 ? state.rooms.map((r) => `${r.id}:${r.name}`).join(", ") : "(なし)";
+    state.rooms.length > 0 ? state.rooms.map((r) => `${r.id}:${r.name}`).join(", ") : "(None)";
 
   return [
-    `【登録科目一覧】${courseList}`,
-    `【教員一覧】${profList}`,
-    `【教室一覧】${roomList}`,
+    `[Courses] ${courseList}`,
+    `[Faculty] ${profList}`,
+    `[Rooms] ${roomList}`,
   ].join("\n");
 }
 
@@ -1473,7 +1478,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         if (initStatus !== "available" || !extractorBaseSession) {
           throw new Error(
             pickTimetableLang(lang, {
-              ja: "Gemini Nano (LanguageModel API) が利用できません。",
+              ja: "Gemini Nano (LanguageModel API) \u304C\u5229\u7528\u3067\u304D\u307E\u305B\u3093\u3002",
               en: "Gemini Nano (LanguageModel API) is unavailable.",
               zh: "Gemini Nano (LanguageModel API) 不可用。",
             })
@@ -1484,7 +1489,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       onProgress?.({
         phase: "turn1_start",
         activeLabel: pickTimetableLang(lang, {
-          ja: "⏳ Gemini Nano で時間割条件を構造化しています…",
+          ja: "\u23F3 Gemini Nano \u3067\u6642\u9593\u5272\u6761\u4EF6\u3092\u69CB\u9020\u5316\u3057\u3066\u3044\u307E\u3059\u2026",
           en: "⏳ Structuring timetable constraints with Gemini Nano…",
           zh: "⏳ 正在通过 Gemini Nano 结构化排课条件…",
         }),
@@ -1519,7 +1524,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
 
       let { session, shouldDestroy } = await getFreshExtractorSession();
       const t0 = performance.now();
-      let usedPrompt = `${buildCompactStateCatalogPrompt(state)}\n\nユーザーの指示: 「${userMessage}」`;
+      let usedPrompt = `${buildCompactStateCatalogPrompt(state)}\n\nUser Request: "${userMessage}"`;
       let rawJson = "";
 
       try {
@@ -1589,7 +1594,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           } else {
             throw new Error(
               pickTimetableLang(lang, {
-                ja: "モデルの出力が途中で途切れました。指示を短く分割して再度お試しください。",
+                ja: "\u30E2\u30C7\u30EB\u306E\u51FA\u529B\u304C\u9014\u4E2D\u3067\u9014\u5207\u308C\u307E\u3057\u305F\u3002\u6307\u793A\u3092\u77ED\u304F\u5206\u5272\u3057\u3066\u518D\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
                 en: "The model response was truncated or invalid. Please split your request into shorter prompts.",
                 zh: "模型输出被截断或格式无效。请将指令缩短或拆分后重试。",
               })
@@ -1620,7 +1625,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
         onProgress?.({
           phase: "turn2_done",
           activeLabel: pickTimetableLang(lang, {
-            ja: `✅ ${operations.length}件の時間割条件を抽出しました`,
+            ja: `\u2705 ${operations.length}\u4EF6\u306E\u6642\u9593\u5272\u6761\u4EF6\u3092\u62BD\u51FA\u3057\u307E\u3057\u305F`,
             en: `✅ Extracted ${operations.length} timetable operation(s)`,
             zh: `✅ 已提取 ${operations.length} 项排课条件`,
           }),
@@ -1665,12 +1670,12 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
       if (appliedSummary.length > 0) {
         summaryLines.push(
           pickTimetableLang(lang, {
-            ja: `【適用した条件変更 (${appliedSummary.length}件)】`,
+            ja: `\u3010\u9069\u7528\u3057\u305F\u6761\u4EF6\u5909\u66F4 (${appliedSummary.length}\u4EF6)\u3011`,
             en: `[Applied Constraint Changes (${appliedSummary.length})]`,
             zh: `【已应用的条件变更 (${appliedSummary.length}项)】`,
           })
         );
-        for (const s of appliedSummary) summaryLines.push(`・${s}`);
+        for (const s of appliedSummary) summaryLines.push(`- ${s}`);
       }
       if (outcome) {
         if (outcome.status === "Optimal" || outcome.status === "Feasible") {
@@ -1679,7 +1684,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           const sessionCount = outcome.timetable?.sessions.length ?? 0;
           summaryLines.push(
             pickTimetableLang(lang, {
-              ja: `【求解結果】ステータス=${outcome.status} (${outcome.solveTimeMs}ms), 対象=${state.courses.length}科目(計${sessionCount}コマ)`,
+              ja: `\u3010\u6C42\u89E3\u7D50\u679C\u3011\u30B9\u30C6\u30FC\u30BF\u30B9=${outcome.status} (${outcome.solveTimeMs}ms), \u5BFE\u8C61=${state.courses.length}\u79D1\u76EE(\u8A08${sessionCount}\u30B3\u30DE)`,
               en: `[Solve Result] Status=${outcome.status} (${outcome.solveTimeMs}ms), Courses=${state.courses.length} (${sessionCount} sessions)`,
               zh: `【求解结果】状态=${outcome.status} (${outcome.solveTimeMs}ms), 课程=${state.courses.length}门(共${sessionCount}节)`,
             })
@@ -1687,25 +1692,25 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
           if (ev) {
             summaryLines.push(
               pickTimetableLang(lang, {
-                ja: `・ハード制約違反: ${ev.hardViolationCount}件 / 学生の空きコマ(中空き)合計: ${ev.softPenaltyCount}コマ`,
-                en: `・Hard violations: ${ev.hardViolationCount} / Student hollow gaps: ${ev.softPenaltyCount}`,
-                zh: `・硬约束违反: ${ev.hardViolationCount}项 / 学生空堂合计: ${ev.softPenaltyCount}节`,
+                ja: `- \u30CF\u30FC\u30C9\u5236\u7D04\u9055\u53CD: ${ev.hardViolationCount}\u4EF6 / \u7A7A\u304D\u30B3\u30DE\u5408\u8A08: ${ev.softPenaltyCount}\u30B3\u30DE`,
+                en: `- Hard violations: ${ev.hardViolationCount} / Student hollow gaps: ${ev.softPenaltyCount}`,
+                zh: `- 硬约束违反: ${ev.hardViolationCount}项 / 学生空堂合计: ${ev.softPenaltyCount}节`,
               })
             );
           }
           if (diff && diff.totalSessions > 0) {
             summaryLines.push(
               pickTimetableLang(lang, {
-                ja: `・前回の時間割からの変更: ${diff.changedSessionsCount}コマのみ変更 (維持率 ${diff.retentionRatePct}%)`,
-                en: `・Changes from previous timetable: ${diff.changedSessionsCount} session(s) moved (retention ${diff.retentionRatePct}%)`,
-                zh: `・较上一版课表变动: 仅调整 ${diff.changedSessionsCount} 节课 (保留率 ${diff.retentionRatePct}%)`,
+                ja: `- \u524D\u56DE\u306E\u6642\u9593\u5272\u304B\u3089\u306E\u5909\u66F4: ${diff.changedSessionsCount}\u30B3\u30DE\u306E\u307F\u5909\u66F4 (\u7DAD\u6301\u7387 ${diff.retentionRatePct}%)`,
+                en: `- Changes from previous timetable: ${diff.changedSessionsCount} session(s) moved (retention ${diff.retentionRatePct}%)`,
+                zh: `- 较上一版课表变动: 仅调整 ${diff.changedSessionsCount} 节课 (保留率 ${diff.retentionRatePct}%)`,
               })
             );
           }
         } else if (outcome.status === "Infeasible") {
           summaryLines.push(
             pickTimetableLang(lang, {
-              ja: `【⚠️ 時間割を組めません (Infeasible)】衝突している制約 (${outcome.conflicts.length}件):`,
+              ja: `\u3010\u26A0\uFE0F \u6642\u9593\u5272\u3092\u7D44\u3081\u307E\u305B\u3093 (Infeasible)\u3011\u885D\u7A81\u3057\u3066\u3044\u308B\u5236\u7D04 (${outcome.conflicts.length}\u4EF6):`,
               en: `[⚠️ Timetable Infeasible] Conflicting constraints (${outcome.conflicts.length}):`,
               zh: `【⚠️ 无法排出课表 (Infeasible)】冲突约束 (${outcome.conflicts.length}项):`,
             })
@@ -1718,14 +1723,14 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
               zh: "解决建议",
             });
             summaryLines.push(
-              `・${loc.label}${loc.relaxSuggestion ? ` (${hintPrefix}: ${loc.relaxSuggestion})` : ""}`
+              `- ${loc.label}${loc.relaxSuggestion ? ` (${hintPrefix}: ${loc.relaxSuggestion})` : ""}`
             );
           }
         }
       }
 
       const fullPrompt = pickTimetableLang(lang, {
-        ja: `${summaryLines.join("\n")}\n\nユーザーの発言: 「${userMessage}」\n上記の結果に基づき、教務担当者・教員にわかりやすく簡潔に日本語で回答してください。`,
+        ja: `${summaryLines.join("\n")}\n\nUser query: "${userMessage}"\nReply concisely in Japanese based on the above result.`,
         en: `${summaryLines.join("\n")}\n\nUser request: "${userMessage}"\nBased on the results above, reply concisely and clearly in English for academic affairs staff and faculty.`,
         zh: `${summaryLines.join("\n")}\n\n用户指令: “${userMessage}”\n请根据上述结果，用简体中文向教务人员与教师简洁清晰地说明。`,
       });

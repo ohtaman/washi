@@ -35,23 +35,25 @@ export const PERIOD_TIME_RANGES: Record<TimetablePeriod, string> = {
 
 export type RoomType = "large_hall" | "medium_room" | "pc_lab" | "seminar_room";
 
-export const ROOM_TYPE_LABELS_JA: Record<RoomType, string> = {
-  large_hall: "大講義室",
-  medium_room: "中講義室",
-  pc_lab: "PC演習室",
-  seminar_room: "ゼミ・小教室",
+export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  large_hall: "Large Lecture Hall",
+  medium_room: "Medium Classroom",
+  pc_lab: "PC Lab",
+  seminar_room: "Seminar Room",
 };
+export const ROOM_TYPE_LABELS_JA = ROOM_TYPE_LABELS;
 
 export type RoomEquipment = "projector" | "mic" | "pc_terminal" | "moveable_desks" | "recording";
 export type EquipmentTag = RoomEquipment;
 
-export const EQUIPMENT_LABELS_JA: Record<RoomEquipment, string> = {
-  projector: "プロジェクター",
-  mic: "音響・マイク",
-  pc_terminal: "演習用PC端末",
-  moveable_desks: "可動式デスク(GW対応)",
-  recording: "講義収録設備",
+export const EQUIPMENT_LABELS: Record<RoomEquipment, string> = {
+  projector: "Projector",
+  mic: "Audio & Microphone",
+  pc_terminal: "PC Workstation",
+  moveable_desks: "Movable Desks",
+  recording: "Lecture Recording",
 };
+export const EQUIPMENT_LABELS_JA = EQUIPMENT_LABELS;
 
 export interface RoomProfile {
   id: string; // e.g., "R101"
@@ -74,10 +76,10 @@ export interface StudentCohort {
 }
 
 export const STUDENT_COHORTS: ReadonlyArray<StudentCohort> = [
-  { id: "Y1", label: "1年次 (B1: 基礎課程)", shortLabel: "1年", studentCount: 135 },
-  { id: "Y2", label: "2年次 (B2: 専門基礎)", shortLabel: "2年", studentCount: 115 },
-  { id: "Y3", label: "3年次 (B3: 専門応用)", shortLabel: "3年", studentCount: 95 },
-  { id: "Y4", label: "4年次・院 (B4/M1: ゼミ・特論)", shortLabel: "4年/院", studentCount: 45 },
+  { id: "Y1", label: "Year 1 (B1: Foundation)", shortLabel: "Y1", studentCount: 135 },
+  { id: "Y2", label: "Year 2 (B2: Core CS)", shortLabel: "Y2", studentCount: 115 },
+  { id: "Y3", label: "Year 3 (B3: Advanced)", shortLabel: "Y3", studentCount: 95 },
+  { id: "Y4", label: "Year 4 / Grad (B4/M1: Seminar)", shortLabel: "Y4/Grad", studentCount: 45 },
 ];
 
 export type ProfessorEmploymentType = "full_time" | "adjunct";
@@ -101,13 +103,14 @@ export interface ProfessorProfile {
 
 export type CourseCategory = "compulsory" | "elective_core" | "elective" | "lab_exercise" | "seminar";
 
-export const COURSE_CATEGORY_LABELS_JA: Record<CourseCategory, { label: string; shortLabel: string; colorClass: string }> = {
-  compulsory: { label: "必修講義", shortLabel: "必修", colorClass: "course-compulsory" },
-  elective_core: { label: "選択必修", shortLabel: "選必", colorClass: "course-elective-core" },
-  lab_exercise: { label: "PC演習・実験", shortLabel: "演習", colorClass: "course-lab" },
-  elective: { label: "専門選択", shortLabel: "選択", colorClass: "course-elective" },
-  seminar: { label: "ゼミ・輪講", shortLabel: "ゼミ", colorClass: "course-seminar" },
+export const COURSE_CATEGORY_LABELS: Record<CourseCategory, { label: string; shortLabel: string; colorClass: string }> = {
+  compulsory: { label: "Compulsory Lecture", shortLabel: "Compulsory", colorClass: "course-compulsory" },
+  elective_core: { label: "Core Elective", shortLabel: "Core", colorClass: "course-elective-core" },
+  lab_exercise: { label: "PC Lab & Hands-on", shortLabel: "Lab", colorClass: "course-lab" },
+  elective: { label: "Elective", shortLabel: "Elective", colorClass: "course-elective" },
+  seminar: { label: "Seminar & Colloquium", shortLabel: "Seminar", colorClass: "course-seminar" },
 };
+export const COURSE_CATEGORY_LABELS_JA = COURSE_CATEGORY_LABELS;
 
 export interface CourseProfile {
   id: string; // e.g., "C01"
@@ -174,7 +177,7 @@ export interface TimetableConfig {
   // Soft objective weights
   weightAvoidPeriod1: number; // Penalty for assigning a course to Period 1 when professor/course dislikes it
   weightAvoidPeriod5: number; // Penalty for assigning a course to Period 5
-  weightCohortIdleGaps: number; // Penalty for hollow free periods (空きコマ) between compulsory classes
+  weightCohortIdleGaps: number; // Penalty for hollow free periods (idle gaps) between compulsory classes
   weightRoomFit: number; // Bonus/penalty for matching room size appropriately
 }
 
@@ -273,7 +276,7 @@ export interface CohortWeeklySummary {
   cohortId: CohortId;
   totalSessions: number;
   compulsorySessions: number;
-  /** Number of hollow bridge periods (中空きコマ) between compulsory/core classes */
+  /** Number of hollow bridge periods (idle gaps) between compulsory/core classes */
   hollowGapsCount: number;
 }
 
@@ -432,8 +435,12 @@ export interface AiTimetableTrajectoryExport {
   turns: TrajectoryTurnRecord[];
 }
 
+export function formatSlotEn(day: TimetableDay, period: TimetablePeriod): string {
+  return `${day} P${period}`;
+}
+
 export function formatSlotJa(day: TimetableDay, period: TimetablePeriod): string {
-  return `${DAY_LABELS_JA[day]}曜${period}限`;
+  return `${day} P${period}`;
 }
 
 /**

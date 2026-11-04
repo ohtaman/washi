@@ -92,31 +92,31 @@ export function hasFaultLines(cols: number, rows: number, blocks: PlacedBlock[])
 // Stage Progression Specs (World 1..4 + Endless)
 export function getStageSpec(stageNum: number): StageSpec {
   if (stageNum === 1) {
-    return { world: 1, cols: 6, rows: 4, targetPieces: 5, diff: "見習い 01", badgeClass: "diff-w1" };
+    return { world: 1, cols: 6, rows: 4, targetPieces: 5, diff: "Apprentice 01", badgeClass: "diff-w1" };
   } else if (stageNum === 2) {
-    return { world: 1, cols: 7, rows: 5, targetPieces: 5, diff: "見習い 02", badgeClass: "diff-w1" };
+    return { world: 1, cols: 7, rows: 5, targetPieces: 5, diff: "Apprentice 02", badgeClass: "diff-w1" };
   } else if (stageNum === 3) {
-    return { world: 2, cols: 8, rows: 5, targetPieces: 5, diff: "板金士 01", badgeClass: "diff-w2" };
+    return { world: 2, cols: 8, rows: 5, targetPieces: 5, diff: "Artisan 01", badgeClass: "diff-w2" };
   } else if (stageNum === 4) {
-    return { world: 2, cols: 8, rows: 6, targetPieces: 6, diff: "板金士 02", badgeClass: "diff-w2" };
+    return { world: 2, cols: 8, rows: 6, targetPieces: 6, diff: "Artisan 02", badgeClass: "diff-w2" };
   } else if (stageNum === 5) {
-    return { world: 2, cols: 9, rows: 6, targetPieces: 6, diff: "板金士 03", badgeClass: "diff-w2" };
+    return { world: 2, cols: 9, rows: 6, targetPieces: 6, diff: "Artisan 03", badgeClass: "diff-w2" };
   } else if (stageNum === 6) {
-    return { world: 3, cols: 9, rows: 7, targetPieces: 6, diff: "マイスター 01", badgeClass: "diff-w3" };
+    return { world: 3, cols: 9, rows: 7, targetPieces: 6, diff: "Meister 01", badgeClass: "diff-w3" };
   } else if (stageNum === 7) {
-    return { world: 3, cols: 10, rows: 7, targetPieces: 7, diff: "マイスター 02", badgeClass: "diff-w3" };
+    return { world: 3, cols: 10, rows: 7, targetPieces: 7, diff: "Meister 02", badgeClass: "diff-w3" };
   } else if (stageNum === 8) {
-    return { world: 3, cols: 10, rows: 8, targetPieces: 7, diff: "マイスター 03", badgeClass: "diff-w3" };
+    return { world: 3, cols: 10, rows: 8, targetPieces: 7, diff: "Meister 03", badgeClass: "diff-w3" };
   } else if (stageNum === 9) {
-    return { world: 4, cols: 11, rows: 8, targetPieces: 7, diff: "伝説匠 01", badgeClass: "diff-w4" };
+    return { world: 4, cols: 11, rows: 8, targetPieces: 7, diff: "Legendary 01", badgeClass: "diff-w4" };
   } else if (stageNum === 10) {
-    return { world: 4, cols: 12, rows: 8, targetPieces: 8, diff: "伝説匠 02", badgeClass: "diff-w4" };
+    return { world: 4, cols: 12, rows: 8, targetPieces: 8, diff: "Legendary 02", badgeClass: "diff-w4" };
   } else {
     const extra = stageNum - 10;
     const cols = Math.min(14, 12 + Math.floor(extra / 4));
     const rows = Math.min(9, 8 + Math.floor(extra / 4));
     const targetPieces = Math.min(10, 8 + Math.floor(extra / 3));
-    return { world: 5, cols, rows, targetPieces, diff: `極限挑戦 ${extra}`, badgeClass: "diff-endless" };
+    return { world: 5, cols, rows, targetPieces, diff: `Extreme ${extra}`, badgeClass: "diff-endless" };
   }
 }
 

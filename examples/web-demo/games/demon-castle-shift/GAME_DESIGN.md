@@ -1,146 +1,110 @@
-# 『魔王城の24時間警備シフト』ゲームデザイン設計書 (GDD)
+# Demon King Castle 24-Hour Guard Shift — Game Design Document (GDD)
 
-## 1. ゲーム概要・トーン＆マナー指針
+## 1. Overview and Tone & Style Guidelines
 
-- **タイトル**：『魔王城の24時間警備シフト』
-- **ジャンル**：拠点防衛シフトパズル
-- **トーン＆マナー（文章・演出の基本方針）**：
-  1. **感嘆符（！）や音符（♪）、過剰な絵文字を排する**：
-     - 見出し・ボタン・セリフの末尾に「！」を連発せず、句点（。）で終わる落ち着いた自然な日本語に統一する。
-     - 「神シフト」「ホワイト防衛大賞」のような大げさな煽り文句は使わず、「防衛成功」「評価 S」「お手本シフト」のように簡潔で品のある表記にする。
-  2. **わざとらしい寸劇や過剰なエフェクトを入れない**：
-     - 画面を激しく点滅させたり、チュートリアルでわざと失敗操作を強制するような不自然な誘導はやめる。
-     - 必要な情報を静かに、分かりやすく提示し、プレイヤー自身の思考を邪魔しない。
+- **Title**: Demon King Castle 24-Hour Guard Shift
+- **Genre**: Base Defense Shift Scheduling Puzzle
+- **Tone & Style Guidelines**:
+  1. **Exclude excessive punctuation and emojis**:
+     - Maintain a calm, restrained tone ending with periods rather than strings of exclamation points.
+     - Avoid hyperbolic promotional phrasing; prefer clear, dignified labels such as "Defense Successful", "Rank S", and "Model Schedule".
+  2. **Avoid forced theatrics or excessive flashing effects**:
+     - Provide essential information clearly and unobtrusively, letting the player focus on strategic scheduling.
 
 ---
 
-## 2. 世界観・キャラクター・背景設定
+## 2. World Setting, Characters, and Narrative Context
 
-### 2.1 導入（オープニングで端的に伝える状況）
-- 森の奥にある「魔王城」へ、人間の勇者軍が昼夜を問わず進軍してきているという報告が入る。
-- 誰かひとりに無理をさせれば、城の守りはすぐに崩れてしまう。
-- それぞれの得意な時間帯と休息を守りながら、昼と夜の警備シフトを組んで魔王城を守り抜く。
+### 2.1 Premise
+- Deep within the forest, human vanguard forces approach the Demon King Castle day and night.
+- If any single guard is pushed beyond their endurance, castle defenses collapse.
+- Balance night/day duty preferences, mandatory rest intervals, and teammate affinities to maintain continuous perimeter protection.
 
-### 2.2 背景設定（長文テキストではなく、1行の掛け合いと象徴表示で伝える）
-- **長文の『魔王城の記録』は廃止**：
-  プレイヤーが読み飛ばしてしまう長文テキスト枠は設けず、警備アニメーション中の「勇者隊と魔物の1行セリフ」および城門ライフを見守る「魔王サンショウ（オオサンショウウオ）の象徴アイコン」だけで自然に世界観を伝える。
-- **魔王サンショウ（渓流の主）と人間軍（「勇者隊」）**：
-  かつて人間が放置した薬品で川が汚染され、生き延びて姿を変えたオオサンショウウオが「魔王サンショウ」となった。魔物たちが森を守るために人間の街を襲うようになり、人間側も街と暮らしを守るために「勇者隊」を編成して進軍してくる。
+### 2.2 Narrative Delivery
+- Minimal narrative overhead: concise one-line battle dialogue and symbolic indicators rather than forced exposition walls.
+- Guardian Lord Sansho (the giant salamander spirit) silently watches over castle gate health.
 
-### 2.3 登場キャラクターと性質（100倍スケール）
+### 2.3 Cast and Unit Characteristics
 
-| キャラクター | 役職・種族 | 昼 / 夜の防衛力 | 勤務条件・連携 |
+| Character | Role / Race | Day / Night Defense | Constraints & Synergies |
 | :--- | :--- | :---: | :--- |
-| **リリス** | 警備参謀 | （案内役） | シフト管理と案内を担当する参謀。 |
-| **ドラゴ** | 古参門番（古竜） | 昼 **500** / 夜 **500** | **連勤不可**（働いた翌日は休み）・週3回まで。フェンリルと連携で **+100**。 |
-| **カーミラ** | 夜番の主力（吸血鬼） | 昼 **200** / 夜 **400** | **夜番が得意**。プルルと同シフトで連携 **+100**、デュラハンとは不仲で **-150**。 |
-| **フェンリル** | 昼番の主力（人狼） | 昼 **400** / 夜 **200** | **昼番が得意** ／ **満月の夜は出撃不可**。ドラゴ・デュラハンと連携で **+100**。 |
-| **デュラハン** | 重装騎士（死霊騎士） | 昼 **300** / 夜 **400** | **夜番が得意**。フェンリル・プルルと同シフトで連携 **+100**。 |
-| **プルル** | 新米警備員（スライム） | 昼 **200** / 夜 **200** | **夜の単独勤務不可**。カーミラ・デュラハンと同シフトで連携 **+100**。 |
+| **Lilith** | Security Strategist | (Guide) | Oversees shift assignments and tactical briefings. |
+| **Drago** | Veteran Gatekeeper (Elder Dragon) | Day **500** / Night **500** | **No consecutive shifts** (rest day required after work); max 3 shifts/week. Synergizes with Fenrir (**+100**). |
+| **Carmilla** | Night Specialist (Vampire) | Day **200** / Night **400** | **Excels at night**. Synergizes with Pururu (**+100**); clashes with Dullahan (**-150**). |
+| **Fenrir** | Day Specialist (Werewolf) | Day **400** / Night **200** | **Excels by day** / **Unavailable during Full Moon nights**. Synergizes with Drago and Dullahan (**+100**). |
+| **Dullahan** | Heavy Knight (Death Knight) | Day **300** / Night **400** | **Excels at night**. Synergizes with Fenrir and Pururu (**+100**). |
+| **Pururu** | Rookie Guard (Slime) | Day **200** / Night **200** | **Cannot work night shifts alone**. Synergizes with Carmilla and Dullahan (**+100**). |
 
 ---
 
-## 3. 戦闘力ロール（対数正規分布）と難易度調整レバー
+## 3. Combat Rolls (Log-Normal Distribution) and Balance Levers
 
-### 3.1 敵のランダム襲撃と戦闘力ロール（シンプル数字比べ・一撃必守ルール）
-- **ランダム襲撃（`raidProbability`）**：勇者隊はすべての昼夜枠に律儀に現れるわけではなく、各月・各ティアの襲撃確率（約 40%〜55%、最低 1 枠は必ず襲撃）でランダムに進軍してくる。勇者が現れなかった平穏な時間帯はクリック不要で自動的に次の時間帯へ進む。
-- **敵戦闘力の生成（上限なし対数正規分布）**：襲撃が発生した枠では、予測値（中央値 $M$）をもとにした **上限なしの対数正規分布（Log-Normal）** から敵の実際の戦闘力 $E$ が生成される：
+### 3.1 Random Raids and Combat Rolls
+- **Random Raids (`raidProbability`)**: Human forces do not appear in every slot; they attack with a tier-based raid probability (approx. 40%–55%, guaranteed at least 1 raid). Quiet periods advance automatically.
+- **Enemy Power Roll**: For active raid slots, enemy actual power $E$ is generated from a log-normal distribution around median forecast $M$:
   $$Z \sim \mathcal{N}(0, 1), \quad E = \max\!\left(50,\, \mathrm{round}_{10}\!\left(M \cdot \exp(\sigma Z)\right)\right)$$
-- **勝敗ルール**：シンプルに **`味方の防衛力 D >= 敵の実際の戦闘力 E` なら防衛成功**（同値は防衛側の勝ち）。
-- **目標防衛ライン（`requiredPower` $\approx +2\sigma$ 目安）**：上限カットを設けないため勝率が 100% になることはない（画面上の勝率表示も最大 `99%`）が、目標防衛ライン（`requiredPower`）を満たせば約 98〜99% の高確率で防衛できる。またソルバーの最適編成・ヒントではこの `requiredPower` を満たすシフトを計算する。
-- **一撃必守ルール（城門ライフ 1）**：襲撃頻度を絞っている分、**1度でも城門を突破されたら即敗北（`castleMaxHp = 1`、常に全襲撃の防衛成功が必須）** という緊張感あるルールになっている。
+- **Victory Condition**: Simple comparison: **Allied Defense $D \ge E$ means Defense Successful** (ties favor defender).
+- **Target Defense Line (`requiredPower` $\approx +2\sigma$)**: Meeting `requiredPower` yields approximately 98%–99% defense success rate. The WaSHI solver optimizes to meet or exceed this line.
+- **Sudden Death Gate Rule (`castleMaxHp = 1`)**: A single gate breach results in defeat, maintaining tactical tension.
 
-### 3.2 難易度調整レバー（どこをいじれば何が変わるか）
+### 3.2 Balance Levers
 
-すべての調整パラメータは [`types.ts`](file:///Users/mitsuhisa.ota/project/washi/examples/web-demo/games/demon-castle-shift/types.ts) の `BALANCE_CONFIG` と [`stages.ts`](file:///Users/mitsuhisa.ota/project/washi/examples/web-demo/games/demon-castle-shift/stages.ts) の `ENDLESS_TIER_CONFIG` に集約されている。
+All balance parameters are centralized in `BALANCE_CONFIG` (`types.ts`) and `ENDLESS_TIER_CONFIG` (`stages.ts`).
 
-| パラメータ名 | 定義場所 | デフォルト値 | 調整したときの効果（レバーの役割） |
+| Parameter | Location | Default | Role / Effect |
 | :--- | :--- | :---: | :--- |
-| **`expectedToMaxRatio`** | `types.ts` (`BALANCE_CONFIG`) | `0.80` | 目標防衛ライン（`requiredPower`）に対する敵予測値（中央値 $M$）の比率。**大きくする（例：`0.86`）と敵の平均戦力が上がって妥協枠が突破されやすくなり、小さくする（例：`0.74`）と妥協枠でも耐えやすくなる。** |
-| **`enemyLogSigma`** | `types.ts` (`BALANCE_CONFIG`) | `0.12` | 対数正規分布の $1\sigma$ ブレ幅。**大きくすると敵の上振れ・下振れが激しくなり、小さくすると予測値通りに落ち着く。** |
-| **`enemyTruncateSigma`** | `types.ts` (`BALANCE_CONFIG`) | `2.0` | 最小戦力目安（$-2.0\sigma$ 下限表示 `getMinEnemyPower`）の算出に使う係数。 |
-| **`castleMaxHp`** | `types.ts` (`BALANCE_CONFIG`) | `1` | 城門ライフ（初期値 `1`＝一撃必守ルール）。増やすと突破許容回数が増える。 |
-| **`raidProbability`** | `types.ts` / `stages.ts` | `0.42`〜`0.55` | 各時間帯に勇者隊が襲来する確率（最低 1 枠は必ず襲来）。 |
-| **`ENDLESS_TIER_CONFIG`** | `stages.ts` | Tier 1〜5 | エンドレス月（6ヶ月目以降）のティア別の「日数 (`numDays`)」「要求戦力の余裕 (`slackPower`: `100`〜`0`)」「指定休の数 (`maxPtoCount`)」「満月数 (`fullMoonCount`)」「襲撃確率 (`raidProbability`)」を直接変更できる。 |
+| **`expectedToMaxRatio`** | `types.ts` (`BALANCE_CONFIG`) | `0.80` | Ratio of forecast median $M$ to required power. Higher values make compromised slots riskier. |
+| **`enemyLogSigma`** | `types.ts` (`BALANCE_CONFIG`) | `0.12` | Log-normal variance ($1\sigma$). Higher values widen the enemy power spread. |
+| **`enemyTruncateSigma`** | `types.ts` (`BALANCE_CONFIG`) | `2.0` | Scaling factor for minimum enemy power threshold. |
+| **`castleMaxHp`** | `types.ts` (`BALANCE_CONFIG`) | `1` | Gate HP. |
+| **`raidProbability`** | `types.ts` / `stages.ts` | `0.42`–`0.55` | Probability of enemy attack per shift slot. |
+| **`ENDLESS_TIER_CONFIG`** | `stages.ts` | Tiers 1–5 | Configures days (`numDays`), slack power, requested PTO days, full moons, and raid probability for endless mode. |
 
 ---
 
-## 3. カレンダー進行設計（星月暦 1073年前からの月次進行 ＋ 履歴連動のエンドレス編成）
+## 4. Calendar Progression & Campaign Arc
 
-「STAGE 1」のようなメタな表記は使わず、**プレイしている日時の 1073 年前（`星月暦 yyyy年x月`）** から 1ヶ月ずつ暦が進んでいくファンタジー暦表記を採用する。基本の 5ヶ月間に加え、6ヶ月目以降は**プレイヤーの警備履歴に応じて難易度が自動調整されるエンドレス進行モード**へシームレスに続く。
+Progression uses fantasy Star-Moon calendar progression (1073 years prior to current date).
 
 ```mermaid
 flowchart TD
-    W1["1ヶ月目（星月暦 yyyy年x月）：先遣隊の偵察（3日間 × 3人）<br/>・状況：まずは敵の少数の偵察隊が様子を見に来る。最初はリリスと一緒にシフトを組む。<br/>・要素：昼と夜の戦力差、ドラゴの『連勤不可』"]
-    W2["2ヶ月目：夜襲部隊の接近（3日間 × 3人）<br/>・状況：見回りから戻ったデュラハンが加わり、ドラゴは休養に入る。<br/>・要素：『夜番の翌朝は昼番不可』、指定休、ペアの相性"]
-    W3["3ヶ月目：4日間の包囲（4日間 × 4人）<br/>・状況：敵の滞在が4日間に延びる。新米のプルルが警備に加わる。<br/>・要素：プルルの『夜は単独配置不可』"]
-    W4["4ヶ月目：満月の攻防（5日間 × 5人）<br/>・状況：ドラゴが復帰し5人全員が揃う。水曜の『満月』に対処する。<br/>・要素：満月夜の制限、週の出勤回数上限"]
-    W5["5ヶ月目：勇者本隊の進軍（5日間 × 5人）<br/>・状況：金曜の夜に敵の本隊が到着する。最終日に主力を残せるよう5日間のローテーションを組む。"]
-    W6["6ヶ月目以降（エンドレス進行）：月替わり適応型シフト<br/>・直近のクリア評価・ヒント使用回数・再挑戦履歴から難易度（穏やか〜極限の5段階）を自動調整"]
+    W1["Month 1: Vanguard Recon (3 Days x 3 Guards)<br/>Introduction with Lilith; Day/Night combat; Drago's rest rules"]
+    W2["Month 2: Night Raid Advance (3 Days x 3 Guards)<br/>Dullahan joins; rest rules, PTO, pair synergy"]
+    W3["Month 3: 4-Day Encirclement (4 Days x 4 Guards)<br/>Pururu joins; 'No solitary night duty' rule"]
+    W4["Month 4: Full Moon Clash (5 Days x 5 Guards)<br/>Full team assembled; Full Moon night restrictions"]
+    W5["Month 5: Main Army Assault (5 Days x 5 Guards)<br/>Full 5-day rotation saving top defenders for final boss raid"]
+    W6["Month 6+: Endless Adaptive Scheduling<br/>Dynamic difficulty calibrated to player's historical clearance"]
 
     W1 --> W2 --> W3 --> W4 --> W5 --> W6
-    W6 -->|翌月へ進行| W6
+    W6 -->|Next Month| W6
 ```
 
 ---
 
-## 4. シーン構成とクリア後の流れ
+## 5. UI Architecture & Stage Flow
 
 ```mermaid
 flowchart LR
-    S0["タイトル画面<br/>（透過エンブレムロゴ）"] --> SOP["オープニングムービー<br/>（全5場面・1文字送りテロップ・スキップ可）"]
-    SOP --> S1["プロローグ<br/>（リリスから新任警備隊長への1対1の語りかけ）"]
-    S1 --> S2["シフト編成画面<br/>（中央：シフト表 ／ 下部：会話枠）"]
-    S2 -->|このシフトで警備する| S3["フルスクリーン警備・迎撃シーン<br/>（平穏枠は自動通過 ／ 襲撃枠はクリック進行＋自動進行切替可）"]
-    S3 -->|翌月の編成へ進む| S2
+    S0["Title Screen"] --> SOP["Cinematic Opening Movie (Skippable)"]
+    SOP --> S1["Prologue Briefing (Lilith Briefing)"]
+    S1 --> S2["Shift Scheduler (Grid + Briefing Box)"]
+    S2 -->|Deploy Guard Shift| S3["Patrol Simulation Scene (Auto-advance quiet slots)"]
+    S3 -->|Next Month| S2
 ```
 
-### 4.1 オープニングムービーとプロローグ（リリスからの1対1の語りかけ）
-- **背景透過タイトルロゴ（[`title-logo.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo.png)）**：
-  - タイトル画面およびオープニングのクライマックスでは、専用デザインの透過ロゴ画像を表示する。
-- **シネマティック・オープニングムービー（全5カット・魔王の来歴は秘匿）**：
-  - 「薄暮の魔王城」「進軍する人間の勇者隊」「魔王城の作戦室（城の奥深くで眠る魔王と仲間たち）」「正門に集う警備隊」「タイトルロゴ・クライマックス」の5カットを、カメラワーク（パン・ズーム）＋光粒子＋専用BGM＋字幕テロップ付きで再生する（オープニング時点では魔王の正体や来歴は伏せておく）。
-- **プロローグ（リリスがプレイヤーに直接話しかける形式）**：
-  - 第三者視点の背景説明（地の文）は混ぜず、全3スライドすべてを「警備参謀リリスが、新しく着任した警備隊長（プレイヤー）に1対1で話しかけるセリフ」に統一する。
-  1. リリス：「あなたが新しく着任された警備隊長ですね。遠いところをよく来てくださいました。私は警備参謀のリリスです。この魔王城には、行き場を失った魔物たちが集まって静かに暮らしています。城の奥深くでは、私たちの主である魔王様も静かに眠っておられるのですよ。」
-  2. リリス：「実は先日、森の外縁で魔物と人間の衝突が起きてしまいました。人間の街を守るために編成された勇者隊が、昼も夜も休まずこの砦へ進軍してきています。見回りの斥候から、敵の予測戦力が届いているところです。」
-  3. リリス：「うちの門番たちは頼もしいですが、日差しが苦手なカーミラや、連勤ができない古竜のドラゴなど事情もさまざまです。どうかあなたの采配で、みんなが無理なく力を発揮できる昼夜のシフトを組んでください。一緒に私たちの魔王城を守り切りましょう。」
+### 5.1 Clean Dual-Section Layout
+- **No Cluttered Sidebars**: Unified grid layout focused on the weekly shift table and dialogue brief.
+- **Explicit Shift Cells**: Rest cells ("OFF"), Day duty ("DAY"), Night duty ("NIGHT").
+- **Clear Restrictions**: PTO and Full Moon constraints clearly locked and explained.
 
-### 4.2 シフト成功時とステージクリア後の要素
-1. **日ごとの確率バトルロールと1行カットイン**：
-   - 「このシフトで警備する」を押すと、月曜の昼から順に、敵の実際の戦闘力が対数正規分布から抽選され、味方防衛力との数字比べと1行の掛け合いが表示される。
-2. **仲間からの一言**：
-   - 城門ライフを1以上残して1週間を守り抜くと、参加したメンバーが落ち着いた一言を返す（例：ドラゴ「中日に休めたおかげで、最後まで体が持ったぞ。」）。
-3. **お手本シフトの確認**：
-   - クリア後には、最も無理のない「お手本シフト」を盤面に反映して自分の組み方と見比べることができる。
-4. **履歴連動のエンドレス進行（第6週以降）**：
-   - STAGE 5 クリア後も第6週・第7週…と毎週のシフト編成を続けて遊べる。直近の警備履歴（評価ランク・ヒント使用回数・未達回数）に応じて、日数（3〜5日）・戦力余裕・指定休・満月夜の有無が5段階で自動調整される。
+### 5.2 Dialogue Briefing Window
+- Displays concise context, rule feedback, and teammate remarks in a single focused dialog box.
 
 ---
 
-## 5. 画面構成とチュートリアル設計（「ゴミゴミ感」の解消）
+## 6. Implementation Scope
 
-### 5.1 画面の整理（シンプル上下2段構成）
-- **右サイドバーの廃止**：
-  - 画面を分割していた右カラムをなくし、**「中央のシフト表」と「下部の会話ウィンドウ」**だけに要素を絞る。
-- **マスの表示を最小限にする**：
-  - 1マスの中に複数のボタンやバッジを詰め込むのをやめ、**休みの日は「休」**、出撃する日だけ **「昼」「夜」** がはっきり見えるすっきりした表示にする。
-  - 指定休や満月の制限があるマスは、最初から選択できない状態で静かにロック表示する。
-
-### 5.2 下部の会話ウィンドウ（1文字ずつ表示されるメッセージ枠）
-- 画面下部にキャラクターの顔アイコンと会話枠を配置する。
-- セリフは落ち着いた速度で1文字ずつ表示され（クリックで即時全文表示）、状況の説明やルール違反時の理由（「ドラゴは2日続けては出られません」など）をこの枠1箇所に集約して伝える。
-
-### 5.3 1ヶ月目のスポットライト＋吹き出しによる共同編成ガイド
-- 最初の月（1ヶ月目）で「一緒に組んでみる」を選んだ場合は、**「いま操作する行・マス」以外を少し暗く（ディミング）し、対象マスのすぐ上に吹き出し（`リリスと一緒に編成 1/6` ＋ 簡潔な操作ガイド ＋ `ここからは自分で組む` ボタン）を表示**する。
-- プレイヤーの視線が自然に操作対象のマスへ集まり、いつでも「ここからは自分で組む」で自由編成に切り替えられる。
-
----
-
-## 6. 実装タスク
-
-1. **Task 1: 文章・セリフ・ステージデータのトーン統一（感嘆符や過剰な装飾の排除、『魔王城の記録』全5話の追加）**
-2. **Task 2: 画面構成の刷新（右サイドバー廃止、すっきりしたシフト表、下部の1文字ずつ表示される会話枠）**
-3. **Task 3: プロローグ画面と STAGE 1 ガイドの実装**
-4. **Task 4: 迎撃結果・クリア後の『魔王城の記録』閲覧・お手本シフト比較の実装**
-5. **Task 5: テストとビルド検証**
+1. Tone consistency and localization parity across English, Japanese, and Chinese.
+2. Clean grid UI with accessible controls and mobile responsive layouts.
+3. Prologue, tutorials, and guided scheduling.
+4. Solver verification via WaSHI MILP solver and automated regression tests.

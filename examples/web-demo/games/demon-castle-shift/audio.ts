@@ -1,7 +1,7 @@
 /**
- * Procedural Web Audio API Synthesizer & Combat SFX Engine for "魔王城の24時間警備シフト"
+ * Procedural Web Audio API Synthesizer & Combat SFX Engine for "Demon King Castle 24-Hour Guard Shift"
  *
- * Designed to avoid repetitive "music-box arpeggio" (チャラチャラ) patterns:
+ * Designed to avoid repetitive music-box arpeggio patterns:
  * - Uses low-pass filtered multi-oscillator pads/brass, punchy synthesized drums (kick, snare/taiko, hi-hat),
  *   groovy basslines, and sustained/syncopated phrasing with real musical rests.
  * - Includes impactful metallic sword clashes, shield blocks, war horns, and gate-breach explosion SFX.
@@ -328,7 +328,7 @@ export class GameAudioEngine {
 
   /**
    * 4. PLANNING (SHIFT BOARD): Smooth, calm RPG strategy room theme in G minor (Gm -> Ebmaj7 -> Cm7 -> D7)
-   * Zero percussion or short bass thumps (no "トトトっ" tapping sound while thinking);
+   * Zero percussion or short bass thumps (no tapping sounds while thinking);
    * uses warm sustained pad chords, slow-attack cello bass once per bar, and a gentle legato melody.
    */
   private stepPlanningTrack(ctx: AudioContext, now: number, stepSec: number, s: number): void {
@@ -375,7 +375,7 @@ export class GameAudioEngine {
 
   /**
    * 5. BATTLE: Classic Orchestral JRPG (Dragon Quest style) Encounter Intro + Symphonic Battle Theme in E Harmonic Minor
-   * - `rawStep < 8` (Intro Bar): Urgent diminished/dominant orchestral fanfare ("ジャッ・ジャッ・ジャーン！")
+   * - `rawStep < 8` (Intro Bar): Urgent diminished/dominant orchestral fanfare
    * - `rawStep >= 8` (8-Bar / 64-Step Loop):
    *   - Section A (Bars 1–4): Tense staccato strings ostinato + timpani + neoclassical half-step/diminished brass theme
    *   - Section B (Bars 5–8): Soaring heroic trumpet counter-melody over rapid orchestral string figures
@@ -396,7 +396,7 @@ export class GameAudioEngine {
         this.playBrassChord(ctx, [185.0, 261.63, 311.13, 440.0], now, stepSec * 1.8, 0.05);
         this.playOrchestralTrumpet(ctx, 739.99, now, stepSec * 1.7, 0.06); // F#5
       } else if (rawStep === 4) {
-        // Dominant Tutti Hit: B7(b9) ("ジャーン！")
+        // Dominant Tutti Hit: B7(b9)
         this.playTimpani(ctx, 61.74, now, 0.19);
         this.playWarSnare(ctx, now, 0.09, 0.15);
         this.playBrassChord(ctx, [123.47, 246.94, 311.13, 440.0, 523.25], now, stepSec * 2.8, 0.054);
@@ -432,7 +432,7 @@ export class GameAudioEngine {
       this.playWarSnare(ctx, now, barStep === 2 || barStep === 6 ? 0.078 : 0.055, 0.11);
     }
 
-    // 2. Urgent Staccato Strings Ostinato ("ザッ・チャ・ザッ・チャ" across all 8 bars)
+    // 2. Urgent Staccato Strings Ostinato across all 8 bars
     const stringDyadsByBar: readonly (readonly number[])[] = [
       [164.81, 246.94, 329.63], // Bar 1: Em
       [164.81, 261.63, 329.63], // Bar 2: Am/E
@@ -947,7 +947,7 @@ export class GameAudioEngine {
   }
 
   /**
-   * Crisp staccato bowed-string section for Dragon Quest–style battle ostinato ("ザッ・チャ・ザッ・チャ").
+   * Crisp staccato bowed-string section for orchestral battle ostinato.
    */
   private playStaccatoStrings(
     ctx: AudioContext,
@@ -1026,11 +1026,11 @@ export class GameAudioEngine {
   }
 
   // ============================================================================
-  // UI & Combat Sound Effects (戦闘音・効果音)
+  // UI & Combat Sound Effects
   // ============================================================================
 
   /**
-   * Dawn / Nightfall sky transition chime (Beat 1: "夜が明けた" / "日が暮れた")
+   * Dawn / Nightfall sky transition chime (Beat 1: dawn or nightfall)
    */
   public playTimeTransitionCue(isDay: boolean, isFullMoon = false): void {
     if (this.isMuted) return;
@@ -1057,8 +1057,8 @@ export class GameAudioEngine {
   }
 
   /**
-   * Dragon Quest–style Enemy Encounter Shock Flourish (Beat 2: "「○○」が現れた"):
-   * Rapid ascending chromatic/diminished string-and-brass run ("テレレレ・テレレレ・ジャーン！")
+   * Dramatic Enemy Encounter Shock Flourish (Beat 2: enemy appeared):
+   * Rapid ascending chromatic/diminished string-and-brass fanfare run
    * that immediately launches into the symphonic "battle" BGM track!
    */
   public playEncounterCue(isDay: boolean, isBossRaid = false): void {
@@ -1068,7 +1068,7 @@ export class GameAudioEngine {
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    // 1. Rapid ascending diminished/chromatic string & brass shock run ("テレレレ・テレレレ")
+    // 1. Rapid ascending diminished/chromatic string & brass shock run
     const runNotes = isBossRaid
       ? [311.13, 329.63, 369.99, 392.0, 440.0, 493.88, 554.37, 622.25] // D#4 -> D#5
       : [329.63, 349.23, 369.99, 415.3, 440.0, 493.88, 523.25, 622.25]; // E4 -> D#5
@@ -1079,7 +1079,7 @@ export class GameAudioEngine {
       this.playStaccatoStrings(ctx, [f * 0.5, f], t, 0.06, 0.045);
     }
 
-    // 2. Dramatic Diminished-7th / Dominant Tutti Shock Chord ("ジャーン！") at the peak of the run
+    // 2. Dramatic Diminished-7th / Dominant Tutti Shock Chord at the peak of the run
     const hitTime = now + runNotes.length * noteGap;
     this.playTimpani(ctx, isBossRaid ? 61.74 : 82.41, hitTime, 0.18, 0.26);
     this.playWarSnare(ctx, hitTime, 0.085, 0.14);

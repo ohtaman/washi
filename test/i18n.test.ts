@@ -25,10 +25,10 @@ describe("i18n Internationalization System", () => {
   it("switches to Japanese and returns Japanese translations", () => {
     setLocale("ja");
     expect(getLocale()).toBe("ja");
-    expect(t("modelSelectLabel")).toBe("問題モデル:");
-    expect(t("runButton")).toBe("最適化を実行");
-    expect(t("statusLabel")).toBe("求解ステータス");
-    expect(t("objectiveLabel")).toBe("最適目的関数値");
+    expect(t("modelSelectLabel")).toBe("\u554F\u984C\u30E2\u30C7\u30EB:");
+    expect(t("runButton")).toBe("\u6700\u9069\u5316\u3092\u5B9F\u884C");
+    expect(t("statusLabel")).toBe("\u6C42\u89E3\u30B9\u30C6\u30FC\u30BF\u30B9");
+    expect(t("objectiveLabel")).toBe("\u6700\u9069\u76EE\u7684\u95A2\u6570\u5024");
   });
 
   it("detects Japanese when navigator.language starts with ja", () => {

@@ -3,11 +3,9 @@ export type PresetGroup = "fundamentals" | "practical" | "logic";
 export interface ExampleModel {
   id: string;
   title: string;
-  titleJa?: string;
   category: "LP" | "MIP" | "QP" | "SMT";
   group: PresetGroup;
   description: string;
-  descriptionJa?: string;
   apis: string[];
   code: string;
   visualizer?: "summary" | "matrix" | "roster" | "coupon" | "none";
@@ -20,13 +18,10 @@ export const EXAMPLES: ExampleModel[] = [
   {
     id: "production",
     title: "Production Planning (Chairs & Tables)",
-    titleJa: "生産計画問題（椅子と机の最適生産）",
     category: "MIP",
     group: "fundamentals",
     description:
       "Classic workshop resource allocation. Maximize profit from chairs and tables subject to carpentry and finishing labor limits.",
-    descriptionJa:
-      "木工・仕上げ時間の制約下で椅子と机の生産数を決定し、総利益を最大化する基本モデル。",
     apis: ["integer()", "maximize()", "constraint()"],
     visualizer: "summary",
     code: `// --- Production Planning (Chairs & Tables) ---
@@ -59,13 +54,10 @@ console.log("Tables to produce:", tables.value);
   {
     id: "knapsack",
     title: "0-1 Knapsack Selection",
-    titleJa: "0-1 ナップサック選択問題",
     category: "MIP",
     group: "fundamentals",
     description:
       "Binary integer programming. Select the highest-value combination of items without exceeding the backpack weight limit.",
-    descriptionJa:
-      "重量上限（7kg）を超えない範囲で価値の合計が最大になるアイテムの組み合わせを0-1変数で選択します。",
     apis: ["binary(keys)", "sum()", "constraint()"],
     visualizer: "summary",
     code: `// --- 0-1 Knapsack Selection Problem ---
@@ -108,13 +100,10 @@ items.forEach(it => {
   {
     id: "transportation",
     title: "Transportation Network (2D Matrix)",
-    titleJa: "輸送・物流ネットワーク問題（2次元変数）",
     category: "LP",
     group: "fundamentals",
     description:
       "2D variable indexing with continuous(factories, stores). Minimize total shipping cost from 3 factories to 4 regional stores.",
-    descriptionJa:
-      "continuous(factories, stores) による2次元マトリクス変数の構築。3工場から4店舗への総輸送コストを最小化します。",
     apis: ["continuous(rows, cols)", "sum()", "constr.dual"],
     visualizer: "matrix",
     code: `// --- Transportation & Distribution Network (2D Matrix) ---
@@ -173,13 +162,10 @@ for (const f of factories) {
   {
     id: "diet_sensitivity",
     title: "Diet & Sensitivity Analysis (Dual / Slack)",
-    titleJa: "栄養問題と感度分析（潜在価格 Dual・スラック Slack）",
     category: "LP",
     group: "fundamentals",
     description:
       "Inspect shadow prices (constr.dual), surpluses (constr.slack), and reduced costs (var.reducedCost) to identify cost bottlenecks.",
-    descriptionJa:
-      "最小コストの献立を求めつつ、どの栄養基準がコストを押し上げているか（潜在価格 dual）や余剰（slack）を分析します。",
     apis: ["continuous(keys)", "constr.dual", "constr.slack", "var.reducedCost"],
     visualizer: "summary",
     code: `// --- Diet Problem & LP Sensitivity Analysis (Duals, Slacks, Reduced Costs) ---
@@ -226,13 +212,10 @@ for (const c of [cCal, cProt, cCalc, cIron]) {
   {
     id: "shift_scheduling",
     title: "Staff Shift Scheduling (Weekly Roster)",
-    titleJa: "スタッフのシフト作成（必要人数・希望休・連勤制限）",
     category: "MIP",
     group: "practical",
     description:
       "Assign 5 staff members across a 7-day week meeting daily coverage, senior leader rules, max shifts, and day-off requests.",
-    descriptionJa:
-      "日別の必要人数・リーダー配置・週5日上限・スタッフの希望休をすべて満たしつつ人件費を最小化するシフト表を作成します。",
     apis: ["binary(staff, days)", "sum()", "constraint()"],
     visualizer: "roster",
     code: `// --- Staff Shift Scheduling (Weekly Roster Optimization) ---
@@ -298,13 +281,10 @@ console.log("Optimal Weekly Payroll: $" + m.objectiveValue);
   {
     id: "cart_coupon",
     title: "E-Commerce Cart & Coupon Optimizer",
-    titleJa: "ECカートのクーポン最適適用（条件付き閾値・追加購入提案）",
     category: "MIP",
     group: "practical",
     description:
       "Client-side checkout optimizer using indicator(). Finds the best stackable/exclusive coupons and checks if a $10 filler item unlocks a bigger discount.",
-    descriptionJa:
-      "indicator() を活用し、併用可否や最低購入金額ルールを満たす最安クーポン構成と「あと10ドル追加で上位割引を解放」する提案を計算します。",
     apis: ["indicator()", "binary()", "sum()"],
     visualizer: "coupon",
     code: `// --- E-Commerce Cart & Coupon Optimizer (Indicator Constraints) ---
@@ -367,13 +347,10 @@ coupons.forEach(c => {
   {
     id: "portfolio_qp",
     title: "Markowitz Portfolio Optimization (Convex QP)",
-    titleJa: "マーコウィッツのポートフォリオ最適化（凸二次計画 QP）",
     category: "QP",
     group: "practical",
     description:
       "Convex Quadratic Programming (QP). Minimize investment portfolio variance risk subject to 100% budget and target return constraints.",
-    descriptionJa:
-      "資産間の共分散行列に基づくポートフォリオ分散（リスク）を、期待リターン下限と予算制約の下で最小化します。",
     apis: ["continuous()", "new QuadExpr()", "v1.mul(v2)", "sum()"],
     visualizer: "summary",
     code: `// --- Markowitz Portfolio Optimization (Convex QP) ---
@@ -427,13 +404,10 @@ assets.forEach((name, i) => {
   {
     id: "glpk_diet_problem",
     title: "Stigler Diet Problem (GLPK Plugin)",
-    titleJa: "スティグラーの栄養問題（GLPK ソルバープラグイン）",
     category: "LP",
     group: "fundamentals",
     description:
       "Classic linear programming diet cost minimization solved using the pluggable GNU Linear Programming Kit (GLPK) WebAssembly engine.",
-    descriptionJa:
-      "プラガブルな GLPK WebAssembly エンジン（solver: 'glpk'）に切り替えて古典的な栄養問題を求解します。",
     apis: ['solver: "glpk"', "continuous()", "m.solve()"],
     visualizer: "summary",
     code: `// --- Diet Optimization via GLPK Solver Plugin ---
@@ -470,13 +444,10 @@ console.log("Cheese packs:", cheese.value?.toFixed(2));
   {
     id: "shift_conflict_unsat",
     title: "Shift Vacation Conflict Diagnosis (Z3 Unsat Core)",
-    titleJa: "シフト希望休の衝突診断（Z3 Unsat Core）",
     category: "SMT",
     group: "logic",
     description:
       "When too many staff members request Saturday off, Z3 isolates the conflicting constraint subset (coverage_Sat vs specific Saturday vacation requests).",
-    descriptionJa:
-      "土曜日の希望休が重なりシフトが組めない（解なし）際、Z3 の unsatCore でどの必須人数枠と誰の希望休が衝突したかを特定します。",
     apis: ["integer(rows, cols)", "m.check()", "m.unsatCore", 'solver: "z3"'],
     visualizer: "none",
     code: `// --- Shift Scheduling Vacation Conflict Diagnosis (Z3 Unsat Core) ---
@@ -515,13 +486,10 @@ if (res.status === "Unsat") {
   {
     id: "conflict_diagnosis_unsat",
     title: "Rule Conflict Diagnosis (Budget vs Staffing Unsat Core)",
-    titleJa: "業務ルールの矛盾診断（予算上限と人員要件の Unsat Core）",
     category: "SMT",
     group: "logic",
     description:
       "Constraint conflict diagnosis with Z3. Isolates a subset of incompatible rules (unsat core) causing infeasibility.",
-    descriptionJa:
-      "特急納期の人員ルールと取締役会の予算上限が矛盾した際、原因となっている制約サブセット（Unsat Core）を抽出します。",
     apis: ["bool()", "implies()", "m.unsatCore"],
     visualizer: "none",
     code: `// --- Conflict Diagnosis & Unsat Core Extraction ---
@@ -564,13 +532,10 @@ if (res.status === "Unsat") {
   {
     id: "smt_sat_scheduling",
     title: "Task Scheduling & Logic Feasibility (SMT / SAT)",
-    titleJa: "タスク割り当てと論理充足性検証（SMT / SAT）",
     category: "SMT",
     group: "logic",
     description:
       "Satisfiability (SAT) checking with Z3. Finds a valid schedule satisfying mutual exclusion and logical implication constraints.",
-    descriptionJa:
-      "排他条件（xor, not）や含意（implies）を含む論理・算術混合制約を満たす割り当てを Z3 で検証します。",
     apis: ["bool()", "xor()", "implies()", "m.check()"],
     visualizer: "none",
     code: `// --- SMT / SAT Logic Satisfiability ---

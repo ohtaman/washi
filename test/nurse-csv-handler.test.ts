@@ -89,8 +89,8 @@ describe("Nurse Scheduling CSV Handler & Blank Slate Mode", () => {
 
   it("parses Japanese headers and tolerant localized tokens correctly", () => {
     const jaNursesCsv = `
-ID,氏名,フリガナ,スキル,経験年数,契約形態,夜勤可否,月間夜勤上限,最小公休数,最小勤務日数,最大勤務日数,最大連勤日数,平日専従,祝日休,前月最終勤務
-N99,田中 花子,タナカ ハナコ,"リーダー;救急",10,full_time,可,6,9,15,22,4,いいえ,いいえ,"休;日;日;準;深;休;日"
+ID,氏名,\u30d5\u30ea\u30ac\u30ca,\u30b9\u30ad\u30eb,経験年数,契約形態,夜勤可否,月間夜勤上限,最小公休数,最小勤務日数,最大勤務日数,最大連勤日数,平日専従,祝日休,前月最終勤務
+N99,田中 花子,\u30bf\u30ca\u30ab \u30cf\u30ca\u30b3,"\u30ea\u30fc\u30c0\u30fc;救急",10,full_time,可,6,9,15,22,4,\u3044\u3044\u3048,\u3044\u3044\u3048,"休;日;日;準;深;休;日"
 `.trim();
 
     const parsed = parseNursesCsv(jaNursesCsv);
@@ -113,7 +113,7 @@ N99,田中 花子,タナカ ハナコ,"リーダー;救急",10,full_time,可,6,9
       {
         id: "N01",
         name: "看護師1",
-        kana: "カンゴシ1",
+        kana: "\u30ab\u30f3\u30b4\u30b71",
         skills: ["leader_cap" as const],
         nightOk: true,
         yearsExp: 5,
@@ -159,7 +159,7 @@ N99,田中 花子,タナカ ハナコ,"リーダー;救急",10,full_time,可,6,9
         type: "ng_pair" as const,
         nurseA: "N01",
         nurseB: "N01", // self pair
-        reason: "自己ペア",
+        reason: "自己\u30da\u30a2",
       },
     ];
 
@@ -167,7 +167,7 @@ N99,田中 花子,タナカ ハナコ,"リーダー;救急",10,full_time,可,6,9
     expect(validation.valid).toBe(false);
     expect(validation.errors.some((e) => e.includes("N99"))).toBe(true);
     expect(validation.errors.some((e) => e.includes("45"))).toBe(true);
-    expect(validation.errors.some((e) => e.includes("自己ペア") || e.includes("N01"))).toBe(true);
+    expect(validation.errors.some((e) => e.includes("自己\u30da\u30a2") || e.includes("N01"))).toBe(true);
   });
 
   it("provides downloadable template samples that pass full validation", () => {
@@ -203,20 +203,20 @@ N99,田中 花子,タナカ ハナコ,"リーダー;救急",10,full_time,可,6,9
         day: 10,
         shift: "O" as const,
         isHard: true,
-        reason: '有給休暇, 私用（"急用"のため）',
+        reason: '有給休暇, 私用（"急用"\u306e\u305f\u3081）',
       },
     ];
     const csv = exportRequestsCsv(preferences);
-    expect(csv).toContain('"有給休暇, 私用（""急用""のため）"');
+    expect(csv).toContain('"有給休暇, 私用（""急用""\u306e\u305f\u3081）"');
 
     const parsed = parseRequestsCsv(csv);
     expect(parsed.errors).toHaveLength(0);
     expect(parsed.preferences).toHaveLength(1);
-    expect(parsed.preferences[0].reason).toBe('有給休暇, 私用（"急用"のため）');
+    expect(parsed.preferences[0].reason).toBe('有給休暇, 私用（"急用"\u306e\u305f\u3081）');
   });
 
   it("handles empty CSV text and malformed rows gracefully", () => {
-    expect(parseNursesCsv("").errors).toContain("CSVファイルが空です。");
+    expect(parseNursesCsv("").errors).toContain("CSV\u30d5\u30a1\u30a4\u30eb\u304c空\u3067\u3059。");
     expect(parseRequestsCsv("").preferences).toHaveLength(0);
     expect(parseRelationsCsv("").relations).toHaveLength(0);
 
@@ -230,11 +230,11 @@ N01,
     expect(parsed.warnings.length).toBeGreaterThan(0);
   });
 
-  it("parses nurses CSV with '所属・属性タグ' header and Japanese attribute tokens", () => {
+  it("parses nurses CSV with localized tags header and Japanese attribute tokens", () => {
     const csv = `
-id,氏名,フリガナ,所属・属性タグ,経験年数,契約形態,夜勤可,月間夜勤上限,最小公休数,最小勤務日数,最大勤務日数,最大連勤日数,平日のみ,祝日休み,前月末7日間シフト
-N01,佐藤 美咲,サトウ ミサキ,A班;主任;リーダー;救急;呼吸器,8,full_time,1,4,8,20,22,5,0,0,D;D;O;D;E;N;O
-N02,田中 健一,タナカ ケンイチ,B班;新人;リ;救;呼,1,full_time,1,2,9,18,20,4,0,0,O;D;D;O;D;E;N
+id,氏名,\u30d5\u30ea\u30ac\u30ca,所属\u30fb属性\u30BF\u30B0,経験年数,契約形態,夜勤可,月間夜勤上限,最小公休数,最小勤務日数,最大勤務日数,最大連勤日数,平日\u306e\u307f,祝日休\u307f,前月末7日間\u30b7\u30d5\u30c8
+N01,佐藤 美咲,\u30b5\u30c8\u30a6 \u30df\u30b5\u30ad,A班;主任;\u30ea\u30fc\u30c0\u30fc;救急;呼吸器,8,full_time,1,4,8,20,22,5,0,0,D;D;O;D;E;N;O
+N02,田中 健一,\u30bf\u30ca\u30ab \u30b1\u30f3\u30a4\u30c1,B班;新人;\u30ea;救;呼,1,full_time,1,2,9,18,20,4,0,0,O;D;D;O;D;E;N
 `.trim();
 
     const parsed = parseNursesCsv(csv);
@@ -262,21 +262,21 @@ N02,田中 健一,タナカ ケンイチ,B班;新人;リ;救;呼,1,full_time,1,2
   it("rejects unknown or invalid shift tokens during CSV import and validation", () => {
     const invalidShiftCsv = `
 nurseId,day,shift,isHard,reason
-N01,5,DN,1,タイポシフト
-N01,6,UNKNOWN,0,無効シフト
+N01,5,DN,1,\u30bf\u30a4\u30dd\u30b7\u30d5\u30c8
+N01,6,UNKNOWN,0,無効\u30b7\u30d5\u30c8
 N01,7,D,0,正常日勤
 `.trim();
 
     const parsed = parseRequestsCsv(invalidShiftCsv);
     expect(parsed.errors.length).toBe(2);
-    expect(parsed.errors[0]).toContain('不明なシフトコード "DN"');
-    expect(parsed.errors[1]).toContain('不明なシフトコード "UNKNOWN"');
+    expect(parsed.errors[0]).toContain('不明\u306a\u30b7\u30d5\u30c8\u30b3\u30fc\u30c9 "DN"');
+    expect(parsed.errors[1]).toContain('不明\u306a\u30b7\u30d5\u30c8\u30b3\u30fc\u30c9 "UNKNOWN"');
     expect(parsed.preferences).toHaveLength(1);
     expect(parsed.preferences[0].shift).toBe("D");
 
     // Allows custom shift codes when explicitly registered
     const customAllowed = parseRequestsCsv(
-      "nurseId,day,shift,isHard,reason\nN01,5,T,1,研修シフト",
+      "nurseId,day,shift,isHard,reason\nN01,5,T,1,研修\u30b7\u30d5\u30c8",
       undefined,
       new Set(["T"])
     );
@@ -289,7 +289,7 @@ N01,7,D,0,正常日勤
       {
         id: "N01",
         name: "看護師1",
-        kana: "カンゴシ1",
+        kana: "\u30ab\u30f3\u30b4\u30b71",
         skills: ["leader_cap" as const],
         nightOk: true,
         yearsExp: 5,
@@ -309,7 +309,7 @@ N01,7,D,0,正常日勤
         day: 5,
         shift: "INVALID_CODE",
         isHard: true,
-        reason: "テスト",
+        reason: "\u30c6\u30b9\u30c8",
       },
     ];
     const val = validateNurseDataset(nurses, invalidPref, [], 30);
@@ -322,7 +322,7 @@ N01,7,D,0,正常日勤
     const relsWithBlankShifts = `
 type,nurseA,nurseB,shifts,isHard,reason
 ng_pair,N01,N02,,1,相性NG
-preceptor,N03,N04,"  ",1,指導ペア
+preceptor,N03,N04,"  ",1,指導\u30da\u30a2
 `.trim();
 
     const parsed = parseRelationsCsv(relsWithBlankShifts);
@@ -336,7 +336,7 @@ preceptor,N03,N04,"  ",1,指導ペア
       {
         id: "N01",
         name: "看護師1",
-        kana: "カンゴシ1",
+        kana: "\u30ab\u30f3\u30b4\u30b71",
         skills: ["leader_cap" as const],
         nightOk: true,
         yearsExp: 5,
@@ -351,7 +351,7 @@ preceptor,N03,N04,"  ",1,指導ペア
       {
         id: "N02",
         name: "看護師2",
-        kana: "カンゴシ2",
+        kana: "\u30ab\u30f3\u30b4\u30b72",
         skills: [] as const,
         nightOk: true,
         yearsExp: 3,
@@ -372,13 +372,13 @@ preceptor,N03,N04,"  ",1,指導ペア
         nurseA: "N01",
         nurseB: "N02",
         shifts: [],
-        reason: "空シフト",
+        reason: "空\u30b7\u30d5\u30c8",
       },
     ];
 
     const val = validateNurseDataset(nurses, [], invalidRel, 30);
     expect(val.valid).toBe(false);
-    expect(val.errors.some((e) => e.includes("対象シフトが空です"))).toBe(true);
+    expect(val.errors.some((e) => e.includes("対象\u30b7\u30d5\u30c8\u304c空\u3067\u3059"))).toBe(true);
   });
 
   it("strips UTF-8 BOM from CSV text and column headers properly", () => {

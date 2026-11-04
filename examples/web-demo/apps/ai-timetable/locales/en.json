@@ -1,0 +1,900 @@
+{
+  "daysShort": {
+    "Mon": "Mon",
+    "Tue": "Tue",
+    "Wed": "Wed",
+    "Thu": "Thu",
+    "Fri": "Fri"
+  },
+  "daysHeader": {
+    "Mon": "Mon",
+    "Tue": "Tue",
+    "Wed": "Wed",
+    "Thu": "Thu",
+    "Fri": "Fri"
+  },
+  "daysFull": {
+    "Mon": "Monday",
+    "Tue": "Tuesday",
+    "Wed": "Wednesday",
+    "Thu": "Thursday",
+    "Fri": "Friday"
+  },
+  "cohorts": {
+    "Y1": {
+      "label": "Year 1 (B1: Foundation)",
+      "shortLabel": "Y1"
+    },
+    "Y2": {
+      "label": "Year 2 (B2: Core CS)",
+      "shortLabel": "Y2"
+    },
+    "Y3": {
+      "label": "Year 3 (B3: Advanced)",
+      "shortLabel": "Y3"
+    },
+    "Y4": {
+      "label": "Year 4 / Grad (B4/M1: Seminar)",
+      "shortLabel": "Y4/Grad"
+    }
+  },
+  "categories": {
+    "compulsory": {
+      "label": "Compulsory",
+      "shortLabel": "Comp",
+      "colorClass": "course-compulsory"
+    },
+    "elective_core": {
+      "label": "Core Elec.",
+      "shortLabel": "Core",
+      "colorClass": "course-elective-core"
+    },
+    "lab_exercise": {
+      "label": "PC Lab",
+      "shortLabel": "Lab",
+      "colorClass": "course-lab"
+    },
+    "elective": {
+      "label": "Elective",
+      "shortLabel": "Elec",
+      "colorClass": "course-elective"
+    },
+    "seminar": {
+      "label": "Seminar",
+      "shortLabel": "Sem",
+      "colorClass": "course-seminar"
+    }
+  },
+  "roomTypes": {
+    "large_hall": "Large Hall",
+    "medium_room": "Medium Room",
+    "pc_lab": "PC Lab",
+    "seminar_room": "Seminar Room"
+  },
+  "equipment": {
+    "projector": "Projector",
+    "mic": "Wireless Mic",
+    "pc_terminal": "PC Terminals",
+    "recording": "Lecture Capture",
+    "moveable_desks": "Modular Desks"
+  },
+  "ui": {
+    "pageTitle": "University Course Timetabling AI Copilot — Gemini Nano × WaSHI",
+    "headerTitle": "🎓 University Timetabling AI Copilot (UCTP)",
+    "btnTutorial": "🔰 Quick Guide",
+    "btnTheory": "📖 Theory Article",
+    "navApps": "← Showcase",
+    "navAiShift": "🏥 AI Shift",
+    "themeToggleTitle": "Toggle Light / Dark Theme",
+    "chatPaneAria": "AI Timetabling Chat Workspace",
+    "chatHeaderTitle": "AI Timetabling Copilot",
+    "trajectoryBtnTitle": "Inspect, copy, or export AI prompts, JSON outputs, and WaSHI solver logs",
+    "nanoChecking": "⏳ Checking",
+    "nanoReady": "🟢 Gemini Nano Ready",
+    "nanoDownloading": "⏬ Downloading...",
+    "nanoDownloadable": "🟡 Gemini Nano Available",
+    "nanoUnavailableBadge": "⚪ Built-in AI Off",
+    "nanoSetupBtnTitle": "Chrome Built-in AI (Gemini Nano) Setup Guide",
+    "nanoUnavailBannerText": "⚠️ Chrome Built-in AI (Gemini Nano) is not enabled",
+    "nanoSetupLink": "Setup Guide",
+    "nanoRetryLink": "Recheck",
+    "chatLogAria": "Chat History",
+    "chatSenderUser": "👤 You (Academic Affairs)",
+    "chatSenderAssistant": "🤖 Timetabling AI Copilot",
+    "chatSenderSystem": "ℹ️ System",
+    "chatWelcomeMarkdown": "👋 **Welcome to the University Course Timetabling AI Copilot (UCTP)!**\n\nStarting in **Blank Slate mode**. Prepare your data using one of the following:\n1. **\"✨ Generate Sample\"**: Automatically create a realistic dataset with 10 professors, 7 lecture halls/labs, and 25 courses.\n2. **\"📂 Import CSV\"**: Load your own separate CSV files for professors, rooms, and courses (downloadable templates available).\n\nOnce loaded, click **\"Auto-Schedule Timetable\"** to optimize using **WaSHI (HiGHS)**. You can also chat to add custom constraints!",
+    "popoverHeader": "💡 Click an example request to populate the chat box",
+    "promptChips": [
+      {
+        "label": "📌 Pin Math Optimization (C15) to Tue P2 in Hall 101",
+        "prompt": "Pin Mathematical Optimization (C15) to Tue Period 2 in Hall 101 (R101) and re-optimize"
+      },
+      {
+        "label": "🕒 Restrict Adjunct Prof. Kobayashi to Tue/Thu afternoons (P3–P5)",
+        "prompt": "Adjunct Prof. Kobayashi (P09) can only teach on Tue and Thu afternoons (Periods 3, 4, 5)"
+      },
+      {
+        "label": "🚫 Prevent Machine Learning (C16) & NLP (C17) from overlapping",
+        "prompt": "Do not schedule Machine Learning (C16) and Natural Language Processing (C17) in the same period"
+      },
+      {
+        "label": "🔗 Schedule Software Design Lab (C12) in 2 consecutive periods",
+        "prompt": "Schedule the 2 weekly sessions of Software Design Lab (C12) in consecutive periods on the same day"
+      },
+      {
+        "label": "📅 Mark Friday afternoon (P3–P5) unavailable for Prof. Sato",
+        "prompt": "Mark Friday afternoon (Periods 3, 4, 5) as unavailable (NG) for Prof. Sato (P01)"
+      },
+      {
+        "label": "🛠️ Close 301 PC Lab A on Thursday afternoon for maintenance",
+        "prompt": "Close 301 PC Lab A (R301) on Thursday afternoon (Periods 3, 4, 5) for network maintenance"
+      },
+      {
+        "label": "⚖️ Limit faculty consecutive teaching to at most 1 period",
+        "prompt": "Change maximum consecutive teaching periods for professors from 2 to 1 and re-solve"
+      },
+      {
+        "label": "💥 Diagnose conflict: Pin Adjunct Kobayashi's course to Monday P3",
+        "prompt": "Diagnose what happens if we pin Information Security (C18, taught by Tue/Thu-only Adjunct Kobayashi) to Mon P3"
+      }
+    ],
+    "chatInputLabel": "Message to AI Timetabling Copilot",
+    "chatPlaceholder": "Enter scheduling rules or changes (e.g., \"Pin Math Optimization to Tue P2\", \"Prof. Kobayashi only Tue/Thu afternoons\")",
+    "btnExamples": "💡 Examples",
+    "autoSolveLabel": "Auto Re-solve",
+    "autoSolveTitle": "Automatically re-optimize when constraints are updated",
+    "btnChatAbort": "⏹ Stop",
+    "btnChatSend": "Send",
+    "tutorialTitle": "🔰 Quick Guide: 3-Step Walkthrough for AI University Timetabling (UCTP)",
+    "tutorialClose": "✕ Close",
+    "step1Badge": "STEP 1",
+    "step1Title": "Review & Load Master Data",
+    "step1DescHtml": "Prepare faculty, room, and course master data first via <strong>🎲 Generate Samples</strong> or <strong>📂 Import CSV</strong> (cells can also be edited directly in the tables).",
+    "step1Btn": "🎲 Try: Load Sample Data",
+    "step2Badge": "STEP 2",
+    "step2Title": "Configure Rules & Consult AI",
+    "step2DescHtml": "Configure academic constraints such as instructor availability, consecutive lab periods, and PC room requirements in the <strong>⚙️ Rules</strong> tab or chat.",
+    "step2Btn": "🔗 Try: Require \"SW Design Lab (2 sessions)\" in Consecutive Periods",
+    "step3Badge": "STEP 3",
+    "step3Title": "Auto-Schedule, Drag & Diagnose",
+    "step3DescHtml": "Optimize across 4 cohorts, faculty, and rooms simultaneously. Drag & drop sessions or auto-diagnose infeasible conflicts with WaSHI IIS.",
+    "step3SelectAria": "Select a conflict scenario to inject",
+    "step3Opt1": "Demo 1: Pin Tue/Thu-only Adjunct Prof. Kobayashi's course to Mon P3",
+    "step3Opt2": "Demo 2: Pin two 130+ student Y1 courses both to Tue P2 in Hall 101",
+    "step3Opt3": "Demo 3: Pin three PC-lab-required courses simultaneously to Mon P2 (only 2 PC labs)",
+    "step3Btn": "💥 Try: Inject Conflict Rule & Diagnose",
+    "statusPreparing": "Ready",
+    "statusSolving": "⏳ Solving...",
+    "statusOptimal": "✅ Optimal",
+    "statusFeasible": "✅ Feasible",
+    "statusInfeasible": "🚨 Infeasible",
+    "statusError": "⚠️ Error",
+    "btnAbortSolve": "⏹ Abort Solve",
+    "btnSolveWashi": "⚡ Re-Optimize Timetable",
+    "btnCheckCurrent": "🔍 Check Feasibility",
+    "btnCheckCurrentTitle": "Verify whether all current timetable constraints are mutually satisfiable",
+    "btnResetClean": "↩ Reset",
+    "btnResetCleanTitle": "Reset all custom rules and conflict demos back to the initial state",
+    "conflictBannerTitle": "🚨 Timetable Infeasible — Conflicting Rules Identified by WaSHI (HiGHS)",
+    "btnClearConflicts": "✨ Clear Conflicting Custom Rules & Re-Solve",
+    "btnAskAiConflict": "🤖 Ask AI How to Resolve",
+    "conflictAskPrompt": "Explain why the current timetable is infeasible and which rule we should relax",
+    "tabTimetable": "📅 Timetable Board (4 Cohorts × 10 Faculty × 7 Rooms)",
+    "tabConstraints": "⚙️ Constraints & Rules",
+    "tabCatalog": "📚 Master Data (Faculty, Rooms, Courses)",
+    "viewCohortsBtn": "🎓 4 Student Cohorts (Y1–Y4 Grid)",
+    "viewProfsBtn": "👨‍🏫 10 Faculty × 25 Slots Matrix",
+    "viewRoomsBtn": "🏫 7 Rooms × 25 Slots Matrix",
+    "legendPinned": "Pinned",
+    "legendChanged": "Changed",
+    "preserveToggleLabel": "🔒 Minimal Perturbation",
+    "preserveToggleTitle": "When ON, minimizes changes from the current timetable during re-optimization",
+    "diffToggleLabel": "✨ Highlight Changes",
+    "diffToggleTitle": "Highlight courses that moved compared to the previous timetable",
+    "crossBarLabel": "🔗 Cross-Board Link (Hover/Click to highlight across all 4 cohort tables):",
+    "crossBarAll": "Show All",
+    "adjunctSuffix": "(Adj)",
+    "periodColHeader": "Period",
+    "pinEmptySlotBtn": "+Pin",
+    "matrixProfCorner": "Professor (Title & Availability)",
+    "matrixRoomCorner": "Room (Capacity & Type)",
+    "matrixProfStatCol": "Weekly / Max Consec",
+    "matrixRoomStatCol": "Used / Util %",
+    "matrixUnavailDay": "Off",
+    "matrixUnavailSlot": "NG",
+    "matrixClosedSlot": "Closed",
+    "matrixFooterLabel": "Active Courses (of 7 Rooms)",
+    "customRulesTitle": "📌 Custom & Pinned Timetable Rules",
+    "customRulesDesc": "Rules added by clicking slots, chatting with AI, or using the builder below. Toggle ON/OFF, switch between Hard/Soft, or delete.",
+    "customRulesEmpty": "No custom rules are currently added.",
+    "btnApplyConfigSave": "💾 Save Settings",
+    "btnApplyConfigSolve": "💾 Save Settings",
+    "btnResetDefaultConfig": "↩ Restore Defaults",
+    "tagHardRule": "🔒 Hard Rule",
+    "tagSoftRule": "⚖️ Soft Pref",
+    "btnSwitchToSoft": "Make Soft",
+    "btnSwitchToHard": "Make Hard",
+    "btnDeleteRule": "Delete",
+    "newRuleKindLabel": "Rule Type",
+    "newRuleKindPin": "📌 Pin Course to Day & Period",
+    "newRuleKindForbid": "🚫 Forbid Day & Period for Course",
+    "newRuleKindNoOverlap": "⚡ No Time Overlap (2 Courses)",
+    "newRuleKindConsec": "🔗 Consecutive Periods (2-Session Course)",
+    "newRuleKindSameDay": "📅 Same-Day Sessions",
+    "newRuleCourse1Label": "Course A",
+    "newRuleCourse2Label": "Course B (for 2-course rule)",
+    "newRuleDayLabel": "Day",
+    "newRulePeriodLabel": "Period",
+    "newRuleRoomLabel": "Room (Optional)",
+    "autoAssignRoomOpt": "Auto-Assign (Any Compatible Room)",
+    "btnAddCustomRule": "+ Add Rule",
+    "card1Title": "🏛️ 1. Room Capacity, Equipment & Cohort Curriculum Rules",
+    "card1Desc": "Enable or disable structural physical and curriculum hard constraints in UCTP.",
+    "cfgRoomCapHtml": "<strong>Enforce Room Capacity</strong> (Forbid assigning a course to a room smaller than its enrollment)",
+    "cfgRoomEquipHtml": "<strong>Enforce Room Equipment & PC Lab Requirements</strong> (Programming/DS labs require PC rooms)",
+    "cfgCohortNoOverlapHtml": "<strong>Forbid Overlap Across All Cohort Courses</strong> (Prevent scheduling multiple courses for the same cohort in the same slot)",
+    "cfgForbidSameDayHtml": "<strong>Spread 2-Session Courses Across Different Days</strong> (Unless overridden by a consecutive/same-day rule)",
+    "card2Title": "👨‍🏫 2. Faculty Availability, Consecutive Caps & Student Hollow Gaps",
+    "card2Desc": "Configure adjunct day restrictions, faculty meeting NG slots, consecutive lecture caps, and soft penalty weights.",
+    "cfgAdjunctDaysHtml": "<strong>Enforce Adjunct Available Days</strong> (Prof. Kobayashi: Tue/Thu only; Prof. Kato: Wed/Fri only)",
+    "cfgProfAvailHtml": "<strong>Enforce Faculty Unavailable Slots</strong> (Faculty meetings, committees, medical slots)",
+    "cfgMaxConsecHtml": "<strong>Enforce Max Consecutive Teaching Periods</strong>",
+    "cfgNumMaxConsec": "Max Consecutive Periods (Faculty)",
+    "cfgNumMaxDaily": "Max Daily Sessions (Faculty)",
+    "cfgNumMaxCohortDaily": "Max Daily Compulsory (Cohort)",
+    "cfgNumWeightGap": "Student Idle Gap Penalty Weight",
+    "devInspectorSummary": "💻 Developer Inspector: View WaSHI TypeScript Model & LP Formulation",
+    "btnDiagnoseSingle": "🔍 Run Standalone WaSHI (HiGHS) Feasibility Check",
+    "catProfTitle": "👨‍🏫 Faculty Roster, Availability & Assigned Load (10 Faculty)",
+    "catProfDesc": "Contracted days, unavailable slots, P1/P5 preferences, and assigned weekly load in the current timetable.",
+    "catProfHeaders": [
+      "ID",
+      "Faculty Name",
+      "Title",
+      "Specialty",
+      "Unavailable Days / NG Slots",
+      "Preferences & Caps",
+      "Current Assigned Load"
+    ],
+    "catRoomTitle": "🏫 Lecture Halls, PC Labs & Utilization (7 Rooms)",
+    "catRoomHeaders": [
+      "ID",
+      "Room Name",
+      "Type & Location",
+      "Capacity",
+      "Equipment",
+      "Weekly Utilization (of 25)"
+    ],
+    "catCourseTitle": "📚 Course Catalog (25 Courses / 30 Weekly Sessions)",
+    "catCourseHeaders": [
+      "ID",
+      "Course Title",
+      "Cohort & Category",
+      "Instructor",
+      "Enrollment & Sessions",
+      "Room / Equipment Req.",
+      "Assigned Slot & Room"
+    ],
+    "slotDialogTitle": "Pin, Move, or Forbid Course Slot",
+    "slotDialogPinBtn": "📌 Pin to This Slot & Re-Solve",
+    "slotDialogForbidBtn": "🚫 Forbid This Slot & Re-Solve",
+    "slotDialogClearBtn": "Clear Custom Rules for This Course",
+    "dialogCloseLabel": "Close",
+    "nanoDialogTitle": "🤖 Chrome Built-in AI (Gemini Nano) Setup Guide",
+    "nanoDialogIntroHtml": "The left chat pane uses Chrome's on-device AI (<code>self.LanguageModel</code> API / <strong>Gemini Nano</strong>).",
+    "nanoDialogStep1Html": "Open <code>chrome://flags/#optimization-guide-on-device-model</code> and set it to <strong>Enabled BypassPerfRequirement</strong>.",
+    "nanoDialogStep2Html": "Open <code>chrome://flags/#prompt-api-for-gemini-nano</code>, set it to <strong>Enabled</strong>, and relaunch Chrome.",
+    "nanoDialogStep3Html": "Open <code>chrome://components</code> and click \"Check for update\" under <strong>Optimization Guide On Device Model</strong>.",
+    "nanoDialogNote": "💡 Even without Gemini Nano enabled, all interactive timetable boards, tutorial steps, rule builders, and WaSHI (HiGHS) optimization & conflict diagnosis work 100% locally.",
+    "nanoDialogRecheckBtn": "🔄 Recheck Status",
+    "nanoDialogCloseBtn": "Close",
+    "trajDialogTitle": "📋 AI × WaSHI Execution Trajectory Export",
+    "trajDialogDesc": "Complete log of prompts sent to Gemini Nano, JSON Schema constraints, raw JSON outputs, extracted operations, and WaSHI (HiGHS) solve outcomes.",
+    "trajCopyBtn": "📋 Copy JSON to Clipboard",
+    "trajDownloadBtn": "📥 Download JSON (.json)",
+    "trajClearBtn": "🗑️ Clear Log",
+    "promptCatalogBtn": "📖 Prompt Catalog",
+    "promptCatalogTitle": "🤖 Gemini Nano Expected Questions & Prompt Catalog (8 Categories)",
+    "promptCatalogIntro": "Representative natural-language requests accurately parsed into JSON tool calls by Gemini Nano for the WaSHI × HiGHS solver. Click any item to populate the chat input.",
+    "promptCatalogCloseBtn": "Close",
+    "promptCatalogCategories": [
+      {
+        "title": "👨‍🏫 1. Faculty Availability & Day Restrictions",
+        "items": [
+          {
+            "label": "Give Prof. Sato Mondays Off",
+            "desc": "Marks all Monday slots as unavailable (NG) for Prof. Sato",
+            "prompt": "Mark all Monday periods as unavailable (NG) for Prof. Sato (P01)"
+          },
+          {
+            "label": "Restrict Adjunct Mr. Kobayashi to Tue/Thu Afternoon",
+            "desc": "Restricts part-time lecturer slots to Tue/Thu P3-P5 only",
+            "prompt": "Restrict adjunct lecturer Mr. Kobayashi (P09) to Tue and Thu afternoon (P3-P5) only"
+          },
+          {
+            "label": "Set Period 1 & Period 5 Avoidance for Prof. Suzuki",
+            "desc": "Soft preference avoiding early and late periods",
+            "prompt": "Set preferences for Prof. Suzuki (P02) to avoid Period 1 and Period 5"
+          },
+          {
+            "label": "Limit Prof. Takahashi to 2 Daily Sessions",
+            "desc": "Caps maximum teaching sessions per day",
+            "prompt": "Limit Prof. Takahashi (P03) to a maximum of 2 sessions per day"
+          }
+        ]
+      },
+      {
+        "title": "📌 2. Course Slot Pinning",
+        "items": [
+          {
+            "label": "Pin Optimization (C15) to Tue P2 in Hall 101",
+            "desc": "Locks course to a specific day, period, and lecture hall",
+            "prompt": "Pin Mathematical Optimization (C15) to Tue P2 in Hall 101 (R101)"
+          },
+          {
+            "label": "Pin Machine Learning (C16) to Tue P2 and Thu P2",
+            "desc": "Locks two-session course to specific slots",
+            "prompt": "Pin Machine Learning (C16) sessions to Tue P2 and Thu P2"
+          },
+          {
+            "label": "Pin Intro to CS (C01) to Mon P1",
+            "desc": "Schedules first-year compulsory kickoff course",
+            "prompt": "Schedule Introduction to Computer Science (C01) on Mon P1"
+          }
+        ]
+      },
+      {
+        "title": "🚫 3. Slot Forbids & Overlap Prevention",
+        "items": [
+          {
+            "label": "Prevent Overlap between ML (C16) and NLP (C17)",
+            "desc": "Prevents scheduling two courses at the same day/period",
+            "prompt": "Prevent time overlap between Machine Learning (C16) and Natural Language Processing (C17)"
+          },
+          {
+            "label": "Avoid Mon P1 & Fri P5 for Information Security (C18)",
+            "desc": "Forbids specific slots for a course",
+            "prompt": "Forbid Mon P1 and Fri P5 for Information Security (C18)"
+          },
+          {
+            "label": "Forbid Friday for Programming Lab A (C05)",
+            "desc": "Forbids an entire day for a course",
+            "prompt": "Do not schedule Introductory Programming Lab A (C05) on Friday"
+          }
+        ]
+      },
+      {
+        "title": "🔗 4. Consecutive Sessions & Curriculum Precedence",
+        "items": [
+          {
+            "label": "Schedule SW Design Lab (C12) in Back-to-Back Slots",
+            "desc": "Groups 2 sessions into consecutive periods on the same day",
+            "prompt": "Schedule both sessions of Software Design Lab (C12) in consecutive periods on the same day"
+          },
+          {
+            "label": "Require Programming Lab A (C05) on or before Lab B (C06)",
+            "desc": "Enforces prerequisite calendar sequence",
+            "prompt": "Schedule Introductory Programming Lab A (C05) on the same day or earlier in the week than Lab B (C06)"
+          }
+        ]
+      },
+      {
+        "title": "🏫 5. Room, Equipment & Maintenance Closures",
+        "items": [
+          {
+            "label": "Require PC Lab for SW Design Lab (C12)",
+            "desc": "Enforces specialized computer equipment requirements",
+            "prompt": "Require a PC lab (pc_lab) for Software Design Lab (C12)"
+          },
+          {
+            "label": "Restrict Seminar (C23) to Seminar Rooms",
+            "desc": "Frees large halls by assigning small seminar rooms",
+            "prompt": "Forbid large lecture halls for Optimization Seminar (C23) and use a seminar room"
+          },
+          {
+            "label": "Close PC Lab A (R301) on Thu Afternoon for Maintenance",
+            "desc": "Temporarily locks a room for maintenance or exams",
+            "prompt": "Close 301 PC Lab A (R301) on Thursday afternoon (P3-P5) for network maintenance"
+          }
+        ]
+      },
+      {
+        "title": "⚖️ 6. Global Policy Settings",
+        "items": [
+          {
+            "label": "Forbid Consecutive Sessions for Faculty (Max 1)",
+            "desc": "Tightens faculty fatigue policy",
+            "prompt": "Set maximum consecutive periods for faculty to 1 and re-solve"
+          },
+          {
+            "label": "Set Faculty Daily Max to 2 Sessions",
+            "desc": "Lowers faculty workload per day",
+            "prompt": "Set maximum daily sessions for faculty to 2"
+          },
+          {
+            "label": "Turn on Minimal Perturbation Mode",
+            "desc": "Preserves current timetable assignments as much as possible",
+            "prompt": "Turn on minimal perturbation mode to preserve the current timetable"
+          }
+        ]
+      },
+      {
+        "title": "💥 7. Conflict Diagnosis & Troubleshooting",
+        "items": [
+          {
+            "label": "Diagnose Adjunct Lecturer Slot Conflict",
+            "desc": "Pins adjunct course on unavailable day and runs IIS diagnosis",
+            "prompt": "Pin adjunct lecturer Kobayashi's course (C18) to Mon P3 and diagnose conflicting constraints"
+          },
+          {
+            "label": "Diagnose Lecture Hall Double-Booking",
+            "desc": "Pins two large compulsory courses to the same room/slot",
+            "prompt": "Inject room double-booking conflict demo and diagnose"
+          },
+          {
+            "label": "Diagnose PC Lab Capacity Overload",
+            "desc": "Pins 3 lab courses simultaneously when only 2 labs exist",
+            "prompt": "Inject PC lab overload conflict demo and diagnose"
+          }
+        ]
+      },
+      {
+        "title": "↩️ 8. Rule Resets & Clear",
+        "items": [
+          {
+            "label": "Clear All Custom Rules",
+            "desc": "Removes all custom pins, forbids, and relation rules",
+            "prompt": "Clear all custom timetable rules"
+          },
+          {
+            "label": "Reset Timetable & Settings to Defaults",
+            "desc": "Completely resets state back to factory defaults",
+            "prompt": "Reset all timetable settings and custom rules to defaults"
+          }
+        ]
+      }
+    ],
+    "catMgmtBadge": "Master Data",
+    "catMgmtTitle": "University Master Data (Faculty, Classrooms & Curriculum)",
+    "catMgmtDesc": "Master rosters, facilities, and courses for university course timetabling.",
+    "btnCatGenerate": "🎲 Load Sample Data",
+    "btnCatImportCsv": "📂 Import CSV",
+    "btnCatDownloadSamples": "📥 Download CSV Templates",
+    "btnCatClearBlank": "🗑️ Clear to Blank",
+    "catEmptyTitle": "Get Started with University Timetabling (Master Data)",
+    "catEmptyDesc": "To auto-schedule timetables, baseline faculty, classroom, and course data are required. Load sample benchmark data below or import your own CSVs.",
+    "catEmptyGenMain": "🎲 Load Sample Data",
+    "catEmptyGenSub": "CS Dept Model (10 faculty, 7 rooms, 25 courses / 30 slots)",
+    "catEmptyImportMain": "📂 Import from CSV Files",
+    "catEmptyImportSub": "Upload your faculty, classroom, and course CSV files",
+    "catEmptySamplesBtn": "📥 Download Sample CSV Templates"
+  },
+  "rooms": {
+    "R101": {
+      "name": "Hall 101 (Large)",
+      "shortName": "101L",
+      "building": "CS Bldg 1F"
+    },
+    "R102": {
+      "name": "Hall 102 (Large)",
+      "shortName": "102L",
+      "building": "CS Bldg 1F"
+    },
+    "R201": {
+      "name": "Room 201 (Med)",
+      "shortName": "201M",
+      "building": "CS Bldg 2F"
+    },
+    "R202": {
+      "name": "Room 202 (Med)",
+      "shortName": "202M",
+      "building": "CS Bldg 2F"
+    },
+    "R301": {
+      "name": "301 PC Lab A",
+      "shortName": "301PC-A",
+      "building": "CS Bldg 3F"
+    },
+    "R302": {
+      "name": "302 PC Lab B",
+      "shortName": "302PC-B",
+      "building": "CS Bldg 3F"
+    },
+    "R401": {
+      "name": "401 Seminar Rm",
+      "shortName": "401Sem",
+      "building": "CS Bldg 4F"
+    }
+  },
+  "professors": {
+    "P01": {
+      "name": "Kenichi Sato",
+      "shortName": "Sato",
+      "title": "Prof.",
+      "specialty": "Mathematical Optimization & Operations Research"
+    },
+    "P02": {
+      "name": "Misaki Suzuki",
+      "shortName": "Suzuki",
+      "title": "Prof.",
+      "specialty": "Machine Learning & Natural Language Processing"
+    },
+    "P03": {
+      "name": "Makoto Takahashi",
+      "shortName": "Takahashi",
+      "title": "Prof.",
+      "specialty": "Algorithms & Discrete Mathematics"
+    },
+    "P04": {
+      "name": "Ayano Tanaka",
+      "shortName": "Tanaka",
+      "title": "Assoc. Prof.",
+      "specialty": "Software Engineering & Programming Languages"
+    },
+    "P05": {
+      "name": "Daisuke Ito",
+      "shortName": "Ito",
+      "title": "Assoc. Prof.",
+      "specialty": "Database & Distributed Systems"
+    },
+    "P06": {
+      "name": "Yui Watanabe",
+      "shortName": "Watanabe",
+      "title": "Assoc. Prof.",
+      "specialty": "Statistical Science & Data Mining"
+    },
+    "P07": {
+      "name": "Shota Yamamoto",
+      "shortName": "Yamamoto",
+      "title": "Lecturer",
+      "specialty": "Computer Systems & Operating Systems"
+    },
+    "P08": {
+      "name": "Rin Nakamura",
+      "shortName": "Nakamura",
+      "title": "Lecturer",
+      "specialty": "Human-Computer Interaction & Web Engineering"
+    },
+    "P09": {
+      "name": "Takumi Kobayashi",
+      "shortName": "Kobayashi",
+      "title": "Adjunct",
+      "specialty": "Cybersecurity & Cryptography (Industry Lab Director)"
+    },
+    "P10": {
+      "name": "Yuna Kato",
+      "shortName": "Kato",
+      "title": "Adjunct",
+      "specialty": "Cloud Architecture & Tech Ethics (Industry VPoE)"
+    }
+  },
+  "courses": {
+    "C01": {
+      "title": "Intro to Computer Science",
+      "shortTitle": "Intro CS"
+    },
+    "C02": {
+      "title": "Linear Algebra I",
+      "shortTitle": "Linear Alg I"
+    },
+    "C03": {
+      "title": "Calculus I",
+      "shortTitle": "Calculus I"
+    },
+    "C04": {
+      "title": "Discrete Mathematics",
+      "shortTitle": "Discrete Math"
+    },
+    "C05": {
+      "title": "Intro Programming Lab A",
+      "shortTitle": "Prog Lab A"
+    },
+    "C06": {
+      "title": "Intro Programming Lab B",
+      "shortTitle": "Prog Lab B"
+    },
+    "C07": {
+      "title": "Information Ethics & Law",
+      "shortTitle": "Info Ethics"
+    },
+    "C08": {
+      "title": "Algorithms & Data Structures",
+      "shortTitle": "Algorithms"
+    },
+    "C09": {
+      "title": "Probability & Statistics",
+      "shortTitle": "Prob & Stats"
+    },
+    "C10": {
+      "title": "Operating Systems",
+      "shortTitle": "OS"
+    },
+    "C11": {
+      "title": "Database Systems",
+      "shortTitle": "Databases"
+    },
+    "C12": {
+      "title": "Software Design Lab",
+      "shortTitle": "SW Design Lab"
+    },
+    "C13": {
+      "title": "Computer Networks",
+      "shortTitle": "Networks"
+    },
+    "C14": {
+      "title": "Human-Computer Interaction",
+      "shortTitle": "HCI"
+    },
+    "C15": {
+      "title": "Mathematical Optimization",
+      "shortTitle": "Math Opt"
+    },
+    "C16": {
+      "title": "Machine Learning",
+      "shortTitle": "Machine Learn"
+    },
+    "C17": {
+      "title": "Natural Language Processing",
+      "shortTitle": "NLP"
+    },
+    "C18": {
+      "title": "Information Security",
+      "shortTitle": "Info Security"
+    },
+    "C19": {
+      "title": "Applied Data Science Lab",
+      "shortTitle": "DS Lab"
+    },
+    "C20": {
+      "title": "Web App Development Lab",
+      "shortTitle": "Web Dev Lab"
+    },
+    "C21": {
+      "title": "Cloud Computing Practice",
+      "shortTitle": "Cloud Comp"
+    },
+    "C22": {
+      "title": "Cryptography & Blockchain",
+      "shortTitle": "Cryptography"
+    },
+    "C23": {
+      "title": "Optimization Seminar",
+      "shortTitle": "Opt Seminar"
+    },
+    "C24": {
+      "title": "AI & NLP Seminar",
+      "shortTitle": "AI Seminar"
+    },
+    "C25": {
+      "title": "Systems Software Colloquium",
+      "shortTitle": "Systems Sem"
+    }
+  },
+  "slotReasons": {
+    "faculty_meeting": "Faculty Meeting",
+    "joint_research": "Joint Research Sync",
+    "childcare": "Childcare Pickup",
+    "it_committee": "IT Infrastructure Committee",
+    "medical_appt": "Medical Appointment",
+    "hq_duty": "HQ Duty (P2+ Preferred)",
+    "commute_time": "Commute Time (No P1)",
+    "outside_window": "Outside Available Window",
+    "chat_ng_slot": "Chat NG Slot"
+  },
+  "csv": {
+    "professors": {
+      "id": [
+        "id",
+        "faculty_id",
+        "professor_id",
+        "code"
+      ],
+      "name": [
+        "name",
+        "faculty_name",
+        "professor_name",
+        "full_name"
+      ],
+      "title": [
+        "title",
+        "position"
+      ],
+      "employment": [
+        "employment",
+        "status",
+        "type"
+      ],
+      "unavailableDays": [
+        "unavailabledays",
+        "unavail_days",
+        "ng_days"
+      ],
+      "unavailableSlots": [
+        "unavailableslots",
+        "unavail_slots",
+        "ng_slots"
+      ],
+      "avoidPeriod1": [
+        "avoidperiod1",
+        "no_p1"
+      ],
+      "avoidPeriod5": [
+        "avoidperiod5",
+        "no_p5"
+      ],
+      "maxSessionsPerDay": [
+        "maxsessionsperday",
+        "max_daily",
+        "daily_cap"
+      ]
+    },
+    "rooms": {
+      "id": [
+        "id",
+        "room_id",
+        "code"
+      ],
+      "name": [
+        "name",
+        "room_name"
+      ],
+      "capacity": [
+        "capacity",
+        "cap",
+        "seats"
+      ],
+      "roomType": [
+        "roomtype",
+        "type"
+      ],
+      "equipment": [
+        "equipment",
+        "equip",
+        "facilities"
+      ],
+      "building": [
+        "building",
+        "location"
+      ]
+    },
+    "courses": {
+      "id": [
+        "id",
+        "course_id",
+        "code"
+      ],
+      "title": [
+        "title",
+        "course_name",
+        "name"
+      ],
+      "professorId": [
+        "professorid",
+        "prof_id",
+        "faculty_id",
+        "instructor"
+      ],
+      "sessionsPerWeek": [
+        "sessionsperweek",
+        "sessions",
+        "weekly_sessions"
+      ],
+      "enrollment": [
+        "enrollment",
+        "students",
+        "capacity"
+      ],
+      "category": [
+        "category",
+        "cat",
+        "course_type"
+      ],
+      "cohorts": [
+        "cohorts",
+        "years",
+        "grades"
+      ],
+      "requiredRoomType": [
+        "requiredroomtype",
+        "room_type"
+      ],
+      "requiredEquipment": [
+        "requiredequipment",
+        "equipment"
+      ]
+    },
+    "tokens": {
+      "large_hall": [
+        "large_hall",
+        "large",
+        "hall"
+      ],
+      "pc_lab": [
+        "pc_lab",
+        "pc",
+        "lab"
+      ],
+      "seminar_room": [
+        "seminar_room",
+        "seminar",
+        "small"
+      ],
+      "compulsory": [
+        "compulsory",
+        "required"
+      ],
+      "elective_core": [
+        "elective_core",
+        "core"
+      ],
+      "lab_exercise": [
+        "lab_exercise",
+        "exercise",
+        "lab"
+      ],
+      "seminar": [
+        "seminar",
+        "colloquium"
+      ],
+      "projector": [
+        "projector"
+      ],
+      "mic": [
+        "mic",
+        "audio"
+      ],
+      "pc_terminal": [
+        "pc_terminal",
+        "pc",
+        "workstation"
+      ],
+      "moveable_desks": [
+        "moveable_desks",
+        "desks"
+      ],
+      "recording": [
+        "recording"
+      ]
+    }
+  },
+  "rules": {
+    "demoPrefix": "[Conflict Demo] ",
+    "pinSlot": "{demoPrefix}Pin \"{c1Name}\" to {slotStr}{rName}",
+    "forbidSlot": "Forbid \"{target}\" on {daysStr} ({periodsStr})",
+    "requireRoom": "Require room {target} for \"{c1Name}\"",
+    "forbidRoom": "Forbid room {target} for \"{c1Name}\"",
+    "noOverlap": "No Time Overlap: Do not schedule \"{c1Short}\" and \"{c2Short}\" in the same slot",
+    "consecutive": "Consecutive Periods: Schedule \"{c1Short}\"{c2Short} in adjacent periods on the same day",
+    "sameDay": "Same-Day Sessions: Schedule \"{c1Short}\"{c2Short} on the same day",
+    "precedence": "Curriculum Order: Schedule \"{c1Short}\" on the same day or an earlier day than \"{c2Short}\"",
+    "closure": "Room Closure: {rName} unavailable on {daysStr} {periodsStr}",
+    "allDay": "All Day",
+    "andOther": " & \"{other}\""
+  },
+  "constraintTemplates": {
+    "custom": {
+      "label": "Custom Rule: {desc}",
+      "suggestion": "Disable or modify custom rule \"{desc}\"."
+    },
+    "profUnavailDay": {
+      "label": "Faculty Unavailable Day: {name} ({title}) cannot teach on {day} (Available: {availDays})",
+      "suggestion": "Schedule {name}'s courses on {availDays}, or update their available days."
+    },
+    "roomExcl": {
+      "label": "Room Double-Booking Forbidden: Room {name} is already booked at {slot}",
+      "suggestion": "Ensure multiple courses are not scheduled at {slot} in {name}."
+    },
+    "profExcl": {
+      "label": "Faculty Overlap Forbidden: {name} ({title}) cannot teach multiple courses at {slot}",
+      "suggestion": "Avoid scheduling overlapping courses for {name} at {slot}."
+    },
+    "cohortExcl": {
+      "label": "Cohort Curriculum Overlap Forbidden: Courses for {cohort} cannot overlap at {slot}",
+      "suggestion": "Ensure multiple compulsory courses for {cohort} are not scheduled at {slot}."
+    },
+    "courseSessions": {
+      "label": "Weekly Sessions Quota: \"{title}\" requires {count} session(s) per week",
+      "suggestion": "Review pinned/forbidden slots, available rooms, or faculty availability for \"{title}\"."
+    }
+  }
+}

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="color-scheme" content="light dark" />
@@ -9,7 +9,7 @@
     <title>大学時間割編成 AI Copilot — Gemini Nano × WaSHI</title>
     <meta
       name="description"
-      content="ブラウザ内蔵 Gemini Nano で教員・教務課の複雑な要望を入力し、WaSHI (HiGHS) で大学時間割編成問題(UCTP: 25科目・30コマ・7教室・10教員)を最適化・矛盾診断するデモ。"
+      content="University Course Timetabling Problem (UCTP) AI Copilot demo: 25 courses, 30 sessions, 7 rooms, 10 faculty optimized and diagnosed with Chrome Built-in AI (Gemini Nano) and WaSHI (HiGHS)."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -63,9 +63,9 @@
           type="button"
           id="btn-toggle-tutorial"
           class="btn-tutorial-toggle"
-          title="使い方チュートリアルの表示/非表示を切り替え"
+          title="🔰 Quick Guide"
         >
-          🔰 使い方ガイド
+          🔰 Quick Guide
         </button>
         <a href="../ai-timetable-theory/" id="nav-link-theory" class="nav-pill-link">📖 解説記事</a>
         <a href="../../ja/showcase/" id="nav-link-apps" class="nav-pill-link">← Showcase</a>
@@ -77,7 +77,7 @@
           class="theme-toggle-btn"
           id="ai-timetable-theme-btn"
           aria-label="Theme"
-          title="ライト/ダークモード切替"
+          title="Toggle Light / Dark Theme"
         >
           🌙
         </button>
@@ -87,19 +87,19 @@
     <!-- Main Split Workspace: Left (AI Chat) + Right (Timetable & Constraints) -->
     <main class="ai-shift-workspace">
       <!-- ==================== LEFT PANE: GEMINI NANO CHAT ==================== -->
-      <aside id="chat-pane-aside" class="chat-pane" aria-label="AI時間割相談チャットスペース">
+      <aside id="chat-pane-aside" class="chat-pane" aria-label="AI Timetabling Chat Workspace">
         <div class="chat-pane-header">
           <div class="chat-header-top">
             <div class="chat-title-row">
               <span class="chat-icon">🤖</span>
-              <h2 id="chat-header-title">AI 教務・時間割相談</h2>
+              <h2 id="chat-header-title">AI Timetabling Copilot</h2>
             </div>
             <div class="nano-status-row">
               <button
                 type="button"
                 id="btn-open-trajectory"
                 class="btn-examples-trigger"
-                title="AIプロンプト・JSON出力・WaSHI求解ログ(Trajectory)の確認・コピー・JSON保存"
+                title="Inspect, copy, or export AI prompts, JSON outputs, and WaSHI solver logs"
               >
                 📋 Trajectory <span id="badge-trajectory-count" class="tab-badge" hidden>0</span>
               </button>
@@ -110,7 +110,7 @@
                 type="button"
                 id="btn-nano-setup-help"
                 class="btn-icon-subtle"
-                title="Chrome Built-in AI (Gemini Nano) の設定手順"
+                title="Chrome Built-in AI (Gemini Nano) Setup Guide"
                 aria-label="Gemini Nano Setup"
               >
                 ⚙️
@@ -126,7 +126,7 @@
           </div>
 
           <div id="nano-unavailable-banner" class="nano-unavailable-compact" hidden>
-            <span id="nano-unavail-text">⚠️ Chrome 内蔵 AI (Gemini Nano) が未有効です</span>
+            <span id="nano-unavail-text">⚠️ Chrome Built-in AI (Gemini Nano) is not enabled</span>
             <div class="nano-unavail-inline-btns">
               <button type="button" id="btn-open-nano-modal" class="btn-link-inline">
                 設定手順
@@ -143,81 +143,81 @@
           class="chat-messages"
           role="log"
           aria-live="polite"
-          aria-label="チャット履歴"
+          aria-label="Chat History"
         ></div>
 
         <!-- Popover Menu for Prompt Examples -->
         <div id="prompt-examples-popover" popover="auto" class="prompt-popover">
           <div class="prompt-popover-header">
-            <span id="popover-header-text">💡 クリックして入力欄にセット（教務・教員要望例）</span>
+            <span id="popover-header-text">💡 Click an example request to populate the chat box</span>
           </div>
           <div id="prompt-popover-list" class="prompt-popover-list">
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="数理最適化(C15)を火曜2限の101大講義室(R101)に固定して、時間割を再最適化して"
+              data-prompt="Pin Mathematical Optimization (C15) to Tue P2 in Hall 101 (R101) and re-optimize the timetable"
             >
-              📌 数理最適化(C15)を火曜2限・101大講義室に固定する
+              📌 Pin C15 to Tue P2 in Hall 101
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="非常勤の小林先生(P09)は火曜と木曜の午後(3〜5限)しか来られないように設定して"
+              data-prompt="Set adjunct lecturer Takumi Kobayashi (P09) available only on Tue and Thu afternoons (P3-P5)"
             >
-              🕒 非常勤の小林先生を火・木の午後(3〜5限)のみ可能にする
+              🕒 Adjunct Prof Kobayashi: Tue/Thu PM only
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="機械学習(C16)と自然言語処理(C17)は両方履修する学生が多いので、同じ曜日・時限に被せないで"
+              data-prompt="Many students take both Machine Learning (C16) and Natural Language Processing (C17), please forbid time conflict"
             >
-              🚫 機械学習(C16)と自然言語処理(C17)の裏番組(重複)を禁止する
+              🚫 Forbid overlap: Machine Learning & NLP
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="ソフトウェア設計演習(C12)の週2コマは、同じ曜日の連続する時限(2コマ連続)にまとめて開講して"
+              data-prompt="Schedule Software Design Lab (C12) 2 sessions in consecutive periods on the same day"
             >
-              🔗 ソフトウェア設計演習(C12)の2コマを同日連続時限にする
+              🔗 Software Design Lab (C12): consecutive periods
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="佐藤先生(P01)は金曜日の午後(3〜5限)を学会・研究打ち合わせのため出講不可(NG)にして"
+              data-prompt="Mark Friday afternoon (P3-P5) unavailable for Prof Sato (P01) due to meetings"
             >
-              📅 佐藤先生の金曜午後(3〜5限)を出講NGにする
+              📅 Prof Sato: Fri PM unavailable
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="301 PC演習室A(R301)は木曜日の午後(3〜5限)にネットワーク機器メンテナンスで閉鎖して"
+              data-prompt="Close 301 PC Lab A (R301) on Thursday afternoon (P3-P5) for network maintenance"
             >
-              🛠️ 301 PC演習室Aを木曜午後にメンテ閉鎖する
+              🛠️ Close PC Lab 301 on Thu PM
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="教員の連続講義上限を2コマ連続から1コマ（連続講義なし）に変更して組み直して"
+              data-prompt="Change faculty max consecutive periods from 2 to 1 and re-optimize"
             >
-              ⚖️ 教員の連続講義を禁止(最大1コマ連続)に変更する
+              ⚖️ Forbid consecutive faculty lectures (max 1)
             </button>
             <button
               type="button"
               class="prompt-chip"
-              data-prompt="火曜・木曜しか来られない非常勤の小林先生の情報セキュリティ(C18)を月曜3限に固定するとどうなるか矛盾診断して"
+              data-prompt="Pin adjunct lecturer Kobayashi's course C18 to Mon P3 and diagnose conflict"
             >
-              💥 非常勤講師の出講不可曜日に授業を固定して矛盾診断する
+              💥 Inject conflict: adjunct unavailable day
             </button>
           </div>
         </div>
 
         <form id="chat-form" class="chat-input-area">
-          <label id="chat-input-label" for="chat-input" class="sr-only">AIへの時間割相談メッセージ</label>
+          <label id="chat-input-label" for="chat-input" class="sr-only">Message to AI Timetabling Copilot</label>
           <textarea
             id="chat-input"
             class="chat-textarea"
             rows="2"
-            placeholder="時間割の要望や条件変更を入力（例: 「数理最適化を火曜2限に固定して」「小林先生は火木の午後のみに」）"
+            placeholder="Enter scheduling rules or changes (e.g., &quot;Pin Math Optimization to Tue P2&quot;, &quot;Prof. Kobayashi only Tue/Thu afternoons&quot;)"
           ></textarea>
           <div class="chat-input-footer">
             <div class="chat-footer-left">
@@ -233,9 +233,9 @@
                 type="button"
                 class="btn-examples-trigger"
                 id="btn-open-prompt-catalog"
-                title="Gemini Nanoで使える全8カテゴリの指示・質問プロンプト集を表示します"
+                title="💡 Examples"
               >
-                📖 プロンプト集
+                💡 Examples
               </button>
             </div>
             <div class="chat-submit-group">
@@ -249,7 +249,7 @@
                 ⏹ 停止
               </button>
               <button type="submit" id="btn-chat-send" class="btn-chat-send">
-                <span id="txt-chat-send">送信</span>
+                <span id="txt-chat-send">Send</span>
               </button>
             </div>
           </div>
@@ -262,7 +262,7 @@
         <div id="tutorial-banner" class="tutorial-banner">
           <div class="tutorial-header">
             <div class="tutorial-title">
-              <span id="tutorial-title-text">🔰 クイックガイド：3ステップで体験するAI大学時間割編成 (UCTP)</span>
+              <span id="tutorial-title-text">🔰 Quick Guide: 3-Step Walkthrough for AI University Timetabling (UCTP)</span>
             </div>
             <button
               type="button"
@@ -270,43 +270,43 @@
               class="tutorial-close-btn"
               aria-label="Close"
             >
-              ✕ 閉じる
+              ✕ Close
             </button>
           </div>
           <div class="tutorial-steps-grid">
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num" id="step1-badge">STEP 1</span>
-                <strong id="step1-title">基礎データを確認・読み込む</strong>
+                <strong id="step1-title">Review & Load Master Data</strong>
               </div>
               <p id="step1-desc">
-                まずは教員・教室・科目のマスタデータを登録します。「🎲 サンプル生成」または「📂 CSV読込」で準備できます（表内のセル直接編集も可能）。
+                Prepare faculty, room, and course master data first via <strong>🎲 Generate Samples</strong> or <strong>📂 Import CSV</strong> (cells can also be edited directly in the tables).
               </p>
               <button type="button" id="btn-tut-step1" class="btn-step-try">
-                🎲 試す：サンプルデータを読み込む
+                🎲 Try: Load Sample Data
               </button>
             </div>
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num" id="step2-badge">STEP 2</span>
-                <strong id="step2-title">条件設定やAI相談で調整</strong>
+                <strong id="step2-title">Configure Rules & Consult AI</strong>
               </div>
               <p id="step2-desc">
-                「⚙️ 条件・ルール設定」タブやチャット欄で、出講枠・連続コマ・PC演習室などの現場ルールを追加・調整できます。
+                Configure academic constraints such as instructor availability, consecutive lab periods, and PC room requirements in the <strong>⚙️ Rules</strong> tab or chat.
               </p>
               <button type="button" id="btn-tut-step2" class="btn-step-try">
-                🔗 試す：「SW設計演習(週2コマ)」を同日連続時限に指定
+                🔗 Try: Require "SW Design Lab (2 sessions)" in Consecutive Periods
               </button>
             </div>
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num" id="step3-badge">STEP 3</span>
-                <strong id="step3-title">時間割の自動編成・調整・矛盾診断</strong>
+                <strong id="step3-title">Auto-Schedule, Drag & Diagnose</strong>
               </div>
               <p id="step3-desc">
-                「⚡ 時間割を自動編成」で4学年・教員・教室を一括最適化。コマをドラッグ移動したり、衝突原因の自動診断(IIS)を体験できます。
+                Optimize across 4 cohorts, faculty, and rooms simultaneously. Drag & drop sessions or auto-diagnose infeasible conflicts with WaSHI IIS.
               </p>
               <div class="conflict-quick-group" style="margin-bottom: 6px;">
                 <select
@@ -315,13 +315,13 @@
                   style="width: 100%;"
                   aria-label="Conflict scenario"
                 >
-                  <option id="opt-conflict-1" value="prof_impossible_day">デモ例1: 非常勤(火・木のみ)の小林先生の科目を月曜3限に強制固定</option>
-                  <option id="opt-conflict-2" value="room_double_book">デモ例2: 130名超の1年必修2科目を両方「火曜2限・101大講義室」に固定</option>
-                  <option id="opt-conflict-3" value="pc_lab_overload">デモ例3: PC演習室が2室しかないのにPC必須3科目を「月曜2限」に同時固定</option>
+                  <option id="opt-conflict-1" value="prof_impossible_day">Demo 1: Pin Tue/Thu-only Adjunct Prof. Kobayashi's course to Mon P3</option>
+                  <option id="opt-conflict-2" value="room_double_book">Demo 2: Pin two 130+ student Y1 courses both to Tue P2 in Hall 101</option>
+                  <option id="opt-conflict-3" value="pc_lab_overload">Demo 3: Pin three PC-lab-required courses simultaneously to Mon P2 (only 2 PC labs)</option>
                 </select>
               </div>
               <button type="button" id="btn-tut-step3" class="btn-step-try">
-                💥 試す：わざと矛盾ルールを追加して診断する
+                💥 Try: Inject Conflict Rule & Diagnose
               </button>
             </div>
           </div>
@@ -332,7 +332,7 @@
           <div class="status-summary-left">
             <span id="kpi-status-badge" class="status-pill status-idle">準備中</span>
             <span id="kpi-summary-text" class="status-summary-text">
-              25科目(30コマ) × 7教室 × 10教員の時間割を計算しています...
+              ⏳ Solving...
             </span>
             <span id="kpi-solve-time" class="status-meta-pill">-- ms</span>
           </div>
@@ -345,14 +345,14 @@
               hidden
               title="Abort"
             >
-              ⏹ 計算を中断
+              ⏹ Abort Solve
             </button>
 
             <button type="button" id="btn-solve-washi" class="btn-solve-primary">
-              ⚡ 時間割を自動編成
+              ⚡ Re-Optimize Timetable
             </button>
 
-            <label id="lbl-auto-solve" class="auto-solve-toggle" title="条件変更時に自動で最適化を実行します">
+            <label id="lbl-auto-solve" class="auto-solve-toggle" title="Automatically re-optimize when constraints are updated">
               <input type="checkbox" id="chk-auto-solve-on-chat" checked />
               <span id="txt-auto-solve">自動再計算</span>
             </label>
@@ -361,35 +361,35 @@
               type="button"
               id="btn-check-current"
               class="btn-toolbar-outline"
-              title="現在の時間割制約条件に矛盾がないかチェックします"
+              title="Verify whether all current timetable constraints are mutually satisfiable"
             >
-              🔍 矛盾チェック
+              🔍 Check Feasibility
             </button>
 
             <button
               type="button"
               id="btn-reset-clean"
               class="btn-toolbar-outline"
-              title="追加した固定ルールや矛盾シナリオをリセットして初期状態に戻します"
+              title="Reset all custom rules and conflict demos back to the initial state"
             >
-              ↩ ルールリセット
+              ↩ Reset
             </button>
 
             <span class="toolbar-divider" aria-hidden="true"></span>
 
-            <button type="button" id="btn-generate-sample" class="btn-toolbar-outline" title="教員10名・教室7室・25科目のサンプルデータを生成します">
-              ✨ サンプル生成
+            <button type="button" id="btn-generate-sample" class="btn-toolbar-outline" title="🎲 Load Sample Data">
+              🎲 Load Sample Data
             </button>
 
-            <button type="button" id="btn-open-csv-dialog" class="btn-toolbar-outline" title="教員・教室・科目のCSVファイルを読み込みます">
-              📂 CSV読込
+            <button type="button" id="btn-open-csv-dialog" class="btn-toolbar-outline" title="📂 Import CSV">
+              📂 Import CSV
             </button>
 
-            <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="現在の教員・教室・科目をCSVファイルで保存します">
+            <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="Export current faculty, rooms, and courses to CSV">
               📥 CSV出力
             </button>
 
-            <button type="button" id="btn-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="時間割・教員・教室・科目をすべてクリアして白紙に戻します">
+            <button type="button" id="btn-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="🗑️ Clear to Blank">
               🗑️ 白紙化
             </button>
           </div>
@@ -399,14 +399,14 @@
         <div id="conflict-alert" class="conflict-banner" hidden>
           <div class="conflict-header">
             <div class="conflict-title">
-              <span id="conflict-banner-title">🚨 時間割を組めません — WaSHI (HiGHS) が特定した衝突ルール</span>
+              <span id="conflict-banner-title">🚨 Timetable Infeasible — Conflicting Rules Identified by WaSHI (HiGHS)</span>
             </div>
             <div class="conflict-actions">
               <button type="button" id="btn-clear-custom-conflicts" class="btn-xs-primary">
-                ✨ 衝突している追加ルールを解除して解決
+                ✨ Clear Conflicting Custom Rules & Re-Solve
               </button>
               <button type="button" id="btn-ask-nano-conflict" class="btn-xs-outline">
-                🤖 AIに解決策を聞く
+                🤖 Ask AI How to Resolve
               </button>
             </div>
           </div>
@@ -424,7 +424,7 @@
             aria-controls="tab-panel-timetable"
             data-tab="timetable"
           >
-            <span id="tab-txt-timetable">📅 時間割ボード</span>
+            <span id="tab-txt-timetable">📅 Timetable Board (4 Cohorts × 10 Faculty × 7 Rooms)</span>
           </button>
           <button
             type="button"
@@ -435,7 +435,7 @@
             aria-controls="tab-panel-constraints"
             data-tab="constraints"
           >
-            <span id="tab-txt-constraints">⚙️ 条件・ルール設定</span>
+            <span id="tab-txt-constraints">⚙️ Constraints & Rules</span>
           </button>
           <button
             type="button"
@@ -446,7 +446,7 @@
             aria-controls="tab-panel-catalog"
             data-tab="catalog"
           >
-            <span id="tab-txt-catalog">📚 基礎データ (教員・教室・科目)</span>
+            <span id="tab-txt-catalog">📚 Master Data (Faculty, Rooms, Courses)</span>
           </button>
         </div>
 
@@ -462,8 +462,8 @@
               <label for="select-view-mode" class="sr-only" id="lbl-view-mode">表示切替</label>
               <select id="select-view-mode" class="toolbar-select view-mode-select">
                 <option value="cohorts_4" id="opt-view-cohorts">🎓 学年別 (1年〜4年 4枚同時)</option>
-                <option value="professors_matrix" id="opt-view-profs">👨‍🏫 教員別マトリクス (10名 × 25コマ)</option>
-                <option value="rooms_matrix" id="opt-view-rooms">🏛️ 教室別マトリクス (7室 × 25コマ)</option>
+                <option value="professors_matrix" id="opt-view-profs">👨‍🏫 10 Faculty × 25 Slots Matrix</option>
+                <option value="rooms_matrix" id="opt-view-rooms">🏫 7 Rooms × 25 Slots Matrix</option>
               </select>
             </div>
 
@@ -485,8 +485,8 @@
                 <span id="leg-txt-elec">選択</span>
               </span>
               <span class="legend-item">
-                <span id="leg-badge-sem" class="shift-badge course-seminar">ゼミ</span>
-                <span id="leg-txt-sem">ゼミ</span>
+                <span id="leg-badge-sem" class="shift-badge course-seminar">Seminar</span>
+                <span id="leg-txt-sem">Seminar</span>
               </span>
               <span class="legend-divider">|</span>
               <span class="legend-item">
@@ -495,7 +495,7 @@
               </span>
               <span class="legend-item">
                 <span class="diff-sample-box"></span>
-                <span id="leg-txt-changed">前回から変更</span>
+                <span id="leg-txt-changed">Changed</span>
               </span>
             </div>
 
@@ -503,18 +503,18 @@
               <label
                 id="lbl-preserve-toggle"
                 class="prev-days-toggle"
-                title="ONのとき、再最適化時に現在の時間割からの変更コマ数を最小化します"
+                title=""
               >
                 <input type="checkbox" id="chk-preserve-timetable" checked />
-                <span id="txt-preserve-toggle">🔒 微調整モード</span>
+                <span id="txt-preserve-toggle">🔒 Minimal Perturbation</span>
               </label>
               <label
                 id="lbl-diff-toggle"
                 class="prev-days-toggle"
-                title="前回の時間割から変更された科目カードをオレンジ枠でハイライト表示します"
+                title=""
               >
                 <input type="checkbox" id="chk-highlight-diff" checked />
-                <span id="txt-diff-toggle">✨ 変更箇所を表示</span>
+                <span id="txt-diff-toggle">✨ Show Diffs</span>
               </label>
             </div>
           </div>
@@ -526,19 +526,19 @@
           <div id="empty-timetable-state" class="empty-timetable-card">
             <div class="empty-state-icon" id="empty-state-icon">📄</div>
             <div class="empty-state-content">
-              <h3 id="empty-state-title">時間割データがありません（白紙モード）</h3>
+              <h3 id="empty-state-title">Get Started with University Timetabling (Master Data)</h3>
               <p id="empty-state-desc">
-                現在、教員・教室・科目のデータが登録されていません。まずは「📚 科目・教員・教室一覧」タブで基礎データを生成またはCSVインポートしてください。
+                To auto-schedule timetables, baseline faculty, classroom, and course data are required. Load sample benchmark data below or import your own CSVs.
               </p>
               <div class="empty-state-actions" id="empty-state-actions">
                 <button type="button" id="btn-empty-view-catalog" class="btn-solve-primary">
-                  📚 基礎データ管理を開く
+                  🎲 Load Sample Data
                 </button>
                 <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
-                  📂 CSVファイルを読み込む
+                  📂 Import from CSV Files
                 </button>
                 <button type="button" id="btn-empty-samples" class="btn-xs-outline">
-                  📥 サンプルCSVをダウンロード
+                  📥 Download Sample CSV Templates
                 </button>
               </div>
             </div>
@@ -569,19 +569,19 @@
             <div class="custom-rules-header">
               <div>
                 <div class="custom-rules-title-row" style="display: flex; align-items: center; gap: 8px;">
-                  <h3 id="custom-rules-title">📌 個別に追加・固定された時間割ルール</h3>
+                  <h3 id="custom-rules-title">📌 Custom & Pinned Timetable Rules</h3>
                   <span id="badge-custom-rules" class="tab-count-badge" hidden>0</span>
                 </div>
                 <p id="custom-rules-desc" class="constraint-card-desc">
-                  時間割ボードのクリックやAIチャット、または下のフォームから追加された個別制約です。チェックボックスでON/OFF、ハード/ソフトの切り替えや削除ができます。
+                  Rules added by clicking slots, chatting with AI, or using the builder below. Toggle ON/OFF, switch between Hard/Soft, or delete.
                 </p>
               </div>
               <div class="custom-rules-actions">
                 <button type="button" id="btn-apply-config-save" class="btn-toolbar-outline">
-                  <span id="txt-apply-config-save">💾 設定を保存</span>
+                  <span id="txt-apply-config-save">💾 Save Settings</span>
                 </button>
                 <button type="button" id="btn-reset-default-config" class="btn-toolbar-outline">
-                  ↩ 初期設定に戻す
+                  ↩ Reset to Defaults
                 </button>
               </div>
             </div>
@@ -593,13 +593,13 @@
               style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px dashed var(--border-subtle);"
             >
               <label class="form-field" style="width: 185px;">
-                <span id="lbl-new-rule-kind">追加するルール種別</span>
+                <span id="lbl-new-rule-kind">Rule Kind</span>
                 <select id="select-new-rule-kind" class="toolbar-select">
-                  <option id="opt-rule-pin" value="pin_slot">📌 科目の曜日・時限固定</option>
-                  <option id="opt-rule-forbid" value="forbid_slot">🚫 科目の曜日・時限禁止</option>
-                  <option id="opt-rule-nooverlap" value="course_no_overlap">⚡ 2科目の同時開講禁止</option>
-                  <option id="opt-rule-consec" value="course_consecutive">🔗 週2コマ科目の連続時限指定</option>
-                  <option id="opt-rule-sameday" value="course_same_day">📅 2コマ/2科目の同日開講指定</option>
+                  <option id="opt-rule-pin" value="pin_slot">📌 Pin Course Slot</option>
+                  <option id="opt-rule-forbid" value="forbid_slot">🚫 Forbid Course Slot</option>
+                  <option id="opt-rule-nooverlap" value="course_no_overlap">⚡ Prevent Simultaneous Scheduling</option>
+                  <option id="opt-rule-consec" value="course_consecutive">🔗 Consecutive Periods</option>
+                  <option id="opt-rule-sameday" value="course_same_day">📅 Same-Day Scheduling</option>
                 </select>
               </label>
               <label class="form-field" style="flex: 1 1 170px;">
@@ -607,7 +607,7 @@
                 <select id="select-new-rule-course1" class="toolbar-select"></select>
               </label>
               <label class="form-field" style="flex: 1 1 160px;" id="wrap-new-rule-course2">
-                <span id="lbl-new-rule-c2">対象科目B (2科目ルール用)</span>
+                <span id="lbl-new-rule-c2">Target Course B (for 2-course rules)</span>
                 <select id="select-new-rule-course2" class="toolbar-select"></select>
               </label>
               <label class="form-field" style="width: 95px;" id="wrap-new-rule-day">
@@ -635,7 +635,7 @@
                 <select id="select-new-rule-room" class="toolbar-select"></select>
               </label>
               <button type="button" id="btn-add-custom-rule" class="btn-solve-primary" style="height: 32px;">
-                ＋ ルールを追加
+                ＋ Add Rule
               </button>
             </div>
           </div>
@@ -644,27 +644,27 @@
             <!-- Card 1: Structural Hard Constraints -->
             <div class="constraint-card">
               <div class="constraint-card-header">
-                <h3 id="card1-title">🏛️ 1. 教室定員・設備 ＆ 学年カリキュラム基本制約</h3>
+                <h3 id="card1-title">🏛️ 1. Room Capacity, Equipment & Cohort Curriculum Rules</h3>
               </div>
               <p id="card1-desc" class="constraint-card-desc">
-                大学時間割編成(UCTP)における物理的・教務的ハード制約の有効/無効を設定します。
+                Enable or disable structural physical and curriculum hard constraints in UCTP.
               </p>
               <div class="constraint-toggles-list">
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceRoomCapacity" checked />
-                  <span id="lbl-cfg-roomcap"><strong>教室定員の厳守</strong>（履修者数が教室定員を超える割当を禁止）</span>
+                  <span id="lbl-cfg-roomcap"><strong>Enforce Room Capacity</strong> (Forbid assigning a course to a room smaller than its enrollment)</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceRoomEquipment" checked />
-                  <span id="lbl-cfg-roomequip"><strong>教室設備・PC演習室要件の厳守</strong>（プログラミング・DS演習はPC演習室必須等）</span>
+                  <span id="lbl-cfg-roomequip"><strong>Enforce Room Equipment & PC Lab Requirements</strong> (Programming/DS labs require PC rooms)</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceCohortNoOverlap" checked />
-                  <span id="lbl-cfg-cohort"><strong>学年別の開講科目重複禁止</strong>（同一学年の科目が同じコマに重複配置されるのを禁止）</span>
+                  <span id="lbl-cfg-cohort"><strong>Forbid Overlap Across All Cohort Courses</strong> (Prevent scheduling multiple courses for the same cohort in the same slot)</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-forbidSameCourseSameDay" checked />
-                  <span id="lbl-cfg-sameday"><strong>週2コマ科目の同日開講防止</strong>（個別指定がない限り週2コマ科目は別々の曜日に分散配置）</span>
+                  <span id="lbl-cfg-sameday"><strong>Spread 2-Session Courses Across Different Days</strong> (Unless overridden by a consecutive/same-day rule)</span>
                 </label>
               </div>
             </div>
@@ -672,23 +672,23 @@
             <!-- Card 2: Professor Workload & Availability Rules -->
             <div class="constraint-card">
               <div class="constraint-card-header">
-                <h3 id="card2-title">👨‍🏫 2. 教員の出講可能枠・連続講義上限・学生空きコマ抑制</h3>
+                <h3 id="card2-title">👨‍🏫 2. Faculty Availability, Consecutive Caps & Student Hollow Gaps</h3>
               </div>
               <p id="card2-desc" class="constraint-card-desc">
-                専任・非常勤講師の出講不可枠の遵守、連続講義上限、および目的関数のソフトペナルティ重みを設定します。
+                Configure adjunct day restrictions, faculty meeting NG slots, consecutive lecture caps, and soft penalty weights.
               </p>
               <div class="constraint-toggles-list">
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceAdjunctDayRestrictions" checked />
-                  <span id="lbl-cfg-adjunct"><strong>非常勤講師の出講可能曜日を厳守</strong>（小林先生:火木のみ / 加藤先生:水金のみ）</span>
+                  <span id="lbl-cfg-adjunct"><strong>Enforce Adjunct Faculty Days</strong></span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceProfessorAvailability" checked />
-                  <span id="lbl-cfg-profavail"><strong>教員の都合NG枠（教授会・委員会・通院等）を厳守</strong></span>
+                  <span id="lbl-cfg-profavail"><strong>Enforce Faculty Unavailable Slots</strong> (Faculty meetings, committees, medical slots)</span>
                 </label>
                 <label class="checkbox-row">
                   <input type="checkbox" id="cfg-enforceMaxConsecutivePeriods" checked />
-                  <span id="lbl-cfg-maxconsec"><strong>教員の連続講義コマ数上限を厳守する</strong></span>
+                  <span id="lbl-cfg-maxconsec"><strong>Enforce Max Consecutive Teaching Periods</strong></span>
                 </label>
               </div>
               <div class="constraint-form-grid">
@@ -697,15 +697,15 @@
                   <input type="number" id="cfg-maxProfessorConsecutivePeriods" min="1" max="5" value="2" />
                 </label>
                 <label class="form-field">
-                  <span id="lbl-num-maxdaily">教員 1日最大担当コマ数</span>
+                  <span id="lbl-num-maxdaily">Max Daily Sessions per Faculty</span>
                   <input type="number" id="cfg-maxProfessorSessionsPerDay" min="1" max="5" value="3" />
                 </label>
                 <label class="form-field">
-                  <span id="lbl-num-maxcohort">学年 1日最大必修コマ数</span>
+                  <span id="lbl-num-maxcohort">Max Daily Compulsory Sessions per Cohort</span>
                   <input type="number" id="cfg-maxCohortCompulsoryPerDay" min="2" max="5" value="4" />
                 </label>
                 <label class="form-field">
-                  <span id="lbl-num-weightgap">学生の空きコマ(中空き)ペナルティ重み</span>
+                  <span id="lbl-num-weightgap">Hollow Gap (Idle Period) Soft Penalty Weight</span>
                   <input type="number" id="cfg-weightCohortIdleGaps" min="0" max="100" value="25" />
                 </label>
               </div>
@@ -715,12 +715,12 @@
           <!-- Developer Inspector -->
           <details class="dev-inspector-details">
             <summary id="dev-inspector-summary" class="dev-inspector-summary">
-              💻 開発者向け: WaSHI 数理モデルコード ＆ LPプレビューを表示
+              💻 Developer: Inspect WaSHI Mathematical Formulation & LP Preview
             </summary>
             <div class="dev-inspector-body">
               <div class="dev-inspector-actions">
                 <button type="button" id="btn-diagnose-conflict" class="btn-solve-secondary">
-                  🔍 WaSHI (HiGHS) で現在の制約の論理整合性を単体チェック
+                  🔍 Check Logical Feasibility with WaSHI (HiGHS)
                 </button>
                 <span id="lp-stats-badge" class="constraint-tag">-- vars / -- constraints</span>
               </div>
@@ -740,26 +740,26 @@
           class="results-tab-panel"
           style="overflow-y: auto; padding: 14px 16px; gap: 14px;"
         >
-          <!-- 基礎データ管理バー -->
+          <!-- Master data toolbar -->
           <div id="cat-mgmt-card" class="catalog-management-card">
             <div class="catalog-mgmt-header">
               <div class="catalog-mgmt-title-group">
-                <span class="dp-badge" id="cat-mgmt-badge">基礎データ</span>
-                <h3 id="cat-mgmt-title">大学基礎データ管理（教員・教室・科目）</h3>
-                <p id="cat-mgmt-desc">時間割編成の基礎となる教員名簿・教室設備・開講科目です。</p>
+                <span class="dp-badge" id="cat-mgmt-badge">Master Data</span>
+                <h3 id="cat-mgmt-title">University Master Data (Faculty, Classrooms & Curriculum)</h3>
+                <p id="cat-mgmt-desc">Master rosters, facilities, and courses for university course timetabling.</p>
               </div>
               <div class="catalog-mgmt-actions">
-                <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary" title="情報科学科モデル（10教員・7教室・25科目・計30コマ）のサンプルデータを読み込みます">
-                  🎲 サンプルデータを読み込む
+                <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary" title="CS Dept Model (10 faculty, 7 rooms, 25 courses / 30 slots)">
+                  🎲 Load Sample Data
                 </button>
-                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="教員・教室・科目のCSVファイルを読み込みます">
-                  📂 CSVインポート
+                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="📂 Import CSV">
+                  📂 Import CSV
                 </button>
-                <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="教員・教室・科目のサンプルCSVファイルをダウンロード">
-                  📥 CSVテンプレート
+                <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="📥 Download Sample CSV Templates">
+                  📥 Download CSV Templates
                 </button>
-                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="登録データをすべてクリアして白紙状態に戻す" hidden>
-                  🗑️ 白紙に戻す
+                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="🗑️ Clear to Blank" hidden>
+                  🗑️ Clear to Blank
                 </button>
               </div>
             </div>
@@ -767,9 +767,9 @@
 
           <div id="cat-tables-container" style="display: flex; flex-direction: column; gap: 14px;">
             <div class="custom-rules-card">
-              <h3 id="cat-prof-title">👨‍🏫 教員一覧 ＆ 出講条件・割当コマ集計 (10名)</h3>
+              <h3 id="cat-prof-title">👨‍🏫 Faculty Roster, Availability & Assigned Load (10 Faculty)</h3>
               <p id="cat-prof-desc" class="constraint-card-desc">
-                各教員の出講不可曜日・NG時限・1限/5限回避希望、および現在の時間割における割当結果です。
+                Contracted days, unavailable slots, P1/P5 preferences, and assigned weekly load in the current timetable.
               </p>
               <div class="staff-table-wrap">
                 <table class="staff-profile-table">
@@ -777,11 +777,11 @@
                     <tr id="cat-prof-thead-row">
                       <th>ID</th>
                       <th>教員氏名</th>
-                      <th>職位・区分</th>
+                      <th>Title / Dept</th>
                       <th>専門分野</th>
-                      <th>出講不可曜日・NG枠</th>
-                      <th>時間帯希望・上限</th>
-                      <th>現在の割当実績</th>
+                      <th>Unavailable Slots</th>
+                      <th>Preferences / Max</th>
+                      <th>Assigned Sessions</th>
                     </tr>
                   </thead>
                   <tbody id="catalog-prof-tbody"></tbody>
@@ -790,14 +790,14 @@
             </div>
 
             <div class="custom-rules-card">
-              <h3 id="cat-room-title">🏫 講義室・演習室一覧 ＆ 設備・稼働率 (7室)</h3>
+              <h3 id="cat-room-title">🏫 Lecture Halls, PC Labs & Utilization (7 Rooms)</h3>
               <div class="staff-table-wrap">
                 <table class="staff-profile-table">
                   <thead>
                     <tr id="cat-room-thead-row">
                       <th>ID</th>
                       <th>教室名</th>
-                      <th>種別・場所</th>
+                      <th>Type / Building</th>
                       <th>定員</th>
                       <th>備付設備</th>
                       <th>週間稼働率 (25枠中)</th>
@@ -809,18 +809,18 @@
             </div>
 
             <div class="custom-rules-card">
-              <h3 id="cat-course-title">📚 開講科目一覧 (全25科目・計30コマ)</h3>
+              <h3 id="cat-course-title">📚 Course Catalog (25 Courses / 30 Weekly Sessions)</h3>
               <div class="staff-table-wrap">
                 <table class="staff-profile-table">
                   <thead>
                     <tr id="cat-course-thead-row">
                       <th>ID</th>
                       <th>科目名</th>
-                      <th>対象学年・区分</th>
+                      <th>Cohort / Category</th>
                       <th>担当教員</th>
-                      <th>履修者数・週コマ数</th>
-                      <th>必須設備・教室条件</th>
-                      <th>現在の割当枠・教室</th>
+                      <th>Enrollment / Sessions</th>
+                      <th>Required Facilities</th>
+                      <th>Current Slot & Room</th>
                     </tr>
                   </thead>
                   <tbody id="catalog-course-tbody"></tbody>
@@ -836,7 +836,7 @@
     <dialog id="slot-inspector-dialog" class="shift-dialog" closedby="any" aria-labelledby="slot-dialog-title" style="max-width: 520px;">
       <div class="dialog-inner">
         <div class="dialog-header">
-          <h3 id="slot-dialog-title">時間割コマの固定・移動・禁止設定</h3>
+          <h3 id="slot-dialog-title">Pin, Move, or Forbid Course Slot</h3>
           <button type="button" id="btn-close-slot-dialog" class="dialog-close-btn" aria-label="Close">
             ✕
           </button>
@@ -871,23 +871,23 @@
             </label>
           </div>
           <label class="form-field">
-            <span id="lbl-dlg-room">教室指定（自動割当または固定）</span>
+            <span id="lbl-dlg-room">Classroom Assignment</span>
             <select id="dialog-select-room" class="toolbar-select" style="flex: 1;"></select>
           </label>
         </div>
 
         <div class="dialog-shift-buttons">
           <button type="button" id="btn-dialog-pin-course" class="btn-solve-primary">
-            📌 この曜日・時限に固定して再計算
+            📌 Pin to this slot & solve
           </button>
           <button type="button" id="btn-dialog-forbid-course" class="btn-toolbar-outline">
-            🚫 この曜日・時限を禁止にして再計算
+            🚫 Forbid this slot & solve
           </button>
         </div>
 
         <div class="dialog-footer">
           <button type="button" id="btn-dialog-clear-course-rules" class="btn-xs-outline">
-            この科目の追加ルールを解除
+            Clear Custom Rules for this Course
           </button>
         </div>
       </div>
@@ -897,37 +897,37 @@
     <dialog id="nano-setup-dialog" class="shift-dialog" closedby="any" aria-labelledby="nano-setup-dialog-title">
       <div class="dialog-inner">
         <div class="dialog-header">
-          <h3 id="nano-setup-dialog-title">🤖 Chrome Built-in AI (Gemini Nano) 有効化ガイド</h3>
+          <h3 id="nano-setup-dialog-title">Chrome Built-in AI (Gemini Nano) Setup Guide</h3>
           <button type="button" id="btn-close-nano-dialog" class="dialog-close-btn" aria-label="Close">
             ✕
           </button>
         </div>
         <div class="dialog-body nano-guide-body">
           <p id="nano-dlg-intro">
-            左側のAIチャットは、Chrome ブラウザに内蔵されたオンデバイス AI
-            (<code>self.LanguageModel</code> API / <strong>Gemini Nano</strong>) を使用します。
+            The AI chat uses Chrome Built-in On-Device AI
+            (<code>self.LanguageModel</code> API / <strong>Gemini Nano</strong>).
           </p>
           <ol class="nano-guide-steps">
             <li id="nano-dlg-step1">
-              <code>chrome://flags/#optimization-guide-on-device-model</code> を開き、<strong>Enabled BypassPerfRequirement</strong> に設定します。
+              <code>chrome://flags/#optimization-guide-on-device-model</code>  and set to <strong>Enabled BypassPerfRequirement</strong>.
             </li>
             <li id="nano-dlg-step2">
-              <code>chrome://flags/#prompt-api-for-gemini-nano</code> を <strong>Enabled</strong> に設定して Chrome を再起動します。
+              <code>chrome://flags/#prompt-api-for-gemini-nano</code>  to <strong>Enabled</strong> and relaunch Chrome.
             </li>
             <li id="nano-dlg-step3">
-              <code>chrome://components</code> の <strong>Optimization Guide On Device Model</strong> で「アップデートを確認」を実行します。
+              In <code>chrome://components</code>, find <strong>Optimization Guide On Device Model</strong> and click "Check for update".
             </li>
           </ol>
           <p id="nano-dlg-note" class="nano-guide-note">
-            💡 Gemini Nano が未有効の環境でも、右側の時間割ボード操作・チュートリアル・条件変更・WaSHI (HiGHS) による最適化と矛盾診断はすべてご利用いただけます。
+            You can still use all timetable solver features even without Gemini Nano.
           </p>
         </div>
         <div class="dialog-footer">
           <button type="button" id="btn-dialog-recheck-nano" class="btn-xs-primary">
-            🔄 ステータスを再確認
+            Recheck
           </button>
           <button type="button" id="btn-dialog-close-ok" class="btn-xs-outline">
-            閉じる
+            Close
           </button>
         </div>
       </div>
@@ -937,24 +937,24 @@
     <dialog id="trajectory-dialog" class="shift-dialog" closedby="any" aria-labelledby="trajectory-dialog-title" style="max-width: 820px; width: 92vw;">
       <div class="dialog-inner">
         <div class="dialog-header">
-          <h3 id="trajectory-dialog-title">📋 AI × WaSHI 実行ログ (Trajectory Export)</h3>
+          <h3 id="trajectory-dialog-title">AI × WaSHI Execution Logs (Trajectory)</h3>
           <button type="button" id="btn-close-trajectory-dialog" class="dialog-close-btn" aria-label="Close">
             ✕
           </button>
         </div>
         <div class="dialog-body">
           <p id="traj-dlg-desc" style="margin: 0 0 0.6rem; font-size: 0.82rem; color: var(--text-muted);">
-            各ターンの Gemini Nano への送信プロンプト・JSON Schema・生JSON出力・抽出されたオペレーション・WaSHI (HiGHS) の求解結果を完全記録しています。
+            Full execution traces of prompts, tool calls, and solver outcomes.
           </p>
           <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.65rem;">
             <button type="button" id="btn-copy-trajectory" class="btn-xs-primary">
-              📋 JSONをクリップボードにコピー
+              📋 Copy JSON
             </button>
             <button type="button" id="btn-download-trajectory" class="btn-xs-outline">
-              📥 JSONファイルを保存 (.json)
+              📥 Download JSON
             </button>
             <button type="button" id="btn-clear-trajectory" class="btn-xs-outline">
-              🗑️ ログをクリア
+              🗑️ Clear Logs
             </button>
           </div>
           <pre
@@ -970,14 +970,14 @@
     <dialog id="csv-import-dialog" class="shift-dialog" closedby="any" aria-labelledby="csv-dialog-title" style="max-width: 680px; width: 92vw;">
       <div class="dialog-inner">
         <div class="dialog-header">
-          <h3 id="csv-dialog-title">📂 CSVファイルの読み込み (教員・教室・科目)</h3>
+          <h3 id="csv-dialog-title">Import Master Data from CSV</h3>
           <button type="button" id="btn-close-csv-dialog" class="dialog-close-btn" aria-label="Close">
             ✕
           </button>
         </div>
         <div class="dialog-body">
           <p id="csv-dlg-intro" style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
-            教員名簿・利用可能教室・開講科目の3つのCSVファイルを読み込みます。手元にCSVがない場合は各「📥 サンプル」ボタンでテンプレートをダウンロードできます。
+            Upload professors, rooms, and courses CSV files.
           </p>
 
           <div class="csv-upload-grid">
@@ -985,7 +985,7 @@
             <div class="csv-upload-item">
               <div class="csv-upload-header">
                 <strong>👨‍🏫 1. 教員CSV (professors.csv)</strong>
-                <button type="button" id="btn-dl-sample-profs" class="btn-link-inline">📥 サンプル</button>
+                <button type="button" id="btn-dl-sample-profs" class="btn-link-inline">📥 Sample</button>
               </div>
               <input type="file" id="file-input-profs" accept=".csv,text/csv" class="csv-file-input" />
               <div id="file-status-profs" class="csv-file-status">未選択</div>
@@ -995,7 +995,7 @@
             <div class="csv-upload-item">
               <div class="csv-upload-header">
                 <strong>🏫 2. 教室CSV (rooms.csv)</strong>
-                <button type="button" id="btn-dl-sample-rooms" class="btn-link-inline">📥 サンプル</button>
+                <button type="button" id="btn-dl-sample-rooms" class="btn-link-inline">📥 Sample</button>
               </div>
               <input type="file" id="file-input-rooms" accept=".csv,text/csv" class="csv-file-input" />
               <div id="file-status-rooms" class="csv-file-status">未選択</div>
@@ -1005,7 +1005,7 @@
             <div class="csv-upload-item">
               <div class="csv-upload-header">
                 <strong>📚 3. 科目CSV (courses.csv)</strong>
-                <button type="button" id="btn-dl-sample-courses" class="btn-link-inline">📥 サンプル</button>
+                <button type="button" id="btn-dl-sample-courses" class="btn-link-inline">📥 Sample</button>
               </div>
               <input type="file" id="file-input-courses" accept=".csv,text/csv" class="csv-file-input" />
               <div id="file-status-courses" class="csv-file-status">未選択</div>
@@ -1016,14 +1016,14 @@
         </div>
         <div class="dialog-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
           <button type="button" id="btn-dl-all-samples" class="btn-xs-outline">
-            📥 サンプルCSV一括ダウンロード
+            📥 Download Sample CSV Bundle
           </button>
           <div style="display: flex; gap: 0.5rem;">
             <button type="button" id="btn-execute-csv-import" class="btn-solve-primary" disabled>
-              📥 インポートを実行してセット
+              📥 Import and Apply
             </button>
             <button type="button" id="btn-close-csv-dialog-cancel" class="btn-xs-outline">
-              閉じる
+              Close
             </button>
           </div>
         </div>
@@ -1034,21 +1034,21 @@
     <dialog id="prompt-catalog-dialog" class="shift-dialog" closedby="any" aria-labelledby="prompt-catalog-dialog-title" style="max-width: 860px; width: 94vw;">
       <div class="dialog-inner">
         <div class="dialog-header">
-          <h3 id="prompt-catalog-dialog-title">🤖 Gemini Nano 想定質問・指示プロンプト集 (8カテゴリ)</h3>
+          <h3 id="prompt-catalog-dialog-title">🤖 Gemini Nano Expected Questions & Prompt Catalog (8 Categories)</h3>
           <button type="button" id="btn-close-prompt-catalog" class="dialog-close-btn" aria-label="Close">
             ✕
           </button>
         </div>
         <div class="dialog-body" style="max-height: 72vh; overflow-y: auto;">
           <p id="prompt-catalog-intro" style="margin: 0 0 1rem; font-size: 0.85rem; color: var(--text-muted); line-height: 1.6;">
-            Gemini Nano が自然言語から正確に構造化（JSON toolCalls）して WaSHI × HiGHS ソルバーに渡せる代表的な指示例です。クリックするとチャット入力欄に自動入力されます。
+            Sample natural language prompts for timetabling adjustments.
           </p>
 
           <div id="prompt-catalog-categories-container"></div>
         </div>
         <div class="dialog-footer">
           <button type="button" id="btn-close-prompt-catalog-bottom" class="btn-xs-outline">
-            閉じる
+            Close
           </button>
         </div>
       </div>

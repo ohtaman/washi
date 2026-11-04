@@ -1,3 +1,24 @@
+import enCatalog from "./locales/en.json" with { type: "json" };
+import jaCatalog from "./locales/ja.json" with { type: "json" };
+import zhCatalog from "./locales/zh.json" with { type: "json" };
+
+const ALL_CSV_CATALOGS = [enCatalog.csv, jaCatalog.csv, zhCatalog.csv];
+
+function matchesHeader(h: string, field: string, section: "professors" | "rooms" | "courses"): boolean {
+  for (const cat of ALL_CSV_CATALOGS) {
+    const list = (cat as any)[section]?.[field];
+    if (list && list.includes(h)) return true;
+  }
+  return false;
+}
+
+function matchesToken(t: string, tokenKey: string): boolean {
+  for (const cat of ALL_CSV_CATALOGS) {
+    const list = (cat as any).tokens?.[tokenKey];
+    if (list && list.some((k: string) => t === k || t.includes(k))) return true;
+  }
+  return false;
+}
 import {
   type CohortId,
   type CourseCategory,
@@ -77,7 +98,7 @@ export function parseCsvRows(text: string): string[][] {
 }
 
 function normalizeHeader(h: string): string {
-  return h.toLowerCase().replace(/[\s_\-（）()・]/g, "");
+  return h.toLowerCase().replace(/[\s_\-()\uFF08\uFF09\u30FB]/g, "");
 }
 
 function parseDayToken(token: string): TimetableDay | null {
@@ -120,28 +141,28 @@ function parseCohortToken(token: string): CohortId | null {
 
 function parseRoomTypeToken(token: string): RoomType {
   const t = token.trim().toLowerCase();
-  if (t === "large_hall" || t.includes("大講義") || t.includes("大ホール")) return "large_hall";
-  if (t === "pc_lab" || t.includes("pc") || t.includes("演習室") || t.includes("端末")) return "pc_lab";
-  if (t === "seminar_room" || t.includes("ゼミ") || t.includes("小教室")) return "seminar_room";
+  if (matchesToken(t, "large_hall")) return "large_hall";
+  if (matchesToken(t, "pc_lab")) return "pc_lab";
+  if (matchesToken(t, "seminar_room")) return "seminar_room";
   return "medium_room";
 }
 
 function parseCategoryToken(token: string): CourseCategory {
   const t = token.trim().toLowerCase();
-  if (t === "compulsory" || t === "必修" || t.includes("必修講義")) return "compulsory";
-  if (t === "elective_core" || t === "選必" || t.includes("選択必修")) return "elective_core";
-  if (t === "lab_exercise" || t === "演習" || t.includes("pc演習") || t.includes("実験")) return "lab_exercise";
-  if (t === "seminar" || t === "ゼミ" || t.includes("輪講")) return "seminar";
+  if (matchesToken(t, "compulsory")) return "compulsory";
+  if (matchesToken(t, "elective_core")) return "elective_core";
+  if (matchesToken(t, "lab_exercise")) return "lab_exercise";
+  if (matchesToken(t, "seminar")) return "seminar";
   return "elective";
 }
 
 function parseEquipmentToken(token: string): RoomEquipment | null {
   const t = token.trim().toLowerCase();
-  if (t === "projector" || t.includes("プロジェクタ")) return "projector";
-  if (t === "mic" || t.includes("マイク") || t.includes("音響")) return "mic";
-  if (t === "pc_terminal" || t.includes("pc") || t.includes("端末")) return "pc_terminal";
-  if (t === "moveable_desks" || t.includes("可動") || t.includes("机")) return "moveable_desks";
-  if (t === "recording" || t.includes("収録") || t.includes("録画")) return "recording";
+  if (matchesToken(t, "projector")) return "projector";
+  if (matchesToken(t, "mic")) return "mic";
+  if (matchesToken(t, "pc_terminal")) return "pc_terminal";
+  if (matchesToken(t, "moveable_desks")) return "moveable_desks";
+  if (matchesToken(t, "recording")) return "recording";
   return null;
 }
 
@@ -154,32 +175,25 @@ export function parseProfessorsCsv(csvText: string): {
 } {
   const rows = parseCsvRows(csvText);
   if (rows.length < 2) {
-    return { professors: [], errors: ["教員CSVにデータ行がありません (ヘッダー行＋1行以上必要です)"] };
+    return { professors: [], errors: ["Faculty CSV has no data rows (header + at least 1 row required)"] };
   }
 
   const rawHeaders = rows[0];
   const headers = rawHeaders.map(normalizeHeader);
-  const idIdx = headers.findIndex((h) => h === "id" || h === "教員id" || h === "コード");
-  const nameIdx = headers.findIndex((h) => h === "name" || h === "氏名" || h === "教員名" || h === "名前");
-  const titleIdx = headers.findIndex((h) => h === "title" || h === "役職" || h === "職階");
-  const empIdx = headers.findIndex((h) => h === "employment" || h === "雇用形態" || h === "身分" || h === "区分");
-  const unavailIdx = headers.findIndex((h) => h === "unavailabledays" || h === "不可曜日" || h === "出講不可曜日" || h === "ng曜日");
-  const slotIdx = headers.findIndex(
-    (h) =>
-      h === "unavailableslots" ||
-      h === "不可コマ" ||
-      h === "出講不可コマ" ||
-      h === "ngコマ" ||
-      h === "不可スロット"
-  );
-  const p1Idx = headers.findIndex((h) => h === "avoidperiod1" || h === "1限回避" || h === "1限ng");
-  const p5Idx = headers.findIndex((h) => h === "avoidperiod5" || h === "5限回避" || h === "5限ng");
-  const maxIdx = headers.findIndex((h) => h === "maxsessionsperday" || h === "1日最大コマ数" || h === "最大コマ");
+  const idIdx = headers.findIndex((h) => matchesHeader(h, "id", "professors"));
+  const nameIdx = headers.findIndex((h) => matchesHeader(h, "name", "professors"));
+  const titleIdx = headers.findIndex((h) => matchesHeader(h, "title", "professors"));
+  const empIdx = headers.findIndex((h) => matchesHeader(h, "employment", "professors"));
+  const unavailIdx = headers.findIndex((h) => matchesHeader(h, "unavailableDays", "professors"));
+  const slotIdx = headers.findIndex((h) => matchesHeader(h, "unavailableSlots", "professors"));
+  const p1Idx = headers.findIndex((h) => matchesHeader(h, "avoidPeriod1", "professors"));
+  const p5Idx = headers.findIndex((h) => matchesHeader(h, "avoidPeriod5", "professors"));
+  const maxIdx = headers.findIndex((h) => matchesHeader(h, "maxSessionsPerDay", "professors"));
 
   if (idIdx === -1 || nameIdx === -1) {
     return {
       professors: [],
-      errors: ["教員CSVには 'id' (教員ID) と 'name' (氏名) 列が必須です。"],
+      errors: ["Faculty CSV requires 'id' and 'name' columns."],
     };
   }
 
@@ -192,11 +206,11 @@ export function parseProfessorsCsv(csvText: string): {
     const id = row[idIdx]?.trim();
     const name = row[nameIdx]?.trim();
     if (!id || !name) {
-      errors.push(`行 ${r + 1}: IDまたは氏名が空です`);
+      errors.push(`Row ${r + 1}: ID or name is empty`);
       continue;
     }
     if (seenIds.has(id)) {
-      errors.push(`行 ${r + 1}: 教員ID '${id}' が重複しています`);
+      errors.push(`Row ${r + 1}: Duplicate faculty ID '${id}'`);
       continue;
     }
     seenIds.add(id);
@@ -268,21 +282,22 @@ export function parseRoomsCsv(csvText: string): {
 } {
   const rows = parseCsvRows(csvText);
   if (rows.length < 2) {
-    return { rooms: [], errors: ["教室CSVにデータ行がありません (ヘッダー行＋1行以上必要です)"] };
+    return { rooms: [], errors: ["Room CSV has no data rows (header + at least 1 row required)"] };
   }
 
   const rawHeaders = rows[0];
   const headers = rawHeaders.map(normalizeHeader);
-  const idIdx = headers.findIndex((h) => h === "id" || h === "教室id" || h === "部屋id" || h === "コード");
-  const nameIdx = headers.findIndex((h) => h === "name" || h === "教室名" || h === "部屋名");
-  const capIdx = headers.findIndex((h) => h === "capacity" || h === "収容定員" || h === "定員" || h === "人数");
-  const typeIdx = headers.findIndex((h) => h === "roomtype" || h === "教室種別" || h === "種別" || h === "タイプ");
-  const eqIdx = headers.findIndex((h) => h === "equipment" || h === "設備" || h === "備品");
+  const idIdx = headers.findIndex((h) => matchesHeader(h, "id", "rooms"));
+  const nameIdx = headers.findIndex((h) => matchesHeader(h, "name", "rooms"));
+  const capIdx = headers.findIndex((h) => matchesHeader(h, "capacity", "rooms"));
+  const typeIdx = headers.findIndex((h) => matchesHeader(h, "roomType", "rooms"));
+  const eqIdx = headers.findIndex((h) => matchesHeader(h, "equipment", "rooms"));
+  const bldIdx = headers.findIndex((h) => matchesHeader(h, "building", "rooms"));
 
   if (idIdx === -1 || nameIdx === -1 || capIdx === -1) {
     return {
       rooms: [],
-      errors: ["教室CSVには 'id' (教室ID), 'name' (教室名), 'capacity' (定員) 列が必須です。"],
+      errors: ["Room CSV requires 'id', 'name', and 'capacity' columns."],
     };
   }
 
@@ -297,11 +312,11 @@ export function parseRoomsCsv(csvText: string): {
     const capNum = row[capIdx] ? Number(row[capIdx]) : NaN;
 
     if (!id || !name || isNaN(capNum) || capNum <= 0) {
-      errors.push(`行 ${r + 1}: ID, 教室名, または有効な定員(正の数値)がありません`);
+      errors.push(`Row ${r + 1}: ID, room name, or valid positive capacity is missing`);
       continue;
     }
     if (seenIds.has(id)) {
-      errors.push(`行 ${r + 1}: 教室ID '${id}' が重複しています`);
+      errors.push(`Row ${r + 1}: Duplicate room ID '${id}'`);
       continue;
     }
     seenIds.add(id);
@@ -345,25 +360,25 @@ export function parseCoursesCsv(
 } {
   const rows = parseCsvRows(csvText);
   if (rows.length < 2) {
-    return { courses: [], errors: ["科目CSVにデータ行がありません (ヘッダー行＋1行以上必要です)"] };
+    return { courses: [], errors: ["Course CSV has no data rows (header + at least 1 row required)"] };
   }
 
   const rawHeaders = rows[0];
   const headers = rawHeaders.map(normalizeHeader);
-  const idIdx = headers.findIndex((h) => h === "id" || h === "科目id" || h === "コード");
-  const titleIdx = headers.findIndex((h) => h === "title" || h === "科目名" || h === "授業名" || h === "名称");
-  const profIdx = headers.findIndex((h) => h === "professorid" || h === "担当教員id" || h === "教員id" || h === "教員");
-  const cohortIdx = headers.findIndex((h) => h === "cohorts" || h === "学年" || h === "対象学年" || h === "年次");
-  const catIdx = headers.findIndex((h) => h === "category" || h === "区分" || h === "科目区分" || h === "種別");
-  const enrollIdx = headers.findIndex((h) => h === "enrollment" || h === "受講者数" || h === "受講予定人数" || h === "人数");
-  const sesIdx = headers.findIndex((h) => h === "sessionsperweek" || h === "週コマ数" || h === "コマ数" || h === "コマ");
-  const eqIdx = headers.findIndex((h) => h === "requiredequipment" || h === "必要設備" || h === "必須設備");
-  const roomTypeIdx = headers.findIndex((h) => h === "requiredroomtype" || h === "必要教室種別" || h === "指定教室種別");
+  const idIdx = headers.findIndex((h) => matchesHeader(h, "id", "courses"));
+  const titleIdx = headers.findIndex((h) => matchesHeader(h, "title", "courses"));
+  const profIdx = headers.findIndex((h) => matchesHeader(h, "professorId", "courses"));
+  const cohortIdx = headers.findIndex((h) => matchesHeader(h, "cohorts", "courses"));
+  const catIdx = headers.findIndex((h) => matchesHeader(h, "category", "courses"));
+  const enrollIdx = headers.findIndex((h) => matchesHeader(h, "enrollment", "courses"));
+  const sesIdx = headers.findIndex((h) => matchesHeader(h, "sessionsPerWeek", "courses"));
+  const eqIdx = headers.findIndex((h) => matchesHeader(h, "requiredEquipment", "courses"));
+  const roomTypeIdx = headers.findIndex((h) => matchesHeader(h, "requiredRoomType", "courses"));
 
   if (idIdx === -1 || titleIdx === -1 || profIdx === -1) {
     return {
       courses: [],
-      errors: ["科目CSVには 'id' (科目ID), 'title' (科目名), 'professorId' (担当教員ID) 列が必須です。"],
+      errors: ["Course CSV requires 'id', 'title', and 'professorId' columns."],
     };
   }
 
@@ -378,18 +393,18 @@ export function parseCoursesCsv(
     const professorId = row[profIdx]?.trim();
 
     if (!id || !title || !professorId) {
-      errors.push(`行 ${r + 1}: ID, 科目名, または担当教員IDが空です`);
+      errors.push(`Row ${r + 1}: ID, title, or professorId is empty`);
       continue;
     }
 
     if (seenIds.has(id)) {
-      errors.push(`行 ${r + 1}: 科目ID '${id}' が重複しています`);
+      errors.push(`Row ${r + 1}: Duplicate course ID '${id}'`);
       continue;
     }
     seenIds.add(id);
 
     if (knownProfIds && knownProfIds.size > 0 && !knownProfIds.has(professorId)) {
-      errors.push(`行 ${r + 1} (${title}): 教員ID '${professorId}' は教員リストに存在しません`);
+      errors.push(`Row ${r + 1} (${title}): Professor ID '${professorId}' does not exist in faculty list`);
     }
 
     const cohorts: CohortId[] = [];
@@ -546,20 +561,20 @@ export function validateTimetableDataset(
   const errors: string[] = [];
 
   if (professors.length === 0) {
-    errors.push("教員データが空です (1名以上必要です)");
+    errors.push("Faculty data is empty (at least 1 required)");
   }
   if (rooms.length === 0) {
-    errors.push("教室データが空です (1室以上必要です)");
+    errors.push("Room data is empty (at least 1 required)");
   }
   if (courses.length === 0) {
-    errors.push("科目データが空です (1科目以上必要です)");
+    errors.push("Course data is empty (at least 1 required)");
   }
 
   // Check unique IDs for professors
   const profIdSet = new Set<string>();
   for (const p of professors) {
     if (profIdSet.has(p.id)) {
-      errors.push(`教員ID '${p.id}' が重複しています (${p.name})`);
+      errors.push(`Duplicate faculty ID '${p.id}' (${p.name})`);
     } else {
       profIdSet.add(p.id);
     }
@@ -569,7 +584,7 @@ export function validateTimetableDataset(
   const roomIdSet = new Set<string>();
   for (const r of rooms) {
     if (roomIdSet.has(r.id)) {
-      errors.push(`教室ID '${r.id}' が重複しています (${r.name})`);
+      errors.push(`Duplicate room ID '${r.id}' (${r.name})`);
     } else {
       roomIdSet.add(r.id);
     }
@@ -579,13 +594,13 @@ export function validateTimetableDataset(
   const courseIdSet = new Set<string>();
   for (const c of courses) {
     if (courseIdSet.has(c.id)) {
-      errors.push(`科目ID '${c.id}' が重複しています (${c.title})`);
+      errors.push(`Duplicate course ID '${c.id}' (${c.title})`);
     } else {
       courseIdSet.add(c.id);
     }
 
     if (!profIdSet.has(c.professorId)) {
-      errors.push(`科目「${c.title}」(${c.id}): 担当教員ID '${c.professorId}' が教員リストに存在しません`);
+      errors.push(`Course "${c.title}" (${c.id}): Professor ID '${c.professorId}' does not exist in faculty list`);
     }
   }
 

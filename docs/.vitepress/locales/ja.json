@@ -1,0 +1,97 @@
+{
+  "label": "日本語",
+  "titleTemplate": ":title | WaSHI — 数理最適化と制約プログラミングのための代数モデラー",
+  "description": "TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）",
+  "nav": [
+    {
+      "text": "はじめに",
+      "link": "/ja/getting-started/",
+      "activeMatch": "^/ja/(?:getting-started|guide|solvers|examples)/"
+    },
+    { "text": "ショーケース", "link": "/ja/showcase/", "activeMatch": "^/ja/showcase/" }
+  ],
+  "sidebar": [
+    {
+      "text": "はじめに",
+      "items": [
+        { "text": "インストールと入門", "link": "/ja/getting-started/" },
+        { "text": "AIエージェント向けリファレンス", "link": "/ja/getting-started/ai-agents" },
+        { "text": "ランタイム環境設定", "link": "/ja/getting-started/runtimes" },
+        { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" }
+      ]
+    },
+    {
+      "text": "モデリングガイド",
+      "items": [
+        { "text": "変数と境界値", "link": "/ja/guide/variables" },
+        { "text": "数式の記述", "link": "/ja/guide/expressions" },
+        { "text": "制約条件", "link": "/ja/guide/constraints" },
+        { "text": "目的関数と最適化", "link": "/ja/guide/objectives" },
+        { "text": "競合制約診断 (Unsat Core)", "link": "/ja/guide/unsat-core" }
+      ]
+    },
+    {
+      "text": "ソルバー",
+      "items": [
+        { "text": "ソルバー比較と概要", "link": "/ja/solvers/" },
+        { "text": "HiGHS (標準ソルバー)", "link": "/ja/solvers/highs" },
+        { "text": "Z3 (SMT / 競合診断)", "link": "/ja/solvers/z3" },
+        { "text": "GLPK (LP / MIP)", "link": "/ja/solvers/glpk" },
+        { "text": "カスタムソルバー作成ガイド", "link": "/ja/solvers/custom-solver" }
+      ]
+    },
+    {
+      "text": "実践例",
+      "items": [
+        { "text": "一覧・逆引きインデックス", "link": "/ja/examples/" },
+        { "text": "生産計画問題 (LP/MIP)", "link": "/ja/examples/production" },
+        { "text": "0-1 ナップサック問題 (MIP)", "link": "/ja/examples/knapsack" },
+        { "text": "輸送・物流ネットワーク (LP)", "link": "/ja/examples/transportation" },
+        { "text": "栄養問題と感度分析 (Dual/Slack)", "link": "/ja/examples/diet-sensitivity" },
+        { "text": "シフト作成と希望休の競合診断", "link": "/ja/examples/shift-scheduling" },
+        { "text": "ECカートのクーポン最適適用", "link": "/ja/examples/ecommerce-coupons" },
+        { "text": "ポートフォリオ最適化 (QP)", "link": "/ja/examples/portfolio-qp" },
+        { "text": "セキュリティポリシー検証 (SMT)", "link": "/ja/examples/smt-security" },
+        { "text": "制約矛盾の診断 (Unsat Core)", "link": "/ja/examples/unsat-core" }
+      ]
+    }
+  ],
+  "outline": {
+    "label": "このページの目次"
+  },
+  "docFooter": {
+    "prev": "前のページ",
+    "next": "次のページ"
+  },
+  "lastUpdated": {
+    "text": "最終更新"
+  },
+  "returnToTopLabel": "トップに戻る",
+  "sidebarMenuLabel": "メニュー",
+  "darkModeSwitchLabel": "外観モード",
+  "lightModeSwitchTitle": "ライトモードに切り替え",
+  "darkModeSwitchTitle": "ダークモードに切り替え",
+  "langMenuLabel": "言語を切り替え",
+  "skipToContentLabel": "本文へスキップ",
+  "search": {
+    "button": {
+      "buttonText": "検索",
+      "buttonAriaLabel": "検索"
+    },
+    "modal": {
+      "displayDetails": "詳細リストを表示",
+      "resetButtonTitle": "検索条件をリセット",
+      "backButtonTitle": "検索を閉じる",
+      "noResultsText": "関連する結果が見つかりませんでした",
+      "footer": {
+        "selectText": "選択",
+        "selectKeyAriaLabel": "Enter キー",
+        "navigateText": "移動",
+        "navigateUpKeyAriaLabel": "上矢印キー",
+        "navigateDownKeyAriaLabel": "下矢印キー",
+        "closeText": "閉じる",
+        "closeKeyAriaLabel": "Esc キー"
+      }
+    }
+  }
+}

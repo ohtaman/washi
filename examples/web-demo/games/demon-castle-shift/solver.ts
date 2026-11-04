@@ -77,31 +77,34 @@ export function computeSlotWinProbability(
 export function resolveEnemyPortrait(req: ShiftSlotRequirement): string {
   const name = req.enemyName;
   if (
-    name.includes("勇者") ||
-    name.includes("聖堂") ||
-    name.includes("親衛隊") ||
+    name.includes("Hero") ||
+    name.includes("Sanctuary") ||
+    name.includes("Templar") ||
+    name.includes("Royal Guard") ||
     req.enemyIcon === "👑"
   ) {
     return "./enemy-hero-party.jpg";
   }
   if (
-    name.includes("魔導") ||
-    name.includes("月下") ||
-    name.includes("狩猟") ||
-    name.includes("夜間精鋭") ||
-    name.includes("傭兵") ||
+    name.includes("Mage") ||
+    name.includes("Moonlit") ||
+    name.includes("Hunt") ||
+    name.includes("Artillery") ||
+    name.includes("Saboteur") ||
+    name.includes("Shinobi") ||
     req.enemyIcon === "✨" ||
     req.enemyIcon === "🌕"
   ) {
     return "./enemy-mages.jpg";
   }
   if (
-    name.includes("重騎士") ||
-    name.includes("重装") ||
-    name.includes("歩兵") ||
-    name.includes("巡回") ||
-    name.includes("騎士") ||
-    name.includes("砲兵") ||
+    name.includes("Knight") ||
+    name.includes("Armored") ||
+    name.includes("Infantry") ||
+    name.includes("Patrol") ||
+    name.includes("Archers") ||
+    name.includes("Shield") ||
+    name.includes("Heavy") ||
     req.enemyIcon === "🛡️" ||
     req.isBossRaid
   ) {
@@ -140,14 +143,14 @@ export function rollStageBattles(
     const leadMonster = leadId ? MONSTERS[leadId] : null;
     const defenderName =
       slot.assignedMonsters.length > 0
-        ? slot.assignedMonsters.map((id) => MONSTERS[id].name).join("・")
-        : "配置なし";
+        ? slot.assignedMonsters.map((id) => MONSTERS[id].name).join(", ")
+        : "No Guards Assigned";
     const defenderPortrait = leadMonster ? leadMonster.portrait : "./char-lilith.jpg";
     const defenderQuote = leadMonster
       ? slot.shift === "day"
         ? leadMonster.quotes.dayAssign
         : leadMonster.quotes.nightAssign
-      : "この時間帯は誰も配置されていません。";
+      : "No guards are scheduled for this shift slot.";
 
     const activePositiveRel = stage.activeRelations.find(
       (rel) =>
@@ -168,7 +171,7 @@ export function rollStageBattles(
       enemyName: req.enemyName,
       enemyIcon: req.enemyIcon,
       enemyPortrait: resolveEnemyPortrait(req),
-      enemyQuote: req.enemyQuote ?? "街の平穏のため、この門を突破する。",
+      enemyQuote: req.enemyQuote ?? "For the peace of human towns, we will break through the gates.",
       defenderQuote: activeNegativeRel ? (leadMonster?.quotes.angry ?? defenderQuote) : defenderQuote,
       defenderName,
       defenderPortrait,
@@ -327,7 +330,7 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         if (shiftMorale !== 0) {
           monsterMorale[mId] += shiftMorale;
           moraleEvents.push({
-            label: `${DAY_LABELS[req.day]}・${req.shift === "day" ? "昼" : "夜"}: ${MONSTERS[mId].name}（適性）`,
+            label: `${DAY_LABELS[req.day]} · ${req.shift === "day" ? "Day" : "Night"}: ${MONSTERS[mId].name} (Affinity)`,
             delta: shiftMorale,
             day: req.day,
             shift: req.shift,
@@ -339,7 +342,7 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         if (req.isBossRaid && bossBonus !== 0) {
           monsterMorale[mId] += bossBonus;
           moraleEvents.push({
-            label: `${DAY_LABELS[req.day]}・${req.shift === "day" ? "昼" : "夜"}: ${MONSTERS[mId].name}（強敵警戒）`,
+            label: `${DAY_LABELS[req.day]} · ${req.shift === "day" ? "Day" : "Night"}: ${MONSTERS[mId].name} (Boss Guard)`,
             delta: bossBonus,
             day: req.day,
             shift: req.shift,
@@ -359,7 +362,7 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         monsterMorale[rel.monsterA] += Math.round(rel.moraleDelta / 2);
         monsterMorale[rel.monsterB] += rel.moraleDelta - Math.round(rel.moraleDelta / 2);
         moraleEvents.push({
-          label: `${DAY_LABELS[req.day]}・${req.shift === "day" ? "昼" : "夜"}: ${rel.title}（${MONSTERS[rel.monsterA].name}・${MONSTERS[rel.monsterB].name}）`,
+          label: `${DAY_LABELS[req.day]} · ${req.shift === "day" ? "Day" : "Night"}: ${rel.title} (${MONSTERS[rel.monsterA].name} & ${MONSTERS[rel.monsterB].name})`,
           delta: rel.moraleDelta,
           day: req.day,
           shift: req.shift,
@@ -397,8 +400,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         severity: "error",
         day: req.day,
         shift: req.shift,
-        shortBadge: `戦力手薄 (${currentPower})`,
-        message: `${DAY_LABELS[req.day]}の${req.shift === "day" ? "昼" : "夜"}（${req.enemyName}・予測 ${expectedPower}）は防衛力が ${currentPower} とやや手薄です。`,
+        shortBadge: `Low Power (${currentPower})`,
+        message: `${DAY_LABELS[req.day]} ${req.shift === "day" ? "Day" : "Night"} (${req.enemyName} · Expected ${expectedPower}) defense power is low at ${currentPower}.`,
       });
     }
 
@@ -409,8 +412,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         severity: "error",
         day: req.day,
         shift: req.shift,
-        shortBadge: `人数不足 (${assignedMonsters.length}/${req.minStaff})`,
-        message: `${DAY_LABELS[req.day]}の${req.shift === "day" ? "昼" : "夜"}は人数が不足しています（現在 ${assignedMonsters.length}名 / 必要 ${req.minStaff}名）。`,
+        shortBadge: `Understaffed (${assignedMonsters.length}/${req.minStaff})`,
+        message: `${DAY_LABELS[req.day]} ${req.shift === "day" ? "Day" : "Night"} is understaffed (${assignedMonsters.length} assigned / ${req.minStaff} required).`,
       });
     }
 
@@ -425,8 +428,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
             day: req.day,
             shift: "night",
             monsterId: mId,
-            shortBadge: "満月夜は配置不可",
-            message: `${DAY_LABELS[req.day]}の夜は満月のため、${MONSTERS[mId].name}は夜番に配置できません。`,
+            shortBadge: "No Full Moon Night",
+            message: `Full moon on ${DAY_LABELS[req.day]} night prevents ${MONSTERS[mId].name} from night duty.`,
           });
         }
       }
@@ -443,8 +446,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
             day: req.day,
             shift: "night",
             monsterId: mId,
-            shortBadge: "夜は単独配置不可",
-            message: `${DAY_LABELS[req.day]}の夜に${MONSTERS[mId].name}がひとりになっています。夜は他の仲間も一緒に配置してください。`,
+            shortBadge: "No Solo Night",
+            message: `${MONSTERS[mId].name} is alone on ${DAY_LABELS[req.day]} night. Pair with another guard.`,
           });
         }
       }
@@ -471,8 +474,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         category: "weekly_cap",
         severity: "error",
         monsterId: mId,
-        shortBadge: `週${profile.maxWeeklyShifts}日上限超過`,
-        message: `${profile.name}の出勤数が上限を超えています（現在 ${totalWorked}日 / 上限 ${profile.maxWeeklyShifts}日）。休みを増やしてください。`,
+        shortBadge: `Exceeds Weekly Limit (${profile.maxWeeklyShifts}d)`,
+        message: `${profile.name} exceeds shift cap (${totalWorked} days / max ${profile.maxWeeklyShifts} days). Add rest days.`,
       });
     }
 
@@ -486,8 +489,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
           day: (d + 1) as DayIndex,
           shift: "day",
           monsterId: mId,
-          shortBadge: "前日が夜番（夜→昼は不可）",
-          message: `${profile.name}が${DAY_LABELS[d]}の夜番から翌朝（${DAY_LABELS[d + 1]}の昼番）へ連続で入っています。夜番の翌朝は昼番に入れません。`,
+          shortBadge: "Night into Morning Transition",
+          message: `${profile.name} is scheduled for night on ${DAY_LABELS[d]} then day on ${DAY_LABELS[d + 1]}. Cannot work day right after night.`,
         });
       }
     }
@@ -510,12 +513,12 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
           monsterId: mId,
           shortBadge:
             profile.maxConsecutiveDays === 1
-              ? "連勤不可（翌日は休み）"
-              : `${windowSize}連勤不可（最大${profile.maxConsecutiveDays}連勤）`,
+              ? "No Consecutive Days"
+              : `Max ${profile.maxConsecutiveDays} Consecutive Days`,
           message:
             profile.maxConsecutiveDays === 1
-              ? `${profile.name}が${DAY_LABELS[start]}と${DAY_LABELS[start + 1]}に連続で入っています。1日働いたら翌日は休みにしてください。`
-              : `${profile.name}が${windowSize}日連続で入っています（最大${profile.maxConsecutiveDays}連勤まで）。`,
+              ? `${profile.name} is scheduled consecutively on ${DAY_LABELS[start]} and ${DAY_LABELS[start + 1]}. Must rest next day.`
+              : `${profile.name} is scheduled for ${windowSize} consecutive days (max ${profile.maxConsecutiveDays}).`,
         });
       }
     }
@@ -533,8 +536,8 @@ export function evaluateSchedule(stage: StageScenario, schedule: ScheduleGrid): 
         severity: "error",
         day: offReq.day,
         monsterId: offReq.monsterId,
-        shortBadge: "指定休",
-        message: `${DAY_LABELS[offReq.day]}は${MONSTERS[offReq.monsterId].name}の指定休（${offReq.reason}）です。休みにしてください。`,
+        shortBadge: "Requested Off",
+        message: `${DAY_LABELS[offReq.day]} is a requested day off for ${MONSTERS[offReq.monsterId].name} (${offReq.reason}). Must be off.`,
       });
     }
   }
@@ -887,13 +890,13 @@ export async function diagnoseScheduleWithHighs(
       if (relaxedStatus === "Optimal") {
         conflicts.push(`deadend_${mId}`);
         messages.push(
-          `${MONSTERS[mId].name}の現在の出撃配置が偏っているため、残りの曜日の襲撃を防ぎきれなくなっています`
+          `${MONSTERS[mId].name}'s current schedule is uneven, leaving remaining days vulnerable to raids.`
         );
       }
     }
     if (messages.length === 0) {
       conflicts.push("deadend_combined");
-      messages.push("複数のモンスターの出撃日が重なり、後半の襲撃枠で人手不足が発生しています");
+      messages.push("Multiple monster shift assignments overlap, causing guard shortages in later slots.");
     }
   }
 

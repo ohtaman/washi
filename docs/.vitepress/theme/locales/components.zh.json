@@ -1,0 +1,120 @@
+{
+  "codeRunner": {
+    "running": "运行中...",
+    "run": "运行代码",
+    "executed": "执行完成",
+    "openPlayground": "在 Playground 中打开 →",
+    "output": "执行输出 (stdout)"
+  },
+  "portfolioQp": {
+    "eyebrow": "交互式示例 · 5 项资产凸二次规划 (QuadExpr)",
+    "title": "投资组合配置优化器 (Markowitz QP)",
+    "subtitle": "调整目标期望收益率并点击“▶ 运行优化”，即可根据 5 项资产的协方差矩阵（QuadExpr）计算最小风险配置比例。",
+    "solving": "计算中...",
+    "run": "运行优化",
+    "targetReturn": "目标期望收益率:",
+    "minVariance": "最小方差:",
+    "dirtyBanner": "目标收益率已更改，请点击右上角“▶ 运行优化”重新计算。",
+    "openPlayground": "在 Playground 中编辑代码 →",
+    "assets": {
+      "Tech": "美股科技",
+      "Global": "全球股票指数",
+      "REIT": "房地产 REIT",
+      "Gold": "黄金 (避险)",
+      "Bonds": "国债"
+    }
+  },
+  "ecommerce": {
+    "eyebrow": "交互式示例 · HiGHS 条件指示约束 (Indicator)",
+    "title": "电商购物车优惠券与智能凑单优化",
+    "subtitle": "勾选购物车商品并点击“▶ 运行优化”，根据叠加限制（最多 2 张）与满减门槛（m.indicator）计算最优优惠券组合与智能凑单商品。",
+    "solving": "计算中...",
+    "run": "运行优化",
+    "step1": "1. 选择购物车商品",
+    "selectedPrefix": "已选: $",
+    "enableFiller": "启用智能凑单商品（Filler）联合优化",
+    "fillerCandidates": "候选凑单品: USB-C 编织线 (+$10) / 屏幕清洁套装 (+$15) / 金属拔键器 (+$25)",
+    "step2": "2. 优化结算明细 (最多叠加 2 张)",
+    "dirtyBanner": "商品选择已更改，请点击右上角“▶ 运行优化”重新计算。",
+    "smartTip": "智能凑单建议：加购 1 件凑单小件反而能降低实付金额！",
+    "smartTipBody1": "加购",
+    "smartTipBody2": "可解锁更高档位满减，比直接结算（$",
+    "smartTipBody3": "）还要",
+    "subtotal": "商品小计",
+    "fillerItem": "凑单加购商品",
+    "discount": "已抵扣优惠券",
+    "totalPayable": "实付金额",
+    "skipped": "未使用",
+    "openPlayground": "在 Playground 中编辑代码 →",
+    "products": {
+      "headphones": "无线降噪耳机",
+      "keyboard": "机械键盘",
+      "webcam": "4K 直播摄像头",
+      "stand": "铝合金笔记本支架",
+      "lightbar": "显示器挂灯",
+      "mat": "毛毡桌垫",
+      "USB_Cable": "USB-C 编织线",
+      "Screen_Wipe": "屏幕清洁套装",
+      "Keycap_Puller": "金属拔键器"
+    },
+    "coupons": {
+      "WELCOME15": "满 $100 减 $15 (可叠加)",
+      "MEMBER10": "满 $180 减 $10 (可叠加)",
+      "SAVE30_200": "满 $200 减 $30 (档位互斥)",
+      "MEGA50_250": "满 $250 减 $50 (档位互斥)"
+    }
+  },
+  "shift": {
+    "eyebrow": "交互式示例 · 8 名员工 × 7 天 (56 个二元变量)",
+    "title": "周排班计划器与休假冲突诊断",
+    "subtitle": "点击表格单元格切换休假申请，然后点击“▶ 运行优化”，由 HiGHS 计算最低成本排班表。",
+    "solving": "计算中...",
+    "run": "运行优化",
+    "dirtyTooltip": "有未应用的更改",
+    "presets": {
+      "standard": "1. 标准需求（工作日 4 人·周末 5–6 人）",
+      "weekend": "2. 周末高峰配置（每日至少 2 名资深）",
+      "twoOff": "3. 全员各申请 2 天休假",
+      "conflict": "⚠️ 冲突示例：周六所有资深员工申请休假"
+    },
+    "minSeniors": "每日最少资深员工数:",
+    "minSeniorsOptions": {
+      "none": "0 人（无限制）",
+      "one": "1 人以上",
+      "two": "2 人以上"
+    },
+    "minShifts": "每人每周最少出勤天数:",
+    "minShiftsSuffix": "天以上",
+    "dirtyBanner": "※ 参数已修改，点击“▶ 运行优化”更新排班结果",
+    "colStaff": "员工 (日薪 / 上限 5 天)",
+    "needPrefix": "需 ",
+    "colTotal": "周出勤",
+    "weekendExtra": "(周末+$20)",
+    "toggleTitle": "点击切换休假申请",
+    "offReq": "请假",
+    "onDuty": "● 值班",
+    "rest": "轮休",
+    "rowTotal": "每日排班 / 需求人数",
+    "short": "✗ 不足",
+    "optimalTitle": "已求得最优排班 (Optimal)",
+    "optimalSub": "56 个二元变量",
+    "payroll": "周总人力成本 (最小化):",
+    "infeasibleTitle": "无法排班 (Infeasible) — Z3 定位的冲突约束子集 (Unsat Core):",
+    "infeasibleTip": "💡 点击任意红框“请假”单元格取消该休假申请，再点击“▶ 运行优化”即可恢复可行排班。",
+    "openPlayground": "在 Playground 中编辑代码 →",
+    "roles": {
+      "Senior": "资深",
+      "Mid": "骨干",
+      "Junior": "初级"
+    },
+    "days": {
+      "Mon": "周一",
+      "Tue": "周二",
+      "Wed": "周三",
+      "Thu": "周四",
+      "Fri": "周五",
+      "Sat": "周六",
+      "Sun": "周日"
+    }
+  }
+}

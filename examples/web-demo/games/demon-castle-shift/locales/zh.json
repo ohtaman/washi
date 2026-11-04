@@ -1,0 +1,939 @@
+{
+  "ui": {
+    "title": "魔王城的24小时警备班表",
+    "subtitle": "要塞防卫排班解谜 (WaSHI MIP)",
+    "metaDesc": "兼顾昼夜专长、休息规则与同伴默契，运用WaSHI数理规划守护魔王城。",
+    "backToShowcase": "返回案例展示",
+    "backToShowcaseShort": "← 案例展示",
+    "menu": "菜单",
+    "openMenu": "打开菜单",
+    "bgmOn": "播放BGM（点击开启）",
+    "bgmOff": "停止BGM（点击静音）",
+    "bgmTagOn": "🔊 BGM: ON",
+    "bgmTagOff": "🔇 BGM: OFF",
+    "bgmTextShort": "🔇 BGM: OFF",
+    "bgmTextExtra": "（点击开启音乐）",
+    "dispatchBtn": "以此班表出击警备",
+    "dispatchBtnDesc": "以当前班表开始警备模拟",
+    "hintBtn": "向莉莉丝请教建议",
+    "hintBtnDesc": "由WaSHI求解器计算最佳调整建议",
+    "solveBtn": "查看示范班表",
+    "solveBtnDesc": "展示经严格验证的零违规最优排班",
+    "resetBtn": "清空班表",
+    "off": "休",
+    "day": "昼",
+    "night": "夜",
+    "mon": "周一",
+    "tue": "周二",
+    "wed": "周三",
+    "thu": "周四",
+    "fri": "周五",
+    "sat": "周六",
+    "sun": "周日",
+    "gateHp": "城门耐久",
+    "winRate": "防卫成功率",
+    "requiredPower": "目标战力",
+    "currentPower": "当前战力",
+    "raidTitle": "敌袭",
+    "noRaid": "平静",
+    "synergy": "连携",
+    "conflict": "排斥",
+    "fullMoon": "满月",
+    "requestedOff": "指定休",
+    "victoryTitle": "防卫成功",
+    "defeatTitle": "城门失守",
+    "nextStage": "前往下个月 ▶",
+    "retryStage": "重新排班 ↺",
+    "theoryArticle": "数理模型解说文章",
+    "rulesTitle": "警备班表须知",
+    "rulesClose": "关闭",
+    "tapToAdvance": "点击任意处继续",
+    "autoSimOn": "自动进行: 开",
+    "autoSimOff": "自动进行: 关",
+    "eraPrefix": "星月历",
+    "yearSuffix": "年",
+    "monthSuffix": "月",
+    "startStory": "开始故事",
+    "returnToTitle": "返回标题画面",
+    "startStory_2": "开始故事 ▶",
+    "finish": "结束 ▶",
+    "next": "下一步 ▶",
+    "clickForMusic": "（点击开启音乐）",
+    "continueDifficulty": "继续游戏（{mLabel}·难度：{dLabel}）",
+    "continue": "继续游戏（{mLabel}）",
+    "proceedToShift": "前往{firstMonth}排班",
+    "next_2": "下一步",
+    "cleared": "防卫成功",
+    "difficulty": "（难度：{endlessDiff}）",
+    "subsequentMonthsWithDifficulty": "根据您的警备记录自动调整难度的次月及后续排班",
+    "daysGuardsOnDuty": "{dayCount}天 · 本周值班 {guardCount}名",
+    "startScheduling": "开始编排班表",
+    "clickToRevealFullMessage": "点击显示完整信息",
+    "day_2": "昼",
+    "night_2": "夜",
+    "off_2": "休",
+    "setOnTo": "将{mName}的{dLabel}设为「{shiftLabel}」吧",
+    "guardMembers": "警备成员",
+    "tapForDetails": "（点击查看详情）",
+    "staff": "人数 {assignedCount}/{req_minStaff}",
+    "text": "{assignedCount}/{req_minStaff}人",
+    "defEst": "防卫 {currentPower} / 预测 {expectedPower}",
+    "off_3": "指定休（{locReason}）",
+    "withLilith": "与莉莉丝一起排班 {activeTutorial_stepIndex}/{activeTutorial_totalSteps}",
+    "buildOnMyOwn": "接下来自己排班",
+    "clashW150": "⚡与{activeConflictPartner}排斥 (-150)",
+    "synergyW100": "🤝与{activeSynergyPartner}连携 (+100)",
+    "noFullMoonNight": "满月夜不可",
+    "cannotWorkNightShiftOn": "满月之夜无法将{m_name}安排在夜班",
+    "currentTapToChangeTo": "{m_name} {getDayLabel_d__currentLang}: 当前 {cycleLabel}（点击切换至 {nextShiftLabel}）",
+    "shifts": "出勤 {assignedCount}/{m_maxWeeklyShifts}",
+    "day_3": "昼 {dayPower}",
+    "night_3": "夜 {nightPower}",
+    "clickToViewSDetails": "点击在下方的对话栏显示{m_name}的详情（平时岗位：{m_usualPost}）",
+    "dayWatch": "白昼警备",
+    "day_4": "☀️ 昼",
+    "nightWatch": "夜间警备",
+    "night_4": "🌙 夜",
+    "understoodFeelFreeToArrange": "明白了，接下来请按照您的节奏自由编排班表吧。",
+    "post": "{m_title}（{m_race}·平时岗位：{m_usualPost}）",
+    "text_2": "「{m_quotes_intro}」 ── {m_traitSummary}",
+    "schedulingWithLilith": "与莉莉丝一起排班（{activeTutorial_stepIndex}/{activeTutorial_totalSteps}）",
+    "scheduleComplete": "排班完成",
+    "our3DayShiftSchedule": "我们一起编排的3天班表已经完成了，请点击下方的「按此班表出击警备」吧。",
+    "thankYouWeHavePut": "非常感谢，我们一起顺利完成了3天的班表。请点击右下方的「按此班表出击警备」，出发守卫城门吧。",
+    "workRuleCheck": "勤务条件确认",
+    "shiftClashDefenseWith": "⚡ 同班排斥（与{other_name}同班防卫力 {rel_moraleDelta}）",
+    "assigningBothToTheSame": "{locRel_description}（排在同一时段会使防卫力降低 {moraleDelta}）",
+    "ready": "准备就绪",
+    "everyTimeSlotIsWell": "所有时段都已安排了可靠的战力，请点击「按此班表出击警备」继续前进吧。",
+    "pairSynergyWith": "🤝 搭档连携发动（与{other_name}同班 +{rel_moraleDelta}）",
+    "text_3": "「{quote}」 ── {locRel_description}",
+    "dayShift": "白班",
+    "nightShift": "夜班",
+    "text_4": "「{quote}」",
+    "difficulty_2": "（难度：{diffLabel}）",
+    "staff_2": "人数 {staffOkSlots}/{totalSlots}",
+    "estPower": "达到预测 {predOkSlots}/{totalSlots}",
+    "workRulesOk": "勤务条件 OK",
+    "ruleIssues": "勤务违规 {laborViolations_length}项",
+    "thereAreNoSpecialPair": "本月值班成员之间没有特殊的相性或排斥关系。",
+    "synergy_2": "默契 (+{rel_moraleDelta})",
+    "clash": "排斥 ({rel_moraleDelta})",
+    "synergy_3": "🤝 默契",
+    "clash_2": "⚡ 排斥",
+    "synergyTogether": "🤝 默契：{mA_name}×{mB_name}（同班 +{rel_moraleDelta}）",
+    "clashTogether": "⚡ 同班排斥：{mA_name}×{mB_name}（同班 {rel_moraleDelta}）",
+    "hint": "提示",
+    "toResolveAWorkRule": "为了消除勤务条件冲突，已将{mName}在{dLabel}的班表调整为「{sLabel}」。",
+    "assignedOnTo": "已将{mName}的{dLabel}配置为「{sLabel}」。{locStage_lilithHint}",
+    "adjustedOnToForAn": "已将{mName}的{dLabel}调整为「{sLabel}」，整体防卫评价进一步提升。",
+    "yourScheduleAlreadyMatchesThe": "当前排班已经与示范解答完全一致，可以直接点击「按此班表出击警备」。",
+    "statusCheck": "状况确认",
+    "yourCurrentlyPlacedShiftsHave": "目前已安排的班表没有任何死胡同或违规，继续填满剩余时段即可完成防卫。",
+    "someGuardsCurrentAssignmentsAr": "当前的出勤配置有所偏重，导致后续袭来时段人手不足。",
+    "tryResettingAFewShifts": "{reasonText} 请尝试将相关成员的出勤日先调回「休」再重新调配。",
+    "day_5": "☀️昼",
+    "night_5": "🌙夜",
+    "match": "✓ 一致",
+    "you": "自",
+    "mod": "范",
+    "text_5": "、",
+    "none": "无",
+    "noRaidEst": "🍃 无袭来／预测 {expectedEnemy}",
+    "actualEst": "实际 {outcome_actualEnemyPower}／预测 {expectedEnemy}",
+    "est": "预测 {expectedEnemy}",
+    "enemy": "敌：",
+    "breachedSlot": "被突破的时段",
+    "yoursStrongDefStrong": "你的排班：<strong>防卫 {pPower}</strong>（{pNames}）",
+    "modelStrongDefStrong": "范例：<strong>防卫 {oPower}</strong>（{oNames}）",
+    "yourShiftVsModelShift": "📊 你的排班 vs 范例排班对比",
+    "goldBorderedCellsDifferFrom": "金框格子为与范例不同的配置（下次挑战时敌军进军与当班成员将重新编排）。",
+    "yourTotalDefenseStrongStrong": "你的总防卫力：<strong>{playerEval_totalScore}</strong>",
+    "modelTotalDefenseStrongStrong": "范例总防卫力：<strong>{optEval_totalScore}</strong>",
+    "shiftComparisonTable": "排班对比表",
+    "guard": "成员",
+    "gateIntactAllRaidsMust": "城门无伤（必须全战防卫）",
+    "gateBreachedFallen": "城门被破（陷落）",
+    "gateIntact": "城门无伤",
+    "breached": "陷落",
+    "unassigned": "未配置",
+    "synergy100": "配合 +100",
+    "friction150": "不和 -150",
+    "noGuardsAreAssignedYet": "尚未安排任何警备成员。请在格子中选择「昼」或「夜」进行安排。",
+    "shiftRulesCheck": "出勤条件确认",
+    "pleaseResolveTheFollowingShift": "在开始警备之前，请先解除以下不合理的出勤条件。",
+    "show1CellHint": "查看1格提示",
+    "returnToShiftTable": "返回排班表调整",
+    "unassignedUnguarded": "无人配置（无防备）",
+    "noGuardsAreStationedHere": "没有任何人驻守，城门处于无防备状态……",
+    "defVsEst": "防卫 {o_defensePower} vs 预测 {o_expectedEnemyPower}",
+    "mainCastleGate": "第一防卫城门",
+    "guardsAreInPositionClick": "警备队已就位。点击画面推进至下一场景。",
+    "autoOff": "▶ 自动: OFF",
+    "skipToResult": "跳至结果 ⏭",
+    "skip": "跳过 ⏭",
+    "clickToAdvance": "点击继续",
+    "demonCastleGuards": "魔王城·值班警备",
+    "advancingExpedition": "涌来的勇者军",
+    "guardDefense": "我方防卫力",
+    "enemyPower": "敌方战力",
+    "weeklyDefenseTimeline": "本周防卫时间线",
+    "autoOn": "🔄 自动: ON",
+    "morningDawnBreaks": "🌅 {dayName}清晨 ── 天亮了",
+    "dawnBreaksOnMorning": "🌅 黎明破晓，{dayName}清晨来临",
+    "nightFallsAndTheFull": "🌕 夜幕降临，{dayName}的满月升起",
+    "nightFallsOnEvening": "🌙 夜幕降临，{dayName}的夜晚来临",
+    "text_6": "{dayName}·{shiftLabel}（{i___1} / {outcomes_length}）",
+    "allQuietNoRaid": "🍃 无敌影·平稳",
+    "alertLevel": "警戒等级 {o_expectedEnemyPower}",
+    "noExpeditionRaidOccurredDuring": "该时段没有勇者军袭来",
+    "onDutyDefCompletedA": "🛡️ 值班：{locO_defenderName}（防卫力 {o_defensePower}）平稳完成巡逻",
+    "allClearAdvancingToNext": "🍃 一切正常 ── 推进至下一时段……",
+    "noEnemyMovementTimePassed": "{dayName}·{shiftLabel}：勇者军没有动静，时间平静流逝。",
+    "noRaidDef": "🍃 无袭来（防卫 {o_defensePower}）",
+    "defVsEst_2": "⚔️ 防卫 {o_defensePower} vs 敌预测 {o_expectedEnemyPower}",
+    "battle": "{shiftIcon} {dayName}·{shiftLabel}之战",
+    "wellAboveEstimate": "🛡️ 远超预测战力",
+    "aboveEstimate": "⚔️ 达到预测战力",
+    "belowEstimate": "⚠️ 低于预测战力",
+    "def": "防卫 {o_defensePower}",
+    "est_2": "预测 {o_expectedEnemyPower}",
+    "appearedBeforeTheCastleGate": "「{locO_enemyName}」出现在了城门前",
+    "emergedFromTheDarkness": "「{locO_enemyName}」从黑暗中现身",
+    "mainForceAppears": "👑 勇者军主力·出现",
+    "dayVanguardAppears": "☀️ 白昼进军部队·出现",
+    "nightRaidAppears": "🌙 夜间奇袭部队·出现",
+    "estEnemyPower": "⚔️ 敌预测战力 {o_expectedEnemyPower}",
+    "onDutyDefStandsFirm": "🛡️ 值班警备：{locO_defenderName}（防卫力 {o_defensePower}）迎战",
+    "morningArrives": "🌅 {dayName}清晨来临……",
+    "nightArrives": "🌙 {dayName}夜晚来临……",
+    "engageBattleClickToClash": "⚔️ 开始迎战 ▶（点击开始交战）",
+    "appeared": "{o_enemyIcon} {locO_enemyName}出现",
+    "asDawnBrokeOnAppeared": "{dayName}黎明破晓，「{locO_enemyName}」出现在了城门前。",
+    "asDarknessFellEmergedFrom": "夜幕降临，「{locO_enemyName}」从黑暗中现身。",
+    "clashing": "⚔️ 交战中……",
+    "standoff": "⚔️ 两军对峙",
+    "clashing_2": "⚡ 战力激突中……",
+    "bladesLocked": "⚡ 激烈交锋中……",
+    "ene": "敌 {frame_val}",
+    "ene_2": "敌 {o_actualEnemyPower}",
+    "defVsEneRepelled": "🛡️ 防卫 {o_defensePower} vs 敌 {o_actualEnemyPower}（防卫成功）",
+    "repelled": "🛡️ 防卫成功",
+    "repelledDefVsEne": "🛡️ 防卫成功（防卫 {o_defensePower} vs 敌 {o_actualEnemyPower}）",
+    "repelledVs": "🛡️ 防卫成功（{o_defensePower} vs {o_actualEnemyPower}）",
+    "repelled_2": "{dayName}·{shiftLabel}：{locO_defenderName}击退了「{locO_enemyName}」。",
+    "defVsEneBreached1": "💥 防卫 {o_defensePower} vs 敌 {o_actualEnemyPower}（突破 -1）",
+    "gateBreached1": "💥 城门被破 -1",
+    "gateBreached1DefVs": "💥 城门被破 -1（防卫 {o_defensePower} vs 敌 {o_actualEnemyPower}）",
+    "defenseBreachedVs": "💥 防卫被破（{o_defensePower} vs {o_actualEnemyPower}）",
+    "theGateShookViolentlyUnder": "敌军猛攻令城门剧烈摇晃（剩余城门耐久 {remainingHp}/{maxHp}）。",
+    "theCastleGateHasBeen": "城门已被突破，防线无法继续维持。",
+    "abortedDueToGateBreach": "（因城门陷落而中断）",
+    "viewDefenseResultClickTo": "💥 确认警备结果 ▶（点击继续）",
+    "viewDefenseResultClickTo_2": "🏆 确认警备结果 ▶（点击继续）",
+    "nextShiftClickToProceed": "▶ 进入下一时段（点击继续）",
+    "defenseFailedGateBreachedGame": "警备失败 — 城门被破（GAME OVER）",
+    "theCastleGateWasBreached": "未能抵挡勇者军的袭击，城门被突破（通关条件为全战防卫成功）。请确认本次排班与范例排班的对比，并从标题画面重新出发。",
+    "backToTitleScreen": "返回标题画面",
+    "defenseComplete": "防卫成功 — {calMonth}警备完成",
+    "theGateWasNeverBreached": "城门一次也未被突破，守护了魔王城平静的生活。",
+    "nextMonthDifficultyAdjustmentD": "下月警备难度调整（{calMonth}·难度：{nextAdaptiveLabel}）",
+    "basedOnYourGuardHistory": "根据至今的警备记录（提示使用情况与重试次数），{calMonth}的进军情况已自动调整为「难度：{nextAdaptiveLabel}」。",
+    "youDefendedTheDemonCastle": "在持续5天的勇者主力部队进军中成功守住了魔王城。",
+    "youRepelledTheExpeditionWhile": "击退了勇者队的进军，在不让任何伙伴勉强的情况下守住了魔王城。",
+    "proceedToNextStage": "进入下一关 ▶",
+    "difficulty_3": "{calMonth} (难度: {nextAdaptiveLabel})",
+    "compareYourShiftWithThe": "📊 对比你的排班与范例排班",
+    "onDutyMemberThisWeek": "本周值班警备成员",
+    "duty": "当班",
+    "post_2": "驻守岗位：",
+    "day_6": "昼 {dayPwr}",
+    "night_6": "夜 {nightPwr}",
+    "maxWk": "每周最多{m_maxWeeklyShifts}次·{m_traitTitle}",
+    "demonCastle24hGuardShift": "魔王城的24小时警备排班 | 据点防卫排班解谜",
+    "castleDefenseShiftPuzzle": "据点防卫排班解谜",
+    "backToShowcase_2": "← 返回案例展示",
+    "showcase": "../../zh/showcase/",
+    "deepInTheAncientForest": "深邃森林深处，魔物们平静生活的最后堡垒——「魔王城」。<br /><strong>编排24小时轮班表，与伙伴们一同守护城堡免受昼夜袭来的讨伐军侵害。</strong>",
+    "startNewGame": "从头开始游玩",
+    "continue_2": "继续游戏",
+    "guardGrimoire": "📖 警备队名鉴",
+    "howToPlay": "玩法说明",
+    "title_2": "← 标题",
+    "grimoire": "📖 名鉴",
+    "grimoireOfAll20Demon": "魔王城全20名成员名鉴与搭档相性一览",
+    "rules": "规则",
+    "hint_2": "💡 提示",
+    "fill1CellFromThe": "填入1格示范排班",
+    "clearAll": "清空重排",
+    "hintFill1Cell": "提示（配置1格）",
+    "pairAffinities": "相性一览",
+    "operationsMenu": "⚙️ 作战指令菜单",
+    "shiftRules": "📜 勤务规则",
+    "affinities": "🤝 相性连携",
+    "backToTitleScreen_2": "← 返回标题画面",
+    "guardAffinitiesClashes": "🤝 相性与排斥一览",
+    "clickToRevealFullMessage_2": "点击显示完整信息或继续",
+    "guardWithThisShift": "⚔️ 按此班表出击警备",
+    "protectOurDemonCastleWith": "用不让任何伙伴勉强的排班表，守护我们的魔王城。",
+    "beginStory": "开始物语",
+    "prologue": "序章",
+    "chiefGuardTactician": "魔王城 警备参谋",
+    "lilith": "莉莉丝",
+    "prev": "上一页",
+    "monthlyGuardBriefing": "本月警备概要",
+    "guardResult": "警备结果",
+    "ancientGrimoireOfThe20": "── 魔王城 警备队古录·全二十名 ──",
+    "demonCastle20GuardGrimoire": "魔王城·全20名成员名鉴",
+    "closeTome": "✕ 合上书卷",
+    "seal": "印",
+    "close": "关闭",
+    "titleScreen": "标题画面",
+    "monthSelection": "年月选择",
+    "guardShiftMatrix": "警备排班表",
+    "openingMovie": "开场动画",
+    "shiftGoalStatus": "排班达成状况",
+    "dialogueWindowAndDispatchComma": "对话窗口与出击指令",
+    "demonCastle24hGuardShift_2": "魔王城的24小时警备排班",
+    "openingScene": "开场情景",
+    "chiefGuardTacticianLilith": "警备参谋 莉莉丝",
+    "howToPlayShiftRules": "玩法与出勤规则",
+    "divClassHelpGridDiv": "<div class=\"help-grid\">\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">步骤 1</span>\n          <h3>敌军战力与我方防卫力的较量</h3>\n          <p>\n            在每个时段中，涌来的勇者军实际战力会在<strong>「预测战力」上下波动</strong>。<br />\n            <strong>只要我方防卫力不低于敌军实际战力即可防卫成功</strong>。善用擅长时段与搭档加成来构筑厚实的防线吧。\n          </p>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">步骤 2</span>\n          <h3>遵守合理的出勤规则</h3>\n          <p>\n            为了不让城里的伙伴勉强，排班必须遵守以下出勤规则（只要遵守出勤规则，即使部分时段战力不足也可凭概率出击）：\n          </p>\n          <ul class=\"help-list\">\n            <li><strong>主力重将（德拉戈、魔像等）不可连勤</strong>：出勤1天后次日必须排「休」（每周最多3次）。</li>\n            <li><strong>夜班次日清晨不可排白班</strong>：前一天上夜班后，第二天不可立即上白班（夜→夜可以）。</li>\n            <li><strong>新人（普露露、曼德拉等）不可单独值夜班</strong>：排夜班时必须与其他伙伴一同配置在夜班。</li>\n            <li><strong>指定休假·满月之夜</strong>：指定休假日以及满月之夜的昼型兽人（芬里尔等）固定为休假。</li>\n          </ul>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">步骤 3</span>\n          <h3>默契搭档（+100）与不和组合（-150）·全战防卫必须</h3>\n          <p>\n            将合得来的搭档排在同一时段可使<strong>防卫力 +100</strong>，但将不和的两人排在同一时段会使<strong>防卫力 -150</strong>。<br />\n            勇者军会在不固定的时段突袭（防卫薄弱的时段更容易被盯上），<strong>只要城门被突破1次即告防卫失败</strong>。请编排出无论何时遇袭都能守住的排班表吧。\n          </p>\n        </div>\n      </div>",
+    "defaultDiagMessage": "当前出勤安排存在偏差，后半段时段人手不足。"
+  },
+  "lilith": {
+    "name": "莉莉丝",
+    "title": "警备参谋",
+    "portrait": "./char-lilith.jpg",
+    "defaultQuote": "请兼顾每位成员擅长的时间段、休息日，以及彼此的搭档默契与同班排斥来编排班表吧。"
+  },
+  "prologue": [
+    {
+      "heading": "「欢迎来到魔王城，您就是新上任的警备队长吧」",
+      "text": "「感谢您远道而来。我是担任魔王城警备参谋的莉莉丝，从今天起将作为您的副官，与您一同负责正门的防卫调度，请多指教。」",
+      "visualHtml": ""
+    },
+    {
+      "heading": "「这座城池，是魔物们安静生活的最后堡垒」",
+      "text": "「在深林与溪流环抱的魔王城里，聚集着无处可去的魔物们。我们的君主魔王大人正静静沉睡在城池深处，正门便是守护大家日常生活的重中之重。」",
+      "visualHtml": "\n          <div class=\"prologue-scene-banner\">\n            <img class=\"prologue-banner-img\" src=\"./op-scene-1-castle.jpg\" alt=\"森林深处的魔王城\" />\n            <div class=\"prologue-banner-caption\">由深林与溪流守护的最后堡垒「魔王城」</div>\n          </div>\n        "
+    },
+    {
+      "heading": "「希望拜托您的，是24小时轮班表的编排」",
+      "text": "「受日前森林外围冲突的影响，人类的勇者部队正昼夜不停地向要塞进军。城内成员有的怕晒、有的不能连续出勤，请为大家编排一份无需勉强又能发挥所长的昼夜班表吧。」",
+      "visualHtml": "\n          <div class=\"prologue-scene-banner\">\n            <img class=\"prologue-banner-img\" src=\"./op-scene-4-guards.jpg\" alt=\"魔王城的门卫们\" />\n            <div class=\"prologue-banner-caption\">昼夜专长各不相同的魔王城门卫们</div>\n          </div>\n        "
+    }
+  ],
+  "cuts": [
+    {
+      "image": "./op-scene-1-castle.jpg",
+      "cameraClass": "op-cam-zoom-in",
+      "particleColor": "#fde047",
+      "lead": "在幽深森林与清澈溪流之上，矗立着魔物们最后的庇护所——「魔王城」。",
+      "sub": "无处可去的魔物们，在这座宁静的城池中彼此依偎、安稳度日。",
+      "durationMs": 5400
+    },
+    {
+      "image": "./op-scene-2-heroes.jpg",
+      "cameraClass": "op-cam-pan-left",
+      "particleColor": "#fb923c",
+      "lead": "某一天，森林外围发生的冲突打破了往日的宁静。",
+      "sub": "为了守护人类城镇，勇者讨伐军开始不分昼夜地向这座要塞进军。",
+      "durationMs": 5400
+    },
+    {
+      "image": "./bg-castle-hall.jpg",
+      "cameraClass": "op-cam-zoom-out",
+      "particleColor": "#38bdf8",
+      "lead": "在城池深处静静沉睡的「魔王」，以及生活在这里的同伴们。",
+      "sub": "一旦正门被攻破，魔物们最后的容身之所也将随之失去。",
+      "durationMs": 5400
+    },
+    {
+      "image": "./op-scene-4-guards.jpg",
+      "cameraClass": "op-cam-pan-up",
+      "particleColor": "#c084fc",
+      "lead": "有人擅长白昼骄阳，有人精于月夜暗影，也有人在身旁默默支援同伴。",
+      "sub": "不让任何一人勉强透支，用24小时轮班制度守住我们的城门——",
+      "durationMs": 5400
+    },
+    {
+      "image": "./op-scene-4-guards.jpg",
+      "cameraClass": "op-cam-climax",
+      "particleColor": "#fde68a",
+      "lead": "《魔王城24小时警备排班》",
+      "sub": "作为新任警备队长，这座魔王城的排班调度就正式托付给您了。",
+      "durationMs": 6200,
+      "isClimax": true
+    }
+  ],
+  "days": {
+    "short": [
+      "周一",
+      "周二",
+      "周三",
+      "周四",
+      "周五"
+    ],
+    "full": [
+      "星期一",
+      "星期二",
+      "星期三",
+      "星期四",
+      "星期五"
+    ]
+  },
+  "difficulty": {
+    "1": "温和（3人值班）",
+    "2": "适中（4人值班）",
+    "3": "标准（5人值班）",
+    "4": "熟练（6人扩编值班）",
+    "5": "极限（7人全力值班）"
+  },
+  "monsters": {
+    "drago": {
+      "name": "德拉戈",
+      "title": "资深门卫",
+      "race": "古龙",
+      "usualPost": "正门·首席门卫",
+      "traitTitle": "不可连勤（出勤次日必须休息）·每周最多3次",
+      "traitSummary": "昼500 / 夜500。拥有极高的防卫力，但因旧伤无法连续两天出勤（最多连上1天·每周最多3次）。不愿与唠叨的巫妖同班（-150）。",
+      "quotes": {
+        "intro": "要派我上场的话请隔天安排，相对地强敌就包在我身上。",
+        "dayAssign": "白天的门卫是吧，结束后明天可得让我好好歇息。",
+        "nightAssign": "夜里的城门啊，就用龙焰照亮夜路吧。",
+        "offAssign": "呼，休息日最适合养精蓄锐了。",
+        "happy": "多亏中途有休息，旧伤没犯，顺利撑到了最后。",
+        "angry": "我应该说过不能连续工作两天，旧伤会作痛的。"
+      }
+    },
+    "carmilla": {
+      "name": "卡蜜拉",
+      "title": "夜班主力",
+      "race": "吸血鬼",
+      "usualPost": "城内沙龙·夜间警备",
+      "traitTitle": "擅长夜班（夜400 / 昼200）·厌恶死板之人",
+      "traitSummary": "昼200 / 夜400。夜间警备能发挥真正实力，但白天怕晒。与普露露、班西关系融洽，却嫌弃死板的杜拉汉与满身汗味的米诺陶洛斯（-150）。",
+      "quotes": {
+        "intro": "我可受不了强烈的日晒，夜间的警备就交给我吧。",
+        "dayAssign": "白天的巡逻吗……没有阳伞实在有些难受呢。",
+        "nightAssign": "在月光之下，连远处的脚步声都听得一清二楚。",
+        "offAssign": "今天就在房间里静静休息了。",
+        "happy": "在静谧的夜色中从容完成了巡视，不错的调度。",
+        "angry": "烈日当空的时段或是与合不来的人同班，真是令人疲惫。"
+      }
+    },
+    "fenrir": {
+      "name": "芬里尔",
+      "title": "白班主力",
+      "race": "狼人",
+      "usualPost": "外围森林·昼间斥候",
+      "traitTitle": "擅长白班（昼400）·满月之夜不可出击",
+      "traitSummary": "昼400 / 夜200。白天巡逻能发挥高防卫力。满月之夜难以控制兽性，无法安排夜班。喜静的班西对她敬而远之（-150）。",
+      "quotes": {
+        "intro": "白天的巡逻包在我身上，只是满月之夜我没法外出，还请多留意。",
+        "dayAssign": "白天视野好、嗅觉也灵敏，我会牢牢盯紧城门的。",
+        "nightAssign": "到了晚上有点犯困，不过巡逻还是会认真完成的。",
+        "offAssign": "今天休息呢，我去森林里悠闲散个步。",
+        "happy": "以白班为主的安排活动起来很顺手，谢谢啦。",
+        "angry": "满月之夜无法控制力量，不能上夜班啦。"
+      }
+    },
+    "pururu": {
+      "name": "普露露",
+      "title": "新晋警备员",
+      "race": "史莱姆",
+      "usualPost": "地下水路·清扫兼巡视",
+      "traitTitle": "夜间不可单独值勤（与前辈搭档+100）",
+      "traitSummary": "昼200 / 夜200。平时负责净化地下水路。单人防卫力虽低，但与卡蜜拉或杜拉汉同班可激发+100连携加成。夜间无法独自看守。",
+      "quotes": {
+        "intro": "虽然还是新人但我会全力以赴，只是夜晚独自值班还是会害怕……",
+        "dayAssign": "白天的巡逻和水路检查，我会认真完成的。",
+        "nightAssign": "夜间的警备呢，只要有前辈在身边就能安心行动。",
+        "offAssign": "休息日就去清澈的水边放松身体。",
+        "happy": "能在前辈们身边一起警备，学到了好多。",
+        "angry": "漆黑的夜里只剩自己一个人的话，会害怕得看不清四周……"
+      }
+    },
+    "dullahan": {
+      "name": "杜拉汉",
+      "title": "重装骑士",
+      "race": "幽灵骑士",
+      "usualPost": "外郭城墙·巡逻队长",
+      "traitTitle": "昼300 / 夜400·与芬里尔及普露露合拍",
+      "traitSummary": "昼300 / 夜400。无论昼夜都能稳定发挥防卫力的重装骑士。与芬里尔或普露露同班可提升100防卫力，但与卡蜜拉方针不合（-150）。",
+      "quotes": {
+        "intro": "此盾只为守护魔王城的安宁，无论何处岗位定当尽职。",
+        "dayAssign": "白昼的城门警备，定会严密把守。",
+        "nightAssign": "夜间巡逻吗，暗处的动静也逃不过我的感知。",
+        "offAssign": "休班日，正好用来保养武具。",
+        "happy": "合理而稳健的部署，城防固若金汤。",
+        "angry": "排班似乎有些勉强，这样会让防线出现破绽。"
+      }
+    },
+    "golem": {
+      "name": "魔像",
+      "title": "锻造场巨兵",
+      "race": "符文魔像",
+      "usualPost": "城内锻造场·装甲工匠",
+      "traitTitle": "不可连勤（出勤次日需冷却休息）·每周最多3次",
+      "traitSummary": "昼500 / 夜500。平时在锻造场打造城门铁件的巨兵。因魔力炉需要冷却，只能隔天出勤·每周最多3次。与米诺陶洛斯及曼德拉十分合拍。",
+      "quotes": {
+        "intro": "……魔力炉仅限隔日运转，愿作城门之盾。",
+        "dayAssign": "……白昼城门防卫，收到。",
+        "nightAssign": "……夜间城门防卫，以炉火照明警戒。",
+        "offAssign": "……转入冷却休眠模式。",
+        "happy": "……魔力炉温度正常，任务顺利完成。",
+        "angry": "……连续运转会导致魔力炉过热。"
+      }
+    },
+    "behemoth": {
+      "name": "贝希摩斯",
+      "title": "森林刚角兽",
+      "race": "巨兽",
+      "usualPost": "北之森·外围哨戒",
+      "traitTitle": "不可连勤（昼550 / 夜450）·豪迈强攻",
+      "traitSummary": "昼550 / 夜450。平时巡视北之森的怪力重战士。全力作战后次日必须午睡休息（最多连上1天·每周最多3次）。布置精密丝网的阿拉克涅嫌弃与他同班（-150）。",
+      "quotes": {
+        "intro": "力气活尽管交给我，不过全力大闹一场后的第二天可得让我睡个好觉。",
+        "dayAssign": "阳光下的战斗最让人热血沸腾，看我把他们通通顶回去。",
+        "nightAssign": "夜班啊，正好当成饭后消食运动。",
+        "offAssign": "吃饱睡足，这才是最棒的。",
+        "happy": "痛快打了一场又睡得饱饱的，真是充实的一周。",
+        "angry": "喂喂，连续两天全力作战实在吃不消啊。"
+      }
+    },
+    "ifrit": {
+      "name": "伊弗利特",
+      "title": "地下炉炎精",
+      "race": "炎之魔人",
+      "usualPost": "地下锅炉室·司炉",
+      "traitTitle": "不可连勤（昼450 / 夜550）·夜间火墙",
+      "traitSummary": "昼450 / 夜550。平时管理魔王城热水炉的炎之魔人。魔力消耗剧烈，只能隔天出勤·每周最多3次。飞溅的火星会让草木系的曼德拉不敢同班（-150）。",
+      "quotes": {
+        "intro": "我从地下炉过来支援了。我的火焰消耗大，请务必隔天排班。",
+        "dayAssign": "白班是吧，看我燃起不输太阳的热度。",
+        "nightAssign": "漆黑的夜晚正是我火焰的舞台，连火把都省了。",
+        "offAssign": "今天回地下炉养一养火种。",
+        "happy": "燃烧的节奏刚刚好，城里的热水温度也完美无缺。",
+        "angry": "燃料会耗尽的，饶了我别让我连上两天吧。"
+      }
+    },
+    "lich": {
+      "name": "巫妖",
+      "title": "地下书库馆长",
+      "race": "高阶巫妖",
+      "usualPost": "地下大书库·文献管理",
+      "traitTitle": "擅长夜班（夜400 / 昼200）·一丝不苟的古魔导师",
+      "traitSummary": "昼200 / 夜400。平时在地下书库整理古籍的馆长，夜间张开魔导障壁可发挥高防卫力。与威斯普、石像鬼合得来，但讨厌粗枝大叶的德拉戈（-150）。",
+      "quotes": {
+        "intro": "整理书库才是我的本职，不过夜间维持结界倒也可以代劳。",
+        "dayAssign": "白昼的外界空气对古书和骨头都不太友好……但也只能尽力了。",
+        "nightAssign": "静谧的夜晚，就一边研读书籍一边张开结界吧。",
+        "offAssign": "今日回书库整理目录。",
+        "happy": "井然有序的班表，读书与警备都进展得十分顺利。",
+        "angry": "和吵闹的家伙分在同一岗位，会打乱我的咏唱节奏。"
+      }
+    },
+    "morgan": {
+      "name": "摩根",
+      "title": "观星塔魔女",
+      "race": "夜之魔女",
+      "usualPost": "天文台·观星塔",
+      "traitTitle": "擅长夜班（夜400 / 昼200）·占星魔术师",
+      "traitSummary": "昼200 / 夜400。平时在观星塔观测夜空的魔女。白天总是睡眼惺忪，夜间则能以星灵术发挥400防卫力。讨厌严守时间的半人马（-150）。",
+      "quotes": {
+        "intro": "呼啊……白天好困呀，星光亮起之后的巡视就交给我吧。",
+        "dayAssign": "白班呀……得把帽檐压低些，当心别打瞌睡才行。",
+        "nightAssign": "今晚星色真美，靠近的敌影全都一目了然。",
+        "offAssign": "休息日呢，去天文台美美地睡个午觉吧。",
+        "happy": "能一边眺望夜空一边按自己的节奏守卫，很棒的安排呢。",
+        "angry": "和按分钟催促人的家伙同班，简直让人喘不过气。"
+      }
+    },
+    "banshee": {
+      "name": "班西",
+      "title": "月影歌姬",
+      "race": "冰霜精灵",
+      "usualPost": "中庭音乐堂·夜间哨戒",
+      "traitTitle": "擅长夜班（夜400 / 昼200）·喜静之冰灵",
+      "traitSummary": "昼200 / 夜400。守护静谧夜廊的冰之精灵。与卡蜜拉或威斯普搭档默契十足（+100），但害怕大嗓门的芬里尔（-150）。",
+      "quotes": {
+        "intro": "我喜欢安静的夜晚……请把我嗓门大的同伴排在不同时段吧。",
+        "dayAssign": "白天稍微有些刺眼……我会在阴凉处静静警戒。",
+        "nightAssign": "夜晚的凉意很舒适，声波的涟漪会替我们察觉敌踪。",
+        "offAssign": "今天在音乐堂安静地调音度过。",
+        "happy": "全都是宁静的夜班，得以安心履行职责。",
+        "angry": "在耳边大声嚷嚷的话，寒冰结界会被震乱的……"
+      }
+    },
+    "garuda": {
+      "name": "迦楼罗",
+      "title": "疾风鸟人",
+      "race": "鹰身枪兵",
+      "usualPost": "溪谷高空·广域侦察",
+      "traitTitle": "擅长白班（昼400）·满月夜气流紊乱不可出击",
+      "traitSummary": "昼400 / 夜200。平时从溪谷高空俯瞰警戒的鸟人斥候。白天视野开阔可达400，满月夜无法升空。嫌弃纹丝不动的石像鬼节奏不合（-150）。",
+      "quotes": {
+        "intro": "晴朗的白天就由我从空中一网打尽吧，只是别把我排在石像旁边。",
+        "dayAssign": "风向正好，我会从高空把敌人的动向全部捕捉下来。",
+        "nightAssign": "夜里翅膀发冷只能打地面战，不过我也会尽力的。",
+        "offAssign": "去梳理一下羽毛，在高高的树枝上午睡一会儿。",
+        "happy": "能痛快乘风翱翔的班表，下次也叫上我吧。",
+        "angry": "和一动不动的家伙搭档，飞行的节奏都被打乱了。"
+      }
+    },
+    "centaur": {
+      "name": "半人马",
+      "title": "森林弓骑兵",
+      "race": "半人马",
+      "usualPost": "西侧街道·森林防线",
+      "traitTitle": "擅长白班（昼400）·重守纪律的射手",
+      "traitSummary": "昼400 / 夜200。平时驻守西之森街道的弓骑兵，白天远距离射击可达400。因严守纪律，若与随性的摩根同班会发生争执（-150）。",
+      "quotes": {
+        "intro": "从西之森前来支援，白昼的狙击绝不会偏离分毫。",
+        "dayAssign": "视野良好、风向适宜，白天的正门就由我的弓箭守护。",
+        "nightAssign": "夜间虽然难以瞄准，但近身战也绝不落于人后。",
+        "offAssign": "休班日，去保养马蹄并补充箭矢。",
+        "happy": "守时而整肃的排班，令人心情舒畅。",
+        "angry": "与不守时的散漫之人同班，会扰乱整支队伍的纪律。"
+      }
+    },
+    "griffon": {
+      "name": "狮鹫",
+      "title": "瞭望塔翼兽",
+      "race": "皇家狮鹫",
+      "usualPost": "中央瞭望塔·上层卫士",
+      "traitTitle": "擅长白班（昼400）·高傲的哨兵",
+      "traitSummary": "昼400 / 夜200。平时在中央瞭望塔顶巡视的翼兽骑士。与迦楼罗、杜拉汉搭档默契（+100），但在金币叮当作响的宝箱怪身旁无法集中精神（-150）。",
+      "quotes": {
+        "intro": "自瞭望塔降临，白昼的警戒就交给我吧。",
+        "dayAssign": "骄阳之下正是我的荣耀，任何斥候都逃不过我的眼睛。",
+        "nightAssign": "鸟类在夜间视力受限，但绝不会放敌人踏入城门。",
+        "offAssign": "回瞭望塔的巢穴歇息羽翼了。",
+        "happy": "高傲而圆满地完成了任务，出色的指挥。",
+        "angry": "眼前金光闪闪的话，本能会让我分心。"
+      }
+    },
+    "gargoyle": {
+      "name": "石像鬼",
+      "title": "城墙石像兵",
+      "race": "石像鬼",
+      "usualPost": "正门拱顶·石像拟态",
+      "traitTitle": "昼350 / 夜350·昼夜皆宜的不动之盾",
+      "traitSummary": "昼350 / 夜350。平时伪装成屋顶石像的沉默卫兵，无论昼夜都能稳定发挥350防卫力。与同样安静的巫妖很合拍（+100），但与急性子的迦楼罗合不来（-150）。",
+      "quotes": {
+        "intro": "……纹丝不动地守卫城门便是我的作风，昼夜皆可。",
+        "dayAssign": "……白天就像普通石像一样伫立警戒。",
+        "nightAssign": "……融入夜色，从城门上方俯视戒备。",
+        "offAssign": "……回到底座化作石头歇息。",
+        "happy": "……安静而稳固的防守，没有一丝裂痕。",
+        "angry": "……身旁有人蹿来蹿去的话，石像伪装就露馅了。"
+      }
+    },
+    "minotaur": {
+      "name": "米诺陶洛斯",
+      "title": "武器库守卫",
+      "race": "牛头人",
+      "usualPost": "地下武器库·武具管理",
+      "traitTitle": "昼400 / 夜300·踏实的工匠战士",
+      "traitSummary": "昼400 / 夜300。平时在地下武器库维护盾牌与长枪的工匠战士。与工匠同伴魔像或宝箱怪搭档可+100，但被讲究贵族派头的卡蜜拉嫌弃（-150）。",
+      "quotes": {
+        "intro": "趁整理武器库的间隙来帮忙看门，让你见识打磨好的巨斧吧。",
+        "dayAssign": "白天的正门是吧，我会稳稳架起巨斧挡住他们。",
+        "nightAssign": "夜班啊，得留神别让火把的灯油烧干了。",
+        "offAssign": "休班日就去帮大家修补盾牌上的凹痕。",
+        "happy": "很合理的排班，武具的损耗也很小。",
+        "angry": "被人嫌弃有汗味和铁锈味，实在没法舒心干活。"
+      }
+    },
+    "arachne": {
+      "name": "阿拉克涅",
+      "title": "银丝陷阱师",
+      "race": "蜘蛛娘",
+      "usualPost": "城内裁缝室·后门陷阱管理",
+      "traitTitle": "昼300 / 夜400·智略丝网防卫",
+      "traitSummary": "昼300 / 夜400。平时缝制警备队制服并在后门布设警戒银丝的智略派。与摩根、曼德拉合拍（+100），但绝不愿与踩坏丝网的贝希摩斯同班（-150）。",
+      "quotes": {
+        "intro": "从缝补制服到布置城门陷阱都包在我身上，只是别把粗鲁莽撞的家伙排给我。",
+        "dayAssign": "白班呢，先在树林间拉起隐蔽的银丝吧。",
+        "nightAssign": "夜色中银丝完全看不见，能漂亮地缠住靠近的敌人。",
+        "offAssign": "休息日就帮大家把制服开线的地方缝好吧。",
+        "happy": "连一根丝线都没乱的优美防卫，干得漂亮。",
+        "angry": "真是的，把我刚拉好的感知丝踩得乱七八糟的人可没法合作。"
+      }
+    },
+    "mandra": {
+      "name": "曼德拉",
+      "title": "药草园见习生",
+      "race": "曼德拉草",
+      "usualPost": "城内温室·救护药草园",
+      "traitTitle": "夜间不可单独值勤（昼250 / 夜200·治愈香气）",
+      "traitSummary": "昼250 / 夜200。平时在药草园调配伤药的植物少女。与魔像、阿拉克涅、半人马同班可获+100加成，但害怕火星飞溅的伊弗利特（-150）。夜间不可单独配置。",
+      "quotes": {
+        "intro": "从药草园来帮忙啦，在暖洋洋的阳光下和温柔的前辈身旁就能努力加油。",
+        "dayAssign": "阳光真暖和，准备好催眠香草粉来站岗啰。",
+        "nightAssign": "夜里有点黑，我会紧紧跟在前辈后面的。",
+        "offAssign": "回温室补充水分和肥料啦。",
+        "happy": "头顶的叶片直到周末都精神抖擞呢。",
+        "angry": "哇，站在烈火熊熊的人旁边，叶子会被烤焦的……"
+      }
+    },
+    "mimic": {
+      "name": "宝箱怪",
+      "title": "宝物库箱番",
+      "race": "拟态少女",
+      "usualPost": "地下宝物库·拟态守卫",
+      "traitTitle": "夜间不可单独值勤（昼200 / 夜200·惊喜箱陷阱）",
+      "traitSummary": "昼200 / 夜200。平时躲在宝物库角落箱子里的害羞少女。与米诺陶洛斯或摩根搭档+100，但害怕对闪亮物品敏感的狮鹫（-150）。夜间不可单独配置。",
+      "quotes": {
+        "intro": "从、从箱子里面观察我最拿手了……但夜里只有一个人会不敢打开盖子……",
+        "dayAssign": "伪装成路边的木箱，给敌方斥候一个大惊喜吧。",
+        "nightAssign": "只要有前辈在旁边，晚上我也能鼓起勇气打开箱盖。",
+        "offAssign": "回到宝物库角落锁好盖子休息。",
+        "happy": "箱子的合页很顺滑，惊喜战术圆满成功。",
+        "angry": "被鸟系前辈从上方死死盯着金币看，会害怕得不敢出箱子……"
+      }
+    },
+    "wisp": {
+      "name": "威斯普",
+      "title": "回廊提灯精灵",
+      "race": "鬼火精灵",
+      "usualPost": "城内回廊·夜间引导灯",
+      "traitTitle": "夜间不可单独值勤（昼200 / 夜250·狐火照明）",
+      "traitSummary": "昼200 / 夜250。平时在昏暗走廊担任照明的小精灵。与巫妖、班西、伊弗利特同班可增强火光+100，但与魔像干燥的炉热相斥（-150）。夜间不可单独配置。",
+      "quotes": {
+        "intro": "轻飘飘地照明是我的强项，但一个人守不住城门，请一定要安排同伴和我一起哦。",
+        "dayAssign": "白天火光不太显眼，我就用脚边的薄雾遮蔽视线吧。",
+        "nightAssign": "夜里的脚下就由我照亮，剩下的就拜托前辈啦。",
+        "offAssign": "缩在提灯里团成一团休息啰。",
+        "happy": "在大家身旁摇曳照亮，真是开心的一周。",
+        "angry": "吹到魔像先生干燥的热风，狐火都快要熄灭了……"
+      }
+    }
+  },
+  "relations": {
+    "carmilla_pururu_love": {
+      "title": "夜班关照搭档"
+    },
+    "drago_fenrir_train": {
+      "title": "师徒连携组合"
+    },
+    "fenrir_dullahan_patrol": {
+      "title": "稳健巡逻搭档"
+    },
+    "dullahan_pururu_mentor": {
+      "title": "前辈骑士的支援"
+    },
+    "golem_minotaur_forge": {
+      "title": "锻造场工匠组合"
+    },
+    "golem_mandra_moss": {
+      "title": "苔藓巨兵与花草"
+    },
+    "behemoth_garuda_wild": {
+      "title": "天地强袭组合"
+    },
+    "ifrit_wisp_flame": {
+      "title": "大小灯火组合"
+    },
+    "lich_wisp_library": {
+      "title": "书库阅读灯搭档"
+    },
+    "lich_gargoyle_silent": {
+      "title": "静寂守护者搭档"
+    },
+    "morgan_arachne_weave": {
+      "title": "星丝魔导陷阱"
+    },
+    "morgan_mimic_mystery": {
+      "title": "幻惑惊喜箱"
+    },
+    "carmilla_banshee_nocturne": {
+      "title": "月下夜想曲搭档"
+    },
+    "banshee_wisp_mist": {
+      "title": "夜雾与狐火幻想"
+    },
+    "garuda_griffon_sky": {
+      "title": "制空哨戒组合"
+    },
+    "centaur_mandra_forest": {
+      "title": "森林恩惠组合"
+    },
+    "griffon_dullahan_honor": {
+      "title": "高洁骑士道搭档"
+    },
+    "minotaur_mimic_craft": {
+      "title": "宝箱金具保养"
+    },
+    "arachne_mandra_garden": {
+      "title": "温室防虫搭档"
+    },
+    "carmilla_dullahan_clash": {
+      "title": "同班排斥：死板骑士与夜贵族"
+    },
+    "drago_lich_clash": {
+      "title": "同班排斥：豪迈古龙与唠叨馆长"
+    },
+    "fenrir_banshee_clash": {
+      "title": "同班排斥：大嗓门与喜静之灵"
+    },
+    "ifrit_mandra_clash": {
+      "title": "同班排斥：灼热之炎与草木"
+    },
+    "behemoth_arachne_clash": {
+      "title": "同班排斥：丝网陷阱与怪力巨兽"
+    },
+    "garuda_gargoyle_clash": {
+      "title": "同班排斥：疾风与不动石像"
+    },
+    "morgan_centaur_clash": {
+      "title": "同班排斥：随性魔女与严守时间"
+    },
+    "griffon_mimic_clash": {
+      "title": "同班排斥：闪亮金币与箱番"
+    },
+    "golem_wisp_clash": {
+      "title": "同班排斥：干燥炉热与狐火"
+    },
+    "carmilla_minotaur_clash": {
+      "title": "同班排斥：贵族的挑剔"
+    }
+  },
+  "stages": {
+    "week-1": {
+      "title": "11月：先遣队的侦察（3天）",
+      "subtitle": "星月历 953年11月 — 先从3天排班开始，将3名警备成员安排在各自擅长的时间段。",
+      "newRuleTitle": "基础规则：擅长时段与德拉戈的休养",
+      "newRuleSummary": "芬里尔擅长白班（防卫力400），卡蜜拉擅长夜班（防卫力400）。德拉戈（防卫力500）昼夜皆可独当一面，但出勤1天后次日必须休息。",
+      "lilithIntro": "这是您第一次编排班表，先由我陪同您一起完成吧。我们需要安排3名成员负责周一至周三的守卫，应对敌方先遣部队。",
+      "lilithHint": "将德拉戈（500）安排在强敌来袭的周一昼与周三夜，周二让他休息；其余白班交给芬里尔（400），夜班交给卡蜜拉（400）即可稳守。",
+      "tutorialSteps": [
+        {
+          "shortCallout": "まずは一緒に組みましょう。月曜·昼はドラゴの「昼」を押します",
+          "instruction": "最初は私と一緒に組んでみましょう（1/6）。月曜の昼は手強い「先遣隊·重装前衛群」が来ますので、防衛力500のドラゴの月曜のマスで「昼」を選んでみてください。"
+        },
+        {
+          "shortCallout": "次は月曜·夜です。夜番400のカーミラの「夜」を押しましょう",
+          "instruction": "いいですね（2/6）。月曜の夜は、夜番が得意なカーミラ（夜400）にお願いしましょう。カーミラの月曜のマスで「夜」を選んでみてください。"
+        },
+        {
+          "shortCallout": "火曜はドラゴのお休みです。昼400のフェンリルの「昼」を押しましょう",
+          "instruction": "順調です（3/6）。ドラゴは1日働くと翌日お休みが必要なので、火曜の昼は昼番が得意なフェンリル（昼400）の「昼」を選びましょう。"
+        },
+        {
+          "shortCallout": "火曜·夜もカーミラの「夜」を押しましょう",
+          "instruction": "その調子です（4/6）。火曜の夜も、引き続きカーミラに任せましょう。カーミラの火曜のマスで「夜」を選んでみてください。"
+        },
+        {
+          "shortCallout": "水曜·昼もフェンリルの「昼」を押しましょう",
+          "instruction": "あと少しです（5/6）。水曜の昼も、昼番が得意なフェンリルの水曜のマスで「昼」を選びましょう。"
+        },
+        {
+          "shortCallout": "仕上げに、火曜休んだドラゴの水曜「夜」を押せば完成です",
+          "instruction": "最後の仕上げです（6/6）。水曜の夜は手強い「勇者軍·紅蓮魔導団」が来ますので、火曜日に休んで体力が戻ったドラゴの水曜のマスで「夜」を選べば完成です。"
+        }
+      ]
+    },
+    "week-2": {
+      "title": "12月：夜袭部队逼近（3天）",
+      "subtitle": "杜拉汉从外郭合流。注意搭档连携（+100）与不愿同班的排斥组合（-150）。",
+      "newRuleTitle": "追加规则：夜班次日不可上白班·搭档默契与同班排斥",
+      "newRuleSummary": "上夜班的成员次日清晨不能直接上白班（夜→夜可以）。此外，合得来的搭档（芬里尔＋杜拉汉）同班可提升100防卫力，而互相排斥的组合（卡蜜拉＋杜拉汉）同班会因争执降低150防卫力。",
+      "lilithIntro": "本月德拉戈调往后门值勤，重装骑士杜拉汉加入正门班表。不过卡蜜拉不愿与死板的杜拉汉同班，请把他们安排在不同时段吧。",
+      "lilithHint": "周一白班同时安排芬里尔（昼400）与杜拉汉（昼300），加上连携加成（+100）可达800防卫力，轻松守住正门。",
+      "tutorialSteps": []
+    },
+    "week-3": {
+      "title": "1月：四日围城（4天）",
+      "subtitle": "新晋史莱姆普露露从地下水路前来支援，编排4天班表。",
+      "newRuleTitle": "追加规则：新人夜间搭档与连续出勤上限",
+      "newRuleSummary": "新人普露露（防卫力200）无法独自承担夜班，夜间必须与前辈同班（与卡蜜拉同班可额外+100）。此外每位成员最多连续工作3天，4天内至少要安排1天休息。",
+      "lilithIntro": "敌军在森林四周扎营，战局延长到了4天。本月由地下水路的普露露前来支援，若安排普露露上夜班，请务必让前辈陪同。",
+      "lilithHint": "周四夜班将卡蜜拉（夜400）与普露露（夜200）排在一起，加上连携加成（+100）即可达到700防卫力。",
+      "tutorialSteps": []
+    },
+    "week-4": {
+      "title": "2月：满月攻防战（5天·5人值班）",
+      "subtitle": "5人阵容应对5天完整班表，处理周三满月之夜与成员间的搭档关系。",
+      "newRuleTitle": "追加规则：满月之夜与每周出勤上限",
+      "newRuleSummary": "周三满月之夜，芬里尔无法配置在夜班（周三白班可以）。在5天班表中，德拉戈最多出勤3次，其余成员最多出勤4次。",
+      "lilithIntro": "本月正门值班共有5名成员。周三夜晚适逢满月，芬里尔无法上夜班。请避开卡蜜拉与杜拉汉的同班排斥（-150），并留意各自的指定休息日。",
+      "lilithHint": "周三满月夜芬里尔无法出战，需从卡蜜拉、杜拉汉、普露露、德拉戈中选2人。善用普露露与前辈的连携，即可避开卡蜜拉与杜拉汉的同班排斥（-150）。",
+      "tutorialSteps": []
+    },
+    "week-5": {
+      "title": "3月：勇者主力进军（5天·6人扩编值班）",
+      "subtitle": "随着勇者主力逼近，地下书库馆长巫妖加入组成6人防线，避开排斥组合全力防守。",
+      "newRuleTitle": "决战之月：6人扩编排班与同班排斥协调",
+      "newRuleSummary": "为迎战敌方主力，地下书库馆长巫妖（夜400）加入形成6人态势。但巫妖讨厌与德拉戈同班（-150），卡蜜拉也排斥与杜拉汉同班（-150）。请合理分配体力，确保周五夜班有3名成员迎战勇者主力。",
+      "lilithIntro": "敌方主力终于出动了。本月特邀地下书库的巫妖支援，以6名成员共同把守正门。请注意别让德拉戈与巫妖、卡蜜拉与杜拉汉同班，并在周五夜晚集结3人守住城门。",
+      "lilithHint": "擅长夜班的成员增加到了卡蜜拉、杜拉汉、巫妖3人。可将德拉戈排在周一昼、周三昼与周五夜，周五夜用德拉戈＋卡蜜拉＋普露露（或杜拉汉＋普露露）即可避开巫妖与德拉戈的排斥。",
+      "tutorialSteps": []
+    }
+  },
+  "violations": {
+    "raid_power": {
+      "shortBadge": "战力偏低",
+      "message": "{day}{shift}（{enemy}）的防卫力偏低。"
+    },
+    "min_staff": {
+      "shortBadge": "需{count}人",
+      "message": "{day}{shift}的人数不足（需要至少 {count} 名成员）。"
+    },
+    "full_moon": {
+      "shortBadge": "满月夜不可配置",
+      "message": "{day}夜晚是满月，{name}无法配置在夜班。"
+    },
+    "solo_night": {
+      "shortBadge": "夜间不可独守",
+      "message": "{day}夜晚只有{name}一人，夜间请安排其他同伴一起值勤。"
+    },
+    "weekly_cap": {
+      "shortBadge": "超过每周{cap}天上限",
+      "message": "{name}的出勤天数已超过每周{cap}天上限，请增加休息日。"
+    },
+    "night_to_day": {
+      "shortBadge": "前日夜班（禁夜转昼）",
+      "message": "{name}从{prevDay}夜班直接连上{day}白班，夜班次日清晨不能安排白班。"
+    },
+    "consecutive_single": {
+      "shortBadge": "不可连勤（次日需休）",
+      "message": "{name}被连续安排了出勤，工作1天后次日请安排休息。"
+    },
+    "consecutive_multi": {
+      "shortBadge": "最多连上{cap}天",
+      "message": "{name}连续出勤超过了上限（最多连续{cap}天）。"
+    },
+    "day_off": {
+      "shortBadge": "指定休息日",
+      "message": "{day}是{name}的指定休息日（{reason}），请设为休班。"
+    }
+  },
+  "requestedOffReasons": {
+    "Rest Day": "休息日",
+    "Waterside Rest": "水边休养",
+    "Old Wound Treatment": "旧伤疗养日",
+    "Armor Maintenance": "保养装备",
+    "Armor Inspection": "检查装备",
+    "Archive Inventory": "整理书库目录"
+  },
+  "enemies": {},
+  "adaptiveStage": {
+    "title": "{calShort}：正门防卫排班（{numDays}天·{count}人值班）",
+    "subtitle": "本月正门值班：{roster}（难度：{diff}）",
+    "newRuleTitle": "{calShort} 正门值班（{count}人编成·{diff}）",
+    "newRuleSummary": "由城内20名成员中选出的{count}名成员（{roster}）负责防卫的{numDays}天排班。",
+    "lilithIntro": "收到了{calShort}的进军预测。请编排班表让本次负责正门值班的{count}名成员顺利防卫。",
+    "lilithHint": "请先确认指定休息日与满月之夜，从主力重将的安排开始着手排班吧。"
+  },
+  "retryStage": {
+    "title": "{calShort}：正门防卫排班（{numDays}天·新编成）",
+    "subtitle": "本周正门值班：{roster}（新编成）",
+    "newRuleTitle": "重新编排的值班成员与敌军阵容",
+    "newRuleSummary": "根据上一轮战况，本周的值班成员与敌军进军编成已重新调整。本次由 {roster} 共{count}名成员负责正门防卫。",
+    "lilithIntro": "收到了新的进军预测。本次负责正门值班的是 {roster} 共{count}名成员，请结合敌方战力与大家的勤务条件来编排班表吧。",
+    "lilithHint": "请先确认指定休息日与满月之夜，再优先决定只能隔天出勤的主力重将安排在哪几个强敌时段。"
+  }
+}

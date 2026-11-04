@@ -1,0 +1,120 @@
+{
+  "codeRunner": {
+    "running": "Running...",
+    "run": "Run Code",
+    "executed": "Executed",
+    "openPlayground": "Open in Playground →",
+    "output": "Execution Output (stdout)"
+  },
+  "portfolioQp": {
+    "eyebrow": "INTERACTIVE EXAMPLE · 5 ASSETS CONVEX QP (QuadExpr)",
+    "title": "Portfolio Allocation Optimizer (Markowitz QP)",
+    "subtitle": "Adjust the target expected return and click '▶ Run Optimization' to solve the 5-asset Quadratic Program.",
+    "solving": "Solving...",
+    "run": "Run Optimization",
+    "targetReturn": "Target Expected Return:",
+    "minVariance": "Min Variance:",
+    "dirtyBanner": "Target return changed. Click '▶ Run Optimization' above to recompute.",
+    "openPlayground": "Edit Code in Playground →",
+    "assets": {
+      "Tech": "US Tech Equity",
+      "Global": "Global Index",
+      "REIT": "Real Estate (REIT)",
+      "Gold": "Gold (Hedge)",
+      "Bonds": "Gov Bonds"
+    }
+  },
+  "ecommerce": {
+    "eyebrow": "INTERACTIVE EXAMPLE · HiGHS CONDITIONAL CONSTRAINTS (Indicator)",
+    "title": "E-Commerce Cart & Smart Coupon Optimizer",
+    "subtitle": "Select items in your cart and click '▶ Run Optimization'. HiGHS evaluates coupon combinations (up to 2 stackable) and recommends optimal filler items to minimize total spend.",
+    "solving": "Solving...",
+    "run": "Run Optimization",
+    "step1": "1. Select Cart Items",
+    "selectedPrefix": "Selected: $",
+    "enableFiller": "Enable simultaneous optimization for smart filler items",
+    "fillerCandidates": "Candidates: USB-C Cable (+$10) / Screen Wipe (+$15) / Keycap Puller (+$25)",
+    "step2": "2. Optimized Checkout Receipt (Max 2 coupons)",
+    "dirtyBanner": "Cart items changed. Click '▶ Run Optimization' above to recompute.",
+    "smartTip": "Smart Tip: Adding an item actually lowers your total payable cash!",
+    "smartTipBody1": "Adding",
+    "smartTipBody2": "unlocks a higher tier discount, saving you",
+    "smartTipBody3": "compared to checking out directly ($",
+    "subtotal": "Items Subtotal",
+    "fillerItem": "Filler Item Added",
+    "discount": "Discounts Applied",
+    "totalPayable": "Total Cash to Pay",
+    "skipped": "Skipped",
+    "openPlayground": "Edit Code in Playground →",
+    "products": {
+      "headphones": "Wireless ANC Headphones",
+      "keyboard": "Mechanical Keyboard",
+      "webcam": "4K Streaming Webcam",
+      "stand": "Aluminum Laptop Stand",
+      "lightbar": "Monitor Light Bar",
+      "mat": "Felt Desk Mat",
+      "USB_Cable": "USB-C Braided Cable",
+      "Screen_Wipe": "Microfiber Cleaning Kit",
+      "Keycap_Puller": "Metal Keycap Puller"
+    },
+    "coupons": {
+      "WELCOME15": "$15 off $100+ (Stackable)",
+      "MEMBER10": "$10 off $180+ (Stackable)",
+      "SAVE30_200": "$30 off $200+ (Tier exclusive)",
+      "MEGA50_250": "$50 off $250+ (Tier exclusive)"
+    }
+  },
+  "shift": {
+    "eyebrow": "INTERACTIVE EXAMPLE · 8 STAFF × 7 DAYS (56 BINARY VARIABLES)",
+    "title": "Weekly Shift Scheduler & Conflict Diagnosis",
+    "subtitle": "Click grid cells to toggle off-day requests, then click '▶ Run Optimization'. HiGHS minimizes total labor cost while guaranteeing coverage.",
+    "solving": "Solving...",
+    "run": "Run Optimization",
+    "dirtyTooltip": "Unapplied changes pending",
+    "presets": {
+      "standard": "1. Standard Demand (4–6/day)",
+      "weekend": "2. Weekend Peak (≥2 Seniors/day)",
+      "twoOff": "3. Everyone Requests 2 Days Off",
+      "conflict": "⚠️ Conflict: All Seniors Off on Sat"
+    },
+    "minSeniors": "Min Seniors / Day:",
+    "minSeniorsOptions": {
+      "none": "0 (None)",
+      "one": "1 Senior",
+      "two": "2 Seniors"
+    },
+    "minShifts": "Min Shifts / Staff:",
+    "minShiftsSuffix": "days",
+    "dirtyBanner": "* Parameters modified. Click '▶ Run Optimization' above to update results.",
+    "colStaff": "Staff (Wage / Max 5d)",
+    "needPrefix": "Need ",
+    "colTotal": "Total",
+    "weekendExtra": "(Wknd +$20)",
+    "toggleTitle": "Click to toggle vacation request",
+    "offReq": "Off Req",
+    "onDuty": "● On Duty",
+    "rest": "Rest",
+    "rowTotal": "Assigned / Required",
+    "short": "✗ Short",
+    "optimalTitle": "Optimal Roster Found",
+    "optimalSub": "56 Binary Variables",
+    "payroll": "Total Weekly Payroll (Minimized):",
+    "infeasibleTitle": "Infeasible Schedule — Z3 Unsat Core Diagnosis:",
+    "infeasibleTip": "💡 Click any red-bordered 'Off Req' cell to remove that request, then click '▶ Run Optimization' to restore feasibility.",
+    "openPlayground": "Edit Code in Playground →",
+    "roles": {
+      "Senior": "Senior",
+      "Mid": "Mid",
+      "Junior": "Junior"
+    },
+    "days": {
+      "Mon": "Mon",
+      "Tue": "Tue",
+      "Wed": "Wed",
+      "Thu": "Thu",
+      "Fri": "Fri",
+      "Sat": "Sat",
+      "Sun": "Sun"
+    }
+  }
+}

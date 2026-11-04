@@ -204,28 +204,29 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(content, `${relPath} should not contain ！`).not.toContain("！");
     }
 
-    // 3. Showcase pages use "解説記事を読む" / "Theory Article" / "阅读解说文章"
+    // 3. Showcase pages use localized theory article links
     const showcaseJa = readFileSync(resolve(__dirname, "../docs/ja/showcase/index.md"), "utf8");
     const showcaseEn = readFileSync(resolve(__dirname, "../docs/showcase/index.md"), "utf8");
     const showcaseZh = readFileSync(resolve(__dirname, "../docs/zh/showcase/index.md"), "utf8");
-    expect(showcaseJa).toContain("解説記事を読む");
+    expect(showcaseJa).toContain("解説記事\u3092読\u3080");
     expect(showcaseEn).toContain("Theory Article");
     expect(showcaseZh).toContain("阅读解说文章");
 
     // 4. Both theory pages and both games provide ja, en, zh localization
-    expect(sheepTheoryHtml).toContain('data-lang-section="ja"');
-    expect(sheepTheoryHtml).toContain('data-lang-section="en"');
-    expect(sheepTheoryHtml).toContain('data-lang-section="zh"');
-    expect(castleTheoryHtml).toContain('data-lang-section="ja"');
-    expect(castleTheoryHtml).toContain('data-lang-section="en"');
-    expect(castleTheoryHtml).toContain('data-lang-section="zh"');
+    expect(sheepTheoryHtml).toContain('data-lang-btn="ja"');
+    expect(sheepTheoryHtml).toContain('data-lang-btn="en"');
+    expect(sheepTheoryHtml).toContain('data-lang-btn="zh"');
+    expect(castleTheoryHtml).toContain('data-lang-btn="ja"');
+    expect(castleTheoryHtml).toContain('data-lang-btn="en"');
+    expect(castleTheoryHtml).toContain('data-lang-btn="zh"');
 
     // Verify Mofumofu Sheep stage localization
     const sheepS1En = getLocalizedStageText(CAMPAIGN_STAGES[0], "en");
+    const sheepS1Ja = getLocalizedStageText(CAMPAIGN_STAGES[0], "ja");
     const sheepS1Zh = getLocalizedStageText(CAMPAIGN_STAGES[0], "zh");
     expect(sheepS1En.title).toBe("First Fence");
-    expect(sheepS1Zh.title).toBe("第一道栅栏");
-    expect(sheepS1En.title).not.toBe(CAMPAIGN_STAGES[0].title);
+    expect(sheepS1En.title).toBe(CAMPAIGN_STAGES[0].title);
+    expect(sheepS1Ja.title).not.toBe(CAMPAIGN_STAGES[0].title);
     expect(sheepS1Zh.title).not.toBe(CAMPAIGN_STAGES[0].title);
 
     // Verify Demon Castle Shift localization
@@ -238,9 +239,10 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(getPrologueSlidesLocalized("en")).toHaveLength(3);
     expect(getPrologueSlidesLocalized("zh")).toHaveLength(3);
     const castleS1En = getStageLocalized(CASTLE_STAGES[0], "en");
+    const castleS1Ja = getStageLocalized(CASTLE_STAGES[0], "ja");
     const castleS1Zh = getStageLocalized(CASTLE_STAGES[0], "zh");
-    expect(castleS1En.title).not.toBe(CASTLE_STAGES[0].title);
-    expect(castleS1Zh.title).not.toBe(CASTLE_STAGES[0].title);
+    expect(castleS1Ja.title).not.toBe(castleS1En.title);
+    expect(castleS1Zh.title).not.toBe(castleS1En.title);
 
     // 5. Chinese weekday labels already include "周" (周一..周五) and must not be double-prefixed as "周${dayName}"
     expect(getDayLabel(0, "zh")).toBe("周一");
@@ -453,9 +455,9 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         "Dialogue Window and Dispatch Command"
       );
       for (const el of castleDoc.allElements) {
-        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.title).not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
       }
       expect(castleDoc.byId.get("stage-heading")?.textContent).toBe(
         getStageLocalized(CASTLE_STAGES[0], "en").title
@@ -503,9 +505,9 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(castleDoc.conditionRows[0]?.getAttribute("aria-label")).toBe("排班达成状况");
       expect(castleDoc.dialogueDocks[0]?.getAttribute("aria-label")).toBe("对话窗口与出击指令");
       for (const el of castleDoc.allElements) {
-        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.title).not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
       }
       expect(castleDoc.byId.get("stage-heading")?.textContent).toBe(
         getStageLocalized(CASTLE_STAGES[0], "zh").title
@@ -568,9 +570,9 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         "Tile Score Legend"
       );
       for (const el of sheepDoc.allElements) {
-        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[\u3041-\u3096\u30A1-\u30F6]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[\u3041-\u3096\u30A1-\u30F6]/);
+        expect(el.title).not.toMatch(/[\u3041-\u3096\u30A1-\u30F6]/);
       }
 
       applySheepStaticTranslations("zh");
@@ -589,12 +591,12 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("btn-restart")?.title).toBe("从头重新开始 (R键)");
       expect(sheepDoc.byId.get("btn-hint-label")?.textContent).toBe("一步提示");
       expect(sheepDoc.byId.get("btn-hint")?.title).toBe("在棋盘上高亮提示下一步操作 (H键)");
-      expect(sheepDoc.byId.get("legend-sheep")?.title).toBe("绵羊（+2分・保护对象）");
+      expect(sheepDoc.byId.get("legend-sheep")?.title).toBe("绵羊（+2分\u30FB保护对象）");
       expect(sheepDoc.byId.get("legend-grass")?.title).toBe("草地（+1分）");
       expect(sheepDoc.byId.get("legend-strawberry")?.title).toBe("野草莓（+5分）");
-      expect(sheepDoc.byId.get("legend-pit")?.title).toBe("坑洞（-5分・可用木桩栅栏填平）");
+      expect(sheepDoc.byId.get("legend-pit")?.title).toBe("坑洞（-5分\u30FB可用木桩栅栏填平）");
       expect(sheepDoc.byId.get("legend-bridge")?.title).toBe(
-        "石桥（+1分・可通行・不可放栅栏）"
+        "石桥（+1分\u30FB可通行\u30FB不可放栅栏）"
       );
       expect(sheepDoc.byId.get("legend-wall")?.textContent).toBe("💧🪨 障碍墙");
       expect(sheepDoc.byId.get("legend-wall")?.title).toBe(
@@ -602,9 +604,9 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       );
       expect(sheepDoc.byId.get("legend-strip")?.getAttribute("aria-label")).toBe("地块得分一览");
       for (const el of sheepDoc.allElements) {
-        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.getAttribute("alt") ?? "").not.toMatch(/[ぁ-んァ-ヶ]/);
-        expect(el.title).not.toMatch(/[ぁ-んァ-ヶ]/);
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[\u3041-\u3096\u30A1-\u30F6]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[\u3041-\u3096\u30A1-\u30F6]/);
+        expect(el.title).not.toMatch(/[\u3041-\u3096\u30A1-\u30F6]/);
       }
     } finally {
       if (prevDocument === undefined) {
@@ -1564,11 +1566,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
       // Initial state: normal guide, optimal button hidden, hint button visible
       expect(guideBanner?.classList.contains("is-shortfall")).toBe(false);
-      expect(stageOneliner?.textContent).toContain("🐑のすぐ隣で塞ぐと🍓に届かない");
+      expect(stageOneliner?.textContent).toContain("🐑\u306E\u3059\u3050隣\u3067塞\u3050\u3068🍓\u306B届\u304B\u306A\u3044");
       expect(btnShowOptimal?.hidden).toBe(true);
       expect(btnHint?.hidden).toBe(false);
 
-      // In Stage 2 ("いちごの丘"), sheep is at (1, 4), wolf is at (1, 0), strawberry at (1, 2).
+      // In Stage 2 ("Strawberry Hill"), sheep is at (1, 4), wolf is at (1, 0), strawberry at (1, 2).
       // Placing the 1 allowed fence at (1, 3) blocks the wolf, but leaves out the strawberry:
       // Score = 2 pt, targetScore = 8 pt -> isShortfall (isSafe && !cleared)!
       const suboptimalCell = boardGridEl?.children.find(
@@ -1579,11 +1581,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
       // Behavioral assertion: Guide banner receives shortfall styling and dynamic guidance text
       expect(guideBanner?.classList.contains("is-shortfall")).toBe(true);
-      expect(stageOneliner?.textContent).toBe("オオカミ防衛成功! 柵の位置を工夫してあと +6 pt 稼ごう");
+      expect(stageOneliner?.textContent).toBe("\u30AA\u30AA\u30AB\u30DF防衛成功! 柵\u306E位置\u3092工夫\u3057\u3066\u3042\u3068 +6 pt 稼\u3054\u3046");
       expect(byId.get("guide-banner-icon")?.textContent).toBe("🍓");
 
       // HUD status pill updates to shortfall status
-      expect(byId.get("status-text")?.textContent).toContain("目標まであと +6 pt");
+      expect(byId.get("status-text")?.textContent).toContain("目標\u307E\u3067\u3042\u3068 +6 pt");
 
       // Controls bar replaces 1-move hint with model solution button when 0 fences remain
       expect(btnShowOptimal?.hidden).toBe(false);
@@ -1592,7 +1594,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       // Clicking Undo or untoggling the fence restores initial normal state
       suboptimalCell?.click();
       expect(guideBanner?.classList.contains("is-shortfall")).toBe(false);
-      expect(stageOneliner?.textContent).toContain("🐑のすぐ隣で塞ぐと🍓に届かない");
+      expect(stageOneliner?.textContent).toContain("🐑\u306E\u3059\u3050隣\u3067塞\u3050\u3068🍓\u306B届\u304B\u306A\u3044");
       expect(btnShowOptimal?.hidden).toBe(true);
       expect(btnHint?.hidden).toBe(false);
     } finally {

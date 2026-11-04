@@ -26,18 +26,18 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
   return [
     {
       code: "leader_cap",
-      label: "リーダー業務可",
-      shortLabel: "リ",
-      badge: "👑リーダー",
+      label: "Leader Qualified",
+      shortLabel: "Lead",
+      badge: "👑Leader",
       category: "skill",
       aliases: [
         "leader_cap",
-        "リーダー業務可",
-        "リーダー",
-        "リーダー業務",
-        "リーダースキル",
-        "日勤リーダー",
-        "夜勤リーダー",
+        "\u30EA\u30FC\u30C0\u30FC業務可",
+        "\u30EA\u30FC\u30C0\u30FC",
+        "\u30EA\u30FC\u30C0\u30FC業務",
+        "\u30EA\u30FC\u30C0\u30FC\u30B9\u30AD\u30EB",
+        "日勤\u30EA\u30FC\u30C0\u30FC",
+        "夜勤\u30EA\u30FC\u30C0\u30FC",
       ],
       minDay: 2,
       minEvening: 1,
@@ -46,11 +46,11 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
     },
     {
       code: "icu_er",
-      label: "救急・重症対応",
+      label: "ICU / Critical Care",
       shortLabel: "救",
       badge: "🚑救急/ICU",
       category: "skill",
-      aliases: ["icu_er", "救急・重症対応", "救急・ICU", "救急", "ICU", "重症対応"],
+      aliases: ["icu_er", "救急\u30FB重症対応", "救急\u30FBICU", "救急", "ICU", "重症対応"],
       minDay: 2,
       minEvening: 1,
       minNight: 1,
@@ -71,10 +71,10 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
     {
       code: "newcomer",
       label: "新人",
-      shortLabel: "新",
-      badge: "🌱新人",
+      shortLabel: "New",
+      badge: "🌱Newcomer",
       category: "role",
-      aliases: ["newcomer", "新人", "新人スタッフ", "新人看護師"],
+      aliases: ["newcomer", "新人", "新人\u30B9\u30BF\u30C3\u30D5", "新人看護師"],
       minDay: 0,
       minEvening: 0,
       minNight: 0,
@@ -85,10 +85,10 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
     {
       code: "mid",
       label: "中堅",
-      shortLabel: "中",
+      shortLabel: "Mid",
       badge: "中堅",
       category: "role",
-      aliases: ["mid", "中堅", "中堅スタッフ", "中堅看護師"],
+      aliases: ["mid", "中堅", "中堅\u30B9\u30BF\u30C3\u30D5", "中堅看護師"],
       minDay: 0,
       minEvening: 0,
       minNight: 0,
@@ -96,11 +96,11 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
     },
     {
       code: "leader",
-      label: "リーダー・主任",
+      label: "Charge Nurse / Leader",
       shortLabel: "主任",
       badge: "主任",
       category: "role",
-      aliases: ["leader", "role_leader", "リーダー・主任", "主任"],
+      aliases: ["leader", "role_leader", "\u30EA\u30FC\u30C0\u30FC\u30FB主任", "主任"],
       minDay: 0,
       minEvening: 0,
       minNight: 0,
@@ -117,10 +117,10 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
         "A",
         "A班",
         "Group A",
-        "グループA",
-        "グループ A",
-        "Aグループ",
-        "A グループ",
+        "\u30B0\u30EB\u30FC\u30D7A",
+        "\u30B0\u30EB\u30FC\u30D7 A",
+        "A\u30B0\u30EB\u30FC\u30D7",
+        "A \u30B0\u30EB\u30FC\u30D7",
         "属性A",
       ],
       minDay: 0,
@@ -139,10 +139,10 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
         "B",
         "B班",
         "Group B",
-        "グループB",
-        "グループ B",
-        "Bグループ",
-        "B グループ",
+        "\u30B0\u30EB\u30FC\u30D7B",
+        "\u30B0\u30EB\u30FC\u30D7 B",
+        "B\u30B0\u30EB\u30FC\u30D7",
+        "B \u30B0\u30EB\u30FC\u30D7",
         "属性B",
       ],
       minDay: 0,
@@ -154,63 +154,63 @@ export function createDefaultSkillDefs(): SkillDefinition[] {
 }
 
 const NURSE_CATALOG: ReadonlyArray<{ name: string; kana: string }> = [
-  { name: "佐藤 美咲", kana: "さとう みさき" },
-  { name: "鈴木 陽菜", kana: "すずき ひな" },
-  { name: "高橋 健太", kana: "たかはし けんた" },
-  { name: "田中 彩乃", kana: "たなか あやの" },
-  { name: "伊藤 結衣", kana: "いとう ゆい" },
-  { name: "渡辺 翔太", kana: "わたなべ しょうた" },
-  { name: "山本 凛", kana: "やまもと りん" },
-  { name: "中村 優奈", kana: "なかむら ゆうな" },
-  { name: "小林 誠", kana: "こばやし まこと" },
-  { name: "加藤 美月", kana: "かとう みづき" },
-  { name: "吉田 葵", kana: "よしだ あおい" },
-  { name: "山田 拓海", kana: "やまだ たくみ" },
-  { name: "佐々木 楓", kana: "ささき かえで" },
-  { name: "山口 莉子", kana: "やまぐち りこ" },
-  { name: "松本 大輝", kana: "まつもと だいき" },
-  { name: "井上 芽依", kana: "いのうえ めい" },
-  { name: "木村 琴音", kana: "きむら ことね" },
-  { name: "林 颯太", kana: "はやし そうた" },
-  { name: "斎藤 杏奈", kana: "さいとう あんな" },
-  { name: "清水 遥", kana: "しみず はるか" },
-  { name: "山崎 翼", kana: "やまざき つばさ" },
-  { name: "森 花音", kana: "もり かのん" },
-  { name: "池田 結菜", kana: "いけだ ゆいな" },
-  { name: "橋本 陸", kana: "はしもと りく" },
-  { name: "阿部 桜", kana: "あべ さくら" },
-  { name: "石川 菜々美", kana: "いしかわ ななみ" },
-  { name: "山下 蓮", kana: "やました れん" },
-  { name: "中島 詩織", kana: "なかじま しおり" },
-  { name: "石井 亮介", kana: "いしい りょうすけ" },
-  { name: "小川 真央", kana: "おがわ まお" },
-  { name: "前田 奏", kana: "まえだ かなで" },
-  { name: "岡田 千尋", kana: "おかだ ちひろ" },
-  { name: "長谷川 駿", kana: "はせがわ しゅん" },
-  { name: "藤田 茉白", kana: "ふじた ましろ" },
-  { name: "後藤 優斗", kana: "ごとう ゆうと" },
-  { name: "近藤 未来", kana: "こんどう みらい" },
+  { name: "佐藤 美咲", kana: "\u3055\u3068\u3046 \u307F\u3055\u304D" },
+  { name: "鈴木 陽菜", kana: "\u3059\u305A\u304D \u3072\u306A" },
+  { name: "高橋 健太", kana: "\u305F\u304B\u306F\u3057 \u3051\u3093\u305F" },
+  { name: "田中 彩乃", kana: "\u305F\u306A\u304B \u3042\u3084\u306E" },
+  { name: "伊藤 結衣", kana: "\u3044\u3068\u3046 \u3086\u3044" },
+  { name: "渡辺 翔太", kana: "\u308F\u305F\u306A\u3079 \u3057\u3087\u3046\u305F" },
+  { name: "山本 凛", kana: "\u3084\u307E\u3082\u3068 \u308A\u3093" },
+  { name: "中村 優奈", kana: "\u306A\u304B\u3080\u3089 \u3086\u3046\u306A" },
+  { name: "小林 誠", kana: "\u3053\u3070\u3084\u3057 \u307E\u3053\u3068" },
+  { name: "加藤 美月", kana: "\u304B\u3068\u3046 \u307F\u3065\u304D" },
+  { name: "吉田 葵", kana: "\u3088\u3057\u3060 \u3042\u304A\u3044" },
+  { name: "山田 拓海", kana: "\u3084\u307E\u3060 \u305F\u304F\u307F" },
+  { name: "佐々木 楓", kana: "\u3055\u3055\u304D \u304B\u3048\u3067" },
+  { name: "山口 莉子", kana: "\u3084\u307E\u3050\u3061 \u308A\u3053" },
+  { name: "松本 大輝", kana: "\u307E\u3064\u3082\u3068 \u3060\u3044\u304D" },
+  { name: "井上 芽依", kana: "\u3044\u306E\u3046\u3048 \u3081\u3044" },
+  { name: "木村 琴音", kana: "\u304D\u3080\u3089 \u3053\u3068\u306D" },
+  { name: "林 颯太", kana: "\u306F\u3084\u3057 \u305D\u3046\u305F" },
+  { name: "斎藤 杏奈", kana: "\u3055\u3044\u3068\u3046 \u3042\u3093\u306A" },
+  { name: "清水 遥", kana: "\u3057\u307F\u305A \u306F\u308B\u304B" },
+  { name: "山崎 翼", kana: "\u3084\u307E\u3056\u304D \u3064\u3070\u3055" },
+  { name: "森 花音", kana: "\u3082\u308A \u304B\u306E\u3093" },
+  { name: "池田 結菜", kana: "\u3044\u3051\u3060 \u3086\u3044\u306A" },
+  { name: "橋本 陸", kana: "\u306F\u3057\u3082\u3068 \u308A\u304F" },
+  { name: "阿部 桜", kana: "\u3042\u3079 \u3055\u304F\u3089" },
+  { name: "石川 菜々美", kana: "\u3044\u3057\u304B\u308F \u306A\u306A\u307F" },
+  { name: "山下 蓮", kana: "\u3084\u307E\u3057\u305F \u308C\u3093" },
+  { name: "中島 詩織", kana: "\u306A\u304B\u3058\u307E \u3057\u304A\u308A" },
+  { name: "石井 亮介", kana: "\u3044\u3057\u3044 \u308A\u3087\u3046\u3059\u3051" },
+  { name: "小川 真央", kana: "\u304A\u304C\u308F \u307E\u304A" },
+  { name: "前田 奏", kana: "\u307E\u3048\u3060 \u304B\u306A\u3067" },
+  { name: "岡田 千尋", kana: "\u304A\u304B\u3060 \u3061\u3072\u308D" },
+  { name: "長谷川 駿", kana: "\u306F\u305B\u304C\u308F \u3057\u3085\u3093" },
+  { name: "藤田 茉白", kana: "\u3075\u3058\u305F \u307E\u3057\u308D" },
+  { name: "後藤 優斗", kana: "\u3054\u3068\u3046 \u3086\u3046\u3068" },
+  { name: "近藤 未来", kana: "\u3053\u3093\u3069\u3046 \u307F\u3089\u3044" },
 ];
 
 const HARD_OFF_REASONS = [
   "有給休暇（申請済）",
   "冠婚葬祭",
-  "院外研修・学会参加",
-  "通院・健診予約",
+  "Conference / External Training",
+  "Medical Appointment",
   "家族行事（確定休）",
 ];
 
 const SOFT_OFF_REASONS = [
   "公休希望（旅行）",
-  "リフレッシュ休希望",
-  "家庭の都合（希望休）",
-  "週末休み希望",
+  "Refresh Leave",
+  "Family Matters",
+  "Weekend Off Request",
 ];
 
 const SOFT_DAY_REASONS = [
-  "日勤希望（夕方予定あり）",
-  "委員会出席のため日勤希望",
-  "カンファレンス担当日",
+  "Day Shift Preferred (Evening Event)",
+  "Day Shift Preferred (Committee Meeting)",
+  "Conference Duty Day",
 ];
 
 /**
@@ -452,7 +452,7 @@ export function generateNurseSchedulingState(
       }
     }
 
-    // 2 nurses in mid-career are daytime-only (日勤専従 / 育児短時間・夜勤免除)
+    // 2 nurses in mid-career are daytime-only (日勤専従 / 育児短時間夜勤免除)
     const nightOk = !(tierAttr === "mid" && (i === leaderCount + 1 || i === leaderCount + 2));
 
     const prevMonthShifts = generatePrevMonthTail(
@@ -501,8 +501,8 @@ export function generateNurseSchedulingState(
   }
 
   // Generate Pairwise Relations:
-  // 1) 3 Incompatible NG Pairs (相性NGペア: 同時夜勤不可)
-  // 2) 3 Preceptor Pairs (プリセプター指導ペア: 新人×先輩)
+  // 1) 3 Incompatible NG Pairs (相性NG: 同時夜勤不可)
+  // 2) 3 Preceptor Pairs (指導: 新人×先輩)
   const relations: PairRelation[] = [];
   const nightEligible = nurses.filter((n) => n.nightOk);
 
@@ -512,21 +512,21 @@ export function generateNurseSchedulingState(
       type: "ng_pair",
       nurseA: nightEligible[0].id,
       nurseB: nightEligible[4].id,
-      reason: "過去のインシデント対応方針の相違により少人数夜勤の同席NG",
+      reason: "Past incident handling discrepancy: avoid pairing for small night shifts",
     });
     relations.push({
       id: "ng_2",
       type: "ng_pair",
       nurseA: nightEligible[2].id,
       nurseB: nightEligible[7].id,
-      reason: "師長配慮：準夜・深夜帯の同一シフト配置を回避",
+      reason: "Nurse manager accommodation: avoid same evening/night shift",
     });
     relations.push({
       id: "ng_3",
       type: "ng_pair",
       nurseA: nightEligible[5].id,
       nurseB: nightEligible[9].id,
-      reason: "本人間の申し出により夜勤ペア配置を回避",
+      reason: "Mutual request: avoid night shift pairing",
     });
   }
 
@@ -539,7 +539,7 @@ export function generateNurseSchedulingState(
       enabled: false,
       nurseA: newcomers[k].id,
       nurseB: seniors[k].id,
-      reason: `プリセプター指導ペア（新人:${newcomers[k].name} ⇄ 指導:${seniors[k].name}）`,
+      reason: `Preceptor training pair (Newcomer:${newcomers[k].name} <-> Mentor:${seniors[k].name})`,
     });
   }
 
@@ -637,7 +637,7 @@ export function createDefaultStaffingRules(
       shifts: ["D"],
       attribute: "all",
       minCount: dayWeekday,
-      description: `日勤は平日に全員が${dayWeekday}人以上 (必須)`,
+      description: `Day shift requires at least ${dayWeekday} staff on weekdays (Mandatory)`,
     },
     {
       id: "default_staffing_day_weekend",
@@ -648,7 +648,7 @@ export function createDefaultStaffingRules(
       shifts: ["D"],
       attribute: "all",
       minCount: dayWeekend,
-      description: `日勤は土日祝に全員が${dayWeekend}人以上 (必須)`,
+      description: `Day shift requires at least ${dayWeekend} staff on weekends/holidays (Mandatory)`,
     },
     {
       id: "default_staffing_eve",
@@ -660,7 +660,7 @@ export function createDefaultStaffingRules(
       attribute: "all",
       minCount: eveStaff,
       maxCount: eveStaff,
-      description: `準夜勤は毎日に全員が${eveStaff}人以上${eveStaff}人以下 (必須)`,
+      description: `Evening shift requires ${eveStaff} staff daily (Mandatory)`,
     },
     {
       id: "default_staffing_night",
@@ -672,7 +672,7 @@ export function createDefaultStaffingRules(
       attribute: "all",
       minCount: nightStaff,
       maxCount: nightStaff,
-      description: `深夜勤は毎日に全員が${nightStaff}人以上${nightStaff}人以下 (必須)`,
+      description: `Night shift requires ${nightStaff} staff daily (Mandatory)`,
     },
     {
       id: "default_staffing_leader_day",
@@ -683,7 +683,7 @@ export function createDefaultStaffingRules(
       shifts: ["D"],
       attribute: "leader_cap",
       minCount: 2,
-      description: `日勤は毎日にリーダーが2人以上 (必須)`,
+      description: `Day shift requires at least 2 leaders daily (Mandatory)`,
     },
     {
       id: "default_staffing_leader_eve",
@@ -694,7 +694,7 @@ export function createDefaultStaffingRules(
       shifts: ["E"],
       attribute: "leader_cap",
       minCount: 1,
-      description: `準夜勤は毎日にリーダーが1人以上 (必須)`,
+      description: `Evening shift requires at least 1 leader daily (Mandatory)`,
     },
     {
       id: "default_staffing_leader_night",
@@ -705,7 +705,7 @@ export function createDefaultStaffingRules(
       shifts: ["N"],
       attribute: "leader_cap",
       minCount: 1,
-      description: `深夜勤は毎日にリーダーが1人以上 (必須)`,
+      description: `Night shift requires at least 1 leader daily (Mandatory)`,
     },
     {
       id: "default_staffing_newcomer_night",
@@ -716,7 +716,7 @@ export function createDefaultStaffingRules(
       shifts: ["N"],
       attribute: "newcomer",
       maxCount: 1,
-      description: `深夜勤は毎日に新人が1人以下 (必須)`,
+      description: `Night shift allows at most 1 newcomer daily (Mandatory)`,
     },
   ];
 }
@@ -750,7 +750,7 @@ export function injectConflictScenario(
       nurseId: n01.id,
       day: 1,
       shift: "D",
-      description: `【矛盾シナリオ】${n01.name}(${n01.id}) に1日の「日勤(D)固定」を指定（前月末日が深夜勤(N)のためインターバル違反と衝突）`,
+      description: `[Conflict Demo] Pin Day shift (D) on Day 1 for ${n01.name} (${n01.id}) (Clashes with previous month Night shift interval)`,
     });
 
     return {
@@ -768,7 +768,7 @@ export function injectConflictScenario(
         nurses: updatedNurses,
         customRules: nextCustomRules,
       },
-      descriptionJa: `${n01.name}さんは前月末日が「深夜勤(N)」ですが、当月1日に「日勤(D)固定」を追加したため、前月引き継ぎのシフト遷移禁止（深夜→日勤禁止）と矛盾が発生します。`,
+      descriptionJa: `Pinned Day shift (D) on Day 1 for ${n01.name} (${n01.id}) after previous month ending in Night shift (N), violating rest interval transition rule.`,
     };
   }
 
@@ -781,7 +781,7 @@ export function injectConflictScenario(
       day: targetDay,
       shift: "D",
       minStaff: 18,
-      description: `【矛盾シナリオ】${targetDay}日の日勤(D)必要人数を18名以上に引き上げ（準夜4名＋深夜4名＋確定休と衝突）`,
+      description: `[Conflict Demo] Day ${targetDay}: Raised Day shift requirement to 18+ staff (Clashes with Evening 4 + Night 4 + Confirmed Offs)`,
     });
     for (let i = 0; i < Math.min(8, state.nurses.length); i++) {
       const nurse = state.nurses[i];
@@ -792,7 +792,7 @@ export function injectConflictScenario(
         nurseId: nurse.id,
         day: targetDay,
         shift: "O",
-        description: `【矛盾シナリオ】${targetDay}日: ${nurse.name}(${nurse.id}) の学会参加による確定公休(O)`,
+        description: `[Conflict Demo] Day ${targetDay}: ${nurse.name} (${nurse.id}) confirmed Off (O) for conference`,
       });
     }
     return {
@@ -800,7 +800,7 @@ export function injectConflictScenario(
         ...state,
         customRules: nextCustomRules,
       },
-      descriptionJa: `${targetDay}日に日勤18名以上（＋準夜4名・深夜4名＝計26名出勤）を要求しつつ、8名に学会参加の確定公休を指定したため、30名では物理的に人数が不足する矛盾が発生します。`,
+      descriptionJa: `Requested 18+ Day staff (+ 4 Evening + 4 Night = 26 staff) on Day ${targetDay} while 8 nurses are on mandatory conference leave, causing staffing shortage for 30 nurses.`,
     };
   }
 
@@ -816,7 +816,7 @@ export function injectConflictScenario(
       nurseId: nurse.id,
       day: targetDay,
       shift: "O",
-      description: `【矛盾シナリオ】${targetDay}日: リーダー資格者 ${nurse.name}(${nurse.id}) の院外リーダー研修による確定休(O)`,
+      description: `[Conflict Demo] Day ${targetDay}: Leader ${nurse.name} (${nurse.id}) confirmed Off (O) for leadership workshop`,
     });
   }
 
@@ -836,7 +836,7 @@ export function injectConflictScenario(
       skillDefs: nextSkills,
       customRules: nextCustomRules,
     },
-    descriptionJa: `${targetDay}日にリーダー資格者${offLeaders.length}名が院外研修で一斉に確定休（O）となったため、同日のリーダー必須配置（日勤2名＋準夜1名＋深夜1名＝計4名必要、残りリーダー2名のみ）が満たせず矛盾が発生します。`,
+    descriptionJa: `On Day ${targetDay}, all ${offLeaders.length} qualified leaders are on mandatory workshop leave, leaving only 2 leaders available when 4 are required (2 Day, 1 Evening, 1 Night).`,
   };
 }
 

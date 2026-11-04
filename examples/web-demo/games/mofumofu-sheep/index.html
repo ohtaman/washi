@@ -1,30 +1,41 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>もふもふ羊の牧場囲い — まきばの柵パズル</title>
+    <title>Fluffy Sheep Pasture Fence — Pastoral Fence Optimization Puzzle</title>
+    <meta name="description" content="Place wooden fences to protect fluffy sheep from wolves and optimize pasture scoring with WaSHI ILP." />
     <link rel="stylesheet" href="./style.css" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Fluffy Sheep Pasture Fence",
+      "description": "Pastoral Fence Optimization Puzzle powered by WaSHI integer programming.",
+      "applicationCategory": "GameApplication",
+      "inLanguage": ["en", "ja", "zh"]
+    }
+    </script>
   </head>
   <body>
     <div class="app-shell">
       <!-- Top Bar: Title + Rules Button + Cleared Count + Language Switcher + Back Link -->
       <header class="topbar">
         <div class="brand">
-          <a href="../../ja/showcase/" class="back-link" id="back-link" title="ショーケースへ戻る">← ショーケース</a>
+          <a href="../../showcase/" class="back-link" id="back-link" title="Return to Showcase">← Showcase</a>
           <img
             src="/games/mofumofu-sheep/char-moko.jpg"
-            alt="モコ"
+            alt="Moko"
             class="brand-avatar"
           />
           <div class="brand-text">
-            <h1 id="app-title">もふもふ羊の牧場囲い</h1>
-            <span class="engine-tag" id="app-subtitle">まきばの柵パズル</span>
+            <h1 id="app-title">Fluffy Sheep Pasture Fence</h1>
+            <span class="engine-tag" id="app-subtitle">Pastoral Fence Optimization Puzzle</span>
           </div>
         </div>
 
         <div class="topbar-actions">
-          <div class="star-counter" id="total-stars-badge" title="クリア済みステージ数">
+          <div class="star-counter" id="total-stars-badge" title="Cleared Stages">
             <span class="star-icon">★</span>
             <span id="total-stars-text">0 CLEAR</span>
             <span id="total-score-text" class="total-score-text"></span>
@@ -34,23 +45,23 @@
             type="button"
             class="topbar-menu-btn"
             id="btn-topbar-menu"
-            aria-label="メニューを開く"
+            aria-label="Open menu"
             aria-expanded="false"
-            title="メニュー"
+            title="Menu"
           >
             ⚙️
           </button>
         </div>
 
         <div class="topbar-stats" id="topbar-stats">
-          <a href="../../ja/showcase/" class="menu-back-link" id="menu-showcase-link" title="ショーケースへ戻る">🏠 <span id="menu-back-label">ショーケース</span></a>
+          <a href="../../showcase/" class="menu-back-link" id="menu-showcase-link" title="Return to Showcase">🏠 <span id="menu-back-label">Showcase</span></a>
           <button
             type="button"
             class="help-pill-btn btn-audio"
             id="btn-bgm-toggle"
             data-bgm-toggle
             aria-pressed="false"
-            title="BGMの再生/停止"
+            title="Play / Stop BGM"
           >
             <span id="bgm-btn-text">🔇 BGM: OFF</span>
           </button>
@@ -58,13 +69,13 @@
             type="button"
             class="help-pill-btn"
             id="btn-open-rules"
-            title="遊び方とチュートリアルを見る"
+            title="View how to play and tutorial"
           >
-            ❓ <span id="btn-open-rules-label">遊び方</span>
+            ❓ <span id="btn-open-rules-label">How to Play</span>
           </button>
           <div class="lang-switch" role="group" aria-label="Language">
-            <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
+            <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
             <button type="button" class="lang-btn" data-lang-btn="zh">中文</button>
           </div>
         </div>
@@ -74,15 +85,15 @@
 
       <!-- Main Puzzle Card -->
       <main class="puzzle-card">
-        <!-- Unified Stage Header & Level Stepper (No cluttered 1..13 strip) -->
+        <!-- Unified Stage Header & Level Stepper -->
         <div class="stage-header">
-          <nav class="stage-nav-bar" id="stage-strip" aria-label="ステージ選択">
+          <nav class="stage-nav-bar" id="stage-strip" aria-label="Stage Selection">
             <button
               type="button"
               class="stage-step-btn"
               id="btn-stage-prev"
-              title="前のステージへ"
-              aria-label="前のステージへ"
+              title="Previous Stage"
+              aria-label="Previous Stage"
             >
               ◀
             </button>
@@ -91,24 +102,24 @@
               <select
                 class="stage-select"
                 id="stage-select"
-                aria-label="ステージ番号を選択"
-                title="到達済みステージへ移動"
+                aria-label="Select stage number"
+                title="Jump to reached stage"
               ></select>
             </div>
             <button
               type="button"
               class="stage-step-btn"
               id="btn-stage-next"
-              title="次のステージへ"
-              aria-label="次のステージへ"
+              title="Next Stage"
+              aria-label="Next Stage"
             >
               ▶
             </button>
           </nav>
 
           <div class="stage-title-group">
-            <span class="tutorial-chip" id="tutorial-chip">🔰 チュートリアル 1/4</span>
-            <h2 id="stage-title">はじめての柵</h2>
+            <span class="tutorial-chip" id="tutorial-chip">🔰 Tutorial 1/4</span>
+            <h2 id="stage-title">First Fence</h2>
           </div>
         </div>
 
@@ -116,26 +127,26 @@
         <div class="guide-banner" id="guide-banner">
           <span class="guide-banner-icon" id="guide-banner-icon">🐑</span>
           <p class="stage-oneliner" id="stage-oneliner">
-            マスをタップして柵を置き、🐺から🐑を守ろう
+            Tap a cell to place a fence and protect 🐑 from 🐺
           </p>
         </div>
 
         <!-- Compact 3-Pill HUD -->
         <div class="hud-bar">
           <div class="hud-pill" id="hud-fence-pill">
-            <span class="hud-label" id="hud-fence-label">柵の残り</span>
+            <span class="hud-label" id="hud-fence-label">Remaining Fences</span>
             <div class="fence-dots" id="fence-dots"></div>
-            <strong class="hud-value" id="fence-count-text">残り 1 / 1</strong>
+            <strong class="hud-value" id="fence-count-text">Remaining 1 / 1</strong>
           </div>
 
           <div class="hud-pill" id="hud-score-pill">
-            <span class="hud-label" id="hud-score-label">現在 / クリア目標</span>
-            <strong class="hud-value" id="score-text">— / 目標 7 pt</strong>
+            <span class="hud-label" id="hud-score-label">Current / Target Score</span>
+            <strong class="hud-value" id="score-text">— / Target 7 pt</strong>
           </div>
 
           <div class="hud-pill status-danger" id="hud-status-pill">
             <span class="status-icon" id="status-icon">🐺</span>
-            <strong class="status-text" id="status-text">オオカミ侵入中</strong>
+            <strong class="status-text" id="status-text">Wolf Infiltrating</strong>
           </div>
         </div>
 
@@ -145,7 +156,7 @@
             class="board-grid"
             id="board-grid"
             role="grid"
-            aria-label="牧場パズル盤面"
+            aria-label="Pasture puzzle board"
           ></div>
         </div>
 
@@ -154,13 +165,13 @@
           <div class="clear-banner-main">
             <div class="clear-stars" id="clear-stars">★</div>
             <div class="clear-copy">
-              <strong id="clear-headline">まきば完成・ステージクリア</strong>
-              <span id="clear-subtext">目標スコア達成</span>
+              <strong id="clear-headline">Pasture Completed · Stage Clear</strong>
+              <span id="clear-subtext">Target Score Achieved</span>
             </div>
           </div>
           <div class="clear-actions">
             <button type="button" class="btn btn-next" id="btn-next-stage">
-              次のステージへ ▶
+              Next Stage ▶
             </button>
           </div>
         </div>
@@ -173,18 +184,18 @@
               class="btn btn-tool"
               id="btn-undo"
               disabled
-              title="1手戻す (Zキー)"
+              title="Undo last move (Z key)"
             >
-              ↩ <span id="btn-undo-label">1手戻す</span> <kbd>Z</kbd>
+              ↩ <span id="btn-undo-label">Undo</span> <kbd>Z</kbd>
             </button>
             <button
               type="button"
               class="btn btn-tool"
               id="btn-restart"
               disabled
-              title="最初からやり直す (Rキー)"
+              title="Start over from beginning (R key)"
             >
-              🔄 <span id="btn-restart-label">リスタート</span> <kbd>R</kbd>
+              🔄 <span id="btn-restart-label">Restart</span> <kbd>R</kbd>
             </button>
           </div>
 
@@ -193,30 +204,30 @@
               type="button"
               class="btn btn-hint"
               id="btn-hint"
-              title="次の1手を盤面上で光らせて教えます (Hキー)"
+              title="Highlights recommended next move on the board (H key)"
             >
-              💡 <span id="btn-hint-label">1手ヒント</span> <kbd>H</kbd>
+              💡 <span id="btn-hint-label">Hint</span> <kbd>H</kbd>
             </button>
             <button
               type="button"
               class="btn btn-secondary btn-optimal"
               id="btn-show-optimal"
               hidden
-              title="最適なお手本解答を表示します"
+              title="Displays verified optimal fence configuration"
             >
-              ✨ お手本を見る
+              ✨ Reveal Optimal Plan
             </button>
           </div>
         </div>
 
         <!-- Minimal Visual Icon Legend -->
-        <footer class="legend-strip" id="legend-strip" aria-label="タイル得点一覧">
-          <span class="legend-chip" id="legend-sheep" title="ヒツジ（+2点・守る対象）">🐑 +2</span>
-          <span class="legend-chip" id="legend-grass" title="草地（+1点）">🌱 +1</span>
-          <span class="legend-chip chip-plus" id="legend-strawberry" title="野いちご（+5点）">🍓 +5</span>
-          <span class="legend-chip chip-minus" id="legend-pit" title="穴ぼこ（-5点・丸太の柵で塞げる）">🕳️ -5</span>
-          <span class="legend-chip chip-bridge" id="legend-bridge" title="石橋（+1点・通り抜け可・柵は置けない）">🌉 +1 <small>(柵×)</small></span>
-          <span class="legend-chip chip-wall" id="legend-wall" title="水辺・岩（通り抜け不可の壁）">💧🪨 壁</span>
+        <footer class="legend-strip" id="legend-strip" aria-label="Tile score breakdown">
+          <span class="legend-chip" id="legend-sheep" title="Sheep (+2 pt · protect source)">🐑 +2</span>
+          <span class="legend-chip" id="legend-grass" title="Grass (+1 pt)">🌱 +1</span>
+          <span class="legend-chip chip-plus" id="legend-strawberry" title="Wild Strawberry (+5 pt)">🍓 +5</span>
+          <span class="legend-chip chip-minus" id="legend-pit" title="Pit (-5 pt · place fence directly over pit to seal)">🕳️ -5</span>
+          <span class="legend-chip chip-bridge" id="legend-bridge" title="Stone Bridge (+1 pt · passable · fence cannot be placed)">🌉 +1 <small>(No fence)</small></span>
+          <span class="legend-chip chip-wall" id="legend-wall" title="Pond / Rock (impassable wall)">💧🪨 Wall</span>
         </footer>
       </main>
     </div>
@@ -230,12 +241,12 @@
     >
       <div class="rules-dialog-inner">
         <div class="rules-dialog-header">
-          <h2 id="rules-dialog-title">🐑 遊び方ガイド</h2>
+          <h2 id="rules-dialog-title">🐑 How to Play Guide</h2>
           <button
             type="button"
             class="rules-close-btn"
             id="btn-close-rules"
-            aria-label="閉じる"
+            aria-label="Close"
           >
             ✕
           </button>
@@ -256,9 +267,9 @@
               </svg>
             </div>
             <div class="rule-card-body">
-              <strong id="rule-step1-title">1. マスをタップして柵を置く</strong>
+              <strong id="rule-step1-title">1. Tap a tile to place a fence</strong>
               <p id="rule-step1-desc">
-                オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵を置いて遮断します。もう一度タップすると柵を外せます。
+                Block wolf paths with wooden fences so wolves cannot reach any sheep. Tap again to remove.
               </p>
             </div>
           </div>
@@ -266,9 +277,9 @@
           <div class="rule-card">
             <div class="rule-card-icon">🍓</div>
             <div class="rule-card-body">
-              <strong id="rule-step2-title">2. 広いまきばを作って目標スコア達成</strong>
+              <strong id="rule-step2-title">2. Build a spacious pasture to achieve the target score</strong>
               <p id="rule-step2-desc">
-                オオカミを防いだ状態で、ヒツジ🐑が歩いて行ける範囲（安全なまきば）の合計得点が「クリア目標」に届けばステージクリアです。
+                While keeping wolves out, the total score of all tiles reachable by sheep must reach or exceed the target score to clear.
               </p>
             </div>
           </div>
@@ -276,9 +287,9 @@
           <div class="rule-card">
             <div class="rule-card-icon">🕳️</div>
             <div class="rule-card-body">
-              <strong id="rule-step3-title">3. 石橋🌉と穴ぼこ🕳️の仕掛け</strong>
+              <strong id="rule-step3-title">3. Stone Bridges 🌉 and Mud Pits 🕳️</strong>
               <p id="rule-step3-desc">
-                🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に木の柵を打ち込めば穴が埋まって壁になります。
+                Stone bridges 🌉 are walkable, but fences cannot be built on them. Mud pits 🕳️ (-5 pt) deduct score if inside your pasture, but placing a wooden fence directly on a pit fills it in completely!
               </p>
             </div>
           </div>
@@ -286,14 +297,14 @@
 
         <div class="rules-tutorials-box">
           <strong class="rules-tutorials-heading" id="rules-tutorials-heading">
-            🔰 基本ルールを学ぶチュートリアル（Stage 1〜4）
+            🔰 Tutorial: Learn the core rules (Stages 1–4)
           </strong>
           <div class="rules-tutorial-grid" id="rules-tutorial-grid"></div>
         </div>
 
         <div class="rules-dialog-footer">
           <button type="button" class="btn btn-next" id="btn-rules-start">
-            わかった・パズルに戻る
+            Got it · Return to puzzle
           </button>
         </div>
       </div>

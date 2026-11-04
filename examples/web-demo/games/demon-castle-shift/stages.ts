@@ -12,19 +12,19 @@ import {
 } from "./types.js";
 
 const DAY_ENEMIES = [
-  { raidTitle: "先遣隊の偵察", enemyName: "先遣隊・剣士＆弓兵班", enemyIcon: "🗡️", enemyQuote: "街の被害を止めるため、門の守りを確かめる。" },
-  { raidTitle: "騎士団の進軍", enemyName: "王国軍・重装盾兵団", enemyIcon: "🛡️", enemyQuote: "正面から押し通る。退いてもらうぞ。" },
-  { raidTitle: "魔導部隊の遠征", enemyName: "勇者軍・紅蓮魔導団", enemyIcon: "🔥", enemyQuote: "これ以上、街の近くに魔物を置くわけにはいかない。" },
-  { raidTitle: "弓兵部隊の接近", enemyName: "森林部隊・長弓狙撃団", enemyIcon: "🏹", enemyQuote: "森の木立から狙い撃つ。隙は見逃さない。" },
-  { raidTitle: "教国軍の進軍", enemyName: "教国軍・聖堂騎士団", enemyIcon: "✨", enemyQuote: "人々の暮らしを守るため、この砦を封じる。" },
+  { raidTitle: "Advance Vanguard Recon", enemyName: "Vanguard Swordsmen & Archers", enemyIcon: "🗡️", enemyQuote: "To prevent damage to the town, we scout the gates." },
+  { raidTitle: "Knight Order Advance", enemyName: "Kingdom Armored Shield Corps", enemyIcon: "🛡️", enemyQuote: "We march straight through. Stand aside." },
+  { raidTitle: "Mage Unit Expedition", enemyName: "Hero Crimson Battle Mages", enemyIcon: "🔥", enemyQuote: "We cannot allow monsters to dwell near the settlement." },
+  { raidTitle: "Archers Approach", enemyName: "Forest Longbow Snipers", enemyIcon: "🏹", enemyQuote: "Aiming through the forest canopy. No opening goes unnoticed." },
+  { raidTitle: "Holy Kingdom Advance", enemyName: "Sanctuary Templar Knights", enemyIcon: "✨", enemyQuote: "To protect human livelihood, we will seal this fortress." },
 ];
 
 const NIGHT_ENEMIES = [
-  { raidTitle: "夜間の潜入", enemyName: "討伐軍・夜間斥候班", enemyIcon: "🗝️", enemyQuote: "夜陰に紛れて裏門の鍵を外すぞ。" },
-  { raidTitle: "裏門への接近", enemyName: "裏門工作・隠密小隊", enemyIcon: "🥷", enemyQuote: "見張りの交代時を狙う。音を立てるな。" },
-  { raidTitle: "月下の奇襲", enemyName: "勇者軍・月下狩猟団", enemyIcon: "🌕", enemyQuote: "月の明かりがあるうち一気に駆け抜ける。" },
-  { raidTitle: "水路からの侵入", enemyName: "水路潜入・忍び分隊", enemyIcon: "🐾", enemyQuote: "水路の隙間から城内へ潜り込む。" },
-  { raidTitle: "本隊の夜間強襲", enemyName: "勇者一行・精鋭本隊", enemyIcon: "👑", enemyQuote: "すべての決着をつける。門を開けてもらうぞ。" },
+  { raidTitle: "Night Infiltration", enemyName: "Expedition Night Scouts", enemyIcon: "🗝️", enemyQuote: "Under cover of darkness, unlock the postern gate." },
+  { raidTitle: "Rear Gate Approach", enemyName: "Rear Gate Infiltration Squad", enemyIcon: "🥷", enemyQuote: "Strike during the guard rotation. Keep silent." },
+  { raidTitle: "Moonlit Ambush", enemyName: "Hero Moonlit Hunt Division", enemyIcon: "🌕", enemyQuote: "Rush the ramparts while the moon lights the way." },
+  { raidTitle: "Waterway Intrusion", enemyName: "Waterway Shinobi Squad", enemyIcon: "🐾", enemyQuote: "Slip into the fortress through the aqueduct grates." },
+  { raidTitle: "Main Force Night Assault", enemyName: "Hero Elite Vanguard", enemyIcon: "👑", enemyQuote: "Time to end this. Open the gates." },
 ];
 
 const HEAVY_POOL: readonly MonsterId[] = ["drago", "golem", "behemoth", "ifrit"];
@@ -34,9 +34,9 @@ const KNIGHT_POOL: readonly MonsterId[] = ["dullahan", "gargoyle", "minotaur", "
 const ROOKIE_POOL: readonly MonsterId[] = ["pururu", "mandra", "mimic", "wisp"];
 
 /**
- * 魔王城の暦名と年月計算（プレイ日時の1073年前を起点とし、ステージが進むごとに翌月へ進む）
+ * Castle calendar era name and year/month calculation (starts 1073 years before refDate)
  */
-export const CALENDAR_ERA_NAME = "星月暦";
+export const CALENDAR_ERA_NAME = "Star-Moon Era";
 export const CALENDAR_YEAR_OFFSET = 1073;
 
 export function getCastleCalendarYearMonth(
@@ -51,22 +51,27 @@ export function getCastleCalendarYearMonth(
   return { eraName: CALENDAR_ERA_NAME, year, month };
 }
 
+const MONTH_NAMES_EN = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
 export function formatCastleCalendarMonth(
   monthNumberOneBased: number,
   includeEra = false,
   refDate: Date = new Date()
 ): string {
   const { eraName, year, month } = getCastleCalendarYearMonth(monthNumberOneBased, refDate);
-  return includeEra ? `${eraName} ${year}年${month}月` : `${month}月`;
+  const mName = MONTH_NAMES_EN[(month - 1) % 12];
+  return includeEra ? `${eraName} ${mName} ${year}` : mName;
 }
 
 /**
- * エンドレス進行（STAGE 6〜）の難易度ティア別チューニングパラメータ
- * - `numDays`: シフト表の日数（3〜5日）
- * - `rosterSize`: 今週の正門当番として招集される人数（3〜7人。高難度では敵も強く6〜7人態勢になる）
- * - `slackPower`: 生成された見本シフトの防衛力からどれだけ差し引いて安全上限を作るか
- * - `maxPtoCount`: 指定休の最大人数
- * - `fullMoonCount`: 満月夜の発生数
+ * Difficulty tier tuning parameters for endless progression
+ * - `numDays`: Number of schedule days (3-5 days)
+ * - `rosterSize`: Number of guards summoned for main gate duty (3-7 members)
+ * - `slackPower`: Safety margin subtracted from witness defense power
+ * - `maxPtoCount`: Maximum requested days off
+ * - `fullMoonCount`: Number of full moon nights
  */
 export const ENDLESS_TIER_CONFIG: Record<
   DifficultyTier,
@@ -79,11 +84,11 @@ export const ENDLESS_TIER_CONFIG: Record<
     fullMoonCount: number;
   }
 > = {
-  1: { label: "穏やか（3人当番）", numDays: 3, rosterSize: 3, slackPower: 100, maxPtoCount: 0, fullMoonCount: 0 },
-  2: { label: "控えめ（4人当番）", numDays: 4, rosterSize: 4, slackPower: 100, maxPtoCount: 1, fullMoonCount: 0 },
-  3: { label: "標準（5人当番）", numDays: 5, rosterSize: 5, slackPower: 100, maxPtoCount: 2, fullMoonCount: 1 },
-  4: { label: "熟練（6人拡大当番）", numDays: 5, rosterSize: 6, slackPower: 50, maxPtoCount: 2, fullMoonCount: 1 },
-  5: { label: "極限（7人総力当番）", numDays: 5, rosterSize: 7, slackPower: 0, maxPtoCount: 3, fullMoonCount: 2 },
+  1: { label: "Peaceful (3-guard roster)", numDays: 3, rosterSize: 3, slackPower: 100, maxPtoCount: 0, fullMoonCount: 0 },
+  2: { label: "Moderate (4-guard roster)", numDays: 4, rosterSize: 4, slackPower: 100, maxPtoCount: 1, fullMoonCount: 0 },
+  3: { label: "Standard (5-guard roster)", numDays: 5, rosterSize: 5, slackPower: 100, maxPtoCount: 2, fullMoonCount: 1 },
+  4: { label: "Veteran (6-guard roster)", numDays: 5, rosterSize: 6, slackPower: 50, maxPtoCount: 2, fullMoonCount: 1 },
+  5: { label: "Extreme (7-guard roster)", numDays: 5, rosterSize: 7, slackPower: 0, maxPtoCount: 3, fullMoonCount: 2 },
 };
 
 export const CAMPAIGN_STAGES: readonly StageScenario[] = [
@@ -91,23 +96,23 @@ export const CAMPAIGN_STAGES: readonly StageScenario[] = [
     id: "week-1",
     weekNumber: 1,
     numDays: 3,
-    title: `${formatCastleCalendarMonth(1)}：先遣隊の偵察（3日間）`,
-    subtitle: `${formatCastleCalendarMonth(1, true)} — まずは3日間、3人の警備メンバーを得意な時間帯へ配置して守る。`,
-    newRuleTitle: "基本ルール：得意な時間帯とドラゴの休養",
+    title: `${formatCastleCalendarMonth(1)}: Vanguard Recon (3 Days)`,
+    subtitle: `${formatCastleCalendarMonth(1, true)} — Assign 3 guards to their best hours across a 3-day schedule.`,
+    newRuleTitle: "Core Rule: Best Hours & Drago's Rest",
     newRuleSummary:
-      "フェンリルは昼（防衛力400）、カーミラは夜（防衛力400）が得意です。ドラゴ（防衛力500）は昼も夜も頼りになりますが、1日働いたら翌日は必ず「休」にする必要があります。",
+      "Fenrir excels during the day (Power 400), while Carmilla dominates the night (Power 400). Drago (Power 500) is reliable day and night, but must rest the day after working.",
     lilithIntro:
-      "初めてのシフト編成ですので、最初は私と一緒に組んでみましょう。まずは月曜から水曜までの3日間、3名で敵の先遣部隊に備えます。",
+      "This is our first shift schedule, so let us build it together. First, we will prepare for the enemy vanguard over 3 days (Mon-Wed) with 3 guards.",
     lilithHint:
-      "手強い部隊が来る月曜の昼と水曜の夜にドラゴ（防衛力500）を配置し、間の火曜日はドラゴを休ませます。残りの昼をフェンリル（400）、夜をカーミラ（400）に任せれば盤石な守りになります。",
+      "Assign Drago (Power 500) to Monday Day and Wednesday Night against tough squads, giving Drago Tuesday off. Station Fenrir (400) on remaining days and Carmilla (400) on nights for an ironclad defense.",
     availableMonsters: ["drago", "fenrir", "carmilla"],
     requirements: [
-      { day: 0, shift: "day", raidTitle: "月曜・昼 先遣重装隊", enemyName: "先遣隊・重装前衛群", enemyIcon: "🔥", requiredPower: 500, minStaff: 1, isBossRaid: true, enemyQuote: "人間の街を守るため、この森の砦を調査する。" },
-      { day: 0, shift: "night", raidTitle: "月曜・夜 夜間偵察", enemyName: "先遣隊・夜間斥候班", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "夜のうちに城門の手薄な場所を探るぞ。" },
-      { day: 1, shift: "day", raidTitle: "火曜・昼 森林調査", enemyName: "王国軍・歩兵巡回隊", enemyIcon: "🛡️", requiredPower: 400, minStaff: 1, enemyQuote: "日中の見回り隊だ。前方の門を突破する。" },
-      { day: 1, shift: "night", raidTitle: "火曜・夜 隠密接近", enemyName: "討伐軍・夜襲工作班", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "足音を消して近づけ。見張りを抜くぞ。" },
-      { day: 2, shift: "day", raidTitle: "水曜・昼 強行偵察", enemyName: "王国軍・森林弓兵団", enemyIcon: "🏹", requiredPower: 400, minStaff: 1, enemyQuote: "矢の届く距離まで踏み込む。構えろ。" },
-      { day: 2, shift: "night", raidTitle: "水曜・夜 魔導奇襲", enemyName: "勇者軍・紅蓮魔導団", enemyIcon: "🔥", requiredPower: 500, minStaff: 1, isBossRaid: true, enemyQuote: "魔導の火で夜の城門をこじ開ける。" },
+      { day: 0, shift: "day", raidTitle: "Mon · Day Vanguard Heavy Frontline", enemyName: "Vanguard Heavy Frontline", enemyIcon: "🔥", requiredPower: 500, minStaff: 1, isBossRaid: true, enemyQuote: "To protect the human towns, we will survey this forest fortress." },
+      { day: 0, shift: "night", raidTitle: "Mon · Night Vanguard Night Scouts", enemyName: "Vanguard Night Scouts", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "Under cover of night, we will probe weak points at the gate." },
+      { day: 1, shift: "day", raidTitle: "Tue · Day Royal Infantry Patrol", enemyName: "Royal Infantry Patrol", enemyIcon: "🛡️", requiredPower: 400, minStaff: 1, enemyQuote: "Daytime patrol squad. Push through the front gate." },
+      { day: 1, shift: "night", raidTitle: "Tue · Night Expedition Night Saboteurs", enemyName: "Expedition Night Saboteurs", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "Approach without a sound and slip past the sentries." },
+      { day: 2, shift: "day", raidTitle: "Wed · Day Royal Forest Archers", enemyName: "Royal Forest Archers", enemyIcon: "🏹", requiredPower: 400, minStaff: 1, enemyQuote: "Advance within bowshot and ready your arrows." },
+      { day: 2, shift: "night", raidTitle: "Wed · Night Hero's Crimson Mage Corps", enemyName: "Hero's Crimson Mage Corps", enemyIcon: "🔥", requiredPower: 500, minStaff: 1, isBossRaid: true, enemyQuote: "Pry open the night gate with arcane fire." },
     ],
     requestedDaysOff: [],
     activeRelations: ALL_PAIR_RELATIONS.filter((r) => r.id === "drago_fenrir_train"),
@@ -116,199 +121,199 @@ export const CAMPAIGN_STAGES: readonly StageScenario[] = [
         monsterId: "drago",
         day: 0,
         targetShift: "day",
-        shortCallout: "まずは一緒に組みましょう。月曜・昼はドラゴの「昼」を押します",
-        instruction: "最初は私と一緒に組んでみましょう（1/6）。月曜の昼は手強い「先遣隊・重装前衛群」が来ますので、防衛力500のドラゴの月曜のマスで「昼」を選んでみてください。",
+        shortCallout: "Let us assemble the schedule together. Select Drago for Monday Day.",
+        instruction: "Let us build the schedule together (1/6). A tough enemy Vanguard Heavy Frontline attacks Monday Day, so assign Drago (Power 500) to Monday Day.",
       },
       {
         monsterId: "carmilla",
         day: 0,
         targetShift: "night",
-        shortCallout: "次は月曜・夜です。夜番400のカーミラの「夜」を押しましょう",
-        instruction: "いいですね（2/6）。月曜の夜は、夜番が得意なカーミラ（夜400）にお願いしましょう。カーミラの月曜のマスで「夜」を選んでみてください。",
+        shortCallout: "Next is Monday Night. Select Carmilla (Night 400) for Night shift.",
+        instruction: "Great job (2/6). Monday Night is best suited for night specialist Carmilla (Night 400). Choose Night in Carmilla's Monday cell.",
       },
       {
         monsterId: "fenrir",
         day: 1,
         targetShift: "day",
-        shortCallout: "火曜はドラゴのお休みです。昼400のフェンリルの「昼」を押しましょう",
-        instruction: "順調です（3/6）。ドラゴは1日働くと翌日お休みが必要なので、火曜の昼は昼番が得意なフェンリル（昼400）の「昼」を選びましょう。",
+        shortCallout: "Drago must rest Tuesday. Select Fenrir (Day 400) for Day shift.",
+        instruction: "Going well (3/6). Drago needs the next day off after working, so assign daytime specialist Fenrir (Day 400) to Tuesday Day.",
       },
       {
         monsterId: "carmilla",
         day: 1,
         targetShift: "night",
-        shortCallout: "火曜・夜もカーミラの「夜」を押しましょう",
-        instruction: "その調子です（4/6）。火曜の夜も、引き続きカーミラに任せましょう。カーミラの火曜のマスで「夜」を選んでみてください。",
+        shortCallout: "Select Carmilla for Tuesday Night as well.",
+        instruction: "Keep it up (4/6). Let Carmilla handle Tuesday Night as well. Choose Night in Carmilla's Tuesday cell.",
       },
       {
         monsterId: "fenrir",
         day: 2,
         targetShift: "day",
-        shortCallout: "水曜・昼もフェンリルの「昼」を押しましょう",
-        instruction: "あと少しです（5/6）。水曜の昼も、昼番が得意なフェンリルの水曜のマスで「昼」を選びましょう。",
+        shortCallout: "Assign Fenrir to Wednesday Day as well.",
+        instruction: "Almost there (5/6). For Wednesday Day, assign daytime specialist Fenrir to the Wednesday Day cell.",
       },
       {
         monsterId: "drago",
         day: 2,
         targetShift: "night",
-        shortCallout: "仕上げに、火曜休んだドラゴの水曜「夜」を押せば完成です",
-        instruction: "最後の仕上げです（6/6）。水曜の夜は手強い「勇者軍・紅蓮魔導団」が来ますので、火曜日に休んで体力が戻ったドラゴの水曜のマスで「夜」を選べば完成です。",
+        shortCallout: "Finally, assign rested Drago to Wednesday Night to finish.",
+        instruction: "Final step (6/6). Wednesday Night brings tough Hero's Crimson Mage Corps, so assign rested Drago to Wednesday Night to complete the schedule.",
       },
     ],
     clearQuotes: {
-      drago: "中日に休めたおかげで、古傷も痛まず最後まで体が持ったぞ。",
-      fenrir: "昼間の見回りなら視界もいいし、落ち着いて対応できたよ。",
-      carmilla: "夜の静かな時間帯に集中できましたわ。悪くない采配ですわね。",
+      drago: "Mid-week rest kept my old wound from aching; held out until the end.",
+      fenrir: "Great visibility on daytime patrols; kept things fully under control.",
+      carmilla: "Could focus during the quiet night hours. Not bad tactical direction.",
     },
   },
   {
     id: "week-2",
     weekNumber: 2,
     numDays: 3,
-    title: `${formatCastleCalendarMonth(2)}：夜襲部隊の接近（3日間）`,
-    subtitle: "外郭からデュラハンが合流。相性ペア（+100）と「一緒に働きたくない相手（-150）」に注意する。",
-    newRuleTitle: "追加ルール：夜番の翌朝は昼番不可・ペアの相性と同番拒否",
+    title: `${formatCastleCalendarMonth(2)}: Night Attack Approaching (3 Days)`,
+    subtitle: "Dullahan joins from the outer bailey. Watch for synergies (+100) and clashes (-150).",
+    newRuleTitle: "New Rule: No Day After Night Shift & Roster Compatibility",
     newRuleSummary:
-      "夜番に入ったメンバーは、翌朝すぐに昼番へ入ることができません（夜→夜は可能です）。また、仲の良い2人（フェンリル＋デュラハン）を同じ枠に並べると連携で防衛力が +100 上がりますが、「あの人とは一緒に働きたくない」という不仲ペア（カーミラ＋デュラハン）を同じ枠に入れると口論になり防衛力が -150 下がります。",
+      "Guards on night shift cannot take day shift the next morning (night to night is allowed). Synergistic pairs (Fenrir + Dullahan) add +100 defense, but clashing pairs (Carmilla + Dullahan) subtract -150 defense.",
     lilithIntro:
-      "今月はドラゴが裏門の当番へ回り、代わりに重装騎士デュラハンが正門当番に入りました。ただ、カーミラは堅物のデュラハンと同じ番に入るのを嫌がるので、別の時間帯に分けてあげてください。",
+      "This month Drago rotates to the postern gate, and armored knight Dullahan joins main gate duty. Carmilla dislikes sharing shifts with rigid Dullahan, so separate them into different slots.",
     lilithHint:
-      "月曜の昼はフェンリル（昼400）とデュラハン（昼300）を並べると、連携ボーナス（+100）が加わって防衛力800になり余裕をもって守れます。",
+      "Pairing Fenrir (Day 400) and Dullahan (Day 300) on Monday Day grants a +100 synergy bonus for 800 defense power, holding the gate with ease.",
     availableMonsters: ["fenrir", "carmilla", "dullahan"],
     requirements: [
-      { day: 0, shift: "day", raidTitle: "月曜・昼 正門への進軍", enemyName: "王国軍・重装歩兵団", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "正面から盾を並べて進む。門を開けろ。" },
-      { day: 0, shift: "night", raidTitle: "月曜・夜 夜間潜入", enemyName: "討伐軍・夜間斥候班", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "夜番の隙を突いて城壁を越えるぞ。" },
-      { day: 1, shift: "day", raidTitle: "火曜・昼 巡回部隊", enemyName: "王国軍・外縁巡回隊", enemyIcon: "🛡️", requiredPower: 400, minStaff: 1, enemyQuote: "森の外縁から順番に制圧していく。" },
-      { day: 1, shift: "night", raidTitle: "火曜・夜 隠密接近", enemyName: "討伐軍・隠密工作小隊", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "今夜は吸血鬼が非番らしい。好機だ。" },
-      { day: 2, shift: "day", raidTitle: "水曜・昼 斥候調査", enemyName: "討伐軍・前衛剣士隊", enemyIcon: "🗡️", requiredPower: 400, minStaff: 1, enemyQuote: "連日の攻防で城の守りも疲れているはずだ。" },
-      { day: 2, shift: "night", raidTitle: "水曜・夜 夜間強襲", enemyName: "勇者軍・夜間強襲団", enemyIcon: "⚔️", requiredPower: 600, minStaff: 2, enemyQuote: "二方向から同時に仕掛ける。突破するぞ。" },
+      { day: 0, shift: "day", raidTitle: "Mon · Day Royal Heavy Infantry", enemyName: "Royal Heavy Infantry", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "Line up shields and advance from the front. Open the gate." },
+      { day: 0, shift: "night", raidTitle: "Mon · Night Vanguard Night Scouts", enemyName: "Vanguard Night Scouts", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "Exploit openings in the night watch to scale the walls." },
+      { day: 1, shift: "day", raidTitle: "Tue · Day Royal Perimeter Patrol", enemyName: "Royal Perimeter Patrol", enemyIcon: "🛡️", requiredPower: 400, minStaff: 1, enemyQuote: "Subdue the forest perimeter one section at a time." },
+      { day: 1, shift: "night", raidTitle: "Tue · Night Covert Sabotage Platoon", enemyName: "Covert Sabotage Platoon", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "The vampire is reportedly off-duty tonight. Perfect chance." },
+      { day: 2, shift: "day", raidTitle: "Wed · Day Vanguard Swordsman Squad", enemyName: "Vanguard Swordsman Squad", enemyIcon: "🗡️", requiredPower: 400, minStaff: 1, enemyQuote: "Consecutive battles must have exhausted the castle defenses." },
+      { day: 2, shift: "night", raidTitle: "Wed · Night Hero Night Assault Corps", enemyName: "Hero Night Assault Corps", enemyIcon: "⚔️", requiredPower: 600, minStaff: 2, enemyQuote: "Attack simultaneously from two flanks. Break through." },
     ],
     requestedDaysOff: [
-      { monsterId: "carmilla", day: 1, reason: "休息日" },
+      { monsterId: "carmilla", day: 1, reason: "Rest Day" },
     ],
     activeRelations: ALL_PAIR_RELATIONS.filter((r) =>
       ["fenrir_dullahan_patrol", "carmilla_dullahan_clash"].includes(r.id)
     ),
     clearQuotes: {
-      dullahan: "夜番明けの休息が守られていれば、鎧の重みも苦にはならん。",
-      fenrir: "デュラハンさんと一緒の見回りは、背中を預けられて安心だったよ。",
-      carmilla: "堅苦しい騎士と顔を合わせずに済んで、快適に夜番ができましたわ。",
+      dullahan: "With post-night rest guaranteed, the heavy armor was no burden.",
+      fenrir: "Patrolling with Dullahan gave complete peace of mind covering each other's backs.",
+      carmilla: "Without having to see that stiff knight, night shift was quite pleasant.",
     },
   },
   {
     id: "week-3",
     weekNumber: 3,
     numDays: 4,
-    title: `${formatCastleCalendarMonth(3)}：4日間の包囲（4日間）`,
-    subtitle: "地下水路から新米スライムのプルルが合流。4日間のシフトを組む。",
-    newRuleTitle: "追加ルール：新米の夜間配置と連続勤務の上限",
+    title: `${formatCastleCalendarMonth(3)}: Four-Day Siege (4 Days)`,
+    subtitle: "Rookie slime Pururu arrives from the aqueducts. Schedule a 4-day roster.",
+    newRuleTitle: "New Rule: Rookie Night Duty & Consecutive Shift Caps",
     newRuleSummary:
-      "新米のプルル（防衛力200）は、夜番にひとりで配置することができません（他の仲間と同じ夜番に並べれば配置でき、カーミラと組むと連携で +100 上がります）。また、どのメンバーも最大3連勤までで、4日間のうち最低1日は休みが必要です。",
+      "Rookie Pururu (Power 200) cannot guard night shift alone (must be paired; gains +100 synergy with Carmilla). All guards are capped at 3 consecutive shifts and must take at least 1 day off in 4 days.",
     lilithIntro:
-      "敵の部隊が森の周囲に陣を張り、4日間の長期戦になりました。今月は地下水路の清掃当番から新米のプルルが応援に加わります。プルルを夜に出すときは、必ず先輩と一緒にしてあげてください。",
+      "Enemy forces have encamped around the forest for a 4-day siege. Rookie Pururu joins from aqueduct maintenance. When stationing Pururu at night, always pair with a senior guard.",
     lilithHint:
-      "木曜の夜にカーミラ（夜400）とプルル（夜200）を一緒に配置すると、連携ボーナス（+100）も加わって防衛力700になり盤石です。",
+      "Stationing Carmilla (Night 400) and Pururu (Night 200) together on Thursday Night yields 700 defense with synergy bonus (+100).",
     availableMonsters: ["drago", "carmilla", "fenrir", "pururu"],
     requirements: [
-      { day: 0, shift: "day", raidTitle: "月曜・昼 先遣隊の進軍", enemyName: "王国軍・包囲歩兵団", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "4日かけて包囲を縮める。まずは正門からだ。" },
-      { day: 0, shift: "night", raidTitle: "月曜・夜 精鋭の夜襲", enemyName: "勇者軍・精鋭夜襲隊", enemyIcon: "🔥", requiredPower: 500, minStaff: 1, isBossRaid: true, enemyQuote: "闇に紛れて一気に門番を討つ。" },
-      { day: 1, shift: "day", raidTitle: "火曜・昼 斥候の接近", enemyName: "討伐軍・水路偵察班", enemyIcon: "🗡️", requiredPower: 200, minStaff: 1, enemyQuote: "水路の入り口を調べる。少人数でいい。" },
-      { day: 1, shift: "night", raidTitle: "火曜・夜 水路の警戒", enemyName: "水路潜入・忍び分隊", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "地下水路から音もなく忍び込むぞ。" },
-      { day: 2, shift: "day", raidTitle: "水曜・昼 魔導部隊の攻撃", enemyName: "勇者軍・攻城魔導団", enemyIcon: "🔥", requiredPower: 700, minStaff: 2, isBossRaid: true, enemyQuote: "全魔力を集中する。城門の結界を砕け。" },
-      { day: 2, shift: "night", raidTitle: "水曜・夜 夜間の見回り", enemyName: "討伐軍・月下狩猟団", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "夜霧が濃い。今のうちに柵を越える。" },
-      { day: 3, shift: "day", raidTitle: "木曜・昼 城門の防衛", enemyName: "王国軍・森林弓兵団", enemyIcon: "🏹", requiredPower: 400, minStaff: 1, enemyQuote: "包囲の最終日だ。休む暇を与えるな。" },
-      { day: 3, shift: "night", raidTitle: "木曜・夜 裏門の防衛", enemyName: "討伐軍・裏門突入隊", enemyIcon: "🗝️", requiredPower: 600, minStaff: 2, enemyQuote: "最後の夜だ。裏門へ総員で突入する。" },
+      { day: 0, shift: "day", raidTitle: "Mon · Day Royal Siege Infantry", enemyName: "Royal Siege Infantry", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "Tighten the perimeter over 4 days, starting at the main gate." },
+      { day: 0, shift: "night", raidTitle: "Mon · Night Hero Elite Night Assault Squad", enemyName: "Hero Elite Night Assault Squad", enemyIcon: "🔥", requiredPower: 500, minStaff: 1, isBossRaid: true, enemyQuote: "Strike the gatekeepers down under cover of darkness." },
+      { day: 1, shift: "day", raidTitle: "Tue · Day Waterway Recon Squad", enemyName: "Waterway Recon Squad", enemyIcon: "🗡️", requiredPower: 200, minStaff: 1, enemyQuote: "Scout the aqueduct inlet. A small unit suffices." },
+      { day: 1, shift: "night", raidTitle: "Tue · Night Waterway Infiltration Shinobi", enemyName: "Waterway Infiltration Shinobi", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "Infiltrate silently through the subterranean aqueducts." },
+      { day: 2, shift: "day", raidTitle: "Wed · Day Hero Siege Mages", enemyName: "Hero Siege Mages", enemyIcon: "🔥", requiredPower: 700, minStaff: 2, isBossRaid: true, enemyQuote: "Focus magical output and shatter the gate barrier." },
+      { day: 2, shift: "night", raidTitle: "Wed · Night Moonlit Hunt Division", enemyName: "Moonlit Hunt Division", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "Dense night fog. Scale the palisade while visibility is low." },
+      { day: 3, shift: "day", raidTitle: "Thu · Day Royal Forest Archers", enemyName: "Royal Forest Archers", enemyIcon: "🏹", requiredPower: 400, minStaff: 1, enemyQuote: "Final day of siege. Give them no respite." },
+      { day: 3, shift: "night", raidTitle: "Thu · Night Postern Gate Assault Unit", enemyName: "Postern Gate Assault Unit", enemyIcon: "🗝️", requiredPower: 600, minStaff: 2, enemyQuote: "Final night. Storm the postern gate in full force." },
     ],
     requestedDaysOff: [
-      { monsterId: "fenrir", day: 1, reason: "休息日" },
-      { monsterId: "pururu", day: 2, reason: "水辺での休養" },
+      { monsterId: "fenrir", day: 1, reason: "Rest Day" },
+      { monsterId: "pururu", day: 2, reason: "Waterside Rest" },
     ],
     activeRelations: ALL_PAIR_RELATIONS.filter((r) =>
       ["carmilla_pururu_love", "drago_fenrir_train"].includes(r.id)
     ),
     clearQuotes: {
-      pururu: "カーミラさんや先輩方が近くにいてくださったので、夜も落ち着いて見張れました。",
-      carmilla: "プルルは素直で助かりますわ。夜の見回りも退屈しませんでした。",
-      drago: "4日間となると休みの配分が肝心だな。いい回り方だったぞ。",
+      pururu: "With Carmilla and senior guards nearby, I could keep watch calmly at night.",
+      carmilla: "Pururu is obedient and helpful. Night rounds were never boring.",
+      drago: "Rest distribution is key over 4 days. Excellent rotation.",
     },
   },
   {
     id: "week-4",
     weekNumber: 4,
     numDays: 5,
-    title: `${formatCastleCalendarMonth(4)}：満月の攻防（5日間・5名当番）`,
-    subtitle: "5名態勢で5日間のシフトへ。水曜の満月とメンバー間の相性・不仲に対処する。",
-    newRuleTitle: "追加ルール：満月の夜と週の出勤上限",
+    title: `${formatCastleCalendarMonth(4)}: Full Moon Battle (5 Days · 5 Guards)`,
+    subtitle: "A 5-guard roster over 5 days. Navigate Wednesday's Full Moon and compatibility.",
+    newRuleTitle: "New Rule: Full Moon Night & Weekly Shift Caps",
     newRuleSummary:
-      "満月の夜（水曜・夜）は、フェンリルを夜番に配置できません（水曜の昼は配置可能です）。また5日間のうち、ドラゴは最大3回、他のメンバーは最大4回までが出勤上限となります。",
+      "During Full Moon (Wed Night), Fenrir cannot guard night duty (day is fine). Over 5 days, Drago may work at most 3 shifts, others at most 4 shifts.",
     lilithIntro:
-      "今月の正門当番は5名です。水曜の夜は満月のため、フェンリルは夜番に出られません。カーミラとデュラハンの不仲（-150）を避けつつ、それぞれの指定休も確認しながら組み立てましょう。",
+      "Five guards are assigned to the main gate this month. Fenrir cannot take Wednesday Night due to the Full Moon. Avoid Carmilla and Dullahan's clash (-150) and heed requested off days.",
     lilithHint:
-      "水曜の満月夜はフェンリルが出られないため、カーミラ・デュラハン・プルル・ドラゴの中から2人を充てます。カーミラとデュラハンを同じシフトに入れると防衛力が -150 下がるので、プルルをうまく組み合わせるのが要です。",
+      "With Fenrir unavailable Wednesday Night, assign 2 guards from Carmilla, Dullahan, Pururu, and Drago. Since Carmilla and Dullahan together subtract -150 defense, Pururu is essential to balance the shift.",
     availableMonsters: ["drago", "carmilla", "fenrir", "pururu", "dullahan"],
     requirements: [
-      { day: 0, shift: "day", raidTitle: "月曜・昼 正門防衛", enemyName: "王国軍・白銀歩兵団", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "第一陣、前へ。人間の街にこれ以上被害は出させない。" },
-      { day: 0, shift: "night", raidTitle: "月曜・夜 裏門夜警", enemyName: "討伐軍・夜間斥候隊", enemyIcon: "🗝️", requiredPower: 600, minStaff: 2, enemyQuote: "夜の森を抜けて裏門へ回り込め。" },
-      { day: 1, shift: "day", raidTitle: "火曜・昼 攻城部隊接近", enemyName: "勇者軍・重装破城団", enemyIcon: "🔥", requiredPower: 700, minStaff: 2, isBossRaid: true, enemyQuote: "破城槌を運べ。門を押し開けるぞ。" },
-      { day: 1, shift: "night", raidTitle: "火曜・夜 夜間奇襲", enemyName: "討伐軍・隠密工作隊", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "静かに進め。見張りの死角を突く。" },
-      { day: 2, shift: "day", raidTitle: "水曜・昼 魔導射撃", enemyName: "王国軍・魔導砲撃隊", enemyIcon: "✨", requiredPower: 300, minStaff: 1, enemyQuote: "遠距離から牽制する。夜の本隊に繋ぐぞ。" },
-      { day: 2, shift: "night", raidTitle: "水曜・夜 満月の攻防", enemyName: "勇者軍・月下狩猟団", enemyIcon: "🌕", requiredPower: 600, minStaff: 2, isFullMoon: true, isBossRaid: true, enemyQuote: "満月の夜なら人狼は出られないはずだ。今が好機だ。" },
-      { day: 3, shift: "day", raidTitle: "木曜・昼 大橋の防衛", enemyName: "王国軍・大橋狙撃隊", enemyIcon: "🏹", requiredPower: 600, minStaff: 2, enemyQuote: "渓流の大橋を渡り切るぞ。援護せよ。" },
-      { day: 3, shift: "night", raidTitle: "木曜・夜 水路の警戒", enemyName: "討伐軍・水路工作班", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "水路の鉄格子を狙う。手早く済ませるぞ。" },
-      { day: 4, shift: "day", raidTitle: "金曜・昼 先鋒部隊の突撃", enemyName: "勇者軍・先鋒騎士団", enemyIcon: "🔥", requiredPower: 700, minStaff: 2, isBossRaid: true, enemyQuote: "我が槍で道を切り開く。総員、続け。" },
-      { day: 4, shift: "night", raidTitle: "金曜・夜 夜間包囲戦", enemyName: "討伐軍・夜間包囲隊", enemyIcon: "⚔️", requiredPower: 600, minStaff: 2, enemyQuote: "週の終わりで守備兵も疲弊しているはずだ。" },
+      { day: 0, shift: "day", raidTitle: "Mon · Day Silver Infantry Vanguard", enemyName: "Silver Infantry Vanguard", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "First division, advance. Protect human towns from harm." },
+      { day: 0, shift: "night", raidTitle: "Mon · Night Postern Gate Night Scouts", enemyName: "Postern Gate Night Scouts", enemyIcon: "🗝️", requiredPower: 600, minStaff: 2, enemyQuote: "Flank around to the postern gate through the night forest." },
+      { day: 1, shift: "day", raidTitle: "Tue · Day Heavy Siege Ram Unit", enemyName: "Heavy Siege Ram Unit", enemyIcon: "🔥", requiredPower: 700, minStaff: 2, isBossRaid: true, enemyQuote: "Bring up the battering ram. Force the gates open." },
+      { day: 1, shift: "night", raidTitle: "Tue · Night Covert Saboteurs", enemyName: "Covert Saboteurs", enemyIcon: "🥷", requiredPower: 400, minStaff: 1, enemyQuote: "Advance quietly. Exploit the sentries' blind spots." },
+      { day: 2, shift: "day", raidTitle: "Wed · Day Royal Arcane Artillery", enemyName: "Royal Arcane Artillery", enemyIcon: "✨", requiredPower: 300, minStaff: 1, enemyQuote: "Pin them down from long range to pave way for the night main force." },
+      { day: 2, shift: "night", raidTitle: "Wed · Night Moonlit Hunt Division", enemyName: "Moonlit Hunt Division", enemyIcon: "🌕", requiredPower: 600, minStaff: 2, isFullMoon: true, isBossRaid: true, enemyQuote: "Werewolves cannot fight under the full moon. Now is our chance." },
+      { day: 3, shift: "day", raidTitle: "Thu · Day Great Bridge Snipers", enemyName: "Great Bridge Snipers", enemyIcon: "🏹", requiredPower: 600, minStaff: 2, enemyQuote: "Cross the great bridge over the gorge. Provide covering fire." },
+      { day: 3, shift: "night", raidTitle: "Thu · Night Waterway Sabotage Unit", enemyName: "Waterway Sabotage Unit", enemyIcon: "🗝️", requiredPower: 400, minStaff: 1, enemyQuote: "Breach the aqueduct grates quickly." },
+      { day: 4, shift: "day", raidTitle: "Fri · Day Hero Vanguard Knights", enemyName: "Hero Vanguard Knights", enemyIcon: "🔥", requiredPower: 700, minStaff: 2, isBossRaid: true, enemyQuote: "My lance will forge the path. All units, follow." },
+      { day: 4, shift: "night", raidTitle: "Fri · Night Siege Encirclement Corps", enemyName: "Siege Encirclement Corps", enemyIcon: "⚔️", requiredPower: 600, minStaff: 2, enemyQuote: "The garrison must be exhausted by week's end." },
     ],
     requestedDaysOff: [
-      { monsterId: "drago", day: 0, reason: "古傷の療養日" },
-      { monsterId: "carmilla", day: 3, reason: "休息日" },
-      { monsterId: "dullahan", day: 1, reason: "武具の手入れ" },
+      { monsterId: "drago", day: 0, reason: "Old Wound Treatment" },
+      { monsterId: "carmilla", day: 3, reason: "Rest Day" },
+      { monsterId: "dullahan", day: 1, reason: "Armor Maintenance" },
     ],
     activeRelations: [...ALL_PAIR_RELATIONS],
     clearQuotes: {
-      fenrir: "満月の夜を外してもらえて助かったよ。その分、昼の見回りに集中できた。",
-      dullahan: "5人の役割がはっきりしていて、長丁場でも乱れのない守りだった。",
-      pururu: "5日間のシフトでも、お休みがあると最後まで元気にお仕事できますね。",
+      fenrir: "Exempting me from Full Moon night was a lifesaver. Focused on day rounds instead.",
+      dullahan: "Clear roles across the five guards; rock-solid defense throughout the long stretch.",
+      pururu: "Even with a 5-day shift, rest days keep energy high to the finish.",
     },
   },
   {
     id: "week-5",
     weekNumber: 5,
     numDays: 5,
-    title: `${formatCastleCalendarMonth(5)}：勇者本隊の進軍（5日間・6名拡大当番）`,
-    subtitle: "勇者本隊の接近に伴い、地下書庫からリッチが加わり6名態勢へ。不仲ペアを避けて総力防衛する。",
-    newRuleTitle: "決戦の月：6名拡大シフトと不仲ペアの調整",
+    title: `${formatCastleCalendarMonth(5)}: Hero Main Force March (5 Days · 6 Guards)`,
+    subtitle: "Lich joins from archives for a 6-guard roster against the Hero. Avoid clashes for total defense.",
+    newRuleTitle: "Climax Month: 6-Guard Expanded Shift & Clash Resolution",
     newRuleSummary:
-      "敵の本隊に対抗するため、地下書庫から司書長リッチ（夜400）が応援に加わり6名態勢になります。ただしリッチは大雑把なドラゴと同じ番に入るのを嫌がり（-150）、カーミラもデュラハンとの同番を嫌がります（-150）。金曜・夜の勇者本隊（必要人数3人）に主力を残せるよう配分してください。",
+      "Lich (Night 400) joins from archives for a 6-guard roster. Lich clashes with Drago (-150), and Carmilla clashes with Dullahan (-150). Preserve frontline strength for Friday Night's Hero Main Force (3 guards required).",
     lilithIntro:
-      "敵の本隊がついに動き出しました。今月は特別に地下書庫からリッチも呼び、6名で正門を守ります。ドラゴとリッチ、カーミラとデュラハンがそれぞれ同じ番にならないよう配慮しつつ、金曜の夜を3人で守り抜きましょう。",
+      "The enemy main force has begun marching. Chief Librarian Lich joins us for a 6-guard roster. Keep Drago/Lich and Carmilla/Dullahan apart while marshaling 3 guards for Friday Night.",
     lilithHint:
-      "夜番が得意なメンバーがカーミラ・デュラハン・リッチの3人に増えています。ドラゴを月曜（昼）・水曜（昼）・金曜（夜）の3枠に充て、金曜の夜はドラゴ＋カーミラ＋プルル（またはデュラハン＋プルル）で組むとリッチとドラゴの反発を避けられます。",
+      "Night duty options expand with Carmilla, Dullahan, and Lich. Station Drago on Mon (Day), Wed (Day), and Fri (Night). A Fri Night trio of Drago + Carmilla + Pururu neatly sidesteps Lich's clash.",
     availableMonsters: ["drago", "carmilla", "fenrir", "pururu", "dullahan", "lich"],
     requirements: [
-      { day: 0, shift: "day", raidTitle: "月曜・昼 本隊先鋒の進軍", enemyName: "勇者軍・先鋒重装団", enemyIcon: "🔥", requiredPower: 800, minStaff: 2, isBossRaid: true, enemyQuote: "勇者本隊の先鋒、推して参る。" },
-      { day: 0, shift: "night", raidTitle: "月曜・夜 夜間魔導砲撃", enemyName: "勇者軍・高位魔導団", enemyIcon: "✨", requiredPower: 700, minStaff: 2, enemyQuote: "夜空から魔導弾を撃ち込む。ひるむな。" },
-      { day: 1, shift: "day", raidTitle: "火曜・昼 弓兵部隊の斉射", enemyName: "王国軍・精鋭弓騎団", enemyIcon: "🏹", requiredPower: 400, minStaff: 1, enemyQuote: "足並みを乱させろ。本隊の到着まで圧力をかけ続ける。" },
-      { day: 1, shift: "night", raidTitle: "火曜・夜 隠密部隊の潜入", enemyName: "討伐軍・隠密本隊", enemyIcon: "🥷", requiredPower: 700, minStaff: 2, enemyQuote: "裏門と水路の双方から同時に揺さぶりをかける。" },
-      { day: 2, shift: "day", raidTitle: "水曜・昼 親衛隊の進軍", enemyName: "教国軍・聖堂親衛隊", enemyIcon: "🔥", requiredPower: 800, minStaff: 2, isBossRaid: true, enemyQuote: "人間の街の平穏のため、この森の城を落とす。" },
-      { day: 2, shift: "night", raidTitle: "水曜・夜 満月の夜襲", enemyName: "勇者軍・月下狩猟団", enemyIcon: "🌕", requiredPower: 600, minStaff: 2, isFullMoon: true, enemyQuote: "満月の光の下、守りの薄い所を突く。" },
-      { day: 3, shift: "day", raidTitle: "木曜・昼 攻城部隊の接近", enemyName: "王国軍・攻城重砲隊", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "城門の前まで陣を押し上げろ。" },
-      { day: 3, shift: "night", raidTitle: "木曜・夜 水路の最終警戒", enemyName: "討伐軍・夜間工兵隊", enemyIcon: "🗝️", requiredPower: 600, minStaff: 2, enemyQuote: "明日の決戦に備えて城壁の足場を崩す。" },
-      { day: 4, shift: "day", raidTitle: "金曜・昼 前衛部隊の突破", enemyName: "勇者軍・前衛突破隊", enemyIcon: "🔥", requiredPower: 400, minStaff: 1, enemyQuote: "夜には勇者本隊が着く。門番を引きつけろ。" },
-      { day: 4, shift: "night", raidTitle: "金曜・夜 勇者本隊の総攻撃", enemyName: "勇者一行・決戦本隊", enemyIcon: "👑", requiredPower: 1000, minStaff: 3, isBossRaid: true, enemyQuote: "これが最後の攻防だ。全軍、正門へ突撃する。" },
+      { day: 0, shift: "day", raidTitle: "Mon · Day Hero Vanguard Heavy Corps", enemyName: "Hero Vanguard Heavy Corps", enemyIcon: "🔥", requiredPower: 800, minStaff: 2, isBossRaid: true, enemyQuote: "Vanguard of the Hero's army, advance." },
+      { day: 0, shift: "night", raidTitle: "Mon · Night High Mage Artillery Corps", enemyName: "High Mage Artillery Corps", enemyIcon: "✨", requiredPower: 700, minStaff: 2, enemyQuote: "Bombard the walls with arcane shells from the night sky." },
+      { day: 1, shift: "day", raidTitle: "Tue · Day Elite Mounted Archers", enemyName: "Elite Mounted Archers", enemyIcon: "🏹", requiredPower: 400, minStaff: 1, enemyQuote: "Disrupt their ranks and maintain pressure until the main force arrives." },
+      { day: 1, shift: "night", raidTitle: "Tue · Night Covert Main Infiltration Unit", enemyName: "Covert Main Infiltration Unit", enemyIcon: "🥷", requiredPower: 700, minStaff: 2, enemyQuote: "Harass both postern and waterways simultaneously." },
+      { day: 2, shift: "day", raidTitle: "Wed · Day Holy Sanctuary Royal Guards", enemyName: "Holy Sanctuary Royal Guards", enemyIcon: "🔥", requiredPower: 800, minStaff: 2, isBossRaid: true, enemyQuote: "For the peace of human towns, we will take this fortress." },
+      { day: 2, shift: "night", raidTitle: "Wed · Night Moonlit Hunt Division", enemyName: "Moonlit Hunt Division", enemyIcon: "🌕", requiredPower: 600, minStaff: 2, isFullMoon: true, enemyQuote: "Under the full moon's light, strike their weakest post." },
+      { day: 3, shift: "day", raidTitle: "Thu · Day Heavy Siege Battery", enemyName: "Heavy Siege Battery", enemyIcon: "🛡️", requiredPower: 600, minStaff: 2, enemyQuote: "Push battle lines directly to the fortress gates." },
+      { day: 3, shift: "night", raidTitle: "Thu · Night Combat Sappers Corps", enemyName: "Combat Sappers Corps", enemyIcon: "🗝️", requiredPower: 600, minStaff: 2, enemyQuote: "Undermine rampart foundations for tomorrow's grand assault." },
+      { day: 4, shift: "day", raidTitle: "Fri · Day Frontline Breakthrough Squad", enemyName: "Frontline Breakthrough Squad", enemyIcon: "🔥", requiredPower: 400, minStaff: 1, enemyQuote: "The Hero arrives tonight. Draw the gatekeepers out." },
+      { day: 4, shift: "night", raidTitle: "Fri · Night Hero Party Decisive Force", enemyName: "Hero Party Decisive Force", enemyIcon: "👑", requiredPower: 1000, minStaff: 3, isBossRaid: true, enemyQuote: "This is the final battle. All units, storm the main gate." },
     ],
     requestedDaysOff: [
-      { monsterId: "carmilla", day: 2, reason: "休息日" },
-      { monsterId: "dullahan", day: 1, reason: "武具の点検" },
-      { monsterId: "lich", day: 4, reason: "書庫の目録整理" },
+      { monsterId: "carmilla", day: 2, reason: "Rest Day" },
+      { monsterId: "dullahan", day: 1, reason: "Armor Inspection" },
+      { monsterId: "lich", day: 4, reason: "Archive Inventory" },
     ],
     activeRelations: [...ALL_PAIR_RELATIONS],
     clearQuotes: {
-      drago: "金曜の夜まで力を温存できたおかげで、本隊相手にも一歩も引かずに済んだぞ。",
-      carmilla: "誰ひとり倒れることなく、静かな夜を取り戻せましたわね。",
-      fenrir: "みんなの力が噛み合って、最後まで気持ちよく守れたよ。",
-      dullahan: "見事な采配だった。この城と森の平穏は守られた。",
-      pururu: "私たちの魔王城、みんなで守り切れましたね。",
-      lich: "ドラゴ殿と鉢合わせしないシフトのおかげで、落ち着いて障壁を展開できましたよ。",
+      drago: "Saving strength until Friday night meant not giving an inch against the main party.",
+      carmilla: "Reclaimed peaceful nights without a single casualty.",
+      fenrir: "Everyone's strengths aligned; defending together felt great to the end.",
+      dullahan: "Masterful leadership. Peace in this fortress and forest has been secured.",
+      pururu: "Our Demon Castle, we defended it together.",
+      lich: "Thanks to a shift without running into Lord Drago, barrier deployment was serene.",
     },
   },
 ];
@@ -438,7 +443,7 @@ export function generateAdaptiveStage(
       witness[night1][d] = d === nightRest ? "off" : "night";
     }
   } else {
-    // 5-day witness for Tiers 3 (5名), 4 (6名), 5 (7名)
+    // 5-day witness for Tiers 3 (5 guards), 4 (6 guards), 5 (7 guards)
     const dayRests: DayIndex[] = [1, 2, 3].sort(() => rng() - 0.5) as DayIndex[];
     const nightRests: DayIndex[] = [1, 2, 3].sort(() => rng() - 0.5) as DayIndex[];
     const day1Rest = dayRests[0];
@@ -547,7 +552,7 @@ export function generateAdaptiveStage(
       requirements.push({
         day: d,
         shift: s,
-        raidTitle: isFullMoon ? "満月の夜間警戒" : enemy.raidTitle,
+        raidTitle: isFullMoon ? "Full Moon Night Watch" : enemy.raidTitle,
         enemyName: enemy.enemyName,
         enemyIcon: isFullMoon ? "🌕" : isBossRaid ? "🔥" : enemy.enemyIcon,
         enemyQuote: enemy.enemyQuote,
@@ -562,8 +567,8 @@ export function generateAdaptiveStage(
   const candidateOffs: RequestedDayOff[] = [];
   for (const mId of availableMonsters) {
     const postReason = MONSTERS[mId].usualPost
-      ? `${MONSTERS[mId].usualPost.split("・")[0]}の当番・休養`
-      : "休息日";
+      ? `${MONSTERS[mId].usualPost.split("·")[0].trim()} Duty / Rest`
+      : "Rest Day";
     for (let d = 0 as DayIndex; d < numDays; d = (d + 1) as DayIndex) {
       if (witness[mId][d] === "off") {
         candidateOffs.push({ monsterId: mId, day: d, reason: postReason });
@@ -582,7 +587,7 @@ export function generateAdaptiveStage(
   }
 
   const diffLabel = getDifficultyLabel(tier);
-  const rosterNames = availableMonsters.map((id) => MONSTERS[id].name).join("・");
+  const rosterNames = availableMonsters.map((id) => MONSTERS[id].name).join(", ");
   const calendarLabel = formatCastleCalendarMonth(weekNumber);
   return {
     id: `week-${weekNumber}-${seed}`,
@@ -590,19 +595,19 @@ export function generateAdaptiveStage(
     numDays,
     difficultyTier: tier,
     difficultyLabel: diffLabel,
-    title: `${calendarLabel}：正門防衛シフト（${numDays}日間・${availableMonsters.length}名当番）`,
-    subtitle: `今月の正門当番：${rosterNames}（難易度：${diffLabel}）`,
-    newRuleTitle: `${calendarLabel} 正門当番（${availableMonsters.length}名編成・${diffLabel}）`,
+    title: `${calendarLabel}: Main Gate Defense (${numDays} Days · ${availableMonsters.length} Guards)`,
+    subtitle: `Guards on Duty: ${rosterNames} (Difficulty: ${diffLabel})`,
+    newRuleTitle: `${calendarLabel} Main Gate Roster (${availableMonsters.length} Guards · ${diffLabel})`,
     newRuleSummary:
       history.length > 0
-        ? `直近の警備結果をもとに、今月は城内20名の中から${availableMonsters.length}名（${rosterNames}）が正門当番に招集されました。仲良しペア（+100）を活かし、同番拒否ペア（-150）を避けて組みましょう。`
-        : `城内20名の中から今月の正門当番として選ばれた${availableMonsters.length}名（${rosterNames}）で守る${numDays}日間の警備スケジュールです。`,
+        ? `Based on recent security performance, ${availableMonsters.length} guards (${rosterNames}) were summoned from the castle's 20 defenders. Leverage synergies (+100) and avoid clashes (-150) to build a solid roster.`
+        : `A ${numDays}-day guard schedule defended by ${availableMonsters.length} members (${rosterNames}) selected from the 20 castle defenders.`,
     lilithIntro:
       history.length > 0
-        ? `${calendarLabel}の進軍予測が届きました。今月の正門当番は ${rosterNames} の${availableMonsters.length}名です。それぞれの得意時間帯と「一緒に働きたくない相手」に気をつけて配置していきましょう。`
-        : `${calendarLabel}の進軍予測が届きました。今月の正門当番である${availableMonsters.length}名で、無理なく守れるシフトを組んでいきましょう。`,
+        ? `The ${calendarLabel} march forecast has arrived. This month's main gate guards are ${rosterNames} (${availableMonsters.length} total). Consider their best hours and clashes to formulate the schedule.`
+        : `The ${calendarLabel} march forecast has arrived. Let us build a reasonable shift to protect the castle with this month's ${availableMonsters.length} guards.`,
     lilithHint:
-      `まずは指定休と満月の夜を確認し、1日おきにしか出られない${MONSTERS[heavy1].name}をどの強敵枠に充てるかから決めると組み立てやすくなります。`,
+      `Check requested days off and Full Moon nights first, then assign ${MONSTERS[heavy1].name} (who can only work every other day) to tough raid slots.`,
     availableMonsters,
     requirements,
     requestedDaysOff,
@@ -624,17 +629,17 @@ export function generateRetryCampaignStage(
   const tierMap: readonly DifficultyTier[] = [1, 1, 2, 3, 4];
   const tier = tierMap[clampedIdx] ?? 3;
   const generated = generateAdaptiveStage(base.weekNumber, [], seed, tier);
-  const rosterNames = generated.availableMonsters.map((id) => MONSTERS[id].name).join("・");
+  const rosterNames = generated.availableMonsters.map((id) => MONSTERS[id].name).join(", ");
 
   return {
     ...generated,
     id: base.id,
     weekNumber: base.weekNumber,
     title: base.title,
-    subtitle: `今週の正門当番：${rosterNames}（新編成）`,
+    subtitle: `Guards on Duty: ${rosterNames} (New Lineup)`,
     newRuleTitle: base.newRuleTitle,
-    newRuleSummary: `前回のシフトから当番メンバーと敵の進軍編成が新たに組み直されました。今週の正門当番は ${rosterNames} の${generated.availableMonsters.length}名です。`,
-    lilithIntro: `新たな進軍予測が届きました。今回の正門当番は ${rosterNames} の${generated.availableMonsters.length}名です。敵の戦力とみんなの勤務条件を見極めてシフトを組みましょう。`,
+    newRuleSummary: `Following the previous battle, the on-duty roster and enemy march schedule have been reorganized. This week's ${generated.availableMonsters.length} guards are ${rosterNames}.`,
+    lilithIntro: `New recon reports have arrived. Our on-duty guards this time are ${rosterNames} (${generated.availableMonsters.length} total). Examine enemy power and everyone's work rules to build the shift.`,
   };
 }
 

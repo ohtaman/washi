@@ -1,0 +1,907 @@
+{
+  "daysShort": {
+    "Mon": "周一",
+    "Tue": "周二",
+    "Wed": "周三",
+    "Thu": "周四",
+    "Fri": "周五"
+  },
+  "daysHeader": {
+    "Mon": "周一",
+    "Tue": "周二",
+    "Wed": "周三",
+    "Thu": "周四",
+    "Fri": "周五"
+  },
+  "daysFull": {
+    "Mon": "星期一",
+    "Tue": "星期二",
+    "Wed": "星期三",
+    "Thu": "星期四",
+    "Fri": "星期五"
+  },
+  "cohorts": {
+    "Y1": {
+      "label": "大一 (B1: 基础课程)",
+      "shortLabel": "大一"
+    },
+    "Y2": {
+      "label": "大二 (B2: 专业基础)",
+      "shortLabel": "大二"
+    },
+    "Y3": {
+      "label": "大三 (B3: 专业进阶)",
+      "shortLabel": "大三"
+    },
+    "Y4": {
+      "label": "大四/研一 (B4/M1: 研讨课)",
+      "shortLabel": "大四/研"
+    }
+  },
+  "categories": {
+    "compulsory": {
+      "label": "必修理论课",
+      "shortLabel": "必修",
+      "colorClass": "course-compulsory"
+    },
+    "elective_core": {
+      "label": "专业限选",
+      "shortLabel": "限选",
+      "colorClass": "course-elective-core"
+    },
+    "lab_exercise": {
+      "label": "PC上机实验",
+      "shortLabel": "上机",
+      "colorClass": "course-lab"
+    },
+    "elective": {
+      "label": "专业选修",
+      "shortLabel": "选修",
+      "colorClass": "course-elective"
+    },
+    "seminar": {
+      "label": "小班研讨课",
+      "shortLabel": "研讨",
+      "colorClass": "course-seminar"
+    }
+  },
+  "roomTypes": {
+    "large_hall": "大阶梯教室",
+    "medium_room": "中型教室",
+    "pc_lab": "PC机房",
+    "seminar_room": "研讨室"
+  },
+  "equipment": {
+    "projector": "投影仪",
+    "mic": "无线麦克风",
+    "pc_terminal": "实验用PC终端",
+    "recording": "录播设备",
+    "moveable_desks": "可移动分组桌椅"
+  },
+  "ui": {
+    "pageTitle": "大学排课 AI Copilot — Gemini Nano × WaSHI",
+    "headerTitle": "🎓 大学排课 AI Copilot (UCTP)",
+    "btnTutorial": "🔰 快速指南",
+    "btnTheory": "📖 原理解说",
+    "navApps": "← 案例展示",
+    "navAiShift": "🏥 护士排班",
+    "themeToggleTitle": "切换亮色/暗色主题",
+    "chatPaneAria": "AI 教务排课对话区",
+    "chatHeaderTitle": "AI 教务·排课助手",
+    "trajectoryBtnTitle": "查看、复制或导出 AI 提示词、JSON 输出与 WaSHI 求解日志",
+    "nanoChecking": "⏳ 检测中",
+    "nanoReady": "🟢 Gemini Nano 就绪",
+    "nanoDownloading": "⏬ 下载中...",
+    "nanoDownloadable": "🟡 Gemini Nano 可下载",
+    "nanoUnavailableBadge": "⚪ 内置AI 未启用",
+    "nanoSetupBtnTitle": "Chrome 内置 AI (Gemini Nano) 配置指南",
+    "nanoUnavailBannerText": "⚠️ Chrome 内置 AI (Gemini Nano) 尚未启用",
+    "nanoSetupLink": "配置步骤",
+    "nanoRetryLink": "重新检测",
+    "chatLogAria": "对话历史",
+    "chatSenderUser": "👤 您 (教务老师)",
+    "chatSenderAssistant": "🤖 排课 AI Copilot",
+    "chatSenderSystem": "ℹ️ 系统通知",
+    "chatWelcomeMarkdown": "👋 **欢迎使用大学课表编排 AI Copilot (UCTP)！**\n\n当前处于**空白模式**。请通过以下方式之一准备排课基础数据：\n1. **“✨ 生成示例”**：自动生成包含10位教师、7间教室与25门课程的典型工学院数据。\n2. **“📂 导入CSV”**：分别导入教师、教室与课程的CSV文件（提供模板下载）。\n\n数据就绪后，点击**“⚡ 自动编排课表”**即可通过 WaSHI (HiGHS) 求解最佳课表方案。您也可以通过对话追加各类排课约束！",
+    "popoverHeader": "💡 点击示例指令填入输入框（教务·教师排课需求示例）",
+    "promptChips": [
+      {
+        "label": "📌 将《数学规划(C15)》固定在周二第2节·101大阶梯教室",
+        "prompt": "将数学规划(C15)固定在周二第2节的101大阶梯教室(R101)，并重新优化课表"
+      },
+      {
+        "label": "🕒 将外聘小林老师设为仅周二·周四下午(3〜5节)可出勤",
+        "prompt": "外聘的小林老师(P09)只有周二和周四的下午(第3〜5节)能来上课"
+      },
+      {
+        "label": "🚫 禁止《机器学习(C16)》与《自然语言处理(C17)》同时段冲突",
+        "prompt": "机器学习(C16)和自然语言处理(C17)同时选修的学生很多，请不要排在同一时段"
+      },
+      {
+        "label": "🔗 将《软件设计实验(C12)》的2节课设为同日相邻节次连排",
+        "prompt": "软件设计实验(C12)每周的2节课请安排在同一天的连续相邻节次(2节连排)"
+      },
+      {
+        "label": "📅 将佐藤老师周五下午(3〜5节)设为禁排(NG)",
+        "prompt": "佐藤老师(P01)周五下午(第3〜5节)因学术会议无法出勤(NG)"
+      },
+      {
+        "label": "🛠️ 周四下午关闭 301 PC机房A 进行网络设备维护",
+        "prompt": "301 PC机房A(R301)在周四下午(第3〜5节)因网络设备维护关闭停用"
+      },
+      {
+        "label": "⚖️ 禁止教师连续上课（将最大连续节数改为1节）",
+        "prompt": "将教师的最大连续上课节数从2节改为1节（禁止连堂），重新排课"
+      },
+      {
+        "label": "💥 冲突诊断：将仅周二/四可来的外聘小林老师的课固定到周一第3节",
+        "prompt": "如果把仅周二和周四能来的外聘小林老师的信息安全(C18)固定在周一第3节会怎样？请进行冲突诊断"
+      }
+    ],
+    "chatInputLabel": "向 AI 发送排课需求",
+    "chatPlaceholder": "输入排课要求或条件变更（例：「将数学规划固定在周二第2节」「小林老师仅周二周四下午可排」）",
+    "btnExamples": "💡 示例指令",
+    "autoSolveLabel": "自动重算",
+    "autoSolveTitle": "修改条件后自动运行数学规划求解",
+    "btnChatAbort": "⏹ 停止",
+    "btnChatSend": "发送",
+    "tutorialTitle": "🔰 快速指南：三步体验 AI 大学排课 (UCTP)",
+    "tutorialClose": "✕ 关闭",
+    "step1Badge": "STEP 1",
+    "step1Title": "查看与导入基础数据",
+    "step1DescHtml": "首先准备教师、教室与课程基础数据。可通过 <strong>🎲 生成示例</strong> 或 <strong>📂 导入 CSV</strong> 录入（也可直接在表格单元格中编辑）。",
+    "step1Btn": "🎲 试试：加载示例数据",
+    "step2Badge": "STEP 2",
+    "step2Title": "调整规则约束与 AI 咨询",
+    "step2DescHtml": "在「⚙️ 规则设置」标签页或对话栏中，添加教师出勤时段、连排实验、机房要求等实际业务约束。",
+    "step2Btn": "🔗 试试：将《软件设计实验(周2节)》设为同日连排",
+    "step3Badge": "STEP 3",
+    "step3Title": "自动排课·拖拽调整·矛盾诊断",
+    "step3DescHtml": "一键全局优化4个年级、教师及教室课表。可拖拽调整节次，或体验 WaSHI 冲突自动诊断 (IIS)。",
+    "step3SelectAria": "选择要注入的冲突演示场景",
+    "step3Opt1": "演示1: 将仅周二/四可出勤的外聘小林老师的课程强制固定在周一第3节",
+    "step3Opt2": "演示2: 将两门130人以上的大一必修课同时固定在“周二第2节·101大阶梯教室”",
+    "step3Opt3": "演示3: 全院仅有2间PC机房，却将3门必须用PC机房的实验课同时固定在“周一第2节”",
+    "step3Btn": "💥 试试：故意添加矛盾规则并执行冲突诊断",
+    "statusPreparing": "准备中",
+    "statusSolving": "⏳ 求解中...",
+    "statusOptimal": "✅ Optimal (最优解)",
+    "statusFeasible": "✅ Feasible (可行解)",
+    "statusInfeasible": "🚨 无解 (Infeasible)",
+    "statusError": "⚠️ 错误",
+    "btnAbortSolve": "⏹ 中断计算",
+    "btnSolveWashi": "⚡ 重新优化课表",
+    "btnCheckCurrent": "🔍 冲突与一致性检查",
+    "btnCheckCurrentTitle": "检查当前所有排课约束条件是否存在逻辑矛盾",
+    "btnResetClean": "↩ 重置",
+    "btnResetCleanTitle": "清空追加的自定义固定规则与冲突演示，恢复初始状态",
+    "conflictBannerTitle": "🚨 无法排出可行课表 — WaSHI (HiGHS) 已定位以下冲突规则",
+    "btnClearConflicts": "✨ 解除发生冲突的追加规则并重算",
+    "btnAskAiConflict": "🤖 询问 AI 解决方案",
+    "conflictAskPrompt": "请告诉我当前无法排课的原因，以及应该放宽哪条限制",
+    "tabTimetable": "📅 课表看板 (4年级 × 10教师 × 7教室)",
+    "tabConstraints": "⚙️ 约束与规则设置",
+    "tabCatalog": "📚 基础数据 (教师·教室·课程)",
+    "viewCohortsBtn": "🎓 按年级 4张同屏显示 (大一〜大四)",
+    "viewProfsBtn": "👨‍🏫 按教师 × 25时段矩阵 (10名)",
+    "viewRoomsBtn": "🏫 按教室 × 25时段矩阵 (7间)",
+    "legendPinned": "已固定",
+    "legendChanged": "较上次有变动",
+    "preserveToggleLabel": "🔒 微调模式",
+    "preserveToggleTitle": "开启时，重新优化将尽量保持现有课表不变（最小化变动课时数）",
+    "diffToggleLabel": "✨ 高亮变动课程",
+    "diffToggleTitle": "用橙色边框高亮显示与上一版课表相比发生移动的课程",
+    "crossBarLabel": "🔗 跨表联动检查 (悬停/点击可在4张年级课表中同步高亮同一教师或教室):",
+    "crossBarAll": "全部显示",
+    "adjunctSuffix": "(外聘)",
+    "periodColHeader": "节次",
+    "pinEmptySlotBtn": "＋固定",
+    "matrixProfCorner": "教师姓名 (职称·出勤条件)",
+    "matrixRoomCorner": "教室·机房 (容量·类型)",
+    "matrixProfStatCol": "周课时 / 最大连堂",
+    "matrixRoomStatCol": "占用数 / 利用率",
+    "matrixUnavailDay": "不可",
+    "matrixUnavailSlot": "禁排",
+    "matrixClosedSlot": "关闭",
+    "matrixFooterLabel": "同时开课门数 (共7间教室)",
+    "customRulesTitle": "📌 单独追加与固定的排课规则",
+    "customRulesDesc": "通过点击课表、AI 对话或下方表单追加的个性化排课约束。可随时勾选启用/停用、切换硬约束/软约束或删除。",
+    "customRulesEmpty": "当前没有单独追加的自定义规则。",
+    "btnApplyConfigSave": "💾 保存设置",
+    "btnApplyConfigSolve": "💾 保存设置",
+    "btnResetDefaultConfig": "↩ 恢复默认设置",
+    "tagHardRule": "🔒 硬约束必选",
+    "tagSoftRule": "⚖️ 软约束偏好",
+    "btnSwitchToSoft": "改为软约束",
+    "btnSwitchToHard": "改为硬约束",
+    "btnDeleteRule": "删除",
+    "newRuleKindLabel": "要追加的规则类型",
+    "newRuleKindPin": "📌 固定课程的星期与节次",
+    "newRuleKindForbid": "🚫 禁止课程排在指定星期与节次",
+    "newRuleKindNoOverlap": "⚡ 禁止2门课程同时段冲突",
+    "newRuleKindConsec": "🔗 周2节课程同日相邻节次连排",
+    "newRuleKindSameDay": "📅 2节课/2门课同日开课",
+    "newRuleCourse1Label": "目标课程A",
+    "newRuleCourse2Label": "目标课程B (双课程规则用)",
+    "newRuleDayLabel": "星期",
+    "newRulePeriodLabel": "节次",
+    "newRuleRoomLabel": "指定教室(可选)",
+    "autoAssignRoomOpt": "自动分配 (符合容量与设备的教室)",
+    "btnAddCustomRule": "＋ 添加规则",
+    "card1Title": "🏛️ 1. 教室容量、设备与年级培养方案基本约束",
+    "card1Desc": "设置大学排课问题 (UCTP) 中的物理容量、机房设备与必修课互斥等硬约束。",
+    "cfgRoomCapHtml": "<strong>严格遵守教室容量限制</strong>（禁止将选课人数超过教室容量的课程排入该教室）",
+    "cfgRoomEquipHtml": "<strong>严格遵守教室设备与PC机房要求</strong>（编程实验与数据科学实验必须排在PC机房）",
+    "cfgCohortNoOverlapHtml": "<strong>同一年级全部课程禁止同时开讲</strong>（同一年级的必修、选修及实验课程均不得在相同时段冲突）",
+    "cfgForbidSameDayHtml": "<strong>防止周2节课程排在同一天</strong>（除非另有连排/同日规则，否则分散在不同星期）",
+    "card2Title": "👨‍🏫 2. 教师可出勤时段、连堂上限与学生空堂惩罚",
+    "card2Desc": "设置专任与外聘教师禁排时段、最大连续上课节数，以及目标函数的软约束权重。",
+    "cfgAdjunctDaysHtml": "<strong>严格遵守外聘讲师可出勤日</strong>（小林老师:仅周二/四 / 加藤老师:仅周三/五）",
+    "cfgProfAvailHtml": "<strong>严格遵守教师禁排时段（教授会·委员会·门诊等）</strong>",
+    "cfgMaxConsecHtml": "<strong>严格限制教师最大连续上课节数（防止过度连堂）</strong>",
+    "cfgNumMaxConsec": "教师 最大连续上课节数",
+    "cfgNumMaxDaily": "教师 单日最大课时数",
+    "cfgNumMaxCohortDaily": "年级 单日最大必修课时",
+    "cfgNumWeightGap": "学生中间空堂惩罚权重",
+    "devInspectorSummary": "💻 开发者检视器: 查看 WaSHI 数学模型代码与 LP 预览",
+    "btnDiagnoseSingle": "🔍 使用 WaSHI (HiGHS) 单独检验当前约束的逻辑一致性",
+    "catProfTitle": "👨‍🏫 教师名录、出勤条件与排课统计 (10名)",
+    "catProfDesc": "各位教师的禁排星期、禁排节次、第1/5节回避偏好，以及当前课表中的实际排课结果。",
+    "catProfHeaders": [
+      "ID",
+      "教师姓名",
+      "职称·类别",
+      "专业方向",
+      "禁排日·禁排时段",
+      "时段偏好·上限",
+      "当前排课统计"
+    ],
+    "catRoomTitle": "🏫 教室与机房名录、设备及利用率 (7间)",
+    "catRoomHeaders": [
+      "ID",
+      "教室名称",
+      "类型·位置",
+      "容量",
+      "配备设备",
+      "周利用率 (共25时段)"
+    ],
+    "catCourseTitle": "📚 开课科目一览 (共25门课·30节课)",
+    "catCourseHeaders": [
+      "ID",
+      "课程名称",
+      "年级·类别",
+      "授课教师",
+      "选课人数·周课时",
+      "必需设备·教室要求",
+      "当前已排时段·教室"
+    ],
+    "slotDialogTitle": "固定、移动或禁排课程时段",
+    "slotDialogPinBtn": "📌 固定到此星期·节次并重算",
+    "slotDialogForbidBtn": "🚫 禁止排在此星期·节次并重算",
+    "slotDialogClearBtn": "清除该课程的所有追加规则",
+    "dialogCloseLabel": "关闭",
+    "nanoDialogTitle": "🤖 Chrome 内置 AI (Gemini Nano) 启用指南",
+    "nanoDialogIntroHtml": "左侧 AI 对话使用 Chrome 浏览器内置的端侧模型 (<code>self.LanguageModel</code> API / <strong>Gemini Nano</strong>)。",
+    "nanoDialogStep1Html": "打开 <code>chrome://flags/#optimization-guide-on-device-model</code>，设为 <strong>Enabled BypassPerfRequirement</strong>。",
+    "nanoDialogStep2Html": "打开 <code>chrome://flags/#prompt-api-for-gemini-nano</code>，设为 <strong>Enabled</strong> 并重启 Chrome。",
+    "nanoDialogStep3Html": "打开 <code>chrome://components</code>，在 <strong>Optimization Guide On Device Model</strong> 下点击“检查更新”。",
+    "nanoDialogNote": "💡 即使在未启用 Gemini Nano 的环境中，右侧的多维课表看板、3步快速指南、规则构建器以及 WaSHI (HiGHS) 优化求解与冲突诊断功能均可 100% 正常使用。",
+    "nanoDialogRecheckBtn": "🔄 重新检测状态",
+    "nanoDialogCloseBtn": "关闭",
+    "trajDialogTitle": "📋 AI × WaSHI 执行日志导出 (Trajectory Export)",
+    "trajDialogDesc": "完整记录每一轮发送给 Gemini Nano 的提示词、JSON Schema、原始 JSON 输出、提取的排课操作指令及 WaSHI (HiGHS) 求解结果。",
+    "trajCopyBtn": "📋 复制 JSON 到剪贴板",
+    "trajDownloadBtn": "📥 下载 JSON 文件 (.json)",
+    "trajClearBtn": "🗑️ 清空日志",
+    "promptCatalogBtn": "📖 指令示例库",
+    "promptCatalogTitle": "🤖 Gemini Nano 预期指令与提问示例库 (8个分类)",
+    "promptCatalogIntro": "Gemini Nano 可准确结构化为 JSON toolCalls 并交由 WaSHI × HiGHS 求解器处理的典型指令示例。点击任意项即可自动填入对话框。",
+    "promptCatalogCloseBtn": "关闭",
+    "promptCatalogCategories": [
+      {
+        "title": "👨‍🏫 1. 教师出勤限制与偏好",
+        "items": [
+          {
+            "label": "给佐藤教授周一排休",
+            "desc": "将佐藤教授 (P01) 的周一全天设为不可出勤 (NG)",
+            "prompt": "将佐藤教授(P01)的周一全天设为不可出勤(NG)"
+          },
+          {
+            "label": "限制兼职小林老师仅周二·周四下午排课",
+            "desc": "限制兼职讲师仅在周二·周四第3~5节上课",
+            "prompt": "将兼职讲师小林老师(P09)的授课时间限制在周二和周四下午(3~5节)"
+          },
+          {
+            "label": "设置铃木教授避开第1节与第5节",
+            "desc": "设置避开早晚节次的软性排课偏好",
+            "prompt": "尽量避免给铃木教授(P02)排第1节与第5节课"
+          },
+          {
+            "label": "限制高桥教授单日最多2节课",
+            "desc": "设置教师单日最大授课节数上限",
+            "prompt": "将高桥教授(P03)单日最大授课节数限制为2节"
+          }
+        ]
+      },
+      {
+        "title": "📌 2. 课程时段与教室固定 (Pin)",
+        "items": [
+          {
+            "label": "将《数理最优化》固定在周二第2节·101大教室",
+            "desc": "强制将指定课程锁定到特定星期、节次与大讲堂",
+            "prompt": "将数理最优化(C15)固定在周二第2节·101大讲堂(R101)"
+          },
+          {
+            "label": "将《机器学习》2节课分别固定在周二2节与周四2节",
+            "desc": "将周多节课程锁定到具体的多个时段",
+            "prompt": "将机器学习(C16)的两节课分别固定在周二第2节与周四第2节"
+          },
+          {
+            "label": "将《计算机导论》排在周一第1节",
+            "desc": "固定大一开学必修课时段",
+            "prompt": "将计算机科学导论(C01)安排在周一第1节"
+          }
+        ]
+      },
+      {
+        "title": "🚫 3. 禁排时段与防课程时间冲突",
+        "items": [
+          {
+            "label": "禁止《机器学习》与《自然语言处理》同时间开课",
+            "desc": "防止同选率高的两门课排在相同星期和节次",
+            "prompt": "机器学习(C16)与自然语言处理(C17)选课重叠较多，请禁止时间冲突"
+          },
+          {
+            "label": "《信息安全》避开周一第1节与周五第5节",
+            "desc": "禁止特定课程排在指定时段",
+            "prompt": "信息安全(C18)避开周一第1节与周五第5节排课"
+          },
+          {
+            "label": "《编程实验A》周五不排课",
+            "desc": "禁止课程排在特定星期的全天时段",
+            "prompt": "程序设计入门实验A(C05)周五不要排课"
+          }
+        ]
+      },
+      {
+        "title": "🔗 4. 连堂授课与修读顺序 (先行约束)",
+        "items": [
+          {
+            "label": "《软件设计实验》连排2节课",
+            "desc": "将同门课程的多节课连续安排在同一天的相邻节次",
+            "prompt": "将软件设计实验(C12)的每周2节课连排在同一天的连续节次"
+          },
+          {
+            "label": "《实验A》安排在《实验B》同天或之前",
+            "desc": "确保修读先后的课程序列约束",
+            "prompt": "程序设计入门实验A(C05)必须排在实验B(C06)相同星期或更早的星期"
+          }
+        ]
+      },
+      {
+        "title": "🏫 5. 教室设备要求与维护封停",
+        "items": [
+          {
+            "label": "《软件设计实验》必须使用PC机房",
+            "desc": "满足实验课对电脑设备的强制要求",
+            "prompt": "软件设计实验(C12)必须使用PC机房(pc_lab)"
+          },
+          {
+            "label": "《最优化研讨课》改用研讨室，腾出大教室",
+            "desc": "小班研讨课转入专用研讨室",
+            "prompt": "数理最优化研讨班(C23)不要占用大教室，请使用研讨室"
+          },
+          {
+            "label": "301 PC机房周四下午网络维护关闭",
+            "desc": "因设备检修或考试封停指定教室时段",
+            "prompt": "301 PC演练室A(R301)周四下午(3~5节)进行网络维护，设置为封停不可用"
+          }
+        ]
+      },
+      {
+        "title": "⚖️ 6. 全局排课策略与上限配置",
+        "items": [
+          {
+            "label": "禁止教师连堂授课 (最大连续1节)",
+            "desc": "提高教师疲劳控制策略标准",
+            "prompt": "将教师最大连续讲课节数上限设为1节"
+          },
+          {
+            "label": "将教师单日授课上限设为2节",
+            "desc": "缓解教师单日教学负荷",
+            "prompt": "将教师单日最大授课节数设为2节"
+          },
+          {
+            "label": "开启微调模式 (尽量保持现有排课不变)",
+            "desc": "在现有排课基础上做最小扰动微调",
+            "prompt": "开启微调模式，尽量保留现有课表布局进行调整"
+          }
+        ]
+      },
+      {
+        "title": "💥 7. 冲突诊断与故障排查演示",
+        "items": [
+          {
+            "label": "诊断兼职教师出勤冲突",
+            "desc": "在兼职讲师不可出勤日排课，验证 WaSHI (HiGHS) 冲突归因",
+            "prompt": "将仅周二周四可出勤的小林老师的课(C18)强制排在周一第3节，并诊断冲突"
+          },
+          {
+            "label": "诊断大讲堂双重占用冲突",
+            "desc": "将两门超百人必修大课同时安排在同一教室",
+            "prompt": "注入大阶梯教室双重排课冲突演示并诊断"
+          },
+          {
+            "label": "诊断PC机房容量超负荷冲突",
+            "desc": "在仅有2间机房的情况下同时安排3门机房课",
+            "prompt": "注入PC机房容量不足冲突演示并诊断"
+          }
+        ]
+      },
+      {
+        "title": "↩️ 8. 规则重置与初始化",
+        "items": [
+          {
+            "label": "清除所有自定义追加规则",
+            "desc": "一键清空用户手动追加的固定与禁排规则",
+            "prompt": "清除所有自定义排课规则"
+          },
+          {
+            "label": "完全重置所有课表与全局设置",
+            "desc": "恢复到出厂默认课表与初始参数",
+            "prompt": "将所有排课设置与自定义规则重置为初始状态"
+          }
+        ]
+      }
+    ],
+    "catMgmtBadge": "基础数据",
+    "catMgmtTitle": "大学基础数据管理 (教师·教室·课程)",
+    "catMgmtDesc": "排课所需的基础教师名册、教室设备和开课课程。",
+    "btnCatGenerate": "🎲 载入示例数据",
+    "btnCatImportCsv": "📂 CSV导入",
+    "btnCatDownloadSamples": "📥 下载CSV模板",
+    "btnCatClearBlank": "🗑️ 恢复为空白",
+    "catEmptyTitle": "开始大学排课（录入基础数据）",
+    "catEmptyDesc": "自动排课需要先录入教师、教室及课程数据。请点击下方按钮载入示例基准数据，或导入自有CSV文件。",
+    "catEmptyGenMain": "🎲 载入示例数据",
+    "catEmptyGenSub": "计算机系模型 (10位教师·7间教室·25门课·计30节)",
+    "catEmptyImportMain": "📂 从 CSV 文件导入",
+    "catEmptyImportSub": "导入自有的教师、教室与课程 CSV 数据",
+    "catEmptySamplesBtn": "📥 下载示例 CSV 模板"
+  },
+  "rooms": {
+    "R101": {
+      "name": "101大阶梯教室",
+      "shortName": "101大",
+      "building": "信息楼1F"
+    },
+    "R102": {
+      "name": "102大阶梯教室",
+      "shortName": "102大",
+      "building": "信息楼1F"
+    },
+    "R201": {
+      "name": "201中型教室",
+      "shortName": "201中",
+      "building": "信息楼2F"
+    },
+    "R202": {
+      "name": "202中型教室",
+      "shortName": "202中",
+      "building": "信息楼2F"
+    },
+    "R301": {
+      "name": "301 PC机房A",
+      "shortName": "301机房A",
+      "building": "信息楼3F"
+    },
+    "R302": {
+      "name": "302 PC机房B",
+      "shortName": "302机房B",
+      "building": "信息楼3F"
+    },
+    "R401": {
+      "name": "401研讨室",
+      "shortName": "401研讨",
+      "building": "信息楼4F"
+    }
+  },
+  "professors": {
+    "P01": {
+      "name": "佐藤 健一",
+      "shortName": "佐藤",
+      "title": "教授",
+      "specialty": "数学规划·运筹学"
+    },
+    "P02": {
+      "name": "铃木 美咲",
+      "shortName": "铃木",
+      "title": "教授",
+      "specialty": "机器学习·自然语言处理"
+    },
+    "P03": {
+      "name": "高桥 诚",
+      "shortName": "高桥",
+      "title": "教授",
+      "specialty": "算法分析·离散数学"
+    },
+    "P04": {
+      "name": "田中 彩乃",
+      "shortName": "田中",
+      "title": "副教授",
+      "specialty": "软件工程·程序设计语言"
+    },
+    "P05": {
+      "name": "伊藤 大辅",
+      "shortName": "伊藤",
+      "title": "副教授",
+      "specialty": "数据库·分布式系统"
+    },
+    "P06": {
+      "name": "渡边 结衣",
+      "shortName": "渡边",
+      "title": "副教授",
+      "specialty": "统计科学·数据挖掘"
+    },
+    "P07": {
+      "name": "山本 翔太",
+      "shortName": "山本",
+      "title": "讲师",
+      "specialty": "计算机系统·操作系统基础"
+    },
+    "P08": {
+      "name": "中村 凛",
+      "shortName": "中村",
+      "title": "讲师",
+      "specialty": "人机交互 (HCI)·Web工程"
+    },
+    "P09": {
+      "name": "小林 拓海",
+      "shortName": "小林",
+      "title": "外聘讲师",
+      "specialty": "信息安全·密码学（安全企研所长）"
+    },
+    "P10": {
+      "name": "加藤 优奈",
+      "shortName": "加藤",
+      "title": "外聘讲师",
+      "specialty": "云架构·信息伦理（科技企业VPoE）"
+    }
+  },
+  "courses": {
+    "C01": {
+      "title": "计算机科学导论",
+      "shortTitle": "计科导论"
+    },
+    "C02": {
+      "title": "线性代数I",
+      "shortTitle": "线性代数I"
+    },
+    "C03": {
+      "title": "微积分I",
+      "shortTitle": "微积分I"
+    },
+    "C04": {
+      "title": "离散数学基础",
+      "shortTitle": "离散数学"
+    },
+    "C05": {
+      "title": "程序设计入门实验A",
+      "shortTitle": "编程实验A"
+    },
+    "C06": {
+      "title": "程序设计入门实验B",
+      "shortTitle": "编程实验B"
+    },
+    "C07": {
+      "title": "信息伦理与法规",
+      "shortTitle": "信息伦理"
+    },
+    "C08": {
+      "title": "算法与数据结构",
+      "shortTitle": "算法结构"
+    },
+    "C09": {
+      "title": "概率论与数理统计",
+      "shortTitle": "概率统计"
+    },
+    "C10": {
+      "title": "操作系统",
+      "shortTitle": "操作系统"
+    },
+    "C11": {
+      "title": "数据库系统",
+      "shortTitle": "数据库"
+    },
+    "C12": {
+      "title": "软件设计实验",
+      "shortTitle": "软件设计实验"
+    },
+    "C13": {
+      "title": "计算机网络",
+      "shortTitle": "计算机网络"
+    },
+    "C14": {
+      "title": "人机交互技术",
+      "shortTitle": "HCI"
+    },
+    "C15": {
+      "title": "数学规划与优化",
+      "shortTitle": "数学规划"
+    },
+    "C16": {
+      "title": "机器学习",
+      "shortTitle": "机器学习"
+    },
+    "C17": {
+      "title": "自然语言处理",
+      "shortTitle": "自然语言处理"
+    },
+    "C18": {
+      "title": "信息安全",
+      "shortTitle": "信息安全"
+    },
+    "C19": {
+      "title": "数据科学实践实验",
+      "shortTitle": "数据科学实验"
+    },
+    "C20": {
+      "title": "Web应用开发实验",
+      "shortTitle": "Web开发实验"
+    },
+    "C21": {
+      "title": "云计算实践",
+      "shortTitle": "云计算实践"
+    },
+    "C22": {
+      "title": "密码学与区块链",
+      "shortTitle": "密码学"
+    },
+    "C23": {
+      "title": "数学规划研讨课",
+      "shortTitle": "优化研讨课"
+    },
+    "C24": {
+      "title": "人工智能与NLP研讨课",
+      "shortTitle": "AI研讨课"
+    },
+    "C25": {
+      "title": "系统软件文献研讨",
+      "shortTitle": "系统研讨课"
+    }
+  },
+  "slotReasons": {
+    "faculty_meeting": "院务与教授例会",
+    "joint_research": "联合研究例会",
+    "childcare": "托儿所接送",
+    "it_committee": "全校信息基础设施委员会",
+    "medical_appt": "定期体检与门诊",
+    "hq_duty": "总部公务（仅第2节后可排）",
+    "commute_time": "通勤时间（第1节不可）",
+    "outside_window": "可出勤时段外(对话设定)",
+    "chat_ng_slot": "对话指定禁排"
+  },
+  "csv": {
+    "professors": {
+      "id": [
+        "id",
+        "教师id",
+        "工号"
+      ],
+      "name": [
+        "name",
+        "姓名",
+        "教师姓名"
+      ],
+      "title": [
+        "title",
+        "职称",
+        "职务"
+      ],
+      "employment": [
+        "employment",
+        "聘用形式",
+        "类别"
+      ],
+      "unavailableDays": [
+        "unavailabledays",
+        "不可排日",
+        "禁排日"
+      ],
+      "unavailableSlots": [
+        "unavailableslots",
+        "不可排节次",
+        "禁排时段"
+      ],
+      "avoidPeriod1": [
+        "avoidperiod1",
+        "避开第1节"
+      ],
+      "avoidPeriod5": [
+        "avoidperiod5",
+        "避开第5节"
+      ],
+      "maxSessionsPerDay": [
+        "maxsessionsperday",
+        "每日最大节数"
+      ]
+    },
+    "rooms": {
+      "id": [
+        "id",
+        "教室id",
+        "房号"
+      ],
+      "name": [
+        "name",
+        "教室名称"
+      ],
+      "capacity": [
+        "capacity",
+        "容量",
+        "座位数"
+      ],
+      "roomType": [
+        "roomtype",
+        "教室类型",
+        "类别"
+      ],
+      "equipment": [
+        "equipment",
+        "设备",
+        "设施"
+      ],
+      "building": [
+        "building",
+        "教学楼",
+        "地点"
+      ]
+    },
+    "courses": {
+      "id": [
+        "id",
+        "课程id",
+        "课号"
+      ],
+      "title": [
+        "title",
+        "课程名称",
+        "课程名"
+      ],
+      "professorId": [
+        "professorid",
+        "授课教师id",
+        "教师id"
+      ],
+      "sessionsPerWeek": [
+        "sessionsperweek",
+        "周课时",
+        "周节数"
+      ],
+      "enrollment": [
+        "enrollment",
+        "选课人数",
+        "人数"
+      ],
+      "category": [
+        "category",
+        "课程类别",
+        "类别"
+      ],
+      "cohorts": [
+        "cohorts",
+        "年级",
+        "开课对象"
+      ],
+      "requiredRoomType": [
+        "requiredroomtype",
+        "所需教室类型"
+      ],
+      "requiredEquipment": [
+        "requiredequipment",
+        "所需设备"
+      ]
+    },
+    "tokens": {
+      "large_hall": [
+        "large_hall",
+        "大阶梯",
+        "大礼堂"
+      ],
+      "pc_lab": [
+        "pc_lab",
+        "机房",
+        "实验机房"
+      ],
+      "seminar_room": [
+        "seminar_room",
+        "研讨室",
+        "小教室"
+      ],
+      "compulsory": [
+        "compulsory",
+        "必修",
+        "必修课"
+      ],
+      "elective_core": [
+        "elective_core",
+        "选必",
+        "专业必修"
+      ],
+      "lab_exercise": [
+        "lab_exercise",
+        "实验",
+        "上机"
+      ],
+      "seminar": [
+        "seminar",
+        "研讨",
+        "讨论班"
+      ],
+      "projector": [
+        "projector",
+        "投影仪"
+      ],
+      "mic": [
+        "mic",
+        "麦克风",
+        "扩音"
+      ],
+      "pc_terminal": [
+        "pc_terminal",
+        "电脑",
+        "终端"
+      ],
+      "moveable_desks": [
+        "moveable_desks",
+        "分组桌椅",
+        "桌椅"
+      ],
+      "recording": [
+        "recording",
+        "录播",
+        "录制"
+      ]
+    }
+  },
+  "rules": {
+    "demoPrefix": "【冲突演示】",
+    "pinSlot": "{demoPrefix}将《{c1Name}》固定在 {slotStr}{rName}",
+    "forbidSlot": "禁止《{target}》排在 {daysStr} ({periodsStr})",
+    "requireRoom": "限定《{c1Name}》使用 {target}",
+    "forbidRoom": "禁止《{c1Name}》使用 {target}",
+    "noOverlap": "禁止同时段冲突: 《{c1Short}》与《{c2Short}》不得排在同一时段",
+    "consecutive": "同日连排指定: 将《{c1Short}》{c2Short}排在同一天的相邻连续节次",
+    "sameDay": "同日开课指定: 将《{c1Short}》{c2Short}排在同一天",
+    "precedence": "教学顺序约束: 《{c1Short}》必须排在《{c2Short}》之前（或同一天）",
+    "closure": "教室关闭维护: {rName} 于 {daysStr} {periodsStr} 停用",
+    "allDay": "全天",
+    "andOther": "与《{other}》"
+  },
+  "constraintTemplates": {
+    "custom": {
+      "label": "自定义规则: {desc}",
+      "suggestion": "请解除或修改自定义规则「{desc}」。"
+    },
+    "profUnavailDay": {
+      "label": "教师不可出勤日: {name} ({title}) 无法在{day}出勤（可排日: {availDays}）",
+      "suggestion": "请将 {name} 负责的课程排在 {availDays}，或调整其可出勤日设定。"
+    },
+    "roomExcl": {
+      "label": "教室不可同时重复使用: {name} 在 {slot} 仅能安排一门课程",
+      "suggestion": "请检查是否有多门课程同时强制固定在 {slot} 的 {name}。"
+    },
+    "profExcl": {
+      "label": "教师不可同时上课: {name} ({title}) 无法在 {slot} 同时讲授多门课程",
+      "suggestion": "请检查 {name} 是否在 {slot} 被安排了重叠的课程。"
+    },
+    "cohortExcl": {
+      "label": "年级课程冲突禁止: {cohort} 的多门课程不得排在同一时段 ({slot})",
+      "suggestion": "请确保 {cohort} 的课程分散在不同时段。"
+    },
+    "courseSessions": {
+      "label": "每周开课节数要求: 《{title}》每周需安排 {count} 节课",
+      "suggestion": "请检查《{title}》的固定/禁排规则，或确认教师与教室的可用性。"
+    }
+  }
+}

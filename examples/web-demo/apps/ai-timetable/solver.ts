@@ -10,10 +10,11 @@ import {
   DAYS_OF_WEEK,
   DAY_FULL_LABELS_JA,
   DAY_LABELS_JA,
-  EQUIPMENT_LABELS_JA,
+  EQUIPMENT_LABELS,
   PERIODS,
-  ROOM_TYPE_LABELS_JA,
+  ROOM_TYPE_LABELS,
   STUDENT_COHORTS,
+  formatSlotEn,
   formatSlotJa,
   type AssignedSession,
   type CohortId,
@@ -33,6 +34,14 @@ import {
   type WashiTimetableSolveOutcome,
   type WeeklyTimetableSolution,
 } from "./types.js";
+
+const DAY_FULL_LABELS_EN: Record<TimetableDay, string> = {
+  Mon: "Monday",
+  Tue: "Tuesday",
+  Wed: "Wednesday",
+  Thu: "Thursday",
+  Fri: "Friday",
+};
 
 export type ElasticWeightMode = "prefer_structural" | "prefer_user";
 
@@ -107,14 +116,14 @@ export function isRoomCompatibleWithCourse(
     if (course.requiredRoomType && room.roomType !== course.requiredRoomType) {
       return {
         compatible: false,
-        reasonJa: `教室種別不一致(${ROOM_TYPE_LABELS_JA[course.requiredRoomType]}が必要)`,
+        reasonJa: `Room type mismatch (${ROOM_TYPE_LABELS[course.requiredRoomType]} required)`,
       };
     }
     for (const eq of course.requiredEquipment) {
       if (!room.equipment.includes(eq)) {
         return {
           compatible: false,
-          reasonJa: `設備不足(${EQUIPMENT_LABELS_JA[eq]}なし)`,
+          reasonJa: `Equipment missing (${EQUIPMENT_LABELS[eq]} required)`,
         };
       }
     }
@@ -255,9 +264,9 @@ export function buildTimetableWashiModel(
     registerConstraint(sum(allCourseVars), "==", c.sessionsPerWeek, {
       name: `course_sessions_${c.id}`,
       category: "assignment",
-      labelJa: `週あたり必要コマ数: 「${c.title}(${c.id})」は週${c.sessionsPerWeek}コマ開講が必要`,
+      labelJa: `Weekly sessions quota: "${c.title}" (${c.id}) requires ${c.sessionsPerWeek} session(s) per week`,
       relatedCourseIds: [c.id],
-      relaxSuggestion: `「${c.title}」の固定・禁止ルールや使用可能教室・担当教員(${profMap.get(c.professorId)?.name ?? c.professorId})の空き時間を確認してください。`,
+      relaxSuggestion: `Review pinned/forbidden slots, available rooms, or faculty availability (${profMap.get(c.professorId)?.name ?? c.professorId}) for "${c.title}".`,
     });
   }
 
@@ -282,14 +291,14 @@ export function buildTimetableWashiModel(
       const compatNames = rooms
         .filter((r) => !incompatibleRooms.some((ir) => ir.id === r.id))
         .map((r) => `${r.shortName}(定員${r.capacity})`)
-        .join("・");
+        .join(", ");
 
       registerConstraint(sum(incompatVars), "<=", 0, {
         name: `room_compat_${c.id}`,
         category: "capacity_equip",
-        labelJa: `教室定員・設備条件: 「${c.title}(${c.id}・履修${c.enrollment}名)」は適合教室（${compatNames || "なし"}）でのみ開講可`,
+        labelJa: `Capacity & equipment match: "${c.title}" (${c.id}, ${c.enrollment} students) must be assigned to an eligible room (${compatNames || "None"})`,
         relatedCourseIds: [c.id],
-        relaxSuggestion: `「${c.title}」の指定教室を見直すか、「教室定員・設備制約」の設定を確認してください。`,
+        relaxSuggestion: `Review room assignments or capacity/equipment constraints for "${c.title}".`,
       });
     }
   }
@@ -302,9 +311,9 @@ export function buildTimetableWashiModel(
         registerConstraint(sum(roomSlotVars), "<=", 1, {
           name: `room_excl_${r.id}_${d}_P${p}`,
           category: "room_conflict",
-          labelJa: `教室重複禁止: ${r.name}(${r.id}) の ${formatSlotJa(d, p)} には同時に1科目までしか配置できません`,
+          labelJa: `Room double-booking forbidden: Room ${r.name} (${r.id}) at ${d} P${p} can host at most one course`,
           relatedRoomIds: [r.id],
-          relaxSuggestion: `${formatSlotJa(d, p)} に ${r.name} へ複数の科目が同時固定されていないか確認してください。`,
+          relaxSuggestion: `Ensure multiple courses are not pinned to ${r.name} at ${d} P${p}.`,
         });
       }
     }
@@ -321,10 +330,10 @@ export function buildTimetableWashiModel(
         registerConstraint(sum(profSlotVars), "<=", 1, {
           name: `prof_excl_${prof.id}_${d}_P${p}`,
           category: "prof_conflict",
-          labelJa: `教員同時担当禁止: ${prof.name}(${prof.id}) は ${formatSlotJa(d, p)} に複数科目を同時担当できません`,
+          labelJa: `Faculty overlap forbidden: ${prof.name} (${prof.id}) cannot teach multiple courses at ${d} P${p}`,
           relatedProfessorIds: [prof.id],
           relatedCourseIds: profCourses.map((c) => c.id),
-          relaxSuggestion: `${prof.name}先生の担当科目（${profCourses.map((c) => c.shortTitle).join("・")}）が同じ時限に重ならないよう調整してください。`,
+          relaxSuggestion: `Ensure courses taught by ${prof.name} (${profCourses.map((c) => c.shortTitle).join(", ")}) do not overlap at the same slot.`,
         });
       }
     }
@@ -343,9 +352,9 @@ export function buildTimetableWashiModel(
           registerConstraint(sum(cohortSlotVars), "<=", 1, {
             name: `cohort_excl_${cohort.id}_${d}_P${p}`,
             category: "cohort_conflict",
-            labelJa: `学年カリキュラム重複禁止: ${cohort.label} の科目は ${formatSlotJa(d, p)} に重複配置できません`,
+            labelJa: `Cohort curriculum overlap forbidden: Courses for ${cohort.label} cannot overlap at ${d} P${p}`,
             relatedCourseIds: cohortCourses.map((c) => c.id),
-            relaxSuggestion: `${cohort.shortLabel}の科目が同じ曜日・時限に複数固定されていないか確認してください。`,
+            relaxSuggestion: `Ensure multiple courses for ${cohort.shortLabel} are not pinned to ${d} P${p}.`,
           });
         }
       }
@@ -371,16 +380,16 @@ export function buildTimetableWashiModel(
             dayVars.push(...slotVarsByCourse(c.id, d, p));
           }
         }
-        const availDaysJa = DAYS_OF_WEEK.filter((day) => !prof.unavailableDays.includes(day))
+        const availDays = DAYS_OF_WEEK.filter((day) => !prof.unavailableDays.includes(day))
           .map((day) => DAY_LABELS_JA[day])
-          .join("・");
+          .join(", ");
         registerConstraint(sum(dayVars), "<=", 0, {
           name: `prof_unavail_day_${prof.id}_${d}`,
           category: "prof_avail",
-          labelJa: `教員出講不可曜日: ${prof.name}(${prof.title}) は ${DAY_FULL_LABELS_JA[d]} に出講できません（出講可能曜日: ${availDaysJa}曜）`,
+          labelJa: `Faculty unavailable day: ${prof.name} (${prof.title}) cannot teach on ${DAY_FULL_LABELS_EN[d]} (Available: ${availDays})`,
           relatedProfessorIds: [prof.id],
           relatedCourseIds: profCourses.map((c) => c.id),
-          relaxSuggestion: `${prof.name}先生の担当科目（${profCourses.map((c) => c.shortTitle).join("・")}）を ${availDaysJa}曜日 に配置するか、先生の出講可能曜日設定を変更してください。`,
+          relaxSuggestion: `Schedule courses taught by ${prof.name} (${profCourses.map((c) => c.shortTitle).join(", ")}) on ${availDays}, or update available days.`,
         });
       }
     }
@@ -395,10 +404,10 @@ export function buildTimetableWashiModel(
         registerConstraint(sum(slotVars), "<=", 0, {
           name: `prof_unavail_slot_${prof.id}_${slot.day}_P${slot.period}`,
           category: "prof_avail",
-          labelJa: `教員都合NG枠: ${prof.name}(${prof.id}) は ${formatSlotJa(slot.day, slot.period)} に担当不可${slot.reason ? `（理由: ${slot.reason}）` : ""}`,
+          labelJa: `Faculty unavailable slot: ${prof.name} (${prof.id}) is unavailable at ${formatSlotEn(slot.day, slot.period)}${slot.reason ? ` (Reason: ${slot.reason})` : ""}`,
           relatedProfessorIds: [prof.id],
           relatedCourseIds: profCourses.map((c) => c.id),
-          relaxSuggestion: `${prof.name}先生の ${formatSlotJa(slot.day, slot.period)} のNG設定を解除するか、別の時限に配置してください。`,
+          relaxSuggestion: `Relax ${prof.name}'s unavailable slot at ${formatSlotEn(slot.day, slot.period)}, or reschedule their course.`,
         });
       }
     }
@@ -422,9 +431,9 @@ export function buildTimetableWashiModel(
         registerConstraint(sum(dayVars), "<=", 1, {
           name: `course_diff_day_${c.id}_${d}`,
           category: "workload",
-          labelJa: `週複数コマ科目の同日重複防止: 「${c.title}(${c.id})」は同じ曜日(${DAY_FULL_LABELS_JA[d]})に2コマ以上配置できません`,
+          labelJa: `Forbid same-day sessions: "${c.title}" (${c.id}) cannot have multiple sessions on ${DAY_FULL_LABELS_EN[d]}`,
           relatedCourseIds: [c.id],
-          relaxSuggestion: `「${c.title}」の2コマを別々の曜日に配置するか、「同日開講・連続開講ルール」を有効にしてください。`,
+          relaxSuggestion: `Schedule the 2 sessions of "${c.title}" on different days, or enable same-day consecutive rules.`,
         });
       }
     }
@@ -450,9 +459,9 @@ export function buildTimetableWashiModel(
       registerConstraint(sum(dayVars), "<=", maxDaily, {
         name: `prof_daily_max_${prof.id}_${d}`,
         category: "workload",
-        labelJa: `教員1日上限コマ数: ${prof.name}(${prof.id}) の ${DAY_FULL_LABELS_JA[d]} の担当は最大${maxDaily}コマまで`,
+        labelJa: `Max daily sessions for faculty: ${prof.name} (${prof.id}) is capped at ${maxDaily} session(s) on ${DAY_FULL_LABELS_EN[d]}`,
         relatedProfessorIds: [prof.id],
-        relaxSuggestion: `${prof.name}先生の1日あたり最大担当コマ数（現在:${maxDaily}コマ）を引き上げてください。`,
+        relaxSuggestion: `Increase the daily session limit for ${prof.name} (currently ${maxDaily}).`,
       });
 
       // Consecutive period limit (sliding window of size maxConsec + 1)
@@ -468,9 +477,9 @@ export function buildTimetableWashiModel(
             registerConstraint(sum(winVars), "<=", maxConsec, {
               name: `prof_consec_${prof.id}_${d}_P${winPeriods[0]}_P${winPeriods[winPeriods.length - 1]}`,
               category: "workload",
-              labelJa: `教員連続講義上限(${maxConsec}連続まで): ${prof.name}(${prof.id}) の ${DAY_FULL_LABELS_JA[d]} ${winPeriods[0]}〜${winPeriods[winPeriods.length - 1]}限`,
+              labelJa: `Max consecutive periods for faculty (${maxConsec} max): ${prof.name} (${prof.id}) on ${DAY_FULL_LABELS_EN[d]} P${winPeriods[0]}-P${winPeriods[winPeriods.length - 1]}`,
               relatedProfessorIds: [prof.id],
-              relaxSuggestion: `教員の連続講義上限（現在:${maxConsec}コマ連続まで）を緩和してください。`,
+              relaxSuggestion: `Relax the consecutive period limit for faculty (currently ${maxConsec}).`,
             });
           }
         }
@@ -493,8 +502,8 @@ export function buildTimetableWashiModel(
       registerConstraint(sum(dayVars), "<=", config.maxCohortCompulsoryPerDay, {
         name: `cohort_daily_max_${cohort.id}_${d}`,
         category: "workload",
-        labelJa: `${cohort.shortLabel}の1日あたり必修・選択必修上限(${config.maxCohortCompulsoryPerDay}コマ以下): ${DAY_FULL_LABELS_JA[d]}`,
-        relaxSuggestion: `1日あたりの学年必修上限（現在:${config.maxCohortCompulsoryPerDay}コマ）を緩和してください。`,
+        labelJa: `Max daily compulsory for ${cohort.shortLabel} (${config.maxCohortCompulsoryPerDay} max): ${DAY_FULL_LABELS_EN[d]}`,
+        relaxSuggestion: `Relax the daily cohort compulsory limit (currently ${config.maxCohortCompulsoryPerDay}).`,
       });
     }
   }
@@ -525,10 +534,10 @@ export function buildTimetableWashiModel(
                 name: `custom_pin_${rule.id}${suffix}`,
                 relatedRuleId: rule.id,
                 category: "custom",
-                labelJa: `追加ルール(枠・教室固定): ${rule.description}`,
+                labelJa: `Custom Rule (Pin Slot & Room): ${rule.description}`,
                 relatedCourseIds: [c.id],
                 relatedRoomIds: [rule.roomId],
-                relaxSuggestion: `固定ルール「${rule.description}」を解除または変更してください。`,
+                relaxSuggestion: `Remove or modify pin rule "${rule.description}".`,
               },
               isHard,
               weight
@@ -543,9 +552,9 @@ export function buildTimetableWashiModel(
                 name: `custom_pin_${rule.id}${suffix}`,
                 relatedRuleId: rule.id,
                 category: "custom",
-                labelJa: `追加ルール(日時固定): ${rule.description}`,
+                labelJa: `Custom Rule (Pin Slot): ${rule.description}`,
                 relatedCourseIds: [c.id],
-                relaxSuggestion: `固定ルール「${rule.description}」を解除または別の時限に変更してください。`,
+                relaxSuggestion: `Remove or modify pin rule "${rule.description}".`,
               },
               isHard,
               weight
@@ -582,10 +591,10 @@ export function buildTimetableWashiModel(
               name: `custom_forbid_${rule.id}`,
               relatedRuleId: rule.id,
               category: "custom",
-              labelJa: `追加ルール(配置禁止): ${rule.description}`,
+              labelJa: `Custom Rule (Forbid Slot): ${rule.description}`,
               relatedCourseIds: targetCourses.map((c) => c.id),
               relatedProfessorIds: rule.professorId ? [rule.professorId] : undefined,
-              relaxSuggestion: `禁止ルール「${rule.description}」を緩和または解除してください。`,
+              relaxSuggestion: `Relax or remove forbid rule "${rule.description}".`,
             },
             isHard,
             weight
@@ -618,10 +627,10 @@ export function buildTimetableWashiModel(
             name: `custom_req_room_${rule.id}`,
             relatedRuleId: rule.id,
             category: "custom",
-            labelJa: `追加ルール(教室指定): ${rule.description}`,
+            labelJa: `Custom Rule (Require Room): ${rule.description}`,
             relatedCourseIds: [c.id],
             relatedRoomIds: rule.roomId ? [rule.roomId] : undefined,
-            relaxSuggestion: `教室指定ルール「${rule.description}」を解除してください。`,
+            relaxSuggestion: `Remove room requirement rule "${rule.description}".`,
           },
           isHard,
           weight
@@ -656,10 +665,10 @@ export function buildTimetableWashiModel(
             name: `custom_forbid_room_${rule.id}`,
             relatedRuleId: rule.id,
             category: "custom",
-            labelJa: `追加ルール(教室禁止): ${rule.description}`,
+            labelJa: `Custom Rule (Forbid Room): ${rule.description}`,
             relatedCourseIds: [c.id],
             relatedRoomIds: forbiddenRooms.map((r) => r.id),
-            relaxSuggestion: `教室禁止ルール「${rule.description}」を解除してください。`,
+            relaxSuggestion: `Remove room forbid rule "${rule.description}".`,
           },
           isHard,
           weight
@@ -688,9 +697,9 @@ export function buildTimetableWashiModel(
               name: `custom_no_overlap_${rule.id}_${d}_P${p}`,
               relatedRuleId: rule.id,
               category: "custom",
-              labelJa: `追加ルール(同時開講禁止): 「${c1.shortTitle}」と「${c2.shortTitle}」は同じ時限(${formatSlotJa(d, p)})に被せない`,
+              labelJa: `Custom Rule (No Overlap): "${c1.shortTitle}" and "${c2.shortTitle}" cannot overlap at ${formatSlotEn(d, p)}`,
               relatedCourseIds: [c1.id, c2.id],
-              relaxSuggestion: `同時開講禁止ルール「${rule.description}」を解除してください。`,
+              relaxSuggestion: `Remove overlap restriction rule "${rule.description}".`,
             },
             isHard,
             weight
@@ -738,9 +747,9 @@ export function buildTimetableWashiModel(
           name: `custom_consec_${rule.id}`,
           relatedRuleId: rule.id,
           category: "custom",
-          labelJa: `追加ルール(連続コマ開講): ${rule.description}`,
+          labelJa: `Custom Rule (Consecutive Sessions): ${rule.description}`,
           relatedCourseIds: c1.id === c2.id ? [c1.id] : [c1.id, c2.id],
-          relaxSuggestion: `連続コマ指定ルール「${rule.description}」を解除してください。`,
+          relaxSuggestion: `Remove consecutive session rule "${rule.description}".`,
         },
         isHard,
         weight
@@ -772,9 +781,9 @@ export function buildTimetableWashiModel(
           name: `custom_sameday_${rule.id}`,
           relatedRuleId: rule.id,
           category: "custom",
-          labelJa: `追加ルール(同日開講): ${rule.description}`,
+          labelJa: `Custom Rule (Same Day Sessions): ${rule.description}`,
           relatedCourseIds: c1.id === c2.id ? [c1.id] : [c1.id, c2.id],
-          relaxSuggestion: `同日開講ルール「${rule.description}」を解除してください。`,
+          relaxSuggestion: `Remove same-day rule "${rule.description}".`,
         },
         isHard,
         weight
@@ -818,9 +827,9 @@ export function buildTimetableWashiModel(
           name: `custom_prec_${rule.id}`,
           relatedRuleId: rule.id,
           category: "custom",
-          labelJa: `追加ルール(開講順序): ${rule.description}`,
+          labelJa: `Custom Rule (Curriculum Order): ${rule.description}`,
           relatedCourseIds: [c1.id, c2.id],
-          relaxSuggestion: `順序ルール「${rule.description}」を緩和または解除してください。`,
+          relaxSuggestion: `Relax or remove order rule "${rule.description}".`,
         },
         isHard,
         weight
@@ -845,9 +854,9 @@ export function buildTimetableWashiModel(
             name: `custom_room_closure_${rule.id}`,
             relatedRuleId: rule.id,
             category: "custom",
-            labelJa: `追加ルール(教室閉鎖・メンテ): ${rule.description}`,
+            labelJa: `Custom Rule (Room Maintenance Closure): ${rule.description}`,
             relatedRoomIds: [rule.roomId],
-            relaxSuggestion: `教室閉鎖ルール「${rule.description}」を解除してください。`,
+            relaxSuggestion: `Remove room closure rule "${rule.description}".`,
           },
           isHard,
           weight
@@ -910,7 +919,7 @@ export function buildTimetableWashiModel(
       }
     }
 
-    // 3. Cohort Compactness (Penalize single-period hollow gaps "空きコマ" between compulsory/core classes on the same day)
+    // 3. Cohort Compactness (Penalize single-period hollow gaps between compulsory/core classes on the same day)
     if (config.weightCohortIdleGaps > 0) {
       for (const cohort of STUDENT_COHORTS) {
         const coreCourses = courses.filter(
@@ -992,7 +1001,7 @@ export function evaluateTimetableSolution(
         category: "assignment",
         severity: "hard",
         courseId: c.id,
-        messageJa: `「${c.title}」の割当コマ数が不足/超過しています（割当:${assigned.length} / 必要:${c.sessionsPerWeek}）`,
+        messageJa: `Session quota mismatch for "${c.title}" (Assigned: ${assigned.length} / Required: ${c.sessionsPerWeek})`,
       });
     }
     for (const s of assigned) {
@@ -1007,7 +1016,7 @@ export function evaluateTimetableSolution(
             roomId: r.id,
             day: s.day,
             period: s.period,
-            messageJa: `${formatSlotJa(s.day, s.period)}「${c.shortTitle}」(${r.shortName}): ${compat.reasonJa}`,
+            messageJa: `${formatSlotEn(s.day, s.period)}「${c.shortTitle}」(${r.shortName}): ${compat.reasonJa}`,
           });
         }
       }
@@ -1043,7 +1052,7 @@ export function evaluateTimetableSolution(
             professorId: prof.id,
             day: d,
             period: p,
-            messageJa: `${prof.name}先生が ${formatSlotJa(d, p)} に複数科目を同時担当しています`,
+            messageJa: `${prof.name} is scheduled to teach multiple courses simultaneously at ${d} P${p}`,
           });
         }
         if (inSlot.length >= 1) {
@@ -1311,7 +1320,7 @@ export function generateTimetableWashiCodePreview(state: TimetableState): string
 // 科目数: ${courses.length}科目 / 教室数: ${rooms.length}室 / 教員数: ${professors.length}名 / 週25枠(月〜金×1〜5限)
 const m = new Model("UniversityCourseTimetabling_UCTP", { solver: "highs" });
 
-// 0-1決定変数: x[c][d][p][r] = 科目cを曜日d・p限・教室rに割り当てるなら1
+// Binary decision variable: x[c][d][p][r] = 1 if course c is assigned to day d, period p, room r
 const x = {};
 for (const c of courses) {
   x[c.id] = {};
@@ -1326,12 +1335,12 @@ for (const c of courses) {
   }
 }
 
-// 1. 各科目の週間必要コマ数 (1コマまたは2コマ) ＆ 教室定員・PC演習設備適合制約
-// 2. 教室の同時使用禁止 (各曜日・各時限・各教室で高々1科目)
-// 3. 教員の同時担当禁止 ＆ 非常勤講師・教授会等のNG枠遵守 (${config.enforceProfessorAvailability ? "ON" : "OFF"})
-// 4. 学年別必修・選択必修カリキュラムの重複禁止 (${config.enforceCohortNoOverlap ? "ON" : "OFF"})
-// 5. 教員の連続講義上限 (最大${config.maxProfessorConsecutivePeriods}コマ連続まで) ＆ 1日最大${config.maxProfessorSessionsPerDay}コマ
-// 6. 個別追加ルール: ${activeRules.length}件 適用中
+// 1. Weekly session quota for each course (1 or 2) & classroom capacity / equipment eligibility
+// 2. Classroom mutual exclusion (at most 1 course per room per slot)
+// 3. Faculty mutual exclusion & unavailable slots compliance (${config.enforceProfessorAvailability ? "ON" : "OFF"})
+// 4. Cohort compulsory curriculum no-overlap (${config.enforceCohortNoOverlap ? "ON" : "OFF"})
+// 5. Faculty max consecutive teaching periods limit (max ${config.maxProfessorConsecutivePeriods} consecutive) & max ${config.maxProfessorSessionsPerDay} sessions/day
+// 6. Custom rules: ${activeRules.length} active
 `;
 }
 
@@ -1373,8 +1382,8 @@ export async function solveTimetableWithWashi(
         emptySolution,
         useRef ? options?.referenceTimetable : null
       ),
-      lpStringPreview: "// 空の時間割 (科目または教室が登録されていません)",
-      washiCodeSnippet: "// 空の時間割",
+      lpStringPreview: "// Empty timetable (no courses or rooms registered)",
+      washiCodeSnippet: "// Empty timetable",
     };
   }
 

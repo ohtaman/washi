@@ -217,8 +217,10 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       expect(html).toContain("class=\"footbar-actions\"");
 
       // 6. Dynamic updateCellSize on resize and orientationchange
-      expect(html).toContain("window.addEventListener(\"resize\", updateCellSize)");
-      expect(html).toContain("window.addEventListener(\"orientationchange\", updateCellSize)");
+      const mainTsPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/main.ts");
+      const clientCode = html + (fs.existsSync(mainTsPath) ? fs.readFileSync(mainTsPath, "utf-8") : "");
+      expect(clientCode).toContain("window.addEventListener(\"resize\", updateCellSize)");
+      expect(clientCode).toContain("window.addEventListener(\"orientationchange\", updateCellSize)");
     });
   });
 });

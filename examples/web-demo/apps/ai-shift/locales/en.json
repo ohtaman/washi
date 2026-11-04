@@ -1,0 +1,277 @@
+{
+  "shifts": {
+    "D": {
+      "label": "Day Shift",
+      "shortLabel": "Day",
+      "timeRange": "08:30–17:00"
+    },
+    "E": {
+      "label": "Evening Shift",
+      "shortLabel": "Eve",
+      "timeRange": "16:30–01:00"
+    },
+    "N": {
+      "label": "Night Shift",
+      "shortLabel": "Night",
+      "timeRange": "00:30–09:00"
+    },
+    "O": {
+      "label": "Off Duty",
+      "shortLabel": "Off",
+      "timeRange": "All Day Off"
+    },
+    "W": {
+      "label": "Duty (Any Shift)",
+      "shortLabel": "Work",
+      "timeRange": "Day/Eve/Night"
+    },
+    "EN": {
+      "label": "Night Duty (Eve/Night)",
+      "shortLabel": "Night",
+      "timeRange": "Eve or Night"
+    }
+  },
+  "skills": {
+    "leader_cap": {
+      "label": "Leader Qualified",
+      "shortLabel": "Lead",
+      "badge": "👑Leader"
+    },
+    "icu_er": {
+      "label": "ICU / Critical Care",
+      "shortLabel": "ICU",
+      "badge": "🚨Critical"
+    },
+    "newcomer": {
+      "label": "Newcomer (<1yr)",
+      "shortLabel": "New",
+      "badge": "🌱Newcomer"
+    },
+    "mid": {
+      "label": "Mid-Career (2-5yr)",
+      "shortLabel": "Mid",
+      "badge": "⭐Mid"
+    },
+    "leader": {
+      "label": "Charge Nurse / Leader",
+      "shortLabel": "Head",
+      "badge": "🏅Head"
+    },
+    "team_A": {
+      "label": "Team A",
+      "shortLabel": "Team A",
+      "badge": "🔷Team A"
+    },
+    "team_B": {
+      "label": "Team B",
+      "shortLabel": "Team B",
+      "badge": "🔶Team B"
+    }
+  },
+  "nurses": {
+    "N01": {
+      "name": "Misaki Sato",
+      "kana": "Sato"
+    },
+    "N02": {
+      "name": "Hina Suzuki",
+      "kana": "Suzuki"
+    },
+    "N03": {
+      "name": "Kenta Takahashi",
+      "kana": "Takahashi"
+    },
+    "N04": {
+      "name": "Ayano Tanaka",
+      "kana": "Tanaka"
+    },
+    "N05": {
+      "name": "Yui Ito",
+      "kana": "Ito"
+    },
+    "N06": {
+      "name": "Shota Watanabe",
+      "kana": "Watanabe"
+    },
+    "N07": {
+      "name": "Rin Yamamoto",
+      "kana": "Yamamoto"
+    },
+    "N08": {
+      "name": "Yuna Nakamura",
+      "kana": "Nakamura"
+    },
+    "N09": {
+      "name": "Makoto Kobayashi",
+      "kana": "Kobayashi"
+    },
+    "N10": {
+      "name": "Mizuki Kato",
+      "kana": "Kato"
+    },
+    "N11": {
+      "name": "Aoi Yoshida",
+      "kana": "Yoshida"
+    },
+    "N12": {
+      "name": "Takumi Yamada",
+      "kana": "Yamada"
+    },
+    "N13": {
+      "name": "Kaede Sasaki",
+      "kana": "Sasaki"
+    },
+    "N14": {
+      "name": "Riko Yamaguchi",
+      "kana": "Yamaguchi"
+    },
+    "N15": {
+      "name": "Daiki Matsumoto",
+      "kana": "Matsumoto"
+    },
+    "N16": {
+      "name": "Mei Inoue",
+      "kana": "Inoue"
+    },
+    "N17": {
+      "name": "Kotone Kimura",
+      "kana": "Kimura"
+    },
+    "N18": {
+      "name": "Sota Hayashi",
+      "kana": "Hayashi"
+    },
+    "N19": {
+      "name": "Anna Saito",
+      "kana": "Saito"
+    },
+    "N20": {
+      "name": "Haruka Shimizu",
+      "kana": "Shimizu"
+    },
+    "N21": {
+      "name": "Tsubasa Yamazaki",
+      "kana": "Yamazaki"
+    },
+    "N22": {
+      "name": "Kanon Mori",
+      "kana": "Mori"
+    },
+    "N23": {
+      "name": "Yuina Ikeda",
+      "kana": "Ikeda"
+    },
+    "N24": {
+      "name": "Riku Hashimoto",
+      "kana": "Hashimoto"
+    },
+    "N25": {
+      "name": "Sakura Abe",
+      "kana": "Abe"
+    },
+    "N26": {
+      "name": "Nanami Ishikawa",
+      "kana": "Ishikawa"
+    },
+    "N27": {
+      "name": "Ren Yamashita",
+      "kana": "Yamashita"
+    },
+    "N28": {
+      "name": "Shiori Nakajima",
+      "kana": "Nakajima"
+    },
+    "N29": {
+      "name": "Ryosuke Ishii",
+      "kana": "Ishii"
+    },
+    "N30": {
+      "name": "Mao Ogawa",
+      "kana": "Ogawa"
+    },
+    "N31": {
+      "name": "Kanade Maeda",
+      "kana": "Maeda"
+    },
+    "N32": {
+      "name": "Chihiro Okada",
+      "kana": "Okada"
+    },
+    "N33": {
+      "name": "Shun Hasegawa",
+      "kana": "Hasegawa"
+    },
+    "N34": {
+      "name": "Mashiro Fujita",
+      "kana": "Fujita"
+    },
+    "N35": {
+      "name": "Yuto Goto",
+      "kana": "Goto"
+    },
+    "N36": {
+      "name": "Mirai Kondo",
+      "kana": "Kondo"
+    }
+  },
+  "csv": {
+    "headers": {
+      "id": [
+        "id",
+        "nurseid",
+        "staffid"
+      ],
+      "name": [
+        "name",
+        "fullname",
+        "staffname"
+      ],
+      "kana": [
+        "kana",
+        "phonetic",
+        "reading"
+      ],
+      "skills": [
+        "skills",
+        "skill_tags",
+        "tags"
+      ],
+      "role": [
+        "role",
+        "job_title",
+        "title"
+      ],
+      "contract": [
+        "contract",
+        "preset",
+        "type"
+      ],
+      "nightOk": [
+        "nightok",
+        "night_eligible"
+      ],
+      "weekdayOnly": [
+        "weekdayonly",
+        "weekdays_only"
+      ],
+      "holidaysOff": [
+        "holidaysoff",
+        "holidays_off"
+      ],
+      "prevMonthShifts": [
+        "prevmonthshifts",
+        "prev_shifts",
+        "last_shifts"
+      ]
+    }
+  },
+  "ui": {
+    "title": "Hospital Nurse Shift Scheduling AI Copilot — Gemini Nano × WaSHI",
+    "headerTitle": "🏥 Hospital Nurse Scheduling AI Copilot (NSP)",
+    "navApps": "← Showcase",
+    "navTimetable": "🎓 AI Timetable",
+    "btnTheory": "📖 Theory Article",
+    "btnTutorial": "🔰 Quick Guide",
+    "themeToggle": "Toggle Theme"
+  }
+}

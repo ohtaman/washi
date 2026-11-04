@@ -1,0 +1,143 @@
+{
+  "title": "Fluffy Sheep Pasture — Fence Enclosure Puzzle",
+  "metaDesc": "Place wooden fences to protect fluffy sheep from wolves and optimize pasture scoring with WaSHI ILP.",
+  "appTitle": "Fluffy Sheep Pasture",
+  "appSubtitle": "Pasture Fence Puzzle",
+  "backToShowcase": "Back to Showcase",
+  "backToShowcaseShort": "← Showcase",
+  "showcaseUrl": "../../showcase/",
+  "menu": "Menu",
+  "openMenu": "Open menu",
+  "bgmOn": "Play BGM (Click to enable)",
+  "bgmOff": "Stop BGM (Click to mute)",
+  "bgmTagOn": "🔊 BGM: ON",
+  "bgmTagOff": "🔇 BGM: OFF",
+  "howToPlay": "How to Play",
+  "howToPlayTooltip": "View rules and tutorials",
+  "clearedStages": "Cleared stages",
+  "clearedSummary": "Cleared Stages: {cleared} (Total Score: {total} pt)",
+  "stageSelect": "Stage Selection",
+  "prevStage": "Previous Stage",
+  "nextStage": "Next Stage",
+  "selectStageNumber": "Select stage number",
+  "jumpToReached": "Jump to reached stage",
+  "tutorialTag": "🔰 Tutorial {current}/{total}",
+  "tutorialSuffix": " [Tutorial {current}/{total}]",
+  "remainingFences": "Fences Left",
+  "remainingFencesText": "{rem} / {max} left",
+  "currentAndTargetScore": "Current / Target",
+  "scoreDisplay": "{cur} / Goal {target} pt",
+  "statusWolfBreach": "Wolves can reach sheep",
+  "statusTargetAchieved": "Goal Reached · STAGE CLEAR",
+  "statusPitDeduction": "Pitfall inside (+{diff} pt needed)",
+  "statusNeedPoints": "+{diff} pt to goal",
+  "clearHeadline": "Pasture Completed · Stage Clear",
+  "clearSubtext": "Target Score Achieved",
+  "clearBannerGolden": "🎉 STAGE CLEAR · Golden Pasture Complete",
+  "clearBannerScore": "Pasture Score {score} / Goal {target} pt achieved",
+  "btnNextStage": "Next Stage ▶",
+  "btnAdvanceToStage": "Proceed to Stage {n} ▶",
+  "boardAria": "Pasture Puzzle Board",
+  "btnUndo": "Undo",
+  "btnUndoTitle": "Undo 1 move (Z key)",
+  "btnRestart": "Restart",
+  "btnRestartTitle": "Restart stage (R key)",
+  "btnHint": "1-Move Hint",
+  "btnHintTitle": "Highlight the next recommended move on the board (H key)",
+  "btnSolve": "✨ View Model Solution",
+  "btnSolveTitle": "Show optimal model solution",
+  "solveBannerOptimal": "✨ Model Solution (Target Score Reached)",
+  "adviceDefensePit": "Sheep safe! Plug or isolate the 🕳️ pitfall to reach +{diff} more pt",
+  "adviceDefenseExpand": "Sheep safe! Adjust fence positions to enclose +{diff} more pt",
+  "adviceSafeNeedPoints": "The sheep are safe from wolves, but you need +{diff} more pt to reach the goal",
+  "adviceFallback": "Could not compute model solution or hints (stage remains playable with target score)",
+  "adviceFallbackValid": "Goal {target} pt remains valid",
+  "legendStripAria": "Tile Score Legend",
+  "legendSheep": "Sheep (+2 pts, protect from wolves)",
+  "legendGrass": "Meadow (+1 pt)",
+  "legendStrawberry": "Wild Strawberry (+5 pts)",
+  "legendPit": "Pitfall (-5 pts, can be plugged with a fence)",
+  "legendBridge": "Stone Bridge (+1 pt, passable, cannot place fence)",
+  "legendBridgeLabel": "🌉 +1 <small>(no fence)</small>",
+  "legendWall": "Water & Rock (impassable natural wall)",
+  "legendWallLabel": "💧🪨 Wall",
+  "mascotAlt": "Moko",
+  "tapInstruction": "👆 Tap",
+  "rulesTitle": "🐑 How to Play",
+  "rulesClose": "Close",
+  "step1Title": "1. Tap Cells to Place Fences",
+  "step1Desc": "Block all paths from wolves 🐺 to sheep 🐑 by placing wooden fences. Tap a fenced cell again to remove the fence.",
+  "step2Title": "2. Enclose a Rich Pasture to Reach the Goal",
+  "step2Desc": "Once the sheep are safe, the total score of all tiles reachable by 🐑 (🌱+1, 🍓+5) must meet or exceed the Target Score to clear the stage.",
+  "step3Title": "3. Stone Bridges 🌉 and Pitfalls 🕳️",
+  "step3Desc": "🌉 Stone bridges are passable but cannot hold fences. 🕳️ Pitfalls (-5 pts) lower your score if enclosed, but driving a fence directly into a pit plugs it and blocks wolves.",
+  "tutorialHeader": "🔰 Interactive Tutorials (Stages 1–4)",
+  "btnGotIt": "Got It · Back to Puzzle",
+  "stageDefaultOneLiner": "Protect 🐑 from 🐺 with {n} fences and reach target score {target} pt",
+  "stages": {
+    "stage-1": {
+      "title": "First Fence",
+      "oneLiner": "Tap a cell to place a fence and protect 🐑 from 🐺"
+    },
+    "stage-2": {
+      "title": "Strawberry Hill",
+      "oneLiner": "Blocking right next to 🐑 misses the 🍓. Block closer to 🐺 to reach the target score"
+    },
+    "stage-3": {
+      "title": "Stone Bridge Rule",
+      "oneLiner": "You cannot place fences on stone bridges 🌉. Cross the bridge to claim the southwest 🍓"
+    },
+    "stage-4": {
+      "title": "Plugging the Pitfall",
+      "oneLiner": "Leaving a pitfall 🕳️ (-5 pt) inside the pasture lowers your score. Drive a wooden fence right into 🕳️ to plug it"
+    },
+    "stage-5": {
+      "title": "Beyond the Bridges",
+      "oneLiner": "Merely blocking near 🐑 falls short of the target. Push your fences up to the two bridge exits"
+    },
+    "stage-6": {
+      "title": "Two Birds with One Post",
+      "oneLiner": "Driving a fence directly into 🕳️ (-5) plugs the pit and blocks 🐺 at the same time"
+    },
+    "stage-7": {
+      "title": "Beyond the Pitfall",
+      "oneLiner": "Plugging the east 🕳️ (-5) cuts off the 🍓 orchard behind it. Leave the path open to claim the orchard"
+    },
+    "stage-8": {
+      "title": "Decoy Strawberry",
+      "oneLiner": "Chasing the nearby 🍓 runs out of fences. Seal the west with 1 fence and expand the east orchard"
+    },
+    "stage-9": {
+      "title": "Two Sheep Reunion",
+      "oneLiner": "Enclosing the two 🐑 separately falls short. Connect them through the central corridor"
+    },
+    "stage-10": {
+      "title": "Pitfall Hill Triage",
+      "oneLiner": "Three 🕳️ (-5) dot the hill. Decide which pits to plug directly with a post and which to wall off"
+    },
+    "stage-11": {
+      "title": "Three-Way Siege",
+      "oneLiner": "Three 🐺 approach across stone bridges. Find the largest orchard you can protect with 4 fences"
+    },
+    "stage-12": {
+      "title": "Golden Meadow",
+      "oneLiner": "Use all 5 fences wisely to complete the highest-scoring golden pasture"
+    }
+  },
+  "themes": [
+    "Windy Highland Pasture",
+    "Stone Bridge Valley",
+    "Strawberry Deepwoods",
+    "Misty Grand Meadow",
+    "Rocky Crag Corridor",
+    "Brookside Orchard",
+    "Starlit Night Pasture",
+    "Sunlit Hills",
+    "Labyrinth Causeway",
+    "Twin Riverbanks",
+    "Ancient Stonewall Meadow",
+    "Skyward Golden Pasture"
+  ],
+  "clearSubtextPit": "Current {score} pt / Goal {target} pt — A pitfall 🕳️ (-5 pts) is inside the pasture. Plug it with a fence post or wall it off",
+  "clearSubtextExpand": "Current {score} pt / Goal {target} pt — Adjust your fences to enclose more 🍓 strawberries and 🌱 grass tiles"
+}

@@ -130,21 +130,21 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
   });
 
   it("completes STAGE 1 valid schedule by following interactive tutorialSteps in order and uses Star-Moon Calendar (1073 years ago)", () => {
-    const refDate = new Date(2026, 9, 20); // October 2026 -> 2026 - 1073 = 953年10月
+    const refDate = new Date(2026, 9, 20); // October 2026 -> 2026 - 1073 = Oct 953
     expect(getCastleCalendarYearMonth(1, refDate)).toEqual({
       eraName: CALENDAR_ERA_NAME,
       year: 953,
       month: 10,
     });
-    expect(formatCastleCalendarMonth(3, true, refDate)).toBe(`${CALENDAR_ERA_NAME} 953年12月`);
-    expect(formatCastleCalendarMonth(4, true, refDate)).toBe(`${CALENDAR_ERA_NAME} 954年1月`);
-    expect(formatCastleCalendarMonth(4, false, refDate)).toBe("1月");
+    expect(formatCastleCalendarMonth(3, true, refDate)).toBe(`${CALENDAR_ERA_NAME} Dec 953`);
+    expect(formatCastleCalendarMonth(4, true, refDate)).toBe(`${CALENDAR_ERA_NAME} Jan 954`);
+    expect(formatCastleCalendarMonth(4, false, refDate)).toBe("Jan");
 
     const stage1 = CAMPAIGN_STAGES[0];
     expect(stage1.numDays).toBe(3);
     expect(stage1.subtitle).toContain(CALENDAR_ERA_NAME);
     expect(stage1.title).not.toContain("STAGE");
-    expect(stage1.lilithIntro).toContain("一緒に");
+    expect(stage1.lilithIntro).toContain("together");
     expect(stage1.tutorialSteps).toBeDefined();
     expect(stage1.tutorialSteps!.length).toBeGreaterThan(0);
 
@@ -295,7 +295,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     const outcomes = rollStageBattles(stage5, evalConflict, () => 0.5);
     const outcomeNight0 = outcomes.find((o) => o.day === 0 && o.shift === "night")!;
     expect(outcomeNight0.hasConflict).toBe(true);
-    expect(outcomeNight0.conflictTitle).toContain("同番拒否");
+    expect(outcomeNight0.conflictTitle).toContain("Incompatible");
     expect(outcomeNight0.isFullMoon).toBe(false);
 
     // Full-moon slot in STAGE 5 (day 2 Wednesday night) carries isFullMoon = true into SlotBattleOutcome
@@ -479,7 +479,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
       expect(mockButtons[0].innerHTML).toContain('class="btn-audio-short"');
       expect(mockButtons[0].innerHTML).toContain('class="btn-audio-extra"');
       expect(mockButtons[0].innerHTML).toContain("🔇 BGM: OFF");
-      expect(mockButtons[0].innerHTML).toContain("（クリックで音楽ON）");
+      expect(mockButtons[0].innerHTML).toContain("(Click for Music)");
     } finally {
       globalThis.document = originalDocument;
     }

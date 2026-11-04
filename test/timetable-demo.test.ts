@@ -112,7 +112,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
           tool_name: "add_course_relation_rule",
           args: {
             relationKind: "course_consecutive",
-            course: "ソフトウェア設計演習",
+            course: "\u30BD\u30D5\u30C8\u30A6\u30A7\u30A2\u8A2D\u8A08\u6F14\u7FD2",
             isHard: true,
           },
         },
@@ -161,7 +161,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       c15Sessions.some((s) => s.day === "Thu" && s.period === 2 && s.roomId === "R101")
     ).toBe(true);
 
-    // 2. Verify C12 (ソフトウェア設計演習) has 2 sessions on the same day in consecutive periods
+    // 2. Verify C12 (Software Design Lab) has 2 sessions on the same day in consecutive periods
     const c12Sessions = res.timetable!.byCourse["C12"];
     expect(c12Sessions.length).toBe(2);
     expect(c12Sessions[0].day).toBe(c12Sessions[1].day);
@@ -373,7 +373,9 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(formatCustomRuleI18n(rule, state, "zh")).toBe(
       "教学顺序约束: 《编程实验A (C05)》必须排在《编程实验B (C06)》之前（或同一天）"
     );
-    expect(formatCustomRuleI18n(rule, state, "ja")).toBe(rule.description);
+    expect(formatCustomRuleI18n(rule, state, "ja")).toBe(
+      "\u30AB\u30EA\u30AD\u30E5\u30E9\u30E0\u9806\u5E8F: \u300C\u30D7\u30ED\u5165\u9580A (C05)\u300D\u3092\u300C\u30D7\u30ED\u5165\u9580B (C06)\u300D\u3068\u540C\u3058\u66DC\u65E5\u307E\u305F\u306F\u3088\u308A\u524D\u306E\u66DC\u65E5\u306B\u958B\u8B1B"
+    );
 
     const { updatedState } = injectTimetableConflictScenario(state, "prof_impossible_day");
     const diag = await diagnoseTimetableWithHiGHS(updatedState);
@@ -446,7 +448,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(convert("pin_course_slot", { course: "C15", days: ["Tue"], periods: [2], isHard: "yes" })).toBeNull();
 
     // Entity resolution: exact match only — a longer name must not resolve to a shorter one
-    expect(resolveCourseFromText("数理最適化ゼミ", state.courses)?.id).toBe("C23");
+    expect(resolveCourseFromText("\u6570\u7406\u6700\u9069\u5316\u30BC\u30DF", state.courses)?.id).toBe("C23");
     expect(resolveCourseFromText("数理最適化", state.courses)?.id).toBe("C15");
     expect(resolveCourseFromText("数理最適", state.courses)).toBeNull();
     expect(resolveRoomFromText("Hall 101", state.rooms)).toBeNull();
@@ -893,10 +895,10 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     expect(repairTruncatedJson("   ")).toBe("{}");
 
     // 2. repairTruncatedJson repairs unclosed string inside object
-    const unclosedStr = '{"thought":"佐藤先生の月曜';
+    const unclosedStr = '{"thought":"Prof Sato Mon';
     const repStr = repairTruncatedJson(unclosedStr);
     expect(() => JSON.parse(repStr)).not.toThrow();
-    expect(JSON.parse(repStr).thought).toBe("佐藤先生の月曜");
+    expect(JSON.parse(repStr).thought).toBe("Prof Sato Mon");
 
     // 3. repairTruncatedJson repairs truncated nested arrays and objects
     const truncatedNested =
@@ -916,19 +918,19 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     // 5. buildCompactStateCatalogPrompt and buildUltraCompactCatalogPrompt
     const state = generateTimetableState();
     const compactPrompt = buildCompactStateCatalogPrompt(state);
-    expect(compactPrompt).toContain("C01:情報科学概論(週1,担当:P07)");
-    expect(compactPrompt).not.toContain("履修135名"); // Pruned to save tokens
-    expect(compactPrompt).toContain("P01:佐藤 健一");
-    expect(compactPrompt).toContain("R101:101大講義室");
+    expect(compactPrompt).toContain("C01:Intro to Computer Science");
+    expect(compactPrompt).not.toContain("enrollment"); // Pruned to save tokens
+    expect(compactPrompt).toContain("P01:Kenichi Sato");
+    expect(compactPrompt).toContain("R101:101 Large Lecture Hall");
 
     const ultraCompactPrompt = buildUltraCompactCatalogPrompt(state);
-    expect(ultraCompactPrompt).toContain("C01:情報科学概論(P07)");
-    expect(ultraCompactPrompt).not.toContain("現在の全体設定"); // Omitted in ultra-compact retry
+    expect(ultraCompactPrompt).toContain("C01:Intro to Computer Science(P07)");
+    expect(ultraCompactPrompt).not.toContain("Current Configuration"); // Omitted in ultra-compact retry
 
     // Empty state (blank slate) produces clean placeholders
     const blankState = { ...state, courses: [], professors: [], rooms: [] };
-    expect(buildCompactStateCatalogPrompt(blankState)).toContain("【登録科目一覧】(なし)");
-    expect(buildUltraCompactCatalogPrompt(blankState)).toContain("【登録科目一覧】(なし)");
+    expect(buildCompactStateCatalogPrompt(blankState)).toContain("[Courses] (None)");
+    expect(buildUltraCompactCatalogPrompt(blankState)).toContain("[Courses] (None)");
 
     // 6. extractPlan recovers when prompt() throws output limits exceeded error
     const prevLM = (globalThis as any).LanguageModel;
@@ -974,13 +976,13 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       };
 
       const mgr = createTimetableGeminiNanoManager();
-      await mgr.initialize(undefined, "ja");
-      const plan = await mgr.extractPlan("佐藤先生は月曜休み", state, undefined, undefined, "ja");
+      await mgr.initialize(undefined, "en");
+      const plan = await mgr.extractPlan("Prof Sato unavailable Mon", state, undefined, undefined, "en");
 
       // Verify that retry occurred with ultra-compact prompt
       expect(promptCallCount).toBe(2);
-      expect(promptsReceived[0]).toContain("週1,担当:P07"); // Initial compact prompt
-      expect(promptsReceived[1]).toContain("C01:情報科学概論(P07)"); // Ultra-compact retry prompt
+      expect(promptsReceived[0]).toContain("Prof:P07"); // Initial compact prompt
+      expect(promptsReceived[1]).toContain("C01:Intro to Computer Science(P07)"); // Ultra-compact retry prompt
       expect(plan.operations.length).toBe(1);
       expect(plan.operations[0].op).toBe("set_professor_unavailability");
       mgr.destroy();
@@ -1169,8 +1171,8 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         expect(ui.btnCatImportCsv.length).toBeGreaterThan(0);
         expect(ui.chatWelcomeMarkdown.length).toBeGreaterThan(0);
       }
-      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("時間割を初期編成します");
-      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("時間割ボード");
+      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).not.toContain("\u6642\u9593\u5272\u3092\u521D\u671F\u7DE8\u6210\u3057\u307E\u3059");
+      expect(UI_TEXT_I18N.ja.chatWelcomeMarkdown).toContain("\u6642\u9593\u5272\u30DC\u30FC\u30C9");
 
       // 5. Step 3: Triggering solve transitions state from unscheduled (null) to scheduled (Optimal)
       const outcome = await triggerSolve();

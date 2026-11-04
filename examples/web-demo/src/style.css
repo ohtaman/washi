@@ -1,48 +1,48 @@
 :root {
-  /* モダン和紙パレット (WaSHI Modern Light Palette - clean, aligned with Docs) */
-  --bg-washi: #f8fafc;           /* クリーンなオフホワイト/ライトスレート (VitePressの#f6f6f7に調和) */
+  /* WaSHI Modern Light Palette - clean, aligned with Docs */
+  --bg-washi: #f8fafc;           /* Clean off-white / light slate (harmonizes with VitePress #f6f6f7) */
   --bg-surface: #ffffff;         /* 白磁 (純白) */
-  --bg-surface-elevated: #f1f5f9;/* カード・ヘッダーエレベーション */
+  --bg-surface-elevated: #f1f5f9;/* Card and header elevation */
   --bg-surface-hover: #e2e8f0;
 
-  /* 墨色 (Sumi) テキスト階層 (視認性の高いモダンタイポグラフィ) */
+  /* Sumi ink text hierarchy (high-visibility modern typography) */
   --text-sumi: #0f172a;          /* 濃墨 / Slate-900 */
   --text-sumi-secondary: #475569;/* 墨 / Slate-600 */
   --text-sumi-muted: #64748b;    /* 薄墨 / Slate-500 */
 
-  /* 緋色・朱 (Hi / Akane / Scarlet) プライマリアクセント */
+  /* Scarlet / Vermilion primary accent */
   --color-hi: #c23b22;           /* 緋色 */
   --color-hi-dark: #9e2a15;      /* 深緋 */
-  --color-hi-light: #fef2f2;     /* 緋の淡色 */
+  --color-hi-light: #fef2f2;     /* Pale scarlet */
   --color-hi-border: #fecdd3;
 
   /* 藍色 (Indigo / Ai) */
   --color-ai: #1e3a5f;
   --color-ai-light: #eff6ff;
 
-  /* 青磁・千歳緑 (Celadon / Pine Green) - 成功・最適解 */
-  --color-seiji: #16a34a;        /* 緑 (Docsのoptimalと一致) */
+  /* Celadon / Pine Green - success & optimal solution */
+  --color-seiji: #16a34a;        /* Green (matches Docs optimal badge) */
   --color-seiji-light: #f0fdf4;
 
-  /* 朽葉・琥珀 (Amber / Warning) */
+  /* Amber / Warning */
   --color-amber: #d97706;
   --color-amber-light: #fffbeb;
 
-  /* 茜・紅 (Rose / Error) */
-  --color-beni: #e11d48;         /* 茜 (Docsのconflict/brand-hiと一致) */
+  /* Rose / Error */
+  --color-beni: #e11d48;         /* Rose (matches Docs conflict / brand-hi) */
   --color-beni-light: #fff1f2;
 
   /* 境界線 (Borders) */
-  --border-washi: #e2e8f0;       /* すっきりとしたボーダー */
+  --border-washi: #e2e8f0;       /* Clean border */
   --border-subtle: rgba(15, 23, 42, 0.06);
   --border-focus: #c23b22;
 
-  /* タイポグラフィ */
+  /* Typography */
   --font-sans: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
   --font-serif: var(--font-sans);
   --font-mono: 'JetBrains Mono', 'Menlo', monospace;
 
-  /* 角丸と陰影 */
+  /* Border radius and shadows */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -52,18 +52,18 @@
   --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
-/* ダークモード (Dark Palette - VitePress Dark Theme と完全調和) */
+/* Dark Mode (Dark Palette - harmonizes with VitePress Dark Theme) */
 :root[data-theme="dark"] {
-  --bg-washi: #141416;           /* 深い墨色背景 (VitePress dark #1b1b1f に調和) */
-  --bg-surface: #1b1b1f;         /* サーフェス */
-  --bg-surface-elevated: #242429;/* エレベーション */
+  --bg-washi: #141416;           /* Deep sumi background (harmonizes with VitePress dark #1b1b1f) */
+  --bg-surface: #1b1b1f;         /* Surface */
+  --bg-surface-elevated: #242429;/* Elevation */
   --bg-surface-hover: #2e2e36;
 
   --text-sumi: #f1f5f9;          /* 明墨 / Slate-100 */
   --text-sumi-secondary: #94a3b8;/* Slate-400 */
   --text-sumi-muted: #64748b;    /* Slate-500 */
 
-  --color-hi: #e05338;           /* ダークでも映える鮮やかな緋色 */
+  --color-hi: #e05338;           /* Vivid scarlet that stands out in dark mode */
   --color-hi-dark: #c23b22;
   --color-hi-light: rgba(224, 83, 56, 0.15);
   --color-hi-border: rgba(224, 83, 56, 0.35);
@@ -415,7 +415,7 @@ body {
   font-family: var(--font-sans);
 }
 
-/* 緋色メインボタン */
+/* Scarlet primary button */
 .btn-primary {
   background: var(--color-hi);
   color: #ffffff;
@@ -556,7 +556,7 @@ body {
   display: block;
 }
 
-/* Summary Cards (上質で端正なメトリクス表示) */
+/* Summary Cards (refined metric cards) */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
@@ -647,7 +647,7 @@ body {
   justify-content: center;
 }
 
-/* N-Queens 市松模様チェス盤 */
+/* N-Queens checkerboard */
 .chessboard {
   display: grid;
   grid-template-columns: repeat(8, 38px);
@@ -777,7 +777,7 @@ body {
   font-weight: 600;
 }
 
-/* LP / Log Pre Block (目に優しい淡和紙背景) */
+/* LP / Log Pre Block (eye-friendly pale washi background) */
 .code-display {
   background: var(--bg-washi);
   border: 1px solid var(--border-washi);

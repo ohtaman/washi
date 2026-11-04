@@ -1,0 +1,283 @@
+{
+  "shifts": {
+    "D": {
+      "label": "白班 (Day)",
+      "shortLabel": "白",
+      "timeRange": "08:30–17:00"
+    },
+    "E": {
+      "label": "小夜班 (Evening)",
+      "shortLabel": "小",
+      "timeRange": "16:30–01:00"
+    },
+    "N": {
+      "label": "大夜班 (Night)",
+      "shortLabel": "大",
+      "timeRange": "00:30–09:00"
+    },
+    "O": {
+      "label": "休假 (Off)",
+      "shortLabel": "休",
+      "timeRange": "全天休息"
+    },
+    "W": {
+      "label": "出勤 (任意班次)",
+      "shortLabel": "勤",
+      "timeRange": "出勤(白/小/大)"
+    },
+    "EN": {
+      "label": "夜班 (小夜/大夜)",
+      "shortLabel": "夜",
+      "timeRange": "小夜或大夜"
+    }
+  },
+  "skills": {
+    "leader_cap": {
+      "label": "组长资格",
+      "shortLabel": "组",
+      "badge": "👑组长"
+    },
+    "icu_er": {
+      "label": "急危重症对应",
+      "shortLabel": "急",
+      "badge": "🚨重症"
+    },
+    "newcomer": {
+      "label": "新手护士",
+      "shortLabel": "新",
+      "badge": "🌱新手"
+    },
+    "mid": {
+      "label": "骨干护士",
+      "shortLabel": "中",
+      "badge": "⭐骨干"
+    },
+    "leader": {
+      "label": "主管护师 / 护士长",
+      "shortLabel": "主",
+      "badge": "🏅主管"
+    },
+    "team_A": {
+      "label": "A组",
+      "shortLabel": "A组",
+      "badge": "🔷A组"
+    },
+    "team_B": {
+      "label": "B组",
+      "shortLabel": "B组",
+      "badge": "🔶B组"
+    }
+  },
+  "nurses": {
+    "N01": {
+      "name": "佐藤 美咲",
+      "kana": "Sato"
+    },
+    "N02": {
+      "name": "铃木 阳菜",
+      "kana": "Suzuki"
+    },
+    "N03": {
+      "name": "高桥 健太",
+      "kana": "Takahashi"
+    },
+    "N04": {
+      "name": "田中 彩乃",
+      "kana": "Tanaka"
+    },
+    "N05": {
+      "name": "伊藤 结衣",
+      "kana": "Ito"
+    },
+    "N06": {
+      "name": "渡边 翔太",
+      "kana": "Watanabe"
+    },
+    "N07": {
+      "name": "山本 凛",
+      "kana": "Yamamoto"
+    },
+    "N08": {
+      "name": "中村 优奈",
+      "kana": "Nakamura"
+    },
+    "N09": {
+      "name": "小林 诚",
+      "kana": "Kobayashi"
+    },
+    "N10": {
+      "name": "加藤 美月",
+      "kana": "Kato"
+    },
+    "N11": {
+      "name": "吉田 葵",
+      "kana": "Yoshida"
+    },
+    "N12": {
+      "name": "山田 拓海",
+      "kana": "Yamada"
+    },
+    "N13": {
+      "name": "佐佐木 枫",
+      "kana": "Sasaki"
+    },
+    "N14": {
+      "name": "山口 莉子",
+      "kana": "Yamaguchi"
+    },
+    "N15": {
+      "name": "松本 大辉",
+      "kana": "Matsumoto"
+    },
+    "N16": {
+      "name": "井上 芽依",
+      "kana": "Inoue"
+    },
+    "N17": {
+      "name": "木村 琴音",
+      "kana": "Kimura"
+    },
+    "N18": {
+      "name": "林 飒太",
+      "kana": "Hayashi"
+    },
+    "N19": {
+      "name": "斋藤 杏奈",
+      "kana": "Saito"
+    },
+    "N20": {
+      "name": "清水 遥",
+      "kana": "Shimizu"
+    },
+    "N21": {
+      "name": "山崎 翼",
+      "kana": "Yamazaki"
+    },
+    "N22": {
+      "name": "森 花音",
+      "kana": "Mori"
+    },
+    "N23": {
+      "name": "池田 结菜",
+      "kana": "Ikeda"
+    },
+    "N24": {
+      "name": "桥本 陆",
+      "kana": "Hashimoto"
+    },
+    "N25": {
+      "name": "阿部 樱",
+      "kana": "Abe"
+    },
+    "N26": {
+      "name": "石川 菜菜美",
+      "kana": "Ishikawa"
+    },
+    "N27": {
+      "name": "山下 莲",
+      "kana": "Yamashita"
+    },
+    "N28": {
+      "name": "中岛 诗织",
+      "kana": "Nakajima"
+    },
+    "N29": {
+      "name": "石井 亮介",
+      "kana": "Ishii"
+    },
+    "N30": {
+      "name": "小川 真央",
+      "kana": "Ogawa"
+    },
+    "N31": {
+      "name": "前田 奏",
+      "kana": "Maeda"
+    },
+    "N32": {
+      "name": "冈田 千寻",
+      "kana": "Okada"
+    },
+    "N33": {
+      "name": "长谷川 骏",
+      "kana": "Hasegawa"
+    },
+    "N34": {
+      "name": "藤田 茉白",
+      "kana": "Fujita"
+    },
+    "N35": {
+      "name": "后藤 优斗",
+      "kana": "Goto"
+    },
+    "N36": {
+      "name": "近藤 未来",
+      "kana": "Kondo"
+    }
+  },
+  "csv": {
+    "headers": {
+      "id": [
+        "id",
+        "护士id",
+        "员工id",
+        "工号"
+      ],
+      "name": [
+        "name",
+        "姓名",
+        "护士姓名"
+      ],
+      "kana": [
+        "kana",
+        "拼音",
+        "读音"
+      ],
+      "skills": [
+        "skills",
+        "技能",
+        "资质",
+        "标签"
+      ],
+      "role": [
+        "role",
+        "职务",
+        "角色",
+        "职称"
+      ],
+      "contract": [
+        "contract",
+        "合同类型",
+        "用工性质"
+      ],
+      "nightOk": [
+        "nightok",
+        "夜班许可",
+        "可否值夜班"
+      ],
+      "weekdayOnly": [
+        "weekdayonly",
+        "仅工作日",
+        "仅限平日"
+      ],
+      "holidaysOff": [
+        "holidaysoff",
+        "节假日休息",
+        "法定休"
+      ],
+      "prevMonthShifts": [
+        "prevmonthshifts",
+        "上月末班次",
+        "上月接续班次"
+      ]
+    }
+  },
+  "ui": {
+    "title": "医院病房护士排班 AI 助手 — Gemini Nano × WaSHI",
+    "headerTitle": "🏥 医院病房护士排班 AI 助手 (NSP)",
+    "navApps": "← 案例展示",
+    "navTimetable": "🎓 AI 大学排课",
+    "btnTheory": "📖 理论原理解析",
+    "btnTutorial": "🔰 快速上手指南",
+    "themeToggle": "切换浅色/深色主题"
+  }
+}

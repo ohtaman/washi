@@ -39,73 +39,73 @@ export function createDefaultRooms(): RoomProfile[] {
   return [
     {
       id: "R101",
-      name: "101大講義室",
-      shortName: "101大",
-      building: "情報棟1F",
+      name: "101 Large Lecture Hall",
+      shortName: "101 Large",
+      building: "CS Bldg 1F",
       capacity: 150,
       roomType: "large_hall",
       equipment: ["projector", "mic", "recording"],
-      aliases: ["R101", "101", "101大講義室", "101大", "大講義室101"],
+      aliases: ["R101", "101", "101 Large"],
     },
     {
       id: "R102",
-      name: "102大講義室",
-      shortName: "102大",
-      building: "情報棟1F",
+      name: "102 Large Lecture Hall",
+      shortName: "102 Large",
+      building: "CS Bldg 1F",
       capacity: 120,
       roomType: "large_hall",
       equipment: ["projector", "mic", "recording"],
-      aliases: ["R102", "102", "102大講義室", "102大", "大講義室102"],
+      aliases: ["R102", "102", "102 Large"],
     },
     {
       id: "R201",
-      name: "201中講義室",
-      shortName: "201中",
-      building: "情報棟2F",
+      name: "201 Medium Classroom",
+      shortName: "201 Med",
+      building: "CS Bldg 2F",
       capacity: 85,
       roomType: "medium_room",
       equipment: ["projector", "mic", "moveable_desks"],
-      aliases: ["R201", "201", "201中講義室", "201中", "中講義室201"],
+      aliases: ["R201", "201", "201 Med"],
     },
     {
       id: "R202",
-      name: "202中講義室",
-      shortName: "202中",
-      building: "情報棟2F",
+      name: "202 Medium Classroom",
+      shortName: "202 Med",
+      building: "CS Bldg 2F",
       capacity: 75,
       roomType: "medium_room",
       equipment: ["projector", "mic", "moveable_desks"],
-      aliases: ["R202", "202", "202中講義室", "202中", "中講義室202"],
+      aliases: ["R202", "202", "202 Med"],
     },
     {
       id: "R301",
-      name: "301 PC演習室A",
+      name: "301 PC Lab A",
       shortName: "301PC-A",
-      building: "情報棟3F",
+      building: "CS Bldg 3F",
       capacity: 70,
       roomType: "pc_lab",
       equipment: ["projector", "mic", "pc_terminal", "recording"],
-      aliases: ["R301", "301", "301PC", "301 PC演習室A", "PC演習室A", "PC室A"],
+      aliases: ["R301", "301", "301PC", "PC Lab A"],
     },
     {
       id: "R302",
-      name: "302 PC演習室B",
+      name: "302 PC Lab B",
       shortName: "302PC-B",
-      building: "情報棟3F",
+      building: "CS Bldg 3F",
       capacity: 60,
       roomType: "pc_lab",
       equipment: ["projector", "mic", "pc_terminal"],
-      aliases: ["R302", "302", "302PC", "302 PC演習室B", "PC演習室B", "PC室B"],
+      aliases: ["R302", "302", "302PC", "PC Lab B"],
     },
     {
       id: "R401",
-      name: "401ゼミ室",
-      shortName: "401ゼミ",
-      building: "情報棟4F",
+      name: "401 Seminar Room",
+      shortName: "401Sem",
+      building: "CS Bldg 4F",
       capacity: 40,
       roomType: "seminar_room",
       equipment: ["projector", "moveable_desks"],
-      aliases: ["R401", "401", "401ゼミ室", "401ゼミ", "ゼミ室"],
+      aliases: ["R401", "401", "401 Seminar", "401 Seminar Room", "Seminar Room"],
     },
   ];
 }
@@ -114,14 +114,14 @@ export function createDefaultProfessors(): ProfessorProfile[] {
   return [
     {
       id: "P01",
-      name: "佐藤 健一",
-      kana: "さとう けんいち",
-      title: "教授",
+      name: "Kenichi Sato",
+      kana: "Sato Kenichi",
+      title: "Professor",
       employment: "full_time",
-      specialty: "数理最適化・オペレーションズリサーチ",
+      specialty: "Mathematical Optimization & Operations Research",
       unavailableDays: [],
       unavailableSlots: [
-        { day: "Wed", period: 5, reason: "学部長・教授会定例" },
+        { day: "Wed", period: 5, reason: "Faculty Meeting" },
       ],
       avoidPeriod1: true,
       avoidPeriod5: false,
@@ -129,15 +129,15 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P02",
-      name: "鈴木 美咲",
-      kana: "すずき みさき",
-      title: "教授",
-      specialty: "機械学習・自然言語処理",
+      name: "Misaki Suzuki",
+      kana: "Suzuki Misaki",
+      title: "Professor",
+      specialty: "Machine Learning & Natural Language Processing",
       employment: "full_time",
       unavailableDays: [],
       unavailableSlots: [
-        { day: "Wed", period: 5, reason: "教授会定例" },
-        { day: "Mon", period: 1, reason: "共同研究定例ミーティング" },
+        { day: "Wed", period: 5, reason: "Faculty Meeting" },
+        { day: "Mon", period: 1, reason: "Joint Research Sync" },
       ],
       avoidPeriod1: true,
       avoidPeriod5: false,
@@ -145,14 +145,14 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P03",
-      name: "高橋 誠",
-      kana: "たかはし まこと",
-      title: "教授",
+      name: "Makoto Takahashi",
+      kana: "Takahashi Makoto",
+      title: "Professor",
       employment: "full_time",
-      specialty: "アルゴリズム・離散数学",
+      specialty: "Algorithms & Discrete Mathematics",
       unavailableDays: [],
       unavailableSlots: [
-        { day: "Wed", period: 5, reason: "教授会定例" },
+        { day: "Wed", period: 5, reason: "Faculty Meeting" },
       ],
       avoidPeriod1: false,
       avoidPeriod5: true,
@@ -160,14 +160,14 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P04",
-      name: "田中 彩乃",
-      kana: "たなか あやの",
-      title: "准教授",
+      name: "Ayano Tanaka",
+      kana: "Tanaka Ayano",
+      title: "Associate Professor",
       employment: "full_time",
-      specialty: "ソフトウェア工学・プログラミング言語",
+      specialty: "Software Engineering & Programming Languages",
       unavailableDays: [],
       unavailableSlots: [
-        { day: "Fri", period: 5, reason: "保育園お迎え" },
+        { day: "Fri", period: 5, reason: "Childcare Pickup" },
       ],
       avoidPeriod1: false,
       avoidPeriod5: true,
@@ -175,14 +175,14 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P05",
-      name: "伊藤 大輔",
-      kana: "いとう だいすけ",
-      title: "准教授",
+      name: "Daisuke Ito",
+      kana: "Ito Daisuke",
+      title: "Associate Professor",
       employment: "full_time",
-      specialty: "データベース・分散システム",
+      specialty: "Databases & Distributed Systems",
       unavailableDays: [],
       unavailableSlots: [
-        { day: "Tue", period: 1, reason: "全学情報基盤委員会" },
+        { day: "Tue", period: 1, reason: "IT Infrastructure Committee" },
       ],
       avoidPeriod1: false,
       avoidPeriod5: false,
@@ -190,11 +190,11 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P06",
-      name: "渡辺 結衣",
-      kana: "わたなべ ゆい",
-      title: "准教授",
+      name: "Yui Watanabe",
+      kana: "Watanabe Yui",
+      title: "Associate Professor",
       employment: "full_time",
-      specialty: "統計科学・データマイニング",
+      specialty: "Statistical Data Science & Data Mining",
       unavailableDays: [],
       unavailableSlots: [],
       avoidPeriod1: true,
@@ -203,11 +203,11 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P07",
-      name: "山本 翔太",
-      kana: "やまもと しょうた",
-      title: "講師",
+      name: "Shota Yamamoto",
+      kana: "Yamamoto Shota",
+      title: "Lecturer",
       employment: "full_time",
-      specialty: "コンピュータシステム・OS・計算機科学基礎",
+      specialty: "Computer Systems & Foundations of CS",
       unavailableDays: [],
       unavailableSlots: [],
       avoidPeriod1: false,
@@ -216,14 +216,14 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P08",
-      name: "中村 凛",
-      kana: "なかむら りん",
-      title: "講師",
+      name: "Rin Nakamura",
+      kana: "Nakamura Rin",
+      title: "Lecturer",
       employment: "full_time",
-      specialty: "HCI・インタラクティブシステム・Web工学",
+      specialty: "HCI & Interactive Web Engineering",
       unavailableDays: [],
       unavailableSlots: [
-        { day: "Thu", period: 1, reason: "通院・定期健診枠" },
+        { day: "Thu", period: 1, reason: "Medical Appointment" },
       ],
       avoidPeriod1: true,
       avoidPeriod5: false,
@@ -231,15 +231,15 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P09",
-      name: "小林 拓海",
-      kana: "こばやし たくみ",
-      title: "非常勤講師",
+      name: "Takumi Kobayashi",
+      kana: "Kobayashi Takumi",
+      title: "Adjunct Lecturer",
       employment: "adjunct",
-      specialty: "情報セキュリティ・暗号理論（セキュリティ企業研究所長）",
+      specialty: "Information Security & Cryptography (Head of Security Research Lab)",
       // Adjunct: only available Tue & Thu
       unavailableDays: ["Mon", "Wed", "Fri"],
       unavailableSlots: [
-        { day: "Tue", period: 1, reason: "本社業務のため午後または2限以降希望" },
+        { day: "Tue", period: 1, reason: "HQ Duty (P2+ Preferred)" },
       ],
       avoidPeriod1: true,
       avoidPeriod5: false,
@@ -247,16 +247,16 @@ export function createDefaultProfessors(): ProfessorProfile[] {
     },
     {
       id: "P10",
-      name: "加藤 優奈",
-      kana: "かとう ゆうな",
-      title: "非常勤講師",
+      name: "Yuna Kato",
+      kana: "Kato Yuna",
+      title: "Adjunct Lecturer",
       employment: "adjunct",
-      specialty: "クラウドアーキテクチャ・情報倫理（テック企業VPoE）",
+      specialty: "Cloud Architecture & Information Ethics (Tech VPoE)",
       // Adjunct: only available Wed & Fri
       unavailableDays: ["Mon", "Tue", "Thu"],
       unavailableSlots: [
-        { day: "Wed", period: 1, reason: "移動時間確保のため1限不可" },
-        { day: "Fri", period: 1, reason: "移動時間確保のため1限不可" },
+        { day: "Wed", period: 1, reason: "Commute Time (No P1)" },
+        { day: "Fri", period: 1, reason: "Commute Time (No P1)" },
       ],
       avoidPeriod1: true,
       avoidPeriod5: false,
@@ -267,320 +267,320 @@ export function createDefaultProfessors(): ProfessorProfile[] {
 
 export function createDefaultCourses(): CourseProfile[] {
   return [
-    // ==================== 1年次 (Y1: 135名) ====================
+    // ==================== Year 1 (Y1: 135 students) ====================
     {
       id: "C01",
-      title: "情報科学概論",
-      shortTitle: "情報科学概論",
-      professorId: "P07", // 山本
+      title: "Intro to Computer Science",
+      shortTitle: "Intro CS",
+      professorId: "P07", // Yamamoto
       cohorts: ["Y1"],
       category: "compulsory",
       enrollment: 135,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C01", "情報科学概論", "情報概論"],
+      aliases: ["C01", "Intro to Computer Science", "Intro CS"],
     },
     {
       id: "C02",
-      title: "線形代数学I",
-      shortTitle: "線形代数I",
-      professorId: "P01", // 佐藤 (週2コマ: 講義+演習講義)
+      title: "Linear Algebra I",
+      shortTitle: "Linear Alg I",
+      professorId: "P01", // Sato (2 sessions/week)
       cohorts: ["Y1"],
       category: "compulsory",
       enrollment: 130,
       sessionsPerWeek: 2,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C02", "線形代数学I", "線形代数I", "線形代数"],
+      aliases: ["C02", "Linear Algebra I", "Linear Alg I"],
     },
     {
       id: "C03",
-      title: "微分積分学I",
-      shortTitle: "微積分I",
-      professorId: "P06", // 渡辺
+      title: "Calculus I",
+      shortTitle: "Calculus I",
+      professorId: "P06", // Watanabe
       cohorts: ["Y1"],
       category: "compulsory",
       enrollment: 125,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C03", "微分積分学I", "微積分I", "微積分", "微分積分"],
+      aliases: ["C03", "Calculus I"],
     },
     {
       id: "C04",
-      title: "離散数学基礎",
-      shortTitle: "離散数学",
-      professorId: "P03", // 高橋
+      title: "Discrete Mathematics",
+      shortTitle: "Discrete Math",
+      professorId: "P03", // Takahashi
       cohorts: ["Y1"],
       category: "compulsory",
       enrollment: 115,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C04", "離散数学基礎", "離散数学"],
+      aliases: ["C04", "Discrete Mathematics", "Discrete Math"],
     },
     {
       id: "C05",
-      title: "プログラミング入門演習A",
-      shortTitle: "プロ入門A",
-      professorId: "P04", // 田中 (1年Aクラス分割・PC演習室)
+      title: "Intro Programming Lab A",
+      shortTitle: "Prog Lab A",
+      professorId: "P04", // Tanaka (Year 1 Class A, PC Lab)
       cohorts: ["Y1"],
       category: "lab_exercise",
       enrollment: 65,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "pc_terminal"],
       requiredRoomType: "pc_lab",
-      aliases: ["C05", "プログラミング入門演習A", "プロ入門A", "プログラミング入門A"],
+      aliases: ["C05", "Intro Programming Lab A", "Prog Lab A"],
     },
     {
       id: "C06",
-      title: "プログラミング入門演習B",
-      shortTitle: "プロ入門B",
-      professorId: "P08", // 中村 (1年Bクラス分割・PC演習室)
+      title: "Intro Programming Lab B",
+      shortTitle: "Prog Lab B",
+      professorId: "P08", // Nakamura (Year 1 Class B, PC Lab)
       cohorts: ["Y1"],
       category: "lab_exercise",
       enrollment: 60,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "pc_terminal"],
       requiredRoomType: "pc_lab",
-      aliases: ["C06", "プログラミング入門演習B", "プロ入門B", "プログラミング入門B"],
+      aliases: ["C06", "Intro Programming Lab B", "Prog Lab B"],
     },
     {
       id: "C07",
-      title: "情報倫理と法制度",
-      shortTitle: "情報倫理",
-      professorId: "P10", // 加藤 (非常勤: 水・金のみ)
+      title: "Information Ethics & Law",
+      shortTitle: "Info Ethics",
+      professorId: "P10", // Kato (Adjunct: Wed/Fri only)
       cohorts: ["Y1"],
       category: "elective_core",
       enrollment: 110,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C07", "情報倫理と法制度", "情報倫理"],
+      aliases: ["C07", "Information Ethics & Law", "Info Ethics"],
     },
 
-    // ==================== 2年次 (Y2: 115名) ====================
+    // ==================== Year 2 (Y2: 115 students) ====================
     {
       id: "C08",
-      title: "アルゴリズムとデータ構造",
-      shortTitle: "アルゴリズム",
-      professorId: "P03", // 高橋 (週2コマ)
+      title: "Algorithms & Data Structures",
+      shortTitle: "Algorithms",
+      professorId: "P03", // Takahashi (2 sessions/week)
       cohorts: ["Y2"],
       category: "compulsory",
       enrollment: 115,
       sessionsPerWeek: 2,
       requiredEquipment: ["projector", "mic", "recording"],
-      aliases: ["C08", "アルゴリズムとデータ構造", "アルゴリズム"],
+      aliases: ["C08", "Algorithms & Data Structures", "Algorithms"],
     },
     {
       id: "C09",
-      title: "確率・統計学",
-      shortTitle: "確率・統計",
-      professorId: "P06", // 渡辺
+      title: "Probability & Statistics",
+      shortTitle: "Prob & Stat",
+      professorId: "P06", // Watanabe
       cohorts: ["Y2"],
       category: "compulsory",
       enrollment: 110,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C09", "確率・統計学", "確率・統計", "確率統計"],
+      aliases: ["C09", "Probability & Statistics", "Prob & Stat"],
     },
     {
       id: "C10",
-      title: "オペレーティングシステム",
+      title: "Operating Systems",
       shortTitle: "OS",
-      professorId: "P07", // 山本
+      professorId: "P07", // Yamamoto
       cohorts: ["Y2"],
       category: "compulsory",
       enrollment: 80,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C10", "オペレーティングシステム", "OS"],
+      aliases: ["C10", "Operating Systems", "OS"],
     },
     {
       id: "C11",
-      title: "データベースシステム",
-      shortTitle: "データベース",
-      professorId: "P05", // 伊藤
+      title: "Database Systems",
+      shortTitle: "Databases",
+      professorId: "P05", // Ito
       cohorts: ["Y2"],
       category: "elective_core",
       enrollment: 75,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C11", "データベースシステム", "データベース", "DB"],
+      aliases: ["C11", "Database Systems", "Databases", "DB"],
     },
     {
       id: "C12",
-      title: "ソフトウェア設計演習",
-      shortTitle: "SW設計演習",
-      professorId: "P04", // 田中 (週2コマ・PC演習室)
+      title: "Software Design Lab",
+      shortTitle: "SW Design Lab",
+      professorId: "P04", // Tanaka (2 sessions/week, PC Lab)
       cohorts: ["Y2"],
       category: "lab_exercise",
       enrollment: 65,
       sessionsPerWeek: 2,
       requiredEquipment: ["projector", "pc_terminal"],
       requiredRoomType: "pc_lab",
-      aliases: ["C12", "ソフトウェア設計演習", "SW設計演習", "ソフト設計演習"],
+      aliases: ["C12", "Software Design Lab", "SW Design Lab"],
     },
     {
       id: "C13",
-      title: "コンピュータネットワーク",
-      shortTitle: "ネットワーク",
-      professorId: "P05", // 伊藤
+      title: "Computer Networks",
+      shortTitle: "Networks",
+      professorId: "P05", // Ito
       cohorts: ["Y2"],
       category: "elective_core",
       enrollment: 70,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C13", "コンピュータネットワーク", "ネットワーク"],
+      aliases: ["C13", "Computer Networks", "Networks"],
     },
     {
       id: "C14",
-      title: "ヒューマンコンピュータインタラクション",
+      title: "Human-Computer Interaction",
       shortTitle: "HCI",
-      professorId: "P08", // 中村
+      professorId: "P08", // Nakamura
       cohorts: ["Y2"],
       category: "elective",
       enrollment: 65,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "moveable_desks"],
-      aliases: ["C14", "ヒューマンコンピュータインタラクション", "HCI"],
+      aliases: ["C14", "Human-Computer Interaction", "HCI"],
     },
 
-    // ==================== 3年次 (Y3: 95名) ====================
+    // ==================== Year 3 (Y3: 95 students) ====================
     {
       id: "C15",
-      title: "数理最適化",
-      shortTitle: "数理最適化",
-      professorId: "P01", // 佐藤 (週2コマ)
+      title: "Mathematical Optimization",
+      shortTitle: "Optimization",
+      professorId: "P01", // Sato (2 sessions/week)
       cohorts: ["Y3"],
       category: "compulsory",
       enrollment: 80,
       sessionsPerWeek: 2,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C15", "数理最適化", "最適化"],
+      aliases: ["C15", "Mathematical Optimization", "Optimization"],
     },
     {
       id: "C16",
-      title: "機械学習",
-      shortTitle: "機械学習",
-      professorId: "P02", // 鈴木 (週2コマ)
+      title: "Machine Learning",
+      shortTitle: "ML",
+      professorId: "P02", // Suzuki (2 sessions/week)
       cohorts: ["Y3"],
       category: "compulsory",
       enrollment: 82,
       sessionsPerWeek: 2,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C16", "機械学習", "ML"],
+      aliases: ["C16", "Machine Learning", "ML"],
     },
     {
       id: "C17",
-      title: "自然言語処理",
-      shortTitle: "自然言語処理",
-      professorId: "P02", // 鈴木
+      title: "Natural Language Processing",
+      shortTitle: "NLP",
+      professorId: "P02", // Suzuki
       cohorts: ["Y3"],
       category: "elective_core",
       enrollment: 70,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C17", "自然言語処理", "NLP"],
+      aliases: ["C17", "Natural Language Processing", "NLP"],
     },
     {
       id: "C18",
-      title: "情報セキュリティ",
-      shortTitle: "セキュリティ",
-      professorId: "P09", // 小林 (非常勤: 火・木のみ)
+      title: "Information Security",
+      shortTitle: "Security",
+      professorId: "P09", // Kobayashi (Adjunct: Tue/Thu only)
       cohorts: ["Y3"],
       category: "elective_core",
       enrollment: 75,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C18", "情報セキュリティ", "セキュリティ"],
+      aliases: ["C18", "Information Security", "Security"],
     },
     {
       id: "C19",
-      title: "データサイエンス実践演習",
-      shortTitle: "DS実践演習",
-      professorId: "P06", // 渡辺 (PC演習室)
+      title: "Practical Data Science Lab",
+      shortTitle: "Data Sci Lab",
+      professorId: "P06", // Watanabe (PC Lab)
       cohorts: ["Y3"],
       category: "lab_exercise",
       enrollment: 58,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "pc_terminal"],
       requiredRoomType: "pc_lab",
-      aliases: ["C19", "データサイエンス実践演習", "DS実践演習", "DS演習"],
+      aliases: ["C19", "Practical Data Science Lab", "Data Sci Lab"],
     },
     {
       id: "C20",
-      title: "Webアプリケーション開発演習",
-      shortTitle: "Web開発演習",
-      professorId: "P08", // 中村 (PC演習室)
+      title: "Web App Development Lab",
+      shortTitle: "Web Dev Lab",
+      professorId: "P08", // Nakamura (PC Lab)
       cohorts: ["Y3"],
       category: "lab_exercise",
       enrollment: 55,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "pc_terminal"],
       requiredRoomType: "pc_lab",
-      aliases: ["C20", "Webアプリケーション開発演習", "Web開発演習", "Web演習"],
+      aliases: ["C20", "Web App Development Lab", "Web Dev Lab"],
     },
     {
       id: "C21",
-      title: "クラウドコンピューティング実践",
-      shortTitle: "クラウド実践",
-      professorId: "P10", // 加藤 (非常勤: 水・金のみ)
+      title: "Cloud Computing in Practice",
+      shortTitle: "Cloud Practice",
+      professorId: "P10", // Kato (Adjunct: Wed/Fri only)
       cohorts: ["Y3"],
       category: "elective",
       enrollment: 65,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "mic"],
-      aliases: ["C21", "クラウドコンピューティング実践", "クラウド実践", "クラウド"],
+      aliases: ["C21", "Cloud Computing in Practice", "Cloud Practice"],
     },
     {
       id: "C22",
-      title: "暗号理論とブロックチェーン",
-      shortTitle: "暗号理論",
-      professorId: "P09", // 小林 (非常勤: 火・木のみ)
+      title: "Cryptography & Blockchain",
+      shortTitle: "Crypto & BC",
+      professorId: "P09", // Kobayashi (Adjunct: Tue/Thu only)
       cohorts: ["Y3", "Y4"],
       category: "elective",
       enrollment: 40,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector"],
-      aliases: ["C22", "暗号理論とブロックチェーン", "暗号理論"],
+      aliases: ["C22", "Cryptography & Blockchain", "Crypto & BC"],
     },
 
-    // ==================== 4年次・院 (Y4: 45名) ====================
+    // ==================== Year 4 / Graduate (Y4: 45 students) ====================
     {
       id: "C23",
-      title: "数理最適化ゼミ",
-      shortTitle: "最適化ゼミ",
-      professorId: "P01", // 佐藤
+      title: "Optimization Seminar",
+      shortTitle: "Opt Seminar",
+      professorId: "P01", // Sato
       cohorts: ["Y4"],
       category: "seminar",
       enrollment: 25,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "moveable_desks"],
       preferredRoomIds: ["R401"],
-      aliases: ["C23", "数理最適化ゼミ", "最適化ゼミ", "佐藤ゼミ"],
+      aliases: ["C23", "Optimization Seminar", "Opt Seminar", "Sato Seminar"],
     },
     {
       id: "C24",
-      title: "人工知能・NLPゼミ",
-      shortTitle: "AI・NLPゼミ",
-      professorId: "P02", // 鈴木
+      title: "AI & NLP Seminar",
+      shortTitle: "AI Seminar",
+      professorId: "P02", // Suzuki
       cohorts: ["Y4"],
       category: "seminar",
       enrollment: 28,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "moveable_desks"],
       preferredRoomIds: ["R401"],
-      aliases: ["C24", "人工知能・NLPゼミ", "AI・NLPゼミ", "鈴木ゼミ"],
+      aliases: ["C24", "AI & NLP Seminar", "AI Seminar", "Suzuki Seminar"],
     },
     {
       id: "C25",
-      title: "システムソフトウェア輪講",
-      shortTitle: "システム輪講",
-      professorId: "P05", // 伊藤
+      title: "System Software Colloquium",
+      shortTitle: "System Collog",
+      professorId: "P05", // Ito
       cohorts: ["Y4"],
       category: "seminar",
       enrollment: 24,
       sessionsPerWeek: 1,
       requiredEquipment: ["projector", "moveable_desks"],
       preferredRoomIds: ["R401"],
-      aliases: ["C25", "システムソフトウェア輪講", "システム輪講", "伊藤ゼミ"],
+      aliases: ["C25", "System Software Colloquium", "System Collog", "Ito Seminar"],
     },
   ];
 }
@@ -602,7 +602,7 @@ export function generateTimetableState(
       isHard: true,
       courseId: "C05",
       secondCourseId: "C06",
-      description: "カリキュラム順序: プログラミング入門演習A(C05)は演習B(C06)と同じ曜日またはより前の曜日に開講",
+      description: "Curriculum Order: Schedule Intro Programming Lab A (C05) on the same day or an earlier day than Lab B (C06)",
     },
   ];
 
@@ -652,7 +652,7 @@ export function injectTimetableConflictScenario(
         days: ["Tue"],
         periods: [2],
         roomId: "R101",
-        description: "【矛盾デモ】情報科学概論(C01・135名)を 火曜2限・101大講義室(R101) に固定",
+        description: "[Conflict Demo] Pin Intro to Computer Science (C01, 135 students) to Tue P2 in 101 Large Hall (R101)",
       },
       {
         id: "conflict_demo_r101_c02",
@@ -663,18 +663,18 @@ export function injectTimetableConflictScenario(
         days: ["Tue"],
         periods: [2],
         roomId: "R101",
-        description: "【矛盾デモ】線形代数学I(C02・130名)も 火曜2限・101大講義室(R101) に固定",
+        description: "[Conflict Demo] Pin Linear Algebra I (C02, 130 students) to Tue P2 in 101 Large Hall (R101)",
       }
     );
     return {
       updatedState: { ...state, customRules: nextRules },
       descriptionJa:
-        "130名超の大規模必修科目「情報科学概論(C01)」と「線形代数学I(C02)」の両方を【火曜2限・101大講義室】に強制固定しました（教室重複＆1年次必修重複）。",
+        "Forced both large 130+ student courses Intro to Computer Science (C01) and Linear Algebra I (C02) into Tue P2 in 101 Large Hall (R101), causing room double-booking and cohort time conflicts.",
     };
   }
 
   if (scenario === "prof_impossible_day") {
-    // Adjunct Prof P09 (小林 拓海: only available Tue/Thu) -> force C18 (情報セキュリティ) onto Monday Period 3!
+    // Adjunct Prof P09 (Takumi Kobayashi: only available Tue/Thu) -> force C18 (Information Security) onto Monday Period 3!
     nextRules.push({
       id: "conflict_demo_adjunct_mon",
       kind: "pin_slot",
@@ -684,12 +684,12 @@ export function injectTimetableConflictScenario(
       days: ["Mon"],
       periods: [3],
       description:
-        "【矛盾デモ】非常勤(火・木のみ出講可)の小林先生が担当する「情報セキュリティ(C18)」を月曜3限に固定",
+        "[Conflict Demo] Pin Information Security (C18) taught by adjunct Prof. Kobayashi (Tue/Thu only) to Mon P3",
     });
     return {
       updatedState: { ...state, customRules: nextRules },
       descriptionJa:
-        "火曜・木曜のみ出講可能な非常勤講師（小林先生）の担当科目「情報セキュリティ(C18)」を【月曜3限】に強制固定しました。",
+        "Forced course Information Security (C18) taught by adjunct Prof. Kobayashi (available Tue/Thu only) onto Mon P3.",
     };
   }
 
@@ -704,7 +704,7 @@ export function injectTimetableConflictScenario(
       courseId: "C05",
       days: ["Mon"],
       periods: [2],
-      description: "【矛盾デモ】プログラミング入門演習A(C05・PC室必須)を月曜2限に固定",
+      description: "[Conflict Demo] Pin Intro Programming Lab A (C05, PC lab required) to Mon P2",
     },
     {
       id: "conflict_demo_pclab_2",
@@ -714,7 +714,7 @@ export function injectTimetableConflictScenario(
       courseId: "C06",
       days: ["Mon"],
       periods: [2],
-      description: "【矛盾デモ】プログラミング入門演習B(C06・PC室必須)を月曜2限に固定",
+      description: "[Conflict Demo] Pin Intro Programming Lab B (C06, PC lab required) to Mon P2",
     },
     {
       id: "conflict_demo_pclab_3",
@@ -724,12 +724,12 @@ export function injectTimetableConflictScenario(
       courseId: "C19",
       days: ["Mon"],
       periods: [2],
-      description: "【矛盾デモ】データサイエンス実践演習(C19・PC室必須)も月曜2限に固定",
+      description: "[Conflict Demo] Pin Practical Data Science Lab (C19, PC lab required) to Mon P2",
     }
   );
   return {
     updatedState: { ...state, customRules: nextRules },
     descriptionJa:
-      "PC演習室が2室（301・302）しかない状態で、PC演習室必須の3科目（C05, C06, C19）すべてを【月曜2限】に同時固定しました。",
+      "With only 2 PC labs available (301 & 302), simultaneously pinned 3 PC-lab required courses (C05, C06, C19) to Mon P2.",
   };
 }
