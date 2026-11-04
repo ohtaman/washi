@@ -1,16 +1,31 @@
 # HiGHS Solver Engine
 
-**HiGHS** is high-performance mathematical optimization software developed at the University of Edinburgh. It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
+**HiGHS** is high-performance mathematical optimization software developed at the University of Edinburgh ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
+
+In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly via the open-source [`highs`](https://www.npmjs.com/package/highs) package ([lovasoa/highs-js](https://github.com/lovasoa/highs-js) by Ophir Lojkine), providing zero-config execution across Node.js, Web Workers, and browsers.
 
 ---
 
 ## Key Features in WaSHI
 
-- **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi`. No separate peer dependency or compilation required.
+- **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi` using the upstream [`highs`](https://www.npmjs.com/package/highs) WASM distribution. No separate peer dependency or C++ compiler required.
 - **Permissive MIT License**: 100% commercially friendly.
 - **Web Worker Multithreading**: Automatically offloads intensive solving to background Web Workers in browser environments to avoid freezing the UI thread.
 - **Warm-Start Support (`initialValue`)**: Supports passing variable primal initial value hints (`initialValue`) to HiGHS `setSolution` for warm starting.
-- **Fast WASM Execution**: Emscripten-compiled 32-bit WASM runs at near-native speed.
+- **Fast WASM Execution**: Runs the upstream 32-bit WebAssembly binary at near-native speed.
+
+---
+
+## Architecture & WebAssembly Runtime
+
+WaSHI does not compile HiGHS from C++ source in-tree. Instead, it packages and bundles the WebAssembly binary (`highs.wasm`) and runtime provided by the upstream [`highs`](https://www.npmjs.com/package/highs) npm package ([lovasoa/highs-js](https://github.com/lovasoa/highs-js)), wrapping it with WaSHI's algebraic modeling layer, automatic Web Worker offloading, and standard solver abstractions.
+
+### Callbacks & Solver Interactivity
+
+- **Progress Monitoring & Cancellation (Supported)**:
+  Through HiGHS's internal logging and interrupt hooks, WaSHI provides real-time progress callbacks (`onProgress`) and cooperative mid-solve cancellation via standard `AbortSignal`.
+- **Dynamic Cuts / Lazy Constraints (Not Supported in WASM Wrapper)**:
+  The upstream WebAssembly wrapper intentionally excludes low-level native callback type 8 (`MIP lazy constraints`) due to WASM-to-JS boundary and synchronous memory safety constraints. For problems requiring subtour elimination or Benders decomposition, use an **iterative cutting-plane loop** (solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve).
 
 ---
 
