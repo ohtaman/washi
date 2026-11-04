@@ -324,7 +324,7 @@ async function runBrowserVerification() {
     await shiftPage.setViewportSize({ width: 1280, height: 800 });
     await shiftPage.goto(`http://localhost:${port}/washi/apps/ai-shift/`, { waitUntil: "networkidle" });
 
-    // Click the 基礎データ tab
+    // Click the Master Data tab
     await shiftPage.click("#tab-btn-staff");
     await shiftPage.waitForFunction(() => {
       const panel = document.getElementById("tab-panel-staff");

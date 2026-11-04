@@ -65,13 +65,12 @@ describe("Web Demo Showcase: Theory Articles TeX Mathematical Formulas", () => {
   });
 
   it("parses dynamic math strings in titan-pack-theory TEXTS without KaTeX parse errors", () => {
-    const fullPath = path.resolve("examples/web-demo/games/titan-pack-theory/index.html");
-    const content = fs.readFileSync(fullPath, "utf8");
-
-    const scriptMatch = content.match(/const TEXTS = (\{[\s\S]*?\n      \});/);
-    expect(scriptMatch, "TEXTS object should exist in titan-pack-theory").not.toBeNull();
-
-    const TEXTS = eval("(" + scriptMatch![1] + ")");
+    const localesDir = path.resolve("examples/web-demo/games/titan-pack-theory/locales");
+    const TEXTS: Record<string, Record<string, string>> = {
+      en: JSON.parse(fs.readFileSync(path.join(localesDir, "en.json"), "utf8")),
+      ja: JSON.parse(fs.readFileSync(path.join(localesDir, "ja.json"), "utf8")),
+      zh: JSON.parse(fs.readFileSync(path.join(localesDir, "zh.json"), "utf8")),
+    };
     for (const [lang, obj] of Object.entries<Record<string, string>>(TEXTS)) {
       for (const [key, val] of Object.entries(obj)) {
         const matches = [...val.matchAll(/(?<!\$)\$([^\$\n]+?)\$(?!\$)/g)];

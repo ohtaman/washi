@@ -1,0 +1,19 @@
+{
+  "navPlay": "🎮 Play Game ▶",
+  "navShowcase": "← Back to Showcase",
+  "title": "Mathematical Foundations of TITAN PACK — 2D Strip Packing & MILP Linearization",
+  "lead": "Explore the Mixed-Integer Linear Programming (MILP) formulation of 2D Strip / Bin Packing behind TITAN PACK, along with the multi-scale interlocking algorithms that guarantee zero-fault-line solutions.",
+  "sec1Title": "1. What is the 2D Packing Problem?",
+  "sec1P1": "The 2D Packing Problem is a combinatorial optimization challenge where rectangular parts of various dimensions must be placed inside a bounding sheet or plate without overlapping or exceeding boundary limits. It has extensive real-world applications in sheet-metal manufacturing, woodworking, cutting-stock layouts, and VLSI floorplanning.",
+  "sec1P2": "Deciding whether a set of items can be packed with zero scrap (100% material efficiency) without void is known to be strongly NP-hard.",
+  "sec2Title": "2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)",
+  "sec2P1": "The condition that two rectangles $i$ and $j$ (placed at $(x_i, y_i)$ with dimensions $w_i \\times h_i$) do not overlap is inherently disjunctive (connected by logical OR):",
+  "sec2P2": "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ and tight axis-specific constants derived from plate dimensions $W, H$:",
+  "warnTitle": "CAUTION: Choice of Big-M and Numerical Stability",
+  "warnBody": "Setting Big-M to an arbitrary large number can weaken the continuous LP relaxation bound, increasing the number of branch-and-bound nodes. It may also trigger numerical instability where parts slightly overlap within solver tolerances ($10^{-6}$) and are falsely treated as feasible. Setting tight, provable upper bounds ($M_x = W$ and $M_y = H$) is standard practice in mathematical programming.",
+  "sec3Title": "3. Geometric Guarantees for Fault-Line-Free Layouts",
+  "sec3P1": "If a rectangle is naively sliced with full-width or full-height cuts, continuous fault lines (guillotine cuts) emerge, degrading structural rigidity and breaking the puzzle into trivial independent sub-puzzles.",
+  "sec3P2": "TITAN PACK uses a Multi-Scale Interlocking & Core Partitioning algorithm that guarantees every interior grid line $c \\in \\{1, \\dots, W-1\\}$ and $r \\in \\{1, \\dots, H-1\\}$ is crossed by at least one overlapping metal girder ($x_i < c < x_i + w_i$), ensuring an interlocking puzzle with zero continuous fault lines (furthermore, when identical parts exist, adding symmetry-breaking constraints like $x_i \\le x_j$ eliminates redundant permutation branches in solver search).",
+  "sec4Title": "4. Implementation with WaSHI",
+  "sec4P1": "Here is how to formulate and solve this 2D packing model using the @ohtaman/washi TypeScript mathematical modeling library:"
+}

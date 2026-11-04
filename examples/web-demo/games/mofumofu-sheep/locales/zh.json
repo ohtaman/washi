@@ -1,0 +1,143 @@
+{
+  "title": "毛茸茸绵羊围牧场 — 牧场栅栏谜题",
+  "metaDesc": "放置木栅栏保护蓬松羊不受狼侵害，通过WaSHI整数规划构建最高得分牧场。",
+  "appTitle": "毛茸茸绵羊围牧场",
+  "appSubtitle": "牧场栅栏谜题",
+  "backToShowcase": "返回案例展示",
+  "backToShowcaseShort": "← 案例展示",
+  "showcaseUrl": "../../zh/showcase/",
+  "menu": "菜单",
+  "openMenu": "打开菜单",
+  "bgmOn": "播放BGM（点击开启）",
+  "bgmOff": "停止BGM（点击静音）",
+  "bgmTagOn": "🔊 BGM: ON",
+  "bgmTagOff": "🔇 BGM: OFF",
+  "howToPlay": "玩法说明",
+  "howToPlayTooltip": "查看玩法说明与新手教程",
+  "clearedStages": "已通关关卡数",
+  "clearedSummary": "通关关卡数: {cleared}（总得分: {total} pt）",
+  "stageSelect": "关卡选择",
+  "prevStage": "上一关",
+  "nextStage": "下一关",
+  "selectStageNumber": "选择关卡编号",
+  "jumpToReached": "跳转到已到达关卡",
+  "tutorialTag": "🔰 新手教程 {current}/{total}",
+  "tutorialSuffix": " [教程 {current}/{total}]",
+  "remainingFences": "剩余栅栏",
+  "remainingFencesText": "剩余 {rem} / {max}",
+  "currentAndTargetScore": "当前 / 目标得分",
+  "scoreDisplay": "{cur} / 目标 {target} pt",
+  "statusWolfBreach": "恶狼正在侵入",
+  "statusTargetAchieved": "达成目标·STAGE CLEAR",
+  "statusPitDeduction": "包含坑洞（还差 +{diff} pt）",
+  "statusNeedPoints": "距目标还差 +{diff} pt",
+  "clearHeadline": "牧场筑成 · 关卡通过",
+  "clearSubtext": "达成目标得分",
+  "clearBannerGolden": "🎉 STAGE CLEAR·黄金牧场完成",
+  "clearBannerScore": "牧场得分 {score} / 目标 {target} pt 达成",
+  "btnNextStage": "下一关 ▶",
+  "btnAdvanceToStage": "前往 Stage {n} ▶",
+  "boardAria": "牧场解谜棋盘",
+  "btnUndo": "撤销一步",
+  "btnUndoTitle": "撤销一步 (Z键)",
+  "btnRestart": "重新开始",
+  "btnRestartTitle": "从头重新开始 (R键)",
+  "btnHint": "一步提示",
+  "btnHintTitle": "在棋盘上高亮提示下一步操作 (H键)",
+  "btnSolve": "✨ 查看示范解答",
+  "btnSolveTitle": "显示示范解答",
+  "solveBannerOptimal": "✨ 示范布局（已达目标得分）",
+  "adviceDefensePit": "恶狼已阻挡! 请填平或隔开🕳️坑洞以追回 +{diff} pt",
+  "adviceDefenseExpand": "恶狼已阻挡! 请调整栅栏位置以追回 +{diff} pt",
+  "adviceSafeNeedPoints": "虽然挡住了恶狼，但距离目标得分还需要 +{diff} pt",
+  "adviceFallback": "未能计算示范解答与提示（仍可按目标得分正常游玩）",
+  "adviceFallbackValid": "目标得分 {target} pt 依然有效",
+  "legendStripAria": "地块得分一览",
+  "legendSheep": "绵羊（+2分・保护对象）",
+  "legendGrass": "草地（+1分）",
+  "legendStrawberry": "野草莓（+5分）",
+  "legendPit": "坑洞（-5分・可用木桩栅栏填平）",
+  "legendBridge": "石桥（+1分・可通行・不可放栅栏）",
+  "legendBridgeLabel": "🌉 +1 <small>(禁放栅栏)</small>",
+  "legendWall": "水池与岩石（不可通行的天然墙壁）",
+  "legendWallLabel": "💧🪨 障碍墙",
+  "mascotAlt": "莫可",
+  "tapInstruction": "👆 点击",
+  "rulesTitle": "🐑 玩法说明",
+  "rulesClose": "关闭",
+  "step1Title": "1. 点击格子放置木栅栏",
+  "step1Desc": "在通道上放置木栅栏，阻断野狼🐺通往绵羊🐑的所有路线。再次点击即可移除栅栏。",
+  "step2Title": "2. 围出广阔牧场以达成目标得分",
+  "step2Desc": "在确保安全的前提下，让绵羊🐑可步行的安全牧场总分（🌱+1、🍓+5）达到目标得分即可过关。",
+  "step3Title": "3. 石桥🌉与坑洞🕳️机关",
+  "step3Desc": "🌉石桥可通行但不能放栅栏。🕳️坑洞（-5分）留在牧场内会扣分，但直接在正上方打入木栅栏即可填平坑洞并充当围墙。",
+  "tutorialHeader": "🔰 学习基础规则的新手教程（Stage 1〜4）",
+  "btnGotIt": "明白了·返回解谜",
+  "stageDefaultOneLiner": "用 {n} 根栅栏抵御🐺，达成目标得分 {target} 分",
+  "stages": {
+    "stage-1": {
+      "title": "第一道栅栏",
+      "oneLiner": "点击格子放置栅栏，保护🐑免受🐺袭击"
+    },
+    "stage-2": {
+      "title": "草莓山丘",
+      "oneLiner": "如果在🐑旁边封堵就会漏掉🍓。在靠近🐺的位置设栏以达成目标分数吧"
+    },
+    "stage-3": {
+      "title": "石桥的规则",
+      "oneLiner": "🌉石桥上不能放置栅栏。跨过石桥把西南方的🍓也纳入牧场吧"
+    },
+    "stage-4": {
+      "title": "填平坑洞",
+      "oneLiner": "若将🕳️坑洞(-5分)圈入牧场会扣分。直接在🕳️正上方打入木栅栏即可把坑填平"
+    },
+    "stage-5": {
+      "title": "石桥彼端",
+      "oneLiner": "仅仅守在附近无法达到目标分数。把防线推进到两座石桥的出口吧"
+    },
+    "stage-6": {
+      "title": "一举两得的木桩",
+      "oneLiner": "直接把木栅栏打进🕳️(-5)里，就能同时填平坑洞并阻挡🐺"
+    },
+    "stage-7": {
+      "title": "舍小取大",
+      "oneLiner": "如果用栅栏封住东侧的🕳️(-5)，就拿不到深处的🍓田。试着保留通道跨过去吧"
+    },
+    "stage-8": {
+      "title": "诱饵野草莓",
+      "oneLiner": "如果贪图眼前的🍓会导致栅栏不够用。用1根栅栏封住西侧，向东扩展果园吧"
+    },
+    "stage-9": {
+      "title": "双羊会师作战",
+      "oneLiner": "把两只🐑分开圈起来无法达到目标。通过中央走廊将它们连成同一个牧场吧"
+    },
+    "stage-10": {
+      "title": "坑洞山丘的取舍",
+      "oneLiner": "山丘上有3个🕳️(-5)。仔细分辨哪些该直接打桩填平、哪些该隔在牧场外吧"
+    },
+    "stage-11": {
+      "title": "三面合围",
+      "oneLiner": "3只🐺正从石桥逼近。找出用4根栅栏能够守护的最大果园吧"
+    },
+    "stage-12": {
+      "title": "黄金牧场",
+      "oneLiner": "充分利用全部5根栅栏，完成最高分的黄金牧场吧"
+    }
+  },
+  "themes": [
+    "微风高原牧场",
+    "石桥溪谷",
+    "草莓深林",
+    "雾霁大草原",
+    "岩山回廊",
+    "溪畔果园",
+    "星夜牧场",
+    "暖阳丘陵",
+    "迷宫石道",
+    "双子河畔",
+    "古石垣牧场",
+    "天空黄金牧场"
+  ],
+  "clearSubtextPit": "当前 {score} pt / 目标 {target} pt — 牧场内包含了🕳️坑洞（-5分），请在正上方打入栅栏填平或将其隔在外面",
+  "clearSubtextExpand": "当前 {score} pt / 目标 {target} pt — 请调整栅栏位置，将更多🍓野草莓和🌱草地圈入牧场"
+}

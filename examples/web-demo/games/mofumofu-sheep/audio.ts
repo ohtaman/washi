@@ -1,5 +1,5 @@
 /**
- * Cozy Pastoral Web Audio Synthesizer & Sound Effects for "もふもふ羊の牧場囲い"
+ * Cozy Pastoral Web Audio Synthesizer & Sound Effects for "Fluffy Sheep Pasture Fence"
  *
  * Uses warm marimba / acoustic pluck tones, gentle bass, and soft wooden percussion
  * for a relaxing storybook ranch atmosphere.
@@ -170,7 +170,7 @@ export class PastureAudioEngine {
     osc.stop(time + dur + 0.02);
   }
 
-  /** Wooden mallet tap ("コンッ") when placing or removing a fence */
+  /** Wooden mallet tap when placing or removing a fence */
   public playFenceTap(placed: boolean): void {
     if (this.isMuted) return;
     const ctx = this.ensureCtx();

@@ -305,13 +305,13 @@ export function renderSafeMarkdown(container: HTMLElement, markdown: string): vo
       continue;
     }
 
-    // 5. Unordered list: -, *, +, or ・
-    if (/^(?:[-*+]\s+|・\s*)(.+)$/.test(trimmed)) {
+    // 5. Unordered list: -, *, +, or 
+    if (/^(?:[-*+]\s+|\u30FB\s*)(.+)$/.test(trimmed)) {
       const ulEl = document.createElement("ul");
       ulEl.className = "md-list";
       while (i < lines.length) {
         const itemLine = (lines[i] ?? "").trim();
-        const m = itemLine.match(/^(?:[-*+]\s+|・\s*)(.+)$/);
+        const m = itemLine.match(/^(?:[-*+]\s+|\u30FB\s*)(.+)$/);
         if (!m) break;
         const liEl = document.createElement("li");
         appendInlineMarkdown(liEl, m[1]);
@@ -363,7 +363,7 @@ export function renderSafeMarkdown(container: HTMLElement, markdown: string): vo
         t.startsWith("```") ||
         t.startsWith(">") ||
         /^(#{1,4})\s+/.test(t) ||
-        /^(?:[-*+]\s+|・\s*)/.test(t) ||
+        /^(?:[-*+]\s+|\u30FB\s*)/.test(t) ||
         /^\d+\.\s+/.test(t) ||
         /^(-{3,}|\*{3,}|_{3,})$/.test(t)
       ) {
@@ -472,7 +472,7 @@ function updateNanoStatusUI(status: GeminiNanoStatus | "checking", progressPct?:
     dlWrap.hidden = true;
   } else if (status === "downloadable" || status === "downloading") {
     badge.classList.add("nano-downloadable");
-    badge.textContent = status === "downloading" ? "⏬ モデル取得中" : "🟡 初回送信時ロード";
+    badge.textContent = status === "downloading" ? "⏬ \u30E2\u30C7\u30EB取得中" : "🟡 初回送信時\u30ED\u30FC\u30C9";
     unavailBanner.hidden = true;
     if (status === "downloading" && typeof progressPct === "number") {
       dlWrap.hidden = false;
@@ -533,7 +533,7 @@ function renderStatusAndConflictBar(): void {
   if (isSolving) {
     statusBadge.classList.add("status-solving");
     statusBadge.textContent = "⏳ 計算中...";
-    summaryTextEl.textContent = "WaSHI (HiGHS) で1ヶ月のシフトを計算しています...";
+    summaryTextEl.textContent = "WaSHI (HiGHS) \u30671\u30F6月\u306E\u30B7\u30D5\u30C8\u3092計算\u3057\u3066\u3044\u307E\u3059...";
     abortSolveBtn.hidden = false;
     solveBtn.disabled = true;
     return;
@@ -544,8 +544,8 @@ function renderStatusAndConflictBar(): void {
 
   if (appState.nurses.length === 0) {
     statusBadge.classList.add("status-idle");
-    statusBadge.textContent = "白紙モード";
-    summaryTextEl.textContent = "スタッフデータが未登録です。「✨ サンプル生成」または「📂 CSV読込」を行ってください";
+    statusBadge.textContent = "白紙\u30E2\u30FC\u30C9";
+    summaryTextEl.textContent = "\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C未登録\u3067\u3059。「✨ \u30B5\u30F3\u30D7\u30EB生成」\u307E\u305F\u306F「📂 CSV読込」\u3092行\u3063\u3066\u304F\u3060\u3055\u3044";
     solveTimeEl.textContent = "-- ms";
     return;
   }
@@ -553,7 +553,7 @@ function renderStatusAndConflictBar(): void {
   if (!lastSolveOutcome) {
     statusBadge.classList.add("status-idle");
     statusBadge.textContent = "準備完了";
-    summaryTextEl.textContent = `${appState.nurses.length}名のデータが読み込まれています。「⚡ シフトを自動作成」を押して最適化してください`;
+    summaryTextEl.textContent = `${appState.nurses.length}名\u306E\u30C7\u30FC\u30BF\u304C読\u307F込\u307E\u308C\u3066\u3044\u307E\u3059。「⚡ \u30B7\u30D5\u30C8\u3092自動作成」\u3092押\u3057\u3066最適化\u3057\u3066\u304F\u3060\u3055\u3044`;
     solveTimeEl.textContent = "-- ms";
     return;
   }
@@ -562,26 +562,26 @@ function renderStatusAndConflictBar(): void {
 
   if (lastSolveOutcome.status === "Optimal" || lastSolveOutcome.status === "Feasible") {
     statusBadge.classList.add("status-optimal");
-    statusBadge.textContent = "✅ シフト作成完了";
+    statusBadge.textContent = "✅ \u30B7\u30D5\u30C8作成完了";
     const softRate = currentEvaluation?.softRequestSatisfactionRate ?? 100;
     const vCount = currentEvaluation?.violations.length ?? 0;
     const diff = lastSolveOutcome.diffFromPrevious;
     const diffSuffix =
       diff && diff.totalCells > 0
-        ? ` ｜ 🔒 前回から ${diff.changedCellsCount}/${diff.totalCells}マス変更 (維持率 ${diff.retentionRatePct}%)`
+        ? ` ｜ 🔒 前回\u304B\u3089 ${diff.changedCellsCount}/${diff.totalCells}\u30DE\u30B9変更 (維持率 ${diff.retentionRatePct}%)`
         : "";
     summaryTextEl.textContent =
       vCount === 0
-        ? `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ ルール違反 0件 ｜ 希望達成率 ${softRate}%${diffSuffix}`
-        : `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ ⚠️ 手動固定による注意 ${vCount}件${diffSuffix}`;
+        ? `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ \u30EB\u30FC\u30EB違反 0件 ｜ 希望達成率 ${softRate}%${diffSuffix}`
+        : `${appState.nurses.length}名×${appState.config.numDays}日間 ｜ ⚠️ 手動固定\u306B\u3088\u308B注意 ${vCount}件${diffSuffix}`;
   } else if (lastSolveOutcome.status === "Infeasible") {
     statusBadge.classList.add("status-infeasible");
-    statusBadge.textContent = "🚨 シフト作成不可 (矛盾あり)";
-    summaryTextEl.textContent = `条件が衝突しているためシフトを組めません（原因 ${lastSolveOutcome.conflicts.length}件）`;
+    statusBadge.textContent = "🚨 \u30B7\u30D5\u30C8作成不可 (矛盾\u3042\u308A)";
+    summaryTextEl.textContent = `条件\u304C衝突\u3057\u3066\u3044\u308B\u305F\u3081\u30B7\u30D5\u30C8\u3092組\u3081\u307E\u305B\u3093（原因 ${lastSolveOutcome.conflicts.length}件）`;
   } else {
     statusBadge.classList.add("status-idle");
     statusBadge.textContent = "⏹ 中断 / 未完了";
-    summaryTextEl.textContent = lastSolveOutcome.errorMessage || "計算が中断されました";
+    summaryTextEl.textContent = lastSolveOutcome.errorMessage || "計算\u304C中断\u3055\u308C\u307E\u3057\u305F";
   }
 
   // Conflict Alert Box
@@ -600,7 +600,7 @@ function renderStatusAndConflictBar(): void {
     }
     if (lastSolveOutcome.conflicts.length > 8) {
       const moreLi = document.createElement("li");
-      moreLi.textContent = `...他 ${lastSolveOutcome.conflicts.length - 8} 件の関連制約`;
+      moreLi.textContent = `...他 ${lastSolveOutcome.conflicts.length - 8} 件\u306E関連制約`;
       conflictList.appendChild(moreLi);
     }
   } else {
@@ -653,7 +653,7 @@ function renderScheduleLegend(): void {
   if (diff && diff.changedCellsCount > 0) {
     markerItems.push({
       dotClass: "diff-sample-box",
-      text: ` 前回から変更(${diff.changedCellsCount}マス)`,
+      text: ` 前回\u304B\u3089変更(${diff.changedCellsCount}\u30DE\u30B9)`,
     });
   }
   for (const m of markerItems) {
@@ -739,7 +739,7 @@ function renderScheduleMatrix(): void {
   const thNurse = document.createElement("th");
   thNurse.className = "sticky-nurse-col";
   thNurse.rowSpan = 2;
-  thNurse.textContent = `スタッフ (${nurses.length}名)`;
+  thNurse.textContent = `\u30B9\u30BF\u30C3\u30D5 (${nurses.length}名)`;
   trGroup.appendChild(thNurse);
 
   const thPrevGroup = document.createElement("th");
@@ -750,12 +750,12 @@ function renderScheduleMatrix(): void {
 
   const thCurrGroup = document.createElement("th");
   thCurrGroup.colSpan = numDays;
-  thCurrGroup.textContent = `${config.year}年${config.month}月 シフト表（マス目をクリックで固定・変更）`;
+  thCurrGroup.textContent = `${config.year}年${config.month}月 \u30B7\u30D5\u30C8表（\u30DE\u30B9目\u3092\u30AF\u30EA\u30C3\u30AF\u3067固定\u30FB変更）`;
   trGroup.appendChild(thCurrGroup);
 
   const thSummaryGroup = document.createElement("th");
   thSummaryGroup.colSpan = 4;
-  thSummaryGroup.textContent = "月間集計・36協定";
+  thSummaryGroup.textContent = "月間集計\u30FB36協定";
   trGroup.appendChild(thSummaryGroup);
   thead.appendChild(trGroup);
 
@@ -837,7 +837,7 @@ function renderScheduleMatrix(): void {
     topRow.append(nameSpan, roleSpan);
 
     const tailStreak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts, customShiftDefs);
-    tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${roleLabel})\n前月末: ${tailStreak}連勤\n直近11ヶ月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
+    tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${roleLabel})\n前月末: ${tailStreak}連勤\n直近11\u30F6月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
     tdNurse.appendChild(topRow);
     tr.appendChild(tdNurse);
 
@@ -879,8 +879,8 @@ function renderScheduleMatrix(): void {
         btn.textContent = "-";
         tooltipParts = [
           `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
-            holidayName ? `・祝日:${holidayName}` : ""
-          }): シフト未作成 (クリックで固定)`,
+            holidayName ? `\u30FB祝日:${holidayName}` : ""
+          }): \u30B7\u30D5\u30C8未作成 (\u30AF\u30EA\u30C3\u30AF\u3067固定)`,
         ];
       } else {
         const shift: ShiftCode = rowShifts[d - 1] ?? "O";
@@ -889,7 +889,7 @@ function renderScheduleMatrix(): void {
         btn.textContent = shiftMeta.shortLabel;
         tooltipParts = [
           `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
-            holidayName ? `・祝日:${holidayName}` : ""
+            holidayName ? `\u30FB祝日:${holidayName}` : ""
           }): ${shiftMeta.label}`,
         ];
 
@@ -898,7 +898,7 @@ function renderScheduleMatrix(): void {
           btn.classList.add("cell-diff-changed");
           const prevMeta = getShiftMeta(diffEntry.prevShift, customShiftDefs);
           tooltipParts.push(
-            `🔄 前回から変更: ${prevMeta.label}(${prevMeta.shortLabel}) ➔ ${shiftMeta.label}(${shiftMeta.shortLabel})`
+            `🔄 前回\u304B\u3089変更: ${prevMeta.label}(${prevMeta.shortLabel}) ➔ ${shiftMeta.label}(${shiftMeta.shortLabel})`
           );
         }
       }
@@ -920,7 +920,7 @@ function renderScheduleMatrix(): void {
 
       if (hasViolation) {
         btn.classList.add("cell-violation-outline");
-        tooltipParts.push("⚠️ 制約違反あり");
+        tooltipParts.push("⚠️ 制約違反\u3042\u308A");
       }
 
       btn.title = tooltipParts.join("\n");
@@ -982,7 +982,7 @@ function renderScheduleMatrix(): void {
         summary?.projectedAnnualOvertimeHours ?? nurse.yearly36Stats.prev11MonthsOvertimeHours;
       const monthOt = summary?.estMonthOvertimeHours ?? 0;
       td36.textContent = `${Math.round(projAnnual)}h`;
-      td36.title = `直近11ヶ月累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h + 当月見込: ${monthOt}h = 年間計 ${projAnnual}h (上限 ${config.maxAnnualOvertimeHours}h)`;
+      td36.title = `直近11\u30F6月累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h + 当月見込: ${monthOt}h = 年間計 ${projAnnual}h (上限 ${config.maxAnnualOvertimeHours}h)`;
       if (
         config.enforce36Agreement &&
         (projAnnual > config.maxAnnualOvertimeHours || monthOt > config.maxMonthlyOvertimeHours)
@@ -1007,11 +1007,11 @@ function renderScheduleMatrix(): void {
       label: "☀️ 日勤計 (必要:平日" + config.weekdayDayStaff + "/土日" + config.weekendDayStaff + ")",
       renderDay: (idx) => {
         const ds = dailySummaries[idx];
-        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "シフト未作成" };
+        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "\u30B7\u30D5\u30C8未作成" };
         return {
           text: String(ds.counts.D),
           ok: ds.counts.D >= ds.required.D,
-          title: `日勤配置: ${ds.counts.D}名 / 必要:${ds.required.D}名 (リーダー:${ds.skillCounts.leader_cap?.D ?? 0}名)`,
+          title: `日勤配置: ${ds.counts.D}名 / 必要:${ds.required.D}名 (\u30EA\u30FC\u30C0\u30FC:${ds.skillCounts.leader_cap?.D ?? 0}名)`,
         };
       },
     },
@@ -1019,11 +1019,11 @@ function renderScheduleMatrix(): void {
       label: `🌆 準夜勤 (必要:${config.eveningStaff}名)`,
       renderDay: (idx) => {
         const ds = dailySummaries[idx];
-        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "シフト未作成" };
+        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "\u30B7\u30D5\u30C8未作成" };
         return {
           text: String(ds.counts.E),
           ok: ds.counts.E >= ds.required.E,
-          title: `準夜配置: ${ds.counts.E}名 / 必要: ${ds.required.E}名 (リーダー:${ds.skillCounts.leader_cap?.E ?? 0}名)`,
+          title: `準夜配置: ${ds.counts.E}名 / 必要: ${ds.required.E}名 (\u30EA\u30FC\u30C0\u30FC:${ds.skillCounts.leader_cap?.E ?? 0}名)`,
         };
       },
     },
@@ -1031,11 +1031,11 @@ function renderScheduleMatrix(): void {
       label: `🌙 深夜勤 (必要:${config.nightStaff}名)`,
       renderDay: (idx) => {
         const ds = dailySummaries[idx];
-        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "シフト未作成" };
+        if (isScheduleEmpty || !ds) return { text: "-", ok: true, title: "\u30B7\u30D5\u30C8未作成" };
         return {
           text: String(ds.counts.N),
           ok: ds.counts.N >= ds.required.N,
-          title: `深夜配置: ${ds.counts.N}名 / 必要: ${ds.required.N}名 (リーダー:${ds.skillCounts.leader_cap?.N ?? 0}名)`,
+          title: `深夜配置: ${ds.counts.N}名 / 必要: ${ds.required.N}名 (\u30EA\u30FC\u30C0\u30FC:${ds.skillCounts.leader_cap?.N ?? 0}名)`,
         };
       },
     },
@@ -1192,11 +1192,11 @@ function renderShiftTransitionMatrix(): void {
             : "✕ 禁止"
           : rule === "require"
             ? isSoft
-              ? "⚖️ なるべく"
+              ? "⚖️ \u306A\u308B\u3079\u304F"
               : "◎ 必須"
             : "○ 許可";
 
-      btn.title = `クリックで「${r.key} ➔ ${c.key}」の遷移ルールを切り替え（許可 ➔ 必須/禁止(ハード) ➔ 回避(ソフト) ➔ 許可）`;
+      btn.title = `\u30AF\u30EA\u30C3\u30AF\u3067「${r.key} ➔ ${c.key}」\u306E遷移\u30EB\u30FC\u30EB\u3092切\u308A替\u3048（許可 ➔ 必須/禁止(\u30CF\u30FC\u30C9) ➔ 回避(\u30BD\u30D5\u30C8) ➔ 許可）`;
       btn.addEventListener("click", () => {
         let nextRule: TransitionRuleType = rule;
         let nextSoftWeight = 0;
@@ -1257,14 +1257,14 @@ function formatCustomShiftBaseAndAliases(cs: CustomShiftDef): string {
   const base = cs.baseShift ?? (cs.countsAsWorkDay ? "D" : "O");
   const baseText =
     base === "E"
-      ? "準夜帯扱い(E)"
+      ? "準夜帯扱\u3044(E)"
       : base === "N"
-        ? "深夜帯扱い(N)"
+        ? "深夜帯扱\u3044(N)"
         : base === "O"
-          ? "休暇扱い(O)"
-          : "日勤帯扱い(D)";
+          ? "休暇扱\u3044(O)"
+          : "日勤帯扱\u3044(D)";
   const aliases = getEffectiveIncludedAliases(cs);
-  const aliasText = aliases.length > 0 ? `グループ包含: [${aliases.join(", ")}]` : "グループ非包含(独立)";
+  const aliasText = aliases.length > 0 ? `\u30B0\u30EB\u30FC\u30D7包含: [${aliases.join(", ")}]` : "\u30B0\u30EB\u30FC\u30D7非包含(独立)";
   return `${baseText} / ${aliasText}`;
 }
 
@@ -1278,7 +1278,7 @@ function renderStaffingRulesList(): void {
     const empty = document.createElement("div");
     empty.className = "constraint-card-desc";
     empty.textContent =
-      "現在、人員配置ルールはありません。下の文章型ルールビルダーから「＋ルールを追加」してください。";
+      "現在、人員配置\u30EB\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093。下\u306E文章型\u30EB\u30FC\u30EB\u30D3\u30EB\u30C0\u30FC\u304B\u3089「＋\u30EB\u30FC\u30EB\u3092追加」\u3057\u3066\u304F\u3060\u3055\u3044。";
     listEl.appendChild(empty);
     return;
   }
@@ -1313,7 +1313,7 @@ function renderStaffingRulesList(): void {
     const curW = rule.penaltyWeight ?? 30;
     const curVal = curHard ? "hard" : `soft:${curW}`;
     const hOpts = [
-      { val: "hard", label: "🔒 必須(ハード)" },
+      { val: "hard", label: "🔒 必須(\u30CF\u30FC\u30C9)" },
       { val: "soft:15", label: "⚖️ 弱(15)" },
       { val: "soft:30", label: "⚖️ 中(30)" },
       { val: "soft:60", label: "⚖️ 強(60)" },
@@ -1328,7 +1328,7 @@ function renderStaffingRulesList(): void {
     if (!curHard && !hOpts.some((o) => o.val === curVal)) {
       const customOpt = document.createElement("option");
       customOpt.value = curVal;
-      customOpt.textContent = `⚖️ 重み:${curW}`;
+      customOpt.textContent = `⚖️ 重\u307F:${curW}`;
       customOpt.selected = true;
       hardSelect.appendChild(customOpt);
     }
@@ -1389,8 +1389,8 @@ function populateBuilderOptions(): void {
 
   const baseAttrs = [
     { val: "all", text: "全員" },
-    { val: "leader_cap", text: "★ リーダー" },
-    { val: "icu_er", text: "救 救急・ICU" },
+    { val: "leader_cap", text: "★ \u30EA\u30FC\u30C0\u30FC" },
+    { val: "icu_er", text: "救 救急\u30FBICU" },
     { val: "newcomer", text: "🔰 新人" },
     { val: "team_A", text: "🅰️ A班" },
     { val: "team_B", text: "🅱️ B班" },
@@ -1417,7 +1417,7 @@ function populateBuilderOptions(): void {
     }
     const customOpt = document.createElement("option");
     customOpt.value = "custom";
-    customOpt.textContent = "🏷️ 複数属性を選択 (OR指定)...";
+    customOpt.textContent = "🏷️ 複数属性\u3092選択 (OR指定)...";
     if (curVal === "custom") customOpt.selected = true;
     attrSelect.appendChild(customOpt);
   }
@@ -1480,7 +1480,7 @@ function handleAddSentenceRule(): void {
   if (rawShift === "D") shiftLabel = "日勤";
   else if (rawShift === "E") shiftLabel = "準夜勤";
   else if (rawShift === "N") shiftLabel = "深夜勤";
-  else if (rawShift === "EN") shiftLabel = "夜勤帯 (準夜・深夜)";
+  else if (rawShift === "EN") shiftLabel = "夜勤帯 (準夜\u30FB深夜)";
   else if (rawShift === "D,E,N") shiftLabel = "全勤務";
   else if (rawShift === "O") shiftLabel = "公休";
   else {
@@ -1503,7 +1503,7 @@ function handleAddSentenceRule(): void {
     );
 
     if (checkedDows.length === 0 && !isHolChecked) {
-      alert("対象の曜日または祝日を少なくとも1つ選択してください。");
+      alert("対象\u306E曜日\u307E\u305F\u306F祝日\u3092少\u306A\u304F\u3068\u30821\u3064選択\u3057\u3066\u304F\u3060\u3055\u3044。");
       return;
     }
 
@@ -1513,11 +1513,11 @@ function handleAddSentenceRule(): void {
 
     const dowNames = checkedDows.map((d) => WEEKDAY_NAMES_JA[d]);
     if (dowNames.length > 0 && isHolChecked) {
-      dayTypeLabel = `${dowNames.join("・")}・祝日`;
+      dayTypeLabel = `${dowNames.join("\u30FB")}\u30FB祝日`;
     } else if (dowNames.length > 0) {
-      dayTypeLabel = `${dowNames.join("・")}曜日`;
+      dayTypeLabel = `${dowNames.join("\u30FB")}曜日`;
     } else {
-      dayTypeLabel = "祝日のみ";
+      dayTypeLabel = "祝日\u306E\u307F";
     }
   } else {
     dayTypeLabel =
@@ -1542,8 +1542,8 @@ function handleAddSentenceRule(): void {
 
   const attrLabelMap: Record<string, string> = {
     all: "全員",
-    leader_cap: "リーダー",
-    icu_er: "救急・ICU",
+    leader_cap: "\u30EA\u30FC\u30C0\u30FC",
+    icu_er: "救急\u30FBICU",
     newcomer: "新人",
     team_A: "A班",
     team_B: "B班",
@@ -1558,12 +1558,12 @@ function handleAddSentenceRule(): void {
     ).map((el) => el.value);
 
     if (checkedAttrs.length === 0) {
-      alert("対象の属性を少なくとも1つ選択してください。");
+      alert("対象\u306E属性\u3092少\u306A\u304F\u3068\u30821\u3064選択\u3057\u3066\u304F\u3060\u3055\u3044。");
       return;
     }
 
     attribute = checkedAttrs.join(",");
-    attrLabel = checkedAttrs.map((code) => attrLabelMap[code] ?? code).join(" または ");
+    attrLabel = checkedAttrs.map((code) => attrLabelMap[code] ?? code).join(" \u307E\u305F\u306F ");
   } else {
     attrLabel = attrLabelMap[rawAttr] ?? rawAttr;
   }
@@ -1574,7 +1574,7 @@ function handleAddSentenceRule(): void {
     maxInput?.value !== "" && maxInput?.value !== undefined ? Number(maxInput.value) : undefined;
 
   if (minCount === undefined && maxCount === undefined) {
-    alert("最低人数または上限人数のいずれかを指定してください。");
+    alert("最低人数\u307E\u305F\u306F上限人数\u306E\u3044\u305A\u308C\u304B\u3092指定\u3057\u3066\u304F\u3060\u3055\u3044。");
     return;
   }
 
@@ -1589,7 +1589,7 @@ function handleAddSentenceRule(): void {
         ? `${minCount}人以上`
         : `${maxCount}人以下`;
 
-  const hardnessText = isHard ? "必須" : `なるべく(重み${penaltyWeight})`;
+  const hardnessText = isHard ? "必須" : `\u306A\u308B\u3079\u304F(重\u307F${penaltyWeight})`;
 
   const newRule: CustomConstraintRule = {
     id: `staffing_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -1604,7 +1604,7 @@ function handleAddSentenceRule(): void {
     attribute,
     minCount,
     maxCount,
-    description: `「${shiftLabel}」は「${dayTypeLabel}」に「${attrLabel}」が「${boundsText}」 (${hardnessText})`,
+    description: `「${shiftLabel}」\u306F「${dayTypeLabel}」\u306B「${attrLabel}」\u304C「${boundsText}」 (${hardnessText})`,
   };
 
   appState = {
@@ -1631,7 +1631,7 @@ function renderShiftAliasesList(): void {
     badge.className = `shift-badge shift-${a.code === "W" ? "W" : a.code === "EN" ? "EN" : "D"}`;
     badge.textContent = a.shortLabel;
     const text = document.createElement("span");
-    text.textContent = `シフトグループ [${a.code}]: 「${a.label}」 ➔ 展開対象: [${a.shifts.join(", ")}]`;
+    text.textContent = `\u30B7\u30D5\u30C8\u30B0\u30EB\u30FC\u30D7 [${a.code}]: 「${a.label}」 ➔ 展開対象: [${a.shifts.join(", ")}]`;
     info.append(badge, text);
     row.appendChild(info);
     listEl.appendChild(row);
@@ -1648,7 +1648,7 @@ function renderShiftAliasesList(): void {
     badge.className = "shift-badge shift-custom";
     badge.textContent = cs.shortLabel;
     const text = document.createElement("span");
-    text.textContent = `カスタムシフト [${cs.code}]: 「${cs.label}」 (${formatCustomShiftBaseAndAliases(cs)})`;
+    text.textContent = `\u30AB\u30B9\u30BF\u30E0\u30B7\u30D5\u30C8 [${cs.code}]: 「${cs.label}」 (${formatCustomShiftBaseAndAliases(cs)})`;
     info.append(badge, text);
 
     const controlsWrap = document.createElement("div");
@@ -1711,7 +1711,7 @@ function renderShiftAliasesList(): void {
       btn.type = "button";
       btn.className = "btn-xs-outline";
       const isIncluded = currentIncluded.includes(aliasCode);
-      btn.textContent = `${isIncluded ? "✓" : "+"}${aliasCode}に含める`;
+      btn.textContent = `${isIncluded ? "✓" : "+"}${aliasCode}\u306B含\u3081\u308B`;
       btn.style.fontSize = "0.72rem";
       if (isIncluded) {
         btn.style.background = "rgba(37, 99, 235, 0.12)";
@@ -1829,7 +1829,7 @@ function renderSkillDefsList(): void {
   if (skills.length === 0) {
     const empty = document.createElement("div");
     empty.className = "constraint-card-desc";
-    empty.textContent = "現在、登録されているスキル・属性はありません。";
+    empty.textContent = "現在、登録\u3055\u308C\u3066\u3044\u308B\u30B9\u30AD\u30EB\u30FB属性\u306F\u3042\u308A\u307E\u305B\u3093。";
     listEl.appendChild(empty);
     return;
   }
@@ -1853,9 +1853,9 @@ function renderSkillDefsList(): void {
         ? "役割"
         : s.category === "team" || (s.category as string) === "group"
           ? "班"
-          : "スキル";
+          : "\u30B9\u30AD\u30EB";
     const subTarget = s.substitutesFor ? getSkillMeta(s.substitutesFor, skills) : null;
-    const subNote = subTarget ? ` 【${subTarget.label}の代行可】` : "";
+    const subNote = subTarget ? ` 【${subTarget.label}\u306E代行可】` : "";
 
     const text = document.createElement("span");
     text.textContent = `${catLabel}「${s.label}」(該当:${totalSatisfying}名)${subNote}`;
@@ -1924,7 +1924,7 @@ function renderSkillDefsList(): void {
       <option value="30" ${curW === 30 ? "selected" : ""}>⚖️ 中 (30)</option>
       <option value="60" ${curW === 60 ? "selected" : ""}>⚖️ 強 (60)</option>
     `;
-    hardSelect.title = `「${s.label}」の人数制約のハード/ソフト切り替え`;
+    hardSelect.title = `「${s.label}」\u306E人数制約\u306E\u30CF\u30FC\u30C9/\u30BD\u30D5\u30C8切\u308A替\u3048`;
     hardSelect.addEventListener("change", () => {
       const w = Number(hardSelect.value) || 0;
       const nextW = { ...(appState.config.softRuleWeights ?? {}) };
@@ -1991,7 +1991,7 @@ function renderCustomRulesList(): void {
     const empty = document.createElement("div");
     empty.className = "constraint-card-desc";
     empty.textContent =
-      "現在、追加された個別固定ルールはありません（シフト表のマス目クリックや画面左下のAIチャットで追加できます）。";
+      "現在、追加\u3055\u308C\u305F個別固定\u30EB\u30FC\u30EB\u306F\u3042\u308A\u307E\u305B\u3093（\u30B7\u30D5\u30C8表\u306E\u30DE\u30B9目\u30AF\u30EA\u30C3\u30AF\u3084画面左下\u306EAI\u30C1\u30E3\u30C3\u30C8\u3067追加\u3067\u304D\u307E\u3059）。";
     listEl.appendChild(empty);
     return;
   }
@@ -2024,10 +2024,10 @@ function renderCustomRulesList(): void {
       else if (nurse.forbiddenShifts.includes("E")) parts.push("準夜勤免除");
     }
     if (nurse.weekdayOnly) {
-      parts.push("平日のみ勤務(土日休)");
+      parts.push("平日\u306E\u307F勤務(土日休)");
     }
     if (nurse.holidaysOff) {
-      parts.push("祝日休み(祝休)");
+      parts.push("祝日休\u307F(祝休)");
     }
     const text = document.createElement("span");
     text.textContent = `👤 個別勤務契約: ${nurse.name}(${nurse.id}) [${parts.join(" / ")}]`;
@@ -2057,7 +2057,7 @@ function renderCustomRulesList(): void {
     badge.className = "shift-badge shift-custom";
     badge.textContent = cs.shortLabel;
     const text = document.createElement("span");
-    text.textContent = `カスタムシフト定義: 「${cs.label}」 (コード:${cs.code} / ${formatCustomShiftBaseAndAliases(cs)})`;
+    text.textContent = `\u30AB\u30B9\u30BF\u30E0\u30B7\u30D5\u30C8定義: 「${cs.label}」 (\u30B3\u30FC\u30C9:${cs.code} / ${formatCustomShiftBaseAndAliases(cs)})`;
     info.append(badge, text);
 
     const delBtn = document.createElement("button");
@@ -2125,13 +2125,13 @@ function renderCustomRulesList(): void {
       const isContiguous = days[days.length - 1] - days[0] + 1 === days.length;
       const spanText = isContiguous
         ? `${appState.config.month}/${days[0]}〜${appState.config.month}/${days[days.length - 1]} (計${days.length}日間)`
-        : `${days.map((d) => `${appState.config.month}/${d}`).join("・")} (計${days.length}日間)`;
+        : `${days.map((d) => `${appState.config.month}/${d}`).join("\u30FB")} (計${days.length}日間)`;
       if (r0.kind === "pin_shift") {
         const shiftMeta = getShiftMeta(r0.shift ?? "O", appState.customShiftDefs);
-        grp.description = `${spanText}: ${nurseLabel} を「${shiftMeta.label}(${shiftMeta.shortLabel})」に固定`;
+        grp.description = `${spanText}: ${nurseLabel} \u3092「${shiftMeta.label}(${shiftMeta.shortLabel})」\u306B固定`;
       } else {
         const shifts = (r0.forbidShifts ?? ["E", "N"]).join("/");
-        grp.description = `${spanText}: ${nurseLabel} の [${shifts}] シフト配置を禁止`;
+        grp.description = `${spanText}: ${nurseLabel} \u306E [${shifts}] \u30B7\u30D5\u30C8配置\u3092禁止`;
       }
     }
 
@@ -2168,10 +2168,10 @@ function renderCustomRulesList(): void {
       const curW = firstRule.penaltyWeight ?? 40;
       const curVal = curHard ? "hard" : `soft:${curW}`;
       const hOpts = [
-        { val: "hard", label: "🔒 必須(ハード)" },
-        { val: "soft:15", label: "⚖️ なるべく(重み:15)" },
-        { val: "soft:40", label: "⚖️ なるべく(重み:40)" },
-        { val: "soft:90", label: "⚖️ なるべく(重み:90)" },
+        { val: "hard", label: "🔒 必須(\u30CF\u30FC\u30C9)" },
+        { val: "soft:15", label: "⚖️ \u306A\u308B\u3079\u304F(重\u307F:15)" },
+        { val: "soft:40", label: "⚖️ \u306A\u308B\u3079\u304F(重\u307F:40)" },
+        { val: "soft:90", label: "⚖️ \u306A\u308B\u3079\u304F(重\u307F:90)" },
       ];
       for (const o of hOpts) {
         const opt = document.createElement("option");
@@ -2183,7 +2183,7 @@ function renderCustomRulesList(): void {
       if (!curHard && !hOpts.some((o) => o.val === curVal)) {
         const customOpt = document.createElement("option");
         customOpt.value = curVal;
-        customOpt.textContent = `⚖️ なるべく(重み:${curW})`;
+        customOpt.textContent = `⚖️ \u306A\u308B\u3079\u304F(重\u307F:${curW})`;
         customOpt.selected = true;
         hardSelect.appendChild(customOpt);
       }
@@ -2245,7 +2245,7 @@ function renderStaffProfilesTab(): void {
     }
     if (catGenBtn) {
       catGenBtn.className = "btn-solve-primary";
-      catGenBtn.textContent = "🎲 サンプルデータを読み込む";
+      catGenBtn.textContent = "🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080";
     }
     if (catClearBtn) catClearBtn.hidden = true;
     if (nextBanner) nextBanner.hidden = true;
@@ -2254,7 +2254,7 @@ function renderStaffProfilesTab(): void {
     emptyRel.style.color = "var(--text-sumi-secondary)";
     emptyRel.style.fontSize = "0.85rem";
     emptyRel.style.padding = "0.5rem 0";
-    emptyRel.textContent = "現在、スタッフおよびペア制約は登録されていません（白紙モード）。";
+    emptyRel.textContent = "現在、\u30B9\u30BF\u30C3\u30D5\u304A\u3088\u3073\u30DA\u30A2制約\u306F登録\u3055\u308C\u3066\u3044\u307E\u305B\u3093（白紙\u30E2\u30FC\u30C9）。";
     relList.appendChild(emptyRel);
 
     const emptyTr = document.createElement("tr");
@@ -2264,8 +2264,8 @@ function renderStaffProfilesTab(): void {
     emptyTd.style.padding = "2.5rem 1rem";
     emptyTd.style.color = "var(--text-sumi-secondary)";
     emptyTd.innerHTML =
-      `📄 <strong>スタッフデータが未登録です（白紙モード）</strong><br>` +
-      `<span style="font-size: 0.82rem; margin-top: 0.4rem; display: inline-block;">上の「🎲 サンプルデータを読み込む」ボタンを押すか、「📂 CSVインポート」で名簿ファイルを読み込んでください。</span>`;
+      `📄 <strong>\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C未登録\u3067\u3059（白紙\u30E2\u30FC\u30C9）</strong><br>` +
+      `<span style="font-size: 0.82rem; margin-top: 0.4rem; display: inline-block;">上\u306E「🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080」\u30DC\u30BF\u30F3\u3092押\u3059\u304B、「📂 CSV\u30A4\u30F3\u30DD\u30FC\u30C8」\u3067名簿\u30D5\u30A1\u30A4\u30EB\u3092読\u307F込\u3093\u3067\u304F\u3060\u3055\u3044。</span>`;
     emptyTr.appendChild(emptyTd);
     tbody.appendChild(emptyTr);
     return;
@@ -2273,13 +2273,13 @@ function renderStaffProfilesTab(): void {
 
   if (catGenBtn) {
     catGenBtn.className = "btn-toolbar-outline";
-    catGenBtn.textContent = "🎲 サンプル再生成";
+    catGenBtn.textContent = "🎲 \u30B5\u30F3\u30D7\u30EB再生成";
   }
   if (catClearBtn) catClearBtn.hidden = false;
   if (nextBanner) {
     nextBanner.hidden = false;
     if (nextMsg) {
-      nextMsg.textContent = `✅ 基礎データの準備完了（${appState.nurses.length}名）。「⚙️ 条件・ルール設定」で制約を確認・調整するか、「⚡ シフトを自動作成」でシフトを編成してください。`;
+      nextMsg.textContent = `✅ 基礎\u30C7\u30FC\u30BF\u306E準備完了（${appState.nurses.length}名）。「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u3067制約\u3092確認\u30FB調整\u3059\u308B\u304B、「⚡ \u30B7\u30D5\u30C8\u3092自動作成」\u3067\u30B7\u30D5\u30C8\u3092編成\u3057\u3066\u304F\u3060\u3055\u3044。`;
     }
   }
 
@@ -2304,7 +2304,7 @@ function renderStaffProfilesTab(): void {
     span.textContent =
       rel.type === "ng_pair"
         ? `⚡ 相性NG: ${nA.name} × ${nB.name}`
-        : `🌱 指導ペア: ${nA.name} ➔ ${nB.name}`;
+        : `🌱 指導\u30DA\u30A2: ${nA.name} ➔ ${nB.name}`;
     pill.appendChild(span);
 
     const hardSelect = document.createElement("select");
@@ -2317,9 +2317,9 @@ function renderStaffProfilesTab(): void {
     const curVal = curHard ? "hard" : `soft:${curW}`;
     for (const o of [
       { val: "hard", label: "🔒必須" },
-      { val: "soft:15", label: "⚖️重み:15" },
-      { val: "soft:40", label: "⚖️重み:40" },
-      { val: "soft:90", label: "⚖️重み:90" },
+      { val: "soft:15", label: "⚖️重\u307F:15" },
+      { val: "soft:40", label: "⚖️重\u307F:40" },
+      { val: "soft:90", label: "⚖️重\u307F:90" },
     ]) {
       const opt = document.createElement("option");
       opt.value = o.val;
@@ -2374,7 +2374,7 @@ function renderStaffProfilesTab(): void {
     skillsWrap.style.gap = "0.25rem";
     skillsWrap.style.alignItems = "center";
 
-    // 1. Group & Role badges (所属・区分)
+    // 1. Group & Role badges (所属区分)
     const groupAndRoleDefs = allSkillDefs.filter(
       (sd) => (sd.category === "group" || sd.category === "role") && nurse.skills.includes(sd.code)
     );
@@ -2392,7 +2392,7 @@ function renderStaffProfilesTab(): void {
       skillsWrap.appendChild(subBadge);
     }
 
-    // 2. Skill toggles (臨床スキル)
+    // 2. Skill toggles (臨床)
     const activeSkillDefs = allSkillDefs.filter(
       (sd) => (sd.category ?? "skill") === "skill"
     );
@@ -2412,7 +2412,7 @@ function renderStaffProfilesTab(): void {
         skillBtn.style.opacity = "0.45";
       }
       skillBtn.textContent = `${hasSkill ? "✓" : "+"}${sd.shortLabel}`;
-      skillBtn.title = `クリックで「${sd.label}」スキルを${hasSkill ? "解除" : "付与"} (${nurse.name})`;
+      skillBtn.title = `\u30AF\u30EA\u30C3\u30AF\u3067「${sd.label}」\u30B9\u30AD\u30EB\u3092${hasSkill ? "解除" : "付与"} (${nurse.name})`;
       skillBtn.addEventListener("click", () => {
         appState = {
           ...appState,
@@ -2439,7 +2439,7 @@ function renderStaffProfilesTab(): void {
     contractBtn.style.padding = "0.1rem 0.38rem";
     contractBtn.style.fontSize = "0.72rem";
     contractBtn.textContent = nurse.nightOk ? "🌙夜勤可" : "☀️日勤専従";
-    contractBtn.title = "クリックで「夜勤可 ⇄ 日勤専従(夜勤免除)」を切り替え";
+    contractBtn.title = "\u30AF\u30EA\u30C3\u30AF\u3067「夜勤可 ⇄ 日勤専従(夜勤免除)」\u3092切\u308A替\u3048";
     if (!nurse.nightOk) {
       contractBtn.style.background = "rgba(245, 158, 11, 0.15)";
       contractBtn.style.borderColor = "#d97706";
@@ -2479,19 +2479,19 @@ function renderStaffProfilesTab(): void {
     if (nurse.maxConsecutiveWorkDays !== undefined) {
       const consecSpan = document.createElement("span");
       consecSpan.className = "role-pill";
-      consecSpan.textContent = `${nurse.maxConsecutiveWorkDays}連勤まで`;
+      consecSpan.textContent = `${nurse.maxConsecutiveWorkDays}連勤\u307E\u3067`;
       skillsWrap.appendChild(consecSpan);
     }
     if (nurse.weekdayOnly) {
       const wkSpan = document.createElement("span");
       wkSpan.className = "role-pill";
-      wkSpan.textContent = "平日のみ(土日休)";
+      wkSpan.textContent = "平日\u306E\u307F(土日休)";
       skillsWrap.appendChild(wkSpan);
     }
     if (nurse.holidaysOff) {
       const holSpan = document.createElement("span");
       holSpan.className = "role-pill";
-      holSpan.textContent = "祝日休み";
+      holSpan.textContent = "祝日休\u307F";
       skillsWrap.appendChild(holSpan);
     }
     if (nurse.forbiddenShifts && nurse.forbiddenShifts.length > 0) {
@@ -2509,7 +2509,7 @@ function renderStaffProfilesTab(): void {
     editContractBtn.style.padding = "0.1rem 0.42rem";
     editContractBtn.style.fontSize = "0.72rem";
     editContractBtn.textContent = "⚙️ 契約編集";
-    editContractBtn.title = `${nurse.name}の契約プリセット・月間上限・曜日/祝日条件を編集`;
+    editContractBtn.title = `${nurse.name}\u306E契約\u30D7\u30EA\u30BB\u30C3\u30C8\u30FB月間上限\u30FB曜日/祝日条件\u3092編集`;
     editContractBtn.addEventListener("click", () => {
       openNurseContractDialog(nurse);
     });
@@ -2542,7 +2542,7 @@ function renderStaffProfilesTab(): void {
                 }`
             )
             .join(", ")
-        : "なし";
+        : "\u306A\u3057";
 
     const tdStats = document.createElement("td");
     const summary = currentEvaluation?.nurseSummaries[nurse.id];
@@ -2572,7 +2572,7 @@ function renderModelInspectorSection(): void {
   codeEl.textContent =
     lastSolveOutcome?.modelCodePreview ?? generateWashiCodePreview(appState);
   lpEl.textContent =
-    lastSolveOutcome?.lpPreview ?? "計算後に CPLEX LP 形式の式が表示されます。";
+    lastSolveOutcome?.lpPreview ?? "計算後\u306B CPLEX LP 形式\u306E式\u304C表示\u3055\u308C\u307E\u3059。";
   if (lastSolveOutcome) {
     statsBadge.textContent = `${lastSolveOutcome.numVariables} vars / ${lastSolveOutcome.numConstraints} constraints`;
   }
@@ -2591,10 +2591,10 @@ async function runWashiOptimization(): Promise<WashiSolveOutcome | null> {
   if (appState.nurses.length === 0) {
     appendChatMessage({
       role: "assistant",
-      senderLabel: "🏥 AI シフト相談",
+      senderLabel: "🏥 AI \u30B7\u30D5\u30C8相談",
       initialText:
-        "⚠️ **スタッフデータが未登録です（白紙モード）**\n" +
-        "まずは右上の **「✨ サンプル生成」** を押して30名のサンプルデータを読み込むか、**「📂 CSV読込」** からお手元の名簿CSVを取り込んでください。",
+        "⚠️ **\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C未登録\u3067\u3059（白紙\u30E2\u30FC\u30C9）**\n" +
+        "\u307E\u305A\u306F右上\u306E **「✨ \u30B5\u30F3\u30D7\u30EB生成」** \u3092押\u3057\u306630名\u306E\u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080\u304B、**「📂 CSV読込」** \u304B\u3089\u304A手元\u306E名簿CSV\u3092取\u308A込\u3093\u3067\u304F\u3060\u3055\u3044。",
     });
     renderAllViews();
     return null;
@@ -2694,17 +2694,17 @@ async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null>
     if (diag.status === "Unsat") {
       appendChatMessage({
         role: "system",
-        senderLabel: "🔍 矛盾・違反チェック結果",
+        senderLabel: "🔍 矛盾\u30FB違反\u30C1\u30A7\u30C3\u30AF結果",
         initialText:
-          `### 🚨 衝突しているルールが検出されました (${diag.conflicts.length}件)\n` +
+          `### 🚨 衝突\u3057\u3066\u3044\u308B\u30EB\u30FC\u30EB\u304C検出\u3055\u308C\u307E\u3057\u305F (${diag.conflicts.length}件)\n` +
           diag.conflicts.slice(0, 6).map((c) => `- ${c.labelJa}`).join("\n"),
       });
     } else if (currentEvaluation && currentEvaluation.violations.length > 0) {
       appendChatMessage({
         role: "system",
-        senderLabel: "🔍 矛盾・違反チェック結果",
+        senderLabel: "🔍 矛盾\u30FB違反\u30C1\u30A7\u30C3\u30AF結果",
         initialText:
-          `### ⚠️ 現在のシフト表に手動固定等による注意箇所があります (${currentEvaluation.violations.length}件)\n` +
+          `### ⚠️ 現在\u306E\u30B7\u30D5\u30C8表\u306B手動固定等\u306B\u3088\u308B注意箇所\u304C\u3042\u308A\u307E\u3059 (${currentEvaluation.violations.length}件)\n` +
           currentEvaluation.violations
             .slice(0, 5)
             .map((v) => `- ${v.message}`)
@@ -2713,12 +2713,12 @@ async function runExplicitConflictDiagnosis(): Promise<WashiSolveOutcome | null>
     } else {
       appendChatMessage({
         role: "system",
-        senderLabel: "🔍 矛盾・違反チェック結果",
+        senderLabel: "🔍 矛盾\u30FB違反\u30C1\u30A7\u30C3\u30AF結果",
         initialText:
-          `### ✅ 整合性チェック完了（矛盾・違反 0件）\n` +
-          `- **前月末7日間の引き継ぎ**（深夜明け・準夜明け遷移・連勤上限）: **クリア**\n` +
-          `- **日別必要人数・リーダー配置・NGペア回避**: **クリア**\n` +
-          `- **WaSHI \`validateSolution()\` 数理検証**: **全制約クリア (最大誤差 0)**`,
+          `### ✅ 整合性\u30C1\u30A7\u30C3\u30AF完了（矛盾\u30FB違反 0件）\n` +
+          `- **前月末7日間\u306E引\u304D継\u304E**（深夜明\u3051\u30FB準夜明\u3051遷移\u30FB連勤上限）: **\u30AF\u30EA\u30A2**\n` +
+          `- **日別必要人数\u30FB\u30EA\u30FC\u30C0\u30FC配置\u30FBNG\u30DA\u30A2回避**: **\u30AF\u30EA\u30A2**\n` +
+          `- **WaSHI \`validateSolution()\` 数理検証**: **全制約\u30AF\u30EA\u30A2 (最大誤差 0)**`,
       });
     }
     return diagOutcome;
@@ -2747,10 +2747,10 @@ function renderCellDialogShiftButtons(): void {
   const mode = getSelectedCellApplyMode();
   const modeSuffix =
     mode === "pref_soft"
-      ? " を希望登録"
+      ? " \u3092希望登録"
       : mode === "forbid"
-        ? " を禁止して再計算"
-        : " に固定して再計算";
+        ? " \u3092禁止\u3057\u3066再計算"
+        : " \u306B固定\u3057\u3066再計算";
 
   const allShiftChoices: Array<{
     code: ShiftCode;
@@ -2762,8 +2762,8 @@ function renderCellDialogShiftButtons(): void {
     { code: "E", shortLabel: "準", label: "準夜勤", colorClass: "shift-E" },
     { code: "N", shortLabel: "深", label: "深夜勤", colorClass: "shift-N" },
     { code: "O", shortLabel: "休", label: "公休", colorClass: "shift-O" },
-    { code: "W", shortLabel: "勤", label: "出勤お任せ (全勤務)", colorClass: "shift-W" },
-    { code: "EN", shortLabel: "夜", label: "夜勤お任せ (準/深)", colorClass: "shift-EN" },
+    { code: "W", shortLabel: "勤", label: "出勤\u304A任\u305B (全勤務)", colorClass: "shift-W" },
+    { code: "EN", shortLabel: "夜", label: "夜勤\u304A任\u305B (準/深)", colorClass: "shift-EN" },
   ];
   for (const cs of appState.customShiftDefs ?? []) {
     allShiftChoices.push({
@@ -2814,7 +2814,7 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
   const currentShift: ShiftCode = currentSchedule?.[nurse.id]?.[day - 1] ?? "O";
   const currentMeta = getShiftMeta(currentShift, appState.customShiftDefs);
   titleEl.textContent = `${nurse.name} — ${appState.config.month}/${day} (${WEEKDAY_NAMES_JA[dow]}${
-    holidayName ? `・祝日:${holidayName}` : ""
+    holidayName ? `\u30FB祝日:${holidayName}` : ""
   })`;
 
   bodyEl.replaceChildren();
@@ -2822,19 +2822,19 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
   const heldAttrLabels = allSkillDefs
     .filter((sd) => nurse.skills.includes(sd.code))
     .map((sd) => sd.shortLabel || sd.label)
-    .join("・");
+    .join("\u30FB");
   const infoLines: string[] = [
-    `現在のシフト: ${currentMeta.label} (${currentMeta.shortLabel})`,
-    `属性・スキル: ${heldAttrLabels || "なし"} (${
+    `現在\u306E\u30B7\u30D5\u30C8: ${currentMeta.label} (${currentMeta.shortLabel})`,
+    `属性\u30FB\u30B9\u30AD\u30EB: ${heldAttrLabels || "\u306A\u3057"} (${
       nurse.nightOk ? "夜勤可" : "日勤専従"
     })`,
-    `前月末のシフト: ${nurse.prevMonthShifts
+    `前月末\u306E\u30B7\u30D5\u30C8: ${nurse.prevMonthShifts
       .map((s) => getShiftMeta(s, appState.customShiftDefs).shortLabel)
       .join(" → ")} (前月末${getPrevMonthTailWorkStreak(
       nurse.prevMonthShifts,
       appState.customShiftDefs
     )}連勤)`,
-    `36協定 直近11ヶ月累計: 残業 ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h / 年間上限 ${appState.config.maxAnnualOvertimeHours}h`,
+    `36協定 直近11\u30F6月累計: 残業 ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h / 年間上限 ${appState.config.maxAnnualOvertimeHours}h`,
   ];
 
   const pref = appState.preferences.find(
@@ -2843,9 +2843,9 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
   if (pref) {
     const prefMeta = getShiftMeta(pref.shift, appState.customShiftDefs);
     infoLines.push(
-      `本人の希望: ${prefMeta.label} (${
+      `本人\u306E希望: ${prefMeta.label} (${
         pref.isHard ? "確定希望" : "希望"
-      }・${pref.reason})`
+      }\u30FB${pref.reason})`
     );
   }
 
@@ -2869,9 +2869,9 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
     patternShiftSelect.replaceChildren();
     const baseOpts: Array<{ value: string; text: string }> = [
       { value: "O", text: "休 (公休)" },
-      { value: "W", text: "勤 (出勤お任せ: 全勤務)" },
+      { value: "W", text: "勤 (出勤\u304A任\u305B: 全勤務)" },
       { value: "D", text: "日 (日勤)" },
-      { value: "EN", text: "夜 (夜勤お任せ: 準/深)" },
+      { value: "EN", text: "夜 (夜勤\u304A任\u305B: 準/深)" },
       { value: "E", text: "準 (準夜勤)" },
       { value: "N", text: "深 (深夜勤)" },
     ];
@@ -2951,7 +2951,7 @@ function pinNurseCellShift(nurseId: string, day: number, shift: ShiftCode, trigg
   const shiftMeta = getShiftMeta(shift, appState.customShiftDefs);
   const newRule: CustomConstraintRule = {
     id: `pin_${nurseId}_d${day}_${Date.now()}`,
-    description: `${nurse.name}の${appState.config.month}/${day}を「${shiftMeta.label}」に固定`,
+    description: `${nurse.name}\u306E${appState.config.month}/${day}\u3092「${shiftMeta.label}」\u306B固定`,
     enabled: true,
     kind: "pin_shift",
     nurseId,
@@ -3015,7 +3015,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
 
   appendChatMessage({
     role: "user",
-    senderLabel: "あなた",
+    senderLabel: "\u3042\u306A\u305F",
     initialText: trimmed,
   });
 
@@ -3030,7 +3030,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
       role: "system",
       senderLabel: "⚠️ Chrome Built-in AI (Gemini Nano) 未有効",
       initialText:
-        "お使いのブラウザでは Chrome 内蔵 AI (`LanguageModel` API / Gemini Nano) が有効になっていないため、AIチャット応答を生成できません（擬似AI応答は行いません）。\n\n右上の「⚙️」ボタンから Chrome フラグ設定手順をご確認いただくか、右側の画面から直接シフト固定・条件変更・最適化をお試しください。",
+        "\u304A使\u3044\u306E\u30D6\u30E9\u30A6\u30B6\u3067\u306F Chrome 内蔵 AI (`LanguageModel` API / Gemini Nano) \u304C有効\u306B\u306A\u3063\u3066\u3044\u306A\u3044\u305F\u3081、AI\u30C1\u30E3\u30C3\u30C8応答\u3092生成\u3067\u304D\u307E\u305B\u3093（擬似AI応答\u306F行\u3044\u307E\u305B\u3093）。\n\n右上\u306E「⚙️」\u30DC\u30BF\u30F3\u304B\u3089 Chrome \u30D5\u30E9\u30B0設定手順\u3092\u3054確認\u3044\u305F\u3060\u304F\u304B、右側\u306E画面\u304B\u3089直接\u30B7\u30D5\u30C8固定\u30FB条件変更\u30FB最適化\u3092\u304A試\u3057\u304F\u3060\u3055\u3044。",
     });
     const setupDialog = $("nano-setup-dialog") as HTMLDialogElement;
     if (!setupDialog.open) {
@@ -3046,7 +3046,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
   const assistantMsg = appendChatMessage({
     role: "assistant",
     senderLabel: "🤖 Gemini Nano × WaSHI",
-    initialText: "相談内容を解析中...",
+    initialText: "相談内容\u3092解析中...",
   });
 
   const turnRecord: TrajectoryTurnRecord = {
@@ -3077,7 +3077,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
     renderAppliedSummariesInto(
       assistantMsg.opsContainerEl,
       [],
-      "⏳ 指示を解析しています…"
+      "⏳ 指示\u3092解析\u3057\u3066\u3044\u307E\u3059…"
     );
     const enrichedPlan = await nanoManager.extractPlan(
       trimmed,
@@ -3137,12 +3137,12 @@ async function handleChatSubmit(userText: string): Promise<void> {
       enrichedPlan.intentType === "solve_only"
     ) {
       assistantMsg.bodyEl.textContent = enrichedPlan.stage1Response
-        ? `${enrichedPlan.stage1Response}\n（シフトを再計算しています…）`
-        : "最適解を求めています…";
+        ? `${enrichedPlan.stage1Response}\n（\u30B7\u30D5\u30C8\u3092再計算\u3057\u3066\u3044\u307E\u3059…）`
+        : "最適解\u3092求\u3081\u3066\u3044\u307E\u3059…";
       renderAppliedSummariesInto(
         assistantMsg.opsContainerEl,
         pillSummaries,
-        "⏳ 最適解を求めています…"
+        "⏳ 最適解\u3092求\u3081\u3066\u3044\u307E\u3059…"
       );
       await runWashiOptimization();
       turnRecord.solverOutcome = {
@@ -3165,7 +3165,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
         const diff = lastSolveOutcome.diffFromPrevious;
         const diffTag =
           diff && diff.totalCells > 0
-            ? ` / 変更 ${diff.changedCellsCount}マス (維持率 ${diff.retentionRatePct}%)`
+            ? ` / 変更 ${diff.changedCellsCount}\u30DE\u30B9 (維持率 ${diff.retentionRatePct}%)`
             : "";
         pillSummaries.push(
           `⚡ WaSHI (HiGHS) 再計算完了: ${lastSolveOutcome.status} (${lastSolveOutcome.solveTimeMs}ms${diffTag})`
@@ -3176,7 +3176,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
       renderAppliedSummariesInto(
         assistantMsg.opsContainerEl,
         pillSummaries,
-        "⏳ 矛盾の原因を診断しています…"
+        "⏳ 矛盾\u306E原因\u3092診断\u3057\u3066\u3044\u307E\u3059…"
       );
       const diagOutcome = await runExplicitConflictDiagnosis();
       turnRecord.solverOutcome = {
@@ -3195,7 +3195,7 @@ async function handleChatSubmit(userText: string): Promise<void> {
     renderAppliedSummariesInto(
       assistantMsg.opsContainerEl,
       pillSummaries,
-      "⏳ 結果をまとめています…"
+      "⏳ 結果\u3092\u307E\u3068\u3081\u3066\u3044\u307E\u3059…"
     );
     const outcomeForTurn = turnRecord.solverOutcome.ran ? lastSolveOutcome : null;
     let fullText = "";
@@ -3229,12 +3229,12 @@ async function handleChatSubmit(userText: string): Promise<void> {
     if (err?.name === "AbortError") {
       renderSafeMarkdown(
         assistantMsg.bodyEl,
-        `${assistantMsg.bodyEl.textContent ?? ""}\n\n*[停止しました]*`
+        `${assistantMsg.bodyEl.textContent ?? ""}\n\n*[停止\u3057\u307E\u3057\u305F]*`
       );
     } else {
       renderSafeMarkdown(
         assistantMsg.bodyEl,
-        `エラーが発生しました: \`${err?.message ?? String(err)}\``
+        `\u30A8\u30E9\u30FC\u304C発生\u3057\u307E\u3057\u305F: \`${err?.message ?? String(err)}\``
       );
     }
   } finally {
@@ -3319,7 +3319,7 @@ function checkImportReadiness(): void {
     if (feedbackEl) {
       feedbackEl.hidden = false;
       feedbackEl.className = "csv-feedback-box";
-      feedbackEl.innerHTML = `⚠️ <strong>データの不整合を検出しました:</strong><br>${validation.errors.join("<br>")}`;
+      feedbackEl.innerHTML = `⚠️ <strong>\u30C7\u30FC\u30BF\u306E不整合\u3092検出\u3057\u307E\u3057\u305F:</strong><br>${validation.errors.join("<br>")}`;
     }
     return;
   }
@@ -3330,7 +3330,7 @@ function checkImportReadiness(): void {
     feedbackEl.className = "csv-feedback-box is-success";
     const reqCount = pendingCsvRequests?.length ?? 0;
     const relCount = pendingCsvRelations?.length ?? 0;
-    feedbackEl.innerHTML = `✅ <strong>インポート準備完了:</strong> 看護師 ${pendingCsvNurses.length}名、希望 ${reqCount}件、ペア ${relCount}件`;
+    feedbackEl.innerHTML = `✅ <strong>\u30A4\u30F3\u30DD\u30FC\u30C8準備完了:</strong> 看護師 ${pendingCsvNurses.length}名、希望 ${reqCount}件、\u30DA\u30A2 ${relCount}件`;
   }
 }
 
@@ -3362,13 +3362,13 @@ function executeCsvImport(): void {
 
   appendChatMessage({
     role: "assistant",
-    senderLabel: "🏥 AI シフト相談",
+    senderLabel: "🏥 AI \u30B7\u30D5\u30C8相談",
     initialText:
-      `📂 **CSVデータを正常にインポートしました**\n` +
+      `📂 **CSV\u30C7\u30FC\u30BF\u3092正常\u306B\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3057\u305F**\n` +
       `- **看護師名簿**: ${appState.nurses.length}名\n` +
-      `- **シフト希望**: ${appState.preferences.length}件\n` +
-      `- **相性・ペア制約**: ${appState.relations.length}件\n\n` +
-      `右上の **「⚡ シフトを自動作成」** ボタンを押すと最適化計算を開始します！`,
+      `- **\u30B7\u30D5\u30C8希望**: ${appState.preferences.length}件\n` +
+      `- **相性\u30FB\u30DA\u30A2制約**: ${appState.relations.length}件\n\n` +
+      `右上\u306E **「⚡ \u30B7\u30D5\u30C8\u3092自動作成」** \u30DC\u30BF\u30F3\u3092押\u3059\u3068最適化計算\u3092開始\u3057\u307E\u3059！`,
   });
 }
 
@@ -3384,7 +3384,7 @@ function handleDownloadAllSamples(): void {
 
 function handleExportCsvs(): void {
   if (appState.nurses.length === 0) {
-    alert("エクスポートするスタッフデータがありません。");
+    alert("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u3059\u308B\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093。");
     return;
   }
   downloadTextFile("nurses.csv", exportNursesCsv(appState.nurses));
@@ -3426,14 +3426,14 @@ function handleGenerateSample(staffCount = 30, autoSwitchToSchedule = false): vo
 
   appendChatMessage({
     role: "assistant",
-    senderLabel: "🏥 AI シフト相談",
+    senderLabel: "🏥 AI \u30B7\u30D5\u30C8相談",
     initialText:
-      `✨ **${normalizedCount}名・3交代制の基礎データをセットしました**\n` +
-      `「基礎データ」タブで看護師名簿・スキル・前月末実績・希望シフト・相性ペアを確認できます。\n\n` +
-      `**次のステップ**:\n` +
-      `1. 「⚙️ 条件・ルール設定」タブで必要出勤人数（日勤/準夜/深夜）・連勤上限・夜勤ルール等を確認・調整\n` +
-      `2. 「⚡ シフトを自動作成」ボタンを押してシフトを一括最適化（HiGHS）\n` +
-      `3. シフト表の完成後、このチャットで個別の調整や相談ができます。`,
+      `✨ **${normalizedCount}名\u30FB3交代制\u306E基礎\u30C7\u30FC\u30BF\u3092\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F**\n` +
+      `「基礎\u30C7\u30FC\u30BF」\u30BF\u30D6\u3067看護師名簿\u30FB\u30B9\u30AD\u30EB\u30FB前月末実績\u30FB希望\u30B7\u30D5\u30C8\u30FB相性\u30DA\u30A2\u3092確認\u3067\u304D\u307E\u3059。\n\n` +
+      `**次\u306E\u30B9\u30C6\u30C3\u30D7**:\n` +
+      `1. 「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u30BF\u30D6\u3067必要出勤人数（日勤/準夜/深夜）\u30FB連勤上限\u30FB夜勤\u30EB\u30FC\u30EB等\u3092確認\u30FB調整\n` +
+      `2. 「⚡ \u30B7\u30D5\u30C8\u3092自動作成」\u30DC\u30BF\u30F3\u3092押\u3057\u3066\u30B7\u30D5\u30C8\u3092一括最適化（HiGHS）\n` +
+      `3. \u30B7\u30D5\u30C8表\u306E完成後、\u3053\u306E\u30C1\u30E3\u30C3\u30C8\u3067個別\u306E調整\u3084相談\u304C\u3067\u304D\u307E\u3059。`,
   });
 }
 
@@ -3452,8 +3452,8 @@ function handleClearBlank(): void {
 
   appendChatMessage({
     role: "assistant",
-    senderLabel: "🏥 AI シフト相談",
-    initialText: "🗑️ **シフト・スタッフデータをすべてクリアして白紙状態に戻しました。**",
+    senderLabel: "🏥 AI \u30B7\u30D5\u30C8相談",
+    initialText: "🗑️ **\u30B7\u30D5\u30C8\u30FB\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u3092\u3059\u3079\u3066\u30AF\u30EA\u30A2\u3057\u3066白紙状態\u306B戻\u3057\u307E\u3057\u305F。**",
   });
 }
 
@@ -3514,7 +3514,7 @@ function setupEventListeners(): void {
     switchTab("schedule");
     const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
     if (chatInput) {
-      chatInput.value = "佐藤さんの15日を「休」にして、夜勤回数のバランスを再調整して";
+      chatInput.value = "佐藤\u3055\u3093\u306E15日\u3092「休」\u306B\u3057\u3066、夜勤回数\u306E\u30D0\u30E9\u30F3\u30B9\u3092再調整\u3057\u3066";
       chatInput.focus();
     }
   });
@@ -3763,7 +3763,7 @@ function setupEventListeners(): void {
         st.className = "csv-file-status is-error";
       } else {
         pendingCsvNurses = parsed.nurses;
-        st.textContent = `✅ ${parsed.nurses.length}名 読み込み完了`;
+        st.textContent = `✅ ${parsed.nurses.length}名 読\u307F込\u307F完了`;
         st.className = "csv-file-status is-ready";
       }
       checkImportReadiness();
@@ -3794,7 +3794,7 @@ function setupEventListeners(): void {
         st.className = "csv-file-status is-error";
       } else {
         pendingCsvRequests = parsed.preferences;
-        st.textContent = `✅ ${parsed.preferences.length}件 読み込み完了`;
+        st.textContent = `✅ ${parsed.preferences.length}件 読\u307F込\u307F完了`;
         st.className = "csv-file-status is-ready";
       }
       checkImportReadiness();
@@ -3825,7 +3825,7 @@ function setupEventListeners(): void {
         st.className = "csv-file-status is-error";
       } else {
         pendingCsvRelations = parsed.relations;
-        st.textContent = `✅ ${parsed.relations.length}件 読み込み完了`;
+        st.textContent = `✅ ${parsed.relations.length}件 読\u307F込\u307F完了`;
         st.className = "csv-file-status is-ready";
       }
       checkImportReadiness();
@@ -3863,7 +3863,7 @@ function setupEventListeners(): void {
     if (appliedLogs.length > 0) {
       appendChatMessage({
         role: "system",
-        senderLabel: "🎖️ スキル・資格追加",
+        senderLabel: "🎖️ \u30B9\u30AD\u30EB\u30FB資格追加",
         initialText: appliedLogs.map((l) => `- ${l}`).join("\n"),
       });
     }
@@ -3917,8 +3917,8 @@ function setupEventListeners(): void {
     if (appliedLogs.length === 0) {
       appendChatMessage({
         role: "system",
-        senderLabel: "⚠️ カスタムシフト追加エラー",
-        initialText: `指定されたコード「${rawCode || rawLabel}」は予約コード（D/E/N/O/W/EN）または既存のカスタムシフトと重複しているため追加できません。別のコードを指定してください。`,
+        senderLabel: "⚠️ \u30AB\u30B9\u30BF\u30E0\u30B7\u30D5\u30C8追加\u30A8\u30E9\u30FC",
+        initialText: `指定\u3055\u308C\u305F\u30B3\u30FC\u30C9「${rawCode || rawLabel}」\u306F予約\u30B3\u30FC\u30C9（D/E/N/O/W/EN）\u307E\u305F\u306F既存\u306E\u30AB\u30B9\u30BF\u30E0\u30B7\u30D5\u30C8\u3068重複\u3057\u3066\u3044\u308B\u305F\u3081追加\u3067\u304D\u307E\u305B\u3093。別\u306E\u30B3\u30FC\u30C9\u3092指定\u3057\u3066\u304F\u3060\u3055\u3044。`,
       });
       return;
     }
@@ -3929,7 +3929,7 @@ function setupEventListeners(): void {
     renderAllViews();
     appendChatMessage({
       role: "system",
-      senderLabel: "🏷️ カスタムシフト追加",
+      senderLabel: "🏷️ \u30AB\u30B9\u30BF\u30E0\u30B7\u30D5\u30C8追加",
       initialText: appliedLogs.map((l) => `- ${l}`).join("\n"),
     });
     void runWashiOptimization();
@@ -3947,7 +3947,7 @@ function setupEventListeners(): void {
         .slice(0, 4)
         .map((c) => c.labelJa)
         .join(" / ") ?? "";
-    const promptText = `現在シフトが組めず、以下の矛盾(${conflictSummary})が検出されました。どう調整すれば解決できるか教えて。`;
+    const promptText = `現在\u30B7\u30D5\u30C8\u304C組\u3081\u305A、以下\u306E矛盾(${conflictSummary})\u304C検出\u3055\u308C\u307E\u3057\u305F。\u3069\u3046調整\u3059\u308C\u3070解決\u3067\u304D\u308B\u304B教\u3048\u3066。`;
     ($("chat-input") as HTMLTextAreaElement).value = promptText;
     void handleChatSubmit(promptText);
   });
@@ -4214,12 +4214,12 @@ function setupEventListeners(): void {
     const origLabel = copyBtn.textContent;
     try {
       await navigator.clipboard.writeText(jsonText);
-      copyBtn.textContent = "✅ クリップボードにコピーしました！";
+      copyBtn.textContent = "✅ \u30AF\u30EA\u30C3\u30D7\u30DC\u30FC\u30C9\u306B\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F！";
       setTimeout(() => {
         copyBtn.textContent = origLabel;
       }, 2000);
     } catch {
-      copyBtn.textContent = "⚠️ 下のプレビューからコピーしてください";
+      copyBtn.textContent = "⚠️ 下\u306E\u30D7\u30EC\u30D3\u30E5\u30FC\u304B\u3089\u30B3\u30D4\u30FC\u3057\u3066\u304F\u3060\u3055\u3044";
       setTimeout(() => {
         copyBtn.textContent = origLabel;
       }, 2500);
@@ -4252,13 +4252,13 @@ async function bootstrap(): Promise<void> {
 
   appendChatMessage({
     role: "assistant",
-    senderLabel: "🏥 AI シフト相談",
+    senderLabel: "🏥 AI \u30B7\u30D5\u30C8相談",
     initialText:
-      "### 🏥 ナーススケジューリング AI Copilot へようこそ\n" +
-      "1ヶ月分の病棟シフト表を数理最適化（WaSHI / HiGHS）で瞬時に自動作成・調整できます。\n\n" +
-      "1. **シフト自動作成**: 上部の **「⚡ シフトを自動作成」** をクリックすると、30名の最適シフトが一括編成されます。\n" +
-      "2. **個別調整・固定**: 表のマス目を直接クリックするか、このチャットで「鈴木さんの15日を日勤にして」のように指示すると固定できます。\n" +
-      "3. **基礎データ & ルール変更**: 「👥 基礎データ」タブでCSV入出力や名簿管理、「⚙️ 条件・ルール設定」タブで必要人数や36協定・連勤上限などをカスタマイズできます。",
+      "### 🏥 \u30CA\u30FC\u30B9\u30B9\u30B1\u30B8\u30E5\u30FC\u30EA\u30F3\u30B0 AI Copilot \u3078\u3088\u3046\u3053\u305D\n" +
+      "1\u30F6月分\u306E病棟\u30B7\u30D5\u30C8表\u3092数理最適化（WaSHI / HiGHS）\u3067瞬時\u306B自動作成\u30FB調整\u3067\u304D\u307E\u3059。\n\n" +
+      "1. **\u30B7\u30D5\u30C8自動作成**: 上部\u306E **「⚡ \u30B7\u30D5\u30C8\u3092自動作成」** \u3092\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u3068、30名\u306E最適\u30B7\u30D5\u30C8\u304C一括編成\u3055\u308C\u307E\u3059。\n" +
+      "2. **個別調整\u30FB固定**: 表\u306E\u30DE\u30B9目\u3092直接\u30AF\u30EA\u30C3\u30AF\u3059\u308B\u304B、\u3053\u306E\u30C1\u30E3\u30C3\u30C8\u3067「鈴木\u3055\u3093\u306E15日\u3092日勤\u306B\u3057\u3066」\u306E\u3088\u3046\u306B指示\u3059\u308B\u3068固定\u3067\u304D\u307E\u3059。\n" +
+      "3. **基礎\u30C7\u30FC\u30BF & \u30EB\u30FC\u30EB変更**: 「👥 基礎\u30C7\u30FC\u30BF」\u30BF\u30D6\u3067CSV入出力\u3084名簿管理、「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u30BF\u30D6\u3067必要人数\u308436協定\u30FB連勤上限\u306A\u3069\u3092\u30AB\u30B9\u30BF\u30DE\u30A4\u30BA\u3067\u304D\u307E\u3059。",
   });
 
   // Check LanguageModel availability and pre-warm session if already available

@@ -1,0 +1,120 @@
+{
+  "codeRunner": {
+    "running": "実行中...",
+    "run": "コードを実行",
+    "executed": "実行完了",
+    "openPlayground": "Playground で開く →",
+    "output": "実行結果 (stdout)"
+  },
+  "portfolioQp": {
+    "eyebrow": "インタラクティブ実例 · 5資産の凸二次計画 (QuadExpr)",
+    "title": "ポートフォリオ配分オプティマイザ (Markowitz QP)",
+    "subtitle": "目標期待リターンを変更して「▶ 最適化を実行」を押すと、5資産の共分散行列（QuadExpr）からリスク最小の配分比率を計算します。",
+    "solving": "計算中...",
+    "run": "最適化を実行",
+    "targetReturn": "目標期待リターン:",
+    "minVariance": "最小分散:",
+    "dirtyBanner": "目標リターンが変更されました。右上の「▶ 最適化を実行」を押して再計算してください。",
+    "openPlayground": "Playground でコードを編集する →",
+    "assets": {
+      "Tech": "ハイテク株",
+      "Global": "全世界株式",
+      "REIT": "不動産 REIT",
+      "Gold": "金 (ヘッジ)",
+      "Bonds": "国債"
+    }
+  },
+  "ecommerce": {
+    "eyebrow": "インタラクティブ実例 · HiGHS 条件付き制約 (Indicator)",
+    "title": "ECカート・クーポン＆「あと少し買い」最適化",
+    "subtitle": "カートの商品を選んで「▶ 最適化を実行」を押すと、併用上限（最大2枚）と最低利用額（m.indicator）から最安になるクーポンの組と追加提案アイテムを計算します。",
+    "solving": "計算中...",
+    "run": "最適化を実行",
+    "step1": "1. カートに入れる商品を選択",
+    "selectedPrefix": "選択中: $",
+    "enableFiller": "「あと少し買い（Fillerアイテム）」の同時最適化を有効化",
+    "fillerCandidates": "候補: USB-Cケーブル (+$10) / クリーナー (+$15) / キーキャッププラー (+$25)",
+    "step2": "2. 最適化された決済内訳 (最大2枚適用)",
+    "dirtyBanner": "商品の選択が変更されました。右上の「▶ 最適化を実行」を押して再計算してください。",
+    "smartTip": "あと少し買い提案: 小物を1点足した方が支払額が下がります！",
+    "smartTipBody1": "",
+    "smartTipBody2": "を追加すると上位クーポンが解放され、そのまま買う（$",
+    "smartTipBody3": "）より",
+    "subtotal": "商品小計",
+    "fillerItem": "あと少し買い追加品",
+    "discount": "クーポン割引適用",
+    "totalPayable": "最終支払額",
+    "skipped": "未適用",
+    "openPlayground": "Playground でコードを編集する →",
+    "products": {
+      "headphones": "ワイヤレスヘッドホン",
+      "keyboard": "メカニカルキーボード",
+      "webcam": "4K ウェブカメラ",
+      "stand": "アルミPCスタンド",
+      "lightbar": "モニターライトバー",
+      "mat": "フェルトデスクマット",
+      "USB_Cable": "USB-C ケーブル",
+      "Screen_Wipe": "液晶クリーナー",
+      "Keycap_Puller": "キーキャッププラー"
+    },
+    "coupons": {
+      "WELCOME15": "$100以上で $15 OFF (併用可)",
+      "MEMBER10": "$180以上で $10 OFF (併用可)",
+      "SAVE30_200": "$200以上で $30 OFF (Tier排他)",
+      "MEGA50_250": "$250以上で $50 OFF (Tier排他)"
+    }
+  },
+  "shift": {
+    "eyebrow": "インタラクティブ実例 · 8名 × 7日間 (56 バイナリ変数)",
+    "title": "週間シフトスケジューラ ＆ 希望休の競合診断",
+    "subtitle": "カレンダーのセルをクリックして希望休を変更し、「▶ 最適化を実行」を押すと HiGHS が最小コストのシフト表を計算します。",
+    "solving": "計算中...",
+    "run": "最適化を実行",
+    "dirtyTooltip": "未反映の変更があります",
+    "presets": {
+      "standard": "1. 標準シフト（平日4名・週末5〜6名）",
+      "weekend": "2. 週末ピーク体制（シニア2名必須）",
+      "twoOff": "3. 全員2日ずつ希望休を指定",
+      "conflict": "⚠️ 競合例：土曜にシニア全員が希望休"
+    },
+    "minSeniors": "1日あたりの最低シニア人数:",
+    "minSeniorsOptions": {
+      "none": "0 名（制約なし）",
+      "one": "1 名以上",
+      "two": "2 名以上"
+    },
+    "minShifts": "各スタッフの週最低出勤日数:",
+    "minShiftsSuffix": "日以上",
+    "dirtyBanner": "※ 条件を変更しました。「▶ 最適化を実行」を押すと結果に反映されます",
+    "colStaff": "スタッフ (日給 / 上限5日)",
+    "needPrefix": "必要 ",
+    "colTotal": "週出勤",
+    "weekendExtra": "(土日+$20)",
+    "toggleTitle": "クリックで希望休をON/OFF",
+    "offReq": "希望休",
+    "onDuty": "● 出勤",
+    "rest": "公休",
+    "rowTotal": "日別割当 / 必要人数",
+    "short": "✗ 不足",
+    "optimalTitle": "最適シフト確定 (Optimal)",
+    "optimalSub": "56 バイナリ変数",
+    "payroll": "週間総人件費 (最小化):",
+    "infeasibleTitle": "シフト編成不可 (Infeasible) — Z3 が特定した原因制約 (Unsat Core):",
+    "infeasibleTip": "💡 赤枠の「希望休」セルを1つクリックして解除し、「▶ 最適化を実行」を押すと再び最適シフトが組めるようになります。",
+    "openPlayground": "Playground でコードを編集する →",
+    "roles": {
+      "Senior": "シニア",
+      "Mid": "中堅",
+      "Junior": "ジュニア"
+    },
+    "days": {
+      "Mon": "月",
+      "Tue": "火",
+      "Wed": "水",
+      "Thu": "木",
+      "Fri": "金",
+      "Sat": "土",
+      "Sun": "日"
+    }
+  }
+}

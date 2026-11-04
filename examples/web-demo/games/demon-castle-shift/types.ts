@@ -31,25 +31,24 @@ export type MonsterArchetype = "heavy" | "nocturnal" | "daylight" | "knight" | "
 
 export type DayIndex = 0 | 1 | 2 | 3 | 4;
 
-export const DAY_LABELS: readonly string[] = ["月曜", "火曜", "水曜", "木曜", "金曜"];
+export const DAY_LABELS: readonly string[] = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 export const DAY_KEYS: readonly string[] = ["mon", "tue", "wed", "thu", "fri"];
 
 /**
  * ============================================================================
- * 難易度調整レバー（Difficulty & Probabilistic Battle Tuning Knobs）
+ * Difficulty & Probabilistic Battle Tuning Knobs
  * ============================================================================
- * 敵パーティの戦闘力は「上限なしの対数正規分布（Log-Normal Distribution）」から生成されます：
+ * Enemy party power is generated from an unbounded Log-Normal Distribution:
  *   Z ~ Normal(0, 1)
  *   EnemyPower = round(expectedPower * exp(enemyLogSigma * Z))
  *
- * - `enemyLogSigma`: 1σあたりの対数標準偏差（デフォルト 0.12 ≒ 1σで約±13%）。
- *   上限（+2σカット）を設けないため、どれほど守りを固めてもごく稀な上振れ（強襲）で突破される可能性が残り、
- *   「何事も100%確実ではない」緊張感が生まれます。
- * - `expectedToMaxRatio`: 各枠の目標防衛ライン（`requiredPower`）に対する「敵予測値（中央値 M）」の比率。
- *   デフォルト 0.80（例：目標ライン 400 のとき、敵予測値 M = 320）。
- * - `raidOccurrenceRatio`: 全時間帯のうち実際に勇者軍が襲来する割合の目安（デフォルト 0.45）。
- *   毎日2回律儀に必ず現れるのではなく、週のうち数回ランダムな時間帯に襲来します（ただし守りが手薄な枠は斥候に見抜かれて狙われます）。
- * - `castleMaxHp`: 魔王城の城門耐久ライフ（デフォルト 1 ＝ 一度でも突破されたら即敗北、すべての襲来を防衛成功する必要があります）。
+ * - `enemyLogSigma`: Log standard deviation per 1σ (default 0.12 ~= ±13%).
+ *   Because there is no upper cap (+2σ cut), rare high-power surges are possible,
+ *   maintaining tactical suspense.
+ * - `expectedToMaxRatio`: Ratio of forecast median M to target defense line requiredPower.
+ *   Default 0.80 (e.g. requiredPower 400 -> median M = 320).
+ * - `raidOccurrenceRatio`: Average proportion of slots facing an active raid (default 0.45).
+ * - `castleMaxHp`: Gate health (default 1 = single breach causes defeat).
  */
 export const BALANCE_CONFIG = {
   enemyLogSigma: 0.12,
@@ -105,11 +104,11 @@ export interface ShiftSlotRequirement {
   raidTitle: string;
   enemyName: string;
   enemyIcon: string;
-  /** 目標防衛ライン（+2σ 目安。ソルバーの最適編成および高勝率の基準値） */
+  /** Target defense line (~+2σ benchmark used by solver) */
   requiredPower: number;
-  /** 敵の予測戦力（対数正規分布の中央値 M。省略時は requiredPower * BALANCE_CONFIG.expectedToMaxRatio） */
+  /** Forecast enemy power (median M; defaults to requiredPower * expectedToMaxRatio) */
   expectedPower?: number;
-  /** 警備アニメーション中に表示される敵部隊の1行セリフ */
+  /** Battle dialogue displayed during combat */
   enemyQuote?: string;
   minStaff: number;
   isFullMoon?: boolean;
@@ -201,13 +200,13 @@ export interface SlotStatus {
   day: DayIndex;
   shift: ActiveShiftType;
   currentPower: number;
-  /** 目標防衛ライン（+2σ 目安） */
+  /** Target defense line (~+2σ benchmark) */
   requiredPower: number;
-  /** 敵の予測戦力（中央値 M） */
+  /** Forecast enemy power (median M) */
   expectedPower: number;
-  /** -2σ 最小戦力目安 */
+  /** -2σ minimum enemy power benchmark */
   minEnemyPower: number;
-  /** 対数正規分布にもとづく防衛成功率（0〜99%） */
+  /** Defense success probability based on log-normal distribution (0-99%) */
   winProbability: number;
   currentStaff: number;
   minStaff: number;
@@ -239,15 +238,15 @@ export interface SlotBattleOutcome {
   maxEnemyPower: number;
   actualEnemyPower: number;
   winProbability: number;
-  /** この時間帯に勇者軍が実際に現れたかどうか（false の場合は敵襲なし・平穏） */
+  /** Whether enemy vanguard attacked during this slot (false = peaceful) */
   hasRaid?: boolean;
   isWin: boolean;
 }
 
 export interface ScheduleEvaluation {
-  /** 全枠で目標防衛ライン（requiredPower）と人数を満たし、かつ勤務条件違反がない場合は true（ソルバーの最適解検証用） */
+  /** True if all slots meet requiredPower and minStaff with zero contract violations */
   isValid: boolean;
-  /** 勤務条件違反（連勤・夜→昼・指定休・満月・単独夜）が0件で、1人以上配置されていれば確率勝負に出撃可能 */
+  /** True if zero hard violations and at least 1 guard assigned */
   canDispatch: boolean;
   violations: RuleViolation[];
   slotStatuses: SlotStatus[];

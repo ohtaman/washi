@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
 import { transpileSnippetToJs } from "../utils/transpile";
+import { useComponentTranslations } from "../locales/index";
 
 const props = defineProps<{
   preset?: string;
@@ -9,8 +10,7 @@ const props = defineProps<{
 }>();
 
 const { lang } = useData();
-const isJa = computed(() => lang.value.startsWith("ja"));
-const isZh = computed(() => lang.value.startsWith("zh"));
+const i18n = computed(() => useComponentTranslations(lang.value).dict.codeRunner);
 
 const slotEl = ref<HTMLElement | null>(null);
 const isRunning = ref(false);
@@ -149,12 +149,12 @@ onMounted(() => {
         :disabled="isRunning"
         @click="runSlotCode"
       >
-        <span v-if="isRunning">⏳ {{ isJa ? "実行中..." : isZh ? "运行中..." : "Running..." }}</span>
-        <span v-else>▶ {{ isJa ? "コードを実行" : isZh ? "运行代码" : "Run Code" }}</span>
+        <span v-if="isRunning">⏳ {{ i18n.running }}</span>
+        <span v-else>▶ {{ i18n.run }}</span>
       </button>
 
       <span v-if="hasRun && !isRunning && !errorMsg" class="runner-status-meta">
-        ✓ {{ isJa ? "実行完了" : isZh ? "执行完成" : "Executed" }} ({{ runTimeMs.toFixed(1) }} ms)
+        ✓ {{ i18n.executed }} ({{ runTimeMs.toFixed(1) }} ms)
       </span>
 
       <a
@@ -164,13 +164,13 @@ onMounted(() => {
         class="playground-link"
         style="margin-left: auto;"
       >
-        {{ isJa ? "Playground で開く →" : isZh ? "在 Playground 中打开 →" : "Open in Playground →" }}
+        {{ i18n.openPlayground }}
       </a>
     </div>
 
     <div v-if="hasRun || isRunning" class="runner-output-panel" :class="{ 'is-stale': isRunning }">
       <div class="console-header">
-        <span>{{ isJa ? "実行結果 (stdout)" : isZh ? "执行输出 (stdout)" : "Execution Output (stdout)" }}</span>
+        <span>{{ i18n.output }}</span>
       </div>
       <pre v-if="errorMsg" class="console-pre error-text"><code>Error: {{ errorMsg }}</code></pre>
       <pre v-else class="console-pre"><code>{{ logs.length > 0 ? logs.join("\n") : (isRunning ? "..." : "(no output)") }}</code></pre>

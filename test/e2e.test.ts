@@ -222,11 +222,11 @@ describe("Browser End-to-End (E2E) Tests", () => {
     await page.click("#lang-btn-ja");
 
     await page.waitForFunction(
-      () => document.getElementById("run-btn")?.textContent?.includes("最適化を実行"),
+      () => document.getElementById("run-btn")?.textContent?.includes("\u6700\u9069\u5316\u3092\u5B9F\u884C"),
       { timeout: 5000 }
     );
-    expect(await page.textContent(".toolbar-label")).toContain("問題");
-    expect(await page.textContent("#tab-btn-results")).toContain("解と変数一覧");
+    expect(await page.textContent(".toolbar-label")).toContain("\u554F\u984C");
+    expect(await page.textContent("#tab-btn-results")).toContain("\u89E3\u3068\u5909\u6570\u4E00\u89A7");
 
     await page.click("#lang-btn-en");
 

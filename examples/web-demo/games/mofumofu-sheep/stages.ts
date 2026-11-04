@@ -1,6 +1,15 @@
 import type { GameLang } from "../i18n.js";
 import { solveOptimalPasture, evaluatePasture } from "./solver.js";
 import { TILE_META, type OptimalPastureResult, type StagePuzzle, type TileType } from "./types.js";
+import enCatalog from "./locales/en.json";
+import jaCatalog from "./locales/ja.json";
+import zhCatalog from "./locales/zh.json";
+
+const STAGE_CATALOGS: Record<GameLang, typeof enCatalog> = {
+  en: enCatalog,
+  ja: jaCatalog,
+  zh: zhCatalog,
+};
 
 /**
  * Compact stage DSL legend:
@@ -39,15 +48,15 @@ export function parseGrid(rows: readonly string[]): TileType[][] {
 
 export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
   // ===========================================================================
-  // Chapter 1: ちっちゃな盤面でルールを知る導入（Stage 1〜4: 3x4 / 3x5 / 4x5）
+  // Chapter 1: Introduction to rules on small boards (Stages 1-4: 3x4 / 3x5 / 4x5)
   // ===========================================================================
 
-  // Stage 1 [Introduce: 柵を置く / 3x4・柵1本]
+  // Stage
   {
     id: "stage-1",
     stageNumber: 1,
-    title: "はじめての柵",
-    oneLiner: "マスをタップして柵を置き、🐺から🐑を守ろう",
+    title: "First Fence",
+    oneLiner: "Tap a cell to place a fence and protect 🐑 from 🐺",
     maxFences: 1,
     targetScore: 7,
     grid: parseGrid([
@@ -56,12 +65,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "R R R R",
     ]),
   },
-  // Stage 2 [Introduce: 目標スコアと広さ / 3x5・柵1本]
+  // Stage
   {
     id: "stage-2",
     stageNumber: 2,
-    title: "いちごの丘",
-    oneLiner: "🐑のすぐ隣で塞ぐと🍓に届かない。🐺の近くで塞いで目標スコアを達成しよう",
+    title: "Strawberry Hill",
+    oneLiner: "Blocking right next to 🐑 misses the 🍓. Block closer to 🐺 to reach the target score",
     maxFences: 1,
     targetScore: 8,
     grid: parseGrid([
@@ -70,12 +79,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ ~ ~ ~ ~",
     ]),
   },
-  // Stage 3 [Introduce: 石橋 🌉 / 4x5・柵1本]
+  // Stage
   {
     id: "stage-3",
     stageNumber: 3,
-    title: "石橋のルール",
-    oneLiner: "🌉石橋の上には柵を置けないよ。橋を渡って南西の🍓も回収しよう",
+    title: "Stone Bridge Rule",
+    oneLiner: "You cannot place fences on stone bridges 🌉. Cross the bridge to claim the southwest 🍓",
     maxFences: 1,
     targetScore: 24,
     grid: parseGrid([
@@ -85,12 +94,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ ~ ~ . .",
     ]),
   },
-  // Stage 4 [Introduce: 穴ぼこ 🕳️ / 4x5・柵2本]
+  // Stage
   {
     id: "stage-4",
     stageNumber: 4,
-    title: "穴ぼこ埋め",
-    oneLiner: "🕳️穴ぼこ(-5点)がまきばに入ると減点になるよ。🕳️の真上に木の柵を打ち込んで穴を塞ごう",
+    title: "Plugging the Pitfall",
+    oneLiner: "Leaving a pitfall 🕳️ (-5 pt) inside the pasture lowers your score. Drive a wooden fence right into 🕳️ to plug it",
     maxFences: 2,
     targetScore: 16,
     grid: parseGrid([
@@ -102,15 +111,15 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
   },
 
   // ===========================================================================
-  // Chapter 2: 応用とひねり（Stage 5〜8: 5x5 / 5x6）
+  // Chapter 2: Applied mechanics and twists (Stages 5-8: 5x5 / 5x6)
   // ===========================================================================
 
-  // Stage 5 [Develop: 2つの石橋ルート / 5x5・柵2本]
+  // Stage
   {
     id: "stage-5",
     stageNumber: 5,
-    title: "石橋のむこう側",
-    oneLiner: "ただ守るだけでは目標に届かないよ。2つの橋の出口まで柵を押し上げよう",
+    title: "Beyond the Bridges",
+    oneLiner: "Merely blocking near 🐑 falls short of the target. Push your fences up to the two bridge exits",
     maxFences: 2,
     targetScore: 27,
     grid: parseGrid([
@@ -121,12 +130,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ I . . I",
     ]),
   },
-  // Stage 6 [Twist: 一石二鳥の杭打ち / 5x5・柵2本]
+  // Stage
   {
     id: "stage-6",
     stageNumber: 6,
-    title: "一石二鳥の杭打ち",
-    oneLiner: "🕳️(-5)の真上に木の柵を打ち込めば、穴埋めと🐺の侵入阻止を同時に達成できるよ",
+    title: "Two Birds with One Post",
+    oneLiner: "Driving a fence directly into 🕳️ (-5) plugs the pit and blocks 🐺 at the same time",
     maxFences: 2,
     targetScore: 26,
     grid: parseGrid([
@@ -137,12 +146,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ I . . I",
     ]),
   },
-  // Stage 7 [Twist: 穴ぼこの向こう側 / 5x6・柵3本]
+  // Stage
   {
     id: "stage-7",
     stageNumber: 7,
-    title: "穴ぼこの向こう側",
-    oneLiner: "東の🕳️(-5)を柵で塞ぐと奥の🍓畑に届かない。あえて通路を残して奥へ進む逆転の発想で挑もう",
+    title: "Beyond the Pitfall",
+    oneLiner: "Plugging the east 🕳️ (-5) cuts off the 🍓 orchard behind it. Leave the path open to claim the orchard",
     maxFences: 3,
     targetScore: 26,
     grid: parseGrid([
@@ -153,12 +162,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "W B . I ~ W",
     ]),
   },
-  // Stage 8 [Twist: おとりの野いちご / 5x6・柵3本]
+  // Stage
   {
     id: "stage-8",
     stageNumber: 8,
-    title: "おとりの野いちご",
-    oneLiner: "すぐ隣の🍓に飛びつくと柵が足りなくなるよ。西を1本で切って東の果樹園を広げよう",
+    title: "Decoy Strawberry",
+    oneLiner: "Chasing the nearby 🍓 runs out of fences. Seal the west with 1 fence and expand the east orchard",
     maxFences: 3,
     targetScore: 20,
     grid: parseGrid([
@@ -171,15 +180,15 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
   },
 
   // ===========================================================================
-  // Chapter 3: さらなる広がり（Stage 9〜12: 6x6 / 6x7 / 7x7）
+  // Chapter 3: Broader pastures (Stages 9-12: 6x6 / 6x7 / 7x7)
   // ===========================================================================
 
-  // Stage 9 [Develop: 2匹のヒツジの合流 / 6x6・柵3本]
+  // Stage
   {
     id: "stage-9",
     stageNumber: 9,
-    title: "ふたりの合流作戦",
-    oneLiner: "2匹の🐑を別々に囲うと目標に届かない。中央の回廊でひとつの牧場につなごう",
+    title: "Two Sheep Reunion",
+    oneLiner: "Enclosing the two 🐑 separately falls short. Connect them through the central corridor",
     maxFences: 3,
     targetScore: 27,
     grid: parseGrid([
@@ -191,12 +200,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "~ I ~ . B W",
     ]),
   },
-  // Stage 10 [Develop: 穴ぼこだらけの丘 / 6x6・柵4本]
+  // Stage
   {
     id: "stage-10",
     stageNumber: 10,
-    title: "穴ぼこだらけの丘",
-    oneLiner: "3つの🕳️(-5)がある丘。丸太で直接埋める穴と、柵の外へ切り離す穴を見極めよう",
+    title: "Pitfall Hill Triage",
+    oneLiner: "Three 🕳️ (-5) dot the hill. Decide which pits to plug directly with a post and which to wall off",
     maxFences: 4,
     targetScore: 25,
     grid: parseGrid([
@@ -208,12 +217,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "W B . ~ P I",
     ]),
   },
-  // Stage 11 [Develop: 三方からの包囲網 / 6x7・柵4本]
+  // Stage
   {
     id: "stage-11",
     stageNumber: 11,
-    title: "三方からの包囲網",
-    oneLiner: "3匹の🐺が石橋から迫る。4本の柵で守れる最大の果樹園を見つけ出そう",
+    title: "Three-Way Siege",
+    oneLiner: "Three 🐺 approach across stone bridges. Find the largest orchard you can protect with 4 fences",
     maxFences: 4,
     targetScore: 28,
     grid: parseGrid([
@@ -225,12 +234,12 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
       "W B ~ I . I ~",
     ]),
   },
-  // Stage 12 [Develop: 黄金のまきば / 7x7・柵5本]
+  // Stage
   {
     id: "stage-12",
     stageNumber: 12,
-    title: "黄金のまきば",
-    oneLiner: "5本の柵すべてを使い切り、満点の黄金牧場を完成させよう",
+    title: "Golden Meadow",
+    oneLiner: "Use all 5 fences wisely to complete the highest-scoring golden pasture",
     maxFences: 5,
     targetScore: 28,
     grid: parseGrid([
@@ -245,187 +254,34 @@ export const CAMPAIGN_STAGES: readonly StagePuzzle[] = [
   },
 ];
 
-const STAGE_I18N: Record<
-  string,
-  { en: { title: string; oneLiner: string }; zh: { title: string; oneLiner: string } }
-> = {
-  "stage-1": {
-    en: {
-      title: "First Fence",
-      oneLiner: "Tap a cell to place a fence and protect 🐑 from 🐺",
-    },
-    zh: {
-      title: "第一道栅栏",
-      oneLiner: "点击格子放置栅栏，保护🐑免受🐺袭击",
-    },
-  },
-  "stage-2": {
-    en: {
-      title: "Strawberry Hill",
-      oneLiner: "Blocking right next to 🐑 misses the 🍓. Block closer to 🐺 to reach the target score",
-    },
-    zh: {
-      title: "草莓山丘",
-      oneLiner: "如果在🐑旁边封堵就会漏掉🍓。在靠近🐺的位置设栏以达成目标分数吧",
-    },
-  },
-  "stage-3": {
-    en: {
-      title: "Stone Bridge Rule",
-      oneLiner: "You cannot place fences on stone bridges 🌉. Cross the bridge to claim the southwest 🍓",
-    },
-    zh: {
-      title: "石桥的规则",
-      oneLiner: "🌉石桥上不能放置栅栏。跨过石桥把西南方的🍓也纳入牧场吧",
-    },
-  },
-  "stage-4": {
-    en: {
-      title: "Plugging the Pitfall",
-      oneLiner: "Leaving a pitfall 🕳️ (-5 pt) inside the pasture lowers your score. Drive a wooden fence right into 🕳️ to plug it",
-    },
-    zh: {
-      title: "填平坑洞",
-      oneLiner: "若将🕳️坑洞(-5分)圈入牧场会扣分。直接在🕳️正上方打入木栅栏即可把坑填平",
-    },
-  },
-  "stage-5": {
-    en: {
-      title: "Beyond the Bridges",
-      oneLiner: "Merely blocking near 🐑 falls short of the target. Push your fences up to the two bridge exits",
-    },
-    zh: {
-      title: "石桥彼端",
-      oneLiner: "仅仅守在附近无法达到目标分数。把防线推进到两座石桥的出口吧",
-    },
-  },
-  "stage-6": {
-    en: {
-      title: "Two Birds with One Post",
-      oneLiner: "Driving a fence directly into 🕳️ (-5) plugs the pit and blocks 🐺 at the same time",
-    },
-    zh: {
-      title: "一举两得的木桩",
-      oneLiner: "直接把木栅栏打进🕳️(-5)里，就能同时填平坑洞并阻挡🐺",
-    },
-  },
-  "stage-7": {
-    en: {
-      title: "Beyond the Pitfall",
-      oneLiner: "Plugging the east 🕳️ (-5) cuts off the 🍓 orchard behind it. Leave the path open to claim the orchard",
-    },
-    zh: {
-      title: "舍小取大",
-      oneLiner: "如果用栅栏封住东侧的🕳️(-5)，就拿不到深处的🍓田。试着保留通道跨过去吧",
-    },
-  },
-  "stage-8": {
-    en: {
-      title: "Decoy Strawberry",
-      oneLiner: "Chasing the nearby 🍓 runs out of fences. Seal the west with 1 fence and expand the east orchard",
-    },
-    zh: {
-      title: "诱饵野草莓",
-      oneLiner: "如果贪图眼前的🍓会导致栅栏不够用。用1根栅栏封住西侧，向东扩展果园吧",
-    },
-  },
-  "stage-9": {
-    en: {
-      title: "Two Sheep Reunion",
-      oneLiner: "Enclosing the two 🐑 separately falls short. Connect them through the central corridor",
-    },
-    zh: {
-      title: "双羊会师作战",
-      oneLiner: "把两只🐑分开圈起来无法达到目标。通过中央走廊将它们连成同一个牧场吧",
-    },
-  },
-  "stage-10": {
-    en: {
-      title: "Pitfall Hill Triage",
-      oneLiner: "Three 🕳️ (-5) dot the hill. Decide which pits to plug directly with a post and which to wall off",
-    },
-    zh: {
-      title: "坑洞山丘的取舍",
-      oneLiner: "山丘上有3个🕳️(-5)。仔细分辨哪些该直接打桩填平、哪些该隔在牧场外吧",
-    },
-  },
-  "stage-11": {
-    en: {
-      title: "Three-Way Siege",
-      oneLiner: "Three 🐺 approach across stone bridges. Find the largest orchard you can protect with 4 fences",
-    },
-    zh: {
-      title: "三面合围",
-      oneLiner: "3只🐺正从石桥逼近。找出用4根栅栏能够守护的最大果园吧",
-    },
-  },
-  "stage-12": {
-    en: {
-      title: "Golden Meadow",
-      oneLiner: "Use all 5 fences wisely to complete the highest-scoring golden pasture",
-    },
-    zh: {
-      title: "黄金牧场",
-      oneLiner: "充分利用全部5根栅栏，完成最高分的黄金牧场吧",
-    },
-  },
-};
-
-const GENERATED_STAGE_THEMES: readonly { ja: string; en: string; zh: string }[] = [
-  { ja: "風わたる高原牧場", en: "Windy Highland Pasture", zh: "微风高原牧场" },
-  { ja: "石橋の渓谷", en: "Stone Bridge Valley", zh: "石桥溪谷" },
-  { ja: "いちご薫る深森", en: "Strawberry Deepwoods", zh: "草莓深林" },
-  { ja: "霧晴れる大草原", en: "Misty Grand Meadow", zh: "雾霁大草原" },
-  { ja: "岩山の回廊", en: "Rocky Crag Corridor", zh: "岩山回廊" },
-  { ja: "せせらぎの果樹園", en: "Brookside Orchard", zh: "溪畔果园" },
-  { ja: "星降る夜のまきば", en: "Starlit Night Pasture", zh: "星夜牧场" },
-  { ja: "陽だまりの丘陵", en: "Sunlit Hills", zh: "暖阳丘陵" },
-  { ja: "迷宮の石畳", en: "Labyrinth Causeway", zh: "迷宫石道" },
-  { ja: "双子川のほとり", en: "Twin Riverbanks", zh: "双子河畔" },
-  { ja: "古の石垣牧場", en: "Ancient Stonewall Meadow", zh: "古石垣牧场" },
-  { ja: "天空の黄金牧場", en: "Skyward Golden Pasture", zh: "天空黄金牧场" },
-];
-
-export function getStageTitleByNumber(stageNumber: number, lang: GameLang): string {
+export function getStageTitleByNumber(stageNumber: number, lang: GameLang = "en"): string {
+  const catalog = STAGE_CATALOGS[lang] ?? STAGE_CATALOGS.en;
   if (stageNumber >= 1 && stageNumber <= CAMPAIGN_STAGES.length) {
     const st = CAMPAIGN_STAGES[stageNumber - 1];
-    if (lang === "ja") return st.title;
-    return STAGE_I18N[st.id]?.[lang]?.title ?? st.title;
+    return (catalog.stages as Record<string, { title: string; oneLiner: string }>)[st.id]?.title ?? st.title;
   }
   const themeIdx =
-    Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
-  return GENERATED_STAGE_THEMES[themeIdx][lang];
+    Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % catalog.themes.length;
+  return catalog.themes[themeIdx] ?? CAMPAIGN_STAGES[0].title;
 }
 
 export function getLocalizedStageText(
   stage: StagePuzzle,
-  lang: GameLang
+  lang: GameLang = "en"
 ): { title: string; oneLiner: string } {
-  if (lang === "ja") {
-    return { title: stage.title, oneLiner: stage.oneLiner };
-  }
-  const entry = STAGE_I18N[stage.id]?.[lang];
+  const catalog = STAGE_CATALOGS[lang] ?? STAGE_CATALOGS.en;
+  const entry = (catalog.stages as Record<string, { title: string; oneLiner: string }>)[stage.id];
   if (entry) {
-    return entry;
-  }
-  const themeIdx =
-    Math.abs(stage.stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
-  const theme = GENERATED_STAGE_THEMES[themeIdx];
-  if (lang === "en") {
-    return {
-      title: theme.en,
-      oneLiner: `Block 🐺 with up to ${stage.maxFences} fences and reach the target score of ${stage.targetScore} pt`,
-    };
+    return { title: entry.title, oneLiner: entry.oneLiner };
   }
   return {
-    title: theme.zh,
-    oneLiner: `使用最多 ${stage.maxFences} 根栅栏阻挡🐺，达成 ${stage.targetScore} pt 的目标分数吧`,
+    title: getStageTitleByNumber(stage.stageNumber, lang),
+    oneLiner: catalog.stageDefaultOneLiner
+      .replace("{n}", String(stage.maxFences))
+      .replace("{target}", String(stage.targetScore)),
   };
 }
 
-/**
- * Deterministic PRNG (Mulberry32) for reproducible procedural stage generation.
- */
 function createRng(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
@@ -623,8 +479,8 @@ export async function generateVerifiedPastureStage(
     const { rows, cols, wolfCount, sheepCount } = spec;
     const baseSeed = getSeedForStageNumber(stageNumber);
     const themeIdx =
-      Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % GENERATED_STAGE_THEMES.length;
-    const theme = GENERATED_STAGE_THEMES[themeIdx];
+      Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % STAGE_CATALOGS.en.themes.length;
+    const themeName = STAGE_CATALOGS.en.themes[themeIdx] ?? "Highland Pasture";
 
     const centerR = (rows - 1) / 2;
     const centerC = (cols - 1) / 2;
@@ -723,8 +579,8 @@ export async function generateVerifiedPastureStage(
       const candidate: StagePuzzle = {
         id: `stage-${stageNumber}`,
         stageNumber,
-        title: theme.ja,
-        oneLiner: `${spec.maxFences}本の柵で🐺の侵入を防ぎ、目標スコアを達成しよう`,
+        title: themeName,
+        oneLiner: `Protect 🐑 from 🐺 with ${spec.maxFences} fences and reach target score`,
         maxFences: spec.maxFences,
         targetScore: 20,
         grid,
@@ -748,7 +604,7 @@ export async function generateVerifiedPastureStage(
       ) {
         candidate.maxFences = solved.optimalFenceCount;
         candidate.targetScore = solved.optimalScore;
-        candidate.oneLiner = `${candidate.maxFences}本の柵で🐺の侵入を防ぎ、目標スコア ${candidate.targetScore} pt を達成しよう`;
+        candidate.oneLiner = `Protect 🐑 from 🐺 with ${candidate.maxFences} fences and reach target score ${candidate.targetScore} pt`;
         generatedStageCache.set(stageNumber, { stage: candidate, optimal: solved });
         return candidate;
       }
@@ -758,7 +614,7 @@ export async function generateVerifiedPastureStage(
       ...CAMPAIGN_STAGES[CAMPAIGN_STAGES.length - 1],
       id: `stage-${stageNumber}`,
       stageNumber,
-      title: theme.ja,
+      title: themeName,
     };
     const fallbackSolved = await solveOptimalPasture(fallback);
     const verifiedFallbackOpt =

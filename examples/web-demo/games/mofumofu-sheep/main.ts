@@ -3,6 +3,43 @@ import { setHighsWasmUrl } from "../../../../src/index.js";
 import { pastureAudio } from "./audio.js";
 import { FENCE_SVG } from "./fence-icon.js";
 import { getGameLang, pickLang, setGameLang, type GameLang } from "../i18n.js";
+import enCatalog from "./locales/en.json";
+import jaCatalog from "./locales/ja.json";
+import zhCatalog from "./locales/zh.json";
+
+const CATALOGS: Record<GameLang, typeof enCatalog> = {
+  en: enCatalog,
+  ja: jaCatalog,
+  zh: zhCatalog,
+};
+
+export function t(
+  key: string,
+  params?: Record<string, string | number>,
+  lang: GameLang = currentLang
+): string {
+  const catalog = CATALOGS[lang] ?? CATALOGS.en;
+  const parts = key.split(".");
+  let val: any = catalog;
+  for (const part of parts) {
+    val = val?.[part];
+    if (val === undefined) break;
+  }
+  if (val === undefined) {
+    let fallback: any = CATALOGS.en;
+    for (const part of parts) {
+      fallback = fallback?.[part];
+      if (fallback === undefined) break;
+    }
+    val = fallback ?? key;
+  }
+  if (typeof val !== "string") return String(val ?? key);
+  if (!params) return val;
+  return val.replace(/\{(\w+)\}/g, (_, k) =>
+    params[k] !== undefined ? String(params[k]) : `{${k}}`
+  );
+}
+
 import {
   cloneFences,
   computeCellSize,
@@ -212,24 +249,8 @@ function syncAudioButtonUi(): void {
   const textEl = document.getElementById("bgm-btn-text");
   if (!btn || !textEl) return;
   btn.setAttribute("aria-pressed", String(playing));
-  textEl.textContent = playing
-    ? "🔊 BGM: ON"
-    : pickLang(currentLang, {
-        ja: "🔇 BGM: OFF",
-        en: "🔇 BGM: OFF",
-        zh: "🔇 BGM: OFF",
-      });
-  btn.title = playing
-    ? pickLang(currentLang, {
-        ja: "BGMを停止（クリックでOFF）",
-        en: "Stop BGM (Click to mute)",
-        zh: "停止BGM（点击静音）",
-      })
-    : pickLang(currentLang, {
-        ja: "BGMを再生（クリックでON）",
-        en: "Play BGM (Click to enable)",
-        zh: "播放BGM（点击开启）",
-      });
+  textEl.textContent = playing ? t("bgmTagOn") : t("bgmTagOff");
+  btn.title = playing ? t("bgmOff") : t("bgmOn");
 }
 
 // Application State
@@ -266,11 +287,7 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
   }
   if (typeof document === "undefined") return;
   document.documentElement.lang = currentLang;
-  document.title = pickLang(currentLang, {
-    ja: "もふもふ羊の牧場囲い — まきばの柵パズル",
-    en: "Fluffy Sheep Pasture — Fence Enclosure Puzzle",
-    zh: "毛茸茸绵羊围牧场 — 牧场栅栏谜题",
-  });
+  document.title = t("title", undefined, currentLang);
 
   const setText = (id: string, text: string) => {
     const el = document.getElementById(id);
@@ -289,413 +306,80 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
     if (el) el.setAttribute(attr, val);
   };
 
-  setText(
-    "back-link",
-    pickLang(currentLang, {
-      ja: "← ショーケース",
-      en: "← Showcase",
-      zh: "← 案例展示",
-    })
-  );
-  setTitle(
-    "back-link",
-    pickLang(currentLang, {
-      ja: "ショーケースへ戻る",
-      en: "Back to Showcase",
-      zh: "返回案例展示",
-    })
-  );
+  setText("back-link", t("backToShowcaseShort", undefined, currentLang));
+  setTitle("back-link", t("backToShowcase", undefined, currentLang));
   const backLink = document.getElementById("back-link") as HTMLAnchorElement | null;
   if (backLink) {
-    backLink.href = pickLang(currentLang, {
-      ja: "../../ja/showcase/",
-      en: "../../showcase/",
-      zh: "../../zh/showcase/",
-    });
+    backLink.href = t("showcaseUrl", undefined, currentLang);
   }
   const menuShowcaseLink = document.getElementById("menu-showcase-link") as HTMLAnchorElement | null;
   if (menuShowcaseLink) {
-    menuShowcaseLink.href = backLink?.href ?? "../../ja/showcase/";
+    menuShowcaseLink.href = backLink?.href ?? t("showcaseUrl", undefined, currentLang);
   }
-  setTitle(
-    "menu-showcase-link",
-    pickLang(currentLang, {
-      ja: "ショーケースへ戻る",
-      en: "Back to Showcase",
-      zh: "返回案例展示",
-    })
-  );
-  setText(
-    "menu-back-label",
-    pickLang(currentLang, {
-      ja: "ショーケース",
-      en: "Showcase",
-      zh: "案例展示",
-    })
-  );
-  setTitle(
-    "btn-topbar-menu",
-    pickLang(currentLang, {
-      ja: "メニュー",
-      en: "Menu",
-      zh: "菜单",
-    })
-  );
-  setAttr(
-    "btn-topbar-menu",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "メニューを開く",
-      en: "Open menu",
-      zh: "打开菜单",
-    })
-  );
+  setTitle("menu-showcase-link", t("backToShowcase", undefined, currentLang));
+  setText("menu-back-label", t("showcaseShort", undefined, currentLang) || "Showcase");
+  setTitle("btn-topbar-menu", t("menu", undefined, currentLang));
+  setAttr("btn-topbar-menu", "aria-label", t("openMenu", undefined, currentLang));
 
-  setText(
-    "app-title",
-    pickLang(currentLang, {
-      ja: "もふもふ羊の牧場囲い",
-      en: "Fluffy Sheep Pasture",
-      zh: "毛茸茸绵羊围牧场",
-    })
-  );
-  setText(
-    "app-subtitle",
-    pickLang(currentLang, {
-      ja: "まきばの柵パズル",
-      en: "Pasture Fence Puzzle",
-      zh: "牧场栅栏谜题",
-    })
-  );
-  setText(
-    "btn-open-rules-label",
-    pickLang(currentLang, {
-      ja: "遊び方",
-      en: "How to Play",
-      zh: "玩法说明",
-    })
-  );
-  setTitle(
-    "btn-open-rules",
-    pickLang(currentLang, {
-      ja: "遊び方とチュートリアルを見る",
-      en: "View rules and tutorials",
-      zh: "查看玩法说明与新手教程",
-    })
-  );
-  setTitle(
-    "total-stars-badge",
-    pickLang(currentLang, {
-      ja: "クリア済みステージ数",
-      en: "Cleared stages",
-      zh: "已通关关卡数",
-    })
-  );
+  setText("app-title", t("appTitle", undefined, currentLang));
+  setText("app-subtitle", t("appSubtitle", undefined, currentLang));
+  setText("btn-open-rules-label", t("howToPlay", undefined, currentLang));
+  setTitle("btn-open-rules", t("howToPlayTooltip", undefined, currentLang));
+  setTitle("total-stars-badge", t("clearedStages", undefined, currentLang));
 
-  setAttr(
-    "stage-strip",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "ステージ選択",
-      en: "Stage Selection",
-      zh: "关卡选择",
-    })
-  );
-  const prevLabel = pickLang(currentLang, {
-    ja: "前のステージへ",
-    en: "Previous Stage",
-    zh: "上一关",
-  });
+  setAttr("stage-strip", "aria-label", t("stageSelect", undefined, currentLang));
+  const prevLabel = t("prevStage", undefined, currentLang);
   setTitle("btn-stage-prev", prevLabel);
   setAttr("btn-stage-prev", "aria-label", prevLabel);
 
-  const nextLabel = pickLang(currentLang, {
-    ja: "次のステージへ",
-    en: "Next Stage",
-    zh: "下一关",
-  });
+  const nextLabel = t("nextStage", undefined, currentLang);
   setTitle("btn-stage-next", nextLabel);
   setAttr("btn-stage-next", "aria-label", nextLabel);
 
-  setAttr(
-    "stage-select",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "ステージ番号を選択",
-      en: "Select stage number",
-      zh: "选择关卡编号",
-    })
-  );
-  setTitle(
-    "stage-select",
-    pickLang(currentLang, {
-      ja: "到達済みステージへ移動",
-      en: "Jump to reached stage",
-      zh: "跳转到已到达关卡",
-    })
-  );
+  setAttr("stage-select", "aria-label", t("selectStageNumber", undefined, currentLang));
+  setTitle("stage-select", t("jumpToReached", undefined, currentLang));
 
-  setText(
-    "hud-fence-label",
-    pickLang(currentLang, {
-      ja: "柵の残り",
-      en: "Fences Left",
-      zh: "剩余栅栏",
-    })
-  );
-  setText(
-    "hud-score-label",
-    pickLang(currentLang, {
-      ja: "現在 / クリア目標",
-      en: "Current / Target",
-      zh: "当前 / 目标得分",
-    })
-  );
+  setText("hud-fence-label", t("remainingFences", undefined, currentLang));
+  setText("hud-score-label", t("currentAndTargetScore", undefined, currentLang));
 
-  setText(
-    "btn-show-optimal",
-    pickLang(currentLang, {
-      ja: "✨ お手本を見る",
-      en: "✨ View Model Solution",
-      zh: "✨ 查看示范解答",
-    })
-  );
-  setTitle(
-    "btn-show-optimal",
-    pickLang(currentLang, {
-      ja: "最適なお手本解答を表示します",
-      en: "Show optimal model solution",
-      zh: "显示示范解答",
-    })
-  );
-  setText(
-    "btn-next-stage",
-    pickLang(currentLang, {
-      ja: "次のステージへ ▶",
-      en: "Next Stage ▶",
-      zh: "下一关 ▶",
-    })
-  );
-  setAttr(
-    "board-grid",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "牧場パズル盤面",
-      en: "Pasture Puzzle Board",
-      zh: "牧场解谜棋盘",
-    })
-  );
-  setAttr(
-    "legend-strip",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "タイル得点一覧",
-      en: "Tile Score Legend",
-      zh: "地块得分一览",
-    })
-  );
+  setText("btn-show-optimal", t("btnSolve", undefined, currentLang));
+  setTitle("btn-show-optimal", t("btnSolveTitle", undefined, currentLang));
+  setText("btn-next-stage", t("btnNextStage", undefined, currentLang));
+  setAttr("board-grid", "aria-label", t("boardAria", undefined, currentLang));
+  setAttr("legend-strip", "aria-label", t("legendStripAria", undefined, currentLang));
   document.querySelectorAll<HTMLImageElement>(".brand-avatar").forEach((el) => {
-    el.setAttribute("alt", pickLang(currentLang, { ja: "モコ", en: "Moko", zh: "莫可" }));
+    el.setAttribute("alt", t("mascotAlt", undefined, currentLang));
   });
 
-  setText(
-    "btn-undo-label",
-    pickLang(currentLang, {
-      ja: "1手戻す",
-      en: "Undo",
-      zh: "撤销一步",
-    })
-  );
-  setTitle(
-    "btn-undo",
-    pickLang(currentLang, {
-      ja: "1手戻す (Zキー)",
-      en: "Undo 1 move (Z key)",
-      zh: "撤销一步 (Z键)",
-    })
-  );
+  setText("btn-undo-label", t("btnUndo", undefined, currentLang));
+  setTitle("btn-undo", t("btnUndoTitle", undefined, currentLang));
 
-  setText(
-    "btn-restart-label",
-    pickLang(currentLang, {
-      ja: "リスタート",
-      en: "Restart",
-      zh: "重新开始",
-    })
-  );
-  setTitle(
-    "btn-restart",
-    pickLang(currentLang, {
-      ja: "最初からやり直す (Rキー)",
-      en: "Restart stage (R key)",
-      zh: "从头重新开始 (R键)",
-    })
-  );
+  setText("btn-restart-label", t("btnRestart", undefined, currentLang));
+  setTitle("btn-restart", t("btnRestartTitle", undefined, currentLang));
 
-  setText(
-    "btn-hint-label",
-    pickLang(currentLang, {
-      ja: "1手ヒント",
-      en: "1-Move Hint",
-      zh: "一步提示",
-    })
-  );
-  setTitle(
-    "btn-hint",
-    pickLang(currentLang, {
-      ja: "次の1手を盤面上で光らせて教えます (Hキー)",
-      en: "Highlight the next recommended move on the board (H key)",
-      zh: "在棋盘上高亮提示下一步操作 (H键)",
-    })
-  );
+  setText("btn-hint-label", t("btnHint", undefined, currentLang));
+  setTitle("btn-hint", t("btnHintTitle", undefined, currentLang));
 
-  setTitle(
-    "legend-sheep",
-    pickLang(currentLang, {
-      ja: "ヒツジ（+2点・守る対象）",
-      en: "Sheep (+2 pts, protect from wolves)",
-      zh: "绵羊（+2分・保护对象）",
-    })
-  );
-  setTitle(
-    "legend-grass",
-    pickLang(currentLang, {
-      ja: "草地（+1点）",
-      en: "Meadow (+1 pt)",
-      zh: "草地（+1分）",
-    })
-  );
-  setTitle(
-    "legend-strawberry",
-    pickLang(currentLang, {
-      ja: "野いちご（+5点）",
-      en: "Wild Strawberry (+5 pts)",
-      zh: "野草莓（+5分）",
-    })
-  );
-  setTitle(
-    "legend-pit",
-    pickLang(currentLang, {
-      ja: "穴ぼこ（-5点・丸太の柵で塞げる）",
-      en: "Pitfall (-5 pts, can be plugged with a fence)",
-      zh: "坑洞（-5分・可用木桩栅栏填平）",
-    })
-  );
-  setHtml(
-    "legend-bridge",
-    pickLang(currentLang, {
-      ja: "🌉 +1 <small>(柵×)</small>",
-      en: "🌉 +1 <small>(no fence)</small>",
-      zh: "🌉 +1 <small>(禁放栅栏)</small>",
-    })
-  );
-  setTitle(
-    "legend-bridge",
-    pickLang(currentLang, {
-      ja: "石橋（+1点・通り抜け可・柵は置けない）",
-      en: "Stone Bridge (+1 pt, passable, cannot place fence)",
-      zh: "石桥（+1分・可通行・不可放栅栏）",
-    })
-  );
-  setText(
-    "legend-wall",
-    pickLang(currentLang, {
-      ja: "💧🪨 壁",
-      en: "💧🪨 Wall",
-      zh: "💧🪨 障碍墙",
-    })
-  );
-  setTitle(
-    "legend-wall",
-    pickLang(currentLang, {
-      ja: "水辺・岩（通り抜け不可の壁）",
-      en: "Water & Rock (impassable natural wall)",
-      zh: "水池与岩石（不可通行的天然墙壁）",
-    })
-  );
+  setTitle("legend-sheep", t("legendSheep", undefined, currentLang));
+  setTitle("legend-grass", t("legendGrass", undefined, currentLang));
+  setTitle("legend-strawberry", t("legendStrawberry", undefined, currentLang));
+  setTitle("legend-pit", t("legendPit", undefined, currentLang));
+  setHtml("legend-bridge", t("legendBridgeLabel", undefined, currentLang));
+  setTitle("legend-bridge", t("legendBridge", undefined, currentLang));
+  setText("legend-wall", t("legendWallLabel", undefined, currentLang));
+  setTitle("legend-wall", t("legendWall", undefined, currentLang));
 
   // Rules Modal Translations
-  setText(
-    "rules-dialog-title",
-    pickLang(currentLang, {
-      ja: "🐑 遊び方ガイド",
-      en: "🐑 How to Play",
-      zh: "🐑 玩法说明",
-    })
-  );
-  setAttr(
-    "btn-close-rules",
-    "aria-label",
-    pickLang(currentLang, {
-      ja: "閉じる",
-      en: "Close",
-      zh: "关闭",
-    })
-  );
-  setText(
-    "rule-step1-title",
-    pickLang(currentLang, {
-      ja: "1. マスをタップして柵を置く",
-      en: "1. Tap Cells to Place Fences",
-      zh: "1. 点击格子放置木栅栏",
-    })
-  );
-  setText(
-    "rule-step1-desc",
-    pickLang(currentLang, {
-      ja: "オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵を置いて遮断します。もう一度タップすると柵を外せます。",
-      en: "Block all paths from wolves 🐺 to sheep 🐑 by placing wooden fences. Tap a fenced cell again to remove the fence.",
-      zh: "在通道上放置木栅栏，阻断野狼🐺通往绵羊🐑的所有路线。再次点击即可移除栅栏。",
-    })
-  );
-  setText(
-    "rule-step2-title",
-    pickLang(currentLang, {
-      ja: "2. 広いまきばを作って目標スコア達成",
-      en: "2. Enclose a Rich Pasture to Reach the Goal",
-      zh: "2. 围出广阔牧场以达成目标得分",
-    })
-  );
-  setText(
-    "rule-step2-desc",
-    pickLang(currentLang, {
-      ja: "オオカミを防いだ状態で、ヒツジ🐑が歩いて行ける範囲（安全なまきば）の合計得点が「クリア目標」に届けばステージクリアです。",
-      en: "Once the sheep are safe, the total score of all tiles reachable by 🐑 (🌱+1, 🍓+5) must meet or exceed the Target Score to clear the stage.",
-      zh: "在确保安全的前提下，让绵羊🐑可步行的安全牧场总分（🌱+1、🍓+5）达到目标得分即可过关。",
-    })
-  );
-  setText(
-    "rule-step3-title",
-    pickLang(currentLang, {
-      ja: "3. 石橋🌉と穴ぼこ🕳️の仕掛け",
-      en: "3. Stone Bridges 🌉 and Pitfalls 🕳️",
-      zh: "3. 石桥🌉与坑洞🕳️机关",
-    })
-  );
-  setText(
-    "rule-step3-desc",
-    pickLang(currentLang, {
-      ja: "🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に木の柵を打ち込めば穴が埋まって壁になります。",
-      en: "🌉 Stone bridges are passable but cannot hold fences. 🕳️ Pitfalls (-5 pts) lower your score if enclosed, but driving a fence directly into a pit plugs it and blocks wolves.",
-      zh: "🌉石桥可通行但不能放栅栏。🕳️坑洞（-5分）留在牧场内会扣分，但直接在正上方打入木栅栏即可填平坑洞并充当围墙。",
-    })
-  );
-  setText(
-    "rules-tutorials-heading",
-    pickLang(currentLang, {
-      ja: "🔰 基本ルールを学ぶチュートリアル（Stage 1〜4）",
-      en: "🔰 Interactive Tutorials (Stages 1–4)",
-      zh: "🔰 学习基础规则的新手教程（Stage 1〜4）",
-    })
-  );
-  setText(
-    "btn-rules-start",
-    pickLang(currentLang, {
-      ja: "わかった・パズルに戻る",
-      en: "Got It · Back to Puzzle",
-      zh: "明白了・返回解谜",
-    })
-  );
+  setText("rules-dialog-title", t("rulesTitle", undefined, currentLang));
+  setAttr("btn-close-rules", "aria-label", t("rulesClose", undefined, currentLang));
+  setText("rule-step1-title", t("step1Title", undefined, currentLang));
+  setText("rule-step1-desc", t("step1Desc", undefined, currentLang));
+  setText("rule-step2-title", t("step2Title", undefined, currentLang));
+  setText("rule-step2-desc", t("step2Desc", undefined, currentLang));
+  setText("rule-step3-title", t("step3Title", undefined, currentLang));
+  setText("rule-step3-desc", t("step3Desc", undefined, currentLang));
+  setText("rules-tutorials-heading", t("tutorialHeader", undefined, currentLang));
+  setText("btn-rules-start", t("btnGotIt", undefined, currentLang));
 
   renderTutorialButtonsInDialog();
 
@@ -789,17 +473,9 @@ export function renderStageNav(): void {
   const totalStarsBadgeEl = document.getElementById("total-stars-badge");
   if (totalStarsBadgeEl) {
     if (totalScore > 0) {
-      totalStarsBadgeEl.title = pickLang(currentLang, {
-        ja: `クリア済みステージ数: ${clearedCount}（合計スコア: ${totalScore} pt）`,
-        en: `Cleared Stages: ${clearedCount} (Total Score: ${totalScore} pt)`,
-        zh: `通关关卡数: ${clearedCount}（总得分: ${totalScore} pt）`,
-      });
+      totalStarsBadgeEl.title = t("clearedSummary", { cleared: clearedCount, total: totalScore });
     } else {
-      totalStarsBadgeEl.title = pickLang(currentLang, {
-        ja: "クリア済みステージ数",
-        en: "Cleared Stages",
-        zh: "通关关卡数",
-      });
+      totalStarsBadgeEl.title = t("clearedStages");
     }
   }
 
@@ -829,11 +505,7 @@ export function renderStageNav(): void {
     const starMark = isCleared ? " ★" : "";
     const tutPrefix =
       num <= TUTORIAL_STAGE_COUNT
-        ? pickLang(currentLang, {
-            ja: ` [チュートリアル ${num}/${TUTORIAL_STAGE_COUNT}]`,
-            en: ` [Tutorial ${num}/${TUTORIAL_STAGE_COUNT}]`,
-            zh: ` [教程 ${num}/${TUTORIAL_STAGE_COUNT}]`,
-          })
+        ? t("tutorialSuffix", { current: num, total: TUTORIAL_STAGE_COUNT })
         : "";
     opt.textContent = `STAGE ${num}: ${title}${tutPrefix}${starMark}`;
     if (num === currentStage.stageNumber) {
@@ -870,10 +542,9 @@ function renderHud(): void {
   if (tutorialChipEl) {
     tutorialChipEl.hidden = !isTutorial;
     if (isTutorial) {
-      tutorialChipEl.textContent = pickLang(currentLang, {
-        ja: `🔰 チュートリアル ${currentStage.stageNumber}/${TUTORIAL_STAGE_COUNT}`,
-        en: `🔰 Tutorial ${currentStage.stageNumber}/${TUTORIAL_STAGE_COUNT}`,
-        zh: `🔰 新手教程 ${currentStage.stageNumber}/${TUTORIAL_STAGE_COUNT}`,
+      tutorialChipEl.textContent = t("tutorialTag", {
+        current: currentStage.stageNumber,
+        total: TUTORIAL_STAGE_COUNT,
       });
     }
   }
@@ -901,16 +572,8 @@ function renderHud(): void {
   stageTitleEl.textContent = localizedStage.title;
   if (isShortfall) {
     stageOneLinerEl.textContent = hasAvoidablePit
-      ? pickLang(currentLang, {
-          ja: `オオカミ防衛成功! 🕳️穴ぼこを埋めるか仕切ってあと +${diff} pt 稼ごう`,
-          en: `Sheep safe! Plug or isolate the 🕳️ pitfall to reach +${diff} more pt`,
-          zh: `恶狼已阻挡! 请填平或隔开🕳️坑洞以追回 +${diff} pt`,
-        })
-      : pickLang(currentLang, {
-          ja: `オオカミ防衛成功! 柵の位置を工夫してあと +${diff} pt 稼ごう`,
-          en: `Sheep safe! Adjust fence positions to enclose +${diff} more pt`,
-          zh: `恶狼已阻挡! 请调整栅栏位置以追回 +${diff} pt`,
-        });
+      ? t("adviceDefensePit", { diff })
+      : t("adviceDefenseExpand", { diff });
   } else {
     stageOneLinerEl.textContent = localizedStage.oneLiner;
   }
@@ -926,50 +589,32 @@ function renderHud(): void {
     dot.innerHTML = FENCE_SVG;
     fenceDotsEl.appendChild(dot);
   }
-  fenceCountTextEl.textContent = pickLang(currentLang, {
-    ja: `残り ${remaining} / ${currentStage.maxFences}`,
-    en: `${remaining} / ${currentStage.maxFences} left`,
-    zh: `剩余 ${remaining} / ${currentStage.maxFences}`,
+  fenceCountTextEl.textContent = t("remainingFencesText", {
+    rem: remaining,
+    max: currentStage.maxFences,
   });
 
   const displayCurrent = currentEval.isSafe ? `${currentEval.pastureScore}` : "—";
-  scoreTextEl.textContent = pickLang(currentLang, {
-    ja: `${displayCurrent} / 目標 ${targetScore} pt`,
-    en: `${displayCurrent} / Goal ${targetScore} pt`,
-    zh: `${displayCurrent} / 目标 ${targetScore} pt`,
+  scoreTextEl.textContent = t("scoreDisplay", {
+    cur: displayCurrent,
+    target: targetScore,
   });
 
   // Safety & Target status pill
   if (cleared) {
     hudStatusPillEl.className = "hud-pill status-safe";
     statusIconEl.textContent = "🎉";
-    statusTextEl.textContent = pickLang(currentLang, {
-      ja: "目標達成・STAGE CLEAR",
-      en: "Goal Reached · STAGE CLEAR",
-      zh: "达成目标・STAGE CLEAR",
-    });
+    statusTextEl.textContent = t("statusTargetAchieved");
   } else if (currentEval.isSafe) {
     hudStatusPillEl.className = "hud-pill status-shortfall";
     statusIconEl.textContent = hasAvoidablePit ? "🕳️" : "🍓";
     statusTextEl.textContent = hasAvoidablePit
-      ? pickLang(currentLang, {
-          ja: `穴ぼこ混入中（あと +${diff} pt）`,
-          en: `Pitfall inside (+${diff} pt needed)`,
-          zh: `包含坑洞（还差 +${diff} pt）`,
-        })
-      : pickLang(currentLang, {
-          ja: `目標まであと +${diff} pt`,
-          en: `+${diff} pt to goal`,
-          zh: `距目标还差 +${diff} pt`,
-        });
+      ? t("statusPitDeduction", { diff })
+      : t("statusNeedPoints", { diff });
   } else {
     hudStatusPillEl.className = "hud-pill status-danger";
     statusIconEl.textContent = "🐺";
-    statusTextEl.textContent = pickLang(currentLang, {
-      ja: "オオカミ侵入中",
-      en: "Wolves can reach sheep",
-      zh: "恶狼正在侵入",
-    });
+    statusTextEl.textContent = t("statusWolfBreach");
   }
 
   // Controls state
@@ -990,51 +635,34 @@ function renderHud(): void {
     clearBannerEl.className = "clear-banner";
     clearStarsEl.textContent = "★";
     clearHeadlineEl.textContent = showingModelAnswer
-      ? pickLang(currentLang, {
-          ja: "✨ お手本の配置（目標スコア達成）",
-          en: "✨ Model Solution (Target Score Reached)",
-          zh: "✨ 示范布局（已达目标得分）",
-        })
-      : pickLang(currentLang, {
-          ja: "🎉 STAGE CLEAR・黄金のまきば完成",
-          en: "🎉 STAGE CLEAR · Golden Pasture Complete",
-          zh: "🎉 STAGE CLEAR・黄金牧场完成",
-        });
-    clearSubtextEl.textContent = pickLang(currentLang, {
-      ja: `まきば得点 ${currentEval.pastureScore} / 目標 ${targetScore} pt 達成`,
-      en: `Pasture Score ${currentEval.pastureScore} / Goal ${targetScore} pt achieved`,
-      zh: `牧场得分 ${currentEval.pastureScore} / 目标 ${targetScore} pt 达成`,
+      ? t("solveBannerOptimal")
+      : t("clearBannerGolden");
+    clearSubtextEl.textContent = t("clearBannerScore", {
+      score: currentEval.pastureScore,
+      target: targetScore,
     });
     btnShowOptimal.hidden = true;
     const canAdvanceNext =
       !showingModelAnswer || currentStage.stageNumber < getMaxUnlockedStage();
     btnNextStage.hidden = !canAdvanceNext;
     btnNextStage.disabled = isStageLoading;
-    btnNextStage.textContent = pickLang(currentLang, {
-      ja: `Stage ${currentStage.stageNumber + 1} へ進む ▶`,
-      en: `Proceed to Stage ${currentStage.stageNumber + 1} ▶`,
-      zh: `前往 Stage ${currentStage.stageNumber + 1} ▶`,
+    btnNextStage.textContent = t("btnAdvanceToStage", {
+      n: currentStage.stageNumber + 1,
     });
   } else if (currentEval.isSafe) {
     const diff = targetScore - currentEval.pastureScore;
     clearBannerEl.hidden = false;
     clearBannerEl.className = "clear-banner banner-shortfall";
     clearStarsEl.textContent = hasAvoidablePit ? "🕳️" : "🍓";
-    clearHeadlineEl.textContent = pickLang(currentLang, {
-      ja: `オオカミは防げたけれど、目標スコアまであと +${diff} pt 必要です`,
-      en: `The sheep are safe from wolves, but you need +${diff} more pt to reach the goal`,
-      zh: `虽然挡住了恶狼，但距离目标得分还需要 +${diff} pt`,
-    });
+    clearHeadlineEl.textContent = t("adviceSafeNeedPoints", { diff });
     clearSubtextEl.textContent = hasAvoidablePit
-      ? pickLang(currentLang, {
-          ja: `現在 ${currentEval.pastureScore} pt / クリア目標 ${targetScore} pt — まきばに🕳️穴ぼこ（-5点）が入っています。真上に柵を打ち込んで埋めるか外へ仕切りましょう`,
-          en: `Current ${currentEval.pastureScore} pt / Goal ${targetScore} pt — A pitfall 🕳️ (-5 pts) is inside the pasture. Plug it with a fence post or wall it off`,
-          zh: `当前 ${currentEval.pastureScore} pt / 目标 ${targetScore} pt — 牧场内包含了🕳️坑洞（-5分），请在正上方打入栅栏填平或将其隔在外面`,
+      ? t("clearSubtextPit", {
+          score: currentEval.pastureScore,
+          target: targetScore,
         })
-      : pickLang(currentLang, {
-          ja: `現在 ${currentEval.pastureScore} pt / クリア目標 ${targetScore} pt — 柵の位置を工夫して、もっと🍓や🌱を取り込みましょう`,
-          en: `Current ${currentEval.pastureScore} pt / Goal ${targetScore} pt — Adjust your fences to enclose more 🍓 strawberries and 🌱 grass tiles`,
-          zh: `当前 ${currentEval.pastureScore} pt / 目标 ${targetScore} pt — 请调整栅栏位置，将更多🍓野草莓和🌱草地圈入牧场`,
+      : t("clearSubtextExpand", {
+          score: currentEval.pastureScore,
+          target: targetScore,
         });
     btnShowOptimal.hidden = !cachedOptimal?.verified;
     btnNextStage.hidden = true;
@@ -1042,15 +670,9 @@ function renderHud(): void {
     clearBannerEl.hidden = false;
     clearBannerEl.className = "clear-banner banner-shortfall";
     clearStarsEl.textContent = "⚠️";
-    clearHeadlineEl.textContent = pickLang(currentLang, {
-      ja: "お手本・ヒントの計算に失敗しました（目標スコアでプレイ可能です）",
-      en: "Could not compute model solution or hints (stage remains playable with target score)",
-      zh: "未能计算示范解答与提示（仍可按目标得分正常游玩）",
-    });
-    clearSubtextEl.textContent = pickLang(currentLang, {
-      ja: `クリア目標 ${targetScore} pt はそのまま有効です`,
-      en: `Goal ${targetScore} pt remains active`,
-      zh: `通关目标 ${targetScore} pt 保持有效`,
+    clearHeadlineEl.textContent = t("adviceFallback");
+    clearSubtextEl.textContent = t("adviceFallbackValid", {
+      target: targetScore,
     });
     btnShowOptimal.hidden = true;
     btnNextStage.hidden = true;
@@ -1112,11 +734,7 @@ function renderBoard(): void {
         cellBtn.classList.add("invite-pulse");
         const inviteTag = document.createElement("span");
         inviteTag.className = "cell-invite-tag";
-        inviteTag.textContent = pickLang(currentLang, {
-          ja: "👆 タップ",
-          en: "👆 Tap",
-          zh: "👆 点击",
-        });
+        inviteTag.textContent = t("tapInstruction");
         cellBtn.appendChild(inviteTag);
       }
 

@@ -62,49 +62,49 @@ export interface ShiftAliasDef {
 export const SHIFT_META: Record<BuiltInShiftCode, ShiftMetaInfo> = {
   D: {
     code: "D",
-    label: "日勤 (Day)",
-    shortLabel: "日",
+    label: "Day Shift (Day)",
+    shortLabel: "Day",
     timeRange: "08:30–17:00",
     colorClass: "shift-D",
     colorKey: "D",
   },
   E: {
     code: "E",
-    label: "準夜勤 (Evening)",
-    shortLabel: "準",
+    label: "Evening Shift (Evening)",
+    shortLabel: "Eve",
     timeRange: "16:30–01:00",
     colorClass: "shift-E",
     colorKey: "E",
   },
   N: {
     code: "N",
-    label: "深夜勤 (Night)",
-    shortLabel: "深",
+    label: "Night Shift (Night)",
+    shortLabel: "Night",
     timeRange: "00:30–09:00",
     colorClass: "shift-N",
     colorKey: "N",
   },
   O: {
     code: "O",
-    label: "公休 (Off)",
-    shortLabel: "休",
-    timeRange: "終日休",
+    label: "Off Duty (Off)",
+    shortLabel: "Off",
+    timeRange: "All Day Off",
     colorClass: "shift-O",
     colorKey: "O",
   },
   W: {
     code: "W",
-    label: "勤務 (シフトお任せ)",
-    shortLabel: "勤",
-    timeRange: "出勤枠(日/準/深)",
+    label: "Duty (Any Shift)",
+    shortLabel: "Work",
+    timeRange: "Day/Eve/Night",
     colorClass: "shift-D",
     colorKey: "W",
   },
   EN: {
     code: "EN",
-    label: "夜勤 (準夜・深夜)",
-    shortLabel: "夜",
-    timeRange: "準夜または深夜",
+    label: "Night Duty (Eve/Night)",
+    shortLabel: "Night",
+    timeRange: "Eve or Night",
     colorClass: "shift-E",
     colorKey: "EN",
   },
@@ -156,26 +156,26 @@ export function createDefaultShiftAliases(
   return [
     {
       code: "W",
-      label: "勤務 (シフトお任せ)",
-      shortLabel: "勤",
+      label: "Duty (Any Shift)",
+      shortLabel: "Work",
       shifts: ["D", "E", "N", ...customWorkCodes],
-      timeRange: "出勤枠(日/準/深)",
+      timeRange: "Day/Eve/Night",
       colorClass: "shift-D",
       builtIn: true,
     },
     {
       code: "EN",
-      label: "夜勤 (準夜・深夜)",
-      shortLabel: "夜",
+      label: "Night Duty (Eve/Night)",
+      shortLabel: "Night",
       shifts: ["E", "N", ...customNightCodes],
-      timeRange: "準夜または深夜",
+      timeRange: "Eve or Night",
       colorClass: "shift-E",
       builtIn: true,
     },
     {
       code: "D",
-      label: "日勤 (Day)",
-      shortLabel: "日",
+      label: "Day Shift (Day)",
+      shortLabel: "Day",
       shifts: ["D", ...customDayCodes],
       timeRange: "08:30–17:00",
       colorClass: "shift-D",
@@ -270,26 +270,26 @@ export function getJapaneseHolidayName(year: number, month: number, day: number)
     return firstMon + (n - 1) * 7;
   };
   const checkBaseHoliday = (m: number, d: number): string | null => {
-    if (m === 1 && d === 1) return "元日";
-    if (m === 1 && d === nthMonday(2)) return "成人の日";
-    if (m === 2 && d === 11) return "建国記念の日";
-    if (m === 2 && d === 23) return "天皇誕生日";
+    if (m === 1 && d === 1) return "\u5143\u65E5";
+    if (m === 1 && d === nthMonday(2)) return "\u6210\u4EBA\u306E\u65E5";
+    if (m === 2 && d === 11) return "\u5EFA\u56FD\u8A18\u5FF5\u306E\u65E5";
+    if (m === 2 && d === 23) return "\u5929\u7687\u8A95\u751F\u65E5";
     if (m === 3 && d === Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4))) {
-      return "春分の日";
+      return "\u6625\u5206\u306E\u65E5";
     }
-    if (m === 4 && d === 29) return "昭和の日";
-    if (m === 5 && d === 3) return "憲法記念日";
-    if (m === 5 && d === 4) return "みどりの日";
-    if (m === 5 && d === 5) return "こどもの日";
-    if (m === 7 && d === nthMonday(3)) return "海の日";
-    if (m === 8 && d === 11) return "山の日";
-    if (m === 9 && d === nthMonday(3)) return "敬老の日";
+    if (m === 4 && d === 29) return "\u662D\u548C\u306E\u65E5";
+    if (m === 5 && d === 3) return "\u61B2\u6CD5\u8A18\u5FF5\u65E5";
+    if (m === 5 && d === 4) return "\u307F\u3069\u308A\u306E\u65E5";
+    if (m === 5 && d === 5) return "\u3053\u3069\u3082\u306E\u65E5";
+    if (m === 7 && d === nthMonday(3)) return "\u6D77\u306E\u65E5";
+    if (m === 8 && d === 11) return "\u5C71\u306E\u65E5";
+    if (m === 9 && d === nthMonday(3)) return "\u656C\u8001\u306E\u65E5";
     if (m === 9 && d === Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4))) {
-      return "秋分の日";
+      return "\u79CB\u5206\u306E\u65E5";
     }
-    if (m === 10 && d === nthMonday(2)) return "スポーツの日";
-    if (m === 11 && d === 3) return "文化の日";
-    if (m === 11 && d === 23) return "勤労感謝の日";
+    if (m === 10 && d === nthMonday(2)) return "\u30B9\u30DD\u30FC\u30C4\u306E\u65E5";
+    if (m === 11 && d === 3) return "\u6587\u5316\u306E\u65E5";
+    if (m === 11 && d === 23) return "\u52E4\u52B4\u611F\u8B1D\u306E\u65E5";
     return null;
   };
   const dateObj = new Date(year, month - 1, day);
@@ -302,11 +302,11 @@ export function getJapaneseHolidayName(year: number, month: number, day: number)
   let prevDay = day - 1;
   while (prevDay >= 1 && checkBaseHoliday(month, prevDay) !== null) {
     if (new Date(year, month - 1, prevDay).getDay() === 0) {
-      return "振替休日";
+      return "\u632F\u66FF\u4F11\u65E5";
     }
     prevDay--;
   }
-  // 国民の休日 (Citizens' holiday: a non-Sunday weekday sandwiched between two base national holidays)
+  // 国民休日 (Citizens' holiday: a non-Sunday weekday sandwiched between two base national holidays)
   const dow = dateObj.getDay();
   if (
     dow !== 0 &&
@@ -314,7 +314,7 @@ export function getJapaneseHolidayName(year: number, month: number, day: number)
     checkBaseHoliday(month, day - 1) !== null &&
     checkBaseHoliday(month, day + 1) !== null
   ) {
-    return "国民の休日";
+    return "\u56FD\u6C11\u306E\u4F11\u65E5";
   }
   return null;
 }
@@ -457,7 +457,7 @@ export interface SkillDefinition {
   maxDay?: number;
   maxEvening?: number;
   maxNight?: number;
-  /** Optional target skill code that this skill can substitute for (e.g. "leader_cap" for "副リーダー") */
+  /** Optional target skill code that this skill can substitute for (e.g. "leader_cap" for "副") */
   substitutesFor?: NurseSkill;
   builtIn?: boolean;
 }
@@ -485,9 +485,9 @@ export interface DefaultAttributeDef {
 
 export const ALL_STAFF_ATTRIBUTE_DEF: DefaultAttributeDef = {
   code: "all",
-  label: "全スタッフ",
-  shortLabel: "全",
-  aliases: ["all", "全員", "全体", "全スタッフ", "全"],
+  label: "All Staff",
+  shortLabel: "All",
+  aliases: ["all", "everyone", "\u5168\u54E1", "\u5168\u4F53", "\u5168\u30B9\u30BF\u30C3\u30D5", "\u5168"],
 };
 
 export const DEFAULT_ATTRIBUTE_DEFS: readonly DefaultAttributeDef[] = [
@@ -582,18 +582,18 @@ export function doesNurseMatchAttribute(
 export const PREV_MONTH_DAYS = 7;
 
 /**
- * 36協定（労働基準法第36条）管理のための直近1年間（過去11ヶ月分）の累計勤務・時間外集計データ
+ * 36協定（労働基準法第36条）管理直近1年間（過去11月分）累計勤務時間外集計
  */
 export interface NurseYearly36Stats {
-  /** 過去11ヶ月の累計出勤日数 (例: 210〜228日) */
+  /** 過去11月累計出勤日数 (例: 210〜228日) */
   prev11MonthsWorkDays: number;
-  /** 過去11ヶ月の累計夜勤回数 (準夜+深夜, 例: 55〜86回) */
+  /** 過去11月累計夜勤回数 (準夜+深夜, 例: 55〜86回) */
   prev11MonthsNightShifts: number;
-  /** 過去11ヶ月の累計時間外労働時間 (時間, 年間上限360hに対して例: 140h〜334h) */
+  /** 過去11月累計時間外労働時間 (時間, 年間上限360h対例: 140h〜334h) */
   prev11MonthsOvertimeHours: number;
-  /** 直近2ヶ月平均の時間外労働時間 (時間/月, 複数月平均80h基準の参照用) */
+  /** 直近2月平均時間外労働時間 (時間/月, 複数月平均80h基準参照用) */
   recent2MonthsAvgOvertime: number;
-  /** 過去11ヶ月の有給休暇取得日数 (年5日取得義務の参照用) */
+  /** 過去11月有給休暇取得日数 (年5日取得義務参照用) */
   paidLeaveDaysTaken: number;
 }
 
@@ -626,9 +626,9 @@ export interface ContractPresetDef {
 export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   {
     id: "full_time",
-    label: "常勤（標準）",
-    badge: "🏥常勤",
-    description: "病棟標準の3交代勤務（日勤・準夜・深夜すべて可）",
+    label: "Full-Time (Standard)",
+    badge: "🏥Full-Time",
+    description: "Standard 3-shift rotation (Day, Evening, Night all allowed)",
     defaults: {
       nightOk: true,
       forbiddenShifts: [],
@@ -637,9 +637,9 @@ export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   },
   {
     id: "day_only",
-    label: "日勤専従（夜勤免除）",
-    badge: "☀️日勤専従",
-    description: "日勤帯のみ勤務（準夜勤・深夜勤は配置不可）",
+    label: "Day Shift Only (Night Exempt)",
+    badge: "☀️Day Only",
+    description: "Day shifts only (no evening or night shifts)",
     defaults: {
       nightOk: false,
       forbiddenShifts: [],
@@ -647,9 +647,9 @@ export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   },
   {
     id: "night_only",
-    label: "夜勤専従（日勤免除）",
-    badge: "🌙夜勤専従",
-    description: "夜勤帯（準夜・深夜）のみ勤務（日勤帯は配置不可）",
+    label: "Night Shift Only (Day Exempt)",
+    badge: "🌙Night Only",
+    description: "Night shifts only (no day shifts)",
     defaults: {
       nightOk: true,
       forbiddenShifts: ["D"],
@@ -658,9 +658,9 @@ export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   },
   {
     id: "no_late_night",
-    label: "深夜勤免除",
-    badge: "🌆深夜免除",
-    description: "日勤・準夜勤のみ可（深夜勤Nは配置不可）",
+    label: "Night Shift Exempt",
+    badge: "🌆No Night",
+    description: "Day and evening shifts only (Night shift N forbidden)",
     defaults: {
       nightOk: true,
       forbiddenShifts: ["N"],
@@ -668,9 +668,9 @@ export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   },
   {
     id: "no_evening",
-    label: "準夜勤免除",
-    badge: "🌃準夜免除",
-    description: "日勤・深夜勤のみ可（準夜勤Eは配置不可）",
+    label: "Evening Shift Exempt",
+    badge: "🌃No Evening",
+    description: "Day and night shifts only (Evening shift E forbidden)",
     defaults: {
       nightOk: true,
       forbiddenShifts: ["E"],
@@ -678,9 +678,9 @@ export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   },
   {
     id: "part_time",
-    label: "パート（日数制限・日勤のみ）",
-    badge: "⏱️パート",
-    description: "月間勤務日数上限（既定10日以内）・日勤専従・最低勤務日数免除",
+    label: "Part-Time (Day Only / Max 10 Days)",
+    badge: "⏱️Part-Time",
+    description: "Part-time day shifts (max 10 days/month)",
     defaults: {
       nightOk: false,
       forbiddenShifts: [],
@@ -690,9 +690,9 @@ export const CONTRACT_PRESETS: readonly ContractPresetDef[] = [
   },
   {
     id: "short_streak",
-    label: "育児・体調配慮（連勤・夜勤軽減）",
-    badge: "🌱配慮契約",
-    description: "個人連勤上限（既定3連勤まで）・月間夜勤上限（既定4回まで）",
+    label: "Parental / Health Accommodation",
+    badge: "🌱Accommodated",
+    description: "Reduced consecutive days (max 3) and night shifts (max 4)",
     defaults: {
       nightOk: true,
       forbiddenShifts: [],
@@ -818,7 +818,7 @@ export interface ShiftPreference {
   nurseId: string;
   day: number; // 1..numDays (1-indexed day of the month)
   shift: ShiftCode; // "O" = 希望休, "D" = 日勤希望, or custom shift code
-  isHard: boolean; // true = 有給・確定休/固定シフト (Hard), false = 希望シフト (Soft)
+  isHard: boolean; // true = 有給\u30FB確定休/固定\u30B7\u30D5\u30C8 (Hard), false = 希望\u30B7\u30D5\u30C8 (Soft)
   /** Optional custom penalty/bonus weight when `isHard === false` (defaults to 20 for "O", 15 for shifts) */
   penaltyWeight?: number;
   reason: string;
@@ -869,7 +869,7 @@ export interface CustomConstraintRule {
   maxCount?: number;
   /** Whether shifts completed in previous months (`prevMonthShifts` / `prevCompletedShifts`) count toward quota/prerequisite */
   includePrevMonth?: boolean;
-  /** Allowed days of week (0=Sun..6=Sat), e.g., [1,2,3,4,5] for weekdays only ("研修は平日のみ") */
+  /** Allowed days of week (0=Sun..6=Sat), e.g., [1,2,3,4,5] for weekdays only ("研修平日") */
   allowedDaysOfWeek?: number[];
   /** Whether holidays are included when evaluating days of week for rules */
   includeHolidays?: boolean;
@@ -932,23 +932,23 @@ export interface NurseScheduleConfig {
   maxMonthlyNightShifts: number; // default 8 (E + N <= 8)
   requireWeekendOff: boolean; // at least 2 weekend days off per month
   enforceNgPairs: boolean; // NG pairs cannot share E or N shifts on the same day
-  /** プリセプター同行夜勤（新人が夜勤に入る日は指導ペアの先輩も同シフトに配置） */
+  /** 同行夜勤（新人夜勤入日指導先輩同配置） */
   enforcePreceptorPairs?: boolean;
   enforceHardRequests: boolean; // Hard day-off / shift requests enforced
 
-  // 5. 36協定（時間外労働の月間上限・直近1年累計上限）
+  // 5. 36協定（時間外労働月間上限直近1年累計上限）
   enforce36Agreement: boolean; // default true
   maxMonthlyOvertimeHours: number; // default 45 (hours/month)
   maxAnnualOvertimeHours: number; // default 360 (hours/year = prev 11 months + current month)
 
-  // 6. 微調整・既存シフト維持モード（Minimal Perturbation / Rescheduling Stability）
-  /** 再最適化時に現在のシフト表からの変更マス数を最小化するかどうか（デフォルト: true） */
+  // 6. 微調整既存維持（Minimal Perturbation / Rescheduling Stability）
+  /** 再最適化時現在表変更数最小化（: true） */
   preserveCurrentSchedule?: boolean;
 
   /**
-   * 7. ソフト制約化＆重み設定 (`softRuleWeights`):
-   * 指定された基本ルールキー（例: "requireWeekendOff", "enforceSkillCoverage", "enforcePreceptorPairs", "enforceNgPairs", "shiftTransitions", "maxConsecutiveWorkDays", "maxMonthlyNightShifts" 等）に
-   * 正の数値（ペナルティ重み w > 0）が設定されている場合、その基本ルールはハード制約ではなくスラック重み w のソフト制約として動作する。
+   * 7. 制約化＆重設定 (`softRuleWeights`):
+   * 指定基本（例: "requireWeekendOff", "enforceSkillCoverage", "enforcePreceptorPairs", "enforceNgPairs", "shiftTransitions", "maxConsecutiveWorkDays", "maxMonthlyNightShifts" 等）
+   * 正数値（重 w > 0）設定場合、基本制約重 w 制約動作。
    */
   softRuleWeights?: Record<string, number>;
 }
@@ -1090,13 +1090,13 @@ export interface NurseMonthlySummary {
   hardRequestsTotal: number;
   softRequestsMet: number;
   softRequestsTotal: number;
-  /** 当月の見込時間外労働時間 (h) */
+  /** 当月見込時間外労働時間 (h) */
   estMonthOvertimeHours: number;
-  /** 過去11ヶ月＋当月の年間累計時間外労働時間 (h) */
+  /** 過去11月＋当月年間累計時間外労働時間 (h) */
   projectedAnnualOvertimeHours: number;
-  /** 36協定の年間上限(360h)までの残り時間 (h) */
+  /** 36協定年間上限(360h)残時間 (h) */
   remainingAnnual36Hours: number;
-  /** 36協定の年間上限に近づいている要注意対象か */
+  /** 36協定年間上限近要注意対象 */
   is36Warning: boolean;
   violations: string[];
 }

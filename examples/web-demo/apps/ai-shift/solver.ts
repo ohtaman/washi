@@ -585,7 +585,7 @@ export function buildNurseWashiModel(
         {
           name: `one_shift_${nurse.id}_d${d}`,
           category: "coverage",
-          labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) は1日1シフトまで（重複不可）`,
+          labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) \u306F1日1\u30B7\u30D5\u30C8\u307E\u3067（重複不可）`,
           relatedNurseIds: [nurse.id],
           relatedDay: d,
         }
@@ -597,10 +597,10 @@ export function buildNurseWashiModel(
           {
             name: `day_only_${nurse.id}_d${d}`,
             category: "skill",
-            labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) は日勤専従（準夜勤・深夜勤の配置不可）`,
+            labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) \u306F日勤専従（準夜勤\u30FB深夜勤\u306E配置不可）`,
             relatedNurseIds: [nurse.id],
             relatedDay: d,
-            relaxSuggestion: `${nurse.name}さんの夜勤固定指定を解除するか、日勤または公休に変更してください。`,
+            relaxSuggestion: `${nurse.name}\u3055\u3093\u306E夜勤固定指定\u3092解除\u3059\u308B\u304B、日勤\u307E\u305F\u306F公休\u306B変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
@@ -612,10 +612,10 @@ export function buildNurseWashiModel(
             {
               name: `forbid_contract_D_${nurse.id}_d${d}`,
               category: "skill",
-              labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) は夜勤専従（日勤帯の配置不可）`,
+              labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) \u306F夜勤専従（日勤帯\u306E配置不可）`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `${nurse.name}さんの日勤固定指定を解除するか、夜勤専従契約を変更してください。`,
+              relaxSuggestion: `${nurse.name}\u3055\u3093\u306E日勤固定指定\u3092解除\u3059\u308B\u304B、夜勤専従契約\u3092変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         }
@@ -625,10 +625,10 @@ export function buildNurseWashiModel(
             {
               name: `forbid_contract_E_${nurse.id}_d${d}`,
               category: "skill",
-              labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) は準夜勤免除（準夜勤の配置不可）`,
+              labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) \u306F準夜勤免除（準夜勤\u306E配置不可）`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `${nurse.name}さんの準夜勤指定を解除するか、準夜勤免除契約を変更してください。`,
+              relaxSuggestion: `${nurse.name}\u3055\u3093\u306E準夜勤指定\u3092解除\u3059\u308B\u304B、準夜勤免除契約\u3092変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         }
@@ -638,10 +638,10 @@ export function buildNurseWashiModel(
             {
               name: `forbid_contract_N_${nurse.id}_d${d}`,
               category: "skill",
-              labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) は深夜勤免除（深夜勤の配置不可）`,
+              labelJa: `${config.month}/${d}: ${nurse.name}(${nurse.id}) \u306F深夜勤免除（深夜勤\u306E配置不可）`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `${nurse.name}さんの深夜勤指定を解除するか、深夜勤免除契約を変更してください。`,
+              relaxSuggestion: `${nurse.name}\u3055\u3093\u306E深夜勤指定\u3092解除\u3059\u308B\u304B、深夜勤免除契約\u3092変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         }
@@ -655,10 +655,10 @@ export function buildNurseWashiModel(
             {
               name: `weekday_only_${nurse.id}_d${d}`,
               category: "monthly",
-              labelJa: `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): ${nurse.name}(${nurse.id}) は平日のみ勤務契約（土日休）`,
+              labelJa: `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): ${nurse.name}(${nurse.id}) \u306F平日\u306E\u307F勤務契約（土日休）`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `${nurse.name}さんの平日のみ勤務契約を解除するか、土日の出勤固定を変更してください。`,
+              relaxSuggestion: `${nurse.name}\u3055\u3093\u306E平日\u306E\u307F勤務契約\u3092解除\u3059\u308B\u304B、土日\u306E出勤固定\u3092変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         }
@@ -672,10 +672,10 @@ export function buildNurseWashiModel(
             {
               name: `holidays_off_${nurse.id}_d${d}`,
               category: "monthly",
-              labelJa: `${config.month}/${d}(${holidayName}): ${nurse.name}(${nurse.id}) は祝日休み契約`,
+              labelJa: `${config.month}/${d}(${holidayName}): ${nurse.name}(${nurse.id}) \u306F祝日休\u307F契約`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `${nurse.name}さんの祝日休み契約を解除するか、祝日の出勤固定を変更してください。`,
+              relaxSuggestion: `${nurse.name}\u3055\u3093\u306E祝日休\u307F契約\u3092解除\u3059\u308B\u304B、祝日\u306E出勤固定\u3092変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         }
@@ -683,7 +683,7 @@ export function buildNurseWashiModel(
     }
   }
 
-  // 2. Previous Month Carryover Constraints (前月末シフトからの連続性・遷移・連勤引き継ぎ)
+  // 2. Previous Month Carryover Constraints (前月末連続性遷移連勤引継)
   if (config.enforcePrevMonthCarryover && isDayIncluded(1)) {
     for (const nurse of nurses) {
       const prev = nurse.prevMonthShifts;
@@ -704,10 +704,10 @@ export function buildNurseWashiModel(
               name: `carryover_${prevBase}_to_Req_${reqTarget}_${nurse.id}_d1`,
               category: "carryover",
               ruleKey: `trans_${prevBase}_${reqTarget}`,
-              labelJa: `前月引き継ぎ(${SHIFT_SHORT_JA[prevBase]}→${SHIFT_SHORT_JA[reqTarget]}必須): ${nurse.name}(${nurse.id}) は前月末日が${SHIFT_LABEL_JA[prevBase]}のため、${config.month}/1は${SHIFT_LABEL_JA[reqTarget]}必須`,
+              labelJa: `前月引\u304D継\u304E(${SHIFT_SHORT_JA[prevBase]}→${SHIFT_SHORT_JA[reqTarget]}必須): ${nurse.name}(${nurse.id}) \u306F前月末日\u304C${SHIFT_LABEL_JA[prevBase]}\u306E\u305F\u3081、${config.month}/1\u306F${SHIFT_LABEL_JA[reqTarget]}必須`,
               relatedNurseIds: [nurse.id],
               relatedDay: 1,
-              relaxSuggestion: `シフト遷移マトリクスの「${SHIFT_SHORT_JA[prevBase]}→${SHIFT_SHORT_JA[reqTarget]} 必須」を解除するか、${nurse.name}さんの${config.month}/1の固定シフトを解除してください。`,
+              relaxSuggestion: `\u30B7\u30D5\u30C8遷移\u30DE\u30C8\u30EA\u30AF\u30B9\u306E「${SHIFT_SHORT_JA[prevBase]}→${SHIFT_SHORT_JA[reqTarget]} 必須」\u3092解除\u3059\u308B\u304B、${nurse.name}\u3055\u3093\u306E${config.month}/1\u306E固定\u30B7\u30D5\u30C8\u3092解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         } else {
@@ -721,10 +721,10 @@ export function buildNurseWashiModel(
                   name: `carryover_${prevBase}_to_${toShift}_${nurse.id}_d1`,
                   category: "carryover",
                   ruleKey: `trans_${prevBase}_${toShift}`,
-                  labelJa: `前月引き継ぎ: ${nurse.name}(${nurse.id}) は前月末日が${SHIFT_LABEL_JA[prevBase]}のため、${config.month}/1の${SHIFT_LABEL_JA[toShift]}は禁止`,
+                  labelJa: `前月引\u304D継\u304E: ${nurse.name}(${nurse.id}) \u306F前月末日\u304C${SHIFT_LABEL_JA[prevBase]}\u306E\u305F\u3081、${config.month}/1\u306E${SHIFT_LABEL_JA[toShift]}\u306F禁止`,
                   relatedNurseIds: [nurse.id],
                   relatedDay: 1,
-                  relaxSuggestion: `${nurse.name}さんの${config.month}/1の固定シフトを解除するか、前月引き継ぎ制約を緩和してください。`,
+                  relaxSuggestion: `${nurse.name}\u3055\u3093\u306E${config.month}/1\u306E固定\u30B7\u30D5\u30C8\u3092解除\u3059\u308B\u304B、前月引\u304D継\u304E制約\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
                 }
               );
             }
@@ -754,10 +754,10 @@ export function buildNurseWashiModel(
               name: `carryover_consec_${nurse.id}_d1_to_d${windowInCurrentMonth}`,
               category: "carryover",
               ruleKey: "consecutive",
-              labelJa: `前月引き継ぎ連勤制限: ${nurse.name}(${nurse.id}) は前月末に${tailStreak}連勤中のため、${config.month}/1〜${config.month}/${windowInCurrentMonth}の間に必ず公休が必要（最大${maxConsec}連勤）`,
+              labelJa: `前月引\u304D継\u304E連勤制限: ${nurse.name}(${nurse.id}) \u306F前月末\u306B${tailStreak}連勤中\u306E\u305F\u3081、${config.month}/1〜${config.month}/${windowInCurrentMonth}\u306E間\u306B必\u305A公休\u304C必要（最大${maxConsec}連勤）`,
               relatedNurseIds: [nurse.id],
               relatedDay: windowInCurrentMonth,
-              relaxSuggestion: `最大連勤日数の上限（現在:${maxConsec}連勤）を緩和するか、月初の出勤指定を調整してください。`,
+              relaxSuggestion: `最大連勤日数\u306E上限（現在:${maxConsec}連勤）\u3092緩和\u3059\u308B\u304B、月初\u306E出勤指定\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         }
@@ -788,10 +788,10 @@ export function buildNurseWashiModel(
               name: `trans_${fromShift}_to_Req_${reqTarget}_${nurse.id}_d${d}`,
               category: "transition",
               ruleKey: `trans_${fromShift}_${reqTarget}`,
-              labelJa: `シフト遷移必須(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[reqTarget]}): ${nurse.name}(${nurse.id}) の ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]}の翌日(${config.month}/${d + 1})は${SHIFT_LABEL_JA[reqTarget]}必須`,
+              labelJa: `\u30B7\u30D5\u30C8遷移必須(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[reqTarget]}): ${nurse.name}(${nurse.id}) \u306E ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]}\u306E翌日(${config.month}/${d + 1})\u306F${SHIFT_LABEL_JA[reqTarget]}必須`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `シフト遷移マトリクスの「${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[reqTarget]} 必須」を解除するか、${nurse.name}さんの固定シフトを調整してください。`,
+              relaxSuggestion: `\u30B7\u30D5\u30C8遷移\u30DE\u30C8\u30EA\u30AF\u30B9\u306E「${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[reqTarget]} 必須」\u3092解除\u3059\u308B\u304B、${nurse.name}\u3055\u3093\u306E固定\u30B7\u30D5\u30C8\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
             }
           );
         } else {
@@ -805,10 +805,10 @@ export function buildNurseWashiModel(
                   name: `trans_${fromShift}_to_${toShift}_${nurse.id}_d${d}`,
                   category: "transition",
                   ruleKey: `trans_${fromShift}_${toShift}`,
-                  labelJa: `シフト遷移禁止(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[toShift]}): ${nurse.name}(${nurse.id}) の ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]} → ${config.month}/${d + 1}${SHIFT_LABEL_JA[toShift]} は禁止`,
+                  labelJa: `\u30B7\u30D5\u30C8遷移禁止(${SHIFT_SHORT_JA[fromShift]}→${SHIFT_SHORT_JA[toShift]}): ${nurse.name}(${nurse.id}) \u306E ${config.month}/${d}${SHIFT_LABEL_JA[fromShift]} → ${config.month}/${d + 1}${SHIFT_LABEL_JA[toShift]} \u306F禁止`,
                   relatedNurseIds: [nurse.id],
                   relatedDay: d,
-                  relaxSuggestion: `${nurse.name}さんの${config.month}/${d}〜${d + 1}の固定シフト指定またはシフト遷移マトリクスを見直してください。`,
+                  relaxSuggestion: `${nurse.name}\u3055\u3093\u306E${config.month}/${d}〜${d + 1}\u306E固定\u30B7\u30D5\u30C8指定\u307E\u305F\u306F\u30B7\u30D5\u30C8遷移\u30DE\u30C8\u30EA\u30AF\u30B9\u3092見直\u3057\u3066\u304F\u3060\u3055\u3044。`,
                 }
               );
             }
@@ -844,10 +844,10 @@ export function buildNurseWashiModel(
           name: `consec_work_${nurse.id}_d${startDay}_to_d${endDay}`,
           category: "consecutive",
           ruleKey: "consecutive",
-          labelJa: `最大${maxConsec}連勤制限: ${nurse.name}(${nurse.id}) の ${config.month}/${startDay}〜${config.month}/${endDay}（${windowSize}日間）で最低1日は公休が必要`,
+          labelJa: `最大${maxConsec}連勤制限: ${nurse.name}(${nurse.id}) \u306E ${config.month}/${startDay}〜${config.month}/${endDay}（${windowSize}日間）\u3067最低1日\u306F公休\u304C必要`,
           relatedNurseIds: [nurse.id],
           relatedDay: startDay,
-          relaxSuggestion: `最大連続勤務日数（現在:${maxConsec}日）を${maxConsec + 1}日に緩和するか、出勤固定を調整してください。`,
+          relaxSuggestion: `最大連続勤務日数（現在:${maxConsec}日）\u3092${maxConsec + 1}日\u306B緩和\u3059\u308B\u304B、出勤固定\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -879,9 +879,9 @@ export function buildNurseWashiModel(
           name: `monthly_off_min_${nurse.id}`,
           category: "monthly",
           ruleKey: "monthlyDaysOff",
-          labelJa: `月間最低公休数(${effectiveMinOff}日以上): ${nurse.name}(${nurse.id}) の月間勤務日数は最大${maxWorkDays}日まで`,
+          labelJa: `月間最低公休数(${effectiveMinOff}日以上): ${nurse.name}(${nurse.id}) \u306E月間勤務日数\u306F最大${maxWorkDays}日\u307E\u3067`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `月間最低公休日数（現在:${effectiveMinOff}日）を1日減らすか、日別の必要人数を緩和してください。`,
+          relaxSuggestion: `月間最低公休日数（現在:${effectiveMinOff}日）\u30921日減\u3089\u3059\u304B、日別\u306E必要人数\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
 
@@ -892,9 +892,9 @@ export function buildNurseWashiModel(
           {
             name: `monthly_work_max_${nurse.id}`,
             category: "monthly",
-            labelJa: `月間最大勤務日数(${maxContractWork}日以下): ${nurse.name}(${nurse.id}) の月間勤務日数は最大${maxContractWork}日まで`,
+            labelJa: `月間最大勤務日数(${maxContractWork}日以下): ${nurse.name}(${nurse.id}) \u306E月間勤務日数\u306F最大${maxContractWork}日\u307E\u3067`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `${nurse.name}さん個人の月間最大勤務日数（現在:${maxContractWork}日）を引き上げるか、出勤固定を減らしてください。`,
+            relaxSuggestion: `${nurse.name}\u3055\u3093個人\u306E月間最大勤務日数（現在:${maxContractWork}日）\u3092引\u304D上\u3052\u308B\u304B、出勤固定\u3092減\u3089\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
@@ -907,9 +907,9 @@ export function buildNurseWashiModel(
             name: `monthly_work_min_${nurse.id}`,
             category: "monthly",
             ruleKey: "minMonthlyWorkDays",
-            labelJa: `月間最低勤務日数(${effectiveMinWork}日以上): ${nurse.name}(${nurse.id}) の最低勤務日数確保`,
+            labelJa: `月間最低勤務日数(${effectiveMinWork}日以上): ${nurse.name}(${nurse.id}) \u306E最低勤務日数確保`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `${nurse.name}さん個人の月間最低勤務日数（現在:${effectiveMinWork}日）を引き下げるか、公休固定の日数を減らしてください。`,
+            relaxSuggestion: `${nurse.name}\u3055\u3093個人\u306E月間最低勤務日数（現在:${effectiveMinWork}日）\u3092引\u304D下\u3052\u308B\u304B、公休固定\u306E日数\u3092減\u3089\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
@@ -924,9 +924,9 @@ export function buildNurseWashiModel(
             name: `monthly_night_max_${nurse.id}`,
             category: "monthly",
             ruleKey: "monthlyNightCap",
-            labelJa: `月間夜勤上限(${effectiveMaxNight}回以下): ${nurse.name}(${nurse.id}) の準夜＋深夜合計は月${effectiveMaxNight}回まで`,
+            labelJa: `月間夜勤上限(${effectiveMaxNight}回以下): ${nurse.name}(${nurse.id}) \u306E準夜＋深夜合計\u306F月${effectiveMaxNight}回\u307E\u3067`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `月間夜勤上限（現在:${effectiveMaxNight}回）を増やすか、準夜・深夜の必要人数を緩和してください。`,
+            relaxSuggestion: `月間夜勤上限（現在:${effectiveMaxNight}回）\u3092増\u3084\u3059\u304B、準夜\u30FB深夜\u306E必要人数\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
@@ -943,14 +943,14 @@ export function buildNurseWashiModel(
             name: `weekend_off_${nurse.id}`,
             category: "monthly",
             ruleKey: "requireWeekendOff",
-            labelJa: `週末公休確保: ${nurse.name}(${nurse.id}) は土日のうち最低2日以上を公休にする`,
+            labelJa: `週末公休確保: ${nurse.name}(${nurse.id}) \u306F土日\u306E\u3046\u3061最低2日以上\u3092公休\u306B\u3059\u308B`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `「週末休みの確保」ルールをOFFにするか、土日日勤の必要人数を緩和してください。`,
+            relaxSuggestion: `「週末休\u307F\u306E確保」\u30EB\u30FC\u30EB\u3092OFF\u306B\u3059\u308B\u304B、土日日勤\u306E必要人数\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
 
-      // 5b. 36協定（時間外労働の月間上限 & 直近1年累計上限）
+      // 5b. 36協定（時間外労働月間上限 & 直近1年累計上限）
       if (config.enforce36Agreement) {
         const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 180;
         const remainingAnnualHours = Math.max(0, config.maxAnnualOvertimeHours - prev11Hours);
@@ -977,9 +977,9 @@ export function buildNurseWashiModel(
             name: `labor36_overtime_${nurse.id}`,
             category: "labor_36",
             ruleKey: "enforce36Agreement",
-            labelJa: `36協定 時間外労働上限: ${nurse.name}(${nurse.id}) の当月時間外 <= ${effectiveOvertimeCap}h（過去11ヶ月累計:${prev11Hours}h / 年間上限:${config.maxAnnualOvertimeHours}h・月上限:${config.maxMonthlyOvertimeHours}h）`,
+            labelJa: `36協定 時間外労働上限: ${nurse.name}(${nurse.id}) \u306E当月時間外 <= ${effectiveOvertimeCap}h（過去11\u30F6月累計:${prev11Hours}h / 年間上限:${config.maxAnnualOvertimeHours}h\u30FB月上限:${config.maxMonthlyOvertimeHours}h）`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `36協定の年間時間外上限（現在:${config.maxAnnualOvertimeHours}h）または月間上限（現在:${config.maxMonthlyOvertimeHours}h）を調整するか、${nurse.name}さんの公休を増やしてください。`,
+            relaxSuggestion: `36協定\u306E年間時間外上限（現在:${config.maxAnnualOvertimeHours}h）\u307E\u305F\u306F月間上限（現在:${config.maxMonthlyOvertimeHours}h）\u3092調整\u3059\u308B\u304B、${nurse.name}\u3055\u3093\u306E公休\u3092増\u3084\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
@@ -1015,9 +1015,9 @@ export function buildNurseWashiModel(
         name: `cov_${s}_d${d}`,
         category: "coverage",
         ruleKey: "dailyCoverage",
-        labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}の必要人数確保 (>= ${req[s]}名)`,
+        labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}\u306E必要人数確保 (>= ${req[s]}名)`,
         relatedDay: d,
-        relaxSuggestion: `${config.month}/${d}(${dowLabel})の${SHIFT_LABEL_JA[s]}必要人数（${req[s]}名）を緩和してください。`,
+        relaxSuggestion: `${config.month}/${d}(${dowLabel})\u306E${SHIFT_LABEL_JA[s]}必要人数（${req[s]}名）\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
       });
     }
 
@@ -1066,9 +1066,9 @@ export function buildNurseWashiModel(
                 name: `skill_${sd.code}_${s}_d${d}`,
                 category: "skill",
                 ruleKey: `skill_${sd.code}`,
-                labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}の「${sd.label}」配置 (>= ${minReq}名)`,
+                labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}\u306E「${sd.label}」配置 (>= ${minReq}名)`,
                 relatedDay: d,
-                relaxSuggestion: `「${sd.label}」の${SHIFT_LABEL_JA[s]}必要人数（${minReq}名）を緩和するか保持者を増やしてください。`,
+                relaxSuggestion: `「${sd.label}」\u306E${SHIFT_LABEL_JA[s]}必要人数（${minReq}名）\u3092緩和\u3059\u308B\u304B保持者\u3092増\u3084\u3057\u3066\u304F\u3060\u3055\u3044。`,
               }
             );
           }
@@ -1086,9 +1086,9 @@ export function buildNurseWashiModel(
                 name: `skill_max_${sd.code}_${s}_d${d}`,
                 category: "skill",
                 ruleKey: `skill_${sd.code}`,
-                labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}の「${sd.label}」人数上限 (<= ${maxCap}名)`,
+                labelJa: `${config.month}/${d}(${dowLabel}) ${SHIFT_LABEL_JA[s]}\u306E「${sd.label}」人数上限 (<= ${maxCap}名)`,
                 relatedDay: d,
-                relaxSuggestion: `「${sd.label}」の${SHIFT_LABEL_JA[s]}上限人数（現在:${maxCap}名）を緩和してください。`,
+                relaxSuggestion: `「${sd.label}」\u306E${SHIFT_LABEL_JA[s]}上限人数（現在:${maxCap}名）\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
               }
             );
           }
@@ -1120,10 +1120,10 @@ export function buildNurseWashiModel(
             name: `ng_pair_${nA.id}_${nB.id}_${s}_d${d}`,
             category: "ng_pair",
             ruleKey: "enforceNgPairs",
-            labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: 相性NGペア（${nA.name} × ${nB.name}）の同時配置禁止`,
+            labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: 相性NG\u30DA\u30A2（${nA.name} × ${nB.name}）\u306E同時配置禁止`,
             relatedNurseIds: [nA.id, nB.id],
             relatedDay: d,
-            relaxSuggestion: `相性NGペア制約をOFFにするか、${nA.name}さん・${nB.name}さんの${config.month}/${d}のシフト指定を変更してください。`,
+            relaxSuggestion: `相性NG\u30DA\u30A2制約\u3092OFF\u306B\u3059\u308B\u304B、${nA.name}\u3055\u3093\u30FB${nB.name}\u3055\u3093\u306E${config.month}/${d}\u306E\u30B7\u30D5\u30C8指定\u3092変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
             isHard: rel.isHard,
             softWeight: rel.penaltyWeight,
           }
@@ -1153,10 +1153,10 @@ export function buildNurseWashiModel(
             name: `preceptor_${nA.id}_${nB.id}_${s}_d${d}`,
             category: "skill",
             ruleKey: "enforcePreceptorPairs",
-            labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: プリセプター同行配置（新人:${nA.name} ➔ 指導:${nB.name}）`,
+            labelJa: `${config.month}/${d} ${SHIFT_LABEL_JA[s as ActiveShiftCode] ?? s}: \u30D7\u30EA\u30BB\u30D7\u30BF\u30FC同行配置（新人:${nA.name} ➔ 指導:${nB.name}）`,
             relatedNurseIds: [nA.id, nB.id],
             relatedDay: d,
-            relaxSuggestion: `プリセプター同行ルールをOFFにするか、${nA.name}さん・${nB.name}さんの休日希望を調整してください。`,
+            relaxSuggestion: `\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC同行\u30EB\u30FC\u30EB\u3092OFF\u306B\u3059\u308B\u304B、${nA.name}\u3055\u3093\u30FB${nB.name}\u3055\u3093\u306E休日希望\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
             isHard: rel.isHard,
             softWeight: rel.penaltyWeight,
           }
@@ -1165,7 +1165,7 @@ export function buildNurseWashiModel(
     }
   }
 
-  // 8. Hard Shift Preferences (有給休暇・確定希望)
+  // 8. Hard Shift Preferences (有給休暇確定希望)
   const nurseById = new Map(nurses.map((n) => [n.id, n]));
   if (config.enforceHardRequests) {
     for (const pref of preferences) {
@@ -1180,15 +1180,15 @@ export function buildNurseWashiModel(
         name: `req_hard_${pref.shift}_${nurse.id}_d${pref.day}`,
         category: "request",
         ruleKey: "enforceHardRequests",
-        labelJa: `${config.month}/${pref.day}: ${nurse.name}(${nurse.id}) の${meta.label}確定指定 [理由: ${pref.reason}]`,
+        labelJa: `${config.month}/${pref.day}: ${nurse.name}(${nurse.id}) \u306E${meta.label}確定指定 [理由: ${pref.reason}]`,
         relatedNurseIds: [nurse.id],
         relatedDay: pref.day,
-        relaxSuggestion: `${nurse.name}さんの${config.month}/${pref.day}の確定希望をソフト希望に変更するか、他スタッフと日程調整してください。`,
+        relaxSuggestion: `${nurse.name}\u3055\u3093\u306E${config.month}/${pref.day}\u306E確定希望\u3092\u30BD\u30D5\u30C8希望\u306B変更\u3059\u308B\u304B、他\u30B9\u30BF\u30C3\u30D5\u3068日程調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
       });
     }
   }
 
-  // 9. Active Custom Rules (チャット・設定から追加された個別制約・シフト回数ノルマ・サブシフト配置基準)
+  // 9. Active Custom Rules (設定追加個別制約回数配置基準)
   for (const rule of customRules) {
     if (!rule.enabled) continue;
     const addRuleConstraint = (
@@ -1213,7 +1213,7 @@ export function buildNurseWashiModel(
         labelJa: `${rule.description}`,
         relatedNurseIds: [nurse.id],
         relatedDay: rule.day,
-        relaxSuggestion: `追加された個別ルール「${rule.description}」を解除または変更してください。`,
+        relaxSuggestion: `追加\u3055\u308C\u305F個別\u30EB\u30FC\u30EB「${rule.description}」\u3092解除\u307E\u305F\u306F変更\u3057\u3066\u304F\u3060\u3055\u3044。`,
       });
     } else if (
       rule.kind === "date_coverage" &&
@@ -1231,7 +1231,7 @@ export function buildNurseWashiModel(
             category: "coverage",
             labelJa: `${rule.description}`,
             relatedDay: rule.day,
-            relaxSuggestion: `特定日人数ルール「${rule.description}」の必要人数を緩和してください。`,
+            relaxSuggestion: `特定日人数\u30EB\u30FC\u30EB「${rule.description}」\u306E必要人数\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
           });
         }
       }
@@ -1246,7 +1246,7 @@ export function buildNurseWashiModel(
         labelJa: `${rule.description}`,
         relatedNurseIds: [nurse.id],
         relatedDay: rule.day,
-        relaxSuggestion: `追加された禁止ルール「${rule.description}」を解除してください。`,
+        relaxSuggestion: `追加\u3055\u308C\u305F禁止\u30EB\u30FC\u30EB「${rule.description}」\u3092解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
       });
     } else if (rule.kind === "staffing_rule" && rule.shifts?.length) {
       if (!config.enforceSkillCoverage) continue;
@@ -1270,7 +1270,7 @@ export function buildNurseWashiModel(
               category: "skill",
               labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} >= ${rule.minCount}名）`,
               relatedDay: d,
-              relaxSuggestion: `配置ルール「${rule.description}」の必要人数（${rule.minCount}名）を緩和してください。`,
+              relaxSuggestion: `配置\u30EB\u30FC\u30EB「${rule.description}」\u306E必要人数（${rule.minCount}名）\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
             });
           }
           if (matchingNurses.length > 0 && typeof rule.maxCount === "number" && rule.maxCount >= 0) {
@@ -1279,7 +1279,7 @@ export function buildNurseWashiModel(
               category: "skill",
               labelJa: `${config.month}/${d}: ${rule.description}（${sLabel} <= ${rule.maxCount}名）`,
               relatedDay: d,
-              relaxSuggestion: `配置ルール「${rule.description}」の上限人数（${rule.maxCount}名）を緩和してください。`,
+              relaxSuggestion: `配置\u30EB\u30FC\u30EB「${rule.description}」\u306E上限人数（${rule.maxCount}名）\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
             });
           }
         }
@@ -1305,18 +1305,18 @@ export function buildNurseWashiModel(
           addRuleConstraint(expr`${monthShiftExpr} >= ${effectiveMin}`, {
             name: `quota_min_${rule.id}_${nurse.id}`,
             category: "custom",
-            labelJa: `${rule.description}（${nurse.name}(${nurse.id}) の当月「${shiftMeta.label}」>= ${effectiveMin}回）`,
+            labelJa: `${rule.description}（${nurse.name}(${nurse.id}) \u306E当月「${shiftMeta.label}」>= ${effectiveMin}回）`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `追加ルール「${rule.description}」の必要回数を減らすか解除してください。`,
+            relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u306E必要回数\u3092減\u3089\u3059\u304B解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
           });
         }
         if (typeof effectiveMax === "number") {
           addRuleConstraint(expr`${monthShiftExpr} <= ${effectiveMax}`, {
             name: `quota_max_${rule.id}_${nurse.id}`,
             category: "custom",
-            labelJa: `${rule.description}（${nurse.name}(${nurse.id}) の当月「${shiftMeta.label}」<= ${effectiveMax}回）`,
+            labelJa: `${rule.description}（${nurse.name}(${nurse.id}) \u306E当月「${shiftMeta.label}」<= ${effectiveMax}回）`,
             relatedNurseIds: [nurse.id],
-            relaxSuggestion: `追加ルール「${rule.description}」の上限回数を緩和するか解除してください。`,
+            relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u306E上限回数\u3092緩和\u3059\u308B\u304B解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
           });
         }
       }
@@ -1345,18 +1345,18 @@ export function buildNurseWashiModel(
           addRuleConstraint(expr`${sum(dayShiftVars)} >= ${rule.minStaff}`, {
             name: `daily_min_${rule.id}_d${d}`,
             category: "custom",
-            labelJa: `${config.month}/${d}: ${rule.description}（「${shiftMeta.label}」は1日最低${rule.minStaff}名以上）`,
+            labelJa: `${config.month}/${d}: ${rule.description}（「${shiftMeta.label}」\u306F1日最低${rule.minStaff}名以上）`,
             relatedDay: d,
-            relaxSuggestion: `追加ルール「${rule.description}」の1日あたり必要人数を緩和するか解除してください。`,
+            relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u306E1日\u3042\u305F\u308A必要人数\u3092緩和\u3059\u308B\u304B解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
           });
         }
         if (dayShiftVars.length > 0 && typeof rule.maxStaff === "number" && rule.maxStaff >= 0) {
           addRuleConstraint(expr`${sum(dayShiftVars)} <= ${rule.maxStaff}`, {
             name: `daily_cap_${rule.id}_d${d}`,
             category: "custom",
-            labelJa: `${config.month}/${d}: ${rule.description}（「${shiftMeta.label}」は1日最大${rule.maxStaff}名まで）`,
+            labelJa: `${config.month}/${d}: ${rule.description}（「${shiftMeta.label}」\u306F1日最大${rule.maxStaff}名\u307E\u3067）`,
             relatedDay: d,
-            relaxSuggestion: `追加ルール「${rule.description}」の1日あたり上限人数を緩和するか解除してください。`,
+            relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u306E1日\u3042\u305F\u308A上限人数\u3092緩和\u3059\u308B\u304B解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
           });
         }
       }
@@ -1384,9 +1384,9 @@ export function buildNurseWashiModel(
           addRuleConstraint(expr`${sum(dayShiftVars)} <= 0`, {
             name: `day_restrict_${rule.id}_d${d}`,
             category: "custom",
-            labelJa: `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): ${rule.description}（${shiftMeta.label}の配置不可）`,
+            labelJa: `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): ${rule.description}（${shiftMeta.label}\u306E配置不可）`,
             relatedDay: d,
-            relaxSuggestion: `追加ルール「${rule.description}」を解除してください。`,
+            relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u3092解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
           });
         }
       }
@@ -1426,10 +1426,10 @@ export function buildNurseWashiModel(
             addRuleConstraint(expr`${sum(rVars)} <= 0`, {
               name: `prereq_${rule.id}_${nurse.id}_d${d}`,
               category: "custom",
-              labelJa: `${config.month}/${d}: ${rule.description}（${nurse.name}(${nurse.id}) は前日までに必要回数を満たせないため配置不可）`,
+              labelJa: `${config.month}/${d}: ${rule.description}（${nurse.name}(${nurse.id}) \u306F前日\u307E\u3067\u306B必要回数\u3092満\u305F\u305B\u306A\u3044\u305F\u3081配置不可）`,
               relatedNurseIds: [nurse.id],
               relatedDay: d,
-              relaxSuggestion: `追加ルール「${rule.description}」を解除または緩和してください。`,
+              relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u3092解除\u307E\u305F\u306F緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
             });
           } else {
             addRuleConstraint(
@@ -1440,7 +1440,7 @@ export function buildNurseWashiModel(
                 labelJa: `${config.month}/${d}: ${rule.description}（${nurse.name}(${nurse.id})）`,
                 relatedNurseIds: [nurse.id],
                 relatedDay: d,
-                relaxSuggestion: `追加ルール「${rule.description}」を解除または緩和してください。`,
+                relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u3092解除\u307E\u305F\u306F緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
               }
             );
           }
@@ -1543,7 +1543,7 @@ export function buildNurseWashiModel(
       }
     }
 
-    // Minimal Perturbation (既存シフト維持 / 変更最小化モード):
+    // Minimal Perturbation (既存維持 / 変更最小化):
     const refSched =
       config.preserveCurrentSchedule !== false ? options?.referenceSchedule : null;
     if (refSched) {
@@ -1713,7 +1713,7 @@ export function evaluateNurseSchedule(
             id: `cov_${s}_d${d}`,
             category: "coverage",
             day: d,
-            message: `${config.month}/${d} ${sMeta.label}の人数不足（配置:${counts[s]}名 / 必要:${required[s]}名）`,
+            message: `${config.month}/${d} ${sMeta.label}\u306E人数不足（配置:${counts[s]}名 / 必要:${required[s]}名）`,
           },
           { ruleKey: "dailyCoverage" }
         );
@@ -1756,7 +1756,7 @@ export function evaluateNurseSchedule(
                 id: `skill_${sd.code}_${s}_d${d}`,
                 category: "skill",
                 day: d,
-                message: `${config.month}/${d} ${sLabel}の「${sd.label}」不足（${sdCounts[s]}/${minVal}名）`,
+                message: `${config.month}/${d} ${sLabel}\u306E「${sd.label}」不足（${sdCounts[s]}/${minVal}名）`,
               },
               { ruleKey: `skill_${sd.code}` }
             );
@@ -1775,7 +1775,7 @@ export function evaluateNurseSchedule(
                 id: `skill_max_${sd.code}_${s}_d${d}`,
                 category: "skill",
                 day: d,
-                message: `${config.month}/${d} ${sLabel}の「${sd.label}」上限超過（${sdCounts[s]}/${maxVal}名）`,
+                message: `${config.month}/${d} ${sLabel}\u306E「${sd.label}」上限超過（${sdCounts[s]}/${maxVal}名）`,
               },
               { ruleKey: `skill_${sd.code}` }
             );
@@ -1819,7 +1819,7 @@ export function evaluateNurseSchedule(
               id: `daily_min_${rule.id}_d${d}`,
               category: "custom",
               day: d,
-              message: `${config.month}/${d} 「${sMeta.label}」の1日あたり人数不足（配置:${assignedCount}名 / 必要:${rule.minStaff}名以上）`,
+              message: `${config.month}/${d} 「${sMeta.label}」\u306E1日\u3042\u305F\u308A人数不足（配置:${assignedCount}名 / 必要:${rule.minStaff}名以上）`,
             },
             { customRule: rule }
           );
@@ -1830,7 +1830,7 @@ export function evaluateNurseSchedule(
               id: `daily_cap_${rule.id}_d${d}`,
               category: "custom",
               day: d,
-              message: `${config.month}/${d} 「${sMeta.label}」の1日あたり上限超過（配置:${assignedCount}名 / 上限:${rule.maxStaff}名）`,
+              message: `${config.month}/${d} 「${sMeta.label}」\u306E1日\u3042\u305F\u308A上限超過（配置:${assignedCount}名 / 上限:${rule.maxStaff}名）`,
             },
             { customRule: rule }
           );
@@ -1864,7 +1864,7 @@ export function evaluateNurseSchedule(
                 id: `staffing_min_${rule.id}_${ts}_d${d}`,
                 category: "skill",
                 day: d,
-                message: `${config.month}/${d} ${sMeta.label}の「${attr}」人数不足（配置:${countInShift}名 / 下限:${rule.minCount}名）`,
+                message: `${config.month}/${d} ${sMeta.label}\u306E「${attr}」人数不足（配置:${countInShift}名 / 下限:${rule.minCount}名）`,
               },
               { customRule: rule }
             );
@@ -1875,7 +1875,7 @@ export function evaluateNurseSchedule(
                 id: `staffing_max_${rule.id}_${ts}_d${d}`,
                 category: "skill",
                 day: d,
-                message: `${config.month}/${d} ${sMeta.label}の「${attr}」上限超過（配置:${countInShift}名 / 上限:${rule.maxCount}名）`,
+                message: `${config.month}/${d} ${sMeta.label}\u306E「${attr}」上限超過（配置:${countInShift}名 / 上限:${rule.maxCount}名）`,
               },
               { customRule: rule }
             );
@@ -1901,7 +1901,7 @@ export function evaluateNurseSchedule(
               id: `custom_date_cov_${rule.id}_d${d}`,
               category: "coverage",
               day: d,
-              message: `${config.month}/${d} ${sMeta.label}の特定日人数不足（配置:${assignedCount}名 / 目標:${rule.minStaff}名以上）`,
+              message: `${config.month}/${d} ${sMeta.label}\u306E特定日人数不足（配置:${assignedCount}名 / 目標:${rule.minStaff}名以上）`,
             },
             { customRule: rule }
           );
@@ -1934,7 +1934,7 @@ export function evaluateNurseSchedule(
         weekendDaysOff++;
       }
       if (!nurse.nightOk && (baseOden === "E" || baseOden === "N")) {
-        const msg = `${config.month}/${d}: 日勤専従スタッフに夜勤(${s})が配置されています`;
+        const msg = `${config.month}/${d}: 日勤専従\u30B9\u30BF\u30C3\u30D5\u306B夜勤(${s})\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059`;
         nurseViolations.push(msg);
         pushViolation({
           id: `day_only_${nurse.id}_d${d}`,
@@ -1946,7 +1946,7 @@ export function evaluateNurseSchedule(
       }
       if (nurse.forbiddenShifts && nurse.forbiddenShifts.length > 0) {
         if (nurse.forbiddenShifts.includes("D") && baseOden === "D") {
-          const msg = `${config.month}/${d}: 夜勤専従スタッフに日勤帯(${s})が配置されています`;
+          const msg = `${config.month}/${d}: 夜勤専従\u30B9\u30BF\u30C3\u30D5\u306B日勤帯(${s})\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059`;
           nurseViolations.push(msg);
           pushViolation({
             id: `forbid_contract_D_${nurse.id}_d${d}`,
@@ -1957,7 +1957,7 @@ export function evaluateNurseSchedule(
           });
         }
         if (nurse.forbiddenShifts.includes("E") && baseOden === "E") {
-          const msg = `${config.month}/${d}: 準夜勤免除スタッフに準夜勤(${s})が配置されています`;
+          const msg = `${config.month}/${d}: 準夜勤免除\u30B9\u30BF\u30C3\u30D5\u306B準夜勤(${s})\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059`;
           nurseViolations.push(msg);
           pushViolation({
             id: `forbid_contract_E_${nurse.id}_d${d}`,
@@ -1968,7 +1968,7 @@ export function evaluateNurseSchedule(
           });
         }
         if (nurse.forbiddenShifts.includes("N") && baseOden === "N") {
-          const msg = `${config.month}/${d}: 深夜勤免除スタッフに深夜勤(${s})が配置されています`;
+          const msg = `${config.month}/${d}: 深夜勤免除\u30B9\u30BF\u30C3\u30D5\u306B深夜勤(${s})\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059`;
           nurseViolations.push(msg);
           pushViolation({
             id: `forbid_contract_N_${nurse.id}_d${d}`,
@@ -1980,7 +1980,7 @@ export function evaluateNurseSchedule(
         }
       }
       if (nurse.weekdayOnly && (dow === 0 || dow === 6) && baseOden !== "O") {
-        const msg = `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): 平日のみ勤務スタッフに土日勤務(${s})が配置されています`;
+        const msg = `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}): 平日\u306E\u307F勤務\u30B9\u30BF\u30C3\u30D5\u306B土日勤務(${s})\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059`;
         nurseViolations.push(msg);
         pushViolation({
           id: `weekday_only_${nurse.id}_d${d}`,
@@ -1993,7 +1993,7 @@ export function evaluateNurseSchedule(
       if (nurse.holidaysOff && baseOden !== "O") {
         const holidayName = getJapaneseHolidayName(config.year, config.month, d);
         if (holidayName) {
-          const msg = `${config.month}/${d}(${holidayName}): 祝日休みスタッフに祝日勤務(${s})が配置されています`;
+          const msg = `${config.month}/${d}(${holidayName}): 祝日休\u307F\u30B9\u30BF\u30C3\u30D5\u306B祝日勤務(${s})\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059`;
           nurseViolations.push(msg);
           pushViolation({
             id: `holidays_off_${nurse.id}_d${d}`,
@@ -2063,7 +2063,7 @@ export function evaluateNurseSchedule(
       );
       if (reqTarget) {
         if (currBase !== reqTarget) {
-          const msg = `${config.month}/${d}: 必須シフト遷移違反（${SHIFT_LABELS[prevBase]}${prevShift} → ${curr}、${SHIFT_LABELS[reqTarget]}${reqTarget}必須）`;
+          const msg = `${config.month}/${d}: 必須\u30B7\u30D5\u30C8遷移違反（${SHIFT_LABELS[prevBase]}${prevShift} → ${curr}、${SHIFT_LABELS[reqTarget]}${reqTarget}必須）`;
           nurseViolations.push(msg);
           pushViolation(
             {
@@ -2077,7 +2077,7 @@ export function evaluateNurseSchedule(
           );
         }
       } else if (rowPolicies[currBase] === "forbid") {
-        const msg = `${config.month}/${d}: 禁止シフト遷移（${SHIFT_LABELS[prevBase]}${prevShift} → ${SHIFT_LABELS[currBase]}${curr}）`;
+        const msg = `${config.month}/${d}: 禁止\u30B7\u30D5\u30C8遷移（${SHIFT_LABELS[prevBase]}${prevShift} → ${SHIFT_LABELS[currBase]}${curr}）`;
         nurseViolations.push(msg);
         pushViolation(
           {
@@ -2183,7 +2183,7 @@ export function evaluateNurseSchedule(
       );
     }
 
-    // 36協定（時間外労働の月間・年間累計チェック）
+    // 36協定（時間外労働月間年間累計）
     const estMonthOvertimeHours = computeNurseMonthOvertimeHours(counts, customShiftDefs);
     const prev11Hours = nurse.yearly36Stats?.prev11MonthsOvertimeHours ?? 180;
     const projectedAnnualOvertimeHours =
@@ -2209,7 +2209,7 @@ export function evaluateNurseSchedule(
         );
       }
       if (projectedAnnualOvertimeHours > config.maxAnnualOvertimeHours + 1e-4) {
-        const msg = `36協定 年間時間外超過（12ヶ月累計${projectedAnnualOvertimeHours}h > 年間上限${config.maxAnnualOvertimeHours}h）`;
+        const msg = `36協定 年間時間外超過（12\u30F6月累計${projectedAnnualOvertimeHours}h > 年間上限${config.maxAnnualOvertimeHours}h）`;
         nurseViolations.push(msg);
         pushViolation(
           {
@@ -2237,7 +2237,7 @@ export function evaluateNurseSchedule(
       const totalCount = actualCount + prevCount;
       const meta = getShiftMeta(rule.shift, customShiftDefs, state.shiftAliases);
       if (typeof rule.minCount === "number" && totalCount < rule.minCount) {
-        const msg = `${meta.label}の回数不足（累計${totalCount}回 / 必要${rule.minCount}回以上）`;
+        const msg = `${meta.label}\u306E回数不足（累計${totalCount}回 / 必要${rule.minCount}回以上）`;
         nurseViolations.push(msg);
         pushViolation(
           {
@@ -2250,7 +2250,7 @@ export function evaluateNurseSchedule(
         );
       }
       if (typeof rule.maxCount === "number" && totalCount > rule.maxCount) {
-        const msg = `${meta.label}の回数超過（累計${totalCount}回 / 上限${rule.maxCount}回）`;
+        const msg = `${meta.label}\u306E回数超過（累計${totalCount}回 / 上限${rule.maxCount}回）`;
         nurseViolations.push(msg);
         pushViolation(
           {
@@ -2305,7 +2305,7 @@ export function evaluateNurseSchedule(
             doesShiftMatchGroup(s, fs, customShiftDefs, state.shiftAliases)
           )
         ) {
-          const msg = `${config.month}/${rule.day}: 禁止指定（${rule.forbidShifts.join("・")}）違反（実際: ${s}）`;
+          const msg = `${config.month}/${rule.day}: 禁止指定（${rule.forbidShifts.join("\u30FB")}）違反（実際: ${s}）`;
           nurseViolations.push(msg);
           pushViolation(
             {
@@ -2371,7 +2371,7 @@ export function evaluateNurseSchedule(
             completedPrereq < rule.prereqMinCount
           ) {
             const sMeta = getShiftMeta(s, customShiftDefs, state.shiftAliases);
-            const msg = `${config.month}/${d}: ${prereqMeta.label}を${rule.prereqMinCount}回受ける前に${sMeta.label}が配置されています（前日まで累計${completedPrereq}回）`;
+            const msg = `${config.month}/${d}: ${prereqMeta.label}\u3092${rule.prereqMinCount}回受\u3051\u308B前\u306B${sMeta.label}\u304C配置\u3055\u308C\u3066\u3044\u307E\u3059（前日\u307E\u3067累計${completedPrereq}回）`;
             nurseViolations.push(msg);
             pushViolation(
               {
@@ -2473,7 +2473,7 @@ export function evaluateNurseSchedule(
               id: `ng_${nA.id}_${nB.id}_${ts}_d${d}`,
               category: "ng_pair",
               day: d,
-              message: `${config.month}/${d} ${ts}シフト: 相性NGペア（${nA.name} × ${nB.name}）が同時配置されています`,
+              message: `${config.month}/${d} ${ts}\u30B7\u30D5\u30C8: 相性NG\u30DA\u30A2（${nA.name} × ${nB.name}）\u304C同時配置\u3055\u308C\u3066\u3044\u307E\u3059`,
               isSoft: rel.isHard === false ? true : undefined,
             },
             { ruleKey: "enforceNgPairs" }
@@ -2503,7 +2503,7 @@ export function evaluateNurseSchedule(
               id: `prec_${nA.id}_${nB.id}_${ts}_d${d}`,
               category: "skill",
               day: d,
-              message: `${config.month}/${d} ${ts}シフト: プリセプター同行違反（新人:${nA.name} が配置されていますが指導:${nB.name} が別シフトです）`,
+              message: `${config.month}/${d} ${ts}\u30B7\u30D5\u30C8: \u30D7\u30EA\u30BB\u30D7\u30BF\u30FC同行違反（新人:${nA.name} \u304C配置\u3055\u308C\u3066\u3044\u307E\u3059\u304C指導:${nB.name} \u304C別\u30B7\u30D5\u30C8\u3067\u3059）`,
               isSoft: rel.isHard === false ? true : undefined,
             },
             { ruleKey: "enforcePreceptorPairs" }
@@ -2747,9 +2747,9 @@ function buildAggregateMonthlyHiGHSModel(
     addTracked(expr`${sum(nurseWorkVars)} <= ${maxWorkByOff}`, {
       name: `monthly_off_min_${nurse.id}`,
       category: "monthly",
-      labelJa: `月間最低公休数(${effectiveMinOff}日以上): ${nurse.name}(${nurse.id}) の月間勤務日数は最大${maxWorkByOff}日まで`,
+      labelJa: `月間最低公休数(${effectiveMinOff}日以上): ${nurse.name}(${nurse.id}) \u306E月間勤務日数\u306F最大${maxWorkByOff}日\u307E\u3067`,
       relatedNurseIds: [nurse.id],
-      relaxSuggestion: `月間最低公休日数（現在:${effectiveMinOff}日）を減らすか、日別の必要人数を緩和してください。`,
+      relaxSuggestion: `月間最低公休日数（現在:${effectiveMinOff}日）\u3092減\u3089\u3059\u304B、日別\u306E必要人数\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
     });
 
     if (typeof nurse.maxMonthlyWorkDays === "number") {
@@ -2761,7 +2761,7 @@ function buildAggregateMonthlyHiGHSModel(
           category: "monthly",
           labelJa: `月間最大勤務日数(${maxContractWork}日以下): ${nurse.name}(${nurse.id})`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `${nurse.name}さん個人の月間最大勤務日数（現在:${maxContractWork}日）を引き上げてください。`,
+          relaxSuggestion: `${nurse.name}\u3055\u3093個人\u306E月間最大勤務日数（現在:${maxContractWork}日）\u3092引\u304D上\u3052\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -2776,9 +2776,9 @@ function buildAggregateMonthlyHiGHSModel(
       addTracked(expr`${sum(dBaseVars)} <= 0`, {
         name: `forbid_contract_D_${nurse.id}`,
         category: "custom",
-        labelJa: `個別契約(夜勤専従・日勤免除): ${nurse.name}(${nurse.id}) は日勤不可`,
+        labelJa: `個別契約(夜勤専従\u30FB日勤免除): ${nurse.name}(${nurse.id}) \u306F日勤不可`,
         relatedNurseIds: [nurse.id],
-        relaxSuggestion: `${nurse.name}さん個人の月間最低勤務日数を夜勤上限以下に引き下げるか、個人の月間夜勤上限を引き上げてください。`,
+        relaxSuggestion: `${nurse.name}\u3055\u3093個人\u306E月間最低勤務日数\u3092夜勤上限以下\u306B引\u304D下\u3052\u308B\u304B、個人\u306E月間夜勤上限\u3092引\u304D上\u3052\u3066\u304F\u3060\u3055\u3044。`,
       });
     }
     const effectiveMinWork = nurse.minMonthlyWorkDays ?? config.minMonthlyWorkDays;
@@ -2804,9 +2804,9 @@ function buildAggregateMonthlyHiGHSModel(
         {
           name: `custom_pin_off_cap_${nurse.id}`,
           category: "custom",
-          labelJa: `${nurse.name}(${nurse.id}) の公休(O)固定 (${pinnedOffDays.length}日間) により当月勤務可能日数は最大${maxWorkAfterPinnedOff}日`,
+          labelJa: `${nurse.name}(${nurse.id}) \u306E公休(O)固定 (${pinnedOffDays.length}日間) \u306B\u3088\u308A当月勤務可能日数\u306F最大${maxWorkAfterPinnedOff}日`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `${nurse.name}さんの公休固定日数（${pinnedOffDays.length}日間）を減らすか、${nurse.name}さん個人の月間最低勤務日数（現在:${effectiveMinWork}日）を引き下げてください。`,
+          relaxSuggestion: `${nurse.name}\u3055\u3093\u306E公休固定日数（${pinnedOffDays.length}日間）\u3092減\u3089\u3059\u304B、${nurse.name}\u3055\u3093個人\u306E月間最低勤務日数（現在:${effectiveMinWork}日）\u3092引\u304D下\u3052\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -2832,9 +2832,9 @@ function buildAggregateMonthlyHiGHSModel(
         {
           name: `custom_pin_work_min_${nurse.id}`,
           category: "custom",
-          labelJa: `${nurse.name}(${nurse.id}) の出勤固定 (${pinnedWorkDays.length}日間) により当月勤務日数は最低${pinnedWorkDays.length}日以上必要`,
+          labelJa: `${nurse.name}(${nurse.id}) \u306E出勤固定 (${pinnedWorkDays.length}日間) \u306B\u3088\u308A当月勤務日数\u306F最低${pinnedWorkDays.length}日以上必要`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `${nurse.name}さんの出勤固定日数（${pinnedWorkDays.length}日間）を減らすか、月間最大勤務日数・公休条件を見直してください。`,
+          relaxSuggestion: `${nurse.name}\u3055\u3093\u306E出勤固定日数（${pinnedWorkDays.length}日間）\u3092減\u3089\u3059\u304B、月間最大勤務日数\u30FB公休条件\u3092見直\u3057\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -2847,7 +2847,7 @@ function buildAggregateMonthlyHiGHSModel(
           category: "monthly",
           labelJa: `月間最低勤務日数(${effectiveMinWork}日以上): ${nurse.name}(${nurse.id})`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `${nurse.name}さん個人の月間最低勤務日数（現在:${effectiveMinWork}日）を引き下げるか、公休固定の日数を減らしてください。`,
+          relaxSuggestion: `${nurse.name}\u3055\u3093個人\u306E月間最低勤務日数（現在:${effectiveMinWork}日）\u3092引\u304D下\u3052\u308B\u304B、公休固定\u306E日数\u3092減\u3089\u3057\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -2865,9 +2865,9 @@ function buildAggregateMonthlyHiGHSModel(
       {
         name: `consec_monthly_cap_${nurse.id}`,
         category: "consecutive",
-        labelJa: `最大${effectiveMaxConsec}連勤制限による月間稼働上限: ${nurse.name}(${nurse.id}) は最低${minOffByConsec}日の公休が必要（最大${maxWorkByConsec}日勤務）`,
+        labelJa: `最大${effectiveMaxConsec}連勤制限\u306B\u3088\u308B月間稼働上限: ${nurse.name}(${nurse.id}) \u306F最低${minOffByConsec}日\u306E公休\u304C必要（最大${maxWorkByConsec}日勤務）`,
         relatedNurseIds: [nurse.id],
-        relaxSuggestion: `最大連続勤務日数（現在:${effectiveMaxConsec}連勤）を緩和してください。`,
+        relaxSuggestion: `最大連続勤務日数（現在:${effectiveMaxConsec}連勤）\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
       }
     );
 
@@ -2879,9 +2879,9 @@ function buildAggregateMonthlyHiGHSModel(
         {
           name: `night_max_${nurse.id}`,
           category: "monthly",
-          labelJa: `月間夜勤上限(${effectiveMaxNight}回以下): ${nurse.name}(${nurse.id}) の準夜＋深夜合計 <= ${effectiveMaxNight}回`,
+          labelJa: `月間夜勤上限(${effectiveMaxNight}回以下): ${nurse.name}(${nurse.id}) \u306E準夜＋深夜合計 <= ${effectiveMaxNight}回`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `月間夜勤上限回数（現在:${effectiveMaxNight}回）を1〜2回引き上げてください。`,
+          relaxSuggestion: `月間夜勤上限回数（現在:${effectiveMaxNight}回）\u30921〜2回引\u304D上\u3052\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -2907,9 +2907,9 @@ function buildAggregateMonthlyHiGHSModel(
         {
           name: `labor36_overtime_${nurse.id}`,
           category: "labor_36",
-          labelJa: `36協定 時間外労働上限: ${nurse.name}(${nurse.id}) の当月時間外 <= ${effectiveOvertimeCap}h（過去11ヶ月累計:${prev11Hours}h / 年間上限:${config.maxAnnualOvertimeHours}h・月上限:${config.maxMonthlyOvertimeHours}h）`,
+          labelJa: `36協定 時間外労働上限: ${nurse.name}(${nurse.id}) \u306E当月時間外 <= ${effectiveOvertimeCap}h（過去11\u30F6月累計:${prev11Hours}h / 年間上限:${config.maxAnnualOvertimeHours}h\u30FB月上限:${config.maxMonthlyOvertimeHours}h）`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `36協定の年間時間外上限（現在:${config.maxAnnualOvertimeHours}h）または月間上限（現在:${config.maxMonthlyOvertimeHours}h）を調整してください。`,
+          relaxSuggestion: `36協定\u306E年間時間外上限（現在:${config.maxAnnualOvertimeHours}h）\u307E\u305F\u306F月間上限（現在:${config.maxMonthlyOvertimeHours}h）\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
         }
       );
     }
@@ -2936,18 +2936,18 @@ function buildAggregateMonthlyHiGHSModel(
         addTracked(expr`${shiftCountExpr} >= ${effectiveMin}`, {
           name: `quota_min_${rule.id}_${nurse.id}`,
           category: "custom",
-          labelJa: `${rule.description}（${nurse.name}(${nurse.id}) の当月「${shiftMeta.label}」>= ${effectiveMin}回）`,
+          labelJa: `${rule.description}（${nurse.name}(${nurse.id}) \u306E当月「${shiftMeta.label}」>= ${effectiveMin}回）`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `追加ルール「${rule.description}」の必要回数を減らすか解除してください。`,
+          relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u306E必要回数\u3092減\u3089\u3059\u304B解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
         });
       }
       if (typeof effectiveMax === "number") {
         addTracked(expr`${shiftCountExpr} <= ${effectiveMax}`, {
           name: `quota_max_${rule.id}_${nurse.id}`,
           category: "custom",
-          labelJa: `${rule.description}（${nurse.name}(${nurse.id}) の当月「${shiftMeta.label}」<= ${effectiveMax}回）`,
+          labelJa: `${rule.description}（${nurse.name}(${nurse.id}) \u306E当月「${shiftMeta.label}」<= ${effectiveMax}回）`,
           relatedNurseIds: [nurse.id],
-          relaxSuggestion: `追加ルール「${rule.description}」の上限回数を緩和するか解除してください。`,
+          relaxSuggestion: `追加\u30EB\u30FC\u30EB「${rule.description}」\u306E上限回数\u3092緩和\u3059\u308B\u304B解除\u3057\u3066\u304F\u3060\u3055\u3044。`,
         });
       }
     }
@@ -2958,23 +2958,23 @@ function buildAggregateMonthlyHiGHSModel(
     {
       name: "monthly_total_cov_D",
       category: "coverage",
-      labelJa: `月間の日勤(D)総必要枠: 1ヶ月計 ${totalReqD}シフト以上が必要（平日${config.weekdayDayStaff}名・土日${config.weekendDayStaff}名）`,
-      relaxSuggestion: "平日または土日の日勤必要人数を減らしてください。",
+      labelJa: `月間\u306E日勤(D)総必要枠: 1\u30F6月計 ${totalReqD}\u30B7\u30D5\u30C8以上\u304C必要（平日${config.weekdayDayStaff}名\u30FB土日${config.weekendDayStaff}名）`,
+      relaxSuggestion: "平日\u307E\u305F\u306F土日\u306E日勤必要人数\u3092減\u3089\u3057\u3066\u304F\u3060\u3055\u3044。",
     }
   );
 
   addTracked(expr`${sum(nurses.map((n) => aggE[n.id]))} >= ${totalReqE}`, {
     name: "monthly_total_cov_E",
     category: "coverage",
-    labelJa: `月間の準夜勤(E)総必要枠: 1ヶ月計 ${totalReqE}シフト以上が必要（毎日${config.eveningStaff}名）`,
-    relaxSuggestion: "準夜勤の必要人数を減らすか、月間夜勤上限を引き上げてください。",
+    labelJa: `月間\u306E準夜勤(E)総必要枠: 1\u30F6月計 ${totalReqE}\u30B7\u30D5\u30C8以上\u304C必要（毎日${config.eveningStaff}名）`,
+    relaxSuggestion: "準夜勤\u306E必要人数\u3092減\u3089\u3059\u304B、月間夜勤上限\u3092引\u304D上\u3052\u3066\u304F\u3060\u3055\u3044。",
   });
 
   addTracked(expr`${sum(nurses.map((n) => aggN[n.id]))} >= ${totalReqN}`, {
     name: "monthly_total_cov_N",
     category: "coverage",
-    labelJa: `月間の深夜勤(N)総必要枠: 1ヶ月計 ${totalReqN}シフト以上が必要（毎日${config.nightStaff}名）`,
-    relaxSuggestion: "深夜勤の必要人数を減らすか、月間夜勤上限を引き上げてください。",
+    labelJa: `月間\u306E深夜勤(N)総必要枠: 1\u30F6月計 ${totalReqN}\u30B7\u30D5\u30C8以上\u304C必要（毎日${config.nightStaff}名）`,
+    relaxSuggestion: "深夜勤\u306E必要人数\u3092減\u3089\u3059\u304B、月間夜勤上限\u3092引\u304D上\u3052\u3066\u304F\u3060\u3055\u3044。",
   });
 
   if (config.enforceSkillCoverage) {
@@ -3000,10 +3000,10 @@ function buildAggregateMonthlyHiGHSModel(
           {
             name: `monthly_non_${sd.code}_night_cov`,
             category: "skill",
-            labelJa: `夜勤の「${sd.label}」上限（準夜${sd.maxEvening ?? "制限なし"}名・深夜${sd.maxNight ?? "制限なし"}名まで）により、他スタッフ(${nonMatched.length}名)で月間計${
+            labelJa: `夜勤\u306E「${sd.label}」上限（準夜${sd.maxEvening ?? "制限\u306A\u3057"}名\u30FB深夜${sd.maxNight ?? "制限\u306A\u3057"}名\u307E\u3067）\u306B\u3088\u308A、他\u30B9\u30BF\u30C3\u30D5(${nonMatched.length}名)\u3067月間計${
               reqNonMatchedE + reqNonMatchedN
-            }枠以上の夜勤カバーが必要`,
-            relaxSuggestion: `月間夜勤上限（現在:${config.maxMonthlyNightShifts}回）を引き上げるか、「${sd.label}」の夜勤上限を緩和してください。`,
+            }枠以上\u306E夜勤\u30AB\u30D0\u30FC\u304C必要`,
+            relaxSuggestion: `月間夜勤上限（現在:${config.maxMonthlyNightShifts}回）\u3092引\u304D上\u3052\u308B\u304B、「${sd.label}」\u306E夜勤上限\u3092緩和\u3057\u3066\u304F\u3060\u3055\u3044。`,
           }
         );
       }
@@ -3199,8 +3199,8 @@ export async function diagnoseNurseScheduleWithHiGHS(
     const unisolatedConflict: ConstraintMeta = {
       name: "coupled_consec_and_transitions",
       category: "consecutive",
-      labelJa: `複数制約の複合競合（候補: 最大${c.maxConsecutiveWorkDays}連勤制限・シフト遷移ルール・月間公休${c.minMonthlyDaysOff}日以上の組み合わせ）`,
-      relaxSuggestion: `最大連続勤務日数（現在:${c.maxConsecutiveWorkDays}日）または日別の必要人数を調整してください。`,
+      labelJa: `複数制約\u306E複合競合（候補: 最大${c.maxConsecutiveWorkDays}連勤制限\u30FB\u30B7\u30D5\u30C8遷移\u30EB\u30FC\u30EB\u30FB月間公休${c.minMonthlyDaysOff}日以上\u306E組\u307F合\u308F\u305B）`,
+      relaxSuggestion: `最大連続勤務日数（現在:${c.maxConsecutiveWorkDays}日）\u307E\u305F\u306F日別\u306E必要人数\u3092調整\u3057\u3066\u304F\u3060\u3055\u3044。`,
     };
     return {
       status: "Unsat",
@@ -3292,7 +3292,7 @@ export async function solveNurseScheduleWithWashi(
       schedule: emptySchedule,
       evaluation: evaluateNurseSchedule(state, emptySchedule),
       conflictAnalysis: null,
-      washiCodePreview: "// (スタッフデータが未登録です。サンプル生成またはCSVインポートを行ってください。)",
+      washiCodePreview: "// (\u30B9\u30BF\u30C3\u30D5\u30C7\u30FC\u30BF\u304C未登録\u3067\u3059。\u30B5\u30F3\u30D7\u30EB生成\u307E\u305F\u306FCSV\u30A4\u30F3\u30DD\u30FC\u30C8\u3092行\u3063\u3066\u304F\u3060\u3055\u3044。)",
       lpPreview: "// (Empty model)",
     };
   }

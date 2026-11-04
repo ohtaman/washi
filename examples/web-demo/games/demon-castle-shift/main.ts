@@ -1,4 +1,42 @@
 /// <reference types="vite/client" />
+
+import enCatalog from "./locales/en.json";
+import jaCatalog from "./locales/ja.json";
+import zhCatalog from "./locales/zh.json";
+
+const CATALOGS: Record<GameLang, typeof enCatalog> = {
+  en: enCatalog,
+  ja: jaCatalog,
+  zh: zhCatalog,
+};
+
+export function t(
+  key: string,
+  params?: Record<string, string | number>,
+  lang: GameLang = currentLang
+): string {
+  const catalog = CATALOGS[lang] ?? CATALOGS.en;
+  const parts = key.split(".");
+  let val: any = catalog;
+  for (const part of parts) {
+    val = val?.[part];
+    if (val === undefined) break;
+  }
+  if (val === undefined) {
+    let fallback: any = CATALOGS.en;
+    for (const part of parts) {
+      fallback = fallback?.[part];
+      if (fallback === undefined) break;
+    }
+    val = fallback ?? key;
+  }
+  if (typeof val !== "string") return String(val ?? key);
+  if (!params) return val;
+  return val.replace(/\{(\w+)\}/g, (_, k) =>
+    params[k] !== undefined ? String(params[k]) : `{${k}}`
+  );
+}
+
 import { setHighsWasmUrl } from "../../../../src/index.js";
 import { getGameLang, pickLang, setGameLang, type GameLang } from "../i18n.js";
 import { soundEngine } from "./audio.js";
@@ -449,14 +487,14 @@ function renderOpeningCut(index: number): void {
   if (cut.isClimax) {
     climaxOverlay.hidden = false;
     finishBtn.textContent = opProceedToPrologueAfter
-      ? pickLang(currentLang, { ja: "物語を始める", en: "Start Story", zh: "开始故事" })
-      : pickLang(currentLang, { ja: "タイトル画面へ戻る", en: "Return to Title", zh: "返回标题画面" });
+      ? t("ui.startStory")
+      : t("ui.returnToTitle");
     nextCutBtn.textContent = opProceedToPrologueAfter
-      ? pickLang(currentLang, { ja: "物語を始める ▶", en: "Start Story ▶", zh: "开始故事 ▶" })
-      : pickLang(currentLang, { ja: "終了 ▶", en: "Finish ▶", zh: "结束 ▶" });
+      ? t("ui.startStory_2")
+      : t("ui.finish");
   } else {
     climaxOverlay.hidden = true;
-    nextCutBtn.textContent = pickLang(currentLang, { ja: "次へ ▶", en: "Next ▶", zh: "下一步 ▶" });
+    nextCutBtn.textContent = t("ui.next");
     opAutoAdvanceTimer = window.setTimeout(() => {
       if (opCutIndex < cuts.length - 1) {
         renderOpeningCut(opCutIndex + 1);
@@ -472,11 +510,7 @@ export function syncAudioButtonUi(): void {
     if (playing) {
       btn.innerHTML = `<span class="btn-audio-short">🔊 BGM: ON</span>`;
     } else {
-      const extra = pickLang(currentLang, {
-        ja: "（クリックで音楽ON）",
-        en: " (Click for Music)",
-        zh: "（点击开启音乐）",
-      });
+      const extra = t("ui.clickForMusic");
       btn.innerHTML = `<span class="btn-audio-short">🔇 BGM: OFF</span><span class="btn-audio-extra">${extra}</span>`;
     }
   });
@@ -553,19 +587,11 @@ function showTitleScreen(): void {
         currentLang
       );
       const dLabel = getDifficultyLabelLocalized(nextTier, currentLang);
-      continueBtn.textContent = pickLang(currentLang, {
-        ja: `つづきから遊ぶ（${mLabel}・難易度：${dLabel}）`,
-        en: `Continue (${mLabel} · Difficulty: ${dLabel})`,
-        zh: `继续游戏（${mLabel}・难度：${dLabel}）`,
-      });
+      continueBtn.textContent = t("ui.continueDifficulty", { mLabel, dLabel });
     } else {
       const resumeIdx = Math.min(saveData.unlockedStageIndex, CAMPAIGN_STAGES.length - 1);
       const mLabel = formatCastleCalendarMonthLocalized(resumeIdx + 1, false, currentLang);
-      continueBtn.textContent = pickLang(currentLang, {
-        ja: `つづきから遊ぶ（${mLabel}）`,
-        en: `Continue (${mLabel})`,
-        zh: `继续游戏（${mLabel}）`,
-      });
+      continueBtn.textContent = t("ui.continue", { mLabel });
     }
   }
 }
@@ -649,12 +675,8 @@ function renderPrologueSlide(): void {
   const firstMonth = formatCastleCalendarMonthLocalized(1, false, currentLang);
   nextBtn.textContent =
     prologueSlideIndex === slides.length - 1
-      ? pickLang(currentLang, {
-          ja: `${firstMonth}の編成へ進む`,
-          en: `Proceed to ${firstMonth} Shift`,
-          zh: `前往${firstMonth}排班`,
-        })
-      : pickLang(currentLang, { ja: "次へ", en: "Next", zh: "下一步" });
+      ? t("ui.proceedToShift", { firstMonth })
+      : t("ui.next_2");
 }
 
 // ============================================================================
@@ -745,11 +767,7 @@ export function isEndlessModeUnlocked(data: SaveData = saveData): boolean {
 
 function renderStageProgressNav(): void {
   const nav = getEl<HTMLElement>("stage-progress-nav");
-  const clearedTitle = pickLang(currentLang, {
-    ja: "防衛成功",
-    en: "Cleared",
-    zh: "防卫成功",
-  });
+  const clearedTitle = t("ui.cleared");
   const buttonsHtml = CAMPAIGN_STAGES.map((st, idx) => {
     const isUnlocked =
       saveData.unlockAllDemo ||
@@ -779,17 +797,9 @@ function renderStageProgressNav(): void {
   const endlessMonth = formatCastleCalendarMonthLocalized(endlessWeek, false, currentLang);
   const endlessDiff = getDifficultyLabelLocalized(endlessTier, currentLang);
   const endlessMonthSpan = `<span class="stage-pill-month">${endlessMonth}</span>`;
-  const diffLabel = pickLang(currentLang, {
-    ja: `（難易度：${endlessDiff}）`,
-    en: ` (Difficulty: ${endlessDiff})`,
-    zh: `（难度：${endlessDiff}）`,
-  });
+  const diffLabel = t("ui.difficulty", { endlessDiff });
   const endlessDiffSpan = `<span class="stage-pill-diff">${diffLabel}</span>`;
-  const endlessTooltip = pickLang(currentLang, {
-    ja: "ユーザーの警備履歴に応じて難易度が自動調整される翌月以降の編成",
-    en: "Subsequent months with difficulty automatically adjusted to your defense history",
-    zh: "根据您的警备记录自动调整难度的次月及后续排班",
-  });
+  const endlessTooltip = t("ui.subsequentMonthsWithDifficulty");
   const randomBtnHtml = `<button type="button" class="stage-pill-btn stage-pill-endless ${isEndlessActive ? "is-active" : ""}" data-stage-random="true" ${!endlessUnlocked ? "disabled" : ""} title="${endlessTooltip}">
     <span>${endlessMonthSpan}${endlessDiffSpan}</span>
     ${!endlessUnlocked ? `<span>🔒</span>` : ""}
@@ -825,21 +835,9 @@ function openBriefingDialog(stage: StageScenario): void {
   const body = getEl<HTMLElement>("briefing-body");
   const locStage = getStageLocalized(stage, currentLang);
   const lilith = getLilithProfileLocalized(currentLang);
-  const stepSummary = pickLang(currentLang, {
-    ja: `${days.length}日間 ・ 今週の当番 ${stage.availableMonsters.length}名`,
-    en: `${days.length} Days · ${stage.availableMonsters.length} Guards on Duty`,
-    zh: `${days.length}天 ・ 本周值班 ${stage.availableMonsters.length}名`,
-  });
-  const startLabel = pickLang(currentLang, {
-    ja: "シフト編成を始める",
-    en: "Start Scheduling",
-    zh: "开始编排班表",
-  });
-  const clickHint = pickLang(currentLang, {
-    ja: "クリックでメッセージを全文表示",
-    en: "Click to reveal full message",
-    zh: "点击显示完整信息",
-  });
+  const stepSummary = t("ui.daysGuardsOnDuty", { dayCount: days.length, guardCount: stage.availableMonsters.length });
+  const startLabel = t("ui.startScheduling");
+  const clickHint = t("ui.clickToRevealFullMessage");
 
   body.innerHTML = `
     <div id="briefing-stage-box" class="prologue-stage" style="margin-bottom:0.85rem;cursor:pointer;" title="${clickHint}">
@@ -938,10 +936,10 @@ function getActiveTutorialStep(): {
       const dLabel = getDayLabel(s.day, currentLang);
       const shiftLabel =
         s.targetShift === "day"
-          ? pickLang(currentLang, { ja: "昼", en: "Day", zh: "昼" })
+          ? t("ui.day_2")
           : s.targetShift === "night"
-            ? pickLang(currentLang, { ja: "夜", en: "Night", zh: "夜" })
-            : pickLang(currentLang, { ja: "休", en: "Off", zh: "休" });
+            ? t("ui.night_2")
+            : t("ui.off_2");
       const baseStep = {
         stepIndex: i + 1,
         totalSteps: steps.length,
@@ -950,11 +948,7 @@ function getActiveTutorialStep(): {
         targetShift: s.targetShift,
         shortCallout:
           s.shortCallout ??
-          pickLang(currentLang, {
-            ja: `${mName}の${dLabel}を「${shiftLabel}」にしましょう`,
-            en: `Set ${mName} on ${dLabel} to '${shiftLabel}'`,
-            zh: `将${mName}的${dLabel}设为「${shiftLabel}」吧`,
-          }),
+          t("ui.setOnTo", { mName, dLabel, shiftLabel }),
         instruction: s.instruction,
       };
       const loc = getTutorialStepLocalized(baseStep, currentLang);
@@ -997,11 +991,7 @@ function renderShiftMatrix(): void {
     }
   }
 
-  const fullMoonTagText = pickLang(currentLang, {
-    ja: "満月",
-    en: "Full Moon",
-    zh: "满月",
-  });
+  const fullMoonTagText = t("ui.fullMoon");
   const dayHeadersHtml = days
     .map((d) => {
       const nightReq = currentStage.requirements.find((r) => r.day === d && r.shift === "night");
@@ -1011,16 +1001,8 @@ function renderShiftMatrix(): void {
     })
     .join("");
 
-  const memberTitle = pickLang(currentLang, {
-    ja: "警備メンバー",
-    en: "Guard Members",
-    zh: "警备成员",
-  });
-  const memberSub = pickLang(currentLang, {
-    ja: "（タップで詳細）",
-    en: "(Tap for details)",
-    zh: "（点击查看详情）",
-  });
+  const memberTitle = t("ui.guardMembers");
+  const memberSub = t("ui.tapForDetails");
   const memberColLabel = `<span class="col-monster-title">${memberTitle}</span><span class="col-monster-sub">${memberSub}</span>`;
   const theadHtml = `
     <thead>
@@ -1065,26 +1047,14 @@ function renderShiftMatrix(): void {
           activeTutorial.day === d &&
           activeTutorial.targetShift === shift;
         const isDimmedRaid = activeTutorial && !isRelatedRaid;
-        const staffTextDesktop = pickLang(currentLang, {
-          ja: `人数 ${assignedMonsters.length}/${req.minStaff}`,
-          en: `Staff ${assignedMonsters.length}/${req.minStaff}`,
-          zh: `人数 ${assignedMonsters.length}/${req.minStaff}`,
-        });
-        const staffTextMobile = pickLang(currentLang, {
-          ja: `${assignedMonsters.length}/${req.minStaff}人`,
-          en: `${assignedMonsters.length}/${req.minStaff}`,
-          zh: `${assignedMonsters.length}/${req.minStaff}人`,
-        });
+        const staffTextDesktop = t("ui.staff", { assignedCount: assignedMonsters.length, req_minStaff: req.minStaff });
+        const staffTextMobile = t("ui.text", { assignedCount: assignedMonsters.length, req_minStaff: req.minStaff });
         const staffPillHtml =
           req.minStaff > 1 || !staffMet
             ? `<span class="meter-pill ${staffMet ? "ok" : "ng"}"><span class="meter-text-desktop">${staffTextDesktop}</span><span class="meter-text-mobile">${staffTextMobile}</span></span>`
             : "";
         const locReq = getRequirementLocalized(req, currentLang);
-        const pwrTextDesktop = pickLang(currentLang, {
-          ja: `防衛 ${currentPower} / 予測 ${expectedPower}`,
-          en: `Def ${currentPower} / Est ${expectedPower}`,
-          zh: `防卫 ${currentPower} / 预测 ${expectedPower}`,
-        });
+        const pwrTextDesktop = t("ui.defEst", { currentPower, expectedPower });
         const pwrTextMobile = `${currentPower} / ${expectedPower}`;
 
         return `
@@ -1113,9 +1083,9 @@ function renderShiftMatrix(): void {
     `;
   };
 
-  const offBtnText = pickLang(currentLang, { ja: "休", en: "Off", zh: "休" });
-  const dayBtnText = pickLang(currentLang, { ja: "昼", en: "Day", zh: "昼" });
-  const nightBtnText = pickLang(currentLang, { ja: "夜", en: "Night", zh: "夜" });
+  const offBtnText = t("ui.off_2");
+  const dayBtnText = t("ui.day_2");
+  const nightBtnText = t("ui.night_2");
 
   const monsterRowsHtml = currentStage.availableMonsters
     .map((mId) => {
@@ -1146,16 +1116,8 @@ function renderShiftMatrix(): void {
 
           if (reqOff) {
             const locReason = getRequestedOffReasonLocalized(reqOff.reason, mId, currentLang);
-            const offLabelDesktop = pickLang(currentLang, {
-              ja: `指定休（${locReason}）`,
-              en: `Off (${locReason})`,
-              zh: `指定休（${locReason}）`,
-            });
-            const offLabelMobile = pickLang(currentLang, {
-              ja: "指定休",
-              en: "Off",
-              zh: "指定休",
-            });
+            const offLabelDesktop = t("ui.off_3", { locReason });
+            const offLabelMobile = t("ui.off_2");
             return `
               <td class="shift-cell state-off cell-locked-pto ${isDimmedCell ? "is-tutorial-dimmed-cell" : ""}">
                 <span class="locked-off-label" title="${locReason}">
@@ -1171,17 +1133,9 @@ function renderShiftMatrix(): void {
           const isTutNight = isTargetCell && activeTutorial?.targetShift === "night";
 
           const tutStepPillText = activeTutorial
-            ? pickLang(currentLang, {
-                ja: `リリスと一緒に編成 ${activeTutorial.stepIndex}/${activeTutorial.totalSteps}`,
-                en: `With Lilith ${activeTutorial.stepIndex}/${activeTutorial.totalSteps}`,
-                zh: `与莉莉丝一起排班 ${activeTutorial.stepIndex}/${activeTutorial.totalSteps}`,
-              })
+            ? t("ui.withLilith", { activeTutorial_stepIndex: activeTutorial.stepIndex, activeTutorial_totalSteps: activeTutorial.totalSteps })
             : "";
-          const tutSkipBtnText = pickLang(currentLang, {
-            ja: "ここからは自分で組む",
-            en: "Build on my own",
-            zh: "接下来自己排班",
-          });
+          const tutSkipBtnText = t("ui.buildOnMyOwn");
 
           const tutorialCalloutHtml =
             isTargetCell && activeTutorial
@@ -1224,31 +1178,19 @@ function renderShiftMatrix(): void {
           let noteClass = "";
           if (hasViolation) {
             noteDesktop = cellViolations[0];
-            noteMobile = "⚠️連勤NG";
+            noteMobile = "⚠️NoConsecutive";
             noteClass = "is-error";
           } else if (activeConflictPartner) {
-            noteDesktop = pickLang(currentLang, {
-              ja: `⚡${activeConflictPartner}と同番NG (-150)`,
-              en: `⚡Clash w/ ${activeConflictPartner} (-150)`,
-              zh: `⚡与${activeConflictPartner}排斥 (-150)`,
-            });
+            noteDesktop = t("ui.clashW150", { activeConflictPartner });
             noteMobile = "⚡-150";
             noteClass = "is-conflict";
           } else if (activeSynergyPartner) {
-            noteDesktop = pickLang(currentLang, {
-              ja: `🤝${activeSynergyPartner}と連携 (+100)`,
-              en: `🤝Synergy w/ ${activeSynergyPartner} (+100)`,
-              zh: `🤝与${activeSynergyPartner}连携 (+100)`,
-            });
+            noteDesktop = t("ui.synergyW100", { activeSynergyPartner });
             noteMobile = "🤝+100";
             noteClass = "is-synergy";
           } else if (isFullMoonForbidden) {
-            noteDesktop = pickLang(currentLang, {
-              ja: "満月夜は不可",
-              en: "No Full Moon Night",
-              zh: "满月夜不可",
-            });
-            noteMobile = "🚫満月";
+            noteDesktop = t("ui.noFullMoonNight");
+            noteMobile = "🚫FullMoon";
             noteClass = "is-info";
           }
 
@@ -1259,29 +1201,13 @@ function renderShiftMatrix(): void {
                </div>`
             : "";
 
-          const fmTitle = pickLang(currentLang, {
-            ja: `満月の夜は${m.name}を夜番に配置できません`,
-            en: `${m.name} cannot work Night shift on a Full Moon night`,
-            zh: `满月之夜无法将${m.name}安排在夜班`,
-          });
+          const fmTitle = t("ui.cannotWorkNightShiftOn", { m_name: m.name });
 
-          const cycleLabel = pickLang(currentLang, {
-            ja: currentShift === "off" ? "休" : currentShift === "day" ? "昼" : "夜",
-            en: currentShift === "off" ? "Off" : currentShift === "day" ? "Day" : "Night",
-            zh: currentShift === "off" ? "休" : currentShift === "day" ? "昼" : "夜",
-          });
+          const cycleLabel = t(`ui.${currentShift}`);
           const cycleIcon = currentShift === "day" ? "☀️" : currentShift === "night" ? "🌙" : "";
           const nextShiftPreview = getNextCycleShift(currentShift, isFullMoonForbidden);
-          const nextShiftLabel = pickLang(currentLang, {
-            ja: nextShiftPreview === "off" ? "休" : nextShiftPreview === "day" ? "昼" : "夜",
-            en: nextShiftPreview === "off" ? "Off" : nextShiftPreview === "day" ? "Day" : "Night",
-            zh: nextShiftPreview === "off" ? "休" : nextShiftPreview === "day" ? "昼" : "夜",
-          });
-          const cycleAriaLabel = pickLang(currentLang, {
-            ja: `${m.name} ${getDayLabel(d, currentLang)}: 現在 ${cycleLabel}（タップで ${nextShiftLabel} に切替）`,
-            en: `${m.name} ${getDayLabel(d, currentLang)}: Current ${cycleLabel} (Tap to change to ${nextShiftLabel})`,
-            zh: `${m.name} ${getDayLabel(d, currentLang)}: 当前 ${cycleLabel}（点击切换至 ${nextShiftLabel}）`,
-          });
+          const nextShiftLabel = t(`ui.${nextShiftPreview}`);
+          const cycleAriaLabel = t("ui.currentTapToChangeTo", { m_name: m.name, getDayLabel_d__currentLang: getDayLabel(d, currentLang), cycleLabel, nextShiftLabel });
 
           return `
             <td class="shift-cell state-${currentShift} ${hasViolation ? "has-violation" : ""} ${isTargetCell ? "is-tutorial-spotlight" : ""} ${isDimmedCell ? "is-tutorial-dimmed-cell" : ""}">
@@ -1332,26 +1258,10 @@ function renderShiftMatrix(): void {
         })
         .join("");
 
-      const workCounterLabel = pickLang(currentLang, {
-        ja: `出勤 ${assignedCount}/${m.maxWeeklyShifts}`,
-        en: `Shifts ${assignedCount}/${m.maxWeeklyShifts}`,
-        zh: `出勤 ${assignedCount}/${m.maxWeeklyShifts}`,
-      });
-      const dayChipLabel = pickLang(currentLang, {
-        ja: `昼 ${dayPower}`,
-        en: `Day ${dayPower}`,
-        zh: `昼 ${dayPower}`,
-      });
-      const nightChipLabel = pickLang(currentLang, {
-        ja: `夜 ${nightPower}`,
-        en: `Night ${nightPower}`,
-        zh: `夜 ${nightPower}`,
-      });
-      const infoTooltip = pickLang(currentLang, {
-        ja: `クリックで${m.name}の詳細（普段の持ち場：${m.usualPost}）を下部の会話枠に表示`,
-        en: `Click to view ${m.name}'s details (${m.usualPost}) in the dialogue box below`,
-        zh: `点击在下方的对话栏显示${m.name}的详情（平时岗位：${m.usualPost}）`,
-      });
+      const workCounterLabel = t("ui.shifts", { assignedCount, m_maxWeeklyShifts: m.maxWeeklyShifts });
+      const dayChipLabel = t("ui.day_3", { dayPower });
+      const nightChipLabel = t("ui.night_3", { nightPower });
+      const infoTooltip = t("ui.clickToViewSDetails", { m_name: m.name, m_usualPost: m.usualPost });
 
       return `
         <tr class="${isDimmedRow ? "is-tutorial-dimmed-row" : ""}">
@@ -1394,26 +1304,10 @@ function renderShiftMatrix(): void {
     })
     .join("");
 
-  const dayGuardLabelDesktop = pickLang(currentLang, {
-    ja: "昼の警備",
-    en: "Day Watch",
-    zh: "白昼警备",
-  });
-  const dayGuardLabelMobile = pickLang(currentLang, {
-    ja: "☀️ 昼",
-    en: "☀️ Day",
-    zh: "☀️ 昼",
-  });
-  const nightGuardLabelDesktop = pickLang(currentLang, {
-    ja: "夜の警備",
-    en: "Night Watch",
-    zh: "夜间警备",
-  });
-  const nightGuardLabelMobile = pickLang(currentLang, {
-    ja: "🌙 夜",
-    en: "🌙 Night",
-    zh: "🌙 夜",
-  });
+  const dayGuardLabelDesktop = t("ui.dayWatch");
+  const dayGuardLabelMobile = t("ui.day_4");
+  const nightGuardLabelDesktop = t("ui.nightWatch");
+  const nightGuardLabelMobile = t("ui.night_4");
 
   table.innerHTML = `
     ${theadHtml}
@@ -1435,11 +1329,7 @@ function renderShiftMatrix(): void {
         speaker: lilith.name,
         tag: lilith.title,
         portrait: lilith.portrait,
-        text: pickLang(currentLang, {
-          ja: "わかりました。ここからはあなたのペースで自由にシフトを組んでみてくださいね。",
-          en: "Understood. Feel free to arrange the rest of the shift at your own pace.",
-          zh: "明白了，接下来请按照您的节奏自由编排班表吧。",
-        }),
+        text: t("ui.understoodFeelFreeToArrange"),
       });
     });
   });
@@ -1479,17 +1369,9 @@ function renderShiftMatrix(): void {
       soundEngine.playClick("day");
       speakInDock({
         speaker: m.name,
-        tag: pickLang(currentLang, {
-          ja: `${m.title}（${m.race}・持ち場：${m.usualPost}）`,
-          en: `${m.title} (${m.race} · Post: ${m.usualPost})`,
-          zh: `${m.title}（${m.race}・平时岗位：${m.usualPost}）`,
-        }),
+        tag: t("ui.post", { m_title: m.title, m_race: m.race, m_usualPost: m.usualPost }),
         portrait: m.portrait,
-        text: pickLang(currentLang, {
-          ja: `「${m.quotes.intro}」 ── ${m.traitSummary}`,
-          en: `"${m.quotes.intro}" — ${m.traitSummary}`,
-          zh: `「${m.quotes.intro}」 ── ${m.traitSummary}`,
-        }),
+        text: t("ui.text_2", { m_quotes_intro: m.quotes.intro, m_traitSummary: m.traitSummary }),
       });
     };
     el.addEventListener("click", showInfo);
@@ -1518,11 +1400,7 @@ function updateDefaultDockMessage(lastMove?: {
   if (activeTutorial) {
     speakInDock({
       speaker: lilith.name,
-      tag: pickLang(currentLang, {
-        ja: `リリスと一緒に編成（${activeTutorial.stepIndex}/${activeTutorial.totalSteps}）`,
-        en: `Scheduling with Lilith (${activeTutorial.stepIndex}/${activeTutorial.totalSteps})`,
-        zh: `与莉莉丝一起排班（${activeTutorial.stepIndex}/${activeTutorial.totalSteps}）`,
-      }),
+      tag: t("ui.schedulingWithLilith", { activeTutorial_stepIndex: activeTutorial.stepIndex, activeTutorial_totalSteps: activeTutorial.totalSteps }),
       portrait: lilith.portrait,
       text: activeTutorial.instruction,
     });
@@ -1532,16 +1410,8 @@ function updateDefaultDockMessage(lastMove?: {
   if (currentStage.tutorialSteps && !tutorialSkipped && currentEvaluation.isValid) {
     dispatchBtn.setAttribute("data-tutorial-target", "true");
     dispatchCallout.hidden = false;
-    const pillDone = pickLang(currentLang, {
-      ja: "シフト完成",
-      en: "Schedule Complete",
-      zh: "排班完成",
-    });
-    const calloutText = pickLang(currentLang, {
-      ja: "一緒に組んだ3日間のシフトが完成しました。下の「このシフトで警備する」を押しましょう。",
-      en: "Our 3-day shift schedule is complete. Press 'Guard with This Shift' below.",
-      zh: "我们一起编排的3天班表已经完成了，请点击下方的「按此班表出击警备」吧。",
-    });
+    const pillDone = t("ui.scheduleComplete");
+    const calloutText = t("ui.our3DayShiftSchedule");
     dispatchCallout.innerHTML = `
       <div class="tutorial-callout-header">
         <span class="tutorial-step-pill">${pillDone}</span>
@@ -1552,11 +1422,7 @@ function updateDefaultDockMessage(lastMove?: {
       speaker: lilith.name,
       tag: pillDone,
       portrait: lilith.portrait,
-      text: pickLang(currentLang, {
-        ja: "ありがとうございます、一緒に3日間のシフトが綺麗に組めましたね。右下の「このシフトで警備する」を押して、城門の警備へ向かいましょう。",
-        en: "Thank you, we have put together a clean 3-day shift schedule. Press 'Guard with This Shift' at the bottom right to begin guarding the gate.",
-        zh: "非常感谢，我们一起顺利完成了3天的班表。请点击右下方的「按此班表出击警备」，出发守卫城门吧。",
-      }),
+      text: t("ui.thankYouWeHavePut"),
     });
     return;
   }
@@ -1573,11 +1439,7 @@ function updateDefaultDockMessage(lastMove?: {
       const locV = getViolationLocalized(moveViolation, currentStage, currentLang);
       speakInDock({
         speaker: lilith.name,
-        tag: pickLang(currentLang, {
-          ja: "勤務条件の確認",
-          en: "Work Rule Check",
-          zh: "勤务条件确认",
-        }),
+        tag: t("ui.workRuleCheck"),
         portrait: lilith.portrait,
         text: locV.message,
       });
@@ -1604,17 +1466,9 @@ function updateDefaultDockMessage(lastMove?: {
           const locRel = getRelationLocalized(rel, currentLang);
           speakInDock({
             speaker: m.name,
-            tag: pickLang(currentLang, {
-              ja: `⚡ 同シフト拒否（${other.name}と同番で防衛力 ${rel.moraleDelta}）`,
-              en: `⚡ Shift Clash (${rel.moraleDelta} defense with ${other.name})`,
-              zh: `⚡ 同班排斥（与${other.name}同班防卫力 ${rel.moraleDelta}）`,
-            }),
+            tag: t("ui.shiftClashDefenseWith", { rel_moraleDelta: rel.moraleDelta, other_name: other.name }),
             portrait: m.portrait,
-            text: pickLang(currentLang, {
-              ja: `${locRel.description}（同じ枠に配置すると防衛力が ${Math.abs(rel.moraleDelta)} 下がります）`,
-              en: `${locRel.description} (Assigning both to the same slot reduces defense by ${Math.abs(rel.moraleDelta)}.)`,
-              zh: `${locRel.description}（排在同一时段会使防卫力降低 ${Math.abs(rel.moraleDelta)}）`,
-            }),
+            text: t("ui.assigningBothToTheSame", { locRel_description: locRel.description, moraleDelta: Math.abs(rel.moraleDelta) }),
           });
           return;
         }
@@ -1625,13 +1479,9 @@ function updateDefaultDockMessage(lastMove?: {
   if (currentEvaluation.isValid) {
     speakInDock({
       speaker: lilith.name,
-      tag: pickLang(currentLang, { ja: "準備完了", en: "Ready", zh: "准备就绪" }),
+      tag: t("ui.ready"),
       portrait: lilith.portrait,
-      text: pickLang(currentLang, {
-        ja: "すべての時間帯に頼もしい戦力を配置できました。「このシフトで警備する」で進みましょう。",
-        en: "Every time slot is well-defended and all work rules are met. Press 'Guard with This Shift' to proceed.",
-        zh: "所有时段都已安排了可靠的战力，请点击「按此班表出击警备」继续前进吧。",
-      }),
+      text: t("ui.everyTimeSlotIsWell"),
     });
     return;
   }
@@ -1643,11 +1493,7 @@ function updateDefaultDockMessage(lastMove?: {
     const locV = getViolationLocalized(laborViolations[0], currentStage, currentLang);
     speakInDock({
       speaker: lilith.name,
-      tag: pickLang(currentLang, {
-        ja: "勤務条件の確認",
-        en: "Work Rule Check",
-        zh: "勤务条件确认",
-      }),
+      tag: t("ui.workRuleCheck"),
       portrait: lilith.portrait,
       text: locV.message,
     });
@@ -1675,17 +1521,9 @@ function updateDefaultDockMessage(lastMove?: {
         const locRel = getRelationLocalized(rel, currentLang);
         speakInDock({
           speaker: m.name,
-          tag: pickLang(currentLang, {
-            ja: `🤝 ペア連携発動（${other.name}と同番で +${rel.moraleDelta}）`,
-            en: `🤝 Pair Synergy (+${rel.moraleDelta} with ${other.name})`,
-            zh: `🤝 搭档连携发动（与${other.name}同班 +${rel.moraleDelta}）`,
-          }),
+          tag: t("ui.pairSynergyWith", { rel_moraleDelta: rel.moraleDelta, other_name: other.name }),
           portrait: m.portrait,
-          text: pickLang(currentLang, {
-            ja: `「${quote}」 ── ${locRel.description}`,
-            en: `"${quote}" — ${locRel.description}`,
-            zh: `「${quote}」 ── ${locRel.description}`,
-          }),
+          text: t("ui.text_3", { quote, locRel_description: locRel.description }),
         });
         return;
       }
@@ -1694,17 +1532,13 @@ function updateDefaultDockMessage(lastMove?: {
     const dLabel = getDayLabel(lastMove.day, currentLang);
     const sLabel =
       lastMove.shift === "day"
-        ? pickLang(currentLang, { ja: "昼番", en: "Day Shift", zh: "白班" })
-        : pickLang(currentLang, { ja: "夜番", en: "Night Shift", zh: "夜班" });
+        ? t("ui.dayShift")
+        : t("ui.nightShift");
     speakInDock({
       speaker: m.name,
       tag: `${dLabel} · ${sLabel}`,
       portrait: m.portrait,
-      text: pickLang(currentLang, {
-        ja: `「${quote}」`,
-        en: `"${quote}"`,
-        zh: `「${quote}」`,
-      }),
+      text: t("ui.text_4", { quote }),
     });
     return;
   }
@@ -1730,11 +1564,7 @@ function renderStageHeading(): void {
       ? locStage.title
       : `${locStage.title}${
           diffLabel
-            ? pickLang(currentLang, {
-                ja: `（難易度：${diffLabel}）`,
-                en: ` (Difficulty: ${diffLabel})`,
-                zh: `（难度：${diffLabel}）`,
-              })
+            ? t("ui.difficulty_2", { diffLabel })
             : ""
         }`;
   if (headingEl) {
@@ -1772,35 +1602,19 @@ function renderGoalTrackerAndHud(): void {
   const stepStaffEl = getEl<HTMLElement>("goal-step-staff");
   const allStaffOk = staffOkSlots === totalSlots;
   stepStaffEl.className = `cond-pill ${allStaffOk ? "is-ok" : "is-ng"}`;
-  stepStaffEl.textContent = pickLang(currentLang, {
-    ja: `人数 ${staffOkSlots}/${totalSlots}`,
-    en: `Staff ${staffOkSlots}/${totalSlots}`,
-    zh: `人数 ${staffOkSlots}/${totalSlots}`,
-  });
+  stepStaffEl.textContent = t("ui.staff_2", { staffOkSlots, totalSlots });
 
   const stepPowerEl = getEl<HTMLElement>("goal-step-power");
   const allPredOk = predOkSlots === totalSlots;
   stepPowerEl.className = `cond-pill ${allPredOk ? "is-ok" : "is-ng"}`;
-  stepPowerEl.textContent = pickLang(currentLang, {
-    ja: `予測到達 ${predOkSlots}/${totalSlots}`,
-    en: `Est. Power ${predOkSlots}/${totalSlots}`,
-    zh: `达到预测 ${predOkSlots}/${totalSlots}`,
-  });
+  stepPowerEl.textContent = t("ui.estPower", { predOkSlots, totalSlots });
 
   const stepLawEl = getEl<HTMLElement>("goal-step-law");
   const allLawOk = laborViolations.length === 0;
   stepLawEl.className = `cond-pill ${allLawOk ? "is-ok" : "is-ng"}`;
   stepLawEl.textContent = allLawOk
-    ? pickLang(currentLang, {
-        ja: "勤務条件 OK",
-        en: "Work Rules OK",
-        zh: "勤务条件 OK",
-      })
-    : pickLang(currentLang, {
-        ja: `勤務違反 ${laborViolations.length}件`,
-        en: `Rule Issues: ${laborViolations.length}`,
-        zh: `勤务违规 ${laborViolations.length}项`,
-      });
+    ? t("ui.workRulesOk")
+    : t("ui.ruleIssues", { laborViolations_length: laborViolations.length });
 
   const dispatchBtn = getEl<HTMLButtonElement>("btn-dispatch");
   if (currentEvaluation.canDispatch) {
@@ -1819,11 +1633,7 @@ function renderSynergyDialogContent(): void {
       currentStage.availableMonsters.includes(r.monsterB)
   );
   if (activeRels.length === 0) {
-    listEl.innerHTML = `<p class="synergy-desc">${pickLang(currentLang, {
-      ja: "今月の当番メンバー間には特別な相性・同番NGはありません。",
-      en: "There are no special pair affinities among this month's on-duty guards.",
-      zh: "本月值班成员之间没有特殊的相性或排斥关系。",
-    })}</p>`;
+    listEl.innerHTML = `<p class="synergy-desc">${t("ui.thereAreNoSpecialPair")}</p>`;
     return;
   }
   listEl.innerHTML = activeRels
@@ -1834,8 +1644,8 @@ function renderSynergyDialogContent(): void {
       const isPos = rel.moraleDelta >= 0;
       const sign = isPos ? `+${rel.moraleDelta}` : `${rel.moraleDelta}`;
       const badgeText = isPos
-        ? pickLang(currentLang, { ja: `相性◎ (+${rel.moraleDelta})`, en: `Synergy (+${rel.moraleDelta})`, zh: `默契 (+${rel.moraleDelta})` })
-        : pickLang(currentLang, { ja: `同番NG (${rel.moraleDelta})`, en: `Clash (${rel.moraleDelta})`, zh: `排斥 (${rel.moraleDelta})` });
+        ? t("ui.synergy_2", { rel_moraleDelta: rel.moraleDelta })
+        : t("ui.clash", { rel_moraleDelta: rel.moraleDelta });
       return `
         <div class="synergy-item-card ${isPos ? "is-positive" : "is-negative"}">
           <div class="synergy-item-header">
@@ -1947,8 +1757,8 @@ function renderPairBonusStrip(): void {
       const isPos = rel.moraleDelta >= 0;
       const sign = isPos ? `+${rel.moraleDelta}` : `${rel.moraleDelta}`;
       const prefixDesktop = isPos
-        ? pickLang(currentLang, { ja: "🤝 相性◎", en: "🤝 Synergy", zh: "🤝 默契" })
-        : pickLang(currentLang, { ja: "⚡ 同番NG", en: "⚡ Clash", zh: "⚡ 排斥" });
+        ? t("ui.synergy_3")
+        : t("ui.clash_2");
       const prefixMobile = isPos ? "🤝" : "⚡";
       return `<button type="button" class="pair-chip ${isPos ? "is-positive" : "is-negative"}" data-rel-idx="${idx}" title="${locRel.description}"><span class="pair-chip-desktop">${prefixDesktop}: ${mA.name}×${mB.name} (${sign})</span><span class="pair-chip-mobile">${prefixMobile} ${mA.name}×${mB.name} (${sign})</span></button>`;
     })
@@ -1968,16 +1778,8 @@ function renderPairBonusStrip(): void {
       speakInDock({
         speaker: isPos ? mA.name : lilith.name,
         tag: isPos
-          ? pickLang(currentLang, {
-              ja: `🤝 相性◎：${mA.name}×${mB.name}（同シフトで +${rel.moraleDelta}）`,
-              en: `🤝 Synergy: ${mA.name} × ${mB.name} (+${rel.moraleDelta} together)`,
-              zh: `🤝 默契：${mA.name}×${mB.name}（同班 +${rel.moraleDelta}）`,
-            })
-          : pickLang(currentLang, {
-              ja: `⚡ 同番NG：${mA.name}×${mB.name}（同シフトで ${rel.moraleDelta}）`,
-              en: `⚡ Clash: ${mA.name} × ${mB.name} (${rel.moraleDelta} together)`,
-              zh: `⚡ 同班排斥：${mA.name}×${mB.name}（同班 ${rel.moraleDelta}）`,
-            }),
+          ? t("ui.synergyTogether", { mA_name: mA.name, mB_name: mB.name, rel_moraleDelta: rel.moraleDelta })
+          : t("ui.clashTogether", { mA_name: mA.name, mB_name: mB.name, rel_moraleDelta: rel.moraleDelta }),
         portrait: isPos ? mA.portrait : lilith.portrait,
         text: locRel.description,
       });
@@ -2002,13 +1804,13 @@ async function giveOneCellHint(): Promise<void> {
   const days = getStageDays(currentStage);
   const lilith = getLilithProfileLocalized(currentLang);
   const locStage = getStageLocalized(currentStage, currentLang);
-  const hintTag = pickLang(currentLang, { ja: "ヒント", en: "Hint", zh: "提示" });
+  const hintTag = t("ui.hint");
   const shiftLabelOf = (s: ShiftType) =>
     s === "day"
-      ? pickLang(currentLang, { ja: "昼", en: "Day", zh: "昼" })
+      ? t("ui.day_2")
       : s === "night"
-        ? pickLang(currentLang, { ja: "夜", en: "Night", zh: "夜" })
-        : pickLang(currentLang, { ja: "休", en: "Off", zh: "休" });
+        ? t("ui.night_2")
+        : t("ui.off_2");
 
   for (const v of currentEvaluation.violations) {
     if (v.monsterId && v.day !== undefined) {
@@ -2024,11 +1826,7 @@ async function giveOneCellHint(): Promise<void> {
           speaker: lilith.name,
           tag: hintTag,
           portrait: lilith.portrait,
-          text: pickLang(currentLang, {
-            ja: `勤務条件の無理を解消するため、${mName}の${dLabel}を「${sLabel}」に調整しました。`,
-            en: `To resolve a work-rule issue, I adjusted ${mName} on ${dLabel} to '${sLabel}'.`,
-            zh: `为了消除勤务条件冲突，已将${mName}在${dLabel}的班表调整为「${sLabel}」。`,
-          }),
+          text: t("ui.toResolveAWorkRule", { mName, dLabel, sLabel }),
         });
         return;
       }
@@ -2049,11 +1847,7 @@ async function giveOneCellHint(): Promise<void> {
           speaker: lilith.name,
           tag: hintTag,
           portrait: lilith.portrait,
-          text: pickLang(currentLang, {
-            ja: `${mName}の${dLabel}を「${sLabel}」に配置しました。${locStage.lilithHint}`,
-            en: `Assigned ${mName} on ${dLabel} to '${sLabel}'. ${locStage.lilithHint}`,
-            zh: `已将${mName}的${dLabel}配置为「${sLabel}」。${locStage.lilithHint}`,
-          }),
+          text: t("ui.assignedOnTo", { mName, dLabel, sLabel, locStage_lilithHint: locStage.lilithHint }),
         });
         return;
       }
@@ -2074,11 +1868,7 @@ async function giveOneCellHint(): Promise<void> {
           speaker: lilith.name,
           tag: hintTag,
           portrait: lilith.portrait,
-          text: pickLang(currentLang, {
-            ja: `${mName}の${dLabel}を「${sLabel}」に調整しました。これで評価がさらに上がります。`,
-            en: `Adjusted ${mName} on ${dLabel} to '${sLabel}' for an even stronger formation.`,
-            zh: `已将${mName}的${dLabel}调整为「${sLabel}」，整体防卫评价进一步提升。`,
-          }),
+          text: t("ui.adjustedOnToForAn", { mName, dLabel, sLabel }),
         });
         return;
       }
@@ -2090,11 +1880,7 @@ async function giveOneCellHint(): Promise<void> {
     speaker: lilith.name,
     tag: hintTag,
     portrait: lilith.portrait,
-    text: pickLang(currentLang, {
-      ja: "すでにお手本シフトと同じ配置になっています。このまま「このシフトで警備する」へ進めます。",
-      en: "Your schedule already matches the model solution. You can proceed with 'Guard with This Shift'.",
-      zh: "当前排班已经与示范解答完全一致，可以直接点击「按此班表出击警备」。",
-    }),
+    text: t("ui.yourScheduleAlreadyMatchesThe"),
   });
 }
 
@@ -2102,7 +1888,7 @@ async function runLilithDiagnosis(): Promise<void> {
   const activeGen = stageLoadGeneration;
   const activeStageId = currentStage.id;
   const lilith = getLilithProfileLocalized(currentLang);
-  const statusTag = pickLang(currentLang, { ja: "状況確認", en: "Status Check", zh: "状况确认" });
+  const statusTag = t("ui.statusCheck");
   try {
     const diag = await diagnoseScheduleWithHighs(currentStage, currentSchedule);
     if (activeGen !== stageLoadGeneration || currentStage.id !== activeStageId) return;
@@ -2112,31 +1898,19 @@ async function runLilithDiagnosis(): Promise<void> {
         speaker: lilith.name,
         tag: statusTag,
         portrait: lilith.portrait,
-        text: pickLang(currentLang, {
-          ja: "いま配置されているマスに手詰まりや違反はありません。このまま残りの空欄を埋めていけば防衛できます。",
-          en: "Your currently placed shifts have no dead-ends or rule violations. Fill in the remaining slots to complete the defense.",
-          zh: "目前已安排的班表没有任何死胡同或违规，继续填满剩余时段即可完成防卫。",
-        }),
+        text: t("ui.yourCurrentlyPlacedShiftsHave"),
       });
     } else {
       soundEngine.playError();
       const reasonText =
         currentLang === "ja"
-          ? (diag.messages[0] ?? "現在の配置に偏りがあり、後半の枠で人手が足りなくなっています。")
-          : pickLang(currentLang, {
-              ja: "",
-              en: "Some guards' current assignments are concentrated in a way that leaves later raid slots short-handed.",
-              zh: "当前的出勤配置有所偏重，导致后续袭来时段人手不足。",
-            });
+          ? (diag.messages[0] ?? t("ui.defaultDiagMessage"))
+          : t("ui.someGuardsCurrentAssignmentsAr");
       speakInDock({
         speaker: lilith.name,
         tag: statusTag,
         portrait: lilith.portrait,
-        text: pickLang(currentLang, {
-          ja: `${reasonText} 該当するメンバーの出勤日を一度「休」に戻して調整してみてください。`,
-          en: `${reasonText} Try resetting a few shifts back to 'Off' and rebalancing.`,
-          zh: `${reasonText} 请尝试将相关成员的出勤日先调回「休」再重新调配。`,
-        }),
+        text: t("ui.tryResettingAFewShifts", { reasonText }),
       });
     }
   } catch (err) {
@@ -2146,12 +1920,12 @@ async function runLilithDiagnosis(): Promise<void> {
 
 function formatShiftChipText(shift: ShiftType): string {
   if (shift === "day") {
-    return pickLang(currentLang, { ja: "☀️昼", en: "☀️Day", zh: "☀️昼" });
+    return t("ui.day_5");
   }
   if (shift === "night") {
-    return pickLang(currentLang, { ja: "🌙夜", en: "🌙Night", zh: "🌙夜" });
+    return t("ui.night_5");
   }
-  return pickLang(currentLang, { ja: "休", en: "Off", zh: "休" });
+  return t("ui.off_2");
 }
 
 function getLocalizedDayLabels(): readonly string[] {
@@ -2216,15 +1990,15 @@ function renderOptimalComparisonHtml(
             return `<td class="cmp-td is-match">
               <div class="cmp-cell-inner">
                 <span class="cmp-shift-pill is-${oShift}">${formatShiftChipText(oShift)}</span>
-                <span class="cmp-match-label">${pickLang(currentLang, { ja: "✓ 一致", en: "✓ Match", zh: "✓ 一致" })}</span>
+                <span class="cmp-match-label">${t("ui.match")}</span>
               </div>
             </td>`;
           }
           return `<td class="cmp-td is-diff">
             <div class="cmp-cell-inner">
-              <span class="cmp-from-pill">${pickLang(currentLang, { ja: "自", en: "You", zh: "自" })}:${formatShiftChipText(pShift)}</span>
+              <span class="cmp-from-pill">${t("ui.you")}:${formatShiftChipText(pShift)}</span>
               <span class="cmp-diff-arrow">▶</span>
-              <span class="cmp-shift-pill is-${oShift}">${pickLang(currentLang, { ja: "最", en: "Mod", zh: "范" })}:${formatShiftChipText(oShift)}</span>
+              <span class="cmp-shift-pill is-${oShift}">${t("ui.mod")}:${formatShiftChipText(oShift)}</span>
             </div>
           </td>`;
         })
@@ -2247,13 +2021,13 @@ function renderOptimalComparisonHtml(
       const outcome = outcomes[idx];
       const shiftIcon = req.shift === "day" ? "☀️" : req.isFullMoon ? "🌕" : "🌙";
       const shiftLabel = req.shift === "day"
-        ? pickLang(currentLang, { ja: "昼", en: "Day", zh: "昼" })
-        : pickLang(currentLang, { ja: "夜", en: "Night", zh: "夜" });
+        ? t("ui.day_2")
+        : t("ui.night_2");
       const pPower = pSlot?.currentPower ?? 0;
       const oPower = oSlot?.currentPower ?? 0;
       const expectedEnemy = pSlot?.expectedPower ?? req.requiredPower;
-      const sep = pickLang(currentLang, { ja: "・", en: ", ", zh: "、" });
-      const noneTxt = pickLang(currentLang, { ja: "なし", en: "None", zh: "无" });
+      const sep = t("ui.text_5");
+      const noneTxt = t("ui.none");
       const pNames =
         pSlot && pSlot.assignedMonsters.length > 0
           ? pSlot.assignedMonsters.map((id) => getLocalizedMonster(id).name).join(sep)
@@ -2265,38 +2039,18 @@ function renderOptimalComparisonHtml(
       const isBreached = outcome && !outcome.isWin;
       const hadRaid = outcome ? outcome.hasRaid !== false : true;
       const actualText = !hadRaid
-        ? pickLang(currentLang, {
-            ja: `🍃 襲来なし／予測 ${expectedEnemy}`,
-            en: `🍃 No Raid / Est. ${expectedEnemy}`,
-            zh: `🍃 无袭来／预测 ${expectedEnemy}`,
-          })
+        ? t("ui.noRaidEst", { expectedEnemy })
         : outcome
-          ? pickLang(currentLang, {
-              ja: `実際 ${outcome.actualEnemyPower}／予測 ${expectedEnemy}`,
-              en: `Actual ${outcome.actualEnemyPower} / Est. ${expectedEnemy}`,
-              zh: `实际 ${outcome.actualEnemyPower}／预测 ${expectedEnemy}`,
-            })
-          : pickLang(currentLang, {
-              ja: `予測 ${expectedEnemy}`,
-              en: `Est. ${expectedEnemy}`,
-              zh: `预测 ${expectedEnemy}`,
-            });
+          ? t("ui.actualEst", { outcome_actualEnemyPower: outcome.actualEnemyPower, expectedEnemy })
+          : t("ui.est", { expectedEnemy });
       return `<div class="cmp-slot-card ${isBreached ? "is-breached" : ""}">
         <div class="cmp-slot-head">
-          <span>${shiftIcon} ${dayLabels[req.day]}・${shiftLabel}（${pickLang(currentLang, { ja: "敵：", en: "Enemy: ", zh: "敌：" })}${actualText}）</span>
-          ${isBreached ? `<span class="cmp-breach-tag">💥 ${pickLang(currentLang, { ja: "突破された枠", en: "Breached Slot", zh: "被突破的时段" })}</span>` : ""}
+          <span>${shiftIcon} ${dayLabels[req.day]} · ${shiftLabel} (${t("ui.enemy")}${actualText})</span>
+          ${isBreached ? `<span class="cmp-breach-tag">💥 ${t("ui.breachedSlot")}</span>` : ""}
         </div>
         <div class="cmp-slot-body">
-          <div class="cmp-slot-line is-player">${pickLang(currentLang, {
-            ja: `あなた：<strong>防衛 ${pPower}</strong>（${pNames}）`,
-            en: `Yours: <strong>Def ${pPower}</strong> (${pNames})`,
-            zh: `你的排班：<strong>防卫 ${pPower}</strong>（${pNames}）`,
-          })}</div>
-          <div class="cmp-slot-line is-optimal">${pickLang(currentLang, {
-            ja: `お手本：<strong>防衛 ${oPower}</strong>（${oNames}）`,
-            en: `Model: <strong>Def ${oPower}</strong> (${oNames})`,
-            zh: `范例：<strong>防卫 ${oPower}</strong>（${oNames}）`,
-          })}</div>
+          <div class="cmp-slot-line is-player">${t("ui.yoursStrongDefStrong", { pPower, pNames })}</div>
+          <div class="cmp-slot-line is-optimal">${t("ui.modelStrongDefStrong", { oPower, oNames })}</div>
         </div>
       </div>`;
     })
@@ -2306,40 +2060,20 @@ function renderOptimalComparisonHtml(
     <div class="optimal-compare-box">
       <div class="optimal-compare-header">
         <div>
-          <h4 class="optimal-compare-title">${pickLang(currentLang, {
-            ja: "📊 あなたのシフト vs お手本シフトの比較",
-            en: "📊 Your Shift vs. Model Shift Comparison",
-            zh: "📊 你的排班 vs 范例排班对比",
-          })}</h4>
-          <p class="optimal-compare-sub">${pickLang(currentLang, {
-            ja: "金枠のマスがお手本と異なっていた配置です（次回挑戦時は敵の進軍と当番メンバーが新しく組み直されます）。",
-            en: "Gold-bordered cells differ from the model shift (on your next attempt, enemy raids and on-duty guards will be newly arranged).",
-            zh: "金框格子为与范例不同的配置（下次挑战时敌军进军与当班成员将重新编排）。",
-          })}</p>
+          <h4 class="optimal-compare-title">${t("ui.yourShiftVsModelShift")}</h4>
+          <p class="optimal-compare-sub">${t("ui.goldBorderedCellsDifferFrom")}</p>
         </div>
         <div class="optimal-compare-totals">
-          <span class="cmp-total-pill">${pickLang(currentLang, {
-            ja: `あなたの総防衛力：<strong>${playerEval.totalScore}</strong>`,
-            en: `Your Total Defense: <strong>${playerEval.totalScore}</strong>`,
-            zh: `你的总防卫力：<strong>${playerEval.totalScore}</strong>`,
-          })}</span>
-          <span class="cmp-total-pill is-opt">${pickLang(currentLang, {
-            ja: `お手本の総防衛力：<strong>${optEval.totalScore}</strong>`,
-            en: `Model Total Defense: <strong>${optEval.totalScore}</strong>`,
-            zh: `范例总防卫力：<strong>${optEval.totalScore}</strong>`,
-          })}</span>
+          <span class="cmp-total-pill">${t("ui.yourTotalDefenseStrongStrong", { playerEval_totalScore: playerEval.totalScore })}</span>
+          <span class="cmp-total-pill is-opt">${t("ui.modelTotalDefenseStrongStrong", { optEval_totalScore: optEval.totalScore })}</span>
         </div>
       </div>
 
       <div class="cmp-table-wrap">
-        <table class="shift-compare-table" aria-label="${pickLang(currentLang, {
-          ja: "あなたのシフトとお手本シフトの比較表",
-          en: "Shift comparison table",
-          zh: "排班对比表",
-        })}">
+        <table class="shift-compare-table" aria-label="${t("ui.shiftComparisonTable")}">
           <thead>
             <tr>
-              <th scope="col">${pickLang(currentLang, { ja: "メンバー", en: "Guard", zh: "成员" })}</th>
+              <th scope="col">${t("ui.guard")}</th>
               ${dayHeaders}
             </tr>
           </thead>
@@ -2436,34 +2170,18 @@ function renderHpOrbsHtml(remainingHp: number, maxHp: number, justLostIndex = -1
   }
   const statusLabelDesktop =
     remainingHp > 0
-      ? pickLang(currentLang, {
-          ja: "城門無傷（全戦防衛必須）",
-          en: "Gate Intact (All Raids Must Be Repelled)",
-          zh: "城门无伤（必须全战防卫）",
-        })
-      : pickLang(currentLang, {
-          ja: "城門突破（陥落）",
-          en: "Gate Breached (Fallen)",
-          zh: "城门被破（陷落）",
-        });
+      ? t("ui.gateIntactAllRaidsMust")
+      : t("ui.gateBreachedFallen");
   const statusLabelMobile =
     remainingHp > 0
-      ? pickLang(currentLang, {
-          ja: "城門無傷",
-          en: "Gate Intact",
-          zh: "城门无伤",
-        })
-      : pickLang(currentLang, {
-          ja: "陥落",
-          en: "Breached",
-          zh: "陷落",
-        });
+      ? t("ui.gateIntact")
+      : t("ui.breached");
   return `<span class="castle-hp-orbs">${orbs.join("")} <span class="hp-label-desktop">${statusLabelDesktop}</span><span class="hp-label-mobile">${statusLabelMobile}</span></span>`;
 }
 
 function renderBattleDefenderAvatarsHtml(outcome: SlotBattleOutcome): string {
   if (outcome.assignedMonsters.length === 0) {
-    return `<div class="battle-party-avatars"><img class="battle-unit-avatar is-empty" src="./char-lilith.jpg" alt="${pickLang(currentLang, { ja: "配置なし", en: "Unassigned", zh: "未配置" })}" width="52" height="52" /></div>`;
+    return `<div class="battle-party-avatars"><img class="battle-unit-avatar is-empty" src="./char-lilith.jpg" alt="${t("ui.unassigned")}" width="52" height="52" /></div>`;
   }
   const imgs = outcome.assignedMonsters
     .map((mId) => {
@@ -2472,10 +2190,10 @@ function renderBattleDefenderAvatarsHtml(outcome: SlotBattleOutcome): string {
     })
     .join("");
   const synChip = outcome.hasSynergy
-    ? `<span class="battle-synergy-chip">✨ ${pickLang(currentLang, { ja: "連携 +100", en: "Synergy +100", zh: "配合 +100" })}</span>`
+    ? `<span class="battle-synergy-chip">✨ ${t("ui.synergy100")}</span>`
     : "";
   const conflictChip = outcome.hasConflict
-    ? `<span class="battle-conflict-chip">⚡ ${pickLang(currentLang, { ja: "不仲 -150", en: "Friction -150", zh: "不和 -150" })}</span>`
+    ? `<span class="battle-conflict-chip">⚡ ${t("ui.friction150")}</span>`
     : "";
   return `<div class="battle-party-avatars">${imgs}${synChip}${conflictChip}</div>`;
 }
@@ -2512,34 +2230,22 @@ async function openDispatchResultDialog(): Promise<void> {
     const issues =
       laborViolations.length > 0
         ? laborViolations.map((v) => `<li class="violation-item">${localizeViolationMessage(v, currentLang)}</li>`).join("")
-        : `<li class="violation-item">${pickLang(currentLang, {
-            ja: "警備メンバーがまだ誰も配置されていません。各マスの「昼」または「夜」を選んで配置してください。",
-            en: "No guards are assigned yet. Select Day or Night in the grid cells to assign guards.",
-            zh: "尚未安排任何警备成员。请在格子中选择「昼」或「夜」进行安排。",
-          })}</li>`;
+        : `<li class="violation-item">${t("ui.noGuardsAreAssignedYet")}</li>`;
 
     body.innerHTML = `
       <div class="result-rank-banner" style="border-color: var(--danger-crimson);">
-        <div class="result-rank-letter" style="color: var(--danger-crimson);">${pickLang(currentLang, {
-          ja: "勤務条件の確認",
-          en: "Shift Rules Check",
-          zh: "出勤条件确认",
-        })}</div>
+        <div class="result-rank-letter" style="color: var(--danger-crimson);">${t("ui.shiftRulesCheck")}</div>
         <p style="margin: 0.4rem 0 0; font-size: 0.84rem; color: var(--text-muted);">
-          ${pickLang(currentLang, {
-            ja: "警備を開始する前に、以下の勤務条件の無理を解消してください。",
-            en: "Please resolve the following shift rule violations before starting guard duty.",
-            zh: "在开始警备之前，请先解除以下不合理的出勤条件。",
-          })}
+          ${t("ui.pleaseResolveTheFollowingShift")}
         </p>
       </div>
       <ul class="violation-list" style="margin-bottom:1rem;">${issues}</ul>
       <div style="display:flex;gap:0.6rem;justify-content:flex-end;flex-wrap:wrap;">
         <button id="btn-modal-hint" type="button" class="btn-glass">
-          ${pickLang(currentLang, { ja: "1マスだけヒントを見る", en: "Show 1-Cell Hint", zh: "查看1格提示" })}
+          ${t("ui.show1CellHint")}
         </button>
         <button id="btn-modal-retry" type="button" class="btn-dispatch" style="width:auto;padding:0.55rem 1.2rem;">
-          ${pickLang(currentLang, { ja: "シフト表に戻って調整する", en: "Return to Shift Table", zh: "返回排班表调整" })}
+          ${t("ui.returnToShiftTable")}
         </button>
       </div>
     `;
@@ -2577,16 +2283,8 @@ async function openDispatchResultDialog(): Promise<void> {
     let defenderName: string;
     let defenderQuote: string;
     if (o.assignedMonsters.length === 0) {
-      defenderName = pickLang(currentLang, {
-        ja: "配置なし（無防備）",
-        en: "Unassigned (Unguarded)",
-        zh: "无人配置（无防备）",
-      });
-      defenderQuote = pickLang(currentLang, {
-        ja: "誰も配置されておらず、城門が無防備になっています…",
-        en: "No guards are stationed here, leaving the castle gate unguarded...",
-        zh: "没有任何人驻守，城门处于无防备状态……",
-      });
+      defenderName = t("ui.unassignedUnguarded");
+      defenderQuote = t("ui.noGuardsAreStationedHere");
     } else {
       const leadM = getLocalizedMonster(o.assignedMonsters[0]);
       defenderName =
@@ -2595,8 +2293,8 @@ async function openDispatchResultDialog(): Promise<void> {
           : currentLang === "en"
             ? `${leadM.name} +${o.assignedMonsters.length - 1}`
             : currentLang === "zh"
-              ? `${leadM.name} 等${o.assignedMonsters.length}名`
-              : `${leadM.name} ほか${o.assignedMonsters.length - 1}名`;
+              ? `${leadM.name} +${o.assignedMonsters.length - 1}`
+              : `${leadM.name} +${o.assignedMonsters.length - 1}`;
       defenderQuote =
         currentLang === "ja"
           ? o.defenderQuote
@@ -2612,8 +2310,8 @@ async function openDispatchResultDialog(): Promise<void> {
       const locO = localizeOutcomeText(o);
       const shiftIcon = o.shift === "day" ? "☀️" : o.isFullMoon ? "🌕" : "🌙";
       const shiftLabel = o.shift === "day"
-        ? pickLang(currentLang, { ja: "昼", en: "Day", zh: "昼" })
-        : pickLang(currentLang, { ja: "夜", en: "Night", zh: "夜" });
+        ? t("ui.day_2")
+        : t("ui.night_2");
       const miniAvatars = o.assignedMonsters
         .map((mId) => {
           const m = getLocalizedMonster(mId);
@@ -2622,15 +2320,11 @@ async function openDispatchResultDialog(): Promise<void> {
         .join("");
       return `<div id="battle-slot-row-${idx}" class="battle-slot-item is-pending">
         <div class="battle-slot-left">
-          <span class="battle-slot-time">${shiftIcon} ${dayLabels[o.day]}・${shiftLabel}</span>
+          <span class="battle-slot-time">${shiftIcon} ${dayLabels[o.day]} · ${shiftLabel}</span>
           <span class="battle-slot-avatars">${miniAvatars}</span>
           <span class="battle-slot-enemy">${locO.enemyName}</span>
         </div>
-        <span id="battle-slot-res-${idx}" class="battle-slot-res">${pickLang(currentLang, {
-          ja: `防衛 ${o.defensePower} vs 予測 ${o.expectedEnemyPower}`,
-          en: `Def ${o.defensePower} vs Est. ${o.expectedEnemyPower}`,
-          zh: `防卫 ${o.defensePower} vs 预测 ${o.expectedEnemyPower}`,
-        })}</span>
+        <span id="battle-slot-res-${idx}" class="battle-slot-res">${t("ui.defVsEst", { o_defensePower: o.defensePower, o_expectedEnemyPower: o.expectedEnemyPower })}</span>
       </div>`;
     })
     .join("");
@@ -2641,27 +2335,19 @@ async function openDispatchResultDialog(): Promise<void> {
         <div class="salamander-sanctum-left">
           <div class="salamander-emblem" aria-hidden="true">🏰</div>
           <div>
-            <div class="salamander-status-title">${stageLoc.title} — ${pickLang(currentLang, {
-              ja: "第一防衛城門",
-              en: "Main Castle Gate",
-              zh: "第一防卫城门",
-            })}</div>
-            <div id="salamander-status-text" class="salamander-status-sub">${pickLang(currentLang, {
-              ja: "警備隊が配置についた。画面クリックで次の場面へ進みます。",
-              en: "Guards are in position. Click anywhere to advance to the next scene.",
-              zh: "警备队已就位。点击画面推进至下一场景。",
-            })}</div>
+            <div class="salamander-status-title">${stageLoc.title} — ${t("ui.mainCastleGate")}</div>
+            <div id="salamander-status-text" class="salamander-status-sub">${t("ui.guardsAreInPositionClick")}</div>
           </div>
         </div>
         <div class="battle-fs-top-controls">
           <div id="salamander-hp-box">${renderHpOrbsHtml(remainingHp, maxHp)}</div>
           <button id="btn-battle-auto" type="button" class="btn-glass btn-sm" aria-pressed="false">
-            <span class="battle-btn-desktop">${pickLang(currentLang, { ja: "▶ 自動進行: OFF", en: "▶ Auto: OFF", zh: "▶ 自动推进: OFF" })}</span>
-            <span class="battle-btn-mobile">${pickLang(currentLang, { ja: "▶ 自動: OFF", en: "▶ Auto: OFF", zh: "▶ 自动: OFF" })}</span>
+            <span class="battle-btn-desktop">${t("ui.autoOff")}</span>
+            <span class="battle-btn-mobile">${t("ui.autoOff")}</span>
           </button>
           <button id="btn-skip-battle-anim" type="button" class="btn-glass btn-sm">
-            <span class="battle-btn-desktop">${pickLang(currentLang, { ja: "結果までスキップ ⏭", en: "Skip to Result ⏭", zh: "跳至结果 ⏭" })}</span>
-            <span class="battle-btn-mobile">${pickLang(currentLang, { ja: "スキップ ⏭", en: "Skip ⏭", zh: "跳过 ⏭" })}</span>
+            <span class="battle-btn-desktop">${t("ui.skipToResult")}</span>
+            <span class="battle-btn-mobile">${t("ui.skip")}</span>
           </button>
         </div>
       </header>
@@ -2670,11 +2356,7 @@ async function openDispatchResultDialog(): Promise<void> {
       <div id="battle-final-summary-area"></div>
 
       <!-- Full-Screen Live Battle Stage (Encounter Cutscene + Clash Arena) -->
-      <div id="battle-live-stage" class="battle-live-stage" title="${pickLang(currentLang, {
-        ja: "クリックで次の場面へ進む",
-        en: "Click to advance",
-        zh: "点击推进至下一场景",
-      })}">
+      <div id="battle-live-stage" class="battle-live-stage" title="${t("ui.clickToAdvance")}">
         <!-- FULL-SCREEN SCENE 1: Dawn / Nightfall & Enemy Arrival Cutscene -->
         <div id="battle-encounter-scene" class="battle-encounter-scene is-day-encounter" aria-live="polite">
           <div class="encounter-sky-rays" aria-hidden="true"></div>
@@ -2733,11 +2415,7 @@ async function openDispatchResultDialog(): Promise<void> {
               <div class="cutin-unit-row">
                 <div id="cutin-defender-avatars" class="cutin-avatars-slot"></div>
                 <div class="cutin-unit-info">
-                  <div class="cutin-side-label">🛡️ ${pickLang(currentLang, {
-                    ja: "魔王城・警備当番",
-                    en: "Demon Castle Guards",
-                    zh: "魔王城・值班警备",
-                  })}</div>
+                  <div class="cutin-side-label">🛡️ ${t("ui.demonCastleGuards")}</div>
                   <div class="cutin-side-title">
                     <span id="cutin-defender-name"></span>
                     <span id="cutin-defender-power" class="cutin-power-num is-def"></span>
@@ -2752,11 +2430,7 @@ async function openDispatchResultDialog(): Promise<void> {
             <div id="cutin-right-side" class="cutin-side cutin-side-enemies">
               <div class="cutin-unit-row is-enemy-row">
                 <div class="cutin-unit-info">
-                  <div class="cutin-side-label is-ene-label">⚔️ ${pickLang(currentLang, {
-                    ja: "押し寄せる勇者軍",
-                    en: "Advancing Expedition",
-                    zh: "涌来的勇者军",
-                  })}</div>
+                  <div class="cutin-side-label is-ene-label">⚔️ ${t("ui.advancingExpedition")}</div>
                   <div class="cutin-side-title">
                     <span id="cutin-enemy-name"></span>
                     <span id="cutin-enemy-power" class="cutin-power-num is-ene"></span>
@@ -2772,17 +2446,9 @@ async function openDispatchResultDialog(): Promise<void> {
 
           <div id="battle-tug-wrap" class="battle-tug-wrap">
             <div class="battle-tug-labels">
-              <span id="tug-label-def">🛡️ ${pickLang(currentLang, {
-                ja: "味方防衛力",
-                en: "Guard Defense",
-                zh: "我方防卫力",
-              })}</span>
+              <span id="tug-label-def">🛡️ ${t("ui.guardDefense")}</span>
               <span id="tug-label-status" class="tug-status-center">⚔️</span>
-              <span id="tug-label-ene">${pickLang(currentLang, {
-                ja: "敵戦力",
-                en: "Enemy Power",
-                zh: "敌方战力",
-              })} ⚔️</span>
+              <span id="tug-label-ene">${t("ui.enemyPower")} ⚔️</span>
             </div>
             <div class="battle-tug-track">
               <div id="battle-tug-fill-def" class="battle-tug-fill-def" style="width: 50%;"></div>
@@ -2799,11 +2465,7 @@ async function openDispatchResultDialog(): Promise<void> {
       </div>
 
       <div class="battle-log-section">
-        <div class="battle-log-heading">📅 ${pickLang(currentLang, {
-          ja: "今週の防衛タイムライン",
-          en: "Weekly Defense Timeline",
-          zh: "本周防卫时间线",
-        })}</div>
+        <div class="battle-log-heading">📅 ${t("ui.weeklyDefenseTimeline")}</div>
         <div class="battle-log-list">${initialSlotsHtml}</div>
       </div>
     </div>
@@ -2829,8 +2491,8 @@ async function openDispatchResultDialog(): Promise<void> {
   const syncAutoBtnUi = () => {
     if (!autoBtn) return;
     autoBtn.innerHTML = isAutoAdvance
-      ? `<span class="battle-btn-desktop">${pickLang(currentLang, { ja: "🔄 自動進行: ON", en: "🔄 Auto: ON", zh: "🔄 自动推进: ON" })}</span><span class="battle-btn-mobile">${pickLang(currentLang, { ja: "🔄 自動: ON", en: "🔄 Auto: ON", zh: "🔄 自动: ON" })}</span>`
-      : `<span class="battle-btn-desktop">${pickLang(currentLang, { ja: "▶ 自動進行: OFF", en: "▶ Auto: OFF", zh: "▶ 自动推进: OFF" })}</span><span class="battle-btn-mobile">${pickLang(currentLang, { ja: "▶ 自動: OFF", en: "▶ Auto: OFF", zh: "▶ 自动: OFF" })}</span>`;
+      ? `<span class="battle-btn-desktop">${t("ui.autoOn")}</span><span class="battle-btn-mobile">${t("ui.autoOn")}</span>`
+      : `<span class="battle-btn-desktop">${t("ui.autoOff")}</span><span class="battle-btn-mobile">${t("ui.autoOff")}</span>`;
     autoBtn.setAttribute("aria-pressed", isAutoAdvance ? "true" : "false");
     autoBtn.classList.toggle("is-active-speed", isAutoAdvance);
   };
@@ -2961,8 +2623,8 @@ async function openDispatchResultDialog(): Promise<void> {
     const isDay = o.shift === "day";
     const shiftIcon = isDay ? "☀️" : o.isFullMoon ? "🌕" : "🌙";
     const shiftLabel = isDay
-      ? pickLang(currentLang, { ja: "昼", en: "Day", zh: "昼" })
-      : pickLang(currentLang, { ja: "夜", en: "Night", zh: "夜" });
+      ? t("ui.day_2")
+      : t("ui.night_2");
     const dayName = dayLabels[o.day];
     const isLastSlot = i === outcomes.length - 1;
     const rowEl = document.getElementById(`battle-slot-row-${i}`);
@@ -2973,41 +2635,21 @@ async function openDispatchResultDialog(): Promise<void> {
     rowEl?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
     // =========================================================================
-    // CASE A: Peaceful Slot (o.hasRaid === false) — 勇者軍の襲来なし（平穏に経過）
+    // CASE A: Peaceful Slot (o.hasRaid === false) — No enemy raid (peaceful)
     // =========================================================================
     if (o.hasRaid === false) {
       if (!skipped && encounterScene) {
         soundEngine.setSceneTrack("prologue");
         const peacefulTimeText = isDay
           ? i === 0
-            ? pickLang(currentLang, {
-                ja: `🌅 ${dayName}曜日の朝 ── 夜が明けた`,
-                en: `🌅 ${dayName} Morning — Dawn breaks`,
-                zh: `🌅 ${dayName}清晨 ── 天亮了`,
-              })
-            : pickLang(currentLang, {
-                ja: `🌅 夜が明け、${dayName}曜日の朝が訪れた`,
-                en: `🌅 Dawn breaks on ${dayName} morning`,
-                zh: `🌅 黎明破晓，${dayName}清晨来临`,
-              })
+            ? t("ui.morningDawnBreaks", { dayName })
+            : t("ui.dawnBreaksOnMorning", { dayName })
           : o.isFullMoon
-            ? pickLang(currentLang, {
-                ja: `🌕 日が暮れて暗くなり、${dayName}曜日の満月が昇った`,
-                en: `🌕 Night falls and the full moon rises on ${dayName}`,
-                zh: `🌕 夜幕降临，${dayName}的满月升起`,
-              })
-            : pickLang(currentLang, {
-                ja: `🌙 日が暮れて暗くなり、${dayName}曜日の夜が訪れた`,
-                en: `🌙 Night falls on ${dayName} evening`,
-                zh: `🌙 夜幕降临，${dayName}的夜晚来临`,
-              });
+            ? t("ui.nightFallsAndTheFull", { dayName })
+            : t("ui.nightFallsOnEvening", { dayName });
 
         if (encounterSlotProgress) {
-          encounterSlotProgress.textContent = pickLang(currentLang, {
-            ja: `${dayName}曜日・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
-            en: `${dayName} ${shiftLabel} (${i + 1} / ${outcomes.length})`,
-            zh: `${dayName}・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
-          });
+          encounterSlotProgress.textContent = t("ui.text_6", { dayName, shiftLabel, i___1: i + 1, outcomes_length: outcomes.length });
         }
         if (encounterCelestialOrb) {
           encounterCelestialOrb.textContent = shiftIcon;
@@ -3016,18 +2658,10 @@ async function openDispatchResultDialog(): Promise<void> {
           encounterTimeBadge.textContent = peacefulTimeText;
         }
         if (encounterKickerBadge) {
-          encounterKickerBadge.textContent = pickLang(currentLang, {
-            ja: "🍃 敵影なし・平穏",
-            en: "🍃 All Quiet / No Raid",
-            zh: "🍃 无敌影・平稳",
-          });
+          encounterKickerBadge.textContent = t("ui.allQuietNoRaid");
         }
         if (encounterExpectedBadge) {
-          encounterExpectedBadge.textContent = pickLang(currentLang, {
-            ja: `警戒レベル ${o.expectedEnemyPower}`,
-            en: `Alert Level ${o.expectedEnemyPower}`,
-            zh: `警戒等级 ${o.expectedEnemyPower}`,
-          });
+          encounterExpectedBadge.textContent = t("ui.alertLevel", { o_expectedEnemyPower: o.expectedEnemyPower });
         }
         if (encounterEnemyImg) {
           encounterEnemyImg.src = o.defenderPortrait;
@@ -3035,11 +2669,7 @@ async function openDispatchResultDialog(): Promise<void> {
           encounterEnemyImg.classList.remove("is-boss-unit");
         }
         if (encounterHeadline) {
-          encounterHeadline.textContent = pickLang(currentLang, {
-            ja: "この時間帯に勇者軍の襲来はなかった",
-            en: "No expedition raid occurred during this shift",
-            zh: "该时段没有勇者军袭来",
-          });
+          encounterHeadline.textContent = t("ui.noExpeditionRaidOccurredDuring");
         }
         if (encounterQuote) {
           encounterQuote.textContent = `「${locO.defenderQuote}」`;
@@ -3053,26 +2683,14 @@ async function openDispatchResultDialog(): Promise<void> {
             .join("");
         }
         if (encounterDefLead) {
-          encounterDefLead.textContent = pickLang(currentLang, {
-            ja: `🛡️ 当番：${locO.defenderName}（防衛力 ${o.defensePower}）が平穏に見回りを終えた`,
-            en: `🛡️ On Duty: ${locO.defenderName} (Def ${o.defensePower}) completed a peaceful patrol`,
-            zh: `🛡️ 值班：${locO.defenderName}（防卫力 ${o.defensePower}）平稳完成巡逻`,
-          });
+          encounterDefLead.textContent = t("ui.onDutyDefCompletedA", { locO_defenderName: locO.defenderName, o_defensePower: o.defensePower });
         }
         encounterProceedBtn?.classList.remove("is-combat-cta");
         if (encounterStepIndicator) {
-          encounterStepIndicator.textContent = pickLang(currentLang, {
-            ja: "🍃 異常なし ── 次の時間帯へ進みます…",
-            en: "🍃 All clear — advancing to next shift...",
-            zh: "🍃 一切正常 ── 推进至下一时段……",
-          });
+          encounterStepIndicator.textContent = t("ui.allClearAdvancingToNext");
         }
         if (salStatusTextEl && remainingHp > 0) {
-          salStatusTextEl.textContent = pickLang(currentLang, {
-            ja: `${dayName}曜日・${shiftLabel}：勇者軍の動きはなく、静かに時間が過ぎた。`,
-            en: `${dayName} ${shiftLabel}: No enemy movement; time passed quietly.`,
-            zh: `${dayName}・${shiftLabel}：勇者军没有动静，时间平静流逝。`,
-          });
+          salStatusTextEl.textContent = t("ui.noEnemyMovementTimePassed", { dayName, shiftLabel });
         }
 
         encounterScene.classList.remove(
@@ -3094,11 +2712,7 @@ async function openDispatchResultDialog(): Promise<void> {
       rowEl?.classList.remove("is-active");
       rowEl?.classList.add("is-peaceful");
       if (resEl) {
-        resEl.textContent = pickLang(currentLang, {
-          ja: `🍃 襲来なし（防衛 ${o.defensePower}）`,
-          en: `🍃 No Raid (Def ${o.defensePower})`,
-          zh: `🍃 无袭来（防卫 ${o.defensePower}）`,
-        });
+        resEl.textContent = t("ui.noRaidDef", { o_defensePower: o.defensePower });
       }
       continue;
     }
@@ -3116,11 +2730,7 @@ async function openDispatchResultDialog(): Promise<void> {
       vsCenter.classList.remove("is-clashing");
     }
     if (tugStatus) {
-      tugStatus.textContent = pickLang(currentLang, {
-        ja: `⚔️ 防衛 ${o.defensePower} vs 敵予測 ${o.expectedEnemyPower}`,
-        en: `⚔️ Def ${o.defensePower} vs Est. ${o.expectedEnemyPower}`,
-        zh: `⚔️ 防卫 ${o.defensePower} vs 敌预测 ${o.expectedEnemyPower}`,
-      });
+      tugStatus.textContent = t("ui.defVsEst_2", { o_defensePower: o.defensePower, o_expectedEnemyPower: o.expectedEnemyPower });
       tugStatus.className = "tug-status-center";
     }
 
@@ -3133,20 +2743,16 @@ async function openDispatchResultDialog(): Promise<void> {
     const eneQuoteEl = document.getElementById("cutin-enemy-quote");
 
     if (headerEl) {
-      headerEl.textContent = pickLang(currentLang, {
-        ja: `${shiftIcon} ${dayName}曜日・${shiftLabel}の戦い`,
-        en: `${shiftIcon} ${dayName} ${shiftLabel} Battle`,
-        zh: `${shiftIcon} ${dayName}・${shiftLabel}之战`,
-      });
+      headerEl.textContent = t("ui.battle", { shiftIcon, dayName, shiftLabel });
     }
     if (winProbBadge) {
       const diff = o.defensePower - o.expectedEnemyPower;
       winProbBadge.textContent =
         diff >= 80
-          ? pickLang(currentLang, { ja: "🛡️ 予測を大きく上回る", en: "🛡️ Well Above Estimate", zh: "🛡️ 远超预测战力" })
+          ? t("ui.wellAboveEstimate")
           : diff >= 0
-            ? pickLang(currentLang, { ja: "⚔️ 予測戦力以上", en: "⚔️ Above Estimate", zh: "⚔️ 达到预测战力" })
-            : pickLang(currentLang, { ja: "⚠️ 予測戦力未満", en: "⚠️ Below Estimate", zh: "⚠️ 低于预测战力" });
+            ? t("ui.aboveEstimate")
+            : t("ui.belowEstimate");
       winProbBadge.className = `cutin-winprob-badge ${diff >= 80 ? "is-safe" : diff >= 0 ? "is-mid" : "is-risky"}`;
     }
     if (defAvatarsEl) {
@@ -3157,71 +2763,35 @@ async function openDispatchResultDialog(): Promise<void> {
     }
     if (defNameEl) defNameEl.textContent = locO.defenderName;
     if (defPwrEl) {
-      defPwrEl.textContent = pickLang(currentLang, {
-        ja: `防衛 ${o.defensePower}`,
-        en: `Def ${o.defensePower}`,
-        zh: `防卫 ${o.defensePower}`,
-      });
+      defPwrEl.textContent = t("ui.def", { o_defensePower: o.defensePower });
     }
     if (defQuoteEl) defQuoteEl.textContent = `「${locO.defenderQuote}」`;
     if (eneNameEl) eneNameEl.textContent = `${o.enemyIcon} ${locO.enemyName}`;
     if (enePwrEl) {
-      enePwrEl.textContent = pickLang(currentLang, {
-        ja: `予測 ${o.expectedEnemyPower}`,
-        en: `Est. ${o.expectedEnemyPower}`,
-        zh: `预测 ${o.expectedEnemyPower}`,
-      });
+      enePwrEl.textContent = t("ui.est_2", { o_expectedEnemyPower: o.expectedEnemyPower });
     }
     if (eneQuoteEl) eneQuoteEl.textContent = `「${locO.enemyQuote}」`;
     updateTugBar(o.defensePower, o.expectedEnemyPower);
 
     // =========================================================================
-    // BEAT 1 (静): Full-Screen Dawn / Nightfall Time Transition
-    // & BEAT 2 (動): Dramatic "Enemy Appeared" Cut-in Animation (Wait for Click)
+    // BEAT 1: Full-Screen Dawn / Nightfall Time Transition
+    // & BEAT 2: Dramatic "Enemy Appeared" Cut-in Animation (Wait for Click)
     // =========================================================================
     if (!skipped && encounterScene) {
       const timeTransitionText = isDay
         ? i === 0
-          ? pickLang(currentLang, {
-              ja: `🌅 ${dayName}曜日の朝 ── 夜が明けた`,
-              en: `🌅 ${dayName} Morning — Dawn breaks`,
-              zh: `🌅 ${dayName}清晨 ── 天亮了`,
-            })
-          : pickLang(currentLang, {
-              ja: `🌅 夜が明け、${dayName}曜日の朝が訪れた`,
-              en: `🌅 Dawn breaks on ${dayName} morning`,
-              zh: `🌅 黎明破晓，${dayName}清晨来临`,
-            })
+          ? t("ui.morningDawnBreaks", { dayName })
+          : t("ui.dawnBreaksOnMorning", { dayName })
         : o.isFullMoon
-          ? pickLang(currentLang, {
-              ja: `🌕 日が暮れて暗くなり、${dayName}曜日の満月が昇った`,
-              en: `🌕 Night falls and the full moon rises on ${dayName}`,
-              zh: `🌕 夜幕降临，${dayName}的满月升起`,
-            })
-          : pickLang(currentLang, {
-              ja: `🌙 日が暮れて暗くなり、${dayName}曜日の夜が訪れた`,
-              en: `🌙 Night falls on ${dayName} evening`,
-              zh: `🌙 夜幕降临，${dayName}的夜晚来临`,
-            });
+          ? t("ui.nightFallsAndTheFull", { dayName })
+          : t("ui.nightFallsOnEvening", { dayName });
 
       const arrivalHeadlineText = isDay
-        ? pickLang(currentLang, {
-            ja: `城門の前に「${locO.enemyName}」が現れた`,
-            en: `${locO.enemyName} appeared before the castle gate`,
-            zh: `「${locO.enemyName}」出现在了城门前`,
-          })
-        : pickLang(currentLang, {
-            ja: `闇の中から「${locO.enemyName}」が現れた`,
-            en: `${locO.enemyName} emerged from the darkness`,
-            zh: `「${locO.enemyName}」从黑暗中现身`,
-          });
+        ? t("ui.appearedBeforeTheCastleGate", { locO_enemyName: locO.enemyName })
+        : t("ui.emergedFromTheDarkness", { locO_enemyName: locO.enemyName });
 
       if (encounterSlotProgress) {
-        encounterSlotProgress.textContent = pickLang(currentLang, {
-          ja: `${dayName}曜日・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
-          en: `${dayName} ${shiftLabel} (${i + 1} / ${outcomes.length})`,
-          zh: `${dayName}・${shiftLabel}（${i + 1} / ${outcomes.length}）`,
-        });
+        encounterSlotProgress.textContent = t("ui.text_6", { dayName, shiftLabel, i___1: i + 1, outcomes_length: outcomes.length });
       }
       if (encounterCelestialOrb) {
         encounterCelestialOrb.textContent = shiftIcon;
@@ -3231,17 +2801,13 @@ async function openDispatchResultDialog(): Promise<void> {
       }
       if (encounterKickerBadge) {
         encounterKickerBadge.textContent = o.isBossRaid
-          ? pickLang(currentLang, { ja: "👑 勇者軍主力・出現", en: "👑 Main Force Appears", zh: "👑 勇者军主力・出现" })
+          ? t("ui.mainForceAppears")
           : isDay
-            ? pickLang(currentLang, { ja: "☀️ 昼の進軍部隊・出現", en: "☀️ Day Vanguard Appears", zh: "☀️ 白昼进军部队・出现" })
-            : pickLang(currentLang, { ja: "🌙 夜の奇襲部隊・出現", en: "🌙 Night Raid Appears", zh: "🌙 夜间奇袭部队・出现" });
+            ? t("ui.dayVanguardAppears")
+            : t("ui.nightRaidAppears");
       }
       if (encounterExpectedBadge) {
-        encounterExpectedBadge.textContent = pickLang(currentLang, {
-          ja: `⚔️ 敵予測戦力 ${o.expectedEnemyPower}`,
-          en: `⚔️ Est. Enemy Power ${o.expectedEnemyPower}`,
-          zh: `⚔️ 敌预测战力 ${o.expectedEnemyPower}`,
-        });
+        encounterExpectedBadge.textContent = t("ui.estEnemyPower", { o_expectedEnemyPower: o.expectedEnemyPower });
       }
       if (encounterEnemyImg) {
         encounterEnemyImg.src = o.enemyPortrait;
@@ -3263,11 +2829,7 @@ async function openDispatchResultDialog(): Promise<void> {
           .join("");
       }
       if (encounterDefLead) {
-        encounterDefLead.textContent = pickLang(currentLang, {
-          ja: `🛡️ 警備当番：${locO.defenderName}（防衛力 ${o.defensePower}）が立ち向かう`,
-          en: `🛡️ On Duty: ${locO.defenderName} (Def ${o.defensePower}) stands firm`,
-          zh: `🛡️ 值班警备：${locO.defenderName}（防卫力 ${o.defensePower}）迎战`,
-        });
+        encounterDefLead.textContent = t("ui.onDutyDefStandsFirm", { locO_defenderName: locO.defenderName, o_defensePower: o.defensePower });
       }
 
       encounterScene.classList.remove(
@@ -3284,57 +2846,33 @@ async function openDispatchResultDialog(): Promise<void> {
       encounterArrivalCard?.classList.remove("is-burst-in");
       encounterScene.classList.add("is-visible");
 
-      // Beat 1 (静): Brief Dawn / Nightfall sky transition first (~420ms)
+      // Beat 1: Brief Dawn / Nightfall sky transition first (~420ms)
       soundEngine.setSceneTrack("prologue");
       encounterProceedBtn?.classList.remove("is-combat-cta");
       if (encounterStepIndicator) {
         encounterStepIndicator.textContent = isDay
-          ? pickLang(currentLang, {
-              ja: `🌅 ${dayName}曜日の朝が訪れました…`,
-              en: `🌅 ${dayName} morning arrives...`,
-              zh: `🌅 ${dayName}清晨来临……`,
-            })
-          : pickLang(currentLang, {
-              ja: `🌙 ${dayName}曜日の夜が訪れました…`,
-              en: `🌙 ${dayName} night arrives...`,
-              zh: `🌙 ${dayName}夜晚来临……`,
-            });
+          ? t("ui.morningArrives", { dayName })
+          : t("ui.nightArrives", { dayName });
       }
       soundEngine.playTimeTransitionCue(isDay, o.isFullMoon);
       await sleepAnim(420, true);
 
-      // Beat 2 (動): Enemy bursts onto the full-screen stage -> Dragon Quest Encounter Flourish + Battle BGM
+      // Beat 2: Enemy bursts onto the full-screen stage -> Encounter Flourish + Battle BGM
       if (!skipped) {
         encounterScene.classList.add("is-enemy-revealed");
         void encounterArrivalCard?.offsetWidth;
         encounterArrivalCard?.classList.add("is-burst-in");
         encounterProceedBtn?.classList.add("is-combat-cta");
         if (encounterStepIndicator) {
-          encounterStepIndicator.textContent = pickLang(currentLang, {
-            ja: "⚔️ 戦いを始める ▶（クリックで交戦開始）",
-            en: "⚔️ Engage Battle ▶ (Click to Clash)",
-            zh: "⚔️ 开始迎战 ▶（点击开始交战）",
-          });
+          encounterStepIndicator.textContent = t("ui.engageBattleClickToClash");
         }
         if (resEl) {
-          resEl.textContent = pickLang(currentLang, {
-            ja: `${o.enemyIcon} ${locO.enemyName}が現れた`,
-            en: `${o.enemyIcon} ${locO.enemyName} appeared`,
-            zh: `${o.enemyIcon} ${locO.enemyName}出现`,
-          });
+          resEl.textContent = t("ui.appeared", { o_enemyIcon: o.enemyIcon, locO_enemyName: locO.enemyName });
         }
         if (salStatusTextEl && remainingHp > 0) {
           salStatusTextEl.textContent = isDay
-            ? pickLang(currentLang, {
-                ja: `${dayName}曜日の夜が明けると、城門の前に「${locO.enemyName}」が現れた。`,
-                en: `As dawn broke on ${dayName}, ${locO.enemyName} appeared at the gate.`,
-                zh: `${dayName}黎明破晓，「${locO.enemyName}」出现在了城门前。`,
-              })
-            : pickLang(currentLang, {
-                ja: `日が暮れて暗くなると、闇の中から「${locO.enemyName}」が現れた。`,
-                en: `As darkness fell, ${locO.enemyName} emerged from the shadows.`,
-                zh: `夜幕降临，「${locO.enemyName}」从黑暗中现身。`,
-              });
+            ? t("ui.asDawnBrokeOnAppeared", { dayName, locO_enemyName: locO.enemyName })
+            : t("ui.asDarknessFellEmergedFrom", { locO_enemyName: locO.enemyName });
         }
         soundEngine.setSceneTrack("battle");
         soundEngine.playEncounterCue(isDay, o.isBossRaid);
@@ -3347,22 +2885,14 @@ async function openDispatchResultDialog(): Promise<void> {
     }
 
     // =========================================================================
-    // BEAT 3 (急): Standoff & Decelerating Battle Clash Roll (→ 戦い)
+    // BEAT 3: Standoff & Decelerating Battle Clash Roll (-> Battle)
     // =========================================================================
     if (!skipped) {
       if (resEl) {
-        resEl.textContent = pickLang(currentLang, {
-          ja: "⚔️ 交戦中…",
-          en: "⚔️ Clashing...",
-          zh: "⚔️ 交战中……",
-        });
+        resEl.textContent = t("ui.clashing");
       }
       if (cutinPhasePill) {
-        cutinPhasePill.textContent = pickLang(currentLang, {
-          ja: "⚔️ 両軍対峙",
-          en: "⚔️ Standoff",
-          zh: "⚔️ 两军对峙",
-        });
+        cutinPhasePill.textContent = t("ui.standoff");
         cutinPhasePill.className = "cutin-phase-pill";
       }
       // Brief standoff before blades clash so the player sees the left vs right matchup
@@ -3372,18 +2902,10 @@ async function openDispatchResultDialog(): Promise<void> {
         vsCenter.classList.add("is-clashing");
       }
       if (cutinPhasePill) {
-        cutinPhasePill.textContent = pickLang(currentLang, {
-          ja: "⚡ 戦力激突中…",
-          en: "⚡ Clashing...",
-          zh: "⚡ 战力激突中……",
-        });
+        cutinPhasePill.textContent = t("ui.clashing_2");
       }
       if (tugStatus) {
-        tugStatus.textContent = pickLang(currentLang, {
-          ja: "⚡ つば迫り合い中…",
-          en: "⚡ Blades locked...",
-          zh: "⚡ 激烈交锋中……",
-        });
+        tugStatus.textContent = t("ui.bladesLocked");
       }
 
       // 4-step decelerating clash roll (fast -> medium -> slow -> lock-in) for dramatic tension
@@ -3396,11 +2918,7 @@ async function openDispatchResultDialog(): Promise<void> {
       for (let fIdx = 0; fIdx < rollFrames.length; fIdx++) {
         const frame = rollFrames[fIdx];
         if (enePwrEl) {
-          enePwrEl.textContent = pickLang(currentLang, {
-            ja: `敵 ${frame.val}`,
-            en: `Ene ${frame.val}`,
-            zh: `敌 ${frame.val}`,
-          });
+          enePwrEl.textContent = t("ui.ene", { frame_val: frame.val });
         }
         updateTugBar(o.defensePower, frame.val);
         soundEngine.playBattleClashTick(fIdx);
@@ -3409,34 +2927,22 @@ async function openDispatchResultDialog(): Promise<void> {
     }
 
     if (enePwrEl) {
-      enePwrEl.textContent = pickLang(currentLang, {
-        ja: `敵 ${o.actualEnemyPower}`,
-        en: `Ene ${o.actualEnemyPower}`,
-        zh: `敌 ${o.actualEnemyPower}`,
-      });
+      enePwrEl.textContent = t("ui.ene_2", { o_actualEnemyPower: o.actualEnemyPower });
     }
     updateTugBar(o.defensePower, o.actualEnemyPower);
     vsCenter?.classList.remove("is-clashing");
 
     // =========================================================================
-    // BEAT 4 (決): Decisive Impact & Wait for Click (or Auto-Advance)
+    // BEAT 4: Decisive Impact & Wait for Click (or Auto-Advance)
     // =========================================================================
     rowEl?.classList.remove("is-active");
     if (o.isWin) {
       rowEl?.classList.add("win");
       if (resEl) {
-        resEl.textContent = pickLang(currentLang, {
-          ja: `🛡️ 防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}（防衛成功）`,
-          en: `🛡️ Def ${o.defensePower} vs Ene ${o.actualEnemyPower} (Repelled)`,
-          zh: `🛡️ 防卫 ${o.defensePower} vs 敌 ${o.actualEnemyPower}（防卫成功）`,
-        });
+        resEl.textContent = t("ui.defVsEneRepelled", { o_defensePower: o.defensePower, o_actualEnemyPower: o.actualEnemyPower });
       }
       if (cutinPhasePill) {
-        cutinPhasePill.textContent = pickLang(currentLang, {
-          ja: "🛡️ 防衛成功",
-          en: "🛡️ Repelled",
-          zh: "🛡️ 防卫成功",
-        });
+        cutinPhasePill.textContent = t("ui.repelled");
         cutinPhasePill.className = "cutin-phase-pill is-win";
       }
       leftSide?.classList.add("is-lunge-win");
@@ -3444,29 +2950,17 @@ async function openDispatchResultDialog(): Promise<void> {
       cutinBox?.classList.add(o.isPerfectDefense ? "is-perfect-flash" : "is-win-flash");
       fxOverlay?.classList.add(o.isPerfectDefense ? "is-perfect" : "is-win");
       if (fxStamp) {
-        fxStamp.textContent = pickLang(currentLang, {
-          ja: `🛡️ 防衛成功（防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}）`,
-          en: `🛡️ Repelled (Def ${o.defensePower} vs Ene ${o.actualEnemyPower})`,
-          zh: `🛡️ 防卫成功（防卫 ${o.defensePower} vs 敌 ${o.actualEnemyPower}）`,
-        });
+        fxStamp.textContent = t("ui.repelledDefVsEne", { o_defensePower: o.defensePower, o_actualEnemyPower: o.actualEnemyPower });
       }
       if (vsCenter) {
         vsCenter.textContent = "🛡️";
       }
       if (tugStatus) {
-        tugStatus.textContent = pickLang(currentLang, {
-          ja: `🛡️ 防衛成功（${o.defensePower} vs ${o.actualEnemyPower}）`,
-          en: `🛡️ Repelled (${o.defensePower} vs ${o.actualEnemyPower})`,
-          zh: `🛡️ 防卫成功（${o.defensePower} vs ${o.actualEnemyPower}）`,
-        });
+        tugStatus.textContent = t("ui.repelledVs", { o_defensePower: o.defensePower, o_actualEnemyPower: o.actualEnemyPower });
         tugStatus.className = "tug-status-center is-win";
       }
       if (salStatusTextEl && remainingHp > 0) {
-        salStatusTextEl.textContent = pickLang(currentLang, {
-          ja: `${dayName}曜日・${shiftLabel}：${locO.defenderName}が「${locO.enemyName}」を退けた。`,
-          en: `${dayName} ${shiftLabel}: ${locO.defenderName} repelled ${locO.enemyName}.`,
-          zh: `${dayName}・${shiftLabel}：${locO.defenderName}击退了「${locO.enemyName}」。`,
-        });
+        salStatusTextEl.textContent = t("ui.repelled_2", { dayName, shiftLabel, locO_defenderName: locO.defenderName, locO_enemyName: locO.enemyName });
       }
       if (!skipped) {
         soundEngine.playBattleWin(o.isPerfectDefense);
@@ -3476,18 +2970,10 @@ async function openDispatchResultDialog(): Promise<void> {
       remainingHp = Math.max(0, remainingHp - 1);
       rowEl?.classList.add("lose");
       if (resEl) {
-        resEl.textContent = pickLang(currentLang, {
-          ja: `💥 防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}（突破 -1）`,
-          en: `💥 Def ${o.defensePower} vs Ene ${o.actualEnemyPower} (Breached -1)`,
-          zh: `💥 防卫 ${o.defensePower} vs 敌 ${o.actualEnemyPower}（突破 -1）`,
-        });
+        resEl.textContent = t("ui.defVsEneBreached1", { o_defensePower: o.defensePower, o_actualEnemyPower: o.actualEnemyPower });
       }
       if (cutinPhasePill) {
-        cutinPhasePill.textContent = pickLang(currentLang, {
-          ja: "💥 城門突破 -1",
-          en: "💥 Gate Breached -1",
-          zh: "💥 城门被破 -1",
-        });
+        cutinPhasePill.textContent = t("ui.gateBreached1");
         cutinPhasePill.className = "cutin-phase-pill is-lose";
       }
       rightSide?.classList.add("is-lunge-breach");
@@ -3495,21 +2981,13 @@ async function openDispatchResultDialog(): Promise<void> {
       cutinBox?.classList.add("is-breach-flash");
       fxOverlay?.classList.add("is-breach");
       if (fxStamp) {
-        fxStamp.textContent = pickLang(currentLang, {
-          ja: `💥 城門突破 -1（防衛 ${o.defensePower} vs 敵 ${o.actualEnemyPower}）`,
-          en: `💥 Gate Breached -1 (Def ${o.defensePower} vs Ene ${o.actualEnemyPower})`,
-          zh: `💥 城门被破 -1（防卫 ${o.defensePower} vs 敌 ${o.actualEnemyPower}）`,
-        });
+        fxStamp.textContent = t("ui.gateBreached1DefVs", { o_defensePower: o.defensePower, o_actualEnemyPower: o.actualEnemyPower });
       }
       if (vsCenter) {
         vsCenter.textContent = "💥";
       }
       if (tugStatus) {
-        tugStatus.textContent = pickLang(currentLang, {
-          ja: `💥 防衛突破（${o.defensePower} vs ${o.actualEnemyPower}）`,
-          en: `💥 Defense Breached (${o.defensePower} vs ${o.actualEnemyPower})`,
-          zh: `💥 防卫被破（${o.defensePower} vs ${o.actualEnemyPower}）`,
-        });
+        tugStatus.textContent = t("ui.defenseBreachedVs", { o_defensePower: o.defensePower, o_actualEnemyPower: o.actualEnemyPower });
         tugStatus.className = "tug-status-center is-lose";
       }
       // Trigger screen shake
@@ -3522,16 +3000,8 @@ async function openDispatchResultDialog(): Promise<void> {
       if (salStatusTextEl) {
         salStatusTextEl.textContent =
           remainingHp > 0
-            ? pickLang(currentLang, {
-                ja: `敵の猛攻で城門が大きく揺れた（残り城門ライフ ${remainingHp}/${maxHp}）。`,
-                en: `The gate shook violently under the assault (Gate HP ${remainingHp}/${maxHp}).`,
-                zh: `敌军猛攻令城门剧烈摇晃（剩余城门耐久 ${remainingHp}/${maxHp}）。`,
-              })
-            : pickLang(currentLang, {
-                ja: "城門が突破され、これ以上は守りを維持できない。",
-                en: "The castle gate has been breached; defense can no longer hold.",
-                zh: "城门已被突破，防线无法继续维持。",
-              });
+            ? t("ui.theGateShookViolentlyUnder", { remainingHp, maxHp })
+            : t("ui.theCastleGateHasBeen");
       }
       if (!skipped) {
         soundEngine.playBattleBreach();
@@ -3543,21 +3013,13 @@ async function openDispatchResultDialog(): Promise<void> {
       for (let rest = i + 1; rest < outcomes.length; rest++) {
         const restRes = document.getElementById(`battle-slot-res-${rest}`);
         if (restRes) {
-          restRes.textContent = pickLang(currentLang, {
-            ja: "（城門陥落により中断）",
-            en: "(Aborted due to gate breach)",
-            zh: "（因城门陷落而中断）",
-          });
+          restRes.textContent = t("ui.abortedDueToGateBreach");
         }
       }
       if (!skipped) {
         if (cutinActionFooter) cutinActionFooter.hidden = false;
         if (clashStepIndicator) {
-          clashStepIndicator.textContent = pickLang(currentLang, {
-            ja: "💥 警備結果を確認する ▶（クリックで進行）",
-            en: "💥 View Defense Result ▶ (Click to Proceed)",
-            zh: "💥 确认警备结果 ▶（点击继续）",
-          });
+          clashStepIndicator.textContent = t("ui.viewDefenseResultClickTo");
         }
         await waitForStepAdvance(1500);
       }
@@ -3569,16 +3031,8 @@ async function openDispatchResultDialog(): Promise<void> {
       if (cutinActionFooter) cutinActionFooter.hidden = false;
       if (clashStepIndicator) {
         clashStepIndicator.textContent = isLastSlot
-          ? pickLang(currentLang, {
-              ja: "🏆 警備結果を確認する ▶（クリックで進行）",
-              en: "🏆 View Defense Result ▶ (Click to Proceed)",
-              zh: "🏆 确认警备结果 ▶（点击继续）",
-            })
-          : pickLang(currentLang, {
-              ja: "▶ 次の時間帯へ進む（クリックで進行）",
-              en: "▶ Next Shift (Click to Proceed)",
-              zh: "▶ 进入下一时段（点击继续）",
-            });
+          ? t("ui.viewDefenseResultClickTo_2")
+          : t("ui.nextShiftClickToProceed");
       }
       await waitForStepAdvance(1500);
     }
@@ -3586,7 +3040,7 @@ async function openDispatchResultDialog(): Promise<void> {
 
   document.getElementById("btn-battle-auto")?.setAttribute("hidden", "true");
   document.getElementById("btn-skip-battle-anim")?.setAttribute("hidden", "true");
-  // Collapse the live battle arena so the Stage Result Banner & "次のステージへ進む" button sit right at the top of the screen
+  // Collapse the live battle arena so the Stage Result Banner & "Next Stage" button sit right at the top of the screen
   if (liveStageEl) {
     liveStageEl.hidden = true;
   }
@@ -3615,22 +3069,14 @@ async function openDispatchResultDialog(): Promise<void> {
       <div class="result-rank-banner result-hero-banner is-gameover">
         <div class="result-hero-top">
           <div>
-            <div class="result-rank-letter" style="color: var(--danger-crimson);">${pickLang(currentLang, {
-              ja: "警備失敗 — 城門突破（GAME OVER）",
-              en: "Defense Failed — Gate Breached (GAME OVER)",
-              zh: "警备失败 — 城门被破（GAME OVER）",
-            })}</div>
+            <div class="result-rank-letter" style="color: var(--danger-crimson);">${t("ui.defenseFailedGateBreachedGame")}</div>
             <p class="result-hero-sub">
-              ${pickLang(currentLang, {
-                ja: "勇者軍の襲来を防ぎきれず、城門が突破されました（全戦防衛成功がクリア条件です）。今回のシフトとお手本シフトの比較を確認し、タイトル画面から再出発してください。",
-                en: "The castle gate was breached by the expedition raid (all raids must be repelled to clear). Review your shift vs. the model shift below and restart from the title screen.",
-                zh: "未能抵挡勇者军的袭击，城门被突破（通关条件为全战防卫成功）。请确认本次排班与范例排班的对比，并从标题画面重新出发。",
-              })}
+              ${t("ui.theCastleGateWasBreached")}
             </p>
           </div>
           <div class="result-hero-actions">
             <button id="btn-modal-gameover-title" type="button" class="btn-dispatch result-primary-cta">
-              ${pickLang(currentLang, { ja: "タイトル画面へ戻る", en: "Back to Title Screen", zh: "返回标题画面" })}
+              ${t("ui.backToTitleScreen")}
             </button>
           </div>
         </div>
@@ -3649,18 +3095,10 @@ async function openDispatchResultDialog(): Promise<void> {
   syncAudioButtonUi();
   soundEngine.playVictoryFanfare();
   recordStageVictory(remainingHp, maxHp);
-  const rankTitle = pickLang(currentLang, {
-    ja: `防衛成功 — ${formatCastleCalendarMonth(currentStage.weekNumber)}の警備完了`,
-    en: `Defense Complete — ${formatCastleCalendarMonth(currentStage.weekNumber)}`,
-    zh: `防卫成功 — ${formatCastleCalendarMonth(currentStage.weekNumber)}警备完成`,
-  });
+  const rankTitle = t("ui.defenseComplete", { calMonth: formatCastleCalendarMonth(currentStage.weekNumber) });
 
   if (salStatusTextEl) {
-    salStatusTextEl.textContent = pickLang(currentLang, {
-      ja: "城門は一度も抜かれることなく、魔王城の静かな日常が守られた。",
-      en: "The gate was never breached, preserving the peaceful days of the Demon Castle.",
-      zh: "城门一次也未被突破，守护了魔王城平静的生活。",
-    });
+    salStatusTextEl.textContent = t("ui.theGateWasNeverBreached");
   }
 
   const nextWeekNumber = currentStage.weekNumber + 1;
@@ -3689,16 +3127,8 @@ async function openDispatchResultDialog(): Promise<void> {
 
   const adaptiveNoteHtml = !hasNextCampaignStage
     ? `<div class="lore-unlock-card" style="margin-top:0.65rem;">
-        <h4>${pickLang(currentLang, {
-          ja: `翌月の警備難度調整（${formatCastleCalendarMonth(nextWeekNumber)}・難易度：${nextAdaptiveLabel}）`,
-          en: `Next Month Difficulty Adjustment (${formatCastleCalendarMonth(nextWeekNumber)} / Difficulty: ${nextAdaptiveLabel})`,
-          zh: `下月警备难度调整（${formatCastleCalendarMonth(nextWeekNumber)}・难度：${nextAdaptiveLabel}）`,
-        })}</h4>
-        <p>${pickLang(currentLang, {
-          ja: `これまでの警備履歴（ヒント使用状況や再挑戦回数）に応じて、${formatCastleCalendarMonth(nextWeekNumber)}の進軍状況が「難易度：${nextAdaptiveLabel}」に自動調整されました。`,
-          en: `Based on your guard history (hint usage and retries), the raid intensity for ${formatCastleCalendarMonth(nextWeekNumber)} has been tuned to Difficulty: ${nextAdaptiveLabel}.`,
-          zh: `根据至今的警备记录（提示使用情况与重试次数），${formatCastleCalendarMonth(nextWeekNumber)}的进军情况已自动调整为「难度：${nextAdaptiveLabel}」。`,
-        })}</p>
+        <h4>${t("ui.nextMonthDifficultyAdjustmentD", { calMonth: formatCastleCalendarMonth(nextWeekNumber), nextAdaptiveLabel })}</h4>
+        <p>${t("ui.basedOnYourGuardHistory", { calMonth: formatCastleCalendarMonth(nextWeekNumber), nextAdaptiveLabel })}</p>
       </div>`
     : "";
 
@@ -3710,7 +3140,7 @@ async function openDispatchResultDialog(): Promise<void> {
     outcomes
   );
 
-  // Put "翌月の編成へ進む" right inside the top hero banner so it is NEVER hidden at the bottom
+  // Put "Proceed to Next Month" right inside the top hero banner so it is NEVER hidden at the bottom
   finalArea.innerHTML = `
     <div class="result-rank-banner result-hero-banner">
       <div class="result-hero-top">
@@ -3719,16 +3149,8 @@ async function openDispatchResultDialog(): Promise<void> {
           <p class="result-hero-sub">
             ${
               isFinalCampaignStage
-                ? pickLang(currentLang, {
-                    ja: "5日間にわたる勇者本隊の進軍から魔王城を守り抜きました。",
-                    en: "You defended the Demon Castle through the 5-day main expedition offensive.",
-                    zh: "在持续5天的勇者主力部队进军中成功守住了魔王城。",
-                  })
-                : pickLang(currentLang, {
-                    ja: "勇者隊の進軍を退け、誰ひとり無理をさせずに魔王城を守り抜きました。",
-                    en: "You repelled the expedition while keeping every guard on a healthy schedule.",
-                    zh: "击退了勇者队的进军，在不让任何伙伴勉强的情况下守住了魔王城。",
-                  })
+                ? t("ui.youDefendedTheDemonCastle")
+                : t("ui.youRepelledTheExpeditionWhile")
             }
           </p>
         </div>
@@ -3739,29 +3161,17 @@ async function openDispatchResultDialog(): Promise<void> {
                   const nextStageScenario = CAMPAIGN_STAGES[currentStageIndex + 1];
                   const nextStageLoc = getLocalizedStage(nextStageScenario);
                   return `<button id="btn-modal-next-stage" type="button" class="btn-dispatch result-primary-cta">
-                    <span class="btn-cta-main">${pickLang(currentLang, {
-                      ja: "次のステージへ進む ▶",
-                      en: "Proceed to Next Stage ▶",
-                      zh: "进入下一关 ▶",
-                    })}</span>
+                    <span class="btn-cta-main">${t("ui.proceedToNextStage")}</span>
                     <span class="btn-cta-sub">${nextStageLoc.title}</span>
                   </button>`;
                 })()
               : `<button id="btn-modal-random-stage" type="button" class="btn-dispatch result-primary-cta">
-                  <span class="btn-cta-main">${pickLang(currentLang, {
-                    ja: "次のステージへ進む ▶",
-                    en: "Proceed to Next Stage ▶",
-                    zh: "进入下一关 ▶",
-                  })}</span>
-                  <span class="btn-cta-sub">${pickLang(currentLang, {
-                    ja: `${formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang)}（難易度：${nextAdaptiveLabel}）`,
-                    en: `${formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang)} (Difficulty: ${nextAdaptiveLabel})`,
-                    zh: `${formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang)} (难度: ${nextAdaptiveLabel})`,
-                  })}</span>
+                  <span class="btn-cta-main">${t("ui.proceedToNextStage")}</span>
+                  <span class="btn-cta-sub">${t("ui.difficulty_3", { calMonth: formatCastleCalendarMonthLocalized(nextWeekNumber, false, currentLang), nextAdaptiveLabel })}</span>
                 </button>`
           }
           <button id="btn-modal-back-title" type="button" class="btn-glass">
-            ${pickLang(currentLang, { ja: "タイトル画面へ戻る", en: "Back to Title Screen", zh: "返回标题画面" })}
+            ${t("ui.backToTitleScreen")}
           </button>
         </div>
       </div>
@@ -3771,11 +3181,7 @@ async function openDispatchResultDialog(): Promise<void> {
     ${adaptiveNoteHtml}
 
     <details class="optimal-compare-details">
-      <summary>${pickLang(currentLang, {
-        ja: "📊 あなたのシフトとお手本シフトを比較する",
-        en: "📊 Compare Your Shift with the Model Shift",
-        zh: "📊 对比你的排班与范例排班",
-      })}</summary>
+      <summary>${t("ui.compareYourShiftWithThe")}</summary>
       ${victoryCompareHtml}
     </details>
   `;
@@ -3843,11 +3249,7 @@ function openRosterDialog(): void {
       <article class="grimoire-entry-card ${isOnDuty ? "is-on-duty" : ""}">
         ${
           isOnDuty
-            ? `<span class="grimoire-wax-stamp" title="${pickLang(currentLang, {
-                ja: "今週のシフト当番メンバー",
-                en: "On-Duty Member This Week",
-                zh: "本周值班警备成员",
-              })}">${pickLang(currentLang, { ja: "当番", en: "Duty", zh: "当班" })}</span>`
+            ? `<span class="grimoire-wax-stamp" title="${t("ui.onDutyMemberThisWeek")}">${t("ui.duty")}</span>`
             : ""
         }
         <div class="grimoire-entry-top">
@@ -3860,19 +3262,11 @@ function openRosterDialog(): void {
               <strong class="grimoire-char-name">${m.name}</strong>
               <span class="grimoire-race-sub">${m.title}（${m.race}）</span>
             </div>
-            <div class="grimoire-post-line">${pickLang(currentLang, {
-              ja: "持ち場：",
-              en: "Post: ",
-              zh: "驻守岗位：",
-            })}<strong>${m.usualPost}</strong></div>
+            <div class="grimoire-post-line">${t("ui.post_2")}<strong>${m.usualPost}</strong></div>
             <div class="grimoire-stats-line">
-              <span class="grimoire-ink-chip is-day">${pickLang(currentLang, { ja: `昼 ${dayPwr}`, en: `Day ${dayPwr}`, zh: `昼 ${dayPwr}` })}</span>
-              <span class="grimoire-ink-chip is-night">${pickLang(currentLang, { ja: `夜 ${nightPwr}`, en: `Night ${nightPwr}`, zh: `夜 ${nightPwr}` })}</span>
-              <span class="grimoire-rule-text">${pickLang(currentLang, {
-                ja: `週${m.maxWeeklyShifts}回まで・${m.traitTitle}`,
-                en: `Max ${m.maxWeeklyShifts}/wk · ${m.traitTitle}`,
-                zh: `每周最多${m.maxWeeklyShifts}次・${m.traitTitle}`,
-              })}</span>
+              <span class="grimoire-ink-chip is-day">${t("ui.day_6", { dayPwr })}</span>
+              <span class="grimoire-ink-chip is-night">${t("ui.night_6", { nightPwr })}</span>
+              <span class="grimoire-rule-text">${t("ui.maxWk", { m_maxWeeklyShifts: m.maxWeeklyShifts, m_traitTitle: m.traitTitle })}</span>
             </div>
           </div>
         </div>
@@ -3897,11 +3291,7 @@ function openRosterDialog(): void {
 
 function applyStaticTranslations(): void {
   document.documentElement.lang = currentLang;
-  document.title = pickLang(currentLang, {
-    ja: "魔王城の24時間警備シフト | 拠点防衛シフトパズル",
-    en: "Demon Castle 24h Guard Shift | Castle Defense Shift Puzzle",
-    zh: "魔王城的24小时警备排班 | 据点防卫排班解谜",
-  });
+  document.title = t("ui.demonCastle24hGuardShift");
 
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
     const isActive = btn.dataset.langBtn === currentLang;
@@ -3924,218 +3314,154 @@ function applyStaticTranslations(): void {
 
   setText(
     "title-genre-pill",
-    pickLang(currentLang, {
-      ja: "拠点防衛シフトパズル",
-      en: "Castle Defense Shift Puzzle",
-      zh: "据点防卫排班解谜",
-    })
+    t("ui.castleDefenseShiftPuzzle")
   );
   setText(
     "title-back-link",
-    pickLang(currentLang, {
-      ja: "← ショーケースへ",
-      en: "← Back to Showcase",
-      zh: "← 返回案例展示",
-    })
+    t("ui.backToShowcase_2")
   );
   const backLink = document.getElementById("title-back-link") as HTMLAnchorElement | null;
   if (backLink) {
-    backLink.href = pickLang(currentLang, {
-      ja: "../../ja/showcase/",
-      en: "../../showcase/",
-      zh: "../../zh/showcase/",
-    });
+    backLink.href = t("ui.showcase");
   }
   setHtml(
     "title-catchphrase",
-    pickLang(currentLang, {
-      ja: `深い森の奥、魔物たちが静かに暮らす最後の砦――「魔王城」。<br />昼夜を問わず押し寄せる討伐軍から、<strong>24時間の交代シフトで仲間と城を守り抜こう。</strong>`,
-      en: `Deep in the ancient forest stands the Demon Castle, the quiet refuge of monsters.<br /><strong>Organize 24-hour guard shifts to protect your companions and the castle from relentless raids.</strong>`,
-      zh: `深邃森林深处，魔物们平静生活的最后堡垒——「魔王城」。<br /><strong>编排24小时轮班表，与伙伴们一同守护城堡免受昼夜袭来的讨伐军侵害。</strong>`,
-    })
+    t("ui.deepInTheAncientForest")
   );
   setText(
     "btn-title-start",
-    pickLang(currentLang, {
-      ja: "はじめから遊ぶ",
-      en: "Start New Game",
-      zh: "从头开始游玩",
-    })
+    t("ui.startNewGame")
   );
   setText(
     "btn-title-continue",
-    pickLang(currentLang, {
-      ja: "つづきから遊ぶ",
-      en: "Continue",
-      zh: "继续游戏",
-    })
+    t("ui.continue_2")
   );
   setText(
     "btn-title-roster",
-    pickLang(currentLang, { ja: "📖 警備隊名鑑", en: "📖 Guard Grimoire", zh: "📖 警备队名鉴" })
+    t("ui.guardGrimoire")
   );
   setText(
     "btn-title-help",
-    pickLang(currentLang, { ja: "遊び方", en: "How to Play", zh: "玩法说明" })
+    t("ui.howToPlay")
   );
 
   setText(
     "btn-back-title",
-    pickLang(currentLang, { ja: "← タイトル", en: "← Title", zh: "← 标题" })
+    t("ui.title_2")
   );
   setTitle(
     "btn-back-title",
-    pickLang(currentLang, {
-      ja: "タイトル画面へ戻る",
-      en: "Back to Title Screen",
-      zh: "返回标题画面",
-    })
+    t("ui.backToTitleScreen")
   );
   setText(
     "btn-roster",
-    pickLang(currentLang, { ja: "📖 名鑑", en: "📖 Grimoire", zh: "📖 名鉴" })
+    t("ui.grimoire")
   );
   setTitle(
     "btn-roster",
-    pickLang(currentLang, {
-      ja: "魔王城で働く全20名のメンバー名鑑と相性一覧",
-      en: "Grimoire of all 20 Demon Castle guards and pair affinities",
-      zh: "魔王城全20名成员名鉴与搭档相性一览",
-    })
+    t("ui.grimoireOfAll20Demon")
   );
-  setText("btn-help", pickLang(currentLang, { ja: "ルール", en: "Rules", zh: "规则" }));
-  setText("btn-hint-one", pickLang(currentLang, { ja: "💡 ヒント", en: "💡 Hint", zh: "💡 提示" }));
+  setText("btn-help", t("ui.rules"));
+  setText("btn-hint-one", t("ui.hint_2"));
   setTitle(
     "btn-hint-one",
-    pickLang(currentLang, {
-      ja: "1マスだけお手本を配置します",
-      en: "Fill 1 cell from the model shift",
-      zh: "填入1格示范排班",
-    })
+    t("ui.fill1CellFromThe")
   );
-  setText("btn-reset", pickLang(currentLang, { ja: "🔄 リセット", en: "Clear All", zh: "清空重排" }));
+  setText("btn-reset", t("ui.clearAll"));
 
   // Mobile quick tools
   const mobileHint = document.getElementById("btn-mobile-hint");
   if (mobileHint) {
-    mobileHint.title = pickLang(currentLang, { ja: "ヒント（1マス配置）", en: "Hint (Fill 1 Cell)", zh: "提示（配置1格）" });
-    mobileHint.setAttribute("aria-label", pickLang(currentLang, { ja: "ヒント", en: "Hint", zh: "提示" }));
+    mobileHint.title = t("ui.hintFill1Cell");
+    mobileHint.setAttribute("aria-label", t("ui.hint"));
   }
   const mobileSynergy = document.getElementById("btn-mobile-synergy");
   if (mobileSynergy) {
-    mobileSynergy.title = pickLang(currentLang, { ja: "相性・連携一覧", en: "Pair Affinities", zh: "相性一览" });
-    mobileSynergy.setAttribute("aria-label", pickLang(currentLang, { ja: "相性一覧", en: "Pair Affinities", zh: "相性一览" }));
+    mobileSynergy.title = t("ui.pairAffinities");
+    mobileSynergy.setAttribute("aria-label", t("ui.pairAffinities"));
   }
   const mobileMenu = document.getElementById("btn-mobile-menu");
   if (mobileMenu) {
-    mobileMenu.title = pickLang(currentLang, { ja: "メニューを開く", en: "Open Menu", zh: "打开菜单" });
-    mobileMenu.setAttribute("aria-label", pickLang(currentLang, { ja: "メニュー", en: "Menu", zh: "菜单" }));
+    mobileMenu.title = t("ui.openMenu");
+    mobileMenu.setAttribute("aria-label", t("ui.menu"));
   }
-  setText("mobile-menu-title", pickLang(currentLang, { ja: "⚙️ 作戦指令メニュー", en: "⚙️ Operations Menu", zh: "⚙️ 作战指令菜单" }));
-  setText("btn-mobile-menu-roster", pickLang(currentLang, { ja: "📖 警備隊名鑑", en: "📖 Guard Grimoire", zh: "📖 警备队名鉴" }));
-  setText("btn-mobile-menu-help", pickLang(currentLang, { ja: "📜 勤務ルール", en: "📜 Shift Rules", zh: "📜 勤务规则" }));
-  setText("btn-mobile-menu-synergy", pickLang(currentLang, { ja: "🤝 相性・連携", en: "🤝 Affinities", zh: "🤝 相性连携" }));
-  setText("btn-mobile-menu-title", pickLang(currentLang, { ja: "← タイトル画面へ戻る", en: "← Back to Title Screen", zh: "← 返回标题画面" }));
-  setText("synergy-dialog-title", pickLang(currentLang, { ja: "🤝 相性◎と同番NG一覧", en: "🤝 Guard Affinities & Clashes", zh: "🤝 相性与排斥一览" }));
+  setText("mobile-menu-title", t("ui.operationsMenu"));
+  setText("btn-mobile-menu-roster", t("ui.guardGrimoire"));
+  setText("btn-mobile-menu-help", t("ui.shiftRules"));
+  setText("btn-mobile-menu-synergy", t("ui.affinities"));
+  setText("btn-mobile-menu-title", t("ui.backToTitleScreen_2"));
+  setText("synergy-dialog-title", t("ui.guardAffinitiesClashes"));
   setTitle(
     "dialogue-box",
-    pickLang(currentLang, {
-      ja: "クリックでメッセージを全文表示・次へ進める",
-      en: "Click to reveal full message or advance",
-      zh: "点击显示完整信息或继续",
-    })
+    t("ui.clickToRevealFullMessage_2")
   );
   setText(
     "btn-dispatch",
-    pickLang(currentLang, {
-      ja: "⚔️ このシフトで警備する",
-      en: "⚔️ Guard with This Shift",
-      zh: "⚔️ 按此班表出击警备",
-    })
+    t("ui.guardWithThisShift")
   );
 
-  setText("btn-op-skip", pickLang(currentLang, { ja: "スキップ ⏭", en: "Skip ⏭", zh: "跳过 ⏭" }));
+  setText("btn-op-skip", t("ui.skip"));
   setTitle(
     "op-stage-viewport",
-    pickLang(currentLang, {
-      ja: "クリックで次へ進む",
-      en: "Click to advance",
-      zh: "点击继续",
-    })
+    t("ui.clickToAdvance")
   );
   setText(
     "op-climax-tagline",
-    pickLang(currentLang, {
-      ja: "誰ひとり無理をさせないシフトで、私たちの魔王城を守り抜く。",
-      en: "Protect our Demon Castle with a shift schedule that leaves no companion overworked.",
-      zh: "用不让任何伙伴勉强的排班表，守护我们的魔王城。",
-    })
+    t("ui.protectOurDemonCastleWith")
   );
   setText(
     "btn-op-finish",
-    pickLang(currentLang, { ja: "物語を始める", en: "Begin Story", zh: "开始物语" })
+    t("ui.beginStory")
   );
   setText(
     "btn-op-next-cut",
-    pickLang(currentLang, { ja: "次へ ▶", en: "Next ▶", zh: "下一步 ▶" })
+    t("ui.next")
   );
 
-  setText("prologue-title", pickLang(currentLang, { ja: "プロローグ", en: "Prologue", zh: "序章" }));
-  setText("btn-prologue-skip", pickLang(currentLang, { ja: "スキップ ⏭", en: "Skip ⏭", zh: "跳过 ⏭" }));
+  setText("prologue-title", t("ui.prologue"));
+  setText("btn-prologue-skip", t("ui.skip"));
   setText(
     "prologue-lilith-role",
-    pickLang(currentLang, {
-      ja: "魔王城 警備参謀",
-      en: "Chief Guard Tactician",
-      zh: "魔王城 警备参谋",
-    })
+    t("ui.chiefGuardTactician")
   );
   setText(
     "prologue-lilith-name",
-    pickLang(currentLang, { ja: "リリス", en: "Lilith", zh: "莉莉丝" })
+    t("ui.lilith")
   );
   setText(
     "prologue-speaker-chip",
-    pickLang(currentLang, { ja: "リリス", en: "Lilith", zh: "莉莉丝" })
+    t("ui.lilith")
   );
-  setText("btn-prologue-prev", pickLang(currentLang, { ja: "前へ", en: "Prev", zh: "上一页" }));
-  setText("btn-prologue-next", pickLang(currentLang, { ja: "次へ", en: "Next", zh: "下一步" }));
+  setText("btn-prologue-prev", t("ui.prev"));
+  setText("btn-prologue-next", t("ui.next_2"));
 
   setText(
     "briefing-title",
-    pickLang(currentLang, { ja: "今月の警備概要", en: "Monthly Guard Briefing", zh: "本月警备概要" })
+    t("ui.monthlyGuardBriefing")
   );
   setText(
     "result-dialog-title",
-    pickLang(currentLang, { ja: "警備結果", en: "Guard Result", zh: "警备结果" })
+    t("ui.guardResult")
   );
   setText(
     "grimoire-folio-sub",
-    pickLang(currentLang, {
-      ja: "── 魔王城 警備隊古録・全二十名 ──",
-      en: "── Ancient Grimoire of the 20 Castle Guards ──",
-      zh: "── 魔王城 警备队古录・全二十名 ──",
-    })
+    t("ui.ancientGrimoireOfThe20")
   );
   setText(
     "roster-dialog-title",
-    pickLang(currentLang, {
-      ja: "魔王城・全20名メンバー名鑑",
-      en: "Demon Castle 20-Guard Grimoire",
-      zh: "魔王城・全20名成员名鉴",
-    })
+    t("ui.demonCastle20GuardGrimoire")
   );
   setText(
     "grimoire-close-btn",
-    pickLang(currentLang, { ja: "✕ 書を閉じる", en: "✕ Close Tome", zh: "✕ 合上书卷" })
+    t("ui.closeTome")
   );
   document.querySelectorAll<HTMLElement>(".grimoire-wax-seal").forEach((el) => {
-    el.textContent = pickLang(currentLang, { ja: "印", en: "Seal", zh: "印" });
+    el.textContent = t("ui.seal");
   });
   document.querySelectorAll<HTMLElement>("[data-close-dialog]").forEach((el) => {
     el.setAttribute(
       "aria-label",
-      pickLang(currentLang, { ja: "閉じる", en: "Close", zh: "关闭" })
+      t("ui.close")
     );
   });
 
@@ -4146,37 +3472,33 @@ function applyStaticTranslations(): void {
   setAttr(
     "title-screen",
     "aria-label",
-    pickLang(currentLang, { ja: "タイトル画面", en: "Title Screen", zh: "标题画面" })
+    t("ui.titleScreen")
   );
   setAttr(
     "stage-progress-nav",
     "aria-label",
-    pickLang(currentLang, { ja: "年月選択", en: "Month Selection", zh: "年月选择" })
+    t("ui.monthSelection")
   );
   setAttr(
     "shift-grid-table",
     "aria-label",
-    pickLang(currentLang, { ja: "警備シフト編成表", en: "Guard Shift Matrix", zh: "警备排班表" })
+    t("ui.guardShiftMatrix")
   );
   setAttr(
     "opening-movie-dialog",
     "aria-label",
-    pickLang(currentLang, { ja: "オープニングムービー", en: "Opening Movie", zh: "开场动画" })
+    t("ui.openingMovie")
   );
   document.querySelectorAll<HTMLElement>(".condition-summary-row").forEach((el) => {
     el.setAttribute(
       "aria-label",
-      pickLang(currentLang, { ja: "シフト達成状況", en: "Shift Goal Status", zh: "排班达成状况" })
+      t("ui.shiftGoalStatus")
     );
   });
   document.querySelectorAll<HTMLElement>(".rpg-dialogue-dock").forEach((el) => {
     el.setAttribute(
       "aria-label",
-      pickLang(currentLang, {
-        ja: "会話ウィンドウと出撃コマンド",
-        en: "Dialogue Window and Dispatch Command",
-        zh: "对话窗口与出击指令",
-      })
+      t("ui.dialogueWindowAndDispatchComma")
     );
   });
   const logoSrc = pickLang(currentLang, {
@@ -4189,11 +3511,7 @@ function applyStaticTranslations(): void {
     .forEach((el) => {
       el.setAttribute(
         "alt",
-        pickLang(currentLang, {
-          ja: "魔王城の24時間警備シフト",
-          en: "Demon Castle 24h Guard Shift",
-          zh: "魔王城的24小时警备排班",
-        })
+        t("ui.demonCastle24hGuardShift_2")
       );
       el.setAttribute("src", logoSrc);
       el.src = logoSrc;
@@ -4201,124 +3519,26 @@ function applyStaticTranslations(): void {
   setAttr(
     "dialogue-portrait",
     "alt",
-    pickLang(currentLang, { ja: "リリス", en: "Lilith", zh: "莉莉丝" })
+    t("ui.lilith")
   );
   setAttr(
     "op-scene-img",
     "alt",
-    pickLang(currentLang, { ja: "オープニング情景", en: "Opening Scene", zh: "开场情景" })
+    t("ui.openingScene")
   );
   setAttr(
     "prologue-portrait",
     "alt",
-    pickLang(currentLang, {
-      ja: "警備参謀 リリス",
-      en: "Chief Guard Tactician Lilith",
-      zh: "警备参谋 莉莉丝",
-    })
+    t("ui.chiefGuardTacticianLilith")
   );
 
   setText(
     "help-dialog-title",
-    pickLang(currentLang, { ja: "遊び方と勤務ルール", en: "How to Play & Shift Rules", zh: "玩法与出勤规则" })
+    t("ui.howToPlayShiftRules")
   );
   setHtml(
     "help-dialog-body",
-    pickLang(currentLang, {
-      ja: `<div class="help-grid">
-        <div class="help-step-card">
-          <span class="step-num">手順 1</span>
-          <h3>敵の戦闘力と味方防衛力の力比べ</h3>
-          <p>
-            各時間帯で、押し寄せる勇者軍部隊の実際の戦闘力が<strong>「予測戦力」の前後で変動</strong>します。<br />
-            <strong>味方の防衛力が敵の戦闘力以上なら防衛成功</strong>です。得意な時間帯や相性ペアを活かして、厚みのある守りを築きましょう。
-          </p>
-        </div>
-        <div class="help-step-card">
-          <span class="step-num">手順 2</span>
-          <h3>無理のない勤務ルールを守る</h3>
-          <p>
-            城の仲間に無理をさせないため、以下の勤務条件を守る必要があります（勤務条件さえ守れば、戦力が足りない枠があっても確率勝負で警備を開始できます）。
-          </p>
-          <ul class="help-list">
-            <li><strong>大物枠（ドラゴ・ゴーレム等）は連勤不可</strong>：1日働いたら翌日は「休」にします（週3回まで）。</li>
-            <li><strong>夜番の翌朝は昼番不可</strong>：夜番に入った翌日にすぐ昼番へ入ることはできません（夜→夜は可能）。</li>
-            <li><strong>新米枠（プルル・マンドラ等）は夜の単独配置不可</strong>：夜番にする時は、他の仲間も一緒に夜番へ配置します。</li>
-            <li><strong>指定休・満月の夜</strong>：指定休の日や、満月の夜の昼型獣人（フェンリル等）は最初からロックされています。</li>
-          </ul>
-        </div>
-        <div class="help-step-card">
-          <span class="step-num">手順 3</span>
-          <h3>相性◎（+100）と同番NG（-150）・全戦防衛必須</h3>
-          <p>
-            気の合うペアを同じ時間帯に並べると<strong>防衛力が +100</strong> 上がりますが、<strong>「この人とは一緒に働きたくない」という不仲ペアを同じ枠に置くと防衛力が -150 下がってしまいます</strong>。<br />
-            勇者軍は毎日決まった時間ではなく<strong>不規則な時間帯に現れ（手薄な枠は特に狙われます）</strong>、<strong>1回でも城門を突破されたら防衛失敗</strong>となります。どの時間帯に来ても守り抜けるシフトを組みましょう。
-          </p>
-        </div>
-      </div>`,
-      en: `<div class="help-grid">
-        <div class="help-step-card">
-          <span class="step-num">Step 1</span>
-          <h3>Guard Defense vs. Enemy Raid Power</h3>
-          <p>
-            In each shift slot, the actual combat power of the invading force fluctuates around the <strong>estimated power</strong>.<br />
-            <strong>Your defense succeeds if your total Defense is at least the enemy's actual power.</strong> Leverage preferred shifts and pair synergies to build a solid defense.
-          </p>
-        </div>
-        <div class="help-step-card">
-          <span class="step-num">Step 2</span>
-          <h3>Follow Healthy Shift Rules</h3>
-          <p>
-            To keep every companion healthy, your schedule must obey these shift rules (as long as labor rules are met, you can dispatch even if some slots are below estimated power):
-          </p>
-          <ul class="help-list">
-            <li><strong>Heavyweights (Drago, Golem, etc.) Cannot Work Consecutive Days</strong>: After working 1 day, the next day must be Off (max 3 shifts/week).</li>
-            <li><strong>No Day Shift Immediately After Night Shift</strong>: A guard on Night duty cannot work Day duty the next morning (Night → Night is allowed).</li>
-            <li><strong>Rookies (Pururu, Mandra, etc.) Cannot Guard Night Alone</strong>: On Night duty, they must be paired with at least one other guard.</li>
-            <li><strong>Requested Days Off & Full Moon Nights</strong>: Requested days off and Full Moon nights for daytime beastkin (Fenrir, etc.) are locked to Off.</li>
-          </ul>
-        </div>
-        <div class="help-step-card">
-          <span class="step-num">Step 3</span>
-          <h3>Synergy (+100), Friction (-150) & Zero-Breach Victory</h3>
-          <p>
-            Assigning compatible partners to the same slot grants <strong>+100 Defense</strong>, while placing incompatible rivals together imposes <strong>-150 Defense</strong>.<br />
-            Enemy raids strike unpredictably (weakly guarded slots are targeted more often), and <strong>even a single gate breach results in defeat</strong>.
-          </p>
-        </div>
-      </div>`,
-      zh: `<div class="help-grid">
-        <div class="help-step-card">
-          <span class="step-num">步骤 1</span>
-          <h3>敌军战力与我方防卫力的较量</h3>
-          <p>
-            在每个时段中，涌来的勇者军实际战力会在<strong>「预测战力」上下波动</strong>。<br />
-            <strong>只要我方防卫力不低于敌军实际战力即可防卫成功</strong>。善用擅长时段与搭档加成来构筑厚实的防线吧。
-          </p>
-        </div>
-        <div class="help-step-card">
-          <span class="step-num">步骤 2</span>
-          <h3>遵守合理的出勤规则</h3>
-          <p>
-            为了不让城里的伙伴勉强，排班必须遵守以下出勤规则（只要遵守出勤规则，即使部分时段战力不足也可凭概率出击）：
-          </p>
-          <ul class="help-list">
-            <li><strong>主力重将（德拉戈、魔像等）不可连勤</strong>：出勤1天后次日必须排「休」（每周最多3次）。</li>
-            <li><strong>夜班次日清晨不可排白班</strong>：前一天上夜班后，第二天不可立即上白班（夜→夜可以）。</li>
-            <li><strong>新人（普露露、曼德拉等）不可单独值夜班</strong>：排夜班时必须与其他伙伴一同配置在夜班。</li>
-            <li><strong>指定休假・满月之夜</strong>：指定休假日以及满月之夜的昼型兽人（芬里尔等）固定为休假。</li>
-          </ul>
-        </div>
-        <div class="help-step-card">
-          <span class="step-num">步骤 3</span>
-          <h3>默契搭档（+100）与不和组合（-150）・全战防卫必须</h3>
-          <p>
-            将合得来的搭档排在同一时段可使<strong>防卫力 +100</strong>，但将不和的两人排在同一时段会使<strong>防卫力 -150</strong>。<br />
-            勇者军会在不固定的时段突袭（防卫薄弱的时段更容易被盯上），<strong>只要城门被突破1次即告防卫失败</strong>。请编排出无论何时遇袭都能守住的排班表吧。
-          </p>
-        </div>
-      </div>`,
-    })
+    t("ui.divClassHelpGridDiv")
   );
 
   syncAudioButtonUi();

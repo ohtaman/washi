@@ -280,13 +280,13 @@ export function renderSafeMarkdown(container: HTMLElement, markdown: string): vo
       continue;
     }
 
-    if (/^([-*•・]|\d+\.)\s+/.test(trimmed)) {
+    if (/^([-*•\u30FB]|\d+\.)\s+/.test(trimmed)) {
       const isOrdered = /^\d+\.\s+/.test(trimmed);
       const listEl = document.createElement(isOrdered ? "ol" : "ul");
       listEl.className = "md-list";
       while (i < lines.length) {
         const l = (lines[i] ?? "").trim();
-        const itemMatch = l.match(/^([-*•・]|\d+\.)\s+(.+)$/);
+        const itemMatch = l.match(/^([-*•\u30FB]|\d+\.)\s+(.+)$/);
         if (!itemMatch) break;
         const li = document.createElement("li");
         appendInlineMarkdown(li, itemMatch[2]);
@@ -528,7 +528,7 @@ function renderCrossHighlightBar(): void {
     chip.className = `cross-chip ${isActive ? "active" : ""}`;
     chip.textContent = `👨‍🏫${pI18n.shortName}${p.employment === "adjunct" ? ui.adjunctSuffix : ""}`;
     chip.title = pickTimetableLang(activeLang, {
-      ja: `${pI18n.name} (${pI18n.title}) が担当するコマを全学年の時間割でハイライト`,
+      ja: `${pI18n.name} (${pI18n.title}) \u304C担当\u3059\u308B\u30B3\u30DE\u3092全学年\u306E時間割\u3067\u30CF\u30A4\u30E9\u30A4\u30C8`,
       en: `Highlight courses taught by ${pI18n.name} (${pI18n.title}) across all cohort boards`,
       zh: `在所有年级课表中高亮显示 ${pI18n.name} (${pI18n.title}) 讲授的课程`,
     });
@@ -561,7 +561,7 @@ function renderCrossHighlightBar(): void {
     chip.className = `cross-chip ${isActive ? "active" : ""}`;
     chip.textContent = `🏫${rI18n.shortName}`;
     chip.title = pickTimetableLang(activeLang, {
-      ja: `${rI18n.name} (定員${r.capacity}名) を使用するコマを全学年の時間割でハイライト`,
+      ja: `${rI18n.name} (定員${r.capacity}名) \u3092使用\u3059\u308B\u30B3\u30DE\u3092全学年\u306E時間割\u3067\u30CF\u30A4\u30E9\u30A4\u30C8`,
       en: `Highlight courses assigned to ${rI18n.name} (Cap ${r.capacity}) across all cohort boards`,
       zh: `在所有年级课表中高亮显示使用 ${rI18n.name} (容量${r.capacity}人) 的课程`,
     });
@@ -609,12 +609,12 @@ function renderTimetableBoard(): void {
         <div class="empty-state-workflow">
           <div class="workflow-header">
             <h3>${pickTimetableLang(activeLang, {
-              ja: "時間割データがありません（白紙モード）",
+              ja: "時間割\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093（白紙\u30E2\u30FC\u30C9）",
               en: "No Timetable Data (Blank Slate)",
               zh: "暂无排课数据（空白模式）",
             })}</h3>
             <p>${pickTimetableLang(activeLang, {
-              ja: "時間割を自動編成するには、まず教員名簿・教室設備・開講科目が必要です。「基礎データ」タブで登録してください。",
+              ja: "時間割\u3092自動編成\u3059\u308B\u306B\u306F、\u307E\u305A教員名簿\u30FB教室設備\u30FB開講科目\u304C必要\u3067\u3059。「基礎\u30C7\u30FC\u30BF」\u30BF\u30D6\u3067登録\u3057\u3066\u304F\u3060\u3055\u3044。",
               en: "University timetabling requires faculty, classrooms, and courses. Please set up baseline data in the Master Data tab.",
               zh: "排课需要先录入教师、教室及课程数据。请前往“基础数据”标签页进行配置。",
             })}</p>
@@ -623,18 +623,18 @@ function renderTimetableBoard(): void {
             <div class="workflow-card highlighted">
               <div class="wf-card-icon">📚</div>
               <h4>${pickTimetableLang(activeLang, {
-                ja: "基礎データ管理を開く (推奨)",
+                ja: "基礎\u30C7\u30FC\u30BF管理\u3092開\u304F (推奨)",
                 en: "Open Master Data (Recommended)",
                 zh: "打开基础数据管理 (推荐)",
               })}</h4>
               <p>${pickTimetableLang(activeLang, {
-                ja: "教員・教室・科目の登録画面を開き、サンプルデータを読み込むかCSVファイルをインポートします。",
+                ja: "教員\u30FB教室\u30FB科目\u306E登録画面\u3092開\u304D、\u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080\u304BCSV\u30D5\u30A1\u30A4\u30EB\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3059。",
                 en: "Open the master data catalog to load benchmark sample data or import your own CSVs.",
                 zh: "打开基础数据名册，载入示例数据或导入自有CSV文件。",
               })}</p>
               <button type="button" id="btn-empty-view-catalog" class="btn-solve-primary">
                 📚 ${pickTimetableLang(activeLang, {
-                  ja: "基礎データ管理を開く",
+                  ja: "基礎\u30C7\u30FC\u30BF管理\u3092開\u304F",
                   en: "Open Master Data",
                   zh: "打开基础数据管理",
                 })}
@@ -643,18 +643,18 @@ function renderTimetableBoard(): void {
             <div class="workflow-card">
               <div class="wf-card-icon">📂</div>
               <h4>${pickTimetableLang(activeLang, {
-                ja: "手持ちのCSVを読み込む",
+                ja: "手持\u3061\u306ECSV\u3092読\u307F込\u3080",
                 en: "Import Your CSV Files",
                 zh: "导入已有CSV文件",
               })}</h4>
               <p>${pickTimetableLang(activeLang, {
-                ja: "professors.csv / rooms.csv / courses.csv の3ファイルをインポートして自前のデータで時間割を作成します。",
+                ja: "professors.csv / rooms.csv / courses.csv \u306E3\u30D5\u30A1\u30A4\u30EB\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u3066自前\u306E\u30C7\u30FC\u30BF\u3067時間割\u3092作成\u3057\u307E\u3059。",
                 en: "Import professors.csv, rooms.csv, and courses.csv to schedule your own university curriculum.",
                 zh: "导入教师、教室与课程3份CSV文件，为自己的课程方案排课。",
               })}</p>
               <button type="button" id="btn-empty-csv" class="btn-toolbar-outline">
                 📂 ${pickTimetableLang(activeLang, {
-                  ja: "CSV読込ダイアログを開く",
+                  ja: "CSV読込\u30C0\u30A4\u30A2\u30ED\u30B0\u3092開\u304F",
                   en: "Open CSV Dialog",
                   zh: "打开CSV导入窗口",
                 })}
@@ -663,18 +663,18 @@ function renderTimetableBoard(): void {
             <div class="workflow-card">
               <div class="wf-card-icon">📥</div>
               <h4>${pickTimetableLang(activeLang, {
-                ja: "CSVテンプレートを取得",
+                ja: "CSV\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092取得",
                 en: "Download Templates",
                 zh: "获取CSV模板",
               })}</h4>
               <p>${pickTimetableLang(activeLang, {
-                ja: "CSVの列名（ID・氏名・出講NG日・教室定員・履修学年等）を確認できるテンプレートを保存します。",
+                ja: "CSV\u306E列名（ID\u30FB氏名\u30FB出講NG日\u30FB教室定員\u30FB履修学年等）\u3092確認\u3067\u304D\u308B\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u3092保存\u3057\u307E\u3059。",
                 en: "Download sample CSV templates to check column headers (IDs, names, unavailable days, room capacities, cohorts).",
                 zh: "下载CSV模板以查阅表头格式（编号、姓名、不可出勤日、容量、年级等）。",
               })}</p>
               <button type="button" id="btn-empty-samples" class="btn-toolbar-outline">
                 📥 ${pickTimetableLang(activeLang, {
-                  ja: "サンプルCSVをダウンロード",
+                  ja: "\u30B5\u30F3\u30D7\u30EBCSV\u3092\u30C0\u30A6\u30F3\u30ED\u30FC\u30C9",
                   en: "Download Sample CSVs",
                   zh: "下载示例CSV",
                 })}
@@ -699,12 +699,12 @@ function renderTimetableBoard(): void {
         <div class="data-preview-card">
           <div class="data-preview-header">
             <h3>${pickTimetableLang(activeLang, {
-              ja: `基礎データの準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}コマ）`,
+              ja: `基礎\u30C7\u30FC\u30BF\u306E準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}\u30B3\u30DE）`,
               en: `Data Ready: ${profCount} Profs / ${roomCount} Rooms / ${courseCount} Courses (${totalSessions} sessions)`,
               zh: `基础数据就绪: ${profCount}位教师 / ${roomCount}间教室 / ${courseCount}门课程 (共${totalSessions}节)`,
             })}</h3>
             <p>${pickTimetableLang(activeLang, {
-              ja: "教員名簿・教室設備・開講科目がセットされました。下の「⚡ 時間割を自動編成する」を押すと WaSHI × HiGHS が全学年・全教員・全教室の時間割を一括最適化します。",
+              ja: "教員名簿\u30FB教室設備\u30FB開講科目\u304C\u30BB\u30C3\u30C8\u3055\u308C\u307E\u3057\u305F。下\u306E「⚡ 時間割\u3092自動編成\u3059\u308B」\u3092押\u3059\u3068 WaSHI × HiGHS \u304C全学年\u30FB全教員\u30FB全教室\u306E時間割\u3092一括最適化\u3057\u307E\u3059。",
               en: "Faculty roster, classrooms, and curriculum are loaded. Click 'Auto-Schedule Timetable' to run WaSHI × HiGHS MIP optimization.",
               zh: "教师名册、教室与课程已载入。点击“自动编排课表”，WaSHI × HiGHS 混合整数规划求解器将一键优化全局排课。",
             })}</p>
@@ -718,12 +718,12 @@ function renderTimetableBoard(): void {
               })}</h4>
               <ul>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `専任教員: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} など計${profCount - adjunctCount}名`,
+                  ja: `専任教員: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} \u306A\u3069計${profCount - adjunctCount}名`,
                   en: `Full-time: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join(", ")}, etc.`,
                   zh: `专任教师: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} 等共${profCount - adjunctCount}位`,
                 })}</li>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `非常勤・曜日制限: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(制限あり)`).join("、") || "特になし"}`,
+                  ja: `非常勤\u30FB曜日制限: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(制限\u3042\u308A)`).join("、") || "特\u306B\u306A\u3057"}`,
                   en: `Part-time / Day limits: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)} (restricted)`).join(", ") || "None"}`,
                   zh: `兼职/时间限制: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(受限)`).join("、") || "无"}`,
                 })}</li>
@@ -742,7 +742,7 @@ function renderTimetableBoard(): void {
                   zh: `讲堂教室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)}(容纳${r.capacity}人)`).join("、")}`,
                 })}</li>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `PC演習室・ゼミ室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
+                  ja: `PC演習室\u30FB\u30BC\u30DF室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
                   en: `PC Labs & Seminars: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join(", ")}`,
                   zh: `机房与研讨室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
                 })}</li>
@@ -756,12 +756,12 @@ function renderTimetableBoard(): void {
               })}</h4>
               <ul>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `週コマ数合計: ${totalSessions}コマ (1〜4年次)`,
+                  ja: `週\u30B3\u30DE数合計: ${totalSessions}\u30B3\u30DE (1〜4年次)`,
                   en: `Total sessions: ${totalSessions} slots across Y1-Y4`,
                   zh: `总授课节数: ${totalSessions}节 (覆盖1~4年级)`,
                 })}</li>
                 <li>${pickTimetableLang(activeLang, {
-                  ja: `設備条件: PC演習室必須 ${pcLabCourseCount}科目、週2コマ科目 ${appState.courses.filter((c) => c.sessionsPerWeek > 1).length}科目`,
+                  ja: `設備条件: PC演習室必須 ${pcLabCourseCount}科目、週2\u30B3\u30DE科目 ${appState.courses.filter((c) => c.sessionsPerWeek > 1).length}科目`,
                   en: `Equipment req: PC lab required for ${pcLabCourseCount} courses`,
                   zh: `设备要求: 机房必须 ${pcLabCourseCount}门`,
                 })}</li>
@@ -771,28 +771,28 @@ function renderTimetableBoard(): void {
           <div class="data-preview-actions">
             <button type="button" id="btn-empty-solve" class="btn-solve-primary">
               ⚡ ${pickTimetableLang(activeLang, {
-                ja: "時間割を自動編成する",
+                ja: "時間割\u3092自動編成\u3059\u308B",
                 en: "Auto-Schedule Timetable",
                 zh: "自动编排课表",
               })}
             </button>
             <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
               📚 ${pickTimetableLang(activeLang, {
-                ja: "基礎データ一覧を確認",
+                ja: "基礎\u30C7\u30FC\u30BF一覧\u3092確認",
                 en: "Review Master Data",
                 zh: "查看基础数据列表",
               })}
             </button>
             <button type="button" id="btn-empty-view-constraints" class="btn-toolbar-outline">
               ⚙️ ${pickTimetableLang(activeLang, {
-                ja: "条件・ルール設定を確認",
+                ja: "条件\u30FB\u30EB\u30FC\u30EB設定\u3092確認",
                 en: "Review Constraints",
                 zh: "查看约束规则",
               })}
             </button>
             <button type="button" id="btn-empty-clear" class="btn-xs-outline" style="color: var(--danger-text, #ef4444);">
               🗑️ ${pickTimetableLang(activeLang, {
-                ja: "白紙に戻す",
+                ja: "白紙\u306B戻\u3059",
                 en: "Clear to Blank",
                 zh: "清空为白纸",
               })}
@@ -857,7 +857,7 @@ function renderTimetableBoard(): void {
       metaSpan.className = "cohort-board-meta";
       if (cohortSum) {
         metaSpan.textContent = pickTimetableLang(activeLang, {
-          ja: `学生${cohort.studentCount}名 | 週${cohortSum.totalSessions}コマ (必修等:${cohortSum.compulsorySessions} / 空きコマ:${cohortSum.hollowGapsCount})`,
+          ja: `学生${cohort.studentCount}名 | 週${cohortSum.totalSessions}\u30B3\u30DE (必修等:${cohortSum.compulsorySessions} / 空\u304D\u30B3\u30DE:${cohortSum.hollowGapsCount})`,
           en: `${cohort.studentCount} students | ${cohortSum.totalSessions}/wk (Core:${cohortSum.compulsorySessions} / Gaps:${cohortSum.hollowGapsCount})`,
           zh: `学生${cohort.studentCount}人 | 周${cohortSum.totalSessions}节 (必修:${cohortSum.compulsorySessions} / 空堂:${cohortSum.hollowGapsCount})`,
         });
@@ -966,7 +966,7 @@ function renderTimetableBoard(): void {
               btn.draggable = true;
 
               btn.title = pickTimetableLang(activeLang, {
-                ja: `${cI18n.title} (ドラッグして移動 / クリックで設定)`,
+                ja: `${cI18n.title} (\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)`,
                 en: `${cI18n.title} (Drag to move / Click to configure)`,
                 zh: `${cI18n.title} (拖拽以移动 / 点击以配置)`,
               });
@@ -1047,7 +1047,7 @@ function renderTimetableBoard(): void {
             emptyBtn.className = "mini-slot-empty";
             emptyBtn.textContent = ui.pinEmptySlotBtn;
             emptyBtn.title = pickTimetableLang(activeLang, {
-              ja: `${cohortI18n.shortLabel}の科目を ${formatSlotI18n(day, period, activeLang)} に固定`,
+              ja: `${cohortI18n.shortLabel}\u306E科目\u3092 ${formatSlotI18n(day, period, activeLang)} \u306B固定`,
               en: `Pin a ${cohortI18n.shortLabel} course to ${formatSlotI18n(day, period, activeLang)}`,
               zh: `将${cohortI18n.shortLabel}课程固定在 ${formatSlotI18n(day, period, activeLang)}`,
             });
@@ -1239,7 +1239,7 @@ function renderTimetableBoard(): void {
             subSpan.className = "matrix-course-sub";
             subSpan.textContent = `${c.cohorts.join("/")}[${rI18n?.shortName ?? assigned.roomId}]`;
             btn.append(codeSpan, subSpan);
-            btn.title = `${formatSlotI18n(d, p, activeLang)}: ${cI18n.title} (${c.cohorts.join("/")} · ${rI18n?.name ?? ""}) ${pickTimetableLang(activeLang, { ja: "(ドラッグして移動 / クリックで設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+            btn.title = `${formatSlotI18n(d, p, activeLang)}: ${cI18n.title} (${c.cohorts.join("/")} · ${rI18n?.name ?? ""}) ${pickTimetableLang(activeLang, { ja: "(\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
 
             btn.addEventListener("dragstart", (e) => {
               activeDragPayload = {
@@ -1277,7 +1277,7 @@ function renderTimetableBoard(): void {
             td.textContent = isUnavailDay ? ui.matrixUnavailDay : ui.matrixUnavailSlot;
             td.title = isUnavailDay
               ? pickTimetableLang(activeLang, {
-                  ja: `${pI18n.name}: ${DAY_FULL_I18N.ja[d]}は出講不可`,
+                  ja: `${pI18n.name}: ${DAY_FULL_I18N.ja[d]}\u306F出講不可`,
                   en: `${pI18n.name}: Unavailable on ${DAY_FULL_I18N.en[d]}`,
                   zh: `${pI18n.name}: ${DAY_FULL_I18N.zh[d]}不可出勤`,
                 })
@@ -1295,7 +1295,7 @@ function renderTimetableBoard(): void {
       const sum = currentEvaluation?.professorSummaries[prof.id];
       tdStat.textContent = sum
         ? pickTimetableLang(activeLang, {
-            ja: `${sum.assignedSessions}コマ (連${sum.maxConsecutiveCount})`,
+            ja: `${sum.assignedSessions}\u30B3\u30DE (連${sum.maxConsecutiveCount})`,
             en: `${sum.assignedSessions}/wk (Max ${sum.maxConsecutiveCount})`,
             zh: `${sum.assignedSessions}节 (连${sum.maxConsecutiveCount})`,
           })
@@ -1405,7 +1405,7 @@ function renderTimetableBoard(): void {
             subSpan.className = "matrix-course-sub";
             subSpan.textContent = `${c.cohorts.join("/")}·${pI18n?.shortName ?? ""} (${c.enrollment})`;
             btn.append(codeSpan, subSpan);
-            btn.title = `${formatSlotI18n(d, p, activeLang)} [${rI18n.name}]: ${cI18n.title} (${c.enrollment}/${room.capacity}) ${pickTimetableLang(activeLang, { ja: "(ドラッグして移動 / クリックで設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+            btn.title = `${formatSlotI18n(d, p, activeLang)} [${rI18n.name}]: ${cI18n.title} (${c.enrollment}/${room.capacity}) ${pickTimetableLang(activeLang, { ja: "(\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
 
             btn.addEventListener("dragstart", (e) => {
               activeDragPayload = {
@@ -1478,7 +1478,7 @@ function renderTimetableBoard(): void {
   footTotal.className = "stat-col";
   const totalSessions = currentTimetable?.sessions.length ?? 0;
   footTotal.textContent = pickTimetableLang(activeLang, {
-    ja: `計${totalSessions}コマ`,
+    ja: `計${totalSessions}\u30B3\u30DE`,
     en: `Total ${totalSessions}`,
     zh: `共${totalSessions}节`,
   });
@@ -1616,21 +1616,21 @@ function renderCatalogTables(): void {
       genBtn.className = "btn-solve-primary";
       genBtn.textContent = ui.btnCatGenerate;
       genBtn.title = pickTimetableLang(activeLang, {
-        ja: "情報科学科モデル（10教員・7教室・25科目・計30コマ）のサンプルデータを読み込みます",
+        ja: "情報科学科\u30E2\u30C7\u30EB（10教員\u30FB7教室\u30FB25科目\u30FB計30\u30B3\u30DE）\u306E\u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u307F\u307E\u3059",
         en: "Load sample CS department benchmark data (10 faculty, 7 rooms, 25 courses / 30 slots)",
-        zh: "载入计算机系示例数据（10位教师・7间教室・25门课・计30节）",
+        zh: "载入计算机系示例数据（10位教师\u30FB7间教室\u30FB25门课\u30FB计30节）",
       });
     } else {
       genBtn.className = "btn-toolbar-outline";
       genBtn.textContent = pickTimetableLang(activeLang, {
-        ja: "🎲 サンプル再生成",
+        ja: "🎲 \u30B5\u30F3\u30D7\u30EB再生成",
         en: "🎲 Regenerate Sample",
         zh: "🎲 重新生成示例",
       });
       genBtn.title = pickTimetableLang(activeLang, {
-        ja: "教員10名・教室7室・25科目のサンプルデータを再生成します",
+        ja: "教員10名\u30FB教室7室\u30FB25科目\u306E\u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092再生成\u3057\u307E\u3059",
         en: "Regenerate benchmark sample data (10 faculty, 7 rooms, 25 courses)",
-        zh: "重新生成示例数据（10位教师・7间教室・25门课）",
+        zh: "重新生成示例数据（10位教师\u30FB7间教室\u30FB25门课）",
       });
     }
   }
@@ -1668,7 +1668,7 @@ function renderCatalogTables(): void {
   setText(
     "cat-prof-title",
     pickTimetableLang(activeLang, {
-      ja: `👨‍🏫 教員一覧 ＆ 出講条件・割当コマ集計 (${isBlank ? "0名" : `${appState.professors.length}名`})`,
+      ja: `👨‍🏫 教員一覧 ＆ 出講条件\u30FB割当\u30B3\u30DE集計 (${isBlank ? "0名" : `${appState.professors.length}名`})`,
       en: `👨‍🏫 Faculty Roster, Availability & Assigned Load (${isBlank ? "0 Faculty" : `${appState.professors.length} Faculty`})`,
       zh: `👨‍🏫 教师名录、出勤条件与排课统计 (${isBlank ? "0名" : `${appState.professors.length}名`})`,
     })
@@ -1676,7 +1676,7 @@ function renderCatalogTables(): void {
   setText(
     "cat-room-title",
     pickTimetableLang(activeLang, {
-      ja: `🏫 講義室・演習室一覧 ＆ 設備・稼働率 (${isBlank ? "0室" : `${appState.rooms.length}室`})`,
+      ja: `🏫 講義室\u30FB演習室一覧 ＆ 設備\u30FB稼働率 (${isBlank ? "0室" : `${appState.rooms.length}室`})`,
       en: `🏫 Classrooms & Computer Labs (${isBlank ? "0 Rooms" : `${appState.rooms.length} Rooms`})`,
       zh: `🏫 讲义教室与实验机房名录 (${isBlank ? "0间" : `${appState.rooms.length}间`})`,
     })
@@ -1684,7 +1684,7 @@ function renderCatalogTables(): void {
   setText(
     "cat-course-title",
     pickTimetableLang(activeLang, {
-      ja: `📖 開講科目・カリキュラム一覧 (${isBlank ? "0科目" : `${appState.courses.length}科目`})`,
+      ja: `📖 開講科目\u30FB\u30AB\u30EA\u30AD\u30E5\u30E9\u30E0一覧 (${isBlank ? "0科目" : `${appState.courses.length}科目`})`,
       en: `📖 Course Offerings & Curriculum (${isBlank ? "0 Courses" : `${appState.courses.length} Courses`})`,
       zh: `📖 开课科目与培养计划 (${isBlank ? "0门" : `${appState.courses.length}门`})`,
     })
@@ -1704,7 +1704,7 @@ function renderCatalogTables(): void {
     pTd.colSpan = ui.catProfHeaders.length;
     pTd.className = "cat-table-empty-cell";
     pTd.textContent = pickTimetableLang(activeLang, {
-      ja: "教員データが登録されていません。上の「🎲 サンプルデータを読み込む」または「📂 CSVインポート」で登録してください。",
+      ja: "教員\u30C7\u30FC\u30BF\u304C登録\u3055\u308C\u3066\u3044\u307E\u305B\u3093。上\u306E「🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080」\u307E\u305F\u306F「📂 CSV\u30A4\u30F3\u30DD\u30FC\u30C8」\u3067登録\u3057\u3066\u304F\u3060\u3055\u3044。",
       en: 'No faculty data registered. Click "🎲 Load Sample Data" or "📂 Import CSV" above to register.',
       zh: "未录入教师数据。请点击上方的“🎲 载入示例数据”或“📂 CSV导入”进行录入。",
     });
@@ -1717,7 +1717,7 @@ function renderCatalogTables(): void {
     rTd.colSpan = ui.catRoomHeaders.length;
     rTd.className = "cat-table-empty-cell";
     rTd.textContent = pickTimetableLang(activeLang, {
-      ja: "講義室・演習室データが登録されていません。",
+      ja: "講義室\u30FB演習室\u30C7\u30FC\u30BF\u304C登録\u3055\u308C\u3066\u3044\u307E\u305B\u3093。",
       en: "No classroom or computer lab data registered.",
       zh: "未录入讲义教室与实验机房数据。",
     });
@@ -1730,7 +1730,7 @@ function renderCatalogTables(): void {
     cTd.colSpan = ui.catCourseHeaders.length;
     cTd.className = "cat-table-empty-cell";
     cTd.textContent = pickTimetableLang(activeLang, {
-      ja: "開講科目データが登録されていません。",
+      ja: "開講科目\u30C7\u30FC\u30BF\u304C登録\u3055\u308C\u3066\u3044\u307E\u305B\u3093。",
       en: "No course or curriculum data registered.",
       zh: "未录入开课科目与培养计划数据。",
     });
@@ -1765,10 +1765,10 @@ function renderCatalogTables(): void {
     if (p.unavailableDays.length > 0) {
       const avail = DAYS_OF_WEEK.filter((d) => !p.unavailableDays.includes(d))
         .map((d) => DAY_SHORT_I18N[activeLang][d])
-        .join(activeLang === "en" ? "/" : "・");
+        .join(activeLang === "en" ? "/" : "\u30FB");
       unavailParts.push(
         pickTimetableLang(activeLang, {
-          ja: `出講曜日: ${avail}曜のみ`,
+          ja: `出講曜日: ${avail}曜\u306E\u307F`,
           en: `Available: ${avail} only`,
           zh: `可出勤日: 仅${avail}`,
         })
@@ -1792,7 +1792,7 @@ function renderCatalogTables(): void {
     const tdPref = document.createElement("td");
     const prefParts: string[] = [
       pickTimetableLang(activeLang, {
-        ja: `1日最大${p.maxSessionsPerDay}コマ`,
+        ja: `1日最大${p.maxSessionsPerDay}\u30B3\u30DE`,
         en: `Max ${p.maxSessionsPerDay}/day`,
         zh: `单日最多${p.maxSessionsPerDay}节`,
       }),
@@ -1821,7 +1821,7 @@ function renderCatalogTables(): void {
     const sum = currentEvaluation?.professorSummaries[p.id];
     if (sum) {
       tdStat.textContent = pickTimetableLang(activeLang, {
-        ja: `週${sum.assignedSessions}コマ (出講${sum.activeDaysCount}日 / 最大連続:${sum.maxConsecutiveCount}コマ)`,
+        ja: `週${sum.assignedSessions}\u30B3\u30DE (出講${sum.activeDaysCount}日 / 最大連続:${sum.maxConsecutiveCount}\u30B3\u30DE)`,
         en: `${sum.assignedSessions}/wk (${sum.activeDaysCount} days / Max consec: ${sum.maxConsecutiveCount})`,
         zh: `周${sum.assignedSessions}节 (出勤${sum.activeDaysCount}天 / 最大连堂:${sum.maxConsecutiveCount}节)`,
       });
@@ -1858,14 +1858,14 @@ function renderCatalogTables(): void {
     const tdEquip = document.createElement("td");
     tdEquip.textContent = r.equipment
       .map((e) => EQUIPMENT_I18N[activeLang][e])
-      .join(activeLang === "en" ? ", " : "・");
+      .join(activeLang === "en" ? ", " : "\u30FB");
 
     const tdUtil = document.createElement("td");
     const usedCount =
       currentTimetable?.sessions.filter((s) => s.roomId === r.id).length ?? 0;
     const pct = currentEvaluation?.roomUtilizationPct[r.id] ?? 0;
     tdUtil.textContent = pickTimetableLang(activeLang, {
-      ja: `${usedCount} / 25コマ (${pct}%)`,
+      ja: `${usedCount} / 25\u30B3\u30DE (${pct}%)`,
       en: `${usedCount} / 25 slots (${pct}%)`,
       zh: `${usedCount} / 25节 (${pct}%)`,
     });
@@ -1904,7 +1904,7 @@ function renderCatalogTables(): void {
 
     const tdEnr = document.createElement("td");
     tdEnr.textContent = pickTimetableLang(activeLang, {
-      ja: `${c.enrollment}名 / 週${c.sessionsPerWeek}コマ`,
+      ja: `${c.enrollment}名 / 週${c.sessionsPerWeek}\u30B3\u30DE`,
       en: `${c.enrollment} students / ${c.sessionsPerWeek}x wk`,
       zh: `${c.enrollment}人 / 周${c.sessionsPerWeek}节`,
     });
@@ -1920,7 +1920,7 @@ function renderCatalogTables(): void {
         })
       );
     }
-    tdReq.textContent = reqs.join(activeLang === "en" ? ", " : "・");
+    tdReq.textContent = reqs.join(activeLang === "en" ? ", " : "\u30FB");
 
     const tdAssigned = document.createElement("td");
     const assigned = currentTimetable?.byCourse[c.id] ?? [];
@@ -1953,7 +1953,7 @@ export function updateDeveloperModelInspector(): void {
 
   if (appState.courses.length === 0) {
     codeBox.textContent = pickTimetableLang(activeLang, {
-      ja: "// 基礎データが未登録（白紙）のため、WaSHI数理モデルはまだ構築されていません。\n// 「✨ サンプル生成」または「📂 CSV読込」でデータを登録すると、ここに自動生成コードが表示されます。",
+      ja: "// 基礎\u30C7\u30FC\u30BF\u304C未登録（白紙）\u306E\u305F\u3081、WaSHI数理\u30E2\u30C7\u30EB\u306F\u307E\u3060構築\u3055\u308C\u3066\u3044\u307E\u305B\u3093。\n// 「✨ \u30B5\u30F3\u30D7\u30EB生成」\u307E\u305F\u306F「📂 CSV読込」\u3067\u30C7\u30FC\u30BF\u3092登録\u3059\u308B\u3068、\u3053\u3053\u306B自動生成\u30B3\u30FC\u30C9\u304C表示\u3055\u308C\u307E\u3059。",
       en: "// Timetable data is blank. WaSHI mathematical model is not built yet.\n// Generate sample data or import CSV to inspect the TypeScript model code.",
       zh: "// 基础数据为空，WaSHI数学模型尚未构建。\n// 请点击“生成示例”或“导入CSV”后查看自动生成的代码。",
     });
@@ -2013,7 +2013,7 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
     const diffStr =
       diff && diff.totalSessions > 0 && diff.changedSessionsCount > 0
         ? pickTimetableLang(activeLang, {
-            ja: ` / 前回から${diff.changedSessionsCount}コマ変更(維持率${diff.retentionRatePct}%)`,
+            ja: ` / 前回\u304B\u3089${diff.changedSessionsCount}\u30B3\u30DE変更(維持率${diff.retentionRatePct}%)`,
             en: ` / ${diff.changedSessionsCount} moved (${diff.retentionRatePct}% retained)`,
             zh: ` / 较上次变动${diff.changedSessionsCount}节(保持率${diff.retentionRatePct}%)`,
           })
@@ -2022,7 +2022,7 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
     const nSess = outcome.timetable?.sessions.length ?? 0;
     const gaps = ev?.softPenaltyCount ?? 0;
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: `全${nCourses}科目(${nSess}コマ)を配置完了 | ハード違反: 0件 / 学生空きコマ合計: ${gaps}コマ${diffStr}`,
+      ja: `全${nCourses}科目(${nSess}\u30B3\u30DE)\u3092配置完了 | \u30CF\u30FC\u30C9違反: 0件 / 学生空\u304D\u30B3\u30DE合計: ${gaps}\u30B3\u30DE${diffStr}`,
       en: `Scheduled all ${nCourses} courses (${nSess} sessions) | Hard violations: 0 / Student idle gaps: ${gaps}${diffStr}`,
       zh: `全部${nCourses}门课程(${nSess}节课)排课完成 | 硬约束违反: 0项 / 学生空堂合计: ${gaps}节${diffStr}`,
     });
@@ -2031,7 +2031,7 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
     badge.classList.add("status-infeasible");
     badge.textContent = ui.statusInfeasible;
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: `条件が衝突しているため時間割を組めません（衝突要因: ${outcome.conflicts.length}件）`,
+      ja: `条件\u304C衝突\u3057\u3066\u3044\u308B\u305F\u3081時間割\u3092組\u3081\u307E\u305B\u3093（衝突要因: ${outcome.conflicts.length}件）`,
       en: `Timetable is infeasible due to conflicting rules (${outcome.conflicts.length} conflicting constraints identified)`,
       zh: `约束条件发生冲突，无法排出可行课表（已定位冲突因素: ${outcome.conflicts.length}项）`,
     });
@@ -2063,7 +2063,7 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
     summaryText.textContent =
       outcome.errorMessage ??
       pickTimetableLang(activeLang, {
-        ja: "ソルバー実行中にエラーが発生しました",
+        ja: "\u30BD\u30EB\u30D0\u30FC実行中\u306B\u30A8\u30E9\u30FC\u304C発生\u3057\u307E\u3057\u305F",
         en: "An error occurred while running the solver",
         zh: "求解器执行过程中发生错误",
       });
@@ -2085,7 +2085,7 @@ function updateStatusBlankUI(): void {
       zh: "未录入",
     });
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: "基礎データ（教員・教室・科目）を登録すると時間割を自動編成できます",
+      ja: "基礎\u30C7\u30FC\u30BF（教員\u30FB教室\u30FB科目）\u3092登録\u3059\u308B\u3068時間割\u3092自動編成\u3067\u304D\u307E\u3059",
       en: "Register master data (faculty, rooms, courses) to auto-schedule timetables",
       zh: "录入基础数据（教师、教室、课程）后即可自动排课",
     });
@@ -2097,7 +2097,7 @@ function updateStatusBlankUI(): void {
       zh: "未编排",
     });
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: `データ準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目 — 「⚡ 時間割を自動編成」を押してください`,
+      ja: `\u30C7\u30FC\u30BF準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目 — 「⚡ 時間割\u3092自動編成」\u3092押\u3057\u3066\u304F\u3060\u3055\u3044`,
       en: `Data ready: ${appState.professors.length} Profs / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses — Click 'Auto-Schedule Timetable'`,
       zh: `数据已就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 — 请点击“自动编排课表”`,
     });
@@ -2121,18 +2121,18 @@ export function updateToolbarButtonsState(): void {
     btnSolve.disabled = isSolving || !hasCoursesAndRooms;
     btnSolve.title = !hasCoursesAndRooms
       ? pickTimetableLang(activeLang, {
-          ja: "データを読み込むと時間割の最適化を実行できます",
+          ja: "\u30C7\u30FC\u30BF\u3092読\u307F込\u3080\u3068時間割\u306E最適化\u3092実行\u3067\u304D\u307E\u3059",
           en: "Load data before solving",
           zh: "载入数据后可执行优化",
         })
       : isScheduled
       ? pickTimetableLang(activeLang, {
-          ja: "現在の制約と条件で時間割を再最適化します",
+          ja: "現在\u306E制約\u3068条件\u3067時間割\u3092再最適化\u3057\u307E\u3059",
           en: "Re-optimize timetable with current constraints",
           zh: "按当前约束条件重新优化课表",
         })
       : pickTimetableLang(activeLang, {
-          ja: "登録されたデータと制約で時間割を自動編成します",
+          ja: "登録\u3055\u308C\u305F\u30C7\u30FC\u30BF\u3068制約\u3067時間割\u3092自動編成\u3057\u307E\u3059",
           en: "Auto-schedule timetable with registered data",
           zh: "按已录入数据与规则自动排课",
         });
@@ -2142,7 +2142,7 @@ export function updateToolbarButtonsState(): void {
     btnCheck.disabled = isSolving || !hasCoursesAndRooms;
     btnCheck.title = !hasCoursesAndRooms
       ? pickTimetableLang(activeLang, {
-          ja: "データを読み込むと制約条件の矛盾チェックを実行できます",
+          ja: "\u30C7\u30FC\u30BF\u3092読\u307F込\u3080\u3068制約条件\u306E矛盾\u30C1\u30A7\u30C3\u30AF\u3092実行\u3067\u304D\u307E\u3059",
           en: "Load data before checking constraints",
           zh: "载入数据后可检查约束冲突",
         })
@@ -2251,9 +2251,9 @@ export function handleGenerateSample(autoSwitchToCatalog = false): void {
     appendChatMessage(
       "assistant",
       pickTimetableLang(activeLang, {
-        ja: `📚 **大学の基礎データ（${appState.professors.length}教員・${appState.rooms.length}教室・${appState.courses.length}科目・計30コマ）をセットしました！**\n「基礎データ」タブで名簿・設備・カリキュラムを確認できます。\n\n**次のアクション**:\n1. 「⚙️ 条件・ルール設定」タブで条件（教室定員・PC演習室設備・教員の連続コマ制限など）を確認・調整\n2. 「📅 時間割ボード」タブで「⚡ 時間割を自動編成する」をクリックして一括最適化\n3. 編成後、このAIチャットで個別の希望や例外ルールを自然言語で調整できます。`,
+        ja: `📚 **大学\u306E基礎\u30C7\u30FC\u30BF（${appState.professors.length}教員\u30FB${appState.rooms.length}教室\u30FB${appState.courses.length}科目\u30FB計30\u30B3\u30DE）\u3092\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F！**\n「基礎\u30C7\u30FC\u30BF」\u30BF\u30D6\u3067名簿\u30FB設備\u30FB\u30AB\u30EA\u30AD\u30E5\u30E9\u30E0\u3092確認\u3067\u304D\u307E\u3059。\n\n**次\u306E\u30A2\u30AF\u30B7\u30E7\u30F3**:\n1. 「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u30BF\u30D6\u3067条件（教室定員\u30FBPC演習室設備\u30FB教員\u306E連続\u30B3\u30DE制限\u306A\u3069）\u3092確認\u30FB調整\n2. 「📅 時間割\u30DC\u30FC\u30C9」\u30BF\u30D6\u3067「⚡ 時間割\u3092自動編成\u3059\u308B」\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066一括最適化\n3. 編成後、\u3053\u306EAI\u30C1\u30E3\u30C3\u30C8\u3067個別\u306E希望\u3084例外\u30EB\u30FC\u30EB\u3092自然言語\u3067調整\u3067\u304D\u307E\u3059。`,
         en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Master Data" tab.\n\n**Next Actions**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
-        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师・${appState.rooms.length}间教室・${appState.courses.length}门课程・共30节课）！**\n可在“基础数据”标签页查看名册、设备与开课计划。\n\n**后续操作**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
+        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师\u30FB${appState.rooms.length}间教室\u30FB${appState.courses.length}门课程\u30FB共30节课）！**\n可在“基础数据”标签页查看名册、设备与开课计划。\n\n**后续操作**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
       })
     );
   }
@@ -2271,7 +2271,7 @@ export function handleClearToBlank(skipConfirm: boolean | unknown = false): void
     (confirmFn
       ? confirmFn(
           pickTimetableLang(activeLang, {
-            ja: "時間割・教員・教室・科目のデータをすべてクリアして、白紙状態に戻しますか？",
+            ja: "時間割\u30FB教員\u30FB教室\u30FB科目\u306E\u30C7\u30FC\u30BF\u3092\u3059\u3079\u3066\u30AF\u30EA\u30A2\u3057\u3066、白紙状態\u306B戻\u3057\u307E\u3059\u304B？",
             en: "Are you sure you want to clear all timetable data, professors, rooms, and courses to start fresh?",
             zh: "确定要清空全部课表、教师、教室和课程数据，恢复为空白吗？",
           })
@@ -2287,7 +2287,7 @@ export function handleClearToBlank(skipConfirm: boolean | unknown = false): void
     appendChatMessage(
       "assistant",
       pickTimetableLang(activeLang, {
-        ja: "🗑️ 時間割データをクリアし、**白紙モード**に戻しました。「✨ サンプル生成」または「📂 CSV読込」でデータをセットしてください。",
+        ja: "🗑️ 時間割\u30C7\u30FC\u30BF\u3092\u30AF\u30EA\u30A2\u3057、**白紙\u30E2\u30FC\u30C9**\u306B戻\u3057\u307E\u3057\u305F。「✨ \u30B5\u30F3\u30D7\u30EB生成」\u307E\u305F\u306F「📂 CSV読込」\u3067\u30C7\u30FC\u30BF\u3092\u30BB\u30C3\u30C8\u3057\u3066\u304F\u3060\u3055\u3044。",
         en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
         zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
       })
@@ -2299,7 +2299,7 @@ function handleExportAllCsvs(): void {
   if (appState.courses.length === 0 && appState.professors.length === 0 && appState.rooms.length === 0) {
     alert(
       pickTimetableLang(activeLang, {
-        ja: "エクスポートするデータがありません（白紙状態です）。",
+        ja: "\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u3059\u308B\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093（白紙状態\u3067\u3059）。",
         en: "No data to export (currently blank).",
         zh: "暂无可导出的数据（当前为空）。",
       })
@@ -2352,7 +2352,7 @@ function checkImportReadiness(): void {
   if (crossErrors.length > 0) {
     feedbackEl.hidden = false;
     feedbackEl.className = "csv-feedback-box is-error";
-    feedbackEl.textContent = `❌ 参照整合性エラー:\n` + crossErrors.join("\n");
+    feedbackEl.textContent = `❌ 参照整合性\u30A8\u30E9\u30FC:\n` + crossErrors.join("\n");
     $<HTMLButtonElement>("btn-execute-csv-import").disabled = true;
     return;
   }
@@ -2361,7 +2361,7 @@ function checkImportReadiness(): void {
   feedbackEl.hidden = false;
   feedbackEl.className = "csv-feedback-box is-success";
   feedbackEl.textContent = pickTimetableLang(activeLang, {
-    ja: `準備完了: 教員 ${pendingCsvProfs!.length}名、教室 ${pendingCsvRooms!.length}室、科目 ${pendingCsvCourses!.length}科目をインポート可能です。`,
+    ja: `準備完了: 教員 ${pendingCsvProfs!.length}名、教室 ${pendingCsvRooms!.length}室、科目 ${pendingCsvCourses!.length}科目\u3092\u30A4\u30F3\u30DD\u30FC\u30C8可能\u3067\u3059。`,
     en: `Ready: Can import ${pendingCsvProfs!.length} profs, ${pendingCsvRooms!.length} rooms, and ${pendingCsvCourses!.length} courses.`,
     zh: `就绪: 可导入 ${pendingCsvProfs!.length}位教师、${pendingCsvRooms!.length}间教室、${pendingCsvCourses!.length}门课程。`,
   });
@@ -2394,7 +2394,7 @@ function executeCsvImport(): void {
   appendChatMessage(
     "assistant",
     pickTimetableLang(activeLang, {
-      ja: `📂 **CSVデータを正常にインポートしました**\n- **教員**: ${appState.professors.length}名\n- **教室**: ${appState.rooms.length}室\n- **科目**: ${appState.courses.length}科目\n\n右側の「📚 科目・教員・教室一覧」タブでインポート内容を確認できます。準備ができたら **「⚡ 時間割を自動編成」** ボタンを押してください！`,
+      ja: `📂 **CSV\u30C7\u30FC\u30BF\u3092正常\u306B\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3057\u305F**\n- **教員**: ${appState.professors.length}名\n- **教室**: ${appState.rooms.length}室\n- **科目**: ${appState.courses.length}科目\n\n右側\u306E「📚 科目\u30FB教員\u30FB教室一覧」\u30BF\u30D6\u3067\u30A4\u30F3\u30DD\u30FC\u30C8内容\u3092確認\u3067\u304D\u307E\u3059。準備\u304C\u3067\u304D\u305F\u3089 **「⚡ 時間割\u3092自動編成」** \u30DC\u30BF\u30F3\u3092押\u3057\u3066\u304F\u3060\u3055\u3044！`,
       en: `📂 **CSV Data Successfully Imported**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}\n\nReview the data in the Catalog tab, then click **"Auto-Schedule Timetable"**!`,
       zh: `📂 **CSV数据导入成功**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门\n\n请在基础数据标签页确认，之后点击“自动编排课表”！`,
     })
@@ -2436,7 +2436,7 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
     if (typeof alert === "function") {
       alert(
         pickTimetableLang(activeLang, {
-          ja: "科目または教室が登録されていません。CSVを読み込むか、「サンプル生成」でデータを作成してください。",
+          ja: "科目\u307E\u305F\u306F教室\u304C登録\u3055\u308C\u3066\u3044\u307E\u305B\u3093。CSV\u3092読\u307F込\u3080\u304B、「\u30B5\u30F3\u30D7\u30EB生成」\u3067\u30C7\u30FC\u30BF\u3092作成\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "No courses or rooms registered. Please import CSVs or generate sample data first.",
           zh: "未注册课程或教室。请先导入CSV或生成示例数据。",
         })
@@ -2479,7 +2479,7 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
         appendChatMessage(
           "assistant",
           pickTimetableLang(activeLang, {
-            ja: "🎉 **時間割を自動編成しました！**\n全学年・全教員・全教室に矛盾のない時間割が配置されました。\n\nここからAIチャットに『佐藤先生は月曜日休みに設定して』『機械学習と自然言語処理を被せないで』などと入力して、柔軟に要望を追加・調整できます。",
+            ja: "🎉 **時間割\u3092自動編成\u3057\u307E\u3057\u305F！**\n全学年\u30FB全教員\u30FB全教室\u306B矛盾\u306E\u306A\u3044時間割\u304C配置\u3055\u308C\u307E\u3057\u305F。\n\n\u3053\u3053\u304B\u3089AI\u30C1\u30E3\u30C3\u30C8\u306B『佐藤先生\u306F月曜日休\u307F\u306B設定\u3057\u3066』『機械学習\u3068自然言語処理\u3092被\u305B\u306A\u3044\u3067』\u306A\u3069\u3068入力\u3057\u3066、柔軟\u306B要望\u3092追加\u30FB調整\u3067\u304D\u307E\u3059。",
             en: "🎉 **Timetable automatically scheduled!**\nA feasible, conflict-free schedule has been generated across cohorts, faculty, and rooms.\n\nYou can now chat with AI Copilot (e.g. 'Set Prof. Sato unavailable on Mondays') to fine-tune requests.",
             zh: "🎉 **课表已自动编排完成！**\n已成功为全学年、全教师、全教室编排无冲突最优课表。\n\n您现在可以在AI聊天中输入“将佐藤老师周一设为休息日”等指令进行个性化微调。",
           })
@@ -2566,7 +2566,7 @@ export async function applyDropMove(
         ...r,
         days: remainingDays,
         description: pickTimetableLang(activeLang, {
-          ja: `「${course.title}(${course.id})」を ${remainingDays.map((d) => formatSlotI18n(d, p, "ja")).join("・")} に固定`,
+          ja: `「${course.title}(${course.id})」\u3092 ${remainingDays.map((d) => formatSlotI18n(d, p, "ja")).join("\u30FB")} \u306B固定`,
           en: `Pin "${course.title}(${course.id})" to ${remainingDays.map((d) => formatSlotI18n(d, p, "en")).join(", ")}`,
           zh: `将《${course.title}(${course.id})》固定在 ${remainingDays.map((d) => formatSlotI18n(d, p, "zh")).join("、")}`,
         }),
@@ -2579,7 +2579,7 @@ export async function applyDropMove(
         ...r,
         periods: remainingPeriods,
         description: pickTimetableLang(activeLang, {
-          ja: `「${course.title}(${course.id})」を ${remainingPeriods.map((p) => formatSlotI18n(d, p, "ja")).join("・")} に固定`,
+          ja: `「${course.title}(${course.id})」\u3092 ${remainingPeriods.map((p) => formatSlotI18n(d, p, "ja")).join("\u30FB")} \u306B固定`,
           en: `Pin "${course.title}(${course.id})" to ${remainingPeriods.map((p) => formatSlotI18n(d, p, "en")).join(", ")}`,
           zh: `将《${course.title}(${course.id})》固定在 ${remainingPeriods.map((p) => formatSlotI18n(d, p, "zh")).join("、")}`,
         }),
@@ -2609,7 +2609,7 @@ export async function applyDropMove(
   const roomText = targetRoom ? ` (${targetRoom.name})` : "";
 
   const desc = pickTimetableLang(activeLang, {
-    ja: `「${course.title}(${course.id})」を ${slotText}${roomText} に固定 (ドラッグ移動)`,
+    ja: `「${course.title}(${course.id})」\u3092 ${slotText}${roomText} \u306B固定 (\u30C9\u30E9\u30C3\u30B0移動)`,
     en: `Pin "${course.title}(${course.id})" to ${slotText}${roomText} (Drag & Drop)`,
     zh: `将《${course.title}(${course.id})》固定在 ${slotText}${roomText} (拖拽移动)`,
   });
@@ -2630,14 +2630,14 @@ export async function applyDropMove(
   const unpinNotice =
     unpinnedCount > 0
       ? pickTimetableLang(activeLang, {
-          ja: ` (移動元の固定を解除)`,
+          ja: ` (移動元\u306E固定\u3092解除)`,
           en: ` (unpinned from source)`,
           zh: ` (已解除原位置固定)`,
         })
       : "";
 
   const moveMsg = pickTimetableLang(activeLang, {
-    ja: `📌 **ドラッグ＆ドロップ移動**: 「${courseI18n.title}」${unpinNotice}を **${slotText}${roomText}** に固定して時間割を再編成します。`,
+    ja: `📌 **\u30C9\u30E9\u30C3\u30B0＆\u30C9\u30ED\u30C3\u30D7移動**: 「${courseI18n.title}」${unpinNotice}\u3092 **${slotText}${roomText}** \u306B固定\u3057\u3066時間割\u3092再編成\u3057\u307E\u3059。`,
     en: `📌 **Drag & Drop**: Pinned **${courseI18n.title}**${unpinNotice} to **${slotText}${roomText}** and re-optimizing timetable.`,
     zh: `📌 **拖拽移动**: 已将《${courseI18n.title}》${unpinNotice}固定在 **${slotText}${roomText}**，正在重新编排课表。`,
   });
@@ -2675,7 +2675,7 @@ function openSlotInspectorDialog(
     const infoP = document.createElement("p");
     infoP.style.margin = "0";
     infoP.textContent = pickTimetableLang(activeLang, {
-      ja: `現在の割当: ${formatSlotI18n(day, period, "ja")} 「${cI18n?.title ?? session.courseId}」 (担当: ${pI18n?.name ?? ""} / 教室: ${rI18n?.name ?? session.roomId} / 履修: ${course?.enrollment ?? 0}名)`,
+      ja: `現在\u306E割当: ${formatSlotI18n(day, period, "ja")} 「${cI18n?.title ?? session.courseId}」 (担当: ${pI18n?.name ?? ""} / 教室: ${rI18n?.name ?? session.roomId} / 履修: ${course?.enrollment ?? 0}名)`,
       en: `Current Assignment: ${formatSlotI18n(day, period, "en")} "${cI18n?.title ?? session.courseId}" (Prof: ${pI18n?.name ?? ""} / Room: ${rI18n?.name ?? session.roomId} / Enrollment: ${course?.enrollment ?? 0})`,
       zh: `当前已排: ${formatSlotI18n(day, period, "zh")} 《${cI18n?.title ?? session.courseId}》 (教师: ${pI18n?.name ?? ""} / 教室: ${rI18n?.name ?? session.roomId} / 选课: ${course?.enrollment ?? 0}人)`,
     });
@@ -2685,7 +2685,7 @@ function openSlotInspectorDialog(
     const infoP = document.createElement("p");
     infoP.style.margin = "0";
     infoP.textContent = pickTimetableLang(activeLang, {
-      ja: `${formatSlotI18n(day, period, "ja")} に固定または禁止したい科目を選択してください。`,
+      ja: `${formatSlotI18n(day, period, "ja")} \u306B固定\u307E\u305F\u306F禁止\u3057\u305F\u3044科目\u3092選択\u3057\u3066\u304F\u3060\u3055\u3044。`,
       en: `Select a course to pin or forbid at ${formatSlotI18n(day, period, "en")}.`,
       zh: `请选择要在 ${formatSlotI18n(day, period, "zh")} 固定或禁排的课程。`,
     });
@@ -2710,7 +2710,7 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("header-app-title", ui.headerTitle);
   setText("btn-toggle-tutorial", ui.btnTutorial);
   $("btn-toggle-tutorial").title = pickTimetableLang(lang, {
-    ja: "使い方チュートリアルの表示/非表示を切り替え",
+    ja: "使\u3044方\u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u306E表示/非表示\u3092切\u308A替\u3048",
     en: "Show or hide the 3-step quick guide",
     zh: "显示或隐藏 3 步快速指南",
   });
@@ -2728,9 +2728,9 @@ export function applyTimetableLang(lang: TimetableLang): void {
   const metaDesc = document.querySelector<HTMLMetaElement>('meta[name="description"]');
   if (metaDesc) {
     metaDesc.content = pickTimetableLang(lang, {
-      ja: "ブラウザ内蔵 Gemini Nano で教員・教務課の複雑な要望を入力し、WaSHI (HiGHS) で大学時間割編成問題(UCTP: 25科目・30コマ・7教室・10教員)を最適化・矛盾診断するデモ。",
+      ja: "\u30D6\u30E9\u30A6\u30B6内蔵 Gemini Nano \u3067教員\u30FB教務課\u306E複雑\u306A要望\u3092入力\u3057、WaSHI (HiGHS) \u3067大学時間割編成問題(UCTP: 25科目\u30FB30\u30B3\u30DE\u30FB7教室\u30FB10教員)\u3092最適化\u30FB矛盾診断\u3059\u308B\u30C7\u30E2。",
       en: "Interactive University Course Timetabling (UCTP) AI Copilot powered by Chrome Built-in AI (Gemini Nano) and WaSHI (HiGHS WASM MIP solver).",
-      zh: "基于浏览器端侧 Gemini Nano 与 WaSHI (HiGHS) 求解器的大学排课问题 (UCTP: 25门课・30节课・7间教室・10位教师) 优化与冲突诊断演示。",
+      zh: "基于浏览器端侧 Gemini Nano 与 WaSHI (HiGHS) 求解器的大学排课问题 (UCTP: 25门课\u30FB30节课\u30FB7间教室\u30FB10位教师) 优化与冲突诊断演示。",
     });
   }
   setText("nav-link-theory", ui.btnTheory);
@@ -2983,7 +2983,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
   activeChatAbortController = chatAbort;
 
   const analyzingText = pickTimetableLang(activeLang, {
-    ja: "⏳ 指示を解析しています...",
+    ja: "⏳ 指示\u3092解析\u3057\u3066\u3044\u307E\u3059...",
     en: "⏳ Analyzing your request...",
     zh: "⏳ 正在解析您的排课指令...",
   });
@@ -2999,7 +2999,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       renderSafeMarkdown(
         assistantMsg.bodyEl,
         pickTimetableLang(activeLang, {
-          ja: "⚠️ Chrome Built-in AI (`LanguageModel` / Gemini Nano) が有効になっていません。右上の「⚙️」ボタンから有効化手順をご確認いただくか、右側の時間割ボード・ルール設定タブから直接条件を操作してください。",
+          ja: "⚠️ Chrome Built-in AI (`LanguageModel` / Gemini Nano) \u304C有効\u306B\u306A\u3063\u3066\u3044\u307E\u305B\u3093。右上\u306E「⚙️」\u30DC\u30BF\u30F3\u304B\u3089有効化手順\u3092\u3054確認\u3044\u305F\u3060\u304F\u304B、右側\u306E時間割\u30DC\u30FC\u30C9\u30FB\u30EB\u30FC\u30EB設定\u30BF\u30D6\u304B\u3089直接条件\u3092操作\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "⚠️ Chrome Built-in AI (`LanguageModel` / Gemini Nano) is not enabled. Click the ⚙️ icon above for setup steps, or use the interactive Timetable Board and Rules tab on the right.",
           zh: "⚠️ Chrome 内置 AI (`LanguageModel` / Gemini Nano) 尚未启用。请点击右上角「⚙️」查看启用步骤，或直接在右侧课表看板与规则设置标签页中操作。",
         })
@@ -3043,7 +3043,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
         const pill = document.createElement("div");
         pill.className = "chat-op-pill chat-op-pill-rejected";
         const label = pickTimetableLang(activeLang, {
-          ja: "⚠ 引数が不正なため未適用",
+          ja: "⚠ 引数\u304C不正\u306A\u305F\u3081未適用",
           en: "⚠ Not applied (invalid arguments)",
           zh: "⚠ 参数无效，未应用",
         });
@@ -3059,7 +3059,7 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       renderSafeMarkdown(
         assistantMsg.bodyEl,
         pickTimetableLang(activeLang, {
-          ja: "⚡ WaSHI (HiGHS) で時間割を最適化しています...",
+          ja: "⚡ WaSHI (HiGHS) \u3067時間割\u3092最適化\u3057\u3066\u3044\u307E\u3059...",
           en: "⚡ Optimizing timetable with WaSHI (HiGHS)...",
           zh: "⚡ 正在使用 WaSHI (HiGHS) 优化课表...",
         })
@@ -3108,12 +3108,12 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
       msg.toLowerCase().includes("quota");
     const formattedError = isTruncated
       ? pickTimetableLang(activeLang, {
-          ja: "⚠️ Gemini Nano の出力トークン上限（4096トークン制限）に達しました。短めの指示に分割して入力するか、右側の「追加ルール・設定」タブから直接ルールを編集してください。",
+          ja: "⚠️ Gemini Nano \u306E出力\u30C8\u30FC\u30AF\u30F3上限（4096\u30C8\u30FC\u30AF\u30F3制限）\u306B達\u3057\u307E\u3057\u305F。短\u3081\u306E指示\u306B分割\u3057\u3066入力\u3059\u308B\u304B、右側\u306E「追加\u30EB\u30FC\u30EB\u30FB設定」\u30BF\u30D6\u304B\u3089直接\u30EB\u30FC\u30EB\u3092編集\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "⚠️ Gemini Nano reached its output token limit. Please try a shorter request or configure rules directly in the Custom Rules tab.",
           zh: "⚠️ 达到 Gemini Nano 输出 Token 上限。请尝试更简短的指令，或直接在右侧「规则设置」标签页中编辑。",
         })
       : pickTimetableLang(activeLang, {
-          ja: `⚠️ エラーが発生しました: ${msg}`,
+          ja: `⚠️ \u30A8\u30E9\u30FC\u304C発生\u3057\u307E\u3057\u305F: ${msg}`,
           en: `⚠️ Error: ${msg}`,
           zh: `⚠️ 发生错误: ${msg}`,
         });
@@ -3168,7 +3168,7 @@ function wireEvents(): void {
       appendChatMessage(
         "assistant",
         pickTimetableLang(activeLang, {
-          ja: "🎲 サンプルデータを読み込みました（10教員 / 7教室 / 25科目）。続いてSTEP 2で条件を確認するか、STEP 3で「⚡ 時間割を自動編成」を実行してください。",
+          ja: "🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u307F\u307E\u3057\u305F（10教員 / 7教室 / 25科目）。続\u3044\u3066STEP 2\u3067条件\u3092確認\u3059\u308B\u304B、STEP 3\u3067「⚡ 時間割\u3092自動編成」\u3092実行\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "🎲 Loaded sample data (10 faculty, 7 rooms, 25 courses). Next, check rules in STEP 2 or click '⚡ Auto-Schedule' in STEP 3.",
           zh: "🎲 已加载示例数据（10位教师、7间教室、25门课程）。接下来可在 STEP 2 查看规则，或在 STEP 3 点击「⚡ 自动排课」。",
         })
@@ -3179,20 +3179,20 @@ function wireEvents(): void {
     appendChatMessage(
       "assistant",
       pickTimetableLang(activeLang, {
-        ja: `ℹ️ 基礎データはすでに登録されています（${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目）。「⚙️ 条件・ルール設定」または「⚡ 時間割を自動編成」に進んでください。`,
+        ja: `ℹ️ 基礎\u30C7\u30FC\u30BF\u306F\u3059\u3067\u306B登録\u3055\u308C\u3066\u3044\u307E\u3059（${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目）。「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u307E\u305F\u306F「⚡ 時間割\u3092自動編成」\u306B進\u3093\u3067\u304F\u3060\u3055\u3044。`,
         en: `ℹ️ Master data is already loaded (${appState.professors.length} faculty, ${appState.rooms.length} rooms, ${appState.courses.length} courses). Proceed to Rules or click Auto-Schedule.`,
         zh: `ℹ️ 基础数据已存在（${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程）。请前往规则设置或点击自动排课。`,
       })
     );
   });
 
-  // Tutorial Step 2: Consecutive sessions for C12 (ソフトウェア設計演習)
+  // Tutorial Step 2: Consecutive sessions for C12 (Software Design Lab)
   $("btn-tut-step2").addEventListener("click", () => {
     if (appState.courses.length === 0) {
       appendChatMessage(
         "assistant",
         pickTimetableLang(activeLang, {
-          ja: "チュートリアルを試すには、まずSTEP 1で「🎲 サンプルデータを読み込む」を実行してください。",
+          ja: "\u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u3092試\u3059\u306B\u306F、\u307E\u305ASTEP 1\u3067「🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080」\u3092実行\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "To try the tutorial, please load sample data in STEP 1 first.",
           zh: "体验演示前，请先在 STEP 1 中点击「🎲 载入示例数据」。",
         })
@@ -3214,9 +3214,9 @@ function wireEvents(): void {
       appendChatMessage(
         "system",
         pickTimetableLang(activeLang, {
-          ja: "🔗 チュートリアル STEP 2: 「ソフトウェア設計演習(C12・週2コマ)」を同じ曜日の連続する時限(2コマ連続)に指定して再計算します。",
+          ja: "🔗 \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB STEP 2: 「\u30BD\u30D5\u30C8\u30A6\u30A7\u30A2設計演習(C12\u30FB週2\u30B3\u30DE)」\u3092同\u3058曜日\u306E連続\u3059\u308B時限(2\u30B3\u30DE連続)\u306B指定\u3057\u3066再計算\u3057\u307E\u3059。",
           en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)" and re-optimizing.',
-          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12・周2节)》设为同日相邻节次连排并重新求解。",
+          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12\u30FB周2节)》设为同日相邻节次连排并重新求解。",
         }),
         res.appliedLogs
       );
@@ -3225,9 +3225,9 @@ function wireEvents(): void {
       appendChatMessage(
         "system",
         pickTimetableLang(activeLang, {
-          ja: "🔗 チュートリアル STEP 2: 「ソフトウェア設計演習(C12・週2コマ)」を同日連続時限ルールに追加しました。「⚡ 時間割を自動編成」を押すと最適化が実行されます。",
+          ja: "🔗 \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB STEP 2: 「\u30BD\u30D5\u30C8\u30A6\u30A7\u30A2設計演習(C12\u30FB週2\u30B3\u30DE)」\u3092同日連続時限\u30EB\u30FC\u30EB\u306B追加\u3057\u307E\u3057\u305F。「⚡ 時間割\u3092自動編成」\u3092押\u3059\u3068最適化\u304C実行\u3055\u308C\u307E\u3059。",
           en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)". Click "⚡ Auto-Schedule" when ready.',
-          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12・周2节)》追加为同日连排规则。请点击「⚡ 自动排课」执行求解。",
+          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12\u30FB周2节)》追加为同日连排规则。请点击「⚡ 自动排课」执行求解。",
         }),
         res.appliedLogs
       );
@@ -3240,7 +3240,7 @@ function wireEvents(): void {
       appendChatMessage(
         "assistant",
         pickTimetableLang(activeLang, {
-          ja: "チュートリアルを試すには、まずSTEP 1で「🎲 サンプルデータを読み込む」を実行してください。",
+          ja: "\u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u3092試\u3059\u306B\u306F、\u307E\u305ASTEP 1\u3067「🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080」\u3092実行\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "To try the tutorial, please load sample data in STEP 1 first.",
           zh: "体验演示前，请先在 STEP 1 中点击「🎲 载入示例数据」。",
         })
@@ -3257,7 +3257,7 @@ function wireEvents(): void {
     appendChatMessage(
       "system",
       pickTimetableLang(activeLang, {
-        ja: `💥 チュートリアル STEP 3 (矛盾診断デモ): ${injected.descriptionJa}`,
+        ja: `💥 \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB STEP 3 (矛盾診断\u30C7\u30E2): ${injected.descriptionJa}`,
         en: `💥 Tutorial STEP 3 (Conflict Diagnosis Demo): Injected conflicting scenario (${sc}) and running WaSHI IIS diagnosis.`,
         zh: `💥 指南 STEP 3 (冲突诊断演示): 已注入冲突场景 (${sc}) 并运行 WaSHI 冲突诊断。`,
       }),
@@ -3284,7 +3284,7 @@ function wireEvents(): void {
       appendChatMessage(
         "system",
         pickTimetableLang(activeLang, {
-          ja: "✅ 整合性チェック完了: 現在のすべての時間割制約条件に矛盾はありません（充足可能: Sat）。",
+          ja: "✅ 整合性\u30C1\u30A7\u30C3\u30AF完了: 現在\u306E\u3059\u3079\u3066\u306E時間割制約条件\u306B矛盾\u306F\u3042\u308A\u307E\u305B\u3093（充足可能: Sat）。",
           en: "✅ Feasibility Check Passed: All current timetable constraints are mutually satisfiable (Sat).",
           zh: "✅ 一致性检查通过: 当前所有排课约束条件均无矛盾（可满足: Sat）。",
         })
@@ -3296,7 +3296,7 @@ function wireEvents(): void {
       appendChatMessage(
         "system",
         pickTimetableLang(activeLang, {
-          ja: `🚨 整合性チェック結果: ${diag.conflicts.length}件の制約が衝突しています。\n${listMd}`,
+          ja: `🚨 整合性\u30C1\u30A7\u30C3\u30AF結果: ${diag.conflicts.length}件\u306E制約\u304C衝突\u3057\u3066\u3044\u307E\u3059。\n${listMd}`,
           en: `🚨 Feasibility Check: ${diag.conflicts.length} conflicting constraints detected.\n${listMd}`,
           zh: `🚨 一致性检查结果: 检测到 ${diag.conflicts.length} 项约束冲突。\n${listMd}`,
         })
@@ -3305,7 +3305,7 @@ function wireEvents(): void {
       appendChatMessage(
         "system",
         pickTimetableLang(activeLang, {
-          ja: "⚠️ 整合性チェックが制限時間内に最適解まで完了しませんでした（判定保留: Unknown）。",
+          ja: "⚠️ 整合性\u30C1\u30A7\u30C3\u30AF\u304C制限時間内\u306B最適解\u307E\u3067完了\u3057\u307E\u305B\u3093\u3067\u3057\u305F（判定保留: Unknown）。",
           en: "⚠️ Feasibility check did not reach a proven result within the time limit (Unknown).",
           zh: "⚠️ 一致性检查未能在时限内得出确定结论（未知: Unknown）。",
         })
@@ -3319,7 +3319,7 @@ function wireEvents(): void {
     appendChatMessage(
       "system",
       pickTimetableLang(activeLang, {
-        ja: "↩ すべての時間割設定と追加ルールを初期状態にリセットしました。",
+        ja: "↩ \u3059\u3079\u3066\u306E時間割設定\u3068追加\u30EB\u30FC\u30EB\u3092初期状態\u306B\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F。",
         en: "↩ Reset all timetable parameters and custom rules to their initial defaults.",
         zh: "↩ 已将所有排课参数与追加规则重置为初始状态。",
       })
@@ -3339,7 +3339,7 @@ function wireEvents(): void {
       appendChatMessage(
         "system",
         pickTimetableLang(activeLang, {
-          ja: "ℹ️ 衝突要因に追加ルールは含まれていません。条件・ルール設定タブで基本制約やパラメータを見直してください。",
+          ja: "ℹ️ 衝突要因\u306B追加\u30EB\u30FC\u30EB\u306F含\u307E\u308C\u3066\u3044\u307E\u305B\u3093。条件\u30FB\u30EB\u30FC\u30EB設定\u30BF\u30D6\u3067基本制約\u3084\u30D1\u30E9\u30E1\u30FC\u30BF\u3092見直\u3057\u3066\u304F\u3060\u3055\u3044。",
           en: "ℹ️ No custom rules are among the conflicting constraints. Review the base constraints and parameters in the Rules tab.",
           zh: "ℹ️ 冲突因素中不包含追加规则。请在规则设置标签页中检查基本约束与参数。",
         })
@@ -3350,7 +3350,7 @@ function wireEvents(): void {
     appendChatMessage(
       "system",
       pickTimetableLang(activeLang, {
-        ja: `✨ 衝突していた追加ルール ${conflictingRuleIds.size}件を解除し、時間割を再最適化しました。`,
+        ja: `✨ 衝突\u3057\u3066\u3044\u305F追加\u30EB\u30FC\u30EB ${conflictingRuleIds.size}件\u3092解除\u3057、時間割\u3092再最適化\u3057\u307E\u3057\u305F。`,
         en: `✨ Removed ${conflictingRuleIds.size} conflicting custom rule(s) and re-optimized the timetable.`,
         zh: `✨ 已解除 ${conflictingRuleIds.size} 条发生冲突的追加规则并重新优化课表。`,
       })
@@ -3638,11 +3638,11 @@ function wireEvents(): void {
       const res = parseProfessorsCsv(text);
       const stEl = $("file-status-profs");
       if (res.errors.length > 0 || res.professors.length === 0) {
-        stEl.textContent = `❌ ${res.errors.join(", ") || "有効な教員データがありません"}`;
+        stEl.textContent = `❌ ${res.errors.join(", ") || "有効\u306A教員\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093"}`;
         stEl.className = "csv-file-status is-error";
         pendingCsvProfs = null;
       } else {
-        stEl.textContent = `✅ ${res.professors.length}名の教員データを読み込み`;
+        stEl.textContent = `✅ ${res.professors.length}名\u306E教員\u30C7\u30FC\u30BF\u3092読\u307F込\u307F`;
         stEl.className = "csv-file-status is-ready";
         pendingCsvProfs = res.professors;
       }
@@ -3658,11 +3658,11 @@ function wireEvents(): void {
       const res = parseRoomsCsv(text);
       const stEl = $("file-status-rooms");
       if (res.errors.length > 0 || res.rooms.length === 0) {
-        stEl.textContent = `❌ ${res.errors.join(", ") || "有効な教室データがありません"}`;
+        stEl.textContent = `❌ ${res.errors.join(", ") || "有効\u306A教室\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093"}`;
         stEl.className = "csv-file-status is-error";
         pendingCsvRooms = null;
       } else {
-        stEl.textContent = `✅ ${res.rooms.length}室の教室データを読み込み`;
+        stEl.textContent = `✅ ${res.rooms.length}室\u306E教室\u30C7\u30FC\u30BF\u3092読\u307F込\u307F`;
         stEl.className = "csv-file-status is-ready";
         pendingCsvRooms = res.rooms;
       }
@@ -3681,11 +3681,11 @@ function wireEvents(): void {
       const res = parseCoursesCsv(text, knownIds);
       const stEl = $("file-status-courses");
       if (res.errors.length > 0 || res.courses.length === 0) {
-        stEl.textContent = `❌ ${res.errors.join(", ") || "有効な科目データがありません"}`;
+        stEl.textContent = `❌ ${res.errors.join(", ") || "有効\u306A科目\u30C7\u30FC\u30BF\u304C\u3042\u308A\u307E\u305B\u3093"}`;
         stEl.className = "csv-file-status is-error";
         pendingCsvCourses = null;
       } else {
-        stEl.textContent = `✅ ${res.courses.length}科目のデータを読み込み`;
+        stEl.textContent = `✅ ${res.courses.length}科目\u306E\u30C7\u30FC\u30BF\u3092読\u307F込\u307F`;
         stEl.className = "csv-file-status is-ready";
         pendingCsvCourses = res.courses;
       }

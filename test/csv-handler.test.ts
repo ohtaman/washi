@@ -45,15 +45,15 @@ describe("Timetable CSV Handler & Blank Slate Mode", () => {
     expect(parsedProfs.errors).toHaveLength(0);
     expect(parsedProfs.professors).toHaveLength(defaultState.professors.length);
     const p1 = parsedProfs.professors.find((p) => p.id === "P01");
-    expect(p1?.name).toBe("佐藤 健一");
+    expect(p1?.name).toBe("Kenichi Sato");
     expect(p1?.employment).toBe("full_time");
     expect(p1?.unavailableSlots).toEqual([
-      { day: "Wed", period: 5, reason: "学部長・教授会定例" },
+      { day: "Wed", period: 5, reason: "Faculty Meeting" },
     ]);
     const p2 = parsedProfs.professors.find((p) => p.id === "P02");
     expect(p2?.unavailableSlots).toEqual([
-      { day: "Wed", period: 5, reason: "教授会定例" },
-      { day: "Mon", period: 1, reason: "共同研究定例ミーティング" },
+      { day: "Wed", period: 5, reason: "Faculty Meeting" },
+      { day: "Mon", period: 1, reason: "Joint Research Sync" },
     ]);
 
     // Rooms
@@ -77,13 +77,13 @@ describe("Timetable CSV Handler & Blank Slate Mode", () => {
     expect(parsedCourses.errors).toHaveLength(0);
     expect(parsedCourses.courses).toHaveLength(defaultState.courses.length);
     const c01 = parsedCourses.courses.find((c) => c.id === "C01");
-    expect(c01?.title).toBe("情報科学概論");
+    expect(c01?.title).toBe("Intro to Computer Science");
     expect(c01?.professorId).toBe(defaultState.courses[0].professorId);
   });
 
   it("parses Japanese header CSV and tolerant tokens correctly", () => {
     const profCsvJa = `
-教員ID,氏名,役職,雇用形態,不可曜日,1限回避,5限回避,1日最大コマ数
+教員ID,氏名,役職,雇用形態,不可曜日,1限回避,5限回避,1日最大\u30B3\u30DE数
 P99,山田 太郎,非常勤講師,非常勤,"月;金",true,false,2
 `.trim();
 
@@ -162,30 +162,30 @@ multiline"
   it("rejects duplicate IDs in individual CSV parsers and dataset validation", () => {
     const dupProfCsv = `
 id,name
-P01,佐藤 健一
-P01,佐藤 健二
+P01,Kenichi Sato
+P01,Kenichi Sato Jr
 `.trim();
     const profRes = parseProfessorsCsv(dupProfCsv);
     expect(profRes.errors.length).toBeGreaterThan(0);
-    expect(profRes.errors[0]).toContain("重複");
+    expect(profRes.errors[0]).toContain("Duplicate");
 
     const dupRoomCsv = `
 id,name,capacity
-R101,101講義室,100
-R101,101講義室B,100
+R101,Hall 101,100
+R101,Hall 101B,100
 `.trim();
     const roomRes = parseRoomsCsv(dupRoomCsv);
     expect(roomRes.errors.length).toBeGreaterThan(0);
-    expect(roomRes.errors[0]).toContain("重複");
+    expect(roomRes.errors[0]).toContain("Duplicate");
 
     const dupCourseCsv = `
 id,title,professorId
-C01,アルゴリズム,P01
-C01,データ構造,P01
+C01,Algorithms,P01
+C01,Data Structures,P01
 `.trim();
     const courseRes = parseCoursesCsv(dupCourseCsv);
     expect(courseRes.errors.length).toBeGreaterThan(0);
-    expect(courseRes.errors[0]).toContain("重複");
+    expect(courseRes.errors[0]).toContain("Duplicate");
 
     const defaultState = generateTimetableState();
     const dupCourseDataset = [
@@ -197,6 +197,6 @@ C01,データ構造,P01
       defaultState.rooms,
       dupCourseDataset
     );
-    expect(dsErrors.some((e) => e.includes("重複"))).toBe(true);
+    expect(dsErrors.some((e) => e.includes("Duplicate"))).toBe(true);
   });
 });

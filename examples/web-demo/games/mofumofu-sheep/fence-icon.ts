@@ -1,5 +1,5 @@
 /**
- * Authentic Pastoral Wooden Fence (木製の柵) SVG Graphic
+ * Authentic Pastoral Wooden Fence SVG Graphic
  *
  * Replaces the confusing log emoji (🪵) with a clear, delightful 2-post
  * wood picket fence featuring warm timber grain, cross rails, and nail accents.

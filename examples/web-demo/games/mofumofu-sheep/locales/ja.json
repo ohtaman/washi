@@ -1,0 +1,143 @@
+{
+  "title": "もふもふ羊の牧場囲い — まきばの柵パズル",
+  "metaDesc": "木の柵を置いて狼から羊を守り、WaSHIの整数計画法で高得点の牧場を完成させよう。",
+  "appTitle": "もふもふ羊の牧場囲い",
+  "appSubtitle": "まきばの柵パズル",
+  "backToShowcase": "ショーケースへ戻る",
+  "backToShowcaseShort": "← ショーケース",
+  "showcaseUrl": "../../ja/showcase/",
+  "menu": "メニュー",
+  "openMenu": "メニューを開く",
+  "bgmOn": "BGMを再生（クリックでON）",
+  "bgmOff": "BGMを停止（クリックでOFF）",
+  "bgmTagOn": "🔊 BGM: ON",
+  "bgmTagOff": "🔇 BGM: OFF",
+  "howToPlay": "遊び方",
+  "howToPlayTooltip": "遊び方とチュートリアルを見る",
+  "clearedStages": "クリア済みステージ数",
+  "clearedSummary": "クリア済みステージ数: {cleared}（合計スコア: {total} pt）",
+  "stageSelect": "ステージ選択",
+  "prevStage": "前のステージへ",
+  "nextStage": "次のステージへ",
+  "selectStageNumber": "ステージ番号を選択",
+  "jumpToReached": "到達済みステージへ移動",
+  "tutorialTag": "🔰 チュートリアル {current}/{total}",
+  "tutorialSuffix": " [チュートリアル {current}/{total}]",
+  "remainingFences": "柵の残り",
+  "remainingFencesText": "残り {rem} / {max}",
+  "currentAndTargetScore": "現在 / クリア目標",
+  "scoreDisplay": "{cur} / 目標 {target} pt",
+  "statusWolfBreach": "オオカミ侵入中",
+  "statusTargetAchieved": "目標達成・STAGE CLEAR",
+  "statusPitDeduction": "穴ぼこ混入中（あと +{diff} pt）",
+  "statusNeedPoints": "目標まであと +{diff} pt",
+  "clearHeadline": "まきば完成・ステージクリア",
+  "clearSubtext": "目標スコア達成",
+  "clearBannerGolden": "🎉 STAGE CLEAR・黄金のまきば完成",
+  "clearBannerScore": "まきば得点 {score} / 目標 {target} pt 達成",
+  "btnNextStage": "次のステージへ ▶",
+  "btnAdvanceToStage": "Stage {n} へ進む ▶",
+  "boardAria": "牧場パズル盤面",
+  "btnUndo": "1手戻す",
+  "btnUndoTitle": "1手戻す (Zキー)",
+  "btnRestart": "リスタート",
+  "btnRestartTitle": "最初からやり直す (Rキー)",
+  "btnHint": "1手ヒント",
+  "btnHintTitle": "次の1手を盤面上で光らせて教えます (Hキー)",
+  "btnSolve": "✨ お手本を見る",
+  "btnSolveTitle": "最適なお手本解答を表示します",
+  "solveBannerOptimal": "✨ お手本の配置（目標スコア達成）",
+  "adviceDefensePit": "オオカミ防衛成功! 🕳️穴ぼこを埋めるか仕切ってあと +{diff} pt 稼ごう",
+  "adviceDefenseExpand": "オオカミ防衛成功! 柵の位置を工夫してあと +{diff} pt 稼ごう",
+  "adviceSafeNeedPoints": "オオカミは防げたけれど、目標スコアまであと +{diff} pt 必要です",
+  "adviceFallback": "お手本・ヒントの計算に失敗しました（目標スコアでプレイ可能です）",
+  "adviceFallbackValid": "クリア目標 {target} pt はそのまま有効です",
+  "legendStripAria": "タイル得点一覧",
+  "legendSheep": "ヒツジ（+2点・守る対象）",
+  "legendGrass": "草地（+1点）",
+  "legendStrawberry": "野いちご（+5点）",
+  "legendPit": "穴ぼこ（-5点・丸太の柵で塞げる）",
+  "legendBridge": "石橋（+1点・通り抜け可・柵は置けない）",
+  "legendBridgeLabel": "🌉 +1 <small>(柵×)</small>",
+  "legendWall": "水辺・岩（通り抜け不可の壁）",
+  "legendWallLabel": "💧🪨 壁",
+  "mascotAlt": "モコ",
+  "tapInstruction": "👆 タップ",
+  "rulesTitle": "🐑 遊び方ガイド",
+  "rulesClose": "閉じる",
+  "step1Title": "1. マスをタップして柵を置く",
+  "step1Desc": "オオカミ🐺がヒツジ🐑へたどり着けないように、通り道に木の柵を置いて遮断します。もう一度タップすると柵を外せます。",
+  "step2Title": "2. 広いまきばを作って目標スコア達成",
+  "step2Desc": "オオカミを防いだ状態で、ヒツジ🐑が歩いて行ける範囲（安全なまきば）の合計得点が「クリア目標」に届けばステージクリアです。",
+  "step3Title": "3. 石橋🌉と穴ぼこ🕳️の仕掛け",
+  "step3Desc": "🌉石橋は通れますが柵は置けません。🕳️穴ぼこ（-5点）はまきばに入ると減点ですが、真上に木の柵を打ち込めば穴が埋まって壁になります。",
+  "tutorialHeader": "🔰 基本ルールを学ぶチュートリアル（Stage 1〜4）",
+  "btnGotIt": "わかった・パズルに戻る",
+  "stageDefaultOneLiner": "{n}本の柵で🐺の侵入を防ぎ、目標スコア {target} pt を達成しよう",
+  "stages": {
+    "stage-1": {
+      "title": "はじめての柵",
+      "oneLiner": "マスをタップして柵を置き、🐺から🐑を守ろう"
+    },
+    "stage-2": {
+      "title": "いちごの丘",
+      "oneLiner": "🐑のすぐ隣で塞ぐと🍓に届かない。🐺の近くで塞いで目標スコアを達成しよう"
+    },
+    "stage-3": {
+      "title": "石橋のルール",
+      "oneLiner": "🌉石橋の上には柵を置けないよ。橋を渡って南西の🍓も回収しよう"
+    },
+    "stage-4": {
+      "title": "穴ぼこ埋め",
+      "oneLiner": "🕳️穴ぼこ(-5点)がまきばに入ると減点になるよ。🕳️の真上に木の柵を打ち込んで穴を塞ごう"
+    },
+    "stage-5": {
+      "title": "石橋のむこう側",
+      "oneLiner": "ただ守るだけでは目標に届かないよ。2つの橋の出口まで柵を押し上げよう"
+    },
+    "stage-6": {
+      "title": "一石二鳥の杭打ち",
+      "oneLiner": "🕳️(-5)の真上に木の柵を打ち込めば、穴埋めと🐺の侵入阻止を同時に達成できるよ"
+    },
+    "stage-7": {
+      "title": "穴ぼこの向こう側",
+      "oneLiner": "東の🕳️(-5)を柵で塞ぐと奥の🍓畑に届かない。あえて通路を残して奥へ進む逆転の発想で挑もう"
+    },
+    "stage-8": {
+      "title": "おとりの野いちご",
+      "oneLiner": "すぐ隣の🍓に飛びつくと柵が足りなくなるよ。西を1本で切って東の果樹園を広げよう"
+    },
+    "stage-9": {
+      "title": "ふたりの合流作戦",
+      "oneLiner": "2匹の🐑を別々に囲うと目標に届かない。中央の回廊でひとつの牧場につなごう"
+    },
+    "stage-10": {
+      "title": "穴ぼこだらけの丘",
+      "oneLiner": "3つの🕳️(-5)がある丘。丸太で直接埋める穴と、柵の外へ切り離す穴を見極めよう"
+    },
+    "stage-11": {
+      "title": "三方からの包囲網",
+      "oneLiner": "3匹の🐺が石橋から迫る。4本の柵で守れる最大の果樹園を見つけ出そう"
+    },
+    "stage-12": {
+      "title": "黄金のまきば",
+      "oneLiner": "5本の柵すべてを使い切り、満点の黄金牧場を完成させよう"
+    }
+  },
+  "themes": [
+    "風わたる高原牧場",
+    "石橋の渓谷",
+    "いちご薫る深森",
+    "霧晴れる大草原",
+    "岩山の回廊",
+    "せせらぎの果樹園",
+    "星降る夜のまきば",
+    "陽だまりの丘陵",
+    "迷宮の石畳",
+    "双子川のほとり",
+    "古の石垣牧場",
+    "天空の黄金牧場"
+  ],
+  "clearSubtextPit": "現在 {score} pt / クリア目標 {target} pt — まきばに🕳️穴ぼこ（-5点）が入っています。真上に柵を打ち込んで埋めるか外へ仕切りましょう",
+  "clearSubtextExpand": "現在 {score} pt / クリア目標 {target} pt — 柵の位置を工夫して、もっと🍓や🌱を取り込みましょう"
+}

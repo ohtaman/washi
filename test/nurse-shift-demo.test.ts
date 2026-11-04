@@ -214,7 +214,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
               return JSON.stringify({
                 intentType: "consult_only",
                 operations: [],
-                summaryJa: "テスト",
+                summaryJa: "\u30c6\u30b9\u30c8",
               });
             },
             destroy() {},
@@ -310,10 +310,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     ).toBe(true);
   }, 30_000);
 
-  it("handles multi-turn training prerequisite ('2回受けないと夜勤ができない') and weekday restriction ('研修は平日のみ')", async () => {
+  it("handles multi-turn training prerequisite ('requires 2 trainings before night shift') and weekday restriction ('weekdays only')", async () => {
     let state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
 
-    // Turn 1: "新人研修シフトを追加して"
+    // Turn 1: Add newcomer training shift
     state = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
         { tool_name: "add_custom_shift", args: { shiftName: "新人研修", shortLabel: "研" } },
@@ -324,7 +324,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(tDef).toBeDefined();
     const tCode = tDef!.code;
 
-    // Turn 2: "新人は新人研修を2回受けないと夜勤ができない"
+    // Turn 2: Newcomers cannot work night shift without 2 trainings
     state = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
         { tool_name: "add_shift_quota", args: { shiftName: "新人研修", attribute: "newcomer", count: 2 } },
@@ -337,7 +337,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     ]).updatedState;
     expect(state.skillDefs?.find((s) => s.code === "newcomer")?.maxNight).toBe(1);
 
-    // Turn 3: "研修は平日のみ"
+    // Turn 3: Training is weekdays only
     state = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
         {
@@ -379,10 +379,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     }
   }, 30_000);
 
-  it("handles previous-month training credit, splitting newcomers into 新人1 and 新人2, and daily shift cap ('1日に2名まで')", async () => {
+  it("handles previous-month training credit, splitting newcomers into two groups, and daily shift cap ('max 2 per day')", async () => {
     let state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
 
-    // Turn 1: "新人研修シフトを追加して。新人は、この研修を必ず2回受けないと、夜勤や準夜勤にはいれない。"
+    // Turn 1: Add newcomer training shift. Newcomers must take 2 trainings before night shift.
     state = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
         { tool_name: "add_custom_shift", args: { shiftName: "新人研修", shortLabel: "研" } },
@@ -401,7 +401,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(tDef).toBeDefined();
     const tCode = tDef!.code;
 
-    // Turn 2: "新人研修は、前の月でもよい、というふうにできる？"
+    // Turn 2: Can training from previous month count?
     const applied2 = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
         { tool_name: "allow_prev_month_shift", args: { shiftName: "新人研修" } },
@@ -431,7 +431,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(group1Nurses.length).toBe(3);
     expect(group2Nurses.length).toBe(3);
 
-    // Turn 4: "新人研修は、1日に2名までしか受けられない。"
+    // Turn 4: Training limited to at most 2 people per day.
     const applied4 = applyChatOperationsToState(state, [
       convertStage2ToolToOperation(
         { tool_name: "add_daily_shift_cap", args: { shiftName: "新人研修", maxStaffPerDay: 2 } },
@@ -504,7 +504,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         return JSON.stringify(currentTurn2Reply);
       },
       async *promptStreaming() {
-        yield "完了しました。";
+        yield "完了\u3057\u307e\u3057\u305f。";
       },
       async clone() {
         return createMockSession();
@@ -528,12 +528,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       // Step 1: Add custom shift "T" + quota + prerequisite via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2
       currentTurn1Reply = {
-        response: "新人研修シフト(研)を追加し、2回受講するまで夜勤に入れないルールを設定します。",
+        response: "新人研修\u30b7\u30d5\u30c8(研)\u3092追加\u3057、2回受講\u3059\u308b\u307e\u3067夜勤\u306b入\u308c\u306a\u3044\u30eb\u30fc\u30eb\u3092設定\u3057\u307e\u3059。",
         routes: [
           {
             tool_type: "custom_shift",
             instruction:
-              "新人研修シフトを追加して。新人は、この研修を必ず2回受けないと、夜勤や準夜勤にはいれない。",
+              "新人研修\u30b7\u30d5\u30c8\u3092追加\u3057\u3066。新人\u306f、\u3053\u306e研修\u3092必\u305a2回受\u3051\u306a\u3044\u3068、夜勤\u3084準夜勤\u306b\u306f\u3044\u308c\u306a\u3044。",
           },
         ],
       };
@@ -566,11 +566,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       };
 
       const plan1 = await manager.extractPlan(
-        "新人研修シフトを追加して。新人は、この研修を必ず2回受けないと、夜勤や準夜勤にはいれない。",
+        "新人研修\u30b7\u30d5\u30c8\u3092追加\u3057\u3066。新人\u306f、\u3053\u306e研修\u3092必\u305a2回受\u3051\u306a\u3044\u3068、夜勤\u3084準夜勤\u306b\u306f\u3044\u308c\u306a\u3044。",
         state
       );
       expect(plan1.intentType).toBe("modify_and_solve");
-      expect(plan1.stage1Response).toContain("新人研修シフト");
+      expect(plan1.stage1Response).toContain("新人研修\u30b7\u30d5\u30c8");
       expect(plan1.routerTrace?.length).toBe(4);
       expect(promptCalls.length).toBe(2);
       expect(promptCalls[0]!.schema).toBe(STAGE1_ROUTER_SCHEMA);
@@ -583,11 +583,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       // Step 2: Allow previous month training credit via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "前月までの新人研修の受講実績も含めるように設定します。",
+        response: "前月\u307e\u3067\u306e新人研修\u306e受講実績\u3082含\u3081\u308b\u3088\u3046\u306b設定\u3057\u307e\u3059。",
         routes: [
           {
             tool_type: "custom_shift",
-            instruction: "新人研修は、前の月までの受講分も含めてよいことにして。",
+            instruction: "新人研修\u306f、前\u306e月\u307e\u3067\u306e受講分\u3082含\u3081\u3066\u3088\u3044\u3053\u3068\u306b\u3057\u3066。",
           },
         ],
       };
@@ -601,7 +601,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       };
 
       const plan2 = await manager.extractPlan(
-        "新人研修は、前の月までの受講分も含めてよいことにして。",
+        "新人研修\u306f、前\u306e月\u307e\u3067\u306e受講分\u3082含\u3081\u3066\u3088\u3044\u3053\u3068\u306b\u3057\u3066。",
         state
       );
       expect(plan2.intentType).toBe("modify_and_solve");
@@ -610,14 +610,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(promptCalls[1]!.schema).toBe(CUSTOM_SHIFT_TOOLS_SCHEMA);
       state = applyChatOperationsToState(state, plan2.operations).updatedState;
 
-      // Step 3: Weekday restriction + Daily cap ("1日に2名まで") via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
+      // Step 3: Weekday restriction + Daily cap ("max 2 per day") via Turn 1 (routes: [{ tool_type: "custom_shift" }]) -> Turn 2 (CUSTOM_SHIFT_TOOLS_SCHEMA)
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "新人研修を平日のみ・1日2名までに制限します。",
+        response: "新人研修\u3092平日\u306e\u307f\u30fb1日2名\u307e\u3067\u306b制限\u3057\u307e\u3059。",
         routes: [
           {
             tool_type: "custom_shift",
-            instruction: "新人研修は平日のみで、1日に2名までしか受けられない。",
+            instruction: "新人研修\u306f平日\u306e\u307f\u3067、1日\u306b2名\u307e\u3067\u3057\u304b受\u3051\u3089\u308c\u306a\u3044。",
           },
         ],
       };
@@ -635,7 +635,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       };
 
       const plan3 = await manager.extractPlan(
-        "新人研修は平日のみで、1日に2名までしか受けられない。",
+        "新人研修\u306f平日\u306e\u307f\u3067、1日\u306b2名\u307e\u3067\u3057\u304b受\u3051\u3089\u308c\u306a\u3044。",
         state
       );
       expect(plan3.intentType).toBe("modify_and_solve");
@@ -673,14 +673,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       );
       expect((addCustomShiftBranch!.properties.args as any).required).toEqual(["shiftName"]);
 
-      // Step 4b: Night shift leveling by skill/role ("スキル毎に、夜勤の数を平準化したい" -> ward_coverage_and_param -> level_night_shifts)
+      // Step 4b: Night shift leveling by skill/role ("level night shifts by skill" -> ward_coverage_and_param -> level_night_shifts)
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "スキルごとに夜勤の数を平準化するルールを設定します。",
+        response: "\u30b9\u30ad\u30eb\u3054\u3068\u306b夜勤\u306e数\u3092平準化\u3059\u308b\u30eb\u30fc\u30eb\u3092設定\u3057\u307e\u3059。",
         routes: [
           {
             tool_type: "ward_coverage_and_param",
-            instruction: "スキル毎に、夜勤の数を平準化したい",
+            instruction: "\u30b9\u30ad\u30eb毎\u306b、夜勤\u306e数\u3092平準化\u3057\u305f\u3044",
           },
         ],
       };
@@ -692,7 +692,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           },
         ],
       };
-      const planLevel = await manager.extractPlan("スキル毎に、夜勤の数を平準化したい", state);
+      const planLevel = await manager.extractPlan("\u30b9\u30ad\u30eb毎\u306b、夜勤\u306e数\u3092平準化\u3057\u305f\u3044", state);
       expect(planLevel.intentType).toBe("modify_and_solve");
       expect(planLevel.operations.length).toBe(1);
       expect(planLevel.operations[0]!.op).toBe("level_night_shifts");
@@ -711,16 +711,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       // Step 4c: Multi-category routing with per-category decomposed instruction (routes: [{ tool_type, instruction }]) + thought + onProgress
       promptCalls.length = 0;
       currentTurn1Reply = {
-        thought: "佐藤さんの12日休み固定はstaff_calendar、最大連勤4日への変更はward_coverage_and_paramに分解する。",
-        response: "佐藤さんの12日を公休に固定し、最大連勤日数を4日に変更します。",
+        thought: "佐藤\u3055\u3093\u306e12日休\u307f固定\u306fstaff_calendar、最大連勤4日\u3078\u306e変更\u306fward_coverage_and_param\u306b分解\u3059\u308b。",
+        response: "佐藤\u3055\u3093\u306e12日\u3092公休\u306b固定\u3057、最大連勤日数\u30924日\u306b変更\u3057\u307e\u3059。",
         routes: [
           {
             tool_type: "staff_calendar",
-            instruction: "佐藤 美咲さんの12日を確定の休み(O)にして",
+            instruction: "佐藤 美咲\u3055\u3093\u306e12日\u3092確定\u306e休\u307f(O)\u306b\u3057\u3066",
           },
           {
             tool_type: "ward_coverage_and_param",
-            instruction: "最大連勤を4日に変更して",
+            instruction: "最大連勤\u30924日\u306b変更\u3057\u3066",
           },
         ],
       };
@@ -742,7 +742,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       });
       const progressPhases: string[] = [];
       const planMultiCat = await manager.extractPlan(
-        "佐藤 美咲さんの12日を確定の休み(O)にして、最大連勤を4日に変更して",
+        "佐藤 美咲\u3055\u3093\u306e12日\u3092確定\u306e休\u307f(O)\u306b\u3057\u3066、最大連勤\u30924日\u306b変更\u3057\u3066",
         state,
         undefined,
         (ev) => progressPhases.push(ev.phase)
@@ -750,7 +750,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       currentTurn2ReplyBySchema.clear();
       expect(planMultiCat.intentType).toBe("modify_and_solve");
       expect(planMultiCat.stage1Thought).toBe(
-        "佐藤さんの12日休み固定はstaff_calendar、最大連勤4日への変更はward_coverage_and_paramに分解する。"
+        "佐藤\u3055\u3093\u306e12日休\u307f固定\u306fstaff_calendar、最大連勤4日\u3078\u306e変更\u306fward_coverage_and_param\u306b分解\u3059\u308b。"
       );
       expect(progressPhases).toEqual([
         "turn1_start",
@@ -763,11 +763,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       ]);
       expect(promptCalls.length).toBe(3); // Turn 1 + Turn 2 (staff_calendar) + Turn 2 (ward_coverage_and_param)
       expect(promptCalls[1]!.schema).toBe(STAFF_CALENDAR_TOOLS_SCHEMA);
-      expect(promptCalls[1]!.promptText).toContain("佐藤 美咲さんの12日を確定の休み(O)にして");
-      expect(promptCalls[1]!.promptText).not.toContain("最大連勤を4日に変更して");
+      expect(promptCalls[1]!.promptText).toContain("佐藤 美咲\u3055\u3093\u306e12日\u3092確定\u306e休\u307f(O)\u306b\u3057\u3066");
+      expect(promptCalls[1]!.promptText).not.toContain("最大連勤\u30924日\u306b変更\u3057\u3066");
       expect(promptCalls[2]!.schema).toBe(WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA);
-      expect(promptCalls[2]!.promptText).toContain("最大連勤を4日に変更して");
-      expect(promptCalls[2]!.promptText).not.toContain("佐藤 美咲さんの12日を確定の休み(O)にして");
+      expect(promptCalls[2]!.promptText).toContain("最大連勤\u30924日\u306b変更\u3057\u3066");
+      expect(promptCalls[2]!.promptText).not.toContain("佐藤 美咲\u3055\u3093\u306e12日\u3092確定\u306e休\u307f(O)\u306b\u3057\u3066");
       expect(planMultiCat.operations).toEqual([
         {
           op: "add_request",
@@ -788,75 +788,75 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       // and streamConsultationReply with outcome=null answers the question without solver status/solveTime
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "現在のルール設定や対応機能をご説明します。",
+        response: "現在\u306e\u30eb\u30fc\u30eb設定\u3084対応機能\u3092\u3054説明\u3057\u307e\u3059。",
         routes: [{ tool_type: "question" }],
       };
-      const plan4 = await manager.extractPlan("なにができる？", state);
+      const plan4 = await manager.extractPlan("\u306a\u306b\u304c\u3067\u304d\u308b？", state);
       expect(plan4.intentType).toBe("consult_only");
       expect(plan4.nonToolReason).toBe("question");
       expect(plan4.operations).toEqual([]);
       expect(promptCalls.length).toBe(1);
 
       let consultReply = "";
-      for await (const chunk of manager.streamConsultationReply("なにができる？", [], state, null)) {
+      for await (const chunk of manager.streamConsultationReply("\u306a\u306b\u304c\u3067\u304d\u308b？", [], state, null)) {
         consultReply += chunk;
       }
       const consultTrace = manager.getLastConsultTrace();
       expect(consultTrace).toBeDefined();
-      expect(consultTrace!.userPrompt).toContain("このAIアシスタントでできること");
-      expect(consultTrace!.userPrompt).toContain("スキル・資格の追加・削除・リーダー代行設定");
-      expect(consultTrace!.userPrompt).not.toContain("WaSHI (HiGHS) 最適化・検証結果");
+      expect(consultTrace!.userPrompt).toContain("\u3053\u306eAI\u30a2\u30b7\u30b9\u30bf\u30f3\u30c8\u3067\u3067\u304d\u308b\u3053\u3068");
+      expect(consultTrace!.userPrompt).toContain("\u30b9\u30ad\u30eb\u30fb資格\u306e追加\u30fb削除\u30fb\u30ea\u30fc\u30c0\u30fc代行設定");
+      expect(consultTrace!.userPrompt).not.toContain("WaSHI (HiGHS) 最適化\u30fb検証結果");
       expect(consultTrace!.userPrompt).not.toContain("求解時間:");
-      expect(consultTrace!.systemPrompt).not.toContain("変更オペレーションは実行されませんでした");
+      expect(consultTrace!.systemPrompt).not.toContain("変更\u30aa\u30da\u30ec\u30fc\u30b7\u30e7\u30f3\u306f実行\u3055\u308c\u307e\u305b\u3093\u3067\u3057\u305f");
 
       // Step 5b: Unsupported request ("unsupported") skips Turn 2 and instructs Turn 3 to explain out-of-scope + suggest alternatives
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "給与や手当額の計算・変更には対応していません。",
+        response: "給与\u3084手当額\u306e計算\u30fb変更\u306b\u306f対応\u3057\u3066\u3044\u307e\u305b\u3093。",
         routes: [{ tool_type: "unsupported" }],
       };
-      const planUnsupported = await manager.extractPlan("夜勤手当を1回5000円に増やして", state);
+      const planUnsupported = await manager.extractPlan("夜勤手当\u30921回5000円\u306b増\u3084\u3057\u3066", state);
       expect(planUnsupported.intentType).toBe("consult_only");
       expect(planUnsupported.nonToolReason).toBe("unsupported");
       expect(planUnsupported.operations).toEqual([]);
       expect(promptCalls.length).toBe(1);
 
-      for await (const _ of manager.streamConsultationReply("夜勤手当を1回5000円に増やして", [], state, null)) {
+      for await (const _ of manager.streamConsultationReply("夜勤手当\u30921回5000円\u306b増\u3084\u3057\u3066", [], state, null)) {
         // consume stream
       }
       const unsupportedTrace = manager.getLastConsultTrace();
-      expect(unsupportedTrace!.userPrompt).toContain("【システム未対応の要求に対する回答指示】");
-      expect(unsupportedTrace!.userPrompt).toContain("給与や手当額の計算・変更には対応していません。");
+      expect(unsupportedTrace!.userPrompt).toContain("【\u30b7\u30b9\u30c6\u30e0未対応\u306e要求\u306b対\u3059\u308b回答指示】");
+      expect(unsupportedTrace!.userPrompt).toContain("給与\u3084手当額\u306e計算\u30fb変更\u306b\u306f対応\u3057\u3066\u3044\u307e\u305b\u3093。");
 
       // Step 5c: Ambiguous request ("clarify") skips Turn 2 and instructs Turn 3 to ask for missing specifics
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "どなたの・何月何日（または何日〜何日）を公休にするか教えていただけますか？",
+        response: "\u3069\u306a\u305f\u306e\u30fb何月何日（\u307e\u305f\u306f何日〜何日）\u3092公休\u306b\u3059\u308b\u304b教\u3048\u3066\u3044\u305f\u3060\u3051\u307e\u3059\u304b？",
         routes: [{ tool_type: "clarify" }],
       };
-      const planClarify = await manager.extractPlan("来週休ませて", state);
+      const planClarify = await manager.extractPlan("来週休\u307e\u305b\u3066", state);
       expect(planClarify.intentType).toBe("consult_only");
       expect(planClarify.nonToolReason).toBe("clarify");
       expect(planClarify.operations).toEqual([]);
       expect(promptCalls.length).toBe(1);
 
-      for await (const _ of manager.streamConsultationReply("来週休ませて", [], state, null)) {
+      for await (const _ of manager.streamConsultationReply("来週休\u307e\u305b\u3066", [], state, null)) {
         // consume stream
       }
       const clarifyTrace = manager.getLastConsultTrace();
-      expect(clarifyTrace!.userPrompt).toContain("【情報不足・確認が必要な指示に対する回答指示】");
-      expect(clarifyTrace!.userPrompt).not.toContain("このAIアシスタントでできること");
+      expect(clarifyTrace!.userPrompt).toContain("【情報不足\u30fb確認\u304c必要\u306a指示\u306b対\u3059\u308b回答指示】");
+      expect(clarifyTrace!.userPrompt).not.toContain("\u3053\u306eAI\u30a2\u30b7\u30b9\u30bf\u30f3\u30c8\u3067\u3067\u304d\u308b\u3053\u3068");
 
-      // Step 6: Skill addition ("スキルを追加したい。副リーダー。リーダーの代わりになれる。")
+      // Step 6: Skill addition ("Add assistant leader skill who can substitute for leader")
       // Routes to "skill_and_pair" -> add_skill_def, adds sub_leader with substitutesFor="leader_cap",
       // and does NOT create a custom shift CS1 or secretly modify nurse profiles without update_nurse_skill
       promptCalls.length = 0;
       currentTurn1Reply = {
-        response: "リーダーの代わりになれる「副リーダー」スキルを追加します。",
+        response: "\u30ea\u30fc\u30c0\u30fc\u306e代\u308f\u308a\u306b\u306a\u308c\u308b「副\u30ea\u30fc\u30c0\u30fc」\u30b9\u30ad\u30eb\u3092追加\u3057\u307e\u3059。",
         routes: [
           {
             tool_type: "skill_and_pair",
-            instruction: "スキルを追加したい。副リーダー。リーダーの代わりになれる。",
+            instruction: "\u30b9\u30ad\u30eb\u3092追加\u3057\u305f\u3044。副\u30ea\u30fc\u30c0\u30fc。\u30ea\u30fc\u30c0\u30fc\u306e代\u308f\u308a\u306b\u306a\u308c\u308b。",
           },
         ],
       };
@@ -864,12 +864,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         tools: [
           {
             tool_name: "add_skill_def",
-            args: { skillName: "副リーダー", substitutesFor: "リーダー" },
+            args: { skillName: "副\u30ea\u30fc\u30c0\u30fc", substitutesFor: "\u30ea\u30fc\u30c0\u30fc" },
           },
         ],
       };
       const planSkillAdd = await manager.extractPlan(
-        "スキルを追加したい。副リーダー。リーダーの代わりになれる。",
+        "\u30b9\u30ad\u30eb\u3092追加\u3057\u305f\u3044。副\u30ea\u30fc\u30c0\u30fc。\u30ea\u30fc\u30c0\u30fc\u306e代\u308f\u308a\u306b\u306a\u308c\u308b。",
         state
       );
       expect(planSkillAdd.intentType).toBe("modify_and_solve");
@@ -877,7 +877,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(planSkillAdd.operations).toEqual([
         {
           op: "add_skill_def",
-          skillName: "副リーダー",
+          skillName: "副\u30ea\u30fc\u30c0\u30fc",
           substitutesFor: "leader_cap",
           skillMinDay: undefined,
           skillMinEvening: undefined,
@@ -885,9 +885,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         },
       ]);
       state = applyChatOperationsToState(state, planSkillAdd.operations).updatedState;
-      expect(state.customShiftDefs.some((d) => d.label === "副リーダー")).toBe(false);
+      expect(state.customShiftDefs.some((d) => d.label === "副\u30ea\u30fc\u30c0\u30fc")).toBe(false);
       const subLeaderDef = state.skillDefs?.find(
-        (s) => s.label === "副リーダー" && s.substitutesFor === "leader_cap"
+        (s) => s.label === "副\u30ea\u30fc\u30c0\u30fc" && s.substitutesFor === "leader_cap"
       );
       expect(subLeaderDef).toBeDefined();
       const subLeaderCode = subLeaderDef!.code;
@@ -897,7 +897,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       // Explicitly assign sub_leader to mid-career nurses via update_nurse_skill
       state = applyChatOperationsToState(state, [
         convertStage2ToolToOperation(
-          { tool_name: "update_nurse_skill", args: { target: "中堅", skillName: "副リーダー", action: "add" } },
+          { tool_name: "update_nurse_skill", args: { target: "中堅", skillName: "副\u30ea\u30fc\u30c0\u30fc", action: "add" } },
           state
         )!,
       ]).updatedState;
@@ -932,9 +932,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
   it("supports dynamic skill removal, night-to-off interval, team balance, and individual nurse contracts", async () => {
     let state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
 
-    // 1. Add substitute skill "副リーダー", remove "人工呼吸器", require N->O transition + team_A/team_B staffing rules, and set N05 to day-only
+    // 1. Add substitute skill "sub-leader", remove "ventilator", require N->O transition + team_A/team_B staffing rules, and set N05 to day-only
     state = applyChatOperationsToState(state, [
-      { op: "add_skill_def", skillName: "副リーダー", substitutesFor: "leader_cap" },
+      { op: "add_skill_def", skillName: "副\u30ea\u30fc\u30c0\u30fc", substitutesFor: "leader_cap" },
       { op: "set_shift_transition", fromShift: "N", toShift: "O", transitionPolicy: "require" },
       { op: "set_staffing_rule", targetShift: "D", shifts: ["D"], attribute: "team_A", minCount: 3 },
       { op: "set_staffing_rule", targetShift: "D", shifts: ["D"], attribute: "team_B", minCount: 3 },
@@ -952,7 +952,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     ]).updatedState;
 
     expect(
-      state.skillDefs?.some((s) => s.label === "副リーダー" && s.substitutesFor === "leader_cap")
+      state.skillDefs?.some((s) => s.label === "副\u30ea\u30fc\u30c0\u30fc" && s.substitutesFor === "leader_cap")
     ).toBe(true);
     expect(state.skillDefs?.some((s) => s.code === "ventilator")).toBe(false);
     expect(state.nurses.some((n) => n.skills.includes("ventilator"))).toBe(false);
@@ -1024,13 +1024,13 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         availability: async () => "available",
         create: async () => ({
           prompt: async (input: string) => {
-            if (input.includes("ユーザーの発話:")) {
+            if (input.includes("\u30e6\u30fc\u30b6\u30fc\u306e発話:")) {
               return JSON.stringify({
-                response: "小林さんの11月1日から11月17日までのシフトを公休(O)に固定します。",
+                response: "小林\u3055\u3093\u306e11月1日\u304b\u308911月17日\u307e\u3067\u306e\u30b7\u30d5\u30c8\u3092公休(O)\u306b固定\u3057\u307e\u3059。",
                 routes: [
                   {
                     tool_type: "staff_calendar",
-                    instruction: "小林さんが怪我をして11/17まで動けないらしい。",
+                    instruction: "小林\u3055\u3093\u304c怪我\u3092\u3057\u306611/17\u307e\u3067動\u3051\u306a\u3044\u3089\u3057\u3044。",
                   },
                 ],
               });
@@ -1061,7 +1061,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       await manager.initialize();
 
       const plan = await manager.extractPlan(
-        "小林さんが怪我をして11/17まで動けないらしい。",
+        "小林\u3055\u3093\u304c怪我\u3092\u3057\u306611/17\u307e\u3067動\u3051\u306a\u3044\u3089\u3057\u3044。",
         state
       );
       expect(plan.intentType).toBe("modify_and_solve");
@@ -1155,13 +1155,13 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // 2. Convert Stage 2 tool calls using the unified NSP schema
     const ops = [
       convertStage2ToolToOperation(
-        { tool_name: "add_skill_def", args: { skillName: "認知症ケア", minDay: 1 } },
+        { tool_name: "add_skill_def", args: { skillName: "認知症\u30b1\u30a2", minDay: 1 } },
         state
       )!,
       convertStage2ToolToOperation(
         {
           tool_name: "update_nurse_skill",
-          args: { target: "中堅", skillName: "認知症ケア", action: "add" },
+          args: { target: "中堅", skillName: "認知症\u30b1\u30a2", action: "add" },
         },
         state
       )!,
@@ -1228,15 +1228,15 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     let state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
 
     // Apply staffing rules on D and E:
-    // - 日勤(D) に 救急・ICU スキル が 2人以上
-    // - 日勤(D) に 新人 (newcomer) は 2人以下
-    // - 日勤(D) に A班 (team_A) が 3人以上
-    // - 準夜勤(E) に B班 (team_B) が 1人以上
+    // - Day shift (D): ICU/ER skill >= 2 nurses
+    // - Day shift (D): newcomer <= 2 nurses
+    // - Day shift (D): Team A >= 3 nurses
+    // - Evening shift (E): Team B >= 1 nurse
     const ops = [
       convertStage2ToolToOperation(
         {
           tool_name: "set_staffing_rule",
-          args: { targetShift: "D", attribute: "救急・ICU", minCount: 2 },
+          args: { targetShift: "D", attribute: "救急\u30fbICU", minCount: 2 },
         },
         state
       )!,
@@ -1296,20 +1296,20 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     }
   }, 30_000);
 
-  it("handles date-bounded custom shift with daily newcomer staffing ('祭りは11月16日から3日間、毎日新人2名をアサイン') and multi-turn history", async () => {
+  it("handles date-bounded custom shift with daily newcomer staffing ('Festival from Nov 16 for 3 days, assign 2 newcomers daily') and multi-turn history", async () => {
     let state = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11 });
 
     // 1. Single-turn application of:
-    // "祭りというシフトを追加してほしい。祭りは11月16日から3日間。その間、毎日新人2名をアサイン。祭りは日勤扱い。"
+    // Add festival shift from Nov 16 for 3 days, assign 2 newcomers daily as day shift.
     const ops = [
       convertStage2ToolToOperation(
-        { tool_name: "add_custom_shift", args: { shiftName: "祭り", baseShift: "D" } },
+        { tool_name: "add_custom_shift", args: { shiftName: "祭\u308a", baseShift: "D" } },
         state
       )!,
       convertStage2ToolToOperation(
         {
           tool_name: "add_shift_day_restriction",
-          args: { shiftName: "祭り", startDay: 16, endDay: 18 },
+          args: { shiftName: "祭\u308a", startDay: 16, endDay: 18 },
         },
         state
       )!,
@@ -1317,7 +1317,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         {
           tool_name: "add_daily_shift_cap",
           args: {
-            shiftName: "祭り",
+            shiftName: "祭\u308a",
             minStaffPerDay: 2,
             maxStaffPerDay: 2,
             attribute: "newcomer",
@@ -1331,7 +1331,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(applied.appliedLogs.length).toBe(3);
     state = applied.updatedState;
 
-    const matsuriDef = state.customShiftDefs.find((d) => d.label === "祭り");
+    const matsuriDef = state.customShiftDefs.find((d) => d.label === "祭\u308a");
     expect(matsuriDef).toBeDefined();
     const csCode = matsuriDef!.code;
 
@@ -1399,12 +1399,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // Apply all 4 composable axes via Stage 2 tool calls:
     // ① Monthly bounds & shift-type exemptions:
-    //   - N25: パート契約 (minWorkDays: 0, maxWorkDays: 10, weekdayOnly)
+    //   - N25: Part-time contract (minWorkDays: 0, maxWorkDays: 10, weekdayOnly)
     //   - N15: 夜勤専従 (nightShiftOnly, minWorkDays: 8)
     //   - N16: 深夜勤免除 (forbidLateNight)
     //   - N17: 準夜勤免除 (forbidEvening)
     // ② Individual max consecutive days:
-    //   - N18: 3連勤まで (maxConsecutiveDays: 3)
+    //   - N18: Max 3 consecutive days (maxConsecutiveDays: 3)
     // ③ Generic 2-day shift transition rules:
     //   - set_shift_transition(fromShift: "E", toShift: "E", policy: "forbid")
     //   - set_shift_transition(fromShift: "D", toShift: "N", policy: "forbid")
@@ -1504,7 +1504,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // 1. N26: Works ONLY on Wednesdays and Fridays ("W": any working shift), off on all other days
     // 2. N27: Off on weekends + Japanese holidays (11/3 Culture Day, 11/23 Labor Thanksgiving Day) via add_calendar_request
-    // 3. N28: "土日祝休み" via set_nurse_contract preset
+    // 3. N28: Off on weekends and holidays via set_nurse_contract preset
     // 4. N10: Pinned to "EN" (any night shift E or N) on 11/10, and "W" (any work shift) on 11/12
     const ops = [
       convertStage2ToolToOperation(
@@ -1547,7 +1547,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           tool_name: "set_nurse_contract",
           args: {
             nurseNameOrId: "N28",
-            item: "土日祝休み",
+            item: "土日祝休\u307f",
           },
         },
         state
@@ -1631,14 +1631,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(resolveShiftSelector("D", state)).toEqual(["D"]);
     expect(resolveShiftSelector("O", state)).toEqual(["O"]);
 
-    // Add a custom alias "DE" (日勤または準夜勤, excluding N and O)
+    // Add a custom alias "DE" (day or evening shift, excluding N and O)
     state = {
       ...state,
       shiftAliases: [
         ...defaultAliases,
         {
           code: "DE",
-          label: "日勤・準夜",
+          label: "日勤\u30fb準夜",
           shortLabel: "日準",
           shifts: ["D", "E"],
         },
@@ -1720,7 +1720,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           day: 14,
           shift: "EN",
           isHard: false,
-          reason: "夜勤帯(準夜または深夜)希望",
+          reason: "夜勤帯(準夜\u307e\u305f\u306f深夜)希望",
         },
       ],
       customRules: [
@@ -1732,7 +1732,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           nurseId: "N11",
           day: 10,
           shift: "DE",
-          description: "11/10: N11 を 日勤・準夜(DE) に固定",
+          description: "11/10: N11 \u3092 日勤\u30fb準夜(DE) \u306b固定",
         },
       ],
     };
@@ -1813,7 +1813,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         {
           code: "DE",
           shortLabel: "日準",
-          label: "日勤・準夜(深夜除外)",
+          label: "日勤\u30fb準夜(深夜除外)",
           shifts: ["D", "E"],
           builtIn: false,
         },
@@ -1823,7 +1823,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const dictCalendar = buildCategoryDynamicDictionary(
       "staff_calendar",
       state,
-      "N01の12日を新人研修に固定"
+      "N01\u306e12日\u3092新人研修\u306b固定"
     );
     expect(dictCalendar).toContain("W");
     expect(dictCalendar).toContain("EN");
@@ -1885,12 +1885,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       // Case A: 2 routes across focused categories (staff_calendar + ward_transition_and_rule)
       turn1Reply = {
-        thought: "N02の15日公休固定(staff_calendar)と日深夜禁止(ward_transition_and_rule)の2件。",
+        thought: "N02\u306e15日公休固定(staff_calendar)\u3068日深夜禁止(ward_transition_and_rule)\u306e2件。",
         routes: [
-          { tool_type: "staff_calendar", instruction: "N02の15日を確定の公休(O)に固定する" },
-          { tool_type: "ward_transition_and_rule", instruction: "日勤→翌日深夜勤(日深夜)を禁止する" },
+          { tool_type: "staff_calendar", instruction: "N02\u306e15日\u3092確定\u306e公休(O)\u306b固定\u3059\u308b" },
+          { tool_type: "ward_transition_and_rule", instruction: "日勤→翌日深夜勤(日深夜)\u3092禁止\u3059\u308b" },
         ],
-        response: "N02の15日を公休に固定し、日深夜を禁止します。",
+        response: "N02\u306e15日\u3092公休\u306b固定\u3057、日深夜\u3092禁止\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [
@@ -1918,7 +1918,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       ]);
 
       const planA = await manager.extractPlan(
-        "N02の15日を確定の休みにして、日深夜を禁止して",
+        "N02\u306e15日\u3092確定\u306e休\u307f\u306b\u3057\u3066、日深夜\u3092禁止\u3057\u3066",
         state
       );
       expect(planA.intentType).toBe("modify_and_solve");
@@ -1932,9 +1932,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       // Case B: When Turn 2 returns "none", Step 3 verification honestly reports verified: false without guessing sibling categories
       promptCalls.length = 0;
       turn1Reply = {
-        thought: "N05を日勤専従にする変更。",
-        routes: [{ tool_type: "staff_calendar", instruction: "N05を日勤専従にする" }],
-        response: "N05を日勤専従に設定します。",
+        thought: "N05\u3092日勤専従\u306b\u3059\u308b変更。",
+        routes: [{ tool_type: "staff_calendar", instruction: "N05\u3092日勤専従\u306b\u3059\u308b" }],
+        response: "N05\u3092日勤専従\u306b設定\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [
@@ -1945,7 +1945,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         ],
       ]);
 
-      const planB = await manager.extractPlan("N05を日勤専従にして", state);
+      const planB = await manager.extractPlan("N05\u3092日勤専従\u306b\u3057\u3066", state);
       expect(planB.intentType).toBe("consult_only");
       expect(planB.operations).toEqual([]);
       expect(planB.verificationResult?.verified).toBe(false);
@@ -1965,10 +1965,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           "望月",
           "甲斐",
           "神谷",
-          "スキルを追加したい。副リーダー",
-          "新人研修シフトを追加して。新人は",
-          "怪我をして11/17まで",
-          "スキル毎に、夜勤の数を平準化したい",
+          "\u30b9\u30ad\u30eb\u3092追加\u3057\u305f\u3044。副\u30ea\u30fc\u30c0\u30fc",
+          "新人研修\u30b7\u30d5\u30c8\u3092追加\u3057\u3066。新人\u306f",
+          "怪我\u3092\u3057\u306611/17\u307e\u3067",
+          "\u30b9\u30ad\u30eb毎\u306b、夜勤\u306e数\u3092平準化\u3057\u305f\u3044",
         ]) {
           expect(sysPrompt).not.toContain(forbiddenTestPhrase);
         }
@@ -1989,7 +1989,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       let turn1Reply: any = null;
       let turn2RepliesBySchema = new Map<any, any>();
       let consultReplyText =
-        "ご指定の操作には対応していません。対応可能な機能については一覧をご確認ください。";
+        "\u3054指定\u306e操作\u306b\u306f対応\u3057\u3066\u3044\u307e\u305b\u3093。対応可能\u306a機能\u306b\u3064\u3044\u3066\u306f一覧\u3092\u3054確認\u304f\u3060\u3055\u3044。";
 
       g.LanguageModel = {
         async availability() {
@@ -2025,94 +2025,94 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const manager = createGeminiNanoManager();
       await manager.initialize();
 
-      // Mode 1: Turn 1 directly classifies out-of-scope request ("夜勤手当を1回1万5000円で計算して給与明細を出して") as unsupported
+      // Mode 1: Turn 1 directly classifies out-of-scope request ("calculate overtime allowance and pay slip") as unsupported
       turn1Reply = {
-        thought: "給与・夜勤手当の計算はシステム未対応のため unsupported とする。",
+        thought: "給与\u30fb夜勤手当\u306e計算\u306f\u30b7\u30b9\u30c6\u30e0未対応\u306e\u305f\u3081 unsupported \u3068\u3059\u308b。",
         routes: [{ tool_type: "unsupported" }],
-        response: "夜勤手当や給与の計算には対応していません。",
+        response: "夜勤手当\u3084給与\u306e計算\u306b\u306f対応\u3057\u3066\u3044\u307e\u305b\u3093。",
       };
       turn2RepliesBySchema = new Map();
       consultReplyText =
-        "夜勤手当や給与の計算は本システムの対応範囲外のため実行できません。";
+        "夜勤手当\u3084給与\u306e計算\u306f本\u30b7\u30b9\u30c6\u30e0\u306e対応範囲外\u306e\u305f\u3081実行\u3067\u304d\u307e\u305b\u3093。";
 
       const plan1 = await manager.extractPlan(
-        "夜勤手当を1回1万5000円で計算して給与明細を出して",
+        "夜勤手当\u30921回1万5000円\u3067計算\u3057\u3066給与明細\u3092出\u3057\u3066",
         state
       );
       expect(plan1.intentType).toBe("consult_only");
       expect(plan1.nonToolReason).toBe("unsupported");
       expect(plan1.operations).toEqual([]);
-      expect(plan1.summaryJa).toContain("対応していません");
+      expect(plan1.summaryJa).toContain("対応\u3057\u3066\u3044\u307e\u305b\u3093");
 
       let reply1 = "";
       for await (const chunk of manager.streamConsultationReply(
-        "夜勤手当を1回1万5000円で計算して給与明細を出して",
+        "夜勤手当\u30921回1万5000円\u3067計算\u3057\u3066給与明細\u3092出\u3057\u3066",
         [],
         state,
         null
       )) {
         reply1 += chunk;
       }
-      expect(reply1).toContain("対応範囲外のため実行できません");
+      expect(reply1).toContain("対応範囲外\u306e\u305f\u3081実行\u3067\u304d\u307e\u305b\u3093");
       const trace1 = manager.getLastConsultTrace();
-      expect(trace1?.userPrompt).toContain("【システム未対応の要求に対する回答指示】");
-      expect(trace1?.userPrompt).toContain("夜勤手当や給与の計算には対応していません。");
+      expect(trace1?.userPrompt).toContain("【\u30b7\u30b9\u30c6\u30e0未対応\u306e要求\u306b対\u3059\u308b回答指示】");
+      expect(trace1?.userPrompt).toContain("夜勤手当\u3084給与\u306e計算\u306b\u306f対応\u3057\u3066\u3044\u307e\u305b\u3093。");
 
-      // Mode 2: Turn 1 optimistically routes an unsupported request ("夜勤の仮眠休憩を90分以上に設定して") to ward_coverage_and_param,
+      // Mode 2: Turn 1 optimistically routes an unsupported request ("set nap break to 90 mins") to ward_coverage_and_param,
       // but Turn 2 (and sibling ward_transition_and_rule) both reject it with tool_name: "none".
       // Step 3 verification must catch it, override Turn 1's optimistic response, and convey that it is unsupported.
       turn1Reply = {
-        thought: "夜勤の仮眠休憩時間を90分にする設定変更。",
+        thought: "夜勤\u306e仮眠休憩時間\u309290分\u306b\u3059\u308b設定変更。",
         routes: [
           {
             tool_type: "ward_coverage_and_param",
-            instruction: "夜勤の仮眠休憩を90分以上に設定する",
+            instruction: "夜勤\u306e仮眠休憩\u309290分以上\u306b設定\u3059\u308b",
           },
         ],
-        response: "夜勤の仮眠休憩を90分以上に設定します。",
+        response: "夜勤\u306e仮眠休憩\u309290分以上\u306b設定\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [WARD_COVERAGE_AND_PARAM_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
         [WARD_TRANSITION_AND_RULE_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
       ]);
       consultReplyText =
-        "夜勤の仮眠休憩時間の設定には対応していないため、変更できません。";
+        "夜勤\u306e仮眠休憩時間\u306e設定\u306b\u306f対応\u3057\u3066\u3044\u306a\u3044\u305f\u3081、変更\u3067\u304d\u307e\u305b\u3093。";
 
-      const plan2 = await manager.extractPlan("夜勤の仮眠休憩を90分以上に設定して", state);
+      const plan2 = await manager.extractPlan("夜勤\u306e仮眠休憩\u309290分以上\u306b設定\u3057\u3066", state);
       expect(plan2.intentType).toBe("consult_only");
       expect(plan2.nonToolReason).toBe("unsupported");
       expect(plan2.operations).toEqual([]);
       expect(plan2.verificationResult?.verified).toBe(false);
       expect(plan2.verificationResult?.missingRoutes.length).toBe(1);
-      // Turn 1's false-positive "設定します" must be replaced with an honest refusal
+      // Turn 1's false-positive "will configure" must be replaced with an honest refusal
       expect(plan2.summaryJa).toContain("未対応");
-      expect(plan2.summaryJa).not.toContain("設定します。");
+      expect(plan2.summaryJa).not.toContain("設定\u3057\u307e\u3059。");
 
       let reply2 = "";
       for await (const chunk of manager.streamConsultationReply(
-        "夜勤の仮眠休憩を90分以上に設定して",
+        "夜勤\u306e仮眠休憩\u309290分以上\u306b設定\u3057\u3066",
         [],
         state,
         null
       )) {
         reply2 += chunk;
       }
-      expect(reply2).toContain("対応していないため");
+      expect(reply2).toContain("対応\u3057\u3066\u3044\u306a\u3044\u305f\u3081");
       const trace2 = manager.getLastConsultTrace();
-      expect(trace2?.userPrompt).toContain("【システム未対応の要求に対する回答指示】");
-      expect(trace2?.userPrompt).toContain("未対応です");
-      expect(trace2?.userPrompt).not.toContain("夜勤の仮眠休憩を90分以上に設定します。");
+      expect(trace2?.userPrompt).toContain("【\u30b7\u30b9\u30c6\u30e0未対応\u306e要求\u306b対\u3059\u308b回答指示】");
+      expect(trace2?.userPrompt).toContain("未対応\u3067\u3059");
+      expect(trace2?.userPrompt).not.toContain("夜勤\u306e仮眠休憩\u309290分以上\u306b設定\u3057\u307e\u3059。");
 
-      // Mode 3: Request targets a staff member who does not exist in the ward roster ("徳川家康さんの12日を休みにして")
+      // Mode 3: Request targets a staff member who does not exist in the ward roster ("give Tokugawa Ieyasu day off on the 12th")
       turn1Reply = {
-        thought: "徳川家康さんの12日を公休に固定する。",
+        thought: "徳川家康\u3055\u3093\u306e12日\u3092公休\u306b固定\u3059\u308b。",
         routes: [
           {
             tool_type: "staff_calendar",
-            instruction: "徳川家康さんの12日を確定の公休(O)に固定する",
+            instruction: "徳川家康\u3055\u3093\u306e12日\u3092確定\u306e公休(O)\u306b固定\u3059\u308b",
           },
         ],
-        response: "徳川家康さんの12日を公休に固定します。",
+        response: "徳川家康\u3055\u3093\u306e12日\u3092公休\u306b固定\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [
@@ -2128,44 +2128,44 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         ],
       ]);
       consultReplyText =
-        "指定された「徳川家康」さんは病棟名簿に存在しないため、シフトを設定できません。";
+        "指定\u3055\u308c\u305f「徳川家康」\u3055\u3093\u306f病棟名簿\u306b存在\u3057\u306a\u3044\u305f\u3081、\u30b7\u30d5\u30c8\u3092設定\u3067\u304d\u307e\u305b\u3093。";
 
-      const plan3 = await manager.extractPlan("徳川家康さんの12日を休みにして", state);
+      const plan3 = await manager.extractPlan("徳川家康\u3055\u3093\u306e12日\u3092休\u307f\u306b\u3057\u3066", state);
       expect(plan3.intentType).toBe("consult_only");
       expect(plan3.nonToolReason).toBe("unsupported");
       expect(plan3.operations).toEqual([]);
       expect(plan3.verificationResult?.verified).toBe(false);
       expect(plan3.summaryJa).toContain("徳川家康");
-      expect(plan3.summaryJa).toContain("病棟名簿に存在しないため");
+      expect(plan3.summaryJa).toContain("病棟名簿\u306b存在\u3057\u306a\u3044\u305f\u3081");
 
       let reply3 = "";
       for await (const chunk of manager.streamConsultationReply(
-        "徳川家康さんの12日を休みにして",
+        "徳川家康\u3055\u3093\u306e12日\u3092休\u307f\u306b\u3057\u3066",
         [],
         state,
         null
       )) {
         reply3 += chunk;
       }
-      expect(reply3).toContain("存在しないため");
+      expect(reply3).toContain("存在\u3057\u306a\u3044\u305f\u3081");
       const trace3 = manager.getLastConsultTrace();
-      expect(trace3?.userPrompt).toContain("病棟名簿に存在しないため");
+      expect(trace3?.userPrompt).toContain("病棟名簿\u306b存在\u3057\u306a\u3044\u305f\u3081");
 
       // Mode 4: Composite request with 1 supported operation + 1 unsupported operation
-      // ("N01の12日を確定の休みにして、夜勤の仮眠休憩を90分にして")
+      // ("set N01 off on 12th, and set nap break to 90 min")
       turn1Reply = {
-        thought: "N01の12日公休固定と、夜勤の仮眠休憩90分設定の複合指示。",
+        thought: "N01\u306e12日公休固定\u3068、夜勤\u306e仮眠休憩90分設定\u306e複合指示。",
         routes: [
           {
             tool_type: "staff_calendar",
-            instruction: "N01の12日を確定の公休(O)に固定する",
+            instruction: "N01\u306e12日\u3092確定\u306e公休(O)\u306b固定\u3059\u308b",
           },
           {
             tool_type: "ward_coverage_and_param",
-            instruction: "夜勤の仮眠休憩を90分に設定する",
+            instruction: "夜勤\u306e仮眠休憩\u309290分\u306b設定\u3059\u308b",
           },
         ],
-        response: "N01の12日を公休に固定し、仮眠休憩を設定します。",
+        response: "N01\u306e12日\u3092公休\u306b固定\u3057、仮眠休憩\u3092設定\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [
@@ -2183,10 +2183,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         [WARD_TRANSITION_AND_RULE_TOOLS_SCHEMA, { tools: [{ tool_name: "none", args: {} }] }],
       ]);
       consultReplyText =
-        "・佐藤 美咲(N01)さんの11/12を公休(O)に固定しました。\n・夜勤の仮眠休憩時間の設定には対応していないため適用していません。";
+        "\u30fb佐藤 美咲(N01)\u3055\u3093\u306e11/12\u3092公休(O)\u306b固定\u3057\u307e\u3057\u305f。\n\u30fb夜勤\u306e仮眠休憩時間\u306e設定\u306b\u306f対応\u3057\u3066\u3044\u306a\u3044\u305f\u3081適用\u3057\u3066\u3044\u307e\u305b\u3093。";
 
       const plan4 = await manager.extractPlan(
-        "N01の12日を確定の休みにして、夜勤の仮眠休憩を90分にして",
+        "N01\u306e12日\u3092確定\u306e休\u307f\u306b\u3057\u3066、夜勤\u306e仮眠休憩\u309290分\u306b\u3057\u3066",
         state
       );
       expect(plan4.intentType).toBe("modify_and_solve");
@@ -2194,23 +2194,23 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(plan4.verificationResult?.verified).toBe(false);
       expect(plan4.verificationResult?.appliedCount).toBe(1);
       expect(plan4.verificationResult?.missingRoutes).toEqual([
-        'ward_coverage_and_param("夜勤の仮眠休憩を90分に設定する")',
+        'ward_coverage_and_param("夜勤\u306e仮眠休憩\u309290分\u306b設定\u3059\u308b")',
       ]);
 
       const applied4 = applyChatOperationsToState(state, plan4.operations);
       let reply4 = "";
       for await (const chunk of manager.streamConsultationReply(
-        "N01の12日を確定の休みにして、夜勤の仮眠休憩を90分にして",
+        "N01\u306e12日\u3092確定\u306e休\u307f\u306b\u3057\u3066、夜勤\u306e仮眠休憩\u309290分\u306b\u3057\u3066",
         applied4.appliedLogs,
         applied4.updatedState,
         null
       )) {
         reply4 += chunk;
       }
-      expect(reply4).toContain("対応していないため");
+      expect(reply4).toContain("対応\u3057\u3066\u3044\u306a\u3044\u305f\u3081");
       const trace4 = manager.getLastConsultTrace();
-      expect(trace4?.userPrompt).toContain("【⚠️ 未対応のため適用できなかった指示】");
-      expect(trace4?.userPrompt).toContain("夜勤の仮眠休憩を90分に設定する");
+      expect(trace4?.userPrompt).toContain("【⚠️ 未対応\u306e\u305f\u3081適用\u3067\u304d\u306a\u304b\u3063\u305f指示】");
+      expect(trace4?.userPrompt).toContain("夜勤\u306e仮眠休憩\u309290分\u306b設定\u3059\u308b");
 
       manager.destroy();
     } finally {
@@ -2240,7 +2240,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       async create() {
         return {
           async prompt() {
-            return "・佐藤 美咲(N01)さんの11/12を公休(休)に固定しました。\n・希望休の充足率100%でシフト表を更新しました。";
+            return "\u30fb佐藤 美咲(N01)\u3055\u3093\u306e11/12\u3092公休(休)\u306b固定\u3057\u307e\u3057\u305f。\n\u30fb希望休\u306e充足率100%\u3067\u30b7\u30d5\u30c8表\u3092更新\u3057\u307e\u3057\u305f。";
           },
           async clone() {
             return this;
@@ -2254,7 +2254,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const manager = createGeminiNanoManager();
       await manager.initialize();
       for await (const _ of manager.streamConsultationReply(
-        "佐藤さんの12日を休みにして",
+        "佐藤\u3055\u3093\u306e12日\u3092休\u307f\u306b\u3057\u3066",
         applied.appliedLogs,
         applied.updatedState,
         nextSolve
@@ -2264,9 +2264,9 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const trace = manager.getLastConsultTrace();
       expect(trace).toBeDefined();
       // Must include nurse-relevant information: applied change, request satisfaction, and schedule diff
-      expect(trace!.userPrompt).toContain("11/12: 佐藤 美咲(N01) を「公休(O)」に固定");
+      expect(trace!.userPrompt).toContain("11/12: 佐藤 美咲(N01) \u3092「公休(O)」\u306b固定");
       expect(trace!.userPrompt).toContain("希望達成状況:");
-      expect(trace!.userPrompt).toContain("前回のシフトからの変更:");
+      expect(trace!.userPrompt).toContain("前回\u306e\u30b7\u30d5\u30c8\u304b\u3089\u306e変更:");
       // Must NOT include solver-internal jargon or metrics
       expect(trace!.userPrompt).not.toContain("validateSolution");
       expect(trace!.userPrompt).not.toContain("変数:");
@@ -2325,7 +2325,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         tool_name: "set_staffing_rule",
         args: {
           targetShift: "委員会",
-          attribute: "救急・ICU",
+          attribute: "救急\u30fbICU",
           minCount: 1,
         },
       },
@@ -2424,7 +2424,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           nurseId: "N01",
           day: 14,
           shift: "D",
-          description: "11/14 N01 なるべく日勤 (重み15)",
+          description: "11/14 N01 \u306a\u308b\u3079\u304f日勤 (重\u307f15)",
         },
         {
           id: "soft_b",
@@ -2435,7 +2435,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           nurseId: "N01",
           day: 14,
           shift: "O",
-          description: "11/14 N01 なるべく公休 (重み90)",
+          description: "11/14 N01 \u306a\u308b\u3079\u304f公休 (重\u307f90)",
         },
       ],
     };
@@ -2541,18 +2541,18 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         op: "set_staffing_rule",
         targetShift: "D",
         shifts: ["D"],
-        attribute: "未登録スキル",
+        attribute: "未登録\u30b9\u30ad\u30eb",
         minCount: 1,
       },
       {
         op: "update_nurse_skill",
         nurseNameOrId: "N01",
-        skillName: "未登録スキル",
+        skillName: "未登録\u30b9\u30ad\u30eb",
         skillAction: "add",
       },
       {
         op: "add_shift_quota",
-        shiftName: "未登録シフト",
+        shiftName: "未登録\u30b7\u30d5\u30c8",
         attribute: "newcomer",
         minCount: 2,
         maxCount: 2,
@@ -2566,16 +2566,16 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // Invariant 3: add_shift_day_restriction (even for <= 7 days) must NEVER delete shift_count_quota or create daily_shift_cap
     let customShiftState = applyChatOperationsToState(baseState, [
-      { op: "add_custom_shift", shiftName: "祭り", shortLabel: "祭", baseShift: "D" },
-      { op: "add_shift_quota", shiftName: "祭り", attribute: "all", minCount: 2, maxCount: 2 },
-      { op: "add_shift_day_restriction", shiftName: "祭り", startDay: 10, endDay: 12 },
+      { op: "add_custom_shift", shiftName: "祭\u308a", shortLabel: "祭", baseShift: "D" },
+      { op: "add_shift_quota", shiftName: "祭\u308a", attribute: "all", minCount: 2, maxCount: 2 },
+      { op: "add_shift_day_restriction", shiftName: "祭\u308a", startDay: 10, endDay: 12 },
     ]).updatedState;
     expect(customShiftState.customRules.some((r) => r.kind === "shift_count_quota")).toBe(true);
     expect(customShiftState.customRules.some((r) => r.kind === "daily_shift_cap")).toBe(false);
 
     // Invariant 4: add_daily_shift_cap with maxStaff only must NEVER coerce minStaff = maxStaff or delete shift_count_quota
     const capOnlyState = applyChatOperationsToState(customShiftState, [
-      { op: "add_daily_shift_cap", shiftName: "祭り", maxStaff: 3 },
+      { op: "add_daily_shift_cap", shiftName: "祭\u308a", maxStaff: 3 },
     ]).updatedState;
     const capRule = capOnlyState.customRules.find((r) => r.kind === "daily_shift_cap")!;
     expect(capRule.maxStaff).toBe(3);
@@ -2614,8 +2614,8 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // Invariant 7: buildNurseWashiModel with shift_prerequisite must NOT inject ad-hoc early-month bonus Coefficients (e.g. 30 C_...) into objective
     const prereqState = applyChatOperationsToState(baseState, [
-      { op: "add_custom_shift", shiftName: "オリエンテーション", shortLabel: "オリ", baseShift: "D" },
-      { op: "add_shift_prerequisite", shiftName: "オリエンテーション", attribute: "newcomer", prereqMinCount: 2, restrictedShifts: ["E", "N"] },
+      { op: "add_custom_shift", shiftName: "\u30aa\u30ea\u30a8\u30f3\u30c6\u30fc\u30b7\u30e7\u30f3", shortLabel: "\u30aa\u30ea", baseShift: "D" },
+      { op: "add_shift_prerequisite", shiftName: "\u30aa\u30ea\u30a8\u30f3\u30c6\u30fc\u30b7\u30e7\u30f3", attribute: "newcomer", prereqMinCount: 2, restrictedShifts: ["E", "N"] },
     ]).updatedState;
     const built = buildNurseWashiModel(prereqState);
     const lp = built.model.toLpString();
@@ -2701,7 +2701,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           shift: "D",
           minStaff: 6,
           maxStaff: 20,
-          description: "日勤(D)は1日6〜20名",
+          description: "日勤(D)\u306f1日6〜20名",
           enabled: true,
         },
       ],
@@ -2737,11 +2737,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
   it("treats roles, teams, and skills uniformly as staff attributes across custom_shift and skill_and_pair tools", async () => {
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 42 });
 
-    // 1. add_skill_def resolves substitutesFor even when formatted with shortLabel parens like "リーダー業務可(リ)"
+    // 1. add_skill_def resolves substitutesFor even when formatted with shortLabel parens
     const skillSubOp = convertStage2ToolToOperation(
       {
         tool_name: "add_skill_def",
-        args: { skillName: "副リーダー", substitutesFor: "リーダー業務可(リ)" },
+        args: { skillName: "副\u30ea\u30fc\u30c0\u30fc", substitutesFor: "\u30ea\u30fc\u30c0\u30fc業務可(\u30ea)" },
       },
       baseState
     );
@@ -2751,11 +2751,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       expect(skillSubOp.skillMinDay).toBeUndefined();
     }
 
-    // 2. add_shift_quota / add_daily_shift_cap / update_nurse_skill accept team_A ("A班") or skills ("救急・重症対応") uniformly
+    // 2. add_shift_quota / add_daily_shift_cap / update_nurse_skill accept team_A or skills uniformly
     const quotaTeamOp = convertStage2ToolToOperation(
       {
         tool_name: "add_shift_quota",
-        args: { shiftName: "カンファレンス", attribute: "A班", count: 1 },
+        args: { shiftName: "\u30ab\u30f3\u30d5\u30a1\u30ec\u30f3\u30b9", attribute: "A班", count: 1 },
       },
       baseState
     );
@@ -2767,7 +2767,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const grantTeamSkillOp = convertStage2ToolToOperation(
       {
         tool_name: "update_nurse_skill",
-        args: { target: "B班", skillName: "副リーダー", action: "add" },
+        args: { target: "B班", skillName: "副\u30ea\u30fc\u30c0\u30fc", action: "add" },
       },
       baseState
     );
@@ -2779,11 +2779,11 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     const applied = applyChatOperationsToState(baseState, [
       skillSubOp!,
       grantTeamSkillOp!,
-      { op: "add_custom_shift", shiftName: "カンファレンス", baseShift: "D" },
+      { op: "add_custom_shift", shiftName: "\u30ab\u30f3\u30d5\u30a1\u30ec\u30f3\u30b9", baseShift: "D" },
       quotaTeamOp!,
     ]).updatedState;
 
-    const subLeaderSkill = applied.skillDefs?.find((s) => s.label === "副リーダー");
+    const subLeaderSkill = applied.skillDefs?.find((s) => s.label === "副\u30ea\u30fc\u30c0\u30fc");
     expect(subLeaderSkill).toBeDefined();
     expect(subLeaderSkill!.substitutesFor).toBe("leader_cap");
 
@@ -2796,7 +2796,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       }
     }
 
-    // Solver should enforce quota on A班 (team_A) nurses for カンファレンス
+    // Solver should enforce quota on team_A nurses for conference
     const solved = await solveNurseScheduleWithWashi(applied);
     expect(solved.status).toBe("Optimal");
     expect(solved.evaluation?.valid).toBe(true);
@@ -2966,7 +2966,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           shift: "E",
           maxCount: 2,
           includePrevMonth: true,
-          description: "N05 の準夜勤は前月累計込みで最大2回まで",
+          description: "N05 \u306e準夜勤\u306f前月累計込\u307f\u3067最大2回\u307e\u3067",
         },
       ],
     };
@@ -2984,7 +2984,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // 1. Statutory Japanese holidays: chained substitute holidays (2025-05-06, 2026-05-06) & citizens' holiday (2026-09-22)
     expect(getJapaneseHolidayName(2025, 5, 6)).toBe("振替休日");
     expect(getJapaneseHolidayName(2026, 5, 6)).toBe("振替休日");
-    expect(getJapaneseHolidayName(2026, 9, 22)).toBe("国民の休日");
+    expect(getJapaneseHolidayName(2026, 9, 22)).toBe("国民\u306e休日");
     expect(resolveDaysBySelector(2026, 9, 30, { kind: "pattern", holidays: "only" })).toEqual([
       21, 22, 23,
     ]);
@@ -3029,7 +3029,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     // 4. Skill removal clears substitutesFor within skillDefs without cross-domain customRules deletion (honest infeasibility)
     const withCustomSkillState = applyChatOperationsToState(baseState, [
       { op: "add_skill_def", skillName: "透析管理" },
-      { op: "add_skill_def", skillName: "透析サブ", substitutesFor: "透析管理" },
+      { op: "add_skill_def", skillName: "透析\u30b5\u30d6", substitutesFor: "透析管理" },
       { op: "set_staffing_rule", targetShift: "D", shifts: ["D"], attribute: "透析管理", minCount: 1 },
     ]).updatedState;
     const dialysisCode = withCustomSkillState.skillDefs!.find((s) => s.label === "透析管理")!.code;
@@ -3040,7 +3040,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
     expect(afterSkillRemoved.skillDefs!.some((s) => s.code === dialysisCode)).toBe(false);
     expect(afterSkillRemoved.customRules.some((r) => r.attribute === dialysisCode)).toBe(true);
     expect(
-      afterSkillRemoved.skillDefs!.find((s) => s.label === "透析サブ")?.substitutesFor
+      afterSkillRemoved.skillDefs!.find((s) => s.label === "透析\u30b5\u30d6")?.substitutesFor
     ).toBeUndefined();
     const zeroHolderAfterRemove = await solveNurseScheduleWithWashi(afterSkillRemoved);
     expect(zeroHolderAfterRemove.status).toBe("Infeasible");
@@ -3072,7 +3072,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           day: 5,
           shift: "D",
           minStaff: 25,
-          description: "11/5 日勤25名目標(ソフト)",
+          description: "11/5 日勤25名目標(\u30bd\u30d5\u30c8)",
         },
         {
           id: "soft_restrict_tr",
@@ -3083,7 +3083,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           shift: "TR_ALL",
           startDay: 10,
           endDay: 12,
-          description: "合同研修はなるべく11/10〜12のみ(ソフト)",
+          description: "合同研修\u306f\u306a\u308b\u3079\u304f11/10〜12\u306e\u307f(\u30bd\u30d5\u30c8)",
         },
       ],
     };
@@ -3389,7 +3389,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // 14. Reject duplicate add_skill_def without mutating existing skill requirements or category (4363684493)
     const dupSkillResult = applyChatOperationsToState(baseState, [
-      { op: "add_skill_def", skillName: "リーダー業務可" },
+      { op: "add_skill_def", skillName: "\u30ea\u30fc\u30c0\u30fc業務可" },
       { op: "add_skill_def", skillName: "新人" },
     ]);
     expect(dupSkillResult.appliedLogs).toHaveLength(0);
@@ -3583,20 +3583,20 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       const manager = createGeminiNanoManager();
       await manager.initialize();
 
-      // Turn 1: User says "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。"
+      // Turn 1: User asks to give nurse Tanaka time off from 9th to 15th and adjust minimum work days
       // Stage 1 routes to `clarify` because the target minimum workday count is missing, holding all tool execution.
       turn1Reply = {
         thought:
-          "田中さんの9日から15日までの公休指定と、月間最低勤務日数の調整。勤務下限の具体的な数値が不明なため clarify で聞き返す。",
+          "田中\u3055\u3093\u306e9日\u304b\u308915日\u307e\u3067\u306e公休指定\u3068、月間最低勤務日数\u306e調整。勤務下限\u306e具体的\u306a数値\u304c不明\u306a\u305f\u3081 clarify \u3067聞\u304d返\u3059。",
         routes: [{ tool_type: "clarify" }],
         response:
-          "田中さんの9日から15日までの公休とあわせて設定するため、月間最低勤務日数を何日に調整するか教えていただけますでしょうか？",
+          "田中\u3055\u3093\u306e9日\u304b\u308915日\u307e\u3067\u306e公休\u3068\u3042\u308f\u305b\u3066設定\u3059\u308b\u305f\u3081、月間最低勤務日数\u3092何日\u306b調整\u3059\u308b\u304b教\u3048\u3066\u3044\u305f\u3060\u3051\u307e\u3059\u3067\u3057\u3087\u3046\u304b？",
       };
       consultReplyText =
-        "田中さんの9日〜15日の公休とあわせて一括設定するため、月間最低勤務日数を何日に調整するか教えてください。";
+        "田中\u3055\u3093\u306e9日〜15日\u306e公休\u3068\u3042\u308f\u305b\u3066一括設定\u3059\u308b\u305f\u3081、月間最低勤務日数\u3092何日\u306b調整\u3059\u308b\u304b教\u3048\u3066\u304f\u3060\u3055\u3044。";
 
       const planTurn1 = await manager.extractPlan(
-        "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。",
+        "田中\u3055\u3093\u306f、9日\u304b\u308915日\u307e\u3067休\u307e\u305b\u3066\u3042\u3052\u3066。勤務下限\u3082調整\u3057\u3066。",
         state
       );
       expect(planTurn1.intentType).toBe("consult_only");
@@ -3607,57 +3607,57 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       let consultOut1 = "";
       for await (const chunk of manager.streamConsultationReply(
-        "田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。",
+        "田中\u3055\u3093\u306f、9日\u304b\u308915日\u307e\u3067休\u307e\u305b\u3066\u3042\u3052\u3066。勤務下限\u3082調整\u3057\u3066。",
         [],
         state,
         null
       )) {
         consultOut1 += chunk;
       }
-      expect(consultOut1).toContain("何日に調整するか教えてください");
+      expect(consultOut1).toContain("何日\u306b調整\u3059\u308b\u304b教\u3048\u3066\u304f\u3060\u3055\u3044");
       const consultTrace1 = manager.getLastConsultTrace();
-      expect(consultTrace1?.userPrompt).toContain("回答待ちのため一括保留");
+      expect(consultTrace1?.userPrompt).toContain("回答待\u3061\u306e\u305f\u3081一括保留");
 
-      // Turn 2: User replies with another vague message ("勤務下限は少し減らして"), triggering a 2nd clarification round (4367076840)
+      // Turn 2: User replies with another vague message ("decrease min work days slightly"), triggering a 2nd clarification round
       turn1Reply = {
-        thought: "『少し減らして』では具体的な日数が不明なため再度聞き返す。",
+        thought: "『少\u3057減\u3089\u3057\u3066』\u3067\u306f具体的\u306a日数\u304c不明\u306a\u305f\u3081再度聞\u304d返\u3059。",
         routes: [{ tool_type: "clarify" }],
-        response: "月間最低勤務日数を具体的に何日にするか教えていただけますか？",
+        response: "月間最低勤務日数\u3092具体的\u306b何日\u306b\u3059\u308b\u304b教\u3048\u3066\u3044\u305f\u3060\u3051\u307e\u3059\u304b？",
       };
-      const planTurn2Vague = await manager.extractPlan("勤務下限は少し減らして", state);
+      const planTurn2Vague = await manager.extractPlan("勤務下限\u306f少\u3057減\u3089\u3057\u3066", state);
       expect(planTurn2Vague.intentType).toBe("consult_only");
       expect(planTurn2Vague.nonToolReason).toBe("clarify");
       expect(planTurn2Vague.operations).toEqual([]);
 
       // Turns 2b/2c: Two more clarification follow-ups. All accumulated messages are preserved in order.
-      const planTurn2b = await manager.extractPlan("まだ決めていない", state);
+      const planTurn2b = await manager.extractPlan("\u307e\u3060決\u3081\u3066\u3044\u306a\u3044", state);
       expect(planTurn2b.nonToolReason).toBe("clarify");
-      const planTurn2c = await manager.extractPlan("やっぱり少しだけ", state);
+      const planTurn2c = await manager.extractPlan("\u3084\u3063\u3071\u308a少\u3057\u3060\u3051", state);
       expect(planTurn2c.nonToolReason).toBe("clarify");
 
       // Turn 2d: Stage 1 output cannot be parsed while the user is answering the held request. The synthetic
       // fallback `question` route must NOT be treated as an intent switch, so the pending entry is retained (4368219493).
       turn1RawOutput = "not a json response";
-      const planTurn2dRouterFailure = await manager.extractPlan("勤務下限は", state);
+      const planTurn2dRouterFailure = await manager.extractPlan("勤務下限\u306f", state);
       expect(planTurn2dRouterFailure.operations).toEqual([]);
       turn1RawOutput = null;
 
-      // Turn 4: User answers "勤務下限は15日" after repeated clarification rounds and a failed routing attempt (4367076840)
+      // Turn 4: User answers "min work days is 15" after repeated clarification rounds and a failed routing attempt
       // All accumulated clarification messages from Turn 1 onward must be retained in the pending entry!
       turn1Reply = {
         thought:
-          "前回の未適用リクエスト（田中さんの9日〜15日の公休）と今回の回答（月間最低勤務日数を15日）を統合して実行する。",
+          "前回\u306e未適用\u30ea\u30af\u30a8\u30b9\u30c8（田中\u3055\u3093\u306e9日〜15日\u306e公休）\u3068今回\u306e回答（月間最低勤務日数\u309215日）\u3092統合\u3057\u3066実行\u3059\u308b。",
         routes: [
           {
             tool_type: "staff_calendar",
-            instruction: "田中さんを9日から15日まで公休(O)にする",
+            instruction: "田中\u3055\u3093\u30929日\u304b\u308915日\u307e\u3067公休(O)\u306b\u3059\u308b",
           },
           {
             tool_type: "staff_contract",
-            instruction: "田中さんの月間最低勤務日数を15日に設定する",
+            instruction: "田中\u3055\u3093\u306e月間最低勤務日数\u309215日\u306b設定\u3059\u308b",
           },
         ],
-        response: "田中さんの9日から15日までを公休にし、月間最低勤務日数を15日に設定します。",
+        response: "田中\u3055\u3093\u306e9日\u304b\u308915日\u307e\u3067\u3092公休\u306b\u3057、月間最低勤務日数\u309215日\u306b設定\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [
@@ -3694,10 +3694,10 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
         ],
       ]);
 
-      const planTurn4 = await manager.extractPlan("勤務下限は15日", state);
+      const planTurn4 = await manager.extractPlan("勤務下限\u306f15日", state);
       const turn4RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
       expect(turn4RouterPrompt).toContain(
-        "・前回(未適用・回答待ち):「田中さんは、9日から15日まで休ませてあげて。勤務下限も調整して。 / 勤務下限は少し減らして / まだ決めていない / やっぱり少しだけ」"
+        "\u30fb前回(未適用\u30fb回答待\u3061):「田中\u3055\u3093\u306f、9日\u304b\u308915日\u307e\u3067休\u307e\u305b\u3066\u3042\u3052\u3066。勤務下限\u3082調整\u3057\u3066。 / 勤務下限\u306f少\u3057減\u3089\u3057\u3066 / \u307e\u3060決\u3081\u3066\u3044\u306a\u3044 / \u3084\u3063\u3071\u308a少\u3057\u3060\u3051」"
       );
       expect(planTurn4.intentType).toBe("modify_and_solve");
       // 1 ranged add_request operation (days 9..15) + 1 set_nurse_contract operation = 2 operations
@@ -3715,12 +3715,12 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       // Turn 5: Stage 1 asks for clarification on a new request, recording a new pending clarification.
       turn1Reply = {
-        thought: "佐藤さんの10日公休は具体的だが、夜勤上限の調整回数が不明なため聞き返す。",
+        thought: "佐藤\u3055\u3093\u306e10日公休\u306f具体的\u3060\u304c、夜勤上限\u306e調整回数\u304c不明\u306a\u305f\u3081聞\u304d返\u3059。",
         routes: [{ tool_type: "clarify" }],
-        response: "佐藤さんの10日の公休とあわせて設定するため、月間夜勤上限を何回にするか教えていただけますか？",
+        response: "佐藤\u3055\u3093\u306e10日\u306e公休\u3068\u3042\u308f\u305b\u3066設定\u3059\u308b\u305f\u3081、月間夜勤上限\u3092何回\u306b\u3059\u308b\u304b教\u3048\u3066\u3044\u305f\u3060\u3051\u307e\u3059\u304b？",
       };
       const planTurn5Clarify = await manager.extractPlan(
-        "佐藤さんを10日休みにして、夜勤上限も調整して",
+        "佐藤\u3055\u3093\u309210日休\u307f\u306b\u3057\u3066、夜勤上限\u3082調整\u3057\u3066",
         appliedTurn4.updatedState
       );
       expect(planTurn5Clarify.intentType).toBe("consult_only");
@@ -3729,7 +3729,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
       // Turn 5b: When accumulated clarification messages exceed Gemini Nano's remaining context budget,
       // older messages are dropped first (FIFO) so the newest follow-up stays within budget.
-      const oversizedFollowUp = `補足${"あ".repeat(7000)}`;
+      const oversizedFollowUp = `補足${"\u3042".repeat(7000)}`;
       const planTurn5bOversized = await manager.extractPlan(
         oversizedFollowUp,
         appliedTurn4.updatedState
@@ -3740,35 +3740,35 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       // Verify that Turn 6's Stage 1 prompt dropped the older Turn 5 message when budget was exceeded,
       // and that switching intent clears `pendingClarification` so Turn 7 does NOT resurrect it!
       turn1Reply = {
-        thought: "現在の設定に関する質問。",
+        thought: "現在\u306e設定\u306b関\u3059\u308b質問。",
         routes: [{ tool_type: "question" }],
-        response: "現在の月間夜勤上限は8回です。",
+        response: "現在\u306e月間夜勤上限\u306f8回\u3067\u3059。",
       };
       const planTurn6Question = await manager.extractPlan(
-        "現在の夜勤上限はいくつ？",
+        "現在\u306e夜勤上限\u306f\u3044\u304f\u3064？",
         appliedTurn4.updatedState
       );
       const turn6RouterPrompt = capturedTurn1Prompts[capturedTurn1Prompts.length - 1]!;
-      expect(turn6RouterPrompt).not.toContain("佐藤さんを10日休みにして、夜勤上限も調整して");
-      expect(turn6RouterPrompt).toContain("補足あああ");
+      expect(turn6RouterPrompt).not.toContain("佐藤\u3055\u3093\u309210日休\u307f\u306b\u3057\u3066、夜勤上限\u3082調整\u3057\u3066");
+      expect(turn6RouterPrompt).toContain("補足\u3042\u3042\u3042");
       expect(planTurn6Question.intentType).toBe("consult_only");
       expect(planTurn6Question.nonToolReason).toBe("question");
 
-      // Turn 7: Subsequent turn prompt must NOT contain `前回(未適用・回答待ち)` (4367105728)
+      // Turn 7: Subsequent turn prompt must NOT contain pending previous turn marker
       turn1Reply = {
-        thought: "シフト再計算のみを実行する。",
-        routes: [{ tool_type: "system_action", instruction: "シフトを再計算する" }],
-        response: "シフトを再計算します。",
+        thought: "\u30b7\u30d5\u30c8再計算\u306e\u307f\u3092実行\u3059\u308b。",
+        routes: [{ tool_type: "system_action", instruction: "\u30b7\u30d5\u30c8\u3092再計算\u3059\u308b" }],
+        response: "\u30b7\u30d5\u30c8\u3092再計算\u3057\u307e\u3059。",
       };
       turn2RepliesBySchema = new Map([
         [SYSTEM_ACTION_TOOLS_SCHEMA, { tools: [{ tool_name: "solve_only", args: {} }] }],
       ]);
       const planTurn7SolveOnly = await manager.extractPlan(
-        "シフトを再計算して",
+        "\u30b7\u30d5\u30c8\u3092再計算\u3057\u3066",
         appliedTurn4.updatedState
       );
       expect(capturedTurn1Prompts[capturedTurn1Prompts.length - 1]).not.toContain(
-        "前回(未適用・回答待ち)"
+        "前回(未適用\u30fb回答待\u3061)"
       );
       expect(planTurn7SolveOnly.intentType).toBe("solve_only");
 
@@ -3780,32 +3780,32 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
   it("distinguishes headcount units ('名','人') from frequency quota ('回') in custom shift prompts and operations", () => {
     // 1. Verify router prompt explicitly guides disambiguation of daily headcount from monthly quota
-    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("1日あたりの配置人数（名・人）");
-    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("個人別の月間回数（回）");
-    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("リーダー業務可は1日最大1名までに制限する");
-    // Ensure test scenario terms ('シフトA', 'シフト A') are NOT hardcoded in few-shot examples
-    expect(STAGE1_ROUTER_SYSTEM_PROMPT).not.toContain("シフトA");
-    expect(STAGE1_ROUTER_SYSTEM_PROMPT).not.toContain("シフト A");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("1日\u3042\u305f\u308a\u306e配置人数（名\u30fb人）");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("個人別\u306e月間回数（回）");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).toContain("\u30ea\u30fc\u30c0\u30fc業務可\u306f1日最大1名\u307e\u3067\u306b制限\u3059\u308b");
+    // Ensure test scenario terms ('Shift A') are NOT hardcoded in few-shot examples
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).not.toContain("\u30b7\u30d5\u30c8A");
+    expect(STAGE1_ROUTER_SYSTEM_PROMPT).not.toContain("\u30b7\u30d5\u30c8 A");
 
     // 2. Verify stage 2 custom shift prompt strictly assigns headcount units ('名','人') to add_daily_shift_cap
-    expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("助数詞（名・人 vs 回）による配置人数と月間ノルマの厳密な区別");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("助数詞（名\u30fb人 vs 回）\u306b\u3088\u308b配置人数\u3068月間\u30ce\u30eb\u30de\u306e厳密\u306a区別");
     expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("add_daily_shift_cap");
     expect(CUSTOM_SHIFT_STAGE2_PROMPT).toContain("add_shift_quota");
-    expect(CUSTOM_SHIFT_STAGE2_PROMPT).not.toContain("シフトA");
-    expect(CUSTOM_SHIFT_STAGE2_PROMPT).not.toContain("シフト A");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).not.toContain("\u30b7\u30d5\u30c8A");
+    expect(CUSTOM_SHIFT_STAGE2_PROMPT).not.toContain("\u30b7\u30d5\u30c8 A");
 
-    // 3. Verify tool call conversion: '新人は2名まで' (boundType: 'max', staffCount: 2, attribute: 'newcomer')
+    // 3. Verify tool call conversion: 'max 2 newcomers' (boundType: 'max', staffCount: 2, attribute: 'newcomer')
     // correctly creates a daily_shift_cap rule with maxStaff=2 rather than a monthly shift_count_quota
     const baseState = generateNurseSchedulingState({ staffCount: 30, year: 2026, month: 11, seed: 202611 });
     const withCustomShift = applyChatOperationsToState(baseState, [
-      { op: "add_custom_shift", shiftName: "シフトA", shift: "CS1", shortLabel: "シ", baseShift: "D" },
+      { op: "add_custom_shift", shiftName: "\u30b7\u30d5\u30c8A", shift: "CS1", shortLabel: "\u30b7", baseShift: "D" },
     ]).updatedState;
 
     const opCap = convertStage2ToolToOperation(
       {
         tool_name: "add_daily_shift_cap",
         args: {
-          shiftName: "シフトA",
+          shiftName: "\u30b7\u30d5\u30c8A",
           attribute: "newcomer",
           boundType: "max",
           staffCount: 2,
@@ -3838,7 +3838,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       id: "rule_weekday_staffing",
       kind: "staffing_rule" as const,
       enabled: true,
-      description: "平日日勤はリーダー2名以上",
+      description: "平日日勤\u306f\u30ea\u30fc\u30c0\u30fc2名以上",
       shifts: ["D" as const],
       attribute: "leader",
       dayType: "weekday" as const,
@@ -3878,7 +3878,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       id: "rule_soft_all_staff",
       kind: "staffing_rule" as const,
       enabled: true,
-      description: "日勤は全員で10名（努力目標）",
+      description: "日勤\u306f全員\u306710名（努力目標）",
       shifts: ["D" as const],
       attribute: "all",
       isHard: false,
@@ -3902,7 +3902,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       id: "rule_impossible_weekend",
       kind: "staffing_rule" as const,
       enabled: true,
-      description: "土日深夜勤はリーダー15名以上必要（不可能な人数）",
+      description: "土日深夜勤\u306f\u30ea\u30fc\u30c0\u30fc15名以上必要（不可能\u306a人数）",
       shifts: ["N" as const],
       attribute: "leader",
       dayType: "weekend" as const,
@@ -3924,7 +3924,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       id: "rule_staffing_d_12",
       kind: "staffing_rule" as const,
       enabled: true,
-      description: "平日日勤は全員で12名",
+      description: "平日日勤\u306f全員\u306712名",
       shifts: ["D" as const],
       attribute: "all",
       dayType: "weekday" as const,
@@ -3935,7 +3935,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
       id: "rule_date_cov_15",
       kind: "date_coverage" as const,
       enabled: true,
-      description: "11月2日日勤は18名必要",
+      description: "11月2日日勤\u306f18名必要",
       shift: "D" as const,
       day: 2,
       minStaff: 18,
@@ -3984,14 +3984,14 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
 
     // 2. isStaffingRuleApplicableOnDay with allowedDaysOfWeek and includeHolidays
     // Nov 2, 2026 is Monday (regular)
-    // Nov 3, 2026 is Tuesday (文化の日 - Holiday)
+    // Nov 3, 2026 is Tuesday (Culture Day - Holiday)
     // Nov 4, 2026 is Wednesday (regular)
-    // Nov 23, 2026 is Monday (勤労感謝の日 - Holiday)
+    // Nov 23, 2026 is Monday (Labor Thanksgiving Day - Holiday)
     const ruleMwfNoHol: CustomConstraintRule = {
       id: "mwf_no_hol",
       kind: "staffing_rule",
       enabled: true,
-      description: "月水金 (祝日除く)",
+      description: "月水金 (祝日除\u304f)",
       shifts: ["D"],
       attribute: "all",
       dayType: "custom",
@@ -4031,7 +4031,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           id: "rule_t_leader_icu",
           kind: "staffing_rule",
           enabled: true,
-          description: "研修Tは月水金にリーダーまたは救急が1名以上",
+          description: "研修T\u306f月水金\u306b\u30ea\u30fc\u30c0\u30fc\u307e\u305f\u306f救急\u304c1名以上",
           shifts: ["T"],
           attribute: "leader_cap,icu_er",
           dayType: "custom",
@@ -4043,7 +4043,7 @@ describe("1-Month 3-Shift Nurse Scheduling Demo (30 Nurses, Carryover, HiGHS)", 
           id: "rule_off_weekend",
           kind: "staffing_rule",
           enabled: true,
-          description: "公休Oは土日に全員で5名以上",
+          description: "公休O\u306f土日\u306b全員\u30675名以上",
           shifts: ["O"],
           attribute: "all",
           dayType: "weekend",

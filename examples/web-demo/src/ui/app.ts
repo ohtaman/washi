@@ -1,6 +1,6 @@
 import { EXAMPLES, type ExampleModel, type PresetGroup } from "../presets/index.js";
 import { executeModelCode } from "./runner.js";
-import { DOCS_HTML } from "./docs.js";
+import { DOCS_HTML, getDocsHtml } from "./docs.js";
 import type { Model } from "../../../../src/modeler/model.js";
 import { setDefaultSolver } from "../../../../src/modeler/solvers/registry.js";
 import { registerZ3Solver } from "../../../../src/modeler/solvers/z3.js";
@@ -11,23 +11,19 @@ import {
   getLocale,
   onLocaleChange,
   t,
+  getPresetTitle,
   type Locale,
   type TranslationDict,
 } from "./i18n.js";
 import { initTheme } from "./theme.js";
 
-const GROUP_LABELS: Record<Locale, Record<PresetGroup, string>> = {
-  en: {
-    fundamentals: "1. Fundamentals (Core Modeling APIs)",
-    practical: "2. Practical Applications (Real-World Use Cases)",
-    logic: "3. SMT Logic & Conflict Diagnosis (Z3)",
-  },
-  ja: {
-    fundamentals: "1. 基本モデル（APIと概念の理解）",
-    practical: "2. 実践ユースケース（業務・アプリ応用）",
-    logic: "3. 論理検証・競合診断（Z3 SMT / Unsat Core）",
-  },
-};
+function getGroupLabel(group: PresetGroup): string {
+  switch (group) {
+    case "fundamentals": return t("categoryFundamentals");
+    case "practical": return t("categoryPractical");
+    case "logic": return t("categoryLogic");
+  }
+}
 
 function stripComments(code: string): string {
   return code
@@ -127,7 +123,7 @@ export function initApp() {
   const unsatCoreList = document.getElementById("unsat-core-list") as HTMLDivElement | null;
 
   if (docsContainer) {
-    docsContainer.innerHTML = DOCS_HTML;
+    docsContainer.innerHTML = getDocsHtml(getLocale());
   }
 
   let currentModel: Model | null = null;
@@ -142,12 +138,12 @@ export function initApp() {
       if (groupItems.length === 0) continue;
 
       const optgroup = document.createElement("optgroup");
-      optgroup.label = GROUP_LABELS[locale][grp];
+      optgroup.label = getGroupLabel(grp);
 
       for (const ex of groupItems) {
         const opt = document.createElement("option");
         opt.value = ex.id;
-        const displayTitle = locale === "ja" && ex.titleJa ? ex.titleJa : ex.title;
+        const displayTitle = getPresetTitle(ex.id, ex.title);
         opt.textContent = `[${ex.category}] ${displayTitle}`;
         optgroup.appendChild(opt);
       }
@@ -578,7 +574,7 @@ export function initApp() {
     visualizerContainer.innerHTML = `
       <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
         <div style="font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-sumi-muted);">
-          ${getLocale() === "ja" ? "主要決定変数の最適値サマリー" : "Optimal Decision Variables Summary"}
+          ${t("optimalSummaryTitle")}
         </div>
         <div style="display: flex; flex-wrap: wrap; gap: 8px; width: 100%;">
           ${cardsHtml}

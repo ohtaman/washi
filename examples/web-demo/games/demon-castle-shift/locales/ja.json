@@ -1,0 +1,1124 @@
+{
+  "ui": {
+    "title": "魔王城の24時間警備シフト",
+    "subtitle": "拠点防衛シフトパズル (WaSHI MIP)",
+    "metaDesc": "昼夜の得意分野、休息条件、モンスター同士の相性を考慮してシフトを組み、WaSHIの数理最適化で魔王城を守り抜こう。",
+    "backToShowcase": "ショーケースへ戻る",
+    "backToShowcaseShort": "← ショーケース",
+    "menu": "メニュー",
+    "openMenu": "メニューを開く",
+    "bgmOn": "BGMを再生（クリックでON）",
+    "bgmOff": "BGMを停止（クリックでOFF）",
+    "bgmTagOn": "🔊 BGM: ON",
+    "bgmTagOff": "🔇 BGM: OFF",
+    "bgmTextShort": "🔇 BGM: OFF",
+    "bgmTextExtra": "（クリックで音楽ON）",
+    "dispatchBtn": "このシフトで警備する",
+    "dispatchBtnDesc": "現在のシフトで警備シミュレーションを開始します",
+    "hintBtn": "リリスに相談する",
+    "hintBtnDesc": "WaSHIソルバーが最適な調整案を提案します",
+    "solveBtn": "お手本シフトを見る",
+    "solveBtnDesc": "違反ゼロの最適配置を展開します",
+    "resetBtn": "シフトをリセット",
+    "off": "休",
+    "day": "昼",
+    "night": "夜",
+    "mon": "月",
+    "tue": "火",
+    "wed": "水",
+    "thu": "木",
+    "fri": "金",
+    "sat": "土",
+    "sun": "日",
+    "gateHp": "城門ライフ",
+    "winRate": "防衛成功率",
+    "requiredPower": "目標戦力",
+    "currentPower": "現在戦力",
+    "raidTitle": "敵襲",
+    "noRaid": "平穏",
+    "synergy": "連携",
+    "conflict": "不仲",
+    "fullMoon": "満月",
+    "requestedOff": "指定休",
+    "victoryTitle": "防衛成功",
+    "defeatTitle": "城門突破",
+    "nextStage": "次の月へ進む ▶",
+    "retryStage": "もう一度組む ↺",
+    "theoryArticle": "数理モデル解説記事",
+    "rulesTitle": "警備シフトの心得",
+    "rulesClose": "閉じる",
+    "tapToAdvance": "タップで次へ",
+    "autoSimOn": "自動進行: ON",
+    "autoSimOff": "自動進行: OFF",
+    "eraPrefix": "星月暦",
+    "yearSuffix": "年",
+    "monthSuffix": "月",
+    "startStory": "物語を始める",
+    "returnToTitle": "タイトル画面へ戻る",
+    "startStory_2": "物語を始める ▶",
+    "finish": "終了 ▶",
+    "next": "次へ ▶",
+    "clickForMusic": "（クリックで音楽ON）",
+    "continueDifficulty": "つづきから遊ぶ（{mLabel}・難易度：{dLabel}）",
+    "continue": "つづきから遊ぶ（{mLabel}）",
+    "proceedToShift": "{firstMonth}の編成へ進む",
+    "next_2": "次へ",
+    "cleared": "防衛成功",
+    "difficulty": "（難易度：{endlessDiff}）",
+    "subsequentMonthsWithDifficulty": "ユーザーの警備履歴に応じて難易度が自動調整される翌月以降の編成",
+    "daysGuardsOnDuty": "{dayCount}日間 ・ 今週の当番 {guardCount}名",
+    "startScheduling": "シフト編成を始める",
+    "clickToRevealFullMessage": "クリックでメッセージを全文表示",
+    "day_2": "昼",
+    "night_2": "夜",
+    "off_2": "休",
+    "setOnTo": "{mName}の{dLabel}を「{shiftLabel}」にしましょう",
+    "guardMembers": "警備メンバー",
+    "tapForDetails": "（タップで詳細）",
+    "staff": "人数 {assignedCount}/{req_minStaff}",
+    "text": "{assignedCount}/{req_minStaff}人",
+    "defEst": "防衛 {currentPower} / 予測 {expectedPower}",
+    "off_3": "指定休（{locReason}）",
+    "withLilith": "リリスと一緒に編成 {activeTutorial_stepIndex}/{activeTutorial_totalSteps}",
+    "buildOnMyOwn": "ここからは自分で組む",
+    "clashW150": "⚡{activeConflictPartner}と同番NG (-150)",
+    "synergyW100": "🤝{activeSynergyPartner}と連携 (+100)",
+    "noFullMoonNight": "満月夜は不可",
+    "cannotWorkNightShiftOn": "満月の夜は{m_name}を夜番に配置できません",
+    "currentTapToChangeTo": "{m_name} {getDayLabel_d__currentLang}: 現在 {cycleLabel}（タップで {nextShiftLabel} に切替）",
+    "shifts": "出勤 {assignedCount}/{m_maxWeeklyShifts}",
+    "day_3": "昼 {dayPower}",
+    "night_3": "夜 {nightPower}",
+    "clickToViewSDetails": "クリックで{m_name}の詳細（普段の持ち場：{m_usualPost}）を下部の会話枠に表示",
+    "dayWatch": "昼の警備",
+    "day_4": "☀️ 昼",
+    "nightWatch": "夜の警備",
+    "night_4": "🌙 夜",
+    "understoodFeelFreeToArrange": "わかりました。ここからはあなたのペースで自由にシフトを組んでみてくださいね。",
+    "post": "{m_title}（{m_race}・持ち場：{m_usualPost}）",
+    "text_2": "「{m_quotes_intro}」 ── {m_traitSummary}",
+    "schedulingWithLilith": "リリスと一緒に編成（{activeTutorial_stepIndex}/{activeTutorial_totalSteps}）",
+    "scheduleComplete": "シフト完成",
+    "our3DayShiftSchedule": "一緒に組んだ3日間のシフトが完成しました。下の「このシフトで警備する」を押しましょう。",
+    "thankYouWeHavePut": "ありがとうございます、一緒に3日間のシフトが綺麗に組めましたね。右下の「このシフトで警備する」を押して、城門の警備へ向かいましょう。",
+    "workRuleCheck": "勤務条件の確認",
+    "shiftClashDefenseWith": "⚡ 同シフト拒否（{other_name}と同番で防衛力 {rel_moraleDelta}）",
+    "assigningBothToTheSame": "{locRel_description}（同じ枠に配置すると防衛力が {moraleDelta} 下がります）",
+    "ready": "準備完了",
+    "everyTimeSlotIsWell": "すべての時間帯に頼もしい戦力を配置できました。「このシフトで警備する」で進みましょう。",
+    "pairSynergyWith": "🤝 ペア連携発動（{other_name}と同番で +{rel_moraleDelta}）",
+    "text_3": "「{quote}」 ── {locRel_description}",
+    "dayShift": "昼番",
+    "nightShift": "夜番",
+    "text_4": "「{quote}」",
+    "difficulty_2": "（難易度：{diffLabel}）",
+    "staff_2": "人数 {staffOkSlots}/{totalSlots}",
+    "estPower": "予測到達 {predOkSlots}/{totalSlots}",
+    "workRulesOk": "勤務条件 OK",
+    "ruleIssues": "勤務違反 {laborViolations_length}件",
+    "thereAreNoSpecialPair": "今月の当番メンバー間には特別な相性・同番NGはありません。",
+    "synergy_2": "相性◎ (+{rel_moraleDelta})",
+    "clash": "同番NG ({rel_moraleDelta})",
+    "synergy_3": "🤝 相性◎",
+    "clash_2": "⚡ 同番NG",
+    "synergyTogether": "🤝 相性◎：{mA_name}×{mB_name}（同シフトで +{rel_moraleDelta}）",
+    "clashTogether": "⚡ 同番NG：{mA_name}×{mB_name}（同シフトで {rel_moraleDelta}）",
+    "hint": "ヒント",
+    "toResolveAWorkRule": "勤務条件の無理を解消するため、{mName}の{dLabel}を「{sLabel}」に調整しました。",
+    "assignedOnTo": "{mName}の{dLabel}を「{sLabel}」に配置しました。{locStage_lilithHint}",
+    "adjustedOnToForAn": "{mName}の{dLabel}を「{sLabel}」に調整しました。これで評価がさらに上がります。",
+    "yourScheduleAlreadyMatchesThe": "すでにお手本シフトと同じ配置になっています。このまま「このシフトで警備する」へ進めます。",
+    "statusCheck": "状況確認",
+    "yourCurrentlyPlacedShiftsHave": "いま配置されているマスに手詰まりや違反はありません。このまま残りの空欄を埋めていけば防衛できます。",
+    "someGuardsCurrentAssignmentsAr": "",
+    "tryResettingAFewShifts": "{reasonText} 該当するメンバーの出勤日を一度「休」に戻して調整してみてください。",
+    "day_5": "☀️昼",
+    "night_5": "🌙夜",
+    "match": "✓ 一致",
+    "you": "自",
+    "mod": "最",
+    "text_5": "・",
+    "none": "なし",
+    "noRaidEst": "🍃 襲来なし／予測 {expectedEnemy}",
+    "actualEst": "実際 {outcome_actualEnemyPower}／予測 {expectedEnemy}",
+    "est": "予測 {expectedEnemy}",
+    "enemy": "敵：",
+    "breachedSlot": "突破された枠",
+    "yoursStrongDefStrong": "あなた：<strong>防衛 {pPower}</strong>（{pNames}）",
+    "modelStrongDefStrong": "お手本：<strong>防衛 {oPower}</strong>（{oNames}）",
+    "yourShiftVsModelShift": "📊 あなたのシフト vs お手本シフトの比較",
+    "goldBorderedCellsDifferFrom": "金枠のマスがお手本と異なっていた配置です（次回挑戦時は敵の進軍と当番メンバーが新しく組み直されます）。",
+    "yourTotalDefenseStrongStrong": "あなたの総防衛力：<strong>{playerEval_totalScore}</strong>",
+    "modelTotalDefenseStrongStrong": "お手本の総防衛力：<strong>{optEval_totalScore}</strong>",
+    "shiftComparisonTable": "あなたのシフトとお手本シフトの比較表",
+    "guard": "メンバー",
+    "gateIntactAllRaidsMust": "城門無傷（全戦防衛必須）",
+    "gateBreachedFallen": "城門突破（陥落）",
+    "gateIntact": "城門無傷",
+    "breached": "陥落",
+    "unassigned": "配置なし",
+    "synergy100": "連携 +100",
+    "friction150": "不仲 -150",
+    "noGuardsAreAssignedYet": "警備メンバーがまだ誰も配置されていません。各マスの「昼」または「夜」を選んで配置してください。",
+    "shiftRulesCheck": "勤務条件の確認",
+    "pleaseResolveTheFollowingShift": "警備を開始する前に、以下の勤務条件の無理を解消してください。",
+    "show1CellHint": "1マスだけヒントを見る",
+    "returnToShiftTable": "シフト表に戻って調整する",
+    "unassignedUnguarded": "配置なし（無防備）",
+    "noGuardsAreStationedHere": "誰も配置されておらず、城門が無防備になっています…",
+    "defVsEst": "防衛 {o_defensePower} vs 予測 {o_expectedEnemyPower}",
+    "mainCastleGate": "第一防衛城門",
+    "guardsAreInPositionClick": "警備隊が配置についた。画面クリックで次の場面へ進みます。",
+    "autoOff": "▶ 自動: OFF",
+    "skipToResult": "結果までスキップ ⏭",
+    "skip": "スキップ ⏭",
+    "clickToAdvance": "クリックで次へ進む",
+    "demonCastleGuards": "魔王城・警備当番",
+    "advancingExpedition": "押し寄せる勇者軍",
+    "guardDefense": "味方防衛力",
+    "enemyPower": "敵戦力",
+    "weeklyDefenseTimeline": "今週の防衛タイムライン",
+    "autoOn": "🔄 自動: ON",
+    "morningDawnBreaks": "🌅 {dayName}曜日の朝 ── 夜が明けた",
+    "dawnBreaksOnMorning": "🌅 夜が明け、{dayName}曜日の朝が訪れた",
+    "nightFallsAndTheFull": "🌕 日が暮れて暗くなり、{dayName}曜日の満月が昇った",
+    "nightFallsOnEvening": "🌙 日が暮れて暗くなり、{dayName}曜日の夜が訪れた",
+    "text_6": "{dayName}曜日・{shiftLabel}（{i___1} / {outcomes_length}）",
+    "allQuietNoRaid": "🍃 敵影なし・平穏",
+    "alertLevel": "警戒レベル {o_expectedEnemyPower}",
+    "noExpeditionRaidOccurredDuring": "この時間帯に勇者軍の襲来はなかった",
+    "onDutyDefCompletedA": "🛡️ 当番：{locO_defenderName}（防衛力 {o_defensePower}）が平穏に見回りを終えた",
+    "allClearAdvancingToNext": "🍃 異常なし ── 次の時間帯へ進みます…",
+    "noEnemyMovementTimePassed": "{dayName}曜日・{shiftLabel}：勇者軍の動きはなく、静かに時間が過ぎた。",
+    "noRaidDef": "🍃 襲来なし（防衛 {o_defensePower}）",
+    "defVsEst_2": "⚔️ 防衛 {o_defensePower} vs 敵予測 {o_expectedEnemyPower}",
+    "battle": "{shiftIcon} {dayName}曜日・{shiftLabel}の戦い",
+    "wellAboveEstimate": "🛡️ 予測を大きく上回る",
+    "aboveEstimate": "⚔️ 予測戦力以上",
+    "belowEstimate": "⚠️ 予測戦力未満",
+    "def": "防衛 {o_defensePower}",
+    "est_2": "予測 {o_expectedEnemyPower}",
+    "appearedBeforeTheCastleGate": "城門の前に「{locO_enemyName}」が現れた",
+    "emergedFromTheDarkness": "闇の中から「{locO_enemyName}」が現れた",
+    "mainForceAppears": "👑 勇者軍主力・出現",
+    "dayVanguardAppears": "☀️ 昼の進軍部隊・出現",
+    "nightRaidAppears": "🌙 夜の奇襲部隊・出現",
+    "estEnemyPower": "⚔️ 敵予測戦力 {o_expectedEnemyPower}",
+    "onDutyDefStandsFirm": "🛡️ 警備当番：{locO_defenderName}（防衛力 {o_defensePower}）が立ち向かう",
+    "morningArrives": "🌅 {dayName}曜日の朝が訪れました…",
+    "nightArrives": "🌙 {dayName}曜日の夜が訪れました…",
+    "engageBattleClickToClash": "⚔️ 戦いを始める ▶（クリックで交戦開始）",
+    "appeared": "{o_enemyIcon} {locO_enemyName}が現れた",
+    "asDawnBrokeOnAppeared": "{dayName}曜日の夜が明けると、城門の前に「{locO_enemyName}」が現れた。",
+    "asDarknessFellEmergedFrom": "日が暮れて暗くなると、闇の中から「{locO_enemyName}」が現れた。",
+    "clashing": "⚔️ 交戦中…",
+    "standoff": "⚔️ 両軍対峙",
+    "clashing_2": "⚡ 戦力激突中…",
+    "bladesLocked": "⚡ つば迫り合い中…",
+    "ene": "敵 {frame_val}",
+    "ene_2": "敵 {o_actualEnemyPower}",
+    "defVsEneRepelled": "🛡️ 防衛 {o_defensePower} vs 敵 {o_actualEnemyPower}（防衛成功）",
+    "repelled": "🛡️ 防衛成功",
+    "repelledDefVsEne": "🛡️ 防衛成功（防衛 {o_defensePower} vs 敵 {o_actualEnemyPower}）",
+    "repelledVs": "🛡️ 防衛成功（{o_defensePower} vs {o_actualEnemyPower}）",
+    "repelled_2": "{dayName}曜日・{shiftLabel}：{locO_defenderName}が「{locO_enemyName}」を退けた。",
+    "defVsEneBreached1": "💥 防衛 {o_defensePower} vs 敵 {o_actualEnemyPower}（突破 -1）",
+    "gateBreached1": "💥 城門突破 -1",
+    "gateBreached1DefVs": "💥 城門突破 -1（防衛 {o_defensePower} vs 敵 {o_actualEnemyPower}）",
+    "defenseBreachedVs": "💥 防衛突破（{o_defensePower} vs {o_actualEnemyPower}）",
+    "theGateShookViolentlyUnder": "敵の猛攻で城門が大きく揺れた（残り城門ライフ {remainingHp}/{maxHp}）。",
+    "theCastleGateHasBeen": "城門が突破され、これ以上は守りを維持できない。",
+    "abortedDueToGateBreach": "（城門陥落により中断）",
+    "viewDefenseResultClickTo": "💥 警備結果を確認する ▶（クリックで進行）",
+    "viewDefenseResultClickTo_2": "🏆 警備結果を確認する ▶（クリックで進行）",
+    "nextShiftClickToProceed": "▶ 次の時間帯へ進む（クリックで進行）",
+    "defenseFailedGateBreachedGame": "警備失敗 — 城門突破（GAME OVER）",
+    "theCastleGateWasBreached": "勇者軍の襲来を防ぎきれず、城門が突破されました（全戦防衛成功がクリア条件です）。今回のシフトとお手本シフトの比較を確認し、タイトル画面から再出発してください。",
+    "backToTitleScreen": "タイトル画面へ戻る",
+    "defenseComplete": "防衛成功 — {calMonth}の警備完了",
+    "theGateWasNeverBreached": "城門は一度も抜かれることなく、魔王城の静かな日常が守られた。",
+    "nextMonthDifficultyAdjustmentD": "翌月の警備難度調整（{calMonth}・難易度：{nextAdaptiveLabel}）",
+    "basedOnYourGuardHistory": "これまでの警備履歴（ヒント使用状況や再挑戦回数）に応じて、{calMonth}の進軍状況が「難易度：{nextAdaptiveLabel}」に自動調整されました。",
+    "youDefendedTheDemonCastle": "5日間にわたる勇者本隊の進軍から魔王城を守り抜きました。",
+    "youRepelledTheExpeditionWhile": "勇者隊の進軍を退け、誰ひとり無理をさせずに魔王城を守り抜きました。",
+    "proceedToNextStage": "次のステージへ進む ▶",
+    "difficulty_3": "{calMonth}（難易度：{nextAdaptiveLabel}）",
+    "compareYourShiftWithThe": "📊 あなたのシフトとお手本シフトを比較する",
+    "onDutyMemberThisWeek": "今週のシフト当番メンバー",
+    "duty": "当番",
+    "post_2": "持ち場：",
+    "day_6": "昼 {dayPwr}",
+    "night_6": "夜 {nightPwr}",
+    "maxWk": "週{m_maxWeeklyShifts}回まで・{m_traitTitle}",
+    "demonCastle24hGuardShift": "魔王城の24時間警備シフト | 拠点防衛シフトパズル",
+    "castleDefenseShiftPuzzle": "拠点防衛シフトパズル",
+    "backToShowcase_2": "← ショーケースへ",
+    "showcase": "../../ja/showcase/",
+    "deepInTheAncientForest": "深い森の奥、魔物たちが静かに暮らす最後の砦――「魔王城」。<br />昼夜を問わず押し寄せる討伐軍から、<strong>24時間の交代シフトで仲間と城を守り抜こう。</strong>",
+    "startNewGame": "はじめから遊ぶ",
+    "continue_2": "つづきから遊ぶ",
+    "guardGrimoire": "📖 警備隊名鑑",
+    "howToPlay": "遊び方",
+    "title_2": "← タイトル",
+    "grimoire": "📖 名鑑",
+    "grimoireOfAll20Demon": "魔王城で働く全20名のメンバー名鑑と相性一覧",
+    "rules": "ルール",
+    "hint_2": "💡 ヒント",
+    "fill1CellFromThe": "1マスだけお手本を配置します",
+    "clearAll": "🔄 リセット",
+    "hintFill1Cell": "ヒント（1マス配置）",
+    "pairAffinities": "相性一覧",
+    "operationsMenu": "⚙️ 作戦指令メニュー",
+    "shiftRules": "📜 勤務ルール",
+    "affinities": "🤝 相性・連携",
+    "backToTitleScreen_2": "← タイトル画面へ戻る",
+    "guardAffinitiesClashes": "🤝 相性◎と同番NG一覧",
+    "clickToRevealFullMessage_2": "クリックでメッセージを全文表示・次へ進める",
+    "guardWithThisShift": "⚔️ このシフトで警備する",
+    "protectOurDemonCastleWith": "誰ひとり無理をさせないシフトで、私たちの魔王城を守り抜く。",
+    "beginStory": "物語を始める",
+    "prologue": "プロローグ",
+    "chiefGuardTactician": "魔王城 警備参謀",
+    "lilith": "リリス",
+    "prev": "前へ",
+    "monthlyGuardBriefing": "今月の警備概要",
+    "guardResult": "警備結果",
+    "ancientGrimoireOfThe20": "── 魔王城 警備隊古録・全二十名 ──",
+    "demonCastle20GuardGrimoire": "魔王城・全20名メンバー名鑑",
+    "closeTome": "✕ 書を閉じる",
+    "seal": "印",
+    "close": "閉じる",
+    "titleScreen": "タイトル画面",
+    "monthSelection": "年月選択",
+    "guardShiftMatrix": "警備シフト編成表",
+    "openingMovie": "オープニングムービー",
+    "shiftGoalStatus": "シフト達成状況",
+    "dialogueWindowAndDispatchComma": "会話ウィンドウと出撃コマンド",
+    "demonCastle24hGuardShift_2": "魔王城の24時間警備シフト",
+    "openingScene": "オープニング情景",
+    "chiefGuardTacticianLilith": "警備参謀 リリス",
+    "howToPlayShiftRules": "遊び方と勤務ルール",
+    "divClassHelpGridDiv": "<div class=\"help-grid\">\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">手順 1</span>\n          <h3>敵の戦闘力と味方防衛力の力比べ</h3>\n          <p>\n            各時間帯で、押し寄せる勇者軍部隊の実際の戦闘力が<strong>「予測戦力」の前後で変動</strong>します。<br />\n            <strong>味方の防衛力が敵の戦闘力以上なら防衛成功</strong>です。得意な時間帯や相性ペアを活かして、厚みのある守りを築きましょう。\n          </p>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">手順 2</span>\n          <h3>無理のない勤務ルールを守る</h3>\n          <p>\n            城の仲間に無理をさせないため、以下の勤務条件を守る必要があります（勤務条件さえ守れば、戦力が足りない枠があっても確率勝負で警備を開始できます）。\n          </p>\n          <ul class=\"help-list\">\n            <li><strong>大物枠（ドラゴ・ゴーレム等）は連勤不可</strong>：1日働いたら翌日は「休」にします（週3回まで）。</li>\n            <li><strong>夜番の翌朝は昼番不可</strong>：夜番に入った翌日にすぐ昼番へ入ることはできません（夜→夜は可能）。</li>\n            <li><strong>新米枠（プルル・マンドラ等）は夜の単独配置不可</strong>：夜番にする時は、他の仲間も一緒に夜番へ配置します。</li>\n            <li><strong>指定休・満月の夜</strong>：指定休の日や、満月の夜の昼型獣人（フェンリル等）は最初からロックされています。</li>\n          </ul>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">手順 3</span>\n          <h3>相性◎（+100）と同番NG（-150）・全戦防衛必須</h3>\n          <p>\n            気の合うペアを同じ時間帯に並べると<strong>防衛力が +100</strong> 上がりますが、<strong>「この人とは一緒に働きたくない」という不仲ペアを同じ枠に置くと防衛力が -150 下がってしまいます</strong>。<br />\n            勇者軍は毎日決まった時間ではなく<strong>不規則な時間帯に現れ（手薄な枠は特に狙われます）</strong>、<strong>1回でも城門を突破されたら防衛失敗</strong>となります。どの時間帯に来ても守り抜けるシフトを組みましょう。\n          </p>\n        </div>\n      </div>",
+    "defaultDiagMessage": "現在の配置に偏りがあり、後半の枠で人手が足りなくなっています。"
+  },
+  "lilith": {
+    "name": "Lilith",
+    "title": "Chief Tactician",
+    "portrait": "./char-lilith.jpg",
+    "defaultQuote": "Let us build the shift while respecting each guard's best hours, rest days, and who they get along with or refuse to work alongside."
+  },
+  "prologue": [
+    {
+      "heading": "「ようこそ魔王城へ。あなたが新しく着任された警備隊長ですね」",
+      "text": "「遠いところをよく来てくださいました。私はこの魔王城で警備参謀を務めているリリスと申します。今日からあなたの副官として、城門の守りを一緒に担当させていただきますね。どうぞよろしくお願いいたします。」",
+      "visualHtml": ""
+    },
+    {
+      "heading": "「この城は、魔物たちが静かに暮らす最後の砦なのです」",
+      "text": "「深い森と渓流に守られたこの魔王城には、行き場を失った魔物たちが集まって暮らしています。城の奥深くでは私たちの主である魔王様も静かに眠っておられ、正門はみんなの暮らしを守る大切な要となっています。」",
+      "visualHtml": "\n        <div class=\"prologue-scene-banner\">\n          <img class=\"prologue-banner-img\" src=\"./op-scene-1-castle.jpg\" alt=\"森の奥の魔王城\" />\n          <div class=\"prologue-banner-caption\">深い森と渓流に守られた最後の砦「魔王城」</div>\n        </div>\n      "
+    },
+    {
+      "heading": "「あなたにお願いしたいのは、24時間のシフト編成です」",
+      "text": "「先日、森の外縁で起きた衝突をきっかけに、人間の勇者隊が昼も夜も休まずこの砦へ進軍してきています。日差しが苦手な者や連勤ができない者など事情もさまざまですので、どうかみんなが無理なく力を発揮できる昼夜のシフトを組んでください。」",
+      "visualHtml": "\n        <div class=\"prologue-scene-banner\">\n          <img class=\"prologue-banner-img\" src=\"./op-scene-4-guards.jpg\" alt=\"魔王城の門番たち\" />\n          <div class=\"prologue-banner-caption\">昼と夜で得意分野が異なる魔王城の門番たち</div>\n        </div>\n      "
+    }
+  ],
+  "cuts": [
+    {
+      "image": "./op-scene-1-castle.jpg",
+      "cameraClass": "op-cam-zoom-in",
+      "particleColor": "#fde047",
+      "lead": "深い森の奥、清らかな渓流の上に立つ最後の砦――「魔王城」。",
+      "sub": "行き場を失った魔物たちは、この静かな城で肩を寄せ合い暮らしていた。",
+      "durationMs": 5400
+    },
+    {
+      "image": "./op-scene-2-heroes.jpg",
+      "cameraClass": "op-cam-pan-left",
+      "particleColor": "#fb923c",
+      "lead": "ある日、森の外縁で起きた魔物と人間の衝突が平穏に影を落とす。",
+      "sub": "街の人々を守るため、人間の勇者隊が昼夜を問わず砦へと進軍を開始した。",
+      "durationMs": 5400
+    },
+    {
+      "image": "./bg-castle-hall.jpg",
+      "cameraClass": "op-cam-zoom-out",
+      "particleColor": "#38bdf8",
+      "lead": "城の奥深くで静かに眠りにつく『魔王』と、この城に暮らす仲間たち。",
+      "sub": "もし城門が破られれば、魔物たちの最後の居場所は失われてしまう。",
+      "durationMs": 5400
+    },
+    {
+      "image": "./op-scene-4-guards.jpg",
+      "cameraClass": "op-cam-pan-up",
+      "particleColor": "#c084fc",
+      "lead": "昼の陽射しに強い者、夜の月影に冴える者、そして仲間の背中を支える者。",
+      "sub": "誰ひとり無理をさせず、24時間の交代シフトで城門を守り抜く――",
+      "durationMs": 5400
+    },
+    {
+      "image": "./op-scene-4-guards.jpg",
+      "cameraClass": "op-cam-climax",
+      "particleColor": "#fde68a",
+      "lead": "『魔王城の24時間警備シフト』",
+      "sub": "新しく着任した警備隊長であるあなたに、この城のシフト編成が託された。",
+      "durationMs": 6200,
+      "isClimax": true
+    }
+  ],
+  "days": {
+    "short": [
+      "月曜",
+      "火曜",
+      "水曜",
+      "木曜",
+      "金曜"
+    ],
+    "full": [
+      "月曜日",
+      "火曜日",
+      "水曜日",
+      "木曜日",
+      "金曜日"
+    ]
+  },
+  "difficulty": {
+    "1": "穏やか（3人当番）",
+    "2": "控えめ（4人当番）",
+    "3": "標準（5人当番）",
+    "4": "熟練（6人拡大当番）",
+    "5": "極限（7人総力当番）"
+  },
+  "monsters": {
+    "drago": {
+      "name": "Drago",
+      "title": "Veteran Gatekeeper",
+      "race": "Elder Dragon",
+      "usualPost": "Main Gate · Lead Warden",
+      "traitTitle": "No consecutive days (must rest next day) · Max 3/wk",
+      "traitSummary": "Day 500 / Night 500. High defense power, but an old wound prevents working 2 days in a row (max 1 consecutive day, 3 shifts/week). Dislikes sharing a shift with fussy Lich (-150).",
+      "quotes": {
+        "intro": "Schedule me every other day, and I will handle the toughest enemies.",
+        "dayAssign": "Day gate duty, understood. Tomorrow I will take a full rest.",
+        "nightAssign": "Night gate duty. My flames will light up the dark road.",
+        "offAssign": "Phew, nothing beats resting old bones on a day off.",
+        "happy": "Resting mid-week kept my old wound from acting up.",
+        "angry": "I told you I cannot work two days in a row with this old wound."
+      }
+    },
+    "carmilla": {
+      "name": "Carmilla",
+      "title": "Night Shift Ace",
+      "race": "Vampire",
+      "usualPost": "Castle Salon · Night Watch",
+      "traitTitle": "Night Specialist (Night 400 / Day 200) · Dislikes rigid types",
+      "traitSummary": "Day 200 / Night 400. Excels at night watch but dislikes bright sunlight. Gets along well with Pururu and Banshee, but refuses to share a shift with rigid Dullahan or sweaty Minotaur (-150).",
+      "quotes": {
+        "intro": "Strong sunlight is not my forte. Leave the night watch to me.",
+        "dayAssign": "Daytime patrol... It is rather taxing without my parasol.",
+        "nightAssign": "Under the moonlight, I can hear footsteps from afar.",
+        "offAssign": "I shall rest quietly in my chamber today.",
+        "happy": "A calm and composed night watch in the quiet darkness.",
+        "angry": "Harsh sunlight or an incompatible partner is terribly exhausting."
+      }
+    },
+    "fenrir": {
+      "name": "Fenrir",
+      "title": "Day Shift Ace",
+      "race": "Werewolf",
+      "usualPost": "Outer Forest · Day Scout",
+      "traitTitle": "Day Specialist (Day 400) · Cannot work Full Moon nights",
+      "traitSummary": "Day 400 / Night 200. Excels at daytime forest patrols. Cannot be assigned to night shift on a Full Moon night. Quiet-loving Banshee avoids her (-150).",
+      "quotes": {
+        "intro": "Leave daytime patrols to me. Just remember I cannot go out on a Full Moon night.",
+        "dayAssign": "In daylight my nose can track anything from afar.",
+        "nightAssign": "I get a bit sleepy at night, but I will keep watch.",
+        "offAssign": "Day off today. I will relax out in the forest.",
+        "happy": "Working mostly daytime shifts made it super easy to move around. Thanks.",
+        "angry": "On a Full Moon night I lose control, so I cannot take night duty."
+      }
+    },
+    "pururu": {
+      "name": "Pururu",
+      "title": "Rookie Guard",
+      "race": "Slime",
+      "usualPost": "Aqueduct · Cleaning & Watch",
+      "traitTitle": "No solo night shift (+100 synergy with seniors)",
+      "traitSummary": "Day 200 / Night 200. Maintains the underground waterways. Modest solo power, but adds +100 synergy when paired with Carmilla or Dullahan. Cannot guard night shifts alone.",
+      "quotes": {
+        "intro": "I am still a rookie, so I will do my best. I just cannot handle night watch all by myself...",
+        "dayAssign": "Heading out for daytime patrol and waterway inspection.",
+        "nightAssign": "Night watch. As long as a senior is with me, I can stay calm.",
+        "offAssign": "On my day off I will rest by the clean stream.",
+        "happy": "Guarding alongside my seniors taught me so much.",
+        "angry": "When left alone in the pitch-black night, I get too scared to see around me..."
+      }
+    },
+    "dullahan": {
+      "name": "Dullahan",
+      "title": "Heavy Spectral Knight",
+      "race": "Spectral Knight",
+      "usualPost": "Outer Rampart · Patrol Captain",
+      "traitTitle": "Day 300 / Night 400 · Synergizes with Fenrir & Pururu",
+      "traitSummary": "Day 300 / Night 400. Dependable knight day or night. Gains +100 defense when paired with Fenrir or Pururu, but clashes with Carmilla (-150).",
+      "quotes": {
+        "intro": "This shield exists for the peace of the Demon Castle. I shall fulfill my duty at any post.",
+        "dayAssign": "Daytime gate guard. I will keep a vigilant watch.",
+        "nightAssign": "Night patrol. Nothing in the shadows shall escape me.",
+        "offAssign": "Off duty. I will spend the day maintaining my armor.",
+        "happy": "A well-balanced deployment. The castle defense was solid.",
+        "angry": "This deployment is strained. It leaves gaps in our defense."
+      }
+    },
+    "golem": {
+      "name": "Golem",
+      "title": "Forge Colossus",
+      "race": "Rune Golem",
+      "usualPost": "Castle Forge · Armor Smith",
+      "traitTitle": "No consecutive days (cooling rest required) · Max 3/wk",
+      "traitSummary": "Day 500 / Night 500. Usually forges gate fittings. Its mana core requires cooling, so it can only work every other day (max 3/wk). Pairs well with Minotaur and Mandra.",
+      "quotes": {
+        "intro": "...Mana furnace operates every other day. I shall be the gate's shield.",
+        "dayAssign": "...Daytime gate defense acknowledged.",
+        "nightAssign": "...Nighttime gate defense. Watching by furnace light.",
+        "offAssign": "...Entering cooling standby mode.",
+        "happy": "...Mana furnace temperature normal. Mission completed.",
+        "angry": "...Continuous operation causes core overheating."
+      }
+    },
+    "behemoth": {
+      "name": "Behemoth",
+      "title": "Forest Horned Brute",
+      "race": "Behemoth",
+      "usualPost": "North Woods · Outer Patrol",
+      "traitTitle": "No consecutive days (Day 550 / Night 450) · Heavy Brawler",
+      "traitSummary": "Day 550 / Night 450. Patrols the northern forest with unmatched strength, but needs a full day's nap after going all out (max 1 consecutive day, 3/wk). Clashes with trap-weaver Arachne (-150).",
+      "quotes": {
+        "intro": "Leave the heavy lifting to me, as long as I get my nap the next day.",
+        "dayAssign": "Daytime battles get my blood pumping. I will push them right back.",
+        "nightAssign": "Night shift, huh. Good exercise after dinner.",
+        "offAssign": "Eat well and sleep well, that is the best.",
+        "happy": "Fought hard and slept plenty. What a great week.",
+        "angry": "Hey now, going all out two days in a row is asking too much."
+      }
+    },
+    "ifrit": {
+      "name": "Ifrit",
+      "title": "Underground Furnace Spirit",
+      "race": "Ifrit",
+      "usualPost": "Boiler Room · Fire Keeper",
+      "traitTitle": "No consecutive days (Day 450 / Night 550) · Night Firewall",
+      "traitSummary": "Day 450 / Night 550. Manages the castle's underground heating furnace. Burns mana rapidly, so only works every other day (max 3/wk). Flying sparks scare plant-type Mandra (-150).",
+      "quotes": {
+        "intro": "Here from the boiler room. My flames burn fuel fast, so schedule me every other day.",
+        "dayAssign": "Day shift, got it. I will burn brighter than the sun.",
+        "nightAssign": "Dark nights are where my flames shine. No torches needed.",
+        "offAssign": "Heading back to the furnace to rest my embers today.",
+        "happy": "Burned at a great pace, and the castle bathwater is right on temperature.",
+        "angry": "I will run out of fuel if you work me two days straight."
+      }
+    },
+    "lich": {
+      "name": "Lich",
+      "title": "Chief Librarian",
+      "race": "Elder Lich",
+      "usualPost": "Grand Archive · Record Keeper",
+      "traitTitle": "Night Specialist (Night 400 / Day 200) · Meticulous Scholar",
+      "traitSummary": "Day 200 / Night 400. Chief librarian of the underground archives. Deploys strong magic barriers at night. Works well with Wisp and Gargoyle, but dislikes rough Drago (-150).",
+      "quotes": {
+        "intro": "Cataloging archives is my main duty, but I can maintain the night barriers.",
+        "dayAssign": "Daytime air is harsh on old books and bones, though I shall manage.",
+        "nightAssign": "A quiet night. I shall maintain the ward while reading my tome.",
+        "offAssign": "Today I return to the archives to organize the catalog.",
+        "happy": "An orderly schedule. Both my reading and guard duty went smoothly.",
+        "angry": "Sharing a post with someone boisterous disrupts my incantations."
+      }
+    },
+    "morgan": {
+      "name": "Morgan",
+      "title": "Stargazer Witch",
+      "race": "Night Witch",
+      "usualPost": "Observatory · Star Tower",
+      "traitTitle": "Night Specialist (Night 400 / Day 200) · Astral Mage",
+      "traitSummary": "Day 200 / Night 400. Observes the night sky from the Star Tower. Sleepy by day, but wields 400 astral power at night. Dislikes strict timekeeper Centaur (-150).",
+      "quotes": {
+        "intro": "Yawn... I am sleepy during the day. Leave the starlit hours to me.",
+        "dayAssign": "Day shift... I will pull my hat brim down and try not to doze off.",
+        "nightAssign": "The stars are clear tonight. I can foresee every approaching shadow.",
+        "offAssign": "A day off. I will take a long nap in the observatory.",
+        "happy": "Guarding at my own pace under the night sky suited me well.",
+        "angry": "Working beside someone who nags every minute makes it hard to breathe."
+      }
+    },
+    "banshee": {
+      "name": "Banshee",
+      "title": "Moonlit Diva",
+      "race": "Frost Spirit",
+      "usualPost": "Courtyard Music Hall · Night Watch",
+      "traitTitle": "Night Specialist (Night 400 / Day 200) · Loves Quiet",
+      "traitSummary": "Day 200 / Night 400. Frost spirit guarding the quiet night corridors. Synergizes with Carmilla and Wisp (+100), but avoids loud, energetic Fenrir (-150).",
+      "quotes": {
+        "intro": "I love quiet nights... Please schedule me apart from noisy companions.",
+        "dayAssign": "Daylight is a bit dazzling... I will watch quietly from the shade.",
+        "nightAssign": "The night chill feels pleasant. Sound ripples will alert us to enemies.",
+        "offAssign": "Today I will quietly tune my strings in the music hall.",
+        "happy": "Peaceful night shifts allowed me to serve with a calm heart.",
+        "angry": "Loud voices right beside my ear disturb my frost barrier..."
+      }
+    },
+    "garuda": {
+      "name": "Garuda",
+      "title": "Gale Harpy Lancer",
+      "race": "Harpy Lancer",
+      "usualPost": "Valley Sky · Aerial Scout",
+      "traitTitle": "Day Specialist (Day 400) · Cannot fly on Full Moon nights",
+      "traitSummary": "Day 400 / Night 200. Aerial scout watching from high above the valley. Strong visibility by day (400), grounded on Full Moon nights. Clashes with motionless Gargoyle (-150).",
+      "quotes": {
+        "intro": "In clear daylight I can spot everything from the sky. Just do not pair me with a still statue.",
+        "dayAssign": "Good wind today. I will track every enemy movement from above.",
+        "nightAssign": "Cold night air keeps me on the ground, but I will do my part.",
+        "offAssign": "I will preen my wings and nap on a high branch.",
+        "happy": "A breezy shift where I could ride the wind freely.",
+        "angry": "Working beside someone motionless throws off my flying rhythm."
+      }
+    },
+    "centaur": {
+      "name": "Centaur",
+      "title": "Forest Cavalry Archer",
+      "race": "Centaur",
+      "usualPost": "West Road · Forest Defense Line",
+      "traitTitle": "Day Specialist (Day 400) · Disciplined Marksman",
+      "traitSummary": "Day 400 / Night 200. Guards the western forest road with long-range archery (400 by day). Strictly punctual, so arguing breaks out if paired with laid-back Morgan (-150).",
+      "quotes": {
+        "intro": "Reporting from the western woods. In daylight, my arrows never miss.",
+        "dayAssign": "Clear visibility and favorable wind. My bow shall guard the main gate.",
+        "nightAssign": "Aiming at night is harder, yet I will not falter in close combat.",
+        "offAssign": "Off duty. I shall tend to my hooves and replenish my arrows.",
+        "happy": "A punctual and orderly schedule. Most satisfactory.",
+        "angry": "Sharing a post with someone unpunctual disrupts unit discipline."
+      }
+    },
+    "griffon": {
+      "name": "Griffon",
+      "title": "Watchtower Winged Sentinel",
+      "race": "Royal Griffon",
+      "usualPost": "Central Watchtower · Upper Guard",
+      "traitTitle": "Day Specialist (Day 400) · Proud Sentinel",
+      "traitSummary": "Day 400 / Night 200. Keeps watch from the central tower peak. Synergizes with Garuda and Dullahan (+100), but gets distracted by shiny coins next to Mimic (-150).",
+      "quotes": {
+        "intro": "Descended from the watchtower. Leave the daylight vigil to me.",
+        "dayAssign": "Under the sun is my pride. No scout shall slip past my eyes.",
+        "nightAssign": "Night vision is tougher for avian eyes, yet none shall pass.",
+        "offAssign": "Returning to my watchtower nest to rest my wings.",
+        "happy": "Fulfilled my duty with pride. Fine command indeed.",
+        "angry": "Glittering gold coins right beside me distract my instincts."
+      }
+    },
+    "gargoyle": {
+      "name": "Gargoyle",
+      "title": "Rampart Stone Sentry",
+      "race": "Stone Gargoyle",
+      "usualPost": "Main Gate Arch · Statue Mimic",
+      "traitTitle": "Day 350 / Night 350 · Steady All-Hour Shield",
+      "traitSummary": "Day 350 / Night 350. Silent sentry disguised as a roof statue. Steady 350 defense day or night. Gets along with quiet Lich (+100), but clashes with restless Garuda (-150).",
+      "quotes": {
+        "intro": "...Guarding the gate without moving an inch is my way, day or night.",
+        "dayAssign": "...By day I shall stand poised like a stone statue.",
+        "nightAssign": "...Blending into the dark to watch from above the arch.",
+        "offAssign": "...Returning to my pedestal to rest as stone.",
+        "happy": "...A quiet and solid defense. Not a single crack.",
+        "angry": "...Someone darting around beside me ruins my stone disguise."
+      }
+    },
+    "minotaur": {
+      "name": "Minotaur",
+      "title": "Armory Warden",
+      "race": "Minotaur",
+      "usualPost": "Underground Armory · Gear Smith",
+      "traitTitle": "Day 400 / Night 300 · Honest Craftsman Warrior",
+      "traitSummary": "Day 400 / Night 300. Maintains shields and spears in the armory. Gains +100 with fellow crafters Golem and Mimic, but aristocratic Carmilla refuses to share a shift (-150).",
+      "quotes": {
+        "intro": "Helping at the gate between armory duties. My sharpened greataxe is ready.",
+        "dayAssign": "Daytime main gate. I will plant my feet and push them back.",
+        "nightAssign": "Night watch. Better make sure the torch oil is full.",
+        "offAssign": "On my day off I will hammer out the dents in everyone's shields.",
+        "happy": "Good shift. Kept wear and tear on our gear to a minimum.",
+        "angry": "Hard to work beside someone complaining about forge sweat and dust."
+      }
+    },
+    "arachne": {
+      "name": "Arachne",
+      "title": "Silver-Thread Trap Weaver",
+      "race": "Arachne",
+      "usualPost": "Tailor Room · Rear Gate Traps",
+      "traitTitle": "Day 300 / Night 400 · Tactical Wire Defense",
+      "traitSummary": "Day 300 / Night 400. Tailors uniforms and strings silver detection threads. Synergizes with Morgan and Mandra (+100), but refuses to work with Behemoth who tramples her webs (-150).",
+      "quotes": {
+        "intro": "From mending uniforms to rigging gate traps, leave it to me. Just keep clumsy brawlers away.",
+        "dayAssign": "Day shift. I will string subtle silver threads between the trees.",
+        "nightAssign": "At night my silver threads are invisible, snaring intruders cleanly.",
+        "offAssign": "A day off. I will mend the frayed hems on everyone's uniforms.",
+        "happy": "A graceful defense with not a single thread out of place.",
+        "angry": "I cannot work beside someone who stomps right through my freshly strung sensor threads."
+      }
+    },
+    "mandra": {
+      "name": "Mandra",
+      "title": "Herb Garden Apprentice",
+      "race": "Mandragora",
+      "usualPost": "Greenhouse · Medicinal Herb Garden",
+      "traitTitle": "No solo night shift (Day 250 / Night 200 · Soothing Aroma)",
+      "traitSummary": "Day 250 / Night 200. Prepares salves in the greenhouse. Gains +100 with Golem, Arachne, or Centaur, but fears Ifrit's flying sparks (-150). Cannot guard night shifts alone.",
+      "quotes": {
+        "intro": "Here to help from the herb garden. I do great in warm sunlight and beside kind seniors.",
+        "dayAssign": "Warm sunshine today. I will ready my sleep-herb powder.",
+        "nightAssign": "Night is a little dark, so I will follow right behind my senior.",
+        "offAssign": "Back to the greenhouse for water and fertilizer.",
+        "happy": "Even the leaf on my head stayed perky all week.",
+        "angry": "Staying next to scorching flames will singe my leaves..."
+      }
+    },
+    "mimic": {
+      "name": "Mimic",
+      "title": "Treasury Chest Keeper",
+      "race": "Mimic Girl",
+      "usualPost": "Underground Treasury · Decoy Guard",
+      "traitTitle": "No solo night shift (Day 200 / Night 200 · Surprise Box)",
+      "traitSummary": "Day 200 / Night 200. Shy guard hiding in a chest. Gains +100 with Minotaur or Morgan, but fears Griffon who stares at shiny gold (-150). Cannot guard night shifts alone.",
+      "quotes": {
+        "intro": "Watching from inside my box is my specialty... Just do not leave me alone at night...",
+        "dayAssign": "I will pretend to be a roadside crate and surprise the scouts.",
+        "nightAssign": "With a senior beside me, I can open my lid even at night.",
+        "offAssign": "Tucking myself in the corner of the treasury with the lock shut.",
+        "happy": "My hinges stayed smooth and the surprise trap worked well.",
+        "angry": "When a bird senior stares at my gold from above, I am too scared to open the lid..."
+      }
+    },
+    "wisp": {
+      "name": "Wisp",
+      "title": "Corridor Lantern Spirit",
+      "race": "Will-o'-Wisp",
+      "usualPost": "Castle Corridors · Night Guide Light",
+      "traitTitle": "No solo night shift (Day 200 / Night 250 · Foxfire Light)",
+      "traitSummary": "Day 200 / Night 250. Guides dark hallways. Gains +100 with Lich, Banshee, or Ifrit, but Golem's dry furnace exhaust scatters her flame (-150). Cannot guard night shifts alone.",
+      "quotes": {
+        "intro": "I am good at lighting the way, so pair me with someone who can hold the gate.",
+        "dayAssign": "My light is fainter by day, so I will use ground mist as cover.",
+        "nightAssign": "I will light up every step in the dark. Seniors, handle the rest.",
+        "offAssign": "Curling up inside my lantern to rest.",
+        "happy": "Floating and shining beside everyone was fun.",
+        "angry": "Golem's dry exhaust wind nearly blows out my foxfire..."
+      }
+    }
+  },
+  "relations": {
+    "carmilla_pururu_love": {
+      "title": "Caring Night Pair"
+    },
+    "drago_fenrir_train": {
+      "title": "Master & Pupil Duo"
+    },
+    "fenrir_dullahan_patrol": {
+      "title": "Steadfast Patrol Pair"
+    },
+    "dullahan_pururu_mentor": {
+      "title": "Senior Knight's Guidance"
+    },
+    "golem_minotaur_forge": {
+      "title": "Forge Artisans"
+    },
+    "golem_mandra_moss": {
+      "title": "Mossy Giant & Flora"
+    },
+    "behemoth_garuda_wild": {
+      "title": "Sky & Earth Assault"
+    },
+    "ifrit_wisp_flame": {
+      "title": "Twin Flames"
+    },
+    "lich_wisp_library": {
+      "title": "Archive Reading Light"
+    },
+    "lich_gargoyle_silent": {
+      "title": "Silent Guardians"
+    },
+    "morgan_arachne_weave": {
+      "title": "Starlight Web Trap"
+    },
+    "morgan_mimic_mystery": {
+      "title": "Illusion Surprise Box"
+    },
+    "carmilla_banshee_nocturne": {
+      "title": "Moonlight Nocturne"
+    },
+    "banshee_wisp_mist": {
+      "title": "Night Mist & Foxfire"
+    },
+    "garuda_griffon_sky": {
+      "title": "Air Superiority Patrol"
+    },
+    "centaur_mandra_forest": {
+      "title": "Forest Blessing Duo"
+    },
+    "griffon_dullahan_honor": {
+      "title": "Chivalrous Knights"
+    },
+    "minotaur_mimic_craft": {
+      "title": "Chest Hinge Maintenance"
+    },
+    "arachne_mandra_garden": {
+      "title": "Greenhouse Pest Ward"
+    },
+    "carmilla_dullahan_clash": {
+      "title": "Incompatible: Stoic Knight & Night Noble"
+    },
+    "drago_lich_clash": {
+      "title": "Incompatible: Elder Dragon & Fussy Librarian"
+    },
+    "fenrir_banshee_clash": {
+      "title": "Incompatible: Loud Howl & Quiet Spirit"
+    },
+    "ifrit_mandra_clash": {
+      "title": "Incompatible: Scorching Flame & Flora"
+    },
+    "behemoth_arachne_clash": {
+      "title": "Incompatible: Web Traps & Rampaging Brute"
+    },
+    "garuda_gargoyle_clash": {
+      "title": "Incompatible: Gale Flyer & Still Statue"
+    },
+    "morgan_centaur_clash": {
+      "title": "Incompatible: Free Spirit & Strict Timekeeper"
+    },
+    "griffon_mimic_clash": {
+      "title": "Incompatible: Shiny Gold & Chest Keeper"
+    },
+    "golem_wisp_clash": {
+      "title": "Incompatible: Furnace Exhaust & Foxfire"
+    },
+    "carmilla_minotaur_clash": {
+      "title": "Incompatible: Noble's Disdain"
+    }
+  },
+  "stages": {
+    "week-1": {
+      "title": "11月：先遣隊の偵察（3日間）",
+      "subtitle": "星月暦 953年11月 — まずは3日間、3人の警備メンバーを得意な時間帯へ配置して守る。",
+      "newRuleTitle": "基本ルール：得意な時間帯とドラゴの休養",
+      "newRuleSummary": "フェンリルは昼（防衛力400）、カーミラは夜（防衛力400）が得意です。ドラゴ（防衛力500）は昼も夜も頼りになりますが、1日働いたら翌日は必ず「休」にする必要があります。",
+      "lilithIntro": "初めてのシフト編成ですので、最初は私と一緒に組んでみましょう。まずは月曜から水曜までの3日間、3名で敵の先遣部隊に備えます。",
+      "lilithHint": "手強い部隊が来る月曜の昼と水曜の夜にドラゴ（防衛力500）を配置し、間の火曜日はドラゴを休ませます。残りの昼をフェンリル（400）、夜をカーミラ（400）に任せれば盤石な守りになります。",
+      "tutorialSteps": [
+        {
+          "shortCallout": "まずは一緒に組みましょう。月曜・昼はドラゴの「昼」を押します",
+          "instruction": "最初は私と一緒に組んでみましょう（1/6）。月曜の昼は手強い「先遣隊・重装前衛群」が来ますので、防衛力500のドラゴの月曜のマスで「昼」を選んでみてください。"
+        },
+        {
+          "shortCallout": "次は月曜・夜です。夜番400のカーミラの「夜」を押しましょう",
+          "instruction": "いいですね（2/6）。月曜の夜は、夜番が得意なカーミラ（夜400）にお願いしましょう。カーミラの月曜のマスで「夜」を選んでみてください。"
+        },
+        {
+          "shortCallout": "火曜はドラゴのお休みです。昼400のフェンリルの「昼」を押しましょう",
+          "instruction": "順調です（3/6）。ドラゴは1日働くと翌日お休みが必要なので、火曜の昼は昼番が得意なフェンリル（昼400）の「昼」を選びましょう。"
+        },
+        {
+          "shortCallout": "火曜・夜もカーミラの「夜」を押しましょう",
+          "instruction": "その調子です（4/6）。火曜の夜も、引き続きカーミラに任せましょう。カーミラの火曜のマスで「夜」を選んでみてください。"
+        },
+        {
+          "shortCallout": "水曜・昼もフェンリルの「昼」を押しましょう",
+          "instruction": "あと少しです（5/6）。水曜の昼も、昼番が得意なフェンリルの水曜のマスで「昼」を選びましょう。"
+        },
+        {
+          "shortCallout": "仕上げに、火曜休んだドラゴの水曜「夜」を押せば完成です",
+          "instruction": "最後の仕上げです（6/6）。水曜の夜は手強い「勇者軍・紅蓮魔導団」が来ますので、火曜日に休んで体力が戻ったドラゴの水曜のマスで「夜」を選べば完成です。"
+        }
+      ]
+    },
+    "week-2": {
+      "title": "12月：夜襲部隊の接近（3日間）",
+      "subtitle": "外郭からデュラハンが合流。相性ペア（+100）と「一緒に働きたくない相手（-150）」に注意する。",
+      "newRuleTitle": "追加ルール：夜番の翌朝は昼番不可・ペアの相性と同番拒否",
+      "newRuleSummary": "夜番に入ったメンバーは、翌朝すぐに昼番へ入ることができません（夜→夜は可能です）。また、仲の良い2人（フェンリル＋デュラハン）を同じ枠に並べると連携で防衛力が +100 上がりますが、「あの人とは一緒に働きたくない」という不仲ペア（カーミラ＋デュラハン）を同じ枠に入れると口論になり防衛力が -150 下がります。",
+      "lilithIntro": "今月はドラゴが裏門の当番へ回り、代わりに重装騎士デュラハンが正門当番に入りました。ただ、カーミラは堅物のデュラハンと同じ番に入るのを嫌がるので、別の時間帯に分けてあげてください。",
+      "lilithHint": "月曜の昼はフェンリル（昼400）とデュラハン（昼300）を並べると、連携ボーナス（+100）が加わって防衛力800になり余裕をもって守れます。",
+      "tutorialSteps": []
+    },
+    "week-3": {
+      "title": "1月：4日間の包囲（4日間）",
+      "subtitle": "地下水路から新米スライムのプルルが合流。4日間のシフトを組む。",
+      "newRuleTitle": "追加ルール：新米の夜間配置と連続勤務の上限",
+      "newRuleSummary": "新米のプルル（防衛力200）は、夜番にひとりで配置することができません（他の仲間と同じ夜番に並べれば配置でき、カーミラと組むと連携で +100 上がります）。また、どのメンバーも最大3連勤までで、4日間のうち最低1日は休みが必要です。",
+      "lilithIntro": "敵の部隊が森の周囲に陣を張り、4日間の長期戦になりました。今月は地下水路の清掃当番から新米のプルルが応援に加わります。プルルを夜に出すときは、必ず先輩と一緒にしてあげてください。",
+      "lilithHint": "木曜の夜にカーミラ（夜400）とプルル（夜200）を一緒に配置すると、連携ボーナス（+100）も加わって防衛力700になり盤石です。",
+      "tutorialSteps": []
+    },
+    "week-4": {
+      "title": "2月：満月の攻防（5日間・5名当番）",
+      "subtitle": "5名態勢で5日間のシフトへ。水曜の満月とメンバー間の相性・不仲に対処する。",
+      "newRuleTitle": "追加ルール：満月の夜と週の出勤上限",
+      "newRuleSummary": "満月の夜（水曜・夜）は、フェンリルを夜番に配置できません（水曜の昼は配置可能です）。また5日間のうち、ドラゴは最大3回、他のメンバーは最大4回までが出勤上限となります。",
+      "lilithIntro": "今月の正門当番は5名です。水曜の夜は満月のため、フェンリルは夜番に出られません。カーミラとデュラハンの不仲（-150）を避けつつ、それぞれの指定休も確認しながら組み立てましょう。",
+      "lilithHint": "水曜の満月夜はフェンリルが出られないため、カーミラ・デュラハン・プルル・ドラゴの中から2人を充てます。カーミラとデュラハンを同じシフトに入れると防衛力が -150 下がるので、プルルをうまく組み合わせるのが要です。",
+      "tutorialSteps": []
+    },
+    "week-5": {
+      "title": "3月：勇者本隊の進軍（5日間・6名拡大当番）",
+      "subtitle": "勇者本隊の接近に伴い、地下書庫からリッチが加わり6名態勢へ。不仲ペアを避けて総力防衛する。",
+      "newRuleTitle": "決戦の月：6名拡大シフトと不仲ペアの調整",
+      "newRuleSummary": "敵の本隊に対抗するため、地下書庫から司書長リッチ（夜400）が応援に加わり6名態勢になります。ただしリッチは大雑把なドラゴと同じ番に入るのを嫌がり（-150）、カーミラもデュラハンとの同番を嫌がります（-150）。金曜・夜の勇者本隊（必要人数3人）に主力を残せるよう配分してください。",
+      "lilithIntro": "敵の本隊がついに動き出しました。今月は特別に地下書庫からリッチも呼び、6名で正門を守ります。ドラゴとリッチ、カーミラとデュラハンがそれぞれ同じ番にならないよう配慮しつつ、金曜の夜を3人で守り抜きましょう。",
+      "lilithHint": "夜番が得意なメンバーがカーミラ・デュラハン・リッチの3人に増えています。ドラゴを月曜（昼）・水曜（昼）・金曜（夜）の3枠に充て、金曜の夜はドラゴ＋カーミラ＋プルル（またはデュラハン＋プルル）で組むとリッチとドラゴの反発を避けられます。",
+      "tutorialSteps": []
+    }
+  },
+  "violations": {
+    "raid_power": {
+      "shortBadge": "戦力手薄",
+      "message": "{day}の{shift}（{enemy}）は防衛力が手薄です。"
+    },
+    "min_staff": {
+      "shortBadge": "必要人数不足",
+      "message": "{day}の{shift}は人数が不足しています（必要 {count}名）。"
+    },
+    "full_moon": {
+      "shortBadge": "満月夜は配置不可",
+      "message": "{day}の夜は満月のため、{name}は夜番に配置できません。"
+    },
+    "solo_night": {
+      "shortBadge": "夜は単独配置不可",
+      "message": "{day}の夜に{name}がひとりになっています。夜は他の仲間も一緒に配置してください。"
+    },
+    "weekly_cap": {
+      "shortBadge": "週{cap}日上限超過",
+      "message": "{name}の出勤数が上限を超えています（上限 {cap}日）。休みを増やしてください。"
+    },
+    "night_to_day": {
+      "shortBadge": "前日が夜番（夜→昼は不可）",
+      "message": "{name}が{prevDay}の夜番から翌朝（{day}の昼番）へ連続で入っています。夜番の翌朝は昼番に入れません。"
+    },
+    "consecutive_single": {
+      "shortBadge": "連勤不可（翌日は休み）",
+      "message": "{name}が連続で入っています。1日働いたら翌日は休みにしてください。"
+    },
+    "consecutive_multi": {
+      "shortBadge": "最大{cap}連勤超過",
+      "message": "{name}が連続で入っています（最大{cap}連勤まで）。"
+    },
+    "day_off": {
+      "shortBadge": "指定休",
+      "message": "{day}は{name}の指定休（{reason}）です。休みにしてください。"
+    }
+  },
+  "requestedOffReasons": {
+    "Rest Day": "休息日",
+    "Waterside Rest": "水辺での休養",
+    "Old Wound Treatment": "古傷の療養日",
+    "Armor Maintenance": "武具の手入れ",
+    "Armor Inspection": "武具の点検",
+    "Archive Inventory": "書庫の目録整理"
+  },
+  "enemies": {
+    "Vanguard Swordsmen & Archers": {
+      "name": "先遣隊・剣士＆弓兵班",
+      "quote": "街の被害を止めるため、門の守りを確かめる。"
+    },
+    "Kingdom Armored Shield Corps": {
+      "name": "王国軍・重装盾兵団",
+      "quote": "正面から押し通る。退いてもらうぞ。"
+    },
+    "Hero Crimson Battle Mages": {
+      "name": "勇者軍・紅蓮魔導団",
+      "quote": "これ以上、街の近くに魔物を置くわけにはいかない。"
+    },
+    "Forest Longbow Snipers": {
+      "name": "森林部隊・長弓狙撃団",
+      "quote": "森の木立から狙い撃つ。隙は見逃さない。"
+    },
+    "Sanctuary Templar Knights": {
+      "name": "教国軍・聖堂騎士団",
+      "quote": "人々の暮らしを守るため、この砦を封じる。"
+    },
+    "Expedition Night Scouts": {
+      "name": "討伐軍・夜間斥候班",
+      "quote": "夜陰に紛れて裏門の鍵を外すぞ。"
+    },
+    "Rear Gate Infiltration Squad": {
+      "name": "裏門工作・隠密小隊",
+      "quote": "見張りの交代時を狙う。音を立てるな。"
+    },
+    "Hero Moonlit Hunt Division": {
+      "name": "勇者軍・月下狩猟団",
+      "quote": "月の明かりがあるうち一気に駆け抜ける。"
+    },
+    "Waterway Shinobi Squad": {
+      "name": "水路潜入・忍び分隊",
+      "quote": "水路の隙間から城内へ潜り込む。"
+    },
+    "Hero Elite Vanguard": {
+      "name": "勇者一行・精鋭本隊",
+      "quote": "すべての決着をつける。門を開けてもらうぞ。"
+    },
+    "Vanguard Heavy Frontline": {
+      "name": "先遣隊・重装前衛群",
+      "quote": "人間の街を守るため、この森の砦を調査する。"
+    },
+    "Vanguard Night Scouts": {
+      "name": "討伐軍・夜間斥候班",
+      "quote": "夜番の隙を突いて城壁を越えるぞ。"
+    },
+    "Royal Infantry Patrol": {
+      "name": "王国軍・歩兵巡回隊",
+      "quote": "日中の見回り隊だ。前方の門を突破する。"
+    },
+    "Expedition Night Saboteurs": {
+      "name": "討伐軍・夜襲工作班",
+      "quote": "足音を消して近づけ。見張りを抜くぞ。"
+    },
+    "Royal Forest Archers": {
+      "name": "王国軍・森林弓兵団",
+      "quote": "包囲の最終日だ。休む暇を与えるな。"
+    },
+    "Hero's Crimson Mage Corps": {
+      "name": "勇者軍・紅蓮魔導団",
+      "quote": "魔導の火で夜の城門をこじ開ける。"
+    },
+    "Royal Heavy Infantry": {
+      "name": "王国軍・重装歩兵団",
+      "quote": "正面から盾を並べて進む。門を開けろ。"
+    },
+    "Royal Perimeter Patrol": {
+      "name": "王国軍・外縁巡回隊",
+      "quote": "森の外縁から順番に制圧していく。"
+    },
+    "Covert Sabotage Platoon": {
+      "name": "討伐軍・隠密工作小隊",
+      "quote": "今夜は吸血鬼が非番らしい。好機だ。"
+    },
+    "Vanguard Swordsman Squad": {
+      "name": "討伐軍・前衛剣士隊",
+      "quote": "連日の攻防で城の守りも疲れているはずだ。"
+    },
+    "Hero Night Assault Corps": {
+      "name": "勇者軍・夜間強襲団",
+      "quote": "二方向から同時に仕掛ける。突破するぞ。"
+    },
+    "Royal Siege Infantry": {
+      "name": "王国軍・包囲歩兵団",
+      "quote": "4日かけて包囲を縮める。まずは正門からだ。"
+    },
+    "Hero Elite Night Assault Squad": {
+      "name": "勇者軍・精鋭夜襲隊",
+      "quote": "闇に紛れて一気に門番を討つ。"
+    },
+    "Waterway Recon Squad": {
+      "name": "討伐軍・水路偵察班",
+      "quote": "水路の入り口を調べる。少人数でいい。"
+    },
+    "Waterway Infiltration Shinobi": {
+      "name": "水路潜入・忍び分隊",
+      "quote": "地下水路から音もなく忍び込むぞ。"
+    },
+    "Hero Siege Mages": {
+      "name": "勇者軍・攻城魔導団",
+      "quote": "全魔力を集中する。城門の結界を砕け。"
+    },
+    "Moonlit Hunt Division": {
+      "name": "勇者軍・月下狩猟団",
+      "quote": "満月の光の下、守りの薄い所を突く。"
+    },
+    "Postern Gate Assault Unit": {
+      "name": "討伐軍・裏門突入隊",
+      "quote": "最後の夜だ。裏門へ総員で突入する。"
+    },
+    "Silver Infantry Vanguard": {
+      "name": "王国軍・白銀歩兵団",
+      "quote": "第一陣、前へ。人間の街にこれ以上被害は出させない。"
+    },
+    "Postern Gate Night Scouts": {
+      "name": "討伐軍・夜間斥候隊",
+      "quote": "夜の森を抜けて裏門へ回り込め。"
+    },
+    "Heavy Siege Ram Unit": {
+      "name": "勇者軍・重装破城団",
+      "quote": "破城槌を運べ。門を押し開けるぞ。"
+    },
+    "Covert Saboteurs": {
+      "name": "討伐軍・隠密工作隊",
+      "quote": "静かに進め。見張りの死角を突く。"
+    },
+    "Royal Arcane Artillery": {
+      "name": "王国軍・魔導砲撃隊",
+      "quote": "遠距離から牽制する。夜の本隊に繋ぐぞ。"
+    },
+    "Great Bridge Snipers": {
+      "name": "王国軍・大橋狙撃隊",
+      "quote": "渓流の大橋を渡り切るぞ。援護せよ。"
+    },
+    "Waterway Sabotage Unit": {
+      "name": "討伐軍・水路工作班",
+      "quote": "水路の鉄格子を狙う。手早く済ませるぞ。"
+    },
+    "Hero Vanguard Knights": {
+      "name": "勇者軍・先鋒騎士団",
+      "quote": "我が槍で道を切り開く。総員、続け。"
+    },
+    "Siege Encirclement Corps": {
+      "name": "討伐軍・夜間包囲隊",
+      "quote": "週の終わりで守備兵も疲弊しているはずだ。"
+    },
+    "Hero Vanguard Heavy Corps": {
+      "name": "勇者軍・先鋒重装団",
+      "quote": "勇者本隊の先鋒、推して参る。"
+    },
+    "High Mage Artillery Corps": {
+      "name": "勇者軍・高位魔導団",
+      "quote": "夜空から魔導弾を撃ち込む。ひるむな。"
+    },
+    "Elite Mounted Archers": {
+      "name": "王国軍・精鋭弓騎団",
+      "quote": "足並みを乱させろ。本隊の到着まで圧力をかけ続ける。"
+    },
+    "Covert Main Infiltration Unit": {
+      "name": "討伐軍・隠密本隊",
+      "quote": "裏門と水路の双方から同時に揺さぶりをかける。"
+    },
+    "Holy Sanctuary Royal Guards": {
+      "name": "教国軍・聖堂親衛隊",
+      "quote": "人間の街の平穏のため、この森の城を落とす。"
+    },
+    "Heavy Siege Battery": {
+      "name": "王国軍・攻城重砲隊",
+      "quote": "城門の前まで陣を押し上げろ。"
+    },
+    "Combat Sappers Corps": {
+      "name": "討伐軍・夜間工兵隊",
+      "quote": "明日の決戦に備えて城壁の足場を崩す。"
+    },
+    "Frontline Breakthrough Squad": {
+      "name": "勇者軍・前衛突破隊",
+      "quote": "夜には勇者本隊が着く。門番を引きつけろ。"
+    },
+    "Hero Party Decisive Force": {
+      "name": "勇者一行・決戦本隊",
+      "quote": "これが最後の攻防だ。全軍、正門へ突撃する。"
+    }
+  },
+  "adaptiveStage": {
+    "title": "{calShort}：正門防衛シフト（{numDays}日間・{count}名当番）",
+    "subtitle": "今月の正門当番：{roster}（難易度：{diff}）",
+    "newRuleTitle": "{calShort} 正門当番（{count}名編成・{diff}）",
+    "newRuleSummary": "城内20名の中から今月の正門当番として選ばれた{count}名（{roster}）で守る{numDays}日間の警備スケジュールです。",
+    "lilithIntro": "{calShort}の進軍予測が届きました。今月の正門当番である{count}名で、無理なく守れるシフトを組んでいきましょう。",
+    "lilithHint": "まずは指定休と満月の夜を確認し、1日おきにしか出られない大物枠をどの強敵枠に充てるかから決めると組み立てやすくなります。"
+  },
+  "retryStage": {
+    "title": "{calShort}：正門防衛シフト（{numDays}日間・新編成）",
+    "subtitle": "今週の正門当番：{roster}（新編成）",
+    "newRuleTitle": "新たな進軍編成への対応",
+    "newRuleSummary": "前回のシフトから当番メンバーと敵の進軍編成が新たに組み直されました。今週の正門当番は {roster} の{count}名です。",
+    "lilithIntro": "新たな進軍予測が届きました。今回の正門当番は {roster} の{count}名です。敵の戦力とみんなの勤務条件を見極めてシフトを組み直しましょう。",
+    "lilithHint": "まずは指定休と満月の夜を確認し、1日おきにしか出られない大物枠をどの強敵枠に充てるかから決めると組み立てやすくなります。"
+  }
+}

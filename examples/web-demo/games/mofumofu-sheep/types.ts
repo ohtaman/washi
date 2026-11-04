@@ -1,12 +1,12 @@
 export type TileType =
-  | "grass" // 🌱 草地 (+1)
-  | "strawberry" // 🍓 野いちご (+5)
-  | "pit" // 🕳️ 穴ぼこ (-5)
-  | "bridge" // 🌉 石橋 (+1, 柵を置けない)
-  | "water" // 💧 池・川 (通行不可・天然の壁)
-  | "rock" // 🪨 岩 (通行不可・天然の壁)
-  | "sheep" // 🐑 ヒツジ (+2, 起点)
-  | "wolf"; // 🐺 オオカミ (侵入源)
+  | "grass" // Grass (+1)
+  | "strawberry" // Wild strawberry (+5)
+  | "pit" // Mud pit (-5)
+  | "bridge" // Stone bridge (+1, cannot place fence)
+  | "water" // Pond / River (impassable natural barrier)
+  | "rock" // Rock / Boulder (impassable natural barrier)
+  | "sheep" // Sheep (+2, starting source)
+  | "wolf"; // Wolf (danger source)
 
 export interface CellCoord {
   row: number;
@@ -25,7 +25,7 @@ export interface TileMeta {
 export const TILE_META: Record<TileType, TileMeta> = {
   grass: {
     type: "grass",
-    label: "草地",
+    label: "Grass",
     emoji: "🌱",
     score: 1,
     passable: true,
@@ -33,7 +33,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   strawberry: {
     type: "strawberry",
-    label: "野いちご",
+    label: "Wild Strawberry",
     emoji: "🍓",
     score: 5,
     passable: true,
@@ -41,7 +41,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   pit: {
     type: "pit",
-    label: "穴ぼこ",
+    label: "Pit",
     emoji: "🕳️",
     score: -5,
     passable: true,
@@ -49,7 +49,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   bridge: {
     type: "bridge",
-    label: "石橋",
+    label: "Stone Bridge",
     emoji: "🌉",
     score: 1,
     passable: true,
@@ -57,7 +57,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   water: {
     type: "water",
-    label: "水辺",
+    label: "Pond",
     emoji: "💧",
     score: 0,
     passable: false,
@@ -65,7 +65,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   rock: {
     type: "rock",
-    label: "岩",
+    label: "Rock",
     emoji: "🪨",
     score: 0,
     passable: false,
@@ -73,7 +73,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   sheep: {
     type: "sheep",
-    label: "ヒツジ",
+    label: "Sheep",
     emoji: "🐑",
     score: 2,
     passable: true,
@@ -81,7 +81,7 @@ export const TILE_META: Record<TileType, TileMeta> = {
   },
   wolf: {
     type: "wolf",
-    label: "オオカミ",
+    label: "Wolf",
     emoji: "🐺",
     score: 0,
     passable: true,
@@ -92,28 +92,28 @@ export const TILE_META: Record<TileType, TileMeta> = {
 export type FenceGrid = boolean[][];
 
 export interface PastureEvaluation {
-  /** オオカミがどのヒツジにも到達できず、かつ柵の本数が上限以内なら true（クリア可能） */
+  /** True if no wolf can reach any sheep and fence count is within budget */
   isSafe: boolean;
-  /** 柵の本数が上限を超えている場合は true */
+  /** True if placed fence count exceeds budget */
   isOverBudget: boolean;
   fencesUsed: number;
   maxFences: number;
-  /** 安全確保時のまきば合計スコア（未確保時は見込みスコア） */
+  /** Total pasture score when secured */
   pastureScore: number;
-  /** 安全なまきばに含まれたマスの数 */
+  /** Number of secured pasture tiles */
   pastureTileCount: number;
-  /** 内訳カウント */
+  /** Breakdown count */
   breakdown: {
     sheepCount: number;
     grassCount: number;
     strawberryCount: number;
     pitCount: number;
   };
-  /** ヒツジから到達可能なマス一覧 */
+  /** Tiles reachable from any sheep */
   sheepReachable: boolean[][];
-  /** オオカミから到達可能なマス一覧 */
+  /** Tiles reachable from any wolf */
   wolfReachable: boolean[][];
-  /** オオカミがヒツジに到達してしまう場合の最短侵入経路 */
+  /** Shortest breach path if wolf can reach sheep */
   breachPath: CellCoord[];
 }
 
@@ -129,7 +129,7 @@ export interface OptimalPastureResult {
 
 export interface HintDiagnosis {
   status: "can_achieve_optimal" | "can_achieve_safe_only" | "bad_fence_placed";
-  /** 次に柵を置くべきおすすめマス（または外すべき柵マス） */
+  /** Recommended cell to place or remove a fence */
   targetCell: CellCoord | null;
   action: "place" | "remove";
 }
@@ -138,10 +138,10 @@ export interface StagePuzzle {
   id: string;
   stageNumber: number;
   title: string;
-  /** 画面上部に1行だけ表示する簡潔なテーマ（長文説明なし） */
+  /** Single-line concise objective */
   oneLiner: string;
   maxFences: number;
-  /** クリアに必要な目標まきばスコア */
+  /** Target pasture score required for stage clear */
   targetScore: number;
   grid: TileType[][];
 }

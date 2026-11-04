@@ -79,14 +79,14 @@ export function escapeCsv(value: unknown): string {
 }
 
 export function normalizeHeader(h: string): string {
-  return h.replace(/^\uFEFF/, "").toLowerCase().replace(/[\s_\-（）()・/]/g, "");
+  return h.replace(/^\uFEFF/, "").toLowerCase().replace(/[\s_\-（）()\u30FB/]/g, "");
 }
 
 export function parseBooleanToken(token: string | undefined, defaultVal = false): boolean {
   if (!token) return defaultVal;
   const t = token.trim().toLowerCase();
-  if (["1", "true", "yes", "y", "t", "可", "○", "はい", "on", "確定"].includes(t)) return true;
-  if (["0", "false", "no", "n", "f", "不可", "×", "いいえ", "off", "希望"].includes(t)) return false;
+  if (["1", "true", "yes", "y", "t", "可", "○", "\u306F\u3044", "on", "確定"].includes(t)) return true;
+  if (["0", "false", "no", "n", "f", "不可", "×", "\u3044\u3044\u3048", "off", "希望"].includes(t)) return false;
   return defaultVal;
 }
 
@@ -111,7 +111,7 @@ export function parseShiftToken(
   if (upper === "日" || upper === "日勤") return "D";
   if (upper === "準" || upper === "準夜" || upper === "準夜勤") return "E";
   if (upper === "深" || upper === "深夜" || upper === "深夜勤") return "N";
-  if (upper === "休" || upper === "公休" || upper === "休み") return "O";
+  if (upper === "休" || upper === "公休" || upper === "休\u307F") return "O";
   if (upper === "勤" || upper === "勤務") return "W";
   if (upper === "夜" || upper === "夜勤") return "EN";
   if (customShiftCodes && customShiftCodes.has(trimmed)) {
@@ -128,11 +128,11 @@ export function parseSkillToken(token: string): NurseSkill | null {
     return t as NurseSkill;
   }
   // Japanese alias mappings
-  if (t.includes("リーダー") || t === "リ") return "leader_cap";
+  if (t.includes("\u30EA\u30FC\u30C0\u30FC") || t === "\u30EA") return "leader_cap";
   if (t.includes("救急") || t.includes("重症") || t.includes("ICU") || t === "救") return "icu_er";
   if (t.includes("呼吸器") || t === "呼") return "ventilator";
-  if (t.includes("チームA") || t.includes("Aチーム") || t.includes("A班")) return "team_A";
-  if (t.includes("チームB") || t.includes("Bチーム") || t.includes("B班")) return "team_B";
+  if (t.includes("\u30C1\u30FC\u30E0A") || t.includes("A\u30C1\u30FC\u30E0") || t.includes("A班")) return "team_A";
+  if (t.includes("\u30C1\u30FC\u30E0B") || t.includes("B\u30C1\u30FC\u30E0") || t.includes("B班")) return "team_B";
   if (t.includes("新人")) return "newcomer";
   if (t.includes("中堅")) return "mid";
   if (t.includes("主任")) return "leader";
@@ -194,7 +194,7 @@ export function parseNursesCsv(text: string): {
   const nurses: NurseProfile[] = [];
 
   if (rows.length === 0) {
-    errors.push("CSVファイルが空です。");
+    errors.push("CSV\u30D5\u30A1\u30A4\u30EB\u304C空\u3067\u3059。");
     return { nurses, errors, warnings };
   }
 
@@ -218,32 +218,32 @@ export function parseNursesCsv(text: string): {
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    const id = getCol(row, "id", "看護師ID", "ID", "スタッフID");
+    const id = getCol(row, "id", "看護師ID", "ID", "\u30B9\u30BF\u30C3\u30D5ID");
     const name = getCol(row, "name", "氏名", "名前");
 
     if (!id || !name) {
-      warnings.push(`行 ${r + 1}: IDまたは氏名が空のためスキップしました。`);
+      warnings.push(`行 ${r + 1}: ID\u307E\u305F\u306F氏名\u304C空\u306E\u305F\u3081\u30B9\u30AD\u30C3\u30D7\u3057\u307E\u3057\u305F。`);
       continue;
     }
 
     if (seenIds.has(id)) {
-      errors.push(`行 ${r + 1}: 看護師ID "${id}" が重複しています。`);
+      errors.push(`行 ${r + 1}: 看護師ID "${id}" \u304C重複\u3057\u3066\u3044\u307E\u3059。`);
       continue;
     }
     seenIds.add(id);
 
-    const kana = getCol(row, "kana", "フリガナ", "ふりがな", "かな") ?? name;
+    const kana = getCol(row, "kana", "\u30D5\u30EA\u30AC\u30CA", "\u3075\u308A\u304C\u306A", "\u304B\u306A") ?? name;
     const skillsRaw =
       getCol(
         row,
         "skills",
-        "スキル",
-        "保有スキル",
-        "所属属性タグ",
-        "属性タグ",
+        "\u30B9\u30AD\u30EB",
+        "保有\u30B9\u30AD\u30EB",
+        "所属属性\u30BF\u30B0",
+        "属性\u30BF\u30B0",
         "所属属性",
         "属性",
-        "タグ"
+        "\u30BF\u30B0"
       ) ?? "";
     const skills: NurseSkill[] = skillsRaw
       ? (skillsRaw
@@ -271,10 +271,10 @@ export function parseNursesCsv(text: string): {
     const maxConsecutiveWorkDaysRaw = getCol(row, "maxconsecutiveworkdays", "最大連勤日数", "連勤上限");
     const maxConsecutiveWorkDays = maxConsecutiveWorkDaysRaw ? parseInt(maxConsecutiveWorkDaysRaw, 10) : undefined;
 
-    const weekdayOnly = parseBooleanToken(getCol(row, "weekdayonly", "平日専従", "平日のみ"), false);
-    const holidaysOff = parseBooleanToken(getCol(row, "holidaysoff", "祝日休", "祝日休み"), false);
+    const weekdayOnly = parseBooleanToken(getCol(row, "weekdayonly", "平日専従", "平日\u306E\u307F"), false);
+    const holidaysOff = parseBooleanToken(getCol(row, "holidaysoff", "祝日休", "祝日休\u307F"), false);
 
-    const prevMonthShiftsRaw = getCol(row, "prevmonthshifts", "前月最終勤務", "前月末シフト") ?? "";
+    const prevMonthShiftsRaw = getCol(row, "prevmonthshifts", "前月最終勤務", "前月末\u30B7\u30D5\u30C8") ?? "";
     let prevMonthShifts: ShiftCode[] = [];
     if (prevMonthShiftsRaw) {
       const tokens = prevMonthShiftsRaw
@@ -286,7 +286,7 @@ export function parseNursesCsv(text: string): {
         if (parsed) {
           prevMonthShifts.push(parsed);
         } else {
-          warnings.push(`行 ${r + 1}: 前月シフト "${tok}" は未定義のため公休(O)として扱いました。`);
+          warnings.push(`行 ${r + 1}: 前月\u30B7\u30D5\u30C8 "${tok}" \u306F未定義\u306E\u305F\u3081公休(O)\u3068\u3057\u3066扱\u3044\u307E\u3057\u305F。`);
           prevMonthShifts.push("O");
         }
       }
@@ -378,36 +378,36 @@ export function parseRequestsCsv(
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    const nurseId = getCol(row, "nurseid", "看護師id", "スタッフid", "id");
+    const nurseId = getCol(row, "nurseid", "看護師id", "\u30B9\u30BF\u30C3\u30D5id", "id");
     const dayRaw = getCol(row, "day", "日付", "日");
-    const shiftRaw = getCol(row, "shift", "シフト", "希望シフト");
+    const shiftRaw = getCol(row, "shift", "\u30B7\u30D5\u30C8", "希望\u30B7\u30D5\u30C8");
 
     if (!nurseId || !dayRaw) {
-      warnings.push(`行 ${r + 1}: nurseIdまたはdayが空のためスキップしました。`);
+      warnings.push(`行 ${r + 1}: nurseId\u307E\u305F\u306Fday\u304C空\u306E\u305F\u3081\u30B9\u30AD\u30C3\u30D7\u3057\u307E\u3057\u305F。`);
       continue;
     }
 
     if (knownNurseIds && !knownNurseIds.has(nurseId)) {
-      errors.push(`行 ${r + 1}: スタッフ名簿に存在しない看護師ID "${nurseId}" です。`);
+      errors.push(`行 ${r + 1}: \u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u306A\u3044看護師ID "${nurseId}" \u3067\u3059。`);
       continue;
     }
 
     const day = parseInt(dayRaw, 10);
     if (isNaN(day) || day < 1 || day > 31) {
-      errors.push(`行 ${r + 1}: 不正な日付 "${dayRaw}" です (1〜31の範囲を指定してください)。`);
+      errors.push(`行 ${r + 1}: 不正\u306A日付 "${dayRaw}" \u3067\u3059 (1〜31\u306E範囲\u3092指定\u3057\u3066\u304F\u3060\u3055\u3044)。`);
       continue;
     }
 
     const shift = parseShiftToken(shiftRaw, customShiftCodes);
     if (!shift) {
       errors.push(
-        `行 ${r + 1}: 不明なシフトコード "${shiftRaw}" です (D/日勤, E/準夜, N/深夜, O/公休, W/勤務, EN/夜勤 を指定してください)。`
+        `行 ${r + 1}: 不明\u306A\u30B7\u30D5\u30C8\u30B3\u30FC\u30C9 "${shiftRaw}" \u3067\u3059 (D/日勤, E/準夜, N/深夜, O/公休, W/勤務, EN/夜勤 \u3092指定\u3057\u3066\u304F\u3060\u3055\u3044)。`
       );
       continue;
     }
 
-    const isHard = parseBooleanToken(getCol(row, "ishard", "確定フラグ", "確定", "必須"), false);
-    const reason = getCol(row, "reason", "理由", "備考") ?? (isHard ? "確定希望" : "希望シフト");
+    const isHard = parseBooleanToken(getCol(row, "ishard", "確定\u30D5\u30E9\u30B0", "確定", "必須"), false);
+    const reason = getCol(row, "reason", "理由", "備考") ?? (isHard ? "確定希望" : "希望\u30B7\u30D5\u30C8");
 
     preferences.push({
       id: `pref_${nurseId}_${day}_${preferences.length}`,
@@ -475,33 +475,33 @@ export function parseRelationsCsv(
 
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    const typeRaw = getCol(row, "type", "種別", "タイプ") ?? "ng_pair";
-    const nurseA = getCol(row, "nursea", "スタッフa", "看護師a", "ペア1");
-    const nurseB = getCol(row, "nurseb", "スタッフb", "看護師b", "ペア2");
+    const typeRaw = getCol(row, "type", "種別", "\u30BF\u30A4\u30D7") ?? "ng_pair";
+    const nurseA = getCol(row, "nursea", "\u30B9\u30BF\u30C3\u30D5a", "看護師a", "\u30DA\u30A21");
+    const nurseB = getCol(row, "nurseb", "\u30B9\u30BF\u30C3\u30D5b", "看護師b", "\u30DA\u30A22");
 
     if (!nurseA || !nurseB) {
-      warnings.push(`行 ${r + 1}: nurseAまたはnurseBが空のためスキップしました。`);
+      warnings.push(`行 ${r + 1}: nurseA\u307E\u305F\u306FnurseB\u304C空\u306E\u305F\u3081\u30B9\u30AD\u30C3\u30D7\u3057\u307E\u3057\u305F。`);
       continue;
     }
 
     if (nurseA === nurseB) {
-      errors.push(`行 ${r + 1}: 同一人物 "${nurseA}" 同士の自己ペアは指定できません。`);
+      errors.push(`行 ${r + 1}: 同一人物 "${nurseA}" 同士\u306E自己\u30DA\u30A2\u306F指定\u3067\u304D\u307E\u305B\u3093。`);
       continue;
     }
 
     if (knownNurseIds) {
       if (!knownNurseIds.has(nurseA)) {
-        errors.push(`行 ${r + 1}: スタッフ名簿に存在しない看護師A "${nurseA}" です。`);
+        errors.push(`行 ${r + 1}: \u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u306A\u3044看護師A "${nurseA}" \u3067\u3059。`);
         continue;
       }
       if (!knownNurseIds.has(nurseB)) {
-        errors.push(`行 ${r + 1}: スタッフ名簿に存在しない看護師B "${nurseB}" です。`);
+        errors.push(`行 ${r + 1}: \u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u306A\u3044看護師B "${nurseB}" \u3067\u3059。`);
         continue;
       }
     }
 
     const type = typeRaw.includes("preceptor") || typeRaw.includes("指導") ? "preceptor" : "ng_pair";
-    const shiftsRaw = getCol(row, "shifts", "対象シフト", "シフト");
+    const shiftsRaw = getCol(row, "shifts", "対象\u30B7\u30D5\u30C8", "\u30B7\u30D5\u30C8");
     const rawTokens = shiftsRaw
       ? shiftsRaw
           .split(/[;,]/)
@@ -515,7 +515,7 @@ export function parseRelationsCsv(
     for (const st of shiftTokens) {
       const parsed = parseShiftToken(st, customShiftCodes);
       if (!parsed) {
-        errors.push(`行 ${r + 1}: ペア制約に対象外または不明なシフトコード "${st}" が含まれています。`);
+        errors.push(`行 ${r + 1}: \u30DA\u30A2制約\u306B対象外\u307E\u305F\u306F不明\u306A\u30B7\u30D5\u30C8\u30B3\u30FC\u30C9 "${st}" \u304C含\u307E\u308C\u3066\u3044\u307E\u3059。`);
         hasUnknownShift = true;
         break;
       }
@@ -523,8 +523,8 @@ export function parseRelationsCsv(
     }
     if (hasUnknownShift) continue;
 
-    const isHard = parseBooleanToken(getCol(row, "ishard", "確定フラグ", "必須"), true);
-    const reason = getCol(row, "reason", "理由", "備考") ?? (type === "preceptor" ? "プリセプター指導ペア" : "相性NGペア");
+    const isHard = parseBooleanToken(getCol(row, "ishard", "確定\u30D5\u30E9\u30B0", "必須"), true);
+    const reason = getCol(row, "reason", "理由", "備考") ?? (type === "preceptor" ? "\u30D7\u30EA\u30BB\u30D7\u30BF\u30FC指導\u30DA\u30A2" : "相性NG\u30DA\u30A2");
 
     relations.push({
       id: `rel_${type}_${nurseA}_${nurseB}_${relations.length}`,
@@ -555,43 +555,43 @@ export function validateNurseDataset(
   const warnings: string[] = [];
 
   if (nurses.length === 0) {
-    errors.push("スタッフが1名も登録されていません。");
+    errors.push("\u30B9\u30BF\u30C3\u30D5\u304C1名\u3082登録\u3055\u308C\u3066\u3044\u307E\u305B\u3093。");
     return { valid: false, errors, warnings };
   }
 
   const nurseMap = new Map(nurses.map((n) => [n.id, n]));
   if (nurseMap.size < nurses.length) {
-    errors.push("スタッフIDに重複があります。");
+    errors.push("\u30B9\u30BF\u30C3\u30D5ID\u306B重複\u304C\u3042\u308A\u307E\u3059。");
   }
 
   for (const pref of preferences) {
     if (!nurseMap.has(pref.nurseId)) {
-      errors.push(`希望シフトの看護師ID "${pref.nurseId}" はスタッフ名簿に存在しません。`);
+      errors.push(`希望\u30B7\u30D5\u30C8\u306E看護師ID "${pref.nurseId}" \u306F\u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u307E\u305B\u3093。`);
     }
     if (pref.day < 1 || pref.day > numDays) {
-      errors.push(`希望シフトの日付 "${pref.day}" は月の日数(1〜${numDays})の範囲外です。`);
+      errors.push(`希望\u30B7\u30D5\u30C8\u306E日付 "${pref.day}" \u306F月\u306E日数(1〜${numDays})\u306E範囲外\u3067\u3059。`);
     }
     if (!parseShiftToken(pref.shift, customShiftCodes)) {
-      errors.push(`希望シフトのシフトコード "${pref.shift}" は無効または未定義です。`);
+      errors.push(`希望\u30B7\u30D5\u30C8\u306E\u30B7\u30D5\u30C8\u30B3\u30FC\u30C9 "${pref.shift}" \u306F無効\u307E\u305F\u306F未定義\u3067\u3059。`);
     }
   }
 
   for (const rel of relations) {
     if (!nurseMap.has(rel.nurseA)) {
-      errors.push(`ペア制約の看護師A "${rel.nurseA}" はスタッフ名簿に存在しません。`);
+      errors.push(`\u30DA\u30A2制約\u306E看護師A "${rel.nurseA}" \u306F\u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u307E\u305B\u3093。`);
     }
     if (!nurseMap.has(rel.nurseB)) {
-      errors.push(`ペア制約の看護師B "${rel.nurseB}" はスタッフ名簿に存在しません。`);
+      errors.push(`\u30DA\u30A2制約\u306E看護師B "${rel.nurseB}" \u306F\u30B9\u30BF\u30C3\u30D5名簿\u306B存在\u3057\u307E\u305B\u3093。`);
     }
     if (rel.nurseA === rel.nurseB) {
-      errors.push(`自己ペア制約 "${rel.nurseA}" は無効です。`);
+      errors.push(`自己\u30DA\u30A2制約 "${rel.nurseA}" \u306F無効\u3067\u3059。`);
     }
     if (!rel.shifts || rel.shifts.length === 0) {
-      errors.push(`ペア制約 "${rel.nurseA} × ${rel.nurseB}" の対象シフトが空です。`);
+      errors.push(`\u30DA\u30A2制約 "${rel.nurseA} × ${rel.nurseB}" \u306E対象\u30B7\u30D5\u30C8\u304C空\u3067\u3059。`);
     } else {
       for (const s of rel.shifts) {
         if (!parseShiftToken(s, customShiftCodes)) {
-          errors.push(`ペア制約の対象シフト "${s}" は無効または未定義です。`);
+          errors.push(`\u30DA\u30A2制約\u306E対象\u30B7\u30D5\u30C8 "${s}" \u306F無効\u307E\u305F\u306F未定義\u3067\u3059。`);
         }
       }
     }
