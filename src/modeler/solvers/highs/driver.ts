@@ -37,6 +37,34 @@ export interface CreateHiGHSOptions {
   printErr?: (text: string) => void;
 }
 
+export interface HighsSolutionColumn {
+  Index: number;
+  Name: string;
+  Primal: number;
+  Dual: number;
+  Type?: string;
+}
+
+export interface HighsSolutionRow {
+  Index: number;
+  Name?: string;
+  Primal?: number;
+  Dual?: number;
+}
+
+export interface HighsSolutionResult {
+  Status: string;
+  StatusCode: number;
+  ObjectiveValue: number;
+  Columns: Record<string, HighsSolutionColumn>;
+  Rows?: HighsSolutionRow[];
+  PrimalSolutionStatus?: number;
+  DualSolutionStatus?: number;
+  HasPrimalSolution?: boolean;
+  IsMip?: boolean;
+  ObjectiveOffsetApplied?: boolean;
+}
+
 function extractFloat64Array(
   module: HighsEmscriptenModule,
   ptr: number,
@@ -522,7 +550,7 @@ export class Highs {
     }
   }
 
-  solve(lpString: string, options: Record<string, any> = {}): any {
+  solve(lpString: string, options: Record<string, any> = {}): HighsSolutionResult {
     return this.withModel({ format: "lp", data: lpString }, (m) => {
       for (const [key, val] of Object.entries(options)) {
         try {
@@ -535,7 +563,7 @@ export class Highs {
       const status = m.getModelStatus();
       const dims = m.getDimensions();
       const sol = m.getSolution();
-      const columns: Record<string, any> = {};
+      const columns: Record<string, HighsSolutionColumn> = {};
       for (let j = 0; j < dims.numCols; j++) {
         const name = m.getColName(j);
         columns[name] = {

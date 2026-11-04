@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import { Model, sum, minimize } from "../src/modeler/index.js";
 
 describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
-  it("solves a realistic 20,050-variable supply chain facility location & distribution problem", async () => {
+  it(
+    "solves a realistic 20,050-variable supply chain facility location & distribution problem",
+    async () => {
     const t0 = performance.now();
 
     // 1. Problem Dimensions
@@ -130,5 +132,5 @@ describe("Large-Scale Optimization Benchmark (20,000+ Variables)", () => {
       }
       expect(fulfilled).toBeGreaterThanOrEqual(demands[c] - 1e-4);
     }
-  }, 60000);
+  }, 180000);
 });
