@@ -152,6 +152,27 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(check.pastureScore).toBe(optimalResult.optimalScore);
     }
 
+    // Verify wolves are not exclusively locked into the 4 corners:
+    // across generated stages, diverse perimeter and edge positions must be utilized
+    let nonCornerWolfCount = 0;
+    for (const stageNum of [13, 19, 25, 27, 31]) {
+      const stage = await generateVerifiedPastureStage(stageNum);
+      const rows = stage.grid.length;
+      const cols = stage.grid[0].length;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (stage.grid[r][c] === "wolf") {
+            const isCorner =
+              (r === 0 || r === rows - 1) && (c === 0 || c === cols - 1);
+            if (!isCorner) {
+              nonCornerWolfCount++;
+            }
+          }
+        }
+      }
+    }
+    expect(nonCornerWolfCount).toBeGreaterThanOrEqual(5);
+
     // When all 36 candidate attempts are rejected (e.g., degenerate PRNG output filling the outer ring with water),
     // fallback stage + verified optimal solution are still cached so revisiting does not re-run generation.
     const imulSpy = vi.spyOn(Math, "imul").mockReturnValue(0);
@@ -387,6 +408,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
         closeBtns,
         conditionRows,
         dialogueDocks,
+        logoImgs,
       };
     };
 
@@ -406,6 +428,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       switchCastleLanguage("en");
       expect(castleDoc.documentElement.lang).toBe("en");
       expect(castleDoc.title).toContain("Demon Castle 24h Guard Shift");
+      expect(castleDoc.logoImgs.length).toBeGreaterThanOrEqual(1);
+      for (const logo of castleDoc.logoImgs) {
+        expect(logo.getAttribute("src")).toBe("./title-logo-en.png");
+        expect(logo.getAttribute("alt")).toBe("Demon Castle 24h Guard Shift");
+      }
       expect(castleDoc.byId.get("btn-title-start")?.textContent).toBe("Start New Game");
       expect(castleDoc.byId.get("btn-title-continue")?.textContent).toBe("Continue");
       expect(castleDoc.byId.get("btn-title-roster")?.textContent).toBe("📖 Guard Grimoire");
@@ -466,6 +493,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       switchCastleLanguage("zh");
       expect(castleDoc.documentElement.lang).toBe("zh");
       expect(castleDoc.title).toContain("魔王城的24小时警备排班");
+      expect(castleDoc.logoImgs.length).toBeGreaterThanOrEqual(1);
+      for (const logo of castleDoc.logoImgs) {
+        expect(logo.getAttribute("src")).toBe("./title-logo-zh.png");
+        expect(logo.getAttribute("alt")).toBe("魔王城的24小时警备排班");
+      }
       expect(castleDoc.byId.get("btn-title-start")?.textContent).toBe("从头开始游玩");
       expect(castleDoc.byId.get("btn-title-continue")?.textContent).toBe("继续游戏");
       expect(castleDoc.byId.get("btn-title-roster")?.textContent).toBe("📖 警备队名鉴");

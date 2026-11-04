@@ -3501,6 +3501,11 @@ function applyStaticTranslations(): void {
       t("ui.dialogueWindowAndDispatchComma")
     );
   });
+  const logoSrc = pickLang(currentLang, {
+    ja: "./title-logo.png",
+    en: "./title-logo-en.png",
+    zh: "./title-logo-zh.png",
+  });
   document
     .querySelectorAll<HTMLImageElement>(".title-logo-img, .op-climax-logo-img")
     .forEach((el) => {
@@ -3508,6 +3513,8 @@ function applyStaticTranslations(): void {
         "alt",
         t("ui.demonCastle24hGuardShift_2")
       );
+      el.setAttribute("src", logoSrc);
+      el.src = logoSrc;
     });
   setAttr(
     "dialogue-portrait",

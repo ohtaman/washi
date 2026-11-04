@@ -92,13 +92,21 @@ flowchart LR
     S3 -->|Next Month| S2
 ```
 
-### 5.1 Clean Dual-Section Layout
+### 5.1 Opening Movie, Prologue, and Multilingual Title Logos
+- **Transparent Title Logos ([`title-logo.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo.png) / [`title-logo-en.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo-en.png) / [`title-logo-zh.png`](file:///Users/mitsuhisa.ota/project/washi/public/games/demon-castle-shift/title-logo-zh.png))**:
+  - The title screen and movie climax render dedicated transparent title logo assets matching the active language setting (English, Japanese, Simplified Chinese).
+- **Cinematic Opening Movie (5 Cuts, Skippable)**:
+  - 5 animated cuts featuring camera motion, particle effects, background music, and subtitled dialogue.
+- **Lilith Briefing Prologue**:
+  - Structured as direct 1-on-1 communication from Chief Tactician Lilith to the newly appointed Guard Captain.
+
+### 5.2 Clean Dual-Section Layout
 - **No Cluttered Sidebars**: Unified grid layout focused on the weekly shift table and dialogue brief.
 - **Explicit Shift Cells**: Rest cells ("OFF"), Day duty ("DAY"), Night duty ("NIGHT").
 - **Clear Restrictions**: PTO and Full Moon constraints clearly locked and explained.
 
-### 5.2 Dialogue Briefing Window
-- Displays concise context, rule feedback, and teammate remarks in a single focused dialog box.
+### 5.3 Dialogue Briefing Window & Patrol Resolution
+- Displays concise context, rule feedback, teammate remarks, and patrol outcome comparisons.
 
 ---
 

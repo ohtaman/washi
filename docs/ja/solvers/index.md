@@ -8,9 +8,9 @@ WaSHI は、疎結合でプラグイン可能なソルバーアーキテクチ�
 
 | ソルバー | ライセンス | 対応問題クラス | 最適な用途 | WaSHI での提供形態 |
 | :--- | :--- | :--- | :--- | :--- |
-| **HiGHS** | **MIT** | **LP, MIP, 凸QP** | 産業グレードの最適化、生産計画、ポートフォリオ最適化 | **標準搭載**（設定不要） |
-| **Z3** | **MIT** | **SMT, SAT, 論理, MIP** | 命題論理、競合診断 (`unsatCore`)、ルールエンジン | オプション (`@ohtaman/washi/solvers/z3`) |
-| **GLPK** | **GPL-3.0** | **LP, MIP** | 学術ベンチマーク、既存 GLPK モデルとの互換検証 | オプション (`@ohtaman/washi/solvers/glpk`) |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** (via [`highs`](https://www.npmjs.com/package/highs)) | **MIT** | **LP, MIP, 凸QP** | 産業グレードの最適化、生産計画、ポートフォリオ最適化 | **標準搭載**（設定不要） |
+| **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, 論理, MIP** | 命題論理、競合診断 (`unsatCore`)、ルールエンジン | オプション (`@ohtaman/washi/solvers/z3`) |
+| **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | 学術ベンチマーク、既存 GLPK モデルとの互換検証 | オプション (`@ohtaman/washi/solvers/glpk`) |
 | **Mock** | **MIT** | *任意* | WebAssembly をロードしない CI での超高速単体テスト | **標準搭載** |
 
 ---

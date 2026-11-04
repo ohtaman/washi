@@ -1,4 +1,4 @@
-import { defineConfig } from "vitepress";
+import { defineConfig, type HeadConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
 import katex from "katex";
 import jaLocale from "./locales/ja.json";
@@ -14,6 +14,47 @@ export default withMermaid(
   lastUpdated: true,
   sitemap: {
     hostname: "https://ohtaman.github.io/washi/",
+  },
+  transformHead({ pageData, siteData }) {
+    const baseDomain = "https://ohtaman.github.io";
+    const basePath = "/washi/";
+
+    // Normalize relativePath for cleanUrls:
+    // "index.md" -> ""
+    // "ja/index.md" -> "ja/"
+    // "getting-started/index.md" -> "getting-started/"
+    // "getting-started/ai-agents.md" -> "getting-started/ai-agents"
+    const cleanRelativePath = pageData.relativePath
+      .replace(/(^|\/)index\.md$/, "$1")
+      .replace(/\.md$/, "");
+
+    const canonicalUrl = `${baseDomain}${basePath}${cleanRelativePath}`;
+
+    const pageTitle = pageData.title
+      ? `${pageData.title} | ${siteData.title}`
+      : siteData.title;
+    const pageDescription =
+      pageData.description ||
+      pageData.frontmatter.description ||
+      siteData.description;
+    const pageType = pageData.relativePath.endsWith("index.md") ? "website" : "article";
+    const ogImage = `${baseDomain}${basePath}washi-logo.png`;
+
+    const head: HeadConfig[] = [
+      ["link", { rel: "canonical", href: canonicalUrl }],
+      ["meta", { property: "og:url", content: canonicalUrl }],
+      ["meta", { property: "og:type", content: pageType }],
+      ["meta", { property: "og:title", content: pageTitle }],
+      ["meta", { property: "og:description", content: pageDescription }],
+      ["meta", { property: "og:image", content: ogImage }],
+      ["meta", { name: "twitter:card", content: "summary" }],
+      ["meta", { name: "twitter:url", content: canonicalUrl }],
+      ["meta", { name: "twitter:title", content: pageTitle }],
+      ["meta", { name: "twitter:description", content: pageDescription }],
+      ["meta", { name: "twitter:image", content: ogImage }],
+    ];
+
+    return head;
   },
   markdown: {
     config(md) {
