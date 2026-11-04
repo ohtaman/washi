@@ -1,0 +1,22 @@
+{
+  "stageCleared": "🎉 关卡通关！",
+  "endlessStageCleared": "🎉 无尽关卡通过！",
+  "goalAchieved": "达成目标！前往下一关",
+  "almostThere": "还差一点！",
+  "nextStage": "下一关 ▶",
+  "score": "得分",
+  "status": "状态",
+  "tutorial": "新手教程 {current}/{total}",
+  "undo": "撤销",
+  "restart": "重开",
+  "hint": "提示",
+  "optimal": "示范",
+  "howToPlay": "玩法介绍",
+  "tileLegend": "图块说明",
+  "confirmReset": "确认重置进度？",
+  "previousStage": "上一关",
+  "selectStage": "选择关卡",
+  "rulesAndInfo": "规则与信息",
+  "close": "关闭",
+  "resetProgress": "重置进度"
+}

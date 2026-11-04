@@ -1,0 +1,22 @@
+{
+  "stageCleared": "Stage Cleared!",
+  "endlessStageCleared": "Endless Stage Cleared!",
+  "goalAchieved": "Goal achieved! Proceed to next stage",
+  "almostThere": "Almost there!",
+  "nextStage": "Next ▶",
+  "score": "Score",
+  "status": "Status",
+  "tutorial": "Tutorial {current}/{total}",
+  "undo": "Undo",
+  "restart": "Restart",
+  "hint": "Hint",
+  "optimal": "Optimal",
+  "howToPlay": "How to Play",
+  "tileLegend": "Tile Legend",
+  "confirmReset": "Reset all progress?",
+  "previousStage": "Previous Stage",
+  "selectStage": "Select Stage",
+  "rulesAndInfo": "Rules & Info",
+  "close": "Close",
+  "resetProgress": "Reset Progress"
+}

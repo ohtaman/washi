@@ -1,0 +1,22 @@
+{
+  "stageCleared": "🎉 ステージクリア！",
+  "endlessStageCleared": "🎉 無限ステージクリア！",
+  "goalAchieved": "目標達成！ 次のステージへ進めます",
+  "almostThere": "あと少し！",
+  "nextStage": "次へ ▶",
+  "score": "スコア",
+  "status": "状態",
+  "tutorial": "チュートリアル {current}/{total}",
+  "undo": "1手戻す",
+  "restart": "やり直し",
+  "hint": "ヒント",
+  "optimal": "お手本",
+  "howToPlay": "遊び方",
+  "tileLegend": "アイコン一覧",
+  "confirmReset": "進捗をリセットしますか？",
+  "previousStage": "前のステージ",
+  "selectStage": "ステージ選択",
+  "rulesAndInfo": "ルール・情報",
+  "close": "閉じる",
+  "resetProgress": "進捗リセット"
+}
