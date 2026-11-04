@@ -8,7 +8,7 @@ WaSHI is designed around a pluggable, decoupled solver architecture. You formula
 
 | Solver | Engine License | Problem Classes | Best For | Status in WaSHI |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** (via [`highs`](https://www.npmjs.com/package/highs)) | **MIT** | **LP, MIP, Convex QP** | Industrial-scale optimization, operations research, finance | **Built-in default** (zero configuration) |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, Convex QP** | Industrial-scale optimization, operations research, finance | **Built-in default** (zero configuration) |
 | **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, Logic, MIP** | Propositional logic, conflict diagnosis (`unsatCore`), rule engines | Optional plugin (`@ohtaman/washi/solvers/z3`) |
 | **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | Academic benchmarks, legacy GLPK compatibility | Optional plugin (`@ohtaman/washi/solvers/glpk`) |
 | **Mock** | **MIT** | *Any* | Ultra-fast unit testing in CI without loading WebAssembly | Built-in |

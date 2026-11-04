@@ -62,7 +62,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 | アダプター | エンジンのライセンス | 対応する問題クラス | エンジンの役割 | 提供形態 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** (via [`highs`](https://www.npmjs.com/package/highs)) | **MIT** | **LP, MIP, 凸QP** | 数値最適化 | 標準ソルバー |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, 凸QP** | 数値最適化 | 標準ソルバー |
 | **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, 命題論理, MIP** | 充足可能性の判定、Unsat Core、最適化 | オプションプラグイン (`@ohtaman/washi/solvers/z3`) |
 | **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | 線形・混合整数最適化 | オプションプラグイン (`@ohtaman/washi/solvers/glpk`) |
 | **Mock** | **MIT** | — | 統合テスト用の模擬応答 | 標準搭載。モデルの求解は行わない |
@@ -491,7 +491,7 @@ node scripts/run-benchmarks.mjs --browser
 ## 📄 ライセンス
 
 - **`@ohtaman/washi`**: [MIT ライセンス](./LICENSE)
-- **HiGHS**（標準エンジン、[`highs`](https://www.npmjs.com/package/highs) / [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS) 経由）: MIT ライセンス
+- **HiGHS**（標準エンジン、[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）: MIT ライセンス
 - **Z3**（オプション、[`z3-solver`](https://www.npmjs.com/package/z3-solver) 経由）: MIT ライセンス
 - **GLPK**（オプション、[`glpk.js`](https://www.npmjs.com/package/glpk.js) 経由）: GPL-3.0 ライセンス
 

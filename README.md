@@ -62,7 +62,7 @@ Model construction and translation are WaSHI's responsibility. Supported problem
 
 | Adapter | Engine license | Supported problem classes | Engine role | Integration |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** (via [`highs`](https://www.npmjs.com/package/highs)) | **MIT** | **LP, MIP, convex QP** | Numerical optimization | Built-in default |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, convex QP** | Numerical optimization | Built-in default |
 | **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, logic, MIP** | Satisfiability checks, unsatisfiable cores, optimization | Optional plugin (`@ohtaman/washi/solvers/z3`) |
 | **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | Linear and mixed-integer optimization | Optional plugin (`@ohtaman/washi/solvers/glpk`) |
 | **Mock** | **MIT** | — | Simulated solver responses for integration tests | Built-in; does not solve the model |
@@ -491,7 +491,7 @@ node scripts/run-benchmarks.mjs --browser
 ## 📄 License
 
 - **`@ohtaman/washi`**: [MIT License](./LICENSE)
-- **HiGHS** (default engine via [`highs`](https://www.npmjs.com/package/highs) / [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)): MIT License
+- **HiGHS** (default engine, [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)): MIT License
 - **Z3** (optional plugin via [`z3-solver`](https://www.npmjs.com/package/z3-solver)): MIT License
 - **GLPK** (optional plugin via [`glpk.js`](https://www.npmjs.com/package/glpk.js)): GPL-3.0 License
 

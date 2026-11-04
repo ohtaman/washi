@@ -8,7 +8,7 @@ WaSHI 采用可插拔、解耦的求解器架构设计。你可以使用统一�
 
 | 求解器 | 引擎许可证 | 支持的问题类型 | 适用场景 | WaSHI 中的状态 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** (via [`highs`](https://www.npmjs.com/package/highs)) | **MIT** | **LP, MIP, 凸QP** | 工业级规模优化、运筹学、生产计划、金融组合优化 | **内置默认**（零配置） |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, 凸QP** | 工业级规模优化、运筹学、生产计划、金融组合优化 | **内置默认**（零配置） |
 | **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, 逻辑, MIP** | 命题逻辑、不可行冲突诊断（`unsatCore`）、规则引擎 | 可选插件（`@ohtaman/washi/solvers/z3`） |
 | **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | 学术基准测试、既有 GLPK 模型兼容性验证 | 可选插件（`@ohtaman/washi/solvers/glpk`） |
 | **Mock** | **MIT** | *任意* | 无需加载 WebAssembly 的 CI 超高速单元测试 | **内置** |
