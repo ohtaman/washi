@@ -258,7 +258,7 @@ export function getStageTitleByNumber(stageNumber: number, lang: GameLang = "en"
   const catalog = STAGE_CATALOGS[lang] ?? STAGE_CATALOGS.en;
   if (stageNumber >= 1 && stageNumber <= CAMPAIGN_STAGES.length) {
     const st = CAMPAIGN_STAGES[stageNumber - 1];
-    return (catalog.stages as any)[st.id]?.title ?? st.title;
+    return (catalog.stages as Record<string, { title: string; oneLiner: string }>)[st.id]?.title ?? st.title;
   }
   const themeIdx =
     Math.abs(stageNumber - (CAMPAIGN_STAGES.length + 1)) % catalog.themes.length;
@@ -270,7 +270,7 @@ export function getLocalizedStageText(
   lang: GameLang = "en"
 ): { title: string; oneLiner: string } {
   const catalog = STAGE_CATALOGS[lang] ?? STAGE_CATALOGS.en;
-  const entry = (catalog.stages as any)[stage.id];
+  const entry = (catalog.stages as Record<string, { title: string; oneLiner: string }>)[stage.id];
   if (entry) {
     return { title: entry.title, oneLiner: entry.oneLiner };
   }

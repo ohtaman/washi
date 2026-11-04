@@ -919,7 +919,192 @@
     "Armor Inspection": "Armor Inspection",
     "Archive Inventory": "Archive Inventory"
   },
-  "enemies": {},
+  "enemies": {
+    "Vanguard Swordsmen & Archers": {
+      "name": "Vanguard Swordsmen & Archers",
+      "quote": "To prevent damage to the town, we scout the gates."
+    },
+    "Kingdom Armored Shield Corps": {
+      "name": "Kingdom Armored Shield Corps",
+      "quote": "We march straight through. Stand aside."
+    },
+    "Hero Crimson Battle Mages": {
+      "name": "Hero Crimson Battle Mages",
+      "quote": "We cannot allow monsters to dwell near the settlement."
+    },
+    "Forest Longbow Snipers": {
+      "name": "Forest Longbow Snipers",
+      "quote": "Aiming through the forest canopy. No opening goes unnoticed."
+    },
+    "Sanctuary Templar Knights": {
+      "name": "Sanctuary Templar Knights",
+      "quote": "To protect human livelihood, we will seal this fortress."
+    },
+    "Expedition Night Scouts": {
+      "name": "Expedition Night Scouts",
+      "quote": "Under cover of darkness, unlock the postern gate."
+    },
+    "Rear Gate Infiltration Squad": {
+      "name": "Rear Gate Infiltration Squad",
+      "quote": "Strike during the guard rotation. Keep silent."
+    },
+    "Hero Moonlit Hunt Division": {
+      "name": "Hero Moonlit Hunt Division",
+      "quote": "Rush the ramparts while the moon lights the way."
+    },
+    "Waterway Shinobi Squad": {
+      "name": "Waterway Shinobi Squad",
+      "quote": "Slip into the fortress through the aqueduct grates."
+    },
+    "Hero Elite Vanguard": {
+      "name": "Hero Elite Vanguard",
+      "quote": "Time to end this. Open the gates."
+    },
+    "Vanguard Heavy Frontline": {
+      "name": "Vanguard Heavy Frontline",
+      "quote": "To protect the human towns, we will survey this forest fortress."
+    },
+    "Vanguard Night Scouts": {
+      "name": "Vanguard Night Scouts",
+      "quote": "Exploit openings in the night watch to scale the walls."
+    },
+    "Royal Infantry Patrol": {
+      "name": "Royal Infantry Patrol",
+      "quote": "Daytime patrol squad. Push through the front gate."
+    },
+    "Expedition Night Saboteurs": {
+      "name": "Expedition Night Saboteurs",
+      "quote": "Approach without a sound and slip past the sentries."
+    },
+    "Royal Forest Archers": {
+      "name": "Royal Forest Archers",
+      "quote": "Final day of siege. Give them no respite."
+    },
+    "Hero's Crimson Mage Corps": {
+      "name": "Hero's Crimson Mage Corps",
+      "quote": "Pry open the night gate with arcane fire."
+    },
+    "Royal Heavy Infantry": {
+      "name": "Royal Heavy Infantry",
+      "quote": "Line up shields and advance from the front. Open the gate."
+    },
+    "Royal Perimeter Patrol": {
+      "name": "Royal Perimeter Patrol",
+      "quote": "Subdue the forest perimeter one section at a time."
+    },
+    "Covert Sabotage Platoon": {
+      "name": "Covert Sabotage Platoon",
+      "quote": "The vampire is reportedly off-duty tonight. Perfect chance."
+    },
+    "Vanguard Swordsman Squad": {
+      "name": "Vanguard Swordsman Squad",
+      "quote": "Consecutive battles must have exhausted the castle defenses."
+    },
+    "Hero Night Assault Corps": {
+      "name": "Hero Night Assault Corps",
+      "quote": "Attack simultaneously from two flanks. Break through."
+    },
+    "Royal Siege Infantry": {
+      "name": "Royal Siege Infantry",
+      "quote": "Tighten the perimeter over 4 days, starting at the main gate."
+    },
+    "Hero Elite Night Assault Squad": {
+      "name": "Hero Elite Night Assault Squad",
+      "quote": "Strike the gatekeepers down under cover of darkness."
+    },
+    "Waterway Recon Squad": {
+      "name": "Waterway Recon Squad",
+      "quote": "Scout the aqueduct inlet. A small unit suffices."
+    },
+    "Waterway Infiltration Shinobi": {
+      "name": "Waterway Infiltration Shinobi",
+      "quote": "Infiltrate silently through the subterranean aqueducts."
+    },
+    "Hero Siege Mages": {
+      "name": "Hero Siege Mages",
+      "quote": "Focus magical output and shatter the gate barrier."
+    },
+    "Moonlit Hunt Division": {
+      "name": "Moonlit Hunt Division",
+      "quote": "Under the full moon's light, strike their weakest post."
+    },
+    "Postern Gate Assault Unit": {
+      "name": "Postern Gate Assault Unit",
+      "quote": "Final night. Storm the postern gate in full force."
+    },
+    "Silver Infantry Vanguard": {
+      "name": "Silver Infantry Vanguard",
+      "quote": "First division, advance. Protect human towns from harm."
+    },
+    "Postern Gate Night Scouts": {
+      "name": "Postern Gate Night Scouts",
+      "quote": "Flank around to the postern gate through the night forest."
+    },
+    "Heavy Siege Ram Unit": {
+      "name": "Heavy Siege Ram Unit",
+      "quote": "Bring up the battering ram. Force the gates open."
+    },
+    "Covert Saboteurs": {
+      "name": "Covert Saboteurs",
+      "quote": "Advance quietly. Exploit the sentries' blind spots."
+    },
+    "Royal Arcane Artillery": {
+      "name": "Royal Arcane Artillery",
+      "quote": "Pin them down from long range to pave way for the night main force."
+    },
+    "Great Bridge Snipers": {
+      "name": "Great Bridge Snipers",
+      "quote": "Cross the great bridge over the gorge. Provide covering fire."
+    },
+    "Waterway Sabotage Unit": {
+      "name": "Waterway Sabotage Unit",
+      "quote": "Breach the aqueduct grates quickly."
+    },
+    "Hero Vanguard Knights": {
+      "name": "Hero Vanguard Knights",
+      "quote": "My lance will forge the path. All units, follow."
+    },
+    "Siege Encirclement Corps": {
+      "name": "Siege Encirclement Corps",
+      "quote": "The garrison must be exhausted by week's end."
+    },
+    "Hero Vanguard Heavy Corps": {
+      "name": "Hero Vanguard Heavy Corps",
+      "quote": "Vanguard of the Hero's army, advance."
+    },
+    "High Mage Artillery Corps": {
+      "name": "High Mage Artillery Corps",
+      "quote": "Bombard the walls with arcane shells from the night sky."
+    },
+    "Elite Mounted Archers": {
+      "name": "Elite Mounted Archers",
+      "quote": "Disrupt their ranks and maintain pressure until the main force arrives."
+    },
+    "Covert Main Infiltration Unit": {
+      "name": "Covert Main Infiltration Unit",
+      "quote": "Harass both postern and waterways simultaneously."
+    },
+    "Holy Sanctuary Royal Guards": {
+      "name": "Holy Sanctuary Royal Guards",
+      "quote": "For the peace of human towns, we will take this fortress."
+    },
+    "Heavy Siege Battery": {
+      "name": "Heavy Siege Battery",
+      "quote": "Push battle lines directly to the fortress gates."
+    },
+    "Combat Sappers Corps": {
+      "name": "Combat Sappers Corps",
+      "quote": "Undermine rampart foundations for tomorrow's grand assault."
+    },
+    "Frontline Breakthrough Squad": {
+      "name": "Frontline Breakthrough Squad",
+      "quote": "The Hero arrives tonight. Draw the gatekeepers out."
+    },
+    "Hero Party Decisive Force": {
+      "name": "Hero Party Decisive Force",
+      "quote": "This is the final battle. All units, storm the main gate."
+    }
+  },
   "adaptiveStage": {
     "title": "{calShort}: Main Gate Shift ({numDays} Days · {count} Guards)",
     "subtitle": "Guards on Duty: {roster} (Difficulty: {diff})",

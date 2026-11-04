@@ -958,23 +958,16 @@
         <span id="toolbar-title-text">Markdown Textbook Design System</span>
       </div>
       <div class="toolbar-controls">
-        <!-- 言語切替 (EN / JA / ZH) -->
-        <div class="lang-switcher" role="group" aria-label="Language">
-          <button type="button" class="lang-btn" data-lang-btn="en" onclick="setLang('en')">English</button>
-          <button type="button" class="lang-btn active" data-lang-btn="ja" onclick="setLang('ja')">日本語</button>
-          <button type="button" class="lang-btn" data-lang-btn="zh" onclick="setLang('zh')">中文</button>
-        </div>
-
         <!-- Theme Switcher (3 Styles) -->
         <div class="theme-switcher" role="group" aria-label="Theme">
-          <button type="button" class="theme-btn active" data-set-theme="educational" onclick="setTheme('educational')">
-            <span id="theme-btn-edu">📘 ① 図解入門</span>
+          <button type="button" class="theme-btn active" data-theme-btn="educational">
+            <span id="theme-btn-edu">📘 ① Educational</span>
           </button>
-          <button type="button" class="theme-btn" data-set-theme="strategy-guide" onclick="setTheme('strategy-guide')">
-            <span id="theme-btn-strat">🎮 ② 攻略本</span>
+          <button type="button" class="theme-btn" data-theme-btn="strategy-guide">
+            <span id="theme-btn-strat">🎮 ② Strategy Guide</span>
           </button>
-          <button type="button" class="theme-btn" data-set-theme="modern-tech" onclick="setTheme('modern-tech')">
-            <span id="theme-btn-mod">⚡ ③ Modern</span>
+          <button type="button" class="theme-btn" data-theme-btn="modern-tech">
+            <span id="theme-btn-mod">⚡ ③ Modern Tech</span>
           </button>
         </div>
       </div>
@@ -1531,6 +1524,7 @@ export function findShortestPath(start: Node, goal: Node): Node[] {
   <script>
     const themeButtons = document.querySelectorAll('.theme-btn');
     function applyTheme(theme) {
+      if (!theme) return;
       document.documentElement.setAttribute('data-theme', theme);
       themeButtons.forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-theme-btn') === theme);
@@ -1538,7 +1532,10 @@ export function findShortestPath(start: Node, goal: Node): Node[] {
       localStorage.setItem('doc-theme', theme);
     }
     themeButtons.forEach(btn => {
-      btn.addEventListener('click', () => applyTheme(btn.getAttribute('data-theme-btn')));
+      btn.addEventListener('click', () => {
+        const theme = btn.getAttribute('data-theme-btn');
+        if (theme) applyTheme(theme);
+      });
     });
     const savedTheme = localStorage.getItem('doc-theme');
     if (savedTheme) applyTheme(savedTheme);

@@ -29,6 +29,7 @@ import {
   BALANCE_CONFIG,
   type StagePlayRecord,
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
+import { getRequirementLocalized } from "../examples/web-demo/games/demon-castle-shift/i18n-data.js";
 import {
   getActiveStageStateForTest,
   getNextCycleShift,
@@ -682,5 +683,27 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
       highestUnlockedWeek: 6,
     };
     expect(hasSavedProgress(endlessSave)).toBe(true);
+  });
+
+  it("localizes enemy names and quotes across all campaign requirements for Japanese and Chinese locales", () => {
+    for (const stage of CAMPAIGN_STAGES) {
+      for (const req of stage.requirements) {
+        const enReq = getRequirementLocalized(req, "en");
+        expect(enReq.enemyName).toBe(req.enemyName);
+        expect(enReq.enemyQuote).toBe(req.enemyQuote);
+
+        const jaReq = getRequirementLocalized(req, "ja");
+        expect(jaReq.enemyName).not.toBe(req.enemyName);
+        expect(jaReq.enemyName.length).toBeGreaterThan(0);
+        expect(jaReq.enemyQuote).not.toBe(req.enemyQuote);
+        expect(jaReq.enemyQuote.length).toBeGreaterThan(0);
+
+        const zhReq = getRequirementLocalized(req, "zh");
+        expect(zhReq.enemyName).not.toBe(req.enemyName);
+        expect(zhReq.enemyName.length).toBeGreaterThan(0);
+        expect(zhReq.enemyQuote).not.toBe(req.enemyQuote);
+        expect(zhReq.enemyQuote.length).toBeGreaterThan(0);
+      }
+    }
   });
 });

@@ -58,16 +58,22 @@ export interface TranslationDict {
   optimalSummaryTitle: string;
 }
 
-export const CATALOGS: Record<Locale, { ui: TranslationDict; presets: Record<string, { title: string; description: string }>; docsHtml: string }> = {
-  en: enCatalog as any,
-  ja: jaCatalog as any,
-  zh: zhCatalog as any,
+export interface WebDemoCatalog {
+  ui: TranslationDict;
+  presets: Record<string, { title: string; description: string }>;
+  docsHtml: string;
+}
+
+export const CATALOGS: Record<Locale, WebDemoCatalog> = {
+  en: enCatalog,
+  ja: jaCatalog,
+  zh: zhCatalog,
 };
 
 export const translations: Record<Locale, TranslationDict> = {
-  en: enCatalog.ui as any,
-  ja: jaCatalog.ui as any,
-  zh: zhCatalog.ui as any,
+  en: enCatalog.ui,
+  ja: jaCatalog.ui,
+  zh: zhCatalog.ui,
 };
 
 const STORAGE_KEY = "opt_ts_locale";

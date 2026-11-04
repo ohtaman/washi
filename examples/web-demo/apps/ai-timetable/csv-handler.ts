@@ -2,11 +2,22 @@ import enCatalog from "./locales/en.json" with { type: "json" };
 import jaCatalog from "./locales/ja.json" with { type: "json" };
 import zhCatalog from "./locales/zh.json" with { type: "json" };
 
-const ALL_CSV_CATALOGS = [enCatalog.csv, jaCatalog.csv, zhCatalog.csv];
+interface CsvCatalogSection {
+  [field: string]: string[] | undefined;
+}
+
+interface CsvCatalog {
+  professors?: CsvCatalogSection;
+  rooms?: CsvCatalogSection;
+  courses?: CsvCatalogSection;
+  tokens?: Record<string, string[] | undefined>;
+}
+
+const ALL_CSV_CATALOGS: CsvCatalog[] = [enCatalog.csv, jaCatalog.csv, zhCatalog.csv];
 
 function matchesHeader(h: string, field: string, section: "professors" | "rooms" | "courses"): boolean {
   for (const cat of ALL_CSV_CATALOGS) {
-    const list = (cat as any)[section]?.[field];
+    const list = cat[section]?.[field];
     if (list && list.includes(h)) return true;
   }
   return false;
@@ -14,7 +25,7 @@ function matchesHeader(h: string, field: string, section: "professors" | "rooms"
 
 function matchesToken(t: string, tokenKey: string): boolean {
   for (const cat of ALL_CSV_CATALOGS) {
-    const list = (cat as any).tokens?.[tokenKey];
+    const list = cat.tokens?.[tokenKey];
     if (list && list.some((k: string) => t === k || t.includes(k))) return true;
   }
   return false;

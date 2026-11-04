@@ -155,39 +155,57 @@ export const EQUIPMENT_I18N: Record<TimetableLang, Record<EquipmentTag, string>>
   zh: zhCatalog.equipment as Record<EquipmentTag, string>,
 };
 
+export interface RoomI18nEntry {
+  name: string;
+  shortName: string;
+  building: string;
+}
+
 export const ROOM_PROFILE_I18N: Record<
   string,
-  Record<TimetableLang, { name: string; shortName: string; building: string }>
+  Record<TimetableLang, RoomI18nEntry>
 > = {};
 for (const id of Object.keys(enCatalog.rooms)) {
   ROOM_PROFILE_I18N[id] = {
-    en: (enCatalog.rooms as any)[id],
-    ja: (jaCatalog.rooms as any)[id],
-    zh: (zhCatalog.rooms as any)[id],
+    en: (enCatalog.rooms as Record<string, RoomI18nEntry>)[id],
+    ja: (jaCatalog.rooms as Record<string, RoomI18nEntry>)[id],
+    zh: (zhCatalog.rooms as Record<string, RoomI18nEntry>)[id],
   };
+}
+
+export interface ProfessorI18nEntry {
+  name: string;
+  shortName: string;
+  title: string;
+  specialty: string;
 }
 
 export const PROFESSOR_PROFILE_I18N: Record<
   string,
-  Record<TimetableLang, { name: string; shortName: string; title: string; specialty: string }>
+  Record<TimetableLang, ProfessorI18nEntry>
 > = {};
 for (const id of Object.keys(enCatalog.professors)) {
   PROFESSOR_PROFILE_I18N[id] = {
-    en: (enCatalog.professors as any)[id],
-    ja: (jaCatalog.professors as any)[id],
-    zh: (zhCatalog.professors as any)[id],
+    en: (enCatalog.professors as Record<string, ProfessorI18nEntry>)[id],
+    ja: (jaCatalog.professors as Record<string, ProfessorI18nEntry>)[id],
+    zh: (zhCatalog.professors as Record<string, ProfessorI18nEntry>)[id],
   };
+}
+
+export interface CourseI18nEntry {
+  title: string;
+  shortTitle: string;
 }
 
 export const COURSE_PROFILE_I18N: Record<
   string,
-  Record<TimetableLang, { title: string; shortTitle: string }>
+  Record<TimetableLang, CourseI18nEntry>
 > = {};
 for (const id of Object.keys(enCatalog.courses)) {
   COURSE_PROFILE_I18N[id] = {
-    en: (enCatalog.courses as any)[id],
-    ja: (jaCatalog.courses as any)[id],
-    zh: (zhCatalog.courses as any)[id],
+    en: (enCatalog.courses as Record<string, CourseI18nEntry>)[id],
+    ja: (jaCatalog.courses as Record<string, CourseI18nEntry>)[id],
+    zh: (zhCatalog.courses as Record<string, CourseI18nEntry>)[id],
   };
 }
 
@@ -460,12 +478,12 @@ export function formatConstraintMetaI18n(
   return { label: meta.labelJa, suggestion: meta.relaxSuggestion };
 }
 
-export type TimetableUiStrings = typeof enCatalog.ui;
+export type TimetableUiStrings = Record<keyof typeof enCatalog.ui, string>;
 
 export const TIMETABLE_UI_I18N: Record<TimetableLang, TimetableUiStrings> = {
   en: enCatalog.ui,
-  ja: jaCatalog.ui as any,
-  zh: zhCatalog.ui as any,
+  ja: jaCatalog.ui,
+  zh: zhCatalog.ui,
 };
 
 export const UI_TEXT_I18N = TIMETABLE_UI_I18N;

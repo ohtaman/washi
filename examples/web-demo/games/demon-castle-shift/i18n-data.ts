@@ -112,7 +112,7 @@ export function getMonsterLocalized(monsterId: MonsterId, lang: GameLang): Monst
 
 export function getRelationLocalized(rel: PairRelation, lang: GameLang): PairRelation {
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const l = (cat.relations as Record<string, any>)[rel.id];
+  const l = (cat.relations as Record<string, { title: string; story: string }>)[rel.id];
   if (!l) return rel;
   return {
     ...rel,
@@ -125,8 +125,9 @@ export function getRequirementLocalized(
   req: ShiftSlotRequirement,
   lang: GameLang
 ): ShiftSlotRequirement {
+  if (lang === "en") return req;
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const ene = (cat.enemies as Record<string, any>)?.[req.enemyName];
+  const ene = (cat.enemies as Record<string, { name?: string; quote?: string }>)?.[req.enemyName];
   if (!ene) return req;
   return {
     ...req,
@@ -152,7 +153,14 @@ export function getStageLocalized(
   lilithHint: string;
 } {
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const stg = (cat.stages as Record<string, any>)?.[stage.id];
+  const stg = (cat.stages as Record<string, {
+    title: string;
+    subtitle: string;
+    newRuleTitle: string;
+    newRuleSummary: string;
+    lilithIntro: string;
+    lilithHint: string;
+  }>)?.[stage.id];
   if (stg) {
     return {
       title: stg.title,

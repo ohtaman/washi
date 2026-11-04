@@ -919,7 +919,192 @@
     "Armor Inspection": "检查装备",
     "Archive Inventory": "整理书库目录"
   },
-  "enemies": {},
+  "enemies": {
+    "Vanguard Swordsmen & Archers": {
+      "name": "先遣队・剑士与弓兵班",
+      "quote": "为了阻止城镇受损，先试探城门的防卫。"
+    },
+    "Kingdom Armored Shield Corps": {
+      "name": "王国军・重装盾兵团",
+      "quote": "从正面强行推进。"
+    },
+    "Hero Crimson Battle Mages": {
+      "name": "勇者军・红莲魔导团",
+      "quote": "用魔导之火撬开夜间的城门。"
+    },
+    "Forest Longbow Snipers": {
+      "name": "森林部队・长弓狙击团",
+      "quote": "从林间狙击，绝不放过任何破绽。"
+    },
+    "Sanctuary Templar Knights": {
+      "name": "教国军・圣堂骑士团",
+      "quote": "为了守护人们的日常生活，封锁这座要塞。"
+    },
+    "Expedition Night Scouts": {
+      "name": "讨伐军・夜间斥候班",
+      "quote": "趁夜班出现空隙翻越城墙。"
+    },
+    "Rear Gate Infiltration Squad": {
+      "name": "后门工作・隐密小队",
+      "quote": "瞄准换岗间隙，不要发出声响。"
+    },
+    "Hero Moonlit Hunt Division": {
+      "name": "勇者军・月下狩猎团",
+      "quote": "满月之夜狼人无法出战，现在正是良机。"
+    },
+    "Waterway Shinobi Squad": {
+      "name": "水路潜入・忍者分队",
+      "quote": "从地下水路悄无声息地潜入城内。"
+    },
+    "Hero Elite Vanguard": {
+      "name": "勇者一行・精锐主力",
+      "quote": "该做个了断了，打开城门吧。"
+    },
+    "Vanguard Heavy Frontline": {
+      "name": "先遣队・重装前卫群",
+      "quote": "为了守护人类的城镇，我们要调查这座森林要塞。"
+    },
+    "Vanguard Night Scouts": {
+      "name": "讨伐军・夜间斥候班",
+      "quote": "趁夜班出现空隙翻越城墙。"
+    },
+    "Royal Infantry Patrol": {
+      "name": "王国军・步兵巡逻队",
+      "quote": "日间巡逻队，突破前方的城门。"
+    },
+    "Expedition Night Saboteurs": {
+      "name": "讨伐军・夜袭工兵班",
+      "quote": "放轻脚步靠近，绕过哨兵。"
+    },
+    "Royal Forest Archers": {
+      "name": "王国军・森林弓兵团",
+      "quote": "推进到弓箭射程之内，做好准备。"
+    },
+    "Hero's Crimson Mage Corps": {
+      "name": "勇者军・红莲魔导团",
+      "quote": "用魔导之火撬开夜间的城门。"
+    },
+    "Royal Heavy Infantry": {
+      "name": "王国军・重装步兵团",
+      "quote": "从正面列盾推进，打开城门。"
+    },
+    "Royal Perimeter Patrol": {
+      "name": "王国军・外围巡逻队",
+      "quote": "从森林外围依次压制。"
+    },
+    "Covert Sabotage Platoon": {
+      "name": "讨伐军・隐密工作小队",
+      "quote": "今晚吸血鬼似乎休班，正是好机会。"
+    },
+    "Vanguard Swordsman Squad": {
+      "name": "讨伐军・前卫剑士队",
+      "quote": "连日攻防之下，城里的守军应该已经疲惫了。"
+    },
+    "Hero Night Assault Corps": {
+      "name": "勇者军・夜间强袭团",
+      "quote": "从两个方向同时发动奇袭，一举突破。"
+    },
+    "Royal Siege Infantry": {
+      "name": "王国军・包围步兵团",
+      "quote": "用四天时间缩小包围圈，先从正门开始。"
+    },
+    "Hero Elite Night Assault Squad": {
+      "name": "勇者军・精锐夜袭队",
+      "quote": "借着夜色一举击破门卫。"
+    },
+    "Waterway Recon Squad": {
+      "name": "讨伐军・水路侦察班",
+      "quote": "调查水路入口，小股人马即可。"
+    },
+    "Waterway Infiltration Shinobi": {
+      "name": "水路潜入・忍者分队",
+      "quote": "从地下水路悄无声息地潜入城内。"
+    },
+    "Hero Siege Mages": {
+      "name": "勇者军・攻城魔导团",
+      "quote": "集中全部魔力，击碎城门结界。"
+    },
+    "Moonlit Hunt Division": {
+      "name": "勇者军・月下狩猎团",
+      "quote": "满月之夜狼人无法出战，现在正是良机。"
+    },
+    "Postern Gate Assault Unit": {
+      "name": "讨伐军・后门突入队",
+      "quote": "最后一夜了，全员突入后门。"
+    },
+    "Silver Infantry Vanguard": {
+      "name": "王国军・白银步兵团",
+      "quote": "第一阵前进，绝不让人类城镇再受波及。"
+    },
+    "Postern Gate Night Scouts": {
+      "name": "讨伐军・夜间斥候队",
+      "quote": "穿过夜色中的森林，绕向后门。"
+    },
+    "Heavy Siege Ram Unit": {
+      "name": "勇者军・重装破城团",
+      "quote": "推进攻城槌，撞开城门。"
+    },
+    "Covert Saboteurs": {
+      "name": "讨伐军・隐密工作队",
+      "quote": "安静前进，突袭哨兵的死角。"
+    },
+    "Royal Arcane Artillery": {
+      "name": "王国军・魔导炮击队",
+      "quote": "从远距离压制，衔接夜间的主力部队。"
+    },
+    "Great Bridge Snipers": {
+      "name": "王国军・大桥狙击队",
+      "quote": "跨过溪流大桥，掩护部队推进。"
+    },
+    "Waterway Sabotage Unit": {
+      "name": "讨伐军・水路工兵班",
+      "quote": "瞄准水路铁栅，速战速决。"
+    },
+    "Hero Vanguard Knights": {
+      "name": "勇者军・先锋骑士团",
+      "quote": "以我之枪开辟道路，全军跟上。"
+    },
+    "Siege Encirclement Corps": {
+      "name": "讨伐军・夜间包围队",
+      "quote": "到了周末，守城兵力肯定已经疲惫不堪。"
+    },
+    "Hero Vanguard Heavy Corps": {
+      "name": "勇者军・先锋重装团",
+      "quote": "勇者主力先锋，全军推进。"
+    },
+    "High Mage Artillery Corps": {
+      "name": "勇者军・高位魔导团",
+      "quote": "从夜空倾泻魔导弹，不要退缩。"
+    },
+    "Elite Mounted Archers": {
+      "name": "王国军・精锐弓骑团",
+      "quote": "打乱敌方阵脚，在主力抵达前持续施压。"
+    },
+    "Covert Main Infiltration Unit": {
+      "name": "讨伐军・隐密本队",
+      "quote": "从后门与水路同时发动奇袭动摇防线。"
+    },
+    "Holy Sanctuary Royal Guards": {
+      "name": "教国军・圣堂亲卫队",
+      "quote": "为了人类城镇的安宁，攻下这座森林城池。"
+    },
+    "Heavy Siege Battery": {
+      "name": "王国军・攻城重炮队",
+      "quote": "把阵线推到正门跟前。"
+    },
+    "Combat Sappers Corps": {
+      "name": "讨伐军・夜间工兵队",
+      "quote": "为明天的决战做准备，破坏城墙地基。"
+    },
+    "Frontline Breakthrough Squad": {
+      "name": "勇者军・前卫突破队",
+      "quote": "勇者主力今夜抵达，把门卫引出来。"
+    },
+    "Hero Party Decisive Force": {
+      "name": "勇者一行・决战主力",
+      "quote": "这是最后的攻防战了，全军突击正门。"
+    }
+  },
   "adaptiveStage": {
     "title": "{calShort}：正门防卫排班（{numDays}天·{count}人值班）",
     "subtitle": "本月正门值班：{roster}（难度：{diff}）",
