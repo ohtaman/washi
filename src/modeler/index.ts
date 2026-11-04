@@ -8,6 +8,7 @@ export {
   type KeyCollection,
 } from "./model.js";
 export { deriveBigMForLe, deriveBigMForGe, validateUserBigM, buildIndicatorLinearization } from "./big-m.js";
+export { linearizeModelForMip, type LinearizationResult } from "./linearizer.js";
 export { validateModelIntegrity } from "./validation.js";
 export {
   maximize,

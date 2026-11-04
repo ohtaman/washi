@@ -478,8 +478,9 @@ const res = await m.check({ solver: "z3" });
 
 console.log("Check Status:", res.status); // "Unsat"
 if (res.status === "Unsat") {
-  console.warn("⚠️ Conflicting Shift Rules (Unsat Core):");
-  m.unsatCore.forEach((rule) => console.warn("  • " + rule));
+  console.warn("⚠️ Conflicting Shift Rules (Conflicts / Unsat Core):");
+  const conflicts = res.conflicts || m.conflicts || m.unsatCore || [];
+  conflicts.forEach((rule) => console.warn("  • " + rule));
 }
 `,
   },
@@ -524,8 +525,9 @@ const res = await m.check({ solver: "z3" });
 console.log("Check Status:", res.status); // "Unsat"
 
 if (res.status === "Unsat") {
-  console.warn("⚠️ Conflicting Rules (Unsat Core):");
-  m.unsatCore.forEach((rule) => console.warn("  • " + rule));
+  console.warn("⚠️ Conflicting Rules (Conflicts / Unsat Core):");
+  const conflicts = res.conflicts || m.conflicts || m.unsatCore || [];
+  conflicts.forEach((rule) => console.warn("  • " + rule));
 }
 `,
   },
