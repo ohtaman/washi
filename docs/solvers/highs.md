@@ -12,7 +12,7 @@ In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly via the open-source [`hi
 - **Permissive MIT License**: 100% commercially friendly.
 - **Web Worker Multithreading**: Automatically offloads intensive solving to background Web Workers in browser environments to avoid freezing the UI thread.
 - **Warm-Start Support (`initialValue`)**: Supports passing variable primal initial value hints (`initialValue`) to HiGHS `setSolution` for warm starting.
-- **Fast WASM Execution**: Emscripten-compiled 32-bit WASM runs at near-native speed.
+- **Fast WASM Execution**: Runs the upstream 32-bit WebAssembly binary at near-native speed.
 
 ---
 

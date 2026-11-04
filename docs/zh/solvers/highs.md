@@ -12,7 +12,7 @@
 - **宽松的 MIT 许可证**：核心包 100% 满足商业友好授权要求。
 - **Web Worker 后台多线程**：在浏览器环境中自动将高强度计算卸载至专用后台 Web Worker，避免阻塞 UI 渲染主线程。
 - **支持热启动（`initialValue`）**：支持将变量的初始值提示（`initialValue`）传递给 HiGHS 的 `setSolution` 进行热启动。
-- **高速 WASM 执行**：基于 Emscripten 编译的 32 位 WebAssembly，运行速度接近原生代码。
+- **高速 WASM 执行**：基于上游 32 位 WebAssembly 二进制产物，运行速度接近原生代码。
 
 ---
 
