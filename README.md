@@ -52,7 +52,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), unified tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`). Because JavaScript lacks operator overloading, `` expr`...` `` parses infix math (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) while binding interpolated `${...}` values directly as typed `Var` or expression references—similar to parameterized SQL templates—preserving static type checking, IDE refactoring, and indexed variable lookups (`${flow[i][j]}`).
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build—removing backend provisioning as a bottleneck when shipping interactive tools or combining mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) on the client. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
-4. **Named constraints and conflict diagnosis**: Explicitly check satisfiability (`m.check()`) and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities using either built-in HiGHS (elastic relaxation) or Z3 (SMT unsatisfiable core). A returned subset pinpoints contradictory constraints (minimality is not guaranteed).
+4. **Named constraints and conflict diagnosis**: Explicitly check satisfiability (`m.check()`) and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities: built-in HiGHS isolates an **elastic repair set** (`conflicts`, constraints requiring relaxation to restore feasibility), while Z3 extracts an **unsatisfiable core** (`unsatCore` / `conflicts`, a mutually contradictory constraint subset; minimality is not guaranteed).
 
 Model construction and translation are WaSHI's responsibility. Supported problem classes, numerical behavior, and solve time depend on the selected solver, its settings, and the problem. Modeling overhead and solver execution time should be measured separately; a result for one model is not a general performance guarantee.
 
@@ -230,9 +230,9 @@ console.log(`Siren active? ${m.values.get("siren")}`); // true
 
 ### 4. Conflict Diagnosis (`conflicts` / `unsatCore`)
 
-When business rules or constraints contradict each other, extract a **conflicting constraint subset** for troubleshooting:
-- **Built-in HiGHS & GLPK**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to diagnose infeasibility and isolate `res.conflicts` without requiring external solver installations.
-- **Z3**: `await m.check({ solver: "z3" })` provides exact SMT unsatisfiable-core extraction (`res.unsatCore` and `res.conflicts`).
+When business rules or constraints contradict each other, diagnose infeasibilities to pinpoint where to intervene:
+- **Built-in HiGHS & GLPK**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to isolate `res.conflicts`—the **repair set** of constraints whose relaxation restores feasibility, without requiring extra dependencies.
+- **Z3**: `await m.check({ solver: "z3" })` provides exact SMT **unsatisfiable-core** extraction (`res.unsatCore` and `res.conflicts`), returning a mutually contradictory constraint subset.
 
 ```ts
 import { Model, expr } from "@ohtaman/washi";
@@ -257,13 +257,18 @@ m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 // Rule 5: Innocent bystander rule
 m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
-// Diagnose directly with default HiGHS (or pass { solver: "z3" } with Z3 imported)
+// 1. Elastic repair diagnosis with default HiGHS
 const res = await m.check();
 
 console.log(`Status: ${res.status}`); // "Unsat"
-console.log("Conflicting constraints:", res.conflicts);
-// Output: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
-// Note: "minimum_one_employee" is correctly excluded!
+console.log("Repair set (relaxed constraints):", res.conflicts);
+// Output with HiGHS: ["rush_required"]
+// (Relaxing rush_required restores feasibility; innocent rules like minimum_one_employee are untouched)
+
+// 2. Or exact SMT unsatisfiable core with Z3 (import "@ohtaman/washi/solvers/z3")
+// const z3Res = await m.check({ solver: "z3" });
+// console.log("Contradictory core:", z3Res.unsatCore);
+// Output with Z3: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 ```
 
 ---
