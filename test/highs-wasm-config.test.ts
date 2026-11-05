@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import {
   loadConfig,
   computeSha256,
@@ -95,36 +96,79 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
       },
     };
 
-    await expect(
-      ensureHighsAssets({
-        config: brokenConfig,
-        repoRoot,
-        silent: true,
-      })
-    ).rejects.toThrowError(/HiGHS WebAssembly assets.*are missing or out of date/);
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("Network connection disabled"));
+
+    try {
+      await expect(
+        ensureHighsAssets({
+          config: brokenConfig,
+          repoRoot,
+          silent: true,
+        })
+      ).rejects.toThrowError(/HiGHS WebAssembly assets.*are missing or out of date/);
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
-  it("successfully downloads and validates assets from release URL into a clean target directory", async () => {
+  it("successfully downloads and validates assets using controlled fixtures", async () => {
     const tmpDir = path.resolve(repoRoot, ".temp-wasm-test-" + Date.now());
     fs.mkdirSync(tmpDir, { recursive: true });
 
+    const fixtureWasm = Buffer.from("\x00asm\x01\x00\x00\x00controlled-test-wasm");
+    const fixtureRuntime = Buffer.from("// controlled-test-runtime\nexport default {};");
+
+    const fixtureWasmSha = crypto.createHash("sha256").update(fixtureWasm).digest("hex");
+    const fixtureRuntimeSha = crypto.createHash("sha256").update(fixtureRuntime).digest("hex");
+
+    const controlledConfig = {
+      version: "v99.0.0-test",
+      repo: "https://github.com/ERGO-Code/HiGHS.git",
+      wasm: {
+        path: "public/highs.wasm",
+        sha256: fixtureWasmSha,
+        downloadUrl: "https://github.com/ohtaman/washi/releases/download/v99.0.0-test/highs.wasm",
+      },
+      runtime: {
+        path: "src/modeler/solvers/highs/runtime.js",
+        sha256: fixtureRuntimeSha,
+        downloadUrl: "https://github.com/ohtaman/washi/releases/download/v99.0.0-test/runtime.js",
+      },
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === controlledConfig.wasm.downloadUrl) {
+        return new Response(fixtureWasm, { status: 200, statusText: "OK" });
+      }
+      if (url === controlledConfig.runtime.downloadUrl) {
+        return new Response(fixtureRuntime, { status: 200, statusText: "OK" });
+      }
+      return new Response("Not Found", { status: 404, statusText: "Not Found" });
+    });
+
     try {
       const result = await ensureHighsAssets({
-        config,
+        config: controlledConfig,
         repoRoot: tmpDir,
         silent: true,
       });
 
       expect(result.status).toBe("downloaded");
 
-      const downloadedWasm = path.resolve(tmpDir, config.wasm.path);
-      const downloadedRuntime = path.resolve(tmpDir, config.runtime.path);
+      const downloadedWasm = path.resolve(tmpDir, controlledConfig.wasm.path);
+      const downloadedRuntime = path.resolve(tmpDir, controlledConfig.runtime.path);
 
       expect(fs.existsSync(downloadedWasm)).toBe(true);
       expect(fs.existsSync(downloadedRuntime)).toBe(true);
-      expect(computeSha256(downloadedWasm)).toBe(config.wasm.sha256);
-      expect(computeSha256(downloadedRuntime)).toBe(config.runtime.sha256);
+      expect(fs.readFileSync(downloadedWasm)).toEqual(fixtureWasm);
+      expect(fs.readFileSync(downloadedRuntime)).toEqual(fixtureRuntime);
+      expect(computeSha256(downloadedWasm)).toBe(fixtureWasmSha);
+      expect(computeSha256(downloadedRuntime)).toBe(fixtureRuntimeSha);
     } finally {
+      fetchSpy.mockRestore();
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
