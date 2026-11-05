@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HiGHS WebAssembly Configuration",
+  "type": "object",
+  "required": ["version", "repo", "wasm", "runtime"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": {
+      "type": "string",
+      "description": "Git tag or commit of the official ERGO-Code/HiGHS repository."
+    },
+    "repo": {
+      "type": "string",
+      "description": "Upstream HiGHS repository URL."
+    },
+    "emscriptenVersion": {
+      "type": "string",
+      "description": "Recommended Emscripten SDK version used for compiling WebAssembly."
+    },
+    "wasm": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "downloadUrl": { "type": "string" }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "downloadUrl": { "type": "string" }
+      }
+    }
+  }
+}

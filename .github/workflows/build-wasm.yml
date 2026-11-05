@@ -1,0 +1,76 @@
+name: Build HiGHS WebAssembly
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_release:
+        description: "Upload built assets to GitHub release tag"
+        required: false
+        type: boolean
+        default: false
+      release_tag:
+        description: "Target release tag (e.g. v0.5.0)"
+        required: false
+        type: string
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - 'highs.config.json'
+      - 'scripts/build-highs-wasm.sh'
+      - '.github/workflows/build-wasm.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-wasm:
+    name: Compile HiGHS WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.50
+
+      - name: Install native build tools (Ninja & CMake)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build HiGHS WebAssembly
+        run: npm run build:highs-wasm
+
+      - name: Verify WebAssembly solver execution
+        run: npm test
+
+      - name: Upload WebAssembly build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: highs-wasm-assets
+          path: |
+            public/highs.wasm
+            src/modeler/solvers/highs/runtime.js
+            highs.config.json
+
+      - name: Upload assets to GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.upload_release && inputs.release_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.release_tag }}" \
+            public/highs.wasm \
+            src/modeler/solvers/highs/runtime.js#highs-runtime.js \
+            --clobber
