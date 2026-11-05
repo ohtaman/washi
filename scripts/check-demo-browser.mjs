@@ -117,20 +117,24 @@ async function runBrowserVerification() {
   try {
     browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
   } catch (err) {
-    await new Promise((res) => server.close(res));
-    const isMissingBinary =
-      err.message?.includes("Executable doesn't exist") ||
-      err.message?.includes("Please run the following command to download new browsers") ||
-      err.message?.includes("playwright install");
+    try {
+      browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--no-sandbox"] });
+    } catch {
+      await new Promise((res) => server.close(res));
+      const isMissingBinary =
+        err.message?.includes("Executable doesn't exist") ||
+        err.message?.includes("Please run the following command to download new browsers") ||
+        err.message?.includes("playwright install");
 
-    if (isMissingBinary && !process.env.CI && process.env.RUN_DEMO_BROWSER !== "1") {
-      console.warn(
-        `\n[Notice] Playwright Chromium binary is not installed locally.\n` +
-        `Skipping demo browser verification. To run locally, install Chromium with: npx playwright install chromium\n`
-      );
-      process.exit(0);
+      if (isMissingBinary && !process.env.CI && process.env.RUN_DEMO_BROWSER !== "1") {
+        console.warn(
+          `\n[Notice] Playwright Chromium binary is not installed locally.\n` +
+          `Skipping demo browser verification. To run locally, install Chromium with: npx playwright install chromium\n`
+        );
+        process.exit(0);
+      }
+      throw err;
     }
-    throw err;
   }
 
   try {
@@ -385,6 +389,49 @@ async function runBrowserVerification() {
 
     await shiftPage.close();
     console.log("   Nurse Scheduling Basic Data tab layout and interaction verified!");
+
+    // 10. Test Demon Castle Shift Opening Movie Climax Button Clickability (Issue #126)
+    console.log("10. Testing Demon Castle Shift opening movie climax button unblocked by letterbox overlay...");
+    const gamePage = await context.newPage();
+    await gamePage.setViewportSize({ width: 1280, height: 800 });
+    await gamePage.goto(`http://localhost:${port}/washi/games/demon-castle-shift/index.html`, { waitUntil: "networkidle" });
+    await gamePage.evaluate(() => localStorage.clear());
+    await gamePage.reload({ waitUntil: "networkidle" });
+
+    await gamePage.click("#btn-title-start");
+    await gamePage.waitForSelector("#opening-movie-dialog[open]", { timeout: 10_000 });
+
+    for (let c = 0; c < 4; c++) {
+      await gamePage.click("#btn-op-next-cut");
+      await gamePage.waitForTimeout(50);
+    }
+
+    await gamePage.waitForFunction(() => {
+      const overlay = document.getElementById("op-climax-overlay");
+      return overlay && !overlay.hidden;
+    }, { timeout: 5_000 });
+
+    // Verify floating controls (BGM toggle & Skip button) remain above the climax overlay and clickable
+    const floatingControlsCheck = await gamePage.evaluate(() => {
+      const skipBtn = document.getElementById("btn-op-skip");
+      const bgmBtn = document.querySelector("#opening-movie-dialog [data-bgm-toggle]");
+      const skipRect = skipBtn ? skipBtn.getBoundingClientRect() : null;
+      const bgmRect = bgmBtn ? bgmBtn.getBoundingClientRect() : null;
+      const elAtSkip = skipRect ? document.elementFromPoint(skipRect.left + skipRect.width / 2, skipRect.top + skipRect.height / 2) : null;
+      const elAtBgm = bgmRect ? document.elementFromPoint(bgmRect.left + bgmRect.width / 2, bgmRect.top + bgmRect.height / 2) : null;
+      return {
+        skipUnblocked: elAtSkip === skipBtn || skipBtn?.contains(elAtSkip),
+        bgmUnblocked: elAtBgm === bgmBtn || bgmBtn?.contains(elAtBgm),
+      };
+    });
+    assert.equal(floatingControlsCheck.skipUnblocked, true, "Skip button must not be blocked by climax overlay");
+    assert.equal(floatingControlsCheck.bgmUnblocked, true, "BGM button must not be blocked by climax overlay");
+
+    // Verify #btn-op-finish receives pointer events cleanly without being intercepted by .op-letterbox-bottom
+    await gamePage.click("#btn-op-finish", { timeout: 5_000 });
+    await gamePage.waitForSelector("#prologue-dialog[open]", { timeout: 5_000 });
+    console.log("   Demon Castle Shift opening movie climax transition verified cleanly!");
+    await gamePage.close();
 
     console.log("\nAll browser verification checks PASSED successfully!");
   } finally {
