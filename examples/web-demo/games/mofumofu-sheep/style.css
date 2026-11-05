@@ -731,6 +731,96 @@ body {
   animation: shakeReject 0.28s ease;
 }
 
+/* Model Solution Diff Visuals */
+.board-cell.diff-added {
+  box-shadow: inset 0 0 0 2px #059669, 0 0 0 2px #10b981;
+  animation: diffAddedPulse 2s ease-in-out infinite;
+}
+
+.board-cell.diff-matching {
+  box-shadow: inset 0 0 0 2px #2563eb;
+}
+
+.board-cell.diff-unnecessary {
+  outline: 2px dashed #dc2626;
+  outline-offset: -2px;
+  background: rgba(254, 226, 226, 0.75) !important;
+}
+
+.cell-diff-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.cell-diff-badge.badge-added {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.cell-diff-badge.badge-matching {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.cell-diff-badge.badge-unnecessary {
+  background: #dc2626;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+.cell-ghost-fence {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.cell-ghost-fence .ghost-fence-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  opacity: 0.35;
+  filter: grayscale(0.5) drop-shadow(0 0 2px #ef4444);
+}
+
+.cell-ghost-fence .ghost-fence-icon svg {
+  width: 82%;
+  height: 82%;
+}
+
+.cell-ghost-fence .ghost-cross {
+  position: absolute;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #dc2626;
+  text-shadow: 0 0 4px #ffffff, 0 0 8px #ffffff;
+  line-height: 1;
+}
+
+@keyframes diffAddedPulse {
+  0%, 100% {
+    box-shadow: inset 0 0 0 2px #059669, 0 0 0 2px #10b981;
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px #059669, 0 0 8px #10b981;
+  }
+}
+
 /* Inline Clear / Celebration Bar */
 .clear-banner {
   background: linear-gradient(135deg, #fef9c3 0%, #dcfce7 100%);
@@ -758,6 +848,37 @@ body {
 
 .clear-banner.banner-shortfall .clear-copy span {
   color: #b45309;
+}
+
+.clear-banner.banner-model-solution {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-color: #059669;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.16);
+}
+
+.clear-banner.banner-model-solution .clear-stars {
+  color: #059669;
+  text-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.clear-banner.banner-model-solution .clear-copy strong {
+  color: #065f46;
+}
+
+.clear-banner.banner-model-solution .clear-copy span {
+  color: #047857;
+}
+
+.btn-revert {
+  background: #059669;
+  color: #ffffff;
+  border: 1px solid #047857;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+.btn-revert:hover {
+  background: #047857;
 }
 
 .clear-banner-main {
@@ -1545,6 +1666,48 @@ body {
   /* Hide controls when stage is cleanly cleared to maximize thumb-zone priority for next-stage CTA */
   .puzzle-card:has(.clear-banner:not([hidden]):not(.banner-shortfall)) .controls-bar {
     display: none;
+  }
+
+  /* Model Solution banner remains static inline and non-blocking on mobile so the board is never obscured */
+  .clear-banner.banner-model-solution {
+    position: static !important;
+    width: auto !important;
+    margin-top: 6px !important;
+    padding: 8px 12px !important;
+    box-shadow: 0 3px 10px rgba(5, 150, 105, 0.15) !important;
+    animation: none !important;
+    border-radius: 14px !important;
+    gap: 6px !important;
+  }
+  .clear-banner.banner-model-solution .clear-banner-main {
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+  .clear-banner.banner-model-solution .clear-copy {
+    text-align: left !important;
+  }
+  .clear-banner.banner-model-solution .clear-actions {
+    width: auto !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .clear-banner.banner-model-solution .btn-revert {
+    width: auto !important;
+    min-height: 36px !important;
+    padding: 6px 12px !important;
+    font-size: 0.85rem !important;
+  }
+  .clear-banner.banner-model-solution .btn-next {
+    width: auto !important;
+    min-height: 36px !important;
+    padding: 6px 12px !important;
+    font-size: 0.85rem !important;
+  }
+
+  /* Keep controls bar visible when viewing model solution */
+  .puzzle-card:has(.clear-banner.banner-model-solution) .controls-bar {
+    display: flex !important;
   }
 
   /* Compact Legend */

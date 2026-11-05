@@ -390,6 +390,47 @@ export function selectVerifiedOptimal(
 }
 
 /**
+ * Difference breakdown between player's placed fences and the verified optimal configuration.
+ */
+export interface FenceDiffSummary {
+  added: number;
+  unnecessary: number;
+  matching: number;
+  userFenceCount: number;
+  optimalFenceCount: number;
+}
+
+/**
+ * Compares user's placed fences with the optimal configuration and computes diff counts.
+ */
+export function computeFenceDiffSummary(
+  userFences: FenceGrid,
+  optimalFences: FenceGrid
+): FenceDiffSummary {
+  let added = 0;
+  let unnecessary = 0;
+  let matching = 0;
+  let userFenceCount = 0;
+  let optimalFenceCount = 0;
+
+  const rows = Math.max(userFences.length, optimalFences.length);
+  for (let r = 0; r < rows; r++) {
+    const cols = Math.max(userFences[r]?.length ?? 0, optimalFences[r]?.length ?? 0);
+    for (let c = 0; c < cols; c++) {
+      const u = Boolean(userFences[r]?.[c]);
+      const o = Boolean(optimalFences[r]?.[c]);
+      if (u) userFenceCount++;
+      if (o) optimalFenceCount++;
+      if (o && !u) added++;
+      else if (!o && u) unnecessary++;
+      else if (o && u) matching++;
+    }
+  }
+
+  return { added, unnecessary, matching, userFenceCount, optimalFenceCount };
+}
+
+/**
  * Resolves the target score for a stage, preserving the authored `stage.targetScore`
  * whenever no verified optimal solution is available.
  */

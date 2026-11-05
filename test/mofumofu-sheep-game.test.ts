@@ -5,6 +5,7 @@ import { FENCE_SVG } from "../examples/web-demo/games/mofumofu-sheep/fence-icon.
 import { pastureAudio } from "../examples/web-demo/games/mofumofu-sheep/audio.js";
 import {
   computeCellSize,
+  computeFenceDiffSummary,
   createEmptyFences,
   diagnoseAndSuggestFenceHint,
   evaluatePasture,
@@ -38,6 +39,8 @@ import {
   applyStaticTranslations as applySheepStaticTranslations,
   countCanonicalClearedStages,
   getResumeStageNumber,
+  handleRevertSolution,
+  handleShowOptimal,
   loadStageByNumber,
   parseProgressState,
   renderStageNav,
@@ -570,6 +573,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("back-link")?.title).toBe("Back to Showcase");
       expect(sheepDoc.byId.get("total-stars-badge")?.title).toBe("Cleared stages");
       expect(sheepDoc.byId.get("btn-show-optimal")?.textContent).toBe("✨ View Model Solution");
+      expect(sheepDoc.byId.get("btn-revert-solution")?.textContent).toBe("↩ Revert to My Solution");
       expect(sheepDoc.byId.get("btn-next-stage")?.textContent).toBe("Next Stage ▶");
       expect(sheepDoc.byId.get("stage-strip")?.getAttribute("aria-label")).toBe("Stage Selection");
       expect(sheepDoc.byId.get("board-grid")?.getAttribute("aria-label")).toBe(
@@ -614,6 +618,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
       expect(sheepDoc.byId.get("back-link")?.title).toBe("返回案例展示");
       expect(sheepDoc.byId.get("total-stars-badge")?.title).toBe("已通关关卡数");
       expect(sheepDoc.byId.get("btn-show-optimal")?.textContent).toBe("✨ 查看示范解答");
+      expect(sheepDoc.byId.get("btn-revert-solution")?.textContent).toBe("↩ 恢复我的布局");
       expect(sheepDoc.byId.get("btn-next-stage")?.textContent).toBe("下一关 ▶");
       expect(sheepDoc.byId.get("stage-strip")?.getAttribute("aria-label")).toBe("关卡选择");
       expect(sheepDoc.byId.get("board-grid")?.getAttribute("aria-label")).toBe("牧场解谜棋盘");
@@ -1642,5 +1647,231 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     expect(mobileShortCellSize).toBe(33);
     const boardTotalHeight = 7 * mobileShortCellSize + 6 * 7;
     expect(boardTotalHeight).toBeLessThanOrEqual(273);
+  });
+
+  it("accurately computes fence diff summary between user plan and optimal solution", () => {
+    const userFences = [
+      [false, true, false],
+      [true, false, false],
+    ];
+    const optimalFences = [
+      [false, true, false],
+      [false, false, true],
+    ];
+    const diff = computeFenceDiffSummary(userFences, optimalFences);
+    expect(diff.matching).toBe(1); // (0, 1) in both
+    expect(diff.unnecessary).toBe(1); // (1, 0) only in user
+    expect(diff.added).toBe(1); // (1, 2) only in optimal
+    expect(diff.userFenceCount).toBe(2);
+    expect(diff.optimalFenceCount).toBe(2);
+  });
+
+  it("visualizes difference between user plan and model solution, provides revert button, and keeps model banner non-blocking on mobile", async () => {
+    const gamesRoot = resolve(__dirname, "../examples/web-demo/games");
+    const styleCss = readFileSync(resolve(gamesRoot, "mofumofu-sheep/style.css"), "utf8");
+
+    // CSS check: model solution banner is static and never covers board on mobile
+    const mobileBlockMatch = styleCss.match(/@media\s*\(max-width:\s*640px\)\s*\{([\s\S]*?\n\})/);
+    expect(mobileBlockMatch).toBeTruthy();
+    const mobileBlock = mobileBlockMatch![1];
+    expect(mobileBlock).toMatch(/\.clear-banner\.banner-model-solution\s*\{[^}]*position:\s*static\s*!important/);
+    expect(mobileBlock).toMatch(/\.puzzle-card:has\(\.clear-banner\.banner-model-solution\)\s*\.controls-bar\s*\{[^}]*display:\s*flex\s*!important/);
+
+    // Interactive DOM check
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    const prevStorage = (globalThis as { localStorage?: unknown }).localStorage;
+
+    interface MockNode {
+      id: string;
+      type: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      disabled: boolean;
+      value: string;
+      selected: boolean;
+      className: string;
+      dataset: Record<string, string>;
+      style: {
+        gridTemplateColumns: string;
+        setProperty: (p: string, v: string) => void;
+      };
+      children: MockNode[];
+      classList: {
+        contains: (c: string) => boolean;
+        toggle: (c: string, f?: boolean) => boolean;
+        add: (...c: string[]) => void;
+        remove: (...c: string[]) => void;
+      };
+      listeners: Record<string, Array<() => void>>;
+      addEventListener: (evt: string, fn: () => void) => void;
+      appendChild: (ch: MockNode) => void;
+      click: () => void;
+      setAttribute: (a: string, v: string) => void;
+      getAttribute: (a: string) => string | null;
+      querySelectorAll: (sel: string) => MockNode[];
+    }
+
+    const byId = new Map<string, MockNode>();
+    const createMockNode = (id: string, type = "div"): MockNode => {
+      const classes = new Set<string>();
+      let innerHtmlVal = "";
+      const node: MockNode = {
+        id,
+        type,
+        textContent: "",
+        get innerHTML() {
+          return innerHtmlVal;
+        },
+        set innerHTML(val: string) {
+          innerHtmlVal = val;
+          if (val === "") {
+            node.children = [];
+          }
+        },
+        title: "",
+        hidden: false,
+        disabled: false,
+        value: "",
+        selected: false,
+        get className() {
+          return Array.from(classes).join(" ");
+        },
+        set className(val: string) {
+          classes.clear();
+          for (const c of val.split(/\s+/)) {
+            if (c) classes.add(c);
+          }
+        },
+        dataset: {},
+        style: {
+          gridTemplateColumns: "",
+          setProperty: () => {},
+        },
+        children: [],
+        classList: {
+          contains: (c) => classes.has(c),
+          toggle: (c, force) => {
+            if (force === undefined) {
+              if (classes.has(c)) {
+                classes.delete(c);
+                return false;
+              }
+              classes.add(c);
+              return true;
+            }
+            if (force) classes.add(c);
+            else classes.delete(c);
+            return force;
+          },
+          add: (...cList) => {
+            for (const c of cList) classes.add(c);
+          },
+          remove: (...cList) => {
+            for (const c of cList) classes.delete(c);
+          },
+        },
+        listeners: {},
+        addEventListener: (evt, fn) => {
+          if (!node.listeners[evt]) node.listeners[evt] = [];
+          node.listeners[evt].push(fn);
+        },
+        appendChild: (ch) => {
+          node.children.push(ch);
+        },
+        click: () => {
+          for (const fn of node.listeners["click"] ?? []) fn();
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        querySelectorAll: () => [],
+      };
+      byId.set(id, node);
+      return node;
+    };
+
+    const mockDoc = {
+      documentElement: { lang: "ja" },
+      title: "",
+      getElementById: (id: string) => byId.get(id) ?? createMockNode(id),
+      querySelectorAll: () => [],
+      createElement: (tag: string) => createMockNode("", tag),
+    };
+
+    (globalThis as { document?: unknown }).document = mockDoc;
+    (globalThis as { localStorage?: unknown }).localStorage = {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+      clear: () => {},
+    };
+
+    try {
+      applySheepStaticTranslations("ja");
+      await loadStageByNumber(2);
+
+      const boardGridEl = byId.get("board-grid");
+      const btnShowOptimal = byId.get("btn-show-optimal");
+      const btnRevertSolution = byId.get("btn-revert-solution");
+      const clearBannerEl = byId.get("clear-banner");
+      const clearHeadlineEl = byId.get("clear-headline");
+      const clearSubtextEl = byId.get("clear-subtext");
+
+      btnShowOptimal?.addEventListener("click", handleShowOptimal);
+      btnRevertSolution?.addEventListener("click", handleRevertSolution);
+
+      // Place a suboptimal fence at (1, 3) in Stage 2 (wolf is at 1,0; sheep at 1,4; optimal is at 1,1)
+      const suboptimalCell = boardGridEl?.children.find(
+        (ch) => ch.dataset.row === "1" && ch.dataset.col === "3"
+      );
+      expect(suboptimalCell).toBeDefined();
+      suboptimalCell?.click();
+
+      // In shortfall state, Reveal Optimal button becomes visible
+      expect(btnShowOptimal?.hidden).toBe(false);
+      expect(btnRevertSolution?.hidden).toBe(true);
+
+      // Click "View Model Solution"
+      btnShowOptimal?.click();
+
+      // 1. Clear banner turns into model-solution mode
+      expect(clearBannerEl?.classList.contains("banner-model-solution")).toBe(true);
+      expect(clearHeadlineEl?.textContent).toBe("✨ お手本の配置（目標スコア達成）");
+      // Diff summary reflects 1 added (1, 1), 1 unnecessary (1, 3), 0 matching
+      expect(clearSubtextEl?.textContent).toContain("＋追加 1");
+      expect(clearSubtextEl?.textContent).toContain("✕不要 1");
+      expect(clearSubtextEl?.textContent).toContain("✓一致 0");
+
+      // 2. Revert button becomes visible
+      expect(btnRevertSolution?.hidden).toBe(false);
+
+      // 3. Cells reflect diff highlights
+      const optimalCell = boardGridEl?.children.find(
+        (ch) => ch.dataset.row === "1" && ch.dataset.col === "1"
+      );
+      const unnecessaryCell = boardGridEl?.children.find(
+        (ch) => ch.dataset.row === "1" && ch.dataset.col === "3"
+      );
+      expect(optimalCell?.classList.contains("diff-added")).toBe(true);
+      expect(unnecessaryCell?.classList.contains("diff-unnecessary")).toBe(true);
+
+      // 4. Clicking "Revert to My Solution" restores user's original placement and clears diff
+      btnRevertSolution?.click();
+      expect(btnRevertSolution?.hidden).toBe(true);
+      const restoredSuboptimalCell = boardGridEl?.children.find(
+        (ch) => ch.dataset.row === "1" && ch.dataset.col === "3"
+      );
+      expect(restoredSuboptimalCell?.classList.contains("has-fence")).toBe(true);
+      expect(restoredSuboptimalCell?.classList.contains("diff-unnecessary")).toBe(false);
+      const restoredOptimalCell = boardGridEl?.children.find(
+        (ch) => ch.dataset.row === "1" && ch.dataset.col === "1"
+      );
+      expect(restoredOptimalCell?.classList.contains("has-fence")).toBe(false);
+      expect(restoredOptimalCell?.classList.contains("diff-added")).toBe(false);
+    } finally {
+      (globalThis as { document?: unknown }).document = prevDocument;
+      (globalThis as { localStorage?: unknown }).localStorage = prevStorage;
+    }
   });
 });

@@ -43,6 +43,7 @@ export function t(
 import {
   cloneFences,
   computeCellSize,
+  computeFenceDiffSummary,
   createEmptyFences,
   diagnoseAndSuggestFenceHint,
   evaluatePasture,
@@ -268,6 +269,7 @@ let solverFailed = false;
 let activeHint: HintDiagnosis | null = null;
 let wasClearedBeforeMove = false;
 let showingModelAnswer = false;
+let userFencesBeforeOptimal: FenceGrid | null = null;
 let solveToken = 0;
 let isStageLoading = false;
 let inFlightLoadPromise: Promise<void> | null = null;
@@ -344,6 +346,8 @@ export function applyStaticTranslations(langOverride?: GameLang): void {
 
   setText("btn-show-optimal", t("btnSolve", undefined, currentLang));
   setTitle("btn-show-optimal", t("btnSolveTitle", undefined, currentLang));
+  setText("btn-revert-solution", t("btnRevertSolution", undefined, currentLang));
+  setTitle("btn-revert-solution", t("btnRevertSolutionTitle", undefined, currentLang));
   setText("btn-next-stage", t("btnNextStage", undefined, currentLang));
   setAttr("board-grid", "aria-label", t("boardAria", undefined, currentLang));
   setAttr("legend-strip", "aria-label", t("legendStripAria", undefined, currentLang));
@@ -617,6 +621,8 @@ function renderHud(): void {
     statusTextEl.textContent = t("statusWolfBreach");
   }
 
+  const btnRevertSolution = document.getElementById("btn-revert-solution") as HTMLButtonElement | null;
+
   // Controls state
   btnUndo.disabled = undoStack.length === 0;
   btnRestart.disabled = currentEval.fencesUsed === 0 && undoStack.length === 0;
@@ -632,15 +638,50 @@ function renderHud(): void {
   // Inline Clear / Shortfall Banner
   if (cleared) {
     clearBannerEl.hidden = false;
-    clearBannerEl.className = "clear-banner";
-    clearStarsEl.textContent = "★";
-    clearHeadlineEl.textContent = showingModelAnswer
-      ? t("solveBannerOptimal")
-      : t("clearBannerGolden");
-    clearSubtextEl.textContent = t("clearBannerScore", {
-      score: currentEval.pastureScore,
-      target: targetScore,
-    });
+    if (showingModelAnswer) {
+      clearBannerEl.className = "clear-banner banner-model-solution";
+      clearStarsEl.textContent = "✨";
+      clearHeadlineEl.textContent = t("solveBannerOptimal", undefined, currentLang);
+      if (userFencesBeforeOptimal) {
+        const diff = computeFenceDiffSummary(userFencesBeforeOptimal, currentFences);
+        if (diff.userFenceCount > 0) {
+          clearSubtextEl.textContent = t(
+            "diffSummary",
+            {
+              added: diff.added,
+              unnecessary: diff.unnecessary,
+              matching: diff.matching,
+            },
+            currentLang
+          );
+        } else {
+          clearSubtextEl.textContent = t(
+            "diffSummaryNoFences",
+            { count: diff.optimalFenceCount },
+            currentLang
+          );
+        }
+      } else {
+        clearSubtextEl.textContent = t("clearBannerScore", {
+          score: currentEval.pastureScore,
+          target: targetScore,
+        }, currentLang);
+      }
+      if (btnRevertSolution) {
+        btnRevertSolution.hidden = !userFencesBeforeOptimal;
+      }
+    } else {
+      clearBannerEl.className = "clear-banner";
+      clearStarsEl.textContent = "★";
+      clearHeadlineEl.textContent = t("clearBannerGolden", undefined, currentLang);
+      clearSubtextEl.textContent = t("clearBannerScore", {
+        score: currentEval.pastureScore,
+        target: targetScore,
+      }, currentLang);
+      if (btnRevertSolution) {
+        btnRevertSolution.hidden = true;
+      }
+    }
     btnShowOptimal.hidden = true;
     const canAdvanceNext =
       !showingModelAnswer || currentStage.stageNumber < getMaxUnlockedStage();
@@ -650,6 +691,7 @@ function renderHud(): void {
       n: currentStage.stageNumber + 1,
     });
   } else if (currentEval.isSafe) {
+    if (btnRevertSolution) btnRevertSolution.hidden = true;
     const diff = targetScore - currentEval.pastureScore;
     clearBannerEl.hidden = false;
     clearBannerEl.className = "clear-banner banner-shortfall";
@@ -667,6 +709,7 @@ function renderHud(): void {
     btnShowOptimal.hidden = !cachedOptimal?.verified;
     btnNextStage.hidden = true;
   } else if (solverFailed) {
+    if (btnRevertSolution) btnRevertSolution.hidden = true;
     clearBannerEl.hidden = false;
     clearBannerEl.className = "clear-banner banner-shortfall";
     clearStarsEl.textContent = "⚠️";
@@ -677,6 +720,7 @@ function renderHud(): void {
     btnShowOptimal.hidden = true;
     btnNextStage.hidden = true;
   } else {
+    if (btnRevertSolution) btnRevertSolution.hidden = true;
     clearBannerEl.hidden = true;
   }
 }
@@ -698,11 +742,14 @@ function renderBoard(): void {
   boardGridEl.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
   boardGridEl.innerHTML = "";
 
+  const isDiffActive = showingModelAnswer && userFencesBeforeOptimal !== null;
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const tile = currentStage.grid[r][c];
       const meta = TILE_META[tile];
       const hasFence = Boolean(currentFences[r]?.[c]);
+      const userHadFence = Boolean(isDiffActive && userFencesBeforeOptimal?.[r]?.[c]);
 
       const cellBtn = document.createElement("button");
       cellBtn.type = "button";
@@ -716,6 +763,35 @@ function renderBoard(): void {
 
       if (hasFence) {
         cellBtn.classList.add("has-fence");
+        if (isDiffActive) {
+          if (!userHadFence) {
+            cellBtn.classList.add("diff-added");
+            cellBtn.title = t("diffBadgeAdded", undefined, currentLang);
+            const badge = document.createElement("span");
+            badge.className = "cell-diff-badge badge-added";
+            badge.textContent = "＋";
+            cellBtn.appendChild(badge);
+          } else {
+            cellBtn.classList.add("diff-matching");
+            cellBtn.title = t("diffBadgeMatching", undefined, currentLang);
+            const badge = document.createElement("span");
+            badge.className = "cell-diff-badge badge-matching";
+            badge.textContent = "✓";
+            cellBtn.appendChild(badge);
+          }
+        }
+      } else if (isDiffActive && userHadFence) {
+        cellBtn.classList.add("diff-unnecessary");
+        cellBtn.title = t("diffBadgeUnnecessary", undefined, currentLang);
+        const badge = document.createElement("span");
+        badge.className = "cell-diff-badge badge-unnecessary";
+        badge.textContent = "✕";
+        cellBtn.appendChild(badge);
+
+        const ghostFence = document.createElement("span");
+        ghostFence.className = "cell-ghost-fence";
+        ghostFence.innerHTML = `<span class="ghost-fence-icon">${FENCE_SVG}</span><span class="ghost-cross">✕</span>`;
+        cellBtn.appendChild(ghostFence);
       } else if (cleared && currentEval.sheepReachable[r]?.[c]) {
         cellBtn.classList.add("in-safe-pasture");
       } else if (currentEval.isSafe && currentEval.sheepReachable[r]?.[c]) {
@@ -862,6 +938,7 @@ function onCellClick(row: number, col: number, cellEl: HTMLElement): void {
 
   undoStack.push(cloneFences(currentFences));
   showingModelAnswer = false;
+  userFencesBeforeOptimal = null;
   activeHint = null;
 
   currentFences = cloneFences(currentFences);
@@ -880,6 +957,7 @@ function handleUndo(): void {
   if (!prev) return;
   currentFences = prev;
   showingModelAnswer = false;
+  userFencesBeforeOptimal = null;
   activeHint = null;
   playFenceRemoveSound();
   updateEvaluationAndRender(false);
@@ -890,6 +968,7 @@ function handleRestart(): void {
   undoStack.push(cloneFences(currentFences));
   currentFences = createEmptyFences(currentStage.grid.length, currentStage.grid[0].length);
   showingModelAnswer = false;
+  userFencesBeforeOptimal = null;
   activeHint = null;
   playFenceRemoveSound();
   updateEvaluationAndRender(false);
@@ -920,13 +999,24 @@ async function handleHint(): Promise<void> {
   }
 }
 
-function handleShowOptimal(): void {
+export function handleShowOptimal(): void {
   if (!cachedOptimal?.verified) return;
+  userFencesBeforeOptimal = cloneFences(currentFences);
   undoStack.push(cloneFences(currentFences));
   currentFences = cloneFences(cachedOptimal.optimalFences);
   showingModelAnswer = true;
   activeHint = null;
-  updateEvaluationAndRender(true);
+  updateEvaluationAndRender(false);
+}
+
+export function handleRevertSolution(): void {
+  if (!userFencesBeforeOptimal) return;
+  currentFences = cloneFences(userFencesBeforeOptimal);
+  userFencesBeforeOptimal = null;
+  showingModelAnswer = false;
+  activeHint = null;
+  playFenceRemoveSound();
+  updateEvaluationAndRender(false);
 }
 
 async function loadStage(
@@ -942,6 +1032,7 @@ async function loadStage(
   activeHint = null;
   wasClearedBeforeMove = false;
   showingModelAnswer = false;
+  userFencesBeforeOptimal = null;
   pastureAudio.setTrack("meadow");
 
   updateEvaluationAndRender(false);
@@ -1113,6 +1204,10 @@ if (typeof document !== "undefined" && document.getElementById("board-grid")) {
     void handleHint();
   });
   getEl<HTMLButtonElement>("btn-show-optimal").addEventListener("click", handleShowOptimal);
+  const btnRevert = document.getElementById("btn-revert-solution");
+  if (btnRevert) {
+    btnRevert.addEventListener("click", handleRevertSolution);
+  }
   getEl<HTMLButtonElement>("btn-next-stage").addEventListener("click", () => {
     void stepStage(1);
   });
