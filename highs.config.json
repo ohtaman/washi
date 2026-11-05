@@ -1,0 +1,16 @@
+{
+  "$schema": "./scripts/highs-config.schema.json",
+  "version": "v1.15.1",
+  "repo": "https://github.com/ERGO-Code/HiGHS.git",
+  "emscriptenVersion": "3.1.50",
+  "wasm": {
+    "path": "public/highs.wasm",
+    "sha256": "86ba80317dd602862d90b718261e3905d81815f44f67b786e1da8a47ec73f2ba",
+    "downloadUrl": "https://github.com/ohtaman/washi/releases/download/highs-v1.15.1/highs.wasm"
+  },
+  "runtime": {
+    "path": "src/modeler/solvers/highs/runtime.js",
+    "sha256": "10d99865b97b6020870ee946af38e4694b22d517f1c070e53b38c262f472a4b8",
+    "downloadUrl": "https://github.com/ohtaman/washi/releases/download/highs-v1.15.1/runtime.js"
+  }
+}

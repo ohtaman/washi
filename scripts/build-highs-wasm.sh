@@ -18,8 +18,17 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-HIGHS_VERSION="${HIGHS_VERSION:-v1.15.1}"
-HIGHS_REPO="${HIGHS_REPO:-https://github.com/ERGO-Code/HiGHS.git}"
+CONFIG_FILE="${REPO_ROOT}/highs.config.json"
+DEFAULT_VERSION="v1.15.1"
+DEFAULT_REPO="https://github.com/ERGO-Code/HiGHS.git"
+
+if [ -f "${CONFIG_FILE}" ] && command -v node >/dev/null 2>&1; then
+  DEFAULT_VERSION="$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).version||"v1.15.1")}catch{console.log("v1.15.1")}' "${CONFIG_FILE}")"
+  DEFAULT_REPO="$(node -e 'try{console.log(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).repo||"https://github.com/ERGO-Code/HiGHS.git")}catch{console.log("https://github.com/ERGO-Code/HiGHS.git")}' "${CONFIG_FILE}")"
+fi
+
+HIGHS_VERSION="${HIGHS_VERSION:-${DEFAULT_VERSION}}"
+HIGHS_REPO="${HIGHS_REPO:-${DEFAULT_REPO}}"
 SRC_DIR="${HIGHS_DIR:-/tmp/highs}"
 BUILD_DIR="${HIGHS_BUILD_DIR:-/tmp/highs-wasm-build}"
 
@@ -117,6 +126,11 @@ mv "${BUILT_WASM}" "${OUTPUT_WASM}"
 # Emscripten findWasmBinary normally uses runtime.wasm when file is runtime.js.
 # Replace runtime.wasm with highs.wasm in runtime.js:
 sed -i '' 's/"runtime.wasm"/"highs.wasm"/g' "${OUTPUT_JS}" || sed -i 's/"runtime.wasm"/"highs.wasm"/g' "${OUTPUT_JS}"
+
+# Sync hashes in highs.config.json if node is available
+if command -v node >/dev/null 2>&1 && [ -f "${SCRIPT_DIR}/ensure-highs-wasm.mjs" ]; then
+  node "${SCRIPT_DIR}/ensure-highs-wasm.mjs" --update-hashes
+fi
 
 echo "========================================================"
 echo " HiGHS WebAssembly Build Complete!"

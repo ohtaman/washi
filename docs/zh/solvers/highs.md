@@ -27,6 +27,13 @@ WaSHI 直接将官方 HiGHS C++ 源码编译为 WebAssembly（`highs.wasm`），
 - **动态割平面 / 惰性约束（受 WASM 包装层限制暂不支持）**：
   上游 WebAssembly 包装层出于 WASM ↔ JS 边界同步内存安全考虑，未公开底层原生回调类型 8（MIP lazy constraints）。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请采用**迭代求解循环（求解 $\to$ 检测违规 $\to$ `model.constraint(...)` $\to$ 重新求解）**的割平面法模式。
 
+### WebAssembly 资源管理与按需构建
+
+HiGHS 的 WebAssembly 二进制（`public/highs.wasm`）与运行时（`runtime.js`）通过 `highs.config.json` 结合 SHA-256 校验和进行版本控制：
+- **高效一致性验证**：构建和分发测试流程会自动运行 `node scripts/ensure-highs-wasm.mjs`，在打包前于毫秒内验证本地资源。
+- **按需 Release 下载**：当资源缺失或版本升级时，`ensure-highs-wasm.mjs` 会自动从官方 GitHub Release 资产中下载已验证的二进制包。
+- **从源码编译**：升级 HiGHS 或修改编译选项时，在安装有 Emscripten SDK（`emcc`）、CMake 与 Ninja 的环境下运行 `npm run build:highs-wasm` 即可本地重新构建（亦可通过 `.github/workflows/build-wasm.yml` 在 GitHub Actions 中自动构建）。
+
 ---
 
 ## 支持的问题类型

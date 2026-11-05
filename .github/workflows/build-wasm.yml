@@ -1,0 +1,99 @@
+name: Build HiGHS WebAssembly
+
+on:
+  workflow_dispatch:
+    inputs:
+      highs_version:
+        description: "HiGHS version / git tag to compile (e.g. v1.15.1 or v1.16.0; leave blank to use highs.config.json)"
+        required: false
+        type: string
+        default: ""
+      create_release:
+        description: "Create or update GitHub Release tag (highs-<version>) with compiled assets"
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'highs.config.json'
+      - 'scripts/build-highs-wasm.sh'
+      - '.github/workflows/build-wasm.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-wasm:
+    name: Compile HiGHS WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.50
+
+      - name: Install native build tools (Ninja & CMake)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build HiGHS WebAssembly
+        env:
+          HIGHS_VERSION_OVERRIDE: ${{ inputs.highs_version }}
+        run: |
+          if [ -n "$HIGHS_VERSION_OVERRIDE" ]; then
+            node -e "
+              const fs = require('fs');
+              const cfg = JSON.parse(fs.readFileSync('highs.config.json', 'utf8'));
+              cfg.version = process.env.HIGHS_VERSION_OVERRIDE;
+              cfg.wasm.downloadUrl = 'https://github.com/ohtaman/washi/releases/download/highs-' + cfg.version + '/highs.wasm';
+              cfg.runtime.downloadUrl = 'https://github.com/ohtaman/washi/releases/download/highs-' + cfg.version + '/runtime.js';
+              fs.writeFileSync('highs.config.json', JSON.stringify(cfg, null, 2) + '\n');
+            "
+            export HIGHS_VERSION="$HIGHS_VERSION_OVERRIDE"
+          fi
+          npm run build:highs-wasm
+          npm run ensure:highs -- --update-hashes
+
+      - name: Verify WebAssembly solver execution
+        run: npm test
+
+      - name: Upload WebAssembly build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: highs-wasm-assets
+          path: |
+            public/highs.wasm
+            src/modeler/solvers/highs/runtime.js
+            highs.config.json
+
+      - name: Upload assets to GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('highs.config.json', 'utf8')).version)")
+          TAG_NAME="highs-${VERSION}"
+          echo "Target Release Tag: ${TAG_NAME}"
+          gh release upload "${TAG_NAME}" \
+            public/highs.wasm \
+            src/modeler/solvers/highs/runtime.js \
+            --clobber || \
+          gh release create "${TAG_NAME}" \
+            public/highs.wasm \
+            src/modeler/solvers/highs/runtime.js \
+            --title "HiGHS WebAssembly ${VERSION}" \
+            --notes "Prebuilt WebAssembly assets (highs.wasm & runtime.js) compiled from upstream ERGO-Code/HiGHS ${VERSION} with Emscripten."

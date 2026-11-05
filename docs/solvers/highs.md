@@ -27,6 +27,13 @@ WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) 
 - **Dynamic Cuts / Lazy Constraints (Not Supported in WASM Wrapper)**:
   The upstream WebAssembly wrapper intentionally excludes low-level native callback type 8 (`MIP lazy constraints`) due to WASM-to-JS boundary and synchronous memory safety constraints. For problems requiring subtour elimination or Benders decomposition, use an **iterative cutting-plane loop** (solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve).
 
+### WebAssembly Asset Lifecycle & On-Demand Builds
+
+HiGHS's WebAssembly binary (`public/highs.wasm`) and runtime driver (`runtime.js`) are managed via `highs.config.json` with cryptographic SHA-256 verification:
+- **Zero-Friction Verification**: Build and distribution pipelines run `node scripts/ensure-highs-wasm.mjs`, verifying local assets in milliseconds before bundling.
+- **On-Demand Release Download**: When assets are missing or updated, `ensure-highs-wasm.mjs` automatically downloads verified binaries from official GitHub Release assets.
+- **Compiling from Source**: When updating HiGHS or modifying compiler flags, run `npm run build:highs-wasm` with the Emscripten SDK (`emcc`), CMake, and Ninja installed (also automated via GitHub Actions in `.github/workflows/build-wasm.yml`).
+
 ---
 
 ## Supported Problem Classes

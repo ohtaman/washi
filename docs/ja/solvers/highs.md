@@ -27,6 +27,13 @@ WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接
 - **動的カット生成・遅延制約（WASM ラッパー層の制約により非対応）**:
   上流の WebAssembly ラッパーにおいて、ネイティブの callback type 8（MIP lazy constraints）は WASM ↔ JS 境界での同期メモリ安全性の観点から公開されていません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、**反復求解ループ（解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）**による切除平面法のアプローチをご利用ください。
 
+### WebAssembly アセットの管理とオンデマンドビルド
+
+HiGHS の WebAssembly バイナリ（`public/highs.wasm`）とランタイム（`runtime.js`）は、`highs.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
+- **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-highs-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
+- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-highs-wasm.mjs` が GitHub Release アセットから検証済みバイナリを自動取得します。
+- **ソースからのコンパイル**: HiGHS のバージョンアップ時などは、Emscripten SDK（`emcc`）、CMake、Ninja があれば `npm run build:highs-wasm` で即座にローカル再ビルドできます（`.github/workflows/build-wasm.yml` により GitHub Actions 上での自動ビルドも可能です）。
+
 ---
 
 ## 対応する問題クラス
