@@ -72,5 +72,5 @@ jobs:
         run: |
           gh release upload "${{ inputs.release_tag }}" \
             public/highs.wasm \
-            src/modeler/solvers/highs/runtime.js#highs-runtime.js \
+            src/modeler/solvers/highs/runtime.js \
             --clobber

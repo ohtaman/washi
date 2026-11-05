@@ -13,6 +13,10 @@
       "type": "string",
       "description": "Upstream HiGHS repository URL."
     },
+    "emscripten": {
+      "type": "string",
+      "description": "Recommended Emscripten SDK version used for compiling WebAssembly."
+    },
     "emscriptenVersion": {
       "type": "string",
       "description": "Recommended Emscripten SDK version used for compiling WebAssembly."
