@@ -1,9 +1,11 @@
 import {
   COLOR_PALETTE,
+  checkBoardCoverage,
   computeTitanCellSize,
   generateStagePuzzle,
   getStageSpec,
   hasFaultLines,
+  removeCollidingBlocks,
   type InventoryPart,
   type PlacedBlock,
   type PuzzleResult,
@@ -197,8 +199,7 @@ function triggerCutClear(isAuto = false) {
   if (isCutting) return;
   isCutting = true;
 
-  const totalArea = currentPuzzle.cols * currentPuzzle.rows;
-  const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
+  const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
 
   if (placedParts.length < currentPuzzle.parts.length) {
     sndError();
@@ -207,9 +208,10 @@ function triggerCutClear(isAuto = false) {
     return;
   }
 
-  if (usedArea !== totalArea) {
+  if (coverage.hasOverlap || coverage.coveredCount !== coverage.totalArea) {
     sndError();
-    setDroneMsg(t("droneVoidRemaining", { n: totalArea - usedArea }));
+    const remaining = coverage.totalArea - coverage.coveredCount;
+    setDroneMsg(t("droneVoidRemaining", { n: remaining > 0 ? remaining : 1 }));
     isCutting = false;
     return;
   }
@@ -265,16 +267,14 @@ function placeActivePart(col: number, row: number) {
     activePartId = null;
     isRotated = false;
 
-    const totalArea = currentPuzzle.cols * currentPuzzle.rows;
-    const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
-
     render();
 
+    const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
     // Instant Win: Trigger automatic laser cut & clear as soon as board is 100% packed!
-    if (placedParts.length === currentPuzzle.parts.length && usedArea === totalArea) {
+    if (placedParts.length === currentPuzzle.parts.length && coverage.isComplete) {
       triggerCutClear(true);
     } else {
-      setDroneMsg(t("droneKeepGoing", { n: totalArea - usedArea }));
+      setDroneMsg(t("droneKeepGoing", { n: coverage.totalArea - coverage.coveredCount }));
     }
   } else {
     sndError();
@@ -510,8 +510,9 @@ function render() {
   }
 
   // 3. Stats Calculation
-  const totalArea = currentPuzzle.cols * currentPuzzle.rows;
-  const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
+  const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
+  const totalArea = coverage.totalArea;
+  const usedArea = coverage.coveredCount;
   const wasteArea = totalArea - usedArea;
   const coveragePct = Math.round((usedArea / totalArea) * 100);
 
@@ -523,7 +524,7 @@ function render() {
   if (wasteEl) {
     wasteEl.textContent = `${wasteArea} BLOCKS`;
     const executeBtn = document.getElementById("btn-execute");
-    if (wasteArea === 0 && placedParts.length === currentPuzzle.parts.length) {
+    if (!coverage.hasOverlap && wasteArea === 0 && placedParts.length === currentPuzzle.parts.length) {
       wasteEl.style.color = "var(--accent-success)";
       executeBtn?.classList.add("ready-cut");
     } else {
@@ -703,7 +704,8 @@ function init() {
       if (unplacedSolBlocks.length > 0) {
         // Place one step hint
         const nextHint = unplacedSolBlocks[0];
-        // Remove any conflicting placed blocks at target cells (rare, but ensure clean placement)
+        // Remove any conflicting placed blocks at target cells before inserting hint
+        placedParts = removeCollidingBlocks(placedParts, nextHint);
         placedParts.push({
           partId: nextHint.partId,
           col: nextHint.col,
@@ -717,9 +719,8 @@ function init() {
         setDroneMsg(t("droneHint"));
         render();
 
-        const totalArea = currentPuzzle.cols * currentPuzzle.rows;
-        const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
-        if (placedParts.length === currentPuzzle.parts.length && usedArea === totalArea) {
+        const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
+        if (placedParts.length === currentPuzzle.parts.length && coverage.isComplete) {
           triggerCutClear(true);
         }
       } else {

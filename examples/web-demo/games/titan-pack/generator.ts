@@ -78,6 +78,74 @@ export function computeTitanCellSize(
   return Math.max(18, Math.min(54, size));
 }
 
+export interface BoardCoverageResult {
+  hasOverlap: boolean;
+  coveredCount: number;
+  totalArea: number;
+  isComplete: boolean;
+}
+
+/**
+ * Validates board coverage by calculating distinct cell occupancy.
+ * Detects boundary violations, pairwise cell overlaps, and empty voids.
+ */
+export function checkBoardCoverage(
+  cols: number,
+  rows: number,
+  blocks: PlacedBlock[]
+): BoardCoverageResult {
+  const grid = Array.from({ length: rows }, () => new Uint8Array(cols));
+  let hasOverlap = false;
+
+  for (const p of blocks) {
+    for (let r = p.row; r < p.row + p.h; r++) {
+      for (let c = p.col; c < p.col + p.w; c++) {
+        if (c < 0 || c >= cols || r < 0 || r >= rows) {
+          hasOverlap = true;
+        } else if (grid[r][c] > 0) {
+          hasOverlap = true;
+        } else {
+          grid[r][c] = 1;
+        }
+      }
+    }
+  }
+
+  let coveredCount = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (grid[r][c] === 1) coveredCount++;
+    }
+  }
+
+  const totalArea = cols * rows;
+  return {
+    hasOverlap,
+    coveredCount,
+    totalArea,
+    isComplete: !hasOverlap && coveredCount === totalArea,
+  };
+}
+
+/**
+ * Removes any placed blocks that overlap or collide with the target block area.
+ */
+export function removeCollidingBlocks<T extends PlacedBlock>(
+  placed: T[],
+  target: PlacedBlock
+): T[] {
+  return placed.filter((p) => {
+    const intersects = !(
+      p.col + p.w <= target.col ||
+      target.col + target.w <= p.col ||
+      p.row + p.h <= target.row ||
+      target.row + target.h <= p.row
+    );
+    return !intersects;
+  });
+}
+
+
 // Fault-Line Check: true if any line cuts continuously from edge to edge
 export function hasFaultLines(cols: number, rows: number, blocks: PlacedBlock[]): boolean {
   for (let c = 1; c < cols; c++) {
