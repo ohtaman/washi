@@ -389,15 +389,17 @@ export function initApp() {
       const totalVars = (currentModel?.numVars ?? 0) + (currentModel?.boolVars.length ?? 0);
       metricVars.textContent = String(totalVars);
 
-      // Render Unsat Core if conflicting constraints detected
-      if (
-        unsatCoreBox &&
-        unsatCoreList &&
-        currentModel?.unsatCore &&
-        currentModel.unsatCore.length > 0
-      ) {
+      // Render Conflicts / Unsat Core if conflicting constraints detected
+      const activeConflicts =
+        currentModel?.conflicts && currentModel.conflicts.length > 0
+          ? currentModel.conflicts
+          : currentModel?.unsatCore && currentModel.unsatCore.length > 0
+            ? currentModel.unsatCore
+            : null;
+
+      if (unsatCoreBox && unsatCoreList && activeConflicts) {
         unsatCoreBox.style.display = "flex";
-        unsatCoreList.innerHTML = currentModel.unsatCore
+        unsatCoreList.innerHTML = activeConflicts
           .map((cName) => `<span class="unsat-core-chip">${cName}</span>`)
           .join("");
       }

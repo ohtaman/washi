@@ -83,24 +83,23 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     expect(resInf.status).toBe("Unsat");
   });
 
-  it("guards against logical constraints when solver lacks SMT capability", async () => {
-    const m = new Model("SMT_Guard");
-    const x = m.continuous("x");
+  it("seamlessly checks logical constraints on HiGHS and GLPK via automatic linearization", async () => {
+    const m = new Model("SMT_Linearized_Check");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
     const p = m.bool("p");
 
     // Logical constraint: p or (x >= 5)
     m.constraint(p.or(x.ge(5)));
 
-    // HiGHS and GLPK do not support SMT native logic without translation
-    await expect(m.check({ solver: "highs" })).rejects.toThrowError(
-      /does not support SMT \/ logical constraints/
-    );
-    await expect(m.check({ solver: "glpk" })).rejects.toThrowError(
-      /does not support SMT \/ logical constraints/
-    );
+    // Both HiGHS and GLPK now solve this seamlessly via automatic MIP linearization
+    const resHighs = await m.check({ solver: "highs" });
+    expect(resHighs.status).toBe("Sat");
+
+    const resGlpk = await m.check({ solver: "glpk" });
+    expect(resGlpk.status).toBe("Sat");
   });
 
-  it("guards against logical constraints in solve() on non-SMT solvers (Issue #39)", async () => {
+  it("automatically linearizes logical constraints on non-SMT solvers (HiGHS, GLPK)", async () => {
     // Model with logical constraint (implies)
     const createModel = (solverName: string) => {
       const m = new Model({ solver: solverName });
@@ -112,19 +111,23 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
       return { m, b, x };
     };
 
-    // 1. HiGHS rejects solve()
-    const { m: mHighs } = createModel("highs");
-    await expect(mHighs.solve()).rejects.toThrowError(
-      /does not support SMT \/ logical constraints/
-    );
+    // 1. HiGHS automatically linearizes and solves successfully
+    const { m: mHighs, b: bHighs, x: xHighs } = createModel("highs");
+    const statusHighs = await mHighs.solve();
+    expect(statusHighs).toBe("Optimal");
+    expect(bHighs.value).toBe(1);
+    expect(xHighs.value).toBeCloseTo(5, 4);
+    expect(mHighs.objectiveValue).toBeCloseTo(5, 4);
 
-    // 2. GLPK rejects solve()
-    const { m: mGlpk } = createModel("glpk");
-    await expect(mGlpk.solve()).rejects.toThrowError(
-      /does not support SMT \/ logical constraints/
-    );
+    // 2. GLPK automatically linearizes and solves successfully
+    const { m: mGlpk, b: bGlpk, x: xGlpk } = createModel("glpk");
+    const statusGlpk = await mGlpk.solve();
+    expect(statusGlpk).toBe("Optimal");
+    expect(bGlpk.value).toBe(1);
+    expect(xGlpk.value).toBeCloseTo(5, 4);
+    expect(mGlpk.objectiveValue).toBeCloseTo(5, 4);
 
-    // 3. Counter-example: Explicit Big-M indicator constraint solves correctly on HiGHS
+    // 3. Counter-example: Explicit Big-M indicator constraint solves identically on HiGHS
     const mInd = new Model({ solver: "highs" });
     const bInd = mInd.binary("b");
     const xInd = mInd.continuous("x", { lb: 0, ub: 10 });
@@ -137,7 +140,7 @@ describe("Boolean Expressions & SMT / SAT Logic AST", () => {
     expect(bInd.value).toBe(1);
     expect(xInd.value).toBeCloseTo(5, 4);
 
-    // 4. SMT-capable solver (Z3) solves model with logical constraint successfully
+    // 4. SMT-capable solver (Z3) solves model with logical constraint natively
     const { m: mZ3, b: bZ3, x: xZ3 } = createModel("z3");
     const statusZ3 = await mZ3.solve();
     expect(statusZ3).toBe("Optimal");

@@ -29,6 +29,7 @@ import {
   type SolutionValidationOptions,
   type SolutionValidationReport,
 } from "./solution-validator.js";
+import { linearizeModelForMip } from "./linearizer.js";
 
 /**
  * Valid items that can be added as a constraint to a model.
@@ -208,6 +209,7 @@ export class Model {
   public boolVars: BoolVar[] = [];
   public logicalConstraints: LogicalConstraint[] = [];
   public unsatCore: readonly string[] | undefined = undefined;
+  private _conflicts: readonly string[] | undefined = undefined;
   public values = new Map<string, number | boolean>();
 
   private varMapByName = new Map<string, Var>();
@@ -273,12 +275,16 @@ export class Model {
   }
 
   /**
-   * User-friendly alias for unsatCore.
+   * User-friendly alias for unsatCore or MIP elastic conflict diagnosis.
    * Returns a subset of conflicting constraint names causing infeasibility,
    * or undefined if not diagnosed, not applicable, or satisfiable.
    */
   get conflicts(): readonly string[] | undefined {
-    return this.unsatCore;
+    return this._conflicts ?? this.unsatCore;
+  }
+
+  set conflicts(value: readonly string[] | undefined) {
+    this._conflicts = value;
   }
 
   get numVars(): number {
@@ -315,6 +321,7 @@ export class Model {
     this.solution = null;
     this.runTime = 0;
     this.unsatCore = undefined;
+    this._conflicts = undefined;
     this.values.clear();
     for (const v of this.variables) {
       v.value = null;
@@ -1764,11 +1771,38 @@ export class Model {
       );
     }
 
-    // Capability check: Validate if solver supports SMT / logical constraints
+    // Handle logical constraints:
+    // If solver natively supports SMT (e.g. Z3), pass logical constraints as-is.
+    // If solver is LP/MIP (HiGHS, GLPK), auto-linearize logical constraints into binary MIP formulation.
+    let modelData: SolveModelData;
+    let linResult: ReturnType<typeof linearizeModelForMip> | null = null;
+
     if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
-      throw new Error(
-        `Solver "${activeSolver.name}" does not support SMT / logical constraints (or, implies, not, xor). Please use an SMT-capable solver such as Z3.`
+      linResult = linearizeModelForMip(
+        this.variables,
+        this.boolVars,
+        this.constraints,
+        this.logicalConstraints
       );
+      modelData = {
+        name: this.name,
+        sense: this.sense,
+        objective: this._objectiveExpr,
+        constraints: linResult.constraints,
+        variables: linResult.variables,
+        logicalConstraints: [],
+        boolVars: [],
+      };
+    } else {
+      modelData = {
+        name: this.name,
+        sense: this.sense,
+        objective: this._objectiveExpr,
+        constraints: this.constraints,
+        variables: this.variables,
+        logicalConstraints: this.logicalConstraints,
+        boolVars: this.boolVars,
+      };
     }
 
     // Capability check: Validate if solver supports primal initial values (warm starts)
@@ -1780,16 +1814,6 @@ export class Model {
         `Solver "${activeSolver.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
       );
     }
-
-    const modelData: SolveModelData = {
-      name: this.name,
-      sense: this.sense,
-      objective: this._objectiveExpr,
-      constraints: this.constraints,
-      variables: this.variables,
-      logicalConstraints: this.logicalConstraints,
-      boolVars: this.boolVars,
-    };
 
     const effectiveOptions = this.wrapSolveOptions(activeOptions, startRevision, opId);
 
@@ -1879,6 +1903,20 @@ export class Model {
             this.values.set(bv.name, boolVal);
           } else {
             this.values.set(vName, boolVal);
+          }
+        }
+      }
+      if (linResult) {
+        for (const bv of this.boolVars) {
+          const binVar = linResult.boolVarToBinary.get(bv);
+          if (binVar && result.values) {
+            const raw = result.values[binVar.name];
+            if (typeof raw === "number" && Number.isFinite(raw)) {
+              const boolVal = Math.round(raw) === 1;
+              bv.value = boolVal;
+              setOwnProperty(valuesRecord, bv.name, boolVal ? 1 : 0);
+              this.values.set(bv.name, boolVal);
+            }
           }
         }
       }
@@ -2002,13 +2040,6 @@ export class Model {
 
     const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
-    // 1. Guard against logical constraints if solver lacks SMT
-    if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
-      throw new Error(
-        `Solver "${activeSolver.name}" does not support SMT / logical constraints (or, implies, not, xor). Please use an SMT-capable solver such as Z3.`
-      );
-    }
-
     // Guard against primal initial values if solver lacks warm-start support
     if (
       this.variables.some((v) => v.initialValue !== undefined) &&
@@ -2058,6 +2089,10 @@ export class Model {
       this.runTime = checkResult.runTime ?? 0;
       this.unsatCore =
         checkResult.unsatCore !== undefined ? Object.freeze([...checkResult.unsatCore]) : undefined;
+      this.conflicts =
+        checkResult.conflicts !== undefined
+          ? Object.freeze([...checkResult.conflicts])
+          : this.unsatCore;
 
       const values: Record<string, number | boolean> = {};
       if (checkResult.values && checkResult.status === "Sat") {
@@ -2098,21 +2133,70 @@ export class Model {
         status: checkResult.status,
         values,
         unsatCore: this.unsatCore,
-        conflicts: this.unsatCore,
+        conflicts: this.conflicts,
         runTime: this.runTime,
       };
     }
 
-    // 3. Fallback: Linear feasibility check using activeSolver.solve() with a zero objective
-    // without mutating this.objectiveExpr or this.sense on the Model instance.
+    // 3. Fallback for LP/MIP solvers (HiGHS, GLPK):
+    // Auto-linearize logical constraints if needed, and solve an elastic feasibility problem
+    // with non-negative slack variables (min sum s_i) to detect satisfiability and identify conflicts.
+    const linResult =
+      this.logicalConstraints.length > 0 || this.boolVars.length > 0
+        ? linearizeModelForMip(this.variables, this.boolVars, this.constraints, this.logicalConstraints)
+        : {
+            variables: [...this.variables],
+            constraints: [...this.constraints],
+            boolVarToBinary: new Map<BoolVar, Var>(),
+            constraintToOriginalName: new Map(this.constraints.map((c) => [c, c.name])),
+          };
+
+    // Construct elastic constraints with slack variables
+    const elasticConstraints: Constraint[] = [];
+    const slackVariables: Var[] = [];
+    const slackTerms: [Var, number][] = [];
+    const slackToOrigName = new Map<Var, string>();
+
+    let slackCounter = 0;
+    for (const c of linResult.constraints) {
+      const origName = linResult.constraintToOriginalName.get(c) ?? c.name;
+      const { lhs, sense, rhs } = c;
+
+      if (sense === "<=") {
+        // terms - s <= rhs  (s >= 0)
+        const s = new Var({ name: `__slack_${++slackCounter}`, type: "Continuous", lb: 0, ub: Infinity });
+        slackVariables.push(s);
+        slackTerms.push([s, 1]);
+        slackToOrigName.set(s, origName);
+        const relaxedLhs = lhs.clone().add(new LinExpr(new Map([[s, -1]]), 0));
+        elasticConstraints.push(new Constraint(relaxedLhs, "<=", rhs, `${c.name}_slack`));
+      } else if (sense === ">=") {
+        // terms + s >= rhs  (s >= 0)
+        const s = new Var({ name: `__slack_${++slackCounter}`, type: "Continuous", lb: 0, ub: Infinity });
+        slackVariables.push(s);
+        slackTerms.push([s, 1]);
+        slackToOrigName.set(s, origName);
+        const relaxedLhs = lhs.clone().add(new LinExpr(new Map([[s, 1]]), 0));
+        elasticConstraints.push(new Constraint(relaxedLhs, ">=", rhs, `${c.name}_slack`));
+      } else {
+        // ==  terms - s_p + s_n == rhs
+        const sPos = new Var({ name: `__slack_${++slackCounter}_p`, type: "Continuous", lb: 0, ub: Infinity });
+        const sNeg = new Var({ name: `__slack_${++slackCounter}_n`, type: "Continuous", lb: 0, ub: Infinity });
+        slackVariables.push(sPos, sNeg);
+        slackTerms.push([sPos, 1], [sNeg, 1]);
+        slackToOrigName.set(sPos, origName);
+        slackToOrigName.set(sNeg, origName);
+        const relaxedLhs = lhs.clone().add(new LinExpr(new Map([[sPos, -1], [sNeg, 1]]), 0));
+        elasticConstraints.push(new Constraint(relaxedLhs, "==", rhs, `${c.name}_slack`));
+      }
+    }
+
     const feasibilityModelData: SolveModelData = {
-      name: this.name,
+      name: `${this.name}_elastic_check`,
       sense: "Minimize" as const,
-      objective: new LinExpr(),
-      constraints: this.constraints,
-      variables: this.variables,
-      logicalConstraints: this.logicalConstraints,
-      boolVars: this.boolVars,
+      objective: new LinExpr(new Map(slackTerms), 0),
+      constraints: elasticConstraints,
+      variables: [...linResult.variables, ...slackVariables],
     };
 
     let result: SolverResult;
@@ -2131,9 +2215,24 @@ export class Model {
     const rawStatus = result.status;
     const rawTermStatus = result.terminationStatus ?? rawStatus;
     const hasPrimal = this.hasPrimalFromResult(result);
+    const objVal =
+      typeof result.objectiveValue === "number" && Number.isFinite(result.objectiveValue)
+        ? result.objectiveValue
+        : Infinity;
 
-    const isSat = hasPrimal || rawStatus === "Optimal" || rawStatus === "Feasible";
-    const isUnsat = rawStatus === "Infeasible";
+    // Primal feasibility threshold for elastic check: sum(slack) <= 1e-5
+    const isSat = (rawStatus === "Optimal" || rawStatus === "Feasible" || hasPrimal) && objVal <= 1e-5;
+    const hasProvenPositiveLowerBound =
+      typeof result.objectiveBound === "number" &&
+      Number.isFinite(result.objectiveBound) &&
+      result.objectiveBound > 1e-5;
+    // Require mathematical proof before declaring Unsat:
+    // Either elastic model is Infeasible, or optimal slack sum > 1e-5, or dual lower bound > 1e-5
+    const isUnsat =
+      !isSat &&
+      (rawStatus === "Infeasible" ||
+        (rawStatus === "Optimal" && objVal > 1e-5) ||
+        hasProvenPositiveLowerBound);
     const checkStatus = isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown";
 
     this.status = checkStatus;
@@ -2154,69 +2253,48 @@ export class Model {
 
     const values: Record<string, number | boolean> = {};
     if (isSat && result.values) {
-      for (const [vName, primal] of Object.entries(result.values)) {
+      // 1. Map base numeric variables
+      for (const v of this.variables) {
+        const primal = result.values[v.name];
         if (typeof primal === "number" && Number.isFinite(primal)) {
-          const v = this.getVarByName(vName);
-          const bv = this.getBoolVarByName(vName);
-          if (v) {
-            v.value = primal;
-            this.values.set(v.name, primal);
-            setOwnProperty(values, v.name, primal);
-          }
-          if (bv) {
-            bv.value = Boolean(primal);
-            this.values.set(bv.name, bv.value);
-            setOwnProperty(values, bv.name, bv.value);
-          }
-          if (!v && !bv) {
-            this.values.set(vName, primal);
-            setOwnProperty(values, vName, primal);
-          }
-        } else if (typeof (primal as unknown) === "boolean") {
-          const boolVal = primal as unknown as boolean;
-          const bv = this.getBoolVarByName(vName);
-          if (bv) {
-            bv.value = boolVal;
-            this.values.set(bv.name, boolVal);
-            setOwnProperty(values, bv.name, boolVal);
-          } else {
-            this.values.set(vName, boolVal);
-            setOwnProperty(values, vName, boolVal);
-          }
+          v.value = primal;
+          this.values.set(v.name, primal);
+          setOwnProperty(values, v.name, primal);
+        }
+      }
+      // 2. Map BoolVars back to boolean values from linearized binary vars
+      for (const bv of this.boolVars) {
+        const binVar = linResult.boolVarToBinary.get(bv);
+        const binVal = binVar ? result.values[binVar.name] : result.values[bv.name];
+        if (typeof binVal === "number" && Number.isFinite(binVal)) {
+          const boolVal = Math.round(binVal) === 1;
+          bv.value = boolVal;
+          this.values.set(bv.name, boolVal);
+          setOwnProperty(values, bv.name, boolVal);
         }
       }
     }
 
-    if (isSat && result.boolValues) {
-      for (const [bName, bVal] of Object.entries(result.boolValues)) {
-        if (typeof bVal !== "boolean") continue;
-        const bv = this.getBoolVarByName(bName);
-        if (bv) {
-          bv.value = bVal;
-          this.values.set(bv.name, bVal);
-          setOwnProperty(values, bv.name, bVal);
-        } else {
-          this.values.set(bName, bVal);
-          setOwnProperty(values, bName, bVal);
+    // Identify conflicting constraint names when Unsat
+    const conflictingSet = new Set<string>();
+    if (isUnsat && result.values) {
+      for (const [slackVar, origName] of slackToOrigName.entries()) {
+        const sVal = result.values[slackVar.name];
+        if (typeof sVal === "number" && sVal > 1e-5) {
+          conflictingSet.add(origName);
         }
       }
     }
 
-    if (result.slacks) {
-      for (const [cName, slack] of Object.entries(result.slacks)) {
-        if (typeof slack !== "number" || !Number.isFinite(slack)) continue;
-        const c = this.getConstraintByName(cName);
-        if (c) {
-          c.slack = slack;
-        }
-      }
-    }
-
+    this.conflicts = isUnsat ? Object.freeze(Array.from(conflictingSet)) : undefined;
+    this.unsatCore = undefined; // SMT Unsat Core is undefined for MIP elastic check
     this.hasSolutionState = true;
 
     return {
       status: checkStatus,
       values,
+      conflicts: this.conflicts,
+      unsatCore: this.unsatCore,
       runTime: this.runTime,
     };
   }
