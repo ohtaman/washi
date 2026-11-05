@@ -103,6 +103,7 @@ export function initApp() {
   // Language buttons
   const langBtnEn = document.getElementById("lang-btn-en") as HTMLButtonElement | null;
   const langBtnJa = document.getElementById("lang-btn-ja") as HTMLButtonElement | null;
+  const langBtnZh = document.getElementById("lang-btn-zh") as HTMLButtonElement | null;
 
   // Tabs
   const tabButtons = document.querySelectorAll(".tab-btn");
@@ -157,15 +158,9 @@ export function initApp() {
 
   function applyLocale(locale: Locale) {
     document.documentElement.lang = locale;
-    if (langBtnEn && langBtnJa) {
-      if (locale === "ja") {
-        langBtnJa.classList.add("active");
-        langBtnEn.classList.remove("active");
-      } else {
-        langBtnEn.classList.add("active");
-        langBtnJa.classList.remove("active");
-      }
-    }
+    if (langBtnEn) langBtnEn.classList.toggle("active", locale === "en");
+    if (langBtnJa) langBtnJa.classList.toggle("active", locale === "ja");
+    if (langBtnZh) langBtnZh.classList.toggle("active", locale === "zh");
 
     document.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.getAttribute("data-i18n") as keyof TranslationDict;
@@ -196,6 +191,9 @@ export function initApp() {
   }
   if (langBtnJa) {
     langBtnJa.addEventListener("click", () => setLocale("ja"));
+  }
+  if (langBtnZh) {
+    langBtnZh.addEventListener("click", () => setLocale("zh"));
   }
 
   onLocaleChange(applyLocale);

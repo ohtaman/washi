@@ -2410,4 +2410,37 @@ body.ai-shift-body {
   cursor: pointer;
 }
 
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.lang-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-sumi-secondary);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.lang-btn:hover {
+  color: var(--text-sumi);
+}
+
+.lang-btn.is-active {
+  background: #e11d48;
+  color: #ffffff;
+}
+
 

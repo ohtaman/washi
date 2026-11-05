@@ -65,4 +65,61 @@ describe("AC-3: Unified i18n Engine", () => {
     expect(pickLocale("ja", map)).toBe("Japanese");
     expect(pickLocale("en", map)).toBe("English");
   });
+
+  it("verifies all demo HTML files feature lang buttons strictly in EN -> JA -> ZH order", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { resolve } = await import("node:path");
+
+    const demoHtmlFiles = [
+      "examples/web-demo/apps/ai-shift/index.html",
+      "examples/web-demo/apps/ai-timetable/index.html",
+      "examples/web-demo/apps/ai-timetable-theory/index.html",
+      "examples/web-demo/games/demon-castle-shift/index.html",
+      "examples/web-demo/games/demon-castle-shift-theory/index.html",
+      "examples/web-demo/games/mofumofu-sheep/index.html",
+      "examples/web-demo/games/mofumofu-sheep-theory/index.html",
+      "examples/web-demo/games/titan-pack/index.html",
+      "examples/web-demo/games/titan-pack-theory/index.html",
+      "examples/web-demo/demo/index.html",
+    ];
+
+    for (const relPath of demoHtmlFiles) {
+      const fullPath = resolve(import.meta.dirname, "..", relPath);
+      const html = readFileSync(fullPath, "utf-8");
+
+      // Extract all data-lang-btn clusters
+      const btnMatches = [...html.matchAll(/data-lang-btn="([^"]+)"/g)].map((m) => m[1]);
+      expect(btnMatches.length, `Expected lang buttons in ${relPath}`).toBeGreaterThanOrEqual(3);
+
+      // Verify each 3-tuple sequence is strictly ["en", "ja", "zh"]
+      for (let i = 0; i < btnMatches.length; i += 3) {
+        const cluster = btnMatches.slice(i, i + 3);
+        expect(cluster, `Lang button sequence mismatch in ${relPath}`).toEqual(["en", "ja", "zh"]);
+      }
+    }
+  });
+
+  it("verifies ai-shift localized shift metadata matches language catalogs", async () => {
+    const { getLocalizedShiftMeta } = await import(
+      "../examples/web-demo/apps/ai-shift/i18n.js"
+    );
+
+    // Japanese: 日, 準, 深, 休
+    expect(getLocalizedShiftMeta("D", "ja").shortLabel).toBe("\u65E5");
+    expect(getLocalizedShiftMeta("E", "ja").shortLabel).toBe("\u6E96");
+    expect(getLocalizedShiftMeta("N", "ja").shortLabel).toBe("\u6DF1");
+    expect(getLocalizedShiftMeta("O", "ja").shortLabel).toBe("\u4F11");
+
+    // English: Day, Eve, Night, Off
+    expect(getLocalizedShiftMeta("D", "en").shortLabel).toBe("Day");
+    expect(getLocalizedShiftMeta("E", "en").shortLabel).toBe("Eve");
+    expect(getLocalizedShiftMeta("N", "en").shortLabel).toBe("Night");
+    expect(getLocalizedShiftMeta("O", "en").shortLabel).toBe("Off");
+
+    // Chinese: 白, 小, 大, 休
+    expect(getLocalizedShiftMeta("D", "zh").shortLabel).toBe("\u767D");
+    expect(getLocalizedShiftMeta("E", "zh").shortLabel).toBe("\u5C0F");
+    expect(getLocalizedShiftMeta("N", "zh").shortLabel).toBe("\u5927");
+    expect(getLocalizedShiftMeta("O", "zh").shortLabel).toBe("\u4F11");
+  });
 });
