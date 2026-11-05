@@ -12,7 +12,7 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 jobs:
@@ -55,13 +55,3 @@ jobs:
       - name: Publish to npm (Trusted Publishing / OIDC)
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && !inputs.dry_run)
         run: npm publish --provenance --access public
-
-      - name: Upload WebAssembly assets to GitHub Release
-        if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            public/highs.wasm \
-            src/modeler/solvers/highs/runtime.js \
-            --clobber

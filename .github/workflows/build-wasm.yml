@@ -3,16 +3,16 @@ name: Build HiGHS WebAssembly
 on:
   workflow_dispatch:
     inputs:
-      upload_release:
-        description: "Upload built assets to GitHub release tag"
-        required: false
-        type: boolean
-        default: false
-      release_tag:
-        description: "Target release tag (e.g. v0.5.0)"
+      highs_version:
+        description: "HiGHS version / git tag to compile (e.g. v1.15.1 or v1.16.0; leave blank to use highs.config.json)"
         required: false
         type: string
         default: ""
+      create_release:
+        description: "Create or update GitHub Release tag (highs-<version>) with compiled assets"
+        required: false
+        type: boolean
+        default: true
   push:
     branches: [main]
     paths:
@@ -51,7 +51,22 @@ jobs:
         run: npm ci
 
       - name: Build HiGHS WebAssembly
-        run: npm run build:highs-wasm
+        env:
+          HIGHS_VERSION_OVERRIDE: ${{ inputs.highs_version }}
+        run: |
+          if [ -n "$HIGHS_VERSION_OVERRIDE" ]; then
+            node -e "
+              const fs = require('fs');
+              const cfg = JSON.parse(fs.readFileSync('highs.config.json', 'utf8'));
+              cfg.version = process.env.HIGHS_VERSION_OVERRIDE;
+              cfg.wasm.downloadUrl = 'https://github.com/ohtaman/washi/releases/download/highs-' + cfg.version + '/highs.wasm';
+              cfg.runtime.downloadUrl = 'https://github.com/ohtaman/washi/releases/download/highs-' + cfg.version + '/runtime.js';
+              fs.writeFileSync('highs.config.json', JSON.stringify(cfg, null, 2) + '\n');
+            "
+            export HIGHS_VERSION="$HIGHS_VERSION_OVERRIDE"
+          fi
+          npm run build:highs-wasm
+          npm run ensure:highs -- --update-hashes
 
       - name: Verify WebAssembly solver execution
         run: npm test
@@ -66,11 +81,19 @@ jobs:
             highs.config.json
 
       - name: Upload assets to GitHub Release
-        if: github.event_name == 'workflow_dispatch' && inputs.upload_release && inputs.release_tag != ''
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ inputs.release_tag }}" \
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('highs.config.json', 'utf8')).version)")
+          TAG_NAME="highs-${VERSION}"
+          echo "Target Release Tag: ${TAG_NAME}"
+          gh release upload "${TAG_NAME}" \
             public/highs.wasm \
             src/modeler/solvers/highs/runtime.js \
-            --clobber
+            --clobber || \
+          gh release create "${TAG_NAME}" \
+            public/highs.wasm \
+            src/modeler/solvers/highs/runtime.js \
+            --title "HiGHS WebAssembly ${VERSION}" \
+            --notes "Prebuilt WebAssembly assets (highs.wasm & runtime.js) compiled from upstream ERGO-Code/HiGHS ${VERSION} with Emscripten."
