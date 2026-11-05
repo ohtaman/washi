@@ -1385,7 +1385,7 @@ body {
   position: absolute;
   top: 1.25rem;
   right: 1.5rem;
-  z-index: 20;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 0.55rem;
@@ -1547,6 +1547,7 @@ body {
   background: radial-gradient(circle at center, rgba(24, 14, 48, 0.55) 0%, rgba(5, 3, 12, 0.84) 100%);
   text-align: center;
   animation: opClimaxFadeIn 0.65s ease-out forwards;
+  pointer-events: none;
 }
 
 @keyframes opClimaxFadeIn {
@@ -1580,6 +1581,7 @@ body {
 }
 
 .op-climax-btn {
+  pointer-events: auto;
   width: auto;
   min-width: 280px;
   padding: 0.72rem 1.65rem;

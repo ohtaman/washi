@@ -411,6 +411,22 @@ async function runBrowserVerification() {
       return overlay && !overlay.hidden;
     }, { timeout: 5_000 });
 
+    // Verify floating controls (BGM toggle & Skip button) remain above the climax overlay and clickable
+    const floatingControlsCheck = await gamePage.evaluate(() => {
+      const skipBtn = document.getElementById("btn-op-skip");
+      const bgmBtn = document.querySelector("#opening-movie-dialog [data-bgm-toggle]");
+      const skipRect = skipBtn ? skipBtn.getBoundingClientRect() : null;
+      const bgmRect = bgmBtn ? bgmBtn.getBoundingClientRect() : null;
+      const elAtSkip = skipRect ? document.elementFromPoint(skipRect.left + skipRect.width / 2, skipRect.top + skipRect.height / 2) : null;
+      const elAtBgm = bgmRect ? document.elementFromPoint(bgmRect.left + bgmRect.width / 2, bgmRect.top + bgmRect.height / 2) : null;
+      return {
+        skipUnblocked: elAtSkip === skipBtn || skipBtn?.contains(elAtSkip),
+        bgmUnblocked: elAtBgm === bgmBtn || bgmBtn?.contains(elAtBgm),
+      };
+    });
+    assert.equal(floatingControlsCheck.skipUnblocked, true, "Skip button must not be blocked by climax overlay");
+    assert.equal(floatingControlsCheck.bgmUnblocked, true, "BGM button must not be blocked by climax overlay");
+
     // Verify #btn-op-finish receives pointer events cleanly without being intercepted by .op-letterbox-bottom
     await gamePage.click("#btn-op-finish", { timeout: 5_000 });
     await gamePage.waitForSelector("#prologue-dialog[open]", { timeout: 5_000 });
