@@ -18,6 +18,7 @@ import {
   SHIFT_META,
   type ActiveShiftCode,
   type AiShiftTrajectoryExport,
+  type BuiltInShiftCode,
   type ContractPresetId,
   type CustomConstraintRule,
   type CustomShiftDef,
@@ -33,6 +34,15 @@ import {
   type TransitionRuleType,
   type WashiSolveOutcome,
 } from "./types";
+import {
+  getLocalizedNurseName,
+  getLocalizedShiftMeta,
+  getShiftCatalog,
+  persistLocale,
+  resolveCurrentLocale,
+  WEEKDAY_SHORT_I18N,
+  type Locale,
+} from "./i18n.js";
 import {
   createBlankNurseSchedulingState,
   createDefaultConfig,
@@ -70,6 +80,31 @@ import {
   createGeminiNanoManager,
   type GeminiNanoStatus,
 } from "./nano-client";
+
+let currentLocale: Locale = resolveCurrentLocale();
+
+function updateLanguageButtonsUI(locale: Locale): void {
+  document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
+    const isTarget = btn.dataset.langBtn === locale;
+    btn.classList.toggle("is-active", isTarget);
+    btn.setAttribute("aria-pressed", isTarget ? "true" : "false");
+  });
+}
+
+function applyLocale(locale: Locale): void {
+  currentLocale = locale;
+  persistLocale(locale);
+  updateLanguageButtonsUI(locale);
+  const cat = getShiftCatalog(locale);
+  if (cat.ui) {
+    document.title = cat.ui.title;
+    const headerEl = document.querySelector(".demo-header-title");
+    if (headerEl) headerEl.textContent = cat.ui.headerTitle;
+    const tutBtn = document.getElementById("btn-toggle-tutorial");
+    if (tutBtn) tutBtn.textContent = cat.ui.btnTutorial;
+  }
+  renderAllViews();
+}
 
 // Application State - Start with default 30 nurses and empty schedule until user clicks solve
 let currentSeed = 202611;
@@ -614,12 +649,17 @@ function renderScheduleLegend(): void {
   if (!legendEl) return;
   legendEl.replaceChildren();
 
-  const baseItems: Array<{ code: string; shortLabel: string; label: string; colorClass: string }> = [
-    { code: "D", shortLabel: "日", label: "日勤", colorClass: "shift-D" },
-    { code: "E", shortLabel: "準", label: "準夜勤", colorClass: "shift-E" },
-    { code: "N", shortLabel: "深", label: "深夜勤", colorClass: "shift-N" },
-    { code: "O", shortLabel: "休", label: "公休", colorClass: "shift-O" },
-  ];
+  const baseCodes: BuiltInShiftCode[] = ["D", "E", "N", "O"];
+  const baseItems: Array<{ code: string; shortLabel: string; label: string; colorClass: string }> =
+    baseCodes.map((code) => {
+      const meta = getLocalizedShiftMeta(code, currentLocale);
+      return {
+        code,
+        shortLabel: meta.shortLabel,
+        label: meta.label,
+        colorClass: meta.colorClass,
+      };
+    });
   for (const cs of appState.customShiftDefs ?? []) {
     baseItems.push({
       code: cs.code,
@@ -769,25 +809,32 @@ function renderScheduleMatrix(): void {
     trDays.appendChild(th);
   }
 
+  const weekdayNames = WEEKDAY_SHORT_I18N[currentLocale];
   for (let d = 1; d <= numDays; d++) {
     const dow = getDayOfWeek(config.year, config.month, d);
     const holidayName = getJapaneseHolidayName(config.year, config.month, d);
     const th = document.createElement("th");
     th.className = `day-col ${dow === 0 || dow === 6 || holidayName ? "day-col-weekend" : ""}`;
-    if (holidayName) {
-      th.title = `${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}) — 祝日: ${holidayName}`;
+    const dowLabel = weekdayNames[dow];
+    if (holidayName && currentLocale === "ja") {
+      th.title = `${config.month}/${d}(${dowLabel}) — 祝日: ${holidayName}`;
     }
     const dayNumDiv = document.createElement("div");
     dayNumDiv.textContent = String(d);
     const dowDiv = document.createElement("div");
-    dowDiv.textContent = holidayName ? `${WEEKDAY_NAMES_JA[dow]}·祝` : WEEKDAY_NAMES_JA[dow];
+    dowDiv.textContent = holidayName && currentLocale === "ja" ? `${dowLabel}·祝` : dowLabel;
     if (dow === 0 || holidayName) dowDiv.className = "dow-sun";
     else if (dow === 6) dowDiv.className = "dow-sat";
     th.append(dayNumDiv, dowDiv);
     trDays.appendChild(th);
   }
 
-  for (const label of ["夜勤", "公休", "連勤", "36(年)"]) {
+  const statHeaders = currentLocale === "ja"
+    ? ["夜勤", "公休", "連勤", "36(年)"]
+    : currentLocale === "zh"
+      ? ["夜班", "轮休", "连班", "36(年)"]
+      : ["Night", "Off", "Streak", "36(Yr)"];
+  for (const label of statHeaders) {
     const th = document.createElement("th");
     th.className = "stat-col";
     th.textContent = label;
@@ -828,7 +875,8 @@ function renderScheduleMatrix(): void {
     topRow.className = "nurse-cell-top";
     const nameSpan = document.createElement("span");
     nameSpan.className = "nurse-name-label";
-    nameSpan.textContent = `${nurse.name}${!nurse.nightOk ? " ☀️" : ""}`;
+    const displayName = getLocalizedNurseName(nurse.id, nurse.name, currentLocale);
+    nameSpan.textContent = `${displayName}${!nurse.nightOk ? " ☀️" : ""}`;
 
     const { roleCode, roleLabel, groupLabel } = getNurseDisplayAttributes(nurse);
     const roleSpan = document.createElement("span");
@@ -837,7 +885,7 @@ function renderScheduleMatrix(): void {
     topRow.append(nameSpan, roleSpan);
 
     const tailStreak = getPrevMonthTailWorkStreak(nurse.prevMonthShifts, customShiftDefs);
-    tdNurse.title = `${nurse.id} ${nurse.name} (${groupLabel ? `${groupLabel} / ` : ""}${roleLabel})\n前月末: ${tailStreak}連勤\n直近11\u30F6月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
+    tdNurse.title = `${nurse.id} ${displayName} (${groupLabel ? `${groupLabel} / ` : ""}${roleLabel})\n前月末: ${tailStreak}連勤\n直近11\u30F6月残業累計: ${nurse.yearly36Stats.prev11MonthsOvertimeHours}h`;
     tdNurse.appendChild(topRow);
     tr.appendChild(tdNurse);
 
@@ -847,11 +895,11 @@ function renderScheduleMatrix(): void {
       tdPrev.className =
         p === totalPrevLen - 1 ? "prev-month-col prev-month-divider" : "prev-month-col";
       const s = nurse.prevMonthShifts[p] ?? "O";
-      const sMeta = getShiftMeta(s, customShiftDefs);
+      const sMeta = getLocalizedShiftMeta(s, currentLocale, customShiftDefs);
       const badge = document.createElement("span");
       badge.className = `shift-badge shift-${sMeta.colorKey} shift-prev-badge`;
       badge.textContent = sMeta.shortLabel;
-      badge.title = `${nurse.name} 前月(${p - totalPrevLen}日目): ${sMeta.label}`;
+      badge.title = `${displayName} 前月(${p - totalPrevLen}日目): ${sMeta.label}`;
       tdPrev.appendChild(badge);
       tr.appendChild(tdPrev);
     }
@@ -878,25 +926,25 @@ function renderScheduleMatrix(): void {
         btn.className = "shift-cell-btn shift-cell-empty";
         btn.textContent = "-";
         tooltipParts = [
-          `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
-            holidayName ? `\u30FB祝日:${holidayName}` : ""
+          `${displayName} — ${config.month}/${d}(${weekdayNames[dow]}${
+            holidayName && currentLocale === "ja" ? `\u30FB祝日:${holidayName}` : ""
           }): \u30B7\u30D5\u30C8未作成 (\u30AF\u30EA\u30C3\u30AF\u3067固定)`,
         ];
       } else {
         const shift: ShiftCode = rowShifts[d - 1] ?? "O";
-        const shiftMeta = getShiftMeta(shift, customShiftDefs);
+        const shiftMeta = getLocalizedShiftMeta(shift, currentLocale, customShiftDefs);
         btn.className = `shift-cell-btn shift-${shiftMeta.colorKey}`;
         btn.textContent = shiftMeta.shortLabel;
         tooltipParts = [
-          `${nurse.name} — ${config.month}/${d}(${WEEKDAY_NAMES_JA[dow]}${
-            holidayName ? `\u30FB祝日:${holidayName}` : ""
+          `${displayName} — ${config.month}/${d}(${weekdayNames[dow]}${
+            holidayName && currentLocale === "ja" ? `\u30FB祝日:${holidayName}` : ""
           }): ${shiftMeta.label}`,
         ];
 
         const diffEntry = diffCellMap.get(key);
         if (diffEntry) {
           btn.classList.add("cell-diff-changed");
-          const prevMeta = getShiftMeta(diffEntry.prevShift, customShiftDefs);
+          const prevMeta = getLocalizedShiftMeta(diffEntry.prevShift, currentLocale, customShiftDefs);
           tooltipParts.push(
             `🔄 前回\u304B\u3089変更: ${prevMeta.label}(${prevMeta.shortLabel}) ➔ ${shiftMeta.label}(${shiftMeta.shortLabel})`
           );
@@ -904,7 +952,7 @@ function renderScheduleMatrix(): void {
       }
 
       if (pref) {
-        const prefMeta = getShiftMeta(pref.shift, customShiftDefs);
+        const prefMeta = getLocalizedShiftMeta(pref.shift, currentLocale, customShiftDefs);
         const dot = document.createElement("span");
         dot.className = `cell-marker-dot ${pref.isHard ? "req-hard-dot" : "req-soft-dot"}`;
         btn.appendChild(dot);
@@ -2752,19 +2800,26 @@ function renderCellDialogShiftButtons(): void {
         ? " \u3092禁止\u3057\u3066再計算"
         : " \u306B固定\u3057\u3066再計算";
 
+  const baseCodes: BuiltInShiftCode[] = ["D", "E", "N", "O", "W", "EN"];
   const allShiftChoices: Array<{
     code: ShiftCode;
     shortLabel: string;
     label: string;
     colorClass: string;
-  }> = [
-    { code: "D", shortLabel: "日", label: "日勤", colorClass: "shift-D" },
-    { code: "E", shortLabel: "準", label: "準夜勤", colorClass: "shift-E" },
-    { code: "N", shortLabel: "深", label: "深夜勤", colorClass: "shift-N" },
-    { code: "O", shortLabel: "休", label: "公休", colorClass: "shift-O" },
-    { code: "W", shortLabel: "勤", label: "出勤\u304A任\u305B (全勤務)", colorClass: "shift-W" },
-    { code: "EN", shortLabel: "夜", label: "夜勤\u304A任\u305B (準/深)", colorClass: "shift-EN" },
-  ];
+  }> = baseCodes.map((code) => {
+    const meta = getLocalizedShiftMeta(
+      code,
+      currentLocale,
+      appState.customShiftDefs,
+      appState.shiftAliases
+    );
+    return {
+      code,
+      shortLabel: meta.shortLabel,
+      label: meta.label,
+      colorClass: meta.colorClass,
+    };
+  });
   for (const cs of appState.customShiftDefs ?? []) {
     allShiftChoices.push({
       code: cs.code,
@@ -2812,9 +2867,11 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
   const dow = getDayOfWeek(appState.config.year, appState.config.month, day);
   const holidayName = getJapaneseHolidayName(appState.config.year, appState.config.month, day);
   const currentShift: ShiftCode = currentSchedule?.[nurse.id]?.[day - 1] ?? "O";
-  const currentMeta = getShiftMeta(currentShift, appState.customShiftDefs);
-  titleEl.textContent = `${nurse.name} — ${appState.config.month}/${day} (${WEEKDAY_NAMES_JA[dow]}${
-    holidayName ? `\u30FB祝日:${holidayName}` : ""
+  const currentMeta = getLocalizedShiftMeta(currentShift, currentLocale, appState.customShiftDefs);
+  const localizedNurseName = getLocalizedNurseName(nurse.id, nurse.name, currentLocale);
+  const weekdayNames = WEEKDAY_SHORT_I18N[currentLocale];
+  titleEl.textContent = `${localizedNurseName} — ${appState.config.month}/${day} (${weekdayNames[dow]}${
+    holidayName && currentLocale === "ja" ? `\u30FB祝日:${holidayName}` : ""
   })`;
 
   bodyEl.replaceChildren();
@@ -2829,7 +2886,7 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
       nurse.nightOk ? "夜勤可" : "日勤専従"
     })`,
     `前月末\u306E\u30B7\u30D5\u30C8: ${nurse.prevMonthShifts
-      .map((s) => getShiftMeta(s, appState.customShiftDefs).shortLabel)
+      .map((s) => getLocalizedShiftMeta(s, currentLocale, appState.customShiftDefs).shortLabel)
       .join(" → ")} (前月末${getPrevMonthTailWorkStreak(
       nurse.prevMonthShifts,
       appState.customShiftDefs
@@ -2841,7 +2898,7 @@ function openShiftCellDialog(nurse: NurseProfile, day: number): void {
     (p) => p.nurseId === nurse.id && p.day === day
   );
   if (pref) {
-    const prefMeta = getShiftMeta(pref.shift, appState.customShiftDefs);
+    const prefMeta = getLocalizedShiftMeta(pref.shift, currentLocale, appState.customShiftDefs);
     infoLines.push(
       `本人\u306E希望: ${prefMeta.label} (${
         pref.isHard ? "確定希望" : "希望"
@@ -3459,6 +3516,16 @@ function handleClearBlank(): void {
 
 // ==================== INITIALIZATION & EVENT LISTENERS ====================
 function setupEventListeners(): void {
+  // Language switcher buttons
+  document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const l = btn.dataset.langBtn as Locale | undefined;
+      if (l === "en" || l === "ja" || l === "zh") {
+        applyLocale(l);
+      }
+    });
+  });
+
   // Theme toggle
   const themeBtn = $("ai-shift-theme-btn");
   const updateThemeIcon = () => {
@@ -4247,6 +4314,16 @@ function setupEventListeners(): void {
 async function bootstrap(): Promise<void> {
   setupEventListeners();
   syncConfigInputsFromState();
+
+  updateLanguageButtonsUI(currentLocale);
+  const cat = getShiftCatalog(currentLocale);
+  if (cat.ui) {
+    document.title = cat.ui.title;
+    const headerEl = document.querySelector(".demo-header-title");
+    if (headerEl) headerEl.textContent = cat.ui.headerTitle;
+    const tutBtn = document.getElementById("btn-toggle-tutorial");
+    if (tutBtn) tutBtn.textContent = cat.ui.btnTutorial;
+  }
 
   switchTab("schedule");
 
