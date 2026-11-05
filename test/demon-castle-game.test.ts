@@ -490,6 +490,9 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     expect(resolveEffectiveStyle(css, ".grimoire-pages-grid", "grid-template-columns", 1200)).toBe("repeat(2, minmax(0, 1fr))");
     expect(resolveEffectiveStyle(css, ".battle-cutin-versus", "grid-template-columns", 1200)).toBe("1fr auto 1fr");
     expect(resolveEffectiveStyle(css, ".op-climax-btn", "min-width", 1200)).toBe("280px");
+    expect(resolveEffectiveStyle(css, ".op-climax-overlay", "z-index", 1200)).toBe("20");
+    expect(resolveEffectiveStyle(css, ".op-letterbox-bottom", "pointer-events", 1200)).toBe("none");
+    expect(resolveEffectiveStyle(css, ".op-letterbox-bottom button", "pointer-events", 1200)).toBe("auto");
     expect(resolveEffectiveStyle(css, ".battle-live-stage", "min-height", 1200)).toBe("clamp(390px, 60vh, 560px)");
     expect(resolveEffectiveStyle(css, ".shift-matrix thead th.col-monster", "width", 1200)).toBe("240px");
 
