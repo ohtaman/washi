@@ -119,7 +119,7 @@ export interface SolveModelData extends CheckModelData {
 
 カスタムソルバーは対応機能を `capabilities` で宣言します。`Model` は `solve()` または `check()` をディスパッチする前に以下の条件を検証します：
 - 目的関数に2次項（`QuadExpr`）が含まれる場合：`supportsQP === false` でないか
-- モデルに論理制約（`m.logicalConstraints`）が含まれる場合：`supportsSMT !== true` でないか
+- モデルに論理制約（`m.logicalConstraints`）が含まれ、ソルバーが SMT 非対応（`supportsSMT !== true`）の場合：`linearizeModelForMip` を通じて 0-1 MIP バイナリ変数と線形制約へ自動線形化されます。
 - いずれかの変数に初期値ヒント（`initialValue`）が設定されている場合：`supportsWarmStart !== true` でないか
 
 ```typescript
