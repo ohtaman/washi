@@ -1,5 +1,6 @@
 import {
   COLOR_PALETTE,
+  computeTitanCellSize,
   generateStagePuzzle,
   getStageSpec,
   hasFaultLines,
@@ -70,7 +71,7 @@ export function t(key: string, params?: Record<string, string | number>): string
   return val.replace(/\{(\w+)\}/g, (_, k) => (params[k] !== undefined ? String(params[k]) : `{${k}}`));
 }
 
-// Sound Synthesizer (Web Audio)
+// Sound Synthesizer (Web Audio) & Haptics
 let audioCtx: AudioContext | null = null;
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
@@ -81,6 +82,16 @@ function getAudioContext(): AudioContext {
     audioCtx.resume();
   }
   return audioCtx;
+}
+
+function vibrate(pattern: number | number[]) {
+  try {
+    if (typeof window !== "undefined" && window.navigator?.vibrate) {
+      window.navigator.vibrate(pattern);
+    }
+  } catch {
+    // Ignore vibration failure
+  }
 }
 
 function playTone(freq: number, type: OscillatorType, duration: number, gainVal = 0.08) {
@@ -101,12 +112,28 @@ function playTone(freq: number, type: OscillatorType, duration: number, gainVal 
   }
 }
 
-function sndSelect() { playTone(600, "sine", 0.04, 0.06); }
-function sndRotate() { playTone(720, "triangle", 0.05, 0.08); }
-function sndSnap() { playTone(320, "square", 0.06, 0.1); }
-function sndRemove() { playTone(400, "sine", 0.04, 0.06); }
-function sndError() { playTone(150, "sawtooth", 0.12, 0.15); }
+function sndSelect() {
+  vibrate(10);
+  playTone(600, "sine", 0.04, 0.06);
+}
+function sndRotate() {
+  vibrate(15);
+  playTone(720, "triangle", 0.05, 0.08);
+}
+function sndSnap() {
+  vibrate(25);
+  playTone(320, "square", 0.06, 0.1);
+}
+function sndRemove() {
+  vibrate(15);
+  playTone(400, "sine", 0.04, 0.06);
+}
+function sndError() {
+  vibrate([30, 40, 30]);
+  playTone(150, "sawtooth", 0.12, 0.15);
+}
 function sndWin() {
+  vibrate([40, 60, 40, 60, 80]);
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
     setTimeout(() => playTone(f, "triangle", 0.22, 0.1), i * 90);
   });
@@ -118,6 +145,7 @@ let currentPuzzle: PuzzleResult;
 let placedParts: Array<{ partId: string; col: number; row: number; w: number; h: number }> = [];
 let activePartId: string | null = null;
 let isRotated = false;
+let isCutting = false;
 
 function setDroneMsg(msg: string, isClear = false) {
   const el = document.getElementById("drone-msg");
@@ -139,11 +167,9 @@ function setDroneMsg(msg: string, isClear = false) {
 function updateCellSize() {
   const viewport = document.getElementById("board-viewport");
   if (!viewport || !currentPuzzle) return;
-  const availW = viewport.clientWidth - 32;
-  const availH = window.innerHeight * 0.44;
-  const maxW = Math.floor(availW / currentPuzzle.cols);
-  const maxH = Math.floor(availH / currentPuzzle.rows);
-  const size = Math.max(28, Math.min(maxW, maxH, 54));
+  const availW = Math.max(120, viewport.clientWidth);
+  const availH = Math.max(120, window.innerHeight * 0.38);
+  const size = computeTitanCellSize(currentPuzzle.cols, currentPuzzle.rows, availW, availH, 24);
   document.documentElement.style.setProperty("--cell-size", `${size}px`);
 }
 
@@ -167,6 +193,65 @@ function canPlace(col: number, row: number, w: number, h: number): boolean {
   return true;
 }
 
+function triggerCutClear(isAuto = false) {
+  if (isCutting) return;
+  isCutting = true;
+
+  const totalArea = currentPuzzle.cols * currentPuzzle.rows;
+  const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
+
+  if (placedParts.length < currentPuzzle.parts.length) {
+    sndError();
+    setDroneMsg(t("droneUnplaced"));
+    isCutting = false;
+    return;
+  }
+
+  if (usedArea !== totalArea) {
+    sndError();
+    setDroneMsg(t("droneVoidRemaining", { n: totalArea - usedArea }));
+    isCutting = false;
+    return;
+  }
+
+  // Check if placement happens to be fault-free (bonus distinction)
+  const isFaultFree = !hasFaultLines(currentPuzzle.cols, currentPuzzle.rows, placedParts);
+
+  const scan = document.getElementById("laser-scan");
+  if (scan) {
+    scan.classList.remove("active");
+    void scan.offsetWidth;
+    scan.classList.add("active");
+  }
+
+  sndWin();
+
+  if (isFaultFree) {
+    setDroneMsg(t("droneClearPerfect"), true);
+  } else {
+    setDroneMsg(t("droneClear"), true);
+  }
+
+  const winTitle = document.getElementById("win-modal-title");
+  const winBody2 = document.getElementById("win-modal-body2");
+  const winDrone = document.getElementById("win-drone-comment");
+
+  if (isFaultFree) {
+    if (winTitle) winTitle.textContent = t("winTitlePerfect");
+    if (winBody2) winBody2.textContent = t("winBody2Perfect");
+    if (winDrone) winDrone.textContent = t("winDronePerfect");
+  } else {
+    if (winTitle) winTitle.textContent = t("winTitle");
+    if (winBody2) winBody2.textContent = t("winBody2");
+    if (winDrone) winDrone.textContent = t("winDrone");
+  }
+
+  setTimeout(() => {
+    document.getElementById("modal-win")?.classList.add("open");
+    isCutting = false;
+  }, 650);
+}
+
 function placeActivePart(col: number, row: number) {
   if (!activePartId) return;
   const part = getPartDef(activePartId);
@@ -182,13 +267,15 @@ function placeActivePart(col: number, row: number) {
 
     const totalArea = currentPuzzle.cols * currentPuzzle.rows;
     const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
-    if (usedArea === totalArea) {
-      setDroneMsg(t("droneAllPlaced"), true);
+
+    render();
+
+    // Instant Win: Trigger automatic laser cut & clear as soon as board is 100% packed!
+    if (placedParts.length === currentPuzzle.parts.length && usedArea === totalArea) {
+      triggerCutClear(true);
     } else {
       setDroneMsg(t("droneKeepGoing", { n: totalArea - usedArea }));
     }
-
-    render();
   } else {
     sndError();
     setDroneMsg(t("droneOverlap"));
@@ -232,6 +319,7 @@ function loadStage(stageNum: number) {
   placedParts = [];
   activePartId = null;
   isRotated = false;
+  isCutting = false;
 
   updateCellSize();
 
@@ -264,7 +352,7 @@ function render() {
       const isActive = activePartId === part.id;
 
       const card = document.createElement("div");
-      card.className = `part-card ${isActive ? "active" : ""} ${placed ? "placed" : ""}`;
+      card.className = `item-card part-card ${isActive ? "active selected" : ""} ${placed ? "placed" : ""}`;
       card.onclick = () => {
         sndSelect();
         if (placed) {
@@ -282,23 +370,23 @@ function render() {
       const curH = isActive && isRotated ? part.w : part.h;
 
       const preview = document.createElement("div");
-      preview.className = "part-preview-grid";
+      preview.className = "item-mini-grid part-preview-grid";
       preview.style.gridTemplateColumns = `repeat(${curW}, 1fr)`;
       preview.style.gridTemplateRows = `repeat(${curH}, 1fr)`;
       for (let r = 0; r < curH; r++) {
         for (let c = 0; c < curW; c++) {
           const mini = document.createElement("div");
-          mini.className = "part-mini-cell";
+          mini.className = "mini-cell part-mini-cell";
           mini.style.background = part.color;
           preview.appendChild(mini);
         }
       }
 
       const meta = document.createElement("div");
-      meta.className = "part-meta";
+      meta.className = "item-details part-meta";
       meta.innerHTML = `
-        <span class="part-name">${part.name}${isActive && isRotated ? t("rotatedSuffix") : ""}</span>
-        <span class="part-dim">${curW} × ${curH} (${curW * curH} sq)</span>
+        <span class="item-code part-name">${part.name}${isActive && isRotated ? t("rotatedSuffix") : ""}</span>
+        <span class="item-name part-dim">${curW} × ${curH} (${curW * curH} sq)</span>
       `;
 
       card.appendChild(preview);
@@ -348,37 +436,40 @@ function render() {
       metaIndicator.textContent = `PLATE: ${currentPuzzle.cols} × ${currentPuzzle.rows}`;
     }
 
+    const highlightTargetCells = (c: number, r: number, clear = false) => {
+      document.querySelectorAll(".grid-cell, .sheet-cell").forEach((el) => {
+        el.classList.remove("hover-valid", "hover-invalid", "preview-valid", "preview-invalid");
+      });
+      if (clear || !activePartId) return;
+
+      const part = getPartDef(activePartId);
+      if (!part) return;
+      const curW = isRotated ? part.h : part.w;
+      const curH = isRotated ? part.w : part.h;
+      const ok = canPlace(c, r, curW, curH);
+
+      for (let dr = 0; dr < curH; dr++) {
+        for (let dc = 0; dc < curW; dc++) {
+          const tc = c + dc;
+          const tr = r + dr;
+          if (tc < currentPuzzle.cols && tr < currentPuzzle.rows) {
+            const target = document.querySelector(`.grid-cell[data-col="${tc}"][data-row="${tr}"]`);
+            if (target) {
+              target.classList.add(ok ? "hover-valid" : "hover-invalid");
+            }
+          }
+        }
+      }
+    };
+
     for (let r = 0; r < currentPuzzle.rows; r++) {
       for (let c = 0; c < currentPuzzle.cols; c++) {
         const cell = document.createElement("div");
-        cell.className = "grid-cell";
+        cell.className = "sheet-cell grid-cell";
         cell.dataset.col = String(c);
         cell.dataset.row = String(r);
 
-        cell.onmouseenter = () => {
-          if (!activePartId) return;
-          const part = getPartDef(activePartId);
-          if (!part) return;
-          const curW = isRotated ? part.h : part.w;
-          const curH = isRotated ? part.w : part.h;
-          const ok = canPlace(c, r, curW, curH);
-
-          document.querySelectorAll(".grid-cell").forEach((el) => {
-            el.classList.remove("hover-valid", "hover-invalid");
-          });
-
-          for (let dr = 0; dr < curH; dr++) {
-            for (let dc = 0; dc < curW; dc++) {
-              const tc = c + dc;
-              const tr = r + dr;
-              if (tc < currentPuzzle.cols && tr < currentPuzzle.rows) {
-                const target = document.querySelector(`.grid-cell[data-col="${tc}"][data-row="${tr}"]`);
-                if (target) target.classList.add(ok ? "hover-valid" : "hover-invalid");
-              }
-            }
-          }
-        };
-
+        cell.onmouseenter = () => highlightTargetCells(c, r);
         cell.onclick = () => {
           if (activePartId) {
             placeActivePart(c, r);
@@ -389,11 +480,7 @@ function render() {
       }
     }
 
-    plate.onmouseleave = () => {
-      document.querySelectorAll(".grid-cell").forEach((el) => {
-        el.classList.remove("hover-valid", "hover-invalid");
-      });
-    };
+    plate.onmouseleave = () => highlightTargetCells(0, 0, true);
 
     placedParts.forEach((placed) => {
       const part = getPartDef(placed.partId);
@@ -606,56 +693,50 @@ function init() {
     };
   }
 
-  // Solver button
+  // Solver / Hint button (Step-by-step hint or full solve)
   const btnSolve = document.getElementById("btn-solve");
   if (btnSolve) {
     btnSolve.onclick = () => {
-      placedParts = currentPuzzle.solution.slice();
-      activePartId = null;
-      isRotated = false;
-      sndWin();
-      setDroneMsg(t("droneSolve"), true);
-      render();
+      // Find parts from solution that are not yet placed
+      const unplacedSolBlocks = currentPuzzle.solution.filter((sb) => !isPartPlaced(sb.partId));
+
+      if (unplacedSolBlocks.length > 0) {
+        // Place one step hint
+        const nextHint = unplacedSolBlocks[0];
+        // Remove any conflicting placed blocks at target cells (rare, but ensure clean placement)
+        placedParts.push({
+          partId: nextHint.partId,
+          col: nextHint.col,
+          row: nextHint.row,
+          w: nextHint.w,
+          h: nextHint.h,
+        });
+        activePartId = null;
+        isRotated = false;
+        sndSnap();
+        setDroneMsg(t("droneHint"));
+        render();
+
+        const totalArea = currentPuzzle.cols * currentPuzzle.rows;
+        const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
+        if (placedParts.length === currentPuzzle.parts.length && usedArea === totalArea) {
+          triggerCutClear(true);
+        }
+      } else {
+        // All placed already, re-apply full solution
+        placedParts = currentPuzzle.solution.slice();
+        activePartId = null;
+        isRotated = false;
+        render();
+        triggerCutClear(true);
+      }
     };
   }
 
   // Cut Execute button
   const btnExecute = document.getElementById("btn-execute");
   if (btnExecute) {
-    btnExecute.onclick = () => {
-      const totalArea = currentPuzzle.cols * currentPuzzle.rows;
-      const usedArea = placedParts.reduce((sum, p) => sum + p.w * p.h, 0);
-
-      if (placedParts.length < currentPuzzle.parts.length) {
-        sndError();
-        setDroneMsg(t("droneUnplaced"));
-        return;
-      }
-
-      if (usedArea !== totalArea) {
-        sndError();
-        setDroneMsg(t("droneVoidRemaining", { n: totalArea - usedArea }));
-        return;
-      }
-
-      if (hasFaultLines(currentPuzzle.cols, currentPuzzle.rows, placedParts)) {
-        sndError();
-        setDroneMsg(t("droneFaultLine"));
-        return;
-      }
-
-      const scan = document.getElementById("laser-scan");
-      if (scan) {
-        scan.classList.remove("active");
-        void scan.offsetWidth;
-        scan.classList.add("active");
-      }
-
-      sndWin();
-      setTimeout(() => {
-        document.getElementById("modal-win")?.classList.add("open");
-      }, 600);
-    };
+    btnExecute.onclick = () => triggerCutClear(false);
   }
 
   // Modal next button
