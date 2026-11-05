@@ -1808,7 +1808,7 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
     };
 
     try {
-      applySheepStaticTranslations("ja");
+      applySheepStaticTranslations("en");
       await loadStageByNumber(2);
 
       const boardGridEl = byId.get("board-grid");
@@ -1837,11 +1837,11 @@ describe("Mofumofu Sheep Pasture Enclosure Puzzle (HiGHS MILP)", () => {
 
       // 1. Clear banner turns into model-solution mode
       expect(clearBannerEl?.classList.contains("banner-model-solution")).toBe(true);
-      expect(clearHeadlineEl?.textContent).toBe("✨ お手本の配置（目標スコア達成）");
+      expect(clearHeadlineEl?.textContent).toBe("✨ Model Solution (Target Score Reached)");
       // Diff summary reflects 1 added (1, 1), 1 unnecessary (1, 3), 0 matching
-      expect(clearSubtextEl?.textContent).toContain("＋追加 1");
-      expect(clearSubtextEl?.textContent).toContain("✕不要 1");
-      expect(clearSubtextEl?.textContent).toContain("✓一致 0");
+      expect(clearSubtextEl?.textContent).toContain("+1 added");
+      expect(clearSubtextEl?.textContent).toContain("✕1 unnecessary");
+      expect(clearSubtextEl?.textContent).toContain("✓0 matching");
 
       // 2. Revert button becomes visible
       expect(btnRevertSolution?.hidden).toBe(false);
