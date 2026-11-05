@@ -42,16 +42,23 @@ if (result.status === "Unsat") {
 > - **请使用 `m.check({ solver: "z3" })` 提取 Unsat Core**：`m.solve()` 执行的是目标函数优化（`Z3.Optimize`），而 `m.check()` 执行的是带跟踪的可满足性检查（`Z3.Solver.assertAndTrack`），并填充 `result.conflicts` / `m.conflicts`（以及别名 `m.unsatCore`）。
 > - **请为约束命名**：变量自带的上下界（`lb`、`ub`）作为背景定义域声明处理。如果希望将某个边界或业务规则包含在返回的 `unsatCore` 列表中，请通过 `m.constraint(expr`...`, "rule_name")` 将其注册为命名约束。
 
-### 实战工作流：使用 HiGHS 优化，遇到不可行时交由 Z3 诊断
+### 实战工作流：使用 HiGHS 或 Z3 进行不可行约束诊断
 
-由于 WaSHI 模型与具体求解器解耦，您可以默认先用高速的 **HiGHS** 求解优化模型（`m.solve()`），仅当 HiGHS 返回 `"Infeasible"` 时自动回退到 **Z3** 的 `m.check()` 定位冲突规则：
+由于 WaSHI 模型与具体求解器解耦，当模型不可行（`"Infeasible"`）时，您可选用两种方式排查原因：
+1. **内置 HiGHS / GLPK**：`await m.check()` 采用单次求解弹性松弛模型（$\min \sum s_i$）定位需要松弛的冲突约束（`diag.conflicts`），无需安装任何额外依赖。
+2. **Z3 SMT 求解器**：`await m.check({ solver: "z3" })` 借助 SMT 约束跟踪机制提取精确的不可满足核（`diag.unsatCore` / `diag.conflicts`）。
 
 ```typescript
 const status = await m.solve(); // 使用默认的 HiGHS 快速求解 MIP
 
 if (status === "Infeasible") {
-  const diag = await m.check({ solver: "z3" });
-  console.error("Model is infeasible due to conflicting rules:", diag.conflicts);
+  // 方式 1: 使用内置 HiGHS 单次求解弹性松弛直接诊断
+  const diag = await m.check();
+  console.error("冲突的约束规则:", diag.conflicts);
+
+  // 方式 2: 使用 Z3 进行精确 SMT Unsat Core 诊断（需 import "@ohtaman/washi/solvers/z3"）
+  // const z3Diag = await m.check({ solver: "z3" });
+  // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 

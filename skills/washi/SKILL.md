@@ -16,9 +16,9 @@ Select the solver engine and execution method that match the problem class:
 | Problem Class | Recommended Solver | Setup & Import | Execution Method |
 | :--- | :--- | :--- | :--- |
 | **LP / MIP / Convex QP** (including `m.indicator()` Big-M and `initialValue` warm starts) | **HiGHS** (default) | Built-in (`import { Model } from "@ohtaman/washi"`) | `await m.solve()` |
-| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **Z3** plugin | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` | `await m.check({ solver: "z3" })` or `await m.solve({ solver: "z3" })` |
-| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **Z3** plugin | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` | `await m.check({ solver: "z3" })` |
-| **LP / MIP with GLPK** (GPL-3.0; no QP, SMT, or `initialValue`) | **GLPK** plugin | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` | `await m.solve({ solver: "glpk" })` |
+| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP) or **Z3** (native SMT) | Built-in for HiGHS; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
+| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (elastic slack `conflicts`) or **Z3** (`unsatCore`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.check()` |
+| **LP / MIP with GLPK** (GPL-3.0; no QP or `initialValue`) | **GLPK** plugin | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` | `await m.solve({ solver: "glpk" })` |
 
 - **Browser runtime notes**:
   - HiGHS and GLPK load local `.wasm` and Worker assets relative to the bundle (never falling back to an external CDN).
@@ -30,7 +30,7 @@ Select the solver engine and execution method that match the problem class:
 
 1. **Define decision variables on `Model`**:
    - Numeric (`Var`): `m.continuous(nameOrDims, { lb, ub, initialValue })`, `m.integer(...)`, `m.binary(...)`
-   - Propositional boolean (`BoolVar`, for Z3): `m.bool(nameOrDims)`
+   - Propositional boolean (`BoolVar`): `m.bool(nameOrDims)`
    - Indexed containers: pass a count (`number` -> `Var[]` / `Var[][]`) or key array (`readonly string[]` -> `Record<K, Var>` / `Record<R, Record<C, Var>>`).
    - Provide finite `lb` and `ub` bounds whenever known—especially on variables used in `m.indicator()` so WaSHI can automatically derive a tight Big-M when `M` is omitted.
 2. **Build expressions (`expr`, `sum`, `dot`)**:
@@ -38,11 +38,11 @@ Select the solver engine and execution method that match the problem class:
    - Quadratic expression (`QuadExpr`, **objectives only**): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``
    - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${y} <= 40` `` (supports `<=`, `>=`, `==`, `=`)
    - Vector aggregations: `sum(iterable, mapper?)` and `dot(a, b)`
-   - Propositional logic (for Z3): `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` (or fluent `.and()`, `.or()`, `.not()`, `.implies()`, `.xor()`)
+   - Propositional logic: `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` (or fluent `.and()`, `.or()`, `.not()`, `.implies()`, `.xor()`). Automatically linearized into 0-1 MIP binary variables and linear constraints on HiGHS/GLPK, or solved natively on Z3.
 3. **Register objective and named constraints**:
    - Constructing an `expr` or `.le()` / `.ge()` / `.eq()` object does **not** attach it to the model.
    - Register the objective with `m.objective(maximize(e))` or `m.objective(minimize(e))`.
-   - Register every constraint with a descriptive name: `m.constraint(c, "resource_limit")` or `m.indicator(binVar, c, { activeValue: 1, name: "cap_when_open" })`. Descriptive names are essential for LP inspection and Z3 `unsatCore` conflict diagnosis.
+   - Register every constraint with a descriptive name: `m.constraint(c, "resource_limit")` or `m.indicator(binVar, c, { activeValue: 1, name: "cap_when_open" })`. Descriptive names are essential for LP inspection and conflict diagnosis (`conflicts` / `unsatCore`).
 
 ---
 
@@ -65,8 +65,8 @@ Never report a model solution as final without executing the verification step:
    - If `report.valid === false`, inspect `report.violations`, `report.missingVariables`, `report.uncheckedConstraints`, and `report.maxViolation`.
    - Note: `m.validateSolution()` independently checks variable finiteness, variable bounds (`lb`/`ub`), integrality (`Integer`, `Binary`, `BoolVar`), linear constraint residuals, and logical constraints. It does **not** recompute `m.objectiveValue` or verify natural-language problem coverage.
 2. **When a model is infeasible (`"Infeasible"` or `"Unsat"`)**:
-   - Run `const res = await m.check({ solver: "z3" })`.
-   - When `res.status === "Unsat"`, inspect `res.conflicts` (alias for `res.unsatCore`, also stored on `m.conflicts` / `m.unsatCore`).
+   - Run `const res = await m.check()` (diagnoses with built-in HiGHS via single-solve elastic slack relaxation) or `const res = await m.check({ solver: "z3" })` (for exact SMT unsat core).
+   - When `res.status === "Unsat"`, inspect `res.conflicts` (also stored on `m.conflicts`). On HiGHS, `conflicts` reports the subset of constraints requiring relaxation to restore feasibility (with `unsatCore: undefined` for semantic rigor). On Z3, both `unsatCore` and `conflicts` report the contradictory constraint subset.
    - Because Z3 asserts variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking named constraints, `res.conflicts` returns a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (not guaranteed minimal).
 
 ---

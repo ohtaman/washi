@@ -42,16 +42,23 @@ if (result.status === "Unsat") {
 > - **Unsat Core 抽出には `m.check({ solver: "z3" })` を使用します**: `m.solve()` は目的関数の最適化を実行するため、追跡付きの競合抽出（`conflicts` / `unsatCore`）は `m.check()` で行います。
 > - **制約には名前を付けてください**: 変数の上下限（`lb`, `ub`）は前提ドメインとして扱われます。診断結果（`unsatCore`）にルール名を含めたい場合は、`m.constraint(expr`...`, "rule_name")` として名前付き制約を登録してください。
 
-### 実践パターン: HiGHS で最適化し、Infeasible 時に Z3 で原因特定
+### 実践パターン: HiGHS または Z3 による実行不能原因の特定
 
-WaSHI のモデルはソルバー非依存のため、普段は高速な **HiGHS** で最適化（`m.solve()`）を行い、`"Infeasible"` になったときだけ同一モデルを **Z3** の `m.check()` に渡して原因を特定できます：
+WaSHI のモデルはソルバー非依存のため、実行不能（`"Infeasible"`）となった場合に 2 つの診断方法を選択できます：
+1. **標準の HiGHS / GLPK**: `await m.check()` が単一 solve の弾性スラック緩和（$\min \sum s_i$）を用いて緩和が必要な制約（`diag.conflicts`）を特定します（追加プラグイン不要）。
+2. **Z3 SMT ソルバー**: `await m.check({ solver: "z3" })` が SMT 制約追跡を用いて厳密な矛盾制約核（`diag.unsatCore` / `diag.conflicts`）を抽出します。
 
 ```typescript
-const status = await m.solve(); // HiGHS で高速に MIP 求解
+const status = await m.solve(); // デフォルトの HiGHS で高速に MIP 求解
 
 if (status === "Infeasible") {
-  const diag = await m.check({ solver: "z3" });
+  // 方法 1: 標準 HiGHS による単一 solve 弾性診断
+  const diag = await m.check();
   console.error("以下の制約が衝突しています:", diag.conflicts);
+
+  // 方法 2: Z3 による厳密な SMT Unsat Core 診断（要 import "@ohtaman/washi/solvers/z3"）
+  // const z3Diag = await m.check({ solver: "z3" });
+  // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 

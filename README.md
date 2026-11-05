@@ -52,7 +52,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), unified tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`). Because JavaScript lacks operator overloading, `` expr`...` `` parses infix math (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) while binding interpolated `${...}` values directly as typed `Var` or expression references—similar to parameterized SQL templates—preserving static type checking, IDE refactoring, and indexed variable lookups (`${flow[i][j]}`).
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build—removing backend provisioning as a bottleneck when shipping interactive tools or combining mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) on the client. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
-4. **Named constraints and SMT results**: With Z3, explicitly check satisfiability and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities. A returned core is a conflicting subset, not necessarily the smallest one.
+4. **Named constraints and conflict diagnosis**: Explicitly check satisfiability (`m.check()`) and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities using either built-in HiGHS (elastic relaxation) or Z3 (SMT unsatisfiable core). A returned subset pinpoints contradictory constraints (minimality is not guaranteed).
 
 Model construction and translation are WaSHI's responsibility. Supported problem classes, numerical behavior, and solve time depend on the selected solver, its settings, and the problem. Modeling overhead and solver execution time should be measured separately; a result for one model is not a general performance guarantee.
 
@@ -230,13 +230,14 @@ console.log(`Siren active? ${m.values.get("siren")}`); // true
 
 ### 4. Conflict Diagnosis (`conflicts` / `unsatCore`)
 
-When business rules or constraints contradict each other, extract a **conflicting constraint subset** (unsatisfiable core; minimality is not guaranteed) for troubleshooting (requires Z3):
+When business rules or constraints contradict each other, extract a **conflicting constraint subset** for troubleshooting:
+- **Built-in HiGHS & GLPK**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to diagnose infeasibility and isolate `res.conflicts` without requiring external solver installations.
+- **Z3**: `await m.check({ solver: "z3" })` provides exact SMT unsatisfiable-core extraction (`res.unsatCore` and `res.conflicts`).
 
 ```ts
 import { Model, expr } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+const m = new Model("ConflictDiagnosis");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
 const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
@@ -256,7 +257,8 @@ m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 // Rule 5: Innocent bystander rule
 m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
-const res = await m.check({ solver: "z3" });
+// Diagnose directly with default HiGHS (or pass { solver: "z3" } with Z3 imported)
+const res = await m.check();
 
 console.log(`Status: ${res.status}`); // "Unsat"
 console.log("Conflicting constraints:", res.conflicts);
