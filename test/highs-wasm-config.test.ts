@@ -106,6 +106,7 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
           config: brokenConfig,
           repoRoot,
           silent: true,
+          allowCompile: false,
         })
       ).rejects.toThrowError(/HiGHS WebAssembly assets.*are missing or out of date/);
     } finally {

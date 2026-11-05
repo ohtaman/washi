@@ -151,23 +151,31 @@ export async function ensureHighsAssets(options = {}) {
   }
 
   // Step 2: Attempt compiling from source if Emscripten is available
-  if (hasEmscripten()) {
+  if (options.allowCompile !== false && hasEmscripten()) {
     console.log(`[WaSHI] Emscripten detected. Compiling HiGHS ${config.version} from source...`);
     const buildScript = path.resolve(options.repoRoot || repoRoot, "scripts/build-highs-wasm.sh");
-    execSync(`bash "${buildScript}"`, {
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        HIGHS_VERSION: config.version,
-        HIGHS_REPO: config.repo,
-      },
-    });
+    try {
+      execSync(`bash "${buildScript}"`, {
+        stdio: "inherit",
+        env: {
+          ...process.env,
+          HIGHS_VERSION: config.version,
+          HIGHS_REPO: config.repo,
+        },
+      });
 
-    const postCheck = checkAssetsMatch(config, options.repoRoot || repoRoot);
-    if (!postCheck.valid && options.updateHashesOnBuild) {
-      updateHashes(options.configPath || configPath);
+      const postCheck = checkAssetsMatch(config, options.repoRoot || repoRoot);
+      if (postCheck.valid) {
+        return { status: "compiled", config };
+      }
+      if (options.updateHashesOnBuild) {
+        updateHashes(options.configPath || configPath);
+        return { status: "compiled", config };
+      }
+      console.warn(`[WaSHI] Compilation completed but assets still do not match config: ${postCheck.reason}.`);
+    } catch (err) {
+      console.warn(`[WaSHI] Source compilation failed: ${err.message}.`);
     }
-    return { status: "compiled", config };
   }
 
   // Step 3: Failure
