@@ -17,7 +17,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -109,20 +108,11 @@ async function downloadAsset(url, targetPath, expectedSha256) {
   console.log(`[WaSHI] Successfully verified and saved ${path.basename(targetPath)}`);
 }
 
-function hasEmscripten() {
-  try {
-    execSync("emcc --version", { stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function ensureHighsAssets(options = {}) {
   const config = options.config || loadConfig(options.configPath);
   const check = checkAssetsMatch(config, options.repoRoot || repoRoot);
 
-  if (check.valid && !options.forceBuild) {
+  if (check.valid) {
     if (!options.silent) {
       console.log(`[WaSHI] HiGHS WebAssembly assets are up to date (${config.version}).`);
     }
@@ -133,10 +123,10 @@ export async function ensureHighsAssets(options = {}) {
     return { status: "invalid", check };
   }
 
-  console.log(`[WaSHI] HiGHS asset check: ${check.reason || "force_build"}. Target version: ${config.version}`);
+  console.log(`[WaSHI] HiGHS asset check: ${check.reason}. Target version: ${config.version}`);
 
-  // Step 1: Attempt download from release URLs if available
-  if (!options.forceBuild && config.wasm?.downloadUrl && config.runtime?.downloadUrl) {
+  // Download verified assets from release URLs
+  if (config.wasm?.downloadUrl && config.runtime?.downloadUrl) {
     try {
       const wasmTarget = path.resolve(options.repoRoot || repoRoot, config.wasm.path);
       const runtimeTarget = path.resolve(options.repoRoot || repoRoot, config.runtime.path);
@@ -146,35 +136,16 @@ export async function ensureHighsAssets(options = {}) {
 
       return { status: "downloaded", config };
     } catch (err) {
-      console.warn(`[WaSHI] Download from release URL failed: ${err.message}.`);
+      throw new Error(
+        `[WaSHI] Failed to download HiGHS WebAssembly assets (${config.version}): ${err.message}.\n` +
+        `To compile from source using Emscripten SDK instead, run "npm run build:highs-wasm".`
+      );
     }
   }
 
-  // Step 2: Attempt compiling from source if Emscripten is available
-  if (hasEmscripten()) {
-    console.log(`[WaSHI] Emscripten detected. Compiling HiGHS ${config.version} from source...`);
-    const buildScript = path.resolve(options.repoRoot || repoRoot, "scripts/build-highs-wasm.sh");
-    execSync(`bash "${buildScript}"`, {
-      stdio: "inherit",
-      env: {
-        ...process.env,
-        HIGHS_VERSION: config.version,
-        HIGHS_REPO: config.repo,
-      },
-    });
-
-    const postCheck = checkAssetsMatch(config, options.repoRoot || repoRoot);
-    if (!postCheck.valid && options.updateHashesOnBuild) {
-      updateHashes(options.configPath || configPath);
-    }
-    return { status: "compiled", config };
-  }
-
-  // Step 3: Failure
   throw new Error(
     `[WaSHI] HiGHS WebAssembly assets (${config.wasm.path}, ${config.runtime.path}) are missing or out of date with ${config.version}.\n` +
-    `Neither prebuilt asset download succeeded nor is Emscripten (emcc) installed on PATH.\n` +
-    `Please install Emscripten SDK and run "npm run build:highs-wasm", or restore the verified prebuilt assets.`
+    `No download URLs are configured. To compile from source, run "npm run build:highs-wasm".`
   );
 }
 
@@ -197,8 +168,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     process.exit(0);
   }
 
-  const forceBuild = args.includes("--force-build");
-  ensureHighsAssets({ forceBuild })
+  ensureHighsAssets()
     .then(() => process.exit(0))
     .catch((err) => {
       console.error(err.message);

@@ -80,7 +80,7 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
     expect(result.status).toBe("cached");
   });
 
-  it("fails with actionable message when assets are invalid and download fails without emcc", async () => {
+  it("fails with actionable message when assets are invalid and download fails", async () => {
     const brokenConfig = {
       version: "v9.9.9",
       repo: "https://github.com/ERGO-Code/HiGHS.git",
@@ -107,7 +107,7 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
           repoRoot,
           silent: true,
         })
-      ).rejects.toThrowError(/HiGHS WebAssembly assets.*are missing or out of date/);
+      ).rejects.toThrowError(/Failed to download HiGHS WebAssembly assets/);
     } finally {
       fetchSpy.mockRestore();
     }
