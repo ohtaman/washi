@@ -79,6 +79,23 @@ export function linearizeModelForMip(
     return auxVar;
   }
 
+  function linearizeBinaryXorEquivalence(outBin: Var, aBin: Var, bBin: Var, origName: string): void {
+    // outBin <=> (a ^ b)
+    // outBin <= a + b
+    // outBin >= a - b
+    // outBin >= b - a
+    // outBin <= 2 - a - b
+    const c1 = new Constraint(linExpr([[outBin, 1], [aBin, -1], [bBin, -1]], 0), "<=", 0, `${origName}_xor_1`);
+    const c2 = new Constraint(linExpr([[outBin, 1], [aBin, -1], [bBin, 1]], 0), ">=", 0, `${origName}_xor_2`);
+    const c3 = new Constraint(linExpr([[outBin, 1], [bBin, -1], [aBin, 1]], 0), ">=", 0, `${origName}_xor_3`);
+    const c4 = new Constraint(linExpr([[outBin, 1], [aBin, 1], [bBin, 1]], 0), "<=", 2, `${origName}_xor_4`);
+    constraints.push(c1, c2, c3, c4);
+    constraintToOriginalName.set(c1, origName);
+    constraintToOriginalName.set(c2, origName);
+    constraintToOriginalName.set(c3, origName);
+    constraintToOriginalName.set(c4, origName);
+  }
+
   function linearizeElementEquivalence(binVar: Var, el: LogicElement, originalName: string): void {
     if (el instanceof BoolVar) {
       const targetBin = boolVarToBinary.get(el)!;
@@ -146,22 +163,28 @@ export function linearizeModelForMip(
       }
 
       if (el.op === "xor") {
-        const aBin = getBinVarForBoolElement(el.children[0], originalName);
-        const bBin = getBinVarForBoolElement(el.children[1], originalName);
-        // binVar <=> (a ^ b)
-        // binVar <= a + b
-        // binVar >= a - b
-        // binVar >= b - a
-        // binVar <= 2 - a - b
-        const c1 = new Constraint(linExpr([[binVar, 1], [aBin, -1], [bBin, -1]], 0), "<=", 0, `${originalName}_xor_1`);
-        const c2 = new Constraint(linExpr([[binVar, 1], [aBin, -1], [bBin, 1]], 0), ">=", 0, `${originalName}_xor_2`);
-        const c3 = new Constraint(linExpr([[binVar, 1], [bBin, -1], [aBin, 1]], 0), ">=", 0, `${originalName}_xor_3`);
-        const c4 = new Constraint(linExpr([[binVar, 1], [aBin, 1], [bBin, 1]], 0), "<=", 2, `${originalName}_xor_4`);
-        constraints.push(c1, c2, c3, c4);
-        constraintToOriginalName.set(c1, originalName);
-        constraintToOriginalName.set(c2, originalName);
-        constraintToOriginalName.set(c3, originalName);
-        constraintToOriginalName.set(c4, originalName);
+        if (el.children.length === 0) {
+          const c = new Constraint(linExpr([[binVar, 1]], 0), "==", 0, `${originalName}_xor_empty`);
+          constraints.push(c);
+          constraintToOriginalName.set(c, originalName);
+          return;
+        }
+        if (el.children.length === 1) {
+          const childBin = getBinVarForBoolElement(el.children[0], originalName);
+          const c = new Constraint(linExpr([[binVar, 1], [childBin, -1]], 0), "==", 0, `${originalName}_xor_single`);
+          constraints.push(c);
+          constraintToOriginalName.set(c, originalName);
+          return;
+        }
+        const childBins = el.children.map((c) => getBinVarForBoolElement(c, originalName));
+        let currentBin = childBins[0];
+        for (let i = 1; i < childBins.length - 1; i++) {
+          const nextAux = new Var({ name: getUniqueAuxName(`xor_fold_${i}`), type: "Binary", lb: 0, ub: 1 });
+          variables.push(nextAux);
+          linearizeBinaryXorEquivalence(nextAux, currentBin, childBins[i], `${originalName}_xor_fold_${i}`);
+          currentBin = nextAux;
+        }
+        linearizeBinaryXorEquivalence(binVar, currentBin, childBins[childBins.length - 1], originalName);
         return;
       }
     }
@@ -254,8 +277,21 @@ export function linearizeModelForMip(
         return;
       }
 
-      // B.4 XOR: xor(a, b)  <=>  a + b == 1
+      // B.4 XOR: parity fold
       if (el.op === "xor") {
+        if (el.children.length === 0) {
+          // xor() == false, but top-level asserts true -> Infeasible
+          const dummy = new Var({ name: getUniqueAuxName("unsat"), type: "Binary", lb: 0, ub: 0 });
+          variables.push(dummy);
+          const c = new Constraint(linExpr([[dummy, 1]], 0), ">=", 1, originalName);
+          constraints.push(c);
+          constraintToOriginalName.set(c, originalName);
+          return;
+        }
+        if (el.children.length === 1) {
+          linearizeTopLevelElement(el.children[0], originalName);
+          return;
+        }
         const childBins = el.children.map((c) => getBinVarForBoolElement(c, originalName));
         if (childBins.length === 2) {
           const c = new Constraint(linExpr([[childBins[0], 1], [childBins[1], 1]], 0), "==", 1, originalName);
@@ -263,9 +299,16 @@ export function linearizeModelForMip(
           constraintToOriginalName.set(c, originalName);
           return;
         }
-        // General XOR: exactly one is true (sum == 1)
-        const terms: [Var, number][] = childBins.map((cb) => [cb, 1]);
-        const c = new Constraint(linExpr(terms, 0), "==", 1, originalName);
+        // Variadic XOR parity fold: (a ^ b) ^ c ... == 1
+        let currentBin = childBins[0];
+        for (let i = 1; i < childBins.length - 1; i++) {
+          const nextAux = new Var({ name: getUniqueAuxName(`xor_fold_${i}`), type: "Binary", lb: 0, ub: 1 });
+          variables.push(nextAux);
+          linearizeBinaryXorEquivalence(nextAux, currentBin, childBins[i], `${originalName}_xor_fold_${i}`);
+          currentBin = nextAux;
+        }
+        const lastBin = childBins[childBins.length - 1];
+        const c = new Constraint(linExpr([[currentBin, 1], [lastBin, 1]], 0), "==", 1, originalName);
         constraints.push(c);
         constraintToOriginalName.set(c, originalName);
         return;

@@ -2222,7 +2222,17 @@ export class Model {
 
     // Primal feasibility threshold for elastic check: sum(slack) <= 1e-5
     const isSat = (rawStatus === "Optimal" || rawStatus === "Feasible" || hasPrimal) && objVal <= 1e-5;
-    const isUnsat = !isSat && (rawStatus === "Infeasible" || objVal > 1e-5);
+    const hasProvenPositiveLowerBound =
+      typeof result.objectiveBound === "number" &&
+      Number.isFinite(result.objectiveBound) &&
+      result.objectiveBound > 1e-5;
+    // Require mathematical proof before declaring Unsat:
+    // Either elastic model is Infeasible, or optimal slack sum > 1e-5, or dual lower bound > 1e-5
+    const isUnsat =
+      !isSat &&
+      (rawStatus === "Infeasible" ||
+        (rawStatus === "Optimal" && objVal > 1e-5) ||
+        hasProvenPositiveLowerBound);
     const checkStatus = isSat ? "Sat" : isUnsat ? "Unsat" : "Unknown";
 
     this.status = checkStatus;

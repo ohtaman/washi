@@ -119,4 +119,78 @@ describe("HiGHS & GLPK SMT / Logic Linearization & Elastic Conflicts Check", () 
     expect(flagB.value).toBe(true);
     expect(val.value).toBeGreaterThanOrEqual(5);
   });
+
+  it("preserves variadic parity XOR semantics on HiGHS (odd number of true operands)", async () => {
+    // 1. Three true operands: true ^ true ^ true == true (SAT)
+    const mOdd = new Model({ solver: "highs" });
+    const a = mOdd.bool("a");
+    const b = mOdd.bool("b");
+    const c = mOdd.bool("c");
+    mOdd.constraint(a);
+    mOdd.constraint(b);
+    mOdd.constraint(c);
+    mOdd.constraint(xor(a, b, c), "three_way_xor");
+    const resOdd = await mOdd.check();
+    expect(resOdd.status).toBe("Sat");
+    expect(a.value).toBe(true);
+    expect(b.value).toBe(true);
+    expect(c.value).toBe(true);
+
+    // 2. Two true operands: true ^ true ^ false == false (UNSAT)
+    const mEven = new Model({ solver: "highs" });
+    const x = mEven.bool("x");
+    const y = mEven.bool("y");
+    const z = mEven.bool("z");
+    mEven.constraint(x);
+    mEven.constraint(y);
+    mEven.constraint(z.not());
+    mEven.constraint(xor(x, y, z), "even_xor_unsat");
+    const resEven = await mEven.check();
+    expect(resEven.status).toBe("Unsat");
+    expect(resEven.conflicts).toBeDefined();
+  });
+
+  it("requires proof before returning Unsat from an elastic check (returns Unknown on inconclusive stops)", async () => {
+    const m = new Model("TestInconclusive");
+    const x = m.continuous("x", { lb: 0, ub: 10 });
+    m.constraint(x.ge(5), "min_x");
+
+    // Mock solver stopping due to TimeLimit with positive objective incumbent but no proven lower bound
+    const timeLimitIncumbentSolver = {
+      name: "MockTimeLimitSolver",
+      capabilities: { supportsMIP: true },
+      async solve() {
+        return {
+          status: "TimeLimit" as const,
+          terminationStatus: "TimeLimit" as const,
+          objectiveValue: 4.2, // Positive incumbent slack
+          // No objectiveBound: 0 is not excluded!
+          values: { x: 2 },
+        };
+      },
+    };
+
+    const resIncumbent = await m.check(timeLimitIncumbentSolver);
+    expect(resIncumbent.status).toBe("Unknown");
+    expect(resIncumbent.conflicts).toBeUndefined();
+
+    // Mock solver stopping with proven objectiveBound > 1e-5 (proves infeasibility!)
+    const timeLimitProvenBoundSolver = {
+      name: "MockProvenBoundSolver",
+      capabilities: { supportsMIP: true },
+      async solve() {
+        return {
+          status: "TimeLimit" as const,
+          terminationStatus: "TimeLimit" as const,
+          objectiveValue: 4.2,
+          objectiveBound: 1.5, // Dual bound proves min sum(slack) >= 1.5 > 1e-5!
+          values: { __slack_1: 4.2 },
+        };
+      },
+    };
+
+    const resProven = await m.check(timeLimitProvenBoundSolver);
+    expect(resProven.status).toBe("Unsat");
+    expect(resProven.conflicts).toContain("min_x");
+  });
 });
