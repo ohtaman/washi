@@ -103,6 +103,19 @@ export function getLocalizedNurseName(
   fallbackName: string,
   locale: Locale = resolveCurrentLocale()
 ): string {
+  // Only localize names that belong to the authored sample roster.
+  // Preserve user-provided custom names or CSV imported names.
+  const isSampleNurse =
+    enCatalog.nurses[nurseId as keyof typeof enCatalog.nurses]?.name === fallbackName ||
+    jaCatalog.nurses[nurseId as keyof typeof jaCatalog.nurses]?.name === fallbackName ||
+    zhCatalog.nurses[nurseId as keyof typeof zhCatalog.nurses]?.name === fallbackName ||
+    jaCatalog.nurses[nurseId as keyof typeof jaCatalog.nurses]?.kana === fallbackName ||
+    enCatalog.nurses[nurseId as keyof typeof enCatalog.nurses]?.kana === fallbackName;
+
+  if (!isSampleNurse) {
+    return fallbackName;
+  }
+
   const cat = getShiftCatalog(locale);
   const info = cat.nurses[nurseId as keyof typeof cat.nurses];
   return info?.name || fallbackName;

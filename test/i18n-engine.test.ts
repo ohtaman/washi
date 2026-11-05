@@ -122,4 +122,20 @@ describe("AC-3: Unified i18n Engine", () => {
     expect(getLocalizedShiftMeta("N", "zh").shortLabel).toBe("\u5927");
     expect(getLocalizedShiftMeta("O", "zh").shortLabel).toBe("\u4F11");
   });
+
+  it("preserves imported custom nurse names and only localizes authored sample names", async () => {
+    const { getLocalizedNurseName } = await import(
+      "../examples/web-demo/apps/ai-shift/i18n.js"
+    );
+
+    // Custom or imported names must not be overwritten
+    expect(getLocalizedNurseName("N01", "Alice Example", "en")).toBe("Alice Example");
+    expect(getLocalizedNurseName("N01", "Alice Example", "ja")).toBe("Alice Example");
+    expect(getLocalizedNurseName("N01", "Alice Example", "zh")).toBe("Alice Example");
+
+    // Authored sample roster names localize cleanly
+    expect(getLocalizedNurseName("N01", "Misaki Sato", "ja")).toBe("\u4F50\u85E4 \u7F8E\u54B2");
+    expect(getLocalizedNurseName("N01", "\u4F50\u85E4 \u7F8E\u54B2", "en")).toBe("Misaki Sato");
+    expect(getLocalizedNurseName("N02", "\u9234\u6728 \u967D\u83DC", "en")).toBe("Hina Suzuki");
+  });
 });
