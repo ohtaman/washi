@@ -1621,6 +1621,13 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       return el;
     };
 
+    const btnSolve = registerMock("btn-solve-washi");
+    registerMock("btn-check-current");
+    registerMock("btn-reset-clean");
+    registerMock("btn-tut-step1");
+    registerMock("btn-tut-step2");
+    registerMock("btn-tut-step3");
+    registerMock("btn-tut-step4");
     registerMock("kpi-status-badge");
     registerMock("kpi-summary-text");
     registerMock("kpi-solve-time");
@@ -1663,11 +1670,18 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       const emptyEl = elements.get("empty-timetable-state");
       expect(emptyEl.hidden).toBe(true);
 
+      // Solve button text indicates initial scheduling on unscheduled board
+      const btnSolveEl = elements.get("btn-solve-washi");
+      expect(btnSolveEl.textContent).toMatch(/自動編成|Auto-Schedule|自动编排/);
+
       // 3. Clicking solve button triggers optimization and generates timetable
       const outcome = await triggerSolve();
       expect(outcome?.status).toBe("Optimal");
       expect(getCurrentTimetable()).not.toBeNull();
       expect(getCurrentTimetable()?.sessions.length).toBeGreaterThan(0);
+
+      // 4. After solve, button text transitions to re-optimization
+      expect(btnSolveEl.textContent).toMatch(/再編成|Re-Optimize|重新优化/);
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;

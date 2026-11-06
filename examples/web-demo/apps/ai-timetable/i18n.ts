@@ -478,7 +478,7 @@ export function formatConstraintMetaI18n(
   return { label: meta.labelJa, suggestion: meta.relaxSuggestion };
 }
 
-export type TimetableUiStrings = Record<keyof typeof enCatalog.ui, string>;
+export type TimetableUiStrings = typeof enCatalog.ui;
 
 export const TIMETABLE_UI_I18N: Record<TimetableLang, TimetableUiStrings> = {
   en: enCatalog.ui,

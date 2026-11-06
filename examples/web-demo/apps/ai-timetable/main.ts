@@ -5,6 +5,7 @@ import {
   type AiTimetableTrajectoryExport,
   type AssignedSession,
   type CustomRuleKind,
+  type CustomTimetableRule,
   type TimetableDay,
   type TimetableEvaluationReport,
   type TimetablePeriod,
@@ -2007,20 +2008,31 @@ export function updateToolbarButtonsState(): void {
 
   if (btnSolve) {
     btnSolve.disabled = isSolving || !hasCoursesAndRooms;
+    btnSolve.textContent = isScheduled
+      ? pickTimetableLang(activeLang, {
+          ja: "\u26a1 \u6642\u9593\u5272\u3092\u518d\u7de8\u6210",
+          en: "⚡ Re-Optimize Timetable",
+          zh: "⚡ 重新优化课表",
+        })
+      : pickTimetableLang(activeLang, {
+          ja: "\u26a1 \u6642\u9593\u5272\u3092\u81ea\u52d5\u7de8\u6210",
+          en: "⚡ Auto-Schedule Timetable",
+          zh: "⚡ 自动编排课表",
+        });
     btnSolve.title = !hasCoursesAndRooms
       ? pickTimetableLang(activeLang, {
-          ja: "\u30C7\u30FC\u30BF\u3092読\u307F込\u3080\u3068時間割\u306E最適化\u3092実行\u3067\u304D\u307E\u3059",
+          ja: "\u30c7\u30fc\u30bf\u3092\u8aad\u307f\u8fbc\u3080\u3068\u6642\u9593\u5272\u306e\u6700\u9069\u5316\u3092\u5b9f\u884c\u3067\u304d\u307e\u3059",
           en: "Load data before solving",
           zh: "载入数据后可执行优化",
         })
       : isScheduled
       ? pickTimetableLang(activeLang, {
-          ja: "現在\u306E制約\u3068条件\u3067時間割\u3092再最適化\u3057\u307E\u3059",
+          ja: "\u73fe\u5728\u306e\u5236\u7d04\u3068\u6761\u4ef6\u3067\u6642\u9593\u5272\u3092\u518d\u6700\u9069\u5316\u3057\u307e\u3059",
           en: "Re-optimize timetable with current constraints",
           zh: "按当前约束条件重新优化课表",
         })
       : pickTimetableLang(activeLang, {
-          ja: "登録\u3055\u308C\u305F\u30C7\u30FC\u30BF\u3068制約\u3067時間割\u3092自動編成\u3057\u307E\u3059",
+          ja: "\u767b\u9332\u3055\u308c\u305f\u30c7\u30fc\u30bf\u3068\u5236\u7d04\u3067\u6642\u9593\u5272\u3092\u81ea\u52d5\u7de8\u6210\u3057\u307e\u3059",
           en: "Auto-schedule timetable with registered data",
           zh: "按已录入数据与规则自动排课",
         });
@@ -2030,7 +2042,7 @@ export function updateToolbarButtonsState(): void {
     btnCheck.disabled = isSolving || !hasCoursesAndRooms;
     btnCheck.title = !hasCoursesAndRooms
       ? pickTimetableLang(activeLang, {
-          ja: "\u30C7\u30FC\u30BF\u3092読\u307F込\u3080\u3068制約条件\u306E矛盾\u30C1\u30A7\u30C3\u30AF\u3092実行\u3067\u304D\u307E\u3059",
+          ja: "\u30c7\u30fc\u30bf\u3092\u8aad\u307f\u8fbc\u3080\u3068\u5236\u7d04\u6761\u4ef6\u306e\u77db\u76fe\u30c1\u30a7\u30c3\u30af\u3092\u5b9f\u884c\u3067\u304d\u307e\u3059",
           en: "Load data before checking constraints",
           zh: "载入数据后可检查约束冲突",
         })
@@ -2052,9 +2064,11 @@ export function updateToolbarButtonsState(): void {
   const tutStep1 = document.getElementById("btn-tut-step1") as HTMLButtonElement | null;
   const tutStep2 = document.getElementById("btn-tut-step2") as HTMLButtonElement | null;
   const tutStep3 = document.getElementById("btn-tut-step3") as HTMLButtonElement | null;
+  const tutStep4 = document.getElementById("btn-tut-step4") as HTMLButtonElement | null;
   if (tutStep1) tutStep1.disabled = false;
   if (tutStep2) tutStep2.disabled = false;
   if (tutStep3) tutStep3.disabled = false;
+  if (tutStep4) tutStep4.disabled = false;
 }
 
 function renderPromptCatalogDialog(lang: TimetableLang): void {
@@ -2737,11 +2751,18 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("step3-badge", ui.step3Badge);
   setText("step3-title", ui.step3Title);
   setHtml("step3-desc", ui.step3DescHtml);
-  $("select-conflict-scenario").setAttribute("aria-label", ui.step3SelectAria);
-  setText("opt-conflict-1", ui.step3Opt1);
-  setText("opt-conflict-2", ui.step3Opt2);
-  setText("opt-conflict-3", ui.step3Opt3);
   setText("btn-tut-step3", ui.step3Btn);
+  setText("step4-badge", ui.step4Badge ?? "STEP 4");
+  setText("step4-title", ui.step4Title ?? "");
+  setHtml("step4-desc", ui.step4DescHtml ?? "");
+  setText("btn-tut-step4", ui.step4Btn ?? "");
+  const conflictSelect = document.getElementById("select-conflict-scenario");
+  if (conflictSelect) {
+    conflictSelect.setAttribute("aria-label", ui.step3SelectAria);
+    setText("opt-conflict-1", ui.step3Opt1);
+    setText("opt-conflict-2", ui.step3Opt2);
+    setText("opt-conflict-3", ui.step3Opt3);
+  }
 
   // Action bar
   setText("btn-abort-solve", ui.btnAbortSolve);
@@ -2880,7 +2901,7 @@ export function applyTimetableLang(lang: TimetableLang): void {
   if (lastSolveOutcome) {
     updateStatusAndConflictsUI(lastSolveOutcome);
   } else {
-    setText("kpi-status-badge", ui.statusPreparing);
+    updateStatusBlankUI();
   }
   renderTimetableBoard();
   renderCustomRulesAndSettings();
@@ -3084,116 +3105,45 @@ function wireEvents(): void {
     $("tutorial-banner").hidden = true;
   });
 
-  // Tutorial Step 1: Review & Load Master Data
-  $("btn-tut-step1").addEventListener("click", () => {
+  // 4-Step Interactive Tutorial Workflow Buttons (Nurse Scheduling Parity)
+  // Step 1: Master data inspection and editing (switches to catalog tab)
+  $("btn-tut-step1")?.addEventListener("click", () => {
+    switchTab("catalog");
+  });
+
+  // Step 2: Review and adjust constraints (switches to constraints tab)
+  $("btn-tut-step2")?.addEventListener("click", () => {
+    switchTab("constraints");
+  });
+
+  // Step 3: Auto-schedule timetable (switches to timetable and solves)
+  $("btn-tut-step3")?.addEventListener("click", () => {
     if (appState.courses.length === 0) {
       handleGenerateSample(false);
-      appendChatMessage(
-        "assistant",
-        pickTimetableLang(activeLang, {
-          ja: "🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u307F\u307E\u3057\u305F（10教員 / 7教室 / 25科目）。続\u3044\u3066STEP 2\u3067条件\u3092確認\u3059\u308B\u304B、STEP 3\u3067「⚡ 時間割\u3092自動編成」\u3092実行\u3057\u3066\u304F\u3060\u3055\u3044。",
-          en: "🎲 Loaded sample data (10 faculty, 7 rooms, 25 courses). Next, check rules in STEP 2 or click '⚡ Auto-Schedule' in STEP 3.",
-          zh: "🎲 已加载示例数据（10位教师、7间教室、25门课程）。接下来可在 STEP 2 查看规则，或在 STEP 3 点击「⚡ 自动排课」。",
-        })
-      );
-      return;
     }
-    switchTab("catalog");
-    appendChatMessage(
-      "assistant",
-      pickTimetableLang(activeLang, {
-        ja: `ℹ️ 基礎\u30C7\u30FC\u30BF\u306F\u3059\u3067\u306B登録\u3055\u308C\u3066\u3044\u307E\u3059（${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目）。「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u307E\u305F\u306F「⚡ 時間割\u3092自動編成」\u306B進\u3093\u3067\u304F\u3060\u3055\u3044。`,
-        en: `ℹ️ Master data is already loaded (${appState.professors.length} faculty, ${appState.rooms.length} rooms, ${appState.courses.length} courses). Proceed to Rules or click Auto-Schedule.`,
-        zh: `ℹ️ 基础数据已存在（${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程）。请前往规则设置或点击自动排课。`,
-      })
-    );
-  });
-
-  // Tutorial Step 2: Consecutive sessions for C12 (Software Design Lab)
-  $("btn-tut-step2").addEventListener("click", () => {
-    if (appState.courses.length === 0) {
-      appendChatMessage(
-        "assistant",
-        pickTimetableLang(activeLang, {
-          ja: "\u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u3092試\u3059\u306B\u306F、\u307E\u305ASTEP 1\u3067「🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080」\u3092実行\u3057\u3066\u304F\u3060\u3055\u3044。",
-          en: "To try the tutorial, please load sample data in STEP 1 first.",
-          zh: "体验演示前，请先在 STEP 1 中点击「🎲 载入示例数据」。",
-        })
-      );
-      return;
-    }
-    const res = applyTimetableChatOperationsToState(appState, [
-      {
-        op: "add_course_relation_rule",
-        kind: "course_consecutive",
-        courseId: "C12",
-        isHard: true,
-      },
-    ]);
-    appState = res.updatedState;
-    renderCustomRulesAndSettings();
-    switchTab("constraints");
-    if (currentTimetable && shouldAutoSolveOnUpdate()) {
-      appendChatMessage(
-        "system",
-        pickTimetableLang(activeLang, {
-          ja: "🔗 \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB STEP 2: 「\u30BD\u30D5\u30C8\u30A6\u30A7\u30A2設計演習(C12\u30FB週2\u30B3\u30DE)」\u3092同\u3058曜日\u306E連続\u3059\u308B時限(2\u30B3\u30DE連続)\u306B指定\u3057\u3066再計算\u3057\u307E\u3059。",
-          en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)" and re-optimizing.',
-          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12\u30FB周2节)》设为同日相邻节次连排并重新求解。",
-        }),
-        res.appliedLogs
-      );
-      void triggerSolve();
-    } else {
-      appendChatMessage(
-        "system",
-        pickTimetableLang(activeLang, {
-          ja: "🔗 \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB STEP 2: 「\u30BD\u30D5\u30C8\u30A6\u30A7\u30A2設計演習(C12\u30FB週2\u30B3\u30DE)」\u3092同日連続時限\u30EB\u30FC\u30EB\u306B追加\u3057\u307E\u3057\u305F。「⚡ 時間割\u3092自動編成」\u3092押\u3059\u3068最適化\u304C実行\u3055\u308C\u307E\u3059。",
-          en: '🔗 Tutorial STEP 2: Added consecutive-period rule for "Software Design Lab (C12, 2 sessions/wk)". Click "⚡ Auto-Schedule" when ready.',
-          zh: "🔗 指南 STEP 2: 已将《软件设计实验(C12\u30FB周2节)》追加为同日连排规则。请点击「⚡ 自动排课」执行求解。",
-        }),
-        res.appliedLogs
-      );
-    }
-  });
-
-  // Tutorial Step 3: Inject conflict scenario
-  $("btn-tut-step3").addEventListener("click", () => {
-    if (appState.courses.length === 0) {
-      appendChatMessage(
-        "assistant",
-        pickTimetableLang(activeLang, {
-          ja: "\u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB\u3092試\u3059\u306B\u306F、\u307E\u305ASTEP 1\u3067「🎲 \u30B5\u30F3\u30D7\u30EB\u30C7\u30FC\u30BF\u3092読\u307F込\u3080」\u3092実行\u3057\u3066\u304F\u3060\u3055\u3044。",
-          en: "To try the tutorial, please load sample data in STEP 1 first.",
-          zh: "体验演示前，请先在 STEP 1 中点击「🎲 载入示例数据」。",
-        })
-      );
-      return;
-    }
-    const sc = $<HTMLSelectElement>("select-conflict-scenario").value as
-      | "prof_impossible_day"
-      | "room_double_book"
-      | "pc_lab_overload";
-    const injected = injectTimetableConflictScenario(appState, sc);
-    appState = injected.updatedState;
     switchTab("timetable");
-    appendChatMessage(
-      "system",
-      pickTimetableLang(activeLang, {
-        ja: `💥 \u30C1\u30E5\u30FC\u30C8\u30EA\u30A2\u30EB STEP 3 (矛盾診断\u30C7\u30E2): ${injected.descriptionJa}`,
-        en: `💥 Tutorial STEP 3 (Conflict Diagnosis Demo): Injected conflicting scenario (${sc}) and running WaSHI IIS diagnosis.`,
-        zh: `💥 指南 STEP 3 (冲突诊断演示): 已注入冲突场景 (${sc}) 并运行 WaSHI 冲突诊断。`,
-      }),
-      [injected.descriptionJa]
-    );
     void triggerSolve();
   });
 
-  // Action bar buttons
-  $("btn-generate-sample").addEventListener("click", () => handleGenerateSample());
-  $("btn-open-csv-dialog").addEventListener("click", openCsvDialog);
-  $("btn-export-csvs").addEventListener("click", handleExportAllCsvs);
-  $("btn-clear-blank").addEventListener("click", () => handleClearToBlank());
+  // Step 4: AI consultation and drag-and-drop adjustment (switches to timetable & focuses chat)
+  $("btn-tut-step4")?.addEventListener("click", () => {
+    switchTab("timetable");
+    const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
+    if (chatInput) {
+      chatInput.value = pickTimetableLang(activeLang, {
+        ja: "\u6570\u7406\u6700\u9069\u5316(C15)\u3092\u706b\u66dc2\u9650\u306e101\u5927\u8b1b\u7fa9\u5ba4(R101)\u306b\u56fa\u5b9a\u3057\u3066\u3001\u6642\u9593\u5272\u3092\u518d\u6700\u9069\u5316\u3057\u3066",
+        en: "Pin Mathematical Optimization (C15) to Tue Period 2 in Hall 101 (R101) and re-optimize",
+        zh: "将数学规划(C15)固定在周二第2节的101大阶梯教室(R101)，并重新优化课表",
+      });
+      chatInput.focus();
+    }
+  });
+
+  // Action bar buttons (if present in toolbar)
+  document.getElementById("btn-generate-sample")?.addEventListener("click", () => handleGenerateSample());
+  document.getElementById("btn-open-csv-dialog")?.addEventListener("click", openCsvDialog);
+  document.getElementById("btn-export-csvs")?.addEventListener("click", handleExportAllCsvs);
+  document.getElementById("btn-clear-blank")?.addEventListener("click", () => handleClearToBlank());
 
   $("btn-solve-washi").addEventListener("click", () => {
     void triggerSolve();
