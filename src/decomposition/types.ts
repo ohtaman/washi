@@ -75,7 +75,8 @@ export interface DeclarativeSubproblem<TColumnMeta = unknown> {
    */
   mapping:
     | Record<string, Var>
-    | Map<Constraint | string, Var>;
+    | Map<Constraint | string, Var>
+    | Array<[Constraint | string, Var]>;
   /** Objective cost coefficient of the generated column (default: 1) */
   cost?: number;
   /** Variable domain type (defaults to "Continuous" during LP relaxation, cast to "Integer" during MIP finalization if requested) */

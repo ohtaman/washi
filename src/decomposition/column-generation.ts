@@ -18,7 +18,8 @@ function isModelLike(val: unknown): val is Model {
       typeof val === "object" &&
       "constraints" in val &&
       "variables" in val &&
-      typeof (val as any).solve === "function"
+      "columnLink" in val &&
+      typeof (val as { solve?: unknown }).solve === "function"
   );
 }
 
@@ -39,7 +40,7 @@ function createPricingFromDeclarativeSubproblem<TColumnMeta = unknown>(
       }
     } else if (Array.isArray(subDef.mapping)) {
       for (const [k, v] of subDef.mapping) {
-        const name = typeof k === "string" ? k : (k as any).name;
+        const name = typeof k === "string" ? k : k.name;
         mappingEntries.push([name, v]);
       }
     } else if (subDef.mapping && typeof subDef.mapping === "object") {
@@ -152,7 +153,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
           return null;
         }
         if (isModelLike(subOutput)) {
-          const colLink = (subOutput as any).columnLink;
+          const colLink = subOutput.columnLink;
           if (!colLink) {
             throw new Error(
               "Subproblem Model returned from subproblem callback does not have column links. " +
@@ -160,6 +161,11 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
             );
           }
           const mapping = colLink.coefficients ?? colLink.mapping;
+          if (!mapping) {
+            throw new Error(
+              "ColumnLinkOptions must specify either 'coefficients' or 'mapping'."
+            );
+          }
           const declarPricing = createPricingFromDeclarativeSubproblem<TColumnMeta>(
             {
               model: subOutput,
@@ -175,7 +181,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
           );
           return declarPricing(context);
         }
-        return subOutput as ColumnProposal<TColumnMeta> | ColumnProposal<TColumnMeta>[];
+        return subOutput;
       };
     } else {
       pricingFn = createPricingFromDeclarativeSubproblem(
