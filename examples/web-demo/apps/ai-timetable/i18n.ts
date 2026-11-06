@@ -1,5 +1,6 @@
 import {
   DAYS_OF_WEEK,
+  STUDENT_COHORTS,
   type CohortId,
   type ConstraintMeta,
   type CourseCategory,
@@ -10,6 +11,7 @@ import {
   type RoomProfile,
   type RoomType,
   type TimetableDay,
+  type TimetableDiffReason,
   type TimetablePeriod,
   type TimetableState,
 } from "./types.js";
@@ -476,6 +478,56 @@ export function formatConstraintMetaI18n(
   }
 
   return { label: meta.labelJa, suggestion: meta.relaxSuggestion };
+}
+
+export function formatDiffReasonI18n(
+  reason: TimetableDiffReason | undefined,
+  state: TimetableState,
+  lang: TimetableLang
+): string {
+  if (!reason) return "";
+  const catalog = CATALOGS[lang].diffReasons;
+  if (!catalog) return "";
+
+  const courseMap = new Map(state.courses.map((c) => [c.id, c]));
+  const roomMap = new Map(state.rooms.map((r) => [r.id, r]));
+  const profMap = new Map(state.professors.map((p) => [p.id, p]));
+
+  const otherCourse = reason.relatedCourseId ? courseMap.get(reason.relatedCourseId) : undefined;
+  const otherCourseName = otherCourse
+    ? getCourseI18n(otherCourse, lang).shortTitle
+    : (reason.relatedCourseId ?? "");
+
+  const prof = reason.relatedProfessorId ? profMap.get(reason.relatedProfessorId) : undefined;
+  const profName = prof ? getProfessorI18n(prof, lang).name : (reason.relatedProfessorId ?? "");
+
+  const room = reason.relatedRoomId ? roomMap.get(reason.relatedRoomId) : undefined;
+  const roomName = room ? getRoomI18n(room, lang).name : (reason.relatedRoomId ?? "");
+
+  const cohort = STUDENT_COHORTS.find((k) => k.id === reason.relatedCohortId);
+  const cohortLabel = cohort ? cohort.shortLabel : (reason.relatedCohortId ?? "");
+
+  switch (reason.kind) {
+    case "user_pin":
+      return catalog.userPin;
+    case "room_only":
+      return catalog.roomOnly.replace("{room}", roomName);
+    case "room_conflict":
+      return catalog.roomConflict
+        .replace("{room}", roomName)
+        .replace("{otherCourse}", otherCourseName);
+    case "prof_conflict":
+      return catalog.profConflict
+        .replace("{prof}", profName)
+        .replace("{otherCourse}", otherCourseName);
+    case "cohort_conflict":
+      return catalog.cohortConflict
+        .replace("{cohort}", cohortLabel)
+        .replace("{otherCourse}", otherCourseName);
+    case "rebalance":
+    default:
+      return catalog.rebalance;
+  }
 }
 
 export type TimetableUiStrings = typeof enCatalog.ui;

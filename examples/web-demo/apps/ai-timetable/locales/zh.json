@@ -909,5 +909,13 @@
       "label": "每周开课节数要求: 《{title}》每周需安排 {count} 节课",
       "suggestion": "请检查《{title}》的固定/禁排规则，或确认教师与教室的可用性。"
     }
+  },
+  "diffReasons": {
+    "userPin": "用户指定移动/固定",
+    "roomOnly": "同一节次微调教室 ({room})",
+    "roomConflict": "《{otherCourse}》使用了{room}（教室占用冲突）",
+    "profConflict": "任课教师{prof}在同节次讲授《{otherCourse}》（教师时间冲突）",
+    "cohortConflict": "避免与{cohort}的《{otherCourse}》时间重叠",
+    "rebalance": "满足约束条件的排课再平衡"
   }
 }

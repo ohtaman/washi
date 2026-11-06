@@ -9,6 +9,7 @@ import {
   ROOM_PROFILE_I18N,
   formatConstraintMetaI18n,
   formatCustomRuleI18n,
+  formatDiffReasonI18n,
   formatPeriodI18n,
   getProfessorI18n,
   getTimetableLang,
@@ -1706,6 +1707,11 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
                 zh: `- 较上一版课表变动: 仅调整 ${diff.changedSessionsCount} 节课 (保留率 ${diff.retentionRatePct}%)`,
               })
             );
+            for (const ch of diff.changes.slice(0, 5)) {
+              const reasonStr = formatDiffReasonI18n(ch.reason, state, lang);
+              const reasonSuffix = reasonStr ? ` (${reasonStr})` : "";
+              summaryLines.push(`  * ${ch.courseTitle}: ${ch.prevDay}P${ch.prevPeriod} -> ${ch.nextDay}P${ch.nextPeriod}${reasonSuffix}`);
+            }
           }
         } else if (outcome.status === "Infeasible") {
           summaryLines.push(

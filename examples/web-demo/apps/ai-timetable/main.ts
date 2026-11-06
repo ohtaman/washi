@@ -25,6 +25,7 @@ import {
   UI_TEXT_I18N,
   formatConstraintMetaI18n,
   formatCustomRuleI18n,
+  formatDiffReasonI18n,
   formatPeriodI18n,
   formatSlotI18n,
   formatSlotReasonI18n,
@@ -715,9 +716,15 @@ function renderTimetableBoard(): void {
   }
 
   const changedCourseSlots = new Set<string>();
+  const diffReasonBySlotCourse = new Map<string, string>();
   if (highlightDiff && lastSolveOutcome?.diffFromPrevious) {
     for (const ch of lastSolveOutcome.diffFromPrevious.changes) {
-      changedCourseSlots.add(`${ch.courseId}_${ch.nextDay}_${ch.nextPeriod}`);
+      const key = `${ch.courseId}_${ch.nextDay}_${ch.nextPeriod}`;
+      changedCourseSlots.add(key);
+      const reasonText = formatDiffReasonI18n(ch.reason, appState, activeLang);
+      if (reasonText) {
+        diffReasonBySlotCourse.set(key, reasonText);
+      }
     }
   }
 
@@ -854,11 +861,13 @@ function renderTimetableBoard(): void {
               btn.dataset.cohortId = cohort.id;
               btn.draggable = true;
 
-              btn.title = pickTimetableLang(activeLang, {
+              const baseTitle = pickTimetableLang(activeLang, {
                 ja: `${cI18n.title} (\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)`,
                 en: `${cI18n.title} (Drag to move / Click to configure)`,
                 zh: `${cI18n.title} (拖拽以移动 / 点击以配置)`,
               });
+              const diffReason = diffReasonBySlotCourse.get(`${course.id}_${day}_${period}`);
+              btn.title = diffReason ? `${baseTitle}\n💡 [${diffReason}]` : baseTitle;
 
               btn.addEventListener("dragstart", (e) => {
                 activeDragPayload = {
@@ -1128,7 +1137,9 @@ function renderTimetableBoard(): void {
             subSpan.className = "matrix-course-sub";
             subSpan.textContent = `${c.cohorts.join("/")}[${rI18n?.shortName ?? assigned.roomId}]`;
             btn.append(codeSpan, subSpan);
-            btn.title = `${formatSlotI18n(d, p, activeLang)}: ${cI18n.title} (${c.cohorts.join("/")} · ${rI18n?.name ?? ""}) ${pickTimetableLang(activeLang, { ja: "(\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+            const baseTitle = `${formatSlotI18n(d, p, activeLang)}: ${cI18n.title} (${c.cohorts.join("/")} · ${rI18n?.name ?? ""}) ${pickTimetableLang(activeLang, { ja: "(\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+            const diffReason = diffReasonBySlotCourse.get(`${c.id}_${d}_${p}`);
+            btn.title = diffReason ? `${baseTitle}\n💡 [${diffReason}]` : baseTitle;
 
             btn.addEventListener("dragstart", (e) => {
               activeDragPayload = {
@@ -1294,7 +1305,9 @@ function renderTimetableBoard(): void {
             subSpan.className = "matrix-course-sub";
             subSpan.textContent = `${c.cohorts.join("/")}·${pI18n?.shortName ?? ""} (${c.enrollment})`;
             btn.append(codeSpan, subSpan);
-            btn.title = `${formatSlotI18n(d, p, activeLang)} [${rI18n.name}]: ${cI18n.title} (${c.enrollment}/${room.capacity}) ${pickTimetableLang(activeLang, { ja: "(\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+            const baseTitle = `${formatSlotI18n(d, p, activeLang)} [${rI18n.name}]: ${cI18n.title} (${c.enrollment}/${room.capacity}) ${pickTimetableLang(activeLang, { ja: "(\u30C9\u30E9\u30C3\u30B0\u3057\u3066移動 / \u30AF\u30EA\u30C3\u30AF\u3067設定)", en: "(Drag to move / Click to configure)", zh: "(拖拽以移动 / 点击以配置)" })}`;
+            const diffReason = diffReasonBySlotCourse.get(`${c.id}_${d}_${p}`);
+            btn.title = diffReason ? `${baseTitle}\n💡 [${diffReason}]` : baseTitle;
 
             btn.addEventListener("dragstart", (e) => {
               activeDragPayload = {
@@ -2580,6 +2593,23 @@ export async function applyDropMove(
       zh: `⚠️ **已撤销移动**: 将《${courseI18n.title}》放置在 **${slotText}${roomText}** 存在冲突${conflictSuffix}，已恢复原课表并取消固定条件。`,
     });
     appendChatMessage("assistant", revertMsg);
+  } else if (outcome.diffFromPrevious && outcome.diffFromPrevious.changes.length > 0) {
+    const diff = outcome.diffFromPrevious;
+    const diffLines = diff.changes.map((ch, idx) => {
+      const cProfile = appState.courses.find((c) => c.id === ch.courseId);
+      const title = cProfile ? getCourseI18n(cProfile, activeLang).title : ch.courseTitle;
+      const prevSlotStr = formatSlotI18n(ch.prevDay, ch.prevPeriod, activeLang);
+      const nextSlotStr = formatSlotI18n(ch.nextDay, ch.nextPeriod, activeLang);
+      const reasonStr = formatDiffReasonI18n(ch.reason, appState, activeLang);
+      const reasonPart = reasonStr ? `\n   \u2514 \uD83D\uDCA1 ${reasonStr}` : "";
+      return `${idx + 1}. **${title}**: ${prevSlotStr} \u2192 **${nextSlotStr}**${reasonPart}`;
+    });
+    const reportMsg = pickTimetableLang(activeLang, {
+      ja: `\uD83D\uDCCB **再編成\u306E変更内訳 (${diff.changes.length}\u30B3\u30DE)**:\n${diffLines.join("\n")}`,
+      en: `\uD83D\uDCCB **Re-optimization Move Details (${diff.changes.length} session(s))**:\n${diffLines.join("\n")}`,
+      zh: `\uD83D\uDCCB **重新编排变动明细 (${diff.changes.length}节)**:\n${diffLines.join("\n")}`,
+    });
+    appendChatMessage("assistant", reportMsg);
   }
 }
 

@@ -26,6 +26,7 @@ import {
   type RoomProfile,
   type TimetableCellDiff,
   type TimetableDay,
+  type TimetableDiffReason,
   type TimetableDiffSummary,
   type TimetableEvaluationReport,
   type TimetablePeriod,
@@ -901,12 +902,12 @@ export function buildTimetableWashiModel(
           let roomCost = 0;
           if (c.preferredRoomIds && c.preferredRoomIds.length > 0) {
             if (!c.preferredRoomIds.includes(r.id)) {
-              roomCost += config.weightRoomFit * 2;
+              roomCost += config.weightRoomFit;
             }
           }
           const excessRatio = (r.capacity - c.enrollment) / 100;
           if (excessRatio > 0.45) {
-            roomCost += Math.round(config.weightRoomFit * excessRatio);
+            roomCost += config.weightRoomFit;
           }
           if (roomCost > 0) {
             for (const d of DAYS_OF_WEEK) {
@@ -953,16 +954,20 @@ export function buildTimetableWashiModel(
     // 4. Minimal Perturbation Mode (Preserve current timetable assignments when re-optimizing)
     if (config.preserveCurrentTimetable && options?.referenceTimetable) {
       const ref = options.referenceTimetable;
+      const wSlot = config.weightPerturbationSlot ?? 10;
+      const wRoom = config.weightPerturbationRoom ?? 3;
+
       for (const session of ref.sessions) {
         const vSameRoom =
           vAssign[session.courseId]?.[session.day]?.[session.period]?.[session.roomId];
         if (vSameRoom) {
-          // Reward keeping the exact same slot & room (-8), and reward keeping the same (day, period) even if room shifts (-6)
-          objTerms.push(vSameRoom.mul(-2));
+          // Bonus for preserving same room (-wRoom in minimization)
+          objTerms.push(vSameRoom.mul(-wRoom));
         }
         const slotVars = slotVarsByCourse(session.courseId, session.day, session.period);
         for (const sv of slotVars) {
-          objTerms.push(sv.mul(-6));
+          // Bonus for preserving same slot (-(wSlot - wRoom)), so moving slot incurs net penalty wSlot
+          objTerms.push(sv.mul(wRoom - wSlot));
         }
       }
     }
@@ -1213,6 +1218,86 @@ export async function diagnoseTimetableWithHiGHS(
   };
 }
 
+function diagnoseChangeReason(
+  ch: TimetableCellDiff,
+  state: TimetableState,
+  next: WeeklyTimetableSolution
+): TimetableDiffReason {
+  const course = state.courses.find((c) => c.id === ch.courseId);
+  if (!course) return { kind: "rebalance" };
+
+  // 1. Explicit user pin at next slot
+  const isPinnedAtNext = state.customRules.some(
+    (r) =>
+      r.enabled &&
+      r.kind === "pin_slot" &&
+      r.courseId === ch.courseId &&
+      r.days?.includes(ch.nextDay) &&
+      r.periods?.includes(ch.nextPeriod)
+  );
+  if (isPinnedAtNext) {
+    return { kind: "user_pin" };
+  }
+
+  // 2. Same slot, room only
+  if (ch.prevDay === ch.nextDay && ch.prevPeriod === ch.nextPeriod) {
+    return { kind: "room_only", relatedRoomId: ch.nextRoomId };
+  }
+
+  // 3. Why couldn't it stay in prevDay, prevPeriod, prevRoomId?
+  const prevSlotSessions =
+    next.bySlot?.[`${ch.prevDay}_${ch.prevPeriod}`] ??
+    next.sessions.filter((s) => s.day === ch.prevDay && s.period === ch.prevPeriod);
+
+  // Check 3A: Room conflict (Did another course in next take prevRoomId at prevDay, prevPeriod?)
+  const roomOccupant = prevSlotSessions.find(
+    (s) => s.roomId === ch.prevRoomId && s.courseId !== ch.courseId
+  );
+  if (roomOccupant) {
+    return {
+      kind: "room_conflict",
+      relatedCourseId: roomOccupant.courseId,
+      relatedRoomId: ch.prevRoomId,
+    };
+  }
+
+  // Check 3B: Professor conflict (Is course's professor teaching another course at prevDay, prevPeriod in next?)
+  const profOccupant = prevSlotSessions.find((s) => {
+    if (s.courseId === ch.courseId) return false;
+    const otherCourse = state.courses.find((c) => c.id === s.courseId);
+    return otherCourse && otherCourse.professorId === course.professorId;
+  });
+  if (profOccupant) {
+    return {
+      kind: "prof_conflict",
+      relatedCourseId: profOccupant.courseId,
+      relatedProfessorId: course.professorId,
+    };
+  }
+
+  // Check 3C: Cohort conflict (Does any cohort of this course have another course at prevDay, prevPeriod in next?)
+  if (state.config.enforceCohortNoOverlap) {
+    const cohortOccupant = prevSlotSessions.find((s) => {
+      if (s.courseId === ch.courseId) return false;
+      const otherCourse = state.courses.find((c) => c.id === s.courseId);
+      return otherCourse && otherCourse.cohorts.some((k) => course.cohorts.includes(k));
+    });
+    if (cohortOccupant) {
+      const otherCourse = state.courses.find((c) => c.id === cohortOccupant.courseId);
+      const sharedCohort = otherCourse
+        ? course.cohorts.find((k) => otherCourse.cohorts.includes(k))
+        : undefined;
+      return {
+        kind: "cohort_conflict",
+        relatedCourseId: cohortOccupant.courseId,
+        relatedCohortId: sharedCohort,
+      };
+    }
+  }
+
+  return { kind: "rebalance" };
+}
+
 export function computeTimetableDiff(
   state: TimetableState,
   prev: WeeklyTimetableSolution | null | undefined,
@@ -1298,6 +1383,11 @@ export function computeTimetableDiff(
   }
 
   if (totalSessions === 0) return null;
+
+  for (const ch of changes) {
+    ch.reason = diagnoseChangeReason(ch, state, next);
+  }
+
   const changedSessionsCount = changes.length;
   const unchangedSessionsCount = totalSessions - changedSessionsCount;
   const retentionRatePct = Math.round((unchangedSessionsCount / totalSessions) * 1000) / 10;

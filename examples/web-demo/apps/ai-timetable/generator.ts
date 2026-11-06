@@ -27,10 +27,12 @@ export function createDefaultTimetableConfig(
     maxCohortCompulsoryPerDay: 4,
     preserveCurrentTimetable: true,
 
-    weightAvoidPeriod1: 20,
-    weightAvoidPeriod5: 15,
-    weightCohortIdleGaps: 25,
-    weightRoomFit: 5,
+    weightAvoidPeriod1: 1,
+    weightAvoidPeriod5: 1,
+    weightCohortIdleGaps: 2,
+    weightRoomFit: 1,
+    weightPerturbationSlot: 10,
+    weightPerturbationRoom: 3,
     ...overrides,
   };
 }

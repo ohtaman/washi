@@ -30,6 +30,7 @@ import {
   detectBrowserTimetableLang,
   formatConstraintMetaI18n,
   formatCustomRuleI18n,
+  formatDiffReasonI18n,
   getTimetableLang,
 } from "../examples/web-demo/apps/ai-timetable/i18n.js";
 import {
@@ -1687,4 +1688,185 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       else (globalThis as any).document = prevDoc;
     }
   }, 30_000);
+
+  it("enforces user-specified weight hierarchy: slot displacement (10) dominates idle gaps (2), and diagnoses diff reasons", async () => {
+    const state = generateTimetableState();
+    // 1. Verify default weight hierarchy
+    expect(state.config.weightAvoidPeriod1).toBe(1);
+    expect(state.config.weightAvoidPeriod5).toBe(1);
+    expect(state.config.weightRoomFit).toBe(1);
+    expect(state.config.weightCohortIdleGaps).toBe(2);
+    expect(state.config.weightPerturbationSlot).toBe(10);
+    expect(state.config.weightPerturbationRoom).toBe(3);
+
+    // Initial baseline solve
+    const baseOutcome = await solveTimetableWithWashi(state);
+    expect(baseOutcome.status).toBe("Optimal");
+    const baseTt = baseOutcome.timetable!;
+
+    const c02Base = baseTt.byCourse["C02"][0];
+    const c07Base = baseTt.byCourse["C07"][0];
+    const c21Base = baseTt.byCourse["C21"][0];
+
+    // C07 and C21 are both taught by adjunct Professor P10
+    const c07 = state.courses.find((c) => c.id === "C07")!;
+    const c21 = state.courses.find((c) => c.id === "C21")!;
+    expect(c07.professorId).toBe("P10");
+    expect(c21.professorId).toBe("P10");
+
+    // Pin C07 to the slot currently occupied by C21
+    // This creates a hard professor conflict because P10 cannot teach both simultaneously
+    const pinRule = {
+      id: "rule_pin_c07_to_c21_slot",
+      kind: "pin_slot" as const,
+      enabled: true,
+      isHard: true,
+      courseId: "C07",
+      days: [c21Base.day],
+      periods: [c21Base.period],
+      description: `Pin C07 to ${c21Base.day} P${c21Base.period}`,
+    };
+    const fineTuneState = {
+      ...state,
+      customRules: [...state.customRules, pinRule],
+    };
+
+    const reSolveOutcome = await solveTimetableWithWashi(fineTuneState, {
+      referenceTimetable: baseTt,
+    });
+    expect(reSolveOutcome.status).toBe("Optimal");
+    const nextTt = reSolveOutcome.timetable!;
+    const diff = reSolveOutcome.diffFromPrevious!;
+    expect(diff).toBeDefined();
+
+    // With new weights (slot displacement 10 > idle gap 2), unrelated courses like C02
+    // MUST remain rock solid at their previous slot!
+    const c02Next = nextTt.byCourse["C02"][0];
+    expect(c02Next.day).toBe(c02Base.day);
+    expect(c02Next.period).toBe(c02Base.period);
+
+    // C07 moved to the pinned slot
+    const c07Next = nextTt.byCourse["C07"][0];
+    expect(c07Next.day).toBe(c21Base.day);
+    expect(c07Next.period).toBe(c21Base.period);
+
+    // C21 was forced to move away from its previous slot due to professor conflict with P10
+    const c21Next = nextTt.byCourse["C21"][0];
+    expect(
+      c21Next.day !== c21Base.day || c21Next.period !== c21Base.period
+    ).toBe(true);
+
+    // Check diff changes and diagnostic reasons
+    const c07Diff = diff.changes.find((ch) => ch.courseId === "C07");
+    expect(c07Diff).toBeDefined();
+    expect(c07Diff?.reason?.kind).toBe("user_pin");
+
+    const c21Diff = diff.changes.find((ch) => ch.courseId === "C21");
+    expect(c21Diff).toBeDefined();
+    expect(c21Diff?.reason?.kind).toBe("prof_conflict");
+    expect(c21Diff?.reason?.relatedProfessorId).toBe("P10");
+    expect(c21Diff?.reason?.relatedCourseId).toBe("C07");
+
+    // Verify formatDiffReasonI18n output in en and ja
+    const reasonEn = formatDiffReasonI18n(c21Diff?.reason, fineTuneState, "en");
+    expect(reasonEn).toContain("Yuna Kato");
+    expect(reasonEn).toContain("Info Ethics");
+
+    const reasonJa = formatDiffReasonI18n(c21Diff?.reason, fineTuneState, "ja");
+    expect(reasonJa).toContain("\u52A0\u85E4"); // Kato
+    expect(reasonJa).toContain("\u6559\u54E1\u91CD\u8907\u56DE\u907F"); // Faculty conflict avoidance
+  }, 30_000);
+
+  it("diagnoses room_only, room_conflict, and cohort_conflict change reasons accurately", () => {
+    const mockState = generateTimetableState();
+    const prevMock = {
+      sessions: [
+        { courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" },
+        { courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" },
+      ],
+      byCourse: {
+        C01: [{ courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" }],
+        C02: [{ courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" }],
+      },
+    };
+
+    // 1. Room only change
+    const nextRoomOnly = {
+      sessions: [
+        { courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R103" },
+        { courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" },
+      ],
+      byCourse: {
+        C01: [{ courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R103" }],
+        C02: [{ courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" }],
+      },
+    };
+    const diffRoomOnly = computeTimetableDiff(mockState, prevMock, nextRoomOnly);
+    expect(diffRoomOnly?.changes[0].reason?.kind).toBe("room_only");
+    expect(diffRoomOnly?.changes[0].reason?.relatedRoomId).toBe("R103");
+
+    // 2. Room conflict
+    const prevRoomConflict = {
+      sessions: [
+        { courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" },
+        { courseId: "C03", sessionIndex: 0, day: "Mon" as const, period: 2 as const, roomId: "R101" },
+      ],
+      byCourse: {
+        C01: [{ courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" }],
+        C03: [{ courseId: "C03", sessionIndex: 0, day: "Mon" as const, period: 2 as const, roomId: "R101" }],
+      },
+    };
+    const nextRoomConflict = {
+      sessions: [
+        { courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 3 as const, roomId: "R101" },
+        { courseId: "C03", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" },
+      ],
+      byCourse: {
+        C01: [{ courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 3 as const, roomId: "R101" }],
+        C03: [{ courseId: "C03", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" }],
+      },
+    };
+    const diffRoomConflict = computeTimetableDiff(mockState, prevRoomConflict, nextRoomConflict);
+    const c01Ch = diffRoomConflict?.changes.find((c) => c.courseId === "C01");
+    expect(c01Ch?.reason?.kind).toBe("room_conflict");
+    expect(c01Ch?.reason?.relatedRoomId).toBe("R101");
+    expect(c01Ch?.reason?.relatedCourseId).toBe("C03");
+
+    // 3. Cohort conflict
+    const prevCohortConflict = {
+      sessions: [
+        { courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" },
+        { courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 2 as const, roomId: "R102" },
+      ],
+      byCourse: {
+        C01: [{ courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R101" }],
+        C02: [{ courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 2 as const, roomId: "R102" }],
+      },
+    };
+    const nextCohortConflict = {
+      sessions: [
+        { courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 3 as const, roomId: "R101" },
+        { courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" },
+      ],
+      byCourse: {
+        C01: [{ courseId: "C01", sessionIndex: 0, day: "Mon" as const, period: 3 as const, roomId: "R101" }],
+        C02: [{ courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" }],
+      },
+    };
+    // 3. Cohort conflict (when enforceCohortNoOverlap is enabled)
+    const diffCohortConflict = computeTimetableDiff(mockState, prevCohortConflict, nextCohortConflict);
+    const c01CohortCh = diffCohortConflict?.changes.find((c) => c.courseId === "C01");
+    expect(c01CohortCh?.reason?.kind).toBe("cohort_conflict");
+    expect(c01CohortCh?.reason?.relatedCohortId).toBe("Y1");
+    expect(c01CohortCh?.reason?.relatedCourseId).toBe("C02");
+
+    // 4. When enforceCohortNoOverlap is disabled, cohort overlap is not a constraint, so reason falls back to rebalance
+    const relaxedState = {
+      ...mockState,
+      config: { ...mockState.config, enforceCohortNoOverlap: false },
+    };
+    const diffRelaxedCohort = computeTimetableDiff(relaxedState, prevCohortConflict, nextCohortConflict);
+    const c01RelaxedCh = diffRelaxedCohort?.changes.find((c) => c.courseId === "C01");
+    expect(c01RelaxedCh?.reason?.kind).toBe("rebalance");
+  });
 });
