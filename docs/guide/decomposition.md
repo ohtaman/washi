@@ -20,15 +20,14 @@ There are two primary problem structures where naive MIP formulations struggle:
 
 WaSHI provides fine-grained modeling primitives to inspect dual information and dynamically modify models:
 
-### 1. Constraint Shadow Prices (`dual` / `shadowPrice`)
+### 1. Constraint Duals (`dual`)
 Access the dual values (marginal impact on the objective per unit change in RHS) after an LP solve:
 
 ```typescript
 const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
-console.log(c.dual);        // Shadow price
-console.log(c.shadowPrice); // Alias for c.dual
+console.log(c.dual); // Dual value / shadow price
 console.log(m.solution.duals.capacity);
 ```
 
@@ -41,11 +40,11 @@ const status = await m.relax();
 console.log("Theoretical dual bound:", m.objectiveValue);
 ```
 
-### 3. Dynamic Column Injection (`model.column()`)
+### 3. Dynamic Column Injection (`model.addColumn()`)
 Inject a new decision variable along with its objective coefficient and constraint contributions in a single call:
 
 ```typescript
-const col = m.column({
+const col = m.addColumn({
   name: "pattern_1",
   type: "Integer", // or "Continuous"
   lb: 0,
@@ -99,10 +98,10 @@ for (const item of items) {
   master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
 }
 
-// Add simple initial single-cut patterns
-master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+// Add simple initial single-cut patterns (or define using standard variables)
+master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
+master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
+master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
 
 // 2. Solve automatically with master.solveColumnGeneration() (just return sub!)
 const result = await master.solveColumnGeneration({
@@ -175,7 +174,7 @@ Benders Decomposition partitions the problem into:
 
 ### Recommended: Automated Cut Generation with `sub.linkRow()`
 
-Return the subproblem `Model` from your callback and register linking constraints with `sub.linkRow(...)` (or `sub.link(...)`). WaSHI automatically manages $\theta$, evaluates master candidate values, extracts duals, and injects Benders optimality cuts:
+Return the subproblem `Model` from your callback and register linking constraints with `sub.linkRow(...)`. WaSHI automatically manages $\theta$, evaluates master candidate values, extracts duals, and injects Benders optimality cuts:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -266,51 +265,126 @@ const result = await master.solveBenders({
 
 Two celebrated canonical use cases where decomposition algorithms shine in production:
 
-### 1. Vehicle Routing Problem (VRP) $\times$ Column Generation
-* **Challenge**: When scheduling a fleet of vehicles to visit customers, enumerating every permutation of tours results in hundreds of millions of variables, causing monolithic MIPs to run out of memory.
+### 1. Vehicle Routing Problem (CVRP) $\times$ Column Generation
+*(Full executable source: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
+
+* **Challenge**: When scheduling a fleet of vehicles to visit customers, enumerating every combination of tours results in millions of variables, causing monolithic MIPs to run out of memory.
 * **Column Generation Approach**:
-  * **Master Problem (Set Partitioning / Covering)**: Chooses the optimal combination of generated vehicle routes such that every customer is visited exactly once with minimum total distance or vehicle count.
-  * **Subproblem (Pricing / Shortest Path)**: Generates one feasible vehicle tour at a time that obeys vehicle capacity and time windows (one valid tour = one column!).
-  * **Benefit**: Rather than enumerating trillions of routes up front, the subproblem **dynamically generates only the improving routes (columns)**, solving industrial-scale routing problems in seconds.
-
-### 2. Traveling Salesperson Problem (TSP) $\times$ Benders Decomposition (Lazy Subtour Elimination)
-* **Challenge**: Preventing isolated loops (subtours) in a TSP requires Subtour Elimination Constraints (SECs), which grow to **$O(2^n)$ constraints** (an astronomically large number) for $n$ cities.
-* **Benders Decomposition Approach**:
-  * **Master Problem**: Solves a relaxed degree-constrained problem (each city has 1 incoming and 1 outgoing edge).
-  * **Subproblem**: Evaluates the resulting edge graph to detect any isolated sub-loops (islands). If a subtour is found, it injects a Benders cut (lazy constraint / row!) forbidding that specific cycle.
-  * **Benefit**: The solver solves the problem with only a handful of dynamically added cuts (rows) rather than instantiating $2^n$ constraints, optimizing massive networks with ease.
-
----
-
-## Unified Syntax via `master.solve()`
-
-You can also invoke decomposition directly from the standard `master.solve()` API:
+  * **Master Problem**: Set covering model that selects the minimum number of vehicle routes such that each customer is served.
+  * **Pricing Subproblem**: Knapsack model that dynamically generates one capacity-feasible route (column) with negative reduced cost based on customer dual shadow prices.
 
 ```typescript
-// Benders decomposition
-const status = await master.solve({
-  benders: {
-    gapTolerance: 1e-4,
-    subproblem: () => {
-      // ...
-      sub.linkRow(expr`${x} <= 50 * ${y}`);
-      return sub;
-    },
+import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
+
+const vehicleCapacity = 8;
+const customers = [
+  { id: "C1", demand: 4 },
+  { id: "C2", demand: 3 },
+  { id: "C3", demand: 5 },
+  { id: "C4", demand: 2 },
+  { id: "C5", demand: 4 },
+];
+
+// 1. Master Problem: Customer coverage
+const master = new Model("CVRP_Master");
+const initialRoutes: Var[] = [];
+for (const cust of customers) {
+  initialRoutes.push(master.integer(`init_${cust.id}`, { lb: 0, ub: 1 }));
+}
+master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr())));
+
+for (let i = 0; i < customers.length; i++) {
+  master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
+}
+
+// 2. Solve via Column Generation
+const result = await master.solveColumnGeneration({
+  finalizeAsMIP: true,
+  subproblem: () => {
+    const sub = new Model("RoutePricing");
+    const a: Record<string, Var> = {};
+    for (const cust of customers) {
+      a[cust.id] = sub.binary(`v_${cust.id}`);
+    }
+
+    // Capacity limit: sum(demand_i * a_i) <= vehicleCapacity
+    const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
+    sub.constraint(expr`${load} <= ${vehicleCapacity}`);
+
+    // Link generated column to master coverage constraints
+    const coefficients: Record<string, Var> = {};
+    for (const cust of customers) {
+      coefficients[`visit_${cust.id}`] = a[cust.id];
+    }
+    sub.linkColumn({ cost: 1, coefficients });
+    return sub;
   },
 });
 
-// Column generation
-const status = await master.solve({
-  columnGeneration: {
-    finalizeAsMIP: true,
-    subproblem: () => {
-      // ...
-      sub.linkColumn({ cost: 1, coefficients: { demand_A: a.A } });
-      return sub;
-    },
+console.log("Optimal fleet size:", result.objectiveValue); // 3 vehicles
+```
+
+### 2. Traveling Salesperson Problem (TSP) $\times$ Benders Decomposition (Lazy Subtour Elimination)
+*(Full executable source: [`examples/node/14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts))*
+
+* **Challenge**: Preventing isolated sub-loops (subtours) requires Subtour Elimination Constraints (SECs), which grow to **$O(2^n)$ constraints** for $n$ cities.
+* **Benders Decomposition Approach**:
+  * **Master Problem**: Solves the relaxed assignment problem (each city has 1 incoming and 1 outgoing edge).
+  * **Subproblem**: Evaluates the candidate tour graph for disconnected components. If isolated subtours exist, it lazily injects a Benders feasibility cut ($\sum_{i,j \in S} x_{ij} \le |S| - 1$) cutting off that specific cycle.
+
+```typescript
+import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
+
+const n = cities.length;
+const master = new Model("TSP_Master");
+const x: Record<string, Var> = {};
+const objExpr = new LinExpr();
+
+for (let i = 0; i < n; i++) {
+  for (let j = 0; j < n; j++) {
+    if (i !== j) {
+      const v = master.binary(`x_${i}_${j}`);
+      x[`${i}_${j}`] = v;
+      objExpr.addTerm(v, dist(i, j));
+    }
+  }
+}
+master.objective(minimize(objExpr));
+
+// Degree constraints
+for (let i = 0; i < n; i++) {
+  const outE = new LinExpr();
+  const inE = new LinExpr();
+  for (let j = 0; j < n; j++) {
+    if (i !== j) {
+      outE.addTerm(x[`${i}_${j}`], 1);
+      inE.addTerm(x[`${j}_${i}`], 1);
+    }
+  }
+  master.constraint(expr`${outE} == 1`, `out_${i}`);
+  master.constraint(expr`${inE} == 1`, `in_${i}`);
+}
+
+// Solve with Benders lazy subtour elimination
+const result = await master.solveBenders({
+  subproblem: ({ getMasterValue }) => {
+    const cycles = findCycles(n, (i, j) => getMasterValue(x[`${i}_${j}`]) > 0.5);
+    if (cycles.length === 1 && cycles[0].length === n) {
+      return null; // Tour is complete and optimal!
+    }
+
+    // Subtour detected: inject Benders feasibility cut for smallest cycle
+    const S = cycles.reduce((min, c) => (c.length < min.length ? c : min), cycles[0]);
+    const secExpr = new LinExpr();
+    for (const i of S) {
+      for (const j of S) {
+        if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+      }
+    }
+    return {
+      kind: "feasibility",
+      constraint: expr`${secExpr} <= ${S.length - 1}`,
+    };
   },
 });
-
-// Access decomposition details anytime
-console.log(master.decomposition?.iterations);
 ```

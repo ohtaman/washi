@@ -438,6 +438,8 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 | **基础模型** | [营养问题与灵敏度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 影子价格 (`constr.dual`)、松弛量 (`constr.slack`) 与缩减成本 (`var.reducedCost`) | HiGHS |
 | **实战应用** | [员工排班与冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 周排班优化与周六休假冲突诊断 | HiGHS + Z3 |
 | **实战应用** | [购物车优惠券最优组合](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 满减门槛条件约束 (`indicator`)、互斥规则与凑单推荐 | HiGHS |
+| **大规模分解** | [车辆路径规划 (CVRP)](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) | 列生成法 (Dantzig-Wolfe): 基于对偶影子价格动态定价可行配送路线 | HiGHS |
+| **大规模分解** | [旅行商问题 (TSP)](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) | Benders 分解 (DFJ 法): 通过可行性割平面延迟生成子回路消除约束 | HiGHS |
 | **实战应用** | [投资组合分配](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目标函数 (`QuadExpr`) 与分配约束 | HiGHS |
 | **逻辑 / SMT** | [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束 (`bool`, `implies`) 的可满足性检查 | Z3 |
 | **逻辑 / SMT** | [冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 命名约束与 Unsat Core (`unsatCore`) | Z3 |
@@ -455,6 +457,8 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 
 # 本地浏览器演示: http://localhost:5173/demo/
 npm run dev

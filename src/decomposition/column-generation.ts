@@ -306,7 +306,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
 
     // 5. Inject new columns into the master model
     for (const proposal of improvingProposals) {
-      const colVar = master.column({
+      const colVar = master.addColumn({
         name: proposal.name,
         type: proposal.type || "Continuous",
         lb: proposal.lb,

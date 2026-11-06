@@ -28,7 +28,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
 
     // Add naive initial single-item patterns:
     // Pattern A: 2 of A (45*2 = 90 <= 100)
-    master.column({
+    master.addColumn({
       name: "init_pattern_A",
       type: "Integer",
       cost: 1,
@@ -36,7 +36,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     });
 
     // Pattern B: 2 of B (36*2 = 72 <= 100)
-    master.column({
+    master.addColumn({
       name: "init_pattern_B",
       type: "Integer",
       cost: 1,
@@ -44,7 +44,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     });
 
     // Pattern C: 6 of C (16*6 = 96 <= 100)
-    master.column({
+    master.addColumn({
       name: "init_pattern_C",
       type: "Integer",
       cost: 1,
@@ -184,9 +184,9 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     }
 
     // Initial naive columns
-    master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-    master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-    master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
 
     // Subproblem knapsack model
     const sub = new Model("KnapsackSub");
@@ -219,7 +219,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     const master = new Model("MaxMaster");
     master.constraint(expr`0 <= 1`, "cap");
     // Initial column with cost 1, coeff 1
-    const initCol = master.column({ cost: 1, type: "Continuous", coefficients: { cap: 1 } });
+    const initCol = master.addColumn({ cost: 1, type: "Continuous", coefficients: { cap: 1 } });
     master.objective(maximize(initCol));
 
     // Pricing subproblem provides an improving column with cost 2 and coeff 1
@@ -258,9 +258,9 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     }
 
     // Initial naive columns
-    master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-    master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-    master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
 
     // Solve using subproblem returning sub with sub.linkColumn
     const result = await master.solveColumnGeneration({
@@ -293,7 +293,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
   it("throws a descriptive error when subproblem callback returns Model without linkColumn", async () => {
     const master = new Model("MissingLinkMaster");
     master.constraint(expr`0 >= 5`, "demand");
-    master.column({ cost: 1, type: "Integer", coefficients: { demand: 1 } });
+    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 1 } });
 
     const brokenModel = new Model("BrokenSub");
 

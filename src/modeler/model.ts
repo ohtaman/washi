@@ -752,7 +752,7 @@ export class Model {
    * const m = new Model("ColumnExample");
    * m.constraint(expr`0 <= 10`, "demand_itemA");
    * m.constraint(expr`0 <= 10`, "demand_itemB");
-   * const colVar = m.column({
+   * const colVar = m.addColumn({
    *   name: "pattern_1",
    *   type: "Continuous",
    *   lb: 0,
@@ -764,7 +764,7 @@ export class Model {
    * });
    * ```
    */
-  column(options: ColumnDefinition): Var {
+  addColumn(options: ColumnDefinition): Var {
     const varType = options.type || "Continuous";
     const v = this.addVar({
       name: options.name,
@@ -822,10 +822,10 @@ export class Model {
   }
 
   /**
-   * Alias for `column(...)`
+   * @deprecated Use `addColumn(...)` instead.
    */
-  addColumn(options: ColumnDefinition): Var {
-    return this.column(options);
+  column(options: ColumnDefinition): Var {
+    return this.addColumn(options);
   }
 
   /**
@@ -1904,15 +1904,6 @@ export class Model {
 
     const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
-    if (activeOptions.benders) {
-      const res = await this.solveBenders(activeOptions.benders);
-      return res.status;
-    }
-    if (activeOptions.columnGeneration) {
-      const res = await this.solveColumnGeneration(activeOptions.columnGeneration);
-      return res.status;
-    }
-
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
       this._objectiveExpr instanceof QuadExpr && this._objectiveExpr.quadTerms.size > 0;
@@ -2478,7 +2469,7 @@ export class Model {
   }
 
   /**
-   * Register a linking constraint that connects this subproblem model's variables
+   * Register a linking constraint (row) that connects this subproblem model's variables
    * with decision variables in the master problem for Benders decomposition.
    *
    * @param constraint The linear constraint connecting subproblem variables with master variables
@@ -2491,10 +2482,10 @@ export class Model {
    *
    * const sub = new Model("Subproblem");
    * const x = sub.continuous("x", { lb: 0 });
-   * sub.link(expr`${x} <= 50 * ${y}`);
+   * sub.linkRow(expr`${x} <= 50 * ${y}`);
    * ```
    */
-  link(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
+  linkRow(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
     if (
       constraint instanceof QuadExpr ||
       (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
@@ -2512,25 +2503,24 @@ export class Model {
   }
 
   /**
-   * Alias for `link` - registers a linking constraint (row) connecting this subproblem model
-   * with decision variables in the master problem for Benders decomposition.
+   * @deprecated Use `linkRow` instead.
    */
-  linkRow(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
-    return this.link(constraint);
+  link(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
+    return this.linkRow(constraint);
   }
 
   /**
-   * Linking constraints registered on this model for Benders decomposition.
+   * Linking constraints (rows) registered on this model for Benders decomposition.
    */
-  get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
+  get rowLinkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
     return this._linkingConstraints ?? [];
   }
 
   /**
-   * Alias for `linkingConstraints`.
+   * @deprecated Use `rowLinkingConstraints` instead.
    */
-  get rowLinkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
-    return this.linkingConstraints;
+  get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
+    return this.rowLinkingConstraints;
   }
 
   /**
@@ -2582,7 +2572,7 @@ export class Model {
    *     const x = sub.continuous("x", { lb: 0 });
    *     sub.objective(minimize(expr`2 * ${x}`));
    *     sub.constraint(expr`${x} >= 30`, "demand");
-   *     sub.link(expr`${x} <= 50 * ${y}`);
+   *     sub.linkRow(expr`${x} <= 50 * ${y}`);
    *     return sub;
    *   },
    * });
@@ -2610,7 +2600,7 @@ export class Model {
    * const master = new Model("CuttingStock");
    * master.objective(minimize(0));
    * master.constraint(expr`0 >= 10`, "demand");
-   * master.column({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
+   * master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
    *
    * const result = await master.solveColumnGeneration({
    *   finalizeAsMIP: true,

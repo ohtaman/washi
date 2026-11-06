@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Model, expr, minimize, maximize, HighsSolver } from "../src/index.js";
 
 describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP Relaxation)", () => {
-  it("provides shadowPrice as an alias for constraint dual", async () => {
-    const m = new Model("ShadowPriceTest");
+  it("extracts constraint duals after continuous LP solve", async () => {
+    const m = new Model("DualTest");
     const x = m.continuous("x", { lb: 0 });
     const y = m.continuous("y", { lb: 0 });
 
@@ -18,12 +18,10 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     const c1 = m.getConstraintByName("capacity")!;
     const c2 = m.getConstraintByName("x_limit")!;
 
-    // Dual values (shadow prices)
+    // Dual values
     expect(c1.dual).not.toBeNull();
-    expect(c1.shadowPrice).toBe(c1.dual);
-    expect(c2.shadowPrice).toBe(c2.dual);
-    expect(c1.shadowPrice).toBeCloseTo(2, 4);
-    expect(c2.shadowPrice).toBeCloseTo(1, 4);
+    expect(c1.dual).toBeCloseTo(2, 4);
+    expect(c2.dual).toBeCloseTo(1, 4);
   });
 
   it("dynamically modifies constraint terms with addTerm and setTerm", async () => {
@@ -54,7 +52,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(c.lhs.terms.has(y)).toBe(false);
   });
 
-  it("injects dynamic columns via model.column() with Record, Map, and Array coefficients", async () => {
+  it("injects dynamic columns via model.addColumn() with Record, Map, and Array coefficients", async () => {
     const m = new Model("ColumnInjectionTest");
     m.constraint(expr`0 <= 10`, "res1");
     m.constraint(expr`0 <= 15`, "res2");
@@ -63,7 +61,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     m.objective(maximize(0));
 
     // Column 1: Record coefficient specification
-    const col1 = m.column({
+    const col1 = m.addColumn({
       name: "col1",
       cost: 5,
       lb: 0,
@@ -81,7 +79,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     const coeffMap = new Map();
     coeffMap.set(c1, 1);
     coeffMap.set("res2", 3);
-    const col2 = m.column({
+    const col2 = m.addColumn({
       name: "col2",
       cost: 6,
       lb: 0,
@@ -165,36 +163,32 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(x.value).toBeCloseTo(1.5, 4);
   });
 
-  it("supports master.solve({ benders }) and master.solve({ columnGeneration }) delegation", async () => {
-    // 1. master.solve({ benders })
-    const mBenders = new Model("BendersSolveDelegation");
+  it("supports master.solveBenders(...) and master.solveColumnGeneration(...) execution", async () => {
+    // 1. master.solveBenders(...)
+    const mBenders = new Model("BendersSolveDirect");
     const y = mBenders.continuous("y", { lb: 0 });
     mBenders.objective(minimize(y));
     mBenders.constraint(expr`${y} >= 10`, "base");
 
-    const bendersStatus = await mBenders.solve({
-      benders: {
-        subproblem: () => null,
-      },
+    const bendersRes = await mBenders.solveBenders({
+      subproblem: () => null,
     });
-    expect(bendersStatus).toBe("Optimal");
+    expect(bendersRes.status).toBe("Optimal");
     expect(mBenders.decomposition).toBeDefined();
     expect(mBenders.decomposition?.status).toBe("Optimal");
     expect(mBenders.objectiveValue).toBe(10);
 
-    // 2. master.solve({ columnGeneration })
-    const mCG = new Model("CGSolveDelegation");
+    // 2. master.solveColumnGeneration(...)
+    const mCG = new Model("CGSolveDirect");
     const x = mCG.continuous("x", { lb: 0 });
     mCG.objective(minimize(x));
     mCG.constraint(expr`${x} >= 5`, "min_x");
 
-    const cgStatus = await mCG.solve({
-      columnGeneration: {
-        finalizeAsMIP: false,
-        pricing: () => null,
-      },
+    const cgRes = await mCG.solveColumnGeneration({
+      finalizeAsMIP: false,
+      pricing: () => null,
     });
-    expect(cgStatus).toBe("Optimal");
+    expect(cgRes.status).toBe("Optimal");
     expect(mCG.decomposition).toBeDefined();
     expect(mCG.decomposition?.status).toBe("Optimal");
     expect(mCG.objectiveValue).toBe(5);
