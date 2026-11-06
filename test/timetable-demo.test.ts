@@ -1477,7 +1477,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         description: "Composite pin C02 on Tue/Thu P2",
       });
 
-      // Move the Tuesday session of C02 to Mon P2
+      // Move the Tuesday session of C02 to Fri P2
       await applyDropMove(
         {
           courseId: "C02",
@@ -1488,7 +1488,7 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
           fromProfId: "P01",
           sourceView: "cohorts_4",
         },
-        "Mon",
+        "Fri",
         2
       );
 
@@ -1499,19 +1499,19 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(retainedCompositeRule?.days).toEqual(["Thu"]);
       expect(retainedCompositeRule?.periods).toEqual([2]);
 
-      // A new pin rule should exist for Mon P2
-      const newMonPinRule = rulesAfterCompositeMove.find(
-        (r) => r.days?.includes("Mon") && r.periods?.includes(2)
+      // A new pin rule should exist for Fri P2
+      const newFriPinRule = rulesAfterCompositeMove.find(
+        (r) => r.days?.includes("Fri") && r.periods?.includes(2)
       );
-      expect(newMonPinRule).toBeDefined();
+      expect(newFriPinRule).toBeDefined();
 
       // 8. Prevent duplicate pin rule accumulation when dropping on the same target slot
-      const initialMonRulesCount = rulesAfterCompositeMove.filter(
-        (r) => r.days?.includes("Mon") && r.periods?.includes(2)
+      const initialFriRulesCount = rulesAfterCompositeMove.filter(
+        (r) => r.days?.includes("Fri") && r.periods?.includes(2)
       ).length;
-      expect(initialMonRulesCount).toBe(1);
+      expect(initialFriRulesCount).toBe(1);
 
-      // Trigger another drop to Mon P2 from Mon P2 (with different room or re-application)
+      // Trigger another drop to Fri P2 from Thu P2 (with different room or re-application)
       await applyDropMove(
         {
           courseId: "C02",
@@ -1522,13 +1522,152 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
           fromProfId: "P01",
           sourceView: "cohorts_4",
         },
-        "Mon",
+        "Fri",
         2
       );
-      const monRulesAfterReapply = getAppState().customRules.filter(
-        (r) => r.courseId === "C02" && r.days?.includes("Mon") && r.periods?.includes(2)
+      const friRulesAfterReapply = getAppState().customRules.filter(
+        (r) => r.courseId === "C02" && r.days?.includes("Fri") && r.periods?.includes(2)
       );
-      expect(monRulesAfterReapply).toHaveLength(1);
+      expect(friRulesAfterReapply).toHaveLength(1);
+
+      // 9. Infeasible DnD Move: Attempt to move adjunct professor's course to an unavailable day
+      // P09 (Takumi Kobayashi, Adjunct) is unavailable on Mon, Wed, Fri.
+      getAppState().config.enforceAdjunctDayRestrictions = true;
+      const rulesBeforeInfeasibleMove = [...getAppState().customRules];
+      const ttBeforeInfeasibleMove = getCurrentTimetable()!;
+      const c18Before = ttBeforeInfeasibleMove.sessions.find((s) => s.courseId === "C18")!;
+
+      await applyDropMove(
+        {
+          courseId: "C18",
+          sessionIndex: c18Before.sessionIndex,
+          fromDay: c18Before.day,
+          fromPeriod: c18Before.period,
+          fromRoomId: c18Before.roomId,
+          fromProfId: "P09",
+          sourceView: "cohorts_4",
+        },
+        "Mon",
+        3
+      );
+
+      // Verify timetable was reverted to previous state
+      const ttAfterInfeasibleMove = getCurrentTimetable()!;
+      const c18After = ttAfterInfeasibleMove.sessions.find((s) => s.courseId === "C18")!;
+      expect(c18After.day).toBe(c18Before.day);
+      expect(c18After.period).toBe(c18Before.period);
+
+      // Verify the added "pin to Mon P3" rule was removed / rolled back
+      const rulesAfterInfeasibleMove = getAppState().customRules;
+      const monPinRule = rulesAfterInfeasibleMove.find(
+        (r) => r.kind === "pin_slot" && r.courseId === "C18" && r.days?.includes("Mon")
+      );
+      expect(monPinRule).toBeUndefined();
+      expect(rulesAfterInfeasibleMove.length).toBe(rulesBeforeInfeasibleMove.length);
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
+
+  test("starts with default master data, empty timetable on first view, and solves via triggerSolve (nurse shift demo parity)", async () => {
+    const {
+      getAppState,
+      getCurrentTimetable,
+      triggerSolve,
+      handleGenerateSample,
+    } = await import("../examples/web-demo/apps/ai-timetable/main.js");
+
+    const elements = new Map<string, any>();
+    const createMockElement = (id = "", initialProps: Record<string, any> = {}) => {
+      const listeners: Record<string, ((e?: any) => void)[]> = {};
+      return {
+        id,
+        disabled: false,
+        hidden: false,
+        value: "",
+        checked: false,
+        textContent: "",
+        title: "",
+        className: "",
+        innerHTML: "",
+        style: {} as Record<string, string>,
+        children: [],
+        options: [],
+        listeners,
+        click() {
+          listeners["click"]?.forEach((fn) => fn());
+        },
+        addEventListener(evt: string, fn: (e?: any) => void) {
+          listeners[evt] = listeners[evt] || [];
+          listeners[evt].push(fn);
+        },
+        setAttribute: () => {},
+        getAttribute: () => null,
+        appendChild: () => {},
+        append: () => {},
+        prepend: () => {},
+        remove: () => {},
+        replaceChildren: () => {},
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        dataset: {},
+        ...initialProps,
+      };
+    };
+
+    const registerMock = (id: string, initialProps: Record<string, any> = {}) => {
+      const el = createMockElement(id, initialProps);
+      elements.set(id, el);
+      return el;
+    };
+
+    registerMock("kpi-status-badge");
+    registerMock("kpi-summary-text");
+    registerMock("kpi-solve-time");
+    registerMock("conflict-alert");
+    registerMock("btn-abort-solve");
+    registerMock("chat-messages");
+    registerMock("view-cohorts-grid");
+    registerMock("view-matrix-wrap");
+    registerMock("chk-highlight-diff", { checked: false });
+    registerMock("empty-timetable-state", { hidden: true });
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => {
+        if (!elements.has(id)) {
+          registerMock(id);
+        }
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      createElement: (tag: string) => createMockElement(`tag_${tag}`),
+      createTextNode: (text: string) => createMockElement("text", { textContent: text }),
+    };
+
+    try {
+      // Reset to default initial state (generateTimetableState) with null timetable
+      handleGenerateSample(false);
+
+      const state = getAppState();
+      // 1. Default data is present on first view
+      expect(state.professors.length).toBeGreaterThan(0);
+      expect(state.rooms.length).toBeGreaterThan(0);
+      expect(state.courses.length).toBeGreaterThan(0);
+
+      // 2. Timetable solution is empty (null) on first view
+      expect(getCurrentTimetable()).toBeNull();
+
+      // empty-timetable-state welcome banner is hidden because baseline data is loaded
+      const emptyEl = elements.get("empty-timetable-state");
+      expect(emptyEl.hidden).toBe(true);
+
+      // 3. Clicking solve button triggers optimization and generates timetable
+      const outcome = await triggerSolve();
+      expect(outcome?.status).toBe("Optimal");
+      expect(getCurrentTimetable()).not.toBeNull();
+      expect(getCurrentTimetable()?.sessions.length).toBeGreaterThan(0);
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;

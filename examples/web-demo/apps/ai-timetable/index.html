@@ -258,8 +258,8 @@
 
       <!-- ==================== RIGHT PANE: TUTORIAL, STATUS, TIMETABLE & SETTINGS ==================== -->
       <section id="results-pane-sec" class="results-pane" aria-label="Timetable Workspace">
-        <!-- Interactive 3-Step Workflow Guide (Dismissible) -->
-        <div id="tutorial-banner" class="tutorial-banner">
+        <!-- Interactive 3-Step Workflow Guide (Dismissible, Hidden by default like AI Shift) -->
+        <div id="tutorial-banner" class="tutorial-banner" hidden>
           <div class="tutorial-header">
             <div class="tutorial-title">
               <span id="tutorial-title-text">🔰 Quick Guide: 3-Step Walkthrough for AI University Timetabling (UCTP)</span>
@@ -523,7 +523,7 @@
           <div class="cross-highlight-bar" id="cross-highlight-bar"></div>
 
           <!-- Empty / Blank Timetable Welcome Banner -->
-          <div id="empty-timetable-state" class="empty-timetable-card">
+          <div id="empty-timetable-state" class="empty-timetable-card" hidden>
             <div class="empty-state-icon" id="empty-state-icon">📄</div>
             <div class="empty-state-content">
               <h3 id="empty-state-title">Get Started with University Timetabling (Master Data)</h3>

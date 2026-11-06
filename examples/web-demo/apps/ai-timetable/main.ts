@@ -73,8 +73,8 @@ declare global {
 }
 
 let activeLang: TimetableLang = getTimetableLang();
-// Start with blank slate mode: empty courses, rooms, and professors until generated or CSV-imported
-let appState: TimetableState = createBlankTimetableState();
+// Start with default baseline master data and empty timetable until user clicks solve (like AI Shift)
+let appState: TimetableState = generateTimetableState();
 let currentTimetable: WeeklyTimetableSolution | null = null;
 let currentEvaluation: TimetableEvaluationReport | null = null;
 let lastSolveOutcome: WashiTimetableSolveOutcome | null = null;
@@ -685,126 +685,14 @@ function renderTimetableBoard(): void {
       `;
       wireEmptyStateButtons();
     }
-  } else if (!currentTimetable) {
-    if (emptyStateEl) {
-      emptyStateEl.hidden = false;
-      const totalSessions = appState.courses.reduce((sum, c) => sum + c.sessionsPerWeek, 0);
-      const profCount = appState.professors.length;
-      const roomCount = appState.rooms.length;
-      const courseCount = appState.courses.length;
-      const adjunctCount = appState.professors.filter((p) => p.employment === "adjunct").length;
-      const pcLabCourseCount = appState.courses.filter((c) => c.requiredRoomType === "pc_lab").length;
-
-      emptyStateEl.innerHTML = `
-        <div class="data-preview-card">
-          <div class="data-preview-header">
-            <h3>${pickTimetableLang(activeLang, {
-              ja: `基礎\u30C7\u30FC\u30BF\u306E準備完了: ${profCount}教員 / ${roomCount}教室 / ${courseCount}科目（計${totalSessions}\u30B3\u30DE）`,
-              en: `Data Ready: ${profCount} Profs / ${roomCount} Rooms / ${courseCount} Courses (${totalSessions} sessions)`,
-              zh: `基础数据就绪: ${profCount}位教师 / ${roomCount}间教室 / ${courseCount}门课程 (共${totalSessions}节)`,
-            })}</h3>
-            <p>${pickTimetableLang(activeLang, {
-              ja: "教員名簿\u30FB教室設備\u30FB開講科目\u304C\u30BB\u30C3\u30C8\u3055\u308C\u307E\u3057\u305F。下\u306E「⚡ 時間割\u3092自動編成\u3059\u308B」\u3092押\u3059\u3068 WaSHI × HiGHS \u304C全学年\u30FB全教員\u30FB全教室\u306E時間割\u3092一括最適化\u3057\u307E\u3059。",
-              en: "Faculty roster, classrooms, and curriculum are loaded. Click 'Auto-Schedule Timetable' to run WaSHI × HiGHS MIP optimization.",
-              zh: "教师名册、教室与课程已载入。点击“自动编排课表”，WaSHI × HiGHS 混合整数规划求解器将一键优化全局排课。",
-            })}</p>
-          </div>
-          <div class="data-preview-summary-grid">
-            <div class="dp-summary-box">
-              <h4>👨‍🏫 ${pickTimetableLang(activeLang, {
-                ja: `教員一覧 (${profCount}名)`,
-                en: `Faculty (${profCount})`,
-                zh: `教师名单 (${profCount}位)`,
-              })}</h4>
-              <ul>
-                <li>${pickTimetableLang(activeLang, {
-                  ja: `専任教員: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} \u306A\u3069計${profCount - adjunctCount}名`,
-                  en: `Full-time: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join(", ")}, etc.`,
-                  zh: `专任教师: ${appState.professors.filter((p) => p.employment !== "adjunct").map((p) => escapeHtml(p.name)).slice(0, 3).join("、")} 等共${profCount - adjunctCount}位`,
-                })}</li>
-                <li>${pickTimetableLang(activeLang, {
-                  ja: `非常勤\u30FB曜日制限: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(制限\u3042\u308A)`).join("、") || "特\u306B\u306A\u3057"}`,
-                  en: `Part-time / Day limits: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)} (restricted)`).join(", ") || "None"}`,
-                  zh: `兼职/时间限制: ${appState.professors.filter((p) => p.unavailableDays.length > 0).map((p) => `${escapeHtml(p.name)}(受限)`).join("、") || "无"}`,
-                })}</li>
-              </ul>
-            </div>
-            <div class="dp-summary-box">
-              <h4>🏫 ${pickTimetableLang(activeLang, {
-                ja: `教室設備 (${roomCount}室)`,
-                en: `Classrooms (${roomCount})`,
-                zh: `教室配置 (${roomCount}间)`,
-              })}</h4>
-              <ul>
-                <li>${pickTimetableLang(activeLang, {
-                  ja: `講義室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)}(定員${r.capacity})`).join("、")}`,
-                  en: `Lecture Halls: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)} (cap ${r.capacity})`).join(", ")}`,
-                  zh: `讲堂教室: ${appState.rooms.filter((r) => r.roomType === "large_hall" || r.roomType === "medium_room").map((r) => `${escapeHtml(r.name)}(容纳${r.capacity}人)`).join("、")}`,
-                })}</li>
-                <li>${pickTimetableLang(activeLang, {
-                  ja: `PC演習室\u30FB\u30BC\u30DF室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
-                  en: `PC Labs & Seminars: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join(", ")}`,
-                  zh: `机房与研讨室: ${appState.rooms.filter((r) => r.roomType === "pc_lab" || r.roomType === "seminar_room").map((r) => escapeHtml(r.name)).join("、")}`,
-                })}</li>
-              </ul>
-            </div>
-            <div class="dp-summary-box">
-              <h4>📚 ${pickTimetableLang(activeLang, {
-                ja: `開講科目 (${courseCount}科目)`,
-                en: `Curriculum (${courseCount})`,
-                zh: `开课计划 (${courseCount}门)`,
-              })}</h4>
-              <ul>
-                <li>${pickTimetableLang(activeLang, {
-                  ja: `週\u30B3\u30DE数合計: ${totalSessions}\u30B3\u30DE (1〜4年次)`,
-                  en: `Total sessions: ${totalSessions} slots across Y1-Y4`,
-                  zh: `总授课节数: ${totalSessions}节 (覆盖1~4年级)`,
-                })}</li>
-                <li>${pickTimetableLang(activeLang, {
-                  ja: `設備条件: PC演習室必須 ${pcLabCourseCount}科目、週2\u30B3\u30DE科目 ${appState.courses.filter((c) => c.sessionsPerWeek > 1).length}科目`,
-                  en: `Equipment req: PC lab required for ${pcLabCourseCount} courses`,
-                  zh: `设备要求: 机房必须 ${pcLabCourseCount}门`,
-                })}</li>
-              </ul>
-            </div>
-          </div>
-          <div class="data-preview-actions">
-            <button type="button" id="btn-empty-solve" class="btn-solve-primary">
-              ⚡ ${pickTimetableLang(activeLang, {
-                ja: "時間割\u3092自動編成\u3059\u308B",
-                en: "Auto-Schedule Timetable",
-                zh: "自动编排课表",
-              })}
-            </button>
-            <button type="button" id="btn-empty-view-catalog" class="btn-toolbar-outline">
-              📚 ${pickTimetableLang(activeLang, {
-                ja: "基礎\u30C7\u30FC\u30BF一覧\u3092確認",
-                en: "Review Master Data",
-                zh: "查看基础数据列表",
-              })}
-            </button>
-            <button type="button" id="btn-empty-view-constraints" class="btn-toolbar-outline">
-              ⚙️ ${pickTimetableLang(activeLang, {
-                ja: "条件\u30FB\u30EB\u30FC\u30EB設定\u3092確認",
-                en: "Review Constraints",
-                zh: "查看约束规则",
-              })}
-            </button>
-            <button type="button" id="btn-empty-clear" class="btn-xs-outline" style="color: var(--danger-text, #ef4444);">
-              🗑️ ${pickTimetableLang(activeLang, {
-                ja: "白紙\u306B戻\u3059",
-                en: "Clear to Blank",
-                zh: "清空为白纸",
-              })}
-            </button>
-          </div>
-        </div>
-      `;
-      wireEmptyStateButtons();
-    }
-  } else {
-    if (emptyStateEl) emptyStateEl.hidden = true;
+    const cohortsGrid = $("view-cohorts-grid");
+    const matrixWrap = $("view-matrix-wrap");
+    if (cohortsGrid) cohortsGrid.hidden = true;
+    if (matrixWrap) matrixWrap.hidden = true;
+    return;
   }
+
+  if (emptyStateEl) emptyStateEl.hidden = true;
 
   const cohortsGrid = $("view-cohorts-grid");
   const matrixWrap = $("view-matrix-wrap");
@@ -2529,6 +2417,14 @@ export async function applyDropMove(
   const course = appState.courses.find((c) => c.id === payload.courseId);
   if (!course) return;
 
+  // Snapshot previous rules and outcome for clean rollback if target placement is infeasible
+  const previousRules: CustomTimetableRule[] = appState.customRules.map((r) => ({
+    ...r,
+    days: r.days ? [...r.days] : undefined,
+    periods: r.periods ? [...r.periods] : undefined,
+  }));
+  const previousOutcome = lastSolveOutcome;
+
   // Unpin previous rules matching the source slot or course
   const updatedRules: CustomTimetableRule[] = [];
   let unpinnedCount = 0;
@@ -2643,7 +2539,34 @@ export async function applyDropMove(
   });
   appendChatMessage("assistant", moveMsg);
 
-  await triggerSolve();
+  const outcome = await triggerSolve();
+
+  if (!outcome || outcome.status === "Infeasible" || !outcome.timetable) {
+    // Target slot violated constraints: rollback customRules to previous state
+    // so that added pin rule is removed and prior pin state is fully restored
+    appState.customRules = previousRules;
+    lastSolveOutcome = previousOutcome;
+    if (previousOutcome) {
+      updateStatusAndConflictsUI(previousOutcome);
+    }
+    renderTimetableBoard();
+    renderCustomRulesAndSettings();
+    renderCatalogTables();
+
+    const conflictSummary =
+      outcome?.conflicts && outcome.conflicts.length > 0
+        ? formatConstraintMetaI18n(outcome.conflicts[0], appState, activeLang).label
+        : (outcome?.errorMessage ?? "");
+
+    const conflictSuffix = conflictSummary ? ` (${conflictSummary})` : "";
+
+    const revertMsg = pickTimetableLang(activeLang, {
+      ja: `⚠️ **移動を元に戻しました**: 「${courseI18n.title}」を **${slotText}${roomText}** に配置すると制約を満たさないため${conflictSuffix}、元の時間割に戻し、固定条件を取り消しました。`,
+      en: `⚠️ **Move reverted**: Placing "${courseI18n.title}" at **${slotText}${roomText}** violates constraints${conflictSuffix}. Reverted to the original timetable and canceled the pin condition.`,
+      zh: `⚠️ **已撤销移动**: 将《${courseI18n.title}》放置在 **${slotText}${roomText}** 存在冲突${conflictSuffix}，已恢复原课表并取消固定条件。`,
+    });
+    appendChatMessage("assistant", revertMsg);
+  }
 }
 
 function openSlotInspectorDialog(
