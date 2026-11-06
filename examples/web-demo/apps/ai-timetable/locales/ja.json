@@ -464,6 +464,7 @@
     "catMgmtDesc": "時間割編成の基礎となる教員名簿・教室設備・開講科目です。",
     "btnCatGenerate": "🎲 サンプルデータを読み込む",
     "btnCatImportCsv": "📂 CSVインポート",
+    "btnCatExportCsv": "📥 CSV出力",
     "btnCatDownloadSamples": "📥 CSVテンプレート",
     "btnCatClearBlank": "🗑️ 白紙に戻す",
     "catEmptyTitle": "大学時間割の編成を始める（基礎データの登録）",

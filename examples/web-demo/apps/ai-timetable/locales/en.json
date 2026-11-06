@@ -464,6 +464,7 @@
     "catMgmtDesc": "Master rosters, facilities, and courses for university course timetabling.",
     "btnCatGenerate": "🎲 Load Sample Data",
     "btnCatImportCsv": "📂 Import CSV",
+    "btnCatExportCsv": "📥 Export CSV",
     "btnCatDownloadSamples": "📥 Download CSV Templates",
     "btnCatClearBlank": "🗑️ Clear to Blank",
     "catEmptyTitle": "Get Started with University Timetabling (Master Data)",

@@ -464,6 +464,7 @@
     "catMgmtDesc": "排课所需的基础教师名册、教室设备和开课课程。",
     "btnCatGenerate": "🎲 载入示例数据",
     "btnCatImportCsv": "📂 CSV导入",
+    "btnCatExportCsv": "📥 导出CSV",
     "btnCatDownloadSamples": "📥 下载CSV模板",
     "btnCatClearBlank": "🗑️ 恢复为空白",
     "catEmptyTitle": "开始大学排课（录入基础数据）",

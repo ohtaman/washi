@@ -2856,6 +2856,7 @@ export function applyTimetableLang(lang: TimetableLang): void {
   setText("cat-mgmt-desc", ui.catMgmtDesc);
   setText("btn-cat-generate-sample", ui.btnCatGenerate);
   setText("btn-cat-import-csv", ui.btnCatImportCsv);
+  setText("btn-export-csvs", ui.btnCatExportCsv);
   setText("btn-cat-download-samples", ui.btnCatDownloadSamples);
   setText("btn-cat-clear-blank", ui.btnCatClearBlank);
   setText("cat-empty-title", ui.catEmptyTitle);
