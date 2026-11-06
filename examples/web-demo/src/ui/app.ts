@@ -121,6 +121,8 @@ export function initApp() {
   const docsContainer = document.getElementById("docs-content") as HTMLElement;
   const filterNonZero = document.getElementById("filter-non-zero") as HTMLInputElement;
   const unsatCoreBox = document.getElementById("unsat-core-box") as HTMLDivElement | null;
+  const unsatCoreTitle = document.getElementById("unsat-core-title") as HTMLSpanElement | null;
+  const unsatCoreDesc = document.getElementById("unsat-core-desc") as HTMLDivElement | null;
   const unsatCoreList = document.getElementById("unsat-core-list") as HTMLDivElement | null;
 
   if (docsContainer) {
@@ -388,6 +390,9 @@ export function initApp() {
       metricVars.textContent = String(totalVars);
 
       // Render Conflicts / Unsat Core if conflicting constraints detected
+      const isUnsatCore = Boolean(
+        currentModel?.unsatCore && currentModel.unsatCore.length > 0
+      );
       const activeConflicts =
         currentModel?.conflicts && currentModel.conflicts.length > 0
           ? currentModel.conflicts
@@ -397,6 +402,16 @@ export function initApp() {
 
       if (unsatCoreBox && unsatCoreList && activeConflicts) {
         unsatCoreBox.style.display = "flex";
+        const titleKey = isUnsatCore ? "unsatCoreTitle" : "conflictsTitle";
+        const descKey = isUnsatCore ? "unsatCoreDesc" : "conflictsDesc";
+        if (unsatCoreTitle) {
+          unsatCoreTitle.setAttribute("data-i18n", titleKey);
+          unsatCoreTitle.textContent = t(titleKey);
+        }
+        if (unsatCoreDesc) {
+          unsatCoreDesc.setAttribute("data-i18n", descKey);
+          unsatCoreDesc.textContent = t(descKey);
+        }
         unsatCoreList.innerHTML = activeConflicts
           .map((cName) => `<span class="unsat-core-chip">${cName}</span>`)
           .join("");

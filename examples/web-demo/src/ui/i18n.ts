@@ -49,6 +49,8 @@ export interface TranslationDict {
   // Unsat Core (Conflict Diagnosis)
   unsatCoreTitle: string;
   unsatCoreDesc: string;
+  conflictsTitle: string;
+  conflictsDesc: string;
   backToDocs: string;
   navShowcase: string;
   // Presets & categories

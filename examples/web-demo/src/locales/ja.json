@@ -40,6 +40,8 @@
     "supplyChainWarehouseUnit": "個",
     "unsatCoreTitle": "矛盾制約を検出（Unsat Core）:",
     "unsatCoreDesc": "モデルに実行可能解が存在しません。ソルバーは矛盾を引き起こしている制約の部分集合（Unsat Core）を特定しました:",
+    "conflictsTitle": "矛盾制約を検出（Conflicts）:",
+    "conflictsDesc": "モデルに実行可能解が存在しません。ソルバーは弾性緩和により矛盾を引き起こしている制約（conflicts）を特定しました:",
     "backToDocs": "ドキュメント",
     "navShowcase": "ショーケース",
     "categoryFundamentals": "1. 基本モデル（APIと概念の理解）",
