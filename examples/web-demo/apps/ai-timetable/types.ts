@@ -175,10 +175,12 @@ export interface TimetableConfig {
   preserveCurrentTimetable: boolean; // Minimal perturbation mode
 
   // Soft objective weights
-  weightAvoidPeriod1: number; // Penalty for assigning a course to Period 1 when professor/course dislikes it
-  weightAvoidPeriod5: number; // Penalty for assigning a course to Period 5
-  weightCohortIdleGaps: number; // Penalty for hollow free periods (idle gaps) between compulsory classes
-  weightRoomFit: number; // Bonus/penalty for matching room size appropriately
+  weightAvoidPeriod1: number; // Penalty for assigning a course to Period 1 when professor/course dislikes it (default 1)
+  weightAvoidPeriod5: number; // Penalty for assigning a course to Period 5 (default 1)
+  weightCohortIdleGaps: number; // Penalty for hollow free periods (idle gaps) between compulsory classes (default 2)
+  weightRoomFit: number; // Penalty for matching room size appropriately (default 1)
+  weightPerturbationSlot?: number; // Penalty for moving a session to a different slot in fine-tuning mode (default 10)
+  weightPerturbationRoom?: number; // Penalty for changing room only at the same slot in fine-tuning mode (default 3)
 }
 
 export interface TimetableState {
@@ -211,6 +213,22 @@ export interface WeeklyTimetableSolution {
   byCourse: Record<string, AssignedSession[]>;
 }
 
+export type TimetableDiffReasonKind =
+  | "user_pin"
+  | "prof_conflict"
+  | "room_conflict"
+  | "cohort_conflict"
+  | "room_only"
+  | "rebalance";
+
+export interface TimetableDiffReason {
+  kind: TimetableDiffReasonKind;
+  relatedCourseId?: string;
+  relatedProfessorId?: string;
+  relatedRoomId?: string;
+  relatedCohortId?: string;
+}
+
 export interface TimetableCellDiff {
   courseId: string;
   courseTitle: string;
@@ -221,6 +239,7 @@ export interface TimetableCellDiff {
   nextDay: TimetableDay;
   nextPeriod: TimetablePeriod;
   nextRoomId: string;
+  reason?: TimetableDiffReason;
 }
 
 export interface TimetableDiffSummary {

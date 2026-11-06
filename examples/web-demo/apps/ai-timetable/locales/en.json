@@ -902,5 +902,13 @@
       "label": "Weekly Sessions Quota: \"{title}\" requires {count} session(s) per week",
       "suggestion": "Review pinned/forbidden slots, available rooms, or faculty availability for \"{title}\"."
     }
+  },
+  "diffReasons": {
+    "userPin": "User pinned / moved",
+    "roomOnly": "Room adjusted at same slot ({room})",
+    "roomConflict": "Room {room} occupied by \"{otherCourse}\"",
+    "profConflict": "Prof. {prof} is teaching \"{otherCourse}\" at this slot",
+    "cohortConflict": "Avoid overlap with \"{otherCourse}\" for {cohort}",
+    "rebalance": "Adjusted to resolve scheduling constraints"
   }
 }
