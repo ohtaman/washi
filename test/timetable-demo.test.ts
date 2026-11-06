@@ -1853,10 +1853,20 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         C02: [{ courseId: "C02", sessionIndex: 0, day: "Mon" as const, period: 1 as const, roomId: "R102" }],
       },
     };
+    // 3. Cohort conflict (when enforceCohortNoOverlap is enabled)
     const diffCohortConflict = computeTimetableDiff(mockState, prevCohortConflict, nextCohortConflict);
     const c01CohortCh = diffCohortConflict?.changes.find((c) => c.courseId === "C01");
     expect(c01CohortCh?.reason?.kind).toBe("cohort_conflict");
     expect(c01CohortCh?.reason?.relatedCohortId).toBe("Y1");
     expect(c01CohortCh?.reason?.relatedCourseId).toBe("C02");
+
+    // 4. When enforceCohortNoOverlap is disabled, cohort overlap is not a constraint, so reason falls back to rebalance
+    const relaxedState = {
+      ...mockState,
+      config: { ...mockState.config, enforceCohortNoOverlap: false },
+    };
+    const diffRelaxedCohort = computeTimetableDiff(relaxedState, prevCohortConflict, nextCohortConflict);
+    const c01RelaxedCh = diffRelaxedCohort?.changes.find((c) => c.courseId === "C01");
+    expect(c01RelaxedCh?.reason?.kind).toBe("rebalance");
   });
 });

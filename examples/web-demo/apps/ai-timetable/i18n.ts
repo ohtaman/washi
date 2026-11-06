@@ -486,7 +486,7 @@ export function formatDiffReasonI18n(
   lang: TimetableLang
 ): string {
   if (!reason) return "";
-  const catalog = (CATALOGS[lang] as any).diffReasons;
+  const catalog = CATALOGS[lang].diffReasons;
   if (!catalog) return "";
 
   const courseMap = new Map(state.courses.map((c) => [c.id, c]));

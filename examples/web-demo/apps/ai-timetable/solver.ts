@@ -1276,21 +1276,23 @@ function diagnoseChangeReason(
   }
 
   // Check 3C: Cohort conflict (Does any cohort of this course have another course at prevDay, prevPeriod in next?)
-  const cohortOccupant = prevSlotSessions.find((s) => {
-    if (s.courseId === ch.courseId) return false;
-    const otherCourse = state.courses.find((c) => c.id === s.courseId);
-    return otherCourse && otherCourse.cohorts.some((k) => course.cohorts.includes(k));
-  });
-  if (cohortOccupant) {
-    const otherCourse = state.courses.find((c) => c.id === cohortOccupant.courseId);
-    const sharedCohort = otherCourse
-      ? course.cohorts.find((k) => otherCourse.cohorts.includes(k))
-      : undefined;
-    return {
-      kind: "cohort_conflict",
-      relatedCourseId: cohortOccupant.courseId,
-      relatedCohortId: sharedCohort,
-    };
+  if (state.config.enforceCohortNoOverlap) {
+    const cohortOccupant = prevSlotSessions.find((s) => {
+      if (s.courseId === ch.courseId) return false;
+      const otherCourse = state.courses.find((c) => c.id === s.courseId);
+      return otherCourse && otherCourse.cohorts.some((k) => course.cohorts.includes(k));
+    });
+    if (cohortOccupant) {
+      const otherCourse = state.courses.find((c) => c.id === cohortOccupant.courseId);
+      const sharedCohort = otherCourse
+        ? course.cohorts.find((k) => otherCourse.cohorts.includes(k))
+        : undefined;
+      return {
+        kind: "cohort_conflict",
+        relatedCourseId: cohortOccupant.courseId,
+        relatedCohortId: sharedCohort,
+      };
+    }
   }
 
   return { kind: "rebalance" };
