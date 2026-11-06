@@ -87,6 +87,33 @@ export interface DeclarativeSubproblem<TColumnMeta = unknown> {
 }
 
 /**
+ * Options for linking decision variables in a subproblem model to master constraints
+ * for Column Generation via `sub.linkColumn(...)`.
+ */
+export interface ColumnLinkOptions {
+  /** Objective cost coefficient of the generated column (default: 1) */
+  cost?: number;
+  /** Variable domain type (defaults to "Integer") */
+  type?: VarType;
+  /** Column variable lower bound (default: 0) */
+  lb?: number;
+  /** Column variable upper bound (default: Infinity) */
+  ub?: number;
+  /**
+   * Mapping from master constraint name (or Constraint object) to the corresponding subproblem decision variable.
+   */
+  coefficients?:
+    | Record<string, Var>
+    | Map<Constraint | string, Var>
+    | Array<[Constraint | string, Var]>;
+  /** Alias for `coefficients` */
+  mapping?:
+    | Record<string, Var>
+    | Map<Constraint | string, Var>
+    | Array<[Constraint | string, Var]>;
+}
+
+/**
  * Progress event emitted on each Column Generation iteration.
  */
 export interface ColumnGenerationIterationInfo<TColumnMeta = unknown> {
@@ -103,11 +130,27 @@ export interface ColumnGenerationOptions<TColumnMeta = unknown> {
   /** Restricted Master Problem (RMP) model containing initial columns and constraints (optional when called via `master.solveColumnGeneration(...)`) */
   master?: Model;
   /**
-   * Declarative subproblem definition.
+   * Declarative subproblem definition, or callback returning a subproblem model with `sub.linkColumn(...)`.
    * Automatically sets the subproblem objective using constraint duals, solves it,
    * evaluates the reduced cost, and injects improving columns into the master.
    */
-  subproblem?: DeclarativeSubproblem<TColumnMeta>;
+  subproblem?:
+    | DeclarativeSubproblem<TColumnMeta>
+    | ((
+        context: PricingContext<TColumnMeta>
+      ) =>
+        | Promise<
+            | Model
+            | ColumnProposal<TColumnMeta>
+            | ColumnProposal<TColumnMeta>[]
+            | null
+            | undefined
+          >
+        | Model
+        | ColumnProposal<TColumnMeta>
+        | ColumnProposal<TColumnMeta>[]
+        | null
+        | undefined);
   /**
    * Custom pricing subproblem generator callback.
    * Receives constraint duals (shadow prices) and returns one or more new columns with improving reduced costs,

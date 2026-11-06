@@ -1,7 +1,7 @@
 # 高度な分解法とベストプラクティス（列生成法・Benders分解）
 
 混合整数計画法（MIP）は極めて柔軟で強力ですが、素朴な一体型定式化（Monolithic Formulation）では分枝限定法の探索木が爆発し、ソルバーの計算が停止・極度に遅延する構造的ボトルネックが存在します。
-WaSHI では、オペレーションズ・リサーチ（OR）の確立されたベストプラクティスを非専門家でも手軽に扱えるよう、高レベルオーケストレーター（`master.solveColumnGeneration` / `master.solveBenders`）と低レベルの分解プリミティブを提供しています。
+WaSHI では、オペレーションズ・リサーチ（OR）の確立されたベストプラクティスを非専門家でも手軽に扱えるよう、子問題モデルを返すだけで完結する高レベルオーケストレーター（`master.solveColumnGeneration` / `master.solveBenders`）と低レベルの分解プリミティブを提供しています。
 
 ---
 
@@ -11,8 +11,8 @@ WaSHI では、オペレーションズ・リサーチ（OR）の確立された
 
 | 問題の構造・特徴 | 素朴な MIP が破綻する理由 | 確立されたベストプラクティス | WaSHI の API |
 | :--- | :--- | :--- | :--- |
-| **巨大な対称性と緩い連続緩和**<br>*(カッティングストック、ビンパッキング、配送計画/VRP、シフト・乗務員スケジューリング)* | パターンの対称な順列が無数に存在し、LP連続緩和が極めて緩いため、分枝限定法の探索木が指数関数的に爆発する。 | **列生成法**<br>*(Dantzig-Wolfe 分解)* | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) |
-| **連結変数と多段階決定構造**<br>*(確率計画法、施設配置＋配送計画、容量投資計画)* | 1段目の投資/選択変数と、無数のシナリオ・運用子問題変数が混在し、単一モデルの行列サイズが巨大化する。 | **Benders 分解**<br>*(ベンダーズ切除平面法)* | [`master.solveBenders()`](#benders-分解-solvebenders) |
+| **巨大な対称性と緩い連続緩和**<br>*(カッティングストック、配送計画/VRP、シフト・乗務員スケジューリング)* | パターンの対称な順列が無数に存在し、LP連続緩和が極めて緩いため、分枝限定法の探索木が指数関数的に爆発する。 | **列生成法**<br>*(Dantzig-Wolfe 分解)* | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) |
+| **連結変数と多段階決定構造**<br>*(巡回セールスマン/TSP、施設配置＋配送計画、2段階確率計画法)* | 1段目の投資/選択変数と、無数のシナリオ・運用子問題変数が混在し、単一モデルの行列サイズが巨大化する。 | **Benders 分解**<br>*(ベンダーズ切除平面法)* | [`master.solveBenders()`](#benders-分解-solvebenders) |
 
 ---
 
@@ -75,14 +75,14 @@ c.setTerm(newVar, 0); // 0 をセットすると制約から安全に削除
 2. 制約のシャドウプライス（双対値）に基づいて価格付け子問題を解く。
 3. 被約費用が負（改善可能）な候補パターン（$\bar{c} = \text{cost} - \sum \pi_i a_i < 0$）を主問題に動的追加。
 4. 改善する列がなくなるまで反復。
-5. 最後に主問題を本来の整数問題（MIP）として解き、厳密な整数解を復元（`finalizeAsMIP: true`）。
+5. 最後に主問題を本来の整数問題（MIP）として解き、厳密な整数解を復元（`finalizeAsMIP`、既定値 `true`）。
 
-### 推奨：宣言的サブ問題による全自動列生成
+### 推奨：子問題モデルと `linkColumn()` による全自動列生成
 
-子問題の `Model` と、主問題制約と子問題変数の対応関係（`mapping`）を指定するだけで、目的関数の双対更新や被約費用の判定・列追加が全自動で行われます：
+子問題のコールバックで `Model` を返し、マスター制約との紐付けを `sub.linkColumn(...)` で指定するだけで、目的関数の双対更新・子問題の求解・被約費用判定・列追加が全自動で行われます：
 
 ```typescript
-import { Model, expr, minimize, maximize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const rollWidth = 100;
 const items = [
@@ -104,26 +104,29 @@ master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
 master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
 master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
 
-// 2. 価格付け子問題（ナップサック問題）の定義
-const sub = new Model("KnapsackPricing");
-const a = {
-  A: sub.integer("a_A", { lb: 0, ub: 2 }),
-  B: sub.integer("a_B", { lb: 0, ub: 2 }),
-  C: sub.integer("a_C", { lb: 0, ub: 6 }),
-};
-sub.constraint(expr`45 * ${a.A} + 36 * ${a.B} + 16 * ${a.C} <= ${rollWidth}`);
-
-// 3. master.solveColumnGeneration() で自動求解
+// 2. master.solveColumnGeneration() で自動求解（sub を返すだけ！）
 const result = await master.solveColumnGeneration({
-  finalizeAsMIP: true,
-  subproblem: {
-    model: sub,
-    mapping: {
-      demand_A: a.A,
-      demand_B: a.B,
-      demand_C: a.C,
-    },
-    cost: 1,
+  subproblem: () => {
+    // 価格付け子問題（ナップサック問題）
+    const sub = new Model("KnapsackPricing");
+    const a = {
+      A: sub.integer("a_A", { lb: 0, ub: 2 }),
+      B: sub.integer("a_B", { lb: 0, ub: 2 }),
+      C: sub.integer("a_C", { lb: 0, ub: 6 }),
+    };
+    sub.constraint(expr`45 * ${a.A} + 36 * ${a.B} + 16 * ${a.C} <= ${rollWidth}`);
+
+    // 子問題の変数がマスターのどの制約に寄与するかを linkColumn で紐付け
+    sub.linkColumn({
+      cost: 1,
+      coefficients: {
+        demand_A: a.A,
+        demand_B: a.B,
+        demand_C: a.C,
+      },
+    });
+
+    return sub; // モデルを返すだけで、双対目的関数と列注入は全自動！
   },
 });
 
@@ -132,13 +135,14 @@ console.log("実行された反復回数:", result.iterations);
 console.log("動的生成された列数:", result.columnsAdded);
 ```
 
+> **Note**: 静的な子問題モデルの場合は、`subproblem: { model: sub, mapping: { demand_A: a.A, ... }, cost: 1 }` のような宣言的オブジェクト形式で渡すことも可能です。
+
 ### 低レベル制御：カスタム `pricing` コールバック
 
 最短経路アルゴリズムなどの専用ソルバーを価格付けに利用したい場合は、`pricing` コールバックを手動定義できます：
 
 ```typescript
 const result = await master.solveColumnGeneration({
-  finalizeAsMIP: true,
   pricing: async ({ getDual, reducedCostTolerance }) => {
     const dualA = getDual("demand_A");
     const dualB = getDual("demand_B");
@@ -169,9 +173,9 @@ Benders 分解は問題を以下のように分割して解きます：
 - **主問題（Master Problem）**: 連結変数（例：施設の開設有無などの 0-1 変数 $y$）と、子問題の推定費用を表す補助変数 $\theta \ge 0$ を持つ。
 - **子問題（Subproblem）**: 主問題の暫定解 $y^*$ のもとで運用子問題を解き、**最適性カット（Optimality Cut）** を主問題へフィードバックする。
 
-### 推奨：子問題モデルと `link()` による全自動カット生成
+### 推奨：子問題モデルと `linkRow()` による全自動カット生成
 
-子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.link(...)` で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
+子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.linkRow(...)`（または `sub.link(...)`）で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -210,9 +214,9 @@ const result = await master.solveBenders({
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // マスター変数 y1, y2 との連結制約を link() で指定するだけ！
-    sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
-    sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
+    // マスター変数 y1, y2 との連結制約を行リンク（linkRow / link）で指定するだけ！
+    sub.linkRow(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
+    sub.linkRow(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
     return sub; // モデルを返すだけで、カット生成・theta管理は全自動！
   },
@@ -259,6 +263,26 @@ const result = await master.solveBenders({
 
 ---
 
+## OR の実践的キラーアプリケーション
+
+OR の現場で分解法が決定的な威力を発揮する2大代表例です：
+
+### 1. 配送計画問題（VRP: Vehicle Routing Problem） $\times$ 列生成法
+* **問題の課題**: 複数台の車両で顧客を巡回配送する際、訪問順序の全ルートをあらかじめ列挙すると何億通りにも達し、単一 MIP ではメモリが爆発します。
+* **列生成法のアプローチ**:
+  * **主問題（Set Partitioning / Covering）**: 「生成されたルート候補の中から、全顧客をちょうど1回訪問する最小台数・最小距離の組み合わせを選ぶ」。
+  * **子問題（Pricing / 最短経路問題）**: トラック1台分の「積載容量や時間枠を満たす有望な巡回ルート」を動的に1本ずつ生成（1本のルート＝1つの列！）。
+  * **効果**: 天文学的な組み合わせの中から、**目的関数を真に改善できるルート（列）だけを子問題が次々に提案**するため、大規模な配送計画が驚異的なスピードで解けます。
+
+### 2. 巡回セールスマン問題（TSP） $\times$ Benders 分解（部分巡回除去）
+* **問題の課題**: 全ての都市を1筆書きで巡回する際、「途中で小さな島（部分巡回）ができてしまう」のを禁止する部分巡回除去制約（Subtour Elimination Constraints）は、都市数 $n$ に対して **$O(2^n)$ 個（天文学的数値）** 存在し、事前にすべてモデルへ投入することは不可能です。
+* **Benders 分解（遅延カット生成）のアプローチ**:
+  * **主問題**: 各都市の入次数・出次数が1という基本制約だけで一旦解く。
+  * **子問題**: 得られた経路グラフで「島（部分巡回）」ができていないかを判定。もし島が見つかれば、その島を禁止する制約式（Benders カット＝行！）を主問題へ動的にフィードバック。
+  * **効果**: $2^n$ 個の制約を最初から作らず、**実際に違反した数個〜数十個の制約（行）だけを動的に追加**するため、巨大な巡回ネットワークも一瞬で最適化できます。
+
+---
+
 ## `master.solve()` との構文の統一
 
 `master.solveBenders(...)` や `master.solveColumnGeneration(...)` は、WaSHI の標準的な `master.solve()` メソッドのオプションとしても渡すことができます：
@@ -270,6 +294,7 @@ const status = await master.solve({
     gapTolerance: 1e-4,
     subproblem: () => {
       // ...
+      sub.linkRow(expr`${x} <= 50 * ${y}`);
       return sub;
     },
   },
@@ -279,10 +304,10 @@ const status = await master.solve({
 const status = await master.solve({
   columnGeneration: {
     finalizeAsMIP: true,
-    subproblem: {
-      model: sub,
-      mapping: { demand_A: a.A },
-      cost: 1,
+    subproblem: () => {
+      // ...
+      sub.linkColumn({ cost: 1, coefficients: { demand_A: a.A } });
+      return sub;
     },
   },
 });

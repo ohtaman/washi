@@ -241,4 +241,66 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(result.objectiveValue).toBe(2);
     expect(result.columnsAdded).toBe(1);
   });
+
+  it("supports subproblem callback returning sub model with sub.linkColumn({ cost, coefficients })", async () => {
+    const rollWidth = 100;
+    const items = [
+      { id: "A", width: 45, demand: 10 },
+      { id: "B", width: 36, demand: 14 },
+      { id: "C", width: 16, demand: 20 },
+    ];
+
+    const master = new Model("LinkColumnCuttingStock");
+    master.objective(minimize(0));
+
+    for (const item of items) {
+      master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
+    }
+
+    // Initial naive columns
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+
+    // Solve using subproblem returning sub with sub.linkColumn
+    const result = await master.solveColumnGeneration({
+      finalizeAsMIP: true,
+      subproblem: () => {
+        const sub = new Model("KnapsackSubLinkColumn");
+        const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
+        const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
+        const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
+        sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+
+        sub.linkColumn({
+          cost: 1,
+          coefficients: {
+            demand_A: a_A,
+            demand_B: a_B,
+            demand_C: a_C,
+          },
+        });
+
+        return sub;
+      },
+    });
+
+    expect(result.status).toBe("Optimal");
+    expect(result.objectiveValue).toBe(14);
+    expect(result.columnsAdded).toBeGreaterThanOrEqual(1);
+  });
+
+  it("throws a descriptive error when subproblem callback returns Model without linkColumn", async () => {
+    const master = new Model("MissingLinkMaster");
+    master.constraint(expr`0 >= 5`, "demand");
+    master.column({ cost: 1, type: "Integer", coefficients: { demand: 1 } });
+
+    const brokenModel = new Model("BrokenSub");
+
+    await expect(
+      master.solveColumnGeneration({
+        subproblem: () => brokenModel,
+      })
+    ).rejects.toThrow("Call sub.linkColumn({ cost, coefficients }) before returning the subproblem model");
+  });
 });

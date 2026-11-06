@@ -7,9 +7,20 @@ import type {
 } from "./types.js";
 import type { Constraint } from "../modeler/constraint.js";
 import type { Var } from "../modeler/variable.js";
+import type { Model } from "../modeler/model.js";
 import type { Solver, SolverOptions } from "../modeler/solvers/index.js";
 import { minimize, maximize } from "../modeler/objective.js";
 import { LinExpr } from "../modeler/expression.js";
+
+function isModelLike(val: unknown): val is Model {
+  return Boolean(
+    val &&
+      typeof val === "object" &&
+      "constraints" in val &&
+      "variables" in val &&
+      typeof (val as any).solve === "function"
+  );
+}
 
 function createPricingFromDeclarativeSubproblem<TColumnMeta = unknown>(
   subDef: DeclarativeSubproblem<TColumnMeta>,
@@ -26,7 +37,12 @@ function createPricingFromDeclarativeSubproblem<TColumnMeta = unknown>(
         const name = typeof k === "string" ? k : k.name;
         mappingEntries.push([name, v]);
       }
-    } else {
+    } else if (Array.isArray(subDef.mapping)) {
+      for (const [k, v] of subDef.mapping) {
+        const name = typeof k === "string" ? k : (k as any).name;
+        mappingEntries.push([name, v]);
+      }
+    } else if (subDef.mapping && typeof subDef.mapping === "object") {
       for (const [k, v] of Object.entries(subDef.mapping)) {
         mappingEntries.push([k, v]);
       }
@@ -126,16 +142,50 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
 
   const isMaximize = master.sense.toLowerCase() === "maximize";
 
-  const pricingFn =
-    pricing ??
-    (subproblem
-      ? createPricingFromDeclarativeSubproblem(
-          subproblem,
-          isMaximize,
-          solver,
-          solverOptions
-        )
-      : null);
+  let pricingFn = pricing;
+  if (!pricingFn && subproblem) {
+    if (typeof subproblem === "function") {
+      const subFn = subproblem;
+      pricingFn = async (context: PricingContext<TColumnMeta>) => {
+        const subOutput = await subFn(context);
+        if (!subOutput) {
+          return null;
+        }
+        if (isModelLike(subOutput)) {
+          const colLink = (subOutput as any).columnLink;
+          if (!colLink) {
+            throw new Error(
+              "Subproblem Model returned from subproblem callback does not have column links. " +
+                "Call sub.linkColumn({ cost, coefficients }) before returning the subproblem model."
+            );
+          }
+          const mapping = colLink.coefficients ?? colLink.mapping;
+          const declarPricing = createPricingFromDeclarativeSubproblem<TColumnMeta>(
+            {
+              model: subOutput,
+              mapping,
+              cost: colLink.cost,
+              type: colLink.type,
+              lb: colLink.lb,
+              ub: colLink.ub,
+            },
+            isMaximize,
+            solver,
+            solverOptions
+          );
+          return declarPricing(context);
+        }
+        return subOutput as ColumnProposal<TColumnMeta> | ColumnProposal<TColumnMeta>[];
+      };
+    } else {
+      pricingFn = createPricingFromDeclarativeSubproblem(
+        subproblem,
+        isMaximize,
+        solver,
+        solverOptions
+      );
+    }
+  }
 
   if (!pricingFn) {
     throw new Error(
