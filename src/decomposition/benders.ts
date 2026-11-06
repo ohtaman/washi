@@ -271,8 +271,8 @@ export async function solveBenders(
           ? rawSubOutput
           : (rawSubOutput as any).model;
         const rawLinking: Array<Constraint | LinExpr> = isModelLike(rawSubOutput)
-          ? ((rawSubOutput as any).rowLinkingConstraints || (rawSubOutput as any).linkingConstraints || [])
-          : ((rawSubOutput as any).linking || (rawSubOutput as any).model?.rowLinkingConstraints || (rawSubOutput as any).model?.linkingConstraints || []);
+          ? ((rawSubOutput as any).rowLinkingConstraints || [])
+          : ((rawSubOutput as any).rowLinkingConstraints || (rawSubOutput as any).model?.rowLinkingConstraints || []);
 
         if (!thetaVar) {
           thetaVar = master.continuous("__benders_theta", { lb: 0 });

@@ -139,7 +139,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
   it("throws a descriptive error when adding a column with non-existent constraint name", () => {
     const m = new Model("NonExistentConstraintTest");
     expect(() => {
-      m.column({
+      m.addColumn({
         name: "invalid_col",
         cost: 1,
         coefficients: {

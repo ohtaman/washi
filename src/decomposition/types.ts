@@ -272,14 +272,14 @@ export interface BendersIterationInfo {
 /**
  * Result returned by a Benders subproblem callback.
  * Can be:
- * - A `Model` (or `{ model: Model, linking?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+ * - A `Model` (or `{ model: Model, rowLinkingConstraints?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
  * - Or `BendersCut | BendersCut[] | null | undefined` for manual cut definition.
  */
 export type BendersSubproblemResult =
   | Model
   | {
       model: Model;
-      linking?: Array<Constraint | LinExpr>;
+      rowLinkingConstraints?: Array<Constraint | LinExpr>;
     }
   | BendersCut
   | BendersCut[]
@@ -295,7 +295,7 @@ export interface BendersOptions {
   /**
    * Subproblem evaluation callback.
    * Evaluates the subproblem given current master decisions.
-   * Can return a `Model` (or `{ model: Model, linking?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+   * Can return a `Model` (or `{ model: Model, rowLinkingConstraints?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
    * or manual `BendersCut | BendersCut[] | null | undefined`.
    */
   subproblem: (

@@ -246,7 +246,7 @@ export class Model {
    * Latest decomposition result if solved using Benders decomposition or Column Generation.
    */
   public decomposition?: BendersResult | ColumnGenerationResult;
-  private _linkingConstraints?: Array<Constraint | LinExpr>;
+  private _rowLinkingConstraints?: Array<Constraint | LinExpr>;
   private _columnLink?: ColumnLinkOptions;
   private hasSolutionState: boolean = false;
   private modelRevision: number = 0;
@@ -819,13 +819,6 @@ export class Model {
     }
 
     return v;
-  }
-
-  /**
-   * @deprecated Use `addColumn(...)` instead.
-   */
-  column(options: ColumnDefinition): Var {
-    return this.addColumn(options);
   }
 
   /**
@@ -2494,33 +2487,19 @@ export class Model {
         "Linking constraint cannot be a quadratic expression."
       );
     }
-    if (!this._linkingConstraints) {
-      this._linkingConstraints = [];
+    if (!this._rowLinkingConstraints) {
+      this._rowLinkingConstraints = [];
     }
     const registered = constraint as Constraint | LinExpr;
-    this._linkingConstraints.push(registered);
+    this._rowLinkingConstraints.push(registered);
     return registered;
-  }
-
-  /**
-   * @deprecated Use `linkRow` instead.
-   */
-  link(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
-    return this.linkRow(constraint);
   }
 
   /**
    * Linking constraints (rows) registered on this model for Benders decomposition.
    */
   get rowLinkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
-    return this._linkingConstraints ?? [];
-  }
-
-  /**
-   * @deprecated Use `rowLinkingConstraints` instead.
-   */
-  get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
-    return this.rowLinkingConstraints;
+    return this._rowLinkingConstraints ?? [];
   }
 
   /**
