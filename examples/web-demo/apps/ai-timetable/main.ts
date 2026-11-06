@@ -2561,7 +2561,7 @@ export async function applyDropMove(
     const conflictSuffix = conflictSummary ? ` (${conflictSummary})` : "";
 
     const revertMsg = pickTimetableLang(activeLang, {
-      ja: `⚠️ **移動を元に戻しました**: 「${courseI18n.title}」を **${slotText}${roomText}** に配置すると制約を満たさないため${conflictSuffix}、元の時間割に戻し、固定条件を取り消しました。`,
+      ja: `⚠️ **移動\u3092元\u306B戻\u3057\u307E\u3057\u305F**: 「${courseI18n.title}」\u3092 **${slotText}${roomText}** \u306B配置\u3059\u308B\u3068制約\u3092満\u305F\u3055\u306A\u3044\u305F\u3081${conflictSuffix}、元\u306E時間割\u306B戻\u3057、固定条件\u3092取\u308A消\u3057\u307E\u3057\u305F。`,
       en: `⚠️ **Move reverted**: Placing "${courseI18n.title}" at **${slotText}${roomText}** violates constraints${conflictSuffix}. Reverted to the original timetable and canceled the pin condition.`,
       zh: `⚠️ **已撤销移动**: 将《${courseI18n.title}》放置在 **${slotText}${roomText}** 存在冲突${conflictSuffix}，已恢复原课表并取消固定条件。`,
     });
