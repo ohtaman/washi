@@ -50,10 +50,9 @@ function createPricingFromDeclarativeSubproblem<TColumnMeta = unknown>(
     const zStar = subModel.objectiveValue ?? 0;
     const colCost = subDef.cost ?? 1;
 
-    // Reduced cost:
-    // For master min: cost - sum(dual * a) = cost - zStar
-    // For master max: sum(dual * a) - cost = zStar - cost
-    const reducedCost = isMasterMaximize ? zStar - colCost : colCost - zStar;
+    // Reduced cost: rc = cost - sum(dual * a) = colCost - zStar
+    // An improving column has rc < -tol for minimization, or rc > +tol for maximization
+    const reducedCost = colCost - zStar;
     const isImproving = isMasterMaximize
       ? reducedCost > context.reducedCostTolerance
       : reducedCost < -context.reducedCostTolerance;

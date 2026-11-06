@@ -213,4 +213,32 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(result.columnsAdded).toBeGreaterThanOrEqual(1);
     expect(master.decomposition).toBe(result);
   });
+
+  it("preserves positive reduced cost for master maximization with declarative subproblem", async () => {
+    // Maximize master objective: max x with initial column x <= 1 (cost 1)
+    const master = new Model("MaxMaster");
+    master.constraint(expr`0 <= 1`, "cap");
+    // Initial column with cost 1, coeff 1
+    const initCol = master.column({ cost: 1, type: "Continuous", coefficients: { cap: 1 } });
+    master.objective(maximize(initCol));
+
+    // Pricing subproblem provides an improving column with cost 2 and coeff 1
+    const sub = new Model("PricingSub");
+    const a = sub.continuous("a", { lb: 1, ub: 1 }); // fixed to 1
+
+    const result = await master.solveColumnGeneration({
+      finalizeAsMIP: true,
+      subproblem: {
+        cost: 2,
+        model: sub,
+        mapping: {
+          cap: a,
+        },
+      },
+    });
+
+    expect(result.status).toBe("Optimal");
+    expect(result.objectiveValue).toBe(2);
+    expect(result.columnsAdded).toBe(1);
+  });
 });
