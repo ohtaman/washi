@@ -3,11 +3,13 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { Model } from "../src/index.js";
 import {
+  checkBoardCoverage,
   computeTitanCellSize,
   generateStagePuzzle,
   getStageSpec,
   hasFaultLines,
   mulberry32,
+  removeCollidingBlocks,
   type PlacedBlock,
 } from "../examples/web-demo/games/titan-pack/generator.ts";
 
@@ -206,9 +208,8 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       // 3. Touch target sizing (min 44px for accessibility on cards/buttons)
       expect(html).toContain("min-height: 44px");
 
-      // 4. Mobile horizontal scroll inventory tray
-      expect(html).toContain("scroll-snap-type: x mandatory");
-      expect(html).toContain("-webkit-overflow-scrolling: touch");
+      // 4. Mobile compact grid inventory tray (eliminates horizontal scrolling)
+      expect(html).toContain("repeat(auto-fit, minmax(54px, 1fr))");
 
       // 5. Dedicated active part controls for mobile
       expect(html).toContain("id=\"active-banner\"");
@@ -216,11 +217,80 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       expect(html).toContain("id=\"btn-active-cancel\"");
       expect(html).toContain("class=\"footbar-actions\"");
 
+      // 6. Mobile header clutter reduction & theory button removal
+      expect(html).toContain("#btn-theory");
+      expect(html).toContain("display: none !important");
+      expect(html).toContain("position: sticky");
+
       // 6. Dynamic updateCellSize on resize and orientationchange
       const mainTsPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/main.ts");
       const clientCode = html + (fs.existsSync(mainTsPath) ? fs.readFileSync(mainTsPath, "utf-8") : "");
       expect(clientCode).toContain("window.addEventListener(\"resize\", updateCellSize)");
       expect(clientCode).toContain("window.addEventListener(\"orientationchange\", updateCellSize)");
+    });
+  });
+
+  describe("Hint Resolution & Board Coverage Integrity (Codex Review Regression)", () => {
+    it("resolves conflicting manual placements when a hint is requested", () => {
+      const puzzle = generateStagePuzzle(1);
+      // Stage 1 blueprint solution block 0: Part A at (0, 0) with w=4, h=1
+      const solA = puzzle.solution.find((s) => s.partId === "part-0") ?? puzzle.solution[0];
+
+      // Simulate player placing another part B at (3, 0) with w=2, h=3 (which overlaps col 3, row 0 of A)
+      let placed: Array<PlacedBlock & { partId: string }> = [
+        { partId: "part-1", col: solA.col + solA.w - 1, row: solA.row, w: 2, h: 3 },
+      ];
+
+      // Remove colliding blocks before inserting hint
+      placed = removeCollidingBlocks(placed, solA);
+      placed.push({ ...solA });
+
+      // Conflicting part-1 must have been evicted back to tray
+      expect(placed.some((p) => p.partId === "part-1")).toBe(false);
+      expect(placed.some((p) => p.partId === solA.partId)).toBe(true);
+
+      const coverage = checkBoardCoverage(puzzle.cols, puzzle.rows, placed);
+      expect(coverage.hasOverlap).toBe(false);
+      expect(coverage.coveredCount).toBe(solA.w * solA.h);
+    });
+
+    it("ensures overlapping parts never satisfy complete board victory", () => {
+      // 6x4 board = 24 cells.
+      // Force overlapping parts that nominally sum to 24 cells:
+      // Part A: 4x1 (4 sq) at (0, 0)
+      // Part B: 2x3 (6 sq) at (3, 0) -> overlaps (3, 0) with Part A
+      // Part C: 2x3 (6 sq) at (0, 1)
+      // Part D: 2x4 (8 sq) at (4, 0)
+      // Total nominal area: 4 + 6 + 6 + 8 = 24, but overlap exists at (3, 0)!
+      const overlappingBlocks: PlacedBlock[] = [
+        { col: 0, row: 0, w: 4, h: 1 },
+        { col: 3, row: 0, w: 2, h: 3 },
+        { col: 0, row: 1, w: 2, h: 3 },
+        { col: 4, row: 0, w: 2, h: 4 },
+      ];
+
+      const coverage = checkBoardCoverage(6, 4, overlappingBlocks);
+      expect(coverage.hasOverlap).toBe(true);
+      expect(coverage.isComplete).toBe(false);
+      expect(coverage.coveredCount).toBeLessThan(24);
+    });
+
+    it("verifies progressive hint sequence clears cleanly without overlaps from empty board", () => {
+      const puzzle = generateStagePuzzle(1);
+      let placed: Array<PlacedBlock & { partId: string }> = [];
+
+      for (const hint of puzzle.solution) {
+        placed = removeCollidingBlocks(placed, hint);
+        placed.push({ ...hint });
+
+        const intermediateCoverage = checkBoardCoverage(puzzle.cols, puzzle.rows, placed);
+        expect(intermediateCoverage.hasOverlap).toBe(false);
+      }
+
+      const finalCoverage = checkBoardCoverage(puzzle.cols, puzzle.rows, placed);
+      expect(finalCoverage.hasOverlap).toBe(false);
+      expect(finalCoverage.isComplete).toBe(true);
+      expect(finalCoverage.coveredCount).toBe(puzzle.cols * puzzle.rows);
     });
   });
 });
