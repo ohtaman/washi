@@ -4,8 +4,150 @@ import type {
   BendersResult,
   BendersSubproblemContext,
 } from "./types.js";
+import type { Model } from "../modeler/model.js";
 import type { Var } from "../modeler/variable.js";
+import type { Solver, SolverOptions } from "../modeler/solvers/index.js";
+import { LinExpr } from "../modeler/expression.js";
 import { Constraint } from "../modeler/constraint.js";
+import { minimize, maximize } from "../modeler/objective.js";
+
+function isModelLike(val: unknown): val is Model {
+  return Boolean(
+    val &&
+    typeof val === "object" &&
+    "constraints" in val &&
+    "variables" in val &&
+    typeof (val as any).solve === "function"
+  );
+}
+
+async function generateBendersCutFromSubproblem(
+  subModel: Model,
+  rawLinking: Array<Constraint | LinExpr>,
+  master: Model,
+  thetaVar: Var,
+  masterValues: Record<string, number>,
+  isMinimize: boolean,
+  solver?: Solver | string,
+  solverOptions?: SolverOptions,
+  iterationIndex = 1
+): Promise<BendersCut | null> {
+  interface LinkingMeta {
+    origConstraint: Constraint;
+    subConstr: Constraint;
+    masterTerms: Array<[Var, number]>;
+    baseRhs: number;
+  }
+
+  const processedLinking: LinkingMeta[] = [];
+
+  for (let idx = 0; idx < rawLinking.length; idx++) {
+    const item = rawLinking[idx];
+    const origConstr: Constraint = item instanceof Constraint ? item : (item as any);
+    const lhs = origConstr.lhs;
+    const sense = origConstr.sense;
+    const rhsConst = origConstr.rhs - (lhs.constant || 0);
+
+    const subTerms: Array<[Var, number]> = [];
+    const masterTerms: Array<[Var, number]> = [];
+    let masterFixedSum = 0;
+
+    for (const [v, coeff] of lhs.terms.entries()) {
+      const isMasterVar = v.ownerModel === master || master.getVarByName(v.name) !== undefined;
+      if (isMasterVar) {
+        masterTerms.push([v, coeff]);
+        const mVal = masterValues[v.name] ?? 0;
+        masterFixedSum += coeff * mVal;
+      } else {
+        subTerms.push([v, coeff]);
+      }
+    }
+
+    const subRhs = rhsConst - masterFixedSum;
+    const subLhs = new LinExpr();
+    for (const [sv, coeff] of subTerms) {
+      subLhs.addTerm(sv, coeff);
+    }
+
+    const subConstrName = `__benders_link_${iterationIndex}_${idx}`;
+    const subConstr = new Constraint(subLhs, sense, subRhs, subConstrName);
+    subModel.constraint(subConstr);
+    processedLinking.push({
+      origConstraint: origConstr,
+      subConstr,
+      masterTerms,
+      baseRhs: rhsConst,
+    });
+  }
+
+  // Solve subproblem as continuous LP
+  const subStatus = await subModel.solve(solver, { ...solverOptions, relax: true });
+  if (subStatus !== "Optimal" && subStatus !== "Feasible") {
+    return null;
+  }
+
+  const subObj = subModel.objectiveValue ?? 0;
+  const currentThetaVal = masterValues[thetaVar.name] ?? 0;
+
+  const tolerance = 1e-4;
+  const needsCut = isMinimize
+    ? currentThetaVal < subObj - tolerance
+    : currentThetaVal > subObj + tolerance;
+
+  if (!needsCut) {
+    return null;
+  }
+
+  // Construct Benders cut
+  let cutConstantRhs = 0;
+  const masterCutCoeffs = new Map<Var, number>();
+
+  const linkingSubConstrNames = new Set(processedLinking.map((p) => p.subConstr.name));
+  for (const c of subModel.constraints) {
+    if (linkingSubConstrNames.has(c.name)) continue;
+    const dual = subModel.solution?.duals[c.name] ?? c.dual ?? 0;
+    if (Math.abs(dual) > 1e-12) {
+      const rhsConst = c.rhs - (c.lhs.constant || 0);
+      cutConstantRhs += dual * rhsConst;
+    }
+  }
+
+  for (const p of processedLinking) {
+    const dual = subModel.solution?.duals[p.subConstr.name] ?? p.subConstr.dual ?? 0;
+    if (Math.abs(dual) > 1e-12) {
+      cutConstantRhs += dual * p.baseRhs;
+      for (const [mVar, coeff] of p.masterTerms) {
+        const currentCoeff = masterCutCoeffs.get(mVar) ?? 0;
+        masterCutCoeffs.set(mVar, currentCoeff + dual * coeff);
+      }
+    }
+  }
+
+  const cutLhs = new LinExpr();
+  cutLhs.addTerm(thetaVar, 1);
+  for (const [mVar, coeff] of masterCutCoeffs.entries()) {
+    if (Math.abs(coeff) > 1e-12) {
+      cutLhs.addTerm(mVar, coeff);
+    }
+  }
+
+  const cutConstraint = new Constraint(
+    cutLhs,
+    isMinimize ? ">=" : "<=",
+    cutConstantRhs,
+    `__benders_opt_cut_${iterationIndex}`
+  );
+
+  const masterDirectCost = (master.objectiveValue ?? 0) - currentThetaVal;
+  const totalEvaluatedObj = masterDirectCost + subObj;
+
+  return {
+    kind: "optimality",
+    constraint: cutConstraint,
+    name: cutConstraint.name,
+    subproblemObjective: totalEvaluatedObj,
+  };
+}
 
 /**
  * Solve a problem using Benders Decomposition.
@@ -37,8 +179,12 @@ import { Constraint } from "../modeler/constraint.js";
 export async function solveBenders(
   options: BendersOptions
 ): Promise<BendersResult> {
+  const master = options.master;
+  if (!master) {
+    throw new Error("A master Model must be provided for solveBenders.");
+  }
+
   const {
-    master,
     subproblem,
     maxIterations = 100,
     gapTolerance = 1e-4,
@@ -46,6 +192,14 @@ export async function solveBenders(
     solverOptions,
     onIteration,
   } = options;
+
+  let thetaVar: Var | undefined;
+  if (options.theta) {
+    thetaVar = typeof options.theta === "string" ? master.getVarByName(options.theta) : options.theta;
+  }
+  if (!thetaVar) {
+    thetaVar = master.variables.find((v) => v.name === "theta" || v.name === "__benders_theta");
+  }
 
   let cutsAdded = 0;
   let iterations = 0;
@@ -102,13 +256,51 @@ export async function solveBenders(
     };
 
     // 2. Evaluate the subproblem
-    const cutOrCuts = await subproblem(context);
+    const rawSubOutput = await subproblem(context);
     const cuts: BendersCut[] = [];
-    if (cutOrCuts) {
-      if (Array.isArray(cutOrCuts)) {
-        cuts.push(...cutOrCuts);
+
+    if (rawSubOutput) {
+      if (
+        isModelLike(rawSubOutput) ||
+        (typeof rawSubOutput === "object" &&
+          "model" in rawSubOutput &&
+          isModelLike((rawSubOutput as any).model))
+      ) {
+        // Automatic Benders cut generation from subproblem Model!
+        const subModel: Model = isModelLike(rawSubOutput)
+          ? rawSubOutput
+          : (rawSubOutput as any).model;
+        const rawLinking: Array<Constraint | LinExpr> = isModelLike(rawSubOutput)
+          ? ((rawSubOutput as any).linkingConstraints || [])
+          : ((rawSubOutput as any).linking || (rawSubOutput as any).model?.linkingConstraints || []);
+
+        if (!thetaVar) {
+          thetaVar = master.continuous("__benders_theta", { lb: 0 });
+          if (isMinimize) {
+            master.objective(minimize(master.objectiveExpr.add(thetaVar)));
+          } else {
+            master.objective(maximize(master.objectiveExpr.sub(thetaVar)));
+          }
+        }
+
+        const autoCut = await generateBendersCutFromSubproblem(
+          subModel,
+          rawLinking,
+          master,
+          thetaVar,
+          masterValues,
+          isMinimize,
+          solver,
+          solverOptions,
+          iter
+        );
+        if (autoCut) {
+          cuts.push(autoCut);
+        }
+      } else if (Array.isArray(rawSubOutput)) {
+        cuts.push(...rawSubOutput);
       } else {
-        cuts.push(cutOrCuts);
+        cuts.push(rawSubOutput as BendersCut);
       }
     }
 
@@ -191,7 +383,7 @@ export async function solveBenders(
   const finalObjective =
     bestEvaluatedObjective !== null ? bestEvaluatedObjective : master.objectiveValue;
 
-  return {
+  const result: BendersResult = {
     status: lastStatus,
     objectiveValue: finalObjective,
     lowerBound,
@@ -202,4 +394,7 @@ export async function solveBenders(
     master,
     values,
   };
+
+  (master as any).decomposition = result;
+  return result;
 }

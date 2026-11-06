@@ -252,4 +252,48 @@ describe("Benders Decomposition", () => {
     expect(master.values.get("y")).toBe(y.value);
     expect(master.solution?.values.y).toBe(y.value);
   });
+
+  it("solves Two-Stage Capacitated Facility Location using simplified master.solveBenders with auto-cut generation and linking constraints", async () => {
+    const master = new Model("SimpleBendersMaster");
+    const y_F1 = master.binary("y_F1");
+    const y_F2 = master.binary("y_F2");
+    master.objective(minimize(expr`100 * ${y_F1} + 120 * ${y_F2}`));
+    master.constraint(expr`50 * ${y_F1} + 60 * ${y_F2} >= 75`, "master_cap");
+
+    const result = await master.solveBenders({
+      subproblem: () => {
+        const sub = new Model("TransportSub");
+        const x11 = sub.continuous("x11", { lb: 0 });
+        const x12 = sub.continuous("x12", { lb: 0 });
+        const x13 = sub.continuous("x13", { lb: 0 });
+        const x21 = sub.continuous("x21", { lb: 0 });
+        const x22 = sub.continuous("x22", { lb: 0 });
+        const x23 = sub.continuous("x23", { lb: 0 });
+
+        sub.objective(
+          minimize(
+            expr`2 * ${x11} + 5 * ${x12} + 3 * ${x13} + 4 * ${x21} + 2 * ${x22} + 4 * ${x23}`
+          )
+        );
+
+        // Demand constraints
+        sub.constraint(expr`${x11} + ${x21} >= 30`, "dem_C1");
+        sub.constraint(expr`${x12} + ${x22} >= 25`, "dem_C2");
+        sub.constraint(expr`${x13} + ${x23} >= 20`, "dem_C3");
+
+        // Linking constraints referencing master variables
+        sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y_F1}`);
+        sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y_F2}`);
+
+        return sub;
+      },
+    });
+
+    expect(result.status).toBe("Optimal");
+    expect(result.objectiveValue).toBeCloseTo(390, 1e-4);
+    expect(result.cutsAdded).toBeGreaterThanOrEqual(1);
+    expect(master.decomposition).toBe(result);
+    expect(Math.round(result.values.y_F1)).toBe(1);
+    expect(Math.round(result.values.y_F2)).toBe(1);
+  });
 });

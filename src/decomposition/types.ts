@@ -63,6 +63,30 @@ export interface PricingContext<TColumnMeta = unknown> {
 }
 
 /**
+ * Declarative subproblem definition for Column Generation.
+ * WaSHI automatically sets the subproblem objective using the master's constraint duals,
+ * solves it, computes reduced costs, and injects improving columns into the master.
+ */
+export interface DeclarativeSubproblem<TColumnMeta = unknown> {
+  /** The subproblem model or a factory function returning a subproblem model given the pricing context */
+  model: Model | ((context: PricingContext<TColumnMeta>) => Promise<Model> | Model);
+  /**
+   * Mapping from master constraint name (or Constraint object) to the corresponding subproblem decision variable.
+   */
+  mapping:
+    | Record<string, Var>
+    | Map<Constraint | string, Var>;
+  /** Objective cost coefficient of the generated column (default: 1) */
+  cost?: number;
+  /** Variable domain type (defaults to "Continuous" during LP relaxation, cast to "Integer" during MIP finalization if requested) */
+  type?: VarType;
+  /** Column variable lower bound (default: 0) */
+  lb?: number;
+  /** Column variable upper bound (default: Infinity) */
+  ub?: number;
+}
+
+/**
  * Progress event emitted on each Column Generation iteration.
  */
 export interface ColumnGenerationIterationInfo<TColumnMeta = unknown> {
@@ -76,14 +100,20 @@ export interface ColumnGenerationIterationInfo<TColumnMeta = unknown> {
  * Options for `solveColumnGeneration`
  */
 export interface ColumnGenerationOptions<TColumnMeta = unknown> {
-  /** Restricted Master Problem (RMP) model containing initial columns and constraints */
-  master: Model;
+  /** Restricted Master Problem (RMP) model containing initial columns and constraints (optional when called via `master.solveColumnGeneration(...)`) */
+  master?: Model;
   /**
-   * Pricing subproblem generator callback.
+   * Declarative subproblem definition.
+   * Automatically sets the subproblem objective using constraint duals, solves it,
+   * evaluates the reduced cost, and injects improving columns into the master.
+   */
+  subproblem?: DeclarativeSubproblem<TColumnMeta>;
+  /**
+   * Custom pricing subproblem generator callback.
    * Receives constraint duals (shadow prices) and returns one or more new columns with improving reduced costs,
    * or `null` / `[]` when no improving columns exist (LP relaxation is optimal).
    */
-  pricing: (
+  pricing?: (
     context: PricingContext<TColumnMeta>
   ) =>
     | Promise<
@@ -196,24 +226,45 @@ export interface BendersIterationInfo {
 }
 
 /**
+ * Result returned by a Benders subproblem callback.
+ * Can be:
+ * - A `Model` (or `{ model: Model, linking?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+ * - Or `BendersCut | BendersCut[] | null | undefined` for manual cut definition.
+ */
+export type BendersSubproblemResult =
+  | Model
+  | {
+      model: Model;
+      linking?: Array<Constraint | LinExpr>;
+    }
+  | BendersCut
+  | BendersCut[]
+  | null
+  | undefined;
+
+/**
  * Options for `solveBenders`
  */
 export interface BendersOptions {
-  /** Master problem model containing master variables (e.g. x and auxiliary theta) */
-  master: Model;
+  /** Master problem model containing master variables (optional when called via `master.solveBenders(...)`) */
+  master?: Model;
   /**
    * Subproblem evaluation callback.
    * Evaluates the subproblem given current master decisions.
-   * Returns an optimality cut, feasibility cut, array of cuts, or `null` / `[]` when the master solution is optimal.
+   * Can return a `Model` (or `{ model: Model, linking?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+   * or manual `BendersCut | BendersCut[] | null | undefined`.
    */
   subproblem: (
     context: BendersSubproblemContext
   ) =>
-    | Promise<BendersCut | BendersCut[] | null | undefined>
-    | BendersCut
-    | BendersCut[]
-    | null
-    | undefined;
+    | Promise<BendersSubproblemResult>
+    | BendersSubproblemResult;
+  /**
+   * Optional reference to the auxiliary theta variable in the master model.
+   * If not provided, WaSHI automatically detects a variable named "theta" / "__benders_theta"
+   * or injects an auxiliary continuous theta variable into the master objective.
+   */
+  theta?: Var | string;
   /** Maximum number of Benders iterations (default: 100) */
   maxIterations?: number;
   /** Relative optimality gap convergence tolerance `|upper - lower| / (|upper| + 1e-10)` (default: 1e-4) */

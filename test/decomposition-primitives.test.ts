@@ -164,4 +164,39 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(m.objectiveValue).toBeCloseTo(1.5, 4);
     expect(x.value).toBeCloseTo(1.5, 4);
   });
+
+  it("supports master.solve({ benders }) and master.solve({ columnGeneration }) delegation", async () => {
+    // 1. master.solve({ benders })
+    const mBenders = new Model("BendersSolveDelegation");
+    const y = mBenders.continuous("y", { lb: 0 });
+    mBenders.objective(minimize(y));
+    mBenders.constraint(expr`${y} >= 10`, "base");
+
+    const bendersStatus = await mBenders.solve({
+      benders: {
+        subproblem: () => null,
+      },
+    });
+    expect(bendersStatus).toBe("Optimal");
+    expect(mBenders.decomposition).toBeDefined();
+    expect(mBenders.decomposition?.status).toBe("Optimal");
+    expect(mBenders.objectiveValue).toBe(10);
+
+    // 2. master.solve({ columnGeneration })
+    const mCG = new Model("CGSolveDelegation");
+    const x = mCG.continuous("x", { lb: 0 });
+    mCG.objective(minimize(x));
+    mCG.constraint(expr`${x} >= 5`, "min_x");
+
+    const cgStatus = await mCG.solve({
+      columnGeneration: {
+        finalizeAsMIP: false,
+        pricing: () => null,
+      },
+    });
+    expect(cgStatus).toBe("Optimal");
+    expect(mCG.decomposition).toBeDefined();
+    expect(mCG.decomposition?.status).toBe("Optimal");
+    expect(mCG.objectiveValue).toBe(5);
+  });
 });

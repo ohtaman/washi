@@ -3,41 +3,105 @@ import type {
   ColumnGenerationResult,
   ColumnProposal,
   PricingContext,
+  DeclarativeSubproblem,
 } from "./types.js";
 import type { Constraint } from "../modeler/constraint.js";
 import type { Var } from "../modeler/variable.js";
+import type { Solver, SolverOptions } from "../modeler/solvers/index.js";
+import { minimize, maximize } from "../modeler/objective.js";
+import { LinExpr } from "../modeler/expression.js";
+
+function createPricingFromDeclarativeSubproblem<TColumnMeta = unknown>(
+  subDef: DeclarativeSubproblem<TColumnMeta>,
+  isMasterMaximize: boolean,
+  defaultSolver?: Solver | string,
+  defaultSolverOptions?: SolverOptions
+): (context: PricingContext<TColumnMeta>) => Promise<ColumnProposal<TColumnMeta> | null> {
+  return async (context) => {
+    const subModel = typeof subDef.model === "function" ? await subDef.model(context) : subDef.model;
+
+    const mappingEntries: Array<[string, Var]> = [];
+    if (subDef.mapping instanceof Map) {
+      for (const [k, v] of subDef.mapping.entries()) {
+        const name = typeof k === "string" ? k : k.name;
+        mappingEntries.push([name, v]);
+      }
+    } else {
+      for (const [k, v] of Object.entries(subDef.mapping)) {
+        mappingEntries.push([k, v]);
+      }
+    }
+
+    const pricingObj = new LinExpr();
+    for (const [cName, subVar] of mappingEntries) {
+      const dual = context.getDual(cName);
+      if (Math.abs(dual) > 1e-12) {
+        pricingObj.addTerm(subVar, dual);
+      }
+    }
+
+    subModel.objective(isMasterMaximize ? minimize(pricingObj) : maximize(pricingObj));
+
+    const subStatus = await subModel.solve(defaultSolver, defaultSolverOptions);
+    if (subStatus !== "Optimal" && subStatus !== "Feasible") {
+      return null;
+    }
+
+    const zStar = subModel.objectiveValue ?? 0;
+    const colCost = subDef.cost ?? 1;
+
+    // Reduced cost:
+    // For master min: cost - sum(dual * a) = cost - zStar
+    // For master max: sum(dual * a) - cost = zStar - cost
+    const reducedCost = isMasterMaximize ? zStar - colCost : colCost - zStar;
+    const isImproving = isMasterMaximize
+      ? reducedCost > context.reducedCostTolerance
+      : reducedCost < -context.reducedCostTolerance;
+
+    if (!isImproving) {
+      return null;
+    }
+
+    const coefficients: Record<string, number> = {};
+    for (const [cName, subVar] of mappingEntries) {
+      const val = subVar.value ?? 0;
+      if (Math.abs(val) > 1e-9) {
+        coefficients[cName] = subVar.type === "Continuous" ? val : Math.round(val);
+      }
+    }
+
+    return {
+      cost: colCost,
+      type: subDef.type || "Integer",
+      lb: subDef.lb,
+      ub: subDef.ub,
+      coefficients,
+      reducedCost,
+    };
+  };
+}
 
 /**
  * Solve a problem using Column Generation (Dantzig-Wolfe decomposition).
  *
  * Column Generation starts with a Restricted Master Problem (RMP) containing a small set of initial columns,
  * repeatedly solves its continuous LP relaxation to obtain dual values (shadow prices), and calls a user-provided
- * `pricing` subproblem callback to identify new columns with improving reduced costs.
+ * `subproblem` (declarative mapping) or `pricing` subproblem callback to identify new columns with improving reduced costs.
  * Once no improving columns exist, it optionally solves the master as a Mixed-Integer Program (MIP)
  * to produce an integer solution.
  *
- * @param options Column generation options including master model and pricing callback
+ * @param options Column generation options including master model and subproblem or pricing callback
  * @returns Result object containing status, objective, iterations, columns added, and final variable values
  *
  * @example
  * ```ts
  * const result = await solveColumnGeneration({
  *   master,
- *   pricing: async ({ getDual, reducedCostTolerance }) => {
- *     // Solve subproblem with dual values to find the best new pattern
- *     const subproblem = createModel();
- *     // ...
- *     const minReducedCost = ...;
- *     if (minReducedCost < -reducedCostTolerance) {
- *       return {
- *         cost: 1,
- *         type: "Integer",
- *         coefficients: { item_A: 2, item_B: 1 },
- *         reducedCost: minReducedCost,
- *       };
- *     }
- *     return null; // Optimal LP relaxation reached
- *   },
+ *   subproblem: () => ({
+ *     model: knapsackSubproblem,
+ *     mapping: { demand_A: a_A, demand_B: a_B },
+ *   }),
+ *   cost: 1,
  *   finalizeAsMIP: true,
  * });
  * ```
@@ -45,9 +109,14 @@ import type { Var } from "../modeler/variable.js";
 export async function solveColumnGeneration<TColumnMeta = unknown>(
   options: ColumnGenerationOptions<TColumnMeta>
 ): Promise<ColumnGenerationResult<TColumnMeta>> {
+  const master = options.master;
+  if (!master) {
+    throw new Error("A master Model must be provided for solveColumnGeneration.");
+  }
+
   const {
-    master,
     pricing,
+    subproblem,
     maxIterations = 100,
     reducedCostTolerance = 1e-6,
     finalizeAsMIP = true,
@@ -57,6 +126,24 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
   } = options;
 
   const isMaximize = master.sense.toLowerCase() === "maximize";
+
+  const pricingFn =
+    pricing ??
+    (subproblem
+      ? createPricingFromDeclarativeSubproblem(
+          subproblem,
+          isMaximize,
+          solver,
+          solverOptions
+        )
+      : null);
+
+  if (!pricingFn) {
+    throw new Error(
+      "Either 'subproblem' (declarative definition) or 'pricing' (custom callback) must be provided in ColumnGenerationOptions."
+    );
+  }
+
   const generatedColumns: Array<{
     variable: Var;
     proposal: ColumnProposal<TColumnMeta>;
@@ -99,7 +186,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
     };
 
     // 2. Call pricing subproblem
-    const proposalOrProposals = await pricing(pricingContext);
+    const proposalOrProposals = await pricingFn(pricingContext);
 
     const proposals: Array<ColumnProposal<TColumnMeta>> = [];
     if (proposalOrProposals) {
@@ -191,7 +278,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
     }
   }
 
-  return {
+  const result: ColumnGenerationResult<TColumnMeta> = {
     status: lastStatus,
     objectiveValue: finalObjective,
     relaxationObjectiveValue,
@@ -201,4 +288,7 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
     master,
     values,
   };
+
+  (master as any).decomposition = result;
+  return result;
 }

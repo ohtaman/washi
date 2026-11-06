@@ -167,4 +167,50 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(iterationsCount).toBe(1);
     expect(progressLog).toEqual([1]);
   });
+
+  it("solves Cutting Stock Problem using simplified master.solveColumnGeneration with declarative subproblem mapping", async () => {
+    const rollWidth = 100;
+    const items = [
+      { id: "A", width: 45, demand: 10 },
+      { id: "B", width: 36, demand: 14 },
+      { id: "C", width: 16, demand: 20 },
+    ];
+
+    const master = new Model("SimpleCuttingStockMaster");
+    master.objective(minimize(0));
+
+    for (const item of items) {
+      master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
+    }
+
+    // Initial naive columns
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
+    master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+
+    // Subproblem knapsack model
+    const sub = new Model("KnapsackSub");
+    const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
+    const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
+    const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
+    sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+
+    const result = await master.solveColumnGeneration({
+      finalizeAsMIP: true,
+      subproblem: {
+        cost: 1,
+        model: sub,
+        mapping: {
+          demand_A: a_A,
+          demand_B: a_B,
+          demand_C: a_C,
+        },
+      },
+    });
+
+    expect(result.status).toBe("Optimal");
+    expect(result.objectiveValue).toBe(14);
+    expect(result.columnsAdded).toBeGreaterThanOrEqual(1);
+    expect(master.decomposition).toBe(result);
+  });
 });
