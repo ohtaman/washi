@@ -1,5 +1,6 @@
 import type { ComparisonSense } from "./types.js";
 import type { LinExpr } from "./expression.js";
+import type { Var } from "./variable.js";
 import { BoolOp, type LogicInput } from "./boolean-expr.js";
 
 let constrIdCounter = 0;
@@ -20,6 +21,34 @@ export class Constraint {
   public slack: number | null = null;
   /** Dual value (shadow price) after solve */
   public dual: number | null = null;
+
+  /**
+   * Shadow price (alias for `dual`) after solve.
+   */
+  get shadowPrice(): number | null {
+    return this.dual;
+  }
+
+  /**
+   * Add or increment the coefficient of a decision variable in this constraint's left-hand side.
+   * Triggers model mutation notification if this constraint belongs to a model.
+   */
+  addTerm(v: Var, coeff: number): this {
+    if (coeff === 0) return this;
+    this._lhs.addTerm(v, coeff);
+    this.ownerModel?.notifyMutation?.();
+    return this;
+  }
+
+  /**
+   * Set or update the coefficient of a decision variable in this constraint's left-hand side.
+   * Triggers model mutation notification if this constraint belongs to a model.
+   */
+  setTerm(v: Var, coeff: number): this {
+    this._lhs.setTerm(v, coeff);
+    this.ownerModel?.notifyMutation?.();
+    return this;
+  }
 
   constructor(
     lhs: LinExpr,

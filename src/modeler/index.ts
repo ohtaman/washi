@@ -76,6 +76,7 @@ export type {
   SolveOptions,
   SolverSolution,
   CheckResult,
+  ColumnDefinition,
 } from "./types.js";
 
 // Pluggable Solvers Architecture (HiGHS, GLPK, Remote, Mock, Custom)

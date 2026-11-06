@@ -78,7 +78,24 @@ export {
   type SolveOptions,
   type SolverSolution,
   type CheckResult,
+  type ColumnDefinition,
 } from "./modeler/types.js";
+
+// Advanced Decomposition Methods (Column Generation, Benders Decomposition)
+export {
+  solveColumnGeneration,
+  solveBenders,
+  type ColumnProposal,
+  type PricingContext,
+  type ColumnGenerationIterationInfo,
+  type ColumnGenerationOptions,
+  type ColumnGenerationResult,
+  type BendersCut,
+  type BendersSubproblemContext,
+  type BendersIterationInfo,
+  type BendersOptions,
+  type BendersResult,
+} from "./decomposition/index.js";
 
 
 // Solvers & Extensibility Architecture

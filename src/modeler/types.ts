@@ -1,3 +1,5 @@
+import type { Constraint } from "./constraint.js";
+
 /**
  * HiGHS & Model Types
  */
@@ -115,6 +117,12 @@ export interface SolveOptions {
   signal?: AbortSignal;
   /** Callback invoked with real solver progress metrics when available */
   onProgress?: (progress: SolveProgressEvent) => void;
+  /** Solve the continuous (LP) relaxation of the model by relaxing integer and binary variables */
+  relax?: boolean;
+  /** Optional Benders decomposition configuration */
+  benders?: any;
+  /** Optional Column Generation configuration */
+  columnGeneration?: any;
   [key: string]: any;
 }
 
@@ -148,5 +156,31 @@ export interface CheckResult {
   /** Alias for unsatCore: subset of conflicting constraints causing infeasibility */
   conflicts?: readonly string[];
   runTime?: number;
+}
+
+/**
+ * Definition for dynamically adding a column (decision variable + constraint coefficients + objective cost).
+ * Core primitive for Column Generation and Dantzig-Wolfe decomposition.
+ */
+export interface ColumnDefinition {
+  name?: string;
+  type?: VarType;
+  lb?: number;
+  ub?: number;
+  /** Objective cost coefficient */
+  cost?: number;
+  /**
+   * Constraint coefficients for this column.
+   * Accepts:
+   * - Record<string, number> (keyed by constraint name)
+   * - Map<Constraint | string, number>
+   * - Array<[Constraint | string, number]>
+   * - Array<{ constraint: Constraint | string; coeff: number }>
+   */
+  coefficients?:
+    | Record<string, number>
+    | Map<Constraint | string, number>
+    | Array<[Constraint | string, number]>
+    | Array<{ constraint: Constraint | string; coeff: number }>;
 }
 

@@ -7,6 +7,7 @@ import {
   type SolveOptions,
   type SolverSolution,
   type CheckResult,
+  type ColumnDefinition,
 } from "./types.js";
 import { type ObjectiveSpec } from "./objective.js";
 import { Var, type VarOptions } from "./variable.js";
@@ -14,7 +15,7 @@ import { LinExpr } from "./expression.js";
 import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
 import { BoolVar, BoolExpr } from "./boolean-expr.js";
-import { parseExpr, parseConstraint } from "./parser.js";
+import { parseExpr, parseConstraint, type ParsedExpr } from "./parser.js";
 import { generateLpString } from "./lp-writer.js";
 import {
   getSolver,
@@ -30,6 +31,14 @@ import {
   type SolutionValidationReport,
 } from "./solution-validator.js";
 import { linearizeModelForMip } from "./linearizer.js";
+import {
+  solveBenders,
+  solveColumnGeneration,
+  type BendersOptions,
+  type BendersResult,
+  type ColumnGenerationOptions,
+  type ColumnGenerationResult,
+} from "../decomposition/index.js";
 
 /**
  * Valid items that can be added as a constraint to a model.
@@ -232,6 +241,11 @@ export class Model {
   public runTime: number = 0;
   public solution: SolverSolution | null = null;
   public solver: Solver | null = null;
+  /**
+   * Latest decomposition result if solved using Benders decomposition or Column Generation.
+   */
+  public decomposition?: BendersResult | ColumnGenerationResult;
+  private _linkingConstraints?: Array<Constraint | LinExpr>;
   private hasSolutionState: boolean = false;
   private modelRevision: number = 0;
   private activeOperationId: number = 0;
@@ -722,6 +736,94 @@ export class Model {
   ): Record<R, Record<C, Var>>;
   continuous(arg1?: any, arg2?: any, arg3?: any): any {
     return this.createDomainVars("Continuous", arg1, arg2, arg3);
+  }
+
+  /**
+   * Dynamically add a column (decision variable + constraint coefficients + objective cost) to the model.
+   * This is the core primitive for Column Generation and Dantzig-Wolfe decomposition.
+   *
+   * @param options Column definition including variable type/bounds, objective cost, and constraint coefficients
+   * @returns The newly created decision variable `Var`
+   *
+   * @example
+   * ```ts
+   * const m = new Model("ColumnExample");
+   * m.constraint(expr`0 <= 10`, "demand_itemA");
+   * m.constraint(expr`0 <= 10`, "demand_itemB");
+   * const colVar = m.column({
+   *   name: "pattern_1",
+   *   type: "Continuous",
+   *   lb: 0,
+   *   cost: 1,
+   *   coefficients: {
+   *     demand_itemA: 2,
+   *     demand_itemB: 1,
+   *   },
+   * });
+   * ```
+   */
+  column(options: ColumnDefinition): Var {
+    const varType = options.type || "Continuous";
+    const v = this.addVar({
+      name: options.name,
+      type: varType,
+      lb: options.lb,
+      ub: options.ub,
+    });
+
+    if (typeof options.cost === "number" && options.cost !== 0) {
+      this._objectiveExpr = this._objectiveExpr.add(v.mul(options.cost));
+      this.recordModelMutation();
+    }
+
+    if (options.coefficients) {
+      if (Array.isArray(options.coefficients)) {
+        for (const item of options.coefficients) {
+          if (Array.isArray(item)) {
+            const [cOrName, coeff] = item;
+            const c = typeof cOrName === "string" ? this.getConstraintByName(cOrName) : cOrName;
+            if (!c) {
+              throw new Error(`Constraint '${String(cOrName)}' not found in model when adding column`);
+            }
+            c.addTerm(v, coeff);
+          } else if (typeof item === "object" && item !== null) {
+            const c =
+              typeof item.constraint === "string"
+                ? this.getConstraintByName(item.constraint)
+                : item.constraint;
+            if (!c) {
+              throw new Error(`Constraint '${String(item.constraint)}' not found in model when adding column`);
+            }
+            c.addTerm(v, item.coeff);
+          }
+        }
+      } else if (options.coefficients instanceof Map) {
+        for (const [cOrName, coeff] of options.coefficients.entries()) {
+          const c = typeof cOrName === "string" ? this.getConstraintByName(cOrName) : cOrName;
+          if (!c) {
+            throw new Error(`Constraint '${String(cOrName)}' not found in model when adding column`);
+          }
+          c.addTerm(v, coeff);
+        }
+      } else if (typeof options.coefficients === "object") {
+        for (const [cName, coeff] of Object.entries(options.coefficients)) {
+          const c = this.getConstraintByName(cName);
+          if (!c) {
+            throw new Error(`Constraint '${cName}' not found in model when adding column`);
+          }
+          c.addTerm(v, coeff);
+        }
+      }
+    }
+
+    return v;
+  }
+
+  /**
+   * Alias for `column(...)`
+   */
+  addColumn(options: ColumnDefinition): Var {
+    return this.column(options);
   }
 
   /**
@@ -1717,6 +1819,44 @@ export class Model {
 
 
   /**
+   * Solve the continuous (LP) relaxation of the model.
+   * Treats all integer and binary decision variables as continuous variables within their bounds.
+   * This computes theoretical lower/upper dual bounds and extracts constraint shadow prices (duals),
+   * which is the foundational building block for Column Generation, Dantzig-Wolfe, and Benders decomposition.
+   *
+   * @param solverOrOptions Optional solver instance, name, or solve options
+   * @param options Solve options
+   * @returns Solver status ("Optimal", "Infeasible", etc.)
+   *
+   * @example
+   * ```ts
+   * const m = new Model("RelaxExample");
+   * const x = m.integer("x", { lb: 0, ub: 10 });
+   * m.objective(maximize(x));
+   * m.constraint(expr`${x} <= 5.5`, "cap");
+   * const status = await m.relax();
+   * if (status === "Optimal") {
+   *   const bound = m.objectiveValue;
+   *   const shadow = m.solution?.duals?.cap;
+   * }
+   * ```
+   */
+  async relax(
+    solverOrOptions?: Solver | string | SolveOptions,
+    options?: SolveOptions
+  ): Promise<SolverStatus> {
+    const isOptionsObj =
+      typeof solverOrOptions === "object" && solverOrOptions !== null && !("solve" in solverOrOptions);
+    const effectiveOptions: SolveOptions = isOptionsObj
+      ? { ...solverOrOptions, relax: true }
+      : { ...(options || {}), relax: true };
+    const effectiveSolver = isOptionsObj ? undefined : solverOrOptions;
+    return effectiveSolver
+      ? this.solve(effectiveSolver, effectiveOptions)
+      : this.solve(effectiveOptions);
+  }
+
+  /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
    * or a solver passed dynamically (e.g., `await m.solve("glpk")` or `await m.solve({ timeLimit: 10 })`).
    *
@@ -1761,6 +1901,15 @@ export class Model {
     this.validateIntegrity();
 
     const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
+
+    if (activeOptions.benders) {
+      const res = await this.solveBenders(activeOptions.benders);
+      return res.status;
+    }
+    if (activeOptions.columnGeneration) {
+      const res = await this.solveColumnGeneration(activeOptions.columnGeneration);
+      return res.status;
+    }
 
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
@@ -2324,5 +2473,121 @@ export class Model {
    */
   validateSolution(options: SolutionValidationOptions = {}): SolutionValidationReport {
     return validateModelSolution(this, options);
+  }
+
+  /**
+   * Register a linking constraint that connects this subproblem model's variables
+   * with decision variables in the master problem for Benders decomposition.
+   *
+   * @param constraint The linear constraint connecting subproblem variables with master variables
+   * @returns The registered linking constraint
+   *
+   * @example
+   * ```ts
+   * const master = new Model("Master");
+   * const y = master.binary("y");
+   *
+   * const sub = new Model("Subproblem");
+   * const x = sub.continuous("x", { lb: 0 });
+   * sub.link(expr`${x} <= 50 * ${y}`);
+   * ```
+   */
+  link(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
+    if (
+      constraint instanceof QuadExpr ||
+      (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
+    ) {
+      throw new Error(
+        "Linking constraint cannot be a quadratic expression."
+      );
+    }
+    if (!this._linkingConstraints) {
+      this._linkingConstraints = [];
+    }
+    const registered = constraint as Constraint | LinExpr;
+    this._linkingConstraints.push(registered);
+    return registered;
+  }
+
+  /**
+   * Linking constraints registered on this model for Benders decomposition.
+   */
+  get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
+    return this._linkingConstraints ?? [];
+  }
+
+  /**
+   * Solve this model as a Master Problem using Benders Decomposition.
+   *
+   * Partitions the problem into a master problem (this model) and a subproblem.
+   * On each iteration, the subproblem is evaluated: either automatically (generating Benders cuts
+   * from a returned subproblem model and its linking constraints) or manually via a cut callback.
+   *
+   * @param options Benders options including subproblem callback
+   * @returns BendersResult containing status, objective, bounds, gap, iterations, cuts, and decision values
+   *
+   * @example
+   * ```ts
+   * const master = new Model("FacilityMaster");
+   * const y = master.binary("open");
+   * master.constraint(expr`${y} >= 1`);
+   * master.objective(minimize(expr`100 * ${y}`));
+   *
+   * const result = await master.solveBenders({
+   *   subproblem: () => {
+   *     const sub = new Model("Transport");
+   *     const x = sub.continuous("x", { lb: 0 });
+   *     sub.objective(minimize(expr`2 * ${x}`));
+   *     sub.constraint(expr`${x} >= 30`, "demand");
+   *     sub.link(expr`${x} <= 50 * ${y}`);
+   *     return sub;
+   *   },
+   * });
+   * ```
+   */
+  async solveBenders(
+    options: Omit<BendersOptions, "master">
+  ): Promise<BendersResult> {
+    const result = await solveBenders({ master: this, ...options });
+    this.decomposition = result;
+    return result;
+  }
+
+  /**
+   * Solve this model as a Restricted Master Problem using Column Generation (Dantzig-Wolfe decomposition).
+   *
+   * Solves the continuous LP relaxation to obtain dual shadow prices, evaluates the pricing subproblem
+   * to dynamically generate columns with negative reduced costs, and optionally finalizes as a MIP.
+   *
+   * @param options Column generation options including declarative subproblem or custom pricing callback
+   * @returns ColumnGenerationResult containing status, objective, iterations, columns, and values
+   *
+   * @example
+   * ```ts
+   * const master = new Model("CuttingStock");
+   * master.objective(minimize(0));
+   * master.constraint(expr`0 >= 10`, "demand");
+   * master.column({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
+   *
+   * const sub = new Model("Pricing");
+   * const a = sub.integer("a", { lb: 0, ub: 5 });
+   * sub.constraint(expr`${a} <= 5`);
+   *
+   * const result = await master.solveColumnGeneration({
+   *   finalizeAsMIP: true,
+   *   subproblem: {
+   *     model: sub,
+   *     mapping: { demand: a },
+   *     cost: 1,
+   *   },
+   * });
+   * ```
+   */
+  async solveColumnGeneration<TColumnMeta = unknown>(
+    options: Omit<ColumnGenerationOptions<TColumnMeta>, "master">
+  ): Promise<ColumnGenerationResult<TColumnMeta>> {
+    const result = await solveColumnGeneration({ master: this, ...options });
+    this.decomposition = result;
+    return result;
   }
 }
