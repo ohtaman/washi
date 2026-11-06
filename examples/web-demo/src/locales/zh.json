@@ -44,6 +44,8 @@
     "supplyChainWarehouseUnit": "件",
     "unsatCoreTitle": "检测到冲突约束 (Unsat Core):",
     "unsatCoreDesc": "该模型不存在可行解。求解器已定位引起矛盾的最小约束子集 (Unsat Core):",
+    "conflictsTitle": "检测到冲突约束 (Conflicts):",
+    "conflictsDesc": "该模型不存在可行解。求解器已通过弹性松弛定位引起矛盾的约束 (conflicts):",
     "backToDocs": "文档",
     "navShowcase": "案例展示"
   },
