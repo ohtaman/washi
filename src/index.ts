@@ -90,6 +90,8 @@ export {
   type ColumnGenerationIterationInfo,
   type ColumnGenerationOptions,
   type ColumnGenerationResult,
+  type ColumnLinkOptions,
+  type DeclarativeSubproblem,
   type BendersCut,
   type BendersSubproblemContext,
   type BendersIterationInfo,
