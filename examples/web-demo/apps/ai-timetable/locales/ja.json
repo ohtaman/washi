@@ -937,5 +937,13 @@
       "label": "週あたり必要コマ数: 「{title}」は週{count}コマ開講が必要です",
       "suggestion": "「{title}」の固定・禁止ルールや使用可能教室・担当教員の空き状況を確認してください。"
     }
+  },
+  "diffReasons": {
+    "userPin": "ユーザーによる移動・固定",
+    "roomOnly": "時限はそのままで教室のみ変更 ({room})",
+    "roomConflict": "{room}で「{otherCourse}」が開講されたため（教室重複回避）",
+    "profConflict": "担当の{prof}先生が同コマで「{otherCourse}」を担当するため（教員重複回避）",
+    "cohortConflict": "{cohort}の「{otherCourse}」と同コマ重複を回避するため",
+    "rebalance": "制約充足のためのスケジュール再調整"
   }
 }
