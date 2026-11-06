@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Model, expr, minimize, maximize } from "../src/index.js";
+import { Model, expr, minimize, maximize, HighsSolver } from "../src/index.js";
 
 describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP Relaxation)", () => {
   it("provides shadowPrice as an alias for constraint dual", async () => {
@@ -149,5 +149,19 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
         },
       });
     }).toThrow("Constraint 'missing_constraint' not found in model when adding column");
+  });
+
+  it("honors constructor-level relax option in HighsSolver", async () => {
+    const solver = new HighsSolver({ relax: true });
+    const m = new Model("ConstructorRelaxTest");
+    const x = m.integer("x", { lb: 0, ub: 10 });
+    m.objective(maximize(x));
+    m.constraint(expr`${x} <= 1.5`, "limit");
+
+    const status = await m.solve(solver);
+    expect(status).toBe("Optimal");
+    // With relax: true, optimal value is 1.5 rather than truncated integer 1
+    expect(m.objectiveValue).toBeCloseTo(1.5, 4);
+    expect(x.value).toBeCloseTo(1.5, 4);
   });
 });

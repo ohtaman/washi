@@ -53,6 +53,8 @@ export async function solveBenders(
   let lowerBound: number | undefined;
   let upperBound: number | undefined;
   let currentGap: number | undefined;
+  let bestIncumbentValues: Record<string, number> = {};
+  let bestEvaluatedObjective: number | null = null;
 
   for (let iter = 1; iter <= maxIterations; iter++) {
     iterations = iter;
@@ -110,15 +112,23 @@ export async function solveBenders(
       }
     }
 
-    // Update bounds from subproblem objective if available
+    // Update bounds and track the incumbent solution associated with the best evaluated objective
     for (const cut of cuts) {
       if (typeof cut.subproblemObjective === "number" && Number.isFinite(cut.subproblemObjective)) {
         if (isMinimize) {
           const candidateUB = cut.subproblemObjective;
-          upperBound = upperBound === undefined ? candidateUB : Math.min(upperBound, candidateUB);
+          if (upperBound === undefined || candidateUB < upperBound) {
+            upperBound = candidateUB;
+            bestEvaluatedObjective = candidateUB;
+            bestIncumbentValues = { ...masterValues };
+          }
         } else {
           const candidateLB = cut.subproblemObjective;
-          lowerBound = lowerBound === undefined ? candidateLB : Math.max(lowerBound, candidateLB);
+          if (lowerBound === undefined || candidateLB > lowerBound) {
+            lowerBound = candidateLB;
+            bestEvaluatedObjective = candidateLB;
+            bestIncumbentValues = { ...masterValues };
+          }
         }
       }
     }
@@ -141,6 +151,9 @@ export async function solveBenders(
 
     // 3. If no cuts are generated or optimality gap is within tolerance, we are done
     if (cuts.length === 0) {
+      // Current master solution is optimal
+      bestEvaluatedObjective = masterObj;
+      bestIncumbentValues = { ...masterValues };
       break;
     }
 
@@ -159,16 +172,33 @@ export async function solveBenders(
     }
   }
 
-  const values: Record<string, number> = {};
+  // Use the best incumbent values associated with the converged bound, falling back to final master state
+  const values: Record<string, number> =
+    Object.keys(bestIncumbentValues).length > 0
+      ? bestIncumbentValues
+      : (() => {
+          const rec: Record<string, number> = {};
+          for (const v of master.variables) {
+            if (v.value !== null) {
+              rec[v.name] = v.value;
+            }
+          }
+          return rec;
+        })();
+
+  // Sync variable values on the master model to reflect the incumbent
   for (const v of master.variables) {
-    if (v.value !== null) {
-      values[v.name] = v.value;
+    if (Object.prototype.hasOwnProperty.call(values, v.name)) {
+      v.value = values[v.name];
     }
   }
 
+  const finalObjective =
+    bestEvaluatedObjective !== null ? bestEvaluatedObjective : master.objectiveValue;
+
   return {
     status: lastStatus,
-    objectiveValue: master.objectiveValue,
+    objectiveValue: finalObjective,
     lowerBound,
     upperBound,
     gap: currentGap,

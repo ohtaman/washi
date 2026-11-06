@@ -232,7 +232,7 @@ export class HighsSolver implements Solver {
 
     const lpResult: LpExportResult = hasExplicitLp
       ? optionsOrLpResult
-      : generateLpString(modelData, { relax: options.relax });
+      : generateLpString(modelData, { relax: mergedOptions.relax });
     const { lpString, nameToVar, nameToConstraint } = lpResult;
 
     const initialValues: Record<string, number> = Object.create(null);
@@ -273,7 +273,7 @@ export class HighsSolver implements Solver {
     const remainingOffset = result?.ObjectiveOffsetApplied ? 0 : offset;
 
     const terminationStatus = mapHighsTerminationStatus(result?.Status, result?.StatusCode);
-    const isMip = options.relax
+    const isMip = mergedOptions.relax
       ? false
       : typeof result?.IsMip === "boolean"
         ? result.IsMip

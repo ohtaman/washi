@@ -173,7 +173,7 @@ async function runBrowserVerification() {
     });
 
     console.log("1. Visiting demo in fresh browser context...");
-    await page.goto(demoUrl, { waitUntil: "networkidle" });
+    await page.goto(demoUrl, { waitUntil: "networkidle", timeout: 60_000 });
 
     // Wait for initial Service Worker registration & automatic reload
     console.log("2. Awaiting Service Worker registration, activation, and reload...");

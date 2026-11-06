@@ -204,4 +204,47 @@ describe("Benders Decomposition", () => {
     expect(result.objectiveValue).toBe(10);
     expect(iterationsLog).toEqual([1]);
   });
+
+  it("returns the incumbent decisions and objective associated with the best converged bound", async () => {
+    // Minimizing 9.9999 * y + theta for binary y
+    // Subproblem recourse: when y=0, cost is 10; when y=1, cost is 100
+    // Total cost:
+    // y=0: 9.9999*0 + 10 = 10
+    // y=1: 9.9999*1 + 100 = 109.9999
+    // True optimal solution is y=0 with objective 10.
+    const master = new Model("IncumbentTrackingTest");
+    const y = master.binary("y");
+    const theta = master.continuous("theta", { lb: 0 });
+    master.objective(minimize(expr`9.9999 * ${y} + ${theta}`));
+
+    const result = await solveBenders({
+      master,
+      gapTolerance: 1e-4,
+      subproblem: ({ getMasterValue }) => {
+        const valY = Math.round(getMasterValue(y));
+        if (valY === 0) {
+          // Subproblem cost is 10, cut: theta >= 10 - 10*y
+          const cut = expr`${theta} + 10 * ${y} >= 10`;
+          return {
+            kind: "optimality",
+            constraint: cut,
+            subproblemObjective: 10,
+          };
+        } else {
+          // When y=1, cost is 100, cut: theta >= 100*y
+          const cut = expr`${theta} - 100 * ${y} >= 0`;
+          return {
+            kind: "optimality",
+            constraint: cut,
+            subproblemObjective: 109.9999,
+          };
+        }
+      },
+    });
+
+    expect(result.status).toBe("Optimal");
+    // Must return the true incumbent y=0 with objective 10, NOT the bad candidate y=1
+    expect(result.objectiveValue).toBeCloseTo(10, 3);
+    expect(Math.round(result.values.y)).toBe(0);
+  });
 });
