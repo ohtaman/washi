@@ -258,11 +258,11 @@
 
       <!-- ==================== RIGHT PANE: TUTORIAL, STATUS, TIMETABLE & SETTINGS ==================== -->
       <section id="results-pane-sec" class="results-pane" aria-label="Timetable Workspace">
-        <!-- Interactive 3-Step Workflow Guide (Dismissible, Hidden by default like AI Shift) -->
+        <!-- Interactive 4-Step Workflow Guide (Dismissible, Hidden by default like AI Shift) -->
         <div id="tutorial-banner" class="tutorial-banner" hidden>
           <div class="tutorial-header">
             <div class="tutorial-title">
-              <span id="tutorial-title-text">🔰 Quick Guide: 3-Step Walkthrough for AI University Timetabling (UCTP)</span>
+              <span id="tutorial-title-text">🔰 Quick Guide: 4-Step Walkthrough for AI University Timetabling (UCTP)</span>
             </div>
             <button
               type="button"
@@ -277,13 +277,13 @@
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num" id="step1-badge">STEP 1</span>
-                <strong id="step1-title">Review & Load Master Data</strong>
+                <strong id="step1-title">Master Data (Faculty, Rooms, Courses)</strong>
               </div>
               <p id="step1-desc">
-                Prepare faculty, room, and course master data first via <strong>🎲 Generate Samples</strong> or <strong>📂 Import CSV</strong> (cells can also be edited directly in the tables).
+                Benchmark faculty (10), classrooms/labs (7), and courses (25) are pre-loaded. Inspect or import your own CSVs in the <strong>📚 Master Data</strong> tab.
               </p>
               <button type="button" id="btn-tut-step1" class="btn-step-try">
-                🎲 Try: Load Sample Data
+                📚 Try: Inspect Master Data
               </button>
             </div>
 
@@ -296,32 +296,33 @@
                 Configure academic constraints such as instructor availability, consecutive lab periods, and PC room requirements in the <strong>⚙️ Rules</strong> tab or chat.
               </p>
               <button type="button" id="btn-tut-step2" class="btn-step-try">
-                🔗 Try: Require "SW Design Lab (2 sessions)" in Consecutive Periods
+                ⚙️ Try: Open Rules & Constraints
               </button>
             </div>
 
             <div class="tutorial-step-card">
               <div class="step-badge-row">
                 <span class="step-num" id="step3-badge">STEP 3</span>
-                <strong id="step3-title">Auto-Schedule, Drag & Diagnose</strong>
+                <strong id="step3-title">Auto-Schedule Timetable (HiGHS Optimization)</strong>
               </div>
               <p id="step3-desc">
-                Optimize across 4 cohorts, faculty, and rooms simultaneously. Drag & drop sessions or auto-diagnose infeasible conflicts with WaSHI IIS.
+                When ready, click "⚡ Auto-Schedule Timetable". WaSHI (HiGHS) optimizes all 4 cohorts, faculty, and rooms simultaneously in seconds.
               </p>
-              <div class="conflict-quick-group" style="margin-bottom: 6px;">
-                <select
-                  id="select-conflict-scenario"
-                  class="toolbar-select"
-                  style="width: 100%;"
-                  aria-label="Conflict scenario"
-                >
-                  <option id="opt-conflict-1" value="prof_impossible_day">Demo 1: Pin Tue/Thu-only Adjunct Prof. Kobayashi's course to Mon P3</option>
-                  <option id="opt-conflict-2" value="room_double_book">Demo 2: Pin two 130+ student Y1 courses both to Tue P2 in Hall 101</option>
-                  <option id="opt-conflict-3" value="pc_lab_overload">Demo 3: Pin three PC-lab-required courses simultaneously to Mon P2 (only 2 PC labs)</option>
-                </select>
-              </div>
               <button type="button" id="btn-tut-step3" class="btn-step-try">
-                💥 Try: Inject Conflict Rule & Diagnose
+                ⚡ Try: Auto-Schedule Timetable
+              </button>
+            </div>
+
+            <div class="tutorial-step-card">
+              <div class="step-badge-row">
+                <span class="step-num" id="step4-badge">STEP 4</span>
+                <strong id="step4-title">Fine-Tuning (Drag & Drop, AI Chat)</strong>
+              </div>
+              <p id="step4-desc">
+                Drag and drop sessions on the board to adjust, or chat naturally with AI Copilot to inject custom pinning rules. Infeasible conflicts are auto-diagnosed with WaSHI IIS.
+              </p>
+              <button type="button" id="btn-tut-step4" class="btn-step-try">
+                🤖 Try: Send AI Request in Chat
               </button>
             </div>
           </div>
@@ -349,7 +350,7 @@
             </button>
 
             <button type="button" id="btn-solve-washi" class="btn-solve-primary">
-              ⚡ Re-Optimize Timetable
+              ⚡ Auto-Schedule Timetable
             </button>
 
             <label id="lbl-auto-solve" class="auto-solve-toggle" title="Automatically re-optimize when constraints are updated">
@@ -374,24 +375,6 @@
             >
               ↩ Reset
             </button>
-
-            <span class="toolbar-divider" aria-hidden="true"></span>
-
-            <button type="button" id="btn-generate-sample" class="btn-toolbar-outline" title="🎲 Load Sample Data">
-              🎲 Load Sample Data
-            </button>
-
-            <button type="button" id="btn-open-csv-dialog" class="btn-toolbar-outline" title="📂 Import CSV">
-              📂 Import CSV
-            </button>
-
-            <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="Export current faculty, rooms, and courses to CSV">
-              📥 CSV出力
-            </button>
-
-            <button type="button" id="btn-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="🗑️ Clear to Blank">
-              🗑️ 白紙化
-            </button>
           </div>
         </div>
 
@@ -413,7 +396,7 @@
           <ul id="conflict-list" class="conflict-list"></ul>
         </div>
 
-        <!-- 3-Tab Navigation Bar: Timetable -> Constraints -> Master Data -->
+        <!-- 3-Tab Navigation Bar: Timetable -> Master Data -> Constraints -->
         <div class="results-tabs-bar" role="tablist" aria-label="Tabs">
           <button
             type="button"
@@ -429,17 +412,6 @@
           <button
             type="button"
             role="tab"
-            id="tab-btn-constraints"
-            class="results-tab-btn"
-            aria-selected="false"
-            aria-controls="tab-panel-constraints"
-            data-tab="constraints"
-          >
-            <span id="tab-txt-constraints">⚙️ Constraints & Rules</span>
-          </button>
-          <button
-            type="button"
-            role="tab"
             id="tab-btn-catalog"
             class="results-tab-btn"
             aria-selected="false"
@@ -447,6 +419,17 @@
             data-tab="catalog"
           >
             <span id="tab-txt-catalog">📚 Master Data (Faculty, Rooms, Courses)</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="tab-btn-constraints"
+            class="results-tab-btn"
+            aria-selected="false"
+            aria-controls="tab-panel-constraints"
+            data-tab="constraints"
+          >
+            <span id="tab-txt-constraints">⚙️ Constraints & Rules</span>
           </button>
         </div>
 
@@ -557,7 +540,108 @@
           </div>
         </div>
 
-        <!-- ==================== TAB 2: CONSTRAINTS & SETTINGS ==================== -->
+        <!-- ==================== TAB 2: MASTER DATA (CATALOG) ==================== -->
+        <div
+          id="tab-panel-catalog"
+          role="tabpanel"
+          aria-labelledby="tab-btn-catalog"
+          class="results-tab-panel"
+          style="overflow-y: auto; padding: 14px 16px; gap: 14px;"
+        >
+          <!-- Master data toolbar -->
+          <div id="cat-mgmt-card" class="catalog-management-card">
+            <div class="catalog-mgmt-header">
+              <div class="catalog-mgmt-title-group">
+                <span class="dp-badge" id="cat-mgmt-badge">Master Data</span>
+                <h3 id="cat-mgmt-title">University Master Data (Faculty, Classrooms & Curriculum)</h3>
+                <p id="cat-mgmt-desc">Master rosters, facilities, and courses for university course timetabling.</p>
+              </div>
+              <div class="catalog-mgmt-actions">
+                <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary" title="CS Dept Model (10 faculty, 7 rooms, 25 courses / 30 slots)">
+                  🎲 Load Sample Data
+                </button>
+                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="📂 Import CSV">
+                  📂 Import CSV
+                </button>
+                <button type="button" id="btn-export-csvs" class="btn-toolbar-outline" title="📥 Export Master Data CSVs">
+                  📥 Export CSV
+                </button>
+                <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="📥 Download Sample CSV Templates">
+                  📥 Download CSV Templates
+                </button>
+                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="🗑️ Clear to Blank" hidden>
+                  🗑️ Clear to Blank
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="cat-tables-container" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="custom-rules-card">
+              <h3 id="cat-prof-title">👨‍🏫 Faculty Roster, Availability & Assigned Load (10 Faculty)</h3>
+              <p id="cat-prof-desc" class="constraint-card-desc">
+                Contracted days, unavailable slots, P1/P5 preferences, and assigned weekly load in the current timetable.
+              </p>
+              <div class="staff-table-wrap">
+                <table class="staff-profile-table">
+                  <thead>
+                    <tr id="cat-prof-thead-row">
+                      <th>ID</th>
+                      <th>教員氏名</th>
+                      <th>Title / Dept</th>
+                      <th>専門分野</th>
+                      <th>Unavailable Slots</th>
+                      <th>Preferences / Max</th>
+                      <th>Assigned Sessions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catalog-prof-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="custom-rules-card">
+              <h3 id="cat-room-title">🏫 Lecture Halls, PC Labs & Utilization (7 Rooms)</h3>
+              <div class="staff-table-wrap">
+                <table class="staff-profile-table">
+                  <thead>
+                    <tr id="cat-room-thead-row">
+                      <th>ID</th>
+                      <th>教室名</th>
+                      <th>Type / Building</th>
+                      <th>定員</th>
+                      <th>備付設備</th>
+                      <th>週間稼働率 (25枠中)</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catalog-room-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="custom-rules-card">
+              <h3 id="cat-course-title">📚 Course Catalog (25 Courses / 30 Weekly Sessions)</h3>
+              <div class="staff-table-wrap">
+                <table class="staff-profile-table">
+                  <thead>
+                    <tr id="cat-course-thead-row">
+                      <th>ID</th>
+                      <th>科目名</th>
+                      <th>Cohort / Category</th>
+                      <th>担当教員</th>
+                      <th>Enrollment / Sessions</th>
+                      <th>Required Facilities</th>
+                      <th>Current Slot & Room</th>
+                    </tr>
+                  </thead>
+                  <tbody id="catalog-course-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== TAB 3: CONSTRAINTS & SETTINGS ==================== -->
         <div
           id="tab-panel-constraints"
           role="tabpanel"
@@ -732,103 +816,6 @@
           </details>
         </div>
 
-        <!-- ==================== TAB 1: MASTER DATA (CATALOG) ==================== -->
-        <div
-          id="tab-panel-catalog"
-          role="tabpanel"
-          aria-labelledby="tab-btn-catalog"
-          class="results-tab-panel"
-          style="overflow-y: auto; padding: 14px 16px; gap: 14px;"
-        >
-          <!-- Master data toolbar -->
-          <div id="cat-mgmt-card" class="catalog-management-card">
-            <div class="catalog-mgmt-header">
-              <div class="catalog-mgmt-title-group">
-                <span class="dp-badge" id="cat-mgmt-badge">Master Data</span>
-                <h3 id="cat-mgmt-title">University Master Data (Faculty, Classrooms & Curriculum)</h3>
-                <p id="cat-mgmt-desc">Master rosters, facilities, and courses for university course timetabling.</p>
-              </div>
-              <div class="catalog-mgmt-actions">
-                <button type="button" id="btn-cat-generate-sample" class="btn-solve-primary" title="CS Dept Model (10 faculty, 7 rooms, 25 courses / 30 slots)">
-                  🎲 Load Sample Data
-                </button>
-                <button type="button" id="btn-cat-import-csv" class="btn-toolbar-outline" title="📂 Import CSV">
-                  📂 Import CSV
-                </button>
-                <button type="button" id="btn-cat-download-samples" class="btn-toolbar-outline" title="📥 Download Sample CSV Templates">
-                  📥 Download CSV Templates
-                </button>
-                <button type="button" id="btn-cat-clear-blank" class="btn-toolbar-outline btn-cat-danger" title="🗑️ Clear to Blank" hidden>
-                  🗑️ Clear to Blank
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div id="cat-tables-container" style="display: flex; flex-direction: column; gap: 14px;">
-            <div class="custom-rules-card">
-              <h3 id="cat-prof-title">👨‍🏫 Faculty Roster, Availability & Assigned Load (10 Faculty)</h3>
-              <p id="cat-prof-desc" class="constraint-card-desc">
-                Contracted days, unavailable slots, P1/P5 preferences, and assigned weekly load in the current timetable.
-              </p>
-              <div class="staff-table-wrap">
-                <table class="staff-profile-table">
-                  <thead>
-                    <tr id="cat-prof-thead-row">
-                      <th>ID</th>
-                      <th>教員氏名</th>
-                      <th>Title / Dept</th>
-                      <th>専門分野</th>
-                      <th>Unavailable Slots</th>
-                      <th>Preferences / Max</th>
-                      <th>Assigned Sessions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="catalog-prof-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="custom-rules-card">
-              <h3 id="cat-room-title">🏫 Lecture Halls, PC Labs & Utilization (7 Rooms)</h3>
-              <div class="staff-table-wrap">
-                <table class="staff-profile-table">
-                  <thead>
-                    <tr id="cat-room-thead-row">
-                      <th>ID</th>
-                      <th>教室名</th>
-                      <th>Type / Building</th>
-                      <th>定員</th>
-                      <th>備付設備</th>
-                      <th>週間稼働率 (25枠中)</th>
-                    </tr>
-                  </thead>
-                  <tbody id="catalog-room-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="custom-rules-card">
-              <h3 id="cat-course-title">📚 Course Catalog (25 Courses / 30 Weekly Sessions)</h3>
-              <div class="staff-table-wrap">
-                <table class="staff-profile-table">
-                  <thead>
-                    <tr id="cat-course-thead-row">
-                      <th>ID</th>
-                      <th>科目名</th>
-                      <th>Cohort / Category</th>
-                      <th>担当教員</th>
-                      <th>Enrollment / Sessions</th>
-                      <th>Required Facilities</th>
-                      <th>Current Slot & Room</th>
-                    </tr>
-                  </thead>
-                  <tbody id="catalog-course-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
 
