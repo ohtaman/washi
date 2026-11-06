@@ -170,8 +170,11 @@ function updateCellSize() {
   const viewport = document.getElementById("board-viewport");
   if (!viewport || !currentPuzzle) return;
   const availW = Math.max(120, viewport.clientWidth);
-  const availH = Math.max(120, window.innerHeight * 0.38);
-  const size = computeTitanCellSize(currentPuzzle.cols, currentPuzzle.rows, availW, availH, 24);
+  const isMobile = window.innerWidth <= 860;
+  // On mobile screens, keep board height bounded so board, parts tray, and stats fit on one screen without vertical scrolling
+  const maxBoardH = isMobile ? Math.min(200, window.innerHeight * 0.28) : window.innerHeight * 0.38;
+  const availH = Math.max(100, maxBoardH);
+  const size = computeTitanCellSize(currentPuzzle.cols, currentPuzzle.rows, availW, availH, isMobile ? 12 : 24);
   document.documentElement.style.setProperty("--cell-size", `${size}px`);
 }
 

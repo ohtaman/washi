@@ -658,119 +658,246 @@
       /* Mobile & Touch Responsiveness */
       @media (max-width: 860px) {
         body {
-          padding: 0.5rem 0.5rem max(1.2rem, env(safe-area-inset-bottom));
+          padding: 0.25rem 0.35rem max(0.35rem, env(safe-area-inset-bottom));
+          min-height: 100dvh;
+          box-sizing: border-box;
         }
+        .app-wrapper {
+          min-height: auto;
+          display: flex;
+          flex-direction: column;
+        }
+        header {
+          padding: 0.35rem 0.55rem;
+          gap: 0.35rem;
+          margin-bottom: 0.35rem;
+          border-radius: 8px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: nowrap;
+        }
+        .brand-box {
+          margin: 0;
+        }
+        .badge-row,
+        .subtitle,
+        .mascot-cluster {
+          display: none !important;
+        }
+        h1 {
+          font-size: 0.95rem;
+          margin: 0;
+          white-space: nowrap;
+          letter-spacing: 0.04em;
+        }
+        .header-controls {
+          flex-direction: row !important;
+          align-items: center !important;
+          gap: 0.35rem !important;
+        }
+        .stage-nav-cluster {
+          padding: 0.15rem 0.3rem;
+          gap: 0.2rem;
+        }
+        .nav-arrow-btn {
+          width: 28px;
+          height: 28px;
+          min-width: 28px;
+          min-height: 28px;
+          font-size: 0.9rem;
+        }
+        .stage-counter {
+          min-width: 72px;
+        }
+        .stage-title {
+          font-size: 0.8rem;
+          line-height: 1.1;
+        }
+        .stage-diff-badge {
+          font-size: 0.55rem;
+          padding: 0.05rem 0.25rem;
+          margin-top: 0;
+        }
+        .lang-switch {
+          padding: 2px;
+          gap: 1px;
+        }
+        .lang-btn {
+          font-size: 0.62rem;
+          padding: 0.12rem 0.32rem;
+        }
+
         .main-grid {
-          gap: 0.8rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          flex: 1 1 auto;
         }
         .panel {
-          padding: 0.85rem;
-          border-radius: 12px;
+          padding: 0.45rem 0.55rem;
+          border-radius: 10px;
         }
+        .panel-head {
+          margin-bottom: 0.25rem;
+          padding-bottom: 0.2rem;
+        }
+        .panel-title {
+          font-size: 0.76rem;
+          gap: 0.3rem;
+        }
+        .meta-indicator {
+          font-size: 0.68rem;
+        }
+
+        .active-banner {
+          padding: 0.2rem 0.45rem;
+          margin-bottom: 0.25rem;
+          border-radius: 6px;
+        }
+        .active-banner-badge {
+          font-size: 0.78rem;
+        }
+        .active-banner-dim {
+          font-size: 0.7rem;
+        }
+        .active-btn {
+          min-height: 28px;
+          padding: 0.15rem 0.45rem;
+          font-size: 0.7rem;
+        }
+
         .board-viewport {
-          min-height: 260px;
-          padding: 0.85rem 0.4rem;
+          min-height: 0;
+          max-height: 38dvh;
+          padding: 0.35rem;
+          border-radius: 8px;
         }
+        .sheet-metal {
+          padding: 4px;
+        }
+
+        /* Compact Grid Inventory Tray (Zero Horizontal Scroll!) */
         .inventory-tray {
-          flex-direction: row;
-          overflow-x: auto;
-          overflow-y: hidden;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+          gap: 0.3rem;
           max-height: none;
-          padding-bottom: 0.45rem;
-          padding-right: 0;
-          gap: 0.5rem;
-          -webkit-overflow-scrolling: touch;
-          scroll-snap-type: x mandatory;
+          overflow: visible;
+          padding: 0;
         }
         .item-card,
         .part-card {
-          flex: 0 0 auto;
-          min-width: 140px;
-          padding: 0.45rem 0.65rem;
-          scroll-snap-align: start;
-          min-height: 44px;
+          flex: initial;
+          min-width: 0;
+          min-height: 48px;
+          padding: 0.3rem 0.2rem;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.2rem;
+          border-radius: 6px;
         }
-      }
+        .item-preview,
+        .part-preview-grid {
+          padding: 2px;
+          gap: 1.5px;
+        }
+        .mini-cell,
+        .part-mini-cell {
+          width: 7px;
+          height: 7px;
+          min-width: 7px;
+          min-height: 7px;
+        }
+        .item-details,
+        .part-meta {
+          align-items: center;
+          text-align: center;
+        }
+        .item-code,
+        .part-name {
+          font-size: 0.68rem;
+          line-height: 1.1;
+        }
+        .item-name,
+        .part-dim {
+          font-size: 0.58rem;
+          line-height: 1.1;
+        }
 
-      @media (max-width: 640px) {
-        header {
-          padding: 0.6rem 0.8rem;
-          gap: 0.6rem;
-          margin-bottom: 0.6rem;
-          border-radius: 10px;
+        #tip-text,
+        #btn-rotate-active {
+          display: none !important;
         }
-        h1 {
-          font-size: 1.25rem;
+        .inventory-sub-actions {
+          margin-top: 0.3rem;
+          padding-top: 0.25rem;
+          border-top: 1px solid rgba(148, 163, 184, 0.2);
         }
-        .subtitle {
-          font-size: 0.72rem;
+        #btn-undo,
+        #btn-reset {
+          min-height: 30px;
+          padding: 0.2rem 0.45rem;
+          font-size: 0.74rem;
+          flex: 1;
         }
-        .mascot-cluster {
-          padding: 0.3rem 0.6rem;
-          gap: 0.5rem;
-        }
-        .drone-svg {
-          width: 36px;
-          height: 36px;
-        }
-        .drone-msg {
-          max-width: 170px;
-          font-size: 0.7rem;
-        }
-        .stage-nav-cluster {
-          padding: 0.25rem 0.45rem;
-          gap: 0.35rem;
-        }
-        .nav-arrow-btn {
-          width: 38px;
-          height: 38px;
-          min-width: 38px;
-          min-height: 38px;
-        }
-        .stage-counter {
-          min-width: 90px;
-        }
-        .stage-title {
-          font-size: 0.92rem;
-        }
+
+        /* Action Footbar & Stats: Immediately visible, zero vertical scroll */
         .action-footbar {
-          padding: 0.75rem 0.85rem;
-          gap: 0.75rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          padding: 0.45rem 0.65rem;
+          margin-top: 0.35rem;
+          border-radius: 10px;
+          position: sticky;
+          bottom: max(0.35rem, env(safe-area-inset-bottom));
+          z-index: 30;
+          background: rgba(255, 255, 255, 0.96);
+          backdrop-filter: blur(12px);
+          box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
         }
         .stats-cluster {
-          gap: 0.6rem;
-          width: 100%;
+          display: flex;
           justify-content: space-between;
+          width: 100%;
+          gap: 0.3rem;
+        }
+        .stat-node {
+          align-items: center;
         }
         .stat-label {
-          font-size: 0.58rem;
+          font-size: 0.52rem;
+          letter-spacing: 0.04em;
+          color: var(--text-muted);
         }
         .stat-val {
           font-size: 0.95rem;
+          font-weight: 900;
         }
         .footbar-actions {
-          width: 100%;
           display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
+          width: 100%;
+          gap: 0.4rem;
           margin-left: 0;
         }
-        .btn {
-          min-height: 44px;
-          padding: 0.55rem 0.8rem;
-          font-size: 0.8rem;
-          touch-action: manipulation;
+        #btn-theory {
+          display: none !important;
+        }
+        #btn-solve {
+          flex: 1;
+          min-height: 38px;
+          padding: 0.35rem 0.5rem;
+          font-size: 0.78rem;
+          justify-content: center;
         }
         #btn-execute {
-          width: 100%;
+          flex: 2;
+          min-height: 38px;
+          padding: 0.35rem 0.5rem;
+          font-size: 0.88rem;
           justify-content: center;
-          font-size: 0.92rem;
-        }
-        #btn-solve,
-        #btn-theory {
-          flex: 1 1 calc(50% - 0.25rem);
-          justify-content: center;
-          font-size: 0.76rem;
         }
         .modal-box {
           padding: 1.25rem 1rem;
@@ -782,6 +909,45 @@
         }
         .modal-text {
           font-size: 0.82rem;
+        }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 0.25rem 0.35rem max(0.4rem, env(safe-area-inset-bottom));
+        }
+        header {
+          padding: 0.3rem 0.45rem;
+          margin-bottom: 0.25rem;
+        }
+        h1 {
+          font-size: 0.9rem;
+        }
+        .main-grid {
+          gap: 0.25rem;
+        }
+        .panel {
+          padding: 0.35rem 0.45rem;
+          border-radius: 8px;
+        }
+        .board-viewport {
+          max-height: 30dvh;
+          padding: 0.25rem;
+        }
+        .action-footbar {
+          padding: 0.35rem 0.5rem;
+          gap: 0.25rem;
+          margin-top: 0.25rem;
+        }
+        .btn {
+          min-height: 44px;
+          touch-action: manipulation;
+        }
+        #btn-execute {
+          font-size: 0.85rem;
+        }
+        #btn-solve {
+          font-size: 0.76rem;
         }
       }
 
@@ -850,7 +1016,7 @@
         </div>
 
         <!-- Controls Cluster: Language + Stage Nav -->
-        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+        <div class="header-controls">
           <div class="lang-switch" role="group" aria-label="Language">
             <button type="button" class="lang-btn active" data-lang-btn="en">EN</button>
             <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
@@ -916,7 +1082,7 @@
             <!-- Cards injected by JS -->
           </div>
 
-          <div style="margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid rgba(148,163,184,0.25);">
+          <div class="inventory-sub-actions" style="margin-top: 0.9rem; padding-top: 0.75rem; border-top: 1px solid rgba(148,163,184,0.25);">
             <div id="tip-text" style="font-size: 0.74rem; color: var(--text-muted); margin-bottom: 0.45rem;">
               TIP: <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">R</kbd> Rotate / <kbd style="background:#e2e8f0; color:#0f172a; padding:2px 5px; border-radius:4px; font-family:'JetBrains Mono';">Z</kbd> Undo (Mobile: Tap active part to rotate)
             </div>

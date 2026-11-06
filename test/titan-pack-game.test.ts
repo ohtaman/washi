@@ -208,15 +208,19 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       // 3. Touch target sizing (min 44px for accessibility on cards/buttons)
       expect(html).toContain("min-height: 44px");
 
-      // 4. Mobile horizontal scroll inventory tray
-      expect(html).toContain("scroll-snap-type: x mandatory");
-      expect(html).toContain("-webkit-overflow-scrolling: touch");
+      // 4. Mobile compact grid inventory tray (eliminates horizontal scrolling)
+      expect(html).toContain("repeat(auto-fit, minmax(54px, 1fr))");
 
       // 5. Dedicated active part controls for mobile
       expect(html).toContain("id=\"active-banner\"");
       expect(html).toContain("id=\"btn-active-rotate\"");
       expect(html).toContain("id=\"btn-active-cancel\"");
       expect(html).toContain("class=\"footbar-actions\"");
+
+      // 6. Mobile header clutter reduction & theory button removal
+      expect(html).toContain("#btn-theory");
+      expect(html).toContain("display: none !important");
+      expect(html).toContain("position: sticky");
 
       // 6. Dynamic updateCellSize on resize and orientationchange
       const mainTsPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/main.ts");
