@@ -154,7 +154,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **Trigger variable** | Numeric `Binary` variable (`m.binary()`) | `BoolVar` (`m.bool()`), `BoolOp`, or `Constraint` |
 | **Consequent** | Linear `Constraint` (`<=`, `>=`, `==`) | `BoolVar`, `BoolOp`, or linear `Constraint` |
-| **Target Solvers** | **All MIP/LP solvers** (HiGHS, GLPK, Z3) via Big-M linearization | **Z3 SMT solver** (`capabilities.supportsSMT: true`) |
+| **Target Solvers** | **All MIP/LP solvers** (HiGHS, GLPK, Z3) via Big-M linearization | **All solvers** (HiGHS and GLPK via automatic 0-1 MIP linearization, Z3 natively) |
 | **Best For** | Operations research & MIP optimization with an objective (`m.solve()`) | Rule engines, policy verification, and SMT feasibility (`m.check()`) |
 
 ---

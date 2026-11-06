@@ -119,7 +119,7 @@ export interface SolveModelData extends CheckModelData {
 
 自定义求解器通过 `capabilities` 声明其支持的功能特性。在分发调用 `solve()` 或 `check()` 之前，`Model` 会自动校验以下能力标志：
 - 当目标函数包含二次项（`QuadExpr`）时检查 `supportsQP === false`；
-- 当模型包含逻辑约束（`m.logicalConstraints`）时检查 `supportsSMT !== true`；
+- 当模型包含逻辑约束（`m.logicalConstraints`）且求解器不支持 SMT（`supportsSMT !== true`）时，`Model` 会自动通过 `linearizeModelForMip` 将其线性化为等价的 0-1 MIP 二元变量与线性约束；
 - 当任意变量设置了初始值（`initialValue`）时检查 `supportsWarmStart !== true`。
 
 ```typescript

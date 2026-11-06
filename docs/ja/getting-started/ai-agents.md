@@ -135,9 +135,10 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
   - `SolverStatus`（`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, または `"Unsat"`）を返します。組み込みの最適化ソルバーは最適化ステータス（`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`）を返し、時間・反復・解数制限や中断で停止した際に有効な実行可能解（Incumbent）が見つかっている場合は `"Feasible"` を返します。`"Sat"` と `"Unsat"` は充足可能性ソルバーやカスタムソルバーアダプター（`MockSolver` など）向けに `SolverStatus` に含まれています。
   - 解の値は `x.value`, `expr`...`.value`, `m.getValues(x)`, `m.getValues(container)`, `m.objectiveValue`, `constr.dual`, `constr.slack`, `x.reducedCost` から読み取ります。
   - 求解後に `m.validateSolution()` を呼び出すことで、変数の有限性、境界条件（`lb`/`ub`）、整数・バイナリ・真偽値領域、線形制約の残差、および論理制約を独立して検証できます（`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`）。なお、`validateSolution()` は変数および制約条件の主実行可能性を検査するものであり、`m.objectiveValue` の再計算や比較は行いません。
-- **充足可能性判定と Unsat Core (`await m.check(options?)`)**:
-  - `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`）を返します。`conflicts` と `unsatCore` は省略可能であり、Unsat Core 抽出に対応したソルバー（Z3 など）が `"Unsat"` を返したときにのみ設定されます。
-  - 線形算術制約のみを含むモデルでは、`m.check()` は実行可能性の `solve()` にフォールバックすることで、デフォルトの HiGHS や GLPK を含む任意のソルバーで動作します。論理制約（`BoolVar`, `and`, `or`, `implies` 等）および Unsat Core 抽出（`result.conflicts` / `result.unsatCore`）には SMT 対応ソルバー（`{ solver: "z3" }`）が必要です。Z3 は登録された制約を追跡しつつ、変数の上下限（`lb`/`ub`）およびバイナリ領域 `{0, 1}` を直接アサートするため、`conflicts` / `unsatCore` は*モデルの固定された変数境界・領域と合わせたときに*矛盾する登録済み制約名の部分集合を返します（最小性は保証されません）。
+- **充足可能性判定と矛盾診断 (`await m.check(options?)`)**:
+  - `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`）を返します。`conflicts` はモデルが `"Unsat"` と証明されたときに設定されます。
+  - 線形算術制約または論理制約（`BoolVar`, `and`, `or`, `implies`, `xor`）を含むモデルでは、`m.check()` はデフォルトの HiGHS や GLPK を含む任意のソルバーで動作します（単一 solve の弾性スラック緩和を用い、論理制約は 0-1 MIP へ自動線形化）。矛盾時は緩和が必要な制約名を `conflicts` として診断します（意味論の厳密さのため `unsatCore: undefined`）。
+  - 厳密な SMT Unsat Core 抽出（`result.unsatCore` および `result.conflicts`）は SMT 対応ソルバー（`{ solver: "z3" }`）使用時に提供されます。Z3 は登録された制約を追跡しつつ、変数の上下限（`lb`/`ub`）およびバイナリ領域 `{0, 1}` を直接アサートするため、`unsatCore` は*モデルの固定された変数境界・領域と合わせたときに*矛盾する登録済み制約名の部分集合を返します（最小性は保証されません）。
 - **非同期 `solve` / `check` 実行中のモデル変更禁止**:
   - `await m.solve()` または `await m.check()` の完了待機中に変数・制約・目的関数を変更すると、進行中の実行は無効化され、古い Promise は reject されます。
 

@@ -52,7 +52,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 1. **代数模型构建**：使用领域变量构造函数（`m.binary`、`m.integer`、`m.continuous`）、标签模板字面量（`expr`）、向量聚合函数（`dot`、`sum`）以及一等约束（`m.constraint`）构建优化模型。由于 JavaScript 不支持运算符重载，`` expr`...` `` 采用类似参数化 SQL 模板的方式，在解析中缀数学运算符（`+`、`-`、`*`、`^2`、`<=`、`>=`、`==`）的同时，将 `${...}` 插值直接绑定为强类型的 `Var` 或表达式对象引用，从而保留静态类型检查、IDE 重命名支持以及多维索引访问（`${flow[i][j]}`）。
 2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/zh/solvers/custom-solver.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
 3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内直接求解，无需单独的 Python 服务或本地 C/C++ 编译——这消除了在快速开发和交付交互式工具时的后端基础设施瓶颈，也便于在客户端直接与浏览器内 LLM（如 WebGPU / WebLLM）协同工作。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
-4. **命名约束与 SMT 结果**：显式使用 Z3 检查可满足性，并通过冲突约束（`conflicts` / `unsatCore`）调查冲突约束。返回的是一个冲突约束子集，不一定是最小子集。
+4. **命名约束与冲突诊断**：通过可满足性检查（`m.check()`），可调查矛盾约束（`conflicts` / `unsatCore`）以排查不可行性原因：内置 HiGHS 分离出**弹性修复集合**（`conflicts`，恢复可行性所需松弛的约束集合），而 Z3 提取 **SMT 不可满足核心**（`unsatCore` / `conflicts`，相互矛盾的约束子集；不保证最小性）。
 
 模型构建与转换由 WaSHI 负责。支持的问题类型、数值行为和求解时间取决于所选求解器、配置及具体问题。建模开销与求解器执行时间应分别测量；某个模型上的结果并不构成通用性能保证。
 
@@ -228,15 +228,16 @@ console.log(`警报响起？ ${m.values.get("siren")}`); // true
 
 ---
 
-### 4. 约束冲突根因诊断 (`conflicts` / `unsatCore`)
+### 4. 冲突诊断 (`conflicts` / `unsatCore`)
 
-当规则或约束之间存在矛盾时，Z3 能够提取引发冲突的**矛盾约束子集**（Unsat Core / Conflicts，不保证最小性；需使用 Z3）：
+当规则或约束之间存在矛盾时，可定位不可行根因以采取干预措施：
+- **内置 HiGHS 与 GLPK**：`await m.check()` 采用单次求解弹性松弛模型（$\min \sum s_i$），无需安装外部求解器即可定位 `res.conflicts`——即恢复可行性所需松弛的**修复集合**。
+- **Z3**：`await m.check({ solver: "z3" })` 提供精确的 SMT **不可满足核心（Unsat Core）** 提取（`res.unsatCore` 与 `res.conflicts`），返回相互矛盾的约束子集。
 
 ```ts
 import { Model, expr } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+const m = new Model("ConflictDiagnosis");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
 const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
@@ -256,12 +257,18 @@ m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 // 规则 5: 最低 1 名员工用工底线（无关规则）
 m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
-const res = await m.check({ solver: "z3" });
+// 1. 使用默认 HiGHS 进行弹性修复诊断
+const res = await m.check();
 
 console.log(`求解状态: ${res.status}`); // "Unsat"
-console.log("冲突约束子集:", res.conflicts);
-// 输出: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
-// 注：无关的 "minimum_one_employee" 被准确排除在外！
+console.log("修复约束集合（需松弛的约束）:", res.conflicts);
+// HiGHS 输出: ["rush_required"]
+// （松弛 rush_required 即可恢复可行性；无关的 minimum_one_employee 不受影响）
+
+// 2. 或使用 Z3 提取精确 SMT 不可满足核心（需导入 "@ohtaman/washi/solvers/z3"）
+// const z3Res = await m.check({ solver: "z3" });
+// console.log("相互矛盾核心:", z3Res.unsatCore);
+// Z3 输出: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 ```
 
 ---

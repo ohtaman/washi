@@ -135,9 +135,10 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
   - 返回 `SolverStatus`（`"Optimal"`、`"Feasible"`、`"Infeasible"`、`"Unbounded"`、`"TimeLimit"`、`"IterationLimit"`、`"Error"`、`"Unknown"`、`"NotSolved"`、`"Sat"` 或 `"Unsat"`）。内置优化求解器返回优化状态（`"Optimal"`、`"Feasible"`、`"Infeasible"`、`"Unbounded"`、`"TimeLimit"`、`"IterationLimit"`、`"Error"`、`"Unknown"`、`"NotSolved"`），其中因时间、迭代或解数量上限（或中断）停止但已找到合法可行解（Incumbent）的运行会返回 `"Feasible"`；`"Sat"` 与 `"Unsat"` 包含在 `SolverStatus` 中以供可满足性/自定义求解器适配器（如 `MockSolver`）使用。
   - 通过 `x.value`、`expr`...`.value`、`m.getValues(x)`、`m.getValues(container)`、`m.objectiveValue`、`constr.dual`、`constr.slack` 和 `x.reducedCost` 读取结果。
   - 求解后调用 `m.validateSolution()` 可独立校验变量有限性、变量上下界（`lb`/`ub`）、整数/二元/布尔域、线性约束残差以及逻辑约束（`SolutionValidationReport`：`{ valid, complete, maxViolation, violations, ... }`）。注意：`validateSolution()` 校验变量与约束的原问题可行性，不会重新计算或比对 `m.objectiveValue`。
-- **可满足性检查与 Unsat Core (`await m.check(options?)`)**:
-  - 返回 `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`），其中 `conflicts` 和 `unsatCore` 为可选字段，仅在支持不可行核提取的求解器（如 Z3）返回 `"Unsat"` 时填充。
-  - 对于仅包含线性算术约束的模型，`m.check()` 会回退为可行性 `solve()`，因此可用于任何求解器（包括默认的 HiGHS 和 GLPK）。逻辑约束（`BoolVar`、`and`、`or`、`implies` 等）以及不可行核提取（`result.conflicts` / `result.unsatCore`）需要支持 SMT 的求解器（`{ solver: "z3" }`）。由于 Z3 在跟踪已注册约束的同时直接断言变量边界（`lb`/`ub`）和二元 `{0, 1}` 域，`conflicts` / `unsatCore` 报告的是*结合模型固定变量边界/域时*发生冲突的已注册约束名称子集（不保证最小性）。
+- **可满足性检查与冲突诊断 (`await m.check(options?)`)**:
+  - 返回 `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`），其中在模型证明为 `"Unsat"` 时填充 `conflicts`。
+  - 对于包含线性算术约束或逻辑约束（`BoolVar`、`and`、`or`、`implies`、`xor`）的模型，`m.check()` 均可在任意求解器（包括默认的 HiGHS 与 GLPK，通过单次求解弹性松弛模型，并将逻辑约束自动线性化为 0-1 MIP）上运行，并在不可行时将需要松弛的冲突约束诊断为 `conflicts`（为保证语义严谨，`unsatCore: undefined`）。
+  - 精确的 SMT 不满足核提取（`result.unsatCore` 与 `result.conflicts`）在选用 SMT 求解器（`{ solver: "z3" }`）时提供。由于 Z3 在跟踪已注册约束的同时直接断言变量边界（`lb`/`ub`）和二元 `{0, 1}` 域，`unsatCore` 报告的是*结合模型固定变量边界/域时*发生冲突的已注册约束名称子集（不保证最小性）。
 - **异步 `solve` / `check` 期间禁止并发修改模型**:
   - 在 `await m.solve()` 或 `await m.check()` 挂起期间修改变量、约束或目标函数会使当前执行失效，并使过期的 Promise 被 reject。
 

@@ -42,16 +42,23 @@ Notice that `routine_operating_cost` is **not** in the core, because only `minim
 > - **Use `m.check({ solver: "z3" })` for Unsat Core extraction**: `m.solve()` runs optimization (`Z3.Optimize`), whereas `m.check()` runs tracked satisfiability checking (`Z3.Solver.assertAndTrack`) and populates `result.conflicts` / `m.conflicts` (and alias `m.unsatCore`).
 > - **Name your constraints**: Variable bounds (`lb`, `ub`) act as background domain declarations. To include a bound or business rule in the reported `unsatCore` list, register it as a named constraint via `m.constraint(expr`...`, "rule_name")`.
 
-### Workflow: Optimize with HiGHS, Diagnose with Z3
+### Workflow: Infeasibility Diagnosis with HiGHS or Z3
 
-Because WaSHI models are solver-independent, you can solve your optimization model with **HiGHS** first and automatically fall back to **Z3** `m.check()` if HiGHS reports `"Infeasible"`:
+Because WaSHI models are solver-independent, you can diagnose infeasibilities using either solver:
+1. **Built-in HiGHS & GLPK (default)**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to identify which constraints required relaxation (`diag.conflicts`), requiring no extra dependencies.
+2. **Z3 SMT Solver**: `await m.check({ solver: "z3" })` uses SMT tracking to extract an exact unsatisfiable core (`diag.unsatCore` / `diag.conflicts`).
 
 ```typescript
 const status = await m.solve(); // Fast MIP solve with default HiGHS
 
 if (status === "Infeasible") {
-  const diag = await m.check({ solver: "z3" });
+  // Option 1: Built-in single-solve elastic diagnosis with HiGHS
+  const diag = await m.check();
   console.error("Model is infeasible due to conflicting rules:", diag.conflicts);
+
+  // Option 2: Exact SMT unsat core diagnosis with Z3 (requires import "@ohtaman/washi/solvers/z3")
+  // const z3Diag = await m.check({ solver: "z3" });
+  // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 

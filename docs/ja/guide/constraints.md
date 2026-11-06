@@ -153,7 +153,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **条件側の変数** | 数値バイナリ変数 (`m.binary()`) | 命題変数 `BoolVar` (`m.bool()`)、`BoolOp`、または `Constraint` |
 | **帰結側の制約** | 線形制約 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp`、または線形制約 `Constraint` |
-| **対応ソルバー** | **全 MIP / LP ソルバー**（HiGHS, GLPK, Z3）— Big-M 線形化 | **Z3 SMT ソルバー**（`capabilities.supportsSMT: true`） |
+| **対応ソルバー** | **全 MIP / LP ソルバー**（HiGHS, GLPK, Z3）— Big-M 線形化 | **全ソルバー**（HiGHS, GLPK は 0-1 MIP 自動線形化、Z3 はネイティブ対応） |
 | **主な用途** | 目的関数を伴う数理最適化（`m.solve()`） | ルール検証・ポリシー検証・充足可能性判定（`m.check()`） |
 
 ---

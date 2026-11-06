@@ -154,7 +154,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **触发条件变量** | 数值 `Binary` 变量 (`m.binary()`) | `BoolVar` (`m.bool()`)、`BoolOp` 或 `Constraint` |
 | **推论约束** | 线性 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp` 或线性 `Constraint` |
-| **适用求解器** | **所有 MIP/LP 求解器**（HiGHS、GLPK、Z3），通过 Big-M 线性化实现 | **Z3 SMT 求解器**（`capabilities.supportsSMT: true`） |
+| **适用求解器** | **所有 MIP/LP 求解器**（HiGHS、GLPK、Z3），通过 Big-M 线性化实现 | **所有求解器**（HiGHS、GLPK 通过 0-1 MIP 自动线性化，Z3 原生支持） |
 | **最佳适用场景** | 带有目标函数的运筹优化与 MIP 模型（`m.solve()`） | 规则引擎、策略验证与 SMT 可满足性判定（`m.check()`） |
 
 ---

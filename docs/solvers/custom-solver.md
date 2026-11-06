@@ -119,7 +119,7 @@ export interface SolveModelData extends CheckModelData {
 
 Custom solvers declare their supported features using `capabilities`. Before dispatching `solve()` or `check()`, `Model` validates:
 - `supportsQP === false` when the objective contains quadratic terms (`QuadExpr`),
-- `supportsSMT !== true` when the model contains logical constraints (`m.logicalConstraints`), and
+- when the model contains logical constraints (`m.logicalConstraints`) and the solver does not support SMT (`supportsSMT !== true`), `Model` automatically linearizes them into equivalent 0-1 MIP binary variables and linear constraints via `linearizeModelForMip`, and
 - `supportsWarmStart !== true` when any variable has a primal `initialValue` set.
 
 ```typescript

@@ -52,7 +52,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 1. **代数的なモデル記述**: ドメイン変数メソッド（`m.binary`, `m.integer`, `m.continuous`）、タグ付きテンプレート（`expr`）、ベクトル集計関数（`dot`, `sum`）、およびファーストクラスの制約（`m.constraint`）によりモデルを記述します。JavaScript には演算子オーバーロードがないため、`` expr`...` `` は SQL のパラメータバインディングと同様に、中置記法の演算子（`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`）を構文解析しつつ `${...}` に渡された値を型付きの `Var` や式のオブジェクト参照として直接バインドします。これにより、TypeScript の型検査、IDE のシンボルリネーム、多次元変数の添字参照（`${flow[i][j]}`）がそのまま機能します。
 2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/ja/solvers/custom-solver.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せずアプリケーション内で求解できるため、プロトタイプから Web ツールを公開する際のバックエンド構築のボトルネックを解消でき、ブラウザ内 LLM（WebGPU / WebLLM 等）とのクライアントサイド連携も容易です。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
-4. **名前付き制約と SMT の結果**: Z3 を明示的に使って充足可能性を確認し、矛盾する制約の調査に競合制約（`conflicts` / `unsatCore`）を利用できます。返されるのは矛盾する制約の部分集合であり、最小の集合とは限りません。
+4. **名前付き制約と矛盾原因の特定**: 充足可能性チェック（`m.check()`）により、矛盾した制約（`conflicts` / `unsatCore`）を調査して実行不能の原因を特定できます。組み込み HiGHS では**エラスティック修復集合**（実行可能性の回復のために緩和が必要な制約集合 `conflicts`）を検出し、Z3 では **SMT 充足不能コア**（相互に矛盾する制約部分集合 `unsatCore` / `conflicts`、最小性は保証されません）を抽出します。
 
 モデルの構築と変換は WaSHI が担当します。扱える問題クラス、数値計算の挙動、求解時間は、選択したソルバー・設定・問題に依存します。モデル構築のオーバーヘッドとソルバーの実行時間は分けて計測する必要があり、特定のモデルでの結果は一般的な性能保証ではありません。
 
@@ -228,15 +228,16 @@ console.log(`サイレン作動？ ${m.values.get("siren")}`); // true
 
 ---
 
-### 4. 矛盾原因の自動特定 (`conflicts` / `unsatCore`)
+### 4. 矛盾診断（`conflicts` / `unsatCore`）
 
-業務ルールや制約群が互いに矛盾している場合、**矛盾を引き起こしている制約の部分集合**（Unsat Core / Conflicts。最小性は保証しません）を特定してデバッグ（Z3 が必要）：
+業務ルールや制約群が互いに矛盾している場合、原因と修正箇所を特定してデバッグできます：
+- **標準の HiGHS & GLPK**: `await m.check()` が単一 solve の弾性スラック緩和（$\min \sum s_i$）を用いて追加ソルバーなしで `res.conflicts`（実行可能性を回復するために緩和が必要な**修復集合**）を特定します。
+- **Z3**: `await m.check({ solver: "z3" })` が厳密な SMT **充足不能コア（Unsat Core）** を抽出し、相互に矛盾している制約部分集合（`res.unsatCore` および `res.conflicts`）を返します。
 
 ```ts
 import { Model, expr } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/z3";
 
-const m = new Model({ name: "ConflictDiagnosis", solver: "z3" });
+const m = new Model("ConflictDiagnosis");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
 const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
@@ -256,12 +257,18 @@ m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
 // ルール 5: 最低 1 人雇用の労働基準（無関係なルール）
 m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
 
-const res = await m.check({ solver: "z3" });
+// 1. 標準の HiGHS によるエラスティック修復診断
+const res = await m.check();
 
 console.log(`ステータス: ${res.status}`); // "Unsat"
-console.log("矛盾している制約:", res.conflicts);
-// 出力: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
-// ※ 無関係な "minimum_one_employee" は的確に除外されます
+console.log("修復対象制約（緩和が必要な制約）:", res.conflicts);
+// HiGHS の出力: ["rush_required"]
+// （rush_required を緩和すれば実行可能となるため修復対象として特定されます）
+
+// 2. または Z3 による厳密な SMT 充足不能コア抽出（import "@ohtaman/washi/solvers/z3" が必要）
+// const z3Res = await m.check({ solver: "z3" });
+// console.log("相互矛盾コア:", z3Res.unsatCore);
+// Z3 の出力: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
 ```
 
 ---
