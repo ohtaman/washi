@@ -166,9 +166,9 @@ export class GLPKSolver implements Solver {
     for (const v of modelData.variables) {
       const vName = varToName.get(v) || v.name;
 
-      if (v.type === "Binary") {
+      if (!mergedOptions.relax && v.type === "Binary") {
         binaries.push(vName);
-      } else if (v.type === "Integer") {
+      } else if (!mergedOptions.relax && v.type === "Integer") {
         generals.push(vName);
       }
 

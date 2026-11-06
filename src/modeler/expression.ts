@@ -16,6 +16,34 @@ export class LinExpr {
   }
 
   /**
+   * Set or overwrite the coefficient for a variable in this expression.
+   * If `coeff === 0`, removes the variable from terms.
+   */
+  setTerm(v: Var, coeff: number): this {
+    if (coeff === 0) {
+      this.terms.delete(v);
+    } else {
+      this.terms.set(v, coeff);
+    }
+    return this;
+  }
+
+  /**
+   * Add a coefficient to a variable in this expression (incrementing any existing coefficient).
+   * If the resulting coefficient is 0, removes the variable from terms.
+   */
+  addTerm(v: Var, coeff: number): this {
+    const current = this.terms.get(v) ?? 0;
+    const next = current + coeff;
+    if (next === 0) {
+      this.terms.delete(v);
+    } else {
+      this.terms.set(v, next);
+    }
+    return this;
+  }
+
+  /**
    * Clone this linear expression
    */
   clone(): LinExpr {

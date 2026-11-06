@@ -27,7 +27,8 @@
         { "text": "数学表达式", "link": "/zh/guide/expressions" },
         { "text": "约束条件", "link": "/zh/guide/constraints" },
         { "text": "目标函数与求解方向", "link": "/zh/guide/objectives" },
-        { "text": "不可行冲突诊断 (Unsat Core)", "link": "/zh/guide/unsat-core" }
+        { "text": "不可行冲突诊断 (Unsat Core)", "link": "/zh/guide/unsat-core" },
+        { "text": "分解方法 (列生成与Benders)", "link": "/zh/guide/decomposition" }
       ]
     },
     {

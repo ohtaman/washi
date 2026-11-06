@@ -204,6 +204,7 @@ export default withMermaid(
               { text: "Constraints", link: "/guide/constraints" },
               { text: "Objectives & Sense", link: "/guide/objectives" },
               { text: "Unsat Core Diagnosis", link: "/guide/unsat-core" },
+              { text: "Decomposition Methods", link: "/guide/decomposition" },
             ],
           },
           {
@@ -268,6 +269,7 @@ export default withMermaid(
               { text: jaLocale.sidebar[1].items[2].text, link: "/ja/guide/constraints" },
               { text: jaLocale.sidebar[1].items[3].text, link: "/ja/guide/objectives" },
               { text: jaLocale.sidebar[1].items[4].text, link: "/ja/guide/unsat-core" },
+              { text: jaLocale.sidebar[1].items[5].text, link: "/ja/guide/decomposition" },
             ],
           },
           {
@@ -342,6 +344,7 @@ export default withMermaid(
               { text: zhLocale.sidebar[1].items[2].text, link: "/zh/guide/constraints" },
               { text: zhLocale.sidebar[1].items[3].text, link: "/zh/guide/objectives" },
               { text: zhLocale.sidebar[1].items[4].text, link: "/zh/guide/unsat-core" },
+              { text: zhLocale.sidebar[1].items[5].text, link: "/zh/guide/decomposition" },
             ],
           },
           {

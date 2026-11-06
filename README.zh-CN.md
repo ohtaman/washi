@@ -421,7 +421,7 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 完整文档可在 **[ohtaman.github.io/washi/zh/](https://ohtaman.github.io/washi/zh/)** 及仓库的 [`docs/zh/`](docs/zh/)（[英文版 `docs/`](docs/)）中查阅：
 
 - **快速上手**: [快速开始](docs/zh/getting-started/index.md) · [AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) · [运行时环境配置](docs/zh/getting-started/runtimes.md) · [跨源隔离指南 (Z3)](docs/zh/getting-started/cross-origin.md)
-- **建模指南**: [决策变量 (`Var`, `BoolVar`)](docs/zh/guide/variables.md) · [表达式与聚合 (`expr`, `sum`, `dot`)](docs/zh/guide/expressions.md) · [约束与逻辑条件 (`indicator`, SMT)](docs/zh/guide/constraints.md) · [目标函数与求解 (`solve`, `validateSolution`)](docs/zh/guide/objectives.md) · [可满足性与 Unsat Core (`check`)](docs/zh/guide/unsat-core.md)
+- **建模指南**: [决策变量 (`Var`, `BoolVar`)](docs/zh/guide/variables.md) · [表达式与聚合 (`expr`, `sum`, `dot`)](docs/zh/guide/expressions.md) · [约束与逻辑条件 (`indicator`, SMT)](docs/zh/guide/constraints.md) · [目标函数与求解 (`solve`, `validateSolution`)](docs/zh/guide/objectives.md) · [可满足性与 Unsat Core (`check`)](docs/zh/guide/unsat-core.md) · [分解法 (`solveColumnGeneration`, `solveBenders`)](docs/zh/guide/decomposition.md)
 - **求解器**: [求解器概览](docs/zh/solvers/index.md) · [HiGHS](docs/zh/solvers/highs.md) · [Z3](docs/zh/solvers/z3.md) · [GLPK](docs/zh/solvers/glpk.md) · [自定义求解器](docs/zh/solvers/custom-solver.md)
 
 ---

@@ -311,7 +311,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 26-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 27-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
@@ -327,7 +327,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enPages).toHaveLength(26);
+    expect(enPages).toHaveLength(27);
     expect(enPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enPages);
     expect(zhPages).toEqual(enPages);

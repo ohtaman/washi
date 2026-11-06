@@ -132,8 +132,12 @@ export function buildLpSymbolMaps(
 /**
  * Convert a linear or quadratic model to standard CPLEX LP format string
  */
-export function generateLpString(modelData: LpModelData): LpExportResult {
+export function generateLpString(
+  modelData: LpModelData,
+  options?: { relax?: boolean }
+): LpExportResult {
   const { sense, objective, constraints, variables } = modelData;
+  const relax = options?.relax === true;
   const { nameToVar, varToName, nameToConstraint, constrToName, varOrder } =
     buildLpSymbolMaps(modelData);
 
@@ -237,12 +241,12 @@ export function generateLpString(modelData: LpModelData): LpExportResult {
   for (const v of variables) {
     const vName = varToName.get(v)!;
 
-    if (v.type === "Binary") {
+    if (!relax && v.type === "Binary") {
       binaryVars.push(vName);
       continue;
     }
 
-    if (v.type === "Integer") {
+    if (!relax && v.type === "Integer") {
       integerVars.push(vName);
     }
 

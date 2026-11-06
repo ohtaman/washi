@@ -421,7 +421,7 @@ WaSHI features a decoupled, pluggable solver architecture. You can easily build 
 Full documentation is available at **[ohtaman.github.io/washi](https://ohtaman.github.io/washi/)** and in the repository's [`docs/`](docs/) directory:
 
 - **Getting Started**: [Quick Start](docs/getting-started/index.md) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Runtime Environments](docs/getting-started/runtimes.md) · [Cross-Origin Isolation (Z3)](docs/getting-started/cross-origin.md)
-- **Modeling Guide**: [Variables (`Var`, `BoolVar`)](docs/guide/variables.md) · [Expressions (`expr`, `sum`, `dot`)](docs/guide/expressions.md) · [Constraints & Logic (`indicator`, SMT)](docs/guide/constraints.md) · [Objectives & Solving (`solve`, `validateSolution`)](docs/guide/objectives.md) · [Feasibility & Unsat Core (`check`)](docs/guide/unsat-core.md)
+- **Modeling Guide**: [Variables (`Var`, `BoolVar`)](docs/guide/variables.md) · [Expressions (`expr`, `sum`, `dot`)](docs/guide/expressions.md) · [Constraints & Logic (`indicator`, SMT)](docs/guide/constraints.md) · [Objectives & Solving (`solve`, `validateSolution`)](docs/guide/objectives.md) · [Feasibility & Unsat Core (`check`)](docs/guide/unsat-core.md) · [Decomposition (`solveColumnGeneration`, `solveBenders`)](docs/guide/decomposition.md)
 - **Solvers**: [Solver Overview](docs/solvers/index.md) · [HiGHS](docs/solvers/highs.md) · [Z3](docs/solvers/z3.md) · [GLPK](docs/solvers/glpk.md) · [Custom Solvers](docs/solvers/custom-solver.md)
 
 ---

@@ -421,7 +421,7 @@ WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャ�
 完全なドキュメントは **[ohtaman.github.io/washi/ja/](https://ohtaman.github.io/washi/ja/)** およびリポジトリの [`docs/ja/`](docs/ja/)（[英語版 `docs/`](docs/)）で公開されています：
 
 - **はじめに**: [クイックスタート](docs/ja/getting-started/index.md) · [AIエージェント向けクイックリファレンス](docs/ja/getting-started/ai-agents.md) · [ランタイム環境とデプロイ構成](docs/ja/getting-started/runtimes.md) · [Cross-Origin Isolation (Z3)](docs/ja/getting-started/cross-origin.md)
-- **モデリングガイド**: [決定変数 (`Var`, `BoolVar`)](docs/ja/guide/variables.md) · [数式と集計 (`expr`, `sum`, `dot`)](docs/ja/guide/expressions.md) · [制約と論理条件 (`indicator`, SMT)](docs/ja/guide/constraints.md) · [目的関数と求解 (`solve`, `validateSolution`)](docs/ja/guide/objectives.md) · [充足可能性と Unsat Core (`check`)](docs/ja/guide/unsat-core.md)
+- **モデリングガイド**: [決定変数 (`Var`, `BoolVar`)](docs/ja/guide/variables.md) · [数式と集計 (`expr`, `sum`, `dot`)](docs/ja/guide/expressions.md) · [制約と論理条件 (`indicator`, SMT)](docs/ja/guide/constraints.md) · [目的関数と求解 (`solve`, `validateSolution`)](docs/ja/guide/objectives.md) · [充足可能性と Unsat Core (`check`)](docs/ja/guide/unsat-core.md) · [分解法 (`solveColumnGeneration`, `solveBenders`)](docs/ja/guide/decomposition.md)
 - **ソルバー**: [ソルバー概要](docs/ja/solvers/index.md) · [HiGHS](docs/ja/solvers/highs.md) · [Z3](docs/ja/solvers/z3.md) · [GLPK](docs/ja/solvers/glpk.md) · [カスタムソルバー](docs/ja/solvers/custom-solver.md)
 
 ---
