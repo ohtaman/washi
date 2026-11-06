@@ -186,13 +186,8 @@ export async function solveBenders(
           return rec;
         })();
 
-  // Sync variable values on the master model to reflect the incumbent
-  for (const v of master.variables) {
-    if (Object.prototype.hasOwnProperty.call(values, v.name)) {
-      v.value = values[v.name];
-    }
-  }
-
+  // The evaluated incumbent values are returned in result.values.
+  // We keep the solved master model state separate and internally consistent with its final solve.
   const finalObjective =
     bestEvaluatedObjective !== null ? bestEvaluatedObjective : master.objectiveValue;
 

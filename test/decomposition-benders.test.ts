@@ -246,5 +246,10 @@ describe("Benders Decomposition", () => {
     // Must return the true incumbent y=0 with objective 10, NOT the bad candidate y=1
     expect(result.objectiveValue).toBeCloseTo(10, 3);
     expect(Math.round(result.values.y)).toBe(0);
+
+    // Verify master solution state remains internally consistent
+    expect(master.validateSolution().valid).toBe(true);
+    expect(master.values.get("y")).toBe(y.value);
+    expect(master.solution?.values.y).toBe(y.value);
   });
 });
