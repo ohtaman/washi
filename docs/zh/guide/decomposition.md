@@ -76,12 +76,12 @@ c.setTerm(newVar, 0); // 设为 0 时安全移除该项
 4. 重复直至无法找到新列。
 5. 最终求解含全部生成列的整数规划（`finalizeAsMIP`，默认 `true`），得到精确整数解。
 
-### 推荐：子问题模型与 `linkColumn()` 全自动列生成
+### 基于 `pricing` 回调的列生成
 
-子问题回调只需返回子问题 `Model` 并使用 `sub.linkColumn(...)` 声明与主问题约束的绑定关系，WaSHI 将全自动设置对偶目标函数、求解子问题、判断检验数并注入新列：
+传入 `pricing` 回调函数，获取约束影子价格（对偶值），求解定价子问题（可使用 WaSHI 模型或任意专用算法），并返回生成的列方案。WaSHI 会自动评估检验数并将有效改进列注入主问题：
 
 ```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize, maximize } from "@ohtaman/washi";
 
 const rollWidth = 100;
 const items = [
@@ -90,42 +90,47 @@ const items = [
   { id: "C", width: 16, demand: 20 },
 ];
 
-// 1. 构建受限主问题（RMP）
+// 1. 构建受限主问题（RMP），使用常规变量定义朴素初始切割方案
 const master = new Model("CuttingStockMaster");
-master.objective(minimize(0));
 
-for (const item of items) {
-  master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
-}
+const pA = master.integer("init_A", { lb: 0 }); // 方案A：每卷切2个A（45*2 = 90 <= 100）
+const pB = master.integer("init_B", { lb: 0 }); // 方案B：每卷切2个B（36*2 = 72 <= 100）
+const pC = master.integer("init_C", { lb: 0 }); // 方案C：每卷切6个C（16*6 = 96 <= 100）
 
-// 注册简单初始列（亦可使用常规变量直接建模）
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
+master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
+master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
+master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 
-// 2. 调用 master.solveColumnGeneration() 全自动求解（直接返回 sub 即可！）
+// 2. 调用 master.solveColumnGeneration() 求解
 const result = await master.solveColumnGeneration({
-  subproblem: () => {
+  finalizeAsMIP: true,
+  pricing: async ({ getDual }) => {
     // 定价子问题（背包问题）
     const sub = new Model("KnapsackPricing");
-    const a = {
-      A: sub.integer("a_A", { lb: 0, ub: 2 }),
-      B: sub.integer("a_B", { lb: 0, ub: 2 }),
-      C: sub.integer("a_C", { lb: 0, ub: 6 }),
-    };
-    sub.constraint(expr`45 * ${a.A} + 36 * ${a.B} + 16 * ${a.C} <= ${rollWidth}`);
+    const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
+    const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
+    const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
-    // 使用 linkColumn 声明子问题变量对主问题各约束的贡献
-    sub.linkColumn({
+    // 最大化对偶奖励
+    const dualA = getDual("demand_A");
+    const dualB = getDual("demand_B");
+    const dualC = getDual("demand_C");
+    sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
+    sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+
+    await sub.solve();
+
+    // 返回生成的切割模式
+    return {
       cost: 1,
+      type: "Integer",
       coefficients: {
-        demand_A: a.A,
-        demand_B: a.B,
-        demand_C: a.C,
+        demand_A: Math.round(a_A.value ?? 0),
+        demand_B: Math.round(a_B.value ?? 0),
+        demand_C: Math.round(a_C.value ?? 0),
       },
-    });
-
-    return sub; // 直接返回模型，对偶目标函数与列注入全自动处理！
+    };
   },
 });
 
@@ -134,31 +139,22 @@ console.log("迭代次数:", result.iterations);
 console.log("动态生成列数:", result.columnsAdded);
 ```
 
-> **Note**: 对于静态子问题，亦可传入声明式对象：`subproblem: { model: sub, mapping: { demand_A: a.A, ... }, cost: 1 }`。
+### 结合自定义图算法 / 动态规划求解子问题
 
-### 低级控制：自定义 `pricing` 回调函数
-
-若定价问题使用专用的图算法（如最短路径），可自定义 `pricing` 回调：
+由于 `pricing` 是标准回调函数，你可以自由使用 Dijkstra 最短路、动态规划或自定义启发式求解子问题：
 
 ```typescript
 const result = await master.solveColumnGeneration({
-  pricing: async ({ getDual, reducedCostTolerance }) => {
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+  pricing: async ({ getDual }) => {
+    // 专用的网络图算法求解最优路径
+    const route = solveSpecializedShortestPath(getDual);
+    if (!route) return null;
 
-    const pattern = solveCustomKnapsack(dualA, dualB, dualC);
-    const reducedCost = 1 - pattern.dualValue;
-
-    if (reducedCost < -reducedCostTolerance) {
-      return {
-        cost: 1,
-        type: "Integer",
-        coefficients: pattern.coefficients,
-        reducedCost,
-      };
-    }
-    return null; // 达到最优，迭代结束
+    return {
+      cost: route.distance,
+      type: "Integer",
+      coefficients: route.visitedCustomers,
+    };
   },
 });
 ```
@@ -171,9 +167,9 @@ Benders 分解将问题划分为：
 - **主问题（Master Problem）**：包含耦合决策变量（如 0-1 投资变量 $y$）及辅助估计变量 $\theta \ge 0$。
 - **子问题（Subproblem）**：在固定主问题解的前提下求解运营子问题，动态生成**最优性割平面（Optimality Cut）**反馈给主问题，直至收敛。
 
-### 推荐：子问题模型与 `linkRow()` 全自动割平面生成
+### 推荐：子问题模型与 `link()` 全自动割平面生成
 
-子问题回调只需返回子问题 `Model` 并使用 `sub.linkRow(...)` 声明与主问题变量的耦合关系，WaSHI 将全自动管理 $\theta$、提取对偶值并注入 Benders 最优性割平面：
+子问题回调只需返回子问题 `Model` 并使用 `sub.link(...)` 声明与主问题变量的耦合关系，WaSHI 将全自动管理 $\theta$、提取对偶值并注入 Benders 最优性割平面：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -212,9 +208,9 @@ const result = await master.solveBenders({
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // 使用 linkRow (行链接) 指定与主问题决策变量的耦合
-    sub.linkRow(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
-    sub.linkRow(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
+    // 使用 link 指定与主问题决策变量的耦合
+    sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
+    sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
     return sub; // 直接返回模型，割平面生成与 theta 管理全自动完成！
   },
@@ -299,24 +295,34 @@ for (let i = 0; i < customers.length; i++) {
 // 2. 列生成法求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  subproblem: () => {
+  pricing: async ({ getDual }) => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
+    const obj = new LinExpr();
+
     for (const cust of customers) {
       a[cust.id] = sub.binary(`v_${cust.id}`);
+      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
     }
+
+    sub.objective(maximize(obj));
 
     // 车辆载重约束: sum(demand_i * a_i) <= vehicleCapacity
     const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
     sub.constraint(expr`${load} <= ${vehicleCapacity}`);
 
-    // 将生成列绑定到主问题约束
-    const coefficients: Record<string, Var> = {};
+    await sub.solve();
+
+    const coefficients: Record<string, number> = {};
     for (const cust of customers) {
-      coefficients[`visit_${cust.id}`] = a[cust.id];
+      coefficients[`visit_${cust.id}`] = Math.round(a[cust.id].value ?? 0);
     }
-    sub.linkColumn({ cost: 1, coefficients });
-    return sub;
+
+    return {
+      cost: 1,
+      type: "Integer",
+      coefficients,
+    };
   },
 });
 

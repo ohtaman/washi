@@ -38,7 +38,6 @@ import {
   type BendersResult,
   type ColumnGenerationOptions,
   type ColumnGenerationResult,
-  type ColumnLinkOptions,
 } from "../decomposition/index.js";
 
 /**
@@ -246,8 +245,7 @@ export class Model {
    * Latest decomposition result if solved using Benders decomposition or Column Generation.
    */
   public decomposition?: BendersResult | ColumnGenerationResult;
-  private _rowLinkingConstraints?: Array<Constraint | LinExpr>;
-  private _columnLink?: ColumnLinkOptions;
+  private _linkingConstraints?: Array<Constraint | LinExpr>;
   private hasSolutionState: boolean = false;
   private modelRevision: number = 0;
   private activeOperationId: number = 0;
@@ -2475,10 +2473,10 @@ export class Model {
    *
    * const sub = new Model("Subproblem");
    * const x = sub.continuous("x", { lb: 0 });
-   * sub.linkRow(expr`${x} <= 50 * ${y}`);
+   * sub.link(expr`${x} <= 50 * ${y}`);
    * ```
    */
-  linkRow(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
+  link(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
     if (
       constraint instanceof QuadExpr ||
       (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
@@ -2487,45 +2485,19 @@ export class Model {
         "Linking constraint cannot be a quadratic expression."
       );
     }
-    if (!this._rowLinkingConstraints) {
-      this._rowLinkingConstraints = [];
+    if (!this._linkingConstraints) {
+      this._linkingConstraints = [];
     }
     const registered = constraint as Constraint | LinExpr;
-    this._rowLinkingConstraints.push(registered);
+    this._linkingConstraints.push(registered);
     return registered;
   }
 
   /**
-   * Linking constraints (rows) registered on this model for Benders decomposition.
+   * Linking constraints registered on this model for Benders decomposition.
    */
-  get rowLinkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
-    return this._rowLinkingConstraints ?? [];
-  }
-
-  /**
-   * Register a column link connecting decision variables in this pricing subproblem model
-   * to constraints in the master problem for Column Generation (Dantzig-Wolfe decomposition).
-   *
-   * @param options Column link options specifying coefficients (or mapping) and optional column cost
-   * @returns This model instance for chaining
-   *
-   * @example
-   * ```ts
-   * const sub = new Model("Pricing");
-   * const a = sub.integer("a", { lb: 0, ub: 2 });
-   * sub.linkColumn({ cost: 1, coefficients: { demand: a } });
-   * ```
-   */
-  linkColumn(options: ColumnLinkOptions): this {
-    this._columnLink = options;
-    return this;
-  }
-
-  /**
-   * Column link registered on this subproblem model for Column Generation.
-   */
-  get columnLink(): ColumnLinkOptions | undefined {
-    return this._columnLink;
+  get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
+    return this._linkingConstraints ?? [];
   }
 
   /**
@@ -2551,7 +2523,7 @@ export class Model {
    *     const x = sub.continuous("x", { lb: 0 });
    *     sub.objective(minimize(expr`2 * ${x}`));
    *     sub.constraint(expr`${x} >= 30`, "demand");
-   *     sub.linkRow(expr`${x} <= 50 * ${y}`);
+   *     sub.link(expr`${x} <= 50 * ${y}`);
    *     return sub;
    *   },
    * });
@@ -2571,24 +2543,29 @@ export class Model {
    * Solves the continuous LP relaxation to obtain dual shadow prices, evaluates the pricing subproblem
    * to dynamically generate columns with negative reduced costs, and optionally finalizes as a MIP.
    *
-   * @param options Column generation options including declarative subproblem or custom pricing callback
+   * @param options Column generation options including custom pricing callback
    * @returns ColumnGenerationResult containing status, objective, iterations, columns, and values
    *
    * @example
    * ```ts
    * const master = new Model("CuttingStock");
    * master.objective(minimize(0));
-   * master.constraint(expr`0 >= 10`, "demand");
+   * const demand = master.constraint(expr`0 >= 10`, "demand");
    * master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
    *
    * const result = await master.solveColumnGeneration({
    *   finalizeAsMIP: true,
-   *   subproblem: () => {
+   *   pricing: async ({ getDual }) => {
    *     const sub = new Model("Pricing");
    *     const a = sub.integer("a", { lb: 0, ub: 5 });
+   *     sub.objective(maximize(expr`${getDual("demand")} * ${a}`));
    *     sub.constraint(expr`${a} <= 5`);
-   *     sub.linkColumn({ cost: 1, coefficients: { demand: a } });
-   *     return sub;
+   *     await sub.solve();
+   *     return {
+   *       cost: 1,
+   *       type: "Integer",
+   *       coefficients: { demand: a.value ?? 0 },
+   *     };
    *   },
    * });
    * ```

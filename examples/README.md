@@ -63,8 +63,8 @@ use `@ohtaman/washi` and import the required solver plugin.
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
-| [Vehicle routing (CVRP)](node/13-vehicle-routing-column-generation.ts) | Capacitated vehicle routing via Column Generation; dynamic route pricing from customer dual values | `solveColumnGeneration`, `sub.linkColumn()` | HiGHS |
-| [Traveling salesperson (TSP)](node/14-traveling-salesperson-benders.ts) | Degree assignment relaxation with lazy subtour elimination constraints via Benders feasibility cuts | `solveBenders`, `sub.linkRow()` | HiGHS |
+| [Vehicle routing (CVRP)](node/13-vehicle-routing-column-generation.ts) | Capacitated vehicle routing via Column Generation; dynamic route pricing from customer dual values | `solveColumnGeneration`, `pricing` | HiGHS |
+| [Traveling salesperson (TSP)](node/14-traveling-salesperson-benders.ts) | Degree assignment relaxation with lazy subtour elimination constraints via Benders feasibility cuts | `solveBenders` | HiGHS |
 
 For example:
 

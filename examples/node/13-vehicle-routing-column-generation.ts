@@ -5,12 +5,16 @@
  * - Dantzig-Wolfe Decomposition / Column Generation for combinatorial OR problems
  * - Master problem: Set covering / fleet vehicle minimization
  * - Pricing subproblem: Knapsack-based route generation using master shadow prices
- * - Returning subproblem model with `sub.linkColumn({ cost, coefficients })`
+ * - Pricing callback receiving dual values and returning feasible route columns
  *
  * Run with: npx tsx examples/node/13-vehicle-routing-column-generation.ts
  */
 
-import { Model, expr, minimize, LinExpr, type Var } from "../../src/index.js";
+import { Model, expr, minimize, maximize, LinExpr, type Var } from "../../src/index.js";
+
+interface RouteMeta {
+  visitedCustomers: string[];
+}
 
 export async function runCVRP() {
   console.log("=== Capacitated Vehicle Routing Problem (CVRP) via Column Generation ===");
@@ -33,7 +37,7 @@ export async function runCVRP() {
   // Initial naive routes: 1 dedicated vehicle per customer
   const initialRoutes: Var[] = [];
   for (const cust of customers) {
-    const r = master.integer(`route_init_${cust.id}`, { lb: 0, ub: 1 });
+    const r = master.binary(`route_init_${cust.id}`);
     initialRoutes.push(r);
   }
 
@@ -54,17 +58,24 @@ export async function runCVRP() {
   console.log("Iteratively solving Column Generation (Dantzig-Wolfe decomposition)...");
 
   // 2. Solve via Column Generation
-  const result = await master.solveColumnGeneration({
+  const result = await master.solveColumnGeneration<RouteMeta>({
     finalizeAsMIP: true,
-    subproblem: (context) => {
+    pricing: async ({ getDual }) => {
       // Pricing subproblem: Given dual prices of master visit constraints,
       // find a new feasible vehicle route visiting a subset of customers that satisfies vehicle capacity
-      const sub = new Model(`RoutePricing_Iter${context.iteration}`);
+      const sub = new Model("RoutePricing");
 
       const visitVars: Record<string, Var> = {};
+      const obj = new LinExpr();
+
       for (const cust of customers) {
         visitVars[cust.id] = sub.binary(`v_${cust.id}`);
+        const dual = getDual(`visit_${cust.id}`);
+        obj.addTerm(visitVars[cust.id], dual);
       }
+
+      // Maximize collected dual revenue
+      sub.objective(maximize(obj));
 
       // Knapsack capacity constraint: sum(demand_i * v_i) <= vehicleCapacity
       const loadExpr = customers.reduce(
@@ -73,21 +84,24 @@ export async function runCVRP() {
       );
       sub.constraint(expr`${loadExpr} <= ${vehicleCapacity}`);
 
-      // Link proposed column to master customer coverage constraints
-      const coefficients: Record<string, Var> = {};
+      await sub.solve();
+
+      const coefficients: Record<string, number> = {};
+      const visited: string[] = [];
       for (const cust of customers) {
-        coefficients[`visit_${cust.id}`] = visitVars[cust.id];
+        const isVisited = Math.round(visitVars[cust.id].value ?? 0) === 1;
+        if (isVisited) {
+          coefficients[`visit_${cust.id}`] = 1;
+          visited.push(cust.id);
+        }
       }
 
-      sub.linkColumn({
+      return {
         cost: 1, // 1 vehicle per route
-        type: "Integer",
-        lb: 0,
-        ub: 1,
+        type: "Binary",
         coefficients,
-      });
-
-      return sub;
+        meta: { visitedCustomers: visited },
+      };
     },
     onIteration: (info) => {
       console.log(
@@ -101,10 +115,10 @@ export async function runCVRP() {
   console.log(`Total Columns Generated: ${result.columnsAdded}`);
   console.log(`Total Iterations: ${result.iterations}`);
 
-  console.log("\nActive routes in optimal fleet:");
-  for (const [varName, val] of Object.entries(result.values)) {
-    if (val > 0.5) {
-      console.log(`  ${varName} = ${val}`);
+  console.log("\nGenerated routes selected in optimal fleet:");
+  for (const col of result.generatedColumns) {
+    if ((col.variable.value ?? 0) > 0.5) {
+      console.log(`  ${col.variable.name} (visits: [${col.proposal.meta?.visitedCustomers.join(", ")}]) = ${col.variable.value}`);
     }
   }
   return result;

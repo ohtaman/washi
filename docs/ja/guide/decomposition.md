@@ -76,12 +76,12 @@ c.setTerm(newVar, 0); // 0 をセットすると制約から安全に削除
 4. 改善する列がなくなるまで反復。
 5. 最後に主問題を本来の整数問題（MIP）として解き、厳密な整数解を復元（`finalizeAsMIP`、既定値 `true`）。
 
-### 推奨：子問題モデルと `linkColumn()` による全自動列生成
+### `pricing` コールバックによる列生成
 
-子問題のコールバックで `Model` を返し、マスター制約との紐付けを `sub.linkColumn(...)` で指定するだけで、目的関数の双対更新・子問題の求解・被約費用判定・列追加が全自動で行われます：
+制約の双対値（シャドウプライス）を受け取り、子問題を解いて（WaSHIモデルでも独自アルゴリズムでも可）改善列を返す `pricing` コールバックを渡します。WaSHI は被約費用を自動評価し、改善が見込める列を主問題へ動的に注入します：
 
 ```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize, maximize } from "@ohtaman/washi";
 
 const rollWidth = 100;
 const items = [
@@ -90,42 +90,47 @@ const items = [
   { id: "C", width: 16, demand: 20 },
 ];
 
-// 1. 制限主問題（RMP）の構築
+// 1. 制限主問題（RMP）を素朴な初期パターンで普通に構築
 const master = new Model("CuttingStockMaster");
-master.objective(minimize(0));
 
-for (const item of items) {
-  master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
-}
+const pA = master.integer("init_A", { lb: 0 }); // パターンA: ロール1本からAを2個（45*2 = 90 <= 100）
+const pB = master.integer("init_B", { lb: 0 }); // パターンB: ロール1本からBを2個（36*2 = 72 <= 100）
+const pC = master.integer("init_C", { lb: 0 }); // パターンC: ロール1本からCを6個（16*6 = 96 <= 100）
 
-// 初期列を登録（通常の変数定義でも、addColumn でも可能）
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
+master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
+master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
+master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 
-// 2. master.solveColumnGeneration() で自動求解（sub を返すだけ！）
+// 2. master.solveColumnGeneration() で求解
 const result = await master.solveColumnGeneration({
-  subproblem: () => {
+  finalizeAsMIP: true,
+  pricing: async ({ getDual }) => {
     // 価格付け子問題（ナップサック問題）
     const sub = new Model("KnapsackPricing");
-    const a = {
-      A: sub.integer("a_A", { lb: 0, ub: 2 }),
-      B: sub.integer("a_B", { lb: 0, ub: 2 }),
-      C: sub.integer("a_C", { lb: 0, ub: 6 }),
-    };
-    sub.constraint(expr`45 * ${a.A} + 36 * ${a.B} + 16 * ${a.C} <= ${rollWidth}`);
+    const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
+    const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
+    const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
-    // 子問題の変数がマスターのどの制約に寄与するかを linkColumn で紐付け
-    sub.linkColumn({
+    // 主問題の双対値を報酬として最大化
+    const dualA = getDual("demand_A");
+    const dualB = getDual("demand_B");
+    const dualC = getDual("demand_C");
+    sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
+    sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+
+    await sub.solve();
+
+    // 生成された切り出しパターン（係数）を返却
+    return {
       cost: 1,
+      type: "Integer",
       coefficients: {
-        demand_A: a.A,
-        demand_B: a.B,
-        demand_C: a.C,
+        demand_A: Math.round(a_A.value ?? 0),
+        demand_B: Math.round(a_B.value ?? 0),
+        demand_C: Math.round(a_C.value ?? 0),
       },
-    });
-
-    return sub; // モデルを返すだけで、双対目的関数と列注入は全自動！
+    };
   },
 });
 
@@ -134,32 +139,22 @@ console.log("実行された反復回数:", result.iterations);
 console.log("動的生成された列数:", result.columnsAdded);
 ```
 
-> **Note**: 静的な子問題モデルの場合は、`subproblem: { model: sub, mapping: { demand_A: a.A, ... }, cost: 1 }` のような宣言的オブジェクト形式で渡すことも可能です。
+### 独自アルゴリズム（グラフ探索・動的計画法）での子問題求解
 
-### 低レベル制御：カスタム `pricing` コールバック
-
-最短経路アルゴリズムなどの専用ソルバーを価格付けに利用したい場合は、`pricing` コールバックを手動定義できます：
+`pricing` は単なる関数ですので、子問題の求解にダイクストラ法や動的計画法などの独自アルゴリズムを自由に組み合わせられます：
 
 ```typescript
 const result = await master.solveColumnGeneration({
-  pricing: async ({ getDual, reducedCostTolerance }) => {
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+  pricing: async ({ getDual }) => {
+    // グラフ探索などの専用アルゴリズムで最適ルートを探索
+    const route = solveSpecializedShortestPath(getDual);
+    if (!route) return null;
 
-    // 独自ソルバーで被約費用最小のパターンを探索
-    const bestPattern = solveKnapsack(dualA, dualB, dualC);
-    const reducedCost = 1 - bestPattern.dualValue;
-
-    if (reducedCost < -reducedCostTolerance) {
-      return {
-        cost: 1,
-        type: "Integer",
-        coefficients: bestPattern.coefficients,
-        reducedCost,
-      };
-    }
-    return null; // 改善列なし（反復終了）
+    return {
+      cost: route.distance,
+      type: "Integer",
+      coefficients: route.visitedCustomers,
+    };
   },
 });
 ```
@@ -172,9 +167,9 @@ Benders 分解は問題を以下のように分割して解きます：
 - **主問題（Master Problem）**: 連結変数（例：施設の開設有無などの 0-1 変数 $y$）と、子問題の推定費用を表す補助変数 $\theta \ge 0$ を持つ。
 - **子問題（Subproblem）**: 主問題の暫定解 $y^*$ のもとで運用子問題を解き、**最適性カット（Optimality Cut）** を主問題へフィードバックする。
 
-### 推奨：子問題モデルと `linkRow()` による全自動カット生成
+### 推奨：子問題モデルと `link()` による全自動カット生成
 
-子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.linkRow(...)` で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
+子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.link(...)` で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -213,9 +208,9 @@ const result = await master.solveBenders({
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // マスター変数 y1, y2 との連結制約を行リンク（linkRow / link）で指定するだけ！
-    sub.linkRow(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
-    sub.linkRow(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
+    // マスター変数 y1, y2 との連結制約を link で指定するだけ！
+    sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
+    sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
     return sub; // モデルを返すだけで、カット生成・theta管理は全自動！
   },
@@ -301,24 +296,34 @@ for (let i = 0; i < customers.length; i++) {
 // 2. 列生成法で求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  subproblem: () => {
+  pricing: async ({ getDual }) => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
+    const obj = new LinExpr();
+
     for (const cust of customers) {
       a[cust.id] = sub.binary(`v_${cust.id}`);
+      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
     }
+
+    sub.objective(maximize(obj));
 
     // 車両の積載容量制約: sum(demand_i * a_i) <= vehicleCapacity
     const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
     sub.constraint(expr`${load} <= ${vehicleCapacity}`);
 
-    // 生成列と主問題の制約を紐付け
-    const coefficients: Record<string, Var> = {};
+    await sub.solve();
+
+    const coefficients: Record<string, number> = {};
     for (const cust of customers) {
-      coefficients[`visit_${cust.id}`] = a[cust.id];
+      coefficients[`visit_${cust.id}`] = Math.round(a[cust.id].value ?? 0);
     }
-    sub.linkColumn({ cost: 1, coefficients });
-    return sub;
+
+    return {
+      cost: 1,
+      type: "Integer",
+      coefficients,
+    };
   },
 });
 

@@ -168,7 +168,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(progressLog).toEqual([1]);
   });
 
-  it("solves Cutting Stock Problem using simplified master.solveColumnGeneration with declarative subproblem mapping", async () => {
+  it("solves Cutting Stock Problem using master.solveColumnGeneration with natural initial variables", async () => {
     const rollWidth = 100;
     const items = [
       { id: "A", width: 45, demand: 10 },
@@ -177,16 +177,16 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     ];
 
     const master = new Model("SimpleCuttingStockMaster");
-    master.objective(minimize(0));
 
-    for (const item of items) {
-      master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
-    }
+    // Initial naive single-cut patterns using natural master variables
+    const initA = master.integer("init_A", { lb: 0 });
+    const initB = master.integer("init_B", { lb: 0 });
+    const initC = master.integer("init_C", { lb: 0 });
 
-    // Initial naive columns
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-    master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+    master.objective(minimize(expr`${initA} + ${initB} + ${initC}`));
+    master.constraint(expr`2 * ${initA} >= ${items[0].demand}`, `demand_${items[0].id}`);
+    master.constraint(expr`2 * ${initB} >= ${items[1].demand}`, `demand_${items[1].id}`);
+    master.constraint(expr`6 * ${initC} >= ${items[2].demand}`, `demand_${items[2].id}`);
 
     // Subproblem knapsack model
     const sub = new Model("KnapsackSub");
@@ -197,14 +197,24 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
 
     const result = await master.solveColumnGeneration({
       finalizeAsMIP: true,
-      subproblem: {
-        cost: 1,
-        model: sub,
-        mapping: {
-          demand_A: a_A,
-          demand_B: a_B,
-          demand_C: a_C,
-        },
+      pricing: async ({ getDual }) => {
+        const dualA = getDual("demand_A");
+        const dualB = getDual("demand_B");
+        const dualC = getDual("demand_C");
+
+        sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
+        const status = await sub.solve();
+        if (status !== "Optimal") return null;
+
+        return {
+          cost: 1,
+          type: "Integer",
+          coefficients: {
+            demand_A: Math.round(a_A.value ?? 0),
+            demand_B: Math.round(a_B.value ?? 0),
+            demand_C: Math.round(a_C.value ?? 0),
+          },
+        };
       },
     });
 
@@ -214,7 +224,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(master.decomposition).toBe(result);
   });
 
-  it("preserves positive reduced cost for master maximization with declarative subproblem", async () => {
+  it("preserves positive reduced cost for master maximization with custom pricing", async () => {
     // Maximize master objective: max x with initial column x <= 1 (cost 1)
     const master = new Model("MaxMaster");
     master.constraint(expr`0 <= 1`, "cap");
@@ -223,17 +233,16 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     master.objective(maximize(initCol));
 
     // Pricing subproblem provides an improving column with cost 2 and coeff 1
-    const sub = new Model("PricingSub");
-    const a = sub.continuous("a", { lb: 1, ub: 1 }); // fixed to 1
-
     const result = await master.solveColumnGeneration({
       finalizeAsMIP: true,
-      subproblem: {
-        cost: 2,
-        model: sub,
-        mapping: {
-          cap: a,
-        },
+      pricing: async ({ getDual }) => {
+        const dual = getDual("cap");
+        return {
+          cost: 2,
+          type: "Continuous",
+          coefficients: { cap: 1 },
+          reducedCost: 2 - dual,
+        };
       },
     });
 
@@ -242,7 +251,7 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(result.columnsAdded).toBe(1);
   });
 
-  it("supports subproblem callback returning sub model with sub.linkColumn({ cost, coefficients })", async () => {
+  it("supports pricing callback using constraint duals and returning column proposals with Constraint references", async () => {
     const rollWidth = 100;
     const items = [
       { id: "A", width: 45, demand: 10 },
@@ -250,38 +259,49 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
       { id: "C", width: 16, demand: 20 },
     ];
 
-    const master = new Model("LinkColumnCuttingStock");
+    const master = new Model("ConstraintRefCuttingStock");
     master.objective(minimize(0));
 
     for (const item of items) {
       master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
     }
 
+    const cA = master.getConstraintByName("demand_A")!;
+    const cB = master.getConstraintByName("demand_B")!;
+    const cC = master.getConstraintByName("demand_C")!;
+
     // Initial naive columns
     master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
     master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
     master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
 
-    // Solve using subproblem returning sub with sub.linkColumn
+    // Solve using pricing callback referencing constraints directly
     const result = await master.solveColumnGeneration({
       finalizeAsMIP: true,
-      subproblem: () => {
-        const sub = new Model("KnapsackSubLinkColumn");
+      pricing: async ({ getDual }) => {
+        const sub = new Model("KnapsackSubDirect");
         const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
         const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
         const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
+
+        const dualA = getDual(cA);
+        const dualB = getDual(cB);
+        const dualC = getDual(cC);
+
+        sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
         sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
 
-        sub.linkColumn({
-          cost: 1,
-          coefficients: {
-            demand_A: a_A,
-            demand_B: a_B,
-            demand_C: a_C,
-          },
-        });
+        await sub.solve();
 
-        return sub;
+        return {
+          cost: 1,
+          type: "Integer",
+          coefficients: [
+            [cA, Math.round(a_A.value ?? 0)],
+            [cB, Math.round(a_B.value ?? 0)],
+            [cC, Math.round(a_C.value ?? 0)],
+          ],
+        };
       },
     });
 
@@ -290,17 +310,13 @@ describe("Column Generation (Dantzig-Wolfe Decomposition)", () => {
     expect(result.columnsAdded).toBeGreaterThanOrEqual(1);
   });
 
-  it("throws a descriptive error when subproblem callback returns Model without linkColumn", async () => {
-    const master = new Model("MissingLinkMaster");
+  it("throws a descriptive error when pricing callback is omitted", async () => {
+    const master = new Model("MissingPricingMaster");
     master.constraint(expr`0 >= 5`, "demand");
     master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 1 } });
 
-    const brokenModel = new Model("BrokenSub");
-
     await expect(
-      master.solveColumnGeneration({
-        subproblem: () => brokenModel,
-      })
-    ).rejects.toThrow("Call sub.linkColumn({ cost, coefficients }) before returning the subproblem model");
+      master.solveColumnGeneration({} as any)
+    ).rejects.toThrow("The 'pricing' callback must be provided in ColumnGenerationOptions");
   });
 });

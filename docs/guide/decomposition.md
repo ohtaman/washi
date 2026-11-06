@@ -76,12 +76,12 @@ Column Generation starts with a **Restricted Master Problem (RMP)** with a small
 4. Repeats until no improving columns exist.
 5. Finally solves the full master model as a Mixed-Integer Program (`finalizeAsMIP`, default: `true`) to obtain optimal integer solutions.
 
-### Recommended: Automated Column Generation with `sub.linkColumn()`
+### Column Generation with the `pricing` Callback
 
-Simply return a subproblem `Model` from your callback and declare variable-to-constraint bindings using `sub.linkColumn(...)`. WaSHI automatically sets the dual pricing objective, verifies reduced costs, and injects columns:
+Provide a `pricing` callback that receives constraint shadow prices (duals), solves the subproblem (using a WaSHI model or any custom algorithm), and returns new column proposals. WaSHI automatically evaluates reduced costs and injects improving columns:
 
 ```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize, maximize } from "@ohtaman/washi";
 
 const rollWidth = 100;
 const items = [
@@ -90,42 +90,47 @@ const items = [
   { id: "C", width: 16, demand: 20 },
 ];
 
-// 1. Define Restricted Master Problem (RMP)
+// 1. Define Restricted Master Problem (RMP) with naive initial single-cut patterns
 const master = new Model("CuttingStockMaster");
-master.objective(minimize(0));
 
-for (const item of items) {
-  master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
-}
+const pA = master.integer("init_A", { lb: 0 }); // 2 of A per roll (45*2 = 90 <= 100)
+const pB = master.integer("init_B", { lb: 0 }); // 2 of B per roll (36*2 = 72 <= 100)
+const pC = master.integer("init_C", { lb: 0 }); // 6 of C per roll (16*6 = 96 <= 100)
 
-// Add simple initial single-cut patterns (or define using standard variables)
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-master.addColumn({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
+master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
+master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
+master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 
-// 2. Solve automatically with master.solveColumnGeneration() (just return sub!)
+// 2. Solve with master.solveColumnGeneration()
 const result = await master.solveColumnGeneration({
-  subproblem: () => {
-    // Pricing subproblem (knapsack model)
+  finalizeAsMIP: true,
+  pricing: async ({ getDual }) => {
+    // Pricing subproblem: Bounded Knapsack
     const sub = new Model("KnapsackPricing");
-    const a = {
-      A: sub.integer("a_A", { lb: 0, ub: 2 }),
-      B: sub.integer("a_B", { lb: 0, ub: 2 }),
-      C: sub.integer("a_C", { lb: 0, ub: 6 }),
-    };
-    sub.constraint(expr`45 * ${a.A} + 36 * ${a.B} + 16 * ${a.C} <= ${rollWidth}`);
+    const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
+    const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
+    const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
-    // Link subproblem variables to master constraint coefficients
-    sub.linkColumn({
+    // Maximize shadow price collection
+    const dualA = getDual("demand_A");
+    const dualB = getDual("demand_B");
+    const dualC = getDual("demand_C");
+    sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
+    sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+
+    await sub.solve();
+
+    // Return the generated cutting pattern
+    return {
       cost: 1,
+      type: "Integer",
       coefficients: {
-        demand_A: a.A,
-        demand_B: a.B,
-        demand_C: a.C,
+        demand_A: Math.round(a_A.value ?? 0),
+        demand_B: Math.round(a_B.value ?? 0),
+        demand_C: Math.round(a_C.value ?? 0),
       },
-    });
-
-    return sub; // Returning the model automatically handles dual objectives and column injection!
+    };
   },
 });
 
@@ -134,32 +139,22 @@ console.log("Iterations executed:", result.iterations);
 console.log("Dynamic columns added:", result.columnsAdded);
 ```
 
-> **Note**: For static subproblem models, you can also pass a declarative object: `subproblem: { model: sub, mapping: { demand_A: a.A, ... }, cost: 1 }`.
+### Custom Pricing Algorithms (Graph / Dynamic Programming)
 
-### Low-Level Control: Custom `pricing` Callback
-
-For specialized subproblem solvers (e.g., shortest path algorithms on networks), you can supply a manual `pricing` callback:
+Because `pricing` is a standard callback returning column definitions, you can solve the subproblem using any algorithm (e.g. Dijkstra, Bellman-Ford, or custom heuristics):
 
 ```typescript
 const result = await master.solveColumnGeneration({
-  pricing: async ({ getDual, reducedCostTolerance }) => {
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+  pricing: async ({ getDual }) => {
+    // Solve subproblem with specialized custom graph algorithm
+    const route = solveSpecializedShortestPath(getDual);
+    if (!route) return null;
 
-    // Solve subproblem with custom algorithm
-    const pattern = solveSpecializedKnapsack(dualA, dualB, dualC);
-    const reducedCost = 1 - pattern.dualValue;
-
-    if (reducedCost < -reducedCostTolerance) {
-      return {
-        cost: 1,
-        type: "Integer",
-        coefficients: pattern.coefficients,
-        reducedCost,
-      };
-    }
-    return null; // Optimum reached
+    return {
+      cost: route.distance,
+      type: "Integer",
+      coefficients: route.visitedCustomers,
+    };
   },
 });
 ```
@@ -172,9 +167,9 @@ Benders Decomposition partitions the problem into:
 - **Master Problem**: Contains complicating variables (e.g., 0-1 facility opening decisions $y$) and an auxiliary variable $\theta \ge 0$ representing estimated subproblem costs.
 - **Subproblem**: Solves operational decisions given fixed master values $y^*$, feeding back **Optimality Cuts** to the master.
 
-### Recommended: Automated Cut Generation with `sub.linkRow()`
+### Recommended: Automated Cut Generation with `sub.link()`
 
-Return the subproblem `Model` from your callback and register linking constraints with `sub.linkRow(...)`. WaSHI automatically manages $\theta$, evaluates master candidate values, extracts duals, and injects Benders optimality cuts:
+Return the subproblem `Model` from your callback and register linking constraints with `sub.link(...)`. WaSHI automatically manages $\theta$, evaluates master candidate values, extracts duals, and injects Benders optimality cuts:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -213,9 +208,9 @@ const result = await master.solveBenders({
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // Link subproblem flows with master decisions y1, y2 via row links
-    sub.linkRow(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
-    sub.linkRow(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
+    // Link subproblem flows with master decisions y1, y2 via linking constraints
+    sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
+    sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
     return sub; // Returning the model automatically generates cuts and manages theta!
   },
@@ -300,24 +295,34 @@ for (let i = 0; i < customers.length; i++) {
 // 2. Solve via Column Generation
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  subproblem: () => {
+  pricing: async ({ getDual }) => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
+    const obj = new LinExpr();
+
     for (const cust of customers) {
       a[cust.id] = sub.binary(`v_${cust.id}`);
+      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
     }
+
+    sub.objective(maximize(obj));
 
     // Capacity limit: sum(demand_i * a_i) <= vehicleCapacity
     const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
     sub.constraint(expr`${load} <= ${vehicleCapacity}`);
 
-    // Link generated column to master coverage constraints
-    const coefficients: Record<string, Var> = {};
+    await sub.solve();
+
+    const coefficients: Record<string, number> = {};
     for (const cust of customers) {
-      coefficients[`visit_${cust.id}`] = a[cust.id];
+      coefficients[`visit_${cust.id}`] = Math.round(a[cust.id].value ?? 0);
     }
-    sub.linkColumn({ cost: 1, coefficients });
-    return sub;
+
+    return {
+      cost: 1,
+      type: "Integer",
+      coefficients,
+    };
   },
 });
 

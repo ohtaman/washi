@@ -3,121 +3,39 @@ import type {
   ColumnGenerationResult,
   ColumnProposal,
   PricingContext,
-  DeclarativeSubproblem,
 } from "./types.js";
 import type { Constraint } from "../modeler/constraint.js";
 import type { Var } from "../modeler/variable.js";
 import type { Model } from "../modeler/model.js";
-import type { Solver, SolverOptions } from "../modeler/solvers/index.js";
-import { minimize, maximize } from "../modeler/objective.js";
-import { LinExpr } from "../modeler/expression.js";
-
-function isModelLike(val: unknown): val is Model {
-  return Boolean(
-    val &&
-      typeof val === "object" &&
-      "constraints" in val &&
-      "variables" in val &&
-      "columnLink" in val &&
-      typeof (val as { solve?: unknown }).solve === "function"
-  );
-}
-
-function createPricingFromDeclarativeSubproblem<TColumnMeta = unknown>(
-  subDef: DeclarativeSubproblem<TColumnMeta>,
-  isMasterMaximize: boolean,
-  defaultSolver?: Solver | string,
-  defaultSolverOptions?: SolverOptions
-): (context: PricingContext<TColumnMeta>) => Promise<ColumnProposal<TColumnMeta> | null> {
-  return async (context) => {
-    const subModel = typeof subDef.model === "function" ? await subDef.model(context) : subDef.model;
-
-    const mappingEntries: Array<[string, Var]> = [];
-    if (subDef.mapping instanceof Map) {
-      for (const [k, v] of subDef.mapping.entries()) {
-        const name = typeof k === "string" ? k : k.name;
-        mappingEntries.push([name, v]);
-      }
-    } else if (Array.isArray(subDef.mapping)) {
-      for (const [k, v] of subDef.mapping) {
-        const name = typeof k === "string" ? k : k.name;
-        mappingEntries.push([name, v]);
-      }
-    } else if (subDef.mapping && typeof subDef.mapping === "object") {
-      for (const [k, v] of Object.entries(subDef.mapping)) {
-        mappingEntries.push([k, v]);
-      }
-    }
-
-    const pricingObj = new LinExpr();
-    for (const [cName, subVar] of mappingEntries) {
-      const dual = context.getDual(cName);
-      if (Math.abs(dual) > 1e-12) {
-        pricingObj.addTerm(subVar, dual);
-      }
-    }
-
-    subModel.objective(isMasterMaximize ? minimize(pricingObj) : maximize(pricingObj));
-
-    const subStatus = await subModel.solve(defaultSolver, defaultSolverOptions);
-    if (subStatus !== "Optimal" && subStatus !== "Feasible") {
-      return null;
-    }
-
-    const zStar = subModel.objectiveValue ?? 0;
-    const colCost = subDef.cost ?? 1;
-
-    // Reduced cost: rc = cost - sum(dual * a) = colCost - zStar
-    // An improving column has rc < -tol for minimization, or rc > +tol for maximization
-    const reducedCost = colCost - zStar;
-    const isImproving = isMasterMaximize
-      ? reducedCost > context.reducedCostTolerance
-      : reducedCost < -context.reducedCostTolerance;
-
-    if (!isImproving) {
-      return null;
-    }
-
-    const coefficients: Record<string, number> = {};
-    for (const [cName, subVar] of mappingEntries) {
-      const val = subVar.value ?? 0;
-      if (Math.abs(val) > 1e-9) {
-        coefficients[cName] = subVar.type === "Continuous" ? val : Math.round(val);
-      }
-    }
-
-    return {
-      cost: colCost,
-      type: subDef.type || "Integer",
-      lb: subDef.lb,
-      ub: subDef.ub,
-      coefficients,
-      reducedCost,
-    };
-  };
-}
 
 /**
  * Solve a problem using Column Generation (Dantzig-Wolfe decomposition).
  *
  * Column Generation starts with a Restricted Master Problem (RMP) containing a small set of initial columns,
  * repeatedly solves its continuous LP relaxation to obtain dual values (shadow prices), and calls a user-provided
- * `subproblem` (declarative mapping) or `pricing` subproblem callback to identify new columns with improving reduced costs.
+ * `pricing` subproblem callback to identify new columns with improving reduced costs.
  * Once no improving columns exist, it optionally solves the master as a Mixed-Integer Program (MIP)
  * to produce an integer solution.
  *
- * @param options Column generation options including master model and subproblem or pricing callback
+ * @param options Column generation options including master model and pricing callback
  * @returns Result object containing status, objective, iterations, columns added, and final variable values
  *
  * @example
  * ```ts
  * const result = await solveColumnGeneration({
  *   master,
- *   subproblem: () => ({
- *     model: knapsackSubproblem,
- *     mapping: { demand_A: a_A, demand_B: a_B },
- *   }),
- *   cost: 1,
+ *   pricing: async ({ getDual }) => {
+ *     const sub = new Model("Pricing");
+ *     const a = sub.integer("a", { lb: 0, ub: 2 });
+ *     sub.objective(maximize(expr`${getDual("demand_A")} * ${a}`));
+ *     sub.constraint(expr`45 * ${a} <= 100`);
+ *     await sub.solve();
+ *     return {
+ *       cost: 1,
+ *       type: "Integer",
+ *       coefficients: { demand_A: a.value ?? 0 },
+ *     };
+ *   },
  *   finalizeAsMIP: true,
  * });
  * ```
@@ -132,7 +50,6 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
 
   const {
     pricing,
-    subproblem,
     maxIterations = 100,
     reducedCostTolerance = 1e-6,
     finalizeAsMIP = true,
@@ -143,59 +60,10 @@ export async function solveColumnGeneration<TColumnMeta = unknown>(
 
   const isMaximize = master.sense.toLowerCase() === "maximize";
 
-  let pricingFn = pricing;
-  if (!pricingFn && subproblem) {
-    if (typeof subproblem === "function") {
-      const subFn = subproblem;
-      pricingFn = async (context: PricingContext<TColumnMeta>) => {
-        const subOutput = await subFn(context);
-        if (!subOutput) {
-          return null;
-        }
-        if (isModelLike(subOutput)) {
-          const colLink = subOutput.columnLink;
-          if (!colLink) {
-            throw new Error(
-              "Subproblem Model returned from subproblem callback does not have column links. " +
-                "Call sub.linkColumn({ cost, coefficients }) before returning the subproblem model."
-            );
-          }
-          const mapping = colLink.coefficients ?? colLink.mapping;
-          if (!mapping) {
-            throw new Error(
-              "ColumnLinkOptions must specify either 'coefficients' or 'mapping'."
-            );
-          }
-          const declarPricing = createPricingFromDeclarativeSubproblem<TColumnMeta>(
-            {
-              model: subOutput,
-              mapping,
-              cost: colLink.cost,
-              type: colLink.type,
-              lb: colLink.lb,
-              ub: colLink.ub,
-            },
-            isMaximize,
-            solver,
-            solverOptions
-          );
-          return declarPricing(context);
-        }
-        return subOutput;
-      };
-    } else {
-      pricingFn = createPricingFromDeclarativeSubproblem(
-        subproblem,
-        isMaximize,
-        solver,
-        solverOptions
-      );
-    }
-  }
-
+  const pricingFn = pricing;
   if (!pricingFn) {
     throw new Error(
-      "Either 'subproblem' (declarative definition) or 'pricing' (custom callback) must be provided in ColumnGenerationOptions."
+      "The 'pricing' callback must be provided in ColumnGenerationOptions."
     );
   }
 
