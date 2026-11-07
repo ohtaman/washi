@@ -498,6 +498,23 @@ node scripts/run-benchmarks.mjs --browser
 - **明示的な計測境界**: コールド初期化（`coldRuntimeInitMs`, `coldFirstSolveMs`）と再利用ランタイムでの反復計測（`modelBuildMs`, `validationMs`, LP文字列アダプタ向けの `lpSerializationMs` または構造化アダプタ向けの `symbolMapMs`, `MockSolver` による `resultMappingMs`, `adapterSolveMs`, `endToEndSolveMs`）を分離して直接計測します（無関係なフェーズ時間を差し引いて「ネイティブソルバー時間」とみなすことはしません）。
 - **実行環境の区別**: Node.js のインプロセス WASM（`usesBrowserWorker: false`）とブラウザ Web Worker 実行（`usesBrowserWorker: true`、Worker ライフサイクルや `postMessage` 転送を含む）は異なる実行環境として区別してレポートされます。
 
+### HiGHS WebAssembly の再ビルドとリリース手順
+
+1. **HiGHS WebAssembly アセットの更新・再ビルド（`highs.config.json`）**:
+   ```bash
+   # ERGO-Code/HiGHS から public/highs.wasm と runtime.js をビルドし、highs.config.json の SHA-256 を更新
+   npm run build:highs-wasm
+
+   # main マージ後、オンデマンド取得（scripts/ensure-highs-wasm.mjs）のハッシュと一致するよう
+   # 対応する highs-<version> GitHub Release タグのアセットを上書きアップロード:
+   gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
+   ```
+   （GitHub Actions の **Build HiGHS WebAssembly** ワークフロー `.github/workflows/build-wasm.yml` を `create_release: true` で手動実行することも可能です。その場合は生成された `highs-wasm-assets` アーティファクト（`public/highs.wasm`、`src/modeler/solvers/highs/runtime.js`、`highs.config.json`）を取得してリポジトリへコミットし、Release アセットと SHA-256 ハッシュを同期してください。）
+
+2. **`@ohtaman/washi` の npm パッケージリリース**:
+   - `main` ブランチへのマージにより、ドキュメントと Web デモは GitHub Pages（`.github/workflows/deploy-demo.yml`）へ自動デプロイされますが、npm への公開は自動では行われません。
+   - npm に新バージョンを公開する場合は、`package.json` の `"version"` を更新して `main` にマージした上で、GitHub Release を公開します（例: `gh release create v0.5.1 --generate-notes`）。Release 公開をトリガーに `.github/workflows/publish-npm.yml` が起動し、ユニットテストおよび Playwright 配布物検証を通過した後に OIDC Trusted Publishing で npm へ公開されます。
+
 ---
 
 ## 📄 ライセンス

@@ -32,7 +32,7 @@ WaSHI 直接将官方 HiGHS C++ 源码编译为 WebAssembly（`highs.wasm`），
 HiGHS 的 WebAssembly 二进制（`public/highs.wasm`）与运行时（`runtime.js`）通过 `highs.config.json` 结合 SHA-256 校验和进行版本控制：
 - **高效一致性验证**：构建和分发测试流程会自动运行 `node scripts/ensure-highs-wasm.mjs`，在打包前于毫秒内验证本地资源。
 - **按需 Release 下载**：当资源缺失或版本升级时，`ensure-highs-wasm.mjs` 会自动从官方 GitHub Release 资产中下载已验证的二进制包。
-- **从源码编译**：升级 HiGHS 或修改编译选项时，在安装有 Emscripten SDK（`emcc`）、CMake 与 Ninja 的环境下运行 `npm run build:highs-wasm` 即可本地重新构建（亦可通过 `.github/workflows/build-wasm.yml` 在 GitHub Actions 中自动构建）。
+- **从源码编译**：升级 HiGHS 或修改编译选项时，在安装有 Emscripten SDK（`emcc`）、CMake 与 Ninja 的环境下运行 `npm run build:highs-wasm` 即可本地重新构建，合并后运行 `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` 同步 Release 资产（亦可通过 `.github/workflows/build-wasm.yml` 自动构建与上传，并将 `highs-wasm-assets` 产物中的 `highs.config.json` 等文件提交至仓库）。
 
 ---
 
