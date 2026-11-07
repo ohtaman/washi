@@ -20,15 +20,14 @@ WaSHI では、オペレーションズ・リサーチ（OR）の確立された
 
 WaSHI は、双対情報の取得やモデルの動的変更を行うためのプリミティブを提供しています：
 
-### 1. 制約のシャドウプライス / 双対変数（`dual` / `shadowPrice`）
+### 1. 制約の双対変数（`dual`）
 LP 求解後に、制約の右辺定数（RHS）を 1 単位変化させたときの目的関数への寄与（限界費用）を取得できます：
 
 ```typescript
 const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
-console.log(c.dual);        // 双対変数
-console.log(c.shadowPrice); // c.dual のエイリアス
+console.log(c.dual); // 双対変数 / シャドウプライス
 console.log(m.solution.duals.capacity);
 ```
 
@@ -41,11 +40,11 @@ const status = await m.relax();
 console.log("理論的双対下界/上界:", m.objectiveValue);
 ```
 
-### 3. 動的な列追加（`model.column()`）
+### 3. 動的な列追加（`model.addColumn()`）
 新しい決定変数の生成、目的関数への係数追加、および既存制約への寄与係数の注入を 1 回の呼び出しで実行します：
 
 ```typescript
-const col = m.column({
+const col = m.addColumn({
   name: "pattern_1",
   type: "Integer", // または "Continuous"
   lb: 0,
@@ -77,12 +76,12 @@ c.setTerm(newVar, 0); // 0 をセットすると制約から安全に削除
 4. 改善する列がなくなるまで反復。
 5. 最後に主問題を本来の整数問題（MIP）として解き、厳密な整数解を復元（`finalizeAsMIP`、既定値 `true`）。
 
-### 推奨：子問題モデルと `linkColumn()` による全自動列生成
+### `pricing` コールバックによる列生成
 
-子問題のコールバックで `Model` を返し、マスター制約との紐付けを `sub.linkColumn(...)` で指定するだけで、目的関数の双対更新・子問題の求解・被約費用判定・列追加が全自動で行われます：
+制約の双対値（シャドウプライス）を受け取り、子問題を解いて（WaSHIモデルでも独自アルゴリズムでも可）改善列を返す `pricing` コールバックを渡します。WaSHI は被約費用を自動評価し、改善が見込める列を主問題へ動的に注入します：
 
 ```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize, maximize } from "@ohtaman/washi";
 
 const rollWidth = 100;
 const items = [
@@ -91,42 +90,47 @@ const items = [
   { id: "C", width: 16, demand: 20 },
 ];
 
-// 1. 制限主問題（RMP）の構築
+// 1. 制限主問題（RMP）を素朴な初期パターンで普通に構築
 const master = new Model("CuttingStockMaster");
-master.objective(minimize(0));
 
-for (const item of items) {
-  master.constraint(expr`0 >= ${item.demand}`, `demand_${item.id}`);
-}
+const pA = master.integer("init_A", { lb: 0 }); // パターンA: ロール1本からAを2個（45*2 = 90 <= 100）
+const pB = master.integer("init_B", { lb: 0 }); // パターンB: ロール1本からBを2個（36*2 = 72 <= 100）
+const pC = master.integer("init_C", { lb: 0 }); // パターンC: ロール1本からCを6個（16*6 = 96 <= 100）
 
-// 初期列（各アイテム単一カットパターン）を登録
-master.column({ cost: 1, type: "Integer", coefficients: { demand_A: 2 } });
-master.column({ cost: 1, type: "Integer", coefficients: { demand_B: 2 } });
-master.column({ cost: 1, type: "Integer", coefficients: { demand_C: 6 } });
+master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
+master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
+master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
+master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 
-// 2. master.solveColumnGeneration() で自動求解（sub を返すだけ！）
+// 2. master.solveColumnGeneration() で求解
 const result = await master.solveColumnGeneration({
-  subproblem: () => {
+  finalizeAsMIP: true,
+  pricing: async ({ getDual }) => {
     // 価格付け子問題（ナップサック問題）
     const sub = new Model("KnapsackPricing");
-    const a = {
-      A: sub.integer("a_A", { lb: 0, ub: 2 }),
-      B: sub.integer("a_B", { lb: 0, ub: 2 }),
-      C: sub.integer("a_C", { lb: 0, ub: 6 }),
-    };
-    sub.constraint(expr`45 * ${a.A} + 36 * ${a.B} + 16 * ${a.C} <= ${rollWidth}`);
+    const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
+    const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
+    const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
-    // 子問題の変数がマスターのどの制約に寄与するかを linkColumn で紐付け
-    sub.linkColumn({
+    // 主問題の双対値を報酬として最大化
+    const dualA = getDual("demand_A");
+    const dualB = getDual("demand_B");
+    const dualC = getDual("demand_C");
+    sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
+    sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+
+    await sub.solve();
+
+    // 生成された切り出しパターン（係数）を返却
+    return {
       cost: 1,
+      type: "Integer",
       coefficients: {
-        demand_A: a.A,
-        demand_B: a.B,
-        demand_C: a.C,
+        demand_A: Math.round(a_A.value ?? 0),
+        demand_B: Math.round(a_B.value ?? 0),
+        demand_C: Math.round(a_C.value ?? 0),
       },
-    });
-
-    return sub; // モデルを返すだけで、双対目的関数と列注入は全自動！
+    };
   },
 });
 
@@ -135,32 +139,22 @@ console.log("実行された反復回数:", result.iterations);
 console.log("動的生成された列数:", result.columnsAdded);
 ```
 
-> **Note**: 静的な子問題モデルの場合は、`subproblem: { model: sub, mapping: { demand_A: a.A, ... }, cost: 1 }` のような宣言的オブジェクト形式で渡すことも可能です。
+### 独自アルゴリズム（グラフ探索・動的計画法）での子問題求解
 
-### 低レベル制御：カスタム `pricing` コールバック
-
-最短経路アルゴリズムなどの専用ソルバーを価格付けに利用したい場合は、`pricing` コールバックを手動定義できます：
+`pricing` は単なる関数ですので、子問題の求解にダイクストラ法や動的計画法などの独自アルゴリズムを自由に組み合わせられます：
 
 ```typescript
 const result = await master.solveColumnGeneration({
-  pricing: async ({ getDual, reducedCostTolerance }) => {
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+  pricing: async ({ getDual }) => {
+    // グラフ探索などの専用アルゴリズムで最適ルートを探索
+    const route = solveSpecializedShortestPath(getDual);
+    if (!route) return null;
 
-    // 独自ソルバーで被約費用最小のパターンを探索
-    const bestPattern = solveKnapsack(dualA, dualB, dualC);
-    const reducedCost = 1 - bestPattern.dualValue;
-
-    if (reducedCost < -reducedCostTolerance) {
-      return {
-        cost: 1,
-        type: "Integer",
-        coefficients: bestPattern.coefficients,
-        reducedCost,
-      };
-    }
-    return null; // 改善列なし（反復終了）
+    return {
+      cost: route.distance,
+      type: "Integer",
+      coefficients: route.visitedCustomers,
+    };
   },
 });
 ```
@@ -173,9 +167,9 @@ Benders 分解は問題を以下のように分割して解きます：
 - **主問題（Master Problem）**: 連結変数（例：施設の開設有無などの 0-1 変数 $y$）と、子問題の推定費用を表す補助変数 $\theta \ge 0$ を持つ。
 - **子問題（Subproblem）**: 主問題の暫定解 $y^*$ のもとで運用子問題を解き、**最適性カット（Optimality Cut）** を主問題へフィードバックする。
 
-### 推奨：子問題モデルと `linkRow()` による全自動カット生成
+### 推奨：子問題モデルと `link()` による全自動カット生成
 
-子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.linkRow(...)`（または `sub.link(...)`）で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
+子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.link(...)` で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -214,9 +208,9 @@ const result = await master.solveBenders({
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // マスター変数 y1, y2 との連結制約を行リンク（linkRow / link）で指定するだけ！
-    sub.linkRow(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
-    sub.linkRow(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
+    // マスター変数 y1, y2 との連結制約を link で指定するだけ！
+    sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
+    sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
     return sub; // モデルを返すだけで、カット生成・theta管理は全自動！
   },
@@ -267,51 +261,136 @@ const result = await master.solveBenders({
 
 OR の現場で分解法が決定的な威力を発揮する2大代表例です：
 
-### 1. 配送計画問題（VRP: Vehicle Routing Problem） $\times$ 列生成法
+### 1. 配送計画問題（CVRP: 容量制約付き配送計画） $\times$ 列生成法
+*(完全な実行可能コード: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
+
 * **問題の課題**: 複数台の車両で顧客を巡回配送する際、訪問順序の全ルートをあらかじめ列挙すると何億通りにも達し、単一 MIP ではメモリが爆発します。
 * **列生成法のアプローチ**:
-  * **主問題（Set Partitioning / Covering）**: 「生成されたルート候補の中から、全顧客をちょうど1回訪問する最小台数・最小距離の組み合わせを選ぶ」。
-  * **子問題（Pricing / 最短経路問題）**: トラック1台分の「積載容量や時間枠を満たす有望な巡回ルート」を動的に1本ずつ生成（1本のルート＝1つの列！）。
-  * **効果**: 天文学的な組み合わせの中から、**目的関数を真に改善できるルート（列）だけを子問題が次々に提案**するため、大規模な配送計画が驚異的なスピードで解けます。
-
-### 2. 巡回セールスマン問題（TSP） $\times$ Benders 分解（部分巡回除去）
-* **問題の課題**: 全ての都市を1筆書きで巡回する際、「途中で小さな島（部分巡回）ができてしまう」のを禁止する部分巡回除去制約（Subtour Elimination Constraints）は、都市数 $n$ に対して **$O(2^n)$ 個（天文学的数値）** 存在し、事前にすべてモデルへ投入することは不可能です。
-* **Benders 分解（遅延カット生成）のアプローチ**:
-  * **主問題**: 各都市の入次数・出次数が1という基本制約だけで一旦解く。
-  * **子問題**: 得られた経路グラフで「島（部分巡回）」ができていないかを判定。もし島が見つかれば、その島を禁止する制約式（Benders カット＝行！）を主問題へ動的にフィードバック。
-  * **効果**: $2^n$ 個の制約を最初から作らず、**実際に違反した数個〜数十個の制約（行）だけを動的に追加**するため、巨大な巡回ネットワークも一瞬で最適化できます。
-
----
-
-## `master.solve()` との構文の統一
-
-`master.solveBenders(...)` や `master.solveColumnGeneration(...)` は、WaSHI の標準的な `master.solve()` メソッドのオプションとしても渡すことができます：
+  * **主問題（Set Covering）**: 生成されたルート候補の中から、全顧客をカバーする最小台数・最小距離の組み合わせを選ぶ。
+  * **子問題（Pricing / ナップサック問題）**: 顧客制約のシャドウプライス（双対変数）をもとに、車両積載容量を満たしつつコスト削減効果の高い新規ルート（列）を動的に1本ずつ生成。
 
 ```typescript
-// Benders 分解
-const status = await master.solve({
-  benders: {
-    gapTolerance: 1e-4,
-    subproblem: () => {
-      // ...
-      sub.linkRow(expr`${x} <= 50 * ${y}`);
-      return sub;
-    },
+import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
+
+const vehicleCapacity = 8;
+const customers = [
+  { id: "C1", demand: 4 },
+  { id: "C2", demand: 3 },
+  { id: "C3", demand: 5 },
+  { id: "C4", demand: 2 },
+  { id: "C5", demand: 4 },
+];
+
+// 1. 主問題：顧客の配送カバー
+const master = new Model("CVRP_Master");
+const initialRoutes: Var[] = [];
+for (const cust of customers) {
+  initialRoutes.push(master.integer(`init_${cust.id}`, { lb: 0, ub: 1 }));
+}
+master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr())));
+
+for (let i = 0; i < customers.length; i++) {
+  master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
+}
+
+// 2. 列生成法で求解
+const result = await master.solveColumnGeneration({
+  finalizeAsMIP: true,
+  pricing: async ({ getDual }) => {
+    const sub = new Model("RoutePricing");
+    const a: Record<string, Var> = {};
+    const obj = new LinExpr();
+
+    for (const cust of customers) {
+      a[cust.id] = sub.binary(`v_${cust.id}`);
+      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
+    }
+
+    sub.objective(maximize(obj));
+
+    // 車両の積載容量制約: sum(demand_i * a_i) <= vehicleCapacity
+    const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
+    sub.constraint(expr`${load} <= ${vehicleCapacity}`);
+
+    await sub.solve();
+
+    const coefficients: Record<string, number> = {};
+    for (const cust of customers) {
+      coefficients[`visit_${cust.id}`] = Math.round(a[cust.id].value ?? 0);
+    }
+
+    return {
+      cost: 1,
+      type: "Integer",
+      coefficients,
+    };
   },
 });
 
-// 列生成法
-const status = await master.solve({
-  columnGeneration: {
-    finalizeAsMIP: true,
-    subproblem: () => {
-      // ...
-      sub.linkColumn({ cost: 1, coefficients: { demand_A: a.A } });
-      return sub;
-    },
+console.log("最適車両台数:", result.objectiveValue); // 3台
+```
+
+### 2. 巡回セールスマン問題（TSP） $\times$ Benders 分解（部分巡回除去）
+*(完全な実行可能コード: [`examples/node/14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts))*
+
+* **問題の課題**: 全都市を1筆書きで巡回する際、「途中で小さな島（部分巡回）ができてしまう」のを禁止する部分巡回除去制約（SECs）は、都市数 $n$ に対して **$O(2^n)$ 個（天文学的数値）** 存在します。
+* **Benders 分解（遅延カット生成 / DFJ法）のアプローチ**:
+  * **主問題**: 各都市の入次数・出次数が1という割り当て緩和制約だけで解く。
+  * **子問題**: 得られた経路グラフで連結成分を調べ、もし島（部分巡回 $S$）が見つかれば、その島を禁止する Benders 実行可能カット（$\sum_{i,j \in S} x_{ij} \le |S| - 1$）を動的に主問題へ注入。
+
+```typescript
+import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
+
+const n = cities.length;
+const master = new Model("TSP_Master");
+const x: Record<string, Var> = {};
+const objExpr = new LinExpr();
+
+for (let i = 0; i < n; i++) {
+  for (let j = 0; j < n; j++) {
+    if (i !== j) {
+      const v = master.binary(`x_${i}_${j}`);
+      x[`${i}_${j}`] = v;
+      objExpr.addTerm(v, dist(i, j));
+    }
+  }
+}
+master.objective(minimize(objExpr));
+
+// 各都市の出次数・入次数制約
+for (let i = 0; i < n; i++) {
+  const outE = new LinExpr();
+  const inE = new LinExpr();
+  for (let j = 0; j < n; j++) {
+    if (i !== j) {
+      outE.addTerm(x[`${i}_${j}`], 1);
+      inE.addTerm(x[`${j}_${i}`], 1);
+    }
+  }
+  master.constraint(expr`${outE} == 1`, `out_${i}`);
+  master.constraint(expr`${inE} == 1`, `in_${i}`);
+}
+
+// Benders 遅延部分巡回路除去で求解
+const result = await master.solveBenders({
+  subproblem: ({ getMasterValue }) => {
+    const cycles = findCycles(n, (i, j) => getMasterValue(x[`${i}_${j}`]) > 0.5);
+    if (cycles.length === 1 && cycles[0].length === n) {
+      return null; // 全都市を回る単一ツアーが完成！最適解！
+    }
+
+    // 部分巡回を検出：最小の島 S に対する Benders 実行可能カットを生成
+    const S = cycles.reduce((min, c) => (c.length < min.length ? c : min), cycles[0]);
+    const secExpr = new LinExpr();
+    for (const i of S) {
+      for (const j of S) {
+        if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+      }
+    }
+    return {
+      kind: "feasibility",
+      constraint: expr`${secExpr} <= ${S.length - 1}`,
+    };
   },
 });
-
-// 解いた後の分解結果は master.decomposition からも取得可能
-console.log(master.decomposition?.iterations);
 ```

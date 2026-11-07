@@ -297,22 +297,22 @@ describe("Benders Decomposition", () => {
     expect(Math.round(result.values.y_F2)).toBe(1);
   });
 
-  it("supports sub.linkRow alias for row linking constraints in Benders decomposition", async () => {
-    const master = new Model("LinkRowMaster");
+  it("supports sub.link for linking constraints in Benders decomposition", async () => {
+    const master = new Model("LinkMaster");
     const y = master.binary("y");
     master.objective(minimize(expr`50 * ${y}`));
     master.constraint(expr`${y} >= 1`);
 
     const result = await master.solveBenders({
       subproblem: () => {
-        const sub = new Model("LinkRowSub");
+        const sub = new Model("LinkSub");
         const x = sub.continuous("x", { lb: 0 });
         sub.objective(minimize(expr`2 * ${x}`));
         sub.constraint(expr`${x} >= 10`, "demand");
 
-        // Use linkRow alias
-        sub.linkRow(expr`${x} <= 20 * ${y}`);
-        expect(sub.rowLinkingConstraints.length).toBe(1);
+        // Use link
+        sub.link(expr`${x} <= 20 * ${y}`);
+        expect(sub.linkingConstraints.length).toBe(1);
 
         return sub;
       },

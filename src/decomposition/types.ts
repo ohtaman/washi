@@ -63,58 +63,6 @@ export interface PricingContext<TColumnMeta = unknown> {
 }
 
 /**
- * Declarative subproblem definition for Column Generation.
- * WaSHI automatically sets the subproblem objective using the master's constraint duals,
- * solves it, computes reduced costs, and injects improving columns into the master.
- */
-export interface DeclarativeSubproblem<TColumnMeta = unknown> {
-  /** The subproblem model or a factory function returning a subproblem model given the pricing context */
-  model: Model | ((context: PricingContext<TColumnMeta>) => Promise<Model> | Model);
-  /**
-   * Mapping from master constraint name (or Constraint object) to the corresponding subproblem decision variable.
-   */
-  mapping:
-    | Record<string, Var>
-    | Map<Constraint | string, Var>
-    | Array<[Constraint | string, Var]>;
-  /** Objective cost coefficient of the generated column (default: 1) */
-  cost?: number;
-  /** Variable domain type (defaults to "Continuous" during LP relaxation, cast to "Integer" during MIP finalization if requested) */
-  type?: VarType;
-  /** Column variable lower bound (default: 0) */
-  lb?: number;
-  /** Column variable upper bound (default: Infinity) */
-  ub?: number;
-}
-
-/**
- * Options for linking decision variables in a subproblem model to master constraints
- * for Column Generation via `sub.linkColumn(...)`.
- */
-export interface ColumnLinkOptions {
-  /** Objective cost coefficient of the generated column (default: 1) */
-  cost?: number;
-  /** Variable domain type (defaults to "Integer") */
-  type?: VarType;
-  /** Column variable lower bound (default: 0) */
-  lb?: number;
-  /** Column variable upper bound (default: Infinity) */
-  ub?: number;
-  /**
-   * Mapping from master constraint name (or Constraint object) to the corresponding subproblem decision variable.
-   */
-  coefficients?:
-    | Record<string, Var>
-    | Map<Constraint | string, Var>
-    | Array<[Constraint | string, Var]>;
-  /** Alias for `coefficients` */
-  mapping?:
-    | Record<string, Var>
-    | Map<Constraint | string, Var>
-    | Array<[Constraint | string, Var]>;
-}
-
-/**
  * Progress event emitted on each Column Generation iteration.
  */
 export interface ColumnGenerationIterationInfo<TColumnMeta = unknown> {
@@ -131,33 +79,11 @@ export interface ColumnGenerationOptions<TColumnMeta = unknown> {
   /** Restricted Master Problem (RMP) model containing initial columns and constraints (optional when called via `master.solveColumnGeneration(...)`) */
   master?: Model;
   /**
-   * Declarative subproblem definition, or callback returning a subproblem model with `sub.linkColumn(...)`.
-   * Automatically sets the subproblem objective using constraint duals, solves it,
-   * evaluates the reduced cost, and injects improving columns into the master.
-   */
-  subproblem?:
-    | DeclarativeSubproblem<TColumnMeta>
-    | ((
-        context: PricingContext<TColumnMeta>
-      ) =>
-        | Promise<
-            | Model
-            | ColumnProposal<TColumnMeta>
-            | ColumnProposal<TColumnMeta>[]
-            | null
-            | undefined
-          >
-        | Model
-        | ColumnProposal<TColumnMeta>
-        | ColumnProposal<TColumnMeta>[]
-        | null
-        | undefined);
-  /**
-   * Custom pricing subproblem generator callback.
+   * Pricing subproblem generator callback.
    * Receives constraint duals (shadow prices) and returns one or more new columns with improving reduced costs,
    * or `null` / `[]` when no improving columns exist (LP relaxation is optimal).
    */
-  pricing?: (
+  pricing: (
     context: PricingContext<TColumnMeta>
   ) =>
     | Promise<
@@ -272,14 +198,14 @@ export interface BendersIterationInfo {
 /**
  * Result returned by a Benders subproblem callback.
  * Can be:
- * - A `Model` (or `{ model: Model, linking?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+ * - A `Model` (or `{ model: Model, linkingConstraints?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
  * - Or `BendersCut | BendersCut[] | null | undefined` for manual cut definition.
  */
 export type BendersSubproblemResult =
   | Model
   | {
       model: Model;
-      linking?: Array<Constraint | LinExpr>;
+      linkingConstraints?: Array<Constraint | LinExpr>;
     }
   | BendersCut
   | BendersCut[]
@@ -295,7 +221,7 @@ export interface BendersOptions {
   /**
    * Subproblem evaluation callback.
    * Evaluates the subproblem given current master decisions.
-   * Can return a `Model` (or `{ model: Model, linking?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+   * Can return a `Model` (or `{ model: Model, linkingConstraints?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
    * or manual `BendersCut | BendersCut[] | null | undefined`.
    */
   subproblem: (

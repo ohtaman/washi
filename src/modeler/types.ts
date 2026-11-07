@@ -119,10 +119,6 @@ export interface SolveOptions {
   onProgress?: (progress: SolveProgressEvent) => void;
   /** Solve the continuous (LP) relaxation of the model by relaxing integer and binary variables */
   relax?: boolean;
-  /** Optional Benders decomposition configuration */
-  benders?: any;
-  /** Optional Column Generation configuration */
-  columnGeneration?: any;
   [key: string]: any;
 }
 

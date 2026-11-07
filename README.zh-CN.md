@@ -53,7 +53,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 2. **求解器适配器**：通过共同的建模 API 使用 HiGHS、Z3 或 GLPK，也可以[注册自己的适配器](https://github.com/ohtaman/washi/blob/main/docs/zh/solvers/custom-solver.md)。需要选择支持相应问题类型的求解器；不同求解器的能力并不相同。
 3. **本地执行与 WebAssembly 分发**：使用本地求解器适配器时，可在应用内直接求解，无需单独的 Python 服务或本地 C/C++ 编译——这消除了在快速开发和交付交互式工具时的后端基础设施瓶颈，也便于在客户端直接与浏览器内 LLM（如 WebGPU / WebLLM）协同工作。浏览器部署需要包含生成的 JS、Worker 和 WASM 资源。离线使用还需要这些资源可在本地访问或已缓存。Z3 有额外的浏览器隔离要求。
 4. **命名约束与冲突诊断**：通过可满足性检查（`m.check()`），可调查矛盾约束（`conflicts` / `unsatCore`）以排查不可行性原因：内置 HiGHS 分离出**弹性修复集合**（`conflicts`，恢复可行性所需松弛的约束集合），而 Z3 提取 **SMT 不可满足核心**（`unsatCore` / `conflicts`，相互矛盾的约束子集；不保证最小性）。
-5. **高级分解方法编排**：利用一等分解算法（`master.solveColumnGeneration`、`master.solveBenders`），突破单体 MIP 在特定结构（下料问题、车辆路径/VRP、旅行商/TSP、两阶段设施选址规划等）上的搜索树爆炸瓶颈。子问题模型只需使用 `sub.linkColumn(...)` 或 `sub.linkRow(...)` 声明关联并直接返回，WaSHI 即可全自动协同对偶定价、割平面生成与整数解复原。
+5. **高级分解方法编排**：利用一等分解算法（`master.solveColumnGeneration`、`master.solveBenders`），突破单体 MIP 在特定结构（下料问题、车辆路径/VRP、旅行商/TSP、两阶段设施选址规划等）上的搜索树爆炸瓶颈。结合定价子问题（Pricing）与链接约束（`sub.link(...)`）的清晰回调编排，协同对偶定价、割平面生成与整数解复原。
 
 模型构建与转换由 WaSHI 负责。支持的问题类型、数值行为和求解时间取决于所选求解器、配置及具体问题。建模开销与求解器执行时间应分别测量；某个模型上的结果并不构成通用性能保证。
 
@@ -438,6 +438,8 @@ WaSHI 采用完全解耦的插件式求解器架构。你可以轻松编写并�
 | **基础模型** | [营养问题与灵敏度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 影子价格 (`constr.dual`)、松弛量 (`constr.slack`) 与缩减成本 (`var.reducedCost`) | HiGHS |
 | **实战应用** | [员工排班与冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 周排班优化与周六休假冲突诊断 | HiGHS + Z3 |
 | **实战应用** | [购物车优惠券最优组合](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 满减门槛条件约束 (`indicator`)、互斥规则与凑单推荐 | HiGHS |
+| **大规模分解** | [车辆路径规划 (CVRP)](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) | 列生成法 (Dantzig-Wolfe): 基于对偶影子价格动态定价可行配送路线 | HiGHS |
+| **大规模分解** | [旅行商问题 (TSP)](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) | Benders 分解 (DFJ 法): 通过可行性割平面延迟生成子回路消除约束 | HiGHS |
 | **实战应用** | [投资组合分配](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目标函数 (`QuadExpr`) 与分配约束 | HiGHS |
 | **逻辑 / SMT** | [业务规则检查](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 算术与逻辑约束 (`bool`, `implies`) 的可满足性检查 | Z3 |
 | **逻辑 / SMT** | [冲突诊断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 命名约束与 Unsat Core (`unsatCore`) | Z3 |
@@ -455,6 +457,8 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 
 # 本地浏览器演示: http://localhost:5173/demo/
 npm run dev

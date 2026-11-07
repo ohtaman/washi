@@ -59,6 +59,13 @@ use `@ohtaman/washi` and import the required solver plugin.
 | [Conflict diagnosis](node/05-unsat-core-diagnosis.ts) | Inconsistent staffing / budget rules and a conflicting constraint subset | `check()`, `unsatCore` | Z3 |
 | [GLPK adapter](node/08-glpk-solver-plugin.ts) | A diet model, plugin selection, an objective value, and row duals | `solver: "glpk"` | GLPK |
 
+### 4. Decomposition Methods (Large-Scale Operations Research)
+
+| Example source | Model construction and results | Featured APIs | Solver |
+| --- | --- | --- | --- |
+| [Vehicle routing (CVRP)](node/13-vehicle-routing-column-generation.ts) | Capacitated vehicle routing via Column Generation; dynamic route pricing from customer dual values | `solveColumnGeneration`, `pricing` | HiGHS |
+| [Traveling salesperson (TSP)](node/14-traveling-salesperson-benders.ts) | Degree assignment relaxation with lazy subtour elimination constraints via Benders feasibility cuts | `solveBenders` | HiGHS |
+
 For example:
 
 ```sh
@@ -67,6 +74,8 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 ```
 
 Repository development dependencies include the optional engines. Applications

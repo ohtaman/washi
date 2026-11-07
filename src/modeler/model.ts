@@ -38,7 +38,6 @@ import {
   type BendersResult,
   type ColumnGenerationOptions,
   type ColumnGenerationResult,
-  type ColumnLinkOptions,
 } from "../decomposition/index.js";
 
 /**
@@ -247,7 +246,6 @@ export class Model {
    */
   public decomposition?: BendersResult | ColumnGenerationResult;
   private _linkingConstraints?: Array<Constraint | LinExpr>;
-  private _columnLink?: ColumnLinkOptions;
   private hasSolutionState: boolean = false;
   private modelRevision: number = 0;
   private activeOperationId: number = 0;
@@ -752,7 +750,7 @@ export class Model {
    * const m = new Model("ColumnExample");
    * m.constraint(expr`0 <= 10`, "demand_itemA");
    * m.constraint(expr`0 <= 10`, "demand_itemB");
-   * const colVar = m.column({
+   * const colVar = m.addColumn({
    *   name: "pattern_1",
    *   type: "Continuous",
    *   lb: 0,
@@ -764,7 +762,7 @@ export class Model {
    * });
    * ```
    */
-  column(options: ColumnDefinition): Var {
+  addColumn(options: ColumnDefinition): Var {
     const varType = options.type || "Continuous";
     const v = this.addVar({
       name: options.name,
@@ -819,13 +817,6 @@ export class Model {
     }
 
     return v;
-  }
-
-  /**
-   * Alias for `column(...)`
-   */
-  addColumn(options: ColumnDefinition): Var {
-    return this.column(options);
   }
 
   /**
@@ -1904,15 +1895,6 @@ export class Model {
 
     const { activeSolver, activeOptions } = this.resolveSolverAndOptions(solverOrOptions, options);
 
-    if (activeOptions.benders) {
-      const res = await this.solveBenders(activeOptions.benders);
-      return res.status;
-    }
-    if (activeOptions.columnGeneration) {
-      const res = await this.solveColumnGeneration(activeOptions.columnGeneration);
-      return res.status;
-    }
-
     // Capability check: Validate if solver supports quadratic objectives
     const hasQuadObjective =
       this._objectiveExpr instanceof QuadExpr && this._objectiveExpr.quadTerms.size > 0;
@@ -2478,7 +2460,7 @@ export class Model {
   }
 
   /**
-   * Register a linking constraint that connects this subproblem model's variables
+   * Register a linking constraint (row) that connects this subproblem model's variables
    * with decision variables in the master problem for Benders decomposition.
    *
    * @param constraint The linear constraint connecting subproblem variables with master variables
@@ -2512,51 +2494,10 @@ export class Model {
   }
 
   /**
-   * Alias for `link` - registers a linking constraint (row) connecting this subproblem model
-   * with decision variables in the master problem for Benders decomposition.
-   */
-  linkRow(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
-    return this.link(constraint);
-  }
-
-  /**
    * Linking constraints registered on this model for Benders decomposition.
    */
   get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
     return this._linkingConstraints ?? [];
-  }
-
-  /**
-   * Alias for `linkingConstraints`.
-   */
-  get rowLinkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
-    return this.linkingConstraints;
-  }
-
-  /**
-   * Register a column link connecting decision variables in this pricing subproblem model
-   * to constraints in the master problem for Column Generation (Dantzig-Wolfe decomposition).
-   *
-   * @param options Column link options specifying coefficients (or mapping) and optional column cost
-   * @returns This model instance for chaining
-   *
-   * @example
-   * ```ts
-   * const sub = new Model("Pricing");
-   * const a = sub.integer("a", { lb: 0, ub: 2 });
-   * sub.linkColumn({ cost: 1, coefficients: { demand: a } });
-   * ```
-   */
-  linkColumn(options: ColumnLinkOptions): this {
-    this._columnLink = options;
-    return this;
-  }
-
-  /**
-   * Column link registered on this subproblem model for Column Generation.
-   */
-  get columnLink(): ColumnLinkOptions | undefined {
-    return this._columnLink;
   }
 
   /**
@@ -2602,24 +2543,29 @@ export class Model {
    * Solves the continuous LP relaxation to obtain dual shadow prices, evaluates the pricing subproblem
    * to dynamically generate columns with negative reduced costs, and optionally finalizes as a MIP.
    *
-   * @param options Column generation options including declarative subproblem or custom pricing callback
+   * @param options Column generation options including custom pricing callback
    * @returns ColumnGenerationResult containing status, objective, iterations, columns, and values
    *
    * @example
    * ```ts
    * const master = new Model("CuttingStock");
    * master.objective(minimize(0));
-   * master.constraint(expr`0 >= 10`, "demand");
-   * master.column({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
+   * const demand = master.constraint(expr`0 >= 10`, "demand");
+   * master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
    *
    * const result = await master.solveColumnGeneration({
    *   finalizeAsMIP: true,
-   *   subproblem: () => {
+   *   pricing: async ({ getDual }) => {
    *     const sub = new Model("Pricing");
    *     const a = sub.integer("a", { lb: 0, ub: 5 });
+   *     sub.objective(maximize(expr`${getDual("demand")} * ${a}`));
    *     sub.constraint(expr`${a} <= 5`);
-   *     sub.linkColumn({ cost: 1, coefficients: { demand: a } });
-   *     return sub;
+   *     await sub.solve();
+   *     return {
+   *       cost: 1,
+   *       type: "Integer",
+   *       coefficients: { demand: a.value ?? 0 },
+   *     };
    *   },
    * });
    * ```

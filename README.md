@@ -53,7 +53,7 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
 3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build—removing backend provisioning as a bottleneck when shipping interactive tools or combining mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) on the client. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
 4. **Named constraints and conflict diagnosis**: Explicitly check satisfiability (`m.check()`) and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities: built-in HiGHS isolates an **elastic repair set** (`conflicts`, constraints requiring relaxation to restore feasibility), while Z3 extracts an **unsatisfiable core** (`unsatCore` / `conflicts`, a mutually contradictory constraint subset; minimality is not guaranteed).
-5. **Advanced decomposition methods**: Overcome combinatorial bottlenecks in monolithic MIP formulations (cutting stock, vehicle routing/VRP, traveling salesperson/TSP, and two-stage facility planning) using first-class decomposition orchestrators (`master.solveColumnGeneration`, `master.solveBenders`). WaSHI automatically coordinates dual shadow prices, pricing objectives, and cut generation by simply returning subproblem models with `sub.linkColumn(...)` or `sub.linkRow(...)`.
+5. **Advanced decomposition methods**: Overcome combinatorial bottlenecks in monolithic MIP formulations (cutting stock, vehicle routing/VRP, traveling salesperson/TSP, and two-stage facility planning) using first-class decomposition orchestrators (`master.solveColumnGeneration`, `master.solveBenders`). WaSHI coordinates dual shadow prices, pricing subproblems, and Benders cut generation via clean callback orchestrators and linking constraints (`sub.link(...)`).
 
 Model construction and translation are WaSHI's responsibility. Supported problem classes, numerical behavior, and solve time depend on the selected solver, its settings, and the problem. Modeling overhead and solver execution time should be measured separately; a result for one model is not a general performance guarantee.
 
@@ -438,6 +438,8 @@ Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/exam
 | **Fundamentals** | [Diet & sensitivity analysis](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | Shadow prices (`constr.dual`), surpluses (`constr.slack`), and reduced costs (`var.reducedCost`) | HiGHS |
 | **Practical** | [Staff shift scheduling](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | Weekly roster optimization + diagnosing conflicting Saturday vacation requests | HiGHS + Z3 |
 | **Practical** | [E-commerce coupon optimizer](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds (`indicator`), coupon exclusivity, and add-on recommendations | HiGHS |
+| **Decomposition** | [Vehicle routing (CVRP)](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) | Column Generation (Dantzig-Wolfe): pricing feasible vehicle routes from dual shadow prices | HiGHS |
+| **Decomposition** | [Traveling salesperson (TSP)](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) | Benders Decomposition (DFJ): lazy subtour elimination constraints via feasibility cuts | HiGHS |
 | **Practical** | [Portfolio allocation](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | A convex quadratic objective (`QuadExpr`) with allocation constraints | HiGHS |
 | **Logic / SMT** | [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints (`bool`, `implies`) with satisfiability checking | Z3 |
 | **Logic / SMT** | [Conflict diagnosis](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | Named constraints and an unsatisfiable core (`unsatCore`) | Z3 |
@@ -455,6 +457,8 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 
 # Local browser demo: http://localhost:5173/demo/
 npm run dev

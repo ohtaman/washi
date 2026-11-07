@@ -53,7 +53,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 2. **ソルバーアダプター**: 共通のモデリング API から HiGHS・Z3・GLPK を利用でき、[独自アダプターも登録できます](https://github.com/ohtaman/washi/blob/main/docs/ja/solvers/custom-solver.md)。モデルの問題クラスを扱えるソルバーを選ぶ必要があり、対応機能はソルバーごとに異なります。
 3. **ローカル実行と WebAssembly の配布**: ローカルソルバーのアダプターでは、別途 Python サービスや C/C++ のネイティブビルドを用意せずアプリケーション内で求解できるため、プロトタイプから Web ツールを公開する際のバックエンド構築のボトルネックを解消でき、ブラウザ内 LLM（WebGPU / WebLLM 等）とのクライアントサイド連携も容易です。ブラウザへの配布には生成された JS・Worker・WASM が必要です。オフライン利用には、これらをローカルに配置するかキャッシュしておく必要があります。Z3 には追加のブラウザ隔離設定があります。
 4. **名前付き制約と矛盾原因の特定**: 充足可能性チェック（`m.check()`）により、矛盾した制約（`conflicts` / `unsatCore`）を調査して実行不能の原因を特定できます。組み込み HiGHS では**エラスティック修復集合**（実行可能性の回復のために緩和が必要な制約集合 `conflicts`）を検出し、Z3 では **SMT 充足不能コア**（相互に矛盾する制約部分集合 `unsatCore` / `conflicts`、最小性は保証されません）を抽出します。
-5. **高度な分解法オーケストレーション**: 素朴な一体型 MIP では探索木が爆発するボトルネック構造（カッティングストック、配送計画/VRP、巡回セールスマン/TSP、施設配置計画など）を、ファーストクラスの分解法（`master.solveColumnGeneration`, `master.solveBenders`）で克服します。子問題モデルで `sub.linkColumn(...)` や `sub.linkRow(...)` を宣言して返すだけで、双対価格付け・カット生成・整数解の復元を全自動で調整します。
+5. **高度な分解法オーケストレーション**: 素朴な一体型 MIP では探索木が爆発するボトルネック構造（カッティングストック、配送計画/VRP、巡回セールスマン/TSP、施設配置計画など）を、ファーストクラスの分解法（`master.solveColumnGeneration`, `master.solveBenders`）で克服します。価格付け（Pricing）や連結制約（`sub.link(...)`）を活用したクリーンなコールバック設計により、双対価格付け・カット生成・整数解の復元をきれいに調整します。
 
 モデルの構築と変換は WaSHI が担当します。扱える問題クラス、数値計算の挙動、求解時間は、選択したソルバー・設定・問題に依存します。モデル構築のオーバーヘッドとソルバーの実行時間は分けて計測する必要があり、特定のモデルでの結果は一般的な性能保証ではありません。
 
@@ -438,6 +438,8 @@ WaSHI は疎結合なプラグイン方式のソルバーアーキテクチャ�
 | **基本モデル** | [栄養問題と感度分析](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | 潜在価格 (`constr.dual`)、余剰 (`constr.slack`)、被約費用 (`var.reducedCost`) | HiGHS |
 | **実践応用** | [スタッフのシフト作成](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | 週間シフト最適化と、土曜日の希望休が衝突した際の原因特定 | HiGHS + Z3 |
 | **実践応用** | [ECカートのクーポン最適適用](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | 条件付き購入金額閾値 (`indicator`)、併用不可ルール、追加購入提案 | HiGHS |
+| **分解法 (OR)** | [配送計画 (CVRP)](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) | 列生成法 (Dantzig-Wolfe): 双対変数を用いた実行可能車両ルートの動的プライシング | HiGHS |
+| **分解法 (OR)** | [巡回セールスマン (TSP)](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) | ベンダーズ分解 (DFJ法): 実行可能カットによる部分巡回路除去制約の遅延生成 | HiGHS |
 | **実践応用** | [ポートフォリオ配分](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | 凸二次目的関数 (`QuadExpr`) と配分の制約 | HiGHS |
 | **論理 / SMT** | [業務ルールの検証](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | 数値・論理制約 (`bool`, `implies`) の充足可能性の確認 | Z3 |
 | **論理 / SMT** | [矛盾する制約の診断](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | 名前付き制約と Unsat Core (`unsatCore`) | Z3 |
@@ -455,6 +457,8 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 
 # ローカルのブラウザデモ: http://localhost:5173/demo/
 npm run dev

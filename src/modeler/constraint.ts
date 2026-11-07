@@ -22,12 +22,6 @@ export class Constraint {
   /** Dual value (shadow price) after solve */
   public dual: number | null = null;
 
-  /**
-   * Shadow price (alias for `dual`) after solve.
-   */
-  get shadowPrice(): number | null {
-    return this.dual;
-  }
 
   /**
    * Add or increment the coefficient of a decision variable in this constraint's left-hand side.
