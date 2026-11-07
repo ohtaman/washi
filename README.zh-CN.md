@@ -498,6 +498,23 @@ node scripts/run-benchmarks.mjs --browser
 - **明确的测量边界**：将冷启动初始化（`coldRuntimeInitMs`、`coldFirstSolveMs`）与复用运行时的重复测量（`modelBuildMs`、`validationMs`、LP 字符串适配器的 `lpSerializationMs` 或结构化适配器的 `symbolMapMs`、基于 `MockSolver` 的 `resultMappingMs`、`adapterSolveMs` 以及 `endToEndSolveMs`）分开直接测量，不通过相减来臆造“原生求解器时间”。
 - **区分不同执行环境**：Node.js 进程内 WASM（`usesBrowserWorker: false`）与浏览器 Web Worker 执行（`usesBrowserWorker: true`，包含 Worker 生命周期与 `postMessage` 结构化克隆传输）作为不同执行环境分别报告，不可直接互换作基线。
 
+### HiGHS WebAssembly 重新构建与发布流程
+
+1. **更新 / 重新构建 HiGHS WebAssembly 资源（`highs.config.json`）**：
+   ```bash
+   # 从 ERGO-Code/HiGHS 编译 public/highs.wasm 与 runtime.js，并更新 highs.config.json 中的 SHA-256 哈希
+   npm run build:highs-wasm
+
+   # 合并到 main 后，将更新后的资源覆盖上传至对应的 highs-<version> GitHub Release 标签，
+   # 确保按需下载（scripts/ensure-highs-wasm.mjs）与 highs.config.json 的 SHA-256 校验一致：
+   gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
+   ```
+   （也可在 GitHub Actions 中手动触发 `.github/workflows/build-wasm.yml` 并启用 `create_release: true`。）
+
+2. **发布 `@ohtaman/washi` 至 npm**：
+   - 合并至 `main` 会自动通过 `.github/workflows/deploy-demo.yml` 部署文档与在线演示到 GitHub Pages，但**不会**自动发布至 npm。
+   - 如需发布新版本至 npm，请先在 `main` 上更新 `package.json` 的 `"version"`，然后创建并发布 GitHub Release（例如 `gh release create v0.5.1 --generate-notes`）。发布 Release 会触发 `.github/workflows/publish-npm.yml`，在通过单元测试与 Playwright 分发验证后通过 OIDC Trusted Publishing 自动发布至 npm。
+
 ---
 
 ## 📄 许可证

@@ -498,6 +498,23 @@ node scripts/run-benchmarks.mjs --browser
 - **Explicit phase boundaries**: Reports cold runtime initialization (`coldRuntimeInitMs`, `coldFirstSolveMs`) separately from repeated warm-runtime measurements (`modelBuildMs`, `validationMs`, `lpSerializationMs` for LP-string adapters or `symbolMapMs` for structured adapters, `resultMappingMs` via `MockSolver`, `adapterSolveMs`, and `endToEndSolveMs`). Timings are measured directly per phase and are never subtracted to estimate "native solver time".
 - **Distinct execution environments**: Node.js in-process WASM (`usesBrowserWorker: false`) and Browser Web Worker execution (`usesBrowserWorker: true`, which includes Worker lifecycle and `postMessage` structured-clone transfer) are reported as separate environments, not interchangeable baselines.
 
+### Rebuilding HiGHS WebAssembly & Release Workflow
+
+1. **Rebuilding / Updating HiGHS WebAssembly Assets (`highs.config.json`)**:
+   ```bash
+   # Compile ERGO-Code/HiGHS to public/highs.wasm + runtime.js and update SHA-256 hashes in highs.config.json
+   npm run build:highs-wasm
+
+   # After merging to main, upload the updated assets to the highs-<version> GitHub Release tag
+   # so on-demand downloads (scripts/ensure-highs-wasm.mjs) match highs.config.json SHA-256 hashes:
+   gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
+   ```
+   Alternatively, trigger the **Build HiGHS WebAssembly** workflow (`.github/workflows/build-wasm.yml`) via `workflow_dispatch` with `create_release: true`.
+
+2. **Publishing `@ohtaman/washi` to npm**:
+   - Merging to `main` automatically deploys the updated documentation and web demo to GitHub Pages (`.github/workflows/deploy-demo.yml`), but does **not** publish to npm automatically.
+   - To publish a new version to npm, bump `"version"` in `package.json` on `main` and publish a GitHub Release (e.g., `gh release create v0.5.1 --generate-notes`). Publishing the GitHub Release triggers `.github/workflows/publish-npm.yml`, which runs unit and Playwright distribution checks before publishing to npm via OIDC Trusted Publishing.
+
 ---
 
 ## 📄 License
