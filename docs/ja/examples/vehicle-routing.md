@@ -25,14 +25,14 @@ $(0, 0)$ の配送拠点（デポ）と、周辺エリアに分散する **50件
 
 ## WaSHI による実装
 
-下の **▶ Run** ボタンをクリックすると、ブラウザ上で対話的に 50 顧客の CVRP を解くことができます。ルート探索ヘルパー（`insertCheapest` や `optimize2Opt`）が外出しされているため、主問題と列生成ループが驚くほどスッキリしており、WebAssembly 上でもわずか約 0.5 秒で完了します：
+下の **▶ Run** ボタンをクリックすると、ブラウザ上で対話的に 50 顧客の CVRP を解くことができます。ルート探索ヒューリスティクス（`findImprovingRoute` / `optimize2Opt`）が外出しされているため、主問題と列生成ループが驚くほどスッキリしており、WebAssembly 上でもわずか約 0.5 秒で完了します：
 
 <CodeRunner>
 
 ```typescript
 import { Model, expr, minimize, sum } from "@ohtaman/washi";
 
-// --- 外出しルーティングヘルパー ---
+// --- 外出しルーティング探索ヘルパー（副問題） ---
 
 // 2-opt局所探索（交差アークを解消して走行距離を短縮）
 function optimize2Opt(tour, dist) {
@@ -80,6 +80,42 @@ function calcRouteTime(tour, dist, serviceTimes) {
   return { travelTime, totalTime: travelTime + serviceTime };
 }
 
+// 価格付け副問題：双対潜在価格に基づき、被約費用が負（1 - dualSum < 0）となる最良改善ルートを探索
+function findImprovingRoute(candidates, config) {
+  let bestRoute = null;
+  let minReducedCost = -1e-4;
+
+  for (const seed of candidates.slice(0, 15)) {
+    let tour = ["Depot", seed.id, "Depot"];
+    let load = seed.demand;
+    let dualSum = seed.dual;
+
+    for (const next of candidates) {
+      if (tour.includes(next.id)) continue;
+      if (load + next.demand > config.vehicleCapacity) continue;
+      if (tour.length - 2 >= config.maxStops) continue;
+
+      // 最短挿入＋2-opt局所探索でルートを整形
+      const candidateTour = optimize2Opt(insertCheapest(tour, next.id, config.dist), config.dist);
+      const { totalTime } = calcRouteTime(candidateTour, config.dist, config.serviceTimes);
+
+      if (totalTime <= config.maxRouteTime) {
+        tour = candidateTour;
+        load += next.demand;
+        dualSum += next.dual;
+      }
+    }
+
+    // 被約費用 = 車両コスト (1) - 獲得した双対潜在価格
+    const reducedCost = 1 - dualSum;
+    if (reducedCost < minReducedCost) {
+      minReducedCost = reducedCost;
+      bestRoute = tour;
+    }
+  }
+  return bestRoute;
+}
+
 // --- 列生成法による 50顧客 CVRP ---
 
 async function runCVRP() {
@@ -102,9 +138,11 @@ async function runCVRP() {
   });
 
   const nodes = Object.fromEntries([depot, ...customers].map((n) => [n.id, n]));
-  const dist = (a: string, b: string) =>
+  const dist = (a, b) =>
     Math.round(Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y));
   const serviceTimes = Object.fromEntries(customers.map((c) => [c.id, c.serviceTime]));
+
+  const routeConfig = { dist, serviceTimes, vehicleCapacity, maxStops, maxRouteTime };
 
   // 1. 限定主問題 (RMP) の構築
   const master = new Model("CVRP_FleetMaster");
@@ -126,50 +164,19 @@ async function runCVRP() {
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
     pricing: async () => {
-      // 双対潜在価格（被覆の改善利益）が大きい顧客順にソート
+      // 1. 双対潜在価格（被覆の改善利益）が大きい顧客順にソート
       const candidates = customers
-        .map((c, i) => ({ ...c, dual: visitConstrs[i].dual ?? 0 }))
+        .map((c, i) => ({ id: c.id, demand: c.demand, dual: visitConstrs[i].dual ?? 0 }))
         .filter((c) => c.dual > 0)
         .sort((a, b) => b.dual - a.dual);
 
-      let bestRoute: string[] | null = null;
-      let minReducedCost = -1e-4;
+      // 2. 副問題ヒューリスティクスで改善ルート（被約費用 < 0）を探索
+      const bestRoute = findImprovingRoute(candidates, routeConfig);
+      if (!bestRoute) return null; // 改善ルートが見つからなければ LP 緩和最適で終了
 
-      // 潜在価格の高い上位顧客をシードとして有望ルートを構築
-      for (const seed of candidates.slice(0, 15)) {
-        let tour = ["Depot", seed.id, "Depot"];
-        let load = seed.demand;
-        let dualSum = seed.dual;
-
-        for (const next of candidates) {
-          if (tour.includes(next.id)) continue;
-          if (load + next.demand > vehicleCapacity) continue;
-          if (tour.length - 2 >= maxStops) continue;
-
-          // 最短挿入＋2-opt局所探索でルートを整形
-          const candidateTour = optimize2Opt(insertCheapest(tour, next.id, dist), dist);
-          const { totalTime } = calcRouteTime(candidateTour, dist, serviceTimes);
-
-          if (totalTime <= maxRouteTime) {
-            tour = candidateTour;
-            load += next.demand;
-            dualSum += next.dual;
-          }
-        }
-
-        // 被約費用 = 車両コスト (1) - 獲得した双対潜在価格
-        const reducedCost = 1 - dualSum;
-        if (reducedCost < minReducedCost) {
-          minReducedCost = reducedCost;
-          bestRoute = tour;
-        }
-      }
-
-      // 改善ルートが見つからなければ LP 緩和最適で終了
-      if (!bestRoute) return null;
-
+      // 3. 改善ルートを新変数（列）として主問題へ提案
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
-      const coefficients: Record<string, number> = {};
+      const coefficients = {};
       for (const id of bestRoute.slice(1, -1)) {
         coefficients[`visit_${id}`] = 1;
       }

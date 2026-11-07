@@ -25,14 +25,14 @@
 
 ## WaSHI 实现代码
 
-点击下方的 **▶ Run** 即可在浏览器中交互式求解包含 50 个客户的真实 CVRP 问题。路线优化辅助函数（`insertCheapest` 与 `optimize2Opt`）被干净地解耦外置，主问题与列生成循环简洁明了，在 WebAssembly 环境中仅需约 0.5 秒即可求解完成：
+点击下方的 **▶ Run** 即可在浏览器中交互式求解包含 50 个客户的真实 CVRP 问题。路线优化辅助函数（`findImprovingRoute` 与 `optimize2Opt`）被干净地解耦外置，主问题与列生成循环简洁明了，在 WebAssembly 环境中仅需约 0.5 秒即可求解完成：
 
 <CodeRunner>
 
 ```typescript
 import { Model, expr, minimize, sum } from "@ohtaman/washi";
 
-// --- 解耦外置的路由启发式辅助函数 ---
+// --- 解耦外置的路由启发式辅助函数（子问题） ---
 
 // 2-opt 局部搜索算法（消除交叉路径，缩短行驶距离）
 function optimize2Opt(tour, dist) {
@@ -80,6 +80,40 @@ function calcRouteTime(tour, dist, serviceTimes) {
   return { travelTime, totalTime: travelTime + serviceTime };
 }
 
+// 定价子问题：根据对偶影子价格搜索检验数为负（1 - dualSum < 0）的最佳改善路线
+function findImprovingRoute(candidates, config) {
+  let bestRoute = null;
+  let minReducedCost = -1e-4;
+
+  for (const seed of candidates.slice(0, 15)) {
+    let tour = ["Depot", seed.id, "Depot"];
+    let load = seed.demand;
+    let dualSum = seed.dual;
+
+    for (const next of candidates) {
+      if (tour.includes(next.id)) continue;
+      if (load + next.demand > config.vehicleCapacity) continue;
+      if (tour.length - 2 >= config.maxStops) continue;
+
+      const candidateTour = optimize2Opt(insertCheapest(tour, next.id, config.dist), config.dist);
+      const { totalTime } = calcRouteTime(candidateTour, config.dist, config.serviceTimes);
+
+      if (totalTime <= config.maxRouteTime) {
+        tour = candidateTour;
+        load += next.demand;
+        dualSum += next.dual;
+      }
+    }
+
+    const reducedCost = 1 - dualSum;
+    if (reducedCost < minReducedCost) {
+      minReducedCost = reducedCost;
+      bestRoute = tour;
+    }
+  }
+  return bestRoute;
+}
+
 // --- 主程序：50 客户列生成法求解 CVRP ---
 
 async function runCVRP() {
@@ -102,9 +136,11 @@ async function runCVRP() {
   });
 
   const nodes = Object.fromEntries([depot, ...customers].map((n) => [n.id, n]));
-  const dist = (a: string, b: string) =>
+  const dist = (a, b) =>
     Math.round(Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y));
   const serviceTimes = Object.fromEntries(customers.map((c) => [c.id, c.serviceTime]));
+
+  const routeConfig = { dist, serviceTimes, vehicleCapacity, maxStops, maxRouteTime };
 
   // 1. 构建限制主问题 (RMP)
   const master = new Model("CVRP_FleetMaster");
@@ -126,50 +162,19 @@ async function runCVRP() {
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
     pricing: async () => {
-      // 按照对偶影子价格（改善收益）从高到低排序客户
+      // 1. 按照对偶影子价格（改善收益）从高到低排序客户
       const candidates = customers
-        .map((c, i) => ({ ...c, dual: visitConstrs[i].dual ?? 0 }))
+        .map((c, i) => ({ id: c.id, demand: c.demand, dual: visitConstrs[i].dual ?? 0 }))
         .filter((c) => c.dual > 0)
         .sort((a, b) => b.dual - a.dual);
 
-      let bestRoute: string[] | null = null;
-      let minReducedCost = -1e-4;
+      // 2. 子问题启发式搜索：寻找检验数为负的路线
+      const bestRoute = findImprovingRoute(candidates, routeConfig);
+      if (!bestRoute) return null; // 未找到可改善路线，LP 松弛达到最优
 
-      // 以高影子价格的客户作为种子点构建优质路线
-      for (const seed of candidates.slice(0, 15)) {
-        let tour = ["Depot", seed.id, "Depot"];
-        let load = seed.demand;
-        let dualSum = seed.dual;
-
-        for (const next of candidates) {
-          if (tour.includes(next.id)) continue;
-          if (load + next.demand > vehicleCapacity) continue;
-          if (tour.length - 2 >= maxStops) continue;
-
-          // 最省插点法结合 2-opt 局部调整
-          const candidateTour = optimize2Opt(insertCheapest(tour, next.id, dist), dist);
-          const { totalTime } = calcRouteTime(candidateTour, dist, serviceTimes);
-
-          if (totalTime <= maxRouteTime) {
-            tour = candidateTour;
-            load += next.demand;
-            dualSum += next.dual;
-          }
-        }
-
-        // 检验数 = 车辆路线固定成本 (1) - 收集到的对偶价格收益
-        const reducedCost = 1 - dualSum;
-        if (reducedCost < minReducedCost) {
-          minReducedCost = reducedCost;
-          bestRoute = tour;
-        }
-      }
-
-      // 未找到可改善路线，LP 松弛达到最优
-      if (!bestRoute) return null;
-
+      // 3. 将新改善路线作为新列引入主问题
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
-      const coefficients: Record<string, number> = {};
+      const coefficients = {};
       for (const id of bestRoute.slice(1, -1)) {
         coefficients[`visit_${id}`] = 1;
       }

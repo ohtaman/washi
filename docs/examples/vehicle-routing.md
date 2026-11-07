@@ -25,7 +25,7 @@ We consider a distribution network with a central depot at $(0, 0)$ and **50 cus
 
 ## Implementation in WaSHI
 
-Click **▶ Run** below to solve the 50-customer CVRP interactively in your browser. Notice how cleanly the routing heuristics (`insertCheapest`, `optimize2Opt`) are extracted, leaving the master problem and pricing loop concise, readable, and lightning-fast (~500 ms in WebAssembly):
+Click **▶ Run** below to solve the 50-customer CVRP interactively in your browser. Notice how cleanly the routing heuristics (`findImprovingRoute`, `optimize2Opt`) are extracted, leaving the master problem and pricing loop concise, readable, and lightning-fast (~500 ms in WebAssembly):
 
 <CodeRunner>
 
@@ -80,6 +80,40 @@ function calcRouteTime(tour, dist, serviceTimes) {
   return { travelTime, totalTime: travelTime + serviceTime };
 }
 
+// Pricing subproblem: Finds an improving route with negative reduced cost (1 - dualSum < 0)
+function findImprovingRoute(candidates, config) {
+  let bestRoute = null;
+  let minReducedCost = -1e-4;
+
+  for (const seed of candidates.slice(0, 15)) {
+    let tour = ["Depot", seed.id, "Depot"];
+    let load = seed.demand;
+    let dualSum = seed.dual;
+
+    for (const next of candidates) {
+      if (tour.includes(next.id)) continue;
+      if (load + next.demand > config.vehicleCapacity) continue;
+      if (tour.length - 2 >= config.maxStops) continue;
+
+      const candidateTour = optimize2Opt(insertCheapest(tour, next.id, config.dist), config.dist);
+      const { totalTime } = calcRouteTime(candidateTour, config.dist, config.serviceTimes);
+
+      if (totalTime <= config.maxRouteTime) {
+        tour = candidateTour;
+        load += next.demand;
+        dualSum += next.dual;
+      }
+    }
+
+    const reducedCost = 1 - dualSum;
+    if (reducedCost < minReducedCost) {
+      minReducedCost = reducedCost;
+      bestRoute = tour;
+    }
+  }
+  return bestRoute;
+}
+
 // --- Main CVRP via Column Generation ---
 
 async function runCVRP() {
@@ -102,9 +136,11 @@ async function runCVRP() {
   });
 
   const nodes = Object.fromEntries([depot, ...customers].map((n) => [n.id, n]));
-  const dist = (a: string, b: string) =>
+  const dist = (a, b) =>
     Math.round(Math.hypot(nodes[a].x - nodes[b].x, nodes[a].y - nodes[b].y));
   const serviceTimes = Object.fromEntries(customers.map((c) => [c.id, c.serviceTime]));
+
+  const routeConfig = { dist, serviceTimes, vehicleCapacity, maxStops, maxRouteTime };
 
   // 1. Build Restricted Master Problem (RMP)
   const master = new Model("CVRP_FleetMaster");
@@ -126,50 +162,19 @@ async function runCVRP() {
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
     pricing: async () => {
-      // Sort customers by shadow price (dual profit) descending
+      // 1. Sort customers by shadow price (dual profit) descending
       const candidates = customers
-        .map((c, i) => ({ ...c, dual: visitConstrs[i].dual ?? 0 }))
+        .map((c, i) => ({ id: c.id, demand: c.demand, dual: visitConstrs[i].dual ?? 0 }))
         .filter((c) => c.dual > 0)
         .sort((a, b) => b.dual - a.dual);
 
-      let bestRoute: string[] | null = null;
-      let minReducedCost = -1e-4;
+      // 2. Solve pricing subproblem: find route with negative reduced cost (dualSum > 1)
+      const bestRoute = findImprovingRoute(candidates, routeConfig);
+      if (!bestRoute) return null; // No improving column -> LP relaxation is optimal!
 
-      // Seed candidate routes with top shadow-price customers
-      for (const seed of candidates.slice(0, 15)) {
-        let tour = ["Depot", seed.id, "Depot"];
-        let load = seed.demand;
-        let dualSum = seed.dual;
-
-        for (const next of candidates) {
-          if (tour.includes(next.id)) continue;
-          if (load + next.demand > vehicleCapacity) continue;
-          if (tour.length - 2 >= maxStops) continue;
-
-          // Greedily insert with cheapest detour and untangle with 2-opt
-          const candidateTour = optimize2Opt(insertCheapest(tour, next.id, dist), dist);
-          const { totalTime } = calcRouteTime(candidateTour, dist, serviceTimes);
-
-          if (totalTime <= maxRouteTime) {
-            tour = candidateTour;
-            load += next.demand;
-            dualSum += next.dual;
-          }
-        }
-
-        // Reduced cost = route cost (1) - dualSum
-        const reducedCost = 1 - dualSum;
-        if (reducedCost < minReducedCost) {
-          minReducedCost = reducedCost;
-          bestRoute = tour;
-        }
-      }
-
-      // No improving route found: LP relaxation is optimal
-      if (!bestRoute) return null;
-
+      // 3. Propose new column to Restricted Master Problem
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
-      const coefficients: Record<string, number> = {};
+      const coefficients = {};
       for (const id of bestRoute.slice(1, -1)) {
         coefficients[`visit_${id}`] = 1;
       }
