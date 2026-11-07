@@ -10,7 +10,7 @@ import {
 } from "./driver.js";
 
 export const OFFICIAL_HIGHS_CDN_WASM_URL =
-  "https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.wasm";
+  "https://cdn.jsdelivr.net/npm/highs@1.15.1/build/highs.wasm";
 
 export type HighsInstance = Highs;
 export { HIGHS_STATUS_NAMES, HIGHS_CONSTANTS, HighsUnsupportedOptionError, Highs };

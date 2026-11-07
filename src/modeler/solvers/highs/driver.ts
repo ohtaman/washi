@@ -70,10 +70,14 @@ function extractFloat64Array(
   ptr: number,
   length: number
 ): Float64Array {
-  if (module.HEAPF64) {
-    return new Float64Array(module.HEAPF64.buffer, ptr, length).slice();
+  if (length <= 0 || !ptr) {
+    return new Float64Array(0);
   }
-  const buffer = module.wasmMemory ? module.wasmMemory.buffer : module.HEAP8?.buffer;
+  const buffer = module.wasmMemory
+    ? module.wasmMemory.buffer
+    : module.HEAPF64
+      ? module.HEAPF64.buffer
+      : module.HEAP8?.buffer;
   if (buffer) {
     return new Float64Array(buffer, ptr, length).slice();
   }
@@ -464,10 +468,10 @@ export class HighsModel {
 
   getSolution(): { colValue: Float64Array; colDual: Float64Array; rowValue: Float64Array; rowDual: Float64Array } {
     const dims = this.getDimensions();
-    const colValPtr = this.module._malloc(dims.numCols * 8);
-    const colDualPtr = this.module._malloc(dims.numCols * 8);
-    const rowValPtr = this.module._malloc(dims.numRows * 8);
-    const rowDualPtr = this.module._malloc(dims.numRows * 8);
+    const colValPtr = dims.numCols > 0 ? this.module._malloc(dims.numCols * 8) : 0;
+    const colDualPtr = dims.numCols > 0 ? this.module._malloc(dims.numCols * 8) : 0;
+    const rowValPtr = dims.numRows > 0 ? this.module._malloc(dims.numRows * 8) : 0;
+    const rowDualPtr = dims.numRows > 0 ? this.module._malloc(dims.numRows * 8) : 0;
 
     try {
       this.bindings.getSolution(this.highs, colValPtr, colDualPtr, rowValPtr, rowDualPtr);
@@ -478,10 +482,10 @@ export class HighsModel {
         rowDual: extractFloat64Array(this.module, rowDualPtr, dims.numRows),
       };
     } finally {
-      this.module._free(colValPtr);
-      this.module._free(colDualPtr);
-      this.module._free(rowValPtr);
-      this.module._free(rowDualPtr);
+      if (colValPtr) this.module._free(colValPtr);
+      if (colDualPtr) this.module._free(colDualPtr);
+      if (rowValPtr) this.module._free(rowValPtr);
+      if (rowDualPtr) this.module._free(rowDualPtr);
     }
   }
 
