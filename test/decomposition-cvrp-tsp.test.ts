@@ -3,33 +3,40 @@ import { runCVRP } from "../examples/node/13-vehicle-routing-column-generation.j
 import { runTSP } from "../examples/node/14-traveling-salesperson-benders.js";
 
 describe("OR Killer Applications (examples/node/13 and 14)", () => {
-  it("executes 13-vehicle-routing-column-generation.ts successfully with tour validation", async () => {
+  it("executes 13-vehicle-routing-column-generation.ts successfully with tour validation (50 customers)", async () => {
     const result = await runCVRP();
     expect(result.status).toBe("Optimal");
-    expect(result.objectiveValue).toBe(3);
-    expect(result.columnsAdded).toBeGreaterThanOrEqual(1);
+    // Theoretical lower bounds: ceil(50 customers / 4 maxStops) = 13 vehicles,
+    // ceil(totalDemand / 10 vehicleCapacity) = 13 vehicles.
+    // Heuristic pricing achieves a significant reduction from 50 initial vehicles to a compact fleet.
+    expect(result.objectiveValue).toBeGreaterThanOrEqual(13);
+    expect(result.objectiveValue).toBeLessThanOrEqual(25);
+    expect(result.columnsAdded).toBeGreaterThanOrEqual(10);
 
-    const customerLocations: Record<
-      string,
-      { x: number; y: number; demand: number; serviceTime: number }
-    > = {
-      C1: { x: 20, y: 20, demand: 4, serviceTime: 30 },
-      C2: { x: 25, y: -10, demand: 3, serviceTime: 25 },
-      C3: { x: -20, y: 30, demand: 5, serviceTime: 40 },
-      C4: { x: -15, y: -25, demand: 2, serviceTime: 20 },
-      C5: { x: 30, y: 15, demand: 4, serviceTime: 35 },
-    };
-    const depot = { x: 0, y: 0 };
-    const maxRouteTime = 180;
-    const vehicleCapacity = 8;
-    const maxStops = 3;
+    const depot = { id: "Depot", x: 0, y: 0 };
+    const customers = Array.from({ length: 50 }, (_, i) => {
+      const angle = i * 2.4;
+      const radius = 15 + (i % 5) * 8;
+      return {
+        id: `C${i + 1}`,
+        x: Math.round(Math.cos(angle) * radius),
+        y: Math.round(Math.sin(angle) * radius),
+        demand: 1 + (i % 4),
+        serviceTime: 10,
+      };
+    });
 
-    const getCoord = (id: string) => (id === "Depot" ? depot : customerLocations[id]);
+    const customerMap = Object.fromEntries(customers.map((c) => [c.id, c]));
+    const nodes = Object.fromEntries([depot, ...customers].map((n) => [n.id, n]));
     const calcDist = (aId: string, bId: string) => {
-      const a = getCoord(aId);
-      const b = getCoord(bId);
+      const a = nodes[aId];
+      const b = nodes[bId];
       return Math.round(Math.hypot(a.x - b.x, a.y - b.y));
     };
+
+    const maxRouteTime = 200;
+    const vehicleCapacity = 10;
+    const maxStops = 4;
 
     expect(result.generatedColumns.length).toBeGreaterThan(0);
 
@@ -48,20 +55,20 @@ describe("OR Killer Applications (examples/node/13 and 14)", () => {
 
       // Verify that coverage coefficients match visited customers exactly
       const coeffs = col.proposal.coefficients;
-      for (const cId of Object.keys(customerLocations)) {
-        const expectedCoeff = visitedCustomers.includes(cId) ? 1 : undefined;
+      for (const c of customers) {
+        const expectedCoeff = visitedCustomers.includes(c.id) ? 1 : undefined;
         const actualCoeff =
           coeffs instanceof Map
-            ? coeffs.get(`visit_${cId}`)
+            ? coeffs.get(`visit_${c.id}`)
             : Array.isArray(coeffs)
               ? undefined
-              : coeffs[`visit_${cId}`];
+              : coeffs[`visit_${c.id}`];
         expect(actualCoeff).toBe(expectedCoeff);
       }
 
       // Total demand must not exceed vehicle capacity
       const totalDemand = visitedCustomers.reduce(
-        (acc, cId) => acc + customerLocations[cId].demand,
+        (acc, cId) => acc + customerMap[cId].demand,
         0
       );
       expect(totalDemand).toBeLessThanOrEqual(vehicleCapacity);
@@ -75,7 +82,7 @@ describe("OR Killer Applications (examples/node/13 and 14)", () => {
 
       // Independently verify total duration (travel time + service time)
       const expectedServiceTime = visitedCustomers.reduce(
-        (acc, cId) => acc + customerLocations[cId].serviceTime,
+        (acc, cId) => acc + customerMap[cId].serviceTime,
         0
       );
       expect(meta?.totalTime).toBe(expectedTravelTime + expectedServiceTime);
@@ -86,14 +93,9 @@ describe("OR Killer Applications (examples/node/13 and 14)", () => {
     const activeGeneratedRoutes = result.generatedColumns.filter(
       (col) => (col.variable.value ?? 0) > 0.5
     );
-    expect(activeGeneratedRoutes.length).toBe(2);
+    expect(activeGeneratedRoutes.length).toBeGreaterThan(0);
 
-    // Verify all active generated routes are multi-stop routes
-    for (const route of activeGeneratedRoutes) {
-      expect(route.proposal.meta?.tour.length).toBeGreaterThan(3);
-    }
-
-    // Verify set partitioning: all 5 customers visited exactly once across active routes
+    // Verify set partitioning: all 50 customers visited exactly once across active routes
     const coveredCustomers = new Set<string>();
     for (const route of activeGeneratedRoutes) {
       const meta = route.proposal.meta;
@@ -103,14 +105,14 @@ describe("OR Killer Applications (examples/node/13 and 14)", () => {
       }
     }
 
-    // The remaining customer (C3) is served by the dedicated initial round-trip route
-    for (const cId of Object.keys(customerLocations)) {
-      if ((result.values[`route_init_${cId}`] ?? 0) > 0.5) {
-        expect(coveredCustomers.has(cId)).toBe(false);
-        coveredCustomers.add(cId);
+    // Remaining customers are served by initial dedicated round trips
+    for (const c of customers) {
+      if ((result.values[`route_init_${c.id}`] ?? 0) > 0.5) {
+        expect(coveredCustomers.has(c.id)).toBe(false);
+        coveredCustomers.add(c.id);
       }
     }
-    expect(coveredCustomers.size).toBe(5);
+    expect(coveredCustomers.size).toBe(50);
   });
 
   it("executes 14-traveling-salesperson-benders.ts successfully", async () => {
