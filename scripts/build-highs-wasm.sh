@@ -58,13 +58,17 @@ fi
 
 echo "Using Emscripten: $(emcc -v 2>&1 | head -n 1)"
 
-# 2. Obtain HiGHS source code if not already present
+# 2. Obtain HiGHS source code and ensure target version is checked out
 if [ ! -f "${SRC_DIR}/CMakeLists.txt" ]; then
   echo "Cloning HiGHS ${HIGHS_VERSION} into ${SRC_DIR}..."
   mkdir -p "$(dirname "${SRC_DIR}")"
   git clone --depth 1 --branch "${HIGHS_VERSION}" "${HIGHS_REPO}" "${SRC_DIR}"
 else
-  echo "Using existing HiGHS source at ${SRC_DIR}"
+  echo "Using existing HiGHS source at ${SRC_DIR} (checking out ${HIGHS_VERSION})..."
+  git -C "${SRC_DIR}" fetch --depth 1 origin tag "${HIGHS_VERSION}" 2>/dev/null || \
+    git -C "${SRC_DIR}" fetch --depth 1 origin "${HIGHS_VERSION}"
+  git -C "${SRC_DIR}" checkout "${HIGHS_VERSION}" 2>/dev/null || \
+    git -C "${SRC_DIR}" checkout FETCH_HEAD
 fi
 
 # 3. Configure and build libhighs.a
@@ -75,6 +79,7 @@ cd "${BUILD_DIR}"
 emcmake cmake "${SRC_DIR}" \
   -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
+  -DHIGHSINT64=OFF \
   -DHIGHS_NO_DEFAULT_THREADS=ON \
   -DZLIB=OFF \
   -DBUILD_SHARED_LIBS=OFF \
@@ -105,6 +110,7 @@ em++ "${LIB_HIGHS}" \
   -fwasm-exceptions \
   -sALLOW_MEMORY_GROWTH=1 \
   -sALLOW_TABLE_GROWTH=1 \
+  -sSTACK_SIZE=4194304 \
   -sMODULARIZE=1 \
   -sEXPORT_ES6=1 \
   -sEXPORT_NAME='createHiGHS' \
