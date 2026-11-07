@@ -266,7 +266,7 @@ export function initApp() {
       } else if (solverName === "glpk") {
         solverBadgeText.textContent = "GLPK v5.0.0 (WASM)";
       } else {
-        solverBadgeText.textContent = "HiGHS v1.15.3 (WASM)";
+        solverBadgeText.textContent = "HiGHS v1.15.1 (WASM)";
       }
     }
   }

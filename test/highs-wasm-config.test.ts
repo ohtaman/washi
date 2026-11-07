@@ -8,6 +8,7 @@ import {
   checkAssetsMatch,
   ensureHighsAssets,
 } from "../scripts/ensure-highs-wasm.mjs";
+import { Model, expr, maximize, sum, type Var } from "../src/index.js";
 
 describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
   const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -171,5 +172,63 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
       fetchSpy.mockRestore();
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
+  });
+
+  it("solves 10-node MTZ routing MIP with 72 subtour constraints without WASM memory/stack bounds errors (Issue #214)", async () => {
+    const n = 10;
+    const model = new Model("RoutePricing10_Issue214");
+
+    const y: Var[] = [];
+    for (let i = 1; i < n; i++) {
+      y[i] = model.binary(`y_${i}`);
+    }
+
+    const x: Var[][] = [];
+    for (let i = 0; i < n; i++) {
+      x[i] = [];
+      for (let j = 0; j < n; j++) {
+        if (i !== j) {
+          x[i][j] = model.binary(`x_${i}_${j}`);
+        }
+      }
+    }
+
+    model.objective(maximize(sum(y.slice(1))));
+
+    const leaveDepot = sum(Array.from({ length: n - 1 }, (_, k) => x[0][k + 1]));
+    const enterDepot = sum(Array.from({ length: n - 1 }, (_, k) => x[k + 1][0]));
+    model.constraint(expr`${leaveDepot} <= 1`);
+    model.constraint(expr`${enterDepot} == ${leaveDepot}`);
+
+    for (let i = 1; i < n; i++) {
+      const inFlow = sum(
+        Array.from({ length: n }, (_, j) => (j !== i ? x[j][i] : undefined)).filter(Boolean) as Var[]
+      );
+      const outFlow = sum(
+        Array.from({ length: n }, (_, j) => (j !== i ? x[i][j] : undefined)).filter(Boolean) as Var[]
+      );
+      model.constraint(expr`${inFlow} == ${y[i]}`);
+      model.constraint(expr`${outFlow} == ${y[i]}`);
+    }
+
+    const u: Var[] = [];
+    for (let i = 1; i < n; i++) {
+      u[i] = model.continuous(`u_${i}`, { lb: 1, ub: n - 1 });
+    }
+    let mtzCount = 0;
+    for (let i = 1; i < n; i++) {
+      for (let j = 1; j < n; j++) {
+        if (i !== j) {
+          model.constraint(expr`${u[i]} - ${u[j]} + ${n} * ${x[i][j]} <= ${n - 1}`);
+          mtzCount++;
+        }
+      }
+    }
+    expect(mtzCount).toBe(72);
+
+    const status = await model.solve();
+    expect(status).toBe("Optimal");
+    expect(model.objectiveValue).toBeCloseTo(9, 6);
+    expect(model.validateSolution().valid).toBe(true);
   });
 });

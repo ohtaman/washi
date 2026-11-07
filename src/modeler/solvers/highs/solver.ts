@@ -202,7 +202,7 @@ export class HighsSolver implements Solver {
     supportsWarmStart: true,
   };
   public readonly name = "HiGHS";
-  public readonly version = "1.15.3";
+  public readonly version = "1.15.1";
   public readonly capabilities = HighsSolver.capabilities;
   public options: SolverOptions;
 
