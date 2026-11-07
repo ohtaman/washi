@@ -184,10 +184,10 @@ async function runCVRP() {
   });
 
   console.log(`\nステータス: ${result.status}`);
-  console.log(`必要車両数: ${Math.round(result.objectiveValue ?? 0)}台`);
+  console.log(`編成車両数: ${Math.round(result.objectiveValue ?? 0)}台 (列生成ヒューリスティクス解)`);
   console.log(`生成されたルート列数: ${result.columnsAdded}`);
 
-  console.log("\n最適車両フリートのルート例 (上位5便):");
+  console.log("\n選定された車両フリートのルート例 (上位5便):");
   const activeRoutes = result.generatedColumns.filter((c) => (c.variable.value ?? 0) > 0.5);
   for (const r of activeRoutes.slice(0, 5)) {
     const meta = r.proposal.meta;

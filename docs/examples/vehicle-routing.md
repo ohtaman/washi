@@ -184,10 +184,10 @@ async function runCVRP() {
   });
 
   console.log(`\nStatus: ${result.status}`);
-  console.log(`Optimal Vehicles: ${Math.round(result.objectiveValue ?? 0)}`);
+  console.log(`Fleet Size: ${Math.round(result.objectiveValue ?? 0)} vehicles (heuristic column generation)`);
   console.log(`Total Columns Generated: ${result.columnsAdded}`);
 
-  console.log("\nSample routes selected in optimal fleet:");
+  console.log("\nSample routes selected in fleet:");
   const activeRoutes = result.generatedColumns.filter((c) => (c.variable.value ?? 0) > 0.5);
   for (const r of activeRoutes.slice(0, 5)) {
     const meta = r.proposal.meta;

@@ -192,11 +192,11 @@ export async function runCVRP() {
   });
 
   console.log(`\nStatus: ${result.status}`);
-  console.log(`Optimal Vehicles: ${result.objectiveValue} (Continuous relaxation bound: ${result.relaxationObjectiveValue?.toFixed(3)})`);
+  console.log(`Fleet Size: ${Math.round(result.objectiveValue ?? 0)} vehicles (heuristic column generation)`);
   console.log(`Total Columns Generated: ${result.columnsAdded}`);
   console.log(`Total Iterations: ${result.iterations}`);
 
-  console.log("\nRoutes selected in optimal fleet:");
+  console.log("\nRoutes selected in fleet:");
   let vehicleNum = 1;
   for (let i = 0; i < customers.length; i++) {
     if ((initialRoutes[i].value ?? 0) > 0.5) {

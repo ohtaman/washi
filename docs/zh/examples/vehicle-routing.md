@@ -184,10 +184,10 @@ async function runCVRP() {
   });
 
   console.log(`\n求解状态: ${result.status}`);
-  console.log(`最优所需车辆数: ${Math.round(result.objectiveValue ?? 0)} 辆`);
+  console.log(`车队所需车辆数: ${Math.round(result.objectiveValue ?? 0)} 辆 (启发式列生成解)`);
   console.log(`生成路线列总数: ${result.columnsAdded}`);
 
-  console.log("\n最优车队选定路线示例 (前 5 班):");
+  console.log("\n选定车队的路线示例 (前 5 班):");
   const activeRoutes = result.generatedColumns.filter((c) => (c.variable.value ?? 0) > 0.5);
   for (const r of activeRoutes.slice(0, 5)) {
     const meta = r.proposal.meta;
