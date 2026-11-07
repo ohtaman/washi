@@ -5,7 +5,7 @@
   "emscriptenVersion": "3.1.50",
   "wasm": {
     "path": "public/highs.wasm",
-    "sha256": "1c117c8e95e96d8d436abfd240854b7424a7a79729dd1f7b2b3d3352145346b3",
+    "sha256": "feb46eb9d5e636ee2b65b7cb586d949cdabb0e6131acdf07ca130e6555801bbf",
     "downloadUrl": "https://github.com/ohtaman/washi/releases/download/highs-v1.15.1/highs.wasm"
   },
   "runtime": {

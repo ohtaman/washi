@@ -110,7 +110,7 @@ em++ "${LIB_HIGHS}" \
   -fwasm-exceptions \
   -sALLOW_MEMORY_GROWTH=1 \
   -sALLOW_TABLE_GROWTH=1 \
-  -sSTACK_SIZE=4194304 \
+  -sSTACK_SIZE=8388608 \
   -sMODULARIZE=1 \
   -sEXPORT_ES6=1 \
   -sEXPORT_NAME='createHiGHS' \

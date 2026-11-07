@@ -76,7 +76,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
     expect(brandTitle).toContain("WaSHI Playground");
 
     const wasmBadge = await page.textContent(".status-chip");
-    expect(wasmBadge).toContain("HiGHS v1.15.3 (WASM)");
+    expect(wasmBadge).toContain("HiGHS v1.15.1 (WASM)");
   }, 15000);
 
   it("automatically solves the initial Production Planning problem with HiGHS", async () => {
@@ -215,7 +215,7 @@ describe("Browser End-to-End (E2E) Tests", () => {
 
     // Switch solver back to HiGHS
     await page.selectOption("#solver-select", "highs");
-    expect(await page.textContent("#solver-badge-text")).toContain("HiGHS v1.15.3 (WASM)");
+    expect(await page.textContent("#solver-badge-text")).toContain("HiGHS v1.15.1 (WASM)");
   }, 30000);
 
   it("switches language between English and Japanese dynamically", async () => {
