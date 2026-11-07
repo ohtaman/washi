@@ -69,6 +69,7 @@ async function runCVRP() {
       `visit_${customers[i].id}`
     );
   }
+  const visitConstrs = master.constraints;
 
   console.log("初期状態: 単独訪問ルート5本 (5台体制)。");
   console.log("列生成法 (Dantzig-Wolfe 分解) による最適化を開始...");
@@ -76,8 +77,8 @@ async function runCVRP() {
   // 2. 列生成法による反復求解
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
-    pricing: async ({ getDual }) => {
-      // 価格付けサブ問題: 主問題の双対潜在価格から、
+    pricing: async () => {
+      // 価格付けサブ問題: 主問題の各制約の .dual（双対潜在価格）から、
       // 積載量・拠点数・制限時間の3資源制約を同時に満たす最良の巡回ルートを動的探索
       const sub = new Model("RoutePricing");
 
@@ -85,9 +86,9 @@ async function runCVRP() {
         customers.map((c) => [c.id, sub.binary(`v_${c.id}`)])
       );
 
-      // 双対潜在価格（主問題の制約緩和による改善余地）の合計収益を最大化
+      // 制約オブジェクトの .dual から直接潜在価格を取得して収益を最大化
       sub.objective(
-        maximize(sum(customers, (c) => visitVars[c.id].mul(getDual(`visit_${c.id}`))))
+        maximize(sum(customers, (c, i) => visitVars[c.id].mul(visitConstrs[i].dual ?? 0)))
       );
 
       // 資源制約①: 車両の積載容量上限
@@ -150,5 +151,5 @@ runCVRP();
 ## 実装のポイント
 
 1. **`sum()` と `expr` による自然な複数資源制約の記述**: WaSHI の `sum(...)` ヘルパーにより、手続き的な累加ループなしで「積載量」「最大拠点数」「制限時間」という現場の多次元リソース制約を宣言的かつクリーンに表現できます。
-2. **`getDual` による明快な制約双対値の取得**: 線形計画の双対理論において、潜在価格（shadow price）は変数ではなく **制約（Constraint）** に紐付きます。`getDual("visit_C1")` を通じて主問題の連続緩和解から安全かつ自然に潜在価格を取得できます。
+2. **制約オブジェクトの `.dual` による直接アクセス**: 主問題の緩和解から得られる潜在価格（shadow price）は、制約オブジェクトの `c.dual` に自動反映されるため、`getDual` などのラッパー関数すら呼び出すことなく直接参照できます。
 3. **メタデータの分離**: `meta: { visitedCustomers: visited }` を用いることで、訪問先の顧客リストなどのドメイン情報を列に付与し、生成変数名をパースすることなく `result.generatedColumns` から直接取り出せます。

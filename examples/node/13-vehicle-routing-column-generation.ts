@@ -44,9 +44,13 @@ export async function runCVRP() {
   master.objective(minimize(sum(initialRoutes)));
 
   // Customer coverage constraints: Each customer must be visited by at least 1 vehicle route
-  const coverageConstrs = customers.map((c, i) =>
-    master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${c.id}`)
-  );
+  for (let i = 0; i < customers.length; i++) {
+    master.constraint(
+      expr`${initialRoutes[i]} >= 1`,
+      `visit_${customers[i].id}`
+    );
+  }
+  const visitConstrs = master.constraints;
 
   console.log("Initial state: 5 naive single-customer routes (5 vehicles).");
   console.log("Iteratively solving Column Generation (Dantzig-Wolfe decomposition)...");
@@ -54,7 +58,7 @@ export async function runCVRP() {
   // 2. Solve via Column Generation
   const result = await master.solveColumnGeneration<RouteMeta>({
     finalizeAsMIP: true,
-    pricing: async ({ getDual }) => {
+    pricing: async () => {
       // Pricing subproblem: Find a new feasible vehicle route satisfying:
       // 1. Cargo capacity limit
       // 2. Maximum customer stops limit
@@ -65,9 +69,9 @@ export async function runCVRP() {
         customers.map((c) => [c.id, sub.binary(`v_${c.id}`)])
       );
 
-      // Maximize collected dual shadow prices from master coverage constraints
+      // Maximize collected dual shadow prices directly from constraint .dual properties
       sub.objective(
-        maximize(sum(customers, (c) => visitVars[c.id].mul(getDual(`visit_${c.id}`))))
+        maximize(sum(customers, (c, i) => visitVars[c.id].mul(visitConstrs[i].dual ?? 0)))
       );
 
       // 1. Knapsack capacity constraint

@@ -69,6 +69,7 @@ async function runCVRP() {
       `visit_${customers[i].id}`
     );
   }
+  const visitConstrs = master.constraints;
 
   console.log("初始状态：5 条单点朴素路线 (5 台车)。");
   console.log("正在使用列生成法 (Dantzig-Wolfe 分解) 求解...");
@@ -76,17 +77,18 @@ async function runCVRP() {
   // 2. 列生成法求解
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
-    pricing: async ({ getDual }) => {
-      // 定价子问题：根据客户对偶影子价格，动态生成满足容量、网点上限与时间限制的最优路线
+    pricing: async () => {
+      // 定价子问题：直接通过主问题各约束的 .dual 属性获取对偶影子价格，
+      // 动态生成满足容量、网点上限与时间限制的最优路线
       const sub = new Model("RoutePricing");
 
       const visitVars = Object.fromEntries(
         customers.map((c) => [c.id, sub.binary(`v_${c.id}`)])
       );
 
-      // 最大化收集到的主问题对偶影子价格收益
+      // 直接从约束对象 .dual 获取影子价格并最大化收益
       sub.objective(
-        maximize(sum(customers, (c) => visitVars[c.id].mul(getDual(`visit_${c.id}`))))
+        maximize(sum(customers, (c, i) => visitVars[c.id].mul(visitConstrs[i].dual ?? 0)))
       );
 
       // 资源约束 1：车辆装载容量上限
@@ -149,5 +151,5 @@ runCVRP();
 ## 核心设计要点
 
 1. **利用 `sum()` 与 `expr` 声明式表达多资源约束**：借助 WaSHI 的 `sum()` 辅助函数与 `expr` 模板标签，无需手动拼接低阶线性表达式（`LinExpr`、`addTerm`），即可将容量、停靠上限与耗时等多维业务约束表达得极其简洁。
-2. **通过 `getDual` 获取对偶影子价格**：在线性规划对偶理论中，影子价格归属于 **约束 (Constraint)** 而非变量。`getDual("visit_C1")` 能自动从主问题的连续松弛解中提取准确的对偶乘子。
+2. **直接通过 `.dual` 读取约束对偶影子价格**：在线性规划松弛求解后，主问题的对偶影子价格会自动同步至每个 `Constraint` 对象的 `.dual` 属性中，无需调用包装查找函数，直接属性访问即可。
 3. **解元数据解耦**：利用 `meta: { visitedCustomers: visited }` 字段，可直接将途经停靠点等领域对象附加至新生成的列中，求解完成后无需解析变量名即可还原业务信息。

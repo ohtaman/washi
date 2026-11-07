@@ -69,6 +69,7 @@ async function runCVRP() {
       `visit_${customers[i].id}`
     );
   }
+  const visitConstrs = master.constraints;
 
   console.log("Initial state: 5 naive single-customer routes (5 vehicles).");
   console.log("Solving via Column Generation...");
@@ -76,18 +77,18 @@ async function runCVRP() {
   // 2. Solve via Column Generation
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
-    pricing: async ({ getDual }) => {
-      // Pricing subproblem: Given customer shadow prices, find an improving route
-      // that simultaneously satisfies capacity, stop limits, and shift duration.
+    pricing: async () => {
+      // Pricing subproblem: Find an improving route satisfying capacity,
+      // stop limits, and shift duration using master constraint shadow prices.
       const sub = new Model("RoutePricing");
 
       const visitVars = Object.fromEntries(
         customers.map((c) => [c.id, sub.binary(`v_${c.id}`)])
       );
 
-      // Maximize collected shadow price (dual) revenue
+      // Maximize collected shadow price revenue directly from constraint .dual
       sub.objective(
-        maximize(sum(customers, (c) => visitVars[c.id].mul(getDual(`visit_${c.id}`))))
+        maximize(sum(customers, (c, i) => visitVars[c.id].mul(visitConstrs[i].dual ?? 0)))
       );
 
       // Resource 1: Cargo capacity constraint
@@ -150,5 +151,5 @@ runCVRP();
 ## Key Takeaways
 
 1. **Declarative Multi-Resource Modeling with `sum()` and `expr`**: Using WaSHI's `sum()` helper and `expr` template literals eliminates verbose manual accumulator loops, expressing cargo capacity, maximum customer stops, and route duration constraints cleanly.
-2. **Decoupled Constraint Duality via `getDual`**: In linear programming duality, shadow prices belong to constraints (not variables). The `getDual("visit_C1")` helper seamlessly reads the master LP relaxation dual values without manual index tracking.
+2. **Direct Constraint Dual Access via `.dual`**: Constraint shadow prices from the master LP relaxation are directly accessible on each `Constraint` object via `c.dual`. No lookup wrapper or callback arguments are required.
 3. **Decoupled Solution Metadata**: Through `meta: { visitedCustomers: visited }`, you can attach arbitrary domain objects (such as customer stop lists or GPS waypoints) and recover them directly from `result.generatedColumns` without parsing generated variable names.
