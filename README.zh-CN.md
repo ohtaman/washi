@@ -509,7 +509,7 @@ node scripts/run-benchmarks.mjs --browser
    # 确保按需下载（scripts/ensure-highs-wasm.mjs）与 highs.config.json 的 SHA-256 校验一致：
    gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
    ```
-   （也可在 GitHub Actions 中手动触发 `.github/workflows/build-wasm.yml` 并启用 `create_release: true`。）
+   （也可在 GitHub Actions 中手动触发 `.github/workflows/build-wasm.yml` 并启用 `create_release: true`，随后下载工作流产物 `highs-wasm-assets`（含 `public/highs.wasm`、`src/modeler/solvers/highs/runtime.js` 与 `highs.config.json`）并提交至仓库，以确保仓库校验和与已发布的 Release 资产保持同步。）
 
 2. **发布 `@ohtaman/washi` 至 npm**：
    - 合并至 `main` 会自动通过 `.github/workflows/deploy-demo.yml` 部署文档与在线演示到 GitHub Pages，但**不会**自动发布至 npm。

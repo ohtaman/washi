@@ -509,7 +509,7 @@ node scripts/run-benchmarks.mjs --browser
    # so on-demand downloads (scripts/ensure-highs-wasm.mjs) match highs.config.json SHA-256 hashes:
    gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
    ```
-   Alternatively, trigger the **Build HiGHS WebAssembly** workflow (`.github/workflows/build-wasm.yml`) via `workflow_dispatch` with `create_release: true`.
+   Alternatively, trigger the **Build HiGHS WebAssembly** workflow (`.github/workflows/build-wasm.yml`) via `workflow_dispatch` with `create_release: true`, then download the `highs-wasm-assets` workflow artifact (`public/highs.wasm`, `src/modeler/solvers/highs/runtime.js`, and `highs.config.json`) and commit those updated files to `main` so repository checksums stay synchronized with the published Release assets.
 
 2. **Publishing `@ohtaman/washi` to npm**:
    - Merging to `main` automatically deploys the updated documentation and web demo to GitHub Pages (`.github/workflows/deploy-demo.yml`), but does **not** publish to npm automatically.

@@ -32,7 +32,7 @@ WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接
 HiGHS の WebAssembly バイナリ（`public/highs.wasm`）とランタイム（`runtime.js`）は、`highs.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
 - **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-highs-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
 - **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-highs-wasm.mjs` が GitHub Release アセットから検証済みバイナリを自動取得します。
-- **ソースからのコンパイル**: HiGHS のバージョンアップやビルドフラグ変更時は、Emscripten SDK（`emcc`）、CMake、Ninja があれば `npm run build:highs-wasm` でローカル再ビルドでき、マージ後に `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` で Release アセットを同期します（`.github/workflows/build-wasm.yml` により GitHub Actions 上での自動ビルド・Release 反映も可能です）。
+- **ソースからのコンパイル**: HiGHS のバージョンアップやビルドフラグ変更時は、Emscripten SDK（`emcc`）、CMake、Ninja があれば `npm run build:highs-wasm` でローカル再ビルドでき、マージ後に `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` で Release アセットを同期します（`.github/workflows/build-wasm.yml` でビルド・Release 反映し、生成された `highs-wasm-assets` アーティファクトの `highs.config.json` 等をコミットすることも可能です）。
 
 ---
 

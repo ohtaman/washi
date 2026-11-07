@@ -509,7 +509,7 @@ node scripts/run-benchmarks.mjs --browser
    # 対応する highs-<version> GitHub Release タグのアセットを上書きアップロード:
    gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
    ```
-   （GitHub Actions の **Build HiGHS WebAssembly** ワークフロー `.github/workflows/build-wasm.yml` を `create_release: true` で手動実行することも可能です。）
+   （GitHub Actions の **Build HiGHS WebAssembly** ワークフロー `.github/workflows/build-wasm.yml` を `create_release: true` で手動実行することも可能です。その場合は生成された `highs-wasm-assets` アーティファクト（`public/highs.wasm`、`src/modeler/solvers/highs/runtime.js`、`highs.config.json`）を取得してリポジトリへコミットし、Release アセットと SHA-256 ハッシュを同期してください。）
 
 2. **`@ohtaman/washi` の npm パッケージリリース**:
    - `main` ブランチへのマージにより、ドキュメントと Web デモは GitHub Pages（`.github/workflows/deploy-demo.yml`）へ自動デプロイされますが、npm への公開は自動では行われません。

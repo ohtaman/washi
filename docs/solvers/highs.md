@@ -32,7 +32,7 @@ WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) 
 HiGHS's WebAssembly binary (`public/highs.wasm`) and runtime driver (`runtime.js`) are managed via `highs.config.json` with cryptographic SHA-256 verification:
 - **Zero-Friction Verification**: Build and distribution pipelines run `node scripts/ensure-highs-wasm.mjs`, verifying local assets in milliseconds before bundling.
 - **On-Demand Release Download**: When assets are missing or updated, `ensure-highs-wasm.mjs` automatically downloads verified binaries from official GitHub Release assets.
-- **Compiling from Source**: When updating HiGHS or modifying compiler flags, run `npm run build:highs-wasm` with the Emscripten SDK (`emcc`), CMake, and Ninja installed (also automated via GitHub Actions in `.github/workflows/build-wasm.yml`), and upload the rebuilt assets to the `highs-<version>` GitHub Release tag (`gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber`) so on-demand downloads match `highs.config.json`.
+- **Compiling from Source**: When updating HiGHS or modifying compiler flags, run `npm run build:highs-wasm` with the Emscripten SDK (`emcc`), CMake, and Ninja installed, and upload the rebuilt assets to the `highs-<version>` GitHub Release tag (`gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber`) so on-demand downloads match `highs.config.json` (or run `.github/workflows/build-wasm.yml` and commit the `highs-wasm-assets` artifact including `highs.config.json`).
 
 ---
 
