@@ -1,116 +1,124 @@
-# 車両配送計画問題 (CVRP: 列生成法)
+# 車両配送計画問題 (列生成法によるCVRP)
 
-| 問題クラス | ソルバー | 主要 API | 関連リンク |
+| 問題分類 | ソルバー | 主要 API | 関連リンク |
 | :--- | :--- | :--- | :--- |
-| 組合せ最適化 / Dantzig-Wolfe | HiGHS (標準) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">ソースコード</a></li><li><a href="../guide/decomposition.md">分解法ガイド</a></li></ul> |
+| 組合せ最適化 / Dantzig-Wolfe | HiGHS (標準) | `m.solveColumnGeneration()`, `pricing`, `sum()`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">ソースコード</a></li><li><a href="../guide/decomposition.md">分解法ガイド</a></li></ul> |
 
-**容量制約付き車両配送計画問題（CVRP: Capacitated Vehicle Routing Problem）** は、物流やサプライチェーン最適化における最も代表的な難関問題です。各顧客への配送需要とトラックの積載容量制限を満たしながら、すべての顧客を訪問するために必要な最少車両数（または最少総運行コスト）を求めます。
+**容量制約付き車両配送計画問題 (Capacitated Vehicle Routing Problem, CVRP)** は、物流・サプライチェーン最適化における代表的な組合せ最適化問題です。トラックの積載容量、1便あたりの最大訪問拠点数、およびルート制限時間（稼働時間上限）を満たしながら、全顧客を訪問するための最少車両数を求めます。
 
-素朴な一体型 MIP で「トラックが訪問しうる全顧客の組み合わせ」を変数として列挙しようとすると、変数の数が指数関数的（$O(2^n)$）に爆発し、中規模な顧客数でも分枝限定法が探索不能に陥ります。
+素朴な一括 MIP モデルでは、顧客の全訪問組み合わせ（ルート候補）をあらかじめ列挙すると変数数が指数関数的に爆発（$O(2^n)$）し、小規模な拠点数でも分枝限定法が停止してしまいます。
 
-**列生成法（Dantzig-Wolfe 分解）** を使うことで、すべてのルートを事前に列挙することなく解くことができます：
-1. **制限主問題（RMP）**: 「顧客ごとに専用トラックを1台走らせる」といった少数の素朴な初期ルートからスタートし、全顧客をカバーする最少ルートの組み合わせを選びます。
-2. **価格付け子問題（Pricing Subproblem）**: 主問題の顧客訪問制約から得られる **シャドウプライス（双対値）** をもとに、トラックの積載容量内で複数顧客を効率よくまとめられる有望な新規ルートを動的に探索・生成します。
+**列生成法 (Dantzig-Wolfe 分解)** を用いることで、すべてのルート候補を事前に生成することなく解くことができます：
+1. **主問題 (Restricted Master Problem, RMP)**: すでに生成された配送ルートの中から、全顧客をカバーする最少の組み合わせを選択するセットカバリング（集合被覆）問題を解きます。
+2. **価格付けサブ問題 (Pricing Subproblem)**: 主問題の顧客訪問制約から得られる **双対潜在価格 (shadow prices / duals)** を受け取り、積載容量・最大拠点数・制限時間を同時に満たしながら、主問題の目的関数を最も改善する（負の被約費用を持つ）効率的なトラック配送ルートを動的に生成します。
 
-## 問題の入力データ
+## 問題の入力と現場の運用制約
 
-配送需要を持つ **5 箇所の顧客** と、積載容量 **8 単位** の配送トラックを考えます：
+配送拠点（デポ）から出発する **5件の顧客** に対して、実務で典型的な **3つの運用制約** を設定します：
+- **最大積載容量**: 1台あたり最大 **8 units** の荷物。
+- **まわれる最大拠点数**: ドライバーの荷扱い負荷制限として、1便あたり最大 **3拠点** まで。
+- **ルート制限時間 (最大稼働時間)**: 移動時間＋荷降ろし作業時間の合計を最大 **180分 (3時間)** 以内に制限。
 
-| 顧客 | 配送需要量 | 車両の積載上限 |
-| :--- | :---: | :---: |
-| **顧客 1 (C1)** | 4 単位 | 8 単位 |
-| **顧客 2 (C2)** | 3 単位 | 8 単位 |
-| **顧客 3 (C3)** | 5 単位 | 8 単位 |
-| **顧客 4 (C4)** | 2 単位 | 8 単位 |
-| **顧客 5 (C5)** | 4 単位 | 8 単位 |
+| 顧客 | 配送需要 | 荷降ろし作業時間 | デポからの移動時間 | 合計所要時間 |
+| :--- | :---: | :---: | :---: | :---: |
+| **顧客 1 (C1)** | 4 units | 30分 | 20分 | 50分 |
+| **顧客 2 (C2)** | 3 units | 25分 | 30分 | 55分 |
+| **顧客 3 (C3)** | 5 units | 40分 | 15分 | 55分 |
+| **顧客 4 (C4)** | 2 units | 20分 | 25分 | 45分 |
+| **顧客 5 (C5)** | 4 units | 35分 | 20分 | 55分 |
 
-- 顧客の総需要量: $4 + 3 + 5 + 2 + 4 = 18$ 単位
-- 理論上の必要最少台数（下限）: $\lceil 18 / 8 \rceil = 3$ 台
+- 顧客の総需要量: $4 + 3 + 5 + 2 + 4 = 18$ units。
+- 理論上の最少車両数下限: $\lceil 18 / 8 \rceil = 3$ 台。
 
 ## WaSHI による実装
 
-下の **▶ 実行（Run）** ボタンをクリックすると、ブラウザ内で実際にソルバーが起動し、反復計算によるルート生成と最適台数の決定を対話的に体験できます：
+下の **▶ Run** をクリックすると、ブラウザ上で列生成法が対話的に実行されます。WaSHI の `sum()` ヘルパーと `expr` テンプレートにより、低レベルなループ式構築コードを一切使わず、すっきりと宣言的に記述できる点にご注目ください：
 
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, maximize, LinExpr } from "@ohtaman/washi";
+import { Model, expr, minimize, maximize, sum } from "@ohtaman/washi";
 
 async function runCVRP() {
-  const vehicleCapacity = 8;
+  // 現場の運用制約パラメータ
+  const vehicleCapacity = 8;  // 最大積載量 (units)
+  const maxStops = 3;         // 1便あたりの最大訪問拠点数
+  const maxRouteTime = 180;   // ルート最大稼働時間 (分)
+
   const customers = [
-    { id: "C1", demand: 4 },
-    { id: "C2", demand: 3 },
-    { id: "C3", demand: 5 },
-    { id: "C4", demand: 2 },
-    { id: "C5", demand: 4 },
+    { id: "C1", demand: 4, serviceTime: 30, transitTime: 20 },
+    { id: "C2", demand: 3, serviceTime: 25, transitTime: 30 },
+    { id: "C3", demand: 5, serviceTime: 40, transitTime: 15 },
+    { id: "C4", demand: 2, serviceTime: 20, transitTime: 25 },
+    { id: "C5", demand: 4, serviceTime: 35, transitTime: 20 },
   ];
 
-  // 1. 制限主問題（RMP）の構築
+  // 1. 主問題 (Restricted Master Problem, RMP) の構築
   const master = new Model("CVRP_FleetMaster");
 
-  // 初期ルート: 各顧客ごとに1台の専用トラックを走らせる素朴な解
-  const initialRoutes = [];
-  for (const cust of customers) {
-    const r = master.binary(`route_init_${cust.id}`);
-    initialRoutes.push(r);
-  }
+  // 初期の自明な単独ルート（各顧客に専用車1台を割り当てた状態）
+  const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
 
-  // 目的関数: 総車両数の最小化
-  master.objective(
-    minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr()))
-  );
+  // 目的関数: 総車両数を最小化
+  master.objective(minimize(sum(initialRoutes)));
 
-  // 顧客訪問制約: 各顧客は少なくとも1つのルートで訪問されること
+  // 顧客カバー制約: 各顧客はいずれかのルートで少なくとも1回訪問される
   for (let i = 0; i < customers.length; i++) {
     master.constraint(
       expr`${initialRoutes[i]} >= 1`,
       `visit_${customers[i].id}`
     );
   }
+  const visitConstrs = master.constraints;
 
-  console.log("初期状態: 顧客ごとに1台の専用ルート（計5台）");
-  console.log("列生成法による反復求解を開始...");
+  console.log("初期状態: 単独訪問ルート5本 (5台体制)。");
+  console.log("列生成法 (Dantzig-Wolfe 分解) による最適化を開始...");
 
-  // 2. 列生成法で求解
+  // 2. 列生成法による反復求解
   const result = await master.solveColumnGeneration({
     finalizeAsMIP: true,
-    pricing: async ({ getDual }) => {
-      // 価格付け子問題: 主問題の双対値を受け取り、トラック容量内で最も価値の高い新規ルートを探索
+    pricing: async () => {
+      // 価格付けサブ問題: 主問題の各制約の .dual（双対潜在価格）から、
+      // 積載量・拠点数・制限時間の3資源制約を同時に満たす最良の巡回ルートを動的探索
       const sub = new Model("RoutePricing");
 
-      const visitVars = {};
-      const obj = new LinExpr();
-
-      for (const cust of customers) {
-        visitVars[cust.id] = sub.binary(`v_${cust.id}`);
-        const dual = getDual(`visit_${cust.id}`);
-        obj.addTerm(visitVars[cust.id], dual);
-      }
-
-      // 訪問による双対価値の最大化
-      sub.objective(maximize(obj));
-
-      // ナップサック積載制約: sum(demand_i * v_i) <= vehicleCapacity
-      const loadExpr = customers.reduce(
-        (acc, cust) => acc.add(visitVars[cust.id].mul(cust.demand)),
-        new LinExpr()
+      const visitVars = Object.fromEntries(
+        customers.map((c) => [c.id, sub.binary(`v_${c.id}`)])
       );
-      sub.constraint(expr`${loadExpr} <= ${vehicleCapacity}`);
+
+      // 制約オブジェクトの .dual から直接潜在価格を取得して収益を最大化
+      sub.objective(
+        maximize(sum(customers, (c, i) => visitVars[c.id].mul(visitConstrs[i].dual ?? 0)))
+      );
+
+      // 資源制約①: 車両の積載容量上限
+      sub.constraint(
+        expr`${sum(customers, (c) => visitVars[c.id].mul(c.demand))} <= ${vehicleCapacity}`
+      );
+
+      // 資源制約②: 1便あたりの最大訪問拠点数
+      sub.constraint(
+        expr`${sum(customers, (c) => visitVars[c.id])} <= ${maxStops}`
+      );
+
+      // 資源制約③: ルート制限時間 (移動時間 ＋ 荷降ろし作業時間の合計上限)
+      sub.constraint(
+        expr`${sum(customers, (c) => visitVars[c.id].mul(c.transitTime + c.serviceTime))} <= ${maxRouteTime}`
+      );
 
       await sub.solve();
 
       const coefficients = {};
       const visited = [];
-      for (const cust of customers) {
-        if (Math.round(visitVars[cust.id].value ?? 0) === 1) {
-          coefficients[`visit_${cust.id}`] = 1;
-          visited.push(cust.id);
+      for (const c of customers) {
+        if (Math.round(visitVars[c.id].value ?? 0) === 1) {
+          coefficients[`visit_${c.id}`] = 1;
+          visited.push(c.id);
         }
       }
 
       return {
-        cost: 1, // 1ルートにつきトラック1台
+        cost: 1, // 1ルートあたり車両1台
         type: "Binary",
         coefficients,
         meta: { visitedCustomers: visited },
@@ -118,19 +126,19 @@ async function runCVRP() {
     },
     onIteration: (info) => {
       console.log(
-        `Iter ${info.iteration}: LP緩和目的値 = ${info.relaxationObjective?.toFixed(2)}, 追加列数 = ${info.columnsAdded}`
+        `反復 ${info.iteration}: LP連続緩和の目的関数値 = ${info.relaxationObjective?.toFixed(2)}, 追加されたルート列数 = ${info.columnsAdded}`
       );
     },
   });
 
   console.log(`\nステータス: ${result.status}`);
   console.log(`最適車両数: ${result.objectiveValue} 台`);
-  console.log(`生成されたルート総数: ${result.columnsAdded}`);
+  console.log(`動的生成されたルート列の総数: ${result.columnsAdded}`);
 
-  console.log("\n最適フリートで採用されたルート:");
+  console.log("\n最適配送計画として採用されたルート:");
   for (const col of result.generatedColumns) {
     if ((col.variable.value ?? 0) > 0.5) {
-      console.log(`  ${col.variable.name} (訪問顧客: [${col.proposal.meta?.visitedCustomers.join(", ")}]) = ${col.variable.value}`);
+      console.log(`  ${col.variable.name} (訪問先: [${col.proposal.meta?.visitedCustomers.join(", ")}]) = ${col.variable.value}`);
     }
   }
 }
@@ -142,6 +150,6 @@ runCVRP();
 
 ## 実装のポイント
 
-1. **自然なモデル定義**: 主問題の定義にダミー制約や特別な列構文は不要です。標準の `master.binary()` と `master.constraint()` を使って通常通りに初期モデルを定義できます。
-2. **透明な `pricing` コールバック**: 子問題では `getDual("visit_C1")` で双対値を取得し、ナップサック問題を解いて `{ coefficients: { visit_C1: 1, ... } }` を返すだけで連携が完結します。
-3. **`meta` による解データの復元**: `meta: { visitedCustomers: visited }` に業務オブジェクトを持たせることで、生成された変数名（`x_4` 等）に依存せず、解いた後に訪問ルートの詳細を型安全に取り出せます。
+1. **`sum()` と `expr` による自然な複数資源制約の記述**: WaSHI の `sum(...)` ヘルパーにより、手続き的な累加ループなしで「積載量」「最大拠点数」「制限時間」という現場の多次元リソース制約を宣言的かつクリーンに表現できます。
+2. **制約オブジェクトの `.dual` による直接アクセス**: 主問題の緩和解から得られる潜在価格（shadow price）は、制約オブジェクトの `c.dual` に自動反映されるため、`getDual` などのラッパー関数すら呼び出すことなく直接参照できます。
+3. **メタデータの分離**: `meta: { visitedCustomers: visited }` を用いることで、訪問先の顧客リストなどのドメイン情報を列に付与し、生成変数名をパースすることなく `result.generatedColumns` から直接取り出せます。

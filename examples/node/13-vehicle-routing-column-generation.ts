@@ -10,7 +10,7 @@
  * Run with: npx tsx examples/node/13-vehicle-routing-column-generation.ts
  */
 
-import { Model, expr, minimize, maximize, LinExpr, type Var } from "../../src/index.js";
+import { Model, expr, minimize, maximize, sum, type Var } from "../../src/index.js";
 
 interface RouteMeta {
   visitedCustomers: string[];
@@ -19,14 +19,17 @@ interface RouteMeta {
 export async function runCVRP() {
   console.log("=== Capacitated Vehicle Routing Problem (CVRP) via Column Generation ===");
 
-  // Problem parameters: 5 customers with demands and maximum vehicle capacity of 8 units
+  // Operational limits: capacity, max stops, and maximum route time (minutes)
   const vehicleCapacity = 8;
+  const maxStops = 3;
+  const maxRouteTime = 180;
+
   const customers = [
-    { id: "C1", demand: 4 },
-    { id: "C2", demand: 3 },
-    { id: "C3", demand: 5 },
-    { id: "C4", demand: 2 },
-    { id: "C5", demand: 4 },
+    { id: "C1", demand: 4, serviceTime: 30, transitTime: 20 },
+    { id: "C2", demand: 3, serviceTime: 25, transitTime: 30 },
+    { id: "C3", demand: 5, serviceTime: 40, transitTime: 15 },
+    { id: "C4", demand: 2, serviceTime: 20, transitTime: 25 },
+    { id: "C5", demand: 4, serviceTime: 35, transitTime: 20 },
   ];
   // Total demand: 4 + 3 + 5 + 2 + 4 = 18 units.
   // Theoretical minimum fleet: ceil(18 / 8) = 3 vehicles.
@@ -35,16 +38,10 @@ export async function runCVRP() {
   const master = new Model("CVRP_FleetMaster");
 
   // Initial naive routes: 1 dedicated vehicle per customer
-  const initialRoutes: Var[] = [];
-  for (const cust of customers) {
-    const r = master.binary(`route_init_${cust.id}`);
-    initialRoutes.push(r);
-  }
+  const initialRoutes: Var[] = customers.map((c) => master.binary(`route_init_${c.id}`));
 
   // Objective: Minimize total fleet size
-  master.objective(
-    minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr()))
-  );
+  master.objective(minimize(sum(initialRoutes)));
 
   // Customer coverage constraints: Each customer must be visited by at least 1 vehicle route
   for (let i = 0; i < customers.length; i++) {
@@ -53,6 +50,7 @@ export async function runCVRP() {
       `visit_${customers[i].id}`
     );
   }
+  const visitConstrs = master.constraints;
 
   console.log("Initial state: 5 naive single-customer routes (5 vehicles).");
   console.log("Iteratively solving Column Generation (Dantzig-Wolfe decomposition)...");
@@ -60,29 +58,36 @@ export async function runCVRP() {
   // 2. Solve via Column Generation
   const result = await master.solveColumnGeneration<RouteMeta>({
     finalizeAsMIP: true,
-    pricing: async ({ getDual }) => {
-      // Pricing subproblem: Given dual prices of master visit constraints,
-      // find a new feasible vehicle route visiting a subset of customers that satisfies vehicle capacity
+    pricing: async () => {
+      // Pricing subproblem: Find a new feasible vehicle route satisfying:
+      // 1. Cargo capacity limit
+      // 2. Maximum customer stops limit
+      // 3. Maximum route duration limit (transit + unloading service time)
       const sub = new Model("RoutePricing");
 
-      const visitVars: Record<string, Var> = {};
-      const obj = new LinExpr();
-
-      for (const cust of customers) {
-        visitVars[cust.id] = sub.binary(`v_${cust.id}`);
-        const dual = getDual(`visit_${cust.id}`);
-        obj.addTerm(visitVars[cust.id], dual);
-      }
-
-      // Maximize collected dual revenue
-      sub.objective(maximize(obj));
-
-      // Knapsack capacity constraint: sum(demand_i * v_i) <= vehicleCapacity
-      const loadExpr = customers.reduce(
-        (acc, cust) => acc.add(visitVars[cust.id].mul(cust.demand)),
-        new LinExpr()
+      const visitVars: Record<string, Var> = Object.fromEntries(
+        customers.map((c) => [c.id, sub.binary(`v_${c.id}`)])
       );
-      sub.constraint(expr`${loadExpr} <= ${vehicleCapacity}`);
+
+      // Maximize collected dual shadow prices directly from constraint .dual properties
+      sub.objective(
+        maximize(sum(customers, (c, i) => visitVars[c.id].mul(visitConstrs[i].dual ?? 0)))
+      );
+
+      // 1. Knapsack capacity constraint
+      sub.constraint(
+        expr`${sum(customers, (c) => visitVars[c.id].mul(c.demand))} <= ${vehicleCapacity}`
+      );
+
+      // 2. Maximum stops constraint
+      sub.constraint(
+        expr`${sum(customers, (c) => visitVars[c.id])} <= ${maxStops}`
+      );
+
+      // 3. Route duration constraint (transit + service time)
+      sub.constraint(
+        expr`${sum(customers, (c) => visitVars[c.id].mul(c.transitTime + c.serviceTime))} <= ${maxRouteTime}`
+      );
 
       await sub.solve();
 
