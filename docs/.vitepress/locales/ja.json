@@ -53,7 +53,9 @@
         { "text": "ECカートのクーポン最適適用", "link": "/ja/examples/ecommerce-coupons" },
         { "text": "ポートフォリオ最適化 (QP)", "link": "/ja/examples/portfolio-qp" },
         { "text": "セキュリティポリシー検証 (SMT)", "link": "/ja/examples/smt-security" },
-        { "text": "制約矛盾の診断 (Unsat Core)", "link": "/ja/examples/unsat-core" }
+        { "text": "制約矛盾の診断 (Unsat Core)", "link": "/ja/examples/unsat-core" },
+        { "text": "車両配送計画 (列生成法)", "link": "/ja/examples/vehicle-routing" },
+        { "text": "巡回セールスマン (Benders分解)", "link": "/ja/examples/traveling-salesperson" }
       ]
     }
   ],

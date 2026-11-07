@@ -53,7 +53,9 @@
         { "text": "购物车优惠券最优组合", "link": "/zh/examples/ecommerce-coupons" },
         { "text": "投资组合优化 (QP)", "link": "/zh/examples/portfolio-qp" },
         { "text": "安全策略验证 (SMT)", "link": "/zh/examples/smt-security" },
-        { "text": "不可行冲突诊断 (Unsat Core)", "link": "/zh/examples/unsat-core" }
+        { "text": "不可行冲突诊断 (Unsat Core)", "link": "/zh/examples/unsat-core" },
+        { "text": "车辆路径规划 (列生成法)", "link": "/zh/examples/vehicle-routing" },
+        { "text": "旅行商问题 (Benders分解)", "link": "/zh/examples/traveling-salesperson" }
       ]
     }
   ],

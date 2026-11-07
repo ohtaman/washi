@@ -48,8 +48,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   }
 
-  it("extracts all documentation code snippets (27 expected across EN, JA, and ZH)", () => {
-    expect(snippets.length).toBe(27);
+  it("extracts all documentation code snippets (33 expected across EN, JA, and ZH)", () => {
+    expect(snippets.length).toBe(33);
   });
 
   for (const snippet of snippets) {
@@ -311,7 +311,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 27-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 29-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
@@ -327,7 +327,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enPages).toHaveLength(27);
+    expect(enPages).toHaveLength(29);
     expect(enPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enPages);
     expect(zhPages).toEqual(enPages);

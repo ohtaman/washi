@@ -15,6 +15,8 @@ Explore runnable optimization and logic formulations built with WaSHI. Every exa
 | **[Portfolio Optimization](./portfolio-qp.md)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | Markowitz mean-variance risk minimization ($w^T \Sigma w$) using `QuadExpr` subject to return targets. | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
 | **[SMT Security Policies](./smt-security.md)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | Propositional variables (`BoolVar`) and logical connectives (`implies`, `and`, `not`, `xor`) mixed with integer bounds. | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
 | **[Conflict Diagnosis (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | Extracting a conflicting constraint subset (`unsatCore`) when staffing and budget rules contradict each other. | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
+| **[Vehicle Routing (CVRP)](./vehicle-routing.md)** | Combinatorial OR / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | Dynamic route column generation from customer dual shadow prices to minimize total fleet vehicles. | [Decomposition Guide](../guide/decomposition.md) |
+| **[Traveling Salesperson (TSP)](./traveling-salesperson.md)** | Combinatorial OR / Benders | HiGHS | `m.solveBenders()`, `subproblem` | Subtour elimination on degree-assignment relaxation using dynamic Benders feasibility cuts. | [Decomposition Guide](../guide/decomposition.md) |
 
 ## Find by WaSHI API (Reverse Index)
 
@@ -32,6 +34,8 @@ Looking for a specific modeling method or solver capability? Jump straight to th
 | `new QuadExpr()` | Convex quadratic objectives ($x^T Q x$) | [Portfolio Optimization](./portfolio-qp.md) | [`03-portfolio-qp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) |
 | `m.bool()` & `.implies()` | Propositional logic & SMT rules | [SMT Security Policies](./smt-security.md) | [`04-smt-security-rules.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) |
 | `m.check()` & `m.unsatCore` | Feasibility check & conflict diagnosis | [Conflict Diagnosis](./unsat-core.md), [Shift Scheduling](./shift-scheduling.md) | [`05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
+| `m.solveColumnGeneration()` | Dantzig-Wolfe Column Generation | [Vehicle Routing](./vehicle-routing.md) | [`13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) |
+| `m.solveBenders()` | Benders Decomposition & cut separation | [Traveling Salesperson](./traveling-salesperson.md) | [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) |
 | `solver: "glpk"` | Solving LP/MIP with GLPK plugin | [GLPK Solver Guide](../solvers/glpk.md) | [`08-glpk-solver-plugin.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/08-glpk-solver-plugin.ts) |
 
 ## Running Examples Locally in Node.js
