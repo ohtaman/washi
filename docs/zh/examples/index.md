@@ -15,6 +15,8 @@
 | **[投资组合优化](/zh/examples/portfolio-qp)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 在目标收益率约束下，使用 `QuadExpr` 最小化马科维茨均值-方差风险（$w^T \Sigma w$）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
 | **[安全策略验证](/zh/examples/smt-security)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑连接词（`implies`, `and`, `not`, `xor`）及整数边界的混合建模。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
 | **[不可行冲突诊断 (`unsatCore`)](/zh/examples/unsat-core)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 当人员配备要求与预算规则互相矛盾时，自动提取冲突约束子集（`unsatCore`）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
+| **[车辆路径规划 (CVRP)](/zh/examples/vehicle-routing)** | 组合优化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 利用客户对偶影子价格动态生成路径列，最小化车队总车辆数。 | [分解算法指南](/zh/guide/decomposition) |
+| **[旅行商问题 (TSP)](/zh/examples/traveling-salesperson)** | 组合优化 / Benders分解 | HiGHS | `m.solveBenders()`, `subproblem` | 从度数分配松弛出发，利用动态 Benders 可行割消除子回路。 | [分解算法指南](/zh/guide/decomposition) |
 
 ## 按 WaSHI API 查找（反向索引）
 
@@ -32,6 +34,8 @@
 | `new QuadExpr()` | 凸二次目标函数（$x^T Q x$） | [投资组合优化](/zh/examples/portfolio-qp) | [`03-portfolio-qp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) |
 | `m.bool()` & `.implies()` | 命题逻辑与 SMT 蕴含规则 | [安全策略验证](/zh/examples/smt-security) | [`04-smt-security-rules.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) |
 | `m.check()` & `m.unsatCore` | 可满足性检查与冲突约束诊断 | [不可行冲突诊断](/zh/examples/unsat-core), [员工排班与冲突诊断](/zh/examples/shift-scheduling) | [`05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
+| `m.solveColumnGeneration()` | Dantzig-Wolfe 列生成法 | [车辆路径规划](/zh/examples/vehicle-routing) | [`13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) |
+| `m.solveBenders()` | Benders分解与延迟割平面分离 | [旅行商问题](/zh/examples/traveling-salesperson) | [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) |
 | `solver: "glpk"` | 使用 GLPK 插件求解 LP/MIP | [GLPK 求解器指南](/zh/solvers/glpk) | [`08-glpk-solver-plugin.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/08-glpk-solver-plugin.ts) |
 
 ## 在本地（Node.js）运行示例

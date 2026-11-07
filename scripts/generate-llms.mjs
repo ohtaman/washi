@@ -52,6 +52,8 @@ export const DOC_SECTIONS = [
       "examples/portfolio-qp.md",
       "examples/smt-security.md",
       "examples/unsat-core.md",
+      "examples/vehicle-routing.md",
+      "examples/traveling-salesperson.md",
     ],
   },
 ];
