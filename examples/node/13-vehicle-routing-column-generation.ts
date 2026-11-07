@@ -3,6 +3,7 @@
  *
  * Demonstrates:
  * - Dantzig-Wolfe Decomposition / Column Generation for combinatorial OR problems
+ * - Cluster-First, Route-Second paradigm: partitioning customers into feasible vehicle clusters
  * - Master problem: Set covering / fleet vehicle minimization
  * - Pricing subproblem: Knapsack-based route generation using master shadow prices
  * - Pricing callback receiving dual values and returning feasible route columns

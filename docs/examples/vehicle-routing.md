@@ -6,6 +6,8 @@
 
 The **Capacitated Vehicle Routing Problem (CVRP)** is a cornerstone problem in logistics and supply chain optimization: determine the minimum number of delivery vehicles needed to visit a set of customers, subject to vehicle cargo capacity, maximum customer stops per shift, and route duration time limits.
 
+In industrial routing, this formulation aligns with the standard **Cluster-First, Route-Second** paradigm: Column Generation optimally partitions customers into feasible vehicle clusters under multi-resource constraints (capacity, stops, duration), after which the exact sequence within each cluster can be determined by standard TSP / routing algorithms.
+
 In a naive monolithic MIP formulation, enumerating all possible combinations of customers leads to an exponential explosion of binary variables ($O(2^n)$), causing the branch-and-bound solver to stall even for modest numbers of stops.
 
 With **Column Generation (Dantzig-Wolfe Decomposition)**, we avoid enumerating all routes up front:
