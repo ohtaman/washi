@@ -149,6 +149,8 @@ export interface Solver {
   readonly version?: string;
   /** Feature capabilities of this solver */
   readonly capabilities?: SolverCapabilities;
+  /** Default options configured on this solver instance */
+  readonly options?: SolverOptions;
   /**
    * Solve the given mathematical programming model data
    */

@@ -1778,6 +1778,23 @@ export class Model {
     );
   }
 
+  private normalizePrimalValue(
+    v: Var,
+    val: number,
+    activeSolver: Solver,
+    activeOptions: SolverOptions
+  ): number {
+    const isRelaxed = (activeOptions.relax ?? activeSolver.options?.relax) === true;
+    if (
+      !isRelaxed &&
+      (v.type === "Integer" || v.type === "Binary") &&
+      Math.abs(val - Math.round(val)) <= 1e-5
+    ) {
+      return Math.round(val) + 0;
+    }
+    return val;
+  }
+
   /**
    * Resolves the target solver and execution options without mutating caller-owned objects,
    * stripping the routing `solver` field from the returned `SolverOptions`.
@@ -2016,12 +2033,12 @@ export class Model {
           const v = this.getVarByName(vName);
           const bv = this.getBoolVarByName(vName);
           if (v) {
-            const normalizedPrimal =
-              !activeOptions.relax &&
-              (v.type === "Integer" || v.type === "Binary") &&
-              Math.abs(primal - Math.round(primal)) <= 1e-5
-                ? Math.round(primal) + 0
-                : primal;
+            const normalizedPrimal = this.normalizePrimalValue(
+              v,
+              primal,
+              activeSolver,
+              activeOptions
+            );
             v.value = normalizedPrimal;
             setOwnProperty(valuesRecord, v.name, normalizedPrimal);
             this.values.set(v.name, normalizedPrimal);
@@ -2241,12 +2258,12 @@ export class Model {
             const v = this.getVarByName(name);
             const bv = this.getBoolVarByName(name);
             if (v) {
-              const normalizedVal =
-                !activeOptions.relax &&
-                (v.type === "Integer" || v.type === "Binary") &&
-                Math.abs(val - Math.round(val)) <= 1e-5
-                  ? Math.round(val) + 0
-                  : val;
+              const normalizedVal = this.normalizePrimalValue(
+                v,
+                val,
+                activeSolver,
+                activeOptions
+              );
               v.value = normalizedVal;
               this.values.set(v.name, normalizedVal);
               setOwnProperty(values, v.name, normalizedVal);
@@ -2402,12 +2419,12 @@ export class Model {
       for (const v of this.variables) {
         const primal = result.values[v.name];
         if (typeof primal === "number" && Number.isFinite(primal)) {
-          const normalizedPrimal =
-            !activeOptions.relax &&
-            (v.type === "Integer" || v.type === "Binary") &&
-            Math.abs(primal - Math.round(primal)) <= 1e-5
-              ? Math.round(primal) + 0
-              : primal;
+          const normalizedPrimal = this.normalizePrimalValue(
+            v,
+            primal,
+            activeSolver,
+            activeOptions
+          );
           v.value = normalizedPrimal;
           this.values.set(v.name, normalizedPrimal);
           setOwnProperty(values, v.name, normalizedPrimal);

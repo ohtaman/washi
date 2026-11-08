@@ -357,6 +357,63 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     await m.relax(relaxSolver);
     expect(b.value).toBe(0.5);
     expect(n.value).toBe(2.9999998);
+
+    // Also honors solver-instance-level { relax: true } (e.g. new HighsSolver({ relax: true })) on solve() and check()
+    const instanceRelaxSolver = {
+      name: "InstanceRelaxSolver",
+      options: { relax: true },
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: -2.999999,
+          values: {
+            b: 0.999999,
+            n: 2.999999,
+            c: 1.5,
+          },
+        };
+      },
+      async check() {
+        return {
+          status: "Sat" as const,
+          values: {
+            b: 0.999999,
+            n: 2.999999,
+            c: 1.5,
+          },
+        };
+      },
+    };
+
+    await m.solve(instanceRelaxSolver);
+    expect(b.value).toBe(0.999999);
+    expect(n.value).toBe(2.999999);
+
+    await m.check(instanceRelaxSolver);
+    expect(b.value).toBe(0.999999);
+    expect(n.value).toBe(2.999999);
+
+    // Also verifies check() LP/MIP fallback path when solver has no native check() method
+    const fallbackRelaxSolver = {
+      name: "FallbackRelaxSolver",
+      options: { relax: true },
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: 0,
+          values: {
+            b: 0.999999,
+            n: 2.999999,
+            c: 1.5,
+          },
+        };
+      },
+    };
+    await m.check(fallbackRelaxSolver);
+    expect(b.value).toBe(0.999999);
+    expect(n.value).toBe(2.999999);
   });
 });
 
