@@ -1,36 +1,32 @@
 # 旅行商问题 (TSP: Benders分解)
 
-| 问题类型 | 求解器 | 核心 API | 相关链接 |
+| 问题分类 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
 | 组合优化 / Benders分解 | HiGHS (默认) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">源代码</a></li><li><a href="../guide/decomposition.md">分解算法指南</a></li></ul> |
 
-**旅行商问题（TSP: Traveling Salesperson Problem）** 是运筹学领域最经典的 NP-hard 组合优化难题：寻找一条恰好经过每座城市一次并最终回到起点的闭合巡回路径（Tour），使得总行程最短。
+**旅行商问题（TSP: Traveling Salesperson Problem）** 要求寻找一条恰好访问每座城市一次并回到起点的最短闭合回路（Tour）。
 
-在经典的 **Dantzig-Fulkerson-Johnson (DFJ) 形式化** 中，为了消除孤立小闭环（**子回路: Subtour**），需要对城市的每个非空真子集 $S \subset V$ 加入子回路消除约束：
+在 **Dantzig-Fulkerson-Johnson (DFJ)** 形式化中，为了消除孤立小环（**子回路: Subtour**），需要对城市的每个非空真子集 $S \subset V$ 加入子回路消除约束：
 
 $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
 
-由于子集总数多达 $2^n - 2$ 个，即便只有 20 座城市，约束量也将突破百万条，无法一次性预先加载到模型中。
+由于子集共有 $2^n - 2$ 个，当城市数量增加时，预先加入全部子回路约束并不现实。采用 **Benders分解（延迟割平面分离: Lazy Subtour Elimination）** 可按需添加被违反的约束：
+1. **主问题（Master Problem）**：求解度数分配松弛（每个城市入度为 1、出度为 1）。
+2. **分离平子问题（Subproblem）**：检查主问题解构成的有向图；若存在多个连通环路，则生成一条消除最小子回路的 **Benders 可行割（Feasibility Cut）** 并加入主问题，迭代直至形成单一回路。
 
-采用 **Benders分解（延迟割平面分离: Lazy Subtour Elimination）** 可高效突破该瓶颈：
-1. **主问题（Master Problem）**：仅求解轻量的度数分配松弛（每个城市入度为 1、出度为 1）。
-2. **Benders 分离子问题（Subproblem）**：检查主问题暂定解所构成的有向图；若发现孤立小回路，则动态生成打破该回路的 **Benders 可行割（Feasibility Cut）** 注入主问题，循环往复直至收敛至单一完整回路。
+## 输入数据
 
-## 问题输入数据
+考虑二维欧氏坐标系上的 **5 座城市**：
 
-考虑位于二维欧氏坐标系上的 **5 座城市**：
+| 城市 | 坐标 $(x, y)$ |
+| :--- | :---: |
+| **城市 A (0)** | $(0, 0)$ |
+| **城市 B (1)** | $(1, 0)$ |
+| **城市 C (2)** | $(1, 2)$ |
+| **城市 D (3)** | $(0, 2)$ |
+| **城市 E (4)** | $(0.5, 3)$ |
 
-| 城市 | 坐标 $(x, y)$ | 职能角色 |
-| :--- | :---: | :--- |
-| **城市 A (0)** | $(0, 0)$ | 起点 / 枢纽 |
-| **城市 B (1)** | $(1, 0)$ | 南部站点 |
-| **城市 C (2)** | $(1, 2)$ | 东部站点 |
-| **城市 D (3)** | $(0, 2)$ | 北部站点 |
-| **城市 E (4)** | $(0.5, 3)$ | 极北顶点 |
-
-## WaSHI 建模实现
-
-点击下方的 **▶ 运行（Run）** 按钮，可在浏览器内直接启动求解器，观察算法在第一轮检测到子回路 `[A -> B -> A]`、注入 Benders 割平面并在第 2 轮即收敛至全局最优回路的过程：
+## WaSHI 实现
 
 <CodeRunner>
 
@@ -147,7 +143,7 @@ async function runTSP() {
         };
       }
 
-      return null; // 找到连通所有城市的全局单一回路！
+      return null; // 已形成单一连通回路
     },
   });
 
@@ -171,8 +167,8 @@ runTSP();
 
 </CodeRunner>
 
-## 核心要点
+## 说明
 
-1. **避免预置指数级约束**：初始阶段仅需度数分配松弛，仅在被违反时才按需生成割平面。
-2. **高效自定义分离器**：`subproblem` 直接读取主问题暂定解 `x[i][j].value`，利用 $O(V)$ 的图遍历查找最小环，以 `{ kind: "feasibility", constraint: ... }` 简洁注入割平面。
-3. **收敛证明**：当子问题返回 `null` 时，数学上保证不存在任何被违反的子回路，求得全局最优解。
+- **延迟子回路消除**：主问题初始仅包含 $2n$ 条度数约束，仅在当前解出现孤立子回路时才向主问题添加相应割平面。
+- **分离回调**：`subproblem` 回调通过 `x[i][j].value` 读取主问题选定的边，遍历连通分量并在存在多个环路时返回 `{ kind: "feasibility", constraint: ... }`。
+- **终止条件**：当 `subproblem` 返回 `null` 时，表示不再存在被违反的子回路约束，迭代结束。

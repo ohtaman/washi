@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { runCVRP } from "../examples/node/13-vehicle-routing-column-generation.js";
 import { runTSP } from "../examples/node/14-traveling-salesperson-benders.js";
 
-describe("OR Killer Applications (examples/node/13 and 14)", () => {
+describe("Decomposition Examples (examples/node/13 and 14)", () => {
   it("executes 13-vehicle-routing-column-generation.ts successfully with tour validation (50 customers)", async () => {
     const result = await runCVRP();
     expect(result.status).toBe("Optimal");

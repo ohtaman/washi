@@ -98,9 +98,9 @@ export async function runTSP() {
         }
       }
 
-      // If a single cycle covers all n cities, we have a complete tour!
+      // If a single cycle covers all n cities, the tour is complete
       if (cycles.length === 1 && cycles[0].length === n) {
-        return null; // Optimal! No further cuts needed.
+        return null; // Optimal tour found; no further cuts needed
       }
 
       // Subtour detected: Generate Subtour Elimination Constraint (Benders Feasibility Cut)

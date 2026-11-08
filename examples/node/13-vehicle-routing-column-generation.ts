@@ -196,7 +196,7 @@ export async function runCVRP() {
 
       // 2. Solve pricing subproblem: find route with negative reduced cost (dualSum > 1)
       const bestRoute = findImprovingRoute(candidates, routeConfig);
-      if (!bestRoute) return null; // No improving column -> LP relaxation is optimal!
+      if (!bestRoute) return null; // No improving column found; LP relaxation has converged
 
       // 3. Propose new column to Restricted Master Problem
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);

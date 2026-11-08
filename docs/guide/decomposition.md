@@ -1,18 +1,18 @@
 # Advanced Decomposition Methods & Best Practices
 
-Mixed-Integer Programming (MIP) is exceptionally versatile, but monolithic formulations suffer from well-known structural bottlenecks where standard branch-and-bound solvers slow down exponentially or stall.
-WaSHI provides first-class decomposition orchestrators (`master.solveColumnGeneration` and `master.solveBenders`) along with fine-grained modeling primitives to make Operations Research (OR) best practices accessible by simply returning subproblem models.
+Mixed-Integer Programming (MIP) formulations can become slow when symmetry or coupling constraints cause branch-and-bound trees to grow large.
+WaSHI provides decomposition orchestrators (`master.solveColumnGeneration` and `master.solveBenders`) along with lower-level modeling primitives for dual inspection and dynamic model modification.
 
 ---
 
 ## Why Decomposition? (When Monolithic MIP Stalls)
 
-There are two primary problem structures where naive MIP formulations struggle:
+There are two common problem structures where monolithic MIP formulations struggle:
 
-| Problem Structure | Why Monolithic MIP Fails | Best Practice Technique | WaSHI API |
+| Problem Structure | Monolithic MIP Bottleneck | Technique | WaSHI API |
 | :--- | :--- | :--- | :--- |
-| **Massive Symmetry & Loose Continuous Bounds**<br>*(Cutting Stock, Vehicle Routing/VRP, Crew Rostering)* | Millions of symmetric permutations and a very weak continuous relaxation cause branch-and-bound exploration trees to explode. | **Column Generation**<br>*(Dantzig-Wolfe Decomposition)* | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) |
-| **Complicating Decisions & Multi-Stage Stages**<br>*(Traveling Salesperson/TSP, Facility Location with Routing, Two-Stage Stochastic Planning)* | Coupling design/master choices with extensive scenario or operational subproblems creates an intractable matrix size. | **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) |
+| **Symmetry & Loose Continuous Bounds**<br>*(Cutting Stock, Vehicle Routing/VRP, Crew Rostering)* | Symmetric permutations and a weak continuous relaxation enlarge the branch-and-bound tree. | **Column Generation**<br>*(Dantzig-Wolfe Decomposition)* | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) |
+| **Complicating Decisions & Multi-Stage Structure**<br>*(Traveling Salesperson/TSP, Facility Location with Routing, Two-Stage Stochastic Planning)* | Coupling master decisions with large scenario or operational subproblems increases the matrix size. | **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) |
 
 ---
 
@@ -214,7 +214,7 @@ const result = await master.solveBenders({
     sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
     sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
-    return sub; // Returning the model automatically generates cuts and manages theta!
+    return sub; // Returning the model automatically generates cuts and manages theta
   },
 });
 
@@ -258,17 +258,17 @@ const result = await master.solveBenders({
 
 ---
 
-## Practical Killer Applications in OR
+## Application Examples
 
-Two celebrated canonical use cases where decomposition algorithms shine in production:
+Two common applications of decomposition methods:
 
 ### 1. Vehicle Routing Problem (CVRP) $\times$ Column Generation
 *(Full executable source: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
 
-* **Challenge**: When scheduling a fleet of vehicles to visit customers, enumerating every combination of tours results in millions of variables, causing monolithic MIPs to run out of memory.
-* **Column Generation Approach**:
+* **Problem Structure**: Enumerating every feasible customer tour upfront produces a large number of variables.
+* **Column Generation Formulation**:
   * **Master Problem**: Set covering model that selects the minimum number of vehicle routes such that each customer is served.
-  * **Pricing Subproblem**: Knapsack model that dynamically generates one capacity-feasible route (column) with negative reduced cost based on customer dual shadow prices.
+  * **Pricing Subproblem**: Knapsack model that dynamically generates a capacity-feasible route (column) with negative reduced cost based on customer dual shadow prices.
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -336,10 +336,10 @@ console.log("Optimal fleet size:", result.objectiveValue); // 3 vehicles
 ### 2. Traveling Salesperson Problem (TSP) $\times$ Benders Decomposition (Lazy Subtour Elimination)
 *(Full executable source: [`examples/node/14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts))*
 
-* **Challenge**: Preventing isolated sub-loops (subtours) requires Subtour Elimination Constraints (SECs), which grow to **$O(2^n)$ constraints** for $n$ cities.
-* **Benders Decomposition Approach**:
+* **Problem Structure**: Preventing isolated sub-loops (subtours) requires Subtour Elimination Constraints (SECs), which grow as $O(2^n)$ constraints for $n$ cities.
+* **Benders Decomposition Formulation**:
   * **Master Problem**: Solves the relaxed assignment problem (each city has 1 incoming and 1 outgoing edge).
-  * **Subproblem**: Evaluates the candidate tour graph for disconnected components. If isolated subtours exist, it lazily injects a Benders feasibility cut ($\sum_{i,j \in S} x_{ij} \le |S| - 1$) cutting off that specific cycle.
+  * **Subproblem**: Evaluates the candidate tour graph for disconnected components. If isolated subtours exist, it lazily injects a Benders feasibility cut ($\sum_{i,j \in S} x_{ij} \le |S| - 1$) cutting off that cycle.
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -379,7 +379,7 @@ const result = await master.solveBenders({
   subproblem: () => {
     const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
     if (cycles.length === 1 && cycles[0].length === n) {
-      return null; // Tour is complete and optimal!
+      return null; // Single tour covers all cities
     }
 
     // Subtour detected: inject Benders feasibility cut for smallest cycle
