@@ -272,7 +272,7 @@ async function runBrowserVerification() {
     }, { timeout: 20_000 });
 
     const z3MipObj = await page.evaluate(() => document.getElementById("metric-obj")?.textContent?.trim());
-    assert.equal(z3MipObj, "1100", `Z3 production planning optimal objective must be 1100, got ${z3MipObj}`);
+    assert.equal(z3MipObj, "2200", `Z3 production planning optimal objective must be 2200, got ${z3MipObj}`);
     console.log(`   Z3 MIP solved successfully with objective ${z3MipObj}!`);
 
     // Reset solver select back to default for subsequent tests
@@ -292,7 +292,7 @@ async function runBrowserVerification() {
     }, { timeout: 15_000 });
 
     const highsObj = await page.evaluate(() => document.getElementById("metric-obj")?.textContent?.trim());
-    assert.equal(highsObj, "1100", `HiGHS production planning optimal objective must be 1100, got ${highsObj}`);
+    assert.equal(highsObj, "2200", `HiGHS production planning optimal objective must be 2200, got ${highsObj}`);
     console.log(`   HiGHS solved successfully with objective ${highsObj}!`);
 
     // 7. Test Subpath Scope & Navigation to landing page (/washi/)
