@@ -149,29 +149,11 @@ let activePartId: string | null = null;
 let isRotated = false;
 let isCutting = false;
 
-function setDroneMsg(msg: string, isClear = false) {
-  const el = document.getElementById("drone-msg");
-  if (!el) return;
-  el.textContent = msg;
-  const eye = document.getElementById("drone-eye");
-  if (!eye) return;
-  if (isClear) {
-    eye.setAttribute("fill", "#059669");
-    eye.setAttribute("rx", "8");
-    eye.setAttribute("ry", "4");
-  } else {
-    eye.setAttribute("fill", "#38bdf8");
-    eye.setAttribute("rx", "7");
-    eye.setAttribute("ry", "7");
-  }
-}
-
 function updateCellSize() {
   const viewport = document.getElementById("board-viewport");
   if (!viewport || !currentPuzzle) return;
   const availW = Math.max(120, viewport.clientWidth);
   const isMobile = window.innerWidth <= 860;
-  // On mobile screens, keep board height bounded so board, parts tray, and stats fit on one screen without vertical scrolling
   const maxBoardH = isMobile ? Math.min(200, window.innerHeight * 0.28) : window.innerHeight * 0.38;
   const availH = Math.max(100, maxBoardH);
   const size = computeTitanCellSize(currentPuzzle.cols, currentPuzzle.rows, availW, availH, isMobile ? 12 : 24);
@@ -198,23 +180,14 @@ function canPlace(col: number, row: number, w: number, h: number): boolean {
   return true;
 }
 
-function triggerCutClear(isAuto = false) {
+function triggerCutClear() {
   if (isCutting) return;
   isCutting = true;
 
   const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
 
-  if (placedParts.length < currentPuzzle.parts.length) {
+  if (placedParts.length < currentPuzzle.parts.length || coverage.hasOverlap || coverage.coveredCount !== coverage.totalArea) {
     sndError();
-    setDroneMsg(t("droneUnplaced"));
-    isCutting = false;
-    return;
-  }
-
-  if (coverage.hasOverlap || coverage.coveredCount !== coverage.totalArea) {
-    sndError();
-    const remaining = coverage.totalArea - coverage.coveredCount;
-    setDroneMsg(t("droneVoidRemaining", { n: remaining > 0 ? remaining : 1 }));
     isCutting = false;
     return;
   }
@@ -231,24 +204,15 @@ function triggerCutClear(isAuto = false) {
 
   sndWin();
 
-  if (isFaultFree) {
-    setDroneMsg(t("droneClearPerfect"), true);
-  } else {
-    setDroneMsg(t("droneClear"), true);
-  }
-
   const winTitle = document.getElementById("win-modal-title");
   const winBody2 = document.getElementById("win-modal-body2");
-  const winDrone = document.getElementById("win-drone-comment");
 
   if (isFaultFree) {
     if (winTitle) winTitle.textContent = t("winTitlePerfect");
     if (winBody2) winBody2.textContent = t("winBody2Perfect");
-    if (winDrone) winDrone.textContent = t("winDronePerfect");
   } else {
     if (winTitle) winTitle.textContent = t("winTitle");
     if (winBody2) winBody2.textContent = t("winBody2");
-    if (winDrone) winDrone.textContent = t("winDrone");
   }
 
   setTimeout(() => {
@@ -273,15 +237,11 @@ function placeActivePart(col: number, row: number) {
     render();
 
     const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
-    // Instant Win: Trigger automatic laser cut & clear as soon as board is 100% packed!
     if (placedParts.length === currentPuzzle.parts.length && coverage.isComplete) {
-      triggerCutClear(true);
-    } else {
-      setDroneMsg(t("droneKeepGoing", { n: coverage.totalArea - coverage.coveredCount }));
+      triggerCutClear();
     }
   } else {
     sndError();
-    setDroneMsg(t("droneOverlap"));
   }
 }
 
@@ -290,7 +250,6 @@ function removePlacedPart(partId: string) {
   activePartId = partId;
   isRotated = false;
   sndRemove();
-  setDroneMsg(t("droneRecalled"));
   render();
 }
 
@@ -300,7 +259,6 @@ function undoLastPlacement() {
   activePartId = last.partId;
   isRotated = false;
   sndRemove();
-  setDroneMsg(t("droneUndo"));
   render();
 }
 
@@ -338,7 +296,6 @@ function loadStage(stageNum: number) {
     badge.className = `stage-diff-badge ${currentPuzzle.spec.badgeClass}`;
   }
 
-  setDroneMsg(t("droneStageStart", { n: currentStageNum }));
   render();
 }
 
@@ -389,7 +346,7 @@ function render() {
       meta.className = "item-details part-meta";
       meta.innerHTML = `
         <span class="item-code part-name">${part.name}${isActive && isRotated ? t("rotatedSuffix") : ""}</span>
-        <span class="item-name part-dim">${curW} × ${curH} (${curW * curH} sq)</span>
+        <span class="item-name part-dim">${curW} × ${curH}</span>
       `;
 
       card.appendChild(preview);
@@ -403,31 +360,38 @@ function render() {
     }
   }
 
-  // Active Part Banner
+  // Active Part Banner (fixed height, zero layout shift)
   const banner = document.getElementById("active-banner");
+  const idleEl = document.getElementById("active-banner-idle");
+  const selectedEl = document.getElementById("active-banner-selected");
+  const actionsEl = document.getElementById("active-banner-actions");
   if (banner) {
-    if (activePartId) {
-      const activePart = getPartDef(activePartId);
-      if (activePart) {
-        banner.style.display = "flex";
-        const badgeEl = document.getElementById("active-banner-badge");
-        if (badgeEl) {
-          badgeEl.textContent = activePart.name;
-          badgeEl.style.background = activePart.color;
-        }
-        const dimEl = document.getElementById("active-banner-dim");
-        if (dimEl) {
-          const curW = isRotated ? activePart.h : activePart.w;
-          const curH = isRotated ? activePart.w : activePart.h;
-          dimEl.textContent = `${curW} × ${curH}${isRotated ? t("rotatedSuffix") : ""}`;
-        }
+    const activePart = activePartId ? getPartDef(activePartId) : undefined;
+    if (activePart) {
+      banner.classList.add("has-selection");
+      if (idleEl) idleEl.style.display = "none";
+      if (selectedEl) selectedEl.style.display = "flex";
+      if (actionsEl) actionsEl.style.display = "flex";
+      const badgeEl = document.getElementById("active-banner-badge");
+      if (badgeEl) {
+        badgeEl.textContent = activePart.name;
+        badgeEl.style.background = activePart.color;
+      }
+      const dimEl = document.getElementById("active-banner-dim");
+      if (dimEl) {
+        const curW = isRotated ? activePart.h : activePart.w;
+        const curH = isRotated ? activePart.w : activePart.h;
+        dimEl.textContent = `${curW} × ${curH}${isRotated ? t("rotatedSuffix") : ""}`;
       }
     } else {
-      banner.style.display = "none";
+      banner.classList.remove("has-selection");
+      if (idleEl) idleEl.style.display = "inline";
+      if (selectedEl) selectedEl.style.display = "none";
+      if (actionsEl) actionsEl.style.display = "none";
     }
   }
 
-  // 2. Titanium Plate Grid
+  // 2. Board Grid
   const plate = document.getElementById("board-plate");
   if (plate) {
     plate.innerHTML = "";
@@ -436,7 +400,7 @@ function render() {
 
     const metaIndicator = document.getElementById("board-meta");
     if (metaIndicator) {
-      metaIndicator.textContent = `PLATE: ${currentPuzzle.cols} × ${currentPuzzle.rows}`;
+      metaIndicator.textContent = `${currentPuzzle.cols} × ${currentPuzzle.rows}`;
     }
 
     const highlightTargetCells = (c: number, r: number, clear = false) => {
@@ -490,7 +454,7 @@ function render() {
       if (!part) return;
       const block = document.createElement("div");
       block.className = "placed-block";
-      block.style.background = part.color;
+      block.style.backgroundColor = part.color;
       block.style.left = `calc(${placed.col} * var(--cell-size))`;
       block.style.top = `calc(${placed.row} * var(--cell-size))`;
       block.style.width = `calc(${placed.w} * var(--cell-size))`;
@@ -510,30 +474,6 @@ function render() {
       };
       plate.appendChild(block);
     });
-  }
-
-  // 3. Stats Calculation
-  const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
-  const totalArea = coverage.totalArea;
-  const usedArea = coverage.coveredCount;
-  const wasteArea = totalArea - usedArea;
-  const coveragePct = Math.round((usedArea / totalArea) * 100);
-
-  const coverageEl = document.getElementById("stat-coverage");
-  if (coverageEl) coverageEl.textContent = `${coveragePct}%`;
-  const partsEl = document.getElementById("stat-parts");
-  if (partsEl) partsEl.textContent = `${placedParts.length} / ${currentPuzzle.parts.length}`;
-  const wasteEl = document.getElementById("stat-waste");
-  if (wasteEl) {
-    wasteEl.textContent = `${wasteArea} BLOCKS`;
-    const executeBtn = document.getElementById("btn-execute");
-    if (!coverage.hasOverlap && wasteArea === 0 && placedParts.length === currentPuzzle.parts.length) {
-      wasteEl.style.color = "var(--accent-success)";
-      executeBtn?.classList.add("ready-cut");
-    } else {
-      wasteEl.style.color = "var(--accent-danger)";
-      executeBtn?.classList.remove("ready-cut");
-    }
   }
 }
 
@@ -559,11 +499,11 @@ function updateStaticI18n() {
   };
 
   setText("brand-subtitle", t("subtitle"));
-  setText("drone-name", t("droneName"));
   setTitle("btn-prev-stage", t("prevStage"));
   setTitle("btn-next-stage", t("nextStage"));
   setText("matrix-title", t("matrixTitle"));
   setText("queue-title", t("queueTitle"));
+  setText("active-banner-idle", t("bannerIdle"));
   setText("btn-rotate-active", t("btnRotate"));
   setText("btn-undo", t("btnUndo"));
   setText("btn-reset", t("btnReset"));
@@ -572,15 +512,10 @@ function updateStaticI18n() {
   setText("btn-solve", t("btnSolve"));
   setTitle("btn-solve", t("btnSolveTitle"));
   setText("btn-theory", t("btnTheory"));
-  setText("btn-execute", t("btnExecute"));
-  setText("stat-label-coverage", t("statCoverage"));
-  setText("stat-label-placed", t("statPlaced"));
-  setText("stat-label-scrap", t("statScrap"));
   setHtml("tip-text", t("tip"));
   setText("win-modal-title", t("winTitle"));
   setText("win-modal-body1", t("winBody1"));
   setText("win-modal-body2", t("winBody2"));
-  setText("win-drone-comment", t("winDrone"));
   setText("btn-modal-next", t("winNext"));
   setText("theory-modal-title", t("theoryTitle"));
   setText("theory-modal-body1", t("theoryBody1"));
@@ -674,7 +609,6 @@ function init() {
       placedParts = [];
       activePartId = null;
       isRotated = false;
-      setDroneMsg(t("droneReset"));
       render();
     };
   }
@@ -719,12 +653,11 @@ function init() {
         activePartId = null;
         isRotated = false;
         sndSnap();
-        setDroneMsg(t("droneHint"));
         render();
 
         const coverage = checkBoardCoverage(currentPuzzle.cols, currentPuzzle.rows, placedParts);
         if (placedParts.length === currentPuzzle.parts.length && coverage.isComplete) {
-          triggerCutClear(true);
+          triggerCutClear();
         }
       } else {
         // All placed already, re-apply full solution
@@ -732,15 +665,9 @@ function init() {
         activePartId = null;
         isRotated = false;
         render();
-        triggerCutClear(true);
+        triggerCutClear();
       }
     };
-  }
-
-  // Cut Execute button
-  const btnExecute = document.getElementById("btn-execute");
-  if (btnExecute) {
-    btnExecute.onclick = () => triggerCutClear(false);
   }
 
   // Modal next button

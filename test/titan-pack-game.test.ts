@@ -293,4 +293,91 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
       expect(finalCoverage.coveredCount).toBe(puzzle.cols * puzzle.rows);
     });
   });
+
+  describe("Stage Diversity & UI Alignment", () => {
+    it("generates distinct puzzle layouts across stages without trivial 1x1 fillers or long 1xN border bars", () => {
+      const signatures = new Set<string>();
+      let nonOriginACount = 0;
+
+      for (let s = 2; s <= 15; s++) {
+        const puzzle = generateStagePuzzle(s);
+        const sig = puzzle.solution
+          .map((b) => `${b.col},${b.row}:${b.w}x${b.h}`)
+          .sort()
+          .join("|");
+        expect(signatures.has(sig)).toBe(false);
+        signatures.add(sig);
+
+        const blockA = puzzle.solution.find((b) => b.partId === "A");
+        if (blockA && (blockA.col !== 0 || blockA.row !== 0)) {
+          nonOriginACount++;
+        }
+
+        for (const b of puzzle.solution) {
+          // No 1x1 unit filler blocks
+          expect(b.w === 1 && b.h === 1).toBe(false);
+          // No long 1xN thin strips (N >= 4) on stages >= 2
+          expect(Math.min(b.w, b.h) === 1 && Math.max(b.w, b.h) >= 4).toBe(false);
+        }
+      }
+
+      // Piece A should not always be placed at (0, 0)
+      expect(nonOriginACount).toBeGreaterThanOrEqual(8);
+    });
+
+    it("keeps .sheet-metal padding at 0 so placed blocks align flush with grid cells", () => {
+      const htmlPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/index.html");
+      const html = fs.readFileSync(htmlPath, "utf-8");
+      const sheetMetalMatches = [...html.matchAll(/\.sheet-metal\s*\{([^}]*)\}/g)];
+      expect(sheetMetalMatches.length).toBeGreaterThan(0);
+      for (const m of sheetMetalMatches) {
+        expect(m[1]).toContain("padding: 0");
+      }
+    });
+
+    it("removes legacy cyber-factory roleplay and literal translation labels from UI and locales", () => {
+      const htmlPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/index.html");
+      const jaPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/locales/ja.json");
+      const enPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/locales/en.json");
+      const zhPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/locales/zh.json");
+      const html = fs.readFileSync(htmlPath, "utf-8");
+      const jaRaw = fs.readFileSync(jaPath, "utf-8");
+      const ja = JSON.parse(jaRaw) as Record<string, unknown>;
+      const en = JSON.parse(fs.readFileSync(enPath, "utf-8")) as Record<string, unknown>;
+      const zh = JSON.parse(fs.readFileSync(zhPath, "utf-8")) as Record<string, unknown>;
+
+      // All 3 locale catalogs must maintain identical top-level and diff key sets
+      expect(Object.keys(ja).sort()).toEqual(Object.keys(en).sort());
+      expect(Object.keys(zh).sort()).toEqual(Object.keys(en).sort());
+      expect(Object.keys(ja.diff as Record<string, string>).sort()).toEqual(
+        Object.keys(en.diff as Record<string, string>).sort(),
+      );
+      expect(Object.keys(zh.diff as Record<string, string>).sort()).toEqual(
+        Object.keys(en.diff as Record<string, string>).sort(),
+      );
+
+      for (const removedKey of [
+        "droneName",
+        "droneDefault",
+        "statCoverage",
+        "statPlaced",
+        "statScrap",
+        "btnExecute",
+      ]) {
+        expect(en[removedKey]).toBeUndefined();
+        expect(ja[removedKey]).toBeUndefined();
+        expect(zh[removedKey]).toBeUndefined();
+      }
+
+      for (const removedTerm of [
+        "PRECISION TITANIUM CUTTING",
+        "FAULT-LINE FREE",
+        "UNIT-74",
+        "AI OPERATOR",
+      ]) {
+        expect(html).not.toContain(removedTerm);
+        expect(jaRaw).not.toContain(removedTerm);
+      }
+    });
+  });
 });
