@@ -245,7 +245,7 @@ export class Model {
    * Latest decomposition result if solved using Benders decomposition or Column Generation.
    */
   public decomposition?: BendersResult | ColumnGenerationResult;
-  private _linkingConstraints?: Array<Constraint | LinExpr>;
+  private _linkingConstraints?: Constraint[];
   private hasSolutionState: boolean = false;
   private modelRevision: number = 0;
   private activeOperationId: number = 0;
@@ -2476,7 +2476,7 @@ export class Model {
    * sub.link(expr`${x} <= 50 * ${y}`);
    * ```
    */
-  link(constraint: Constraint | LinExpr | ParsedExpr): Constraint | LinExpr {
+  link(constraint: Constraint | ParsedExpr): Constraint {
     if (
       constraint instanceof QuadExpr ||
       (typeof constraint === "object" && constraint !== null && "quadTerms" in constraint)
@@ -2485,10 +2485,22 @@ export class Model {
         "Linking constraint cannot be a quadratic expression."
       );
     }
+    if (
+      !(constraint instanceof Constraint) &&
+      (typeof constraint !== "object" ||
+        constraint === null ||
+        !("sense" in constraint) ||
+        !("lhs" in constraint) ||
+        !("rhs" in constraint))
+    ) {
+      throw new Error(
+        "Linking constraint must contain a comparison operator (<=, >=, ==). Use expr`... <= ...` or .le(), .ge(), .eq()."
+      );
+    }
     if (!this._linkingConstraints) {
       this._linkingConstraints = [];
     }
-    const registered = constraint as Constraint | LinExpr;
+    const registered = constraint as Constraint;
     this._linkingConstraints.push(registered);
     return registered;
   }
@@ -2496,7 +2508,7 @@ export class Model {
   /**
    * Linking constraints registered on this model for Benders decomposition.
    */
-  get linkingConstraints(): ReadonlyArray<Constraint | LinExpr> {
+  get linkingConstraints(): ReadonlyArray<Constraint> {
     return this._linkingConstraints ?? [];
   }
 
@@ -2550,15 +2562,16 @@ export class Model {
    * ```ts
    * const master = new Model("CuttingStock");
    * master.objective(minimize(0));
-   * const demand = master.constraint(expr`0 >= 10`, "demand");
+   * master.constraint(expr`0 >= 10`, "demand");
+   * const [demand] = master.constraints;
    * master.addColumn({ cost: 1, type: "Integer", coefficients: { demand: 2 } });
    *
    * const result = await master.solveColumnGeneration({
    *   finalizeAsMIP: true,
-   *   pricing: async ({ getDual }) => {
+   *   pricing: async () => {
    *     const sub = new Model("Pricing");
    *     const a = sub.integer("a", { lb: 0, ub: 5 });
-   *     sub.objective(maximize(expr`${getDual("demand")} * ${a}`));
+   *     sub.objective(maximize(expr`${(demand.dual ?? 0)} * ${a}`));
    *     sub.constraint(expr`${a} <= 5`);
    *     await sub.solve();
    *     return {

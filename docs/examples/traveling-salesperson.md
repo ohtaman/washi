@@ -96,12 +96,12 @@ async function runTSP() {
   // 2. Solve via Benders Decomposition
   let cutCounter = 0;
   const result = await master.solveBenders({
-    subproblem: ({ getMasterValue }) => {
+    subproblem: () => {
       // Find active directed edges in the master solution
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(getMasterValue(x[i][j])) === 1) {
+          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
             succ[i] = j;
           }
         }
@@ -173,5 +173,5 @@ runTSP();
 ## Key Takeaways
 
 1. **Lazy Constraint Generation**: You do not need to add $2^n$ subtour constraints upfront. The master problem starts with a minimal relaxation, and Benders cuts are added dynamically only when violated.
-2. **Transparent Custom Separation Callback**: The `subproblem` callback receives `getMasterValue`, analyzes the graph structure with a fast $O(V)$ cycle finder, and returns `{ kind: "feasibility", constraint: ... }`.
+2. **Transparent Custom Separation Callback**: The `subproblem` callback reads candidate master values directly via `x[i][j].value`, analyzes the graph structure with a fast $O(V)$ cycle finder, and returns `{ kind: "feasibility", constraint: ... }`.
 3. **Seamless Termination**: Once the subproblem returns `null`, WaSHI certifies that no violated subtours exist and the global tour is mathematically optimal.

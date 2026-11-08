@@ -96,12 +96,12 @@ async function runTSP() {
   // 2. 调用 Benders 分解求解
   let cutCounter = 0;
   const result = await master.solveBenders({
-    subproblem: ({ getMasterValue }) => {
+    subproblem: () => {
       // 提取主问题暂定解所激活的有向边
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(getMasterValue(x[i][j])) === 1) {
+          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
             succ[i] = j;
           }
         }
@@ -174,5 +174,5 @@ runTSP();
 ## 核心要点
 
 1. **避免预置指数级约束**：初始阶段仅需度数分配松弛，仅在被违反时才按需生成割平面。
-2. **高效自定义分离器**：`subproblem` 接收 `getMasterValue`，利用 $O(V)$ 的图遍历查找最小环，以 `{ kind: "feasibility", constraint: ... }` 简洁注入割平面。
+2. **高效自定义分离器**：`subproblem` 直接读取主问题暂定解 `x[i][j].value`，利用 $O(V)$ 的图遍历查找最小环，以 `{ kind: "feasibility", constraint: ... }` 简洁注入割平面。
 3. **收敛证明**：当子问题返回 `null` 时，数学上保证不存在任何被违反的子回路，求得全局最优解。

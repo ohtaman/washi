@@ -107,8 +107,8 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     // s.t. 2*col1 + col2 + col3 <= 10
     //      col1 + 3*col2 + col3 <= 15
     expect(m.objectiveValue).toBeGreaterThan(0);
-    expect(m.solution.duals.res1).toBeGreaterThanOrEqual(0);
-    expect(m.solution.duals.res2).toBeGreaterThanOrEqual(0);
+    expect(m.solution?.duals.res1).toBeGreaterThanOrEqual(0);
+    expect(m.solution?.duals.res2).toBeGreaterThanOrEqual(0);
   });
 
   it("solves continuous LP relaxation of MIP models via model.relax()", async () => {
@@ -126,7 +126,7 @@ describe("Decomposition Primitives (Column Injection, Terms, Shadow Prices, LP R
     expect(relaxStatus).toBe("Optimal");
     // In continuous relaxation: x=1, y=0.5 -> obj = 1.5
     expect(m.objectiveValue).toBeCloseTo(1.5, 4);
-    expect(m.solution.duals.knapsack).toBeCloseTo(0.5, 4);
+    expect(m.solution?.duals.knapsack).toBeCloseTo(0.5, 4);
 
     // 2. Solve true MIP
     const mipStatus = await m.solve();

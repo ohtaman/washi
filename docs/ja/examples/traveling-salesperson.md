@@ -96,12 +96,12 @@ async function runTSP() {
   // 2. Benders分解で求解
   let cutCounter = 0;
   const result = await master.solveBenders({
-    subproblem: ({ getMasterValue }) => {
+    subproblem: () => {
       // 主問題の暫定解で選ばれた有効枝を特定
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(getMasterValue(x[i][j])) === 1) {
+          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
             succ[i] = j;
           }
         }
@@ -174,5 +174,5 @@ runTSP();
 ## 実装のポイント
 
 1. **指数本の制約を事前生成しない**: $2^n$ 本の全部分巡回路制約をあらかじめモデルに加える必要はありません。最初は最低限の次数制約だけで解き、違反が見つかった小ループに対してのみ動的にカットを追加します。
-2. **高速な分離コールバック**: `subproblem` コールバックは `getMasterValue` を受け取り、$O(V)$ のグラフ走査で閉路をチェックして `{ kind: "feasibility", constraint: ... }` を返すだけで済みます。
+2. **高速な分離コールバック**: `subproblem` コールバックは主問題の暫定解 `x[i][j].value` を直接参照し、$O(V)$ のグラフ走査で閉路をチェックして `{ kind: "feasibility", constraint: ... }` を返すだけで済みます。
 3. **自然な収束判定**: 子問題が `null` を返した時点で、「これ以上違反する部分巡回路は存在しない」ことが数学的に保証され、大域的最適解として終了します。

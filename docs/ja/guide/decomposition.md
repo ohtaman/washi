@@ -24,11 +24,12 @@ WaSHI は、双対情報の取得やモデルの動的変更を行うための�
 LP 求解後に、制約の右辺定数（RHS）を 1 単位変化させたときの目的関数への寄与（限界費用）を取得できます：
 
 ```typescript
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
+const c = m.getConstraintByName("capacity")!;
 console.log(c.dual); // 双対変数 / シャドウプライス
-console.log(m.solution.duals.capacity);
+console.log(m.solution?.duals.capacity);
 ```
 
 ### 2. 連続 LP 緩和（`model.relax()`）
@@ -101,11 +102,12 @@ master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
 master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
 master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
 master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
+const [demandA, demandB, demandC] = master.constraints;
 
 // 2. master.solveColumnGeneration() で求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     // 価格付け子問題（ナップサック問題）
     const sub = new Model("KnapsackPricing");
     const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
@@ -113,9 +115,9 @@ const result = await master.solveColumnGeneration({
     const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
     // 主問題の双対値を報酬として最大化
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+    const dualA = demandA.dual ?? 0;
+    const dualB = demandB.dual ?? 0;
+    const dualC = demandC.dual ?? 0;
     sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
     sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
 
@@ -232,10 +234,10 @@ console.log("施設開設状況:", {
 ```typescript
 const result = await master.solveBenders({
   gapTolerance: 1e-4,
-  subproblem: async ({ getMasterValue }) => {
-    const open1 = getMasterValue(y1);
-    const open2 = getMasterValue(y2);
-    const estTheta = getMasterValue("theta");
+  subproblem: async () => {
+    const open1 = y1.value ?? 0;
+    const open2 = y2.value ?? 0;
+    const estTheta = theta.value ?? 0;
 
     const sub = new Model("TransportSubproblem");
     // ...
@@ -246,7 +248,7 @@ const result = await master.solveBenders({
       // 最適性カットを手動定義
       return {
         kind: "optimality",
-        constraint: expr`theta - 50 * ${sub.solution.duals.cap1} * ${y1} - 60 * ${sub.solution.duals.cap2} * ${y2} >= ${rhs}`,
+        constraint: expr`${theta} - 50 * ${sub.solution!.duals.cap1} * ${y1} - 60 * ${sub.solution!.duals.cap2} * ${y2} >= ${rhs}`,
         subproblemObjective: 100 * open1 + 120 * open2 + actualCost,
       };
     }
@@ -292,18 +294,20 @@ master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinEx
 for (let i = 0; i < customers.length; i++) {
   master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
 }
+const visitConstrs = master.constraints;
 
 // 2. 列生成法で求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
     const obj = new LinExpr();
 
-    for (const cust of customers) {
+    for (let i = 0; i < customers.length; i++) {
+      const cust = customers[i];
       a[cust.id] = sub.binary(`v_${cust.id}`);
-      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
+      obj.addTerm(a[cust.id], visitConstrs[i].dual ?? 0);
     }
 
     sub.objective(maximize(obj));
@@ -373,8 +377,8 @@ for (let i = 0; i < n; i++) {
 
 // Benders 遅延部分巡回路除去で求解
 const result = await master.solveBenders({
-  subproblem: ({ getMasterValue }) => {
-    const cycles = findCycles(n, (i, j) => getMasterValue(x[`${i}_${j}`]) > 0.5);
+  subproblem: () => {
+    const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
     if (cycles.length === 1 && cycles[0].length === n) {
       return null; // 全都市を回る単一ツアーが完成！最適解！
     }

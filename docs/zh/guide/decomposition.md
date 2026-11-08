@@ -24,11 +24,12 @@ WaSHI 提供细粒度的建模原语，用于获取对偶信息与动态修改�
 求解线性规划（LP）后，可获取约束右端常数项（RHS）变化时的边际效益：
 
 ```typescript
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
+const c = m.getConstraintByName("capacity")!;
 console.log(c.dual); // 对偶变量值 / 影子价格
-console.log(m.solution.duals.capacity);
+console.log(m.solution?.duals.capacity);
 ```
 
 ### 2. 连续 LP 松弛求解（`model.relax()`）
@@ -101,11 +102,12 @@ master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
 master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
 master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
 master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
+const [demandA, demandB, demandC] = master.constraints;
 
 // 2. 调用 master.solveColumnGeneration() 求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     // 定价子问题（背包问题）
     const sub = new Model("KnapsackPricing");
     const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
@@ -113,9 +115,9 @@ const result = await master.solveColumnGeneration({
     const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
     // 最大化对偶奖励
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+    const dualA = demandA.dual ?? 0;
+    const dualB = demandB.dual ?? 0;
+    const dualC = demandC.dual ?? 0;
     sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
     sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
 
@@ -232,10 +234,10 @@ console.log("设施选址决策:", {
 ```typescript
 const result = await master.solveBenders({
   gapTolerance: 1e-4,
-  subproblem: async ({ getMasterValue }) => {
-    const open1 = getMasterValue(y1);
-    const open2 = getMasterValue(y2);
-    const estTheta = getMasterValue("theta");
+  subproblem: async () => {
+    const open1 = y1.value ?? 0;
+    const open2 = y2.value ?? 0;
+    const estTheta = theta.value ?? 0;
 
     const sub = new Model("TransportSubproblem");
     // ...
@@ -245,7 +247,7 @@ const result = await master.solveBenders({
     if (estTheta < actualCost - 1e-4) {
       return {
         kind: "optimality",
-        constraint: expr`theta - 50 * ${sub.solution.duals.cap1} * ${y1} - 60 * ${sub.solution.duals.cap2} * ${y2} >= ${rhs}`,
+        constraint: expr`${theta} - 50 * ${sub.solution!.duals.cap1} * ${y1} - 60 * ${sub.solution!.duals.cap2} * ${y2} >= ${rhs}`,
         subproblemObjective: 100 * open1 + 120 * open2 + actualCost,
       };
     }
@@ -291,18 +293,20 @@ master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinEx
 for (let i = 0; i < customers.length; i++) {
   master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
 }
+const visitConstrs = master.constraints;
 
 // 2. 列生成法求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
     const obj = new LinExpr();
 
-    for (const cust of customers) {
+    for (let i = 0; i < customers.length; i++) {
+      const cust = customers[i];
       a[cust.id] = sub.binary(`v_${cust.id}`);
-      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
+      obj.addTerm(a[cust.id], visitConstrs[i].dual ?? 0);
     }
 
     sub.objective(maximize(obj));
@@ -372,8 +376,8 @@ for (let i = 0; i < n; i++) {
 
 // Benders 延迟消除子回路求解
 const result = await master.solveBenders({
-  subproblem: ({ getMasterValue }) => {
-    const cycles = findCycles(n, (i, j) => getMasterValue(x[`${i}_${j}`]) > 0.5);
+  subproblem: () => {
+    const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
     if (cycles.length === 1 && cycles[0].length === n) {
       return null; // 单一完整巡回路线生成！最优解达成！
     }

@@ -22,6 +22,7 @@
   },
   "include": [
     "src/index.ts",
-    "src/modeler/**/*"
+    "src/modeler/**/*",
+    "src/decomposition/**/*"
   ]
 }

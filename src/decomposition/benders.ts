@@ -17,13 +17,13 @@ function isModelLike(val: unknown): val is Model {
     typeof val === "object" &&
     "constraints" in val &&
     "variables" in val &&
-    typeof (val as any).solve === "function"
+    typeof (val as Model).solve === "function"
   );
 }
 
 async function generateBendersCutFromSubproblem(
   subModel: Model,
-  rawLinking: Array<Constraint | LinExpr>,
+  rawLinking: ReadonlyArray<Constraint>,
   master: Model,
   thetaVar: Var,
   masterValues: Record<string, number>,
@@ -42,8 +42,7 @@ async function generateBendersCutFromSubproblem(
   const processedLinking: LinkingMeta[] = [];
 
   for (let idx = 0; idx < rawLinking.length; idx++) {
-    const item = rawLinking[idx];
-    const origConstr: Constraint = item instanceof Constraint ? item : (item as any);
+    const origConstr = rawLinking[idx];
     const lhs = origConstr.lhs;
     const sense = origConstr.sense;
     const rhsConst = origConstr.rhs - (lhs.constant || 0);
@@ -165,12 +164,14 @@ async function generateBendersCutFromSubproblem(
  *
  * @example
  * ```ts
- * const result = await solveBenders({
- *   master,
- *   subproblem: async ({ getMasterValue }) => {
- *     const facilityOpen = getMasterValue(openVar);
- *     // Solve operational subproblem with fixed facilityOpen
- *     // Return optimality cut if operational cost > theta, or null when converged
+ * const result = await master.solveBenders({
+ *   subproblem: () => {
+ *     const sub = new Model("OperationalSub");
+ *     const x = sub.continuous("x", { lb: 0 });
+ *     sub.objective(minimize(expr`2 * ${x}`));
+ *     sub.constraint(expr`${x} >= 30`, "demand");
+ *     sub.link(expr`${x} <= 50 * ${openVar}`);
+ *     return sub;
  *   },
  *   gapTolerance: 1e-4,
  * });
@@ -260,19 +261,10 @@ export async function solveBenders(
     const cuts: BendersCut[] = [];
 
     if (rawSubOutput) {
-      if (
-        isModelLike(rawSubOutput) ||
-        (typeof rawSubOutput === "object" &&
-          "model" in rawSubOutput &&
-          isModelLike((rawSubOutput as any).model))
-      ) {
+      if (isModelLike(rawSubOutput)) {
         // Automatic Benders cut generation from subproblem Model!
-        const subModel: Model = isModelLike(rawSubOutput)
-          ? rawSubOutput
-          : (rawSubOutput as any).model;
-        const rawLinking: Array<Constraint | LinExpr> = isModelLike(rawSubOutput)
-          ? ((rawSubOutput as any).linkingConstraints || [])
-          : ((rawSubOutput as any).linkingConstraints || (rawSubOutput as any).model?.linkingConstraints || []);
+        const subModel: Model = rawSubOutput;
+        const rawLinking = subModel.linkingConstraints;
 
         if (!thetaVar) {
           thetaVar = master.continuous("__benders_theta", { lb: 0 });
@@ -300,7 +292,7 @@ export async function solveBenders(
       } else if (Array.isArray(rawSubOutput)) {
         cuts.push(...rawSubOutput);
       } else {
-        cuts.push(rawSubOutput as BendersCut);
+        cuts.push(rawSubOutput);
       }
     }
 
@@ -355,11 +347,7 @@ export async function solveBenders(
 
     // 4. Add cuts to the master model
     for (const cut of cuts) {
-      if (cut.constraint instanceof Constraint) {
-        master.constraint(cut.constraint);
-      } else {
-        master.constraint(cut.constraint, cut.name);
-      }
+      master.constraint(cut.constraint, cut.name);
       cutsAdded++;
     }
   }
