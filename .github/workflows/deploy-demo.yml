@@ -9,6 +9,8 @@ on:
       - 'docs/**'
       - 'examples/web-demo/**'
       - 'public/**'
+      - 'scripts/build-site.mjs'
+      - 'scripts/generate-llms.mjs'
       - 'package*.json'
       - 'vite.config*.ts'
       - 'tsconfig*.json'

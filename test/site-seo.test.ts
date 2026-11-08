@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
+// @ts-expect-error .mjs script module
+import { appendInteractiveRoutesToSitemap } from "../scripts/build-site.mjs";
 
 describe("Site SEO: Sitemap and robots.txt configuration", () => {
   const rootDir = process.cwd();
@@ -25,6 +28,31 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(content).toMatch(/User-agent:\s*\*/i);
     expect(content).toMatch(/Allow:\s*\//i);
     expect(content).toMatch(/Sitemap:\s*https:\/\/ohtaman\.github\.io\/washi\/sitemap\.xml/i);
+  });
+
+  it("appends interactive demo, apps, and games routes to sitemap XML via appendInteractiveRoutesToSitemap", () => {
+    const webDemoRoot = path.resolve(rootDir, "examples/web-demo");
+    const baseXml =
+      '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://ohtaman.github.io/washi/</loc></url></urlset>';
+    const augmented = appendInteractiveRoutesToSitemap(baseXml, webDemoRoot);
+    const locs = [...augmented.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+
+    expect(locs).toEqual([
+      "https://ohtaman.github.io/washi/",
+      "https://ohtaman.github.io/washi/demo/",
+      "https://ohtaman.github.io/washi/apps/ai-shift/",
+      "https://ohtaman.github.io/washi/apps/ai-timetable-theory/",
+      "https://ohtaman.github.io/washi/apps/ai-timetable/",
+      "https://ohtaman.github.io/washi/games/demon-castle-shift-theory/",
+      "https://ohtaman.github.io/washi/games/demon-castle-shift/",
+      "https://ohtaman.github.io/washi/games/mofumofu-sheep-theory/",
+      "https://ohtaman.github.io/washi/games/mofumofu-sheep/",
+      "https://ohtaman.github.io/washi/games/titan-pack-theory/",
+      "https://ohtaman.github.io/washi/games/titan-pack/",
+    ]);
+
+    // Idempotent when called a second time
+    expect(appendInteractiveRoutesToSitemap(augmented, webDemoRoot)).toBe(augmented);
   });
 
   it("verifies site assembly copies robots.txt and generates well-formed sitemap.xml", () => {
@@ -56,8 +84,87 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(locMatches).toContain("https://ohtaman.github.io/washi/zh/");
     expect(locMatches).toContain("https://ohtaman.github.io/washi/getting-started/");
     expect(locMatches).toContain("https://ohtaman.github.io/washi/guide/variables");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/guide/decomposition");
     expect(locMatches).toContain("https://ohtaman.github.io/washi/solvers/highs");
     expect(locMatches).toContain("https://ohtaman.github.io/washi/examples/production");
+
+    // Verify interactive Playground, Apps, and Games routes are included in sitemap.xml
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/demo/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/apps/ai-shift/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/apps/ai-timetable/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/apps/ai-timetable-theory/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/games/demon-castle-shift/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/games/demon-castle-shift-theory/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/games/mofumofu-sheep/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/games/mofumofu-sheep-theory/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/games/titan-pack/");
+    expect(locMatches).toContain("https://ohtaman.github.io/washi/games/titan-pack-theory/");
+  });
+
+  it("skips Service Worker registration and reload in coi-serviceworker.js for search engine crawlers while registering for standard browsers", () => {
+    const coiScriptPath = path.resolve(rootDir, "public/coi-serviceworker.js");
+    const coiCode = fs.readFileSync(coiScriptPath, "utf-8");
+
+    const runCoiInWindowContext = (userAgent: string) => {
+      let registered = false;
+      let reloaded = false;
+      const win: Record<string, unknown> = {
+        crossOriginIsolated: false,
+        isSecureContext: true,
+        location: {
+          hostname: "ohtaman.github.io",
+          href: "https://ohtaman.github.io/washi/demo/",
+          reload: () => {
+            reloaded = true;
+          },
+        },
+      };
+      const sandbox = {
+        window: win,
+        document: {
+          currentScript: { src: "https://ohtaman.github.io/washi/coi-serviceworker.js" },
+        },
+        navigator: {
+          userAgent,
+          serviceWorker: {
+            controller: null,
+            register: () => {
+              registered = true;
+              return Promise.resolve({ active: {} });
+            },
+            addEventListener: () => {},
+          },
+        },
+        sessionStorage: {
+          getItem: () => null,
+          setItem: () => {},
+          removeItem: () => {},
+        },
+        URL,
+        console,
+      };
+      vm.runInNewContext(coiCode, sandbox);
+      return { status: win.__washi_coi_status, registered, reloaded };
+    };
+
+    // Search engine crawlers must skip SW registration and never trigger reload
+    for (const botUa of [
+      "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 (compatible; Google-InspectionTool/1.0;)",
+      "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    ]) {
+      const res = runCoiInWindowContext(botUa);
+      expect(res.status).toBe("crawler_skipped");
+      expect(res.registered).toBe(false);
+      expect(res.reloaded).toBe(false);
+    }
+
+    // Standard browser UA must proceed to Service Worker registration
+    const browserRes = runCoiInWindowContext(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+    );
+    expect(browserRes.status).toBeUndefined();
+    expect(browserRes.registered).toBe(true);
   });
 });
 
@@ -137,6 +244,45 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     const zhContent = fs.readFileSync(docsZhIndexPath, "utf-8");
     expect(zhContent).toContain('text: "适用于数理优化与约束编程的代数建模器"');
     expect(zhContent).toContain("Python PuLP 的 TypeScript 替代方案。");
+
+    // Verify 1-hop crawlability links from EN/JA/ZH homepages to Playground, Apps, Games, and full doc suite
+    for (const [mdContent, prefix] of [
+      [enContent, ""],
+      [jaContent, "/ja"],
+      [zhContent, "/zh"],
+    ] as const) {
+      expect(mdContent).toContain(`(${prefix}/guide/decomposition)`);
+      expect(mdContent).toContain(`(${prefix}/solvers/)`);
+      expect(mdContent).toContain(`(${prefix}/examples/)`);
+      expect(mdContent).toContain(`(${prefix}/examples/transportation)`);
+      expect(mdContent).toContain(`(${prefix}/examples/ecommerce-coupons)`);
+      expect(mdContent).toContain(`(${prefix}/examples/unsat-core)`);
+      expect(mdContent).toContain(`(${prefix}/examples/vehicle-routing)`);
+      expect(mdContent).toContain(`(${prefix}/examples/traveling-salesperson)`);
+      expect(mdContent).toContain('href="/washi/demo/" target="_self"');
+      expect(mdContent).toContain('href="/washi/apps/ai-shift/" target="_self"');
+      expect(mdContent).toContain('href="/washi/apps/ai-timetable/" target="_self"');
+      expect(mdContent).toContain('href="/washi/games/demon-castle-shift/" target="_self"');
+      expect(mdContent).toContain('href="/washi/games/mofumofu-sheep/" target="_self"');
+      expect(mdContent).toContain('href="/washi/games/titan-pack/" target="_self"');
+    }
+
+    // Verify canonical links in standalone interactive HTML entrypoints
+    for (const subpath of [
+      "demo",
+      "apps/ai-shift",
+      "apps/ai-timetable",
+      "apps/ai-timetable-theory",
+      "games/demon-castle-shift",
+      "games/demon-castle-shift-theory",
+      "games/mofumofu-sheep",
+      "games/mofumofu-sheep-theory",
+      "games/titan-pack",
+      "games/titan-pack-theory",
+    ]) {
+      const html = fs.readFileSync(path.resolve(rootDir, "examples/web-demo", subpath, "index.html"), "utf-8");
+      expect(html).toContain(`<link rel="canonical" href="https://ohtaman.github.io/washi/${subpath}/" />`);
+    }
   });
 
   it("aligns README headers across English, Japanese, and Simplified Chinese", () => {
@@ -188,6 +334,33 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(subpageHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/getting-started/ai-agents"');
     expect(subpageHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/getting-started/ai-agents"');
     expect(subpageHtml).toContain('property="og:type" content="article"');
+
+    // Verify homepages link directly (1 hop) to Playground, Apps, Games, and newly added doc pages
+    for (const html of [enHtml, jaHtml, zhHtml]) {
+      expect(html).toContain('href="/washi/demo/" target="_self"');
+      expect(html).toContain('href="/washi/apps/ai-shift/" target="_self"');
+      expect(html).toContain('href="/washi/apps/ai-timetable/" target="_self"');
+      expect(html).toContain('href="/washi/games/demon-castle-shift/" target="_self"');
+      expect(html).toContain('href="/washi/games/mofumofu-sheep/" target="_self"');
+      expect(html).toContain('href="/washi/games/titan-pack/" target="_self"');
+    }
+
+    // Verify standalone interactive HTML entrypoints contain canonical links
+    for (const subpath of [
+      "demo",
+      "apps/ai-shift",
+      "apps/ai-timetable",
+      "apps/ai-timetable-theory",
+      "games/demon-castle-shift",
+      "games/demon-castle-shift-theory",
+      "games/mofumofu-sheep",
+      "games/mofumofu-sheep-theory",
+      "games/titan-pack",
+      "games/titan-pack-theory",
+    ]) {
+      const entryHtml = fs.readFileSync(path.resolve(siteDistPath, subpath, "index.html"), "utf-8");
+      expect(entryHtml).toContain(`link rel="canonical" href="https://ohtaman.github.io/washi/${subpath}/"`);
+    }
 
     const demoDistPath = path.resolve(rootDir, "dist/demo/index.html");
     if (fs.existsSync(demoDistPath)) {

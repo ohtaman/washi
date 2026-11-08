@@ -49,6 +49,19 @@ if (typeof window === "undefined") {
       return;
     }
 
+    // 1b. Skip Service Worker registration & reload for search engine crawlers so headless
+    // indexing (e.g. Googlebot WRS, Google-InspectionTool, Bingbot) is never interrupted
+    // by a mid-render window.location.reload().
+    const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+    if (
+      /googlebot|google-inspectiontool|adsbot-google|apis-google|mediapartners-google|bingbot|msnbot|adidxbot|slurp|duckduckbot|baiduspider|yandexbot|applebot|facebookexternalhit|twitterbot|linkedinbot/i.test(
+        ua
+      )
+    ) {
+      window.__washi_coi_status = "crawler_skipped";
+      return;
+    }
+
     // 2. Validate secure context (HTTPS or localhost required by Service Workers & COOP/COEP)
     const isLocalhost =
       window.location.hostname === "localhost" ||
