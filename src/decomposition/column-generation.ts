@@ -22,12 +22,11 @@ import type { Model } from "../modeler/model.js";
  *
  * @example
  * ```ts
- * const result = await solveColumnGeneration({
- *   master,
- *   pricing: async ({ getDual }) => {
+ * const result = await master.solveColumnGeneration({
+ *   pricing: async () => {
  *     const sub = new Model("Pricing");
  *     const a = sub.integer("a", { lb: 0, ub: 2 });
- *     sub.objective(maximize(expr`${getDual("demand_A")} * ${a}`));
+ *     sub.objective(maximize(expr`${(demandA.dual ?? 0)} * ${a}`));
  *     sub.constraint(expr`45 * ${a} <= 100`);
  *     await sub.solve();
  *     return {

@@ -4,28 +4,22 @@
 | :--- | :--- | :--- | :--- |
 | Combinatorial OR / Dantzig-Wolfe | HiGHS (default) | `m.solveColumnGeneration()`, `pricing`, `sum()`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">Source Code</a></li><li><a href="../guide/decomposition.md">Decomposition Guide</a></li></ul> |
 
-The **Capacitated Vehicle Routing Problem (CVRP)** is a cornerstone problem in logistics and supply chain optimization: determine the minimum number of delivery vehicles needed to visit a large set of customers, subject to vehicle cargo capacity, maximum customer stops per shift, and route duration time limits.
+The **Capacitated Vehicle Routing Problem (CVRP)** determines the minimum number of delivery vehicles needed to visit a set of customers, subject to vehicle cargo capacity, maximum customer stops per shift, and route duration limits.
 
-In a naive monolithic MIP formulation, enumerating all possible combinations and sequences of customers leads to an exponential explosion of binary variables ($O(2^n)$), causing the branch-and-bound solver to stall even for modest numbers of stops.
+In a monolithic MIP formulation, enumerating all possible customer combinations and visit sequences leads to $O(2^n)$ binary variables. With **Column Generation (Dantzig-Wolfe Decomposition)**, routes are generated on demand:
+1. **Restricted Master Problem (RMP)**: Solves a set partitioning problem that selects a subset of candidate routes so that every customer is visited once.
+2. **Pricing Subproblem**: Uses the dual values (shadow prices) from the master LP relaxation to construct improving routes with negative reduced cost ($\bar{c} = 1 - \sum \pi_i < 0$) via cheapest insertion and 2-opt local search.
 
-With **Column Generation (Dantzig-Wolfe Decomposition)**, we avoid enumerating all routes up front:
-1. **Restricted Master Problem (RMP)**: Solves a set partitioning problem that selects the best combination of candidate vehicle routes to ensure every customer is visited exactly once.
-2. **Pricing Subproblem (Heuristic Route Generation)**: In real-world routing frameworks (such as Branch-and-Price), solving subproblems as full MIPs is notoriously inefficient. Instead, pricing is solved with **fast domain heuristics (cheapest insertion & 2-opt local search)** guided by the **shadow prices (duals)** of the master problem to dynamically discover improving routes.
+## Problem Inputs
 
-## Problem Inputs & Operational Limits
+We consider a distribution network with a central depot at $(0, 0)$ and **50 customer locations**:
 
-We consider a distribution network with a central depot at $(0, 0)$ and **50 customer delivery locations** scattered across surrounding zones:
-
-- **Operational Limits**:
-  - **Vehicle Cargo Capacity**: At most **10 units** of cargo per vehicle.
-  - **Maximum Stops**: At most **4 customers** visited per route.
-  - **Maximum Shift Duration**: At most **200 minutes** (transit time + unloading service time) per vehicle.
-- **Inter-Location Transit Times**: Computed from the pairwise Euclidean distance matrix between all nodes (assuming an average transit speed of 1 km/min).
-- **Unloading Service Time**: 10 minutes per customer.
+- **Vehicle Cargo Capacity**: At most **10 units** per vehicle.
+- **Maximum Stops**: At most **4 customers** per route.
+- **Maximum Shift Duration**: At most **200 minutes** (transit time + service time) per route.
+- **Transit & Service Times**: Euclidean distances between nodes (1 unit = 1 minute) plus **10 minutes** of unloading service time per customer.
 
 ## Implementation in WaSHI
-
-Click **▶ Run** below to solve the 50-customer CVRP interactively in your browser. Notice how cleanly the routing heuristics (`findImprovingRoute`, `optimize2Opt`) are extracted, leaving the master problem and pricing loop concise, readable, and lightning-fast (~500 ms in WebAssembly):
 
 <CodeRunner>
 
@@ -170,7 +164,7 @@ async function runCVRP() {
 
       // 2. Solve pricing subproblem: find route with negative reduced cost (dualSum > 1)
       const bestRoute = findImprovingRoute(candidates, routeConfig);
-      if (!bestRoute) return null; // No improving column -> LP relaxation is optimal!
+      if (!bestRoute) return null; // No improving column found
 
       // 3. Propose new column to Restricted Master Problem
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
@@ -205,9 +199,8 @@ runCVRP();
 
 </CodeRunner>
 
-## Key Takeaways
+## Notes
 
-1. **Hybrid Architecture (Exact Master × Heuristic Pricing)**: In industrial Branch-and-Price frameworks, the pricing subproblem does not require an expensive MIP solver. By combining mathematical programming (LP relaxation & set partitioning MIP in the master) with fast domain heuristics (cheapest insertion & 2-opt), decomposition achieves massive performance gains.
-2. **Scales to 50+ Customers in Hundreds of Milliseconds**: Bypassing subproblem MIPs avoids combinatorial tree explosion and Emscripten memory barriers, enabling large-scale routing optimization directly inside the browser.
-3. **Clean Code with Extracted Domain Helpers**: Keeping routing algorithms (`optimize2Opt`, `insertCheapest`, `calcRouteTime`) decoupled from the modeling API ensures both the business logic and the mathematical master problem remain crystal clear.
-4. **Direct Shadow Price Access via `.dual`**: Shadow prices (dual values) from the master LP relaxation are read directly from `visitConstrs[i].dual` to steer the heuristic toward the most lucrative customer combinations.
+- **Master Problem and Pricing Separation**: The master problem solves the LP relaxation and final set-partitioning MIP, while the `pricing` callback searches for negative-reduced-cost routes using cheapest insertion and 2-opt local search.
+- **Dual Value Access**: Dual values from the master LP relaxation are read from `visitConstrs[i].dual` to prioritize customers with higher shadow prices during route construction.
+- **Route Metadata**: Each proposed column attaches `{ tour, travelTime, totalTime }` under `meta`, allowing the ordered stop sequence to be inspected from `result.generatedColumns` after the solve completes.

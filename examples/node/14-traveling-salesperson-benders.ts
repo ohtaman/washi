@@ -67,14 +67,13 @@ export async function runTSP() {
   // 2. Solve via Benders Decomposition
   const result = await master.solveBenders({
     maxIterations: 20,
-    subproblem: (context) => {
+    subproblem: ({ iteration }) => {
       // Reconstruct tour from candidate master binary values
       const nextCity: number[] = new Array(n).fill(-1);
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           if (i !== j) {
-            const val = context.getMasterValue(x[`${i}_${j}`]);
-            if (val > 0.5) {
+            if ((x[`${i}_${j}`].value ?? 0) > 0.5) {
               nextCity[i] = j;
             }
           }
@@ -99,9 +98,9 @@ export async function runTSP() {
         }
       }
 
-      // If a single cycle covers all n cities, we have a complete tour!
+      // If a single cycle covers all n cities, the tour is complete
       if (cycles.length === 1 && cycles[0].length === n) {
-        return null; // Optimal! No further cuts needed.
+        return null; // Optimal tour found; no further cuts needed
       }
 
       // Subtour detected: Generate Subtour Elimination Constraint (Benders Feasibility Cut)
@@ -116,7 +115,7 @@ export async function runTSP() {
         }
       }
 
-      console.log(`  Iter ${context.iteration}: Subtour detected: [${smallest.join(" -> ")}]. Adding Benders feasibility cut.`);
+      console.log(`  Iter ${iteration}: Subtour detected: [${smallest.join(" -> ")}]. Adding Benders feasibility cut.`);
 
       return {
         kind: "feasibility",

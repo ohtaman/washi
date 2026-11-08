@@ -4,33 +4,29 @@
 | :--- | :--- | :--- | :--- |
 | Combinatorial OR / Benders | HiGHS (default) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">Source Code</a></li><li><a href="../guide/decomposition.md">Decomposition Guide</a></li></ul> |
 
-The **Traveling Salesperson Problem (TSP)** is the archetypal NP-hard combinatorial problem: find the shortest closed tour that visits every city in a given set exactly once and returns to the starting city.
+The **Traveling Salesperson Problem (TSP)** seeks the shortest closed tour that visits every city in a given set once and returns to the starting city.
 
-Under the classical **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing isolated mini-loops (called **subtours**) requires adding subtour elimination constraints for every non-empty proper subset of cities $S \subset V$:
+In the **Dantzig-Fulkerson-Johnson (DFJ)** formulation, preventing disconnected cycles (**subtours**) requires subtour elimination constraints for every non-empty proper subset of cities $S \subset V$:
 
 $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S| \le |V| - 1$$
 
-Because there are $2^n - 2$ possible subsets, adding all subtour elimination constraints upfront makes the model impossibly large even for 20 cities ($> 10^6$ constraints).
-
-With **Benders Decomposition (Lazy Constraint Separation)**, we solve this efficiently:
-1. **Master Problem**: Solves an initial lightweight degree-assignment relaxation (each city has 1 incoming and 1 outgoing edge).
-2. **Benders Separation Subproblem**: Inspects the tentative tour from the master. If isolated subtours (disconnected cycles) exist, it dynamically generates and injects **Benders Feasibility Cuts** that break those specific subtours, iterating until a single connected grand tour is achieved.
+Because there are $2^n - 2$ subsets, enumerating all subtour constraints upfront is impractical as $n$ grows. With **Benders Decomposition (Lazy Constraint Separation)**, constraints are added only when violated:
+1. **Master Problem**: Solves the degree-assignment relaxation (each city has 1 incoming and 1 outgoing edge).
+2. **Separation Subproblem**: Inspects the candidate solution graph. If disconnected cycles exist, it adds a **Benders Feasibility Cut** eliminating the smallest cycle and resolves until a single connected tour is obtained.
 
 ## Problem Inputs
 
-We have **5 benchmark cities** placed on a 2D Euclidean coordinate grid:
+We consider **5 cities** on a 2D Euclidean coordinate grid:
 
-| City | Coordinates $(x, y)$ | Role |
-| :--- | :---: | :--- |
-| **City A (0)** | $(0, 0)$ | Origin / Depot |
-| **City B (1)** | $(1, 0)$ | Southern stop |
-| **City C (2)** | $(1, 2)$ | Eastern stop |
-| **City D (3)** | $(0, 2)$ | Northern stop |
-| **City E (4)** | $(0.5, 3)$ | Northern apex |
+| City | Coordinates $(x, y)$ |
+| :--- | :---: |
+| **City A (0)** | $(0, 0)$ |
+| **City B (1)** | $(1, 0)$ |
+| **City C (2)** | $(1, 2)$ |
+| **City D (3)** | $(0, 2)$ |
+| **City E (4)** | $(0.5, 3)$ |
 
 ## Implementation in WaSHI
-
-Click **▶ Run** below to solve the TSP interactively in your browser. Notice how WaSHI identifies the initial subtour `[A -> B -> A]`, injects a Benders feasibility cut, and converges in just 2 iterations:
 
 <CodeRunner>
 
@@ -96,12 +92,12 @@ async function runTSP() {
   // 2. Solve via Benders Decomposition
   let cutCounter = 0;
   const result = await master.solveBenders({
-    subproblem: ({ getMasterValue }) => {
+    subproblem: () => {
       // Find active directed edges in the master solution
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(getMasterValue(x[i][j])) === 1) {
+          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
             succ[i] = j;
           }
         }
@@ -146,7 +142,7 @@ async function runTSP() {
         };
       }
 
-      return null; // Feasible full tour found!
+      return null; // Single connected tour found
     },
   });
 
@@ -170,8 +166,8 @@ runTSP();
 
 </CodeRunner>
 
-## Key Takeaways
+## Notes
 
-1. **Lazy Constraint Generation**: You do not need to add $2^n$ subtour constraints upfront. The master problem starts with a minimal relaxation, and Benders cuts are added dynamically only when violated.
-2. **Transparent Custom Separation Callback**: The `subproblem` callback receives `getMasterValue`, analyzes the graph structure with a fast $O(V)$ cycle finder, and returns `{ kind: "feasibility", constraint: ... }`.
-3. **Seamless Termination**: Once the subproblem returns `null`, WaSHI certifies that no violated subtours exist and the global tour is mathematically optimal.
+- **Lazy Subtour Elimination**: The master problem starts with only the $2n$ degree constraints, and subtour elimination cuts are added on demand when disconnected cycles appear in the master solution.
+- **Separation Callback**: The `subproblem` callback reads candidate edge values via `x[i][j].value`, traces connected components in $O(n)$, and returns `{ kind: "feasibility", constraint: ... }` when multiple cycles are present.
+- **Termination Condition**: Returning `null` from `subproblem` indicates that no violated subtour constraints remain.

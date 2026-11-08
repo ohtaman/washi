@@ -1,7 +1,7 @@
 import type { Model } from "../modeler/model.js";
 import type { Var } from "../modeler/variable.js";
 import type { Constraint } from "../modeler/constraint.js";
-import type { LinExpr } from "../modeler/expression.js";
+import type { ParsedExpr } from "../modeler/parser.js";
 import type {
   SolverStatus,
   SolverSolution,
@@ -154,7 +154,7 @@ export interface BendersCut {
    */
   kind: "optimality" | "feasibility";
   /** The linear constraint expression representing the cut */
-  constraint: Constraint | LinExpr;
+  constraint: Constraint | ParsedExpr;
   /** Optional cut constraint name */
   name?: string;
   /** Optional subproblem objective or diagnostic value */
@@ -198,15 +198,11 @@ export interface BendersIterationInfo {
 /**
  * Result returned by a Benders subproblem callback.
  * Can be:
- * - A `Model` (or `{ model: Model, linkingConstraints?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+ * - A subproblem `Model` (with linking constraints registered via `sub.link(...)`) for automatic Benders cut generation,
  * - Or `BendersCut | BendersCut[] | null | undefined` for manual cut definition.
  */
 export type BendersSubproblemResult =
   | Model
-  | {
-      model: Model;
-      linkingConstraints?: Array<Constraint | LinExpr>;
-    }
   | BendersCut
   | BendersCut[]
   | null
@@ -221,7 +217,7 @@ export interface BendersOptions {
   /**
    * Subproblem evaluation callback.
    * Evaluates the subproblem given current master decisions.
-   * Can return a `Model` (or `{ model: Model, linkingConstraints?: Array<Constraint | LinExpr> }`) for automatic Benders cut generation,
+   * Can return a subproblem `Model` (with linking constraints registered via `sub.link(...)`) for automatic Benders cut generation,
    * or manual `BendersCut | BendersCut[] | null | undefined`.
    */
   subproblem: (

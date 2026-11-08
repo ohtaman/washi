@@ -92,6 +92,7 @@ export {
   type ColumnGenerationResult,
   type BendersCut,
   type BendersSubproblemContext,
+  type BendersSubproblemResult,
   type BendersIterationInfo,
   type BendersOptions,
   type BendersResult,

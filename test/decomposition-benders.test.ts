@@ -150,11 +150,11 @@ describe("Benders Decomposition", () => {
           // Extract dual values:
           // For dem_j (>=): dual >= 0
           // For sub_cap_i (<=): dual <= 0 in standard LP or dual >= 0 depending on convention
-          const d_C1 = sub.solution.duals["dem_C1"] ?? 0;
-          const d_C2 = sub.solution.duals["dem_C2"] ?? 0;
-          const d_C3 = sub.solution.duals["dem_C3"] ?? 0;
-          const d_F1 = sub.solution.duals["sub_cap_F1"] ?? 0;
-          const d_F2 = sub.solution.duals["sub_cap_F2"] ?? 0;
+          const d_C1 = sub.solution?.duals["dem_C1"] ?? 0;
+          const d_C2 = sub.solution?.duals["dem_C2"] ?? 0;
+          const d_C3 = sub.solution?.duals["dem_C3"] ?? 0;
+          const d_F1 = sub.solution?.duals["sub_cap_F1"] ?? 0;
+          const d_F2 = sub.solution?.duals["sub_cap_F2"] ?? 0;
 
           // By strong duality:
           // subCost = 30*d_C1 + 25*d_C2 + 20*d_C3 + (50*val_y1)*d_F1 + (60*val_y2)*d_F2
@@ -177,6 +177,7 @@ describe("Benders Decomposition", () => {
     expect(result.status).toBe("Optimal");
     expect(result.objectiveValue).toBeCloseTo(referenceObjective, 1e-4);
     expect(result.cutsAdded).toBeGreaterThanOrEqual(1);
+    expect(master.getConstraintByName("benders_cut_1")).toBeDefined();
 
     // Both facilities must be open in the optimal solution
     expect(Math.round(result.values["y_F1"] ?? 0)).toBe(1);
@@ -320,5 +321,13 @@ describe("Benders Decomposition", () => {
 
     expect(result.status).toBe("Optimal");
     expect(result.objectiveValue).toBeCloseTo(70, 1e-4); // 50 * 1 + 2 * 10 = 70
+  });
+
+  it("throws a descriptive error when sub.link receives an unconstrained expression", () => {
+    const sub = new Model("InvalidLinkSub");
+    const x = sub.continuous("x", { lb: 0 });
+    expect(() => {
+      sub.link(expr`2 * ${x}`);
+    }).toThrow("Linking constraint must contain a comparison operator (<=, >=, ==)");
   });
 });

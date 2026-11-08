@@ -1,18 +1,18 @@
 # 高度な分解法とベストプラクティス（列生成法・Benders分解）
 
-混合整数計画法（MIP）は極めて柔軟で強力ですが、素朴な一体型定式化（Monolithic Formulation）では分枝限定法の探索木が爆発し、ソルバーの計算が停止・極度に遅延する構造的ボトルネックが存在します。
-WaSHI では、オペレーションズ・リサーチ（OR）の確立されたベストプラクティスを非専門家でも手軽に扱えるよう、子問題モデルを返すだけで完結する高レベルオーケストレーター（`master.solveColumnGeneration` / `master.solveBenders`）と低レベルの分解プリミティブを提供しています。
+混合整数計画法（MIP）では、問題構造によって単一のモデル（一体型定式化）の分枝限定法の探索木が大きくなり、求解に時間がかかる場合があります。
+WaSHI では、子問題モデルを返す高レベルオーケストレーター（`master.solveColumnGeneration` / `master.solveBenders`）と、双対情報の取得やモデルの動的変更を行う低レベルの分解プリミティブを提供しています。
 
 ---
 
-## なぜ分解法が必要なのか？（素朴な MIP が解けない理由）
+## なぜ分解法が必要なのか？（単一 MIP の課題）
 
-汎用 MIP ソルバーが苦手とする典型的な問題構造は主に以下の2つです：
+単一の MIP 定式化で計算負荷が高くなりやすい典型的な問題構造は以下の2つです：
 
-| 問題の構造・特徴 | 素朴な MIP が破綻する理由 | 確立されたベストプラクティス | WaSHI の API |
+| 問題の構造・特徴 | 単一 MIP での課題 | 手法 | WaSHI の API |
 | :--- | :--- | :--- | :--- |
-| **巨大な対称性と緩い連続緩和**<br>*(カッティングストック、配送計画/VRP、シフト・乗務員スケジューリング)* | パターンの対称な順列が無数に存在し、LP連続緩和が極めて緩いため、分枝限定法の探索木が指数関数的に爆発する。 | **列生成法**<br>*(Dantzig-Wolfe 分解)* | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) |
-| **連結変数と多段階決定構造**<br>*(巡回セールスマン/TSP、施設配置＋配送計画、2段階確率計画法)* | 1段目の投資/選択変数と、無数のシナリオ・運用子問題変数が混在し、単一モデルの行列サイズが巨大化する。 | **Benders 分解**<br>*(ベンダーズ切除平面法)* | [`master.solveBenders()`](#benders-分解-solvebenders) |
+| **対称性と緩い連続緩和**<br>*(カッティングストック、配送計画/VRP、シフト・乗務員スケジューリング)* | パターンの対称な順列が多く LP 連続緩和が緩いため、分枝限定法の探索木が大きくなる。 | **列生成法**<br>*(Dantzig-Wolfe 分解)* | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) |
+| **連結変数と多段階決定構造**<br>*(巡回セールスマン/TSP、施設配置＋配送計画、2段階確率計画法)* | 1段目の投資/選択変数と多数のシナリオ・運用子問題変数が混在し、単一モデルの行列サイズが大きくなる。 | **Benders 分解**<br>*(ベンダーズ切除平面法)* | [`master.solveBenders()`](#benders-分解-solvebenders) |
 
 ---
 
@@ -24,11 +24,12 @@ WaSHI は、双対情報の取得やモデルの動的変更を行うための�
 LP 求解後に、制約の右辺定数（RHS）を 1 単位変化させたときの目的関数への寄与（限界費用）を取得できます：
 
 ```typescript
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
+const c = m.getConstraintByName("capacity")!;
 console.log(c.dual); // 双対変数 / シャドウプライス
-console.log(m.solution.duals.capacity);
+console.log(m.solution?.duals.capacity);
 ```
 
 ### 2. 連続 LP 緩和（`model.relax()`）
@@ -101,11 +102,12 @@ master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
 master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
 master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
 master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
+const [demandA, demandB, demandC] = master.constraints;
 
 // 2. master.solveColumnGeneration() で求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     // 価格付け子問題（ナップサック問題）
     const sub = new Model("KnapsackPricing");
     const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
@@ -113,9 +115,9 @@ const result = await master.solveColumnGeneration({
     const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
     // 主問題の双対値を報酬として最大化
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+    const dualA = demandA.dual ?? 0;
+    const dualB = demandB.dual ?? 0;
+    const dualC = demandC.dual ?? 0;
     sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
     sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
 
@@ -167,9 +169,9 @@ Benders 分解は問題を以下のように分割して解きます：
 - **主問題（Master Problem）**: 連結変数（例：施設の開設有無などの 0-1 変数 $y$）と、子問題の推定費用を表す補助変数 $\theta \ge 0$ を持つ。
 - **子問題（Subproblem）**: 主問題の暫定解 $y^*$ のもとで運用子問題を解き、**最適性カット（Optimality Cut）** を主問題へフィードバックする。
 
-### 推奨：子問題モデルと `link()` による全自動カット生成
+### 推奨：子問題モデルと `link()` による自動カット生成
 
-子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.link(...)` で指定するだけで、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が全自動で完結します：
+子問題のコールバックで `Model` を返し、マスター変数との連結制約を `sub.link(...)` で指定すると、$\theta$ の管理・双対変数の抽出・Benders 最適性カットの生成が自動で行われます：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -184,7 +186,7 @@ master.objective(minimize(expr`100 * ${y1} + 120 * ${y2}`));
 // 全体需要を満たす最低限の施設容量制約
 master.constraint(expr`50 * ${y1} + 60 * ${y2} >= 75`, "capacity_check");
 
-// 2. master.solveBenders() で全自動求解
+// 2. master.solveBenders() で求解
 const result = await master.solveBenders({
   gapTolerance: 1e-4,
   subproblem: () => {
@@ -208,11 +210,11 @@ const result = await master.solveBenders({
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // マスター変数 y1, y2 との連結制約を link で指定するだけ！
+    // マスター変数 y1, y2 との連結制約を link で指定
     sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
     sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
-    return sub; // モデルを返すだけで、カット生成・theta管理は全自動！
+    return sub; // モデルを返すとカット生成・theta管理が自動で行われる
   },
 });
 
@@ -232,10 +234,10 @@ console.log("施設開設状況:", {
 ```typescript
 const result = await master.solveBenders({
   gapTolerance: 1e-4,
-  subproblem: async ({ getMasterValue }) => {
-    const open1 = getMasterValue(y1);
-    const open2 = getMasterValue(y2);
-    const estTheta = getMasterValue("theta");
+  subproblem: async () => {
+    const open1 = y1.value ?? 0;
+    const open2 = y2.value ?? 0;
+    const estTheta = theta.value ?? 0;
 
     const sub = new Model("TransportSubproblem");
     // ...
@@ -246,7 +248,7 @@ const result = await master.solveBenders({
       // 最適性カットを手動定義
       return {
         kind: "optimality",
-        constraint: expr`theta - 50 * ${sub.solution.duals.cap1} * ${y1} - 60 * ${sub.solution.duals.cap2} * ${y2} >= ${rhs}`,
+        constraint: expr`${theta} - 50 * ${sub.solution!.duals.cap1} * ${y1} - 60 * ${sub.solution!.duals.cap2} * ${y2} >= ${rhs}`,
         subproblemObjective: 100 * open1 + 120 * open2 + actualCost,
       };
     }
@@ -257,17 +259,17 @@ const result = await master.solveBenders({
 
 ---
 
-## OR の実践的キラーアプリケーション
+## 応用例
 
-OR の現場で分解法が決定的な威力を発揮する2大代表例です：
+分解法が用いられる代表的な問題例です：
 
 ### 1. 配送計画問題（CVRP: 容量制約付き配送計画） $\times$ 列生成法
 *(完全な実行可能コード: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
 
-* **問題の課題**: 複数台の車両で顧客を巡回配送する際、訪問順序の全ルートをあらかじめ列挙すると何億通りにも達し、単一 MIP ではメモリが爆発します。
-* **列生成法のアプローチ**:
+* **問題の構造**: 複数台の車両で顧客を巡回配送する問題では、訪問順序の全ルートをあらかじめ列挙すると変数が膨大になります。
+* **列生成法による定式化**:
   * **主問題（Set Covering）**: 生成されたルート候補の中から、全顧客をカバーする最小台数・最小距離の組み合わせを選ぶ。
-  * **子問題（Pricing / ナップサック問題）**: 顧客制約のシャドウプライス（双対変数）をもとに、車両積載容量を満たしつつコスト削減効果の高い新規ルート（列）を動的に1本ずつ生成。
+  * **子問題（Pricing / ナップサック問題）**: 顧客制約のシャドウプライス（双対変数）をもとに、車両積載容量を満たしつつ被約費用が負となる新規ルート（列）を動的に1本ずつ生成。
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -292,18 +294,20 @@ master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinEx
 for (let i = 0; i < customers.length; i++) {
   master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
 }
+const visitConstrs = master.constraints;
 
 // 2. 列生成法で求解
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
     const obj = new LinExpr();
 
-    for (const cust of customers) {
+    for (let i = 0; i < customers.length; i++) {
+      const cust = customers[i];
       a[cust.id] = sub.binary(`v_${cust.id}`);
-      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
+      obj.addTerm(a[cust.id], visitConstrs[i].dual ?? 0);
     }
 
     sub.objective(maximize(obj));
@@ -333,10 +337,10 @@ console.log("最適車両台数:", result.objectiveValue); // 3台
 ### 2. 巡回セールスマン問題（TSP） $\times$ Benders 分解（部分巡回除去）
 *(完全な実行可能コード: [`examples/node/14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts))*
 
-* **問題の課題**: 全都市を1筆書きで巡回する際、「途中で小さな島（部分巡回）ができてしまう」のを禁止する部分巡回除去制約（SECs）は、都市数 $n$ に対して **$O(2^n)$ 個（天文学的数値）** 存在します。
-* **Benders 分解（遅延カット生成 / DFJ法）のアプローチ**:
+* **問題の構造**: 全都市を単一の閉路で巡回するための部分巡回除去制約（SECs）は、都市数 $n$ に対して $O(2^n)$ 個存在します。
+* **Benders 分解（遅延カット生成 / DFJ法）による定式化**:
   * **主問題**: 各都市の入次数・出次数が1という割り当て緩和制約だけで解く。
-  * **子問題**: 得られた経路グラフで連結成分を調べ、もし島（部分巡回 $S$）が見つかれば、その島を禁止する Benders 実行可能カット（$\sum_{i,j \in S} x_{ij} \le |S| - 1$）を動的に主問題へ注入。
+  * **子問題**: 得られた経路グラフで連結成分を調べ、部分巡回 $S$ が見つかれば、それを禁止する Benders 実行可能カット（$\sum_{i,j \in S} x_{ij} \le |S| - 1$）を動的に主問題へ注入。
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -373,10 +377,10 @@ for (let i = 0; i < n; i++) {
 
 // Benders 遅延部分巡回路除去で求解
 const result = await master.solveBenders({
-  subproblem: ({ getMasterValue }) => {
-    const cycles = findCycles(n, (i, j) => getMasterValue(x[`${i}_${j}`]) > 0.5);
+  subproblem: () => {
+    const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
     if (cycles.length === 1 && cycles[0].length === n) {
-      return null; // 全都市を回る単一ツアーが完成！最適解！
+      return null; // 全都市を回る単一ツアーが完成
     }
 
     // 部分巡回を検出：最小の島 S に対する Benders 実行可能カットを生成

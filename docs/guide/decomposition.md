@@ -1,18 +1,18 @@
 # Advanced Decomposition Methods & Best Practices
 
-Mixed-Integer Programming (MIP) is exceptionally versatile, but monolithic formulations suffer from well-known structural bottlenecks where standard branch-and-bound solvers slow down exponentially or stall.
-WaSHI provides first-class decomposition orchestrators (`master.solveColumnGeneration` and `master.solveBenders`) along with fine-grained modeling primitives to make Operations Research (OR) best practices accessible by simply returning subproblem models.
+Mixed-Integer Programming (MIP) formulations can become slow when symmetry or coupling constraints cause branch-and-bound trees to grow large.
+WaSHI provides decomposition orchestrators (`master.solveColumnGeneration` and `master.solveBenders`) along with lower-level modeling primitives for dual inspection and dynamic model modification.
 
 ---
 
 ## Why Decomposition? (When Monolithic MIP Stalls)
 
-There are two primary problem structures where naive MIP formulations struggle:
+There are two common problem structures where monolithic MIP formulations struggle:
 
-| Problem Structure | Why Monolithic MIP Fails | Best Practice Technique | WaSHI API |
+| Problem Structure | Monolithic MIP Bottleneck | Technique | WaSHI API |
 | :--- | :--- | :--- | :--- |
-| **Massive Symmetry & Loose Continuous Bounds**<br>*(Cutting Stock, Vehicle Routing/VRP, Crew Rostering)* | Millions of symmetric permutations and a very weak continuous relaxation cause branch-and-bound exploration trees to explode. | **Column Generation**<br>*(Dantzig-Wolfe Decomposition)* | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) |
-| **Complicating Decisions & Multi-Stage Stages**<br>*(Traveling Salesperson/TSP, Facility Location with Routing, Two-Stage Stochastic Planning)* | Coupling design/master choices with extensive scenario or operational subproblems creates an intractable matrix size. | **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) |
+| **Symmetry & Loose Continuous Bounds**<br>*(Cutting Stock, Vehicle Routing/VRP, Crew Rostering)* | Symmetric permutations and a weak continuous relaxation enlarge the branch-and-bound tree. | **Column Generation**<br>*(Dantzig-Wolfe Decomposition)* | [`master.solveColumnGeneration()`](#column-generation-solvecolumngeneration) |
+| **Complicating Decisions & Multi-Stage Structure**<br>*(Traveling Salesperson/TSP, Facility Location with Routing, Two-Stage Stochastic Planning)* | Coupling master decisions with large scenario or operational subproblems increases the matrix size. | **Benders Decomposition** | [`master.solveBenders()`](#benders-decomposition-solvebenders) |
 
 ---
 
@@ -24,11 +24,12 @@ WaSHI provides fine-grained modeling primitives to inspect dual information and 
 Access the dual values (marginal impact on the objective per unit change in RHS) after an LP solve:
 
 ```typescript
-const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
+const c = m.getConstraintByName("capacity")!;
 console.log(c.dual); // Dual value / shadow price
-console.log(m.solution.duals.capacity);
+console.log(m.solution?.duals.capacity);
 ```
 
 ### 2. Continuous LP Relaxation (`model.relax()`)
@@ -101,11 +102,12 @@ master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
 master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
 master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
 master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
+const [demandA, demandB, demandC] = master.constraints;
 
 // 2. Solve with master.solveColumnGeneration()
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     // Pricing subproblem: Bounded Knapsack
     const sub = new Model("KnapsackPricing");
     const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
@@ -113,9 +115,9 @@ const result = await master.solveColumnGeneration({
     const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
 
     // Maximize shadow price collection
-    const dualA = getDual("demand_A");
-    const dualB = getDual("demand_B");
-    const dualC = getDual("demand_C");
+    const dualA = demandA.dual ?? 0;
+    const dualB = demandB.dual ?? 0;
+    const dualC = demandC.dual ?? 0;
     sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
     sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
 
@@ -212,7 +214,7 @@ const result = await master.solveBenders({
     sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
     sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
-    return sub; // Returning the model automatically generates cuts and manages theta!
+    return sub; // Returning the model automatically generates cuts and manages theta
   },
 });
 
@@ -232,10 +234,10 @@ You can also construct Benders cuts manually by returning `BendersCut` objects:
 ```typescript
 const result = await master.solveBenders({
   gapTolerance: 1e-4,
-  subproblem: async ({ getMasterValue }) => {
-    const open1 = getMasterValue(y1);
-    const open2 = getMasterValue(y2);
-    const estTheta = getMasterValue("theta");
+  subproblem: async () => {
+    const open1 = y1.value ?? 0;
+    const open2 = y2.value ?? 0;
+    const estTheta = theta.value ?? 0;
 
     const sub = new Model("TransportSubproblem");
     // ...
@@ -245,7 +247,7 @@ const result = await master.solveBenders({
     if (estTheta < actualCost - 1e-4) {
       return {
         kind: "optimality",
-        constraint: expr`theta - 50 * ${sub.solution.duals.cap1} * ${y1} - 60 * ${sub.solution.duals.cap2} * ${y2} >= ${rhs}`,
+        constraint: expr`${theta} - 50 * ${sub.solution!.duals.cap1} * ${y1} - 60 * ${sub.solution!.duals.cap2} * ${y2} >= ${rhs}`,
         subproblemObjective: 100 * open1 + 120 * open2 + actualCost,
       };
     }
@@ -256,17 +258,17 @@ const result = await master.solveBenders({
 
 ---
 
-## Practical Killer Applications in OR
+## Application Examples
 
-Two celebrated canonical use cases where decomposition algorithms shine in production:
+Two common applications of decomposition methods:
 
 ### 1. Vehicle Routing Problem (CVRP) $\times$ Column Generation
 *(Full executable source: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
 
-* **Challenge**: When scheduling a fleet of vehicles to visit customers, enumerating every combination of tours results in millions of variables, causing monolithic MIPs to run out of memory.
-* **Column Generation Approach**:
+* **Problem Structure**: Enumerating every feasible customer tour upfront produces a large number of variables.
+* **Column Generation Formulation**:
   * **Master Problem**: Set covering model that selects the minimum number of vehicle routes such that each customer is served.
-  * **Pricing Subproblem**: Knapsack model that dynamically generates one capacity-feasible route (column) with negative reduced cost based on customer dual shadow prices.
+  * **Pricing Subproblem**: Knapsack model that dynamically generates a capacity-feasible route (column) with negative reduced cost based on customer dual shadow prices.
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -291,18 +293,20 @@ master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinEx
 for (let i = 0; i < customers.length; i++) {
   master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
 }
+const visitConstrs = master.constraints;
 
 // 2. Solve via Column Generation
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
-  pricing: async ({ getDual }) => {
+  pricing: async () => {
     const sub = new Model("RoutePricing");
     const a: Record<string, Var> = {};
     const obj = new LinExpr();
 
-    for (const cust of customers) {
+    for (let i = 0; i < customers.length; i++) {
+      const cust = customers[i];
       a[cust.id] = sub.binary(`v_${cust.id}`);
-      obj.addTerm(a[cust.id], getDual(`visit_${cust.id}`));
+      obj.addTerm(a[cust.id], visitConstrs[i].dual ?? 0);
     }
 
     sub.objective(maximize(obj));
@@ -332,10 +336,10 @@ console.log("Optimal fleet size:", result.objectiveValue); // 3 vehicles
 ### 2. Traveling Salesperson Problem (TSP) $\times$ Benders Decomposition (Lazy Subtour Elimination)
 *(Full executable source: [`examples/node/14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts))*
 
-* **Challenge**: Preventing isolated sub-loops (subtours) requires Subtour Elimination Constraints (SECs), which grow to **$O(2^n)$ constraints** for $n$ cities.
-* **Benders Decomposition Approach**:
+* **Problem Structure**: Preventing isolated sub-loops (subtours) requires Subtour Elimination Constraints (SECs), which grow as $O(2^n)$ constraints for $n$ cities.
+* **Benders Decomposition Formulation**:
   * **Master Problem**: Solves the relaxed assignment problem (each city has 1 incoming and 1 outgoing edge).
-  * **Subproblem**: Evaluates the candidate tour graph for disconnected components. If isolated subtours exist, it lazily injects a Benders feasibility cut ($\sum_{i,j \in S} x_{ij} \le |S| - 1$) cutting off that specific cycle.
+  * **Subproblem**: Evaluates the candidate tour graph for disconnected components. If isolated subtours exist, it lazily injects a Benders feasibility cut ($\sum_{i,j \in S} x_{ij} \le |S| - 1$) cutting off that cycle.
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -372,10 +376,10 @@ for (let i = 0; i < n; i++) {
 
 // Solve with Benders lazy subtour elimination
 const result = await master.solveBenders({
-  subproblem: ({ getMasterValue }) => {
-    const cycles = findCycles(n, (i, j) => getMasterValue(x[`${i}_${j}`]) > 0.5);
+  subproblem: () => {
+    const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
     if (cycles.length === 1 && cycles[0].length === n) {
-      return null; // Tour is complete and optimal!
+      return null; // Single tour covers all cities
     }
 
     // Subtour detected: inject Benders feasibility cut for smallest cycle
