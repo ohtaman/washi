@@ -951,7 +951,7 @@ function getActiveTutorialStep(): {
           t("ui.setOnTo", { mName, dLabel, shiftLabel }),
         instruction: s.instruction,
       };
-      const loc = getTutorialStepLocalized(baseStep, currentLang);
+      const loc = getTutorialStepLocalized(baseStep, i, currentLang);
       return {
         ...baseStep,
         shortCallout: loc.shortCallout,
@@ -1178,7 +1178,7 @@ function renderShiftMatrix(): void {
           let noteClass = "";
           if (hasViolation) {
             noteDesktop = cellViolations[0];
-            noteMobile = "⚠️NoConsecutive";
+            noteMobile = t("ui.noteViolationMobile");
             noteClass = "is-error";
           } else if (activeConflictPartner) {
             noteDesktop = t("ui.clashW150", { activeConflictPartner });
@@ -1190,7 +1190,7 @@ function renderShiftMatrix(): void {
             noteClass = "is-synergy";
           } else if (isFullMoonForbidden) {
             noteDesktop = t("ui.noFullMoonNight");
-            noteMobile = "🚫FullMoon";
+            noteMobile = t("ui.noteFullMoonMobile");
             noteClass = "is-info";
           }
 
@@ -1261,7 +1261,7 @@ function renderShiftMatrix(): void {
       const workCounterLabel = t("ui.shifts", { assignedCount, m_maxWeeklyShifts: m.maxWeeklyShifts });
       const dayChipLabel = t("ui.day_3", { dayPower });
       const nightChipLabel = t("ui.night_3", { nightPower });
-      const infoTooltip = t("ui.clickToViewSDetails", { m_name: m.name, m_usualPost: m.usualPost });
+      const infoTooltip = t("ui.clickToViewSDetails", { m_name: m.name, m_usualPost: m.usualPost ?? "" });
 
       return `
         <tr class="${isDimmedRow ? "is-tutorial-dimmed-row" : ""}">
@@ -1369,7 +1369,7 @@ function renderShiftMatrix(): void {
       soundEngine.playClick("day");
       speakInDock({
         speaker: m.name,
-        tag: t("ui.post", { m_title: m.title, m_race: m.race, m_usualPost: m.usualPost }),
+        tag: t("ui.post", { m_title: m.title, m_race: m.race, m_usualPost: m.usualPost ?? "" }),
         portrait: m.portrait,
         text: t("ui.text_2", { m_quotes_intro: m.quotes.intro, m_traitSummary: m.traitSummary }),
       });
@@ -1902,10 +1902,7 @@ async function runLilithDiagnosis(): Promise<void> {
       });
     } else {
       soundEngine.playError();
-      const reasonText =
-        currentLang === "ja"
-          ? (diag.messages[0] ?? t("ui.defaultDiagMessage"))
-          : t("ui.someGuardsCurrentAssignmentsAr");
+      const reasonText = t("ui.someGuardsCurrentAssignmentsAr") || t("ui.defaultDiagMessage");
       speakInDock({
         speaker: lilith.name,
         tag: statusTag,
@@ -2290,17 +2287,16 @@ async function openDispatchResultDialog(): Promise<void> {
       defenderName =
         o.assignedMonsters.length === 1
           ? leadM.name
-          : currentLang === "en"
-            ? `${leadM.name} +${o.assignedMonsters.length - 1}`
-            : currentLang === "zh"
-              ? `${leadM.name} +${o.assignedMonsters.length - 1}`
-              : `${leadM.name} +${o.assignedMonsters.length - 1}`;
-      defenderQuote =
-        currentLang === "ja"
-          ? o.defenderQuote
-          : o.isWin
-            ? leadM.quotes.happy
-            : leadM.quotes.angry;
+          : t("ui.defenderNameMulti", {
+              name: leadM.name,
+              extra: o.assignedMonsters.length - 1,
+              total: o.assignedMonsters.length,
+            });
+      defenderQuote = o.hasConflict
+        ? leadM.quotes.angry
+        : o.shift === "day"
+          ? leadM.quotes.dayAssign
+          : leadM.quotes.nightAssign;
     }
     return { enemyName, enemyQuote, defenderName, defenderQuote };
   };
@@ -3114,10 +3110,7 @@ async function openDispatchResultDialog(): Promise<void> {
   const commentsHtml = currentStage.availableMonsters
     .map((mId) => {
       const m = getLocalizedMonster(mId);
-      const quote =
-        currentLang === "ja"
-          ? (currentStage.clearQuotes?.[mId] ?? m.quotes.happy)
-          : m.quotes.happy;
+      const quote = stageLoc.clearQuotes?.[mId] ?? m.quotes.happy;
       return `<div class="guard-comment-item">
         <img src="${m.portrait}" alt="${m.name}" width="36" height="36" />
         <div><strong>${m.name}</strong>：「${quote}」</div>
@@ -3582,6 +3575,14 @@ export function switchCastleLanguage(next: GameLang): void {
   const rosterDialog = document.getElementById("roster-dialog") as HTMLDialogElement | null;
   if (rosterDialog?.open) {
     openRosterDialog();
+  }
+  const synergyDialog = document.getElementById("synergy-dialog") as HTMLDialogElement | null;
+  if (synergyDialog?.open) {
+    renderSynergyDialogContent();
+  }
+  const mobileMenuDialog = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
+  if (mobileMenuDialog?.open) {
+    renderMobileStageNav();
   }
 }
 

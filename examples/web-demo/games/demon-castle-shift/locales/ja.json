@@ -130,7 +130,7 @@
     "yourScheduleAlreadyMatchesThe": "すでにお手本シフトと同じ配置になっています。このまま「このシフトで警備する」へ進めます。",
     "statusCheck": "状況確認",
     "yourCurrentlyPlacedShiftsHave": "いま配置されているマスに手詰まりや違反はありません。このまま残りの空欄を埋めていけば防衛できます。",
-    "someGuardsCurrentAssignmentsAr": "",
+    "someGuardsCurrentAssignmentsAr": "現在の配置に偏りがあり、後半の枠で人手が足りなくなっています。",
     "tryResettingAFewShifts": "{reasonText} 該当するメンバーの出勤日を一度「休」に戻して調整してみてください。",
     "day_5": "☀️昼",
     "night_5": "🌙夜",
@@ -299,13 +299,17 @@
     "chiefGuardTacticianLilith": "警備参謀 リリス",
     "howToPlayShiftRules": "遊び方と勤務ルール",
     "divClassHelpGridDiv": "<div class=\"help-grid\">\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">手順 1</span>\n          <h3>敵の戦闘力と味方防衛力の力比べ</h3>\n          <p>\n            各時間帯で、押し寄せる勇者軍部隊の実際の戦闘力が<strong>「予測戦力」の前後で変動</strong>します。<br />\n            <strong>味方の防衛力が敵の戦闘力以上なら防衛成功</strong>です。得意な時間帯や相性ペアを活かして、厚みのある守りを築きましょう。\n          </p>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">手順 2</span>\n          <h3>無理のない勤務ルールを守る</h3>\n          <p>\n            城の仲間に無理をさせないため、以下の勤務条件を守る必要があります（勤務条件さえ守れば、戦力が足りない枠があっても確率勝負で警備を開始できます）。\n          </p>\n          <ul class=\"help-list\">\n            <li><strong>大物枠（ドラゴ・ゴーレム等）は連勤不可</strong>：1日働いたら翌日は「休」にします（週3回まで）。</li>\n            <li><strong>夜番の翌朝は昼番不可</strong>：夜番に入った翌日にすぐ昼番へ入ることはできません（夜→夜は可能）。</li>\n            <li><strong>新米枠（プルル・マンドラ等）は夜の単独配置不可</strong>：夜番にする時は、他の仲間も一緒に夜番へ配置します。</li>\n            <li><strong>指定休・満月の夜</strong>：指定休の日や、満月の夜の昼型獣人（フェンリル等）は最初からロックされています。</li>\n          </ul>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">手順 3</span>\n          <h3>相性◎（+100）と同番NG（-150）・全戦防衛必須</h3>\n          <p>\n            気の合うペアを同じ時間帯に並べると<strong>防衛力が +100</strong> 上がりますが、<strong>「この人とは一緒に働きたくない」という不仲ペアを同じ枠に置くと防衛力が -150 下がってしまいます</strong>。<br />\n            勇者軍は毎日決まった時間ではなく<strong>不規則な時間帯に現れ（手薄な枠は特に狙われます）</strong>、<strong>1回でも城門を突破されたら防衛失敗</strong>となります。どの時間帯に来ても守り抜けるシフトを組みましょう。\n          </p>\n        </div>\n      </div>",
-    "defaultDiagMessage": "現在の配置に偏りがあり、後半の枠で人手が足りなくなっています。"
+    "defaultDiagMessage": "現在の配置に偏りがあり、後半の枠で人手が足りなくなっています。",
+    "noteViolationMobile": "⚠️連勤NG",
+    "noteFullMoonMobile": "🚫満月",
+    "defenderNameMulti": "{name} ほか{extra}名",
+    "postDutyRest": "{post}の当番・休養"
   },
   "lilith": {
-    "name": "Lilith",
-    "title": "Chief Tactician",
+    "name": "リリス",
+    "title": "警備参謀",
     "portrait": "./char-lilith.jpg",
-    "defaultQuote": "Let us build the shift while respecting each guard's best hours, rest days, and who they get along with or refuse to work alongside."
+    "defaultQuote": "各メンバーの得意な時間帯と休息、それに「誰と組みたいか・組みたくないか」にも配慮しながらシフトを組んでいきましょう。"
   },
   "prologue": [
     {
@@ -392,413 +396,442 @@
   },
   "monsters": {
     "drago": {
-      "name": "Drago",
-      "title": "Veteran Gatekeeper",
-      "race": "Elder Dragon",
-      "usualPost": "Main Gate · Lead Warden",
-      "traitTitle": "No consecutive days (must rest next day) · Max 3/wk",
-      "traitSummary": "Day 500 / Night 500. High defense power, but an old wound prevents working 2 days in a row (max 1 consecutive day, 3 shifts/week). Dislikes sharing a shift with fussy Lich (-150).",
+      "name": "ドラゴ",
+      "title": "古参門番",
+      "race": "エルダードラゴン",
+      "usualPost": "正門・筆頭門番",
+      "traitTitle": "連勤不可（働いた翌日は休み）・週3回まで",
+      "traitSummary": "昼500 / 夜500。高い防衛力を持つが、古傷があるため2日続けては出られない（最大1連勤・週3回まで）。小言の多いリッチとは同じ番に入りたがらない（-150）。",
       "quotes": {
-        "intro": "Schedule me every other day, and I will handle the toughest enemies.",
-        "dayAssign": "Day gate duty, understood. Tomorrow I will take a full rest.",
-        "nightAssign": "Night gate duty. My flames will light up the dark road.",
-        "offAssign": "Phew, nothing beats resting old bones on a day off.",
-        "happy": "Resting mid-week kept my old wound from acting up.",
-        "angry": "I told you I cannot work two days in a row with this old wound."
+        "intro": "ワシが出るなら1日おきにしてくれ。そのかわり手強い相手は任せろ。",
+        "dayAssign": "昼の門番だな。終わったら明日はゆっくり休ませてもらうぞ。",
+        "nightAssign": "夜の城門か。暗い道も火吹きで照らしてやろう。",
+        "offAssign": "ふぅ、休みの日は骨休めに限るな。",
+        "happy": "中日に休めたおかげで、最後まで体が持ったぞ。",
+        "angry": "2日続けては出られんと言ったはずだ。古傷が痛むのでな。"
       }
     },
     "carmilla": {
-      "name": "Carmilla",
-      "title": "Night Shift Ace",
-      "race": "Vampire",
-      "usualPost": "Castle Salon · Night Watch",
-      "traitTitle": "Night Specialist (Night 400 / Day 200) · Dislikes rigid types",
-      "traitSummary": "Day 200 / Night 400. Excels at night watch but dislikes bright sunlight. Gets along well with Pururu and Banshee, but refuses to share a shift with rigid Dullahan or sweaty Minotaur (-150).",
+      "name": "カーミラ",
+      "title": "夜番の主力",
+      "race": "ヴァンパイア",
+      "usualPost": "城内サロン・夜間警備",
+      "traitTitle": "夜番が得意（夜400 / 昼200）・堅物が苦手",
+      "traitSummary": "昼200 / 夜400。夜間の警備では本来の力を発揮するが、日中は日差しが苦手。プルルやバンシーとは仲が良いが、堅物のデュラハンや汗臭いミノタウロスとは同じ番を嫌がる（-150）。",
       "quotes": {
-        "intro": "Strong sunlight is not my forte. Leave the night watch to me.",
-        "dayAssign": "Daytime patrol... It is rather taxing without my parasol.",
-        "nightAssign": "Under the moonlight, I can hear footsteps from afar.",
-        "offAssign": "I shall rest quietly in my chamber today.",
-        "happy": "A calm and composed night watch in the quiet darkness.",
-        "angry": "Harsh sunlight or an incompatible partner is terribly exhausting."
+        "intro": "わたくし、強い日差しは苦手なの。夜の警備ならお任せなさい。",
+        "dayAssign": "日中の見回りですか……日傘がないと少しつらいですわね。",
+        "nightAssign": "月明かりの下なら、遠くの足音までよく分かりますわ。",
+        "offAssign": "今日は部屋で静かに休ませていただきますわね。",
+        "happy": "夜の静けさの中で落ち着いて見回りができましたわ。",
+        "angry": "日差しの強い時間帯や、馬の合わない相手との同番は疲れますわ。"
       }
     },
     "fenrir": {
-      "name": "Fenrir",
-      "title": "Day Shift Ace",
-      "race": "Werewolf",
-      "usualPost": "Outer Forest · Day Scout",
-      "traitTitle": "Day Specialist (Day 400) · Cannot work Full Moon nights",
-      "traitSummary": "Day 400 / Night 200. Excels at daytime forest patrols. Cannot be assigned to night shift on a Full Moon night. Quiet-loving Banshee avoids her (-150).",
+      "name": "フェンリル",
+      "title": "昼番の主力",
+      "race": "ワーウルフ",
+      "usualPost": "外周森林・昼間斥候",
+      "traitTitle": "昼番が得意（昼400）・満月の夜は出撃不可",
+      "traitSummary": "昼400 / 夜200。日中の見回りで高い防衛力を発揮する。満月の夜は制御が効かなくなるため夜番には配置できない。静寂を好むバンシーからは敬遠されている（-150）。",
       "quotes": {
-        "intro": "Leave daytime patrols to me. Just remember I cannot go out on a Full Moon night.",
-        "dayAssign": "In daylight my nose can track anything from afar.",
-        "nightAssign": "I get a bit sleepy at night, but I will keep watch.",
-        "offAssign": "Day off today. I will relax out in the forest.",
-        "happy": "Working mostly daytime shifts made it super easy to move around. Thanks.",
-        "angry": "On a Full Moon night I lose control, so I cannot take night duty."
+        "intro": "昼間の見回りなら任せて。ただ、満月の夜だけは外に出られないから気をつけてね。",
+        "dayAssign": "明るい時間なら遠くまで鼻が利くよ。しっかり見張ってくるね。",
+        "nightAssign": "夜は少し眠くなるけど、見回りはちゃんとしてくるよ。",
+        "offAssign": "今日はお休みだね。森の方でゆっくり過ごしてくるよ。",
+        "happy": "昼間のシフト中心で動きやすかったよ。ありがとう。",
+        "angry": "満月の夜は制御が効かなくなるから、夜番には出られないよ。"
       }
     },
     "pururu": {
-      "name": "Pururu",
-      "title": "Rookie Guard",
-      "race": "Slime",
-      "usualPost": "Aqueduct · Cleaning & Watch",
-      "traitTitle": "No solo night shift (+100 synergy with seniors)",
-      "traitSummary": "Day 200 / Night 200. Maintains the underground waterways. Modest solo power, but adds +100 synergy when paired with Carmilla or Dullahan. Cannot guard night shifts alone.",
+      "name": "プルル",
+      "title": "新米警備員",
+      "race": "スライム",
+      "usualPost": "地下水路・清掃兼見張り",
+      "traitTitle": "夜の単独勤務不可（先輩と組むと連携 +100）",
+      "traitSummary": "昼200 / 夜200。普段は地下水路の浄化を担当。単体の防衛力は控えめだが、カーミラやデュラハンと同じ枠に入ると連携で防衛力が +100 上がる。夜間はひとりでは守れない。",
       "quotes": {
-        "intro": "I am still a rookie, so I will do my best. I just cannot handle night watch all by myself...",
-        "dayAssign": "Heading out for daytime patrol and waterway inspection.",
-        "nightAssign": "Night watch. As long as a senior is with me, I can stay calm.",
-        "offAssign": "On my day off I will rest by the clean stream.",
-        "happy": "Guarding alongside my seniors taught me so much.",
-        "angry": "When left alone in the pitch-black night, I get too scared to see around me..."
+        "intro": "新米ですが精一杯つとめます。ただ、夜のひとり番だけはまだ心細くて……。",
+        "dayAssign": "昼の見回りと水路の点検、丁寧に行ってきます。",
+        "nightAssign": "夜の警備ですね。先輩と一緒なら落ち着いて動けます。",
+        "offAssign": "お休みの日はきれいな水辺で体を休めてきますね。",
+        "happy": "先輩方の近くで警備ができて、とても勉強になりました。",
+        "angry": "真っ暗な夜にひとりきりだと、どうしても周りが見えなくなってしまいます……。"
       }
     },
     "dullahan": {
-      "name": "Dullahan",
-      "title": "Heavy Spectral Knight",
-      "race": "Spectral Knight",
-      "usualPost": "Outer Rampart · Patrol Captain",
-      "traitTitle": "Day 300 / Night 400 · Synergizes with Fenrir & Pururu",
-      "traitSummary": "Day 300 / Night 400. Dependable knight day or night. Gains +100 defense when paired with Fenrir or Pururu, but clashes with Carmilla (-150).",
+      "name": "デュラハン",
+      "title": "重装騎士",
+      "race": "スペクトラルナイト",
+      "usualPost": "外郭城壁・巡回隊長",
+      "traitTitle": "昼300 / 夜400・フェンリルやプルルと好相性",
+      "traitSummary": "昼300 / 夜400。昼夜を問わず安定した防衛力を持つ重装騎士。フェンリルやプルルと組むと防衛力が +100 上がるが、カーミラとは方針が合わない（-150）。",
       "quotes": {
-        "intro": "This shield exists for the peace of the Demon Castle. I shall fulfill my duty at any post.",
-        "dayAssign": "Daytime gate guard. I will keep a vigilant watch.",
-        "nightAssign": "Night patrol. Nothing in the shadows shall escape me.",
-        "offAssign": "Off duty. I will spend the day maintaining my armor.",
-        "happy": "A well-balanced deployment. The castle defense was solid.",
-        "angry": "This deployment is strained. It leaves gaps in our defense."
+        "intro": "この盾は魔王城の平穏のためにある。どの持ち場でも責務を全うしよう。",
+        "dayAssign": "日中の城門警備だな。手抜かりなく見張ろう。",
+        "nightAssign": "夜間の見回りか。暗がりでも気配は逃さん。",
+        "offAssign": "非番だな。武具の手入れに充てさせてもらおう。",
+        "happy": "無理のない見事な配置だった。城の守りも盤石だ。",
+        "angry": "配置に無理があるようだ。これでは守りに綻びが出てしまうぞ。"
       }
     },
     "golem": {
-      "name": "Golem",
-      "title": "Forge Colossus",
-      "race": "Rune Golem",
-      "usualPost": "Castle Forge · Armor Smith",
-      "traitTitle": "No consecutive days (cooling rest required) · Max 3/wk",
-      "traitSummary": "Day 500 / Night 500. Usually forges gate fittings. Its mana core requires cooling, so it can only work every other day (max 3/wk). Pairs well with Minotaur and Mandra.",
+      "name": "ゴーレム",
+      "title": "鍛冶場の巨兵",
+      "race": "ルーンゴーレム",
+      "usualPost": "城内鍛冶場・装甲職人",
+      "traitTitle": "連勤不可（稼働の翌日は冷却休み）・週3回まで",
+      "traitSummary": "昼500 / 夜500。普段は鍛冶場で城門の金具を打つ巨兵。魔力炉の冷却が必要なため1日おき・週3回までしか動けない。ミノタウロスやマンドラと好相性。",
       "quotes": {
-        "intro": "...Mana furnace operates every other day. I shall be the gate's shield.",
-        "dayAssign": "...Daytime gate defense acknowledged.",
-        "nightAssign": "...Nighttime gate defense. Watching by furnace light.",
-        "offAssign": "...Entering cooling standby mode.",
-        "happy": "...Mana furnace temperature normal. Mission completed.",
-        "angry": "...Continuous operation causes core overheating."
+        "intro": "……魔力炉ノ稼働ハ一日オキ。城門ノ盾トナロウ。",
+        "dayAssign": "……日中ノ城門防衛、了解シタ。",
+        "nightAssign": "……夜間ノ城門防衛、炉ノ灯リデ見張ル。",
+        "offAssign": "……冷却休止モードヘ移行スル。",
+        "happy": "……魔力炉ノ温度正常。問題ナク任務完了シタ。",
+        "angry": "……連続稼働ハオーバーヒートノ原因トナル。"
       }
     },
     "behemoth": {
-      "name": "Behemoth",
-      "title": "Forest Horned Brute",
-      "race": "Behemoth",
-      "usualPost": "North Woods · Outer Patrol",
-      "traitTitle": "No consecutive days (Day 550 / Night 450) · Heavy Brawler",
-      "traitSummary": "Day 550 / Night 450. Patrols the northern forest with unmatched strength, but needs a full day's nap after going all out (max 1 consecutive day, 3/wk). Clashes with trap-weaver Arachne (-150).",
+      "name": "ベヒモス",
+      "title": "森の剛角獣",
+      "race": "ベヒモス",
+      "usualPost": "北の森・外縁哨戒",
+      "traitTitle": "連勤不可（昼550 / 夜450）・豪快な力押し",
+      "traitSummary": "昼550 / 夜450。普段は北の森を見回る怪力無双の重戦士。全力で暴れるため翌日は必ず昼寝が必要（最大1連勤・週3回まで）。繊細な罠を張るアラクネからは同じ番を嫌がられる（-150）。",
       "quotes": {
-        "intro": "Leave the heavy lifting to me, as long as I get my nap the next day.",
-        "dayAssign": "Daytime battles get my blood pumping. I will push them right back.",
-        "nightAssign": "Night shift, huh. Good exercise after dinner.",
-        "offAssign": "Eat well and sleep well, that is the best.",
-        "happy": "Fought hard and slept plenty. What a great week.",
-        "angry": "Hey now, going all out two days in a row is asking too much."
+        "intro": "ガハハ、力仕事なら任せな。ただし全力で暴れた翌日は昼寝させてもらうぜ。",
+        "dayAssign": "日向の戦いは血が騒ぐな。まとめて押し返してやるぜ。",
+        "nightAssign": "夜の番か。腹ごなしにちょうどいい運動だな。",
+        "offAssign": "よく食ってよく寝る、これに限るぜ。",
+        "happy": "たっぷり暴れてたっぷり寝た。最高の1週間だったぜ。",
+        "angry": "おいおい、2日続けて全力は無理ってもんだぜ。"
       }
     },
     "ifrit": {
-      "name": "Ifrit",
-      "title": "Underground Furnace Spirit",
-      "race": "Ifrit",
-      "usualPost": "Boiler Room · Fire Keeper",
-      "traitTitle": "No consecutive days (Day 450 / Night 550) · Night Firewall",
-      "traitSummary": "Day 450 / Night 550. Manages the castle's underground heating furnace. Burns mana rapidly, so only works every other day (max 3/wk). Flying sparks scare plant-type Mandra (-150).",
+      "name": "イフリート",
+      "title": "地下炉の炎精",
+      "race": "イフリート",
+      "usualPost": "地下ボイラー室・火守",
+      "traitTitle": "連勤不可（昼450 / 夜550）・夜の炎壁",
+      "traitSummary": "昼450 / 夜550。普段は魔王城の温水炉を管理する炎の魔人。魔力の消費が激しいため1日おき・週3回まで。火の粉が飛ぶため草木系のマンドラとは同じ番に入れない（-150）。",
       "quotes": {
-        "intro": "Here from the boiler room. My flames burn fuel fast, so schedule me every other day.",
-        "dayAssign": "Day shift, got it. I will burn brighter than the sun.",
-        "nightAssign": "Dark nights are where my flames shine. No torches needed.",
-        "offAssign": "Heading back to the furnace to rest my embers today.",
-        "happy": "Burned at a great pace, and the castle bathwater is right on temperature.",
-        "angry": "I will run out of fuel if you work me two days straight."
+        "intro": "地下炉の番から応援に来たぜ。俺の炎は燃費が悪いから1日おき頼むな。",
+        "dayAssign": "昼の番だな。太陽に負けないくらい熱くしてやるよ。",
+        "nightAssign": "暗い夜こそ俺の炎の出番だ。松明いらずで守ってやるぜ。",
+        "offAssign": "今日は地下炉に戻って火種を休めてくるぜ。",
+        "happy": "いいペースで燃えられたな。城の湯加減もバッチリだぜ。",
+        "angry": "燃料切れになっちまう。2日連続は勘弁してくれ。"
       }
     },
     "lich": {
-      "name": "Lich",
-      "title": "Chief Librarian",
-      "race": "Elder Lich",
-      "usualPost": "Grand Archive · Record Keeper",
-      "traitTitle": "Night Specialist (Night 400 / Day 200) · Meticulous Scholar",
-      "traitSummary": "Day 200 / Night 400. Chief librarian of the underground archives. Deploys strong magic barriers at night. Works well with Wisp and Gargoyle, but dislikes rough Drago (-150).",
+      "name": "リッチ",
+      "title": "地下書庫の司書長",
+      "race": "エルダーリッチ",
+      "usualPost": "地下大書庫・記録管理",
+      "traitTitle": "夜番が得意（夜400 / 昼200）・几帳面な古魔道士",
+      "traitSummary": "昼200 / 夜400。普段は地下書庫で古文書を整理している司書長。夜は魔導障壁で高い防衛力を出す。ウィスプやガーゴイルとは相性が良いが、大雑把なドラゴと同じ番になるのを嫌がる（-150）。",
       "quotes": {
-        "intro": "Cataloging archives is my main duty, but I can maintain the night barriers.",
-        "dayAssign": "Daytime air is harsh on old books and bones, though I shall manage.",
-        "nightAssign": "A quiet night. I shall maintain the ward while reading my tome.",
-        "offAssign": "Today I return to the archives to organize the catalog.",
-        "happy": "An orderly schedule. Both my reading and guard duty went smoothly.",
-        "angry": "Sharing a post with someone boisterous disrupts my incantations."
+        "intro": "本来は書庫の整理が本業なのですがね。夜間の結界維持なら引き受けましょう。",
+        "dayAssign": "日中の外気は古書にも骨にも良くないのですが……やむを得ませんね。",
+        "nightAssign": "静かな夜ですね。書物を読み進めながら結界を張っておきましょう。",
+        "offAssign": "本日は書庫に戻って目録の整理をさせていただきます。",
+        "happy": "規則正しいシフトでした。おかげで読書も警備も捗りましたよ。",
+        "angry": "騒がしい方と同じ持ち場にされると、詠唱が乱れて困りますね。"
       }
     },
     "morgan": {
-      "name": "Morgan",
-      "title": "Stargazer Witch",
-      "race": "Night Witch",
-      "usualPost": "Observatory · Star Tower",
-      "traitTitle": "Night Specialist (Night 400 / Day 200) · Astral Mage",
-      "traitSummary": "Day 200 / Night 400. Observes the night sky from the Star Tower. Sleepy by day, but wields 400 astral power at night. Dislikes strict timekeeper Centaur (-150).",
+      "name": "モルガン",
+      "title": "星見塔の魔女",
+      "race": "ナイトウィッチ",
+      "usualPost": "天文台・星見の塔",
+      "traitTitle": "夜番が得意（夜400 / 昼200）・星読みの魔術師",
+      "traitSummary": "昼200 / 夜400。普段は星見塔で夜空を観測している魔女。昼間は眠たそうにしているが夜は星霊術で400を発揮。時間にうるさいケンタウロスとは同じ番を嫌がる（-150）。",
       "quotes": {
-        "intro": "Yawn... I am sleepy during the day. Leave the starlit hours to me.",
-        "dayAssign": "Day shift... I will pull my hat brim down and try not to doze off.",
-        "nightAssign": "The stars are clear tonight. I can foresee every approaching shadow.",
-        "offAssign": "A day off. I will take a long nap in the observatory.",
-        "happy": "Guarding at my own pace under the night sky suited me well.",
-        "angry": "Working beside someone who nags every minute makes it hard to breathe."
+        "intro": "ふぁ……昼間は眠いのよ。星が出る時間の見張りなら任せてちょうだい。",
+        "dayAssign": "昼番なの……帽子のつばを深くして居眠りしないようにしないとね。",
+        "nightAssign": "今夜は星がきれいね。近づく敵の影も全部見通せるわ。",
+        "offAssign": "お休みね。天文台でゆっくり昼寝させてもらうわ。",
+        "happy": "夜空を眺めながら自分のペースで守れたわ。いい采配ね。",
+        "angry": "分刻みで急かしてくる人と同じ番は、息が詰まっちゃうわ。"
       }
     },
     "banshee": {
-      "name": "Banshee",
-      "title": "Moonlit Diva",
-      "race": "Frost Spirit",
-      "usualPost": "Courtyard Music Hall · Night Watch",
-      "traitTitle": "Night Specialist (Night 400 / Day 200) · Loves Quiet",
-      "traitSummary": "Day 200 / Night 400. Frost spirit guarding the quiet night corridors. Synergizes with Carmilla and Wisp (+100), but avoids loud, energetic Fenrir (-150).",
+      "name": "バンシー",
+      "title": "月影の歌姫",
+      "race": "フロストスピリット",
+      "usualPost": "中庭音楽堂・夜の哨戒",
+      "traitTitle": "夜番が得意（夜400 / 昼200）・静寂を好む氷霊",
+      "traitSummary": "昼200 / 夜400。静かな夜の回廊を守る氷の精霊。カーミラやウィスプと組むと連携が冴える（+100）が、元気すぎて声が大きいフェンリルとは同じ番になりたがらない（-150）。",
       "quotes": {
-        "intro": "I love quiet nights... Please schedule me apart from noisy companions.",
-        "dayAssign": "Daylight is a bit dazzling... I will watch quietly from the shade.",
-        "nightAssign": "The night chill feels pleasant. Sound ripples will alert us to enemies.",
-        "offAssign": "Today I will quietly tune my strings in the music hall.",
-        "happy": "Peaceful night shifts allowed me to serve with a calm heart.",
-        "angry": "Loud voices right beside my ear disturb my frost barrier..."
+        "intro": "静かな夜が好きです……騒がしい方とは別の時間帯にしてくださいね。",
+        "dayAssign": "日中は少し眩しくて……日陰からそっと見張りますね。",
+        "nightAssign": "夜の冷気は心地いいです。音の波紋で敵の接近を知らせます。",
+        "offAssign": "今日は音楽堂で静かに弦を合わせて過ごします。",
+        "happy": "穏やかな夜番ばかりで、心安らかに務められました。",
+        "angry": "耳元で大きな声を出されると、氷の結界が乱れてしまいます……。"
       }
     },
     "garuda": {
-      "name": "Garuda",
-      "title": "Gale Harpy Lancer",
-      "race": "Harpy Lancer",
-      "usualPost": "Valley Sky · Aerial Scout",
-      "traitTitle": "Day Specialist (Day 400) · Cannot fly on Full Moon nights",
-      "traitSummary": "Day 400 / Night 200. Aerial scout watching from high above the valley. Strong visibility by day (400), grounded on Full Moon nights. Clashes with motionless Gargoyle (-150).",
+      "name": "ガルーダ",
+      "title": "疾風の鳥人",
+      "race": "ハーピーランサー",
+      "usualPost": "渓谷上空・広域偵察",
+      "traitTitle": "昼番が得意（昼400）・満月夜は気流が乱れ不可",
+      "traitSummary": "昼400 / 夜200。普段は渓谷の上空から見張る鳥人斥候。日中は視界が良く400を出すが、夜間や満月夜は飛べない。動かないガーゴイルとはテンポが合わず同番を嫌がる（-150）。",
       "quotes": {
-        "intro": "In clear daylight I can spot everything from the sky. Just do not pair me with a still statue.",
-        "dayAssign": "Good wind today. I will track every enemy movement from above.",
-        "nightAssign": "Cold night air keeps me on the ground, but I will do my part.",
-        "offAssign": "I will preen my wings and nap on a high branch.",
-        "happy": "A breezy shift where I could ride the wind freely.",
-        "angry": "Working beside someone motionless throws off my flying rhythm."
+        "intro": "晴れた昼間なら空から一網打尽だよ。じっとしてる石像の隣だけは勘弁してね。",
+        "dayAssign": "いい風だね。上空から敵の動きをぜんぶ捉えてみせるよ。",
+        "nightAssign": "夜は羽が冷えるから地上戦になるけど、やれるだけやるよ。",
+        "offAssign": "翼の手入れをして、高い枝で昼寝してくるね。",
+        "happy": "気持ちよく風に乗れるシフトだったよ。また呼んでよね。",
+        "angry": "足並みの遅い相手と組まされると、飛び回るペースが狂っちゃうよ。"
       }
     },
     "centaur": {
-      "name": "Centaur",
-      "title": "Forest Cavalry Archer",
-      "race": "Centaur",
-      "usualPost": "West Road · Forest Defense Line",
-      "traitTitle": "Day Specialist (Day 400) · Disciplined Marksman",
-      "traitSummary": "Day 400 / Night 200. Guards the western forest road with long-range archery (400 by day). Strictly punctual, so arguing breaks out if paired with laid-back Morgan (-150).",
+      "name": "ケンタウロス",
+      "title": "森の弓騎兵",
+      "race": "ケンタウロス",
+      "usualPost": "西の街道・森林防衛線",
+      "traitTitle": "昼番が得意（昼400）・規律を重んじる射手",
+      "traitSummary": "昼400 / 夜200。普段は西の森の街道を守る弓騎兵。日中の遠距離射撃で400を発揮。規律に厳しいため、マイペースなモルガンと同じ番になると言い合いになる（-150）。",
       "quotes": {
-        "intro": "Reporting from the western woods. In daylight, my arrows never miss.",
-        "dayAssign": "Clear visibility and favorable wind. My bow shall guard the main gate.",
-        "nightAssign": "Aiming at night is harder, yet I will not falter in close combat.",
-        "offAssign": "Off duty. I shall tend to my hooves and replenish my arrows.",
-        "happy": "A punctual and orderly schedule. Most satisfactory.",
-        "angry": "Sharing a post with someone unpunctual disrupts unit discipline."
+        "intro": "西の森から応援に参上した。日中の狙撃なら一矢たりとも外さん。",
+        "dayAssign": "視界良好、風向き良し。日中の正門は我が弓で守ろう。",
+        "nightAssign": "夜間は矢の狙いがつけにくいが、近接でも遅れは取らん。",
+        "offAssign": "非番だな。蹄の手入れと矢の補充を行っておく。",
+        "happy": "時間を守った整然たるシフトだった。実に気分が良い。",
+        "angry": "時間を守らんルーズな者と同じ持ち場では、統率が乱れてしまうぞ。"
       }
     },
     "griffon": {
-      "name": "Griffon",
-      "title": "Watchtower Winged Sentinel",
-      "race": "Royal Griffon",
-      "usualPost": "Central Watchtower · Upper Guard",
-      "traitTitle": "Day Specialist (Day 400) · Proud Sentinel",
-      "traitSummary": "Day 400 / Night 200. Keeps watch from the central tower peak. Synergizes with Garuda and Dullahan (+100), but gets distracted by shiny coins next to Mimic (-150).",
+      "name": "グリフォン",
+      "title": "見張り塔の翼獣",
+      "race": "ロイヤルグリフォン",
+      "usualPost": "中央見張り塔・上層衛士",
+      "traitTitle": "昼番が得意（昼400）・誇り高き見張り番",
+      "traitSummary": "昼400 / 夜200。普段は中央見張り塔の頂上で目を光らせる翼獣騎士。ガルーダやデュラハンと組むと連携が光る（+100）が、光り物をジャラジャラさせたミミックの隣では集中できない（-150）。",
       "quotes": {
-        "intro": "Descended from the watchtower. Leave the daylight vigil to me.",
-        "dayAssign": "Under the sun is my pride. No scout shall slip past my eyes.",
-        "nightAssign": "Night vision is tougher for avian eyes, yet none shall pass.",
-        "offAssign": "Returning to my watchtower nest to rest my wings.",
-        "happy": "Fulfilled my duty with pride. Fine command indeed.",
-        "angry": "Glittering gold coins right beside me distract my instincts."
+        "intro": "見張り塔から降りてきたぞ。陽のあるうちの警戒なら我に任せよ。",
+        "dayAssign": "太陽の下こそ我が誇り。いかなる斥候も見逃しはせん。",
+        "nightAssign": "鳥目ゆえ夜は少しばかり骨が折れるが、門は通さん。",
+        "offAssign": "見張り塔の巣へ戻って羽を休めるとしよう。",
+        "happy": "誇り高く任務を全うできた。見事な指揮であったぞ。",
+        "angry": "目の前で金貨をピカピカさせられると、本能で気が散ってかなわん。"
       }
     },
     "gargoyle": {
-      "name": "Gargoyle",
-      "title": "Rampart Stone Sentry",
-      "race": "Stone Gargoyle",
-      "usualPost": "Main Gate Arch · Statue Mimic",
-      "traitTitle": "Day 350 / Night 350 · Steady All-Hour Shield",
-      "traitSummary": "Day 350 / Night 350. Silent sentry disguised as a roof statue. Steady 350 defense day or night. Gets along with quiet Lich (+100), but clashes with restless Garuda (-150).",
+      "name": "ガーゴイル",
+      "title": "城壁の石像兵",
+      "race": "ストーンガーゴイル",
+      "usualPost": "正門アーチ上・石像擬態",
+      "traitTitle": "昼350 / 夜350・昼夜不問の不動の盾",
+      "traitSummary": "昼350 / 夜350。普段は屋根の飾り石像に擬態している無口な衛兵。昼も夜も350の安定した守りを発揮する。リッチとは静か同士で馬が合う（+100）が、せっかちなガルーダとは合わない（-150）。",
       "quotes": {
-        "intro": "...Guarding the gate without moving an inch is my way, day or night.",
-        "dayAssign": "...By day I shall stand poised like a stone statue.",
-        "nightAssign": "...Blending into the dark to watch from above the arch.",
-        "offAssign": "...Returning to my pedestal to rest as stone.",
-        "happy": "...A quiet and solid defense. Not a single crack.",
-        "angry": "...Someone darting around beside me ruins my stone disguise."
+        "intro": "……微動だにせず門を守るのが俺の流儀だ。昼でも夜でも構わん。",
+        "dayAssign": "……日中はただの石像に見えるよう構えておこう。",
+        "nightAssign": "……闇に溶け込んで門の上から見張る。",
+        "offAssign": "……台座に戻って石に戻るとしよう。",
+        "happy": "……静かでいい守りだった。ひび割れひとつない。",
+        "angry": "……ちょこまか動き回る奴が隣だと、石像の擬態がバレてしまう。"
       }
     },
     "minotaur": {
-      "name": "Minotaur",
-      "title": "Armory Warden",
-      "race": "Minotaur",
-      "usualPost": "Underground Armory · Gear Smith",
-      "traitTitle": "Day 400 / Night 300 · Honest Craftsman Warrior",
-      "traitSummary": "Day 400 / Night 300. Maintains shields and spears in the armory. Gains +100 with fellow crafters Golem and Mimic, but aristocratic Carmilla refuses to share a shift (-150).",
+      "name": "ミノタウロス",
+      "title": "武器庫の番人",
+      "race": "ミノタウロス",
+      "usualPost": "地下武器庫・武具管理",
+      "traitTitle": "昼400 / 夜300・実直な職人戦士",
+      "traitSummary": "昼400 / 夜300。普段は地下の武器庫で全員の盾や槍を整備している職人戦士。同じ鍛冶仲間のゴーレムやミミックと組むと +100 だが、貴族趣味のカーミラからは同番を嫌がられる（-150）。",
       "quotes": {
-        "intro": "Helping at the gate between armory duties. My sharpened greataxe is ready.",
-        "dayAssign": "Daytime main gate. I will plant my feet and push them back.",
-        "nightAssign": "Night watch. Better make sure the torch oil is full.",
-        "offAssign": "On my day off I will hammer out the dents in everyone's shields.",
-        "happy": "Good shift. Kept wear and tear on our gear to a minimum.",
-        "angry": "Hard to work beside someone complaining about forge sweat and dust."
+        "intro": "武器庫の整理ついでに門番も手伝うぞ。手入れした大斧の切れ味を見せてやろう。",
+        "dayAssign": "昼の正門だな。しっかり構えて押し返すぞ。",
+        "nightAssign": "夜番か。松明の油を切らさんようにしないとな。",
+        "offAssign": "非番の日はみんなの盾の凹みを直しておくぞ。",
+        "happy": "いいシフトだったな。武具の傷みも少なくて助かるよ。",
+        "angry": "やれ汗臭いだの埃っぽいだの言われる相手とは、やりづらくていかん。"
       }
     },
     "arachne": {
-      "name": "Arachne",
-      "title": "Silver-Thread Trap Weaver",
-      "race": "Arachne",
-      "usualPost": "Tailor Room · Rear Gate Traps",
-      "traitTitle": "Day 300 / Night 400 · Tactical Wire Defense",
-      "traitSummary": "Day 300 / Night 400. Tailors uniforms and strings silver detection threads. Synergizes with Morgan and Mandra (+100), but refuses to work with Behemoth who tramples her webs (-150).",
+      "name": "アラクネ",
+      "title": "銀糸の罠師",
+      "race": "アラクネ",
+      "usualPost": "城内裁縫室・裏門罠管理",
+      "traitTitle": "昼300 / 夜400・知略のワイヤー防衛",
+      "traitSummary": "昼300 / 夜400。普段は警備隊の制服を仕立てつつ、裏門に警戒糸を張っている知略派。モルガンやマンドラと相性が良い（+100）が、糸を踏み荒らすベヒモスとは絶対に組みたがらない（-150）。",
       "quotes": {
-        "intro": "From mending uniforms to rigging gate traps, leave it to me. Just keep clumsy brawlers away.",
-        "dayAssign": "Day shift. I will string subtle silver threads between the trees.",
-        "nightAssign": "At night my silver threads are invisible, snaring intruders cleanly.",
-        "offAssign": "A day off. I will mend the frayed hems on everyone's uniforms.",
-        "happy": "A graceful defense with not a single thread out of place.",
-        "angry": "I cannot work beside someone who stomps right through my freshly strung sensor threads."
+        "intro": "制服の繕いから門の罠張りまでお任せあれ。ただし大雑把な乱暴者とは組ませないでね。",
+        "dayAssign": "昼の番ね。木立の間に見えにくい銀糸を張っておくわ。",
+        "nightAssign": "夜なら銀糸が一切見えないから、近づく敵を綺麗に絡め取れるわよ。",
+        "offAssign": "お休みね。みんなの制服のほつれを直しておくわ。",
+        "happy": "糸ひとつ乱れない美しい防衛だったわね。お見事よ。",
+        "angry": "ちょっと、せっかく張った感知糸をドカドカ踏み切る人とは組めないわよ。"
       }
     },
     "mandra": {
-      "name": "Mandra",
-      "title": "Herb Garden Apprentice",
-      "race": "Mandragora",
-      "usualPost": "Greenhouse · Medicinal Herb Garden",
-      "traitTitle": "No solo night shift (Day 250 / Night 200 · Soothing Aroma)",
-      "traitSummary": "Day 250 / Night 200. Prepares salves in the greenhouse. Gains +100 with Golem, Arachne, or Centaur, but fears Ifrit's flying sparks (-150). Cannot guard night shifts alone.",
+      "name": "マンドラ",
+      "title": "薬草園の見習い",
+      "race": "マンドラゴラ",
+      "usualPost": "城内温室・救護薬草園",
+      "traitTitle": "夜の単独勤務不可（昼250 / 夜200・癒やしの香気）",
+      "traitSummary": "昼250 / 夜200。普段は薬草園で傷薬を作っている植物娘。ゴーレムやアラクネ、ケンタウロスと組むと元気が出て +100 だが、火の粉が飛ぶイフリートの隣は怖がる（-150）。夜は単独配置不可。",
       "quotes": {
-        "intro": "Here to help from the herb garden. I do great in warm sunlight and beside kind seniors.",
-        "dayAssign": "Warm sunshine today. I will ready my sleep-herb powder.",
-        "nightAssign": "Night is a little dark, so I will follow right behind my senior.",
-        "offAssign": "Back to the greenhouse for water and fertilizer.",
-        "happy": "Even the leaf on my head stayed perky all week.",
-        "angry": "Staying next to scorching flames will singe my leaves..."
+        "intro": "薬草園からお手伝いに来ました。お日様の下と、優しい先輩の隣なら頑張れます。",
+        "dayAssign": "ぽかぽか陽気ですね。眠り粉のハーブを準備して見張ります。",
+        "nightAssign": "夜はちょっと暗いので、先輩の後ろについていきますね。",
+        "offAssign": "温室に戻って、お水と肥料をもらってきます。",
+        "happy": "頭の葉っぱもピンと元気なまま1週間を終えられました。",
+        "angry": "あわわ、炎が熱い方の隣だと葉っぱがチリチリに焦げてしまいます……。"
       }
     },
     "mimic": {
-      "name": "Mimic",
-      "title": "Treasury Chest Keeper",
-      "race": "Mimic Girl",
-      "usualPost": "Underground Treasury · Decoy Guard",
-      "traitTitle": "No solo night shift (Day 200 / Night 200 · Surprise Box)",
-      "traitSummary": "Day 200 / Night 200. Shy guard hiding in a chest. Gains +100 with Minotaur or Morgan, but fears Griffon who stares at shiny gold (-150). Cannot guard night shifts alone.",
+      "name": "ミミック",
+      "title": "宝物庫の箱番",
+      "race": "ミミックガール",
+      "usualPost": "地下宝物庫・擬態番人",
+      "traitTitle": "夜の単独勤務不可（昼200 / 夜200・びっくり箱罠）",
+      "traitSummary": "昼200 / 夜200。普段は宝物庫の片隅で箱に隠れている恥ずかしがり屋。ミノタウロスやモルガンと組むと連携 +100 だが、光り物に敏感なグリフォンからは嫌がられる（-150）。夜は単独配置不可。",
       "quotes": {
-        "intro": "Watching from inside my box is my specialty... Just do not leave me alone at night...",
-        "dayAssign": "I will pretend to be a roadside crate and surprise the scouts.",
-        "nightAssign": "With a senior beside me, I can open my lid even at night.",
-        "offAssign": "Tucking myself in the corner of the treasury with the lock shut.",
-        "happy": "My hinges stayed smooth and the surprise trap worked well.",
-        "angry": "When a bird senior stares at my gold from above, I am too scared to open the lid..."
+        "intro": "は、箱の中から見張るのなら得意です……。でも夜のひとりぼっちは蓋が開けられません……。",
+        "dayAssign": "道端に置かれた木箱のふりをして、斥候をびっくりさせますね。",
+        "nightAssign": "先輩が隣にいてくれるなら、夜でも頑張って蓋を開けます。",
+        "offAssign": "宝物庫の隅っこに戻って、鍵を閉めて休んでいますね。",
+        "happy": "箱の蝶番もガタつかず、うまくびっくり作戦ができました。",
+        "angry": "鳥の先輩に上からジッと狙われていると、怖くて箱から出られません……。"
       }
     },
     "wisp": {
-      "name": "Wisp",
-      "title": "Corridor Lantern Spirit",
-      "race": "Will-o'-Wisp",
-      "usualPost": "Castle Corridors · Night Guide Light",
-      "traitTitle": "No solo night shift (Day 200 / Night 250 · Foxfire Light)",
-      "traitSummary": "Day 200 / Night 250. Guides dark hallways. Gains +100 with Lich, Banshee, or Ifrit, but Golem's dry furnace exhaust scatters her flame (-150). Cannot guard night shifts alone.",
+      "name": "ウィスプ",
+      "title": "回廊の提灯精霊",
+      "race": "ウィルオウィスプ",
+      "usualPost": "城内回廊・夜間案内灯",
+      "traitTitle": "夜の単独勤務不可（昼200 / 夜250・狐火の照明）",
+      "traitSummary": "昼200 / 夜250。普段は暗い廊下の案内灯をしている小さな精霊。リッチやバンシー、イフリートと組むと灯りが強まり +100 だが、ゴーレムの乾いた炉熱とは反発する（-150）。夜は単独配置不可。",
       "quotes": {
-        "intro": "I am good at lighting the way, so pair me with someone who can hold the gate.",
-        "dayAssign": "My light is fainter by day, so I will use ground mist as cover.",
-        "nightAssign": "I will light up every step in the dark. Seniors, handle the rest.",
-        "offAssign": "Curling up inside my lantern to rest.",
-        "happy": "Floating and shining beside everyone was fun.",
-        "angry": "Golem's dry exhaust wind nearly blows out my foxfire..."
+        "intro": "ふわふわ照らすのは得意だけど、ひとりで門を守るのは無理だから誰かと一緒にしてね。",
+        "dayAssign": "昼間はちょっと光が見えにくいけど、足元の霧で目隠しするよ。",
+        "nightAssign": "夜の足元はぜんぶ照らしてあげる。先輩、あとはよろしくね。",
+        "offAssign": "ランタンの中でまるくなって休んでくるね。",
+        "happy": "みんなの隣でゆらゆら楽しく照らせたよ。",
+        "angry": "ゴーレムさんの乾いた熱風にあたると、狐火が消えそうになっちゃうよ……。"
       }
     }
   },
   "relations": {
     "carmilla_pururu_love": {
-      "title": "Caring Night Pair"
+      "title": "夜番の世話焼きペア",
+      "description": "カーミラとプルルが同じシフトに入ると、連携で防衛力 +100。"
     },
     "drago_fenrir_train": {
-      "title": "Master & Pupil Duo"
+      "title": "師弟コンビの連携",
+      "description": "ドラゴとフェンリルが同じシフトに入ると、息の合った守りで防衛力 +100。"
     },
     "fenrir_dullahan_patrol": {
-      "title": "Steadfast Patrol Pair"
+      "title": "実直な見回りペア",
+      "description": "フェンリルとデュラハンが同じシフトに入ると、堅実な巡回で防衛力 +100。"
     },
     "dullahan_pururu_mentor": {
-      "title": "Senior Knight's Guidance"
+      "title": "先輩騎士のフォロー",
+      "description": "デュラハンとプルルが同じシフトに入ると、丁寧な指導で防衛力 +100。"
     },
     "golem_minotaur_forge": {
-      "title": "Forge Artisans"
+      "title": "鍛冶場職人コンビ",
+      "description": "ゴーレムとミノタウロスが同じシフトに入ると、阿吽の呼吸で防衛力 +100。"
     },
     "golem_mandra_moss": {
-      "title": "Mossy Giant & Flora"
+      "title": "苔むす巨兵と草花",
+      "description": "ゴーレムとマンドラが同じシフトに入ると、穏やかな連携で防衛力 +100。"
     },
     "behemoth_garuda_wild": {
-      "title": "Sky & Earth Assault"
+      "title": "天地強襲コンビ",
+      "description": "ベヒモスとガルーダが同じシフトに入ると、地上と上空の挟撃で防衛力 +100。"
     },
     "ifrit_wisp_flame": {
-      "title": "Twin Flames"
+      "title": "大小の灯火コンビ",
+      "description": "イフリートとウィスプが同じシフトに入ると、炎の共鳴で防衛力 +100。"
     },
     "lich_wisp_library": {
-      "title": "Archive Reading Light"
+      "title": "書庫の読書灯ペア",
+      "description": "リッチとウィスプが同じシフトに入ると、静かな魔力補助で防衛力 +100。"
     },
     "lich_gargoyle_silent": {
-      "title": "Silent Guardians"
+      "title": "静寂の守護者ペア",
+      "description": "リッチとガーゴイルが同じシフトに入ると、無言の連携で防衛力 +100。"
     },
     "morgan_arachne_weave": {
-      "title": "Starlight Web Trap"
+      "title": "星糸の魔導罠ペア",
+      "description": "モルガンとアラクネが同じシフトに入ると、魔術と銀糸の罠で防衛力 +100。"
     },
     "morgan_mimic_mystery": {
-      "title": "Illusion Surprise Box"
+      "title": "幻惑のびっくり箱",
+      "description": "モルガンとミミックが同じシフトに入ると、幻術の誘導で防衛力 +100。"
     },
     "carmilla_banshee_nocturne": {
-      "title": "Moonlight Nocturne"
+      "title": "月下の夜想曲ペア",
+      "description": "カーミラとバンシーが同じシフトに入ると、優雅な夜間連携で防衛力 +100。"
     },
     "banshee_wisp_mist": {
-      "title": "Night Mist & Foxfire"
+      "title": "夜霧と狐火の幻想",
+      "description": "バンシーとウィスプが同じシフトに入ると、幻想的な撹乱で防衛力 +100。"
     },
     "garuda_griffon_sky": {
-      "title": "Air Superiority Patrol"
+      "title": "制空哨戒コンビ",
+      "description": "ガルーダとグリフォンが同じシフトに入ると、空からの連携で防衛力 +100。"
     },
     "centaur_mandra_forest": {
-      "title": "Forest Blessing Duo"
+      "title": "森の恵みコンビ",
+      "description": "ケンタウロスとマンドラが同じシフトに入ると、毒矢と薬草の連携で防衛力 +100。"
     },
     "griffon_dullahan_honor": {
-      "title": "Chivalrous Knights"
+      "title": "誇り高き騎士道ペア",
+      "description": "グリフォンとデュラハンが同じシフトに入ると、鉄壁の礼節で防衛力 +100。"
     },
     "minotaur_mimic_craft": {
-      "title": "Chest Hinge Maintenance"
+      "title": "箱の金具メンテナンス",
+      "description": "ミノタウロスとミミックが同じシフトに入ると、頑丈な守りで防衛力 +100。"
     },
     "arachne_mandra_garden": {
-      "title": "Greenhouse Pest Ward"
+      "title": "温室の虫除けペア",
+      "description": "アラクネとマンドラが同じシフトに入ると、息の合った連携で防衛力 +100。"
     },
     "carmilla_dullahan_clash": {
-      "title": "Incompatible: Stoic Knight & Night Noble"
+      "title": "同番拒否：堅物騎士と夜貴族",
+      "description": "カーミラとデュラハンは「堅苦しい説教はうんざり」と反発し合い、同番だと防衛力 -150。"
     },
     "drago_lich_clash": {
-      "title": "Incompatible: Elder Dragon & Fussy Librarian"
+      "title": "同番拒否：豪快竜と小言司書",
+      "description": "ドラゴとリッチは「細かい小言がうるさい」「火の粉で古書が傷む」と嫌がり、同番だと防衛力 -150。"
     },
     "fenrir_banshee_clash": {
-      "title": "Incompatible: Loud Howl & Quiet Spirit"
+      "title": "同番拒否：大声と静寂好き",
+      "description": "バンシーは元気すぎるフェンリルの遠吠えが苦手で、同じシフトだと防衛力 -150。"
     },
     "ifrit_mandra_clash": {
-      "title": "Incompatible: Scorching Flame & Flora"
+      "title": "同番拒否：灼熱の炎と草木",
+      "description": "マンドラはイフリートの熱気で葉っぱが焦げるのを怖がり、同じシフトだと防衛力 -150。"
     },
     "behemoth_arachne_clash": {
-      "title": "Incompatible: Web Traps & Rampaging Brute"
+      "title": "同番拒否：糸罠と怪力暴れ馬",
+      "description": "アラクネは「張ったばかりの銀糸を踏み荒らされる」とベヒモスとの同番を嫌がり、防衛力 -150。"
     },
     "garuda_gargoyle_clash": {
-      "title": "Incompatible: Gale Flyer & Still Statue"
+      "title": "同番拒否：疾風と不動の石像",
+      "description": "ガルーダとガーゴイルは動くテンポがまったく合わず、同じシフトだと防衛力 -150。"
     },
     "morgan_centaur_clash": {
-      "title": "Incompatible: Free Spirit & Strict Timekeeper"
+      "title": "同番拒否：マイペースと時間厳守",
+      "description": "時間に厳しいケンタウロスと夜更かし魔女のモルガンは口論になり、同番だと防衛力 -150。"
     },
     "griffon_mimic_clash": {
-      "title": "Incompatible: Shiny Gold & Chest Keeper"
+      "title": "同番拒否：光り物と箱番",
+      "description": "ミミックは光り物に反応するグリフォンを怖がり、同じシフトだと防衛力 -150。"
     },
     "golem_wisp_clash": {
-      "title": "Incompatible: Furnace Exhaust & Foxfire"
+      "title": "同番拒否：乾いた炉熱と狐火",
+      "description": "ゴーレムの排熱でウィスプの狐火が乱れてしまい、同じシフトだと防衛力 -150。"
     },
     "carmilla_minotaur_clash": {
-      "title": "Incompatible: Noble's Disdain"
+      "title": "同番拒否：貴族のわがまま",
+      "description": "カーミラが「鍛冶場帰りの汗臭い方と同じ控え室はごめんですわ」と嫌がり、同番だと防衛力 -150。"
     }
   },
   "stages": {
@@ -834,7 +867,12 @@
           "shortCallout": "仕上げに、火曜休んだドラゴの水曜「夜」を押せば完成です",
           "instruction": "最後の仕上げです（6/6）。水曜の夜は手強い「勇者軍・紅蓮魔導団」が来ますので、火曜日に休んで体力が戻ったドラゴの水曜のマスで「夜」を選べば完成です。"
         }
-      ]
+      ],
+      "clearQuotes": {
+        "drago": "中日に休めたおかげで、古傷も痛まず最後まで体が持ったぞ。",
+        "fenrir": "昼間の見回りなら視界もいいし、落ち着いて対応できたよ。",
+        "carmilla": "夜の静かな時間帯に集中できましたわ。悪くない采配ですわね。"
+      }
     },
     "week-2": {
       "title": "12月：夜襲部隊の接近（3日間）",
@@ -843,7 +881,12 @@
       "newRuleSummary": "夜番に入ったメンバーは、翌朝すぐに昼番へ入ることができません（夜→夜は可能です）。また、仲の良い2人（フェンリル＋デュラハン）を同じ枠に並べると連携で防衛力が +100 上がりますが、「あの人とは一緒に働きたくない」という不仲ペア（カーミラ＋デュラハン）を同じ枠に入れると口論になり防衛力が -150 下がります。",
       "lilithIntro": "今月はドラゴが裏門の当番へ回り、代わりに重装騎士デュラハンが正門当番に入りました。ただ、カーミラは堅物のデュラハンと同じ番に入るのを嫌がるので、別の時間帯に分けてあげてください。",
       "lilithHint": "月曜の昼はフェンリル（昼400）とデュラハン（昼300）を並べると、連携ボーナス（+100）が加わって防衛力800になり余裕をもって守れます。",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "dullahan": "夜番明けの休息が守られていれば、鎧の重みも苦にはならん。",
+        "fenrir": "デュラハンさんと一緒の見回りは、背中を預けられて安心だったよ。",
+        "carmilla": "堅苦しい騎士と顔を合わせずに済んで、快適に夜番ができましたわ。"
+      }
     },
     "week-3": {
       "title": "1月：4日間の包囲（4日間）",
@@ -852,7 +895,12 @@
       "newRuleSummary": "新米のプルル（防衛力200）は、夜番にひとりで配置することができません（他の仲間と同じ夜番に並べれば配置でき、カーミラと組むと連携で +100 上がります）。また、どのメンバーも最大3連勤までで、4日間のうち最低1日は休みが必要です。",
       "lilithIntro": "敵の部隊が森の周囲に陣を張り、4日間の長期戦になりました。今月は地下水路の清掃当番から新米のプルルが応援に加わります。プルルを夜に出すときは、必ず先輩と一緒にしてあげてください。",
       "lilithHint": "木曜の夜にカーミラ（夜400）とプルル（夜200）を一緒に配置すると、連携ボーナス（+100）も加わって防衛力700になり盤石です。",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "pururu": "カーミラさんや先輩方が近くにいてくださったので、夜も落ち着いて見張れました。",
+        "carmilla": "プルルは素直で助かりますわ。夜の見回りも退屈しませんでした。",
+        "drago": "4日間となると休みの配分が肝心だな。いい回り方だったぞ。"
+      }
     },
     "week-4": {
       "title": "2月：満月の攻防（5日間・5名当番）",
@@ -861,7 +909,12 @@
       "newRuleSummary": "満月の夜（水曜・夜）は、フェンリルを夜番に配置できません（水曜の昼は配置可能です）。また5日間のうち、ドラゴは最大3回、他のメンバーは最大4回までが出勤上限となります。",
       "lilithIntro": "今月の正門当番は5名です。水曜の夜は満月のため、フェンリルは夜番に出られません。カーミラとデュラハンの不仲（-150）を避けつつ、それぞれの指定休も確認しながら組み立てましょう。",
       "lilithHint": "水曜の満月夜はフェンリルが出られないため、カーミラ・デュラハン・プルル・ドラゴの中から2人を充てます。カーミラとデュラハンを同じシフトに入れると防衛力が -150 下がるので、プルルをうまく組み合わせるのが要です。",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "fenrir": "満月の夜を外してもらえて助かったよ。その分、昼の見回りに集中できた。",
+        "dullahan": "5人の役割がはっきりしていて、長丁場でも乱れのない守りだった。",
+        "pururu": "5日間のシフトでも、お休みがあると最後まで元気にお仕事できますね。"
+      }
     },
     "week-5": {
       "title": "3月：勇者本隊の進軍（5日間・6名拡大当番）",
@@ -870,7 +923,15 @@
       "newRuleSummary": "敵の本隊に対抗するため、地下書庫から司書長リッチ（夜400）が応援に加わり6名態勢になります。ただしリッチは大雑把なドラゴと同じ番に入るのを嫌がり（-150）、カーミラもデュラハンとの同番を嫌がります（-150）。金曜・夜の勇者本隊（必要人数3人）に主力を残せるよう配分してください。",
       "lilithIntro": "敵の本隊がついに動き出しました。今月は特別に地下書庫からリッチも呼び、6名で正門を守ります。ドラゴとリッチ、カーミラとデュラハンがそれぞれ同じ番にならないよう配慮しつつ、金曜の夜を3人で守り抜きましょう。",
       "lilithHint": "夜番が得意なメンバーがカーミラ・デュラハン・リッチの3人に増えています。ドラゴを月曜（昼）・水曜（昼）・金曜（夜）の3枠に充て、金曜の夜はドラゴ＋カーミラ＋プルル（またはデュラハン＋プルル）で組むとリッチとドラゴの反発を避けられます。",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "drago": "金曜の夜まで力を温存できたおかげで、本隊相手にも一歩も引かずに済んだぞ。",
+        "carmilla": "誰ひとり倒れることなく、静かな夜を取り戻せましたわね。",
+        "fenrir": "みんなの力が噛み合って、最後まで気持ちよく守れたよ。",
+        "dullahan": "見事な采配だった。この城と森の平穏は守られた。",
+        "pururu": "私たちの魔王城、みんなで守り切れましたね。",
+        "lich": "ドラゴ殿と鉢合わせしないシフトのおかげで、落ち着いて障壁を展開できましたよ。"
+      }
     }
   },
   "violations": {

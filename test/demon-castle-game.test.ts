@@ -29,7 +29,16 @@ import {
   BALANCE_CONFIG,
   type StagePlayRecord,
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
-import { getRequirementLocalized } from "../examples/web-demo/games/demon-castle-shift/i18n-data.js";
+import {
+  formatCastleCalendarMonthLocalized,
+  getLilithProfileLocalized,
+  getMonsterLocalized,
+  getRelationLocalized,
+  getRequestedOffReasonLocalized,
+  getRequirementLocalized,
+  getStageLocalized,
+  getTutorialStepLocalized,
+} from "../examples/web-demo/games/demon-castle-shift/i18n-data.js";
 import {
   getActiveStageStateForTest,
   getNextCycleShift,
@@ -270,7 +279,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     for (const mId of ALL_MONSTER_IDS) {
       const m = MONSTERS[mId];
       expect(m).toBeDefined();
-      expect(m.usualPost.length).toBeGreaterThan(0);
+      expect((m.usualPost ?? "").length).toBeGreaterThan(0);
       expect(m.portrait).toMatch(/^\.\/char-[a-z]+\.jpg$/);
     }
 
@@ -702,14 +711,144 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
         expect(jaReq.enemyName).not.toBe(req.enemyName);
         expect(jaReq.enemyName.length).toBeGreaterThan(0);
         expect(jaReq.enemyQuote).not.toBe(req.enemyQuote);
-        expect(jaReq.enemyQuote.length).toBeGreaterThan(0);
+        expect((jaReq.enemyQuote ?? "").length).toBeGreaterThan(0);
 
         const zhReq = getRequirementLocalized(req, "zh");
         expect(zhReq.enemyName).not.toBe(req.enemyName);
         expect(zhReq.enemyName.length).toBeGreaterThan(0);
         expect(zhReq.enemyQuote).not.toBe(req.enemyQuote);
-        expect(zhReq.enemyQuote.length).toBeGreaterThan(0);
+        expect((zhReq.enemyQuote ?? "").length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it("localizes monster profiles, pair relations, requested day-off reasons, tutorial steps, and calendar era without mixed-language bleed-through", () => {
+    const kanaRegex = /[\u3040-\u309F\u30A1-\u30FA\u30FC-\u30FF]/;
+
+    // 1. Lilith profile
+    const lilithEn = getLilithProfileLocalized("en");
+    const lilithJa = getLilithProfileLocalized("ja");
+    const lilithZh = getLilithProfileLocalized("zh");
+    expect(lilithJa.name).not.toBe(lilithEn.name);
+    expect(lilithJa.title).not.toBe(lilithEn.title);
+    expect(lilithJa.defaultQuote).not.toBe(lilithEn.defaultQuote);
+    expect(lilithZh.name).not.toBe(lilithEn.name);
+    expect(lilithZh.title).not.toBe(lilithEn.title);
+
+    // 2. All 20 monster profiles
+    for (const mId of ALL_MONSTER_IDS) {
+      const mEn = getMonsterLocalized(mId, "en");
+      const mJa = getMonsterLocalized(mId, "ja");
+      const mZh = getMonsterLocalized(mId, "zh");
+
+      expect(mJa.name).not.toBe(mEn.name);
+      expect(mJa.title).not.toBe(mEn.title);
+      expect(mJa.race).not.toBe(mEn.race);
+      expect(mJa.usualPost).not.toBe(mEn.usualPost);
+      expect(mJa.traitTitle).not.toBe(mEn.traitTitle);
+      expect(mJa.traitSummary).not.toBe(mEn.traitSummary);
+      expect(mJa.quotes.intro).not.toBe(mEn.quotes.intro);
+      expect(mJa.quotes.dayAssign).not.toBe(mEn.quotes.dayAssign);
+      expect(mJa.quotes.nightAssign).not.toBe(mEn.quotes.nightAssign);
+      expect(mJa.quotes.offAssign).not.toBe(mEn.quotes.offAssign);
+      expect(mJa.quotes.happy).not.toBe(mEn.quotes.happy);
+      expect(mJa.quotes.angry).not.toBe(mEn.quotes.angry);
+      expect(mJa.traitTitle).not.toContain("Night Specialist");
+      expect(mJa.usualPost).not.toContain("Main Gate");
+
+      expect(mZh.name).not.toBe(mEn.name);
+      expect(mZh.traitTitle).not.toBe(mEn.traitTitle);
+      expect(mZh.traitSummary).not.toBe(mEn.traitSummary);
+    }
+
+    // 3. All pair relations (both title and description)
+    for (const rel of ALL_PAIR_RELATIONS) {
+      const rEn = getRelationLocalized(rel, "en");
+      const rJa = getRelationLocalized(rel, "ja");
+      const rZh = getRelationLocalized(rel, "zh");
+
+      expect(rEn.title).toBe(rel.title);
+      expect(rEn.description).toBe(rel.description);
+      expect(rJa.title).not.toBe(rEn.title);
+      expect(rJa.description).not.toBe(rEn.description);
+      expect(rZh.title).not.toBe(rEn.title);
+      expect(rZh.description).not.toBe(rEn.description);
+    }
+
+    // 4. Requested day-off reasons (both 2-arg and 3-arg signatures, static & dynamic endless post reasons)
+    for (const stage of CAMPAIGN_STAGES) {
+      for (const reqOff of stage.requestedDaysOff) {
+        const jaReason2 = getRequestedOffReasonLocalized(reqOff.reason, "ja");
+        const jaReason3 = getRequestedOffReasonLocalized(reqOff.reason, reqOff.monsterId, "ja");
+        const zhReason3 = getRequestedOffReasonLocalized(reqOff.reason, reqOff.monsterId, "zh");
+        const enReason3 = getRequestedOffReasonLocalized(reqOff.reason, reqOff.monsterId, "en");
+
+        expect(enReason3).toBe(reqOff.reason);
+        expect(jaReason2).not.toBe(reqOff.reason);
+        expect(jaReason3).toBe(jaReason2);
+        expect(zhReason3).not.toBe(reqOff.reason);
+      }
+    }
+    const dynEn = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "drago", "en");
+    const dynJa3 = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "drago", "ja");
+    const dynJa2 = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "ja");
+    const dynZh3 = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "drago", "zh");
+    expect(dynEn).toBe("Main Gate Duty / Rest");
+    expect(dynJa3).not.toContain("Main Gate");
+    expect(dynJa2).toBe(dynJa3);
+    expect(dynZh3).not.toContain("Main Gate");
+
+    // 5. Tutorial steps (both 2-arg and 3-arg signatures; no Japanese Kana in EN or ZH)
+    const week1Steps = CAMPAIGN_STAGES[0].tutorialSteps ?? [];
+    expect(week1Steps.length).toBeGreaterThan(0);
+    week1Steps.forEach((step, idx) => {
+      const tEn2 = getTutorialStepLocalized(step, "en");
+      const tEn3 = getTutorialStepLocalized(step, idx, "en");
+      const tJa2 = getTutorialStepLocalized(step, "ja");
+      const tJa3 = getTutorialStepLocalized(step, idx, "ja");
+      const tZh2 = getTutorialStepLocalized(step, "zh");
+      const tZh3 = getTutorialStepLocalized(step, idx, "zh");
+
+      expect(tEn2).toEqual(tEn3);
+      expect(tJa2).toEqual(tJa3);
+      expect(tZh2).toEqual(tZh3);
+
+      expect(kanaRegex.test(tEn3.shortCallout)).toBe(false);
+      expect(kanaRegex.test(tEn3.instruction)).toBe(false);
+      expect(kanaRegex.test(tZh3.shortCallout)).toBe(false);
+      expect(kanaRegex.test(tZh3.instruction)).toBe(false);
+      expect(tJa3.shortCallout).not.toBe(tEn3.shortCallout);
+      expect(tJa3.instruction).not.toBe(tEn3.instruction);
+      expect(tZh3.shortCallout).not.toBe(tEn3.shortCallout);
+      expect(tZh3.instruction).not.toBe(tEn3.instruction);
+    });
+
+    // 6. Calendar era formatting and stage localization (including clearQuotes and retry stages)
+    const refDate = new Date(2026, 10, 1);
+    const calEn = formatCastleCalendarMonthLocalized(1, true, "en", refDate);
+    const calJa = formatCastleCalendarMonthLocalized(1, true, "ja", refDate);
+    const calZh = formatCastleCalendarMonthLocalized(1, true, "zh", refDate);
+    expect(calEn).toContain("Star-Moon Era");
+    expect(calJa).not.toContain("Star-Moon Era");
+    expect(calZh).not.toContain("Star-Moon Era");
+
+    for (const stage of CAMPAIGN_STAGES) {
+      const sEn = getStageLocalized(stage, "en");
+      const sJa = getStageLocalized(stage, "ja");
+      const sZh = getStageLocalized(stage, "zh");
+      expect(sJa.title).not.toBe(sEn.title);
+      expect(sZh.title).not.toBe(sEn.title);
+      for (const mId of Object.keys(stage.clearQuotes ?? {})) {
+        const key = mId as (typeof ALL_MONSTER_IDS)[number];
+        expect(sJa.clearQuotes?.[key]).toBeTruthy();
+        expect(sJa.clearQuotes?.[key]).not.toBe(sEn.clearQuotes?.[key]);
+        expect(sZh.clearQuotes?.[key]).toBeTruthy();
+        expect(sZh.clearQuotes?.[key]).not.toBe(sEn.clearQuotes?.[key]);
+      }
+    }
+
+    const retryStage = generateRetryCampaignStage(0, 1);
+    const retryJa = getStageLocalized(retryStage, "ja");
+    expect(retryJa.subtitle).not.toContain("New Lineup");
   });
 });

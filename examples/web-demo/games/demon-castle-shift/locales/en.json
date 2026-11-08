@@ -299,7 +299,11 @@
     "chiefGuardTacticianLilith": "Chief Guard Tactician Lilith",
     "howToPlayShiftRules": "How to Play & Shift Rules",
     "divClassHelpGridDiv": "<div class=\"help-grid\">\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">Step 1</span>\n          <h3>Guard Defense vs. Enemy Raid Power</h3>\n          <p>\n            In each shift slot, the actual combat power of the invading force fluctuates around the <strong>estimated power</strong>.<br />\n            <strong>Your defense succeeds if your total Defense is at least the enemy's actual power.</strong> Leverage preferred shifts and pair synergies to build a solid defense.\n          </p>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">Step 2</span>\n          <h3>Follow Healthy Shift Rules</h3>\n          <p>\n            To keep every companion healthy, your schedule must obey these shift rules (as long as labor rules are met, you can dispatch even if some slots are below estimated power):\n          </p>\n          <ul class=\"help-list\">\n            <li><strong>Heavyweights (Drago, Golem, etc.) Cannot Work Consecutive Days</strong>: After working 1 day, the next day must be Off (max 3 shifts/week).</li>\n            <li><strong>No Day Shift Immediately After Night Shift</strong>: A guard on Night duty cannot work Day duty the next morning (Night → Night is allowed).</li>\n            <li><strong>Rookies (Pururu, Mandra, etc.) Cannot Guard Night Alone</strong>: On Night duty, they must be paired with at least one other guard.</li>\n            <li><strong>Requested Days Off & Full Moon Nights</strong>: Requested days off and Full Moon nights for daytime beastkin (Fenrir, etc.) are locked to Off.</li>\n          </ul>\n        </div>\n        <div class=\"help-step-card\">\n          <span class=\"step-num\">Step 3</span>\n          <h3>Synergy (+100), Friction (-150) & Zero-Breach Victory</h3>\n          <p>\n            Assigning compatible partners to the same slot grants <strong>+100 Defense</strong>, while placing incompatible rivals together imposes <strong>-150 Defense</strong>.<br />\n            Enemy raids strike unpredictably (weakly guarded slots are targeted more often), and <strong>even a single gate breach results in defeat</strong>.\n          </p>\n        </div>\n      </div>",
-    "defaultDiagMessage": "Current guard placement is uneven, causing staffing shortages in later slots."
+    "defaultDiagMessage": "Current guard placement is uneven, causing staffing shortages in later slots.",
+    "noteViolationMobile": "⚠️Rule",
+    "noteFullMoonMobile": "🚫FullMoon",
+    "defenderNameMulti": "{name} +{extra}",
+    "postDutyRest": "{post} Duty / Rest"
   },
   "lilith": {
     "name": "Lilith",
@@ -714,91 +718,120 @@
   },
   "relations": {
     "carmilla_pururu_love": {
-      "title": "Caring Night Pair"
+      "title": "Caring Night Pair",
+      "description": "When Carmilla and Pururu share a shift, teamwork adds +100 defense."
     },
     "drago_fenrir_train": {
-      "title": "Master & Pupil Duo"
+      "title": "Master & Pupil Duo",
+      "description": "When Drago and Fenrir share a shift, coordinated defense adds +100."
     },
     "fenrir_dullahan_patrol": {
-      "title": "Steadfast Patrol Pair"
+      "title": "Steadfast Patrol Pair",
+      "description": "When Fenrir and Dullahan share a shift, steady patrolling adds +100."
     },
     "dullahan_pururu_mentor": {
-      "title": "Senior Knight's Guidance"
+      "title": "Senior Knight's Guidance",
+      "description": "When Dullahan and Pururu share a shift, attentive mentoring adds +100."
     },
     "golem_minotaur_forge": {
-      "title": "Forge Artisans"
+      "title": "Forge Artisans",
+      "description": "When Golem and Minotaur share a shift, craftsman synergy adds +100."
     },
     "golem_mandra_moss": {
-      "title": "Mossy Giant & Flora"
+      "title": "Mossy Giant & Flora",
+      "description": "When Golem and Mandra share a shift, gentle harmony adds +100."
     },
     "behemoth_garuda_wild": {
-      "title": "Sky & Earth Assault"
+      "title": "Sky & Earth Assault",
+      "description": "When Behemoth and Garuda share a shift, air-ground pincer adds +100."
     },
     "ifrit_wisp_flame": {
-      "title": "Twin Flames"
+      "title": "Twin Flames",
+      "description": "When Ifrit and Wisp share a shift, flame resonance adds +100."
     },
     "lich_wisp_library": {
-      "title": "Archive Reading Light"
+      "title": "Archive Reading Light",
+      "description": "When Lich and Wisp share a shift, quiet mana support adds +100."
     },
     "lich_gargoyle_silent": {
-      "title": "Silent Guardians"
+      "title": "Silent Guardians",
+      "description": "When Lich and Gargoyle share a shift, wordless coordination adds +100."
     },
     "morgan_arachne_weave": {
-      "title": "Starlight Web Trap"
+      "title": "Starlight Web Trap",
+      "description": "When Morgan and Arachne share a shift, astral silver webs add +100."
     },
     "morgan_mimic_mystery": {
-      "title": "Illusion Surprise Box"
+      "title": "Illusion Surprise Box",
+      "description": "When Morgan and Mimic share a shift, illusion decoys add +100."
     },
     "carmilla_banshee_nocturne": {
-      "title": "Moonlight Nocturne"
+      "title": "Moonlight Nocturne",
+      "description": "When Carmilla and Banshee share a shift, elegant night harmony adds +100."
     },
     "banshee_wisp_mist": {
-      "title": "Night Mist & Foxfire"
+      "title": "Night Mist & Foxfire",
+      "description": "When Banshee and Wisp share a shift, illusory mist adds +100."
     },
     "garuda_griffon_sky": {
-      "title": "Air Superiority Patrol"
+      "title": "Air Superiority Patrol",
+      "description": "When Garuda and Griffon share a shift, aerial teamwork adds +100."
     },
     "centaur_mandra_forest": {
-      "title": "Forest Blessing Duo"
+      "title": "Forest Blessing Duo",
+      "description": "When Centaur and Mandra share a shift, herbal arrows add +100."
     },
     "griffon_dullahan_honor": {
-      "title": "Chivalrous Knights"
+      "title": "Chivalrous Knights",
+      "description": "When Griffon and Dullahan share a shift, honorable formation adds +100."
     },
     "minotaur_mimic_craft": {
-      "title": "Chest Hinge Maintenance"
+      "title": "Chest Hinge Maintenance",
+      "description": "When Minotaur and Mimic share a shift, sturdy craftsmanship adds +100."
     },
     "arachne_mandra_garden": {
-      "title": "Greenhouse Pest Ward"
+      "title": "Greenhouse Pest Ward",
+      "description": "When Arachne and Mandra share a shift, smooth teamwork adds +100."
     },
     "carmilla_dullahan_clash": {
-      "title": "Incompatible: Stoic Knight & Night Noble"
+      "title": "Incompatible: Stoic Knight & Night Noble",
+      "description": "Carmilla and Dullahan clash over stiff lectures, reducing defense by -150 when sharing a shift."
     },
     "drago_lich_clash": {
-      "title": "Incompatible: Elder Dragon & Fussy Librarian"
+      "title": "Incompatible: Elder Dragon & Fussy Librarian",
+      "description": "Drago and Lich bicker over stray sparks and nagging, reducing defense by -150 when sharing a shift."
     },
     "fenrir_banshee_clash": {
-      "title": "Incompatible: Loud Howl & Quiet Spirit"
+      "title": "Incompatible: Loud Howl & Quiet Spirit",
+      "description": "Banshee cannot stand Fenrir's loud howling, reducing defense by -150 when sharing a shift."
     },
     "ifrit_mandra_clash": {
-      "title": "Incompatible: Scorching Flame & Flora"
+      "title": "Incompatible: Scorching Flame & Flora",
+      "description": "Mandra fears Ifrit's heat singeing her leaves, reducing defense by -150 when sharing a shift."
     },
     "behemoth_arachne_clash": {
-      "title": "Incompatible: Web Traps & Rampaging Brute"
+      "title": "Incompatible: Web Traps & Rampaging Brute",
+      "description": "Arachne hates Behemoth trampling her silver threads, reducing defense by -150 when sharing a shift."
     },
     "garuda_gargoyle_clash": {
-      "title": "Incompatible: Gale Flyer & Still Statue"
+      "title": "Incompatible: Gale Flyer & Still Statue",
+      "description": "Garuda and Gargoyle have opposite paces, reducing defense by -150 when sharing a shift."
     },
     "morgan_centaur_clash": {
-      "title": "Incompatible: Free Spirit & Strict Timekeeper"
+      "title": "Incompatible: Free Spirit & Strict Timekeeper",
+      "description": "Punctual Centaur and night-owl Morgan argue, reducing defense by -150 when sharing a shift."
     },
     "griffon_mimic_clash": {
-      "title": "Incompatible: Shiny Gold & Chest Keeper"
+      "title": "Incompatible: Shiny Gold & Chest Keeper",
+      "description": "Mimic fears Griffon's gaze on her gold coins, reducing defense by -150 when sharing a shift."
     },
     "golem_wisp_clash": {
-      "title": "Incompatible: Furnace Exhaust & Foxfire"
+      "title": "Incompatible: Furnace Exhaust & Foxfire",
+      "description": "Golem's dry heat scatters Wisp's lantern flame, reducing defense by -150 when sharing a shift."
     },
     "carmilla_minotaur_clash": {
-      "title": "Incompatible: Noble's Disdain"
+      "title": "Incompatible: Noble's Disdain",
+      "description": "Carmilla refuses to share a waiting room with sweaty Minotaur, reducing defense by -150."
     }
   },
   "stages": {
@@ -811,30 +844,35 @@
       "lilithHint": "Place Drago (500) on Monday Day and Wednesday Night where tough squads attack, and let him rest on Tuesday. Assign Fenrir (400) to the remaining Day shifts and Carmilla (400) to Night.",
       "tutorialSteps": [
         {
-          "shortCallout": "まずは一緒に組みましょう。月曜・昼はドラゴの「昼」を押します",
-          "instruction": "最初は私と一緒に組んでみましょう（1/6）。月曜の昼は手強い「先遣隊・重装前衛群」が来ますので、防衛力500のドラゴの月曜のマスで「昼」を選んでみてください。"
+          "shortCallout": "Let us build this together. Click 'Day' for Drago on Mon",
+          "instruction": "Let us build the first shift together (1/6). A tough vanguard squad attacks on Monday Day, so select 'Day' for Drago (500 defense) on Monday."
         },
         {
-          "shortCallout": "次は月曜・夜です。夜番400のカーミラの「夜」を押しましょう",
-          "instruction": "いいですね（2/6）。月曜の夜は、夜番が得意なカーミラ（夜400）にお願いしましょう。カーミラの月曜のマスで「夜」を選んでみてください。"
+          "shortCallout": "Next is Mon Night. Click 'Night' for Carmilla (Night 400)",
+          "instruction": "Nicely done (2/6). For Monday Night, let us assign night specialist Carmilla (Night 400). Select 'Night' for Carmilla on Monday."
         },
         {
-          "shortCallout": "火曜はドラゴのお休みです。昼400のフェンリルの「昼」を押しましょう",
-          "instruction": "順調です（3/6）。ドラゴは1日働くと翌日お休みが必要なので、火曜の昼は昼番が得意なフェンリル（昼400）の「昼」を選びましょう。"
+          "shortCallout": "Drago rests on Tue. Click 'Day' for Fenrir (Day 400)",
+          "instruction": "Looking good (3/6). Drago needs a rest day after working, so select 'Day' for daytime specialist Fenrir (Day 400) on Tuesday."
         },
         {
-          "shortCallout": "火曜・夜もカーミラの「夜」を押しましょう",
-          "instruction": "その調子です（4/6）。火曜の夜も、引き続きカーミラに任せましょう。カーミラの火曜のマスで「夜」を選んでみてください。"
+          "shortCallout": "Click 'Night' for Carmilla on Tue as well",
+          "instruction": "Keep it up (4/6). Let Carmilla handle Tuesday Night as well. Select 'Night' for Carmilla on Tuesday."
         },
         {
-          "shortCallout": "水曜・昼もフェンリルの「昼」を押しましょう",
-          "instruction": "あと少しです（5/6）。水曜の昼も、昼番が得意なフェンリルの水曜のマスで「昼」を選びましょう。"
+          "shortCallout": "Click 'Day' for Fenrir on Wed",
+          "instruction": "Almost there (5/6). Select 'Day' for Fenrir on Wednesday to cover the daytime patrol."
         },
         {
-          "shortCallout": "仕上げに、火曜休んだドラゴの水曜「夜」を押せば完成です",
-          "instruction": "最後の仕上げです（6/6）。水曜の夜は手強い「勇者軍・紅蓮魔導団」が来ますので、火曜日に休んで体力が戻ったドラゴの水曜のマスで「夜」を選べば完成です。"
+          "shortCallout": "Finally, click 'Night' for well-rested Drago on Wed",
+          "instruction": "Final step (6/6). The Crimson Mage Corps attacks on Wednesday Night—assign Drago, who rested on Tuesday, to 'Night' on Wednesday to complete the schedule."
         }
-      ]
+      ],
+      "clearQuotes": {
+        "drago": "Mid-week rest kept my old wound from aching; held out until the end.",
+        "fenrir": "Great visibility on daytime patrols; kept things fully under control.",
+        "carmilla": "Could focus during the quiet night hours. Not bad tactical direction."
+      }
     },
     "week-2": {
       "title": "Dec: Night Raiders Approach (3 Days)",
@@ -843,7 +881,12 @@
       "newRuleSummary": "A guard on Night shift cannot take the next morning's Day shift (Night -> Night is allowed). Friendly pairs (Fenrir + Dullahan) gain +100 defense together, while incompatible pairs (Carmilla + Dullahan) argue and lose -150 defense.",
       "lilithIntro": "This month Drago is covering the rear gate, and spectral knight Dullahan joins the main gate. However, Carmilla dislikes sharing a shift with stiff Dullahan, so keep them in separate slots.",
       "lilithHint": "Pairing Fenrir (Day 400) and Dullahan (Day 300) on Monday Day triggers their +100 synergy for 800 total defense.",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "dullahan": "With post-night rest guaranteed, the heavy armor was no burden.",
+        "fenrir": "Patrolling with Dullahan gave complete peace of mind covering each other's backs.",
+        "carmilla": "Without having to see that stiff knight, night shift was quite pleasant."
+      }
     },
     "week-3": {
       "title": "Jan: Four-Day Siege (4 Days)",
@@ -852,7 +895,12 @@
       "newRuleSummary": "Rookie Pururu (200) cannot work Night shift alone; pair her with a senior at night (pairing with Carmilla adds +100). Also, no guard can work more than 3 consecutive days, so everyone needs at least 1 day off in 4 days.",
       "lilithIntro": "Enemy forces have camped around the woods for a 4-day siege. Rookie Pururu is helping from the aqueduct—always pair her with a senior if she takes a night shift.",
       "lilithHint": "Assigning Carmilla (Night 400) and Pururu (Night 200) together on Thursday Night grants +100 synergy for 700 total defense.",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "pururu": "With Carmilla and senior guards nearby, I could keep watch calmly at night.",
+        "carmilla": "Pururu is obedient and helpful. Night rounds were never boring.",
+        "drago": "Rest distribution is key over 4 days. Excellent rotation."
+      }
     },
     "week-4": {
       "title": "Feb: Full Moon Defense (5 Days · 5 Guards)",
@@ -861,7 +909,12 @@
       "newRuleSummary": "On Wednesday's Full Moon night, Fenrir cannot take the Night shift (Wednesday Day is allowed). Over 5 days, Drago can work at most 3 shifts and other guards at most 4 shifts.",
       "lilithIntro": "Five guards are on main gate duty this month. Wednesday night is a Full Moon, so Fenrir cannot work that night. Avoid putting Carmilla and Dullahan in the same slot (-150) while respecting everyone's requested days off.",
       "lilithHint": "Since Fenrir cannot work Wednesday Night, pick two from Carmilla, Dullahan, Pururu, and Drago. Pairing Pururu with Carmilla or Dullahan avoids the -150 clash between Carmilla and Dullahan.",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "fenrir": "Exempting me from Full Moon night was a lifesaver. Focused on day rounds instead.",
+        "dullahan": "Clear roles across the five guards; rock-solid defense throughout the long stretch.",
+        "pururu": "Even with a 5-day shift, rest days keep energy high to the finish."
+      }
     },
     "week-5": {
       "title": "Mar: Hero's Main Force (5 Days · 6 Guards)",
@@ -870,7 +923,15 @@
       "newRuleSummary": "Chief Librarian Lich (Night 400) joins for a 6-guard lineup. However, Lich dislikes sharing a shift with Drago (-150), and Carmilla clashes with Dullahan (-150). Save enough stamina so 3 guards can defend Friday Night's decisive raid.",
       "lilithIntro": "The Hero's main force is finally on the move. With Lich joining from the archives, 6 guards protect the main gate. Keep Drago apart from Lich and Carmilla apart from Dullahan, and hold Friday Night with 3 guards.",
       "lilithHint": "We now have 3 strong night guards: Carmilla, Dullahan, and Lich. Assign Drago to Mon Day, Wed Day, and Fri Night, and pair Drago + Carmilla + Pururu (or Dullahan + Pururu) on Friday Night to avoid the Drago-Lich penalty.",
-      "tutorialSteps": []
+      "tutorialSteps": [],
+      "clearQuotes": {
+        "drago": "Saving strength until Friday night meant not giving an inch against the main party.",
+        "carmilla": "Reclaimed peaceful nights without a single casualty.",
+        "fenrir": "Everyone's strengths aligned; defending together felt great to the end.",
+        "dullahan": "Masterful leadership. Peace in this fortress and forest has been secured.",
+        "pururu": "Our Demon Castle, we defended it together.",
+        "lich": "Thanks to a shift without running into Lord Drago, barrier deployment was serene."
+      }
     }
   },
   "violations": {

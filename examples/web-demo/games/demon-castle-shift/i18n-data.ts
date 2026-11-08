@@ -1,9 +1,8 @@
-import { pickLang, type GameLang } from "../i18n.js";
+import { type GameLang } from "../i18n.js";
 import { LILITH_PROFILE, MONSTERS } from "./characters.js";
-import { getCastleCalendarYearMonth, getDifficultyLabel } from "./stages.js";
+import { CAMPAIGN_STAGES, getCastleCalendarYearMonth, getDifficultyLabel } from "./stages.js";
 import {
   DAY_LABELS,
-  type ActiveShiftType,
   type DayIndex,
   type DifficultyTier,
   type MonsterId,
@@ -19,20 +18,19 @@ import jaCatalog from "./locales/ja.json";
 import zhCatalog from "./locales/zh.json";
 
 export interface LocalizedCut {
-  label: string;
-  speaker: string;
-  text: string;
-  bg?: string;
-  durationMs?: number;
+  image: string;
+  cameraClass: string;
+  particleColor: string;
+  lead: string;
+  sub: string;
+  durationMs: number;
+  isClimax?: boolean;
 }
 
 export interface LocalizedPrologueSlide {
-  slideNumber: number;
-  title: string;
-  summary: string;
-  body: string;
-  quoteSpeaker: string;
-  quoteText: string;
+  heading: string;
+  text: string;
+  visualHtml: string;
 }
 
 const CATALOGS: Record<GameLang, typeof enCatalog> = {
@@ -59,14 +57,15 @@ export function formatCastleCalendarMonthLocalized(
   lang: GameLang,
   refDate: Date = new Date()
 ): string {
-  const { eraName, year, month } = getCastleCalendarYearMonth(monthNumberOneBased, refDate);
+  const { year, month } = getCastleCalendarYearMonth(monthNumberOneBased, refDate);
+  const cat = CATALOGS[lang] ?? CATALOGS.en;
   if (lang === "en") {
     const mName = MONTH_NAMES_EN[(month - 1) % 12];
-    return includeEra ? `Star-Moon Era ${mName} ${year}` : mName;
+    return includeEra ? `${cat.ui.eraPrefix} ${mName} ${year}` : mName;
   }
-  const mSuffix = "\u6708"; // "月"
-  const ySuffix = "\u5E74"; // "年"
-  const era = lang === "zh" ? "\u661F\u6708\u5386" : eraName;
+  const era = cat.ui.eraPrefix;
+  const ySuffix = cat.ui.yearSuffix;
+  const mSuffix = cat.ui.monthSuffix;
   return includeEra ? `${era} ${year}${ySuffix}${month}${mSuffix}` : `${month}${mSuffix}`;
 }
 
@@ -93,7 +92,7 @@ export function getLilithProfileLocalized(lang: GameLang): {
 export function getMonsterLocalized(monsterId: MonsterId, lang: GameLang): MonsterProfile {
   const base = MONSTERS[monsterId];
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const l = (cat.monsters as Record<string, any>)[monsterId];
+  const l = cat.monsters[monsterId];
   if (!l) return base;
   return {
     ...base,
@@ -112,12 +111,12 @@ export function getMonsterLocalized(monsterId: MonsterId, lang: GameLang): Monst
 
 export function getRelationLocalized(rel: PairRelation, lang: GameLang): PairRelation {
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const l = (cat.relations as Record<string, { title: string; story: string }>)[rel.id];
+  const l = (cat.relations as Record<string, { title: string; description: string }>)[rel.id];
   if (!l) return rel;
   return {
     ...rel,
     title: l.title,
-    story: l.story,
+    description: l.description,
   };
 }
 
@@ -136,9 +135,30 @@ export function getRequirementLocalized(
   };
 }
 
-export function getRequestedOffReasonLocalized(reason: string, lang: GameLang): string {
+export function getRequestedOffReasonLocalized(
+  reason: string,
+  monsterIdOrLang: MonsterId | GameLang,
+  maybeLang?: GameLang
+): string {
+  const lang: GameLang = maybeLang ?? (monsterIdOrLang as GameLang);
+  const monsterId: MonsterId | undefined = maybeLang ? (monsterIdOrLang as MonsterId) : undefined;
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  return (cat.requestedOffReasons as Record<string, string>)?.[reason] ?? reason;
+  const mapped = (cat.requestedOffReasons as Record<string, string>)?.[reason];
+  if (mapped) return mapped;
+  if (reason.endsWith(" Duty / Rest")) {
+    const prefix = reason.slice(0, -" Duty / Rest".length).trim();
+    const resolvedMonsterId =
+      monsterId ??
+      (Object.keys(MONSTERS) as MonsterId[]).find(
+        (id) => (MONSTERS[id].usualPost ?? MONSTERS[id].title).split("·")[0]?.trim() === prefix
+      );
+    if (resolvedMonsterId) {
+      const mLoc = getMonsterLocalized(resolvedMonsterId, lang);
+      const postPart = (mLoc.usualPost ?? mLoc.title).split(/[·\u30fb]/)[0]?.trim() ?? mLoc.title;
+      return cat.ui.postDutyRest.replace(/\{post\}/g, postPart);
+    }
+  }
+  return reason;
 }
 
 export function getStageLocalized(
@@ -151,8 +171,12 @@ export function getStageLocalized(
   newRuleSummary: string;
   lilithIntro: string;
   lilithHint: string;
+  clearQuotes?: Partial<Record<MonsterId, string>>;
 } {
   const cat = CATALOGS[lang] ?? CATALOGS.en;
+  const calShort = formatCastleCalendarMonthLocalized(stage.weekNumber, false, lang);
+  const calFull = formatCastleCalendarMonthLocalized(stage.weekNumber, true, lang);
+  const isRetry = stage.subtitle.includes("New Lineup");
   const stg = (cat.stages as Record<string, {
     title: string;
     subtitle: string;
@@ -160,23 +184,26 @@ export function getStageLocalized(
     newRuleSummary: string;
     lilithIntro: string;
     lilithHint: string;
+    clearQuotes?: Partial<Record<MonsterId, string>>;
   }>)?.[stage.id];
-  if (stg) {
+  if (stg && !isRetry) {
+    const title = stg.title.replace(/^[^:\uFF1A]+([:\uFF1A])/, `${calShort}$1`);
+    const subtitle = stg.subtitle.replace(/^.+?(?=\s*\u2014)/, calFull);
     return {
-      title: stg.title,
-      subtitle: stg.subtitle,
+      title,
+      subtitle,
       newRuleTitle: stg.newRuleTitle,
       newRuleSummary: stg.newRuleSummary,
       lilithIntro: stg.lilithIntro,
       lilithHint: stg.lilithHint,
+      clearQuotes: stg.clearQuotes,
     };
   }
 
-  const calShort = formatCastleCalendarMonthLocalized(stage.weekNumber, false, lang);
-  const isRetry = stage.subtitle.includes("New Lineup");
+  const sep = lang === "en" ? ", " : " \u00b7 ";
   const roster = stage.availableMonsters
     .map((id) => getMonsterLocalized(id, lang).name)
-    .join(lang === "en" ? ", " : " · ");
+    .join(sep);
   const diff = stage.difficultyTier
     ? getDifficultyLabelLocalized(stage.difficultyTier, lang)
     : "";
@@ -203,14 +230,27 @@ export function getStageLocalized(
 }
 
 export function getTutorialStepLocalized(
-  step: TutorialStep,
-  idx: number,
-  lang: GameLang
+  step: TutorialStep & { stepIndex?: number },
+  idxOrLang: number | GameLang,
+  maybeLang?: GameLang
 ): { shortCallout: string; instruction: string } {
+  const lang: GameLang = typeof idxOrLang === "number" ? (maybeLang ?? "en") : idxOrLang;
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const tStep = cat.stages?.["week-1"]?.tutorialSteps?.[idx];
+  const steps = cat.stages?.["week-1"]?.tutorialSteps;
+  let idx: number;
+  if (typeof idxOrLang === "number") {
+    idx = idxOrLang;
+  } else if (typeof step.stepIndex === "number") {
+    idx = step.stepIndex - 1;
+  } else {
+    const week1Steps = CAMPAIGN_STAGES[0]?.tutorialSteps ?? [];
+    idx = week1Steps.findIndex(
+      (s) => s.monsterId === step.monsterId && s.day === step.day && s.targetShift === step.targetShift
+    );
+  }
+  const tStep = idx >= 0 ? steps?.[idx] : undefined;
   return {
-    shortCallout: tStep?.shortCallout ?? step.shortCallout,
+    shortCallout: tStep?.shortCallout ?? step.shortCallout ?? "",
     instruction: tStep?.instruction ?? step.instruction,
   };
 }
@@ -221,7 +261,7 @@ export function getViolationLocalized(
   lang: GameLang
 ): { shortBadge: string; message: string } {
   const cat = CATALOGS[lang] ?? CATALOGS.en;
-  const viols = cat.violations as Record<string, any>;
+  const viols = cat.violations;
   const dayLabel = v.day !== undefined ? getDayLabel(v.day, lang) : "";
   const shiftLabel =
     v.shift === "day"
@@ -298,7 +338,7 @@ export function getViolationLocalized(
     }
     case "day_off": {
       const offReq = stage.requestedDaysOff.find((r) => r.day === v.day && r.monsterId === v.monsterId);
-      const reason = offReq ? getRequestedOffReasonLocalized(offReq.reason, lang) : "";
+      const reason = offReq ? getRequestedOffReasonLocalized(offReq.reason, offReq.monsterId, lang) : "";
       const tpl = viols.day_off;
       return {
         shortBadge: tpl.shortBadge,
