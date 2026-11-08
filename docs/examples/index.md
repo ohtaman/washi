@@ -13,7 +13,7 @@ Explore runnable optimization and logic formulations built with WaSHI. Every exa
 | **[Staff Shift Scheduling](./shift-scheduling.md)** | Binary MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5×7 weekly roster planner (coverage, senior duty, max shifts, day-off requests) and diagnosing conflicting vacation requests with Z3 `unsatCore`. | [Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
 | **[E-Commerce Coupon Optimizer](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `sum()`, `m.constraint()` | Checkout optimizer using `m.indicator()` for minimum spend thresholds, exclusive vs. stackable rules, and smart filler add-on suggestions. | [Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
 | **[Portfolio Optimization](./portfolio-qp.md)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | Markowitz mean-variance risk minimization ($w^T \Sigma w$) using `QuadExpr` subject to return targets. | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
-| **[SMT Security Policies](./smt-security.md)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | Propositional variables (`BoolVar`) and logical connectives (`implies`, `and`, `not`, `xor`) mixed with integer bounds. | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
+| **[SMT Security Policies](./smt-security.md)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | Propositional variables (`BoolVar`) and logical connectives (`implies`, `and`, `not`, `xor`) mixed with integer bounds. | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_security) |
 | **[Conflict Diagnosis (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | Extracting a conflicting constraint subset (`unsatCore`) when staffing and budget rules contradict each other. | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
 | **[Vehicle Routing (CVRP)](./vehicle-routing.md)** | Combinatorial OR / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | Dynamic route column generation from customer dual shadow prices to minimize total fleet vehicles. | [Decomposition Guide](../guide/decomposition.md) |
 | **[Traveling Salesperson (TSP)](./traveling-salesperson.md)** | Combinatorial OR / Benders | HiGHS | `m.solveBenders()`, `subproblem` | Subtour elimination on degree-assignment relaxation using dynamic Benders feasibility cuts. | [Decomposition Guide](../guide/decomposition.md) |
@@ -54,4 +54,6 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 ```

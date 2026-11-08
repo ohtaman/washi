@@ -164,7 +164,10 @@ export async function runMipExample() {
   m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${setup}`));
   m.constraint(expr`${dot(woodPerUnit, qty)} <= 40`, "wood_cap");
   m.constraint(expr`${dot(laborPerUnit, qty)} <= 50`, "labor_cap");
-  m.constraint(expr`${sum(Object.values(qty))} <= 30 * ${setup}`, "require_setup");
+  m.indicator(setup, expr`${sum(Object.values(qty))} <= 0`, {
+    activeValue: 0,
+    name: "require_setup",
+  });
 
   const status = await m.solve();
   const report = m.validateSolution();
@@ -268,3 +271,9 @@ export function verifyNegativePatterns() {
   return { m, x, y, maximize };
 }
 ```
+
+### 实战运筹建模守则
+
+- **优先使用不等式（`>=` / `<=`）而非严格等式（`==`）**：当目标成本为正时，需求覆盖与资源上限应优先采用 `>=` / `<=`；仅将 `==` 用于流量守恒或投资权重归一化（$\sum w_i = 1$）等严格恒等关系。
+- **为 `m.indicator(...)` 涉及的变量提供有限 `lb` 与 `ub` 并省略 `M`**：设置合理的有限变量边界并省略 `M`，可让 WaSHI 自动推导最紧凑的 Big-M，避免退化为松散的 `1e6` 默认值。
+- **将非刚性业务规则建模为软约束（弹性松弛变量）**：对排班偏好、安全库存等非绝对硬性规则，引入非负松弛变量（`lb: 0`）并在目标函数中施加分级惩罚，避免真实业务数据微小波动导致整个模型返回 `"Infeasible"`。

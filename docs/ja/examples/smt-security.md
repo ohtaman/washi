@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
+| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
 
 真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`luxLevel.le(50).implies(isNight)`)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
 
@@ -16,7 +16,7 @@
 
 ## WaSHI による実装
 
-<CodeRunner preset="smt_sat_scheduling">
+<CodeRunner preset="smt_security">
 
 ```typescript
 import { Model, not, expr } from "@ohtaman/washi";
@@ -64,9 +64,21 @@ async function verifySecurityRules() {
   console.log(`Lights On    : ${lightsOn.value}`);
   console.log(`Door Locked  : ${frontDoorUnlocked.value ? "No" : "Yes"}`);
   console.log(`Is Night     : ${isNight.value}`);
+
+  // 4. 安全性プロパティの形式検証（反例探索 / 背理法）:
+  // この状況下で「サイレンが鳴らない (not(sirenActive))」という抜け道が存在しないことを証明
+  m.constraint(not(sirenActive), "counterexample_siren_off");
+  const proof = await m.check({ solver: "z3" });
+  console.log(`Can siren stay off? ${proof.status} (Unsat なら抜け道なしと証明完了)`);
+  console.log(`Active proof core : ${(proof.conflicts ?? []).join(", ")}`);
 }
 
 verifySecurityRules();
 ```
 
 </CodeRunner>
+
+## 実務上のポイント
+
+- **背理法による形式検証（反例探索）**: 単一の `check()` で `"Sat"` が返ることは「条件を満たす状態が少なくとも1つ存在する」ことを意味します。ある安全性要件 $P$（例：`sirenActive`）が**いかなる場合も必ず成立する（抜け道がない）**ことを形式的に証明するには、あえて否定 `not(P)` を追加して `m.check()` を実行し、`"Unsat"` になることを確認します。もし `"Sat"` が返れば、そのときの変数値が具体的なセキュリティ上の抜け道（反例）となります。
+- **片方向の含意（`implies`）と双方向同値の違い**: `luxLevel.le(50).implies(isNight)` は「照度 50 以下なら夜」しか規定しないため、昼間（`luxLevel > 50`）のときに `isNight` が `true` になっても論理的には違反になりません（オープンワールド仮定）。「照度 50 以下 $\iff$ 夜」とする場合は、逆方向の `luxLevel.ge(51).implies(not(isNight))` も併せて記述します。

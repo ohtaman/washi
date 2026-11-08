@@ -378,7 +378,14 @@ export class HighsSolver implements Solver {
         const v = nameToVar.get(colName);
         if (v) {
           if (typeof colData.Primal === "number" && Number.isFinite(colData.Primal)) {
-            const primal = Math.abs(colData.Primal) < 1e-9 ? 0 : colData.Primal;
+            let primal = Math.abs(colData.Primal) < 1e-9 ? 0 : colData.Primal;
+            if (
+              !mergedOptions.relax &&
+              (v.type === "Integer" || v.type === "Binary") &&
+              Math.abs(primal - Math.round(primal)) <= 1e-5
+            ) {
+              primal = Math.round(primal) + 0;
+            }
             setOwnProperty(valuesRecord, v.name, primal);
           }
           if (typeof colData.Dual === "number" && Number.isFinite(colData.Dual)) {

@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 
@@ -18,7 +18,7 @@ We model a security rule system with sensor readings and logic rules:
 
 ## Implementation in WaSHI
 
-<CodeRunner preset="smt_sat_scheduling">
+<CodeRunner preset="smt_security">
 
 ```typescript
 import { Model, not, expr } from "@ohtaman/washi";
@@ -66,9 +66,21 @@ async function verifySecurityRules() {
   console.log(`Lights On    : ${lightsOn.value}`);
   console.log(`Door Locked  : ${frontDoorUnlocked.value ? "No" : "Yes"}`);
   console.log(`Is Night     : ${isNight.value}`);
+
+  // 4. Formal Safety Verification (Counterexample Search):
+  // Prove that the siren CANNOT remain off under these sensor readings
+  m.constraint(not(sirenActive), "counterexample_siren_off");
+  const proof = await m.check({ solver: "z3" });
+  console.log(`Can siren stay off? ${proof.status} (Proven safe when Unsat)`);
+  console.log(`Active proof core : ${(proof.conflicts ?? []).join(", ")}`);
 }
 
 verifySecurityRules();
 ```
 
 </CodeRunner>
+
+## Practical Notes
+
+- **Proof by Refutation (Counterexample Search)**: A single `Sat` check shows that *a* valid assignment exists. To formally prove that a safety property $P$ (such as `sirenActive`) **must** hold in *every* valid state, assert its negation `not(P)` and verify that `m.check()` returns `"Unsat"`. If it returns `"Sat"`, the solver's variable values give you a concrete counterexample (security loophole).
+- **One-Way Implication (`implies`) vs. Equivalence**: In classical logic, `luxLevel.le(50).implies(isNight)` only constrains `isNight` when `luxLevel <= 50`. During daytime (`luxLevel > 50`), `isNight` is unconstrained ("open-world" assumption) and could be assigned either `true` or `false` unless you also add the converse rule `luxLevel.ge(51).implies(not(isNight))`.

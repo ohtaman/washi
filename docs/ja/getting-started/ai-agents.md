@@ -164,7 +164,10 @@ export async function runMipExample() {
   m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${setup}`));
   m.constraint(expr`${dot(woodPerUnit, qty)} <= 40`, "wood_cap");
   m.constraint(expr`${dot(laborPerUnit, qty)} <= 50`, "labor_cap");
-  m.constraint(expr`${sum(Object.values(qty))} <= 30 * ${setup}`, "require_setup");
+  m.indicator(setup, expr`${sum(Object.values(qty))} <= 0`, {
+    activeValue: 0,
+    name: "require_setup",
+  });
 
   const status = await m.solve();
   const report = m.validateSolution();
@@ -268,3 +271,9 @@ export function verifyNegativePatterns() {
   return { m, x, y, maximize };
 }
 ```
+
+### 実務モデリングのベストプラクティス
+
+- **等式制約（`==`）よりも不等式制約（`>=` / `<=`）を優先する**: 需要充足やリソース上限など、コストが正である限り不等式で自然に等号成立する条件には `>=` / `<=` を使い、`==` は流量保存則や重みの合計（$\sum w_i = 1$）など物理的・定義的な恒等式に限定してください。
+- **`m.indicator(...)` 内の変数には有限の `lb` / `ub` を設定し `M` を省略する**: 変数に現実的な上下限を設定して `M` オプションを省略することで、`1e6` のような過大なデフォルト値ではなく、変数境界から最もタイトな Big-M が自動導出されます。
+- **絶対条件以外のビジネス目標はソフト制約（スラック変数）にする**: 希望休や目標在庫などの「可能な限り守りたい条件」には非負スラック変数（`lb: 0`）を導入して目的関数でペナルティを課し、データ変動時にモデル全体が `Infeasible` で停止するのを防いでください。

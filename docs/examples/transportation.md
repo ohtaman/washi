@@ -49,7 +49,7 @@ const shippingCost = {
 const supplies = { Tokyo: 120, Nagoya: 100, Osaka: 80 };
 const demands = { North: 70, East: 90, West: 60, South: 60 };
 
-async function runTransportation() {
+async function solveScenario(label: string, cap: typeof supplies) {
   const m = new Model("TransportationNetwork");
 
   // 1. Create 2D continuous variables: ship[factory][store] >= 0
@@ -58,10 +58,10 @@ async function runTransportation() {
   // 2. Objective: Minimize total shipping cost across all routes via 2D dot product
   m.objective(minimize(dot(shippingCost, ship)));
 
-  // 3. Supply constraints (row sums): outgoing from f <= supplies[f]
+  // 3. Supply constraints (row sums): outgoing from f <= cap[f]
   for (const f of factories) {
     m.constraint(
-      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
+      expr`${sum(stores, (s) => ship[f][s])} <= ${cap[f]}`,
       `supply_${f}`
     );
   }
@@ -75,16 +75,40 @@ async function runTransportation() {
   }
 
   const status = await m.solve();
-  console.log(`Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
+  console.log(`[${label}] Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
   for (const f of factories) {
+    const dual = m.getConstraintByName(`supply_${f}`)?.dual ?? 0;
     const routes = stores
       .map((s) => `${s}:${Math.round(ship[f][s].value ?? 0)}`)
       .join(", ");
-    console.log(`  ${f.padEnd(7)} -> ${routes}`);
+    console.log(`  ${f.padEnd(7)} -> ${routes} (supply dual: $${dual}/u)`);
   }
+  const demandDuals = stores
+    .map((s) => `${s}:$${m.getConstraintByName(`demand_${s}`)?.dual ?? 0}`)
+    .join(", ");
+  console.log(`  Marginal Delivered Cost (demand duals) -> ${demandDuals}`);
+}
+
+async function runTransportation() {
+  // Scenario A: Baseline capacities ($920)
+  await solveScenario("Scenario A: Baseline", supplies);
+
+  // Scenario B: Tokyo capacity reduced (120 -> 80) due to maintenance ($1,000)
+  await solveScenario("Scenario B: Tokyo Maintenance", {
+    Tokyo: 80,
+    Nagoya: 120,
+    Osaka: 100,
+  });
 }
 
 runTransportation();
 ```
 
 </CodeRunner>
+
+## Practical Notes
+
+- **Interpreting Supply & Demand Shadow Prices (`.dual`)**:
+  - **`demand_s.dual` ($\ge 0$)**: The marginal delivered cost of supplying 1 additional unit to store $s$.
+  - **`supply_f.dual` ($\le 0$)**: How much total network shipping cost would decrease if factory $f$'s capacity were expanded by 1 unit. In Scenario B, when Tokyo is constrained at 80 units, `supply_Tokyo.dual` becomes negative (`-$2/u`), indicating that each extra unit of capacity in Tokyo saves \$2 by avoiding rerouting through Nagoya.
+- **Total Supply vs. Total Demand ($\sum \text{Supply}_f \ge \sum \text{Demand}_s$)**: If store demands exceed aggregate factory capacity, the hard demand constraints become `"Infeasible"`. In production logistics systems, add an elastic "spot-carrier / backorder" variable $u_s \ge 0$ to each store's demand constraint ($\sum_f x_{f,s} + u_s \ge \text{Demand}_s$) with a high penalty cost so the solver allocates scarce inventory optimally rather than failing.

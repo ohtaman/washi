@@ -127,7 +127,7 @@ async function runScenario(
   if (status === "Optimal") {
     console.log(`最適週間人件費: $${model.objectiveValue}`);
     for (const s of staffList) {
-      const schedule = days.map((d) => (Math.round(shift[s.name][d].value ?? 0) === 1 ? "ON" : " ·"));
+      const schedule = days.map((d) => (shift[s.name][d].value === 1 ? "ON" : " ·"));
       console.log(`  ${s.name.padEnd(8)}: ${schedule.join(" ")}`);
     }
     console.log("シフト作成完了（不要な UNSAT 診断は実行しません）\n");
@@ -174,3 +174,18 @@ main();
 ```
 
 </CodeRunner>
+
+## ソフト制約（ペナルティ緩和）による希望休衝突の自動修復
+
+Z3 の `unsatCore` によって「土曜日のシニア必須ルール（`senior_duty_Sat`）と Alice・Bob の土曜希望休が衝突している」と特定できた後、希望休をハード制約（`shift[staff][day] == 0`）から**目的関数のペナルティ項（ソフト制約）**へ切り替えることで、最小限の希望休調整で済む代替シフト案を自動生成できます：
+
+```typescript
+// ソフト制約パターン: 希望休をハード制約にする代わりに、希望休の日に出勤した場合 +$500 のペナルティを課す
+const overridePenalty = sum(
+  dayOffRequests,
+  (req) => expr`500 * ${shift[req.staff][req.day]}`
+);
+m.objective(minimize(expr`${dot(costMatrix, shift)} + ${overridePenalty}`));
+```
+
+シナリオBに対してこのソフト制約モデルを解くと、4件の希望休のうち3件（`Alice (Sat)`, `Charlie (Sat)`, `Diana (Wed)`）を守りつつ、日給が Alice（`$220`）より `$10` 安い `Bob (Sat)`（`$210`）の1件だけに出勤を依頼する最適修復シフトが即座に得られます。

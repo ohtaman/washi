@@ -187,7 +187,7 @@ async function runCVRP() {
   console.log(`生成路线列总数: ${result.columnsAdded}`);
 
   console.log("\n选定车队的路线示例 (前 5 班):");
-  const activeRoutes = result.generatedColumns.filter((c) => (c.variable.value ?? 0) > 0.5);
+  const activeRoutes = result.generatedColumns.filter((c) => c.variable.value === 1);
   for (const r of activeRoutes.slice(0, 5)) {
     const meta = r.proposal.meta;
     console.log(`  ${meta?.tour.join(" -> ")} (行驶: ${meta?.travelTime}分钟, 总时长: ${meta?.totalTime}分钟)`);
@@ -204,3 +204,6 @@ runCVRP();
 - **主问题与定价子问题分离**：主问题负责求解 LP 松弛与最终的集合划分 MIP，`pricing` 回调使用最省插点法与 2-opt 局部搜索生成负检验数路线。
 - **读取对偶变量**：通过 `visitConstrs[i].dual` 直接读取主问题 LP 松弛的对偶价格，在构造路线时优先考虑边际收益较高的客户。
 - **路线元数据记录**：生成的每一列在 `meta` 中保存 `{ tour, travelTime, totalTime }`，求解完成后可从 `result.generatedColumns` 中读取访问顺序与耗时。
+- **集合划分 (`== 1`) 与集合覆盖 (`>= 1`)**：本例使用 `== 1`（集合划分）直接禁止同一客户被多辆车重复访问。在大规模列生成实践中，改用 `>= 1`（集合覆盖）可将对偶价格限制在 $\pi_i \ge 0$，从而提升 LP 收敛稳定性（当距离满足三角不等式时，最终解中重复访问的客户可通过后处理直接剔除而不增加路程）。
+- **启发式定价与精确 ESPPRC**：由于 `findImprovingRoute` 使用快速贪心插点与 2-opt 启发式而非精确的带资源约束初等最短路（ESPPRC）算法，返回 `null` 仅代表启发式搜索未发现更多负检验数路线，而非全局对偶下界证明。
+- **Price-and-Branch (`finalizeAsMIP: true`)**：在根节点列生成收敛后对现有列池求解一次 MIP 的方法称为限制主问题启发式（Restricted Master Heuristic / Price-and-Branch），无需实现完整的 Branch-and-Price 分支定界树即可快速获得高质量整数车队方案。

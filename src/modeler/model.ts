@@ -1778,6 +1778,23 @@ export class Model {
     );
   }
 
+  private normalizePrimalValue(
+    v: Var,
+    val: number,
+    activeSolver: Solver,
+    activeOptions: SolverOptions
+  ): number {
+    const isRelaxed = (activeOptions.relax ?? activeSolver.options?.relax) === true;
+    if (
+      !isRelaxed &&
+      (v.type === "Integer" || v.type === "Binary") &&
+      Math.abs(val - Math.round(val)) <= 1e-5
+    ) {
+      return Math.round(val) + 0;
+    }
+    return val;
+  }
+
   /**
    * Resolves the target solver and execution options without mutating caller-owned objects,
    * stripping the routing `solver` field from the returned `SolverOptions`.
@@ -2016,9 +2033,15 @@ export class Model {
           const v = this.getVarByName(vName);
           const bv = this.getBoolVarByName(vName);
           if (v) {
-            v.value = primal;
-            setOwnProperty(valuesRecord, v.name, primal);
-            this.values.set(v.name, primal);
+            const normalizedPrimal = this.normalizePrimalValue(
+              v,
+              primal,
+              activeSolver,
+              activeOptions
+            );
+            v.value = normalizedPrimal;
+            setOwnProperty(valuesRecord, v.name, normalizedPrimal);
+            this.values.set(v.name, normalizedPrimal);
           }
           if (bv) {
             bv.value = Boolean(primal);
@@ -2235,9 +2258,15 @@ export class Model {
             const v = this.getVarByName(name);
             const bv = this.getBoolVarByName(name);
             if (v) {
-              v.value = val;
-              this.values.set(v.name, val);
-              setOwnProperty(values, v.name, val);
+              const normalizedVal = this.normalizePrimalValue(
+                v,
+                val,
+                activeSolver,
+                activeOptions
+              );
+              v.value = normalizedVal;
+              this.values.set(v.name, normalizedVal);
+              setOwnProperty(values, v.name, normalizedVal);
             }
             if (bv) {
               bv.value = Boolean(val);
@@ -2390,9 +2419,15 @@ export class Model {
       for (const v of this.variables) {
         const primal = result.values[v.name];
         if (typeof primal === "number" && Number.isFinite(primal)) {
-          v.value = primal;
-          this.values.set(v.name, primal);
-          setOwnProperty(values, v.name, primal);
+          const normalizedPrimal = this.normalizePrimalValue(
+            v,
+            primal,
+            activeSolver,
+            activeOptions
+          );
+          v.value = normalizedPrimal;
+          this.values.set(v.name, normalizedPrimal);
+          setOwnProperty(values, v.name, normalizedPrimal);
         }
       }
       // 2. Map BoolVars back to boolean values from linearized binary vars

@@ -70,6 +70,9 @@ const count = sum(Object.values(x));
 
 `sum()` runs in $O(N)$ linear time without AST overhead.
 
+> [!TIP]
+> **Avoid $O(N^2)$ `expr` Re-Assignment Inside Loops**: Because `LinExpr` and `expr` are immutable, accumulating terms via `total = expr`${total} + ${x[i]}`` inside a large loop copies all previously accumulated terms on every iteration ($O(N^2)$ time and memory). Always pass arrays or iterables to `sum(x)` or `dot(coeffs, x)` for $O(N)$ construction.
+
 ---
 
 ## 🎯 Dot Product (`dot`)
@@ -161,6 +164,24 @@ risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
 risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
 m.objective(minimize(risk));
+```
+
+### 3. Practical QP & Bilinear Formulation Notes
+
+- **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: Standard QP solvers (including HiGHS) require the quadratic objective matrix $\mathbf{Q}$ to be **positive semi-definite (PSD)** when minimizing (or negative semi-definite when maximizing). Sum-of-squares objectives ($\sum_i (x_i - t_i)^2$) and covariance matrices ($\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$) are guaranteed PSD. Indefinite products (such as minimizing $x \cdot y$ over continuous variables) are non-convex and will be rejected by the solver.
+- **Linearizing Binary Products ($x_A \cdot x_B$) in MILP**: If your model has integer/binary variables and needs the product of two binary decisions $x_A, x_B \in \{0, 1\}$ (e.g., a bundle bonus or interaction cost when both $A$ and $B$ are chosen), linearize the product $z_{AB} = x_A \cdot x_B$ using an auxiliary variable $z_{AB} \in [0, 1]$ and the standard McCormick / Fortet inequalities:
+
+$$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
+
+```typescript
+const xA = m.binary("xA");
+const xB = m.binary("xB");
+// Continuous [0, 1] is automatically forced to {0, 1} when xA, xB are binary
+const bothAB = m.continuous("both_AB", { lb: 0, ub: 1 });
+
+m.constraint(expr`${bothAB} <= ${xA}`, "and_upper_A");
+m.constraint(expr`${bothAB} <= ${xB}`, "and_upper_B");
+m.constraint(expr`${bothAB} >= ${xA} + ${xB} - 1`, "and_lower_AB");
 ```
 
 ---

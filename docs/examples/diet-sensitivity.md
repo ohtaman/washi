@@ -86,5 +86,7 @@ runDietSensitivity();
 
 - **Bottleneck constraints (`slack == 0`, `dual > 0`):** Calories (`2000 kcal`) and Iron (`18 mg`) are tight at their lower bounds. Increasing the daily Iron requirement by 1 mg increases the minimum daily diet cost by **$0.3241**.
 - **Constraints with surplus (`slack > 0`, `dual == 0`):** Protein (`+46.46 g` surplus) and Calcium (`+483.02 mg` surplus) are already exceeded with room to spare, so their shadow prices are `$0`.
-- **Reduced cost (`Salmon`):** Unselected `Salmon` (`0.00` servings) has a reduced cost of `+1.5125`, meaning its price per serving would need to drop by at least **$1.51** before it enters the optimal daily menu.
+- **Reduced cost at lower bound (`Salmon`):** Unselected `Salmon` (`0.00` servings) has a reduced cost of `+1.5125`, meaning its price per serving would need to drop by at least **$1.51** before it enters the optimal daily menu.
+- **Negative reduced cost at upper bound (`Oats`, `Eggs`):** Both `Oats` (`reducedCost = -0.2581`) and `Eggs` (`reducedCost = -0.0887`) are pinned against their upper serving cap (`ub = 4.0`). In a minimization LP, a negative reduced cost on an upper-bounded variable tells you how much the total objective would **decrease** per unit increase in `ub`—raising the daily cap on `Oats` from 4 to 5 servings would save **$0.26/day**.
+- **Basis stability range:** Shadow prices (`dual`) and reduced costs (`reducedCost`) represent local marginal rates of change within the current optimal simplex basis. If a right-hand side or bound changes enough to trigger a basis change (for example, once another variable hits its bound), the marginal rate shifts to a new piece of the piecewise-linear optimal cost curve.
 

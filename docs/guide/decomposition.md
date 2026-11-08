@@ -262,13 +262,13 @@ const result = await master.solveBenders({
 
 Two common applications of decomposition methods:
 
-### 1. Vehicle Routing Problem (CVRP) $\times$ Column Generation
-*(Full executable source: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
+### 1. 1D Bin Packing / Fleet Sizing $\times$ Column Generation (and Full CVRP)
+*(For full distance-based CVRP with 2-opt tour pricing, see [Vehicle Routing Problem (CVRP)](../examples/vehicle-routing.md) and [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
 
-* **Problem Structure**: Enumerating every feasible customer tour upfront produces a large number of variables.
+* **Problem Structure**: Assigning customer orders to capacity-constrained vehicles (1D Bin Packing / Fleet Sizing) or tours produces an exponential number of feasible combinations.
 * **Column Generation Formulation**:
-  * **Master Problem**: Set covering model that selects the minimum number of vehicle routes such that each customer is served.
-  * **Pricing Subproblem**: Knapsack model that dynamically generates a capacity-feasible route (column) with negative reduced cost based on customer dual shadow prices.
+  * **Master Problem**: Set covering model (`>= 1`) that selects the minimum number of vehicles (`cost: 1` per route) such that each customer order is covered.
+  * **Pricing Subproblem**: 0-1 Knapsack model that dynamically generates a capacity-feasible batch (`column`) with negative reduced cost ($1 - \sum \pi_i a_i < 0$) based on customer dual shadow prices. (In full CVRP, the column cost is the tour distance and the pricing subproblem is an Elementary Shortest Path Problem with Resource Constraints, ESPPRC.)
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -382,18 +382,33 @@ const result = await master.solveBenders({
       return null; // Single tour covers all cities
     }
 
-    // Subtour detected: inject Benders feasibility cut for smallest cycle
-    const S = cycles.reduce((min, c) => (c.length < min.length ? c : min), cycles[0]);
-    const secExpr = new LinExpr();
-    for (const i of S) {
-      for (const j of S) {
-        if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+    // Subtours detected: inject a Benders feasibility cut for EVERY disconnected cycle (multi-cut separation)
+    return cycles.map((S) => {
+      const secExpr = new LinExpr();
+      for (const i of S) {
+        for (const j of S) {
+          if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+        }
       }
-    }
-    return {
-      kind: "feasibility",
-      constraint: expr`${secExpr} <= ${S.length - 1}`,
-    };
+      return {
+        kind: "feasibility" as const,
+        constraint: expr`${secExpr} <= ${S.length - 1}`,
+      };
+    });
   },
 });
 ```
+
+---
+
+## 💡 Practical Decomposition Notes
+
+1. **Set Covering (`>= 1`) vs. Set Partitioning (`== 1`) in Column Generation**:
+   - Formulating customer coverage as `>= 1` (Set Covering) rather than `== 1` (Set Partitioning) restricts dual prices to $\pi_i \ge 0$, preventing wild positive/negative dual oscillations and significantly accelerating column generation convergence. Whenever costs obey the triangle inequality, any over-covered customer in a route can simply be skipped without increasing cost.
+2. **Price-and-Branch (`finalizeAsMIP: true`) vs. Exact Branch-and-Price**:
+   - Setting `finalizeAsMIP: true` solves the final Restricted Master Problem as an integer program over all columns generated during the root LP phase. In industrial OR, this is known as the **Price-and-Branch (Restricted Master Heuristic)** pattern—it is fast, simple, and typically within 0–2% of the exact Branch-and-Price optimum without requiring branching inside the pricing subproblem.
+3. **Negative Subproblem Objectives in `solveBenders()` (`theta` Lower Bound)**:
+   - When using automatic linking via `sub.link(...)`, WaSHI creates an auxiliary master variable `__benders_theta` with default `lb: 0` (valid when subproblem costs are non-negative). If your subproblem objective can take negative values (e.g., net profit or rebate terms), pass an explicit `theta: master.continuous("theta", { lb: -1e6 })` option with a finite negative lower bound so the initial master relaxation is not artificially clipped at `0`.
+4. **Multi-Cut Separation & Equivalent DFJ Subtour Constraints**:
+   - In Benders / lazy-constraint callbacks, returning an array of cuts for **all** disconnected subtours found in the current incumbent (`cycles.map(...)`) eliminates multiple invalid components per master MIP solve.
+   - Because the TSP master problem enforces out-degree $\sum_{j \ne i} x_{ij} = 1$ for every $i \in S$, the internal-edge subtour elimination constraint $\sum_{i,j \in S} x_{ij} \le |S| - 1$ is algebraically identical to the cut-set constraint $\sum_{i \in S, j \notin S} x_{ij} \ge 1$.

@@ -91,6 +91,14 @@ await model.solve({
     console.log(`Elapsed: ${ev.elapsedTime.toFixed(1)}s, Best: ${ev.objectiveValue}`);
   },
 });
+
+// Always check hasPrimalSolution when timeLimit or AbortSignal is used:
+if (model.hasPrimalSolution) {
+  console.log(
+    `Usable solution (${model.status}, termination: ${model.terminationStatus}):`,
+    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+  );
+}
 ```
 
 ---

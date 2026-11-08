@@ -157,6 +157,65 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **适用求解器** | **所有 MIP/LP 求解器**（HiGHS、GLPK、Z3），通过 Big-M 线性化实现 | **所有求解器**（HiGHS、GLPK 通过 0-1 MIP 自动线性化，Z3 原生支持） |
 | **最佳适用场景** | 带有目标函数的运筹优化与 MIP 模型（`m.solve()`） | 规则引擎、策略验证与 SMT 可满足性判定（`m.check()`） |
 
+> [!NOTE]
+> **在 `implies()` 的前提条件（Antecedent）中使用一般不等式**：使用 **Z3**（`solver: "z3"`）时，`implies(a, b)` 的前提 `a` 可以是任意一般线性不等式（如 ``expr`${luxLevel} <= 50`.implies(isNight)``）。而在 MIP 求解器（**HiGHS** / **GLPK**）中建模条件约束时，前提条件应使用布尔命题变量 `BoolVar`（`m.bool()`），或通过 `m.indicator(binVar, constraint)` 使用 0-1 二元触发变量。
+
+---
+
+## 🪞 同构资源的对称性破缺（Symmetry Breaking）
+
+当模型包含 $K$ 个完全相同的可互换资源（如相同规格的货车、箱子或并行机器）时，任意可行解都可以通过重排资源编号产生 $K!$ 个目标值完全相同的等价解。若不消除对称性，MIP 求解器会在分支定界树中反复搜索互为镜像的冗余子树，导致证明全局最优极度缓慢。
+
+通过对同构资源的启用状态施加顺序约束（$u_0 \ge u_1 \ge \dots \ge u_{K-1}$），即可在不损失任何最优解的前提下大幅削减搜索空间：
+
+```typescript
+const numTrucks = 4;
+const truckUsed = m.binary(numTrucks, { prefix: "truck_used" });
+
+// 仅当第 k 辆货车已启用时，才允许启用第 k+1 辆货车 (u_0 >= u_1 >= u_2 >= u_3)
+for (let k = 0; k < numTrucks - 1; k++) {
+  m.constraint(
+    expr`${truckUsed[k]} >= ${truckUsed[k + 1]}`,
+    `symmetry_truck_${k}`
+  );
+}
+```
+
+---
+
+## ⚖️ 硬约束 vs 软约束（引入弹性松弛变量）
+
+在实际的排班调度与资源分配业务中，如果将所有业务规则都设为不可违背的**硬约束（Hard Constraints）**，一旦遇到需求高峰或人手不足，模型往往会直接返回无解（`"Infeasible"`）。
+
+为了保证模型在极端情况下仍能给出最优折中方案并定位缺口，建议将非刚性目标转化为**软约束（Soft / Elastic Constraints）**：引入非负的缺口或超额松弛变量（$s \ge 0$），并在目标函数中对其施加惩罚权重：
+
+| 约束类型 | 硬约束形式 | 软约束（弹性）形式 ($s \ge 0$) | 目标函数惩罚项（最小化） |
+| :--- | :--- | :--- | :--- |
+| **下界约束** | $\text{lhs} \ge b$ | $\text{lhs} + s_{\text{short}} \ge b$ | $+ W \cdot s_{\text{short}}$ |
+| **上界约束** | $\text{lhs} \le b$ | $\text{lhs} - s_{\text{excess}} \le b$ | $+ W \cdot s_{\text{excess}}$ |
+| **目标等式** | $\text{lhs} = b$ | $\text{lhs} + s_{\text{short}} - s_{\text{excess}} = b$ | $+ W_1 \cdot s_{\text{short}} + W_2 \cdot s_{\text{excess}}$ |
+
+```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+
+const m = new Model("ElasticShiftCoverage");
+
+const assignedStaff = m.integer("assignedStaff", { lb: 0, ub: 4 }); // 当日最多仅有 4 名员工可排班
+const shortage = m.continuous("shortage", { lb: 0 });               // 非负缺口松弛变量 (s >= 0)
+
+// 软约束：目标配置 5 名员工，若人手不足则允许 shortage > 0
+m.constraint(expr`${assignedStaff} + ${shortage} >= 5`, "target_5_staff");
+
+// 对每缺少 1 名员工施加远高于常规人力成本 ($100) 的惩罚权重 ($1,000)
+m.objective(minimize(expr`100 * ${assignedStaff} + 1000 * ${shortage}`));
+
+await m.solve();
+console.log("排班人数:", assignedStaff.value); // 4
+console.log("缺口人数:", shortage.value);      // 1 (平滑降级并给出最优折中方案，而非报错 Infeasible)
+```
+
+> **工程实践提示 — 惩罚权重 $W$ 的取值**：将权重 $W$ 设为略高于常规业务边际成本（例如单位成本的 $10\sim 1{,}000$ 倍），但应避免使用 $10^{12}$ 这类过大的天文数字。将模型中最大系数与最小系数的比例控制在 $10^5\sim 10^6$ 以内，有助于保持 LP/MIP 求解器的浮点数值稳定性。
+
 ---
 
 ## 📐 对偶值（影子价格）、松弛变量与查询

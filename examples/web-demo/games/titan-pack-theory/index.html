@@ -113,27 +113,26 @@
           <p id="t-sec4-p1">
             Here is how to formulate and solve this 2D packing model using the <code>@ohtaman/washi</code> TypeScript mathematical modeling library:
           </p>
-          <pre class="code-block"><code>import { Model } from "@ohtaman/washi";
+          <pre class="code-block"><code>import { Model, expr } from "@ohtaman/washi";
 
 const model = new Model("TitanPacking2D");
-const M = Math.max(plateW, plateH) + 1;
 
 // 1. Continuous coordinate variables for each part
-const x = parts.map((p, i) => model.continuous(`x_${i}`, { lb: 0, ub: plateW - p.w }));
-const y = parts.map((p, i) => model.continuous(`y_${i}`, { lb: 0, ub: plateH - p.h }));
+const x = parts.map((p, i) =&gt; model.continuous(`x_${i}`, { lb: 0, ub: plateW - p.w }));
+const y = parts.map((p, i) =&gt; model.continuous(`y_${i}`, { lb: 0, ub: plateH - p.h }));
 
-// 2. Pairwise non-overlap constraints (Big-M)
+// 2. Pairwise non-overlap constraints with axis-specific tight Big-M (plateW, plateH)
 for (let i = 0; i &lt; parts.length; i++) {
   for (let j = i + 1; j &lt; parts.length; j++) {
     const d1 = model.binary(`d_${i}_${j}_left`);
     const d2 = model.binary(`d_${i}_${j}_right`);
     const d3 = model.binary(`d_${i}_${j}_below`);
     const d4 = model.binary(`d_${i}_${j}_above`);
-    model.constraint(x[i].add(parts[i].w).sub(x[j]).add(d1.mul(M)).le(M));
-    model.constraint(x[j].add(parts[j].w).sub(x[i]).add(d2.mul(M)).le(M));
-    model.constraint(y[i].add(parts[i].h).sub(y[j]).add(d3.mul(M)).le(M));
-    model.constraint(y[j].add(parts[j].h).sub(y[i]).add(d4.mul(M)).le(M));
-    model.constraint(d1.add(d2).add(d3).add(d4).ge(1));
+    model.constraint(expr`${x[i]} + ${parts[i].w} - ${x[j]} + ${plateW} * ${d1} &lt;= ${plateW}`);
+    model.constraint(expr`${x[j]} + ${parts[j].w} - ${x[i]} + ${plateW} * ${d2} &lt;= ${plateW}`);
+    model.constraint(expr`${y[i]} + ${parts[i].h} - ${y[j]} + ${plateH} * ${d3} &lt;= ${plateH}`);
+    model.constraint(expr`${y[j]} + ${parts[j].h} - ${y[i]} + ${plateH} * ${d4} &lt;= ${plateH}`);
+    model.constraint(expr`${d1} + ${d2} + ${d3} + ${d4} &gt;= 1`);
   }
 }
 

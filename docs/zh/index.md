@@ -49,9 +49,9 @@ import { Model, expr, maximize } from "@ohtaman/washi";
 // 1. 创建模型
 const m = new Model("木工产品利润最大化");
 
-// 2. 定义整数决策变量
-const desks = m.integer("桌子", { lb: 0 });
-const chairs = m.integer("椅子", { lb: 0 });
+// 2. 定义带合理上下界的整数决策变量
+const desks = m.integer("桌子", { lb: 0, ub: 100 });
+const chairs = m.integer("椅子", { lb: 0, ub: 100 });
 
 // 3. 设置目标函数（桌子利润 $30，椅子利润 $50）
 m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
@@ -63,8 +63,10 @@ m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
 // 5. 调用 WebAssembly (HiGHS) 求解
 await m.solve();
 
-console.log(`生产方案: 桌子=${desks.value}, 椅子=${chairs.value}`);
-console.log(`最大利润: $${m.objectiveValue}`);
+if (m.hasPrimalSolution) {
+  console.log(`生产方案: 桌子=${desks.value}, 椅子=${chairs.value}`);
+  console.log(`最大利润: $${m.objectiveValue}`);
+}
 ```
 
 ## 文档导航

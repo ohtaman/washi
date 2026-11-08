@@ -126,7 +126,7 @@ async function runScenario(
   if (status === "Optimal") {
     console.log(`Optimal Weekly Payroll: $${model.objectiveValue}`);
     for (const s of staffList) {
-      const schedule = days.map((d) => (Math.round(shift[s.name][d].value ?? 0) === 1 ? "ON" : " ·"));
+      const schedule = days.map((d) => (shift[s.name][d].value === 1 ? "ON" : " ·"));
       console.log(`  ${s.name.padEnd(8)}: ${schedule.join(" ")}`);
     }
     console.log("Schedule resolved successfully (no UNSAT diagnosis needed).\n");
@@ -173,3 +173,19 @@ main();
 ```
 
 </CodeRunner>
+
+## Auto-Repairing Conflicts with Soft Constraints (Elastic Requests)
+
+Once Z3 `unsatCore` diagnoses that `senior_duty_Sat` conflicts with `day_off_Alice_Sat` and `day_off_Bob_Sat`, you can offer managers an automatic repair option by relaxing day-off requests from hard constraints (`shift[staff][day] == 0`) into **soft preferences** penalized in the objective (e.g., `+$500` per overridden day off):
+
+```typescript
+// Soft constraint pattern: penalize working on a requested day off by $500
+// instead of enforcing hard shift[req.staff][req.day] == 0
+const overridePenalty = sum(
+  dayOffRequests,
+  (req) => expr`500 * ${shift[req.staff][req.day]}`
+);
+m.objective(minimize(expr`${dot(costMatrix, shift)} + ${overridePenalty}`));
+```
+
+With this soft formulation on Scenario B, HiGHS automatically finds a valid roster that honors 3 of the 4 requests (`Alice (Sat)`, `Charlie (Sat)`, and `Diana (Wed)`) and overrides only `Bob (Sat)`—choosing Bob over Alice because Bob's daily wage (`$210`) is `$10` lower than Alice's (`$220`).

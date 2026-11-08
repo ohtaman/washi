@@ -148,7 +148,7 @@ async function runShiftSchedulingWorkflow(
     for (const s of staffList) {
       let worked = 0;
       const cells = days.map((d) => {
-        const on = Math.round(shift[s.name][d].value ?? 0) === 1;
+        const on = shift[s.name][d].value === 1;
         if (on) worked++;
         return on ? "  ON" : "   ·";
       });
@@ -201,16 +201,45 @@ async function main() {
   );
 
   // Scenario B: Conflicting Saturday Vacation Requests
+  const conflictingRequests: Array<{ staff: string; day: Day }> = [
+    { staff: "Alice",   day: "Sat" }, // Senior
+    { staff: "Bob",     day: "Sat" }, // Senior
+    { staff: "Charlie", day: "Sat" }, // Junior
+    { staff: "Diana",   day: "Wed" }, // Unrelated weekday request
+  ];
   await runShiftSchedulingWorkflow(
     "Scenario B: Conflicting Vacation Requests (Infeasible & Z3 Diagnosis)",
     "WeeklyRoster_Conflict",
-    [
-      { staff: "Alice",   day: "Sat" }, // Senior
-      { staff: "Bob",     day: "Sat" }, // Senior
-      { staff: "Charlie", day: "Sat" }, // Junior
-      { staff: "Diana",   day: "Wed" }, // Unrelated weekday request
-    ]
+    conflictingRequests
   );
+
+  // Scenario C: Auto-Repair via Soft Constraints (Penalized Day-Off Overrides)
+  console.log("=== Scenario C: Auto-Repair with Soft Vacation Constraints (HiGHS MIP) ===");
+  const mSoft = new Model("WeeklyRoster_SoftRepair");
+  const shiftSoft = mSoft.binary(staffList.map((s) => s.name), [...days]);
+  const costMatrix = Object.fromEntries(
+    staffList.map((s) => [
+      s.name,
+      Object.fromEntries(
+        days.map((d) => [d, s.dailyWage + (d === "Sat" || d === "Sun" ? 30 : 0)])
+      ),
+    ])
+  );
+  for (const d of days) {
+    mSoft.constraint(expr`${sum(staffList, (s) => shiftSoft[s.name][d])} >= ${requiredCoverage[d]}`, `coverage_${d}`);
+    const seniors = staffList.filter((s) => s.isSenior);
+    mSoft.constraint(expr`${sum(seniors, (s) => shiftSoft[s.name][d])} >= 1`, `senior_duty_${d}`);
+  }
+  for (const s of staffList) {
+    mSoft.constraint(expr`${sum(days, (d) => shiftSoft[s.name][d])} <= ${s.maxShifts}`, `max_shifts_${s.name}`);
+  }
+  // Treat each vacation request as a soft preference: penalize working on a requested day off by $500
+  const overridePenalty = sum(conflictingRequests, (req) => expr`500 * ${shiftSoft[req.staff][req.day]}`);
+  mSoft.objective(minimize(expr`${dot(costMatrix, shiftSoft)} + ${overridePenalty}`));
+  await mSoft.solve();
+  const overridden = conflictingRequests.filter((r) => shiftSoft[r.staff][r.day].value === 1);
+  console.log(`Status: ${mSoft.status}, Total Objective (Payroll + Penalty): $${mSoft.objectiveValue}`);
+  console.log(`Minimum Vacation Overrides (${overridden.length}): ${overridden.map((r) => `${r.staff} (${r.day})`).join(", ")}\n`);
 }
 
 main().catch(console.error);

@@ -262,13 +262,13 @@ const result = await master.solveBenders({
 
 分解方法在组合优化中的两个典型应用示例：
 
-### 1. 车辆路径问题（CVRP: 容量限制车辆路径） $\times$ 列生成法
-*(完整可执行代码: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
+### 1. 一维装箱／车队规模最小化 $\times$ 列生成法（以及完整 CVRP）
+*(包含行驶距离与 2-opt 路径定价的完整 CVRP 请参见 [车辆路径问题 (CVRP)](../examples/vehicle-routing.md) 与 [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
 
-* **问题结构**: 多车巡回配送客户时，预先枚举所有可能路线会产生大量变量。
+* **问题结构**: 将客户订单分配给受载重限制的车辆（一维装箱／最小车队规模问题）或巡回路线时，预先枚举所有可行组合会产生指数级数量的变量。
 * **列生成法建模**:
-  * **主问题（集合覆盖）**: 从已生成的路线候选中，选择覆盖所有客户且总车辆数最少的路线组合。
-  * **定价子问题（背包问题）**: 基于客户约束的影子价格（对偶变量），动态生成满足车辆载重限制且具有负检验数的可行路线（列）。
+  * **主问题（集合覆盖 `>= 1`）**: 从已生成的装载方案候选中，选择覆盖所有客户且总车辆数最少（每列 `cost: 1`）的组合。
+  * **定价子问题（0-1 背包问题）**: 基于客户覆盖约束的影子价格（对偶变量 $\pi_i$），动态生成满足车辆载重限制且具有负检验数（$1 - \sum \pi_i a_i < 0$）的可行方案（列）。（在最小化行驶距离的完整 CVRP 中，列的成本为路线距离，定价子问题则为带资源约束的最短路问题 ESPPRC。）
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -382,18 +382,33 @@ const result = await master.solveBenders({
       return null; // 已形成覆盖所有城市的单一回路
     }
 
-    // 发现子回路：为最小局部回路 S 生成 Benders 可行性割平面
-    const S = cycles.reduce((min, c) => (c.length < min.length ? c : min), cycles[0]);
-    const secExpr = new LinExpr();
-    for (const i of S) {
-      for (const j of S) {
-        if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+    // 发现子回路：为当前解中每一个孤立子回路 S 同时生成 Benders 可行性割平面（多割平面分离）
+    return cycles.map((S) => {
+      const secExpr = new LinExpr();
+      for (const i of S) {
+        for (const j of S) {
+          if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+        }
       }
-    }
-    return {
-      kind: "feasibility",
-      constraint: expr`${secExpr} <= ${S.length - 1}`,
-    };
+      return {
+        kind: "feasibility" as const,
+        constraint: expr`${secExpr} <= ${S.length - 1}`,
+      };
+    });
   },
 });
 ```
+
+---
+
+## 💡 分解算法实战要点与注意事项
+
+1. **列生成中的集合覆盖（`>= 1`）与集合划分（`== 1`）**：
+   - 将客户覆盖约束建模为不等式 `>= 1`（集合覆盖）而非严格等式 `== 1`（集合划分），可将对偶价格限制在 $\pi_i \ge 0$ 范围内，避免对偶值剧烈正负震荡，显著加快列生成收敛（在满足三角不等式的距离空间中，若某客户被多条路线覆盖，直接跳过重复访问不会增加成本）。
+2. **Price-and-Branch（`finalizeAsMIP: true`）与精确 Branch-and-Price**：
+   - `finalizeAsMIP: true` 会在根节点 LP 松弛完成列生成后，在生成的列池上求解一次最终 MIP。这在工业界运筹学中称为 **Price-and-Branch（限制主问题启发式）**，无需在定价子问题内部处理分支约束即可快速获得高质量整数解。
+3. **`solveBenders()` 中子问题目标值为负时的 `theta` 下界**：
+   - 使用 `sub.link(...)` 自动关联时，WaSHI 自动创建的辅助变量 `__benders_theta` 默认下界为 `lb: 0`（假设子问题运营成本非负）。若子问题目标函数可能取负值（如净收益或返利），请显式传入带有有限负下界的 `theta: master.continuous("theta", { lb: -1e6 })`。
+4. **多割平面分离与 DFJ 子回路消除约束的等价性**：
+   - 在 TSP 子问题中发现多个孤立子回路时，一次性返回**所有**子回路的割平面数组（`cycles.map(...)` 多割平面分离）能显著减少主问题 MIP 的重求解次数。
+   - 此外，由于主问题已强制每个城市的出度 $\sum_{j \ne i} x_{ij} = 1$，子集 $S$ 内部边数约束 $\sum_{i,j \in S} x_{ij} \le |S| - 1$ 与跨边界割集约束 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 在代数上完全等价。

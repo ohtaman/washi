@@ -164,7 +164,10 @@ export async function runMipExample() {
   m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${setup}`));
   m.constraint(expr`${dot(woodPerUnit, qty)} <= 40`, "wood_cap");
   m.constraint(expr`${dot(laborPerUnit, qty)} <= 50`, "labor_cap");
-  m.constraint(expr`${sum(Object.values(qty))} <= 30 * ${setup}`, "require_setup");
+  m.indicator(setup, expr`${sum(Object.values(qty))} <= 0`, {
+    activeValue: 0,
+    name: "require_setup",
+  });
 
   const status = await m.solve();
   const report = m.validateSolution();
@@ -268,4 +271,11 @@ export function verifyNegativePatterns() {
   return { m, x, y, maximize };
 }
 ```
+
+### Practical OR Modeling Guardrails
+
+- **Prefer inequalities (`>=` / `<=`) over exact equalities (`==`)** for demand coverage and resource limits when objective costs are positive; reserve `==` for physical conservation laws (e.g., flow balance, portfolio weights summing to `1`).
+- **Always provide finite `lb` and `ub` bounds** on variables referenced inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M instead of falling back to `1e6`.
+- **Use soft constraints (elastic slack variables)** for non-rigid business targets (e.g., preferred staffing, safety stock, day-off requests) by adding a non-negative slack variable (`lb: 0`) with a tiered objective penalty, reserving hard constraints for physical or legal invariants.
+
 

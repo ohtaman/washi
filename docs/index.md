@@ -49,9 +49,9 @@ import { Model, expr, maximize } from "@ohtaman/washi";
 // 1. Create a model
 const m = new Model("WoodworkingProfit");
 
-// 2. Define decision variables
-const desks = m.integer("desks", { lb: 0 });
-const chairs = m.integer("chairs", { lb: 0 });
+// 2. Define decision variables with realistic bounds
+const desks = m.integer("desks", { lb: 0, ub: 100 });
+const chairs = m.integer("chairs", { lb: 0, ub: 100 });
 
 // 3. Set objective function ($30/desk, $50/chair)
 m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
@@ -63,8 +63,10 @@ m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
 // 5. Solve via WebAssembly (HiGHS)
 await m.solve();
 
-console.log(`Produce: ${desks.value} desks, ${chairs.value} chairs`);
-console.log(`Maximum Profit: $${m.objectiveValue}`);
+if (m.hasPrimalSolution) {
+  console.log(`Produce: ${desks.value} desks, ${chairs.value} chairs`);
+  console.log(`Maximum Profit: $${m.objectiveValue}`);
+}
 ```
 
 ## Explore Documentation

@@ -13,7 +13,7 @@
 | **[员工排班与冲突诊断](/zh/examples/shift-scheduling)** | Binary MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5×7 周排班规划（每日人数覆盖、资深员工值班、排班上限与休假申请），以及使用 Z3 `unsatCore` 诊断冲突的休假申请。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
 | **[购物车优惠券最优组合](/zh/examples/ecommerce-coupons)** | Indicator MIP | HiGHS | `m.indicator()`, `sum()`, `m.constraint()` | 使用 `m.indicator()` 对最低消费门槛、互斥与可叠加规则建模，并提供智能凑单加购建议。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
 | **[投资组合优化](/zh/examples/portfolio-qp)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 在目标收益率约束下，使用 `QuadExpr` 最小化马科维茨均值-方差风险（$w^T \Sigma w$）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
-| **[安全策略验证](/zh/examples/smt-security)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑连接词（`implies`, `and`, `not`, `xor`）及整数边界的混合建模。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
+| **[安全策略验证](/zh/examples/smt-security)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑连接词（`implies`, `and`, `not`, `xor`）及整数边界的混合建模。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_security) |
 | **[不可行冲突诊断 (`unsatCore`)](/zh/examples/unsat-core)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 当人员配备要求与预算规则互相矛盾时，自动提取冲突约束子集（`unsatCore`）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
 | **[车辆路径规划 (CVRP)](/zh/examples/vehicle-routing)** | 组合优化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 利用客户对偶影子价格动态生成路径列，最小化车队总车辆数。 | [分解算法指南](/zh/guide/decomposition) |
 | **[旅行商问题 (TSP)](/zh/examples/traveling-salesperson)** | 组合优化 / Benders分解 | HiGHS | `m.solveBenders()`, `subproblem` | 从度数分配松弛出发，利用动态 Benders 可行割消除子回路。 | [分解算法指南](/zh/guide/decomposition) |
@@ -54,4 +54,6 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 ```

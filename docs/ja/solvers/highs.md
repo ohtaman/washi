@@ -88,6 +88,14 @@ await model.solve({
     console.log(`経過: ${ev.elapsedTime.toFixed(1)}s, 暫定値: ${ev.objectiveValue}`);
   },
 });
+
+// timeLimit や AbortSignal を使用する場合は hasPrimalSolution で暫定解の有無を確認します:
+if (model.hasPrimalSolution) {
+  console.log(
+    `利用可能な解 (${model.status}, 停止理由: ${model.terminationStatus}):`,
+    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+  );
+}
 ```
 
 ---

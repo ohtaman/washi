@@ -175,7 +175,10 @@ export async function runCVRP() {
   const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
   master.objective(minimize(sum(initialRoutes)));
 
-  // Customer coverage constraints: Each customer must be visited by exactly 1 vehicle
+  // Customer coverage constraints: Each customer must be visited by at least 1 vehicle.
+  // Note: Using `== 1` (Set Partitioning) guarantees no duplicate customer visits across routes,
+  // whereas `>= 1` (Set Covering) restricts duals to non-negative values (dual_i >= 0), stabilizing
+  // LP convergence when the triangle inequality holds (any duplicate visit can be shortcut later).
   for (let i = 0; i < customers.length; i++) {
     master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${customers[i].id}`);
   }
@@ -184,7 +187,7 @@ export async function runCVRP() {
   console.log(`Initial state: ${customers.length} naive single-customer routes (${customers.length} vehicles).`);
   console.log("Solving Column Generation with dual-directed heuristic pricing...");
 
-  // 2. Solve via Column Generation
+  // 2. Solve via Column Generation (Price-and-Branch: LP column generation followed by MIP finalization)
   const result = await master.solveColumnGeneration<RouteMeta>({
     finalizeAsMIP: true,
     pricing: async () => {
@@ -194,9 +197,12 @@ export async function runCVRP() {
         .filter((c) => c.dual > 0)
         .sort((a, b) => b.dual - a.dual);
 
-      // 2. Solve pricing subproblem: find route with negative reduced cost (dualSum > 1)
+      // 2. Solve pricing subproblem: find route with negative reduced cost (dualSum > 1).
+      // Note: Because pricing uses a fast heuristic (cheapest insertion + 2-opt) rather than
+      // an exact ESPPRC solver, termination when `bestRoute === null` yields a high-quality
+      // heuristic LP solution rather than a certified global LP lower bound.
       const bestRoute = findImprovingRoute(candidates, routeConfig);
-      if (!bestRoute) return null; // No improving column found; LP relaxation has converged
+      if (!bestRoute) return null; // No improving column found by heuristic pricing
 
       // 3. Propose new column to Restricted Master Problem
       const { travelTime, totalTime } = calcRouteTime(bestRoute, dist, serviceTimes);
@@ -233,14 +239,14 @@ export async function runCVRP() {
   console.log("\nRoutes selected in fleet:");
   let vehicleNum = 1;
   for (let i = 0; i < customers.length; i++) {
-    if ((initialRoutes[i].value ?? 0) > 0.5) {
+    if (initialRoutes[i].value === 1) {
       const transit = dist("Depot", customers[i].id) + dist(customers[i].id, "Depot");
       const total = transit + customers[i].serviceTime;
       console.log(`  Vehicle ${vehicleNum++}: Depot -> ${customers[i].id} -> Depot (Transit: ${transit}m, Total: ${total}m)`);
     }
   }
   for (const col of result.generatedColumns) {
-    if ((col.variable.value ?? 0) > 0.5) {
+    if (col.variable.value === 1) {
       const meta = col.proposal.meta;
       console.log(`  Vehicle ${vehicleNum++}: ${meta?.tour.join(" -> ")} (Transit: ${meta?.travelTime}m, Total: ${meta?.totalTime}m)`);
     }

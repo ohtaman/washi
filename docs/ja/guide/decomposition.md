@@ -263,13 +263,13 @@ const result = await master.solveBenders({
 
 分解法が用いられる代表的な問題例です：
 
-### 1. 配送計画問題（CVRP: 容量制約付き配送計画） $\times$ 列生成法
-*(完全な実行可能コード: [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
+### 1. 1次元ビンパッキング／車両台数最小化 $\times$ 列生成法（および距離ベース CVRP）
+*(走行距離と 2-opt 経路探索を含む本格的な CVRP は [配送計画問題 (CVRP)](../examples/vehicle-routing.md) および [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) を参照)*
 
-* **問題の構造**: 複数台の車両で顧客を巡回配送する問題では、訪問順序の全ルートをあらかじめ列挙すると変数が膨大になります。
+* **問題の構造**: 積載容量制約のある車両への注文割当（1次元ビンパッキング／最小車両台数問題）や巡回配送では、実行可能な組み合わせをあらかじめ全列挙すると変数が指数関数的に爆発します。
 * **列生成法による定式化**:
-  * **主問題（Set Covering）**: 生成されたルート候補の中から、全顧客をカバーする最小台数・最小距離の組み合わせを選ぶ。
-  * **子問題（Pricing / ナップサック問題）**: 顧客制約のシャドウプライス（双対変数）をもとに、車両積載容量を満たしつつ被約費用が負となる新規ルート（列）を動的に1本ずつ生成。
+  * **主問題（Set Covering）**: 生成された積載パターン候補の中から、全顧客をカバーする最小車両台数（各列の `cost: 1`）の組み合わせを選ぶ。
+  * **子問題（Pricing / 0-1 ナップサック問題）**: 顧客カバー制約のシャドウプライス（双対変数 $\pi_i$）をもとに、車両積載容量を満たしつつ被約費用が負（$1 - \sum \pi_i a_i < 0$）となる新規パターン（列）を動的に生成。（距離最小化の CVRP では、列のコストを巡回距離とし、Pricing 子問題として資源制約付き最短路問題 ESPPRC を解きます。）
 
 ```typescript
 import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
@@ -383,18 +383,33 @@ const result = await master.solveBenders({
       return null; // 全都市を回る単一ツアーが完成
     }
 
-    // 部分巡回を検出：最小の島 S に対する Benders 実行可能カットを生成
-    const S = cycles.reduce((min, c) => (c.length < min.length ? c : min), cycles[0]);
-    const secExpr = new LinExpr();
-    for (const i of S) {
-      for (const j of S) {
-        if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+    // 部分巡回を検出：見つかったすべての部分巡回 S に対して Benders 実行可能カットを一括生成（マルチカット分離）
+    return cycles.map((S) => {
+      const secExpr = new LinExpr();
+      for (const i of S) {
+        for (const j of S) {
+          if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
+        }
       }
-    }
-    return {
-      kind: "feasibility",
-      constraint: expr`${secExpr} <= ${S.length - 1}`,
-    };
+      return {
+        kind: "feasibility" as const,
+        constraint: expr`${secExpr} <= ${S.length - 1}`,
+      };
+    });
   },
 });
 ```
+
+---
+
+## 💡 分解法の実務上の勘所と注意点
+
+1. **列生成法における集合被覆（`>= 1`）と集合分割（`== 1`）の違い**:
+   - 顧客の訪問制約を等式 `== 1`（集合分割）ではなく不等式 `>= 1`（集合被覆）で定式化すると、双対変数の符号が $\pi_i \ge 0$ に制限されるため、双対価格の激しい正負振動が抑えられ、列生成の収束が大幅に安定・高速化します（三角不等式が成り立つ距離空間では、仮に複数ルートで重複カバーされた顧客がいても単にスキップすればコストが増えないため、最適値は一致します）。
+2. **Price-and-Branch（`finalizeAsMIP: true`）と厳密な Branch-and-Price**:
+   - `finalizeAsMIP: true` は、ルートノードの LP 緩和で生成された列プール全体に対して最後に1回 MIP を解く手法で、実務では **Price-and-Branch（Restricted Master Heuristic）** と呼ばれます。Pricing 子問題の内部に分枝限定法を組み込む厳密な Branch-and-Price に比べて実装が極めてシンプルでありながら、実用上十分な高精度整数解を高速に得られます。
+3. **`solveBenders()` で子問題の目的関数が負になり得る場合（`theta` の下限）**:
+   - `sub.link(...)` による自動リンク機能では、子問題コストを表す補助変数 `__benders_theta` がデフォルトで `lb: 0`（非負コストを想定）として生成されます。子問題の目的関数が負の値（利益項や値引きなど）をとり得る場合は、`theta: master.continuous("theta", { lb: -1e6 })` のように有限の負の下限を持つ `theta` 変数を明示的に渡してください。
+4. **マルチカット分離と DFJ 部分巡回除去制約の等価性**:
+   - TSP の子問題で複数の孤立サイクルが見つかった際、最小の1個だけでなく**すべての部分巡回に対して同時にカットを返す（マルチカット分離）**ことで、主問題の MIP 再求解回数を大きく削減できます。
+   - また、主問題で各都市の出次数制約 $\sum_{j \ne i} x_{ij} = 1$ が課されているため、部分集合 $S$ 内の内部辺数制約 $\sum_{i,j \in S} x_{ij} \le |S| - 1$ と、境界を跨ぐカットセット制約 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ は数学的に完全に等価です。

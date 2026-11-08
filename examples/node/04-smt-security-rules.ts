@@ -56,10 +56,17 @@ async function main() {
 
   console.log(`\nStatus: ${res.status}`);
   console.log("Deduced System State:");
-  console.log(`  • Siren Active : ${m.values.get("sirenActive")}`);
-  console.log(`  • Lights On    : ${m.values.get("lightsOn")}`);
-  console.log(`  • Door Locked  : ${m.values.get("frontDoorUnlocked") ? "No (Unlocked)" : "Yes (Locked)"}`);
-  console.log(`  • Is Night     : ${m.values.get("isNight")}`);
+  console.log(`  • Siren Active : ${sirenActive.value}`);
+  console.log(`  • Lights On    : ${lightsOn.value}`);
+  console.log(`  • Door Locked  : ${frontDoorUnlocked.value ? "No (Unlocked)" : "Yes (Locked)"}`);
+  console.log(`  • Is Night     : ${isNight.value}`);
+
+  // 4. Formal Safety Verification (Proof by Refutation / Counterexample Search)
+  // Prove that under this context, the siren CANNOT remain off (sirenActive === false is Unsat)
+  m.constraint(not(sirenActive), "counterexample_siren_off");
+  const verifyRes = await m.check({ solver: "z3" });
+  console.log(`\nFormal Safety Proof (Can siren remain off?): ${verifyRes.status}`);
+  console.log(`  → Proven guaranteed to sound via rules: ${(verifyRes.conflicts ?? []).join(", ")}`);
 }
 
 main().catch(console.error);

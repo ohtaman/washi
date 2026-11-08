@@ -84,6 +84,9 @@ export async function runHybridPipeline({
     console.log("SMT Check Result: SAT (Feasible & Consistent)");
   } else if (policyCheck.status === "Unsat") {
     console.log("SMT Check Result: UNSAT (Inconsistent policy rules detected)");
+    if (policyCheck.conflicts?.length) {
+      console.log(`Conflicting policy rules: ${policyCheck.conflicts.join(", ")}`);
+    }
     console.log("Policy rules are inconsistent! Halting optimization pipeline before solver invocation.");
     return { status: "Unsat", executedMIP: false };
   } else {
@@ -98,17 +101,19 @@ export async function runHybridPipeline({
   console.log("\nStep 2: Policy verified. Transferring deployment decisions to HiGHS MIP...");
   const mip = new Model("DataCenterCapacityAllocation");
 
-  // Continuous traffic capacity in TB/s
+  // Continuous traffic capacity in TB/s (including optional APAC burst region)
   const capEU = mip.continuous("capEU", { lb: 0, ub: 500 });
   const capUS = mip.continuous("capUS", { lb: 0, ub: 500 });
+  const capAPAC = mip.continuous("capAPAC", { lb: 0, ub: 500 });
 
   // Binary activation decisions
   const openEU = mip.binary("openEU");
   const openUS = mip.binary("openUS");
+  const openAPAC = mip.binary("openAPAC"); // Optional burst region decided by MIP
 
   // Carry over SMT-verified deployment decisions:
   // Since SMT verified that deployEurope and deployUS are feasible together,
-  // enforce both data centers to be online to satisfy the business policy (Issue #34).
+  // enforce both mandatory data centers to be online to satisfy the business policy (Issue #34).
   if (deployEurope.value ?? true) {
     mip.constraint(openEU.eq(1), "enforce_eu_deployment");
   }
@@ -116,29 +121,35 @@ export async function runHybridPipeline({
     mip.constraint(openUS.eq(1), "enforce_us_deployment");
   }
 
-  // Big-M Indicator Constraints:
-  // If openEU == 0 -> capEU <= 0 (cannot route traffic if cluster is offline)
-  // If openUS == 0 -> capUS <= 0
-  mip.indicator(openEU, capEU.le(0), { activeValue: 0, M: 500, name: "eu_offline" });
-  mip.indicator(openUS, capUS.le(0), { activeValue: 0, M: 500, name: "us_offline" });
+  // Big-M Indicator Constraints (M is automatically derived from finite bounds [0, 500]):
+  // If open == 0 -> cap <= 0 (cannot route traffic if cluster is offline)
+  mip.indicator(openEU, capEU.le(0), { activeValue: 0, name: "eu_offline" });
+  mip.indicator(openUS, capUS.le(0), { activeValue: 0, name: "us_offline" });
+  mip.indicator(openAPAC, capAPAC.le(0), { activeValue: 0, name: "apac_offline" });
 
   // Minimum activation batch (at least 50 TB/s if activated)
-  mip.indicator(openEU, capEU.ge(50), { activeValue: 1, M: 500, name: "eu_min_batch" });
-  mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500, name: "us_min_batch" });
+  mip.indicator(openEU, capEU.ge(50), { activeValue: 1, name: "eu_min_batch" });
+  mip.indicator(openUS, capUS.ge(50), { activeValue: 1, name: "us_min_batch" });
+  mip.indicator(openAPAC, capAPAC.ge(50), { activeValue: 1, name: "apac_min_batch" });
 
   // Demand requirement: total traffic >= 450 TB/s
-  mip.constraint(expr`${capEU} + ${capUS} >= 450`, "total_demand");
+  mip.constraint(expr`${capEU} + ${capUS} + ${capAPAC} >= 450`, "total_demand");
 
   // Objective: Minimize Operational Cost
-  // Base fixed cost per DC ($5000), marginal cost per TB ($12 in US, $18 in EU)
-  mip.objective(minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`));
+  // Base fixed cost per DC ($5000 US/EU, $6000 APAC), marginal cost per TB ($12 US, $18 EU, $15 APAC)
+  mip.objective(
+    minimize(
+      expr`5000 * ${openEU} + 5000 * ${openUS} + 6000 * ${openAPAC} + 18 * ${capEU} + 12 * ${capUS} + 15 * ${capAPAC}`
+    )
+  );
 
   const status = await mip.solve();
 
   console.log(`HiGHS MIP Status: ${status}`);
   console.log(`Optimal Total Cost: $${mip.objectiveValue?.toLocaleString()}`);
-  console.log(`US Center: ${openUS.value ? "ONLINE" : "OFFLINE"} (Allocation: ${capUS.value} TB/s)`);
-  console.log(`EU Center: ${openEU.value ? "ONLINE" : "OFFLINE"} (Allocation: ${capEU.value} TB/s)`);
+  console.log(`US Center  : ${openUS.value === 1 ? "ONLINE" : "OFFLINE"} (Allocation: ${capUS.value} TB/s)`);
+  console.log(`EU Center  : ${openEU.value === 1 ? "ONLINE" : "OFFLINE"} (Allocation: ${capEU.value} TB/s)`);
+  console.log(`APAC Backup: ${openAPAC.value === 1 ? "ONLINE" : "OFFLINE"} (Allocation: ${capAPAC.value} TB/s)`);
   console.log("Pipeline finished successfully!");
 
   return {

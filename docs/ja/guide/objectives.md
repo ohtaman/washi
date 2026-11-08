@@ -27,6 +27,57 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 
 ---
 
+## ⚖️ 実務で頻出する目的関数パターン（Min-Max 負荷平準化・多目的最適化・MIP 終了条件）
+
+### 1. Min-Max 最適化（最大負荷の最小化・負荷平準化）
+LP/MIP の目的関数には `Math.max(...)` を直接記述できません。残業時間や設備負荷の最大値を抑えて平準化する $\min \max_i (\text{load}_i)$ を表現するには、補助変数 `maxLoad`（$z$）を導入し、すべての要素に対して $\text{load}_i \le z$ という上限制約を課したうえで $z$ を最小化します：
+
+$$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
+
+```typescript
+const workers = ["Alice", "Bob", "Carol"] as const;
+const hours = m.continuous(workers, { lb: 0, ub: 40 });
+const maxHours = m.continuous("max_hours", { lb: 0, ub: 40 });
+
+// 各スタッフの労働時間を maxHours 以下に抑える
+for (const w of workers) {
+  m.constraint(expr`${hours[w]} <= ${maxHours}`, `cap_${w}`);
+}
+m.constraint(expr`${hours.Alice} + ${hours.Bob} + ${hours.Carol} >= 60`, "total_work");
+
+// maxHours を最小化することで、最も忙しいスタッフの負荷を平準化
+m.objective(minimize(maxHours));
+```
+
+*（同様に、最小サービス水準を最大化する **Max-Min 最適化** $\max \min_i u_i$ では、すべての $i$ について $u_i \ge z$ とし、`maximize(z)` を設定します。）*
+
+### 2. 多目的最適化（重み付き和 vs. 辞書式2段階最適化）
+「総コスト（$f_1$）を最小化しつつ、納期遅延や負荷偏り（$f_2$）も最小化したい」といった複数目的を扱うには、主に2つの手法があります：
+
+- **重み付き和（1回で求解）**: スケールを揃えて `minimize(expr`${cost} + 50 * ${leadTime}`)` のように単一目的へ統合します。数値不安定を防ぐため、係数比は $10^5\text{〜}10^6$ 以内に収めてください。
+- **辞書式（階層的）2段階最適化**: 第1目的（コスト最小化など）に明確な優先順位がある場合は、まず第1目的で `solve()` して最適値 $f_1^*$ を求め、次に $f_1 \le f_1^*$（または 1% の許容幅を持たせて $f_1 \le 1.01 f_1^*$）を制約として追加してから第2目的で再求解します：
+
+```typescript
+// 第1段階: 最優先の目的（総コスト）を最小化
+m.objective(minimize(totalCost));
+await m.solve();
+const minCost = m.objectiveValue!;
+
+// 第2段階: コスト増加を最大1%以内に抑える制約を追加し、第2目的（最大負荷）を最小化
+m.constraint(expr`${totalCost} <= ${minCost * 1.01}`, "keep_near_min_cost");
+m.objective(minimize(maxHours));
+await m.solve();
+```
+
+### 3. 実務での MIP 終了条件の設計 (`relGap`, `absGap`, `timeLimit`)
+組合せ最適化（MIP）では、探索開始から数秒で実用上十分な良質解（Incumbent）が見つかる一方、残りの 0.5% のギャップを詰めて「数学的な大域最適性の証明」を完了するまでに計算時間の大半が費やされる現象（**Tail-off**）が頻発します。
+
+実務システムや対話型 UI では、`timeLimit` と併せてビジネス上意味のある許容ギャップを設定することを推奨します：
+- **`relGap: 0.01`**: 理論上の双対境界（これ以上良くなり得ない限界値）との相対差が **1% 以内**に入った時点で即座に終了します。
+- **`absGap: 100`**: 目的関数の単位（円やドルなど）において、暫定解と双対境界の絶対差（`|objectiveValue - objectiveBound|`）が **100 以下**になった時点で終了します。
+
+---
+
 ## 🚀 モデルの実行 (`m.solve()` vs. `m.check()`)
 
 WaSHI には2つの非同期実行メソッドがあります：

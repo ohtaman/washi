@@ -304,6 +304,117 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(repBadConstr.complete).toBe(false);
     expect(repBadConstr.uncheckedConstraints).toEqual(["nan_rhs", "nan_coeff"]);
   });
+
+  it("normalizes Integer and Binary variable values to exact integers on solve() and check(), while preserving fractional values on relax()", async () => {
+    const m = new Model("IntegralityNormalization");
+    const b = m.binary("b");
+    const n = m.integer("n", { lb: -10, ub: 10 });
+    const c = m.continuous("c", { lb: 0, ub: 10 });
+
+    const noisySolver = {
+      name: "NoisyMipSolver",
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: 5,
+          values: {
+            b: 0.9999998,
+            n: -0,
+            c: 1.9999998,
+          },
+        };
+      },
+    };
+
+    await m.solve(noisySolver);
+    expect(b.value).toBe(1);
+    expect(Number.isInteger(b.value)).toBe(true);
+    expect(n.value).toBe(0);
+    expect(Object.is(n.value, -0)).toBe(false);
+    expect(m.solution?.values.b).toBe(1);
+    expect(m.values.get("b")).toBe(1);
+    // Continuous variable preserves its exact floating-point value
+    expect(c.value).toBe(1.9999998);
+
+    // When solving LP relaxation (relax: true), fractional values on Integer/Binary variables are preserved
+    const relaxSolver = {
+      name: "RelaxLpSolver",
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: 2.5,
+          values: {
+            b: 0.5,
+            n: 2.9999998,
+            c: 1.25,
+          },
+        };
+      },
+    };
+
+    await m.relax(relaxSolver);
+    expect(b.value).toBe(0.5);
+    expect(n.value).toBe(2.9999998);
+
+    // Also honors solver-instance-level { relax: true } (e.g. new HighsSolver({ relax: true })) on solve() and check()
+    const instanceRelaxSolver = {
+      name: "InstanceRelaxSolver",
+      options: { relax: true },
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: -2.999999,
+          values: {
+            b: 0.999999,
+            n: 2.999999,
+            c: 1.5,
+          },
+        };
+      },
+      async check() {
+        return {
+          status: "Sat" as const,
+          values: {
+            b: 0.999999,
+            n: 2.999999,
+            c: 1.5,
+          },
+        };
+      },
+    };
+
+    await m.solve(instanceRelaxSolver);
+    expect(b.value).toBe(0.999999);
+    expect(n.value).toBe(2.999999);
+
+    await m.check(instanceRelaxSolver);
+    expect(b.value).toBe(0.999999);
+    expect(n.value).toBe(2.999999);
+
+    // Also verifies check() LP/MIP fallback path when solver has no native check() method
+    const fallbackRelaxSolver = {
+      name: "FallbackRelaxSolver",
+      options: { relax: true },
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: 0,
+          values: {
+            b: 0.999999,
+            n: 2.999999,
+            c: 1.5,
+          },
+        };
+      },
+    };
+    await m.check(fallbackRelaxSolver);
+    expect(b.value).toBe(0.999999);
+    expect(n.value).toBe(2.999999);
+  });
 });
 
 

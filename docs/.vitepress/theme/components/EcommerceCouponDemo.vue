@@ -142,7 +142,6 @@ async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
   for (const c of coupons) {
     m.indicator(useCoupon[c.id], expr`${merchSpend} >= ${c.minSpend}`, {
       activeValue: 1,
-      M: 600,
       name: `thresh_${c.id}`,
     });
   }
@@ -157,10 +156,10 @@ async function runSingleCartModel(cartVal: number, enableFillers: boolean) {
   await m.solve();
 
   const activeCpns = coupons
-    .filter((c) => Math.round(useCoupon[c.id].value ?? 0) === 1)
+    .filter((c) => useCoupon[c.id].value === 1)
     .map((c) => c.id);
   const activeFiller =
-    fillers.find((f) => Math.round(addFiller[f.id].value ?? 0) === 1)?.id ?? null;
+    fillers.find((f) => addFiller[f.id].value === 1)?.id ?? null;
 
   const merch = cartVal + (fillers.find((f) => f.id === activeFiller)?.price ?? 0);
   const disc = coupons

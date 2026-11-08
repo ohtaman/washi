@@ -3,7 +3,7 @@
  * 
  * Demonstrates:
  * - Binary decision variables
- * - Array-based dynamic modeling using classical sum() helper
+ * - Array-based dynamic modeling using dot() inner-product helper
  * - High-speed MIP solving via HiGHS
  * 
  * Run with: npx tsx examples/node/02-knapsack-problem.ts

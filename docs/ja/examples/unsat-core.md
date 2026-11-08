@@ -53,10 +53,20 @@ async function diagnoseConflicts() {
   const res = await m.check({ solver: "z3" });
 
   console.log(`Status: ${res.status}`);
-  console.log("Conflicting Constraints (conflicts):", m.conflicts);
+  console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+
+  // 標準搭載の HiGHS でも単一 solve の L1 弾性スラック緩和で競合診断が可能:
+  const highsDiag = await m.check({ solver: "highs" });
+  console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
 }
 
 diagnoseConflicts();
 ```
 
 </CodeRunner>
+
+## 実務上のポイント
+
+- **Z3 の `unsatCore` と HiGHS の弾性スラック診断 (`conflicts`) の違い**:
+  - **Z3（`m.check({ solver: "z3" })`）** は論理的な仮定追跡を行い、無関係な `minimum_one_employee` を除外したうえで、矛盾を構成する4つのルール（`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`）を単位スケールに依存せず抽出します。
+  - **HiGHS（`m.check({ solver: "highs" })`）** は単一 solve の $L_1$ 弾性スラック最小化（$\min \sum s_i$）を解きます。予算上限を $14,000 緩和するよりも特急要件・人数要件を 1〜2 単位緩和する方がスラック総和が小さいため、重みなし $L_1$ 最小化では「最小の数値変更で実行可能に戻せる修復箇所（`rush_required`）」が優先して提示されます。

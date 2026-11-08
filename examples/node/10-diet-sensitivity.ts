@@ -78,7 +78,7 @@ async function main() {
     if (val < 1e-5 && rc > 1e-5) {
       note = `Needs -$${rc.toFixed(2)} price drop to enter menu`;
     } else if (Math.abs(val - 4) < 1e-5) {
-      note = "At upper serving cap (4.0)";
+      note = `At upper cap (4.0); +1 cap saves $${Math.abs(rc).toFixed(2)}/day`;
     }
     console.log(
       `${f.name.padEnd(10)}| ${val.toFixed(2).padStart(8)} |     $${f.cost.toFixed(2)} |     ${rc >= 0 ? "+" : ""}${rc.toFixed(4)} | ${note}`

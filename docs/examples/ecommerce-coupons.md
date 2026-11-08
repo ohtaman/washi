@@ -56,19 +56,18 @@ async function optimizeCheckoutCart() {
   const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
   const techSpend  = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
 
-  // 1. Indicator constraints: If useCoupon[id] == 1, minimum spend threshold must hold
+  // 1. Indicator constraints: If useCoupon[id] == 1, minimum spend threshold must hold.
+  // Omitting `M` lets WaSHI automatically derive the tightest Big-M from variable bounds!
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
       m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCart), {
         activeValue: 1,
-        M: 500,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTech > 0) {
       m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTech), {
         activeValue: 1,
-        M: 500,
         name: `min_tech_${cpn.id}`,
       });
     }
@@ -93,9 +92,9 @@ async function optimizeCheckoutCart() {
 
   const status = await m.solve();
   console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);
-  console.log(`Recommended Add-on (+$10 USB-C Cable): ${(addUsbCable.value ?? 0) > 0.5 ? "YES" : "NO"}`);
+  console.log(`Recommended Add-on (+$10 USB-C Cable): ${addUsbCable.value === 1 ? "YES" : "NO"}`);
   for (const cpn of coupons) {
-    const applied = (useCoupon[cpn.id].value ?? 0) > 0.5;
+    const applied = useCoupon[cpn.id].value === 1;
     console.log(`  ${applied ? "✅ [APPLIED]" : "   [skipped]"} ${cpn.id.padEnd(11)} (-$${cpn.discount})`);
   }
 }

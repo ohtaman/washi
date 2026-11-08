@@ -62,6 +62,18 @@ if (status === "Infeasible") {
 }
 ```
 
+### Z3 `unsatCore` 与 HiGHS 弹性松弛诊断 (`conflicts`) 的对比
+
+| 维度 | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
+| :--- | :--- | :--- |
+| **诊断算法** | SMT 假设跟踪（`assertAndTrack`） | 单次求解 $L_1$ 弹性松弛最小化（$\min \sum s_i$） |
+| **填充字段** | 同时填充 `result.unsatCore` 与 `result.conflicts` | 仅填充 `result.conflicts`（`unsatCore` 为 `undefined`） |
+| **语义含义** | 无法同时成立的**矛盾规则子集** | 松弛后能以最小总违反量恢复可行性的**最小修复约束集** |
+| **量纲尺度敏感性** | **尺度无关**（纯逻辑与代数矛盾分析） | **对量纲尺度敏感**（无权重最小化 $\sum s_i$ 时，松弛 `2` 名人手比松弛 `10,000` 元预算的总松弛量更小） |
+
+> [!TIP]
+> 当模型同时包含量级差异巨大的约束（例如人数 $\le 8$ 与预算 $\le 50{,}000$）时，若希望获得与量纲无关的完整矛盾规则集，请使用 **`m.check({ solver: "z3" })`**，或在构建约束时对不同量纲进行归一化。
+
 ---
 
 ## ✅ 独立解验证 (`m.validateSolution()`)

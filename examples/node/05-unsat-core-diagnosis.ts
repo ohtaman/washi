@@ -43,11 +43,16 @@ async function main() {
   console.log(`\nStatus: ${res.status}`);
 
   if (res.status === "Unsat") {
-    console.log("\n⚠️ Conflicting Constraints (conflicts / unsatCore):");
+    console.log("\n⚠️ Conflicting Constraints (Z3 unsatCore — scale-invariant logical core):");
     (res.conflicts ?? []).forEach((ruleName) => {
       console.log(`  ❌ ${ruleName}`);
     });
   }
+
+  // Compare with built-in HiGHS single-solve elastic slack diagnosis (no Z3 required)
+  const highsRes = await m.check({ solver: "highs" });
+  console.log("\n🔧 Built-in HiGHS Elastic Slack Diagnosis (minimum L1 slack repair set):");
+  console.log(`  Status: ${highsRes.status}, Conflicts: ${(highsRes.conflicts ?? []).join(", ")}`);
 }
 
 main().catch(console.error);

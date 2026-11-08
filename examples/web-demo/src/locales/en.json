@@ -74,7 +74,7 @@
       "title": "E-Commerce Cart & Coupon Optimizer",
       "description": "Client-side checkout optimizer using indicator(). Finds the best stackable/exclusive coupons and checks if a $10 filler item unlocks a bigger discount."
     },
-    "WELCOME15": {
+    "portfolio_qp": {
       "title": "Markowitz Portfolio Optimization (Convex QP)",
       "description": "Convex Quadratic Programming (QP). Minimize investment portfolio variance risk subject to 100% budget and target return constraints."
     },
@@ -89,6 +89,10 @@
     "conflict_diagnosis_unsat": {
       "title": "Rule Conflict Diagnosis (Budget vs Staffing Unsat Core)",
       "description": "Constraint conflict diagnosis with Z3. Isolates a subset of incompatible rules (unsat core) causing infeasibility."
+    },
+    "smt_security": {
+      "title": "Smart Home Security Rules (SMT / SAT)",
+      "description": "Verify and deduce system states in an IoT home security system combining boolean logic (implies, and, not) with integer sensor thresholds."
     },
     "smt_sat_scheduling": {
       "title": "Task Scheduling & Logic Feasibility (SMT / SAT)",

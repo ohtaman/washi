@@ -48,6 +48,19 @@ const alarmTriggered = m.bool("alarmTriggered");
 m.constraint(alarmTriggered.implies(isNight), "alarm_policy");
 ```
 
+### Choosing Between `m.binary()` and `m.bool()`
+
+| Feature | `m.binary()` (`Var`) | `m.bool()` (`BoolVar`) |
+| :--- | :--- | :--- |
+| **Solved `.value` type** | `number \| null` (`0` or `1`) | `boolean \| null` (`true` or `false`) |
+| **Linear arithmetic (`expr`, `sum`, `dot`, objective costs)** | ✅ Native (`expr`30 * \${b}``) | ❌ Cannot be multiplied by numbers or summed directly |
+| **Indicator constraints (`m.indicator(b, ...)` )** | ✅ Supported as trigger variable | ❌ Use `implies(flag, expr`...`)` instead |
+| **Propositional logic (`and`, `or`, `not`, `implies`, `xor`)** | Via comparison (`expr`\${b} == 1``) | ✅ Native first-class methods (`.implies()`, `.and()`) |
+| **Solver execution** | Native 0-1 MIP on HiGHS/GLPK; bounded integer on Z3 | Native boolean proposition on Z3; auto-linearized to 0-1 MIP on HiGHS/GLPK |
+
+> [!TIP]
+> Use **`m.binary()`** whenever a decision participates in linear sums (e.g., headcount $\sum x_i \ge 3$), objective costs ($c_i x_i$), or `m.indicator()`. Use **`m.bool()`** for pure rule-engine / policy propositions (`isNight`, `isVip`) combined with `implies()`, `and()`, and `or()`.
+
 ### 💡 Modeling Semi-Continuous Decisions
 Semi-continuous variables take values in $\{0\} \cup [L, U]$ (either zero or between a positive lower and upper bound, useful for minimum production batches or operational thresholds).
 
@@ -150,7 +163,33 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial sta
 
 - **Hint vs. Hard Constraint**: `initialValue` is strictly an optional solver hint (passed to HiGHS via `setSolution`). It does **not** fix the variable, add a constraint, or guarantee either solver acceptance or a runtime speedup. It remains separate from `variable.value` (which is `null` until solved and populated with the solver's primal solution).
 - **Validation & Tolerance (`1e-6`)**: Supplied values must be finite numbers within `[lb - 1e-6, ub + 1e-6]` (and within `1e-6` of an integer inside bounds for `"Integer"` and `"Binary"` variables). Partial starts are not required to satisfy every model constraint.
+- **Complete Feasible Starts Perform Best**: While partial starts are accepted, MIP solvers extract the greatest speedup (immediately pruning the branch-and-bound tree via an initial upper/lower bound) when you supply a **complete, constraint-feasible** assignment—including dependent continuous or slack variables computed from your integer decisions.
 - **Solver Support**: Supported by **HiGHS** (`capabilities.supportsWarmStart === true`). Solvers without warm-start support (**GLPK**, **Z3**, or custom adapters without `supportsWarmStart: true`) reject `solve()` and `check()` with a descriptive error rather than silently ignoring `initialValue`.
+
+### 💡 Schedule Stability vs. Warm Starting (Minimal Perturbation)
+In operational re-scheduling (e.g., repairing a staff roster or delivery plan after an unexpected absence), setting `initialValue` to yesterday's plan only gives the solver a starting search point—it does **not** prevent the solver from reshuffling every employee's shift to gain a tiny objective improvement.
+
+To keep the new plan close to a baseline binary assignment $x_i^{\text{prev}} \in \{0, 1\}$, add a small **Hamming-distance perturbation penalty** to the objective:
+
+$$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
+
+```typescript
+import { Model, expr, sum, minimize } from "@ohtaman/washi";
+
+const m = new Model("StableReschedule");
+const prevShift = [1, 0, 1, 0];
+const x = prevShift.map((prev, i) =>
+  m.binary(`shift_${i}`, { initialValue: prev })
+);
+
+// Count how many binary assignments flip from the previous schedule
+const flips = sum(
+  x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : expr`${v}`))
+);
+
+// Penalize each schedule change by $5 alongside the primary operational cost
+m.objective(minimize(expr`5 * ${flips}`));
+```
 
 ---
 

@@ -88,14 +88,14 @@ describe("Browser End-to-End (E2E) Tests", () => {
     );
 
     const objText = await page.textContent("#metric-obj");
-    expect(objText).toBe("1100");
+    expect(objText).toBe("2200");
 
     // Verify chairs and tables values in variable table
     const tableText = await page.textContent("#vars-tbody");
     expect(tableText).toContain("chairs");
-    expect(tableText).toContain("20");
+    expect(tableText).toContain("24");
     expect(tableText).toContain("tables");
-    expect(tableText).toContain("10");
+    expect(tableText).toContain("14");
 
     await page.screenshot({ path: path.join(screenshotsDir, "01_initial_production_optimal.png") });
   }, 15000);

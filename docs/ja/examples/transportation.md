@@ -49,7 +49,7 @@ const shippingCost = {
 const supplies = { Tokyo: 120, Nagoya: 100, Osaka: 80 };
 const demands = { North: 70, East: 90, West: 60, South: 60 };
 
-async function runTransportation() {
+async function solveScenario(label: string, cap: typeof supplies) {
   const m = new Model("TransportationNetwork");
 
   // 1. 2次元決定変数の生成: ship[factory][store] >= 0
@@ -58,10 +58,10 @@ async function runTransportation() {
   // 2. 目的関数: 2次元内積による総輸送コストの最小化
   m.objective(minimize(dot(shippingCost, ship)));
 
-  // 3. 供給上限（行方向の合計）: 各工場からの総出荷量 <= supplies[f]
+  // 3. 供給上限（行方向の合計）: 各工場からの総出荷量 <= cap[f]
   for (const f of factories) {
     m.constraint(
-      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
+      expr`${sum(stores, (s) => ship[f][s])} <= ${cap[f]}`,
       `supply_${f}`
     );
   }
@@ -75,16 +75,40 @@ async function runTransportation() {
   }
 
   const status = await m.solve();
-  console.log(`Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
+  console.log(`[${label}] Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
   for (const f of factories) {
+    const dual = m.getConstraintByName(`supply_${f}`)?.dual ?? 0;
     const routes = stores
       .map((s) => `${s}:${Math.round(ship[f][s].value ?? 0)}`)
       .join(", ");
-    console.log(`  ${f.padEnd(7)} -> ${routes}`);
+    console.log(`  ${f.padEnd(7)} -> ${routes} (supply dual: $${dual}/u)`);
   }
+  const demandDuals = stores
+    .map((s) => `${s}:$${m.getConstraintByName(`demand_${s}`)?.dual ?? 0}`)
+    .join(", ");
+  console.log(`  Marginal Delivered Cost (demand duals) -> ${demandDuals}`);
+}
+
+async function runTransportation() {
+  // シナリオ A: 通常時の供給能力 ($920)
+  await solveScenario("Scenario A: Baseline", supplies);
+
+  // シナリオ B: メンテナンスにより Tokyo の供給上限が 120 -> 80 に減少 ($1,000)
+  await solveScenario("Scenario B: Tokyo Maintenance", {
+    Tokyo: 80,
+    Nagoya: 120,
+    Osaka: 100,
+  });
 }
 
 runTransportation();
 ```
 
 </CodeRunner>
+
+## 実務上のポイント
+
+- **供給・需要制約の潜在価格（`.dual`）の経済的意味**:
+  - **`demand_s.dual`（$\ge 0$）**: 店舗 $s$ の需要が 1 個増えたときに発生する限界配送コスト（着地単価）を表します。
+  - **`supply_f.dual`（$\le 0$）**: 工場 $f$ の供給能力を 1 個増強したときにネットワーク全体の輸送費がいくら下がるかを表します。シナリオ B で Tokyo が上限 80 個に制限されると `supply_Tokyo.dual` が `-$2/u` となり、Tokyo の能力を 1 個増やすごとに Nagoya からの迂回輸送が解消されて \$2 節約できることが分かります。
+- **総供給量と総需要量のバランス（$\sum \text{Supply}_f \ge \sum \text{Demand}_s$）**: 需要の合計が全工場の供給能力合計を上回ると、ハード制約のままでは `"Infeasible"` になります。実務の物流計画システムでは、各店舗の需要制約に非負の欠品・スポット便スラック変数 $u_s \ge 0$（$\sum_f x_{f,s} + u_s \ge \text{Demand}_s$）を導入して高いペナルティ単価を設定することで、供給不足時でも優先度の高い店舗へ最適配分できるように設計します。

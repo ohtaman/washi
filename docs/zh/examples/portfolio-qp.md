@@ -52,7 +52,8 @@ async function solvePortfolio() {
 
   // 2. 预期收益率约束: sum(r_i * w_i) >= 8.5%
   const retMap = Object.fromEntries(assets.map((a, i) => [a, expectedReturns[i]]));
-  m.constraint(expr`${dot(retMap, w)} >= ${targetReturn}`, "target_return");
+  const portfolioReturn = dot(retMap, w);
+  m.constraint(expr`${portfolioReturn} >= ${targetReturn}`, "target_return");
 
   // 3. 二次目标函数: 最小化风险 w^T * Sigma * w
   let risk = new QuadExpr();
@@ -71,6 +72,7 @@ async function solvePortfolio() {
   console.log(`Status: ${status}`);
   console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);
   console.log(`Volatility (Std Dev): ${((Math.sqrt(m.objectiveValue || 0)) * 100).toFixed(2)}%`);
+  console.log(`Expected Return: ${((portfolioReturn.value ?? 0) * 100).toFixed(2)}% (target >= ${(targetReturn * 100).toFixed(2)}%)`);
 
   assets.forEach((name) => {
     console.log(`  ${name.padEnd(10)}: ${((w[name].value ?? 0) * 100).toFixed(2)}%`);
@@ -81,3 +83,8 @@ solvePortfolio();
 ```
 
 </CodeRunner>
+
+## 实战要点
+
+- **描绘有效前沿（`targetReturn` 与 `portfolioReturn.value`）**：当达成的预期收益率（`8.50%`）恰好等于 `targetReturn` 时，说明目标收益率约束紧绑定在马科维茨有效前沿上。在 `[0.05, 0.12]` 区间内扫描 `targetReturn` 即可完整描绘风险-收益有效前沿曲线。
+- **目标收益约束 vs. 风险厌恶系数标量化**：在禁止做空（$0 \le w_i \le 1$）条件下，若 `targetReturn` 超过最高单一资产收益率（`Tech` 的 $12\%$），硬约束 $\mathbf{r}^T \mathbf{w} \ge R_{\text{target}}$ 将变为 `"Infeasible"`。在量化实践中，也可以使用风险厌恶系数 $\lambda > 0$ 将目标函数写为 $\min (\lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w})$，从而保证对任意风险偏好始终可行。

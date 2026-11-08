@@ -52,7 +52,8 @@ async function solvePortfolio() {
 
   // 2. 目標リターン制約: sum(r_i * w_i) >= 8.5%
   const retMap = Object.fromEntries(assets.map((a, i) => [a, expectedReturns[i]]));
-  m.constraint(expr`${dot(retMap, w)} >= ${targetReturn}`, "target_return");
+  const portfolioReturn = dot(retMap, w);
+  m.constraint(expr`${portfolioReturn} >= ${targetReturn}`, "target_return");
 
   // 3. 二次目的関数: リスク w^T * Sigma * w の最小化
   let risk = new QuadExpr();
@@ -71,6 +72,7 @@ async function solvePortfolio() {
   console.log(`Status: ${status}`);
   console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);
   console.log(`Volatility (Std Dev): ${((Math.sqrt(m.objectiveValue || 0)) * 100).toFixed(2)}%`);
+  console.log(`Expected Return: ${((portfolioReturn.value ?? 0) * 100).toFixed(2)}% (target >= ${(targetReturn * 100).toFixed(2)}%)`);
 
   assets.forEach((name) => {
     console.log(`  ${name.padEnd(10)}: ${((w[name].value ?? 0) * 100).toFixed(2)}%`);
@@ -81,3 +83,8 @@ solvePortfolio();
 ```
 
 </CodeRunner>
+
+## 実務上のポイント
+
+- **有効フロンティアの描出（`targetReturn` と `portfolioReturn.value`）**: 達成された期待リターン（`8.50%`）が `targetReturn` と一致していることは、目標リターン制約が有効（タイト）であり、解がマーコウィッツの有効フロンティア上に乗っていることを示します。`targetReturn` を `[0.05, 0.12]` の範囲でスイープすることで、リスクとリターンのトレードオフ曲線全体を描出できます。
+- **目標リターン制約 vs. リスク回避度パラメータ $\lambda$**: 空売りなし（$0 \le w_i \le 1$）の条件では、単一資産の最大期待リターン（`Tech` の $12\%$）を超える `targetReturn` を指定するとハード制約が満たせず `"Infeasible"` になります。実務で常に実行可能なモデルにする場合は、リスク回避度 $\lambda > 0$ を用いて目的関数を $\min (\lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w})$ とする定式化も広く使われます。
