@@ -55,10 +55,20 @@ async function diagnoseConflicts() {
   const res = await m.check({ solver: "z3" });
 
   console.log(`Status: ${res.status}`);
-  console.log("Conflicting Constraints (conflicts):", m.conflicts);
+  console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+
+  // Built-in HiGHS can also diagnose conflicts via single-solve L1 elastic slack relaxation:
+  const highsDiag = await m.check({ solver: "highs" });
+  console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
 }
 
 diagnoseConflicts();
 ```
 
 </CodeRunner>
+
+## Practical Notes
+
+- **Z3 `unsatCore` vs. HiGHS Elastic Slack `conflicts`**:
+  - **Z3 (`m.check({ solver: "z3" })`)** performs logical assumption tracking and returns all four rules that jointly form the contradiction (`budget_limit`, `rush_required`, `rush_staffing_rule`, `strict_board_budget_cap`), while excluding the innocent `minimum_one_employee` rule.
+  - **HiGHS (`m.check({ solver: "highs" })`)** solves a single $L_1$ elastic slack minimization problem ($\min \sum s_i$). Because relaxing `rush_staffing_rule` (or `rush_required`) requires a slack of only `1`–`2` units whereas relaxing `strict_board_budget_cap` requires a slack of `14,000` dollars, unweighted $L_1$ minimization naturally highlights the smallest-magnitude repair (`rush_required`) needed to restore feasibility.

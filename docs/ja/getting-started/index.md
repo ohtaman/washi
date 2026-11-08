@@ -67,11 +67,11 @@ const model = new Model();
 
 ### 3. 決定変数の定義
 
-決定変数は最適化によって求めたい未知数です。ドメインファクトリメソッド（`m.continuous`, `m.integer`, `m.binary`, `m.bool`）で直感的に定義します：
+決定変数は最適化によって求めたい未知数です。ドメインファクトリメソッド（`m.continuous`, `m.integer`, `m.binary`, `m.bool`）で直感的に定義します。現実的な有限の上下限（`lb`, `ub`）を設定することで、MIP の前処理（Presolve）や自動 Big-M 導出が強化されます：
 
 ```typescript
-const x = model.integer("x", { lb: 0 });
-const y = model.integer("y", { lb: 0 });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
 ```
 
 ### 4. 目的関数の設定
@@ -92,16 +92,19 @@ model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
 model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
-### 6. 求解と結果の取得
+### 6. 求解・検証と結果の取得
 
-モデルを非同期で解きます。デフォルトで WebAssembly (HiGHS) が実行されます：
+モデルを非同期で解き（デフォルトは HiGHS WebAssembly）、`hasPrimalSolution` で解の有無を確認したうえで `validateSolution()` で実行可能性を検証します：
 
 ```typescript
-const result = await model.solve();
+const status = await model.solve();
 
-console.log("ステータス:", model.status); // "Optimal"
-console.log("最適目的関数値:", model.objectiveValue); // 1100
-console.log(`最適解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
+if (model.hasPrimalSolution) {
+  const report = model.validateSolution();
+  console.log("ステータス:", status, "| 検証:", report.valid); // "Optimal" | true
+  console.log("最適目的関数値:", model.objectiveValue); // 1100
+  console.log(`最適解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
+}
 ```
 
 ---

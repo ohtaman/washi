@@ -49,9 +49,9 @@ import { Model, expr, maximize } from "@ohtaman/washi";
 // 1. モデルの作成
 const m = new Model("木工製品の利益最大化");
 
-// 2. 決定変数の定義（整数変数）
-const desks = m.integer("机", { lb: 0 });
-const chairs = m.integer("椅子", { lb: 0 });
+// 2. 決定変数の定義（現実的な上下限を設定した整数変数）
+const desks = m.integer("机", { lb: 0, ub: 100 });
+const chairs = m.integer("椅子", { lb: 0, ub: 100 });
 
 // 3. 目的関数の設定（机 $30、椅子 $50 の利益最大化）
 m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
@@ -63,8 +63,10 @@ m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "労働力上限");
 // 5. WebAssembly (HiGHS) による求解
 await m.solve();
 
-console.log(`生産量: 机=${desks.value}台, 椅子=${chairs.value}台`);
-console.log(`最大利益: $${m.objectiveValue}`);
+if (m.hasPrimalSolution) {
+  console.log(`生産量: 机=${desks.value}台, 椅子=${chairs.value}台`);
+  console.log(`最大利益: $${m.objectiveValue}`);
+}
 ```
 
 ## ドキュメント一覧

@@ -157,6 +157,65 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **Target Solvers** | **All MIP/LP solvers** (HiGHS, GLPK, Z3) via Big-M linearization | **All solvers** (HiGHS and GLPK via automatic 0-1 MIP linearization, Z3 natively) |
 | **Best For** | Operations research & MIP optimization with an objective (`m.solve()`) | Rule engines, policy verification, and SMT feasibility (`m.check()`) |
 
+> [!NOTE]
+> **General Inequality Antecedents in `implies()`**: When solving on **Z3** (`solver: "z3"`), the antecedent `a` in `implies(a, b)` can be any general linear inequality (e.g., ``expr`${luxLevel} <= 50`.implies(isNight)``). When solving on MIP engines (**HiGHS** / **GLPK**), the antecedent of a conditional constraint should be a `BoolVar` (`m.bool()`) or a `Binary` trigger variable via `m.indicator(binVar, constraint)`.
+
+---
+
+## 🪞 Symmetry Breaking for Identical Resources
+
+When a model includes $K$ interchangeable resources—such as identical trucks, bins, or parallel machines—any solution can be permuted in $K!$ ways with the exact same objective value. Without symmetry breaking, a MIP solver wastes time exploring redundant mirror-image branches before proving optimality.
+
+Break symmetry by imposing a canonical ordering on resource activation ($u_0 \ge u_1 \ge \dots \ge u_{K-1}$) or resource load:
+
+```typescript
+const numTrucks = 4;
+const truckUsed = m.binary(numTrucks, { prefix: "truck_used" });
+
+// Only activate Truck k+1 if Truck k is already active (u_0 >= u_1 >= u_2 >= u_3)
+for (let k = 0; k < numTrucks - 1; k++) {
+  m.constraint(
+    expr`${truckUsed[k]} >= ${truckUsed[k + 1]}`,
+    `symmetry_truck_${k}`
+  );
+}
+```
+
+---
+
+## ⚖️ Hard vs. Soft Constraints (Elastic Slack Variables)
+
+In real-world scheduling and resource allocation, treating every business rule as a strict **hard constraint** often makes the model `"Infeasible"` when demand spikes or staff are unavailable.
+
+To keep the model solvable while minimizing rule violations, convert target requirements into **soft (elastic) constraints** by introducing a non-negative slack/shortage variable ($s \ge 0$) and penalizing it in the objective function:
+
+| Constraint Type | Hard Formulation | Soft (Elastic) Formulation ($s \ge 0$) | Objective Penalty Term (Minimize) |
+| :--- | :--- | :--- | :--- |
+| **Lower bound** | $\text{lhs} \ge b$ | $\text{lhs} + s_{\text{short}} \ge b$ | $+ W \cdot s_{\text{short}}$ |
+| **Upper bound** | $\text{lhs} \le b$ | $\text{lhs} - s_{\text{excess}} \le b$ | $+ W \cdot s_{\text{excess}}$ |
+| **Target equality** | $\text{lhs} = b$ | $\text{lhs} + s_{\text{short}} - s_{\text{excess}} = b$ | $+ W_1 \cdot s_{\text{short}} + W_2 \cdot s_{\text{excess}}$ |
+
+```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+
+const m = new Model("ElasticShiftCoverage");
+
+const assignedStaff = m.integer("assignedStaff", { lb: 0, ub: 4 }); // Only 4 staff available today
+const shortage = m.continuous("shortage", { lb: 0 });               // Non-negative slack (s >= 0)
+
+// Soft constraint: aim for 5 staff, allowing shortage > 0 if strictly necessary
+m.constraint(expr`${assignedStaff} + ${shortage} >= 5`, "target_5_staff");
+
+// Penalize each missing staff member heavily ($1,000) relative to regular wage ($100)
+m.objective(minimize(expr`100 * ${assignedStaff} + 1000 * ${shortage}`));
+
+await m.solve();
+console.log("Assigned staff:", assignedStaff.value); // 4
+console.log("Unmet shortage:", shortage.value);      // 1 (graceful degradation instead of Infeasible)
+```
+
+> **Practical Tip — Choosing Penalty Weights ($W$)**: Set $W$ larger than the maximum marginal cost of satisfying the constraint normally (e.g., $10\times$ to $1{,}000\times$ unit cost), but avoid astronomically large penalties such as $10^{12}$. Keeping the ratio between the largest and smallest coefficients within $10^5\text{–}10^6$ preserves floating-point numerical stability in LP/MIP solvers.
+
 ---
 
 ## 📐 Dual Values, Shadow Prices & Lookups

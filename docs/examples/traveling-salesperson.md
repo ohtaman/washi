@@ -97,7 +97,7 @@ async function runTSP() {
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
+          if (i !== j && x[i][j].value === 1) {
             succ[i] = j;
           }
         }
@@ -119,27 +119,28 @@ async function runTSP() {
         }
       }
 
-      // If more than 1 cycle, subtours exist: inject Benders feasibility cut
+      // If more than 1 cycle, subtours exist: inject Benders feasibility cuts for all cycles
       if (cycles.length > 1) {
-        const smallestCycle = cycles.reduce((min, c) => (c.length < min.length ? c : min));
-        const S = new Set(smallestCycle);
-        cutCounter++;
-        console.log(`Subtour detected: [${smallestCycle.map(k => cities[k].name).join(" -> ")}]. Adding Benders cut #${cutCounter}.`);
+        return cycles.map((cycle) => {
+          const S = new Set(cycle);
+          cutCounter++;
+          console.log(`Subtour detected: [${cycle.map(k => cities[k].name).join(" -> ")}]. Adding Benders cut #${cutCounter}.`);
 
-        let cutLhs = new LinExpr();
-        for (const i of S) {
-          for (let j = 0; j < n; j++) {
-            if (!S.has(j)) {
-              cutLhs = cutLhs.add(x[i][j]);
+          let cutLhs = new LinExpr();
+          for (const i of S) {
+            for (let j = 0; j < n; j++) {
+              if (!S.has(j)) {
+                cutLhs = cutLhs.add(x[i][j]);
+              }
             }
           }
-        }
 
-        return {
-          kind: "feasibility",
-          constraint: expr`${cutLhs} >= 1`,
-          name: `subtour_cut_${cutCounter}`,
-        };
+          return {
+            kind: "feasibility",
+            constraint: expr`${cutLhs} >= 1`,
+            name: `subtour_cut_${cutCounter}`,
+          };
+        });
       }
 
       return null; // Single connected tour found
@@ -154,7 +155,7 @@ async function runTSP() {
   console.log("\nOptimal tour edges:");
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i !== j && (result.values[`x_${i}_${j}`] ?? 0) > 0.5) {
+      if (i !== j && result.values[`x_${i}_${j}`] === 1) {
         console.log(`  ${cities[i].name} -> ${cities[j].name} (distance: ${dist(i, j).toFixed(3)})`);
       }
     }
@@ -169,5 +170,7 @@ runTSP();
 ## Notes
 
 - **Lazy Subtour Elimination**: The master problem starts with only the $2n$ degree constraints, and subtour elimination cuts are added on demand when disconnected cycles appear in the master solution.
-- **Separation Callback**: The `subproblem` callback reads candidate edge values via `x[i][j].value`, traces connected components in $O(n)$, and returns `{ kind: "feasibility", constraint: ... }` when multiple cycles are present.
+- **Multi-Cut Separation**: Returning an array of cuts (`cycles.map(...)`) from `subproblem` eliminates all disconnected cycles discovered in the current candidate solution simultaneously, reducing the number of master MIP re-solves.
+- **Two Equivalent DFJ Cut Forms**: Because every city has out-degree $\sum_{j \ne i} x_{ij} = 1$, summing over $i \in S$ gives $\sum_{i \in S, j \in S} x_{ij} + \sum_{i \in S, j \notin S} x_{ij} = |S|$. Thus the cut-set inequality $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ used above and the internal-edge inequality $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ used in [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) are algebraically identical.
+- **Upfront 2-City Subtour Elimination**: In larger TSP instances, mutual 2-cycles ($i \leftrightarrow j$) are the most frequent initial subtours. Adding the $\binom{n}{2}$ pairwise constraints $x_{ij} + x_{ji} \le 1$ directly to the initial master problem often cuts the number of Benders iterations substantially.
 - **Termination Condition**: Returning `null` from `subproblem` indicates that no violated subtour constraints remain.

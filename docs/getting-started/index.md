@@ -67,11 +67,11 @@ const model = new Model("WoodworkingProfit");
 
 ### 3. Add Decision Variables
 
-Variables represent the unknowns you want to determine. Factory methods (`m.continuous`, `m.integer`, `m.binary`) clearly define their domain:
+Variables represent the unknowns you want to determine. Factory methods (`m.continuous`, `m.integer`, `m.binary`) clearly define their domain. Providing realistic finite bounds (`lb` and `ub`) strengthens MIP presolve and enables automatic tight Big-M derivation:
 
 ```typescript
-const x = model.integer("x", { lb: 0 });
-const y = model.integer("y", { lb: 0 });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
 ```
 
 ### 4. Set the Objective Function
@@ -92,16 +92,19 @@ model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
 model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
-### 6. Solve and Extract Results
+### 6. Solve, Verify, and Extract Results
 
-Solve the model asynchronously via WebAssembly (HiGHS by default):
+Solve the model asynchronously via WebAssembly (HiGHS by default), verify primal feasibility with `validateSolution()`, and inspect the solution when `hasPrimalSolution` is true:
 
 ```typescript
 const status = await model.solve();
 
-console.log("Status:", status); // "Optimal"
-console.log("Optimal Objective Value:", model.objectiveValue); // 1100
-console.log(`Solution: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
+if (model.hasPrimalSolution) {
+  const report = model.validateSolution();
+  console.log("Status:", status, "| Valid:", report.valid); // "Optimal" | true
+  console.log("Optimal Objective Value:", model.objectiveValue); // 1100
+  console.log(`Solution: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
+}
 ```
 
 ---

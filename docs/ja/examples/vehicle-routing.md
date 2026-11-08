@@ -189,7 +189,7 @@ async function runCVRP() {
   console.log(`生成されたルート列数: ${result.columnsAdded}`);
 
   console.log("\n選定された車両フリートのルート例 (上位5便):");
-  const activeRoutes = result.generatedColumns.filter((c) => (c.variable.value ?? 0) > 0.5);
+  const activeRoutes = result.generatedColumns.filter((c) => c.variable.value === 1);
   for (const r of activeRoutes.slice(0, 5)) {
     const meta = r.proposal.meta;
     console.log(`  ${meta?.tour.join(" -> ")} (移動: ${meta?.travelTime}分, 合計: ${meta?.totalTime}分)`);
@@ -206,3 +206,6 @@ runCVRP();
 - **主問題と価格付け処理の分離**: 主問題では LP 緩和と集合分割 MIP を解き、`pricing` コールバックでは最短挿入法と 2-opt 局所探索で負の被約費用を持つルート候補を生成しています。
 - **双対変数の参照**: 主問題の LP 緩和で得られた潜在価格を `visitConstrs[i].dual` から取得し、改善量の大きい顧客を優先してルートを組み立てています。
 - **ルート情報の保持**: 各列の `meta` に `{ tour, travelTime, totalTime }` を保持することで、求解後に `result.generatedColumns` から訪問順序や所要時間を参照できます。
+- **集合分割 (`== 1`) と集合被覆 (`>= 1`) の違い**: 本例では同一顧客への重複訪問を禁止するため `== 1`（集合分割）を用いています。大規模な列生成実務では `>= 1`（集合被覆）とすることで双対変数の符号が $\pi_i \ge 0$ に制限されて LP 収束が安定しやすくなります（距離が三角不等式を満たす場合、重複訪問された顧客は後処理で抜くことでコストを増やさず集合分割解へ変換できます）。
+- **ヒューリスティック価格付けと厳密 ESPPRC**: `findImprovingRoute` は厳密な資源制約付き初等最短路問題（ESPPRC）ではなく高速な貪欲法＋2-opt を用いるため、`null` を返した時点の LP 目的関数値は厳密な双対下界ではなくヒューリスティック収束値となります。
+- **Price-and-Branch (`finalizeAsMIP: true`)**: ルートノードの LP 緩和で生成された列プールに対して最後に一度だけ整数計画（MIP）を解く手法は Restricted Master Heuristic（Price-and-Branch）と呼ばれ、フル Branch-and-Price 実装なしで高品質な整数解を高速に得る実務定番アプローチです。

@@ -55,10 +55,20 @@ async function diagnoseConflicts() {
   const res = await m.check({ solver: "z3" });
 
   console.log(`Status: ${res.status}`);
-  console.log("Conflicting Constraints (conflicts):", m.conflicts);
+  console.log("Z3 Unsat Core (scale-invariant):", m.conflicts);
+
+  // 内置的 HiGHS 同样可通过单次求解 L1 弹性松弛定位冲突：
+  const highsDiag = await m.check({ solver: "highs" });
+  console.log("HiGHS Elastic Repair Set:", highsDiag.conflicts);
 }
 
 diagnoseConflicts();
 ```
 
 </CodeRunner>
+
+## 实战要点
+
+- **Z3 `unsatCore` 与 HiGHS 弹性松弛诊断 (`conflicts`) 的区别**：
+  - **Z3（`m.check({ solver: "z3" })`）** 基于逻辑假设跟踪，排除无辜的 `minimum_one_employee` 规则，并不受量纲影响地完整返回共同构成矛盾的 4 条规则（`budget_limit`、`rush_required`、`rush_staffing_rule`、`strict_board_budget_cap`）。
+  - **HiGHS（`m.check({ solver: "highs" })`）** 求解单次 $L_1$ 弹性松弛最小化问题（$\min \sum s_i$）。由于放宽预算需要 `14,000` 单位松弛量，而放宽加急或人数要求仅需 `1`–`2` 单位松弛量，无权重 $L_1$ 最小化会优先指出总变动量最小的修复点（`rush_required`）。

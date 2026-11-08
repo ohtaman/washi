@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 命题逻辑与 SMT 可满足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">源代码</a></li></ul> |
+| 命题逻辑与 SMT 可满足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">源代码</a></li></ul> |
 
 可满足性模理论（SMT, Satisfiability Modulo Theories）将命题逻辑（布尔 SAT）与一阶理论（如线性整数算术、实数不等式）结合在一起。
 
@@ -18,7 +18,7 @@
 
 ## WaSHI 实现
 
-<CodeRunner preset="smt_sat_scheduling">
+<CodeRunner preset="smt_security">
 
 ```typescript
 import { Model, not, expr } from "@ohtaman/washi";
@@ -66,9 +66,21 @@ async function verifySecurityRules() {
   console.log(`Lights On    : ${lightsOn.value}`);
   console.log(`Door Locked  : ${frontDoorUnlocked.value ? "No" : "Yes"}`);
   console.log(`Is Night     : ${isNight.value}`);
+
+  // 4. 安全性属性的形式化验证（反例搜索 / 反证法）：
+  // 证明在该传感器状态下，“警笛不响 (not(sirenActive))”是不可能的（Unsat）
+  m.constraint(not(sirenActive), "counterexample_siren_off");
+  const proof = await m.check({ solver: "z3" });
+  console.log(`Can siren stay off? ${proof.status} (返回 Unsat 即证明无安全漏洞)`);
+  console.log(`Active proof core : ${(proof.conflicts ?? []).join(", ")}`);
 }
 
 verifySecurityRules();
 ```
 
 </CodeRunner>
+
+## 实战要点
+
+- **反证法形式化验证（反例搜索）**：单次 `check()` 返回 `"Sat"` 仅表明*存在*满足规则的状态。若要严格**证明**某项安全属性 $P$（如 `sirenActive`）在所有可能状态下*必然*成立，应断言其否定式 `not(P)` 并验证 `m.check()` 返回 `"Unsat"`。若返回 `"Sat"`，此时求解器给出的变量赋值即为一个具体的安全漏洞反例。
+- **单向蕴含（`implies`）与双向等价**：`luxLevel.le(50).implies(isNight)` 仅规定当 `luxLevel <= 50` 时 `isNight` 必为 `true`；当白天（`luxLevel > 50`）时，`isNight` 并不受此规则限制（开放世界假设）。若需表达充要条件，还需补充逆否规则 `luxLevel.ge(51).implies(not(isNight))`。

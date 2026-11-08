@@ -52,7 +52,8 @@ async function solvePortfolio() {
 
   // 2. Expected return constraint: sum(r_i * w_i) >= 8.5%
   const retMap = Object.fromEntries(assets.map((a, i) => [a, expectedReturns[i]]));
-  m.constraint(expr`${dot(retMap, w)} >= ${targetReturn}`, "target_return");
+  const portfolioReturn = dot(retMap, w);
+  m.constraint(expr`${portfolioReturn} >= ${targetReturn}`, "target_return");
 
   // 3. Quadratic Objective: minimize risk w^T * Sigma * w
   let risk = new QuadExpr();
@@ -71,6 +72,7 @@ async function solvePortfolio() {
   console.log(`Status: ${status}`);
   console.log(`Variance: ${m.objectiveValue?.toFixed(6)}`);
   console.log(`Volatility (Std Dev): ${((Math.sqrt(m.objectiveValue || 0)) * 100).toFixed(2)}%`);
+  console.log(`Expected Return: ${((portfolioReturn.value ?? 0) * 100).toFixed(2)}% (target >= ${(targetReturn * 100).toFixed(2)}%)`);
 
   assets.forEach((name) => {
     console.log(`  ${name.padEnd(10)}: ${((w[name].value ?? 0) * 100).toFixed(2)}%`);
@@ -81,3 +83,8 @@ solvePortfolio();
 ```
 
 </CodeRunner>
+
+## Practical Notes
+
+- **Tracing the Efficient Frontier (`targetReturn` & `portfolioReturn.value`)**: Because the achieved return (`8.50%`) matches `targetReturn` exactly, the return constraint is tightly binding on the Markowitz efficient frontier. Varying `targetReturn` across `[0.05, 0.12]` traces out the full risk-return frontier.
+- **Risk-Aversion Scalarization vs. Target Return Constraint**: If `targetReturn` is set above the highest single-asset return ($12\%$ for `Tech` under long-only weights), the hard constraint $\mathbf{r}^T \mathbf{w} \ge R_{\text{target}}$ becomes `"Infeasible"`. An alternative formulation that is always feasible for any risk appetite $\lambda > 0$ is to minimize the risk-adjusted objective $\min (\lambda \, \mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w} - \mathbf{r}^T \mathbf{w})$.

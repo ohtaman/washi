@@ -19,6 +19,26 @@ describe("Playground Solver Synchronization & Code Updating", () => {
     }
   });
 
+  it("every preset in EXAMPLES has a localized title and description in en, ja, and zh locales", () => {
+    for (const loc of ["en", "ja", "zh"]) {
+      const localePath = path.resolve(
+        __dirname,
+        `../examples/web-demo/src/locales/${loc}.json`
+      );
+      const localeData = JSON.parse(fs.readFileSync(localePath, "utf-8"));
+      for (const ex of EXAMPLES) {
+        expect(
+          localeData.presets?.[ex.id]?.title,
+          `Missing presets.${ex.id}.title in ${loc}.json`
+        ).toBeTruthy();
+        expect(
+          localeData.presets?.[ex.id]?.description,
+          `Missing presets.${ex.id}.description in ${loc}.json`
+        ).toBeTruthy();
+      }
+    }
+  });
+
   it("updates solver in new Model({ ... solver: 'highs' }) when changed to glpk or z3", () => {
     const originalCode = `const m = new Model({ name: "PortfolioOptimization", sense: "Minimize", solver: "highs" });
 const status = await m.solve();`;

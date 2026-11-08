@@ -334,7 +334,16 @@ export class GLPKSolver implements Solver {
         }
         const v = nameToVar.get(vName);
         const originalName = v ? v.name : vName;
-        setOwnProperty(valuesRecord, originalName, Math.abs(val) < 1e-9 ? 0 : val);
+        let normalizedVal = Math.abs(val) < 1e-9 ? 0 : val;
+        if (
+          !mergedOptions.relax &&
+          v &&
+          (v.type === "Integer" || v.type === "Binary") &&
+          Math.abs(normalizedVal - Math.round(normalizedVal)) <= 1e-5
+        ) {
+          normalizedVal = Math.round(normalizedVal) + 0;
+        }
+        setOwnProperty(valuesRecord, originalName, normalizedVal);
       }
 
       if (hasValidVariablePayload) {

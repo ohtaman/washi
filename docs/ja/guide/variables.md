@@ -47,6 +47,19 @@ const alarmTriggered = m.bool("alarmTriggered");
 m.constraint(alarmTriggered.implies(isNight), "alarm_policy");
 ```
 
+### `m.binary()` と `m.bool()` の使い分け
+
+| 比較項目 | `m.binary()` (`Var`) | `m.bool()` (`BoolVar`) |
+| :--- | :--- | :--- |
+| **求解後の `.value` の型** | `number \| null`（厳密な `0` または `1`） | `boolean \| null`（`true` または `false`） |
+| **線形算術式（`expr`, `sum`, `dot`, 目的関数の係数）** | ✅ そのまま記述可能（`` expr`30 * ${b}` ``） | ❌ 数値との積や `sum()` には直接使えない |
+| **インジケータ制約（`m.indicator(b, ...)`）** | ✅ トリガー変数として使用可能 | ❌ 代わりに `implies(flag, expr`...`)` を使用 |
+| **命題論理演算（`and`, `or`, `not`, `implies`, `xor`）** | 比較式経由（`` expr`${b} == 1` ``） | ✅ メソッド・関数で直接記述可能（`.implies()`, `.and()`） |
+| **ソルバーでの扱い** | HiGHS/GLPK で 0-1 MIP 変数として直接求解 | Z3 ではネイティブ真偽値命題、HiGHS/GLPK では 0-1 MIP に自動線形化 |
+
+> [!TIP]
+> 人数カウント（$\sum x_i \ge 3$）や目的関数のコスト計算（$c_i x_i$）、`m.indicator()` に使う意思決定には **`m.binary()`** を使用してください。一方、ビジネスルールやポリシー検証（`isNight`, `isVip` など）で `implies()` や `and()` / `or()` を中心に記述する場合は **`m.bool()`** が適しています。
+
 ### 💡 半連続変数（Semi-Continuous）のモデリング
 半連続変数は $\{0\} \cup [L, U]$ の値（0、または正の下限 $L$ から上限 $U$ の間）をとる変数で、最小ロットサイズのある生産量などで使われます。
 
@@ -149,7 +162,33 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的�
 
 - **ヒントとしての扱い**: `initialValue` はソルバーへの初期解ヒント（HiGHS の `setSolution`）であり、変数の固定や制約追加ではありません。求解前の `variable.value` は `null` のまま保たれます。
 - **検証と許容誤差 (`1e-6`)**: 境界 `[lb - 1e-6, ub + 1e-6]` 内の有限値であること（整数・バイナリ変数は整数から `1e-6` 以内）が検証されます。
+- **完全な実行可能初期解の推奨**: 部分的な指定も可能ですが、従属する連続変数やスラック変数も含めてすべての制約を満たす「完全な実行可能解」を渡すと、MIP ソルバーが初期ステップからタイトな暫定値（Incumbent）を得て分枝限定法の探索木を大幅に刈り込めるため最も効果的です。
 - **対応ソルバー**: **HiGHS**（`capabilities.supportsWarmStart === true`）がサポートしています。ウォームスタート非対応のソルバー（GLPK, Z3 など）では、`initialValue` を黙って無視せず明示的なエラーを投げます。
+
+### 💡 スケジュールの安定性維持（最小変更再最適化）とウォームスタートの違い
+シフト表や配送計画の急な変更（欠勤対応など）でモデルを解き直す際、`initialValue` に既存の計画値を渡すだけでは「探索の出発点のヒント」になるだけであり、わずかな目的関数改善のために全員のシフトが総入れ替えされるのを防ぐことはできません。
+
+既存のバイナリ割当 $x_i^{\text{prev}} \in \{0, 1\}$ からの変更件数（ハミング距離）を最小限に抑えたい場合は、目的関数に**変更ペナルティ項**を追加します：
+
+$$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
+
+```typescript
+import { Model, expr, sum, minimize } from "@ohtaman/washi";
+
+const m = new Model("StableReschedule");
+const prevShift = [1, 0, 1, 0];
+const x = prevShift.map((prev, i) =>
+  m.binary(`shift_${i}`, { initialValue: prev })
+);
+
+// 既存計画から反転（0→1 または 1→0）した箇所の合計を表す線形表現
+const flips = sum(
+  x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : expr`${v}`))
+);
+
+// 1箇所の計画変更につきペナルティ 5 を課す
+m.objective(minimize(expr`5 * ${flips}`));
+```
 
 ---
 

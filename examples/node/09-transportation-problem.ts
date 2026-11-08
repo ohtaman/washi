@@ -82,10 +82,15 @@ async function solveTransportation(
       used += val;
       return (val > 1e-6 ? val.toFixed(0) : "·").padStart(8);
     });
+    const supplyDual = m.getConstraintByName(`supply_${f}`)?.dual ?? 0;
     console.log(
-      `${f.padEnd(16)}${rowCells.join("")}  | ${String(Math.round(used)).padStart(3)} / ${supplies[f]}`
+      `${f.padEnd(16)}${rowCells.join("")}  | ${String(Math.round(used)).padStart(3)} / ${supplies[f]} (dual: $${supplyDual.toFixed(1)})`
     );
   }
+  const storeDuals = stores
+    .map((s) => `${s}: $${(m.getConstraintByName(`demand_${s}`)?.dual ?? 0).toFixed(1)}/u`)
+    .join(", ");
+  console.log(`Marginal Delivered Cost (Demand Duals): ${storeDuals}`);
 }
 
 async function main() {

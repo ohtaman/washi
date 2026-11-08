@@ -97,7 +97,7 @@ async function runTSP() {
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
+          if (i !== j && x[i][j].value === 1) {
             succ[i] = j;
           }
         }
@@ -119,28 +119,29 @@ async function runTSP() {
         }
       }
 
-      // 若环路超过 1 个，说明存在子回路：注入 Benders 可行割
+      // 若环路超过 1 个，对所有孤立子回路同时注入 Benders 可行割（多割分离）
       if (cycles.length > 1) {
-        const smallestCycle = cycles.reduce((min, c) => (c.length < min.length ? c : min));
-        const S = new Set(smallestCycle);
-        cutCounter++;
-        console.log(`检测到子回路: [${smallestCycle.map(k => cities[k].name).join(" -> ")}]。注入 Benders 割平面 #${cutCounter}。`);
+        return cycles.map((cycle) => {
+          const S = new Set(cycle);
+          cutCounter++;
+          console.log(`检测到子回路: [${cycle.map(k => cities[k].name).join(" -> ")}]。注入 Benders 割平面 #${cutCounter}。`);
 
-        // 割约束：sum_{i in S, j not in S} x_ij >= 1
-        let cutLhs = new LinExpr();
-        for (const i of S) {
-          for (let j = 0; j < n; j++) {
-            if (!S.has(j)) {
-              cutLhs = cutLhs.add(x[i][j]);
+          // 割约束：sum_{i in S, j not in S} x_ij >= 1
+          let cutLhs = new LinExpr();
+          for (const i of S) {
+            for (let j = 0; j < n; j++) {
+              if (!S.has(j)) {
+                cutLhs = cutLhs.add(x[i][j]);
+              }
             }
           }
-        }
 
-        return {
-          kind: "feasibility",
-          constraint: expr`${cutLhs} >= 1`,
-          name: `subtour_cut_${cutCounter}`,
-        };
+          return {
+            kind: "feasibility",
+            constraint: expr`${cutLhs} >= 1`,
+            name: `subtour_cut_${cutCounter}`,
+          };
+        });
       }
 
       return null; // 已形成单一连通回路
@@ -155,7 +156,7 @@ async function runTSP() {
   console.log("\n最优巡回选定边:");
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i !== j && (result.values[`x_${i}_${j}`] ?? 0) > 0.5) {
+      if (i !== j && result.values[`x_${i}_${j}`] === 1) {
         console.log(`  ${cities[i].name} -> ${cities[j].name} (距离: ${dist(i, j).toFixed(3)})`);
       }
     }
@@ -170,5 +171,7 @@ runTSP();
 ## 说明
 
 - **延迟子回路消除**：主问题初始仅包含 $2n$ 条度数约束，仅在当前解出现孤立子回路时才向主问题添加相应割平面。
-- **分离回调**：`subproblem` 回调通过 `x[i][j].value` 读取主问题选定的边，遍历连通分量并在存在多个环路时返回 `{ kind: "feasibility", constraint: ... }`。
+- **多割分离（Multi-Cut Separation）**：在 `subproblem` 中返回割平面数组（`cycles.map(...)`）可一次性消除当前候选解中的所有孤立子回路，显著减少主问题 MIP 的重求解轮数。
+- **两种等价的 DFJ 割平面形式**：由于每个城市的出度满足 $\sum_{j \ne i} x_{ij} = 1$，对 $i \in S$ 求和可得 $\sum_{i \in S, j \in S} x_{ij} + \sum_{i \in S, j \notin S} x_{ij} = |S|$。因此上方代码使用的割集不等式 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 与 [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) 使用的内部边不等式 $\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$ 在代数上完全等价。
+- **预先消除双城往返子回路**：在城市数量较多的 TSP 中，初始解最常出现两城直接往返（$i \leftrightarrow j$）。在主问题中预先加入 $\binom{n}{2}$ 条 $x_{ij} + x_{ji} \le 1$ 约束通常能大幅减少 Benders 迭代次数。
 - **终止条件**：当 `subproblem` 返回 `null` 时，表示不再存在被违反的子回路约束，迭代结束。

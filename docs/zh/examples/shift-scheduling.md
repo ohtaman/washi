@@ -126,7 +126,7 @@ async function runScenario(
   if (status === "Optimal") {
     console.log(`最优周薪总额: $${model.objectiveValue}`);
     for (const s of staffList) {
-      const schedule = days.map((d) => (Math.round(shift[s.name][d].value ?? 0) === 1 ? "ON" : " ·"));
+      const schedule = days.map((d) => (shift[s.name][d].value === 1 ? "ON" : " ·"));
       console.log(`  ${s.name.padEnd(8)}: ${schedule.join(" ")}`);
     }
     console.log("排班求解成功（无需执行 UNSAT 冲突诊断）。\n");
@@ -173,3 +173,18 @@ main();
 ```
 
 </CodeRunner>
+
+## 使用软约束（弹性偏好惩罚）自动修复排班冲突
+
+当 Z3 `unsatCore` 定位出 `senior_duty_Sat` 与 `day_off_Alice_Sat`、`day_off_Bob_Sat` 发生冲突后，可将休假申请从硬约束（`shift[staff][day] == 0`）转换为目标函数中的**软约束惩罚项**（例如每驳回 1 个休假申请施加 `+$500` 惩罚），从而自动生成调整幅度最小的替代排班方案：
+
+```typescript
+// 软约束模式：不强制 shift[req.staff][req.day] == 0，而是对在申请休假日排班施加 $500 惩罚
+const overridePenalty = sum(
+  dayOffRequests,
+  (req) => expr`500 * ${shift[req.staff][req.day]}`
+);
+m.objective(minimize(expr`${dot(costMatrix, shift)} + ${overridePenalty}`));
+```
+
+在场景 B 中应用此软约束模型后，HiGHS 会自动保留其余 3 项休假申请（`Alice (Sat)`、`Charlie (Sat)`、`Diana (Wed)`），仅让日薪比 Alice（`$220`）低 `$10` 的资深员工 `Bob (Sat)`（`$210`）在周六值班，一步完成冲突修复。

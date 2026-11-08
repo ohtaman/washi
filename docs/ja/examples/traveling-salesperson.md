@@ -97,7 +97,7 @@ async function runTSP() {
       const succ = {};
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j && Math.round(x[i][j].value ?? 0) === 1) {
+          if (i !== j && x[i][j].value === 1) {
             succ[i] = j;
           }
         }
@@ -119,28 +119,29 @@ async function runTSP() {
         }
       }
 
-      // ループが2つ以上ある場合、部分巡回路が存在するので Benders カットを生成
+      // ループが2つ以上ある場合、検出された全部分巡回路に対して Benders カットを一括生成（マルチカット分離）
       if (cycles.length > 1) {
-        const smallestCycle = cycles.reduce((min, c) => (c.length < min.length ? c : min));
-        const S = new Set(smallestCycle);
-        cutCounter++;
-        console.log(`部分巡回路を検出: [${smallestCycle.map(k => cities[k].name).join(" -> ")}]. Benders カット #${cutCounter} を追加します。`);
+        return cycles.map((cycle) => {
+          const S = new Set(cycle);
+          cutCounter++;
+          console.log(`部分巡回路を検出: [${cycle.map(k => cities[k].name).join(" -> ")}]. Benders カット #${cutCounter} を追加します。`);
 
-        // カット式: sum_{i in S, j not in S} x_ij >= 1
-        let cutLhs = new LinExpr();
-        for (const i of S) {
-          for (let j = 0; j < n; j++) {
-            if (!S.has(j)) {
-              cutLhs = cutLhs.add(x[i][j]);
+          // カット式: sum_{i in S, j not in S} x_ij >= 1
+          let cutLhs = new LinExpr();
+          for (const i of S) {
+            for (let j = 0; j < n; j++) {
+              if (!S.has(j)) {
+                cutLhs = cutLhs.add(x[i][j]);
+              }
             }
           }
-        }
 
-        return {
-          kind: "feasibility",
-          constraint: expr`${cutLhs} >= 1`,
-          name: `subtour_cut_${cutCounter}`,
-        };
+          return {
+            kind: "feasibility",
+            constraint: expr`${cutLhs} >= 1`,
+            name: `subtour_cut_${cutCounter}`,
+          };
+        });
       }
 
       return null; // 単一の巡回路が得られたため終了
@@ -155,7 +156,7 @@ async function runTSP() {
   console.log("\n採用された巡回エッジ:");
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i !== j && (result.values[`x_${i}_${j}`] ?? 0) > 0.5) {
+      if (i !== j && result.values[`x_${i}_${j}`] === 1) {
         console.log(`  ${cities[i].name} -> ${cities[j].name} (距離: ${dist(i, j).toFixed(3)})`);
       }
     }
@@ -170,5 +171,7 @@ runTSP();
 ## 補足
 
 - **部分巡回路除去制約の遅延追加**: 主問題には $2n$ 本の次数制約のみを初期配置し、解に部分巡回路が現れた場合にのみ対応する制約を追加します。
-- **分離コールバック**: `subproblem` コールバックでは `x[i][j].value` から主問題の選択枝を読み取り、閉路が複数ある場合に `{ kind: "feasibility", constraint: ... }` を返します。
+- **マルチカット分離（Multi-Cut Separation）**: `subproblem` から配列（`cycles.map(...)`）を返すことで、1回の反復で見つかったすべての孤立ループを同時に除去でき、主問題 MIP の再求解回数を削減できます。
+- **2種類の等価な DFJ カット表現**: 各都市の出次数制約 $\sum_{j \ne i} x_{ij} = 1$ を $i \in S$ について足し合わせると $\sum_{i \in S, j \in S} x_{ij} + \sum_{i \in S, j \notin S} x_{ij} = |S|$ が成り立ちます。したがって、上記コードのカットセット形式（$\sum_{i \in S, j \notin S} x_{ij} \ge 1$）と [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) の内部枝形式（$\sum_{i \in S, j \in S} x_{ij} \le |S| - 1$）は代数的に完全に等価です。
+- **2都市間の往復ループの事前除去**: 都市数が多い問題では、初期反復で 2 都市間の往復（$i \leftrightarrow j$）が大量に発生しやすくなります。主問題にあらかじめ $\binom{n}{2}$ 本の $x_{ij} + x_{ji} \le 1$ を入れておくと、Benders 反復回数を大幅に減らせます。
 - **終了条件**: `subproblem` が `null` を返した時点で、追加すべき制約がないものとして反復を終了します。

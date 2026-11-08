@@ -70,6 +70,9 @@ const count = sum(Object.values(x));
 
 `sum()` 在无 AST 解析开销的情况下以 $O(N)$ 线性时间运行。
 
+> [!TIP]
+> **避免在循环中用 `expr` 逐项累加（$O(N^2)$）**：由于 `LinExpr` 与 `expr` 的返回值是不可变的，在大规模循环中编写 ``total = expr`${total} + ${x[i]}` `` 会在每次迭代时复制已有的全部项，导致 $O(N^2)$ 的时间与内存开销。汇总大量变量时，请始终使用 `sum(x)` 或 `dot(coeffs, x)` 以保持 $O(N)$ 线性复杂度。
+
 ---
 
 ## 🎯 向量与矩阵点积 (`dot`)
@@ -161,6 +164,24 @@ risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
 risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
 m.objective(minimize(risk));
+```
+
+### 3. 二次规划（QP）与二元变量乘积线性化实战要点
+
+- **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：包括 HiGHS 在内的标准 QP 求解器要求最小化目标中的二次型矩阵 $\mathbf{Q}$ 必须为**半正定（PSD）**（最大化时为半负定）。平方和（$\sum_i (x_i - t_i)^2$）与协方差矩阵（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）天然满足半正定性；而连续变量之间的不定乘积（如直接最小化 $x \cdot y$）属于非凸问题，会被求解器拒绝。
+- **在 MILP 中线性化二元变量乘积（$x_A \cdot x_B$）**：若模型包含整数或二元变量，且需要表达两个二元决策 $x_A, x_B \in \{0, 1\}$ 同时为 1 时的协同收益或交互成本（$z_{AB} = x_A \cdot x_B$），应引入辅助变量 $z_{AB} \in [0, 1]$ 及以下三条线性不等式（McCormick / Fortet 线性化），从而作为标准 MILP 高效求解：
+
+$$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
+
+```typescript
+const xA = m.binary("xA");
+const xB = m.binary("xB");
+// 当 xA, xB 为 0-1 变量时，连续区间 [0, 1] 上的 bothAB 会自动取 {0, 1} 整数值
+const bothAB = m.continuous("both_AB", { lb: 0, ub: 1 });
+
+m.constraint(expr`${bothAB} <= ${xA}`, "and_upper_A");
+m.constraint(expr`${bothAB} <= ${xB}`, "and_upper_B");
+m.constraint(expr`${bothAB} >= ${xA} + ${xB} - 1`, "and_lower_AB");
 ```
 
 ---

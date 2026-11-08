@@ -62,6 +62,18 @@ if (status === "Infeasible") {
 }
 ```
 
+### Comparing Z3 `unsatCore` vs. HiGHS Elastic Slack `conflicts`
+
+| Property | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
+| :--- | :--- | :--- |
+| **Algorithm** | SMT assumption tracking (`assertAndTrack`) | Single-solve $L_1$ elastic slack relaxation ($\min \sum s_i$) |
+| **Populated Fields** | Both `result.unsatCore` and `result.conflicts` | `result.conflicts` (`unsatCore` is `undefined`) |
+| **Semantic Meaning** | A **contradictory subset** of rules that cannot all hold together | A **minimum-violation repair set** of constraints whose relaxation restores feasibility |
+| **Unit-Scaling Sensitivity** | **Scale-invariant** (pure logical/algebraic contradiction) | **Scale-sensitive** (minimizing unweighted $\sum s_i$ prefers relaxing a headcount constraint by `2` units over a budget constraint by `10,000` dollars) |
+
+> [!TIP]
+> When diagnosing models that mix constraints of vastly different magnitudes (e.g., headcount $\le 8$ alongside budget $\le 50{,}000$), use **`m.check({ solver: "z3" })`** if you want the complete scale-invariant set of mutually contradictory rules, or normalize constraint scales when relying on unweighted $L_1$ slack relaxation.
+
 ---
 
 ## ✅ Independent Solution Validation (`m.validateSolution()`)

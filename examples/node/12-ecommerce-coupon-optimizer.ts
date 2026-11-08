@@ -2,7 +2,8 @@
  * Example 12: E-Commerce Cart & Coupon Optimizer (Client-Side MIP with Indicators)
  *
  * Demonstrates:
- * - Conditional activation constraints via `m.indicator(binVar, constraint, { activeValue, M })`
+ * - Conditional activation constraints via `m.indicator(binVar, constraint, { activeValue })`
+ *   with automatic tight Big-M derivation from variable bounds
  * - Mutual exclusion between promotional coupons (`c1 + c2 <= 1`)
  * - Determining whether adding a small "filler" item unlocks a higher discount tier
  *   that reduces the customer's net payable amount
@@ -48,18 +49,18 @@ async function main() {
 
   // Rule 1: Indicator constraints — if coupon `c` is applied (useCoupon[c.id] == 1),
   // the cart must satisfy its minimum spend threshold.
+  // Omitting `M` lets WaSHI automatically derive the tightest valid Big-M from variable bounds
+  // (e.g., M = 8 for MEGA45_250 where 242 + 10 * addUsbCable >= 250).
   for (const cpn of coupons) {
     if (cpn.minCartSpend > 0) {
       m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCartSpend), {
         activeValue: 1,
-        M: 500,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTechSpend > 0) {
       m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTechSpend), {
         activeValue: 1,
-        M: 500,
         name: `min_tech_${cpn.id}`,
       });
     }
@@ -86,7 +87,7 @@ async function main() {
   const status = await m.solve();
   const solveMs = m.runTime * 1000;
 
-  const cableAdded = Math.round(addUsbCable.value ?? 0) === 1;
+  const cableAdded = addUsbCable.value === 1;
   const grossTotal = baseCartSubtotal + (cableAdded ? usbCablePrice : 0);
   const netPayable = m.objectiveValue ?? grossTotal;
   const discountSaved = grossTotal - netPayable;
@@ -102,7 +103,7 @@ async function main() {
 
   console.log("Coupon Selection Breakdown:");
   for (const cpn of coupons) {
-    const applied = Math.round(useCoupon[cpn.id].value ?? 0) === 1;
+    const applied = useCoupon[cpn.id].value === 1;
     console.log(
       `  ${applied ? "✅ [APPLIED] " : "   [skipped] "} ${cpn.id.padEnd(12)} (-$${cpn.discount}) — ${cpn.desc}`
     );

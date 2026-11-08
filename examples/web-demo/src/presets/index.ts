@@ -25,22 +25,22 @@ export const EXAMPLES: ExampleModel[] = [
     apis: ["integer()", "maximize()", "constraint()"],
     visualizer: "summary",
     code: `// --- Production Planning (Chairs & Tables) ---
-// Maximize profit under carpentry and finishing hours constraints.
-const m = new Model({ name: "ProductionPlanning", sense: "Maximize", solver: "highs" });
+// Maximize profit under mahogany wood and carpentry labor constraints.
+const m = new Model({ name: "FactoryProduction", sense: "Maximize", solver: "highs" });
 
 // Decision variables (integer quantities >= 0)
 const chairs = m.integer("chairs", { lb: 0 });
 const tables = m.integer("tables", { lb: 0 });
 
-// Objective: Profit is $30 per chair, $50 per table
-m.objective(maximize(chairs.mul(30).add(tables.mul(50))));
+// Objective: Profit is $45 per chair, $80 per table
+m.objective(maximize(expr\`45 * \${chairs} + 80 * \${tables}\`));
 
 // Constraints:
-// 1. Carpentry: 1 hr/chair + 2 hrs/table <= 40 hrs
-m.constraint(chairs.add(tables.mul(2)).le(40), "carpentry_limit");
+// 1. Mahogany wood: 5 sq ft/chair + 20 sq ft/table <= 400 sq ft
+m.constraint(expr\`5 * \${chairs} + 20 * \${tables} <= 400\`, "mahogany_limit");
 
-// 2. Finishing: 2 hrs/chair + 1 hr/table <= 50 hrs
-m.constraint(chairs.mul(2).add(tables).le(50), "finishing_limit");
+// 2. Carpentry labor: 10 hrs/chair + 15 hrs/table <= 450 hrs
+m.constraint(expr\`10 * \${chairs} + 15 * \${tables} <= 450\`, "labor_limit");
 
 // Solve with HiGHS WASM in browser
 const status = await m.solve();
@@ -58,40 +58,39 @@ console.log("Tables to produce:", tables.value);
     group: "fundamentals",
     description:
       "Binary integer programming. Select the highest-value combination of items without exceeding the backpack weight limit.",
-    apis: ["binary(keys)", "sum()", "constraint()"],
+    apis: ["binary(keys)", "dot()", "constraint()"],
     visualizer: "summary",
     code: `// --- 0-1 Knapsack Selection Problem ---
 // Maximize total item value within backpack weight capacity.
 const m = new Model({ name: "KnapsackProblem", sense: "Maximize", solver: "highs" });
 
 const items = [
-  { name: "Laptop",       weight: 3, value: 50 },
-  { name: "Camera",       weight: 2, value: 40 },
-  { name: "Book",         weight: 1, value: 10 },
-  { name: "Water_Bottle", weight: 2, value: 25 },
-  { name: "Drone",        weight: 4, value: 65 },
-  { name: "First_Aid",    weight: 1, value: 15 },
+  { name: "Laptop",   weight: 3, value: 50 },
+  { name: "Camera",   weight: 2, value: 40 },
+  { name: "Drone",    weight: 4, value: 65 },
+  { name: "FirstAid", weight: 1, value: 15 },
+  { name: "Tent",     weight: 5, value: 70 },
 ];
 const maxCapacity = 7;
 
 // Binary decision variables (1 = packed, 0 = skipped)
 const x = m.binary(items.map(it => it.name));
 
-// Objective: Maximize total packed value
-m.objective(maximize(sum(items, it => x[it.name].mul(it.value))));
+const values = Object.fromEntries(items.map(it => [it.name, it.value]));
+const weights = Object.fromEntries(items.map(it => [it.name, it.weight]));
+
+// Objective: Maximize total packed value via dot product
+m.objective(maximize(dot(values, x)));
 
 // Constraint: Total weight <= maxCapacity (7 kg)
-m.constraint(
-  sum(items, it => x[it.name].mul(it.weight)).le(maxCapacity),
-  "capacity_limit"
-);
+m.constraint(expr\`\${dot(weights, x)} <= \${maxCapacity}\`, "capacity_limit");
 
 const status = await m.solve();
 
 console.log("Status:", status);
 console.log("Max Total Value: $" + m.objectiveValue);
 items.forEach(it => {
-  if (Math.round(x[it.name].value || 0) === 1) {
+  if (x[it.name].value === 1) {
     console.log(\`Packed \${it.name} (weight: \${it.weight}kg, value: $\${it.value})\`);
   }
 });
@@ -311,13 +310,14 @@ const cpn = m.binary(coupons.map(c => c.id), { prefix: "cpn" });
 const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
 const techSpend  = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
 
-// 1. Indicator Constraints: If coupon is selected (cpn == 1), minimum spend must hold
+// 1. Indicator Constraints: If coupon is selected (cpn == 1), minimum spend must hold.
+// Omitting M lets WaSHI automatically derive the tightest Big-M from variable bounds!
 for (const c of coupons) {
   if (c.minCart > 0) {
-    m.indicator(cpn[c.id], merchSpend.ge(c.minCart), { activeValue: 1, M: 500, name: \`min_cart_\${c.id}\` });
+    m.indicator(cpn[c.id], merchSpend.ge(c.minCart), { activeValue: 1, name: \`min_cart_\${c.id}\` });
   }
   if (c.minTech > 0) {
-    m.indicator(cpn[c.id], techSpend.ge(c.minTech), { activeValue: 1, M: 500, name: \`min_tech_\${c.id}\` });
+    m.indicator(cpn[c.id], techSpend.ge(c.minTech), { activeValue: 1, name: \`min_tech_\${c.id}\` });
   }
 }
 
@@ -336,9 +336,9 @@ const status = await m.solve();
 
 console.log("Status:", status);
 console.log("Final Net Payable: $" + m.objectiveValue + " (Base Cart was $" + baseCartSubtotal + ")");
-console.log("Add $10 USB-C Cable?:", Math.round(addUsbCable.value || 0) === 1 ? "YES (Unlocks $250 tier!)" : "NO");
+console.log("Add $10 USB-C Cable?:", addUsbCable.value === 1 ? "YES (Unlocks $250 tier!)" : "NO");
 coupons.forEach(c => {
-  if (Math.round(cpn[c.id].value || 0) === 1) {
+  if (cpn[c.id].value === 1) {
     console.log(\`  Applied Coupon: \${c.id} (-$\${c.discount})\`);
   }
 });
@@ -351,7 +351,7 @@ coupons.forEach(c => {
     group: "practical",
     description:
       "Convex Quadratic Programming (QP). Minimize investment portfolio variance risk subject to 100% budget and target return constraints.",
-    apis: ["continuous()", "new QuadExpr()", "v1.mul(v2)", "sum()"],
+    apis: ["continuous()", "new QuadExpr()", "v1.mul(v2)", "dot()"],
     visualizer: "summary",
     code: `// --- Markowitz Portfolio Optimization (Convex QP) ---
 // Minimize portfolio variance risk subject to capital and target return constraints.
@@ -359,17 +359,17 @@ const m = new Model({ name: "PortfolioOptimization", sense: "Minimize", solver: 
 
 // 1. Asset universe and expected returns
 const assets = ["Tech", "Bonds", "GlobalEq", "RealEstate", "Gold"];
-const expectedReturns = [0.15, 0.04, 0.10, 0.08, 0.06];
+const expectedReturns = [0.12, 0.04, 0.09, 0.07, 0.05];
+const targetReturn = 0.085; // 8.5% minimum expected annual return
 
 // Asset weight decision variables: 0% <= w_i <= 100%
 const w = assets.map((name) => m.continuous(\`weight_\${name}\`, { lb: 0, ub: 1 }));
 
 // 2. Budget constraint: sum of weights = 1.0 (100% capital allocation)
-m.constraint(sum(w).eq(1.0), "budget_full_investment");
+m.constraint(expr\`\${sum(w)} == 1.0\`, "budget_full_investment");
 
-// 3. Minimum expected return target: sum(r_i * w_i) >= 9.0%
-const portfolioReturn = sum(w.map((v, i) => v.mul(expectedReturns[i])));
-m.constraint(portfolioReturn.ge(0.09), "min_expected_return");
+// 3. Minimum expected return target: dot(expectedReturns, w) >= 8.5%
+m.constraint(expr\`\${dot(expectedReturns, w)} >= \${targetReturn}\`, "min_expected_return");
 
 // 4. Covariance Matrix (risk & asset correlations)
 const cov = [
@@ -529,6 +529,60 @@ if (res.status === "Unsat") {
   const conflicts = res.conflicts || m.conflicts || m.unsatCore || [];
   conflicts.forEach((rule) => console.warn("  • " + rule));
 }
+`,
+  },
+  {
+    id: "smt_security",
+    title: "Smart Home Security Rules (SMT / SAT)",
+    category: "SMT",
+    group: "logic",
+    description:
+      "Verify and deduce system states in an IoT home security system combining boolean logic (implies, and, not) with integer sensor thresholds.",
+    apis: ["bool()", "implies()", "not()", "m.check()"],
+    visualizer: "none",
+    code: `// --- Smart Home Security Rules (SMT / SAT) ---
+// Deduce IoT system states combining boolean propositions with sensor arithmetic
+const m = new Model({ name: "SmartHomeSecurity", solver: "z3" });
+
+// 1. Boolean Propositional Variables
+const isNight = m.bool("isNight");
+const motionDetected = m.bool("motionDetected");
+const alarmArmed = m.bool("alarmArmed");
+const frontDoorUnlocked = m.bool("frontDoorUnlocked");
+const sirenActive = m.bool("sirenActive");
+const lightsOn = m.bool("lightsOn");
+
+// 2. Arithmetic metric (lux sensor)
+const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
+
+// Rule 1: luxLevel <= 50 implies isNight
+m.constraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+
+// Rule 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
+m.constraint(
+  motionDetected.and(isNight).and(alarmArmed).implies(sirenActive),
+  "intrusion_rule"
+);
+
+// Rule 3: alarmArmed => NOT(frontDoorUnlocked)
+m.constraint(alarmArmed.implies(not(frontDoorUnlocked)), "lock_safety_rule");
+
+// Rule 4: (motionDetected AND isNight) => lightsOn
+m.constraint(motionDetected.and(isNight).implies(lightsOn), "comfort_lights");
+
+// 3. Observed Context
+m.constraint(expr\`\${luxLevel} <= 20\`, "sensor_reading_dark");
+m.constraint(alarmArmed, "user_armed_alarm");
+m.constraint(motionDetected, "sensor_motion_triggered");
+
+console.log("Checking security satisfiability with Z3...");
+const res = await m.check({ solver: "z3" });
+
+console.log("Status:", res.status);
+console.log("Siren Active :", sirenActive.value);
+console.log("Lights On    :", lightsOn.value);
+console.log("Door Locked  :", frontDoorUnlocked.value ? "No (Unlocked)" : "Yes (Locked)");
+console.log("Is Night     :", isNight.value);
 `,
   },
   {

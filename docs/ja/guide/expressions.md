@@ -70,6 +70,9 @@ const count = sum(Object.values(x));
 
 `sum()` は AST パースのオーバーヘッドなしに $O(N)$ 線形時間で高速に動作します。
 
+> [!TIP]
+> **ループ内での `expr` の再代入（$O(N^2)$）を避ける**: `LinExpr` や `expr` の結果は不変（イミュータブル）であるため、大きなループの中で ``total = expr`${total} + ${x[i]}` `` のように1項ずつ加算していくと、反復ごとに既存の全項がコピーされ $O(N^2)$ の時間・メモリを消費します。多数の変数を集計する際は、必ず `sum(x)` または `dot(coeffs, x)` を使用して $O(N)$ で構築してください。
+
 ---
 
 ## 🎯 内積関数 (`dot`)
@@ -161,6 +164,24 @@ risk = risk.add(w.Tech.mul(w.Bonds).mul(0.005));
 risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 
 m.objective(minimize(risk));
+```
+
+### 3. 2次計画（QP）とバイナリ積の線形化に関する実務上の注意点
+
+- **凸性条件（半正定値性 $\mathbf{Q} \succeq 0$）**: HiGHS を含む標準的な QP ソルバーで最小化を行う場合、2次形式の係数行列 $\mathbf{Q}$ が**半正定値（Positive Semi-Definite: PSD）**である必要があります（最大化の場合は半負定値）。二乗和（$\sum_i (x_i - t_i)^2$）や共分散行列（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）は常に半正定値ですが、連続変数同士の不定な積（$x \cdot y$ の最小化など）は非凸となりソルバーでエラーになります。
+- **MIP におけるバイナリ変数同士の積（$x_A \cdot x_B$）の線形化**: 整数・バイナリ変数を含むモデルで「アイテム $A$ と $B$ の両方を選んだときだけシナジー効果（またはペナルティ）が発生する」といった積 $z_{AB} = x_A \cdot x_B$ を扱いたい場合、2次式のままにするのではなく、補助変数 $z_{AB} \in [0, 1]$ と以下の3本の線形不等式（McCormick / Fortet 線形化）に置き換えることで、通常の MILP として高速に求解できます：
+
+$$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
+
+```typescript
+const xA = m.binary("xA");
+const xB = m.binary("xB");
+// xA, xB がバイナリであれば、bothAB は連続変数 [0, 1] でも自動的に {0, 1} の整数値をとります
+const bothAB = m.continuous("both_AB", { lb: 0, ub: 1 });
+
+m.constraint(expr`${bothAB} <= ${xA}`, "and_upper_A");
+m.constraint(expr`${bothAB} <= ${xB}`, "and_upper_B");
+m.constraint(expr`${bothAB} >= ${xA} + ${xB} - 1`, "and_lower_AB");
 ```
 
 ---

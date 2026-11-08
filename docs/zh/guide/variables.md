@@ -47,6 +47,19 @@ const alarmTriggered = m.bool("alarmTriggered");
 m.constraint(alarmTriggered.implies(isNight), "alarm_policy");
 ```
 
+### `m.binary()` 与 `m.bool()` 的选型对比
+
+| 特性 | `m.binary()` (`Var`) | `m.bool()` (`BoolVar`) |
+| :--- | :--- | :--- |
+| **求解后的 `.value` 类型** | `number \| null`（精确的 `0` 或 `1`） | `boolean \| null`（`true` 或 `false`） |
+| **线性算术运算（`expr`, `sum`, `dot`, 目标成本）** | ✅ 原生支持（`` expr`30 * ${b}` ``） | ❌ 不能直接与数值相乘或求和 |
+| **指示约束（`m.indicator(b, ...)`）** | ✅ 可作为触发变量 | ❌ 请改用 `implies(flag, expr`...`)` |
+| **命题逻辑（`and`, `or`, `not`, `implies`, `xor`）** | 需通过比较式（`` expr`${b} == 1` ``） | ✅ 原生一等方法（`.implies()`, `.and()`） |
+| **求解器底层处理** | HiGHS/GLPK 原生 0-1 MIP；Z3 有界整数 | Z3 原生布尔命题；HiGHS/GLPK 自动线性化为 0-1 MIP |
+
+> [!TIP]
+> 当决策需要参与线性求和（如人数统计 $\sum x_i \ge 3$）、目标函数成本（$c_i x_i$）或 `m.indicator()` 时，请使用 **`m.binary()`**；当表达纯规则引擎或策略逻辑（如 `isNight`、`isVip`）并配合 `implies()`、`and()`、`or()` 时，请使用 **`m.bool()`**。
+
 ### 💡 半连续决策变量（Semi-Continuous）的建模
 半连续变量的取值范围为 $\{0\} \cup [L, U]$（即要么为 0，要么落在正下界 $L$ 与上界 $U$ 之间，常用于具有最小起订量或最小生产批次的场景）。
 
@@ -149,7 +162,33 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 
 - **提示而非硬约束**：`initialValue` 仅作为传递给求解器的可选初始解提示（通过 `setSolution` 传递给 HiGHS）。它**不会**固定变量或添加额外约束，也不保证一定被求解器采纳或带来加速。它与 `variable.value` 相互独立（`variable.value` 在求解前始终为 `null`，求解后填充为求解器所得的原问题解）。
 - **校验与容差 (`1e-6`)**：提供的值必须是位于 `[lb - 1e-6, ub + 1e-6]` 内的有限数值（对于 `"Integer"` 与 `"Binary"` 变量，还必须与边界内的某个整数距离不超过 `1e-6`）。部分初始解无需满足模型的所有约束条件。
+- **完整可行初始解效果最佳**：虽然支持只为部分变量提供初始值，但当您提供**完整且满足所有约束**的初始解（包括由整数决策推导出的连续变量与松弛变量）时，MIP 求解器能在根节点立即获得紧凑的初始界（Incumbent）并大幅剪枝分支定界树。
 - **求解器支持**：由 **HiGHS**（`capabilities.supportsWarmStart === true`）支持。不支持热启动的求解器（**GLPK**、**Z3** 或未声明 `supportsWarmStart: true` 的自定义适配器）在调用 `solve()` 和 `check()` 时会抛出明确的错误，而不会静默忽略 `initialValue`。
+
+### 💡 计划稳定性（最小扰动重优化）与热启动的区别
+在排班或配送计划重调度（如因临时缺勤重新排班）时，仅将原方案设为 `initialValue` 只会为求解器提供搜索起点，**不会**阻止求解器为了微小的目标收益而推翻大部分员工原有的班次。
+
+若希望新方案尽可能保持原二元方案 $x_i^{\text{prev}} \in \{0, 1\}$ 的稳定性，可在目标函数中添加**汉明距离（Hamming Distance）变动惩罚项**：
+
+$$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
+
+```typescript
+import { Model, expr, sum, minimize } from "@ohtaman/washi";
+
+const m = new Model("StableReschedule");
+const prevShift = [1, 0, 1, 0];
+const x = prevShift.map((prev, i) =>
+  m.binary(`shift_${i}`, { initialValue: prev })
+);
+
+// 统计相比原计划发生翻转（0->1 或 1->0）的班次总数
+const flips = sum(
+  x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : expr`${v}`))
+);
+
+// 对每次班次变动施加 $5 的扰动惩罚
+m.objective(minimize(expr`5 * ${flips}`));
+```
 
 ---
 

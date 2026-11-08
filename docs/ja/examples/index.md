@@ -13,7 +13,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 | **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5名×7日のシフト作成（必要人数・シニア配置・週上限・希望休）と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
 | **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `sum()`, `m.constraint()` | `m.indicator()` を用いた最低購入金額条件、併用不可ルール、さらに追加購入による上位割引解放の同時計算。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
 | **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | マーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
-| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_sat_scheduling) |
+| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_security) |
 | **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
 | **[車両配送計画 (CVRP)](./vehicle-routing.md)** | 組合せ最適化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 顧客訪問の双対価格からトラック巡回ルートを動的生成し、最少車両数を決定。 | [分解法ガイド](../guide/decomposition.md) |
 | **[巡回セールスマン (TSP)](./traveling-salesperson.md)** | 組合せ最適化 / Benders分解 | HiGHS | `m.solveBenders()`, `subproblem` | 次数割り当て緩和問題からスタートし、部分巡回路に対して動的に Benders cut を追加。 | [分解法ガイド](../guide/decomposition.md) |
@@ -54,4 +54,6 @@ npx tsx examples/node/09-transportation-problem.ts
 npx tsx examples/node/10-diet-sensitivity.ts
 npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
+npx tsx examples/node/13-vehicle-routing-column-generation.ts
+npx tsx examples/node/14-traveling-salesperson-benders.ts
 ```

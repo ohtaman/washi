@@ -73,7 +73,7 @@ export async function runTSP() {
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           if (i !== j) {
-            if ((x[`${i}_${j}`].value ?? 0) > 0.5) {
+            if (x[`${i}_${j}`].value === 1) {
               nextCity[i] = j;
             }
           }
@@ -103,25 +103,27 @@ export async function runTSP() {
         return null; // Optimal tour found; no further cuts needed
       }
 
-      // Subtour detected: Generate Subtour Elimination Constraint (Benders Feasibility Cut)
-      // for the smallest disconnected component S: sum_{i in S, j in S} x_ij <= |S| - 1
-      const smallest = cycles.reduce((min, c) => (c.length < min.length ? c : min), cycles[0]);
-      const secExpr = new LinExpr();
-      for (const i of smallest) {
-        for (const j of smallest) {
-          if (i !== j) {
-            secExpr.addTerm(x[`${i}_${j}`], 1);
+      // Disconnected subtours detected: Generate Benders Feasibility Cuts (multi-cut separation)
+      // for every disconnected component S: sum_{i in S, j in S} x_ij <= |S| - 1
+      console.log(
+        `  Iter ${iteration}: ${cycles.length} subtours detected (${cycles.map((c) => `[${c.join(" -> ")}]`).join(", ")}). Adding Benders feasibility cuts.`
+      );
+
+      return cycles.map((cycle) => {
+        const secExpr = new LinExpr();
+        for (const i of cycle) {
+          for (const j of cycle) {
+            if (i !== j) {
+              secExpr.addTerm(x[`${i}_${j}`], 1);
+            }
           }
         }
-      }
-
-      console.log(`  Iter ${iteration}: Subtour detected: [${smallest.join(" -> ")}]. Adding Benders feasibility cut.`);
-
-      return {
-        kind: "feasibility",
-        constraint: expr`${secExpr} <= ${smallest.length - 1}`,
-        name: `sec_${smallest.join("_")}`,
-      };
+        return {
+          kind: "feasibility" as const,
+          constraint: expr`${secExpr} <= ${cycle.length - 1}`,
+          name: `sec_${cycle.join("_")}`,
+        };
+      });
     },
   });
 
@@ -133,7 +135,7 @@ export async function runTSP() {
   console.log("\nOptimal tour edges:");
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i !== j && (result.values[`x_${i}_${j}`] ?? 0) > 0.5) {
+      if (i !== j && result.values[`x_${i}_${j}`] === 1) {
         console.log(`  ${cities[i].name} -> ${cities[j].name} (distance: ${dist(i, j).toFixed(3)})`);
       }
     }

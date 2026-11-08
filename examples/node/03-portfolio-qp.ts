@@ -36,7 +36,8 @@ async function main() {
 
   // Target expected return: sum(r_i * w_i) >= 8.5%
   const returns = Object.fromEntries(assets.map((name, i) => [name, expectedReturns[i]]));
-  m.constraint(expr`${dot(returns, w)} >= 0.085`, "min_expected_return");
+  const expectedReturnExpr = dot(returns, w);
+  m.constraint(expr`${expectedReturnExpr} >= 0.085`, "min_expected_return");
 
   // Objective: Minimize portfolio variance w^T * Cov * w
   let risk = new QuadExpr();
@@ -54,6 +55,7 @@ async function main() {
   console.log(`\nStatus: ${status}`);
   console.log(`Optimal Variance (Risk): ${m.objectiveValue?.toFixed(6)}`);
   console.log(`Portfolio Volatility (Std Dev): ${((Math.sqrt(m.objectiveValue || 0)) * 100).toFixed(2)}%`);
+  console.log(`Achieved Expected Return: ${((expectedReturnExpr.value ?? 0) * 100).toFixed(2)}% (target >= 8.50%)`);
   console.log("\nAsset Allocations:");
   assets.forEach((name) => {
     const pct = ((w[name].value || 0) * 100).toFixed(2);

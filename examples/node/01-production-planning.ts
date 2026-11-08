@@ -1,5 +1,5 @@
 /**
- * Example 1: Production Planning (Linear Programming)
+ * Example 1: Production Planning (Mixed-Integer Programming)
  * 
  * Demonstrates:
  * - Basic Model definition
@@ -12,7 +12,7 @@
 import { Model, expr, maximize } from "../../src/index.js";
 
 async function main() {
-  console.log("=== Production Planning Optimization (LP) ===");
+  console.log("=== Production Planning Optimization (MIP) ===");
 
   const m = new Model("FactoryProduction");
 

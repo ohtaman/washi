@@ -92,6 +92,14 @@ await model.solve({
     console.log(`已用时: ${ev.elapsedTime.toFixed(1)}s, 当前最优值: ${ev.objectiveValue}`);
   },
 });
+
+// 当使用 timeLimit 或 AbortSignal 时，通过 hasPrimalSolution 检查是否存在可用可行解：
+if (model.hasPrimalSolution) {
+  console.log(
+    `可用解 (${model.status}, 终止原因: ${model.terminationStatus}):`,
+    `obj = ${model.objectiveValue}, gap = ${((model.relGap ?? 0) * 100).toFixed(2)}%`
+  );
+}
 ```
 
 ---

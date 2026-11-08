@@ -304,6 +304,60 @@ describe("Post-solve Solution Validation (Issue #54)", () => {
     expect(repBadConstr.complete).toBe(false);
     expect(repBadConstr.uncheckedConstraints).toEqual(["nan_rhs", "nan_coeff"]);
   });
+
+  it("normalizes Integer and Binary variable values to exact integers on solve() and check(), while preserving fractional values on relax()", async () => {
+    const m = new Model("IntegralityNormalization");
+    const b = m.binary("b");
+    const n = m.integer("n", { lb: -10, ub: 10 });
+    const c = m.continuous("c", { lb: 0, ub: 10 });
+
+    const noisySolver = {
+      name: "NoisyMipSolver",
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: 5,
+          values: {
+            b: 0.9999998,
+            n: -0,
+            c: 1.9999998,
+          },
+        };
+      },
+    };
+
+    await m.solve(noisySolver);
+    expect(b.value).toBe(1);
+    expect(Number.isInteger(b.value)).toBe(true);
+    expect(n.value).toBe(0);
+    expect(Object.is(n.value, -0)).toBe(false);
+    expect(m.solution?.values.b).toBe(1);
+    expect(m.values.get("b")).toBe(1);
+    // Continuous variable preserves its exact floating-point value
+    expect(c.value).toBe(1.9999998);
+
+    // When solving LP relaxation (relax: true), fractional values on Integer/Binary variables are preserved
+    const relaxSolver = {
+      name: "RelaxLpSolver",
+      async solve() {
+        return {
+          status: "Optimal" as const,
+          hasPrimalSolution: true,
+          objectiveValue: 2.5,
+          values: {
+            b: 0.5,
+            n: 2.9999998,
+            c: 1.25,
+          },
+        };
+      },
+    };
+
+    await m.relax(relaxSolver);
+    expect(b.value).toBe(0.5);
+    expect(n.value).toBe(2.9999998);
+  });
 });
 
 

@@ -67,9 +67,11 @@ const model = new Model();
 
 ### 3. 定义决策变量
 
+提供合理的有限上下界（`lb` 与 `ub`）有助于强化 MIP 预处理（Presolve）与自动推导紧凑的 Big-M：
+
 ```typescript
-const x = model.integer("x", { lb: 0 });
-const y = model.integer("y", { lb: 0 });
+const x = model.integer("x", { lb: 0, ub: 100 });
+const y = model.integer("y", { lb: 0, ub: 100 });
 ```
 
 ### 4. 设定目标函数
@@ -90,14 +92,17 @@ model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
 model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
 ```
 
-### 6. 异步求解与结果获取
+### 6. 异步求解、验证与结果获取
 
 ```typescript
-const result = await model.solve();
+const status = await model.solve();
 
-console.log("状态:", model.status); // "Optimal"
-console.log("最优目标值:", model.objectiveValue); // 1100
-console.log(`最优解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
+if (model.hasPrimalSolution) {
+  const report = model.validateSolution();
+  console.log("状态:", status, "| 验证:", report.valid); // "Optimal" | true
+  console.log("最优目标值:", model.objectiveValue); // 1100
+  console.log(`最优解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
+}
 ```
 
 ---

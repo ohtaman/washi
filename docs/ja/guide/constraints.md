@@ -156,6 +156,65 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **対応ソルバー** | **全 MIP / LP ソルバー**（HiGHS, GLPK, Z3）— Big-M 線形化 | **全ソルバー**（HiGHS, GLPK は 0-1 MIP 自動線形化、Z3 はネイティブ対応） |
 | **主な用途** | 目的関数を伴う数理最適化（`m.solve()`） | ルール検証・ポリシー検証・充足可能性判定（`m.check()`） |
 
+> [!NOTE]
+> **`implies()` の前提条件（Antecedent）に一般不等式を使う場合**: **Z3**（`solver: "z3"`）では、``expr`${luxLevel} <= 50`.implies(isNight)`` のように一般の線形不等式を `implies(a, b)` の前提条件 `a` として直接扱えます。一方、MIP ソルバー（**HiGHS** / **GLPK**）で条件付き制約を扱う場合は、前提条件に `BoolVar`（`m.bool()`）を用いるか、バイナリ変数（`m.binary()`）をトリガーとする `m.indicator(binVar, constraint)` を使用してください。
+
+---
+
+## 🪞 対称性除去制約（Symmetry Breaking）
+
+同一スペックのトラック・ビン（箱）・並列機械が $K$ 台あるモデルでは、どのトラックを「1号車」「2号車」と呼ぶかを入れ替えた $K!$ 通りの等価な解が存在します。この対称性を放置すると、MIP ソルバーが分枝限定法の探索木で同じ目的関数値を持つ鏡像の部分木を何度も探索してしまい、最適性の証明が極端に遅くなります。
+
+同一リソースには「番号の若いリソースから順番に使用する（$u_0 \ge u_1 \ge \dots \ge u_{K-1}$）」という順序付け制約を追加することで、解の質を一切損なわずに探索空間を劇的に削減できます：
+
+```typescript
+const numTrucks = 4;
+const truckUsed = m.binary(numTrucks, { prefix: "truck_used" });
+
+// トラック k が使われているときだけトラック k+1 の使用を許可する (u_0 >= u_1 >= u_2 >= u_3)
+for (let k = 0; k < numTrucks - 1; k++) {
+  m.constraint(
+    expr`${truckUsed[k]} >= ${truckUsed[k + 1]}`,
+    `symmetry_truck_${k}`
+  );
+}
+```
+
+---
+
+## ⚖️ ハード制約 vs ソフト制約（スラック変数による緩和）
+
+シフトスケジューリングや生産計画などの実務問題では、すべての業務ルールを絶対条件（**ハード制約**）として記述すると、繁忙期や欠員時に条件を1つでも満たせなくなった瞬間に解なし（`"Infeasible"`）となってしまいます。
+
+絶対に破れない物理的・法的な制約（ハード制約）と、可能な限り守りたい目標（**ソフト制約**）を切り分け、ソフト制約には非負の不足・超過スラック変数（$s \ge 0$）を導入して目的関数でペナルティを課すのが実務の定石です：
+
+| 制約の種類 | ハード制約 | ソフト制約（緩和後, $s \ge 0$） | 目的関数へのペナルティ項（最小化） |
+| :--- | :--- | :--- | :--- |
+| **下限制約** | $\text{lhs} \ge b$ | $\text{lhs} + s_{\text{short}} \ge b$ | $+ W \cdot s_{\text{short}}$ |
+| **上限制約** | $\text{lhs} \le b$ | $\text{lhs} - s_{\text{excess}} \le b$ | $+ W \cdot s_{\text{excess}}$ |
+| **目標等式** | $\text{lhs} = b$ | $\text{lhs} + s_{\text{short}} - s_{\text{excess}} = b$ | $+ W_1 \cdot s_{\text{short}} + W_2 \cdot s_{\text{excess}}$ |
+
+```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+
+const m = new Model("ElasticShiftCoverage");
+
+const assignedStaff = m.integer("assignedStaff", { lb: 0, ub: 4 }); // 当日の出勤可能上限は 4 名
+const shortage = m.continuous("shortage", { lb: 0 });               // 不足人数を表す非負スラック変数 (s >= 0)
+
+// ソフト制約: 目標は 5 名だが、不可能な場合は shortage > 0 を許容して解を返す
+m.constraint(expr`${assignedStaff} + ${shortage} >= 5`, "target_5_staff");
+
+// 通常人件費 ($100) よりも十分大きいペナルティ重み ($1,000) を不足人数に課す
+m.objective(minimize(expr`100 * ${assignedStaff} + 1000 * ${shortage}`));
+
+await m.solve();
+console.log("配置人数:", assignedStaff.value); // 4
+console.log("不足人数:", shortage.value);      // 1 (Infeasible にならず最善の妥協解と不足箇所が分かる)
+```
+
+> **実務の勘所 — ペナルティ重み $W$ の設計**: 重み $W$ は通常のコスト係数より十分大きく（例：$10\sim 1{,}000$ 倍）設定しますが、$10^{12}$ のような極端に巨大な値は避けてください。モデル内の最大係数と最小係数の比（スケーリング比）を $10^5\sim 10^6$ 以内に収めることで、ソルバーの浮動小数点数値安定性を高く保てます。
+
 ---
 
 ## 📐 双対変数（潜在価格）とスラックの取得

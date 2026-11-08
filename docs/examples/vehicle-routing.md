@@ -187,7 +187,7 @@ async function runCVRP() {
   console.log(`Total Columns Generated: ${result.columnsAdded}`);
 
   console.log("\nSample routes selected in fleet:");
-  const activeRoutes = result.generatedColumns.filter((c) => (c.variable.value ?? 0) > 0.5);
+  const activeRoutes = result.generatedColumns.filter((c) => c.variable.value === 1);
   for (const r of activeRoutes.slice(0, 5)) {
     const meta = r.proposal.meta;
     console.log(`  ${meta?.tour.join(" -> ")} (Transit: ${meta?.travelTime}m, Total: ${meta?.totalTime}m)`);
@@ -204,3 +204,6 @@ runCVRP();
 - **Master Problem and Pricing Separation**: The master problem solves the LP relaxation and final set-partitioning MIP, while the `pricing` callback searches for negative-reduced-cost routes using cheapest insertion and 2-opt local search.
 - **Dual Value Access**: Dual values from the master LP relaxation are read from `visitConstrs[i].dual` to prioritize customers with higher shadow prices during route construction.
 - **Route Metadata**: Each proposed column attaches `{ tour, travelTime, totalTime }` under `meta`, allowing the ordered stop sequence to be inspected from `result.generatedColumns` after the solve completes.
+- **Set Partitioning (`== 1`) vs. Set Covering (`>= 1`)**: This example uses `== 1` so that the final MIP never covers a customer twice. In large-scale column generation, formulating coverage as `>= 1` restricts the dual prices to $\pi_i \ge 0$, avoiding negative dual oscillations; if the final MIP selects overlapping routes, duplicate visits can be removed by post-processing whenever distances satisfy the triangle inequality.
+- **Heuristic Pricing vs. Exact ESPPRC**: Because `findImprovingRoute` uses a fast greedy heuristic (cheapest insertion + 2-opt) instead of an exact Elementary Shortest Path Problem with Resource Constraints (ESPPRC) solver, returning `null` means no further improving columns were found by the heuristic rather than proving global LP optimality.
+- **Price-and-Branch (`finalizeAsMIP: true`)**: Solving the Restricted Master Problem as a MIP over the columns generated at the root node is known as the *Restricted Master Heuristic* (Price-and-Branch). It produces near-optimal integer fleets quickly without requiring full Branch-and-Price tree search.
