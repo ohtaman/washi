@@ -125,18 +125,18 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(content).toContain("Interactive browser demos and playground for WaSHI: solve linear programming, nurse shift scheduling, and constraint games client-side with WebAssembly (HiGHS & Z3).");
   });
 
-  it("updates docs homepages with PuLP/JuMP framing and domain tagline", () => {
+  it("updates docs homepages with PuLP framing and domain tagline", () => {
     const enContent = fs.readFileSync(docsEnIndexPath, "utf-8");
     expect(enContent).toContain('text: "Algebraic Modeler for Mathematical Optimization & Constraint Programming"');
-    expect(enContent).toContain("A TypeScript alternative to Python's PuLP and Julia's JuMP.");
+    expect(enContent).toContain("A TypeScript alternative to Python's PuLP.");
 
     const jaContent = fs.readFileSync(docsJaIndexPath, "utf-8");
     expect(jaContent).toContain('text: "数理最適化\u3068制約\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u305f\u3081\u306e代数\u30e2\u30c7\u30e9\u30fc"');
-    expect(jaContent).toContain("Python\u306ePuLP\u3084Julia\u306eJuMP\u306e\u3088\u3046\u306b直感的\u306a数式\u3067定式化\u3067\u304d\u308bTypeScript向\u3051代数\u30e2\u30c7\u30e9\u30fc。");
+    expect(jaContent).toContain("Python\u306ePuLP\u306e\u3088\u3046\u306b直感的\u306a数式\u3067定式化\u3067\u304d\u308bTypeScript向\u3051代数\u30e2\u30c7\u30e9\u30fc。");
 
     const zhContent = fs.readFileSync(docsZhIndexPath, "utf-8");
     expect(zhContent).toContain('text: "适用于数理优化与约束编程的代数建模器"');
-    expect(zhContent).toContain("Python PuLP 与 Julia JuMP 的 TypeScript 替代方案。");
+    expect(zhContent).toContain("Python PuLP 的 TypeScript 替代方案。");
   });
 
   it("aligns README headers across English, Japanese, and Simplified Chinese", () => {
