@@ -2,7 +2,7 @@
 
 欢迎使用 **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface)。
 
-WaSHI 为 TypeScript/JavaScript 生态系统带来了类似于 Python **PuLP** 和 Julia **JuMP** 的代数建模方式。无需单独的 Python 后端或本地 C/C++ 编译环境，即可在浏览器与 Node.js 中运行 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）。
+WaSHI 为 TypeScript/JavaScript 生态系统带来了类似于 Python **PuLP** 的代数建模方式。无需单独的 Python 后端或本地 C/C++ 编译环境，即可在浏览器与 Node.js 中运行 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）。
 
 ### 为什么选择 TypeScript 与 WebAssembly？
 

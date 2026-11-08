@@ -2,7 +2,7 @@
 
 **WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）へようこそ。
 
-WaSHI は、Python の **PuLP** や Julia の **JuMP** のような代数モデリングを TypeScript / JavaScript エコシステムで提供するライブラリです。別途 Python サーバーや C/C++ のネイティブビルドを用意することなく、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によってブラウザや Node.js で数理最適化を実行できます。
+WaSHI は、Python の **PuLP** のような代数モデリングを TypeScript / JavaScript エコシステムで提供するライブラリです。別途 Python サーバーや C/C++ のネイティブビルドを用意することなく、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によってブラウザや Node.js で数理最適化を実行できます。
 
 ### なぜ TypeScript & WebAssembly なのか？
 

@@ -2,7 +2,7 @@
 
 Welcome to **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface).
 
-WaSHI brings the algebraic modeling style of Python's **PuLP** and Julia's **JuMP** to the TypeScript and JavaScript ecosystem. You can formulate mathematical optimization problems using algebraic expressions and solve them locally using WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**)—without a separate Python service or native C/C++ build steps.
+WaSHI brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. You can formulate mathematical optimization problems using algebraic expressions and solve them locally using WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**)—without a separate Python service or native C/C++ build steps.
 
 ### Why TypeScript & WebAssembly?
 

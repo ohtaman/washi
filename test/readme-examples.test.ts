@@ -321,8 +321,56 @@ describe("README.md Code Snippets Validation", () => {
           `Expected relative doc path '${relPath}' in ${file} to exist`
         ).toBe(true);
       }
-      expect(matchedPaths.length).toBeGreaterThanOrEqual(10);
+      expect(matchedPaths.length).toBeGreaterThanOrEqual(1);
     }
+  });
+
+  it("executes the current Usage Examples (TransportPlanning, PortfolioQP, StaffingRules) from README.md", async () => {
+    // 1. TransportPlanning (Indexed Variables, dot, indicator, getValues, validateSolution)
+    const m1 = new Model("TransportPlanning");
+    const factories = ["Tokyo", "Osaka"];
+    const stores = ["StoreA", "StoreB"];
+    const costs = {
+      Tokyo: { StoreA: 4, StoreB: 7 },
+      Osaka: { StoreA: 8, StoreB: 3 },
+    };
+    const open = m1.binary(factories);
+    const ship = m1.continuous(factories, stores, { lb: 0, ub: 500 });
+    m1.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+    m1.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
+    m1.objective(minimize(dot(costs, ship)));
+    const s1 = await m1.solve();
+    expect(s1).toBe("Optimal");
+    expect(m1.objectiveValue).toBeCloseTo(400, 6);
+    expect(m1.getValues(ship).Tokyo.StoreA).toBeCloseTo(100, 6);
+    expect(m1.validateSolution().valid).toBe(true);
+
+    // 2. PortfolioQP (Convex QP with expr)
+    const m2 = new Model("PortfolioQP");
+    const x = m2.continuous("tech", { lb: 0, ub: 1 });
+    const y = m2.continuous("bonds", { lb: 0, ub: 1 });
+    m2.constraint(expr`${x} + ${y} == 1`, "budget");
+    m2.constraint(expr`0.14 * ${x} + 0.04 * ${y} >= 0.08`, "min_return");
+    m2.objective(minimize(expr`0.04 * ${x}^2 + 0.005 * ${y}^2`));
+    const s2 = await m2.solve();
+    expect(s2).toBe("Optimal");
+    expect(x.value).toBeCloseTo(0.4, 5);
+    expect(y.value).toBeCloseTo(0.6, 5);
+    expect(m2.objectiveValue).toBeCloseTo(0.0082, 6);
+
+    // 3. StaffingRules (Conflict Diagnosis with default HiGHS)
+    const m3 = new Model("StaffingRules");
+    const engineers = m3.integer("engineers", { lb: 0, ub: 20 });
+    const budget = m3.continuous("budget", { lb: 0, ub: 100000 });
+    const rush = m3.bool("rush");
+    m3.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
+    m3.constraint(rush, "rush_required");
+    m3.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+    m3.constraint(expr`${budget} <= 50000`, "budget_cap");
+    m3.constraint(expr`${engineers} >= 1`, "min_staff");
+    const res3 = await m3.check();
+    expect(res3.status).toBe("Unsat");
+    expect(res3.conflicts).toEqual(["rush_required"]);
   });
 });
 

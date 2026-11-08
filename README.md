@@ -24,11 +24,37 @@
 
 ---
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) is an algebraic modeler for mathematical optimization and constraint programming in TypeScript and JavaScript, inspired by Python's **PuLP** and Julia's **JuMP**. Define variables, objectives, and arithmetic or logical constraints in application code. WaSHI constructs the model, translates it for a solver adapter, and maps results back to your variables. **HiGHS**, **Z3**, and **GLPK** perform the optimization or satisfiability checks.
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) is an algebraic modeler for mathematical optimization and constraint programming in TypeScript and JavaScript, inspired by Python's **PuLP**. Define variables, objectives, and constraints in application code, and solve them locally in Node.js or the browser using **HiGHS** (default), **Z3**, or **GLPK**.
 
-HiGHS is the default solver; Z3 and GLPK are optional plugins. The package provides Node.js and browser distributions, including WebAssembly assets. See the [browser integration guide](#-browser--web-worker-usage) for deployment requirements.
+## ✨ Key Features
 
-[Documentation](https://ohtaman.github.io/washi/) · [Try the browser demo](https://ohtaman.github.io/washi/demo/) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [Browse example source code](https://github.com/ohtaman/washi/blob/main/examples/README.md) · [ESM / script / CodePen examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md)
+- **Natural Algebraic Syntax**: Write expressions and constraints directly with `` expr`30 * ${x} + 50 * ${y} <= 40` ``, `sum`, and `dot`.
+- **Runs in Node.js & Browsers**: Powered by WebAssembly—no Python service or native C/C++ build required.
+- **Solver-Independent**: Use built-in **HiGHS**, optional **Z3** and **GLPK** plugins, or custom solver adapters.
+- **Satisfiability & Conflict Diagnosis**: Check logical/arithmetic feasibility and pinpoint contradictory constraints when a model is infeasible.
+- **Decomposition Methods**: Built-in support for Column Generation and Benders Decomposition on large-scale problems.
+
+## 📚 Documentation & Links
+
+- **[Documentation](https://ohtaman.github.io/washi/)**: Modeling guide, solver references, and deployment guides
+- **[Interactive Showcase](https://ohtaman.github.io/washi/showcase/) & [Browser Playground](https://ohtaman.github.io/washi/demo/)**: Try live optimization apps and edit models in the browser
+- **[Examples](https://ohtaman.github.io/washi/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
+- **[AI Agent Guide](docs/getting-started/ai-agents.md) & [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md)**: Compact reference and workflow skill for AI coding agents
+
+---
+
+## 📦 Installation & Quick Start
+
+```bash
+npm install @ohtaman/washi
+
+# Optional solver plugins
+npm install z3-solver   # For SMT logic & unsat core diagnosis
+npm install glpk.js     # For GLPK solver (GPL-3.0)
+
+# Optional skill for AI coding agents (Claude Code, Cursor, Codex, etc.)
+npx skills add ohtaman/washi
+```
 
 ```ts
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -47,481 +73,126 @@ console.log(`Produce: x=${x.value}, y=${y.value} (Profit: $${m.objectiveValue})`
 
 ---
 
-## 🎯 What WaSHI provides
+## ⚙️ Solvers
 
-1. **Algebraic model construction**: Formulate optimization models using domain-specific variable constructors (`m.binary`, `m.integer`, `m.continuous`), unified tagged template literals (`expr`), vector aggregations (`dot`, `sum`), and first-class constraints (`m.constraint`). Because JavaScript lacks operator overloading, `` expr`...` `` parses infix math (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) while binding interpolated `${...}` values directly as typed `Var` or expression references—similar to parameterized SQL templates—preserving static type checking, IDE refactoring, and indexed variable lookups (`${flow[i][j]}`).
-2. **Solver adapters**: Use a common modeling API with HiGHS, Z3, or GLPK, or [register your own adapter](https://github.com/ohtaman/washi/blob/main/docs/solvers/custom-solver.md). Choose an engine that supports the model's problem class; the adapters do not make every solver support every feature.
-3. **Local execution and WebAssembly distribution**: With the local solver adapters, solving runs in the application without a separate Python service or native C/C++ build—removing backend provisioning as a bottleneck when shipping interactive tools or combining mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) on the client. Browser deployments must include the generated JS, Worker, and WASM assets. Offline use also requires those resources to be available locally or cached. Z3 has additional browser isolation requirements.
-4. **Named constraints and conflict diagnosis**: Explicitly check satisfiability (`m.check()`) and inspect conflicting constraints (`conflicts` / `unsatCore`) to investigate infeasibilities: built-in HiGHS isolates an **elastic repair set** (`conflicts`, constraints requiring relaxation to restore feasibility), while Z3 extracts an **unsatisfiable core** (`unsatCore` / `conflicts`, a mutually contradictory constraint subset; minimality is not guaranteed).
-5. **Advanced decomposition methods**: Overcome combinatorial bottlenecks in monolithic MIP formulations (cutting stock, vehicle routing/VRP, traveling salesperson/TSP, and two-stage facility planning) using first-class decomposition orchestrators (`master.solveColumnGeneration`, `master.solveBenders`). WaSHI coordinates dual shadow prices, pricing subproblems, and Benders cut generation via clean callback orchestrators and linking constraints (`sub.link(...)`).
-
-Model construction and translation are WaSHI's responsibility. Supported problem classes, numerical behavior, and solve time depend on the selected solver, its settings, and the problem. Modeling overhead and solver execution time should be measured separately; a result for one model is not a general performance guarantee.
-
----
-
-## ⚙️ Solver adapters and capabilities
-
-| Adapter | Engine license | Supported problem classes | Engine role | Integration |
+| Solver | License | Problem Classes | Primary Use Case | Setup |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | **MIT** | **LP, MIP, convex QP** | Numerical optimization | Built-in default |
-| **[Z3](https://github.com/Z3Prover/z3)** (via [`z3-solver`](https://www.npmjs.com/package/z3-solver)) | **MIT** | **SMT, SAT, logic, MIP** | Satisfiability checks, unsatisfiable cores, optimization | Optional plugin (`@ohtaman/washi/solvers/z3`) |
-| **[GLPK](https://www.gnu.org/software/glpk/)** (via [`glpk.js`](https://www.npmjs.com/package/glpk.js)) | **GPL-3.0** | **LP, MIP** | Linear and mixed-integer optimization | Optional plugin (`@ohtaman/washi/solvers/glpk`) |
-| **Mock** | **MIT** | — | Simulated solver responses for integration tests | Built-in; does not solve the model |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, Convex QP | Numerical optimization & elastic conflict repair | Built-in default |
+| **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, Logic, MIP | Logical rules, satisfiability & exact `unsatCore` | `import "@ohtaman/washi/solvers/z3"` |
+| **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | Linear & mixed-integer optimization | `import "@ohtaman/washi/solvers/glpk"` |
+| **Mock** | MIT | — | Deterministic unit & integration testing | Built-in (`MockSolver`) |
+
+Pass `{ solver: "z3" }` or `{ solver: "glpk" }` to `new Model(...)`, `m.solve(...)`, or `m.check(...)` after importing the plugin.
 
 ---
 
-## 📦 Installation
+## 🚀 Usage Examples
 
-```bash
-# npm
-npm install @ohtaman/washi
+### 1. Sums, Dot Products (`sum` / `dot`) & Conditional Constraints
 
-# pnpm
-pnpm add @ohtaman/washi
-
-# yarn
-yarn add @ohtaman/washi
-
-# bun
-bun add @ohtaman/washi
-```
-
-*(Optional)* To use Z3 or GLPK solvers, install their respective packages:
-
-```bash
-npm install z3-solver    # For SMT and unsat core diagnosis
-npm install glpk.js      # For GLPK solver (GPL-3.0)
-```
-
-*(Optional)* For AI coding agents (Claude Code, Antigravity, Cursor, Codex, etc.), install the portable [`skills/washi/SKILL.md`](skills/washi/SKILL.md) workflow directly via the `skills` CLI or copy it from the installed package:
-
-```bash
-# Install via the open skills CLI (skills.sh / vercel-labs/skills)
-npx skills add ohtaman/washi
-
-# Or manually copy the packaged skill into your project's agent directory
-mkdir -p .agents/skills/washi
-cp node_modules/@ohtaman/washi/skills/washi/SKILL.md .agents/skills/washi/SKILL.md
-```
-
----
-
-## 🚀 Usage Guide
-
-### 1. Multidimensional Variables, Indicator Constraints & Solution Validation
-
-Construct 1D dictionaries or 2D matrices of variables in a single call, express conditional Big-M logic with `m.indicator()`, monitor live progress (`onProgress`), and independently verify solutions with `m.validateSolution()`:
+Combine indexed variables with `dot` / `sum` and express conditional rules with `m.indicator()`:
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, dot, expr, minimize } from "@ohtaman/washi";
 
-const m = new Model("FacilityPlanning");
-
-// 1D dictionary of binary variables
-const openCity = m.binary(["Tokyo", "Osaka", "Nagoya"]);
-
-// 2D transport flow matrix: [Factory] x [Store]
-const flow = m.continuous(["F1", "F2"], ["StoreA", "StoreB"], { lb: 0, ub: 1000 });
-
-// 2D coordinate grid (e.g. 8x8 chessboard)
-const board = m.binary(8, 8, { prefix: "queen" });
-
-// Conditional Big-M constraint: if openCity["Tokyo"] == 0, flow["F1"]["StoreA"] <= 0
-// (Omit M to let WaSHI automatically derive a tight Big-M from finite variable bounds)
-m.indicator(openCity["Tokyo"], expr`${flow["F1"]["StoreA"]} <= 0`, {
-  activeValue: 0,
-  name: "tokyo_closed_no_flow",
-});
-
-// Solve with optional progress callback & AbortSignal cancellation
-const controller = new AbortController();
-await m.solve({
-  signal: controller.signal,
-  onProgress: (ev) => {
-    // Live branch-and-bound metrics: ev.elapsedTime, ev.objectiveValue, ev.objectiveBound, ev.mipGap
-  },
-});
-
-// Independently verify variable bounds, integrality, and linear/logical constraints
-const report = m.validateSolution();
-console.log("Solution valid?", report.valid);
-```
-
----
-
-### 2. Portfolio Risk Minimization (Convex Quadratic Programming)
-
-Minimize investment risk based on a covariance matrix subject to return and budget constraints:
-
-```ts
-import { Model, QuadExpr, sum, dot, minimize, expr } from "@ohtaman/washi";
-
-const m = new Model("MarkowitzPortfolio");
-const assets = ["Tech", "Bonds", "RealEstate"];
-const returns = [0.14, 0.04, 0.08];
-
-// Decision variables: portfolio allocation weights (0 to 1)
-const w = m.continuous(assets, { lb: 0, ub: 1 });
-
-// 1. Fully invested budget: sum(w) == 1.0
-m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
-
-// 2. Minimum target return: portfolio return >= 8.5%
-const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-m.constraint(expr`${dot(retMap, w)} >= 0.085`, "min_return");
-
-// 3. Covariance risk matrix
-const cov = [
-  [0.040, 0.002, 0.015],
-  [0.002, 0.005, 0.002],
-  [0.015, 0.002, 0.025],
-];
-
-// Quadratic objective: w^T * Cov * w
-let risk = new QuadExpr();
-for (let i = 0; i < assets.length; i++) {
-  for (let j = 0; j < assets.length; j++) {
-    risk = risk.add(w[assets[i]].mul(w[assets[j]]).mul(cov[i][j]));
-  }
-}
-m.objective(minimize(risk));
-
-await m.solve();
-console.log(`Minimal Variance: ${m.objectiveValue?.toFixed(6)}`);
-assets.forEach((name) => {
-  console.log(`  ${name}: ${((w[name].value || 0) * 100).toFixed(2)}%`);
-});
-```
-
----
-
-### 3. SMT Logic & Rule Engines (with Z3)
-
-Express boolean variables, propositional connectives (`and`, `or`, `implies`, `not`, `xor`), and mixed arithmetic rules:
-
-```ts
-import { Model, not, expr } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/z3";
-
-const m = new Model({ name: "SmartSecurityRules" });
-
-const isNight = m.bool("isNight");
-const motion = m.bool("motion");
-const alarm = m.bool("alarm");
-const siren = m.bool("siren");
-const lux = m.integer("lux", { lb: 0 });
-
-// Logical rules
-m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
-m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
-
-// Current sensor observations
-m.constraint(expr`${lux} <= 10`, "sensor_dark");
-m.constraint(motion, "sensor_motion");
-m.constraint(alarm, "alarm_on");
-
-// Check satisfiability and deduce state without an objective function
-const res = await m.check({ solver: "z3" });
-
-console.log(`Satisfiable? ${res.status === "Sat"}`); // true
-console.log(`Siren active? ${m.values.get("siren")}`); // true
-```
-
----
-
-### 4. Conflict Diagnosis (`conflicts` / `unsatCore`)
-
-When business rules or constraints contradict each other, diagnose infeasibilities to pinpoint where to intervene:
-- **Built-in HiGHS & GLPK**: `await m.check()` uses a single-solve elastic slack formulation ($\min \sum s_i$) to isolate `res.conflicts`—the **repair set** of constraints whose relaxation restores feasibility, without requiring extra dependencies.
-- **Z3**: `await m.check({ solver: "z3" })` provides exact SMT **unsatisfiable-core** extraction (`res.unsatCore` and `res.conflicts`), returning a mutually contradictory constraint subset.
-
-```ts
-import { Model, expr } from "@ohtaman/washi";
-
-const m = new Model("ConflictDiagnosis");
-const engineers = m.integer("engineers", { lb: 0, ub: 20 });
-const budget = m.continuous("budget", { lb: 0, ub: 100000 });
-const rushDelivery = m.bool("rushDelivery");
-
-// Rule 1: Each engineer costs $8,000
-m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
-
-// Rule 2: Customer requires rush delivery
-m.constraint(rushDelivery, "rush_required");
-
-// Rule 3: Rush delivery requires at least 8 engineers
-m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
-
-// Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
-m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
-
-// Rule 5: Innocent bystander rule
-m.constraint(expr`${engineers} >= 1`, "minimum_one_employee");
-
-// 1. Elastic repair diagnosis with default HiGHS
-const res = await m.check();
-
-console.log(`Status: ${res.status}`); // "Unsat"
-console.log("Repair set (relaxed constraints):", res.conflicts);
-// Output with HiGHS: ["rush_required"]
-// (Relaxing rush_required restores feasibility; innocent rules like minimum_one_employee are untouched)
-
-// 2. Or exact SMT unsatisfiable core with Z3 (import "@ohtaman/washi/solvers/z3")
-// const z3Res = await m.check({ solver: "z3" });
-// console.log("Contradictory core:", z3Res.unsatCore);
-// Output with Z3: ["budget_limit", "rush_required", "rush_staffing_rule", "strict_board_budget_cap"]
-```
-
----
-
-### 5. Solving with GLPK (GPL-3.0)
-
-To use the GNU Linear Programming Kit (GLPK) solver plugin:
-
-```ts
-import { Model, expr, maximize } from "@ohtaman/washi";
-import "@ohtaman/washi/solvers/glpk";
-
-const m = new Model({ solver: "glpk" });
-const x = m.integer("x", { lb: 0 });
-const y = m.integer("y", { lb: 0 });
-
-m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
-m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_limit");
-
-const status = await m.solve();
-console.log(`Status: ${status}`); // "Optimal"
-console.log(`Objective: ${m.objectiveValue}`); // 1100
-```
-
----
-
-### 6. Vector Operations & Fast Dot Product
-
-Cleanly compute 1D/2D linear combinations without nested loops:
-
-```ts
-import { Model, dot, minimize } from "@ohtaman/washi";
-
-const m = new Model();
+const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
 const stores = ["StoreA", "StoreB"];
-
 const costs = {
   Tokyo: { StoreA: 4, StoreB: 7 },
   Osaka: { StoreA: 8, StoreB: 3 },
 };
 
-const ship = m.continuous(factories, stores);
+const open = m.binary(factories);
+const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// Total transportation cost in one line:
+// If Tokyo is closed (open["Tokyo"] == 0), shipment from Tokyo to StoreA must be 0
+m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
+
 m.objective(minimize(dot(costs, ship)));
 await m.solve();
 
-// Extract all optimal variable values as a structured object
-const solution = m.getValues(ship);
-console.log(solution);
+console.log("Shipments:", m.getValues(ship));
+```
+
+### 2. Convex Quadratic Programming (QP)
+
+Minimize a quadratic objective subject to linear constraints:
+
+```ts
+import { Model, expr, minimize } from "@ohtaman/washi";
+
+const m = new Model("PortfolioQP");
+const x = m.continuous("tech", { lb: 0, ub: 1 });
+const y = m.continuous("bonds", { lb: 0, ub: 1 });
+
+m.constraint(expr`${x} + ${y} == 1`, "budget");
+m.constraint(expr`0.14 * ${x} + 0.04 * ${y} >= 0.08`, "min_return");
+m.objective(minimize(expr`0.04 * ${x}^2 + 0.005 * ${y}^2`));
+
+await m.solve();
+console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
+```
+
+### 3. SMT Logic & Conflict Diagnosis (`m.check`)
+
+Express logical implications and diagnose why a model is infeasible:
+- **HiGHS (default)**: Isolates an **elastic repair set** (`res.conflicts`)—constraints whose relaxation restores feasibility.
+- **Z3**: Extracts an **unsatisfiable core** (`res.unsatCore` / `res.conflicts`)—a mutually contradictory subset of constraints.
+
+```ts
+import { Model, expr } from "@ohtaman/washi";
+// import "@ohtaman/washi/solvers/z3"; // Optional: for exact SMT unsatCore
+
+const m = new Model("StaffingRules");
+const engineers = m.integer("engineers", { lb: 0, ub: 20 });
+const budget = m.continuous("budget", { lb: 0, ub: 100000 });
+const rush = m.bool("rush");
+
+m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
+m.constraint(rush, "rush_required");
+m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(expr`${budget} <= 50000`, "budget_cap"); // Conflict: 8 * $8,000 > $50,000
+m.constraint(expr`${engineers} >= 1`, "min_staff");   // Unrelated rule
+
+const res = await m.check(); // Or: await m.check({ solver: "z3" })
+console.log(res.status);     // "Unsat"
+console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ```
 
 ---
 
 ## 🌐 Browser & Web Worker Usage
 
-The default HiGHS engine uses the package's WASM asset. There is **no automatic CDN fallback**. Node.js uses the installed HiGHS runtime; Vite and webpack 5 can discover the package-relative WASM and Worker references when building a browser application.
-
-### npm with a bundler
-
-```typescript
-import { Model } from "@ohtaman/washi";
-const model = new Model();
-// Define variables, objective and constraints.
-await model.solve();
-```
-
-No manual WASM copy or URL configuration is needed in the tested Vite / webpack builds. Other bundlers and SSR need their own integration checks; call the browser solver on the client. Worker execution is the browser default. Use `model.solve({ useWorker: false })` for a simple main-thread demo; a long solve will block the UI.
-
-### Browser ESM without an application build
-
-Serve the **entire `dist/browser` directory**, including its JS chunks, `highs.wasm` and Worker. No import map is needed:
+- **Bundlers (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` works out of the box. Solves run in a Web Worker by default; pass `{ useWorker: false }` for main-thread execution.
+- **Standalone ESM / Script Tag / CDN**: Serve `dist/browser/` (including `highs.wasm` and worker chunks) or load from a CDN.
 
 ```html
+<!-- Browser ESM -->
 <script type="module">
   import { Model } from "./washi/washi.js";
-  const model = new Model();
-  // Define variables, objective and constraints.
-  await model.solve({ useWorker: false });
+  // Optional solver plugins: import "./washi/solvers/glpk.js" or "./washi/solvers/z3.js"
+  const m = new Model();
+  await m.solve();
 </script>
-```
 
-### Plain script / CodePen
-
-The package also includes `dist/browser/washi.min.js`, which exports the `Washi` global. Put that file's URL in CodePen's External Scripts, or use a script tag:
-
-```html
-<script src="./washi/washi.min.js"></script>
-<script>
-  const model = new Washi.Model();
-  // Define variables, objective and constraints.
-  model.solve({ useWorker: false }).then(status => console.log(status));
-</script>
-```
-
-For CDN usage, replace the local URL with `https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js` (specifying a compatible release version once published). For ESM use the corresponding `dist/browser/washi.js` URL. Selecting the CDN URL is an explicit choice; local copies never switch to a CDN.
-
-### Solver Plugins in the Browser (GLPK & Z3)
-
-The browser distribution includes pre-bundled, standalone solver plugins under `dist/browser/solvers/`:
-- **GLPK**: `dist/browser/solvers/glpk.js` (ESM) and `dist/browser/solvers/glpk.min.js` (IIFE, registers global `WashiGLPK`)
-- **Z3**: `dist/browser/solvers/z3.js` (ESM) and `dist/browser/solvers/z3.min.js` (IIFE, registers global `WashiZ3`), accompanied by `z3-built.js` and `z3-built.wasm`
-
-#### Browser ESM with GLPK
-```html
-<script type="module">
-  import { Model, maximize } from "./washi/washi.js";
-  import "./washi/solvers/glpk.js";
-
-  const model = new Model({ solver: "glpk" });
-  const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.objective(maximize(x));
-  await model.solve();
-  console.log("GLPK status:", model.status);
-</script>
-```
-
-#### Plain Script with GLPK
-```html
-<script src="./washi/washi.min.js"></script>
-<script src="./washi/solvers/glpk.min.js"></script>
-<script>
-  const model = new Washi.Model({ solver: "glpk" });
-  const x = model.continuous("x", { lb: 0, ub: 10 });
-  model.objective(Washi.maximize(x));
-  model.solve().then(status => console.log("GLPK status:", status));
-</script>
+<!-- Classic Script / CodePen (exposes global Washi) -->
+<script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
 ```
 
 > [!NOTE]
-> **Z3 in Browser Environments & Cross-Origin Isolation**:
-> Because the Z3 WebAssembly engine uses multithreading (`SharedArrayBuffer`), modern browsers require cross-origin isolation (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`). See the [Cross-Origin Isolation Guide](docs/getting-started/cross-origin.md) and [Runtime Environments Guide](docs/getting-started/runtimes.md) for full details on static hosting, `coi-serviceworker.js`, offline/intranet deployment, CSP (`worker-src blob:`), and custom WASM URLs (`setHighsWasmUrl`).
-
-Complete standalone examples for ESM, script tags, and CodePen are available in [`examples/distribution/`](examples/distribution/README.md).
+> **Z3 in the Browser**: Because Z3's WebAssembly build uses `SharedArrayBuffer`, browsers require Cross-Origin Isolation (`COOP: same-origin` and `COEP: require-corp`). See the [Cross-Origin Isolation Guide](docs/getting-started/cross-origin.md) and [`examples/distribution/`](examples/distribution/README.md).
 
 ---
 
-## 🛠️ Custom Solvers & Extensibility
+## 🤝 Contributing
 
-WaSHI features a decoupled, pluggable solver architecture. You can easily build and register your own custom solver adapter (e.g., for cloud REST optimizers, WebAssembly engines, or proprietary solvers):
-
-- See the complete [Custom Solver Developer Guide](docs/solvers/custom-solver.md) for step-by-step tutorials, complete API contracts (`Solver`, `SolveModelData`, `CheckModelData`, `SolverResult`), and testing best practices.
-
----
-
-## 📚 Documentation
-
-Full documentation is available at **[ohtaman.github.io/washi](https://ohtaman.github.io/washi/)** and in the repository's [`docs/`](docs/) directory:
-
-- **Getting Started**: [Quick Start](docs/getting-started/index.md) · [AI Agent Quick-Reference](docs/getting-started/ai-agents.md) · [Runtime Environments](docs/getting-started/runtimes.md) · [Cross-Origin Isolation (Z3)](docs/getting-started/cross-origin.md)
-- **Modeling Guide**: [Variables (`Var`, `BoolVar`)](docs/guide/variables.md) · [Expressions (`expr`, `sum`, `dot`)](docs/guide/expressions.md) · [Constraints & Logic (`indicator`, SMT)](docs/guide/constraints.md) · [Objectives & Solving (`solve`, `validateSolution`)](docs/guide/objectives.md) · [Feasibility & Unsat Core (`check`)](docs/guide/unsat-core.md) · [Decomposition (`solveColumnGeneration`, `solveBenders`)](docs/guide/decomposition.md)
-- **Solvers**: [Solver Overview](docs/solvers/index.md) · [HiGHS](docs/solvers/highs.md) · [Z3](docs/solvers/z3.md) · [GLPK](docs/solvers/glpk.md) · [Custom Solvers](docs/solvers/custom-solver.md)
-
----
-
-## 💻 Examples and browser demo
-
-Start with the [example gallery](https://github.com/ohtaman/washi/blob/main/examples/README.md) or the [online Example & Feature Finder](https://ohtaman.github.io/washi/examples/), which organize examples by problem category and by WaSHI API feature.
-
-| Category | Example | What it demonstrates | Solver |
-| :--- | :--- | :--- | :--- |
-| **Fundamentals** | [Production planning](https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts) | Integer variables, a profit objective, and resource constraints (`expr`) | HiGHS |
-| **Fundamentals** | [Transportation network](https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts) | 2D origin-destination variable matrix (`continuous(rows, cols)`) and flow balance | HiGHS |
-| **Fundamentals** | [Diet & sensitivity analysis](https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts) | Shadow prices (`constr.dual`), surpluses (`constr.slack`), and reduced costs (`var.reducedCost`) | HiGHS |
-| **Practical** | [Staff shift scheduling](https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts) | Weekly roster optimization + diagnosing conflicting Saturday vacation requests | HiGHS + Z3 |
-| **Practical** | [E-commerce coupon optimizer](https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts) | Conditional spend thresholds (`indicator`), coupon exclusivity, and add-on recommendations | HiGHS |
-| **Decomposition** | [Vehicle routing (CVRP)](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) | Column Generation (Dantzig-Wolfe): pricing feasible vehicle routes from dual shadow prices | HiGHS |
-| **Decomposition** | [Traveling salesperson (TSP)](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) | Benders Decomposition (DFJ): lazy subtour elimination constraints via feasibility cuts | HiGHS |
-| **Practical** | [Portfolio allocation](https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts) | A convex quadratic objective (`QuadExpr`) with allocation constraints | HiGHS |
-| **Logic / SMT** | [Business rule checks](https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts) | Arithmetic and Boolean constraints (`bool`, `implies`) with satisfiability checking | Z3 |
-| **Logic / SMT** | [Conflict diagnosis](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) | Named constraints and an unsatisfiable core (`unsatCore`) | Z3 |
-
-[Open the hosted demo](https://ohtaman.github.io/washi/demo/) to edit and run models in your browser. For browser ESM, classic script tags, and CodePen, see the [distribution examples](https://github.com/ohtaman/washi/blob/main/examples/distribution/README.md). Z3 requires cross-origin isolation; see the browser requirements above.
-
-To run examples locally, clone the repository and install its development dependencies first:
-
-```bash
-git clone https://github.com/ohtaman/washi.git
-cd washi
-npm ci
-npx tsx examples/node/01-production-planning.ts
-npx tsx examples/node/09-transportation-problem.ts
-npx tsx examples/node/10-diet-sensitivity.ts
-npx tsx examples/node/11-shift-scheduling.ts
-npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
-npx tsx examples/node/13-vehicle-routing-column-generation.ts
-npx tsx examples/node/14-traveling-salesperson-benders.ts
-
-# Local browser demo: http://localhost:5173/demo/
-npm run dev
-```
-
-The example sources import the repository's `src/` modules. In an application using the published package, import `@ohtaman/washi` and the required solver plugin instead.
-
----
-
-## 🧪 Testing & Reproducible Benchmarks
-
-Run the repository's unit and integration tests, and build the distributions:
-
-```bash
-# Run all unit and integration tests
-npm test
-
-# Build production bundle and TypeScript declarations
-npm run build
-```
-
-### Optional Reproducible Benchmarks
-
-To measure modeling and solver phases on deterministic `small-lp` (24 variables, 18 constraints) and `scheduling-mip` (315 variables, 231 constraints, including rebuilt `initialValue` warm starts) scenarios without mixing performance timings into correctness test thresholds:
-
-```bash
-# Run Node.js in-process WASM benchmarks (HiGHS and GLPK, 5 warm iterations by default)
-npm run bench
-
-# Customize iteration count or emit structured JSON
-node scripts/run-benchmarks.mjs --iterations=10 --json
-
-# Also measure headless Chromium Web Worker execution (requires Playwright Chromium)
-node scripts/run-benchmarks.mjs --browser
-```
-
-- **Explicit phase boundaries**: Reports cold runtime initialization (`coldRuntimeInitMs`, `coldFirstSolveMs`) separately from repeated warm-runtime measurements (`modelBuildMs`, `validationMs`, `lpSerializationMs` for LP-string adapters or `symbolMapMs` for structured adapters, `resultMappingMs` via `MockSolver`, `adapterSolveMs`, and `endToEndSolveMs`). Timings are measured directly per phase and are never subtracted to estimate "native solver time".
-- **Distinct execution environments**: Node.js in-process WASM (`usesBrowserWorker: false`) and Browser Web Worker execution (`usesBrowserWorker: true`, which includes Worker lifecycle and `postMessage` structured-clone transfer) are reported as separate environments, not interchangeable baselines.
-
-### Rebuilding HiGHS WebAssembly & Release Workflow
-
-1. **Rebuilding / Updating HiGHS WebAssembly Assets (`highs.config.json`)**:
-   ```bash
-   # Compile ERGO-Code/HiGHS to public/highs.wasm + runtime.js and update SHA-256 hashes in highs.config.json
-   npm run build:highs-wasm
-
-   # After merging to main, upload the updated assets to the highs-<version> GitHub Release tag
-   # so on-demand downloads (scripts/ensure-highs-wasm.mjs) match highs.config.json SHA-256 hashes:
-   gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber
-   ```
-   Alternatively, trigger the **Build HiGHS WebAssembly** workflow (`.github/workflows/build-wasm.yml`) via `workflow_dispatch` with `create_release: true`, then download the `highs-wasm-assets` workflow artifact (`public/highs.wasm`, `src/modeler/solvers/highs/runtime.js`, and `highs.config.json`) and commit those updated files to `main` so repository checksums stay synchronized with the published Release assets.
-
-2. **Publishing `@ohtaman/washi` to npm**:
-   - Merging to `main` automatically deploys the updated documentation and web demo to GitHub Pages (`.github/workflows/deploy-demo.yml`), but does **not** publish to npm automatically.
-   - To publish a new version to npm, bump `"version"` in `package.json` on `main` and publish a GitHub Release (e.g., `gh release create v0.5.1 --generate-notes`). Publishing the GitHub Release triggers `.github/workflows/publish-npm.yml`, which runs unit and Playwright distribution checks before publishing to npm via OIDC Trusted Publishing.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup, running tests and benchmarks, rebuilding WebAssembly assets, and the release workflow.
 
 ---
 
 ## 📄 License
 
 - **`@ohtaman/washi`**: [MIT License](./LICENSE)
-- **HiGHS** (default engine, [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)): MIT License
-- **Z3** (optional plugin via [`z3-solver`](https://www.npmjs.com/package/z3-solver)): MIT License
-- **GLPK** (optional plugin via [`glpk.js`](https://www.npmjs.com/package/glpk.js)): GPL-3.0 License
-
-See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for full attribution and license details of bundled/peer optimization engines.
+- **Bundled / Optional Engines**: HiGHS (MIT), Z3 (MIT), GLPK (GPL-3.0). See [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) for full details.
