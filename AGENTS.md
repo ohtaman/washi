@@ -9,46 +9,43 @@ This document defines the standards and instructions for automated and human cod
 ## 1. Communication & Language Policy
 
 - **English Only**: All PR titles, descriptions, review summaries, inline comments, and commit messages MUST be written in clear, professional **English**.
-- **Constructive & Objective Tone**: Critique the code, not the author. Explain *why* something is an issue and provide concrete, actionable code suggestions where possible.
+- **Constructive & Objective Tone**: Critique the code, not the author. Explain *why* something is an issue, show a concrete reproduction or counterexample where applicable, and provide actionable fix guidance.
 - **Severity Prefixes**: Prefix every inline review comment to make expectations clear:
-  - `[Blocker]` / `[Bug]`: Must be fixed before merging. **Strict Threshold**: ONLY use for verifiable regressions against `main`, functional correctness defects introduced by new code, broken builds/types/tests, mathematical solver errors, ad-hoc / test-tailored hacks introduced to bypass failures, or security vulnerabilities introduced by the diff.
-    - **Never** classify the following as `[Blocker]` or `[Bug]`: speculative "what-if" edge cases outside the PR's stated intent, test mock fidelity or fake object structure (as long as tests reliably pass), stylistic preferences, or non-critical enhancements.
-  - `[Scope]` / `[Design]`: Architectural concerns, inappropriate approach for the stated problem, over-engineering / gratuitous complexity, or out-of-scope changes that should be simplified or extracted into a separate PR.
-  - `[Suggestion]`: Optional improvements for readability, minor edge-case handling, or performance. Non-blocking; author may decline or defer.
-  - `[Nit]`: Minor stylistic, naming, or documentation polish. Strictly non-blocking.
+  - `[Blocker]` / `[Bug]`: Must be fixed before merging. Use for verifiable regressions against `main`, functional correctness or boundary defects in new/modified code, broken builds/types/tests, mathematical solver or domain formulation errors, ad-hoc / test-tailored hacks introduced to bypass failures, missing behavioral tests for new/changed logic, stale or broken documentation/examples, or security vulnerabilities introduced by the diff.
+    - Do not classify purely stylistic preferences, synthetic DOM/browser mock structures in unit tests (when behavioral assertions already verify the logic), or unrelated out-of-scope feature requests as `[Blocker]` or `[Bug]`.
+  - `[Scope]` / `[Design]`: Architectural concerns, inappropriate approach or wrong abstraction layer for the stated problem, over-engineering / gratuitous complexity, unjustified type escapes (`any`, `as unknown as ...`), or out-of-scope changes that should be simplified or extracted into a separate PR.
+  - `[Suggestion]`: Optional improvements for readability or minor performance. Non-blocking; author may decline or defer.
+  - `[Nit]`: Minor stylistic, naming, or prose polish. Strictly non-blocking.
 
 ---
 
 ## 2. Core Philosophy: Scope Discipline, Simplicity & Anti-Over-Engineering
 
-Preventing unnecessary complexity, inappropriate design, and scope creep is a top priority during review—both for the PR author and for the reviewer:
+Preventing unnecessary complexity, inappropriate design, and scope creep—while rigorously catching functional, mathematical, and architectural defects—is a top priority during review:
 
 1. **Appropriate Approach & Design First (Problem-Solution Fit)**:
-   - Before evaluating line-by-line syntax or low-level logic, step back and evaluate whether the architectural approach and design are fundamentally appropriate for the problem being solved.
-   - Check whether the solution addresses the root requirement at the correct layer, or whether it takes a misdirected, convoluted, or symptomatic route. An elegant implementation of an ill-fitting approach must be challenged early under `[Scope]` / `[Design]`.
+   - Before evaluating line-by-line syntax, evaluate whether the architectural approach and design are fundamentally appropriate for the problem being solved.
+   - Check whether the solution addresses the root requirement at the correct layer (e.g., modeler, solver backend, decomposition orchestrator, expression tree, or UI wrapper), or whether it takes a misdirected, convoluted, or symptomatic route. Challenge ill-fitting approaches under `[Scope]` / `[Design]`.
 2. **Implementation Simplicity (KISS & Anti-Over-Engineering)**:
    - The implementation must be sufficiently simple and direct. Reject premature abstractions, speculative configuration options, or complex class hierarchies built for hypothetical future requirements.
    - Prefer simple, direct, and readable TypeScript over clever or overly generic patterns.
    - Check if a new helper, wrapper, or abstraction is only used once; if so, prefer inlining unless it significantly improves clarity.
    - Always ask: *"Can this same outcome be achieved with a simpler, cleaner, and more direct implementation?"*
 3. **Zero Tolerance for Ad-Hoc / Quick-Fix Code**:
-   - Strictly detect and reject ad-hoc, superficial, or test-specific code introduced purely to make tests pass or appease review comments without resolving root causes.
+   - Strictly detect and reject ad-hoc, superficial, or test-specific code introduced purely to make tests pass or appease review comments without resolving root causes (`[Blocker]`).
    - Prohibit test-case-tailored conditional branching, hardcoded literals matching specific test fixtures, implicit argument coercion/flipping, unapproved fallback heuristics, and silent mutation of unrelated state slices.
    - Require genuine, principled fixes at the root cause rather than cosmetic band-aids.
 4. **Single-Responsibility PRs (Author Scope Creep Check)**:
    - Compare the changed files and logic against the stated goal of the PR (and linked Issue, if any).
-   - **Action**: If the PR includes unrelated features, opportunistic wide-scale refactorings, or tangential changes that depart from the original objective, **explicitly ask the author to revert those changes and extract them into a separate PR**.
-5. **Review Strictly Within the PR's Stated Intent (No Reviewer-Induced Scope Creep)**:
-   - Evaluate the PR strictly against its stated objective, linked Issue, and the code actually modified or directly impacted by the diff.
-   - **Do NOT expand the scope of the PR** during review by requesting new features, broader architectural redesigns, fixes for pre-existing unrelated issues in surrounding code, or handling of hypothetical edge cases that lie outside the PR's stated goal.
-   - If you notice a valid pre-existing bug or a worthwhile follow-up enhancement outside the PR's scope, do **not** flag it as a `[Blocker]` or require it to be fixed in the current PR; at most, note it briefly as an optional follow-up Issue.
+   - **Action**: If the PR includes unrelated features, opportunistic wide-scale refactorings, or tangential changes that depart from the original objective, **explicitly ask the author to revert those changes and extract them into a separate PR** (`[Scope]`).
+5. **Independent Verification Within the PR's Scope**:
+   - Do not treat the PR description or a passing test suite as proof that the implementation is correct. Independently verify that the code, mathematical formulation, and tests genuinely satisfy the claimed problem and contract across realistic inputs and boundary conditions.
+   - **Do NOT expand the scope of the PR** by requesting unrelated new features or fixes for pre-existing issues in untouched surrounding code. If you notice a pre-existing bug outside the diff's impact, note it briefly as an optional follow-up rather than a blocker.
 6. **Favor Incremental Code Health**:
-   - Follow Google's Engineering Practices standard: approve once the PR demonstrably improves the overall code health of the system within its intended scope, even if it isn't "perfect." Do not block merges over subjective `[Nit]` items or out-of-scope follow-ups.
-7. **High Bar for Review Comments (Anti-Nitpicking & Pragmatism)**:
-   - Automated and human reviewers must NOT comment merely to have something to say.
-   - Do NOT demand extra defensive layers, state machines, or fallbacks for low-probability hypothetical edge cases ("what if the user does X and then Y before Z?"). Simple, robust code covering the intended workflow is vastly superior to complex defensive code.
-   - Do NOT nitpick test harness fidelity or fake objects (e.g., DOM or browser API mocks) in demo apps or auxiliary code as long as tests are deterministic, green, and test the intended behavior.
-   - If the PR fulfills its stated goal with an appropriate design, simple implementation, and zero ad-hoc hacks, passes all tests, and introduces no regressions on `main`, the default verdict MUST be **Approve**.
+   - Follow Google's Engineering Practices standard: approve once the PR demonstrably improves the overall code health of the system within its intended scope and is free of `[Blocker]` / `[Bug]` and `[Scope]` / `[Design]` issues.
+7. **High-Signal Reviews (No Trivial Nitpicking)**:
+   - Focus review comments on substantive issues: correctness bugs, boundary defects, mathematical/domain inaccuracies, inappropriate design, over-engineering, ad-hoc workarounds, type safety violations, and missing behavioral test coverage.
+   - Do not nitpick synthetic DOM or browser API fakes in unit tests as long as the tests deterministically verify the intended behavioral and state invariants.
 
 ---
 
@@ -56,11 +53,10 @@ Preventing unnecessary complexity, inappropriate design, and scope creep is a to
 
 Because reviews run on **every push** to an open PR:
 
-- **Focus on New Changes**: On follow-up pushes, focus primarily on the newly pushed commits and whether previously raised `[Blocker]` or `[Scope]` issues have been resolved.
+- **Verify New Changes & Fixes Holistically**: On follow-up pushes (`synchronize`), inspect the newly pushed commits and verify that previously raised `[Blocker]`, `[Bug]`, or `[Scope]` / `[Design]` issues are genuinely resolved at the root cause—without introducing new edge-case bugs, breaking adjacent logic, or adding ad-hoc band-aids tailored solely to pass a test.
 - **Avoid Repetitive Noise**: Do not re-post identical comments on unchanged lines that were already flagged in earlier review rounds.
-- **Verify Fixes Holistically**: When a push addresses an earlier review comment, verify that the fix actually resolves the root cause without introducing new edge-case bugs or breaking adjacent logic. Ensure the fix is not an ad-hoc band-aid tailored solely to pass the failing test.
-- **Consolidate Pattern Findings Up Front (No Drip-Feed Reviews)**: When flagging a pattern-level issue (e.g., missing localization, accessibility attributes, validation, or error handling), enumerate all affected instances within the PR's scope in a single comment on the initial pass rather than surfacing one new instance per push.
-- **No Post-Fix Goalpost Shifting**: On follow-up pushes (`synchronize`), restrict new comments to bugs/regressions introduced by the newly pushed commits or incomplete fixes of previously raised threads. Do not open brand-new findings on pre-existing lines or adjacent attributes that were already present in earlier commits.
+- **Consolidate Pattern Findings Up Front (No Drip-Feed Reviews)**: When flagging a pattern-level issue (e.g., missing localization, accessibility attributes, validation, or error handling), enumerate all affected instances within the PR's diff in a single comment on the initial pass rather than surfacing one new instance per push.
+- **Report Any Remaining Bugs in the PR Diff**: On follow-up pushes (`synchronize`), do not introduce late stylistic `[Nit]` comments or scope-expanding requests on unchanged lines. However, if a verifiable `[Blocker]` / `[Bug]` or `[Scope]` / `[Design]` defect remains anywhere in the PR's diff against the base branch—even if introduced in an earlier commit of the PR and missed on the first pass—you MUST report it so defects are never merged into `main`.
 
 ---
 
@@ -70,7 +66,7 @@ Because reviews run on **every push** to an open PR:
 Evaluate whether the foundational design strategy fits the problem:
 - **Core Appropriateness**: Is the chosen design fundamentally appropriate for the problem being solved? Does it tackle the requirement at the correct layer (e.g., modeler, solver backend, expression tree, or UI wrapper)?
 - **Root-Cause Resolution**: Does the solution resolve the root cause of the issue/requirement, or does it merely paper over symptoms?
-- **Domain Alignment**: Does the design adhere naturally to the mathematical and modeling paradigms of WaSHI, or does it distort core abstractions?
+- **Domain & Modeling Alignment**: Does the design adhere naturally to the mathematical and modeling paradigms of WaSHI? In examples, tutorials, and showcase apps, does the mathematical formulation genuinely model the claimed operations research problem (e.g., CVRP with actual routing/coordinates vs. 1D knapsack, proven global optimum vs. heuristic solution)?
 
 ### B. Implementation Simplicity & Cleanliness (KISS)
 - **Direct & Minimal**: Is the implementation as simple and direct as possible without unnecessary layers of indirection?
@@ -86,25 +82,25 @@ Actively inspect for and reject superficial or cosmetic patches:
 
 ### D. Correctness & Domain Logic
 Pay special attention to mathematical and logical soundness:
-- **Mathematical Soundness**: Sign flips, operator inversions (`<=`, `>=`, `==`), objective sense (`minimize` vs. `maximize`), constant term offsets, and coefficient scaling conventions.
+- **Mathematical Soundness**: Sign flips, operator inversions (`<=`, `>=`, `==`), objective sense (`minimize` vs. `maximize`), dual/reduced-cost signs, cut/column validity, constant term offsets, and coefficient scaling conventions.
 - **Transformations & Reformulations**: When expressions or constraints are normalized, linearized, or reformulated, verify that equivalence and boundary conditions hold across all valid variable domains.
-- **Numerical & Boundary Edge Cases**: Handling of `0`, `-0`, `NaN`, `Infinity`, `-Infinity`, floating-point tolerances, unbounded variables, and empty expressions or constraints.
-- **Backend / Interface Parity**: Ensure behavior and status mapping remain consistent across supported backends, or fail clearly with a descriptive error when a backend does not support a capability.
+- **Numerical & Boundary Edge Cases**: Handling of `0`, `-0`, `NaN`, `Infinity`, `-Infinity`, floating-point tolerances, integer/binary relaxation options, unbounded variables, iteration budget exhaustion, and empty expressions or constraints.
+- **Backend / Interface Parity**: Ensure behavior, option handling, and status mapping remain consistent across supported backends and symmetric entrypoints (`solve()` vs. `check()`, `HiGHS` vs. `GLPK` vs. `Z3`), or fail clearly with a descriptive error when a capability is unsupported.
 
 ### E. Public API, Types & Distribution Integrity
-- **Type Safety**: Flag any use of `any`, unsafe type assertions (`as unknown as ...`), or weakened public types unless accompanied by a clear justification.
-- **Exports & Bundles**: If public APIs or package entrypoints are modified, verify compatibility across all target environments (ESM, TypeScript declarations, and browser builds).
-- **Documentation Sync**: If user-facing APIs or behavior change, check whether docstrings, documentation, or README examples need corresponding updates or have become stale.
+- **Type Safety**: Flag any use of `any`, unsafe type assertions (`as unknown as ...`), or weakened public types as `[Design]` / `[Bug]` unless accompanied by a clear justification at an untyped external boundary.
+- **Exports & Bundles**: If public APIs, build scripts, or package entrypoints are modified, verify compatibility across all target environments (ESM, TypeScript declarations, VitePress site, and browser/WASM builds).
+- **Documentation & Locale Sync**: If user-facing APIs, workflows, or examples change, verify that docstrings, READMEs, guides, and all localized counterparts (`en`, `ja`, `zh`) remain accurate and synchronized.
 
 ### F. Tests & Verification
-- **Behavior-Driven Tests**: Every bug fix or new feature MUST include automated tests that would fail without the change.
-- **Edge-Case Coverage for Core Domain**: Check boundary inputs and error paths for core solver, parsing, and math algorithms. For UI demos, games, or example integrations, lightweight behavioral tests covering the happy path and primary user flows are sufficient.
-- **Independent Expected Values**: Ensure test assertions verify independent expected values rather than merely mirroring the implementation's internal calculation.
-- **Pragmatic Test Mocks**: Never require full DOM or browser API simulation in unit tests when simple synthetic objects or state asserts adequately verify the logic.
+- **Behavior-Driven & Invariant-Checking Tests**: Every bug fix, new feature, or runnable example MUST include automated tests that would fail without the change (`[Bug]` if missing or superficial). Tests must verify core behavioral and mathematical invariants—not merely exit codes, array lengths, or syntax transpilation.
+- **Edge-Case Coverage**: Check boundary inputs, configuration combinations, and error paths for core solver, parsing, decomposition, and math algorithms. For UI demos, games, and example integrations, verify both the primary user/modeling workflows and the domain invariants of the generated solutions.
+- **Independent Expected Values**: Ensure test assertions verify independently derived expected values and feasibility checks rather than merely mirroring the implementation's internal calculation or locking in unverified heuristic outputs.
+- **Pragmatic UI Mocks**: Do not require full browser/DOM rendering engines in unit tests when lightweight synthetic objects or state assertions adequately test the UI wiring.
 
 ### G. Security & Dependencies
 - **Minimal Dependencies**: Flag any new runtime dependencies unless strictly necessary and discussed.
-- **Safe Parsing & Input Handling**: Guard against injection, prototype pollution, or catastrophic regular expression backtracking (ReDoS) when parsing user or external inputs.
+- **Safe Parsing & Input Handling**: Guard against injection, prototype pollution, broken URL/path resolution, or catastrophic regular expression backtracking (ReDoS) when parsing user or external inputs.
 
 ---
 
@@ -116,21 +112,18 @@ Before approving or concluding a review, verify that the changes pass the reposi
 
 ## 6. Expected Review Output Structure
 
-Structure each PR review response concisely in English using the following format:
+Evaluate every PR against the repository's review dimensions (Section 4), including the three foundational checks:
+1. **Approach & Design Appropriateness** (tackles the root problem at the right layer; faithful domain/mathematical modeling).
+2. **Implementation Simplicity** (adheres to KISS/YAGNI without gratuitous complexity or premature abstraction).
+3. **Absence of Ad-Hoc / Quick-Fix Code** (no test-tailored branches, magic literals, silent argument coercions, or superficial band-aids).
 
-1. **Summary & Core Assessment Checklist**:
-   - 1–3 sentences summarizing the intent of the PR/push and whether the changes stay strictly within scope.
-   - **Mandatory Assessment Comments**: In every review comment, reviewers (including Codex and automated bots) MUST explicitly evaluate and leave recorded comments on the following three foundational checks:
-     1. **Approach & Design Appropriateness**: Is the chosen approach/design fundamentally appropriate for the problem being solved? (State clearly whether the solution tackles the root requirement at the correct layer or takes an ill-fitting/convoluted approach).
-     2. **Implementation Simplicity**: Is the implementation method sufficiently simple and direct? (State clearly whether the code adheres to KISS/YAGNI, or identify any gratuitous complexity / over-engineering).
-     3. **Absence of Ad-Hoc / Quick-Fix Code**: Does the PR contain any ad-hoc, test-tailored, or superficial code added just to pass tests or reviews? (Explicitly confirm that no quick-fix hacks, test-case-specific branches, or silent argument coercions exist, or cite detected instances as blockers).
-2. **Key Findings (Inline or Grouped by Severity)**:
-   - List `[Blocker]`, `[Scope]` / `[Design]`, `[Suggestion]`, and `[Nit]` items with file paths and line references.
-   - Use `[Blocker]` for ad-hoc / quick-fix hacks, test-tailored branches, correctness defects, or regressions.
-   - Use `[Scope]` / `[Design]` for inappropriate approach for the problem, over-engineering, or out-of-scope additions.
-   - Omit sections that have no findings (do not pad with filler text).
-3. **Verdict**:
-   - Clear recommendation: **Approve**, **Approve with minor nits**, or **Request Changes** (listing the exact blockers required to resolve).
+Format review output in English as follows:
+
+- **Inline Review Comments (Codex, Automated Bots & Human Reviewers)**:
+  - Whenever a defect, regression, boundary bug, missing behavioral test, inappropriate design, over-engineering, unjustified type escape, or ad-hoc workaround is detected, post a specific inline comment prefixed with `[Blocker]` / `[Bug]` or `[Scope]` / `[Design]`, citing the concrete scenario/reproduction and actionable fix.
+  - Do **not** pad inline `[Bug]` comments with boilerplate sentences declaring that the rest of the PR's design is simple or free of hacks; keep each inline comment focused directly on the reported issue.
+- **Top-Level Review Summary (For Summary-Capable Reviewers)**:
+  - Summarize the PR's intent (1–3 sentences), note the assessment of the three foundational checks above, and state a clear verdict (**Approve**, **Approve with minor nits**, or **Request Changes**).
 
 ---
 
@@ -138,14 +131,13 @@ Structure each PR review response concisely in English using the following forma
 
 When addressing review comments, simplifying a PR, or reporting that a PR is "merge-ready", coding agents MUST follow these verification rules:
 
-1. **Critical Triage of Review Comments (Do NOT Blindly Implement Every Comment)**:
-   - Automated reviewers (e.g., Codex) frequently speculate about edge cases or request deeper mock fidelity that strays from the PR's purpose.
+1. **Critical Triage of Review Comments**:
    - **Triage before coding**:
-     - **Genuine Blocker / Regression**: Fix directly and cleanly with minimal diff.
-     - **Speculative Edge Cases / Pedantic Mock Demands / Out-of-Scope Requests**: Do NOT write complex defensive branching, convoluted mock setups, or sprawling helper code to appease the bot. Instead, classify the finding as **Intentionally Deferred / Out of Scope** (e.g., `"Deferred: Speculative edge case outside the PR's stated intent; kept simple per YAGNI (AGENTS.md Section 2)"`) and reply directly on the review thread.
-     - `[Suggestion]` and `[Nit]` items are non-blocking. Only address them if the fix is trivial (1–2 lines) and does not increase complexity.
+     - **Genuine Bug / Regression / Design Defect**: Fix the root cause directly and cleanly with minimal complexity.
+     - **Out-of-Scope Requests / Speculative Unrelated Edge Cases**: Do NOT write convoluted defensive branching or sprawling helper code that degrades simplicity. Instead, classify the finding as **Intentionally Deferred / Out of Scope** (citing the scope boundary or Section 2 simplicity rules) and reply clearly on the review thread.
+     - `[Suggestion]` and `[Nit]` items are non-blocking. Address them if the fix is simple and improves clarity without adding complexity.
 2. **Never Equate "Zero New Bot Findings on Latest Push" with "All Threads Resolved"**:
-   - Automated reviewers (e.g., Codex) only inspect the latest push and may stop re-reporting older unresolved threads.
+   - Automated reviewers may only post new comments on the latest push and stop re-reporting older unresolved threads.
    - Before claiming a PR is ready, enumerate **all** review comments across the PR timeline and explicitly classify each one as:
      - **Fixed** (cite the exact file/line and the regression test on the current `HEAD`), or
      - **Intentionally Deferred / Won't Fix** (cite the reason, scope boundary, or follow-up Issue, and leave a clear reply on the PR).
@@ -155,12 +147,10 @@ When addressing review comments, simplifying a PR, or reporting that a PR is "me
 4. **Check Symmetric Entrypoints & Execution Paths (Core Domain Only)**:
    - When fixing a bug in core solver methods or public model APIs, systematically check symmetric entrypoints and branches (e.g., `solve()` vs. `check()`, `sat` vs. `unsat`, `<=` vs. `>=`, `HiGHS` vs. `GLPK` vs. `Z3`) so fixes are not applied to only half of a parallel code path. Do not force artificial symmetry onto asymmetric utility or demo UI code.
 5. **Reproduce Verifiable Bugs with a Test on `HEAD`**:
-   - For genuine functional bugs or regressions within the PR's core scope, write an automated regression test on `HEAD`.
-   - Do NOT construct elaborate mock frameworks for speculative or non-reproducible reviewer scenarios.
+   - For genuine functional bugs or regressions within the PR's scope, write an automated regression test on `HEAD` that fails without the fix and passes with it.
 6. **Sweep the Entire Surface Class for Systemic Pattern Issues (Prevent Review Whack-a-Mole)**:
-   - When fixing a systemic category of issue within the PR's scope (e.g., broad localization rollouts, public status mappings), audit the affected surface once rather than patching one line per push. For isolated or single-element fixes, a focused behavioral test is completely sufficient; do not demand exhaustive whole-DOM scans or elaborate test harnesses.
+   - When fixing a systemic category of issue within the PR's scope (e.g., broad localization rollouts, public status mappings), audit the affected surface once rather than patching one line per push. For isolated or single-element fixes, a focused behavioral test is sufficient.
 7. **Pre-Screen Every Commit Against Section 4 Before Pushing**:
    - Review fixes frequently trigger secondary review rounds when test harnesses or helpers take shortcuts. Before pushing any commit, verify that the new diff introduces **zero unjustified** `any` or `as unknown as ...` assertions (Section 4.E), **zero** source-substring-only tests in place of behavioral tests (Section 4.F), and **zero** collateral changes outside the PR scope (Section 2).
 8. **Maintain Architectural Integrity & Avoid Quick-Fixes**:
    - When resolving review findings or failing tests, never add test-specific conditional branches, ad-hoc fallback heuristics, or superficial workarounds. Fix the root cause with the simplest sound implementation.
-
