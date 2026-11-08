@@ -73,11 +73,11 @@ if (m.hasPrimalSolution) {
 
 <div class="tip custom-block" style="padding-top: 8px;">
 
-- **Getting Started**: [Introduction & Installation](./getting-started/) · [AI Coding Agent Quick-Reference](./getting-started/ai-agents) · [Runtime Environments](./getting-started/runtimes) · [Cross-Origin Isolation](./getting-started/cross-origin)
-- **Modeling Guide**: [Variables & Bounds](./guide/variables) · [Expressions (expr, dot, sum)](./guide/expressions) · [Objective Functions](./guide/objectives) · [Constraints](./guide/constraints) · [Unsat Core Diagnosis](./guide/unsat-core)
-- **Solver Backends**: [HiGHS (Built-in)](./solvers/highs) · [Z3 (SMT)](./solvers/z3) · [GLPK (LP/MIP)](./solvers/glpk) · [Custom Solver Plugins](./solvers/custom-solver)
-- **Examples**: [Diet Problem & Sensitivity](./examples/diet-sensitivity) · [Production Planning](./examples/production) · [Knapsack](./examples/knapsack) · [Portfolio QP](./examples/portfolio-qp) · [Shift Scheduling](./examples/shift-scheduling) · [SMT Security](./examples/smt-security)
-- **Interactive Showcase**: [Apps & Games Showcase](./showcase/)
+- **Getting Started**: [Introduction & Installation](/getting-started/) · [AI Coding Agent Quick-Reference](/getting-started/ai-agents) · [Runtime Environments](/getting-started/runtimes) · [Cross-Origin Isolation](/getting-started/cross-origin)
+- **Modeling Guide**: [Variables & Bounds](/guide/variables) · [Expressions (expr, dot, sum)](/guide/expressions) · [Objective Functions](/guide/objectives) · [Constraints](/guide/constraints) · [Unsat Core Diagnosis](/guide/unsat-core) · [Decomposition Methods](/guide/decomposition)
+- **Solver Backends**: [Overview & Comparison](/solvers/) · [HiGHS (Built-in)](/solvers/highs) · [Z3 (SMT)](/solvers/z3) · [GLPK (LP/MIP)](/solvers/glpk) · [Custom Solver Adapter](/solvers/custom-solver)
+- **Examples**: [Overview & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack](/examples/knapsack) · [Transportation Network](/examples/transportation) · [Diet Problem & Sensitivity](/examples/diet-sensitivity) · [Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Coupon Optimizer](/examples/ecommerce-coupons) · [Portfolio QP](/examples/portfolio-qp) · [SMT Security](/examples/smt-security) · [Conflict Diagnosis](/examples/unsat-core) · [Vehicle Routing](/examples/vehicle-routing) · [Traveling Salesperson](/examples/traveling-salesperson)
+- **Interactive Playground & Showcase**: [Showcase Hub](/showcase/) · <a href="/washi/demo/" target="_self">WaSHI Playground</a> · <a href="/washi/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/washi/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a> · <a href="/washi/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/washi/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/washi/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>
 

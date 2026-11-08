@@ -73,11 +73,11 @@ if (m.hasPrimalSolution) {
 
 <div class="tip custom-block" style="padding-top: 8px;">
 
-- **はじめに**: [概要とインストール](./getting-started/) · [AI コーディングエージェント向けクイックリファレンス](./getting-started/ai-agents) · [ランタイム環境設定](./getting-started/runtimes) · [Cross-Origin Isolation 設定](./getting-started/cross-origin)
-- **モデリングガイド**: [変数と上下限](./guide/variables) · [数式の記述 (expr, dot, sum)](./guide/expressions) · [目的関数](./guide/objectives) · [制約条件](./guide/constraints) · [競合制約診断 (Unsat Core)](./guide/unsat-core)
-- **ソルバー接続**: [HiGHS (標準搭載)](./solvers/highs) · [Z3 (SMT)](./solvers/z3) · [GLPK (LP/MIP)](./solvers/glpk) · [カスタムソルバー実装](./solvers/custom-solver)
-- **定式化の具体例**: [献立問題と感度分析](./examples/diet-sensitivity) · [生産計画](./examples/production) · [ナップサック問題](./examples/knapsack) · [ポートフォリオ最適化 (QP)](./examples/portfolio-qp) · [シフトスケジューリング](./examples/shift-scheduling) · [SMT セキュリティポリシー検証](./examples/smt-security)
-- **インタラクティブアプリ**: [ショーケース一覧](./showcase/)
+- **はじめに**: [概要とインストール](/ja/getting-started/) · [AI コーディングエージェント向けクイックリファレンス](/ja/getting-started/ai-agents) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
+- **モデリングガイド**: [変数と上下限](/ja/guide/variables) · [数式の記述 (expr, dot, sum)](/ja/guide/expressions) · [目的関数](/ja/guide/objectives) · [制約条件](/ja/guide/constraints) · [競合制約診断 (Unsat Core)](/ja/guide/unsat-core) · [分解法 (列生成・Benders)](/ja/guide/decomposition)
+- **ソルバー接続**: [ソルバー概要と比較](/ja/solvers/) · [HiGHS (標準搭載)](/ja/solvers/highs) · [Z3 (SMT)](/ja/solvers/z3) · [GLPK (LP/MIP)](/ja/solvers/glpk) · [カスタムソルバー実装](/ja/solvers/custom-solver)
+- **定式化の具体例**: [具体例一覧と API 早見表](/ja/examples/) · [生産計画](/ja/examples/production) · [ナップサック問題](/ja/examples/knapsack) · [輸送ネットワーク計画](/ja/examples/transportation) · [献立問題と感度分析](/ja/examples/diet-sensitivity) · [シフトスケジューリング](/ja/examples/shift-scheduling) · [EC クーポン最適化](/ja/examples/ecommerce-coupons) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp) · [SMT セキュリティポリシー検証](/ja/examples/smt-security) · [競合制約診断 (Unsat Core)](/ja/examples/unsat-core) · [配送計画問題 (列生成法)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (Benders 分解)](/ja/examples/traveling-salesperson)
+- **インタラクティブ Playground・アプリ**: [ショーケース一覧](/ja/showcase/) · <a href="/washi/demo/" target="_self">WaSHI Playground</a> · <a href="/washi/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/washi/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a> · <a href="/washi/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/washi/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/washi/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>
 
