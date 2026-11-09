@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800;900&family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
@@ -49,13 +49,12 @@
           </div>
           <h1 class="book-title">Behind "University Course Timetabling AI Copilot":<br />4D 0-1 MILP Formulation (UCTP) &amp; Coupled Multi-Board Scheduling</h1>
           <div class="book-lead-box">
-            Target Audience: Readers interested in Mixed-Integer Linear Programming (MILP) and neuro-symbolic AI copilot architectures.<br />
-            This article explains why university course timetabling cannot be solved on a single grid—requiring simultaneous coordination across <strong>4 student cohort boards, 10 professor schedules, and 7 specialized rooms</strong>—and how <strong>Chrome Built-in AI (Gemini Nano) + WaSHI (HiGHS)</strong> solve and diagnose it in the browser.
+            <strong class="lead-label">TL;DR — </strong>This article explains why university course timetabling cannot be solved on a single grid—requiring simultaneous coordination across <strong>4 student cohort boards, 10 professor schedules, and 7 specialized rooms</strong>—and how <strong>Chrome Built-in AI (Gemini Nano) + WaSHI (HiGHS)</strong> solve and diagnose it in the browser.
           </div>
         </header>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>Why University Timetabling Requires Multiple Coupled Boards (UCTP)</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">01</span><span>Why University Timetabling Requires Multiple Coupled Boards (UCTP)</span></h2>
           <p>
             In Operations Research (OR), the <strong>University Course Timetabling Problem (UCTP)</strong>—standardized in benchmarks such as the International Timetabling Competition (ITC-2007 Curriculum-Based Track)—is one of the most heavily studied NP-hard scheduling problems alongside the Nurse Scheduling Problem (NSP).
           </p>
@@ -112,7 +111,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>4D Binary Decision Variables and Core Structural Constraints</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">02</span><span>4D Binary Decision Variables and Core Structural Constraints</span></h2>
           <p>
             Let $C$ be the set of 25 courses, $D = \{\text{Mon}, \text{Tue}, \text{Wed}, \text{Thu}, \text{Fri}\}$ be the days, $P = \{1, 2, 3, 4, 5\}$ be the periods, and $R$ be the 7 rooms. We define a 4D binary variable $x_{c,d,p,r} \in \{0, 1\}$ equal to $1$ if and only if course $c$ is assigned to day $d$, period $p$, and room $r$.
           </p>
@@ -147,7 +146,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>Linearizing Pedagogical &amp; Operational Rules</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">03</span><span>Linearizing Pedagogical &amp; Operational Rules</span></h2>
           <h3 class="section-heading">(A) Consecutive Double-Period Lab Sessions (<code>course_consecutive</code>)</h3>
           <p>
             While 2-session lecture courses are normally spread across different days ($\sum_{p \in P} u_{c,d,p} \le 1$), hands-on courses like "Software Design Lab (C12)" often require <strong>two consecutive periods on the same day</strong> (e.g., Tue Periods 2–3). We introduce binary indicator variables $z_{d,p} \in \{0, 1\}$ for $p \in \{1, 2, 3, 4\}$:
@@ -186,7 +185,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>Neuro-Symbolic Architecture: Gemini Nano + WaSHI (HiGHS)</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">04</span><span>Neuro-Symbolic Architecture: Gemini Nano + WaSHI (HiGHS)</span></h2>
           <p>
             Instead of asking an LLM to guess a timetable (which inevitably violates room capacities or double-books faculty), the copilot separates natural-language understanding from combinatorial optimization:
           </p>
@@ -205,7 +204,7 @@
           <div class="callout callout-point">
             <div class="callout-header">
               <span class="callout-icon">💡</span>
-              <span>POINT: Two-Stage Decomposition for Large-Scale Timetabling</span>
+              <span>Two-Stage Decomposition for Large-Scale Timetabling</span>
             </div>
             <div class="callout-content">
               While our 30-course demo solves in ~250 ms using full 4D variables, university-wide timetables with hundreds of courses benefit from hierarchical problem decomposition:<br />

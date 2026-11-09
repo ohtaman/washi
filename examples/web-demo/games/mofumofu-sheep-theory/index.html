@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
@@ -34,16 +34,16 @@
         margin: 1.5rem 0;
       }
       .mini-board {
-        background: var(--color-surface-soft, #f4f2eb);
-        border: 2px solid var(--color-border, #e6e2d6);
-        border-radius: var(--radius-md, 10px);
-        padding: 1.25rem;
+        background: var(--color-surface-soft, #f8fafc);
+        border: 1px solid var(--color-border, #e2e8f0);
+        border-radius: var(--radius-md, 0.5rem);
+        padding: 1.125rem;
         text-align: center;
       }
       .mini-board-title {
-        font-weight: 800;
-        font-size: 0.9rem;
-        color: var(--color-brand-primary, #3f7d20);
+        font-weight: 700;
+        font-size: 0.875rem;
+        color: var(--color-text-main, #0f172a);
         margin-bottom: 0.75rem;
       }
       .mini-cells {
@@ -103,13 +103,12 @@
           </div>
           <h1 class="book-title">Behind "Fluffy Sheep Pasture Enclosure":<br />From Minimum Vertex Cut to Budgeted Maximum-Weight Connected Subgraph</h1>
           <div class="book-lead-box">
-            Target Audience: Readers familiar with the basics of Mixed-Integer Linear Programming (binary variables, linear inequalities, and objective functions).<br />
-            This article explains how a cozy puzzle about enclosing sheep with wooden fences builds upon the classic <strong>Minimum s-t Vertex Cut</strong> problem while formulating negative-weight tiles (pitfalls) and strict region connectivity using linear constraints.
+            <strong class="lead-label">TL;DR — </strong>This article explains how a cozy puzzle about enclosing sheep with wooden fences builds upon the classic <strong>Minimum s-t Vertex Cut</strong> problem while formulating negative-weight tiles (pitfalls) and strict region connectivity using linear constraints.
           </div>
         </header>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>Puzzle Rules and Graph Representation</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">01</span><span>Puzzle Rules and Graph Representation</span></h2>
           <p>
             The board is modeled as an undirected grid graph <code>G = (V, E)</code>, where orthogonally adjacent passable cells form the edge set <code>E</code>. Each vertex (cell) <code>v ∈ V</code> has the following properties:
           </p>
@@ -176,7 +175,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>What If We Only Minimized Fence Count? (Minimum s-t Vertex Cut)</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">02</span><span>What If We Only Minimized Fence Count? (Minimum s-t Vertex Cut)</span></h2>
           <p>
             Suppose we temporarily ignore tile scores and ask only: <strong>"What is the minimum number of fences required to separate the wolves <code>W</code> from the sheep <code>S</code>?"</strong>
           </p>
@@ -212,7 +211,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>MILP Formulation (Part 1): Decision Variables and the Flood Constraint</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">03</span><span>MILP Formulation (Part 1): Decision Variables and the Flood Constraint</span></h2>
           <p>
             To formulate the puzzle as a Mixed-Integer Linear Program (MILP), we introduce two sets of binary decision variables over the passable cells $v \in V$:
           </p>
@@ -267,7 +266,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>MILP Formulation (Part 2): Disconnected Pockets and Single-Commodity Flow</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">04</span><span>MILP Formulation (Part 2): Disconnected Pockets and Single-Commodity Flow</span></h2>
           <p>
             Here we encounter a classic mathematical modeling pitfall: <strong>the flood constraint alone is not sufficient to define the pasture accurately.</strong>
           </p>
@@ -359,7 +358,7 @@
           <div class="callout callout-point">
             <div class="callout-header">
               <span class="callout-icon">💡</span>
-              <span>POINT: Big-M Tightness and Cutting Plane Methods</span>
+              <span>Big-M Tightness and Cutting Plane Methods</span>
             </div>
             <div class="callout-content">
               <strong>Big-M Tightness</strong>: While $M = |V|$ is valid in (5) and (6), bounding $M$ by the maximum reachable area under fence budget $K$ yields a tighter LP relaxation.<br />
@@ -369,7 +368,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 05</span><span>Objective Function and 1-Move Hint Diagnosis (Partial Fixing)</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">05</span><span>Objective Function and 1-Move Hint Diagnosis (Partial Fixing)</span></h2>
           <p>
             Finally, we combine "maximizing total pasture score (primary objective)" and "using as few fences as possible among tied scores (secondary tie-breaker)" into a single linear objective using a lexicographic weight of $100$:
           </p>

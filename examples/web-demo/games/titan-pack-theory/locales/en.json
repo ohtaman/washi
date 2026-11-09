@@ -9,7 +9,7 @@
   "sec2Title": "2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)",
   "sec2P1": "The condition that two rectangles $i$ and $j$ (placed at $(x_i, y_i)$ with dimensions $w_i \\times h_i$) do not overlap is inherently disjunctive (connected by logical OR):",
   "sec2P2": "In Mixed-Integer Linear Programming (MILP), we linearize this disjunction using four binary indicator variables $\\delta_{ij,1}, \\delta_{ij,2}, \\delta_{ij,3}, \\delta_{ij,4} \\in \\{0, 1\\}$ and tight axis-specific constants derived from plate dimensions $W, H$:",
-  "warnTitle": "CAUTION: Choice of Big-M and Numerical Stability",
+  "warnTitle": "Choice of Big-M and Numerical Stability",
   "warnBody": "Setting Big-M to an arbitrary large number can weaken the continuous LP relaxation bound, increasing the number of branch-and-bound nodes. It may also trigger numerical instability where parts slightly overlap within solver tolerances ($10^{-6}$) and are falsely treated as feasible. Setting tight, provable upper bounds ($M_x = W$ and $M_y = H$) is standard practice in mathematical programming.",
   "sec3Title": "3. Geometric Guarantees for Fault-Line-Free Layouts",
   "sec3P1": "If a rectangle is naively sliced with full-width or full-height cuts, continuous fault lines (guillotine cuts) emerge, degrading structural rigidity and breaking the puzzle into trivial independent sub-puzzles.",

@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800;900&family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
@@ -53,7 +53,7 @@
           </div>
         </header>
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span id="t-sec1-title">1. What is the 2D Packing Problem?</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">01</span><span id="t-sec1-title">1. What is the 2D Packing Problem?</span></h2>
           <p id="t-sec1-p1">
             The 2D Packing Problem is a combinatorial optimization challenge where rectangular parts of various dimensions must be placed inside a bounding sheet or plate without overlapping or exceeding boundary limits. It has extensive real-world applications in sheet-metal manufacturing, woodworking, cutting-stock layouts, and VLSI floorplanning.
           </p>
@@ -63,7 +63,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span id="t-sec2-title">2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">02</span><span id="t-sec2-title">2. Linearizing Geometric Non-Overlap Constraints (Big-M Formulation)</span></h2>
           <p id="t-sec2-p1">
             The condition that two rectangles $i$ and $j$ (placed at $(x_i, y_i)$ with dimensions $w_i \times h_i$) do not overlap is inherently disjunctive (connected by logical OR):
           </p>
@@ -91,7 +91,7 @@
           <div class="callout callout-warn">
             <div class="callout-header">
               <span class="callout-icon">⚠️</span>
-              <span id="t-warn-title">CAUTION: Choice of Big-M and Numerical Stability</span>
+              <span id="t-warn-title">Choice of Big-M and Numerical Stability</span>
             </div>
             <div class="callout-content" id="t-warn-body">
               Setting Big-M to an arbitrary large number can weaken the continuous LP relaxation bound, increasing the number of branch-and-bound nodes. It may also trigger numerical instability where parts slightly overlap within solver tolerances ($10^{-6}$) and are falsely treated as feasible. Setting tight, provable upper bounds ($M_x = W$ and $M_y = H$) is standard practice in mathematical programming.
@@ -100,7 +100,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span id="t-sec3-title">3. Geometric Guarantees for Fault-Line-Free Layouts</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">03</span><span id="t-sec3-title">3. Geometric Guarantees for Fault-Line-Free Layouts</span></h2>
           <p id="t-sec3-p1">
             If a rectangle is naively sliced with full-width or full-height cuts, continuous fault lines (guillotine cuts) emerge, degrading structural rigidity and breaking the puzzle into trivial independent sub-puzzles.
           </p>
@@ -110,7 +110,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span id="t-sec4-title">4. Implementation with WaSHI</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">04</span><span id="t-sec4-title">4. Implementation with WaSHI</span></h2>
           <p id="t-sec4-p1">
             Here is how to formulate and solve this 2D packing model using the <code>@ohtaman/washi</code> TypeScript mathematical modeling library:
           </p>
