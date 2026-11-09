@@ -12,7 +12,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700;800;900&family=JetBrains+Mono:wght@400;600;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../src/theory-theme.css" />
@@ -49,12 +49,12 @@
           </div>
           <h1 class="book-title">Behind "Demon Castle 24-Hour Guard Shift" — Shift Scheduling (NSP) and Logical Linearization</h1>
           <div class="book-lead-box">
-            A comprehensive guide to the mathematical optimization behind "Demon Castle 24-Hour Guard Shift." Learn how Nurse Scheduling Problems (NSP), sliding window consecutive limits, and partner synergy linearizations are formulated with Mixed-Integer Linear Programming (MILP) in WaSHI.
+            <strong class="lead-label">TL;DR — </strong>A comprehensive guide to the mathematical optimization behind "Demon Castle 24-Hour Guard Shift." Learn how Nurse Scheduling Problems (NSP), sliding window consecutive limits, and partner synergy linearizations are formulated with Mixed-Integer Linear Programming (MILP) in WaSHI.
           </div>
         </header>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 01</span><span>Shift Scheduling (NSP) &amp; Decision Variables</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">01</span><span>Shift Scheduling (NSP) &amp; Decision Variables</span></h2>
           <p>
             The Demon Castle Guard Roster must schedule guards for 5 weekdays across 3 shifts per day: Day (D), Evening (E), and Night (N). Mathematically, this is an instance of the <strong>Nurse Scheduling Problem (NSP)</strong>, a classic combinatorial optimization challenge.
           </p>
@@ -79,7 +79,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 02</span><span>Consecutive Shift Limits &amp; Sliding Window Formulation</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">02</span><span>Consecutive Shift Limits &amp; Sliding Window Formulation</span></h2>
           <p>
             To prevent guard exhaustion, maximum consecutive working days $L_m$ are enforced. Instead of tracking state variables or using non-linear branching, we formulate this using a <strong>Sliding Window</strong> over consecutive days:
           </p>
@@ -98,7 +98,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 03</span><span>Partner Synergy Linearization (McCormick Envelopes)</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">03</span><span>Partner Synergy Linearization (McCormick Envelopes)</span></h2>
           <p>
             When two guards work the same shift, they may produce synergy bonuses (e.g. Goblin + Skeleton) or clash penalties. The interaction term is inherently non-linear ($x_A \cdot x_B$). In MILP, we introduce an auxiliary variable $\text{pair}_{A,B,d,s} \in [0, 1]$ and linearize it using McCormick envelopes:
           </p>
@@ -123,7 +123,7 @@
         </section>
 
         <section>
-          <h2 class="chapter-heading"><span class="chapter-badge">Chapter 04</span><span>Implementation with WaSHI</span></h2>
+          <h2 class="chapter-heading"><span class="chapter-badge">04</span><span>Implementation with WaSHI</span></h2>
           <p>
             Here is how to express these constraints using <code>@ohtaman/washi</code> in TypeScript:
           </p>

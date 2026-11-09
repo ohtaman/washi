@@ -88,4 +88,48 @@ describe("Web Demo Showcase: Theory Articles TeX Mathematical Formulas", () => {
       }
     }
   });
+
+  it("enforces modern engineering case study theme and avoids study-guide labels across theory articles", () => {
+    const css = fs.readFileSync(path.resolve("examples/web-demo/src/theory-theme.css"), "utf8");
+    expect(css).toContain("--color-bg-page: #f8fafc");
+    expect(css).toContain("--color-brand-primary: #4f46e5");
+    expect(css).not.toContain("M PLUS Rounded 1c");
+    expect(css).not.toContain("border-style: dashed");
+
+    const forbiddenStudyGuideTokens = [
+      "Chapter 01",
+      "Chapter 02",
+      "Chapter 03",
+      "Chapter 04",
+      "Chapter 05",
+      "POINT :",
+      "POINT:",
+      "CAUTION :",
+      "CAUTION:",
+      "対象読者：",
+      "Target Audience:",
+      "适合读者：",
+    ];
+
+    for (const relPath of theoryFiles) {
+      const htmlDir = path.dirname(path.resolve(relPath));
+      const html = fs.readFileSync(path.resolve(relPath), "utf8");
+      expect(html).not.toContain("M+PLUS+Rounded+1c");
+      expect(html).toContain('<span class="chapter-badge">01</span>');
+      for (const token of forbiddenStudyGuideTokens) {
+        expect(html, `${relPath} should not contain study-guide token "${token}"`).not.toContain(token);
+      }
+
+      for (const lang of ["en", "ja", "zh"]) {
+        const localePath = path.join(htmlDir, "locales", `${lang}.json`);
+        const localeRaw = fs.readFileSync(localePath, "utf8");
+        for (const token of forbiddenStudyGuideTokens) {
+          expect(
+            localeRaw,
+            `${localePath} should not contain study-guide token "${token}"`
+          ).not.toContain(token);
+        }
+      }
+    }
+  });
 });
