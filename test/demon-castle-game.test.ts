@@ -29,7 +29,16 @@ import {
   BALANCE_CONFIG,
   type StagePlayRecord,
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
-import { getRequirementLocalized } from "../examples/web-demo/games/demon-castle-shift/i18n-data.js";
+import {
+  formatCastleCalendarMonthLocalized,
+  getLilithProfileLocalized,
+  getMonsterLocalized,
+  getRelationLocalized,
+  getRequestedOffReasonLocalized,
+  getRequirementLocalized,
+  getStageLocalized,
+  getTutorialStepLocalized,
+} from "../examples/web-demo/games/demon-castle-shift/i18n-data.js";
 import {
   getActiveStageStateForTest,
   getNextCycleShift,
@@ -37,9 +46,12 @@ import {
   isEndlessModeUnlocked,
   loadCampaignStage,
   loadEndlessStage,
+  openMobileMenuDialog,
+  openSynergyDialog,
   recordStageBreachFailure,
   recordStageVictory,
   resetSaveDataForTest,
+  switchCastleLanguage,
   syncAudioButtonUi,
   type SaveData,
 } from "../examples/web-demo/games/demon-castle-shift/main.js";
@@ -270,7 +282,7 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     for (const mId of ALL_MONSTER_IDS) {
       const m = MONSTERS[mId];
       expect(m).toBeDefined();
-      expect(m.usualPost.length).toBeGreaterThan(0);
+      expect((m.usualPost ?? "").length).toBeGreaterThan(0);
       expect(m.portrait).toMatch(/^\.\/char-[a-z]+\.jpg$/);
     }
 
@@ -702,14 +714,356 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
         expect(jaReq.enemyName).not.toBe(req.enemyName);
         expect(jaReq.enemyName.length).toBeGreaterThan(0);
         expect(jaReq.enemyQuote).not.toBe(req.enemyQuote);
-        expect(jaReq.enemyQuote.length).toBeGreaterThan(0);
+        expect((jaReq.enemyQuote ?? "").length).toBeGreaterThan(0);
 
         const zhReq = getRequirementLocalized(req, "zh");
         expect(zhReq.enemyName).not.toBe(req.enemyName);
         expect(zhReq.enemyName.length).toBeGreaterThan(0);
         expect(zhReq.enemyQuote).not.toBe(req.enemyQuote);
-        expect(zhReq.enemyQuote.length).toBeGreaterThan(0);
+        expect((zhReq.enemyQuote ?? "").length).toBeGreaterThan(0);
       }
+    }
+  });
+
+  it("localizes monster profiles, pair relations, requested day-off reasons, tutorial steps, and calendar era without mixed-language bleed-through", () => {
+    const kanaRegex = /[\u3040-\u309F\u30A1-\u30FA\u30FC-\u30FF]/;
+
+    // 1. Lilith profile
+    const lilithEn = getLilithProfileLocalized("en");
+    const lilithJa = getLilithProfileLocalized("ja");
+    const lilithZh = getLilithProfileLocalized("zh");
+    expect(lilithJa.name).not.toBe(lilithEn.name);
+    expect(lilithJa.title).not.toBe(lilithEn.title);
+    expect(lilithJa.defaultQuote).not.toBe(lilithEn.defaultQuote);
+    expect(lilithZh.name).not.toBe(lilithEn.name);
+    expect(lilithZh.title).not.toBe(lilithEn.title);
+
+    // 2. All 20 monster profiles
+    for (const mId of ALL_MONSTER_IDS) {
+      const mEn = getMonsterLocalized(mId, "en");
+      const mJa = getMonsterLocalized(mId, "ja");
+      const mZh = getMonsterLocalized(mId, "zh");
+
+      expect(mJa.name).not.toBe(mEn.name);
+      expect(mJa.title).not.toBe(mEn.title);
+      expect(mJa.race).not.toBe(mEn.race);
+      expect(mJa.usualPost).not.toBe(mEn.usualPost);
+      expect(mJa.traitTitle).not.toBe(mEn.traitTitle);
+      expect(mJa.traitSummary).not.toBe(mEn.traitSummary);
+      expect(mJa.quotes.intro).not.toBe(mEn.quotes.intro);
+      expect(mJa.quotes.dayAssign).not.toBe(mEn.quotes.dayAssign);
+      expect(mJa.quotes.nightAssign).not.toBe(mEn.quotes.nightAssign);
+      expect(mJa.quotes.offAssign).not.toBe(mEn.quotes.offAssign);
+      expect(mJa.quotes.happy).not.toBe(mEn.quotes.happy);
+      expect(mJa.quotes.angry).not.toBe(mEn.quotes.angry);
+      expect(mJa.traitTitle).not.toContain("Night Specialist");
+      expect(mJa.usualPost).not.toContain("Main Gate");
+
+      expect(mZh.name).not.toBe(mEn.name);
+      expect(mZh.traitTitle).not.toBe(mEn.traitTitle);
+      expect(mZh.traitSummary).not.toBe(mEn.traitSummary);
+    }
+
+    // 3. All pair relations (both title and description)
+    for (const rel of ALL_PAIR_RELATIONS) {
+      const rEn = getRelationLocalized(rel, "en");
+      const rJa = getRelationLocalized(rel, "ja");
+      const rZh = getRelationLocalized(rel, "zh");
+
+      expect(rEn.title).toBe(rel.title);
+      expect(rEn.description).toBe(rel.description);
+      expect(rJa.title).not.toBe(rEn.title);
+      expect(rJa.description).not.toBe(rEn.description);
+      expect(rZh.title).not.toBe(rEn.title);
+      expect(rZh.description).not.toBe(rEn.description);
+    }
+
+    // 4. Requested day-off reasons (both 2-arg and 3-arg signatures, static & dynamic endless post reasons)
+    for (const stage of CAMPAIGN_STAGES) {
+      for (const reqOff of stage.requestedDaysOff) {
+        const jaReason2 = getRequestedOffReasonLocalized(reqOff.reason, "ja");
+        const jaReason3 = getRequestedOffReasonLocalized(reqOff.reason, reqOff.monsterId, "ja");
+        const zhReason3 = getRequestedOffReasonLocalized(reqOff.reason, reqOff.monsterId, "zh");
+        const enReason3 = getRequestedOffReasonLocalized(reqOff.reason, reqOff.monsterId, "en");
+
+        expect(enReason3).toBe(reqOff.reason);
+        expect(jaReason2).not.toBe(reqOff.reason);
+        expect(jaReason3).toBe(jaReason2);
+        expect(zhReason3).not.toBe(reqOff.reason);
+      }
+    }
+    const dynEn = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "drago", "en");
+    const dynJa3 = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "drago", "ja");
+    const dynJa2 = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "ja");
+    const dynZh3 = getRequestedOffReasonLocalized("Main Gate Duty / Rest", "drago", "zh");
+    expect(dynEn).toBe("Main Gate Duty / Rest");
+    expect(dynJa3).not.toContain("Main Gate");
+    expect(dynJa2).toBe(dynJa3);
+    expect(dynZh3).not.toContain("Main Gate");
+
+    // 5. Tutorial steps (both 2-arg and 3-arg signatures; no Japanese Kana in EN or ZH)
+    const week1Steps = CAMPAIGN_STAGES[0].tutorialSteps ?? [];
+    expect(week1Steps.length).toBeGreaterThan(0);
+    week1Steps.forEach((step, idx) => {
+      const tEn2 = getTutorialStepLocalized(step, "en");
+      const tEn3 = getTutorialStepLocalized(step, idx, "en");
+      const tJa2 = getTutorialStepLocalized(step, "ja");
+      const tJa3 = getTutorialStepLocalized(step, idx, "ja");
+      const tZh2 = getTutorialStepLocalized(step, "zh");
+      const tZh3 = getTutorialStepLocalized(step, idx, "zh");
+
+      expect(tEn2).toEqual(tEn3);
+      expect(tJa2).toEqual(tJa3);
+      expect(tZh2).toEqual(tZh3);
+
+      expect(kanaRegex.test(tEn3.shortCallout)).toBe(false);
+      expect(kanaRegex.test(tEn3.instruction)).toBe(false);
+      expect(kanaRegex.test(tZh3.shortCallout)).toBe(false);
+      expect(kanaRegex.test(tZh3.instruction)).toBe(false);
+      expect(tJa3.shortCallout).not.toBe(tEn3.shortCallout);
+      expect(tJa3.instruction).not.toBe(tEn3.instruction);
+      expect(tZh3.shortCallout).not.toBe(tEn3.shortCallout);
+      expect(tZh3.instruction).not.toBe(tEn3.instruction);
+    });
+
+    // 6. Calendar era formatting and stage localization (including clearQuotes and retry stages)
+    const refDate = new Date(2026, 10, 1);
+    const calEn = formatCastleCalendarMonthLocalized(1, true, "en", refDate);
+    const calJa = formatCastleCalendarMonthLocalized(1, true, "ja", refDate);
+    const calZh = formatCastleCalendarMonthLocalized(1, true, "zh", refDate);
+    expect(calEn).toContain("Star-Moon Era");
+    expect(calJa).not.toContain("Star-Moon Era");
+    expect(calZh).not.toContain("Star-Moon Era");
+
+    for (const stage of CAMPAIGN_STAGES) {
+      const sEn = getStageLocalized(stage, "en");
+      const sJa = getStageLocalized(stage, "ja");
+      const sZh = getStageLocalized(stage, "zh");
+      expect(sJa.title).not.toBe(sEn.title);
+      expect(sZh.title).not.toBe(sEn.title);
+      for (const mId of Object.keys(stage.clearQuotes ?? {})) {
+        const key = mId as (typeof ALL_MONSTER_IDS)[number];
+        expect(sJa.clearQuotes?.[key]).toBeTruthy();
+        expect(sJa.clearQuotes?.[key]).not.toBe(sEn.clearQuotes?.[key]);
+        expect(sZh.clearQuotes?.[key]).toBeTruthy();
+        expect(sZh.clearQuotes?.[key]).not.toBe(sEn.clearQuotes?.[key]);
+      }
+    }
+
+    const retryStage = generateRetryCampaignStage(0, 1);
+    const retryJa = getStageLocalized(retryStage, "ja");
+    expect(retryJa.subtitle).not.toContain("New Lineup");
+  });
+
+  it("refreshes open synergy and mobile menu dialogs on switchCastleLanguage and preserves stage selection handlers", async () => {
+    interface MockButton {
+      getAttribute: (attr: string) => string | null;
+      addEventListener: (type: string, fn: () => void) => void;
+      click: () => void;
+    }
+
+    interface MockEl {
+      id: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      open: boolean;
+      dataset: Record<string, string>;
+      classList: {
+        toggle: () => void;
+        add: () => void;
+        remove: () => void;
+      };
+      setAttribute: (attr: string, val: string) => void;
+      removeAttribute: (attr: string) => void;
+      getAttribute: (attr: string) => string | null;
+      showModal: () => void;
+      close: () => void;
+      querySelectorAll: (selector: string) => MockButton[];
+      querySelector: (selector: string) => MockButton | null;
+    }
+
+    const createChildButtonsFromHtml = (html: string): {
+      stageButtons: MockButton[];
+      randomButton: MockButton | null;
+    } => {
+      const stageButtons: MockButton[] = [];
+      let randomButton: MockButton | null = null;
+      const btnRegex = /<button\b([^>]*)>/gi;
+      let match: RegExpExecArray | null;
+      while ((match = btnRegex.exec(html)) !== null) {
+        const attrRaw = match[1];
+        const attrs = new Map<string, string>();
+        const attrRegex = /([a-zA-Z0-9_-]+)(?:="([^"]*)")?/g;
+        let am: RegExpExecArray | null;
+        while ((am = attrRegex.exec(attrRaw)) !== null) {
+          attrs.set(am[1], am[2] ?? "");
+        }
+        const clickHandlers: Array<() => void> = [];
+        const btn: MockButton = {
+          getAttribute: (name: string) => attrs.get(name) ?? null,
+          addEventListener: (type: string, fn: () => void) => {
+            if (type === "click") clickHandlers.push(fn);
+          },
+          click: () => {
+            for (const fn of clickHandlers) fn();
+          },
+        };
+        if (attrs.has("data-stage-index")) {
+          stageButtons.push(btn);
+        }
+        if (attrs.has("data-stage-random")) {
+          randomButton = btn;
+        }
+      }
+      return { stageButtons, randomButton };
+    };
+
+    const htmlPath = resolve(__dirname, "../examples/web-demo/games/demon-castle-shift/index.html");
+    const castleHtml = readFileSync(htmlPath, "utf-8");
+    const byId = new Map<string, MockEl>();
+
+    const makeMockEl = (id: string, initialAttrs = new Map<string, string>()): MockEl => {
+      let currentHtml = "";
+      let parsedChildren = { stageButtons: [] as MockButton[], randomButton: null as MockButton | null };
+      const el: MockEl = {
+        id,
+        textContent: "",
+        get innerHTML() {
+          return currentHtml;
+        },
+        set innerHTML(val: string) {
+          currentHtml = val;
+          parsedChildren = createChildButtonsFromHtml(val);
+        },
+        title: initialAttrs.get("title") ?? "",
+        hidden: initialAttrs.has("hidden"),
+        open: false,
+        dataset: {},
+        classList: {
+          toggle: () => {},
+          add: () => {},
+          remove: () => {},
+        },
+        setAttribute: (attr: string, val: string) => {
+          initialAttrs.set(attr, val);
+        },
+        removeAttribute: (attr: string) => {
+          initialAttrs.delete(attr);
+        },
+        getAttribute: (attr: string) => initialAttrs.get(attr) ?? null,
+        showModal: () => {
+          el.open = true;
+        },
+        close: () => {
+          el.open = false;
+        },
+        querySelectorAll: (selector: string) => {
+          if (selector === "[data-stage-index]") return parsedChildren.stageButtons;
+          return [];
+        },
+        querySelector: (selector: string) => {
+          if (selector === "[data-stage-random]") return parsedChildren.randomButton;
+          return null;
+        },
+      };
+      return el;
+    };
+
+    const tagRegex = /<([a-zA-Z0-9-]+)\b([^>]*?)>/g;
+    let tm: RegExpExecArray | null;
+    while ((tm = tagRegex.exec(castleHtml)) !== null) {
+      const attrChunk = tm[2];
+      const idMatch = /\bid="([^"]+)"/.exec(attrChunk);
+      if (idMatch) {
+        const id = idMatch[1];
+        byId.set(id, makeMockEl(id));
+      }
+    }
+
+    const mockDoc = {
+      documentElement: { lang: "en" },
+      title: "",
+      getElementById: (id: string) => byId.get(id) ?? null,
+      querySelectorAll: () => [],
+    };
+
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    const prevWindow = (globalThis as { window?: unknown }).window;
+    try {
+      (globalThis as { document?: unknown }).document = mockDoc;
+      (globalThis as { window?: unknown }).window = {
+        setInterval: () => 1,
+        clearInterval: () => {},
+      };
+
+      resetSaveDataForTest();
+      await loadCampaignStage(1, false); // week-2 (has synergy, clash, and requested day off)
+
+      switchCastleLanguage("en");
+      openSynergyDialog();
+      const synergyDlg = byId.get("synergy-dialog")!;
+      const synergyList = byId.get("synergy-dialog-list")!;
+      const shiftTable = byId.get("shift-grid-table")!;
+      expect(synergyDlg.open).toBe(true);
+
+      const relSample = CAMPAIGN_STAGES[1].activeRelations[0];
+      const relEn = getRelationLocalized(relSample, "en");
+      const relJa = getRelationLocalized(relSample, "ja");
+      const relZh = getRelationLocalized(relSample, "zh");
+      const fenrirEn = getMonsterLocalized("fenrir", "en").name;
+      const fenrirJa = getMonsterLocalized("fenrir", "ja").name;
+      const fenrirZh = getMonsterLocalized("fenrir", "zh").name;
+
+      expect(synergyList.innerHTML).toContain(fenrirEn);
+      expect(synergyList.innerHTML).toContain(relEn.description);
+      expect(shiftTable.innerHTML).toContain("Rest Day");
+
+      // Switch to Japanese while synergy-dialog is open -> dialog & shift matrix update immediately
+      switchCastleLanguage("ja");
+      expect(synergyList.innerHTML).toContain(fenrirJa);
+      expect(synergyList.innerHTML).toContain(relJa.description);
+      expect(synergyList.innerHTML).not.toContain(relEn.description);
+      expect(shiftTable.innerHTML).toContain(getRequestedOffReasonLocalized("Rest Day", "carmilla", "ja"));
+      expect(shiftTable.innerHTML).not.toContain("Rest Day");
+
+      // Switch to Chinese while synergy-dialog is open -> dialog & shift matrix update immediately
+      switchCastleLanguage("zh");
+      expect(synergyList.innerHTML).toContain(fenrirZh);
+      expect(synergyList.innerHTML).toContain(relZh.description);
+      expect(synergyList.innerHTML).not.toContain(relJa.description);
+      expect(shiftTable.innerHTML).toContain(getRequestedOffReasonLocalized("Rest Day", "carmilla", "zh"));
+      synergyDlg.close();
+
+      // Open mobile-menu-dialog in English, then switch to Japanese and verify re-rendered stage nav & click handler
+      switchCastleLanguage("en");
+      openMobileMenuDialog();
+      const mobileMenuDlg = byId.get("mobile-menu-dialog")!;
+      const mobileStageNav = byId.get("mobile-stage-nav")!;
+      expect(mobileMenuDlg.open).toBe(true);
+      expect(mobileStageNav.innerHTML).toContain(formatCastleCalendarMonthLocalized(1, true, "en"));
+
+      switchCastleLanguage("ja");
+      expect(mobileStageNav.innerHTML).toContain(formatCastleCalendarMonthLocalized(1, true, "ja"));
+      expect(mobileStageNav.innerHTML).not.toContain("Star-Moon Era");
+
+      // Verify stage selection buttons in re-rendered mobile stage nav remain interactive
+      const stageBtns = mobileStageNav.querySelectorAll("[data-stage-index]");
+      expect(stageBtns.length).toBe(CAMPAIGN_STAGES.length);
+      expect(getActiveStageStateForTest().currentStage.id).toBe("week-2");
+
+      stageBtns[0].click();
+      expect(mobileMenuDlg.open).toBe(false);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(getActiveStageStateForTest().currentStage.id).toBe("week-1");
+      // Stage 1 tutorial callout in shift table is also rendered in Japanese (not English)
+      expect(shiftTable.innerHTML).toContain(
+        getTutorialStepLocalized(CAMPAIGN_STAGES[0].tutorialSteps![0], 0, "ja").shortCallout
+      );
+    } finally {
+      (globalThis as { document?: unknown }).document = prevDocument;
+      (globalThis as { window?: unknown }).window = prevWindow;
     }
   });
 });
