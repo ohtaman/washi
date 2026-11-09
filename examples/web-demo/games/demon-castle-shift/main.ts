@@ -1659,7 +1659,7 @@ function renderSynergyDialogContent(): void {
     .join("");
 }
 
-function openSynergyDialog(): void {
+export function openSynergyDialog(): void {
   renderSynergyDialogContent();
   const dlg = document.getElementById("synergy-dialog") as HTMLDialogElement | null;
   if (dlg && !dlg.open) {
@@ -1730,7 +1730,7 @@ function renderMobileStageNav(): void {
   });
 }
 
-function openMobileMenuDialog(): void {
+export function openMobileMenuDialog(): void {
   renderMobileStageNav();
   const dlg = document.getElementById("mobile-menu-dialog") as HTMLDialogElement | null;
   if (dlg && !dlg.open) {
