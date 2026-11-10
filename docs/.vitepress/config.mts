@@ -39,9 +39,25 @@ export default withMermaid(
       siteData.description;
     const pageType = pageData.relativePath.endsWith("index.md") ? "website" : "article";
     const ogImage = `${baseDomain}${basePath}washi-logo.png`;
+    const hasRawMarkdownEndpoint =
+      pageData.relativePath === "index.md" ||
+      /^(?:getting-started|guide|solvers|examples)\/[^/]+\.md$/.test(pageData.relativePath);
 
     const head: HeadConfig[] = [
       ["link", { rel: "canonical", href: canonicalUrl }],
+      ["link", { rel: "describedby", href: `${basePath}llms.txt` }],
+      ...(hasRawMarkdownEndpoint
+        ? ([
+            [
+              "link",
+              {
+                rel: "alternate",
+                type: "text/markdown",
+                href: `${basePath}${pageData.relativePath}`,
+              },
+            ],
+          ] as HeadConfig[])
+        : []),
       ["meta", { property: "og:url", content: canonicalUrl }],
       ["meta", { property: "og:type", content: pageType }],
       ["meta", { property: "og:title", content: pageTitle }],
@@ -191,9 +207,9 @@ export default withMermaid(
             text: "Getting Started",
             items: [
               { text: "Introduction & Installation", link: "/getting-started/" },
-              { text: "AI Agent Quick-Reference", link: "/getting-started/ai-agents" },
               { text: "Runtime Environments", link: "/getting-started/runtimes" },
               { text: "Cross-Origin Isolation", link: "/getting-started/cross-origin" },
+              { text: "AI Agent Quick-Reference", link: "/getting-started/ai-agents" },
             ],
           },
           {
@@ -258,9 +274,9 @@ export default withMermaid(
             text: jaLocale.sidebar[0].text,
             items: [
               { text: jaLocale.sidebar[0].items[0].text, link: "/ja/getting-started/" },
-              { text: jaLocale.sidebar[0].items[1].text, link: "/ja/getting-started/ai-agents" },
-              { text: jaLocale.sidebar[0].items[2].text, link: "/ja/getting-started/runtimes" },
-              { text: jaLocale.sidebar[0].items[3].text, link: "/ja/getting-started/cross-origin" },
+              { text: jaLocale.sidebar[0].items[1].text, link: "/ja/getting-started/runtimes" },
+              { text: jaLocale.sidebar[0].items[2].text, link: "/ja/getting-started/cross-origin" },
+              { text: jaLocale.sidebar[0].items[3].text, link: "/ja/getting-started/ai-agents" },
             ],
           },
           {
@@ -335,9 +351,9 @@ export default withMermaid(
             text: zhLocale.sidebar[0].text,
             items: [
               { text: zhLocale.sidebar[0].items[0].text, link: "/zh/getting-started/" },
-              { text: zhLocale.sidebar[0].items[1].text, link: "/zh/getting-started/ai-agents" },
-              { text: zhLocale.sidebar[0].items[2].text, link: "/zh/getting-started/runtimes" },
-              { text: zhLocale.sidebar[0].items[3].text, link: "/zh/getting-started/cross-origin" },
+              { text: zhLocale.sidebar[0].items[1].text, link: "/zh/getting-started/runtimes" },
+              { text: zhLocale.sidebar[0].items[2].text, link: "/zh/getting-started/cross-origin" },
+              { text: zhLocale.sidebar[0].items[3].text, link: "/zh/getting-started/ai-agents" },
             ],
           },
           {

@@ -1,19 +1,35 @@
 # インストールと入門
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）へようこそ。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** のような代数モデリングを TypeScript / JavaScript で提供する数理最適化ライブラリです。タグ付きテンプレート（`expr`）で直感的に数式を記述でき、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によって **Node.js やブラウザ** でそのまま求解できます。
 
-WaSHI は、Python の **PuLP** のような代数モデリングを TypeScript / JavaScript エコシステムで提供するライブラリです。別途 Python サーバーや C/C++ のネイティブビルドを用意することなく、WebAssembly ソルバー（**HiGHS**, **Z3**, **GLPK**）によってブラウザや Node.js で数理最適化を実行できます。
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
 
-### なぜ TypeScript & WebAssembly なのか？
+const m = new Model("production");
 
-- **デプロイのボトルネック解消とクライアント完結**: 従来の数理最適化ワークフロー（Python の PuLP や Pyomo など）では、作成したモデルを他の人が使える Web ツールとして公開しようとすると、Python バックエンドやネイティブソルバーのホスティング・運用が必要になります。AI コーディングによって UI やアプリケーションの実装が高速化する中、このインフラ準備が公開時のボトルネックになりがちです。モデラーとソルバーを Web 標準技術（TypeScript + WebAssembly）で動かすことで、静的アセット（生成された JS・Worker・WASM を配信する GitHub Pages や Cloudflare Pages などの静的ホスティング。Z3 利用時は COOP/COEP ヘッダーが必要）として配布でき、さらにブラウザ内 LLM（WebGPU / WebLLM 等）ともサーバーを介さず同一ランタイム内で連携できます。
-- **演算子オーバーロードなしでの数式記述 (`expr`)**: JavaScript / TypeScript には演算子オーバーロードがないため、通常のライブラリは冗長なメソッドチェーン（`x.mul(30).add(y.mul(50))`）か、型が効かない生文字列パース（`"30 * x + 50 * y"`）の二択になりがちです。WaSHI は SQL クエリビルダのパラメータバインディングと同様にタグ付きテンプレートリテラル（`` expr`30 * ${x} + 50 * ${y} <= 40` ``）を採用し、中置記法の演算子を解析しつつ `${x}` を実際の TypeScript オブジェクト参照としてバインドします。これにより、型チェック・IDE の変数リネーム（F2）・多次元配列の添字指定（`${flow[i][j]}`）がそのまま機能します。
+// 1. 決定変数の定義（現実的な上下限 lb / ub を指定）
+const desks = m.integer("desks", { lb: 0, ub: 100 });
+const chairs = m.integer("chairs", { lb: 0, ub: 100 });
+
+// 2. 目的関数と制約条件の設定
+m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
+
+// 3. 求解（標準搭載の HiGHS WebAssembly）と解の検証
+const status = await m.solve();
+if (m.hasPrimalSolution) {
+  const report = m.validateSolution();
+  console.log(status, report.valid); // "Optimal", true
+  console.log(`利益: ${m.objectiveValue} (机=${desks.value}, 椅子=${chairs.value})`); // 1100 (机=20, 椅子=10)
+}
+```
 
 ---
 
 ## 📦 インストール
 
-お好みのパッケージマネージャーでインストールしてください：
+標準の **HiGHS** ソルバー（LP / MIP / 凸QP）は本体に同梱されており、これだけで動作します：
 
 ::: code-group
 
@@ -35,86 +51,37 @@ bun add @ohtaman/washi
 
 :::
 
-### オプションのソルバー依存関係
-
-標準の **HiGHS** ソルバーは設定不要で本体に同梱されています。Z3 による SMT 論理制約や競合診断（Unsat Core）、GLPK 互換が必要な場合は、対応する peer dependencies をインストールしてください：
+**Z3**（SMT 論理制約・Unsat Core 競合診断）や **GLPK** を使う場合のみ、追加でインストールします：
 
 ```bash
-# SMT論理およびUnsat Core競合診断用
-npm install z3-solver
-
-# GLPKソルバー用 (GPL-3.0)
-npm install glpk.js
+npm install z3-solver   # SMT論理制約および Unsat Core 競合診断用
+npm install glpk.js     # GLPK ソルバー用 (GPL-3.0)
 ```
 
 ---
 
-## 🚀 クイックスタート
+## 💡 なぜ TypeScript & WebAssembly なのか？
 
-工場における製品生産計画の最適化を例に、WaSHI の基本的な使い方を説明します。
+- **Node.js でもブラウザでも、環境構築なしで実行**: OS ごとの C/C++ ネイティブビルドや Python 環境の用意は不要です。`npm install` ひとつで、**Node.js の API・CLI・スクリプト** でも **ブラウザ** でも同じコードがそのまま動きます。
+- **Web 標準 API や日常の UI へのライトウェイトな組み込み**: 手元の分析スクリプトにとどまらず、**URL を開くだけで誰でも使える Web ツールやミニゲーム、Chrome 拡張** としてサーバー維持コストなしで公開できます。ドラッグ操作に即応する UI の裏側や、画面・カメラキャプチャ・音声認識（Web Speech API）といった **ブラウザ標準機能の入出力と、通信やデータの外部送信なしで数理最適化を直結** するような使い方も手軽に実現できます。
+- **入力データからモデルまで一貫した型安全**: 最適化の実装で起きやすい添字や辞書キーの取り違えを TypeScript の型システムで防げます。型付きの変数辞書（`Record<K, Var>`）や `` expr`30 * ${qty.desk} <= 40` `` の変数参照バインドにより、アプリ側のデータ型と直結し、コンパイル時の変数・キー検査や IDE の補完・リネームがそのまま効きます。
+- **AI × 数理最適化の高い親和性**: アプリ本体と最適化モデルが **単一の TypeScript コードベース** に収まるため、Python サーバーを跨がずにひとつのテスト環境でまとめて検証でき、静的サイト等へのデプロイも容易です。この「単一コードでのテスト・デプロイのしやすさ」は AI コーディングとの相性が良く、さらに実行時にも LLM による柔軟な条件抽出とソルバーによる厳密な制約充足・矛盾診断（Unsat Core）を同一ランタイム上でシンプルに統合できます。
 
-### 1. クラスとタグのインポート
+---
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-```
+## 🔍 基本ワークフローの勘所
 
-### 2. モデルのインスタンス化
+冒頭のコードで使われている、WaSHI の基本的なお作法は3点だけです：
 
-```typescript
-const model = new Model();
-```
-
-### 3. 決定変数の定義
-
-決定変数は最適化によって求めたい未知数です。ドメインファクトリメソッド（`m.continuous`, `m.integer`, `m.binary`, `m.bool`）で直感的に定義します。現実的な有限の上下限（`lb`, `ub`）を設定することで、MIP の前処理（Presolve）や自動 Big-M 導出が強化されます：
-
-```typescript
-const x = model.integer("x", { lb: 0, ub: 100 });
-const y = model.integer("y", { lb: 0, ub: 100 });
-```
-
-### 4. 目的関数の設定
-
-`maximize()` コンビネータと `expr` タグ付きテンプレートリテラルを用いて、目的関数を宣言的に設定します：
-
-```typescript
-// 30*x + 50*y の最大化
-model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-```
-
-### 5. 制約条件の追加
-
-`model.constraint()` と `expr` タグ付きテンプレートリテラルを用いて不等式・等式制約を表現します：
-
-```typescript
-model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
-```
-
-### 6. 求解・検証と結果の取得
-
-モデルを非同期で解き（デフォルトは HiGHS WebAssembly）、`hasPrimalSolution` で解の有無を確認したうえで `validateSolution()` で実行可能性を検証します：
-
-```typescript
-const status = await model.solve();
-
-if (model.hasPrimalSolution) {
-  const report = model.validateSolution();
-  console.log("ステータス:", status, "| 検証:", report.valid); // "Optimal" | true
-  console.log("最適目的関数値:", model.objectiveValue); // 1100
-  console.log(`最適解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
-}
-```
+1. **変数には現実的な上下限（`lb`, `ub`）を設定する**: `m.continuous` / `m.integer` / `m.binary` で変数を定義する際、有限の `lb`・`ub` を与えると MIP の前処理（Presolve）や論理制約の自動 Big-M 導出が強化されます。
+2. **`expr` で目的関数と制約を記述する**: `` m.objective(maximize(expr`...`)) `` や `` m.constraint(expr`... <= ...`, "名前") `` のように記述します。制約に名前を付けておくと、解なし（Infeasible）になった際の原因特定にそのまま使えます。
+3. **`hasPrimalSolution` の確認と `validateSolution()`**: `await m.solve()` の実行後、`m.hasPrimalSolution` で実行可能解の有無を確認してから各変数の `.value` を読み取ります。`m.validateSolution()` を呼ぶと、元の制約や整数条件を数値誤差の範囲で満たしているかを独立検証できます。
 
 ---
 
 ## 🧭 次のステップ
 
-- [AI コーディングエージェント向けクイックリファレンス](./ai-agents.md): AI コーディングエージェント向けの API シグネチャとデプロイ要点の速習リファレンス
-- [ランタイム環境設定](./runtimes.md): Node.js, ブラウザバンドラー, ESM, CDN, イントラネット (CSP) での動かし方
-- [モデリングガイド](../guide/variables.md): 決定変数・数式テンプレート (`expr`)・制約条件の記述方法
-- [ソルバー詳細](../solvers/): 各ソルバーの特性と選び方
-- [実践例・API 逆引きインデックス](../examples/): ブラウザ上で直接実行できる 9 つの最適化・論理モデリング事例
-
-
+- **[モデリングガイド](../guide/variables.md)**: 配列・辞書変数の作り方、総和 `sum()` や内積 `dot()`、論理制約や競合診断（Unsat Core）の書き方
+- **[具体例と API 早見表](../examples/)**: 生産計画・シフト作成・ポートフォリオ最適化・配送計画など、ブラウザ上でそのまま動かせる11の実践レシピ
+- **[ソルバーの比較と切り替え](../solvers/)**: 標準搭載の HiGHS と、オプションの Z3・GLPK の特性比較
+- **[ランタイム環境設定](./runtimes.md)**: Node.js、Vite / Next.js 等のバンドラー、CDN、静的ホスティングでの設定方法

@@ -35,7 +35,7 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
 
   const codeBlocks = extractTsBlocks(guideContent);
 
-  it("is linked with localized routes from READMEs, AGENTS.md, getting-started/index.md, and VitePress config, and shipped in package.json files", () => {
+  it("is linked with localized routes from READMEs, AGENTS.md, and VitePress config, and shipped in package.json files", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
     );
@@ -55,16 +55,6 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
     expect(
       fs.readFileSync(path.resolve(process.cwd(), "AGENTS.md"), "utf-8")
     ).toContain("docs/getting-started/ai-agents.md");
-
-    expect(
-      fs.readFileSync(path.resolve(process.cwd(), "docs/getting-started/index.md"), "utf-8")
-    ).toContain("./ai-agents.md");
-    expect(
-      fs.readFileSync(path.resolve(process.cwd(), "docs/ja/getting-started/index.md"), "utf-8")
-    ).toContain("./ai-agents.md");
-    expect(
-      fs.readFileSync(path.resolve(process.cwd(), "docs/zh/getting-started/index.md"), "utf-8")
-    ).toContain("/zh/getting-started/ai-agents");
 
     const vpConfig = fs.readFileSync(
       path.resolve(process.cwd(), "docs/.vitepress/config.mts"),
@@ -468,9 +458,9 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("async function runProductionOptimization()");
 
     // Rewrites subfolder-relative links (`./...`, `../...`) to root/package-relative `docs/...` paths
-    expect(llmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](docs/getting-started/ai-agents.md)");
-    expect(llmsFullTxt).toContain("[Modeling Guide](docs/guide/expressions.md)");
-    expect(llmsFullTxt).toContain("[Solvers Matrix](docs/solvers/index.md)");
+    expect(llmsFullTxt).toContain("[Runtime Environments](docs/getting-started/runtimes.md)");
+    expect(llmsFullTxt).toContain("[Modeling Guide](docs/guide/variables.md)");
+    expect(llmsFullTxt).toContain("[Solvers Overview](docs/solvers/index.md)");
     expect(llmsFullTxt).toContain("[Production Planning](docs/examples/production.md)");
     expect(llmsFullTxt).toContain("[GLPK Solver Guide](docs/solvers/glpk.md)");
     expect(llmsFullTxt).not.toMatch(/\]\(\.\.?\//);
@@ -555,8 +545,8 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
       expect(siteLlmsTxt).toBe(siteArtifacts.llmsTxt);
       expect(siteLlmsFullTxt).toBe(siteArtifacts.llmsFullTxt);
       expect(siteLlmsTxt).toContain("[getting-started/ai-agents.md](getting-started/ai-agents.md)");
-      expect(siteLlmsFullTxt).toContain("[AI Coding Agent Quick-Reference Guide](getting-started/ai-agents.md)");
-      expect(siteLlmsFullTxt).toContain("[Modeling Guide](guide/expressions.md)");
+      expect(siteLlmsFullTxt).toContain("[Runtime Environments](getting-started/runtimes.md)");
+      expect(siteLlmsFullTxt).toContain("[Modeling Guide](guide/variables.md)");
 
       for (const relPath of siteArtifacts.allDocFiles) {
         const siteMdPath = path.join(tmpSiteDir, relPath);

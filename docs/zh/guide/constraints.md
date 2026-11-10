@@ -54,27 +54,28 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ### 为什么要为约束命名？
 1. **模型检查 (`m.toLpString()`)**：导出的 CPLEX LP 格式字符串会保留这些可读名称（必要时自动转义），方便直接检查生成的数学模型。
-2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束之间相互矛盾导致模型不可行时，Z3 的 `m.check()` 会返回构成冲突子集的具体约束名称。
+2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束之间相互矛盾导致模型不可行时，`m.check()`（通过内置 HiGHS 弹性松弛或 Z3 `unsatCore`）会返回构成冲突子集的具体约束名称。
 3. **按名称查询 (`m.getConstraintByName()`)**：求解后可按名称获取对应的约束对象，以查看其影子价格（`dual`）或松弛变量值（`slack`）。
 
 ---
 
-## 🔁 基于集合与求和构建聚合约束
+## 🔁 基于求和 (`sum`) 与点积 (`dot`) 构建聚合约束
 
-在 `expr` 内部嵌入 `sum()` 或 `dot()`，可以简洁地表达集合上的线性聚合约束：
+在 `expr` 中直接使用 `sum(...)` 与 `dot(..., ...)`，即可简洁地表达数组或字典上的线性聚合约束：
 
 ```typescript
-import { Model, sum, expr } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const items = ["A", "B", "C"];
+const m = new Model();
+const items = ["A", "B", "C"] as const;
 const weights = { A: 5, B: 10, C: 15 };
 const selected = m.binary(items);
 
+// 最多选择 2 个物品
+m.constraint(expr`sum(${selected}) <= 2`, "max_items");
+
 // 总重量不得超过容量上限 25
-m.constraint(
-  expr`${sum(items, (i) => selected[i].mul(weights[i]))} <= 25`,
-  "capacity_limit"
-);
+m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 ```
 
 ---

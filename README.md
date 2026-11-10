@@ -39,7 +39,7 @@
 - **[Documentation](https://ohtaman.github.io/washi/)**: Modeling guide, solver references, and deployment guides
 - **[Interactive Showcase](https://ohtaman.github.io/washi/showcase/) & [Browser Playground](https://ohtaman.github.io/washi/demo/)**: Try live optimization apps and edit models in the browser
 - **[Examples](https://ohtaman.github.io/washi/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
-- **[AI Agent Guide](docs/getting-started/ai-agents.md) & [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md)**: Compact reference and workflow skill for AI coding agents
+- **[AI Agent Guide](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://ohtaman.github.io/washi/llms.txt) / [`llms-full.txt`](https://ohtaman.github.io/washi/llms-full.txt)**: Compact reference, workflow skill, and machine-readable docs for AI coding agents
 
 ---
 

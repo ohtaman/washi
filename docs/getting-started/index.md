@@ -1,19 +1,35 @@
 # Introduction & Installation
 
-Welcome to **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface).
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. Write expressions naturally with tagged templates (`expr`) and solve mathematical optimization problems directly in **Node.js and the browser** using WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**).
 
-WaSHI brings the algebraic modeling style of Python's **PuLP** to the TypeScript and JavaScript ecosystem. You can formulate mathematical optimization problems using algebraic expressions and solve them locally using WebAssembly solvers (**HiGHS**, **Z3**, and **GLPK**)—without a separate Python service or native C/C++ build steps.
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
 
-### Why TypeScript & WebAssembly?
+const m = new Model("production");
 
-- **Removing the deployment bottleneck**: In traditional optimization workflows (e.g., Python with PuLP or Pyomo), turning a model into an interactive application requires provisioning a backend service and managing native C/C++ solver binaries. As AI-assisted development accelerates UI and application prototyping, backend infrastructure often becomes the primary bottleneck to shipping. Running both the modeler and WebAssembly solvers on standard Web technologies allows an optimization tool to be deployed as static assets (e.g., on GitHub Pages or Cloudflare Pages, serving the generated JS, Worker, and WASM files; with COOP/COEP headers when using Z3)—and makes it straightforward to pair mathematical optimization with in-browser LLMs (e.g., WebGPU / WebLLM) entirely on the client.
-- **Algebraic syntax without operator overloading (`expr`)**: Because JavaScript lacks operator overloading, libraries usually trade off between verbose method chaining (`x.mul(30).add(y.mul(50))`) and untyped strings (`"30 * x + 50 * y"`). WaSHI uses tagged template literals (`` expr`30 * ${x} + 50 * ${y} <= 40` ``) similar to parameterized SQL queries—parsing infix operators while binding `${x}` directly as typed TypeScript object references for static type checking, IDE symbol renaming, and multi-dimensional indexing (`${flow[i][j]}`).
+// 1. Define decision variables with realistic finite bounds (lb / ub)
+const desks = m.integer("desks", { lb: 0, ub: 100 });
+const chairs = m.integer("chairs", { lb: 0, ub: 100 });
+
+// 2. Set the objective function and constraints
+m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
+
+// 3. Solve (built-in HiGHS WebAssembly) and validate the solution
+const status = await m.solve();
+if (m.hasPrimalSolution) {
+  const report = m.validateSolution();
+  console.log(status, report.valid); // "Optimal", true
+  console.log(`Profit: ${m.objectiveValue} (desks=${desks.value}, chairs=${chairs.value})`); // 1100 (desks=20, chairs=10)
+}
+```
 
 ---
 
 ## 📦 Installation
 
-Install WaSHI using your preferred package manager:
+The default **HiGHS** solver (LP / MIP / Convex QP) is bundled and works out of the box:
 
 ::: code-group
 
@@ -35,85 +51,37 @@ bun add @ohtaman/washi
 
 :::
 
-### Optional Solver Dependencies
-
-WaSHI ships with **HiGHS** built-in with zero configuration. If you need SMT logic / Unsat Core diagnosis via **Z3**, or compatibility with **GLPK**, install their respective peer dependencies:
+Install optional peer dependencies only if you need **Z3** (SMT logic & Unsat Core diagnosis) or **GLPK**:
 
 ```bash
-# For SMT logic and Unsat Core conflict diagnosis
-npm install z3-solver
-
-# For GLPK solver (GPL-3.0)
-npm install glpk.js
+npm install z3-solver   # For SMT logic and Unsat Core conflict diagnosis
+npm install glpk.js     # For GLPK solver (GPL-3.0)
 ```
 
 ---
 
-## 🚀 Quickstart Walkthrough
+## 💡 Why TypeScript & WebAssembly?
 
-Here is a step-by-step example of solving a production allocation problem.
+- **Zero native setup across Node.js and the browser**: No platform-specific C/C++ builds or separate Python runtimes to manage. A single `npm install` runs the same modeling code across **Node.js APIs, CLIs, and scripts** as well as in the **browser**.
+- **Lightweight embedding with standard Web APIs & UIs**: Go beyond local analysis scripts by shipping **interactive Web tools, mini-games, or Chrome extensions** that anyone can open via a URL with zero backend hosting cost. You can wire mathematical optimization directly into drag-and-drop UIs or **standard browser capabilities**—such as screen/camera capture and speech recognition (Web Speech API)—with no network round-trips or external data transfer.
+- **End-to-end type safety from app data to model**: Prevent common indexing and dictionary-key mistakes with TypeScript's type system. Typed variable dictionaries (`Record<K, Var>`) and variable-reference interpolation (`` expr`30 * ${qty.desk} <= 40` ``) connect directly to your application schemas, preserving compile-time variable/key checks, IDE autocompletion, and symbol renaming.
+- **Strong synergy with AI development & LLM workflows**: Keeping your application and optimization model in a **single TypeScript codebase** lets you validate everything in one test runner—without crossing a Python service boundary—and deploy easily as static assets or a single service. That tight test-and-deploy loop fits AI-assisted coding naturally, while at runtime you can pair flexible LLM extraction with exact solver feasibility and conflict diagnosis (`unsatCore`) in the same runtime.
 
-### 1. Import the Core Classes
+---
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-```
+## 🔍 Core Workflow Essentials
 
-### 2. Instantiate a Model
+Three practical habits cover the essentials shown in the snippet above:
 
-```typescript
-const model = new Model("WoodworkingProfit");
-```
-
-### 3. Add Decision Variables
-
-Variables represent the unknowns you want to determine. Factory methods (`m.continuous`, `m.integer`, `m.binary`) clearly define their domain. Providing realistic finite bounds (`lb` and `ub`) strengthens MIP presolve and enables automatic tight Big-M derivation:
-
-```typescript
-const x = model.integer("x", { lb: 0, ub: 100 });
-const y = model.integer("y", { lb: 0, ub: 100 });
-```
-
-### 4. Set the Objective Function
-
-Use the `expr` tagged template literal along with `maximize(...)` or `minimize(...)` to define the goal:
-
-```typescript
-// Maximize 30*x + 50*y
-model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-```
-
-### 5. Add Constraints
-
-Use `model.constraint()` with the `expr` tagged template to formulate equality and inequality constraints:
-
-```typescript
-model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
-```
-
-### 6. Solve, Verify, and Extract Results
-
-Solve the model asynchronously via WebAssembly (HiGHS by default), verify primal feasibility with `validateSolution()`, and inspect the solution when `hasPrimalSolution` is true:
-
-```typescript
-const status = await model.solve();
-
-if (model.hasPrimalSolution) {
-  const report = model.validateSolution();
-  console.log("Status:", status, "| Valid:", report.valid); // "Optimal" | true
-  console.log("Optimal Objective Value:", model.objectiveValue); // 1100
-  console.log(`Solution: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
-}
-```
+1. **Set realistic finite bounds (`lb`, `ub`)**: When defining variables with `m.continuous`, `m.integer`, or `m.binary`, finite bounds strengthen MIP presolve and enable automatic tight Big-M derivation for logical constraints.
+2. **Formulate objectives and constraints with `expr`**: Use `` m.objective(maximize(expr`...`)) `` and `` m.constraint(expr`... <= ...`, "name") ``. Naming constraints lets you pinpoint conflicting rules immediately if a model becomes infeasible.
+3. **Check `hasPrimalSolution` and call `validateSolution()`**: After `await m.solve()`, check `m.hasPrimalSolution` before reading `.value` on variables, and call `m.validateSolution()` to independently verify that bounds, integrality, and constraints hold within tolerance.
 
 ---
 
 ## 🧭 Next Steps
 
-- Give AI coding agents a concise API & deployment reference with the [AI Coding Agent Quick-Reference Guide](./ai-agents.md).
-- Learn how to run WaSHI across different environments in [Runtime Environments](./runtimes.md).
-- Understand how to formulate complex expressions in the [Modeling Guide](../guide/expressions.md).
-- Explore built-in and pluggable solvers in the [Solvers Matrix](../solvers/).
-- Browse 9 runnable optimization and SMT recipes in [Examples & API Finder](../examples/).
-
+- **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and Unsat Core diagnosis
+- **[Examples & API Finder](../examples/)**: 11 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
+- **[Solvers Overview](../solvers/)**: Compare built-in HiGHS with optional Z3 and GLPK adapters
+- **[Runtime Environments](./runtimes.md)**: Setup details for Node.js, Vite / Next.js bundlers, CDNs, and static hosting

@@ -54,27 +54,28 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ### 名前を付けるメリット
 1. **LP 定式化の確認 (`m.toLpString()`)**: エクスポートされる CPLEX LP 文字列に制約名がそのまま出力されるため、生成された式のデバッグが容易になります。
-2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、Z3 の `m.check()` がどの名前付き制約同士が衝突しているかを返します。
+2. **矛盾診断 (`conflicts` / `unsatCore`)**: 制約同士が矛盾して解なしになった際、`m.check()`（標準 HiGHS の弾性緩和や Z3 の `unsatCore`）がどの名前付き制約同士が衝突しているかを返します。
 3. **名前による参照 (`m.getConstraintByName()`)**: 求解後に名前から制約オブジェクトを取り出し、潜在価格（`dual`）や余剰（`slack`）を確認できます。
 
 ---
 
-## 🔁 総和 (`sum`) を使った集約制約
+## 🔁 総和 (`sum`)・内積 (`dot`) を使った集約制約
 
-`expr` の中に `sum()` や `dot()` を埋め込むことで、配列や辞書に対する線形制約を簡潔に記述できます：
+`expr` の中で直接 `sum(...)` や `dot(..., ...)` を使うことで、配列や辞書に対する線形制約を簡潔に記述できます：
 
 ```typescript
-import { Model, sum, expr } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const items = ["A", "B", "C"];
+const m = new Model();
+const items = ["A", "B", "C"] as const;
 const weights = { A: 5, B: 10, C: 15 };
 const selected = m.binary(items);
 
+// 選ぶ個数を 2 個以下に制限
+m.constraint(expr`sum(${selected}) <= 2`, "max_items");
+
 // 総重量を 25 以下に制限
-m.constraint(
-  expr`${sum(items, (i) => selected[i].mul(weights[i]))} <= 25`,
-  "capacity_limit"
-);
+m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 ```
 
 ---

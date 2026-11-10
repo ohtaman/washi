@@ -2,8 +2,12 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import type { HeadConfig, PageData, SiteData } from "vitepress";
+import vitepressConfig from "../docs/.vitepress/config.mts";
 // @ts-expect-error .mjs script module
 import { appendInteractiveRoutesToSitemap } from "../scripts/build-site.mjs";
+// @ts-expect-error .mjs script module
+import { buildLlmsArtifacts } from "../scripts/generate-llms.mjs";
 
 describe("Site SEO: Sitemap and robots.txt configuration", () => {
   const rootDir = process.cwd();
@@ -199,6 +203,95 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(content).toContain("typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly");
   });
 
+  it("emits spec-compliant llms.txt describedby and raw Markdown alternate links via transformHead and places ai-agents last in Getting Started sidebars", async () => {
+    expect(typeof vitepressConfig.transformHead).toBe("function");
+    type TransformCtx = Parameters<NonNullable<typeof vitepressConfig.transformHead>>[0];
+
+    const runTransformHead = async (relativePath: string): Promise<HeadConfig[]> => {
+      const pageData: PageData = {
+        relativePath,
+        filePath: relativePath,
+        title: "Test Title",
+        titleTemplate: ":title | WaSHI",
+        description: "Test Description",
+        headers: [],
+        frontmatter: {},
+        params: {},
+        isNotFound: false,
+      };
+      const siteData = {
+        title: "WaSHI",
+        description: "Site Description",
+      } as SiteData;
+      const res = await vitepressConfig.transformHead!({
+        pageData,
+        siteData,
+      } as TransformCtx);
+      return res ?? [];
+    };
+
+    const { allDocFiles } = buildLlmsArtifacts(rootDir) as { allDocFiles: string[] };
+    for (const publishedRelPath of ["index.md", ...allDocFiles]) {
+      const head = await runTransformHead(publishedRelPath);
+      expect(head).toContainEqual(["link", { rel: "describedby", href: "/washi/llms.txt" }]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", type: "text/markdown", href: `/washi/${publishedRelPath}` },
+      ]);
+    }
+
+    for (const nonRawMdRelPath of [
+      "showcase/index.md",
+      "ja/index.md",
+      "ja/getting-started/index.md",
+      "ja/showcase/index.md",
+      "zh/index.md",
+      "zh/getting-started/index.md",
+    ]) {
+      const head = await runTransformHead(nonRawMdRelPath);
+      expect(head).toContainEqual(["link", { rel: "describedby", href: "/washi/llms.txt" }]);
+      expect(
+        head.some(
+          (entry) =>
+            entry[0] === "link" &&
+            typeof entry[1] === "object" &&
+            entry[1].type === "text/markdown"
+        )
+      ).toBe(false);
+    }
+
+    // Verify Getting Started sidebar groups place ai-agents at the end across EN, JA, and ZH
+    type SidebarGroup = { items?: Array<{ link?: string }> };
+    const enSidebar = vitepressConfig.locales?.root?.themeConfig?.sidebar as
+      | SidebarGroup[]
+      | undefined;
+    const jaSidebar = vitepressConfig.locales?.ja?.themeConfig?.sidebar as
+      | SidebarGroup[]
+      | undefined;
+    const zhSidebar = vitepressConfig.locales?.zh?.themeConfig?.sidebar as
+      | SidebarGroup[]
+      | undefined;
+
+    expect(enSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
+      "/getting-started/",
+      "/getting-started/runtimes",
+      "/getting-started/cross-origin",
+      "/getting-started/ai-agents",
+    ]);
+    expect(jaSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
+      "/ja/getting-started/",
+      "/ja/getting-started/runtimes",
+      "/ja/getting-started/cross-origin",
+      "/ja/getting-started/ai-agents",
+    ]);
+    expect(zhSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
+      "/zh/getting-started/",
+      "/zh/getting-started/runtimes",
+      "/zh/getting-started/cross-origin",
+      "/zh/getting-started/ai-agents",
+    ]);
+  });
+
   it("updates package.json description and target search keywords", () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
     expect(pkg.description).toBe("WaSHI: WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming (LP, MIP, QP, SMT)");
@@ -297,6 +390,11 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     const zhReadme = fs.readFileSync(readmeZhPath, "utf-8");
     expect(zhReadme).toContain("TypeScript 数理优化建模器");
     expect(zhReadme).toContain("面向 TypeScript / JavaScript 的数理优化与约束编程代数建模器");
+
+    for (const readme of [enReadme, jaReadme, zhReadme]) {
+      expect(readme).toContain("https://ohtaman.github.io/washi/llms.txt");
+      expect(readme).toContain("https://ohtaman.github.io/washi/llms-full.txt");
+    }
   });
 
   it("verifies emitted HTML in dist/site and dist/demo contains configured SEO tags and localized titles", () => {
@@ -329,11 +427,25 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(zhHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/zh/"');
     expect(zhHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/zh/"');
 
-    // Verify subpage canonical URLs
+    // Verify subpage canonical URLs and llms.txt / Markdown discovery links
     const subpageHtml = fs.readFileSync(path.resolve(siteDistPath, "getting-started/ai-agents.html"), "utf-8");
     expect(subpageHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/getting-started/ai-agents"');
     expect(subpageHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/getting-started/ai-agents"');
     expect(subpageHtml).toContain('property="og:type" content="article"');
+    expect(subpageHtml).toContain('link rel="describedby" href="/washi/llms.txt"');
+    expect(subpageHtml).toContain('link rel="alternate" type="text/markdown" href="/washi/getting-started/ai-agents.md"');
+
+    expect(enHtml).toContain('link rel="describedby" href="/washi/llms.txt"');
+    expect(enHtml).toContain('link rel="alternate" type="text/markdown" href="/washi/index.md"');
+    expect(fs.existsSync(path.resolve(siteDistPath, "llms.txt"))).toBe(true);
+    expect(fs.existsSync(path.resolve(siteDistPath, "index.md"))).toBe(true);
+
+    // Localized and showcase pages emit rel="describedby" to /washi/llms.txt, but no unshipped raw .md alternate link
+    const showcaseHtml = fs.readFileSync(path.resolve(siteDistPath, "showcase/index.html"), "utf-8");
+    for (const html of [jaHtml, zhHtml, showcaseHtml]) {
+      expect(html).toContain('link rel="describedby" href="/washi/llms.txt"');
+      expect(html).not.toContain('type="text/markdown"');
+    }
 
     // Verify homepages link directly (1 hop) to Playground, Apps, Games, and newly added doc pages
     for (const html of [enHtml, jaHtml, zhHtml]) {

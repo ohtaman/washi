@@ -1,19 +1,35 @@
 # 安装与入门
 
-欢迎使用 **WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface)。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）为 TypeScript / JavaScript 带来了类似于 Python **PuLP** 的代数建模方式。通过标签模板字面量（`expr`）直观地编写代数公式，并借助 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）直接在 **Node.js 与浏览器** 中求解数理优化问题。
 
-WaSHI 为 TypeScript/JavaScript 生态系统带来了类似于 Python **PuLP** 的代数建模方式。无需单独的 Python 后端或本地 C/C++ 编译环境，即可在浏览器与 Node.js 中运行 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）。
+```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
 
-### 为什么选择 TypeScript 与 WebAssembly？
+const m = new Model("production");
 
-- **消除部署瓶颈与客户端协同**：在传统的运筹优化工作流（如 Python 的 PuLP 或 Pyomo）中，将模型转化为可交互的应用通常需要部署后端服务并维护本地 C/C++ 求解器二进制文件。随着 AI 辅助编程大幅加快 UI 与应用原型的开发速度，后端基础设施往往成为交付的主要瓶颈。通过基于 Web 标准（TypeScript + WebAssembly）运行建模器与求解器，整个优化应用可以直接作为静态资源（托管在 GitHub Pages 或 Cloudflare Pages 等平台上，包含生成的 JS、Worker 与 WASM 文件；使用 Z3 时需配置 COOP/COEP 响应头）发布，并能直接在浏览器端与端侧 LLM（如 WebGPU / WebLLM）无缝配合。
-- **无需运算符重载的代数语法 (`expr`)**：由于 JavaScript 不支持运算符重载，常规库往往只能在冗长的方法链（`x.mul(30).add(y.mul(50))`）和无类型的纯字符串（`"30 * x + 50 * y"`）之间妥协。WaSHI 借鉴了参数化 SQL 模板的思路，使用标签模板字面量（`` expr`30 * ${x} + 50 * ${y} <= 40` ``）解析中缀运算符，同时将 `${x}` 直接绑定为 TypeScript 对象引用，从而兼顾公式可读性、静态类型检查、IDE 符号重命名以及多维索引访问（`${flow[i][j]}`）。
+// 1. 定义决策变量（设置合理的有限上下界 lb / ub）
+const desks = m.integer("desks", { lb: 0, ub: 100 });
+const chairs = m.integer("chairs", { lb: 0, ub: 100 });
+
+// 2. 设定目标函数与约束条件
+m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
+m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_capacity");
+m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_capacity");
+
+// 3. 求解（默认内置 HiGHS WebAssembly）并验证结果
+const status = await m.solve();
+if (m.hasPrimalSolution) {
+  const report = m.validateSolution();
+  console.log(status, report.valid); // "Optimal", true
+  console.log(`利润: ${m.objectiveValue} (书桌=${desks.value}, 椅子=${chairs.value})`); // 1100 (书桌=20, 椅子=10)
+}
+```
 
 ---
 
 ## 📦 安装
 
-使用您偏好的包管理器安装：
+默认的 **HiGHS** 求解器（LP / MIP / 凸QP）已内置随包提供，开箱即用：
 
 ::: code-group
 
@@ -35,82 +51,37 @@ bun add @ohtaman/washi
 
 :::
 
-### 可选求解器依赖
-
-默认的 **HiGHS** 求解器已内置随包提供，开箱即用。若需使用 **Z3**（进行 SMT 逻辑与冲突诊断）或 **GLPK**，请安装相应的对等依赖：
+仅在需要使用 **Z3**（SMT 逻辑约束与 Unsat Core 冲突诊断）或 **GLPK** 时安装可选依赖：
 
 ```bash
-# SMT 逻辑与不可行约束诊断
-npm install z3-solver
-
-# GLPK 求解器 (GPL-3.0)
-npm install glpk.js
+npm install z3-solver   # SMT 逻辑约束及 Unsat Core 冲突诊断
+npm install glpk.js     # GLPK 求解器 (GPL-3.0)
 ```
 
 ---
 
-## 🚀 快速上手示例
+## 💡 为什么选择 TypeScript 与 WebAssembly？
 
-以下是求解经典工厂生产资源分配问题的完整流程。
+- **跨 Node.js 与浏览器零原生编译运行**：无需配置跨平台 C/C++ 编译环境，也无需维护独立的 Python 运行时。只需一次 `npm install`，同一套建模代码即可在 **Node.js 后端 API、CLI、脚本** 以及 **浏览器** 中直接运行。
+- **轻量嵌入日常 UI 与浏览器标准 API**：不仅限于本地分析脚本，您可以零后端运维成本发布 **打开链接即可使用的 Web 小工具、轻量游戏或 Chrome 扩展**。还能在无需网络往返、数据不出本地的前提下，将数理优化直接接入拖拽交互 UI，或与屏幕/摄像头采集、语音识别（Web Speech API）等 **浏览器标准功能** 即时联动。
+- **从应用数据到模型的一致类型安全**：利用 TypeScript 类型系统避免优化建模中常见的下标错位与字典键名拼写错误。通过带类型的变量字典（`Record<K, Var>`）与引用绑定（`` expr`30 * ${qty.desk} <= 40` ``），模型可与应用侧数据结构无缝衔接，保留编译期变量/键检查、IDE 自动补全与符号重命名。
+- **AI 辅助开发与 LLM 协同的高契合度**：应用逻辑与优化模型统一在 **单一 TypeScript 代码库** 中，无需跨越 Python 服务边界即可在同一测试环境中完成端到端验证，并轻松部署为静态站点或单一服务。这种易于测试与部署的闭环非常适合 AI 辅助编程；同时在运行时，也能在同一运行环境中将 LLM 的灵活条件提取与求解器的严格约束满足及冲突诊断（Unsat Core）简洁结合。
 
-### 1. 引入核心类与标签函数
+---
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-```
+## 🔍 基本工作流要点
 
-### 2. 初始化模型实例
+开篇代码涵盖了 WaSHI 建模的三个核心要点：
 
-```typescript
-const model = new Model();
-```
-
-### 3. 定义决策变量
-
-提供合理的有限上下界（`lb` 与 `ub`）有助于强化 MIP 预处理（Presolve）与自动推导紧凑的 Big-M：
-
-```typescript
-const x = model.integer("x", { lb: 0, ub: 100 });
-const y = model.integer("y", { lb: 0, ub: 100 });
-```
-
-### 4. 设定目标函数
-
-使用 `maximize()` 与 `expr` 标签模板字面量声明式设定目标函数：
-
-```typescript
-// 最大化 30*x + 50*y
-model.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
-```
-
-### 5. 添加约束条件
-
-使用 `expr` 标签模板字面量与 `constraint` 添加不等式或等式约束：
-
-```typescript
-model.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_capacity");
-model.constraint(expr`2 * ${x} + ${y} <= 50`, "labor_capacity");
-```
-
-### 6. 异步求解、验证与结果获取
-
-```typescript
-const status = await model.solve();
-
-if (model.hasPrimalSolution) {
-  const report = model.validateSolution();
-  console.log("状态:", status, "| 验证:", report.valid); // "Optimal" | true
-  console.log("最优目标值:", model.objectiveValue); // 1100
-  console.log(`最优解: x = ${x.value}, y = ${y.value}`); // x = 20, y = 10
-}
-```
+1. **为变量提供合理的有限上下界（`lb`, `ub`）**：使用 `m.continuous` / `m.integer` / `m.binary` 定义变量时，指定有限上下界有助于强化 MIP 预处理（Presolve）并为逻辑约束自动推导紧凑的 Big-M。
+2. **用 `expr` 编写目标函数与约束**：使用 `` m.objective(maximize(expr`...`)) `` 与 `` m.constraint(expr`... <= ...`, "名称") ``。为约束命名可在模型不可行（Infeasible）时直接定位冲突规则。
+3. **检查 `hasPrimalSolution` 并调用 `validateSolution()`**：在 `await m.solve()` 之后，先通过 `m.hasPrimalSolution` 确认存在可行解再读取变量的 `.value`；调用 `m.validateSolution()` 可在容差范围内独立校验边界、整数性与约束满足情况。
 
 ---
 
 ## 🧭 下一步
 
-- [AI 编程助手快速参考](/zh/getting-started/ai-agents)：面向 AI 编程代理的 API 签名与部署要点速查
-- [运行时环境配置](/zh/getting-started/runtimes)：Node.js、现代打包工具、浏览器 ESM、CDN 与离线部署说明
-- [建模指南](/zh/guide/variables)：决策变量、代数表达式 (`expr`)、约束条件与解验证 (`validateSolution`)
-- [求解器矩阵](/zh/solvers/)：HiGHS、Z3、GLPK 与自定义求解器插件对比
-- [实际案例与 API 索引](/zh/examples/)：9 个可在页面内直接运行的优化与逻辑建模示例
+- **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与不可行冲突诊断（Unsat Core）
+- **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 11 个可在页面内直接运行的建模示例
+- **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与可选 Z3、GLPK 求解器的特性对比与切换方式
+- **[运行时环境配置](/zh/getting-started/runtimes)**：Node.js、Vite / Next.js 打包工具、CDN 与静态托管配置说明
