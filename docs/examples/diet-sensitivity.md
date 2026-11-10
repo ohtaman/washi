@@ -55,10 +55,12 @@ async function runDietSensitivity() {
   m.objective(minimize(dot(costs, srv)));
 
   // Nutritional constraints defined declaratively with expr and constraint()
-  m.constraint(expr`${dot(cals, srv)} >= 2000`, "min_calories")
-   .constraint(expr`${dot(prots, srv)} >= 105`,  "min_protein")
-   .constraint(expr`${dot(calcs, srv)} >= 1000`, "min_calcium")
-   .constraint(expr`${dot(irons, srv)} >= 18`,   "min_iron");
+  const nutConstraints = [
+    m.constraint(expr`${dot(cals, srv)} >= 2000`, "min_calories"),
+    m.constraint(expr`${dot(prots, srv)} >= 105`,  "min_protein"),
+    m.constraint(expr`${dot(calcs, srv)} >= 1000`, "min_calcium"),
+    m.constraint(expr`${dot(irons, srv)} >= 18`,   "min_iron"),
+  ];
 
   const status = await m.solve();
 
@@ -69,11 +71,8 @@ async function runDietSensitivity() {
     console.log(`  ${f.name.padEnd(8)}: value=${v.value?.toFixed(2)}, reducedCost=${v.reducedCost?.toFixed(4)}`);
   }
   console.log("--- Nutritional Constraints (Dual & Slack) ---");
-  for (const name of ["min_calories", "min_protein", "min_calcium", "min_iron"]) {
-    const c = m.getConstraintByName(name);
-    if (c) {
-      console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
-    }
+  for (const c of nutConstraints) {
+    console.log(`  ${c.name.padEnd(13)}: dual=$${c.dual?.toFixed(4)}, slack=${Math.abs(c.slack ?? 0).toFixed(2)}`);
   }
 }
 

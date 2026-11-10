@@ -122,8 +122,8 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 // 使用 maximize() 或 minimize() 设置目标函数
 m.objective(maximize(expr`30 * ${x} + 50 * ${n}`));
 
-// 将约束注册到模型
-m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
+// 将约束注册到模型（返回已注册的 Constraint / BoolExpr 或其数组）
+const limit = m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
 
 // 指示约束 (MIP Big-M 转化: b === 1 => x <= 50)
 m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });

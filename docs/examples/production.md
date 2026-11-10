@@ -34,9 +34,9 @@ async function runProductionOptimization() {
   // Objective: Maximize total profit ($45 per chair, $80 per table)
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // Resource constraints: declarative formulas via expr and fluent constraint()
-  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
-   .constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  // Resource constraints: declarative formulas via expr and constraint()
+  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
+  m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
   const status = await m.solve();
 

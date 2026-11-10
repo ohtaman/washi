@@ -42,7 +42,7 @@ Select the solver engine and execution method that match the problem class:
 3. **Register objective and named constraints**:
    - Constructing an `expr` or `.le()` / `.ge()` / `.eq()` object does **not** attach it to the model.
    - Register the objective with `m.objective(maximize(e))` or `m.objective(minimize(e))`.
-   - Register every constraint with a descriptive name: `m.constraint(c, "resource_limit")` or `m.indicator(binVar, c, { activeValue: 1, name: "cap_when_open" })`. Descriptive names are essential for LP inspection and conflict diagnosis (`conflicts` / `unsatCore`).
+   - Register every constraint with a descriptive name: `const limit = m.constraint(c, "resource_limit")` (returns the registered `Constraint` / `BoolExpr`, or array for batch inputs) or `m.indicator(binVar, c, { activeValue: 1, name: "cap_when_open" })`. Descriptive names are essential for LP inspection and conflict diagnosis (`conflicts` / `unsatCore`).
 
 ---
 

@@ -216,7 +216,7 @@ describe("README.md Code Snippets Validation", () => {
 
       policyModel.constraint(deployEurope.implies(complianceGDPR), "r1_gdpr");
       policyModel.constraint(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
-      policyModel.constraint(deployEurope).constraint(deployUS).constraint(complianceGDPR);
+      policyModel.constraint([deployEurope, deployUS, complianceGDPR]);
 
       if (forceConflict) {
         policyModel.constraint(budgetTierHigh.not(), "r3_low_budget_cap");

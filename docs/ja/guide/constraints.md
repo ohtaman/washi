@@ -219,16 +219,15 @@ console.log("不足人数:", shortage.value);      // 1 (Infeasible にならず
 
 ## 📐 双対変数（潜在価格）とスラックの取得
 
-連続変数の線形計画問題（LP）では、求解後に各制約の潜在価格（`dual`）と余剰（`slack`）を取得できます：
+連続変数の線形計画問題（LP）では、求解後に各制約（`m.constraint()` の戻り値、または `m.getConstraintByName()` で取得）の潜在価格（`dual`）と余剰（`slack`）を取得できます：
 
 ```typescript
-m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
 
 await m.solve();
 
-const woodConstraint = m.getConstraintByName("wood");
-console.log("潜在価格 (dual):", woodConstraint?.dual);
-console.log("余剰 (slack):", woodConstraint?.slack);
+console.log("潜在価格 (dual):", woodConstraint.dual);
+console.log("余剰 (slack):", woodConstraint.slack);
 console.log("線形制約の総数:", m.numConstrs);
 ```
 

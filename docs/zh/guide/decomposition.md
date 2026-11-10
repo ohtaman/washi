@@ -24,10 +24,9 @@ WaSHI 提供细粒度的建模原语，用于获取对偶信息与动态修改�
 求解线性规划（LP）后，可获取约束右端常数项（RHS）变化时的边际效益：
 
 ```typescript
-m.constraint(expr`${x} + ${y} <= 10`, "capacity");
+const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
-const c = m.getConstraintByName("capacity")!;
 console.log(c.dual); // 对偶变量值 / 影子价格
 console.log(m.solution?.duals.capacity);
 ```
@@ -99,10 +98,9 @@ const pB = master.integer("init_B", { lb: 0 }); // 方案B：每卷切2个B（36
 const pC = master.integer("init_C", { lb: 0 }); // 方案C：每卷切6个C（16*6 = 96 <= 100）
 
 master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
-master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
-master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
-master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
-const [demandA, demandB, demandC] = master.constraints;
+const demandA = master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
+const demandB = master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
+const demandC = master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 
 // 2. 调用 master.solveColumnGeneration() 求解
 const result = await master.solveColumnGeneration({
@@ -290,10 +288,9 @@ for (const cust of customers) {
 }
 master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr())));
 
-for (let i = 0; i < customers.length; i++) {
-  master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${customers[i].id}`);
-}
-const visitConstrs = master.constraints;
+const visitConstrs = customers.map((cust, i) =>
+  master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${cust.id}`)
+);
 
 // 2. 列生成法求解
 const result = await master.solveColumnGeneration({

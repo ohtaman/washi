@@ -23,11 +23,11 @@ async function main() {
   // Objective: Maximize profit ($45/chair, $80/table)
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // Resource Constraints via Tagged Template Literals and fluent constraint():
+  // Resource Constraints via Tagged Template Literals and constraint():
   // Mahogany wood: 5 sq ft per chair, 20 sq ft per table <= 400 sq ft
   // Carpentry labor: 10 hrs per chair, 15 hrs per table <= 450 hrs
-  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
-   .constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
+  m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
   console.log("Solving with default HiGHS WebAssembly solver...");
   const status = await m.solve();

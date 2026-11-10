@@ -1234,7 +1234,7 @@ export class Model {
 
   /**
    * Register linear comparison constraint(s) (`<=`, `>=`, `==`), SMT logical constraint(s) (`BoolVar`, `BoolExpr`),
-   * or constraint formula string(s) on the model. Chainable: returns `this`.
+   * or constraint formula string(s) on the model, returning the registered constraint(s).
    *
    * **Formulation & solver capability notes**:
    * - Rejects raw arithmetic expressions (`LinExpr`, `QuadExpr`) without a comparison operator and quadratic constraints.
@@ -1248,23 +1248,31 @@ export class Model {
    * const chairs = m.integer("chairs", { lb: 0 });
    * const x = m.continuous(3, { lb: 0, prefix: "x" });
    *
-   * m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood");
-   * m.constraint(x.map((v) => expr`${v} <= 10`));
-   * m.constraint(desks.ge(2)).constraint(chairs.ge(4));
+   * const wood = m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood");
+   * const caps = m.constraint(x.map((v) => expr`${v} <= 10`));
+   * m.constraint(desks.ge(2));
+   * m.constraint(chairs.ge(4));
    * ```
    */
-  constraint(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): this;
-  constraint(constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>): this;
+  constraint(constraint: Constraint | LinExpr | QuadExpr | string, name?: string): Constraint;
+  constraint<T extends BoolExpr>(constraint: T, name?: string): T;
+  constraint(constraint: ConstraintItem | LinExpr | QuadExpr, name?: string): Constraint | BoolExpr;
+  constraint(constraints: ReadonlyArray<Constraint | LinExpr | QuadExpr | string>): Constraint[];
+  constraint<T extends BoolExpr>(constraints: ReadonlyArray<T>): T[];
+  constraint(
+    constraints: ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>
+  ): Array<Constraint | BoolExpr>;
   constraint(
     item: ConstraintItem | LinExpr | QuadExpr | ReadonlyArray<ConstraintItem | LinExpr | QuadExpr>,
     name?: string
-  ): this {
+  ): Constraint | BoolExpr | Array<Constraint | BoolExpr> {
     if (Array.isArray(item)) {
       return this.runTransactionalBatch(() => {
+        const added: Array<Constraint | BoolExpr> = [];
         for (const elem of item) {
-          this.constraint(elem);
+          added.push(this.constraint(elem));
         }
-        return this;
+        return added;
       });
     }
     if (
@@ -1288,8 +1296,7 @@ export class Model {
         `Cannot add numeric variable "${item.name}" directly as a constraint without a comparison operator (<=, >=, ==). Numeric variables require a comparison such as expr\`\${x} <= 10\` or x.le(10), whereas propositional BoolVar variables must be created with m.bool().`
       );
     }
-    this.addConstraint(item as Constraint | BoolExpr | string, name);
-    return this;
+    return this.addConstraint(item as Constraint | BoolExpr | string, name);
   }
 
   /**

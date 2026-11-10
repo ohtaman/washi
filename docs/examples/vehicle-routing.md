@@ -144,10 +144,9 @@ async function runCVRP() {
   master.objective(minimize(sum(initialRoutes)));
 
   // Each customer must be visited by exactly 1 vehicle
-  for (let i = 0; i < customers.length; i++) {
-    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${customers[i].id}`);
-  }
-  const visitConstrs = master.constraints;
+  const visitConstrs = customers.map((c, i) =>
+    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${c.id}`)
+  );
 
   console.log(`Initial state: 50 naive single-customer routes (50 vehicles).`);
   console.log("Solving via Column Generation with dual-directed heuristic pricing...");

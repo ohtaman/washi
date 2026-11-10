@@ -144,10 +144,9 @@ async function runCVRP() {
   master.objective(minimize(sum(initialRoutes)));
 
   // 客户覆盖约束：每个客户必须且仅被服务一次
-  for (let i = 0; i < customers.length; i++) {
-    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${customers[i].id}`);
-  }
-  const visitConstrs = master.constraints;
+  const visitConstrs = customers.map((c, i) =>
+    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${c.id}`)
+  );
 
   console.log(`初始状态：50 条单点直达专车路线。`);
   console.log("使用对偶影子价格引导启发式定价的列生成算法求解中...");
