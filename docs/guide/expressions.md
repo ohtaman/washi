@@ -130,26 +130,27 @@ m.objective(minimize(expr`dot(${costs}, ${ship})`));
 
 ---
 
-## ✨ Idiomatic Formulation Patterns (Zero Boilerplate)
+## Formulation Patterns
 
-By combining `expr`, `sum(...)`, `dot(..., ...)`, and `.map()`, you can write complete optimization models without `for` loops, `Object.values()`, or nested `${sum(...)}` calls.
+By combining `expr`, `sum(...)`, `dot(..., ...)`, and `.map()`, you can express common optimization patterns directly without manual loops or `Object.values()`.
 
-### 1. The Golden Rule of `expr`
-> **Put mathematical operators, `sum(...)`, `dot(..., ...)`, and comparisons (`<=`, `>=`, `==`) in the template string; put variables and data containers inside `${...}`.**
+### 1. Separating Syntax and Data in `expr`
+
+Write mathematical operators, `sum(...)`, `dot(..., ...)`, and comparisons (`<=`, `>=`, `==`) in the template string, and interpolate variables and data containers via `${...}`:
 
 ```typescript
-// ❌ Verbose: nested template tags and Object.values()
+// Nested calls and Object.values() (verbose)
 m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
 m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
 
-// ✅ Idiomatic: sum() and dot() directly inside expr
+// Direct sum() and dot() inside expr (recommended)
 m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
 m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
 ```
 
-### 2. 1-Line Idiom Cheat Sheet
+### 2. Common Aggregation & Constraint Patterns
 
-| Goal | Mathematical Formula | Idiomatic WaSHI |
+| Pattern | Mathematical Formula | WaSHI Expression |
 | :--- | :--- | :--- |
 | **Total sum** (1D/2D `Array` or `Record`) | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
 | **Inner product** (1D vector or 2D Frobenius) | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
@@ -159,7 +160,7 @@ m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
 | **2D row sums** (for each row $f$) | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
 | **2D column sums** (for each col $s$) | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
 
-### 3. Before vs. After: Transportation Problem
+### 3. Example: Transportation Problem
 
 ```typescript
 const factories = ["Tokyo", "Osaka"] as const;

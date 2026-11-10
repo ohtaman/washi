@@ -130,26 +130,27 @@ m.objective(minimize(expr`dot(${costs}, ${ship})`));
 
 ---
 
-## ✨ きれいに書くための定式化パターン集（Zero Boilerplate）
+## 定式化パターン
 
-`expr`、`sum(...)`、`dot(..., ...)`、および `.map()` を組み合わせることで、`for` ループや `Object.values()`、ネストした `${sum(...)}` を一切使わずに数理モデルを記述できます。
+`expr`、`sum(...)`、`dot(..., ...)`、および `.map()` を組み合わせることで、`for` ループや `Object.values()`、ネストした `${sum(...)}` を使わずに数理モデルを記述できます。
 
-### 1. `expr` の黄金ルール
-> **演算子・`sum(...)`・`dot(..., ...)`・比較記号（`<=`, `>=`, `==`）は文字列側に書き、`${...}` には変数・定数・配列・辞書（データ）だけを入れる。**
+### 1. `expr` における演算子とデータの分離
+
+演算子・`sum(...)`・`dot(..., ...)`・比較記号（`<=`, `>=`, `==`）はテンプレート文字列側に記述し、`${...}` には変数・定数・コンテナ（配列・辞書）を渡します：
 
 ```typescript
-// ❌ 冗長な書き方: テンプレートタグのネストや Object.values()
+// 従来の記述（テンプレートのネストと Object.values()）
 m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
 m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
 
-// ✅ 推奨される書き方: sum() と dot() を expr の中に直接書く
+// sum() と dot() を expr 内に直接記述（推奨）
 m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
 m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
 ```
 
-### 2. 1行イディオム早見表
+### 2. 主な集計・制約パターン
 
-| やりたいこと | 数式イメージ | WaSHI の推奨イディオム |
+| 用途 | 数式 | WaSHI での記述例 |
 | :--- | :--- | :--- |
 | **全体の合計**（1D/2D の配列・辞書） | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
 | **内積**（1D ベクトル / 2D フロベニウス内積） | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
@@ -159,7 +160,7 @@ m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
 | **2次元変数の行和**（各拠点 $f$ の出荷上限） | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
 | **2次元変数の列和**（各店舗 $s$ の需要充足） | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
 
-### 3. Before / After：輸送問題（Transportation Problem）
+### 3. 例：輸送問題（Transportation Problem）
 
 ```typescript
 const factories = ["Tokyo", "Osaka"] as const;

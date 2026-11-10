@@ -130,26 +130,27 @@ m.objective(minimize(expr`dot(${costs}, ${ship})`));
 
 ---
 
-## ✨ 地道建模模式指南（零样板代码）
+## 建模模式
 
-结合 `expr`、`sum(...)`、`dot(..., ...)` 与 `.map()`，您可以编写无需 `for` 循环、`Object.values()` 或嵌套 `${sum(...)}` 的精炼优化模型。
+结合 `expr`、`sum(...)`、`dot(..., ...)` 与 `.map()`，可以无需手动 `for` 循环、`Object.values()` 或嵌套 `${sum(...)}` 即可编写常见的优化模型。
 
-### 1. `expr` 的黄金法则
-> **将数学运算符、`sum(...)`、`dot(..., ...)` 和比较符号（`<=`、`>=`、`==`）写在模板字符串中；将变量、常数和容器（数组/字典）放在 `${...}` 内。**
+### 1. 在 `expr` 中分离运算符与数据
+
+将数学运算符、`sum(...)`、`dot(..., ...)` 和比较符号（`<=`、`>=`、`==`）写在模板字符串中，并通过 `${...}` 传入变量、常数和容器（数组/字典）：
 
 ```typescript
-// ❌ 繁琐写法：嵌套模板标签与 Object.values()
+// 嵌套调用与 Object.values()（较繁琐）
 m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
 m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
 
-// ✅ 地道写法：在 expr 中直接书写 sum() 与 dot()
+// 在 expr 内直接书写 sum() 与 dot()（推荐）
 m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
 m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
 ```
 
-### 2. 一行惯用法速查表
+### 2. 常见聚合与约束模式
 
-| 建模目标 | 数学公式 | WaSHI 地道写法 |
+| 建模目标 | 数学公式 | WaSHI 写法 |
 | :--- | :--- | :--- |
 | **全体求和**（1D/2D 数组或字典） | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
 | **内积**（1D 向量或 2D Frobenius 内积） | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
@@ -159,7 +160,7 @@ m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
 | **二维变量按行求和**（各工厂供应上限） | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
 | **二维变量按列求和**（各门店需求满足） | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
 
-### 3. Before / After：运输问题（Transportation Problem）
+### 3. 示例：运输问题（Transportation Problem）
 
 ```typescript
 const factories = ["Tokyo", "Osaka"] as const;
