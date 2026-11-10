@@ -23,6 +23,8 @@ export {
   type DotTerm,
   type DotVarContainer,
   type DotCoeffContainer,
+  type SumTerm,
+  type SumContainer,
   sum,
   dot,
 } from "./expression.js";
@@ -46,6 +48,10 @@ export {
   expr,
   type ParsedExpr,
   type ExprResolver,
+  type ExprContainerLeaf,
+  type ExprRecordContainer,
+  type ExprMapperFn,
+  type ExprInterpolation,
 } from "./parser.js";
 export {
   generateLpString,

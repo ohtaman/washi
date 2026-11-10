@@ -37,35 +37,43 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 
 ### `expr` でサポートされる構文
 - **加算と減算**: `${x} + ${y} - 5`
-- **スカラー乗算**: `4 * ${x}`, `${x} * 4`
+- **スカラー乗算と除算**: `4 * ${x}`, `${x} / 2`
 - **変数同士の乗算（2次項）**: `${x} * ${y}`, `2 * ${x} * ${x}`
 - **べき乗・二乗**: `${x}^2`, `${x}**2`
-- **単項マイナス**: `-${x} + 10`
+- **単項プラスとマイナス**: `-${x} + 10`, `+${x}`
 - **丸括弧**: `2 * (${x} + ${y})`
-- **ネスト式**: 変数、数値、`sum()` の結果、およびネストした式を自然に埋め込めます。
+- **集計関数 (`sum` & `dot`)**: `sum(${qty}) <= 100`, `dot(${profit}, ${qty}) - 20 * ${lineOpen}`, `sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`
+- **コンテナの要素積・要素ごとの四則演算**: `sum((${price} - ${cost}) * ${qty})`, `sum((${x} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
+- **ネスト式**: 変数、数値、`Array` / `Record` コンテナ（`sum` または `dot` の内部）、およびネストした式を自然に埋め込めます。
 
 > [!NOTE]
 > 関係演算子（`<=`, `>=`, `==`）を含む比較制約では、`expr`（例: ``expr`${x} + 2 * ${y} <= 40` ``）はファーストクラスの `Constraint` を返します。
-> 比較演算子を含まない算術式では、`expr` は線形式および2次式（次数2以下）を統一的に扱います（2次項が含まれる場合は `QuadExpr` を返し、すべて線形項の場合は `LinExpr` を返します）。次数3以上の非線形多項式（例: ``${x} * ${y} * ${z}``, ``${x}^3``）や非線形制約（例: ``${x} * ${y} <= 10``）は、MILP/LP/QP の定式化要件（線形制約かつ次数2以下の目的関数）に基づきエラーとなります。
+> 比較演算子を含まない算術式では、`expr` は線形式および2次式（次数2以下）を統一的に扱います（2次項が含まれる場合は `QuadExpr` を返し、すべて線形項の場合は `LinExpr` を返します）。埋め込まれた `Array` や `Record` コンテナは、`sum(...)` または `dot(..., ...)` でスカラーに縮約する必要があります。次数3以上の非線形多項式（例: ``${x} * ${y} * ${z}``, ``${x}^3``）や非線形制約（例: ``${x} * ${y} <= 10``）は、MILP/LP/QP の定式化要件（線形制約かつ次数2以下の目的関数）に基づきエラーとなります。
 
 ---
 
 ## ⚡ 高速な総和関数 (`sum`)
 
-変数の配列や反復集合に対して効率的に総和を計算します：
+1次元・2次元の `Array`, `Iterable`, `Record`（辞書）コンテナに対して、`` expr`sum(...)` `` の内部またはスタンドアロンの `sum()` 関数で直接総和を計算できます：
 
 ```typescript
-import { sum } from "@ohtaman/washi";
+import { expr, sum } from "@ohtaman/washi";
 
-const items = ["A", "B", "C"];
+const items = ["A", "B", "C"] as const;
 const weights = { A: 10, B: 20, C: 30 };
 const x = m.binary(items);
 
-// 1. マッピングコールバック関数による変換集計:
+// 1. expr 内で Record や配列を直接集計（Object.values() 不要）:
+m.constraint(expr`sum(${x}) <= 2`, "max_selected");
+
+// 2. expr`sum(...)` 内での要素積・要素ごとの四則演算:
+const weightedExpr = expr`sum(${weights} * ${x})`;
+
+// 3. マッピングコールバック関数による変換集計:
 const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
 
-// 2. 配列の直接総和:
-const count = sum(Object.values(x));
+// 4. スタンドアロン sum() でも 1D/2D Record や配列を直接集計可能:
+const count = sum(x);
 ```
 
 `sum()` は AST パースのオーバーヘッドなしに $O(N)$ 線形時間で高速に動作します。
@@ -77,7 +85,7 @@ const count = sum(Object.values(x));
 
 ## 🎯 内積関数 (`dot`)
 
-`dot(a, b)` ヘルパー関数は、数値係数（`number`）と決定変数または1次式（`Var | LinExpr`）の線形結合を、引数の順序を問わず（`dot(coeffs, vars)` または `dot(vars, coeffs)`）計算します。
+`dot(a, b)`（`` expr`dot(${a}, ${b})` `` の内部およびスタンドアロン関数 `dot(a, b)` の両方で使用可能）は、数値係数（`number`）と決定変数または1次式（`Var | LinExpr`）の線形結合を、引数の順序を問わず（`dot(coeffs, vars)` または `dot(vars, coeffs)`）計算します。
 
 サポートされる 1次元・2次元コンテナ構造：
 - **1次元配列**: `number[]` $\times$ `(Var | LinExpr)[]`
@@ -90,31 +98,84 @@ const count = sum(Object.values(x));
 
 ### 1次元ベクトルの内積
 ```typescript
-import { dot } from "@ohtaman/washi";
+import { expr, dot } from "@ohtaman/washi";
 
 const profits = { desk: 30, chair: 50 };
-const vars = m.integer(["desk", "chair"]);
+const vars = m.integer(["desk", "chair"] as const);
 
-// 30 * vars.desk + 50 * vars.chair を計算
-const totalProfit = dot(profits, vars);
+// expr 内で 30 * vars.desk + 50 * vars.chair を計算（dot(profits, vars) と同等）
+const totalProfit = expr`dot(${profits}, ${vars})`;
 ```
 
-### 2次元行列の内積
+### 2次元行列の内積（フロベニウス内積）
 2次元配列（`m.continuous(rows, cols)`）、ネストされた辞書（`m.continuous(rowKeys, colKeys)`）、または混合2次元コンテナと直接連携します：
 
 ```typescript
-const factories = ["Tokyo", "Osaka"];
-const stores = ["StoreA", "StoreB"];
+const factories = ["Tokyo", "Osaka"] as const;
+const stores = ["StoreA", "StoreB"] as const;
 
 const costs = {
   Tokyo: { StoreA: 4, StoreB: 7 },
   Osaka: { StoreA: 8, StoreB: 3 },
 };
 
-const ship = m.continuous(factories, stores);
+const ship = m.continuous(factories, stores, { lb: 0 });
 
-// 総輸送コストを1行で記述:
-m.objective(minimize(dot(costs, ship)));
+// 総輸送コストを1行で記述（expr`sum(${costs} * ${ship})` と同等）:
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
+```
+
+> [!NOTE]
+> **2次元の `dot(A, B)` はフロベニウス内積（Frobenius Inner Product）です**: 2次元配列や2次元辞書に対する `dot(A, B)` は、行列積 $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$ ではなく、対応する全要素の積和スカラー $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$（`` expr`sum(${A} * ${B})` `` と同等）を計算します。
+
+---
+
+## ✨ きれいに書くための定式化パターン集（Zero Boilerplate）
+
+`expr`、`sum(...)`、`dot(..., ...)`、および `.map()` を組み合わせることで、`for` ループや `Object.values()`、ネストした `${sum(...)}` を一切使わずに数理モデルを記述できます。
+
+### 1. `expr` の黄金ルール
+> **演算子・`sum(...)`・`dot(..., ...)`・比較記号（`<=`, `>=`, `==`）は文字列側に書き、`${...}` には変数・定数・配列・辞書（データ）だけを入れる。**
+
+```typescript
+// ❌ 冗長な書き方: テンプレートタグのネストや Object.values()
+m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
+m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
+
+// ✅ 推奨される書き方: sum() と dot() を expr の中に直接書く
+m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
+m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
+```
+
+### 2. 1行イディオム早見表
+
+| やりたいこと | 数式イメージ | WaSHI の推奨イディオム |
+| :--- | :--- | :--- |
+| **全体の合計**（1D/2D の配列・辞書） | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
+| **内積**（1D ベクトル / 2D フロベニウス内積） | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
+| **要素ごとの差・積の合計**（粗利など） | $\sum_i (p_i - c_i) \cdot x_i$ | `` expr`sum((${price} - ${cost}) * ${x})` `` |
+| **最小二乗（QP 目的関数）** | $\sum_i (x_i - t_i)^2$ | `` expr`sum((${x} - ${target})^2)` `` |
+| **要素ごとの一括制約**（全 $i \in I$） | $a_i x_i \le b_i \quad (\forall i)$ | `` m.constraint(items.map((i) => expr`${a[i]} * ${x[i]} <= ${b[i]}`)) `` |
+| **2次元変数の行和**（各拠点 $f$ の出荷上限） | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
+| **2次元変数の列和**（各店舗 $s$ の需要充足） | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
+
+### 3. Before / After：輸送問題（Transportation Problem）
+
+```typescript
+const factories = ["Tokyo", "Osaka"] as const;
+const stores = ["S1", "S2", "S3"] as const;
+const ship = m.continuous(factories, stores, { lb: 0 });
+
+// 目的関数：全ルートの輸送コスト総和を最小化
+m.objective(minimize(expr`dot(${costMat}, ${ship})`));
+
+// 各工場の供給上限（行ごとの合計）
+m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`));
+
+// 各店舗の需要充足（列ごとの合計）
+m.constraint(
+  stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)
+);
 ```
 
 ---

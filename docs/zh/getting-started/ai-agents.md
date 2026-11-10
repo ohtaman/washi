@@ -103,12 +103,12 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 ### 步骤 2：构建表达式 (`expr`, `sum`, `dot`)
 
 - **统一 `expr` 模板标签**:
-  - 线性表达式（`LinExpr`）: `` expr`30 * ${x} + 50 * ${n} - 10` ``
-  - 二次表达式（`QuadExpr`）: `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` ``（支持凸 QP 目标函数中的变量相乘与平方项）。
-  - 线性约束（`Constraint`）: `` expr`${x} + 2 * ${n} <= 40` ``（支持 `<=`、`>=`、`==` 和 `=`）。
-- **聚合函数**:
-  - `sum(iterable, mapper?)` 对 `Var` / `LinExpr` / `number` 的 `Iterable`（例如 `Var[]`、`grid.flat()` 或 `Object.values(record)`）求和。
-  - `dot(a, b)` 计算匹配的一维数组、二维数组（`number[][]` / `Var[][]`）、普通字典（`Record<string, ...>`）或混合 Array/Record 容器的内积，操作数顺序不限。
+  - 线性表达式（`LinExpr`）: `` expr`30 * ${x} + 50 * ${n} - 10` ``、`` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``、`` expr`sum((${price} - ${cost}) * ${byItem})` ``
+  - 二次表达式（`QuadExpr`）: `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` ``、`` expr`sum((${vec} - ${target})^2)` ``（支持凸 QP 目标函数中的变量相乘与平方项）。
+  - 线性约束（`Constraint`）: `` expr`${x} + 2 * ${n} <= 40` ``、`` expr`sum(${byItem}) <= 100` ``（支持 `<=`、`>=`、`==` 和 `=`）。
+- **聚合函数与逐元素算术运算**:
+  - `sum(containerOrItems, mapper?)`（可在 `` expr`sum(...)` `` 内部或独立函数 `sum(...)` 中使用）对一维/二维 `Array`、`Iterable` 或普通字典 `Record`（无需 `Object.values(record)`）求和。在 `` expr`sum(...)` `` 内部还支持容器逐元素四则运算与平方（`+`、`-`、`*`、`/`、`^2`）。
+  - `dot(a, b)`（可在 `` expr`dot(${a}, ${b})` `` 内部或独立函数 `dot(a, b)` 中使用）计算匹配的一维数组、二维数组（`number[][]` / `Var[][]`，计算 Frobenius 内积 $\sum_{i,j} A_{i,j} B_{i,j}$）、普通字典（`Record<string, ...>`）或混合 Array/Record 容器的内积，操作数顺序不限。
 - **链式方法**:
   - 算术运算（在 `LinExpr` 和 `QuadExpr` 上支持；`Var` 支持 `.add()`、`.sub()`、`.mul()`、`.neg()`）: `.add(other)`、`.sub(other)`、`.mul(other)`、`.div(scalar)`、`.neg()`
   - 比较运算（在 `Var` 和 `LinExpr` 上支持）: `.le(rhs, name?)`、`.ge(rhs, name?)`、`.eq(rhs, name?)`
@@ -161,10 +161,10 @@ export async function runMipExample() {
   const qty = m.integer(products, { lb: 0, ub: 100 });
   const setup = m.binary("setup");
 
-  m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${setup}`));
-  m.constraint(expr`${dot(woodPerUnit, qty)} <= 40`, "wood_cap");
-  m.constraint(expr`${dot(laborPerUnit, qty)} <= 50`, "labor_cap");
-  m.indicator(setup, expr`${sum(Object.values(qty))} <= 0`, {
+  m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${setup}`));
+  m.constraint(expr`dot(${woodPerUnit}, ${qty}) <= 40`, "wood_cap");
+  m.constraint(expr`dot(${laborPerUnit}, ${qty}) <= 50`, "labor_cap");
+  m.indicator(setup, expr`sum(${qty}) <= 0`, {
     activeValue: 0,
     name: "require_setup",
   });

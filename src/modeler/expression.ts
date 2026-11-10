@@ -335,111 +335,6 @@ export class LinExpr {
  */
 export type Expr = LinExpr | QuadExpr;
 
-/**
- * Sum an `Iterable` of `Var` / `LinExpr` / `number` items, an `Iterable` with a mapping function,
- * or a numeric count `n` with an index mapper `(0 .. n - 1)` into a single `LinExpr`.
- *
- * **Formulation notes**:
- * - Produces a linear expression (`LinExpr`).
- * - Passing comparison `Constraint`s (`<=`, `>=`, `==`) or non-linear `QuadExpr` terms throws an Error
- *   (quadratic terms are supported in objectives only via `expr` or `.mul()`).
- *
- * @example
- * ```ts
- * const m = new Model("SumExample");
- * const x = m.continuous(3, { lb: 0, prefix: "x" });
- * const byItem = m.integer(["desk", "chair"] as const, { lb: 0 });
- *
- * // Sum an array or iterable directly
- * m.constraint(expr`${sum(x)} <= 100`, "total_x");
- * m.constraint(expr`${sum(Object.values(byItem))} <= 50`, "total_items");
- *
- * // Sum with a mapper or over a count range (0..2)
- * const weighted = sum(3, (i) => expr`${i + 1} * ${x[i]}`);
- * m.objective(maximize(weighted));
- * ```
- */
-export function sum(
-  count: number,
-  mapFn: (index: number) => LinExpr | QuadExpr | Constraint | Var | number
-): LinExpr;
-export function sum<T = any>(
-  items: Iterable<T>,
-  mapFn?: (item: T, index: number) => LinExpr | QuadExpr | Constraint | Var | number
-): LinExpr;
-export function sum<T = any>(
-  arg1: number | Iterable<T>,
-  arg2?: (item: any, index: number) => LinExpr | QuadExpr | Constraint | Var | number
-): LinExpr {
-  const terms = new Map<Var, number>();
-  let constant = 0;
-
-  function addVal(val: LinExpr | QuadExpr | Constraint | Var | number | undefined | null) {
-    if (val === null || val === undefined) return;
-    if (typeof val === "number") {
-      constant += val;
-    } else if (
-      val instanceof Constraint ||
-      (typeof val === "object" && "sense" in val && "lhs" in val && "rhs" in val)
-    ) {
-      throw new Error(
-        "Cannot sum a constraint comparison (<=, >=, ==) in sum(): expected a number, Var, or LinExpr."
-      );
-    } else if (
-      val instanceof QuadExpr ||
-      (typeof val === "object" && "quadTerms" in val && val.quadTerms instanceof Map)
-    ) {
-      const quadExpr = val as QuadExpr;
-      if (quadExpr.quadTerms.size > 0) {
-        throw new Error(
-          "Quadratic expressions are not supported in sum(): sum() produces a linear expression (LinExpr)."
-        );
-      }
-      for (const [v, c] of quadExpr.linearTerms) {
-        const cur = terms.get(v) ?? 0;
-        terms.set(v, cur + c);
-      }
-      constant += quadExpr.constant;
-    } else if (typeof val === "object" && "terms" in val) {
-      const linExpr = val as LinExpr;
-      for (const [v, c] of linExpr.terms) {
-        const cur = terms.get(v) ?? 0;
-        terms.set(v, cur + c);
-      }
-      constant += linExpr.constant;
-    } else if (typeof val === "object" && "id" in val && "name" in val && "lb" in val && "ub" in val) {
-      const v = val as Var;
-      const cur = terms.get(v) ?? 0;
-      terms.set(v, cur + 1);
-    } else {
-      throw new Error("Unsupported item in sum(): expected a number, Var, or LinExpr.");
-    }
-  }
-
-  if (typeof arg1 === "number") {
-    const count = arg1;
-    const mapFn = arg2!;
-    for (let i = 0; i < count; i++) {
-      addVal(mapFn(i, i));
-    }
-  } else {
-    let index = 0;
-    for (const item of arg1) {
-      const val = arg2 ? arg2(item, index++) : (item as unknown as LinExpr | Var | number);
-      addVal(val);
-    }
-  }
-
-  // Prune exact zero terms
-  for (const [v, c] of terms) {
-    if (c === 0) {
-      terms.delete(v);
-    }
-  }
-
-  return new LinExpr(terms, constant);
-}
-
 export type DotTerm = Var | LinExpr;
 
 export type DotVarContainer<
@@ -488,6 +383,315 @@ type DotContainerArg<T, Leaf, Inner = never> =
   | ReadonlyArray<ReadonlyArray<Leaf>>
   | ReadonlyArray<DotRecordLeafMap<T[number & keyof T], Leaf>>
   | DotRecordShape<T, Leaf, Inner>;
+
+export type SumTerm = Var | LinExpr | number;
+
+export type SumContainer<
+  R extends string | number = string | number,
+  C extends string | number = string | number,
+> =
+  | Iterable<SumTerm>
+  | { readonly [K in R]: SumTerm }
+  | Iterable<Iterable<SumTerm>>
+  | Iterable<{ readonly [K in C]: SumTerm }>
+  | { readonly [K in R]: Iterable<SumTerm> }
+  | { readonly [K in R]: { readonly [L in C]: SumTerm } };
+
+type SumRecordLeaf = LinExpr | QuadExpr | Constraint | Var | number;
+
+type SumRecordShape<T, Inner = never> = object & {
+  readonly [K in keyof T]:
+    | SumRecordLeaf
+    | Iterable<SumRecordLeaf>
+    | DotRecordLeafMap<T[K], SumRecordLeaf>
+    | DotRecordLeafMap<Inner, SumRecordLeaf>;
+} & NoSymbolKeys<T>;
+
+/**
+ * Sum a 1D or 2D `Iterable` / `Array` / plain `Record` of `Var` / `LinExpr` / `number` items,
+ * an `Iterable` or `Record` with a mapping function, or a numeric count `n` with an index mapper `(0 .. n - 1)`
+ * into a single `LinExpr`.
+ *
+ * **Formulation notes**:
+ * - Produces a linear expression (`LinExpr`).
+ * - Accepts 1D/2D `Record` containers directly without `Object.values()`.
+ * - Passing comparison `Constraint`s (`<=`, `>=`, `==`) or non-linear `QuadExpr` terms throws an Error
+ *   (quadratic terms are supported in objectives only via `expr` or `.mul()`).
+ *
+ * @example
+ * ```ts
+ * const m = new Model("SumExample");
+ * const x = m.continuous(3, { lb: 0, prefix: "x" });
+ * const byItem = m.integer(["desk", "chair"] as const, { lb: 0 });
+ *
+ * // Sum an array, iterable, or Record directly (or inside expr`sum(...)`)
+ * m.constraint(expr`sum(${x}) <= 100`, "total_x");
+ * m.constraint(expr`sum(${byItem}) <= 50`, "total_items");
+ *
+ * // Sum with a mapper or over a count range (0..2)
+ * const weighted = sum(3, (i) => expr`${i + 1} * ${x[i]}`);
+ * m.objective(maximize(weighted));
+ * ```
+ */
+export function sum(
+  count: number,
+  mapFn: (index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function sum<T = any>(
+  items: Iterable<T>,
+  mapFn?: (item: T, index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function sum<T extends object>(
+  record: T & NoSymbolKeys<T>,
+  mapFn: (value: T[keyof T], index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function sum<T = SumContainer, TI = never>(
+  container: T & (Record<any, TI> | unknown) & SumRecordShape<T, TI>
+): LinExpr;
+export function sum(container: SumContainer<any, any>): LinExpr;
+export function sum<T = any>(
+  arg1: number | Iterable<T> | Record<string | number, any>,
+  arg2?: (item: any, index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr {
+  const terms = new Map<Var, number>();
+  let constant = 0;
+
+  function isConstraintObj(val: object): boolean {
+    if (val instanceof Constraint || (val as { kind?: unknown }).kind === "constraint") {
+      return true;
+    }
+    return (
+      "sense" in val &&
+      ((val as { sense: unknown }).sense === "<=" ||
+        (val as { sense: unknown }).sense === ">=" ||
+        (val as { sense: unknown }).sense === "==") &&
+      "lhs" in val &&
+      "rhs" in val &&
+      typeof (val as { rhs: unknown }).rhs === "number" &&
+      typeof (val as { lhs: unknown }).lhs === "object" &&
+      (val as { lhs: unknown }).lhs !== null &&
+      "terms" in (val as { lhs: object }).lhs &&
+      ((val as { lhs: { terms: unknown } }).lhs).terms instanceof Map
+    );
+  }
+
+  function isQuadExprObj(val: object): val is QuadExpr {
+    return (
+      val instanceof QuadExpr ||
+      ("quadTerms" in val &&
+        (val as { quadTerms: unknown }).quadTerms instanceof Map &&
+        "linearTerms" in val &&
+        (val as { linearTerms: unknown }).linearTerms instanceof Map &&
+        typeof (val as { constant?: unknown }).constant === "number")
+    );
+  }
+
+  function isLinExprObj(val: object): val is LinExpr {
+    return (
+      val instanceof LinExpr ||
+      ("terms" in val &&
+        (val as { terms: unknown }).terms instanceof Map &&
+        typeof (val as { constant?: unknown }).constant === "number")
+    );
+  }
+
+  function isVarObj(val: object): val is Var {
+    return (
+      val instanceof Var ||
+      (!isConstraintObj(val) &&
+        typeof (val as { id?: unknown }).id === "number" &&
+        typeof (val as { name?: unknown }).name === "string" &&
+        typeof (val as { lb?: unknown }).lb === "number" &&
+        typeof (val as { ub?: unknown }).ub === "number" &&
+        typeof (val as { type?: unknown }).type === "string" &&
+        typeof (val as { mul?: unknown }).mul === "function")
+    );
+  }
+
+  function isLeafObj(val: object): boolean {
+    return isConstraintObj(val) || isQuadExprObj(val) || isLinExprObj(val) || isVarObj(val);
+  }
+
+  function isPlainRecord(val: unknown): val is Record<string, unknown> {
+    if (typeof val !== "object" || val === null || Array.isArray(val)) {
+      return false;
+    }
+    if (isLeafObj(val)) {
+      return false;
+    }
+    const proto = Object.getPrototypeOf(val);
+    return proto === Object.prototype || proto === null;
+  }
+
+  function addVal(val: LinExpr | QuadExpr | Constraint | Var | number | undefined | null) {
+    if (val === null || val === undefined) return;
+    if (typeof val === "number") {
+      if (!Number.isFinite(val)) {
+        throw new Error(`Invalid non-finite number "${val}" in sum().`);
+      }
+      const nextConst = constant + val;
+      if (!Number.isFinite(nextConst)) {
+        throw new Error("Constant accumulation overflows finite floating-point range in sum().");
+      }
+      constant = nextConst;
+    } else if (typeof val === "object" && isConstraintObj(val)) {
+      throw new Error(
+        "Cannot sum a constraint comparison (<=, >=, ==) in sum(): expected a number, Var, or LinExpr."
+      );
+    } else if (typeof val === "object" && isQuadExprObj(val)) {
+      const quadExpr = val as QuadExpr;
+      if (quadExpr.quadTerms.size > 0) {
+        throw new Error(
+          "Quadratic expressions are not supported in sum(): sum() produces a linear expression (LinExpr)."
+        );
+      }
+      if (!Number.isFinite(quadExpr.constant)) {
+        throw new Error(`Invalid non-finite constant "${quadExpr.constant}" in sum().`);
+      }
+      for (const [v, c] of quadExpr.linearTerms) {
+        if (!Number.isFinite(c)) {
+          throw new Error(`Invalid non-finite coefficient "${c}" in sum().`);
+        }
+        const cur = terms.get(v) ?? 0;
+        const next = cur + c;
+        if (!Number.isFinite(next)) {
+          throw new Error("Coefficient accumulation overflows finite floating-point range in sum().");
+        }
+        terms.set(v, next);
+      }
+      const nextConst = constant + quadExpr.constant;
+      if (!Number.isFinite(nextConst)) {
+        throw new Error("Constant accumulation overflows finite floating-point range in sum().");
+      }
+      constant = nextConst;
+    } else if (typeof val === "object" && isLinExprObj(val)) {
+      const linExpr = val as LinExpr;
+      if (!Number.isFinite(linExpr.constant)) {
+        throw new Error(`Invalid non-finite constant "${linExpr.constant}" in sum().`);
+      }
+      for (const [v, c] of linExpr.terms) {
+        if (!Number.isFinite(c)) {
+          throw new Error(`Invalid non-finite coefficient "${c}" in sum().`);
+        }
+        const cur = terms.get(v) ?? 0;
+        const next = cur + c;
+        if (!Number.isFinite(next)) {
+          throw new Error("Coefficient accumulation overflows finite floating-point range in sum().");
+        }
+        terms.set(v, next);
+      }
+      const nextConst = constant + linExpr.constant;
+      if (!Number.isFinite(nextConst)) {
+        throw new Error("Constant accumulation overflows finite floating-point range in sum().");
+      }
+      constant = nextConst;
+    } else if (typeof val === "object" && isVarObj(val)) {
+      const v = val as Var;
+      const cur = terms.get(v) ?? 0;
+      const next = cur + 1;
+      if (!Number.isFinite(next)) {
+        throw new Error("Coefficient accumulation overflows finite floating-point range in sum().");
+      }
+      terms.set(v, next);
+    } else {
+      throw new Error("Unsupported item in sum(): expected a number, Var, or LinExpr.");
+    }
+  }
+
+  function visitItem(item: unknown, depth: number = 0) {
+    if (item === null || item === undefined) return;
+    if (typeof item === "number") {
+      addVal(item);
+      return;
+    }
+    if (typeof item === "object") {
+      if (isLeafObj(item)) {
+        addVal(item as LinExpr | QuadExpr | Constraint | Var);
+        return;
+      }
+      if (
+        !(item instanceof String) &&
+        !(item instanceof Map) &&
+        Symbol.iterator in item &&
+        typeof (item as Iterable<unknown>)[Symbol.iterator] === "function"
+      ) {
+        if (depth >= 2) {
+          throw new Error("Nested containers deeper than 2D are not supported in sum().");
+        }
+        for (const sub of item as Iterable<unknown>) {
+          visitItem(sub, depth + 1);
+        }
+        return;
+      }
+      if (isPlainRecord(item)) {
+        if (depth >= 2) {
+          throw new Error("Nested containers deeper than 2D are not supported in sum().");
+        }
+        if (Object.getOwnPropertySymbols(item).length > 0) {
+          throw new Error("Symbol keys are not supported in sum().");
+        }
+        for (const key of Object.keys(item)) {
+          visitItem(item[key], depth + 1);
+        }
+        return;
+      }
+    }
+    addVal(item as any);
+  }
+
+  if (typeof arg1 === "number") {
+    if (typeof arg2 !== "function") {
+      throw new Error("sum(count, mapFn) requires a mapping function as the second argument.");
+    }
+    if (!Number.isInteger(arg1) || arg1 < 0) {
+      throw new Error("sum(count, mapFn) requires a non-negative integer count.");
+    }
+    const count = arg1;
+    for (let i = 0; i < count; i++) {
+      visitItem(arg2(i, i), 0);
+    }
+  } else if (
+    typeof arg1 === "object" &&
+    arg1 !== null &&
+    !(arg1 instanceof String) &&
+    !(arg1 instanceof Map) &&
+    Symbol.iterator in arg1 &&
+    typeof (arg1 as Iterable<T>)[Symbol.iterator] === "function"
+  ) {
+    let index = 0;
+    for (const item of arg1 as Iterable<T>) {
+      if (arg2) {
+        visitItem(arg2(item, index++), 0);
+      } else {
+        visitItem(item, 1);
+      }
+    }
+  } else if (isPlainRecord(arg1)) {
+    if (Object.getOwnPropertySymbols(arg1).length > 0) {
+      throw new Error("Symbol keys are not supported in sum().");
+    }
+    let index = 0;
+    for (const key of Object.keys(arg1)) {
+      const item = arg1[key];
+      if (arg2) {
+        visitItem(arg2(item, index++), 0);
+      } else {
+        visitItem(item, 1);
+      }
+    }
+  } else {
+    throw new Error("Unsupported item in sum(): expected an Iterable, Record, or (count, mapFn).");
+  }
+
+  // Prune exact zero terms
+  for (const [v, c] of terms) {
+    if (c === 0) {
+      terms.delete(v);
+    }
+  }
+
+  return new LinExpr(terms, constant);
+}
 
 /**
  * Compute the inner product (linear combination `LinExpr`) of numeric coefficients and

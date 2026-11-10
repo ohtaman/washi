@@ -93,6 +93,70 @@ describe("LinExpr & Arithmetic Operations", () => {
     expect(s3.terms.get(x2)).toBe(6);
   });
 
+  it("supports 1D/2D Record and 2D Array/Iterable containers directly in sum()", () => {
+    const m = new Model("SumContainers");
+    const qty1D = m.integer(["desk", "chair"] as const, { lb: 0 });
+    const sRec1D = sum(qty1D);
+    expect(sRec1D.terms.get(qty1D.desk)).toBe(1);
+    expect(sRec1D.terms.get(qty1D.chair)).toBe(1);
+
+    // 1D Record with mapper
+    const weights = { desk: 3, chair: 5 };
+    const sRecMapped = sum(qty1D, (v, idx) => v.mul(idx === 0 ? weights.desk : weights.chair));
+    expect(sRecMapped.terms.get(qty1D.desk)).toBe(3);
+    expect(sRecMapped.terms.get(qty1D.chair)).toBe(5);
+
+    // 2D Array
+    const grid2D = m.continuous(2, 2, { prefix: "g" });
+    const sArr2D = sum(grid2D);
+    expect(sArr2D.terms.get(grid2D[0][0])).toBe(1);
+    expect(sArr2D.terms.get(grid2D[0][1])).toBe(1);
+    expect(sArr2D.terms.get(grid2D[1][0])).toBe(1);
+    expect(sArr2D.terms.get(grid2D[1][1])).toBe(1);
+
+    // 2D Record
+    const ship2D = m.continuous(["F1", "F2"] as const, ["S1", "S2"] as const, { prefix: "ship" });
+    const sRec2D = sum(ship2D);
+    expect(sRec2D.terms.get(ship2D.F1.S1)).toBe(1);
+    expect(sRec2D.terms.get(ship2D.F1.S2)).toBe(1);
+    expect(sRec2D.terms.get(ship2D.F2.S1)).toBe(1);
+    expect(sRec2D.terms.get(ship2D.F2.S2)).toBe(1);
+
+    // Mixed 2D containers (Array of Records and Record of Arrays/Sets)
+    const arrOfRec = m.binary(2, ["Day", "Night"] as const);
+    const sArrOfRec = sum(arrOfRec);
+    expect(sArrOfRec.terms.get(arrOfRec[0].Day)).toBe(1);
+    expect(sArrOfRec.terms.get(arrOfRec[1].Night)).toBe(1);
+
+    const recOfSet = {
+      A: new Set([qty1D.desk, 5]),
+      B: new Set([qty1D.chair, 7]),
+    };
+    const sRecOfSet = sum(recOfSet);
+    expect(sRecOfSet.terms.get(qty1D.desk)).toBe(1);
+    expect(sRecOfSet.terms.get(qty1D.chair)).toBe(1);
+    expect(sRecOfSet.constant).toBe(12);
+
+    // Records with reserved property names ('id', 'terms', 'quadTerms', 'sense', 'lhs')
+    const specialVars = m.continuous(["id", "terms", "quadTerms", "sense", "lhs"] as const);
+    const sSpecial = sum(specialVars);
+    expect(sSpecial.terms.get(specialVars.id)).toBe(1);
+    expect(sSpecial.terms.get(specialVars.terms)).toBe(1);
+    expect(sSpecial.terms.get(specialVars.quadTerms)).toBe(1);
+    expect(sSpecial.terms.get(specialVars.sense)).toBe(1);
+    expect(sSpecial.terms.get(specialVars.lhs)).toBe(1);
+
+    // Validation errors in sum()
+    const sym = Symbol("s");
+    expect(() => {
+      // @ts-expect-error symbol keys are not supported in sum()
+      sum({ [sym]: qty1D.desk });
+    }).toThrow(/Symbol keys are not supported in sum/);
+    expect(() => sum(-1, () => qty1D.desk)).toThrow(/non-negative integer count/);
+    expect(() => sum(1.5, () => qty1D.desk)).toThrow(/non-negative integer count/);
+    expect(() => sum([[[qty1D.desk]]] as any)).toThrow(/Nested containers deeper than 2D/);
+  });
+
   it("creates comparison constraints correctly", () => {
     const x = new Var({ name: "x" });
     const y = new Var({ name: "y" });

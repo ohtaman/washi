@@ -34,10 +34,10 @@ Select the solver engine and execution method that match the problem class:
    - Indexed containers: pass a count (`number` -> `Var[]` / `Var[][]`) or key array (`readonly string[]` -> `Record<K, Var>` / `Record<R, Record<C, Var>>`).
    - Provide finite `lb` and `ub` bounds whenever known—especially on variables used in `m.indicator()` so WaSHI can automatically derive a tight Big-M when `M` is omitted.
 2. **Build expressions (`expr`, `sum`, `dot`)**:
-   - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${y} - 10` ``
-   - Quadratic expression (`QuadExpr`, **objectives only**): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``
-   - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${y} <= 40` `` (supports `<=`, `>=`, `==`, `=`)
-   - Vector aggregations: `sum(iterable, mapper?)` and `dot(a, b)`
+   - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${y} - 10` ``, `` expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}` ``
+   - Quadratic expression (`QuadExpr`, **objectives only**): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${xVec} - ${target})^2)` ``
+   - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${y} <= 40` ``, `` expr`sum(${qty}) <= 100` `` (supports `<=`, `>=`, `==`, `=`)
+   - Vector & Record aggregations: `sum(containerOrItems, mapper?)` and `dot(a, b)` (both usable inside `expr` or standalone; `sum` accepts 1D/2D `Array`, `Iterable`, and `Record` directly without `Object.values()`, plus element-wise container arithmetic `+`, `-`, `*`, `/`, `^2` inside `expr`; `dot` computes the 1D inner product or 2D Frobenius inner product)
    - Propositional logic: `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` (or fluent `.and()`, `.or()`, `.not()`, `.implies()`, `.xor()`). Automatically linearized into 0-1 MIP binary variables and linear constraints on HiGHS/GLPK, or solved natively on Z3.
 3. **Register objective and named constraints**:
    - Constructing an `expr` or `.le()` / `.ge()` / `.eq()` object does **not** attach it to the model.
@@ -88,10 +88,10 @@ export async function solveAndVerifyMip() {
   const qty = m.integer(products, { lb: 0, ub: 100 });
   const lineOpen = m.binary("lineOpen");
 
-  m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
-  m.constraint(expr`${dot(woodPerUnit, qty)} <= 40`, "wood_limit");
-  m.constraint(expr`${dot(laborPerUnit, qty)} <= 50`, "labor_limit");
-  m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, {
+  m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
+  m.constraint(expr`dot(${woodPerUnit}, ${qty}) <= 40`, "wood_limit");
+  m.constraint(expr`dot(${laborPerUnit}, ${qty}) <= 50`, "labor_limit");
+  m.indicator(lineOpen, expr`sum(${qty}) <= 0`, {
     activeValue: 0,
     name: "closed_line_zero_output",
   });

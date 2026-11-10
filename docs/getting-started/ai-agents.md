@@ -103,12 +103,12 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 ### Step 2: Build Expressions (`expr`, `sum`, `dot`)
 
 - **Unified `expr` template tag**:
-  - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${n} - 10` ``
-  - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` `` (variable-by-variable products and squares are supported for convex QP objectives).
-  - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` `` (supports `<=`, `>=`, `==`, and `=`).
-- **Aggregations**:
-  - `sum(iterable, mapper?)` sums an `Iterable` of `Var` / `LinExpr` / `number` (e.g., `Var[]`, `grid.flat()`, or `Object.values(record)`).
-  - `dot(a, b)` computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
+  - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``, `` expr`sum((${price} - ${cost}) * ${byItem})` ``
+  - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` (variable-by-variable products and squares are supported for convex QP objectives).
+  - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` (supports `<=`, `>=`, `==`, and `=`).
+- **Aggregations & Element-Wise Container Arithmetic**:
+  - `sum(containerOrItems, mapper?)` (usable inside `` expr`sum(...)` `` or standalone `sum(...)`) sums a 1D/2D `Array`, `Iterable`, or plain `Record` of `Var` / `LinExpr` / `number` (without needing `Object.values(record)`), or maps over items/counts via `sum(items, (item, i) => ...)`. Inside `` expr`sum(...)` ``, element-wise container arithmetic (`+`, `-`, `*`, `/`, `^2`) is also supported.
+  - `dot(a, b)` (usable inside `` expr`dot(${a}, ${b})` `` or standalone `dot(a, b)`) computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`, computing the Frobenius inner product $\sum_{i,j} A_{i,j} B_{i,j}$), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
 - **Fluent methods**:
   - Arithmetic (on `LinExpr` and `QuadExpr`; `Var` supports `.add()`, `.sub()`, `.mul()`, `.neg()`): `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
@@ -161,10 +161,10 @@ export async function runMipExample() {
   const qty = m.integer(products, { lb: 0, ub: 100 });
   const setup = m.binary("setup");
 
-  m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${setup}`));
-  m.constraint(expr`${dot(woodPerUnit, qty)} <= 40`, "wood_cap");
-  m.constraint(expr`${dot(laborPerUnit, qty)} <= 50`, "labor_cap");
-  m.indicator(setup, expr`${sum(Object.values(qty))} <= 0`, {
+  m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${setup}`));
+  m.constraint(expr`dot(${woodPerUnit}, ${qty}) <= 40`, "wood_cap");
+  m.constraint(expr`dot(${laborPerUnit}, ${qty}) <= 50`, "labor_cap");
+  m.indicator(setup, expr`sum(${qty}) <= 0`, {
     activeValue: 0,
     name: "require_setup",
   });
