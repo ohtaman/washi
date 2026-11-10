@@ -654,7 +654,7 @@ export function sum<T = any>(
     typeof arg1 === "object" &&
     arg1 !== null &&
     !(arg1 instanceof String) &&
-    !(arg1 instanceof Map) &&
+    (!(arg1 instanceof Map) || typeof arg2 === "function") &&
     Symbol.iterator in arg1 &&
     typeof (arg1 as Iterable<T>)[Symbol.iterator] === "function"
   ) {

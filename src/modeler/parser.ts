@@ -275,7 +275,7 @@ function mapContainerLeaves(
       isContainerLeafValue(item) ? fn(item) : mapContainerLeaves(item as ContainerData, fn)
     );
   }
-  const out: Record<string, ContainerLeaf | ContainerData> = {};
+  const out: Record<string, ContainerLeaf | ContainerData> = Object.create(null);
   for (const key of Object.keys(data)) {
     const item = (data as Record<string, ContainerLeaf | ContainerData>)[key];
     out[key] = isContainerLeafValue(item)
@@ -369,7 +369,7 @@ function zipContainerData(
     );
   }
 
-  const out: Record<string, ContainerLeaf | ContainerData> = {};
+  const out: Record<string, ContainerLeaf | ContainerData> = Object.create(null);
   for (const key of keysA) {
     out[key] = zipContainerData(recA[key], recB[key], op, path ? `${path}.${key}` : key);
   }
@@ -548,7 +548,7 @@ function buildContainerNode(val: unknown, depth: number = 0): ContainerNode {
       throw new Error("Symbol keys are not supported in template expression at 'root'.");
     }
     let fromNonArrayIterable = false;
-    const out: Record<string, ContainerLeaf | ContainerData> = {};
+    const out: Record<string, ContainerLeaf | ContainerData> = Object.create(null);
     for (const key of Object.keys(val)) {
       const item = val[key];
       if (
@@ -1040,7 +1040,6 @@ class Parser {
         typeof itemsOrCount === "object" &&
         itemsOrCount !== null &&
         !(itemsOrCount instanceof String) &&
-        !(itemsOrCount instanceof Map) &&
         Symbol.iterator in itemsOrCount &&
         typeof (itemsOrCount as Iterable<unknown>)[Symbol.iterator] === "function"
       ) {
@@ -1375,8 +1374,7 @@ export type ExprInterpolation<T = any> =
   | number
   | ExprMapperFn
   | ReadonlyArray<any>
-  | Iterable<ExprContainerLeaf>
-  | Iterable<Iterable<ExprContainerLeaf>>
+  | Iterable<any>
   | ExprRecordContainer
   | ExprRecordShape<T>;
 
@@ -1457,6 +1455,7 @@ function parseTemplate(
       } else if (
         Array.isArray(val) ||
         isIterableContainerCandidate(val) ||
+        val instanceof Map ||
         isPlainRecordObject(val)
       ) {
         const ph = `${tag}ph_${i}__`;

@@ -797,6 +797,36 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => expr`sum(${{ [sym]: x } as any})`).toThrow(/Symbol keys are not supported/);
     expect(() => expr`sum(${[[[x]]] as any})`).toThrow(/Nested containers deeper than 2D/);
     expect(() => expr`sum(2 * ${[[[x]]] as any})`).toThrow(/Nested containers deeper than 2D/);
+
+    // 7. Own "__proto__" keys in plain records and mapped Map iterables
+    const cProto = JSON.parse('{"__proto__": 2, "a": 3}') as Record<string, number>;
+    expect((expr`sum(${cProto})` as LinExpr).constant).toBe(5);
+    expect((expr`sum((${cProto}))` as LinExpr).constant).toBe(5);
+    expect((expr`sum(2 * ${cProto})` as LinExpr).constant).toBe(10);
+    expect((expr`sum(${cProto} + ${cProto})` as LinExpr).constant).toBe(10);
+
+    const vProto: Record<string, typeof x> = Object.create(null);
+    vProto["__proto__"] = x;
+    vProto["a"] = vec2[0];
+    const dotProto = expr`dot(${cProto}, ${vProto})` as LinExpr;
+    expect(dotProto.terms.get(x)).toBe(2);
+    expect(dotProto.terms.get(vec2[0])).toBe(3);
+
+    const cProto2D = JSON.parse('{"__proto__": {"k": 2}, "a": {"k": 3}}') as Record<
+      string,
+      Record<string, number>
+    >;
+    expect((expr`sum((${cProto2D}))` as LinExpr).constant).toBe(5);
+    expect((expr`sum(2 * ${cProto2D})` as LinExpr).constant).toBe(10);
+
+    const mapEntries = new Map([
+      ["x", x],
+      ["v0", vec2[0]],
+    ]);
+    const mappedMapExpr = expr`sum(${mapEntries}, ${([, v]: [string, typeof x], i: number) => v.mul(i + 2)})` as LinExpr;
+    expect(mappedMapExpr.terms.get(x)).toBe(2);
+    expect(mappedMapExpr.terms.get(vec2[0])).toBe(3);
+    expect(() => expr`sum(${mapEntries})`).toThrow(/Unsupported item in sum/);
   });
 });
 

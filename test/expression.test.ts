@@ -137,7 +137,7 @@ describe("LinExpr & Arithmetic Operations", () => {
     expect(sRecOfSet.terms.get(qty1D.chair)).toBe(1);
     expect(sRecOfSet.constant).toBe(12);
 
-    // Records with reserved property names ('id', 'terms', 'quadTerms', 'sense', 'lhs')
+    // Records with reserved property names ('id', 'terms', 'quadTerms', 'sense', 'lhs', '__proto__')
     const specialVars = m.continuous(["id", "terms", "quadTerms", "sense", "lhs"] as const);
     const sSpecial = sum(specialVars);
     expect(sSpecial.terms.get(specialVars.id)).toBe(1);
@@ -145,6 +145,19 @@ describe("LinExpr & Arithmetic Operations", () => {
     expect(sSpecial.terms.get(specialVars.quadTerms)).toBe(1);
     expect(sSpecial.terms.get(specialVars.sense)).toBe(1);
     expect(sSpecial.terms.get(specialVars.lhs)).toBe(1);
+
+    const protoRec = JSON.parse('{"__proto__": 2, "a": 3}') as Record<string, number>;
+    expect(sum(protoRec).constant).toBe(5);
+
+    // Mapped Iterable over a Map (regression test: Map is supported when a mapper is provided)
+    const varMap = new Map<string, Var>([
+      ["desk", qty1D.desk],
+      ["chair", qty1D.chair],
+    ]);
+    const sMappedMap = sum(varMap, ([, v], idx) => v.mul(idx + 2));
+    expect(sMappedMap.terms.get(qty1D.desk)).toBe(2);
+    expect(sMappedMap.terms.get(qty1D.chair)).toBe(3);
+    expect(() => sum(varMap as any)).toThrow(/Unsupported item in sum/);
 
     // Validation errors in sum()
     const sym = Symbol("s");
