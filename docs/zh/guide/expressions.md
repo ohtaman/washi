@@ -37,35 +37,43 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 
 ### `expr` 支持的语法
 - **加法与减法**：`${x} + ${y} - 5`
-- **标量乘法**：`4 * ${x}`、`${x} * 4`
+- **标量乘法与除法**：`4 * ${x}`、`${x} / 2`
 - **变量相乘（二次项）**：`${x} * ${y}`、`2 * ${x} * ${x}`
 - **幂运算与平方**：`${x}^2`、`${x}**2`
-- **一元取反**：`-${x} + 10`
+- **一元正负号**：`-${x} + 10`、`+${x}`
 - **圆括号分组**：`2 * (${x} + ${y})`
-- **嵌套表达式**：`expr` 可无缝插值变量、数字、`sum()` 结果以及嵌套表达式。
+- **聚合函数 (`sum` & `dot`)**：`sum(${qty}) <= 100`、`dot(${profit}, ${qty}) - 20 * ${lineOpen}`、`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`
+- **容器逐元素四则运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${x} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
+- **嵌套表达式**：`expr` 可无缝插值变量、数字、`Array` / `Record` 容器（在 `sum` 或 `dot` 内部）以及嵌套表达式。
 
 > [!NOTE]
 > 对于包含关系比较运算符（`<=`、`>=`、`==`）的式子，`expr`（例如 ``expr`${x} + 2 * ${y} <= 40` ``）会返回一等的 `Constraint` 对象。
-> 对于不含比较运算符的算术表达式，`expr` 会统一处理线性与二次表达式（最高 2 次）：若包含二次项则返回 `QuadExpr`，否则返回 `LinExpr`。次数 $> 2$ 的多项式项（如 ``${x} * ${y} * ${z}``、``${x}^3``）以及非线性约束（如 ``${x} * ${y} <= 10``）会被拒绝，因为标准的 MILP/LP/QP 模型仅支持线性约束与最高二次的目标函数。
+> 对于不含比较运算符的算术表达式，`expr` 会统一处理线性与二次表达式（最高 2 次）：若包含二次项则返回 `QuadExpr`，否则返回 `LinExpr`。插值的 `Array` 或 `Record` 容器必须通过 `sum(...)` 或 `dot(..., ...)` 归约为标量。次数 $> 2$ 的多项式项（如 ``${x} * ${y} * ${z}``、``${x}^3``）以及非线性约束（如 ``${x} * ${y} <= 10``）会被拒绝，因为标准的 MILP/LP/QP 模型仅支持线性约束与最高二次的目标函数。
 
 ---
 
 ## ⚡ 高性能求和 (`sum`)
 
-在对大规模变量集合或索引数组进行迭代求和时，推荐使用 `sum()`：
+在对一维或二维 `Array`、`Iterable` 或 `Record`（字典）容器求和时，既可以在 `` expr`sum(...)` `` 内部直接书写，也可以调用独立的 `sum()` 辅助函数：
 
 ```typescript
-import { sum } from "@ohtaman/washi";
+import { expr, sum } from "@ohtaman/washi";
 
-const items = ["A", "B", "C"];
+const items = ["A", "B", "C"] as const;
 const weights = { A: 10, B: 20, C: 30 };
 const x = m.binary(items);
 
-// 1. 使用映射回调函数转换并汇总元素：
+// 1. 在 expr 内直接对 Record 或数组求和（无需 Object.values()）：
+m.constraint(expr`sum(${x}) <= 2`, "max_selected");
+
+// 2. 在 expr`sum(...)` 内进行逐元素算术运算：
+const weightedExpr = expr`sum(${weights} * ${x})`;
+
+// 3. 使用映射回调函数转换并汇总元素：
 const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
 
-// 2. 对变量数组直接求和：
-const count = sum(Object.values(x));
+// 4. 独立 sum() 同样支持直接传入一维/二维 Record 或数组：
+const count = sum(x);
 ```
 
 `sum()` 在无 AST 解析开销的情况下以 $O(N)$ 线性时间运行。
@@ -77,7 +85,7 @@ const count = sum(Object.values(x));
 
 ## 🎯 向量与矩阵点积 (`dot`)
 
-`dot(a, b)` 辅助函数用于计算数值系数（`number`）与变量或线性表达式（`Var | LinExpr`）的线性组合，支持任意操作数顺序（`dot(coeffs, vars)` 或 `dot(vars, coeffs)`）。
+`dot(a, b)`（既可在 `` expr`dot(${a}, ${b})` `` 内部使用，也可作为独立函数 `dot(a, b)` 调用）用于计算数值系数（`number`）与变量或线性表达式（`Var | LinExpr`）的线性组合，支持任意操作数顺序（`dot(coeffs, vars)` 或 `dot(vars, coeffs)`）。
 
 支持的一维和二维容器结构：
 - **一维数组**：`number[]` $\times$ `(Var | LinExpr)[]`
@@ -90,31 +98,85 @@ const count = sum(Object.values(x));
 
 ### 一维向量点积
 ```typescript
-import { dot } from "@ohtaman/washi";
+import { expr, dot } from "@ohtaman/washi";
 
 const profits = { desk: 30, chair: 50 };
-const vars = m.integer(["desk", "chair"]);
+const vars = m.integer(["desk", "chair"] as const);
 
-// 计算 30 * vars.desk + 50 * vars.chair
-const totalProfit = dot(profits, vars);
+// 在 expr 内计算 30 * vars.desk + 50 * vars.chair（等同于 dot(profits, vars)）
+const totalProfit = expr`dot(${profits}, ${vars})`;
 ```
 
-### 二维矩阵点积
+### 二维矩阵内积（Frobenius 内积）
 直接支持二维数组（`m.continuous(rows, cols)`）、嵌套字典（`m.continuous(rowKeys, colKeys)`）或混合二维容器：
 
 ```typescript
-const factories = ["Tokyo", "Osaka"];
-const stores = ["StoreA", "StoreB"];
+const factories = ["Tokyo", "Osaka"] as const;
+const stores = ["StoreA", "StoreB"] as const;
 
 const costs = {
   Tokyo: { StoreA: 4, StoreB: 7 },
   Osaka: { StoreA: 8, StoreB: 3 },
 };
 
-const ship = m.continuous(factories, stores);
+const ship = m.continuous(factories, stores, { lb: 0 });
 
-// 一行代码表达总运输成本：
-m.objective(minimize(dot(costs, ship)));
+// 一行代码表达总运输成本（等同于 expr`sum(${costs} * ${ship})`）：
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
+```
+
+> [!NOTE]
+> **二维 `dot(A, B)` 是 Frobenius 内积（Frobenius Inner Product）**：对于二维矩阵或嵌套字典，`dot(A, B)` 计算的是标量 **Frobenius 内积** $\langle A, B \rangle_F = \sum_{i,j} A_{i,j} B_{i,j}$（即所有行列对应元素乘积之和，等同于 `` expr`sum(${A} * ${B})` ``），而**不是**矩阵乘法 $(AB)_{i,k} = \sum_j A_{i,j} B_{j,k}$。
+
+---
+
+## 建模模式
+
+结合 `expr`、`sum(...)`、`dot(..., ...)` 与 `.map()`，可以无需手动 `for` 循环、`Object.values()` 或嵌套 `${sum(...)}` 即可编写常见的优化模型。
+
+### 1. 在 `expr` 中分离运算符与数据
+
+将数学运算符、`sum(...)`、`dot(..., ...)` 和比较符号（`<=`、`>=`、`==`）写在模板字符串中，并通过 `${...}` 传入变量、常数和容器（数组/字典）：
+
+```typescript
+// 嵌套调用与 Object.values()（较繁琐）
+m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
+m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
+
+// 在 expr 内直接书写 sum() 与 dot()（推荐）
+m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
+m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
+```
+
+### 2. 常见聚合与约束模式
+
+| 建模目标 | 数学公式 | WaSHI 写法 |
+| :--- | :--- | :--- |
+| **全体求和**（1D/2D 数组或字典） | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
+| **内积**（1D 向量或 2D Frobenius 内积） | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
+| **逐元素差/积求和**（如净毛利） | $\sum_i (p_i - c_i) \cdot x_i$ | `` expr`sum((${price} - ${cost}) * ${x})` `` |
+| **最小二乘（QP 目标函数）** | $\sum_i (x_i - t_i)^2$ | `` expr`sum((${x} - ${target})^2)` `` |
+| **批量逐元素约束**（对所有 $i \in I$） | $a_i x_i \le b_i \quad (\forall i)$ | `` m.constraint(items.map((i) => expr`${a[i]} * ${x[i]} <= ${b[i]}`)) `` |
+| **二维变量按行求和**（各工厂供应上限） | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
+| **二维变量按列求和**（各门店需求满足） | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
+
+### 3. 示例：运输问题（Transportation Problem）
+
+```typescript
+const factories = ["Tokyo", "Osaka"] as const;
+const stores = ["S1", "S2", "S3"] as const;
+const ship = m.continuous(factories, stores, { lb: 0 });
+
+// 目标函数：最小化所有路线的总运输成本
+m.objective(minimize(expr`dot(${costMat}, ${ship})`));
+
+// 每个工厂的供应上限（按行求和）
+m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`));
+
+// 每个门店的需求满足（按列求和）
+m.constraint(
+  stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)
+);
 ```
 
 ---
