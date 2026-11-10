@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - 数理最適化と制約プログラミングのための代数モデラー (TypeScript / JavaScript)" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - TypeScript 数理最適化モデラー" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>数理最適化と制約プログラミングのための代数モデラー</strong></p>
+  <p><strong>TypeScript 数理最適化モデラー</strong></p>
   <p>
     <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • SMT論理制約 &amp; 矛盾診断</em>
   </p>

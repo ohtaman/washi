@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - 适用于数理优化与约束编程的代数建模器 (TypeScript &amp; JavaScript)" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - TypeScript 数理优化建模器" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>适用于数理优化与约束编程的代数建模器</strong></p>
+  <p><strong>TypeScript 数理优化建模器</strong></p>
   <p>
     <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • SMT逻辑约束与冲突诊断</em>
   </p>
