@@ -238,8 +238,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(enContent).toContain("A TypeScript alternative to Python's PuLP.");
 
     const jaContent = fs.readFileSync(docsJaIndexPath, "utf-8");
-    expect(jaContent).toContain('text: "TypeScript 数理最適化モデラー"');
-    expect(jaContent).toContain("PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。");
+    expect(jaContent).toContain('text: "TypeScript 数理最適化\u30e2\u30c7\u30e9\u30fc"');
+    expect(jaContent).toContain("Python\u306ePuLP\u306e\u3088\u3046\u306b直感的\u306a数式\u3067定式化\u3067\u304d\u308bTypeScript向\u3051代数\u30e2\u30c7\u30e9\u30fc。");
 
     const zhContent = fs.readFileSync(docsZhIndexPath, "utf-8");
     expect(zhContent).toContain('text: "TypeScript 数理优化建模器"');
@@ -291,8 +291,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(enReadme).toContain("algebraic modeler for mathematical optimization and constraint programming");
 
     const jaReadme = fs.readFileSync(readmeJaPath, "utf-8");
-    expect(jaReadme).toContain("TypeScript 数理最適化モデラー");
-    expect(jaReadme).toContain("数理最適化と制約プログラミングのための TypeScript / JavaScript 向け代数モデラー");
+    expect(jaReadme).toContain("TypeScript 数理最適化\u30e2\u30c7\u30e9\u30fc");
+    expect(jaReadme).toContain("数理最適化\u3068制約\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u305f\u3081\u306e TypeScript / JavaScript 向\u3051代数\u30e2\u30c7\u30e9\u30fc");
 
     const zhReadme = fs.readFileSync(readmeZhPath, "utf-8");
     expect(zhReadme).toContain("TypeScript 数理优化建模器");
@@ -318,8 +318,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(enHtml).toContain('name="keywords" content="typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly"');
 
     const jaHtml = fs.readFileSync(path.resolve(siteDistPath, "ja/index.html"), "utf-8");
-    expect(jaHtml).toContain("<title>WaSHI | WaSHI — TypeScript 数理最適化モデラー</title>");
-    expect(jaHtml).toContain('name="description" content="TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）"');
+    expect(jaHtml).toContain("<title>WaSHI | WaSHI — TypeScript 数理最適化\u30e2\u30c7\u30e9\u30fc</title>");
+    expect(jaHtml).toContain('name="description" content="TypeScript & JavaScript 向\u3051数理最適化\u3068制約\u30d7\u30ed\u30b0\u30e9\u30df\u30f3\u30b0\u306e\u305f\u3081\u306e代数\u30e2\u30c7\u30e9\u30fc（LP, MIP, 凸QP, SMT）"');
     expect(jaHtml).toContain('link rel="canonical" href="https://ohtaman.github.io/washi/ja/"');
     expect(jaHtml).toContain('property="og:url" content="https://ohtaman.github.io/washi/ja/"');
 
