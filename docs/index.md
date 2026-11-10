@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
-  text: "Algebraic Modeler for Mathematical Optimization & Constraint Programming"
+  text: "Mathematical Optimization Modeler in TypeScript"
   tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, and SMT models with intuitive infix expressions and solve client-side via WebAssembly (HiGHS, Z3, GLPK) with zero Python or native C++ dependencies."
   image:
     src: /washi-logo.svg

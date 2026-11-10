@@ -7,7 +7,7 @@ import zhLocale from "./locales/zh.json";
 export default withMermaid(
   defineConfig({
   title: "WaSHI",
-  titleTemplate: ":title | WaSHI — Algebraic Modeler for Mathematical Optimization & Constraint Programming",
+  titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript",
   description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
   base: "/washi/",
   cleanUrls: true,
@@ -175,7 +175,7 @@ export default withMermaid(
       label: "English",
       lang: "en",
       title: "WaSHI",
-      titleTemplate: ":title | WaSHI — Algebraic Modeler for Mathematical Optimization & Constraint Programming",
+      titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript",
       description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
       themeConfig: {
         nav: [

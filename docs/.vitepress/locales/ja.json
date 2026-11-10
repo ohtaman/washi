@@ -1,6 +1,6 @@
 {
   "label": "日本語",
-  "titleTemplate": ":title | WaSHI — 数理最適化と制約プログラミングのための代数モデラー",
+  "titleTemplate": ":title | WaSHI — TypeScript 数理最適化モデラー",
   "description": "TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）",
   "nav": [
     {

@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - Mathematical Optimization Modeler in TypeScript" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming</strong></p>
+  <p><strong>Mathematical Optimization Modeler in TypeScript</strong></p>
   <p>
     <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Convex Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
   </p>
