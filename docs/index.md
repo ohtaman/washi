@@ -4,7 +4,7 @@ layout: home
 hero:
   name: 'WaS<span class="brand-hi">HI</span>'
   text: "Mathematical Optimization Modeler in TypeScript"
-  tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, and SMT models with intuitive infix expressions and solve client-side via WebAssembly (HiGHS, Z3, GLPK) with zero Python or native C++ dependencies."
+  tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, and SMT models with intuitive infix expressions and solve in Node.js and browsers via WebAssembly (HiGHS, Z3, GLPK) with zero Python or native C++ dependencies."
   image:
     src: /washi-logo.svg
     alt: WaSHI Emblem
@@ -34,7 +34,7 @@ features:
     linkText: Runtime Environments
   - icon: 🔍
     title: Conflict Diagnosis (unsatCore)
-    details: Name constraints and inspect conflicting constraint subsets (unsatCore) with the Z3 adapter to debug infeasible formulations.
+    details: Name constraints to diagnose infeasible formulations via built-in HiGHS elastic relaxation or exact Z3 unsat cores (unsatCore).
     link: /guide/unsat-core
     linkText: Unsat Core Diagnosis
 ---
@@ -73,7 +73,7 @@ if (m.hasPrimalSolution) {
 
 <div class="tip custom-block" style="padding-top: 8px;">
 
-- **Getting Started**: [Introduction & Installation](/getting-started/) · [AI Coding Agent Quick-Reference](/getting-started/ai-agents) · [Runtime Environments](/getting-started/runtimes) · [Cross-Origin Isolation](/getting-started/cross-origin)
+- **Getting Started**: [Introduction & Installation](/getting-started/) · [Runtime Environments](/getting-started/runtimes) · [Cross-Origin Isolation](/getting-started/cross-origin) · [AI Coding Agent Quick-Reference](/getting-started/ai-agents)
 - **Modeling Guide**: [Variables & Bounds](/guide/variables) · [Expressions (expr, dot, sum)](/guide/expressions) · [Objective Functions](/guide/objectives) · [Constraints](/guide/constraints) · [Unsat Core Diagnosis](/guide/unsat-core) · [Decomposition Methods](/guide/decomposition)
 - **Solver Backends**: [Overview & Comparison](/solvers/) · [HiGHS (Built-in)](/solvers/highs) · [Z3 (SMT)](/solvers/z3) · [GLPK (LP/MIP)](/solvers/glpk) · [Custom Solver Adapter](/solvers/custom-solver)
 - **Examples**: [Overview & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack](/examples/knapsack) · [Transportation Network](/examples/transportation) · [Diet Problem & Sensitivity](/examples/diet-sensitivity) · [Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Coupon Optimizer](/examples/ecommerce-coupons) · [Portfolio QP](/examples/portfolio-qp) · [SMT Security](/examples/smt-security) · [Conflict Diagnosis](/examples/unsat-core) · [Vehicle Routing](/examples/vehicle-routing) · [Traveling Salesperson](/examples/traveling-salesperson)

@@ -15,9 +15,9 @@
       "text": "はじめに",
       "items": [
         { "text": "インストールと入門", "link": "/ja/getting-started/" },
-        { "text": "AIエージェント向けリファレンス", "link": "/ja/getting-started/ai-agents" },
         { "text": "ランタイム環境設定", "link": "/ja/getting-started/runtimes" },
-        { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" }
+        { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" },
+        { "text": "AIエージェント向けリファレンス", "link": "/ja/getting-started/ai-agents" }
       ]
     },
     {

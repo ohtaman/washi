@@ -54,27 +54,28 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ### Why Name Constraints?
 1. **Model Inspection (`m.toLpString()`)**: Exported CPLEX LP strings retain these descriptive names (sanitized if needed) so you can inspect the exact generated formulation.
-2. **Conflict Diagnosis (`conflicts` / `unsatCore`)**: When constraints contradict each other, Z3 `m.check()` returns the exact constraint names forming the conflicting subset.
+2. **Conflict Diagnosis (`conflicts` / `unsatCore`)**: When constraints contradict each other, `m.check()` returns the conflicting constraint names (via built-in HiGHS elastic relaxation or Z3 `unsatCore`).
 3. **Direct Lookup (`m.getConstraintByName()`)**: Retrieve a constraint by name after solving to inspect its `dual` or `slack` value.
 
 ---
 
 ## 🔁 Adding Constraints over Iterables & Sums
 
-Use `sum()` or `dot()` inside `expr` to express linear aggregations cleanly:
+Use `sum(...)` and `dot(..., ...)` directly inside `expr` to express linear aggregations over arrays and dictionaries cleanly:
 
 ```typescript
-import { Model, sum, expr } from "@ohtaman/washi";
+import { Model, expr } from "@ohtaman/washi";
 
-const items = ["A", "B", "C"];
+const m = new Model();
+const items = ["A", "B", "C"] as const;
 const weights = { A: 5, B: 10, C: 15 };
 const selected = m.binary(items);
 
+// Select at most 2 items
+m.constraint(expr`sum(${selected}) <= 2`, "max_items");
+
 // Total weight cannot exceed capacity 25
-m.constraint(
-  expr`${sum(items, (i) => selected[i].mul(weights[i]))} <= 25`,
-  "capacity_limit"
-);
+m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 ```
 
 ---

@@ -748,4 +748,64 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     );
     expect(appTsRaw).toContain('navShowcase.setAttribute("href", locale === "ja" ? "../ja/showcase/" : "../showcase/")');
   });
+
+  it("executes Getting Started quickstart and Guide constraints sum/dot snippets across EN, JA, and ZH", async () => {
+    for (const relDoc of [
+      "docs/getting-started/index.md",
+      "docs/ja/getting-started/index.md",
+      "docs/zh/getting-started/index.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relDoc), "utf-8");
+      const firstTsMatch = md.match(/```typescript\n([\s\S]*?)```/);
+      expect(firstTsMatch, `Missing opening TypeScript snippet in ${relDoc}`).not.toBeNull();
+
+      const jsBody = stripTypeScriptTypes(firstTsMatch![1]).replace(
+        /^\s*import\s+\{[^}]+\}\s+from\s+["']@ohtaman\/washi["'];?\s*$/gm,
+        ""
+      );
+      const logs: unknown[][] = [];
+      const mockConsole = { log: (...args: unknown[]) => logs.push(args) };
+      const runner = new Function(
+        "Washi",
+        "console",
+        `const { Model, expr, maximize } = Washi;\nreturn (async () => {\n${jsBody}\nreturn { m, desks, chairs, status };\n})();`
+      );
+      const res = (await runner(Washi, mockConsole)) as {
+        m: Washi.Model;
+        desks: Washi.Var;
+        chairs: Washi.Var;
+        status: string;
+      };
+      expect(res.status).toBe("Optimal");
+      expect(res.m.validateSolution().valid).toBe(true);
+      expect(res.m.objectiveValue).toBeCloseTo(1100, 6);
+      expect(res.desks.value).toBeCloseTo(20, 6);
+      expect(res.chairs.value).toBeCloseTo(10, 6);
+      expect(logs[0]).toEqual(["Optimal", true]);
+    }
+
+    for (const relDoc of [
+      "docs/guide/constraints.md",
+      "docs/ja/guide/constraints.md",
+      "docs/zh/guide/constraints.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relDoc), "utf-8");
+      const aggMatch = md.match(/```typescript\n((?:(?!```)[\s\S])*?capacity_limit(?:(?!```)[\s\S])*?)```/);
+      expect(aggMatch, `Missing sum/dot aggregation snippet in ${relDoc}`).not.toBeNull();
+
+      const jsBody = stripTypeScriptTypes(aggMatch![1]).replace(
+        /^\s*import\s+\{[^}]+\}\s+from\s+["']@ohtaman\/washi["'];?\s*$/gm,
+        ""
+      );
+      const runner = new Function(
+        "Washi",
+        `const { Model, expr } = Washi;\n${jsBody}\nreturn m;`
+      );
+      const m = runner(Washi) as Washi.Model;
+      expect(m.numConstrs).toBe(2);
+      const lp = m.toLpString();
+      expect(lp).toContain("max_items: A + B + C <= 2");
+      expect(lp).toContain("capacity_limit: 5 A + 10 B + 15 C <= 25");
+    }
+  });
 });

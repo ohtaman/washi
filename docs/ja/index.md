@@ -34,7 +34,7 @@ features:
     linkText: ランタイム環境設定
   - icon: 🔍
     title: 矛盾制約の特定 (unsatCore)
-    details: 名前付き制約と Z3 アダプターを用いて、実行不可能（Infeasible）なモデルの矛盾する制約の部分集合（unsatCore）を抽出。
+    details: 名前付き制約を用いて、実行不可能（Infeasible）なモデルの衝突ルールを標準 HiGHS の弾性緩和または Z3 の unsatCore で特定。
     link: /ja/guide/unsat-core
     linkText: 競合制約診断 (Unsat Core)
 ---
@@ -73,7 +73,7 @@ if (m.hasPrimalSolution) {
 
 <div class="tip custom-block" style="padding-top: 8px;">
 
-- **はじめに**: [概要とインストール](/ja/getting-started/) · [AI コーディングエージェント向けクイックリファレンス](/ja/getting-started/ai-agents) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin)
+- **はじめに**: [概要とインストール](/ja/getting-started/) · [ランタイム環境設定](/ja/getting-started/runtimes) · [Cross-Origin Isolation 設定](/ja/getting-started/cross-origin) · [AI コーディングエージェント向けクイックリファレンス](/ja/getting-started/ai-agents)
 - **モデリングガイド**: [変数と上下限](/ja/guide/variables) · [数式の記述 (expr, dot, sum)](/ja/guide/expressions) · [目的関数](/ja/guide/objectives) · [制約条件](/ja/guide/constraints) · [競合制約診断 (Unsat Core)](/ja/guide/unsat-core) · [分解法 (列生成・Benders)](/ja/guide/decomposition)
 - **ソルバー接続**: [ソルバー概要と比較](/ja/solvers/) · [HiGHS (標準搭載)](/ja/solvers/highs) · [Z3 (SMT)](/ja/solvers/z3) · [GLPK (LP/MIP)](/ja/solvers/glpk) · [カスタムソルバー実装](/ja/solvers/custom-solver)
 - **定式化の具体例**: [具体例一覧と API 早見表](/ja/examples/) · [生産計画](/ja/examples/production) · [ナップサック問題](/ja/examples/knapsack) · [輸送ネットワーク計画](/ja/examples/transportation) · [献立問題と感度分析](/ja/examples/diet-sensitivity) · [シフトスケジューリング](/ja/examples/shift-scheduling) · [EC クーポン最適化](/ja/examples/ecommerce-coupons) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp) · [SMT セキュリティポリシー検証](/ja/examples/smt-security) · [競合制約診断 (Unsat Core)](/ja/examples/unsat-core) · [配送計画問題 (列生成法)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (Benders 分解)](/ja/examples/traveling-salesperson)

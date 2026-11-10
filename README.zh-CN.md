@@ -39,7 +39,7 @@
 - **[在线文档](https://ohtaman.github.io/washi/zh/)**：建模指南、求解器说明与运行环境配置
 - **[案例展示](https://ohtaman.github.io/washi/zh/showcase/) & [浏览器演示](https://ohtaman.github.io/washi/demo/)**：在线体验交互式应用与浏览器建模演练场
 - **[示例目录](https://ohtaman.github.io/washi/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
-- **[AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) & [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md)**：面向 AI 编程助手的速查指南与技能定义
+- **[AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://ohtaman.github.io/washi/llms.txt) / [`llms-full.txt`](https://ohtaman.github.io/washi/llms-full.txt)**：面向 AI 编程助手的速查指南、技能定义与机器可读文档
 
 ---
 

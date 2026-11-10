@@ -1,47 +1,70 @@
 # Cross-Origin Isolation (Z3 & Browsers)
 
-When running the **Z3** solver engine inside a web browser, special HTTP headers are required due to browser security models.
+When running the **Z3** solver inside a web browser, Cross-Origin Isolation HTTP headers are required so the browser enables `SharedArrayBuffer`.
+
+> [!TIP]
+> **Not needed for HiGHS, GLPK, or Node.js**: The built-in **HiGHS** solver and **GLPK** plugin run in standard browser contexts without Cross-Origin Isolation or `SharedArrayBuffer`. Running Z3 in **Node.js** also requires no HTTP headers. You only need this page when using `@ohtaman/washi/solvers/z3` in the browser.
 
 ---
 
 ## Why is Cross-Origin Isolation Required?
 
-The Z3 WebAssembly engine utilizes multithreading backed by `SharedArrayBuffer` and Web Workers.
-
-In modern browsers (Chrome, Firefox, Safari, Edge), `SharedArrayBuffer` is disabled by default to mitigate Spectre-style timing side-channel attacks. To re-enable it, the hosting page must be **Cross-Origin Isolated**.
+Z3's WebAssembly build uses multithreading (pthreads) backed by `SharedArrayBuffer` and Web Workers. Modern browsers (Chrome, Firefox, Safari, Edge) disable `SharedArrayBuffer` by default to mitigate Spectre-style side-channel attacks unless the top-level document opts into **Cross-Origin Isolation** (`window.crossOriginIsolated === true`).
 
 ---
 
 ## Required HTTP Response Headers
 
-To establish cross-origin isolation, your web server must serve the top-level HTML document with the following HTTP headers:
+Serve the top-level HTML document with:
 
 ```http
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-In addition, any cross-origin assets (e.g. scripts or WASM files loaded from external domains) must send:
+If your page loads cross-origin subresources (such as scripts, images, or WASM files from another domain), those responses must also include `Cross-Origin-Resource-Policy: cross-origin` (or CORS headers).
 
-```http
-Cross-Origin-Resource-Policy: cross-origin
-```
+> [!NOTE]
+> Chromium and Firefox also support `Cross-Origin-Embedder-Policy: credentialless`, which relaxes subresource CORP requirements, **but Safari (WebKit) does not support `credentialless`**. Use `require-corp` if you support Safari / iOS.
 
 ---
 
-## Solutions by Hosting Environment
+## Setup by Environment
 
-### 1. Custom Node.js / Express Server
+### 1. Vite (`vite.config.ts`)
 
-```javascript
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-  next();
+Configure both the local dev server (`vite`) and production preview server (`vite preview`):
+
+```typescript
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+  preview: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
 });
 ```
 
-### 2. Next.js (`next.config.js`)
+### 2. Cloudflare Pages / Netlify (`public/_headers`)
+
+Place a `_headers` file in `public/` so it is copied to the root of your build output:
+
+```text
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+```
+
+### 3. Next.js (`next.config.js`)
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -62,26 +85,31 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
-### 3. Static Hosting without Header Control (e.g., GitHub Pages)
+### 4. Custom Node.js / Express Server
 
-Platforms like GitHub Pages or preview environments do not allow customizing response headers directly.
+```javascript
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  next();
+});
+```
 
-For these environments, you can use **`coi-serviceworker`** (a lightweight Service Worker that injects isolation headers on the client side):
+### 5. Static Hosting without Header Control (e.g., GitHub Pages)
 
-1. Place `coi-serviceworker.js` in your website root.
-2. In your HTML `<head>`, include:
+Platforms like GitHub Pages do not allow customizing HTTP response headers directly. You can use **`coi-serviceworker`** to inject the isolation headers via a client-side Service Worker:
+
+1. Place `coi-serviceworker.js` at your site root.
+2. Load it in your HTML `<head>`:
 
 ```html
 <script src="/coi-serviceworker.js"></script>
 ```
 
-When a user visits for the first time, the service worker registers and reloads the page once to establish `window.crossOriginIsolated === true`.
+On the first visit, the Service Worker registers and reloads the page once to establish `window.crossOriginIsolated === true`.
 
 ---
 
-## Graceful Degradation in WaSHI
+## Runtime Check in WaSHI
 
-WaSHI's Z3 solver adapter automatically inspects the environment at runtime. If Z3 is invoked in a browser lacking cross-origin isolation, it immediately rejects with a clear, informative error message explaining that COOP/COEP headers or a service worker are required, rather than hanging silently.
-
-> [!TIP]
-> The default **HiGHS** solver engine does not require cross-origin isolation or `SharedArrayBuffer`. It works out of the box in standard browser contexts.
+WaSHI's Z3 adapter checks `crossOriginIsolated` before initializing Z3 in the browser. If Cross-Origin Isolation is missing, `solve()` / `check()` immediately rejects with an actionable error explaining that COOP/COEP headers or a Service Worker are required, rather than hanging silently.
