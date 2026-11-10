@@ -18,10 +18,10 @@ interface ContainerNode {
   readonly fromNonArrayIterable: boolean;
 }
 
-type EvalNode = ScalarExpr | ContainerNode;
+type EvalNode = number | ScalarExpr | ContainerNode;
 
 function isContainerNode(node: EvalNode): node is ContainerNode {
-  return (node as ContainerNode).kind === "container";
+  return typeof node === "object" && node !== null && (node as ContainerNode).kind === "container";
 }
 
 interface TemplateContext {
@@ -189,15 +189,6 @@ function isContainerLeafValue(val: unknown): val is ContainerLeaf {
   );
 }
 
-function extractPureNumber(leaf: ContainerLeaf): number | null {
-  if (typeof leaf === "number") return leaf;
-  if (leaf instanceof LinExpr && leaf.terms.size === 0) return leaf.constant;
-  if (leaf instanceof QuadExpr && leaf.quadTerms.size === 0 && leaf.linearTerms.size === 0) {
-    return leaf.constant;
-  }
-  return null;
-}
-
 function leafToScalarExpr(leaf: ContainerLeaf): ScalarExpr {
   if (typeof leaf === "number") {
     return new LinExpr(new Map(), leaf);
@@ -213,26 +204,24 @@ function applyLeafBinaryOp(
   b: ContainerLeaf,
   op: "+" | "-" | "*" | "/"
 ): ContainerLeaf {
-  const numA = extractPureNumber(a);
-  const numB = extractPureNumber(b);
-  if (numA !== null && numB !== null) {
+  if (typeof a === "number" && typeof b === "number") {
     if (op === "+") {
-      const res = numA + numB;
+      const res = a + b;
       if (!Number.isFinite(res)) {
         throw new Error(`Invalid non-finite constant "${res}" in expression.`);
       }
       return res;
     }
     if (op === "-") {
-      const res = numA - numB;
+      const res = a - b;
       if (!Number.isFinite(res)) {
         throw new Error(`Invalid non-finite constant "${res}" in expression.`);
       }
       return res;
     }
     if (op === "*") {
-      const res = numA === 0 || numB === 0 ? 0 : numA * numB;
-      if (numA !== 0 && numB !== 0 && res === 0) {
+      const res = a * b;
+      if (a !== 0 && b !== 0 && res === 0) {
         throw new Error("Constant multiplication underflows to zero.");
       }
       if (!Number.isFinite(res)) {
@@ -240,11 +229,11 @@ function applyLeafBinaryOp(
       }
       return res;
     }
-    if (numB === 0) {
+    if (b === 0) {
       throw new Error("Division by zero");
     }
-    const res = numA === 0 ? 0 : numA / numB;
-    if (numA !== 0 && res === 0) {
+    const res = a * (1 / b);
+    if (a !== 0 && res === 0) {
       throw new Error("Constant multiplication underflows to zero.");
     }
     if (!Number.isFinite(res)) {
@@ -262,8 +251,7 @@ function applyLeafBinaryOp(
   else res = exprA.div(exprB);
   const normalized = normalizeScalarExpr(res);
   validateTemplateExprNumericSanity(normalized);
-  const pureNum = extractPureNumber(normalized);
-  return pureNum !== null ? pureNum : normalized;
+  return normalized;
 }
 
 function mapContainerLeaves(
@@ -271,9 +259,14 @@ function mapContainerLeaves(
   fn: (leaf: ContainerLeaf) => ContainerLeaf
 ): ContainerData {
   if (Array.isArray(data)) {
-    return data.map((item) =>
-      isContainerLeafValue(item) ? fn(item) : mapContainerLeaves(item as ContainerData, fn)
-    );
+    const out: Array<ContainerLeaf | ContainerData> = new Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      out[i] = isContainerLeafValue(item)
+        ? fn(item)
+        : mapContainerLeaves(item as ContainerData, fn);
+    }
+    return out;
   }
   const out: Record<string, ContainerLeaf | ContainerData> = Object.create(null);
   for (const key of Object.keys(data)) {
@@ -310,9 +303,11 @@ function zipContainerData(
           `Array length mismatch in template expression at '${path || "root"}': received lengths ${valA.length} and ${valB.length}.`
         );
       }
-      return valA.map((_, i) =>
-        zipContainerData(valA[i], valB[i], op, path ? `${path}[${i}]` : `[${i}]`)
-      );
+      const out: Array<ContainerLeaf | ContainerData> = new Array(valA.length);
+      for (let i = 0; i < valA.length; i++) {
+        out[i] = zipContainerData(valA[i], valB[i], op, path ? `${path}[${i}]` : `[${i}]`);
+      }
+      return out;
     }
 
     const arr = Array.isArray(valA) ? valA : (valB as ReadonlyArray<ContainerLeaf | ContainerData>);
@@ -334,11 +329,13 @@ function zipContainerData(
           `Key mismatch in template expression at '${path || "root"}': missing indices [${missingIndices.join(", ")}] in numeric record.`
         );
       }
-      return arr.map((_, i) => {
+      const out: Array<ContainerLeaf | ContainerData> = new Array(arr.length);
+      for (let i = 0; i < arr.length; i++) {
         const itemA = Array.isArray(valA) ? valA[i] : (valA as Record<number, ContainerLeaf | ContainerData>)[i];
         const itemB = Array.isArray(valB) ? valB[i] : (valB as Record<number, ContainerLeaf | ContainerData>)[i];
-        return zipContainerData(itemA, itemB, op, path ? `${path}[${i}]` : `[${i}]`);
-      });
+        out[i] = zipContainerData(itemA, itemB, op, path ? `${path}[${i}]` : `[${i}]`);
+      }
+      return out;
     }
 
     if (keys.length > 0 && keys.every((k) => /^(?:0|[1-9]\d*)$/.test(k))) {
@@ -381,12 +378,7 @@ function combineEvalNodes(a: EvalNode, b: EvalNode, op: "+" | "-" | "*" | "/"): 
   const isContB = isContainerNode(b);
 
   if (!isContA && !isContB) {
-    let res: ScalarExpr;
-    if (op === "+") res = a.add(b);
-    else if (op === "-") res = a.sub(b);
-    else if (op === "*") res = a.mul(b);
-    else res = a.div(b);
-    return normalizeScalarExpr(res);
+    return applyLeafBinaryOp(a, b, op) as number | ScalarExpr;
   }
 
   if (isContA && !isContB) {
@@ -415,14 +407,19 @@ function combineEvalNodes(a: EvalNode, b: EvalNode, op: "+" | "-" | "*" | "/"): 
 }
 
 function negateEvalNode(node: EvalNode): EvalNode {
+  if (typeof node === "number") {
+    return -node;
+  }
   if (!isContainerNode(node)) {
     return node.neg();
   }
   return {
     kind: "container",
     data: mapContainerLeaves(node.data, (leaf) => {
-      const num = extractPureNumber(leaf);
-      return num !== null ? -num : leafToScalarExpr(leaf).neg();
+      if (typeof leaf === "number") {
+        return -leaf;
+      }
+      return leafToScalarExpr(leaf).neg();
     }),
     fromNonArrayIterable: node.fromNonArrayIterable,
   };
@@ -509,7 +506,14 @@ function isIterableContainerCandidate(val: unknown): val is Iterable<unknown> {
 function buildContainerNode(val: unknown, depth: number = 0): ContainerNode {
   if (Array.isArray(val)) {
     let fromNonArrayIterable = false;
-    const arr = val.map((item) => {
+    const arr: Array<ContainerLeaf | ContainerData> = new Array(val.length);
+    for (let i = 0; i < val.length; i++) {
+      if (!(i in val)) {
+        throw new Error(
+          `Unsupported interpolation value in template expression: sparse array hole at index ${i}.`
+        );
+      }
+      const item = val[i];
       if (
         Array.isArray(item) ||
         isPlainRecordObject(item) ||
@@ -520,10 +524,11 @@ function buildContainerNode(val: unknown, depth: number = 0): ContainerNode {
         }
         const sub = buildContainerNode(item, depth + 1);
         if (sub.fromNonArrayIterable) fromNonArrayIterable = true;
-        return sub.data;
+        arr[i] = sub.data;
+      } else {
+        arr[i] = normalizeContainerLeaf(item);
       }
-      return normalizeContainerLeaf(item);
-    });
+    }
     return { kind: "container", data: arr, fromNonArrayIterable };
   }
   if (isIterableContainerCandidate(val)) {
@@ -610,6 +615,9 @@ class Parser {
         "Container expression (Array or Record) cannot be used directly as a scalar expression or constraint; wrap it in sum(...) or use dot(a, b)."
       );
     }
+    if (typeof node === "number") {
+      return new LinExpr(new Map(), node);
+    }
     return normalizeScalarExpr(node);
   }
 
@@ -634,7 +642,10 @@ class Parser {
       }
     }
 
-    return isContainerNode(result) ? result : normalizeScalarExpr(result);
+    if (isContainerNode(result) || typeof result === "number") {
+      return result;
+    }
+    return normalizeScalarExpr(result);
   }
 
   /**
@@ -691,9 +702,9 @@ class Parser {
         // Exponentiation binds tighter than implicit scalar multiplication!
         // e.g. 2x^2 is 2 * (x^2), not (2x)^2.
         const powered = this.applyPowerNode(subNode);
-        return combineEvalNodes(powered, new LinExpr(new Map(), val), "*");
+        return combineEvalNodes(powered, val, "*");
       }
-      primary = new LinExpr(new Map(), val);
+      primary = val;
     } else if (t.type === "IDENT" || t.type === "LPAREN") {
       primary = this.parsePrimaryNode();
     } else {
@@ -827,6 +838,9 @@ class Parser {
         }
         this.consume("RPAREN");
         const mapFn = this.templateCtx.functionMap.get(fnToken.value)!;
+        if (typeof firstArg === "number") {
+          return this.evalSumWithMapper(firstArg, mapFn);
+        }
         if (!isContainerNode(firstArg) && firstArg instanceof LinExpr && firstArg.terms.size === 0) {
           return this.evalSumWithMapper(firstArg.constant, mapFn);
         }
@@ -963,8 +977,11 @@ class Parser {
         if (depth >= 2) {
           throw new Error("Nested containers deeper than 2D are not supported in sum().");
         }
-        for (const sub of val) {
-          addItem(sub, depth + 1);
+        for (let i = 0; i < val.length; i++) {
+          if (!(i in val)) {
+            throw new Error(`Unsupported item in sum(): sparse array hole at index ${i}.`);
+          }
+          addItem(val[i], depth + 1);
         }
         return;
       }
@@ -1033,6 +1050,15 @@ class Parser {
         }
         for (let i = 0; i < itemsOrCount; i++) {
           addItem(mapFn(i, i));
+        }
+        return;
+      }
+      if (Array.isArray(itemsOrCount)) {
+        for (let i = 0; i < itemsOrCount.length; i++) {
+          if (!(i in itemsOrCount)) {
+            throw new Error(`Unsupported item in sum(): sparse array hole at index ${i}.`);
+          }
+          addItem(mapFn(itemsOrCount[i], i));
         }
         return;
       }
@@ -1121,6 +1147,17 @@ class Parser {
       throw new Error("Exponent creates an invalid or out-of-range power");
     }
 
+    if (typeof base === "number") {
+      const val = Math.pow(base, totalPower);
+      if (base !== 0 && totalPower > 0 && val === 0) {
+        throw new Error("Constant exponentiation underflows to zero.");
+      }
+      if (!Number.isFinite(val)) {
+        throw new Error(`Invalid non-finite constant "${val}" in expression.`);
+      }
+      return val;
+    }
+
     if (!isContainerNode(base)) {
       return applyScalarPower(base, totalPower);
     }
@@ -1128,10 +1165,9 @@ class Parser {
     return {
       kind: "container",
       data: mapContainerLeaves(base.data, (leaf) => {
-        const num = extractPureNumber(leaf);
-        if (num !== null) {
-          const val = Math.pow(num, totalPower);
-          if (num !== 0 && totalPower > 0 && val === 0) {
+        if (typeof leaf === "number") {
+          const val = Math.pow(leaf, totalPower);
+          if (leaf !== 0 && totalPower > 0 && val === 0) {
             throw new Error("Constant exponentiation underflows to zero.");
           }
           if (!Number.isFinite(val)) {
@@ -1141,8 +1177,7 @@ class Parser {
         }
         const powered = normalizeScalarExpr(applyScalarPower(leafToScalarExpr(leaf), totalPower));
         validateTemplateExprNumericSanity(powered);
-        const poweredNum = extractPureNumber(powered);
-        return poweredNum !== null ? poweredNum : powered;
+        return powered;
       }),
       fromNonArrayIterable: base.fromNonArrayIterable,
     };

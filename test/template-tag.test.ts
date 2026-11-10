@@ -827,6 +827,22 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(mappedMapExpr.terms.get(x)).toBe(2);
     expect(mappedMapExpr.terms.get(vec2[0])).toBe(3);
     expect(() => expr`sum(${mapEntries})`).toThrow(/Unsupported item in sum/);
+
+    // 8. Zero-scaled / cancelled symbolic container leaves in dot() and sparse array rejection
+    const zeroMaskedDot = expr`dot(${[2, 3]}, ${[0, 1]} * ${vec2})` as LinExpr;
+    expect(zeroMaskedDot.terms.has(vec2[0])).toBe(false);
+    expect(zeroMaskedDot.terms.get(vec2[1])).toBe(3);
+    expect(zeroMaskedDot.constant).toBe(0);
+
+    const cancelledDot = expr`dot(${[2, 3]}, (${vec2} - ${vec2}) + 5)` as LinExpr;
+    expect(cancelledDot.terms.size).toBe(0);
+    expect(cancelledDot.constant).toBe(25);
+
+    const sparseArr = [, 1] as unknown as number[];
+    expect(() => expr`sum(${sparseArr} + ${vec2})`).toThrow(/sparse array hole/);
+    expect(() => expr`sum(${vec2} + ${sparseArr})`).toThrow(/sparse array hole/);
+    expect(() => expr`sum(${sparseArr})`).toThrow(/sparse array hole/);
+    expect(() => expr`sum(${sparseArr}, ${(v: number) => v})`).toThrow(/sparse array hole/);
   });
 });
 
