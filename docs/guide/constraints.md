@@ -220,16 +220,15 @@ console.log("Unmet shortage:", shortage.value);      // 1 (graceful degradation 
 
 ## 📐 Dual Values, Shadow Prices & Lookups
 
-For continuous Linear Programming (LP) problems, query the economic shadow price (`dual`) and surplus (`slack`) on each constraint:
+For continuous Linear Programming (LP) problems, query the economic shadow price (`dual`) and surplus (`slack`) on each constraint (returned directly by `m.constraint()` or looked up via `m.getConstraintByName()`):
 
 ```typescript
-m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
 
 await m.solve();
 
-const woodConstraint = m.getConstraintByName("wood");
-console.log("Shadow price (dual):", woodConstraint?.dual);
-console.log("Slack surplus:", woodConstraint?.slack);
+console.log("Shadow price (dual):", woodConstraint.dual);
+console.log("Slack surplus:", woodConstraint.slack);
 console.log("Total linear constraints:", m.numConstrs);
 ```
 

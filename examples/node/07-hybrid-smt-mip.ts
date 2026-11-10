@@ -61,9 +61,7 @@ export async function runHybridPipeline({
   policyModel.constraint(deployEurope.and(deployUS).implies(budgetTierHigh), "r2_budget");
 
   // Desired deployment configuration: Deploy both Europe and US, with GDPR compliance enabled
-  policyModel.constraint(deployEurope)
-    .constraint(deployUS)
-    .constraint(complianceGDPR);
+  policyModel.constraint([deployEurope, deployUS, complianceGDPR]);
 
   if (forceConflict) {
     // Contradictory policy: High budget tier is NOT approved (low budget forced),

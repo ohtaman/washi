@@ -220,16 +220,15 @@ console.log("缺口人数:", shortage.value);      // 1 (平滑降级并给出�
 
 ## 📐 对偶值（影子价格）、松弛变量与查询
 
-对于连续线性规划（LP）问题，求解后可在每条约束上查询其经济学影子价格/对偶值（`dual`）与松弛变量/余量（`slack`）：
+对于连续线性规划（LP）问题，求解后可在每条约束（直接由 `m.constraint()` 返回，或通过 `m.getConstraintByName()` 查询）上读取其经济学影子价格/对偶值（`dual`）与松弛变量/余量（`slack`）：
 
 ```typescript
-m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
+const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
 
 await m.solve();
 
-const woodConstraint = m.getConstraintByName("wood");
-console.log("Shadow price (dual):", woodConstraint?.dual);
-console.log("Slack surplus:", woodConstraint?.slack);
+console.log("Shadow price (dual):", woodConstraint.dual);
+console.log("Slack surplus:", woodConstraint.slack);
 console.log("Total linear constraints:", m.numConstrs);
 ```
 

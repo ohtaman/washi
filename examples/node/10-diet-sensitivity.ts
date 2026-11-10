@@ -54,10 +54,13 @@ async function main() {
     { name: "min_iron",     label: "Iron (mg)",        rhs: 18,   key: "iron" as const },
   ];
 
-  for (const req of reqDefs) {
+  const reqConstrs = reqDefs.map((req) => {
     const coeffMap = Object.fromEntries(foods.map((f) => [f.name, f[req.key]]));
-    m.constraint(expr`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name);
-  }
+    return {
+      ...req,
+      constr: m.constraint(expr`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name),
+    };
+  });
 
   const buildMs = performance.now() - t0;
   const status = await m.solve();
@@ -89,14 +92,13 @@ async function main() {
   console.log("\n2. Nutritional Constraints & Shadow Prices (constr.dual, constr.slack):");
   console.log("Requirement      | Target |  Slack (Surplus) | Shadow Price (Dual) | Status");
   console.log("-----------------+--------+------------------+---------------------+--------------------");
-  for (const req of reqDefs) {
-    const constr = m.getConstraintByName(req.name)!;
+  for (const { label, rhs, constr } of reqConstrs) {
     const slack = Math.abs(constr.slack ?? 0);
     const dual = constr.dual ?? 0;
     const isBinding = slack < 1e-4;
     const statusText = isBinding ? "BINDING (Bottleneck)" : "Non-binding (Surplus)";
     console.log(
-      `${req.label.padEnd(17)}| >= ${String(req.rhs).padStart(4)}| ${slack.toFixed(2).padStart(16)} |           $${dual.toFixed(4)} | ${statusText}`
+      `${label.padEnd(17)}| >= ${String(rhs).padStart(4)}| ${slack.toFixed(2).padStart(16)} |           $${dual.toFixed(4)} | ${statusText}`
     );
   }
 }

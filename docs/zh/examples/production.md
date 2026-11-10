@@ -34,9 +34,9 @@ async function runProductionOptimization() {
   // 目标函数：最大化总利润（每把椅子 $45，每张桌子 $80）
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // 资源约束：通过 expr 与链式 constraint() 声明式定义公式
-  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
-   .constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  // 资源约束：通过 expr 与 constraint() 声明式定义公式
+  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
+  m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
   const status = await m.solve();
 

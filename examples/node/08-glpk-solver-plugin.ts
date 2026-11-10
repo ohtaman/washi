@@ -28,9 +28,9 @@ async function main() {
 
   // Nutritional requirements:
   // Calories >= 2000, Protein >= 70g, Calcium >= 800mg
-  model.constraint(expr`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories")
-       .constraint(expr`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein")
-       .constraint(expr`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
+  const calories = model.constraint(expr`300 * ${bread} + 250 * ${milk} + 400 * ${cheese} >= 2000`, "Calories");
+  const protein  = model.constraint(expr`10 * ${bread} + 15 * ${milk} + 25 * ${cheese} >= 70`, "Protein");
+  const calcium  = model.constraint(expr`50 * ${bread} + 300 * ${milk} + 500 * ${cheese} >= 800`, "Calcium");
 
   console.log("Solving with GLPK...");
   const status = await model.solve();
@@ -42,9 +42,9 @@ async function main() {
   console.log(`Cheese: ${cheese.value?.toFixed(2)} packs`);
 
   console.log("\nShadow Prices (Duals):");
-  console.log(`Calories dual: ${model.getConstraintByName("Calories")?.dual?.toFixed(4)}`);
-  console.log(`Protein dual:  ${model.getConstraintByName("Protein")?.dual?.toFixed(4)}`);
-  console.log(`Calcium dual:  ${model.getConstraintByName("Calcium")?.dual?.toFixed(4)}`);
+  console.log(`Calories dual: ${calories.dual?.toFixed(4)}`);
+  console.log(`Protein dual:  ${protein.dual?.toFixed(4)}`);
+  console.log(`Calcium dual:  ${calcium.dual?.toFixed(4)}`);
 }
 
 main().catch(console.error);

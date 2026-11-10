@@ -179,10 +179,9 @@ export async function runCVRP() {
   // Note: Using `== 1` (Set Partitioning) guarantees no duplicate customer visits across routes,
   // whereas `>= 1` (Set Covering) restricts duals to non-negative values (dual_i >= 0), stabilizing
   // LP convergence when the triangle inequality holds (any duplicate visit can be shortcut later).
-  for (let i = 0; i < customers.length; i++) {
-    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${customers[i].id}`);
-  }
-  const visitConstrs = master.constraints;
+  const visitConstrs = customers.map((c, i) =>
+    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${c.id}`)
+  );
 
   console.log(`Initial state: ${customers.length} naive single-customer routes (${customers.length} vehicles).`);
   console.log("Solving Column Generation with dual-directed heuristic pricing...");

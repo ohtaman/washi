@@ -122,8 +122,8 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 // maximize() または minimize() を用いて目的関数を設定
 m.objective(maximize(expr`30 * ${x} + 50 * ${n}`));
 
-// モデルに制約条件を登録
-m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
+// モデルに制約条件を登録（登録された Constraint / BoolExpr またはその配列を返す）
+const limit = m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
 
 // 条件付き（Indicator）制約 (MIP Big-M 変換: b === 1 => x <= 50)
 m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });

@@ -34,9 +34,9 @@ async function runProductionOptimization() {
   // 目的関数: 総利益の最大化 ($45/椅子, $80/机)
   m.objective(maximize(expr`45 * ${chairs} + 80 * ${tables}`));
 
-  // リソース制約: m.constraint と expr による宣言的記述 (メソッドチェーン可能)
-  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit")
-   .constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
+  // リソース制約: m.constraint と expr による宣言的記述
+  m.constraint(expr`5 * ${chairs} + 20 * ${tables} <= 400`, "mahogany_limit");
+  m.constraint(expr`10 * ${chairs} + 15 * ${tables} <= 450`, "labor_limit");
 
   const status = await m.solve();
 

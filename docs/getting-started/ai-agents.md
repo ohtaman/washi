@@ -122,8 +122,8 @@ Constructing an `expr` or `.le()` object does **not** attach it to the model unt
 // Set objective using maximize() or minimize()
 m.objective(maximize(expr`30 * ${x} + 50 * ${n}`));
 
-// Register constraints on the model
-m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
+// Register constraints on the model (returns the registered Constraint / BoolExpr or array)
+const limit = m.constraint(expr`${x} + 2 * ${n} <= 40`, "resource_limit");
 
 // Indicator constraint (MIP Big-M reformulation: b === 1 => x <= 50)
 m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });

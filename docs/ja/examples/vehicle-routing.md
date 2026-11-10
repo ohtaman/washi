@@ -146,10 +146,9 @@ async function runCVRP() {
   master.objective(minimize(sum(initialRoutes)));
 
   // 顧客被覆制約: 全顧客をちょうど1台の車両が担当
-  for (let i = 0; i < customers.length; i++) {
-    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${customers[i].id}`);
-  }
-  const visitConstrs = master.constraints;
+  const visitConstrs = customers.map((c, i) =>
+    master.constraint(expr`${initialRoutes[i]} == 1`, `visit_${c.id}`)
+  );
 
   console.log(`初期状態: 50台の単独ピストン便。`);
   console.log("双対潜在価格に基づくヒューリスティック価格付けで列生成法を実行...");
