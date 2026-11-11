@@ -2,7 +2,7 @@
 
 数学表达式是决策变量与数值系数的线性或二次组合。
 
-在不支持运算符重载的 JavaScript 与 TypeScript 中，WaSHI 提供了**统一标签模板字面量 (`expr`)**、求和函数 **`sum()`** 以及向量/矩阵点积函数 **`dot()`**，让您在保持静态类型安全的前提下自然地编写代数公式。
+在不支持运算符重载的 JavaScript 与 TypeScript 中，WaSHI 提供了**统一标签模板字面量 (`expr`)**、求和函数 **`sum()`** 以及向量/矩阵点积函数 **`dot()`**，让您在保持静态类型安全的前提下编写代数公式。
 
 | 方式 | 示例 | 中缀可读性 | 类型安全与 IDE 重命名 | 多维索引变量 (`flow[i][j]`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -12,7 +12,7 @@
 
 ---
 
-## ✍️ 标签模板字面量 (`expr`)
+## 标签模板字面量 (`expr`)
 
 类似于参数化的 `sql` 标签模板，`expr` 将静态运算符文本（`+`、`-`、`*`、`^2`、`<=`、`>=`、`==`）与插值 `${...}` 中的值（`Var`、`LinExpr`、`QuadExpr` 或有限 `number`）分开接收。变量通过对象引用直接绑定，而非按字符串名称解析，从而避免命名冲突，并完整保留 TypeScript 类型检查与 IDE 符号重命名能力。
 
@@ -42,17 +42,17 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **幂运算与平方**：`${x}^2`、`${x}**2`
 - **一元正负号**：`-${x} + 10`、`+${x}`
 - **圆括号分组**：`2 * (${x} + ${y})`
-- **聚合函数 (`sum` & `dot`)**：`sum(${qty}) <= 100`、`dot(${profit}, ${qty}) - 20 * ${lineOpen}`、`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`
-- **容器逐元素四则运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${x} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
-- **嵌套表达式**：`expr` 可无缝插值变量、数字、`Array` / `Record` 容器（在 `sum` 或 `dot` 内部）以及嵌套表达式。
+- **聚合函数 (`sum` & `dot`)**：`sum(${xVec}) <= 100`、`dot(${costs}, ${xVec})`、`sum(${rows}, ${(r) => grid[r][col]})`
+- **容器逐元素四则运算**：`sum((${price} - ${cost}) * ${qty})`、`sum((${xVec} - ${target})^2)`、`dot(${price} - ${cost}, ${qty})`
+- **嵌套表达式**：`expr` 可插值变量、数字、`Array` / `Record` 容器（在 `sum` 或 `dot` 内部）以及嵌套的 `LinExpr` / `QuadExpr` 对象。
 
 > [!NOTE]
 > 对于包含关系比较运算符（`<=`、`>=`、`==`）的式子，`expr`（例如 ``expr`${x} + 2 * ${y} <= 40` ``）会返回一等的 `Constraint` 对象。
-> 对于不含比较运算符的算术表达式，`expr` 会统一处理线性与二次表达式（最高 2 次）：若包含二次项则返回 `QuadExpr`，否则返回 `LinExpr`。插值的 `Array` 或 `Record` 容器必须通过 `sum(...)` 或 `dot(..., ...)` 归约为标量。次数 $> 2$ 的多项式项（如 ``${x} * ${y} * ${z}``、``${x}^3``）以及非线性约束（如 ``${x} * ${y} <= 10``）会被拒绝，因为标准的 MILP/LP/QP 模型仅支持线性约束与最高二次的目标函数。
+> 对于不含比较运算符的算术表达式，`expr` 会统一处理线性与二次表达式（最高 2 次）：若包含二次项则返回 `QuadExpr`，否则返回 `LinExpr`。插值的 `Array` 或 `Record` 容器必须通过 `sum(...)` 或 `dot(..., ...)` 归约为标量。次数 $> 2$ 的多项式项（如 ``${x} * ${y} * ${z}``、``${x}^3``）以及非线性约束（如 ``${x} * ${y} <= 10``）会抛出错误，因为 LP/MIP/QP 规范要求约束为线性且目标函数最高为二次。
 
 ---
 
-## ⚡ 高性能求和 (`sum`)
+## 高性能求和 (`sum`)
 
 在对一维或二维 `Array`、`Iterable` 或 `Record`（字典）容器求和时，既可以在 `` expr`sum(...)` `` 内部直接书写，也可以调用独立的 `sum()` 辅助函数：
 
@@ -79,11 +79,11 @@ const count = sum(x);
 `sum()` 在无 AST 解析开销的情况下以 $O(N)$ 线性时间运行。
 
 > [!TIP]
-> **避免在循环中用 `expr` 逐项累加（$O(N^2)$）**：由于 `LinExpr` 与 `expr` 的返回值是不可变的，在大规模循环中编写 ``total = expr`${total} + ${x[i]}` `` 会在每次迭代时复制已有的全部项，导致 $O(N^2)$ 的时间与内存开销。汇总大量变量时，请始终使用 `sum(x)` 或 `dot(coeffs, x)` 以保持 $O(N)$ 线性复杂度。
+> **避免在循环中用 `expr` 逐项累加（$O(N^2)$）**：由于 `LinExpr` 与 `expr` 的返回值是不可变的，在循环中编写 ``total = expr`${total} + ${x[i]}` `` 会在每次迭代时复制已有的全部项，导致 $O(N^2)$ 的时间与内存开销。汇总大量变量时，请使用 `sum(x)` 或 `dot(coeffs, x)` 以保持 $O(N)$ 线性复杂度。
 
 ---
 
-## 🎯 向量与矩阵点积 (`dot`)
+## 向量与矩阵点积 (`dot`)
 
 `dot(a, b)`（既可在 `` expr`dot(${a}, ${b})` `` 内部使用，也可作为独立函数 `dot(a, b)` 调用）用于计算数值系数（`number`）与变量或线性表达式（`Var | LinExpr`）的线性组合，支持任意操作数顺序（`dot(coeffs, vars)` 或 `dot(vars, coeffs)`）。
 
@@ -121,8 +121,8 @@ const costs = {
 
 const ship = m.continuous(factories, stores, { lb: 0 });
 
-// 一行代码表达总运输成本（等同于 expr`sum(${costs} * ${ship})`）：
-m.objective(minimize(expr`dot(${costs}, ${ship})`));
+// 一行代码表达所有路线的总运输成本（等同于 expr`sum(${costs} * ${ship})`）：
+const totalShippingCost = expr`dot(${costs}, ${ship})`;
 ```
 
 > [!NOTE]
@@ -130,63 +130,42 @@ m.objective(minimize(expr`dot(${costs}, ${ship})`));
 
 ---
 
-## 建模模式
+## `expr` 聚合与批量书写方式
 
-结合 `expr`、`sum(...)`、`dot(..., ...)` 与 `.map()`，可以无需手动 `for` 循环、`Object.values()` 或嵌套 `${sum(...)}` 即可编写常见的优化模型。
+### 分离运算符与数据
 
-### 1. 在 `expr` 中分离运算符与数据
-
-将数学运算符、`sum(...)`、`dot(..., ...)` 和比较符号（`<=`、`>=`、`==`）写在模板字符串中，并通过 `${...}` 传入变量、常数和容器（数组/字典）：
+将数学运算符、`sum(...)`、`dot(..., ...)` 和比较符号（`<=`、`>=`、`==`）写在模板字符串中，并通过 `${...}` 传入变量、标量和容器（`Array` / `Record`）：
 
 ```typescript
-// 嵌套调用与 Object.values()（较繁琐）
-m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
-m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
+// 嵌套模板调用与 Object.values()（较繁琐）
+const totalProfit1 = expr`${dot(profits, vars)}`;
+const cap1 = expr`${sum(Object.values(vars))} <= 100`;
 
 // 在 expr 内直接书写 sum() 与 dot()（推荐）
-m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
-m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
+const totalProfit2 = expr`dot(${profits}, ${vars})`;
+const cap2 = expr`sum(${vars}) <= 100`;
 ```
 
-### 2. 常见聚合与约束模式
+### 常见 `expr` 聚合语法速查
 
-| 建模目标 | 数学公式 | WaSHI 写法 |
+| 操作 | 数学公式 | WaSHI 写法 |
 | :--- | :--- | :--- |
 | **全体求和**（1D/2D 数组或字典） | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
 | **内积**（1D 向量或 2D Frobenius 内积） | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
-| **逐元素差/积求和**（如净毛利） | $\sum_i (p_i - c_i) \cdot x_i$ | `` expr`sum((${price} - ${cost}) * ${x})` `` |
-| **最小二乘（QP 目标函数）** | $\sum_i (x_i - t_i)^2$ | `` expr`sum((${x} - ${target})^2)` `` |
-| **批量逐元素约束**（对所有 $i \in I$） | $a_i x_i \le b_i \quad (\forall i)$ | `` m.constraint(items.map((i) => expr`${a[i]} * ${x[i]} <= ${b[i]}`)) `` |
-| **二维变量按行求和**（各工厂供应上限） | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
-| **二维变量按列求和**（各门店需求满足） | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
-
-### 3. 示例：运输问题（Transportation Problem）
-
-```typescript
-const factories = ["Tokyo", "Osaka"] as const;
-const stores = ["S1", "S2", "S3"] as const;
-const ship = m.continuous(factories, stores, { lb: 0 });
-
-// 目标函数：最小化所有路线的总运输成本
-m.objective(minimize(expr`dot(${costMat}, ${ship})`));
-
-// 每个工厂的供应上限（按行求和）
-m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`));
-
-// 每个门店的需求满足（按列求和）
-m.constraint(
-  stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)
-);
-```
+| **逐元素差与乘积求和** | $\sum_i (p_i - c_i) \cdot x_i$ | `` expr`sum((${price} - ${cost}) * ${x})` `` |
+| **平方误差求和（QP）** | $\sum_i (x_i - t_i)^2$ | `` expr`sum((${x} - ${target})^2)` `` |
+| **逐元素批量约束**（$\forall i \in I$） | $a_i x_i \le b_i \quad (\forall i)$ | `` m.constraint(items.map((i) => expr`${a[i]} * ${x[i]} <= ${b[i]}`)) `` |
+| **二维变量按行求和**（每行 $f$） | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
+| **二维变量按列求和**（每列 $s$） | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
 
 ---
 
-## 🧮 二次表达式 (`QuadExpr` 与 `expr`)
+## 二次表达式 (`QuadExpr` 与 `expr`)
 
-WaSHI 通过 HiGHS 求解器原生支持凸二次规划（Convex QP）。二次目标函数既可以使用 `expr` 模板字面量统一编写，也可以使用 `QuadExpr` 与 `.mul()` 通过方法链构建：
+WaSHI 通过 HiGHS 求解器支持凸二次规划（Convex QP）目标函数。二次表达式既可以使用 `expr` 模板字面量编写，也可以使用 `QuadExpr` 与 `.mul()` 编程构建。
 
 ### 1. 使用 `expr`（推荐）
-您可以使用 `*`、`^2` 或 `**2` 自然地书写二次公式：
+使用 `*`、`^2` 或 `**2` 书写二次项：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -203,7 +182,7 @@ m.constraint(expr`${x} + ${y} >= 4`);
 ```
 
 ### 2. 使用 `.mul()` 或 `QuadExpr` 方法链
-您也可以通过编程方式构建二次表达式：
+也可以通过编程方式构建二次表达式：
 
 ```typescript
 import { Model, QuadExpr, minimize } from "@ohtaman/washi";
@@ -212,12 +191,11 @@ const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
-// 1. 使用 .mul() 构建二次项
-// 表示 x * y + 2 * x^2
+// 1. 使用 .mul() 构建二次项 (x * y + 2 * x^2)
 const quad = x.mul(y).add(x.mul(x).mul(2));
 
-// 2. 构建投资组合风险目标函数：w^T * Sigma * w
-const assets = ["Tech", "Bonds"];
+// 2. 构建投资组合方差目标函数：w^T * Sigma * w
+const assets = ["Tech", "Bonds"] as const;
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 let risk = new QuadExpr();
@@ -228,31 +206,22 @@ risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 m.objective(minimize(risk));
 ```
 
-### 3. 二次规划（QP）与二元变量乘积线性化实战要点
-
-- **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：包括 HiGHS 在内的标准 QP 求解器要求最小化目标中的二次型矩阵 $\mathbf{Q}$ 必须为**半正定（PSD）**（最大化时为半负定）。平方和（$\sum_i (x_i - t_i)^2$）与协方差矩阵（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）天然满足半正定性；而连续变量之间的不定乘积（如直接最小化 $x \cdot y$）属于非凸问题，会被求解器拒绝。
-- **在 MILP 中线性化二元变量乘积（$x_A \cdot x_B$）**：若模型包含整数或二元变量，且需要表达两个二元决策 $x_A, x_B \in \{0, 1\}$ 同时为 1 时的协同收益或交互成本（$z_{AB} = x_A \cdot x_B$），应引入辅助变量 $z_{AB} \in [0, 1]$ 及以下三条线性不等式（McCormick / Fortet 线性化），从而作为标准 MILP 高效求解：
-
-$$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
-
-```typescript
-const xA = m.binary("xA");
-const xB = m.binary("xB");
-// 当 xA, xB 为 0-1 变量时，连续区间 [0, 1] 上的 bothAB 会自动取 {0, 1} 整数值
-const bothAB = m.continuous("both_AB", { lb: 0, ub: 1 });
-
-m.constraint(expr`${bothAB} <= ${xA}`, "and_upper_A");
-m.constraint(expr`${bothAB} <= ${xB}`, "and_upper_B");
-m.constraint(expr`${bothAB} >= ${xA} + ${xB} - 1`, "and_lower_AB");
-```
+> [!NOTE]
+> **凸性要求（半正定矩阵 $\mathbf{Q} \succeq 0$）**：包括 HiGHS 在内的 QP 求解器要求最小化目标中的二次型矩阵 $\mathbf{Q}$ 必须为**半正定（PSD）**（最大化时为半负定）。平方和（$\sum_i (x_i - t_i)^2$）与协方差矩阵（$\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$）天然满足半正定性；而连续变量之间的不定乘积（如直接最小化 $x \cdot y$）属于非凸问题，会被求解器拒绝。（*关于在 MILP 中线性化两个二元变量乘积 $x_A \cdot x_B$ 的方法，请参见 [建模模式与优化技巧](./formulation-tips.md#binary-product)。*）
 
 ---
 
-## 📊 求解后求值表达式 (`.value`)
+## 求解后求值表达式 (`.value`)
 
-`LinExpr` 与 `QuadExpr` 均提供 `.value` 访问器（`number | null`）。当模型完成求解且表达式引用的所有变量均具有有限原问题解时，您可以直接读取任意子表达式的值（如部门总成本、投资组合收益或资源使用量），无需手动重新计算：
+`LinExpr` 与 `QuadExpr` 均提供 `.value` 访问器（`number | null`）。当模型完成求解且表达式引用的所有变量均具有有限原问题解时，可以直接读取子表达式的值：
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.integer("x", { lb: 0 });
+const y = m.integer("y", { lb: 0 });
+
 const revenue = expr`30 * ${x} + 50 * ${y}`;
 const laborUsed = expr`2 * ${x} + ${y}`;
 
@@ -270,7 +239,7 @@ console.log("Labor Used:", laborUsed.value);    // 50
 
 ---
 
-## 🔗 链式算术与关系方法
+## 链式算术与关系方法
 
 除 `expr` 外，`Var`、`LinExpr` 与 `QuadExpr` 还提供不可变的链式方法，便于动态构建表达式：
 

@@ -2,7 +2,7 @@
 
 Mathematical expressions are linear or quadratic combinations of decision variables and numeric coefficients.
 
-In JavaScript and TypeScript—which do not support operator overloading—WaSHI provides the **unified tagged template literal (`expr`)**, **`sum()`**, and matrix/vector **`dot()`** to construct algebraic expressions without losing static type safety.
+In JavaScript and TypeScript—which do not support operator overloading—WaSHI provides the **unified tagged template literal (`expr`)**, **`sum()`**, and matrix/vector **`dot()`** to construct algebraic expressions with full static type safety.
 
 | Approach | Example | Infix readability | Type safety & IDE rename | Indexed variables (`flow[i][j]`) |
 | :--- | :--- | :--- | :--- | :--- |
@@ -12,9 +12,9 @@ In JavaScript and TypeScript—which do not support operator overloading—WaSHI
 
 ---
 
-## ✍️ Tagged Template Literal (`expr`)
+## Tagged Template Literal (`expr`)
 
-Similar to parameterized `sql` tagged templates, `expr` receives the static operator text (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) separately from the interpolated `${...}` values (`Var`, `LinExpr`, `QuadExpr`, or finite `number`). Variables are bound by object reference rather than resolved by string name, avoiding naming collisions and preserving TypeScript type checking and IDE refactoring.
+Similar to parameterized `sql` tagged templates, `expr` receives static operator text (`+`, `-`, `*`, `^2`, `<=`, `>=`, `==`) separately from interpolated `${...}` values (`Var`, `LinExpr`, `QuadExpr`, or finite `number`). Variables are bound by object reference rather than resolved by string name, avoiding naming collisions and preserving TypeScript type checking and IDE refactoring.
 
 Use `expr` for both arithmetic expressions (`LinExpr | QuadExpr`) and relational constraints (`Constraint`):
 
@@ -42,19 +42,19 @@ const balanceConstraint = expr`${x} + 2 * ${y} <= 40`;
 - **Powers & Exponentiation**: `${x}^2`, `${x}**2`
 - **Unary Plus & Negation**: `-${x} + 10`, `+${x}`
 - **Parentheses**: `2 * (${x} + ${y})`
-- **Aggregations (`sum` & `dot`)**: `sum(${qty}) <= 100`, `dot(${profit}, ${qty}) - 20 * ${lineOpen}`, `sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`
-- **Element-Wise Container Arithmetic**: `sum((${price} - ${cost}) * ${qty})`, `sum((${x} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
-- **Nested Expressions**: `expr` seamlessly interpolates variables, numbers, `Array` / `Record` containers (inside `sum` or `dot`), and nested expressions.
+- **Aggregations (`sum` & `dot`)**: `sum(${xVec}) <= 100`, `dot(${costs}, ${xVec})`, `sum(${rows}, ${(r) => grid[r][col]})`
+- **Element-Wise Container Arithmetic**: `sum((${price} - ${cost}) * ${qty})`, `sum((${xVec} - ${target})^2)`, `dot(${price} - ${cost}, ${qty})`
+- **Nested Expressions**: `expr` interpolates variables, numbers, `Array` / `Record` containers (inside `sum` or `dot`), and nested `LinExpr` / `QuadExpr` objects.
 
 > [!NOTE]
 > For relational comparisons (`<=`, `>=`, `==`), `expr` (e.g., ``expr`${x} + 2 * ${y} <= 40` ``) returns a first-class `Constraint`.
-> For arithmetic expressions without comparison operators, `expr` uniformly handles linear and quadratic expressions (up to degree 2): if quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Interpolated `Array` or `Record` containers must be reduced to a scalar via `sum(...)` or `dot(..., ...)`. Polynomial terms of degree $> 2$ (e.g. ``${x} * ${y} * ${z}``, ``${x}^3``) and non-linear constraints (e.g. ``${x} * ${y} <= 10``) are rejected because standard MILP/LP/QP formulations only support linear constraints and quadratic objectives.
+> For arithmetic expressions without comparison operators, `expr` uniformly handles linear and quadratic expressions (up to degree 2): if quadratic terms are present, `expr` returns a `QuadExpr`; otherwise, it returns a `LinExpr`. Interpolated `Array` or `Record` containers must be reduced to a scalar via `sum(...)` or `dot(..., ...)`. Polynomial terms of degree $> 2$ (e.g., ``${x} * ${y} * ${z}``, ``${x}^3``) and non-linear constraints (e.g., ``${x} * ${y} <= 10``) throw an error because LP/MIP/QP formulations require linear constraints and at most quadratic objectives.
 
 ---
 
-## ⚡ High-Performance Summation (`sum`)
+## High-Performance Summation (`sum`)
 
-For summing 1D/2D `Array`, `Iterable`, or `Record` containers—either directly inside `` expr`sum(...)` `` or via the standalone `sum()` helper:
+Sum 1D or 2D `Array`, `Iterable`, or `Record` containers directly inside `` expr`sum(...)` `` or via the standalone `sum()` helper:
 
 ```typescript
 import { expr, sum } from "@ohtaman/washi";
@@ -76,14 +76,14 @@ const totalWeight = sum(items, (item) => x[item].mul(weights[item]));
 const count = sum(x);
 ```
 
-`sum()` runs in $O(N)$ linear time without AST overhead.
+`sum()` runs in $O(N)$ linear time without AST parsing overhead.
 
 > [!TIP]
-> **Avoid $O(N^2)$ `expr` Re-Assignment Inside Loops**: Because `LinExpr` and `expr` are immutable, accumulating terms via `total = expr`${total} + ${x[i]}`` inside a large loop copies all previously accumulated terms on every iteration ($O(N^2)$ time and memory). Always pass arrays or records to `sum(x)` or `dot(coeffs, x)` for $O(N)$ construction.
+> **Avoid $O(N^2)$ `expr` Re-Assignment Inside Loops**: Because `LinExpr` and `expr` results are immutable, accumulating terms one by one via ``total = expr`${total} + ${x[i]}` `` inside a loop copies all previously accumulated terms on every iteration ($O(N^2)$ time and memory). Pass arrays or records to `sum(x)` or `dot(coeffs, x)` for $O(N)$ construction.
 
 ---
 
-## 🎯 Dot Product (`dot`)
+## Dot Product (`dot`)
 
 The `dot(a, b)` helper (usable both inside `` expr`dot(${a}, ${b})` `` and as a standalone function `dot(a, b)`) computes linear combinations of numeric coefficients (`number`) and variables or linear expressions (`Var | LinExpr`) in either operand order (`dot(coeffs, vars)` or `dot(vars, coeffs)`).
 
@@ -121,8 +121,8 @@ const costs = {
 
 const ship = m.continuous(factories, stores, { lb: 0 });
 
-// Total shipping cost in one line (equivalent to expr`sum(${costs} * ${ship})`):
-m.objective(minimize(expr`dot(${costs}, ${ship})`));
+// Total shipping cost across all routes (equivalent to expr`sum(${costs} * ${ship})`):
+const totalShippingCost = expr`dot(${costs}, ${ship})`;
 ```
 
 > [!NOTE]
@@ -130,63 +130,42 @@ m.objective(minimize(expr`dot(${costs}, ${ship})`));
 
 ---
 
-## Formulation Patterns
+## Composing Aggregations in `expr`
 
-By combining `expr`, `sum(...)`, `dot(..., ...)`, and `.map()`, you can express common optimization patterns directly without manual loops or `Object.values()`.
+### Separating Operators and Data
 
-### 1. Separating Syntax and Data in `expr`
-
-Write mathematical operators, `sum(...)`, `dot(..., ...)`, and comparisons (`<=`, `>=`, `==`) in the template string, and interpolate variables and data containers via `${...}`:
+Write mathematical operators, `sum(...)`, `dot(..., ...)`, and comparison symbols (`<=`, `>=`, `==`) in the template string, and pass variables, scalars, and containers (`Array` / `Record`) via `${...}`:
 
 ```typescript
-// Nested calls and Object.values() (verbose)
-m.objective(maximize(expr`${dot(profit, qty)} - 20 * ${lineOpen}`));
-m.indicator(lineOpen, expr`${sum(Object.values(qty))} <= 0`, { activeValue: 0 });
+// Nested template calls and Object.values() (verbose)
+const totalProfit1 = expr`${dot(profits, vars)}`;
+const cap1 = expr`${sum(Object.values(vars))} <= 100`;
 
 // Direct sum() and dot() inside expr (recommended)
-m.objective(maximize(expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}`));
-m.indicator(lineOpen, expr`sum(${qty}) <= 0`, { activeValue: 0 });
+const totalProfit2 = expr`dot(${profits}, ${vars})`;
+const cap2 = expr`sum(${vars}) <= 100`;
 ```
 
-### 2. Common Aggregation & Constraint Patterns
+### Common `expr` Aggregation Syntax
 
-| Pattern | Mathematical Formula | WaSHI Expression |
+| Operation | Mathematical Formula | WaSHI Expression |
 | :--- | :--- | :--- |
 | **Total sum** (1D/2D `Array` or `Record`) | $\sum_i x_i \le C$ | `` m.constraint(expr`sum(${x}) <= ${C}`) `` |
 | **Inner product** (1D vector or 2D Frobenius) | $\sum_i c_i x_i \le B$ | `` m.constraint(expr`dot(${c}, ${x}) <= ${B}`) `` |
-| **Element-wise margin / net sum** | $\sum_i (p_i - c_i) \cdot x_i$ | `` expr`sum((${price} - ${cost}) * ${x})` `` |
-| **Least-squares QP objective** | $\sum_i (x_i - t_i)^2$ | `` expr`sum((${x} - ${target})^2)` `` |
-| **Batch constraints** (for all $i \in I$) | $a_i x_i \le b_i \quad (\forall i)$ | `` m.constraint(items.map((i) => expr`${a[i]} * ${x[i]} <= ${b[i]}`)) `` |
+| **Element-wise difference & product** | $\sum_i (p_i - c_i) \cdot x_i$ | `` expr`sum((${price} - ${cost}) * ${x})` `` |
+| **Sum of squared deviations (QP)** | $\sum_i (x_i - t_i)^2$ | `` expr`sum((${x} - ${target})^2)` `` |
+| **Element-wise constraints** ($\forall i \in I$) | $a_i x_i \le b_i \quad (\forall i)$ | `` m.constraint(items.map((i) => expr`${a[i]} * ${x[i]} <= ${b[i]}`)) `` |
 | **2D row sums** (for each row $f$) | $\sum_s X_{f,s} \le S_f \quad (\forall f)$ | `` m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`)) `` |
-| **2D column sums** (for each col $s$) | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
-
-### 3. Example: Transportation Problem
-
-```typescript
-const factories = ["Tokyo", "Osaka"] as const;
-const stores = ["S1", "S2", "S3"] as const;
-const ship = m.continuous(factories, stores, { lb: 0 });
-
-// Objective: minimize total shipping cost across all routes
-m.objective(minimize(expr`dot(${costMat}, ${ship})`));
-
-// Supply limit per factory (row sum)
-m.constraint(factories.map((f) => expr`sum(${ship[f]}) <= ${supply[f]}`));
-
-// Demand fulfillment per store (column sum)
-m.constraint(
-  stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)
-);
-```
+| **2D column sums** (for each column $s$) | $\sum_f X_{f,s} \ge D_s \quad (\forall s)$ | `` m.constraint(stores.map((s) => expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demand[s]}`)) `` |
 
 ---
 
-## 🧮 Quadratic Expressions (`QuadExpr` & `expr`)
+## Quadratic Expressions (`QuadExpr` & `expr`)
 
-WaSHI natively supports Convex Quadratic Programming (QP) with the HiGHS solver. Quadratic objectives can be written uniformly using the `expr` template literal, or algebraically using `QuadExpr` and `.mul()`:
+WaSHI supports Convex Quadratic Programming (QP) objectives via the HiGHS solver. Quadratic expressions can be written using the `expr` template literal or constructed programmatically with `QuadExpr` and `.mul()`.
 
 ### 1. Using `expr` (Recommended)
-You can write quadratic formulas naturally with `*`, `^2`, or `**2`:
+Write quadratic terms with `*`, `^2`, or `**2`:
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
@@ -203,7 +182,7 @@ m.constraint(expr`${x} + ${y} >= 4`);
 ```
 
 ### 2. Method Chaining with `.mul()` or `QuadExpr`
-Alternatively, you can construct quadratic expressions programmatically:
+You can also construct quadratic expressions programmatically:
 
 ```typescript
 import { Model, QuadExpr, minimize } from "@ohtaman/washi";
@@ -212,12 +191,11 @@ const m = new Model();
 const x = m.continuous("x", { lb: 0 });
 const y = m.continuous("y", { lb: 0 });
 
-// 1. Construct quadratic terms with .mul()
-// Represents x * y + 2 * x^2
+// 1. Construct quadratic terms with .mul() (x * y + 2 * x^2)
 const quad = x.mul(y).add(x.mul(x).mul(2));
 
-// 2. Build portfolio risk objective: w^T * Sigma * w
-const assets = ["Tech", "Bonds"];
+// 2. Build portfolio variance objective: w^T * Sigma * w
+const assets = ["Tech", "Bonds"] as const;
 const w = m.continuous(assets, { lb: 0, ub: 1 });
 
 let risk = new QuadExpr();
@@ -228,31 +206,22 @@ risk = risk.add(w.Bonds.mul(w.Bonds).mul(0.01));
 m.objective(minimize(risk));
 ```
 
-### 3. Practical QP & Bilinear Formulation Notes
-
-- **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: Standard QP solvers (including HiGHS) require the quadratic objective matrix $\mathbf{Q}$ to be **positive semi-definite (PSD)** when minimizing (or negative semi-definite when maximizing). Sum-of-squares objectives ($\sum_i (x_i - t_i)^2$) and covariance matrices ($\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$) are guaranteed PSD. Indefinite products (such as minimizing $x \cdot y$ over continuous variables) are non-convex and will be rejected by the solver.
-- **Linearizing Binary Products ($x_A \cdot x_B$) in MILP**: If your model has integer/binary variables and needs the product of two binary decisions $x_A, x_B \in \{0, 1\}$ (e.g., a bundle bonus or interaction cost when both $A$ and $B$ are chosen), linearize the product $z_{AB} = x_A \cdot x_B$ using an auxiliary variable $z_{AB} \in [0, 1]$ and the standard McCormick / Fortet inequalities:
-
-$$z_{AB} \le x_A, \quad z_{AB} \le x_B, \quad z_{AB} \ge x_A + x_B - 1$$
-
-```typescript
-const xA = m.binary("xA");
-const xB = m.binary("xB");
-// Continuous [0, 1] is automatically forced to {0, 1} when xA, xB are binary
-const bothAB = m.continuous("both_AB", { lb: 0, ub: 1 });
-
-m.constraint(expr`${bothAB} <= ${xA}`, "and_upper_A");
-m.constraint(expr`${bothAB} <= ${xB}`, "and_upper_B");
-m.constraint(expr`${bothAB} >= ${xA} + ${xB} - 1`, "and_lower_AB");
-```
+> [!NOTE]
+> **Convexity Requirement ($\mathbf{Q} \succeq 0$)**: QP solvers (including HiGHS) require the quadratic objective matrix $\mathbf{Q}$ to be **positive semi-definite (PSD)** when minimizing (or negative semi-definite when maximizing). Sum-of-squares terms ($\sum_i (x_i - t_i)^2$) and covariance matrices ($\mathbf{w}^\top \boldsymbol{\Sigma} \mathbf{w}$) are guaranteed PSD, whereas indefinite products over continuous variables (such as minimizing $x \cdot y$) are non-convex and rejected by the solver. *(To linearize the product of two binary variables $x_A \cdot x_B$ in MILP, see [Formulation Patterns & Tips](./formulation-tips.md#product-of-two-binary-variables).)*
 
 ---
 
-## 📊 Evaluating Expressions After Solving (`.value`)
+## Evaluating Expressions After Solving (`.value`)
 
-Both `LinExpr` and `QuadExpr` expose a `.value` getter (`number | null`). Once a model has been solved and all referenced variables have finite primal values, you can evaluate any sub-expression—such as total department cost, portfolio return, or resource utilization—directly without manual arithmetic:
+Both `LinExpr` and `QuadExpr` expose a `.value` getter (`number | null`). Once a model has been solved and all referenced variables have finite primal values, you can evaluate any sub-expression directly:
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.integer("x", { lb: 0 });
+const y = m.integer("y", { lb: 0 });
+
 const revenue = expr`30 * ${x} + 50 * ${y}`;
 const laborUsed = expr`2 * ${x} + ${y}`;
 
@@ -270,7 +239,7 @@ If the model has not been solved (or any variable in the expression has `value =
 
 ---
 
-## 🔗 Fluent Arithmetic & Relational Methods
+## Fluent Arithmetic & Relational Methods
 
 In addition to `expr`, `Var`, `LinExpr`, and `QuadExpr` provide immutable fluent methods for programmatic expression building:
 
@@ -284,4 +253,3 @@ In addition to `expr`, `Var`, `LinExpr`, and `QuadExpr` provide immutable fluent
 | `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a $\le$ constraint (`lhs <= rhs`). |
 | `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds a $\ge$ constraint (`lhs >= rhs`). |
 | `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | Builds an $==$ equality constraint (`lhs == rhs`). |
-

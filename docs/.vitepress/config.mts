@@ -221,6 +221,7 @@ export default withMermaid(
               { text: "Objectives & Sense", link: "/guide/objectives" },
               { text: "Unsat Core Diagnosis", link: "/guide/unsat-core" },
               { text: "Decomposition Methods", link: "/guide/decomposition" },
+              { text: "Formulation Patterns & Tips", link: "/guide/formulation-tips" },
             ],
           },
           {
@@ -288,6 +289,7 @@ export default withMermaid(
               { text: jaLocale.sidebar[1].items[3].text, link: "/ja/guide/objectives" },
               { text: jaLocale.sidebar[1].items[4].text, link: "/ja/guide/unsat-core" },
               { text: jaLocale.sidebar[1].items[5].text, link: "/ja/guide/decomposition" },
+              { text: jaLocale.sidebar[1].items[6].text, link: "/ja/guide/formulation-tips" },
             ],
           },
           {
@@ -365,6 +367,7 @@ export default withMermaid(
               { text: zhLocale.sidebar[1].items[3].text, link: "/zh/guide/objectives" },
               { text: zhLocale.sidebar[1].items[4].text, link: "/zh/guide/unsat-core" },
               { text: zhLocale.sidebar[1].items[5].text, link: "/zh/guide/decomposition" },
+              { text: zhLocale.sidebar[1].items[6].text, link: "/zh/guide/formulation-tips" },
             ],
           },
           {

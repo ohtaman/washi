@@ -440,6 +440,8 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
     expect(llmsFullTxt).toContain("# Objectives & Solving (`m.solve` & `m.check`)");
     expect(llmsFullTxt).toContain("# Conflict Diagnosis (`unsatCore`) & Solution Validation");
+    expect(llmsFullTxt).toContain("# Decomposition Methods (`solveColumnGeneration` & `solveBenders`)");
+    expect(llmsFullTxt).toContain("# Formulation Patterns & Optimization Tips");
     expect(llmsFullTxt).toContain("# Solvers Overview");
     expect(llmsFullTxt).toContain("# HiGHS Solver Engine");
     expect(llmsFullTxt).toContain("# Z3 SMT Solver Engine");

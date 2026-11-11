@@ -1,6 +1,6 @@
 # Variables & Domains
 
-Variables represent the mathematical decision variables in your optimization model.
+Variables represent the mathematical decision variables in your optimization or logical model.
 WaSHI provides domain-specific factory methods on the `Model` instance: `m.continuous()`, `m.integer()`, `m.binary()`, and `m.bool()`.
 
 ---
@@ -8,7 +8,7 @@ WaSHI provides domain-specific factory methods on the `Model` instance: `m.conti
 ## Decision Variable Types
 
 ### 1. Continuous Variables (`m.continuous`)
-Can take any real number value within `[lb, ub]`. Ideal for physical measurements, flow rates, budgets, and weights:
+Can take any real number value within `[lb, ub]`. Used for continuous quantities such as flow rates, weights, budgets, and portfolio allocations:
 
 ```typescript
 import { Model } from "@ohtaman/washi";
@@ -20,7 +20,7 @@ const fuel = m.continuous("fuel", { lb: 0, ub: 1000 });
 ```
 
 ### 2. Integer Variables (`m.integer`)
-Restricted to integers. Ideal for countable assets (machines, trucks, staff count):
+Restricted to integer values within `[lb, ub]`. Used for discrete counts such as machines, vehicles, or headcount:
 
 ```typescript
 // Single integer variable bounded in [0, 15]
@@ -28,24 +28,23 @@ const trucks = m.integer("trucks", { lb: 0, ub: 15 });
 ```
 
 ### 3. Binary Variables (`m.binary`)
-Restricted to $\{0, 1\}$ as mathematical 0-1 values. Ideal for MIP selection, yes/no decisions, and facility selections:
+Restricted to $\{0, 1\}$ as numeric values (`lb = 0`, `ub = 1`). Used for 0-1 MIP selection and yes/no decisions that appear in linear sums or objective costs:
 
 ```typescript
-// Single binary variable
+// Single binary variable (lb = 0, ub = 1 automatically)
 const openWarehouse = m.binary("open_warehouse");
-// lb is automatically 0, ub is automatically 1
 ```
 
 ### 4. Propositional Boolean Variables (`m.bool`)
-Pure boolean logic propositions for SMT / SAT modeling with Z3:
+Pure boolean propositions (`true` / `false`) for logical and SMT constraints:
 
 ```typescript
-// Single propositional boolean variable
-const isNight = m.bool("isNight");
-const alarmTriggered = m.bool("alarmTriggered");
+// Single propositional boolean variables
+const isAdmin = m.bool("isAdmin");
+const hasMfa = m.bool("hasMfa");
 
 // First-class boolean operators: and, or, not, implies, xor
-m.constraint(alarmTriggered.implies(isNight), "alarm_policy");
+m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 ```
 
 ### Choosing Between `m.binary()` and `m.bool()`
@@ -53,36 +52,19 @@ m.constraint(alarmTriggered.implies(isNight), "alarm_policy");
 | Feature | `m.binary()` (`Var`) | `m.bool()` (`BoolVar`) |
 | :--- | :--- | :--- |
 | **Solved `.value` type** | `number \| null` (`0` or `1`) | `boolean \| null` (`true` or `false`) |
-| **Linear arithmetic (`expr`, `sum`, `dot`, objective costs)** | ✅ Native (`expr`30 * \${b}``) | ❌ Cannot be multiplied by numbers or summed directly |
-| **Indicator constraints (`m.indicator(b, ...)` )** | ✅ Supported as trigger variable | ❌ Use `implies(flag, expr`...`)` instead |
-| **Propositional logic (`and`, `or`, `not`, `implies`, `xor`)** | Via comparison (`expr`\${b} == 1``) | ✅ Native first-class methods (`.implies()`, `.and()`) |
+| **Linear arithmetic (`expr`, `sum`, `dot`, objective costs)** | ✅ Native (`` expr`30 * ${b}` ``) | ❌ Cannot be multiplied by numbers or summed directly |
+| **Indicator constraints (`m.indicator(b, ...)` )** | ✅ Supported as trigger variable | ❌ Use `` implies(flag, expr`...`) `` instead |
+| **Propositional logic (`and`, `or`, `not`, `implies`, `xor`)** | Via comparison (`` expr`${b} == 1` ``) | ✅ Native first-class methods (`.implies()`, `.and()`) |
 | **Solver execution** | Native 0-1 MIP on HiGHS/GLPK; bounded integer on Z3 | Native boolean proposition on Z3; auto-linearized to 0-1 MIP on HiGHS/GLPK |
 
 > [!TIP]
-> Use **`m.binary()`** whenever a decision participates in linear sums (e.g., headcount $\sum x_i \ge 3$), objective costs ($c_i x_i$), or `m.indicator()`. Use **`m.bool()`** for pure rule-engine / policy propositions (`isNight`, `isVip`) combined with `implies()`, `and()`, and `or()`.
-
-### 💡 Modeling Semi-Continuous Decisions
-Semi-continuous variables take values in $\{0\} \cup [L, U]$ (either zero or between a positive lower and upper bound, useful for minimum production batches or operational thresholds).
-
-While not a primitive `VarType` in `Model`, semi-continuous behavior is cleanly modeled by combining a continuous variable with a binary indicator variable and linking constraints ($L \cdot b \le x \le U \cdot b$):
-
-```typescript
-import { Model, expr } from "@ohtaman/washi";
-
-const m = new Model();
-const batch = m.continuous("batch", { lb: 0, ub: 100 });
-const isActive = m.binary("is_active");
-
-// If isActive === 0, batch is forced to 0; if 1, batch is within [10, 100]
-m.constraint(expr`${batch} >= 10 * ${isActive}`, "min_batch_run");
-m.constraint(expr`${batch} <= 100 * ${isActive}`, "max_batch_run");
-```
+> Use **`m.binary()`** when a decision participates in arithmetic expressions—such as linear sums ($\sum x_i \ge 3$), objective cost terms ($c_i x_i$), or `m.indicator()`. Use **`m.bool()`** when expressing logical conditions with `implies()`, `and()`, and `or()` without numeric coefficients.
 
 ---
 
 ## Multi-Dimensional & Array Creation
 
-The domain factory methods (`continuous`, `integer`, `binary`, `bool`) support count, arrays of keys, and row/column keys to create 1D arrays, typed dictionaries, and 2D matrices in a single call.
+The domain factory methods (`continuous`, `integer`, `binary`, `bool`) accept a numeric count or an array of string keys to create 1D arrays, typed dictionaries, and 2D matrices in a single call.
 
 ### By Count
 Pass a number to create an array of variables:
@@ -93,15 +75,15 @@ const flags = m.bool(3);              // BoolVar[] (p_0, p_1, p_2)
 ```
 
 ### 1D Variable Dictionaries
-Pass an array of keys to get a typed dictionary `Record<string, Var>` or `Record<string, BoolVar>`:
+Pass an array of keys to get a typed dictionary `Record<K, Var>` or `Record<K, BoolVar>`:
 
 ```typescript
-const items = ["laptop", "phone", "tablet"];
+const items = ["laptop", "phone", "tablet"] as const;
 
 // Record<"laptop" | "phone" | "tablet", Var>
 const selected = m.binary(items);
 
-const perms = m.bool(["read", "write", "execute"]);
+const perms = m.bool(["read", "write", "execute"] as const);
 // perms.read, perms.write, perms.execute
 ```
 
@@ -135,16 +117,16 @@ const schedule = m.binary(factories, 7, { prefix: "open_day" });
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `lb` | `number` | `0` | Lower bound. Defaults to 0 (non-negative). |
+| `lb` | `number` | `0` | Lower bound. Defaults to `0` (non-negative). |
 | `ub` | `number` | `Infinity` (or `1` for binary) | Upper bound. |
 | `type` | `"Continuous"` \| `"Integer"` \| `"Binary"` | Inferred from method | Underlying variable domain category. |
-| `initialValue` | `number` | `undefined` | Optional primal solution hint (MIP start), kept distinct from solved `variable.value`. |
+| `initialValue` | `number` | `undefined` | Optional primal solution hint (MIP warm start), kept distinct from solved `variable.value`. |
 
 ---
 
 ## Primal Initial Values (Warm-Start Hints)
 
-When rebuilding a model across iterations with stable variable names, you can supply optional primal initial values (`initialValue`) on a subset or all numeric variables (`m.continuous`, `m.integer`, `m.binary`, or `v.initialValue = ...`):
+When rebuilding a model across iterations, you can supply optional primal initial values (`initialValue`) on a subset or all numeric variables (`m.continuous`, `m.integer`, `m.binary`, or `v.initialValue = ...`):
 
 ```typescript
 const prevValues: Record<string, number | null> = { trucks: 8, open_warehouse: 1 };
@@ -161,39 +143,15 @@ const openWarehouse2 = m2.binary("open_warehouse", {
 const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial start: no initialValue needed
 ```
 
-- **Hint vs. Hard Constraint**: `initialValue` is strictly an optional solver hint (passed to HiGHS via `setSolution`). It does **not** fix the variable, add a constraint, or guarantee either solver acceptance or a runtime speedup. It remains separate from `variable.value` (which is `null` until solved and populated with the solver's primal solution).
-- **Validation & Tolerance (`1e-6`)**: Supplied values must be finite numbers within `[lb - 1e-6, ub + 1e-6]` (and within `1e-6` of an integer inside bounds for `"Integer"` and `"Binary"` variables). Partial starts are not required to satisfy every model constraint.
-- **Complete Feasible Starts Perform Best**: While partial starts are accepted, MIP solvers extract the greatest speedup (immediately pruning the branch-and-bound tree via an initial upper/lower bound) when you supply a **complete, constraint-feasible** assignment—including dependent continuous or slack variables computed from your integer decisions.
+- **Hint vs. Hard Constraint**: `initialValue` is an optional solver hint (passed to HiGHS via `setSolution`). It does **not** fix the variable or add a constraint, and `variable.value` remains `null` until solved. *(To penalize deviations from a previous plan, see [Formulation Patterns & Tips](./formulation-tips.md#minimal-perturbation-rescheduling-vs-warm-starting).)*
+- **Validation & Tolerance (`1e-6`)**: Supplied values must be finite numbers within `[lb - 1e-6, ub + 1e-6]` (and within `1e-6` of an integer for `"Integer"` and `"Binary"` variables). Partial starts are accepted without needing to satisfy every model constraint, though supplying a complete constraint-feasible assignment gives MIP solvers an immediate incumbent bound.
 - **Solver Support**: Supported by **HiGHS** (`capabilities.supportsWarmStart === true`). Solvers without warm-start support (**GLPK**, **Z3**, or custom adapters without `supportsWarmStart: true`) reject `solve()` and `check()` with a descriptive error rather than silently ignoring `initialValue`.
-
-### 💡 Schedule Stability vs. Warm Starting (Minimal Perturbation)
-In operational re-scheduling (e.g., repairing a staff roster or delivery plan after an unexpected absence), setting `initialValue` to yesterday's plan only gives the solver a starting search point—it does **not** prevent the solver from reshuffling every employee's shift to gain a tiny objective improvement.
-
-To keep the new plan close to a baseline binary assignment $x_i^{\text{prev}} \in \{0, 1\}$, add a small **Hamming-distance perturbation penalty** to the objective:
-
-$$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
-
-```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
-
-const m = new Model("StableReschedule");
-const prevShift = [1, 0, 1, 0];
-const x = prevShift.map((prev, i) =>
-  m.binary(`shift_${i}`, { initialValue: prev })
-);
-
-// Count how many binary assignments flip from the previous schedule
-const flipTerms = x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : v));
-
-// Penalize each schedule change by $5 alongside the primary operational cost
-m.objective(minimize(expr`5 * sum(${flipTerms})`));
-```
 
 ---
 
 ## Accessing Solution Values & Reduced Costs
 
-After calling `await m.solve()` or `await m.check()`, assigned variable values (optimal or incumbent primal values from `solve()`, or a satisfying assignment from `check()`) are accessible via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`) or the bulk accessor `m.getValues()`:
+After calling `await m.solve()` or `await m.check()`, assigned variable values are accessible via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`) or the bulk accessor `m.getValues()`:
 
 ```typescript
 await m.solve();
@@ -201,7 +159,7 @@ await m.solve();
 // Single variable primal value
 console.log(`trucks: ${trucks.value}`);
 
-// Reduced cost (LP sensitivity analysis — how much an objective coefficient must improve before a variable at its bound enters the basis)
+// Reduced cost (LP sensitivity analysis)
 console.log(`fuel reduced cost: ${fuel.reducedCost}`);
 
 // Bulk extraction for 1D or 2D collections (works for both Var and BoolVar collections)
@@ -216,10 +174,10 @@ const flowValues = m.getValues(ship);
 
 ## Looking Up Variables by Name
 
-You can retrieve registered decision variables by name or inspect the total variable count on the model:
+You can retrieve registered decision variables by name or inspect the total numeric variable count on the model:
 
 ```typescript
 const v = m.getVarByName("trucks");           // Var | undefined
-const b = m.getBoolVarByName("isNight");      // BoolVar | undefined
+const b = m.getBoolVarByName("isAdmin");      // BoolVar | undefined
 console.log("Total numeric variables:", m.numVars);
 ```

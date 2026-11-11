@@ -8,7 +8,7 @@ WaSHI はこれらを解決するため、Z3 による **Unsat Core（充足不�
 
 ---
 
-## 🔍 矛盾制約の診断 (`unsatCore` / `conflicts`)
+## 矛盾制約の診断 (`unsatCore` / `conflicts`)
 
 モデルが実行不可能な場合、一般的な MIP ソルバーは単に `"Infeasible"` とだけ返し、どの制約が原因かは教えてくれません。
 **`await m.check({ solver: "z3" })`** を呼び出すと、WaSHI は Z3 の `assertAndTrack` 機構を用いて **Unsatisfiable Core (`unsatCore`)**（互いに矛盾している名前付き制約の部分集合）を自動的に特定します：
@@ -76,7 +76,7 @@ if (status === "Infeasible") {
 
 ---
 
-## ✅ 解の独立検証 (`m.validateSolution()`)
+## 解の独立検証 (`m.validateSolution()`)
 
 求解後（または `values` オプションでカスタム解を渡して）、得られた解が元のモデルの変数上下限・整数条件・線形制約・論理制約を許容誤差内で満たしているかを独立して検証できます：
 
@@ -116,7 +116,7 @@ if (m.hasPrimalSolution) {
 
 ---
 
-## 📄 LP 定式化の出力・確認 (`m.toLpString()`)
+## LP 定式化の出力・確認 (`m.toLpString()`)
 
 係数や符号、あるいは `m.indicator()` によって自動展開された Big-M 制約を確認したい場合は、`m.toLpString()` で標準的な CPLEX / HiGHS `.lp` 形式の文字列を出力できます：
 
@@ -142,7 +142,7 @@ End
 
 ---
 
-## 🧪 `MockSolver` によるアプリケーションの単体テスト
+## `MockSolver` によるアプリケーションの単体テスト
 
 CI 環境などで WebAssembly をロードせずにアプリケーション側のモデル構築ロジックや結果処理ロジックを高速にテストしたい場合は、組み込みの `MockSolver`（`solver: "mock"`）を利用できます：
 
