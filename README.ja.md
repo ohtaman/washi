@@ -93,7 +93,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 `dot` / `sum` による線形式の記述と、`m.indicator()` による条件付き制約：
 
 ```ts
-import { Model, dot, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
@@ -106,11 +106,11 @@ const costs = {
 const open = m.binary(factories);
 const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// 東京工場が閉鎖 (open["Tokyo"] == 0) なら StoreA への輸送量は 0
-m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+// 東京工場が閉鎖 (open["Tokyo"] == 0) なら東京工場からの総輸送量は 0
+m.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
 m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
 
-m.objective(minimize(dot(costs, ship)));
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
 console.log("輸送量:", m.getValues(ship));
@@ -137,12 +137,12 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 
 ### 3. SMT 論理ルール & 矛盾診断 (`m.check`)
 
-論理条件（`m.bool`, `.implies`）を含むモデルの充足可能性を判定し、矛盾時の原因制約を特定します：
+論理条件（`m.bool`, `implies`）を含むモデルの充足可能性を判定し、矛盾時の原因制約を特定します：
 - **HiGHS（標準）**: 緩和すれば実行可能になる**修復集合**（`res.conflicts`）を特定します。
 - **Z3**: 相互に矛盾している**充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 // import "@ohtaman/washi/solvers/z3"; // 厳密な SMT unsatCore を抽出する場合
 
 const m = new Model("StaffingRules");
@@ -152,7 +152,7 @@ const rush = m.bool("rush");
 
 m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
 m.constraint(expr`${budget} <= 50000`, "budget_cap"); // 矛盾: 8人 * $8,000 > $50,000
 m.constraint(expr`${engineers} >= 1`, "min_staff");   // 無関係な制約
 

@@ -173,7 +173,7 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 $$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
 
 ```typescript
-import { Model, expr, sum, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("StableReschedule");
 const prevShift = [1, 0, 1, 0];
@@ -181,13 +181,11 @@ const x = prevShift.map((prev, i) =>
   m.binary(`shift_${i}`, { initialValue: prev })
 );
 
-// 统计相比原计划发生翻转（0->1 或 1->0）的班次总数
-const flips = sum(
-  x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : expr`${v}`))
-);
+// 统计相比原计划发生翻转（0->1 或 1->0）的班次项
+const flipTerms = x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : v));
 
 // 对每次班次变动施加 $5 的扰动惩罚
-m.objective(minimize(expr`5 * ${flips}`));
+m.objective(minimize(expr`5 * sum(${flipTerms})`));
 ```
 
 ---

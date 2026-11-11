@@ -10,7 +10,7 @@
  * Run with: npx tsx examples/node/14-traveling-salesperson-benders.ts
  */
 
-import { Model, expr, minimize, LinExpr, type Var } from "../../src/index.js";
+import { Model, expr, minimize, type Var } from "../../src/index.js";
 
 export async function runTSP() {
   console.log("=== Traveling Salesperson Problem (TSP) via Benders Decomposition ===");
@@ -25,40 +25,30 @@ export async function runTSP() {
   ];
   const n = cities.length;
 
-  const dist = (i: number, j: number) => {
-    const dx = cities[i].x - cities[j].x;
-    const dy = cities[i].y - cities[j].y;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
+  const dist = (i: number, j: number) =>
+    Math.hypot(cities[i].x - cities[j].x, cities[i].y - cities[j].y);
 
   // 1. Build Master Problem (Assignment Relaxation)
   const master = new Model("TSP_BendersMaster");
-  const x: Record<string, Var> = {};
-  const objExpr = new LinExpr();
+  const x: Record<number, Record<number, Var>> = {};
+  const distMatrix: Record<number, Record<number, number>> = {};
 
   for (let i = 0; i < n; i++) {
+    x[i] = {};
+    distMatrix[i] = {};
     for (let j = 0; j < n; j++) {
       if (i !== j) {
-        const v = master.binary(`x_${i}_${j}`);
-        x[`${i}_${j}`] = v;
-        objExpr.addTerm(v, dist(i, j));
+        x[i][j] = master.binary(`x_${i}_${j}`);
+        distMatrix[i][j] = dist(i, j);
       }
     }
   }
-  master.objective(minimize(objExpr));
+  master.objective(minimize(expr`dot(${distMatrix}, ${x})`));
 
   // Degree constraints: Exactly 1 outgoing and 1 incoming edge per city
   for (let i = 0; i < n; i++) {
-    const outExpr = new LinExpr();
-    const inExpr = new LinExpr();
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        outExpr.addTerm(x[`${i}_${j}`], 1);
-        inExpr.addTerm(x[`${j}_${i}`], 1);
-      }
-    }
-    master.constraint(expr`${outExpr} == 1`, `out_${i}`);
-    master.constraint(expr`${inExpr} == 1`, `in_${i}`);
+    master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
+    master.constraint(expr`sum(${n}, ${(j: number) => x[j][i]}) == 1`, `in_${i}`);
   }
 
   console.log(`Initialized TSP master problem with ${n} cities and assignment constraints.`);
@@ -72,10 +62,8 @@ export async function runTSP() {
       const nextCity: number[] = new Array(n).fill(-1);
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
-          if (i !== j) {
-            if (x[`${i}_${j}`].value === 1) {
-              nextCity[i] = j;
-            }
+          if (i !== j && x[i][j].value === 1) {
+            nextCity[i] = j;
           }
         }
       }
@@ -104,23 +92,18 @@ export async function runTSP() {
       }
 
       // Disconnected subtours detected: Generate Benders Feasibility Cuts (multi-cut separation)
-      // for every disconnected component S: sum_{i in S, j in S} x_ij <= |S| - 1
+      // for every disconnected component S: sum_{i in S, j in S, i != j} x_ij <= |S| - 1
       console.log(
         `  Iter ${iteration}: ${cycles.length} subtours detected (${cycles.map((c) => `[${c.join(" -> ")}]`).join(", ")}). Adding Benders feasibility cuts.`
       );
 
       return cycles.map((cycle) => {
-        const secExpr = new LinExpr();
-        for (const i of cycle) {
-          for (const j of cycle) {
-            if (i !== j) {
-              secExpr.addTerm(x[`${i}_${j}`], 1);
-            }
-          }
-        }
+        const internalEdges = cycle.flatMap((i) =>
+          cycle.filter((j) => j !== i).map((j) => x[i][j])
+        );
         return {
           kind: "feasibility" as const,
-          constraint: expr`${secExpr} <= ${cycle.length - 1}`,
+          constraint: expr`sum(${internalEdges}) <= ${cycle.length - 1}`,
           name: `sec_${cycle.join("_")}`,
         };
       });

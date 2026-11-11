@@ -11,7 +11,7 @@
  * Run with: npx tsx examples/node/13-vehicle-routing-column-generation.ts
  */
 
-import { Model, expr, minimize, sum } from "../../src/index.js";
+import { Model, expr, minimize } from "../../src/index.js";
 
 export interface RouteMeta {
   tour: string[];
@@ -173,7 +173,7 @@ export async function runCVRP() {
 
   // Initial naive routes: 1 dedicated vehicle per customer (Depot -> C_i -> Depot)
   const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
-  master.objective(minimize(sum(initialRoutes)));
+  master.objective(minimize(expr`sum(${initialRoutes})`));
 
   // Customer coverage constraints: Each customer must be visited by at least 1 vehicle.
   // Note: Using `== 1` (Set Partitioning) guarantees no duplicate customer visits across routes,

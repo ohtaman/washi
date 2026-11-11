@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { Model, expr, sum, dot, not, QuadExpr, HiGHS, maximize, minimize } from "../src/index.js";
+import { Model, expr, implies, not, QuadExpr, HiGHS, maximize, minimize } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
 import "../src/modeler/solvers/glpk/index.js";
 
@@ -87,11 +87,11 @@ describe("README.md Code Snippets Validation", () => {
     const w = m.continuous(assets, { lb: 0, ub: 1 });
 
     // 1. Fully invested budget: sum(w) == 1.0
-    m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget");
+    m.constraint(expr`sum(${w}) == 1.0`, "budget");
 
     // 2. Minimum target return: portfolio return >= 8.5%
     const retMap = Object.fromEntries(assets.map((a, i) => [a, returns[i]]));
-    m.constraint(expr`${dot(retMap, w)} >= 0.085`, "min_return");
+    m.constraint(expr`dot(${retMap}, ${w}) >= 0.085`, "min_return");
 
     // 3. Covariance risk matrix
     const cov = [
@@ -126,7 +126,7 @@ describe("README.md Code Snippets Validation", () => {
     const lux = m.integer("lux", { lb: 0 });
 
     // Logical rules
-    m.constraint(lux.le(50).implies(isNight), "dark_implies_night");
+    m.constraint(implies(expr`${lux} <= 50`, isNight), "dark_implies_night");
     m.constraint(motion.and(isNight).and(alarm).implies(siren), "alarm_rule");
 
     // Current sensor observations
@@ -154,7 +154,7 @@ describe("README.md Code Snippets Validation", () => {
     m.constraint(rushDelivery, "rush_required");
 
     // Rule 3: Rush delivery requires at least 8 engineers
-    m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+    m.constraint(implies(rushDelivery, expr`${engineers} >= 8`), "rush_staffing_rule");
 
     // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
     m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");
@@ -237,16 +237,16 @@ describe("README.md Code Snippets Validation", () => {
 
       // Carry over SMT-verified deployment decisions into MIP (Issue #34)
       if (deployEurope.value ?? true) {
-        mip.constraint(openEU.eq(1), "enforce_eu_deployment");
+        mip.constraint(expr`${openEU} == 1`, "enforce_eu_deployment");
       }
       if (deployUS.value ?? true) {
-        mip.constraint(openUS.eq(1), "enforce_us_deployment");
+        mip.constraint(expr`${openUS} == 1`, "enforce_us_deployment");
       }
 
-      mip.indicator(openEU, capEU.le(0), { activeValue: 0, M: 500 });
-      mip.indicator(openUS, capUS.le(0), { activeValue: 0, M: 500 });
-      mip.indicator(openEU, capEU.ge(50), { activeValue: 1, M: 500 });
-      mip.indicator(openUS, capUS.ge(50), { activeValue: 1, M: 500 });
+      mip.indicator(openEU, expr`${capEU} <= 0`, { activeValue: 0, M: 500 });
+      mip.indicator(openUS, expr`${capUS} <= 0`, { activeValue: 0, M: 500 });
+      mip.indicator(openEU, expr`${capEU} >= 50`, { activeValue: 1, M: 500 });
+      mip.indicator(openUS, expr`${capUS} >= 50`, { activeValue: 1, M: 500 });
       mip.constraint(expr`${capEU} + ${capUS} >= 450`);
       mip.objective(minimize(expr`5000 * ${openEU} + 5000 * ${openUS} + 18 * ${capEU} + 12 * ${capUS}`));
 
@@ -336,9 +336,9 @@ describe("README.md Code Snippets Validation", () => {
     };
     const open = m1.binary(factories);
     const ship = m1.continuous(factories, stores, { lb: 0, ub: 500 });
-    m1.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+    m1.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
     m1.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
-    m1.objective(minimize(dot(costs, ship)));
+    m1.objective(minimize(expr`dot(${costs}, ${ship})`));
     const s1 = await m1.solve();
     expect(s1).toBe("Optimal");
     expect(m1.objectiveValue).toBeCloseTo(400, 6);
@@ -365,7 +365,7 @@ describe("README.md Code Snippets Validation", () => {
     const rush = m3.bool("rush");
     m3.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
     m3.constraint(rush, "rush_required");
-    m3.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+    m3.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
     m3.constraint(expr`${budget} <= 50000`, "budget_cap");
     m3.constraint(expr`${engineers} >= 1`, "min_staff");
     const res3 = await m3.check();

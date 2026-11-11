@@ -1,9 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { EXAMPLES } from "../examples/web-demo/src/presets/index.js";
 import {
   replaceSolverInCode,
   detectSolverInCode,
 } from "../examples/web-demo/src/ui/app.js";
+import { executeModelCode } from "../examples/web-demo/src/ui/runner.js";
+import { registerGLPKSolver } from "../src/modeler/solvers/glpk.js";
+import { registerZ3Solver, killZ3Threads } from "../src/modeler/solvers/z3.js";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -122,4 +125,77 @@ describe("Playground Typography (Mincho / Serif Removal)", () => {
     expect(content).not.toContain("Noto+Serif+JP");
     expect(content).toContain("Noto+Sans+JP");
   });
+});
+
+describe("Playground Presets Runtime Execution", () => {
+  beforeAll(() => {
+    registerGLPKSolver();
+    registerZ3Solver();
+  });
+
+  afterAll(async () => {
+    await killZ3Threads();
+  });
+
+  const expectedObjectives: Record<string, number> = {
+    production: 2200,
+    knapsack: 120,
+    transportation: 880,
+    diet_sensitivity: 24652 / 1805,
+    shift_scheduling: 3830,
+    cart_coupon: 192,
+    portfolio_qp: 0.014229,
+    glpk_diet_problem: 206 / 13,
+  };
+
+  for (const ex of EXAMPLES) {
+    it(`executes preset "${ex.id}" cleanly and satisfies mathematical invariants`, async () => {
+      const res = await executeModelCode(ex.code);
+      expect(res.error, `Preset "${ex.id}" threw error: ${res.error}`).toBeUndefined();
+      expect(res.success).toBe(true);
+      expect(res.model).toBeDefined();
+      const m = res.model!;
+
+      if (ex.id in expectedObjectives) {
+        expect(m.status).toBe("Optimal");
+        expect(m.objectiveValue).not.toBeNull();
+        expect(m.objectiveValue!).toBeCloseTo(expectedObjectives[ex.id], 4);
+        expect(m.validateSolution().valid).toBe(true);
+      } else if (ex.id === "shift_conflict_unsat") {
+        expect(m.status).toBe("Unsat");
+        expect(m.conflicts).toEqual(
+          expect.arrayContaining([
+            "coverage_Sat",
+            "day_off_Alice_Sat",
+            "day_off_Bob_Sat",
+            "day_off_Charlie_Sat",
+          ])
+        );
+        expect(m.conflicts).not.toContain("day_off_Diana_Fri");
+      } else if (ex.id === "conflict_diagnosis_unsat") {
+        expect(m.status).toBe("Unsat");
+        expect(m.conflicts).toEqual(
+          expect.arrayContaining([
+            "budget_limit",
+            "rush_required",
+            "rush_staffing_rule",
+            "strict_board_budget_cap",
+          ])
+        );
+        expect(m.conflicts).not.toContain("minimum_one_employee");
+      } else if (ex.id === "smt_security") {
+        expect(m.status).toBe("Sat");
+        expect(m.values.get("sirenActive")).toBe(true);
+        expect(m.values.get("lightsOn")).toBe(true);
+        expect(m.values.get("frontDoorUnlocked")).toBe(false);
+        expect(m.values.get("isNight")).toBe(true);
+        expect(m.validateSolution().valid).toBe(true);
+      } else if (ex.id === "smt_sat_scheduling") {
+        expect(m.status).toBe("Sat");
+        expect(m.validateSolution().valid).toBe(true);
+      } else {
+        throw new Error(`Unhandled preset id "${ex.id}" in runtime execution suite`);
+      }
+    }, 30000);
+  }
 });

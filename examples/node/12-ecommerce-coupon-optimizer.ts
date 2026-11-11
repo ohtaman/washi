@@ -12,7 +12,7 @@
  * Run with: npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
  */
 
-import { Model, sum, expr, minimize } from "../../src/index.js";
+import { Model, expr, minimize } from "../../src/index.js";
 
 async function main() {
   console.log("=== E-Commerce Cart & Coupon Optimizer (MIP) ===");
@@ -42,10 +42,11 @@ async function main() {
   ];
 
   const useCoupon = m.binary(coupons.map((c) => c.id));
+  const discounts = Object.fromEntries(coupons.map((c) => [c.id, c.discount]));
 
   // Total merchandise spend (base cart + optional add-on item)
-  const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
-  const techSpend = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
+  const merchSpend = expr`${baseCartSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
+  const techSpend = expr`${baseTechSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
 
   // Rule 1: Indicator constraints — if coupon `c` is applied (useCoupon[c.id] == 1),
   // the cart must satisfy its minimum spend threshold.
@@ -53,13 +54,13 @@ async function main() {
   // (e.g., M = 8 for MEGA45_250 where 242 + 10 * addUsbCable >= 250).
   for (const cpn of coupons) {
     if (cpn.minCartSpend > 0) {
-      m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCartSpend), {
+      m.indicator(useCoupon[cpn.id], expr`${merchSpend} >= ${cpn.minCartSpend}`, {
         activeValue: 1,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTechSpend > 0) {
-      m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTechSpend), {
+      m.indicator(useCoupon[cpn.id], expr`${techSpend} >= ${cpn.minTechSpend}`, {
         activeValue: 1,
         name: `min_tech_${cpn.id}`,
       });
@@ -67,21 +68,14 @@ async function main() {
   }
 
   // Rule 2: Mutual exclusion among non-stackable ("Exclusive") coupons
-  const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.constraint(
-    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
-    "at_most_one_exclusive_coupon"
-  );
+  const exclusiveVars = coupons.filter((c) => !c.stackable).map((c) => useCoupon[c.id]);
+  m.constraint(expr`sum(${exclusiveVars}) <= 1`, "at_most_one_exclusive_coupon");
 
   // Rule 3: Maximum 2 coupons total per checkout
-  m.constraint(
-    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
-    "max_two_coupons_total"
-  );
+  m.constraint(expr`sum(${useCoupon}) <= 2`, "max_two_coupons_total");
 
   // Objective: Minimize final net payable amount = merchSpend - totalDiscounts
-  const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
-  m.objective(minimize(merchSpend.sub(totalDiscount)));
+  m.objective(minimize(expr`${merchSpend} - dot(${discounts}, ${useCoupon})`));
 
   const buildMs = performance.now() - t0;
   const status = await m.solve();

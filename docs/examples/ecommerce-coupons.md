@@ -31,7 +31,7 @@ By adding the `$10` cable (`$252` gross), the customer unlocks `MEGA45_250` (`-$
 <CodeRunner preset="cart_coupon">
 
 ```typescript
-import { Model, sum, minimize, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 
 async function optimizeCheckoutCart() {
   const m = new Model("CartCouponOptimizer");
@@ -52,21 +52,22 @@ async function optimizeCheckoutCart() {
 
   // Binary decision variables for each coupon
   const useCoupon = m.binary(coupons.map((c) => c.id));
+  const discounts = Object.fromEntries(coupons.map((c) => [c.id, c.discount]));
 
-  const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
-  const techSpend  = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
+  const merchSpend = expr`${baseCartSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
+  const techSpend  = expr`${baseTechSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
 
   // 1. Indicator constraints: If useCoupon[id] == 1, minimum spend threshold must hold.
   // Omitting `M` lets WaSHI automatically derive the tightest Big-M from variable bounds!
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
-      m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCart), {
+      m.indicator(useCoupon[cpn.id], expr`${merchSpend} >= ${cpn.minCart}`, {
         activeValue: 1,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTech > 0) {
-      m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTech), {
+      m.indicator(useCoupon[cpn.id], expr`${techSpend} >= ${cpn.minTech}`, {
         activeValue: 1,
         name: `min_tech_${cpn.id}`,
       });
@@ -74,21 +75,14 @@ async function optimizeCheckoutCart() {
   }
 
   // 2. Mutual exclusion among non-stackable ("Exclusive") coupons
-  const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.constraint(
-    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
-    "at_most_one_exclusive"
-  );
+  const exclusiveVars = coupons.filter((c) => !c.stackable).map((c) => useCoupon[c.id]);
+  m.constraint(expr`sum(${exclusiveVars}) <= 1`, "at_most_one_exclusive");
 
   // 3. Max 2 coupons per order
-  m.constraint(
-    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
-    "max_two_coupons"
-  );
+  m.constraint(expr`sum(${useCoupon}) <= 2`, "max_two_coupons");
 
   // Objective: Minimize final net payable amount (merchSpend - totalDiscounts)
-  const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
-  m.objective(minimize(merchSpend.sub(totalDiscount)));
+  m.objective(minimize(expr`${merchSpend} - dot(${discounts}, ${useCoupon})`));
 
   const status = await m.solve();
   console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);

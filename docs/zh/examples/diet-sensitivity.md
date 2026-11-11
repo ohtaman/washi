@@ -2,7 +2,7 @@
 
 | 问题类型 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">源代码</a></li></ul> |
+| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">源代码</a></li></ul> |
 
 在求解线性规划模型时，决策变量的最优取值（`var.value`）往往只是故事的一半。在实际业务决策中，我们通常还需要了解**灵敏度分析（Sensitivity Analysis）**信息：
 
@@ -28,7 +28,7 @@
 <CodeRunner preset="diet_sensitivity">
 
 ```typescript
-import { Model, minimize, dot, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -51,15 +51,15 @@ async function runDietSensitivity() {
   const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
   const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // 目标函数：通过点积（dot）最小化每日饮食总成本
-  m.objective(minimize(dot(costs, srv)));
+  // 目标函数：通过 expr 内的点积（dot）最小化每日饮食总成本
+  m.objective(minimize(expr`dot(${costs}, ${srv})`));
 
   // 营养下限约束：使用 expr 与 constraint() 声明式定义
   const nutConstraints = [
-    m.constraint(expr`${dot(cals, srv)} >= 2000`, "min_calories"),
-    m.constraint(expr`${dot(prots, srv)} >= 105`,  "min_protein"),
-    m.constraint(expr`${dot(calcs, srv)} >= 1000`, "min_calcium"),
-    m.constraint(expr`${dot(irons, srv)} >= 18`,   "min_iron"),
+    m.constraint(expr`dot(${cals}, ${srv}) >= 2000`, "min_calories"),
+    m.constraint(expr`dot(${prots}, ${srv}) >= 105`,  "min_protein"),
+    m.constraint(expr`dot(${calcs}, ${srv}) >= 1000`, "min_calcium"),
+    m.constraint(expr`dot(${irons}, ${srv}) >= 18`,   "min_iron"),
   ];
 
   const status = await m.solve();

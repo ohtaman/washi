@@ -2,9 +2,9 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
+| 命題論理・SMT 充足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">ソースコード</a></li></ul> |
 
-真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`luxLevel.le(50).implies(isNight)`)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
+真偽値変数（`BoolVar`）と数値変数（`Var`）を組み合わせ、「もし照度が 50 以下なら夜間モードにする (`` implies(expr`${luxLevel} <= 50`, isNight) ``)」といった複合的な業務ルール・セキュリティポリシーの充足性を Z3 ソルバーで検証します。
 
 ## シナリオ
 
@@ -19,7 +19,7 @@
 <CodeRunner preset="smt_security">
 
 ```typescript
-import { Model, not, expr } from "@ohtaman/washi";
+import { Model, implies, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 async function verifySecurityRules() {
@@ -37,7 +37,7 @@ async function verifySecurityRules() {
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
   // ルール 1: luxLevel <= 50 ならば isNight
-  m.constraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+  m.constraint(implies(expr`${luxLevel} <= 50`, isNight), "dark_implies_night");
 
   // ルール 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
   m.constraint(
@@ -81,4 +81,4 @@ verifySecurityRules();
 ## 実務上のポイント
 
 - **背理法による形式検証（反例探索）**: 単一の `check()` で `"Sat"` が返ることは「条件を満たす状態が少なくとも1つ存在する」ことを意味します。ある安全性要件 $P$（例：`sirenActive`）が**いかなる場合も必ず成立する（抜け道がない）**ことを形式的に証明するには、あえて否定 `not(P)` を追加して `m.check()` を実行し、`"Unsat"` になることを確認します。もし `"Sat"` が返れば、そのときの変数値が具体的なセキュリティ上の抜け道（反例）となります。
-- **片方向の含意（`implies`）と双方向同値の違い**: `luxLevel.le(50).implies(isNight)` は「照度 50 以下なら夜」しか規定しないため、昼間（`luxLevel > 50`）のときに `isNight` が `true` になっても論理的には違反になりません（オープンワールド仮定）。「照度 50 以下 $\iff$ 夜」とする場合は、逆方向の `luxLevel.ge(51).implies(not(isNight))` も併せて記述します。
+- **片方向の含意（`implies`）と双方向同値の違い**: `` implies(expr`${luxLevel} <= 50`, isNight) `` は「照度 50 以下なら夜」しか規定しないため、昼間（`luxLevel > 50`）のときに `isNight` が `true` になっても論理的には違反になりません（オープンワールド仮定）。「照度 50 以下 $\iff$ 夜」とする場合は、逆方向の `` implies(expr`${luxLevel} >= 51`, not(isNight)) `` も併せて記述します。

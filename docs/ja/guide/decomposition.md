@@ -270,7 +270,7 @@ const result = await master.solveBenders({
   * **子問題（Pricing / 0-1 ナップサック問題）**: 顧客カバー制約のシャドウプライス（双対変数 $\pi_i$）をもとに、車両積載容量を満たしつつ被約費用が負（$1 - \sum \pi_i a_i < 0$）となる新規パターン（列）を動的に生成。（距離最小化の CVRP では、列のコストを巡回距離とし、Pricing 子問題として資源制約付き最短路問題 ESPPRC を解きます。）
 
 ```typescript
-import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
+import { Model, expr, minimize, maximize } from "@ohtaman/washi";
 
 const vehicleCapacity = 8;
 const customers = [
@@ -280,14 +280,14 @@ const customers = [
   { id: "C4", demand: 2 },
   { id: "C5", demand: 4 },
 ];
+const demands = Object.fromEntries(customers.map((c) => [c.id, c.demand]));
 
 // 1. 主問題：顧客の配送カバー
 const master = new Model("CVRP_Master");
-const initialRoutes: Var[] = [];
-for (const cust of customers) {
-  initialRoutes.push(master.integer(`init_${cust.id}`, { lb: 0, ub: 1 }));
-}
-master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr())));
+const initialRoutes = customers.map((cust) =>
+  master.integer(`init_${cust.id}`, { lb: 0, ub: 1 })
+);
+master.objective(minimize(expr`sum(${initialRoutes})`));
 
 const visitConstrs = customers.map((cust, i) =>
   master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${cust.id}`)
@@ -298,20 +298,15 @@ const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
   pricing: async () => {
     const sub = new Model("RoutePricing");
-    const a: Record<string, Var> = {};
-    const obj = new LinExpr();
+    const a = sub.binary(customers.map((c) => c.id), { prefix: "v" });
+    const duals = Object.fromEntries(
+      customers.map((cust, i) => [cust.id, visitConstrs[i].dual ?? 0])
+    );
 
-    for (let i = 0; i < customers.length; i++) {
-      const cust = customers[i];
-      a[cust.id] = sub.binary(`v_${cust.id}`);
-      obj.addTerm(a[cust.id], visitConstrs[i].dual ?? 0);
-    }
-
-    sub.objective(maximize(obj));
+    sub.objective(maximize(expr`dot(${duals}, ${a})`));
 
     // 車両の積載容量制約: sum(demand_i * a_i) <= vehicleCapacity
-    const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
-    sub.constraint(expr`${load} <= ${vehicleCapacity}`);
+    sub.constraint(expr`dot(${demands}, ${a}) <= ${vehicleCapacity}`);
 
     await sub.solve();
 
@@ -340,57 +335,47 @@ console.log("最適車両台数:", result.objectiveValue); // 3台
   * **子問題**: 得られた経路グラフで連結成分を調べ、部分巡回 $S$ が見つかれば、それを禁止する Benders 実行可能カット（$\sum_{i,j \in S} x_{ij} \le |S| - 1$）を動的に主問題へ注入。
 
 ```typescript
-import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
+import { Model, expr, minimize, type Var } from "@ohtaman/washi";
 
 const n = cities.length;
 const master = new Model("TSP_Master");
-const x: Record<string, Var> = {};
-const objExpr = new LinExpr();
+const x: Record<number, Record<number, Var>> = {};
+const distMatrix: Record<number, Record<number, number>> = {};
 
 for (let i = 0; i < n; i++) {
+  x[i] = {};
+  distMatrix[i] = {};
   for (let j = 0; j < n; j++) {
     if (i !== j) {
-      const v = master.binary(`x_${i}_${j}`);
-      x[`${i}_${j}`] = v;
-      objExpr.addTerm(v, dist(i, j));
+      x[i][j] = master.binary(`x_${i}_${j}`);
+      distMatrix[i][j] = dist(i, j);
     }
   }
 }
-master.objective(minimize(objExpr));
+master.objective(minimize(expr`dot(${distMatrix}, ${x})`));
 
 // 各都市の出次数・入次数制約
 for (let i = 0; i < n; i++) {
-  const outE = new LinExpr();
-  const inE = new LinExpr();
-  for (let j = 0; j < n; j++) {
-    if (i !== j) {
-      outE.addTerm(x[`${i}_${j}`], 1);
-      inE.addTerm(x[`${j}_${i}`], 1);
-    }
-  }
-  master.constraint(expr`${outE} == 1`, `out_${i}`);
-  master.constraint(expr`${inE} == 1`, `in_${i}`);
+  master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
+  master.constraint(expr`sum(${n}, ${(j: number) => x[j][i]}) == 1`, `in_${i}`);
 }
 
 // Benders 遅延部分巡回路除去で求解
 const result = await master.solveBenders({
   subproblem: () => {
-    const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
+    const cycles = findCycles(n, (i, j) => (x[i][j].value ?? 0) > 0.5);
     if (cycles.length === 1 && cycles[0].length === n) {
       return null; // 全都市を回る単一ツアーが完成
     }
 
     // 部分巡回を検出：見つかったすべての部分巡回 S に対して Benders 実行可能カットを一括生成（マルチカット分離）
     return cycles.map((S) => {
-      const secExpr = new LinExpr();
-      for (const i of S) {
-        for (const j of S) {
-          if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
-        }
-      }
+      const internalEdges = S.flatMap((i) =>
+        S.filter((j) => j !== i).map((j) => x[i][j])
+      );
       return {
         kind: "feasibility" as const,
-        constraint: expr`${secExpr} <= ${S.length - 1}`,
+        constraint: expr`sum(${internalEdges}) <= ${S.length - 1}`,
       };
     });
   },
