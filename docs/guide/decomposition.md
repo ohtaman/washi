@@ -132,25 +132,32 @@ console.log("Columns added:", result.columnsAdded);
 
 ### Pricing with a Custom Algorithm (`getDual`)
 
-Because `pricing` is a standard callback receiving `PricingContext`, you can also generate columns using a custom dynamic programming or shortest-path routine instead of a subproblem `Model`:
+Because `pricing` is a standard callback receiving `PricingContext`, you can also solve the pricing problem directly in TypeScript (e.g., via combinatorial search, dynamic programming, or shortest-path routines) instead of constructing a subproblem `Model`:
 
 ```typescript
 const customResult = await master.solveColumnGeneration({
   maxIterations: 100,
   reducedCostTolerance: 1e-6,
   pricing: ({ getDual }) => {
-    const duals = {
-      A: getDual("demand_A"),
-      B: getDual("demand_B"),
-      C: getDual("demand_C"),
-    };
-    // Evaluate best pattern using any domain-specific algorithm; return null when optimal
-    if (duals.A + duals.B * 0 <= 1) return null;
-    return {
-      cost: 1,
-      type: "Integer",
-      coefficients: { demand_A: 2, demand_B: 0, demand_C: 0 },
-    };
+    const dA = getDual("demand_A");
+    const dB = getDual("demand_B");
+    const dC = getDual("demand_C");
+
+    // Search feasible patterns (45*aA + 36*aB + 16*aC <= rollWidth) for negative reduced cost (1 - dualSum < -1e-6)
+    let bestDualSum = 1 + 1e-6;
+    let best: { demand_A: number; demand_B: number; demand_C: number } | null = null;
+    for (let aA = 0; 45 * aA <= rollWidth; aA++) {
+      for (let aB = 0; 45 * aA + 36 * aB <= rollWidth; aB++) {
+        for (let aC = 0; 45 * aA + 36 * aB + 16 * aC <= rollWidth; aC++) {
+          const dualSum = dA * aA + dB * aB + dC * aC;
+          if (dualSum > bestDualSum) {
+            bestDualSum = dualSum;
+            best = { demand_A: aA, demand_B: aB, demand_C: aC };
+          }
+        }
+      }
+    }
+    return best ? { cost: 1, type: "Integer", coefficients: best } : null;
   },
 });
 ```

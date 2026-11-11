@@ -446,19 +446,51 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(lex.bob).toBeCloseTo(20, 6);
     }
 
-    // Verify self-contained ManualBenders snippet in decomposition.md across EN/JA/ZH
+    // Verify all decomposition.md orchestrator snippets (CuttingStockMaster, Custom getDual Pricing, FacilityMaster, ManualBenders) across EN/JA/ZH
     for (const relPath of [
       "docs/guide/decomposition.md",
       "docs/ja/guide/decomposition.md",
       "docs/zh/guide/decomposition.md",
     ]) {
       const md = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
-      const manualBlock = [...md.matchAll(/```typescript\n([\s\S]*?)```/g)]
-        .map((m) => m[1])
-        .find((b) => b.includes("ManualBenders"));
+      const allBlocks = [...md.matchAll(/```typescript\n([\s\S]*?)```/g)].map((m) => m[1]);
+
+      const cuttingBlock = allBlocks.find((b) => b.includes("CuttingStockMaster"));
+      expect(cuttingBlock, `Missing CuttingStockMaster snippet in ${relPath}`).toBeDefined();
+      const cgSubRes = await runDocBlock<{ status: string; obj: number | null; cols: number }>(
+        cuttingBlock!.replace(/^\s*console\.log\([\s\S]*?\);\s*$/gm, ""),
+        `({ status: result.status, obj: result.objectiveValue, cols: result.columnsAdded })`
+      );
+      expect(cgSubRes.status).toBe("Optimal");
+      expect(cgSubRes.obj).toBeCloseTo(14, 5);
+      expect(cgSubRes.cols).toBeGreaterThan(0);
+
+      // Extract the RMP setup (before `const result = await master.solveColumnGeneration`) and run the custom `getDual` snippet against a fresh RMP
+      const rmpSetup = cuttingBlock!.split("const result = await master.solveColumnGeneration")[0];
+      const customPricingBlock = allBlocks.find((b) => b.includes("customResult"));
+      expect(customPricingBlock, `Missing customResult getDual pricing snippet in ${relPath}`).toBeDefined();
+      const cgCustomRes = await runDocBlock<{ status: string; obj: number | null; cols: number }>(
+        `${rmpSetup}\n${customPricingBlock!}`,
+        `({ status: customResult.status, obj: customResult.objectiveValue, cols: customResult.columnsAdded })`
+      );
+      expect(cgCustomRes.status).toBe("Optimal");
+      expect(cgCustomRes.obj).toBeCloseTo(14, 5);
+      expect(cgCustomRes.cols).toBeGreaterThan(0);
+
+      const facilityBlock = allBlocks.find((b) => b.includes("FacilityMaster"));
+      expect(facilityBlock, `Missing FacilityMaster snippet in ${relPath}`).toBeDefined();
+      const facilityRes = await runDocBlock<{ status: string; obj: number | null; cuts: number }>(
+        facilityBlock!.replace(/^\s*console\.log\([\s\S]*?\);\s*$/gm, ""),
+        `({ status: result.status, obj: result.objectiveValue, cuts: result.cutsAdded })`
+      );
+      expect(facilityRes.status).toBe("Optimal");
+      expect(facilityRes.obj).toBeCloseTo(390, 4);
+      expect(facilityRes.cuts).toBeGreaterThan(0);
+
+      const manualBlock = allBlocks.find((b) => b.includes("ManualBenders"));
       expect(manualBlock, `Missing ManualBenders snippet in ${relPath}`).toBeDefined();
       const bendersRes = await runDocBlock<{ status: string; obj: number | null; y: number; theta: number }>(
-        manualBlock!,
+        manualBlock!.replace(/^\s*console\.log\([\s\S]*?\);\s*$/gm, ""),
         `({ status: result.status, obj: result.objectiveValue, y: result.values.y, theta: result.values.theta })`
       );
       expect(bendersRes.status).toBe("Optimal");

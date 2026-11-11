@@ -132,25 +132,32 @@ console.log("新增列数:", result.columnsAdded);
 
 ### 使用自定义算法实现 `pricing` (`getDual`)
 
-由于 `pricing` 是接收 `PricingContext` 的普通回调函数，您也可以直接用动态规划或图最短路算法生成列，而无需构建子问题 `Model`：
+由于 `pricing` 是接收 `PricingContext` 的普通回调函数，您也可以直接使用组合搜索、动态规划或图最短路等任意 TypeScript 算法求解定价问题，而无需构建子问题 `Model`：
 
 ```typescript
 const customResult = await master.solveColumnGeneration({
   maxIterations: 100,
   reducedCostTolerance: 1e-6,
   pricing: ({ getDual }) => {
-    const duals = {
-      A: getDual("demand_A"),
-      B: getDual("demand_B"),
-      C: getDual("demand_C"),
-    };
-    // 使用任意专用算法搜索新方案；无改进列时返回 null
-    if (duals.A + duals.B * 0 <= 1) return null;
-    return {
-      cost: 1,
-      type: "Integer",
-      coefficients: { demand_A: 2, demand_B: 0, demand_C: 0 },
-    };
+    const dA = getDual("demand_A");
+    const dB = getDual("demand_B");
+    const dC = getDual("demand_C");
+
+    // 搜索所有可行切割方案 (45*aA + 36*aB + 16*aC <= rollWidth)，寻找负检验数 (1 - dualSum < -1e-6) 的最优列
+    let bestDualSum = 1 + 1e-6;
+    let best: { demand_A: number; demand_B: number; demand_C: number } | null = null;
+    for (let aA = 0; 45 * aA <= rollWidth; aA++) {
+      for (let aB = 0; 45 * aA + 36 * aB <= rollWidth; aB++) {
+        for (let aC = 0; 45 * aA + 36 * aB + 16 * aC <= rollWidth; aC++) {
+          const dualSum = dA * aA + dB * aB + dC * aC;
+          if (dualSum > bestDualSum) {
+            bestDualSum = dualSum;
+            best = { demand_A: aA, demand_B: aB, demand_C: aC };
+          }
+        }
+      }
+    }
+    return best ? { cost: 1, type: "Integer", coefficients: best } : null;
   },
 });
 ```
