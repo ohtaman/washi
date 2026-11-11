@@ -1,17 +1,17 @@
 # Constraints (`m.constraint` & `m.indicator`)
 
 Constraints restrict the feasible solution space of your mathematical or logical model.
-In WaSHI, both linear arithmetic constraints and propositional SMT formulas are registered using **`m.constraint()`**:
+In WaSHI, both linear arithmetic constraints and propositional logic formulas are registered using **`m.constraint()`**:
 
 ```typescript
-m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
+m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood_limit");
 ```
 
 ---
 
-## ✍️ Algebraic Linear Constraints (`expr`)
+## Algebraic Linear Constraints (`expr`)
 
-The `expr` tagged template literal syntax allows writing equations and inequalities with natural mathematical notation:
+The `expr` tagged template literal allows writing equations and inequalities with standard mathematical notation:
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
@@ -30,13 +30,15 @@ m.constraint(expr`3 * ${x} + ${y} >= 20`, "min_demand");
 m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 ```
 
+`m.constraint()` returns the registered `Constraint` (or `BoolExpr` for logical formulas), or an array when passed a batch array.
+
 ### Supported Comparison Operators
 - `<=`: Upper bound constraint
 - `>=`: Lower bound constraint
 - `==` or `=`: Exact equality constraint
 
 ### Batch Registration
-You can pass an array of constraints to `m.constraint([...])` to register them transactionally in a single call:
+Pass an array of constraints to `m.constraint([...])` to register them transactionally in a single call:
 
 ```typescript
 m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
@@ -44,22 +46,22 @@ m.constraint([expr`${x} <= 10`, expr`${y} <= 20`]);
 
 ---
 
-## 🏷️ Naming Constraints
+## Naming Constraints
 
-Every constraint can be given a unique, descriptive name as the second argument of `m.constraint(c, name)`:
+Pass a unique, descriptive name as the second argument of `m.constraint(c, name)`:
 
 ```typescript
 m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 ```
 
 ### Why Name Constraints?
-1. **Model Inspection (`m.toLpString()`)**: Exported CPLEX LP strings retain these descriptive names (sanitized if needed) so you can inspect the exact generated formulation.
+1. **Model Inspection (`m.toLpString()`)**: Exported CPLEX LP strings retain these descriptive names (sanitized if needed) so you can inspect the generated formulation.
 2. **Conflict Diagnosis (`conflicts` / `unsatCore`)**: When constraints contradict each other, `m.check()` returns the conflicting constraint names (via built-in HiGHS elastic relaxation or Z3 `unsatCore`).
 3. **Direct Lookup (`m.getConstraintByName()`)**: Retrieve a constraint by name after solving to inspect its `dual` or `slack` value.
 
 ---
 
-## 🔁 Adding Constraints over Iterables & Sums
+## Aggregated Constraints (`sum` & `dot`)
 
 Use `sum(...)` and `dot(..., ...)` directly inside `expr` to express linear aggregations over arrays and dictionaries cleanly:
 
@@ -80,15 +82,15 @@ m.constraint(expr`dot(${weights}, ${selected}) <= 25`, "capacity_limit");
 
 ---
 
-## 🎯 Conditional / Indicator Constraints (`m.indicator`)
+## Conditional / Indicator Constraints (`m.indicator`)
 
-When a linear constraint should only take effect when a binary decision variable is active (`1` or `0`), use `m.indicator()`:
+When a linear constraint should only take effect when a binary decision variable (`m.binary()`) equals `1` (or `0`), use `m.indicator()`:
 
 ```typescript
 const useDiscount = m.binary("use_discount");
 const cartTotal = m.continuous("cart_total", { lb: 0, ub: 10_000 });
 
-// If useDiscount == 1, then cartTotal >= 100
+// If useDiscount == 1, enforce cartTotal >= 100
 // WaSHI automatically derives a safe, tight Big-M from the variable bounds
 m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
   activeValue: 1,
@@ -98,16 +100,16 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 ### Safe Automatic Big-M Derivation & Bounds
 
-When `options.M` is omitted, WaSHI automatically derives a safe, minimal Big-M value from the finite variable bounds:
+When `options.M` is omitted, WaSHI automatically derives a minimal valid Big-M value from finite variable bounds (`lb` and `ub`):
 - For `<=` constraints, variables with positive coefficients require finite upper bounds (`ub`), and negative coefficients require finite lower bounds (`lb`).
 - For `>=` constraints, variables with positive coefficients require finite lower bounds (`lb`), and negative coefficients require finite upper bounds (`ub`).
-- For `==` constraints, safe bounds are derived separately for both the `<=` and `>=` directions (generating `name_le` and `name_ge`).
+- For `==` constraints, bounds are derived separately for both the `<=` and `>=` directions (generating `name_le` and `name_ge`).
 
-If any referenced variable lacks the required finite bounds, `m.indicator()` throws an actionable error prompting for finite bounds or an explicit `options.M`.
+If any referenced variable lacks the required finite bound, `m.indicator()` throws an error prompting for finite bounds or an explicit `options.M`.
 
-### Explicit Override & Numerical Stability
+### Explicit `M` Override
 
-You can override the derived Big-M by providing `{ M: number }`:
+You can override the derived Big-M by passing `{ M: number }`:
 
 ```typescript
 m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
@@ -117,15 +119,13 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 ```
 
 > [!TIP]
-> **Numerical Stability vs. Correctness**:
-> An $M$ value that is too small can inadvertently cut off valid solutions. Conversely, an excessively large $M$ (e.g., $10^9$) causes poor matrix conditioning and numerical instability in MIP solvers.
-> By setting explicit, realistic variable bounds (`lb` and `ub`), WaSHI derives the tightest possible safe Big-M automatically.
+> **Prefer Finite Variable Bounds Over Arbitrary Large `M`**: An $M$ value that is too small can cut off valid feasible solutions, whereas an excessively large $M$ (e.g., $10^9$) degrades numerical conditioning in MIP solvers. Setting realistic `lb` and `ub` bounds on variables lets WaSHI compute the tightest safe Big-M automatically.
 
 ---
 
-## 🧠 Propositional Logic & SMT Constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
+## Propositional Logic & SMT Constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
-When solving with the **Z3** SMT engine (`@ohtaman/washi/solvers/z3`), you can combine propositional boolean variables (`m.bool()`) and linear constraints (`Constraint`) using first-class logical operators:
+WaSHI provides first-class logical operators to combine propositional boolean variables (`m.bool()`) and linear constraints (`Constraint`). Logical formulas are solved natively by the **Z3** SMT adapter (`@ohtaman/washi/solvers/z3`) and automatically linearized to 0-1 MIP constraints on **HiGHS** and **GLPK**:
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";
@@ -134,14 +134,14 @@ import "@ohtaman/washi/solvers/z3";
 const m = new Model({ solver: "z3" });
 const isAdmin = m.bool("isAdmin");
 const hasMfa = m.bool("hasMfa");
-const Clearance = m.integer("clearance", { lb: 0, ub: 5 });
+const clearance = m.integer("clearance", { lb: 0, ub: 5 });
 
 // Method syntax on BoolVar / BoolOp:
 m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 
 // Mixing boolean propositions with linear arithmetic comparisons:
 m.constraint(
-  implies(isAdmin, expr`${Clearance} >= 4`),
+  implies(isAdmin, expr`${clearance} >= 4`),
   "admin_clearance_level"
 );
 
@@ -156,72 +156,16 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **Trigger variable** | Numeric `Binary` variable (`m.binary()`) | `BoolVar` (`m.bool()`), `BoolOp`, or `Constraint` |
 | **Consequent** | Linear `Constraint` (`<=`, `>=`, `==`) | `BoolVar`, `BoolOp`, or linear `Constraint` |
 | **Target Solvers** | **All MIP/LP solvers** (HiGHS, GLPK, Z3) via Big-M linearization | **All solvers** (HiGHS and GLPK via automatic 0-1 MIP linearization, Z3 natively) |
-| **Best For** | Operations research & MIP optimization with an objective (`m.solve()`) | Rule engines, policy verification, and SMT feasibility (`m.check()`) |
+| **Primary Use Case** | MIP optimization models with arithmetic binary variables (`m.solve()`) | Logical rule systems and SMT feasibility (`m.check()`) |
 
 > [!NOTE]
-> **General Inequality Antecedents in `implies()`**: When solving on **Z3** (`solver: "z3"`), the antecedent `a` in `implies(a, b)` can be any general linear inequality (e.g., `` implies(expr`${luxLevel} <= 50`, isNight) ``). When solving on MIP engines (**HiGHS** / **GLPK**), the antecedent of a conditional constraint should be a `BoolVar` (`m.bool()`) or a `Binary` trigger variable via `m.indicator(binVar, constraint)`.
+> **General Inequality Antecedents in `implies()`**: On **Z3** (`solver: "z3"`), the antecedent `a` in `implies(a, b)` can be any linear inequality—for example, ``implies(expr`${clearance} >= 4`, hasMfa)`` using `clearance` and `hasMfa` above. On MIP solvers (**HiGHS** / **GLPK**), conditional constraints should use a `BoolVar` (`m.bool()`) antecedent or `m.indicator(binVar, constraint)` with a `Binary` trigger variable.
 
 ---
 
-## 🪞 Symmetry Breaking for Identical Resources
+## Dual Values, Shadow Prices & Lookups
 
-When a model includes $K$ interchangeable resources—such as identical trucks, bins, or parallel machines—any solution can be permuted in $K!$ ways with the exact same objective value. Without symmetry breaking, a MIP solver wastes time exploring redundant mirror-image branches before proving optimality.
-
-Break symmetry by imposing a canonical ordering on resource activation ($u_0 \ge u_1 \ge \dots \ge u_{K-1}$) or resource load:
-
-```typescript
-const numTrucks = 4;
-const truckUsed = m.binary(numTrucks, { prefix: "truck_used" });
-
-// Only activate Truck k+1 if Truck k is already active (u_0 >= u_1 >= u_2 >= u_3)
-for (let k = 0; k < numTrucks - 1; k++) {
-  m.constraint(
-    expr`${truckUsed[k]} >= ${truckUsed[k + 1]}`,
-    `symmetry_truck_${k}`
-  );
-}
-```
-
----
-
-## ⚖️ Hard vs. Soft Constraints (Elastic Slack Variables)
-
-In real-world scheduling and resource allocation, treating every business rule as a strict **hard constraint** often makes the model `"Infeasible"` when demand spikes or staff are unavailable.
-
-To keep the model solvable while minimizing rule violations, convert target requirements into **soft (elastic) constraints** by introducing a non-negative slack/shortage variable ($s \ge 0$) and penalizing it in the objective function:
-
-| Constraint Type | Hard Formulation | Soft (Elastic) Formulation ($s \ge 0$) | Objective Penalty Term (Minimize) |
-| :--- | :--- | :--- | :--- |
-| **Lower bound** | $\text{lhs} \ge b$ | $\text{lhs} + s_{\text{short}} \ge b$ | $+ W \cdot s_{\text{short}}$ |
-| **Upper bound** | $\text{lhs} \le b$ | $\text{lhs} - s_{\text{excess}} \le b$ | $+ W \cdot s_{\text{excess}}$ |
-| **Target equality** | $\text{lhs} = b$ | $\text{lhs} + s_{\text{short}} - s_{\text{excess}} = b$ | $+ W_1 \cdot s_{\text{short}} + W_2 \cdot s_{\text{excess}}$ |
-
-```typescript
-import { Model, expr, minimize } from "@ohtaman/washi";
-
-const m = new Model("ElasticShiftCoverage");
-
-const assignedStaff = m.integer("assignedStaff", { lb: 0, ub: 4 }); // Only 4 staff available today
-const shortage = m.continuous("shortage", { lb: 0 });               // Non-negative slack (s >= 0)
-
-// Soft constraint: aim for 5 staff, allowing shortage > 0 if strictly necessary
-m.constraint(expr`${assignedStaff} + ${shortage} >= 5`, "target_5_staff");
-
-// Penalize each missing staff member heavily ($1,000) relative to regular wage ($100)
-m.objective(minimize(expr`100 * ${assignedStaff} + 1000 * ${shortage}`));
-
-await m.solve();
-console.log("Assigned staff:", assignedStaff.value); // 4
-console.log("Unmet shortage:", shortage.value);      // 1 (graceful degradation instead of Infeasible)
-```
-
-> **Practical Tip — Choosing Penalty Weights ($W$)**: Set $W$ larger than the maximum marginal cost of satisfying the constraint normally (e.g., $10\times$ to $1{,}000\times$ unit cost), but avoid astronomically large penalties such as $10^{12}$. Keeping the ratio between the largest and smallest coefficients within $10^5\text{–}10^6$ preserves floating-point numerical stability in LP/MIP solvers.
-
----
-
-## 📐 Dual Values, Shadow Prices & Lookups
-
-For continuous Linear Programming (LP) problems, query the economic shadow price (`dual`) and surplus (`slack`) on each constraint (returned directly by `m.constraint()` or looked up via `m.getConstraintByName()`):
+For continuous Linear Programming (LP) problems, query the shadow price (`dual`) and surplus (`slack`) on each constraint (returned by `m.constraint()` or looked up via `m.getConstraintByName()`):
 
 ```typescript
 const woodConstraint = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
@@ -233,4 +177,7 @@ console.log("Slack surplus:", woodConstraint.slack);
 console.log("Total linear constraints:", m.numConstrs);
 ```
 
-For logical constraints registered with a name, use `m.getLogicalConstraintByName(name)` to look up the registered `LogicalConstraintItem`.
+For named logical constraints, use `m.getLogicalConstraintByName(name)` to look up the registered `LogicalConstraintItem`.
+
+> [!TIP]
+> For modeling techniques such as **soft constraints with slack variables** and **symmetry breaking**, see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_3-constraint-design-numerical-conditioning).

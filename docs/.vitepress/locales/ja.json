@@ -28,7 +28,8 @@
         { "text": "制約条件", "link": "/ja/guide/constraints" },
         { "text": "目的関数と最適化", "link": "/ja/guide/objectives" },
         { "text": "競合制約診断 (Unsat Core)", "link": "/ja/guide/unsat-core" },
-        { "text": "分解法 (列生成・Benders)", "link": "/ja/guide/decomposition" }
+        { "text": "分解法 (列生成・Benders)", "link": "/ja/guide/decomposition" },
+        { "text": "定式化パターン・Tips", "link": "/ja/guide/formulation-tips" }
       ]
     },
     {

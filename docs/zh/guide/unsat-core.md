@@ -8,7 +8,7 @@ WaSHI 内置了完整的诊断与验证工具链：基于 Z3 的**不可行冲�
 
 ---
 
-## 🔍 冲突约束诊断 (`unsatCore` / `conflicts`)
+## 冲突约束诊断 (`unsatCore` / `conflicts`)
 
 当模型**不可行（Infeasible）**时，传统的 MIP 求解器通常只报告“无可行解”，而不会指出具体是*哪些*约束发生了矛盾。
 通过调用 **`await m.check({ solver: "z3" })`**，WaSHI 会利用 Z3 的 `assertAndTrack` 机制计算出**不可满足核（Unsatisfiable Core，`unsatCore`）**——即无法同时满足的命名约束冲突子集：
@@ -76,7 +76,7 @@ if (status === "Infeasible") {
 
 ---
 
-## ✅ 独立解验证 (`m.validateSolution()`)
+## 独立解验证 (`m.validateSolution()`)
 
 求解完成后（或通过 `values` 选项传入自定义候选解后），您可以对照原始模型定义，独立验证所有变量边界、整数/二元定义域、线性约束以及 SMT 逻辑公式是否在容差范围内成立：
 
@@ -116,7 +116,7 @@ if (m.hasPrimalSolution) {
 
 ---
 
-## 📄 检查导出的 LP 模型公式 (`m.toLpString()`)
+## 检查导出的 LP 模型公式 (`m.toLpString()`)
 
 在调试系数、正负号或由 `m.indicator()` 自动展开的 Big-M 约束时，可调用 `m.toLpString()` 将模型导出为标准的 CPLEX/HiGHS `.lp` 格式文本：
 
@@ -142,7 +142,7 @@ End
 
 ---
 
-## 🧪 使用 `MockSolver` 对应用逻辑进行单元测试
+## 使用 `MockSolver` 对应用逻辑进行单元测试
 
 在为构建或消费 WaSHI `Model` 的业务代码编写单元测试时，可以使用内置的 `MockSolver`（`solver: "mock"`）立即返回确定性的测试结果，而无需加载 WebAssembly：
 

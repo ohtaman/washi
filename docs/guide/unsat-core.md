@@ -8,7 +8,7 @@ WaSHI provides built-in tools for both: **Unsat Core conflict diagnosis** via Z3
 
 ---
 
-## 🔍 Conflict Diagnosis (`unsatCore` / `conflicts`)
+## Conflict Diagnosis (`unsatCore` / `conflicts`)
 
 When a model is **Infeasible**, traditional MIP solvers simply report that no solution exists without indicating *which* constraints are contradictory.
 By calling **`await m.check({ solver: "z3" })`**, WaSHI uses Z3's `assertAndTrack` mechanism to compute an **Unsatisfiable Core (`unsatCore`)**—a conflicting subset of named constraints that cannot be satisfied simultaneously:
@@ -76,7 +76,7 @@ if (status === "Infeasible") {
 
 ---
 
-## ✅ Independent Solution Validation (`m.validateSolution()`)
+## Independent Solution Validation (`m.validateSolution()`)
 
 After solving a model (or supplying a custom candidate map via `values`), you can independently verify that all variable bounds, integer/binary domains, linear constraints, and logical SMT formulas hold against the original model definitions:
 
@@ -116,7 +116,7 @@ if (m.hasPrimalSolution) {
 
 ---
 
-## 📄 Inspecting the LP Formulation (`m.toLpString()`)
+## Inspecting the LP Formulation (`m.toLpString()`)
 
 When debugging coefficients, signs, or Big-M indicator expansions, call `m.toLpString()` to export the model in standard CPLEX/HiGHS `.lp` format:
 
@@ -142,7 +142,7 @@ End
 
 ---
 
-## 🧪 Unit Testing Application Logic with `MockSolver`
+## Unit Testing Application Logic with `MockSolver`
 
 When running unit tests for application code that builds or consumes a WaSHI `Model`, you can use the built-in `MockSolver` (`solver: "mock"`) to return deterministic results instantaneously without loading WebAssembly:
 

@@ -25,6 +25,7 @@ export const DOC_SECTIONS = [
       "guide/objectives.md",
       "guide/unsat-core.md",
       "guide/decomposition.md",
+      "guide/formulation-tips.md",
     ],
   },
   {

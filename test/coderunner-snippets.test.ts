@@ -311,7 +311,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 29-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 30-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
@@ -327,10 +327,188 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enPages).toHaveLength(29);
+    expect(enPages).toHaveLength(30);
+    expect(enPages).toContain("guide/formulation-tips.md");
     expect(enPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enPages);
     expect(zhPages).toEqual(enPages);
+  });
+
+  it("executes all formulation-tips.md and decomposition.md snippets across EN/JA/ZH and verifies mathematical invariants", async () => {
+    const runDocBlock = async <T>(tsSource: string, tailExpr: string): Promise<T> => {
+      const stripped = stripTypeScriptTypes(tsSource).replace(
+        /^\s*import\s+[\s\S]*?from\s+["']@ohtaman\/washi["'];?\s*$/gm,
+        ""
+      );
+      const fn = new Function(
+        "Washi",
+        `const { Model, expr, sum, dot, minimize, maximize } = Washi;\nreturn (async () => {\n${stripped}\nreturn ${tailExpr};\n})();`
+      );
+      return fn(Washi) as Promise<T>;
+    };
+
+    for (const relPath of [
+      "docs/guide/formulation-tips.md",
+      "docs/ja/guide/formulation-tips.md",
+      "docs/zh/guide/formulation-tips.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const blocks = [...md.matchAll(/```typescript\n([\s\S]*?)```/g)].map((m) => m[1]);
+      expect(blocks, `Expected 7 TS blocks in ${relPath}`).toHaveLength(7);
+
+      // 1. Semi-continuous batch: batch in {0} U [10, 100]
+      const semiActive = await runDocBlock<{ status: string; batch: number | null; isActive: number | null }>(
+        blocks[0],
+        `(m.constraint(expr\`\${batch} >= 4\`), m.objective(minimize(batch)), await m.solve(), { status: m.status, batch: batch.value, isActive: isActive.value })`
+      );
+      expect(semiActive.status).toBe("Optimal");
+      expect(semiActive.isActive).toBe(1);
+      expect(semiActive.batch).toBeCloseTo(10, 6);
+
+      const semiZero = await runDocBlock<{ status: string; batch: number | null; isActive: number | null }>(
+        blocks[0],
+        `(m.objective(minimize(batch)), await m.solve(), { status: m.status, batch: batch.value, isActive: isActive.value })`
+      );
+      expect(semiZero.status).toBe("Optimal");
+      expect(semiZero.isActive).toBe(0);
+      expect(semiZero.batch).toBeCloseTo(0, 6);
+
+      // 2. Minimal-perturbation rescheduling (Hamming distance)
+      const stable = await runDocBlock<{ status: string; obj: number | null; vals: Array<number | null> }>(
+        blocks[1],
+        `(await m.solve(), { status: m.status, obj: m.objectiveValue, vals: x.map((v) => v.value) })`
+      );
+      expect(stable.status).toBe("Optimal");
+      expect(stable.obj).toBeCloseTo(5, 6);
+      expect(stable.vals[0]).toBe(1);
+      expect(stable.vals[2]).toBe(1);
+      expect(stable.vals[1]! + stable.vals[3]!).toBe(1);
+
+      // 3. Binary product linearization: bothAB == xA * xB across all 4 binary assignments
+      const binMax = await runDocBlock<{ status: string; obj: number | null; xA: number | null; xB: number | null; bothAB: number | null }>(
+        blocks[2],
+        `(await m.solve(), { status: m.status, obj: m.objectiveValue, xA: xA.value, xB: xB.value, bothAB: bothAB.value })`
+      );
+      expect(binMax.status).toBe("Optimal");
+      expect(binMax.obj).toBeCloseTo(25, 6);
+      expect(binMax.bothAB).toBeCloseTo(1, 6);
+
+      for (const [aVal, bVal] of [
+        [0, 0],
+        [0, 1],
+        [1, 0],
+        [1, 1],
+      ] as const) {
+        const fixed = await runDocBlock<number | null>(
+          blocks[2],
+          `(m.constraint(expr\`\${xA} == ${aVal}\`), m.constraint(expr\`\${xB} == ${bVal}\`), await m.solve(), bothAB.value)`
+        );
+        expect(fixed).toBeCloseTo(aVal * bVal, 6);
+      }
+
+      // 4. Min-Max load balancing: 60 hours across 3 workers -> maxHours = 20
+      const minMax = await runDocBlock<{ status: string; maxHours: number | null; alice: number | null; bob: number | null; carol: number | null }>(
+        blocks[3],
+        `(await m.solve(), { status: m.status, maxHours: maxHours.value, alice: hours.Alice.value, bob: hours.Bob.value, carol: hours.Carol.value })`
+      );
+      expect(minMax.status).toBe("Optimal");
+      expect(minMax.maxHours).toBeCloseTo(20, 6);
+      expect(minMax.alice).toBeCloseTo(20, 6);
+      expect(minMax.bob).toBeCloseTo(20, 6);
+      expect(minMax.carol).toBeCloseTo(20, 6);
+
+      // 5. Soft constraint with slack variable
+      const soft = await runDocBlock<{ status: string; staff: number | null; shortage: number | null; obj: number | null }>(
+        blocks[4],
+        `({ status: m.status, staff: assignedStaff.value, shortage: shortage.value, obj: m.objectiveValue })`
+      );
+      expect(soft.status).toBe("Optimal");
+      expect(soft.staff).toBe(4);
+      expect(soft.shortage).toBeCloseTo(1, 6);
+      expect(soft.obj).toBeCloseTo(1400, 6);
+
+      // 6. Symmetry breaking: activating 2 of 4 trucks forces canonical prefix [1, 1, 0, 0]
+      const sym = await runDocBlock<Array<number | null>>(
+        blocks[5],
+        `(m.constraint(expr\`sum(\${truckUsed}) == 2\`), await m.solve(), truckUsed.map((t) => t.value))`
+      );
+      expect(sym).toEqual([1, 1, 0, 0]);
+
+      // 7. Lexicographic two-stage solve
+      const lex = await runDocBlock<{ status: string; minCost: number; maxHours: number | null; alice: number | null; bob: number | null }>(
+        blocks[6],
+        `({ status: m.status, minCost, maxHours: maxHours.value, alice: hours.Alice.value, bob: hours.Bob.value })`
+      );
+      expect(lex.status).toBe("Optimal");
+      expect(lex.minCost).toBeCloseTo(800, 6);
+      expect(lex.maxHours).toBeCloseTo(20, 6);
+      expect(lex.alice).toBeCloseTo(20, 6);
+      expect(lex.bob).toBeCloseTo(20, 6);
+    }
+
+    // Verify all decomposition.md orchestrator snippets (CuttingStockMaster, Custom getDual Pricing, FacilityMaster, ManualBenders) across EN/JA/ZH
+    for (const relPath of [
+      "docs/guide/decomposition.md",
+      "docs/ja/guide/decomposition.md",
+      "docs/zh/guide/decomposition.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const allBlocks = [...md.matchAll(/```typescript\n([\s\S]*?)```/g)].map((m) => m[1]);
+
+      const cuttingBlock = allBlocks.find((b) => b.includes("CuttingStockMaster"));
+      expect(cuttingBlock, `Missing CuttingStockMaster snippet in ${relPath}`).toBeDefined();
+      const cgSubRes = await runDocBlock<{ status: string; obj: number | null; cols: number }>(
+        cuttingBlock!.replace(/^\s*console\.log\([\s\S]*?\);\s*$/gm, ""),
+        `({ status: result.status, obj: result.objectiveValue, cols: result.columnsAdded })`
+      );
+      expect(cgSubRes.status).toBe("Optimal");
+      expect(cgSubRes.obj).toBeCloseTo(14, 5);
+      expect(cgSubRes.cols).toBeGreaterThan(0);
+
+      // Extract the RMP setup (before `const result = await master.solveColumnGeneration`) and run the custom `getDual` snippet against a fresh RMP
+      const rmpSetup = cuttingBlock!.split("const result = await master.solveColumnGeneration")[0];
+      const customPricingBlock = allBlocks.find((b) => b.includes("customResult"));
+      expect(customPricingBlock, `Missing customResult getDual pricing snippet in ${relPath}`).toBeDefined();
+      const cgCustomRes = await runDocBlock<{ status: string; obj: number | null; cols: number }>(
+        `${rmpSetup}\n${customPricingBlock!}`,
+        `({ status: customResult.status, obj: customResult.objectiveValue, cols: customResult.columnsAdded })`
+      );
+      expect(cgCustomRes.status).toBe("Optimal");
+      expect(cgCustomRes.obj).toBeCloseTo(14, 5);
+      expect(cgCustomRes.cols).toBeGreaterThan(0);
+
+      const facilityBlock = allBlocks.find((b) => b.includes("FacilityMaster"));
+      expect(facilityBlock, `Missing FacilityMaster snippet in ${relPath}`).toBeDefined();
+      const facilityRes = await runDocBlock<{ status: string; obj: number | null; cuts: number }>(
+        facilityBlock!.replace(/^\s*console\.log\([\s\S]*?\);\s*$/gm, ""),
+        `({ status: result.status, obj: result.objectiveValue, cuts: result.cutsAdded })`
+      );
+      expect(facilityRes.status).toBe("Optimal");
+      expect(facilityRes.obj).toBeCloseTo(390, 4);
+      expect(facilityRes.cuts).toBeGreaterThan(0);
+
+      const manualBlock = allBlocks.find((b) => b.includes("ManualBenders"));
+      expect(manualBlock, `Missing ManualBenders snippet in ${relPath}`).toBeDefined();
+      const bendersRes = await runDocBlock<{ status: string; obj: number | null; y: number; theta: number }>(
+        manualBlock!.replace(/^\s*console\.log\([\s\S]*?\);\s*$/gm, ""),
+        `({ status: result.status, obj: result.objectiveValue, y: result.values.y, theta: result.values.theta })`
+      );
+      expect(bendersRes.status).toBe("Optimal");
+      expect(bendersRes.obj).toBeCloseTo(70, 5);
+      expect(bendersRes.y).toBe(1);
+      expect(bendersRes.theta).toBeCloseTo(30, 5);
+    }
+
+    // Ensure guide pages across EN/JA/ZH contain no unexplained external domain identifiers
+    for (const guideDir of ["docs/guide", "docs/ja/guide", "docs/zh/guide"]) {
+      const absGuideDir = path.resolve(process.cwd(), guideDir);
+      for (const file of fs.readdirSync(absGuideDir).filter((f) => f.endsWith(".md"))) {
+        const text = fs.readFileSync(path.join(absGuideDir, file), "utf-8");
+        expect(text, `Unexplained identifier in ${guideDir}/${file}`).not.toMatch(
+          /\b(?:isNight|isVip|luxLevel|alarmTriggered|solveSpecializedShortestPath)\b/
+        );
+      }
+    }
   });
 
   it("executes VitePress interactive demo components (PortfolioQpDemo, EcommerceCouponDemo, ShiftSchedulingDemo) at runtime", async () => {
