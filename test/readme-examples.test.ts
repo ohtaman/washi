@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import vm from "node:vm";
 import { describe, it, expect } from "vitest";
 import { Model, expr, implies, not, QuadExpr, HiGHS, maximize, minimize } from "../src/index.js";
 import "../src/modeler/solvers/z3/index.js";
@@ -281,7 +282,7 @@ describe("README.md Code Snippets Validation", () => {
     const minJsPath = path.resolve(process.cwd(), "dist/browser/washi.min.js");
     if (!fs.existsSync(minJsPath)) return;
     const code = fs.readFileSync(minJsPath, "utf-8");
-    const WashiGlobal = new Function(code + "; return Washi;")();
+    const WashiGlobal = vm.runInNewContext(code + "; Washi;");
 
     expect(typeof WashiGlobal.maximize).toBe("function");
     expect(typeof WashiGlobal.minimize).toBe("function");
@@ -326,7 +327,7 @@ describe("README.md Code Snippets Validation", () => {
   });
 
   it("executes the current Usage Examples (TransportPlanning, PortfolioQP, StaffingRules) from README.md", async () => {
-    // 1. TransportPlanning (Indexed Variables, dot, indicator, getValues, validateSolution)
+    // 1. TransportPlanning (Indexed Variables, dot, indicator, validateSolution)
     const m1 = new Model("TransportPlanning");
     const factories = ["Tokyo", "Osaka"];
     const stores = ["StoreA", "StoreB"];
@@ -342,7 +343,7 @@ describe("README.md Code Snippets Validation", () => {
     const s1 = await m1.solve();
     expect(s1).toBe("Optimal");
     expect(m1.objectiveValue).toBeCloseTo(400, 6);
-    expect(m1.getValues(ship).Tokyo.StoreA).toBeCloseTo(100, 6);
+    expect(ship["Tokyo"]["StoreA"].value).toBeCloseTo(100, 6);
     expect(m1.validateSolution().valid).toBe(true);
 
     // 2. PortfolioQP (Convex QP with expr)

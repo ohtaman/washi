@@ -50,7 +50,6 @@ async function main() {
     }
   }
   console.log(`Total Weight: ${totalWeight}kg / ${maxCapacity}kg`);
-  console.log("All Solution Values:", m.getValues(x));
 }
 
 main().catch(console.error);

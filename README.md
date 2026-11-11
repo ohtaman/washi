@@ -113,7 +113,7 @@ m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100
 m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("Shipments:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. Convex Quadratic Programming (QP)

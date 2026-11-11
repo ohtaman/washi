@@ -50,7 +50,8 @@ async function runKnapsack() {
   const status = await m.solve();
   console.log(`Status: ${status}`);
   console.log(`Max Total Value: $${m.objectiveValue}`);
-  console.log("Selected Items:", m.getValues(x));
+  const packed = items.filter((it) => x[it.name].value === 1).map((it) => it.name);
+  console.log("Packed Items:", packed.join(", "));
 }
 
 runKnapsack();

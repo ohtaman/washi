@@ -113,7 +113,7 @@ m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100
 m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("輸送量:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. 凸二次計画 (QP)
