@@ -433,6 +433,59 @@ async function runBrowserVerification() {
     console.log("   Demon Castle Shift opening movie climax transition verified cleanly!");
     await gamePage.close();
 
+    // 11. Test Theory Articles Honshu Textbook Theme (Desktop & Simplified Mobile Layout)
+    console.log("11. Testing Theory Articles Honshu textbook theme on desktop and mobile viewports...");
+    const theoryPage = await context.newPage();
+    await theoryPage.setViewportSize({ width: 1024, height: 800 });
+    await theoryPage.goto(`http://localhost:${port}/washi/games/mofumofu-sheep-theory/index.html`, { waitUntil: "load" });
+    await theoryPage.click('[data-lang-btn="ja"]');
+    await theoryPage.waitForSelector(".math-box .katex-display", { timeout: 5_000 });
+
+    const desktopTheme = await theoryPage.evaluate(() => {
+      const sheet = getComputedStyle(document.querySelector(".article-sheet"));
+      const badge = getComputedStyle(document.querySelector(".chapter-badge"));
+      const katexDisplay = getComputedStyle(document.querySelector(".math-box .katex-display"));
+      return {
+        bodyBg: getComputedStyle(document.body).backgroundColor,
+        sheetBorderTopWidth: sheet.borderTopWidth,
+        sheetBorderTopColor: sheet.borderTopColor,
+        badgeBg: badge.backgroundColor,
+        katexAlign: katexDisplay.textAlign,
+      };
+    });
+    assert.equal(desktopTheme.bodyBg, "rgb(255, 255, 255)", "Theory page background must be pure white (#ffffff)");
+    assert.equal(desktopTheme.sheetBorderTopWidth, "3px", "Desktop article sheet must have 3px top accent rule");
+    assert.equal(desktopTheme.sheetBorderTopColor, "rgb(194, 59, 34)", "Desktop article sheet top rule must be Honshu (#c23b22)");
+    assert.equal(desktopTheme.badgeBg, "rgb(194, 59, 34)", "Desktop chapter badge must use solid Honshu background");
+    assert.equal(desktopTheme.katexAlign, "start", "Formula box KaTeX display math must override centered katex.min.css alignment");
+
+    await theoryPage.setViewportSize({ width: 360, height: 800 });
+    const mobileTheme = await theoryPage.evaluate(() => {
+      const sheet = getComputedStyle(document.querySelector(".article-sheet"));
+      const badge = getComputedStyle(document.querySelector(".chapter-badge"));
+      const mathBox = getComputedStyle(document.querySelector(".math-box"));
+      const th = getComputedStyle(document.querySelector("table.mapping-table th"));
+      return {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        sheetBorderTopWidth: sheet.borderTopWidth,
+        badgeBg: badge.backgroundColor,
+        badgeColor: badge.color,
+        mathBorderLeftWidth: mathBox.borderLeftWidth,
+        mathBorderTopWidth: mathBox.borderTopWidth,
+        thWhiteSpace: th.whiteSpace,
+      };
+    });
+    assert.equal(mobileTheme.scrollWidth, mobileTheme.clientWidth, "Mobile theory article must not overflow 360px viewport horizontally");
+    assert.equal(mobileTheme.sheetBorderTopWidth, "0px", "Mobile article sheet must remove outer frame border");
+    assert.equal(mobileTheme.badgeBg, "rgba(0, 0, 0, 0)", "Mobile chapter badge must render without filled box background");
+    assert.equal(mobileTheme.badgeColor, "rgb(194, 59, 34)", "Mobile chapter badge text must use Honshu (#c23b22)");
+    assert.equal(mobileTheme.mathBorderLeftWidth, "0px", "Mobile formula block must omit side card borders");
+    assert.equal(mobileTheme.mathBorderTopWidth, "1px", "Mobile formula block must retain top/bottom hairline borders");
+    assert.equal(mobileTheme.thWhiteSpace, "nowrap", "Mobile table headers must not wrap into single-character vertical stacks");
+    await theoryPage.close();
+    console.log("   Theory Articles Honshu desktop and simplified mobile styles verified!");
+
     console.log("\nAll browser verification checks PASSED successfully!");
   } finally {
     await browser.close();
