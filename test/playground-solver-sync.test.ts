@@ -39,6 +39,16 @@ describe("Playground Solver Synchronization & Code Updating", () => {
           `Missing presets.${ex.id}.description in ${loc}.json`
         ).toBeTruthy();
       }
+      expect(
+        localeData.docsHtml,
+        `${loc}.json docsHtml should not contain literal backslash-escaped template syntax`
+      ).not.toContain("\\`");
+      expect(
+        localeData.docsHtml,
+        `${loc}.json docsHtml should not contain literal backslash-escaped interpolations`
+      ).not.toContain("\\${");
+      expect(localeData.docsHtml).toContain("<code>expr`sum(${x})`</code>");
+      expect(localeData.docsHtml).toContain("<code>expr`dot(${costs}, ${x})`</code>");
     }
   });
 
