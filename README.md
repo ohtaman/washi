@@ -93,7 +93,7 @@ Pass `{ solver: "z3" }` or `{ solver: "glpk" }` to `new Model(...)`, `m.solve(..
 Combine indexed variables with `dot` / `sum` and express conditional rules with `m.indicator()`:
 
 ```ts
-import { Model, dot, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
@@ -106,14 +106,14 @@ const costs = {
 const open = m.binary(factories);
 const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// If Tokyo is closed (open["Tokyo"] == 0), shipment from Tokyo to StoreA must be 0
-m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+// If Tokyo is closed (open["Tokyo"] == 0), total shipment from Tokyo must be 0
+m.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
 m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
 
-m.objective(minimize(dot(costs, ship)));
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("Shipments:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. Convex Quadratic Programming (QP)
@@ -142,7 +142,7 @@ Express logical implications and diagnose why a model is infeasible:
 - **Z3**: Extracts an **unsatisfiable core** (`res.unsatCore` / `res.conflicts`)—a mutually contradictory subset of constraints.
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 // import "@ohtaman/washi/solvers/z3"; // Optional: for exact SMT unsatCore
 
 const m = new Model("StaffingRules");
@@ -152,7 +152,7 @@ const rush = m.bool("rush");
 
 m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
 m.constraint(expr`${budget} <= 50000`, "budget_cap"); // Conflict: 8 * $8,000 > $50,000
 m.constraint(expr`${engineers} >= 1`, "min_staff");   // Unrelated rule
 

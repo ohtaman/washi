@@ -127,25 +127,21 @@
           <p>
             Here is how to express these constraints using <code>@ohtaman/washi</code> in TypeScript:
           </p>
-          <pre class="code-block"><code>import { Model, sum } from "@ohtaman/washi";
+          <pre class="code-block"><code>import { Model, expr, type Var } from "@ohtaman/washi";
 
 const model = new Model("DemonCastleShift");
 
-// 1. Binary shift assignment variables
-const x: Record&lt;string, any&gt; = {};
+// 1. Binary shift assignment variables: x[guardId][day][shift]
+const x: Record&lt;string, Record&lt;string, Record&lt;string, Var&gt;&gt;&gt; = {};
 for (const m of guards) {
-  for (const d of days) {
-    for (const s of shifts) {
-      x[`${m.id}_${d}_${s}`] = model.binary(`x_${m.id}_${d}_${s}`);
-    }
-  }
+  x[m.id] = model.binary(days, shifts, { prefix: `x_${m.id}` });
 }
 
 // 2. Headcount requirement per shift
 for (const d of days) {
   for (const s of shifts) {
     model.constraint(
-      sum(guards, (m) => x[`${m.id}_${d}_${s}`]).eq(demand[d][s])
+      expr`sum(${guards}, ${(m: { id: string }) =&gt; x[m.id][d][s]}) == ${demand[d][s]}`
     );
   }
 }
@@ -153,13 +149,11 @@ for (const d of days) {
 // 3. At most one shift per day
 for (const m of guards) {
   for (const d of days) {
-    model.constraint(
-      sum(shifts, (s) => x[`${m.id}_${d}_${s}`]).le(1)
-    );
+    model.constraint(expr`sum(${x[m.id][d]}) &lt;= 1`);
   }
 }
 
-const status = await model.solve({ solver: "highs" });
+const status = await model.solve();
 console.log("Status:", status);</code></pre>
         </section>
       </div>

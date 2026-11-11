@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/03-portfolio-qp.ts
  */
 
-import { Model, sum, dot, QuadExpr, minimize, expr } from "../../src/index.js";
+import { Model, dot, QuadExpr, minimize, expr } from "../../src/index.js";
 
 async function main() {
   console.log("=== Markowitz Portfolio Optimization (Convex QP) ===");
@@ -32,7 +32,7 @@ async function main() {
   const w = m.continuous(assets, { lb: 0, ub: 1 });
 
   // Budget constraint: sum(w) == 1.0 (100% total capital)
-  m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget_full_allocation");
+  m.constraint(expr`sum(${w}) == 1.0`, "budget_full_allocation");
 
   // Target expected return: sum(r_i * w_i) >= 8.5%
   const returns = Object.fromEntries(assets.map((name, i) => [name, expectedReturns[i]]));

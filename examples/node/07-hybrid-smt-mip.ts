@@ -113,22 +113,22 @@ export async function runHybridPipeline({
   // Since SMT verified that deployEurope and deployUS are feasible together,
   // enforce both mandatory data centers to be online to satisfy the business policy (Issue #34).
   if (deployEurope.value ?? true) {
-    mip.constraint(openEU.eq(1), "enforce_eu_deployment");
+    mip.constraint(expr`${openEU} == 1`, "enforce_eu_deployment");
   }
   if (deployUS.value ?? true) {
-    mip.constraint(openUS.eq(1), "enforce_us_deployment");
+    mip.constraint(expr`${openUS} == 1`, "enforce_us_deployment");
   }
 
   // Big-M Indicator Constraints (M is automatically derived from finite bounds [0, 500]):
   // If open == 0 -> cap <= 0 (cannot route traffic if cluster is offline)
-  mip.indicator(openEU, capEU.le(0), { activeValue: 0, name: "eu_offline" });
-  mip.indicator(openUS, capUS.le(0), { activeValue: 0, name: "us_offline" });
-  mip.indicator(openAPAC, capAPAC.le(0), { activeValue: 0, name: "apac_offline" });
+  mip.indicator(openEU, expr`${capEU} <= 0`, { activeValue: 0, name: "eu_offline" });
+  mip.indicator(openUS, expr`${capUS} <= 0`, { activeValue: 0, name: "us_offline" });
+  mip.indicator(openAPAC, expr`${capAPAC} <= 0`, { activeValue: 0, name: "apac_offline" });
 
   // Minimum activation batch (at least 50 TB/s if activated)
-  mip.indicator(openEU, capEU.ge(50), { activeValue: 1, name: "eu_min_batch" });
-  mip.indicator(openUS, capUS.ge(50), { activeValue: 1, name: "us_min_batch" });
-  mip.indicator(openAPAC, capAPAC.ge(50), { activeValue: 1, name: "apac_min_batch" });
+  mip.indicator(openEU, expr`${capEU} >= 50`, { activeValue: 1, name: "eu_min_batch" });
+  mip.indicator(openUS, expr`${capUS} >= 50`, { activeValue: 1, name: "us_min_batch" });
+  mip.indicator(openAPAC, expr`${capAPAC} >= 50`, { activeValue: 1, name: "apac_min_batch" });
 
   // Demand requirement: total traffic >= 450 TB/s
   mip.constraint(expr`${capEU} + ${capUS} + ${capAPAC} >= 450`, "total_demand");

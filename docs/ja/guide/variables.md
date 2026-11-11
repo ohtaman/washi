@@ -173,7 +173,7 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的�
 $$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
 
 ```typescript
-import { Model, expr, sum, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("StableReschedule");
 const prevShift = [1, 0, 1, 0];
@@ -181,13 +181,11 @@ const x = prevShift.map((prev, i) =>
   m.binary(`shift_${i}`, { initialValue: prev })
 );
 
-// 既存計画から反転（0→1 または 1→0）した箇所の合計を表す線形表現
-const flips = sum(
-  x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : expr`${v}`))
-);
+// 既存計画から反転（0→1 または 1→0）した箇所のリスト
+const flipTerms = x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : v));
 
 // 1箇所の計画変更につきペナルティ 5 を課す
-m.objective(minimize(expr`5 * ${flips}`));
+m.objective(minimize(expr`5 * sum(${flipTerms})`));
 ```
 
 ---

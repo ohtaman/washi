@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr`, `minimize`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
+| 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
 
 员工排班是企业 SaaS 与劳动力管理系统中混合整数规划（MIP）的经典落地场景。然而在实际业务中，**员工提交的休假申请经常会与每日最低到岗人数或资深员工值班要求发生冲突**，导致求解器返回无解（`Infeasible`）。
 
@@ -35,7 +35,7 @@
 <CodeRunner preset="shift_scheduling">
 
 ```typescript
-import { Model, sum, dot, minimize, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -68,12 +68,12 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
       ),
     ])
   );
-  m.objective(minimize(dot(costMatrix, shift)));
+  m.objective(minimize(expr`dot(${costMatrix}, ${shift})`));
 
   // 规则 1: 每日最低到岗人数要求
   for (const d of days) {
     m.constraint(
-      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+      expr`sum(${staffList}, ${(s) => shift[s.name][d]}) >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -82,7 +82,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
     m.constraint(
-      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+      expr`sum(${seniors}, ${(s) => shift[s.name][d]}) >= 1`,
       `senior_duty_${d}`
     );
   }
@@ -90,7 +90,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   // 规则 3: 每名员工每周的最大出勤天数
   for (const s of staffList) {
     m.constraint(
-      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+      expr`sum(${shift[s.name]}) <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
@@ -180,11 +180,8 @@ main();
 
 ```typescript
 // 软约束模式：不强制 shift[req.staff][req.day] == 0，而是对在申请休假日排班施加 $500 惩罚
-const overridePenalty = sum(
-  dayOffRequests,
-  (req) => expr`500 * ${shift[req.staff][req.day]}`
-);
-m.objective(minimize(expr`${dot(costMatrix, shift)} + ${overridePenalty}`));
+const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]);
+m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
 在场景 B 中应用此软约束模型后，HiGHS 会自动保留其余 3 项休假申请（`Alice (Sat)`、`Charlie (Sat)`、`Diana (Wed)`），仅让日薪比 Alice（`$220`）低 `$10` 的资深员工 `Bob (Sat)`（`$210`）在周六值班，一步完成冲突修复。

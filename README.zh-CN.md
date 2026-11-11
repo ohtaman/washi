@@ -93,7 +93,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 使用 `dot` / `sum` 组合线性表达式，并通过 `m.indicator()` 表达条件规则：
 
 ```ts
-import { Model, dot, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
@@ -106,14 +106,14 @@ const costs = {
 const open = m.binary(factories);
 const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// 若东京工厂关闭 (open["Tokyo"] == 0)，发往 StoreA 的运输量必须为 0
-m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+// 若东京工厂关闭 (open["Tokyo"] == 0)，从东京工厂发出的总运输量必须为 0
+m.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
 m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
 
-m.objective(minimize(dot(costs, ship)));
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("运输方案:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. 凸二次规划 (QP)
@@ -142,7 +142,7 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 - **Z3**：提取精确的 **SMT 不可满足核心**（`res.unsatCore` / `res.conflicts`），即相互矛盾的约束子集。
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 // import "@ohtaman/washi/solvers/z3"; // 可选：使用 Z3 提取精确 SMT unsatCore
 
 const m = new Model("StaffingRules");
@@ -152,7 +152,7 @@ const rush = m.bool("rush");
 
 m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
 m.constraint(expr`${budget} <= 50000`, "budget_cap"); // 冲突: 8人 * $8,000 > $50,000
 m.constraint(expr`${engineers} >= 1`, "min_staff");   // 无关规则
 

@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/04-smt-security-rules.ts
  */
 
-import { Model, not, expr } from "../../src/index.js";
+import { Model, implies, not, expr } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 async function main() {
@@ -32,7 +32,7 @@ async function main() {
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
   // Rule 1: Sensor reading <= 50 implies night
-  m.constraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+  m.constraint(implies(expr`${luxLevel} <= 50`, isNight), "dark_implies_night");
 
   // Rule 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
   m.constraint(

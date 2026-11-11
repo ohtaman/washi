@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">Source Code</a></li></ul> |
+| Linear Programming (LP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">Source Code</a></li></ul> |
 
 The transportation problem is one of the most fundamental network optimization models: determine how many units to ship from each supply origin (factory) to each destination (store) to minimize total shipping cost while respecting factory supply limits and meeting store demands.
 
@@ -35,7 +35,7 @@ $$\begin{aligned}
 <CodeRunner preset="transportation">
 
 ```typescript
-import { Model, sum, dot, minimize, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -56,35 +56,38 @@ async function solveScenario(label: string, cap: typeof supplies) {
   const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
   // 2. Objective: Minimize total shipping cost across all routes via 2D dot product
-  m.objective(minimize(dot(shippingCost, ship)));
+  m.objective(minimize(expr`dot(${shippingCost}, ${ship})`));
 
   // 3. Supply constraints (row sums): outgoing from f <= cap[f]
-  for (const f of factories) {
-    m.constraint(
-      expr`${sum(stores, (s) => ship[f][s])} <= ${cap[f]}`,
-      `supply_${f}`
-    );
-  }
+  const supplyConstrs = Object.fromEntries(
+    factories.map((f) => [
+      f,
+      m.constraint(expr`sum(${ship[f]}) <= ${cap[f]}`, `supply_${f}`),
+    ])
+  );
 
   // 4. Demand constraints (column sums): incoming to s >= demands[s]
-  for (const s of stores) {
-    m.constraint(
-      expr`${sum(factories, (f) => ship[f][s])} >= ${demands[s]}`,
-      `demand_${s}`
-    );
-  }
+  const demandConstrs = Object.fromEntries(
+    stores.map((s) => [
+      s,
+      m.constraint(
+        expr`sum(${factories}, ${(f) => ship[f][s]}) >= ${demands[s]}`,
+        `demand_${s}`
+      ),
+    ])
+  );
 
   const status = await m.solve();
   console.log(`[${label}] Status: ${status}, Total Shipping Cost: $${m.objectiveValue}`);
   for (const f of factories) {
-    const dual = m.getConstraintByName(`supply_${f}`)?.dual ?? 0;
+    const dual = supplyConstrs[f].dual ?? 0;
     const routes = stores
       .map((s) => `${s}:${Math.round(ship[f][s].value ?? 0)}`)
       .join(", ");
     console.log(`  ${f.padEnd(7)} -> ${routes} (supply dual: $${dual}/u)`);
   }
   const demandDuals = stores
-    .map((s) => `${s}:$${m.getConstraintByName(`demand_${s}`)?.dual ?? 0}`)
+    .map((s) => `${s}:$${demandConstrs[s].dual ?? 0}`)
     .join(", ");
   console.log(`  Marginal Delivered Cost (demand duals) -> ${demandDuals}`);
 }

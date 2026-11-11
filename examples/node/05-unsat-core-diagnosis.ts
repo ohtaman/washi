@@ -8,7 +8,7 @@
  * Run with: npx tsx examples/node/05-unsat-core-diagnosis.ts
  */
 
-import { Model, expr } from "../../src/index.js";
+import { Model, implies, expr } from "../../src/index.js";
 import { registerZ3Solver } from "../../src/modeler/solvers/z3.js";
 
 async function main() {
@@ -29,7 +29,7 @@ async function main() {
   m.constraint(rushDelivery, "rush_required");
 
   // Rule 3: Rush delivery requires at least 8 engineers
-  m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+  m.constraint(implies(rushDelivery, expr`${engineers} >= 8`), "rush_staffing_rule");
 
   // Rule 4: Hard board budget cap of $50,000 (Conflict: 8 * $8000 = $64,000 > $50,000!)
   m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");

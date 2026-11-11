@@ -174,7 +174,7 @@ To keep the new plan close to a baseline binary assignment $x_i^{\text{prev}} \i
 $$\text{Changes} = \sum_{i:\, x_i^{\text{prev}} = 0} x_i + \sum_{i:\, x_i^{\text{prev}} = 1} (1 - x_i)$$
 
 ```typescript
-import { Model, expr, sum, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("StableReschedule");
 const prevShift = [1, 0, 1, 0];
@@ -183,12 +183,10 @@ const x = prevShift.map((prev, i) =>
 );
 
 // Count how many binary assignments flip from the previous schedule
-const flips = sum(
-  x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : expr`${v}`))
-);
+const flipTerms = x.map((v, i) => (prevShift[i] === 1 ? expr`1 - ${v}` : v));
 
 // Penalize each schedule change by $5 alongside the primary operational cost
-m.objective(minimize(expr`5 * ${flips}`));
+m.objective(minimize(expr`5 * sum(${flipTerms})`));
 ```
 
 ---

@@ -38,8 +38,8 @@ use `@ohtaman/washi` and import the required solver plugin.
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
 | [Production planning](node/01-production-planning.ts) | Integer production quantities, a profit objective, resource limits, and the resulting plan | `integer()`, `expr` | HiGHS |
-| [Knapsack](node/02-knapsack-problem.ts) | Binary selection variables, a capacity constraint, and selected items | `binary(keys)`, `dot()` | HiGHS |
-| [Transportation network](node/09-transportation-problem.ts) | 2D origin-destination flows (`ship[factory][store]`), supply/demand balance, and flow changes when capacity shifts | `continuous(rows, cols)`, `sum()` | HiGHS |
+| [Knapsack](node/02-knapsack-problem.ts) | Binary selection variables, a capacity constraint, and selected items | `binary(keys)`, `expr` (`dot`) | HiGHS |
+| [Transportation network](node/09-transportation-problem.ts) | 2D origin-destination flows (`ship[factory][store]`), supply/demand balance, and flow changes when capacity shifts | `continuous(rows, cols)`, `expr` (`sum`, `dot`) | HiGHS |
 | [Diet & sensitivity analysis](node/10-diet-sensitivity.ts) | Nutritional LP with shadow prices (bottlenecks), constraint surpluses, and variable reduced costs | `constr.dual`, `constr.slack`, `var.reducedCost` | HiGHS |
 
 ### 2. Practical Applications & Hybrid Workflows
@@ -55,7 +55,7 @@ use `@ohtaman/washi` and import the required solver plugin.
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
-| [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `bool()`, `.implies()`, `check()` | Z3 |
+| [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `bool()`, `implies()`, `check()` | Z3 |
 | [Conflict diagnosis](node/05-unsat-core-diagnosis.ts) | Inconsistent staffing / budget rules and a conflicting constraint subset | `check()`, `unsatCore` | Z3 |
 | [GLPK adapter](node/08-glpk-solver-plugin.ts) | A diet model, plugin selection, an objective value, and row duals | `solver: "glpk"` | GLPK |
 

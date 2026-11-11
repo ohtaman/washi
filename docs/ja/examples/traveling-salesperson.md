@@ -31,7 +31,7 @@ $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, LinExpr } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 async function runTSP() {
   const cities = [
@@ -52,39 +52,26 @@ async function runTSP() {
   // 1. 主問題: 次数割り当て問題（各都市で入次数=1, 出次数=1）
   const master = new Model("TSP_BendersMaster");
   const x = {};
+  const distMatrix = {};
 
   for (let i = 0; i < n; i++) {
     x[i] = {};
+    distMatrix[i] = {};
     for (let j = 0; j < n; j++) {
       if (i !== j) {
         x[i][j] = master.binary(`x_${i}_${j}`);
+        distMatrix[i][j] = dist(i, j);
       }
     }
   }
 
   // 目的関数: 移動距離の総和を最小化
-  let totalDistance = new LinExpr();
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        totalDistance = totalDistance.add(x[i][j].mul(dist(i, j)));
-      }
-    }
-  }
-  master.objective(minimize(totalDistance));
+  master.objective(minimize(expr`dot(${distMatrix}, ${x})`));
 
   // 各都市から出る枝が1本、入る枝が1本
   for (let i = 0; i < n; i++) {
-    let outExpr = new LinExpr();
-    let inExpr = new LinExpr();
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        outExpr = outExpr.add(x[i][j]);
-        inExpr = inExpr.add(x[j][i]);
-      }
-    }
-    master.constraint(expr`${outExpr} == 1`, `out_${i}`);
-    master.constraint(expr`${inExpr} == 1`, `in_${i}`);
+    master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
+    master.constraint(expr`sum(${n}, ${(j) => x[j][i]}) == 1`, `in_${i}`);
   }
 
   console.log("Benders遅延部分巡回路除去によるTSPの求解を開始...");
@@ -127,18 +114,12 @@ async function runTSP() {
           console.log(`部分巡回路を検出: [${cycle.map(k => cities[k].name).join(" -> ")}]. Benders カット #${cutCounter} を追加します。`);
 
           // カット式: sum_{i in S, j not in S} x_ij >= 1
-          let cutLhs = new LinExpr();
-          for (const i of S) {
-            for (let j = 0; j < n; j++) {
-              if (!S.has(j)) {
-                cutLhs = cutLhs.add(x[i][j]);
-              }
-            }
-          }
+          const outCities = Array.from({ length: n }, (_, j) => j).filter((j) => !S.has(j));
+          const cutEdges = cycle.flatMap((i) => outCities.map((j) => x[i][j]));
 
           return {
             kind: "feasibility",
-            constraint: expr`${cutLhs} >= 1`,
+            constraint: expr`sum(${cutEdges}) >= 1`,
             name: `subtour_cut_${cutCounter}`,
           };
         });

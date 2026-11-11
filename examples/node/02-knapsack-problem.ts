@@ -9,7 +9,7 @@
  * Run with: npx tsx examples/node/02-knapsack-problem.ts
  */
 
-import { Model, dot, maximize } from "../../src/index.js";
+import { Model, expr, maximize } from "../../src/index.js";
 
 async function main() {
   console.log("=== 0-1 Knapsack Optimization (MIP) ===");
@@ -32,10 +32,10 @@ async function main() {
   const weights = Object.fromEntries(items.map((it) => [it.name, it.weight]));
 
   // Objective: Maximize total value of packed items via dot product
-  m.objective(maximize(dot(values, x)));
+  m.objective(maximize(expr`dot(${values}, ${x})`));
 
-  // Capacity constraint: total weight <= maxCapacity using dot product and constraint()
-  m.constraint(dot(weights, x).le(maxCapacity), "capacity_limit");
+  // Capacity constraint: total weight <= maxCapacity using dot() inside expr
+  m.constraint(expr`dot(${weights}, ${x}) <= ${maxCapacity}`, "capacity_limit");
 
   const status = await m.solve();
 
@@ -50,7 +50,6 @@ async function main() {
     }
   }
   console.log(`Total Weight: ${totalWeight}kg / ${maxCapacity}kg`);
-  console.log("All Solution Values:", m.getValues(x));
 }
 
 main().catch(console.error);

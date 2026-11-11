@@ -159,7 +159,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **Best For** | Operations research & MIP optimization with an objective (`m.solve()`) | Rule engines, policy verification, and SMT feasibility (`m.check()`) |
 
 > [!NOTE]
-> **General Inequality Antecedents in `implies()`**: When solving on **Z3** (`solver: "z3"`), the antecedent `a` in `implies(a, b)` can be any general linear inequality (e.g., ``expr`${luxLevel} <= 50`.implies(isNight)``). When solving on MIP engines (**HiGHS** / **GLPK**), the antecedent of a conditional constraint should be a `BoolVar` (`m.bool()`) or a `Binary` trigger variable via `m.indicator(binVar, constraint)`.
+> **General Inequality Antecedents in `implies()`**: When solving on **Z3** (`solver: "z3"`), the antecedent `a` in `implies(a, b)` can be any general linear inequality (e.g., `` implies(expr`${luxLevel} <= 50`, isNight) ``). When solving on MIP engines (**HiGHS** / **GLPK**), the antecedent of a conditional constraint should be a `BoolVar` (`m.bool()`) or a `Binary` trigger variable via `m.indicator(binVar, constraint)`.
 
 ---
 

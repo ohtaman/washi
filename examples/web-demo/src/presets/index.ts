@@ -22,11 +22,11 @@ export const EXAMPLES: ExampleModel[] = [
     group: "fundamentals",
     description:
       "Classic workshop resource allocation. Maximize profit from chairs and tables subject to carpentry and finishing labor limits.",
-    apis: ["integer()", "maximize()", "constraint()"],
+    apis: ["integer()", "expr", "maximize()", "constraint()"],
     visualizer: "summary",
     code: `// --- Production Planning (Chairs & Tables) ---
 // Maximize profit under mahogany wood and carpentry labor constraints.
-const m = new Model({ name: "FactoryProduction", sense: "Maximize", solver: "highs" });
+const m = new Model({ name: "FactoryProduction", solver: "highs" });
 
 // Decision variables (integer quantities >= 0)
 const chairs = m.integer("chairs", { lb: 0 });
@@ -58,11 +58,11 @@ console.log("Tables to produce:", tables.value);
     group: "fundamentals",
     description:
       "Binary integer programming. Select the highest-value combination of items without exceeding the backpack weight limit.",
-    apis: ["binary(keys)", "dot()", "constraint()"],
+    apis: ["binary(keys)", "expr (dot)", "constraint()"],
     visualizer: "summary",
     code: `// --- 0-1 Knapsack Selection Problem ---
 // Maximize total item value within backpack weight capacity.
-const m = new Model({ name: "KnapsackProblem", sense: "Maximize", solver: "highs" });
+const m = new Model({ name: "KnapsackProblem", solver: "highs" });
 
 const items = [
   { name: "Laptop",   weight: 3, value: 50 },
@@ -79,11 +79,11 @@ const x = m.binary(items.map(it => it.name));
 const values = Object.fromEntries(items.map(it => [it.name, it.value]));
 const weights = Object.fromEntries(items.map(it => [it.name, it.weight]));
 
-// Objective: Maximize total packed value via dot product
-m.objective(maximize(dot(values, x)));
+// Objective: Maximize total packed value via dot() inside expr
+m.objective(maximize(expr\`dot(\${values}, \${x})\`));
 
 // Constraint: Total weight <= maxCapacity (7 kg)
-m.constraint(expr\`\${dot(weights, x)} <= \${maxCapacity}\`, "capacity_limit");
+m.constraint(expr\`dot(\${weights}, \${x}) <= \${maxCapacity}\`, "capacity_limit");
 
 const status = await m.solve();
 
@@ -103,11 +103,11 @@ items.forEach(it => {
     group: "fundamentals",
     description:
       "2D variable indexing with continuous(factories, stores). Minimize total shipping cost from 3 factories to 4 regional stores.",
-    apis: ["continuous(rows, cols)", "sum()", "constr.dual"],
+    apis: ["continuous(rows, cols)", "expr (sum, dot)", "constr.dual"],
     visualizer: "matrix",
     code: `// --- Transportation & Distribution Network (2D Matrix) ---
 // 3 Factories (Tokyo, Nagoya, Osaka) -> 4 Regional Stores (North, East, West, South)
-const m = new Model({ name: "TransportationNetwork", sense: "Minimize", solver: "highs" });
+const m = new Model({ name: "TransportationNetwork", solver: "highs" });
 
 const factories = ["Tokyo", "Nagoya", "Osaka"];
 const supplies = { Tokyo: 120, Nagoya: 100, Osaka: 80 };
@@ -125,23 +125,17 @@ const cost = {
 // 2D matrix of continuous shipment variables: ship[factory][store] >= 0
 const ship = m.continuous(factories, stores, { lb: 0, prefix: "ship" });
 
-// Objective: Minimize total shipping cost across all routes
-const terms = [];
-for (const f of factories) {
-  for (const s of stores) {
-    terms.push(ship[f][s].mul(cost[f][s]));
-  }
-}
-m.objective(minimize(sum(terms)));
+// Objective: Minimize total shipping cost across all routes via 2D dot product
+m.objective(minimize(expr\`dot(\${cost}, \${ship})\`));
 
-// Supply constraints: Outgoing shipments from each factory <= supply[f]
+// Supply constraints: Outgoing shipments from each factory <= supplies[f]
 for (const f of factories) {
-  m.constraint(sum(stores.map(s => ship[f][s])).le(supplies[f]), \`supply_\${f}\`);
+  m.constraint(expr\`sum(\${ship[f]}) <= \${supplies[f]}\`, \`supply_\${f}\`);
 }
 
-// Demand constraints: Incoming shipments to each store >= demand[s]
+// Demand constraints: Incoming shipments to each store >= demands[s]
 for (const s of stores) {
-  m.constraint(sum(factories.map(f => ship[f][s])).ge(demands[s]), \`demand_\${s}\`);
+  m.constraint(expr\`sum(\${factories}, \${(f) => ship[f][s]}) >= \${demands[s]}\`, \`demand_\${s}\`);
 }
 
 const status = await m.solve();
@@ -165,11 +159,11 @@ for (const f of factories) {
     group: "fundamentals",
     description:
       "Inspect shadow prices (constr.dual), surpluses (constr.slack), and reduced costs (var.reducedCost) to identify cost bottlenecks.",
-    apis: ["continuous(keys)", "constr.dual", "constr.slack", "var.reducedCost"],
+    apis: ["continuous(keys)", "expr (dot)", "constr.dual", "constr.slack", "var.reducedCost"],
     visualizer: "summary",
     code: `// --- Diet Problem & LP Sensitivity Analysis (Duals, Slacks, Reduced Costs) ---
 // Minimize daily menu cost while meeting nutritional requirements, then inspect duals.
-const m = new Model({ name: "DietSensitivity", sense: "Minimize", solver: "highs" });
+const m = new Model({ name: "DietSensitivity", solver: "highs" });
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -183,15 +177,20 @@ const foods = [
 // Continuous servings per day (0 to 4 servings max per food)
 const srv = m.continuous(foods.map(f => f.name), { lb: 0, ub: 4, prefix: "srv" });
 
-// Objective: Minimize daily food cost
-m.objective(minimize(sum(foods, f => srv[f.name].mul(f.cost))));
+const costs = Object.fromEntries(foods.map(f => [f.name, f.cost]));
+const cals  = Object.fromEntries(foods.map(f => [f.name, f.calories]));
+const prots = Object.fromEntries(foods.map(f => [f.name, f.protein]));
+const calcs = Object.fromEntries(foods.map(f => [f.name, f.calcium]));
+const irons = Object.fromEntries(foods.map(f => [f.name, f.iron]));
 
-// Nutritional constraints (keep references to inspect .dual and .slack)
-const cCal  = sum(foods, f => srv[f.name].mul(f.calories)).ge(2000, "min_calories");
-const cProt = sum(foods, f => srv[f.name].mul(f.protein)).ge(105,   "min_protein");
-const cCalc = sum(foods, f => srv[f.name].mul(f.calcium)).ge(1000,  "min_calcium");
-const cIron = sum(foods, f => srv[f.name].mul(f.iron)).ge(18,       "min_iron");
-m.constraint([cCal, cProt, cCalc, cIron]);
+// Objective: Minimize daily food cost
+m.objective(minimize(expr\`dot(\${costs}, \${srv})\`));
+
+// Nutritional constraints (capture Constraint references directly to inspect .dual and .slack)
+const cCal  = m.constraint(expr\`dot(\${cals}, \${srv}) >= 2000\`, "min_calories");
+const cProt = m.constraint(expr\`dot(\${prots}, \${srv}) >= 105\`,  "min_protein");
+const cCalc = m.constraint(expr\`dot(\${calcs}, \${srv}) >= 1000\`, "min_calcium");
+const cIron = m.constraint(expr\`dot(\${irons}, \${srv}) >= 18\`,   "min_iron");
 
 const status = await m.solve();
 
@@ -215,11 +214,11 @@ for (const c of [cCal, cProt, cCalc, cIron]) {
     group: "practical",
     description:
       "Assign 5 staff members across a 7-day week meeting daily coverage, senior leader rules, max shifts, and day-off requests.",
-    apis: ["binary(staff, days)", "sum()", "constraint()"],
+    apis: ["binary(staff, days)", "expr (sum, dot)", "constraint()"],
     visualizer: "roster",
     code: `// --- Staff Shift Scheduling (Weekly Roster Optimization) ---
 // Assign 5 staff across Mon..Sun meeting coverage, senior duty, and day-off requests.
-const m = new Model({ name: "WeeklyShiftRoster", sense: "Minimize", solver: "highs" });
+const m = new Model({ name: "WeeklyShiftRoster", solver: "highs" });
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const requiredCoverage = { Mon: 3, Tue: 3, Wed: 3, Thu: 3, Fri: 4, Sat: 3, Sun: 2 };
@@ -236,29 +235,28 @@ const staffList = [
 const shift = m.binary(staffList.map(s => s.name), days, { prefix: "shift" });
 
 // Objective: Minimize total payroll cost (+$30 weekend shift premium)
-const costTerms = [];
-for (const s of staffList) {
-  for (const d of days) {
-    const cost = s.wage + (d === "Sat" || d === "Sun" ? 30 : 0);
-    costTerms.push(shift[s.name][d].mul(cost));
-  }
-}
-m.objective(minimize(sum(costTerms)));
+const costMatrix = Object.fromEntries(
+  staffList.map(s => [
+    s.name,
+    Object.fromEntries(days.map(d => [d, s.wage + (d === "Sat" || d === "Sun" ? 30 : 0)])),
+  ])
+);
+m.objective(minimize(expr\`dot(\${costMatrix}, \${shift})\`));
 
 // 1. Daily minimum headcount coverage
 for (const d of days) {
-  m.constraint(sum(staffList, s => shift[s.name][d]).ge(requiredCoverage[d]), \`coverage_\${d}\`);
+  m.constraint(expr\`sum(\${staffList}, \${(s) => shift[s.name][d]}) >= \${requiredCoverage[d]}\`, \`coverage_\${d}\`);
 }
 
 // 2. At least 1 senior staff member on duty every day
 const seniors = staffList.filter(s => s.isSenior);
 for (const d of days) {
-  m.constraint(sum(seniors, s => shift[s.name][d]).ge(1), \`senior_duty_\${d}\`);
+  m.constraint(expr\`sum(\${seniors}, \${(s) => shift[s.name][d]}) >= 1\`, \`senior_duty_\${d}\`);
 }
 
 // 3. Max working days per week (<= 5 shifts)
 for (const s of staffList) {
-  m.constraint(sum(days, d => shift[s.name][d]).le(s.maxShifts), \`max_shifts_\${s.name}\`);
+  m.constraint(expr\`sum(\${shift[s.name]}) <= \${s.maxShifts}\`, \`max_shifts_\${s.name}\`);
 }
 
 // 4. Requested days off
@@ -269,7 +267,7 @@ const dayOffRequests = [
   { staff: "Diana",   day: "Wed" },
 ];
 for (const req of dayOffRequests) {
-  m.constraint(shift[req.staff][req.day].le(0), \`day_off_\${req.staff}_\${req.day}\`);
+  m.constraint(expr\`\${shift[req.staff][req.day]} == 0\`, \`day_off_\${req.staff}_\${req.day}\`);
 }
 
 const status = await m.solve();
@@ -284,12 +282,12 @@ console.log("Optimal Weekly Payroll: $" + m.objectiveValue);
     group: "practical",
     description:
       "Client-side checkout optimizer using indicator(). Finds the best stackable/exclusive coupons and checks if a $10 filler item unlocks a bigger discount.",
-    apis: ["indicator()", "binary()", "sum()"],
+    apis: ["indicator()", "binary()", "expr (sum, dot)"],
     visualizer: "coupon",
     code: `// --- E-Commerce Cart & Coupon Optimizer (Indicator Constraints) ---
 // Base cart subtotal is $242 (Tech subtotal: $210).
 // Can adding a $10 USB-C cable unlock the $45-off ($250+ tier) coupon for a lower net total?
-const m = new Model({ name: "CartCouponOptimizer", sense: "Minimize", solver: "highs" });
+const m = new Model({ name: "CartCouponOptimizer", solver: "highs" });
 
 const baseCartSubtotal = 242;
 const baseTechSubtotal = 210;
@@ -306,31 +304,31 @@ const coupons = [
 ];
 
 const cpn = m.binary(coupons.map(c => c.id), { prefix: "cpn" });
+const discounts = Object.fromEntries(coupons.map(c => [c.id, c.discount]));
 
-const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
-const techSpend  = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
+const merchSpend = expr\`\${baseCartSubtotal} + \${usbCablePrice} * \${addUsbCable}\`;
+const techSpend  = expr\`\${baseTechSubtotal} + \${usbCablePrice} * \${addUsbCable}\`;
 
 // 1. Indicator Constraints: If coupon is selected (cpn == 1), minimum spend must hold.
 // Omitting M lets WaSHI automatically derive the tightest Big-M from variable bounds!
 for (const c of coupons) {
   if (c.minCart > 0) {
-    m.indicator(cpn[c.id], merchSpend.ge(c.minCart), { activeValue: 1, name: \`min_cart_\${c.id}\` });
+    m.indicator(cpn[c.id], expr\`\${merchSpend} >= \${c.minCart}\`, { activeValue: 1, name: \`min_cart_\${c.id}\` });
   }
   if (c.minTech > 0) {
-    m.indicator(cpn[c.id], techSpend.ge(c.minTech), { activeValue: 1, name: \`min_tech_\${c.id}\` });
+    m.indicator(cpn[c.id], expr\`\${techSpend} >= \${c.minTech}\`, { activeValue: 1, name: \`min_tech_\${c.id}\` });
   }
 }
 
 // 2. Mutual exclusion among non-stackable ("Exclusive") coupons
-const exclusive = coupons.filter(c => !c.stackable);
-m.constraint(sum(exclusive, c => cpn[c.id]).le(1), "exclusive_coupon_limit");
+const exclusiveVars = coupons.filter(c => !c.stackable).map(c => cpn[c.id]);
+m.constraint(expr\`sum(\${exclusiveVars}) <= 1\`, "exclusive_coupon_limit");
 
 // 3. Max 2 coupons per order
-m.constraint(sum(coupons, c => cpn[c.id]).le(2), "max_two_coupons");
+m.constraint(expr\`sum(\${cpn}) <= 2\`, "max_two_coupons");
 
 // Objective: Minimize final net payable amount (merchSpend - discounts)
-const totalDiscount = sum(coupons, c => cpn[c.id].mul(c.discount));
-m.objective(minimize(merchSpend.sub(totalDiscount)));
+m.objective(minimize(expr\`\${merchSpend} - dot(\${discounts}, \${cpn})\`));
 
 const status = await m.solve();
 
@@ -351,11 +349,11 @@ coupons.forEach(c => {
     group: "practical",
     description:
       "Convex Quadratic Programming (QP). Minimize investment portfolio variance risk subject to 100% budget and target return constraints.",
-    apis: ["continuous()", "new QuadExpr()", "v1.mul(v2)", "dot()"],
+    apis: ["continuous()", "new QuadExpr()", "expr (sum, dot)"],
     visualizer: "summary",
     code: `// --- Markowitz Portfolio Optimization (Convex QP) ---
 // Minimize portfolio variance risk subject to capital and target return constraints.
-const m = new Model({ name: "PortfolioOptimization", sense: "Minimize", solver: "highs" });
+const m = new Model({ name: "PortfolioOptimization", solver: "highs" });
 
 // 1. Asset universe and expected returns
 const assets = ["Tech", "Bonds", "GlobalEq", "RealEstate", "Gold"];
@@ -366,10 +364,10 @@ const targetReturn = 0.085; // 8.5% minimum expected annual return
 const w = assets.map((name) => m.continuous(\`weight_\${name}\`, { lb: 0, ub: 1 }));
 
 // 2. Budget constraint: sum of weights = 1.0 (100% capital allocation)
-m.constraint(expr\`\${sum(w)} == 1.0\`, "budget_full_investment");
+m.constraint(expr\`sum(\${w}) == 1.0\`, "budget_full_investment");
 
 // 3. Minimum expected return target: dot(expectedReturns, w) >= 8.5%
-m.constraint(expr\`\${dot(expectedReturns, w)} >= \${targetReturn}\`, "min_expected_return");
+m.constraint(expr\`dot(\${expectedReturns}, \${w}) >= \${targetReturn}\`, "min_expected_return");
 
 // 4. Covariance Matrix (risk & asset correlations)
 const cov = [
@@ -408,11 +406,11 @@ assets.forEach((name, i) => {
     group: "fundamentals",
     description:
       "Classic linear programming diet cost minimization solved using the pluggable GNU Linear Programming Kit (GLPK) WebAssembly engine.",
-    apis: ['solver: "glpk"', "continuous()", "m.solve()"],
+    apis: ['solver: "glpk"', "continuous()", "expr", "m.solve()"],
     visualizer: "summary",
     code: `// --- Diet Optimization via GLPK Solver Plugin ---
 // Switch seamlessly to GLPK solver via solver: "glpk"
-const m = new Model({ name: "DietProblem", sense: "Minimize", solver: "glpk" });
+const m = new Model({ name: "DietProblem", solver: "glpk" });
 
 // Food item decision variables (quantities >= 0)
 const bread = m.continuous("bread", { lb: 0, ub: 10 });     // $2.00 / loaf
@@ -420,12 +418,12 @@ const milk = m.continuous("milk", { lb: 0, ub: 10 });       // $3.50 / bottle
 const cheese = m.continuous("cheese", { lb: 0, ub: 5 });    // $5.00 / pack
 
 // Objective: Minimize total basket cost
-m.objective(minimize(bread.mul(2.0).add(milk.mul(3.5)).add(cheese.mul(5.0))));
+m.objective(minimize(expr\`2.0 * \${bread} + 3.5 * \${milk} + 5.0 * \${cheese}\`));
 
 // Nutritional requirements
-m.constraint(bread.mul(300).add(milk.mul(250)).add(cheese.mul(400)).ge(2000), "Calories_min");
-m.constraint(bread.mul(10).add(milk.mul(15)).add(cheese.mul(25)).ge(70), "Protein_min");
-m.constraint(bread.mul(50).add(milk.mul(300)).add(cheese.mul(500)).ge(800), "Calcium_min");
+m.constraint(expr\`300 * \${bread} + 250 * \${milk} + 400 * \${cheese} >= 2000\`, "Calories_min");
+m.constraint(expr\`10 * \${bread} + 15 * \${milk} + 25 * \${cheese} >= 70\`, "Protein_min");
+m.constraint(expr\`50 * \${bread} + 300 * \${milk} + 500 * \${cheese} >= 800\`, "Calcium_min");
 
 console.log("Solving with GLPK plugin engine...");
 const status = await m.solve();
@@ -448,7 +446,7 @@ console.log("Cheese packs:", cheese.value?.toFixed(2));
     group: "logic",
     description:
       "When too many staff members request Saturday off, Z3 isolates the conflicting constraint subset (coverage_Sat vs specific Saturday vacation requests).",
-    apis: ["integer(rows, cols)", "m.check()", "m.unsatCore", 'solver: "z3"'],
+    apis: ["integer(rows, cols)", "expr (sum)", "m.check()", "m.unsatCore", 'solver: "z3"'],
     visualizer: "none",
     code: `// --- Shift Scheduling Vacation Conflict Diagnosis (Z3 Unsat Core) ---
 // When Saturday coverage requires 3 staff out of 5, but 3 staff members request Saturday off,
@@ -461,17 +459,17 @@ const days = ["Fri", "Sat", "Sun"];
 const shift = m.integer(staff, days, { lb: 0, ub: 1, prefix: "shift" });
 
 // Daily coverage requirements
-m.constraint(sum(staff, s => shift[s]["Fri"]).ge(3), "coverage_Fri");
-m.constraint(sum(staff, s => shift[s]["Sat"]).ge(3), "coverage_Sat");
-m.constraint(sum(staff, s => shift[s]["Sun"]).ge(2), "coverage_Sun");
+m.constraint(expr\`sum(\${staff}, \${(s) => shift[s]["Fri"]}) >= 3\`, "coverage_Fri");
+m.constraint(expr\`sum(\${staff}, \${(s) => shift[s]["Sat"]}) >= 3\`, "coverage_Sat");
+m.constraint(expr\`sum(\${staff}, \${(s) => shift[s]["Sun"]}) >= 2\`, "coverage_Sun");
 
 // Vacation requests: 3 staff request Saturday off -> leaves at most 2 staff for Saturday!
-m.constraint(shift["Alice"]["Sat"].le(0),   "day_off_Alice_Sat");
-m.constraint(shift["Bob"]["Sat"].le(0),     "day_off_Bob_Sat");
-m.constraint(shift["Charlie"]["Sat"].le(0), "day_off_Charlie_Sat");
+m.constraint(expr\`\${shift["Alice"]["Sat"]} == 0\`,   "day_off_Alice_Sat");
+m.constraint(expr\`\${shift["Bob"]["Sat"]} == 0\`,     "day_off_Bob_Sat");
+m.constraint(expr\`\${shift["Charlie"]["Sat"]} == 0\`, "day_off_Charlie_Sat");
 
 // Unrelated Friday request (innocent bystander rule)
-m.constraint(shift["Diana"]["Fri"].le(0),   "day_off_Diana_Fri");
+m.constraint(expr\`\${shift["Diana"]["Fri"]} == 0\`,   "day_off_Diana_Fri");
 
 console.log("Checking shift schedule feasibility with Z3...");
 const res = await m.check({ solver: "z3" });
@@ -491,7 +489,7 @@ if (res.status === "Unsat") {
     group: "logic",
     description:
       "Constraint conflict diagnosis with Z3. Isolates a subset of incompatible rules (unsat core) causing infeasibility.",
-    apis: ["bool()", "implies()", "m.unsatCore"],
+    apis: ["bool()", "implies()", "expr", "m.unsatCore"],
     visualizer: "none",
     code: `// --- Conflict Diagnosis & Unsat Core Extraction ---
 // Demonstrates Z3 SMT engine isolating the exact contradictory rules
@@ -503,20 +501,20 @@ const budget = m.continuous("budget", { lb: 0, ub: 100000 });
 const rushDelivery = m.bool("rushDelivery");
 
 // Rule 1: Each engineer costs $8,000
-m.constraint(engineers.mul(8000).le(budget), "budget_limit");
+m.constraint(expr\`8000 * \${engineers} <= \${budget}\`, "budget_limit");
 
 // Rule 2: Client strictly requires rush delivery
 m.constraint(rushDelivery, "rush_required");
 
 // Rule 3: Rush delivery requires at least 8 engineers
-m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+m.constraint(implies(rushDelivery, expr\`\${engineers} >= 8\`), "rush_staffing_rule");
 
 // Rule 4: Board of Directors budget cap: $50,000
 // Note: 8 engineers * $8,000 = $64,000 > $50,000 budget! (CONFLICT!)
-m.constraint(budget.le(50000), "strict_board_budget_cap");
+m.constraint(expr\`\${budget} <= 50000\`, "strict_board_budget_cap");
 
 // Rule 5: Completely independent regulation (unrelated to conflict)
-m.constraint(engineers.ge(1), "minimum_one_employee");
+m.constraint(expr\`\${engineers} >= 1\`, "minimum_one_employee");
 
 // Solve feasibility & extract conflict core
 console.log("Checking rule feasibility with Z3 SMT engine...");
@@ -538,7 +536,7 @@ if (res.status === "Unsat") {
     group: "logic",
     description:
       "Verify and deduce system states in an IoT home security system combining boolean logic (implies, and, not) with integer sensor thresholds.",
-    apis: ["bool()", "implies()", "not()", "m.check()"],
+    apis: ["bool()", "implies()", "not()", "expr", "m.check()"],
     visualizer: "none",
     code: `// --- Smart Home Security Rules (SMT / SAT) ---
 // Deduce IoT system states combining boolean propositions with sensor arithmetic
@@ -556,7 +554,7 @@ const lightsOn = m.bool("lightsOn");
 const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
 // Rule 1: luxLevel <= 50 implies isNight
-m.constraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+m.constraint(implies(expr\`\${luxLevel} <= 50\`, isNight), "dark_implies_night");
 
 // Rule 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
 m.constraint(
@@ -592,7 +590,7 @@ console.log("Is Night     :", isNight.value);
     group: "logic",
     description:
       "Satisfiability (SAT) checking with Z3. Finds a valid schedule satisfying mutual exclusion and logical implication constraints.",
-    apis: ["bool()", "xor()", "implies()", "m.check()"],
+    apis: ["bool()", "xor()", "implies()", "expr", "m.check()"],
     visualizer: "none",
     code: `// --- SMT / SAT Logic Satisfiability ---
 // Demonstrates Z3 finding satisfying assignments for boolean & integer constraints
@@ -614,7 +612,7 @@ m.constraint(taskA_s1.and(taskB_s1).not(), "server1_capacity");
 // Worker hours (integer)
 const hours = m.integer("worker_hours", { lb: 1, ub: 8 });
 // If Task A is on Server 2, requires at least 4 hours
-m.constraint(taskA_s2.implies(hours.ge(4)), "s2_overtime_rule");
+m.constraint(implies(taskA_s2, expr\`\${hours} >= 4\`), "s2_overtime_rule");
 
 console.log("Checking feasibility with Z3 SMT engine...");
 const res = await m.check({ solver: "z3" });

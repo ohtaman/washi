@@ -159,7 +159,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **最佳适用场景** | 带有目标函数的运筹优化与 MIP 模型（`m.solve()`） | 规则引擎、策略验证与 SMT 可满足性判定（`m.check()`） |
 
 > [!NOTE]
-> **在 `implies()` 的前提条件（Antecedent）中使用一般不等式**：使用 **Z3**（`solver: "z3"`）时，`implies(a, b)` 的前提 `a` 可以是任意一般线性不等式（如 ``expr`${luxLevel} <= 50`.implies(isNight)``）。而在 MIP 求解器（**HiGHS** / **GLPK**）中建模条件约束时，前提条件应使用布尔命题变量 `BoolVar`（`m.bool()`），或通过 `m.indicator(binVar, constraint)` 使用 0-1 二元触发变量。
+> **在 `implies()` 的前提条件（Antecedent）中使用一般不等式**：使用 **Z3**（`solver: "z3"`）时，`implies(a, b)` 的前提 `a` 可以是任意一般线性不等式（如 `` implies(expr`${luxLevel} <= 50`, isNight) ``）。而在 MIP 求解器（**HiGHS** / **GLPK**）中建模条件约束时，前提条件应使用布尔命题变量 `BoolVar`（`m.bool()`），或通过 `m.indicator(binVar, constraint)` 使用 0-1 二元触发变量。
 
 ---
 

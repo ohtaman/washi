@@ -406,7 +406,7 @@ model.constraint(expr`${flowUV} - ${maxFlowM} * ${uReach} &lt;= 0`);
 model.constraint(expr`${flowUV} - ${maxFlowM} * ${vReach} &lt;= 0`);
 
 // 3. Flow conservation at every non-sheep cell (inflow - outflow == r_v)
-model.constraint(expr`${sum(inList)} - ${sum(outList)} - ${rVar} == 0`);</code></pre>
+model.constraint(expr`sum(${inList}) - sum(${outList}) - ${rVar} == 0`);</code></pre>
 
           <div class="footer-cta">
             <a href="../mofumofu-sheep/" class="nav-btn primary">🐑 Play "Fluffy Sheep Pasture Enclosure" ▶</a>

@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr`, `minimize`, `dot`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
+| 0-1 整数計画 (MIP) & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (シフト最適化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (衝突診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">ソースコード</a></li></ul> |
 
 シフトスケジューリングは業務 SaaS で最も需要の高い最適化タスクの1つですが、現場で必ず発生するのが**「スタッフの希望休が重なり、必要人数やリーダー要件を満たせず解なし（Infeasible）になる」**という問題です。
 
@@ -36,7 +36,7 @@
 <CodeRunner preset="shift_scheduling">
 
 ```typescript
-import { Model, sum, dot, minimize, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -69,12 +69,12 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
       ),
     ])
   );
-  m.objective(minimize(dot(costMatrix, shift)));
+  m.objective(minimize(expr`dot(${costMatrix}, ${shift})`));
 
   // ルール1: 日別の最低必要人数
   for (const d of days) {
     m.constraint(
-      expr`${sum(staffList, (s) => shift[s.name][d])} >= ${requiredCoverage[d]}`,
+      expr`sum(${staffList}, ${(s) => shift[s.name][d]}) >= ${requiredCoverage[d]}`,
       `coverage_${d}`
     );
   }
@@ -83,7 +83,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   const seniors = staffList.filter((s) => s.isSenior);
   for (const d of days) {
     m.constraint(
-      expr`${sum(seniors, (s) => shift[s.name][d])} >= 1`,
+      expr`sum(${seniors}, ${(s) => shift[s.name][d]}) >= 1`,
       `senior_duty_${d}`
     );
   }
@@ -91,7 +91,7 @@ function buildShiftModel(name: string, dayOffRequests: Array<{ staff: string; da
   // ルール3: 各スタッフの週あたり最大出勤日数（5日以内）
   for (const s of staffList) {
     m.constraint(
-      expr`${sum(days, (d) => shift[s.name][d])} <= ${s.maxShifts}`,
+      expr`sum(${shift[s.name]}) <= ${s.maxShifts}`,
       `max_shifts_${s.name}`
     );
   }
@@ -181,11 +181,8 @@ Z3 の `unsatCore` によって「土曜日のシニア必須ルール（`senior
 
 ```typescript
 // ソフト制約パターン: 希望休をハード制約にする代わりに、希望休の日に出勤した場合 +$500 のペナルティを課す
-const overridePenalty = sum(
-  dayOffRequests,
-  (req) => expr`500 * ${shift[req.staff][req.day]}`
-);
-m.objective(minimize(expr`${dot(costMatrix, shift)} + ${overridePenalty}`));
+const requestedShiftVars = dayOffRequests.map((req) => shift[req.staff][req.day]);
+m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedShiftVars})`));
 ```
 
 シナリオBに対してこのソフト制約モデルを解くと、4件の希望休のうち3件（`Alice (Sat)`, `Charlie (Sat)`, `Diana (Wed)`）を守りつつ、日給が Alice（`$220`）より `$10` 安い `Bob (Sat)`（`$210`）の1件だけに出勤を依頼する最適修復シフトが即座に得られます。

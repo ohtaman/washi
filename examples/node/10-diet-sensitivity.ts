@@ -13,7 +13,7 @@
  * Run with: npx tsx examples/node/10-diet-sensitivity.ts
  */
 
-import { Model, expr, dot, minimize } from "../../src/index.js";
+import { Model, expr, minimize } from "../../src/index.js";
 
 interface FoodItem {
   name: string;
@@ -44,7 +44,7 @@ async function main() {
 
   // Objective: Minimize total daily food cost via dot product
   const costMap = Object.fromEntries(foods.map((f) => [f.name, f.cost]));
-  m.objective(minimize(dot(costMap, servings)));
+  m.objective(minimize(expr`dot(${costMap}, ${servings})`));
 
   // Daily nutritional minimum requirements
   const reqDefs = [
@@ -58,7 +58,7 @@ async function main() {
     const coeffMap = Object.fromEntries(foods.map((f) => [f.name, f[req.key]]));
     return {
       ...req,
-      constr: m.constraint(expr`${dot(coeffMap, servings)} >= ${req.rhs}`, req.name),
+      constr: m.constraint(expr`dot(${coeffMap}, ${servings}) >= ${req.rhs}`, req.name),
     };
   });
 

@@ -158,7 +158,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **主な用途** | 目的関数を伴う数理最適化（`m.solve()`） | ルール検証・ポリシー検証・充足可能性判定（`m.check()`） |
 
 > [!NOTE]
-> **`implies()` の前提条件（Antecedent）に一般不等式を使う場合**: **Z3**（`solver: "z3"`）では、``expr`${luxLevel} <= 50`.implies(isNight)`` のように一般の線形不等式を `implies(a, b)` の前提条件 `a` として直接扱えます。一方、MIP ソルバー（**HiGHS** / **GLPK**）で条件付き制約を扱う場合は、前提条件に `BoolVar`（`m.bool()`）を用いるか、バイナリ変数（`m.binary()`）をトリガーとする `m.indicator(binVar, constraint)` を使用してください。
+> **`implies()` の前提条件（Antecedent）に一般不等式を使う場合**: **Z3**（`solver: "z3"`）では、`` implies(expr`${luxLevel} <= 50`, isNight) `` のように一般の線形不等式を `implies(a, b)` の前提条件 `a` として直接扱えます。一方、MIP ソルバー（**HiGHS** / **GLPK**）で条件付き制約を扱う場合は、前提条件に `BoolVar`（`m.bool()`）を用いるか、バイナリ変数（`m.binary()`）をトリガーとする `m.indicator(binVar, constraint)` を使用してください。
 
 ---
 
