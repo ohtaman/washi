@@ -1,43 +1,54 @@
 /* ==========================================================================
-   Theory Articles Theme — Modern Engineering Case Study Style
-   Unified Stylesheet for WaSHI Showcase Theory Articles
+   Theory Articles Theme — Honshu Two-Color Print Textbook Style
+   Unified Stylesheet for WaSHI Showcase Theory Articles (White Paper x Honshu)
    ========================================================================== */
 
 :root {
+  color-scheme: light;
+
   --font-body: "Inter", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-heading: var(--font-body);
   --font-mono: "JetBrains Mono", "SF Mono", Consolas, Menlo, monospace;
 
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
 
-  --color-bg-page: #f8fafc;
+  /* Crisp White Textbook Paper & Warm Sumi Neutrals */
+  --color-bg-page: #ffffff;
   --color-surface: #ffffff;
-  --color-surface-soft: #f8fafc;
-  --color-surface-muted: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
+  --color-surface-soft: #f7f6f5;
+  --color-surface-muted: #f2f0ed;
+  --color-border: #dedad5;
+  --color-border-strong: #c7c1ba;
 
-  --color-text-main: #0f172a;
-  --color-text-sub: #334155;
-  --color-text-muted: #64748b;
+  /* Sumi Ink Hierarchy */
+  --color-text-main: #1f1d1b;
+  --color-text-sub: #3b3734;
+  --color-text-muted: #6b655f;
 
-  --color-brand-primary: #4f46e5;
-  --color-brand-primary-soft: #eef2ff;
-  --color-brand-primary-border: #c7d2fe;
+  /* Traditional Japanese Vermilion — Honshu */
+  --color-brand-primary: #c23b22;
+  --color-brand-primary-ink: #a62c16;
+  --color-brand-primary-soft: #fdf4f2;
+  --color-brand-primary-border: #f0cbc3;
+  --color-brand-primary-border-strong: #e8b4a9;
 
-  --color-brand-secondary: #475569;
-  --color-brand-secondary-soft: #f1f5f9;
+  --color-brand-secondary: #524e4a;
+  --color-brand-secondary-soft: #f6f5f4;
 
-  --color-accent-warn: #d97706;
-  --color-accent-warn-border: #fcd34d;
+  /* Caution / Numerical Pitfall Accent (Ochre Amber) */
+  --color-accent-warn: #b45309;
+  --color-accent-warn-ink: #92400e;
+  --color-accent-warn-soft: #fffcf5;
+  --color-accent-warn-border: #f3d49b;
 
-  --color-code-bg: #0f172a;
-  --color-code-text: #f8fafc;
+  /* Deep Sumi Code Block */
+  --color-code-bg: #1c1b1a;
+  --color-code-text: #f8f7f5;
 
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
+  --shadow-sm: 0 1px 2px rgba(31, 29, 27, 0.04);
+  --shadow-md: 0 2px 8px rgba(31, 29, 27, 0.04);
 
   --transition-base: 0.16s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -58,11 +69,12 @@ body {
   background-color: var(--color-bg-page);
   color: var(--color-text-main);
   font-family: var(--font-body);
-  line-height: 1.75;
+  line-height: 1.8;
   font-size: 1rem;
   text-align: start;
   -webkit-font-smoothing: antialiased;
-  padding: 1.5rem 1rem 4.5rem;
+  -webkit-text-size-adjust: 100%;
+  padding: 1.5rem 1.25rem 4.5rem;
 }
 
 /* Article Shell */
@@ -76,8 +88,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-block-end: 1.5rem;
+  gap: 0.625rem;
+  margin-block-end: 1.375rem;
   flex-wrap: wrap;
 }
 
@@ -91,7 +103,9 @@ body {
 .nav-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
+  min-height: 2.5rem;
   text-decoration: none;
   font-weight: 600;
   font-size: 0.8125rem;
@@ -102,24 +116,25 @@ body {
   padding: 0.4375rem 0.875rem;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
+  -webkit-tap-highlight-color: transparent;
   transition: border-color var(--transition-base), color var(--transition-base), background-color var(--transition-base);
 }
 
 .nav-btn:hover {
   border-color: var(--color-border-strong);
-  background: var(--color-surface-muted);
+  background: var(--color-surface-soft);
   color: var(--color-text-main);
 }
 
 .nav-btn.primary {
-  background: var(--color-text-main);
+  background: var(--color-brand-primary);
   color: #ffffff;
-  border-color: var(--color-text-main);
+  border-color: var(--color-brand-primary);
 }
 
 .nav-btn.primary:hover {
-  background: #1e293b;
-  border-color: #1e293b;
+  background: var(--color-brand-primary-ink);
+  border-color: var(--color-brand-primary-ink);
   color: #ffffff;
 }
 
@@ -127,6 +142,7 @@ body {
 .lang-switch {
   display: inline-flex;
   align-items: center;
+  min-height: 2.5rem;
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -136,7 +152,11 @@ body {
 
 .lang-btn {
   appearance: none;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--color-text-muted);
   font-family: var(--font-mono);
@@ -144,9 +164,10 @@ body {
   font-weight: 600;
   line-height: 1.4;
   padding: 0.25rem 0.625rem;
-  border-radius: 0.25rem;
+  border-radius: 0.1875rem;
   cursor: pointer;
-  transition: color var(--transition-base), background-color var(--transition-base), box-shadow var(--transition-base);
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .lang-btn:hover:not(:disabled) {
@@ -155,34 +176,26 @@ body {
 
 .lang-btn:where(.is-active, .active) {
   background: var(--color-surface);
-  color: var(--color-text-main);
+  color: var(--color-brand-primary-ink);
+  border-color: var(--color-border);
   box-shadow: var(--shadow-sm);
 }
 
-/* Article Sheet — Engineering Blog Card */
+/* Article Sheet — Crisp White Textbook Page */
 .article-sheet {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 2.75rem 2.75rem 3.25rem;
+  border-block-start: 3px solid var(--color-brand-primary);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: 2.5rem 2.75rem 3rem;
   box-shadow: var(--shadow-md);
   margin-block-end: 2.5rem;
 }
 
-@media (max-width: 48rem) {
-  body {
-    padding: 1rem 0.625rem 3.5rem;
-  }
-  .article-sheet {
-    padding: 1.75rem 1.25rem 2.25rem;
-    border-radius: var(--radius-md);
-  }
-}
-
-/* Article Header — Title & Meta */
+/* Article Header — Textbook Chapter Title & Key Summary */
 .book-header {
   margin-block-end: 2.25rem;
-  padding-block-end: 1.75rem;
+  padding-block-end: 1.625rem;
   border-block-end: 1px solid var(--color-border);
 }
 
@@ -200,34 +213,34 @@ body {
   gap: 0.25rem;
   font-family: var(--font-mono);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.4;
-  padding: 0.1875rem 0.5rem;
-  border-radius: 0.25rem;
+  padding: 0.1875rem 0.5625rem;
+  border-radius: 0.1875rem;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
 
 .badge-primary {
-  background: var(--color-brand-primary-soft);
-  color: var(--color-brand-primary);
-  border: 1px solid var(--color-brand-primary-border);
+  background: var(--color-brand-primary);
+  color: #ffffff;
+  border: 1px solid var(--color-brand-primary);
 }
 
 :where(.badge-secondary, .badge-point, .badge-neutral) {
-  background: var(--color-surface-muted);
-  color: var(--color-text-sub);
+  background: var(--color-brand-secondary-soft);
+  color: var(--color-brand-secondary);
   border: 1px solid var(--color-border);
 }
 
 .book-title {
   font-family: var(--font-heading);
-  font-size: clamp(1.5rem, 1.15rem + 1.5vw, 2rem);
+  font-size: clamp(1.375rem, 1.1rem + 1.4vw, 1.9375rem);
   font-weight: 800;
-  line-height: 1.35;
+  line-height: 1.38;
   color: var(--color-text-main);
   margin-block-end: 1rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   text-wrap: balance;
 }
 
@@ -240,12 +253,12 @@ body {
 }
 
 .book-lead-box {
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
+  background: var(--color-brand-primary-soft);
+  border: 1px solid var(--color-brand-primary-border);
   border-radius: var(--radius-md);
-  padding: 1rem 1.25rem;
+  padding: 0.9375rem 1.1875rem;
   font-size: 0.9375rem;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--color-text-sub);
   text-wrap: pretty;
   overflow-wrap: break-word;
@@ -259,23 +272,26 @@ body {
 .lead-label {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
+  font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--color-text-main);
+  color: var(--color-brand-primary-ink) !important;
 }
 
-/* Headings — Engineering Section Headers */
+/* Headings — Two-Color Print Textbook Band & Subsections */
 h2.chapter-heading {
   font-family: var(--font-heading);
-  font-size: 1.3125rem;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: -0.015em;
-  margin-block: 2.75rem 1.125rem;
-  padding-block-end: 0.625rem;
-  border-block-end: 1px solid var(--color-border);
+  font-size: clamp(1.125rem, 1.02rem + 0.45vw, 1.25rem);
+  font-weight: 800;
+  line-height: 1.42;
+  letter-spacing: -0.01em;
+  margin-block: 2.625rem 1.125rem;
+  padding: 0.5625rem 0.9375rem;
+  background: var(--color-brand-primary-soft);
+  border-inline-start: 4px solid var(--color-brand-primary);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   display: flex;
   align-items: center;
-  gap: 0.625rem;
+  gap: 0.6875rem;
   color: var(--color-text-main);
   text-wrap: balance;
 }
@@ -284,15 +300,15 @@ h2.chapter-heading {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-brand-primary-soft);
-  color: var(--color-brand-primary);
-  border: 1px solid var(--color-brand-primary-border);
+  background: var(--color-brand-primary);
+  color: #ffffff;
+  border: 1px solid var(--color-brand-primary);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.2;
   padding: 0.2rem 0.5rem;
-  border-radius: 0.25rem;
+  border-radius: 0.1875rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   flex-shrink: 0;
@@ -304,6 +320,8 @@ h3.section-heading {
   font-weight: 700;
   line-height: 1.45;
   margin-block: 1.875rem 0.75rem;
+  padding-inline-start: 0.6875rem;
+  border-inline-start: 3px solid var(--color-brand-primary);
   color: var(--color-text-main);
   text-wrap: balance;
 }
@@ -321,14 +339,14 @@ h4.topic-heading {
 p {
   margin-block-end: 1.125rem;
   color: var(--color-text-sub);
-  line-height: 1.75;
+  line-height: 1.8;
   text-wrap: pretty;
   overflow-wrap: break-word;
 }
 
 p strong {
   color: var(--color-text-main);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 :where(ul, ol) {
@@ -338,24 +356,24 @@ p strong {
 }
 
 li {
-  margin-block-end: 0.45rem;
-  line-height: 1.7;
+  margin-block-end: 0.5rem;
+  line-height: 1.75;
   text-wrap: pretty;
   overflow-wrap: break-word;
 }
 
 li strong {
   color: var(--color-text-main);
-  font-weight: 600;
+  font-weight: 700;
 }
 
-/* Subtle Text Highlights */
+/* Vermilion Underline Textbook Emphasis */
 :where(mark, .marker-yellow, .marker-pink, .marker-cyan) {
   background: var(--color-brand-primary-soft);
-  color: var(--color-text-main);
-  font-weight: 600;
-  padding-inline: 0.25em;
-  border-radius: 0.2rem;
+  color: var(--color-brand-primary-ink);
+  border-block-end: 2px solid var(--color-brand-primary);
+  font-weight: 700;
+  padding-inline: 0.2em;
 }
 
 /* Keytop & UI Badges */
@@ -369,7 +387,7 @@ kbd {
   background: var(--color-surface-soft);
   border: 1px solid var(--color-border-strong);
   border-block-end-width: 2px;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   padding: 0.125rem 0.4rem;
   margin-inline: 0.15rem;
   white-space: nowrap;
@@ -383,35 +401,42 @@ code {
   color: var(--color-text-main);
   border: 1px solid var(--color-border);
   padding: 0.125em 0.375em;
-  border-radius: 0.25rem;
+  border-radius: 0.2rem;
 }
 
-/* Callout Boxes — Unified Engineering Note Cards */
+/* Callout Boxes — Two-Color Print Key Points & Cautions */
 .callout {
   position: relative;
   margin-block: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
-  border-inline-start: 3px solid var(--color-brand-primary);
+  padding: 0.9375rem 1.1875rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-brand-primary-border-strong);
+  border-inline-start: 4px solid var(--color-brand-primary);
 }
 
 .callout > strong:first-child {
   display: block;
   margin-block-end: 0.375rem;
-  color: var(--color-text-main);
+  color: var(--color-brand-primary-ink);
 }
 
 .callout-header {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  align-items: baseline;
+  gap: 0.45rem;
   font-size: 0.875rem;
   font-weight: 700;
   line-height: 1.45;
-  color: var(--color-text-main);
+  color: var(--color-brand-primary-ink);
   margin-block-end: 0.4rem;
+}
+
+.callout-header::before {
+  content: "◆";
+  color: var(--color-brand-primary);
+  font-size: 0.75em;
+  flex-shrink: 0;
 }
 
 .callout-icon {
@@ -420,7 +445,7 @@ code {
 
 .callout-content {
   font-size: 0.875rem;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--color-text-sub);
   text-wrap: pretty;
   overflow-wrap: break-word;
@@ -430,48 +455,73 @@ code {
   margin-block-end: 0;
 }
 
-/* Unified Callout Variants (Indigo insight default, Amber border for caution) */
+/* Unified Callout Variants (Honshu key point default, Ochre-Amber for caution) */
 :where(.callout.callout-point, .callout.gold, .callout.callout-column, .callout.purple, .callout.cyan, .callout.green) {
-  background: var(--color-surface-soft);
-  border-color: var(--color-border);
-  border-inline-start: 3px solid var(--color-brand-primary);
+  background: var(--color-surface);
+  border-color: var(--color-brand-primary-border-strong);
+  border-inline-start: 4px solid var(--color-brand-primary);
   border-style: solid;
 }
 
 :where(.callout.callout-warn, .callout.rose) {
-  background: var(--color-surface-soft);
-  border-color: var(--color-border);
-  border-inline-start: 3px solid var(--color-accent-warn);
+  background: var(--color-accent-warn-soft);
+  border-color: var(--color-accent-warn-border);
+  border-inline-start: 4px solid var(--color-accent-warn);
 }
 
-/* Formula Box (KaTeX) */
+:where(.callout.callout-warn, .callout.rose) .callout-header {
+  color: var(--color-accent-warn-ink);
+}
+
+:where(.callout.callout-warn, .callout.rose) .callout-header::before {
+  content: "▲";
+  color: var(--color-accent-warn);
+}
+
+/* Formula Box (KaTeX) — Textbook Formulation Frame */
 :where(.math-box, .formula-box) {
+  --formula-pad-y: 0.95rem;
+  --formula-pad-x: 1.25rem;
   margin-block: 1.375rem;
-  padding: 1.125rem 1.375rem;
-  background: var(--color-surface-soft);
-  border: 1px solid var(--color-border);
+  padding: var(--formula-pad-y) var(--formula-pad-x);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-brand-primary-border-strong);
   border-radius: var(--radius-md);
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 :where(.math-title, .formula-title) {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  letter-spacing: 0.02em;
-  padding-block-end: 0.5rem;
-  margin-block-end: 0.625rem;
-  border-block-end: 1px solid var(--color-border);
   display: block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-brand-primary-ink);
+  background: var(--color-brand-primary-soft);
+  letter-spacing: 0.01em;
+  margin: calc(-1 * var(--formula-pad-y)) calc(-1 * var(--formula-pad-x)) 0.85rem;
+  padding: 0.45rem var(--formula-pad-x);
+  border-block-end: 1px solid var(--color-brand-primary-border);
 }
 
-:where(.math-box, .formula-box) .katex-display {
+:where(.math-title, .formula-title)::before {
+  content: "■ ";
+  color: var(--color-brand-primary);
+}
+
+.math-box .katex-display,
+.formula-box .katex-display {
   margin-block: 0.375rem;
+  padding-block: 0.125rem;
   text-align: start;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
-:where(.math-box, .formula-box) .katex {
+.math-box .katex,
+.formula-box .katex {
   color: var(--color-text-main);
 }
 
@@ -479,10 +529,13 @@ code {
 :where(pre, pre.code-block, .code-window pre) {
   background: var(--color-code-bg);
   color: var(--color-code-text);
-  padding: 1.125rem 1.375rem;
+  padding: 1.125rem 1.25rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-strong);
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   line-height: 1.65;
@@ -497,59 +550,55 @@ code {
   font-size: inherit;
 }
 
-/* Table Styles */
+/* Table Styles — Two-Color Textbook Table */
 .table-wrapper {
   margin-block: 1.5rem;
+  max-width: 100%;
   overflow-x: auto;
-  border-radius: var(--radius-md);
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--color-border);
 }
 
 :where(table, table.mapping-table) {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+  border-collapse: collapse;
   font-size: 0.875rem;
   text-align: start;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
   margin-block: 1.375rem;
 }
 
 .table-wrapper :where(table, table.mapping-table) {
   border: none;
-  border-radius: 0;
   margin-block: 0;
 }
 
 :where(th, table.mapping-table th) {
   background: var(--color-surface-soft);
-  color: var(--color-text-sub);
-  font-weight: 600;
+  color: var(--color-text-main);
+  font-weight: 700;
   font-size: 0.8125rem;
-  padding: 0.75rem 1rem;
-  border-block-end: 1px solid var(--color-border);
+  text-align: start;
+  padding: 0.6875rem 0.875rem;
+  border-block-end: 2px solid var(--color-brand-primary);
 }
 
 :where(td, table.mapping-table td) {
-  padding: 0.75rem 1rem;
+  padding: 0.6875rem 0.875rem;
   color: var(--color-text-sub);
   vertical-align: top;
   overflow-wrap: break-word;
 }
 
-:where(td, table.mapping-table td) code {
-  overflow-wrap: anywhere;
+:where(td:first-child, table.mapping-table td:first-child) {
+  font-weight: 600;
+  color: var(--color-text-main);
 }
 
-@media (max-width: 48rem) {
-  :where(table, table.mapping-table) {
-    display: block;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+:where(td, table.mapping-table td) code {
+  overflow-wrap: anywhere;
 }
 
 :where(tr:not(:last-child) td, table.mapping-table tr:not(:last-child) td) {
@@ -593,6 +642,246 @@ code {
   justify-content: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+}
+
+/* Simplified Mobile Reading Layout (<= 768px) */
+@media (max-width: 48rem) {
+  body {
+    padding: 0.75rem 1rem 3.25rem;
+    font-size: 0.9375rem;
+    line-height: 1.78;
+  }
+
+  .topnav {
+    gap: 0.375rem;
+    padding-block-end: 0.625rem;
+    margin-block-end: 1.125rem;
+    border-block-end: 1px solid var(--color-border);
+  }
+
+  .topnav .nav-btn:not(.primary) {
+    min-height: 2.25rem;
+    padding: 0.25rem 0;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: var(--color-text-muted);
+    font-size: 0.78125rem;
+  }
+
+  .topnav .nav-btn.primary {
+    min-height: 2.25rem;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    background: var(--color-brand-primary-soft);
+    color: var(--color-brand-primary-ink);
+    border-color: var(--color-brand-primary-border-strong);
+    box-shadow: none;
+  }
+
+  .topnav-right {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.375rem;
+  }
+
+  .nav-btn {
+    min-height: 2.5rem;
+    font-size: 0.78125rem;
+    padding: 0.375rem 0.75rem;
+  }
+
+  .lang-switch {
+    min-height: 2.375rem;
+    padding: 0.125rem;
+    border-color: transparent;
+  }
+
+  .lang-btn {
+    min-height: 2.25rem;
+    min-width: 2.25rem;
+    font-size: 0.71875rem;
+    padding-inline: 0.34375rem;
+  }
+
+  .article-sheet {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.125rem 0 1.75rem;
+    margin-block-end: 1.25rem;
+  }
+
+  .book-header {
+    margin-block-end: 1.75rem;
+    padding-block-end: 1.25rem;
+  }
+
+  .book-meta-bar {
+    margin-block-end: 0.5rem;
+  }
+
+  .badge-primary {
+    background: transparent;
+    color: var(--color-brand-primary-ink);
+    border: none;
+    padding: 0;
+    font-size: 0.75rem;
+  }
+
+  .book-meta-bar :where(.badge-secondary, .badge-point, .badge-neutral) {
+    display: none;
+  }
+
+  .book-title {
+    font-size: 1.3125rem;
+    line-height: 1.4;
+    margin-block-end: 0.875rem;
+    text-wrap: pretty;
+  }
+
+  .book-lead-box {
+    background: transparent;
+    border: none;
+    border-inline-start: 2.5px solid var(--color-brand-primary);
+    border-radius: 0;
+    padding: 0.125rem 0 0.125rem 0.8125rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
+  }
+
+  h2.chapter-heading {
+    background: transparent;
+    border-inline-start: none;
+    border-block-end: 1px solid var(--color-border);
+    border-radius: 0;
+    padding: 0 0 0.45rem;
+    margin-block: 2.125rem 0.875rem;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 1.09375rem;
+    text-wrap: pretty;
+  }
+
+  .chapter-badge {
+    background: transparent;
+    color: var(--color-brand-primary);
+    border: none;
+    padding: 0;
+    font-size: 0.9375rem;
+    font-weight: 800;
+  }
+
+  h3.section-heading {
+    border-inline-start: none;
+    padding-inline-start: 0;
+    font-size: 0.96875rem;
+    margin-block: 1.5rem 0.5rem;
+    text-wrap: pretty;
+  }
+
+  h4.topic-heading {
+    text-wrap: pretty;
+  }
+
+  .callout {
+    border: none;
+    border-inline-start: 3px solid var(--color-brand-primary);
+    background: var(--color-surface-soft);
+    border-radius: 0;
+    padding: 0.75rem 0.875rem;
+    margin-block: 1.25rem;
+  }
+
+  :where(.callout.callout-point, .callout.gold, .callout.callout-column, .callout.purple, .callout.cyan, .callout.green) {
+    border: none;
+    border-inline-start: 3px solid var(--color-brand-primary);
+    background: var(--color-surface-soft);
+  }
+
+  :where(.callout.callout-warn, .callout.rose) {
+    border: none;
+    border-inline-start: 3px solid var(--color-accent-warn);
+    background: var(--color-accent-warn-soft);
+  }
+
+  :where(.math-box, .formula-box) {
+    border: none;
+    border-block: 1px solid var(--color-border);
+    border-radius: 0;
+    background: transparent;
+    padding: 0.75rem 0;
+    margin-block: 1.125rem;
+    overflow: visible;
+  }
+
+  :where(.math-title, .formula-title) {
+    background: transparent;
+    border-block-end: none;
+    margin: 0 0 0.375rem;
+    padding: 0;
+    font-size: 0.75rem;
+  }
+
+  .math-box .katex,
+  .formula-box .katex {
+    font-size: 0.85rem;
+  }
+
+  :where(pre, pre.code-block, .code-window pre) {
+    padding: 0.875rem 1rem;
+    font-size: 0.78125rem;
+  }
+
+  :where(table, table.mapping-table) {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    font-size: 0.8125rem;
+  }
+
+  .table-wrapper :where(table, table.mapping-table) {
+    display: table;
+    overflow-x: visible;
+  }
+
+  :where(th, table.mapping-table th) {
+    white-space: nowrap;
+    padding: 0.5rem 0.625rem;
+  }
+
+  :where(td, table.mapping-table td) {
+    padding: 0.5rem 0.625rem;
+  }
+
+  :where(td:last-child, table.mapping-table td:last-child) {
+    min-width: 11rem;
+  }
+
+  .footer-cta {
+    margin-block-start: 2rem;
+    padding-block-start: 1.25rem;
+  }
+}
+
+/* High Contrast / Forced Colors Mode Support */
+@media (forced-colors: active) {
+  .lang-btn:where(.is-active, .active) {
+    border: 2px solid Highlight;
+  }
+
+  .nav-btn.primary {
+    border: 1px solid ButtonText;
+  }
+}
+
+@media (min-width: 48.0625rem) and (forced-colors: active) {
+  .badge-primary,
+  .chapter-badge {
+    border: 1px solid ButtonText;
+  }
 }
 
 /* Language Section Animation */
