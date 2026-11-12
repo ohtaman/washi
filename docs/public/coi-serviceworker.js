@@ -14,7 +14,7 @@ if (typeof window === "undefined") {
 
   self.addEventListener("fetch", (event) => {
     const r = event.request;
-    if (r.cache === "only-if-cached" && r.mode !== "same-origin") {
+    if (r.method !== "GET" || (r.cache === "only-if-cached" && r.mode !== "same-origin")) {
       return;
     }
 
@@ -30,7 +30,8 @@ if (typeof window === "undefined") {
         newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
         newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
 
-        return new Response(response.body, {
+        const body = [101, 204, 205, 304].includes(response.status) ? null : response.body;
+        return new Response(body, {
           status: response.status,
           statusText: response.statusText,
           headers: newHeaders,
@@ -46,6 +47,19 @@ if (typeof window === "undefined") {
       try {
         sessionStorage.removeItem("washi_coi_reload_attempted");
       } catch (_) {}
+      return;
+    }
+
+    // 1b. Skip Service Worker registration & reload for search engine crawlers so headless
+    // indexing (e.g. Googlebot WRS, Google-InspectionTool, Bingbot) is never interrupted
+    // by a mid-render window.location.reload().
+    const ua = (typeof navigator !== "undefined" && navigator.userAgent) || "";
+    if (
+      /googlebot|google-inspectiontool|adsbot-google|apis-google|mediapartners-google|bingbot|msnbot|adidxbot|slurp|duckduckbot|baiduspider|yandexbot|applebot|facebookexternalhit|twitterbot|linkedinbot/i.test(
+        ua
+      )
+    ) {
+      window.__washi_coi_status = "crawler_skipped";
       return;
     }
 

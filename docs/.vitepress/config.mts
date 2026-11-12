@@ -1,8 +1,15 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig, type HeadConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
 import katex from "katex";
 import jaLocale from "./locales/ja.json";
 import zhLocale from "./locales/zh.json";
+
+const docsRoot = resolve(import.meta.dirname, "..");
+const GOOGLE_TAG_ID = "GTM-59QSZTZL";
+const GOOGLE_TAG_INLINE_INIT =
+  "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
 
 export default withMermaid(
   defineConfig({
@@ -19,14 +26,15 @@ export default withMermaid(
     const baseDomain = "https://washi.ohtaman.dev";
     const basePath = "/";
 
+    const toCleanPath = (rel: string): string =>
+      rel.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
+
     // Normalize relativePath for cleanUrls:
     // "index.md" -> ""
     // "ja/index.md" -> "ja/"
     // "getting-started/index.md" -> "getting-started/"
     // "getting-started/ai-agents.md" -> "getting-started/ai-agents"
-    const cleanRelativePath = pageData.relativePath
-      .replace(/(^|\/)index\.md$/, "$1")
-      .replace(/\.md$/, "");
+    const cleanRelativePath = toCleanPath(pageData.relativePath);
 
     const canonicalUrl = `${baseDomain}${basePath}${cleanRelativePath}`;
 
@@ -43,8 +51,45 @@ export default withMermaid(
       pageData.relativePath === "index.md" ||
       /^(?:getting-started|guide|solvers|examples)\/[^/]+\.md$/.test(pageData.relativePath);
 
+    const hreflangLinks: HeadConfig[] = [];
+    if (
+      !pageData.isNotFound &&
+      pageData.relativePath.endsWith(".md") &&
+      existsSync(resolve(docsRoot, pageData.relativePath))
+    ) {
+      const baseDocRelPath = pageData.relativePath.replace(/^(?:ja|zh)\//, "");
+      const localeCandidates = [
+        { hreflang: "en", relPath: baseDocRelPath },
+        { hreflang: "ja", relPath: `ja/${baseDocRelPath}` },
+        { hreflang: "zh-CN", relPath: `zh/${baseDocRelPath}` },
+      ];
+      for (const candidate of localeCandidates) {
+        if (existsSync(resolve(docsRoot, candidate.relPath))) {
+          hreflangLinks.push([
+            "link",
+            {
+              rel: "alternate",
+              hreflang: candidate.hreflang,
+              href: `${baseDomain}${basePath}${toCleanPath(candidate.relPath)}`,
+            },
+          ]);
+        }
+      }
+      if (existsSync(resolve(docsRoot, baseDocRelPath))) {
+        hreflangLinks.push([
+          "link",
+          {
+            rel: "alternate",
+            hreflang: "x-default",
+            href: `${baseDomain}${basePath}${toCleanPath(baseDocRelPath)}`,
+          },
+        ]);
+      }
+    }
+
     const head: HeadConfig[] = [
       ["link", { rel: "canonical", href: canonicalUrl }],
+      ...hreflangLinks,
       ["link", { rel: "describedby", href: `${basePath}llms.txt` }],
       ...(hasRawMarkdownEndpoint
         ? ([
@@ -185,6 +230,9 @@ export default withMermaid(
     ["meta", { name: "keywords", content: "typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly" }],
     // Load Service Worker
     ["script", { src: "/coi-serviceworker.js" }],
+    // Google Tag (GA4)
+    ["script", { async: "", src: `https://www.googletagmanager.com/gtm.js?id=${GOOGLE_TAG_ID}` }],
+    ["script", {}, GOOGLE_TAG_INLINE_INIT],
   ],
   locales: {
     root: {
