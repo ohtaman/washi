@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
+| Binary MIP & SMT Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">Playground (Roster)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">Source Code</a></li></ul> |
 
 Staff shift scheduling is a classic real-world application of Mixed-Integer Programming in SaaS and workforce management tools. However, in real applications, **staff vacation requests frequently collide with minimum coverage or leadership rules**, causing the solver to return `Infeasible`.
 

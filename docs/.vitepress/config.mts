@@ -9,15 +9,15 @@ export default withMermaid(
   title: "WaSHI",
   titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript",
   description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
-  base: "/washi/",
+  base: "/",
   cleanUrls: true,
   lastUpdated: true,
   sitemap: {
-    hostname: "https://ohtaman.github.io/washi/",
+    hostname: "https://washi.ohtaman.dev/",
   },
   transformHead({ pageData, siteData }) {
-    const baseDomain = "https://ohtaman.github.io";
-    const basePath = "/washi/";
+    const baseDomain = "https://washi.ohtaman.dev";
+    const basePath = "/";
 
     // Normalize relativePath for cleanUrls:
     // "index.md" -> ""
@@ -174,17 +174,17 @@ export default withMermaid(
     },
   },
   head: [
-    ["link", { rel: "icon", href: "/washi/washi-logo.svg", type: "image/svg+xml" }],
-    ["link", { rel: "alternate icon", href: "/washi/washi-logo.png", type: "image/png" }],
+    ["link", { rel: "icon", href: "/washi-logo.svg", type: "image/svg+xml" }],
+    ["link", { rel: "alternate icon", href: "/washi-logo.png", type: "image/png" }],
     ["meta", { name: "theme-color", content: "#3b82f6" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "WaSHI" }],
-    ["meta", { property: "og:image", content: "https://ohtaman.github.io/washi/washi-logo.png" }],
+    ["meta", { property: "og:image", content: "https://washi.ohtaman.dev/washi-logo.png" }],
     ["meta", { name: "twitter:card", content: "summary" }],
-    ["meta", { name: "twitter:image", content: "https://ohtaman.github.io/washi/washi-logo.png" }],
+    ["meta", { name: "twitter:image", content: "https://washi.ohtaman.dev/washi-logo.png" }],
     ["meta", { name: "keywords", content: "typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly" }],
     // Load Service Worker
-    ["script", { src: "/washi/coi-serviceworker.js" }],
+    ["script", { src: "/coi-serviceworker.js" }],
   ],
   locales: {
     root: {

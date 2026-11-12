@@ -820,12 +820,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         return hrefMatch![1];
       });
       expect(primaryHrefs).toEqual([
-        "/washi/demo/",
-        "/washi/apps/ai-shift/",
-        "/washi/apps/ai-timetable/",
-        "/washi/games/demon-castle-shift/",
-        "/washi/games/mofumofu-sheep/",
-        "/washi/games/titan-pack/",
+        "/demo/",
+        "/apps/ai-shift/",
+        "/apps/ai-timetable/",
+        "/games/demon-castle-shift/",
+        "/games/mofumofu-sheep/",
+        "/games/titan-pack/",
       ]);
 
       const langParam = loc.key === "root" ? "en" : loc.key;
@@ -835,15 +835,15 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         return hrefMatch![1];
       });
       expect(theoryHrefs).toEqual([
-        `/washi/apps/ai-timetable-theory/?lang=${langParam}`,
-        `/washi/games/demon-castle-shift-theory/?lang=${langParam}`,
-        `/washi/games/mofumofu-sheep-theory/?lang=${langParam}`,
-        `/washi/games/titan-pack-theory/?lang=${langParam}`,
+        `/apps/ai-timetable-theory/?lang=${langParam}`,
+        `/games/demon-castle-shift-theory/?lang=${langParam}`,
+        `/games/mofumofu-sheep-theory/?lang=${langParam}`,
+        `/games/titan-pack-theory/?lang=${langParam}`,
       ]);
 
       for (const href of [...primaryHrefs, ...theoryHrefs]) {
         const cleanHref = href.split("?")[0];
-        const subpath = cleanHref.replace(/^\/washi\//, "");
+        const subpath = cleanHref.replace(/^\//, "");
         const expectedEntryHtml = path.resolve(
           process.cwd(),
           "examples/web-demo",

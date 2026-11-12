@@ -2,7 +2,7 @@
 
 | 问题类型 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=transportation">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">源代码</a></li></ul> |
+| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=transportation">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/09-transportation-problem.ts">源代码</a></li></ul> |
 
 运输问题是最基础的网络优化模型之一：确定从每个供应源（工厂）向每个目的地（门店）发出的货物数量，在不超过各工厂产能上限并满足各门店需求量的前提下，使总运输成本最小化。
 

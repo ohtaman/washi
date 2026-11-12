@@ -1,20 +1,20 @@
 # 实际案例与 API 功能索引
 
-本页汇总了使用 WaSHI 构建的可运行数理优化与逻辑建模示例。每个案例均可直接在其文档页面内执行，也可以在 [Playground](https://ohtaman.github.io/washi/demo/) 中在线编辑和运行。
+本页汇总了使用 WaSHI 构建的可运行数理优化与逻辑建模示例。每个案例均可直接在其文档页面内执行，也可以在 [Playground](https://washi.ohtaman.dev/demo/) 中在线编辑和运行。
 
 ## 案例一览
 
 | 案例 | 问题类型 | 求解器 | 核心 WaSHI API | 演示内容 | 代码编辑 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[生产计划问题](/zh/examples/production)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 决策变量定义、标签模板字面量方程，以及在资源约束下最大化总利润。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
-| **[0-1 背包问题](/zh/examples/knapsack)** | Binary MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 一维 `Binary` 变量字典及物品数组上的线性聚合。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
-| **[运输与分配网络](/zh/examples/transportation)** | LP | HiGHS | `m.continuous(rows, cols)`, `expr` (`sum`, `dot`), `m.constraint()` | 二维矩阵索引（`ship[factory][store]`）与行/列供需流量平衡约束。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=transportation) |
-| **[营养问题与灵敏度分析](/zh/examples/diet-sensitivity)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解后读取影子价格（瓶颈识别）、约束松弛量（盈余）与变量缩减成本。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
-| **[员工排班与冲突诊断](/zh/examples/shift-scheduling)** | Binary MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5×7 周排班规划（每日人数覆盖、资深员工值班、排班上限与休假申请），以及使用 Z3 `unsatCore` 诊断冲突的休假申请。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
-| **[购物车优惠券最优组合](/zh/examples/ecommerce-coupons)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | 使用 `m.indicator()` 对最低消费门槛、互斥与可叠加规则建模，并提供智能凑单加购建议。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
-| **[投资组合优化](/zh/examples/portfolio-qp)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 在目标收益率约束下，使用 `QuadExpr` 最小化马科维茨均值-方差风险（$w^T \Sigma w$）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
-| **[安全策略验证](/zh/examples/smt-security)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑连接词（`implies`, `and`, `not`, `xor`）及整数边界的混合建模。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_security) |
-| **[不可行冲突诊断 (`unsatCore`)](/zh/examples/unsat-core)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 当人员配备要求与预算规则互相矛盾时，自动提取冲突约束子集（`unsatCore`）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
+| **[生产计划问题](/zh/examples/production)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 决策变量定义、标签模板字面量方程，以及在资源约束下最大化总利润。 | [Playground](https://washi.ohtaman.dev/demo/?preset=production) |
+| **[0-1 背包问题](/zh/examples/knapsack)** | Binary MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 一维 `Binary` 变量字典及物品数组上的线性聚合。 | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |
+| **[运输与分配网络](/zh/examples/transportation)** | LP | HiGHS | `m.continuous(rows, cols)`, `expr` (`sum`, `dot`), `m.constraint()` | 二维矩阵索引（`ship[factory][store]`）与行/列供需流量平衡约束。 | [Playground](https://washi.ohtaman.dev/demo/?preset=transportation) |
+| **[营养问题与灵敏度分析](/zh/examples/diet-sensitivity)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解后读取影子价格（瓶颈识别）、约束松弛量（盈余）与变量缩减成本。 | [Playground](https://washi.ohtaman.dev/demo/?preset=diet_sensitivity) |
+| **[员工排班与冲突诊断](/zh/examples/shift-scheduling)** | Binary MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5×7 周排班规划（每日人数覆盖、资深员工值班、排班上限与休假申请），以及使用 Z3 `unsatCore` 诊断冲突的休假申请。 | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
+| **[购物车优惠券最优组合](/zh/examples/ecommerce-coupons)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | 使用 `m.indicator()` 对最低消费门槛、互斥与可叠加规则建模，并提供智能凑单加购建议。 | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
+| **[投资组合优化](/zh/examples/portfolio-qp)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 在目标收益率约束下，使用 `QuadExpr` 最小化马科维茨均值-方差风险（$w^T \Sigma w$）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
+| **[安全策略验证](/zh/examples/smt-security)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑连接词（`implies`, `and`, `not`, `xor`）及整数边界的混合建模。 | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
+| **[不可行冲突诊断 (`unsatCore`)](/zh/examples/unsat-core)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 当人员配备要求与预算规则互相矛盾时，自动提取冲突约束子集（`unsatCore`）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
 | **[车辆路径规划 (CVRP)](/zh/examples/vehicle-routing)** | 组合优化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 利用客户对偶影子价格动态生成路径列，最小化车队总车辆数。 | [分解算法指南](/zh/guide/decomposition) |
 | **[旅行商问题 (TSP)](/zh/examples/traveling-salesperson)** | 组合优化 / Benders分解 | HiGHS | `m.solveBenders()`, `subproblem` | 从度数分配松弛出发，利用动态 Benders 可行割消除子回路。 | [分解算法指南](/zh/guide/decomposition) |
 

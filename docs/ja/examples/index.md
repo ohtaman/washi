@@ -1,20 +1,20 @@
 # 実践例・サンプル集
 
-WaSHI を使った数理最適化・論理検証のサンプル集です。各ページ内でそのまま実行して動作を確認できるほか、[Playground](https://ohtaman.github.io/washi/demo/) でコードを自由に編集して試すこともできます。
+WaSHI を使った数理最適化・論理検証のサンプル集です。各ページ内でそのまま実行して動作を確認できるほか、[Playground](https://washi.ohtaman.dev/demo/) でコードを自由に編集して試すこともできます。
 
 ## サンプル一覧
 
 | サンプル | 問題クラス | ソルバー | 主な API | 概要 | コード編集 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[生産計画問題](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=production) |
-| **[0-1 ナップサック問題](./knapsack.md)** | 0-1 MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 1次元キー配列からの `Binary` 変数生成と、`expr` 内の `dot()` による内積集計。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=knapsack) |
-| **[輸送・物流ネットワーク](./transportation.md)** | LP | HiGHS | `m.continuous(rows, cols)`, `expr` (`sum`, `dot`), `m.constraint()` | `ship[factory][store]` のような2次元マトリクス変数の生成と、行・列方向のフロー保存則。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=transportation) |
-| **[栄養問題と感度分析](./diet-sensitivity.md)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解後に潜在価格（ボトルネックの特定）、余剰（スラック）、被約費用を取り出す方法。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity) |
-| **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5名×7日のシフト作成（必要人数・シニア配置・週上限・希望休）と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=shift_scheduling) |
-| **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | `m.indicator()` を用いた最低購入金額条件、併用不可ルール、さらに追加購入による上位割引解放の同時計算。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=cart_coupon) |
-| **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | マーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=portfolio_qp) |
-| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=smt_security) |
-| **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [Playground](https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat) |
+| **[生産計画問題](./production.md)** | LP / MIP | HiGHS | `m.integer()`, `m.constraint()`, `expr` | 変数の定義、テンプレートリテラルによる数式記述、リソース上限下での利益最大化。 | [Playground](https://washi.ohtaman.dev/demo/?preset=production) |
+| **[0-1 ナップサック問題](./knapsack.md)** | 0-1 MIP | HiGHS | `m.binary(keys)`, `expr` (`dot`), `m.constraint()` | 1次元キー配列からの `Binary` 変数生成と、`expr` 内の `dot()` による内積集計。 | [Playground](https://washi.ohtaman.dev/demo/?preset=knapsack) |
+| **[輸送・物流ネットワーク](./transportation.md)** | LP | HiGHS | `m.continuous(rows, cols)`, `expr` (`sum`, `dot`), `m.constraint()` | `ship[factory][store]` のような2次元マトリクス変数の生成と、行・列方向のフロー保存則。 | [Playground](https://washi.ohtaman.dev/demo/?preset=transportation) |
+| **[栄養問題と感度分析](./diet-sensitivity.md)** | LP | HiGHS | `constr.dual`, `constr.slack`, `var.reducedCost` | 求解後に潜在価格（ボトルネックの特定）、余剰（スラック）、被約費用を取り出す方法。 | [Playground](https://washi.ohtaman.dev/demo/?preset=diet_sensitivity) |
+| **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5名×7日のシフト作成（必要人数・シニア配置・週上限・希望休）と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
+| **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | `m.indicator()` を用いた最低購入金額条件、併用不可ルール、さらに追加購入による上位割引解放の同時計算。 | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
+| **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | マーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
+| **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
+| **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
 | **[車両配送計画 (CVRP)](./vehicle-routing.md)** | 組合せ最適化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 顧客訪問の双対価格からトラック巡回ルートを動的生成し、最少車両数を決定。 | [分解法ガイド](../guide/decomposition.md) |
 | **[巡回セールスマン (TSP)](./traveling-salesperson.md)** | 組合せ最適化 / Benders分解 | HiGHS | `m.solveBenders()`, `subproblem` | 次数割り当て緩和問題からスタートし、部分巡回路に対して動的に Benders cut を追加。 | [分解法ガイド](../guide/decomposition.md) |
 

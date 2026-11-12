@@ -301,9 +301,9 @@ describe("README.md Code Snippets Validation", () => {
 
   it("links to the online documentation and valid relative docs/ files across README.md, README.ja.md, and README.zh-CN.md", () => {
     const expectations = [
-      { file: "README.md", docsUrl: "https://ohtaman.github.io/washi/" },
-      { file: "README.ja.md", docsUrl: "https://ohtaman.github.io/washi/ja/" },
-      { file: "README.zh-CN.md", docsUrl: "https://ohtaman.github.io/washi/zh/" },
+      { file: "README.md", docsUrl: "https://washi.ohtaman.dev/" },
+      { file: "README.ja.md", docsUrl: "https://washi.ohtaman.dev/ja/" },
+      { file: "README.zh-CN.md", docsUrl: "https://washi.ohtaman.dev/zh/" },
     ];
 
     for (const { file, docsUrl } of expectations) {

@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
+| 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
 
 现代电商结算页面通常包含复杂的促销规则：最低消费门槛、特定品类折扣、可叠加与互斥（不可叠加）优惠券，以及每笔订单的最大用券数量限制。直接在浏览器端（或边缘节点 Worker）运行优化求解器，可以让结算 UI 自动为用户匹配最优的优惠券组合——甚至在跨过满减门槛能降低实付总额时，智能推荐一件低价“凑单”商品。
 

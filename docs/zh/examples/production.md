@@ -2,7 +2,7 @@
 
 | 问题类型 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 线性规划 / 整数规划 (LP / MIP) | HiGHS (默认) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">源代码</a></li></ul> |
+| 线性规划 / 整数规划 (LP / MIP) | HiGHS (默认) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">源代码</a></li></ul> |
 
 生产计划是一个经典的线性与整数规划问题：在满足各项资源约束（原材料、机器工时、人工工时等）的前提下，确定每种产品的最优生产数量，使总利润最大化。
 

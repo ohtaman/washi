@@ -1,13 +1,13 @@
 # WaSHI examples
 
-[English README](../README.md) · [日本語 README](../README.ja.md) · [中文 README](../README.zh-CN.md) · [Online Example Docs](https://ohtaman.github.io/washi/examples/)
+[English README](../README.md) · [日本語 README](../README.ja.md) · [中文 README](../README.zh-CN.md) · [Online Example Docs](https://washi.ohtaman.dev/examples/)
 
 These examples show how to construct models with WaSHI and inspect results from
 HiGHS, Z3, or GLPK. The solver performs the optimization or satisfiability check.
 
 ## Browser demo
 
-[Open the interactive demo](https://ohtaman.github.io/washi/demo/) to select a
+[Open the interactive demo](https://washi.ohtaman.dev/demo/) to select a
 preset, edit the model, choose a compatible solver, and inspect its results
 (including 2D flow matrices, weekly shift rosters, coupon breakdowns, and
 constraint shadow prices). The [demo source](web-demo/) is included in this repository.

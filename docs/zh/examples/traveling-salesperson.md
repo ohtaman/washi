@@ -2,7 +2,7 @@
 
 | 问题分类 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 组合优化 / Benders分解 | HiGHS (默认) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">源代码</a></li><li><a href="../guide/decomposition.md">分解算法指南</a></li></ul> |
+| 组合优化 / Benders分解 | HiGHS (默认) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">源代码</a></li><li><a href="/zh/guide/decomposition">分解算法指南</a></li></ul> |
 
 **旅行商问题（TSP: Traveling Salesperson Problem）** 要求寻找一条恰好访问每座城市一次并回到起点的最短闭合回路（Tour）。
 

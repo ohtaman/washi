@@ -80,7 +80,7 @@ function z3DemoAssets(): Plugin {
 }
 
 export default defineConfig({
-  base: process.env.BASE_URL || (process.env.GITHUB_ACTIONS ? "/washi/" : "./"),
+  base: process.env.BASE_URL || (process.env.GITHUB_ACTIONS ? "/" : "./"),
   root: "examples/web-demo",
   publicDir: "../../public",
   plugins: [z3DemoAssets()],

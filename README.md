@@ -16,8 +16,8 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
-    <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
+    <a href="https://washi.ohtaman.dev/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
@@ -36,10 +36,10 @@
 
 ## 📚 Documentation & Links
 
-- **[Documentation](https://ohtaman.github.io/washi/)**: Modeling guide, solver references, and deployment guides
-- **[Interactive Showcase](https://ohtaman.github.io/washi/showcase/) & [Browser Playground](https://ohtaman.github.io/washi/demo/)**: Try live optimization apps and edit models in the browser
-- **[Examples](https://ohtaman.github.io/washi/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
-- **[AI Agent Guide](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://ohtaman.github.io/washi/llms.txt) / [`llms-full.txt`](https://ohtaman.github.io/washi/llms-full.txt)**: Compact reference, workflow skill, and machine-readable docs for AI coding agents
+- **[Documentation](https://washi.ohtaman.dev/)**: Modeling guide, solver references, and deployment guides
+- **[Interactive Showcase](https://washi.ohtaman.dev/showcase/) & [Browser Playground](https://washi.ohtaman.dev/demo/)**: Try live optimization apps and edit models in the browser
+- **[Examples](https://washi.ohtaman.dev/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
+- **[AI Agent Guide](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: Compact reference, workflow skill, and machine-readable docs for AI coding agents
 
 ---
 

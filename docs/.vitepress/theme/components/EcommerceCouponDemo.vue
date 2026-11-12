@@ -337,7 +337,7 @@ onMounted(() => {
     </div>
 
     <div class="washi-app-footer">
-      <a href="/washi/demo/?preset=cart_coupon" target="_self" class="playground-link">
+      <a href="/demo/?preset=cart_coupon" target="_self" class="playground-link">
         {{ i18n.openPlayground }}
       </a>
     </div>

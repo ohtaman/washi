@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| 0-1 Binary MIP | HiGHS (default) | `m.binary()`, `m.constraint()`, `expr` (`dot`), `maximize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=knapsack">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">Source Code</a></li></ul> |
+| 0-1 Binary MIP | HiGHS (default) | `m.binary()`, `m.constraint()`, `expr` (`dot`), `maximize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=knapsack">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/02-knapsack-problem.ts">Source Code</a></li></ul> |
 
 The 0-1 Knapsack problem is an essential combinatorial optimization problem: given a set of items, each with a weight and a value, determine which items to include in a collection so that the total weight does not exceed a given limit and the total value is maximized.
 

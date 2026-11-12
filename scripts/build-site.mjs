@@ -16,7 +16,7 @@ const siteDist = resolve(rootDir, "dist/site");
 export function appendInteractiveRoutesToSitemap(
   sitemapXml,
   targetRoot,
-  baseHostname = "https://ohtaman.github.io/washi/"
+  baseHostname = "https://washi.ohtaman.dev/"
 ) {
   const interactiveSubpaths = [];
 
