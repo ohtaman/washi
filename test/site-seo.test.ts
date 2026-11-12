@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import type { Plugin } from "vite";
 import type { HeadConfig, PageData, SiteData } from "vitepress";
 import vitepressConfig from "../docs/.vitepress/config.mts";
+import viteDemoConfig from "../vite.config.ts";
 // @ts-expect-error .mjs script module
 import { appendInteractiveRoutesToSitemap } from "../scripts/build-site.mjs";
 // @ts-expect-error .mjs script module
@@ -180,6 +182,99 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(browserRes.status).toBeUndefined();
     expect(browserRes.registered).toBe(true);
   });
+
+  it("keeps public/coi-serviceworker.js and docs/public/coi-serviceworker.js synchronized and safely handles non-GET beacons and 204 responses", async () => {
+    const rootCoi = fs.readFileSync(path.resolve(rootDir, "public/coi-serviceworker.js"), "utf-8");
+    const docsCoi = fs.readFileSync(path.resolve(rootDir, "docs/public/coi-serviceworker.js"), "utf-8");
+    expect(docsCoi).toBe(rootCoi);
+
+    type FetchEventStub = {
+      request: { method: string; cache?: string; mode?: string };
+      respondWith: (p: Promise<Response>) => void;
+    };
+    let fetchHandler: ((event: FetchEventStub) => void) | undefined;
+    let mockFetchResponse: {
+      status: number;
+      statusText: string;
+      type: string;
+      headers: Headers;
+      body: ReadableStream<Uint8Array> | string | null;
+    } = {
+      status: 200,
+      statusText: "OK",
+      type: "basic",
+      headers: new Headers({ "content-type": "text/html" }),
+      body: "hello",
+    };
+
+    const swSelf = {
+      skipWaiting: () => {},
+      clients: { claim: () => Promise.resolve() },
+      addEventListener: (type: string, listener: (event: FetchEventStub) => void) => {
+        if (type === "fetch") {
+          fetchHandler = listener;
+        }
+      },
+    };
+
+    vm.runInNewContext(rootCoi, {
+      self: swSelf,
+      Headers,
+      Response,
+      fetch: () => Promise.resolve(mockFetchResponse),
+    });
+
+    expect(typeof fetchHandler).toBe("function");
+
+    // 1. POST analytics beacons (e.g. GA4 /g/collect) must bypass SW interception completely
+    let postIntercepted = false;
+    fetchHandler!({
+      request: { method: "POST", mode: "no-cors" },
+      respondWith: () => {
+        postIntercepted = true;
+      },
+    });
+    expect(postIntercepted).toBe(false);
+
+    // 2. GET 200 responses must receive COOP/COEP/CORP headers
+    let capturedPromise: Promise<Response> | undefined;
+    fetchHandler!({
+      request: { method: "GET", mode: "same-origin" },
+      respondWith: (p) => {
+        capturedPromise = p;
+      },
+    });
+    expect(capturedPromise).toBeDefined();
+    const okRes = await capturedPromise!;
+    expect(okRes.status).toBe(200);
+    expect(okRes.headers.get("Cross-Origin-Embedder-Policy")).toBe("require-corp");
+    expect(okRes.headers.get("Cross-Origin-Resource-Policy")).toBe("cross-origin");
+    expect(okRes.headers.get("Cross-Origin-Opener-Policy")).toBe("same-origin");
+
+    // 3. GET 204 No Content responses (even when upstream exposes a non-null stream object) must pass null body without throwing
+    mockFetchResponse = {
+      status: 204,
+      statusText: "No Content",
+      type: "cors",
+      headers: new Headers(),
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close();
+        },
+      }),
+    };
+    let captured204: Promise<Response> | undefined;
+    fetchHandler!({
+      request: { method: "GET", mode: "cors" },
+      respondWith: (p) => {
+        captured204 = p;
+      },
+    });
+    expect(captured204).toBeDefined();
+    const res204 = await captured204!;
+    expect(res204.status).toBe(204);
+    expect(res204.body).toBeNull();
+  });
 });
 
 describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglines", () => {
@@ -299,6 +394,104 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "/zh/getting-started/runtimes",
       "/zh/getting-started/cross-origin",
       "/zh/getting-started/ai-agents",
+    ]);
+  });
+
+  it("emits localized hreflang alternates (en, ja, zh-CN, x-default) via transformHead and configures Google Tag (GTM-59QSZTZL) across VitePress and Vite demo plugins", async () => {
+    type TransformCtx = Parameters<NonNullable<typeof vitepressConfig.transformHead>>[0];
+    const runTransformHead = async (relativePath: string, isNotFound = false): Promise<HeadConfig[]> => {
+      const pageData: PageData = {
+        relativePath,
+        filePath: relativePath,
+        title: "Test Title",
+        titleTemplate: ":title | WaSHI",
+        description: "Test Description",
+        headers: [],
+        frontmatter: {},
+        params: {},
+        isNotFound,
+      };
+      const siteData = { title: "WaSHI", description: "Site Description" } as SiteData;
+      return (await vitepressConfig.transformHead!({ pageData, siteData } as TransformCtx)) ?? [];
+    };
+
+    // Root index across EN, JA, ZH must emit identical hreflang cluster
+    for (const indexRel of ["index.md", "ja/index.md", "zh/index.md"]) {
+      const head = await runTransformHead(indexRel);
+      expect(head).toContainEqual(["link", { rel: "alternate", hreflang: "en", href: "https://washi.ohtaman.dev/" }]);
+      expect(head).toContainEqual(["link", { rel: "alternate", hreflang: "ja", href: "https://washi.ohtaman.dev/ja/" }]);
+      expect(head).toContainEqual(["link", { rel: "alternate", hreflang: "zh-CN", href: "https://washi.ohtaman.dev/zh/" }]);
+      expect(head).toContainEqual(["link", { rel: "alternate", hreflang: "x-default", href: "https://washi.ohtaman.dev/" }]);
+    }
+
+    // Nested guide route across EN, JA, ZH
+    for (const guideRel of ["guide/variables.md", "ja/guide/variables.md", "zh/guide/variables.md"]) {
+      const head = await runTransformHead(guideRel);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "en", href: "https://washi.ohtaman.dev/guide/variables" },
+      ]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "ja", href: "https://washi.ohtaman.dev/ja/guide/variables" },
+      ]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "zh-CN", href: "https://washi.ohtaman.dev/zh/guide/variables" },
+      ]);
+      expect(head).toContainEqual([
+        "link",
+        { rel: "alternate", hreflang: "x-default", href: "https://washi.ohtaman.dev/guide/variables" },
+      ]);
+    }
+
+    // 404 / non-existent route must not emit hreflang tags
+    const notFoundHead = await runTransformHead("404.md", true);
+    expect(
+      notFoundHead.some(
+        (entry) =>
+          entry[0] === "link" &&
+          typeof entry[1] === "object" &&
+          "hreflang" in entry[1]
+      )
+    ).toBe(false);
+
+    // VitePress global head includes Google Tag GTM-59QSZTZL
+    expect(vitepressConfig.head).toContainEqual([
+      "script",
+      { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL" },
+    ]);
+    expect(
+      vitepressConfig.head?.some(
+        (entry) =>
+          entry[0] === "script" &&
+          typeof entry[2] === "string" &&
+          entry[2].includes("gtag('js', new Date());")
+      )
+    ).toBe(true);
+
+    // Vite interactive demo/apps/games config includes Google Tag transformIndexHtml plugin
+    const plugins = (viteDemoConfig.plugins ?? []).flat() as Plugin[];
+    const gtagPlugin = plugins.find((p) => p && p.name === "washi-google-tag");
+    expect(gtagPlugin).toBeDefined();
+    const hook = gtagPlugin?.transformIndexHtml;
+    const fn = typeof hook === "function" ? hook : hook && "handler" in hook ? hook.handler : undefined;
+    expect(typeof fn).toBe("function");
+    const injectedTags = await (fn as (html: string, ctx: { path: string; filename: string }) => unknown)(
+      "<html><head></head><body></body></html>",
+      { path: "/demo/index.html", filename: "demo/index.html" }
+    );
+    expect(injectedTags).toEqual([
+      {
+        tag: "script",
+        attrs: { async: true, src: "https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL" },
+        injectTo: "head",
+      },
+      {
+        tag: "script",
+        children: "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());",
+        injectTo: "head",
+      },
     ]);
   });
 
@@ -497,6 +690,12 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
     // Verify homepages link directly (1 hop) to Playground, Apps, Games, and newly added doc pages
     for (const html of [enHtml, jaHtml, zhHtml]) {
+      expect(html).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
+      expect(html).toMatch(/gtag\(\s*['"]js['"]\s*,\s*new Date(?:\(\))?\s*\)/);
+      expect(html).toContain('hreflang="en" href="https://washi.ohtaman.dev/"');
+      expect(html).toContain('hreflang="ja" href="https://washi.ohtaman.dev/ja/"');
+      expect(html).toContain('hreflang="zh-CN" href="https://washi.ohtaman.dev/zh/"');
+      expect(html).toContain('hreflang="x-default" href="https://washi.ohtaman.dev/"');
       expect(html).toContain('href="/demo/" target="_self"');
       expect(html).toContain('href="/apps/ai-shift/" target="_self"');
       expect(html).toContain('href="/apps/ai-timetable/" target="_self"');
@@ -505,7 +704,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(html).toContain('href="/games/titan-pack/" target="_self"');
     }
 
-    // Verify standalone interactive HTML entrypoints contain canonical links
+    // Verify standalone interactive HTML entrypoints contain canonical links and Google Tag
     for (const subpath of [
       "demo",
       "apps/ai-shift",
@@ -520,6 +719,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     ]) {
       const entryHtml = fs.readFileSync(path.resolve(siteDistPath, subpath, "index.html"), "utf-8");
       expect(entryHtml).toContain(`link rel="canonical" href="https://washi.ohtaman.dev/${subpath}/"`);
+      expect(entryHtml).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
+      expect(entryHtml).toContain("gtag('js', new Date());");
       expect(entryHtml).not.toContain('"/washi/');
     }
 
@@ -528,6 +729,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       const demoHtml = fs.readFileSync(demoDistPath, "utf-8");
       expect(demoHtml).toContain("<title>WaSHI — Browser Optimization & Constraint Programming Demos</title>");
       expect(demoHtml).toContain("Interactive browser demos and playground for WaSHI: solve linear programming, nurse shift scheduling, and constraint games client-side with WebAssembly (HiGHS & Z3).");
+      expect(demoHtml).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
     }
   });
 });
