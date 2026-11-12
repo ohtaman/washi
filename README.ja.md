@@ -192,6 +192,17 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 
 ---
 
+## 🙏 謝辞
+
+WaSHI は、数理最適化および自動推論分野の素晴らしいオープンソースソフトウェアの上に成り立っています：
+
+- **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— エディンバラ大学の Julian Hall 氏、Qi Huangfu 氏、Ivet Galabova 氏、Leona Gottwald 氏、Michael Feldmeier 氏をはじめとする開発チームによる高性能なオープンソース LP / MIP / 凸 QP ソルバーであり、WaSHI の標準エンジンを支えています（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
+- **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— Microsoft Research により開発された SMT ソルバーであり、オプションの論理充足判定および `unsatCore` 矛盾診断プラグインを支えています。
+- **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — オプションの GPL-3.0 LP / MIP ソルバープラグインを支えています。
+- **[PuLP](https://github.com/coin-or/pulp)** — WaSHI の直感的な代数モデリング API 設計に大きな着想を与えました。
+
+---
+
 ## 📄 ライセンス
 
 - **`@ohtaman/washi`**: [MIT ライセンス](./LICENSE)

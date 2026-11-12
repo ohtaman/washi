@@ -36,7 +36,7 @@ const m3 = new Model({ solver: "glpk" });
 
 ## 求解器详细指南
 
-- [HiGHS 指南](/zh/solvers/highs)：Web Worker 多线程后台执行、MIP 容差设置、凸二次规划（QP）求解、进度回调与中断控制。
+- [HiGHS 指南](/zh/solvers/highs)：Web Worker 后台执行、MIP 容差设置、凸二次规划（QP）求解、进度回调与中断控制。
 - [Z3 指南](/zh/solvers/z3)：SMT 逻辑断言、逻辑建模、`m.check()` 冲突约束集（Unsat Core）分析与跨源隔离要求。
 - [GLPK 指南](/zh/solvers/glpk)：GLPK 适配器用法、GPL-3.0 许可证注意事项、状态映射与浏览器使用方式。
 - [自定义求解器开发指南](/zh/solvers/custom-solver)：将私有求解器、商业求解器或云端 REST 求解服务集成为 WaSHI 插件的分步开发教程。

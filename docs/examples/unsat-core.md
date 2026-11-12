@@ -4,7 +4,7 @@
 | :--- | :--- | :--- | :--- |
 | Infeasibility Diagnosis / Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">Source Code</a></li></ul> |
 
-When business rules, budgets, and operational policies grow complex, constraints inevitably conflict. Traditional solvers simply report "Infeasible", leaving engineers to guess which of hundreds of rules caused the contradiction.
+When business rules, budgets, and operational policies grow complex, constraints can easily conflict. Because a standard optimization call (`m.solve()`) only reports `"Infeasible"`, WaSHI provides `m.check()` to pinpoint conflicting rules without manual trial-and-error.
 
 This example shows how to isolate the conflicting constraint subset using Z3 Unsat Core extraction.
 

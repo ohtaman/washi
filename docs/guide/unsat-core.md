@@ -4,13 +4,13 @@ When building real-world optimization and configuration systems, two verificatio
 1. **Why is my model infeasible?** Which specific business rules contradict each other?
 2. **Does the solver's solution genuinely satisfy every constraint?** How do I verify tolerances, integrality, and formulations?
 
-WaSHI provides built-in tools for both: **Unsat Core conflict diagnosis** via Z3 (`m.check()`), **independent solution validation** (`m.validateSolution()`), **LP formulation export** (`m.toLpString()`), and **fast unit testing** (`MockSolver`).
+WaSHI provides built-in tools for both: **conflict diagnosis** via built-in HiGHS elastic relaxation or Z3 Unsat Core (`m.check()`), **independent solution validation** (`m.validateSolution()`), **LP formulation export** (`m.toLpString()`), and **fast unit testing** (`MockSolver`).
 
 ---
 
 ## Conflict Diagnosis (`unsatCore` / `conflicts`)
 
-When a model is **Infeasible**, traditional MIP solvers simply report that no solution exists without indicating *which* constraints are contradictory.
+When an optimization run (`m.solve()`) returns **`"Infeasible"`**, the status alone tells you that no solution satisfies every constraint—not *which* rules conflict with each other.
 By calling **`await m.check({ solver: "z3" })`**, WaSHI uses Z3's `assertAndTrack` mechanism to compute an **Unsatisfiable Core (`unsatCore`)**—a conflicting subset of named constraints that cannot be satisfied simultaneously:
 
 ```typescript

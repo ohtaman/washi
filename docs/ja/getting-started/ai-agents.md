@@ -57,7 +57,7 @@ import "@ohtaman/washi/solvers/glpk";
 1. **デフォルトでパッケージ同梱 WASM を使用（暗黙の CDN フォールバックなし）**:
    - Node.js および最新のバンドラーでは、WebAssembly アセットはモジュールからの相対パスで自動的に解決されます。
    - ブラウザ環境へデプロイする際は、`dist/browser/` ディレクトリ一式（JS、Worker、`.wasm` ファイル）をまとめて配置してください。ローカルの WASM URL が欠落している場合や HTML の SPA フォールバックが返された場合、初期化は試行した URL を明示して即座に失敗し、**外部パブリック CDN へ勝手に切り替わることは決してありません**。
-   - ブラウザランタイムで `highs.wasm` をカスタム URL から読み込む場合は、`setHighsWasmUrl("https://.../highs.wasm")` を呼び出すか、`await m.solve({ wasmUrl: "https://.../highs.wasm" })` を渡します（Node.js では常にローカルの `highs` パッケージランタイムを読み込むため無視されます）。
+   - ブラウザランタイムで `highs.wasm` をカスタム URL から読み込む場合は、`setHighsWasmUrl("https://.../highs.wasm")` を呼び出すか、`await m.solve({ wasmUrl: "https://.../highs.wasm" })` を渡します（Node.js では常にパッケージ同梱のローカル `highs.wasm` ランタイムを読み込むため無視されます）。
 2. **ブラウザでの Z3 実行にはセキュアコンテキスト・Cross-Origin Isolation・CORS が必要**:
    - Z3 WebAssembly は `SharedArrayBuffer` によるマルチスレッドを使用します。Z3 を実行するブラウザページは、セキュアコンテキスト（`window.isSecureContext === true`、すなわち HTTPS または `localhost`）かつ Cross-Origin Isolated（`window.crossOriginIsolated === true`）である必要があり、以下の HTTP ヘッダーを配信する必要があります：
      - `Cross-Origin-Opener-Policy: same-origin`（ドキュメント応答）
@@ -82,6 +82,7 @@ const m = new Model("ExampleModel");
 
 // スカラー変数
 const x = m.continuous("x", { lb: 0, ub: 100 });
+const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
 const flag = m.bool("flag"); // 命題論理変数（Z3 / 論理制約用）
@@ -104,7 +105,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 
 - **統一 `expr` テンプレートタグ**:
   - 1次式（`LinExpr`）: `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``, `` expr`sum((${price} - ${cost}) * ${byItem})` ``
-  - 2次式（`QuadExpr`）: `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` ``, `` expr`sum((${vec} - ${target})^2)` ``（凸 QP 目的関数向けに変数同士の積や二乗をサポート）。
+  - 2次式（`QuadExpr`）: `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${vec} - ${target})^2)` ``（連続変数 `m.continuous` のみで構成される凸 QP モデルの目的関数としてサポート。標準搭載の HiGHS は整数・バイナリ・論理変数を含む MIQP には非対応です）。
   - 線形制約（`Constraint`）: `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` ``（`<=`, `>=`, `==`, `=` をサポート）。
 - **集計ヘルパーと要素ごとの四則演算**:
   - `sum(containerOrItems, mapper?)`（`` expr`sum(...)` `` の内部またはスタンドアロン `sum(...)` で利用可能）は、1次元・2次元の `Array`, `Iterable`, またはプレーンな `Record`（`Object.values(record)` 不要）の総和を計算します。`` expr`sum(...)` `` 内ではコンテナの要素ごとの四則演算・二乗（`+`, `-`, `*`, `/`, `^2`）も記述可能です。

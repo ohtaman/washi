@@ -1,6 +1,6 @@
 # HiGHS Solver Engine
 
-**HiGHS** is high-performance mathematical optimization software developed at the University of Edinburgh ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
+**HiGHS** is high-performance mathematical optimization software initiated at the University of Edinburgh ([highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)). It is widely recognized as the state-of-the-art open-source solver for Linear Programming (LP), Mixed-Integer Programming (MIP), and Convex Quadratic Programming (QP).
 
 In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly compiled directly from official upstream source ([ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)) using its native C API (`highs_c_api.h`), providing zero-config execution across Node.js, Web Workers, and browsers without third-party wrapper dependencies.
 
@@ -10,7 +10,7 @@ In `@ohtaman/washi`, HiGHS runs entirely in WebAssembly compiled directly from o
 
 - **Built-in & Zero-Config**: Bundled directly with `@ohtaman/washi` with zero external runtime dependencies. No separate peer dependency or C++ compiler required.
 - **Permissive MIT License**: 100% commercially friendly.
-- **Web Worker Multithreading**: Automatically offloads intensive solving to background Web Workers in browser environments to avoid freezing the UI thread.
+- **Background Web Worker Execution**: Automatically offloads solving to a dedicated Web Worker in browser environments to avoid freezing the UI thread.
 - **Warm-Start Support (`initialValue`)**: Supports passing variable primal initial value hints (`initialValue`) to HiGHS `setSolution` for warm starting.
 - **Fast WASM Execution**: Runs the directly compiled 32-bit WebAssembly binary at near-native speed.
 
@@ -24,14 +24,14 @@ WaSHI compiles official HiGHS C++ source directly to WebAssembly (`highs.wasm`) 
 
 - **Progress Monitoring & Cancellation (Supported)**:
   Through HiGHS's internal logging and interrupt hooks, WaSHI provides real-time progress callbacks (`onProgress`) and cooperative mid-solve cancellation via standard `AbortSignal`.
-- **Dynamic Cuts / Lazy Constraints (Not Supported in WASM Wrapper)**:
-  The upstream WebAssembly wrapper intentionally excludes low-level native callback type 8 (`MIP lazy constraints`) due to WASM-to-JS boundary and synchronous memory safety constraints. For problems requiring subtour elimination or Benders decomposition, use an **iterative cutting-plane loop** (solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve).
+- **Dynamic Cuts / Lazy Constraints (Not Exposed in WASM Driver)**:
+  WaSHI's HiGHS WebAssembly C API driver currently binds logging, progress, interrupt, and incumbent callbacks and does not expose in-tree lazy constraint or user cut callbacks across the WASM-to-JS boundary. For problems requiring dynamic subtour elimination or Benders decomposition, use [`await m.solveBenders({ subproblem })`](../guide/decomposition.md#benders-decomposition-solvebenders) (or a manual outer cutting-plane loop: solve $\to$ detect violation $\to$ `model.constraint(...)` $\to$ re-solve), which iteratively separates cuts and converges to the same exact optimal solution.
 
 ### WebAssembly Asset Lifecycle & On-Demand Builds
 
 HiGHS's WebAssembly binary (`public/highs.wasm`) and runtime driver (`runtime.js`) are managed via `highs.config.json` with cryptographic SHA-256 verification:
 - **Zero-Friction Verification**: Build and distribution pipelines run `node scripts/ensure-highs-wasm.mjs`, verifying local assets in milliseconds before bundling.
-- **On-Demand Release Download**: When assets are missing or updated, `ensure-highs-wasm.mjs` automatically downloads verified binaries from official GitHub Release assets.
+- **On-Demand Release Download**: When assets are missing or updated, `ensure-highs-wasm.mjs` automatically downloads verified binaries from WaSHI's GitHub Release assets.
 - **Compiling from Source**: When updating HiGHS or modifying compiler flags, run `npm run build:highs-wasm` with the Emscripten SDK (`emcc`), CMake, and Ninja installed, and upload the rebuilt assets to the `highs-<version>` GitHub Release tag (`gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber`) so on-demand downloads match `highs.config.json` (or run `.github/workflows/build-wasm.yml` and commit the `highs-wasm-assets` artifact including `highs.config.json`).
 
 ---
@@ -60,7 +60,7 @@ const count = model.integer("count", { lb: 0, ub: 50 });
 ```
 
 ### 3. Convex Quadratic Programming (QP)
-Solves quadratic objective functions subject to linear constraints:
+Solves continuous models with convex quadratic objective functions subject to linear constraints:
 
 ```typescript
 // Minimize risk/variance uniformly using expr:
@@ -70,6 +70,9 @@ model.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
 // const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
 // model.objective(minimize(quadObj));
 ```
+
+> [!NOTE]
+> **Continuous Convex QP Only**: HiGHS solves Convex QP models where **all** model variables are continuous (`m.continuous`), with a positive semi-definite quadratic matrix $\mathbf{Q}$ when minimizing (or negative semi-definite when maximizing). Mixed-Integer Quadratic Programming (**MIQP**—any model combining a quadratic objective with `Integer`, `Binary`, or `BoolVar` variables) and quadratic constraints (**QCP**) are not supported; to model products of binary decisions in MILP, see [Formulation Patterns & Tips](../guide/formulation-tips.md).
 
 ---
 
@@ -120,4 +123,14 @@ const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
+
+---
+
+## References & Upstream Links
+
+- **Official Website**: [https://highs.dev/](https://highs.dev/)
+- **Official Documentation**: [https://ergo-code.github.io/HiGHS/](https://ergo-code.github.io/HiGHS/)
+- **Source Repository**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS) (MIT License)
+- **Academic Citation**: If you cite HiGHS in academic or technical publications, please reference the foundational paper requested by the HiGHS authors:
+  > Q. Huangfu and J. A. J. Hall, *"Parallelizing the dual revised simplex method"*, Mathematical Programming Computation, 10 (1), 119–142, 2018. DOI: [10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)
 

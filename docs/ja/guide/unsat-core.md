@@ -4,13 +4,13 @@
 1. **なぜモデルが実行不可能（Infeasible）になったのか？** どのビジネスルール同士が衝突しているのか？
 2. **ソルバーが返した解は本当にすべての制約を満たしているか？** 許容誤差・整数条件・LP定式化をどう検証するか？
 
-WaSHI はこれらを解決するため、Z3 による **Unsat Core（充足不能コア）抽出**（`m.check()`）、**独立した解検証**（`m.validateSolution()`）、**LP 定式化出力**（`m.toLpString()`）、および **高速ユニットテスト用モック**（`MockSolver`）を備えています。
+WaSHI はこれらを解決するため、標準搭載の HiGHS による弾性スラック緩和または Z3 の **Unsat Core（充足不能コア）抽出**による**矛盾診断**（`m.check()`）、**独立した解検証**（`m.validateSolution()`）、**LP 定式化出力**（`m.toLpString()`）、および **高速ユニットテスト用モック**（`MockSolver`）を備えています。
 
 ---
 
 ## 矛盾制約の診断 (`unsatCore` / `conflicts`)
 
-モデルが実行不可能な場合、一般的な MIP ソルバーは単に `"Infeasible"` とだけ返し、どの制約が原因かは教えてくれません。
+通常の最適化実行（`m.solve()`）が **`"Infeasible"`** を返しただけでは、すべての制約を同時に満たす解が存在しないことは分かっても、*どの*ルール同士が衝突しているかまでは分かりません。
 **`await m.check({ solver: "z3" })`** を呼び出すと、WaSHI は Z3 の `assertAndTrack` 機構を用いて **Unsatisfiable Core (`unsatCore`)**（互いに矛盾している名前付き制約の部分集合）を自動的に特定します：
 
 ```typescript

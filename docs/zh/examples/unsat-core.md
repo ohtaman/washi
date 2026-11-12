@@ -4,7 +4,7 @@
 | :--- | :--- | :--- | :--- |
 | 不可行性诊断 / 不可满足核 (Unsat Core) | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">源代码</a></li></ul> |
 
-当业务规则、预算限制和运营策略变得越来越复杂时，约束之间不可避免地会发生冲突。传统求解器通常只会简单地报错“不可行（Infeasible）”，让工程师不得不在成百上千条规则中盲目排查究竟是哪几条规则引发了矛盾。
+当业务规则、预算限制和运营策略变得复杂时，约束之间往往会发生冲突。由于常规优化调用（`m.solve()`）仅返回 `"Infeasible"` 状态，WaSHI 提供了 `m.check()` 来直接定位引发矛盾的规则，无需人工逐条排查。
 
 本示例展示如何利用 Z3 的不可满足核（Unsat Core）提取功能，从命名约束中精准隔离出引发矛盾的约束子集（不保证极小性）。
 
