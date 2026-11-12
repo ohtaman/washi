@@ -477,9 +477,6 @@ export default withMermaid(
   },
   vite: {
     assetsInclude: ["**/*.wasm"],
-    optimizeDeps: {
-      exclude: ["highs"],
-    },
     worker: {
       format: "es",
     },

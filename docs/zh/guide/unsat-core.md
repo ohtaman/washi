@@ -4,13 +4,13 @@
 1. **为什么我的模型不可行（Infeasible）？** 究竟是哪几条业务规则之间发生了相互矛盾？
 2. **求解器返回的解真的满足每一条约束吗？** 如何独立校验数值容差、整数约束以及 LP 模型公式？
 
-WaSHI 内置了完整的诊断与验证工具链：基于 Z3 的**不可行冲突核（Unsat Core）诊断**（`m.check()`）、**独立解验证**（`m.validateSolution()`）、**LP 格式公式导出**（`m.toLpString()`）以及**快速单元测试模拟求解器**（`MockSolver`）。
+WaSHI 内置了完整的诊断与验证工具链：基于内置 HiGHS 弹性松弛或 Z3 **不可满足核（Unsat Core）**的**冲突约束诊断**（`m.check()`）、**独立解验证**（`m.validateSolution()`）、**LP 格式公式导出**（`m.toLpString()`）以及**快速单元测试模拟求解器**（`MockSolver`）。
 
 ---
 
 ## 冲突约束诊断 (`unsatCore` / `conflicts`)
 
-当模型**不可行（Infeasible）**时，传统的 MIP 求解器通常只报告“无可行解”，而不会指出具体是*哪些*约束发生了矛盾。
+当常规优化调用（`m.solve()`）返回 **`"Infeasible"`** 时，仅凭该状态只能得知不存在满足全部约束的可行解，而无法直接看出具体是*哪些*规则发生了冲突。
 通过调用 **`await m.check({ solver: "z3" })`**，WaSHI 会利用 Z3 的 `assertAndTrack` 机制计算出**不可满足核（Unsatisfiable Core，`unsatCore`）**——即无法同时满足的命名约束冲突子集：
 
 ```typescript

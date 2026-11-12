@@ -1,6 +1,6 @@
 # HiGHS ソルバーエンジン
 
-**HiGHS** はエディンバラ大学を中心に開発されている高性能な数理最適化ソフトウェアです（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）における代表的なオープンソースソルバーとして広く利用されています。
+**HiGHS** はエディンバラ大学で創始された高性能な数理最適化ソフトウェアです（[highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）。線形計画問題（LP）、混合整数計画問題（MIP）、および凸二次計画問題（QP）における代表的なオープンソースソルバーとして広く利用されています。
 
 `@ohtaman/washi` では、公式の上流リポジトリ（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）から直接コンパイルした WebAssembly とネイティブ C API（`highs_c_api.h`）ドライバにより、サードパーティ製ラッパーに依存することなく、Node.js・Web Worker・ブラウザ環境でゼロコンフィグで完全動作します。
 
@@ -24,14 +24,14 @@ WaSHI は公式 HiGHS C++ ソースから WebAssembly（`highs.wasm`）を直接
 
 - **進捗監視と途中中断（対応済み）**:
   HiGHS の内部ロギングおよび割り込みフックと連携しており、リアルタイムの進捗通知（`onProgress`）や標準の `AbortSignal` を用いた協調的途中中断をサポートしています。
-- **動的カット生成・遅延制約（WASM ラッパー層の制約により非対応）**:
-  上流の WebAssembly ラッパーにおいて、ネイティブの callback type 8（MIP lazy constraints）は WASM ↔ JS 境界での同期メモリ安全性の観点から公開されていません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、**反復求解ループ（解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）**による切除平面法のアプローチをご利用ください。
+- **動的カット生成・遅延制約（WASM ドライバで未公開）**:
+  WaSHI の HiGHS WebAssembly C API ドライバは現在ロギング・進捗・割り込み・暫定解コールバックのみをバインドしており、探索木内部の遅延制約（lazy constraints）やユーザーカット（user cuts）コールバックは WASM ↔ JS 境界越しに公開していません。巡回セールスマン問題（TSP）の部分巡回路除去や Benders 分解などが必要な場合は、外側の反復カット分離ループとして同じ厳密最適解へ収束する [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（または手動の切除平面ループ：解く $\to$ 違反検出 $\to$ `model.constraint(...)` $\to$ 再求解）をご利用ください。
 
 ### WebAssembly アセットの管理とオンデマンドビルド
 
 HiGHS の WebAssembly バイナリ（`public/highs.wasm`）とランタイム（`runtime.js`）は、`highs.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
 - **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-highs-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
-- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-highs-wasm.mjs` が GitHub Release アセットから検証済みバイナリを自動取得します。
+- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-highs-wasm.mjs` が WaSHI リポジトリの GitHub Release アセットから検証済みバイナリを自動取得します。
 - **ソースからのコンパイル**: HiGHS のバージョンアップやビルドフラグ変更時は、Emscripten SDK（`emcc`）、CMake、Ninja があれば `npm run build:highs-wasm` でローカル再ビルドでき、マージ後に `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` で Release アセットを同期します（`.github/workflows/build-wasm.yml` でビルド・Release 反映し、生成された `highs-wasm-assets` アーティファクトの `highs.config.json` 等をコミットすることも可能です）。
 
 ---
@@ -61,12 +61,15 @@ const open = model.binary("open");
 ```
 
 ### 3. 凸二次計画問題 (Convex QP)
-線形制約の下で2次の目的関数を最小化・最大化します：
+線形制約の下で、連続変数に対する凸二次目的関数を最小化（または凹二次目的関数を最大化）します：
 
 ```typescript
 // expr タグで二次目的関数を記述:
 model.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
 ```
+
+> [!NOTE]
+> **全変数が連続変数の凸 QP が対象**: HiGHS がサポートする二次計画は、モデル内の**すべての変数が連続変数（`m.continuous`）**である凸 QP（最小化時は半正定値行列 $\mathbf{Q}$、最大化時は半負定値行列）です。`Integer`・`Binary`・`BoolVar` を含むモデルに二次目的関数を設定する混合整数二次計画（**MIQP**）および二次制約（**QCP**）には対応していません。バイナリ変数同士の積を MILP として線形化する手法については、[定式化パターン・Tips](../guide/formulation-tips.md) を参照してください。
 
 ---
 
@@ -115,3 +118,13 @@ const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
+
+---
+
+## 参考リンク・引用文献
+
+- **公式ウェブサイト**: [https://highs.dev/](https://highs.dev/)
+- **公式ドキュメント**: [https://ergo-code.github.io/HiGHS/](https://ergo-code.github.io/HiGHS/)
+- **ソースリポジトリ**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)（MIT License）
+- **学術引用（Citation）**: 学術論文や技術報告等で HiGHS を引用される際は、HiGHS 開発チームが案内している以下の基礎論文をご参照ください：
+  > Q. Huangfu and J. A. J. Hall, *"Parallelizing the dual revised simplex method"*, Mathematical Programming Computation, 10 (1), 119–142, 2018. DOI: [10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)

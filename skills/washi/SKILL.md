@@ -35,7 +35,7 @@ Select the solver engine and execution method that match the problem class:
    - Provide finite `lb` and `ub` bounds whenever known—especially on variables used in `m.indicator()` so WaSHI can automatically derive a tight Big-M when `M` is omitted.
 2. **Build expressions (`expr`, `sum`, `dot`)**:
    - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${y} - 10` ``, `` expr`dot(${profit}, ${qty}) - 20 * ${lineOpen}` ``
-   - Quadratic expression (`QuadExpr`, **objectives only**): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${xVec} - ${target})^2)` ``
+   - Quadratic expression (`QuadExpr`, **objectives only**): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${xVec} - ${target})^2)` `` (purely continuous models on HiGHS; MIQP with integer/binary/boolean variables is not supported)
    - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${y} <= 40` ``, `` expr`sum(${qty}) <= 100` `` (supports `<=`, `>=`, `==`, `=`)
    - Vector & Record aggregations: `sum(containerOrItems, mapper?)` and `dot(a, b)` (both usable inside `expr` or standalone; `sum` accepts 1D/2D `Array`, `Iterable`, and `Record` directly without `Object.values()`, plus element-wise container arithmetic `+`, `-`, `*`, `/`, `^2` inside `expr`; `dot` computes the 1D inner product or 2D Frobenius inner product)
    - Propositional logic: `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` (or fluent `.and()`, `.or()`, `.not()`, `.implies()`, `.xor()`). Automatically linearized into 0-1 MIP binary variables and linear constraints on HiGHS/GLPK, or solved natively on Z3.
@@ -191,7 +191,7 @@ export async function diagnoseAndVerifyWithZ3() {
 
 ## 6. Guardrails & Common Pitfalls
 
-- **No quadratic constraints**: Quadratic terms (`${x}^2`, `${x} * ${y}`) are only valid in `m.objective(...)`. Using them in `m.constraint(...)` throws `"Quadratic constraints are not supported"`.
+- **No quadratic constraints or MIQP**: Quadratic terms (`${x}^2`, `${x} * ${y}`) are only valid in `m.objective(...)` (using them in `m.constraint(...)` throws `"Quadratic constraints are not supported"`), and built-in HiGHS requires Convex QP models to contain only continuous variables (`m.continuous`).
 - **Do not confuse `LinExpr` and `Constraint`**: `m.objective(maximize(...))` requires a `LinExpr`, `QuadExpr`, `Var`, or `number` (never a `Constraint`). `m.constraint(...)` requires a `Constraint` (with `<=`, `>=`, `==`, or `=`) or `BoolExpr` (never a bare `LinExpr`).
 - **Do not mutate during async solve/check**: Modifying variables, bounds, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight run and rejects the promise.
 - **Do not use retired aliases**: Always use `expr` (not `c`), `m.constraint(...)` (not `m.constrain` or `m.add`), `m.objective(maximize(...))` (not `m.maximize` or `m.setObjective`), `await m.solve()` (not `m.optimize`), `.le()` / `.ge()` / `.eq()` (not `.lessThanOrEqual()`), `.value` / `m.getValues(...)` (not `.getValue()`), and `m.variables` / `m.constraints` (not `m.vars` / `m.constrs`).

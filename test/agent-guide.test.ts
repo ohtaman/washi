@@ -152,32 +152,87 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
     }
   });
 
-  it("executes the Step 1 & Step 3 canonical workflow snippets without error", () => {
-    const jsCode = `${stripTypeScriptTypes(`${codeBlocks[1]}\n${codeBlocks[2]}`)}\nreturn { m, vec, grid, byItem, mixed };`;
-    const fn = new Function(
-      "Model",
-      "expr",
-      "maximize",
-      "minimize",
-      "sum",
-      "dot",
-      jsCode
-    );
-    const res = fn(
-      Washi.Model,
-      Washi.expr,
-      Washi.maximize,
-      Washi.minimize,
-      Washi.sum,
-      Washi.dot
-    );
-    expect(Array.isArray(res.vec)).toBe(true);
-    expect(res.vec).toHaveLength(4);
-    expect(Array.isArray(res.grid)).toBe(true);
-    expect(Array.isArray(res.grid[0])).toBe(true);
-    expect(res.byItem.desk.name).toBe("desk");
-    expect(Array.isArray(res.mixed.A)).toBe(true);
-    expect(res.m.constraints.length).toBe(2);
+  it("executes the Step 1, Step 2 (QuadExpr), and Step 3 canonical workflow snippets to Optimal across EN, JA, and ZH", async () => {
+    for (const relPath of guidePaths) {
+      const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const blocks = extractTsBlocks(content);
+
+      // 1. Step 1 + Step 3 linear/MIP canonical workflow
+      const jsCode = `${stripTypeScriptTypes(`${blocks[1]}\n${blocks[2]}`)}\nreturn { m, x, n, vec, grid, byItem, mixed };`;
+      const fn = new Function(
+        "Model",
+        "expr",
+        "maximize",
+        "minimize",
+        "sum",
+        "dot",
+        jsCode
+      );
+      const res = fn(
+        Washi.Model,
+        Washi.expr,
+        Washi.maximize,
+        Washi.minimize,
+        Washi.sum,
+        Washi.dot
+      );
+      expect(Array.isArray(res.vec)).toBe(true);
+      expect(res.vec).toHaveLength(4);
+      expect(Array.isArray(res.grid)).toBe(true);
+      expect(Array.isArray(res.grid[0])).toBe(true);
+      expect(res.byItem.desk.name).toBe("desk");
+      expect(Array.isArray(res.mixed.A)).toBe(true);
+      expect(res.m.constraints.length).toBe(2);
+
+      const mipStatus = await res.m.solve();
+      expect(mipStatus, `Expected Step 1 + Step 3 in ${relPath} to solve to Optimal`).toBe("Optimal");
+      expect(res.m.objectiveValue).toBeCloseTo(1200, 6);
+      expect(res.x.value).toBeCloseTo(40, 6);
+      expect(res.n.value).toBeCloseTo(0, 6);
+
+      // 2. Step 2 inline QuadExpr formulas against Step 1 continuous declarations (regression guard against MIQP NotSolved)
+      const quadLine = content
+        .split("\n")
+        .find((line) => line.includes("`QuadExpr`") && line.includes("expr`"));
+      expect(quadLine, `Missing QuadExpr bullet in ${relPath}`).toBeDefined();
+      const quadSnippets = Array.from(
+        quadLine!.matchAll(/``\s*(expr`[^`]+`)\s*``/g),
+        (match) => match[1]
+      );
+      expect(quadSnippets.length, `Expected 2 QuadExpr examples in ${relPath}`).toBe(2);
+
+      const continuousStep1Lines = stripTypeScriptTypes(blocks[1])
+        .split("\n")
+        .filter((line) => /\bnew Model\b|\bm\.continuous\(/.test(line))
+        .join("\n");
+
+      const qpRunner = new Function(
+        "Model",
+        "expr",
+        "minimize",
+        "sum",
+        `${continuousStep1Lines}
+const target = [1, 2, 3, 4];
+const q1 = ${quadSnippets[0]};
+const q2 = ${quadSnippets[1]};
+m.constraint(expr\`\${x} + \${y} >= 4\`, "min_sum");
+m.objective(minimize(q1.add(q2)));
+return (async () => {
+  const status = await m.solve();
+  const report = m.validateSolution();
+  return { status, objectiveValue: m.objectiveValue, x: x.value, y: y.value, vec: m.getValues(vec), valid: report.valid };
+})();`
+      );
+      const qpRes = await qpRunner(Washi.Model, Washi.expr, Washi.minimize, Washi.sum);
+      expect(qpRes.status, `Expected Step 2 QuadExpr in ${relPath} to solve to Optimal`).toBe("Optimal");
+      expect(qpRes.valid).toBe(true);
+      expect(qpRes.x + qpRes.y).toBeCloseTo(4, 5);
+      expect(qpRes.vec[0]).toBeCloseTo(1, 5);
+      expect(qpRes.vec[1]).toBeCloseTo(2, 5);
+      expect(qpRes.vec[2]).toBeCloseTo(3, 5);
+      expect(qpRes.vec[3]).toBeCloseTo(4, 5);
+      expect(qpRes.objectiveValue).toBeCloseTo(16, 5);
+    }
   });
 
   it("executes Example A (MIP) and Example B (QP) from the guide and passes validateSolution()", async () => {

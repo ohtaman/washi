@@ -192,6 +192,17 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 
 ---
 
+## 🙏 致谢
+
+WaSHI 的诞生离不开数理优化与自动推理开源社区的卓越工作：
+
+- **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— 发源于爱丁堡大学、由 Julian Hall、Qi Huangfu、Ivet Galabova、Leona Gottwald、Michael Feldmeier 及社区贡献者共同打造的高性能开源 LP / MIP / 凸 QP 求解器，驱动了 WaSHI 的内置默认引擎（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
+- **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— 由 Microsoft Research 研发，驱动了 WaSHI 可选的 SMT 可满足性判定与精确 `unsatCore` 冲突诊断插件。
+- **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — 驱动了 WaSHI 可选的 GPL-3.0 LP / MIP 求解器插件。
+- **[PuLP](https://github.com/coin-or/pulp)** — 启发了 WaSHI 声明式代数建模 API 的设计。
+
+---
+
 ## 📄 许可证
 
 - **`@ohtaman/washi`**: [MIT 许可证](./LICENSE)

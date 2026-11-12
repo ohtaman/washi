@@ -57,7 +57,7 @@ import "@ohtaman/washi/solvers/glpk";
 1. **默认使用随包内置的 WASM（无隐式 CDN 回退）**:
    - 在 Node.js 和现代构建工具中，WebAssembly 资源会自动相对于模块路径解析。
    - 在浏览器部署中，请将完整的 `dist/browser/` 目录（包含 JS、Worker 和 `.wasm` 文件）一起部署。如果本地 WASM URL 缺失或返回了 HTML SPA 回退页面，初始化会立即失败并报告所尝试的 URL——**绝不会**静默切换到公共 CDN。
-   - 在浏览器运行时中，若需从自定义位置加载 `highs.wasm`，请调用 `setHighsWasmUrl("https://.../highs.wasm")` 或传入 `await m.solve({ wasmUrl: "https://.../highs.wasm" })`（在 Node.js 中会被忽略，Node.js 始终加载本地安装的 `highs` 包运行时）。
+   - 在浏览器运行时中，若需从自定义位置加载 `highs.wasm`，请调用 `setHighsWasmUrl("https://.../highs.wasm")` 或传入 `await m.solve({ wasmUrl: "https://.../highs.wasm" })`（在 Node.js 中会被忽略，Node.js 始终加载随包内置的本地 `highs.wasm` 运行时）。
 2. **浏览器中运行 Z3 需要安全上下文、跨源隔离（Cross-Origin Isolation）与 CORS**:
    - Z3 WebAssembly 依赖 `SharedArrayBuffer` 多线程。运行 Z3 的浏览器页面必须处于安全上下文（`window.isSecureContext === true`，即 HTTPS 或 `localhost`）且开启跨源隔离（`window.crossOriginIsolated === true`），服务端需配置以下响应头：
      - `Cross-Origin-Opener-Policy: same-origin`（主文档响应）
@@ -82,6 +82,7 @@ const m = new Model("ExampleModel");
 
 // 标量变量
 const x = m.continuous("x", { lb: 0, ub: 100 });
+const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
 const flag = m.bool("flag"); // 命题布尔变量（用于 Z3 / 逻辑约束）
@@ -104,7 +105,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 
 - **统一 `expr` 模板标签**:
   - 线性表达式（`LinExpr`）: `` expr`30 * ${x} + 50 * ${n} - 10` ``、`` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``、`` expr`sum((${price} - ${cost}) * ${byItem})` ``
-  - 二次表达式（`QuadExpr`）: `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` ``、`` expr`sum((${vec} - ${target})^2)` ``（支持凸 QP 目标函数中的变量相乘与平方项）。
+  - 二次表达式（`QuadExpr`）: `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``、`` expr`sum((${vec} - ${target})^2)` ``（支持仅含连续变量 `m.continuous` 的凸 QP 目标函数；内置 HiGHS 不支持包含整数、二元或布尔变量的混合整数二次规划 MIQP）。
   - 线性约束（`Constraint`）: `` expr`${x} + 2 * ${n} <= 40` ``、`` expr`sum(${byItem}) <= 100` ``（支持 `<=`、`>=`、`==` 和 `=`）。
 - **聚合函数与逐元素算术运算**:
   - `sum(containerOrItems, mapper?)`（可在 `` expr`sum(...)` `` 内部或独立函数 `sum(...)` 中使用）对一维/二维 `Array`、`Iterable` 或普通字典 `Record`（无需 `Object.values(record)`）求和。在 `` expr`sum(...)` `` 内部还支持容器逐元素四则运算与平方（`+`、`-`、`*`、`/`、`^2`）。
