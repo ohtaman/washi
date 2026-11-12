@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://ohtaman.github.io/washi/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
+| 0-1 混合整数规划 (MIP) & SMT 不可满足核 | HiGHS + Z3 | `m.binary(staff, days)`, `m.constraint()`, `expr` (`sum`, `dot`), `minimize`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_scheduling">演练场 (排班优化)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=shift_conflict_unsat">演练场 (冲突诊断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/11-shift-scheduling.ts">源代码</a></li></ul> |
 
 员工排班是企业 SaaS 与劳动力管理系统中混合整数规划（MIP）的经典落地场景。然而在实际业务中，**员工提交的休假申请经常会与每日最低到岗人数或资深员工值班要求发生冲突**，导致求解器返回无解（`Infeasible`）。
 

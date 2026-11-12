@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 命题逻辑与 SMT 可满足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">源代码</a></li></ul> |
+| 命题逻辑与 SMT 可满足性判定 | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">源代码</a></li></ul> |
 
 可满足性模理论（SMT, Satisfiability Modulo Theories）将命题逻辑（布尔 SAT）与一阶理论（如线性整数算术、实数不等式）结合在一起。
 

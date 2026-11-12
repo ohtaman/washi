@@ -16,8 +16,8 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/zh/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
-    <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
+    <a href="https://washi.ohtaman.dev/zh/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
@@ -36,10 +36,10 @@
 
 ## 📚 文档与链接
 
-- **[在线文档](https://ohtaman.github.io/washi/zh/)**：建模指南、求解器说明与运行环境配置
-- **[案例展示](https://ohtaman.github.io/washi/zh/showcase/) & [浏览器演示](https://ohtaman.github.io/washi/demo/)**：在线体验交互式应用与浏览器建模演练场
-- **[示例目录](https://ohtaman.github.io/washi/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
-- **[AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://ohtaman.github.io/washi/llms.txt) / [`llms-full.txt`](https://ohtaman.github.io/washi/llms-full.txt)**：面向 AI 编程助手的速查指南、技能定义与机器可读文档
+- **[在线文档](https://washi.ohtaman.dev/zh/)**：建模指南、求解器说明与运行环境配置
+- **[案例展示](https://washi.ohtaman.dev/zh/showcase/) & [浏览器演示](https://washi.ohtaman.dev/demo/)**：在线体验交互式应用与浏览器建模演练场
+- **[示例目录](https://washi.ohtaman.dev/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
+- **[AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**：面向 AI 编程助手的速查指南、技能定义与机器可读文档
 
 ---
 

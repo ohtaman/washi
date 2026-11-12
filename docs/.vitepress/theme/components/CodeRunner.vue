@@ -68,8 +68,8 @@ async function runSlotCode() {
     if (rawCode.includes("z3")) {
       const z3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
       z3Mod.setZ3Assets({
-        jsUrl: new URL("/washi/z3-built.js", window.location.origin).href,
-        wasmUrl: new URL("/washi/z3-built.wasm", window.location.origin).href,
+        jsUrl: new URL("/z3-built.js", window.location.origin).href,
+        wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
       });
     }
     if (rawCode.includes("glpk")) {
@@ -159,7 +159,7 @@ onMounted(() => {
 
       <a
         v-if="preset"
-        :href="`/washi/demo/?preset=${preset}`"
+        :href="`/demo/?preset=${preset}`"
         target="_self"
         class="playground-link"
         style="margin-left: auto;"

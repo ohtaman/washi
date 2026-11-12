@@ -29,14 +29,8 @@ function startStaticPagesServer(port = 0) {
     const server = createServer((req, res) => {
       const urlPath = req.url?.split("?")[0] || "/";
       
-      // Route /washi/* to dist/demo/*
-      if (!urlPath.startsWith("/washi/")) {
-        res.statusCode = 404;
-        res.end("Not Found (outside /washi/ base)");
-        return;
-      }
-
-      let subPath = urlPath.slice("/washi/".length);
+      // Route /* to dist/demo/*
+      let subPath = urlPath.replace(/^\/+/, "");
       if (subPath === "" || subPath.endsWith("/")) {
         subPath += "index.html";
       }
@@ -110,7 +104,7 @@ async function runBrowserVerification() {
   console.log("=== WaSHI Web Demo GitHub Pages Cross-Origin Isolation Verification ===");
 
   const { server, port } = await startStaticPagesServer();
-  const demoUrl = `http://localhost:${port}/washi/demo/`;
+  const demoUrl = `http://localhost:${port}/demo/`;
   console.log(`Simulated GitHub Pages server running at ${demoUrl}`);
 
   let browser;
@@ -295,12 +289,12 @@ async function runBrowserVerification() {
     assert.equal(highsObj, "2200", `HiGHS production planning optimal objective must be 2200, got ${highsObj}`);
     console.log(`   HiGHS solved successfully with objective ${highsObj}!`);
 
-    // 7. Test Subpath Scope & Navigation to landing page (/washi/)
-    console.log("7. Testing navigation between /washi/ and /washi/demo/ under scope...");
-    await page.goto(`http://localhost:${port}/washi/`, { waitUntil: "networkidle" });
+    // 7. Test Root Scope & Navigation to landing page (/)
+    console.log("7. Testing navigation between / and /demo/ under scope...");
+    await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
     const landingIsolated = await page.evaluate(() => window.crossOriginIsolated);
-    console.log(`   Landing page (/washi/) crossOriginIsolated: ${landingIsolated}`);
-    assert.equal(landingIsolated, true, "Landing page within /washi/ scope must also be crossOriginIsolated");
+    console.log(`   Landing page (/) crossOriginIsolated: ${landingIsolated}`);
+    assert.equal(landingIsolated, true, "Landing page within / scope must also be crossOriginIsolated");
 
     // 8. Test Failure Behavior when cross-origin isolation is not available
     console.log("8. Testing graceful abort when crossOriginIsolated is false...");
@@ -326,7 +320,7 @@ async function runBrowserVerification() {
     console.log("9. Testing Nurse Scheduling Basic Data tab layout, collapsible relations, and scrolling...");
     const shiftPage = await context.newPage();
     await shiftPage.setViewportSize({ width: 1280, height: 800 });
-    await shiftPage.goto(`http://localhost:${port}/washi/apps/ai-shift/`, { waitUntil: "networkidle" });
+    await shiftPage.goto(`http://localhost:${port}/apps/ai-shift/`, { waitUntil: "networkidle" });
 
     // Click the Master Data tab
     await shiftPage.click("#tab-btn-staff");
@@ -394,7 +388,7 @@ async function runBrowserVerification() {
     console.log("10. Testing Demon Castle Shift opening movie climax button unblocked by letterbox overlay...");
     const gamePage = await context.newPage();
     await gamePage.setViewportSize({ width: 1280, height: 800 });
-    await gamePage.goto(`http://localhost:${port}/washi/games/demon-castle-shift/index.html`, { waitUntil: "networkidle" });
+    await gamePage.goto(`http://localhost:${port}/games/demon-castle-shift/index.html`, { waitUntil: "networkidle" });
     await gamePage.evaluate(() => localStorage.clear());
     await gamePage.reload({ waitUntil: "networkidle" });
 
@@ -437,7 +431,7 @@ async function runBrowserVerification() {
     console.log("11. Testing Theory Articles Honshu textbook theme on desktop and mobile viewports...");
     const theoryPage = await context.newPage();
     await theoryPage.setViewportSize({ width: 1024, height: 800 });
-    await theoryPage.goto(`http://localhost:${port}/washi/games/mofumofu-sheep-theory/index.html`, { waitUntil: "load" });
+    await theoryPage.goto(`http://localhost:${port}/games/mofumofu-sheep-theory/index.html`, { waitUntil: "load" });
     await theoryPage.click('[data-lang-btn="ja"]');
     await theoryPage.waitForSelector(".math-box .katex-display", { timeout: 5_000 });
 

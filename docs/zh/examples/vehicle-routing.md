@@ -2,7 +2,7 @@
 
 | 问题分类 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 组合优化 / Dantzig-Wolfe | HiGHS (默认) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">源代码</a></li><li><a href="../guide/decomposition.md">分解算法指南</a></li></ul> |
+| 组合优化 / Dantzig-Wolfe | HiGHS (默认) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">源代码</a></li><li><a href="/zh/guide/decomposition">分解算法指南</a></li></ul> |
 
 **有容量限制的车辆路径规划问题 (Capacitated Vehicle Routing Problem, CVRP)** 在满足车辆载重容量、单车最大途经网点数及路线时长限制的前提下，求服务所有客户所需的车辆数与配送路线。
 

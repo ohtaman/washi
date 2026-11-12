@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 凸二次规划 (Convex QP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=portfolio_qp">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">源代码</a></li></ul> |
+| 凸二次规划 (Convex QP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">源代码</a></li></ul> |
 
 马科维茨（Markowitz）均值-方差投资组合优化问题是现代量化金融的基石：在满足最低预期收益率要求及资金全额配置的前提下，将资金分配到各类风险资产中，从而最小化投资组合的整体方差（风险）。
 

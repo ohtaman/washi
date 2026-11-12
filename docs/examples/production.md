@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
+| Linear / Integer Programming (LP / MIP) | HiGHS (default) | `m.integer()`, `m.constraint()`, `expr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=production">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/01-production-planning.ts">Source Code</a></li></ul> |
 
 Production planning is a classic Linear Programming problem: determine the optimal quantity of each product to manufacture in order to maximize total profit while respecting resource constraints (raw materials, machine time, labor hours).
 

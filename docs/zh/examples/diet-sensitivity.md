@@ -2,7 +2,7 @@
 
 | 问题类型 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">源代码</a></li></ul> |
+| 线性规划 (LP) | HiGHS (默认) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">在 Playground 中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">源代码</a></li></ul> |
 
 在求解线性规划模型时，决策变量的最优取值（`var.value`）往往只是故事的一半。在实际业务决策中，我们通常还需要了解**灵敏度分析（Sensitivity Analysis）**信息：
 
