@@ -66,7 +66,7 @@ import "@ohtaman/washi/solvers/glpk";
    - 导入 `@ohtaman/washi` 绝不会自动注入 Service Worker。当浏览器缺少安全上下文或跨源隔离时，Z3 会立即以明确说明原因的错误 reject。
 3. **Web Worker 与取消控制 (`AbortSignal`)**:
    - 求解前取消（执行开始前 `signal.aborted` 已为真）在所有求解器中均受支持。
-   - 在支持 `Worker` 的浏览器环境中，HiGHS 默认在专用 Web Worker 中运行（`useWorker: true`）。向 `m.solve({ signal })` 传入 `{ signal }` 可以抢占式终止正在运行的 Worker 求解（或取消排队中的 Worker 请求）。
+   - 在标准 Web 源（`window.location.origin !== "null"` 且 `window.location.protocol !== "file:"`）并支持 `Worker` 的浏览器环境中，HiGHS 默认在专用 Web Worker 中运行（`useWorker: true`）；在 `file:` URL 或不透明源（如 `sandbox="allow-scripts"` 的 `<iframe>` 嵌入）下则默认在主线程运行（`useWorker: false`）。向 `m.solve({ signal })` 传入 `{ signal }` 可以抢占式终止正在运行的 Worker 求解（或取消排队中的 Worker 请求）。
    - 在主线程运行 HiGHS 时（`useWorker: false` 或在 Node.js 中），支持在求解器中断检查点触发的 `onProgress` 回调内同步调用 `abort()` 实现协作式中途取消；来自外部的任意异步取消在同步 WASM 线程到达检查点或执行完成前无法抢占阻塞线程。无中断钩子的单线程 WASM 求解器（GLPK、Z3）会在执行开始前检查 `signal`。
 
 ---

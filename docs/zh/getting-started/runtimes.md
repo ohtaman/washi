@@ -211,7 +211,7 @@ export default function OptimizerComponent() {
 ```
 
 > [!NOTE]
-> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker，因此从 CDN 加载时同样可以开箱即用地使用 Web Worker。
+> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。在标准 Web 源（`https://` / `http://`）下，WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker；而在本地 `file:` 页面或 `sandbox="allow-scripts"` 的 `<iframe>` 嵌入等不透明源（`window.location.origin === "null"`）下，未显式指定 `useWorker` 时 WaSHI 会自动在主线程中运行 HiGHS。
 
 ---
 
