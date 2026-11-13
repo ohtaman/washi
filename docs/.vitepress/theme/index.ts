@@ -1,14 +1,23 @@
 import DefaultTheme from "vitepress/theme";
 import type { Theme } from "vitepress";
+import { h } from "vue";
 import "katex/dist/katex.min.css";
 import "./custom.css";
 import ShiftSchedulingDemo from "./components/ShiftSchedulingDemo.vue";
 import EcommerceCouponDemo from "./components/EcommerceCouponDemo.vue";
 import PortfolioQpDemo from "./components/PortfolioQpDemo.vue";
 import CodeRunner from "./components/CodeRunner.vue";
+import HeroBrandLogo from "./components/HeroBrandLogo.vue";
+import HeroCodeDemo from "./components/HeroCodeDemo.vue";
 
 export default {
   extends: DefaultTheme,
+  Layout() {
+    return h(DefaultTheme.Layout, null, {
+      "home-hero-info-before": () => h(HeroBrandLogo),
+      "home-hero-image": () => h(HeroCodeDemo),
+    });
+  },
   enhanceApp({ app, router }) {
     app.component("ShiftSchedulingDemo", ShiftSchedulingDemo);
     app.component("EcommerceCouponDemo", EcommerceCouponDemo);

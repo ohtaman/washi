@@ -52,6 +52,34 @@ console.log("Tables to produce:", tables.value);
 `,
   },
   {
+    id: "cloud_sizing",
+    title: "Cloud Instance Sizing (Cost Minimization)",
+    category: "MIP",
+    group: "fundamentals",
+    description:
+      "Provision integer counts of small and large cloud instances to meet vCPU and RAM requirements at minimum hourly cost.",
+    apis: ["integer()", "minimize()", "expr"],
+    visualizer: "summary",
+    code: `// --- Cloud Instance Sizing (Cost Minimization) ---
+// small ($20/h: 4 vCPU, 8 GB), large ($50/h: 12 vCPU, 32 GB)
+const m = new Model({ name: "CloudSizing", solver: "highs" });
+
+const small = m.integer("small", { lb: 0 });
+const large = m.integer("large", { lb: 0 });
+
+// Minimize total hourly instance cost
+m.objective(minimize(expr\`20 * \${small} + 50 * \${large}\`));
+
+// Cluster capacity requirements: >= 30 vCPU and >= 80 GB RAM
+m.constraint(expr\`4 * \${small} + 12 * \${large} >= 30\`, "vcpu");
+m.constraint(expr\`8 * \${small} + 32 * \${large} >= 80\`, "ram_gb");
+
+const status = await m.solve();
+console.log(\`\${status}: $\${m.objectiveValue}/h\`);
+console.log({ small: small.value, large: large.value });
+`,
+  },
+  {
     id: "knapsack",
     title: "0-1 Knapsack Selection",
     category: "MIP",

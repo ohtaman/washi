@@ -2,12 +2,8 @@
 layout: home
 
 hero:
-  name: 'WaS<span class="brand-hi">HI</span>'
   text: "TypeScript 数理最適化モデラー"
   tagline: "PythonのPuLPのように直感的な数式で定式化できるTypeScript向け代数モデラー。WebAssembly（HiGHS・Z3・GLPK）を搭載し、Pythonサーバーやネイティブビルド不要でLP・混合整数計画法（MIP）・凸QP・SMTをブラウザやNode.jsで高速に求解します。"
-  image:
-    src: /washi-logo.svg
-    alt: WaSHI Emblem
   actions:
     - theme: brand
       text: はじめに
@@ -17,57 +13,103 @@ hero:
       link: /ja/showcase/
 
 features:
-  - icon: ✍️
-    title: 代数的なモデル記述 (expr)
-    details: タグ付きテンプレート（expr`30 * ${x} + 50 * ${y} <= 40`）や内積（dot）・総和（sum）により、${...} を型付きの変数参照として直接バインドして定式化。
-    link: /ja/guide/expressions
-    linkText: 数式の記述
-  - icon: ⚙️
-    title: ソルバーアダプター機構
-    details: 共通のモデリング API から標準搭載の HiGHS（LP/MIP/凸QP）およびオプションの Z3（SMT・論理制約・競合診断）、GLPK を切り替え可能。
-    link: /ja/solvers/
-    linkText: ソルバー
+  - icon: 📅
+    title: シフト・時間割・配送計画
+    details: 人員シフト、大学時間割、2次元パッキング、配送ルートなどの組合せ最適化を標準搭載の HiGHS（LP / MIP）で高速に求解します。
+    link: /ja/examples/
+    linkText: 定式化の具体例
+  - icon: 📈
+    title: ポートフォリオ・連続配分
+    details: 資産配分のリスク最小化（Markowitz QP）や目標値への最小二乗フィットを凸二次計画（QuadExpr）でそのまま記述できます。
+    link: /ja/examples/portfolio-qp
+    linkText: ポートフォリオ最適化
+  - icon: 🔍
+    title: ルール検証と矛盾の原因特定
+    details: 希望休の重複などで解が存在しないとき、衝突している条件を標準搭載 HiGHS の弾性緩和または Z3 の unsatCore で特定します。
+    link: /ja/guide/unsat-core
+    linkText: 競合制約診断
   - icon: 🌐
-    title: WebAssembly によるローカル実行
-    details: Python バックエンドや C/C++ のネイティブビルドなしで Node.js やブラウザの Web Worker 上で動作。静的アセットとして配信でき、ブラウザ内 LLM とも連携可能。
+    title: サーバー不要・ブラウザ完結
+    details: Python バックエンド不要でブラウザの Web Worker や Node.js で動作。ローカル LLM が抽出した条件の数理ガードレールとしても機能します。
     link: /ja/getting-started/runtimes
     linkText: ランタイム環境設定
-  - icon: 🔍
-    title: 矛盾制約の特定 (unsatCore)
-    details: 名前付き制約を用いて、実行不可能（Infeasible）なモデルの衝突ルールを標準 HiGHS の弾性緩和または Z3 の unsatCore で特定。
-    link: /ja/guide/unsat-core
-    linkText: 競合制約診断 (Unsat Core)
 ---
 
-<div style="max-width: 800px; margin: 40px auto;">
+<div class="washi-home-sections">
 
-## クイックコード例
+<div class="washi-home-showcase">
+<div class="washi-home-showcase-head">
+<h2>WaSHI で動くアプリケーション</h2>
+<a href="/ja/showcase/" class="washi-home-all-link">ショーケース一覧を見る →</a>
+</div>
+<p class="washi-home-showcase-sub">
+外部サーバー通信なしでブラウザ内の WebAssembly だけで動作する、実務スケジューリングアプリと最適化パズルです。
+</p>
+<div class="washi-home-showcase-grid">
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-ai-timetable.png" alt="" width="960" height="540" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">🎓</span>
+<span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学時間割編成 AI Copilot</a>
+</div>
+<p class="washi-showcase-desc">
+4学年×10教員×7教室の時間割を同時編成。非常勤講師の曜日制約や連続コマ指定を自然言語や CSV から取り込んで求解します。
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">アプリを開く →</span>
+</div>
+</div>
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-titan-pack.png" alt="" width="640" height="360" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">⚡</span>
+<span class="washi-showcase-badge">2次元パッキング MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
+</div>
+<p class="washi-showcase-desc">
+注文パーツを母材プレートに隙間なく配置し、端材ロス 0% と断層回避の条件を MILP ソルバーと競い合う2次元板金パズル。
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">ゲームを開く →</span>
+</div>
+</div>
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-mofumofu-sheep.png" alt="" width="960" height="540" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">🐑</span>
+<span class="washi-showcase-badge">領域分離・最小カット MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">もふもふ羊の牧場囲い</a>
+</div>
+<p class="washi-showcase-desc">
+限られた木の柵でオオカミの侵入経路を遮断しつつ、安全な牧場内の野いちごを最大化するネットワーク分離パズル。
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">ゲームを開く →</span>
+</div>
+</div>
+</div>
+</div>
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-// 1. モデルの作成
-const m = new Model("木工製品の利益最大化");
-
-// 2. 決定変数の定義（現実的な上下限を設定した整数変数）
-const desks = m.integer("机", { lb: 0, ub: 100 });
-const chairs = m.integer("椅子", { lb: 0, ub: 100 });
-
-// 3. 目的関数の設定（机 $30、椅子 $50 の利益最大化）
-m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
-
-// 4. 制約条件の追加（木材と労働力の上限）
-m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "木材上限");
-m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "労働力上限");
-
-// 5. WebAssembly (HiGHS) による求解
-await m.solve();
-
-if (m.hasPrimalSolution) {
-  console.log(`生産量: 机=${desks.value}台, 椅子=${chairs.value}台`);
-  console.log(`最大利益: $${m.objectiveValue}`);
-}
-```
+<div class="washi-home-docs-dir">
 
 ## ドキュメント一覧
 
@@ -78,6 +120,8 @@ if (m.hasPrimalSolution) {
 - **ソルバー接続**: [ソルバー概要と比較](/ja/solvers/) · [HiGHS (標準搭載)](/ja/solvers/highs) · [Z3 (SMT)](/ja/solvers/z3) · [GLPK (LP/MIP)](/ja/solvers/glpk) · [カスタムソルバー実装](/ja/solvers/custom-solver)
 - **定式化の具体例**: [具体例一覧と API 早見表](/ja/examples/) · [生産計画](/ja/examples/production) · [ナップサック問題](/ja/examples/knapsack) · [輸送ネットワーク計画](/ja/examples/transportation) · [献立問題と感度分析](/ja/examples/diet-sensitivity) · [シフトスケジューリング](/ja/examples/shift-scheduling) · [EC クーポン最適化](/ja/examples/ecommerce-coupons) · [ポートフォリオ最適化 (QP)](/ja/examples/portfolio-qp) · [SMT セキュリティポリシー検証](/ja/examples/smt-security) · [競合制約診断 (Unsat Core)](/ja/examples/unsat-core) · [配送計画問題 (列生成法)](/ja/examples/vehicle-routing) · [巡回セールスマン問題 (Benders 分解)](/ja/examples/traveling-salesperson)
 - **インタラクティブ Playground・アプリ**: [ショーケース一覧](/ja/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/apps/ai-shift/" target="_self">ナーススケジューリング AI Copilot</a> · <a href="/apps/ai-timetable/" target="_self">大学時間割編成 AI Copilot</a> · <a href="/games/demon-castle-shift/" target="_self">魔王城の24時間警備シフト</a> · <a href="/games/mofumofu-sheep/" target="_self">もふもふ羊の牧場囲い</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
+
+</div>
 
 </div>
 

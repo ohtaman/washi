@@ -2,12 +2,8 @@
 layout: home
 
 hero:
-  name: 'WaS<span class="brand-hi">HI</span>'
   text: "Mathematical Optimization Modeler in TypeScript"
   tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, and SMT models with intuitive infix expressions and solve in Node.js and browsers via WebAssembly (HiGHS, Z3, GLPK) with zero Python or native C++ dependencies."
-  image:
-    src: /washi-logo.svg
-    alt: WaSHI Emblem
   actions:
     - theme: brand
       text: Getting Started
@@ -17,57 +13,103 @@ hero:
       link: /showcase/
 
 features:
-  - icon: ✍️
-    title: Algebraic Modeling (expr)
-    details: Write infix formulas (expr`30 * ${x} + 50 * ${y} <= 40`), vector dot products (dot), and summations (sum) while binding ${...} directly as typed Var references.
-    link: /guide/expressions
-    linkText: Expressions
-  - icon: ⚙️
-    title: Pluggable Solver Adapters
-    details: Use a common modeling API across the built-in HiGHS engine (LP, MIP, convex QP) and optional adapters for Z3 (SMT, logic, unsat cores) and GLPK.
-    link: /solvers/
-    linkText: Solvers
-  - icon: 🌐
-    title: WebAssembly & Local Execution
-    details: Solve in Node.js, Bun, Deno, or browser Web Workers without Python services or native C/C++ builds—deployable as static assets and composable with in-browser LLMs.
-    link: /getting-started/runtimes
-    linkText: Runtime Environments
+  - icon: 📅
+    title: Scheduling, Routing & Packing
+    details: Solve staff rosters, university timetables, 2D packing, and vehicle routing problems out of the box with built-in HiGHS (LP / MIP).
+    link: /examples/
+    linkText: Practical Examples
+  - icon: 📈
+    title: Portfolio & Resource Allocation
+    details: Minimize portfolio variance risk (Markowitz QP) or fit continuous targets directly with convex quadratic objectives (QuadExpr).
+    link: /examples/portfolio-qp
+    linkText: Portfolio QP
   - icon: 🔍
-    title: Conflict Diagnosis (unsatCore)
-    details: Name constraints to diagnose infeasible formulations via built-in HiGHS elastic relaxation or exact Z3 unsat cores (unsatCore).
+    title: Logic Rules & Conflict Diagnosis
+    details: When a schedule or policy has no feasible solution, pinpoint conflicting rules via built-in HiGHS elastic relaxation or exact Z3 unsat cores (unsatCore).
     link: /guide/unsat-core
     linkText: Unsat Core Diagnosis
+  - icon: 🌐
+    title: Browser-Native & Serverless
+    details: Runs locally in browser Web Workers and Node.js with zero Python backend—pairs naturally with on-device LLMs as a mathematical guardrail.
+    link: /getting-started/runtimes
+    linkText: Runtime Environments
 ---
 
-<div style="max-width: 800px; margin: 40px auto;">
+<div class="washi-home-sections">
 
-## Quick Example
+<div class="washi-home-showcase">
+<div class="washi-home-showcase-head">
+<h2>Built with WaSHI</h2>
+<a href="/showcase/" class="washi-home-all-link">View All Showcase →</a>
+</div>
+<p class="washi-home-showcase-sub">
+Decision-support apps and optimization puzzles running locally in the browser via WebAssembly, with zero server round-trips.
+</p>
+<div class="washi-home-showcase-grid">
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-ai-timetable.png" alt="" width="960" height="540" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">🎓</span>
+<span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">AI University Timetabling Copilot</a>
+</div>
+<p class="washi-showcase-desc">
+Coordinate 4 student cohorts, 10 faculty schedules, and 7 specialized rooms simultaneously from CSV data or natural-language rules.
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">Open App →</span>
+</div>
+</div>
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-titan-pack.png" alt="" width="640" height="360" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">⚡</span>
+<span class="washi-showcase-badge">2D Strip Packing MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
+</div>
+<p class="washi-showcase-desc">
+2D sheet-metal cutting puzzle powered by live MILP solving—pack parts with zero scrap void and zero guillotine fault lines.
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">Play Game →</span>
+</div>
+</div>
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-mofumofu-sheep.png" alt="" width="960" height="540" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">🐑</span>
+<span class="washi-showcase-badge">Network Cut &amp; Enclosure MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">Fluffy Sheep Pasture Enclosure</a>
+</div>
+<p class="washi-showcase-desc">
+Block wolf entry paths with limited wooden fences while maximizing safe pasture rewards using exact graph-cut optimization.
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">Play Game →</span>
+</div>
+</div>
+</div>
+</div>
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-// 1. Create a model
-const m = new Model("WoodworkingProfit");
-
-// 2. Define decision variables with realistic bounds
-const desks = m.integer("desks", { lb: 0, ub: 100 });
-const chairs = m.integer("chairs", { lb: 0, ub: 100 });
-
-// 3. Set objective function ($30/desk, $50/chair)
-m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
-
-// 4. Add constraints (material and labor limits)
-m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
-m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
-
-// 5. Solve via WebAssembly (HiGHS)
-await m.solve();
-
-if (m.hasPrimalSolution) {
-  console.log(`Produce: ${desks.value} desks, ${chairs.value} chairs`);
-  console.log(`Maximum Profit: $${m.objectiveValue}`);
-}
-```
+<div class="washi-home-docs-dir">
 
 ## Explore Documentation
 
@@ -78,6 +120,8 @@ if (m.hasPrimalSolution) {
 - **Solver Backends**: [Overview & Comparison](/solvers/) · [HiGHS (Built-in)](/solvers/highs) · [Z3 (SMT)](/solvers/z3) · [GLPK (LP/MIP)](/solvers/glpk) · [Custom Solver Adapter](/solvers/custom-solver)
 - **Examples**: [Overview & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack](/examples/knapsack) · [Transportation Network](/examples/transportation) · [Diet Problem & Sensitivity](/examples/diet-sensitivity) · [Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Coupon Optimizer](/examples/ecommerce-coupons) · [Portfolio QP](/examples/portfolio-qp) · [SMT Security](/examples/smt-security) · [Conflict Diagnosis](/examples/unsat-core) · [Vehicle Routing](/examples/vehicle-routing) · [Traveling Salesperson](/examples/traveling-salesperson)
 - **Interactive Playground & Showcase**: [Showcase Hub](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a> · <a href="/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
+
+</div>
 
 </div>
 

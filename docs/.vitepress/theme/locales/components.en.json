@@ -6,6 +6,13 @@
     "openPlayground": "Open in Playground →",
     "output": "Execution Output (stdout)"
   },
+  "heroDemo": {
+    "caption": "Cloud instance cost minimization",
+    "badge": "HiGHS · MIP",
+    "idleHint": "Loads WebAssembly on click",
+    "previewTag": "Preview",
+    "liveTag": "HiGHS WASM"
+  },
   "portfolioQp": {
     "eyebrow": "INTERACTIVE EXAMPLE · 5 ASSETS CONVEX QP (QuadExpr)",
     "title": "Portfolio Allocation Optimizer (Markowitz QP)",

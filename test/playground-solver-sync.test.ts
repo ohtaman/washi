@@ -149,6 +149,7 @@ describe("Playground Presets Runtime Execution", () => {
 
   const expectedObjectives: Record<string, number> = {
     production: 2200,
+    cloud_sizing: 140,
     knapsack: 120,
     transportation: 880,
     diet_sensitivity: 24652 / 1805,

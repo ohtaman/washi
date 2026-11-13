@@ -863,6 +863,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
 
     for (const componentFile of [
       "docs/.vitepress/theme/components/CodeRunner.vue",
+      "docs/.vitepress/theme/components/HeroCodeDemo.vue",
       "docs/.vitepress/theme/components/EcommerceCouponDemo.vue",
       "docs/.vitepress/theme/components/PortfolioQpDemo.vue",
       "docs/.vitepress/theme/components/ShiftSchedulingDemo.vue",
