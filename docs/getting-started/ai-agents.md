@@ -57,7 +57,7 @@ import "@ohtaman/washi/solvers/glpk";
 1. **Bundled WASM by default (no implicit CDN fallback)**:
    - In Node.js and modern bundlers, WebAssembly assets resolve relative to the module automatically.
    - In browser deployments, deploy the full `dist/browser/` directory (JS, Worker, and `.wasm` files) together. If a local WASM URL is missing or returns an HTML SPA fallback, initialization fails immediately and reports the attempted URL—it **never** silently switches to a public CDN.
-   - In browser runtimes, to load `highs.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` or pass `await m.solve({ wasmUrl: "https://.../highs.wasm" })` (ignored in Node.js, which always loads the local Node `highs` package runtime).
+   - In browser runtimes, to load `highs.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` or pass `await m.solve({ wasmUrl: "https://.../highs.wasm" })` (ignored in Node.js, which always loads WaSHI's bundled local `highs.wasm` runtime).
 2. **Z3 requires a Secure Context, Cross-Origin Isolation, and CORS in browsers**:
    - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must run in a secure context (`window.isSecureContext === true`, i.e., HTTPS or `localhost`) and be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
      - `Cross-Origin-Opener-Policy: same-origin` (on the document)
@@ -66,7 +66,7 @@ import "@ohtaman/washi/solvers/glpk";
    - Importing `@ohtaman/washi` never auto-injects a Service Worker. When a secure context or cross-origin isolation is absent in a browser, Z3 rejects immediately with a descriptive error.
 3. **Web Workers & Cancellation (`AbortSignal`)**:
    - Pre-solve cancellation (`signal.aborted` before execution starts) is supported across all solvers.
-   - In browsers where `Worker` is available, HiGHS runs in a dedicated Web Worker by default (`useWorker: true`). Passing `{ signal }` to `m.solve({ signal })` preemptively terminates an in-flight Worker solve (or cancels queued Worker requests).
+   - In browsers where `Worker` is available on a non-opaque effective origin (`window.origin !== "null"`), HiGHS runs in a dedicated Web Worker by default (`useWorker: true`). On opaque effective origins (`window.origin === "null"`, such as `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), HiGHS defaults to main-thread execution (`useWorker: false`). Passing `{ signal }` to `m.solve({ signal })` preemptively terminates an in-flight Worker solve (or cancels queued Worker requests).
    - On main-thread HiGHS (`useWorker: false` or in Node.js), cooperative mid-solve cancellation is supported when `abort()` is triggered synchronously inside an `onProgress` callback at a solver interrupt checkpoint; arbitrary asynchronous aborts from outside cannot preempt a blocked synchronous WASM thread until a callback checkpoint or completion. Single-threaded WASM solvers without interrupt hooks (GLPK, Z3) check `signal` before execution starts.
 
 ---
@@ -82,6 +82,7 @@ const m = new Model("ExampleModel");
 
 // Scalar variables
 const x = m.continuous("x", { lb: 0, ub: 100 });
+const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
 const flag = m.bool("flag"); // Propositional boolean (for Z3 / logical constraints)
@@ -104,7 +105,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 
 - **Unified `expr` template tag**:
   - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``, `` expr`sum((${price} - ${cost}) * ${byItem})` ``
-  - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${n} + ${n}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` (variable-by-variable products and squares are supported for convex QP objectives).
+  - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` (supported for convex QP objectives on purely continuous models using `m.continuous`; built-in HiGHS does not support MIQP models containing integer, binary, or boolean variables).
   - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` (supports `<=`, `>=`, `==`, and `=`).
 - **Aggregations & Element-Wise Container Arithmetic**:
   - `sum(containerOrItems, mapper?)` (usable inside `` expr`sum(...)` `` or standalone `sum(...)`) sums a 1D/2D `Array`, `Iterable`, or plain `Record` of `Var` / `LinExpr` / `number` (without needing `Object.values(record)`), or maps over items/counts via `sum(items, (item, i) => ...)`. Inside `` expr`sum(...)` ``, element-wise container arithmetic (`+`, `-`, `*`, `/`, `^2`) is also supported.

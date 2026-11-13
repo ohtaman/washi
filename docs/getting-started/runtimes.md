@@ -1,12 +1,14 @@
 # Runtime Environments & Deployment
 
-WaSHI runs across JavaScript and TypeScript runtimes—from Node.js, Bun, and Deno to modern bundlers, vanilla browser `<script>` tags, and air-gapped intranets—without native C/C++ compilation.
+WaSHI runs across JavaScript and TypeScript runtimes—from Node.js, Bun, and Deno to modern bundlers, static hosting, and vanilla browser `<script>` tags—without native C/C++ compilation.
 
 ---
 
-## 🟢 Node.js
+## 🟢 Node.js, Bun & Deno
 
-WaSHI supports Node.js (v18+) out of the box with standard ECMAScript Modules (ESM). The built-in HiGHS WebAssembly binary is loaded directly from the installed package.
+### Node.js
+
+WaSHI supports Node.js (v18+) out of the box with standard ECMAScript Modules (ESM). The built-in HiGHS WebAssembly binary is loaded directly from the installed package:
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -19,8 +21,10 @@ m.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
 m.constraint(expr`${x} + ${y} <= 15`, "capacity");
 
 await m.solve();
-console.log(`Status: ${m.status}, Objective: ${m.objectiveValue}`);
-console.log(`x = ${x.value}, y = ${y.value}`);
+if (m.hasPrimalSolution) {
+  console.log(`Status: ${m.status}, Objective: ${m.objectiveValue}`);
+  console.log(`x = ${x.value}, y = ${y.value}`);
+}
 ```
 
 Run directly with `tsx` or `node`:
@@ -29,11 +33,33 @@ Run directly with `tsx` or `node`:
 npx tsx app.ts
 ```
 
+### Bun & Deno
+
+```bash
+# Bun
+bun add @ohtaman/washi
+bun run app.ts
+```
+
+In Deno (v1.30+ with `npm:` specifiers):
+
+```typescript
+import { Model, maximize } from "npm:@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0, ub: 10 });
+m.objective(maximize(x));
+await m.solve();
+if (m.hasPrimalSolution) {
+  console.log("x =", x.value);
+}
+```
+
 ---
 
-## 🌐 Bundlers (Vite, Webpack, Rollup, Next.js)
+## 🌐 Bundlers & Static Hosting (Vite, Next.js, Webpack, Rollup)
 
-### Modern Bundlers (Vite / Rollup / Webpack)
+### Modern Bundlers & Static Deployment
 
 When importing `@ohtaman/washi` in a browser bundler, the `browser` export condition resolves automatically:
 
@@ -45,14 +71,16 @@ export async function runOptimization() {
   const x = m.continuous("x", { lb: 0, ub: 100 });
   m.objective(maximize(x));
   await m.solve();
-  return x.value;
+  return m.hasPrimalSolution ? x.value : null;
 }
 ```
 
-#### Background Web Worker Execution (Default)
-In browsers, HiGHS automatically runs inside a dedicated **Web Worker** so long-running LP/MIP/QP solves never freeze the main UI thread, animations, or user input, while enabling real-time progress events (`onProgress`) and cancellation (`AbortSignal`).
+Because both the modeler and solver run on WebAssembly, the static output of `vite build` (or your bundler's production build) can be deployed directly to **GitHub Pages, Cloudflare Pages, Vercel, or Netlify** with no backend server required. (The default HiGHS and GLPK solvers require no special HTTP headers; if you use Z3 in the browser, see [Cross-Origin Isolation](./cross-origin.md).)
 
-If your environment prohibits Web Workers or you explicitly want synchronous main-thread execution, pass `useWorker: false`:
+#### Background Web Worker Execution (Default)
+In browsers, HiGHS automatically runs inside a dedicated **Web Worker** so LP/MIP/QP solves never freeze the main UI thread, animations, or user input, while enabling real-time progress events (`onProgress`) and cancellation (`AbortSignal`).
+
+If your environment prohibits Web Workers or you explicitly want main-thread execution, pass `useWorker: false`:
 
 ```typescript
 await m.solve({ useWorker: false });
@@ -91,7 +119,9 @@ export default function OptimizerComponent() {
     const x = m.continuous("x", { lb: 0, ub: 50 });
     m.objective(maximize(x));
     await m.solve();
-    setVal(x.value);
+    if (m.hasPrimalSolution) {
+      setVal(x.value);
+    }
   };
 
   return (
@@ -107,36 +137,36 @@ export default function OptimizerComponent() {
 
 ## 📦 Browser ESM (`<script type="module">`)
 
-You can import the pre-bundled browser ESM modules directly from a local static server (or from an npm CDN once a compatible release is published) without a build step:
+Without a bundler, you can import the pre-built browser ESM module directly from your own static server or an npm CDN:
 
 ```html
 <script type="module">
-  // Serve from your local static server / dist:
-  import { Model, expr, maximize } from "./dist/browser/washi.js";
-  // Or from an npm CDN once a compatible release is published:
-  // import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.js";
+  // From an npm CDN (or "./dist/browser/washi.js" when self-hosted):
+  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/washi.js";
   // Optional solver plugins:
-  // import "./dist/browser/solvers/glpk.js";
-  // import "./dist/browser/solvers/z3.js";
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/glpk.js";
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/z3.js";
 
   const m = new Model("BrowserESM");
-  const x = m.integer("x", { lb: 0 });
-  const y = m.integer("y", { lb: 0 });
+  const x = m.integer("x", { lb: 0, ub: 100 });
+  const y = m.integer("y", { lb: 0, ub: 100 });
 
   m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
   m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
   m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor");
 
   await m.solve();
-  console.log("Optimal Objective:", m.objectiveValue);
+  if (m.hasPrimalSolution) {
+    console.log("Optimal Objective:", m.objectiveValue);
+  }
 </script>
 ```
 
 ---
 
-## 🟨 Classic `<script>` Tags (IIFE / Standalone Build / CDN)
+## 🟨 Classic `<script>` Tags (IIFE / Standalone HTML / CDN)
 
-For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard `<script>` tag. All exports are attached to the global `window.Washi` object:
+For single-file HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard `<script>` tag. All exports are attached to the global `window.Washi` object:
 
 ```html
 <!DOCTYPE html>
@@ -149,13 +179,11 @@ For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard 
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- Core WaSHI + HiGHS (MIT) from local static build / assets -->
-    <script src="./dist/browser/washi.min.js"></script>
-    <!-- Or via CDN once a compatible release is published: -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js"></script> -->
+    <!-- Core WaSHI + HiGHS (MIT) via CDN (or "./dist/browser/washi.min.js" when self-hosted) -->
+    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/washi.min.js"></script>
     <!-- Optional plugins (auto-register on window.Washi): -->
-    <!-- <script src="./dist/browser/solvers/glpk.min.js"></script> -->
-    <!-- <script src="./dist/browser/solvers/z3.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/glpk.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/z3.min.js"></script> -->
 
     <script>
       (async () => {
@@ -170,10 +198,12 @@ For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard 
 
         await m.solve();
 
-        document.getElementById("output").textContent =
-          `Status: ${m.status}\n` +
-          `Objective: ${m.objectiveValue}\n` +
-          `x = ${x.value}, y = ${y.value}`;
+        if (m.hasPrimalSolution) {
+          document.getElementById("output").textContent =
+            `Status: ${m.status}\n` +
+            `Objective: ${m.objectiveValue}\n` +
+            `x = ${x.value}, y = ${y.value}`;
+        }
       })();
     </script>
   </body>
@@ -181,7 +211,7 @@ For static HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a standard 
 ```
 
 > [!NOTE]
-> When loading `washi.min.js` from a cross-origin CDN (such as jsDelivr or unpkg), browsers block direct `new Worker("https://cdn...")` construction due to the same-origin policy. WaSHI automatically bridges cross-origin workers via a lightweight `Blob` wrapper using `importScripts()`, so Web Worker execution works out of the box from CDNs.
+> When loading from a cross-origin CDN (such as jsDelivr or unpkg), browsers block direct `new Worker("https://cdn...")` construction under the same-origin policy. On standard web origins (`https://` / `http://`), WaSHI automatically bridges cross-origin workers via a lightweight ES module `Blob` bootstrap (`import "https://..."`). On opaque effective origins (`window.origin === "null"`, such as local `file:` URLs or `sandbox="allow-scripts"` `<iframe>` embeds without `allow-same-origin`), WaSHI automatically runs HiGHS on the main thread when `useWorker` is omitted.
 
 ---
 
@@ -195,33 +225,8 @@ WaSHI never phones home or falls back to public CDNs. To self-host in an air-gap
    - Optional Z3: `solvers/z3.js` / `solvers/z3.min.js`, `solvers/z3-built.js`, `solvers/z3-built.wasm`
 2. **Content Security Policy (CSP) Headers**:
    - Allow WebAssembly compilation (`'wasm-unsafe-eval'` in `script-src`).
-   - If using the default Web Worker or cross-origin Blob worker fallback, allow `worker-src 'self' blob:;`.
+   - If using the default Web Worker or cross-origin Blob worker bootstrap, allow `worker-src 'self' blob:;`.
    - If `blob:` workers are prohibited by policy, either serve `highs-worker.js` from `'self'` or run on the main thread with `await m.solve({ useWorker: false })`.
 3. **Cross-Origin Isolation (Z3 Only)**:
    - HiGHS and GLPK run in standard browser contexts without special headers.
-   - Z3 WASM uses pthreads + `SharedArrayBuffer` and requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (or `credentialless`). See the [Cross-Origin Isolation Guide](./cross-origin.md) for setup details.
-
----
-
-## ⚡ Bun & Deno
-
-### Bun
-
-```bash
-bun add @ohtaman/washi
-bun run app.ts
-```
-
-### Deno
-
-In Deno (v1.30+ with `npm:` specifiers):
-
-```typescript
-import { Model, maximize } from "npm:@ohtaman/washi";
-
-const m = new Model();
-const x = m.continuous("x", { lb: 0, ub: 10 });
-m.objective(maximize(x));
-await m.solve();
-console.log("x =", x.value);
-```
+   - Z3 WASM uses pthreads + `SharedArrayBuffer` and requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (`credentialless` works in Chromium/Firefox, whereas Safari requires `require-corp`). See the [Cross-Origin Isolation Guide](./cross-origin.md) for setup details.

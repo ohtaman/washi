@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=smt_security">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
+| Propositional Logic & SMT | Z3 (`@ohtaman/washi/solvers/z3`) | `m.bool()`, `m.integer()`, `implies()`, `m.constraint()`, `expr`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=smt_security">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/04-smt-security-rules.ts">Source Code</a></li></ul> |
 
 Satisfiability Modulo Theories (SMT) combines propositional logic (Boolean SAT) with first-order theories (linear integer arithmetic, real inequalities).
 
@@ -21,7 +21,7 @@ We model a security rule system with sensor readings and logic rules:
 <CodeRunner preset="smt_security">
 
 ```typescript
-import { Model, not, expr } from "@ohtaman/washi";
+import { Model, implies, not, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 async function verifySecurityRules() {
@@ -39,7 +39,7 @@ async function verifySecurityRules() {
   const luxLevel = m.integer("luxLevel", { lb: 0, ub: 1000 });
 
   // Rule 1: luxLevel <= 50 implies isNight
-  m.constraint(luxLevel.le(50).implies(isNight), "dark_implies_night");
+  m.constraint(implies(expr`${luxLevel} <= 50`, isNight), "dark_implies_night");
 
   // Rule 2: (motionDetected AND isNight AND alarmArmed) => sirenActive
   m.constraint(
@@ -83,4 +83,4 @@ verifySecurityRules();
 ## Practical Notes
 
 - **Proof by Refutation (Counterexample Search)**: A single `Sat` check shows that *a* valid assignment exists. To formally prove that a safety property $P$ (such as `sirenActive`) **must** hold in *every* valid state, assert its negation `not(P)` and verify that `m.check()` returns `"Unsat"`. If it returns `"Sat"`, the solver's variable values give you a concrete counterexample (security loophole).
-- **One-Way Implication (`implies`) vs. Equivalence**: In classical logic, `luxLevel.le(50).implies(isNight)` only constrains `isNight` when `luxLevel <= 50`. During daytime (`luxLevel > 50`), `isNight` is unconstrained ("open-world" assumption) and could be assigned either `true` or `false` unless you also add the converse rule `luxLevel.ge(51).implies(not(isNight))`.
+- **One-Way Implication (`implies`) vs. Equivalence**: In classical logic, `` implies(expr`${luxLevel} <= 50`, isNight) `` only constrains `isNight` when `luxLevel <= 50`. During daytime (`luxLevel > 50`), `isNight` is unconstrained ("open-world" assumption) and could be assigned either `true` or `false` unless you also add the converse rule `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``.

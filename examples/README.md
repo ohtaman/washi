@@ -1,13 +1,13 @@
 # WaSHI examples
 
-[English README](../README.md) · [日本語 README](../README.ja.md) · [中文 README](../README.zh-CN.md) · [Online Example Docs](https://ohtaman.github.io/washi/examples/)
+[English README](../README.md) · [日本語 README](../README.ja.md) · [中文 README](../README.zh-CN.md) · [Online Example Docs](https://washi.ohtaman.dev/examples/)
 
 These examples show how to construct models with WaSHI and inspect results from
 HiGHS, Z3, or GLPK. The solver performs the optimization or satisfiability check.
 
 ## Browser demo
 
-[Open the interactive demo](https://ohtaman.github.io/washi/demo/) to select a
+[Open the interactive demo](https://washi.ohtaman.dev/demo/) to select a
 preset, edit the model, choose a compatible solver, and inspect its results
 (including 2D flow matrices, weekly shift rosters, coupon breakdowns, and
 constraint shadow prices). The [demo source](web-demo/) is included in this repository.
@@ -38,8 +38,8 @@ use `@ohtaman/washi` and import the required solver plugin.
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
 | [Production planning](node/01-production-planning.ts) | Integer production quantities, a profit objective, resource limits, and the resulting plan | `integer()`, `expr` | HiGHS |
-| [Knapsack](node/02-knapsack-problem.ts) | Binary selection variables, a capacity constraint, and selected items | `binary(keys)`, `dot()` | HiGHS |
-| [Transportation network](node/09-transportation-problem.ts) | 2D origin-destination flows (`ship[factory][store]`), supply/demand balance, and flow changes when capacity shifts | `continuous(rows, cols)`, `sum()` | HiGHS |
+| [Knapsack](node/02-knapsack-problem.ts) | Binary selection variables, a capacity constraint, and selected items | `binary(keys)`, `expr` (`dot`) | HiGHS |
+| [Transportation network](node/09-transportation-problem.ts) | 2D origin-destination flows (`ship[factory][store]`), supply/demand balance, and flow changes when capacity shifts | `continuous(rows, cols)`, `expr` (`sum`, `dot`) | HiGHS |
 | [Diet & sensitivity analysis](node/10-diet-sensitivity.ts) | Nutritional LP with shadow prices (bottlenecks), constraint surpluses, and variable reduced costs | `constr.dual`, `constr.slack`, `var.reducedCost` | HiGHS |
 
 ### 2. Practical Applications & Hybrid Workflows
@@ -55,7 +55,7 @@ use `@ohtaman/washi` and import the required solver plugin.
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
-| [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `bool()`, `.implies()`, `check()` | Z3 |
+| [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `bool()`, `implies()`, `check()` | Z3 |
 | [Conflict diagnosis](node/05-unsat-core-diagnosis.ts) | Inconsistent staffing / budget rules and a conflicting constraint subset | `check()`, `unsatCore` | Z3 |
 | [GLPK adapter](node/08-glpk-solver-plugin.ts) | A diet model, plugin selection, an objective value, and row duals | `solver: "glpk"` | GLPK |
 

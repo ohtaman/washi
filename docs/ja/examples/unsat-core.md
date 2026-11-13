@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 実行不能 (Infeasible) 診断・Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=conflict_diagnosis_unsat">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">ソースコード</a></li></ul> |
+| 実行不能 (Infeasible) 診断・Unsat Core | Z3 (`@ohtaman/washi/solvers/z3`) | `m.integer()`, `m.continuous()`, `implies()`, `m.constraint()`, `expr`, `m.check()`, `m.conflicts` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts">ソースコード</a></li></ul> |
 
 複数の業務ルールや数値制約が互いに矛盾して実行可能解が存在しない（`Unsat`）場合、名前付き制約の中から矛盾を引き起こしている制約の部分集合（Unsat Core。最小性は保証されません）を Z3 で抽出します。
 
@@ -24,7 +24,7 @@ $$8 \text{ engineers} \times \$8,000 = \$64,000 > \$50,000 \text{ budget!}$$
 <CodeRunner preset="conflict_diagnosis_unsat">
 
 ```typescript
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/z3";
 
 async function diagnoseConflicts() {
@@ -41,7 +41,7 @@ async function diagnoseConflicts() {
   m.constraint(rushDelivery, "rush_required");
 
   // ルール 3: 特急納品には最低 8 名のエンジニアが必要
-  m.constraint(rushDelivery.implies(engineers.ge(8)), "rush_staffing_rule");
+  m.constraint(implies(rushDelivery, expr`${engineers} >= 8`), "rush_staffing_rule");
 
   // ルール 4: 役員会による予算上限 $50,000（矛盾の原因！）
   m.constraint(expr`${budget} <= 50000`, "strict_board_budget_cap");

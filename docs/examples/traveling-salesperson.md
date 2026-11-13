@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Combinatorial OR / Benders | HiGHS (default) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">Source Code</a></li><li><a href="../guide/decomposition.md">Decomposition Guide</a></li></ul> |
+| Combinatorial OR / Benders | HiGHS (default) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">Source Code</a></li><li><a href="/guide/decomposition">Decomposition Guide</a></li></ul> |
 
 The **Traveling Salesperson Problem (TSP)** seeks the shortest closed tour that visits every city in a given set once and returns to the starting city.
 
@@ -31,7 +31,7 @@ We consider **5 cities** on a 2D Euclidean coordinate grid:
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, LinExpr } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 async function runTSP() {
   const cities = [
@@ -52,39 +52,26 @@ async function runTSP() {
   // 1. Master Problem: Degree assignment relaxation
   const master = new Model("TSP_BendersMaster");
   const x = {};
+  const distMatrix = {};
 
   for (let i = 0; i < n; i++) {
     x[i] = {};
+    distMatrix[i] = {};
     for (let j = 0; j < n; j++) {
       if (i !== j) {
         x[i][j] = master.binary(`x_${i}_${j}`);
+        distMatrix[i][j] = dist(i, j);
       }
     }
   }
 
   // Objective: Minimize total tour distance
-  let totalDistance = new LinExpr();
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        totalDistance = totalDistance.add(x[i][j].mul(dist(i, j)));
-      }
-    }
-  }
-  master.objective(minimize(totalDistance));
+  master.objective(minimize(expr`dot(${distMatrix}, ${x})`));
 
   // Each city must have 1 outgoing and 1 incoming edge
   for (let i = 0; i < n; i++) {
-    let outExpr = new LinExpr();
-    let inExpr = new LinExpr();
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        outExpr = outExpr.add(x[i][j]);
-        inExpr = inExpr.add(x[j][i]);
-      }
-    }
-    master.constraint(expr`${outExpr} == 1`, `out_${i}`);
-    master.constraint(expr`${inExpr} == 1`, `in_${i}`);
+    master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
+    master.constraint(expr`sum(${n}, ${(j) => x[j][i]}) == 1`, `in_${i}`);
   }
 
   console.log("Solving TSP with Benders lazy subtour elimination...");
@@ -126,18 +113,12 @@ async function runTSP() {
           cutCounter++;
           console.log(`Subtour detected: [${cycle.map(k => cities[k].name).join(" -> ")}]. Adding Benders cut #${cutCounter}.`);
 
-          let cutLhs = new LinExpr();
-          for (const i of S) {
-            for (let j = 0; j < n; j++) {
-              if (!S.has(j)) {
-                cutLhs = cutLhs.add(x[i][j]);
-              }
-            }
-          }
+          const outCities = Array.from({ length: n }, (_, j) => j).filter((j) => !S.has(j));
+          const cutEdges = cycle.flatMap((i) => outCities.map((j) => x[i][j]));
 
           return {
             kind: "feasibility",
-            constraint: expr`${cutLhs} >= 1`,
+            constraint: expr`sum(${cutEdges}) >= 1`,
             name: `subtour_cut_${cutCounter}`,
           };
         });

@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 組合せ最適化 / Dantzig-Wolfe | HiGHS (標準) | `m.solveColumnGeneration()`, `pricing`, `sum()`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">ソースコード</a></li><li><a href="../guide/decomposition.md">分解法ガイド</a></li></ul> |
+| 組合せ最適化 / Dantzig-Wolfe | HiGHS (標準) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">ソースコード</a></li><li><a href="/ja/guide/decomposition">分解法ガイド</a></li></ul> |
 
 **容量制約付き車両配送計画問題 (Capacitated Vehicle Routing Problem, CVRP)** は、車両の積載容量、1便あたりの最大訪問件数、および稼働時間の上限を満たしながら、すべての顧客を訪問するのに必要な車両数と配送ルートを求める問題です。
 
@@ -24,7 +24,7 @@
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, sum } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 // --- 外出しルーティング探索ヘルパー（副問題） ---
 
@@ -143,7 +143,7 @@ async function runCVRP() {
 
   // 初期自明列: 顧客1件ごとの専用ピストン便
   const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
-  master.objective(minimize(sum(initialRoutes)));
+  master.objective(minimize(expr`sum(${initialRoutes})`));
 
   // 顧客被覆制約: 全顧客をちょうど1台の車両が担当
   const visitConstrs = customers.map((c, i) =>

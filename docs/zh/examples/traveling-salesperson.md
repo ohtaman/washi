@@ -2,7 +2,7 @@
 
 | 问题分类 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 组合优化 / Benders分解 | HiGHS (默认) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">源代码</a></li><li><a href="../guide/decomposition.md">分解算法指南</a></li></ul> |
+| 组合优化 / Benders分解 | HiGHS (默认) | `m.solveBenders()`, `subproblem`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts">源代码</a></li><li><a href="/zh/guide/decomposition">分解算法指南</a></li></ul> |
 
 **旅行商问题（TSP: Traveling Salesperson Problem）** 要求寻找一条恰好访问每座城市一次并回到起点的最短闭合回路（Tour）。
 
@@ -31,7 +31,7 @@ $$\sum_{i \in S, j \notin S} x_{ij} \ge 1 \quad \forall S \subset V, \; 2 \le |S
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, LinExpr } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 async function runTSP() {
   const cities = [
@@ -52,39 +52,26 @@ async function runTSP() {
   // 1. 主问题：度数分配松弛（每个城市 1 条出边、1 条入边）
   const master = new Model("TSP_BendersMaster");
   const x = {};
+  const distMatrix = {};
 
   for (let i = 0; i < n; i++) {
     x[i] = {};
+    distMatrix[i] = {};
     for (let j = 0; j < n; j++) {
       if (i !== j) {
         x[i][j] = master.binary(`x_${i}_${j}`);
+        distMatrix[i][j] = dist(i, j);
       }
     }
   }
 
   // 目标函数：最小化总巡回距离
-  let totalDistance = new LinExpr();
-  for (let i = 0; i < n; i++) {
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        totalDistance = totalDistance.add(x[i][j].mul(dist(i, j)));
-      }
-    }
-  }
-  master.objective(minimize(totalDistance));
+  master.objective(minimize(expr`dot(${distMatrix}, ${x})`));
 
   // 每个城市有 1 条出边和 1 条入边
   for (let i = 0; i < n; i++) {
-    let outExpr = new LinExpr();
-    let inExpr = new LinExpr();
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        outExpr = outExpr.add(x[i][j]);
-        inExpr = inExpr.add(x[j][i]);
-      }
-    }
-    master.constraint(expr`${outExpr} == 1`, `out_${i}`);
-    master.constraint(expr`${inExpr} == 1`, `in_${i}`);
+    master.constraint(expr`sum(${x[i]}) == 1`, `out_${i}`);
+    master.constraint(expr`sum(${n}, ${(j) => x[j][i]}) == 1`, `in_${i}`);
   }
 
   console.log("启动 Benders 延迟子回路消除算法求解 TSP...");
@@ -127,18 +114,12 @@ async function runTSP() {
           console.log(`检测到子回路: [${cycle.map(k => cities[k].name).join(" -> ")}]。注入 Benders 割平面 #${cutCounter}。`);
 
           // 割约束：sum_{i in S, j not in S} x_ij >= 1
-          let cutLhs = new LinExpr();
-          for (const i of S) {
-            for (let j = 0; j < n; j++) {
-              if (!S.has(j)) {
-                cutLhs = cutLhs.add(x[i][j]);
-              }
-            }
-          }
+          const outCities = Array.from({ length: n }, (_, j) => j).filter((j) => !S.has(j));
+          const cutEdges = cycle.flatMap((i) => outCities.map((j) => x[i][j]));
 
           return {
             kind: "feasibility",
-            constraint: expr`${cutLhs} >= 1`,
+            constraint: expr`sum(${cutEdges}) >= 1`,
             name: `subtour_cut_${cutCounter}`,
           };
         });

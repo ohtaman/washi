@@ -79,11 +79,38 @@ function z3DemoAssets(): Plugin {
   };
 }
 
+const GOOGLE_TAG_ID = "GTM-59QSZTZL";
+const GOOGLE_TAG_INLINE_INIT =
+  "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
+
+function googleAnalyticsTag(): Plugin {
+  return {
+    name: "washi-google-tag",
+    transformIndexHtml() {
+      return [
+        {
+          tag: "script",
+          attrs: {
+            async: true,
+            src: `https://www.googletagmanager.com/gtm.js?id=${GOOGLE_TAG_ID}`,
+          },
+          injectTo: "head",
+        },
+        {
+          tag: "script",
+          children: GOOGLE_TAG_INLINE_INIT,
+          injectTo: "head",
+        },
+      ];
+    },
+  };
+}
+
 export default defineConfig({
-  base: process.env.BASE_URL || (process.env.GITHUB_ACTIONS ? "/washi/" : "./"),
+  base: process.env.BASE_URL || (process.env.GITHUB_ACTIONS ? "/" : "./"),
   root: "examples/web-demo",
   publicDir: "../../public",
-  plugins: [z3DemoAssets()],
+  plugins: [z3DemoAssets(), googleAnalyticsTag()],
   server: {
     port: 5173,
     headers: {

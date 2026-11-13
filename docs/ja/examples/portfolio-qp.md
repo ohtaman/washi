@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 凸二次計画問題 (Convex QP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=portfolio_qp">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">ソースコード</a></li></ul> |
+| 凸二次計画問題 (Convex QP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">ソースコード</a></li></ul> |
 
 マーコウィッツの平均・分散モデルに基づき、目標期待リターンと投資比率合計（100%）の制約を満たしながら、資産間の共分散行列から計算されるポートフォリオ全体の分散（リスク $\mathbf{w}^T \boldsymbol{\Sigma} \mathbf{w}$）を最小化します。
 
@@ -26,7 +26,7 @@ $$\begin{aligned}
 <CodeRunner preset="portfolio_qp">
 
 ```typescript
-import { Model, QuadExpr, sum, dot, minimize, expr } from "@ohtaman/washi";
+import { Model, QuadExpr, dot, minimize, expr } from "@ohtaman/washi";
 
 async function solvePortfolio() {
   const m = new Model("PortfolioQP");
@@ -48,7 +48,7 @@ async function solvePortfolio() {
   const w = m.continuous(assets, { lb: 0, ub: 1 });
 
   // 1. 予算制約: sum(w_i) == 1.0 (100%)
-  m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget_limit");
+  m.constraint(expr`sum(${w}) == 1.0`, "budget_limit");
 
   // 2. 目標リターン制約: sum(r_i * w_i) >= 8.5%
   const retMap = Object.fromEntries(assets.map((a, i) => [a, expectedReturns[i]]));

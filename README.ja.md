@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - 数理最適化と制約プログラミングのための代数モデラー (TypeScript / JavaScript)" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - TypeScript 数理最適化モデラー" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>数理最適化と制約プログラミングのための代数モデラー</strong></p>
+  <p><strong>TypeScript 数理最適化モデラー</strong></p>
   <p>
     <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • SMT論理制約 &amp; 矛盾診断</em>
   </p>
@@ -16,8 +16,8 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/ja/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
-    <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
+    <a href="https://washi.ohtaman.dev/ja/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
@@ -36,10 +36,10 @@
 
 ## 📚 ドキュメント & リンク
 
-- **[ドキュメント](https://ohtaman.github.io/washi/ja/)**: モデリングガイド・ソルバー仕様・環境別の導入手順
-- **[ショーケース](https://ohtaman.github.io/washi/ja/showcase/) & [ブラウザデモ](https://ohtaman.github.io/washi/demo/)**: ブラウザ上で動くデモアプリ集とプレイグラウンド
-- **[サンプル集](https://ohtaman.github.io/washi/ja/examples/)**: 課題別の実践レシピと実行可能なサンプルコード（[`examples/`](examples/README.md)）
-- **[AIエージェント向けガイド](docs/ja/getting-started/ai-agents.md) & [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md)**: AI コーディングエージェント向けのリファレンスとスキル定義
+- **[ドキュメント](https://washi.ohtaman.dev/ja/)**: モデリングガイド・ソルバー仕様・環境別の導入手順
+- **[ショーケース](https://washi.ohtaman.dev/ja/showcase/) & [ブラウザデモ](https://washi.ohtaman.dev/demo/)**: ブラウザ上で動くデモアプリ集とプレイグラウンド
+- **[サンプル集](https://washi.ohtaman.dev/ja/examples/)**: 課題別の実践レシピと実行可能なサンプルコード（[`examples/`](examples/README.md)）
+- **[AIエージェント向けガイド](docs/ja/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: AI コーディングエージェント向けのリファレンス・スキル定義・機械可読ドキュメント
 
 ---
 
@@ -93,7 +93,7 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 `dot` / `sum` による線形式の記述と、`m.indicator()` による条件付き制約：
 
 ```ts
-import { Model, dot, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
@@ -106,14 +106,14 @@ const costs = {
 const open = m.binary(factories);
 const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// 東京工場が閉鎖 (open["Tokyo"] == 0) なら StoreA への輸送量は 0
-m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+// 東京工場が閉鎖 (open["Tokyo"] == 0) なら東京工場からの総輸送量は 0
+m.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
 m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
 
-m.objective(minimize(dot(costs, ship)));
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("輸送量:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. 凸二次計画 (QP)
@@ -137,12 +137,12 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 
 ### 3. SMT 論理ルール & 矛盾診断 (`m.check`)
 
-論理条件（`m.bool`, `.implies`）を含むモデルの充足可能性を判定し、矛盾時の原因制約を特定します：
+論理条件（`m.bool`, `implies`）を含むモデルの充足可能性を判定し、矛盾時の原因制約を特定します：
 - **HiGHS（標準）**: 緩和すれば実行可能になる**修復集合**（`res.conflicts`）を特定します。
 - **Z3**: 相互に矛盾している**充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 // import "@ohtaman/washi/solvers/z3"; // 厳密な SMT unsatCore を抽出する場合
 
 const m = new Model("StaffingRules");
@@ -152,7 +152,7 @@ const rush = m.bool("rush");
 
 m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
 m.constraint(expr`${budget} <= 50000`, "budget_cap"); // 矛盾: 8人 * $8,000 > $50,000
 m.constraint(expr`${engineers} >= 1`, "min_staff");   // 無関係な制約
 
@@ -189,6 +189,17 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ## 🤝 コントリビューション・開発
 
 ローカル開発、テスト・ベンチマークの実行、WebAssembly アセットの再ビルド、およびリリース手順については [CONTRIBUTING.md](./CONTRIBUTING.md) を参照してください。
+
+---
+
+## 🙏 謝辞
+
+WaSHI は、数理最適化および自動推論分野の素晴らしいオープンソースソフトウェアの上に成り立っています：
+
+- **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— エディンバラ大学の Julian Hall 氏、Qi Huangfu 氏、Ivet Galabova 氏、Leona Gottwald 氏、Michael Feldmeier 氏をはじめとする開発チームによる高性能なオープンソース LP / MIP / 凸 QP ソルバーであり、WaSHI の標準エンジンを支えています（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
+- **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— Microsoft Research により開発された SMT ソルバーであり、オプションの論理充足判定および `unsatCore` 矛盾診断プラグインを支えています。
+- **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — オプションの GPL-3.0 LP / MIP ソルバープラグインを支えています。
+- **[PuLP](https://github.com/coin-or/pulp)** — WaSHI の直感的な代数モデリング API 設計に大きな着想を与えました。
 
 ---
 

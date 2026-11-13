@@ -29,14 +29,8 @@ function startStaticPagesServer(port = 0) {
     const server = createServer((req, res) => {
       const urlPath = req.url?.split("?")[0] || "/";
       
-      // Route /washi/* to dist/demo/*
-      if (!urlPath.startsWith("/washi/")) {
-        res.statusCode = 404;
-        res.end("Not Found (outside /washi/ base)");
-        return;
-      }
-
-      let subPath = urlPath.slice("/washi/".length);
+      // Route /* to dist/demo/*
+      let subPath = urlPath.replace(/^\/+/, "");
       if (subPath === "" || subPath.endsWith("/")) {
         subPath += "index.html";
       }
@@ -110,7 +104,7 @@ async function runBrowserVerification() {
   console.log("=== WaSHI Web Demo GitHub Pages Cross-Origin Isolation Verification ===");
 
   const { server, port } = await startStaticPagesServer();
-  const demoUrl = `http://localhost:${port}/washi/demo/`;
+  const demoUrl = `http://localhost:${port}/demo/`;
   console.log(`Simulated GitHub Pages server running at ${demoUrl}`);
 
   let browser;
@@ -295,12 +289,12 @@ async function runBrowserVerification() {
     assert.equal(highsObj, "2200", `HiGHS production planning optimal objective must be 2200, got ${highsObj}`);
     console.log(`   HiGHS solved successfully with objective ${highsObj}!`);
 
-    // 7. Test Subpath Scope & Navigation to landing page (/washi/)
-    console.log("7. Testing navigation between /washi/ and /washi/demo/ under scope...");
-    await page.goto(`http://localhost:${port}/washi/`, { waitUntil: "networkidle" });
+    // 7. Test Root Scope & Navigation to landing page (/)
+    console.log("7. Testing navigation between / and /demo/ under scope...");
+    await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
     const landingIsolated = await page.evaluate(() => window.crossOriginIsolated);
-    console.log(`   Landing page (/washi/) crossOriginIsolated: ${landingIsolated}`);
-    assert.equal(landingIsolated, true, "Landing page within /washi/ scope must also be crossOriginIsolated");
+    console.log(`   Landing page (/) crossOriginIsolated: ${landingIsolated}`);
+    assert.equal(landingIsolated, true, "Landing page within / scope must also be crossOriginIsolated");
 
     // 8. Test Failure Behavior when cross-origin isolation is not available
     console.log("8. Testing graceful abort when crossOriginIsolated is false...");
@@ -326,7 +320,7 @@ async function runBrowserVerification() {
     console.log("9. Testing Nurse Scheduling Basic Data tab layout, collapsible relations, and scrolling...");
     const shiftPage = await context.newPage();
     await shiftPage.setViewportSize({ width: 1280, height: 800 });
-    await shiftPage.goto(`http://localhost:${port}/washi/apps/ai-shift/`, { waitUntil: "networkidle" });
+    await shiftPage.goto(`http://localhost:${port}/apps/ai-shift/`, { waitUntil: "networkidle" });
 
     // Click the Master Data tab
     await shiftPage.click("#tab-btn-staff");
@@ -394,7 +388,7 @@ async function runBrowserVerification() {
     console.log("10. Testing Demon Castle Shift opening movie climax button unblocked by letterbox overlay...");
     const gamePage = await context.newPage();
     await gamePage.setViewportSize({ width: 1280, height: 800 });
-    await gamePage.goto(`http://localhost:${port}/washi/games/demon-castle-shift/index.html`, { waitUntil: "networkidle" });
+    await gamePage.goto(`http://localhost:${port}/games/demon-castle-shift/index.html`, { waitUntil: "networkidle" });
     await gamePage.evaluate(() => localStorage.clear());
     await gamePage.reload({ waitUntil: "networkidle" });
 
@@ -432,6 +426,59 @@ async function runBrowserVerification() {
     await gamePage.waitForSelector("#prologue-dialog[open]", { timeout: 5_000 });
     console.log("   Demon Castle Shift opening movie climax transition verified cleanly!");
     await gamePage.close();
+
+    // 11. Test Theory Articles Honshu Textbook Theme (Desktop & Simplified Mobile Layout)
+    console.log("11. Testing Theory Articles Honshu textbook theme on desktop and mobile viewports...");
+    const theoryPage = await context.newPage();
+    await theoryPage.setViewportSize({ width: 1024, height: 800 });
+    await theoryPage.goto(`http://localhost:${port}/games/mofumofu-sheep-theory/index.html`, { waitUntil: "load" });
+    await theoryPage.click('[data-lang-btn="ja"]');
+    await theoryPage.waitForSelector(".math-box .katex-display", { timeout: 5_000 });
+
+    const desktopTheme = await theoryPage.evaluate(() => {
+      const sheet = getComputedStyle(document.querySelector(".article-sheet"));
+      const badge = getComputedStyle(document.querySelector(".chapter-badge"));
+      const katexDisplay = getComputedStyle(document.querySelector(".math-box .katex-display"));
+      return {
+        bodyBg: getComputedStyle(document.body).backgroundColor,
+        sheetBorderTopWidth: sheet.borderTopWidth,
+        sheetBorderTopColor: sheet.borderTopColor,
+        badgeBg: badge.backgroundColor,
+        katexAlign: katexDisplay.textAlign,
+      };
+    });
+    assert.equal(desktopTheme.bodyBg, "rgb(255, 255, 255)", "Theory page background must be pure white (#ffffff)");
+    assert.equal(desktopTheme.sheetBorderTopWidth, "3px", "Desktop article sheet must have 3px top accent rule");
+    assert.equal(desktopTheme.sheetBorderTopColor, "rgb(194, 59, 34)", "Desktop article sheet top rule must be Honshu (#c23b22)");
+    assert.equal(desktopTheme.badgeBg, "rgb(194, 59, 34)", "Desktop chapter badge must use solid Honshu background");
+    assert.equal(desktopTheme.katexAlign, "start", "Formula box KaTeX display math must override centered katex.min.css alignment");
+
+    await theoryPage.setViewportSize({ width: 360, height: 800 });
+    const mobileTheme = await theoryPage.evaluate(() => {
+      const sheet = getComputedStyle(document.querySelector(".article-sheet"));
+      const badge = getComputedStyle(document.querySelector(".chapter-badge"));
+      const mathBox = getComputedStyle(document.querySelector(".math-box"));
+      const th = getComputedStyle(document.querySelector("table.mapping-table th"));
+      return {
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        sheetBorderTopWidth: sheet.borderTopWidth,
+        badgeBg: badge.backgroundColor,
+        badgeColor: badge.color,
+        mathBorderLeftWidth: mathBox.borderLeftWidth,
+        mathBorderTopWidth: mathBox.borderTopWidth,
+        thWhiteSpace: th.whiteSpace,
+      };
+    });
+    assert.equal(mobileTheme.scrollWidth, mobileTheme.clientWidth, "Mobile theory article must not overflow 360px viewport horizontally");
+    assert.equal(mobileTheme.sheetBorderTopWidth, "0px", "Mobile article sheet must remove outer frame border");
+    assert.equal(mobileTheme.badgeBg, "rgba(0, 0, 0, 0)", "Mobile chapter badge must render without filled box background");
+    assert.equal(mobileTheme.badgeColor, "rgb(194, 59, 34)", "Mobile chapter badge text must use Honshu (#c23b22)");
+    assert.equal(mobileTheme.mathBorderLeftWidth, "0px", "Mobile formula block must omit side card borders");
+    assert.equal(mobileTheme.mathBorderTopWidth, "1px", "Mobile formula block must retain top/bottom hairline borders");
+    assert.equal(mobileTheme.thWhiteSpace, "nowrap", "Mobile table headers must not wrap into single-character vertical stacks");
+    await theoryPage.close();
+    console.log("   Theory Articles Honshu desktop and simplified mobile styles verified!");
 
     console.log("\nAll browser verification checks PASSED successfully!");
   } finally {

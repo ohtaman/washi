@@ -14,7 +14,7 @@ if (typeof window === "undefined") {
 
   self.addEventListener("fetch", (event) => {
     const r = event.request;
-    if (r.cache === "only-if-cached" && r.mode !== "same-origin") {
+    if (r.method !== "GET" || (r.cache === "only-if-cached" && r.mode !== "same-origin")) {
       return;
     }
 
@@ -30,7 +30,8 @@ if (typeof window === "undefined") {
         newHeaders.set("Cross-Origin-Resource-Policy", "cross-origin");
         newHeaders.set("Cross-Origin-Opener-Policy", "same-origin");
 
-        return new Response(response.body, {
+        const body = [101, 204, 205, 304].includes(response.status) ? null : response.body;
+        return new Response(body, {
           status: response.status,
           statusText: response.statusText,
           headers: newHeaders,

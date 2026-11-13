@@ -2,7 +2,7 @@
 
 | 问题分类 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 组合优化 / Dantzig-Wolfe | HiGHS (默认) | `m.solveColumnGeneration()`, `pricing`, `sum()`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">源代码</a></li><li><a href="../guide/decomposition.md">分解算法指南</a></li></ul> |
+| 组合优化 / Dantzig-Wolfe | HiGHS (默认) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">源代码</a></li><li><a href="/zh/guide/decomposition">分解算法指南</a></li></ul> |
 
 **有容量限制的车辆路径规划问题 (Capacitated Vehicle Routing Problem, CVRP)** 在满足车辆载重容量、单车最大途经网点数及路线时长限制的前提下，求服务所有客户所需的车辆数与配送路线。
 
@@ -24,7 +24,7 @@
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, sum } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 // --- 解耦外置的路由启发式辅助函数（子问题） ---
 
@@ -141,7 +141,7 @@ async function runCVRP() {
 
   // 初始自明路线：每个客户配备一辆直达专车
   const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
-  master.objective(minimize(sum(initialRoutes)));
+  master.objective(minimize(expr`sum(${initialRoutes})`));
 
   // 客户覆盖约束：每个客户必须且仅被服务一次
   const visitConstrs = customers.map((c, i) =>

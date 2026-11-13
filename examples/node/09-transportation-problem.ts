@@ -10,7 +10,7 @@
  * Run with: npx tsx examples/node/09-transportation-problem.ts
  */
 
-import { Model, sum, dot, minimize, expr } from "../../src/index.js";
+import { Model, minimize, expr } from "../../src/index.js";
 
 const factories = ["Tokyo", "Nagoya", "Osaka"] as const;
 const stores = ["North", "East", "West", "South"] as const;
@@ -45,23 +45,26 @@ async function solveTransportation(
   const ship = m.continuous([...factories], [...stores], { lb: 0 });
 
   // Objective: Minimize total shipping cost across all routes via 2D dot product
-  m.objective(minimize(dot(shippingCost, ship)));
+  m.objective(minimize(expr`dot(${shippingCost}, ${ship})`));
 
   // Supply constraints: Outgoing shipments from each factory <= capacity
-  for (const f of factories) {
-    m.constraint(
-      expr`${sum(stores, (s) => ship[f][s])} <= ${supplies[f]}`,
-      `supply_${f}`
-    );
-  }
+  const supplyConstrs = Object.fromEntries(
+    factories.map((f) => [
+      f,
+      m.constraint(expr`sum(${ship[f]}) <= ${supplies[f]}`, `supply_${f}`),
+    ])
+  );
 
   // Demand constraints: Incoming shipments to each store >= demand
-  for (const s of stores) {
-    m.constraint(
-      expr`${sum(factories, (f) => ship[f][s])} >= ${storeDemands[s]}`,
-      `demand_${s}`
-    );
-  }
+  const demandConstrs = Object.fromEntries(
+    stores.map((s) => [
+      s,
+      m.constraint(
+        expr`sum(${factories}, ${(f: Factory) => ship[f][s]}) >= ${storeDemands[s]}`,
+        `demand_${s}`
+      ),
+    ])
+  );
 
   const buildMs = performance.now() - t0;
   const status = await m.solve();
@@ -82,13 +85,13 @@ async function solveTransportation(
       used += val;
       return (val > 1e-6 ? val.toFixed(0) : "·").padStart(8);
     });
-    const supplyDual = m.getConstraintByName(`supply_${f}`)?.dual ?? 0;
+    const supplyDual = supplyConstrs[f].dual ?? 0;
     console.log(
       `${f.padEnd(16)}${rowCells.join("")}  | ${String(Math.round(used)).padStart(3)} / ${supplies[f]} (dual: $${supplyDual.toFixed(1)})`
     );
   }
   const storeDuals = stores
-    .map((s) => `${s}: $${(m.getConstraintByName(`demand_${s}`)?.dual ?? 0).toFixed(1)}/u`)
+    .map((s) => `${s}: $${(demandConstrs[s].dual ?? 0).toFixed(1)}/u`)
     .join(", ");
   console.log(`Marginal Delivered Cost (Demand Duals): ${storeDuals}`);
 }

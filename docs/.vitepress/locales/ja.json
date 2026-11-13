@@ -1,6 +1,6 @@
 {
   "label": "日本語",
-  "titleTemplate": ":title | WaSHI — 数理最適化と制約プログラミングのための代数モデラー",
+  "titleTemplate": ":title | WaSHI — TypeScript 数理最適化モデラー",
   "description": "TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）",
   "nav": [
     {
@@ -15,9 +15,9 @@
       "text": "はじめに",
       "items": [
         { "text": "インストールと入門", "link": "/ja/getting-started/" },
-        { "text": "AIエージェント向けリファレンス", "link": "/ja/getting-started/ai-agents" },
         { "text": "ランタイム環境設定", "link": "/ja/getting-started/runtimes" },
-        { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" }
+        { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" },
+        { "text": "AIエージェント向けリファレンス", "link": "/ja/getting-started/ai-agents" }
       ]
     },
     {
@@ -28,7 +28,8 @@
         { "text": "制約条件", "link": "/ja/guide/constraints" },
         { "text": "目的関数と最適化", "link": "/ja/guide/objectives" },
         { "text": "競合制約診断 (Unsat Core)", "link": "/ja/guide/unsat-core" },
-        { "text": "分解法 (列生成・Benders)", "link": "/ja/guide/decomposition" }
+        { "text": "分解法 (列生成・Benders)", "link": "/ja/guide/decomposition" },
+        { "text": "定式化パターン・Tips", "link": "/ja/guide/formulation-tips" }
       ]
     },
     {

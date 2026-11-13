@@ -51,8 +51,8 @@ export async function runWashiSnippet(rawCode: string): Promise<SnippetRunResult
       const z3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
       if (typeof window !== "undefined") {
         z3Mod.setZ3Assets({
-          jsUrl: new URL("/washi/z3-built.js", window.location.origin).href,
-          wasmUrl: new URL("/washi/z3-built.wasm", window.location.origin).href,
+          jsUrl: new URL("/z3-built.js", window.location.origin).href,
+          wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
         });
       }
     }

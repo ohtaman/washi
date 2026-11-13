@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=diet_sensitivity">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">ソースコード</a></li></ul> |
+| 線形計画問題 (LP) | HiGHS (標準) | `m.continuous()`, `m.constraint()`, `expr` (`dot`), `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=diet_sensitivity">Playground で開く</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/10-diet-sensitivity.ts">ソースコード</a></li></ul> |
 
 線形計画問題を解いた際、決定変数の最適値（`var.value`）だけでなく、**感度分析（Sensitivity Analysis）**の情報を取得できると実務での意思決定が格段に深まります。
 
@@ -28,7 +28,7 @@
 <CodeRunner preset="diet_sensitivity">
 
 ```typescript
-import { Model, minimize, dot, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 
 const foods = [
   { name: "Oats",    cost: 0.60, calories: 150, protein: 5,  calcium: 20,  iron: 1.8 },
@@ -51,15 +51,15 @@ async function runDietSensitivity() {
   const calcs = Object.fromEntries(foods.map((f) => [f.name, f.calcium]));
   const irons = Object.fromEntries(foods.map((f) => [f.name, f.iron]));
 
-  // 目的関数: 1日の食費合計を最小化 (dot による内積)
-  m.objective(minimize(dot(costs, srv)));
+  // 目的関数: 1日の食費合計を最小化 (expr 内の dot による内積)
+  m.objective(minimize(expr`dot(${costs}, ${srv})`));
 
   // 栄養基準の制約: m.constraint と expr による数式定義
   const nutConstraints = [
-    m.constraint(expr`${dot(cals, srv)} >= 2000`, "min_calories"),
-    m.constraint(expr`${dot(prots, srv)} >= 105`,  "min_protein"),
-    m.constraint(expr`${dot(calcs, srv)} >= 1000`, "min_calcium"),
-    m.constraint(expr`${dot(irons, srv)} >= 18`,   "min_iron"),
+    m.constraint(expr`dot(${cals}, ${srv}) >= 2000`, "min_calories"),
+    m.constraint(expr`dot(${prots}, ${srv}) >= 105`,  "min_protein"),
+    m.constraint(expr`dot(${calcs}, ${srv}) >= 1000`, "min_calcium"),
+    m.constraint(expr`dot(${irons}, ${srv}) >= 18`,   "min_iron"),
   ];
 
   const status = await m.solve();

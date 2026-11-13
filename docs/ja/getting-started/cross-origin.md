@@ -1,47 +1,70 @@
 # Cross-Origin Isolation 設定 (Z3 & ブラウザ)
 
-ブラウザ内で **Z3** ソルバーエンジンを実行する場合、ブラウザのセキュリティモデルに基づき特別な HTTP レスポンスヘッダーが必要になります。
+ブラウザ内で **Z3** ソルバーを実行する場合、`SharedArrayBuffer` を有効化するために Cross-Origin Isolation 用の HTTP レスポンスヘッダーが必要になります。
+
+> [!TIP]
+> **HiGHS・GLPK・Node.js では設定不要です**: 標準搭載の **HiGHS** および **GLPK** プラグインは `SharedArrayBuffer` を使わないため、通常のブラウザ環境でそのまま動作します。また **Node.js** で Z3 を動かす場合も不要です。ブラウザ上で `@ohtaman/washi/solvers/z3` を使う場合のみ本ページを参照してください。
 
 ---
 
 ## なぜ Cross-Origin Isolation が必要なのか？
 
-Z3 の WebAssembly エンジンは、`SharedArrayBuffer` と Web Worker を用いたマルチスレッド（pthreads）で動作します。
-
-モダンブラウザ（Chrome, Firefox, Safari, Edge）では、Spectre 型のサイドチャネル攻撃を緩和するため、デフォルトで `SharedArrayBuffer` が無効化されています。これを有効化するには、ホストする Web ページが **Cross-Origin Isolated（クロスオリジン分離）** 状態である必要があります。
+Z3 の WebAssembly ビルドは、`SharedArrayBuffer` と Web Worker を用いたマルチスレッド（pthreads）で動作します。モダンブラウザ（Chrome, Firefox, Safari, Edge）では Spectre 型のサイドチャネル攻撃を緩和するため、トップレベルページが **Cross-Origin Isolated**（`window.crossOriginIsolated === true`）でない限り `SharedArrayBuffer` が無効化されています。
 
 ---
 
 ## 必要な HTTP レスポンスヘッダー
 
-クロスオリジン分離を確立するには、Web サーバーがトップレベルの HTML ドキュメントに以下の HTTP ヘッダーを付与して配信する必要があります：
+トップレベルの HTML ドキュメントに以下の HTTP ヘッダーを付与して配信します：
 
 ```http
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
 
-また、外部ドメインから読み込むクロスオリジンアセット（スクリプトや WASM ファイルなど）には以下のヘッダーが必要です：
+外部ドメインからサブリソース（画像・スクリプト・WASM ファイル等）を読み込む場合は、それらのレスポンスにも `Cross-Origin-Resource-Policy: cross-origin`（または CORS ヘッダー）が必要です。
 
-```http
-Cross-Origin-Resource-Policy: cross-origin
-```
+> [!NOTE]
+> Chromium 系ブラウザと Firefox では、外部サブリソースの CORP 要件を緩和できる `Cross-Origin-Embedder-Policy: credentialless` も動作しますが、**Safari（macOS / iOS WebKit）は `credentialless` に未対応**です。Safari を含む主要ブラウザ全体で動かす場合は `require-corp` を使用してください。
 
 ---
 
-## ホスティング環境別の設定方法
+## 環境別の設定方法
 
-### 1. Node.js / Express サーバー
+### 1. Vite (`vite.config.ts`)
 
-```javascript
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
-  next();
+開発サーバー（`vite`）と本番プレビュー（`vite preview`）の両方に設定します：
+
+```typescript
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
+  preview: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
 });
 ```
 
-### 2. Next.js (`next.config.js`)
+### 2. Cloudflare Pages / Netlify (`public/_headers`)
+
+ビルド出力のルートに配置されるよう、`public/_headers` ファイルを作成します：
+
+```text
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+```
+
+### 3. Next.js (`next.config.js`)
 
 ```javascript
 /** @type {import('next').NextConfig} */
@@ -62,11 +85,19 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
-### 3. ヘッダー変更ができない静的ホスティング（GitHub Pages 等）
+### 4. Node.js / Express サーバー
 
-GitHub Pages などの静的ホスティングサービスでは、カスタム HTTP レスポンスヘッダーを直接設定できません。
+```javascript
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Embedder-Policy", "require-corp");
+  next();
+});
+```
 
-このような環境では、クライアント側で Service Worker を介して分離ヘッダーを注入する **`coi-serviceworker`** を利用できます：
+### 5. ヘッダー変更ができない静的ホスティング（GitHub Pages 等）
+
+GitHub Pages のようにカスタム HTTP レスポンスヘッダーを設定できない環境では、Service Worker でクライアント側から分離ヘッダーを付与する **`coi-serviceworker`** を利用できます：
 
 1. `coi-serviceworker.js` をサイトのルートディレクトリに配置します。
 2. HTML の `<head>` 内に以下を追加します：
@@ -81,7 +112,4 @@ GitHub Pages などの静的ホスティングサービスでは、カスタム 
 
 ## WaSHI における実行時チェック
 
-WaSHI の Z3 ソルバーアダプターは、実行時にブラウザ環境を自動検査します。Cross-Origin Isolation が無効なブラウザ環境で Z3 が呼び出された場合、無応答でハングするのではなく、COOP/COEP ヘッダーまたは Service Worker が必要である旨を説明する明確なエラーメッセージとともに Promise を reject します。
-
-> [!TIP]
-> デフォルトの **HiGHS** ソルバーおよび **GLPK** ソルバーは `SharedArrayBuffer` や Cross-Origin Isolation を必要としません。標準的なブラウザ環境でそのまま動作します。
+WaSHI の Z3 アダプターは、ブラウザでの初期化前に `crossOriginIsolated` を自動検査します。Cross-Origin Isolation が無効な場合は無応答でハングするのではなく、COOP/COEP ヘッダーまたは Service Worker が必要である旨を示す明確なエラーで即座に reject します。

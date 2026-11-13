@@ -89,12 +89,27 @@ describe("Web Demo Showcase: Theory Articles TeX Mathematical Formulas", () => {
     }
   });
 
-  it("enforces modern engineering case study theme and avoids study-guide labels across theory articles", () => {
+  it("enforces Honshu two-color textbook theme and valid CSS token references across theory articles", () => {
     const css = fs.readFileSync(path.resolve("examples/web-demo/src/theory-theme.css"), "utf8");
-    expect(css).toContain("--color-bg-page: #f8fafc");
-    expect(css).toContain("--color-brand-primary: #4f46e5");
+    expect(css).toContain("--color-bg-page: #ffffff");
+    expect(css).toContain("--color-brand-primary: #c23b22");
+    expect(css).toContain("--color-brand-primary-ink: #a62c16");
+    expect(css).toContain("--color-brand-primary-soft: #fdf4f2");
     expect(css).not.toContain("M PLUS Rounded 1c");
     expect(css).not.toContain("border-style: dashed");
+
+    const rootBlockMatch = css.match(/:root\s*\{([\s\S]*?)\}/);
+    expect(rootBlockMatch, "Expected :root block in theory-theme.css").not.toBeNull();
+    const rootVars = new Set(
+      [...(rootBlockMatch?.[1] ?? "").matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((m) => m[1])
+    );
+    const allDefinedVars = new Set(
+      [...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((m) => m[1])
+    );
+
+    for (const m of css.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) {
+      expect(allDefinedVars.has(m[1]), `Undefined CSS variable ${m[1]} in theory-theme.css`).toBe(true);
+    }
 
     const forbiddenStudyGuideTokens = [
       "Chapter 01",
@@ -119,6 +134,9 @@ describe("Web Demo Showcase: Theory Articles TeX Mathematical Formulas", () => {
       for (const token of forbiddenStudyGuideTokens) {
         expect(html, `${relPath} should not contain study-guide token "${token}"`).not.toContain(token);
       }
+      for (const m of html.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) {
+        expect(rootVars.has(m[1]), `Undefined :root CSS variable ${m[1]} in ${relPath}`).toBe(true);
+      }
 
       for (const lang of ["en", "ja", "zh"]) {
         const localePath = path.join(htmlDir, "locales", `${lang}.json`);
@@ -128,6 +146,9 @@ describe("Web Demo Showcase: Theory Articles TeX Mathematical Formulas", () => {
             localeRaw,
             `${localePath} should not contain study-guide token "${token}"`
           ).not.toContain(token);
+        }
+        for (const m of localeRaw.matchAll(/var\(\s*(--[a-z0-9-]+)/gi)) {
+          expect(rootVars.has(m[1]), `Undefined :root CSS variable ${m[1]} in ${localePath}`).toBe(true);
         }
       }
     }

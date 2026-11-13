@@ -36,7 +36,7 @@ const m3 = new Model({ solver: "glpk" });
 
 ## Solver Guides
 
-- [HiGHS Guide](./highs.md): Web Worker multithreading, MIP tolerances, and QP solving.
+- [HiGHS Guide](./highs.md): Background Web Worker execution, MIP tolerances, and Convex QP solving.
 - [Z3 Guide](./z3.md): SMT assertions, logic modeling, and Unsat Core analysis.
 - [GLPK Guide](./glpk.md): GLPK adapter, GPL-3.0 licensing considerations, and browser usage.
 - [Custom Solvers](./custom-solver.md): Step-by-step developer tutorial for integrating proprietary or cloud REST solvers.

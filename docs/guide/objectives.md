@@ -25,60 +25,12 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 
 Calling `m.objective()` with no arguments returns the current objective expression (`LinExpr | QuadExpr`). If you omit setting an objective, the model defaults to minimizing `0`.
 
----
-
-## ⚖️ Practical Objective Patterns (Min-Max, Multi-Objective & MIP Stopping)
-
-### 1. Min-Max Fairness (Load Balancing & Bottleneck Minimization)
-Standard LP/MIP objectives must be linear or quadratic, so $\min \max_i (\text{load}_i)$ cannot be written with `Math.max(...)`. Instead, introduce an auxiliary ceiling variable `maxLoad` ($z$) and constrain every individual load to be at most $z$:
-
-$$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
-
-```typescript
-const workers = ["Alice", "Bob", "Carol"] as const;
-const hours = m.continuous(workers, { lb: 0, ub: 40 });
-const maxHours = m.continuous("max_hours", { lb: 0, ub: 40 });
-
-// Ensure every worker's workload is bounded by maxHours
-for (const w of workers) {
-  m.constraint(expr`${hours[w]} <= ${maxHours}`, `cap_${w}`);
-}
-m.constraint(expr`${hours.Alice} + ${hours.Bob} + ${hours.Carol} >= 60`, "total_work");
-
-// Minimizing maxHours balances the workload across all workers
-m.objective(minimize(maxHours));
-```
-
-*(Similarly, to **maximize the minimum** service level $\max \min_i u_i$, constrain $u_i \ge z$ for all $i$ and `maximize(z)`.)*
-
-### 2. Multi-Objective Optimization (Weighted Sum vs. Lexicographic Two-Stage)
-When optimizing competing goals—such as minimizing total shipping cost ($f_1$) while also minimizing delivery lead time ($f_2$)—two patterns are commonly used:
-
-- **Weighted Sum (Single Solve)**: Combine normalized terms into one objective, e.g., `minimize(expr`${cost} + 50 * ${leadTime}`)`. Keep weights within a reasonable numerical range ($10^{-3}$ to $10^5$) to preserve solver conditioning.
-- **Lexicographic / Hierarchical Two-Stage Solve**: When Objective 1 has strict priority over Objective 2, solve Stage 1 first, lock in the optimal (or near-optimal) primary value as a constraint, and then re-solve for Objective 2:
-
-```typescript
-// Stage 1: Minimize primary objective (total cost)
-m.objective(minimize(totalCost));
-await m.solve();
-const minCost = m.objectiveValue!;
-
-// Stage 2: Allow at most 1% cost increase while minimizing secondary objective (workload imbalance)
-m.constraint(expr`${totalCost} <= ${minCost * 1.01}`, "keep_near_min_cost");
-m.objective(minimize(maxHours));
-await m.solve();
-```
-
-### 3. Practical MIP Stopping Criteria (`relGap`, `absGap`, `timeLimit`)
-In combinatorial MIP models, solvers often discover a high-quality feasible solution within the first few seconds, but spend the remaining 95% of runtime proving that no slightly better solution exists in the branch-and-bound tree (**MIP tail-off**).
-
-For interactive or production workflows, combine `timeLimit` with a business-meaningful optimality tolerance:
-- **`relGap: 0.01`**: Stop as soon as the incumbent solution is proven to be within **1%** of the theoretical global optimum.
-- **`absGap: 100`**: Stop as soon as the absolute difference between the incumbent and the theoretical bound (`|objectiveValue - objectiveBound|`) is at most **\$100** (in your objective's native currency or units).
+> [!TIP]
+> For objective formulation patterns—such as **Min-Max / Max-Min load balancing**, **weighted-sum vs. lexicographic multi-objective optimization**, and **MIP stopping tolerances (`relGap` / `absGap`)**—see [Formulation Patterns & Optimization Tips](./formulation-tips.md#_4-multi-objective-mip-stopping-design).
 
 ---
 
-## 🚀 Solving the Model (`m.solve()` vs. `m.check()`)
+## Solving the Model (`m.solve()` vs. `m.check()`)
 
 WaSHI provides two asynchronous execution entrypoints:
 
@@ -114,7 +66,7 @@ You can also pass a solver name directly as the first argument: `await m.solve("
 
 ---
 
-## ⏱️ Real-Time Progress (`onProgress`) & Cancellation (`AbortSignal`)
+## Real-Time Progress (`onProgress`) & Cancellation (`AbortSignal`)
 
 For long-running MIP optimizations in interactive UIs, you can stream live branch-and-bound progress (`SolveProgressEvent`) and allow users to cancel the solve cleanly with `AbortController`:
 
@@ -160,7 +112,7 @@ console.log("Has incumbent:", m.hasPrimalSolution); // true if an incumbent was 
 
 ---
 
-## 📊 Reading Results, Bounds & Solver Status
+## Reading Results, Bounds & Solver Status
 
 After solving, query the status, optimal values, and MIP optimality bounds on the `Model`:
 
@@ -208,7 +160,7 @@ If an integer-feasible incumbent was found before hitting `timeLimit` or `signal
 
 ---
 
-## 🔄 Model Mutations & Execution Validity
+## Model Mutations & Execution Validity
 
 A `Model` instance keeps its solution state synchronized across mutations made through `Model` methods and `Model` / `Var` / `Constraint` property setters:
 

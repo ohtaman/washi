@@ -25,60 +25,12 @@ m.constraint(expr`2 * ${x} + 3 * ${y} <= 100`, "resource_limit");
 
 无参数调用 `m.objective()` 可读取当前的目标函数表达式（`LinExpr | QuadExpr`）。如果未设置目标函数，模型默认最小化常数 `0`。
 
----
-
-## ⚖️ 实用目标函数建模模式（Min-Max 负载均衡、多目标优化与 MIP 停止条件）
-
-### 1. Min-Max 公平性优化（负载均衡与瓶颈最小化）
-线性/二次规划的目标函数不能直接调用 `Math.max(...)`。若要最小化最大工作负荷 $\min \max_i (\text{load}_i)$，可引入辅助上限变量 `maxLoad`（$z$），约束每个个体的负荷不超过 $z$，然后最小化 $z$：
-
-$$\min z \quad \text{subject to} \quad \text{load}_i \le z \quad \forall i$$
-
-```typescript
-const workers = ["Alice", "Bob", "Carol"] as const;
-const hours = m.continuous(workers, { lb: 0, ub: 40 });
-const maxHours = m.continuous("max_hours", { lb: 0, ub: 40 });
-
-// 约束每位员工的工时不超过 maxHours
-for (const w of workers) {
-  m.constraint(expr`${hours[w]} <= ${maxHours}`, `cap_${w}`);
-}
-m.constraint(expr`${hours.Alice} + ${hours.Bob} + ${hours.Carol} >= 60`, "total_work");
-
-// 最小化 maxHours 即可在所有员工之间均衡分配工作量
-m.objective(minimize(maxHours));
-```
-
-*（同理，若要**最大化最低服务水平** $\max \min_i u_i$，只需对所有 $i$ 约束 $u_i \ge z$ 并设置 `maximize(z)`。）*
-
-### 2. 多目标优化（加权求和 vs. 词典序两阶段求解）
-当需要同时优化多个冲突目标（如最小化总成本 $f_1$ 与最小化最大工时 $f_2$）时，常用以下两种模式：
-
-- **加权求和（单次求解）**：量纲归一化后合并为单一目标，例如 `minimize(expr`${cost} + 50 * ${leadTime}`)`。注意将最大与最小系数之比控制在 $10^5\text{–}10^6$ 以内以保持数值稳定性。
-- **词典序（分层）两阶段求解**：当第一目标优先级严格高于第二目标时，先在第一阶段求解最优值 $f_1^*$，然后将 $f_1 \le f_1^*$（或允许 1% 退化的 $f_1 \le 1.01 f_1^*$）作为约束锁定，再切换为第二目标重新求解：
-
-```typescript
-// 第一阶段：最小化首要目标（总成本）
-m.objective(minimize(totalCost));
-await m.solve();
-const minCost = m.objectiveValue!;
-
-// 第二阶段：限制总成本增幅不超过 1%，在此前提下最小化次要目标（最大工时）
-m.constraint(expr`${totalCost} <= ${minCost * 1.01}`, "keep_near_min_cost");
-m.objective(minimize(maxHours));
-await m.solve();
-```
-
-### 3. 实战 MIP 停止准则 (`relGap`, `absGap`, `timeLimit`)
-在组合 MIP 问题中，求解器通常能在前几秒内找到高质量的可行解（Incumbent），但往往会耗费剩余 95% 的时间在分支定界树中证明不存在哪怕好 0.5% 的解（即 **MIP 长尾效应 / Tail-off**）。
-
-在生产环境或交互式应用中，建议将 `timeLimit` 与具有明确业务含义的最优性容差结合使用：
-- **`relGap: 0.01`**：一旦证明当前可行解与理论全局最优界的相对差距在 **1% 以内**，立即停止并返回。
-- **`absGap: 100`**：一旦当前可行解与理论对偶界的绝对差值（`|objectiveValue - objectiveBound|`）不超过 **\$100**（按目标函数的实际业务货币或单位计），立即停止并返回。
+> [!TIP]
+> 关于 **Min-Max / Max-Min 负载均衡**、**多目标优化（加权求和与词典序两阶段求解）** 以及 **MIP 停止间隙容差（`relGap` / `absGap`）设计**等建模技巧，请参见 [建模模式与优化技巧](./formulation-tips.md#multi-objective)。
 
 ---
 
-## 🚀 求解模型 (`m.solve()` vs. `m.check()`)
+## 求解模型 (`m.solve()` vs. `m.check()`)
 
 WaSHI 提供两个异步执行入口：
 
@@ -114,7 +66,7 @@ const status = await m.solve({
 
 ---
 
-## ⏱️ 实时进度回调 (`onProgress`) 与取消执行 (`AbortSignal`)
+## 实时进度回调 (`onProgress`) 与取消执行 (`AbortSignal`)
 
 在交互式 UI 中运行耗时较长的 MIP 优化时，您可以通过 `onProgress` 实时获取分支定界法的进度流（`SolveProgressEvent`），并借助 `AbortController` 让用户随时安全地中断求解：
 
@@ -160,7 +112,7 @@ console.log("Has incumbent:", m.hasPrimalSolution); // 若存在可用可行解�
 
 ---
 
-## 📊 读取结果、边界与求解器状态
+## 读取结果、边界与求解器状态
 
 求解完成后，可在 `Model` 实例上读取状态、最优值以及 MIP 最优性边界指标：
 
@@ -208,7 +160,7 @@ console.log(m.getValues({ x, y }));                       // { x: ..., y: ... }
 
 ---
 
-## 🔄 模型修改与解状态同步
+## 模型修改与解状态同步
 
 当通过 `Model` 方法以及 `Model` / `Var` / `Constraint` 的属性设置器修改模型时，`Model` 实例会自动同步并维护其解状态的一致性：
 

@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Convex Quadratic Programming (QP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=portfolio_qp">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">Source Code</a></li></ul> |
+| Convex Quadratic Programming (QP) | HiGHS (default) | `m.continuous()`, `m.constraint()`, `expr`, `minimize`, `dot`, `QuadExpr` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=portfolio_qp">Open in Playground</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/03-portfolio-qp.ts">Source Code</a></li></ul> |
 
 The Markowitz mean-variance portfolio optimization problem is the foundation of modern quantitative finance: allocate capital across risky assets to minimize overall portfolio variance (risk) subject to achieving a minimum required expected return.
 
@@ -26,7 +26,7 @@ where $\boldsymbol{\Sigma}$ is the positive semi-definite asset return covarianc
 <CodeRunner preset="portfolio_qp">
 
 ```typescript
-import { Model, QuadExpr, sum, dot, minimize, expr } from "@ohtaman/washi";
+import { Model, QuadExpr, dot, minimize, expr } from "@ohtaman/washi";
 
 async function solvePortfolio() {
   const m = new Model("PortfolioQP");
@@ -48,7 +48,7 @@ async function solvePortfolio() {
   const w = m.continuous(assets, { lb: 0, ub: 1 });
 
   // 1. Budget constraint: sum(w_i) == 1.0 (100%)
-  m.constraint(expr`${sum(assets, (a) => w[a])} == 1.0`, "budget_limit");
+  m.constraint(expr`sum(${w}) == 1.0`, "budget_limit");
 
   // 2. Expected return constraint: sum(r_i * w_i) >= 8.5%
   const retMap = Object.fromEntries(assets.map((a, i) => [a, expectedReturns[i]]));

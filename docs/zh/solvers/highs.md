@@ -1,6 +1,6 @@
 # HiGHS 求解器引擎
 
-**HiGHS** 是由爱丁堡大学研发的高性能数理优化软件（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)），公认为线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）领域的顶尖开源求解器。
+**HiGHS** 是发源于爱丁堡大学的高性能数理优化软件（[highs.dev](https://highs.dev/) · [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)），公认为线性规划（LP）、混合整数规划（MIP）和凸二次规划（QP）领域的顶尖开源求解器。
 
 在 `@ohtaman/washi` 中，HiGHS 通过直接从官方上游源码（[ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)）编译的 WebAssembly 以及原生 C API（`highs_c_api.h`）驱动程序运行，无需依赖任何第三方 npm 包装器，在 Node.js、Web Worker 和浏览器环境中提供零配置执行能力。
 
@@ -10,7 +10,7 @@
 
 - **内置且零配置**：直接打包由官方 HiGHS 源码编译的 WebAssembly 分发包，零外部运行时依赖，无需安装额外依赖或进行 C++ 本地编译。
 - **宽松的 MIT 许可证**：核心包 100% 满足商业友好授权要求。
-- **Web Worker 后台多线程**：在浏览器环境中自动将高强度计算卸载至专用后台 Web Worker，避免阻塞 UI 渲染主线程。
+- **Web Worker 后台执行**：在浏览器环境中自动将计算卸载至专用后台 Web Worker，避免阻塞 UI 渲染主线程。
 - **支持热启动（`initialValue`）**：支持将变量的初始值提示（`initialValue`）传递给 HiGHS 的 `setSolution` 进行热启动。
 - **高速 WASM 执行**：直接编译的 32 位 WebAssembly 二进制产物以接近原生的速度运行。
 
@@ -24,14 +24,14 @@ WaSHI 直接将官方 HiGHS C++ 源码编译为 WebAssembly（`highs.wasm`），
 
 - **进度监控与中途取消（已支持）**：
   通过 HiGHS 内部的日志与中断钩子，WaSHI 提供实时进度回调（`onProgress`），并支持通过标准 `AbortSignal` 进行协作式中途取消。
-- **动态割平面 / 惰性约束（受 WASM 包装层限制暂不支持）**：
-  上游 WebAssembly 包装层出于 WASM ↔ JS 边界同步内存安全考虑，未公开底层原生回调类型 8（MIP lazy constraints）。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请采用**迭代求解循环（求解 $\to$ 检测违规 $\to$ `model.constraint(...)` $\to$ 重新求解）**的割平面法模式。
+- **动态割平面 / 惰性约束（WASM 驱动暂未公开）**：
+  WaSHI 的 HiGHS WebAssembly C API 驱动目前绑定了日志、进度、中断与可行解（incumbent）回调，尚未跨 WASM ↔ JS 边界公开搜索树内的惰性约束（lazy constraints）或用户割平面（user cuts）回调。对于旅行商问题（TSP）的子回路消除或 Benders 分解等场景，请使用 [`await m.solveBenders({ subproblem })`](../guide/decomposition.md)（或手动外层割平面循环：求解 $\to$ 检测违规 $\to$ `model.constraint(...)` $\to$ 重新求解），通过外层迭代分离割平面收敛到相同的精确最优解。
 
 ### WebAssembly 资源管理与按需构建
 
 HiGHS 的 WebAssembly 二进制（`public/highs.wasm`）与运行时（`runtime.js`）通过 `highs.config.json` 结合 SHA-256 校验和进行版本控制：
 - **高效一致性验证**：构建和分发测试流程会自动运行 `node scripts/ensure-highs-wasm.mjs`，在打包前于毫秒内验证本地资源。
-- **按需 Release 下载**：当资源缺失或版本升级时，`ensure-highs-wasm.mjs` 会自动从官方 GitHub Release 资产中下载已验证的二进制包。
+- **按需 Release 下载**：当资源缺失或版本升级时，`ensure-highs-wasm.mjs` 会自动从 WaSHI 的 GitHub Release 资产中下载已验证的二进制包。
 - **从源码编译**：升级 HiGHS 或修改编译选项时，在安装有 Emscripten SDK（`emcc`）、CMake 与 Ninja 的环境下运行 `npm run build:highs-wasm` 即可本地重新构建，合并后运行 `gh release upload highs-v1.15.1 public/highs.wasm src/modeler/solvers/highs/runtime.js --clobber` 同步 Release 资产（亦可通过 `.github/workflows/build-wasm.yml` 自动构建与上传，并将 `highs-wasm-assets` 产物中的 `highs.config.json` 等文件提交至仓库）。
 
 ---
@@ -61,7 +61,7 @@ const open = model.binary("open");
 ```
 
 ### 3. 凸二次规划 (Convex QP)
-在线性约束条件下最小化或最大化二次目标函数：
+在线性约束条件下求解连续变量的凸二次目标函数：
 
 ```typescript
 // 使用 expr 模板统一最小化风险/方差：
@@ -71,6 +71,9 @@ model.objective(minimize(expr`0.5 * ${x}^2 + 0.5 * ${y}^2`));
 // const quadObj = x.mul(x).mul(0.5).add(y.mul(y).mul(0.5));
 // model.objective(minimize(quadObj));
 ```
+
+> [!NOTE]
+> **仅支持全连续变量的凸 QP**：HiGHS 求解模型中**所有变量均为连续变量（`m.continuous`）**的凸二次规划（最小化时要求二次项矩阵 $\mathbf{Q}$ 半正定，最大化时要求半负定）。不支持包含任何 `Integer`、`Binary` 或 `BoolVar` 变量的二次目标模型（混合整数二次规划 **MIQP**）以及二次约束（**QCP**）——如需在 MILP 中线性化二元变量乘积，请参阅[建模模式与优化技巧](../guide/formulation-tips.md)。
 
 ---
 
@@ -121,3 +124,13 @@ const syncModel = new Model({
   solver: new HighsSolver({ useWorker: false }),
 });
 ```
+
+---
+
+## 参考链接与学术引用
+
+- **官方网站**: [https://highs.dev/](https://highs.dev/)
+- **官方文档**: [https://ergo-code.github.io/HiGHS/](https://ergo-code.github.io/HiGHS/)
+- **源码仓库**: [ERGO-Code/HiGHS](https://github.com/ERGO-Code/HiGHS)（MIT License）
+- **学术引用（Citation）**：如果在学术论文或技术报告中引用 HiGHS，请参考 HiGHS 开发团队推荐的基础论文：
+  > Q. Huangfu and J. A. J. Hall, *"Parallelizing the dual revised simplex method"*, Mathematical Programming Computation, 10 (1), 119–142, 2018. DOI: [10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)

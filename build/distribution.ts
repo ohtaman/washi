@@ -128,7 +128,8 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
       if (id === factoryId) return `import { getAssetUrl } from ${JSON.stringify(assetsId)};
         export function createHighsWorker() {
           const url = getAssetUrl("highs-worker.js");
-          if (new URL(url).origin === window.location.origin) return new Worker(url, { type: "module" });
+          const effectiveOrigin = typeof window.origin === "string" ? window.origin : window.location?.origin;
+          if (new URL(url).origin === effectiveOrigin) return new Worker(url, { type: "module" });
           const bootstrap = URL.createObjectURL(new Blob(["import " + JSON.stringify(url) + ";"], { type: "text/javascript" }));
           try {
             const worker = new Worker(bootstrap, { type: "module" });

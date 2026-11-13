@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - 适用于数理优化与约束编程的代数建模器 (TypeScript &amp; JavaScript)" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - TypeScript 数理优化建模器" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>适用于数理优化与约束编程的代数建模器</strong></p>
+  <p><strong>TypeScript 数理优化建模器</strong></p>
   <p>
     <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • SMT逻辑约束与冲突诊断</em>
   </p>
@@ -16,8 +16,8 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/zh/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
-    <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
+    <a href="https://washi.ohtaman.dev/zh/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
@@ -36,10 +36,10 @@
 
 ## 📚 文档与链接
 
-- **[在线文档](https://ohtaman.github.io/washi/zh/)**：建模指南、求解器说明与运行环境配置
-- **[案例展示](https://ohtaman.github.io/washi/zh/showcase/) & [浏览器演示](https://ohtaman.github.io/washi/demo/)**：在线体验交互式应用与浏览器建模演练场
-- **[示例目录](https://ohtaman.github.io/washi/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
-- **[AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) & [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md)**：面向 AI 编程助手的速查指南与技能定义
+- **[在线文档](https://washi.ohtaman.dev/zh/)**：建模指南、求解器说明与运行环境配置
+- **[案例展示](https://washi.ohtaman.dev/zh/showcase/) & [浏览器演示](https://washi.ohtaman.dev/demo/)**：在线体验交互式应用与浏览器建模演练场
+- **[示例目录](https://washi.ohtaman.dev/zh/examples/)**：各类问题的建模示例与可运行源码（[`examples/`](examples/README.md)）
+- **[AI 编程助手快速参考](docs/zh/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**：面向 AI 编程助手的速查指南、技能定义与机器可读文档
 
 ---
 
@@ -93,7 +93,7 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 使用 `dot` / `sum` 组合线性表达式，并通过 `m.indicator()` 表达条件规则：
 
 ```ts
-import { Model, dot, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
@@ -106,14 +106,14 @@ const costs = {
 const open = m.binary(factories);
 const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// 若东京工厂关闭 (open["Tokyo"] == 0)，发往 StoreA 的运输量必须为 0
-m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+// 若东京工厂关闭 (open["Tokyo"] == 0)，从东京工厂发出的总运输量必须为 0
+m.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
 m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
 
-m.objective(minimize(dot(costs, ship)));
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("运输方案:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. 凸二次规划 (QP)
@@ -142,7 +142,7 @@ console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 - **Z3**：提取精确的 **SMT 不可满足核心**（`res.unsatCore` / `res.conflicts`），即相互矛盾的约束子集。
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 // import "@ohtaman/washi/solvers/z3"; // 可选：使用 Z3 提取精确 SMT unsatCore
 
 const m = new Model("StaffingRules");
@@ -152,7 +152,7 @@ const rush = m.bool("rush");
 
 m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
 m.constraint(expr`${budget} <= 50000`, "budget_cap"); // 冲突: 8人 * $8,000 > $50,000
 m.constraint(expr`${engineers} >= 1`, "min_staff");   // 无关规则
 
@@ -189,6 +189,17 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ## 🤝 参与开发与贡献
 
 关于本地开发、运行测试与基准测试、重新构建 WebAssembly 资源以及发布流程，请参阅 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+
+---
+
+## 🙏 致谢
+
+WaSHI 的诞生离不开数理优化与自动推理开源社区的卓越工作：
+
+- **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— 发源于爱丁堡大学、由 Julian Hall、Qi Huangfu、Ivet Galabova、Leona Gottwald、Michael Feldmeier 及社区贡献者共同打造的高性能开源 LP / MIP / 凸 QP 求解器，驱动了 WaSHI 的内置默认引擎（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
+- **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— 由 Microsoft Research 研发，驱动了 WaSHI 可选的 SMT 可满足性判定与精确 `unsatCore` 冲突诊断插件。
+- **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — 驱动了 WaSHI 可选的 GPL-3.0 LP / MIP 求解器插件。
+- **[PuLP](https://github.com/coin-or/pulp)** — 启发了 WaSHI 声明式代数建模 API 的设计。
 
 ---
 

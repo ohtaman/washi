@@ -1,6 +1,6 @@
 {
   "label": "简体中文",
-  "titleTemplate": ":title | WaSHI — 适用于数理优化与约束编程的代数建模器",
+  "titleTemplate": ":title | WaSHI — TypeScript 数理优化建模器",
   "description": "适用于 TypeScript 与 JavaScript 的数理优化与约束编程代数建模器（LP, MIP, 凸QP, SMT）",
   "nav": [
     {
@@ -15,9 +15,9 @@
       "text": "快速入门",
       "items": [
         { "text": "安装与入门", "link": "/zh/getting-started/" },
-        { "text": "AI 编程助手快速参考", "link": "/zh/getting-started/ai-agents" },
         { "text": "运行时环境配置", "link": "/zh/getting-started/runtimes" },
-        { "text": "跨源隔离 (COOP/COEP)", "link": "/zh/getting-started/cross-origin" }
+        { "text": "跨源隔离 (COOP/COEP)", "link": "/zh/getting-started/cross-origin" },
+        { "text": "AI 编程助手快速参考", "link": "/zh/getting-started/ai-agents" }
       ]
     },
     {
@@ -28,7 +28,8 @@
         { "text": "约束条件", "link": "/zh/guide/constraints" },
         { "text": "目标函数与求解方向", "link": "/zh/guide/objectives" },
         { "text": "不可行冲突诊断 (Unsat Core)", "link": "/zh/guide/unsat-core" },
-        { "text": "分解方法 (列生成与Benders)", "link": "/zh/guide/decomposition" }
+        { "text": "分解方法 (列生成与Benders)", "link": "/zh/guide/decomposition" },
+        { "text": "建模模式与优化技巧", "link": "/zh/guide/formulation-tips" }
       ]
     },
     {

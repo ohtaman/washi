@@ -2,9 +2,9 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/washi-header-dark.png">
     <source media="(prefers-color-scheme: light)" srcset="./assets/washi-header-light.png">
-    <img alt="WaSHI - Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming" src="./assets/washi-header-light.png" width="420" />
+    <img alt="WaSHI - Mathematical Optimization Modeler in TypeScript" src="./assets/washi-header-light.png" width="420" />
   </picture>
-  <p><strong>Algebraic Modeler for Mathematical Optimization &amp; Constraint Programming</strong></p>
+  <p><strong>Mathematical Optimization Modeler in TypeScript</strong></p>
   <p>
     <em>Linear Programming (LP) • Mixed-Integer Programming (MIP) • Convex Quadratic Programming (QP) • SMT &amp; Conflict Diagnosis</em>
   </p>
@@ -16,8 +16,8 @@
   <p>
     <a href="https://www.npmjs.com/package/@ohtaman/washi"><img src="https://img.shields.io/npm/v/@ohtaman/washi?color=crimson&label=npm" alt="npm version" /></a>
     <a href="https://github.com/ohtaman/washi/actions/workflows/distribution.yml"><img src="https://github.com/ohtaman/washi/actions/workflows/distribution.yml/badge.svg" alt="CI Status" /></a>
-    <a href="https://ohtaman.github.io/washi/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
-    <a href="https://ohtaman.github.io/washi/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
+    <a href="https://washi.ohtaman.dev/"><img src="https://img.shields.io/badge/docs-online-blue" alt="docs" /></a>
+    <a href="https://washi.ohtaman.dev/demo/"><img src="https://img.shields.io/badge/demo-playground-brightgreen" alt="live demo" /></a>
     <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="license" /></a>
   </p>
 </div>
@@ -36,10 +36,10 @@
 
 ## 📚 Documentation & Links
 
-- **[Documentation](https://ohtaman.github.io/washi/)**: Modeling guide, solver references, and deployment guides
-- **[Interactive Showcase](https://ohtaman.github.io/washi/showcase/) & [Browser Playground](https://ohtaman.github.io/washi/demo/)**: Try live optimization apps and edit models in the browser
-- **[Examples](https://ohtaman.github.io/washi/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
-- **[AI Agent Guide](docs/getting-started/ai-agents.md) & [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md)**: Compact reference and workflow skill for AI coding agents
+- **[Documentation](https://washi.ohtaman.dev/)**: Modeling guide, solver references, and deployment guides
+- **[Interactive Showcase](https://washi.ohtaman.dev/showcase/) & [Browser Playground](https://washi.ohtaman.dev/demo/)**: Try live optimization apps and edit models in the browser
+- **[Examples](https://washi.ohtaman.dev/examples/)**: Problem recipes and runnable Node.js / browser scripts ([`examples/`](examples/README.md))
+- **[AI Agent Guide](docs/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: Compact reference, workflow skill, and machine-readable docs for AI coding agents
 
 ---
 
@@ -93,7 +93,7 @@ Pass `{ solver: "z3" }` or `{ solver: "glpk" }` to `new Model(...)`, `m.solve(..
 Combine indexed variables with `dot` / `sum` and express conditional rules with `m.indicator()`:
 
 ```ts
-import { Model, dot, expr, minimize } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 const m = new Model("TransportPlanning");
 const factories = ["Tokyo", "Osaka"];
@@ -106,14 +106,14 @@ const costs = {
 const open = m.binary(factories);
 const ship = m.continuous(factories, stores, { lb: 0, ub: 500 });
 
-// If Tokyo is closed (open["Tokyo"] == 0), shipment from Tokyo to StoreA must be 0
-m.indicator(open["Tokyo"], expr`${ship["Tokyo"]["StoreA"]} <= 0`, { activeValue: 0 });
+// If Tokyo is closed (open["Tokyo"] == 0), total shipment from Tokyo must be 0
+m.indicator(open["Tokyo"], expr`sum(${ship["Tokyo"]}) <= 0`, { activeValue: 0 });
 m.constraint(expr`${ship["Tokyo"]["StoreA"]} + ${ship["Osaka"]["StoreA"]} >= 100`, "demand_A");
 
-m.objective(minimize(dot(costs, ship)));
+m.objective(minimize(expr`dot(${costs}, ${ship})`));
 await m.solve();
 
-console.log("Shipments:", m.getValues(ship));
+console.log("Tokyo -> StoreA:", ship["Tokyo"]["StoreA"].value);
 ```
 
 ### 2. Convex Quadratic Programming (QP)
@@ -142,7 +142,7 @@ Express logical implications and diagnose why a model is infeasible:
 - **Z3**: Extracts an **unsatisfiable core** (`res.unsatCore` / `res.conflicts`)—a mutually contradictory subset of constraints.
 
 ```ts
-import { Model, expr } from "@ohtaman/washi";
+import { Model, implies, expr } from "@ohtaman/washi";
 // import "@ohtaman/washi/solvers/z3"; // Optional: for exact SMT unsatCore
 
 const m = new Model("StaffingRules");
@@ -152,7 +152,7 @@ const rush = m.bool("rush");
 
 m.constraint(expr`8000 * ${engineers} <= ${budget}`, "budget_limit");
 m.constraint(rush, "rush_required");
-m.constraint(rush.implies(engineers.ge(8)), "rush_staffing");
+m.constraint(implies(rush, expr`${engineers} >= 8`), "rush_staffing");
 m.constraint(expr`${budget} <= 50000`, "budget_cap"); // Conflict: 8 * $8,000 > $50,000
 m.constraint(expr`${engineers} >= 1`, "min_staff");   // Unrelated rule
 
@@ -189,6 +189,17 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for local development setup, running tests and benchmarks, rebuilding WebAssembly assets, and the release workflow.
+
+---
+
+## 🙏 Acknowledgments
+
+WaSHI stands on the shoulders of the open-source mathematical optimization and automated reasoning communities:
+
+- **[HiGHS](https://highs.dev/)** ([`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)) — High-performance open-source optimization software for LP, MIP, and Convex QP initiated at the University of Edinburgh by Julian Hall, Qi Huangfu, Ivet Galabova, Leona Gottwald, Michael Feldmeier, and contributors, which powers WaSHI's built-in default solver (*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)).
+- **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)** ([`z3-solver`](https://www.npmjs.com/package/z3-solver)) — Developed at Microsoft Research, powering WaSHI's optional SMT satisfiability and exact `unsatCore` conflict diagnosis plugin.
+- **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — Powering WaSHI's optional GPL-3.0 LP/MIP solver plugin.
+- **[PuLP](https://github.com/coin-or/pulp)** — Inspiring WaSHI's declarative algebraic modeling ergonomics.
 
 ---
 

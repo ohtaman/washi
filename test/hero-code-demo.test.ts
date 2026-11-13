@@ -377,7 +377,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
   });
 
   it("defers HeroCodeDemo.vue execution until Run click and transitions cleanly across running, live output, locale switch, and error/retry states", async () => {
-    vi.stubGlobal("window", { location: { origin: "https://ohtaman.github.io" } });
+    vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
 
     const lang = ref("en-US");
     const mockHighlighted: HeroHighlightedByLocale = {
@@ -415,7 +415,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(root.findByClass("hero-console-pre")?.textContent).toBe(HERO_INITIAL_LOGS.join("\n"));
 
       const playgroundLink = root.findByClass("playground-link")!;
-      expect(playgroundLink.props.href).toBe(`/washi/demo/?preset=${HERO_PRESET_ID}`);
+      expect(playgroundLink.props.href).toBe(`/demo/?preset=${HERO_PRESET_ID}`);
       expect(playgroundLink.props.target).toBe("_self");
 
       // 2. Reactive locale switch (EN -> JA -> ZH -> JA) updates UI without invoking solver
@@ -510,7 +510,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
   });
 
   it("executes live HiGHS solver end-to-end when clicking Run in HeroCodeDemo.vue with zero solver calls before click", async () => {
-    vi.stubGlobal("window", { location: { origin: "https://ohtaman.github.io" } });
+    vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
     const solveSpy = vi.spyOn(Model.prototype, "solve");
 
     const HeroCodeDemo = compileVueSfc(
@@ -548,7 +548,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
   });
 
   it("mounts CodeRunner.vue symmetrically: defers execution by default, honors autorun, and renders slot output and errors", async () => {
-    vi.stubGlobal("window", { location: { origin: "https://ohtaman.github.io" } });
+    vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
     const runSnippetMock = vi.fn<(rawCode: string) => Promise<SnippetRunResult>>();
 
     const CodeRunner = compileVueSfc(
@@ -571,7 +571,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       // Lazy by default: zero calls and output panel hidden before click
       expect(runSnippetMock).not.toHaveBeenCalled();
       expect(root.findByClass("runner-output-panel")).toBeNull();
-      expect(root.findByClass("playground-link")?.props.href).toBe("/washi/demo/?preset=production");
+      expect(root.findByClass("playground-link")?.props.href).toBe("/demo/?preset=production");
 
       runSnippetMock.mockResolvedValueOnce({
         logs: ["hello washi"],

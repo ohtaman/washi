@@ -27,7 +27,7 @@ export default {
     if (typeof window !== "undefined") {
       router.onBeforeRouteChange = (to) => {
         const url = new URL(to, window.location.origin);
-        if (/^(?:\/washi)?\/(?:demo|apps|games)(?:\/|$)/.test(url.pathname)) {
+        if (/^\/(?:demo|apps|games)(?:\/|$)/.test(url.pathname)) {
           const normalizedPath =
             /\.[a-z0-9]+$/i.test(url.pathname) || url.pathname.endsWith("/")
               ? url.pathname
@@ -47,7 +47,7 @@ export default {
           const href = link.getAttribute("href");
           if (!href) return;
           if (
-            /^(?:https?:\/\/[^/]+)?(?:\/washi)?\/(?:demo|apps|games)(?:\/|$)/.test(href) &&
+            /^(?:https?:\/\/[^/]+)?\/(?:demo|apps|games)(?:\/|$)/.test(href) &&
             !link.hasAttribute("target")
           ) {
             link.setAttribute("target", "_self");

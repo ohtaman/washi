@@ -2,7 +2,7 @@
 
 | 问题类别 | 求解器 | 核心 API | 链接 |
 | :--- | :--- | :--- | :--- |
-| 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://ohtaman.github.io/washi/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
+| 混合整数规划 (MIP) | HiGHS (默认) | `m.binary()`, `m.constraint()`, `m.indicator()`, `expr`, `minimize` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=cart_coupon">在演练场中打开</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/12-ecommerce-coupon-optimizer.ts">源代码</a></li></ul> |
 
 现代电商结算页面通常包含复杂的促销规则：最低消费门槛、特定品类折扣、可叠加与互斥（不可叠加）优惠券，以及每笔订单的最大用券数量限制。直接在浏览器端（或边缘节点 Worker）运行优化求解器，可以让结算 UI 自动为用户匹配最优的优惠券组合——甚至在跨过满减门槛能降低实付总额时，智能推荐一件低价“凑单”商品。
 
@@ -31,7 +31,7 @@
 <CodeRunner preset="cart_coupon">
 
 ```typescript
-import { Model, sum, minimize, expr } from "@ohtaman/washi";
+import { Model, minimize, expr } from "@ohtaman/washi";
 
 async function optimizeCheckoutCart() {
   const m = new Model("CartCouponOptimizer");
@@ -52,21 +52,22 @@ async function optimizeCheckoutCart() {
 
   // 每张优惠券对应的 0-1 决策变量
   const useCoupon = m.binary(coupons.map((c) => c.id));
+  const discounts = Object.fromEntries(coupons.map((c) => [c.id, c.discount]));
 
-  const merchSpend = addUsbCable.mul(usbCablePrice).add(baseCartSubtotal);
-  const techSpend  = addUsbCable.mul(usbCablePrice).add(baseTechSubtotal);
+  const merchSpend = expr`${baseCartSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
+  const techSpend  = expr`${baseTechSubtotal} + ${usbCablePrice} * ${addUsbCable}`;
 
   // 1. 指示符约束 (Indicator)：若 useCoupon[id] == 1，则必须满足最低消费门槛
   // 省略 M 时，WaSHI 会根据变量边界自动推导最紧凑的 Big-M
   for (const cpn of coupons) {
     if (cpn.minCart > 0) {
-      m.indicator(useCoupon[cpn.id], merchSpend.ge(cpn.minCart), {
+      m.indicator(useCoupon[cpn.id], expr`${merchSpend} >= ${cpn.minCart}`, {
         activeValue: 1,
         name: `min_spend_${cpn.id}`,
       });
     }
     if (cpn.minTech > 0) {
-      m.indicator(useCoupon[cpn.id], techSpend.ge(cpn.minTech), {
+      m.indicator(useCoupon[cpn.id], expr`${techSpend} >= ${cpn.minTech}`, {
         activeValue: 1,
         name: `min_tech_${cpn.id}`,
       });
@@ -74,21 +75,14 @@ async function optimizeCheckoutCart() {
   }
 
   // 2. 不可叠加（互斥）优惠券之间最多只能选用 1 张
-  const exclusiveCoupons = coupons.filter((c) => !c.stackable);
-  m.constraint(
-    expr`${sum(exclusiveCoupons, (c) => useCoupon[c.id])} <= 1`,
-    "at_most_one_exclusive"
-  );
+  const exclusiveVars = coupons.filter((c) => !c.stackable).map((c) => useCoupon[c.id]);
+  m.constraint(expr`sum(${exclusiveVars}) <= 1`, "at_most_one_exclusive");
 
   // 3. 每笔订单最多使用 2 张优惠券
-  m.constraint(
-    expr`${sum(coupons, (c) => useCoupon[c.id])} <= 2`,
-    "max_two_coupons"
-  );
+  m.constraint(expr`sum(${useCoupon}) <= 2`, "max_two_coupons");
 
   // 目标函数：最小化最终应付净额 (商品总额 - 折扣总额)
-  const totalDiscount = sum(coupons, (c) => useCoupon[c.id].mul(c.discount));
-  m.objective(minimize(merchSpend.sub(totalDiscount)));
+  m.objective(minimize(expr`${merchSpend} - dot(${discounts}, ${useCoupon})`));
 
   const status = await m.solve();
   console.log(`Status: ${status}, Optimal Net Payable: $${m.objectiveValue}`);

@@ -1,134 +1,125 @@
-# 高级分解方法与最佳实践（列生成法与 Benders 分解）
+# 分解方法 (`solveColumnGeneration` & `solveBenders`)
 
-在混合整数规划（MIP）中，对称性或耦合约束等结构特征可能导致单体建模（Monolithic Formulation）的分支定界搜索树过大，从而影响求解速度。
-WaSHI 提供了分解编排器（`master.solveColumnGeneration` 与 `master.solveBenders`）以及用于读取对偶信息和动态修改模型的底层原语。
+当混合整数规划（MIP）模型包含指数级数量的候选方案或具有两阶段耦合结构时，WaSHI 提供了两个高级分解编排器——`master.solveColumnGeneration()` 与 `master.solveBenders()`——以及用于读取对偶信息和动态修改模型的底层原语。
 
----
-
-## 为什么需要分解法？（单体 MIP 的瓶颈）
-
-单体 MIP 建模在以下两类问题结构中容易遇到瓶颈：
-
-| 问题结构与特征 | 单体 MIP 瓶颈 | 分解方法 | WaSHI API |
-| :--- | :--- | :--- | :--- |
-| **对称性与松弛界较弱**<br>*(下料问题 Cutting Stock、车辆路径 VRP、排班/机组轮班)* | 存在大量对称排列且连续松弛界较弱，导致分支定界搜索树扩大。 | **列生成法**<br>*(Dantzig-Wolfe 分解)* | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) |
-| **耦合变量与多阶段决策结构**<br>*(旅行商问题/TSP、两阶段选址配送、两阶段随机规划)* | 一阶段主决策与大量子场景或运营变量耦合，导致矩阵规模增大。 | **Benders 分解**<br>*(Benders 割平面法)* | [`master.solveBenders()`](#benders-分解-solvebenders) |
+| 分解方法 | WaSHI 编排器 | 典型适用场景 |
+| :--- | :--- | :--- |
+| **列生成法** *(Dantzig-Wolfe 分解)* | [`master.solveColumnGeneration()`](#列生成法-solvecolumngeneration) | 切割方案、配送路线或排班组合数量呈指数增长的问题（如下料问题 Cutting Stock、车辆路径 VRP、机组排班）。 |
+| **Benders 分解** *(及延迟割平面)* | [`master.solveBenders()`](#benders-分解-solvebenders) | 含耦合决策变量的两阶段问题或延迟约束分离（如设施选址＋调度、两阶段随机规划、TSP 子回路消除）。 |
 
 ---
 
 ## 基础原语
 
-WaSHI 提供细粒度的建模原语，用于获取对偶信息与动态修改模型：
+分解编排器内部使用的四个底层原语也可直接用于编写自定义迭代算法：
 
-### 1. 约束对偶值（`dual`）
-求解线性规划（LP）后，可获取约束右端常数项（RHS）变化时的边际效益：
+### 1. 约束对偶值 (`c.dual`)
+求解连续线性规划（LP）后，读取每条约束右端项（RHS）每变动 1 单位对目标函数的边际影响（影子价格）：
 
 ```typescript
+import { Model, expr, maximize } from "@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0 });
+const y = m.continuous("y", { lb: 0 });
+
+m.objective(maximize(expr`3 * ${x} + 2 * ${y}`));
 const c = m.constraint(expr`${x} + ${y} <= 10`, "capacity");
 await m.solve();
 
-console.log(c.dual); // 对偶变量值 / 影子价格
-console.log(m.solution?.duals.capacity);
+console.log(c.dual);                    // 对偶值 / 影子价格
+console.log(m.solution?.duals.capacity); // 按约束名称读取
 ```
 
-### 2. 连续 LP 松弛求解（`model.relax()`）
-分解算法依赖连续松弛的对偶变量。`model.relax()` 会在变量界限内临时将所有 `Integer` 和 `Binary` 决策变量松弛为连续变量进行求解：
+### 2. 连续 LP 松弛求解 (`m.relax()`)
+`m.relax()` 会在 `[lb, ub]` 边界内临时将所有 `Integer` 与 `Binary` 变量松弛为连续变量求解 LP，并将影子价格填充到 `m.solution.duals`：
 
 ```typescript
-// 求解 LP 松弛并提取影子价格至 m.solution.duals
+// 求解连续 LP 松弛并填充 m.solution.duals
 const status = await m.relax();
-console.log("理论对偶界限:", m.objectiveValue);
+console.log("LP 松弛目标界:", m.objectiveValue);
 ```
 
-### 3. 动态列注入（`model.addColumn()`）
-单次调用即可同时创建新决策变量、设置目标函数系数并绑定到既有约束矩阵：
+### 3. 动态列注入 (`m.addColumn()`)
+在单次调用中创建新决策变量、设置其目标函数系数，并将非零系数注入既有命名约束中：
 
 ```typescript
 const col = m.addColumn({
   name: "pattern_1",
-  type: "Integer", // 或 "Continuous"
+  type: "Integer", // 或 "Continuous" / "Binary"
   lb: 0,
   cost: 1, // 目标函数系数
   coefficients: {
-    demand_itemA: 2,
-    demand_itemB: 1,
+    capacity: 2,
   },
 });
 ```
 
-### 4. 约束项动态修改（`addTerm` / `setTerm`）
-动态增减或修改既有约束中特定变量的系数：
+### 4. 动态修改约束项 (`c.addTerm()` / `c.setTerm()`)
+动态增减或覆盖既有线性约束中某个变量的系数：
 
 ```typescript
-const c = m.getConstraintByName("budget")!;
-c.addTerm(newVar, 5); // 将 newVar 的系数增加 5
-c.setTerm(newVar, 0); // 设为 0 时安全移除该项
+const extra = m.continuous("extra", { lb: 0 });
+const budget = m.constraint(expr`${x} + ${y} <= 20`, "budget");
+
+budget.addTerm(extra, 5); // 在左端项增加 +5 * extra
+budget.setTerm(extra, 0); // 设为 0 可将该变量从约束中移除
 ```
 
 ---
 
-## 列生成法（`solveColumnGeneration`）
+## 列生成法 (`solveColumnGeneration`)
 
-列生成法从包含少量初始列的**受限主问题（Restricted Master Problem, RMP）**开始，自动循环以下流程：
-1. 通过 `master.relax()` 求解受限主问题的连续 LP 松弛。
-2. 依据约束对偶值（影子价格）求解定价子问题。
-3. 寻找检验数（Reduced Cost）为负的改进列（$\bar{c} = \text{cost} - \sum \pi_i a_i < 0$）并动态加入主问题。
-4. 重复直至无法找到新列。
-5. 最终求解含全部生成列的整数规划（`finalizeAsMIP`，默认 `true`），得到精确整数解。
+`master.solveColumnGeneration(options)` 从包含少量可行初始列的**受限主问题（Restricted Master Problem, RMP）**出发，自动执行列生成循环：
+1. 调用 `master.relax()` 求解受限主问题的连续 LP 松弛。
+2. 将当前约束影子价格（`duals`, `getDual`）传入 `pricing` 回调。
+3. 评估候选列（`ColumnProposal` 或 `ColumnProposal[]`），将具有负检验数（最小化问题中 $\bar{c} = \text{cost} - \sum_i \pi_i a_i < 0$）的改进列动态注入主问题。
+4. 重复迭代，直至 `pricing` 返回 `null` / `[]` 或没有超出 `reducedCostTolerance` 的改进列。
+5. 最后默认在所有已生成列上将主问题作为 MIP 求解一次（`finalizeAsMIP: true`），恢复整数解。
 
-### 基于 `pricing` 回调的列生成
-
-传入 `pricing` 回调函数，获取约束影子价格（对偶值），求解定价子问题（可使用 WaSHI 模型或任意专用算法），并返回生成的列方案。WaSHI 会自动评估检验数并将有效改进列注入主问题：
+### 使用 WaSHI 子问题模型实现 `pricing`
 
 ```typescript
 import { Model, expr, minimize, maximize } from "@ohtaman/washi";
 
 const rollWidth = 100;
-const items = [
-  { id: "A", width: 45, demand: 10 },
-  { id: "B", width: 36, demand: 14 },
-  { id: "C", width: 16, demand: 20 },
-];
 
-// 1. 构建受限主问题（RMP），使用常规变量定义朴素初始切割方案
+// 1. 受限主问题（RMP）：使用单一物料朴素切割方案初始化
 const master = new Model("CuttingStockMaster");
-
-const pA = master.integer("init_A", { lb: 0 }); // 方案A：每卷切2个A（45*2 = 90 <= 100）
-const pB = master.integer("init_B", { lb: 0 }); // 方案B：每卷切2个B（36*2 = 72 <= 100）
-const pC = master.integer("init_C", { lb: 0 }); // 方案C：每卷切6个C（16*6 = 96 <= 100）
+const pA = master.integer("init_A", { lb: 0 }); // 每卷切 2 个 A（宽 45）
+const pB = master.integer("init_B", { lb: 0 }); // 每卷切 2 个 B（宽 36）
+const pC = master.integer("init_C", { lb: 0 }); // 每卷切 6 个 C（宽 16）
 
 master.objective(minimize(expr`${pA} + ${pB} + ${pC}`));
 const demandA = master.constraint(expr`2 * ${pA} >= 10`, "demand_A");
 const demandB = master.constraint(expr`2 * ${pB} >= 14`, "demand_B");
 const demandC = master.constraint(expr`6 * ${pC} >= 20`, "demand_C");
 
-// 2. 调用 master.solveColumnGeneration() 求解
+// 2. 运行列生成法
 const result = await master.solveColumnGeneration({
   finalizeAsMIP: true,
   pricing: async () => {
-    // 定价子问题（背包问题）
+    // 背包定价子问题：寻找最大化对偶价格总和的切割方案
     const sub = new Model("KnapsackPricing");
-    const a_A = sub.integer("a_A", { lb: 0, ub: 2 });
-    const a_B = sub.integer("a_B", { lb: 0, ub: 2 });
-    const a_C = sub.integer("a_C", { lb: 0, ub: 6 });
+    const aA = sub.integer("a_A", { lb: 0, ub: 2 });
+    const aB = sub.integer("a_B", { lb: 0, ub: 2 });
+    const aC = sub.integer("a_C", { lb: 0, ub: 6 });
 
-    // 最大化对偶奖励
     const dualA = demandA.dual ?? 0;
     const dualB = demandB.dual ?? 0;
     const dualC = demandC.dual ?? 0;
-    sub.objective(maximize(expr`${dualA} * ${a_A} + ${dualB} * ${a_B} + ${dualC} * ${a_C}`));
-    sub.constraint(expr`45 * ${a_A} + 36 * ${a_B} + 16 * ${a_C} <= ${rollWidth}`);
+    sub.objective(maximize(expr`${dualA} * ${aA} + ${dualB} * ${aB} + ${dualC} * ${aC}`));
+    sub.constraint(expr`45 * ${aA} + 36 * ${aB} + 16 * ${aC} <= ${rollWidth}`);
 
     await sub.solve();
 
-    // 返回生成的切割模式
     return {
       cost: 1,
       type: "Integer",
       coefficients: {
-        demand_A: Math.round(a_A.value ?? 0),
-        demand_B: Math.round(a_B.value ?? 0),
-        demand_C: Math.round(a_C.value ?? 0),
+        demand_A: Math.round(aA.value ?? 0),
+        demand_B: Math.round(aB.value ?? 0),
+        demand_C: Math.round(aC.value ?? 0),
       },
     };
   },
@@ -136,60 +127,68 @@ const result = await master.solveColumnGeneration({
 
 console.log("最优总卷数:", result.objectiveValue); // 14
 console.log("迭代次数:", result.iterations);
-console.log("动态生成列数:", result.columnsAdded);
+console.log("新增列数:", result.columnsAdded);
 ```
 
-### 结合自定义图算法 / 动态规划求解子问题
+### 使用自定义算法实现 `pricing` (`getDual`)
 
-由于 `pricing` 是标准回调函数，你可以自由使用 Dijkstra 最短路、动态规划或自定义启发式求解子问题：
+由于 `pricing` 是接收 `PricingContext` 的普通回调函数，您也可以直接使用组合搜索、动态规划或图最短路等任意 TypeScript 算法求解定价问题，而无需构建子问题 `Model`：
 
 ```typescript
-const result = await master.solveColumnGeneration({
-  pricing: async ({ getDual }) => {
-    // 专用的网络图算法求解最优路径
-    const route = solveSpecializedShortestPath(getDual);
-    if (!route) return null;
+const customResult = await master.solveColumnGeneration({
+  maxIterations: 100,
+  reducedCostTolerance: 1e-6,
+  pricing: ({ getDual }) => {
+    const dA = getDual("demand_A");
+    const dB = getDual("demand_B");
+    const dC = getDual("demand_C");
 
-    return {
-      cost: route.distance,
-      type: "Integer",
-      coefficients: route.visitedCustomers,
-    };
+    // 搜索所有可行切割方案 (45*aA + 36*aB + 16*aC <= rollWidth)，寻找负检验数 (1 - dualSum < -1e-6) 的最优列
+    let bestDualSum = 1 + 1e-6;
+    let best: { demand_A: number; demand_B: number; demand_C: number } | null = null;
+    for (let aA = 0; 45 * aA <= rollWidth; aA++) {
+      for (let aB = 0; 45 * aA + 36 * aB <= rollWidth; aB++) {
+        for (let aC = 0; 45 * aA + 36 * aB + 16 * aC <= rollWidth; aC++) {
+          const dualSum = dA * aA + dB * aB + dC * aC;
+          if (dualSum > bestDualSum) {
+            bestDualSum = dualSum;
+            best = { demand_A: aA, demand_B: aB, demand_C: aC };
+          }
+        }
+      }
+    }
+    return best ? { cost: 1, type: "Integer", coefficients: best } : null;
   },
 });
 ```
 
 ---
 
-## Benders 分解（`solveBenders`）
+## Benders 分解 (`solveBenders`)
 
-Benders 分解将问题划分为：
-- **主问题（Master Problem）**：包含耦合决策变量（如 0-1 投资变量 $y$）及辅助估计变量 $\theta \ge 0$。
-- **子问题（Subproblem）**：在固定主问题解的前提下求解运营子问题，动态生成**最优性割平面（Optimality Cut）**反馈给主问题，直至收敛。
+`master.solveBenders(options)` 将问题拆分为**主问题（Master Problem）**与**子问题（Subproblem）**，在每次迭代中固定主问题候选解并评估子问题，动态向主问题反馈**最优性割平面（Optimality Cut）**或**可行性割平面（Feasibility Cut）**。
 
-### 推荐：子问题模型与 `link()` 自动割平面生成
+### 基于 `sub.link()` 的自动割平面生成
 
-子问题回调返回子问题 `Model` 并使用 `sub.link(...)` 声明与主问题变量的耦合关系时，WaSHI 会自动管理 $\theta$、提取对偶值并注入 Benders 最优性割平面：
+在 `subproblem` 回调中返回连续 LP 子问题 `Model`，并通过 `sub.link(...)` 声明跨模型耦合约束，WaSHI 将自动管理辅助估计变量 $\theta$、代入主问题候选值、提取对偶变量并注入 Benders 割平面：
 
 ```typescript
 import { Model, expr, minimize } from "@ohtaman/washi";
 
-// 1. 主问题：两阶段设施选址
+// 1. 主问题：二元设施选址决策
 const master = new Model("FacilityMaster");
 const y1 = master.binary("open_F1");
 const y2 = master.binary("open_F2");
 
-// 目标函数：设施固定建设成本（theta 由系统自动管理）
+// 固定建设成本（代表运营子问题成本的 theta 由系统自动管理）
 master.objective(minimize(expr`100 * ${y1} + 120 * ${y2}`));
-// 满足总需求的总体容量校验约束
-master.constraint(expr`50 * ${y1} + 60 * ${y2} >= 75`, "capacity_check");
+master.constraint(expr`50 * ${y1} + 60 * ${y2} >= 75`, "total_capacity_floor");
 
-// 2. 调用 master.solveBenders() 求解
+// 2. 自动生成 Benders 割平面并求解
 const result = await master.solveBenders({
   gapTolerance: 1e-4,
   subproblem: () => {
-    // 运营调度子问题（最小化运输成本）
-    const sub = new Model("TransportSubproblem");
+    const sub = new Model("DispatchSubproblem");
     const x11 = sub.continuous("x_11", { lb: 0 });
     const x12 = sub.continuous("x_12", { lb: 0 });
     const x13 = sub.continuous("x_13", { lb: 0 });
@@ -203,209 +202,66 @@ const result = await master.solveBenders({
       )
     );
 
-    // 客户需求约束
     sub.constraint(expr`${x11} + ${x21} >= 20`, "demand_C1");
     sub.constraint(expr`${x12} + ${x22} >= 25`, "demand_C2");
     sub.constraint(expr`${x13} + ${x23} >= 30`, "demand_C3");
 
-    // 使用 link 指定与主问题决策变量的耦合
+    // 通过 sub.link() 将子问题流量关联到主问题决策变量 y1, y2
     sub.link(expr`${x11} + ${x12} + ${x13} <= 50 * ${y1}`);
     sub.link(expr`${x21} + ${x22} + ${x23} <= 60 * ${y2}`);
 
-    return sub; // 返回模型后自动生成割平面并管理 theta
+    return sub;
   },
 });
 
 console.log("最优总成本:", result.objectiveValue); // 390
-console.log("迭代次数:", result.iterations);
 console.log("添加割平面数:", result.cutsAdded);
-console.log("设施选址决策:", {
-  F1: result.values.open_F1,
-  F2: result.values.open_F2,
-});
+console.log("设施选址结果:", result.values);
 ```
 
-### 低级控制：自定义 `BendersCut` 回调
+> [!NOTE]
+> **子问题目标值为负时的 `theta` 下界设置**：未显式声明 `theta` 而直接使用 `sub.link(...)` 时，WaSHI 默认注入下界为 `lb: 0` 的辅助变量 `__benders_theta`（假设子问题成本非负）。若子问题目标值可能为负（如净收益或返利），请显式声明 `const theta = master.continuous("theta", { lb: -1e6 })`，在 `master.objective(...)` 中加入 `+ ${theta}`，并在 `solveBenders(options)` 中传入 `{ theta }`。
 
-若需手动构造割平面，回调亦可直接返回 `BendersCut` 对象：
+### 手动构造割平面 (`BendersCut` / 延迟约束)
+
+对于组合优化中的延迟约束分离（如子回路消除）或自定义解析割平面，可直接返回单个 `BendersCut`、数组 `BendersCut[]`，或在收敛时返回 `null`：
 
 ```typescript
+import { Model, expr, minimize } from "@ohtaman/washi";
+
+const master = new Model("ManualBenders");
+const y = master.binary("y");
+const theta = master.continuous("theta", { lb: 0 });
+master.objective(minimize(expr`40 * ${y} + ${theta}`));
+
 const result = await master.solveBenders({
+  theta,
   gapTolerance: 1e-4,
-  subproblem: async () => {
-    const open1 = y1.value ?? 0;
-    const open2 = y2.value ?? 0;
-    const estTheta = theta.value ?? 0;
+  subproblem: ({ getMasterValue }) => {
+    const yVal = getMasterValue(y);
+    const estTheta = getMasterValue(theta);
 
-    const sub = new Model("TransportSubproblem");
-    // ...
-    await sub.solve();
-
-    const actualCost = sub.objectiveValue!;
-    if (estTheta < actualCost - 1e-4) {
+    // 运营子问题成本：y = 0 时为 100，y = 1 时为 30
+    const actualSubCost = 100 - 70 * yVal;
+    if (estTheta < actualSubCost - 1e-4) {
       return {
-        kind: "optimality",
-        constraint: expr`${theta} - 50 * ${sub.solution!.duals.cap1} * ${y1} - 60 * ${sub.solution!.duals.cap2} * ${y2} >= ${rhs}`,
-        subproblemObjective: 100 * open1 + 120 * open2 + actualCost,
+        kind: "optimality", // 组合延迟可行性割平面可设为 "feasibility"
+        constraint: expr`${theta} >= 100 - 70 * ${y}`,
+        subproblemObjective: 40 * yVal + actualSubCost,
       };
     }
-    return null; // 收敛
+    return null; // 已收敛
   },
 });
+
+console.log(result.objectiveValue); // 70 (y = 1, theta = 30)
 ```
 
 ---
 
-## 应用示例
+## 相关案例与建模技巧
 
-分解方法在组合优化中的两个典型应用示例：
-
-### 1. 一维装箱／车队规模最小化 $\times$ 列生成法（以及完整 CVRP）
-*(包含行驶距离与 2-opt 路径定价的完整 CVRP 请参见 [车辆路径问题 (CVRP)](../examples/vehicle-routing.md) 与 [`examples/node/13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts))*
-
-* **问题结构**: 将客户订单分配给受载重限制的车辆（一维装箱／最小车队规模问题）或巡回路线时，预先枚举所有可行组合会产生指数级数量的变量。
-* **列生成法建模**:
-  * **主问题（集合覆盖 `>= 1`）**: 从已生成的装载方案候选中，选择覆盖所有客户且总车辆数最少（每列 `cost: 1`）的组合。
-  * **定价子问题（0-1 背包问题）**: 基于客户覆盖约束的影子价格（对偶变量 $\pi_i$），动态生成满足车辆载重限制且具有负检验数（$1 - \sum \pi_i a_i < 0$）的可行方案（列）。（在最小化行驶距离的完整 CVRP 中，列的成本为路线距离，定价子问题则为带资源约束的最短路问题 ESPPRC。）
-
-```typescript
-import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
-
-const vehicleCapacity = 8;
-const customers = [
-  { id: "C1", demand: 4 },
-  { id: "C2", demand: 3 },
-  { id: "C3", demand: 5 },
-  { id: "C4", demand: 2 },
-  { id: "C5", demand: 4 },
-];
-
-// 1. 主问题：客户覆盖
-const master = new Model("CVRP_Master");
-const initialRoutes: Var[] = [];
-for (const cust of customers) {
-  initialRoutes.push(master.integer(`init_${cust.id}`, { lb: 0, ub: 1 }));
-}
-master.objective(minimize(initialRoutes.reduce((acc, r) => acc.add(r), new LinExpr())));
-
-const visitConstrs = customers.map((cust, i) =>
-  master.constraint(expr`${initialRoutes[i]} >= 1`, `visit_${cust.id}`)
-);
-
-// 2. 列生成法求解
-const result = await master.solveColumnGeneration({
-  finalizeAsMIP: true,
-  pricing: async () => {
-    const sub = new Model("RoutePricing");
-    const a: Record<string, Var> = {};
-    const obj = new LinExpr();
-
-    for (let i = 0; i < customers.length; i++) {
-      const cust = customers[i];
-      a[cust.id] = sub.binary(`v_${cust.id}`);
-      obj.addTerm(a[cust.id], visitConstrs[i].dual ?? 0);
-    }
-
-    sub.objective(maximize(obj));
-
-    // 车辆载重约束: sum(demand_i * a_i) <= vehicleCapacity
-    const load = customers.reduce((acc, c) => acc.add(a[c.id].mul(c.demand)), new LinExpr());
-    sub.constraint(expr`${load} <= ${vehicleCapacity}`);
-
-    await sub.solve();
-
-    const coefficients: Record<string, number> = {};
-    for (const cust of customers) {
-      coefficients[`visit_${cust.id}`] = Math.round(a[cust.id].value ?? 0);
-    }
-
-    return {
-      cost: 1,
-      type: "Integer",
-      coefficients,
-    };
-  },
-});
-
-console.log("最优车队规模:", result.objectiveValue); // 3 辆车
-```
-
-### 2. 旅行商问题（TSP） $\times$ Benders 分解（延迟割平面消除子回路）
-*(完整可执行代码: [`examples/node/14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts))*
-
-* **问题结构**: 消除子回路约束（SECs）的数量随城市数 $n$ 呈 $O(2^n)$ 增长，无法预先全部加入模型。
-* **Benders 分解建模（DFJ 延迟割平面法）**:
-  * **主问题**: 仅求解每个城市入度与出度各为 1 的基础指派松弛问题。
-  * **子问题**: 检查解路径的连通分量。若存在孤立子回路 $S$，动态生成一条禁止该子回路的 Benders 可行性割平面（$\sum_{i,j \in S} x_{ij} \le |S| - 1$）反馈给主问题。
-
-```typescript
-import { Model, expr, minimize, LinExpr, type Var } from "@ohtaman/washi";
-
-const n = cities.length;
-const master = new Model("TSP_Master");
-const x: Record<string, Var> = {};
-const objExpr = new LinExpr();
-
-for (let i = 0; i < n; i++) {
-  for (let j = 0; j < n; j++) {
-    if (i !== j) {
-      const v = master.binary(`x_${i}_${j}`);
-      x[`${i}_${j}`] = v;
-      objExpr.addTerm(v, dist(i, j));
-    }
-  }
-}
-master.objective(minimize(objExpr));
-
-// 城市出度与入度约束
-for (let i = 0; i < n; i++) {
-  const outE = new LinExpr();
-  const inE = new LinExpr();
-  for (let j = 0; j < n; j++) {
-    if (i !== j) {
-      outE.addTerm(x[`${i}_${j}`], 1);
-      inE.addTerm(x[`${j}_${i}`], 1);
-    }
-  }
-  master.constraint(expr`${outE} == 1`, `out_${i}`);
-  master.constraint(expr`${inE} == 1`, `in_${i}`);
-}
-
-// Benders 延迟消除子回路求解
-const result = await master.solveBenders({
-  subproblem: () => {
-    const cycles = findCycles(n, (i, j) => (x[`${i}_${j}`].value ?? 0) > 0.5);
-    if (cycles.length === 1 && cycles[0].length === n) {
-      return null; // 已形成覆盖所有城市的单一回路
-    }
-
-    // 发现子回路：为当前解中每一个孤立子回路 S 同时生成 Benders 可行性割平面（多割平面分离）
-    return cycles.map((S) => {
-      const secExpr = new LinExpr();
-      for (const i of S) {
-        for (const j of S) {
-          if (i !== j) secExpr.addTerm(x[`${i}_${j}`], 1);
-        }
-      }
-      return {
-        kind: "feasibility" as const,
-        constraint: expr`${secExpr} <= ${S.length - 1}`,
-      };
-    });
-  },
-});
-```
-
----
-
-## 💡 分解算法实战要点与注意事项
-
-1. **列生成中的集合覆盖（`>= 1`）与集合划分（`== 1`）**：
-   - 将客户覆盖约束建模为不等式 `>= 1`（集合覆盖）而非严格等式 `== 1`（集合划分），可将对偶价格限制在 $\pi_i \ge 0$ 范围内，避免对偶值剧烈正负震荡，显著加快列生成收敛（在满足三角不等式的距离空间中，若某客户被多条路线覆盖，直接跳过重复访问不会增加成本）。
-2. **Price-and-Branch（`finalizeAsMIP: true`）与精确 Branch-and-Price**：
-   - `finalizeAsMIP: true` 会在根节点 LP 松弛完成列生成后，在生成的列池上求解一次最终 MIP。这在工业界运筹学中称为 **Price-and-Branch（限制主问题启发式）**，无需在定价子问题内部处理分支约束即可快速获得高质量整数解。
-3. **`solveBenders()` 中子问题目标值为负时的 `theta` 下界**：
-   - 使用 `sub.link(...)` 自动关联时，WaSHI 自动创建的辅助变量 `__benders_theta` 默认下界为 `lb: 0`（假设子问题运营成本非负）。若子问题目标函数可能取负值（如净收益或返利），请显式传入带有有限负下界的 `theta: master.continuous("theta", { lb: -1e6 })`。
-4. **多割平面分离与 DFJ 子回路消除约束的等价性**：
-   - 在 TSP 子问题中发现多个孤立子回路时，一次性返回**所有**子回路的割平面数组（`cycles.map(...)` 多割平面分离）能显著减少主问题 MIP 的重求解次数。
-   - 此外，由于主问题已强制每个城市的出度 $\sum_{j \ne i} x_{ij} = 1$，子集 $S$ 内部边数约束 $\sum_{i,j \in S} x_{ij} \le |S| - 1$ 与跨边界割集约束 $\sum_{i \in S, j \notin S} x_{ij} \ge 1$ 在代数上完全等价。
+- **分解算法完整案例**：
+  - [车辆路径问题 CVRP (`solveColumnGeneration`)](../examples/vehicle-routing.md)
+  - [旅行商问题 TSP (`solveBenders` 延迟子回路消除)](../examples/traveling-salesperson.md)
+- **建模技巧**：关于列生成中的集合覆盖（`>= 1`）与集合划分（`== 1`）对比、Price-and-Branch（`finalizeAsMIP`）以及多割平面分离，请参见 [建模模式与优化技巧](./formulation-tips.md#decomposition-tips)。

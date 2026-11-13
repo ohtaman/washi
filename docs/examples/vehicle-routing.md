@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| Combinatorial OR / Dantzig-Wolfe | HiGHS (default) | `m.solveColumnGeneration()`, `pricing`, `sum()`, `m.binary()`, `m.constraint()`, `expr` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">Source Code</a></li><li><a href="../guide/decomposition.md">Decomposition Guide</a></li></ul> |
+| Combinatorial OR / Dantzig-Wolfe | HiGHS (default) | `m.solveColumnGeneration()`, `pricing`, `m.binary()`, `m.constraint()`, `expr` (`sum`) | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts">Source Code</a></li><li><a href="/guide/decomposition">Decomposition Guide</a></li></ul> |
 
 The **Capacitated Vehicle Routing Problem (CVRP)** determines the minimum number of delivery vehicles needed to visit a set of customers, subject to vehicle cargo capacity, maximum customer stops per shift, and route duration limits.
 
@@ -24,7 +24,7 @@ We consider a distribution network with a central depot at $(0, 0)$ and **50 cus
 <CodeRunner>
 
 ```typescript
-import { Model, expr, minimize, sum } from "@ohtaman/washi";
+import { Model, expr, minimize } from "@ohtaman/washi";
 
 // --- Extracted Routing Helpers ---
 
@@ -141,7 +141,7 @@ async function runCVRP() {
 
   // Initial naive routes: 1 dedicated vehicle per customer
   const initialRoutes = customers.map((c) => master.binary(`route_init_${c.id}`));
-  master.objective(minimize(sum(initialRoutes)));
+  master.objective(minimize(expr`sum(${initialRoutes})`));
 
   // Each customer must be visited by exactly 1 vehicle
   const visitConstrs = customers.map((c, i) =>

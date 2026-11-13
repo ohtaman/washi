@@ -1,12 +1,14 @@
 # 运行时环境与部署配置
 
-WaSHI 无需本地 C/C++ 编译，即可跨 JavaScript 与 TypeScript 运行时环境一致运行——从 Node.js、Bun、Deno 到现代前端打包工具、原生浏览器 `<script>` 标签以及物理隔离的企业内网环境。
+WaSHI 无需本地 C/C++ 编译，即可跨 JavaScript 与 TypeScript 运行时环境一致运行——从 Node.js、Bun、Deno 到现代打包工具、静态站点托管、原生浏览器 `<script>` 标签以及离线企业内网环境。
 
 ---
 
-## 🟢 Node.js
+## 🟢 Node.js / Bun / Deno
 
-WaSHI 原生支持 Node.js (v18+) 的标准 ECMAScript Modules (ESM)。内置的 HiGHS WebAssembly 二进制文件会直接从已安装的包中加载。
+### Node.js
+
+WaSHI 原生支持 Node.js (v18+) 的标准 ECMAScript Modules (ESM)。内置的 HiGHS WebAssembly 二进制文件会直接从已安装的包中加载：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -19,8 +21,10 @@ m.objective(maximize(expr`2 * ${x} + 3 * ${y}`));
 m.constraint(expr`${x} + ${y} <= 15`, "capacity");
 
 await m.solve();
-console.log(`Status: ${m.status}, Objective: ${m.objectiveValue}`);
-console.log(`x = ${x.value}, y = ${y.value}`);
+if (m.hasPrimalSolution) {
+  console.log(`Status: ${m.status}, Objective: ${m.objectiveValue}`);
+  console.log(`x = ${x.value}, y = ${y.value}`);
+}
 ```
 
 使用 `tsx` 或 `node` 直接运行：
@@ -29,11 +33,33 @@ console.log(`x = ${x.value}, y = ${y.value}`);
 npx tsx app.ts
 ```
 
+### Bun & Deno
+
+```bash
+# Bun
+bun add @ohtaman/washi
+bun run app.ts
+```
+
+在 Deno（v1.30+，支持 `npm:` 标识符）中：
+
+```typescript
+import { Model, maximize } from "npm:@ohtaman/washi";
+
+const m = new Model();
+const x = m.continuous("x", { lb: 0, ub: 10 });
+m.objective(maximize(x));
+await m.solve();
+if (m.hasPrimalSolution) {
+  console.log("x =", x.value);
+}
+```
+
 ---
 
-## 🌐 打包工具环境 (Vite, Webpack, Rollup, Next.js)
+## 🌐 打包工具与静态托管 (Vite, Next.js, Webpack, Rollup)
 
-### 现代打包工具 (Vite / Rollup / Webpack)
+### 现代打包工具与静态站点发布
 
 在面向浏览器的打包工具中导入 `@ohtaman/washi` 时，`browser` 导出条件会自动解析：
 
@@ -45,14 +71,16 @@ export async function runOptimization() {
   const x = m.continuous("x", { lb: 0, ub: 100 });
   m.objective(maximize(x));
   await m.solve();
-  return x.value;
+  return m.hasPrimalSolution ? x.value : null;
 }
 ```
 
-#### 后台 Web Worker 执行（默认）
-在浏览器环境中，HiGHS 默认在专用的 **Web Worker** 中运行。这样即使在求解大规模 LP / MIP / QP 模型时，也不会阻塞主 UI 线程、动画或用户输入，同时支持实时进度回调（`onProgress`）与取消操作（`AbortSignal`）。
+由于建模器与求解器均基于 WebAssembly 运行，`vite build` 等生产构建产物（JS、Worker 与 WASM）可直接部署到 **GitHub Pages、Cloudflare Pages、Vercel 或 Netlify** 等静态托管平台，无需后端服务（默认的 HiGHS 与 GLPK 无需特殊响应头；仅在浏览器中使用 Z3 时需参阅[跨源隔离配置](./cross-origin.md)）。
 
-如果您的运行环境限制使用 Web Worker，或者希望在主线程中同步执行，可以传入 `useWorker: false`：
+#### 后台 Web Worker 执行（默认）
+在浏览器环境中，HiGHS 默认在专用的 **Web Worker** 中运行。这样即使在求解 LP / MIP / QP 模型时，也不会阻塞主 UI 线程、动画或用户输入，同时支持实时进度回调（`onProgress`）与取消操作（`AbortSignal`）。
+
+如果运行环境限制使用 Web Worker，或希望在主线程中执行，可传入 `useWorker: false`：
 
 ```typescript
 await m.solve({ useWorker: false });
@@ -61,7 +89,7 @@ await m.solve({ useWorker: false });
 #### 自定义 HiGHS WASM 资源 URL
 默认情况下，WaSHI 会相对于打包产物解析 `highs.wasm`（`new URL("./highs.wasm", import.meta.url)`），**绝不会**向外部公共 CDN（如 `jsdelivr`、`unpkg` 等）发起隐式网络请求。
 
-如果您的打包工具或静态资源服务器将 `.wasm` 文件托管在自定义路径下，可以在全局或每次求解时指定 URL：
+如果打包工具或静态资源服务器将 `.wasm` 文件托管在自定义路径下，可在全局或每次求解时指定 URL：
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
@@ -91,7 +119,9 @@ export default function OptimizerComponent() {
     const x = m.continuous("x", { lb: 0, ub: 50 });
     m.objective(maximize(x));
     await m.solve();
-    setVal(x.value);
+    if (m.hasPrimalSolution) {
+      setVal(x.value);
+    }
   };
 
   return (
@@ -107,36 +137,36 @@ export default function OptimizerComponent() {
 
 ## 📦 浏览器 ESM (`<script type="module">`)
 
-无需构建步骤，您可以直接从本地静态服务器（或待包含相应 API 的版本发布后的 npm CDN）导入预打包的浏览器 ESM 模块：
+无需构建步骤，您可以直接从自托管静态服务器或 npm CDN 导入预构建的浏览器 ESM 模块：
 
 ```html
 <script type="module">
-  // 从本地静态服务器 / dist 加载：
-  import { Model, expr, maximize } from "./dist/browser/washi.js";
-  // 或待相应版本发布后通过 npm CDN 加载：
-  // import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.js";
+  // 从 npm CDN 加载（自托管时可使用 "./dist/browser/washi.js"）：
+  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/washi.js";
   // 可选的求解器插件：
-  // import "./dist/browser/solvers/glpk.js";
-  // import "./dist/browser/solvers/z3.js";
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/glpk.js";
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/z3.js";
 
   const m = new Model("BrowserESM");
-  const x = m.integer("x", { lb: 0 });
-  const y = m.integer("y", { lb: 0 });
+  const x = m.integer("x", { lb: 0, ub: 100 });
+  const y = m.integer("y", { lb: 0, ub: 100 });
 
   m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
   m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
   m.constraint(expr`2 * ${x} + ${y} <= 50`, "labor");
 
   await m.solve();
-  console.log("Optimal Objective:", m.objectiveValue);
+  if (m.hasPrimalSolution) {
+    console.log("Optimal Objective:", m.objectiveValue);
+  }
 </script>
 ```
 
 ---
 
-## 🟨 传统 `<script>` 标签 (IIFE / 独立构建发布 / CDN)
+## 🟨 传统 `<script>` 标签 (IIFE / 单文件 HTML / CDN)
 
-对于静态 HTML 页面、CodePen 或 JSFiddle，可通过标准 `<script>` 标签加载 `washi.min.js`。所有导出项均挂载在全局变量 `window.Washi` 上：
+对于单文件静态 HTML 页面、CodePen 或 JSFiddle，可通过标准 `<script>` 标签加载 `washi.min.js`。所有导出项均挂载在全局变量 `window.Washi` 上：
 
 ```html
 <!DOCTYPE html>
@@ -149,13 +179,11 @@ export default function OptimizerComponent() {
     <h1>WaSHI Browser Optimization</h1>
     <pre id="output">Solving...</pre>
 
-    <!-- 从本地静态构建 / 资源加载 WaSHI 核心 + HiGHS (MIT) -->
-    <script src="./dist/browser/washi.min.js"></script>
-    <!-- 或待相应版本发布后通过 CDN 加载： -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@<version>/dist/browser/washi.min.js"></script> -->
+    <!-- 通过 CDN 加载 WaSHI 核心 + HiGHS (MIT)（自托管时可使用 "./dist/browser/washi.min.js"） -->
+    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/washi.min.js"></script>
     <!-- 可选插件（自动注册到 window.Washi）： -->
-    <!-- <script src="./dist/browser/solvers/glpk.min.js"></script> -->
-    <!-- <script src="./dist/browser/solvers/z3.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/glpk.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/z3.min.js"></script> -->
 
     <script>
       (async () => {
@@ -170,10 +198,12 @@ export default function OptimizerComponent() {
 
         await m.solve();
 
-        document.getElementById("output").textContent =
-          `Status: ${m.status}\n` +
-          `Objective: ${m.objectiveValue}\n` +
-          `x = ${x.value}, y = ${y.value}`;
+        if (m.hasPrimalSolution) {
+          document.getElementById("output").textContent =
+            `Status: ${m.status}\n` +
+            `Objective: ${m.objectiveValue}\n` +
+            `x = ${x.value}, y = ${y.value}`;
+        }
       })();
     </script>
   </body>
@@ -181,7 +211,7 @@ export default function OptimizerComponent() {
 ```
 
 > [!NOTE]
-> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载 `washi.min.js` 时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。WaSHI 会自动通过调用 `importScripts()` 的轻量级 `Blob` 包装器桥接跨源 Worker，因此从 CDN 加载时同样可以开箱即用地使用 Web Worker。
+> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。在标准 Web 源（`https://` / `http://`）下，WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker；而在有效源为不透明源的环境（`window.origin === "null"`，例如本地 `file:` 页面或未开启 `allow-same-origin` 的 `sandbox="allow-scripts"` `<iframe>` 嵌入）下，未显式指定 `useWorker` 时 WaSHI 会自动在主线程中运行 HiGHS。
 
 ---
 
@@ -195,33 +225,8 @@ WaSHI 绝不会向外部发送遥测数据或隐式回退到公共 CDN。若需�
    - 可选 Z3：`solvers/z3.js` / `solvers/z3.min.js`、`solvers/z3-built.js`、`solvers/z3-built.wasm`
 2. **内容安全策略 (CSP) 响应头**：
    - 允许 WebAssembly 编译（在 `script-src` 中包含 `'wasm-unsafe-eval'`）。
-   - 若使用默认的 Web Worker 或跨源 Blob Worker 回退方案，请允许 `worker-src 'self' blob:;`。
+   - 若使用默认的 Web Worker 或跨源 `Blob` Worker 引导方案，请允许 `worker-src 'self' blob:;`。
    - 如果安全策略禁止 `blob:` Worker，请从同源（`'self'`）托管 `highs-worker.js`，或使用 `await m.solve({ useWorker: false })` 在主线程中运行。
 3. **跨源隔离（仅限使用 Z3 时）**：
    - HiGHS 与 GLPK 在标准浏览器上下文中即可直接运行，无需特殊响应头。
-   - Z3 WASM 使用了 pthreads 与 `SharedArrayBuffer`，需要配置 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`（或 `credentialless`）。详细配置请参阅[跨源隔离配置指南](./cross-origin.md)。
-
----
-
-## ⚡ Bun & Deno
-
-### Bun
-
-```bash
-bun add @ohtaman/washi
-bun run app.ts
-```
-
-### Deno
-
-在 Deno（v1.30+，支持 `npm:` 标识符）中：
-
-```typescript
-import { Model, maximize } from "npm:@ohtaman/washi";
-
-const m = new Model();
-const x = m.continuous("x", { lb: 0, ub: 10 });
-m.objective(maximize(x));
-await m.solve();
-console.log("x =", x.value);
-```
+   - Z3 WASM 使用了 pthreads 与 `SharedArrayBuffer`，需要配置 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`（Chromium / Firefox 也支持 `credentialless`，但兼容 Safari 需使用 `require-corp`）。详细配置请参阅[跨源隔离配置指南](./cross-origin.md)。

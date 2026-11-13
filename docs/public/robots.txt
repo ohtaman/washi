@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://ohtaman.github.io/washi/sitemap.xml
+Sitemap: https://washi.ohtaman.dev/sitemap.xml

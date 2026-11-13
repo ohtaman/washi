@@ -83,7 +83,7 @@ async function runHeroCode() {
       </span>
 
       <a
-        :href="`/washi/demo/?preset=${HERO_PRESET_ID}`"
+        :href="`/demo/?preset=${HERO_PRESET_ID}`"
         target="_self"
         class="playground-link"
       >

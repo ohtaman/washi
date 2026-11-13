@@ -1,32 +1,40 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig, type HeadConfig } from "vitepress";
 import { withMermaid } from "vitepress-plugin-mermaid";
 import katex from "katex";
 import jaLocale from "./locales/ja.json";
 import zhLocale from "./locales/zh.json";
 
+const docsRoot = resolve(import.meta.dirname, "..");
+const GOOGLE_TAG_ID = "GTM-59QSZTZL";
+const GOOGLE_TAG_INLINE_INIT =
+  "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
+
 export default withMermaid(
   defineConfig({
   title: "WaSHI",
-  titleTemplate: ":title | WaSHI — Algebraic Modeler for Mathematical Optimization & Constraint Programming",
+  titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript",
   description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
-  base: "/washi/",
+  base: "/",
   cleanUrls: true,
   lastUpdated: true,
   sitemap: {
-    hostname: "https://ohtaman.github.io/washi/",
+    hostname: "https://washi.ohtaman.dev/",
   },
   transformHead({ pageData, siteData }) {
-    const baseDomain = "https://ohtaman.github.io";
-    const basePath = "/washi/";
+    const baseDomain = "https://washi.ohtaman.dev";
+    const basePath = "/";
+
+    const toCleanPath = (rel: string): string =>
+      rel.replace(/(^|\/)index\.md$/, "$1").replace(/\.md$/, "");
 
     // Normalize relativePath for cleanUrls:
     // "index.md" -> ""
     // "ja/index.md" -> "ja/"
     // "getting-started/index.md" -> "getting-started/"
     // "getting-started/ai-agents.md" -> "getting-started/ai-agents"
-    const cleanRelativePath = pageData.relativePath
-      .replace(/(^|\/)index\.md$/, "$1")
-      .replace(/\.md$/, "");
+    const cleanRelativePath = toCleanPath(pageData.relativePath);
 
     const canonicalUrl = `${baseDomain}${basePath}${cleanRelativePath}`;
 
@@ -39,9 +47,62 @@ export default withMermaid(
       siteData.description;
     const pageType = pageData.relativePath.endsWith("index.md") ? "website" : "article";
     const ogImage = `${baseDomain}${basePath}washi-logo.png`;
+    const hasRawMarkdownEndpoint =
+      pageData.relativePath === "index.md" ||
+      /^(?:getting-started|guide|solvers|examples)\/[^/]+\.md$/.test(pageData.relativePath);
+
+    const hreflangLinks: HeadConfig[] = [];
+    if (
+      !pageData.isNotFound &&
+      pageData.relativePath.endsWith(".md") &&
+      existsSync(resolve(docsRoot, pageData.relativePath))
+    ) {
+      const baseDocRelPath = pageData.relativePath.replace(/^(?:ja|zh)\//, "");
+      const localeCandidates = [
+        { hreflang: "en", relPath: baseDocRelPath },
+        { hreflang: "ja", relPath: `ja/${baseDocRelPath}` },
+        { hreflang: "zh-CN", relPath: `zh/${baseDocRelPath}` },
+      ];
+      for (const candidate of localeCandidates) {
+        if (existsSync(resolve(docsRoot, candidate.relPath))) {
+          hreflangLinks.push([
+            "link",
+            {
+              rel: "alternate",
+              hreflang: candidate.hreflang,
+              href: `${baseDomain}${basePath}${toCleanPath(candidate.relPath)}`,
+            },
+          ]);
+        }
+      }
+      if (existsSync(resolve(docsRoot, baseDocRelPath))) {
+        hreflangLinks.push([
+          "link",
+          {
+            rel: "alternate",
+            hreflang: "x-default",
+            href: `${baseDomain}${basePath}${toCleanPath(baseDocRelPath)}`,
+          },
+        ]);
+      }
+    }
 
     const head: HeadConfig[] = [
       ["link", { rel: "canonical", href: canonicalUrl }],
+      ...hreflangLinks,
+      ["link", { rel: "describedby", href: `${basePath}llms.txt` }],
+      ...(hasRawMarkdownEndpoint
+        ? ([
+            [
+              "link",
+              {
+                rel: "alternate",
+                type: "text/markdown",
+                href: `${basePath}${pageData.relativePath}`,
+              },
+            ],
+          ] as HeadConfig[])
+        : []),
       ["meta", { property: "og:url", content: canonicalUrl }],
       ["meta", { property: "og:type", content: pageType }],
       ["meta", { property: "og:title", content: pageTitle }],
@@ -158,24 +219,27 @@ export default withMermaid(
     },
   },
   head: [
-    ["link", { rel: "icon", href: "/washi/washi-logo.svg", type: "image/svg+xml" }],
-    ["link", { rel: "alternate icon", href: "/washi/washi-logo.png", type: "image/png" }],
+    ["link", { rel: "icon", href: "/washi-logo.svg", type: "image/svg+xml" }],
+    ["link", { rel: "alternate icon", href: "/washi-logo.png", type: "image/png" }],
     ["meta", { name: "theme-color", content: "#3b82f6" }],
     ["meta", { property: "og:type", content: "website" }],
     ["meta", { property: "og:site_name", content: "WaSHI" }],
-    ["meta", { property: "og:image", content: "https://ohtaman.github.io/washi/washi-logo.png" }],
+    ["meta", { property: "og:image", content: "https://washi.ohtaman.dev/washi-logo.png" }],
     ["meta", { name: "twitter:card", content: "summary" }],
-    ["meta", { name: "twitter:image", content: "https://ohtaman.github.io/washi/washi-logo.png" }],
+    ["meta", { name: "twitter:image", content: "https://washi.ohtaman.dev/washi-logo.png" }],
     ["meta", { name: "keywords", content: "typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly" }],
     // Load Service Worker
-    ["script", { src: "/washi/coi-serviceworker.js" }],
+    ["script", { src: "/coi-serviceworker.js" }],
+    // Google Tag (GA4)
+    ["script", { async: "", src: `https://www.googletagmanager.com/gtm.js?id=${GOOGLE_TAG_ID}` }],
+    ["script", {}, GOOGLE_TAG_INLINE_INIT],
   ],
   locales: {
     root: {
       label: "English",
       lang: "en",
       title: "WaSHI",
-      titleTemplate: ":title | WaSHI — Algebraic Modeler for Mathematical Optimization & Constraint Programming",
+      titleTemplate: ":title | WaSHI — Mathematical Optimization Modeler in TypeScript",
       description: "WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming in TypeScript & JavaScript (LP, MIP, Convex QP, SMT).",
       themeConfig: {
         nav: [
@@ -191,9 +255,9 @@ export default withMermaid(
             text: "Getting Started",
             items: [
               { text: "Introduction & Installation", link: "/getting-started/" },
-              { text: "AI Agent Quick-Reference", link: "/getting-started/ai-agents" },
               { text: "Runtime Environments", link: "/getting-started/runtimes" },
               { text: "Cross-Origin Isolation", link: "/getting-started/cross-origin" },
+              { text: "AI Agent Quick-Reference", link: "/getting-started/ai-agents" },
             ],
           },
           {
@@ -205,6 +269,7 @@ export default withMermaid(
               { text: "Objectives & Sense", link: "/guide/objectives" },
               { text: "Unsat Core Diagnosis", link: "/guide/unsat-core" },
               { text: "Decomposition Methods", link: "/guide/decomposition" },
+              { text: "Formulation Patterns & Tips", link: "/guide/formulation-tips" },
             ],
           },
           {
@@ -258,9 +323,9 @@ export default withMermaid(
             text: jaLocale.sidebar[0].text,
             items: [
               { text: jaLocale.sidebar[0].items[0].text, link: "/ja/getting-started/" },
-              { text: jaLocale.sidebar[0].items[1].text, link: "/ja/getting-started/ai-agents" },
-              { text: jaLocale.sidebar[0].items[2].text, link: "/ja/getting-started/runtimes" },
-              { text: jaLocale.sidebar[0].items[3].text, link: "/ja/getting-started/cross-origin" },
+              { text: jaLocale.sidebar[0].items[1].text, link: "/ja/getting-started/runtimes" },
+              { text: jaLocale.sidebar[0].items[2].text, link: "/ja/getting-started/cross-origin" },
+              { text: jaLocale.sidebar[0].items[3].text, link: "/ja/getting-started/ai-agents" },
             ],
           },
           {
@@ -272,6 +337,7 @@ export default withMermaid(
               { text: jaLocale.sidebar[1].items[3].text, link: "/ja/guide/objectives" },
               { text: jaLocale.sidebar[1].items[4].text, link: "/ja/guide/unsat-core" },
               { text: jaLocale.sidebar[1].items[5].text, link: "/ja/guide/decomposition" },
+              { text: jaLocale.sidebar[1].items[6].text, link: "/ja/guide/formulation-tips" },
             ],
           },
           {
@@ -335,9 +401,9 @@ export default withMermaid(
             text: zhLocale.sidebar[0].text,
             items: [
               { text: zhLocale.sidebar[0].items[0].text, link: "/zh/getting-started/" },
-              { text: zhLocale.sidebar[0].items[1].text, link: "/zh/getting-started/ai-agents" },
-              { text: zhLocale.sidebar[0].items[2].text, link: "/zh/getting-started/runtimes" },
-              { text: zhLocale.sidebar[0].items[3].text, link: "/zh/getting-started/cross-origin" },
+              { text: zhLocale.sidebar[0].items[1].text, link: "/zh/getting-started/runtimes" },
+              { text: zhLocale.sidebar[0].items[2].text, link: "/zh/getting-started/cross-origin" },
+              { text: zhLocale.sidebar[0].items[3].text, link: "/zh/getting-started/ai-agents" },
             ],
           },
           {
@@ -349,6 +415,7 @@ export default withMermaid(
               { text: zhLocale.sidebar[1].items[3].text, link: "/zh/guide/objectives" },
               { text: zhLocale.sidebar[1].items[4].text, link: "/zh/guide/unsat-core" },
               { text: zhLocale.sidebar[1].items[5].text, link: "/zh/guide/decomposition" },
+              { text: zhLocale.sidebar[1].items[6].text, link: "/zh/guide/formulation-tips" },
             ],
           },
           {
@@ -458,9 +525,6 @@ export default withMermaid(
   },
   vite: {
     assetsInclude: ["**/*.wasm"],
-    optimizeDeps: {
-      exclude: ["highs"],
-    },
     worker: {
       format: "es",
     },
