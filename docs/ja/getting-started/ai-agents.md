@@ -66,7 +66,7 @@ import "@ohtaman/washi/solvers/glpk";
    - `@ohtaman/washi` のインポートによって Service Worker が自動注入されることはありません。ブラウザでセキュアコンテキストや Cross-Origin Isolation が欠けている場合、Z3 は原因を示すエラーで即座に reject します。
 3. **Web Worker とキャンセル制御 (`AbortSignal`)**:
    - 求解開始前のキャンセル（実行開始時点で `signal.aborted`）は、すべてのソルバーでサポートされています。
-   - `Worker` が利用可能なブラウザ環境では、HiGHS はデフォルトで専用 Web Worker 内で実行されます（`useWorker: true`）。`m.solve({ signal })` に `{ signal }` を渡すと、実行中の Worker 求解をプリエンプティブに強制終了（または待機中の Worker リクエストをキャンセル）できます。
+   - 通常の Web オリジン（`window.location.origin !== "null"` かつ `window.location.protocol !== "file:"`）で `Worker` が利用可能なブラウザ環境では、HiGHS はデフォルトで専用 Web Worker 内で実行されます（`useWorker: true`）。`file:` URL や不透明オリジン（`sandbox="allow-scripts"` の `<iframe>` 埋め込み等）ではデフォルトでメインスレッド実行（`useWorker: false`）になります。`m.solve({ signal })` に `{ signal }` を渡すと、実行中の Worker 求解をプリエンプティブに強制終了（または待機中の Worker リクエストをキャンセル）できます。
    - メインスレッド実行の HiGHS（`useWorker: false` または Node.js）では、ソルバーの割り込みチェックポイントで呼ばれる `onProgress` コールバック内で同期的に `abort()` をトリガーした場合に協調的な途中中断が機能します。外部からの非同期 abort は、同期実行中の WASM スレッドがチェックポイントまたは完了に達するまで割り込むことはできません。割り込みフックを持たないシングルスレッド WASM ソルバー（GLPK、Z3）は実行開始前に `signal` を確認します。
 
 ---

@@ -540,6 +540,114 @@ try {
         }
       }
 
+      // Test restricted origins (file:// local HTML and sandbox="allow-scripts" iframe) with default solve() & check()
+      const opaqueRunnerBody = `
+        const runOpaqueSuite = async (api, expectMode) => {
+          const { Model, expr, maximize } = api;
+          if (expectMode === "file" && window.location.protocol !== "file:") {
+            throw new Error("Expected file: protocol, got: " + window.location.protocol);
+          }
+          if (expectMode === "sandbox" && window.location.origin !== "null") {
+            throw new Error("Expected opaque origin ('null'), got: " + window.location.origin);
+          }
+          const m = new Model("OpaqueOriginMIP");
+          const x = m.integer("x", { lb: 0 });
+          const y = m.integer("y", { lb: 0 });
+          m.objective(maximize(expr\`30 * \${x} + 50 * \${y}\`));
+          m.constraint(expr\`\${x} + 2 * \${y} <= 40\`, "wood");
+          m.constraint(expr\`2 * \${x} + \${y} <= 50\`, "labor");
+          const status = await m.solve();
+          if (!m.validateSolution().valid) {
+            throw new Error("Expected valid primal solution on restricted origin");
+          }
+          const diag = new Model("OpaqueOriginConflicts");
+          const z = diag.continuous("z", { lb: 0, ub: 10 });
+          diag.constraint(expr\`\${z} >= 8\`, "min_req");
+          diag.constraint(expr\`\${z} <= 3\`, "max_cap");
+          const checkRes = await diag.check();
+          return {
+            status,
+            objective: m.objectiveValue,
+            x: x.value,
+            y: y.value,
+            checkStatus: checkRes.status,
+            conflicts: checkRes.conflicts,
+          };
+        };
+      `;
+
+      const blockExternalOnContext = async (ctx) => {
+        const blocked = [];
+        await ctx.route("**/*", (route) => {
+          const reqUrl = route.request().url();
+          if (!reqUrl.startsWith("file:") && new URL(reqUrl).hostname !== "127.0.0.1") {
+            blocked.push(reqUrl);
+            return route.abort();
+          }
+          return route.continue();
+        });
+        return blocked;
+      };
+
+      for (const [label, scriptBlock] of [
+        ["file-iife", `<script src="${cdn}/factory/washi.min.js"></script><script>${opaqueRunnerBody};window.runOpaque = () => runOpaqueSuite(Washi, "file");</script>`],
+        ["file-esm", `<script type="module">import * as api from '${cdn}/factory/washi.js';${opaqueRunnerBody};window.runOpaque = () => runOpaqueSuite(api, "file");</script>`],
+      ]) {
+        const localHtmlPath = path.join(fixture, "pages", `${label}.html`);
+        await writeFile(localHtmlPath, `<!doctype html><html><body>${scriptBlock}</body></html>`);
+        const fileCtx = await browser.newContext();
+        const fileBlocked = await blockExternalOnContext(fileCtx);
+        const filePage = await fileCtx.newPage();
+        await filePage.goto(`file://${localHtmlPath}`);
+        await filePage.waitForFunction(() => typeof window.runOpaque === "function");
+        const opaqueRes = await timeout(filePage.evaluate(() => window.runOpaque()));
+        check({ status: opaqueRes.status, objective: opaqueRes.objective, x: opaqueRes.x, y: opaqueRes.y });
+        assert.equal(opaqueRes.checkStatus, "Unsat");
+        assert(
+          Array.isArray(opaqueRes.conflicts) &&
+            (opaqueRes.conflicts.includes("min_req") || opaqueRes.conflicts.includes("max_cap")),
+          `Expected named conflict from {min_req, max_cap}, got: ${JSON.stringify(opaqueRes.conflicts)}`
+        );
+        assert.deepEqual(fileBlocked, []);
+        await fileCtx.close();
+        console.log(`PASS Chromium: file:// ${label} (restricted origin default solve() & check() on main thread)`);
+      }
+
+      const sandboxHostHtml = `<!doctype html><html><body><iframe id="sb" sandbox="allow-scripts"></iframe></body></html>`;
+      const sandboxSrcdoc = `<!doctype html><html><body><script src="${cdn}/factory/washi.min.js"></script><script>
+        ${opaqueRunnerBody}
+        runOpaqueSuite(Washi, "sandbox").then(
+          (data) => parent.postMessage({ ok: true, data }, "*"),
+          (err) => parent.postMessage({ ok: false, error: String(err && err.message || err) }, "*")
+        );
+      </script></body></html>`;
+      await writeFile(path.join(fixture, "pages", "sandbox-host.html"), sandboxHostHtml);
+      const sandboxHostSite = await serve(path.join(fixture, "pages"));
+      const sbCtx = await browser.newContext();
+      const sbBlocked = await blockExternalOnContext(sbCtx);
+      const sbPage = await sbCtx.newPage();
+      await sbPage.goto(`${sandboxHostSite}/sandbox-host.html`);
+      const sbOutcome = await timeout(sbPage.evaluate((srcdoc) => new Promise((resolve) => {
+        window.addEventListener("message", (ev) => resolve(ev.data), { once: true });
+        document.getElementById("sb").srcdoc = srcdoc;
+      }), sandboxSrcdoc));
+      assert.equal(sbOutcome.ok, true, sbOutcome.error || "Sandboxed iframe solve failed");
+      check({
+        status: sbOutcome.data.status,
+        objective: sbOutcome.data.objective,
+        x: sbOutcome.data.x,
+        y: sbOutcome.data.y,
+      });
+      assert.equal(sbOutcome.data.checkStatus, "Unsat");
+      assert(
+        Array.isArray(sbOutcome.data.conflicts) &&
+          (sbOutcome.data.conflicts.includes("min_req") || sbOutcome.data.conflicts.includes("max_cap")),
+        `Expected named conflict from {min_req, max_cap}, got: ${JSON.stringify(sbOutcome.data.conflicts)}`
+      );
+      assert.deepEqual(sbBlocked, []);
+      await sbCtx.close();
+      console.log("PASS Chromium: sandbox='allow-scripts' iframe (opaque origin default solve() & check() on main thread)");
+
       // Test GLPK ESM and IIFE in Chromium
       const glpkSource = `
         window.runGlpk = async () => {

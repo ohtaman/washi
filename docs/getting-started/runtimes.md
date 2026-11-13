@@ -211,7 +211,7 @@ For single-file HTML pages, CodePen, or JSFiddle, load `washi.min.js` via a stan
 ```
 
 > [!NOTE]
-> When loading from a cross-origin CDN (such as jsDelivr or unpkg), browsers block direct `new Worker("https://cdn...")` construction under the same-origin policy. WaSHI automatically bridges cross-origin workers via a lightweight ES module `Blob` bootstrap (`import "https://..."`), so Web Worker execution works out of the box from CDNs.
+> When loading from a cross-origin CDN (such as jsDelivr or unpkg), browsers block direct `new Worker("https://cdn...")` construction under the same-origin policy. On standard web origins (`https://` / `http://`), WaSHI automatically bridges cross-origin workers via a lightweight ES module `Blob` bootstrap (`import "https://..."`). On local `file:` URLs or opaque origins (`window.location.origin === "null"`, such as `sandbox="allow-scripts"` `<iframe>` embeds), WaSHI automatically runs HiGHS on the main thread when `useWorker` is omitted.
 
 ---
 

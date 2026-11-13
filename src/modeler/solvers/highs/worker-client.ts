@@ -223,7 +223,11 @@ export async function solveLp(
     };
   }
 
-  const useWorker = options.useWorker ?? (typeof window !== "undefined");
+  const useWorker =
+    options.useWorker ??
+    (typeof window !== "undefined" &&
+      window.location?.origin !== "null" &&
+      window.location?.protocol !== "file:");
   const worker = useWorker ? getWorker() : null;
 
   if (!worker) {
