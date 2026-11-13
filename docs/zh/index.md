@@ -2,12 +2,8 @@
 layout: home
 
 hero:
-  name: 'WaS<span class="brand-hi">HI</span>'
   text: "适用于数理优化与约束编程的代数建模器"
   tagline: "Python PuLP 的 TypeScript 替代方案。使用直观的中缀数学表达式构建 LP、MIP、凸 QP 与 SMT 模型，基于 WebAssembly（HiGHS、Z3、GLPK）在客户端高效求解，无需 Python 服务或本地 C++ 依赖。"
-  image:
-    src: /washi-logo.svg
-    alt: WaSHI Emblem
   actions:
     - theme: brand
       text: 快速入门
@@ -17,57 +13,103 @@ hero:
       link: /zh/showcase/
 
 features:
-  - icon: ✍️
-    title: 代数模型构建 (expr)
-    details: 使用标签模板（expr`30 * ${x} + 50 * ${y} <= 40`）、向量点积（dot）与求和（sum），将 ${...} 直接绑定为强类型的变量对象引用。
-    link: /zh/guide/expressions
-    linkText: 数学表达式
-  - icon: ⚙️
-    title: 可插拔求解器适配器
-    details: 通过统一的建模 API 调用内置默认的 HiGHS（LP/MIP/凸QP）以及可选的 Z3（SMT 逻辑与冲突诊断）和 GLPK 插件。
-    link: /zh/solvers/
-    linkText: 求解器
+  - icon: 📅
+    title: 排班、排课与路径优化
+    details: 使用内置 HiGHS（LP / MIP）高效求解人员排班、大学排课、二维装箱与车辆路径等组合优化问题。
+    link: /zh/examples/
+    linkText: 实战范例
+  - icon: 📈
+    title: 投资组合与连续资源分配
+    details: 通过凸二次目标函数（QuadExpr）直接构建马科维茨投资组合风险最小化与连续指标拟合模型。
+    link: /zh/examples/portfolio-qp
+    linkText: 投资组合优化
+  - icon: 🔍
+    title: 逻辑规则验证与冲突诊断
+    details: 当排班或业务规则因条件冲突而无可行解时，借助 Z3 引擎精准定位相互矛盾的约束子集（unsatCore）。
+    link: /zh/guide/unsat-core
+    linkText: 冲突约束诊断
   - icon: 🌐
-    title: WebAssembly 本地执行
-    details: 无需单独的 Python 服务或 C/C++ 本地编译即可在 Node.js 或浏览器 Web Worker 中求解，支持作为静态资源部署并与浏览器端 LLM 协同。
+    title: 零后端部署与端侧运行
+    details: 无需 Python 后端即可在浏览器 Web Worker 与 Node.js 中本地运行，可作为端侧大模型的数理校验护栏。
     link: /zh/getting-started/runtimes
     linkText: 运行时环境配置
-  - icon: 🔍
-    title: 冲突约束诊断 (unsatCore)
-    details: 借助命名约束与 Z3 适配器提取不可行模型的冲突约束子集（unsatCore），定位相互矛盾的约束条件。
-    link: /zh/guide/unsat-core
-    linkText: 不可行冲突诊断 (Unsat Core)
 ---
 
-<div style="max-width: 800px; margin: 40px auto;">
+<div class="washi-home-sections">
 
-## 快速示例
+<div class="washi-home-showcase">
+<div class="washi-home-showcase-head">
+<h2>基于 WaSHI 构建的应用</h2>
+<a href="/washi/zh/showcase/" class="washi-home-all-link">查看全部案例 →</a>
+</div>
+<p class="washi-home-showcase-sub">
+完全通过浏览器端 WebAssembly 本地运行的排班决策应用与数理优化解谜游戏，无需任何后端服务器通信。
+</p>
+<div class="washi-home-showcase-grid">
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-ai-timetable.png" alt="" width="960" height="540" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">🎓</span>
+<span class="washi-showcase-badge">Gemini Nano × HiGHS MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/washi/apps/ai-timetable/" target="_self" class="washi-showcase-title-link">大学排课 AI Copilot</a>
+</div>
+<p class="washi-showcase-desc">
+同时协调 4 个年级课表、10 位教师出勤与 7 间专业教室，支持 CSV 导入与自然语言复杂排课规则求解。
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">打开应用 →</span>
+</div>
+</div>
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-titan-pack.png" alt="" width="640" height="360" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">⚡</span>
+<span class="washi-showcase-badge">二维装箱 MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/washi/games/titan-pack/" target="_self" class="washi-showcase-title-link">TITAN PACK</a>
+</div>
+<p class="washi-showcase-desc">
+将订单零件严丝合缝排入母材平板，基于实时 MILP 求解器体验零废料与零通断层的二维板材切割优化。
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">打开游戏 →</span>
+</div>
+</div>
+<div class="washi-showcase-card">
+<div class="washi-showcase-thumb">
+<img src="/showcase/thumb-mofumofu-sheep.png" alt="" width="960" height="540" class="washi-showcase-thumb-img" loading="lazy" />
+</div>
+<div class="washi-showcase-card-body">
+<div>
+<div class="washi-showcase-card-top">
+<span class="washi-showcase-icon" aria-hidden="true">🐑</span>
+<span class="washi-showcase-badge">图割与牧场围栏 MILP</span>
+</div>
+<div class="washi-showcase-title">
+<a href="/washi/games/mofumofu-sheep/" target="_self" class="washi-showcase-title-link">毛茸茸绵羊的牧场围栏</a>
+</div>
+<p class="washi-showcase-desc">
+用有限数量的木栅栏阻断野狼入侵路线，并通过精确整数规划最大化安全牧场内的野草莓收益。
+</p>
+</div>
+<span class="washi-home-card-cta" aria-hidden="true">打开游戏 →</span>
+</div>
+</div>
+</div>
+</div>
 
-```typescript
-import { Model, expr, maximize } from "@ohtaman/washi";
-
-// 1. 创建模型
-const m = new Model("木工产品利润最大化");
-
-// 2. 定义带合理上下界的整数决策变量
-const desks = m.integer("桌子", { lb: 0, ub: 100 });
-const chairs = m.integer("椅子", { lb: 0, ub: 100 });
-
-// 3. 设置目标函数（桌子利润 $30，椅子利润 $50）
-m.objective(maximize(expr`30 * ${desks} + 50 * ${chairs}`));
-
-// 4. 添加约束条件（木材与工时上限）
-m.constraint(expr`${desks} + 2 * ${chairs} <= 40`, "wood_limit");
-m.constraint(expr`2 * ${desks} + ${chairs} <= 50`, "labor_limit");
-
-// 5. 调用 WebAssembly (HiGHS) 求解
-await m.solve();
-
-if (m.hasPrimalSolution) {
-  console.log(`生产方案: 桌子=${desks.value}, 椅子=${chairs.value}`);
-  console.log(`最大利润: $${m.objectiveValue}`);
-}
-```
+<div class="washi-home-docs-dir">
 
 ## 文档导航
 
@@ -78,6 +120,8 @@ if (m.hasPrimalSolution) {
 - **求解器适配**: [求解器概览与对比](/zh/solvers/) · [HiGHS (内置)](/zh/solvers/highs) · [Z3 (SMT)](/zh/solvers/z3) · [GLPK (LP/MIP)](/zh/solvers/glpk) · [自定义求解器适配器](/zh/solvers/custom-solver)
 - **实战范例**: [范例总览与 API 速查](/zh/examples/) · [生产规划](/zh/examples/production) · [背包问题](/zh/examples/knapsack) · [运输网络规划](/zh/examples/transportation) · [饮食配方与敏感度分析](/zh/examples/diet-sensitivity) · [排班调度](/zh/examples/shift-scheduling) · [电商优惠券优化](/zh/examples/ecommerce-coupons) · [投资组合二次规划 (QP)](/zh/examples/portfolio-qp) · [SMT 安全策略验证](/zh/examples/smt-security) · [冲突约束诊断 (Unsat Core)](/zh/examples/unsat-core) · [车辆路径问题 (列生成)](/zh/examples/vehicle-routing) · [旅行商问题 (Benders 分解)](/zh/examples/traveling-salesperson)
 - **交互式 Playground 与展厅**: [应用与游戏展厅](/zh/showcase/) · <a href="/washi/demo/" target="_self">WaSHI Playground</a> · <a href="/washi/apps/ai-shift/" target="_self">护士排班 AI 助手</a> · <a href="/washi/apps/ai-timetable/" target="_self">大学排课 AI Copilot</a> · <a href="/washi/games/demon-castle-shift/" target="_self">魔王城24小时警备排班</a> · <a href="/washi/games/mofumofu-sheep/" target="_self">毛茸茸绵羊的牧场围栏</a> · <a href="/washi/games/titan-pack/" target="_self">TITAN PACK</a>
+
+</div>
 
 </div>
 

@@ -6,6 +6,13 @@
     "openPlayground": "在 Playground 中打开 →",
     "output": "执行输出 (stdout)"
   },
+  "heroDemo": {
+    "caption": "云服务器配置成本最小化",
+    "badge": "HiGHS · 整数规划",
+    "idleHint": "点击后通过 WebAssembly 运行",
+    "previewTag": "输出预览",
+    "liveTag": "HiGHS WASM"
+  },
   "portfolioQp": {
     "eyebrow": "交互式示例 · 5 项资产凸二次规划 (QuadExpr)",
     "title": "投资组合配置优化器 (Markowitz QP)",

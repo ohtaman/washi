@@ -487,7 +487,7 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     const strippedHome = stripVitePressSyntax(homeMd);
     expect(strippedHome).not.toContain("layout: home");
     expect(strippedHome).not.toMatch(/^---/);
-    expect(strippedHome).toContain("## Quick Example");
+    expect(strippedHome).toContain("## Explore Documentation");
 
     const synthetic = [
       "---",

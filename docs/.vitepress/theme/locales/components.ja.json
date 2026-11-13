@@ -6,6 +6,13 @@
     "openPlayground": "Playground で開く →",
     "output": "実行結果 (stdout)"
   },
+  "heroDemo": {
+    "caption": "サーバー台数のコスト最小化",
+    "badge": "HiGHS · 整数計画",
+    "idleHint": "クリック時に WebAssembly で実行",
+    "previewTag": "出力例",
+    "liveTag": "HiGHS WASM"
+  },
   "portfolioQp": {
     "eyebrow": "インタラクティブ実例 · 5資産の凸二次計画 (QuadExpr)",
     "title": "ポートフォリオ配分オプティマイザ (Markowitz QP)",

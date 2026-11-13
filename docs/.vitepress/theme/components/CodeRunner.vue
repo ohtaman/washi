@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
-import { transpileSnippetToJs } from "../utils/transpile";
+import { runWashiSnippet } from "../utils/runSnippet";
 import { useComponentTranslations } from "../locales/index";
 
 const props = defineProps<{
@@ -27,36 +27,6 @@ async function runSlotCode() {
 
   isRunning.value = true;
   errorMsg.value = null;
-  const capturedLogs: string[] = [];
-
-  const origLog = console.log;
-  const origWarn = console.warn;
-  const origError = console.error;
-
-  const formatArg = (a: unknown): string => {
-    if (typeof a === "string") return a;
-    if (typeof a === "object" && a !== null) {
-      try {
-        return JSON.stringify(a);
-      } catch {
-        return String(a);
-      }
-    }
-    return String(a);
-  };
-
-  console.log = (...args: unknown[]) => {
-    capturedLogs.push(args.map(formatArg).join(" "));
-    origLog(...args);
-  };
-  console.warn = (...args: unknown[]) => {
-    capturedLogs.push("[WARN] " + args.map(formatArg).join(" "));
-    origWarn(...args);
-  };
-  console.error = (...args: unknown[]) => {
-    capturedLogs.push("[ERROR] " + args.map(formatArg).join(" "));
-    origError(...args);
-  };
 
   try {
     if (hasRun.value) {
@@ -64,67 +34,12 @@ async function runSlotCode() {
       await new Promise((r) => setTimeout(r, 120));
     }
 
-    const Modeler = await import("../../../../src/index.ts");
-    if (rawCode.includes("z3")) {
-      const z3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
-      z3Mod.setZ3Assets({
-        jsUrl: new URL("/washi/z3-built.js", window.location.origin).href,
-        wasmUrl: new URL("/washi/z3-built.wasm", window.location.origin).href,
-      });
-    }
-    if (rawCode.includes("glpk")) {
-      await import("../../../../src/modeler/solvers/glpk/index.ts");
-    }
-
-    const pendingPromises: Promise<unknown>[] = [];
-
-    class TrackedModel extends Modeler.Model {
-      override solve(...args: Parameters<Modeler.Model["solve"]>) {
-        const p = super.solve(...args);
-        pendingPromises.push(p);
-        return p;
-      }
-      override check(...args: Parameters<Modeler.Model["check"]>) {
-        const p = super.check(...args);
-        pendingPromises.push(p);
-        return p;
-      }
-    }
-
-    const context: Record<string, unknown> = {
-      ...Modeler,
-      Model: TrackedModel,
-      console: {
-        log: console.log,
-        warn: console.warn,
-        error: console.error,
-      },
-    };
-
-    const jsCode = transpileSnippetToJs(rawCode);
-    const keys = Object.keys(context);
-    const values = Object.values(context);
-
-    const t0 = performance.now();
-    const fn = new Function(
-      ...keys,
-      `return (async () => {\n${jsCode}\n})();`
-    );
-    await fn(...values);
-    if (pendingPromises.length > 0) {
-      await Promise.allSettled(pendingPromises);
-    }
-    runTimeMs.value = performance.now() - t0;
-    logs.value = capturedLogs;
-    hasRun.value = true;
-  } catch (err: unknown) {
-    errorMsg.value = err instanceof Error ? err.message : String(err);
-    logs.value = capturedLogs;
+    const res = await runWashiSnippet(rawCode);
+    runTimeMs.value = res.runTimeMs;
+    logs.value = res.logs;
+    errorMsg.value = res.errorMsg;
     hasRun.value = true;
   } finally {
-    console.log = origLog;
-    console.warn = origWarn;
-    console.error = origError;
     isRunning.value = false;
   }
 }
@@ -144,6 +59,7 @@ onMounted(() => {
 
     <div class="runner-action-bar">
       <button
+        type="button"
         class="washi-solve-btn"
         :class="{ solving: isRunning }"
         :disabled="isRunning"

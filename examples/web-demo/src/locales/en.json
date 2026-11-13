@@ -54,6 +54,10 @@
       "title": "Production Planning (Chairs & Tables)",
       "description": "Classic workshop resource allocation. Maximize profit from chairs and tables subject to carpentry and finishing labor limits."
     },
+    "cloud_sizing": {
+      "title": "Cloud Instance Sizing (Cost Minimization)",
+      "description": "Provision integer counts of small and large cloud instances to meet vCPU and RAM requirements at minimum hourly cost."
+    },
     "knapsack": {
       "title": "0-1 Knapsack Selection",
       "description": "Binary integer programming. Select the highest-value combination of items without exceeding the backpack weight limit."
