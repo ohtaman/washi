@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { mkdtemp, readFile, writeFile, mkdir, rm, readdir } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, mkdir, rm, readdir, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import vm from "node:vm";
@@ -540,39 +540,64 @@ try {
         }
       }
 
-      // Test restricted origins (file:// local HTML and sandbox="allow-scripts" iframe) with default solve() & check()
-      const opaqueRunnerBody = `
-        const runOpaqueSuite = async (api, expectMode) => {
+      // Test effective window.origin vs location.origin across file://, URL-loaded sandbox, srcdoc sandbox, and inherited about:blank iframes
+      const originSuiteBody = `
+        const runOriginSuite = async (api, expectMode) => {
           const { Model, expr, maximize } = api;
-          if (expectMode === "file" && window.location.protocol !== "file:") {
-            throw new Error("Expected file: protocol, got: " + window.location.protocol);
+          if (expectMode === "file") {
+            if (window.location.protocol !== "file:" || window.origin !== "null") {
+              throw new Error("Expected file: with opaque window.origin, got protocol=" + window.location.protocol + ", origin=" + window.origin);
+            }
+          } else if (expectMode === "url-sandbox") {
+            if (!window.location.origin.startsWith("http://") || window.origin !== "null") {
+              throw new Error("Expected HTTP location.origin with opaque window.origin, got location.origin=" + window.location.origin + ", window.origin=" + window.origin);
+            }
+          } else if (expectMode === "srcdoc-sandbox") {
+            if (window.origin !== "null") {
+              throw new Error("Expected opaque window.origin ('null'), got: " + window.origin);
+            }
+          } else if (expectMode === "inherited-blank") {
+            if (window.location.origin !== "null" || !window.origin.startsWith("http://")) {
+              throw new Error("Expected null location.origin with inherited HTTP window.origin, got location.origin=" + window.location.origin + ", window.origin=" + window.origin);
+            }
           }
-          if (expectMode === "sandbox" && window.location.origin !== "null") {
-            throw new Error("Expected opaque origin ('null'), got: " + window.location.origin);
-          }
-          const m = new Model("OpaqueOriginMIP");
-          const x = m.integer("x", { lb: 0 });
-          const y = m.integer("y", { lb: 0 });
-          m.objective(maximize(expr\`30 * \${x} + 50 * \${y}\`));
-          m.constraint(expr\`\${x} + 2 * \${y} <= 40\`, "wood");
-          m.constraint(expr\`2 * \${x} + \${y} <= 50\`, "labor");
-          const status = await m.solve();
-          if (!m.validateSolution().valid) {
-            throw new Error("Expected valid primal solution on restricted origin");
-          }
-          const diag = new Model("OpaqueOriginConflicts");
-          const z = diag.continuous("z", { lb: 0, ub: 10 });
-          diag.constraint(expr\`\${z} >= 8\`, "min_req");
-          diag.constraint(expr\`\${z} <= 3\`, "max_cap");
-          const checkRes = await diag.check();
-          return {
-            status,
-            objective: m.objectiveValue,
-            x: x.value,
-            y: y.value,
-            checkStatus: checkRes.status,
-            conflicts: checkRes.conflicts,
+
+          let workersCreated = 0;
+          const NativeWorker = window.Worker;
+          window.Worker = class extends NativeWorker {
+            constructor(...args) {
+              workersCreated++;
+              super(...args);
+            }
           };
+          try {
+            const m = new Model("EffectiveOriginMIP");
+            const x = m.integer("x", { lb: 0 });
+            const y = m.integer("y", { lb: 0 });
+            m.objective(maximize(expr\`30 * \${x} + 50 * \${y}\`));
+            m.constraint(expr\`\${x} + 2 * \${y} <= 40\`, "wood");
+            m.constraint(expr\`2 * \${x} + \${y} <= 50\`, "labor");
+            const status = await m.solve();
+            if (!m.validateSolution().valid) {
+              throw new Error("Expected valid primal solution");
+            }
+            const diag = new Model("EffectiveOriginConflicts");
+            const z = diag.continuous("z", { lb: 0, ub: 10 });
+            diag.constraint(expr\`\${z} >= 8\`, "min_req");
+            diag.constraint(expr\`\${z} <= 3\`, "max_cap");
+            const checkRes = await diag.check();
+            return {
+              status,
+              objective: m.objectiveValue,
+              x: x.value,
+              y: y.value,
+              checkStatus: checkRes.status,
+              conflicts: checkRes.conflicts,
+              workersCreated,
+            };
+          } finally {
+            window.Worker = NativeWorker;
+          }
         };
       `;
 
@@ -589,9 +614,24 @@ try {
         return blocked;
       };
 
+      const assertOriginSuiteResult = (res, expectWorker) => {
+        check({ status: res.status, objective: res.objective, x: res.x, y: res.y });
+        assert.equal(res.checkStatus, "Unsat");
+        assert(
+          Array.isArray(res.conflicts) &&
+            (res.conflicts.includes("min_req") || res.conflicts.includes("max_cap")),
+          `Expected named conflict from {min_req, max_cap}, got: ${JSON.stringify(res.conflicts)}`
+        );
+        if (expectWorker) {
+          assert(res.workersCreated >= 1, `Expected Web Worker execution, got workersCreated=${res.workersCreated}`);
+        } else {
+          assert.equal(res.workersCreated, 0, `Expected main-thread execution without Worker construction, got workersCreated=${res.workersCreated}`);
+        }
+      };
+
       for (const [label, scriptBlock] of [
-        ["file-iife", `<script src="${cdn}/factory/washi.min.js"></script><script>${opaqueRunnerBody};window.runOpaque = () => runOpaqueSuite(Washi, "file");</script>`],
-        ["file-esm", `<script type="module">import * as api from '${cdn}/factory/washi.js';${opaqueRunnerBody};window.runOpaque = () => runOpaqueSuite(api, "file");</script>`],
+        ["file-iife", `<script src="${cdn}/factory/washi.min.js"></script><script>${originSuiteBody};window.runOpaque = () => runOriginSuite(Washi, "file");</script>`],
+        ["file-esm", `<script type="module">import * as api from '${cdn}/factory/washi.js';${originSuiteBody};window.runOpaque = () => runOriginSuite(api, "file");</script>`],
       ]) {
         const localHtmlPath = path.join(fixture, "pages", `${label}.html`);
         await writeFile(localHtmlPath, `<!doctype html><html><body>${scriptBlock}</body></html>`);
@@ -601,52 +641,99 @@ try {
         await filePage.goto(`file://${localHtmlPath}`);
         await filePage.waitForFunction(() => typeof window.runOpaque === "function");
         const opaqueRes = await timeout(filePage.evaluate(() => window.runOpaque()));
-        check({ status: opaqueRes.status, objective: opaqueRes.objective, x: opaqueRes.x, y: opaqueRes.y });
-        assert.equal(opaqueRes.checkStatus, "Unsat");
-        assert(
-          Array.isArray(opaqueRes.conflicts) &&
-            (opaqueRes.conflicts.includes("min_req") || opaqueRes.conflicts.includes("max_cap")),
-          `Expected named conflict from {min_req, max_cap}, got: ${JSON.stringify(opaqueRes.conflicts)}`
-        );
+        assertOriginSuiteResult(opaqueRes, false);
         assert.deepEqual(fileBlocked, []);
         await fileCtx.close();
-        console.log(`PASS Chromium: file:// ${label} (restricted origin default solve() & check() on main thread)`);
+        console.log(`PASS Chromium: file:// ${label} (opaque window.origin default solve() & check() on main thread)`);
       }
 
-      const sandboxHostHtml = `<!doctype html><html><body><iframe id="sb" sandbox="allow-scripts"></iframe></body></html>`;
-      const sandboxSrcdoc = `<!doctype html><html><body><script src="${cdn}/factory/washi.min.js"></script><script>
-        ${opaqueRunnerBody}
-        runOpaqueSuite(Washi, "sandbox").then(
-          (data) => parent.postMessage({ ok: true, data }, "*"),
-          (err) => parent.postMessage({ ok: false, error: String(err && err.message || err) }, "*")
+      const sandboxEmbedHtml = `<!doctype html><html><body><script src="${cdn}/factory/washi.min.js"></script><script>
+        ${originSuiteBody}
+        runOriginSuite(Washi, "url-sandbox").then(
+          (data) => parent.postMessage({ tag: "url-sandbox", ok: true, data }, "*"),
+          (err) => parent.postMessage({ tag: "url-sandbox", ok: false, error: String(err && err.message || err) }, "*")
         );
       </script></body></html>`;
-      await writeFile(path.join(fixture, "pages", "sandbox-host.html"), sandboxHostHtml);
+      const sandboxSrcdoc = `<!doctype html><html><body><script src="${cdn}/factory/washi.min.js"></script><script>
+        ${originSuiteBody}
+        runOriginSuite(Washi, "srcdoc-sandbox").then(
+          (data) => parent.postMessage({ tag: "srcdoc-sandbox", ok: true, data }, "*"),
+          (err) => parent.postMessage({ tag: "srcdoc-sandbox", ok: false, error: String(err && err.message || err) }, "*")
+        );
+      </script></body></html>`;
+      await writeFile(path.join(fixture, "pages", "sandbox-embed.html"), sandboxEmbedHtml);
+      await writeFile(path.join(fixture, "pages", "sandbox-host.html"), "<!doctype html><html><body></body></html>");
       const sandboxHostSite = await serve(path.join(fixture, "pages"));
       const sbCtx = await browser.newContext();
       const sbBlocked = await blockExternalOnContext(sbCtx);
       const sbPage = await sbCtx.newPage();
       await sbPage.goto(`${sandboxHostSite}/sandbox-host.html`);
-      const sbOutcome = await timeout(sbPage.evaluate((srcdoc) => new Promise((resolve) => {
-        window.addEventListener("message", (ev) => resolve(ev.data), { once: true });
-        document.getElementById("sb").srcdoc = srcdoc;
+
+      // 1. URL-loaded sandboxed iframe (location.origin is HTTP, effective window.origin is "null")
+      const urlSbOutcome = await timeout(sbPage.evaluate((embedUrl) => new Promise((resolve) => {
+        const handler = (ev) => {
+          if (ev.data?.tag === "url-sandbox") {
+            window.removeEventListener("message", handler);
+            resolve(ev.data);
+          }
+        };
+        window.addEventListener("message", handler);
+        const f = document.createElement("iframe");
+        f.sandbox = "allow-scripts";
+        f.src = embedUrl;
+        document.body.appendChild(f);
+      }), `${sandboxHostSite}/sandbox-embed.html`));
+      assert.equal(urlSbOutcome.ok, true, urlSbOutcome.error || "URL-loaded sandboxed iframe solve failed");
+      assertOriginSuiteResult(urlSbOutcome.data, false);
+      console.log("PASS Chromium: URL-loaded sandbox='allow-scripts' iframe (opaque window.origin -> main thread)");
+
+      // 2. srcdoc sandboxed iframe
+      const srcdocSbOutcome = await timeout(sbPage.evaluate((srcdoc) => new Promise((resolve) => {
+        const handler = (ev) => {
+          if (ev.data?.tag === "srcdoc-sandbox") {
+            window.removeEventListener("message", handler);
+            resolve(ev.data);
+          }
+        };
+        window.addEventListener("message", handler);
+        const f = document.createElement("iframe");
+        f.sandbox = "allow-scripts";
+        f.srcdoc = srcdoc;
+        document.body.appendChild(f);
       }), sandboxSrcdoc));
-      assert.equal(sbOutcome.ok, true, sbOutcome.error || "Sandboxed iframe solve failed");
-      check({
-        status: sbOutcome.data.status,
-        objective: sbOutcome.data.objective,
-        x: sbOutcome.data.x,
-        y: sbOutcome.data.y,
-      });
-      assert.equal(sbOutcome.data.checkStatus, "Unsat");
-      assert(
-        Array.isArray(sbOutcome.data.conflicts) &&
-          (sbOutcome.data.conflicts.includes("min_req") || sbOutcome.data.conflicts.includes("max_cap")),
-        `Expected named conflict from {min_req, max_cap}, got: ${JSON.stringify(sbOutcome.data.conflicts)}`
-      );
+      assert.equal(srcdocSbOutcome.ok, true, srcdocSbOutcome.error || "srcdoc sandboxed iframe solve failed");
+      assertOriginSuiteResult(srcdocSbOutcome.data, false);
+      console.log("PASS Chromium: srcdoc sandbox='allow-scripts' iframe (opaque window.origin -> main thread)");
+
+      // 3. Same-origin about:blank iframe (location.origin is "null", effective window.origin is inherited HTTP -> uses Worker)
+      await cp(path.join(packageRoot, "dist/browser"), path.join(fixture, "pages", "same-origin"), { recursive: true });
+      for (const [blankLabel, scriptSrc] of [
+        ["cross-origin CDN", `${cdn}/factory/washi.min.js`],
+        ["same-origin bundle", `${sandboxHostSite}/same-origin/washi.min.js`],
+      ]) {
+        const blankOutcome = await timeout(sbPage.evaluate(({ src, bodyCode }) => new Promise((resolve, reject) => {
+          const f = document.createElement("iframe");
+          document.body.appendChild(f);
+          const doc = f.contentDocument;
+          const s1 = doc.createElement("script");
+          s1.src = src;
+          s1.onload = () => {
+            const s2 = doc.createElement("script");
+            s2.textContent = `${bodyCode}; runOriginSuite(Washi, "inherited-blank").then(window.__done, window.__fail);`;
+            f.contentWindow.__done = (data) => resolve({ ok: true, data });
+            f.contentWindow.__fail = (err) => resolve({ ok: false, error: String(err && err.message || err) });
+            doc.body.appendChild(s2);
+          };
+          s1.onerror = () => reject(new Error("Failed to load script in about:blank iframe: " + src));
+          doc.head.appendChild(s1);
+        }), { src: scriptSrc, bodyCode: originSuiteBody }));
+        assert.equal(blankOutcome.ok, true, blankOutcome.error || `about:blank (${blankLabel}) solve failed`);
+        assertOriginSuiteResult(blankOutcome.data, true);
+        console.log(`PASS Chromium: inherited-origin about:blank iframe (${blankLabel}) preserves Web Worker execution`);
+      }
+
       assert.deepEqual(sbBlocked, []);
       await sbCtx.close();
-      console.log("PASS Chromium: sandbox='allow-scripts' iframe (opaque origin default solve() & check() on main thread)");
 
       // Test GLPK ESM and IIFE in Chromium
       const glpkSource = `

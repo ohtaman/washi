@@ -53,14 +53,19 @@ describe("HiGHS worker failures", () => {
     await expect(solveLp("model")).rejects.toThrow("clone failed");
   });
 
-  it("defaults to main-thread execution on opaque or file: origins unless useWorker: true is passed", async () => {
-    for (const loc of [
-      { origin: "null", protocol: "about:" },
-      { origin: "file://", protocol: "file:" },
+  it("defaults to main-thread execution when effective window.origin is opaque or file:, including URL-loaded sandboxed iframes", async () => {
+    for (const winStub of [
+      // URL-loaded <iframe sandbox="allow-scripts" src="https://example.com/embed.html">:
+      // location.origin is the HTTPS URL origin, whereas effective window.origin is "null".
+      { origin: "null", location: { origin: "https://example.com", protocol: "https:" } },
+      // Local file:// page in Chromium (window.origin === "null", location.origin === "file://")
+      { origin: "null", location: { origin: "file://", protocol: "file:" } },
+      // Fallback path when synthetic environment omits window.origin on file:
+      { location: { origin: "file://", protocol: "file:" } },
     ]) {
       vi.resetModules();
       FakeWorker.instances = [];
-      vi.stubGlobal("window", { location: loc });
+      vi.stubGlobal("window", winStub);
       vi.stubGlobal("Worker", FakeWorker);
 
       const loader = await import("../src/modeler/solvers/highs/loader.js");
@@ -87,18 +92,28 @@ describe("HiGHS worker failures", () => {
     }
   });
 
-  it("defaults to Web Worker execution on standard web origins", async () => {
-    vi.stubGlobal("window", { location: { origin: "https://example.com", protocol: "https:" } });
-    const loader = await import("../src/modeler/solvers/highs/loader.js");
-    vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
+  it("defaults to Web Worker execution on standard web origins and inherited-origin about:blank iframes", async () => {
+    for (const winStub of [
+      { origin: "https://example.com", location: { origin: "https://example.com", protocol: "https:" } },
+      // Same-origin about:blank iframe inherits window.origin from parent even though location.origin is "null".
+      { origin: "https://example.com", location: { origin: "null", protocol: "about:" } },
+    ]) {
+      vi.resetModules();
+      FakeWorker.instances = [];
+      vi.stubGlobal("window", winStub);
+      vi.stubGlobal("Worker", FakeWorker);
 
-    const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
-    const req = solveLp("Maximize\n obj: x\nEnd");
-    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
-    const worker = FakeWorker.instances[0];
-    worker.onmessage?.({
-      data: { type: "SOLVE_SUCCESS", id: worker.messages[0].id, result: { Status: "Optimal" }, runTime: 0.01 },
-    });
-    await expect(req).resolves.toMatchObject({ result: { Status: "Optimal" } });
+      const loader = await import("../src/modeler/solvers/highs/loader.js");
+      vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
+
+      const { solveLp } = await import("../src/modeler/solvers/highs/worker-client.js");
+      const req = solveLp("Maximize\n obj: x\nEnd");
+      await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+      const worker = FakeWorker.instances[0];
+      worker.onmessage?.({
+        data: { type: "SOLVE_SUCCESS", id: worker.messages[0].id, result: { Status: "Optimal" }, runTime: 0.01 },
+      });
+      await expect(req).resolves.toMatchObject({ result: { Status: "Optimal" } });
+    }
   });
 });

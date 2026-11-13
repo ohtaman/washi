@@ -211,7 +211,7 @@ export default function OptimizerComponent() {
 ```
 
 > [!NOTE]
-> jsDelivr 等のクロスオリジン CDN から読み込んだ場合、ブラウザの同一オリジンポリシーにより直接の `new Worker("https://cdn...")` はブロックされます。通常の Web オリジン（`https://` / `http://`）では、WaSHI は軽量の ES モジュール `Blob` ブートストラップ（`import "https://..."`）を介して自動的に Web Worker を起動します。一方、ローカルの `file:` URL や不透明オリジン（`window.location.origin === "null"`、`sandbox="allow-scripts"` の `<iframe>` 埋め込みなど）では、`useWorker` 未指定時に自動的にメインスレッドで HiGHS を実行します。
+> jsDelivr 等のクロスオリジン CDN から読み込んだ場合、ブラウザの同一オリジンポリシーにより直接の `new Worker("https://cdn...")` はブロックされます。通常の Web オリジン（`https://` / `http://`）では、WaSHI は軽量の ES モジュール `Blob` ブートストラップ（`import "https://..."`）を介して自動的に Web Worker を起動します。一方、実効オリジンが不透明な環境（`window.origin === "null"`、ローカルの `file:` URL や `allow-same-origin` なしの `sandbox="allow-scripts"` `<iframe>` 埋め込みなど）では、`useWorker` 未指定時に自動的にメインスレッドで HiGHS を実行します。
 
 ---
 
