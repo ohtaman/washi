@@ -76,23 +76,24 @@ function formatConsoleArg(arg: unknown): string {
 }
 
 function extractCallTarget(
-  modelSolverName: string | undefined,
+  modelSolver: Solver | null | undefined,
+  getDefaultSolver: (options?: SolveOptions) => Solver,
   solverOrOptions?: Solver | string | SolveOptions,
   maybeOptions?: SolveOptions
 ): { solverName: string; solveOptions: SolveOptions } {
   if (typeof solverOrOptions === "string") {
-    return { solverName: solverOrOptions, solveOptions: maybeOptions ?? {} };
+    return { solverName: solverOrOptions.toLowerCase(), solveOptions: maybeOptions ?? {} };
   }
   if (solverOrOptions && typeof solverOrOptions === "object" && "solve" in solverOrOptions) {
-    return { solverName: solverOrOptions.name, solveOptions: maybeOptions ?? {} };
+    return { solverName: solverOrOptions.name.toLowerCase(), solveOptions: maybeOptions ?? {} };
   }
   const opts = solverOrOptions ?? {};
   const solverChoice = opts.solver;
-  const solverName =
+  const resolvedName =
     typeof solverChoice === "string"
       ? solverChoice
-      : solverChoice?.name ?? modelSolverName ?? "highs";
-  return { solverName, solveOptions: opts };
+      : solverChoice?.name ?? modelSolver?.name ?? getDefaultSolver(opts).name;
+  return { solverName: resolvedName.toLowerCase(), solveOptions: opts };
 }
 
 /**
@@ -185,12 +186,13 @@ export async function runWashiSnippet(
     };
 
     const warmSolverForCall = async (
-      modelSolverName: string | undefined,
+      modelSolver: Solver | null | undefined,
       solverOrOptions?: Solver | string | SolveOptions,
       maybeOptions?: SolveOptions
     ) => {
       const { solverName, solveOptions } = extractCallTarget(
-        modelSolverName,
+        modelSolver,
+        (opts) => Modeler.getSolver(undefined, opts),
         solverOrOptions,
         maybeOptions
       );
@@ -247,7 +249,7 @@ export async function runWashiSnippet(
       run: () => Promise<T>
     ): Promise<T> => {
       const p = (async () => {
-        await warmSolverForCall(modelInstance.solver?.name, args[0], args[1]);
+        await warmSolverForCall(modelInstance.solver, args[0], args[1]);
         const res = await run();
         solveCalls++;
         totalSolveTimeSec += Number.isFinite(modelInstance.runTime) ? modelInstance.runTime : 0;

@@ -472,6 +472,59 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       z3Mod.resetZ3LoaderCache();
       resetSnippetRunnerStateForTests();
     }
+
+    // Normalized solver instance names ("HiGHS", "GLPK") and setDefaultSolver("z3") must dispatch warmup accurately
+    const { setDefaultSolver } = await import("../src/index.js");
+    const glpkMod = await import("../src/modeler/solvers/glpk/index.js");
+    vi.unstubAllGlobals();
+    glpkMod.resetGlpkCache();
+    z3Mod.resetZ3LoaderCache();
+    const isHighsWarmedStub = vi.spyOn(workerClientMod, "isHighsWarmed").mockResolvedValue(false);
+    const highsWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockResolvedValue({ cached: false });
+    const glpkGetSpy = vi.spyOn(glpkMod, "getGlpk");
+    const z3LoadDefaultSpy = vi.spyOn(z3Mod, "loadZ3");
+    const solveNoopStub = vi.spyOn(Model.prototype, "solve").mockResolvedValue("Optimal");
+    const checkNoopStub = vi.spyOn(Model.prototype, "check").mockResolvedValue({
+      status: "Sat",
+      values: {},
+      runTime: 0.001,
+    });
+    try {
+      const explicitHighsRes = await runWashiSnippet(`
+        const m = new Model({ solver: "highs" });
+        await m.solve();
+      `);
+      expect(explicitHighsRes.errorMsg).toBeNull();
+      expect(highsWarmupSpy).toHaveBeenCalledTimes(1);
+
+      const explicitGlpkRes = await runWashiSnippet(`
+        const m = new Model({ solver: "glpk" });
+        await m.solve();
+      `);
+      expect(explicitGlpkRes.errorMsg).toBeNull();
+      expect(glpkGetSpy).toHaveBeenCalledTimes(1);
+
+      highsWarmupSpy.mockClear();
+      const defaultZ3Res = await runWashiSnippet(`
+        setDefaultSolver("z3");
+        const m = new Model();
+        await m.check();
+      `);
+      expect(defaultZ3Res.errorMsg).toBeNull();
+      expect(highsWarmupSpy).not.toHaveBeenCalled();
+      expect(z3LoadDefaultSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      setDefaultSolver("highs");
+      isHighsWarmedStub.mockRestore();
+      highsWarmupSpy.mockRestore();
+      glpkGetSpy.mockRestore();
+      z3LoadDefaultSpy.mockRestore();
+      solveNoopStub.mockRestore();
+      checkNoopStub.mockRestore();
+      glpkMod.resetGlpkCache();
+      z3Mod.resetZ3LoaderCache();
+      resetSnippetRunnerStateForTests();
+    }
   });
 
   it("links Open in Playground to a matching cloud_sizing preset with identical optimal solution", async () => {
