@@ -151,23 +151,24 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // Partial sta
 
 ## Accessing Solution Values & Reduced Costs
 
-After calling `await m.solve()` or `await m.check()`, assigned variable values are accessible via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`) or the bulk accessor `m.getValues()`:
+After calling `await m.solve()` or `await m.check()`, assigned variable values are accessible directly via `variable.value` (returns `number | null` for `Var`, or `boolean | null` for `BoolVar`), or by variable name via `m.values`:
 
 ```typescript
 await m.solve();
 
-// Single variable primal value
+// Scalar variable primal & boolean values
 console.log(`trucks: ${trucks.value}`);
+console.log(`isAdmin: ${isAdmin.value}`);
+
+// Indexed 1D & 2D variable containers
+const packedItems = items.filter((it) => selected[it].value === 1);
+console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
+
+// Name-keyed Map lookup (Map<string, number | boolean>)
+console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // Reduced cost (LP sensitivity analysis)
 console.log(`fuel reduced cost: ${fuel.reducedCost}`);
-
-// Bulk extraction for 1D or 2D collections (works for both Var and BoolVar collections)
-const selectedValues = m.getValues(selected);
-// { laptop: 1, phone: 0, tablet: 1 }
-
-const flowValues = m.getValues(ship);
-// { Tokyo: { StoreA: 50, ... }, Osaka: { ... } }
 ```
 
 ---

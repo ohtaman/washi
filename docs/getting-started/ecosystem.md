@@ -69,7 +69,10 @@ m.constraint(expr`dot(${labor}, ${qty}) <= 50`, "labor_limit");
 
 const status = await m.solve();
 const report = m.validateSolution();
-console.log(status, report.valid, m.objectiveValue, m.getValues(qty));
+console.log(status, report.valid, m.objectiveValue, {
+  desk: qty.desk.value,
+  chair: qty.chair.value,
+});
 // "Optimal", true, 1100, { desk: 20, chair: 10 }
 ```
 
@@ -107,7 +110,7 @@ print(LpStatus[prob.status], value(prob.objective), {p: value(qty[p]) for p in p
 | **Conditional / Big-M** | Manual Big-M linear inequality | `m.indicator(binVar, constraint, { activeValue: 0 })` (auto-derives tight Big-M from `lb`/`ub`) |
 | **Solve** | `prob.solve()` (uses CBC / configured solver) | `await m.solve()` (built-in HiGHS WASM; or `{ solver: "glpk" }` / `{ solver: "z3" }`) |
 | **Inspect LP** | `prob.writeLP("model.lp")` | `m.toLpString()` |
-| **Read results** | `LpStatus[prob.status]`, `value(x)`, `value(prob.objective)` | `status`, `x.value`, `m.getValues(qty)`, `m.objectiveValue`, `c.dual`, `c.slack` |
+| **Read results** | `LpStatus[prob.status]`, `value(x)`, `value(prob.objective)` | `status`, `x.value`, `qty.desk.value`, `m.values`, `m.objectiveValue`, `c.dual`, `c.slack` |
 | **Verify & diagnose** | Manual checks | `m.validateSolution()` & `await m.check()` (`conflicts` / Z3 `unsatCore`) |
 
 ### Beyond PuLP in TypeScript & Browser Apps

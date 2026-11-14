@@ -129,9 +129,9 @@ console.log("Objective Bound:", m.objectiveBound);        // Best dual bound (or
 console.log("Relative Gap:", m.relGap);                   // Relative MIP gap (alias: m.mipGap)
 console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
 
-// Individual & Bulk Variable Values
+// Variable Values (via .value or name-keyed m.values Map)
 console.log("x =", x.value, "y =", y.value);
-console.log(m.getValues({ x, y }));                       // { x: ..., y: ... }
+console.log("x by name:", m.values.get("x"));
 ```
 
 ### Understanding `m.status` vs. `m.terminationStatus`

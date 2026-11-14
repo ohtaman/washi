@@ -151,23 +151,24 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部�
 
 ## 获取求解结果与缩减成本 (Reduced Cost)
 
-调用 `await m.solve()` 或 `await m.check()` 后，可通过 `variable.value`（`Var` 返回 `number | null`，`BoolVar` 返回 `boolean | null`）或批量访问器 `m.getValues()` 获取变量赋值：
+调用 `await m.solve()` 或 `await m.check()` 后，可直接通过 `variable.value`（`Var` 返回 `number | null`，`BoolVar` 返回 `boolean | null`）读取变量赋值，也可通过以变量名为键的 `m.values` 查询：
 
 ```typescript
 await m.solve();
 
-// 单个变量的原问题解
+// 标量变量的原问题解与布尔值
 console.log(`trucks: ${trucks.value}`);
+console.log(`isAdmin: ${isAdmin.value}`);
+
+// 一维与二维容器的变量值读取
+const packedItems = items.filter((it) => selected[it].value === 1);
+console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
+
+// 按变量名从 Map 查询 (Map<string, number | boolean>)
+console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // 缩减成本（LP 灵敏度分析）
 console.log(`fuel reduced cost: ${fuel.reducedCost}`);
-
-// 批量提取一维或二维集合的值（同时支持 Var 与 BoolVar 集合）
-const selectedValues = m.getValues(selected);
-// { laptop: 1, phone: 0, tablet: 1 }
-
-const flowValues = m.getValues(ship);
-// { Tokyo: { StoreA: 50, ... }, Osaka: { ... } }
 ```
 
 ---

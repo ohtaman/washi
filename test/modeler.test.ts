@@ -104,7 +104,9 @@ describe("HiGHS Web Modeler", () => {
     expect(m.objectiveValue).toBe(1100);
     expect(x.value).toBe(20);
     expect(y.value).toBe(10);
-    expect(m.getValues([x, y])).toEqual([20, 10]);
+    expect(m.values.get("chairs")).toBe(20);
+    expect(m.values.get("tables")).toBe(10);
+    expect("getValues" in m).toBe(false);
   });
 
   it("handles multi-dimensional variables with m.binary(rows, cols)", async () => {

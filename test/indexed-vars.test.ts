@@ -101,33 +101,35 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
     expect(sparse2D[20][200].name).toBe("arc_20_200");
   });
 
-  it("preserves declared container shapes and leaf types in m.getValues()", async () => {
-    const m = new Model("GetValuesShapes");
+  it("preserves declared container shapes and direct .value access across 2D containers", async () => {
+    const m = new Model("ContainerValueShapes");
+    expect("getValues" in m).toBe(false);
+
     const grid = m.integer(2, 2, { lb: 0, ub: 10, prefix: "g" });
     const countKeys = m.continuous(2, ["A", "B"] as const, { lb: 0, prefix: "ck" });
     const keysCount = m.binary(["R1", "R2"] as const, 2, { prefix: "kc" });
 
-    // Before solve: preserves shapes with null leaves
-    const unsolvedGrid = m.getValues(grid);
-    expect(Array.isArray(unsolvedGrid)).toBe(true);
-    expect(Array.isArray(unsolvedGrid[0])).toBe(true);
-    expect(unsolvedGrid).toEqual([
+    // Before solve: preserves declared container shapes with null leaves
+    expect(Array.isArray(grid)).toBe(true);
+    expect(Array.isArray(grid[0])).toBe(true);
+    expect(grid.map((row) => row.map((v) => v.value))).toEqual([
       [null, null],
       [null, null],
     ]);
 
-    const unsolvedCK = m.getValues(countKeys);
-    expect(Array.isArray(unsolvedCK)).toBe(true);
-    expect(Array.isArray(unsolvedCK[0])).toBe(false);
-    expect(unsolvedCK).toEqual([
+    expect(Array.isArray(countKeys)).toBe(true);
+    expect(Array.isArray(countKeys[0])).toBe(false);
+    expect(countKeys.map((row) => ({ A: row.A.value, B: row.B.value }))).toEqual([
       { A: null, B: null },
       { A: null, B: null },
     ]);
 
-    const unsolvedKC = m.getValues(keysCount);
-    expect(Array.isArray(unsolvedKC)).toBe(false);
-    expect(Array.isArray(unsolvedKC.R1)).toBe(true);
-    expect(unsolvedKC).toEqual({
+    expect(Array.isArray(keysCount)).toBe(false);
+    expect(Array.isArray(keysCount.R1)).toBe(true);
+    expect({
+      R1: keysCount.R1.map((v) => v.value),
+      R2: keysCount.R2.map((v) => v.value),
+    }).toEqual({
       R1: [null, null],
       R2: [null, null],
     });
@@ -145,15 +147,18 @@ describe("Indexed Multi-dimensional Variables (binary / continuous)", () => {
     keysCount.R2[0].value = 0;
     keysCount.R2[1].value = 1;
 
-    expect(m.getValues(grid)).toEqual([
+    expect(grid.map((row) => row.map((v) => v.value))).toEqual([
       [1, 2],
       [3, 4],
     ]);
-    expect(m.getValues(countKeys)).toEqual([
+    expect(countKeys.map((row) => ({ A: row.A.value, B: row.B.value }))).toEqual([
       { A: 1.5, B: 2.5 },
       { A: 3.5, B: 4.5 },
     ]);
-    expect(m.getValues(keysCount)).toEqual({
+    expect({
+      R1: keysCount.R1.map((v) => v.value),
+      R2: keysCount.R2.map((v) => v.value),
+    }).toEqual({
       R1: [1, 0],
       R2: [0, 1],
     });

@@ -134,7 +134,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 
 - **Optimization (`await m.solve(options?)`)**:
   - Returns `SolverStatus` (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, or `"Unsat"`). Built-in optimization solvers return the optimization statuses (`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`), where a time-, iteration-, or solution-limited run (or an interrupted solve) that found a valid primal incumbent returns `"Feasible"`; `"Sat"` and `"Unsat"` are included in `SolverStatus` for satisfiability/custom solver adapters (such as `MockSolver`).
-  - Read values via `x.value`, `expr`...`.value`, `m.getValues(x)`, `m.getValues(container)`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`.
+  - Read values via `x.value`, `expr`...`.value`, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, and `x.reducedCost`.
   - Call `m.validateSolution()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary/boolean domains, linear constraint residuals, and logical constraints (`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`). Note that `validateSolution()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
 - **Satisfiability & Conflict Diagnosis (`await m.check(options?)`)**:
   - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`), where `conflicts` is populated when the model is proven `"Unsat"`.
@@ -172,7 +172,7 @@ export async function runMipExample() {
 
   const status = await m.solve();
   const report = m.validateSolution();
-  const values = m.getValues(qty);
+  const values = { desk: qty.desk.value, chair: qty.chair.value };
 
   return {
     status,
@@ -261,13 +261,13 @@ export function verifyNegativePatterns() {
   // 3. DO NOT use quadratic terms inside linear constraints:
   // WRONG: expr`${x}^2 <= 10`; -> throws Error ("Quadratic constraints are not supported")
 
-  // 4. DO NOT use retired aliases (removed in #59 / #81):
+  // 4. DO NOT use retired aliases (removed in #59 / #81 / #236):
   // - Use `expr` instead of retired `c` template tag
   // - Use `m.constraint(...)` instead of `m.constrain(...)` or `m.add(...)`
   // - Use `m.objective(maximize(...))` / `m.objective(minimize(...))` instead of `m.maximize(...)` / `m.minimize(...)` / `m.setObjective(...)`
   // - Use `await m.solve()` instead of `await m.optimize()`
   // - Use `.le()`, `.ge()`, `.eq()` instead of `.lessThanOrEqual()`, `.greaterThanOrEqual()`, `.equalTo()`
-  // - Use `.value` or `m.getValues(...)` instead of `expr.getValue()`
+  // - Use `.value` instead of `m.getValues(...)` or `expr.getValue()`
   // - Use `m.variables` / `m.constraints` instead of `m.vars` / `m.constrs`
   return { m, x, y, maximize };
 }

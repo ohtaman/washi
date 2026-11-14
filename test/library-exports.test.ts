@@ -104,6 +104,8 @@ describe("opt-ts Library Entry Point Exports", () => {
     expect((m as any).add).toBeUndefined();
     expect((m as any).vars).toBeUndefined();
     expect((m as any).constrs).toBeUndefined();
+    expect(Reflect.get(m, "getValues")).toBeUndefined();
+    expect("getValues" in m).toBe(false);
 
     // Canonical Model methods & properties exist
     expect(typeof m.constraint).toBe("function");

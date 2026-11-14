@@ -129,9 +129,9 @@ console.log("Objective Bound:", m.objectiveBound);        // 最佳对偶界 (�
 console.log("Relative Gap:", m.relGap);                   // 相对 MIP 间隙 (别名: m.mipGap)
 console.log("Absolute Gap:", m.absGap);                   // |objectiveValue - objectiveBound|
 
-// 单个及批量读取变量值
+// 读取变量值（通过 .value 或按名称索引的 m.values Map）
 console.log("x =", x.value, "y =", y.value);
-console.log(m.getValues({ x, y }));                       // { x: ..., y: ... }
+console.log("x by name:", m.values.get("x"));
 ```
 
 ### 理解 `m.status` 与 `m.terminationStatus` 的区别

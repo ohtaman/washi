@@ -95,7 +95,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
     expect(s.terms.get(vars[4])).toBe(5);
   });
 
-  it("solves standard knapsack problem using constraint() and values()", async () => {
+  it("solves standard knapsack problem using constraint() and direct .value access", async () => {
     const m = new Model("KnapsackProduction");
 
     const items = [
@@ -119,14 +119,10 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
 
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(90); // laptop (3, 50) + camera (2, 40) = 5 wt, 90 val
-
-    // Extract values directly via m.getValues()
-    const result = m.getValues(x);
-    expect(result).toEqual({
-      laptop: 1,
-      camera: 1,
-      drone: 0,
-    });
+    expect(x.laptop.value).toBe(1);
+    expect(x.camera.value).toBe(1);
+    expect(x.drone.value).toBe(0);
+    expect("getValues" in m).toBe(false);
   });
 
   it("supports adding multiple constraints via m.constraint(...)", async () => {
@@ -144,9 +140,8 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
     const status = await m.solve();
     expect(status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
-    expect(m.getValues(desks)).toBe(20);
-    expect(m.getValues(chairs)).toBe(10);
-    expect(m.getValues([desks, chairs])).toEqual([20, 10]);
+    expect(desks.value).toBe(20);
+    expect(chairs.value).toBe(10);
   });
 
   it("throws clear error when passing a LinExpr without comparison operator to constraint()", () => {
@@ -452,7 +447,7 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
       expect(grid.bob.viewer.name).toBe("p_bob_viewer");
     });
 
-    it("extracts boolean solution values via m.getValues()", async () => {
+    it("populates boolean solution values on BoolVar.value and m.values", async () => {
       const { registerZ3Solver, killZ3Threads } = await import("../src/modeler/solvers/z3.js");
       registerZ3Solver();
 
@@ -479,14 +474,20 @@ describe("Domain-pure modeling API: binary, integer, continuous, dot, constraint
       const res = await m.check();
       expect(res.status).toBe("Sat");
 
-      // Verify m.getValues
-      expect(m.getValues(single)).toBe(true);
-      expect(m.getValues(list)).toEqual([true, false]);
-      expect(m.getValues(dict)).toEqual({ optA: true, optB: false });
-      expect(m.getValues(grid)).toEqual({
+      // Verify BoolVar.value and m.values
+      expect(single.value).toBe(true);
+      expect(list.map((v) => v.value)).toEqual([true, false]);
+      expect({ optA: dict.optA.value, optB: dict.optB.value }).toEqual({ optA: true, optB: false });
+      expect({
+        r1: { c1: grid.r1.c1.value, c2: grid.r1.c2.value },
+        r2: { c1: grid.r2.c1.value, c2: grid.r2.c2.value },
+      }).toEqual({
         r1: { c1: true, c2: false },
         r2: { c1: false, c2: false },
       });
+      expect(m.values.get("single")).toBe(true);
+      expect(m.values.get("optA")).toBe(true);
+      expect(m.values.get("optB")).toBe(false);
 
       await killZ3Threads();
     });

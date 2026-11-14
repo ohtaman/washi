@@ -168,6 +168,8 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect((m as any).add).toBeUndefined();
     expect((m as any).vars).toBeUndefined();
     expect((m as any).constrs).toBeUndefined();
+    expect(Reflect.get(m, "getValues")).toBeUndefined();
+    expect("getValues" in m).toBe(false);
 
     expect((x as any).lessThanOrEqual).toBeUndefined();
     expect((x as any).greaterThanOrEqual).toBeUndefined();

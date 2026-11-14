@@ -163,6 +163,7 @@ async function runtime(root, entry, esm, base = "/factory/") {
     assert.equal(expModel.add, undefined);
     assert.equal(expModel.vars, undefined);
     assert.equal(expModel.constrs, undefined);
+    assert.equal(expModel.getValues, undefined);
     const expVar = expModel.continuous("x");
     assert.equal(expVar.lessThanOrEqual, undefined);
     assert.equal(expVar.greaterThanOrEqual, undefined);

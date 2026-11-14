@@ -288,6 +288,7 @@ describe("README.md Code Snippets Validation", () => {
     expect(typeof WashiGlobal.minimize).toBe("function");
     expect(typeof WashiGlobal.Model.prototype.objective).toBe("function");
     expect(typeof WashiGlobal.Model.prototype.constraint).toBe("function");
+    expect(WashiGlobal.Model.prototype.getValues).toBeUndefined();
 
     // Execute the exact snippet from runtimes.md
     const { Model: BrowserModel, expr: browserExpr, maximize: browserMaximize } = WashiGlobal;

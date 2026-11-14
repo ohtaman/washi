@@ -134,7 +134,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 
 - **最適化 (`await m.solve(options?)`)**:
   - `SolverStatus`（`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`, `"Sat"`, または `"Unsat"`）を返します。組み込みの最適化ソルバーは最適化ステータス（`"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`, `"TimeLimit"`, `"IterationLimit"`, `"Error"`, `"Unknown"`, `"NotSolved"`）を返し、時間・反復・解数制限や中断で停止した際に有効な実行可能解（Incumbent）が見つかっている場合は `"Feasible"` を返します。`"Sat"` と `"Unsat"` は充足可能性ソルバーやカスタムソルバーアダプター（`MockSolver` など）向けに `SolverStatus` に含まれています。
-  - 解の値は `x.value`, `expr`...`.value`, `m.getValues(x)`, `m.getValues(container)`, `m.objectiveValue`, `constr.dual`, `constr.slack`, `x.reducedCost` から読み取ります。
+  - 解の値は `x.value`, `expr`...`.value`, `m.values`, `m.objectiveValue`, `constr.dual`, `constr.slack`, `x.reducedCost` から読み取ります。
   - 求解後に `m.validateSolution()` を呼び出すことで、変数の有限性、境界条件（`lb`/`ub`）、整数・バイナリ・真偽値領域、線形制約の残差、および論理制約を独立して検証できます（`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`）。なお、`validateSolution()` は変数および制約条件の主実行可能性を検査するものであり、`m.objectiveValue` の再計算や比較は行いません。
 - **充足可能性判定と矛盾診断 (`await m.check(options?)`)**:
   - `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`）を返します。`conflicts` はモデルが `"Unsat"` と証明されたときに設定されます。
@@ -172,7 +172,7 @@ export async function runMipExample() {
 
   const status = await m.solve();
   const report = m.validateSolution();
-  const values = m.getValues(qty);
+  const values = { desk: qty.desk.value, chair: qty.chair.value };
 
   return {
     status,
@@ -261,13 +261,13 @@ export function verifyNegativePatterns() {
   // 3. 線形制約の中に二次項を含めないでください:
   // 誤り: expr`${x}^2 <= 10`; -> Error ("Quadratic constraints are not supported") がスローされます
 
-  // 4. 廃止された旧エイリアス (#59 / #81 で削除済み) を使用しないでください:
+  // 4. 廃止された旧エイリアス (#59 / #81 / #236 で削除済み) を使用しないでください:
   // - 廃止された `c` テンプレートタグではなく `expr` を使用する
   // - `m.constrain(...)` や `m.add(...)` ではなく `m.constraint(...)` を使用する
   // - `m.maximize(...)` / `m.minimize(...)` / `m.setObjective(...)` ではなく `m.objective(maximize(...))` / `m.objective(minimize(...))` を使用する
   // - `await m.optimize()` ではなく `await m.solve()` を使用する
   // - `.lessThanOrEqual()`, `.greaterThanOrEqual()`, `.equalTo()` ではなく `.le()`, `.ge()`, `.eq()` を使用する
-  // - `expr.getValue()` ではなく `.value` または `m.getValues(...)` を使用する
+  // - `m.getValues(...)` や `expr.getValue()` ではなく `.value` を使用する
   // - `m.vars` / `m.constrs` ではなく `m.variables` / `m.constraints` を使用する
   return { m, x, y, maximize };
 }
