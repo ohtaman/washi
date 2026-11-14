@@ -17,6 +17,7 @@
         { "text": "安装与入门", "link": "/zh/getting-started/" },
         { "text": "运行时环境配置", "link": "/zh/getting-started/runtimes" },
         { "text": "跨源隔离 (COOP/COEP)", "link": "/zh/getting-started/cross-origin" },
+        { "text": "生态对比与从 PuLP 迁移", "link": "/zh/getting-started/ecosystem" },
         { "text": "AI 编程助手快速参考", "link": "/zh/getting-started/ai-agents" }
       ]
     },

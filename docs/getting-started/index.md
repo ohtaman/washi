@@ -81,6 +81,7 @@ Three practical habits cover the essentials shown in the snippet above:
 
 ## 🧭 Next Steps
 
+- **[Ecosystem & From Python (PuLP)](./ecosystem.md)**: How WaSHI compares with raw WASM bindings (`highs`, `glpk.js`, `z3-solver`), pure-JS solvers (`yalps`, `javascript-lp-solver`), and Python `PuLP`
 - **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and Unsat Core diagnosis
 - **[Examples & API Finder](../examples/)**: 11 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
 - **[Solvers Overview](../solvers/)**: Compare built-in HiGHS with optional Z3 and GLPK adapters

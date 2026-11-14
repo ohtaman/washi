@@ -381,18 +381,21 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "/getting-started/",
       "/getting-started/runtimes",
       "/getting-started/cross-origin",
+      "/getting-started/ecosystem",
       "/getting-started/ai-agents",
     ]);
     expect(jaSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/ja/getting-started/",
       "/ja/getting-started/runtimes",
       "/ja/getting-started/cross-origin",
+      "/ja/getting-started/ecosystem",
       "/ja/getting-started/ai-agents",
     ]);
     expect(zhSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/zh/getting-started/",
       "/zh/getting-started/runtimes",
       "/zh/getting-started/cross-origin",
+      "/zh/getting-started/ecosystem",
       "/zh/getting-started/ai-agents",
     ]);
   });
@@ -497,7 +500,9 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
   it("updates package.json description and target search keywords", () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
-    expect(pkg.description).toBe("WaSHI: WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming (LP, MIP, QP, SMT)");
+    expect(pkg.description).toBe(
+      "WaSHI: TypeScript & JavaScript algebraic modeler for Linear & Mixed-Integer Programming (LP, MILP, QP, SMT) powered by WebAssembly (HiGHS, Z3, GLPK)"
+    );
 
     const expectedKeywords = [
       "optimization",
@@ -506,15 +511,25 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "linear-programming",
       "mixed-integer-programming",
       "quadratic-programming",
+      "milp",
+      "lp",
+      "mip",
+      "qp",
+      "solver",
+      "modeler",
+      "scheduling",
+      "timetabling",
       "smt",
       "z3",
       "highs",
+      "glpk",
       "pulp",
       "jump",
       "operations-research",
       "wasm",
       "webassembly",
       "typescript",
+      "javascript",
     ];
     for (const kw of expectedKeywords) {
       expect(pkg.keywords).toContain(kw);
@@ -547,6 +562,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       [jaContent, "/ja"],
       [zhContent, "/zh"],
     ] as const) {
+      expect(mdContent).toContain(`(${prefix}/getting-started/ecosystem)`);
       expect(mdContent).toContain(`(${prefix}/guide/decomposition)`);
       expect(mdContent).toContain(`(${prefix}/solvers/)`);
       expect(mdContent).toContain(`(${prefix}/examples/)`);

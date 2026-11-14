@@ -81,6 +81,7 @@ npm install glpk.js     # GLPK 求解器 (GPL-3.0)
 
 ## 🧭 下一步
 
+- **[生态对比与从 Python (PuLP) 迁移](/zh/getting-started/ecosystem)**：对比原生 WASM 绑定（`highs`、`glpk.js`、`z3-solver`）、纯 JS 求解器（`yalps`、`javascript-lp-solver`）与 Python `PuLP` 的差异及 API 映射
 - **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与不可行冲突诊断（Unsat Core）
 - **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 11 个可在页面内直接运行的建模示例
 - **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与可选 Z3、GLPK 求解器的特性对比与切换方式

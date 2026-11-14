@@ -327,7 +327,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enPages).toHaveLength(30);
+    expect(enPages).toHaveLength(31);
+    expect(enPages).toContain("getting-started/ecosystem.md");
     expect(enPages).toContain("guide/formulation-tips.md");
     expect(enPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enPages);
@@ -985,6 +986,38 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       const lp = m.toLpString();
       expect(lp).toContain("max_items: A + B + C <= 2");
       expect(lp).toContain("capacity_limit: 5 A + 10 B + 15 C <= 25");
+    }
+
+    for (const relDoc of [
+      "docs/getting-started/ecosystem.md",
+      "docs/ja/getting-started/ecosystem.md",
+      "docs/zh/getting-started/ecosystem.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relDoc), "utf-8");
+      const tsMatch = md.match(/```typescript[^\n]*\n([\s\S]*?)```/);
+      expect(tsMatch, `Missing TypeScript comparison snippet in ${relDoc}`).not.toBeNull();
+
+      const jsBody = stripTypeScriptTypes(tsMatch![1]).replace(
+        /^\s*import\s+\{[^}]+\}\s+from\s+["']@ohtaman\/washi["'];?\s*$/gm,
+        ""
+      );
+      const logs: unknown[][] = [];
+      const mockConsole = { log: (...args: unknown[]) => logs.push(args) };
+      const runner = new Function(
+        "Washi",
+        "console",
+        `const { Model, expr, maximize } = Washi;\nreturn (async () => {\n${jsBody}\nreturn { m, qty, status, report };\n})();`
+      );
+      const res = (await runner(Washi, mockConsole)) as {
+        m: Washi.Model;
+        qty: Record<"desk" | "chair", Washi.Var>;
+        status: string;
+        report: Washi.SolutionValidationReport;
+      };
+      expect(res.status).toBe("Optimal");
+      expect(res.report.valid).toBe(true);
+      expect(res.m.objectiveValue).toBeCloseTo(1100, 6);
+      expect(res.m.getValues(res.qty)).toEqual({ desk: 20, chair: 10 });
     }
   });
 });
