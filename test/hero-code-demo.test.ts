@@ -394,13 +394,19 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     }
 
     // Snippet with setHighsWasmUrl / custom solve options must configure options before warming HiGHS
+    const { HighsSolver } = await import("../src/index.js");
     let wasmUrlAtWarmup: string | null = null;
     const isWarmedSpy = vi.spyOn(workerClientMod, "isHighsWarmed").mockResolvedValue(false);
     const customWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockImplementation(async () => {
       wasmUrlAtWarmup = getHighsWasmUrl();
       return { cached: false };
     });
-    const solveStub = vi.spyOn(Model.prototype, "solve").mockResolvedValue("Optimal");
+    const solveStub = vi.spyOn(HighsSolver.prototype, "solve").mockResolvedValue({
+      status: "Optimal",
+      objectiveValue: 0,
+      values: { x: 0 },
+      runTime: 0.001,
+    });
     try {
       const customRes = await runWashiSnippet(`
         setHighsWasmUrl("https://custom.example/highs.wasm");
@@ -419,9 +425,42 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
         wasmUrl: "https://override.example/highs.wasm",
       });
       expect(wasmUrlAtWarmup).toBe("https://custom.example/highs.wasm");
-      expect(solveStub).toHaveBeenCalledWith({
+      expect(solveStub).toHaveBeenCalledWith(expect.any(Object), {
         useWorker: false,
         wasmUrl: "https://override.example/highs.wasm",
+      });
+
+      // Solver-instance defaults (new HighsSolver({ useWorker: false, wasmUrl })) must merge into warmup
+      isWarmedSpy.mockClear();
+      customWarmupSpy.mockClear();
+      solveStub.mockClear();
+      const instanceRes = await runWashiSnippet(`
+        const m = new Model({
+          solver: new HighsSolver({
+            useWorker: false,
+            wasmUrl: "https://instance.example/highs.wasm",
+          }),
+        });
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        await m.solve();
+        await m.solve({ wasmUrl: "https://call-override.example/highs.wasm" });
+      `);
+      expect(instanceRes.errorMsg).toBeNull();
+      expect(isWarmedSpy).toHaveBeenNthCalledWith(1, {
+        useWorker: false,
+        wasmUrl: "https://instance.example/highs.wasm",
+      });
+      expect(customWarmupSpy).toHaveBeenNthCalledWith(1, {
+        useWorker: false,
+        wasmUrl: "https://instance.example/highs.wasm",
+      });
+      expect(isWarmedSpy).toHaveBeenNthCalledWith(2, {
+        useWorker: false,
+        wasmUrl: "https://call-override.example/highs.wasm",
+      });
+      expect(customWarmupSpy).toHaveBeenNthCalledWith(2, {
+        useWorker: false,
+        wasmUrl: "https://call-override.example/highs.wasm",
       });
     } finally {
       isWarmedSpy.mockRestore();
@@ -483,8 +522,19 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     const highsWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockResolvedValue({ cached: false });
     const glpkGetSpy = vi.spyOn(glpkMod, "getGlpk");
     const z3LoadDefaultSpy = vi.spyOn(z3Mod, "loadZ3");
-    const solveNoopStub = vi.spyOn(Model.prototype, "solve").mockResolvedValue("Optimal");
-    const checkNoopStub = vi.spyOn(Model.prototype, "check").mockResolvedValue({
+    const highsSolveStub = vi.spyOn(HighsSolver.prototype, "solve").mockResolvedValue({
+      status: "Optimal",
+      objectiveValue: 0,
+      values: {},
+      runTime: 0.001,
+    });
+    const glpkSolveStub = vi.spyOn(glpkMod.GLPKSolver.prototype, "solve").mockResolvedValue({
+      status: "Optimal",
+      objectiveValue: 0,
+      values: {},
+      runTime: 0.001,
+    });
+    const z3CheckStub = vi.spyOn(z3Mod.Z3Solver.prototype, "check").mockResolvedValue({
       status: "Sat",
       values: {},
       runTime: 0.001,
@@ -519,12 +569,59 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       highsWarmupSpy.mockRestore();
       glpkGetSpy.mockRestore();
       z3LoadDefaultSpy.mockRestore();
-      solveNoopStub.mockRestore();
-      checkNoopStub.mockRestore();
+      highsSolveStub.mockRestore();
+      glpkSolveStub.mockRestore();
+      z3CheckStub.mockRestore();
       glpkMod.resetGlpkCache();
       z3Mod.resetZ3LoaderCache();
       resetSnippetRunnerStateForTests();
     }
+
+    // Synchronous operation entry must capture startRevision/opId and clear stale state before async warmup awaits
+    const inFlightRes = await runWashiSnippet(`
+      const m = new Model("SyncEntryTest");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      m.objective(maximize(x));
+      await m.solve();
+      console.log("before:", m.status, x.value);
+
+      const pendingSolve = m.solve();
+      console.log("during_sync:", m.status, x.value);
+      m.constraint(expr\`\${x} <= 1\`, "late_mutation");
+      try {
+        await pendingSolve;
+        console.log("unexpected_success");
+      } catch (err) {
+        console.log("mutated_error:", err.message);
+      }
+
+      const z3Model = new Model("SyncCheckTest", { solver: "z3" });
+      const a = z3Model.continuous("a", { lb: 0, ub: 5 });
+      const pendingCheck = z3Model.check();
+      z3Model.constraint(expr\`\${a} >= 2\`, "late_check_mutation");
+      try {
+        await pendingCheck;
+        console.log("unexpected_check_success");
+      } catch (err) {
+        console.log("check_mutated_error:", err.message);
+      }
+
+      const m2 = new Model("SupersededTest");
+      const y = m2.continuous("y", { lb: 0, ub: 5 });
+      m2.objective(maximize(y));
+      const first = m2.solve();
+      const second = m2.solve();
+      const settled = await Promise.allSettled([first, second]);
+      console.log("superseded:", settled[0].status, settled[1].status, settled[1].status === "fulfilled" ? settled[1].value : "");
+    `);
+    expect(inFlightRes.errorMsg).toBeNull();
+    expect(inFlightRes.logs[0]).toBe("before: Optimal 10");
+    expect(inFlightRes.logs[1]).toBe("during_sync: NotSolved null");
+    expect(inFlightRes.logs[2]).toContain("mutated_error:");
+    expect(inFlightRes.logs[2]).toContain("was modified while solve() was in progress");
+    expect(inFlightRes.logs[3]).toContain("check_mutated_error:");
+    expect(inFlightRes.logs[3]).toContain("was modified while check() was in progress");
+    expect(inFlightRes.logs[4]).toBe("superseded: rejected fulfilled Optimal");
   });
 
   it("links Open in Playground to a matching cloud_sizing preset with identical optimal solution", async () => {

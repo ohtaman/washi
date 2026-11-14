@@ -1,6 +1,11 @@
 import { transpileSnippetToJs } from "./transpile";
-import type { SolveOptions } from "../../../../src/modeler/types.ts";
-import type { Solver } from "../../../../src/modeler/solvers/types.ts";
+import type { SolveOptions, SolverStatus } from "../../../../src/modeler/types.ts";
+import type {
+  CheckModelData,
+  SolveModelData,
+  Solver,
+  SolverOptions,
+} from "../../../../src/modeler/solvers/types.ts";
 
 export type SnippetRunPhase = "loading" | "running";
 
@@ -75,25 +80,40 @@ function formatConsoleArg(arg: unknown): string {
   return String(arg);
 }
 
-function extractCallTarget(
+type SolverConstructor = new (options?: SolverOptions) => Solver;
+
+function isSolverInstance(value: unknown): value is Solver {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "solve" in value &&
+    typeof (value as { solve?: unknown }).solve === "function"
+  );
+}
+
+function resolveActiveSolverAndOptions(
   modelSolver: Solver | null | undefined,
-  getDefaultSolver: (options?: SolveOptions) => Solver,
-  solverOrOptions?: Solver | string | SolveOptions,
-  maybeOptions?: SolveOptions
-): { solverName: string; solveOptions: SolveOptions } {
+  getSolverFn: (solverOrName?: string | Solver, options?: SolveOptions) => Solver,
+  solverOrOptions?: Solver | string | SolveOptions | SolverConstructor,
+  options?: SolveOptions
+): { activeSolver: Solver; activeOptions: SolverOptions } {
+  if (isSolverInstance(solverOrOptions)) {
+    const { solver: _ignored, ...rest } = options || {};
+    return { activeSolver: solverOrOptions, activeOptions: rest };
+  }
+  if (typeof solverOrOptions === "function") {
+    const { solver: _ignored, ...rest } = options || {};
+    return { activeSolver: new solverOrOptions(rest), activeOptions: rest };
+  }
   if (typeof solverOrOptions === "string") {
-    return { solverName: solverOrOptions.toLowerCase(), solveOptions: maybeOptions ?? {} };
+    const { solver: _ignored, ...rest } = options || {};
+    return { activeSolver: getSolverFn(solverOrOptions, rest), activeOptions: rest };
   }
-  if (solverOrOptions && typeof solverOrOptions === "object" && "solve" in solverOrOptions) {
-    return { solverName: solverOrOptions.name.toLowerCase(), solveOptions: maybeOptions ?? {} };
+  const { solver: solverChoice, ...rest } = solverOrOptions || {};
+  if (solverChoice) {
+    return { activeSolver: getSolverFn(solverChoice, rest), activeOptions: rest };
   }
-  const opts = solverOrOptions ?? {};
-  const solverChoice = opts.solver;
-  const resolvedName =
-    typeof solverChoice === "string"
-      ? solverChoice
-      : solverChoice?.name ?? modelSolver?.name ?? getDefaultSolver(opts).name;
-  return { solverName: resolvedName.toLowerCase(), solveOptions: opts };
+  return { activeSolver: modelSolver || getSolverFn(), activeOptions: rest };
 }
 
 /**
@@ -174,28 +194,53 @@ export async function runWashiSnippet(
 
     const pendingPromises: Promise<unknown>[] = [];
 
-    const measureSolverLoad = async <T>(loadFn: () => Promise<T>): Promise<T> => {
-      emitPhase("loading");
-      const warmStart = performance.now();
-      try {
-        return await loadFn();
-      } finally {
-        inSnippetLoadMs += performance.now() - warmStart;
+    let activeLoadDepth = 0;
+    let activeLoadIntervalStart = 0;
+    let activeLoadIntervalCold = false;
+
+    const enterLoadWindow = () => {
+      if (activeLoadDepth === 0) {
+        activeLoadIntervalStart = performance.now();
+        activeLoadIntervalCold = false;
+        emitPhase("loading");
+      }
+      activeLoadDepth++;
+    };
+
+    const exitLoadWindow = (markCold: boolean) => {
+      if (markCold) {
+        didLoad = true;
+        activeLoadIntervalCold = true;
+      }
+      activeLoadDepth--;
+      if (activeLoadDepth === 0) {
+        if (activeLoadIntervalCold) {
+          inSnippetLoadMs += performance.now() - activeLoadIntervalStart;
+        }
         emitPhase("running");
       }
     };
 
-    const warmSolverForCall = async (
-      modelSolver: Solver | null | undefined,
-      solverOrOptions?: Solver | string | SolveOptions,
-      maybeOptions?: SolveOptions
-    ) => {
-      const { solverName, solveOptions } = extractCallTarget(
-        modelSolver,
-        (opts) => Modeler.getSolver(undefined, opts),
-        solverOrOptions,
-        maybeOptions
-      );
+    const measureSolverLoad = async <T>(loadFn: () => Promise<T>): Promise<T> => {
+      let completedOrFailed = false;
+      enterLoadWindow();
+      try {
+        const res = await loadFn();
+        completedOrFailed = true;
+        return res;
+      } catch (err) {
+        completedOrFailed = true;
+        throw err;
+      } finally {
+        exitLoadWindow(completedOrFailed);
+      }
+    };
+
+    const warmSolver = async (rawSolverName: string, solveOptions: SolveOptions) => {
+      if (solveOptions.signal?.aborted) {
+        return;
+      }
+      const solverName = rawSolverName.toLowerCase();
       if (solverName === "highs") {
         const { isHighsWarmed, warmupHighs } = await import(
           "../../../../src/modeler/solvers/highs/worker-client.ts"
@@ -203,19 +248,16 @@ export async function runWashiSnippet(
         if (await isHighsWarmed(solveOptions)) {
           return;
         }
-        emitPhase("loading");
-        const warmStart = performance.now();
+        let coldLoadedOrFailed = false;
+        enterLoadWindow();
         try {
           const { cached } = await warmupHighs(solveOptions);
-          if (!cached) {
-            didLoad = true;
-            inSnippetLoadMs += performance.now() - warmStart;
-          }
+          coldLoadedOrFailed = !cached;
         } catch (err) {
-          inSnippetLoadMs += performance.now() - warmStart;
+          coldLoadedOrFailed = true;
           throw err;
         } finally {
-          emitPhase("running");
+          exitLoadWindow(coldLoadedOrFailed);
         }
       } else if (solverName === "z3") {
         const z3Mod =
@@ -230,7 +272,6 @@ export async function runWashiSnippet(
             z3AssetsConfigured = true;
           }
           await measureSolverLoad(() => z3Mod.loadZ3(solveOptions));
-          didLoad = true;
         }
       } else if (solverName === "glpk") {
         const glpkMod =
@@ -238,33 +279,88 @@ export async function runWashiSnippet(
           (cachedGlpkMod = await import("../../../../src/modeler/solvers/glpk/index.ts"));
         if (!glpkMod.isGlpkLoaded()) {
           await measureSolverLoad(() => glpkMod.getGlpk());
-          didLoad = true;
         }
       }
     };
 
+    const wrapSolverWithWarmup = (activeSolver: Solver): Solver => {
+      const runWithWarmup = async <R>(
+        callOpts: SolverOptions | undefined,
+        execute: () => Promise<R>
+      ): Promise<R> => {
+        const mergedOpts: SolveOptions = {
+          ...(activeSolver.options ?? {}),
+          ...(callOpts ?? {}),
+        };
+        await warmSolver(activeSolver.name, mergedOpts);
+        return execute();
+      };
+
+      return {
+        name: activeSolver.name,
+        version: activeSolver.version,
+        capabilities: activeSolver.capabilities,
+        options: activeSolver.options,
+        solve: (modelData: SolveModelData, solveOpts?: SolverOptions) =>
+          runWithWarmup(solveOpts, () => activeSolver.solve(modelData, solveOpts)),
+        ...(typeof activeSolver.check === "function"
+          ? {
+              check: (checkModelData: CheckModelData, checkOpts?: SolverOptions) =>
+                runWithWarmup(checkOpts, () => activeSolver.check!(checkModelData, checkOpts)),
+            }
+          : {}),
+      };
+    };
+
     const trackOperation = <T>(
       modelInstance: InstanceType<typeof Modeler.Model>,
-      args: [Solver | string | SolveOptions | undefined, SolveOptions | undefined],
-      run: () => Promise<T>
+      solverOrOptions: Solver | string | SolveOptions | undefined,
+      options: SolveOptions | undefined,
+      invoke: (wrappedSolver: Solver, activeOptions: SolveOptions) => Promise<T>
     ): Promise<T> => {
-      const p = (async () => {
-        await warmSolverForCall(modelInstance.solver, args[0], args[1]);
-        const res = await run();
+      // Enter super.solve/check synchronously so opId, startRevision, and clearSolutionFields
+      // are captured before yielding to async solver warmup.
+      let rawPromise: Promise<T>;
+      try {
+        const { activeSolver, activeOptions } = resolveActiveSolverAndOptions(
+          modelInstance.solver,
+          Modeler.getSolver,
+          solverOrOptions,
+          options
+        );
+        const wrappedSolver = wrapSolverWithWarmup(activeSolver);
+        rawPromise = invoke(wrappedSolver, activeOptions);
+      } catch (err) {
+        rawPromise = Promise.reject(err);
+      }
+      const trackedPromise = rawPromise.then((res) => {
         solveCalls++;
         totalSolveTimeSec += Number.isFinite(modelInstance.runTime) ? modelInstance.runTime : 0;
         return res;
-      })();
-      pendingPromises.push(p);
-      return p;
+      });
+      trackedPromise.catch(() => {
+        // Rejection is observed by the caller or settled via Promise.allSettled below.
+      });
+      pendingPromises.push(trackedPromise);
+      return trackedPromise;
     };
 
     class TrackedModel extends Modeler.Model {
-      override solve(...args: Parameters<InstanceType<typeof Modeler.Model>["solve"]>) {
-        return trackOperation(this, [args[0], args[1]], () => super.solve(...args));
+      override solve(
+        solverOrOptions?: Solver | string | SolveOptions,
+        options?: SolveOptions
+      ): Promise<SolverStatus> {
+        return trackOperation(this, solverOrOptions, options, (wrappedSolver, activeOptions) =>
+          super.solve(wrappedSolver, activeOptions)
+        );
       }
-      override check(...args: Parameters<InstanceType<typeof Modeler.Model>["check"]>) {
-        return trackOperation(this, [args[0], args[1]], () => super.check(...args));
+      override check(
+        solverOrOptions?: Solver | string | SolveOptions,
+        options?: SolveOptions
+      ) {
+        return trackOperation(this, solverOrOptions, options, (wrappedSolver, activeOptions) =>
+          super.check(wrappedSolver, activeOptions)
+        );
       }
     }
 
