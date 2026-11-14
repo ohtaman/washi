@@ -13,26 +13,36 @@ hero:
       link: /ja/showcase/
 
 features:
-  - icon: 📅
-    title: シフト・時間割・配送計画
-    details: 人員シフト、大学時間割、2次元パッキング、配送ルートなどの組合せ最適化を標準搭載の HiGHS（LP / MIP）で高速に求解します。
-    link: /ja/examples/
-    linkText: 定式化の具体例
-  - icon: 📈
-    title: ポートフォリオ・連続配分
-    details: 資産配分のリスク最小化（Markowitz QP）や目標値への最小二乗フィットを凸二次計画（QuadExpr）でそのまま記述できます。
-    link: /ja/examples/portfolio-qp
-    linkText: ポートフォリオ最適化
-  - icon: 🔍
-    title: ルール検証と矛盾の原因特定
-    details: 希望休の重複などで解が存在しないとき、衝突している条件を標準搭載 HiGHS の弾性緩和または Z3 の unsatCore で特定します。
-    link: /ja/guide/unsat-core
-    linkText: 競合制約診断
   - icon: 🌐
-    title: サーバー不要・ブラウザ完結
-    details: Python バックエンド不要でブラウザの Web Worker や Node.js で動作。ローカル LLM が抽出した条件の数理ガードレールとしても機能します。
+    title: WebAssembly で環境構築不要
+    details: Python サーバーや C/C++ のネイティブビルドは不要。ブラウザ（Web Worker）や Node.js などの JS 環境でそのまま求解できます。
     link: /ja/getting-started/runtimes
     linkText: ランタイム環境設定
+  - icon: ✍️
+    title: 直感的な代数モデリング (expr)
+    details: 行列や LP 文字列を手組みせず、PuLP に近い数式表現で線形・整数・凸二次・論理モデルをそのまま記述できます。
+    link: /ja/guide/expressions
+    linkText: 数式の記述
+  - icon: 🧩
+    title: TypeScript による型安全なモデリング
+    details: アプリ側のデータ構造と直結した変数辞書により、添字・キーの綴り間違いや数値・真偽値の取り違えをコンパイル時に防げます。
+    link: /ja/guide/variables
+    linkText: 変数と上下限
+  - icon: 🔍
+    title: 「解なし」の原因を特定
+    details: 制約が衝突して解が見つからないとき、ただエラーで終わらず、どの条件同士が矛盾しているかを HiGHS や Z3 で特定できます。
+    link: /ja/guide/unsat-core
+    linkText: 競合制約診断
+  - icon: ⚙️
+    title: 切り替え可能なソルバー接続
+    details: モデルを書き直すことなく、標準搭載の HiGHS から Z3（SMT）・GLPK や独自ソルバーへ用途に応じて切り替えられます。
+    link: /ja/solvers/
+    linkText: ソルバー比較と接続
+  - icon: 🔀
+    title: 大規模問題向けの分解法
+    details: 列生成法や Benders 分解、LP 緩和・双対値（シャドウプライス）の取得を備え、単一モデルでは解きにくい大規模問題にも対応します。
+    link: /ja/guide/decomposition
+    linkText: 分解法ガイド
 ---
 
 <div class="washi-home-sections">
