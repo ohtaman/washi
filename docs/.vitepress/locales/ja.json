@@ -17,6 +17,7 @@
         { "text": "インストールと入門", "link": "/ja/getting-started/" },
         { "text": "ランタイム環境設定", "link": "/ja/getting-started/runtimes" },
         { "text": "Cross-Origin Isolation (COOP/COEP)", "link": "/ja/getting-started/cross-origin" },
+        { "text": "エコシステム比較と PuLP からの移行", "link": "/ja/getting-started/ecosystem" },
         { "text": "AIエージェント向けリファレンス", "link": "/ja/getting-started/ai-agents" }
       ]
     },

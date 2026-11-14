@@ -81,6 +81,7 @@ npm install glpk.js     # GLPK ソルバー用 (GPL-3.0)
 
 ## 🧭 次のステップ
 
+- **[エコシステム比較と Python (PuLP) からの移行](./ecosystem.md)**: 生の WASM バインディング（`highs` / `glpk.js` / `z3-solver`）、純 JS ソルバー（`yalps` / `javascript-lp-solver`）、および Python `PuLP` との違いと移行対照表
 - **[モデリングガイド](../guide/variables.md)**: 配列・辞書変数の作り方、総和 `sum()` や内積 `dot()`、論理制約や競合診断（Unsat Core）の書き方
 - **[具体例と API 早見表](../examples/)**: 生産計画・シフト作成・ポートフォリオ最適化・配送計画など、ブラウザ上でそのまま動かせる11の実践レシピ
 - **[ソルバーの比較と切り替え](../solvers/)**: 標準搭載の HiGHS と、オプションの Z3・GLPK の特性比較

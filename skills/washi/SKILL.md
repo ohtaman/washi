@@ -1,6 +1,6 @@
 ---
 name: washi
-description: Formulate, inspect, solve, and verify mathematical optimization (LP, MIP, convex QP) and SMT satisfiability or unsat-core models in TypeScript and JavaScript using @ohtaman/washi (HiGHS, Z3, GLPK).
+description: Formulate, inspect, solve, and verify mathematical optimization (LP, MILP/MIP, convex QP) and SMT satisfiability or unsat-core models in TypeScript and JavaScript using @ohtaman/washi (HiGHS, Z3, GLPK) for shift scheduling, timetabling, resource allocation, bin packing, routing, portfolio optimization, and rule conflict diagnosis.
 ---
 
 # WaSHI Modeling & Verification Skill

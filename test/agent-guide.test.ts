@@ -490,6 +490,7 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Introduction & Installation");
     expect(llmsFullTxt).toContain("# Runtime Environments & Deployment");
     expect(llmsFullTxt).toContain("# Cross-Origin Isolation (Z3 & Browsers)");
+    expect(llmsFullTxt).toContain("# Ecosystem & From Python (PuLP)");
     expect(llmsFullTxt).toContain("# Variables & Domains");
     expect(llmsFullTxt).toContain("# Expressions (`expr`, `sum`, `dot`)");
     expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
@@ -656,7 +657,19 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
     const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
     const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
     expect(nameMatch?.[1]?.trim()).toBe("washi");
-    expect(descMatch?.[1]?.trim().length).toBeGreaterThan(20);
+    const skillDesc = descMatch?.[1]?.trim() ?? "";
+    expect(skillDesc.length).toBeGreaterThan(20);
+    for (const domainTerm of [
+      "shift scheduling",
+      "timetabling",
+      "resource allocation",
+      "bin packing",
+      "routing",
+      "portfolio optimization",
+      "rule conflict diagnosis",
+    ]) {
+      expect(skillDesc.toLowerCase()).toContain(domainTerm);
+    }
 
     // Covers required lifecycle stages and links to ai-agents.md with a location-independent URL
     expect(skillContent).toContain("docs/getting-started/ai-agents.md");
