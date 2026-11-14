@@ -163,6 +163,13 @@ export function resetZ3LoaderCache(): void {
 }
 
 /**
+ * Returns whether Z3 has already been initialized in the current runtime.
+ */
+export function isZ3Loaded(): boolean {
+  return Boolean(currentRuntime?.instance && !currentRuntime.error);
+}
+
+/**
  * Validate browser environment prerequisites for multithreaded Z3 WASM.
  */
 export function validateZ3BrowserEnvironment(): void {

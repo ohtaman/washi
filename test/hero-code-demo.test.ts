@@ -19,7 +19,11 @@ import heroExamplesLoader, {
   type HeroHighlightedByLocale,
 } from "../docs/.vitepress/theme/components/heroExamples.data.js";
 import * as RunSnippetModule from "../docs/.vitepress/theme/utils/runSnippet.js";
-import type { SnippetRunResult } from "../docs/.vitepress/theme/utils/runSnippet.js";
+import type {
+  SnippetRunOptions,
+  SnippetRunPhase,
+  SnippetRunResult,
+} from "../docs/.vitepress/theme/utils/runSnippet.js";
 import * as LocalesModule from "../docs/.vitepress/theme/locales/index.js";
 import { EXAMPLES } from "../examples/web-demo/src/presets/index.js";
 
@@ -324,6 +328,66 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(res.errorMsg).toBeNull();
       expect(res.logs).toEqual([`Optimal: $${bestCost}/h`, JSON.stringify(optimalPairs[0])]);
       expect(res.logs).toEqual([...HERO_INITIAL_LOGS]);
+      expect(typeof res.loadTimeMs).toBe("number");
+      expect(res.loadTimeMs).toBeGreaterThanOrEqual(0);
+      expect(typeof res.solveTimeMs).toBe("number");
+      expect(res.solveTimeMs!).toBeGreaterThanOrEqual(0);
+      expect(typeof res.wasCached).toBe("boolean");
+    }
+  });
+
+  it("separates cold WASM load time from solve time on first run and marks subsequent runs cached", async () => {
+    const { setHighsWasmUrl } = await import("../src/index.js");
+    const resetFn = (RunSnippetModule as any).resetSnippetRunnerStateForTests as (() => void) | undefined;
+    expect(typeof resetFn).toBe("function");
+    setHighsWasmUrl(null);
+    resetFn!();
+
+    const coldPhases: SnippetRunPhase[] = [];
+    const coldRes = await runWashiSnippet(buildHeroSnippetCode("en"), {
+      onPhase: (phase) => coldPhases.push(phase),
+    });
+    expect(coldRes.errorMsg).toBeNull();
+    expect(coldPhases).toEqual(["loading", "running"]);
+    expect(coldRes.wasCached).toBe(false);
+    expect(coldRes.loadTimeMs).toBeGreaterThan(0);
+    expect(coldRes.solveTimeMs).not.toBeNull();
+    expect(coldRes.solveTimeMs!).toBeGreaterThanOrEqual(0);
+
+    const warmPhases: SnippetRunPhase[] = [];
+    const warmRes = await runWashiSnippet(buildHeroSnippetCode("en"), {
+      onPhase: (phase) => warmPhases.push(phase),
+    });
+    expect(warmRes.errorMsg).toBeNull();
+    expect(warmPhases).toEqual(["running"]);
+    expect(warmRes.wasCached).toBe(true);
+    expect(warmRes.loadTimeMs).toBe(0);
+    expect(warmRes.solveTimeMs).not.toBeNull();
+
+    const pureJsRes = await runWashiSnippet('console.log("no model");');
+    expect(pureJsRes.errorMsg).toBeNull();
+    expect(pureJsRes.solveTimeMs).toBeNull();
+    expect(pureJsRes.runTimeMs).toBeGreaterThanOrEqual(0);
+
+    // Pure Z3 snippet with named Model + no-arg check() must NOT warm up HiGHS
+    RunSnippetModule.resetSnippetRunnerStateForTests();
+    const workerClientMod = await import("../src/modeler/solvers/highs/worker-client.js");
+    const warmupSpy = vi.spyOn(workerClientMod, "warmupHighs");
+    try {
+      const z3OnlyRes = await runWashiSnippet(`
+        const m = new Model("PolicyCheck", { solver: "z3" });
+        const a = m.continuous("a", { lb: 0, ub: 5 });
+        m.constraint(expr\`\${a} >= 2\`);
+        const res = await m.check();
+        console.log(res.status);
+      `);
+      expect(z3OnlyRes.errorMsg).toBeNull();
+      expect(z3OnlyRes.logs).toEqual(["Sat"]);
+      expect(z3OnlyRes.solveTimeMs).not.toBeNull();
+      expect(warmupSpy).not.toHaveBeenCalled();
+    } finally {
+      warmupSpy.mockRestore();
+      RunSnippetModule.resetSnippetRunnerStateForTests();
     }
   });
 
@@ -385,7 +449,9 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       ja: '<pre class="vp-code"><code>// JA CloudSizing</code></pre>',
       zh: '<pre class="vp-code"><code>// ZH CloudSizing</code></pre>',
     };
-    const runSnippetMock = vi.fn<(rawCode: string) => Promise<SnippetRunResult>>();
+    const runSnippetMock = vi.fn<
+      (rawCode: string, options?: SnippetRunOptions) => Promise<SnippetRunResult>
+    >();
 
     const HeroCodeDemo = compileVueSfc(
       "docs/.vitepress/theme/components/HeroCodeDemo.vue",
@@ -394,7 +460,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
         vitepress: { useData: () => ({ lang }) },
         "./heroExamples": HeroExamples,
         "./heroExamples.data": { data: mockHighlighted },
-        "../utils/runSnippet": { runWashiSnippet: runSnippetMock },
+        "../utils/runSnippet": {
+          runWashiSnippet: runSnippetMock,
+          formatSnippetStatus: (RunSnippetModule as any).formatSnippetStatus,
+        },
         "../locales/index": LocalesModule,
       }
     );
@@ -431,9 +500,14 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(root.findByClass("hero-demo-code-inner")?.innerHTML).toBe(mockHighlighted.ja);
       expect(runSnippetMock).not.toHaveBeenCalled();
 
-      // 3. Click Run: enters in-flight running state and blocks duplicate concurrent clicks
+      // 3. Click Run: enters in-flight loading -> running states and blocks duplicate concurrent clicks
       const deferredRun = createDeferred<SnippetRunResult>();
-      runSnippetMock.mockReturnValueOnce(deferredRun.promise);
+      let capturedOptions: SnippetRunOptions | undefined;
+      runSnippetMock.mockImplementationOnce(async (_code, options) => {
+        capturedOptions = options;
+        options?.onPhase?.("loading");
+        return deferredRun.promise;
+      });
 
       const runBtn = root.findByClass("hero-solve-btn")!;
       expect(runBtn.props.disabled).toBe(false);
@@ -443,22 +517,31 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       await nextTick();
 
       expect(runSnippetMock).toHaveBeenCalledTimes(1);
-      expect(runSnippetMock).toHaveBeenLastCalledWith(buildHeroSnippetCode("ja"));
+      expect(runSnippetMock.mock.calls[0][0]).toBe(buildHeroSnippetCode("ja"));
+      expect(typeof capturedOptions?.onPhase).toBe("function");
       expect(runBtn.props.disabled).toBe(true);
       expect(runBtn.hasClass("solving")).toBe(true);
-      expect(runBtn.textContent).toContain("⏳");
+      expect(runBtn.textContent).toContain(`⏳ ${(useComponentTranslations("ja").dict.codeRunner as any).loading}`);
       expect(root.findByClass("hero-demo-output")?.hasClass("is-stale")).toBe(true);
       expect(root.findByClass("hero-idle-note")).toBeNull();
+
+      // Transition from loading -> running updates the button label
+      capturedOptions?.onPhase?.("running");
+      await nextTick();
+      expect(runBtn.textContent).toContain(`⏳ ${useComponentTranslations("ja").dict.codeRunner.running}`);
 
       // Duplicate click while running must be ignored
       await runBtn.trigger("click");
       expect(runSnippetMock).toHaveBeenCalledTimes(1);
 
-      // Resolve live execution
+      // Resolve live cold execution: load time and solve time displayed separately
       deferredRun.resolve({
         logs: ["Optimal: $140/h", '{"small":2,"large":2}'],
         errorMsg: null,
-        runTimeMs: 14.26,
+        loadTimeMs: 412.54,
+        solveTimeMs: 1.82,
+        runTimeMs: 2.34,
+        wasCached: false,
       });
       await clickPromise;
       await nextTick();
@@ -470,7 +553,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       const statusBadge = root.findByRole("status");
       expect(statusBadge).not.toBeNull();
       expect(statusBadge!.props["aria-live"]).toBe("polite");
-      expect(statusBadge!.textContent).toContain("14.3 ms");
+      expect(statusBadge!.textContent).toContain("412.5 ms");
+      expect(statusBadge!.textContent).toContain("1.8 ms");
+      expect(statusBadge!.textContent).toContain((useComponentTranslations("ja").dict.codeRunner as any).loadLabel);
+      expect(statusBadge!.textContent).toContain((useComponentTranslations("ja").dict.codeRunner as any).solveLabel);
 
       const liveTag = root.findByClass("hero-console-tag")!;
       expect(liveTag.hasClass("is-live")).toBe(true);
@@ -483,7 +569,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       runSnippetMock.mockResolvedValueOnce({
         logs: [],
         errorMsg: "Failed to fetch highs.wasm",
-        runTimeMs: 3.2,
+        loadTimeMs: 3.2,
+        solveTimeMs: null,
+        runTimeMs: 0,
+        wasCached: false,
       });
       await runBtn.trigger("click");
 
@@ -493,16 +582,22 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(root.findByRole("status")).toBeNull();
       expect(root.findByClass("hero-console-tag")?.hasClass("is-live")).toBe(false);
 
-      // 5. Retry recovery clears alert and restores live state
+      // 5. Retry recovery (cached) clears alert, restores live state, and indicates cached load + solve time
       runSnippetMock.mockResolvedValueOnce({
         logs: ["Optimal: $140/h", '{"small":2,"large":2}'],
         errorMsg: null,
-        runTimeMs: 8.4,
+        loadTimeMs: 0,
+        solveTimeMs: 1.54,
+        runTimeMs: 2.1,
+        wasCached: true,
       });
       await runBtn.trigger("click");
 
       expect(root.findByRole("alert")).toBeNull();
-      expect(root.findByRole("status")?.textContent).toContain("8.4 ms");
+      const cachedStatus = root.findByRole("status")?.textContent ?? "";
+      expect(cachedStatus).toContain((useComponentTranslations("ja").dict.codeRunner as any).cachedLabel);
+      expect(cachedStatus).toContain("1.5 ms");
+      expect(cachedStatus).not.toContain("0.0 ms");
       expect(root.findByClass("hero-console-tag")?.hasClass("is-live")).toBe(true);
     } finally {
       unmount();
@@ -549,14 +644,19 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
 
   it("mounts CodeRunner.vue symmetrically: defers execution by default, honors autorun, and renders slot output and errors", async () => {
     vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
-    const runSnippetMock = vi.fn<(rawCode: string) => Promise<SnippetRunResult>>();
+    const runSnippetMock = vi.fn<
+      (rawCode: string, options?: SnippetRunOptions) => Promise<SnippetRunResult>
+    >();
 
     const CodeRunner = compileVueSfc(
       "docs/.vitepress/theme/components/CodeRunner.vue",
       {
         vue: Vue,
         vitepress: { useData: () => ({ lang: ref("en-US") }) },
-        "../utils/runSnippet": { runWashiSnippet: runSnippetMock },
+        "../utils/runSnippet": {
+          runWashiSnippet: runSnippetMock,
+          formatSnippetStatus: (RunSnippetModule as any).formatSnippetStatus,
+        },
         "../locales/index": LocalesModule,
       }
     );
@@ -576,20 +676,28 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       runSnippetMock.mockResolvedValueOnce({
         logs: ["hello washi"],
         errorMsg: null,
+        loadTimeMs: 42.0,
+        solveTimeMs: null,
         runTimeMs: 5.5,
+        wasCached: false,
       });
       await root.findByClass("washi-solve-btn")!.trigger("click");
 
       expect(runSnippetMock).toHaveBeenCalledTimes(1);
-      expect(runSnippetMock).toHaveBeenLastCalledWith(sampleSnippet);
+      expect(runSnippetMock.mock.calls[0][0]).toBe(sampleSnippet);
       expect(root.findByClass("runner-output-panel")).not.toBeNull();
       expect(root.findByClass("console-pre")?.textContent).toBe("hello washi");
+      expect(root.findByClass("runner-status-meta")?.textContent).toContain("42.0 ms");
+      expect(root.findByClass("runner-status-meta")?.textContent).toContain("5.5 ms");
 
       // Re-run with runtime error renders .error-text cleanly
       runSnippetMock.mockResolvedValueOnce({
         logs: [],
         errorMsg: "snippet failed",
+        loadTimeMs: 0,
+        solveTimeMs: null,
         runTimeMs: 1.2,
+        wasCached: true,
       });
       await root.findByClass("washi-solve-btn")!.trigger("click");
       expect(root.findByClass("error-text")?.textContent).toBe("Error: snippet failed");
@@ -601,7 +709,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     runSnippetMock.mockResolvedValueOnce({
       logs: ["autorun ok"],
       errorMsg: null,
-      runTimeMs: 2.0,
+      loadTimeMs: 0,
+      solveTimeMs: 2.0,
+      runTimeMs: 2.3,
+      wasCached: true,
     });
     const autoMounted = mountComponent(CodeRunner, { autorun: true }, slots);
     try {

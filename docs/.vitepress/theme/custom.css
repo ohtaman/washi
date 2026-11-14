@@ -1069,6 +1069,7 @@
   font-family: var(--vp-font-family-mono);
   font-size: 0.76rem;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: #16a34a;
 }
 

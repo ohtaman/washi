@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
 import { useData } from "vitepress";
-import { runWashiSnippet } from "../utils/runSnippet";
+import {
+  formatSnippetStatus,
+  runWashiSnippet,
+  type SnippetRunPhase,
+} from "../utils/runSnippet";
 import { useComponentTranslations } from "../locales/index";
 
 const props = defineProps<{
@@ -14,10 +18,26 @@ const i18n = computed(() => useComponentTranslations(lang.value).dict.codeRunner
 
 const slotEl = ref<HTMLElement | null>(null);
 const isRunning = ref(false);
+const runPhase = ref<SnippetRunPhase>("running");
 const hasRun = ref(false);
+const loadTimeMs = ref(0);
+const solveTimeMs = ref<number | null>(null);
 const runTimeMs = ref(0);
+const wasCached = ref(false);
 const logs = ref<string[]>([]);
 const errorMsg = ref<string | null>(null);
+
+const statusText = computed(() =>
+  formatSnippetStatus(
+    {
+      loadTimeMs: loadTimeMs.value,
+      solveTimeMs: solveTimeMs.value,
+      runTimeMs: runTimeMs.value,
+      wasCached: wasCached.value,
+    },
+    i18n.value
+  )
+);
 
 async function runSlotCode() {
   if (typeof window === "undefined" || !slotEl.value) return;
@@ -26,6 +46,7 @@ async function runSlotCode() {
   if (!rawCode.trim()) return;
 
   isRunning.value = true;
+  runPhase.value = "running";
   errorMsg.value = null;
 
   try {
@@ -34,8 +55,15 @@ async function runSlotCode() {
       await new Promise((r) => setTimeout(r, 120));
     }
 
-    const res = await runWashiSnippet(rawCode);
+    const res = await runWashiSnippet(rawCode, {
+      onPhase: (phase) => {
+        runPhase.value = phase;
+      },
+    });
+    loadTimeMs.value = res.loadTimeMs;
+    solveTimeMs.value = res.solveTimeMs;
     runTimeMs.value = res.runTimeMs;
+    wasCached.value = res.wasCached;
     logs.value = res.logs;
     errorMsg.value = res.errorMsg;
     hasRun.value = true;
@@ -65,12 +93,14 @@ onMounted(() => {
         :disabled="isRunning"
         @click="runSlotCode"
       >
-        <span v-if="isRunning">⏳ {{ i18n.running }}</span>
+        <span v-if="isRunning">
+          ⏳ {{ runPhase === "loading" ? i18n.loading : i18n.running }}
+        </span>
         <span v-else>▶ {{ i18n.run }}</span>
       </button>
 
       <span v-if="hasRun && !isRunning && !errorMsg" class="runner-status-meta">
-        ✓ {{ i18n.executed }} ({{ runTimeMs.toFixed(1) }} ms)
+        ✓ {{ statusText }}
       </span>
 
       <a

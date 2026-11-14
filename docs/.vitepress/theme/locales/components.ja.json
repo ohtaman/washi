@@ -1,8 +1,13 @@
 {
   "codeRunner": {
+    "loading": "WaSHI ロード中...",
     "running": "実行中...",
     "run": "コードを実行",
     "executed": "実行完了",
+    "loadLabel": "ロード",
+    "cachedLabel": "キャッシュ済",
+    "solveLabel": "求解",
+    "runLabel": "実行",
     "openPlayground": "Playground で開く →",
     "output": "実行結果 (stdout)"
   },

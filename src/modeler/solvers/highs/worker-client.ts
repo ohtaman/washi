@@ -1,5 +1,7 @@
 import type { SolveOptions, SolveProgressEvent } from "../../types.js";
 import {
+  getHighs,
+  isHighsCached,
   solveLpWithHighs,
   type RawHighsSolveResult,
   type HighsIncumbentSnapshot,
@@ -7,10 +9,12 @@ import {
 } from "./loader.js";
 import { createHighsWorker } from "./worker-factory.js";
 
-interface PendingWorkerRequest {
+interface PendingSolveRequest {
+  kind: "SOLVE";
   id: string;
   lpString: string;
   workerOptions: Record<string, any>;
+  wasmUrl: string;
   reportProgress: boolean;
   dispatched?: boolean;
   startTime: number;
@@ -22,7 +26,22 @@ interface PendingWorkerRequest {
   reject: (err: any) => void;
 }
 
+interface PendingWarmupRequest {
+  kind: "WARMUP";
+  id: string;
+  workerOptions: Record<string, any>;
+  wasmUrl: string;
+  dispatched?: boolean;
+  cleanupAbort?: () => void;
+  resolve: () => void;
+  reject: (err: any) => void;
+}
+
+type PendingWorkerRequest = PendingSolveRequest | PendingWarmupRequest;
+
 let workerInstance: Worker | null = null;
+let warmedWorker: Worker | null = null;
+let warmedWorkerWasmUrl: string | null = null;
 let reqIdCounter = 0;
 const pendingRequests = new Map<string, PendingWorkerRequest>();
 
@@ -72,13 +91,21 @@ function dispatchHeadRequestIfIdle(worker: Worker): void {
   }
   head.dispatched = true;
   try {
-    worker.postMessage({
-      type: "SOLVE",
-      id: head.id,
-      lpString: head.lpString,
-      options: head.workerOptions,
-      ...(head.reportProgress ? { reportProgress: true } : {}),
-    });
+    if (head.kind === "WARMUP") {
+      worker.postMessage({
+        type: "WARMUP",
+        id: head.id,
+        options: head.workerOptions,
+      });
+    } else {
+      worker.postMessage({
+        type: "SOLVE",
+        id: head.id,
+        lpString: head.lpString,
+        options: head.workerOptions,
+        ...(head.reportProgress ? { reportProgress: true } : {}),
+      });
+    }
   } catch (err) {
     pendingRequests.delete(head.id);
     head.cleanupAbort?.();
@@ -91,6 +118,8 @@ function terminateActiveWorkerAndRedispatch(): void {
   const currentWorker = workerInstance;
   if (currentWorker) {
     workerInstance = null;
+    warmedWorker = null;
+    warmedWorkerWasmUrl = null;
     currentWorker.terminate();
   }
 
@@ -114,7 +143,13 @@ function terminateActiveWorkerAndRedispatch(): void {
 }
 
 function getWorker(): Worker | null {
-  if (typeof window === "undefined" || typeof Worker === "undefined") {
+  if (
+    typeof window === "undefined" ||
+    typeof Worker === "undefined" ||
+    // z3-built.js assigns node:worker_threads.Worker onto global.Worker in Node.js;
+    // avoid treating it as a browser Web Worker when window is polyfilled (e.g. jsdom/SSR).
+    typeof (Worker as { prototype?: { unref?: unknown } })?.prototype?.unref === "function"
+  ) {
     return null;
   }
 
@@ -131,7 +166,7 @@ function getWorker(): Worker | null {
         }
 
         if (type === "SOLVE_PROGRESS") {
-          if (progress) {
+          if (pending.kind === "SOLVE" && progress) {
             pending.lastProgress = progress;
             try {
               pending.onProgress?.(progress);
@@ -152,7 +187,7 @@ function getWorker(): Worker | null {
         }
 
         if (type === "SOLVE_INCUMBENT") {
-          if (incumbent) {
+          if (pending.kind === "SOLVE" && incumbent) {
             pending.lastIncumbent = incumbent;
           }
           return;
@@ -160,7 +195,21 @@ function getWorker(): Worker | null {
 
         pendingRequests.delete(id);
         pending.cleanupAbort?.();
-        if (type === "SOLVE_SUCCESS") {
+        if (pending.kind === "WARMUP") {
+          if (type === "WARMUP_SUCCESS") {
+            if (workerInstance === currentWorker) {
+              warmedWorker = currentWorker;
+              warmedWorkerWasmUrl = pending.wasmUrl;
+            }
+            pending.resolve();
+          } else {
+            pending.reject(new Error(error || "Worker warmup failed"));
+          }
+        } else if (type === "SOLVE_SUCCESS") {
+          if (workerInstance === currentWorker) {
+            warmedWorker = currentWorker;
+            warmedWorkerWasmUrl = pending.wasmUrl;
+          }
           pending.resolve({ result, runTime });
         } else {
           pending.reject(new Error(error || "Worker solve failed"));
@@ -173,6 +222,8 @@ function getWorker(): Worker | null {
       const failWorker = (error: Error) => {
         if (workerInstance !== currentWorker) return;
         workerInstance = null;
+        warmedWorker = null;
+        warmedWorkerWasmUrl = null;
         currentWorker.terminate();
         for (const pending of pendingRequests.values()) {
           pending.cleanupAbort?.();
@@ -199,6 +250,75 @@ function getWorker(): Worker | null {
   return workerInstance;
 }
 
+function shouldUseWorker(options: SolveOptions & { useWorker?: boolean }): boolean {
+  const effectiveOrigin =
+    typeof window !== "undefined"
+      ? typeof window.origin === "string"
+        ? window.origin
+        : window.location?.origin
+      : undefined;
+  return (
+    options.useWorker ??
+    (typeof window !== "undefined" &&
+      effectiveOrigin !== "null" &&
+      !effectiveOrigin?.startsWith("file:"))
+  );
+}
+
+function sanitizeWorkerOptions(
+  options: SolveOptions & { useWorker?: boolean },
+  resolvedWasmUrl: string
+): Record<string, any> {
+  const { signal: _signal, onProgress: _onProgress, ...restOptions } = options;
+  const workerOptions: Record<string, any> = {};
+  for (const [k, v] of Object.entries(restOptions)) {
+    if (typeof v !== "function") {
+      workerOptions[k] = v;
+    }
+  }
+  workerOptions.wasmUrl = resolvedWasmUrl;
+  return workerOptions;
+}
+
+/**
+ * Pre-initialize the HiGHS WebAssembly runtime (inside the active Web Worker when used,
+ * or on the main thread otherwise) so subsequent solve calls avoid cold WASM loading latency.
+ */
+export async function warmupHighs(
+  options: SolveOptions & { useWorker?: boolean } = {}
+): Promise<{ cached: boolean }> {
+  const resolvedWasmUrl = await resolveBrowserWasmUrl(options.wasmUrl);
+  const worker = shouldUseWorker(options) ? getWorker() : null;
+
+  if (!worker) {
+    const cached = await isHighsCached(options);
+    await getHighs(options);
+    return { cached };
+  }
+
+  if (warmedWorker === worker && warmedWorkerWasmUrl === resolvedWasmUrl) {
+    return { cached: true };
+  }
+
+  const workerOptions = sanitizeWorkerOptions(options, resolvedWasmUrl);
+  const id = `req_${++reqIdCounter}`;
+
+  await new Promise<void>((resolve, reject) => {
+    const entry: PendingWarmupRequest = {
+      kind: "WARMUP",
+      id,
+      workerOptions,
+      wasmUrl: resolvedWasmUrl,
+      resolve,
+      reject,
+    };
+    pendingRequests.set(id, entry);
+    dispatchHeadRequestIfIdle(worker);
+  });
+
+  return { cached: false };
+}
+
 /**
  * Solve an LP model using a Web Worker if supported and requested,
  * falling back to the main thread WASM solver otherwise.
@@ -223,41 +343,26 @@ export async function solveLp(
     };
   }
 
-  const effectiveOrigin =
-    typeof window !== "undefined"
-      ? typeof window.origin === "string"
-        ? window.origin
-        : window.location?.origin
-      : undefined;
-  const useWorker =
-    options.useWorker ??
-    (typeof window !== "undefined" &&
-      effectiveOrigin !== "null" &&
-      !effectiveOrigin?.startsWith("file:"));
-  const worker = useWorker ? getWorker() : null;
+  const worker = shouldUseWorker(options) ? getWorker() : null;
 
   if (!worker) {
     return solveLpWithHighs(lpString, options);
   }
 
-  const { signal, onProgress, ...restOptions } = options;
-  const workerOptions: Record<string, any> = {};
-  for (const [k, v] of Object.entries(restOptions)) {
-    if (typeof v !== "function") {
-      workerOptions[k] = v;
-    }
-  }
-  workerOptions.wasmUrl = resolvedWasmUrl;
+  const { signal, onProgress } = options;
+  const workerOptions = sanitizeWorkerOptions(options, resolvedWasmUrl);
   const reportProgress = Boolean(onProgress || signal);
 
   const id = `req_${++reqIdCounter}`;
   const startTime = performance.now();
 
   return new Promise((resolve, reject) => {
-    const entry: PendingWorkerRequest = {
+    const entry: PendingSolveRequest = {
+      kind: "SOLVE",
       id,
       lpString,
       workerOptions,
+      wasmUrl: resolvedWasmUrl,
       reportProgress,
       startTime,
       onProgress,
@@ -268,7 +373,7 @@ export async function solveLp(
     if (signal) {
       const onAbort = () => {
         const pending = pendingRequests.get(id);
-        if (!pending) return;
+        if (!pending || pending.kind !== "SOLVE") return;
         const activeId = pendingRequests.keys().next().value;
         pendingRequests.delete(id);
         pending.cleanupAbort?.();

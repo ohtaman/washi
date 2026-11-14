@@ -116,4 +116,38 @@ describe("HiGHS worker failures", () => {
       await expect(req).resolves.toMatchObject({ result: { Status: "Optimal" } });
     }
   });
+
+  it("warms up the HiGHS worker once per active worker instance and resets cache on worker failure", async () => {
+    vi.resetModules();
+    FakeWorker.instances = [];
+    vi.stubGlobal("window", { origin: "https://example.com", location: { origin: "https://example.com", protocol: "https:" } });
+    vi.stubGlobal("Worker", FakeWorker);
+
+    const loader = await import("../src/modeler/solvers/highs/loader.js");
+    vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
+
+    const workerClient = await import("../src/modeler/solvers/highs/worker-client.js");
+    const warmupHighs = (workerClient as any).warmupHighs as (opts?: any) => Promise<{ cached: boolean }>;
+    expect(typeof warmupHighs).toBe("function");
+
+    const firstWarmup = warmupHighs();
+    await vi.waitFor(() => expect(FakeWorker.instances[0]?.messages).toHaveLength(1));
+    const worker1 = FakeWorker.instances[0];
+    expect(worker1.messages[0].type).toBe("WARMUP");
+    worker1.onmessage?.({ data: { type: "WARMUP_SUCCESS", id: worker1.messages[0].id } });
+    await expect(firstWarmup).resolves.toEqual({ cached: false });
+
+    // Second warmup on the same healthy worker must short-circuit without posting
+    await expect(warmupHighs()).resolves.toEqual({ cached: true });
+    expect(worker1.messages).toHaveLength(1);
+
+    // Worker crash clears warmed state so retry warms a fresh worker
+    worker1.onerror?.({ message: "worker crashed" });
+    const retryWarmup = warmupHighs();
+    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(2));
+    const worker2 = FakeWorker.instances[1];
+    expect(worker2.messages[0].type).toBe("WARMUP");
+    worker2.onmessage?.({ data: { type: "WARMUP_SUCCESS", id: worker2.messages[0].id } });
+    await expect(retryWarmup).resolves.toEqual({ cached: false });
+  });
 });

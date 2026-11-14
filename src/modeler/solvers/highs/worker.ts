@@ -1,9 +1,26 @@
-import { solveLpWithHighs, type HighsIncumbentSnapshot } from "./loader.js";
+import { getHighs, solveLpWithHighs, type HighsIncumbentSnapshot } from "./loader.js";
 import type { SolveProgressEvent } from "../../types.js";
 
 // Web Worker entry point for non-blocking solver execution
 self.onmessage = async (e: MessageEvent) => {
   const { type, id, lpString, options, reportProgress } = e.data;
+
+  if (type === "WARMUP") {
+    try {
+      await getHighs(options);
+      self.postMessage({
+        type: "WARMUP_SUCCESS",
+        id,
+      });
+    } catch (err: any) {
+      self.postMessage({
+        type: "WARMUP_ERROR",
+        id,
+        error: err?.message || String(err),
+      });
+    }
+    return;
+  }
 
   if (type === "SOLVE") {
     try {
