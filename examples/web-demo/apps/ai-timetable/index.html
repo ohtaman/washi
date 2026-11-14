@@ -49,12 +49,22 @@
               <h1 class="brand-title"><span>WaS</span><span class="accent-hi">HI</span></h1>
             </a>
             <span class="header-divider">/</span>
-            <span id="header-app-title" class="demo-header-title">🎓 大学時間割編成 AI Copilot (UCTP)</span>
+            <span id="header-app-title" class="demo-header-title">🎓 Course Timetabling</span>
           </div>
         </div>
       </div>
 
       <div class="header-controls">
+        <button
+          type="button"
+          id="btn-toggle-ai-drawer"
+          class="btn-ai-drawer-toggle"
+          hidden
+          aria-expanded="false"
+          aria-controls="chat-pane-aside"
+        >
+          💬 AI Chat
+        </button>
         <div class="lang-switch" role="group" aria-label="Language">
           <button type="button" class="lang-btn" data-lang-btn="en">EN</button>
           <button type="button" class="lang-btn" data-lang-btn="ja">日本語</button>
@@ -63,16 +73,16 @@
         <button
           type="button"
           id="btn-toggle-tutorial"
-          class="btn-tutorial-toggle"
-          title="🔰 Quick Guide"
+          class="btn-tutorial-toggle desktop-nav-item"
+          title="🔰 Guide"
         >
-          🔰 Quick Guide
+          🔰 Guide
         </button>
-        <a href="../ai-timetable-theory/" id="nav-link-theory" class="nav-pill-link">📖 解説記事</a>
-        <a href="../../ja/showcase/" id="nav-link-apps" class="nav-pill-link">← Showcase</a>
-        <a href="../ai-shift/" id="nav-link-aishift" class="nav-pill-link">🏥 AI Shift</a>
-        <a href="../../" class="nav-pill-link">Docs</a>
-        <a href="../../demo/" class="nav-pill-link">Playground</a>
+        <a href="../ai-timetable-theory/" id="nav-link-theory" class="nav-pill-link desktop-nav-item">📖 Theory</a>
+        <a href="../../ja/showcase/" id="nav-link-apps" class="nav-pill-link desktop-nav-item">← Showcase</a>
+        <a href="../ai-shift/" id="nav-link-aishift" class="nav-pill-link desktop-nav-item">🏥 AI Shift</a>
+        <a href="../../" class="nav-pill-link desktop-nav-item">Docs</a>
+        <a href="../../demo/" class="nav-pill-link desktop-nav-item">Playground</a>
         <button
           type="button"
           class="theme-toggle-btn"
@@ -82,13 +92,33 @@
         >
           🌙
         </button>
+        <button
+          type="button"
+          id="btn-mobile-nav-menu"
+          class="mobile-nav-menu-btn"
+          popovertarget="mobile-nav-popover"
+          aria-label="Menu"
+          aria-haspopup="menu"
+        >
+          ⋯
+        </button>
       </div>
     </header>
 
-    <!-- Main Split Workspace: Left (AI Chat) + Right (Timetable & Constraints) -->
-    <main class="ai-shift-workspace">
+    <div id="mobile-nav-popover" popover="auto" class="mobile-nav-popover" role="menu">
+      <button type="button" id="btn-mobile-tutorial" class="mobile-nav-item" role="menuitem">🔰 Guide</button>
+      <a href="../ai-timetable-theory/" id="nav-link-theory-mobile" class="mobile-nav-item" role="menuitem">📖 Theory</a>
+      <a href="../../ja/showcase/" id="nav-link-apps-mobile" class="mobile-nav-item" role="menuitem">← Showcase</a>
+      <a href="../ai-shift/" id="nav-link-aishift-mobile" class="mobile-nav-item" role="menuitem">🏥 AI Shift</a>
+      <a href="../../" class="mobile-nav-item" role="menuitem">Docs</a>
+      <a href="../../demo/" class="mobile-nav-item" role="menuitem">Playground</a>
+    </div>
+
+    <!-- Main Split Workspace: Left (AI Chat, hidden when unsupported) + Right (Timetable & Constraints) -->
+    <main id="ai-timetable-workspace" class="ai-shift-workspace" data-ai-available="false" data-ai-drawer-open="false">
+      <div id="ai-drawer-backdrop" class="ai-drawer-backdrop" hidden></div>
       <!-- ==================== LEFT PANE: GEMINI NANO CHAT ==================== -->
-      <aside id="chat-pane-aside" class="chat-pane" aria-label="AI Timetabling Chat Workspace">
+      <aside id="chat-pane-aside" class="chat-pane" hidden aria-label="AI Timetabling Chat Workspace">
         <div class="chat-pane-header">
           <div class="chat-header-top">
             <div class="chat-title-row">
@@ -102,7 +132,7 @@
                 class="btn-examples-trigger"
                 title="Inspect, copy, or export AI prompts, JSON outputs, and WaSHI solver logs"
               >
-                📋 Trajectory <span id="badge-trajectory-count" class="tab-badge" hidden>0</span>
+                📋 <span class="hide-on-narrow-chat">Log</span> <span id="badge-trajectory-count" class="tab-badge" hidden>0</span>
               </button>
               <span id="nano-status-badge" class="nano-badge nano-checking">
                 ⏳ 確認中
@@ -115,6 +145,14 @@
                 aria-label="Gemini Nano Setup"
               >
                 ⚙️
+              </button>
+              <button
+                type="button"
+                id="btn-close-ai-drawer"
+                class="btn-close-ai-drawer"
+                aria-label="Close AI Chat"
+              >
+                ✕
               </button>
             </div>
           </div>
@@ -347,11 +385,11 @@
               hidden
               title="Abort"
             >
-              ⏹ Abort Solve
+              ⏹ Stop
             </button>
 
             <button type="button" id="btn-solve-washi" class="btn-solve-primary">
-              ⚡ Auto-Schedule Timetable
+              ⚡ Auto-Schedule
             </button>
 
             <label id="lbl-auto-solve" class="auto-solve-toggle" title="Automatically re-optimize when constraints are updated">
@@ -365,7 +403,7 @@
               class="btn-toolbar-outline"
               title="Verify whether all current timetable constraints are mutually satisfiable"
             >
-              🔍 Check Feasibility
+              🔍 Check
             </button>
 
             <button
@@ -379,18 +417,27 @@
           </div>
         </div>
 
+        <!-- Workspace Notification Banner (replaces dumping timetable feedback into AI chat) -->
+        <div id="workspace-action-banner" class="workspace-action-banner" hidden role="status" aria-live="polite">
+          <div id="workspace-action-body" class="workspace-action-body"></div>
+          <button type="button" id="btn-close-workspace-banner" class="workspace-banner-close" aria-label="Dismiss">✕</button>
+        </div>
+
+        <!-- Floating Toast Stack -->
+        <div id="workspace-toast-region" popover="manual" class="workspace-toast-region" role="region" aria-label="Notifications" aria-live="polite"></div>
+
         <!-- Conflict Alert Box (Shown only when Infeasible) -->
         <div id="conflict-alert" class="conflict-banner" hidden>
           <div class="conflict-header">
             <div class="conflict-title">
-              <span id="conflict-banner-title">🚨 Timetable Infeasible — Conflicting Rules Identified by WaSHI (HiGHS)</span>
+              <span id="conflict-banner-title">🚨 Conflicting Rules Prevent Scheduling</span>
             </div>
             <div class="conflict-actions">
               <button type="button" id="btn-clear-custom-conflicts" class="btn-xs-primary">
-                ✨ Clear Conflicting Custom Rules & Re-Solve
+                ✨ Clear Conflicting Rules
               </button>
-              <button type="button" id="btn-ask-nano-conflict" class="btn-xs-outline">
-                🤖 Ask AI How to Resolve
+              <button type="button" id="btn-ask-nano-conflict" class="btn-xs-outline" hidden>
+                🤖 Ask AI
               </button>
             </div>
           </div>
@@ -408,7 +455,7 @@
             aria-controls="tab-panel-timetable"
             data-tab="timetable"
           >
-            <span id="tab-txt-timetable">📅 Timetable Board (4 Cohorts × 10 Faculty × 7 Rooms)</span>
+            <span id="tab-txt-timetable">📅 Timetable</span>
           </button>
           <button
             type="button"
@@ -419,7 +466,7 @@
             aria-controls="tab-panel-catalog"
             data-tab="catalog"
           >
-            <span id="tab-txt-catalog">📚 Master Data (Faculty, Rooms, Courses)</span>
+            <span id="tab-txt-catalog">📚 Data</span>
           </button>
           <button
             type="button"
@@ -430,7 +477,7 @@
             aria-controls="tab-panel-constraints"
             data-tab="constraints"
           >
-            <span id="tab-txt-constraints">⚙️ Constraints & Rules</span>
+            <span id="tab-txt-constraints">⚙️ Rules</span>
           </button>
         </div>
 
@@ -441,17 +488,66 @@
           aria-labelledby="tab-btn-timetable"
           class="results-tab-panel"
         >
-          <div class="schedule-controls-bar">
+          <!-- First-View Unscheduled Hero CTA (shown when baseline data exists but timetable === null) -->
+          <div id="unscheduled-hero-state" class="unscheduled-hero-card" hidden>
+            <span id="hero-eyebrow" class="hero-eyebrow">Unscheduled (0/30 slots) · 10 Faculty · 7 Rooms · 25 Courses</span>
+            <h2 id="hero-title" class="hero-title">Auto-Schedule Your Timetable</h2>
+            <p id="hero-desc" class="hero-desc">
+              No timetable slots are pre-filled yet. Click below to run mathematical optimization from scratch and generate a conflict-free schedule.
+            </p>
+            <div class="hero-actions">
+              <button type="button" id="btn-hero-solve" class="btn-solve-primary hero-primary-btn">
+                ⚡ Auto-Schedule Timetable
+              </button>
+              <div class="hero-secondary-actions">
+                <button type="button" id="btn-hero-catalog" class="btn-toolbar-outline">
+                  📚 View Data
+                </button>
+                <button type="button" id="btn-hero-constraints" class="btn-toolbar-outline">
+                  ⚙️ Rules
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="schedule-controls-bar" class="schedule-controls-bar">
             <div class="view-mode-selector-wrap">
               <label for="select-view-mode" class="sr-only" id="lbl-view-mode">表示切替</label>
               <select id="select-view-mode" class="toolbar-select view-mode-select">
-                <option value="cohorts_4" id="opt-view-cohorts">🎓 学年別 (1年〜4年 4枚同時)</option>
-                <option value="professors_matrix" id="opt-view-profs">👨‍🏫 10 Faculty × 25 Slots Matrix</option>
-                <option value="rooms_matrix" id="opt-view-rooms">🏫 7 Rooms × 25 Slots Matrix</option>
+                <option value="cohorts_4" id="opt-view-cohorts">🎓 Cohorts</option>
+                <option value="professors_matrix" id="opt-view-profs">👨‍🏫 Faculty</option>
+                <option value="rooms_matrix" id="opt-view-rooms">🏫 Rooms</option>
               </select>
             </div>
 
-            <div class="schedule-legend">
+            <div class="schedule-filters">
+              <label
+                id="lbl-preserve-toggle"
+                class="prev-days-toggle"
+                title=""
+              >
+                <input type="checkbox" id="chk-preserve-timetable" checked />
+                <span id="txt-preserve-toggle">🔒 Minimal Edit</span>
+              </label>
+              <label
+                id="lbl-diff-toggle"
+                class="prev-days-toggle"
+                title=""
+              >
+                <input type="checkbox" id="chk-highlight-diff" checked />
+                <span id="txt-diff-toggle">✨ Show Moves</span>
+              </label>
+              <button
+                type="button"
+                id="btn-toggle-legend"
+                popovertarget="legend-popover"
+                class="btn-toolbar-outline btn-legend-trigger"
+              >
+                🎨 Legend
+              </button>
+            </div>
+
+            <div id="legend-popover" popover="auto" class="schedule-legend legend-popover">
               <span class="legend-item">
                 <span id="leg-badge-comp" class="shift-badge course-compulsory">必修</span>
                 <span id="leg-txt-comp">必修</span>
@@ -472,39 +568,25 @@
                 <span id="leg-badge-sem" class="shift-badge course-seminar">Seminar</span>
                 <span id="leg-txt-sem">Seminar</span>
               </span>
-              <span class="legend-divider">|</span>
               <span class="legend-item">
                 <span class="pin-sample-box"></span>
-                <span id="leg-txt-pinned">固定中</span>
+                <span id="leg-txt-pinned">固定</span>
               </span>
               <span class="legend-item">
                 <span class="diff-sample-box"></span>
-                <span id="leg-txt-changed">Changed</span>
+                <span id="leg-txt-changed">変更</span>
               </span>
-            </div>
-
-            <div class="schedule-filters">
-              <label
-                id="lbl-preserve-toggle"
-                class="prev-days-toggle"
-                title=""
-              >
-                <input type="checkbox" id="chk-preserve-timetable" checked />
-                <span id="txt-preserve-toggle">🔒 Minimal Perturbation</span>
-              </label>
-              <label
-                id="lbl-diff-toggle"
-                class="prev-days-toggle"
-                title=""
-              >
-                <input type="checkbox" id="chk-highlight-diff" checked />
-                <span id="txt-diff-toggle">✨ Show Diffs</span>
-              </label>
             </div>
           </div>
 
           <!-- Cross-Table Link / Highlight Bar -->
           <div class="cross-highlight-bar" id="cross-highlight-bar"></div>
+
+          <!-- Compact Interactive Board Affordance Guide (visible only once scheduled) -->
+          <div id="board-interaction-guide" class="board-interaction-guide" hidden>
+            <span id="board-guide-drag" class="board-guide-pill">🖐️ Drag (or click) any course cell to move &amp; pin it</span>
+            <span id="board-guide-optimize" class="board-guide-pill board-guide-pill-accent">✨ Other courses auto-rebalance cleanly to stay conflict-free</span>
+          </div>
 
           <!-- Empty / Blank Timetable Welcome Banner -->
           <div id="empty-timetable-state" class="empty-timetable-card" hidden>

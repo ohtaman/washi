@@ -7,10 +7,12 @@ import {
   DAY_SHORT_I18N,
   PROFESSOR_PROFILE_I18N,
   ROOM_PROFILE_I18N,
+  UI_TEXT_I18N,
   formatConstraintMetaI18n,
   formatCustomRuleI18n,
   formatDiffReasonI18n,
   formatPeriodI18n,
+  formatUiTemplate,
   getProfessorI18n,
   getTimetableLang,
   pickTimetableLang,
@@ -1489,11 +1491,7 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
 
       onProgress?.({
         phase: "turn1_start",
-        activeLabel: pickTimetableLang(lang, {
-          ja: "\u23F3 Gemini Nano \u3067\u6642\u9593\u5272\u6761\u4EF6\u3092\u69CB\u9020\u5316\u3057\u3066\u3044\u307E\u3059\u2026",
-          en: "⏳ Structuring timetable constraints with Gemini Nano…",
-          zh: "⏳ 正在通过 Gemini Nano 结构化排课条件…",
-        }),
+        activeLabel: UI_TEXT_I18N[lang].nanoProgressTurn1,
       });
 
       const getFreshExtractorSession = async (): Promise<{
@@ -1625,10 +1623,8 @@ export function createTimetableGeminiNanoManager(): TimetableGeminiNanoManager {
 
         onProgress?.({
           phase: "turn2_done",
-          activeLabel: pickTimetableLang(lang, {
-            ja: `\u2705 ${operations.length}\u4EF6\u306E\u6642\u9593\u5272\u6761\u4EF6\u3092\u62BD\u51FA\u3057\u307E\u3057\u305F`,
-            en: `✅ Extracted ${operations.length} timetable operation(s)`,
-            zh: `✅ 已提取 ${operations.length} 项排课条件`,
+          activeLabel: formatUiTemplate(UI_TEXT_I18N[lang].nanoProgressTurn2Done, {
+            count: operations.length,
           }),
         });
 

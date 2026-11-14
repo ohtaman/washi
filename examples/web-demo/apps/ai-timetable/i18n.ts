@@ -477,6 +477,139 @@ export function formatConstraintMetaI18n(
     };
   }
 
+  if (meta.name.startsWith("course_diff_day_")) {
+    const parts = meta.name.split("_");
+    const day = parts[parts.length - 1] as TimetableDay;
+    const courseId = parts.slice(3, -1).join("_");
+    const c = courseMap.get(courseId);
+    const title = c ? getCourseI18n(c, lang).title : courseId;
+    const dayName = DAY_FULL_I18N[lang][day] ?? day;
+    return {
+      label: templates.courseDiffDay.label
+        .replace("{title}", title)
+        .replace("{day}", dayName),
+      suggestion: templates.courseDiffDay.suggestion
+        .replace("{title}", title)
+        .replace("{day}", dayName),
+    };
+  }
+
+  if (meta.name.startsWith("prof_unavail_slot_")) {
+    const parts = meta.name.split("_");
+    const period = Number(parts[parts.length - 1]?.replace("P", "")) as TimetablePeriod;
+    const day = parts[parts.length - 2] as TimetableDay;
+    const profId = parts.slice(3, -2).join("_");
+    const prof = profMap.get(profId);
+    const pI18n = prof ? getProfessorI18n(prof, lang) : null;
+    const slot = formatSlotI18n(day, period, lang);
+    const unavailEntry = prof?.unavailableSlots.find(
+      (s) => s.day === day && s.period === period
+    );
+    const reason = unavailEntry?.reason ? ` (${unavailEntry.reason})` : "";
+    const name = pI18n?.name ?? profId;
+    const profTitle = pI18n?.title ?? "";
+    return {
+      label: templates.profUnavailSlot.label
+        .replace("{name}", name)
+        .replace("{title}", profTitle)
+        .replace("{slot}", slot)
+        .replace("{reason}", reason),
+      suggestion: templates.profUnavailSlot.suggestion
+        .replace("{name}", name)
+        .replace("{title}", profTitle)
+        .replace("{slot}", slot)
+        .replace("{reason}", reason),
+    };
+  }
+
+  if (meta.name.startsWith("prof_daily_max_")) {
+    const parts = meta.name.split("_");
+    const day = parts[parts.length - 1] as TimetableDay;
+    const profId = parts.slice(3, -1).join("_");
+    const prof = profMap.get(profId);
+    const pI18n = prof ? getProfessorI18n(prof, lang) : null;
+    const customMaxRule = state.customRules.find(
+      (r) => r.enabled && r.kind === "prof_max_daily" && r.professorId === profId
+    );
+    const max = String(
+      customMaxRule?.maxDailySessions ??
+        Math.min(prof?.maxSessionsPerDay ?? state.config.maxProfessorSessionsPerDay, state.config.maxProfessorSessionsPerDay)
+    );
+    const dayName = DAY_FULL_I18N[lang][day] ?? day;
+    const name = pI18n?.name ?? profId;
+    return {
+      label: templates.profDailyMax.label
+        .replace("{name}", name)
+        .replace("{day}", dayName)
+        .replace("{max}", max),
+      suggestion: templates.profDailyMax.suggestion
+        .replace("{name}", name)
+        .replace("{day}", dayName)
+        .replace("{max}", max),
+    };
+  }
+
+  if (meta.name.startsWith("prof_consec_")) {
+    const parts = meta.name.split("_");
+    const pEnd = parts[parts.length - 1]?.replace("P", "") ?? "";
+    const pStart = parts[parts.length - 2]?.replace("P", "") ?? "";
+    const day = parts[parts.length - 3] as TimetableDay;
+    const profId = parts.slice(2, -3).join("_");
+    const prof = profMap.get(profId);
+    const pI18n = prof ? getProfessorI18n(prof, lang) : null;
+    const dayName = DAY_FULL_I18N[lang][day] ?? day;
+    const max = String(state.config.maxProfessorConsecutivePeriods);
+    const name = pI18n?.name ?? profId;
+    return {
+      label: templates.profConsec.label
+        .replace("{name}", name)
+        .replace("{max}", max)
+        .replace("{day}", dayName)
+        .replace("{pStart}", pStart)
+        .replace("{pEnd}", pEnd),
+      suggestion: templates.profConsec.suggestion
+        .replace("{name}", name)
+        .replace("{max}", max)
+        .replace("{day}", dayName)
+        .replace("{pStart}", pStart)
+        .replace("{pEnd}", pEnd),
+    };
+  }
+
+  if (meta.name.startsWith("cohort_daily_max_")) {
+    const parts = meta.name.split("_");
+    const day = parts[parts.length - 1] as TimetableDay;
+    const cohortId = parts.slice(3, -1).join("_") as CohortId;
+    const cohortLabel = COHORT_I18N[lang][cohortId]?.shortLabel ?? cohortId;
+    const dayName = DAY_FULL_I18N[lang][day] ?? day;
+    const max = String(state.config.maxCohortCompulsoryPerDay);
+    return {
+      label: templates.cohortDailyMax.label
+        .replace("{cohort}", cohortLabel)
+        .replace("{day}", dayName)
+        .replace("{max}", max),
+      suggestion: templates.cohortDailyMax.suggestion
+        .replace("{cohort}", cohortLabel)
+        .replace("{day}", dayName)
+        .replace("{max}", max),
+    };
+  }
+
+  if (meta.name.startsWith("room_compat_")) {
+    const courseId = meta.name.replace("room_compat_", "");
+    const c = courseMap.get(courseId);
+    const title = c ? getCourseI18n(c, lang).title : courseId;
+    const enrollment = String(c?.enrollment ?? 0);
+    return {
+      label: templates.roomCompat.label
+        .replace("{title}", title)
+        .replace("{enrollment}", enrollment),
+      suggestion: templates.roomCompat.suggestion
+        .replace("{title}", title)
+        .replace("{enrollment}", enrollment),
+    };
+  }
+
   return { label: meta.labelJa, suggestion: meta.relaxSuggestion };
 }
 
@@ -539,3 +672,12 @@ export const TIMETABLE_UI_I18N: Record<TimetableLang, TimetableUiStrings> = {
 };
 
 export const UI_TEXT_I18N = TIMETABLE_UI_I18N;
+
+export function formatUiTemplate(
+  template: string,
+  vars: Record<string, string | number>
+): string {
+  return template.replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) =>
+    Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match
+  );
+}

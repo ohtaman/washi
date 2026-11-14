@@ -37,6 +37,11 @@ import {
   resolveDayToken,
   resolvePeriodNumbers,
 } from "../examples/web-demo/apps/ai-timetable/types.js";
+import {
+  isGeminiNanoVisibleStatus,
+  setAiDrawerOpen,
+  updateNanoStatusUI,
+} from "../examples/web-demo/apps/ai-timetable/main.js";
 
 describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
   it("solves the default 25-course (30-session) 7-room 10-professor timetable to Optimal and passes validateSolution()", async () => {
@@ -1869,4 +1874,686 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
     const c01RelaxedCh = diffRelaxedCohort?.changes.find((c) => c.courseId === "C01");
     expect(c01RelaxedCh?.reason?.kind).toBe("rebalance");
   });
+
+  it("hides AI chat pane when Gemini Nano is checking/unavailable and shows it when usable, plus decouples timetable notifications from chat", async () => {
+    expect(isGeminiNanoVisibleStatus("unavailable")).toBe(false);
+    expect(isGeminiNanoVisibleStatus("checking")).toBe(false);
+    expect(isGeminiNanoVisibleStatus("available")).toBe(true);
+    expect(isGeminiNanoVisibleStatus("downloadable")).toBe(true);
+    expect(isGeminiNanoVisibleStatus("downloading")).toBe(true);
+
+    const {
+      getAppState,
+      handleGenerateSample,
+      triggerSolve,
+      applyDropMove,
+    } = await import("../examples/web-demo/apps/ai-timetable/main.js");
+
+    const elements = new Map<string, any>();
+    const chatAppends: any[] = [];
+    const toastAppends: any[] = [];
+    const makeEl = (id: string, extra: Record<string, any> = {}): any => {
+      const children: any[] = [];
+      return {
+        id,
+        children,
+        options: [],
+        textContent: "",
+        innerHTML: "",
+        value: "",
+        disabled: false,
+        checked: false,
+        hidden: false,
+        className: "",
+        title: "",
+        style: {},
+        dataset: {} as Record<string, string>,
+        attributes: new Map<string, string>(),
+        setAttribute: function (k: string, v: string) {
+          this.attributes.set(k, v);
+        },
+        getAttribute: function (k: string) {
+          return this.attributes.get(k) ?? null;
+        },
+        addEventListener: () => {},
+        click: () => {},
+        appendChild: (node: any) => {
+          children.push(node);
+          if (id === "chat-messages") chatAppends.push(node);
+          if (id === "workspace-toast-region") toastAppends.push(node);
+          return node;
+        },
+        append: (...nodes: any[]) => {
+          children.push(...nodes);
+        },
+        prepend: (node: any) => children.unshift(node),
+        remove: () => {},
+        replaceChildren: () => {
+          children.length = 0;
+        },
+        classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+        ...extra,
+      };
+    };
+
+    const register = (id: string, extra: Record<string, any> = {}) => {
+      const el = makeEl(id, extra);
+      elements.set(id, el);
+      return el;
+    };
+
+    const workspace = register("ai-timetable-workspace");
+    const chatPane = register("chat-pane-aside", { hidden: true });
+    const toggleAiBtn = register("btn-toggle-ai-drawer", { hidden: true });
+    const askAiConflict = register("btn-ask-nano-conflict", { hidden: true });
+    const tutStep4 = register("btn-tut-step4", { hidden: true });
+    const heroState = register("unscheduled-hero-state", { hidden: true });
+    const emptyState = register("empty-timetable-state", { hidden: true });
+    const controlsBar = register("schedule-controls-bar", { hidden: false });
+    const crossBar = register("cross-highlight-bar", { hidden: false });
+    const viewsContainer = register("timetable-views-container", { hidden: false });
+    register("workspace-action-banner", { hidden: true });
+    register("workspace-action-body");
+    register("workspace-toast-region");
+    register("chat-messages");
+    register("chk-highlight-diff", { checked: false });
+    register("view-cohorts-grid");
+    register("view-matrix-wrap");
+    register("nano-status-badge");
+    register("nano-unavailable-banner", { hidden: true });
+    register("nano-download-bar-wrap", { hidden: true });
+    register("nano-download-bar");
+    register("nano-download-label");
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => {
+        if (!elements.has(id)) register(id);
+        return elements.get(id);
+      },
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      createElement: (tag: string) => makeEl(`tag_${tag}`),
+      createTextNode: (t: string) => makeEl("text", { textContent: t }),
+    };
+
+    try {
+      // 1. Checking & Unavailable must hide all AI UI affordances and close mobile drawer
+      setAiDrawerOpen(true);
+      expect(workspace.dataset.aiDrawerOpen).toBe("true");
+      updateNanoStatusUI("checking");
+      expect(workspace.dataset.aiAvailable).toBe("false");
+      expect(workspace.dataset.aiDrawerOpen).toBe("false");
+      expect(chatPane.hidden).toBe(true);
+      expect(toggleAiBtn.hidden).toBe(true);
+      expect(askAiConflict.hidden).toBe(true);
+      expect(tutStep4.hidden).toBe(true);
+
+      updateNanoStatusUI("unavailable");
+      expect(workspace.dataset.aiAvailable).toBe("false");
+      expect(chatPane.hidden).toBe(true);
+      expect(toggleAiBtn.hidden).toBe(true);
+
+      // 2. Downloadable, Downloading, and Available must reveal AI chat & toggle
+      for (const usableStatus of ["downloadable", "downloading", "available"] as const) {
+        updateNanoStatusUI(usableStatus, 45);
+        expect(workspace.dataset.aiAvailable).toBe("true");
+        expect(chatPane.hidden).toBe(false);
+        expect(toggleAiBtn.hidden).toBe(false);
+        expect(askAiConflict.hidden).toBe(false);
+        expect(tutStep4.hidden).toBe(false);
+      }
+
+      // 3. First view with default data shows unscheduled hero CTA and hides empty grid & filter strips
+      handleGenerateSample(false);
+      expect(heroState.hidden).toBe(false);
+      expect(emptyState.hidden).toBe(true);
+      expect(controlsBar.hidden).toBe(true);
+      expect(crossBar.hidden).toBe(true);
+      expect(viewsContainer.hidden).toBe(true);
+
+      // 4. Solving reveals the grid & hides hero, and notifies workspace toast rather than #chat-messages
+      chatAppends.length = 0;
+      toastAppends.length = 0;
+      const solved = await triggerSolve();
+      expect(solved?.status).toBe("Optimal");
+      expect(heroState.hidden).toBe(true);
+      expect(controlsBar.hidden).toBe(false);
+      expect(crossBar.hidden).toBe(false);
+      expect(viewsContainer.hidden).toBe(false);
+      expect(chatAppends.length).toBe(0);
+      expect(toastAppends.length).toBeGreaterThan(0);
+
+      // 5. Drag-and-drop move also avoids dumping logs into #chat-messages
+      chatAppends.length = 0;
+      toastAppends.length = 0;
+      const sess = solved!.timetable!.sessions[0];
+      const targetCourse = getAppState().courses.find((c) => c.id === sess.courseId)!;
+      await applyDropMove(
+        { courseId: targetCourse.id, fromDay: sess.day, fromPeriod: sess.period },
+        sess.day === "Fri" ? "Thu" : "Fri",
+        sess.period
+      );
+      expect(chatAppends.length).toBe(0);
+      expect(toastAppends.length).toBeGreaterThan(0);
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
+
+  it("avoids developer jargon in UI strings and Gemini progress labels across ja/en/zh", async () => {
+    for (const lang of ["ja", "en", "zh"] as const) {
+      const ui = UI_TEXT_I18N[lang];
+      expect(ui.promptCatalogIntro).not.toMatch(/構造化|toolCalls|JSON tool calls/);
+      expect(ui.heroEyebrow.length).toBeGreaterThan(0);
+      expect(ui.heroTitle.length).toBeGreaterThan(0);
+      expect(ui.heroDesc.length).toBeGreaterThan(0);
+      expect(ui.heroPrimaryBtn.length).toBeGreaterThan(0);
+      expect(ui.heroDataBtn.length).toBeGreaterThan(0);
+      expect(ui.heroRulesBtn.length).toBeGreaterThan(0);
+      expect(ui.btnToggleAiDrawer.length).toBeGreaterThan(0);
+      expect(ui.btnCloseAiDrawer.length).toBeGreaterThan(0);
+      expect(ui.btnMobileMenu.length).toBeGreaterThan(0);
+      expect(ui.btnControlsToggle.length).toBeGreaterThan(0);
+      expect(ui.btnLegendToggle.length).toBeGreaterThan(0);
+      expect(ui.toastCloseLabel.length).toBeGreaterThan(0);
+    }
+
+    // Verify extractPlan emits natural user-facing progress labels without "構造化" / "Structuring"
+    const labels: string[] = [];
+    const prevLm = (globalThis as any).LanguageModel;
+    (globalThis as any).LanguageModel = {
+      availability: async () => "available",
+      create: async () => ({
+        prompt: async () => JSON.stringify({ intentType: "update", toolCalls: [] }),
+        destroy: () => {},
+      }),
+    };
+    try {
+      const mgr = createTimetableGeminiNanoManager();
+      await mgr.initialize();
+      const state = generateTimetableState();
+      await mgr.extractPlan("Make Monday off for Prof. Sato", state, undefined, (ev) => labels.push(ev.activeLabel), "ja");
+      expect(labels.length).toBeGreaterThan(0);
+      for (const lbl of labels) {
+        expect(lbl).not.toMatch(/構造化|Structuring|结构化|toolCall/);
+      }
+    } finally {
+      if (prevLm === undefined) delete (globalThis as any).LanguageModel;
+      else (globalThis as any).LanguageModel = prevLm;
+    }
+  });
+
+  it("localizes all structural conflict constraints and surfaces revert reasons, cascade adjustments, optimization provenance, and board interaction guide", async () => {
+    const state = generateTimetableState();
+    const {
+      formatConstraintMetaI18n,
+    } = await import("../examples/web-demo/apps/ai-timetable/i18n.js");
+
+    // 1. Verify all structural constraint types have localized ja/en/zh output (not English meta.labelJa fallback)
+    const sampleMetas = [
+      {
+        name: "course_diff_day_C12_Thu",
+        category: "workload" as const,
+        labelJa: "Raw English diff-day fallback",
+        relatedCourseIds: ["C12"],
+      },
+      {
+        name: "prof_unavail_slot_P04_Fri_P5",
+        category: "prof_avail" as const,
+        labelJa: "Raw English slot fallback",
+        relatedProfessorIds: ["P04"],
+      },
+      {
+        name: "prof_daily_max_P01_Mon",
+        category: "workload" as const,
+        labelJa: "Raw English daily max fallback",
+        relatedProfessorIds: ["P01"],
+      },
+      {
+        name: "prof_consec_P04_Thu_P1_P3",
+        category: "workload" as const,
+        labelJa: "Raw English consec fallback",
+        relatedProfessorIds: ["P04"],
+      },
+      {
+        name: "cohort_daily_max_Y2_Thu",
+        category: "workload" as const,
+        labelJa: "Raw English cohort max fallback",
+      },
+      {
+        name: "room_compat_C12",
+        category: "capacity_equip" as const,
+        labelJa: "Raw English room compat fallback",
+        relatedCourseIds: ["C12"],
+      },
+    ];
+
+    for (const meta of sampleMetas) {
+      for (const lang of ["en", "ja", "zh"] as const) {
+        const res = formatConstraintMetaI18n(meta, state, lang);
+        expect(res.label).not.toBe(meta.labelJa);
+        expect(res.label.length).toBeGreaterThan(5);
+      }
+      expect(formatConstraintMetaI18n(sampleMetas[0], state, "ja").label).not.toBe(
+        formatConstraintMetaI18n(sampleMetas[0], state, "en").label
+      );
+    }
+
+    // 2. Test UI flow: provenance, board interaction guide, cascaded move notice, and revert reason inside toast & banner
+    const {
+      getAppState,
+      handleGenerateSample,
+      triggerSolve,
+      applyDropMove,
+      applyTimetableLang,
+    } = await import("../examples/web-demo/apps/ai-timetable/main.js");
+
+    const elements = new Map<string, any>();
+    const toastAppends: any[] = [];
+    const makeEl = (id: string, extra: Record<string, any> = {}): any => {
+      const children: any[] = [];
+      return {
+        id,
+        children,
+        options: [],
+        dataset: {},
+        style: {},
+        hidden: false,
+        disabled: false,
+        value: "",
+        textContent: "",
+        innerHTML: "",
+        checked: true,
+        className: "",
+        classList: {
+          add: (...cls: string[]) => cls,
+          remove: (...cls: string[]) => cls,
+          toggle: () => false,
+          contains: () => false,
+        },
+        setAttribute: () => {},
+        addEventListener: () => {},
+        querySelectorAll: () => [],
+        querySelector: () => null,
+        click: () => {},
+        appendChild: (node: any) => {
+          children.push(node);
+          if (id === "workspace-toast-region") toastAppends.push(node);
+          return node;
+        },
+        append: (...nodes: any[]) => {
+          for (const node of nodes) {
+            children.push(node);
+            if (id === "workspace-toast-region") toastAppends.push(node);
+          }
+        },
+        replaceChildren: (...nodes: any[]) => {
+          children.length = 0;
+          children.push(...nodes);
+        },
+        querySelector: () => null,
+        querySelectorAll: () => [],
+        remove: () => {},
+        ...extra,
+      };
+    };
+
+    const register = (id: string, extra: Record<string, any> = {}) => {
+      const el = makeEl(id, extra);
+      elements.set(id, el);
+      return el;
+    };
+
+    register("ai-timetable-workspace", { dataset: {} });
+    register("kpi-status-badge");
+    const summaryEl = register("kpi-summary-text");
+    register("kpi-solve-time");
+    register("btn-solve-washi");
+    register("btn-hero-solve");
+    register("btn-abort-solve", { hidden: true });
+    register("btn-check-current");
+    register("btn-export-csvs");
+    register("btn-clear-blank");
+    register("btn-reset-clean");
+    register("conflict-alert", { hidden: true });
+    register("conflict-list");
+    register("lp-stats-badge");
+    register("washi-code-preview");
+    register("washi-lp-preview");
+    register("unscheduled-hero-state", { hidden: false });
+    register("empty-timetable-state", { hidden: true });
+    register("schedule-controls-bar", { hidden: false });
+    register("cross-highlight-bar", { hidden: false });
+    const guideBar = register("board-interaction-guide", { hidden: true });
+    register("timetable-views-container", { hidden: false });
+    register("view-cohorts-grid", { hidden: false });
+    register("view-matrix-wrap", { hidden: true });
+    register("custom-rules-list");
+    register("custom-rules-count");
+    register("tbl-profs-body");
+    register("tbl-rooms-body");
+    register("tbl-courses-body");
+    register("tab-btn-timetable");
+    register("trajectory-json-preview");
+    register("badge-trajectory-count", { hidden: true });
+    const banner = register("workspace-action-banner", { hidden: true });
+    const bannerBody = register("workspace-action-body");
+    const toastRegion = register("workspace-toast-region", {
+      showPopover: () => {},
+      hidePopover: () => {},
+    });
+    register("sel-rule-course-1");
+    register("sel-rule-course-2");
+    register("sel-rule-room");
+    register("dialog-select-course");
+    register("dialog-select-room");
+
+    const collectTextNodes = (node: any): string[] => {
+      const out: string[] = [];
+      if (!node) return out;
+      if (typeof node.textContent === "string" && node.textContent.trim()) {
+        out.push(node.textContent.trim());
+      }
+      if (Array.isArray(node.children)) {
+        for (const ch of node.children) {
+          out.push(...collectTextNodes(ch));
+        }
+      }
+      return out;
+    };
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => elements.get(id) ?? register(id),
+      createElement: (_tag: string) => makeEl(`anon_${Math.random()}`),
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      addEventListener: () => {},
+      documentElement: { lang: "en" },
+    };
+
+    try {
+      applyTimetableLang("en");
+      handleGenerateSample(false);
+      // Before solving, board interaction guide must remain hidden
+      expect(guideBar.hidden).toBe(true);
+
+      const solved = await triggerSolve();
+      expect(solved?.status).toBe("Optimal");
+      // After solving: guide bar visible & summary shows variable count proving live optimization
+      expect(guideBar.hidden).toBe(false);
+      expect(summaryEl.textContent).toContain(String(solved!.numVariables));
+
+      // Attempt infeasible move: C18 (Adjunct Prof Kobayashi, Tue/Thu only) -> Mon P3
+      toastAppends.length = 0;
+      banner.hidden = true;
+      bannerBody.children.length = 0;
+      const c18Sess = solved!.timetable!.sessions.find((s) => s.courseId === "C18")!;
+      await applyDropMove(
+        {
+          courseId: "C18",
+          sessionIndex: c18Sess.sessionIndex,
+          fromDay: c18Sess.day,
+          fromPeriod: c18Sess.period,
+          fromRoomId: c18Sess.roomId,
+          fromProfId: "P09",
+          sourceView: "cohorts_4",
+        },
+        "Mon",
+        3
+      );
+
+      // Verify revert banner AND toast both contain opposing conflict reason (Kobayashi / Monday), NOT empty!
+      expect(banner.hidden).toBe(false);
+      const bannerTexts = collectTextNodes(bannerBody).join(" | ");
+      expect(bannerTexts).toMatch(/Kobayashi|Monday|Mon|Unavailable/i);
+
+      expect(toastAppends.length).toBeGreaterThan(0);
+      const latestToast = toastAppends[toastAppends.length - 1];
+      const detailEl = (latestToast.children?.[0]?.children ?? []).find(
+        (c: any) => typeof c.className === "string" && c.className.includes("workspace-toast-detail")
+      );
+      expect(detailEl).toBeDefined();
+      expect(detailEl.textContent).toMatch(/Kobayashi|Monday|Mon|Unavailable/i);
+      expect(toastRegion.children.length).toBeGreaterThan(0);
+
+      // Verify cascaded auto-rebalance notice: move a 1-session Y1 course onto another Y1 course's occupied slot
+      const y1Courses = solved!.timetable!.sessions.filter((s) => {
+        const c = getAppState().courses.find((x) => x.id === s.courseId);
+        return c && c.cohorts.includes("Y1") && c.sessionsPerWeek === 1 && c.professorId !== "P09" && c.professorId !== "P10";
+      });
+      expect(y1Courses.length).toBeGreaterThanOrEqual(2);
+      const srcY1 = y1Courses[0];
+      const occupiedY1 = y1Courses[1];
+      toastAppends.length = 0;
+      banner.hidden = true;
+      bannerBody.children.length = 0;
+      await applyDropMove(
+        {
+          courseId: srcY1.courseId,
+          sessionIndex: srcY1.sessionIndex,
+          fromDay: srcY1.day,
+          fromPeriod: srcY1.period,
+          fromRoomId: srcY1.roomId,
+          fromProfId: getAppState().courses.find((c) => c.id === srcY1.courseId)!.professorId,
+          sourceView: "cohorts_4",
+        },
+        occupiedY1.day,
+        occupiedY1.period
+      );
+      expect(banner.hidden).toBe(false);
+      const cascadeBannerText = collectTextNodes(bannerBody).join(" | ");
+      expect(cascadeBannerText).toMatch(/Pinned .* Auto-adjusted \d+ other session/i);
+      const occupiedTitle = getAppState().courses.find((c) => c.id === occupiedY1.courseId)!.title;
+      expect(cascadeBannerText).toContain(occupiedTitle);
+      const cascadeToastDetail = (
+        toastAppends[toastAppends.length - 1].children?.[0]?.children ?? []
+      ).find((c: any) => typeof c.className === "string" && c.className.includes("workspace-toast-detail"));
+      expect(cascadeToastDetail?.textContent).toContain(occupiedTitle);
+
+      // Pin one session of C12 at its current slot, then try placing C12's other session on the SAME day -> must revert with forbidSameCourseSameDay reason
+      const currentOutcome = await triggerSolve();
+      const c12Now = currentOutcome!.timetable!.byCourse["C12"];
+      expect(c12Now).toHaveLength(2);
+      const pinS1 = c12Now[1];
+      const pinS0 = c12Now[0];
+      getAppState().customRules.push({
+        id: "pin_c12_s1_for_sameday_test",
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C12",
+        days: [pinS1.day],
+        periods: [pinS1.period],
+        description: "Pin C12 session 2",
+      });
+      toastAppends.length = 0;
+      banner.hidden = true;
+      bannerBody.children.length = 0;
+      const sameDayPeriod = pinS1.period === 3 ? 2 : 3;
+      await applyDropMove(
+        {
+          courseId: "C12",
+          sessionIndex: pinS0.sessionIndex,
+          fromDay: pinS0.day,
+          fromPeriod: pinS0.period,
+          fromRoomId: pinS0.roomId,
+          fromProfId: "P04",
+          sourceView: "cohorts_4",
+        },
+        pinS1.day,
+        sameDayPeriod
+      );
+      expect(banner.hidden).toBe(false);
+      const c12RevertTexts = collectTextNodes(bannerBody).join(" | ");
+      expect(c12RevertTexts).toMatch(/Move reverted/i);
+      expect(c12RevertTexts).toMatch(/Forbid Same-Day Sessions.*cannot meet multiple times on/i);
+      expect(c12RevertTexts).toContain("Pin \"Software Design Lab (C12)\" to Thu P2");
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
+
+  it("clears obsolete conflict banners after a passing feasibility check or successful solve", async () => {
+    const mainMod: any = await import("../examples/web-demo/apps/ai-timetable/main.js");
+    const {
+      getAppState,
+      handleGenerateSample,
+      triggerSolve,
+      runFeasibilityCheck,
+      applyTimetableLang,
+    } = mainMod;
+    expect(typeof runFeasibilityCheck).toBe("function");
+
+    const elements = new Map<string, any>();
+    const makeEl = (id: string, extra: Record<string, any> = {}): any => {
+      const children: any[] = [];
+      return {
+        id,
+        children,
+        options: [],
+        dataset: {},
+        style: {},
+        hidden: false,
+        disabled: false,
+        value: "",
+        textContent: "",
+        innerHTML: "",
+        checked: true,
+        className: "",
+        classList: {
+          add: () => {},
+          remove: () => {},
+          toggle: () => {},
+          contains: () => false,
+        },
+        setAttribute: () => {},
+        addEventListener: () => {},
+        querySelectorAll: () => [],
+        querySelector: () => null,
+        click: () => {},
+        focus: () => {},
+        replaceChildren: (...nodes: any[]) => {
+          children.length = 0;
+          children.push(...nodes);
+        },
+        append: (...nodes: any[]) => {
+          children.push(...nodes);
+        },
+        appendChild: (node: any) => {
+          children.push(node);
+          return node;
+        },
+        remove: () => {},
+        ...extra,
+      };
+    };
+
+    const register = (id: string, extra: Record<string, any> = {}) => {
+      const el = makeEl(id, extra);
+      elements.set(id, el);
+      return el;
+    };
+
+    const banner = register("workspace-action-banner", { hidden: true });
+    const bannerBody = register("workspace-action-body");
+    const toastRegion = register("workspace-toast-region");
+
+    const collectText = (node: any): string[] => {
+      if (node == null) return [];
+      if (typeof node === "string") return [node];
+      const out: string[] = [];
+      if (typeof node.textContent === "string" && node.textContent) out.push(node.textContent);
+      if (Array.isArray(node.children)) {
+        for (const ch of node.children) out.push(...collectText(ch));
+      }
+      return out;
+    };
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => elements.get(id) ?? register(id),
+      createElement: (_tag: string) => makeEl(`anon_${Math.random()}`),
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      addEventListener: () => {},
+      documentElement: { lang: "en" },
+    };
+
+    try {
+      applyTimetableLang("en");
+      handleGenerateSample(false);
+
+      // Introduce an impossible custom rule: pin C18 (Adjunct Prof Kobayashi, Tue/Thu only) to Mon P3
+      const badRuleId = "bad_rule_c18_mon_p3";
+      getAppState().customRules.push({
+        id: badRuleId,
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C18",
+        days: ["Mon"],
+        periods: [3],
+        description: "Pin C18 to Mon P3 (impossible)",
+      });
+
+      await runFeasibilityCheck();
+      expect(banner.hidden).toBe(false);
+      expect(collectText(bannerBody).join(" | ")).toMatch(/conflict/i);
+
+      // Fix the rule and run feasibility check again -> obsolete Unsat banner must be cleared!
+      getAppState().customRules = getAppState().customRules.filter((r: any) => r.id !== badRuleId);
+      await runFeasibilityCheck();
+      expect(banner.hidden).toBe(true);
+      expect(bannerBody.children).toHaveLength(0);
+      expect(toastRegion.children.length).toBeGreaterThan(0);
+
+      // Re-introduce impossible rule, show Unsat banner, remove rule, and solve -> successful solve must also clear stale banner!
+      getAppState().customRules.push({
+        id: badRuleId,
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C18",
+        days: ["Mon"],
+        periods: [3],
+        description: "Pin C18 to Mon P3 (impossible)",
+      });
+      await runFeasibilityCheck();
+      expect(banner.hidden).toBe(false);
+
+      getAppState().customRules = getAppState().customRules.filter((r: any) => r.id !== badRuleId);
+      const outcome = await triggerSolve();
+      expect(outcome?.status).toBe("Optimal");
+      expect(banner.hidden).toBe(true);
+      expect(bannerBody.children).toHaveLength(0);
+
+      // Desktop viewports (> 1100px) must keep AI drawer backdrop hidden even if setAiDrawerOpen(true) is triggered
+      const prevWindow = (globalThis as any).window;
+      const backdrop = register("ai-drawer-backdrop", { hidden: true });
+      const workspace = register("ai-timetable-workspace", { dataset: { aiDrawerOpen: "false" } });
+      (globalThis as any).window = {
+        matchMedia: (query: string) => ({
+          matches: !query.includes("max-width: 1100px"),
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }),
+      };
+      try {
+        mainMod.setAiDrawerOpen(true);
+        expect(backdrop.hidden).toBe(true);
+        expect(workspace.dataset.aiDrawerOpen).toBe("false");
+      } finally {
+        if (prevWindow === undefined) delete (globalThis as any).window;
+        else (globalThis as any).window = prevWindow;
+      }
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
 });

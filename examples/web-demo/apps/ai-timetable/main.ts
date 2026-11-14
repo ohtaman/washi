@@ -29,6 +29,7 @@ import {
   formatPeriodI18n,
   formatSlotI18n,
   formatSlotReasonI18n,
+  formatUiTemplate,
   getCourseI18n,
   getProfessorI18n,
   getRoomI18n,
@@ -186,6 +187,10 @@ function syncTrajectoryUI(): void {
 }
 
 export function switchTab(tabName: "timetable" | "constraints" | "catalog"): void {
+  const workspace = document.getElementById("ai-timetable-workspace");
+  if (workspace) {
+    workspace.dataset.activeTab = tabName;
+  }
   const tabBtns = document.querySelectorAll<HTMLButtonElement>(".results-tab-btn");
   tabBtns.forEach((b) => {
     const active = b.dataset.tab === tabName;
@@ -364,39 +369,220 @@ function appendChatMessage(
   return { msgEl, bodyEl, opsEl };
 }
 
-function updateNanoStatusUI(status: GeminiNanoStatus, pct?: number | null): void {
-  lastNanoStatus = status;
-  const ui = UI_TEXT_I18N[activeLang];
-  const badge = $("nano-status-badge");
-  const unavailBanner = $("nano-unavailable-banner");
-  const dlWrap = $("nano-download-bar-wrap");
-  const dlBar = $("nano-download-bar");
-  const dlLabel = $("nano-download-label");
+export function isGeminiNanoVisibleStatus(status: GeminiNanoStatus): boolean {
+  return status === "available" || status === "downloadable" || status === "downloading";
+}
 
+function isCompactAiDrawerViewport(): boolean {
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    return window.matchMedia("(max-width: 1100px)").matches;
+  }
+  return true;
+}
+
+export function setAiDrawerOpen(open: boolean): void {
+  if (typeof document === "undefined") return;
+  const effectiveOpen = open && isCompactAiDrawerViewport();
+  const workspace = document.getElementById("ai-timetable-workspace");
+  const toggleBtn = document.getElementById("btn-toggle-ai-drawer");
+  const backdrop = document.getElementById("ai-drawer-backdrop");
+  if (workspace) {
+    workspace.dataset.aiDrawerOpen = effectiveOpen ? "true" : "false";
+  }
+  if (toggleBtn) {
+    toggleBtn.setAttribute("aria-expanded", effectiveOpen ? "true" : "false");
+  }
+  if (backdrop) {
+    backdrop.hidden = !effectiveOpen;
+  }
+  if (open && (effectiveOpen || isGeminiNanoVisibleStatus(lastNanoStatus))) {
+    const closeBtn = document.getElementById("btn-close-ai-drawer") as HTMLButtonElement | null;
+    const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
+    (chatInput ?? closeBtn)?.focus?.();
+  }
+}
+
+export function clearWorkspaceActionBanner(): void {
+  if (typeof document === "undefined") return;
+  const banner = document.getElementById("workspace-action-banner");
+  const body = document.getElementById("workspace-action-body");
+  if (banner) banner.hidden = true;
+  if (body) body.replaceChildren();
+}
+
+export function showWorkspaceNotice(
+  title: string,
+  opts?: {
+    variant?: "info" | "success" | "warning" | "error";
+    detailLines?: string[];
+    showBanner?: boolean;
+    clearBanner?: boolean;
+    autoHideMs?: number;
+  }
+): void {
+  if (typeof document === "undefined") return;
+  const variant = opts?.variant ?? "info";
+  const ui = UI_TEXT_I18N[activeLang];
+
+  // 1. Update persistent inline banner when requested (or clear obsolete banner when resolved)
+  const banner = document.getElementById("workspace-action-banner");
+  const bannerBody = document.getElementById("workspace-action-body");
+  if (opts?.showBanner && banner && bannerBody) {
+    bannerBody.replaceChildren();
+    banner.dataset.variant = variant;
+    const heading = document.createElement("strong");
+    heading.className = "workspace-banner-title";
+    heading.textContent = title;
+    bannerBody.appendChild(heading);
+    if (opts.detailLines && opts.detailLines.length > 0) {
+      const list = document.createElement("ul");
+      list.className = "workspace-banner-list";
+      for (const line of opts.detailLines) {
+        const li = document.createElement("li");
+        li.textContent = line;
+        list.appendChild(li);
+      }
+      bannerBody.appendChild(list);
+    }
+    banner.hidden = false;
+  } else if (opts?.clearBanner) {
+    clearWorkspaceActionBanner();
+  }
+
+  // 2. Push lightweight toast notification to #workspace-toast-region (never into AI chat)
+  const toastRegion = document.getElementById("workspace-toast-region") as
+    | (HTMLElement & { showPopover?: () => void; hidePopover?: () => void })
+    | null;
+  if (!toastRegion) return;
+
+  const toast = document.createElement("div");
+  toast.className = `workspace-toast workspace-toast-${variant}`;
+
+  const content = document.createElement("div");
+  content.className = "workspace-toast-content";
+  const titleEl = document.createElement("div");
+  titleEl.className = "workspace-toast-title";
+  titleEl.textContent = title;
+  content.appendChild(titleEl);
+  if (opts?.detailLines && opts.detailLines.length > 0) {
+    const visibleToastLines = opts.detailLines.slice(0, 2);
+    for (const line of visibleToastLines) {
+      const subEl = document.createElement("div");
+      subEl.className = "workspace-toast-detail";
+      subEl.textContent = line;
+      content.appendChild(subEl);
+    }
+    if (opts.detailLines.length > 2) {
+      const moreEl = document.createElement("div");
+      moreEl.className = "workspace-toast-detail";
+      moreEl.textContent = formatUiTemplate(ui.noticeCascadeMore, {
+        count: opts.detailLines.length - 2,
+      });
+      content.appendChild(moreEl);
+    }
+  }
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "workspace-toast-close";
+  closeBtn.setAttribute("aria-label", ui.toastCloseLabel);
+  closeBtn.textContent = "✕";
+
+  const removeToast = () => {
+    toast.remove();
+    if ((toastRegion.children?.length ?? 0) === 0) {
+      toastRegion.dataset.open = "false";
+      try {
+        toastRegion.hidePopover?.();
+      } catch {
+        // Ignore if not in top layer
+      }
+    }
+  };
+  closeBtn.addEventListener("click", removeToast);
+
+  toast.append(content, closeBtn);
+  toastRegion.appendChild(toast);
+  toastRegion.dataset.open = "true";
+  try {
+    toastRegion.showPopover?.();
+  } catch {
+    // Ignore when headless / already shown / unsupported
+  }
+
+  const timeoutMs =
+    opts?.autoHideMs ?? (variant === "warning" || variant === "error" ? 8000 : 5600);
+  if (timeoutMs > 0 && typeof setTimeout === "function") {
+    setTimeout(removeToast, timeoutMs);
+  }
+}
+
+export function updateNanoStatusUI(status: GeminiNanoStatus, pct?: number | null): void {
+  lastNanoStatus = status;
+  if (typeof document === "undefined") return;
+  const ui = UI_TEXT_I18N[activeLang];
+  const aiVisible = isGeminiNanoVisibleStatus(status);
+
+  const workspace = document.getElementById("ai-timetable-workspace");
+  if (workspace) {
+    workspace.dataset.aiAvailable = aiVisible ? "true" : "false";
+  }
+
+  const chatPane = document.getElementById("chat-pane-aside");
+  if (chatPane) {
+    chatPane.hidden = !aiVisible;
+  }
+
+  const toggleDrawerBtn = document.getElementById("btn-toggle-ai-drawer");
+  if (toggleDrawerBtn) {
+    toggleDrawerBtn.hidden = !aiVisible;
+  }
+
+  const btnAskConflict = document.getElementById("btn-ask-nano-conflict");
+  if (btnAskConflict) {
+    btnAskConflict.hidden = !aiVisible;
+  }
+
+  const btnTutStep4 = document.getElementById("btn-tut-step4");
+  if (btnTutStep4) {
+    btnTutStep4.hidden = !aiVisible;
+  }
+
+  if (!aiVisible) {
+    setAiDrawerOpen(false);
+  }
+
+  const badge = document.getElementById("nano-status-badge");
+  const unavailBanner = document.getElementById("nano-unavailable-banner");
+  const dlWrap = document.getElementById("nano-download-bar-wrap");
+  const dlBar = document.getElementById("nano-download-bar");
+  const dlLabel = document.getElementById("nano-download-label");
+
+  if (!badge) return;
   badge.className = "nano-badge";
   if (status === "available") {
     badge.classList.add("nano-ready");
     badge.textContent = ui.nanoReady;
-    unavailBanner.hidden = true;
-    dlWrap.hidden = true;
+    if (unavailBanner) unavailBanner.hidden = true;
+    if (dlWrap) dlWrap.hidden = true;
   } else if (status === "downloading") {
     badge.classList.add("nano-downloadable");
     badge.textContent = ui.nanoDownloading;
-    unavailBanner.hidden = true;
-    dlWrap.hidden = false;
+    if (unavailBanner) unavailBanner.hidden = true;
+    if (dlWrap) dlWrap.hidden = false;
     const p = pct ?? 0;
-    dlBar.style.width = `${p}%`;
-    dlLabel.textContent = `${p}%`;
+    if (dlBar) dlBar.style.width = `${p}%`;
+    if (dlLabel) dlLabel.textContent = `${p}%`;
   } else if (status === "downloadable") {
     badge.classList.add("nano-downloadable");
     badge.textContent = ui.nanoDownloadable;
-    unavailBanner.hidden = true;
-    dlWrap.hidden = true;
+    if (unavailBanner) unavailBanner.hidden = true;
+    if (dlWrap) dlWrap.hidden = true;
   } else {
     badge.classList.add("nano-unavailable");
     badge.textContent = ui.nanoUnavailableBadge;
-    unavailBanner.hidden = false;
-    dlWrap.hidden = true;
+    if (unavailBanner) unavailBanner.hidden = false;
+    if (dlWrap) dlWrap.hidden = true;
   }
 }
 
@@ -599,12 +785,18 @@ function renderTimetableBoard(): void {
   }
 
   const emptyStateEl = document.getElementById("empty-timetable-state");
-  const emptyIconEl = document.getElementById("empty-state-icon");
-  const emptyTitleEl = document.getElementById("empty-state-title");
-  const emptyDescEl = document.getElementById("empty-state-desc");
-  const emptyActionsEl = document.getElementById("empty-state-actions");
+  const heroStateEl = document.getElementById("unscheduled-hero-state");
+  const controlsBarEl = document.getElementById("schedule-controls-bar");
+  const crossHighlightEl = document.getElementById("cross-highlight-bar");
+  const guideEl = document.getElementById("board-interaction-guide");
+  const viewsContainerEl = document.getElementById("timetable-views-container");
 
   if (appState.courses.length === 0) {
+    if (heroStateEl) heroStateEl.hidden = true;
+    if (controlsBarEl) controlsBarEl.hidden = true;
+    if (crossHighlightEl) crossHighlightEl.hidden = true;
+    if (guideEl) guideEl.hidden = true;
+    if (viewsContainerEl) viewsContainerEl.hidden = true;
     if (emptyStateEl) {
       emptyStateEl.hidden = false;
       emptyStateEl.innerHTML = `
@@ -696,8 +888,31 @@ function renderTimetableBoard(): void {
 
   if (emptyStateEl) emptyStateEl.hidden = true;
 
-  const cohortsGrid = $("view-cohorts-grid");
-  const matrixWrap = $("view-matrix-wrap");
+  const cohortsGrid = document.getElementById("view-cohorts-grid");
+  const matrixWrap = document.getElementById("view-matrix-wrap");
+
+  if (!currentTimetable) {
+    if (heroStateEl) heroStateEl.hidden = false;
+    if (controlsBarEl) controlsBarEl.hidden = true;
+    if (crossHighlightEl) crossHighlightEl.hidden = true;
+    if (guideEl) guideEl.hidden = true;
+    if (viewsContainerEl) viewsContainerEl.hidden = true;
+    if (cohortsGrid) cohortsGrid.hidden = true;
+    if (matrixWrap) matrixWrap.hidden = true;
+    return;
+  }
+
+  if (heroStateEl) heroStateEl.hidden = true;
+  if (controlsBarEl) controlsBarEl.hidden = false;
+  if (crossHighlightEl) crossHighlightEl.hidden = false;
+  if (guideEl) {
+    guideEl.hidden = false;
+    const guideDragEl = document.getElementById("board-guide-drag");
+    const guideOptEl = document.getElementById("board-guide-optimize");
+    if (guideDragEl) guideDragEl.textContent = ui.boardGuideDrag;
+    if (guideOptEl) guideOptEl.textContent = ui.boardGuideOptimize;
+  }
+  if (viewsContainerEl) viewsContainerEl.hidden = false;
 
   const highlightDiff = $<HTMLInputElement>("chk-highlight-diff").checked;
   const courseMap = new Map(appState.courses.map((c) => [c.id, c]));
@@ -728,6 +943,8 @@ function renderTimetableBoard(): void {
     }
   }
 
+  if (!cohortsGrid || !matrixWrap) return;
+
   if (activeViewMode === "cohorts_4") {
     cohortsGrid.hidden = false;
     matrixWrap.hidden = true;
@@ -752,16 +969,16 @@ function renderTimetableBoard(): void {
       const metaSpan = document.createElement("span");
       metaSpan.className = "cohort-board-meta";
       if (cohortSum) {
-        metaSpan.textContent = pickTimetableLang(activeLang, {
-          ja: `学生${cohort.studentCount}名 | 週${cohortSum.totalSessions}\u30B3\u30DE (必修等:${cohortSum.compulsorySessions} / 空\u304D\u30B3\u30DE:${cohortSum.hollowGapsCount})`,
-          en: `${cohort.studentCount} students | ${cohortSum.totalSessions}/wk (Core:${cohortSum.compulsorySessions} / Gaps:${cohortSum.hollowGapsCount})`,
-          zh: `学生${cohort.studentCount}人 | 周${cohortSum.totalSessions}节 (必修:${cohortSum.compulsorySessions} / 空堂:${cohortSum.hollowGapsCount})`,
+        metaSpan.textContent = formatUiTemplate(UI_TEXT_I18N[activeLang].cohortMetaFull, {
+          students: cohort.studentCount,
+          sessions: cohortSum.totalSessions,
+          gaps: cohortSum.hollowGapsCount,
         });
       } else {
         metaSpan.textContent = pickTimetableLang(activeLang, {
-          ja: `学生${cohort.studentCount}名`,
-          en: `${cohort.studentCount} students`,
-          zh: `学生${cohort.studentCount}人`,
+          ja: `${cohort.studentCount}名`,
+          en: `${cohort.studentCount} stu`,
+          zh: `${cohort.studentCount}人`,
         });
       }
 
@@ -906,7 +1123,11 @@ function renderTimetableBoard(): void {
               const topRow = document.createElement("div");
               topRow.className = "card-top-row";
               const catSpan = document.createElement("span");
-              catSpan.textContent = `${catMeta.shortLabel}·${course.id}`;
+              const gripSpan = document.createElement("span");
+              gripSpan.className = "card-drag-grip";
+              gripSpan.setAttribute("aria-hidden", "true");
+              gripSpan.textContent = "⋮⋮";
+              catSpan.append(gripSpan, `${catMeta.shortLabel}·${course.id}`);
               const roomSpan = document.createElement("span");
               roomSpan.className = "card-room-pill";
               roomSpan.textContent = rI18n ? rI18n.shortName : s.roomId;
@@ -1900,7 +2121,7 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
   const conflictAlert = $("conflict-alert");
   const conflictList = $("conflict-list");
 
-  solveTimeEl.textContent = `${outcome.solveTimeMs} ms (${outcome.numVariables} vars / ${outcome.numConstraints} constrs)`;
+  solveTimeEl.textContent = `${outcome.solveTimeMs} ms`;
   $("lp-stats-badge").textContent =
     `${outcome.numVariables} vars / ${outcome.numConstraints} constraints`;
   $("washi-code-preview").textContent = outcome.modelCodePreview;
@@ -1914,28 +2135,27 @@ function updateStatusAndConflictsUI(outcome: WashiTimetableSolveOutcome): void {
     const diff = outcome.diffFromPrevious;
     const diffStr =
       diff && diff.totalSessions > 0 && diff.changedSessionsCount > 0
-        ? pickTimetableLang(activeLang, {
-            ja: ` / 前回\u304B\u3089${diff.changedSessionsCount}\u30B3\u30DE変更(維持率${diff.retentionRatePct}%)`,
-            en: ` / ${diff.changedSessionsCount} moved (${diff.retentionRatePct}% retained)`,
-            zh: ` / 较上次变动${diff.changedSessionsCount}节(保持率${diff.retentionRatePct}%)`,
-          })
+        ? formatUiTemplate(ui.statusDiffSuffix, { count: diff.changedSessionsCount })
         : "";
     const nCourses = appState.courses.length;
     const nSess = outcome.timetable?.sessions.length ?? 0;
     const gaps = ev?.softPenaltyCount ?? 0;
-    summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: `全${nCourses}科目(${nSess}\u30B3\u30DE)\u3092配置完了 | \u30CF\u30FC\u30C9違反: 0件 / 学生空\u304D\u30B3\u30DE合計: ${gaps}\u30B3\u30DE${diffStr}`,
-      en: `Scheduled all ${nCourses} courses (${nSess} sessions) | Hard violations: 0 / Student idle gaps: ${gaps}${diffStr}`,
-      zh: `全部${nCourses}门课程(${nSess}节课)排课完成 | 硬约束违反: 0项 / 学生空堂合计: ${gaps}节${diffStr}`,
+    summaryText.textContent = formatUiTemplate(ui.statusSummarySolved, {
+      courses: nCourses,
+      sessions: nSess,
+      vars: outcome.numVariables,
+      constrs: outcome.numConstraints,
+      gaps,
+      diff: diffStr,
     });
     conflictAlert.hidden = true;
   } else if (outcome.status === "Infeasible") {
     badge.classList.add("status-infeasible");
     badge.textContent = ui.statusInfeasible;
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: `条件\u304C衝突\u3057\u3066\u3044\u308B\u305F\u3081時間割\u3092組\u3081\u307E\u305B\u3093（衝突要因: ${outcome.conflicts.length}件）`,
-      en: `Timetable is infeasible due to conflicting rules (${outcome.conflicts.length} conflicting constraints identified)`,
-      zh: `约束条件发生冲突，无法排出可行课表（已定位冲突因素: ${outcome.conflicts.length}项）`,
+      ja: `制約衝突: ${outcome.conflicts.length}件`,
+      en: `Conflicts: ${outcome.conflicts.length}`,
+      zh: `约束冲突: ${outcome.conflicts.length}项`,
     });
     conflictAlert.hidden = false;
     conflictList.replaceChildren();
@@ -1999,9 +2219,9 @@ function updateStatusBlankUI(): void {
       zh: "未编排",
     });
     summaryText.textContent = pickTimetableLang(activeLang, {
-      ja: `\u30C7\u30FC\u30BF準備完了: ${appState.professors.length}教員 / ${appState.rooms.length}教室 / ${appState.courses.length}科目 — 「⚡ 時間割\u3092自動編成」\u3092押\u3057\u3066\u304F\u3060\u3055\u3044`,
-      en: `Data ready: ${appState.professors.length} Profs / ${appState.rooms.length} Rooms / ${appState.courses.length} Courses — Click 'Auto-Schedule Timetable'`,
-      zh: `数据已就绪: ${appState.professors.length}位教师 / ${appState.rooms.length}间教室 / ${appState.courses.length}门课程 — 请点击“自动编排课表”`,
+      ja: `${appState.professors.length}教員 · ${appState.rooms.length}教室 · ${appState.courses.length}科目`,
+      en: `${appState.professors.length} faculty · ${appState.rooms.length} rooms · ${appState.courses.length} courses`,
+      zh: `${appState.professors.length}位教师 · ${appState.rooms.length}间教室 · ${appState.courses.length}门课`,
     });
   }
   solveTimeEl.textContent = "-- ms";
@@ -2012,26 +2232,39 @@ export function updateToolbarButtonsState(): void {
   const hasCoursesAndRooms = appState.courses.length > 0 && appState.rooms.length > 0;
   const hasAnyData = appState.courses.length > 0 || appState.professors.length > 0 || appState.rooms.length > 0;
   const isScheduled = !!currentTimetable;
+  const workspace = document.getElementById("ai-timetable-workspace");
+  if (workspace) {
+    workspace.dataset.scheduled = isScheduled ? "true" : "false";
+    workspace.dataset.hasCourses = appState.courses.length > 0 ? "true" : "false";
+  }
 
   const btnSolve = document.getElementById("btn-solve-washi") as HTMLButtonElement | null;
+  const btnHeroSolve = document.getElementById("btn-hero-solve") as HTMLButtonElement | null;
   const btnCheck = document.getElementById("btn-check-current") as HTMLButtonElement | null;
   const btnExport = document.getElementById("btn-export-csvs") as HTMLButtonElement | null;
   const btnClear = document.getElementById("btn-clear-blank") as HTMLButtonElement | null;
   const btnReset = document.getElementById("btn-reset-clean") as HTMLButtonElement | null;
 
+  const ui = UI_TEXT_I18N[activeLang];
+  const heroEyebrowEl = document.getElementById("hero-eyebrow");
+  if (heroEyebrowEl) {
+    const totalSessions = appState.courses.reduce((acc, c) => acc + c.sessionsPerWeek, 0);
+    heroEyebrowEl.textContent = formatUiTemplate(ui.heroEyebrow, {
+      sessions: totalSessions,
+      profs: appState.professors.length,
+      rooms: appState.rooms.length,
+      courses: appState.courses.length,
+    });
+  }
+
+  if (btnHeroSolve) {
+    btnHeroSolve.disabled = isSolving || !hasCoursesAndRooms;
+    btnHeroSolve.textContent = isSolving ? ui.statusSolving : ui.heroPrimaryBtn;
+  }
+
   if (btnSolve) {
     btnSolve.disabled = isSolving || !hasCoursesAndRooms;
-    btnSolve.textContent = isScheduled
-      ? pickTimetableLang(activeLang, {
-          ja: "\u26a1 \u6642\u9593\u5272\u3092\u518d\u7de8\u6210",
-          en: "⚡ Re-Optimize Timetable",
-          zh: "⚡ 重新优化课表",
-        })
-      : pickTimetableLang(activeLang, {
-          ja: "\u26a1 \u6642\u9593\u5272\u3092\u81ea\u52d5\u7de8\u6210",
-          en: "⚡ Auto-Schedule Timetable",
-          zh: "⚡ 自动编排课表",
-        });
+    btnSolve.textContent = isScheduled ? ui.btnSolveReoptimize : ui.btnSolveWashi;
     btnSolve.title = !hasCoursesAndRooms
       ? pickTimetableLang(activeLang, {
           ja: "\u30c7\u30fc\u30bf\u3092\u8aad\u307f\u8fbc\u3080\u3068\u6642\u9593\u5272\u306e\u6700\u9069\u5316\u3092\u5b9f\u884c\u3067\u304d\u307e\u3059",
@@ -2159,17 +2392,18 @@ export function handleGenerateSample(autoSwitchToCatalog = false): void {
   currentEvaluation = null;
   lastSolveOutcome = null;
   if (typeof document !== "undefined") {
+    clearWorkspaceActionBanner();
     renderAll();
     if (autoSwitchToCatalog) {
       $<HTMLButtonElement>("tab-btn-catalog").click();
     }
-    appendChatMessage(
-      "assistant",
-      pickTimetableLang(activeLang, {
-        ja: `📚 **大学\u306E基礎\u30C7\u30FC\u30BF（${appState.professors.length}教員\u30FB${appState.rooms.length}教室\u30FB${appState.courses.length}科目\u30FB計30\u30B3\u30DE）\u3092\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F！**\n「基礎\u30C7\u30FC\u30BF」\u30BF\u30D6\u3067名簿\u30FB設備\u30FB\u30AB\u30EA\u30AD\u30E5\u30E9\u30E0\u3092確認\u3067\u304D\u307E\u3059。\n\n**次\u306E\u30A2\u30AF\u30B7\u30E7\u30F3**:\n1. 「⚙️ 条件\u30FB\u30EB\u30FC\u30EB設定」\u30BF\u30D6\u3067条件（教室定員\u30FBPC演習室設備\u30FB教員\u306E連続\u30B3\u30DE制限\u306A\u3069）\u3092確認\u30FB調整\n2. 「📅 時間割\u30DC\u30FC\u30C9」\u30BF\u30D6\u3067「⚡ 時間割\u3092自動編成\u3059\u308B」\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066一括最適化\n3. 編成後、\u3053\u306EAI\u30C1\u30E3\u30C3\u30C8\u3067個別\u306E希望\u3084例外\u30EB\u30FC\u30EB\u3092自然言語\u3067調整\u3067\u304D\u307E\u3059。`,
-        en: `📚 **Loaded baseline university data (${appState.professors.length} Faculty, ${appState.rooms.length} Classrooms, ${appState.courses.length} Courses)!**\nYou can inspect the roster, facilities, and curriculum in the "Master Data" tab.\n\n**Next Actions**:\n1. Check or tweak constraints in the "Constraints & Rules" tab\n2. Proceed to the "Timetable Board" and click "⚡ Auto-Schedule Timetable" for full MIP optimization\n3. Afterward, chat with AI Copilot here to apply fine-grained personal requests or exceptions.`,
-        zh: `📚 **已载入大学基础数据（${appState.professors.length}位教师\u30FB${appState.rooms.length}间教室\u30FB${appState.courses.length}门课程\u30FB共30节课）！**\n可在“基础数据”标签页查看名册、设备与开课计划。\n\n**后续操作**:\n1. 前往“约束与规则设置”标签页确认或调整条件（教室容量、机房设备、连续节数上限等）\n2. 前往“课表看板”标签页点击“⚡ 自动编排课表”一键全局优化\n3. 排课完成后，即可在当前 AI 聊天栏中用自然语言对调或增设个性化规则。`,
-      })
+    showWorkspaceNotice(
+      formatUiTemplate(UI_TEXT_I18N[activeLang].noticeSampleLoaded, {
+        profs: appState.professors.length,
+        rooms: appState.rooms.length,
+        courses: appState.courses.length,
+      }),
+      { variant: "info" }
     );
   }
 }
@@ -2198,14 +2432,11 @@ export function handleClearToBlank(skipConfirm: boolean | unknown = false): void
   currentEvaluation = null;
   lastSolveOutcome = null;
   if (typeof document !== "undefined") {
+    clearWorkspaceActionBanner();
     renderAll();
-    appendChatMessage(
-      "assistant",
-      pickTimetableLang(activeLang, {
-        ja: "🗑️ 時間割\u30C7\u30FC\u30BF\u3092\u30AF\u30EA\u30A2\u3057、**白紙\u30E2\u30FC\u30C9**\u306B戻\u3057\u307E\u3057\u305F。「✨ \u30B5\u30F3\u30D7\u30EB生成」\u307E\u305F\u306F「📂 CSV読込」\u3067\u30C7\u30FC\u30BF\u3092\u30BB\u30C3\u30C8\u3057\u3066\u304F\u3060\u3055\u3044。",
-        en: "🗑️ Cleared all timetable data back to **Blank Slate**. Please generate sample data or import CSVs.",
-        zh: "🗑️ 已清空数据恢复为**空白模式**。请生成示例数据或导入CSV。",
-      })
+    showWorkspaceNotice(
+      UI_TEXT_I18N[activeLang].noticeClearedBlank,
+      { variant: "info" }
     );
   }
 }
@@ -2304,15 +2535,16 @@ function executeCsvImport(): void {
   currentEvaluation = null;
   lastSolveOutcome = null;
   $<HTMLDialogElement>("csv-import-dialog").close();
+  clearWorkspaceActionBanner();
   renderAll();
   $<HTMLButtonElement>("tab-btn-catalog").click();
-  appendChatMessage(
-    "assistant",
-    pickTimetableLang(activeLang, {
-      ja: `📂 **CSV\u30C7\u30FC\u30BF\u3092正常\u306B\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3057\u305F**\n- **教員**: ${appState.professors.length}名\n- **教室**: ${appState.rooms.length}室\n- **科目**: ${appState.courses.length}科目\n\n右側\u306E「📚 科目\u30FB教員\u30FB教室一覧」\u30BF\u30D6\u3067\u30A4\u30F3\u30DD\u30FC\u30C8内容\u3092確認\u3067\u304D\u307E\u3059。準備\u304C\u3067\u304D\u305F\u3089 **「⚡ 時間割\u3092自動編成」** \u30DC\u30BF\u30F3\u3092押\u3057\u3066\u304F\u3060\u3055\u3044！`,
-      en: `📂 **CSV Data Successfully Imported**\n- **Professors**: ${appState.professors.length}\n- **Rooms**: ${appState.rooms.length}\n- **Courses**: ${appState.courses.length}\n\nReview the data in the Catalog tab, then click **"Auto-Schedule Timetable"**!`,
-      zh: `📂 **CSV数据导入成功**\n- **教师**: ${appState.professors.length}位\n- **教室**: ${appState.rooms.length}间\n- **课程**: ${appState.courses.length}门\n\n请在基础数据标签页确认，之后点击“自动编排课表”！`,
-    })
+  showWorkspaceNotice(
+    formatUiTemplate(UI_TEXT_I18N[activeLang].noticeCsvImported, {
+      profs: appState.professors.length,
+      rooms: appState.rooms.length,
+      courses: appState.courses.length,
+    }),
+    { variant: "success" }
   );
 }
 
@@ -2368,6 +2600,7 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
   }
   isSolving = true;
   pendingSolveRequested = false;
+  clearWorkspaceActionBanner();
 
   const abortCtrl = new AbortController();
   activeSolveAbortController = abortCtrl;
@@ -2391,13 +2624,17 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
       currentEvaluation = outcome.evaluation;
       if (wasUnscheduled) {
         $<HTMLButtonElement>("tab-btn-timetable").click();
-        appendChatMessage(
-          "assistant",
-          pickTimetableLang(activeLang, {
-            ja: "🎉 **時間割\u3092自動編成\u3057\u307E\u3057\u305F！**\n全学年\u30FB全教員\u30FB全教室\u306B矛盾\u306E\u306A\u3044時間割\u304C配置\u3055\u308C\u307E\u3057\u305F。\n\n\u3053\u3053\u304B\u3089AI\u30C1\u30E3\u30C3\u30C8\u306B『佐藤先生\u306F月曜日休\u307F\u306B設定\u3057\u3066』『機械学習\u3068自然言語処理\u3092被\u305B\u306A\u3044\u3067』\u306A\u3069\u3068入力\u3057\u3066、柔軟\u306B要望\u3092追加\u30FB調整\u3067\u304D\u307E\u3059。",
-            en: "🎉 **Timetable automatically scheduled!**\nA feasible, conflict-free schedule has been generated across cohorts, faculty, and rooms.\n\nYou can now chat with AI Copilot (e.g. 'Set Prof. Sato unavailable on Mondays') to fine-tune requests.",
-            zh: "🎉 **课表已自动编排完成！**\n已成功为全学年、全教师、全教室编排无冲突最优课表。\n\n您现在可以在AI聊天中输入“将佐藤老师周一设为休息日”等指令进行个性化微调。",
-          })
+        showWorkspaceNotice(
+          formatUiTemplate(UI_TEXT_I18N[activeLang].noticeFirstScheduledTitle, {
+            sessions: outcome.timetable.sessions.length,
+            vars: outcome.numVariables,
+            constrs: outcome.numConstraints,
+          }),
+          {
+            variant: "success",
+            detailLines: [UI_TEXT_I18N[activeLang].noticeFirstScheduledDetail],
+            autoHideMs: 7500,
+          }
         );
       }
     }
@@ -2553,18 +2790,11 @@ export async function applyDropMove(
   const unpinNotice =
     unpinnedCount > 0
       ? pickTimetableLang(activeLang, {
-          ja: ` (移動元\u306E固定\u3092解除)`,
-          en: ` (unpinned from source)`,
+          ja: ` (移動元解除)`,
+          en: ` (source unpinned)`,
           zh: ` (已解除原位置固定)`,
         })
       : "";
-
-  const moveMsg = pickTimetableLang(activeLang, {
-    ja: `📌 **\u30C9\u30E9\u30C3\u30B0＆\u30C9\u30ED\u30C3\u30D7移動**: 「${courseI18n.title}」${unpinNotice}\u3092 **${slotText}${roomText}** \u306B固定\u3057\u3066時間割\u3092再編成\u3057\u307E\u3059。`,
-    en: `📌 **Drag & Drop**: Pinned **${courseI18n.title}**${unpinNotice} to **${slotText}${roomText}** and re-optimizing timetable.`,
-    zh: `📌 **拖拽移动**: 已将《${courseI18n.title}》${unpinNotice}固定在 **${slotText}${roomText}**，正在重新编排课表。`,
-  });
-  appendChatMessage("assistant", moveMsg);
 
   const outcome = await triggerSolve();
 
@@ -2580,36 +2810,89 @@ export async function applyDropMove(
     renderCustomRulesAndSettings();
     renderCatalogTables();
 
-    const conflictSummary =
-      outcome?.conflicts && outcome.conflicts.length > 0
-        ? formatConstraintMetaI18n(outcome.conflicts[0], appState, activeLang).label
-        : (outcome?.errorMessage ?? "");
+    const ui = UI_TEXT_I18N[activeLang];
+    const allConflicts = outcome?.conflicts ?? [];
+    const opposingConflicts = allConflicts.filter((c) => c.relatedRuleId !== newRule.id);
+    const chosenConflicts = opposingConflicts.length > 0 ? opposingConflicts : allConflicts;
+    const reasonSet = new Set<string>();
+    for (const c of chosenConflicts) {
+      const label = formatConstraintMetaI18n(c, appState, activeLang).label.trim();
+      if (label) reasonSet.add(label);
+    }
+    const rawReasons = Array.from(reasonSet).slice(0, 3);
+    const detailLines =
+      rawReasons.length === 1
+        ? [`${ui.noticeReasonPrefix}${rawReasons[0]}`]
+        : rawReasons.length > 1
+          ? rawReasons
+          : [
+              outcome?.errorMessage?.trim()
+                ? `${ui.noticeReasonPrefix}${outcome.errorMessage.trim()}`
+                : `${ui.noticeReasonPrefix}${ui.noticeMoveRevertFallback}`,
+            ];
 
-    const conflictSuffix = conflictSummary ? ` (${conflictSummary})` : "";
-
-    const revertMsg = pickTimetableLang(activeLang, {
-      ja: `⚠️ **移動\u3092元\u306B戻\u3057\u307E\u3057\u305F**: 「${courseI18n.title}」\u3092 **${slotText}${roomText}** \u306B配置\u3059\u308B\u3068制約\u3092満\u305F\u3055\u306A\u3044\u305F\u3081${conflictSuffix}、元\u306E時間割\u306B戻\u3057、固定条件\u3092取\u308A消\u3057\u307E\u3057\u305F。`,
-      en: `⚠️ **Move reverted**: Placing "${courseI18n.title}" at **${slotText}${roomText}** violates constraints${conflictSuffix}. Reverted to the original timetable and canceled the pin condition.`,
-      zh: `⚠️ **已撤销移动**: 将《${courseI18n.title}》放置在 **${slotText}${roomText}** 存在冲突${conflictSuffix}，已恢复原课表并取消固定条件。`,
+    const revertTitle = formatUiTemplate(ui.noticeMoveReverted, {
+      title: courseI18n.title,
+      slot: slotText,
+      room: roomText,
     });
-    appendChatMessage("assistant", revertMsg);
+    showWorkspaceNotice(revertTitle, {
+      variant: "warning",
+      showBanner: true,
+      detailLines,
+      autoHideMs: 8500,
+    });
   } else if (outcome.diffFromPrevious && outcome.diffFromPrevious.changes.length > 0) {
+    const ui = UI_TEXT_I18N[activeLang];
     const diff = outcome.diffFromPrevious;
-    const diffLines = diff.changes.map((ch, idx) => {
-      const cProfile = appState.courses.find((c) => c.id === ch.courseId);
-      const title = cProfile ? getCourseI18n(cProfile, activeLang).title : ch.courseTitle;
-      const prevSlotStr = formatSlotI18n(ch.prevDay, ch.prevPeriod, activeLang);
-      const nextSlotStr = formatSlotI18n(ch.nextDay, ch.nextPeriod, activeLang);
-      const reasonStr = formatDiffReasonI18n(ch.reason, appState, activeLang);
-      const reasonPart = reasonStr ? `\n   \u2514 \uD83D\uDCA1 ${reasonStr}` : "";
-      return `${idx + 1}. **${title}**: ${prevSlotStr} \u2192 **${nextSlotStr}**${reasonPart}`;
-    });
-    const reportMsg = pickTimetableLang(activeLang, {
-      ja: `\uD83D\uDCCB **再編成\u306E変更内訳 (${diff.changes.length}\u30B3\u30DE)**:\n${diffLines.join("\n")}`,
-      en: `\uD83D\uDCCB **Re-optimization Move Details (${diff.changes.length} session(s))**:\n${diffLines.join("\n")}`,
-      zh: `\uD83D\uDCCB **重新编排变动明细 (${diff.changes.length}节)**:\n${diffLines.join("\n")}`,
-    });
-    appendChatMessage("assistant", reportMsg);
+    const cascadedChanges = diff.changes.filter(
+      (ch) => !(ch.courseId === course.id && ch.nextDay === toDay && ch.nextPeriod === toPeriod)
+    );
+    if (cascadedChanges.length > 0) {
+      const diffLines = cascadedChanges.map((ch) => {
+        const cProfile = appState.courses.find((c) => c.id === ch.courseId);
+        const title = cProfile ? getCourseI18n(cProfile, activeLang).title : ch.courseTitle;
+        const prevSlotStr = formatSlotI18n(ch.prevDay, ch.prevPeriod, activeLang);
+        const nextSlotStr = formatSlotI18n(ch.nextDay, ch.nextPeriod, activeLang);
+        const reasonStr = formatDiffReasonI18n(ch.reason, appState, activeLang);
+        return reasonStr
+          ? `${title}: ${prevSlotStr} → ${nextSlotStr}（${reasonStr}）`
+          : `${title}: ${prevSlotStr} → ${nextSlotStr}`;
+      });
+      const reportTitle = formatUiTemplate(ui.noticeMoveCascaded, {
+        title: courseI18n.title,
+        slot: slotText,
+        room: roomText,
+        count: cascadedChanges.length,
+        unpin: unpinNotice,
+      });
+      showWorkspaceNotice(reportTitle, {
+        variant: "success",
+        showBanner: true,
+        detailLines: diffLines,
+        autoHideMs: 7500,
+      });
+    } else {
+      showWorkspaceNotice(
+        formatUiTemplate(ui.noticeMoveNoCascade, {
+          title: courseI18n.title,
+          slot: slotText,
+          room: roomText,
+          unpin: unpinNotice,
+        }),
+        { variant: "success" }
+      );
+    }
+  } else {
+    showWorkspaceNotice(
+      formatUiTemplate(UI_TEXT_I18N[activeLang].noticeMoveNoCascade, {
+        title: courseI18n.title,
+        slot: slotText,
+        room: roomText,
+        unpin: unpinNotice,
+      }),
+      { variant: "success" }
+    );
   }
 }
 
@@ -2701,17 +2984,57 @@ export function applyTimetableLang(lang: TimetableLang): void {
     });
   }
   setText("nav-link-theory", ui.btnTheory);
+  setText("nav-link-theory-mobile", ui.btnTheory);
+  const theoryHref = `../ai-timetable-theory/?lang=${lang}`;
   const theoryLink = document.getElementById("nav-link-theory") as HTMLAnchorElement | null;
-  if (theoryLink) {
-    theoryLink.href = `../ai-timetable-theory/?lang=${lang}`;
-  }
+  if (theoryLink) theoryLink.href = theoryHref;
+  const theoryMobileLink = document.getElementById("nav-link-theory-mobile") as HTMLAnchorElement | null;
+  if (theoryMobileLink) theoryMobileLink.href = theoryHref;
+
   setText("nav-link-apps", ui.navApps);
+  setText("nav-link-apps-mobile", ui.navApps);
+  const appsHref = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
   const appsLink = document.getElementById("nav-link-apps") as HTMLAnchorElement | null;
-  if (appsLink) {
-    appsLink.href = lang === "ja" ? "../../ja/showcase/" : lang === "zh" ? "../../zh/showcase/" : "../../showcase/";
-  }
+  if (appsLink) appsLink.href = appsHref;
+  const appsMobileLink = document.getElementById("nav-link-apps-mobile") as HTMLAnchorElement | null;
+  if (appsMobileLink) appsMobileLink.href = appsHref;
+
   setText("nav-link-aishift", ui.navAiShift);
+  setText("nav-link-aishift-mobile", ui.navAiShift);
+  setText("btn-mobile-tutorial", ui.btnTutorial);
   $("ai-timetable-theme-btn").title = ui.themeToggleTitle;
+
+  setText("btn-toggle-ai-drawer", ui.btnToggleAiDrawer);
+  const btnCloseAiDrawer = document.getElementById("btn-close-ai-drawer");
+  if (btnCloseAiDrawer) btnCloseAiDrawer.setAttribute("aria-label", ui.btnCloseAiDrawer);
+  const btnMobileNav = document.getElementById("btn-mobile-nav-menu");
+  if (btnMobileNav) btnMobileNav.setAttribute("aria-label", ui.btnMobileMenu);
+  setText("btn-toggle-legend", ui.btnLegendToggle);
+
+  const btnCloseBanner = document.getElementById("btn-close-workspace-banner");
+  if (btnCloseBanner) btnCloseBanner.setAttribute("aria-label", ui.toastCloseLabel);
+
+  // Unscheduled Hero CTA & Board Interaction Guide
+  const totalSessions = appState.courses.reduce((acc, c) => acc + c.sessionsPerWeek, 0);
+  setText(
+    "hero-eyebrow",
+    formatUiTemplate(ui.heroEyebrow, {
+      sessions: totalSessions,
+      profs: appState.professors.length,
+      rooms: appState.rooms.length,
+      courses: appState.courses.length,
+    })
+  );
+  setText("hero-title", ui.heroTitle);
+  setText("hero-desc", ui.heroDesc);
+  setText("btn-hero-solve", ui.heroPrimaryBtn);
+  setText("btn-hero-catalog", ui.heroDataBtn);
+  setText("btn-hero-constraints", ui.heroRulesBtn);
+  setText("board-guide-drag", ui.boardGuideDrag);
+  setText("board-guide-optimize", ui.boardGuideOptimize);
+  if (lastSolveOutcome) {
+    updateStatusAndConflictsUI(lastSolveOutcome);
+  }
 
   $("chat-pane-aside").setAttribute("aria-label", ui.chatPaneAria);
   setText("chat-header-title", ui.chatHeaderTitle);
@@ -3101,6 +3424,32 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
   }
 }
 
+/** Runs a HiGHS feasibility check against the current state and updates workspace notices. */
+export async function runFeasibilityCheck(): Promise<void> {
+  const diag = await diagnoseTimetableWithHiGHS(appState);
+  if (diag.status === "Sat") {
+    showWorkspaceNotice(
+      UI_TEXT_I18N[activeLang].noticeCheckSat,
+      { variant: "success", showBanner: false, clearBanner: true }
+    );
+  } else if (diag.status === "Unsat") {
+    const detailLines = diag.conflicts.map(
+      (c) => formatConstraintMetaI18n(c, appState, activeLang).label
+    );
+    showWorkspaceNotice(
+      formatUiTemplate(UI_TEXT_I18N[activeLang].noticeCheckUnsat, {
+        count: diag.conflicts.length,
+      }),
+      { variant: "error", showBanner: true, detailLines, autoHideMs: 8000 }
+    );
+  } else {
+    showWorkspaceNotice(
+      UI_TEXT_I18N[activeLang].noticeCheckTimeout,
+      { variant: "warning", clearBanner: true }
+    );
+  }
+}
+
 function wireEvents(): void {
   // Language switcher buttons
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
@@ -3156,11 +3505,14 @@ function wireEvents(): void {
     void triggerSolve();
   });
 
-  // Step 4: AI consultation and drag-and-drop adjustment (switches to timetable & focuses chat)
-  $("btn-tut-step4")?.addEventListener("click", () => {
+  // Step 4: AI consultation and drag-and-drop adjustment (switches to timetable & opens AI chat when usable)
+  document.getElementById("btn-tut-step4")?.addEventListener("click", () => {
     switchTab("timetable");
+    if (isGeminiNanoVisibleStatus(lastNanoStatus)) {
+      setAiDrawerOpen(true);
+    }
     const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
-    if (chatInput) {
+    if (chatInput && isGeminiNanoVisibleStatus(lastNanoStatus)) {
       chatInput.value = pickTimetableLang(activeLang, {
         ja: "\u6570\u7406\u6700\u9069\u5316(C15)\u3092\u706b\u66dc2\u9650\u306e101\u5927\u8b1b\u7fa9\u5ba4(R101)\u306b\u56fa\u5b9a\u3057\u3066\u3001\u6642\u9593\u5272\u3092\u518d\u6700\u9069\u5316\u3057\u3066",
         en: "Pin Mathematical Optimization (C15) to Tue Period 2 in Hall 101 (R101) and re-optimize",
@@ -3168,6 +3520,60 @@ function wireEvents(): void {
       });
       chatInput.focus();
     }
+  });
+
+  // Unscheduled hero CTA buttons
+  document.getElementById("btn-hero-solve")?.addEventListener("click", () => {
+    void triggerSolve();
+  });
+  document.getElementById("btn-hero-catalog")?.addEventListener("click", () => {
+    switchTab("catalog");
+  });
+  document.getElementById("btn-hero-constraints")?.addEventListener("click", () => {
+    switchTab("constraints");
+  });
+
+  // Mobile AI chat drawer controls & workspace notification banner
+  document.getElementById("btn-toggle-ai-drawer")?.addEventListener("click", () => {
+    const workspace = document.getElementById("ai-timetable-workspace");
+    const isOpen = workspace?.dataset.aiDrawerOpen === "true";
+    setAiDrawerOpen(!isOpen);
+  });
+  document.getElementById("btn-close-ai-drawer")?.addEventListener("click", () => {
+    setAiDrawerOpen(false);
+  });
+  document.getElementById("ai-drawer-backdrop")?.addEventListener("click", () => {
+    setAiDrawerOpen(false);
+  });
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    window.matchMedia("(max-width: 1100px)").addEventListener?.("change", (ev) => {
+      if (!ev.matches) {
+        setAiDrawerOpen(false);
+      }
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const workspace = document.getElementById("ai-timetable-workspace");
+      if (workspace?.dataset.aiDrawerOpen === "true") {
+        setAiDrawerOpen(false);
+      }
+    }
+  });
+  document.getElementById("btn-mobile-tutorial")?.addEventListener("click", () => {
+    const mobileMenu = document.getElementById("mobile-nav-popover") as
+      | (HTMLElement & { hidePopover?: () => void })
+      | null;
+    try {
+      mobileMenu?.hidePopover?.();
+    } catch {
+      // Ignore
+    }
+    const b = $("tutorial-banner");
+    b.hidden = !b.hidden;
+  });
+  document.getElementById("btn-close-workspace-banner")?.addEventListener("click", () => {
+    clearWorkspaceActionBanner();
   });
 
   // Action bar buttons (if present in toolbar)
@@ -3182,51 +3588,17 @@ function wireEvents(): void {
   $("btn-abort-solve").addEventListener("click", () => {
     activeSolveAbortController?.abort();
   });
-  $("btn-check-current").addEventListener("click", async () => {
-    const diag = await diagnoseTimetableWithHiGHS(appState);
-    if (diag.status === "Sat") {
-      appendChatMessage(
-        "system",
-        pickTimetableLang(activeLang, {
-          ja: "✅ 整合性\u30C1\u30A7\u30C3\u30AF完了: 現在\u306E\u3059\u3079\u3066\u306E時間割制約条件\u306B矛盾\u306F\u3042\u308A\u307E\u305B\u3093（充足可能: Sat）。",
-          en: "✅ Feasibility Check Passed: All current timetable constraints are mutually satisfiable (Sat).",
-          zh: "✅ 一致性检查通过: 当前所有排课约束条件均无矛盾（可满足: Sat）。",
-        })
-      );
-    } else if (diag.status === "Unsat") {
-      const listMd = diag.conflicts
-        .map((c) => `- **${formatConstraintMetaI18n(c, appState, activeLang).label}**`)
-        .join("\n");
-      appendChatMessage(
-        "system",
-        pickTimetableLang(activeLang, {
-          ja: `🚨 整合性\u30C1\u30A7\u30C3\u30AF結果: ${diag.conflicts.length}件\u306E制約\u304C衝突\u3057\u3066\u3044\u307E\u3059。\n${listMd}`,
-          en: `🚨 Feasibility Check: ${diag.conflicts.length} conflicting constraints detected.\n${listMd}`,
-          zh: `🚨 一致性检查结果: 检测到 ${diag.conflicts.length} 项约束冲突。\n${listMd}`,
-        })
-      );
-    } else {
-      appendChatMessage(
-        "system",
-        pickTimetableLang(activeLang, {
-          ja: "⚠️ 整合性\u30C1\u30A7\u30C3\u30AF\u304C制限時間内\u306B最適解\u307E\u3067完了\u3057\u307E\u305B\u3093\u3067\u3057\u305F（判定保留: Unknown）。",
-          en: "⚠️ Feasibility check did not reach a proven result within the time limit (Unknown).",
-          zh: "⚠️ 一致性检查未能在时限内得出确定结论（未知: Unknown）。",
-        })
-      );
-    }
+  $("btn-check-current").addEventListener("click", () => {
+    void runFeasibilityCheck();
   });
   $("btn-reset-clean").addEventListener("click", () => {
     appState = generateTimetableState();
     currentTimetable = null;
     currentEvaluation = null;
-    appendChatMessage(
-      "system",
-      pickTimetableLang(activeLang, {
-        ja: "↩ \u3059\u3079\u3066\u306E時間割設定\u3068追加\u30EB\u30FC\u30EB\u3092初期状態\u306B\u30EA\u30BB\u30C3\u30C8\u3057\u307E\u3057\u305F。",
-        en: "↩ Reset all timetable parameters and custom rules to their initial defaults.",
-        zh: "↩ 已将所有排课参数与追加规则重置为初始状态。",
-      })
+    clearWorkspaceActionBanner();
+    showWorkspaceNotice(
+      UI_TEXT_I18N[activeLang].noticeResetDefaults,
+      { variant: "info" }
     );
     void triggerSolve();
   });
@@ -3240,28 +3612,23 @@ function wireEvents(): void {
         .filter((id): id is string => typeof id === "string")
     );
     if (conflictingRuleIds.size === 0) {
-      appendChatMessage(
-        "system",
-        pickTimetableLang(activeLang, {
-          ja: "ℹ️ 衝突要因\u306B追加\u30EB\u30FC\u30EB\u306F含\u307E\u308C\u3066\u3044\u307E\u305B\u3093。条件\u30FB\u30EB\u30FC\u30EB設定\u30BF\u30D6\u3067基本制約\u3084\u30D1\u30E9\u30E1\u30FC\u30BF\u3092見直\u3057\u3066\u304F\u3060\u3055\u3044。",
-          en: "ℹ️ No custom rules are among the conflicting constraints. Review the base constraints and parameters in the Rules tab.",
-          zh: "ℹ️ 冲突因素中不包含追加规则。请在规则设置标签页中检查基本约束与参数。",
-        })
+      showWorkspaceNotice(
+        UI_TEXT_I18N[activeLang].noticeConflictCheckBaseRules,
+        { variant: "info", showBanner: true }
       );
       return;
     }
     appState.customRules = appState.customRules.filter((r) => !conflictingRuleIds.has(r.id));
-    appendChatMessage(
-      "system",
-      pickTimetableLang(activeLang, {
-        ja: `✨ 衝突\u3057\u3066\u3044\u305F追加\u30EB\u30FC\u30EB ${conflictingRuleIds.size}件\u3092解除\u3057、時間割\u3092再最適化\u3057\u307E\u3057\u305F。`,
-        en: `✨ Removed ${conflictingRuleIds.size} conflicting custom rule(s) and re-optimized the timetable.`,
-        zh: `✨ 已解除 ${conflictingRuleIds.size} 条发生冲突的追加规则并重新优化课表。`,
-      })
+    showWorkspaceNotice(
+      formatUiTemplate(UI_TEXT_I18N[activeLang].noticeConflictCleared, {
+        count: conflictingRuleIds.size,
+      }),
+      { variant: "success" }
     );
     void triggerSolve();
   });
   $("btn-ask-nano-conflict").addEventListener("click", () => {
+    setAiDrawerOpen(true);
     void handleChatSubmit(UI_TEXT_I18N[activeLang].conflictAskPrompt);
   });
 
