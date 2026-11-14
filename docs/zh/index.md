@@ -13,26 +13,36 @@ hero:
       link: /zh/showcase/
 
 features:
-  - icon: 📅
-    title: 排班、排课与路径优化
-    details: 使用内置 HiGHS（LP / MIP）高效求解人员排班、大学排课、二维装箱与车辆路径等组合优化问题。
-    link: /zh/examples/
-    linkText: 实战范例
-  - icon: 📈
-    title: 投资组合与连续资源分配
-    details: 通过凸二次目标函数（QuadExpr）直接构建马科维茨投资组合风险最小化与连续指标拟合模型。
-    link: /zh/examples/portfolio-qp
-    linkText: 投资组合优化
-  - icon: 🔍
-    title: 逻辑规则验证与冲突诊断
-    details: 当排班或业务规则因条件冲突而无可行解时，通过内置 HiGHS 弹性松弛或 Z3 严格冲突核（unsatCore）精准定位相互矛盾的约束。
-    link: /zh/guide/unsat-core
-    linkText: 冲突约束诊断
   - icon: 🌐
-    title: 零后端部署与端侧运行
-    details: 无需 Python 后端即可在浏览器 Web Worker 与 Node.js 中本地运行，可作为端侧大模型的数理校验护栏。
+    title: WebAssembly 零原生依赖运行
+    details: 无需 Python 服务或本地 C/C++ 编译，直接在浏览器（Web Worker）和 Node.js 等 JS 运行时中本地求解优化模型。
     link: /zh/getting-started/runtimes
     linkText: 运行时环境配置
+  - icon: ✍️
+    title: 直观的代数建模 (expr)
+    details: 无需手动拼接矩阵或 LP 文本，以贴近 PuLP 的自然数学表达式直接描述线性、整数、凸二次与逻辑约束模型。
+    link: /zh/guide/expressions
+    linkText: 表达式建模
+  - icon: 🧩
+    title: TypeScript 类型安全建模
+    details: 将决策变量直接绑定到应用数据结构，在编译期即可拦截键名拼写错误、索引错位以及数值与布尔类型混用。
+    link: /zh/guide/variables
+    linkText: 变量与上下界
+  - icon: 🔍
+    title: 定位“无解”的冲突原因
+    details: 当约束相互冲突导致无可行解时，可借助内置 HiGHS 或 Z3 精准定位相互矛盾的规则，而非仅返回错误状态。
+    link: /zh/guide/unsat-core
+    linkText: 冲突约束诊断
+  - icon: ⚙️
+    title: 可插拔求解器架构
+    details: 只需编写一次模型，即可在内置 HiGHS、可选 Z3（SMT）与 GLPK 插件或自定义求解器之间按需无缝切换。
+    link: /zh/solvers/
+    linkText: 求解器概览
+  - icon: 🔀
+    title: 面向大规模问题的分解算法
+    details: 内置列生成、Benders 分解以及线性松弛与对偶值（影子价格）读取能力，从容应对难以整块求解的大规模问题。
+    link: /zh/guide/decomposition
+    linkText: 分解算法指南
 ---
 
 <div class="washi-home-sections">

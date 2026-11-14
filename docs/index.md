@@ -13,26 +13,36 @@ hero:
       link: /showcase/
 
 features:
-  - icon: 📅
-    title: Scheduling, Routing & Packing
-    details: Solve staff rosters, university timetables, 2D packing, and vehicle routing problems out of the box with built-in HiGHS (LP / MIP).
-    link: /examples/
-    linkText: Practical Examples
-  - icon: 📈
-    title: Portfolio & Resource Allocation
-    details: Minimize portfolio variance risk (Markowitz QP) or fit continuous targets directly with convex quadratic objectives (QuadExpr).
-    link: /examples/portfolio-qp
-    linkText: Portfolio QP
-  - icon: 🔍
-    title: Logic Rules & Conflict Diagnosis
-    details: When a schedule or policy has no feasible solution, pinpoint conflicting rules via built-in HiGHS elastic relaxation or exact Z3 unsat cores (unsatCore).
-    link: /guide/unsat-core
-    linkText: Unsat Core Diagnosis
   - icon: 🌐
-    title: Browser-Native & Serverless
-    details: Runs locally in browser Web Workers and Node.js with zero Python backend—pairs naturally with on-device LLMs as a mathematical guardrail.
+    title: WebAssembly & Zero Native Setup
+    details: No Python runtime or native C/C++ builds required. Run optimization models directly in Node.js, browsers, and Web Workers.
     link: /getting-started/runtimes
     linkText: Runtime Environments
+  - icon: ✍️
+    title: Algebraic Modeling (expr)
+    details: Write LP, MIP, Convex QP, and SMT models using natural infix math expressions instead of hand-assembling matrices or LP text.
+    link: /guide/expressions
+    linkText: Modeling Expressions
+  - icon: 🧩
+    title: Type-Safe Modeling in TypeScript
+    details: Bind decision variables directly to your application's data types to catch key typos, index mismatches, and type mix-ups at compile time.
+    link: /guide/variables
+    linkText: Variables & Domains
+  - icon: 🔍
+    title: Infeasibility & Conflict Diagnosis
+    details: When constraints conflict and no feasible solution exists, pinpoint which rules contradict each other using built-in HiGHS or Z3.
+    link: /guide/unsat-core
+    linkText: Conflict Diagnosis
+  - icon: ⚙️
+    title: Pluggable Solver Backends
+    details: Formulate once and switch seamlessly between built-in HiGHS, optional Z3 (SMT) and GLPK plugins, or your own custom solver.
+    link: /solvers/
+    linkText: Solver Backends
+  - icon: 🔀
+    title: Large-Scale Decomposition
+    details: Built-in support for Column Generation, Benders Decomposition, LP relaxations, and dual values (shadow prices) for large-scale problems.
+    link: /guide/decomposition
+    linkText: Decomposition Methods
 ---
 
 <div class="washi-home-sections">
