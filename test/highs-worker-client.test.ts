@@ -126,9 +126,10 @@ describe("HiGHS worker failures", () => {
     const loader = await import("../src/modeler/solvers/highs/loader.js");
     vi.spyOn(loader, "resolveBrowserWasmUrl").mockResolvedValue("https://cdn.example.com/highs.wasm");
 
-    const workerClient = await import("../src/modeler/solvers/highs/worker-client.js");
-    const warmupHighs = (workerClient as any).warmupHighs as (opts?: any) => Promise<{ cached: boolean }>;
-    expect(typeof warmupHighs).toBe("function");
+    const { isHighsWarmed, warmupHighs } = await import(
+      "../src/modeler/solvers/highs/worker-client.js"
+    );
+    await expect(isHighsWarmed()).resolves.toBe(false);
 
     const firstWarmup = warmupHighs();
     await vi.waitFor(() => expect(FakeWorker.instances[0]?.messages).toHaveLength(1));
@@ -136,6 +137,7 @@ describe("HiGHS worker failures", () => {
     expect(worker1.messages[0].type).toBe("WARMUP");
     worker1.onmessage?.({ data: { type: "WARMUP_SUCCESS", id: worker1.messages[0].id } });
     await expect(firstWarmup).resolves.toEqual({ cached: false });
+    await expect(isHighsWarmed()).resolves.toBe(true);
 
     // Second warmup on the same healthy worker must short-circuit without posting
     await expect(warmupHighs()).resolves.toEqual({ cached: true });
@@ -143,6 +145,7 @@ describe("HiGHS worker failures", () => {
 
     // Worker crash clears warmed state so retry warms a fresh worker
     worker1.onerror?.({ message: "worker crashed" });
+    await expect(isHighsWarmed()).resolves.toBe(false);
     const retryWarmup = warmupHighs();
     await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(2));
     const worker2 = FakeWorker.instances[1];

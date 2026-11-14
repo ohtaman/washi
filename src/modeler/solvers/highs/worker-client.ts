@@ -142,14 +142,18 @@ function terminateActiveWorkerAndRedispatch(): void {
   }
 }
 
-function getWorker(): Worker | null {
-  if (
-    typeof window === "undefined" ||
-    typeof Worker === "undefined" ||
+function isBrowserWebWorkerAvailable(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof Worker !== "undefined" &&
     // z3-built.js assigns node:worker_threads.Worker onto global.Worker in Node.js;
     // avoid treating it as a browser Web Worker when window is polyfilled (e.g. jsdom/SSR).
-    typeof (Worker as { prototype?: { unref?: unknown } })?.prototype?.unref === "function"
-  ) {
+    typeof (Worker as { prototype?: { unref?: unknown } })?.prototype?.unref !== "function"
+  );
+}
+
+function getWorker(): Worker | null {
+  if (!isBrowserWebWorkerAvailable()) {
     return null;
   }
 
@@ -278,6 +282,23 @@ function sanitizeWorkerOptions(
   }
   workerOptions.wasmUrl = resolvedWasmUrl;
   return workerOptions;
+}
+
+/**
+ * Returns whether the target HiGHS runtime (active Web Worker or main thread)
+ * is already warmed and ready without triggering worker creation or WASM loads.
+ */
+export async function isHighsWarmed(
+  options: SolveOptions & { useWorker?: boolean } = {}
+): Promise<boolean> {
+  if (!shouldUseWorker(options) || !isBrowserWebWorkerAvailable()) {
+    return isHighsCached(options);
+  }
+  if (!workerInstance || !warmedWorker || warmedWorker !== workerInstance) {
+    return false;
+  }
+  const resolvedWasmUrl = await resolveBrowserWasmUrl(options.wasmUrl);
+  return warmedWorkerWasmUrl === resolvedWasmUrl;
 }
 
 /**

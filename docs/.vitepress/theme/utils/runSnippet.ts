@@ -1,4 +1,6 @@
 import { transpileSnippetToJs } from "./transpile";
+import type { SolveOptions } from "../../../../src/modeler/types.ts";
+import type { Solver } from "../../../../src/modeler/solvers/types.ts";
 
 export type SnippetRunPhase = "loading" | "running";
 
@@ -124,6 +126,26 @@ function detectRequiredSolvers(rawCode: string): {
   return { needsHighs, needsZ3, needsGlpk };
 }
 
+function extractCallTarget(
+  modelSolverName: string | undefined,
+  solverOrOptions?: Solver | string | SolveOptions,
+  maybeOptions?: SolveOptions
+): { solverName: string; solveOptions: SolveOptions } {
+  if (typeof solverOrOptions === "string") {
+    return { solverName: solverOrOptions, solveOptions: maybeOptions ?? {} };
+  }
+  if (solverOrOptions && typeof solverOrOptions === "object" && "solve" in solverOrOptions) {
+    return { solverName: solverOrOptions.name, solveOptions: maybeOptions ?? {} };
+  }
+  const opts = solverOrOptions ?? {};
+  const solverChoice = opts.solver;
+  const solverName =
+    typeof solverChoice === "string"
+      ? solverChoice
+      : solverChoice?.name ?? modelSolverName ?? "highs";
+  return { solverName, solveOptions: opts };
+}
+
 /**
  * Transpiles and executes a WaSHI documentation TypeScript/JavaScript snippet
  * in-process against the live WebAssembly modeler with an isolated lexical
@@ -155,14 +177,17 @@ export async function runWashiSnippet(
   };
 
   const { needsHighs, needsZ3, needsGlpk } = detectRequiredSolvers(rawCode);
+  const hasCustomHighsConfig = /\b(?:setHighsWasmUrl|wasmUrl|useWorker)\b/.test(rawCode);
+  const hasCustomZ3Config = /\bsetZ3Assets\b/.test(rawCode);
   const mayNeedLoad =
     !cachedModeler ||
-    (needsHighs && !highsWarmed) ||
-    (needsZ3 && (!cachedZ3Mod || !cachedZ3Mod.isZ3Loaded())) ||
+    (needsHighs && !hasCustomHighsConfig && !highsWarmed) ||
+    (needsZ3 && !hasCustomZ3Config && (!cachedZ3Mod || !cachedZ3Mod.isZ3Loaded())) ||
     (needsGlpk && (!cachedGlpkMod || !cachedGlpkMod.isGlpkLoaded()));
 
   let didLoad = false;
-  let loadTimeMs = 0;
+  let preLoadTimeMs = 0;
+  let inSnippetLoadMs = 0;
   let execStart: number | null = null;
   let solveCalls = 0;
   let totalSolveTimeSec = 0;
@@ -184,14 +209,14 @@ export async function runWashiSnippet(
         didLoad = true;
         cachedZ3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
       }
-      if (typeof window !== "undefined" && !z3AssetsConfigured) {
+      if (typeof window !== "undefined" && !z3AssetsConfigured && !hasCustomZ3Config) {
         cachedZ3Mod.setZ3Assets({
           jsUrl: new URL("/z3-built.js", window.location.origin).href,
           wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
         });
         z3AssetsConfigured = true;
       }
-      if (!cachedZ3Mod.isZ3Loaded()) {
+      if (!hasCustomZ3Config && !cachedZ3Mod.isZ3Loaded()) {
         didLoad = true;
         await cachedZ3Mod.loadZ3();
       }
@@ -208,7 +233,7 @@ export async function runWashiSnippet(
       }
     }
 
-    if (needsHighs) {
+    if (needsHighs && !hasCustomHighsConfig) {
       const { warmupHighs } = await import("../../../../src/modeler/solvers/highs/worker-client.ts");
       const { cached } = await warmupHighs();
       if (!cached) {
@@ -217,28 +242,85 @@ export async function runWashiSnippet(
       highsWarmed = true;
     }
 
-    loadTimeMs = didLoad ? performance.now() - loadStart : 0;
+    preLoadTimeMs = didLoad ? performance.now() - loadStart : 0;
 
     const pendingPromises: Promise<unknown>[] = [];
 
+    const warmSolverForCall = async (
+      modelSolverName: string | undefined,
+      solverOrOptions?: Solver | string | SolveOptions,
+      maybeOptions?: SolveOptions
+    ) => {
+      const { solverName, solveOptions } = extractCallTarget(
+        modelSolverName,
+        solverOrOptions,
+        maybeOptions
+      );
+      if (solverName === "highs") {
+        const { isHighsWarmed, warmupHighs } = await import(
+          "../../../../src/modeler/solvers/highs/worker-client.ts"
+        );
+        if (await isHighsWarmed(solveOptions)) {
+          return;
+        }
+        options.onPhase?.("loading");
+        const warmStart = performance.now();
+        try {
+          const { cached } = await warmupHighs(solveOptions);
+          if (!cached) {
+            didLoad = true;
+            inSnippetLoadMs += performance.now() - warmStart;
+          }
+          if (!solveOptions.wasmUrl && solveOptions.useWorker === undefined && !hasCustomHighsConfig) {
+            highsWarmed = true;
+          } else if (!cached) {
+            highsWarmed = false;
+          }
+        } catch (err) {
+          inSnippetLoadMs += performance.now() - warmStart;
+          throw err;
+        } finally {
+          options.onPhase?.("running");
+        }
+      } else if (solverName === "z3" && hasCustomZ3Config) {
+        const z3Mod =
+          cachedZ3Mod ?? (cachedZ3Mod = await import("../../../../src/modeler/solvers/z3/index.ts"));
+        if (!z3Mod.isZ3Loaded()) {
+          options.onPhase?.("loading");
+          const warmStart = performance.now();
+          try {
+            await z3Mod.loadZ3(solveOptions);
+            didLoad = true;
+          } finally {
+            inSnippetLoadMs += performance.now() - warmStart;
+            options.onPhase?.("running");
+          }
+        }
+      }
+    };
+
+    const trackOperation = <T>(
+      modelInstance: InstanceType<typeof Modeler.Model>,
+      args: [Solver | string | SolveOptions | undefined, SolveOptions | undefined],
+      run: () => Promise<T>
+    ): Promise<T> => {
+      const p = (async () => {
+        await warmSolverForCall(modelInstance.solver?.name, args[0], args[1]);
+        const res = await run();
+        solveCalls++;
+        totalSolveTimeSec += Number.isFinite(modelInstance.runTime) ? modelInstance.runTime : 0;
+        return res;
+      })();
+      pendingPromises.push(p);
+      return p;
+    };
+
     class TrackedModel extends Modeler.Model {
       override solve(...args: Parameters<InstanceType<typeof Modeler.Model>["solve"]>) {
-        const p = super.solve(...args).then((res) => {
-          solveCalls++;
-          totalSolveTimeSec += Number.isFinite(this.runTime) ? this.runTime : 0;
-          return res;
-        });
-        pendingPromises.push(p);
-        return p;
+        return trackOperation(this, [args[0], args[1]], () => super.solve(...args));
       }
       override check(...args: Parameters<InstanceType<typeof Modeler.Model>["check"]>) {
-        const p = super.check(...args).then((res) => {
-          solveCalls++;
-          totalSolveTimeSec += Number.isFinite(this.runTime) ? this.runTime : 0;
-          return res;
-        });
-        pendingPromises.push(p);
-        return p;
+        return trackOperation(this, [args[0], args[1]], () => super.check(...args));
       }
     }
 
@@ -260,11 +342,11 @@ export async function runWashiSnippet(
       await Promise.allSettled(pendingPromises);
     }
 
-    const runTimeMs = performance.now() - execStart;
+    const runTimeMs = Math.max(0, performance.now() - execStart - inSnippetLoadMs);
     return {
       logs: capturedLogs,
       errorMsg: null,
-      loadTimeMs,
+      loadTimeMs: preLoadTimeMs + inSnippetLoadMs,
       solveTimeMs: solveCalls > 0 ? totalSolveTimeSec * 1000 : null,
       runTimeMs,
       wasCached: !didLoad,
@@ -274,9 +356,9 @@ export async function runWashiSnippet(
     return {
       logs: capturedLogs,
       errorMsg: err instanceof Error ? err.message : String(err),
-      loadTimeMs: execStart === null ? now - loadStart : loadTimeMs,
+      loadTimeMs: execStart === null ? now - loadStart : preLoadTimeMs + inSnippetLoadMs,
       solveTimeMs: solveCalls > 0 ? totalSolveTimeSec * 1000 : null,
-      runTimeMs: execStart === null ? 0 : now - execStart,
+      runTimeMs: execStart === null ? 0 : Math.max(0, now - execStart - inSnippetLoadMs),
       wasCached: !didLoad,
     };
   }

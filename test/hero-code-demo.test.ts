@@ -33,7 +33,11 @@ const {
   buildHeroSnippetCode,
   resolveHeroLocale,
 } = HeroExamples;
-const { runWashiSnippet } = RunSnippetModule;
+const {
+  formatSnippetStatus,
+  resetSnippetRunnerStateForTests,
+  runWashiSnippet,
+} = RunSnippetModule;
 const { useComponentTranslations } = LocalesModule;
 
 interface TestNode {
@@ -337,11 +341,9 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
   });
 
   it("separates cold WASM load time from solve time on first run and marks subsequent runs cached", async () => {
-    const { setHighsWasmUrl } = await import("../src/index.js");
-    const resetFn = (RunSnippetModule as any).resetSnippetRunnerStateForTests as (() => void) | undefined;
-    expect(typeof resetFn).toBe("function");
+    const { getHighsWasmUrl, setHighsWasmUrl } = await import("../src/index.js");
     setHighsWasmUrl(null);
-    resetFn!();
+    resetSnippetRunnerStateForTests();
 
     const coldPhases: SnippetRunPhase[] = [];
     const coldRes = await runWashiSnippet(buildHeroSnippetCode("en"), {
@@ -370,7 +372,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     expect(pureJsRes.runTimeMs).toBeGreaterThanOrEqual(0);
 
     // Pure Z3 snippet with named Model + no-arg check() must NOT warm up HiGHS
-    RunSnippetModule.resetSnippetRunnerStateForTests();
+    resetSnippetRunnerStateForTests();
     const workerClientMod = await import("../src/modeler/solvers/highs/worker-client.js");
     const warmupSpy = vi.spyOn(workerClientMod, "warmupHighs");
     try {
@@ -387,7 +389,45 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(warmupSpy).not.toHaveBeenCalled();
     } finally {
       warmupSpy.mockRestore();
-      RunSnippetModule.resetSnippetRunnerStateForTests();
+      resetSnippetRunnerStateForTests();
+    }
+
+    // Snippet with setHighsWasmUrl / custom solve options must configure options before warming HiGHS
+    let wasmUrlAtWarmup: string | null = null;
+    const isWarmedSpy = vi.spyOn(workerClientMod, "isHighsWarmed").mockResolvedValue(false);
+    const customWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockImplementation(async () => {
+      wasmUrlAtWarmup = getHighsWasmUrl();
+      return { cached: false };
+    });
+    const solveStub = vi.spyOn(Model.prototype, "solve").mockResolvedValue("Optimal");
+    try {
+      const customRes = await runWashiSnippet(`
+        setHighsWasmUrl("https://custom.example/highs.wasm");
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        await m.solve({ useWorker: false, wasmUrl: "https://override.example/highs.wasm" });
+      `);
+      expect(customRes.errorMsg).toBeNull();
+      expect(isWarmedSpy).toHaveBeenCalledWith({
+        useWorker: false,
+        wasmUrl: "https://override.example/highs.wasm",
+      });
+      expect(customWarmupSpy).toHaveBeenCalledTimes(1);
+      expect(customWarmupSpy).toHaveBeenCalledWith({
+        useWorker: false,
+        wasmUrl: "https://override.example/highs.wasm",
+      });
+      expect(wasmUrlAtWarmup).toBe("https://custom.example/highs.wasm");
+      expect(solveStub).toHaveBeenCalledWith({
+        useWorker: false,
+        wasmUrl: "https://override.example/highs.wasm",
+      });
+    } finally {
+      isWarmedSpy.mockRestore();
+      customWarmupSpy.mockRestore();
+      solveStub.mockRestore();
+      setHighsWasmUrl(null);
+      resetSnippetRunnerStateForTests();
     }
   });
 
@@ -462,7 +502,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
         "./heroExamples.data": { data: mockHighlighted },
         "../utils/runSnippet": {
           runWashiSnippet: runSnippetMock,
-          formatSnippetStatus: (RunSnippetModule as any).formatSnippetStatus,
+          formatSnippetStatus,
         },
         "../locales/index": LocalesModule,
       }
@@ -521,7 +561,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(typeof capturedOptions?.onPhase).toBe("function");
       expect(runBtn.props.disabled).toBe(true);
       expect(runBtn.hasClass("solving")).toBe(true);
-      expect(runBtn.textContent).toContain(`⏳ ${(useComponentTranslations("ja").dict.codeRunner as any).loading}`);
+      expect(runBtn.textContent).toContain(`⏳ ${useComponentTranslations("ja").dict.codeRunner.loading}`);
       expect(root.findByClass("hero-demo-output")?.hasClass("is-stale")).toBe(true);
       expect(root.findByClass("hero-idle-note")).toBeNull();
 
@@ -555,8 +595,8 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(statusBadge!.props["aria-live"]).toBe("polite");
       expect(statusBadge!.textContent).toContain("412.5 ms");
       expect(statusBadge!.textContent).toContain("1.8 ms");
-      expect(statusBadge!.textContent).toContain((useComponentTranslations("ja").dict.codeRunner as any).loadLabel);
-      expect(statusBadge!.textContent).toContain((useComponentTranslations("ja").dict.codeRunner as any).solveLabel);
+      expect(statusBadge!.textContent).toContain(useComponentTranslations("ja").dict.codeRunner.loadLabel);
+      expect(statusBadge!.textContent).toContain(useComponentTranslations("ja").dict.codeRunner.solveLabel);
 
       const liveTag = root.findByClass("hero-console-tag")!;
       expect(liveTag.hasClass("is-live")).toBe(true);
@@ -595,7 +635,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
 
       expect(root.findByRole("alert")).toBeNull();
       const cachedStatus = root.findByRole("status")?.textContent ?? "";
-      expect(cachedStatus).toContain((useComponentTranslations("ja").dict.codeRunner as any).cachedLabel);
+      expect(cachedStatus).toContain(useComponentTranslations("ja").dict.codeRunner.cachedLabel);
       expect(cachedStatus).toContain("1.5 ms");
       expect(cachedStatus).not.toContain("0.0 ms");
       expect(root.findByClass("hero-console-tag")?.hasClass("is-live")).toBe(true);
@@ -655,7 +695,7 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
         vitepress: { useData: () => ({ lang: ref("en-US") }) },
         "../utils/runSnippet": {
           runWashiSnippet: runSnippetMock,
-          formatSnippetStatus: (RunSnippetModule as any).formatSnippetStatus,
+          formatSnippetStatus,
         },
         "../locales/index": LocalesModule,
       }
