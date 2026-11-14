@@ -76,3 +76,10 @@ export function terminateGlpk(): void {
 export function resetGlpkCache(): void {
   terminateGlpk();
 }
+
+/**
+ * Returns whether GLPK has already been initialized in the current runtime.
+ */
+export function isGlpkLoaded(): boolean {
+  return Boolean(currentGlpkInstance);
+}

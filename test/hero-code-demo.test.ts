@@ -19,7 +19,11 @@ import heroExamplesLoader, {
   type HeroHighlightedByLocale,
 } from "../docs/.vitepress/theme/components/heroExamples.data.js";
 import * as RunSnippetModule from "../docs/.vitepress/theme/utils/runSnippet.js";
-import type { SnippetRunResult } from "../docs/.vitepress/theme/utils/runSnippet.js";
+import type {
+  SnippetRunOptions,
+  SnippetRunPhase,
+  SnippetRunResult,
+} from "../docs/.vitepress/theme/utils/runSnippet.js";
 import * as LocalesModule from "../docs/.vitepress/theme/locales/index.js";
 import { EXAMPLES } from "../examples/web-demo/src/presets/index.js";
 
@@ -29,7 +33,11 @@ const {
   buildHeroSnippetCode,
   resolveHeroLocale,
 } = HeroExamples;
-const { runWashiSnippet } = RunSnippetModule;
+const {
+  formatSnippetStatus,
+  resetSnippetRunnerStateForTests,
+  runWashiSnippet,
+} = RunSnippetModule;
 const { useComponentTranslations } = LocalesModule;
 
 interface TestNode {
@@ -324,6 +332,338 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(res.errorMsg).toBeNull();
       expect(res.logs).toEqual([`Optimal: $${bestCost}/h`, JSON.stringify(optimalPairs[0])]);
       expect(res.logs).toEqual([...HERO_INITIAL_LOGS]);
+      expect(typeof res.loadTimeMs).toBe("number");
+      expect(res.loadTimeMs).toBeGreaterThanOrEqual(0);
+      expect(typeof res.solveTimeMs).toBe("number");
+      expect(res.solveTimeMs!).toBeGreaterThanOrEqual(0);
+      expect(typeof res.wasCached).toBe("boolean");
+    }
+  });
+
+  it("separates cold WASM load time from solve time on first run and marks subsequent runs cached", async () => {
+    const { getHighsWasmUrl, setHighsWasmUrl } = await import("../src/index.js");
+    setHighsWasmUrl(null);
+    resetSnippetRunnerStateForTests();
+
+    const coldPhases: SnippetRunPhase[] = [];
+    const coldRes = await runWashiSnippet(buildHeroSnippetCode("en"), {
+      onPhase: (phase) => coldPhases.push(phase),
+    });
+    expect(coldRes.errorMsg).toBeNull();
+    expect(coldPhases[0]).toBe("loading");
+    expect(coldPhases[coldPhases.length - 1]).toBe("running");
+    expect(coldRes.wasCached).toBe(false);
+    expect(coldRes.loadTimeMs).toBeGreaterThan(0);
+    expect(coldRes.solveTimeMs).not.toBeNull();
+    expect(coldRes.solveTimeMs!).toBeGreaterThanOrEqual(0);
+
+    const warmPhases: SnippetRunPhase[] = [];
+    const warmRes = await runWashiSnippet(buildHeroSnippetCode("en"), {
+      onPhase: (phase) => warmPhases.push(phase),
+    });
+    expect(warmRes.errorMsg).toBeNull();
+    expect(warmPhases).toEqual(["running"]);
+    expect(warmRes.wasCached).toBe(true);
+    expect(warmRes.loadTimeMs).toBe(0);
+    expect(warmRes.solveTimeMs).not.toBeNull();
+
+    const pureJsRes = await runWashiSnippet('console.log("no model");');
+    expect(pureJsRes.errorMsg).toBeNull();
+    expect(pureJsRes.solveTimeMs).toBeNull();
+    expect(pureJsRes.runTimeMs).toBeGreaterThanOrEqual(0);
+
+    // Pure Z3 snippet with named Model + no-arg check() must NOT warm up HiGHS
+    resetSnippetRunnerStateForTests();
+    const workerClientMod = await import("../src/modeler/solvers/highs/worker-client.js");
+    const warmupSpy = vi.spyOn(workerClientMod, "warmupHighs");
+    try {
+      const z3OnlyRes = await runWashiSnippet(`
+        const m = new Model("PolicyCheck", { solver: "z3" });
+        const a = m.continuous("a", { lb: 0, ub: 5 });
+        m.constraint(expr\`\${a} >= 2\`);
+        const res = await m.check();
+        console.log(res.status);
+      `);
+      expect(z3OnlyRes.errorMsg).toBeNull();
+      expect(z3OnlyRes.logs).toEqual(["Sat"]);
+      expect(z3OnlyRes.solveTimeMs).not.toBeNull();
+      expect(warmupSpy).not.toHaveBeenCalled();
+    } finally {
+      warmupSpy.mockRestore();
+      resetSnippetRunnerStateForTests();
+    }
+
+    // Snippet with setHighsWasmUrl / custom solve options must configure options before warming HiGHS
+    const { HighsSolver } = await import("../src/index.js");
+    let wasmUrlAtWarmup: string | null = null;
+    const isWarmedSpy = vi.spyOn(workerClientMod, "isHighsWarmed").mockResolvedValue(false);
+    const customWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockImplementation(async () => {
+      wasmUrlAtWarmup = getHighsWasmUrl();
+      return { cached: false };
+    });
+    const solveStub = vi.spyOn(HighsSolver.prototype, "solve").mockResolvedValue({
+      status: "Optimal",
+      objectiveValue: 0,
+      values: { x: 0 },
+      runTime: 0.001,
+    });
+    try {
+      const customRes = await runWashiSnippet(`
+        setHighsWasmUrl("https://custom.example/highs.wasm");
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        await m.solve({ useWorker: false, wasmUrl: "https://override.example/highs.wasm" });
+      `);
+      expect(customRes.errorMsg).toBeNull();
+      expect(isWarmedSpy).toHaveBeenCalledWith({
+        useWorker: false,
+        wasmUrl: "https://override.example/highs.wasm",
+      });
+      expect(customWarmupSpy).toHaveBeenCalledTimes(1);
+      expect(customWarmupSpy).toHaveBeenCalledWith({
+        useWorker: false,
+        wasmUrl: "https://override.example/highs.wasm",
+      });
+      expect(wasmUrlAtWarmup).toBe("https://custom.example/highs.wasm");
+      expect(solveStub).toHaveBeenCalledWith(expect.any(Object), {
+        useWorker: false,
+        wasmUrl: "https://override.example/highs.wasm",
+      });
+
+      // Solver-instance defaults (new HighsSolver({ useWorker: false, wasmUrl })) must merge into warmup
+      isWarmedSpy.mockClear();
+      customWarmupSpy.mockClear();
+      solveStub.mockClear();
+      const instanceRes = await runWashiSnippet(`
+        const m = new Model({
+          solver: new HighsSolver({
+            useWorker: false,
+            wasmUrl: "https://instance.example/highs.wasm",
+          }),
+        });
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        await m.solve();
+        await m.solve({ wasmUrl: "https://call-override.example/highs.wasm" });
+      `);
+      expect(instanceRes.errorMsg).toBeNull();
+      expect(isWarmedSpy).toHaveBeenNthCalledWith(1, {
+        useWorker: false,
+        wasmUrl: "https://instance.example/highs.wasm",
+      });
+      expect(customWarmupSpy).toHaveBeenNthCalledWith(1, {
+        useWorker: false,
+        wasmUrl: "https://instance.example/highs.wasm",
+      });
+      expect(isWarmedSpy).toHaveBeenNthCalledWith(2, {
+        useWorker: false,
+        wasmUrl: "https://call-override.example/highs.wasm",
+      });
+      expect(customWarmupSpy).toHaveBeenNthCalledWith(2, {
+        useWorker: false,
+        wasmUrl: "https://call-override.example/highs.wasm",
+      });
+    } finally {
+      isWarmedSpy.mockRestore();
+      customWarmupSpy.mockRestore();
+      solveStub.mockRestore();
+      setHighsWasmUrl(null);
+      resetSnippetRunnerStateForTests();
+    }
+
+    // Comment mentioning z3 must NOT trigger setZ3Assets/loadZ3; per-call z3JsUrl/z3WasmUrl must pass through
+    const z3Mod = await import("../src/modeler/solvers/z3/index.js");
+    const setZ3AssetsSpy = vi.spyOn(z3Mod, "setZ3Assets");
+    const loadZ3Spy = vi.spyOn(z3Mod, "loadZ3");
+    try {
+      z3Mod.resetZ3LoaderCache();
+      vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
+      const commentZ3Res = await runWashiSnippet(`
+        // Optional alternative: const res = await m.check({ solver: "z3" });
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        m.objective(maximize(x));
+        await m.solve();
+      `);
+      expect(commentZ3Res.errorMsg).toBeNull();
+      expect(setZ3AssetsSpy).not.toHaveBeenCalled();
+      expect(loadZ3Spy).not.toHaveBeenCalled();
+
+      const z3OverrideRes = await runWashiSnippet(`
+        const m = new Model({ solver: "z3" });
+        const a = m.continuous("a", { lb: 0, ub: 5 });
+        m.constraint(expr\`\${a} >= 1\`);
+        const res = await m.check({
+          z3JsUrl: "https://cdn.example/z3-built.js",
+          z3WasmUrl: "https://cdn.example/z3-built.wasm",
+        });
+        console.log(res.status);
+      `);
+      expect(z3OverrideRes.errorMsg).toBeNull();
+      expect(z3OverrideRes.logs).toEqual(["Sat"]);
+      expect(setZ3AssetsSpy).not.toHaveBeenCalled();
+      expect(loadZ3Spy).toHaveBeenCalledWith({
+        z3JsUrl: "https://cdn.example/z3-built.js",
+        z3WasmUrl: "https://cdn.example/z3-built.wasm",
+      });
+    } finally {
+      setZ3AssetsSpy.mockRestore();
+      loadZ3Spy.mockRestore();
+      z3Mod.resetZ3LoaderCache();
+      resetSnippetRunnerStateForTests();
+    }
+
+    // Normalized solver instance names ("HiGHS", "GLPK") and setDefaultSolver("z3") must dispatch warmup accurately
+    const { setDefaultSolver } = await import("../src/index.js");
+    const glpkMod = await import("../src/modeler/solvers/glpk/index.js");
+    vi.unstubAllGlobals();
+    glpkMod.resetGlpkCache();
+    z3Mod.resetZ3LoaderCache();
+    const isHighsWarmedStub = vi.spyOn(workerClientMod, "isHighsWarmed").mockResolvedValue(false);
+    const highsWarmupSpy = vi.spyOn(workerClientMod, "warmupHighs").mockResolvedValue({ cached: false });
+    const glpkGetSpy = vi.spyOn(glpkMod, "getGlpk");
+    const z3LoadDefaultSpy = vi.spyOn(z3Mod, "loadZ3");
+    const highsSolveStub = vi.spyOn(HighsSolver.prototype, "solve").mockResolvedValue({
+      status: "Optimal",
+      objectiveValue: 0,
+      values: {},
+      runTime: 0.001,
+    });
+    const glpkSolveStub = vi.spyOn(glpkMod.GLPKSolver.prototype, "solve").mockResolvedValue({
+      status: "Optimal",
+      objectiveValue: 0,
+      values: {},
+      runTime: 0.001,
+    });
+    const z3CheckStub = vi.spyOn(z3Mod.Z3Solver.prototype, "check").mockResolvedValue({
+      status: "Sat",
+      values: {},
+      runTime: 0.001,
+    });
+    try {
+      const explicitHighsRes = await runWashiSnippet(`
+        const m = new Model({ solver: "highs" });
+        await m.solve();
+      `);
+      expect(explicitHighsRes.errorMsg).toBeNull();
+      expect(highsWarmupSpy).toHaveBeenCalledTimes(1);
+
+      const explicitGlpkRes = await runWashiSnippet(`
+        const m = new Model({ solver: "glpk" });
+        await m.solve();
+      `);
+      expect(explicitGlpkRes.errorMsg).toBeNull();
+      expect(glpkGetSpy).toHaveBeenCalledTimes(1);
+
+      highsWarmupSpy.mockClear();
+      const defaultZ3Res = await runWashiSnippet(`
+        setDefaultSolver("z3");
+        const m = new Model();
+        await m.check();
+      `);
+      expect(defaultZ3Res.errorMsg).toBeNull();
+      expect(highsWarmupSpy).not.toHaveBeenCalled();
+      expect(z3LoadDefaultSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      setDefaultSolver("highs");
+      isHighsWarmedStub.mockRestore();
+      highsWarmupSpy.mockRestore();
+      glpkGetSpy.mockRestore();
+      z3LoadDefaultSpy.mockRestore();
+      highsSolveStub.mockRestore();
+      glpkSolveStub.mockRestore();
+      z3CheckStub.mockRestore();
+      glpkMod.resetGlpkCache();
+      z3Mod.resetZ3LoaderCache();
+      resetSnippetRunnerStateForTests();
+    }
+
+    // Synchronous operation entry must capture startRevision/opId and clear stale state before async warmup awaits
+    const inFlightRes = await runWashiSnippet(`
+      const m = new Model("SyncEntryTest");
+      const x = m.continuous("x", { lb: 0, ub: 10 });
+      m.objective(maximize(x));
+      await m.solve();
+      console.log("before:", m.status, x.value);
+
+      const pendingSolve = m.solve();
+      console.log("during_sync:", m.status, x.value);
+      m.constraint(expr\`\${x} <= 1\`, "late_mutation");
+      try {
+        await pendingSolve;
+        console.log("unexpected_success");
+      } catch (err) {
+        console.log("mutated_error:", err.message);
+      }
+
+      const z3Model = new Model("SyncCheckTest", { solver: "z3" });
+      const a = z3Model.continuous("a", { lb: 0, ub: 5 });
+      const pendingCheck = z3Model.check();
+      z3Model.constraint(expr\`\${a} >= 2\`, "late_check_mutation");
+      try {
+        await pendingCheck;
+        console.log("unexpected_check_success");
+      } catch (err) {
+        console.log("check_mutated_error:", err.message);
+      }
+
+      const m2 = new Model("SupersededTest");
+      const y = m2.continuous("y", { lb: 0, ub: 5 });
+      m2.objective(maximize(y));
+      const first = m2.solve();
+      const second = m2.solve();
+      const settled = await Promise.allSettled([first, second]);
+      console.log("superseded:", settled[0].status, settled[1].status, settled[1].status === "fulfilled" ? settled[1].value : "");
+    `);
+    expect(inFlightRes.errorMsg).toBeNull();
+    expect(inFlightRes.logs[0]).toBe("before: Optimal 10");
+    expect(inFlightRes.logs[1]).toBe("during_sync: NotSolved null");
+    expect(inFlightRes.logs[2]).toContain("mutated_error:");
+    expect(inFlightRes.logs[2]).toContain("was modified while solve() was in progress");
+    expect(inFlightRes.logs[3]).toContain("check_mutated_error:");
+    expect(inFlightRes.logs[3]).toContain("was modified while check() was in progress");
+    expect(inFlightRes.logs[4]).toBe("superseded: rejected fulfilled Optimal");
+
+    // Aborting during cold HiGHS worker warmup must terminate the stalled worker and settle interrupted immediately
+    vi.resetModules();
+    const { runWashiSnippet: runFreshSnippet, resetSnippetRunnerStateForTests: resetFreshRunner } =
+      await import("../docs/.vitepress/theme/utils/runSnippet.js");
+    const terminateSpy = vi.fn();
+    let warmupsPosted = 0;
+    class StalledWarmupWorker {
+      onmessage: ((event: unknown) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      onmessageerror: (() => void) | null = null;
+      terminate = terminateSpy;
+      postMessage(data: { type?: string }) {
+        if (data?.type === "WARMUP") {
+          warmupsPosted++;
+        }
+      }
+    }
+    vi.stubGlobal("window", {
+      origin: "https://washi.ohtaman.dev",
+      location: { origin: "https://washi.ohtaman.dev", protocol: "https:" },
+    });
+    vi.stubGlobal("Worker", StalledWarmupWorker);
+    try {
+      const abortWarmupRes = await runFreshSnippet(`
+        const m = new Model("AbortDuringWarmup");
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        m.objective(maximize(x));
+        const ac = new AbortController();
+        const solvePromise = m.solve({ signal: ac.signal });
+        setTimeout(() => ac.abort(), 20);
+        const status = await solvePromise;
+        console.log("aborted_status:", status, m.terminationStatus);
+      `);
+      expect(abortWarmupRes.errorMsg).toBeNull();
+      expect(warmupsPosted).toBe(1);
+      expect(terminateSpy).toHaveBeenCalledOnce();
+      expect(abortWarmupRes.logs).toEqual(["aborted_status: Unknown Interrupted"]);
+    } finally {
+      vi.unstubAllGlobals();
+      resetFreshRunner();
+      vi.resetModules();
     }
   });
 
@@ -385,7 +725,9 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       ja: '<pre class="vp-code"><code>// JA CloudSizing</code></pre>',
       zh: '<pre class="vp-code"><code>// ZH CloudSizing</code></pre>',
     };
-    const runSnippetMock = vi.fn<(rawCode: string) => Promise<SnippetRunResult>>();
+    const runSnippetMock = vi.fn<
+      (rawCode: string, options?: SnippetRunOptions) => Promise<SnippetRunResult>
+    >();
 
     const HeroCodeDemo = compileVueSfc(
       "docs/.vitepress/theme/components/HeroCodeDemo.vue",
@@ -394,7 +736,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
         vitepress: { useData: () => ({ lang }) },
         "./heroExamples": HeroExamples,
         "./heroExamples.data": { data: mockHighlighted },
-        "../utils/runSnippet": { runWashiSnippet: runSnippetMock },
+        "../utils/runSnippet": {
+          runWashiSnippet: runSnippetMock,
+          formatSnippetStatus,
+        },
         "../locales/index": LocalesModule,
       }
     );
@@ -431,9 +776,14 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(root.findByClass("hero-demo-code-inner")?.innerHTML).toBe(mockHighlighted.ja);
       expect(runSnippetMock).not.toHaveBeenCalled();
 
-      // 3. Click Run: enters in-flight running state and blocks duplicate concurrent clicks
+      // 3. Click Run: enters in-flight loading -> running states and blocks duplicate concurrent clicks
       const deferredRun = createDeferred<SnippetRunResult>();
-      runSnippetMock.mockReturnValueOnce(deferredRun.promise);
+      let capturedOptions: SnippetRunOptions | undefined;
+      runSnippetMock.mockImplementationOnce(async (_code, options) => {
+        capturedOptions = options;
+        options?.onPhase?.("loading");
+        return deferredRun.promise;
+      });
 
       const runBtn = root.findByClass("hero-solve-btn")!;
       expect(runBtn.props.disabled).toBe(false);
@@ -443,22 +793,31 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       await nextTick();
 
       expect(runSnippetMock).toHaveBeenCalledTimes(1);
-      expect(runSnippetMock).toHaveBeenLastCalledWith(buildHeroSnippetCode("ja"));
+      expect(runSnippetMock.mock.calls[0][0]).toBe(buildHeroSnippetCode("ja"));
+      expect(typeof capturedOptions?.onPhase).toBe("function");
       expect(runBtn.props.disabled).toBe(true);
       expect(runBtn.hasClass("solving")).toBe(true);
-      expect(runBtn.textContent).toContain("⏳");
+      expect(runBtn.textContent).toContain(`⏳ ${useComponentTranslations("ja").dict.codeRunner.loading}`);
       expect(root.findByClass("hero-demo-output")?.hasClass("is-stale")).toBe(true);
       expect(root.findByClass("hero-idle-note")).toBeNull();
+
+      // Transition from loading -> running updates the button label
+      capturedOptions?.onPhase?.("running");
+      await nextTick();
+      expect(runBtn.textContent).toContain(`⏳ ${useComponentTranslations("ja").dict.codeRunner.running}`);
 
       // Duplicate click while running must be ignored
       await runBtn.trigger("click");
       expect(runSnippetMock).toHaveBeenCalledTimes(1);
 
-      // Resolve live execution
+      // Resolve live cold execution: load time and solve time displayed separately
       deferredRun.resolve({
         logs: ["Optimal: $140/h", '{"small":2,"large":2}'],
         errorMsg: null,
-        runTimeMs: 14.26,
+        loadTimeMs: 412.54,
+        solveTimeMs: 1.82,
+        runTimeMs: 2.34,
+        wasCached: false,
       });
       await clickPromise;
       await nextTick();
@@ -470,7 +829,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       const statusBadge = root.findByRole("status");
       expect(statusBadge).not.toBeNull();
       expect(statusBadge!.props["aria-live"]).toBe("polite");
-      expect(statusBadge!.textContent).toContain("14.3 ms");
+      expect(statusBadge!.textContent).toContain("412.5 ms");
+      expect(statusBadge!.textContent).toContain("1.8 ms");
+      expect(statusBadge!.textContent).toContain(useComponentTranslations("ja").dict.codeRunner.loadLabel);
+      expect(statusBadge!.textContent).toContain(useComponentTranslations("ja").dict.codeRunner.solveLabel);
 
       const liveTag = root.findByClass("hero-console-tag")!;
       expect(liveTag.hasClass("is-live")).toBe(true);
@@ -483,7 +845,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       runSnippetMock.mockResolvedValueOnce({
         logs: [],
         errorMsg: "Failed to fetch highs.wasm",
-        runTimeMs: 3.2,
+        loadTimeMs: 3.2,
+        solveTimeMs: null,
+        runTimeMs: 0,
+        wasCached: false,
       });
       await runBtn.trigger("click");
 
@@ -493,16 +858,22 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       expect(root.findByRole("status")).toBeNull();
       expect(root.findByClass("hero-console-tag")?.hasClass("is-live")).toBe(false);
 
-      // 5. Retry recovery clears alert and restores live state
+      // 5. Retry recovery (cached) clears alert, restores live state, and indicates cached load + solve time
       runSnippetMock.mockResolvedValueOnce({
         logs: ["Optimal: $140/h", '{"small":2,"large":2}'],
         errorMsg: null,
-        runTimeMs: 8.4,
+        loadTimeMs: 0,
+        solveTimeMs: 1.54,
+        runTimeMs: 2.1,
+        wasCached: true,
       });
       await runBtn.trigger("click");
 
       expect(root.findByRole("alert")).toBeNull();
-      expect(root.findByRole("status")?.textContent).toContain("8.4 ms");
+      const cachedStatus = root.findByRole("status")?.textContent ?? "";
+      expect(cachedStatus).toContain(useComponentTranslations("ja").dict.codeRunner.cachedLabel);
+      expect(cachedStatus).toContain("1.5 ms");
+      expect(cachedStatus).not.toContain("0.0 ms");
       expect(root.findByClass("hero-console-tag")?.hasClass("is-live")).toBe(true);
     } finally {
       unmount();
@@ -549,14 +920,19 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
 
   it("mounts CodeRunner.vue symmetrically: defers execution by default, honors autorun, and renders slot output and errors", async () => {
     vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
-    const runSnippetMock = vi.fn<(rawCode: string) => Promise<SnippetRunResult>>();
+    const runSnippetMock = vi.fn<
+      (rawCode: string, options?: SnippetRunOptions) => Promise<SnippetRunResult>
+    >();
 
     const CodeRunner = compileVueSfc(
       "docs/.vitepress/theme/components/CodeRunner.vue",
       {
         vue: Vue,
         vitepress: { useData: () => ({ lang: ref("en-US") }) },
-        "../utils/runSnippet": { runWashiSnippet: runSnippetMock },
+        "../utils/runSnippet": {
+          runWashiSnippet: runSnippetMock,
+          formatSnippetStatus,
+        },
         "../locales/index": LocalesModule,
       }
     );
@@ -576,20 +952,28 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       runSnippetMock.mockResolvedValueOnce({
         logs: ["hello washi"],
         errorMsg: null,
+        loadTimeMs: 42.0,
+        solveTimeMs: null,
         runTimeMs: 5.5,
+        wasCached: false,
       });
       await root.findByClass("washi-solve-btn")!.trigger("click");
 
       expect(runSnippetMock).toHaveBeenCalledTimes(1);
-      expect(runSnippetMock).toHaveBeenLastCalledWith(sampleSnippet);
+      expect(runSnippetMock.mock.calls[0][0]).toBe(sampleSnippet);
       expect(root.findByClass("runner-output-panel")).not.toBeNull();
       expect(root.findByClass("console-pre")?.textContent).toBe("hello washi");
+      expect(root.findByClass("runner-status-meta")?.textContent).toContain("42.0 ms");
+      expect(root.findByClass("runner-status-meta")?.textContent).toContain("5.5 ms");
 
       // Re-run with runtime error renders .error-text cleanly
       runSnippetMock.mockResolvedValueOnce({
         logs: [],
         errorMsg: "snippet failed",
+        loadTimeMs: 0,
+        solveTimeMs: null,
         runTimeMs: 1.2,
+        wasCached: true,
       });
       await root.findByClass("washi-solve-btn")!.trigger("click");
       expect(root.findByClass("error-text")?.textContent).toBe("Error: snippet failed");
@@ -601,7 +985,10 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     runSnippetMock.mockResolvedValueOnce({
       logs: ["autorun ok"],
       errorMsg: null,
-      runTimeMs: 2.0,
+      loadTimeMs: 0,
+      solveTimeMs: 2.0,
+      runTimeMs: 2.3,
+      wasCached: true,
     });
     const autoMounted = mountComponent(CodeRunner, { autorun: true }, slots);
     try {

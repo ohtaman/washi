@@ -342,8 +342,10 @@ export class Z3Solver implements Solver {
       return {
         status: "Unknown",
         values: {},
+        runTime: 0,
       };
     }
+    const startTime = performance.now();
     const ctx = new Context(`check_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     const s = new ctx.Solver();
     const trans = this.createContextTranslator(ctx);
@@ -385,6 +387,7 @@ export class Z3Solver implements Solver {
       return {
         status: "Unknown",
         values: {},
+        runTime: (performance.now() - startTime) / 1000,
       };
     }
 
@@ -410,6 +413,7 @@ export class Z3Solver implements Solver {
       return {
         status: "Sat",
         values,
+        runTime: (performance.now() - startTime) / 1000,
       };
     } else if (statusStr === "unsat") {
       const coreVector = s.unsatCore();
@@ -424,11 +428,13 @@ export class Z3Solver implements Solver {
         status: "Unsat",
         values: {},
         unsatCore,
+        runTime: (performance.now() - startTime) / 1000,
       };
     } else {
       return {
         status: "Unknown",
         values: {},
+        runTime: (performance.now() - startTime) / 1000,
       };
     }
   }
@@ -488,11 +494,11 @@ export class Z3Solver implements Solver {
 
       const isSat = checkRes.status === "Sat";
       const objVal = isSat ? (obj?.constant ?? 0) : null;
+      const runTime = checkRes.runTime ?? (performance.now() - startTime) / 1000;
       if (options.onProgress && !options.signal?.aborted) {
-        const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
-          elapsedTime: elapsed,
-          elapsedSeconds: elapsed,
+          elapsedTime: runTime,
+          elapsedSeconds: runTime,
           ...(typeof objVal === "number" && Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
         });
       }
@@ -503,6 +509,7 @@ export class Z3Solver implements Solver {
           hasPrimalSolution: isSat,
           objectiveValue: objVal,
           values: isSat ? numericValues : {},
+          runTime,
           ...(isSat && Object.keys(boolValues).length > 0 ? { boolValues } : {}),
         };
       }
@@ -519,6 +526,7 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: isSat,
         objectiveValue: objVal,
         values: isSat ? numericValues : {},
+        runTime,
         ...(isSat && Object.keys(boolValues).length > 0 ? { boolValues } : {}),
       };
     }
@@ -532,8 +540,10 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
+        runTime: 0,
       };
     }
+    const solveStartTime = performance.now();
     const ctx = new Context(`opt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
     const opt = new ctx.Optimize();
     const trans = this.createContextTranslator(ctx);
@@ -575,11 +585,13 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
+        runTime: (performance.now() - solveStartTime) / 1000,
       };
     }
 
     const checkRes = await this.runZ3CheckWithErrorGuard(opt, instance);
     const statusStr = checkRes.toString();
+    const solveElapsed = (performance.now() - solveStartTime) / 1000;
 
     if (statusStr === "sat") {
       const z3Model = opt.model();
@@ -622,12 +634,13 @@ export class Z3Solver implements Solver {
         // Ignore if bound inspection is unavailable
       }
 
+      const postSolveElapsed = (performance.now() - solveStartTime) / 1000;
+
       if (isUnbounded) {
         if (options.onProgress) {
-          const elapsed = (performance.now() - startTime) / 1000;
           options.onProgress({
-            elapsedTime: elapsed,
-            elapsedSeconds: elapsed,
+            elapsedTime: postSolveElapsed,
+            elapsedSeconds: postSolveElapsed,
             ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
           });
         }
@@ -637,16 +650,16 @@ export class Z3Solver implements Solver {
           hasPrimalSolution: true,
           objectiveValue: objVal,
           values,
+          runTime: postSolveElapsed,
           ...(Object.keys(boolValues).length > 0 ? { boolValues } : {}),
         };
       }
 
       if (isUnattained) {
         if (options.onProgress) {
-          const elapsed = (performance.now() - startTime) / 1000;
           options.onProgress({
-            elapsedTime: elapsed,
-            elapsedSeconds: elapsed,
+            elapsedTime: postSolveElapsed,
+            elapsedSeconds: postSolveElapsed,
           });
         }
         return {
@@ -655,14 +668,14 @@ export class Z3Solver implements Solver {
           hasPrimalSolution: false,
           objectiveValue: null,
           values: {},
+          runTime: postSolveElapsed,
         };
       }
 
       if (options.onProgress) {
-        const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
-          elapsedTime: elapsed,
-          elapsedSeconds: elapsed,
+          elapsedTime: postSolveElapsed,
+          elapsedSeconds: postSolveElapsed,
           ...(Number.isFinite(objVal) ? { objectiveValue: objVal } : {}),
         });
       }
@@ -673,14 +686,14 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: true,
         objectiveValue: objVal,
         values,
+        runTime: postSolveElapsed,
         ...(Object.keys(boolValues).length > 0 ? { boolValues } : {}),
       };
     } else if (statusStr === "unsat") {
       if (options.onProgress) {
-        const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
-          elapsedTime: elapsed,
-          elapsedSeconds: elapsed,
+          elapsedTime: solveElapsed,
+          elapsedSeconds: solveElapsed,
         });
       }
       return {
@@ -689,13 +702,13 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
+        runTime: solveElapsed,
       };
     } else if (statusStr === "unknown") {
       if (options.onProgress) {
-        const elapsed = (performance.now() - startTime) / 1000;
         options.onProgress({
-          elapsedTime: elapsed,
-          elapsedSeconds: elapsed,
+          elapsedTime: solveElapsed,
+          elapsedSeconds: solveElapsed,
         });
       }
       return {
@@ -704,6 +717,7 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
+        runTime: solveElapsed,
       };
     } else {
       return {
@@ -712,6 +726,7 @@ export class Z3Solver implements Solver {
         hasPrimalSolution: false,
         objectiveValue: null,
         values: {},
+        runTime: solveElapsed,
       };
     }
   }

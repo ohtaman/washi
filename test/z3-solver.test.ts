@@ -323,6 +323,26 @@ describe("Z3Solver (SMT & SAT & MIP)", () => {
 
     await killZ3Threads();
   });
+
+  it("reports positive finite runTime excluding WASM load on both check() and solve()", async () => {
+    const mCheck = new Model({ solver: "z3" });
+    const a = mCheck.bool("a");
+    mCheck.constraint(a);
+    const checkRes = await mCheck.check();
+    expect(checkRes.status).toBe("Sat");
+    expect(typeof checkRes.runTime).toBe("number");
+    expect(checkRes.runTime).toBeGreaterThan(0);
+    expect(mCheck.runTime).toBe(checkRes.runTime);
+
+    const mSolve = new Model({ solver: "z3" });
+    const x = mSolve.integer("x", { lb: 0, ub: 5 });
+    mSolve.objective(maximize(x));
+    const status = await mSolve.solve();
+    expect(status).toBe("Optimal");
+    expect(mSolve.runTime).toBeGreaterThan(0);
+
+    await killZ3Threads();
+  });
 });
 
 

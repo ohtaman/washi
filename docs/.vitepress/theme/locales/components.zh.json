@@ -1,8 +1,13 @@
 {
   "codeRunner": {
+    "loading": "加载 WaSHI...",
     "running": "运行中...",
     "run": "运行代码",
     "executed": "执行完成",
+    "loadLabel": "加载",
+    "cachedLabel": "已缓存",
+    "solveLabel": "求解",
+    "runLabel": "运行",
     "openPlayground": "在 Playground 中打开 →",
     "output": "执行输出 (stdout)"
   },

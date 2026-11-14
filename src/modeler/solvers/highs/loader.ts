@@ -17,6 +17,7 @@ export { HIGHS_STATUS_NAMES, HIGHS_CONSTANTS, HighsUnsupportedOptionError, Highs
 
 let cachedHighsPromise: Promise<HighsInstance> | null = null;
 let cachedWasmKey: string | null = null;
+let cachedHighsReadyKey: string | null = null;
 let customWasmUrl: string | null = null;
 
 export function setHighsWasmUrl(url: string | null) {
@@ -24,6 +25,7 @@ export function setHighsWasmUrl(url: string | null) {
   // Invalidate cache if wasm url changes before load
   cachedHighsPromise = null;
   cachedWasmKey = null;
+  cachedHighsReadyKey = null;
 }
 
 export function getHighsWasmUrl(): string | null {
@@ -97,22 +99,42 @@ export async function resolveBrowserWasmUrl(explicitUrl?: string): Promise<strin
   return getBundledWasmUrl();
 }
 
+async function resolveHighsTarget(options: SolveOptions = {}): Promise<{
+  isNode: boolean;
+  wasmUrl: string | null;
+  key: string;
+}> {
+  const isNode = Boolean(
+    typeof process !== "undefined" &&
+      process.versions?.node &&
+      (process as any).type !== "renderer"
+  );
+  const wasmUrl = isNode ? null : await resolveBrowserWasmUrl(options.wasmUrl);
+  return { isNode, wasmUrl, key: wasmUrl ?? "node" };
+}
+
+/**
+ * Returns whether the HiGHS runtime for the resolved WASM target is already initialized.
+ */
+export async function isHighsCached(options: SolveOptions = {}): Promise<boolean> {
+  const { key } = await resolveHighsTarget(options);
+  return cachedHighsReadyKey === key;
+}
+
 /**
  * Get or initialize the HiGHS WebAssembly solver instance.
  * Works seamlessly in Node.js, Web Browsers, and Web Workers.
  */
 export async function getHighs(options: SolveOptions = {}): Promise<HighsInstance> {
-  const isNode =
-    typeof process !== "undefined" && process.versions?.node &&
-    (process as any).type !== "renderer";
-  const wasmUrl = isNode ? null : await resolveBrowserWasmUrl(options.wasmUrl);
-  const key = wasmUrl ?? "node";
+  const { isNode, wasmUrl, key } = await resolveHighsTarget(options);
   if (cachedHighsPromise && cachedWasmKey === key) {
     return cachedHighsPromise;
   }
 
   cachedWasmKey = key;
-  const initializing: Promise<HighsInstance> = (async () => {
+  cachedHighsReadyKey = null;
+  let initializing: Promise<HighsInstance> | null = null;
+  initializing = (async () => {
     // Dynamically import highs to ensure compatibility with ESM / Bundler / Node
     const loadHighs = isNode
       ? await loadNodeHighs()
@@ -123,7 +145,7 @@ export async function getHighs(options: SolveOptions = {}): Promise<HighsInstanc
     }
 
     // Browser or Web Worker environment
-    const highsInstance = await loadHighs({
+    return await loadHighs({
       locateFile: (file: string) => {
         if (file.endsWith(".wasm")) {
           return wasmUrl!;
@@ -131,20 +153,26 @@ export async function getHighs(options: SolveOptions = {}): Promise<HighsInstanc
         return file;
       },
     });
-
-    return highsInstance;
-  })().catch((error) => {
-    if (cachedHighsPromise === initializing) {
-      cachedHighsPromise = null;
-      cachedWasmKey = null;
-    }
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(
-      `[WaSHI] Failed to initialize HiGHS${wasmUrl ? ` from "${wasmUrl}"` : ""}. ` +
-      `Deploy the package's WASM asset or explicitly set wasmUrl; no CDN fallback is attempted. ${message}`,
-      { cause: error },
-    );
-  });
+  })()
+    .then((instance) => {
+      if (cachedHighsPromise === initializing) {
+        cachedHighsReadyKey = key;
+      }
+      return instance;
+    })
+    .catch((error) => {
+      if (cachedHighsPromise === initializing) {
+        cachedHighsPromise = null;
+        cachedWasmKey = null;
+        cachedHighsReadyKey = null;
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `[WaSHI] Failed to initialize HiGHS${wasmUrl ? ` from "${wasmUrl}"` : ""}. ` +
+        `Deploy the package's WASM asset or explicitly set wasmUrl; no CDN fallback is attempted. ${message}`,
+        { cause: error },
+      );
+    });
   cachedHighsPromise = initializing;
   return initializing;
 }

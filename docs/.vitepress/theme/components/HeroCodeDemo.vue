@@ -8,7 +8,11 @@ import {
   resolveHeroLocale,
 } from "./heroExamples";
 import { data as highlightedByLocale } from "./heroExamples.data";
-import { runWashiSnippet } from "../utils/runSnippet";
+import {
+  formatSnippetStatus,
+  runWashiSnippet,
+  type SnippetRunPhase,
+} from "../utils/runSnippet";
 import { useComponentTranslations } from "../locales/index";
 
 const { lang } = useData();
@@ -20,21 +24,45 @@ const heroI18n = computed(() => translations.value.heroDemo);
 const highlightedHtml = computed(() => highlightedByLocale[localeKey.value]);
 
 const isRunning = ref(false);
+const runPhase = ref<SnippetRunPhase>("running");
 const hasRun = ref(false);
+const loadTimeMs = ref(0);
+const solveTimeMs = ref<number | null>(null);
 const runTimeMs = ref(0);
+const wasCached = ref(false);
 const logs = ref<string[]>([...HERO_INITIAL_LOGS]);
 const errorMsg = ref<string | null>(null);
+
+const statusText = computed(() =>
+  formatSnippetStatus(
+    {
+      loadTimeMs: loadTimeMs.value,
+      solveTimeMs: solveTimeMs.value,
+      runTimeMs: runTimeMs.value,
+      wasCached: wasCached.value,
+    },
+    runnerI18n.value
+  )
+);
 
 async function runHeroCode() {
   if (typeof window === "undefined" || isRunning.value) return;
 
   isRunning.value = true;
+  runPhase.value = "running";
   errorMsg.value = null;
 
   try {
     const rawCode = buildHeroSnippetCode(localeKey.value);
-    const res = await runWashiSnippet(rawCode);
+    const res = await runWashiSnippet(rawCode, {
+      onPhase: (phase) => {
+        runPhase.value = phase;
+      },
+    });
+    loadTimeMs.value = res.loadTimeMs;
+    solveTimeMs.value = res.solveTimeMs;
     runTimeMs.value = res.runTimeMs;
+    wasCached.value = res.wasCached;
     errorMsg.value = res.errorMsg;
     if (res.errorMsg === null) {
       logs.value = res.logs;
@@ -66,7 +94,9 @@ async function runHeroCode() {
         :disabled="isRunning"
         @click="runHeroCode"
       >
-        <span v-if="isRunning">⏳ {{ runnerI18n.running }}</span>
+        <span v-if="isRunning">
+          ⏳ {{ runPhase === "loading" ? runnerI18n.loading : runnerI18n.running }}
+        </span>
         <span v-else>▶ {{ runnerI18n.run }}</span>
       </button>
 
@@ -76,7 +106,7 @@ async function runHeroCode() {
         aria-live="polite"
         class="runner-status-meta"
       >
-        ✓ {{ runnerI18n.executed }} ({{ runTimeMs.toFixed(1) }} ms)
+        ✓ {{ statusText }}
       </span>
       <span v-else-if="!isRunning" class="hero-idle-note">
         {{ heroI18n.idleHint }}
