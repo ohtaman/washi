@@ -408,6 +408,7 @@ export function showWorkspaceNotice(
     variant?: "info" | "success" | "warning" | "error";
     detailLines?: string[];
     showBanner?: boolean;
+    clearBanner?: boolean;
     autoHideMs?: number;
   }
 ): void {
@@ -415,7 +416,7 @@ export function showWorkspaceNotice(
   const variant = opts?.variant ?? "info";
   const ui = UI_TEXT_I18N[activeLang];
 
-  // 1. Update persistent inline banner when requested (for multi-line diffs, reverts, or check summaries)
+  // 1. Update persistent inline banner when requested (or clear obsolete banner when resolved)
   const banner = document.getElementById("workspace-action-banner");
   const bannerBody = document.getElementById("workspace-action-body");
   if (opts?.showBanner && banner && bannerBody) {
@@ -436,6 +437,8 @@ export function showWorkspaceNotice(
       bannerBody.appendChild(list);
     }
     banner.hidden = false;
+  } else if (opts?.clearBanner) {
+    clearWorkspaceActionBanner();
   }
 
   // 2. Push lightweight toast notification to #workspace-toast-region (never into AI chat)
@@ -2589,6 +2592,7 @@ export async function triggerSolve(): Promise<WashiTimetableSolveOutcome | null>
   }
   isSolving = true;
   pendingSolveRequested = false;
+  clearWorkspaceActionBanner();
 
   const abortCtrl = new AbortController();
   activeSolveAbortController = abortCtrl;
@@ -3412,6 +3416,32 @@ async function handleChatSubmit(userMessage: string): Promise<void> {
   }
 }
 
+/** Runs a HiGHS feasibility check against the current state and updates workspace notices. */
+export async function runFeasibilityCheck(): Promise<void> {
+  const diag = await diagnoseTimetableWithHiGHS(appState);
+  if (diag.status === "Sat") {
+    showWorkspaceNotice(
+      UI_TEXT_I18N[activeLang].noticeCheckSat,
+      { variant: "success", showBanner: false, clearBanner: true }
+    );
+  } else if (diag.status === "Unsat") {
+    const detailLines = diag.conflicts.map(
+      (c) => formatConstraintMetaI18n(c, appState, activeLang).label
+    );
+    showWorkspaceNotice(
+      formatUiTemplate(UI_TEXT_I18N[activeLang].noticeCheckUnsat, {
+        count: diag.conflicts.length,
+      }),
+      { variant: "error", showBanner: true, detailLines, autoHideMs: 8000 }
+    );
+  } else {
+    showWorkspaceNotice(
+      UI_TEXT_I18N[activeLang].noticeCheckTimeout,
+      { variant: "warning", clearBanner: true }
+    );
+  }
+}
+
 function wireEvents(): void {
   // Language switcher buttons
   document.querySelectorAll<HTMLButtonElement>("[data-lang-btn]").forEach((btn) => {
@@ -3543,29 +3573,8 @@ function wireEvents(): void {
   $("btn-abort-solve").addEventListener("click", () => {
     activeSolveAbortController?.abort();
   });
-  $("btn-check-current").addEventListener("click", async () => {
-    const diag = await diagnoseTimetableWithHiGHS(appState);
-    if (diag.status === "Sat") {
-      showWorkspaceNotice(
-        UI_TEXT_I18N[activeLang].noticeCheckSat,
-        { variant: "success", showBanner: false }
-      );
-    } else if (diag.status === "Unsat") {
-      const detailLines = diag.conflicts.map(
-        (c) => formatConstraintMetaI18n(c, appState, activeLang).label
-      );
-      showWorkspaceNotice(
-        formatUiTemplate(UI_TEXT_I18N[activeLang].noticeCheckUnsat, {
-          count: diag.conflicts.length,
-        }),
-        { variant: "error", showBanner: true, detailLines, autoHideMs: 8000 }
-      );
-    } else {
-      showWorkspaceNotice(
-        UI_TEXT_I18N[activeLang].noticeCheckTimeout,
-        { variant: "warning" }
-      );
-    }
+  $("btn-check-current").addEventListener("click", () => {
+    void runFeasibilityCheck();
   });
   $("btn-reset-clean").addEventListener("click", () => {
     appState = generateTimetableState();

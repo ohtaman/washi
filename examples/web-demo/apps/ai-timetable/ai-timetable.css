@@ -1369,8 +1369,8 @@ body.ai-shift-body {
   grid-template-columns: 1fr !important;
 }
 
-/* Avoid showing a duplicate giant Auto-Schedule bar above the first-view Hero CTA */
-.ai-shift-workspace[data-has-courses="true"][data-scheduled="false"][data-active-tab="timetable"] .action-buttons-right {
+/* Avoid showing duplicate Auto-Schedule controls above the first-view Hero CTA while keeping #btn-abort-solve visible during initial solving */
+.ai-shift-workspace[data-has-courses="true"][data-scheduled="false"][data-active-tab="timetable"] .action-buttons-right > :not(#btn-abort-solve) {
   display: none;
 }
 

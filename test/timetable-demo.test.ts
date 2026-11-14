@@ -2175,6 +2175,8 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
         },
         setAttribute: () => {},
         addEventListener: () => {},
+        querySelectorAll: () => [],
+        querySelector: () => null,
         click: () => {},
         appendChild: (node: any) => {
           children.push(node);
@@ -2389,6 +2391,145 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(c12RevertTexts).toMatch(/Move reverted/i);
       expect(c12RevertTexts).toMatch(/Forbid Same-Day Sessions.*cannot meet multiple times on/i);
       expect(c12RevertTexts).toContain("Pin \"Software Design Lab (C12)\" to Thu P2");
+    } finally {
+      if (prevDoc === undefined) delete (globalThis as any).document;
+      else (globalThis as any).document = prevDoc;
+    }
+  }, 30_000);
+
+  it("clears obsolete conflict banners after a passing feasibility check or successful solve", async () => {
+    const mainMod: any = await import("../examples/web-demo/apps/ai-timetable/main.js");
+    const {
+      getAppState,
+      handleGenerateSample,
+      triggerSolve,
+      runFeasibilityCheck,
+      applyTimetableLang,
+    } = mainMod;
+    expect(typeof runFeasibilityCheck).toBe("function");
+
+    const elements = new Map<string, any>();
+    const makeEl = (id: string, extra: Record<string, any> = {}): any => {
+      const children: any[] = [];
+      return {
+        id,
+        children,
+        options: [],
+        dataset: {},
+        style: {},
+        hidden: false,
+        disabled: false,
+        value: "",
+        textContent: "",
+        innerHTML: "",
+        checked: true,
+        className: "",
+        classList: {
+          add: () => {},
+          remove: () => {},
+          toggle: () => {},
+          contains: () => false,
+        },
+        setAttribute: () => {},
+        addEventListener: () => {},
+        querySelectorAll: () => [],
+        querySelector: () => null,
+        click: () => {},
+        focus: () => {},
+        replaceChildren: (...nodes: any[]) => {
+          children.length = 0;
+          children.push(...nodes);
+        },
+        append: (...nodes: any[]) => {
+          children.push(...nodes);
+        },
+        appendChild: (node: any) => {
+          children.push(node);
+          return node;
+        },
+        remove: () => {},
+        ...extra,
+      };
+    };
+
+    const register = (id: string, extra: Record<string, any> = {}) => {
+      const el = makeEl(id, extra);
+      elements.set(id, el);
+      return el;
+    };
+
+    const banner = register("workspace-action-banner", { hidden: true });
+    const bannerBody = register("workspace-action-body");
+    const toastRegion = register("workspace-toast-region");
+
+    const collectText = (node: any): string[] => {
+      if (node == null) return [];
+      if (typeof node === "string") return [node];
+      const out: string[] = [];
+      if (typeof node.textContent === "string" && node.textContent) out.push(node.textContent);
+      if (Array.isArray(node.children)) {
+        for (const ch of node.children) out.push(...collectText(ch));
+      }
+      return out;
+    };
+
+    const prevDoc = (globalThis as any).document;
+    (globalThis as any).document = {
+      getElementById: (id: string) => elements.get(id) ?? register(id),
+      createElement: (_tag: string) => makeEl(`anon_${Math.random()}`),
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      addEventListener: () => {},
+      documentElement: { lang: "en" },
+    };
+
+    try {
+      applyTimetableLang("en");
+      handleGenerateSample(false);
+
+      // Introduce an impossible custom rule: pin C18 (Adjunct Prof Kobayashi, Tue/Thu only) to Mon P3
+      const badRuleId = "bad_rule_c18_mon_p3";
+      getAppState().customRules.push({
+        id: badRuleId,
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C18",
+        days: ["Mon"],
+        periods: [3],
+        description: "Pin C18 to Mon P3 (impossible)",
+      });
+
+      await runFeasibilityCheck();
+      expect(banner.hidden).toBe(false);
+      expect(collectText(bannerBody).join(" | ")).toMatch(/conflict/i);
+
+      // Fix the rule and run feasibility check again -> obsolete Unsat banner must be cleared!
+      getAppState().customRules = getAppState().customRules.filter((r: any) => r.id !== badRuleId);
+      await runFeasibilityCheck();
+      expect(banner.hidden).toBe(true);
+      expect(bannerBody.children).toHaveLength(0);
+      expect(toastRegion.children.length).toBeGreaterThan(0);
+
+      // Re-introduce impossible rule, show Unsat banner, remove rule, and solve -> successful solve must also clear stale banner!
+      getAppState().customRules.push({
+        id: badRuleId,
+        kind: "pin_slot",
+        enabled: true,
+        isHard: true,
+        courseId: "C18",
+        days: ["Mon"],
+        periods: [3],
+        description: "Pin C18 to Mon P3 (impossible)",
+      });
+      await runFeasibilityCheck();
+      expect(banner.hidden).toBe(false);
+
+      getAppState().customRules = getAppState().customRules.filter((r: any) => r.id !== badRuleId);
+      const outcome = await triggerSolve();
+      expect(outcome?.status).toBe("Optimal");
+      expect(banner.hidden).toBe(true);
+      expect(bannerBody.children).toHaveLength(0);
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;
