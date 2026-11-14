@@ -1391,6 +1391,7 @@ dialog::backdrop {
   display: inline-flex;
 }
 
+.ai-drawer-backdrop,
 .mobile-nav-menu-btn,
 .btn-ai-drawer-toggle,
 .btn-close-ai-drawer {
@@ -1798,6 +1799,7 @@ dialog::backdrop {
 
   /* AI Chat is separated into an on-demand slide-up modal sheet (never stacked above timetable) */
   .ai-drawer-backdrop {
+    display: block;
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.48);

@@ -2530,6 +2530,27 @@ describe("University Course Timetabling AI Copilot Demo (UCTP, HiGHS)", () => {
       expect(outcome?.status).toBe("Optimal");
       expect(banner.hidden).toBe(true);
       expect(bannerBody.children).toHaveLength(0);
+
+      // Desktop viewports (> 1100px) must keep AI drawer backdrop hidden even if setAiDrawerOpen(true) is triggered
+      const prevWindow = (globalThis as any).window;
+      const backdrop = register("ai-drawer-backdrop", { hidden: true });
+      const workspace = register("ai-timetable-workspace", { dataset: { aiDrawerOpen: "false" } });
+      (globalThis as any).window = {
+        matchMedia: (query: string) => ({
+          matches: !query.includes("max-width: 1100px"),
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }),
+      };
+      try {
+        mainMod.setAiDrawerOpen(true);
+        expect(backdrop.hidden).toBe(true);
+        expect(workspace.dataset.aiDrawerOpen).toBe("false");
+      } finally {
+        if (prevWindow === undefined) delete (globalThis as any).window;
+        else (globalThis as any).window = prevWindow;
+      }
     } finally {
       if (prevDoc === undefined) delete (globalThis as any).document;
       else (globalThis as any).document = prevDoc;

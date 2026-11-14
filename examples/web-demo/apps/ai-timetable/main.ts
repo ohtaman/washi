@@ -373,21 +373,29 @@ export function isGeminiNanoVisibleStatus(status: GeminiNanoStatus): boolean {
   return status === "available" || status === "downloadable" || status === "downloading";
 }
 
+function isCompactAiDrawerViewport(): boolean {
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    return window.matchMedia("(max-width: 1100px)").matches;
+  }
+  return true;
+}
+
 export function setAiDrawerOpen(open: boolean): void {
   if (typeof document === "undefined") return;
+  const effectiveOpen = open && isCompactAiDrawerViewport();
   const workspace = document.getElementById("ai-timetable-workspace");
   const toggleBtn = document.getElementById("btn-toggle-ai-drawer");
   const backdrop = document.getElementById("ai-drawer-backdrop");
   if (workspace) {
-    workspace.dataset.aiDrawerOpen = open ? "true" : "false";
+    workspace.dataset.aiDrawerOpen = effectiveOpen ? "true" : "false";
   }
   if (toggleBtn) {
-    toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    toggleBtn.setAttribute("aria-expanded", effectiveOpen ? "true" : "false");
   }
   if (backdrop) {
-    backdrop.hidden = !open;
+    backdrop.hidden = !effectiveOpen;
   }
-  if (open) {
+  if (open && (effectiveOpen || isGeminiNanoVisibleStatus(lastNanoStatus))) {
     const closeBtn = document.getElementById("btn-close-ai-drawer") as HTMLButtonElement | null;
     const chatInput = document.getElementById("chat-input") as HTMLTextAreaElement | null;
     (chatInput ?? closeBtn)?.focus?.();
@@ -3537,6 +3545,13 @@ function wireEvents(): void {
   document.getElementById("ai-drawer-backdrop")?.addEventListener("click", () => {
     setAiDrawerOpen(false);
   });
+  if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    window.matchMedia("(max-width: 1100px)").addEventListener?.("change", (ev) => {
+      if (!ev.matches) {
+        setAiDrawerOpen(false);
+      }
+    });
+  }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       const workspace = document.getElementById("ai-timetable-workspace");
