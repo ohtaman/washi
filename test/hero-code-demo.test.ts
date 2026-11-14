@@ -350,7 +350,8 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       onPhase: (phase) => coldPhases.push(phase),
     });
     expect(coldRes.errorMsg).toBeNull();
-    expect(coldPhases).toEqual(["loading", "running"]);
+    expect(coldPhases[0]).toBe("loading");
+    expect(coldPhases[coldPhases.length - 1]).toBe("running");
     expect(coldRes.wasCached).toBe(false);
     expect(coldRes.loadTimeMs).toBeGreaterThan(0);
     expect(coldRes.solveTimeMs).not.toBeNull();
@@ -427,6 +428,48 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
       customWarmupSpy.mockRestore();
       solveStub.mockRestore();
       setHighsWasmUrl(null);
+      resetSnippetRunnerStateForTests();
+    }
+
+    // Comment mentioning z3 must NOT trigger setZ3Assets/loadZ3; per-call z3JsUrl/z3WasmUrl must pass through
+    const z3Mod = await import("../src/modeler/solvers/z3/index.js");
+    const setZ3AssetsSpy = vi.spyOn(z3Mod, "setZ3Assets");
+    const loadZ3Spy = vi.spyOn(z3Mod, "loadZ3");
+    try {
+      z3Mod.resetZ3LoaderCache();
+      vi.stubGlobal("window", { location: { origin: "https://washi.ohtaman.dev" } });
+      const commentZ3Res = await runWashiSnippet(`
+        // Optional alternative: const res = await m.check({ solver: "z3" });
+        const m = new Model();
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        m.objective(maximize(x));
+        await m.solve();
+      `);
+      expect(commentZ3Res.errorMsg).toBeNull();
+      expect(setZ3AssetsSpy).not.toHaveBeenCalled();
+      expect(loadZ3Spy).not.toHaveBeenCalled();
+
+      const z3OverrideRes = await runWashiSnippet(`
+        const m = new Model({ solver: "z3" });
+        const a = m.continuous("a", { lb: 0, ub: 5 });
+        m.constraint(expr\`\${a} >= 1\`);
+        const res = await m.check({
+          z3JsUrl: "https://cdn.example/z3-built.js",
+          z3WasmUrl: "https://cdn.example/z3-built.wasm",
+        });
+        console.log(res.status);
+      `);
+      expect(z3OverrideRes.errorMsg).toBeNull();
+      expect(z3OverrideRes.logs).toEqual(["Sat"]);
+      expect(setZ3AssetsSpy).not.toHaveBeenCalled();
+      expect(loadZ3Spy).toHaveBeenCalledWith({
+        z3JsUrl: "https://cdn.example/z3-built.js",
+        z3WasmUrl: "https://cdn.example/z3-built.wasm",
+      });
+    } finally {
+      setZ3AssetsSpy.mockRestore();
+      loadZ3Spy.mockRestore();
+      z3Mod.resetZ3LoaderCache();
       resetSnippetRunnerStateForTests();
     }
   });

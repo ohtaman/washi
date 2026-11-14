@@ -33,17 +33,15 @@ let cachedModeler: ModelerModule | null = null;
 let cachedZ3Mod: Z3Module | null = null;
 let cachedGlpkMod: GlpkModule | null = null;
 let z3AssetsConfigured = false;
-let highsWarmed = false;
 
 /**
- * Reset cached module/solver warmup tracking in tests so cold-load timing can be exercised.
+ * Reset cached module/solver plugin tracking in tests so cold-load timing can be exercised.
  */
 export function resetSnippetRunnerStateForTests(): void {
   cachedModeler = null;
   cachedZ3Mod = null;
   cachedGlpkMod = null;
   z3AssetsConfigured = false;
-  highsWarmed = false;
 }
 
 /**
@@ -75,55 +73,6 @@ function formatConsoleArg(arg: unknown): string {
     }
   }
   return String(arg);
-}
-
-function extractNewModelArgs(rawCode: string): string[] {
-  const argsList: string[] = [];
-  const regex = /\bnew\s+Model\s*\(/g;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(rawCode)) !== null) {
-    let depth = 1;
-    let i = match.index + match[0].length;
-    const start = i;
-    let quote: string | null = null;
-    while (i < rawCode.length && depth > 0) {
-      const ch = rawCode[i];
-      if (quote) {
-        if (ch === "\\") {
-          i += 2;
-          continue;
-        }
-        if (ch === quote) quote = null;
-      } else if (ch === '"' || ch === "'" || ch === "`") {
-        quote = ch;
-      } else if (ch === "(") {
-        depth++;
-      } else if (ch === ")") {
-        depth--;
-      }
-      i++;
-    }
-    argsList.push(rawCode.slice(start, Math.max(start, i - 1)));
-  }
-  return argsList;
-}
-
-function detectRequiredSolvers(rawCode: string): {
-  needsHighs: boolean;
-  needsZ3: boolean;
-  needsGlpk: boolean;
-} {
-  const needsZ3 = /\bz3\b|@ohtaman\/washi\/solvers\/z3/.test(rawCode);
-  const needsGlpk = /\bglpk\b|@ohtaman\/washi\/solvers\/glpk/.test(rawCode);
-  const usesModel =
-    /\bModel\b|\.(?:solve|check|solveColumnGeneration|solveBenders)\s*\(/.test(rawCode);
-  const newModelArgs = extractNewModelArgs(rawCode);
-  const hasDefaultHighsModel =
-    newModelArgs.length > 0
-      ? newModelArgs.some((args) => !/\bsolver\s*:\s*["'](?:z3|glpk)["']/.test(args))
-      : !needsZ3 && !needsGlpk;
-  const needsHighs = usesModel && (/\bhighs\b/.test(rawCode) || hasDefaultHighsModel);
-  return { needsHighs, needsZ3, needsGlpk };
 }
 
 function extractCallTarget(
@@ -176,16 +125,21 @@ export async function runWashiSnippet(
     },
   };
 
-  const { needsHighs, needsZ3, needsGlpk } = detectRequiredSolvers(rawCode);
-  const hasCustomHighsConfig = /\b(?:setHighsWasmUrl|wasmUrl|useWorker)\b/.test(rawCode);
-  const hasCustomZ3Config = /\bsetZ3Assets\b/.test(rawCode);
-  const mayNeedLoad =
+  const needsZ3Plugin = rawCode.includes("z3");
+  const needsGlpkPlugin = rawCode.includes("glpk");
+  const mayNeedJsLoad =
     !cachedModeler ||
-    (needsHighs && !hasCustomHighsConfig && !highsWarmed) ||
-    (needsZ3 && !hasCustomZ3Config && (!cachedZ3Mod || !cachedZ3Mod.isZ3Loaded())) ||
-    (needsGlpk && (!cachedGlpkMod || !cachedGlpkMod.isGlpkLoaded()));
+    (needsZ3Plugin && !cachedZ3Mod) ||
+    (needsGlpkPlugin && !cachedGlpkMod);
 
   let didLoad = false;
+  let currentPhase: SnippetRunPhase | null = null;
+  const emitPhase = (phase: SnippetRunPhase) => {
+    if (currentPhase !== phase) {
+      currentPhase = phase;
+      options.onPhase?.(phase);
+    }
+  };
   let preLoadTimeMs = 0;
   let inSnippetLoadMs = 0;
   let execStart: number | null = null;
@@ -194,8 +148,8 @@ export async function runWashiSnippet(
 
   const loadStart = performance.now();
   try {
-    if (mayNeedLoad) {
-      options.onPhase?.("loading");
+    if (mayNeedJsLoad) {
+      emitPhase("loading");
     }
 
     if (!cachedModeler) {
@@ -204,47 +158,31 @@ export async function runWashiSnippet(
     }
     const Modeler = cachedModeler;
 
-    if (needsZ3) {
-      if (!cachedZ3Mod) {
-        didLoad = true;
-        cachedZ3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
-      }
-      if (typeof window !== "undefined" && !z3AssetsConfigured && !hasCustomZ3Config) {
-        cachedZ3Mod.setZ3Assets({
-          jsUrl: new URL("/z3-built.js", window.location.origin).href,
-          wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
-        });
-        z3AssetsConfigured = true;
-      }
-      if (!hasCustomZ3Config && !cachedZ3Mod.isZ3Loaded()) {
-        didLoad = true;
-        await cachedZ3Mod.loadZ3();
-      }
+    // Register optional solver plugins synchronously without initializing WASM or asset configs;
+    // actual WASM/worker loading happens only when an operation executes with that solver.
+    if (needsZ3Plugin && !cachedZ3Mod) {
+      didLoad = true;
+      cachedZ3Mod = await import("../../../../src/modeler/solvers/z3/index.ts");
     }
-
-    if (needsGlpk) {
-      if (!cachedGlpkMod) {
-        didLoad = true;
-        cachedGlpkMod = await import("../../../../src/modeler/solvers/glpk/index.ts");
-      }
-      if (!cachedGlpkMod.isGlpkLoaded()) {
-        didLoad = true;
-        await cachedGlpkMod.getGlpk();
-      }
-    }
-
-    if (needsHighs && !hasCustomHighsConfig) {
-      const { warmupHighs } = await import("../../../../src/modeler/solvers/highs/worker-client.ts");
-      const { cached } = await warmupHighs();
-      if (!cached) {
-        didLoad = true;
-      }
-      highsWarmed = true;
+    if (needsGlpkPlugin && !cachedGlpkMod) {
+      didLoad = true;
+      cachedGlpkMod = await import("../../../../src/modeler/solvers/glpk/index.ts");
     }
 
     preLoadTimeMs = didLoad ? performance.now() - loadStart : 0;
 
     const pendingPromises: Promise<unknown>[] = [];
+
+    const measureSolverLoad = async <T>(loadFn: () => Promise<T>): Promise<T> => {
+      emitPhase("loading");
+      const warmStart = performance.now();
+      try {
+        return await loadFn();
+      } finally {
+        inSnippetLoadMs += performance.now() - warmStart;
+        emitPhase("running");
+      }
+    };
 
     const warmSolverForCall = async (
       modelSolverName: string | undefined,
@@ -263,7 +201,7 @@ export async function runWashiSnippet(
         if (await isHighsWarmed(solveOptions)) {
           return;
         }
-        options.onPhase?.("loading");
+        emitPhase("loading");
         const warmStart = performance.now();
         try {
           const { cached } = await warmupHighs(solveOptions);
@@ -271,30 +209,34 @@ export async function runWashiSnippet(
             didLoad = true;
             inSnippetLoadMs += performance.now() - warmStart;
           }
-          if (!solveOptions.wasmUrl && solveOptions.useWorker === undefined && !hasCustomHighsConfig) {
-            highsWarmed = true;
-          } else if (!cached) {
-            highsWarmed = false;
-          }
         } catch (err) {
           inSnippetLoadMs += performance.now() - warmStart;
           throw err;
         } finally {
-          options.onPhase?.("running");
+          emitPhase("running");
         }
-      } else if (solverName === "z3" && hasCustomZ3Config) {
+      } else if (solverName === "z3") {
         const z3Mod =
           cachedZ3Mod ?? (cachedZ3Mod = await import("../../../../src/modeler/solvers/z3/index.ts"));
         if (!z3Mod.isZ3Loaded()) {
-          options.onPhase?.("loading");
-          const warmStart = performance.now();
-          try {
-            await z3Mod.loadZ3(solveOptions);
-            didLoad = true;
-          } finally {
-            inSnippetLoadMs += performance.now() - warmStart;
-            options.onPhase?.("running");
+          const hasExplicitZ3Urls = Boolean(solveOptions.z3JsUrl || solveOptions.z3WasmUrl);
+          if (typeof window !== "undefined" && !z3AssetsConfigured && !hasExplicitZ3Urls) {
+            z3Mod.setZ3Assets({
+              jsUrl: new URL("/z3-built.js", window.location.origin).href,
+              wasmUrl: new URL("/z3-built.wasm", window.location.origin).href,
+            });
+            z3AssetsConfigured = true;
           }
+          await measureSolverLoad(() => z3Mod.loadZ3(solveOptions));
+          didLoad = true;
+        }
+      } else if (solverName === "glpk") {
+        const glpkMod =
+          cachedGlpkMod ??
+          (cachedGlpkMod = await import("../../../../src/modeler/solvers/glpk/index.ts"));
+        if (!glpkMod.isGlpkLoaded()) {
+          await measureSolverLoad(() => glpkMod.getGlpk());
+          didLoad = true;
         }
       }
     };
@@ -334,7 +276,7 @@ export async function runWashiSnippet(
     const keys = Object.keys(context);
     const values = Object.values(context);
 
-    options.onPhase?.("running");
+    emitPhase("running");
     execStart = performance.now();
     const fn = new Function(...keys, `return (async () => {\n${jsCode}\n})();`);
     await fn(...values);
