@@ -1,6 +1,6 @@
 {
   "name": "@ohtaman/washi",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "WaSHI: WebAssembly-backed Algebraic Modeler for Mathematical Optimization & Constraint Programming (LP, MIP, QP, SMT)",
   "type": "module",
   "main": "./dist/lib/washi.js",
