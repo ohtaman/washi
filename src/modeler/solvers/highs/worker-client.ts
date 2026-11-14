@@ -301,6 +301,32 @@ export async function isHighsWarmed(
   return warmedWorkerWasmUrl === resolvedWasmUrl;
 }
 
+function attachAbortHandler(
+  signal: AbortSignal | undefined,
+  entry: PendingWorkerRequest,
+  onCancel: () => void
+): void {
+  if (!signal) {
+    return;
+  }
+  const onAbort = () => {
+    const pending = pendingRequests.get(entry.id);
+    if (!pending) return;
+    const activeId = pendingRequests.keys().next().value;
+    pendingRequests.delete(entry.id);
+    pending.cleanupAbort?.();
+
+    if (activeId === entry.id) {
+      terminateActiveWorkerAndRedispatch();
+    }
+
+    onCancel();
+  };
+
+  signal.addEventListener("abort", onAbort, { once: true });
+  entry.cleanupAbort = () => signal.removeEventListener("abort", onAbort);
+}
+
 /**
  * Pre-initialize the HiGHS WebAssembly runtime (inside the active Web Worker when used,
  * or on the main thread otherwise) so subsequent solve calls avoid cold WASM loading latency.
@@ -308,12 +334,52 @@ export async function isHighsWarmed(
 export async function warmupHighs(
   options: SolveOptions & { useWorker?: boolean } = {}
 ): Promise<{ cached: boolean }> {
+  const { signal } = options;
+  if (signal?.aborted) {
+    return { cached: false };
+  }
+
   const resolvedWasmUrl = await resolveBrowserWasmUrl(options.wasmUrl);
+  if (signal?.aborted) {
+    return { cached: false };
+  }
+
   const worker = shouldUseWorker(options) ? getWorker() : null;
 
   if (!worker) {
     const cached = await isHighsCached(options);
-    await getHighs(options);
+    if (cached || signal?.aborted) {
+      return { cached };
+    }
+    if (!signal) {
+      await getHighs(options);
+      return { cached };
+    }
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      getHighs(options).then(
+        () => {
+          signal.removeEventListener("abort", onAbort);
+          if (!settled) {
+            settled = true;
+            resolve();
+          }
+        },
+        (err) => {
+          signal.removeEventListener("abort", onAbort);
+          if (!settled) {
+            settled = true;
+            reject(err);
+          }
+        }
+      );
+    });
     return { cached };
   }
 
@@ -333,6 +399,8 @@ export async function warmupHighs(
       resolve,
       reject,
     };
+
+    attachAbortHandler(signal, entry, resolve);
     pendingRequests.set(id, entry);
     dispatchHeadRequestIfIdle(worker);
   });
@@ -391,28 +459,13 @@ export async function solveLp(
       reject,
     };
 
-    if (signal) {
-      const onAbort = () => {
-        const pending = pendingRequests.get(id);
-        if (!pending || pending.kind !== "SOLVE") return;
-        const activeId = pendingRequests.keys().next().value;
-        pendingRequests.delete(id);
-        pending.cleanupAbort?.();
-
-        if (activeId === id) {
-          terminateActiveWorkerAndRedispatch();
-        }
-
-        const elapsed = (performance.now() - pending.startTime) / 1000;
-        pending.resolve({
-          result: createInterruptedRawResult(pending.lastIncumbent, pending.lastProgress),
-          runTime: elapsed,
-        });
-      };
-
-      signal.addEventListener("abort", onAbort, { once: true });
-      entry.cleanupAbort = () => signal.removeEventListener("abort", onAbort);
-    }
+    attachAbortHandler(signal, entry, () => {
+      const elapsed = (performance.now() - entry.startTime) / 1000;
+      entry.resolve({
+        result: createInterruptedRawResult(entry.lastIncumbent, entry.lastProgress),
+        runTime: elapsed,
+      });
+    });
 
     pendingRequests.set(id, entry);
     dispatchHeadRequestIfIdle(worker);

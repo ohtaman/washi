@@ -622,6 +622,49 @@ describe("Home Hero Clean Code Demo, Brand Lockup & Visual Showcase", () => {
     expect(inFlightRes.logs[3]).toContain("check_mutated_error:");
     expect(inFlightRes.logs[3]).toContain("was modified while check() was in progress");
     expect(inFlightRes.logs[4]).toBe("superseded: rejected fulfilled Optimal");
+
+    // Aborting during cold HiGHS worker warmup must terminate the stalled worker and settle interrupted immediately
+    vi.resetModules();
+    const { runWashiSnippet: runFreshSnippet, resetSnippetRunnerStateForTests: resetFreshRunner } =
+      await import("../docs/.vitepress/theme/utils/runSnippet.js");
+    const terminateSpy = vi.fn();
+    let warmupsPosted = 0;
+    class StalledWarmupWorker {
+      onmessage: ((event: unknown) => void) | null = null;
+      onerror: ((event: unknown) => void) | null = null;
+      onmessageerror: (() => void) | null = null;
+      terminate = terminateSpy;
+      postMessage(data: { type?: string }) {
+        if (data?.type === "WARMUP") {
+          warmupsPosted++;
+        }
+      }
+    }
+    vi.stubGlobal("window", {
+      origin: "https://washi.ohtaman.dev",
+      location: { origin: "https://washi.ohtaman.dev", protocol: "https:" },
+    });
+    vi.stubGlobal("Worker", StalledWarmupWorker);
+    try {
+      const abortWarmupRes = await runFreshSnippet(`
+        const m = new Model("AbortDuringWarmup");
+        const x = m.continuous("x", { lb: 0, ub: 5 });
+        m.objective(maximize(x));
+        const ac = new AbortController();
+        const solvePromise = m.solve({ signal: ac.signal });
+        setTimeout(() => ac.abort(), 20);
+        const status = await solvePromise;
+        console.log("aborted_status:", status, m.terminationStatus);
+      `);
+      expect(abortWarmupRes.errorMsg).toBeNull();
+      expect(warmupsPosted).toBe(1);
+      expect(terminateSpy).toHaveBeenCalledOnce();
+      expect(abortWarmupRes.logs).toEqual(["aborted_status: Unknown Interrupted"]);
+    } finally {
+      vi.unstubAllGlobals();
+      resetFreshRunner();
+      vi.resetModules();
+    }
   });
 
   it("links Open in Playground to a matching cloud_sizing preset with identical optimal solution", async () => {
