@@ -85,7 +85,7 @@ const x = m.continuous("x", { lb: 0, ub: 100 });
 const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
-const flag = m.bool("flag"); // 命题布尔变量（用于 Z3 / 逻辑约束）
+const flag = m.bool("flag"); // 命题布尔变量（HiGHS/GLPK 自动转化为 0-1 MIP，Z3 原生 SMT）
 
 // 多维索引变量容器：
 // - 数字维度 -> Array
@@ -113,7 +113,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 - **链式方法**:
   - 算术运算（在 `LinExpr` 和 `QuadExpr` 上支持；`Var` 支持 `.add()`、`.sub()`、`.mul()`、`.neg()`）: `.add(other)`、`.sub(other)`、`.mul(other)`、`.div(scalar)`、`.neg()`
   - 比较运算（在 `Var` 和 `LinExpr` 上支持）: `.le(rhs, name?)`、`.ge(rhs, name?)`、`.eq(rhs, name?)`
-  - 布尔逻辑（面向 Z3 的 `BoolVar`、`BoolExpr` 和 `Constraint`）: 独立函数 `and(...)`、`or(...)`、`not(...)`、`implies(a, b)`、`xor(a, b)` 以及链式方法 `.and(...)`、`.or(...)`、`.not()`、`.implies(...)`、`.xor(...)`
+  - 布尔逻辑（支持 `BoolVar`、`BoolExpr` 和 `Constraint`）: 独立函数 `and(...)`、`or(...)`、`not(...)`、`implies(a, b)`、`xor(a, b)` 以及链式方法 `.and(...)`、`.or(...)`、`.not()`、`.implies(...)`、`.xor(...)`——在 Z3 上原生求解，在 HiGHS/GLPK 上自动线性化为 0-1 MIP（`implies` 前提、`not` 或 `xor` 等取反位置的比较 `Constraint` 对整系数、整右端项的 `Integer`/`Binary` 表达式采用精确 $\pm 1$ 偏移；含 `Continuous` 变量或非整数系数的取反 `Constraint` 在 MIP 求解器上会抛出错误——请改用 `{ solver: "z3" }`，或显式编写 ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`）
 
 ### 步骤 3：向模型注册目标函数与约束条件
 
@@ -138,7 +138,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
   - 求解后调用 `m.validateSolution()` 可独立校验变量有限性、变量上下界（`lb`/`ub`）、整数/二元/布尔域、线性约束残差以及逻辑约束（`SolutionValidationReport`：`{ valid, complete, maxViolation, violations, ... }`）。注意：`validateSolution()` 校验变量与约束的原问题可行性，不会重新计算或比对 `m.objectiveValue`。
 - **可满足性检查与冲突诊断 (`await m.check(options?)`)**:
   - 返回 `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`），其中在模型证明为 `"Unsat"` 时填充 `conflicts`。
-  - 对于包含线性算术约束或逻辑约束（`BoolVar`、`and`、`or`、`implies`、`xor`）的模型，`m.check()` 均可在任意求解器（包括默认的 HiGHS 与 GLPK，通过单次求解弹性松弛模型，并将逻辑约束自动线性化为 0-1 MIP）上运行，并在不可行时将需要松弛的冲突约束诊断为 `conflicts`（为保证语义严谨，`unsatCore: undefined`）。
+  - 对于包含线性算术约束或逻辑约束（`BoolVar`、`and`、`or`、`not`、`implies`、`xor`）的模型，`m.check()` 均可在任意求解器（包括默认的 HiGHS 与 GLPK，通过单次求解弹性松弛模型，并将逻辑约束自动线性化为 0-1 MIP）上运行，并在不可行时将需要松弛的冲突约束诊断为 `conflicts`（为保证语义严谨，`unsatCore: undefined`）。
   - 精确的 SMT 不满足核提取（`result.unsatCore` 与 `result.conflicts`）在选用 SMT 求解器（`{ solver: "z3" }`）时提供。由于 Z3 在跟踪已注册约束的同时直接断言变量边界（`lb`/`ub`）和二元 `{0, 1}` 域，`unsatCore` 报告的是*结合模型固定变量边界/域时*发生冲突的已注册约束名称子集（不保证最小性）。
 - **异步 `solve` / `check` 期间禁止并发修改模型**:
   - 在 `await m.solve()` 或 `await m.check()` 挂起期间修改变量、约束或目标函数会使当前执行失效，并使过期的 Promise 被 reject。

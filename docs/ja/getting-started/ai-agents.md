@@ -85,7 +85,7 @@ const x = m.continuous("x", { lb: 0, ub: 100 });
 const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
-const flag = m.bool("flag"); // 命題論理変数（Z3 / 論理制約用）
+const flag = m.bool("flag"); // 命題論理変数（HiGHS/GLPK は 0-1 MIP 自動線形化、Z3 はネイティブ SMT）
 
 // インデックス付き変数コンテナ:
 // - 数値次元 -> Array
@@ -113,7 +113,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 - **メソッドチェーン（Fluent API）**:
   - 算術演算（`LinExpr` と `QuadExpr` で利用可能。`Var` は `.add()`, `.sub()`, `.mul()`, `.neg()` をサポート）: `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - 比較演算（`Var` と `LinExpr`）: `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
-  - 論理演算（Z3 向けの `BoolVar`, `BoolExpr`, `Constraint`）: 関数形式の `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` およびメソッド形式の `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`
+  - 論理演算（`BoolVar`, `BoolExpr`, `Constraint`）: 関数形式の `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` およびメソッド形式の `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`—Z3 ではネイティブに処理され、HiGHS/GLPK では 0-1 MIP へ自動線形化されます（`implies` の前提や `not` / `xor` などの否定側に現れる比較 `Constraint` は整数係数・整数右辺の `Integer`/`Binary` 式に対して厳密な $\pm 1$ シフトで線形化され、`Continuous` 変数や非整数係数を含む比較制約が否定側に現れた場合は MIP ソルバーでエラーを送出します—`{ solver: "z3" }`、または ``or(expr`... >= ... + eps`, ...)``・`m.bool()` を使用してください）
 
 ### ステップ 3: 目的関数と制約条件のモデルへの登録
 
@@ -138,7 +138,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
   - 求解後に `m.validateSolution()` を呼び出すことで、変数の有限性、境界条件（`lb`/`ub`）、整数・バイナリ・真偽値領域、線形制約の残差、および論理制約を独立して検証できます（`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`）。なお、`validateSolution()` は変数および制約条件の主実行可能性を検査するものであり、`m.objectiveValue` の再計算や比較は行いません。
 - **充足可能性判定と矛盾診断 (`await m.check(options?)`)**:
   - `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`）を返します。`conflicts` はモデルが `"Unsat"` と証明されたときに設定されます。
-  - 線形算術制約または論理制約（`BoolVar`, `and`, `or`, `implies`, `xor`）を含むモデルでは、`m.check()` はデフォルトの HiGHS や GLPK を含む任意のソルバーで動作します（単一 solve の弾性スラック緩和を用い、論理制約は 0-1 MIP へ自動線形化）。矛盾時は緩和が必要な制約名を `conflicts` として診断します（意味論の厳密さのため `unsatCore: undefined`）。
+  - 線形算術制約または論理制約（`BoolVar`, `and`, `or`, `not`, `implies`, `xor`）を含むモデルでは、`m.check()` はデフォルトの HiGHS や GLPK を含む任意のソルバーで動作します（単一 solve の弾性スラック緩和を用い、論理制約は 0-1 MIP へ自動線形化）。矛盾時は緩和が必要な制約名を `conflicts` として診断します（意味論の厳密さのため `unsatCore: undefined`）。
   - 厳密な SMT Unsat Core 抽出（`result.unsatCore` および `result.conflicts`）は SMT 対応ソルバー（`{ solver: "z3" }`）使用時に提供されます。Z3 は登録された制約を追跡しつつ、変数の上下限（`lb`/`ub`）およびバイナリ領域 `{0, 1}` を直接アサートするため、`unsatCore` は*モデルの固定された変数境界・領域と合わせたときに*矛盾する登録済み制約名の部分集合を返します（最小性は保証されません）。
 - **非同期 `solve` / `check` 実行中のモデル変更禁止**:
   - `await m.solve()` または `await m.check()` の完了待機中に変数・制約・目的関数を変更すると、進行中の実行は無効化され、古い Promise は reject されます。

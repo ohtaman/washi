@@ -159,7 +159,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **主な用途** | バイナリ変数を含む数理最適化（`m.solve()`） | 論理ルールの記述・充足可能性判定（`m.check()`） |
 
 > [!NOTE]
-> **`implies()` の前提条件（Antecedent）に一般不等式を使う場合**: **Z3**（`solver: "z3"`）では、上記の `clearance` と `hasMfa` を使った ``implies(expr`${clearance} >= 4`, hasMfa)`` のように、一般の線形不等式を `implies(a, b)` の前提条件 `a` として直接扱えます。一方、MIP ソルバー（**HiGHS** / **GLPK**）で条件付き制約を扱う場合は、前提条件に `BoolVar`（`m.bool()`）を用いるか、バイナリ変数（`m.binary()`）をトリガーとする `m.indicator(binVar, constraint)` を使用してください。
+> **否定側に現れる比較制約（`implies` の前提・`not`・`xor` など）**: 参照される変数がすべて `Integer` または `Binary` で整数係数・整数右辺を持つ線形比較制約（Big-M インジケータに必要な有限境界を備えるもの。上記の `clearance` と `hasMfa` を使った ``implies(expr`${clearance} >= 4`, hasMfa)`` など）は、**HiGHS** や **GLPK** でも $\pm 1$ シフト（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$、$==$ は $\le b - 1$ または $\ge b + 1$）によって厳密に MIP 線形化され、**Z3** ではネイティブに処理されます。一方、`Continuous` 変数や非整数の係数・閾値を含む比較制約が否定側に現れた場合、厳密不等式の否定が開半空間となるため MIP ソルバー（HiGHS / GLPK での `solve()` / `check()`）ではエラーを送出します—`{ solver: "z3" }` を利用するか、許容幅 `eps` を用いた ``or(expr`... >= ... + eps`, ...)`` や `m.bool()` で明示的に記述してください。
 
 ---
 
