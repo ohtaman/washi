@@ -7,9 +7,24 @@ import jaLocale from "./locales/ja.json";
 import zhLocale from "./locales/zh.json";
 
 const docsRoot = resolve(import.meta.dirname, "..");
-const GOOGLE_TAG_ID = "GTM-59QSZTZL";
 const GOOGLE_TAG_INLINE_INIT =
   "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
+
+export function buildGoogleTagHead(
+  rawTagId: string | undefined = process.env.GOOGLE_TAG_ID
+): HeadConfig[] {
+  const tagId = rawTagId?.trim();
+  if (!tagId) {
+    return [];
+  }
+  return [
+    [
+      "script",
+      { async: "", src: `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(tagId)}` },
+    ],
+    ["script", {}, GOOGLE_TAG_INLINE_INIT],
+  ];
+}
 
 export default withMermaid(
   defineConfig({
@@ -230,9 +245,8 @@ export default withMermaid(
     ["meta", { name: "keywords", content: "typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly" }],
     // Load Service Worker
     ["script", { src: "/coi-serviceworker.js" }],
-    // Google Tag (GA4)
-    ["script", { async: "", src: `https://www.googletagmanager.com/gtm.js?id=${GOOGLE_TAG_ID}` }],
-    ["script", {}, GOOGLE_TAG_INLINE_INIT],
+    // Google Tag (GA4), injected only when GOOGLE_TAG_ID is provided at build time
+    ...buildGoogleTagHead(),
   ],
   locales: {
     root: {

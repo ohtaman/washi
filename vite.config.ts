@@ -79,7 +79,6 @@ function z3DemoAssets(): Plugin {
   };
 }
 
-const GOOGLE_TAG_ID = "GTM-59QSZTZL";
 const GOOGLE_TAG_INLINE_INIT =
   "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
 
@@ -87,12 +86,16 @@ function googleAnalyticsTag(): Plugin {
   return {
     name: "washi-google-tag",
     transformIndexHtml() {
+      const tagId = process.env.GOOGLE_TAG_ID?.trim();
+      if (!tagId) {
+        return [];
+      }
       return [
         {
           tag: "script",
           attrs: {
             async: true,
-            src: `https://www.googletagmanager.com/gtm.js?id=${GOOGLE_TAG_ID}`,
+            src: `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(tagId)}`,
           },
           injectTo: "head",
         },

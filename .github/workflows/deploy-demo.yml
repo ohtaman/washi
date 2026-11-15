@@ -49,9 +49,12 @@ jobs:
         run: npm run build:site
         env:
           GITHUB_ACTIONS: 'true'
+          GOOGLE_TAG_ID: ${{ vars.GOOGLE_TAG_ID }}
 
       - name: Verify Unified Site SEO & Assets
         run: REQUIRE_SITE_DIST=1 npx vitest run test/site-seo.test.ts
+        env:
+          GOOGLE_TAG_ID: ${{ vars.GOOGLE_TAG_ID }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
