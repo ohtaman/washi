@@ -10,9 +10,8 @@ const docsRoot = resolve(import.meta.dirname, "..");
 const GOOGLE_TAG_INLINE_INIT =
   "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
 
-export function buildGoogleTagHead(
-  rawTagId: string | undefined = process.env.GOOGLE_TAG_ID
-): HeadConfig[] {
+export function buildGoogleTagHead(...args: [rawTagId?: string]): HeadConfig[] {
+  const rawTagId = args.length === 0 ? process.env.GOOGLE_TAG_ID : args[0];
   const tagId = rawTagId?.trim();
   if (!tagId) {
     return [];

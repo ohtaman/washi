@@ -518,8 +518,10 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
     // 1. Unset, empty, or whitespace-only GOOGLE_TAG_ID must emit zero analytics scripts
     for (const emptyVal of [undefined, "", "   \t\n  "]) {
-      expect(buildGoogleTagHead(emptyVal)).toEqual([]);
       await withEnvGoogleTagId(emptyVal, async () => {
+        expect(buildGoogleTagHead()).toEqual([]);
+        expect(buildGoogleTagHead(emptyVal)).toEqual([]);
+
         vi.resetModules();
         const reloadedVitepress = await import("../docs/.vitepress/config.mts");
         expect(reloadedVitepress.default.head).toContainEqual([
@@ -535,11 +537,16 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
     // 2. Non-empty GOOGLE_TAG_ID (including surrounding whitespace) must inject expected scripts in both VitePress and Vite demo
     for (const configuredVal of ["GTM-TEST1234", "  GTM-TEST1234  "]) {
-      expect(buildGoogleTagHead(configuredVal)).toEqual([
+      const expectedVitepressHead: HeadConfig[] = [
         ["script", { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" }],
         ["script", {}, inlineInit],
-      ]);
+      ];
       await withEnvGoogleTagId(configuredVal, async () => {
+        expect(buildGoogleTagHead()).toEqual(expectedVitepressHead);
+        expect(buildGoogleTagHead(configuredVal)).toEqual(expectedVitepressHead);
+        // Explicit undefined overrides a set process.env.GOOGLE_TAG_ID cleanly
+        expect(buildGoogleTagHead(undefined)).toEqual([]);
+
         vi.resetModules();
         const reloadedVitepress = await import("../docs/.vitepress/config.mts");
         expect(reloadedVitepress.default.head).toContainEqual([
