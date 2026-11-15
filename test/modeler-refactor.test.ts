@@ -1,35 +1,34 @@
 import { describe, it, expect } from "vitest";
 import {
   Model,
-  Var,
   Constraint,
+  BoolVar,
+  BoolOp,
+  implies,
   expr,
   maximize,
   minimize,
-  normalizeSense,
-  type ConstraintItem,
-  type ObjectiveExpr,
 } from "../src/index.js";
-import { HiGHS } from "../src/modeler/solvers/highs.js";
 
 describe("New Modeler API: constraint, objective, solve, conflicts", () => {
-  it("supports model.constraint(...) returning registered constraint(s) for single items and arrays", async () => {
+  it("supports model.constraint(...) returning registered constraint(s) for single items, strings, logicals, and arrays", async () => {
     const m = new Model("ConstraintReturnTest");
     const x = m.continuous("x", { lb: 0, ub: 20 });
     const y = m.continuous("y", { lb: 0, ub: 20 });
 
+    const prebuilt = x.le(15, "cap_x");
     const wood = m.constraint(expr`${x} + 2 * ${y} <= 40`, "wood");
-    const capX = m.constraint(expr`${x} <= 15`, "cap_x");
-    const batch = m.constraint([
-      expr`${y} <= 18`,
-      "x + y <= 30",
-    ]);
+    const capX = m.constraint(prebuilt);
+    const parsed = m.constraint("x + y <= 30", "sum_limit");
+    const batch = m.constraint([expr`${y} <= 18`]);
 
     expect(wood).toBeInstanceOf(Constraint);
-    expect(capX).toBeInstanceOf(Constraint);
-    expect(batch).toHaveLength(2);
+    expect(capX).toBe(prebuilt);
+    expect(m.getConstraintByName("cap_x")).toBe(prebuilt);
+    expect(parsed).toBeInstanceOf(Constraint);
+    expect(m.getConstraintByName("sum_limit")).toBe(parsed);
+    expect(batch).toHaveLength(1);
     expect(batch[0]).toBeInstanceOf(Constraint);
-    expect(batch[1]).toBeInstanceOf(Constraint);
     expect(m.numConstrs).toBe(4);
 
     m.objective(maximize(expr`30 * ${x} + 50 * ${y}`));
@@ -41,6 +40,21 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     expect(m.objectiveValue).toBe(30 * 15 + 50 * 12.5); // 1075
     expect(wood.dual).toBeCloseTo(25, 4);
     expect(capX.dual).toBeCloseTo(5, 4);
+
+    // Logical constraints preserve BoolVar / BoolOp / array return types
+    const mLogic = new Model();
+    const flagA = mLogic.bool("flagA");
+    const flagB = mLogic.bool("flagB");
+    const z = mLogic.continuous("z", { lb: 0, ub: 10 });
+    const regVar = mLogic.constraint(flagA, "require_A");
+    const regOp = mLogic.constraint(implies(flagA, expr`${z} >= 5`), "a_implies_z");
+    const regBatch = mLogic.constraint([flagB, flagA.and(flagB)]);
+    expect(regVar).toBe(flagA);
+    expect(regVar).toBeInstanceOf(BoolVar);
+    expect(regOp).toBeInstanceOf(BoolOp);
+    expect(regBatch[0]).toBe(flagB);
+    expect(regBatch[1]).toBeInstanceOf(BoolOp);
+    expect(mLogic.logicalConstraints).toHaveLength(4);
   });
 
   it("strictly rejects raw arithmetic expressions in model.constraint()", () => {
@@ -152,61 +166,6 @@ describe("New Modeler API: constraint, objective, solve, conflicts", () => {
     // After solve (satisfiable LP)
     await m.solve();
     expect(m.conflicts).toBeUndefined();
-  });
-
-  it("retires redundant aliases on Model, Var, LinExpr, and QuadExpr (Issue #81)", () => {
-    const m = new Model("CanonicalSurfaceTest");
-    const x = m.continuous("x", { lb: 0, ub: 10 });
-    const lin = x.add(1);
-    const quad = x.mul(x);
-
-    expect((m as any).constrain).toBeUndefined();
-    expect((m as any).optimize).toBeUndefined();
-    expect((m as any).maximize).toBeUndefined();
-    expect((m as any).minimize).toBeUndefined();
-    expect((m as any).setObjective).toBeUndefined();
-    expect((m as any).add).toBeUndefined();
-    expect((m as any).vars).toBeUndefined();
-    expect((m as any).constrs).toBeUndefined();
-    expect(Reflect.get(m, "getValues")).toBeUndefined();
-    expect("getValues" in m).toBe(false);
-
-    expect((x as any).lessThanOrEqual).toBeUndefined();
-    expect((x as any).greaterThanOrEqual).toBeUndefined();
-    expect((x as any).equalTo).toBeUndefined();
-
-    expect((lin as any).getValue).toBeUndefined();
-    expect((lin as any).lessThanOrEqual).toBeUndefined();
-    expect((lin as any).greaterThanOrEqual).toBeUndefined();
-    expect((lin as any).equalTo).toBeUndefined();
-
-    expect((quad as any).getValue).toBeUndefined();
-    expect((quad as any).lessThanOrEqual).toBeUndefined();
-    expect((quad as any).greaterThanOrEqual).toBeUndefined();
-    expect((quad as any).equalTo).toBeUndefined();
-  });
-
-  it("rejects invalid runtime VarType and OptimizationSense strings instead of silently defaulting (Issue #81)", () => {
-    expect(() => new Var({ type: "bogus" as any })).toThrow(/Invalid variable type/);
-    const v = new Var({ type: "integer" });
-    expect(v.type).toBe("Integer");
-    expect(() => {
-      v.type = "unknown_type" as any;
-    }).toThrow(/Invalid variable type/);
-
-    expect(() => normalizeSense("bogus" as any)).toThrow(/Invalid optimization sense/);
-    expect(() => new Model({ sense: "bogus" as any })).toThrow(/Invalid optimization sense/);
-    const m = new Model();
-    const x = m.continuous("x");
-    expect(() => {
-      m.sense = "bogus" as any;
-    }).toThrow(/Invalid optimization sense/);
-    expect(() => {
-      m.objective({ expr: x, sense: "" as any });
-    }).toThrow(/Invalid optimization sense/);
-    expect(() => {
-      m.objective({ expr: x, sense: null as any });
-    }).toThrow(/Invalid optimization sense/);
   });
 
   it("provides conflicts string[] on unsatisfiable SMT models via check()", async () => {

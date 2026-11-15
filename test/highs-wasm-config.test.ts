@@ -8,6 +8,7 @@ import {
   checkAssetsMatch,
   ensureHighsAssets,
 } from "../scripts/ensure-highs-wasm.mjs";
+import { isValidWasmHeader } from "../src/modeler/solvers/highs/loader.js";
 import { Model, expr, maximize, sum, type Var } from "../src/index.js";
 
 describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
@@ -31,6 +32,7 @@ describe("HiGHS WebAssembly Config & Lifecycle (highs.config.json)", () => {
 
     expect(fs.existsSync(wasmFile)).toBe(true);
     expect(fs.existsSync(runtimeFile)).toBe(true);
+    expect(isValidWasmHeader(fs.readFileSync(wasmFile))).toBe(true);
 
     const wasmSha = computeSha256(wasmFile);
     const runtimeSha = computeSha256(runtimeFile);

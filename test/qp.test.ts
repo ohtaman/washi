@@ -37,6 +37,7 @@ describe("Quadratic Programming (QP) with HiGHS", () => {
     m.objective(minimize(x.mul(3).add(x.mul(x)).add(y.mul(y))));
     m.constraint(x.add(y).ge(4), "sum_ge_4");
 
+    expect(HiGHS.capabilities?.supportsQP).toBe(true);
     const status = await m.solve(HiGHS);
 
     expect(status).toBe("Optimal");

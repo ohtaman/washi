@@ -138,4 +138,32 @@ describe("AC-3: Unified i18n Engine", () => {
     expect(getLocalizedNurseName("N01", "\u4F50\u85E4 \u7F8E\u54B2", "en")).toBe("Misaki Sato");
     expect(getLocalizedNurseName("N02", "\u9234\u6728 \u967D\u83DC", "en")).toBe("Hina Suzuki");
   });
+
+  it("switches Playground UI locale (en, ja, zh) and prioritizes stored preference over browser language", async () => {
+    const { t, getLocale, setLocale, detectInitialLocale } = await import(
+      "../examples/web-demo/src/ui/i18n.js"
+    );
+    try {
+      setLocale("en");
+      expect(getLocale()).toBe("en");
+      expect(t("modelSelectLabel")).toBe("Problem Model:");
+
+      setLocale("ja");
+      expect(getLocale()).toBe("ja");
+      expect(t("modelSelectLabel")).toBe("\u554F\u984C\u30E2\u30C7\u30EB:");
+
+      setLocale("zh");
+      expect(getLocale()).toBe("zh");
+      expect(t("modelSelectLabel")).not.toBe("Problem Model:");
+
+      expect(detectInitialLocale(undefined, "ja-JP")).toBe("ja");
+      expect(detectInitialLocale(undefined, "zh-CN")).toBe("zh");
+      expect(detectInitialLocale(undefined, "en-US")).toBe("en");
+      expect(detectInitialLocale(undefined, "fr-FR")).toBe("en");
+      expect(detectInitialLocale("en", "ja-JP")).toBe("en");
+      expect(detectInitialLocale("zh", "en-US")).toBe("zh");
+    } finally {
+      setLocale("en");
+    }
+  });
 });

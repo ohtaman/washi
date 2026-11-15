@@ -50,6 +50,9 @@ jobs:
         env:
           GITHUB_ACTIONS: 'true'
 
+      - name: Verify Unified Site SEO & Assets
+        run: REQUIRE_SITE_DIST=1 npx vitest run test/site-seo.test.ts
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

@@ -84,6 +84,7 @@
     "build:browser": "node scripts/ensure-highs-wasm.mjs && node scripts/build-browser.mjs",
     "test:distribution": "node scripts/ensure-highs-wasm.mjs && npm run build:types && npm run build:lib && npm run build:browser && npm run build:llms && node --experimental-vm-modules scripts/check-distribution.mjs",
     "test:demo": "BASE_URL=/ npm run build:demo && node scripts/check-demo-browser.mjs",
+    "test:site": "npm run build:site && REQUIRE_SITE_DIST=1 vitest run test/site-seo.test.ts",
     "bench": "node scripts/run-benchmarks.mjs"
   },
   "keywords": [

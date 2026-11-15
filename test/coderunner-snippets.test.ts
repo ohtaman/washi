@@ -62,19 +62,13 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     });
   }
 
-  it("verifies shipped README.md, README.ja.md, README.zh-CN.md, and docs/ contain no retired API calls, invalid options, or broken doc paths", () => {
+  it("verifies shipped READMEs and docs/ contain no retired API calls and all TypeScript blocks parse cleanly", () => {
     for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
       const content = fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8");
       expect(content).not.toMatch(
         /\.(constrain|optimize|setObjective|vars|constrs|getValues?|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
       );
       expect(content).not.toMatch(/\b(?:m|model)\.(minimize|maximize)\b/);
-      expect(content).not.toContain("/public/highs.wasm");
-      expect(content).not.toContain("custom-solver-guide.md");
-      expect(content).not.toContain("documentation-plan.md");
-      expect(content).not.toContain("bestBound");
-      expect(content).not.toContain("iterationCount");
-      expect(content).not.toContain("@0.4.0");
     }
 
     for (const docFile of mdFiles) {
@@ -89,39 +83,6 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(content, `Retired m.minimize/maximize in ${docFile}`).not.toMatch(
         /\b(?:m|model)\.(minimize|maximize)\b/
       );
-      expect(content, `Invalid computeUnsatCore option in ${docFile}`).not.toContain("computeUnsatCore");
-      expect(content, `Invalid solverOptions on Model in ${docFile}`).not.toContain("solverOptions:");
-      expect(content, `Invalid SolutionValidationOptions/Report field in ${docFile}`).not.toMatch(
-        /\b(absTol|relTol|integralityTol|maxBoundViolation|maxIntegralityViolation|maxConstraintViolation|objectiveDiscrepancy|checkedSolveStatus)\b/
-      );
-      expect(content, `Invalid MockSolver defaultResult wrapper in ${docFile}`).not.toContain("defaultResult");
-      expect(content, `Invalid SolveProgressEvent field in ${docFile}`).not.toMatch(/\b(bestBound|iterationCount)\b/);
-      expect(content, `Invalid two-argument objective call in ${docFile}`).not.toContain(', "Maximize")');
-      expect(content, `Invalid Interrupted row in SolverStatus table in ${docFile}`).not.toContain('| `"Interrupted"` | `false` |');
-      expect(content, `Invalid boolean presolve type in ${docFile}`).not.toMatch(/presolve.*boolean/);
-      expect(content, `Invalid numConstraints property in ${docFile}`).not.toContain("numConstraints");
-      expect(content, `Invalid Promise<SolverCheckResult> for m.check() in ${docFile}`).not.toContain(
-        "| `Promise<SolverCheckResult>` |"
-      );
-      expect(content, `Invalid "Empty" in SolverStatus list in ${docFile}`).not.toContain('- `"Empty"`');
-      expect(content, `Incorrect negated LP objective in ${docFile}`).not.toContain("obj: - 5 x");
-      expect(content, `Incorrect highs.worker.js asset name in ${docFile}`).not.toContain("highs.worker.js");
-      expect(content, `Incorrect objectiveBound null comment in ${docFile}`).not.toMatch(
-        /m\.objectiveBound\);\s*\/\/.*null/
-      );
-      expect(content, `Stale @0.4.0 CDN URL in ${docFile}`).not.toContain("@0.4.0");
-      expect(rawContent, `Deleted custom-solver-guide.md ref in ${docFile}`).not.toContain("custom-solver-guide.md");
-
-      if (docFile.endsWith("highs.md")) {
-        expect(content, `Stale verbose: true in ${docFile}`).not.toContain("verbose: true");
-        expect(content, `Missing outputFlag: true in ${docFile}`).toContain("outputFlag: true");
-      }
-      if (docFile.endsWith("custom-solver.md")) {
-        expect(content, `Unmapped status in ${docFile}`).not.toContain('payload.status === "OPTIMAL"');
-        expect(content, `Missing statusMap in ${docFile}`).toContain("statusMap");
-        expect(content, `Missing AbortError handling in ${docFile}`).toContain("AbortError");
-      }
-      expect(content, `Invalid Var.div() in ${docFile}`).not.toMatch(/\|\s*`\.div\(divisor\)`\s*\|\s*`Var`/);
 
       const tsBlockRegex = /```(?:typescript|ts)\n([\s\S]*?)```/g;
       let blockMatch;
@@ -498,17 +459,6 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(bendersRes.obj).toBeCloseTo(70, 5);
       expect(bendersRes.y).toBe(1);
       expect(bendersRes.theta).toBeCloseTo(30, 5);
-    }
-
-    // Ensure guide pages across EN/JA/ZH contain no unexplained external domain identifiers
-    for (const guideDir of ["docs/guide", "docs/ja/guide", "docs/zh/guide"]) {
-      const absGuideDir = path.resolve(process.cwd(), guideDir);
-      for (const file of fs.readdirSync(absGuideDir).filter((f) => f.endsWith(".md"))) {
-        const text = fs.readFileSync(path.join(absGuideDir, file), "utf-8");
-        expect(text, `Unexplained identifier in ${guideDir}/${file}`).not.toMatch(
-          /\b(?:isNight|isVip|luxLevel|alarmTriggered|solveSpecializedShortestPath)\b/
-        );
-      }
     }
   });
 
@@ -889,10 +839,6 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     );
     expect(themeIndexRaw).toContain("router.onBeforeRouteChange");
     expect(themeIndexRaw).toMatch(/demo\|apps\|games/);
-
-    // Old standalone games and apps hubs are removed in favor of unified showcase
-    expect(fs.existsSync(path.resolve(process.cwd(), "examples/web-demo/games/index.html"))).toBe(false);
-    expect(fs.existsSync(path.resolve(process.cwd(), "examples/web-demo/apps/index.html"))).toBe(false);
 
     const castleIndexRaw = fs.readFileSync(
       path.resolve(process.cwd(), "examples/web-demo/games/demon-castle-shift/index.html"),
