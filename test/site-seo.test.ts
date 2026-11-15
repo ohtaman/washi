@@ -11,11 +11,19 @@ import { appendInteractiveRoutesToSitemap } from "../scripts/build-site.mjs";
 // @ts-expect-error .mjs script module
 import { buildLlmsArtifacts } from "../scripts/generate-llms.mjs";
 
+const rootDir = process.cwd();
+const siteDistPath = path.resolve(rootDir, "dist/site");
+const demoDistIndexPath = path.resolve(rootDir, "dist/demo/index.html");
+const requireSiteDist = process.env.REQUIRE_SITE_DIST === "1";
+const itSiteDist = requireSiteDist || fs.existsSync(siteDistPath) ? it : it.skip;
+const itSiteAndDemoDist =
+  requireSiteDist || (fs.existsSync(siteDistPath) && fs.existsSync(demoDistIndexPath))
+    ? it
+    : it.skip;
+
 describe("Site SEO: Sitemap and robots.txt configuration", () => {
-  const rootDir = process.cwd();
   const vitepressConfigPath = path.resolve(rootDir, "docs/.vitepress/config.mts");
   const publicRobotsPath = path.resolve(rootDir, "docs/public/robots.txt");
-  const siteDistPath = path.resolve(rootDir, "dist/site");
   const siteRobotsPath = path.resolve(siteDistPath, "robots.txt");
   const siteSitemapPath = path.resolve(siteDistPath, "sitemap.xml");
 
@@ -66,11 +74,8 @@ describe("Site SEO: Sitemap and robots.txt configuration", () => {
     expect(appendInteractiveRoutesToSitemap(augmented, webDemoRoot)).toBe(augmented);
   });
 
-  it("verifies site assembly copies CNAME and robots.txt and generates well-formed sitemap.xml", () => {
-    if (!fs.existsSync(siteDistPath)) {
-      // If dist/site has not been built yet in this session, skip dist check
-      return;
-    }
+  itSiteDist("verifies site assembly copies CNAME and robots.txt and generates well-formed sitemap.xml", () => {
+    expect(fs.existsSync(siteDistPath)).toBe(true);
 
     const siteCnamePath = path.resolve(siteDistPath, "CNAME");
     expect(fs.existsSync(siteCnamePath)).toBe(true);
@@ -653,11 +658,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     }
   });
 
-  it("verifies emitted HTML in dist/site and dist/demo contains configured SEO tags and localized titles", () => {
-    const siteDistPath = path.resolve(rootDir, "dist/site");
-    if (!fs.existsSync(siteDistPath)) {
-      return;
-    }
+  itSiteAndDemoDist("verifies emitted HTML in dist/site and dist/demo contains configured SEO tags and localized titles", () => {
+    expect(fs.existsSync(siteDistPath)).toBe(true);
 
     const enHtml = fs.readFileSync(path.resolve(siteDistPath, "index.html"), "utf-8");
     expect(enHtml).toContain("<title>WaSHI | WaSHI — Mathematical Optimization Modeler in TypeScript</title>");
@@ -740,12 +742,10 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(entryHtml).not.toContain('"/washi/');
     }
 
-    const demoDistPath = path.resolve(rootDir, "dist/demo/index.html");
-    if (fs.existsSync(demoDistPath)) {
-      const demoHtml = fs.readFileSync(demoDistPath, "utf-8");
-      expect(demoHtml).toContain("<title>WaSHI — Browser Optimization & Constraint Programming Demos</title>");
-      expect(demoHtml).toContain("Interactive browser demos and playground for WaSHI: solve linear programming, nurse shift scheduling, and constraint games client-side with WebAssembly (HiGHS & Z3).");
-      expect(demoHtml).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
-    }
+    expect(fs.existsSync(demoDistIndexPath)).toBe(true);
+    const demoHtml = fs.readFileSync(demoDistIndexPath, "utf-8");
+    expect(demoHtml).toContain("<title>WaSHI — Browser Optimization & Constraint Programming Demos</title>");
+    expect(demoHtml).toContain("Interactive browser demos and playground for WaSHI: solve linear programming, nurse shift scheduling, and constraint games client-side with WebAssembly (HiGHS & Z3).");
+    expect(demoHtml).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
   });
 });

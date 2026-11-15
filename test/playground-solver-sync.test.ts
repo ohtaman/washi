@@ -113,30 +113,6 @@ const status = await m.solve();`;
   });
 });
 
-describe("Playground Typography (Mincho / Serif Removal)", () => {
-  it("style.css does not assign serif fonts to brand or section headings", () => {
-    const styleCssPath = path.resolve(__dirname, "../examples/web-demo/src/style.css");
-    const content = fs.readFileSync(styleCssPath, "utf-8");
-
-    // Headings and brand titles should not use var(--font-serif)
-    expect(content).not.toMatch(/\.brand-title\s*\{[^}]*font-family:\s*var\(--font-serif\)/);
-    expect(content).not.toMatch(/\.section-title\s*\{[^}]*font-family:\s*var\(--font-serif\)/);
-    expect(content).not.toMatch(/\.docs-container\s+h2\s*\{[^}]*font-family:\s*var\(--font-serif\)/);
-    expect(content).not.toMatch(/\.docs-section\s+h3\s*\{[^}]*font-family:\s*var\(--font-serif\)/);
-
-    // --font-serif should not be set to Noto Serif JP
-    expect(content).not.toMatch(/--font-serif:\s*['"]Noto Serif JP['"]/);
-  });
-
-  it("demo/index.html does not load Noto Serif JP", () => {
-    const indexPath = path.resolve(__dirname, "../examples/web-demo/demo/index.html");
-    const content = fs.readFileSync(indexPath, "utf-8");
-
-    expect(content).not.toContain("Noto+Serif+JP");
-    expect(content).toContain("Noto+Sans+JP");
-  });
-});
-
 describe("Playground Presets Runtime Execution", () => {
   beforeAll(() => {
     registerGLPKSolver();

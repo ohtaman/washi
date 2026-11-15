@@ -20,9 +20,12 @@ describe("HiGHS Web Modeler", () => {
     const status = await m.solve();
 
     expect(status).toBe("Optimal");
+    expect(m.status).toBe("Optimal");
     expect(m.objectiveValue).toBe(1100);
     expect(chairs.value).toBe(20);
     expect(tables.value).toBe(10);
+    expect(m.values.get("chairs")).toBe(20);
+    expect(m.values.get("tables")).toBe(10);
   });
 
   it("solves using string formula constraints and objectives", async () => {
@@ -87,26 +90,6 @@ describe("HiGHS Web Modeler", () => {
     expect(x["camera"].value).toBe(1);
     expect(x["book"].value).toBe(0);
     expect(x["water"].value).toBe(0);
-  });
-
-  it("supports domain-pure integer variables and constraint() API", async () => {
-    const m = new Model("PureProblem");
-    const x = m.integer("chairs", { lb: 0 });
-    const y = m.integer("tables", { lb: 0 });
-
-    m.objective(maximize(x.mul(30).add(y.mul(50))));
-    m.constraint(x.add(y.mul(2)).le(40));
-    m.constraint(x.mul(2).add(y).le(50));
-
-    await m.solve();
-
-    expect(m.status).toBe("Optimal");
-    expect(m.objectiveValue).toBe(1100);
-    expect(x.value).toBe(20);
-    expect(y.value).toBe(10);
-    expect(m.values.get("chairs")).toBe(20);
-    expect(m.values.get("tables")).toBe(10);
-    expect("getValues" in m).toBe(false);
   });
 
   it("handles multi-dimensional variables with m.binary(rows, cols)", async () => {

@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { Model, expr, maximize, minimize, MockSolver } from "../src/index.js";
+import { LinExpr, Model, expr, maximize, minimize, MockSolver } from "../src/index.js";
 import {
+  HighsSolver,
   mapHighsStatus,
   mapHighsTerminationStatus,
 } from "../src/modeler/solvers/highs/solver.js";
 import * as highsLoader from "../src/modeler/solvers/highs/loader.js";
+import * as workerClient from "../src/modeler/solvers/highs/worker-client.js";
 
 describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap (Issue #53)", () => {
   afterEach(() => {
@@ -238,7 +240,7 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     expect(mMock.absGap).toBe(3);
   });
 
-  it("maps all HiGHS status codes and strings accurately in mapHighsTerminationStatus and mapHighsStatus", () => {
+  it("maps all HiGHS status codes and strings accurately in mapHighsTerminationStatus and mapHighsStatus", async () => {
     expect(mapHighsTerminationStatus("Optimal", 7)).toBe("Optimal");
     expect(mapHighsTerminationStatus("Primal infeasible or unbounded", 9)).toBe("InfeasibleOrUnbounded");
     expect(mapHighsTerminationStatus("Solution limit reached", 16)).toBe("SolutionLimit");
@@ -246,11 +248,65 @@ describe("Solution Metrics: Incumbent Availability, Objective Bound, and MIP Gap
     expect(mapHighsTerminationStatus("Bound on objective reached", 11)).toBe("ObjectiveBound");
     expect(mapHighsTerminationStatus("Target for objective reached", 12)).toBe("ObjectiveTarget");
 
+    expect(mapHighsStatus("Optimal")).toBe("Optimal");
+    expect(mapHighsStatus("Infeasible")).toBe("Infeasible");
+    expect(mapHighsStatus("Unbounded")).toBe("Unbounded");
     expect(mapHighsStatus("Primal infeasible or unbounded", 9)).toBe("Unknown");
+    expect(mapHighsStatus("Time limit reached")).toBe("TimeLimit");
+    expect(mapHighsStatus("TimeLimit")).toBe("TimeLimit");
+    expect(mapHighsStatus("Iteration limit reached")).toBe("IterationLimit");
+    expect(mapHighsStatus("IterationLimit")).toBe("IterationLimit");
+    expect(mapHighsStatus("Bound on objective reached")).toBe("Feasible");
+    expect(mapHighsStatus("Target for objective reached")).toBe("Feasible");
+    expect(mapHighsStatus("Not Set")).toBe("NotSolved");
     expect(mapHighsStatus("Solution limit reached", 16, true)).toBe("Feasible");
     expect(mapHighsStatus("Solution limit reached", 16, false)).toBe("Unknown");
     expect(mapHighsStatus("Interrupted", 17, true)).toBe("Feasible");
     expect(mapHighsStatus("Interrupted", 17, false)).toBe("Unknown");
+
+    for (const errStatus of [
+      "Load error",
+      "Model error",
+      "Presolve error",
+      "Solve error",
+      "Postsolve error",
+      "Error",
+    ]) {
+      expect(mapHighsStatus(errStatus)).toBe("Error");
+    }
+
+    for (const raw of ["Unknown", "Empty", "SomeUnexpectedStatus", "", "   ", undefined, null, 123]) {
+      expect(mapHighsStatus(raw)).toBe("Unknown");
+    }
+
+    const malformedResult: highsLoader.RawHighsSolveResult = {
+      // @ts-expect-error simulating malformed external WASM payload with missing Status
+      Status: undefined,
+      ObjectiveValue: NaN,
+      Columns: {},
+      Rows: [],
+    };
+    vi.spyOn(workerClient, "solveLp").mockResolvedValueOnce({
+      result: malformedResult,
+      runTime: 0.01,
+    });
+    const solver = new HighsSolver();
+    const res = await solver.solve(
+      {
+        name: "Test",
+        sense: "Minimize",
+        objective: new LinExpr(),
+        variables: [],
+        constraints: [],
+      },
+      {
+        lpString: "Minimize\n obj: 0\nEnd",
+        nameToVar: new Map(),
+        nameToConstraint: new Map(),
+      }
+    );
+    expect(res.status).toBe("Unknown");
+    expect(res.raw).toEqual(malformedResult);
   });
 
   it("recomputes relative MIP gap using shifted objective and detects unbounded Z3 objectives", async () => {

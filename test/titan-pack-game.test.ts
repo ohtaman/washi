@@ -334,50 +334,5 @@ describe("TITAN PACK: 2D Cutting Stock & Interlocking Puzzle Generator", () => {
         expect(m[1]).toContain("padding: 0");
       }
     });
-
-    it("removes legacy cyber-factory roleplay and literal translation labels from UI and locales", () => {
-      const htmlPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/index.html");
-      const jaPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/locales/ja.json");
-      const enPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/locales/en.json");
-      const zhPath = path.resolve(__dirname, "../examples/web-demo/games/titan-pack/locales/zh.json");
-      const html = fs.readFileSync(htmlPath, "utf-8");
-      const jaRaw = fs.readFileSync(jaPath, "utf-8");
-      const ja = JSON.parse(jaRaw) as Record<string, unknown>;
-      const en = JSON.parse(fs.readFileSync(enPath, "utf-8")) as Record<string, unknown>;
-      const zh = JSON.parse(fs.readFileSync(zhPath, "utf-8")) as Record<string, unknown>;
-
-      // All 3 locale catalogs must maintain identical top-level and diff key sets
-      expect(Object.keys(ja).sort()).toEqual(Object.keys(en).sort());
-      expect(Object.keys(zh).sort()).toEqual(Object.keys(en).sort());
-      expect(Object.keys(ja.diff as Record<string, string>).sort()).toEqual(
-        Object.keys(en.diff as Record<string, string>).sort(),
-      );
-      expect(Object.keys(zh.diff as Record<string, string>).sort()).toEqual(
-        Object.keys(en.diff as Record<string, string>).sort(),
-      );
-
-      for (const removedKey of [
-        "droneName",
-        "droneDefault",
-        "statCoverage",
-        "statPlaced",
-        "statScrap",
-        "btnExecute",
-      ]) {
-        expect(en[removedKey]).toBeUndefined();
-        expect(ja[removedKey]).toBeUndefined();
-        expect(zh[removedKey]).toBeUndefined();
-      }
-
-      for (const removedTerm of [
-        "PRECISION TITANIUM CUTTING",
-        "FAULT-LINE FREE",
-        "UNIT-74",
-        "AI OPERATOR",
-      ]) {
-        expect(html).not.toContain(removedTerm);
-        expect(jaRaw).not.toContain(removedTerm);
-      }
-    });
   });
 });

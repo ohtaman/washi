@@ -26,9 +26,10 @@ import {
   buildLpSymbolMaps,
   isLpExportResult,
   sanitizeIdentifier,
+  normalizeSense,
 } from "../src/index.js";
 
-describe("opt-ts Library Entry Point Exports", () => {
+describe("WaSHI Library Entry Point Exports", () => {
   it("exports all core modeler classes and default solvers from root and excludes retired diagnostic helpers", () => {
     expect(Model).toBeDefined();
     expect(Var).toBeDefined();
@@ -127,8 +128,23 @@ describe("opt-ts Library Entry Point Exports", () => {
     }
 
     // Strict runtime validation for OptimizationSense and VarType
+    // @ts-expect-error invalid runtime OptimizationSense literal
+    expect(() => normalizeSense("bogus")).toThrow(/Invalid optimization sense/);
     expect(() => new Model({ sense: "InvalidSense" as any })).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      // @ts-expect-error invalid runtime OptimizationSense assignment
+      m.sense = "bogus";
+    }).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      // @ts-expect-error empty runtime OptimizationSense literal
+      m.objective({ expr: x, sense: "" });
+    }).toThrow(/Invalid optimization sense/);
+    expect(() => {
+      // @ts-expect-error null runtime OptimizationSense literal
+      m.objective({ expr: x, sense: null });
+    }).toThrow(/Invalid optimization sense/);
     expect(() => new Var({ name: "bad", type: "SemiContinuous" as any })).toThrow(/Invalid variable type/);
+    expect(new Var({ type: "integer" }).type).toBe("Integer");
     expect(() => {
       x.type = "InvalidType" as any;
     }).toThrow(/Invalid variable type/);

@@ -31,8 +31,11 @@ import {
 } from "../examples/web-demo/games/demon-castle-shift/types.js";
 import {
   formatCastleCalendarMonthLocalized,
+  getDayLabel,
   getLilithProfileLocalized,
   getMonsterLocalized,
+  getOpeningMovieCutsLocalized,
+  getPrologueSlidesLocalized,
   getRelationLocalized,
   getRequestedOffReasonLocalized,
   getRequirementLocalized,
@@ -853,6 +856,205 @@ describe("Demon Castle 24-Hour Guard Shift Game Solver & Stages (HiGHS only)", (
     const retryStage = generateRetryCampaignStage(0, 1);
     const retryJa = getStageLocalized(retryStage, "ja");
     expect(retryJa.subtitle).not.toContain("New Lineup");
+
+    expect(getOpeningMovieCutsLocalized("en").length).toBeGreaterThanOrEqual(4);
+    expect(getOpeningMovieCutsLocalized("zh").length).toBeGreaterThanOrEqual(4);
+    expect(getPrologueSlidesLocalized("en")).toHaveLength(3);
+    expect(getPrologueSlidesLocalized("zh")).toHaveLength(3);
+    expect(getDayLabel(0, "zh")).toBe("周一");
+  });
+
+  it("switches static UI buttons, tooltips, aria-labels, wax seals, and #stage-heading to en and zh", async () => {
+    interface MockElement {
+      id: string;
+      textContent: string;
+      innerHTML: string;
+      title: string;
+      hidden: boolean;
+      open: boolean;
+      dataset: Record<string, string>;
+      classList: {
+        toggle: () => void;
+        add: () => void;
+        remove: () => void;
+      };
+      setAttribute: (attr: string, val: string) => void;
+      getAttribute: (attr: string) => string | null;
+      appendChild: () => void;
+    }
+
+    const castleHtml = readFileSync(
+      resolve(__dirname, "../examples/web-demo/games/demon-castle-shift/index.html"),
+      "utf8"
+    );
+    const byId = new Map<string, MockElement>();
+    const allElements: MockElement[] = [];
+    const langBtns: MockElement[] = [];
+    const waxSeals: MockElement[] = [];
+    const closeBtns: MockElement[] = [];
+    const bgmBtns: MockElement[] = [];
+    const conditionRows: MockElement[] = [];
+    const dialogueDocks: MockElement[] = [];
+    const logoImgs: MockElement[] = [];
+
+    for (const match of castleHtml.matchAll(/<([a-zA-Z0-9-]+)\b([^>]*)>/g)) {
+      const attrs = new Map<string, string>();
+      for (const attrMatch of match[2].matchAll(/([a-zA-Z0-9_-]+)(?:="([^"]*)")?/g)) {
+        attrs.set(attrMatch[1], attrMatch[2] ?? "");
+      }
+      const id = attrs.get("id") ?? "";
+      const clsList = (attrs.get("class") ?? "").split(/\s+/);
+      const hasWaxSeal = clsList.includes("grimoire-wax-seal");
+      const hasConditionRow = clsList.includes("condition-summary-row");
+      const hasDialogueDock = clsList.includes("rpg-dialogue-dock");
+      const hasLogoImg =
+        clsList.includes("title-logo-img") || clsList.includes("op-climax-logo-img");
+      const hasCloseDialog = attrs.has("data-close-dialog");
+      const hasLangBtn = attrs.has("data-lang-btn");
+      const hasBgmToggle = attrs.has("data-bgm-toggle");
+      if (
+        !id &&
+        !hasWaxSeal &&
+        !hasConditionRow &&
+        !hasDialogueDock &&
+        !hasLogoImg &&
+        !hasCloseDialog &&
+        !hasLangBtn &&
+        !hasBgmToggle &&
+        !attrs.has("aria-label") &&
+        !attrs.has("title") &&
+        !attrs.has("alt")
+      ) {
+        continue;
+      }
+      const el: MockElement = {
+        id,
+        textContent: "__JA_INITIAL__",
+        innerHTML: "__JA_INITIAL__",
+        title: attrs.get("title") ?? "",
+        hidden: attrs.has("hidden"),
+        open: false,
+        dataset: hasLangBtn ? { langBtn: attrs.get("data-lang-btn") ?? "" } : {},
+        classList: { toggle: () => {}, add: () => {}, remove: () => {} },
+        setAttribute: (attr: string, val: string) => {
+          attrs.set(attr, val);
+        },
+        getAttribute: (attr: string) => attrs.get(attr) ?? null,
+        appendChild: () => {},
+      };
+      allElements.push(el);
+      if (id) byId.set(id, el);
+      if (hasWaxSeal) waxSeals.push(el);
+      if (hasConditionRow) conditionRows.push(el);
+      if (hasDialogueDock) dialogueDocks.push(el);
+      if (hasLogoImg) logoImgs.push(el);
+      if (hasCloseDialog) closeBtns.push(el);
+      if (hasLangBtn) langBtns.push(el);
+      if (hasBgmToggle) bgmBtns.push(el);
+    }
+
+    const castleDoc = {
+      documentElement: { lang: "ja" },
+      title: "",
+      createElement: () => ({
+        type: "",
+        className: "",
+        disabled: false,
+        textContent: "",
+        value: "",
+        selected: false,
+        dataset: {},
+        classList: { toggle: () => {}, add: () => {}, remove: () => {} },
+        addEventListener: () => {},
+        appendChild: () => {},
+      }),
+      getElementById: (id: string) => byId.get(id) ?? null,
+      querySelectorAll: (selector: string) => {
+        if (selector === "[data-lang-btn]") return langBtns;
+        if (selector === ".grimoire-wax-seal") return waxSeals;
+        if (selector === "[data-close-dialog]") return closeBtns;
+        if (selector === "[data-bgm-toggle]") return bgmBtns;
+        if (selector === ".condition-summary-row") return conditionRows;
+        if (selector === ".rpg-dialogue-dock") return dialogueDocks;
+        if (selector === ".title-logo-img, .op-climax-logo-img") return logoImgs;
+        return [];
+      },
+    };
+
+    const prevDocument = (globalThis as { document?: unknown }).document;
+    try {
+      (globalThis as { document?: unknown }).document = castleDoc;
+      resetSaveDataForTest();
+      await loadCampaignStage(0, false);
+
+      switchCastleLanguage("en");
+      expect(castleDoc.documentElement.lang).toBe("en");
+      expect(castleDoc.title).toContain("Demon Castle 24h Guard Shift");
+      expect(logoImgs.length).toBeGreaterThanOrEqual(1);
+      for (const logo of logoImgs) {
+        expect(logo.getAttribute("src")).toBe("./title-logo-en.png");
+      }
+      expect(byId.get("btn-title-start")?.textContent).toBe("Start New Game");
+      expect(byId.get("btn-dispatch")?.textContent).toBe("⚔️ Guard with This Shift");
+      expect(waxSeals.length).toBeGreaterThanOrEqual(1);
+      for (const seal of waxSeals) {
+        expect(seal.textContent).toBe("Seal");
+      }
+      expect(closeBtns.length).toBeGreaterThanOrEqual(3);
+      for (const closeBtn of closeBtns) {
+        expect(closeBtn.getAttribute("aria-label")).toBe("Close");
+      }
+      expect(conditionRows[0]?.getAttribute("aria-label")).toBe("Shift Goal Status");
+      expect(dialogueDocks[0]?.getAttribute("aria-label")).toBe(
+        "Dialogue Window and Dispatch Command"
+      );
+      expect(byId.get("stage-heading")?.textContent).toBe(
+        getStageLocalized(CAMPAIGN_STAGES[0], "en").title
+      );
+      for (const el of allElements) {
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.title).not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+      }
+
+      switchCastleLanguage("zh");
+      expect(castleDoc.documentElement.lang).toBe("zh");
+      expect(castleDoc.title).toContain("魔王城的24小时警备排班");
+      for (const logo of logoImgs) {
+        expect(logo.getAttribute("src")).toBe("./title-logo-zh.png");
+      }
+      expect(byId.get("btn-title-start")?.textContent).toBe("从头开始游玩");
+      expect(byId.get("btn-dispatch")?.textContent).toBe("⚔️ 按此班表出击警备");
+      for (const seal of waxSeals) {
+        expect(seal.textContent).toBe("印");
+      }
+      for (const closeBtn of closeBtns) {
+        expect(closeBtn.getAttribute("aria-label")).toBe("关闭");
+      }
+      expect(conditionRows[0]?.getAttribute("aria-label")).toBe("排班达成状况");
+      expect(dialogueDocks[0]?.getAttribute("aria-label")).toBe("对话窗口与出击指令");
+      expect(byId.get("stage-heading")?.textContent).toBe(
+        getStageLocalized(CAMPAIGN_STAGES[0], "zh").title
+      );
+      for (const el of allElements) {
+        expect(el.getAttribute("aria-label") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.getAttribute("alt") ?? "").not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+        expect(el.title).not.toMatch(/[\u3040-\u309F\u30A0-\u30FF]/);
+      }
+
+      await loadEndlessStage(6, false);
+      switchCastleLanguage("en");
+      expect(byId.get("stage-heading")?.textContent ?? "").toContain("(Difficulty: Standard (5 Guards))");
+      switchCastleLanguage("zh");
+      expect(byId.get("stage-heading")?.textContent ?? "").toContain("（难度：标准（5人值班））");
+    } finally {
+      switchCastleLanguage("ja");
+      if (prevDocument === undefined) {
+        delete (globalThis as { document?: unknown }).document;
+      } else {
+        (globalThis as { document?: unknown }).document = prevDocument;
+      }
+    }
   });
 
   it("refreshes open synergy and mobile menu dialogs on switchCastleLanguage and preserves stage selection handlers", async () => {
