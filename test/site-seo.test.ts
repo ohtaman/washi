@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import type { Plugin } from "vite";
 import type { HeadConfig, PageData, SiteData } from "vitepress";
-import vitepressConfig from "../docs/.vitepress/config.mts";
+import vitepressConfig, { buildGoogleTagHead } from "../docs/.vitepress/config.mts";
 import viteDemoConfig from "../vite.config.ts";
 // @ts-expect-error .mjs script module
 import { appendInteractiveRoutesToSitemap } from "../scripts/build-site.mjs";
@@ -405,7 +405,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     ]);
   });
 
-  it("emits localized hreflang alternates (en, ja, zh-CN, x-default) via transformHead and configures Google Tag (GTM-59QSZTZL) across VitePress and Vite demo plugins", async () => {
+  it("emits localized hreflang alternates (en, ja, zh-CN, x-default) via transformHead", async () => {
     type TransformCtx = Parameters<NonNullable<typeof vitepressConfig.transformHead>>[0];
     const runTransformHead = async (relativePath: string, isNotFound = false): Promise<HeadConfig[]> => {
       const pageData: PageData = {
@@ -463,44 +463,127 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
           "hreflang" in entry[1]
       )
     ).toBe(false);
+  });
 
-    // VitePress global head includes Google Tag GTM-59QSZTZL
-    expect(vitepressConfig.head).toContainEqual([
-      "script",
-      { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL" },
-    ]);
-    expect(
-      vitepressConfig.head?.some(
-        (entry) =>
-          entry[0] === "script" &&
-          typeof entry[2] === "string" &&
-          entry[2].includes("gtag('js', new Date());")
-      )
-    ).toBe(true);
+  it("injects Google Tag scripts only when GOOGLE_TAG_ID is configured and wires deploy-demo.yml via vars.GOOGLE_TAG_ID", async () => {
+    const inlineInit =
+      "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());";
 
-    // Vite interactive demo/apps/games config includes Google Tag transformIndexHtml plugin
+    const withEnvGoogleTagId = async (
+      value: string | undefined,
+      fn: () => Promise<void>
+    ): Promise<void> => {
+      const hadPrev = Object.prototype.hasOwnProperty.call(process.env, "GOOGLE_TAG_ID");
+      const prevValue = process.env.GOOGLE_TAG_ID;
+      if (value === undefined) {
+        delete process.env.GOOGLE_TAG_ID;
+      } else {
+        process.env.GOOGLE_TAG_ID = value;
+      }
+      try {
+        await fn();
+      } finally {
+        if (hadPrev) {
+          process.env.GOOGLE_TAG_ID = prevValue;
+        } else {
+          delete process.env.GOOGLE_TAG_ID;
+        }
+      }
+    };
+
     const plugins = (viteDemoConfig.plugins ?? []).flat() as Plugin[];
     const gtagPlugin = plugins.find((p) => p && p.name === "washi-google-tag");
     expect(gtagPlugin).toBeDefined();
     const hook = gtagPlugin?.transformIndexHtml;
-    const fn = typeof hook === "function" ? hook : hook && "handler" in hook ? hook.handler : undefined;
-    expect(typeof fn).toBe("function");
-    const injectedTags = await (fn as (html: string, ctx: { path: string; filename: string }) => unknown)(
-      "<html><head></head><body></body></html>",
-      { path: "/demo/index.html", filename: "demo/index.html" }
+    const transformFn =
+      typeof hook === "function" ? hook : hook && "handler" in hook ? hook.handler : undefined;
+    expect(typeof transformFn).toBe("function");
+
+    const invokeViteGoogleTagTransform = () =>
+      (transformFn as (html: string, ctx: { path: string; filename: string }) => unknown)(
+        "<html><head></head><body></body></html>",
+        { path: "/demo/index.html", filename: "demo/index.html" }
+      );
+
+    const hasAnalyticsEntry = (head: HeadConfig[] | undefined): boolean =>
+      (head ?? []).some((entry) => {
+        const serialized = JSON.stringify(entry);
+        return (
+          serialized.includes("googletagmanager.com") ||
+          serialized.includes("gtm.js") ||
+          serialized.includes("dataLayer") ||
+          serialized.includes("gtag(")
+        );
+      });
+
+    // 1. Unset, empty, or whitespace-only GOOGLE_TAG_ID must emit zero analytics scripts
+    for (const emptyVal of [undefined, "", "   \t\n  "]) {
+      await withEnvGoogleTagId(emptyVal, async () => {
+        expect(buildGoogleTagHead()).toEqual([]);
+        expect(buildGoogleTagHead(emptyVal)).toEqual([]);
+
+        vi.resetModules();
+        const reloadedVitepress = await import("../docs/.vitepress/config.mts");
+        expect(reloadedVitepress.default.head).toContainEqual([
+          "script",
+          { src: "/coi-serviceworker.js" },
+        ]);
+        expect(hasAnalyticsEntry(reloadedVitepress.default.head)).toBe(false);
+
+        const injectedTags = await invokeViteGoogleTagTransform();
+        expect(injectedTags).toEqual([]);
+      });
+    }
+
+    // 2. Non-empty GOOGLE_TAG_ID (including surrounding whitespace) must inject expected scripts in both VitePress and Vite demo
+    for (const configuredVal of ["GTM-TEST1234", "  GTM-TEST1234  "]) {
+      const expectedVitepressHead: HeadConfig[] = [
+        ["script", { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" }],
+        ["script", {}, inlineInit],
+      ];
+      await withEnvGoogleTagId(configuredVal, async () => {
+        expect(buildGoogleTagHead()).toEqual(expectedVitepressHead);
+        expect(buildGoogleTagHead(configuredVal)).toEqual(expectedVitepressHead);
+        // Explicit undefined overrides a set process.env.GOOGLE_TAG_ID cleanly
+        expect(buildGoogleTagHead(undefined)).toEqual([]);
+
+        vi.resetModules();
+        const reloadedVitepress = await import("../docs/.vitepress/config.mts");
+        expect(reloadedVitepress.default.head).toContainEqual([
+          "script",
+          { async: "", src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" },
+        ]);
+        expect(reloadedVitepress.default.head).toContainEqual(["script", {}, inlineInit]);
+
+        const injectedTags = await invokeViteGoogleTagTransform();
+        expect(injectedTags).toEqual([
+          {
+            tag: "script",
+            attrs: { async: true, src: "https://www.googletagmanager.com/gtm.js?id=GTM-TEST1234" },
+            injectTo: "head",
+          },
+          {
+            tag: "script",
+            children: inlineInit,
+            injectTo: "head",
+          },
+        ]);
+      });
+    }
+
+    // 3. CI workflow passes vars.GOOGLE_TAG_ID on Unified Site build, and source/workflow files contain no hardcoded container IDs
+    const deployWorkflowPath = path.resolve(rootDir, ".github/workflows/deploy-demo.yml");
+    const deployWorkflow = fs.readFileSync(deployWorkflowPath, "utf-8");
+    expect(deployWorkflow).toMatch(
+      /run:\s*npm run build:site[\s\S]*?env:[\s\S]*?GOOGLE_TAG_ID:\s*\$\{\{\s*vars\.GOOGLE_TAG_ID\s*\}\}/
     );
-    expect(injectedTags).toEqual([
-      {
-        tag: "script",
-        attrs: { async: true, src: "https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL" },
-        injectTo: "head",
-      },
-      {
-        tag: "script",
-        children: "window.dataLayer = window.dataLayer || [];\nfunction gtag(){dataLayer.push(arguments);}\ngtag('js', new Date());",
-        injectTo: "head",
-      },
-    ]);
+
+    const viteConfigPath = path.resolve(rootDir, "vite.config.ts");
+    for (const configFile of [vitepressConfigPath, viteConfigPath, deployWorkflowPath]) {
+      const src = fs.readFileSync(configFile, "utf-8");
+      const rel = path.relative(rootDir, configFile);
+      expect(src, `Hardcoded GTM/GA tag ID in ${rel}`).not.toMatch(/\b(?:GTM|GT|G)-[A-Z0-9]{4,}\b/);
+    }
   });
 
   it("updates package.json description and target search keywords", () => {
@@ -708,8 +791,6 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
 
     // Verify homepages link directly (1 hop) to Playground, Apps, Games, and newly added doc pages
     for (const html of [enHtml, jaHtml, zhHtml]) {
-      expect(html).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
-      expect(html).toMatch(/gtag\(\s*['"]js['"]\s*,\s*new Date(?:\(\))?\s*\)/);
       expect(html).toContain('hreflang="en" href="https://washi.ohtaman.dev/"');
       expect(html).toContain('hreflang="ja" href="https://washi.ohtaman.dev/ja/"');
       expect(html).toContain('hreflang="zh-CN" href="https://washi.ohtaman.dev/zh/"');
@@ -722,7 +803,8 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       expect(html).toContain('href="/games/titan-pack/" target="_self"');
     }
 
-    // Verify standalone interactive HTML entrypoints contain canonical links and Google Tag
+    // Verify standalone interactive HTML entrypoints contain canonical links
+    const entryHtmlList: string[] = [];
     for (const subpath of [
       "demo",
       "apps/ai-shift",
@@ -737,15 +819,28 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     ]) {
       const entryHtml = fs.readFileSync(path.resolve(siteDistPath, subpath, "index.html"), "utf-8");
       expect(entryHtml).toContain(`link rel="canonical" href="https://washi.ohtaman.dev/${subpath}/"`);
-      expect(entryHtml).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
-      expect(entryHtml).toContain("gtag('js', new Date());");
       expect(entryHtml).not.toContain('"/washi/');
+      entryHtmlList.push(entryHtml);
     }
 
     expect(fs.existsSync(demoDistIndexPath)).toBe(true);
     const demoHtml = fs.readFileSync(demoDistIndexPath, "utf-8");
     expect(demoHtml).toContain("<title>WaSHI — Browser Optimization & Constraint Programming Demos</title>");
     expect(demoHtml).toContain("Interactive browser demos and playground for WaSHI: solve linear programming, nurse shift scheduling, and constraint games client-side with WebAssembly (HiGHS & Z3).");
-    expect(demoHtml).toContain("https://www.googletagmanager.com/gtm.js?id=GTM-59QSZTZL");
+
+    if (requireSiteDist) {
+      const configuredTagId = process.env.GOOGLE_TAG_ID?.trim();
+      for (const html of [enHtml, jaHtml, zhHtml, ...entryHtmlList, demoHtml]) {
+        if (configuredTagId) {
+          expect(html).toContain(
+            `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(configuredTagId)}`
+          );
+          expect(html).toMatch(/gtag\(\s*['"]js['"]\s*,\s*new Date(?:\(\))?\s*\)/);
+        } else {
+          expect(html).not.toContain("googletagmanager.com/gtm.js");
+          expect(html).not.toContain("window.dataLayer");
+        }
+      }
+    }
   });
 });
