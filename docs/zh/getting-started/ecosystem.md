@@ -69,7 +69,10 @@ m.constraint(expr`dot(${labor}, ${qty}) <= 50`, "labor_limit");
 
 const status = await m.solve();
 const report = m.validateSolution();
-console.log(status, report.valid, m.objectiveValue, m.getValues(qty));
+console.log(status, report.valid, m.objectiveValue, {
+  desk: qty.desk.value,
+  chair: qty.chair.value,
+});
 // "Optimal", true, 1100, { desk: 20, chair: 10 }
 ```
 
@@ -107,7 +110,7 @@ print(LpStatus[prob.status], value(prob.objective), {p: value(qty[p]) for p in p
 | **条件 / Big-M 约束** | 手动编写 Big-M 线性不等式 | `m.indicator(binVar, constraint, { activeValue: 0 })`（根据 `lb`/`ub` 自动推导紧凑 Big-M） |
 | **求解** | `prob.solve()`（调用 CBC 等外部求解器） | `await m.solve()`（内置 HiGHS WASM；支持 `{ solver: "glpk" }` / `{ solver: "z3" }`） |
 | **导出 LP 检查** | `prob.writeLP("model.lp")` | `m.toLpString()` |
-| **读取求解结果** | `LpStatus[prob.status]`, `value(x)`, `value(prob.objective)` | `status`, `x.value`, `m.getValues(qty)`, `m.objectiveValue`, `c.dual`, `c.slack` |
+| **读取求解结果** | `LpStatus[prob.status]`, `value(x)`, `value(prob.objective)` | `status`, `x.value`, `qty.desk.value`, `m.values`, `m.objectiveValue`, `c.dual`, `c.slack` |
 | **校验与冲突诊断** | 手动校验 | `m.validateSolution()` 与 `await m.check()`（`conflicts` / Z3 `unsatCore`） |
 
 ### 面向 TypeScript 与浏览器应用的额外能力

@@ -134,7 +134,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 
 - **数理优化 (`await m.solve(options?)`)**:
   - 返回 `SolverStatus`（`"Optimal"`、`"Feasible"`、`"Infeasible"`、`"Unbounded"`、`"TimeLimit"`、`"IterationLimit"`、`"Error"`、`"Unknown"`、`"NotSolved"`、`"Sat"` 或 `"Unsat"`）。内置优化求解器返回优化状态（`"Optimal"`、`"Feasible"`、`"Infeasible"`、`"Unbounded"`、`"TimeLimit"`、`"IterationLimit"`、`"Error"`、`"Unknown"`、`"NotSolved"`），其中因时间、迭代或解数量上限（或中断）停止但已找到合法可行解（Incumbent）的运行会返回 `"Feasible"`；`"Sat"` 与 `"Unsat"` 包含在 `SolverStatus` 中以供可满足性/自定义求解器适配器（如 `MockSolver`）使用。
-  - 通过 `x.value`、`expr`...`.value`、`m.getValues(x)`、`m.getValues(container)`、`m.objectiveValue`、`constr.dual`、`constr.slack` 和 `x.reducedCost` 读取结果。
+  - 通过 `x.value`、`expr`...`.value`、`m.values`、`m.objectiveValue`、`constr.dual`、`constr.slack` 和 `x.reducedCost` 读取结果。
   - 求解后调用 `m.validateSolution()` 可独立校验变量有限性、变量上下界（`lb`/`ub`）、整数/二元/布尔域、线性约束残差以及逻辑约束（`SolutionValidationReport`：`{ valid, complete, maxViolation, violations, ... }`）。注意：`validateSolution()` 校验变量与约束的原问题可行性，不会重新计算或比对 `m.objectiveValue`。
 - **可满足性检查与冲突诊断 (`await m.check(options?)`)**:
   - 返回 `CheckResult`（`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`），其中在模型证明为 `"Unsat"` 时填充 `conflicts`。
@@ -172,7 +172,7 @@ export async function runMipExample() {
 
   const status = await m.solve();
   const report = m.validateSolution();
-  const values = m.getValues(qty);
+  const values = { desk: qty.desk.value, chair: qty.chair.value };
 
   return {
     status,
@@ -261,13 +261,13 @@ export function verifyNegativePatterns() {
   // 3. 切勿在线性约束中包含二次项：
   // 错误: expr`${x}^2 <= 10`; -> 抛出 Error ("Quadratic constraints are not supported")
 
-  // 4. 切勿使用已移除的旧别名（已在 #59 / #81 中移除）：
+  // 4. 切勿使用已移除的旧别名（已在 #59 / #81 / #236 中移除）：
   // - 使用 `expr` 代替已废弃的 `c` 模板标签
   // - 使用 `m.constraint(...)` 代替 `m.constrain(...)` 或 `m.add(...)`
   // - 使用 `m.objective(maximize(...))` / `m.objective(minimize(...))` 代替 `m.maximize(...)` / `m.minimize(...)` / `m.setObjective(...)`
   // - 使用 `await m.solve()` 代替 `await m.optimize()`
   // - 使用 `.le()`, `.ge()`, `.eq()` 代替 `.lessThanOrEqual()`, `.greaterThanOrEqual()`, `.equalTo()`
-  // - 使用 `.value` 或 `m.getValues(...)` 代替 `expr.getValue()`
+  // - 使用 `.value` 代替 `m.getValues(...)` 或 `expr.getValue()`
   // - 使用 `m.variables` / `m.constraints` 代替 `m.vars` / `m.constrs`
   return { m, x, y, maximize };
 }

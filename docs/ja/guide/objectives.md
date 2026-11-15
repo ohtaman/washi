@@ -128,9 +128,9 @@ console.log("Objective Bound:", m.objectiveBound);        // 双対境界値 (�
 console.log("Relative Gap:", m.relGap);                   // 相対ギャップ (別名: m.mipGap)
 console.log("Absolute Gap:", m.absGap);                   // 絶対ギャップ |objectiveValue - objectiveBound|
 
-// 個別および一括での変数値取得
+// 変数値の取得 (.value または変数名キーの m.values Map)
 console.log("x =", x.value, "y =", y.value);
-console.log(m.getValues({ x, y }));                       // { x: ..., y: ... }
+console.log("x by name:", m.values.get("x"));
 ```
 
 ### `m.status` と `m.terminationStatus` の違い

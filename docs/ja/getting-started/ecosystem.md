@@ -69,7 +69,10 @@ m.constraint(expr`dot(${labor}, ${qty}) <= 50`, "labor_limit");
 
 const status = await m.solve();
 const report = m.validateSolution();
-console.log(status, report.valid, m.objectiveValue, m.getValues(qty));
+console.log(status, report.valid, m.objectiveValue, {
+  desk: qty.desk.value,
+  chair: qty.chair.value,
+});
 // "Optimal", true, 1100, { desk: 20, chair: 10 }
 ```
 
@@ -107,7 +110,7 @@ print(LpStatus[prob.status], value(prob.objective), {p: value(qty[p]) for p in p
 | **条件付き制約 (Big-M)** | 手動で Big-M 不等式を記述 | `m.indicator(binVar, constraint, { activeValue: 0 })`（`lb`/`ub` から最小限の Big-M を自動導出） |
 | **求解** | `prob.solve()`（CBC 等を呼び出し） | `await m.solve()`（標準搭載 HiGHS WASM。`{ solver: "glpk" }` / `{ solver: "z3" }` も可） |
 | **LP 出力確認** | `prob.writeLP("model.lp")` | `m.toLpString()` |
-| **結果の取得** | `LpStatus[prob.status]`, `value(x)`, `value(prob.objective)` | `status`, `x.value`, `m.getValues(qty)`, `m.objectiveValue`, `c.dual`, `c.slack` |
+| **結果の取得** | `LpStatus[prob.status]`, `value(x)`, `value(prob.objective)` | `status`, `x.value`, `qty.desk.value`, `m.values`, `m.objectiveValue`, `c.dual`, `c.slack` |
 | **検証と矛盾診断** | 手動検証 | `m.validateSolution()` および `await m.check()`（`conflicts` / Z3 `unsatCore`） |
 
 ### TypeScript / ブラウザ環境ならではの拡張機能

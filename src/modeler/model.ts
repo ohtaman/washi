@@ -206,7 +206,7 @@ function assertValidCount(count: number, label: string): void {
  *
  * const status = await m.solve();
  * const report = m.validateSolution();
- * const solvedQty = m.getValues(qty);
+ * const solvedQty = { desk: qty.desk.value, chair: qty.chair.value };
  * ```
  */
 export class Model {
@@ -1300,69 +1300,6 @@ export class Model {
   }
 
   /**
-   * Extract primal solution values directly into plain primitives, preserving container shapes:
-   * - `m.getValues(x)` -> `number | null`
-   * - `m.getValues(p)` -> `boolean | null`
-   * - `m.getValues([x, y])` -> `(number | null)[]`
-   * - `m.getValues([[x11, x12], [x21, x22]])` -> `(number | null)[][]`
-   * - `m.getValues(record)` -> `Record<K, number | boolean | null>`
-   * - `m.getValues(matrix)` -> `Record<R, Record<C, number | boolean | null>>`
-   *
-   * @example
-   * ```ts
-   * const m = new Model("GetValuesExample");
-   * const qty = m.integer(["desk", "chair"] as const, { lb: 0, ub: 10 });
-   * m.objective(maximize(expr`30 * ${qty.desk} + 50 * ${qty.chair}`));
-   * m.constraint(expr`${qty.desk} + ${qty.chair} <= 10`);
-   * await m.solve();
-   * const values = m.getValues(qty); // Record<"desk" | "chair", number | null>
-   * ```
-   */
-  getValues(item: Var): number | null;
-  getValues(item: BoolVar): boolean | null;
-  getValues(items: ReadonlyArray<Var>): (number | null)[];
-  getValues(items: ReadonlyArray<BoolVar>): (boolean | null)[];
-  getValues(items: ReadonlyArray<ReadonlyArray<Var>>): (number | null)[][];
-  getValues(items: ReadonlyArray<ReadonlyArray<BoolVar>>): (boolean | null)[][];
-  getValues<C extends string | number>(
-    items: ReadonlyArray<Record<C, Var>>
-  ): Array<Record<C, number | null>>;
-  getValues<C extends string | number>(
-    items: ReadonlyArray<Record<C, BoolVar>>
-  ): Array<Record<C, boolean | null>>;
-  getValues<R extends string | number>(
-    items: Record<R, ReadonlyArray<Var>>
-  ): Record<R, (number | null)[]>;
-  getValues<R extends string | number>(
-    items: Record<R, ReadonlyArray<BoolVar>>
-  ): Record<R, (boolean | null)[]>;
-  getValues<K extends string | number>(items: Record<K, Var>): Record<K, number | null>;
-  getValues<K extends string | number>(items: Record<K, BoolVar>): Record<K, boolean | null>;
-  getValues<R extends string | number, C extends string | number>(
-    items: Record<R, Record<C, Var>>
-  ): Record<R, Record<C, number | null>>;
-  getValues<R extends string | number, C extends string | number>(
-    items: Record<R, Record<C, BoolVar>>
-  ): Record<R, Record<C, boolean | null>>;
-  getValues(items: any): any {
-    if (items === null || items === undefined) return null;
-    if (items instanceof Var || items instanceof BoolVar) {
-      return items.value;
-    }
-    if (Array.isArray(items)) {
-      return items.map((v) => this.getValues(v));
-    }
-    if (typeof items === "object") {
-      const res: any = {};
-      for (const [k, v] of Object.entries(items)) {
-        res[k] = this.getValues(v as any);
-      }
-      return res;
-    }
-    return null;
-  }
-
-  /**
    * Internal linear or logical constraint adder
    */
   private addConstraint(constraint: Constraint | LinExpr | QuadExpr | string, name?: string): Constraint;
@@ -1884,7 +1821,7 @@ export class Model {
    * - When a time-, iteration-, or solution-limited run (or an interrupted solve) has found a valid
    *   primal incumbent, `solve()` returns `"Feasible"` (`m.hasPrimalSolution === true`, with the exact
    *   stopping reason in `m.terminationStatus`).
-   * - After solving, read primal/dual values via `x.value`, `m.getValues(...)`, `m.objectiveValue`,
+   * - After solving, read primal/dual values via `x.value`, `m.values`, `m.objectiveValue`,
    *   `constr.dual`, `constr.slack`, and `x.reducedCost`, and verify primal feasibility with `m.validateSolution()`.
    *
    * **Solver capability preconditions**:

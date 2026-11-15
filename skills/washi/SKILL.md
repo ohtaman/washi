@@ -110,7 +110,7 @@ export async function solveAndVerifyMip() {
     status,
     lpText,
     objectiveValue: m.objectiveValue,
-    quantities: m.getValues(qty),
+    quantities: { desk: qty.desk.value, chair: qty.chair.value },
     lineOpen: lineOpen.value,
     valid: report.valid,
     maxViolation: report.maxViolation,
@@ -194,7 +194,7 @@ export async function diagnoseAndVerifyWithZ3() {
 - **No quadratic constraints or MIQP**: Quadratic terms (`${x}^2`, `${x} * ${y}`) are only valid in `m.objective(...)` (using them in `m.constraint(...)` throws `"Quadratic constraints are not supported"`), and built-in HiGHS requires Convex QP models to contain only continuous variables (`m.continuous`).
 - **Do not confuse `LinExpr` and `Constraint`**: `m.objective(maximize(...))` requires a `LinExpr`, `QuadExpr`, `Var`, or `number` (never a `Constraint`). `m.constraint(...)` requires a `Constraint` (with `<=`, `>=`, `==`, or `=`) or `BoolExpr` (never a bare `LinExpr`).
 - **Do not mutate during async solve/check**: Modifying variables, bounds, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight run and rejects the promise.
-- **Do not use retired aliases**: Always use `expr` (not `c`), `m.constraint(...)` (not `m.constrain` or `m.add`), `m.objective(maximize(...))` (not `m.maximize` or `m.setObjective`), `await m.solve()` (not `m.optimize`), `.le()` / `.ge()` / `.eq()` (not `.lessThanOrEqual()`), `.value` / `m.getValues(...)` (not `.getValue()`), and `m.variables` / `m.constraints` (not `m.vars` / `m.constrs`).
+- **Do not use retired aliases**: Always use `expr` (not `c`), `m.constraint(...)` (not `m.constrain` or `m.add`), `m.objective(maximize(...))` (not `m.maximize` or `m.setObjective`), `await m.solve()` (not `m.optimize`), `.le()` / `.ge()` / `.eq()` (not `.lessThanOrEqual()`), `.value` (not `m.getValues(...)` or `.getValue()`), and `m.variables` / `m.constraints` (not `m.vars` / `m.constrs`).
 - **Practical OR formulation guardrails**:
   - **Prefer inequalities (`>=` / `<=`) over `==`** for demand coverage and capacity limits when costs are non-negative; reserve `==` for flow conservation or normalization identities.
   - **Provide finite `lb` and `ub` bounds** on variables inside `m.indicator(...)` and omit `M` so WaSHI automatically derives the tightest valid Big-M instead of a loose `1e6` fallback.

@@ -114,6 +114,7 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
     expect(modelDts).toContain("unsatCore");
     expect(modelDts).toContain("validateSolution");
     expect(modelDts).toContain("toLpString");
+    expect(modelDts).not.toContain("getValues");
 
     const parserDts = fs.readFileSync(
       path.resolve(rootDir, "dist/types/modeler/parser.d.ts"),
@@ -293,12 +294,11 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
       expect(prodPlan).toBeDefined();
       expect(prodPlan!.status).toBe("Optimal");
       expect(prodPlan!.objectiveValue).toBeCloseTo(1080, 6);
+      expect(prodPlan!.getVarByName("desk")?.value).toBe(20);
+      expect(prodPlan!.getVarByName("chair")?.value).toBe(10);
       expect(prodPlan!.validateSolution().valid).toBe(true);
 
-      const getValuesModel = byName.get("GetValuesExample");
-      expect(getValuesModel).toBeDefined();
-      expect(getValuesModel!.status).toBe("Optimal");
-      expect(getValuesModel!.objectiveValue).toBeCloseTo(500, 6);
+      expect(byName.has("GetValuesExample")).toBe(false);
 
       const solveModel = byName.get("SolveExample");
       expect(solveModel).toBeDefined();

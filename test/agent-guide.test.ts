@@ -220,7 +220,7 @@ m.objective(minimize(q1.add(q2)));
 return (async () => {
   const status = await m.solve();
   const report = m.validateSolution();
-  return { status, objectiveValue: m.objectiveValue, x: x.value, y: y.value, vec: m.getValues(vec), valid: report.valid };
+  return { status, objectiveValue: m.objectiveValue, x: x.value, y: y.value, vec: vec.map((v) => v.value), valid: report.valid };
 })();`
       );
       const qpRes = await qpRunner(Washi.Model, Washi.expr, Washi.minimize, Washi.sum);
@@ -378,7 +378,10 @@ return (async () => {
       }
 
       // Every `m.<member>` referenced in the positive guide sections must exist on a Model instance
-      const positiveGuide = content.split(/^## 4\./m)[0];
+      const [positiveGuide, negativeGuide] = content.split(/^## 4\./m);
+      expect("getValues" in sampleModel).toBe(false);
+      expect(positiveGuide).not.toContain("getValues");
+      expect(negativeGuide).toContain("m.getValues(");
       const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
       let memberMatch: RegExpExecArray | null;
       while ((memberMatch = memberRegex.exec(positiveGuide)) !== null) {
@@ -861,8 +864,11 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
   });
 
   it("ensures every m.<member> in positive SKILL.md sections exists on a Model instance", () => {
-    const positiveSkill = skillContent.split("## 6. Guardrails")[0];
+    const [positiveSkill, guardrailsSkill] = skillContent.split("## 6. Guardrails");
     const sampleModel = new Washi.Model("SkillMemberCheck");
+    expect("getValues" in sampleModel).toBe(false);
+    expect(positiveSkill).not.toContain("getValues");
+    expect(guardrailsSkill).toContain("m.getValues(");
     const memberRegex = /\bm\.([a-zA-Z_]\w*)/g;
     let memberMatch: RegExpExecArray | null;
     while ((memberMatch = memberRegex.exec(positiveSkill)) !== null) {

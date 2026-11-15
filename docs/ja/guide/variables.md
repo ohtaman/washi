@@ -151,23 +151,24 @@ const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 部分的�
 
 ## 求解後の値と被約費用の取得
 
-`await m.solve()` または `await m.check()` の実行後、`variable.value`（`Var` は `number | null`、`BoolVar` は `boolean | null`）または一括取得メソッド `m.getValues()` で変数の解を取り出せます：
+`await m.solve()` または `await m.check()` の実行後、`variable.value`（`Var` は `number | null`、`BoolVar` は `boolean | null`）で各変数の解を直接参照できるほか、変数名をキーとする `m.values` からも取得できます：
 
 ```typescript
 await m.solve();
 
-// 単一変数の値
+// スカラー変数の値（数値 / 真偽値）
 console.log(`trucks: ${trucks.value}`);
+console.log(`isAdmin: ${isAdmin.value}`);
+
+// 1次元・2次元コンテナの要素アクセス
+const packedItems = items.filter((it) => selected[it].value === 1);
+console.log(`Tokyo -> StoreA: ${ship.Tokyo.StoreA.value}`);
+
+// 変数名をキーとする Map からの取得 (Map<string, number | boolean>)
+console.log(`trucks by name: ${m.values.get("trucks")}`);
 
 // 被約費用 (LP の感度分析)
 console.log(`fuel reduced cost: ${fuel.reducedCost}`);
-
-// 1次元・2次元コレクションの一括抽出 (Var / BoolVar の両方に対応)
-const selectedValues = m.getValues(selected);
-// { laptop: 1, phone: 0, tablet: 1 }
-
-const flowValues = m.getValues(ship);
-// { Tokyo: { StoreA: 50, ... }, Osaka: { ... } }
 ```
 
 ---

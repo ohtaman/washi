@@ -66,7 +66,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
       const content = fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8");
       expect(content).not.toMatch(
-        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+        /\.(constrain|optimize|setObjective|vars|constrs|getValues?|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
       );
       expect(content).not.toMatch(/\b(?:m|model)\.(minimize|maximize)\b/);
       expect(content).not.toContain("/public/highs.wasm");
@@ -84,7 +84,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         ? rawContent.split(/^## 4\./m)[0]
         : rawContent;
       expect(content, `Retired API in ${docFile}`).not.toMatch(
-        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+        /\.(constrain|optimize|setObjective|vars|constrs|getValues?|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
       );
       expect(content, `Retired m.minimize/maximize in ${docFile}`).not.toMatch(
         /\b(?:m|model)\.(minimize|maximize)\b/
@@ -523,7 +523,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     for (const spec of demoSpecs) {
       const vueSource = fs.readFileSync(path.join(componentsDir, spec.file), "utf-8");
       expect(vueSource).not.toMatch(
-        /\.(constrain|optimize|setObjective|vars|constrs|getValue|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
+        /\.(constrain|optimize|setObjective|vars|constrs|getValues?|lessThanOrEqual|greaterThanOrEqual|equalTo)\b/
       );
       const scriptMatch = vueSource.match(/<script setup lang="ts">([\s\S]*?)<\/script>/);
       expect(scriptMatch).not.toBeNull();
@@ -1017,7 +1017,11 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(res.status).toBe("Optimal");
       expect(res.report.valid).toBe(true);
       expect(res.m.objectiveValue).toBeCloseTo(1100, 6);
-      expect(res.m.getValues(res.qty)).toEqual({ desk: 20, chair: 10 });
+      expect({ desk: res.qty.desk.value, chair: res.qty.chair.value }).toEqual({
+        desk: 20,
+        chair: 10,
+      });
+      expect(logs[0]?.[3]).toEqual({ desk: 20, chair: 10 });
     }
   });
 });
