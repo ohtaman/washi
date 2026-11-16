@@ -318,11 +318,7 @@ export function linearizeModelForMip(
       if (el.op === "xor") {
         if (el.children.length === 0) {
           // xor() == false, but top-level asserts true -> Infeasible
-          const dummy = new Var({ name: getUniqueAuxName("unsat"), type: "Binary", lb: 0, ub: 0 });
-          variables.push(dummy);
-          const c = new Constraint(linExpr([[dummy, 1]], 0), ">=", 1, originalName);
-          constraints.push(c);
-          constraintToOriginalName.set(c, originalName);
+          emitUnsatConstraint(originalName);
           return;
         }
         if (el.children.length === 1) {
@@ -483,9 +479,9 @@ export function linearizeModelForMip(
   }
 
   function emitUnsatConstraint(originalName: string): void {
-    const dummy = new Var({ name: getUniqueAuxName("unsat"), type: "Binary", lb: 0, ub: 0 });
+    const dummy = new Var({ name: getUniqueAuxName("unsat"), type: "Binary", lb: 0, ub: 1 });
     variables.push(dummy);
-    emitConstraint(new Constraint(linExpr([[dummy, 1]], 0), ">=", 1, originalName), originalName);
+    emitConstraint(new Constraint(linExpr([[dummy, 1]], 0), ">=", 2, originalName), originalName);
   }
 
   function linearizeTopLevelConstraint(targetConstraint: Constraint, originalName: string): void {

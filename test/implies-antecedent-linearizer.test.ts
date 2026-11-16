@@ -358,6 +358,33 @@ describe("Issue #221: MIP linearization of implies() with general inequality/equ
       expect(flagTrue.value).toBe(true);
       expect(flagFree.value).toBe(false);
       expect(mConst.validateSolution().valid).toBe(true);
+
+      // Identically-false top-level negations must be genuinely Infeasible / Unsat:
+      // (a) not(3 <= 5)
+      const mNotTrueConst = new Model({ name: `NotTrueConst_${solver}`, solver });
+      mNotTrueConst.constraint(not(alwaysTrueC.clone()), "contradiction_not_const");
+      expect(await mNotTrueConst.solve()).toBe("Infeasible");
+      const resNotConst = await mNotTrueConst.check();
+      expect(resNotConst.status).toBe("Unsat");
+      expect(resNotConst.conflicts).toContain("contradiction_not_const");
+
+      // (b) not(fixed == 5) when fixed has exact bounds [5, 5] (both < 5 and > 5 unreachable)
+      const mNotFixedEq = new Model({ name: `NotFixedEq_${solver}`, solver });
+      const fixed = mNotFixedEq.integer("fixed", { lb: 5, ub: 5 });
+      mNotFixedEq.constraint(not(expr`${fixed} == 5`), "contradiction_fixed_eq");
+      expect(await mNotFixedEq.solve()).toBe("Infeasible");
+      const resNotFixed = await mNotFixedEq.check();
+      expect(resNotFixed.status).toBe("Unsat");
+      expect(resNotFixed.conflicts).toContain("contradiction_fixed_eq");
+
+      // (c) not(implies(10 <= 5, flag)) <=> (10 <= 5) AND !flag (contradictory top-level constant)
+      const mNotImpFalse = new Model({ name: `NotImpFalse_${solver}`, solver });
+      const fDummy = mNotImpFalse.bool("flag");
+      mNotImpFalse.constraint(not(implies(alwaysFalseC.clone(), fDummy)), "contradiction_false_const");
+      expect(await mNotImpFalse.solve()).toBe("Infeasible");
+      const resNotImpFalse = await mNotImpFalse.check();
+      expect(resNotImpFalse.status).toBe("Unsat");
+      expect(resNotImpFalse.conflicts).toContain("contradiction_false_const");
     }
   });
 
