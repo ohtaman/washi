@@ -85,7 +85,7 @@ const x = m.continuous("x", { lb: 0, ub: 100 });
 const y = m.continuous("y", { lb: 0, ub: 100 });
 const n = m.integer("n", { lb: 0, ub: 10 });
 const b = m.binary("b");
-const flag = m.bool("flag"); // Propositional boolean (for Z3 / logical constraints)
+const flag = m.bool("flag"); // Propositional boolean (auto 0-1 MIP on HiGHS/GLPK, native SMT on Z3)
 
 // Indexed variable containers:
 // - Numeric dimension -> Array
@@ -113,7 +113,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 - **Fluent methods**:
   - Arithmetic (on `LinExpr` and `QuadExpr`; `Var` supports `.add()`, `.sub()`, `.mul()`, `.neg()`): `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
   - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
-  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint` for Z3): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`
+  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint`): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`—solved natively on Z3 and automatically linearized to 0-1 MIP on HiGHS/GLPK (negated comparison `Constraint`s in `implies` antecedents, `not`, or `xor` use exact $\pm 1$ shifts over integer-valued `Integer`/`Binary` expressions; `Continuous` or non-integer negated `Constraint`s throw on MIP solvers—use `{ solver: "z3" }`, or write ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`)
 
 ### Step 3: Register Objective & Constraints on the Model
 
@@ -138,7 +138,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
   - Call `m.validateSolution()` after solving to independently verify variable finiteness, variable bounds (`lb`/`ub`), integer/binary/boolean domains, linear constraint residuals, and logical constraints (`SolutionValidationReport`: `{ valid, complete, maxViolation, violations, ... }`). Note that `validateSolution()` checks primal feasibility of variables and constraints; it does not recompute or compare `m.objectiveValue`.
 - **Satisfiability & Conflict Diagnosis (`await m.check(options?)`)**:
   - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`), where `conflicts` is populated when the model is proven `"Unsat"`.
-  - For models containing linear arithmetic constraints or logical constraints (`BoolVar`, `and`, `or`, `implies`, `xor`), `m.check()` works with any solver (including the default HiGHS and GLPK via single-solve elastic slack relaxation, automatically linearizing logical constraints into 0-1 MIP formulation) and diagnoses conflicting constraints as `conflicts` (leaving `unsatCore: undefined` for semantic rigor).
+  - For models containing linear arithmetic constraints or logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`), `m.check()` works with any solver (including the default HiGHS and GLPK via single-solve elastic slack relaxation, automatically linearizing logical constraints into 0-1 MIP formulation) and diagnoses conflicting constraints as `conflicts` (leaving `unsatCore: undefined` for semantic rigor).
   - Exact SMT unsatisfiable-core extraction (`result.unsatCore` and `result.conflicts`) is provided when using an SMT-capable solver (`{ solver: "z3" }`). Because Z3 asserts variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking registered constraints, `unsatCore` reports a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (and is not guaranteed minimal).
 - **No concurrent mutation during async solve/check**:
   - Mutating variables, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight execution and rejects the stale promise.

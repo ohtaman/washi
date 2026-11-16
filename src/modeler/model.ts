@@ -832,10 +832,9 @@ export class Model {
    * - `m.bool(rowKeys, colKeys, options?)` -> `Record<R, Record<C, BoolVar>>`
    *
    * **Solver capability note**:
-   * - Logical constraints over `BoolVar` (`and`, `or`, `not`, `implies`, `xor`) require an SMT-capable solver
-   *   such as Z3 (`new Model("...", { solver: "z3" })` after `import "@ohtaman/washi/solvers/z3"`).
-   * - LP/MIP solvers (HiGHS, GLPK) throw if logical constraints are present. For 0-1 arithmetic variables
-   *   in LP/MIP (or Big-M `m.indicator()`), use `m.binary()` instead.
+   * - Logical constraints over `BoolVar` (`and`, `or`, `not`, `implies`, `xor`) are solved natively by Z3
+   *   (`{ solver: "z3" }`) and automatically linearized into 0-1 MIP constraints on HiGHS and GLPK.
+   * - For 0-1 arithmetic variables in linear sums, objectives, or Big-M `m.indicator()`, use `m.binary()` instead.
    *
    * @example
    * ```ts
@@ -1238,8 +1237,12 @@ export class Model {
    *
    * **Formulation & solver capability notes**:
    * - Rejects raw arithmetic expressions (`LinExpr`, `QuadExpr`) without a comparison operator and quadratic constraints.
-   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) require an SMT-capable solver (`{ solver: "z3" }`);
-   *   LP/MIP solvers (HiGHS, GLPK) throw if logical constraints are present.
+   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) are solved natively on Z3
+   *   (`{ solver: "z3" }`) and automatically linearized into 0-1 MIP constraints on HiGHS and GLPK.
+   *   Comparison `Constraint`s in negated positions (`implies` antecedents, `not`, `xor`) use exact `+/- 1`
+   *   integer shifts over `Integer`/`Binary` variables with integer coefficients and RHS on MIP backends;
+   *   `Continuous` or non-integer negated constraints throw an Error on MIP solvers (use `{ solver: "z3" }`,
+   *   or rewrite explicitly with `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`).
    *
    * @example
    * ```ts
@@ -2096,16 +2099,17 @@ export class Model {
    *
    * Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values, conflicts?, unsatCore?, runTime? }`).
    *
-   * **LP feasibility fallback vs. Z3 requirement**:
-   * - **Linear models (`m.check()` fallback)**: For models containing only linear arithmetic constraints,
-   *   `m.check()` works with any solver (including the default HiGHS and GLPK) by falling back to a
-   *   zero-objective feasibility `solve()` without mutating `m.objectiveExpr` or `m.sense`.
-   * - **Logical constraints & `unsatCore` (requires Z3)**: Models containing `BoolVar` or logical
-   *   constraints (`and`, `or`, `not`, `implies`, `xor`) require an SMT-capable solver (`{ solver: "z3" }`
-   *   after `import "@ohtaman/washi/solvers/z3"`). Unsatisfiable-core extraction (`result.conflicts` /
-   *   `result.unsatCore` and `m.conflicts` / `m.unsatCore`) is populated only when an unsat-core-capable
-   *   solver such as Z3 returns `"Unsat"`, reporting a subset of registered constraint names that conflicts
-   *   together with the model's fixed variable bounds/domains.
+   * **MIP elastic-slack diagnosis vs. Z3 `unsatCore`**:
+   * - **All solvers (`m.check()`)**: Works on both linear arithmetic models and logical models (`BoolVar`,
+   *   `and`, `or`, `not`, `implies`, `xor`) across HiGHS, GLPK, and Z3. On HiGHS and GLPK, logical constraints
+   *   are automatically linearized to 0-1 MIP (negated comparison `Constraint`s require integer-valued
+   *   expressions; `Continuous` or non-integer negated constraints require `{ solver: "z3" }` or explicit
+   *   `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`), and conflicting constraints are diagnosed as
+   *   `result.conflicts` via elastic slack relaxation (leaving `unsatCore: undefined`).
+   * - **Exact SMT `unsatCore` (Z3)**: Unsatisfiable-core extraction (`result.conflicts` and `result.unsatCore`,
+   *   as well as `m.conflicts` / `m.unsatCore`) is populated when an unsat-core-capable solver such as Z3
+   *   (`{ solver: "z3" }` after `import "@ohtaman/washi/solvers/z3"`) returns `"Unsat"`, reporting a subset of
+   *   registered constraint names that conflicts together with the model's fixed variable bounds/domains.
    * - Mutating the model or starting a newer `solve()` / `check()` while in flight discards the stale
    *   result and rejects the pending promise.
    *

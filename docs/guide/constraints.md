@@ -159,7 +159,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **Primary Use Case** | MIP optimization models with arithmetic binary variables (`m.solve()`) | Logical rule systems and SMT feasibility (`m.check()`) |
 
 > [!NOTE]
-> **General Inequality Antecedents in `implies()`**: On **Z3** (`solver: "z3"`), the antecedent `a` in `implies(a, b)` can be any linear inequality—for example, ``implies(expr`${clearance} >= 4`, hasMfa)`` using `clearance` and `hasMfa` above. On MIP solvers (**HiGHS** / **GLPK**), conditional constraints should use a `BoolVar` (`m.bool()`) antecedent or `m.indicator(binVar, constraint)` with a `Binary` trigger variable.
+> **Comparison Constraints in Negated Positions (`implies` Antecedents, `not`, `xor`)**: Linear comparison constraints whose referenced variables are all `Integer` or `Binary` with integer coefficients and integer right-hand sides (plus required finite bounds for Big-M indicators, such as ``implies(expr`${clearance} >= 4`, hasMfa)`` above) are linearized automatically on **HiGHS** and **GLPK** via exact $\pm 1$ integer shifts ($\neg(a^\top x \le b) \iff a^\top x \ge b + 1$, and $a^\top x \ne b \iff a^\top x \le b - 1 \lor a^\top x \ge b + 1$), and solved natively on **Z3**. When a comparison constraint containing `Continuous` variables or non-integer coefficients/thresholds appears in a negated position, MIP `solve()` / `check()` throws an error because strict-inequality negation forms an open half-space—use `{ solver: "z3" }`, or write an explicit closed-tolerance disjunction such as ``or(expr`... >= ... + eps`, ...)`` or an `m.bool()` proposition.
 
 ---
 

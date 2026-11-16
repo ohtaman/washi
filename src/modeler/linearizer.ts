@@ -106,6 +106,13 @@ export function linearizeModelForMip(
       return;
     }
 
+    if (el instanceof Constraint) {
+      // binVar <=> el: (binVar == 0 => not(el)) and (binVar == 1 => el)
+      linearizeNegatedConstraint(binVar, el, 0, `${originalName}_c_neg`, originalName);
+      linearizeIndicator(binVar, el, 1, `${originalName}_c_pos`, originalName);
+      return;
+    }
+
     if (el instanceof BoolOp) {
       if (el.op === "not") {
         const childBin = getBinVarForBoolElement(el.children[0], originalName);
@@ -201,12 +208,15 @@ export function linearizeModelForMip(
   }
 
   function linearizeTopLevelElement(el: LogicElement, originalName: string): void {
+    if (el instanceof Constraint) {
+      linearizeTopLevelConstraint(el, originalName);
+      return;
+    }
+
     // Case A: Pure BoolVar: el == true  <=>  binVar >= 1
     if (el instanceof BoolVar) {
-      const binVar = boolVarToBinary.get(el)!;
-      const c = new Constraint(linExpr([[binVar, 1]], 0), ">=", 1, originalName);
-      constraints.push(c);
-      constraintToOriginalName.set(c, originalName);
+      const binVar = getBinVarForBoolElement(el, originalName);
+      emitConstraint(new Constraint(linExpr([[binVar, 1]], 0), ">=", 1, originalName), originalName);
       return;
     }
 
@@ -216,17 +226,41 @@ export function linearizeModelForMip(
       if (el.op === "not") {
         const child = el.children[0];
         if (child instanceof BoolVar) {
-          const binVar = boolVarToBinary.get(child)!;
-          const c = new Constraint(linExpr([[binVar, 1]], 0), "<=", 0, originalName);
-          constraints.push(c);
-          constraintToOriginalName.set(c, originalName);
+          const binVar = getBinVarForBoolElement(child, originalName);
+          emitConstraint(new Constraint(linExpr([[binVar, 1]], 0), "<=", 0, originalName), originalName);
           return;
         }
-        // not of compound: aux == 0
+        if (child instanceof Constraint) {
+          linearizeTopLevelNegatedConstraint(child, originalName);
+          return;
+        }
+        if (child instanceof BoolOp) {
+          if (child.op === "not") {
+            linearizeTopLevelElement(child.children[0], originalName);
+            return;
+          }
+          if (child.op === "or") {
+            for (const sub of child.children) {
+              linearizeTopLevelElement(new BoolOp("not", [sub]), originalName);
+            }
+            return;
+          }
+          if (child.op === "and") {
+            linearizeTopLevelElement(
+              new BoolOp("or", child.children.map((sub) => new BoolOp("not", [sub]))),
+              originalName
+            );
+            return;
+          }
+          if (child.op === "implies") {
+            linearizeTopLevelElement(child.children[0], originalName);
+            linearizeTopLevelElement(new BoolOp("not", [child.children[1]]), originalName);
+            return;
+          }
+        }
+        // not of xor / remaining compound: aux == 0
         const aux = getBinVarForBoolElement(child, originalName);
-        const c = new Constraint(linExpr([[aux, 1]], 0), "<=", 0, originalName);
-        constraints.push(c);
-        constraintToOriginalName.set(c, originalName);
+        emitConstraint(new Constraint(linExpr([[aux, 1]], 0), "<=", 0, originalName), originalName);
         return;
       }
 
@@ -240,18 +274,20 @@ export function linearizeModelForMip(
 
       // B.3 OR: or(c1, c2, ...)
       if (el.op === "or") {
-        // If all children are BoolVars (or compound BoolOps), sum(childBins) >= 1
-        const allBoolean = el.children.every((c) => c instanceof BoolVar || c instanceof BoolOp);
+        // If all children are pure boolean (neither Constraint nor not(Constraint)), sum(childBins) >= 1
+        const allBoolean = el.children.every(
+          (c) =>
+            !(c instanceof Constraint) &&
+            !(c instanceof BoolOp && c.op === "not" && c.children[0] instanceof Constraint)
+        );
         if (allBoolean) {
           const childBins = el.children.map((c) => getBinVarForBoolElement(c, originalName));
           const terms: [Var, number][] = childBins.map((cb) => [cb, 1]);
-          const c = new Constraint(linExpr(terms, 0), ">=", 1, originalName);
-          constraints.push(c);
-          constraintToOriginalName.set(c, originalName);
+          emitConstraint(new Constraint(linExpr(terms, 0), ">=", 1, originalName), originalName);
           return;
         }
 
-        // If children include comparison constraints:
+        // If children include comparison constraints (or negated comparison constraints):
         // For each child c_i, introduce aux y_i, enforce y_i => c_i, and sum(y_i) >= 1
         const auxVars: Var[] = [];
         for (let i = 0; i < el.children.length; i++) {
@@ -262,18 +298,19 @@ export function linearizeModelForMip(
 
           if (child instanceof Constraint) {
             linearizeIndicator(y, child, 1, `${originalName}_or_branch_${i}`, originalName);
+          } else if (child instanceof BoolOp && child.op === "not" && child.children[0] instanceof Constraint) {
+            linearizeNegatedConstraint(y, child.children[0], 1, `${originalName}_or_neg_${i}`, originalName);
           } else {
             // BoolVar or BoolOp: y <= child
             const childBin = getBinVarForBoolElement(child, originalName);
-            const c = new Constraint(linExpr([[y, 1], [childBin, -1]], 0), "<=", 0, `${originalName}_or_bool_${i}`);
-            constraints.push(c);
-            constraintToOriginalName.set(c, originalName);
+            emitConstraint(
+              new Constraint(linExpr([[y, 1], [childBin, -1]], 0), "<=", 0, `${originalName}_or_bool_${i}`),
+              originalName
+            );
           }
         }
         const sumTerms: [Var, number][] = auxVars.map((y) => [y, 1]);
-        const orSumC = new Constraint(linExpr(sumTerms, 0), ">=", 1, originalName);
-        constraints.push(orSumC);
-        constraintToOriginalName.set(orSumC, originalName);
+        emitConstraint(new Constraint(linExpr(sumTerms, 0), ">=", 1, originalName), originalName);
         return;
       }
 
@@ -281,11 +318,7 @@ export function linearizeModelForMip(
       if (el.op === "xor") {
         if (el.children.length === 0) {
           // xor() == false, but top-level asserts true -> Infeasible
-          const dummy = new Var({ name: getUniqueAuxName("unsat"), type: "Binary", lb: 0, ub: 0 });
-          variables.push(dummy);
-          const c = new Constraint(linExpr([[dummy, 1]], 0), ">=", 1, originalName);
-          constraints.push(c);
-          constraintToOriginalName.set(c, originalName);
+          emitUnsatConstraint(originalName);
           return;
         }
         if (el.children.length === 1) {
@@ -317,33 +350,49 @@ export function linearizeModelForMip(
       // B.5 IMPLIES: antecedent => consequent
       if (el.op === "implies") {
         const [antecedent, consequent] = el.children;
+        const directBin = antecedent instanceof Constraint ? matchDirectBinaryCondition(antecedent) : null;
 
-        // Detect if antecedent is a direct binary variable condition: b == 1, b == 0, b <= 0, b >= 1
-        if (antecedent instanceof Constraint && antecedent.lhs.terms.size === 1 && antecedent.lhs.constant === 0) {
-          const [[v, coeff]] = Array.from(antecedent.lhs.terms.entries());
-          const isBin = v.type === "Binary" || (v.type === "Integer" && v.lb === 0 && v.ub === 1);
-          if (isBin && coeff === 1) {
-            let directActiveVal: 0 | 1 | null = null;
-            if (antecedent.sense === "==" && antecedent.rhs === 1) directActiveVal = 1;
-            else if (antecedent.sense === "==" && antecedent.rhs === 0) directActiveVal = 0;
-            else if (antecedent.sense === "<=" && antecedent.rhs === 0) directActiveVal = 0;
-            else if (antecedent.sense === ">=" && antecedent.rhs === 1) directActiveVal = 1;
-
-            if (directActiveVal !== null && consequent instanceof Constraint) {
-              linearizeIndicator(v, consequent, directActiveVal, originalName, originalName);
+        if (directBin !== null) {
+          if (consequent instanceof Constraint && (consequent.lhs.terms.get(directBin.binVar) ?? 0) === 0) {
+            linearizeIndicator(directBin.binVar, consequent, directBin.activeVal, originalName, originalName);
+            return;
+          }
+          if (consequent instanceof BoolVar) {
+            const consBin = getBinVarForBoolElement(consequent, originalName);
+            const c =
+              directBin.activeVal === 1
+                ? new Constraint(linExpr([[consBin, 1], [directBin.binVar, -1]], 0), ">=", 0, originalName)
+                : new Constraint(linExpr([[consBin, 1], [directBin.binVar, 1]], 0), ">=", 1, originalName);
+            emitConstraint(c, originalName);
+            return;
+          }
+          if (consequent instanceof BoolOp && consequent.op === "not") {
+            const notTarget = consequent.children[0];
+            if (notTarget instanceof BoolVar) {
+              const consBin = getBinVarForBoolElement(notTarget, originalName);
+              const c =
+                directBin.activeVal === 1
+                  ? new Constraint(linExpr([[consBin, 1], [directBin.binVar, 1]], 0), "<=", 1, originalName)
+                  : new Constraint(linExpr([[consBin, 1], [directBin.binVar, -1]], 0), "<=", 0, originalName);
+              emitConstraint(c, originalName);
+              return;
+            }
+            if (notTarget instanceof Constraint && (notTarget.lhs.terms.get(directBin.binVar) ?? 0) === 0) {
+              linearizeNegatedConstraint(directBin.binVar, notTarget, directBin.activeVal, originalName, originalName);
               return;
             }
           }
         }
 
-        // If antecedent is a comparison Constraint (e.g. expr.ge(80000).implies(...))
-        // Introduce aux binary var: aux <=> antecedent, then aux => consequent
+        // General antecedent: introduce aux binary anteBin and enforce contrapositive
+        //   anteBin == 0 => not(antecedent)   (equivalently: antecedent => anteBin == 1)
+        // followed by:
+        //   anteBin == 1 => consequent
         let anteBin: Var;
         if (antecedent instanceof Constraint) {
           anteBin = new Var({ name: getUniqueAuxName("ante"), type: "Binary", lb: 0, ub: 1 });
           variables.push(anteBin);
-          // If anteBin == 1, then antecedent must hold
-          linearizeIndicator(anteBin, antecedent, 1, `${originalName}_ante_active`, originalName);
+          linearizeNegatedConstraint(anteBin, antecedent, 0, `${originalName}_ante_neg`, originalName);
         } else {
           anteBin = getBinVarForBoolElement(antecedent, originalName);
         }
@@ -355,11 +404,9 @@ export function linearizeModelForMip(
         }
 
         if (consequent instanceof BoolVar) {
-          const consBin = boolVarToBinary.get(consequent)!;
+          const consBin = getBinVarForBoolElement(consequent, originalName);
           // anteBin <= consBin  <=>  consBin - anteBin >= 0
-          const c = new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName);
-          constraints.push(c);
-          constraintToOriginalName.set(c, originalName);
+          emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName), originalName);
           return;
         }
 
@@ -372,24 +419,47 @@ export function linearizeModelForMip(
           }
           if (consequent.op === "not") {
             const notChild = consequent.children[0];
+            if (notChild instanceof Constraint) {
+              linearizeNegatedConstraint(anteBin, notChild, 1, originalName, originalName);
+              return;
+            }
             const notChildBin = getBinVarForBoolElement(notChild, originalName);
             // anteBin => ~notChildBin  <=>  anteBin + notChildBin <= 1
-            const c = new Constraint(linExpr([[anteBin, 1], [notChildBin, 1]], 0), "<=", 1, originalName);
-            constraints.push(c);
-            constraintToOriginalName.set(c, originalName);
+            emitConstraint(new Constraint(linExpr([[anteBin, 1], [notChildBin, 1]], 0), "<=", 1, originalName), originalName);
             return;
           }
           // General compound consequent
           const consBin = getBinVarForBoolElement(consequent, originalName);
-          const c = new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName);
-          constraints.push(c);
-          constraintToOriginalName.set(c, originalName);
+          emitConstraint(new Constraint(linExpr([[consBin, 1], [anteBin, -1]], 0), ">=", 0, originalName), originalName);
           return;
         }
       }
     }
 
     throw new Error(`Unsupported top-level logical constraint "${originalName}": ${el}`);
+  }
+
+  function emitConstraint(c: Constraint, originalName: string): void {
+    constraints.push(c);
+    constraintToOriginalName.set(c, originalName);
+  }
+
+  function emitSingleIndicator(
+    binVar: Var,
+    lhs: LinExpr,
+    sense: "<=" | ">=",
+    rhs: number,
+    activeVal: 0 | 1,
+    constraintName: string,
+    originalName: string
+  ): void {
+    const M = sense === "<="
+      ? deriveBigMForLe(lhs, rhs, constraintName)
+      : deriveBigMForGe(lhs, rhs, constraintName);
+    const lin = buildIndicatorLinearization(binVar, lhs, sense, rhs, activeVal, M, constraintName);
+    if (lin.lhs.terms.size > 0) {
+      emitConstraint(new Constraint(lin.lhs, sense, lin.rhs, constraintName), originalName);
+    }
   }
 
   function linearizeIndicator(
@@ -400,31 +470,108 @@ export function linearizeModelForMip(
     originalName: string
   ): void {
     const { lhs, sense, rhs } = targetConstraint;
-    if (sense === "<=" || sense === ">=") {
-      const M = sense === "<="
-        ? deriveBigMForLe(lhs, rhs, constraintName)
-        : deriveBigMForGe(lhs, rhs, constraintName);
-
-      const lin = buildIndicatorLinearization(binVar, lhs, sense, rhs, activeVal, M, constraintName);
-      const c = new Constraint(lin.lhs, sense, lin.rhs, constraintName);
-      constraints.push(c);
-      constraintToOriginalName.set(c, originalName);
+    if (sense === "==") {
+      emitSingleIndicator(binVar, lhs, "<=", rhs, activeVal, `${constraintName}_le`, originalName);
+      emitSingleIndicator(binVar, lhs, ">=", rhs, activeVal, `${constraintName}_ge`, originalName);
     } else {
-      // Equality: sense === "=="
-      // Expand to <= and >=
-      const MLe = deriveBigMForLe(lhs, rhs, `${constraintName}_le`);
-      const MGe = deriveBigMForGe(lhs, rhs, `${constraintName}_ge`);
-
-      const linLe = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, MLe, `${constraintName}_le`);
-      const linGe = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, MGe, `${constraintName}_ge`);
-
-      const cLe = new Constraint(linLe.lhs, "<=", linLe.rhs, `${constraintName}_le`);
-      const cGe = new Constraint(linGe.lhs, ">=", linGe.rhs, `${constraintName}_ge`);
-
-      constraints.push(cLe, cGe);
-      constraintToOriginalName.set(cLe, originalName);
-      constraintToOriginalName.set(cGe, originalName);
+      emitSingleIndicator(binVar, lhs, sense, rhs, activeVal, constraintName, originalName);
     }
+  }
+
+  function emitUnsatConstraint(originalName: string): void {
+    const dummy = new Var({ name: getUniqueAuxName("unsat"), type: "Binary", lb: 0, ub: 1 });
+    variables.push(dummy);
+    emitConstraint(new Constraint(linExpr([[dummy, 1]], 0), ">=", 2, originalName), originalName);
+  }
+
+  function linearizeTopLevelConstraint(targetConstraint: Constraint, originalName: string): void {
+    const { lhs, sense, rhs } = targetConstraint;
+    const constant = lhs.constant ?? 0;
+    const effectiveRhs = rhs - constant;
+    if (!Number.isFinite(constant) || !Number.isFinite(rhs) || !Number.isFinite(effectiveRhs)) {
+      throw new Error(
+        `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+          `constraint "${targetConstraint.name}" contains non-finite constant or right-hand side.`
+      );
+    }
+    const nonZeroTerms: [Var, number][] = [];
+    for (const [v, coeff] of lhs.terms) {
+      if (!Number.isFinite(coeff)) {
+        throw new Error(
+          `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+            `variable "${v.name}" in constraint "${targetConstraint.name}" has non-finite coefficient (${coeff}).`
+        );
+      }
+      if (coeff !== 0) nonZeroTerms.push([v, coeff]);
+    }
+    if (nonZeroTerms.length === 0) {
+      const holds =
+        sense === "<=" ? 0 <= effectiveRhs : sense === ">=" ? 0 >= effectiveRhs : 0 === effectiveRhs;
+      if (!holds) emitUnsatConstraint(originalName);
+      return;
+    }
+    emitConstraint(new Constraint(new LinExpr(new Map(nonZeroTerms), 0), sense, effectiveRhs, originalName), originalName);
+  }
+
+  function linearizeTopLevelNegatedConstraint(targetConstraint: Constraint, originalName: string): void {
+    const neg = negateIntegerConstraint(targetConstraint, originalName);
+    if (neg.kind === "always_true") return;
+    if (neg.kind === "always_false") {
+      emitUnsatConstraint(originalName);
+      return;
+    }
+    if (neg.kind === "single") {
+      emitConstraint(new Constraint(neg.lhs, neg.sense, neg.rhs, originalName), originalName);
+      return;
+    }
+    const ltBin = new Var({ name: getUniqueAuxName("neq_lt"), type: "Binary", lb: 0, ub: 1 });
+    const gtBin = new Var({ name: getUniqueAuxName("neq_gt"), type: "Binary", lb: 0, ub: 1 });
+    variables.push(ltBin, gtBin);
+    emitSingleIndicator(ltBin, neg.lhs, "<=", neg.ltRhs, 1, `${originalName}_lt`, originalName);
+    emitSingleIndicator(gtBin, neg.lhs, ">=", neg.gtRhs, 1, `${originalName}_gt`, originalName);
+    emitConstraint(new Constraint(linExpr([[ltBin, 1], [gtBin, 1]], 0), ">=", 1, originalName), originalName);
+  }
+
+  // Enforces: binVar == activeVal => not(targetConstraint)
+  function linearizeNegatedConstraint(
+    binVar: Var,
+    targetConstraint: Constraint,
+    activeVal: 0 | 1,
+    constraintName: string,
+    originalName: string
+  ): void {
+    const neg = negateIntegerConstraint(targetConstraint, originalName);
+    if (neg.kind === "always_true") return;
+    if (neg.kind === "always_false") {
+      emitConstraint(
+        new Constraint(
+          linExpr([[binVar, 1]], 0),
+          activeVal === 0 ? ">=" : "<=",
+          activeVal === 0 ? 1 : 0,
+          constraintName
+        ),
+        originalName
+      );
+      return;
+    }
+    if (neg.kind === "single") {
+      emitSingleIndicator(binVar, neg.lhs, neg.sense, neg.rhs, activeVal, constraintName, originalName);
+      return;
+    }
+    const ltBin = new Var({ name: getUniqueAuxName("neq_lt"), type: "Binary", lb: 0, ub: 1 });
+    const gtBin = new Var({ name: getUniqueAuxName("neq_gt"), type: "Binary", lb: 0, ub: 1 });
+    variables.push(ltBin, gtBin);
+    emitSingleIndicator(ltBin, neg.lhs, "<=", neg.ltRhs, 1, `${constraintName}_lt`, originalName);
+    emitSingleIndicator(gtBin, neg.lhs, ">=", neg.gtRhs, 1, `${constraintName}_gt`, originalName);
+    emitConstraint(
+      new Constraint(
+        linExpr([[ltBin, 1], [gtBin, 1], [binVar, activeVal === 0 ? 1 : -1]], 0),
+        ">=",
+        activeVal === 0 ? 1 : 0,
+        `${constraintName}_disj`
+      ),
+      originalName
+    );
   }
 
   return {
@@ -442,4 +589,138 @@ class BoolVarWrapper extends BoolVar {
     super(v.name);
     this.wrappedVar = v;
   }
+}
+
+type NegatedIntegerConstraint =
+  | { kind: "always_true" }
+  | { kind: "always_false" }
+  | { kind: "single"; lhs: LinExpr; sense: "<=" | ">="; rhs: number }
+  | { kind: "disjunction"; lhs: LinExpr; ltRhs: number; gtRhs: number };
+
+function matchDirectBinaryCondition(c: Constraint): { binVar: Var; activeVal: 0 | 1 } | null {
+  if (c.lhs.terms.size !== 1 || (c.lhs.constant ?? 0) !== 0) return null;
+  const [[v, coeff]] = Array.from(c.lhs.terms.entries());
+  const isBin = (v.type === "Binary" || v.type === "Integer") && v.lb === 0 && v.ub === 1;
+  if (!isBin || coeff !== 1) return null;
+  if ((c.sense === "==" && c.rhs === 1) || (c.sense === ">=" && c.rhs === 1)) {
+    return { binVar: v, activeVal: 1 };
+  }
+  if ((c.sense === "==" && c.rhs === 0) || (c.sense === "<=" && c.rhs === 0)) {
+    return { binVar: v, activeVal: 0 };
+  }
+  return null;
+}
+
+/**
+ * Computes the exact closed-half-space negation of an integer linear constraint.
+ * Rejects constraints with Continuous variables or non-integer coefficients/thresholds,
+ * whose strict-inequality negation is an open half-space not representable in MIP.
+ */
+function negateIntegerConstraint(
+  targetConstraint: Constraint,
+  originalName: string
+): NegatedIntegerConstraint {
+  const { lhs, sense, rhs } = targetConstraint;
+  const constant = lhs.constant ?? 0;
+  const effectiveRhs = rhs - constant;
+
+  if (!Number.isFinite(constant) || !Number.isFinite(rhs) || !Number.isFinite(effectiveRhs)) {
+    throw new Error(
+      `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+        `constraint "${targetConstraint.name}" contains non-finite constant or right-hand side.`
+    );
+  }
+  if (sense !== "<=" && sense !== ">=" && sense !== "==") {
+    throw new Error(
+      `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+        `unsupported comparison sense "${String(sense)}" in constraint "${targetConstraint.name}".`
+    );
+  }
+
+  const nonZeroTerms: [Var, number][] = [];
+  for (const [v, coeff] of lhs.terms) {
+    if (!Number.isFinite(coeff)) {
+      throw new Error(
+        `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+          `variable "${v.name}" in constraint "${targetConstraint.name}" has non-finite coefficient (${coeff}).`
+      );
+    }
+    if (coeff === 0) continue;
+    if (v.type !== "Integer" && v.type !== "Binary") {
+      throw new Error(
+        `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+          `negating constraint "${targetConstraint.name}" involves Continuous variable "${v.name}", ` +
+          `whose strict-inequality negation creates an open half-space not representable in MIP. ` +
+          `Use { solver: "z3" }, rewrite explicitly with a closed tolerance such as or(expr\`... >= ... + eps\`, ...), or model the proposition with m.bool().`
+      );
+    }
+    if (!Number.isSafeInteger(coeff)) {
+      throw new Error(
+        `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+          `negating constraint "${targetConstraint.name}" requires safe integer coefficients, but variable "${v.name}" has coefficient ${coeff}. ` +
+          `Scale to integer coefficients, use { solver: "z3" }, or rewrite explicitly with or(expr\`... >= ... + eps\`, ...) / m.bool().`
+      );
+    }
+    nonZeroTerms.push([v, coeff]);
+  }
+
+  if (nonZeroTerms.length === 0) {
+    const holds =
+      sense === "<=" ? 0 <= effectiveRhs : sense === ">=" ? 0 >= effectiveRhs : 0 === effectiveRhs;
+    return holds ? { kind: "always_false" } : { kind: "always_true" };
+  }
+
+  if (!Number.isInteger(effectiveRhs)) {
+    throw new Error(
+      `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+        `negating constraint "${targetConstraint.name}" requires an integer right-hand side and constant, received effective right-hand side ${effectiveRhs}. ` +
+        `Scale or round the threshold to an integer, use { solver: "z3" }, or rewrite explicitly with or(expr\`... >= ... + eps\`, ...) / m.bool().`
+    );
+  }
+  if (Math.abs(effectiveRhs) >= Number.MAX_SAFE_INTEGER) {
+    throw new Error(
+      `Cannot linearize logical constraint "${originalName}" for MIP solver: ` +
+        `effective right-hand side (${effectiveRhs}) of constraint "${targetConstraint.name}" exceeds safe integer precision for exact +/-1 negation. ` +
+        `Please rescale coefficients/constants or solve with { solver: "z3" }.`
+    );
+  }
+
+  const termsOnlyLhs = new LinExpr(new Map(nonZeroTerms), 0);
+  if (sense === "<=") {
+    return { kind: "single", lhs: termsOnlyLhs, sense: ">=", rhs: effectiveRhs + 1 };
+  }
+  if (sense === ">=") {
+    return { kind: "single", lhs: termsOnlyLhs, sense: "<=", rhs: effectiveRhs - 1 };
+  }
+
+  // sense === "==": negation over integers is (lhs <= ltRhs) OR (lhs >= gtRhs).
+  // Prune branches that cannot hold within exact variable bounds.
+  const ltRhs = effectiveRhs - 1;
+  const gtRhs = effectiveRhs + 1;
+  let minLhs = 0;
+  let maxLhs = 0;
+  let minExact = true;
+  let maxExact = true;
+  for (const [v, coeff] of nonZeroTerms) {
+    if (!(v.lb <= v.ub)) {
+      minExact = false;
+      maxExact = false;
+      break;
+    }
+    const minBound = coeff > 0 ? v.lb : v.ub;
+    const maxBound = coeff > 0 ? v.ub : v.lb;
+    const termMin = coeff * minBound;
+    const termMax = coeff * maxBound;
+    minLhs += termMin;
+    maxLhs += termMax;
+    minExact &&= Number.isSafeInteger(minBound) && Number.isSafeInteger(termMin) && Number.isSafeInteger(minLhs);
+    maxExact &&= Number.isSafeInteger(maxBound) && Number.isSafeInteger(termMax) && Number.isSafeInteger(maxLhs);
+  }
+  const canBeLt = !(minExact && minLhs > ltRhs);
+  const canBeGt = !(maxExact && maxLhs < gtRhs);
+
+  if (!canBeLt && !canBeGt) return { kind: "always_false" };
+  if (!canBeGt) return { kind: "single", lhs: termsOnlyLhs, sense: "<=", rhs: ltRhs };
+  if (!canBeLt) return { kind: "single", lhs: termsOnlyLhs, sense: ">=", rhs: gtRhs };
+  return { kind: "disjunction", lhs: termsOnlyLhs, ltRhs, gtRhs };
 }

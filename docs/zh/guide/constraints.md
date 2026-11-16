@@ -159,7 +159,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | **主要用途** | 包含二元算术变量的数理优化模型（`m.solve()`） | 逻辑规则系统与 SMT 可满足性判定（`m.check()`） |
 
 > [!NOTE]
-> **在 `implies()` 的前提条件（Antecedent）中使用一般不等式**：使用 **Z3**（`solver: "z3"`）时，`implies(a, b)` 的前提 `a` 可以是任意线性不等式——例如使用上文 `clearance` 与 `hasMfa` 编写 ``implies(expr`${clearance} >= 4`, hasMfa)``。而在 MIP 求解器（**HiGHS** / **GLPK**）中建模条件约束时，前提条件应使用 `BoolVar`（`m.bool()`），或通过 `m.indicator(binVar, constraint)` 使用 0-1 二元触发变量。
+> **出现在取反位置的比较约束（`implies` 前提、`not`、`xor` 等）**：当线性比较约束引用的变量均为 `Integer` 或 `Binary` 且系数与右端项均为整数时（具备 Big-M 指示约束所需的有限边界，例如使用上文 `clearance` 与 `hasMfa` 编写 ``implies(expr`${clearance} >= 4`, hasMfa)``），**HiGHS** 与 **GLPK** 会通过精确的 $\pm 1$ 整数偏移（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$，$==$ 则转化为 $\le b - 1$ 或 $\ge b + 1$）将其严格线性化为 MIP 约束，**Z3** 则原生求解。若包含 `Continuous` 变量或非整数系数/阈值的比较约束出现在取反位置，由于严格不等式取反对应开半空间，MIP 求解器（HiGHS / GLPK 上的 `solve()` / `check()`）会抛出错误——请使用 `{ solver: "z3" }`，或通过显式闭半空间容差 ``or(expr`... >= ... + eps`, ...)`` 及 `m.bool()` 进行建模。
 
 ---
 

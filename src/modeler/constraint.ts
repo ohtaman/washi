@@ -115,23 +115,35 @@ export class Constraint {
     this.hasExplicitName = hasExplicitName;
   }
 
-  // Logical operators for SMT / SAT
+  // Logical operators (natively solved on Z3; automatically linearized to 0-1 MIP on HiGHS/GLPK;
+  // negating a Constraint in implies antecedents / not / xor requires integer-valued expressions on MIP)
+  /** Logical conjunction (`this AND other`). */
   public and(other: LogicInput): BoolOp {
     return new BoolOp("and", [this, other]);
   }
 
+  /** Logical disjunction (`this OR other`). */
   public or(other: LogicInput): BoolOp {
     return new BoolOp("or", [this, other]);
   }
 
+  /**
+   * Logical implication (`this => consequent`).
+   * On MIP backends (HiGHS, GLPK), `this` is negated via exact `+/- 1` integer shifts
+   * (`Integer`/`Binary` variables with integer coefficients and RHS); `Continuous` or
+   * non-integer antecedents throw an Error (use `{ solver: "z3" }`, or write
+   * `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`).
+   */
   public implies(consequent: LogicInput): BoolOp {
     return new BoolOp("implies", [this, consequent]);
   }
 
+  /** Logical exclusive-or (`this XOR other`). Requires integer-valued `this` on MIP backends. */
   public xor(other: LogicInput): BoolOp {
     return new BoolOp("xor", [this, other]);
   }
 
+  /** Logical negation (`NOT this`). Negated via exact `+/- 1` integer shifts on MIP backends. */
   public not(): BoolOp {
     return new BoolOp("not", [this]);
   }
