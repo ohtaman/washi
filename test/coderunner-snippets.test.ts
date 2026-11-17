@@ -73,7 +73,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
 
     for (const docFile of mdFiles) {
       const rawContent = fs.readFileSync(docFile, "utf-8");
-      // Exclude the intentional Negative Examples section in ai-agents.md (EN/JA/ZH)
+      // Exclude the intentional Negative Examples section in ai-agents.md
       const content = docFile.endsWith("ai-agents.md")
         ? rawContent.split(/^## 4\./m)[0]
         : rawContent;
@@ -272,10 +272,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 30-page parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
-    const enPages = mdFiles
+  it("maintains full 29-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+    const enHumanPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
-      .filter((rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/"))
+      .filter(
+        (rel) => !rel.startsWith("ja/") && !rel.startsWith("zh/") && rel !== "getting-started/ai-agents.md"
+      )
       .sort();
     const jaPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
@@ -288,12 +290,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enPages).toHaveLength(31);
-    expect(enPages).toContain("getting-started/ecosystem.md");
-    expect(enPages).toContain("guide/formulation-tips.md");
-    expect(enPages).toContain("showcase/index.md");
-    expect(jaPages).toEqual(enPages);
-    expect(zhPages).toEqual(enPages);
+    expect(enHumanPages).toHaveLength(29);
+    expect(enHumanPages).not.toContain("getting-started/ecosystem.md");
+    expect(enHumanPages).toContain("guide/formulation-tips.md");
+    expect(enHumanPages).toContain("showcase/index.md");
+    expect(jaPages).toEqual(enHumanPages);
+    expect(zhPages).toEqual(enHumanPages);
   });
 
   it("executes all formulation-tips.md and decomposition.md snippets across EN/JA/ZH and verifies mathematical invariants", async () => {
@@ -882,6 +884,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       "docs/zh/getting-started/index.md",
     ]) {
       const md = fs.readFileSync(path.resolve(process.cwd(), relDoc), "utf-8");
+      expect(md.match(/^## /gm)).toHaveLength(3);
+      expect(md).not.toContain("Why TypeScript & WebAssembly");
+      expect(md).not.toContain("\u306a\u305c TypeScript & WebAssembly");
+      expect(md).not.toContain("\u4e3a\u4ec0\u4e48\u9009\u62e9 TypeScript");
+      expect(md).not.toContain("ecosystem.md");
+      expect(md).not.toContain("/ecosystem");
       const firstTsMatch = md.match(/```typescript\n([\s\S]*?)```/);
       expect(firstTsMatch, `Missing opening TypeScript snippet in ${relDoc}`).not.toBeNull();
 
@@ -932,42 +940,6 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       const lp = m.toLpString();
       expect(lp).toContain("max_items: A + B + C <= 2");
       expect(lp).toContain("capacity_limit: 5 A + 10 B + 15 C <= 25");
-    }
-
-    for (const relDoc of [
-      "docs/getting-started/ecosystem.md",
-      "docs/ja/getting-started/ecosystem.md",
-      "docs/zh/getting-started/ecosystem.md",
-    ]) {
-      const md = fs.readFileSync(path.resolve(process.cwd(), relDoc), "utf-8");
-      const tsMatch = md.match(/```typescript[^\n]*\n([\s\S]*?)```/);
-      expect(tsMatch, `Missing TypeScript comparison snippet in ${relDoc}`).not.toBeNull();
-
-      const jsBody = stripTypeScriptTypes(tsMatch![1]).replace(
-        /^\s*import\s+\{[^}]+\}\s+from\s+["']@ohtaman\/washi["'];?\s*$/gm,
-        ""
-      );
-      const logs: unknown[][] = [];
-      const mockConsole = { log: (...args: unknown[]) => logs.push(args) };
-      const runner = new Function(
-        "Washi",
-        "console",
-        `const { Model, expr, maximize } = Washi;\nreturn (async () => {\n${jsBody}\nreturn { m, qty, status, report };\n})();`
-      );
-      const res = (await runner(Washi, mockConsole)) as {
-        m: Washi.Model;
-        qty: Record<"desk" | "chair", Washi.Var>;
-        status: string;
-        report: Washi.SolutionValidationReport;
-      };
-      expect(res.status).toBe("Optimal");
-      expect(res.report.valid).toBe(true);
-      expect(res.m.objectiveValue).toBeCloseTo(1100, 6);
-      expect({ desk: res.qty.desk.value, chair: res.qty.chair.value }).toEqual({
-        desk: 20,
-        chair: 10,
-      });
-      expect(logs[0]?.[3]).toEqual({ desk: 20, chair: 10 });
     }
   });
 });

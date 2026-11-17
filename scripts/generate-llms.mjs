@@ -13,7 +13,6 @@ export const DOC_SECTIONS = [
       "getting-started/index.md",
       "getting-started/runtimes.md",
       "getting-started/cross-origin.md",
-      "getting-started/ecosystem.md",
     ],
   },
   {

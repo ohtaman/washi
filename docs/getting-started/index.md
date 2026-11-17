@@ -51,21 +51,15 @@ bun add @ohtaman/washi
 
 :::
 
-Install optional peer dependencies only if you need **Z3** (SMT logic & Unsat Core diagnosis) or **GLPK**:
+Install optional peer dependencies when you need **Z3** (SMT logic and Unsat Core conflict diagnosis) or **GLPK**, or add the optional skill for AI coding agents:
 
 ```bash
 npm install z3-solver   # For SMT logic and Unsat Core conflict diagnosis
 npm install glpk.js     # For GLPK solver (GPL-3.0)
+
+# Optional skill for AI coding agents (Claude Code, Cursor, Codex, etc.)
+npx skills add ohtaman/washi
 ```
-
----
-
-## 💡 Why TypeScript & WebAssembly?
-
-- **Zero native setup across Node.js and the browser**: No platform-specific C/C++ builds or separate Python runtimes to manage. A single `npm install` runs the same modeling code across **Node.js APIs, CLIs, and scripts** as well as in the **browser**.
-- **Lightweight embedding with standard Web APIs & UIs**: Go beyond local analysis scripts by shipping **interactive Web tools, mini-games, or Chrome extensions** that anyone can open via a URL with zero backend hosting cost. You can wire mathematical optimization directly into drag-and-drop UIs or **standard browser capabilities**—such as screen/camera capture and speech recognition (Web Speech API)—with no network round-trips or external data transfer.
-- **End-to-end type safety from app data to model**: Prevent common indexing and dictionary-key mistakes with TypeScript's type system. Typed variable dictionaries (`Record<K, Var>`) and variable-reference interpolation (`` expr`30 * ${qty.desk} <= 40` ``) connect directly to your application schemas, preserving compile-time variable/key checks, IDE autocompletion, and symbol renaming.
-- **Strong synergy with AI development & LLM workflows**: Keeping your application and optimization model in a **single TypeScript codebase** lets you validate everything in one test runner—without crossing a Python service boundary—and deploy easily as static assets or a single service. That tight test-and-deploy loop fits AI-assisted coding naturally, while at runtime you can pair flexible LLM extraction with exact solver feasibility and conflict diagnosis (`unsatCore`) in the same runtime.
 
 ---
 
@@ -81,7 +75,6 @@ Three practical habits cover the essentials shown in the snippet above:
 
 ## 🧭 Next Steps
 
-- **[Ecosystem & From Python (PuLP)](./ecosystem.md)**: How WaSHI compares with raw WASM bindings (`highs`, `glpk.js`, `z3-solver`), pure-JS solvers (`yalps`, `javascript-lp-solver`), and Python `PuLP`
 - **[Modeling Guide](../guide/variables.md)**: Array/dictionary variables, aggregations (`sum`, `dot`), logical constraints, and Unsat Core diagnosis
 - **[Examples & API Finder](../examples/)**: 11 runnable optimization and SMT recipes—from shift scheduling and portfolio QP to vehicle routing
 - **[Solvers Overview](../solvers/)**: Compare built-in HiGHS with optional Z3 and GLPK adapters

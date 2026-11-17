@@ -14,12 +14,8 @@ import {
   stripVitePressSyntax,
 } from "../scripts/generate-llms.mjs";
 
-describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", () => {
-  const guidePaths = [
-    "docs/getting-started/ai-agents.md",
-    "docs/ja/getting-started/ai-agents.md",
-    "docs/zh/getting-started/ai-agents.md",
-  ];
+describe("AI Coding Agent Quick-Reference Guide (docs/getting-started/ai-agents.md)", () => {
+  const guidePaths = ["docs/getting-started/ai-agents.md"];
   const guidePath = path.resolve(process.cwd(), "docs/getting-started/ai-agents.md");
   const guideContent = fs.readFileSync(guidePath, "utf-8");
 
@@ -35,37 +31,43 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
 
   const codeBlocks = extractTsBlocks(guideContent);
 
-  it("is linked with localized routes from READMEs, AGENTS.md, and VitePress config, and shipped in package.json files", () => {
+  it("is linked from AGENTS.md and SKILL.md, decoupled from human navigation, and shipped in package.json files", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
     );
-    for (const relPath of guidePaths) {
-      expect(pkg.files).toContain(relPath);
-    }
+    expect(pkg.files).toContain("docs/getting-started/ai-agents.md");
+    expect(pkg.files).not.toContain("docs/ja/getting-started/ai-agents.md");
+    expect(pkg.files).not.toContain("docs/zh/getting-started/ai-agents.md");
+    expect(
+      fs.existsSync(path.resolve(process.cwd(), "docs/ja/getting-started/ai-agents.md"))
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.resolve(process.cwd(), "docs/zh/getting-started/ai-agents.md"))
+    ).toBe(false);
 
-    expect(
-      fs.readFileSync(path.resolve(process.cwd(), "README.md"), "utf-8")
-    ).toContain("docs/getting-started/ai-agents.md");
-    expect(
-      fs.readFileSync(path.resolve(process.cwd(), "README.ja.md"), "utf-8")
-    ).toContain("docs/ja/getting-started/ai-agents.md");
-    expect(
-      fs.readFileSync(path.resolve(process.cwd(), "README.zh-CN.md"), "utf-8")
-    ).toContain("docs/zh/getting-started/ai-agents.md");
     expect(
       fs.readFileSync(path.resolve(process.cwd(), "AGENTS.md"), "utf-8")
     ).toContain("docs/getting-started/ai-agents.md");
+    expect(
+      fs.readFileSync(path.resolve(process.cwd(), "skills/washi/SKILL.md"), "utf-8")
+    ).toContain("docs/getting-started/ai-agents.md");
+
+    for (const readmeFile of ["README.md", "README.ja.md", "README.zh-CN.md"]) {
+      expect(
+        fs.readFileSync(path.resolve(process.cwd(), readmeFile), "utf-8")
+      ).not.toContain("ai-agents.md");
+    }
 
     const vpConfig = fs.readFileSync(
       path.resolve(process.cwd(), "docs/.vitepress/config.mts"),
       "utf-8"
     );
-    expect(vpConfig).toContain('link: "/getting-started/ai-agents"');
-    expect(vpConfig).toContain('link: "/ja/getting-started/ai-agents"');
-    expect(vpConfig).toContain('link: "/zh/getting-started/ai-agents"');
+    expect(vpConfig).not.toContain("/getting-started/ai-agents");
+    expect(vpConfig).not.toContain("/ja/getting-started/ai-agents");
+    expect(vpConfig).not.toContain("/zh/getting-started/ai-agents");
   });
 
-  it("type-checks all extracted guide code blocks across EN, JA, and ZH and verifies package export subpaths and symbols", () => {
+  it("type-checks all extracted guide code blocks and verifies package export subpaths and symbols", () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.resolve(process.cwd(), "package.json"), "utf-8")
     );
@@ -152,7 +154,7 @@ describe("AI Coding Agent Quick-Reference Guide (EN / JA / ZH ai-agents.md)", ()
     }
   });
 
-  it("executes the Step 1, Step 2 (QuadExpr), and Step 3 canonical workflow snippets to Optimal across EN, JA, and ZH", async () => {
+  it("executes the Step 1, Step 2 (QuadExpr), and Step 3 canonical workflow snippets to Optimal", async () => {
     for (const relPath of guidePaths) {
       const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
       const blocks = extractTsBlocks(content);
@@ -340,7 +342,7 @@ return (async () => {
     expect(linearCheckRes.unsatCore).toBeUndefined();
   });
 
-  it("does not advertise nonexistent APIs or types in guide prose or comments across EN, JA, and ZH", () => {
+  it("does not advertise nonexistent APIs or types in guide prose or comments", () => {
     const sampleModel = new Washi.Model("MemberCheck");
     for (const relPath of guidePaths) {
       const content = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
@@ -493,7 +495,8 @@ describe("llms.txt, llms-full.txt, and raw Markdown endpoints", () => {
     expect(llmsFullTxt).toContain("# Introduction & Installation");
     expect(llmsFullTxt).toContain("# Runtime Environments & Deployment");
     expect(llmsFullTxt).toContain("# Cross-Origin Isolation (Z3 & Browsers)");
-    expect(llmsFullTxt).toContain("# Ecosystem & From Python (PuLP)");
+    expect(llmsFullTxt).not.toContain("# Ecosystem & From Python (PuLP)");
+    expect(llmsFullTxt).not.toContain("Why TypeScript & WebAssembly?");
     expect(llmsFullTxt).toContain("# Variables & Domains");
     expect(llmsFullTxt).toContain("# Expressions (`expr`, `sum`, `dot`)");
     expect(llmsFullTxt).toContain("# Constraints (`m.constraint` & `m.indicator`)");
@@ -706,8 +709,9 @@ describe("Portable Agent Skill (skills/washi/SKILL.md)", () => {
       "README.ja.md",
       "README.zh-CN.md",
       "docs/getting-started/ai-agents.md",
-      "docs/ja/getting-started/ai-agents.md",
-      "docs/zh/getting-started/ai-agents.md",
+      "docs/getting-started/index.md",
+      "docs/ja/getting-started/index.md",
+      "docs/zh/getting-started/index.md",
     ]) {
       const text = fs.readFileSync(path.resolve(process.cwd(), file), "utf-8");
       expect(text).toContain("npx skills add ohtaman/washi");

@@ -39,7 +39,7 @@
 - **[ドキュメント](https://washi.ohtaman.dev/ja/)**: モデリングガイド・ソルバー仕様・環境別の導入手順
 - **[ショーケース](https://washi.ohtaman.dev/ja/showcase/) & [ブラウザデモ](https://washi.ohtaman.dev/demo/)**: ブラウザ上で動くデモアプリ集とプレイグラウンド
 - **[サンプル集](https://washi.ohtaman.dev/ja/examples/)**: 課題別の実践レシピと実行可能なサンプルコード（[`examples/`](examples/README.md)）
-- **[AIエージェント向けガイド](docs/ja/getting-started/ai-agents.md) · [Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: AI コーディングエージェント向けのリファレンス・スキル定義・機械可読ドキュメント
+- **[Agent Skill (`SKILL.md`)](skills/washi/SKILL.md) · [`llms.txt`](https://washi.ohtaman.dev/llms.txt) / [`llms-full.txt`](https://washi.ohtaman.dev/llms-full.txt)**: AI コーディングエージェント向けのスキル定義・機械可読ドキュメント
 
 ---
 
