@@ -665,4 +665,60 @@ describe("Pumpkin WASM LCG solver", () => {
     client.dispose();
     expect(wNext.terminated).toBe(true);
   });
+
+  it("intersects Binary variable bounds with [0, 1] and handles empty binary domains honestly", async () => {
+    await ensurePumpkinRegistered();
+
+    // 1. Widened binary variable (ub > 1) must still stay in {0, 1}
+    const mWidened = new Model("widened-binary");
+    const x = mWidened.binary("x");
+    x.ub = 10;
+    mWidened.objective(maximize(x));
+
+    expect(await mWidened.solve({ solver: "pumpkin" })).toBe("Optimal");
+    expect(x.value).toBe(1);
+    expect(mWidened.objectiveValue).toBe(1);
+    expect(mWidened.validateSolution().valid).toBe(true);
+
+    mWidened.constraint(x.ge(2), "ge_2");
+    const checkWidened = await mWidened.check({ solver: "pumpkin" });
+    expect(checkWidened.status).toBe("Unsat");
+    expect(checkWidened.conflicts).toContain("ge_2");
+    expect(checkWidened.unsatCore).toContain("ge_2");
+    expect(await mWidened.solve({ solver: "pumpkin" })).toBe("Infeasible");
+
+    // 2. Integer variable reassigned to Binary must intersect bounds with [0, 1]
+    const mConverted = new Model("int-to-binary");
+    const y = mConverted.integer("y", { lb: -5, ub: 10 });
+    y.type = "Binary";
+    mConverted.objective(maximize(y));
+
+    expect(await mConverted.solve({ solver: "pumpkin" })).toBe("Optimal");
+    expect(y.value).toBe(1);
+    expect(mConverted.validateSolution().valid).toBe(true);
+
+    mConverted.objective(minimize(y));
+    expect(await mConverted.solve({ solver: "pumpkin" })).toBe("Optimal");
+    expect(y.value).toBe(0);
+    expect(mConverted.validateSolution().valid).toBe(true);
+
+    // 3. Disjoint binary domain ([2, 5] ∩ [0, 1] = ∅) must report Unsat / Infeasible honestly
+    const mEmpty = new Model("empty-binary");
+    const z = mEmpty.binary("z");
+    z.lb = 2;
+    z.ub = 5;
+    mEmpty.objective(minimize(z));
+
+    const emptyCheck = await mEmpty.check({ solver: "pumpkin" });
+    expect(emptyCheck.status).toBe("Unsat");
+    expect(emptyCheck.conflicts).toEqual([]);
+    expect(emptyCheck.unsatCore).toEqual([]);
+
+    expect(await mEmpty.solve({ solver: "pumpkin" })).toBe("Infeasible");
+    expect(mEmpty.terminationStatus).toBe("Infeasible");
+    expect(mEmpty.hasPrimalSolution).toBe(false);
+
+    // Unsupported options on an empty-binary model must still be rejected upfront
+    await expect(mEmpty.solve({ solver: "pumpkin", relax: true })).rejects.toThrow(/relax/i);
+  });
 });

@@ -120,9 +120,11 @@ function isQuadraticExpr(expr: unknown): expr is QuadExpr {
 function serializeVariables(variables: Var[]): {
   vars: SerializedVar[];
   varIndexMap: Map<Var, number>;
+  hasEmptyDomain: boolean;
 } {
   const vars: SerializedVar[] = [];
   const varIndexMap = new Map<Var, number>();
+  let hasEmptyDomain = false;
 
   for (let i = 0; i < variables.length; i++) {
     const v = variables[i];
@@ -137,6 +139,44 @@ function serializeVariables(variables: Var[]): {
         `Solver "pumpkin" does not support primal initial values (initialValue) on variable "${v.name}". Please use a solver with warm-start support such as HiGHS.`
       );
     }
+
+    varIndexMap.set(v, i);
+    const isBinary = normType === "binary" || normType === "bin";
+    if (isBinary) {
+      if (
+        typeof v.lb !== "number" ||
+        Number.isNaN(v.lb) ||
+        typeof v.ub !== "number" ||
+        Number.isNaN(v.ub)
+      ) {
+        throw new Error(
+          `PumpkinSolver encountered non-finite numeric value in bounds of variable "${v.name}".`
+        );
+      }
+      if (v.lb === Infinity || v.ub === -Infinity || v.lb > v.ub) {
+        throw new Error(
+          `Variable "${v.name}" has invalid bounds lb (${v.lb}) > ub (${v.ub}).`
+        );
+      }
+      if (
+        (Number.isFinite(v.lb) && !Number.isInteger(v.lb)) ||
+        (Number.isFinite(v.ub) && !Number.isInteger(v.ub))
+      ) {
+        throw new Error(
+          `PumpkinSolver only supports integer values (bounds of binary variable "${v.name}").`
+        );
+      }
+      const effLb = v.lb === -Infinity ? 0 : Math.max(0, normalizeZero(v.lb));
+      const effUb = v.ub === Infinity ? 1 : Math.min(1, normalizeZero(v.ub));
+      if (effLb > effUb) {
+        hasEmptyDomain = true;
+        vars.push({ name: v.name, lb: 0, ub: 1 });
+      } else {
+        vars.push({ name: v.name, lb: effLb, ub: effUb });
+      }
+      continue;
+    }
+
     const lb = validateSafeInt(v.lb, `lower bound of variable "${v.name}"`);
     const ub = validateSafeInt(v.ub, `upper bound of variable "${v.name}"`);
     if (lb > ub) {
@@ -144,11 +184,10 @@ function serializeVariables(variables: Var[]): {
         `Variable "${v.name}" has invalid bounds lb (${lb}) > ub (${ub}).`
       );
     }
-    varIndexMap.set(v, i);
     vars.push({ name: v.name, lb, ub });
   }
 
-  return { vars, varIndexMap };
+  return { vars, varIndexMap, hasEmptyDomain };
 }
 
 function serializeLinearTerms(
@@ -327,8 +366,9 @@ function serializeCommonModel(modelData: CheckModelData): {
   constraints: SerializedLinearConstraint[];
   logicalConstraints: SerializedLogicalConstraint[];
   varIndexMap: Map<Var, number>;
+  hasEmptyDomain: boolean;
 } {
-  const { vars, varIndexMap } = serializeVariables(modelData.variables);
+  const { vars, varIndexMap, hasEmptyDomain } = serializeVariables(modelData.variables);
 
   const boolVarsList = modelData.boolVars ?? [];
   const boolVarIndexMap = new Map<BoolVar, number>();
@@ -361,7 +401,7 @@ function serializeCommonModel(modelData: CheckModelData): {
     logicalConstraints.push({ name: lc.name, expr });
   }
 
-  return { vars, boolVars, constraints, logicalConstraints, varIndexMap };
+  return { vars, boolVars, constraints, logicalConstraints, varIndexMap, hasEmptyDomain };
 }
 
 function tuplesToValuesRecord(
@@ -455,6 +495,16 @@ export class PumpkinSolver implements Solver {
         status: "Unknown",
         values: {},
         runTime: 0,
+      };
+    }
+
+    if (common.hasEmptyDomain) {
+      return {
+        status: "Unsat",
+        values: {},
+        unsatCore: [],
+        conflicts: [],
+        runTime: 1e-6,
       };
     }
 
@@ -567,6 +617,17 @@ export class PumpkinSolver implements Solver {
         objectiveValue: null,
         values: {},
         runTime: 0,
+      };
+    }
+
+    if (common.hasEmptyDomain) {
+      return {
+        status: "Infeasible",
+        terminationStatus: "Infeasible",
+        hasPrimalSolution: false,
+        objectiveValue: null,
+        values: {},
+        runTime: 1e-6,
       };
     }
 
