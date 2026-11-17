@@ -608,7 +608,61 @@ describe("Pumpkin WASM LCG solver", () => {
     } as MessageEvent);
 
     await expect(p2).resolves.toMatchObject({ status: "Sat" });
+
+    // Regression: if onProgress aborts its own signal and then throws, the queued next task
+    // must NOT be terminated or rejected by the originating callback's catch block.
+    const controller3 = new AbortController();
+    const p3 = client.solve(
+      { requestJson: "{}" },
+      {
+        signal: controller3.signal,
+        onProgress: () => {
+          controller3.abort();
+          throw new Error("callback threw after aborting");
+        },
+      }
+    );
+    const p4 = client.check({ requestJson: "{}" });
+
+    await vi.waitFor(() => {
+      expect(createdWorkers.length).toBe(2);
+      expect(createdWorkers[1].messages.length).toBe(2);
+    });
+    const wActive = createdWorkers[1];
+    const req3Id = wActive.messages[1].id;
+    wActive.onmessage?.({
+      data: {
+        id: req3Id,
+        type: "SOLVE_PROGRESS",
+        elapsedTime: 0.01,
+        payloadJson: JSON.stringify({ objectiveValue: 42, values: [], boolValues: [] }),
+      },
+    } as MessageEvent);
+
+    const r3 = await p3;
+    expect(r3.terminationStatus).toBe("Interrupted");
+    expect(r3.objectiveValue).toBe(42);
+    expect(wActive.terminated).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(createdWorkers.length).toBe(3);
+      expect(createdWorkers[2].messages.length).toBe(1);
+    });
+    const wNext = createdWorkers[2];
+    expect(wNext.terminated).toBe(false);
+    expect(wNext.messages[0].type).toBe("check");
+    wNext.onmessage?.({
+      data: {
+        id: wNext.messages[0].id,
+        type: "CHECK_SUCCESS",
+        responseJson: JSON.stringify({ status: "Sat", values: [] }),
+        runTime: 0.01,
+      },
+    } as MessageEvent);
+
+    await expect(p4).resolves.toMatchObject({ status: "Sat" });
+
     client.dispose();
-    expect(w2.terminated).toBe(true);
+    expect(wNext.terminated).toBe(true);
   });
 });

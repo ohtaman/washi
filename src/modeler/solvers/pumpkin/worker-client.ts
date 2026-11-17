@@ -57,18 +57,90 @@ export interface PumpkinWorkerClient {
   dispose(): void;
 }
 
-interface QueuedTask {
+interface BaseQueuedTask {
   id: number;
-  type: "check" | "solve";
   requestJson: string;
   wasmUrl: string | null;
   signal?: AbortSignal;
-  onProgress?: (event: SolveProgressEvent) => void;
   startTimeMs: number;
   lastIncumbent: PumpkinIncumbentMessagePayload | null;
-  resolve: (value: any) => void;
   reject: (reason: unknown) => void;
   cleanupAbort?: () => void;
+}
+
+interface CheckQueuedTask extends BaseQueuedTask {
+  type: "check";
+  resolve: (value: PumpkinCheckResponsePayload) => void;
+}
+
+interface SolveQueuedTask extends BaseQueuedTask {
+  type: "solve";
+  onProgress?: (event: SolveProgressEvent) => void;
+  resolve: (value: PumpkinSolveResponsePayload) => void;
+}
+
+type QueuedTask = CheckQueuedTask | SolveQueuedTask;
+
+type PumpkinWorkerIncomingMessage =
+  | {
+      id: number;
+      type: "SOLVE_PROGRESS";
+      payloadJson?: string;
+      incumbent?: PumpkinIncumbentMessagePayload;
+      elapsedTime?: number;
+    }
+  | {
+      id: number;
+      type: "CHECK_SUCCESS";
+      responseJson?: string;
+      result?: PumpkinCheckResponsePayload;
+      runTime?: number;
+    }
+  | {
+      id: number;
+      type: "SOLVE_SUCCESS";
+      responseJson?: string;
+      result?: PumpkinSolveResponsePayload;
+      runTime?: number;
+    }
+  | {
+      id: number;
+      type: "SOLVER_ERROR";
+      error?: string;
+    };
+
+function buildAbortedCheckResult(startTimeMs: number): PumpkinCheckResponsePayload {
+  return {
+    status: "Unknown",
+    values: [],
+    boolValues: [],
+    runTime: Math.max((performance.now() - startTimeMs) / 1000, 1e-6),
+  };
+}
+
+function buildAbortedSolveResult(
+  startTimeMs: number,
+  incumbent: PumpkinIncumbentMessagePayload | null
+): PumpkinSolveResponsePayload {
+  const runTime = Math.max((performance.now() - startTimeMs) / 1000, 1e-6);
+  if (incumbent) {
+    return {
+      status: "Feasible",
+      terminationStatus: "Interrupted",
+      objectiveValue: incumbent.objectiveValue,
+      values: incumbent.values,
+      boolValues: incumbent.boolValues,
+      runTime,
+    };
+  }
+  return {
+    status: "Unknown",
+    terminationStatus: "Interrupted",
+    objectiveValue: null,
+    values: [],
+    boolValues: [],
+    runTime,
+  };
 }
 
 /**
@@ -96,48 +168,60 @@ export function createPumpkinWorkerClient(
     }
   };
 
-  const buildAbortedResult = (task: QueuedTask): PumpkinCheckResponsePayload | PumpkinSolveResponsePayload => {
-    const runTime = Math.max((performance.now() - task.startTimeMs) / 1000, 1e-6);
-    if (task.type === "check") {
-      return {
-        status: "Unknown",
-        values: [],
-        boolValues: [],
-        runTime,
-      };
+  const detachTask = (task: QueuedTask) => {
+    if (activeTask === task) {
+      activeTask = null;
     }
-    if (task.lastIncumbent) {
-      return {
-        status: "Feasible",
-        terminationStatus: "Interrupted",
-        objectiveValue: task.lastIncumbent.objectiveValue,
-        values: task.lastIncumbent.values,
-        boolValues: task.lastIncumbent.boolValues,
-        runTime,
-      };
-    }
-    return {
-      status: "Unknown",
-      terminationStatus: "Interrupted",
-      objectiveValue: null,
-      values: [],
-      boolValues: [],
-      runTime,
-    };
+    task.cleanupAbort?.();
   };
 
-  const finishActive = (outcome: { kind: "resolve"; value: any } | { kind: "reject"; reason: unknown }) => {
-    const task = activeTask;
-    activeTask = null;
-    if (task) {
-      task.cleanupAbort?.();
-      if (outcome.kind === "resolve") {
-        task.resolve(outcome.value);
-      } else {
-        task.reject(outcome.reason);
-      }
-    }
+  const settleCheck = (task: CheckQueuedTask, value: PumpkinCheckResponsePayload) => {
+    detachTask(task);
+    task.resolve(value);
     pumpQueue();
+  };
+
+  const settleSolve = (task: SolveQueuedTask, value: PumpkinSolveResponsePayload) => {
+    detachTask(task);
+    task.resolve(value);
+    pumpQueue();
+  };
+
+  const rejectTask = (task: QueuedTask, reason: unknown) => {
+    detachTask(task);
+    task.reject(reason);
+    pumpQueue();
+  };
+
+  const resolveAbortedTask = (task: QueuedTask) => {
+    if (task.type === "check") {
+      settleCheck(task, buildAbortedCheckResult(task.startTimeMs));
+    } else {
+      settleSolve(task, buildAbortedSolveResult(task.startTimeMs, task.lastIncumbent));
+    }
+  };
+
+  const parseSuccessPayload = <T extends PumpkinCheckResponsePayload | PumpkinSolveResponsePayload>(
+    responseJson: string | undefined,
+    fallbackResult: T | undefined,
+    rawRunTime: number | undefined,
+    startTimeMs: number
+  ): T => {
+    const payload =
+      typeof responseJson === "string" ? (JSON.parse(responseJson) as T) : fallbackResult;
+    if (!payload) {
+      throw new Error("Pumpkin worker returned an empty success payload.");
+    }
+    if (payload.error) {
+      throw new Error(payload.error);
+    }
+    return {
+      ...payload,
+      runTime:
+        typeof rawRunTime === "number"
+          ? rawRunTime
+          : Math.max((performance.now() - startTimeMs) / 1000, 1e-6),
+    };
   };
 
   const ensureWorker = (): Worker => {
@@ -145,65 +229,98 @@ export function createPumpkinWorkerClient(
       return worker;
     }
     const w = createWorker();
-    w.onmessage = (event: MessageEvent<Record<string, any>>) => {
+    w.onmessage = (event: MessageEvent<PumpkinWorkerIncomingMessage>) => {
       const data = event.data;
-      if (!data || !activeTask || data.id !== activeTask.id) {
+      const task = activeTask;
+      if (worker !== w || !data || !task || data.id !== task.id) {
         return;
       }
 
       if (data.type === "SOLVE_PROGRESS") {
+        if (task.type !== "solve") {
+          return;
+        }
         try {
           const parsed =
             typeof data.payloadJson === "string"
               ? (JSON.parse(data.payloadJson) as PumpkinIncumbentMessagePayload)
-              : (data.incumbent as PumpkinIncumbentMessagePayload);
-          activeTask.lastIncumbent = parsed;
+              : data.incumbent;
+          if (!parsed) {
+            return;
+          }
+          task.lastIncumbent = parsed;
 
-          if (activeTask.onProgress) {
+          if (task.onProgress) {
             const elapsedTime =
               typeof data.elapsedTime === "number"
                 ? data.elapsedTime
-                : Math.max((performance.now() - activeTask.startTimeMs) / 1000, 1e-6);
-            activeTask.onProgress({
+                : Math.max((performance.now() - task.startTimeMs) / 1000, 1e-6);
+            task.onProgress({
               elapsedTime,
               elapsedSeconds: elapsedTime,
               objectiveValue: parsed.objectiveValue,
             });
           }
 
-          if (activeTask.signal?.aborted) {
-            const interrupted = buildAbortedResult(activeTask);
+          if (worker !== w || activeTask !== task) {
+            return;
+          }
+
+          if (task.signal?.aborted) {
             terminateWorker();
-            finishActive({ kind: "resolve", value: interrupted });
+            resolveAbortedTask(task);
           }
         } catch (cbErr) {
-          terminateWorker();
-          finishActive({ kind: "reject", reason: cbErr });
+          if (worker === w && activeTask === task) {
+            terminateWorker();
+            rejectTask(task, cbErr);
+          }
         }
         return;
       }
 
-      if (data.type === "CHECK_SUCCESS" || data.type === "SOLVE_SUCCESS") {
-        try {
-          const payload =
-            typeof data.responseJson === "string" ? JSON.parse(data.responseJson) : data.result;
-          if (payload?.error) {
-            finishActive({ kind: "reject", reason: new Error(payload.error) });
-            return;
-          }
-          finishActive({
-            kind: "resolve",
-            value: {
-              ...payload,
-              runTime:
-                typeof data.runTime === "number"
-                  ? data.runTime
-                  : Math.max((performance.now() - activeTask.startTimeMs) / 1000, 1e-6),
-            },
-          });
-        } catch (parseErr) {
+      if (data.type === "CHECK_SUCCESS") {
+        if (task.type !== "check") {
           terminateWorker();
-          finishActive({ kind: "reject", reason: parseErr });
+          rejectTask(task, new Error('Received "CHECK_SUCCESS" for a solve task.'));
+          return;
+        }
+        try {
+          const payload = parseSuccessPayload<PumpkinCheckResponsePayload>(
+            data.responseJson,
+            data.result,
+            data.runTime,
+            task.startTimeMs
+          );
+          settleCheck(task, payload);
+        } catch (parseErr) {
+          if (worker === w && activeTask === task) {
+            terminateWorker();
+            rejectTask(task, parseErr);
+          }
+        }
+        return;
+      }
+
+      if (data.type === "SOLVE_SUCCESS") {
+        if (task.type !== "solve") {
+          terminateWorker();
+          rejectTask(task, new Error('Received "SOLVE_SUCCESS" for a check task.'));
+          return;
+        }
+        try {
+          const payload = parseSuccessPayload<PumpkinSolveResponsePayload>(
+            data.responseJson,
+            data.result,
+            data.runTime,
+            task.startTimeMs
+          );
+          settleSolve(task, payload);
+        } catch (parseErr) {
+          if (worker === w && activeTask === task) {
+            terminateWorker();
+            rejectTask(task, parseErr);
+          }
         }
         return;
       }
@@ -211,25 +328,30 @@ export function createPumpkinWorkerClient(
       if (data.type === "SOLVER_ERROR") {
         const message =
           typeof data.error === "string" ? data.error : "Pumpkin worker execution failed.";
-        finishActive({ kind: "reject", reason: new Error(message) });
+        rejectTask(task, new Error(message));
       }
     };
 
     w.onerror = (err: ErrorEvent) => {
+      if (worker !== w) {
+        return;
+      }
+      const task = activeTask;
       terminateWorker();
-      if (activeTask) {
+      if (task) {
         const message = err?.message || "Pumpkin Web Worker encountered an unexpected error.";
-        finishActive({ kind: "reject", reason: new Error(message) });
+        rejectTask(task, new Error(message));
       }
     };
 
     w.onmessageerror = () => {
+      if (worker !== w) {
+        return;
+      }
+      const task = activeTask;
       terminateWorker();
-      if (activeTask) {
-        finishActive({
-          kind: "reject",
-          reason: new Error("Failed to deserialize message from Pumpkin Web Worker."),
-        });
+      if (task) {
+        rejectTask(task, new Error("Failed to deserialize message from Pumpkin Web Worker."));
       }
     };
 
@@ -244,7 +366,11 @@ export function createPumpkinWorkerClient(
     while (queue.length > 0) {
       const next = queue.shift()!;
       if (next.signal?.aborted) {
-        next.resolve(buildAbortedResult(next));
+        if (next.type === "check") {
+          next.resolve(buildAbortedCheckResult(next.startTimeMs));
+        } else {
+          next.resolve(buildAbortedSolveResult(next.startTimeMs, next.lastIncumbent));
+        }
         continue;
       }
 
@@ -256,9 +382,8 @@ export function createPumpkinWorkerClient(
           if (activeTask !== next) {
             return;
           }
-          const interrupted = buildAbortedResult(next);
           terminateWorker();
-          finishActive({ kind: "resolve", value: interrupted });
+          resolveAbortedTask(next);
         };
         next.signal.addEventListener("abort", onAbort, { once: true });
         next.cleanupAbort = () => next.signal?.removeEventListener("abort", onAbort);
@@ -273,42 +398,63 @@ export function createPumpkinWorkerClient(
           wasmUrl: next.wasmUrl,
         });
       } catch (err) {
-        terminateWorker();
-        finishActive({ kind: "reject", reason: err });
+        if (activeTask === next) {
+          terminateWorker();
+          rejectTask(next, err);
+        }
       }
       return;
     }
   };
 
-  const enqueue = <T>(
-    type: "check" | "solve",
-    requestJson: string,
-    wasmUrl: string | null,
-    options?: PumpkinWorkerSolveOptions
-  ): Promise<T> => {
-    if (disposed) {
-      return Promise.reject(new Error("[WaSHI] Pumpkin worker client has been disposed."));
-    }
-    if (options?.signal?.aborted) {
-      const immediateTask: QueuedTask = {
-        id: 0,
-        type,
-        requestJson,
+  const resolveWasmUrl = (paramUrl?: string | null): string | null =>
+    paramUrl !== undefined
+      ? paramUrl
+      : clientOptions.wasmUrl !== undefined
+        ? clientOptions.wasmUrl
+        : getPumpkinWasmUrl();
+
+  const enqueueTask = <T>(
+    buildTask: (resolve: (value: T) => void, reject: (reason: unknown) => void) => QueuedTask
+  ): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
+      queue.push(buildTask(resolve, reject));
+      pumpQueue();
+    });
+
+  return {
+    check(params, options) {
+      if (disposed) {
+        return Promise.reject(new Error("[WaSHI] Pumpkin worker client has been disposed."));
+      }
+      if (options?.signal?.aborted) {
+        return Promise.resolve(buildAbortedCheckResult(performance.now()));
+      }
+      const wasmUrl = resolveWasmUrl(params.wasmUrl);
+      return enqueueTask<PumpkinCheckResponsePayload>((resolve, reject) => ({
+        id: nextRequestId++,
+        type: "check",
+        requestJson: params.requestJson,
         wasmUrl,
-        signal: options.signal,
+        signal: options?.signal,
         startTimeMs: performance.now(),
         lastIncumbent: null,
-        resolve: () => {},
-        reject: () => {},
-      };
-      return Promise.resolve(buildAbortedResult(immediateTask) as T);
-    }
-
-    return new Promise<T>((resolve, reject) => {
-      const task: QueuedTask = {
+        resolve,
+        reject,
+      }));
+    },
+    solve(params, options) {
+      if (disposed) {
+        return Promise.reject(new Error("[WaSHI] Pumpkin worker client has been disposed."));
+      }
+      if (options?.signal?.aborted) {
+        return Promise.resolve(buildAbortedSolveResult(performance.now(), null));
+      }
+      const wasmUrl = resolveWasmUrl(params.wasmUrl);
+      return enqueueTask<PumpkinSolveResponsePayload>((resolve, reject) => ({
         id: nextRequestId++,
-        type,
-        requestJson,
+        type: "solve",
+        requestJson: params.requestJson,
         wasmUrl,
         signal: options?.signal,
         onProgress: options?.onProgress,
@@ -316,40 +462,7 @@ export function createPumpkinWorkerClient(
         lastIncumbent: null,
         resolve,
         reject,
-      };
-      queue.push(task);
-      pumpQueue();
-    });
-  };
-
-  return {
-    check(params, options) {
-      const effectiveWasmUrl =
-        params.wasmUrl !== undefined
-          ? params.wasmUrl
-          : clientOptions.wasmUrl !== undefined
-            ? clientOptions.wasmUrl
-            : getPumpkinWasmUrl();
-      return enqueue<PumpkinCheckResponsePayload>(
-        "check",
-        params.requestJson,
-        effectiveWasmUrl,
-        options
-      );
-    },
-    solve(params, options) {
-      const effectiveWasmUrl =
-        params.wasmUrl !== undefined
-          ? params.wasmUrl
-          : clientOptions.wasmUrl !== undefined
-            ? clientOptions.wasmUrl
-            : getPumpkinWasmUrl();
-      return enqueue<PumpkinSolveResponsePayload>(
-        "solve",
-        params.requestJson,
-        effectiveWasmUrl,
-        options
-      );
+      }));
     },
     dispose() {
       disposed = true;
