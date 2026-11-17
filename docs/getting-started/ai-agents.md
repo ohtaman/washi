@@ -34,6 +34,8 @@ import {
   setHighsWasmUrl,
 } from "@ohtaman/washi";
 
+// Bundled optional CP/LCG solver plugin (zero external dependencies):
+import "@ohtaman/washi/solvers/pumpkin";
 // Optional solver plugins (require installing peer dependencies first):
 // npm install z3-solver
 import "@ohtaman/washi/solvers/z3";
@@ -45,10 +47,12 @@ import "@ohtaman/washi/solvers/glpk";
 
 - **Browser ESM**:
   - Core (HiGHS built-in): `import { Model, expr, maximize } from "./washi/washi.js";`
+  - Pumpkin plugin: `import "./washi/solvers/pumpkin.js";`
   - GLPK plugin: `import "./washi/solvers/glpk.js";`
   - Z3 plugin: `import "./washi/solvers/z3.js";`
 - **Classic `<script>` / CodePen (IIFE)**:
   - Core: `<script src="./washi/washi.min.js"></script>` (exposes global `Washi`)
+  - Pumpkin plugin: `<script src="./washi/solvers/pumpkin.min.js"></script>` (registers `"pumpkin"`, exposes `WashiPumpkin`)
   - GLPK plugin: `<script src="./washi/solvers/glpk.min.js"></script>` (registers `"glpk"`, exposes `WashiGLPK`)
   - Z3 plugin: `<script src="./washi/solvers/z3.min.js"></script>` (registers `"z3"`, exposes `WashiZ3`)
 
@@ -57,7 +61,8 @@ import "@ohtaman/washi/solvers/glpk";
 1. **Bundled WASM by default (no implicit CDN fallback)**:
    - In Node.js and modern bundlers, WebAssembly assets resolve relative to the module automatically.
    - In browser deployments, deploy the full `dist/browser/` directory (JS, Worker, and `.wasm` files) together. If a local WASM URL is missing or returns an HTML SPA fallback, initialization fails immediately and reports the attempted URL—it **never** silently switches to a public CDN.
-   - In browser runtimes, to load `highs.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` or pass `await m.solve({ wasmUrl: "https://.../highs.wasm" })` (ignored in Node.js, which always loads WaSHI's bundled local `highs.wasm` runtime).
+   - In browser runtimes, to load `highs.wasm` or `pumpkin.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` (or `await m.solve({ wasmUrl: "https://.../highs.wasm" })` for HiGHS) or `setPumpkinWasmUrl("https://.../pumpkin.wasm")` from `@ohtaman/washi/solvers/pumpkin` (ignored in Node.js for HiGHS; for Pumpkin in Node.js, bundled local `pumpkin.wasm` is used by default).
+   - **Pumpkin runs without `COOP`/`COEP`**: Unlike Z3, Pumpkin (`@ohtaman/washi/solvers/pumpkin`) uses single-threaded WASM inside a regular Web Worker and does **not** require `SharedArrayBuffer` or Cross-Origin Isolation headers (`COOP`/`COEP`). It requires bounded finite integer/binary variables (`lb`, `ub` in `[-(2^30 - 1), 2^30 - 1]`) and integer linear coefficients/RHS (no `Continuous`, `QuadExpr`, `initialValue`, or `relax: true`).
 2. **Z3 requires a Secure Context, Cross-Origin Isolation, and CORS in browsers**:
    - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must run in a secure context (`window.isSecureContext === true`, i.e., HTTPS or `localhost`) and be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
      - `Cross-Origin-Opener-Policy: same-origin` (on the document)
@@ -139,7 +144,7 @@ m.indicator(b, expr`${x} <= 50`, { activeValue: 1, name: "cap_when_b" });
 - **Satisfiability & Conflict Diagnosis (`await m.check(options?)`)**:
   - Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values: Record<string, number | boolean>, conflicts?: readonly string[], unsatCore?: readonly string[], runTime?: number }`), where `conflicts` is populated when the model is proven `"Unsat"`.
   - For models containing linear arithmetic constraints or logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`), `m.check()` works with any solver (including the default HiGHS and GLPK via single-solve elastic slack relaxation, automatically linearizing logical constraints into 0-1 MIP formulation) and diagnoses conflicting constraints as `conflicts` (leaving `unsatCore: undefined` for semantic rigor).
-  - Exact SMT unsatisfiable-core extraction (`result.unsatCore` and `result.conflicts`) is provided when using an SMT-capable solver (`{ solver: "z3" }`). Because Z3 asserts variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking registered constraints, `unsatCore` reports a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (and is not guaranteed minimal).
+  - Exact unsatisfiable-core extraction (`result.unsatCore` and `result.conflicts`) is provided when using `{ solver: "z3" }` or `{ solver: "pumpkin" }`. Use `"pumpkin"` (`@ohtaman/washi/solvers/pumpkin`) for bounded-integer/propositional models in environments without `COOP`/`COEP` headers, and use `"z3"` when `Continuous` variables or fractional arithmetic are involved. Because Z3 and Pumpkin assert variable bounds (`lb`/`ub`) and binary `{0, 1}` domains directly while tracking registered constraints, `unsatCore` reports a subset of registered constraint names that conflicts *together with the model's fixed variable bounds/domains* (and is not guaranteed minimal).
 - **No concurrent mutation during async solve/check**:
   - Mutating variables, constraints, or the objective while `await m.solve()` or `await m.check()` is pending invalidates the in-flight execution and rejects the stale promise.
 

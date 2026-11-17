@@ -5,12 +5,13 @@ import { browserAssets } from "./build/distribution.js";
 export default defineConfig(() => {
   const iife = process.env.WASHI_BROWSER_FORMAT === "iife";
   const runtime = process.env.WASHI_BROWSER_FORMAT === "runtime";
-  const target = (process.env.WASHI_BROWSER_TARGET || "core") as "core" | "glpk" | "z3";
+  const target = (process.env.WASHI_BROWSER_TARGET || "core") as "core" | "glpk" | "z3" | "pumpkin";
 
   let entry: any;
   let name = "Washi";
   let fileName: (_format: string, name: string) => string;
   let emptyOutDir = false;
+  let outDir = runtime ? "dist/lib" : "dist/browser";
 
   if (target === "glpk") {
     entry = resolve(import.meta.dirname, "src/modeler/solvers/glpk/index.ts");
@@ -20,6 +21,21 @@ export default defineConfig(() => {
     entry = resolve(import.meta.dirname, "src/modeler/solvers/z3/index.ts");
     name = "WashiZ3";
     fileName = () => (iife ? "solvers/z3.min.js" : "solvers/z3.js");
+  } else if (target === "pumpkin") {
+    if (iife) {
+      entry = resolve(import.meta.dirname, "src/modeler/solvers/pumpkin/index.ts");
+      name = "WashiPumpkin";
+      outDir = "dist/browser";
+      fileName = () => "solvers/pumpkin.min.js";
+    } else {
+      entry = {
+        "pumpkin": resolve(import.meta.dirname, "src/modeler/solvers/pumpkin/index.ts"),
+        "pumpkin-worker": resolve(import.meta.dirname, "src/modeler/solvers/pumpkin/worker.ts"),
+      };
+      name = "WashiPumpkin";
+      outDir = "dist/browser/solvers";
+      fileName = (_format, entryName) => `${entryName}.js`;
+    }
   } else if (runtime) {
     entry = resolve(import.meta.dirname, "src/modeler/solvers/highs/browser-runtime.ts");
     name = "Washi";
@@ -51,7 +67,7 @@ export default defineConfig(() => {
       ...(iife ? { "import.meta": "{}" } : {}),
     },
     build: {
-      outDir: runtime ? "dist/lib" : "dist/browser",
+      outDir,
       emptyOutDir,
       target: "es2022",
       lib: {
@@ -63,7 +79,9 @@ export default defineConfig(() => {
       rollupOptions: {
         output: target === "glpk" || target === "z3" || iife
           ? { codeSplitting: false }
-          : { chunkFileNames: "[name]-[hash].js" },
+          : target === "pumpkin"
+            ? { chunkFileNames: "pumpkin-[name]-[hash].js" }
+            : { chunkFileNames: "[name]-[hash].js" },
       },
     },
   };

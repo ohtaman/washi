@@ -34,6 +34,7 @@ export const DOC_SECTIONS = [
     files: [
       "solvers/index.md",
       "solvers/highs.md",
+      "solvers/pumpkin.md",
       "solvers/z3.md",
       "solvers/glpk.md",
       "solvers/custom-solver.md",

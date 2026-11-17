@@ -120,6 +120,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     "z3-built.js",
     "z3-built.wasm",
     "highs.wasm",
+    "pumpkin.wasm",
   ];
 
   for (const file of filesToCopy) {

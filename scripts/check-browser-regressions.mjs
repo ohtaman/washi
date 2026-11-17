@@ -20,7 +20,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
   const site = await serve(pagesRoot, true);
 
   for (const format of ["esm", "iife"]) {
-    for (const solver of ["highs", "glpk", "z3"]) {
+    for (const solver of ["highs", "glpk", "z3", "pumpkin"]) {
       const plugin = solver === "highs" ? "" : solver;
       const setup = format === "esm"
         ? `<script type="module">
@@ -129,14 +129,14 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
             require(checkRejected, `${solverName} check() did not reject initialValue`);
           }
 
-          if (solverName === "z3") {
+          if (solverName === "z3" || solverName === "pumpkin") {
             const logic = new Model("Browser conflicts");
             const a = logic.bool("a");
             logic.constraint(a, "required presence");
-            require((await logic.check("z3")).status === "Sat", "Expected Sat");
+            require((await logic.check(solverName)).status === "Sat", "Expected Sat");
             require(logic.validateSolution().valid, "Boolean solution validation failed");
             logic.constraint(a.not(), "requested absence");
-            require((await logic.check("z3")).status === "Unsat", "Expected Unsat");
+            require((await logic.check(solverName)).status === "Unsat", "Expected Unsat");
             require(logic.unsatCore.length === 2 && logic.unsatCore.includes("required presence") &&
               logic.unsatCore.includes("requested absence"), "Wrong named unsat core");
             require(JSON.stringify(logic.conflicts) === JSON.stringify(logic.unsatCore), "Conflict alias mismatch");
@@ -146,7 +146,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
         if (solver === "z3") await checkZ3FailureRecovery(page, assets);
         assert.deepEqual(errors, [], `${solver}/${format}: uncaught browser errors`);
         assert.deepEqual(externalRequests, [], `${solver}/${format}: external network dependency`);
-        console.log(`PASS Chromium regression: ${solver}/${format} (declarative API, Big-M, validation, metrics, cancellation/recovery${solver === "z3" ? ", SAT/UNSAT/conflicts" : ""})`);
+        console.log(`PASS Chromium regression: ${solver}/${format} (declarative API, Big-M, validation, metrics, cancellation/recovery${solver === "z3" || solver === "pumpkin" ? ", SAT/UNSAT/conflicts" : ""})`);
       } finally {
         await context.close();
       }

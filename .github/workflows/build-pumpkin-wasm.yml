@@ -1,0 +1,49 @@
+name: Build Pumpkin WebAssembly
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'pumpkin.config.json'
+      - 'wasm/pumpkin/**'
+      - 'scripts/build-pumpkin-wasm.sh'
+      - '.github/workflows/build-pumpkin-wasm.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-pumpkin-wasm:
+    name: Compile Pumpkin WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Pumpkin WebAssembly
+        run: bash scripts/build-pumpkin-wasm.sh
+
+      - name: Upload WebAssembly build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pumpkin-wasm-assets
+          path: |
+            public/pumpkin.wasm
+            src/modeler/solvers/pumpkin/runtime.js
+            src/modeler/solvers/pumpkin/runtime.d.ts
+            pumpkin.config.json

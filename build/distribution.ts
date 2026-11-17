@@ -5,6 +5,8 @@ import type { Plugin } from "vite";
 const wasm = () => readFileSync(new URL("../public/highs.wasm", import.meta.url));
 const license = () => readFileSync(new URL("../public/highs.wasm.LICENSE", import.meta.url));
 const runtimeJs = () => readFileSync(new URL("../src/modeler/solvers/highs/runtime.js", import.meta.url));
+const pumpkinWasm = () => readFileSync(new URL("../public/pumpkin.wasm", import.meta.url));
+const pumpkinLicense = () => readFileSync(new URL("../public/pumpkin.wasm.LICENSE", import.meta.url));
 const z3Js = () => readFileSync(new URL("./z3-built.js", import.meta.resolve("z3-solver")));
 const z3Wasm = () => readFileSync(new URL("./z3-built.wasm", import.meta.resolve("z3-solver")));
 
@@ -66,11 +68,66 @@ export function packageAssets(): Plugin {
   };
 }
 
+/** Keep Pumpkin asset discovery modules unbundled in dist/lib/solvers so consumers can resolve them. */
+export function pumpkinPackageAssets(): Plugin {
+  return {
+    name: "washi-pumpkin-package-assets",
+    enforce: "pre",
+    resolveId(id) {
+      if (["./pumpkin-assets.js", "./pumpkin-worker-factory.js", "./pumpkin-node-runtime.js"].includes(id)) {
+        return { id, external: true };
+      }
+      if (id === "./assets.js") return { id: "./pumpkin-assets.js", external: true };
+      if (id === "./worker-factory.js") return { id: "./pumpkin-worker-factory.js", external: true };
+      if (id === "./node-runtime.js") return { id: "./pumpkin-node-runtime.js", external: true };
+    },
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "pumpkin-assets.js",
+        source:
+          'export function getBundledPumpkinWasmUrl() { return new URL("./pumpkin.wasm", import.meta.url).href; }\n',
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "pumpkin-worker-factory.js",
+        source:
+          'export function createPumpkinWorker() { return new Worker(new URL("./pumpkin-worker.js", import.meta.url), { type: "module" }); }\n',
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "pumpkin-node-runtime.js",
+        source:
+          'export async function readPumpkinWasmFileUrl(fileUrl) {\n' +
+          '  const [{ readFile }] = await Promise.all([import(/* webpackIgnore: true */ /* @vite-ignore */ "node:fs/promises")]);\n' +
+          '  const buf = await readFile(fileUrl);\n' +
+          '  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);\n' +
+          '}\n' +
+          'export async function readBundledPumpkinWasmBytes() {\n' +
+          '  const [{ fileURLToPath }] = await Promise.all([import(/* webpackIgnore: true */ /* @vite-ignore */ "node:url")]);\n' +
+          '  const tried = [];\n' +
+          '  for (const rel of ["./pumpkin.wasm", "../../public/pumpkin.wasm"]) {\n' +
+          '    const fileUrl = new URL(rel, import.meta.url);\n' +
+          '    tried.push(fileURLToPath(fileUrl));\n' +
+          '    try { return await readPumpkinWasmFileUrl(fileUrl); } catch {}\n' +
+          '  }\n' +
+          '  throw new Error(`[WaSHI] Bundled pumpkin.wasm could not be found in Node.js (tried: ${tried.join(", ")}); no CDN fallback is attempted.`);\n' +
+          '}\n',
+      });
+      this.emitFile({ type: "asset", fileName: "pumpkin.wasm", source: pumpkinWasm() });
+      this.emitFile({ type: "asset", fileName: "pumpkin.wasm.LICENSE", source: pumpkinLicense() });
+    },
+  };
+}
+
 /** Browser distributions contain all HiGHS JS, but no optional solver engines in core. */
-export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "z3" = "core"): Plugin {
+export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "z3" | "pumpkin" = "core"): Plugin {
   const assetsId = "\0washi-browser-assets";
   const z3AssetsId = "\0washi-browser-z3-assets";
   const factoryId = "\0washi-browser-worker-factory";
+  const pumpkinAssetsId = "\0washi-browser-pumpkin-assets";
+  const pumpkinFactoryId = "\0washi-browser-pumpkin-worker-factory";
+  const pumpkinNodeId = "\0washi-pumpkin-node-runtime";
   const optionalId = "\0washi-optional-engine";
   const nodeId = "\0washi-node-only";
   const base = format === "es"
@@ -81,7 +138,12 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
     name: "washi-browser-assets",
     enforce: "pre",
     resolveId(id, importer) {
-      if ([assetsId, z3AssetsId, factoryId, optionalId, nodeId].includes(id)) return id;
+      if ([assetsId, z3AssetsId, factoryId, pumpkinAssetsId, pumpkinFactoryId, pumpkinNodeId, optionalId, nodeId].includes(id)) return id;
+      if (target === "pumpkin" || (importer && (importer.includes("/pumpkin/") || importer.includes("\\pumpkin\\")))) {
+        if (id === "./pumpkin-assets.js" || id === "./assets.js" || id.endsWith("/pumpkin/assets.js")) return pumpkinAssetsId;
+        if (id === "./pumpkin-worker-factory.js" || id === "./worker-factory.js" || id.endsWith("/pumpkin/worker-factory.js")) return pumpkinFactoryId;
+        if (id === "./pumpkin-node-runtime.js" || id === "./node-runtime.js" || id.endsWith("/pumpkin/node-runtime.js")) return pumpkinNodeId;
+      }
       if (target === "z3" || (importer && (importer.includes("/z3/") || importer.includes("\\z3\\")))) {
         if (id === "./z3-assets.js" || id === "./assets.js" || id.endsWith("/z3/assets.js")) return z3AssetsId;
       }
@@ -89,6 +151,12 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
       if (id === "./highs-worker-factory.js" || id === "./worker-factory.js" || id.endsWith("/highs/worker-factory.js")) return factoryId;
       if (id === "./highs-node-runtime.js" || id === "./node-runtime.js" || id.endsWith("/highs/node-runtime.js")) return "\0washi-node-runtime";
       if (id === "\0washi-node-runtime") return id;
+
+      if (target === "pumpkin") {
+        if (["glpk.js", "glpk.js/node", "z3-solver"].includes(id)) return optionalId;
+        if (id.startsWith("node:") || ["fs", "path", "url"].includes(id)) return nodeId;
+        return;
+      }
 
       if (target === "glpk") {
         if (id === "glpk.js/node") return nodeId;
@@ -139,6 +207,28 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
             return worker;
           } catch (error) { URL.revokeObjectURL(bootstrap); throw error; }
         }`;
+      if (id === pumpkinAssetsId) return `${base}
+        export function getAssetUrl(name) {
+          if (!assetBase) throw new Error("[WaSHI] Load the browser IIFE using an external script src, or use the browser ESM build.");
+          return new URL(name, assetBase).href;
+        }
+        export function getBundledPumpkinWasmUrl() { return getAssetUrl("pumpkin.wasm"); }`;
+      if (id === pumpkinFactoryId) return `import { getAssetUrl } from ${JSON.stringify(pumpkinAssetsId)};
+        export function createPumpkinWorker() {
+          const url = getAssetUrl("pumpkin-worker.js");
+          const effectiveOrigin = typeof window.origin === "string" ? window.origin : window.location?.origin;
+          if (new URL(url).origin === effectiveOrigin) return new Worker(url, { type: "module" });
+          const bootstrap = URL.createObjectURL(new Blob(["import " + JSON.stringify(url) + ";"], { type: "text/javascript" }));
+          try {
+            const worker = new Worker(bootstrap, { type: "module" });
+            const release = () => URL.revokeObjectURL(bootstrap);
+            worker.addEventListener("message", release, { once: true });
+            worker.addEventListener("error", release, { once: true });
+            return worker;
+          } catch (error) { URL.revokeObjectURL(bootstrap); throw error; }
+        }`;
+      if (id === pumpkinNodeId) return `export async function readPumpkinWasmFileUrl() { throw new Error("This distribution is for browsers. Use the npm entry in Node.js."); }
+        export async function readBundledPumpkinWasmBytes() { throw new Error("This distribution is for browsers. Use the npm entry in Node.js."); }`;
       if (id === optionalId) return `export default function unavailable() { throw new Error("[WaSHI] Optional GLPK/Z3 engines are not included in the core browser bundle. Import the plugin module or include its script tag."); }
         export const init = unavailable;`;
       if (id === nodeId) return "export default {};";
@@ -152,6 +242,10 @@ export function browserAssets(format: "es" | "iife", target: "core" | "glpk" | "
       if (target === "core" || target === "z3") {
         this.emitFile({ type: "asset", fileName: "solvers/z3-built.js", source: z3Js() });
         this.emitFile({ type: "asset", fileName: "solvers/z3-built.wasm", source: z3Wasm() });
+      }
+      if (target === "pumpkin" && format === "es") {
+        this.emitFile({ type: "asset", fileName: "pumpkin.wasm", source: pumpkinWasm() });
+        this.emitFile({ type: "asset", fileName: "pumpkin.wasm.LICENSE", source: pumpkinLicense() });
       }
     },
   };

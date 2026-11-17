@@ -38,6 +38,7 @@
         { "text": "HiGHS (内置默认)", "link": "/zh/solvers/highs" },
         { "text": "Z3 (SMT / 冲突诊断)", "link": "/zh/solvers/z3" },
         { "text": "GLPK (LP / MIP)", "link": "/zh/solvers/glpk" },
+        { "text": "Pumpkin (CP / LCG / 逻辑)", "link": "/zh/solvers/pumpkin" },
         { "text": "自定义求解器指南", "link": "/zh/solvers/custom-solver" }
       ]
     },

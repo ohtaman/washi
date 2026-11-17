@@ -65,7 +65,7 @@ describe("WaSHI Library Entry Point Exports", () => {
     expect((WashiRoot as any).resolveBrowserWasmUrl).toBeUndefined();
   });
 
-  it("exports GLPK and Z3 solvers as separate plugins", async () => {
+  it("exports GLPK, Z3, and Pumpkin solvers as separate plugins", async () => {
     const glpkModule = await import("../src/modeler/solvers/glpk.js");
     expect(glpkModule.GLPKSolver).toBeDefined();
     expect(glpkModule.registerGLPKSolver).toBeDefined();
@@ -73,6 +73,12 @@ describe("WaSHI Library Entry Point Exports", () => {
     const z3Module = await import("../src/modeler/solvers/z3.js");
     expect(z3Module.Z3Solver).toBeDefined();
     expect(z3Module.registerZ3Solver).toBeDefined();
+
+    const pumpkinModule = await import("../src/modeler/solvers/pumpkin.js");
+    expect(pumpkinModule.PumpkinSolver).toBeDefined();
+    expect(pumpkinModule.registerPumpkinSolver).toBeDefined();
+    expect(pumpkinModule.setPumpkinWasmUrl).toBeDefined();
+    expect(pumpkinModule.getPumpkinWasmUrl).toBeDefined();
   });
 
   it("can formulate and solve a simple MIP using only root exports", async () => {

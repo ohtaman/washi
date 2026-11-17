@@ -1829,8 +1829,8 @@ export class Model {
    *
    * **Solver capability preconditions**:
    * - Quadratic objectives (`QuadExpr`) require `supportsQP` (supported by HiGHS; throws on GLPK and Z3).
-   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) require `supportsSMT`
-   *   (supported by Z3; throws on HiGHS and GLPK).
+   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) execute natively on solvers
+   *   with `supportsLogicalConstraints` or `supportsSMT` (Pumpkin, Z3), and are auto-linearized for MIP solvers (HiGHS, GLPK).
    * - Primal `initialValue` warm starts require `supportsWarmStart` (supported by HiGHS; throws on GLPK and Z3).
    * - Mutating the model or starting a newer `solve()` / `check()` while in flight discards the stale
    *   result and rejects the pending promise.
@@ -1869,12 +1869,16 @@ export class Model {
     }
 
     // Handle logical constraints:
-    // If solver natively supports SMT (e.g. Z3), pass logical constraints as-is.
+    // If solver natively supports logical constraints or SMT (e.g. Pumpkin, Z3), pass logical constraints as-is.
     // If solver is LP/MIP (HiGHS, GLPK), auto-linearize logical constraints into binary MIP formulation.
     let modelData: SolveModelData;
     let linResult: ReturnType<typeof linearizeModelForMip> | null = null;
 
-    if (this.logicalConstraints.length > 0 && activeSolver.capabilities?.supportsSMT !== true) {
+    const supportsNativeLogic =
+      activeSolver.capabilities?.supportsLogicalConstraints === true ||
+      activeSolver.capabilities?.supportsSMT === true;
+
+    if ((this.logicalConstraints.length > 0 || this.boolVars.length > 0) && !supportsNativeLogic) {
       linResult = linearizeModelForMip(
         this.variables,
         this.boolVars,

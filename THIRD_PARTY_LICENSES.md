@@ -82,3 +82,36 @@ of this license document, but changing it is not allowed.
 For the full license text of GPL-3.0, please refer to:
 https://www.gnu.org/licenses/gpl-3.0.txt
 ```
+
+---
+
+## 4. Pumpkin Constraint Programming Solver (Optional Solver Plugin)
+
+- **Role**: Optional Lazy Clause Generation (LCG) Constraint Programming Solver (WebAssembly)
+- **License**: **MIT License**
+- **Upstream Repository**: [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)
+- **Bundled Asset**: Directly compiled from upstream crates (`pumpkin-core`, `pumpkin-constraints`, `pumpkin-conflict-resolvers` `v0.5.0`) to WebAssembly and shipped with WaSHI (`@ohtaman/washi/solvers/pumpkin`); transitive Rust WASM dependencies are strictly permissive (`MIT`, `Apache-2.0`, `Unicode-3.0`).
+
+```text
+MIT License
+
+Copyright (c) 2024 ConSol Lab (TU Delft) / Pumpkin Developers and Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```

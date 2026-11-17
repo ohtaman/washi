@@ -1,0 +1,30 @@
+[package]
+name = "washi-pumpkin-wasm"
+version = "0.5.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[workspace]
+
+[lib]
+name = "pumpkin"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js-sys = "0.3"
+pumpkin-conflict-resolvers = "0.5.0"
+pumpkin-constraints = "0.5.0"
+pumpkin-core = "0.5.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wasm-bindgen = "0.2"
+
+[dev-dependencies]
+wasm-bindgen-cli-support = "0.2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"

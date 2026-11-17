@@ -272,7 +272,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 29-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 30-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enHumanPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter(
@@ -290,9 +290,10 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enHumanPages).toHaveLength(29);
+    expect(enHumanPages).toHaveLength(30);
     expect(enHumanPages).not.toContain("getting-started/ecosystem.md");
     expect(enHumanPages).toContain("guide/formulation-tips.md");
+    expect(enHumanPages).toContain("solvers/pumpkin.md");
     expect(enHumanPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enHumanPages);
     expect(zhPages).toEqual(enHumanPages);

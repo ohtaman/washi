@@ -38,6 +38,7 @@
         { "text": "HiGHS (標準ソルバー)", "link": "/ja/solvers/highs" },
         { "text": "Z3 (SMT / 競合診断)", "link": "/ja/solvers/z3" },
         { "text": "GLPK (LP / MIP)", "link": "/ja/solvers/glpk" },
+        { "text": "Pumpkin (CP / LCG / 論理)", "link": "/ja/solvers/pumpkin" },
         { "text": "カスタムソルバー作成ガイド", "link": "/ja/solvers/custom-solver" }
       ]
     },

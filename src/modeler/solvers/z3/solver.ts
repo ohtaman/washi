@@ -52,6 +52,7 @@ export class Z3Solver implements Solver {
     supportsMIP: true,
     supportsQP: false,
     supportsSMT: true,
+    supportsLogicalConstraints: true,
     supportsUnsatCore: true,
     supportsWarmStart: false,
   };

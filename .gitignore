@@ -44,3 +44,6 @@ Thumbs.db
 .env.local
 .env.*.local
 examples/distribution/washi/
+
+# Rust WASM build target
+wasm/pumpkin/target/
