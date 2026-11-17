@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, readFile, writeFile, mkdir, rm, readdir, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -364,6 +364,9 @@ try {
   const packageRoot = path.join(fixture, "node_modules/@ohtaman/washi");
   const shippedAgentGuide = await readFile(path.join(packageRoot, "docs/getting-started/ai-agents.md"), "utf8");
   assert(shippedAgentGuide.includes("# AI Coding Agent Quick-Reference Guide"), "npm tarball missing AI agent guide");
+  assert(!existsSync(path.join(packageRoot, "docs/getting-started/ecosystem.md")), "npm tarball should not contain removed ecosystem.md");
+  assert(!existsSync(path.join(packageRoot, "docs/ja/getting-started/ai-agents.md")), "npm tarball should not contain removed docs/ja/getting-started/ai-agents.md");
+  assert(!existsSync(path.join(packageRoot, "docs/zh/getting-started/ai-agents.md")), "npm tarball should not contain removed docs/zh/getting-started/ai-agents.md");
   const shippedAgentSkill = await readFile(path.join(packageRoot, "skills/washi/SKILL.md"), "utf8");
   assert(shippedAgentSkill.includes("name: washi"), "npm tarball missing Agent Skill frontmatter");
   assert(shippedAgentSkill.includes("# WaSHI Modeling & Verification Skill"), "npm tarball missing Agent Skill heading");

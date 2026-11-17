@@ -313,7 +313,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(content).toContain("typescript, optimization, mathematical-programming, constraint-programming, linear-programming, mip, smt, highs, z3, pulp, jump, webassembly");
   });
 
-  it("emits spec-compliant llms.txt describedby and raw Markdown alternate links via transformHead and places ai-agents last in Getting Started sidebars", async () => {
+  it("emits spec-compliant llms.txt describedby and raw Markdown alternate links via transformHead and keeps Getting Started sidebars focused on human setup guides", async () => {
     expect(typeof vitepressConfig.transformHead).toBe("function");
     type TransformCtx = Parameters<NonNullable<typeof vitepressConfig.transformHead>>[0];
 
@@ -370,7 +370,7 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       ).toBe(false);
     }
 
-    // Verify Getting Started sidebar groups place ai-agents at the end across EN, JA, and ZH
+    // Verify Getting Started sidebars contain only human setup guides across EN, JA, and ZH
     type SidebarGroup = { items?: Array<{ link?: string }> };
     const enSidebar = vitepressConfig.locales?.root?.themeConfig?.sidebar as
       | SidebarGroup[]
@@ -386,22 +386,16 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       "/getting-started/",
       "/getting-started/runtimes",
       "/getting-started/cross-origin",
-      "/getting-started/ecosystem",
-      "/getting-started/ai-agents",
     ]);
     expect(jaSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/ja/getting-started/",
       "/ja/getting-started/runtimes",
       "/ja/getting-started/cross-origin",
-      "/ja/getting-started/ecosystem",
-      "/ja/getting-started/ai-agents",
     ]);
     expect(zhSidebar?.[0]?.items?.map((item) => item.link)).toEqual([
       "/zh/getting-started/",
       "/zh/getting-started/runtimes",
       "/zh/getting-started/cross-origin",
-      "/zh/getting-started/ecosystem",
-      "/zh/getting-started/ai-agents",
     ]);
   });
 
@@ -452,6 +446,25 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
         { rel: "alternate", hreflang: "x-default", href: "https://washi.ohtaman.dev/guide/variables" },
       ]);
     }
+
+    // Canonical-only EN ai-agents guide emits en and x-default without removed ja/zh-CN alternates
+    const aiAgentsHead = await runTransformHead("getting-started/ai-agents.md");
+    expect(aiAgentsHead).toContainEqual([
+      "link",
+      { rel: "alternate", hreflang: "en", href: "https://washi.ohtaman.dev/getting-started/ai-agents" },
+    ]);
+    expect(aiAgentsHead).toContainEqual([
+      "link",
+      { rel: "alternate", hreflang: "x-default", href: "https://washi.ohtaman.dev/getting-started/ai-agents" },
+    ]);
+    expect(
+      aiAgentsHead.some(
+        (entry) =>
+          entry[0] === "link" &&
+          typeof entry[1] === "object" &&
+          (entry[1].hreflang === "ja" || entry[1].hreflang === "zh-CN")
+      )
+    ).toBe(false);
 
     // 404 / non-existent route must not emit hreflang tags
     const notFoundHead = await runTransformHead("404.md", true);
@@ -650,7 +663,9 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
       [jaContent, "/ja"],
       [zhContent, "/zh"],
     ] as const) {
-      expect(mdContent).toContain(`(${prefix}/getting-started/ecosystem)`);
+      expect(mdContent).toContain(`(${prefix}/getting-started/runtimes)`);
+      expect(mdContent).not.toContain("getting-started/ecosystem");
+      expect(mdContent).not.toContain("getting-started/ai-agents");
       expect(mdContent).toContain(`(${prefix}/guide/decomposition)`);
       expect(mdContent).toContain(`(${prefix}/solvers/)`);
       expect(mdContent).toContain(`(${prefix}/examples/)`);
@@ -776,6 +791,14 @@ describe("Site SEO: Meta tags, Open Graph, Twitter Cards, and Positioning Taglin
     expect(subpageHtml).toContain('property="og:type" content="article"');
     expect(subpageHtml).toContain('link rel="describedby" href="/llms.txt"');
     expect(subpageHtml).toContain('link rel="alternate" type="text/markdown" href="/getting-started/ai-agents.md"');
+
+    // Removed pages must not exist in built dist/site
+    expect(fs.existsSync(path.resolve(siteDistPath, "getting-started/ecosystem.html"))).toBe(false);
+    expect(fs.existsSync(path.resolve(siteDistPath, "getting-started/ecosystem.md"))).toBe(false);
+    expect(fs.existsSync(path.resolve(siteDistPath, "ja/getting-started/ecosystem.html"))).toBe(false);
+    expect(fs.existsSync(path.resolve(siteDistPath, "zh/getting-started/ecosystem.html"))).toBe(false);
+    expect(fs.existsSync(path.resolve(siteDistPath, "ja/getting-started/ai-agents.html"))).toBe(false);
+    expect(fs.existsSync(path.resolve(siteDistPath, "zh/getting-started/ai-agents.html"))).toBe(false);
 
     expect(enHtml).toContain('link rel="describedby" href="/llms.txt"');
     expect(enHtml).toContain('link rel="alternate" type="text/markdown" href="/index.md"');

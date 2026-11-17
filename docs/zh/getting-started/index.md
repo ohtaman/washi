@@ -51,21 +51,15 @@ bun add @ohtaman/washi
 
 :::
 
-仅在需要使用 **Z3**（SMT 逻辑约束与 Unsat Core 冲突诊断）或 **GLPK** 时安装可选依赖：
+仅在需要使用 **Z3**（SMT 逻辑约束与 Unsat Core 冲突诊断）、**GLPK** 或 AI 编程助手技能时按需安装：
 
 ```bash
 npm install z3-solver   # SMT 逻辑约束及 Unsat Core 冲突诊断
 npm install glpk.js     # GLPK 求解器 (GPL-3.0)
+
+# 可选：为 AI 编程助手（Claude Code, Cursor, Codex 等）安装建模技能
+npx skills add ohtaman/washi
 ```
-
----
-
-## 💡 为什么选择 TypeScript 与 WebAssembly？
-
-- **跨 Node.js 与浏览器零原生编译运行**：无需配置跨平台 C/C++ 编译环境，也无需维护独立的 Python 运行时。只需一次 `npm install`，同一套建模代码即可在 **Node.js 后端 API、CLI、脚本** 以及 **浏览器** 中直接运行。
-- **轻量嵌入日常 UI 与浏览器标准 API**：不仅限于本地分析脚本，您可以零后端运维成本发布 **打开链接即可使用的 Web 小工具、轻量游戏或 Chrome 扩展**。还能在无需网络往返、数据不出本地的前提下，将数理优化直接接入拖拽交互 UI，或与屏幕/摄像头采集、语音识别（Web Speech API）等 **浏览器标准功能** 即时联动。
-- **从应用数据到模型的一致类型安全**：利用 TypeScript 类型系统避免优化建模中常见的下标错位与字典键名拼写错误。通过带类型的变量字典（`Record<K, Var>`）与引用绑定（`` expr`30 * ${qty.desk} <= 40` ``），模型可与应用侧数据结构无缝衔接，保留编译期变量/键检查、IDE 自动补全与符号重命名。
-- **AI 辅助开发与 LLM 协同的高契合度**：应用逻辑与优化模型统一在 **单一 TypeScript 代码库** 中，无需跨越 Python 服务边界即可在同一测试环境中完成端到端验证，并轻松部署为静态站点或单一服务。这种易于测试与部署的闭环非常适合 AI 辅助编程；同时在运行时，也能在同一运行环境中将 LLM 的灵活条件提取与求解器的严格约束满足及冲突诊断（Unsat Core）简洁结合。
 
 ---
 
@@ -81,7 +75,6 @@ npm install glpk.js     # GLPK 求解器 (GPL-3.0)
 
 ## 🧭 下一步
 
-- **[生态对比与从 Python (PuLP) 迁移](/zh/getting-started/ecosystem)**：对比原生 WASM 绑定（`highs`、`glpk.js`、`z3-solver`）、纯 JS 求解器（`yalps`、`javascript-lp-solver`）与 Python `PuLP` 的差异及 API 映射
 - **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与不可行冲突诊断（Unsat Core）
 - **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 11 个可在页面内直接运行的建模示例
 - **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与可选 Z3、GLPK 求解器的特性对比与切换方式
