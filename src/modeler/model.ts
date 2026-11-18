@@ -31,6 +31,23 @@ import {
   type SolutionValidationReport,
 } from "./solution-validator.js";
 import { linearizeModelForMip } from "./linearizer.js";
+
+function hasNonlinearOrNeq(
+  objective: LinExpr | QuadExpr,
+  constraints: readonly Constraint[]
+): boolean {
+  if (objective.hasNonlinearTerms()) return true;
+  return constraintsHaveNonlinearOrNeq(constraints);
+}
+
+function constraintsHaveNonlinearOrNeq(constraints: readonly Constraint[]): boolean {
+  for (const c of constraints) {
+    if (c.sense === "!=" || c.lhs.hasNonlinearTerms()) {
+      return true;
+    }
+  }
+  return false;
+}
 import {
   solveBenders,
   solveColumnGeneration,
@@ -1140,7 +1157,7 @@ export class Model {
         "sense" in raw &&
         "lhs" in raw &&
         "rhs" in raw) ||
-      (typeof raw === "string" && /(<=|>=|==|=<|=>|=)/.test(raw))
+      (typeof raw === "string" && /(<=|>=|==|!=|=<|=>|<|>|=)/.test(raw))
     ) {
       throw new Error(
         "Cannot use a Constraint as an objective. Did you mean to use m.constraint(expr`... <= ...`)? To set an objective, wrap an unconstrained expression with maximize(...) or minimize(...), e.g. m.objective(maximize(expr`30 * ${x}`))."
@@ -1171,7 +1188,7 @@ export class Model {
         "sense" in expr &&
         "lhs" in expr &&
         "rhs" in expr) ||
-      (typeof expr === "string" && /(<=|>=|==|=<|=>|=)/.test(expr))
+      (typeof expr === "string" && /(<=|>=|==|!=|=<|=>|<|>|=)/.test(expr))
     ) {
       throw new Error(
         typeof expr === "string"
@@ -1201,7 +1218,7 @@ export class Model {
       typeof (expr as { constant?: unknown }).constant === "number"
     ) {
       const q = expr as unknown as QuadExpr;
-      parsedExpr = new QuadExpr(q.linearTerms, q.quadTerms, q.constant);
+      parsedExpr = new QuadExpr(q.linearTerms, q.quadTerms, q.constant, q.nonlinearTerms);
     } else if (
       typeof expr === "object" &&
       expr !== null &&
@@ -1210,7 +1227,7 @@ export class Model {
       typeof (expr as { constant?: unknown }).constant === "number"
     ) {
       const l = expr as unknown as LinExpr;
-      parsedExpr = new LinExpr(l.terms, l.constant);
+      parsedExpr = new LinExpr(l.terms, l.constant, l.nonlinearTerms);
     } else if (
       expr instanceof Var ||
       (typeof expr === "object" &&
@@ -1520,6 +1537,16 @@ export class Model {
       );
     }
     const resolvedConstraint = constraint as Constraint;
+    if (resolvedConstraint.sense === "!=") {
+      throw new Error(
+        `Constraint "${resolvedConstraint.name}" uses discrete "!=", which is not supported in m.indicator(). Use m.constraint(implies(${binVar.name}.eq(1), ...)) instead.`
+      );
+    }
+    if (resolvedConstraint.lhs.hasNonlinearTerms()) {
+      throw new Error(
+        `Constraint "${resolvedConstraint.name}" contains nonlinear terms (max/min/abs/at), which are not supported in m.indicator().`
+      );
+    }
     const activeVal = options.activeValue !== undefined ? options.activeValue : 1;
     if (activeVal !== 0 && activeVal !== 1) {
       throw new Error(
@@ -1594,12 +1621,32 @@ export class Model {
       if (sense === "<=" || sense === "==") {
         const mLe = options.M !== undefined ? options.M : deriveBigMForLe(lhs, rhs, leName);
         const leLinearized = buildIndicatorLinearization(binVar, lhs, "<=", rhs, activeVal, mLe, leName);
-        pending.push([new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName), leName]);
+        const cLe = new Constraint(leLinearized.lhs, "<=", leLinearized.rhs, leName);
+        if (options.M === undefined) {
+          cLe._setIndicatorOrigin({
+            binVar,
+            activeValue: activeVal,
+            targetLhs: lhs.clone(),
+            targetSense: "<=",
+            targetRhs: rhs,
+          });
+        }
+        pending.push([cLe, leName]);
       }
       if (sense === ">=" || sense === "==") {
         const mGe = options.M !== undefined ? options.M : deriveBigMForGe(lhs, rhs, geName);
         const geLinearized = buildIndicatorLinearization(binVar, lhs, ">=", rhs, activeVal, mGe, geName);
-        pending.push([new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName), geName]);
+        const cGe = new Constraint(geLinearized.lhs, ">=", geLinearized.rhs, geName);
+        if (options.M === undefined) {
+          cGe._setIndicatorOrigin({
+            binVar,
+            activeValue: activeVal,
+            targetLhs: lhs.clone(),
+            targetSense: ">=",
+            targetRhs: rhs,
+          });
+        }
+        pending.push([cGe, geName]);
       }
 
       for (const [cRow, rowName] of pending) {
@@ -1637,6 +1684,23 @@ export class Model {
    */
   toLpString(): string {
     this.validateIntegrity();
+    if (hasNonlinearOrNeq(this._objectiveExpr, this.constraints)) {
+      const linResult = linearizeModelForMip(
+        this.variables,
+        [],
+        this.constraints,
+        [],
+        { expr: this._objectiveExpr, sense: this.sense }
+      );
+      const { lpString } = generateLpString({
+        name: this.name,
+        sense: this.sense,
+        objective: linResult.objective ?? this._objectiveExpr,
+        constraints: linResult.constraints,
+        variables: linResult.variables,
+      });
+      return lpString;
+    }
     const { lpString } = generateLpString({
       name: this.name,
       sense: this.sense,
@@ -1882,17 +1946,24 @@ export class Model {
       activeSolver.capabilities?.supportsLogicalConstraints === true ||
       activeSolver.capabilities?.supportsSMT === true;
 
-    if ((this.logicalConstraints.length > 0 || this.boolVars.length > 0) && !supportsNativeLogic) {
+    const needsMipLinearization =
+      !supportsNativeLogic &&
+      (this.logicalConstraints.length > 0 ||
+        this.boolVars.length > 0 ||
+        hasNonlinearOrNeq(this._objectiveExpr, this.constraints));
+
+    if (needsMipLinearization) {
       linResult = linearizeModelForMip(
         this.variables,
         this.boolVars,
         this.constraints,
-        this.logicalConstraints
+        this.logicalConstraints,
+        { expr: this._objectiveExpr, sense: this.sense }
       );
       modelData = {
         name: this.name,
         sense: this.sense,
-        objective: this._objectiveExpr,
+        objective: linResult.objective ?? this._objectiveExpr,
         constraints: linResult.constraints,
         variables: linResult.variables,
         logicalConstraints: [],
@@ -2002,7 +2073,7 @@ export class Model {
             bv.value = Boolean(primal);
             this.values.set(bv.name, primal);
           }
-          if (!v && !bv) {
+          if (!v && !bv && !linResult) {
             this.values.set(vName, primal);
           }
         } else if (typeof (primal as unknown) === "boolean") {
@@ -2259,15 +2330,18 @@ export class Model {
     // 3. Fallback for LP/MIP solvers (HiGHS, GLPK):
     // Auto-linearize logical constraints if needed, and solve an elastic feasibility problem
     // with non-negative slack variables (min sum s_i) to detect satisfiability and identify conflicts.
-    const linResult =
-      this.logicalConstraints.length > 0 || this.boolVars.length > 0
-        ? linearizeModelForMip(this.variables, this.boolVars, this.constraints, this.logicalConstraints)
-        : {
-            variables: [...this.variables],
-            constraints: [...this.constraints],
-            boolVarToBinary: new Map<BoolVar, Var>(),
-            constraintToOriginalName: new Map(this.constraints.map((c) => [c, c.name])),
-          };
+    const needsCheckMipLinearization =
+      this.logicalConstraints.length > 0 ||
+      this.boolVars.length > 0 ||
+      constraintsHaveNonlinearOrNeq(this.constraints);
+    const linResult = needsCheckMipLinearization
+      ? linearizeModelForMip(this.variables, this.boolVars, this.constraints, this.logicalConstraints)
+      : {
+          variables: [...this.variables],
+          constraints: [...this.constraints],
+          boolVarToBinary: new Map<BoolVar, Var>(),
+          constraintToOriginalName: new Map(this.constraints.map((c) => [c, c.name])),
+        };
 
     // Construct elastic constraints with slack variables
     const elasticConstraints: Constraint[] = [];

@@ -131,12 +131,12 @@ describe("Unified Tagged Template Literal Syntax (expr)", () => {
     expect(() => parseConstraint("2 * x + 5", xResolver)).toThrow(
       /Constraint must contain a comparison operator/
     );
-    // Strict inequality operators are rejected
+    // Discrete inequality operators are rejected on Continuous variables
     expect(() => expr`${x} < 10`).toThrow(
-      /Unexpected token '<'/
+      /discrete < requires Integer or Binary/i
     );
     expect(() => expr`${x} > 10`).toThrow(
-      /Unexpected token '>'/
+      /discrete > requires Integer or Binary/i
     );
   });
 

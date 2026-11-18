@@ -53,6 +53,7 @@ const PUMPKIN_CRATE_DEPS = [
   "pumpkin-core",
   "pumpkin-constraints",
   "pumpkin-conflict-resolvers",
+  "pumpkin-propagators",
 ];
 
 /**

@@ -3,16 +3,298 @@ import { Constraint, isConstraint } from "./constraint.js";
 import { QuadExpr } from "./quad-expr.js";
 
 /**
- * Represents a linear expression: c0 + c1*x1 + c2*x2 + ...
+ * Nonlinear scalar atom representable inside a `LinExpr` (piecewise-linear `max`/`min`/`abs` or `at` element lookup).
+ */
+export type NonlinearAtom =
+  | { readonly kind: "max"; readonly args: ReadonlyArray<LinExpr> }
+  | { readonly kind: "min"; readonly args: ReadonlyArray<LinExpr> }
+  | { readonly kind: "abs"; readonly arg: LinExpr }
+  | {
+      readonly kind: "at";
+      readonly array: ReadonlyArray<LinExpr>;
+      readonly index: LinExpr;
+      readonly discreteVars: ReadonlySet<Var>;
+    };
+
+/**
+ * Weighted nonlinear scalar atom term (`coeff * atom`).
+ */
+export interface NonlinearTerm {
+  readonly atom: NonlinearAtom;
+  readonly coeff: number;
+}
+
+export function cloneNonlinearAtom(atom: NonlinearAtom): NonlinearAtom {
+  switch (atom.kind) {
+    case "abs":
+      return { kind: "abs", arg: atom.arg.clone() };
+    case "max":
+      return { kind: "max", args: atom.args.map((a) => a.clone()) };
+    case "min":
+      return { kind: "min", args: atom.args.map((a) => a.clone()) };
+    case "at":
+      return {
+        kind: "at",
+        array: atom.array.map((a) => a.clone()),
+        index: atom.index.clone(),
+        discreteVars: new Set(atom.discreteVars),
+      };
+  }
+}
+
+function formatNonlinearAtom(atom: NonlinearAtom): string {
+  switch (atom.kind) {
+    case "abs":
+      return `abs(${atom.arg.toString()})`;
+    case "max":
+      return `max(${atom.args.map((a) => a.toString()).join(", ")})`;
+    case "min":
+      return `min(${atom.args.map((a) => a.toString()).join(", ")})`;
+    case "at":
+      return `at([${atom.array.map((a) => a.toString()).join(", ")}], ${atom.index.toString()})`;
+  }
+}
+
+export function evaluateNonlinearAtomValue(atom: NonlinearAtom): number | null {
+  switch (atom.kind) {
+    case "abs": {
+      const val = atom.arg.value;
+      return val === null ? null : Math.abs(val);
+    }
+    case "max": {
+      let best = -Infinity;
+      for (const a of atom.args) {
+        const val = a.value;
+        if (val === null) return null;
+        if (val > best) best = val;
+      }
+      return best;
+    }
+    case "min": {
+      let best = Infinity;
+      for (const a of atom.args) {
+        const val = a.value;
+        if (val === null) return null;
+        if (val < best) best = val;
+      }
+      return best;
+    }
+    case "at": {
+      const idxVal = atom.index.value;
+      if (idxVal === null || !Number.isFinite(idxVal)) return null;
+      const rounded = Math.round(idxVal);
+      if (Math.abs(idxVal - rounded) > 1e-6) return null;
+      if (rounded < 0 || rounded >= atom.array.length) return null;
+      return atom.array[rounded].value;
+    }
+  }
+}
+
+function isVarLikeExpr(val: unknown): val is Var {
+  return (
+    val instanceof Var ||
+    (typeof val === "object" &&
+      val !== null &&
+      !isConstraint(val) &&
+      typeof (val as { id?: unknown }).id === "number" &&
+      typeof (val as { name?: unknown }).name === "string" &&
+      typeof (val as { lb?: unknown }).lb === "number" &&
+      typeof (val as { ub?: unknown }).ub === "number" &&
+      typeof (val as { type?: unknown }).type === "string" &&
+      typeof (val as { mul?: unknown }).mul === "function")
+  );
+}
+
+/**
+ * Validates that an expression is purely integer-valued (only Integer/Binary variables,
+ * safe integer coefficients/constants, and discrete nested atoms) and collects all referenced `Var`s.
+ */
+export function collectAndValidateDiscreteExpr(
+  val: LinExpr | QuadExpr | Var | number,
+  context: string,
+  outVars: Set<Var> = new Set<Var>()
+): Set<Var> {
+  if (typeof val === "number") {
+    if (!Number.isSafeInteger(val)) {
+      throw new Error(
+        `${context} requires Integer or Binary variables and integer constants/coefficients, but received constant ${val}.`
+      );
+    }
+    return outVars;
+  }
+  if (isConstraint(val)) {
+    throw new Error(`${context} cannot accept a Constraint comparison.`);
+  }
+  if (
+    val instanceof QuadExpr ||
+    ("quadTerms" in val &&
+      (val as { quadTerms?: unknown }).quadTerms instanceof Map &&
+      "linearTerms" in val &&
+      (val as { linearTerms?: unknown }).linearTerms instanceof Map &&
+      typeof (val as { constant?: unknown }).constant === "number")
+  ) {
+    const q = val as Pick<QuadExpr, "quadTerms" | "linearTerms" | "constant" | "nonlinearTerms">;
+    if (q.quadTerms.size > 0) {
+      throw new Error(`${context} does not support quadratic expressions.`);
+    }
+    return collectAndValidateDiscreteExpr(
+      new LinExpr(q.linearTerms, q.constant, q.nonlinearTerms ?? []),
+      context,
+      outVars
+    );
+  }
+  if (isVarLikeExpr(val)) {
+    if (val.type !== "Integer" && val.type !== "Binary") {
+      throw new Error(
+        `${context} requires Integer or Binary variables, but involves Continuous variable "${val.name}".`
+      );
+    }
+    outVars.add(val);
+    return outVars;
+  }
+  if ("terms" in val && (val as LinExpr).terms instanceof Map) {
+    const lin = val as LinExpr;
+    const c = lin.constant ?? 0;
+    if (!Number.isSafeInteger(c)) {
+      throw new Error(
+        `${context} requires Integer or Binary variables and integer constants/coefficients, but received constant ${c}.`
+      );
+    }
+    for (const [v, coeff] of lin.terms) {
+      if (coeff === 0) continue;
+      if (v.type !== "Integer" && v.type !== "Binary") {
+        throw new Error(
+          `${context} requires Integer or Binary variables, but involves Continuous variable "${v.name}".`
+        );
+      }
+      if (!Number.isSafeInteger(coeff)) {
+        throw new Error(
+          `${context} requires integer coefficients, but variable "${v.name}" has coefficient ${coeff}.`
+        );
+      }
+      outVars.add(v);
+    }
+    for (const nl of lin.nonlinearTerms ?? []) {
+      if (nl.coeff === 0) continue;
+      if (!Number.isSafeInteger(nl.coeff)) {
+        throw new Error(
+          `${context} requires integer coefficients on nonlinear expressions, received ${nl.coeff}.`
+        );
+      }
+      const atom = nl.atom;
+      if (atom.kind === "abs") {
+        collectAndValidateDiscreteExpr(atom.arg, context, outVars);
+      } else if (atom.kind === "max" || atom.kind === "min") {
+        for (const arg of atom.args) {
+          collectAndValidateDiscreteExpr(arg, context, outVars);
+        }
+      } else if (atom.kind === "at") {
+        collectAndValidateDiscreteExpr(atom.index, context, outVars);
+        for (const elem of atom.array) {
+          collectAndValidateDiscreteExpr(elem, context, outVars);
+        }
+      }
+    }
+    return outVars;
+  }
+  throw new Error(`${context} expected an integer-valued scalar expression.`);
+}
+
+/**
+ * Converts a scalar `number | Var | LinExpr | degree-1 QuadExpr` to a cloned `LinExpr`,
+ * rejecting `Constraint`, non-finite numbers, and quadratic terms.
+ */
+export function toScalarLinExpr(val: unknown, context: string): LinExpr {
+  if (typeof val === "number") {
+    if (!Number.isFinite(val)) {
+      throw new Error(`Invalid non-finite number "${val}" in ${context}.`);
+    }
+    return new LinExpr(new Map(), Object.is(val, -0) ? 0 : val);
+  }
+  if (isConstraint(val)) {
+    if (context.startsWith("sum")) {
+      throw new Error(
+        `Cannot sum a constraint comparison (<=, >=, ==, !=, <, >): expected arithmetic expressions in ${context}.`
+      );
+    }
+    throw new Error(
+      `Cannot use a constraint comparison (<=, >=, ==, !=, <, >) in ${context}: expected a finite number, Var, or LinExpr.`
+    );
+  }
+  if (
+    val instanceof QuadExpr ||
+    (typeof val === "object" &&
+      val !== null &&
+      "quadTerms" in val &&
+      (val as { quadTerms: unknown }).quadTerms instanceof Map &&
+      "linearTerms" in val &&
+      (val as { linearTerms: unknown }).linearTerms instanceof Map)
+  ) {
+    const q = val as QuadExpr;
+    if (q.quadTerms.size > 0) {
+      throw new Error(`Quadratic expressions are not supported in ${context}.`);
+    }
+    if (!Number.isFinite(q.constant)) {
+      throw new Error(`Invalid non-finite constant "${q.constant}" in ${context}.`);
+    }
+    for (const [, coeff] of q.linearTerms) {
+      if (!Number.isFinite(coeff)) {
+        throw new Error(`Invalid non-finite coefficient "${coeff}" in ${context}.`);
+      }
+    }
+    return new LinExpr(q.linearTerms, q.constant, q.nonlinearTerms ?? []);
+  }
+  if (
+    val instanceof LinExpr ||
+    (typeof val === "object" &&
+      val !== null &&
+      "terms" in val &&
+      (val as { terms: unknown }).terms instanceof Map &&
+      typeof (val as { constant?: unknown }).constant === "number")
+  ) {
+    const lin = val as LinExpr;
+    if (!Number.isFinite(lin.constant)) {
+      throw new Error(`Invalid non-finite constant "${lin.constant}" in ${context}.`);
+    }
+    for (const [, coeff] of lin.terms) {
+      if (!Number.isFinite(coeff)) {
+        throw new Error(`Invalid non-finite coefficient "${coeff}" in ${context}.`);
+      }
+    }
+    return lin.clone();
+  }
+  if (isVarLikeExpr(val)) {
+    return new LinExpr(new Map([[val, 1]]), 0);
+  }
+  throw new Error(`Unsupported item in ${context}: expected a finite number, Var, or LinExpr.`);
+}
+
+/**
+ * Represents a linear (or piecewise-linear / element) expression: c0 + sum(c_i*x_i) + sum(w_k*atom_k)
  */
 export class LinExpr {
   public readonly kind = "linear" as const;
   public terms: Map<Var, number>;
   public constant: number;
+  public nonlinearTerms: NonlinearTerm[];
 
-  constructor(terms: Map<Var, number> = new Map(), constant: number = 0) {
+  constructor(
+    terms: Map<Var, number> = new Map(),
+    constant: number = 0,
+    nonlinearTerms: ReadonlyArray<NonlinearTerm> = []
+  ) {
     this.terms = new Map(terms);
     this.constant = constant;
+    this.nonlinearTerms = nonlinearTerms
+      .filter((t) => t.coeff !== 0)
+      .map((t) => ({ atom: cloneNonlinearAtom(t.atom), coeff: t.coeff }));
+  }
+
+  /**
+   * Returns true if this expression includes nonlinear scalar atoms (`max`, `min`, `abs`, `at`).
+   */
+  hasNonlinearTerms(): boolean {
+    return this.nonlinearTerms.length > 0;
   }
 
   /**
@@ -47,7 +329,7 @@ export class LinExpr {
    * Clone this linear expression
    */
   clone(): LinExpr {
-    return new LinExpr(this.terms, this.constant);
+    return new LinExpr(this.terms, this.constant, this.nonlinearTerms);
   }
 
   /**
@@ -80,6 +362,13 @@ export class LinExpr {
         }
       }
       result.constant += other.constant;
+      if (Array.isArray(other.nonlinearTerms)) {
+        for (const t of other.nonlinearTerms) {
+          if (t.coeff !== 0) {
+            result.nonlinearTerms.push({ atom: cloneNonlinearAtom(t.atom), coeff: t.coeff });
+          }
+        }
+      }
     } else {
       // other is Var
       const current = result.terms.get(other) ?? 0;
@@ -129,8 +418,9 @@ export class LinExpr {
       );
     }
     if (typeof operand === "number") {
+      const hasTerms = this.terms.size > 0 || this.nonlinearTerms.length > 0;
       const rawConst =
-        this.constant === 0 && this.terms.size > 0 ? 0 : this.constant * operand;
+        this.constant === 0 && hasTerms ? 0 : this.constant * operand;
       if (this.constant !== 0 && operand !== 0 && rawConst === 0) {
         throw new Error("Constant multiplication underflows to zero.");
       }
@@ -144,6 +434,17 @@ export class LinExpr {
           result.terms.set(v, prod);
         }
       }
+      if (operand !== 0) {
+        for (const nl of this.nonlinearTerms) {
+          const prod = nl.coeff * operand;
+          if (nl.coeff !== 0 && prod === 0) {
+            throw new Error("Coefficient multiplication underflows to zero.");
+          }
+          if (prod !== 0) {
+            result.nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: prod });
+          }
+        }
+      }
       return result;
     }
     const isVar =
@@ -154,6 +455,11 @@ export class LinExpr {
         !("terms" in operand) &&
         !("quadTerms" in operand));
     if (isVar) {
+      if (this.hasNonlinearTerms()) {
+        throw new Error(
+          "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+        );
+      }
       return QuadExpr.multiplyLinearTerms(
         this.constant,
         this.terms,
@@ -162,12 +468,46 @@ export class LinExpr {
       );
     }
     if (operand instanceof QuadExpr) {
+      const opHasTerms = operand.linearTerms.size > 0 || operand.quadTerms.size > 0 || operand.hasNonlinearTerms();
+      if (this.hasNonlinearTerms()) {
+        if (!opHasTerms) {
+          return this.mul(operand.constant);
+        }
+        throw new Error(
+          "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+        );
+      }
+      if (operand.hasNonlinearTerms()) {
+        if (this.terms.size === 0) {
+          return operand.mul(this.constant);
+        }
+        throw new Error(
+          "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+        );
+      }
       if (this.terms.size === 0) {
         return operand.mul(this.constant);
       }
       return new QuadExpr(this.terms, new Map(), this.constant).mul(operand);
     }
     // operand is LinExpr
+    const opLinHasNl = Array.isArray(operand.nonlinearTerms) && operand.nonlinearTerms.length > 0;
+    if (this.hasNonlinearTerms()) {
+      if (operand.terms.size === 0 && !opLinHasNl) {
+        return this.mul(operand.constant);
+      }
+      throw new Error(
+        "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+      );
+    }
+    if (opLinHasNl) {
+      if (this.terms.size === 0) {
+        return operand.mul(this.constant);
+      }
+      throw new Error(
+        "Cannot multiply nonlinear expression (max, min, abs, or at) by a variable expression: only scalar multiplication is supported."
+      );
+    }
     if (this.terms.size === 0) {
       return operand.mul(this.constant);
     }
@@ -208,6 +548,13 @@ export class LinExpr {
       }
       sum += c * v.value;
     }
+    for (const nl of this.nonlinearTerms) {
+      const atomVal = evaluateNonlinearAtomValue(nl.atom);
+      if (atomVal === null) {
+        return null;
+      }
+      sum += nl.coeff * atomVal;
+    }
     return sum;
   }
 
@@ -232,8 +579,78 @@ export class LinExpr {
     return this.toConstraint("==", rhs, name);
   }
 
+  /**
+   * Create discrete strict less-than constraint (`this < rhs`, normalized to `this <= rhs - 1`).
+   * Requires integer-valued `Integer`/`Binary` expressions; throws on `Continuous` variables or fractional constants.
+   */
+  lt(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toDiscreteComparison("<", rhs, name);
+  }
+
+  /**
+   * Create discrete strict greater-than constraint (`this > rhs`, normalized to `this >= rhs + 1`).
+   * Requires integer-valued `Integer`/`Binary` expressions; throws on `Continuous` variables or fractional constants.
+   */
+  gt(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toDiscreteComparison(">", rhs, name);
+  }
+
+  /**
+   * Create discrete not-equal constraint (`this != rhs`).
+   * Requires integer-valued `Integer`/`Binary` expressions; throws on `Continuous` variables or fractional constants.
+   */
+  ne(rhs: number | Var | LinExpr | QuadExpr | Constraint, name?: string): Constraint {
+    return this.toDiscreteComparison("!=", rhs, name);
+  }
+
+  private toDiscreteComparison(
+    op: "<" | ">" | "!=",
+    rhs: number | Var | LinExpr | QuadExpr | Constraint,
+    name?: string
+  ): Constraint {
+    if (
+      rhs instanceof Constraint ||
+      (typeof rhs === "object" && rhs !== null && "sense" in rhs && "lhs" in rhs)
+    ) {
+      throw new Error(
+        `Cannot compare against a Constraint in (${op}): expected a finite integer, discrete Var, or discrete LinExpr.`
+      );
+    }
+    const opLabel = `discrete ${op}`;
+    const discreteVars = new Set<Var>();
+    collectAndValidateDiscreteExpr(this, opLabel, discreteVars);
+    collectAndValidateDiscreteExpr(rhs as any, opLabel, discreteVars);
+
+    const c = this.toConstraint(op === "<" ? "<=" : op === ">" ? ">=" : "!=", rhs, name);
+    if (op === "<") {
+      const shifted = c.rhs - 1;
+      if (!Number.isSafeInteger(shifted)) {
+        throw new Error(
+          `Discrete comparison (<) adjusted right-hand side (${shifted}) exceeds safe integer range.`
+        );
+      }
+      c.rhs = shifted;
+    } else if (op === ">") {
+      const shifted = c.rhs + 1;
+      if (!Number.isSafeInteger(shifted)) {
+        throw new Error(
+          `Discrete comparison (>) adjusted right-hand side (${shifted}) exceeds safe integer range.`
+        );
+      }
+      c.rhs = shifted;
+    } else {
+      if (!Number.isSafeInteger(c.rhs)) {
+        throw new Error(
+          `Discrete comparison (!=) adjusted right-hand side (${c.rhs}) exceeds safe integer range.`
+        );
+      }
+    }
+    c._setDiscreteVars(discreteVars);
+    return c;
+  }
+
   private toConstraint(
-    sense: "<=" | ">=" | "==",
+    sense: "<=" | ">=" | "==" | "!=",
     rhs: number | Var | LinExpr | QuadExpr | Constraint,
     name?: string
   ): Constraint {
@@ -261,11 +678,11 @@ export class LinExpr {
           `Quadratic expressions are not supported in linear constraints (${sense}): quadratic terms are only allowed in objectives.`
         );
       }
-      target = target.sub(new LinExpr(quad.linearTerms, 0));
+      target = target.sub(new LinExpr(quad.linearTerms, 0, quad.nonlinearTerms ?? []));
       rhsConstant = quad.constant;
     } else if ("terms" in rhs) {
-      // rhs is LinExpr: subtract its terms and add its constant
-      target = target.sub(new LinExpr(rhs.terms, 0));
+      // rhs is LinExpr: subtract its terms and nonlinearTerms, and add its constant
+      target = target.sub(new LinExpr(rhs.terms, 0, rhs.nonlinearTerms ?? []));
       rhsConstant = rhs.constant;
     } else {
       // rhs is Var
@@ -281,31 +698,31 @@ export class LinExpr {
   // Runtime guards when an arithmetic expression from unified expr`...` is chained with logical combinators
   public and(_other: unknown): never {
     throw new Error(
-      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'and': expected a BoolVar, Constraint, or BoolOp."
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==, !=, <, >) in logical 'and': expected a BoolVar, Constraint, or BoolOp."
     );
   }
 
   public or(_other: unknown): never {
     throw new Error(
-      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'or': expected a BoolVar, Constraint, or BoolOp."
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==, !=, <, >) in logical 'or': expected a BoolVar, Constraint, or BoolOp."
     );
   }
 
   public implies(_consequent: unknown): never {
     throw new Error(
-      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'implies': expected a BoolVar, Constraint, or BoolOp."
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==, !=, <, >) in logical 'implies': expected a BoolVar, Constraint, or BoolOp."
     );
   }
 
   public xor(_other: unknown): never {
     throw new Error(
-      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'xor': expected a BoolVar, Constraint, or BoolOp."
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==, !=, <, >) in logical 'xor': expected a BoolVar, Constraint, or BoolOp."
     );
   }
 
   public not(): never {
     throw new Error(
-      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==) in logical 'not': expected a BoolVar, Constraint, or BoolOp."
+      "Cannot use an arithmetic expression without a comparison operator (<=, >=, ==, !=, <, >) in logical 'not': expected a BoolVar, Constraint, or BoolOp."
     );
   }
 
@@ -318,6 +735,15 @@ export class LinExpr {
       const absC = Math.abs(c);
       const coeffStr = absC === 1 ? "" : `${absC} `;
       parts.push(`${sign}${coeffStr}${v.name}`);
+      isFirst = false;
+    }
+
+    for (const nl of this.nonlinearTerms) {
+      const c = nl.coeff;
+      const sign = c >= 0 ? (isFirst ? "" : "+ ") : "- ";
+      const absC = Math.abs(c);
+      const coeffStr = absC === 1 ? "" : `${absC} `;
+      parts.push(`${sign}${coeffStr}${formatNonlinearAtom(nl.atom)}`);
       isFirst = false;
     }
 
@@ -454,6 +880,7 @@ export function sum<T = any>(
   arg2?: (item: any, index: number) => LinExpr | QuadExpr | Constraint | Var | number
 ): LinExpr {
   const terms = new Map<Var, number>();
+  const nonlinearTerms: NonlinearTerm[] = [];
   let constant = 0;
 
   function isConstraintObj(val: object): boolean {
@@ -464,7 +891,8 @@ export function sum<T = any>(
       "sense" in val &&
       ((val as { sense: unknown }).sense === "<=" ||
         (val as { sense: unknown }).sense === ">=" ||
-        (val as { sense: unknown }).sense === "==") &&
+        (val as { sense: unknown }).sense === "==" ||
+        (val as { sense: unknown }).sense === "!=") &&
       "lhs" in val &&
       "rhs" in val &&
       typeof (val as { rhs: unknown }).rhs === "number" &&
@@ -564,6 +992,16 @@ export function sum<T = any>(
         throw new Error("Constant accumulation overflows finite floating-point range in sum().");
       }
       constant = nextConst;
+      if (Array.isArray(quadExpr.nonlinearTerms)) {
+        for (const nl of quadExpr.nonlinearTerms) {
+          if (!Number.isFinite(nl.coeff)) {
+            throw new Error(`Invalid non-finite coefficient "${nl.coeff}" in sum().`);
+          }
+          if (nl.coeff !== 0) {
+            nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: nl.coeff });
+          }
+        }
+      }
     } else if (typeof val === "object" && isLinExprObj(val)) {
       const linExpr = val as LinExpr;
       if (!Number.isFinite(linExpr.constant)) {
@@ -585,6 +1023,16 @@ export function sum<T = any>(
         throw new Error("Constant accumulation overflows finite floating-point range in sum().");
       }
       constant = nextConst;
+      if (Array.isArray(linExpr.nonlinearTerms)) {
+        for (const nl of linExpr.nonlinearTerms) {
+          if (!Number.isFinite(nl.coeff)) {
+            throw new Error(`Invalid non-finite coefficient "${nl.coeff}" in sum().`);
+          }
+          if (nl.coeff !== 0) {
+            nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: nl.coeff });
+          }
+        }
+      }
     } else if (typeof val === "object" && isVarObj(val)) {
       const v = val as Var;
       const cur = terms.get(v) ?? 0;
@@ -690,7 +1138,7 @@ export function sum<T = any>(
     }
   }
 
-  return new LinExpr(terms, constant);
+  return new LinExpr(terms, constant, nonlinearTerms);
 }
 
 /**
@@ -756,6 +1204,7 @@ export function dot(
 ): LinExpr;
 export function dot(a: any, b: any): LinExpr {
   const terms = new Map<Var, number>();
+  const nonlinearTerms: NonlinearTerm[] = [];
   let constant = 0;
 
   function isVar(x: any): x is Var {
@@ -834,6 +1283,27 @@ export function dot(a: any, b: any): LinExpr {
           );
         }
         terms.set(v, next);
+      }
+      if (Array.isArray(exprOrVar.nonlinearTerms) && coeff !== 0) {
+        for (const nl of exprOrVar.nonlinearTerms) {
+          if (!Number.isFinite(nl.coeff)) {
+            throw new Error(
+              `Invalid non-finite coefficient "${nl.coeff}" in dot() at '${path || "root"}'.`
+            );
+          }
+          const prod = coeff * nl.coeff;
+          if (nl.coeff !== 0 && prod === 0) {
+            throw new Error("Coefficient multiplication underflows to zero.");
+          }
+          if (!Number.isFinite(prod)) {
+            throw new Error(
+              `Coefficient multiplication overflows finite floating-point range in dot() at '${path || "root"}'.`
+            );
+          }
+          if (prod !== 0) {
+            nonlinearTerms.push({ atom: cloneNonlinearAtom(nl.atom), coeff: prod });
+          }
+        }
       }
     } else if (isVar(exprOrVar)) {
       const v = exprOrVar as Var;
@@ -986,7 +1456,298 @@ export function dot(a: any, b: any): LinExpr {
     }
   }
 
-  return new LinExpr(terms, constant);
+  return new LinExpr(terms, constant, nonlinearTerms);
+}
+
+/**
+ * Compute the absolute value $|e|$ of a scalar expression (`number`, `Var`, or `LinExpr`).
+ *
+ * **Lowering behavior**:
+ * - **HiGHS / GLPK**: Pure LP epigraph (`t >= e, t >= -e`, zero binary variables) when used in a convex direction (`minimize(abs(e))`, `abs(e) <= rhs`); exact bounded MIP linearization using finite `[lb, ub]` bounds otherwise.
+ * - **Pumpkin**: Native `absolute` propagator on bounded integer expressions (`Continuous` rejected).
+ * - **Z3**: Exact `ITE` arithmetic AST on `Int` and `Real` sorts.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("AbsExample");
+ * const a = m.continuous("a", { lb: 0, ub: 10 });
+ * const b = m.continuous("b", { lb: 0, ub: 10 });
+ * m.constraint(a.eq(7));
+ * m.constraint(abs(a.sub(b)).le(2), "balance");
+ * m.objective(minimize(b));
+ * ```
+ */
+export function abs(value: number | Var | LinExpr | QuadExpr | Constraint): LinExpr {
+  const lin = toScalarLinExpr(value, "abs()");
+  if (lin.terms.size === 0 && lin.nonlinearTerms.length === 0) {
+    return new LinExpr(new Map(), Math.abs(lin.constant) + 0);
+  }
+  return new LinExpr(new Map(), 0, [{ atom: { kind: "abs", arg: lin }, coeff: 1 }]);
+}
+
+export type ExtremumTerm = Var | LinExpr | QuadExpr | Constraint | number;
+
+export type ExtremumArg<T = any> =
+  | SumContainer<any, any>
+  | ExtremumTerm
+  | Iterable<T>
+  | {
+      readonly [key: string]:
+        | ExtremumTerm
+        | Iterable<ExtremumTerm>
+        | { readonly [subKey: string]: ExtremumTerm };
+    };
+
+function collectExtremumItems(
+  fnName: "max" | "min",
+  args: readonly unknown[]
+): LinExpr[] {
+  if (args.length === 0) {
+    throw new Error(`${fnName}() requires at least one expression.`);
+  }
+
+  const items: LinExpr[] = [];
+  const isLeaf = (val: unknown): boolean =>
+    typeof val === "number" ||
+    isConstraint(val) ||
+    isVarLikeExpr(val) ||
+    val instanceof LinExpr ||
+    val instanceof QuadExpr ||
+    (typeof val === "object" &&
+      val !== null &&
+      (("terms" in val && (val as { terms: unknown }).terms instanceof Map) ||
+        ("quadTerms" in val && (val as { quadTerms: unknown }).quadTerms instanceof Map)));
+
+  const isPlainRecord = (val: unknown): val is Record<string, unknown> => {
+    if (typeof val !== "object" || val === null || Array.isArray(val)) return false;
+    if (isLeaf(val)) return false;
+    const proto = Object.getPrototypeOf(val);
+    return proto === Object.prototype || proto === null;
+  };
+
+  const pushScalar = (val: unknown) => {
+    items.push(toScalarLinExpr(val, `${fnName}()`));
+  };
+
+  const visitContainer = (val: unknown, depth: number): void => {
+    if (val === null || val === undefined) {
+      throw new Error(`Unsupported nullish item in ${fnName}(): expected a finite number, Var, or LinExpr.`);
+    }
+    if (typeof val === "number" || isLeaf(val)) {
+      pushScalar(val);
+      return;
+    }
+    if (Array.isArray(val)) {
+      if (depth >= 2) {
+        throw new Error(`Nested containers deeper than 2D are not supported in ${fnName}().`);
+      }
+      for (let i = 0; i < val.length; i++) {
+        if (!(i in val)) {
+          throw new Error(`Unsupported item in ${fnName}(): sparse array hole at index ${i}.`);
+        }
+        visitContainer(val[i], depth + 1);
+      }
+      return;
+    }
+    if (
+      typeof val === "object" &&
+      !(val instanceof String) &&
+      !(val instanceof Map) &&
+      Symbol.iterator in val &&
+      typeof (val as Iterable<unknown>)[Symbol.iterator] === "function"
+    ) {
+      if (depth >= 2) {
+        throw new Error(`Nested containers deeper than 2D are not supported in ${fnName}().`);
+      }
+      for (const sub of val as Iterable<unknown>) {
+        visitContainer(sub, depth + 1);
+      }
+      return;
+    }
+    if (isPlainRecord(val)) {
+      if (depth >= 2) {
+        throw new Error(`Nested containers deeper than 2D are not supported in ${fnName}().`);
+      }
+      if (Object.getOwnPropertySymbols(val).length > 0) {
+        throw new Error(`Symbol keys are not supported in ${fnName}().`);
+      }
+      for (const key of Object.keys(val)) {
+        visitContainer(val[key], depth + 1);
+      }
+      return;
+    }
+    throw new Error(`Unsupported item in ${fnName}(): expected a finite number, Var, or LinExpr.`);
+  };
+
+  if (args.length === 2 && typeof args[1] === "function") {
+    const first = args[0];
+    const mapFn = args[1] as (item: any, index: number) => unknown;
+    if (typeof first === "number") {
+      if (!Number.isInteger(first) || first < 0) {
+        throw new Error(`${fnName}(count, mapFn) requires a non-negative integer count.`);
+      }
+      for (let i = 0; i < first; i++) {
+        visitContainer(mapFn(i, i), 0);
+      }
+    } else if (Array.isArray(first)) {
+      for (let i = 0; i < first.length; i++) {
+        if (!(i in first)) {
+          throw new Error(`Unsupported item in ${fnName}(): sparse array hole at index ${i}.`);
+        }
+        visitContainer(mapFn(first[i], i), 0);
+      }
+    } else if (
+      typeof first === "object" &&
+      first !== null &&
+      !(first instanceof String) &&
+      Symbol.iterator in first &&
+      typeof (first as Iterable<unknown>)[Symbol.iterator] === "function"
+    ) {
+      let idx = 0;
+      for (const item of first as Iterable<unknown>) {
+        visitContainer(mapFn(item, idx++), 0);
+      }
+    } else if (isPlainRecord(first)) {
+      if (Object.getOwnPropertySymbols(first).length > 0) {
+        throw new Error(`Symbol keys are not supported in ${fnName}().`);
+      }
+      let idx = 0;
+      for (const key of Object.keys(first)) {
+        visitContainer(mapFn(first[key], idx++), 0);
+      }
+    } else {
+      throw new Error(
+        `Invalid first argument in ${fnName}(itemsOrCount, mapFn): expected an Iterable, Record, or non-negative integer count.`
+      );
+    }
+  } else {
+    for (const arg of args) {
+      if (typeof arg === "function") {
+        throw new Error(
+          `Function interpolation in ${fnName}() is only supported as ${fnName}(itemsOrCount, mapFn).`
+        );
+      }
+      visitContainer(arg, 0);
+    }
+  }
+
+  if (items.length === 0) {
+    throw new Error(`${fnName}() requires at least one expression.`);
+  }
+  return items;
+}
+
+function buildExtremumExpr(fnName: "max" | "min", items: LinExpr[]): LinExpr {
+  if (items.length === 1) {
+    return items[0].clone();
+  }
+  if (items.every((item) => item.terms.size === 0 && item.nonlinearTerms.length === 0)) {
+    const vals = items.map((item) => item.constant);
+    const folded = fnName === "max" ? Math.max(...vals) : Math.min(...vals);
+    return new LinExpr(new Map(), Object.is(folded, -0) ? 0 : folded);
+  }
+  return new LinExpr(new Map(), 0, [{ atom: { kind: fnName, args: items }, coeff: 1 }]);
+}
+
+/**
+ * Compute the maximum $\max(e_1, \dots, e_n)$ across variadic scalar expressions,
+ * 1D/2D `Array` / `Iterable` / `Record` containers, or a `(itemsOrCount, mapFn)` mapper.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("MaxExample");
+ * const x = m.continuous("x", { lb: 2, ub: 10 });
+ * const y = m.continuous("y", { lb: 5, ub: 10 });
+ * m.objective(minimize(max(x, y)));
+ * ```
+ */
+export function max(
+  count: number,
+  mapFn: (index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function max<T = any>(
+  items: Iterable<T>,
+  mapFn: (item: T, index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function max<T extends object>(
+  record: T & NoSymbolKeys<T>,
+  mapFn: (value: T[keyof T], index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function max(...args: ExtremumArg[]): LinExpr;
+export function max(...args: unknown[]): LinExpr {
+  return buildExtremumExpr("max", collectExtremumItems("max", args));
+}
+
+/**
+ * Compute the minimum $\min(e_1, \dots, e_n)$ across variadic scalar expressions,
+ * 1D/2D `Array` / `Iterable` / `Record` containers, or a `(itemsOrCount, mapFn)` mapper.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("MinExample");
+ * const x = m.continuous("x", { lb: 0, ub: 8 });
+ * const y = m.continuous("y", { lb: 0, ub: 5 });
+ * m.objective(maximize(min(x, y)));
+ * ```
+ */
+export function min(
+  count: number,
+  mapFn: (index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function min<T = any>(
+  items: Iterable<T>,
+  mapFn: (item: T, index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function min<T extends object>(
+  record: T & NoSymbolKeys<T>,
+  mapFn: (value: T[keyof T], index: number) => LinExpr | QuadExpr | Constraint | Var | number
+): LinExpr;
+export function min(...args: ExtremumArg[]): LinExpr;
+export function min(...args: unknown[]): LinExpr {
+  return buildExtremumExpr("min", collectExtremumItems("min", args));
+}
+
+/**
+ * 0-based variable-indexed lookup `array[index]` (CP `Element` constraint).
+ * Automatically enforces $0 \le \text{index} < \text{array.length}$ and rejects `Continuous` or fractional indices.
+ *
+ * @example
+ * ```ts
+ * const m = new Model("AtExample");
+ * const route = m.integer("route", { lb: 0, ub: 2 });
+ * m.objective(minimize(at([30, 12, 25], route)));
+ * ```
+ */
+export function at(
+  array: ReadonlyArray<number | Var | LinExpr | QuadExpr | Constraint>,
+  index: number | Var | LinExpr | QuadExpr | Constraint
+): LinExpr {
+  if (!Array.isArray(array)) {
+    throw new Error("at(array, index) requires an Array as its first argument.");
+  }
+  if (array.length === 0) {
+    throw new Error("at(array, index) requires an array with at least 1 element.");
+  }
+  const normalizedArray: LinExpr[] = new Array(array.length);
+  for (let i = 0; i < array.length; i++) {
+    if (!(i in array)) {
+      throw new Error(`at(array, index) encountered sparse array hole at index ${i}.`);
+    }
+    normalizedArray[i] = toScalarLinExpr(array[i], `at() array[${i}]`);
+  }
+  const indexLin = toScalarLinExpr(index, "at() index");
+  const discreteVars = collectAndValidateDiscreteExpr(indexLin, "at() index");
+  return new LinExpr(new Map(), 0, [
+    {
+      atom: {
+        kind: "at",
+        array: normalizedArray,
+        index: indexLin,
+        discreteVars,
+      },
+      coeff: 1,
+    },
+  ]);
 }
 
 

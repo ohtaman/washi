@@ -1,7 +1,8 @@
 import type { Var } from "./variable.js";
-import type { LinExpr } from "./expression.js";
+import { LinExpr, type NonlinearAtom } from "./expression.js";
+import { QuadExpr } from "./quad-expr.js";
 import { Constraint } from "./constraint.js";
-import { BoolVar, BoolOp, type LogicElement } from "./boolean-expr.js";
+import { BoolVar, BoolOp, GlobalConstraint, type LogicElement } from "./boolean-expr.js";
 import type { ComparisonSense } from "./types.js";
 import type { Model } from "./model.js";
 
@@ -356,10 +357,78 @@ export function validateModelSolution(
     checkedBoolVariables++;
   }
 
-  // Helper to evaluate a linear expression
-  const evalLinExpr = (
-    expr: LinExpr
-  ): { ok: true; value: number } | { ok: false; reason: string } => {
+  // Helper to evaluate a linear / piecewise / element expression
+  type ExprEvalResult =
+    | { ok: true; value: number; atDomainError?: { violation: number; message: string } }
+    | { ok: false; reason: string };
+
+  const evalAtom = (atom: NonlinearAtom): ExprEvalResult => {
+    switch (atom.kind) {
+      case "abs": {
+        const inner = evalLinExpr(atom.arg);
+        if (!inner.ok) return inner;
+        return {
+          ok: true,
+          value: Math.abs(inner.value),
+          ...(inner.atDomainError ? { atDomainError: inner.atDomainError } : {}),
+        };
+      }
+      case "max": {
+        let best = -Infinity;
+        let firstErr: { violation: number; message: string } | undefined;
+        for (const a of atom.args) {
+          const r = evalLinExpr(a);
+          if (!r.ok) return r;
+          if (!firstErr && r.atDomainError) firstErr = r.atDomainError;
+          if (r.value > best) best = r.value;
+        }
+        return { ok: true, value: best, ...(firstErr ? { atDomainError: firstErr } : {}) };
+      }
+      case "min": {
+        let best = Infinity;
+        let firstErr: { violation: number; message: string } | undefined;
+        for (const a of atom.args) {
+          const r = evalLinExpr(a);
+          if (!r.ok) return r;
+          if (!firstErr && r.atDomainError) firstErr = r.atDomainError;
+          if (r.value < best) best = r.value;
+        }
+        return { ok: true, value: best, ...(firstErr ? { atDomainError: firstErr } : {}) };
+      }
+      case "at": {
+        const idxRes = evalLinExpr(atom.index);
+        if (!idxRes.ok) return idxRes;
+        const idxVal = idxRes.value;
+        const maxIdx = atom.array.length - 1;
+        const lowerViol = Math.max(0, -idxVal);
+        const upperViol = Math.max(0, idxVal - maxIdx);
+        const boundViol = Math.max(lowerViol, upperViol);
+        const intViol = Math.abs(idxVal - Math.round(idxVal));
+        if (boundViol > feasibilityTolerance || intViol > integralityTolerance) {
+          const violation = Math.max(boundViol, intViol);
+          return {
+            ok: true,
+            value: 0,
+            atDomainError: {
+              violation,
+              message: `at() index (${idxVal}) violates valid integer range [0, ${maxIdx}].`,
+            },
+          };
+        }
+        const elemRes = evalLinExpr(atom.array[Math.round(idxVal)]);
+        if (!elemRes.ok) return elemRes;
+        return {
+          ok: true,
+          value: elemRes.value,
+          ...(idxRes.atDomainError ?? elemRes.atDomainError
+            ? { atDomainError: idxRes.atDomainError ?? elemRes.atDomainError }
+            : {}),
+        };
+      }
+    }
+  };
+
+  const evalLinExpr = (expr: LinExpr): ExprEvalResult => {
     const constant = expr.constant !== undefined ? expr.constant : 0;
     if (typeof constant !== "number" || !Number.isFinite(constant)) {
       return { ok: false, reason: `non-finite constant (${String(constant)})` };
@@ -381,10 +450,127 @@ export function validateModelSolution(
         return { ok: false, reason: "linear expression evaluation overflowed finite range" };
       }
     }
-    return { ok: true, value: sum };
+    let firstAtError: { violation: number; message: string } | undefined;
+    for (const nl of expr.nonlinearTerms ?? []) {
+      if (typeof nl.coeff !== "number" || !Number.isFinite(nl.coeff)) {
+        return { ok: false, reason: `non-finite nonlinear coefficient (${String(nl.coeff)})` };
+      }
+      const atomRes = evalAtom(nl.atom);
+      if (!atomRes.ok) return atomRes;
+      if (!firstAtError && atomRes.atDomainError) {
+        firstAtError = atomRes.atDomainError;
+      }
+      if (nl.coeff === 0) continue;
+      sum += nl.coeff * atomRes.value;
+      if (!Number.isFinite(sum)) {
+        return { ok: false, reason: "expression evaluation overflowed finite range" };
+      }
+    }
+    return { ok: true, value: sum, ...(firstAtError ? { atDomainError: firstAtError } : {}) };
   };
 
-  // Helper to evaluate a linear constraint residual
+  type AtDomainError = { violation: number; message: string };
+  type AtDomainCheckResult =
+    | { ok: true; errors: AtDomainError[] }
+    | { ok: false; reason: string };
+
+  const checkAtomAtDomains = (atom: NonlinearAtom): AtDomainCheckResult => {
+    switch (atom.kind) {
+      case "abs":
+        return checkExprAtDomains(atom.arg);
+      case "max":
+      case "min": {
+        const errors: AtDomainError[] = [];
+        for (const a of atom.args) {
+          const sub = checkExprAtDomains(a);
+          if (!sub.ok) return sub;
+          errors.push(...sub.errors);
+        }
+        return { ok: true, errors };
+      }
+      case "at": {
+        const errors: AtDomainError[] = [];
+        const idxSub = checkExprAtDomains(atom.index);
+        if (!idxSub.ok) return idxSub;
+        errors.push(...idxSub.errors);
+        for (const el of atom.array) {
+          const elSub = checkExprAtDomains(el);
+          if (!elSub.ok) return elSub;
+          errors.push(...elSub.errors);
+        }
+        const idxRes = evalLinExpr(atom.index);
+        if (!idxRes.ok) return idxRes;
+        if (idxSub.errors.length === 0) {
+          const idxVal = idxRes.value;
+          const maxIdx = atom.array.length - 1;
+          const lowerViol = Math.max(0, -idxVal);
+          const upperViol = Math.max(0, idxVal - maxIdx);
+          const boundViol = Math.max(lowerViol, upperViol);
+          const intViol = Math.abs(idxVal - Math.round(idxVal));
+          if (boundViol > feasibilityTolerance || intViol > integralityTolerance) {
+            const violation = Math.max(boundViol, intViol);
+            errors.push({
+              violation,
+              message: `at() index (${idxVal}) violates valid integer range [0, ${maxIdx}].`,
+            });
+          }
+        }
+        return { ok: true, errors };
+      }
+    }
+  };
+
+  const checkExprAtDomains = (expr: LinExpr): AtDomainCheckResult => {
+    const errors: AtDomainError[] = [];
+    for (const nl of expr.nonlinearTerms ?? []) {
+      const res = checkAtomAtDomains(nl.atom);
+      if (!res.ok) return res;
+      errors.push(...res.errors);
+    }
+    return { ok: true, errors };
+  };
+
+  const checkLogicAtDomains = (
+    elem: LogicElement
+  ): { ok: true; firstError?: AtDomainError } | { ok: false; reason: string } => {
+    if (elem instanceof BoolVar) {
+      return { ok: true };
+    }
+    if (elem instanceof Constraint) {
+      const domRes = checkExprAtDomains(elem.lhs);
+      if (!domRes.ok) return domRes;
+      return { ok: true, ...(domRes.errors.length > 0 ? { firstError: domRes.errors[0] } : {}) };
+    }
+    if (elem instanceof GlobalConstraint) {
+      const spec = elem.spec;
+      const exprs =
+        spec.kind === "distinct"
+          ? spec.args
+          : spec.kind === "disjoint" || spec.kind === "cumulative"
+            ? spec.tasks.map((t) => t.start)
+            : spec.vars;
+      for (const e of exprs) {
+        const r = checkExprAtDomains(e);
+        if (!r.ok) return r;
+        if (r.errors.length > 0) {
+          return { ok: true, firstError: r.errors[0] };
+        }
+      }
+      return { ok: true };
+    }
+    if (elem instanceof BoolOp) {
+      let firstError: AtDomainError | undefined;
+      for (const child of elem.children) {
+        const sub = checkLogicAtDomains(child);
+        if (!sub.ok) return sub;
+        if (!firstError && sub.firstError) firstError = sub.firstError;
+      }
+      return { ok: true, ...(firstError ? { firstError } : {}) };
+    }
+    return { ok: true };
+  };
+
+  // Helper to evaluate a linear / discrete constraint residual
   const checkLinearConstraint = (
     c: Constraint,
     tol: number = feasibilityTolerance
@@ -395,9 +581,23 @@ export function validateModelSolution(
     if (typeof c.rhs !== "number" || !Number.isFinite(c.rhs)) {
       return { status: "unchecked", reason: `non-finite right-hand side (${String(c.rhs)})` };
     }
+    const domainRes = checkExprAtDomains(c.lhs);
+    if (!domainRes.ok) {
+      return { status: "unchecked", reason: domainRes.reason };
+    }
     const lhsRes = evalLinExpr(c.lhs);
     if (!lhsRes.ok) {
       return { status: "unchecked", reason: lhsRes.reason };
+    }
+    if (domainRes.errors.length > 0 || lhsRes.atDomainError) {
+      const err = domainRes.errors[0] ?? lhsRes.atDomainError!;
+      return {
+        status: "violated",
+        lhsVal: lhsRes.value,
+        signed: lhsRes.value - c.rhs,
+        violation: err.violation,
+        message: `Constraint "${c.name}" invalid element lookup: ${err.message}`,
+      };
     }
 
     const lhsVal = lhsRes.value;
@@ -410,7 +610,9 @@ export function validateModelSolution(
         ? Math.max(0, signed)
         : c.sense === ">="
           ? Math.max(0, -signed)
-          : Math.abs(signed);
+          : c.sense === "!="
+            ? Math.max(0, 1 - Math.abs(signed))
+            : Math.abs(signed);
 
     if (viol > tol) {
       return {
@@ -423,6 +625,27 @@ export function validateModelSolution(
     }
     return { status: "satisfied", lhsVal, signed, violation: viol };
   };
+
+  // Validate any at() atoms embedded in objective expression (e.g., minimize(at(costs, idx)))
+  if (
+    (model.objectiveExpr instanceof QuadExpr || model.objectiveExpr instanceof LinExpr) &&
+    model.objectiveExpr.nonlinearTerms.length > 0
+  ) {
+    const objDomRes = checkExprAtDomains(
+      new LinExpr(new Map(), 0, model.objectiveExpr.nonlinearTerms)
+    );
+    if (objDomRes.ok) {
+      for (const err of objDomRes.errors) {
+        recordViolation({
+          type: "linear_constraint",
+          target: "constraint",
+          name: "objective_at",
+          violation: err.violation,
+          message: `Objective at() lookup failed: ${err.message}`,
+        });
+      }
+    }
+  }
 
   // 3. Validate linear constraints
   for (const c of model.constraints) {
@@ -472,6 +695,24 @@ export function validateModelSolution(
       return { ok: true, value: booleanValues.get(elem)!, violation: 0 };
     }
     if (elem instanceof Constraint) {
+      if (elem.sense === "!=") {
+        const lhsRes = evalLinExpr(elem.lhs);
+        if (!lhsRes.ok) return { ok: false, reason: lhsRes.reason };
+        if (lhsRes.atDomainError) {
+          return { ok: false, reason: lhsRes.atDomainError.message };
+        }
+        const absDiff = Math.abs(lhsRes.value - elem.rhs);
+        if (absDiff <= feasibilityTolerance) {
+          return { ok: true, value: false, violation: 0 };
+        }
+        if (absDiff >= 1 - feasibilityTolerance) {
+          return { ok: true, value: true, violation: 0 };
+        }
+        return {
+          ok: false,
+          reason: `discrete comparison "${elem.name}" lies between 0 and 1 (${lhsRes.value} != ${elem.rhs})`,
+        };
+      }
       const res = checkLinearConstraint(elem, 0);
       if (res.status === "unchecked") {
         return { ok: false, reason: res.reason };
@@ -491,6 +732,105 @@ export function validateModelSolution(
         value: isSatisfied,
         violation: 0,
       };
+    }
+    if (elem instanceof GlobalConstraint) {
+      const spec = elem.spec;
+      if (spec.kind === "distinct") {
+        const vals: number[] = [];
+        for (const arg of spec.args) {
+          const r = evalLinExpr(arg);
+          if (!r.ok) return r;
+          if (r.atDomainError) return { ok: false, reason: r.atDomainError.message };
+          vals.push(r.value);
+        }
+        for (let i = 0; i < vals.length; i++) {
+          for (let j = i + 1; j < vals.length; j++) {
+            const diff = Math.abs(vals[i] - vals[j]);
+            if (diff <= feasibilityTolerance) {
+              return { ok: true, value: false, violation: 0 };
+            }
+            if (diff < 1 - feasibilityTolerance) {
+              return {
+                ok: false,
+                reason: `distinct() operands at indices (${i}, ${j}) have fractional gap (${diff})`,
+              };
+            }
+          }
+        }
+        return { ok: true, value: true, violation: 0 };
+      }
+      if (spec.kind === "disjoint") {
+        const starts: number[] = [];
+        for (const t of spec.tasks) {
+          const r = evalLinExpr(t.start);
+          if (!r.ok) return r;
+          if (r.atDomainError) return { ok: false, reason: r.atDomainError.message };
+          starts.push(r.value);
+        }
+        for (let i = 0; i < spec.tasks.length; i++) {
+          for (let j = i + 1; j < spec.tasks.length; j++) {
+            const si = starts[i];
+            const di = spec.tasks[i].duration;
+            const sj = starts[j];
+            const dj = spec.tasks[j].duration;
+            const okPair =
+              si + di <= sj + feasibilityTolerance || sj + dj <= si + feasibilityTolerance;
+            if (!okPair) {
+              return { ok: true, value: false, violation: 0 };
+            }
+          }
+        }
+        return { ok: true, value: true, violation: 0 };
+      }
+      if (spec.kind === "cumulative") {
+        const starts: number[] = [];
+        for (const t of spec.tasks) {
+          const r = evalLinExpr(t.start);
+          if (!r.ok) return r;
+          if (r.atDomainError) return { ok: false, reason: r.atDomainError.message };
+          starts.push(r.value);
+        }
+        const active: Array<{ start: number; duration: number; demand: number }> = [];
+        for (let i = 0; i < spec.tasks.length; i++) {
+          const t = spec.tasks[i];
+          if (t.duration > 0 && t.demand > 0) {
+            if (t.demand > spec.capacity) {
+              return { ok: true, value: false, violation: 0 };
+            }
+            active.push({ start: starts[i], duration: t.duration, demand: t.demand });
+          }
+        }
+        for (let k = 0; k < active.length; k++) {
+          const tPoint = active[k].start;
+          let load = 0;
+          for (let i = 0; i < active.length; i++) {
+            const task = active[i];
+            if (
+              task.start - feasibilityTolerance <= tPoint &&
+              tPoint < task.start + task.duration - feasibilityTolerance
+            ) {
+              load += task.demand;
+            }
+          }
+          if (load > spec.capacity + feasibilityTolerance) {
+            return { ok: true, value: false, violation: 0 };
+          }
+        }
+        return { ok: true, value: true, violation: 0 };
+      }
+      if (spec.kind === "allowed") {
+        const vals: number[] = [];
+        for (const vExpr of spec.vars) {
+          const r = evalLinExpr(vExpr);
+          if (!r.ok) return r;
+          if (r.atDomainError) return { ok: false, reason: r.atDomainError.message };
+          vals.push(r.value);
+        }
+        const matched = spec.tuples.some((row) =>
+          row.every((target, j) => Math.abs(vals[j] - target) <= feasibilityTolerance)
+        );
+        return { ok: true, value: matched, violation: 0 };
+      }
     }
     if (elem instanceof BoolOp) {
       switch (elem.op) {
@@ -561,6 +901,33 @@ export function validateModelSolution(
         name: lcName,
         violation: Infinity,
         message: `Logical constraint "${lcName}" was not evaluated because evaluateLogicalConstraints is false.`,
+      });
+      continue;
+    }
+
+    const atDomRes = checkLogicAtDomains(lc.expr);
+    if (!atDomRes.ok) {
+      uncheckedConstraints.push(lcName);
+      recordViolation({
+        type: "unchecked_constraint",
+        target: "logical_constraint",
+        name: lcName,
+        violation: Infinity,
+        message: `Logical constraint "${lcName}" could not be evaluated: ${atDomRes.reason}.`,
+      });
+      continue;
+    }
+    if (atDomRes.firstError) {
+      checkedLogicalConstraints++;
+      recordViolation({
+        type: "logical_constraint",
+        target: "logical_constraint",
+        name: lcName,
+        actual: false,
+        limit: true,
+        violation: atDomRes.firstError.violation,
+        signedViolation: -1,
+        message: `Logical constraint "${lcName}" invalid element lookup: ${atDomRes.firstError.message}`,
       });
       continue;
     }

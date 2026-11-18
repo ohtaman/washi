@@ -253,3 +253,38 @@ console.log("労働力使用量:", laborUsed.value); // 50
 | `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | $\le$ 制約（`lhs <= rhs`）を生成します。 |
 | `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | $\ge$ 制約（`lhs >= rhs`）を生成します。 |
 | `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | $==$ 等式制約（`lhs == rhs`）を生成します。 |
+| `.lt(rhs)` | `Var`, `LinExpr` | `Constraint` | 離散 $<$ 制約（`lhs - rhs <= -1`。整数値式のみ）を生成します。 |
+| `.gt(rhs)` | `Var`, `LinExpr` | `Constraint` | 離散 $>$ 制約（`lhs - rhs >= 1`。整数値式のみ）を生成します。 |
+| `.ne(rhs)` | `Var`, `LinExpr` | `Constraint` | 離散 $\ne$ 制約（`lhs != rhs`。整数値式のみ）を生成します。 |
+
+---
+
+## 区分線形関数・インデックス参照 (`max`, `min`, `abs`, `at`)
+
+WaSHI は区分線形関数（`max`, `min`, `abs`）および 0 始まり変数インデックス参照（`at`）を提供しており、`` expr`...` `` タグ内でも `@ohtaman/washi` のスタンドアロン関数としてもそのまま記述できます：
+
+```typescript
+import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
+
+const m = new Model();
+const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
+const target = [4, 7, 10];
+const route = m.integer("route", { lb: 0, ub: 2 });
+const routeCost = [18, 12, 25];
+
+// 凸方向（minimize の max/abs 等）はバイナリ変数ゼロの純粋 LP エピグラフに変換：
+m.objective(
+  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
+);
+m.constraint(expr`max(${w}) <= 15`, "peak_cap");
+
+// ネスト合成やスタンドアロン関数呼び出しにも対応：
+const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
+m.constraint(expr`${maxErr} <= 3`);
+```
+
+- **コンテナ要素ごとの合成**: `expr` 内では `abs(${arr} - ${target})` が 1D/2D の `Array`・`Iterable`・`Record` に対して要素ごとに展開されるため、`` expr`sum(abs(${w} - ${target}))` `` や `` expr`max(abs(${pred} - ${actual}))` `` を簡潔に記述できます。
+- **極性に応じた LP/MIP 変換とネイティブ CP/SMT 対応**:
+  - 凸方向（`max`/`abs` の最小化または `<=`、`min` の最大化または `>=`）では、HiGHS / GLPK 上で**バイナリ変数を一切導入しない**純粋 LP エピグラフへ変換されます（無界な連続変数にも対応）。
+  - 非凸方向・等式コンテキスト（`minimize(min(...))`, `maximize(abs(...))`, `max(...) >= rhs`, `abs(...) == rhs` 等）では、HiGHS / GLPK が有限境界つきの厳密 MIP 定式化を行い、Pumpkin は有界整数向けネイティブ伝播器（`maximum`/`minimum`/`absolute`）、Z3 はネイティブ `If`（ITE）として解きます。
+- **0 始まりインデックス参照 (`at(array, index)`)**: CP の `Element` 制約（`array[index]`）に相当し、整数値の `index` 式を要求して全ソルバー共通で $0 \le \text{index} < \text{array.length}$ を自動強制します（Pumpkin は `element` 伝播器、Z3 は入れ子 `If` ＋範囲ガード、HiGHS / GLPK は凸包バイナリ＋McCormick 線形化）。

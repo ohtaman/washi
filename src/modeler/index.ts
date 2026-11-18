@@ -20,13 +20,21 @@ export { Var, type VarOptions } from "./variable.js";
 export {
   LinExpr,
   type Expr,
+  type NonlinearAtom,
+  type NonlinearTerm,
   type DotTerm,
   type DotVarContainer,
   type DotCoeffContainer,
   type SumTerm,
   type SumContainer,
+  type ExtremumTerm,
+  type ExtremumArg,
   sum,
   dot,
+  abs,
+  max,
+  min,
+  at,
 } from "./expression.js";
 export { QuadExpr, type QuadTerm } from "./quad-expr.js";
 export { Constraint } from "./constraint.js";
@@ -34,6 +42,11 @@ export {
   BoolVar,
   BoolExpr,
   BoolOp,
+  GlobalConstraint,
+  type GlobalConstraintSpec,
+  type DiscreteExprOperand,
+  type DisjointTask,
+  type CumulativeTask,
   type LogicElement,
   type LogicInput,
   and,
@@ -41,6 +54,10 @@ export {
   not,
   implies,
   xor,
+  distinct,
+  disjoint,
+  cumulative,
+  allowed,
 } from "./boolean-expr.js";
 export {
   parseExpr,

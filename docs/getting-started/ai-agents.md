@@ -24,6 +24,14 @@ import {
   expr,
   sum,
   dot,
+  abs,
+  max,
+  min,
+  at,
+  distinct,
+  disjoint,
+  cumulative,
+  allowed,
   maximize,
   minimize,
   and,
@@ -106,23 +114,25 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
   - A start may be complete or partial (e.g., transferred by stable variable names when rebuilding a MIP model). Supplying `initialValue` is a hint only—it does **not** fix the variable, add a hard constraint, or guarantee solver acceptance or a runtime speedup.
   - Supported by **HiGHS** and **Pumpkin** (`supportsWarmStart: true`); solvers without warm-start support (**GLPK**, **Z3**) throw an error if any variable has `initialValue !== undefined`.
 
-### Step 2: Build Expressions (`expr`, `sum`, `dot`)
+### Step 2: Build Expressions (`expr`, `sum`, `dot`, `max`, `min`, `abs`, `at`)
 
 - **Unified `expr` template tag**:
   - Linear expression (`LinExpr`): `` expr`30 * ${x} + 50 * ${n} - 10` ``, `` expr`dot(${profit}, ${byItem}) - 20 * ${b}` ``, `` expr`sum((${price} - ${cost}) * ${byItem})` ``
+  - Piecewise-linear & element primitives (`max`, `min`, `abs`, `at`, usable inside `expr` or standalone): `` expr`max(${vec}) + sum(abs(${vec} - ${target}))` ``, `` expr`max(abs(${pred} - ${actual}))` ``, `` expr`at(${costs}, ${idx})` `` (0-based integer `idx`, automatically enforcing $0 \le \text{idx} < \text{costs.length}$). On HiGHS/GLPK, convex directions (`minimize` or `<=` on `max`/`abs`, `maximize` or `>=` on `min`) lower to pure continuous LP epigraphs with zero binary variables, while non-convex/equality contexts use exact bounded MIP formulations (finite bounds required); Pumpkin lowers natively (`maximum`/`minimum`/`absolute`/`element`) and Z3 uses native `If` (ITE).
   - Quadratic expression (`QuadExpr`): `` expr`${x}^2 + 2 * ${x} * ${y} + ${y}^2` ``, `` expr`sum((${vec} - ${target})^2)` `` (supported for convex QP objectives on purely continuous models using `m.continuous`; built-in HiGHS does not support MIQP models containing integer, binary, or boolean variables).
-  - Linear constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` (supports `<=`, `>=`, `==`, and `=`).
+  - Constraint (`Constraint`): `` expr`${x} + 2 * ${n} <= 40` ``, `` expr`sum(${byItem}) <= 100` `` (supports `<=`, `>=`, `==`, `=`, plus discrete integer-only `<`, `>`, `!=`).
 - **Aggregations & Element-Wise Container Arithmetic**:
-  - `sum(containerOrItems, mapper?)` (usable inside `` expr`sum(...)` `` or standalone `sum(...)`) sums a 1D/2D `Array`, `Iterable`, or plain `Record` of `Var` / `LinExpr` / `number` (without needing `Object.values(record)`), or maps over items/counts via `sum(items, (item, i) => ...)`. Inside `` expr`sum(...)` ``, element-wise container arithmetic (`+`, `-`, `*`, `/`, `^2`) is also supported.
+  - `sum(containerOrItems, mapper?)` (usable inside `` expr`sum(...)` `` or standalone `sum(...)`) sums a 1D/2D `Array`, `Iterable`, or plain `Record` of `Var` / `LinExpr` / `number` (without needing `Object.values(record)`), or maps over items/counts via `sum(items, (item, i) => ...)`. Inside `` expr`sum(...)` ``, element-wise container arithmetic (`+`, `-`, `*`, `/`, `^2`) and `abs(...)` mapping are also supported.
   - `dot(a, b)` (usable inside `` expr`dot(${a}, ${b})` `` or standalone `dot(a, b)`) computes the inner product of matching 1D arrays, 2D arrays (`number[][]` / `Var[][]`, computing the Frobenius inner product $\sum_{i,j} A_{i,j} B_{i,j}$), plain records (`Record<string, ...>`), or mixed Array/Record containers in either operand order.
 - **Fluent methods**:
   - Arithmetic (on `LinExpr` and `QuadExpr`; `Var` supports `.add()`, `.sub()`, `.mul()`, `.neg()`): `.add(other)`, `.sub(other)`, `.mul(other)`, `.div(scalar)`, `.neg()`
-  - Comparisons (on `Var` and `LinExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`
-  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint`): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`—solved natively on Z3 and automatically linearized to 0-1 MIP on HiGHS/GLPK (negated comparison `Constraint`s in `implies` antecedents, `not`, or `xor` use exact $\pm 1$ shifts over integer-valued `Integer`/`Binary` expressions; `Continuous` or non-integer negated `Constraint`s throw on MIP solvers—use `{ solver: "z3" }`, or write ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`)
+  - Comparisons (on `Var`, `LinExpr`, and `QuadExpr`): `.le(rhs, name?)`, `.ge(rhs, name?)`, `.eq(rhs, name?)`, plus discrete integer-only `.lt(rhs, name?)`, `.gt(rhs, name?)`, `.ne(rhs, name?)` (Continuous / fractional operands throw immediately)
+  - CP global constraints (`BoolExpr` predicates composable with logical operators): `distinct(...args)` (pairwise `!=` on HiGHS/GLPK, `all_different` via pairwise `binary_not_equals` on Pumpkin `0.5.0`, `ctx.Distinct` on Z3), `disjoint(tasks)` (`{ start, duration }`, native `disjunctive_strict` Vilím edge-finding on Pumpkin), `cumulative(tasks, capacity)` (`{ start, duration, demand }`, native `cumulative` time-table on Pumpkin; MIP time-indexed formulation enforces a horizon memory guard recommending `{ solver: "pumpkin" }`), and `allowed(vars, tuples)` (`table` / `negative_table` on Pumpkin)
+  - Boolean logic (on `BoolVar`, `BoolExpr`, and `Constraint`): standalone `and(...)`, `or(...)`, `not(...)`, `implies(a, b)`, `xor(a, b)` and fluent `.and(...)`, `.or(...)`, `.not()`, `.implies(...)`, `.xor(...)`—solved natively on Z3 and Pumpkin (bounded integers) and automatically linearized to 0-1 MIP on HiGHS/GLPK (negated comparison `Constraint`s in `implies` antecedents, `not`, or `xor` use exact $\pm 1$ shifts over integer-valued `Integer`/`Binary` expressions; `Continuous` or non-integer negated `Constraint`s throw on MIP solvers—use `{ solver: "z3" }`, or write ``or(expr`... >= ... + eps`, ...)`` / `m.bool()`)
 
 ### Step 3: Register Objective & Constraints on the Model
 
-Constructing an `expr` or `.le()` object does **not** attach it to the model until you pass it to `m.constraint(...)` or `m.objective(...)`:
+Constructing an `expr` or `.le()` object does **not** attach it to the model until you pass it to `m.constraint(...)` or `m.objective(...)` (when `options.M` is omitted in `m.indicator()`, HiGHS/GLPK use tight derived Big-M and preserve `toLpString()`, while Pumpkin lowers natively via `implied_by` and Z3 via `ctx.Implies` unless the returned `Constraint` row is subsequently mutated):
 
 ```ts
 // Set objective using maximize() or minimize()

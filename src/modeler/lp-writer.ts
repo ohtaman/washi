@@ -137,6 +137,11 @@ export function generateLpString(
   options?: { relax?: boolean }
 ): LpExportResult {
   const { sense, objective, constraints, variables } = modelData;
+  if (typeof objective.hasNonlinearTerms === "function" && objective.hasNonlinearTerms()) {
+    throw new Error(
+      "generateLpString() received an unlowered nonlinear objective (max/min/abs/at). Lower via Model.toLpString() or linearizeModelForMip() first."
+    );
+  }
   const relax = options?.relax === true;
   const { nameToVar, varToName, nameToConstraint, constrToName, varOrder } =
     buildLpSymbolMaps(modelData);
@@ -214,6 +219,11 @@ export function generateLpString(
   // 2. Constraints Section
   lines.push("Subject To");
   for (const c of constraints) {
+    if (c.sense === "!=" || c.lhs.hasNonlinearTerms()) {
+      throw new Error(
+        `generateLpString() received unlowered constraint "${c.name}" (${c.sense === "!=" ? "discrete !=" : "nonlinear max/min/abs/at"}). Lower via Model.toLpString() or linearizeModelForMip() first.`
+      );
+    }
     const cName = constrToName.get(c)!;
     const terms: string[] = [];
     let firstTerm = true;

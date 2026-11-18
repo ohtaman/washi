@@ -171,6 +171,14 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
       `  not,`,
       `  implies,`,
       `  xor,`,
+      `  abs,`,
+      `  max,`,
+      `  min,`,
+      `  at,`,
+      `  distinct,`,
+      `  disjoint,`,
+      `  cumulative,`,
+      `  allowed,`,
       `} from "@ohtaman/washi";`,
     ].join("\n");
 
@@ -266,6 +274,14 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
           "not",
           "implies",
           "xor",
+          "abs",
+          "max",
+          "min",
+          "at",
+          "distinct",
+          "disjoint",
+          "cumulative",
+          "allowed",
           `return (async () => {\n${jsBody}\n})();`
         );
         await runner(
@@ -284,7 +300,15 @@ describe("Public JSDoc @example Snippets & Emitted .d.ts Declarations (Issue #10
           Washi.or,
           Washi.not,
           Washi.implies,
-          Washi.xor
+          Washi.xor,
+          Washi.abs,
+          Washi.max,
+          Washi.min,
+          Washi.at,
+          Washi.distinct,
+          Washi.disjoint,
+          Washi.cumulative,
+          Washi.allowed
         );
       }
 

@@ -16,6 +16,7 @@ js-sys = "0.3"
 pumpkin-conflict-resolvers = "0.5.0"
 pumpkin-constraints = "0.5.0"
 pumpkin-core = "0.5.0"
+pumpkin-propagators = "0.5.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wasm-bindgen = "0.2"

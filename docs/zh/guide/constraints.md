@@ -107,6 +107,9 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 如果引用的任何变量缺少所需的有限边界，`m.indicator()` 会抛出错误，提示补充有限边界或显式指定 `options.M`。
 
+> [!NOTE]
+> **Pumpkin 与 Z3 上的原生指示约束转换**：当省略 `options.M` 时，`m.indicator()` 仍返回经 Big-M 线性化的 `Constraint[]` 行（保证 `m.toLpString()` 以及 HiGHS / GLPK 的完全向后兼容），但会附带原始逻辑元数据，使 **Pumpkin**（`implied_by`）和 **Z3**（`ctx.Implies`）能够以原生逻辑蕴含形式求解，从而避免超大 Big-M 带来的数值病态或溢出。若直接修改返回的行对象，该元数据会被自动清除以保证后续修改真实生效。
+
 ### 显式指定 `M`
 
 可以通过传入 `{ M: number }` 显式覆盖自动推导的 Big-M：
@@ -155,11 +158,56 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 | :--- | :--- | :--- |
 | **触发条件变量** | 数值 `Binary` 变量 (`m.binary()`) | `BoolVar` (`m.bool()`)、`BoolOp` 或 `Constraint` |
 | **推论约束** | 线性 `Constraint` (`<=`, `>=`, `==`) | `BoolVar`、`BoolOp` 或线性 `Constraint` |
-| **适用求解器** | **所有 MIP/LP 求解器**（HiGHS、GLPK、Z3），通过 Big-M 线性化实现 | **所有求解器**（HiGHS、GLPK 通过 0-1 MIP 自动线性化，Z3 原生支持） |
+| **适用求解器** | **所有 MIP/LP 求解器**（HiGHS、GLPK 使用 Big-M；省略 `M` 时 Pumpkin / Z3 原生求解） | **所有求解器**（HiGHS、GLPK 自动 0-1 MIP 线性化，Pumpkin、Z3 原生支持） |
 | **主要用途** | 包含二元算术变量的数理优化模型（`m.solve()`） | 逻辑规则系统与 SMT 可满足性判定（`m.check()`） |
 
 > [!NOTE]
-> **出现在取反位置的比较约束（`implies` 前提、`not`、`xor` 等）**：当线性比较约束引用的变量均为 `Integer` 或 `Binary` 且系数与右端项均为整数时（具备 Big-M 指示约束所需的有限边界，例如使用上文 `clearance` 与 `hasMfa` 编写 ``implies(expr`${clearance} >= 4`, hasMfa)``），**HiGHS** 与 **GLPK** 会通过精确的 $\pm 1$ 整数偏移（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$，$==$ 则转化为 $\le b - 1$ 或 $\ge b + 1$）将其严格线性化为 MIP 约束，**Z3** 则原生求解。若包含 `Continuous` 变量或非整数系数/阈值的比较约束出现在取反位置，由于严格不等式取反对应开半空间，MIP 求解器（HiGHS / GLPK 上的 `solve()` / `check()`）会抛出错误——请使用 `{ solver: "z3" }`，或通过显式闭半空间容差 ``or(expr`... >= ... + eps`, ...)`` 及 `m.bool()` 进行建模。
+> **出现在取反位置的比较约束（`implies` 前提、`not`、`xor` 等）**：当线性比较约束引用的变量均为 `Integer` 或 `Binary` 且系数与右端项均为整数时（具备 Big-M 指示约束所需的有限边界，例如使用上文 `clearance` 与 `hasMfa` 编写 ``implies(expr`${clearance} >= 4`, hasMfa)``），**HiGHS** 与 **GLPK** 会通过精确的 $\pm 1$ 整数偏移（$\neg(a^\top x \le b) \iff a^\top x \ge b + 1$，$==$ 则转化为 $\le b - 1$ 或 $\ge b + 1$）将其严格线性化为 MIP 约束，**Pumpkin** 与 **Z3** 则原生求解。若包含 `Continuous` 变量或非整数系数/阈值的比较约束出现在取反位置，由于严格不等式取反对应开半空间，MIP 求解器（HiGHS / GLPK 上的 `solve()` / `check()`）会抛出错误——请使用 `{ solver: "z3" }`，或通过显式闭半空间容差 ``or(expr`... >= ... + eps`, ...)`` 及 `m.bool()` 进行建模。
+
+---
+
+## 离散比较运算符 (`!=`, `<`, `>`)
+
+WaSHI 在 `expr` 模板中（以及 `Var`、`LinExpr`、`QuadExpr` 上的 `.ne()`、`.lt()`、`.gt()` 链式方法）支持离散比较运算符 `!=`、`<` 和 `>`，且**仅限整数值表达式**（仅含 `Integer` / `Binary` 变量与安全整数系数和常数）：
+
+```typescript
+const rankA = m.integer("rankA", { lb: 1, ub: 4 });
+const rankB = m.integer("rankB", { lb: 1, ub: 4 });
+const roomA = m.integer("roomA", { lb: 1, ub: 3 });
+const roomB = m.integer("roomB", { lb: 1, ub: 3 });
+
+m.constraint(expr`${rankA} < ${rankB}`, "strict_order"); // 等价为 rankA - rankB <= -1
+m.constraint(expr`${roomA} != ${roomB}`, "diff_room");   // Pumpkin 原生 not_equals，Z3 原生 neq，HiGHS/GLPK 单二元变量 MIP
+```
+
+如果在 `!=`、`<` 或 `>` 中使用 `Continuous` 变量或小数常数，系统会立即拒绝并抛出错误，因为连续域上的严格不等式或不等约束并非闭多面体。
+
+---
+
+## CP 全局约束 (`distinct`, `disjoint`, `cumulative`, `allowed`)
+
+WaSHI 提供可与 `and`、`or`、`not`、`implies`、`xor` 自由组合的 `BoolExpr` 全局约束：
+
+| 全局约束 | 语义 | HiGHS / GLPK | Pumpkin | Z3 |
+| :--- | :--- | :--- | :--- | :--- |
+| `distinct(...args)` | 整数值表达式或 1D/2D 容器内全部元素的两两相异约束（`AllDifferent`） | 两两 `!=` MIP | `all_different` | `ctx.Distinct` |
+| `disjoint(tasks)` | 单机非重叠区间 `[start, start + duration)`（`NoOverlap` / `Disjunctive`，整数 `duration >= 0`；零时长任务仅允许置于边界） | 两两顺序二元变量 + Big-M | `disjunctive_strict`（Vilím 边缘推导） | 两两 `Or` 析取 |
+| `cumulative(tasks, capacity)` | 所有时刻资源占用总量 $\le$ `capacity`（整数 `duration >= 0`, `demand >= 0`） | 时间索引 MIP（跨度超 5,000 或脉冲变量超 25,000 时抛出保护错误并建议 `{ solver: "pumpkin" }`） | 原生 `cumulative`（时间表滤波） | 起始事件负载断言 |
+| `allowed(vars, tuples)` | 允许元组表约束（`Table` / `AllowedAssignments`，禁止元组请外包 `not(allowed(...))`） | 元组选择二元变量（二值变量取反为零二元割） | `table` / `negative_table` | 元组 `Or` / `And` |
+
+```typescript
+import { Model, expr, distinct, disjoint, cumulative, allowed, not, minimize } from "@ohtaman/washi";
+
+const m = new Model("ScheduleAndAssign");
+const s = m.integer(2, { lb: 0, ub: 10, prefix: "s" });
+const room = m.integer(2, { lb: 1, ub: 2, prefix: "room" });
+
+m.constraint(distinct(room), "unique_rooms");
+m.constraint(disjoint([{ start: s[0], duration: 4 }, { start: s[1], duration: 3 }]), "machine_1");
+m.constraint(not(allowed([room[0], room[1]], [[1, 2]])), "forbid_1_2");
+m.constraint(cumulative([{ start: s[0], duration: 4, demand: 1 }, { start: s[1], duration: 3, demand: 1 }], 2), "workers");
+m.objective(minimize(expr`${s[0]} + ${s[1]}`));
+```
 
 ---
 

@@ -253,3 +253,38 @@ console.log("Labor Used:", laborUsed.value);    // 50
 | `.le(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $\le$ 约束（`lhs <= rhs`）。 |
 | `.ge(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $\ge$ 约束（`lhs >= rhs`）。 |
 | `.eq(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建 $==$ 等式约束（`lhs == rhs`）。 |
+| `.lt(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建离散 $<$ 约束（`lhs - rhs <= -1`；仅限整数值表达式）。 |
+| `.gt(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建离散 $>$ 约束（`lhs - rhs >= 1`；仅限整数值表达式）。 |
+| `.ne(rhs)` | `Var`, `LinExpr` | `Constraint` | 构建离散 $\ne$ 约束（`lhs != rhs`；仅限整数值表达式）。 |
+
+---
+
+## 分段线性与下标索引表达式 (`max`, `min`, `abs`, `at`)
+
+WaSHI 提供后端无关的分段线性函数（`max`, `min`, `abs`）及基于 0 下标的变量索引查找（`at`），可在 `` expr`...` `` 模板字面量中直接使用，也可作为从 `@ohtaman/washi` 导出的独立辅助函数调用：
+
+```typescript
+import { Model, expr, minimize, abs, max, min, at } from "@ohtaman/washi";
+
+const m = new Model();
+const w = m.continuous(3, { lb: 0, ub: 20, prefix: "w" });
+const target = [4, 7, 10];
+const route = m.integer("route", { lb: 0, ub: 2 });
+const routeCost = [18, 12, 25];
+
+// 凸方向（如最小化 max/abs）在 HiGHS / GLPK 上转为零二元变量的纯 LP 上镜图（epigraph）：
+m.objective(
+  minimize(expr`sum(abs(${w} - ${target})) + at(${routeCost}, ${route})`)
+);
+m.constraint(expr`max(${w}) <= 15`, "peak_cap");
+
+// 支持嵌套组合与独立辅助函数调用：
+const maxErr = max(expr`abs(${w[0]} - 4)`, abs(expr`${w[1]} - 7`));
+m.constraint(expr`${maxErr} <= 3`);
+```
+
+- **逐元素容器算术组合**：在 `expr` 中，`abs(${arr} - ${target})` 会自动在匹配的 1D/2D `Array`、`Iterable` 或 `Record` 容器上逐元素展开，因此可直接编写 `` expr`sum(abs(${w} - ${target}))` `` 与 `` expr`max(abs(${pred} - ${actual}))` ``。
+- **极性感知的 MIP 化简与原生 CP/SMT 降级**：
+  - 在凸方向上（最小化或 `<=` 中的 `max`/`abs`，最大化或 `>=` 中的 `min`），HiGHS 与 GLPK 会降级为**零二元变量**的纯连续 LP 上镜图形式（支持无界 `Continuous` 变量）。
+  - 在非凸或等式上下文中（如 `minimize(min(...))`、`maximize(abs(...))`、`max(...) >= rhs`、`abs(...) == rhs`），HiGHS 与 GLPK 要求变量有有限边界并采用精确有界 MIP 线性化，Pumpkin 通过原生 `maximum`/`minimum`/`absolute` 传播器求解，Z3 则使用原生 `If`（ITE）。
+- **基于 0 下标的元素查找 (`at(array, index)`)**：对应约束规划中的 `Element` 约束（`array[index]`），要求 `index` 为整数值表达式，并在全部求解器上自动约束 $0 \le \text{index} < \text{array.length}$（Pumpkin 原生 `element` 传播器，Z3 嵌套 `If` 与越界守卫，HiGHS / GLPK 凸包二元变量 + McCormick 线性化）。

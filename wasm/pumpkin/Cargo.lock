@@ -828,6 +828,7 @@ dependencies = [
  "pumpkin-conflict-resolvers",
  "pumpkin-constraints",
  "pumpkin-core",
+ "pumpkin-propagators",
  "serde",
  "serde_json",
  "wasm-bindgen",
