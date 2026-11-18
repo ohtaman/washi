@@ -1,0 +1,27 @@
+{
+  "id": "004",
+  "slug": "minimax-workload",
+  "chapter": 1,
+  "order": 4,
+  "role": "core",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

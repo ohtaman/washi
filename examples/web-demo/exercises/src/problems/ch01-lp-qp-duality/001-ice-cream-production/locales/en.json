@@ -1,0 +1,22 @@
+{
+  "title": "#001. Ice Cream Production Mix",
+  "subtitle": "Translate a plain business problem into decision variables, constraints, and an objective — where greedy loses to LP.",
+  "tags": [
+    "LP",
+    "Product Mix",
+    "Modeling Basics"
+  ],
+  "caseNames": [
+    "Two-flavor creamery (greedy Trap: 15,000 vs LP: 19,000)",
+    "Three-product artisan factory (fractional continuous LP)"
+  ],
+  "markdown": "# #001. Ice Cream Production Mix\n\n<!-- section:scenario -->\nAn artisan creamery manufactures $n$ flavors of bulk gelato (sold by the liter as **continuous** non-negative quantities `quantities[j] >= 0`). Each batch is constrained by $m$ shared ingredients and kitchen capacities `capacities[k]`, where producing 1 liter of flavor $j$ consumes `usages[k][j]` units of resource $k$ and yields unit profit `margins[j]`.\n\nDetermine how many liters of each flavor to produce in order to **maximize total profit**.\n\n<!-- section:io -->\n- **Input (`P001Input`)**:\n  - `margins: number[]` — profit per unit of product $j$ ($0 \\le j < n$)\n  - `usages: number[][]` — resource matrix where `usages[k][j]` is resource $k$ required per unit of product $j$\n  - `capacities: number[]` — available capacity of each resource $k$ ($0 \\le k < m$)\n- **Output (`P001Output`)**:\n  - `quantities: number[]` — non-negative continuous production amounts of length $n$\n  - `totalProfit: number` — maximized profit $\\sum_j \\text{margins}[j] \\cdot \\text{quantities}[j]$\n\n<!-- section:example -->\nSuppose flavor 0 earns `500`/L (using `3` milk, `1` sugar) and flavor 1 earns `300`/L (using `1` milk, `2` sugar), with `90` milk and `80` sugar available:\n\n- **Greedy temptation**: Prioritize only flavor 0 because its `500`/L margin is higher. Milk caps flavor 0 at `90 / 3 = 30` L, leaving `50` sugar unused for a profit of only **`15,000`**.\n- **Optimal LP blend**: Producing `quantities = [20, 30]` uses all `90` milk and `80` sugar simultaneously for **`19,000`** profit — `4,000` higher than greedy!\n\n<!-- section:hint1 -->\nTranslate the scenario into the three core elements of an LP model:\n1. **Decision variables**: continuous variables $x_j \\ge 0$ for each flavor $j$.\n2. **Constraints**: one linear `<=` inequality per resource $k$ summing `usages[k][j] * x[j]`.\n3. **Objective**: `maximize` the inner product `dot(margins, x)`.\n\n<!-- section:hint2 -->\nDon't round `quantities` to integers here! Resource allocations of bulk volume are continuous (`m.continuous` / `h.addVariable`), and in Case 2 the exact LP vertex has fractional quantities (`[6.666..., 46.666..., 0]`) yielding `28666.67`! Forcing integrality would artificially cut off the true optimum and trigger `SUBOPTIMAL`.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & \\sum_{j=0}^{n-1} c_j x_j \\\\\n\\text{s.t.} \\quad & \\sum_{j=0}^{n-1} a_{k,j} x_j \\le b_k && \\forall k \\in \\{0, \\dots, m-1\\} \\\\\n& x_j \\ge 0 && \\forall j \\in \\{0, \\dots, n-1\\}\n\\end{aligned}\n$$\n\nReal business translation begins by explicitly mapping every noun phrase into `(index sets, parameters, decision variables, constraints, objective)`. Here, greedy marginal sorting fails whenever multiple resources bottleneck together.\n",
+  "judge": {
+    "m0": "Output must be an object { quantities, totalProfit }.",
+    "m1": "quantities[{p0}] cannot be negative (received {p1}).",
+    "m2": "Resource {p0} usage ({p1}) exceeds capacity ({p2}).",
+    "m3": "Reported totalProfit ({p0}) does not match computed margin sum ({p1}).",
+    "m4": "Feasible production plan, but profit ({p0}) is below the LP optimum ({p1}).",
+    "m5": "Optimal production mix found (profit = {p0})!"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "title": "#010. Boss: Reduced Costs & New-Product Break-Even",
+  "subtitle": "Combine primal LP, shadow prices, and reduced costs to price R&D product candidates.",
+  "tags": [
+    "LP",
+    "Boss",
+    "Reduced Cost",
+    "Sensitivity Analysis",
+    "Duality"
+  ],
+  "caseNames": [
+    "Both R&D candidates unprofitable (reduced costs -50 and -15)",
+    "Candidate 0 wins market entry (RC = 0); Candidate 1 needs +45.83"
+  ],
+  "markdown": "# #010. Boss: Reduced Costs & New-Product Break-Even\n\n<!-- section:scenario -->\nWelcome to the **Chapter 1 Boss**! Your plant currently manufactures $B$ existing products (`baseMargins`) sharing $M$ factory resources (`capacities`). R&D proposes $C$ new **candidate products** (`candidateMargins`) that consume the same resources: the full consumption matrix `usages` has $M$ rows and $B + C$ columns (first the $B$ base products, then the $C$ candidates).\n\nManagement asks three unified questions:\n1. If all $B + C$ products compete together in one joint LP, what are the optimal production levels (`baseQuantities`, `candidateQuantities`) and maximum `optimalProfit`?\n2. What are the resource `shadowPrices` $y_k \\ge 0$ at that joint optimum?\n3. For each candidate $c$, what is its **reduced cost** $r_c = \\text{candidateMargins}[c] - \\sum_k \\text{usages}[k][B + c] \\, y_k \\le 0$ (`v.reducedCost` / `col_dual`), and how much must its unit margin increase (`minMarginIncreaseNeeded[c] = max(0, -r_c)`) before it breaks even against existing products?\n\n<!-- section:io -->\n- **Input (`P010Input`)**:\n  - `baseMargins: number[]` (length $B$), `candidateMargins: number[]` (length $C$)\n  - `usages: number[][]` — $M \\times (B + C)$ consumption matrix\n  - `capacities: number[]` — length $M$ resource limits\n- **Output (`P010Output`)**:\n  - `baseQuantities: number[]`, `candidateQuantities: number[]` — optimal continuous quantities\n  - `optimalProfit: number` — joint maximum profit\n  - `shadowPrices: number[]` — shadow prices $y_k$ of the joint LP\n  - `candidateReducedCosts: number[]` — reduced cost $r_c \\le 0$ for each candidate\n  - `minMarginIncreaseNeeded: number[]` — `max(0, -candidateReducedCosts[c])`\n\n<!-- section:example -->\n- **Case 1**: Base `[50, 40]` already earn `2,800` with shadow prices `[20, 10, 0]`. Candidate 0 earns `20` per unit while consuming `2*20 + 3*10 = 70` worth of bottleneck capacity (`reducedCost = -50`), so it sits at `0` unless R&D lifts its margin by at least **`+50`**.\n- **Case 2**: Candidate 0 earns `75` and actually **beats** the opportunity cost of existing products! In the joint optimum, `candidateQuantities[0] > 0`, `candidateReducedCosts[0] = 0`, and `minMarginIncreaseNeeded[0] = 0`!\n\n<!-- section:hint1 -->\nDo **not** optimize only over the $B$ base products and evaluate candidates separately — in Case 2 Candidate 0 shifts the active bottleneck basis! Build a single joint LP with $B + C$ non-negative variables `allVars` against `usages` and `capacities`.\n\n<!-- section:hint2 -->\nAfter `await m.solve()` (or `sol = h.getSolution()` in `highspy`), every non-negative variable already exposes its exact LP reduced cost!\n- **WaSHI**: **`v.reducedCost`** (note `Math.abs(rc) < 1e-9 ? 0 : rc`), or compute directly `candMargin - sum_k usages[k][B+c] * shadowPrices[k]`.\n- **highspy**: **`sol.col_dual[v.index]`** equals $c_j - A_{\\cdot j}^\\top y \\le 0$ in maximization! Then **`minMarginIncreaseNeeded[c] = Math.max(0, -rc)`**.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max_{x \\ge 0} \\quad & c_{\\text{base}}^\\top x_{\\text{base}} + c_{\\text{cand}}^\\top x_{\\text{cand}} \\quad \\text{s.t.} \\; A x \\le b \\\\\nr_c &= c_{\\text{cand}, c} - \\sum_{k=0}^{M-1} a_{k, B+c} \\, y_k^* \\le 0 \\\\\n\\Delta_{\\text{break-even}, c} &= \\max(0, -r_c)\n\\end{aligned}\n$$\n\n**Pricing out** new activities using dual shadow prices ($r_j = c_j - A_{\\cdot j}^\\top y^*$) is the exact engine behind the Simplex pivot rule and **Column Generation** — which you will use later in Chapter 8!\n",
+  "judge": {
+    "m0": "Output must be an object { baseQuantities, candidateQuantities, optimalProfit, shadowPrices, candidateReducedCosts, minMarginIncreaseNeeded }.",
+    "m1": "Production quantity[{p0}] cannot be negative ({p1}).",
+    "m2": "Resource {p0} capacity exceeded ({p1} > {p2}).",
+    "m3": "Reported optimalProfit ({p0}) does not match computed profit ({p1}).",
+    "m4": "Feasible across all products, but profit ({p0}) is below LP optimum ({p1}). Tip: remember to include candidate products in the same model!",
+    "m5": "shadowPrices[{p0}] must be >= 0 (got {p1}).",
+    "m6": "Resource {p0} has slack ({p1}) so shadowPrice must be 0.",
+    "m7": "Strong duality check failed on shadowPrices (b^T y = {p0} vs {p1}).",
+    "m8": "candidateReducedCosts[{p0}] ({p1}) != candidateMargins[{p0}] - A^T y ({p2}). Check sign convention for maximization!",
+    "m9": "minMarginIncreaseNeeded[{p0}] ({p1}) must equal max(0, -reducedCost) = {p2}.",
+    "m10": "Chapter 1 Boss cleared! Exact profit ({p0}), duals, and break-even reduced costs verified."
+  }
+}

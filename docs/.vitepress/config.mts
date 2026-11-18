@@ -262,6 +262,7 @@ export default withMermaid(
             activeMatch: "^/(?:getting-started|guide|solvers|examples)/",
           },
           { text: "Showcase", link: "/showcase/", activeMatch: "^/showcase/" },
+          { text: "100 Exercises", link: "/exercises/", target: "_self" },
         ],
         sidebar: [
           {
@@ -332,6 +333,7 @@ export default withMermaid(
             activeMatch: "^/ja/(?:getting-started|guide|solvers|examples)/",
           },
           { text: jaLocale.nav[1].text, link: "/ja/showcase/", activeMatch: "^/ja/showcase/" },
+          { text: jaLocale.nav[2].text, link: "/exercises/?lang=ja", target: "_self" },
         ],
         sidebar: [
           {
@@ -412,6 +414,7 @@ export default withMermaid(
             activeMatch: "^/zh/(?:getting-started|guide|solvers|examples)/",
           },
           { text: zhLocale.nav[1].text, link: "/zh/showcase/", activeMatch: "^/zh/showcase/" },
+          { text: zhLocale.nav[2].text, link: "/exercises/?lang=zh", target: "_self" },
         ],
         sidebar: [
           {

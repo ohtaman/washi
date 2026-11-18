@@ -1,0 +1,24 @@
+{
+  "title": "T2. Integer Variables & Adding a Constraint",
+  "subtitle": "Optional Tutorial: switch continuous variables to integer and add the missing weight limit.",
+  "tags": [
+    "Tutorial",
+    "Integer",
+    "Constraints",
+    "dot"
+  ],
+  "caseNames": [
+    "Compact carry-on bag",
+    "Field kit pack"
+  ],
+  "markdown": "# T2. Integer Variables & Adding a Constraint\n\n<!-- section:scenario -->\n> **Optional Tutorial (excluded from the 0/100 score)**: Skip anytime once you understand variable types and constraints.\n\nPack integer quantities `counts[i]` of $n$ item types into a bag with weight limit `maxWeight`, maximizing total value while respecting `0 <= counts[i] <= maxCounts[i]`.\n\nRight now the starter code has **two intentional gaps**:\n1. It forgets the weight limit constraint (`sum(weight[i] * counts[i]) <= maxWeight`), so running it immediately triggers a **VIOLATION**.\n2. Notice the items must be packed in **integer** units (`counts[i]` cannot be fractional!). Check the variable constructor too (`continuous` vs `integer` in WaSHI, `addVariables` vs `addIntegrals` in `highspy`).\n\n<!-- section:io -->\n- **Input**: `maxWeight: number`, `weights: number[]`, `values: number[]`, `maxCounts: number[]`\n- **Output**: `{ counts: number[], totalValue: number }` (where every `counts[i]` is an integer)\n\n<!-- section:example -->\nWith `maxWeight = 10`, `weights = [3, 4, 2]`, `values = [40, 55, 22]`, `maxCounts = [2, 2, 3]`, packing `counts = [2, 1, 0]` weighs $2\\times 3 + 1\\times 4 = 10$ for maximum integer value **`135`**.\n\n<!-- section:hint1 -->\n- **WaSHI**: Declare integer arrays with `m.integer(n, { lb: 0, ub: (i) => input.maxCounts[i] })` (or a loop of `m.integer(...)`) and add the weight limit using `expr\\`dot(${input.weights}, ${counts}) <= ${input.maxWeight}\\``.\n- **highspy**: Use `[h.addIntegral(lb=0, ub=m) for m in input_data[\"maxCounts\"]]` and add `h.addConstr(h.qsum(w * x for w, x in zip(weights, counts)) <= max_weight)`.\n\n<!-- section:hint2 -->\nWithout the integer requirement (`continuous`), packing `counts = [2, 1, 0]` vs `[0, 2, 1]` behaves differently — in general, fractional LP relaxations can achieve strictly higher objective values than physically possible integer items! Remember `Math.round(...)` when extracting integer solutions if solver tolerance leaves `1.999999999`.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & \\sum_{i=0}^{n-1} v_i x_i \\\\\n\\text{s.t.} \\quad & \\sum_{i=0}^{n-1} w_i x_i \\le W_{\\max} \\\\\n& x_i \\in \\{0, 1, \\dots, u_i\\} \\quad \\forall i\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "Output must be an object { counts, totalValue }.",
+    "m1": "counts[{p0}] must be an integer (received {p1}). Did you use continuous variables instead of integer?",
+    "m2": "counts[{p0}] = {p1} must be within [0, {p2}].",
+    "m3": "Total weight ({p0}) exceeds bag limit ({p1}). Did you add the weight limit constraint?",
+    "m4": "Reported totalValue ({p0}) does not match computed item value ({p1}).",
+    "m5": "Feasible packing, but totalValue ({p0}) is below optimal ({p1}).",
+    "m6": "Optimal integer packing achieved (value = {p0})! You're ready for #001."
+  }
+}

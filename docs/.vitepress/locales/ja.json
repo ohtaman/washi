@@ -8,7 +8,8 @@
       "link": "/ja/getting-started/",
       "activeMatch": "^/ja/(?:getting-started|guide|solvers|examples)/"
     },
-    { "text": "ショーケース", "link": "/ja/showcase/", "activeMatch": "^/ja/showcase/" }
+    { "text": "ショーケース", "link": "/ja/showcase/", "activeMatch": "^/ja/showcase/" },
+    { "text": "100本ノック", "link": "/exercises/?lang=ja", "target": "_self" }
   ],
   "sidebar": [
     {

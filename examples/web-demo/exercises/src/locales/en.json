@@ -1,0 +1,151 @@
+{
+  "ui": {
+    "brandTitle": "Optimization 100",
+    "brandSubtitle": "Interactive LP · MIP · QP · CP · SMT Workout (WaSHI & highspy)",
+    "navDocs": "Docs",
+    "navShowcase": "Showcase",
+    "navPlayground": "Playground",
+    "backToMap": "← Quest Map",
+    "startFirstBtn": "▶ Start #001",
+    "resumeBtn": "▶ Resume (#{id})",
+    "tutorialBannerTitle": "New to WaSHI or highspy? Try the optional 3-minute Tutorial (T1–T2)",
+    "tutorialBannerDesc": "Learn how the interactive judge works and how to declare variables & constraints. Skippable anytime — excluded from the 0/100 score.",
+    "tutorialDismissBtn": "Skip tutorial",
+    "tutorialRestoreBtn": "Show tutorial (T1–T2)",
+    "progressLabel": "{solved} / {total} Completed",
+    "starsLabel": "★ {stars} / {maxStars} Mastery",
+    "comingSoonBadge": "Coming Soon",
+    "chapterPrefix": "Chapter {n}",
+    "roleLabels": {
+      "tutorial": "Tutorial",
+      "intro": "Intro",
+      "core": "Core",
+      "twist": "Trap / Twist",
+      "boss": "Boss 👑"
+    },
+    "provenance": {
+      "aiDrafted": "AI-Drafted",
+      "solverVerified": "Solver-Verified (WaSHI × highspy)",
+      "reviewedBy": "Reviewed by {handles}",
+      "feedbackHint": "Cross-checked automatically by both solvers; human review pending."
+    },
+    "tabs": {
+      "washi": "WaSHI (TypeScript)",
+      "highspy": "Python (highspy)",
+      "tablistLabel": "Solver runtime tabs",
+      "pythonLazyNote": "Pyodide v0.29 (highspy) loads in a background Web Worker on your first Python run."
+    },
+    "sections": {
+      "scenario": "Problem Scenario",
+      "io": "Input & Output Contract",
+      "example": "Worked Example",
+      "hintsTitle": "Hints & Reference Formulation",
+      "hint1": "Hint 1 — Decision Variables & Structure",
+      "hint2": "Hint 2 — Common Beginner Pitfall",
+      "formulation": "Mathematical Formulation & Notes (Open After Solving)"
+    },
+    "editor": {
+      "label": "Your solve() implementation",
+      "runBtn": "▶ Run & Judge",
+      "runningBtn": "Running…",
+      "loadingPyodide": "Loading Pyodide v0.29 WebAssembly…",
+      "loadingHighspy": "Loading highspy solver package…",
+      "runningPython": "Running Python solver…",
+      "resetBtn": "Reset",
+      "solutionBtn": "Load Reference Solution",
+      "confirmSolution": "Replace your current code in this tab with the reference solution?",
+      "shortcutHint": "Ctrl/Cmd + Enter to run"
+    },
+    "results": {
+      "title": "Judge Verdict",
+      "placeholder": "Edit solve() above and click Run & Judge to evaluate all test cases.",
+      "verdicts": {
+        "AC": "AC — Optimal!",
+        "SUBOPTIMAL": "SUBOPTIMAL — Feasible, not optimal",
+        "VIOLATION": "VIOLATION — Rule check failed",
+        "INFEASIBLE": "INFEASIBLE — No solution found",
+        "RUNTIME_ERROR": "ERROR — Runtime failure"
+      },
+      "caseLabel": "Case {num}: {name}",
+      "objectiveDiff": "Your objective: {yours}  |  Optimal objective: {optimal}",
+      "metricsLineNoMs": "Vars: {vars} · Constraints: {constrs}",
+      "metricsLineWithMs": "Vars: {vars} · Constraints: {constrs} · Solve: {ms} ms",
+      "previewLabel": "Solution Summary",
+      "lpPreviewLabel": "Inspect Generated LP Format (toLpString)",
+      "consoleLabel": "Console Output",
+      "nextQuestBtn": "Next Quest (#{nextId}) →"
+    },
+    "backup": {
+      "openBtn": "Backup",
+      "title": "Progress Backup (localStorage)",
+      "desc": "Your solved stars and code drafts are stored locally in this browser. Export JSON to move across devices or restore a saved backup.",
+      "exportBtn": "Download JSON",
+      "copyBtn": "Copy JSON",
+      "copied": "Copied!",
+      "importBtn": "Import JSON",
+      "importPlaceholder": "Paste exported JSON here...",
+      "importSuccess": "Progress restored successfully.",
+      "importError": "Import failed: {msg}",
+      "resetAllBtn": "Clear All Progress",
+      "resetAllConfirm": "Delete all saved stars and drafts in this browser?",
+      "closeBtn": "Close"
+    },
+    "theme": {
+      "toggleLabel": "Toggle color theme",
+      "switchToDark": "Dark",
+      "switchToLight": "Light"
+    },
+    "localeNames": {
+      "en": "EN",
+      "ja": "日本語",
+      "zh": "中文"
+    }
+  },
+  "chapters": {
+    "1": {
+      "title": "Continuous Optimization, Blending, Piecewise LP, QP & Duality",
+      "description": "Turn business rules into linear programs, handle ratios and minimax balance cleanly, exploit objective direction, build convex QP portfolios, and interpret dual shadow prices."
+    },
+    "2": {
+      "title": "Mixed-Integer Programming (MIP) Formulation Idioms",
+      "description": "Fixed-charge lot sizing, indicator directions, chained logic, SOS2 piecewise approximation, McCormick envelopes, and pattern enumeration."
+    },
+    "3": {
+      "title": "Propositional Logic & SMT Modeling",
+      "description": "Uniqueness proofs via no-good cuts, Minesweeper refutation, policy verification, minimal Unsat Core extraction, MaxSAT repair, and SMT-LIRA."
+    },
+    "4": {
+      "title": "Constraint Programming (CP / LCG) & Global Constraints",
+      "description": "AllDifferent (distinct), Element (at), Table (allowed), NoOverlap (disjoint), Cumulative scheduling, 2D packing, symmetry breaking, and Paradigm Showdown #1."
+    },
+    "5": {
+      "title": "Networks, Total Unimodularity, Connectivity & Vehicle Routing",
+      "description": "Exploit total unimodularity, max-flow min-cut, flow-based connectivity without subtours, CVRP, VRPTW, and connected territory design."
+    },
+    "6": {
+      "title": "Production, Inventory, Supply Chain & Energy Systems",
+      "description": "Strong lot-sizing reformulations, multi-level BOM/MRP, backorders vs lost sales, facility location (CFLP), Unit Commitment, and battery arbitrage."
+    },
+    "7": {
+      "title": "Scheduling, Staff Rostering, Timetabling & Revenue Management",
+      "description": "Job-shop Showdown #2 (MIP vs CP), RCPSP, rolling night-rest rosters, university timetabling, OR scheduling, and seat allocation."
+    },
+    "8": {
+      "title": "Requirements Auditing, Model Debugging & Acceleration",
+      "description": "Expose fake hard constraints with historical data, diagnose Infeasible/Unbounded/Unrealistic models, loophole testing, Unsat Core vs elastic slacks, and warm starts."
+    },
+    "9": {
+      "title": "Multi-Objective Tradeoffs, Fairness, Rescheduling & Uncertainty",
+      "description": "Goal programming, lexicographic optimization, Pareto frontiers, fairness metrics, Hamming-distance rescheduling, 2-stage stochastic LP, CVaR, and robust optimization."
+    },
+    "10": {
+      "title": "Large-Scale Decomposition & Hybrid Solvers",
+      "description": "Lazy cuts, cutting-stock/VRP column generation, Dantzig-Wolfe, classical & logic-based Benders decomposition, Lagrangian relaxation, LNS, and integrated S&OP Capstone."
+    }
+  },
+  "judgeHelpers": {
+    "expectFiniteNumber": "Field \"{field}\" must be a finite number (received {actual}).",
+    "expectArrayLength": "Field \"{field}\" must be an array of length {length}.",
+    "expectArrayElementFinite": "{field}[{index}] must be a finite number (received {actual})."
+  }
+}

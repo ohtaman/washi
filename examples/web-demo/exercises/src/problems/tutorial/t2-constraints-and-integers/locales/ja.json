@@ -1,0 +1,24 @@
+{
+  "title": "T2. 整数変数と制約の追加（チュートリアル）",
+  "subtitle": "チュートリアル：連続変数を整数変数に直し、抜けている重量上限制約を追加しよう。",
+  "tags": [
+    "チュートリアル",
+    "整数変数",
+    "制約追加",
+    "dot"
+  ],
+  "caseNames": [
+    "機内持ち込みバッグ",
+    "調査機材パック"
+  ],
+  "markdown": "# T2. 整数変数と制約の追加（チュートリアル）\n\n<!-- section:scenario -->\n> **チュートリアル（0/100 のカウント外・いつでもスキップ可）**: ライブラリの書き方に慣れたらスキップして本番 `#001` に進めます。\n\n重さの上限 `maxWeight` のバッグに、$n$ 種類のアイテムをそれぞれ整数個 `counts[i]`（`0 <= counts[i] <= maxCounts[i]`）詰めて、合計価値を最大化してください。\n\n現在の初期コードには **意図的な欠陥が2つ** あります：\n1. 重量制限（合計重量 $\\le \\text{maxWeight}$）の制約が抜けているため、そのまま実行すると赤色の **VIOLATION** が返ります。\n2. アイテムの個数は **整数** でなければなりません（現在 `continuous` / 連続変数になっています）。\n\n<!-- section:io -->\n- **入力**: `maxWeight: number`, `weights: number[]`, `values: number[]`, `maxCounts: number[]`\n- **出力**: `{ counts: number[], totalValue: number }`（`counts[i]` はすべて整数）\n\n<!-- section:example -->\n`maxWeight = 10`, `weights = [3, 4, 2]`, `values = [40, 55, 22]`, `maxCounts = [2, 2, 3]` のとき、`counts = [2, 1, 0]` で重さちょうど `10`・総価値 **`135`** が最適です。\n\n<!-- section:hint1 -->\n- **WaSHI**: `m.integer(...)` で整数変数を宣言し、`m.constraint(expr\\`dot(${input.weights}, ${counts}) <= ${input.maxWeight}\\`)` で重量上限を追加します。\n- **highspy**: `h.addIntegral(lb=0, ub=m)` で整数変数を作り、`h.addConstr(h.qsum(...) <= input_data[\"maxWeight\"])` を追加します。\n\n<!-- section:hint2 -->\n整数変数であっても、内部の浮動小数点計算により返ってくる値が `1.999999999` や `-0` になることがあります。結果オブジェクトを返す前に `Math.round(v.value!)`（Python なら `round(h.val(x))`）で整数に丸めるクセをつけておくと安全です。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & \\sum_{i=0}^{n-1} v_i x_i \\\\\n\\text{s.t.} \\quad & \\sum_{i=0}^{n-1} w_i x_i \\le W_{\\max} \\\\\n& x_i \\in \\{0, 1, \\dots, u_i\\} \\quad \\forall i\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "返り値は { counts, totalValue } のオブジェクトである必要があります。",
+    "m1": "counts[{p0}] は整数である必要があります（実際: {p1}）。連続変数のままになっていませんか？",
+    "m2": "counts[{p0}] = {p1} は範囲 [0, {p2}] に収まる必要があります。",
+    "m3": "合計重量 ({p0}) が上限 ({p1}) を超えています。重量上限制約を追加しましたか？",
+    "m4": "返された totalValue ({p0}) が実際の合計価値 ({p1}) と一致しません。",
+    "m5": "制約は満たしていますが、総価値 ({p0}) が最適値 ({p1}) 未満です。",
+    "m6": "正解！ 最適価値 {p0} を達成しました。これで本番 #001 に進む準備は完了です！"
+  }
+}

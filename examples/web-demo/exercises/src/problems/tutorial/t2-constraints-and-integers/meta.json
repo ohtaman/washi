@@ -1,0 +1,27 @@
+{
+  "id": "T2",
+  "slug": "tutorial-constraints-and-integers",
+  "chapter": 0,
+  "order": 2,
+  "role": "tutorial",
+  "scaffold": "fill-in",
+  "difficulty": 1,
+  "estimatedMinutes": 2,
+  "paradigms": [
+    "MIP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "pumpkin",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

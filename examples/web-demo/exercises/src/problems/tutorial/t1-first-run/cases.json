@@ -1,0 +1,28 @@
+[
+  {
+    "input": {
+      "flourCap": 120,
+      "butterCap": 70,
+      "croissantProfit": 40,
+      "loafProfit": 70,
+      "croissantFlour": 2,
+      "croissantButter": 1,
+      "loafFlour": 3,
+      "loafButter": 2
+    },
+    "expectedOptimal": 2600
+  },
+  {
+    "input": {
+      "flourCap": 160,
+      "butterCap": 80,
+      "croissantProfit": 55,
+      "loafProfit": 65,
+      "croissantFlour": 3,
+      "croissantButter": 1,
+      "loafFlour": 2,
+      "loafButter": 2
+    },
+    "expectedOptimal": 3500
+  }
+]

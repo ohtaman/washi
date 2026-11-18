@@ -1,0 +1,27 @@
+{
+  "id": "005",
+  "slug": "positive-part-ramp",
+  "chapter": 1,
+  "order": 5,
+  "role": "twist",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 10,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "title": "T1. 第一次优化与判题流程（修改一行）",
+  "subtitle": "可选引导教程：把 minimize 改成 maximize，将 SUBOPTIMAL 变成 AC。",
+  "tags": [
+    "新手引导",
+    "LP",
+    "优化方向"
+  ],
+  "caseNames": [
+    "早班烘焙批次",
+    "周末加产批次"
+  ],
+  "markdown": "# T1. 第一次优化与判题流程（修改一行）\n\n<!-- section:scenario -->\n> **可选引导教程（不计入 0/100 通关统计）**：熟悉优化建模的同学可随时跳过并直接从 **#001** 开始。\n\n通过这道热身题来熟悉浏览器的运行与自动判题反馈。\n\n面包房在面粉与黄油库存上限内生产 **可颂** (`croissants >= 0`) 与 **吐司** (`loaves >= 0`)。编辑器里的初始代码已写好全部约束，但故意留下了一个 bug：它错误地调用了最小化 (`minimize`)。\n\n1. 先直接点击 **「运行并判题」**，观察黄色的 **SUBOPTIMAL** 提示（全生产 `0` 个虽然合法，但利润为 `0`）。\n2. 将代码中的 **`minimize` 改为 `maximize`**（Python 标签页中把 `h.minimize(...)` 改为 `h.maximize(...)`），再次运行即可获得 **AC**！\n\n<!-- section:io -->\n- **输入**：`flourCap`、`butterCap`、单位利润（`croissantProfit`, `loafProfit`）与单位原料消耗（`croissantFlour`, `croissantButter`, `loafFlour`, `loafButter`）。\n- **输出**：`{ croissants: number, loaves: number, totalProfit: number }`\n\n<!-- section:example -->\n当 `flourCap = 120`, `butterCap = 70`，可颂（利润 40，面粉 2，黄油 1）与吐司（利润 70，面粉 3，黄油 2）时，`croissants = 30, loaves = 20` 可恰好用完所有原料，获得最大总利润 **`2600`**。\n\n<!-- section:hint1 -->\n在 WaSHI (TypeScript) 标签页中把 `import` 和 `m.objective(...)` 里的 `minimize` 改为 `maximize`；在 Python (`highspy`) 标签页中把 `h.minimize(...)` 改为 `h.maximize(...)`。\n\n<!-- section:hint2 -->\n注意 **SUBOPTIMAL（满足约束但非最优）** 与 **VIOLATION（违反约束）** 的区别：生产 `0` 个没有超库存，因此只是次优而非不可行。学会区分这两种反馈是优化调试的关键一步。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max \\quad & p_c c + p_l \\ell \\\\\n\\text{s.t.} \\quad & f_c c + f_l \\ell \\le F_{\\text{cap}} \\\\\n& b_c c + b_l \\ell \\le B_{\\text{cap}} \\\\\n& c, \\ell \\ge 0\n\\end{aligned}\n$$\n",
+  "judge": {
+    "m0": "返回值必须是包含 { croissants, loaves, totalProfit } 的对象。",
+    "m1": "产量不能为负数（当前: croissants={p0}, loaves={p1}）。",
+    "m2": "面粉用量 ({p0}) 超过库存上限 ({p1})。",
+    "m3": "黄油用量 ({p0}) 超过库存上限 ({p1})。",
+    "m4": "返回的 totalProfit ({p0}) 与按产量计算的利润 ({p1}) 不一致。",
+    "m5": "方案满足约束，但总利润 ({p0}) 低于最优值 ({p1})。请检查优化方向！",
+    "m6": "正确！已达到最优利润 {p0}。"
+  }
+}

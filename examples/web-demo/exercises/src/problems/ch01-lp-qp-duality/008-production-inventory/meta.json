@@ -1,0 +1,27 @@
+{
+  "id": "008",
+  "slug": "production-inventory",
+  "chapter": 1,
+  "order": 8,
+  "role": "core",
+  "scaffold": "scratch",
+  "difficulty": 2,
+  "estimatedMinutes": 12,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "003",
+  "slug": "fractional-charnes-cooper",
+  "chapter": 1,
+  "order": 3,
+  "role": "twist",
+  "scaffold": "fill-in",
+  "difficulty": 2,
+  "estimatedMinutes": 12,
+  "paradigms": [
+    "LP"
+  ],
+  "runtimes": [
+    "washi",
+    "highspy"
+  ],
+  "solvers": [
+    "highs",
+    "glpk",
+    "z3"
+  ],
+  "provenance": {
+    "generatedBy": "AI (Gemini)",
+    "autoVerified": true,
+    "reviewedBy": []
+  }
+}

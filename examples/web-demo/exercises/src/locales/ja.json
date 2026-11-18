@@ -1,0 +1,151 @@
+{
+  "ui": {
+    "brandTitle": "数理最適化100本ノック",
+    "brandSubtitle": "LP · MIP · 凸QP · CP · SMT ブラウザ演習道場 (WaSHI & highspy)",
+    "navDocs": "ドキュメント",
+    "navShowcase": "ショーケース",
+    "navPlayground": "Playground",
+    "backToMap": "← クエスト一覧へ",
+    "startFirstBtn": "▶ #001 から始める",
+    "resumeBtn": "▶ 続きから（#{id}）",
+    "tutorialBannerTitle": "はじめての方へ：3分チュートリアル（T1〜T2・スキップ可）",
+    "tutorialBannerDesc": "採点画面の見方や変数・制約の基本APIを2問で確認できます。100問の進捗カウント外なので経験者はスキップできます。",
+    "tutorialDismissBtn": "スキップする",
+    "tutorialRestoreBtn": "チュートリアルを表示（T1〜T2）",
+    "progressLabel": "{solved} / {total} クリア",
+    "starsLabel": "★ {stars} / {maxStars} 習熟度",
+    "comingSoonBadge": "順次公開予定",
+    "chapterPrefix": "第{n}章",
+    "roleLabels": {
+      "tutorial": "チュートリアル",
+      "intro": "導入",
+      "core": "定番",
+      "twist": "ひねり・罠",
+      "boss": "章末ボス 👑"
+    },
+    "provenance": {
+      "aiDrafted": "AI-Drafted",
+      "solverVerified": "Solver-Verified (両ソルバー一致検証済)",
+      "reviewedBy": "Reviewed by {handles}",
+      "feedbackHint": "両ソルバーによる全ケース自動検算済み（人間レビュー前）。"
+    },
+    "tabs": {
+      "washi": "WaSHI (TypeScript)",
+      "highspy": "Python (highspy)",
+      "tablistLabel": "実行ランタイム切り替え",
+      "pythonLazyNote": "Pyodide v0.29 (highspy) は Python タブで初回実行するときだけバックグラウンド読込されます。"
+    },
+    "sections": {
+      "scenario": "問題（業務シナリオ）",
+      "io": "入出力仕様",
+      "example": "入出力例",
+      "hintsTitle": "段階的ヒント・定式化解説",
+      "hint1": "ヒント 1：決定変数とモデルの組み立て方",
+      "hint2": "ヒント 2：初学者がハマりやすい罠",
+      "formulation": "数理定式化と解説（解答後に読む）"
+    },
+    "editor": {
+      "label": "あなたの solve() 実装",
+      "runBtn": "▶ 実行して採点",
+      "runningBtn": "実行中…",
+      "loadingPyodide": "Pyodide v0.29 WebAssembly 読込中…",
+      "loadingHighspy": "highspy パッケージ読込中…",
+      "runningPython": "Python ソルバー実行中…",
+      "resetBtn": "リセット",
+      "solutionBtn": "模範解答を読み込む",
+      "confirmSolution": "このタブの現在のコードを模範解答で上書きしますか？",
+      "shortcutHint": "Ctrl/Cmd + Enter で実行"
+    },
+    "results": {
+      "title": "採点結果",
+      "placeholder": "上の solve() を編集して「実行して採点」を押すと、全テストケースを自動検証します。",
+      "verdicts": {
+        "AC": "AC — 最適解！",
+        "SUBOPTIMAL": "SUBOPTIMAL — 惜しい！実行可能ですが最適ではありません",
+        "VIOLATION": "VIOLATION — ルール違反があります",
+        "INFEASIBLE": "INFEASIBLE — 解が見つかりませんでした",
+        "RUNTIME_ERROR": "ERROR — 実行時エラー"
+      },
+      "caseLabel": "Case {num}: {name}",
+      "objectiveDiff": "あなたの目的値: {yours}  ｜  最適値: {optimal}",
+      "metricsLineNoMs": "変数: {vars} · 制約: {constrs}",
+      "metricsLineWithMs": "変数: {vars} · 制約: {constrs} · 求解: {ms} ms",
+      "previewLabel": "出力解サマリー",
+      "lpPreviewLabel": "生成された LP 数式を見る (toLpString)",
+      "consoleLabel": "コンソール出力",
+      "nextQuestBtn": "次のクエストへ (#{nextId}) →"
+    },
+    "backup": {
+      "openBtn": "進捗保存",
+      "title": "進捗のバックアップ（localStorage）",
+      "desc": "クリアした星とタブ別の書きかけコードはこのブラウザに保存されます。別端末へ移す場合は JSON を書き出してインポートしてください。",
+      "exportBtn": "JSON ダウンロード",
+      "copyBtn": "JSON コピー",
+      "copied": "コピーしました",
+      "importBtn": "JSON 読み込み",
+      "importPlaceholder": "エクスポートした JSON を貼り付け...",
+      "importSuccess": "進捗を復元しました。",
+      "importError": "読み込み失敗: {msg}",
+      "resetAllBtn": "全進捗を消去",
+      "resetAllConfirm": "ブラウザに保存されたすべての星とコードを消去しますか？",
+      "closeBtn": "閉じる"
+    },
+    "theme": {
+      "toggleLabel": "カラーテーマ切替",
+      "switchToDark": "ダーク",
+      "switchToLight": "ライト"
+    },
+    "localeNames": {
+      "en": "EN",
+      "ja": "日本語",
+      "zh": "中文"
+    }
+  },
+  "chapters": {
+    "1": {
+      "title": "連続最適化（LP・凸QP）と双対・感度分析",
+      "description": "文章を数理モデルに翻訳し、比率・平準化・目的関数の圧力・凸QP・潜在価格（Shadow Price）と被約費用までを体得します。"
+    },
+    "2": {
+      "title": "混合整数計画（MIP）の定式化イディオム道場",
+      "description": "固定費・半連続変数、インジケータの向きとチェイン結合、SOS2近似、McCormick緩和、パターン列挙への発想転換。"
+    },
+    "3": {
+      "title": "論理充足と SMT モデリング",
+      "description": "一意性証明、背理法推論、ルール矛盾の Unsat Core 特定、MaxSAT 修復、実数＋論理（SMT-LIRA）の検証。"
+    },
+    "4": {
+      "title": "制約プログラミング（CP / LCG）とグローバル制約",
+      "description": "distinct・at・allowed・disjoint・cumulative の各グローバル制約、対称性除去、第1回 MIP vs CP vs SMT 対決。"
+    },
+    "5": {
+      "title": "ネットワーク・全単模性・連結性・配送計画 (VRP)",
+      "description": "全単模性の威力、最大流最小カット、仮想フローによる領域連結性、CVRP / VRPTW、テリトリー設計。"
+    },
+    "6": {
+      "title": "生産・在庫・サプライチェーン・エネルギー運用",
+      "description": "強定式化ロットサイズ、多段階MRP、サプライヤー配分、CFLP、発電機起動停止計画、蓄電池ピークカット。"
+    },
+    "7": {
+      "title": "スケジューリング・シフト・時間割・収益管理",
+      "description": "ジョブショップ対決、RCPSP、連勤・夜勤インターバル、大学時間割、手術室スケジュール、座席在庫制御。"
+    },
+    "8": {
+      "title": "要件監査・モデルデバッグ・高速化の技術",
+      "description": "過去実績データによる偽ルール監査、3分類デバッグ、逆向き最適化抜け穴テスト、Unsat Core vs 弾性スラック、ウォームスタート。"
+    },
+    "9": {
+      "title": "多目的・公平性・リスケジュール・不確実性最適化",
+      "description": "ゴールプログラミング、辞書式最適化、パレート曲線、公平性指標比較、最小変更リスケ、2段階確率計画、CVaR、ロバスト最適化。"
+    },
+    "10": {
+      "title": "大規模分解法とマルチソルバー・ハイブリッド解法",
+      "description": "遅延カットTSP、列生成法（CSP/シフト/VRP）、Dantzig-Wolfe、Benders / LBBD、ラグランジュ緩和、LNS、S&OP 総合卒業演習。"
+    }
+  },
+  "judgeHelpers": {
+    "expectFiniteNumber": "フィールド「{field}」は有限な数値である必要があります（実際: {actual}）。",
+    "expectArrayLength": "フィールド「{field}」は長さ {length} の配列である必要があります。",
+    "expectArrayElementFinite": "{field}[{index}] は有限な数値である必要があります（実際: {actual}）。"
+  }
+}

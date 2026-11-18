@@ -39,6 +39,29 @@ aside: false
       </div>
     </div>
   </div>
+
+  <div class="washi-showcase-card">
+    <div class="washi-showcase-thumb">
+      <img src="/showcase/thumb-exercises.png" alt="数理优化百题训练" class="washi-showcase-thumb-img" loading="lazy" />
+    </div>
+    <div class="washi-showcase-card-body">
+      <div>
+        <div class="washi-showcase-card-top">
+          <span class="washi-showcase-icon">🏋️</span>
+          <span class="washi-showcase-badge">WaSHI TS × Python highspy</span>
+        </div>
+        <div class="washi-showcase-title">
+          <a href="/exercises/?lang=zh" target="_self" class="washi-showcase-title-link">数理优化百题训练</a>
+        </div>
+        <p class="washi-showcase-desc">
+          浏览器本地运行的交互式数理优化百题训练营，支持 TypeScript（WaSHI）与 Python（Pyodide <code>highspy</code>）双语言标签即时评测、分步提示与本地进度持久化。
+        </p>
+      </div>
+      <div class="washi-showcase-actions">
+        <a href="/exercises/?lang=zh" target="_self" class="washi-showcase-cta">开始训练 →</a>
+      </div>
+    </div>
+  </div>
 </div>
 
 </div>

@@ -663,6 +663,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         gettingStartedLink: "/getting-started/",
         showcaseText: "Showcase",
         showcaseLink: "/showcase/",
+        exercisesText: "100 Exercises",
+        exercisesLink: "/exercises/",
         sheepTitle: "Fluffy Sheep Pasture Enclosure",
       },
       {
@@ -674,6 +676,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         gettingStartedLink: "/ja/getting-started/",
         showcaseText: "\u30B7\u30E7\u30FC\u30B1\u30FC\u30B9",
         showcaseLink: "/ja/showcase/",
+        exercisesText: "100\u672C\u30CE\u30C3\u30AF",
+        exercisesLink: "/exercises/?lang=ja",
         sheepTitle: "\u3082\u3075\u3082\u3075\u7F8A\u306E\u7267\u5834\u56F2\u3044",
       },
       {
@@ -685,6 +689,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         gettingStartedLink: "/zh/getting-started/",
         showcaseText: "案例展示",
         showcaseLink: "/zh/showcase/",
+        exercisesText: "百题训练",
+        exercisesLink: "/exercises/?lang=zh",
         sheepTitle: "毛茸茸绵羊的牧场围栏",
       },
     ] as const;
@@ -695,6 +701,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(nav.map((item: { text: string; link: string }) => ({ text: item.text, link: item.link }))).toEqual([
         { text: loc.gettingStartedText, link: loc.gettingStartedLink },
         { text: loc.showcaseText, link: loc.showcaseLink },
+        { text: loc.exercisesText, link: loc.exercisesLink },
       ]);
 
       const gsRegex = new RegExp(nav[0].activeMatch);
@@ -731,19 +738,19 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         showcaseRaw.matchAll(/<div\s+([^>]*\bclass="washi-showcase-card(?:\s+[^"]*)?"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(cardDivs).toHaveLength(6);
+      expect(cardDivs).toHaveLength(7);
 
       const ctaAnchors = Array.from(
         showcaseRaw.matchAll(/<a\s+([^>]*class="washi-showcase-cta"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(ctaAnchors).toHaveLength(6);
+      expect(ctaAnchors).toHaveLength(7);
 
       const thumbImgs = Array.from(
         showcaseRaw.matchAll(/<img\s+([^>]*class="washi-showcase-thumb-img"[^>]*)>/g),
         (m) => m[1]
       );
-      expect(thumbImgs).toHaveLength(6);
+      expect(thumbImgs).toHaveLength(7);
       for (const imgAttrs of thumbImgs) {
         const srcMatch = imgAttrs.match(/\bsrc="([^"]+)"/);
         expect(srcMatch, `Missing src in showcase thumbnail <img ${imgAttrs}>`).not.toBeNull();
@@ -780,16 +787,17 @@ describe("CodeRunner documentation snippets syntax validity", () => {
         expect(hrefMatch, `Missing href in showcase CTA <a ${attrs}>`).not.toBeNull();
         return hrefMatch![1];
       });
+      const langParam = loc.key === "root" ? "en" : loc.key;
+      const expectedExercisesHref = loc.key === "root" ? "/exercises/" : `/exercises/?lang=${loc.key}`;
       expect(primaryHrefs).toEqual([
         "/demo/",
+        expectedExercisesHref,
         "/apps/ai-shift/",
         "/apps/ai-timetable/",
         "/games/demon-castle-shift/",
         "/games/mofumofu-sheep/",
         "/games/titan-pack/",
       ]);
-
-      const langParam = loc.key === "root" ? "en" : loc.key;
       const theoryHrefs = theoryAnchors.map((attrs) => {
         const hrefMatch = attrs.match(/\bhref="([^"]+)"/);
         expect(hrefMatch, `Missing href in showcase theory CTA <a ${attrs}>`).not.toBeNull();
@@ -848,7 +856,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       "utf-8"
     );
     expect(themeIndexRaw).toContain("router.onBeforeRouteChange");
-    expect(themeIndexRaw).toMatch(/demo\|apps\|games/);
+    expect(themeIndexRaw).toMatch(/demo\|apps\|games\|exercises/);
 
     const castleIndexRaw = fs.readFileSync(
       path.resolve(process.cwd(), "examples/web-demo/games/demon-castle-shift/index.html"),

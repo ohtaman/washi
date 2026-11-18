@@ -1,0 +1,30 @@
+{
+  "title": "#009. 潜在価格（双対変数）とボトルネック特定",
+  "subtitle": "LPの双対変数（潜在価格）とスラックを読み取り、資源を1単位増やしたときの限界利益を算出する。",
+  "tags": [
+    "LP",
+    "双対性",
+    "潜在価格",
+    "感度分析"
+  ],
+  "caseNames": [
+    "2製品・3資源（2制約がボトルネック、1資源に余剰スラック10）",
+    "3製品・4資源（資源2の潜在価格 45、資源3の潜在価格 5）"
+  ],
+  "markdown": "# #009. 潜在価格（双対変数）とボトルネック特定\n\n<!-- section:scenario -->\n最適な生産量 `quantities[j]` を求めるだけでなく、実務では「**どの資源が本当のボトルネックか**」「**その資源をあと 1 単位増やせたら最大利益はいくら増えるか（限界価値）**」を知ることが重要になります。\n\n資源制約つき最大利益生産計画（LP）を解き、最適生産量・最大利益に加えて、各資源の **潜在価格（シャドウプライス / `c.dual`）**、**余剰資源（スラック / `c.slack`）**、およびボトルネック判定 `isBottleneck[k]` を返してください。\n\n<!-- section:io -->\n- **入力 (`P009Input`)**:\n  - `margins: number[]` — 各製品 $j$ の単位粗利\n  - `usages: number[][]` — 製品 1 単位あたりの資源消費行列 `usages[k][j]`\n  - `capacities: number[]` — 各資源 $k$ の供給上限\n- **出力 (`P009Output`)**:\n  - `quantities: number[]` — 最適生産量\n  - `optimalProfit: number` — 最大総利益\n  - `shadowPrices: number[]` — 各資源制約の潜在価格 $y_k \\ge 0$\n  - `slacks: number[]` — 各資源の未使用スラック `capacities[k] - sum_j usages[k][j] * quantities[j]`\n  - `isBottleneck: boolean[]` — 資源 $k$ がボトルネック（`shadowPrices[k] > 1e-5`）かどうかの真偽値配列\n\n<!-- section:example -->\nケース 1（`margins = [50, 40]`, `usages = [[2, 1], [1, 2], [1, 1]]`, `capacities = [100, 80, 70]`）の場合：\n\n- 最適生産量は `quantities = [40, 20]`、最大利益は **`2,800`** です。\n- 資源 0 と 1 は限界まで使い切られており（`slack = 0`）、潜在価格は **`20`** と **`10`** です（資源 0 を 1 単位増強すると利益がちょうど `20` 増えます）。\n- 資源 2 は使用量 `60 <= 70` で `slack = 10` 余っているため、追加増強しても利益が増えず **`shadowPrices[2] = 0`** となります（相補スラック条件）。強双対性 `100*20 + 80*10 + 70*0 = 2,800` もぴったり成立しています。\n\n<!-- section:hint1 -->\n制約を追加したときの返り値（制約ハンドル）を配列に保持しておきましょう！\n- **WaSHI (`TypeScript`)**: `const c = m.constraint(...)` を保持し、`await m.solve()` の後に **`c.dual`** と **`c.slack`** を参照します。\n- **Python (`highspy`)**: `c = h.addConstr(...)` を保持し、解いたあと `sol = h.getSolution()` から **`sol.row_dual[c.index]`** と **`cap - sol.row_value[c.index]`** を読み取ります。\n\n<!-- section:hint2 -->\nジャッジは双対理論の3定理を使ってあなたの `shadowPrices` を独立検証します：\n1. **双対実行可能性**：`shadowPrices[k] >= 0` かつ各製品 $j$ について $\\sum_k \\text{usages}[k][j] \\, y_k \\ge \\text{margins}[j]$。\n2. **相補スラック条件**：`slacks[k] > 0` の資源では必ず `shadowPrices[k] == 0`。\n3. **強双対性**：$\\sum_k \\text{capacities}[k] \\, y_k = \\text{optimalProfit}$。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\text{(主問題 Primal)} \\quad \\max_{x \\ge 0} \\; c^\\top x \\quad \\text{s.t.} \\; Ax \\le b\n\\qquad\\Longleftrightarrow\\qquad\n\\text{(双対問題 Dual)} \\quad \\min_{y \\ge 0} \\; b^\\top y \\quad \\text{s.t.} \\; A^\\top y \\ge c\n\\end{aligned}\n$$\n\n強双対性より最適値で $c^\\top x^* = b^\\top y^*$ が成り立ち、非退縮のもとで $y_k^* = \\frac{\\partial V^*(b)}{\\partial b_k}$（資源 $k$ の限界価値）を与えます。\n",
+  "judge": {
+    "m0": "返り値は { quantities, optimalProfit, shadowPrices, slacks, isBottleneck } のオブジェクトである必要があります。",
+    "m1": "isBottleneck は長さ {p0} の boolean 配列である必要があります。",
+    "m2": "quantities[{p0}] は 0 以上である必要があります（実際: {p1}）。",
+    "m3": "資源 {p0} の使用量 ({p1}) が上限 ({p2}) を超えています。",
+    "m4": "slacks[{p0}] ({p1}) が実際の余剰資源 ({p2}) と一致しません。",
+    "m5": "返された optimalProfit ({p0}) が生産量に基づく利益 ({p1}) と一致しません。",
+    "m6": "制約は満たしていますが、利益 ({p0}) が最適値 ({p1}) に達していません。",
+    "m7": "最大化問題の上限(<=)制約に対する潜在価格 shadowPrices[{p0}] は非負である必要があります（実際: {p1}）。",
+    "m8": "相補スラック条件違反：資源 {p0} は余剰 ({p1}) があるため潜在価格は 0 であるはずです（実際: {p2}）。",
+    "m9": "isBottleneck[{p0}] が正しくありません（期待: {p1}, shadowPrice={p2}, slack={p3}）。",
+    "m10": "製品 {p0} の双対実行可能条件違反：資源の帰属価値 ({p1}) が粗利 ({p2}) を下回っています。",
+    "m11": "強双対性が成立していません：sum(capacities * shadowPrices) = {p0} != 最適利益 ({p1})。",
+    "m12": "正解！ 最適生産量と双対変数（潜在価格 = [{p1}]）を正しく抽出できました。"
+  }
+}

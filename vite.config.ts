@@ -144,6 +144,7 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, "examples/web-demo/index.html"),
         demo: resolve(import.meta.dirname, "examples/web-demo/demo/index.html"),
+        exercises: resolve(import.meta.dirname, "examples/web-demo/exercises/index.html"),
         ...discoverAppInputs(import.meta.dirname),
         ...discoverGameInputs(import.meta.dirname),
       },

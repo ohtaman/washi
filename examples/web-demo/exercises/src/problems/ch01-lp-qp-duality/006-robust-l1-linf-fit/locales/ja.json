@@ -1,0 +1,21 @@
+{
+  "title": "#006. L1+L∞ ロバスト回帰（絶対値線形化と自由変数）",
+  "subtitle": "絶対値 |a x_i + b - y_i| と最大誤差を線形展開しつつ、自由変数の下界 lb = -∞ を正しく指定する。",
+  "tags": [
+    "LP",
+    "ロバスト回帰",
+    "自由変数",
+    "絶対値の線形化"
+  ],
+  "caseNames": [
+    "外れ値を含む上昇データ（切片 b が負になるケース）",
+    "傾き a と切片 b の両方が負になる下降トレンド（自由変数チェック）"
+  ],
+  "markdown": "# #006. L1+L∞ ロバスト回帰（絶対値線形化と自由変数）\n\n<!-- section:scenario -->\n外れ値を含む観測点 `(x[i], y[i])`（$i = 0, \\dots, n-1$）に対し、総絶対誤差（$L_1$）と最大誤差（チェビシェフ $L_\\infty$）の重み付き和を最小化する直線 $\\hat{y}_i = a \\, x_i + b$ を求めます：\n\n$$\n\\min_{a, b \\in \\mathbb{R}} \\sum_{i=0}^{n-1} |a \\, x_i + b - y_i| + \\lambda \\max_{0 \\le i < n} |a \\, x_i + b - y_i|\n$$\n\nここで $\\lambda = \\text{linfWeight} \\ge 0$ です。**傾き $a$ も切片 $b$ も負の値をとり得る自由変数**である点に注意してください！\n\n<!-- section:io -->\n- **入力 (`P006Input`)**:\n  - `x: number[]`, `y: number[]` — 観測データの座標配列\n  - `linfWeight: number` — 最大誤差項（$L_\\infty$）の重み $\\lambda$\n- **出力 (`P006Output`)**:\n  - `slope: number` — 推定された傾き $a \\in \\mathbb{R}$\n  - `intercept: number` — 推定された切片 $b \\in \\mathbb{R}$\n  - `objective: number` — 最小化された誤差値 $L_1 + \\lambda L_\\infty$\n\n<!-- section:example -->\n`x = [1, 2, 3, 4, 5]`, `y = [3, 5, 7, 9, 25]`, `linfWeight = 2.0` のとき：\n\n- 点 `(5, 25)` が外れ値になっており、$L_1 + 2 L_\\infty$ を最小化する直線は **`slope = 4.8`, `intercept = -4.6`**（最適値 **`28.0`**）になります。\n- **要注意の罠**：`intercept = -4.6` は **負の数** です！ ソルバーのデフォルト下界（`lb = 0`）のまま解くと $b \\ge 0$ に縛られて最適解が出ません（`SUBOPTIMAL`）。\n\n<!-- section:hint1 -->\nほぼすべてのLPソルバーは、明示しない限り変数を「非負（`lb = 0`）」として作ります！ WaSHIでは `lb: -Infinity`、`highspy` では `lb=-highspy.kHighsInf, ub=highspy.kHighsInf` を指定して `slope` と `intercept` を自由変数に解放してください（ケース 2 では傾きも切片も両方負になります）。\n\n<!-- section:hint2 -->\n絶対値 $|a x_i + b - y_i|$ は各点ごとの非負誤差変数 `e[i] >= 0` を用意して2本の不等式で線形化できます：\n- `e[i] >= a * x[i] + b - y[i]`\n- `e[i] >= y[i] - (a * x[i] + b)`\nさらに最大誤差を表す補助変数 `mErr >= 0`（全点について `mErr >= e[i]`）を置き、`sum(e) + linfWeight * mErr` を最小化してください。\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\min_{a, b \\in \\mathbb{R}, \\, e, m \\ge 0} \\quad & \\sum_{i=0}^{n-1} e_i + \\lambda \\, m \\\\\n\\text{s.t.} \\quad & -e_i \\le a x_i + b - y_i \\le e_i && \\forall i \\\\\n& e_i \\le m && \\forall i \\\\\n& a, b \\in (-\\infty, +\\infty), \\; e_i \\ge 0, \\; m \\ge 0\n\\end{aligned}\n$$\n\n現実のデータ解析や差分のモデリングでは、「変数が負をとり得るかどうか」を最初に確認することがデフォルト `lb = 0` バグを防ぐ鉄則です。\n",
+  "judge": {
+    "m0": "返り値は { slope, intercept, objective } のオブジェクトである必要があります。",
+    "m1": "返された objective ({p0}) が実際の誤差 L1 + {p1}*L∞ ({p2}) と一致しません。",
+    "m2": "目的関数値 ({p0}) が最適値 ({p1}) より大きいです。slope や intercept の下界がデフォルト 0 のままになっていませんか？",
+    "m3": "正解！ 自由変数を正しく扱い、最適ロバスト回帰 ({p0}) を求められました。"
+  }
+}

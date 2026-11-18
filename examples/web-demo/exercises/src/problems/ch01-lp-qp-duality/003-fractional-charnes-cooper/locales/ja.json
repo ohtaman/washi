@@ -1,0 +1,25 @@
+{
+  "title": "#003. 利益率の最大化（分数計画のCharnes-Cooper変換）",
+  "subtitle": "割り算を含む線形分数計画を、変数変換 t = 1/g(x), y = t・x で厳密なLPに帰着する。",
+  "tags": [
+    "LP",
+    "分数計画",
+    "Charnes-Cooper変換"
+  ],
+  "caseNames": [
+    "3製品ライン（固定費オフセット・環境製品比率制約あり）",
+    "環境配慮ライン比率 30% 以上・総生産上限あり"
+  ],
+  "markdown": "# #003. 利益率の最大化（分数計画のCharnes-Cooper変換）\n\n<!-- section:scenario -->\n製造会社は $n$ 本の製品ラインの連続生産量 $x_i \\in [0, \\text{capacities}[i]]$ を決定します。通常の総利益最大化ではなく、投資コストに対する **効率比率（ROI）** を最大化したいとします：\n\n$$\n\\max_x \\; \\frac{\\text{baseRevenue} + \\sum_i \\text{revenues}[i] \\, x_i}{\\text{baseCost} + \\sum_i \\text{costs}[i] \\, x_i}\n$$\n\nただし合計生産量は `minTotal <= sum(x) <= maxTotal` を満たし、さらに環境規制により `greenIndex` 番目の製品ラインが総生産量の少なくとも `minGreenShare` 以上（`x[greenIndex] >= minGreenShare * sum(x)`）を占める必要があります。\n\n<!-- section:io -->\n- **入力 (`P003Input`)**:\n  - `baseRevenue: number`, `baseCost: number` — 分子・分母の固定オフセット（分母は常に正）\n  - `revenues: number[]`, `costs: number[]` — 製品ライン $i$ の単位あたり売上貢献・コスト\n  - `capacities: number[]` — 各ラインの生産上限\n  - `minTotal: number`, `maxTotal: number` — 総生産量の下限・上限\n  - `greenIndex: number`, `minGreenShare: number` — 環境配慮ラインのインデックスと最低構成比\n- **出力 (`P003Output`)**:\n  - `quantities: number[]` — 最適生産量ベクトル $x$\n  - `ratio: number` — 最大化された効率比率\n\n<!-- section:example -->\n`baseRevenue = -60`, `baseCost = 15`, `revenues = [20, 15, 22]`, `costs = [8, 10, 12]`, `capacities = [30, 30, 20]`, `minTotal = 20`, `maxTotal = 50`, `greenIndex = 1`, `minGreenShare = 0.25` の場合：\n\n- 固定赤字 `-60` があるため、単体コスト比だけで少量生産すると分子が小さくなりすぎます。\n- 最適生産量は `quantities = [30, 10, 0]` となり、分子 `690`・分母 `355` で最大比率 **`690 / 355 ≈ 1.94366`** を達成します。\n\n<!-- section:hint1 -->\n線形計画ソルバーは決定変数同士の割り算を直接書けません。そこで分母の逆数 $t = \\frac{1}{\\text{baseCost} + \\sum_i c_i x_i} > 0$ を新たな変数にし、スケール変換された変数 $y_i = t \\cdot x_i \\ge 0$ を導入してみましょう！\n\n<!-- section:hint2 -->\n変数 $(t, y)$ を使うと次の厳密な線形計画になります：\n1. 正規化制約：**`baseCost * t + dot(costs, y) == 1`**\n2. 目的関数：**`maximize baseRevenue * t + dot(revenues, y)`**\n3. 各不等式の定数項に `t` を掛ける：`y[i] <= capacities[i] * t`、`minTotal * t <= sum(y) <= maxTotal * t`、`y[greenIndex] >= minGreenShare * sum(y)`。\n4. 最適解から **`quantities[i] = y[i] / t`** で元の変数を復元します！\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\max_{y \\ge 0, \\, t \\ge 0} \\quad & r_0 t + \\sum_{i=0}^{n-1} r_i y_i \\\\\n\\text{s.t.} \\quad & c_0 t + \\sum_{i=0}^{n-1} c_i y_i = 1 \\\\\n& y_i \\le U_i t && \\forall i \\\\\n& L_{\\text{tot}} t \\le \\sum_{i=0}^{n-1} y_i \\le U_{\\text{tot}} t \\\\\n& y_{\\text{green}} \\ge \\alpha \\sum_{i=0}^{n-1} y_i\n\\end{aligned}\n$$\n\n有界な実行可能領域上で分母が常に正であるため $t^* > 0$ が保証され、$x_i = y_i / t$ によって元の非線形分数計画と完全に同値な解が得られます。\n",
+  "judge": {
+    "m0": "返り値は { quantities, ratio } のオブジェクトである必要があります。",
+    "m1": "quantities[{p0}] は 0 以上である必要があります（実際: {p1}）。",
+    "m2": "quantities[{p0}] ({p1}) がライン上限 ({p2}) を超えています。",
+    "m3": "合計生産量 ({p0}) が範囲 [{p1}, {p2}] に収まっていません。",
+    "m4": "環境配慮ライン比率 ({p0}%) が下限 ({p1}%) 未満です。",
+    "m5": "分母の総コスト ({p0}) は正である必要があります。",
+    "m6": "返された ratio ({p0}) が実際の利益コスト比 ({p1}) と一致しません。",
+    "m7": "実行可能ですが、比率 ({p0}) が最適値 ({p1}) 未満です。",
+    "m8": "正解！ Charnes-Cooper変換により最大比率 {p0} を達成しました。"
+  }
+}

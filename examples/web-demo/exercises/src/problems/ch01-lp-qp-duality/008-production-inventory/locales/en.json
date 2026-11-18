@@ -1,0 +1,25 @@
+{
+  "title": "#008. Multi-Period Production & Inventory Smoothing",
+  "subtitle": "Balance overtime premiums against warehouse holding costs across coupled time periods.",
+  "tags": [
+    "LP",
+    "Multi-Period",
+    "Inventory Flow"
+  ],
+  "caseNames": [
+    "4-quarter demand spike smoothed via inventory pre-build",
+    "5-period schedule with strict ending safety stock"
+  ],
+  "markdown": "# #008. Multi-Period Production & Inventory Smoothing\n\n<!-- section:scenario -->\nA factory plans regular production `regular[t] <= regCap[t]`, overtime production `overtime[t] <= otCap[t]`, and end-of-period inventory `inventory[t] <= invCap` over $T$ periods ($t = 0, \\dots, T-1$), starting with `initialInventory`.\n\nIn each period $t$, beginning stock plus total output must meet customer demand `demands[t]` with any surplus rolling into `inventory[t] >= 0`, and ending inventory after period $T-1$ must satisfy **`inventory[T-1] >= minFinalInventory`**. Minimize total regular (`regCost`), overtime (`otCost`), and holding (`holdCost`) costs.\n\n<!-- section:io -->\n- **Input (`P008Input`)**:\n  - `demands: number[]`, `regCap: number[]`, `otCap: number[]` — per-period demands and production caps\n  - `invCap: number` — warehouse storage capacity in every period\n  - `initialInventory: number`, `minFinalInventory: number` — boundary inventory levels\n  - `regCost: number`, `otCost: number`, `holdCost: number` — unit regular, overtime, and holding costs\n- **Output (`P008Output`)**:\n  - `regular: number[]`, `overtime: number[]`, `inventory: number[]` — non-negative schedules of length $T$\n  - `totalCost: number` — minimized total production + inventory cost\n\n<!-- section:example -->\nIn Case 1 (`demands = [80, 140, 120, 70]`, `regCap = [100]*4`, `initialInventory = 10`, `minFinalInventory = 10`, `regCost = 20`, `otCost = 32`, `holdCost = 3`):\n\n- Period 0 has spare regular capacity (`100` vs `80` demand), so producing at full `100` carries `30` units into Period 1 (`30 * 3 = 90` holding cost) instead of paying `+12`/unit overtime premium later (`+360`)!\n- Combining pre-built inventory (`inventory = [30, 0, 0, 10]`) with targeted overtime (`overtime = [0, 10, 20, 0]`) yields **`totalCost = 8,680`**.\n\n<!-- section:hint1 -->\nWrite the **inventory flow-conservation equation** connecting period $t-1$ to period $t$:\n$$\\text{inventory}[t] = \\text{prevInventory} + \\text{regular}[t] + \\text{overtime}[t] - \\text{demands}[t]$$\nwhere `prevInventory = initialInventory` when $t = 0$ and `inventory[t - 1]` for $t \\ge 1$.\n\n<!-- section:hint2 -->\nVerify the boundary conditions carefully:\n1. `0 <= regular[t] <= regCap[t]`, `0 <= overtime[t] <= otCap[t]`\n2. `0 <= inventory[t] <= invCap` for $t < T - 1$, and for $t = T - 1$ impose **`minFinalInventory <= inventory[T-1] <= invCap`**.\n3. Sum `regCost * regular[t] + otCost * overtime[t] + holdCost * inventory[t]` across all $t$.\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\min_{r, o, I \\ge 0} \\quad & \\sum_{t=0}^{T-1} \\left( c_r r_t + c_o o_t + c_h I_t \\right) \\\\\n\\text{s.t.} \\quad & I_t = I_{t-1} + r_t + o_t - d_t && \\forall t \\;\\; (I_{-1} = I_{\\text{init}}) \\\\\n& 0 \\le r_t \\le R_t, \\; 0 \\le o_t \\le O_t, \\; 0 \\le I_t \\le I_{\\max} && \\forall t \\\\\n& I_{T-1} \\ge I_{\\min,\\text{end}}\n\\end{aligned}\n$$\n\nInventory balance equations (`stock_next = stock_prev + inflow - outflow`) form a network-flow backbone appearing in supply chains, energy storage, and cash management!\n",
+  "judge": {
+    "m0": "Output must be an object { regular, overtime, inventory, totalCost }.",
+    "m1": "Period {p0} regular production ({p1}) must be in [0, {p2}].",
+    "m2": "Period {p0} overtime production ({p1}) must be in [0, {p2}].",
+    "m3": "Period {p0} ending inventory ({p1}) must be in [0, {p2}].",
+    "m4": "Period {p0} inventory balance violated: expected {p1}, got {p2}.",
+    "m5": "Final ending inventory ({p0}) is below minFinalInventory ({p1}).",
+    "m6": "Reported totalCost ({p0}) does not match computed production + holding cost ({p1}).",
+    "m7": "Valid production schedule, but cost ({p0}) exceeds minimum ({p1}).",
+    "m8": "Optimal multi-period production & inventory schedule found (totalCost = {p0})!"
+  }
+}

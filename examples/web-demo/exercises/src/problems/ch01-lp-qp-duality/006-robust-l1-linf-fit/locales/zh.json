@@ -1,0 +1,21 @@
+{
+  "title": "#006. 鲁棒 L1+L∞ 线性拟合（绝对值展开与自由变量）",
+  "subtitle": "将绝对残差与最大误差展开为线性不等式，并正确设置斜率与截距的无界下限 lb = -∞。",
+  "tags": [
+    "LP",
+    "鲁棒回归",
+    "自由变量",
+    "绝对值线性化"
+  ],
+  "caseNames": [
+    "含离群点的正斜率负截距数据集（a=4.8, b=-4.6）",
+    "斜率 a 与截距 b 同为负数的下降趋势（自由变量必测）"
+  ],
+  "markdown": "# #006. 鲁棒 L1+L∞ 线性拟合（绝对值展开与自由变量）\n\n<!-- section:scenario -->\n给定含异常离群点的二维观测数据 `(x[i], y[i])`（$i = 0, \\dots, n-1$）。为了在抗离群点能力（$L_1$）与最坏误差控制（$L_\\infty$）之间取得平衡，拟合直线 $\\hat{y}_i = a \\, x_i + b$ 以最小化：\n\n$$\n\\min_{a, b \\in \\mathbb{R}} \\sum_{i=0}^{n-1} |a \\, x_i + b - y_i| + \\lambda \\max_{0 \\le i < n} |a \\, x_i + b - y_i|\n$$\n\n其中 $\\lambda = \\text{linfWeight} \\ge 0$。注意**斜率 $a$ 与截距 $b$ 均为无符号限制的自由实数**（$a, b \\in \\mathbb{R}$）！\n\n<!-- section:io -->\n- **输入 (`P006Input`)**：\n  - `x: number[]`, `y: number[]` — 观测点横纵坐标\n  - `linfWeight: number` — Chebyshev 最大误差项权重 $\\lambda$\n- **输出 (`P006Output`)**：\n  - `slope: number` — 拟合斜率 $a \\in \\mathbb{R}$\n  - `intercept: number` — 拟合截距 $b \\in \\mathbb{R}$\n  - `objective: number` — 最小总目标误差 $L_1 + \\lambda L_\\infty$\n\n<!-- section:example -->\n对于 `x = [1, 2, 3, 4, 5]`、`y = [3, 5, 7, 9, 25]`、`linfWeight = 2.0`：\n\n- `(5, 25)` 是明显离群点，综合最优直线为 **`slope = 4.8`, `intercept = -4.6`**，最小误差 **`28.0`**。\n- **典型陷阱**：`intercept = -4.6` 是**负数**！如果沿用求解器默认下界 `lb = 0`，截距会被错误截断在 `0` 处，导致得到次优结果（`SUBOPTIMAL`）。\n\n<!-- section:hint1 -->\n几乎所有线性规划 API 默认都会创建非负变量（`lb = 0`）！务必在 WaSHI 中显式传入 `lb: -Infinity`，或在 `highspy` 中传入 `lb=-highspy.kHighsInf, ub=highspy.kHighsInf`，释放 `slope` 与 `intercept` 的下界（算例 2 中斜率和截距均为负数！）。\n\n<!-- section:hint2 -->\n引入每点非负误差变量 `e[i] >= 0` 展开绝对值：\n- `e[i] >= a * x[i] + b - y[i]`\n- `e[i] >= y[i] - (a * x[i] + b)`\n再引入最大误差上镜图变量 `mErr >= 0`（对所有点约束 `mErr >= e[i]`），最小化 `sum(e) + linfWeight * mErr` 即可！\n\n<!-- section:formulation -->\n$$\n\\begin{aligned}\n\\min_{a, b \\in \\mathbb{R}, \\, e, m \\ge 0} \\quad & \\sum_{i=0}^{n-1} e_i + \\lambda \\, m \\\\\n\\text{s.t.} \\quad & -e_i \\le a x_i + b - y_i \\le e_i && \\forall i \\\\\n& e_i \\le m && \\forall i \\\\\n& a, b \\in (-\\infty, +\\infty), \\; e_i \\ge 0, \\; m \\ge 0\n\\end{aligned}\n$$\n\n编写回归或差值模型时，先确认决策变量是否允许取负值，能帮你避开最隐蔽的默认 `lb = 0` 建模 Bug。\n",
+  "judge": {
+    "m0": "返回值必须是包含 { slope, intercept, objective } 的对象。",
+    "m1": "返回的 objective ({p0}) 与实际误差 L1 + {p1}*L∞ ({p2}) 不一致。",
+    "m2": "拟合目标值 ({p0}) 高于最优值 ({p1})。请检查是否忘记将斜率或截距设为无约束自由变量（lb = -∞）！",
+    "m3": "正确！成功处理无界自由变量并求得最优鲁棒线性拟合（目标 = {p0}）。"
+  }
+}

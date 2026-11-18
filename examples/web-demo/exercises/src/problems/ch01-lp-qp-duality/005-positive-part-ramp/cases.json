@@ -1,0 +1,32 @@
+[
+  {
+    "input": {
+      "demands": [
+        180,
+        260,
+        120,
+        280
+      ],
+      "maxOutput": 400,
+      "initialOutput": 100,
+      "runCost": 10,
+      "rampCost": 25
+    },
+    "expectedOptimal": 14300
+  },
+  {
+    "input": {
+      "demands": [
+        300,
+        100,
+        100,
+        300
+      ],
+      "maxOutput": 350,
+      "initialOutput": 300,
+      "runCost": 20,
+      "rampCost": 15
+    },
+    "expectedOptimal": 19000
+  }
+]
