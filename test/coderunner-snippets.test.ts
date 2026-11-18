@@ -3,8 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { stripTypeScriptTypes } from "node:module";
 import * as Washi from "../src/index.js";
+import "../src/modeler/solvers/pumpkin.js";
 import "../src/modeler/solvers/z3.js";
 import { transpileSnippetToJs } from "../docs/.vitepress/theme/utils/transpile.js";
+import {
+  resetSnippetRunnerStateForTests,
+  runWashiSnippet,
+} from "../docs/.vitepress/theme/utils/runSnippet.js";
 
 describe("CodeRunner documentation snippets syntax validity", () => {
   function getMarkdownFiles(dir: string): string[] {
@@ -48,8 +53,8 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     }
   }
 
-  it("extracts all documentation code snippets (33 expected across EN, JA, and ZH)", () => {
-    expect(snippets.length).toBe(33);
+  it("extracts all documentation code snippets (36 expected across EN, JA, and ZH)", () => {
+    expect(snippets.length).toBe(36);
   });
 
   for (const snippet of snippets) {
@@ -272,7 +277,7 @@ describe("CodeRunner documentation snippets syntax validity", () => {
     expect(mCloud2.status).toBe("Unknown");
   });
 
-  it("maintains full 30-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
+  it("maintains full 32-page human documentation parity across English (docs/), Chinese (docs/zh/), and Japanese (docs/ja/)", () => {
     const enHumanPages = mdFiles
       .map((f) => path.relative(docsDir, f).replace(/\\/g, "/"))
       .filter(
@@ -290,10 +295,12 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       .map((rel) => rel.slice(3))
       .sort();
 
-    expect(enHumanPages).toHaveLength(30);
+    expect(enHumanPages).toHaveLength(32);
     expect(enHumanPages).not.toContain("getting-started/ecosystem.md");
+    expect(enHumanPages).toContain("guide/constraint-programming.md");
     expect(enHumanPages).toContain("guide/formulation-tips.md");
     expect(enHumanPages).toContain("solvers/pumpkin.md");
+    expect(enHumanPages).toContain("examples/project-scheduling.md");
     expect(enHumanPages).toContain("showcase/index.md");
     expect(jaPages).toEqual(enHumanPages);
     expect(zhPages).toEqual(enHumanPages);
@@ -942,5 +949,85 @@ describe("CodeRunner documentation snippets syntax validity", () => {
       expect(lp).toContain("max_items: A + B + C <= 2");
       expect(lp).toContain("capacity_limit: 5 A + 10 B + 15 C <= 25");
     }
+  });
+
+  it("executes guide/constraint-programming.md snippets and examples/project-scheduling.md CodeRunner across EN, JA, and ZH", async () => {
+    const runCpBlock = async <T>(tsSource: string, tailExpr: string): Promise<T> => {
+      const stripped = stripTypeScriptTypes(tsSource)
+        .replace(/^\s*import\s+[\s\S]*?from\s+["']@ohtaman\/washi["'];?\s*$/gm, "")
+        .replace(/^\s*import\s+["']@ohtaman\/washi\/solvers\/pumpkin["'];?\s*$/gm, "");
+      const fn = new Function(
+        "Washi",
+        `const { Model, expr, distinct, disjoint, cumulative, allowed, not, max, at, and, minimize } = Washi;\nreturn (async () => {\n${stripped}\nreturn ${tailExpr};\n})();`
+      );
+      return fn(Washi) as Promise<T>;
+    };
+
+    for (const relPath of [
+      "docs/guide/constraint-programming.md",
+      "docs/ja/guide/constraint-programming.md",
+      "docs/zh/guide/constraint-programming.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const blocks = [...md.matchAll(/```typescript\n([\s\S]*?)```/g)].map((m) => m[1]);
+      expect(blocks, `Expected 3 TS blocks in ${relPath}`).toHaveLength(3);
+
+      // Block 1: IntervalSchedulingCP -> Optimal makespan 12
+      const sched = await runCpBlock<{ status: string; obj: number | null; valid: boolean }>(
+        blocks[0],
+        `({ status: m.status, obj: m.objectiveValue, valid: m.validateSolution().valid })`
+      );
+      expect(sched.status).toBe("Optimal");
+      expect(sched.obj).toBe(12);
+      expect(sched.valid).toBe(true);
+
+      // Block 2: MachineAssignmentCP -> Optimal cost 55, machine = { jobA: 1, jobB: 0, jobC: 2 }
+      const assign = await runCpBlock<{
+        status: string;
+        obj: number | null;
+        machine: { jobA: number | null; jobB: number | null; jobC: number | null };
+        valid: boolean;
+      }>(
+        blocks[1],
+        `({ status: m.status, obj: m.objectiveValue, machine: { jobA: machine.jobA.value, jobB: machine.jobB.value, jobC: machine.jobC.value }, valid: m.validateSolution().valid })`
+      );
+      expect(assign.status).toBe("Optimal");
+      expect(assign.obj).toBe(55);
+      expect(assign.machine).toEqual({ jobA: 1, jobB: 0, jobC: 2 });
+      expect(assign.valid).toBe(true);
+
+      // Block 3: SymmetryBreakingCP -> Optimal cost 1270, slot = [1, 2, 3]
+      const sym = await runCpBlock<{
+        status: string;
+        obj: number | null;
+        slots: Array<number | null>;
+        valid: boolean;
+      }>(
+        blocks[2],
+        `({ status: m.status, obj: m.objectiveValue, slots: slot.map((s) => s.value), valid: m.validateSolution().valid })`
+      );
+      expect(sym.status).toBe("Optimal");
+      expect(sym.obj).toBe(1270);
+      expect(sym.slots).toEqual([1, 2, 3]);
+      expect(sym.valid).toBe(true);
+    }
+
+    resetSnippetRunnerStateForTests();
+    for (const relPath of [
+      "docs/examples/project-scheduling.md",
+      "docs/ja/examples/project-scheduling.md",
+      "docs/zh/examples/project-scheduling.md",
+    ]) {
+      const md = fs.readFileSync(path.resolve(process.cwd(), relPath), "utf-8");
+      const runnerMatch = md.match(/<CodeRunner[\s\S]*?>[\s\S]*?```typescript\n([\s\S]*?)```[\s\S]*?<\/CodeRunner>/);
+      expect(runnerMatch, `Missing CodeRunner snippet in ${relPath}`).not.toBeNull();
+      const res = await runWashiSnippet(runnerMatch![1]);
+      expect(res.errorMsg, `CodeRunner execution failed in ${relPath}: ${res.errorMsg}`).toBeNull();
+      const joined = res.logs.join("\n");
+      expect(joined).toContain("Optimal");
+      expect(joined).toContain("12");
+      expect(joined).toContain("Unsat");
+    }
+    resetSnippetRunnerStateForTests();
   });
 });

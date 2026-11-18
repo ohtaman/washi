@@ -6,7 +6,7 @@
   </picture>
   <p><strong>TypeScript 数理优化建模器</strong></p>
   <p>
-    <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • SMT逻辑约束与冲突诊断</em>
+    <em>线性规划 (LP) • 混合整数规划 (MIP) • 凸二次规划 (QP) • 约束规划 (CP) • SMT逻辑约束与冲突诊断</em>
   </p>
   <p>
     <a href="./README.md">English</a> •
@@ -24,13 +24,13 @@
 
 ---
 
-**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) 是面向 TypeScript / JavaScript 的数理优化与约束编程代数建模器，受到 Python **PuLP** 的启发。你可以在应用代码中定义变量、目标函数和约束，并在 Node.js 或浏览器本地使用 **HiGHS**（默认）、**Z3** 或 **GLPK** 求解。
+**WaSHI** (WebAssembly-backed, Solver-independent, High-level modeling Interface) 是面向 TypeScript / JavaScript 的数理优化与约束编程代数建模器，受到 Python **PuLP** 的启发。你可以在应用代码中定义变量、目标函数和约束，并在 Node.js 或浏览器本地使用内置 **HiGHS**（默认）和 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`），或按需加载 **Z3**、**GLPK** 插件进行求解。
 
 ## ✨ 核心特性
 
 - **直观的代数语法**：通过 `` expr`30 * ${x} + 50 * ${y} <= 40` `` 与求和、点积（`sum`, `dot`）清晰编写公式与约束。
 - **跨 Node.js 与浏览器本地运行**：基于 WebAssembly，无需单独部署 Python 服务或本地编译 C/C++。
-- **求解器无关**：内置 **HiGHS**，支持按需加载 **Z3**、**GLPK** 插件或自定义求解器适配器。
+- **求解器无关**：内置零外部依赖的 **HiGHS**（LP/MIP/QP）与 **Pumpkin**（CP/LCG），并支持按需加载 **Z3**、**GLPK** 插件或自定义求解器适配器。
 - **可满足性判定与冲突诊断**：支持逻辑与算术约束的可满足性判定，并在模型不可行时定位矛盾约束。
 - **大规模分解算法**：内置列生成法与 Benders 分解支持。
 
@@ -47,9 +47,10 @@
 
 ```bash
 npm install @ohtaman/washi
+# HiGHS (LP/MIP/QP) 与 Pumpkin (CP/LCG, @ohtaman/washi/solvers/pumpkin) 已内置打包，无需额外依赖
 
-# 可选求解器插件
-npm install z3-solver   # 用于 SMT 逻辑与冲突诊断
+# 可选 peer-dependency 求解器插件
+npm install z3-solver   # 用于 SMT 逻辑与包含连续变量的精确冲突诊断
 npm install glpk.js     # 用于 GLPK 求解器 (GPL-3.0)
 
 # 可选：为 AI 编程助手（Claude Code, Cursor, Codex 等）安装建模技能
@@ -77,10 +78,10 @@ console.log(`生产计划: x=${x.value}, y=${y.value} (最大利润: $${m.object
 
 | 求解器 | 许可证 | 支持问题类型 | 主要用途 | 引入方式 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数值优化与弹性冲突修复诊断 | 默认内置 |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 逻辑, 有界整数 | 组合调度与免 COOP/COEP 的 `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（内置 WASM） |
-| **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 逻辑, MIP | 逻辑规则、可满足性判定与精确 `unsatCore` | `import "@ohtaman/washi/solvers/z3"` |
-| **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 线性与混合整数规划 | `import "@ohtaman/washi/solvers/glpk"` |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数值优化与弹性冲突修复诊断 | 默认内置（零额外依赖） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 逻辑, 有界整数 | 组合调度与免 COOP/COEP 的 `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（内置 WASM，零额外依赖） |
+| **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 逻辑, MIP | 逻辑规则、可满足性判定与精确 `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
+| **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 线性与混合整数规划 | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | 单元与集成测试模拟响应 | 内置 (`MockSolver`) |
 
 导入对应插件后，可在 `new Model(...)`、`m.solve(...)` 或 `m.check(...)` 中传入 `{ solver: "pumpkin" }`、`{ solver: "z3" }` 或 `{ solver: "glpk" }`。
@@ -136,15 +137,46 @@ await m.solve();
 console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 ```
 
-### 3. SMT 逻辑规则与冲突诊断 (`m.check`)
+### 3. 约束规划与析取调度 (Pumpkin)
+
+使用内置的 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）求解有界整数调度与 CP 全局约束（`disjoint`、`distinct`、`cumulative`、`allowed`），无需任何额外依赖：
+
+```ts
+import { Model, expr, disjoint, distinct, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+const m = new Model("WorkshopCP", { solver: "pumpkin" });
+const start = m.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
+const bench = m.integer(["cut", "weld", "paint"] as const, { lb: 1, ub: 3, prefix: "bench" });
+
+m.constraint(
+  disjoint([
+    { start: start.cut, duration: 4 },
+    { start: start.weld, duration: 3 },
+    { start: start.paint, duration: 2 },
+  ]),
+  "single_line"
+);
+m.constraint(expr`${start.cut} + 4 <= ${start.weld}`, "cut_before_weld");
+m.constraint(expr`${start.weld} + 3 <= ${start.paint}`, "weld_before_paint");
+m.constraint(distinct(bench), "unique_benches");
+
+m.objective(minimize(expr`${start.paint} + 2`));
+await m.solve();
+console.log(`Makespan: ${m.objectiveValue}h (paint starts at ${start.paint.value}h)`);
+```
+
+### 4. 逻辑规则与冲突诊断 (`m.check`)
 
 表达逻辑蕴含规则并排查不可行原因：
 - **HiGHS（默认）**：提取**弹性修复集合**（`res.conflicts`），即松弛后可恢复可行性的约束。
-- **Z3**：提取精确的 **SMT 不可满足核心**（`res.unsatCore` / `res.conflicts`），即相互矛盾的约束子集。
+- **Pumpkin（内置）**：为有界整数与布尔模型提取尺度无关的**不可满足核心**（`res.unsatCore` / `res.conflicts`），**无需 `COOP`/`COEP` 响应头**。
+- **Z3**：提取包含连续变量与有理数算术的精确 **SMT 不可满足核心**（`res.unsatCore` / `res.conflicts`）。
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/z3"; // 可选：使用 Z3 提取精确 SMT unsatCore
+// import "@ohtaman/washi/solvers/pumpkin"; // 内置：免 COOP/COEP 的 unsatCore（有界整数/布尔）
+// import "@ohtaman/washi/solvers/z3";      // 可选：支持含连续变量的精确 SMT unsatCore
 
 const m = new Model("StaffingRules");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
@@ -166,24 +198,29 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 
 ## 🌐 浏览器与 Web Worker 使用指南
 
-- **打包工具 (Vite / webpack 5)**：直接 `import { Model } from "@ohtaman/washi"` 即可。浏览器默认在 Web Worker 中求解；传入 `{ useWorker: false }` 可在主线程执行。
-- **原生 ESM / Script 标签 / CDN**：部署 `dist/browser/` 目录（含 `highs.wasm` 与 Worker 资源）或从 CDN 加载。
+- **打包工具 (Vite / webpack 5)**：直接 `import { Model } from "@ohtaman/washi"` 即可。**HiGHS** 与 **Pumpkin** 默认均在专用 Web Worker 中求解（传入 `{ useWorker: false }` 可在主线程执行），且**无需 `COOP`/`COEP` 响应头**。
+- **原生 ESM / Script 标签 / CDN**：部署 `dist/browser/` 目录（含 `highs.wasm`、`solvers/pumpkin.wasm` 与 Worker 资源）或从 CDN 加载。
 
 ```html
 <!-- 浏览器原生 ESM -->
 <script type="module">
   import { Model } from "./washi/washi.js";
-  // 可选求解器插件: import "./washi/solvers/glpk.js" 或 "./washi/solvers/z3.js"
+  // 内置或可选求解器插件:
+  // import "./washi/solvers/pumpkin.js"; // 内置 CP/LCG（免 COOP/COEP）
+  // import "./washi/solvers/glpk.js";    // 可选 GLPK 插件
+  // import "./washi/solvers/z3.js";      // 可选 Z3 插件（需 COOP/COEP）
   const m = new Model();
   await m.solve();
 </script>
 
 <!-- Script 标签 / CodePen (挂载全局变量 Washi) -->
 <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
+<!-- 可选求解器插件脚本（自动注册到 window.Washi）： -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
 ```
 
 > [!NOTE]
-> **浏览器中使用 Z3**：Z3 的 WebAssembly 引擎依赖 `SharedArrayBuffer`，需要配置跨源隔离响应头（`COOP: same-origin` 与 `COEP: require-corp`）。详见[跨源隔离指南](docs/zh/getting-started/cross-origin.md)与 [`examples/distribution/`](examples/distribution/README.md)。
+> **浏览器中使用 Z3**：Z3 的 WebAssembly 引擎依赖 `SharedArrayBuffer`，需要配置跨源隔离响应头（`COOP: same-origin` 与 `COEP: require-corp`）。详见[跨源隔离指南](docs/zh/getting-started/cross-origin.md)与 [`examples/distribution/`](examples/distribution/README.md)。**HiGHS**、**Pumpkin**（包括有界整数/布尔模型的 `unsatCore`）和 **GLPK** 均无需跨源隔离响应头即可运行。
 
 ---
 
@@ -198,6 +235,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 WaSHI 的诞生离不开数理优化与自动推理开源社区的卓越工作：
 
 - **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— 发源于爱丁堡大学、由 Julian Hall、Qi Huangfu、Ivet Galabova、Leona Gottwald、Michael Feldmeier 及社区贡献者共同打造的高性能开源 LP / MIP / 凸 QP 求解器，驱动了 WaSHI 的内置默认引擎（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
+- **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** — 由代尔夫特理工大学（TU Delft）ConSol Lab 使用 Rust 开发的惰性子句生成（LCG）约束规划求解器，驱动了 WaSHI 内置的 CP/LCG 与免 `COOP`/`COEP` `unsatCore` 引擎。
 - **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— 由 Microsoft Research 研发，驱动了 WaSHI 可选的 SMT 可满足性判定与精确 `unsatCore` 冲突诊断插件。
 - **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — 驱动了 WaSHI 可选的 GPL-3.0 LP / MIP 求解器插件。
 - **[PuLP](https://github.com/coin-or/pulp)** — 启发了 WaSHI 声明式代数建模 API 的设计。
@@ -207,4 +245,4 @@ WaSHI 的诞生离不开数理优化与自动推理开源社区的卓越工作�
 ## 📄 许可证
 
 - **`@ohtaman/washi`**: [MIT 许可证](./LICENSE)
-- **内置与可选引擎**: HiGHS (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。完整许可说明请参阅 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)。
+- **内置与可选引擎**: HiGHS (MIT)、Pumpkin (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。完整许可说明请参阅 [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md)。

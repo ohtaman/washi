@@ -51,11 +51,12 @@ function assertLogicElement(el: unknown, op: string): LogicElement {
 /**
  * Base abstract class for propositional / SMT Boolean expressions (`BoolVar` and `BoolOp`).
  *
- * **Solver capability note**: Logical constraints are solved natively by Z3 (`{ solver: "z3" }`)
- * and automatically linearized into 0-1 MIP constraints on HiGHS and GLPK. Comparison `Constraint`s
- * in negated positions (`implies` antecedents, `not`, `xor`) require `Integer`/`Binary` variables
- * with integer coefficients and RHS on MIP backends (for `Continuous` or non-integer negated
- * constraints, use `{ solver: "z3" }`, or write `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`).
+ * **Solver capability note**: Logical constraints are solved natively by Pumpkin (`{ solver: "pumpkin" }`,
+ * bounded integer/boolean models) and Z3 (`{ solver: "z3" }`), and automatically linearized into 0-1 MIP
+ * constraints on HiGHS and GLPK. Comparison `Constraint`s in negated positions (`implies` antecedents,
+ * `not`, `xor`) require `Integer`/`Binary` variables with integer coefficients and RHS on MIP backends
+ * (and bounded `Integer`/`Binary` models on Pumpkin; for `Continuous` or non-integer negated constraints,
+ * use `{ solver: "z3" }`, or write `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`).
  */
 export abstract class BoolExpr {
   /** Logical conjunction (`this AND other`). Requires a `BoolVar`, `BoolExpr`, or comparison `Constraint`. */
@@ -86,8 +87,8 @@ export abstract class BoolExpr {
 
 /**
  * Propositional Boolean variable (`true` / `false`) for logical / SMT modeling.
- * Created via `m.bool(...)`; solved natively on Z3 (`{ solver: "z3" }`) and automatically
- * linearized into a 0-1 MIP binary variable on HiGHS and GLPK.
+ * Created via `m.bool(...)`; solved natively on Pumpkin (`{ solver: "pumpkin" }`, bounded integer/boolean
+ * models) and Z3 (`{ solver: "z3" }`), and automatically linearized into a 0-1 MIP binary variable on HiGHS and GLPK.
  * For 0-1 arithmetic variables in linear sums or objectives, use `m.binary(...)` instead.
  */
 export class BoolVar extends BoolExpr {
@@ -130,9 +131,9 @@ export class BoolOp extends BoolExpr {
 /**
  * Logical conjunction (`e1 AND e2 AND ...`) over `BoolVar`, `BoolExpr`, or linear comparison `Constraint`s.
  *
- * **Solver capability note**: Solved natively by Z3 (`{ solver: "z3" }`) and automatically
- * linearized into 0-1 MIP constraints on HiGHS and GLPK. Passing an unconstrained arithmetic
- * expression (`LinExpr` / `QuadExpr`) throws an Error.
+ * **Solver capability note**: Solved natively by Pumpkin (`{ solver: "pumpkin" }`, bounded integer/boolean
+ * models) and Z3 (`{ solver: "z3" }`), and automatically linearized into 0-1 MIP constraints on HiGHS and
+ * GLPK. Passing an unconstrained arithmetic expression (`LinExpr` / `QuadExpr`) throws an Error.
  *
  * @example
  * ```ts
@@ -150,10 +151,10 @@ export function and(...exprs: LogicInput[]): BoolOp {
 /**
  * Logical disjunction (`e1 OR e2 OR ...`) over `BoolVar`, `BoolExpr`, or linear comparison `Constraint`s.
  *
- * **Solver capability note**: Solved natively by Z3 (`{ solver: "z3" }`) and automatically
- * linearized via 0-1 MIP Big-M indicators on HiGHS and GLPK (variables in comparison branches
- * require finite bounds on MIP solvers). Passing an unconstrained arithmetic expression
- * (`LinExpr` / `QuadExpr`) throws an Error.
+ * **Solver capability note**: Solved natively by Pumpkin (`{ solver: "pumpkin" }`, bounded integer/boolean
+ * models) and Z3 (`{ solver: "z3" }`), and automatically linearized via 0-1 MIP Big-M indicators on HiGHS
+ * and GLPK (variables in comparison branches require finite bounds on MIP backends and Pumpkin). Passing
+ * an unconstrained arithmetic expression (`LinExpr` / `QuadExpr`) throws an Error.
  *
  * @example
  * ```ts
@@ -170,10 +171,11 @@ export function or(...exprs: LogicInput[]): BoolOp {
 /**
  * Logical negation (`NOT e`) of a `BoolVar`, `BoolExpr`, or linear comparison `Constraint`.
  *
- * **Solver capability note**: Solved natively by Z3 (`{ solver: "z3" }`) and automatically
- * linearized on HiGHS and GLPK. Negating a comparison `Constraint` on MIP backends uses exact
- * `+/- 1` integer shifts and requires `Integer`/`Binary` variables with integer coefficients and RHS;
- * for `Continuous` or non-integer constraints, use `{ solver: "z3" }`, or write an explicit
+ * **Solver capability note**: Solved natively by Pumpkin (`{ solver: "pumpkin" }`, bounded integer/boolean
+ * models) and Z3 (`{ solver: "z3" }`), and automatically linearized on HiGHS and GLPK. Negating a
+ * comparison `Constraint` on MIP backends uses exact `+/- 1` integer shifts and requires `Integer`/`Binary`
+ * variables with integer coefficients and RHS (and bounded `Integer`/`Binary` models on Pumpkin); for
+ * `Continuous` or non-integer constraints, use `{ solver: "z3" }`, or write an explicit
  * closed-tolerance disjunction `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`.
  *
  * @example
@@ -190,12 +192,13 @@ export function not(expr: LogicInput): BoolOp {
 /**
  * Logical implication (`antecedent => consequent`) over `BoolVar`, `BoolExpr`, or linear comparison `Constraint`s.
  *
- * **Solver capability note**: Solved natively by Z3 (`{ solver: "z3" }`) and automatically
- * linearized into 0-1 MIP constraints on HiGHS and GLPK. When `antecedent` contains a comparison
- * `Constraint`, MIP backends negate it via exact `+/- 1` integer shifts (`Integer`/`Binary` variables
- * with integer coefficients and RHS); if `antecedent` involves `Continuous` variables or non-integer
- * coefficients/thresholds, MIP solvers throw an Error—use `{ solver: "z3" }`, or rewrite explicitly
- * with `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`.
+ * **Solver capability note**: Solved natively by Pumpkin (`{ solver: "pumpkin" }`, bounded integer/boolean
+ * models) and Z3 (`{ solver: "z3" }`), and automatically linearized into 0-1 MIP constraints on HiGHS and
+ * GLPK. When `antecedent` contains a comparison `Constraint`, MIP backends negate it via exact `+/- 1`
+ * integer shifts (`Integer`/`Binary` variables with integer coefficients and RHS), and Pumpkin requires
+ * bounded `Integer`/`Binary` models; if `antecedent` involves `Continuous` variables or non-integer
+ * coefficients/thresholds, MIP solvers and Pumpkin throw an Error—use `{ solver: "z3" }`, or rewrite
+ * explicitly with `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`.
  *
  * @example
  * ```ts
@@ -212,11 +215,12 @@ export function implies(antecedent: LogicInput, consequent: LogicInput): BoolOp 
 /**
  * Logical exclusive-or (`e1 XOR e2 ...`) over `BoolVar`, `BoolExpr`, or linear comparison `Constraint`s.
  *
- * **Solver capability note**: Solved natively by Z3 (`{ solver: "z3" }`) and automatically
- * linearized into 0-1 MIP constraints on HiGHS and GLPK. Comparison `Constraint` operands require
- * both positive and negated directions (`+/- 1` integer shifts over bounded `Integer`/`Binary`
- * variables with integer coefficients and RHS); for `Continuous` or non-integer constraints, use
- * `{ solver: "z3" }`, or model the propositions explicitly with `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`.
+ * **Solver capability note**: Solved natively by Pumpkin (`{ solver: "pumpkin" }`, bounded integer/boolean
+ * models) and Z3 (`{ solver: "z3" }`), and automatically linearized into 0-1 MIP constraints on HiGHS and
+ * GLPK. Comparison `Constraint` operands require both positive and negated directions (`+/- 1` integer
+ * shifts over bounded `Integer`/`Binary` variables with integer coefficients and RHS); for `Continuous`
+ * or non-integer constraints, use `{ solver: "z3" }`, or model the propositions explicitly with
+ * `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`.
  *
  * @example
  * ```ts

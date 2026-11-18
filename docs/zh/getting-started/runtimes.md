@@ -8,7 +8,7 @@ WaSHI 无需本地 C/C++ 编译，即可跨 JavaScript 与 TypeScript 运行时�
 
 ### Node.js
 
-WaSHI 原生支持 Node.js (v18+) 的标准 ECMAScript Modules (ESM)。内置的 HiGHS WebAssembly 二进制文件会直接从已安装的包中加载：
+WaSHI 原生支持 Node.js (v18+) 的标准 ECMAScript Modules (ESM)。内置的 HiGHS 与 Pumpkin（`@ohtaman/washi/solvers/pumpkin`）WebAssembly 二进制文件会直接从已安装的包中加载：
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -75,10 +75,10 @@ export async function runOptimization() {
 }
 ```
 
-由于建模器与求解器均基于 WebAssembly 运行，`vite build` 等生产构建产物（JS、Worker 与 WASM）可直接部署到 **GitHub Pages、Cloudflare Pages、Vercel 或 Netlify** 等静态托管平台，无需后端服务（默认的 HiGHS 与 GLPK 无需特殊响应头；仅在浏览器中使用 Z3 时需参阅[跨源隔离配置](./cross-origin.md)）。
+由于建模器与求解器均基于 WebAssembly 运行，`vite build` 等生产构建产物（JS、Worker 与 WASM）可直接部署到 **GitHub Pages、Cloudflare Pages、Vercel 或 Netlify** 等静态托管平台，无需后端服务（内置的 **HiGHS** 与 **Pumpkin**，以及 **GLPK** 均无需特殊响应头；仅在浏览器中使用 Z3 时需参阅[跨源隔离配置](./cross-origin.md)）。
 
 #### 后台 Web Worker 执行（默认）
-在浏览器环境中，HiGHS 默认在专用的 **Web Worker** 中运行。这样即使在求解 LP / MIP / QP 模型时，也不会阻塞主 UI 线程、动画或用户输入，同时支持实时进度回调（`onProgress`）与取消操作（`AbortSignal`）。
+在浏览器环境中，**HiGHS** 与 **Pumpkin** 默认均在专用的 **Web Worker** 中运行。这样即使在求解 LP / MIP / QP / CP 模型时，也不会阻塞主 UI 线程、动画或用户输入，同时支持实时进度回调（`onProgress`）与取消操作（`AbortSignal`）。
 
 如果运行环境限制使用 Web Worker，或希望在主线程中执行，可传入 `useWorker: false`：
 
@@ -86,18 +86,20 @@ export async function runOptimization() {
 await m.solve({ useWorker: false });
 ```
 
-#### 自定义 HiGHS WASM 资源 URL
-默认情况下，WaSHI 会相对于打包产物解析 `highs.wasm`（`new URL("./highs.wasm", import.meta.url)`），**绝不会**向外部公共 CDN（如 `jsdelivr`、`unpkg` 等）发起隐式网络请求。
+#### 自定义 WASM 资源 URL
+默认情况下，WaSHI 会相对于打包产物解析 `highs.wasm` 与 `pumpkin.wasm`（`new URL("./highs.wasm", import.meta.url)` / `new URL("./pumpkin.wasm", import.meta.url)`），**绝不会**向外部公共 CDN（如 `jsdelivr`、`unpkg` 等）发起隐式网络请求。
 
 如果打包工具或静态资源服务器将 `.wasm` 文件托管在自定义路径下，可在全局或每次求解时指定 URL：
 
 ```typescript
 import { setHighsWasmUrl } from "@ohtaman/washi";
+import { setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 
 // 方式 A：在求解前全局配置
 setHighsWasmUrl("/assets/wasm/highs.wasm");
+setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 
-// 方式 B：在每次调用 solve 时单独配置
+// 方式 B：在每次调用 solve / check 时单独配置
 await m.solve({ wasmUrl: "/assets/wasm/highs.wasm" });
 ```
 
@@ -142,10 +144,11 @@ export default function OptimizerComponent() {
 ```html
 <script type="module">
   // 从 npm CDN 加载（自托管时可使用 "./dist/browser/washi.js"）：
-  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/washi.js";
-  // 可选的求解器插件：
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/glpk.js";
-  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/z3.js";
+  import { Model, expr, maximize } from "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.js";
+  // 内置或可选的求解器插件：
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.js";
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.js";
+  // import "https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/z3.js";
 
   const m = new Model("BrowserESM");
   const x = m.integer("x", { lb: 0, ub: 100 });
@@ -180,10 +183,11 @@ export default function OptimizerComponent() {
     <pre id="output">Solving...</pre>
 
     <!-- 通过 CDN 加载 WaSHI 核心 + HiGHS (MIT)（自托管时可使用 "./dist/browser/washi.min.js"） -->
-    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/washi.min.js"></script>
-    <!-- 可选插件（自动注册到 window.Washi）： -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/glpk.min.js"></script> -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi@0.6/dist/browser/solvers/z3.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
+    <!-- 内置或可选插件（自动注册到 window.Washi）： -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/glpk.min.js"></script> -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/z3.min.js"></script> -->
 
     <script>
       (async () => {
@@ -211,7 +215,7 @@ export default function OptimizerComponent() {
 ```
 
 > [!NOTE]
-> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。在标准 Web 源（`https://` / `http://`）下，WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker；而在有效源为不透明源的环境（`window.origin === "null"`，例如本地 `file:` 页面或未开启 `allow-same-origin` 的 `sandbox="allow-scripts"` `<iframe>` 嵌入）下，未显式指定 `useWorker` 时 WaSHI 会自动在主线程中运行 HiGHS。
+> 当从跨源 CDN（如 jsDelivr 或 unpkg）加载时，浏览器的同源策略会拦截直接调用 `new Worker("https://cdn...")`。在标准 Web 源（`https://` / `http://`）下，WaSHI 会自动通过轻量级 ES 模块 `Blob` 引导脚本（`import "https://..."`）桥接跨源 Worker；而在有效源为不透明源的环境（`window.origin === "null"`，例如本地 `file:` 页面或未开启 `allow-same-origin` 的 `sandbox="allow-scripts"` `<iframe>` 嵌入）下，未显式指定 `useWorker` 时 WaSHI 会自动在主线程中运行 HiGHS 与 Pumpkin。
 
 ---
 
@@ -221,12 +225,13 @@ WaSHI 绝不会向外部发送遥测数据或隐式回退到公共 CDN。若需�
 
 1. **复制静态资源**：将 `node_modules/@ohtaman/washi/dist/browser/` 下的文件托管到您自己的同源服务器上：
    - `washi.js` / `washi.min.js`、`highs.wasm` 以及 `highs-worker.js`
+   - 内置 Pumpkin：`solvers/pumpkin.js` / `solvers/pumpkin.min.js`、`solvers/pumpkin.wasm`、`solvers/pumpkin-worker.js`（以及 `solvers/pumpkin-*.js` 分块）
    - 可选 GLPK：`solvers/glpk.js` / `solvers/glpk.min.js`
    - 可选 Z3：`solvers/z3.js` / `solvers/z3.min.js`、`solvers/z3-built.js`、`solvers/z3-built.wasm`
 2. **内容安全策略 (CSP) 响应头**：
    - 允许 WebAssembly 编译（在 `script-src` 中包含 `'wasm-unsafe-eval'`）。
    - 若使用默认的 Web Worker 或跨源 `Blob` Worker 引导方案，请允许 `worker-src 'self' blob:;`。
-   - 如果安全策略禁止 `blob:` Worker，请从同源（`'self'`）托管 `highs-worker.js`，或使用 `await m.solve({ useWorker: false })` 在主线程中运行。
+   - 如果安全策略禁止 `blob:` Worker，请从同源（`'self'`）托管 `highs-worker.js` / `solvers/pumpkin-worker.js`，或使用 `await m.solve({ useWorker: false })` 在主线程中运行。
 3. **跨源隔离（仅限使用 Z3 时）**：
-   - HiGHS 与 GLPK 在标准浏览器上下文中即可直接运行，无需特殊响应头。
+   - HiGHS、Pumpkin 与 GLPK 在标准浏览器上下文中即可直接运行，无需特殊响应头。
    - Z3 WASM 使用了 pthreads 与 `SharedArrayBuffer`，需要配置 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`（Chromium / Firefox 也支持 `credentialless`，但兼容 Safari 需使用 `require-corp`）。详细配置请参阅[跨源隔离配置指南](./cross-origin.md)。

@@ -1,6 +1,6 @@
 # Formulation Patterns & Optimization Tips
 
-While the preceding Modeling Guide pages cover WaSHI's APIs (`Model`, `expr`, `m.constraint`, `m.solve`, etc.), this page collects standard mathematical optimization formulation patterns and solver tuning techniques frequently used in linear and mixed-integer programming (LP/MIP).
+While the preceding Modeling Guide pages cover WaSHI's APIs (`Model`, `expr`, `m.constraint`, `m.solve`, etc.), this page collects standard mathematical optimization formulation patterns and solver tuning techniques frequently used in linear and mixed-integer programming (LP/MIP). *(For Constraint Programming idioms such as `disjoint`, `cumulative`, `distinct`, `allowed`, and `at` with Pumpkin, see the [Constraint Programming (CP) Modeling Guide](./constraint-programming.md).)*
 
 ---
 
@@ -97,7 +97,7 @@ m.constraint(expr`sum(${hours}) >= 60`, "total_required_work");
 m.objective(minimize(maxHours));
 ```
 
-*(Symmetrically, to **maximize the minimum** level $\max \min_i u_i$, impose $u_i \ge z$ for all $i$ and set `m.objective(maximize(z))`.)*
+*(Symmetrically, to **maximize the minimum** level $\max \min_i u_i$, impose $u_i \ge z$ for all $i$ and set `m.objective(maximize(z))`. WaSHI also automates this convex LP epigraph lowering via built-in `max(...)` and `min(...)`, which map to native propagators when solving with Pumpkin—see [Piecewise-Linear & Element Expressions](./expressions.md#piecewise-linear-element-expressions-max-min-abs-at).)*
 
 ---
 

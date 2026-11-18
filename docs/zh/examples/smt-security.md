@@ -84,3 +84,4 @@ verifySecurityRules();
 
 - **反证法形式化验证（反例搜索）**：单次 `check()` 返回 `"Sat"` 仅表明*存在*满足规则的状态。若要严格**证明**某项安全属性 $P$（如 `sirenActive`）在所有可能状态下*必然*成立，应断言其否定式 `not(P)` 并验证 `m.check()` 返回 `"Unsat"`。若返回 `"Sat"`，此时求解器给出的变量赋值即为一个具体的安全漏洞反例。
 - **单向蕴含（`implies`）与双向等价**：`` implies(expr`${luxLevel} <= 50`, isNight) `` 仅规定当 `luxLevel <= 50` 时 `isNight` 必为 `true`；当白天（`luxLevel > 50`）时，`isNight` 并不受此规则限制（开放世界假设）。若需表达充要条件，还需补充逆否规则 `` implies(expr`${luxLevel} >= 51`, not(isNight)) ``。
+- **免 `COOP` / `COEP` 响应头运行（`solver: "pumpkin"`）**：由于此模型仅包含 `BoolVar` 与有界整数变量（`luxLevel` 范围为 `[0, 1000]`），使用内置的 `@ohtaman/washi/solvers/pumpkin`（`m.check({ solver: "pumpkin" })`）即可在无需配置 `COOP` / `COEP` 或安装 `z3-solver` 的情况下执行完全相同的推理与反例 `unsatCore` 证明。

@@ -2,7 +2,7 @@
 
 This guide describes how to build, test, and distribute custom solver plugins for **WaSHI** (`@ohtaman/washi`).
 
-WaSHI features a pluggable, decoupled solver architecture. Core `@ohtaman/washi` bundles only the zero-config HiGHS WASM engine and a Mock solver. Any third-party solver—whether implemented in WebAssembly, native C++, a Web Worker, or an external cloud REST/RPC backend—can be registered and used through the unified `Model` API.
+WaSHI features a pluggable, decoupled solver architecture. Core `@ohtaman/washi` bundles the zero-config HiGHS WASM engine and a Mock solver, while `@ohtaman/washi/solvers/pumpkin` provides a bundled CP/LCG WASM plugin. Any third-party solver—whether implemented in WebAssembly, native C++, a Web Worker, or an external cloud REST/RPC backend—can be registered and used through the unified `Model` API.
 
 ---
 
@@ -13,6 +13,7 @@ graph TD
     A[WaSHI Model] --> B[Solver Registry Map Symbol.for]
     B --> C[HiGHS WASM Engine Core]
     B --> D[Mock Solver Core]
+    B --> H[Pumpkin WASM Plugin @ohtaman/washi/solvers/pumpkin]
     B --> E[GLPK Plugin @ohtaman/washi/solvers/glpk]
     B --> F[Z3 SMT Plugin @ohtaman/washi/solvers/z3]
     B --> G[Your Custom Solver Plugin]
@@ -119,7 +120,7 @@ export interface SolveModelData extends CheckModelData {
 
 Custom solvers declare their supported features using `capabilities`. Before dispatching `solve()` or `check()`, `Model` validates:
 - `supportsQP === false` when the objective contains quadratic terms (`QuadExpr`),
-- when the model contains logical constraints (`m.logicalConstraints`) and the solver does not support SMT (`supportsSMT !== true`), `Model` automatically linearizes them into equivalent 0-1 MIP binary variables and linear constraints via `linearizeModelForMip`, and
+- when the model contains logical constraints (`m.logicalConstraints`) and the solver supports neither native logical constraints (`supportsLogicalConstraints !== true`) nor SMT (`supportsSMT !== true`), `Model` automatically linearizes them into equivalent 0-1 MIP binary variables and linear constraints via `linearizeModelForMip`, and
 - `supportsWarmStart !== true` when any variable has a primal `initialValue` set.
 
 ```typescript
@@ -135,6 +136,9 @@ export interface SolverCapabilities {
 
   /** Supports satisfiability modulo theories / boolean logic constraints */
   supportsSMT?: boolean;
+
+  /** Supports native boolean/propositional logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) without SMT continuous theories */
+  supportsLogicalConstraints?: boolean;
 
   /** Supports extracting an unsatisfiable core (conflicting constraint subset) */
   supportsUnsatCore?: boolean;
@@ -172,7 +176,7 @@ export interface SolverOptions {
 
 ### Optional LP Serialization & Symbol-Mapping Helpers
 
-Solvers that consume structured JS/WASM data (such as `GLPKSolver` and `Z3Solver`) work directly with `SolveModelData` / `CheckModelData`.
+Solvers that consume structured JS/WASM data (such as `PumpkinSolver`, `GLPKSolver`, and `Z3Solver`) work directly with `SolveModelData` / `CheckModelData`.
 If your adapter targets a backend that requires CPLEX/HiGHS LP text or restricted identifier syntax, WaSHI exports opt-in helpers:
 
 - `generateLpString(modelData): LpExportResult` — serializes `modelData` into a CPLEX LP format string (`lpString`) along with collision-safe symbol lookup maps (`nameToVar`, `nameToConstraint`).

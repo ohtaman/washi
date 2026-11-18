@@ -69,6 +69,7 @@ diagnoseConflicts();
 
 ## 实战要点
 
-- **Z3 `unsatCore` 与 HiGHS 弹性松弛诊断 (`conflicts`) 的区别**：
-  - **Z3（`m.check({ solver: "z3" })`）** 基于逻辑假设跟踪，排除无辜的 `minimum_one_employee` 规则，并不受量纲影响地完整返回共同构成矛盾的 4 条规则（`budget_limit`、`rush_required`、`rush_staffing_rule`、`strict_board_budget_cap`）。
+- **在 Pumpkin、Z3 与 HiGHS 之间选择诊断引擎**：
+  - **Pumpkin（`m.check({ solver: "pumpkin" })`）** 内置打包于 `@ohtaman/washi/solvers/pumpkin`（零外部依赖，免 `COOP` / `COEP` 响应头），适用于所有变量均为有界 `Integer`、`Binary` 或 `BoolVar` 的离散与命题模型（例如将上例中的 `budget` 设为 `m.integer("budget", ...)`），可提取尺度无关的 `unsatCore`。
+  - **Z3（`m.check({ solver: "z3" })`）** 支持 `Continuous` 连续变量（如上例中的 `budget`）与小数算术，排除无辜的 `minimum_one_employee` 规则，并不受量纲影响地完整返回共同构成矛盾的 4 条规则（`budget_limit`、`rush_required`、`rush_staffing_rule`、`strict_board_budget_cap`）。
   - **HiGHS（`m.check({ solver: "highs" })`）** 求解单次 $L_1$ 弹性松弛最小化问题（$\min \sum s_i$）。由于放宽预算需要 `14,000` 单位松弛量，而放宽加急或人数要求仅需 `1`–`2` 单位松弛量，无权重 $L_1$ 最小化会优先指出总变动量最小的修复点（`rush_required`）。

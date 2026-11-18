@@ -17,28 +17,34 @@ python3 -m http.server 8000 --directory examples/distribution
 - **`glpk-script.html`**: GLPK MIP solver plugin via `<script src="./washi/solvers/glpk.min.js">`.
 - **`z3-esm.html`**: Z3 SMT solver plugin via ESM (`import "./washi/solvers/z3.js"`).
 
+Bundled **Pumpkin** CP/LCG plugin assets are also emitted in `dist/browser/solvers/`:
+- **Browser ESM**: `import "./washi/solvers/pumpkin.js"` (uses `solvers/pumpkin.wasm`, `solvers/pumpkin-worker.js`, and `solvers/pumpkin-*.js` chunks).
+- **Classic `<script>` (IIFE)**: `<script src="./washi/solvers/pumpkin.min.js"></script>` (registers `"pumpkin"` on `window.Washi` and exposes `window.WashiPumpkin`).
+
 Keep the entire `washi/` directory (including `solvers/` subdirectory, JS, Workers, and WASM) together.
 
 ---
 
 ## CodePen & Third-Party Embeds
 
-### 1. HiGHS Core & GLPK
-HiGHS and GLPK run smoothly in standard CodePen pens or iframes using CDN URLs.
+### 1. HiGHS Core, Pumpkin & GLPK
+HiGHS, Pumpkin (including CP solving and `unsatCore` extraction on bounded integer/boolean models without `COOP`/`COEP` headers), and GLPK run smoothly in standard CodePen pens or iframes using CDN URLs.
 
 > [!NOTE]
-> The modular solver plugins under `dist/browser/solvers/` (`glpk.min.js`, `z3.min.js`) are available starting from version `>= 0.2.0` (or `@latest`). Prior releases like `@0.1.2` only contained the core HiGHS bundle (`dist/browser/washi.min.js`). For local testing with files in this directory, serve `./washi/...` from a local HTTP server.
+> The modular solver plugins under `dist/browser/solvers/` (`pumpkin.min.js`, `glpk.min.js`, `z3.min.js`) require no external CDN fallback; deploy `dist/browser/` together when self-hosting. For local testing with files in this directory, serve `./washi/...` from a local HTTP server.
 
-In **Settings → JavaScript → External Scripts** (pin to `>= 0.2.0` or `@latest`):
+In **Settings → JavaScript → External Scripts** (pin to `@latest` or a matching release tag):
 ```text
 https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/washi.min.js
+https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/solvers/pumpkin.min.js
 https://cdn.jsdelivr.net/npm/@ohtaman/washi@latest/dist/browser/solvers/glpk.min.js
 ```
 
 In the JS panel:
 ```javascript
 const { Model } = window.Washi;
-const model = new Model({ solver: "glpk" });
+const cpModel = new Model({ solver: "pumpkin" });
+const lpModel = new Model({ solver: "glpk" });
 ```
 
 ### 2. Z3 Browser Engine Requirement

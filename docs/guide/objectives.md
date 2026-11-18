@@ -37,7 +37,7 @@ WaSHI provides two asynchronous execution entrypoints:
 | Method | Return Value | Purpose |
 | :--- | :--- | :--- |
 | **`await m.solve(options?)`** | `Promise<SolverStatus>` | Optimizes the objective (`Minimize` or `Maximize`) subject to all constraints. Populates primal values, objective value, MIP bounds/gaps, and LP duals/slacks. |
-| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks constraint satisfiability without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` where `values: Record<string, number \| boolean>` contains both numeric and Boolean variable assignments. Ideal for SMT/SAT verification and Z3 `unsatCore` extraction. |
+| **`await m.check(options?)`** | `Promise<CheckResult>` | Checks constraint satisfiability without an objective. Returns `{ status, values, conflicts?, unsatCore?, runTime? }` where `values: Record<string, number \| boolean>` contains both numeric and Boolean variable assignments. Ideal for CP/SMT/SAT verification and Pumpkin / Z3 `unsatCore` extraction. |
 
 ```typescript
 const status = await m.solve({
@@ -51,14 +51,14 @@ const status = await m.solve({
 
 | Option | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `solver` | `string` \| `Solver` | Model's solver (`"highs"`) | Registered solver name (e.g. `"highs"`, `"z3"`, `"glpk"`, or custom) or `Solver` instance for this run. |
+| `solver` | `string` \| `Solver` | Model's solver (`"highs"`) | Registered solver name (e.g. `"highs"`, `"pumpkin"`, `"z3"`, `"glpk"`, or custom) or `Solver` instance for this run. |
 | `timeLimit` | `number` | `undefined` | Maximum solve duration in seconds. |
 | `mipGap` / `relGap` | `number` | `undefined` | Relative MIP optimality gap tolerance (e.g. `0.01` for 1%). |
 | `absGap` | `number` | `undefined` | Absolute MIP optimality gap tolerance (HiGHS `mip_abs_gap`). |
 | `presolve` | `"on"` \| `"off"` \| `"choose"` | `"choose"` | Controls solver presolve reduction prior to optimization. |
 | `outputFlag` / `verbose` | `boolean` | `false` | Emits internal solver iteration logs (`outputFlag` for HiGHS, `verbose` for GLPK). |
-| `useWorker` | `boolean` | `true` (browser) | Offloads HiGHS to a dedicated Web Worker in browsers. Set `false` for main-thread execution. |
-| `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` in browser deployments. |
+| `useWorker` | `boolean` | `true` (browser) | Offloads **HiGHS** and **Pumpkin** to dedicated Web Workers in browsers. Set `false` for main-thread execution. |
+| `wasmUrl` | `string` | Auto-resolved | Custom URL to load `highs.wasm` or `pumpkin.wasm` in browser deployments. |
 | `signal` | `AbortSignal` | `undefined` | Cooperative cancellation signal (`AbortController.signal`). |
 | `onProgress` | `(e: SolveProgressEvent) => void` | `undefined` | Callback receiving live solver progress snapshots. |
 

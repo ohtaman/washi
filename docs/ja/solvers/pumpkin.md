@@ -1,32 +1,56 @@
 # Pumpkin 制約プログラミングソルバー
 
-**Pumpkin** は、デルフト工科大学 ConSol Lab が純 Rust で開発している LCG（Lazy Clause Generation：遅延節生成）ベースの制約プログラミング（CP）ソルバーです。WaSHI では、Pumpkin（`v0.5.0`）を WebAssembly へ直接コンパイルし、追加の外部依存なしで利用できるプラグイン（`@ohtaman/washi/solvers/pumpkin`）として標準同梱しています。
+**Pumpkin** は、デルフト工科大学（TU Delft）ConSol Lab が純 Rust で開発している LCG（Lazy Clause Generation：遅延節生成）ベースの制約プログラミング（CP）ソルバーです（[ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin) · [docs.rs/pumpkin-core](https://docs.rs/pumpkin-core)）。WaSHI では Pumpkin（`v0.5.0`）を WebAssembly へ直接コンパイルし、外部ランタイム依存ゼロで利用できるプラグイン（`@ohtaman/washi/solvers/pumpkin`）として同梱しています。
 
 マルチスレッド WASM を用いるソルバーとは異なり、Pumpkin はシングルスレッドの WASM として Web Worker（または Node.js メインプロセス）で実行されるため、ブラウザ側で **Cross-Origin Isolation（`COOP` / `COEP` ヘッダー）を設定せずに動作**します。
 
 ---
 
-## Pumpkin を選ぶべき場面
+## WaSHI における主な特徴
 
-1. **ジョブショップスケジューリングや組合せ整数モデル**:
-   作業の順序選択（`implies(y, ...)`）や整数ドメイン伝播・節学習（nogood learning）が効くスケジューリングや配置問題。
-2. **COOP / COEP 不要の Unsat Core 競合診断**:
-   通常の Web ホスティング、CodePen、あるいは第三者 iframe 内（`SharedArrayBuffer` 不可環境）で、`await model.check({ solver: "pumpkin" })` による競合制約集合（`unsatCore` / `conflicts`）の抽出を行いたい場合。
-3. **追加インストール不要のプラグイン**:
-   `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に同梱されているため、追加パッケージをインストールせずそのまま動作します。
-
-> [!TIP]
-> **HiGHS・Z3・Pumpkin の使い分け**:
-> - **HiGHS** (`{ solver: "highs" }`): 連続変数を含む LP、凸 QP、線形緩和が強く効く大規模 MILP 向け。
-> - **Pumpkin** (`{ solver: "pumpkin" }`): 有界整数変数＋命題論理モデル、および `COOP`/`COEP` 不要な `unsatCore` 抽出向け。
-> - **Z3** (`{ solver: "z3" }`): 連続変数・実数係数を含む条件付き論理式や厳密な有理数 SMT 判定向け。
+- **標準同梱・追加依存なし**: `pumpkin.wasm`（約 1.4 MB）が `@ohtaman/washi` に同梱され、`@ohtaman/washi/solvers/pumpkin` からそのまま利用できます。追加の `npm install`（peer dependency）や Rust ツールチェーンは不要です。
+- **商用利用しやすい MIT ライセンス**: トランジティブな Rust WASM 依存を含め、すべてパーミッシブなライセンス（`MIT`, `Apache-2.0`, `Unicode-3.0`）で構成されています。
+- **Web Worker バックグラウンド実行 & COOP / COEP 不要**: 通常の HTTP(S) オリジン上では `SharedArrayBuffer` や Cross-Origin Isolation ヘッダーなしで専用 Web Worker により非同期実行され、UI スレッドをブロックせず第三者 iframe でもそのまま動作します。
+- **ネイティブ CP グローバル制約・伝播器**: `distinct()`、`disjoint()`、`cumulative()`、`allowed()`、`at()`、`max()` / `min()` / `abs()`、離散 `!=`、および `M` 省略時の `m.indicator()`（`implied_by`）を Pumpkin ネイティブ制約へ直接変換します。
+- **COOP / COEP 不要の Unsat Core 競合診断**: `await model.check({ solver: "pumpkin" })` により、通常のブラウザ環境のまま有界整数・真偽値制約の矛盾コア（`unsatCore` / `conflicts`）を抽出できます。
+- **ウォームスタート対応 (`initialValue`)**: 有界 `Integer` / `Binary` 変数に対して `solve()`・`check()` の双方で `initialValue` ヒントをサポートし、Pumpkin の `WarmStart` brancher を通じて探索ヒントとして利用できます。
 
 ---
 
-## 基本的な使い方
+## アーキテクチャと WebAssembly ランタイム
+
+WaSHI は専用の Rust WebAssembly ラッパークレート（`wasm/pumpkin`、`pumpkin-core` / `pumpkin-constraints` / `pumpkin-propagators` / `pumpkin-conflict-resolvers` `v0.5.0` を `wasm32-unknown-unknown` へビルド）から `pumpkin.wasm` と `wasm-bindgen` バインディングを直接生成しています。
+
+### コールバックと対話的制御
+
+- **進捗監視と途中中断（対応済み）**:
+  `solve()` 中は暫定解が見つかるたびにリアルタイムの進捗通知（`onProgress` で `elapsedTime`・`objectiveValue` を配信）を行い、`AbortSignal` による中断にも対応します。ブラウザ Web Worker 環境では実行中 Worker の即時停止とキューキャンセルが行われ、メインスレッドおよび Node.js 環境では探索フック上の協調的中断チェック（`should_abort`）が機能します。
+- **離散最適性の厳密証明**:
+  有限整数領域上の厳密 LCG ソルバーとして動作するため、LP 緩和ベースのギャップオプション（`mipGap`, `relGap`, `absGap`, `presolve`）ではなく、節学習（nogood learning）と目的境界の厳密化（`LinearSatUnsat`）によって最適性を証明します。
+
+### WebAssembly アセットの管理とオンデマンドビルド
+
+Pumpkin の WebAssembly バイナリ（`public/pumpkin.wasm`）と JS/TS ランタイム（`runtime.js` / `runtime.d.ts`）は、`pumpkin.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
+- **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-pumpkin-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
+- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-pumpkin-wasm.mjs` が WaSHI リポジトリの `pumpkin-v<version>` GitHub Release アセット（`pumpkin.config.json` の `downloadUrl`）から検証済みバイナリを自動取得します。
+- **ソースからのコンパイル**: Pumpkin のバージョンアップや `wasm/pumpkin` 変更時は、`wasm32-unknown-unknown` ターゲット付き Rust 環境で（必要に応じて `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>` で設定・`Cargo.toml` を更新したうえで）`npm run build:pumpkin-wasm` を実行し、`pumpkin-v<version>` の GitHub Release アセットへ反映します（`gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`、初回は `gh release create`、または `.github/workflows/build-pumpkin-wasm.yml` を実行して `pumpkin-wasm-assets` アーティファクトの変更をコミット）。
+
+---
+
+## 対応する問題クラス
+
+> [!TIP]
+> **HiGHS・Pumpkin・Z3 の使い分け**:
+> - **HiGHS** (`{ solver: "highs" }`): 連続変数を含む LP、凸 QP、線形緩和が強く効く大規模 MILP 向け。
+> - **Pumpkin** (`{ solver: "pumpkin" }`): 排反スケジューリング、CP グローバル制約、有界整数＋命題論理モデル、および `COOP`/`COEP` 不要な `unsatCore` 抽出向け。
+> - **Z3** (`{ solver: "z3" }`): 連続変数・実数係数を含む条件付き論理式や厳密な有理数 SMT 判定向け。
+
+### 1. 排反スケジューリングとグローバル CP 制約 (`model.solve()`)
+
+単一・累積資源スケジューリング、順序論理（`implies`, `not`）、およびグローバル述語（`disjoint`, `distinct`, `cumulative`, `allowed`, `at`, `max`, `min`, `abs`）を有界整数上でそのまま求解します：
 
 ```typescript
-import { Model, expr, implies, minimize, not } from "@ohtaman/washi";
+import { Model, disjoint, expr, implies, minimize, not } from "@ohtaman/washi";
 import "@ohtaman/washi/solvers/pumpkin";
 
 const model = new Model("SchedulingStep", { solver: "pumpkin" });
@@ -35,6 +59,13 @@ const s1 = model.integer("start_job1", { lb: 0, ub: 20 });
 const s2 = model.integer("start_job2", { lb: 0, ub: 20 });
 const job1First = model.bool("job1_first");
 
+model.constraint(
+  disjoint([
+    { start: s1, duration: 6 },
+    { start: s2, duration: 4 },
+  ]),
+  "single_machine"
+);
 model.constraint(implies(job1First, expr`${s1} + 6 <= ${s2}`), "job1_before_job2");
 model.constraint(implies(not(job1First), expr`${s2} + 4 <= ${s1}`), "job2_before_job1");
 
@@ -44,11 +75,9 @@ await model.solve();
 console.log(`Status: ${model.status}, s1=${s1.value}, s2=${s2.value}`);
 ```
 
----
+### 2. 充足判定と Unsat Core（矛盾コア）の抽出 (`model.check()`)
 
-## 充足判定と Unsat Core（矛盾コア）の抽出 (`model.check()`)
-
-`await model.check()` を使用すると、整数線形制約とネストした命題論理（`and`, `or`, `not`, `implies`, `xor`）の充足可能性を判定し、充足不能（`"Unsat"`）の場合に矛盾する名前付き制約の部分集合（`conflicts` / `unsatCore`）を取得できます：
+`await model.check()` を使用すると、整数線形制約、CP グローバル制約、およびネストした命題論理（`and`, `or`, `not`, `implies`, `xor`）の充足可能性を判定し、充足不能（`"Unsat"`）の場合に矛盾する名前付き制約の部分集合（`conflicts` / `unsatCore`）を取得できます：
 
 ```typescript
 import { Model, expr, implies } from "@ohtaman/washi";
@@ -70,6 +99,32 @@ if (result.status === "Unsat") {
 
 ---
 
+## ソルバーオプション
+
+`model.solve()` または `model.check()` にオプションを渡して制御できます：
+
+```typescript
+const controller = new AbortController();
+
+await model.solve({
+  timeLimit: 30.0,       // 最大実行時間（秒）
+  signal: controller.signal,
+  onProgress: (ev) => {
+    console.log(`経過: ${ev.elapsedTime.toFixed(1)}s, 暫定値: ${ev.objectiveValue}`);
+  },
+});
+
+// timeLimit や AbortSignal を使用する場合は hasPrimalSolution で暫定解の有無を確認します:
+if (model.hasPrimalSolution) {
+  console.log(
+    `利用可能な解 (${model.status}, 停止理由: ${model.terminationStatus}):`,
+    `obj = ${model.objectiveValue}`
+  );
+}
+```
+
+---
+
 ## ドメイン制約・事前条件
 
 Pumpkin は**有界整数・真偽値専用の CP/LCG ソルバー**です。非対応のモデル構文は暗黙に丸めたり別ソルバーへフォールバックせず、明示的なエラーを投げます：
@@ -82,23 +137,34 @@ Pumpkin は**有界整数・真偽値専用の CP/LCG ソルバー**です。非
 
 ---
 
-## ブラウザ配信とカスタム WASM URL
+## ブラウザでの Web Worker・WASM 設定
 
-通常は `@ohtaman/washi/solvers/pumpkin` が同梱の `pumpkin.wasm` を自動解決し、HTTP(S) オリジン下では `pumpkin-worker.js` を用いたバックグラウンド Web Worker で非同期実行します（`file://` や不透明オリジンのサンドボックス iframe ではメインスレッドで実行されます）。
+ブラウザでは通常、`@ohtaman/washi/solvers/pumpkin` が同梱の `pumpkin.wasm` を自動解決し、HTTP(S) オリジン下では `pumpkin-worker.js` を用いた専用 Web Worker で非同期実行します（`file://` や不透明オリジンのサンドボックス iframe ではメインスレッドで実行されます）。
 
-`pumpkin.wasm` を独自のパスや CDN に配置する場合は以下のように指定できます：
+Web Worker が制限されている環境やメインスレッドで同期実行したい場合は `useWorker: false` を指定するか、`PumpkinSolver` を直接インスタンス化します：
 
 ```typescript
-import { setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
+import { Model } from "@ohtaman/washi";
+import { PumpkinSolver, setPumpkinWasmUrl } from "@ohtaman/washi/solvers/pumpkin";
 
+// 方法 1: solve / check 呼び出し時に指定
+await model.solve({ useWorker: false });
+
+// 方法 2: PumpkinSolver インスタンス生成時に指定
+const syncModel = new Model({
+  solver: new PumpkinSolver({ useWorker: false }),
+});
+
+// pumpkin.wasm を独自のパスや CDN に配置する場合（グローバル設定、または呼び出しごとの { wasmUrl } 指定）:
 setPumpkinWasmUrl("/assets/wasm/pumpkin.wasm");
 ```
 
-`pumpkin.wasm` の取得失敗や HTML フォールバック応答が返された場合、WaSHI は試行した URL を含めて即座にエラーを報告し、暗黙的な CDN フォールバックは行いません。
+`pumpkin.wasm` の取得失敗や HTML フォールバック応答が返された場合、WaSHI は試行した URL を含めて即座にエラーを報告し、**暗黙的な CDN フォールバックは一切行いません**。
 
-### WebAssembly アセットの管理とオンデマンドビルド
+---
 
-Pumpkin の WebAssembly バイナリ（`public/pumpkin.wasm`）と JS/TS ランタイム（`runtime.js` / `runtime.d.ts`）は、`pumpkin.config.json` により SHA-256 チェックサム付きでバージョン管理されています：
-- **高速な整合性検証**: ビルドおよび配布パイプライン実行時に `node scripts/ensure-pumpkin-wasm.mjs` が走り、ミリ秒単位でローカルアセットを検証します。
-- **オンデマンドダウンロード**: ファイルが存在しない場合やバージョン更新時は、`ensure-pumpkin-wasm.mjs` が WaSHI リポジトリの `pumpkin-v<version>` GitHub Release アセット（`pumpkin.config.json` の `downloadUrl`）から検証済みバイナリを自動取得します。
-- **ソースからのコンパイル**: Pumpkin のバージョンアップや `wasm/pumpkin` 変更時は、`wasm32-unknown-unknown` ターゲット付き Rust 環境で（必要に応じて `node scripts/ensure-pumpkin-wasm.mjs --set-version <version>` で設定・`Cargo.toml` を更新したうえで）`npm run build:pumpkin-wasm` を実行し、`pumpkin-v<version>` の GitHub Release アセットへ反映します（`gh release upload pumpkin-v0.5.0 public/pumpkin.wasm src/modeler/solvers/pumpkin/runtime.js src/modeler/solvers/pumpkin/runtime.d.ts --clobber`、初回は `gh release create`、または `.github/workflows/build-pumpkin-wasm.yml` を実行して `pumpkin-wasm-assets` アーティファクトの変更をコミット）。
+## 参考リンク
+
+- **モデリングガイド・実践例**: [制約プログラミング (CP) モデリング](../guide/constraint-programming.md) · [リソース制約付きプロジェクトスケジューリング (RCPSP)](../examples/project-scheduling.md)
+- **ソースリポジトリ**: [ConSol-Lab/Pumpkin](https://github.com/ConSol-Lab/Pumpkin)（MIT License — ConSol Lab, TU Delft）
+- **Rust クレート・API ドキュメント**: [docs.rs/pumpkin-core](https://docs.rs/pumpkin-core) · [crates.io/crates/pumpkin-core](https://crates.io/crates/pumpkin-core)

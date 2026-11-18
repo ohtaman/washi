@@ -13,6 +13,7 @@
 | **[员工排班与冲突诊断](/zh/examples/shift-scheduling)** | Binary MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5×7 周排班规划（每日人数覆盖、资深员工值班、排班上限与休假申请），以及使用 Z3 `unsatCore` 诊断冲突的休假申请。 | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
 | **[购物车优惠券最优组合](/zh/examples/ecommerce-coupons)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | 使用 `m.indicator()` 对最低消费门槛、互斥与可叠加规则建模，并提供智能凑单加购建议。 | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
 | **[投资组合优化](/zh/examples/portfolio-qp)** | Convex QP | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | 在目标收益率约束下，使用 `QuadExpr` 最小化马科维茨均值-方差风险（$w^T \Sigma w$）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
+| **[资源受限项目调度 (RCPSP)](/zh/examples/project-scheduling)** | CP / LCG + Unsat Core | Pumpkin | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `m.check()` | 兼具共享校准台互斥与 3 人累计人力上限的 6 工序调度，以及免 `COOP`/`COEP` 的 `unsatCore` 截止期冲突诊断。 | [CP 建模指南](/zh/guide/constraint-programming) |
 | **[安全策略验证](/zh/examples/smt-security)** | SMT Logic | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命题布尔变量（`BoolVar`）与逻辑连接词（`implies`, `and`, `not`, `xor`）及整数边界的混合建模。 | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
 | **[不可行冲突诊断 (`unsatCore`)](/zh/examples/unsat-core)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 当人员配备要求与预算规则互相矛盾时，自动提取冲突约束子集（`unsatCore`）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
 | **[车辆路径规划 (CVRP)](/zh/examples/vehicle-routing)** | 组合优化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 利用客户对偶影子价格动态生成路径列，最小化车队总车辆数。 | [分解算法指南](/zh/guide/decomposition) |
@@ -36,6 +37,9 @@
 | `m.check()` & `m.unsatCore` | 可满足性检查与冲突约束诊断 | [不可行冲突诊断](/zh/examples/unsat-core), [员工排班与冲突诊断](/zh/examples/shift-scheduling) | [`05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
 | `m.solveColumnGeneration()` | Dantzig-Wolfe 列生成法 | [车辆路径规划](/zh/examples/vehicle-routing) | [`13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) |
 | `m.solveBenders()` | Benders分解与延迟割平面分离 | [旅行商问题](/zh/examples/traveling-salesperson) | [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) |
+| `distinct()` / `disjoint()` / `cumulative()` / `allowed()` | 与求解器无关的 CP 全局约束 | [资源受限项目调度](/zh/examples/project-scheduling), [CP 建模指南](/zh/guide/constraint-programming) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `max()` / `min()` / `abs()` / `at()` | 分段线性与元素索引查找（Element）原语 | [资源受限项目调度](/zh/examples/project-scheduling), [数学表达式指南](/zh/guide/expressions) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `solver: "pumpkin"` | 使用内置 Pumpkin 求解 CP/LCG 与免 `COOP`/`COEP` 的 `unsatCore` | [资源受限项目调度](/zh/examples/project-scheduling), [Pumpkin 求解器指南](/zh/solvers/pumpkin) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
 | `solver: "glpk"` | 使用 GLPK 插件求解 LP/MIP | [GLPK 求解器指南](/zh/solvers/glpk) | [`08-glpk-solver-plugin.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/08-glpk-solver-plugin.ts) |
 
 ## 在本地（Node.js）运行示例
@@ -56,4 +60,5 @@ npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 npx tsx examples/node/13-vehicle-routing-column-generation.ts
 npx tsx examples/node/14-traveling-salesperson-benders.ts
+npx tsx examples/node/15-project-scheduling-cp.ts
 ```

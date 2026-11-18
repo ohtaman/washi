@@ -186,3 +186,6 @@ m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedSh
 ```
 
 With this soft formulation on Scenario B, HiGHS automatically finds a valid roster that honors 3 of the 4 requests (`Alice (Sat)`, `Charlie (Sat)`, and `Diana (Wed)`) and overrides only `Bob (Sat)`—choosing Bob over Alice because Bob's daily wage (`$210`) is `$10` lower than Alice's (`$220`).
+
+> [!TIP]
+> **Diagnosing `unsatCore` Without `COOP` / `COEP` Headers**: Because every variable in this roster model is a 0-1 binary (`m.binary(...)`) with integer coefficients, you can also run `await model.check({ solver: "pumpkin" })` (after `import "@ohtaman/washi/solvers/pumpkin"`) to extract `unsatCore` in standard browser environments without `COOP` / `COEP` headers or external peer dependencies.

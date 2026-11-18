@@ -853,8 +853,9 @@ export class Model {
    * - `m.bool(rowKeys, colKeys, options?)` -> `Record<R, Record<C, BoolVar>>`
    *
    * **Solver capability note**:
-   * - Logical constraints over `BoolVar` (`and`, `or`, `not`, `implies`, `xor`) are solved natively by Z3
-   *   (`{ solver: "z3" }`) and automatically linearized into 0-1 MIP constraints on HiGHS and GLPK.
+   * - Logical constraints over `BoolVar` (`and`, `or`, `not`, `implies`, `xor`) are solved natively by Pumpkin
+   *   (`{ solver: "pumpkin" }`, bounded integer/boolean models) and Z3 (`{ solver: "z3" }`), and automatically
+   *   linearized into 0-1 MIP constraints on HiGHS and GLPK.
    * - For 0-1 arithmetic variables in linear sums, objectives, or Big-M `m.indicator()`, use `m.binary()` instead.
    *
    * @example
@@ -1130,7 +1131,7 @@ export class Model {
    *
    * **Formulation & solver capability notes**:
    * - Supports linear (`LinExpr`, `Var`, `number`, formula string) and quadratic (`QuadExpr`: `^2`, `${x} * ${y}`) expressions.
-   * - Quadratic terms are supported in **objectives only** (requires a QP-capable solver such as HiGHS; throws on GLPK and Z3).
+   * - Quadratic terms are supported in **objectives only** (requires a QP-capable solver such as HiGHS; throws on Pumpkin, GLPK, and Z3).
    * - Passing a comparison `Constraint` (`<=`, `>=`, `==`) throws an Error.
    *
    * @example
@@ -1258,12 +1259,13 @@ export class Model {
    *
    * **Formulation & solver capability notes**:
    * - Rejects raw arithmetic expressions (`LinExpr`, `QuadExpr`) without a comparison operator and quadratic constraints.
-   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) are solved natively on Z3
-   *   (`{ solver: "z3" }`) and automatically linearized into 0-1 MIP constraints on HiGHS and GLPK.
-   *   Comparison `Constraint`s in negated positions (`implies` antecedents, `not`, `xor`) use exact `+/- 1`
-   *   integer shifts over `Integer`/`Binary` variables with integer coefficients and RHS on MIP backends;
-   *   `Continuous` or non-integer negated constraints throw an Error on MIP solvers (use `{ solver: "z3" }`,
-   *   or rewrite explicitly with `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`).
+   * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) are solved natively on Pumpkin
+   *   (`{ solver: "pumpkin" }`, bounded integer/boolean models) and Z3 (`{ solver: "z3" }`), and automatically
+   *   linearized into 0-1 MIP constraints on HiGHS and GLPK. Comparison `Constraint`s in negated positions
+   *   (`implies` antecedents, `not`, `xor`) use exact `+/- 1` integer shifts over `Integer`/`Binary`
+   *   variables with integer coefficients and RHS on MIP backends (and bounded `Integer`/`Binary` models on
+   *   Pumpkin); `Continuous` or non-integer negated constraints throw an Error on MIP solvers and Pumpkin
+   *   (use `{ solver: "z3" }`, or rewrite explicitly with `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`).
    *
    * @example
    * ```ts
@@ -1477,12 +1479,16 @@ export class Model {
    * `"If binVar === activeValue, then constraint holds"` (`activeValue` defaults to `1`).
    *
    * **Formulation & solver capability notes**:
-   * - Automatically linearizes `<=`, `>=`, and `==` constraints for LP/MIP solvers (HiGHS, GLPK)
+   * - Automatically linearizes `<=`, `>=`, and `==` constraints for LP/MIP solvers (HiGHS, GLPK) and `toLpString()`
    *   under standard floating-point feasibility tolerances (`==` generates `_le` and `_ge` rows).
+   * - When `options.M` is omitted, native logic/SMT solvers bypass Big-M linearization: Pumpkin lowers
+   *   `m.indicator()` via native `implied_by` over bounded integer/binary constraints, and Z3 lowers via
+   *   native `ctx.Implies` (passing explicit `{ M }` preserves Big-M rows across backends).
    * - Variables appearing in `constraint` must have finite bounds (`lb`/`ub`) to derive a safe tight Big-M
    *   automatically, unless an explicit `{ M }` override is supplied in `options`.
-   * - Because Big-M rows are floating-point linear relaxations, they do not guarantee exact rational
-   *   equivalence in SMT solvers (Z3); use `implies(...)` with `m.bool(...)` when exact SMT diagnosis is required.
+   * - Because Big-M rows are floating-point linear relaxations, explicit Big-M indicators do not guarantee
+   *   exact rational equivalence in SMT solvers (Z3); omit `M` or use `implies(...)` with `m.bool(...)`
+   *   when exact SMT diagnosis is required.
    *
    * @example
    * ```ts
@@ -1885,7 +1891,7 @@ export class Model {
 
   /**
    * Solve the optimization model using the configured solver (defaults to HiGHS WASM)
-   * or a solver passed dynamically (e.g., `await m.solve("glpk")` or `await m.solve({ timeLimit: 10 })`).
+   * or a solver passed dynamically (e.g., `await m.solve("pumpkin")`, `await m.solve("glpk")`, or `await m.solve({ timeLimit: 10 })`).
    *
    * **Return status (`SolverStatus`)**:
    * - Built-in optimization solvers return `"Optimal"`, `"Feasible"`, `"Infeasible"`, `"Unbounded"`,
@@ -1898,7 +1904,7 @@ export class Model {
    *   `constr.dual`, `constr.slack`, and `x.reducedCost`, and verify primal feasibility with `m.validateSolution()`.
    *
    * **Solver capability preconditions**:
-   * - Quadratic objectives (`QuadExpr`) require `supportsQP` (supported by HiGHS; throws on GLPK and Z3).
+   * - Quadratic objectives (`QuadExpr`) require `supportsQP` (supported by HiGHS; throws on Pumpkin, GLPK, and Z3).
    * - Logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) execute natively on solvers
    *   with `supportsLogicalConstraints` or `supportsSMT` (Pumpkin, Z3), and are auto-linearized for MIP solvers (HiGHS, GLPK).
    * - Primal `initialValue` warm starts require `supportsWarmStart` (supported by HiGHS and Pumpkin; throws on GLPK and Z3).
@@ -2180,17 +2186,21 @@ export class Model {
    *
    * Returns `CheckResult` (`{ status: "Sat" | "Unsat" | "Unknown", values, conflicts?, unsatCore?, runTime? }`).
    *
-   * **MIP elastic-slack diagnosis vs. Z3 `unsatCore`**:
-   * - **All solvers (`m.check()`)**: Works on both linear arithmetic models and logical models (`BoolVar`,
-   *   `and`, `or`, `not`, `implies`, `xor`) across HiGHS, GLPK, and Z3. On HiGHS and GLPK, logical constraints
-   *   are automatically linearized to 0-1 MIP (negated comparison `Constraint`s require integer-valued
-   *   expressions; `Continuous` or non-integer negated constraints require `{ solver: "z3" }` or explicit
-   *   `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`), and conflicting constraints are diagnosed as
-   *   `result.conflicts` via elastic slack relaxation (leaving `unsatCore: undefined`).
+   * **Conflict diagnosis across HiGHS/GLPK, Pumpkin, and Z3**:
+   * - **All solvers (`m.check()`)**: Works on linear arithmetic, CP global, and logical models (`BoolVar`,
+   *   `and`, `or`, `not`, `implies`, `xor`) across HiGHS, Pumpkin, GLPK, and Z3. On HiGHS and GLPK, logical
+   *   constraints are automatically linearized to 0-1 MIP (negated comparison `Constraint`s require
+   *   integer-valued expressions; `Continuous` or non-integer negated constraints require `{ solver: "z3" }`
+   *   or explicit `or(expr\`... >= ... + eps\`, ...)` / `m.bool()`), and conflicting constraints are diagnosed
+   *   as `result.conflicts` via elastic slack relaxation (leaving `unsatCore: undefined`).
+   * - **Zero-`COOP`/`COEP` `unsatCore` (Pumpkin)**: Bundled Pumpkin (`{ solver: "pumpkin" }` after
+   *   `import "@ohtaman/washi/solvers/pumpkin"`) extracts `result.conflicts` and `result.unsatCore` (as well as
+   *   `m.conflicts` / `m.unsatCore`) over bounded integer and boolean models without `SharedArrayBuffer` or
+   *   Cross-Origin Isolation headers in browsers.
    * - **Exact SMT `unsatCore` (Z3)**: Unsatisfiable-core extraction (`result.conflicts` and `result.unsatCore`,
-   *   as well as `m.conflicts` / `m.unsatCore`) is populated when an unsat-core-capable solver such as Z3
-   *   (`{ solver: "z3" }` after `import "@ohtaman/washi/solvers/z3"`) returns `"Unsat"`, reporting a subset of
-   *   registered constraint names that conflicts together with the model's fixed variable bounds/domains.
+   *   as well as `m.conflicts` / `m.unsatCore`) also supports `Continuous` and mixed real-integer SMT constraints
+   *   when using Z3 (`{ solver: "z3" }` after `import "@ohtaman/washi/solvers/z3"`). Both Pumpkin and Z3 report
+   *   a subset of registered constraint names that conflicts together with the model's fixed variable bounds/domains.
    * - Mutating the model or starting a newer `solve()` / `check()` while in flight discards the stale
    *   result and rejects the pending promise.
    *

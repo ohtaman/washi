@@ -1,6 +1,6 @@
 # 安装与入门
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）为 TypeScript / JavaScript 带来了类似于 Python **PuLP** 的代数建模方式。通过标签模板字面量（`expr`）直观地编写代数公式，并借助 WebAssembly 求解器（**HiGHS**, **Z3**, **GLPK**）直接在 **Node.js 与浏览器** 中求解数理优化问题。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）为 TypeScript / JavaScript 带来了类似于 Python **PuLP** 的代数建模方式。通过标签模板字面量（`expr`）直观地编写代数公式，并借助 WebAssembly 求解器（**HiGHS**, **Pumpkin**, **Z3**, **GLPK**）直接在 **Node.js 与浏览器** 中求解数理优化与约束规划问题。
 
 ```typescript
 import { Model, expr, maximize } from "@ohtaman/washi";
@@ -29,7 +29,7 @@ if (m.hasPrimalSolution) {
 
 ## 📦 安装
 
-默认的 **HiGHS** 求解器（LP / MIP / 凸QP）已内置随包提供，开箱即用：
+默认的 **HiGHS** 求解器（LP / MIP / 凸QP）与 **Pumpkin** CP/LCG 求解器（`@ohtaman/washi/solvers/pumpkin`）均零外部依赖内置随包提供，开箱即用：
 
 ::: code-group
 
@@ -77,5 +77,5 @@ npx skills add ohtaman/washi
 
 - **[建模指南](/zh/guide/variables)**：数组/字典变量定义、聚合函数（`sum`, `dot`）、逻辑约束与不可行冲突诊断（Unsat Core）
 - **[实际案例与 API 索引](/zh/examples/)**：排班优化、投资组合 QP、车辆路径规划等 11 个可在页面内直接运行的建模示例
-- **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与可选 Z3、GLPK 求解器的特性对比与切换方式
+- **[求解器概览与对比](/zh/solvers/)**：内置 HiGHS 与 Pumpkin，以及可选 Z3、GLPK 求解器的特性对比与切换方式
 - **[运行时环境配置](/zh/getting-started/runtimes)**：Node.js、Vite / Next.js 打包工具、CDN 与静态托管配置说明

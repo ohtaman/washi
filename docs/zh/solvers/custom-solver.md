@@ -2,7 +2,7 @@
 
 本指南介绍如何为 **WaSHI**（`@ohtaman/washi`）构建、测试和发布自定义求解器插件。
 
-WaSHI 采用可插拔、解耦的求解器架构。核心包 `@ohtaman/washi` 仅内置零配置的 HiGHS WASM 引擎和 Mock 求解器。任何第三方求解器——无论是通过 WebAssembly、原生 C++ 插件、Web Worker，还是外部云端 REST/RPC 后端实现——都可以注册并通过统一的 `Model` API 进行调用。
+WaSHI 采用可插拔、解耦的求解器架构。核心包 `@ohtaman/washi` 内置零配置的 HiGHS WASM 引擎与 Mock 求解器，并通过 `@ohtaman/washi/solvers/pumpkin` 内置打包提供 Pumpkin CP/LCG WASM 插件。在此基础上，任何第三方求解器——无论是通过 WebAssembly、原生 C++ 插件、Web Worker，还是外部云端 REST/RPC 后端实现——都可以注册并通过统一的 `Model` API 进行调用。
 
 ---
 
@@ -13,6 +13,7 @@ graph TD
     A[WaSHI Model] --> B[Solver Registry Map Symbol.for]
     B --> C[HiGHS WASM Engine Core]
     B --> D[Mock Solver Core]
+    B --> H[Pumpkin WASM Plugin @ohtaman/washi/solvers/pumpkin]
     B --> E[GLPK Plugin @ohtaman/washi/solvers/glpk]
     B --> F[Z3 SMT Plugin @ohtaman/washi/solvers/z3]
     B --> G[Your Custom Solver Plugin]
@@ -119,7 +120,7 @@ export interface SolveModelData extends CheckModelData {
 
 自定义求解器通过 `capabilities` 声明其支持的功能特性。在分发调用 `solve()` 或 `check()` 之前，`Model` 会自动校验以下能力标志：
 - 当目标函数包含二次项（`QuadExpr`）时检查 `supportsQP === false`；
-- 当模型包含逻辑约束（`m.logicalConstraints`）且求解器不支持 SMT（`supportsSMT !== true`）时，`Model` 会自动通过 `linearizeModelForMip` 将其线性化为等价的 0-1 MIP 二元变量与线性约束；
+- 当模型包含逻辑约束（`m.logicalConstraints`）且求解器既不支持原生逻辑约束（`supportsLogicalConstraints !== true`）也不支持 SMT（`supportsSMT !== true`）时，`Model` 会自动通过 `linearizeModelForMip` 将其线性化为等价的 0-1 MIP 二元变量与线性约束；
 - 当任意变量设置了初始值（`initialValue`）时检查 `supportsWarmStart !== true`。
 
 ```typescript
@@ -135,6 +136,9 @@ export interface SolverCapabilities {
 
   /** 支持可满足性模理论（SMT）/ 布尔逻辑约束 */
   supportsSMT?: boolean;
+
+  /** 原生支持布尔/命题逻辑约束（BoolVar, and, or, not, implies, xor），无需 SMT 连续理论 */
+  supportsLogicalConstraints?: boolean;
 
   /** 支持提取不可行核心（冲突约束子集） */
   supportsUnsatCore?: boolean;
@@ -172,7 +176,7 @@ export interface SolverOptions {
 
 ### 可选的 LP 序列化与符号映射辅助函数
 
-直接消费结构化 JS/WASM 数据的求解器（如 `GLPKSolver` 和 `Z3Solver`）可以直接使用 `SolveModelData` / `CheckModelData`。
+直接消费结构化 JS/WASM 数据的求解器（如 `PumpkinSolver`、`GLPKSolver` 和 `Z3Solver`）可以直接使用 `SolveModelData` / `CheckModelData`。
 如果你的适配器对接的后端需要 CPLEX/HiGHS LP 格式文本或受限的标识符语法，WaSHI 导出了按需使用的辅助函数：
 
 - `generateLpString(modelData): LpExportResult` — 将 `modelData` 序列化为 CPLEX LP 格式字符串（`lpString`），并生成防冲突的符号查找映射表（`nameToVar`、`nameToConstraint`）。

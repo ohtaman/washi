@@ -4,18 +4,18 @@
 1. **なぜモデルが実行不可能（Infeasible）になったのか？** どのビジネスルール同士が衝突しているのか？
 2. **ソルバーが返した解は本当にすべての制約を満たしているか？** 許容誤差・整数条件・LP定式化をどう検証するか？
 
-WaSHI はこれらを解決するため、標準搭載の HiGHS による弾性スラック緩和または Z3 の **Unsat Core（充足不能コア）抽出**による**矛盾診断**（`m.check()`）、**独立した解検証**（`m.validateSolution()`）、**LP 定式化出力**（`m.toLpString()`）、および **高速ユニットテスト用モック**（`MockSolver`）を備えています。
+WaSHI はこれらを解決するため、標準搭載の HiGHS による弾性スラック緩和、同梱の Pumpkin による Unsat Core 抽出、または Z3 による **Unsat Core（充足不能コア）抽出**による**矛盾診断**（`m.check()`）、**独立した解検証**（`m.validateSolution()`）、**LP 定式化出力**（`m.toLpString()`）、および **高速ユニットテスト用モック**（`MockSolver`）を備えています。
 
 ---
 
 ## 矛盾制約の診断 (`unsatCore` / `conflicts`)
 
 通常の最適化実行（`m.solve()`）が **`"Infeasible"`** を返しただけでは、すべての制約を同時に満たす解が存在しないことは分かっても、*どの*ルール同士が衝突しているかまでは分かりません。
-**`await m.check({ solver: "z3" })`** を呼び出すと、WaSHI は Z3 の `assertAndTrack` 機構を用いて **Unsatisfiable Core (`unsatCore`)**（互いに矛盾している名前付き制約の部分集合）を自動的に特定します：
+**`await m.check({ solver: "pumpkin" })`**（有界整数・真偽値モデル向け、`COOP`/`COEP` ヘッダーや外部依存なし）または **`await m.check({ solver: "z3" })`**（`Continuous` 変数や実数を含むモデル向け）を呼び出すと、WaSHI は **Unsatisfiable Core (`unsatCore`)**（互いに矛盾している名前付き制約の部分集合）を自動的に特定します：
 
 ```typescript
 import { Model, expr } from "@ohtaman/washi";
-// Z3 ソルバープラグインを登録
+// Z3 ソルバープラグインを登録（Continuous / 実数を含む SMT モデル向け）
 import "@ohtaman/washi/solvers/z3";
 
 const m = new Model();
@@ -39,14 +39,15 @@ if (result.status === "Unsat") {
 `routine_operating_cost`（$x \ge 10$）は矛盾の原因ではないため除外され、直接衝突している `minimum_regulatory_reserve`（$x \ge 100$）と `budget_ceiling`（$x \le 50$）だけが抽出されます。
 
 > [!IMPORTANT]
-> - **Unsat Core 抽出には `m.check({ solver: "z3" })` を使用します**: `m.solve()` は目的関数の最適化を実行するため、追跡付きの競合抽出（`conflicts` / `unsatCore`）は `m.check()` で行います。
+> - **Unsat Core 抽出には `m.check({ solver: "pumpkin" })` または `m.check({ solver: "z3" })` を使用します**: `m.solve()` は目的関数の最適化を実行するため、仮定追跡付きの競合抽出（`conflicts` / `unsatCore`）は `m.check()` で行います。
 > - **制約には名前を付けてください**: 変数の上下限（`lb`, `ub`）は前提ドメインとして扱われます。診断結果（`unsatCore`）にルール名を含めたい場合は、`m.constraint(expr`...`, "rule_name")` として名前付き制約を登録してください。
 
-### 実践パターン: HiGHS または Z3 による実行不能原因の特定
+### 実践パターン: HiGHS・Pumpkin・Z3 による実行不能原因の特定
 
-WaSHI のモデルはソルバー非依存のため、実行不能（`"Infeasible"`）となった場合に 2 つの診断方法を選択できます：
-1. **標準の HiGHS / GLPK**: `await m.check()` が単一 solve の弾性スラック緩和（$\min \sum s_i$）を用いて緩和が必要な制約（`diag.conflicts`）を特定します（追加プラグイン不要）。
-2. **Z3 SMT ソルバー**: `await m.check({ solver: "z3" })` が SMT 制約追跡を用いて厳密な矛盾制約核（`diag.unsatCore` / `diag.conflicts`）を抽出します。
+WaSHI のモデルはソルバー非依存のため、実行不能（`"Infeasible"`）となった場合に 3 通りの診断方法を選択できます：
+1. **標準の HiGHS / GLPK**: `await m.check()` が単一 solve の弾性スラック緩和（$\min \sum s_i$）を用いて緩和が必要な制約（`diag.conflicts`）を特定します（追加 import 不要）。
+2. **同梱 Pumpkin CP/LCG ソルバー**: `await m.check({ solver: "pumpkin" })`（要 `import "@ohtaman/washi/solvers/pumpkin"`）が、**追加依存なし・ブラウザの `COOP` / `COEP` ヘッダー不要**で有界整数・真偽値モデルのスケール不変な `unsatCore` / `conflicts` を抽出します。
+3. **Z3 SMT ソルバー**: `await m.check({ solver: "z3" })` が SMT 制約追跡を用いて、`Continuous` 変数や小数を含むモデルでも厳密な矛盾制約核（`diag.unsatCore` / `diag.conflicts`）を抽出します。
 
 ```typescript
 const status = await m.solve(); // デフォルトの HiGHS で高速に MIP 求解
@@ -56,23 +57,30 @@ if (status === "Infeasible") {
   const diag = await m.check();
   console.error("以下の制約が衝突しています:", diag.conflicts);
 
-  // 方法 2: Z3 による厳密な SMT Unsat Core 診断（要 import "@ohtaman/washi/solvers/z3"）
+  // 方法 2: 同梱 Pumpkin による COOP/COEP 不要の Unsat Core 診断（有界整数・真偽値モデル向け・要 import "@ohtaman/washi/solvers/pumpkin"）
+  // const pumpkinDiag = await m.check({ solver: "pumpkin" });
+  // console.error("Pumpkin Unsat Core:", pumpkinDiag.unsatCore);
+
+  // 方法 3: Z3 による厳密な SMT Unsat Core 診断（Continuous/実数変数にも対応・要 import "@ohtaman/washi/solvers/z3"）
   // const z3Diag = await m.check({ solver: "z3" });
   // console.error("Z3 Unsat Core:", z3Diag.unsatCore);
 }
 ```
 
-### Z3 の `unsatCore` と HiGHS の弾性スラック診断 (`conflicts`) の違い
+### Pumpkin `unsatCore`・Z3 `unsatCore`・HiGHS 弾性スラック診断 (`conflicts`) の違い
 
-| 比較項目 | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
-| :--- | :--- | :--- |
-| **診断アルゴリズム** | SMT 仮定追跡（`assertAndTrack`） | 単一 solve による $L_1$ 弾性スラック最小化（$\min \sum s_i$） |
-| **格納されるフィールド** | `result.unsatCore` と `result.conflicts` の両方 | `result.conflicts` のみ（`unsatCore` は `undefined`） |
-| **抽出結果の意味** | 同時に成立し得ない**論理的な矛盾ルール集合** | どの制約を緩めれば最小の違反量で実行可能に戻るかを表す**最小修復セット** |
-| **単位スケールへの依存性** | **スケール不変**（係数の桁数に影響されない） | **スケールに依存**（重みなしの $\sum s_i$ を最小化するため、予算 `10,000` 円の緩和よりも人数 `2` 人の緩和が優先して選ばれやすい） |
+| 比較項目 | Pumpkin (`m.check({ solver: "pumpkin" })`) | Z3 (`m.check({ solver: "z3" })`) | HiGHS / GLPK (`m.check()`) |
+| :--- | :--- | :--- | :--- |
+| **導入・依存関係** | **同梱プラグイン**（`@ohtaman/washi/solvers/pumpkin`・外部依存なし） | オプション依存パッケージ（`z3-solver`） | **標準搭載**（HiGHS）/ オプション `glpk.js` |
+| **ブラウザ HTTP ヘッダー** | **不要**（`COOP` / `COEP` 不要） | `COOP` / `COEP` 必須（`SharedArrayBuffer`） | **不要** |
+| **対応変数型** | 有界 `Integer`, `Binary`, `BoolVar` | `Continuous`, `Integer`, `Binary`, `BoolVar` | `Continuous`, `Integer`, `Binary`, `BoolVar` |
+| **診断アルゴリズム** | 制約仮定に基づく LCG 矛盾解析 | SMT 仮定追跡（`assertAndTrack`） | 単一 solve による $L_1$ 弾性スラック最小化（$\min \sum s_i$） |
+| **格納されるフィールド** | `result.unsatCore` と `result.conflicts` の両方 | `result.unsatCore` と `result.conflicts` の両方 | `result.conflicts` のみ（`unsatCore` は `undefined`） |
+| **抽出結果の意味** | 同時に成立し得ない**論理的な矛盾ルール集合** | 同時に成立し得ない**論理的な矛盾ルール集合** | どの制約を緩めれば最小の違反量で実行可能に戻るかを表す**最小修復セット** |
+| **単位スケールへの依存性** | **スケール不変**（係数の桁数に影響されない） | **スケール不変**（係数の桁数に影響されない） | **スケールに依存**（重みなしの $\sum s_i$ を最小化するため、予算 `10,000` 円の緩和よりも人数 `2` 人の緩和が優先して選ばれやすい） |
 
 > [!TIP]
-> 人数制約（$\le 8$ 人）と予算制約（$\le 50{,}000$ ドル）のように単位の桁数が大きく異なる制約が混在するモデルで、スケールに依存せず矛盾に関与する全ルールを特定したい場合は **`m.check({ solver: "z3" })`** を使用するか、制約の単位スケールを揃える（千円・万円単位にする等）ことを推奨します。
+> 人数制約（$\le 8$ 人）と予算制約（$\le 50{,}000$ ドル）のように単位の桁数が大きく異なる制約が混在するモデルで、スケールに依存せず矛盾に関与するルールを特定したい場合は、有界整数・真偽値モデルであれば `COOP`/`COEP` 不要な **`m.check({ solver: "pumpkin" })`**、連続変数や小数閾値を含む場合は **`m.check({ solver: "z3" })`** を使用するか、制約の単位スケールを揃えることを推奨します。
 
 ---
 

@@ -3,7 +3,7 @@
 [English README](../README.md) · [日本語 README](../README.ja.md) · [中文 README](../README.zh-CN.md) · [Online Example Docs](https://washi.ohtaman.dev/examples/)
 
 These examples show how to construct models with WaSHI and inspect results from
-HiGHS, Z3, or GLPK. The solver performs the optimization or satisfiability check.
+HiGHS, Pumpkin, Z3, or GLPK. The solver performs the optimization or satisfiability check.
 
 ## Browser demo
 
@@ -22,7 +22,7 @@ npm run dev
 # Open http://localhost:5173/demo/
 ```
 
-Z3 in a browser requires a secure context, SharedArrayBuffer, and
+HiGHS, Pumpkin, and GLPK require no Cross-Origin Isolation headers in browsers. Z3 in a browser requires a secure context, SharedArrayBuffer, and
 cross-origin isolation. See the [browser requirements](../README.md#-browser--web-worker-usage).
 The GitHub Pages demo uses a service worker scoped to the project's path to
 establish isolation; it may reload once on the first visit.
@@ -51,10 +51,11 @@ use `@ohtaman/washi` and import the required solver plugin.
 | [Portfolio allocation](node/03-portfolio-qp.ts) | Continuous weights, a quadratic variance objective, and budget / return constraints | `new QuadExpr()`, `v1.mul(v2)` | HiGHS |
 | [SMT / MIP workflow](node/07-hybrid-smt-mip.ts) | Separate policy verification and capacity allocation models | `bool()`, `indicator()` | Z3 + HiGHS |
 
-### 3. SMT Logic & Solver Adapters
+### 3. Constraint Programming, SMT Logic & Solver Adapters
 
 | Example source | Model construction and results | Featured APIs | Solver |
 | --- | --- | --- | --- |
+| [Project scheduling (RCPSP)](node/15-project-scheduling-cp.ts) | Resource-constrained project schedule (unary rig + 3-engineer cumulative pool, makespan minimization) + zero-COOP/COEP `unsatCore` conflict check | `disjoint()`, `cumulative()`, `max()`, `check()`, `unsatCore` | Pumpkin |
 | [Security rules](node/04-smt-security-rules.ts) | Boolean and arithmetic constraints, implications, and a satisfying assignment | `bool()`, `implies()`, `check()` | Z3 |
 | [Conflict diagnosis](node/05-unsat-core-diagnosis.ts) | Inconsistent staffing / budget rules and a conflicting constraint subset | `check()`, `unsatCore` | Z3 |
 | [GLPK adapter](node/08-glpk-solver-plugin.ts) | A diet model, plugin selection, an objective value, and row duals | `solver: "glpk"` | GLPK |
@@ -76,10 +77,10 @@ npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 npx tsx examples/node/13-vehicle-routing-column-generation.ts
 npx tsx examples/node/14-traveling-salesperson-benders.ts
+npx tsx examples/node/15-project-scheduling-cp.ts
 ```
 
-Repository development dependencies include the optional engines. Applications
-using the npm package install `z3-solver` or `glpk.js` when they use those plugins.
+HiGHS and Pumpkin (`@ohtaman/washi/solvers/pumpkin`) are bundled in `@ohtaman/washi` with zero extra runtime dependencies. Repository development dependencies also include the optional engines; applications using the npm package install `z3-solver` or `glpk.js` when they use those plugins.
 GLPK / glpk.js uses GPL-3.0; see the [third-party notices](../THIRD_PARTY_LICENSES.md).
 
 ## Browser distribution examples

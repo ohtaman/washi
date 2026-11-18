@@ -13,6 +13,7 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 | **[スタッフのシフト作成と競合診断](./shift-scheduling.md)** | 0-1 MIP + Unsat Core | HiGHS + Z3 | `m.binary(staff, days)`, `check()`, `unsatCore` | 5名×7日のシフト作成（必要人数・シニア配置・週上限・希望休）と、希望休が衝突した際の Z3 `unsatCore` による原因特定。 | [Playground](https://washi.ohtaman.dev/demo/?preset=shift_scheduling) |
 | **[ECカートのクーポン最適適用](./ecommerce-coupons.md)** | Indicator MIP | HiGHS | `m.indicator()`, `expr` (`sum`, `dot`), `m.constraint()` | `m.indicator()` を用いた最低購入金額条件、併用不可ルール、さらに追加購入による上位割引解放の同時計算。 | [Playground](https://washi.ohtaman.dev/demo/?preset=cart_coupon) |
 | **[ポートフォリオ最適化](./portfolio-qp.md)** | 凸二次計画 (QP) | HiGHS | `m.continuous()`, `m.constraint()`, `dot()`, `QuadExpr` | マーコウィッツの平均・分散モデル（共分散リスクの最小化）。 | [Playground](https://washi.ohtaman.dev/demo/?preset=portfolio_qp) |
+| **[プロジェクトスケジューリング (RCPSP)](./project-scheduling.md)** | CP / LCG + Unsat Core | Pumpkin | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `m.check()` | 共有リグ排他と 3 名人員上限を伴う 6 工程スケジューリングおよび `COOP`/`COEP` 不要の `unsatCore` 納期競合診断。 | [CP モデリングガイド](../guide/constraint-programming.md) |
 | **[セキュリティポリシー検証](./smt-security.md)** | SMT 論理 | Z3 | `m.bool()`, `m.constraint()`, `m.check()` | 命題変数（`BoolVar`）と論理演算（`implies`, `and`, `not`, `xor`）によるルール検証。 | [Playground](https://washi.ohtaman.dev/demo/?preset=smt_security) |
 | **[制約矛盾の診断 (`unsatCore`)](./unsat-core.md)** | Unsat Core | Z3 | `m.constraint()`, `m.check()`, `m.unsatCore` | 人員要件と予算上限が衝突した際、矛盾を引き起こしている制約の部分集合を自動抽出。 | [Playground](https://washi.ohtaman.dev/demo/?preset=conflict_diagnosis_unsat) |
 | **[車両配送計画 (CVRP)](./vehicle-routing.md)** | 組合せ最適化 / Dantzig-Wolfe | HiGHS | `m.solveColumnGeneration()`, `pricing` | 顧客訪問の双対価格からトラック巡回ルートを動的生成し、最少車両数を決定。 | [分解法ガイド](../guide/decomposition.md) |
@@ -36,6 +37,9 @@ WaSHI を使った数理最適化・論理検証のサンプル集です。各�
 | `m.check()` / `m.unsatCore` | 充足性チェックと矛盾制約サブセットの抽出 | [制約矛盾の診断](./unsat-core.md), [シフト作成](./shift-scheduling.md) | [`05-unsat-core-diagnosis.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/05-unsat-core-diagnosis.ts) |
 | `m.solveColumnGeneration()` | Dantzig-Wolfe 列生成法 | [車両配送計画](./vehicle-routing.md) | [`13-vehicle-routing-column-generation.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/13-vehicle-routing-column-generation.ts) |
 | `m.solveBenders()` | Benders分解と遅延切除平面分離 | [巡回セールスマン](./traveling-salesperson.md) | [`14-traveling-salesperson-benders.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/14-traveling-salesperson-benders.ts) |
+| `distinct()` / `disjoint()` / `cumulative()` / `allowed()` | ソルバー非依存の CP グローバル制約 | [プロジェクトスケジューリング](./project-scheduling.md), [CP モデリングガイド](../guide/constraint-programming.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `max()` / `min()` / `abs()` / `at()` | 区分線形・要素参照（Element）プリミティブ | [プロジェクトスケジューリング](./project-scheduling.md), [数式の記述ガイド](../guide/expressions.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
+| `solver: "pumpkin"` | 同梱 Pumpkin による CP/LCG 求解と `COOP`/`COEP` 不要の `unsatCore` | [プロジェクトスケジューリング](./project-scheduling.md), [Pumpkin ソルバーガイド](../solvers/pumpkin.md) | [`15-project-scheduling-cp.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts) |
 | `solver: "glpk"` | GLPK プラグインによる LP / MIP 求解 | [GLPK ソルバーガイド](../solvers/glpk.md) | [`08-glpk-solver-plugin.ts`](https://github.com/ohtaman/washi/blob/main/examples/node/08-glpk-solver-plugin.ts) |
 
 ## ローカル環境（Node.js）での実行方法
@@ -56,4 +60,5 @@ npx tsx examples/node/11-shift-scheduling.ts
 npx tsx examples/node/12-ecommerce-coupon-optimizer.ts
 npx tsx examples/node/13-vehicle-routing-column-generation.ts
 npx tsx examples/node/14-traveling-salesperson-benders.ts
+npx tsx examples/node/15-project-scheduling-cp.ts
 ```

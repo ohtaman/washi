@@ -3,7 +3,7 @@ layout: home
 
 hero:
   text: "Mathematical Optimization Modeler in TypeScript"
-  tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, and SMT models with intuitive infix expressions and solve in Node.js and browsers via WebAssembly (HiGHS, Z3, GLPK) with zero Python or native C++ dependencies."
+  tagline: "A TypeScript alternative to Python's PuLP. Formulate LP, MIP, Convex QP, CP, and SMT models with intuitive infix expressions and solve in Node.js and browsers via WebAssembly (HiGHS, Pumpkin, Z3, GLPK) with zero Python or native C++ dependencies."
   actions:
     - theme: brand
       text: Getting Started
@@ -20,7 +20,7 @@ features:
     linkText: Runtime Environments
   - icon: ✍️
     title: Algebraic Modeling (expr)
-    details: Write LP, MIP, Convex QP, and SMT models using natural infix math expressions instead of hand-assembling matrices or LP text.
+    details: Write LP, MIP, Convex QP, CP, and SMT models using natural infix math expressions instead of hand-assembling matrices or LP text.
     link: /guide/expressions
     linkText: Modeling Expressions
   - icon: 🧩
@@ -30,12 +30,12 @@ features:
     linkText: Variables & Domains
   - icon: 🔍
     title: Infeasibility & Conflict Diagnosis
-    details: When constraints conflict and no feasible solution exists, pinpoint which rules contradict each other using built-in HiGHS or Z3.
+    details: When constraints conflict and no feasible solution exists, pinpoint which rules contradict each other using bundled HiGHS or Pumpkin, or optional Z3.
     link: /guide/unsat-core
     linkText: Conflict Diagnosis
   - icon: ⚙️
     title: Pluggable Solver Backends
-    details: Formulate once and switch seamlessly between built-in HiGHS, optional Z3 (SMT) and GLPK plugins, or your own custom solver.
+    details: Formulate once and switch seamlessly between bundled HiGHS (LP/MIP/QP) and Pumpkin (CP/LCG), optional Z3 and GLPK plugins, or your own custom solver.
     link: /solvers/
     linkText: Solver Backends
   - icon: 🔀
@@ -126,9 +126,9 @@ Block wolf entry paths with limited wooden fences while maximizing safe pasture 
 <div class="tip custom-block" style="padding-top: 8px;">
 
 - **Getting Started**: [Introduction & Installation](/getting-started/) · [Runtime Environments](/getting-started/runtimes) · [Cross-Origin Isolation](/getting-started/cross-origin)
-- **Modeling Guide**: [Variables & Bounds](/guide/variables) · [Expressions (expr, dot, sum)](/guide/expressions) · [Objective Functions](/guide/objectives) · [Constraints](/guide/constraints) · [Unsat Core Diagnosis](/guide/unsat-core) · [Decomposition Methods](/guide/decomposition) · [Formulation Patterns & Tips](/guide/formulation-tips)
-- **Solver Backends**: [Overview & Comparison](/solvers/) · [HiGHS (Built-in)](/solvers/highs) · [Z3 (SMT)](/solvers/z3) · [GLPK (LP/MIP)](/solvers/glpk) · [Custom Solver Adapter](/solvers/custom-solver)
-- **Examples**: [Overview & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack](/examples/knapsack) · [Transportation Network](/examples/transportation) · [Diet Problem & Sensitivity](/examples/diet-sensitivity) · [Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Coupon Optimizer](/examples/ecommerce-coupons) · [Portfolio QP](/examples/portfolio-qp) · [SMT Security](/examples/smt-security) · [Conflict Diagnosis](/examples/unsat-core) · [Vehicle Routing](/examples/vehicle-routing) · [Traveling Salesperson](/examples/traveling-salesperson)
+- **Modeling Guide**: [Variables & Bounds](/guide/variables) · [Expressions (expr, dot, sum)](/guide/expressions) · [Objective Functions](/guide/objectives) · [Constraints](/guide/constraints) · [Unsat Core Diagnosis](/guide/unsat-core) · [Constraint Programming (CP)](/guide/constraint-programming) · [Decomposition Methods](/guide/decomposition) · [Formulation Patterns & Tips](/guide/formulation-tips)
+- **Solver Backends**: [Overview & Comparison](/solvers/) · [HiGHS (Built-in)](/solvers/highs) · [Pumpkin (CP/LCG)](/solvers/pumpkin) · [Z3 (SMT)](/solvers/z3) · [GLPK (LP/MIP)](/solvers/glpk) · [Custom Solver Adapter](/solvers/custom-solver)
+- **Examples**: [Overview & API Finder](/examples/) · [Production Planning](/examples/production) · [0-1 Knapsack](/examples/knapsack) · [Transportation Network](/examples/transportation) · [Diet Problem & Sensitivity](/examples/diet-sensitivity) · [Shift Scheduling](/examples/shift-scheduling) · [E-Commerce Coupon Optimizer](/examples/ecommerce-coupons) · [Portfolio QP](/examples/portfolio-qp) · [Project Scheduling (CP)](/examples/project-scheduling) · [SMT Security](/examples/smt-security) · [Conflict Diagnosis](/examples/unsat-core) · [Vehicle Routing](/examples/vehicle-routing) · [Traveling Salesperson](/examples/traveling-salesperson)
 - **Interactive Playground & Showcase**: [Showcase Hub](/showcase/) · <a href="/demo/" target="_self">WaSHI Playground</a> · <a href="/apps/ai-shift/" target="_self">AI Nurse Shift Copilot</a> · <a href="/apps/ai-timetable/" target="_self">AI University Timetabling Copilot</a> · <a href="/games/demon-castle-shift/" target="_self">Demon Castle 24-Hour Guard Shift</a> · <a href="/games/mofumofu-sheep/" target="_self">Fluffy Sheep Pasture Enclosure</a> · <a href="/games/titan-pack/" target="_self">TITAN PACK</a>
 
 </div>

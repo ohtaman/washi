@@ -36,6 +36,7 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `<=`：小于等于（上界）约束
 - `>=`：大于等于（下界）约束
 - `==` 或 `=`：等式约束
+- `<`、`>`、`!=`：离散严格不等式与不等约束（仅限整数值表达式；参见 [离散比较运算符](#discrete-comparisons)）
 
 ### 数组批量注册
 向 `m.constraint([...])` 传入约束数组，可在单次调用中以事务方式批量注册多条约束：
@@ -56,7 +57,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ### 为什么要为约束命名？
 1. **模型检查 (`m.toLpString()`)**：导出的 CPLEX LP 格式字符串会保留这些名称（必要时自动转义），便于核对生成的数学模型。
-2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束之间相互矛盾导致模型不可行时，`m.check()`（通过内置 HiGHS 弹性松弛或 Z3 `unsatCore`）会返回构成冲突子集的具体约束名称。
+2. **冲突诊断 (`conflicts` / `unsatCore`)**：当约束之间相互矛盾导致模型不可行时，`m.check()`（通过内置 HiGHS 弹性松弛、内置 Pumpkin `unsatCore` 或 Z3 `unsatCore`）会返回构成冲突子集的具体约束名称。
 3. **按名称查询 (`m.getConstraintByName()`)**：求解后可按名称获取约束对象，读取其影子价格（`dual`）或松弛量（`slack`）。
 
 ---
@@ -128,7 +129,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 ## 命题逻辑与 SMT 约束 (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
-WaSHI 提供一等逻辑运算符来组合命题布尔变量（`m.bool()`）与线性算术约束（`Constraint`）。逻辑公式在 **Z3** SMT 求解器（`@ohtaman/washi/solvers/z3`）中原生求解，在 **HiGHS** 与 **GLPK** 中自动线性化为 0-1 MIP 约束：
+WaSHI 提供一等逻辑运算符来组合命题布尔变量（`m.bool()`）与线性算术约束（`Constraint`）。逻辑公式在 **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`，面向有界整数与布尔模型）与 **Z3**（`@ohtaman/washi/solvers/z3`）中原生求解，在 **HiGHS** 与 **GLPK** 中自动线性化为 0-1 MIP 约束：
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";
@@ -166,7 +167,7 @@ m.constraint(and(or(isAdmin, hasMfa), not(xor(isAdmin, hasMfa))), "policy");
 
 ---
 
-## 离散比较运算符 (`!=`, `<`, `>`)
+## 离散比较运算符 (`!=`, `<`, `>`) {#discrete-comparisons}
 
 WaSHI 在 `expr` 模板中（以及 `Var`、`LinExpr`、`QuadExpr` 上的 `.ne()`、`.lt()`、`.gt()` 链式方法）支持离散比较运算符 `!=`、`<` 和 `>`，且**仅限整数值表达式**（仅含 `Integer` / `Binary` 变量与安全整数系数和常数）：
 

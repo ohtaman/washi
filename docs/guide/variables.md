@@ -55,7 +55,7 @@ m.constraint(isAdmin.implies(hasMfa), "admin_requires_mfa");
 | **Linear arithmetic (`expr`, `sum`, `dot`, objective costs)** | ✅ Native (`` expr`30 * ${b}` ``) | ❌ Cannot be multiplied by numbers or summed directly |
 | **Indicator constraints (`m.indicator(b, ...)` )** | ✅ Supported as trigger variable | ❌ Use `` implies(flag, expr`...`) `` instead |
 | **Propositional logic (`and`, `or`, `not`, `implies`, `xor`)** | Via comparison (`` expr`${b} == 1` ``) | ✅ Native first-class methods (`.implies()`, `.and()`) |
-| **Solver execution** | Native 0-1 MIP on HiGHS/GLPK; bounded integer on Z3 | Native boolean proposition on Z3; auto-linearized to 0-1 MIP on HiGHS/GLPK |
+| **Solver execution** | Native 0-1 MIP on HiGHS/GLPK; bounded `{0, 1}` integer on Pumpkin/Z3 | Native boolean proposition on Pumpkin/Z3; auto-linearized to 0-1 MIP on HiGHS/GLPK |
 
 > [!TIP]
 > Use **`m.binary()`** when a decision participates in arithmetic expressions—such as linear sums ($\sum x_i \ge 3$), objective cost terms ($c_i x_i$), or `m.indicator()`. Use **`m.bool()`** when expressing logical conditions with `implies()`, `and()`, and `or()` without numeric coefficients.

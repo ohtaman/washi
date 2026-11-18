@@ -141,7 +141,7 @@ export interface SolverCheckResult {
 
 /**
  * Universal Solver interface.
- * Any optimization engine (HiGHS WASM, GLPK, Z3, Gurobi Remote, CBC, SCIP, custom JS)
+ * Any optimization engine (HiGHS WASM, Pumpkin WASM, Z3, GLPK, Gurobi Remote, CBC, SCIP, custom JS)
  * implements this interface to be used interchangeably with Model.
  */
 export interface Solver {

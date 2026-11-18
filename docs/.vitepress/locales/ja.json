@@ -1,7 +1,7 @@
 {
   "label": "日本語",
   "titleTemplate": ":title | WaSHI — TypeScript 数理最適化モデラー",
-  "description": "TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, SMT）",
+  "description": "TypeScript & JavaScript 向け数理最適化と制約プログラミングのための代数モデラー（LP, MIP, 凸QP, CP, SMT）",
   "nav": [
     {
       "text": "はじめに",
@@ -27,6 +27,7 @@
         { "text": "制約条件", "link": "/ja/guide/constraints" },
         { "text": "目的関数と最適化", "link": "/ja/guide/objectives" },
         { "text": "競合制約診断 (Unsat Core)", "link": "/ja/guide/unsat-core" },
+        { "text": "制約プログラミング (CP)", "link": "/ja/guide/constraint-programming" },
         { "text": "分解法 (列生成・Benders)", "link": "/ja/guide/decomposition" },
         { "text": "定式化パターン・Tips", "link": "/ja/guide/formulation-tips" }
       ]
@@ -36,9 +37,9 @@
       "items": [
         { "text": "ソルバー比較と概要", "link": "/ja/solvers/" },
         { "text": "HiGHS (標準ソルバー)", "link": "/ja/solvers/highs" },
+        { "text": "Pumpkin (同梱 CP / LCG)", "link": "/ja/solvers/pumpkin" },
         { "text": "Z3 (SMT / 競合診断)", "link": "/ja/solvers/z3" },
         { "text": "GLPK (LP / MIP)", "link": "/ja/solvers/glpk" },
-        { "text": "Pumpkin (CP / LCG / 論理)", "link": "/ja/solvers/pumpkin" },
         { "text": "カスタムソルバー作成ガイド", "link": "/ja/solvers/custom-solver" }
       ]
     },
@@ -53,6 +54,7 @@
         { "text": "シフト作成と希望休の競合診断", "link": "/ja/examples/shift-scheduling" },
         { "text": "ECカートのクーポン最適適用", "link": "/ja/examples/ecommerce-coupons" },
         { "text": "ポートフォリオ最適化 (QP)", "link": "/ja/examples/portfolio-qp" },
+        { "text": "プロジェクトスケジューリング (CP)", "link": "/ja/examples/project-scheduling" },
         { "text": "セキュリティポリシー検証 (SMT)", "link": "/ja/examples/smt-security" },
         { "text": "制約矛盾の診断 (Unsat Core)", "link": "/ja/examples/unsat-core" },
         { "text": "車両配送計画 (列生成法)", "link": "/ja/examples/vehicle-routing" },

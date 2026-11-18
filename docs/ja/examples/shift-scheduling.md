@@ -186,3 +186,6 @@ m.objective(minimize(expr`dot(${costMatrix}, ${shift}) + 500 * sum(${requestedSh
 ```
 
 シナリオBに対してこのソフト制約モデルを解くと、4件の希望休のうち3件（`Alice (Sat)`, `Charlie (Sat)`, `Diana (Wed)`）を守りつつ、日給が Alice（`$220`）より `$10` 安い `Bob (Sat)`（`$210`）の1件だけに出勤を依頼する最適修復シフトが即座に得られます。
+
+> [!TIP]
+> **`COOP` / `COEP` ヘッダー不要での `unsatCore` 診断**: このシフト表モデルの変数はすべて整数係数の 0-1 バイナリ変数（`m.binary(...)`）であるため、`import "@ohtaman/washi/solvers/pumpkin"` を読み込んで `await model.check({ solver: "pumpkin" })` を実行すれば、`COOP` / `COEP` ヘッダーや追加依存パッケージなしの通常ブラウザ環境でも `unsatCore` を抽出できます。

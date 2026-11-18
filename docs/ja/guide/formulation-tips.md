@@ -1,6 +1,6 @@
 # 数理最適化の定式化パターン・Tips
 
-これまでのモデリングガイド各ページでは WaSHI の API と機能（`Model`、`expr`、`m.constraint`、`m.solve` など）を解説しました。本ページでは、線形計画法（LP）や混合整数計画法（MIP）で頻出する一般的な数理最適化の定式化テクニックとソルバー運用の勘所をまとめています。
+これまでのモデリングガイド各ページでは WaSHI の API と機能（`Model`、`expr`、`m.constraint`、`m.solve` など）を解説しました。本ページでは、線形計画法（LP）や混合整数計画法（MIP）で頻出する一般的な数理最適化の定式化テクニックとソルバー運用の勘所をまとめています。*（Pumpkin を用いた `disjoint`・`cumulative`・`distinct`・`allowed`・`at` による制約プログラミングの定式化については、[制約プログラミング (CP) モデリングガイド](./constraint-programming.md) を参照してください。）*
 
 ---
 
@@ -95,7 +95,7 @@ m.constraint(expr`sum(${hours}) >= 60`, "total_required_work");
 m.objective(minimize(maxHours));
 ```
 
-*（同様に、最小水準を最大化する **Max-Min 最適化** $\max \min_i u_i$ では、すべての $i$ について $u_i \ge z$ を課し、`m.objective(maximize(z))` を設定します。）*
+*（同様に、最小水準を最大化する **Max-Min 最適化** $\max \min_i u_i$ では、すべての $i$ について $u_i \ge z$ を課し、`m.objective(maximize(z))` を設定します。なお WaSHI は組み込みの `max(...)`・`min(...)` でも同様の凸 LP エピグラフ変換を自動生成し、Pumpkin ではネイティブプロパゲータへ直接マッピングします。詳細は [数式の記述 (区分線形・Element)](./expressions.md) を参照してください。）*
 
 ---
 

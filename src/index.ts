@@ -1,8 +1,8 @@
 /**
  * WaSHI: Modern Mathematical Optimization Modeler for TypeScript & JavaScript
  * 
- * Domain-pure algebraic modeling with WebAssembly (HiGHS, Z3, GLPK) and pluggable solvers.
- * Supports LP (Linear Programming), MIP (Mixed-Integer Programming), QP (Quadratic Programming), and SMT.
+ * Domain-pure algebraic modeling with WebAssembly (HiGHS, Pumpkin, Z3, GLPK) and pluggable solvers.
+ * Supports LP (Linear Programming), MIP (Mixed-Integer Programming), QP (Quadratic Programming), CP (Constraint Programming), and SMT.
  */
 
 // Core Algebraic Modeler

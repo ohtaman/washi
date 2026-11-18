@@ -15,6 +15,7 @@ export interface PumpkinRuntime {
 const MAX_CACHED_RUNTIMES = 4;
 let customWasmUrl: string | null = null;
 const runtimeCache = new Map<string, Promise<PumpkinRuntime>>();
+const readyRuntimeKeys = new Set<string>();
 let resetEpoch = 0;
 let workerResetHook: (() => void) | null = null;
 
@@ -78,7 +79,16 @@ export function resolvePumpkinWasmUrl(): string {
 export function resetPumpkinLoader(): void {
   resetEpoch++;
   runtimeCache.clear();
+  readyRuntimeKeys.clear();
   workerResetHook?.();
+}
+
+/**
+ * Returns `true` when an instantiated main-thread Pumpkin WASM runtime is cached for the resolved URL.
+ */
+export function isPumpkinRuntimeCached(overrideWasmUrl?: string | null): boolean {
+  const targetKey = normalizeCustomWasmUrl(overrideWasmUrl) ?? "__bundled__";
+  return readyRuntimeKeys.has(targetKey);
 }
 
 /**
@@ -220,10 +230,17 @@ export async function loadPumpkinRuntime(overrideWasmUrl?: string | null): Promi
   pending = (async () => {
     try {
       const wasmBytes = await loadWasmBytes(targetCustomUrl);
-      return await createPumpkinRuntime(wasmBytes);
-    } catch (err) {
+      const rt = await createPumpkinRuntime(wasmBytes);
       if (resetEpoch === capturedEpoch && runtimeCache.get(targetKey) === pending) {
-        runtimeCache.delete(targetKey);
+        readyRuntimeKeys.add(targetKey);
+      }
+      return rt;
+    } catch (err) {
+      if (resetEpoch === capturedEpoch) {
+        readyRuntimeKeys.delete(targetKey);
+        if (runtimeCache.get(targetKey) === pending) {
+          runtimeCache.delete(targetKey);
+        }
       }
       if (
         targetCustomUrl !== null &&
@@ -242,6 +259,7 @@ export async function loadPumpkinRuntime(overrideWasmUrl?: string | null): Promi
     const oldestKey = runtimeCache.keys().next().value;
     if (oldestKey === undefined) break;
     runtimeCache.delete(oldestKey);
+    readyRuntimeKeys.delete(oldestKey);
   }
   runtimeCache.set(targetKey, pending);
   return pending;

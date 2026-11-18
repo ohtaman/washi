@@ -36,6 +36,7 @@ m.constraint(expr`${x} + ${y} == 30`, "exact_quota");
 - `<=`: Upper bound constraint
 - `>=`: Lower bound constraint
 - `==` or `=`: Exact equality constraint
+- `<`, `>`, `!=`: Discrete strict inequality / disequality constraints (integer-valued expressions only; see [Discrete Comparisons](#discrete-comparisons))
 
 ### Batch Registration
 Pass an array of constraints to `m.constraint([...])` to register them transactionally in a single call:
@@ -56,7 +57,7 @@ m.constraint(expr`${x} + ${y} <= 100`, "budget_cap");
 
 ### Why Name Constraints?
 1. **Model Inspection (`m.toLpString()`)**: Exported CPLEX LP strings retain these descriptive names (sanitized if needed) so you can inspect the generated formulation.
-2. **Conflict Diagnosis (`conflicts` / `unsatCore`)**: When constraints contradict each other, `m.check()` returns the conflicting constraint names (via built-in HiGHS elastic relaxation or Z3 `unsatCore`).
+2. **Conflict Diagnosis (`conflicts` / `unsatCore`)**: When constraints contradict each other, `m.check()` returns the conflicting constraint names (via built-in HiGHS elastic relaxation, bundled Pumpkin `unsatCore`, or Z3 `unsatCore`).
 3. **Direct Lookup (`m.getConstraintByName()`)**: Retrieve a constraint by name after solving to inspect its `dual` or `slack` value.
 
 ---
@@ -128,7 +129,7 @@ m.indicator(useDiscount, expr`${cartTotal} >= 100`, {
 
 ## Propositional Logic & SMT Constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`)
 
-WaSHI provides first-class logical operators to combine propositional boolean variables (`m.bool()`) and linear constraints (`Constraint`). Logical formulas are solved natively by the **Z3** SMT adapter (`@ohtaman/washi/solvers/z3`) and automatically linearized to 0-1 MIP constraints on **HiGHS** and **GLPK**:
+WaSHI provides first-class logical operators to combine propositional boolean variables (`m.bool()`) and linear constraints (`Constraint`). Logical formulas are solved natively by **Pumpkin** (`@ohtaman/washi/solvers/pumpkin`, for bounded integer & boolean models) and **Z3** (`@ohtaman/washi/solvers/z3`), and automatically linearized to 0-1 MIP constraints on **HiGHS** and **GLPK**:
 
 ```typescript
 import { Model, expr, and, or, not, implies, xor } from "@ohtaman/washi";

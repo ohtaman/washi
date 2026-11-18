@@ -6,7 +6,7 @@
   </picture>
   <p><strong>TypeScript 数理最適化モデラー</strong></p>
   <p>
-    <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • SMT論理制約 &amp; 矛盾診断</em>
+    <em>線形計画 (LP) • 混合整数計画 (MIP) • 凸二次計画 (QP) • 制約プログラミング (CP) • SMT論理制約 &amp; 矛盾診断</em>
   </p>
   <p>
     <a href="./README.md">English</a> •
@@ -24,13 +24,13 @@
 
 ---
 
-**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** に着想を得た、数理最適化と制約プログラミングのための TypeScript / JavaScript 向け代数モデラーです。変数・目的関数・制約をアプリケーションコードで記述し、Node.js やブラウザ上で **HiGHS**（標準）・**Z3**・**GLPK** を使ってそのまま求解できます。
+**WaSHI**（WebAssembly-backed, Solver-independent, High-level modeling Interface）は、Python の **PuLP** に着想を得た、数理最適化と制約プログラミングのための TypeScript / JavaScript 向け代数モデラーです。変数・目的関数・制約をアプリケーションコードで記述し、Node.js やブラウザ上で標準同梱の **HiGHS**（デフォルト）・**Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）、あるいはオプションの **Z3**・**GLPK** を使ってそのまま求解できます。
 
 ## ✨ 主な特徴
 
 - **直感的な数式記述**: `` expr`30 * ${x} + 50 * ${y} <= 40` `` や総和・内積（`sum`, `dot`）で数式と制約を簡潔に書けます。
 - **Node.js・ブラウザで完結**: WebAssembly ベースのため、Python サーバーや C/C++ のネイティブビルドなしで動作します。
-- **ソルバー非依存**: 標準同梱の **HiGHS** に加え、オプションの **Z3**・**GLPK** や独自ソルバーへ切り替えられます。
+- **ソルバー非依存**: 追加依存なしの同梱 **HiGHS**（LP/MIP/QP）・**Pumpkin**（CP/LCG）に加え、オプションの **Z3**・**GLPK** や独自ソルバーへ切り替えられます。
 - **充足判定と矛盾診断**: 論理・数値制約の充足可能性判定や、実行不能（Infeasible）になった原因制約の特定に対応しています。
 - **大規模問題の分解法**: 列生成法やベンダーズ分解などの分解アルゴリズムをサポートしています。
 
@@ -47,9 +47,10 @@
 
 ```bash
 npm install @ohtaman/washi
+# HiGHS (LP/MIP/QP) と Pumpkin (CP/LCG, @ohtaman/washi/solvers/pumpkin) は追加依存なしで同梱されています
 
-# オプションのソルバープラグイン
-npm install z3-solver   # SMT 論理制約・Unsat Core 診断を使う場合
+# オプションの peer-dependency ソルバープラグイン
+npm install z3-solver   # SMT 論理制約・実数を含む厳密 Unsat Core 診断を使う場合
 npm install glpk.js     # GLPK ソルバーを使う場合 (GPL-3.0)
 
 # AI コーディングエージェント用スキル (Claude Code, Cursor, Codex 等)
@@ -77,10 +78,10 @@ console.log(`生産量: x=${x.value}, y=${y.value} (最大利益: $${m.objective
 
 | ソルバー | ライセンス | 対応クラス | 主な用途 | 導入方法 |
 | :--- | :--- | :--- | :--- | :--- |
-| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・エラスティック矛盾修復 | 標準搭載（設定不要） |
-| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 論理, 有界整数 | スケジューリング・COOP/COEP不要の `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（WASM同梱） |
-| **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 論理, MIP | 論理ルール・充足判定・厳密な `unsatCore` | `import "@ohtaman/washi/solvers/z3"` |
-| **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 線形・混合整数最適化 | `import "@ohtaman/washi/solvers/glpk"` |
+| **[HiGHS](https://github.com/ERGO-Code/HiGHS)** | MIT | LP, MIP, 凸QP | 数値最適化・エラスティック矛盾修復 | 標準搭載（追加依存なし） |
+| **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** | MIT | CP, LCG, 論理, 有界整数 | スケジューリング・COOP/COEP不要の `unsatCore` | `import "@ohtaman/washi/solvers/pumpkin"`（WASM同梱・追加依存なし） |
+| **[Z3](https://github.com/Z3Prover/z3)** | MIT | SMT, SAT, 論理, MIP | 論理ルール・充足判定・厳密な `unsatCore` | `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` |
+| **[GLPK](https://www.gnu.org/software/glpk/)** | GPL-3.0 | LP, MIP | 線形・混合整数最適化 | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` |
 | **Mock** | MIT | — | テスト用の決定論的な模擬応答 | 標準搭載 (`MockSolver`) |
 
 プラグインを import した上で、`new Model(...)`・`m.solve(...)`・`m.check(...)` に `{ solver: "pumpkin" }`・`{ solver: "z3" }`・`{ solver: "glpk" }` を渡して切り替えます。
@@ -136,15 +137,46 @@ await m.solve();
 console.log(`Tech: ${x.value?.toFixed(2)}, Bonds: ${y.value?.toFixed(2)}`);
 ```
 
-### 3. SMT 論理ルール & 矛盾診断 (`m.check`)
+### 3. 制約プログラミング & スケジューリング (Pumpkin)
+
+同梱の **Pumpkin**（`@ohtaman/washi/solvers/pumpkin`）を使うと、追加依存なしで有界整数スケジューリングや CP グローバル制約（`disjoint`, `distinct`, `cumulative`, `allowed`）を求解できます：
+
+```ts
+import { Model, expr, disjoint, distinct, minimize } from "@ohtaman/washi";
+import "@ohtaman/washi/solvers/pumpkin";
+
+const m = new Model("WorkshopCP", { solver: "pumpkin" });
+const start = m.integer(["cut", "weld", "paint"] as const, { lb: 0, ub: 20, prefix: "start" });
+const bench = m.integer(["cut", "weld", "paint"] as const, { lb: 1, ub: 3, prefix: "bench" });
+
+m.constraint(
+  disjoint([
+    { start: start.cut, duration: 4 },
+    { start: start.weld, duration: 3 },
+    { start: start.paint, duration: 2 },
+  ]),
+  "single_line"
+);
+m.constraint(expr`${start.cut} + 4 <= ${start.weld}`, "cut_before_weld");
+m.constraint(expr`${start.weld} + 3 <= ${start.paint}`, "weld_before_paint");
+m.constraint(distinct(bench), "unique_benches");
+
+m.objective(minimize(expr`${start.paint} + 2`));
+await m.solve();
+console.log(`Makespan: ${m.objectiveValue}h (paint starts at ${start.paint.value}h)`);
+```
+
+### 4. 論理ルール & 矛盾診断 (`m.check`)
 
 論理条件（`m.bool`, `implies`）を含むモデルの充足可能性を判定し、矛盾時の原因制約を特定します：
 - **HiGHS（標準）**: 緩和すれば実行可能になる**修復集合**（`res.conflicts`）を特定します。
-- **Z3**: 相互に矛盾している**充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
+- **Pumpkin（同梱）**: 有界整数・真偽値モデルに対して、**COOP/COEP ヘッダー不要**でスケール不変な**充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
+- **Z3**: 連続変数・実数演算を含む厳密な SMT **充足不能コア**（`res.unsatCore` / `res.conflicts`）を抽出します。
 
 ```ts
 import { Model, implies, expr } from "@ohtaman/washi";
-// import "@ohtaman/washi/solvers/z3"; // 厳密な SMT unsatCore を抽出する場合
+// import "@ohtaman/washi/solvers/pumpkin"; // COOP/COEP 不要の unsatCore（有界整数・真偽値）
+// import "@ohtaman/washi/solvers/z3";      // Continuous 変数を含む厳密 SMT unsatCore
 
 const m = new Model("StaffingRules");
 const engineers = m.integer("engineers", { lb: 0, ub: 20 });
@@ -166,24 +198,29 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 
 ## 🌐 ブラウザ & Web Worker での利用方法
 
-- **バンドラー (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` でそのまま動作します。ブラウザでは標準で Web Worker 上で実行されます（メインスレッドで実行する場合は `{ useWorker: false }` を指定）。
-- **単体 ESM / script タグ / CDN**: `dist/browser/` 一式（`highs.wasm` や Worker を含む）を配信するか、CDN の URL を指定して読み込みます。
+- **バンドラー (Vite / webpack 5)**: `import { Model } from "@ohtaman/washi"` でそのまま動作します。**HiGHS** と **Pumpkin** はいずれもブラウザで標準で専用 Web Worker 上で実行され（メインスレッドで実行する場合は `{ useWorker: false }` を指定）、**COOP/COEP ヘッダーは不要**です。
+- **単体 ESM / script タグ / CDN**: `dist/browser/` 一式（`highs.wasm`、`solvers/pumpkin.wasm` や Worker を含む）を配信するか、CDN の URL を指定して読み込みます。
 
 ```html
 <!-- ブラウザ ESM -->
 <script type="module">
   import { Model } from "./washi/washi.js";
-  // オプションプラグイン: import "./washi/solvers/glpk.js" または "./washi/solvers/z3.js"
+  // 同梱・オプションプラグイン:
+  // import "./washi/solvers/pumpkin.js"; // 同梱 CP/LCG (COOP/COEP 不要)
+  // import "./washi/solvers/glpk.js";    // オプション GLPK プラグイン
+  // import "./washi/solvers/z3.js";      // オプション Z3 プラグイン (COOP/COEP 必要)
   const m = new Model();
   await m.solve();
 </script>
 
 <!-- script タグ / CodePen (グローバル Washi を公開) -->
 <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/washi.min.js"></script>
+<!-- オプションプラグインスクリプト (window.Washi に自動登録): -->
+<!-- <script src="https://cdn.jsdelivr.net/npm/@ohtaman/washi/dist/browser/solvers/pumpkin.min.js"></script> -->
 ```
 
 > [!NOTE]
-> **ブラウザでの Z3 利用**: Z3 の WebAssembly は `SharedArrayBuffer` を使用するため、Cross-Origin Isolation（`COOP: same-origin` / `COEP: require-corp`）が必要です。詳細は [Cross-Origin Isolation 設定](docs/ja/getting-started/cross-origin.md) および [`examples/distribution/`](examples/distribution/README.md) を参照してください。
+> **ブラウザでの Z3 利用**: Z3 の WebAssembly は `SharedArrayBuffer` を使用するため、Cross-Origin Isolation（`COOP: same-origin` / `COEP: require-corp`）が必要です。詳細は [Cross-Origin Isolation 設定](docs/ja/getting-started/cross-origin.md) および [`examples/distribution/`](examples/distribution/README.md) を参照してください。**HiGHS**、**Pumpkin**（有界整数・真偽値に対する `unsatCore` を含む）、および **GLPK** は Cross-Origin Isolation ヘッダーなしで動作します。
 
 ---
 
@@ -198,6 +235,7 @@ console.log(res.conflicts);  // HiGHS: ["rush_required"]
 WaSHI は、数理最適化および自動推論分野の素晴らしいオープンソースソフトウェアの上に成り立っています：
 
 - **[HiGHS](https://highs.dev/)**（[`ERGO-Code/HiGHS`](https://github.com/ERGO-Code/HiGHS)）— エディンバラ大学の Julian Hall 氏、Qi Huangfu 氏、Ivet Galabova 氏、Leona Gottwald 氏、Michael Feldmeier 氏をはじめとする開発チームによる高性能なオープンソース LP / MIP / 凸 QP ソルバーであり、WaSHI の標準エンジンを支えています（*Huangfu & Hall, Mathematical Programming Computation, 2018*, [DOI: 10.1007/s12532-017-0130-5](https://doi.org/10.1007/s12532-017-0130-5)）。
+- **[Pumpkin](https://github.com/ConSol-Lab/Pumpkin)** — デルフト工科大学 ConSol Lab により Rust で開発された LCG（Lazy Clause Generation）制約プログラミングソルバーであり、WaSHI の同梱 CP/LCG および COOP/COEP 不要な `unsatCore` エンジンを支えています。
 - **[Z3 Theorem Prover](https://github.com/Z3Prover/z3)**（[`z3-solver`](https://www.npmjs.com/package/z3-solver)）— Microsoft Research により開発された SMT ソルバーであり、オプションの論理充足判定および `unsatCore` 矛盾診断プラグインを支えています。
 - **[GLPK](https://www.gnu.org/software/glpk/) & [`glpk.js`](https://github.com/jvail/glpk.js)** — オプションの GPL-3.0 LP / MIP ソルバープラグインを支えています。
 - **[PuLP](https://github.com/coin-or/pulp)** — WaSHI の直感的な代数モデリング API 設計に大きな着想を与えました。
@@ -207,4 +245,4 @@ WaSHI は、数理最適化および自動推論分野の素晴らしいオー�
 ## 📄 ライセンス
 
 - **`@ohtaman/washi`**: [MIT ライセンス](./LICENSE)
-- **同梱・外部ソルバー**: HiGHS (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。詳細は [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) を参照してください。
+- **同梱・外部ソルバー**: HiGHS (MIT)、Pumpkin (MIT)、Z3 (MIT)、GLPK (GPL-3.0)。詳細は [THIRD_PARTY_LICENSES.md](./THIRD_PARTY_LICENSES.md) を参照してください。
