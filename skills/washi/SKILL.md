@@ -1,11 +1,11 @@
 ---
 name: washi
-description: Formulate, inspect, solve, and verify mathematical optimization (LP, MILP/MIP, convex QP) and SMT satisfiability or unsat-core models in TypeScript and JavaScript using @ohtaman/washi (HiGHS, Z3, GLPK) for shift scheduling, timetabling, resource allocation, bin packing, routing, portfolio optimization, and rule conflict diagnosis.
+description: Formulate, inspect, solve, and verify mathematical optimization (LP, MILP/MIP, convex QP, CP/LCG) and SMT satisfiability or unsat-core models in TypeScript and JavaScript using @ohtaman/washi (HiGHS, Pumpkin, Z3, GLPK) for shift scheduling, timetabling, resource allocation, bin packing, routing, portfolio optimization, and rule conflict diagnosis.
 ---
 
 # WaSHI Modeling & Verification Skill
 
-Use this skill when building, debugging, or verifying mathematical optimization (LP, MIP, convex QP) or satisfiability (SMT / SAT) models with `@ohtaman/washi`. For the full API reference and browser/bundler deployment rules, see [`docs/getting-started/ai-agents.md`](https://github.com/ohtaman/washi/blob/main/docs/getting-started/ai-agents.md) (available locally at `node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md` in consumer projects or `docs/getting-started/ai-agents.md` in the repository).
+Use this skill when building, debugging, or verifying mathematical optimization (LP, MIP, convex QP, CP/LCG) or satisfiability (SMT / SAT) models with `@ohtaman/washi`. For the full API reference and browser/bundler deployment rules, see [`docs/getting-started/ai-agents.md`](https://github.com/ohtaman/washi/blob/main/docs/getting-started/ai-agents.md) (available locally at `node_modules/@ohtaman/washi/docs/getting-started/ai-agents.md` in consumer projects or `docs/getting-started/ai-agents.md` in the repository).
 
 ---
 
@@ -16,12 +16,13 @@ Select the solver engine and execution method that match the problem class:
 | Problem Class | Recommended Solver | Setup & Import | Execution Method |
 | :--- | :--- | :--- | :--- |
 | **LP / MIP / Convex QP** (including `m.indicator()` Big-M and `initialValue` warm starts) | **HiGHS** (default) | Built-in (`import { Model } from "@ohtaman/washi"`) | `await m.solve()` |
-| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP) or **Z3** (native SMT) | Built-in for HiGHS; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
-| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (elastic slack `conflicts`) or **Z3** (`unsatCore`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.check()` |
+| **CP/LCG Bounded Integer & Propositional Logic** (including `initialValue` warm starts and zero-`COOP`/`COEP` `unsatCore`) | **Pumpkin** plugin (bundled WASM) | `import "@ohtaman/washi/solvers/pumpkin"` | `await m.solve({ solver: "pumpkin" })` or `await m.check({ solver: "pumpkin" })` |
+| **SMT Propositional Logic** (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`) | **HiGHS** (auto 0-1 MIP), **Pumpkin** (bounded int), or **Z3** (native SMT incl. `Continuous`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/pumpkin"`; `npm install z3-solver` + `import "@ohtaman/washi/solvers/z3"` for Z3 | `await m.solve()` or `await m.check()` |
+| **Infeasibility / Conflict Diagnosis** (`conflicts` / `unsatCore`) | **HiGHS** (elastic slack `conflicts`), **Pumpkin** (zero-`COOP`/`COEP` `unsatCore`), or **Z3** (`unsatCore`) | Built-in for HiGHS; `import "@ohtaman/washi/solvers/pumpkin"`; `import "@ohtaman/washi/solvers/z3"` | `await m.check()` |
 | **LP / MIP with GLPK** (GPL-3.0; no QP or `initialValue`) | **GLPK** plugin | `npm install glpk.js` + `import "@ohtaman/washi/solvers/glpk"` | `await m.solve({ solver: "glpk" })` |
 
 - **Browser runtime notes**:
-  - HiGHS and GLPK load local `.wasm` and Worker assets relative to the bundle (never falling back to an external CDN).
+  - HiGHS, Pumpkin, and GLPK load local `.wasm` and Worker assets relative to the bundle (never falling back to an external CDN) and work without `COOP`/`COEP`.
   - Z3 uses `SharedArrayBuffer` pthreads and requires `window.isSecureContext === true` and `window.crossOriginIsolated === true` (`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`).
 
 ---

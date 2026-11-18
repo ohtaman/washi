@@ -143,9 +143,9 @@ const openWarehouse2 = m2.binary("open_warehouse", {
 const extraCapacity = m2.continuous("extra_capacity", { lb: 0 }); // 支持部分指定：无需提供 initialValue
 ```
 
-- **提示而非硬约束**：`initialValue` 仅作为传递给求解器的可选初始解提示（通过 `setSolution` 传递给 HiGHS）。它**不会**固定变量或添加约束，且 `variable.value` 在求解前始终保持为 `null`。（*若需在目标函数中惩罚相对原方案的变动，请参见 [建模模式与优化技巧](./formulation-tips.md#minimal-perturbation)。*）
+- **提示而非硬约束**：`initialValue` 仅作为传递给求解器的可选初始解提示（通过 `setSolution` 传递给 HiGHS，或通过 `WarmStart` 分支策略传递给 Pumpkin）。它**不会**固定变量或添加约束，且 `variable.value` 在求解前始终保持为 `null`。（*若需在目标函数中惩罚相对原方案的变动，请参见 [建模模式与优化技巧](./formulation-tips.md#minimal-perturbation)。*）
 - **校验与容差 (`1e-6`)**：提供的值必须是位于 `[lb - 1e-6, ub + 1e-6]` 内的有限数值（对于 `"Integer"` 与 `"Binary"` 变量，还必须与边界内的某个整数距离不超过 `1e-6`）。支持只为部分变量指定初始值；若提供满足所有约束的完整初始解，MIP 求解器可在根节点立即获得初始界（Incumbent）。
-- **求解器支持**：由 **HiGHS**（`capabilities.supportsWarmStart === true`）支持。不支持热启动的求解器（**GLPK**、**Z3** 或未声明 `supportsWarmStart: true` 的自定义适配器）在调用 `solve()` 和 `check()` 时会抛出明确的错误，而不会静默忽略 `initialValue`。
+- **求解器支持**：由 **HiGHS** 和 **Pumpkin**（`capabilities.supportsWarmStart === true`；Pumpkin 支持在 `solve()` 与 `check()` 中为有界 `Integer` 和 `Binary` 变量提供提示）支持。不支持热启动的求解器（**GLPK**、**Z3** 或未声明 `supportsWarmStart: true` 的自定义适配器）在调用 `solve()` 和 `check()` 时会抛出明确的错误，而不会静默忽略 `initialValue`。
 
 ---
 

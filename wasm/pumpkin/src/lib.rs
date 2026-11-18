@@ -8,13 +8,17 @@ use pumpkin_conflict_resolvers::resolvers::ResolutionResolver;
 use pumpkin_constraints::{
     clause, conjunction, equals, greater_than_or_equals, less_than_or_equals,
 };
+use pumpkin_core::branching::branchers::warm_start::WarmStart;
+use pumpkin_core::branching::{Brancher, BrancherEvent, SelectionContext};
 use pumpkin_core::optimisation::linear_sat_unsat::LinearSatUnsat;
 use pumpkin_core::optimisation::OptimisationDirection;
 use pumpkin_core::options::SolverOptions;
+use pumpkin_core::predicates::Predicate;
 use pumpkin_core::results::{
     OptimisationResult, ProblemSolution, SatisfactionResult, SatisfactionResultUnderAssumptions,
     SolutionReference,
 };
+use pumpkin_core::statistics::StatisticLogger;
 use pumpkin_core::termination::{TerminationCondition, TimeBudget};
 use pumpkin_core::variables::{AffineView, DomainId, Literal, TransformableVariable};
 use pumpkin_core::{DefaultBrancher, Duration, Solver};
@@ -31,6 +35,8 @@ pub struct VarSpec {
     pub name: String,
     pub lb: i64,
     pub ub: i64,
+    #[serde(default)]
+    pub initial_value: Option<i64>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -231,9 +237,132 @@ fn validate_vars(var_specs: &[VarSpec]) -> Result<Vec<(i32, i32)>, String> {
                 v.name
             ));
         }
+        if let Some(init) = v.initial_value {
+            let init_i32 = validate_safe_i32(init, &format!("variable \"{}\" initialValue", v.name))?;
+            if init_i32 < lb || init_i32 > ub {
+                return Err(format!(
+                    "Variable \"{}\" has initialValue ({init_i32}) outside its bounds [{lb}, {ub}].",
+                    v.name
+                ));
+            }
+        }
         bounds.push((lb, ub));
     }
     Ok(bounds)
+}
+
+#[derive(Debug)]
+struct PumpkinBrancher {
+    warm_start: Option<WarmStart<DomainId>>,
+    default: DefaultBrancher,
+}
+
+impl PumpkinBrancher {
+    fn new(solver: &Solver, var_specs: &[VarSpec], vars: &[DomainId]) -> Self {
+        let mut hint_vars = Vec::new();
+        let mut hint_vals = Vec::new();
+        for (spec, &var) in var_specs.iter().zip(vars.iter()) {
+            if let Some(init) = spec.initial_value {
+                hint_vars.push(var);
+                hint_vals.push(init as i32);
+            }
+        }
+        let warm_start = if hint_vars.is_empty() {
+            None
+        } else {
+            // `WarmStart::new` internally reverses slices and iterates `0..len`;
+            // reverse upfront so hints are tried in variable declaration order.
+            hint_vars.reverse();
+            hint_vals.reverse();
+            Some(WarmStart::new(&hint_vars, &hint_vals))
+        };
+        Self {
+            warm_start,
+            default: solver.default_brancher(),
+        }
+    }
+}
+
+impl Brancher for PumpkinBrancher {
+    fn log_statistics(&self, statistic_logger: StatisticLogger) {
+        self.default.log_statistics(statistic_logger);
+    }
+
+    fn next_decision(&mut self, context: &mut SelectionContext) -> Option<Predicate> {
+        if let Some(ref mut ws) = self.warm_start {
+            if let Some(decision) = ws.next_decision(context) {
+                return Some(decision);
+            }
+        }
+        self.default.next_decision(context)
+    }
+
+    fn on_conflict(&mut self) {
+        if let Some(ref mut ws) = self.warm_start {
+            ws.on_conflict();
+        }
+        self.default.on_conflict();
+    }
+
+    fn on_backtrack(&mut self) {
+        if let Some(ref mut ws) = self.warm_start {
+            ws.on_backtrack();
+        }
+        self.default.on_backtrack();
+    }
+
+    fn on_solution(&mut self, solution: SolutionReference) {
+        if let Some(ref mut ws) = self.warm_start {
+            ws.on_solution(solution);
+        }
+        self.warm_start = None;
+        self.default.on_solution(solution);
+    }
+
+    fn on_unassign_integer(&mut self, variable: DomainId, value: i32) {
+        if let Some(ref mut ws) = self.warm_start {
+            ws.on_unassign_integer(variable, value);
+        }
+        self.default.on_unassign_integer(variable, value);
+    }
+
+    fn on_appearance_in_conflict_predicate(&mut self, predicate: Predicate) {
+        if let Some(ref mut ws) = self.warm_start {
+            ws.on_appearance_in_conflict_predicate(predicate);
+        }
+        self.default.on_appearance_in_conflict_predicate(predicate);
+    }
+
+    fn on_restart(&mut self) {
+        self.warm_start = None;
+        self.default.on_restart();
+    }
+
+    fn synchronise(&mut self, context: &mut SelectionContext) {
+        if let Some(ref mut ws) = self.warm_start {
+            ws.synchronise(context);
+        }
+        self.default.synchronise(context);
+    }
+
+    fn is_restart_pointless(&mut self) -> bool {
+        // Retire any remaining unsatisfied warm-start prefix at the first restart point so an
+        // infeasible or conflicting hint cannot trap search across restarts.
+        self.warm_start = None;
+        self.default.is_restart_pointless()
+    }
+
+    fn subscribe_to_events(&self) -> Vec<BrancherEvent> {
+        let mut events = self.default.subscribe_to_events();
+        if let Some(ref ws) = self.warm_start {
+            for ev in ws.subscribe_to_events() {
+                if !events.contains(&ev) {
+                    events.push(ev);
+                }
+            }
+        }
+        events
+    }
 }
 
 struct NormalizedLinear {
@@ -761,7 +890,7 @@ pub fn check_with_callback(request_json: &str, should_abort: Option<Function>) -
         Rc::clone(&aborted),
         Rc::clone(&timed_out),
     );
-    let mut brancher = solver.default_brancher();
+    let mut brancher = PumpkinBrancher::new(&solver, &req.vars, &vars);
     let mut resolver = ResolutionResolver::default();
 
     let result = solver.satisfy_under_assumptions(
@@ -971,7 +1100,7 @@ pub fn solve_with_callback(
         Rc::clone(&aborted),
         Rc::clone(&timed_out),
     );
-    let mut brancher = solver.default_brancher();
+    let mut brancher = PumpkinBrancher::new(&solver, &req.vars, &vars);
     let mut resolver = ResolutionResolver::default();
 
     let Some(obj_var) = obj_var else {
@@ -1083,7 +1212,7 @@ pub fn solve_with_callback(
 
     let callback = |_: &Solver,
                     sol: SolutionReference,
-                    _: &DefaultBrancher,
+                    _: &PumpkinBrancher,
                     _: &ResolutionResolver|
      -> ControlFlow<()> {
         if let Some(ref cb) = on_event {

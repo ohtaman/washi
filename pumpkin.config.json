@@ -5,7 +5,7 @@
   "repo": "https://github.com/ConSol-Lab/Pumpkin.git",
   "wasm": {
     "path": "public/pumpkin.wasm",
-    "sha256": "613d79e628ee84a4e3d44d192dca3915e58641b02394aa120c8501e1fd8cac89",
+    "sha256": "ad8f7473d77d43c5f657c51e3e895e0dbb7ed5027452753ccd438bb97939ca30",
     "downloadUrl": "https://github.com/ohtaman/washi/releases/download/pumpkin-v0.5.0/pumpkin.wasm"
   },
   "runtime": {

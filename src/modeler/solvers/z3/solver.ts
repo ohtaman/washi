@@ -328,7 +328,7 @@ export class Z3Solver implements Solver {
   async check(modelData: CheckModelData, options: SolverOptions = {}): Promise<SolverCheckResult> {
     if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
       throw new Error(
-        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
     if (options.signal?.aborted) {
@@ -459,7 +459,7 @@ export class Z3Solver implements Solver {
 
     if (modelData?.variables?.some((v: Var) => v.initialValue !== undefined)) {
       throw new Error(
-        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
     if (options.signal?.aborted) {

@@ -37,6 +37,14 @@ if ! command -v rust-lld >/dev/null 2>&1 && ! command -v wasm-ld >/dev/null 2>&1
   done
 fi
 
+# Homebrew rustc invokes `rust-lld -flavor wasm` by default for wasm32-unknown-unknown
+if ! command -v rust-lld >/dev/null 2>&1 && command -v lld >/dev/null 2>&1; then
+  SHIM_LLD_DIR="$(mktemp -d)"
+  trap 'rm -rf "${SHIM_LLD_DIR}"' EXIT
+  ln -s "$(command -v lld)" "${SHIM_LLD_DIR}/rust-lld"
+  export PATH="${SHIM_LLD_DIR}:${PATH}"
+fi
+
 echo "========================================================"
 echo " Building Pumpkin WebAssembly (wasm/pumpkin)"
 echo " Rustc:    $(rustc --version)"

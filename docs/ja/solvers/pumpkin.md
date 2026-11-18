@@ -76,7 +76,8 @@ Pumpkin は**有界整数・真偽値専用の CP/LCG ソルバー**です。非
 
 - **有界整数 / Binary / BoolVar のみ対応**: すべての `Var` は有限整数上下界（`lb`, `ub` が `[-(2^30 - 1), 2^30 - 1]` の整数）である必要があります。無界整数（`-Infinity` / `Infinity`）や `Continuous` 変数はエラーになります。
 - **整数係数の線形制約**: 制約の係数、調整済み右辺値（`rhs - lhs.constant`）、およびスケーリング上下界はすべて 32bit 安全範囲（`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`）の整数である必要があります（目的関数の定数項は小数可）。
-- **非対応機能**: `QuadExpr`（二次式）、ウォームスタート（`initialValue`）、LP 緩和（`relax: true`）は明示的にエラーになります。グローバル制約（`distinct` や `noOverlap` など）は今後の別 Issue で順次拡張予定です。
+- **ウォームスタート対応 (`initialValue`)**: 有界な `Integer` / `Binary` 変数に対して `solve()` と `check()` の双方で `initialValue` ヒント（`supportsWarmStart: true`）をサポートしており、Pumpkin の `WarmStart` brancher による探索ヒントとして適用されます（`Var.initialValue` は求解結果の `Var.value` とは独立して保持されます）。
+- **非対応機能**: `QuadExpr`（二次式）および LP 緩和（`relax: true`）は明示的にエラーになります。グローバル制約（`distinct` や `noOverlap` など）は今後の別 Issue で順次拡張予定です。
 
 ---
 

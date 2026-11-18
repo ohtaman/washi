@@ -112,15 +112,16 @@ describe("Pumpkin WASM LCG solver", () => {
     const solver = new PumpkinSolver();
 
     expect(solver.name).toBe("pumpkin");
-    expect(solver.capabilities).toEqual({
+    expect(PumpkinSolver.capabilities).toEqual({
       supportsMIP: true,
       supportsQP: false,
       supportsQCQP: false,
       supportsSMT: false,
       supportsLogicalConstraints: true,
       supportsUnsatCore: true,
-      supportsWarmStart: false,
+      supportsWarmStart: true,
     });
+    expect(solver.capabilities).toEqual(PumpkinSolver.capabilities);
     expect(listAvailableSolvers()).toContain("pumpkin");
     expect(getSolver("pumpkin").name).toBe("pumpkin");
   });
@@ -467,11 +468,24 @@ describe("Pumpkin WASM LCG solver", () => {
 
     // Warm start / initialValue
     const mWarm = new Model("warm");
-    const xw = mWarm.integer("xw", { lb: 0, ub: 3 });
-    xw.initialValue = 1;
-    mWarm.objective(minimize(xw));
-    await expect(mWarm.solve({ solver: "pumpkin" })).rejects.toThrow(/initialValue|warm/i);
-    await expect(mWarm.check({ solver: "pumpkin" })).rejects.toThrow(/initialValue|warm/i);
+    const xw1 = mWarm.integer("xw1", { lb: 0, ub: 3, initialValue: 2 });
+    const xw2 = mWarm.integer("xw2", { lb: 0, ub: 3, initialValue: 1 });
+    mWarm.constraint(xw1.add(xw2).eq(3), "sum3");
+    mWarm.objective(minimize(xw1.add(xw2)));
+    expect((await mWarm.check({ solver: "pumpkin" })).status).toBe("Sat");
+    expect([xw1.value, xw2.value]).toEqual([2, 1]);
+    expect(await mWarm.solve({ solver: "pumpkin" })).toBe("Optimal");
+    expect([xw1.value, xw2.value]).toEqual([2, 1]);
+
+    // Invalid bypassed initialValue on direct PumpkinSolver call is rejected honestly
+    const xwBad = mWarm.integer("xw_bad", { lb: 0, ub: 3 });
+    Object.defineProperty(xwBad, "initialValue", { value: 2.5, configurable: true });
+    await expect(
+      new PumpkinSolver().check({
+        variables: [xwBad],
+        constraints: [],
+      })
+    ).rejects.toThrow(/initialValue/i);
 
     // LP relaxation
     const mRelax = new Model("relax");

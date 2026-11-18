@@ -62,7 +62,7 @@ import "@ohtaman/washi/solvers/glpk";
    - In Node.js and modern bundlers, WebAssembly assets resolve relative to the module automatically.
    - In browser deployments, deploy the full `dist/browser/` directory (JS, Worker, and `.wasm` files) together. If a local WASM URL is missing or returns an HTML SPA fallback, initialization fails immediately and reports the attempted URL—it **never** silently switches to a public CDN.
    - In browser runtimes, to load `highs.wasm` or `pumpkin.wasm` from a custom location, call `setHighsWasmUrl("https://.../highs.wasm")` (or `await m.solve({ wasmUrl: "https://.../highs.wasm" })` for HiGHS) or `setPumpkinWasmUrl("https://.../pumpkin.wasm")` from `@ohtaman/washi/solvers/pumpkin` (ignored in Node.js for HiGHS; for Pumpkin in Node.js, bundled local `pumpkin.wasm` is used by default).
-   - **Pumpkin runs without `COOP`/`COEP`**: Unlike Z3, Pumpkin (`@ohtaman/washi/solvers/pumpkin`) uses single-threaded WASM inside a regular Web Worker and does **not** require `SharedArrayBuffer` or Cross-Origin Isolation headers (`COOP`/`COEP`). It requires bounded finite integer/binary variables (`lb`, `ub` in `[-(2^30 - 1), 2^30 - 1]`) and integer linear coefficients/RHS (no `Continuous`, `QuadExpr`, `initialValue`, or `relax: true`).
+   - **Pumpkin runs without `COOP`/`COEP`**: Unlike Z3, Pumpkin (`@ohtaman/washi/solvers/pumpkin`) uses single-threaded WASM inside a regular Web Worker and does **not** require `SharedArrayBuffer` or Cross-Origin Isolation headers (`COOP`/`COEP`). It requires bounded finite integer/binary variables (`lb`, `ub` in `[-(2^30 - 1), 2^30 - 1]`) and integer linear coefficients/RHS, and supports `initialValue` warm starts across `solve()` and `check()` (no `Continuous`, `QuadExpr`, or `relax: true`).
 2. **Z3 requires a Secure Context, Cross-Origin Isolation, and CORS in browsers**:
    - Z3 WebAssembly uses `SharedArrayBuffer` multithreading. Browser pages running Z3 must run in a secure context (`window.isSecureContext === true`, i.e., HTTPS or `localhost`) and be cross-origin isolated (`window.crossOriginIsolated === true`) by serving:
      - `Cross-Origin-Opener-Policy: same-origin` (on the document)
@@ -104,7 +104,7 @@ const mixed = m.binary(["A", "B"] as const, 3); // Record<"A" | "B", Var[]>
 - **Optional Primal Initial Values (`initialValue?: number`)**:
   - Numeric variable constructors (`m.continuous`, `m.integer`, `m.binary`, and `new Var`) and the mutable `v.initialValue` property accept an optional finite primal hint (validated with tolerance `1e-6` against bounds `[lb, ub]` and integer/binary domains), kept distinct from the solved `v.value`.
   - A start may be complete or partial (e.g., transferred by stable variable names when rebuilding a MIP model). Supplying `initialValue` is a hint only—it does **not** fix the variable, add a hard constraint, or guarantee solver acceptance or a runtime speedup.
-  - Supported by **HiGHS** (`supportsWarmStart: true`); solvers without warm-start support (**GLPK**, **Z3**) throw an error if any variable has `initialValue !== undefined`.
+  - Supported by **HiGHS** and **Pumpkin** (`supportsWarmStart: true`); solvers without warm-start support (**GLPK**, **Z3**) throw an error if any variable has `initialValue !== undefined`.
 
 ### Step 2: Build Expressions (`expr`, `sum`, `dot`)
 

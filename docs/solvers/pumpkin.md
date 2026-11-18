@@ -76,7 +76,8 @@ Pumpkin is strictly a **bounded integer & boolean CP/LCG solver**. Unsupported c
 
 - **Bounded integer / binary / boolean variables only**: All `Var` instances must be finite integers (`Integer` or `Binary`) with `lb` and `ub` within `[-(2^30 - 1), 2^30 - 1]`. Unbounded integers (`-Infinity` / `Infinity`) and `Continuous` variables throw an explicit error.
 - **Integer linear arithmetic**: Constraint coefficients, adjusted RHS values (`rhs - lhs.constant`), and scaled variable bounds must be exact integers within safe signed 32-bit range (`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`). Objective constants (`f64`) may be fractional.
-- **Unsupported features**: `QuadExpr` objectives/constraints, warm-start `initialValue`, and `relax: true` throw explicit errors. Dedicated global CP constraints (such as `distinct` / `noOverlap`) are tracked separately for future releases.
+- **Warm-start hints (`initialValue`)**: Optional primal initial values (`supportsWarmStart: true`) are supported on bounded `Integer` and `Binary` variables in both `solve()` and `check()`, applied as non-binding branching hints via Pumpkin's `WarmStart` brancher (with `Var.initialValue` kept distinct from solved `Var.value`).
+- **Unsupported features**: `QuadExpr` objectives/constraints and `relax: true` throw explicit errors. Dedicated global CP constraints (such as `distinct` / `noOverlap`) are tracked separately for future releases.
 
 ---
 

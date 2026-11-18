@@ -76,7 +76,8 @@ Pumpkin 是**严格的有界整数与布尔约束规划求解器**。不支持�
 
 - **仅支持有界整数 / Binary / BoolVar**：所有 `Var` 必须具有有限整数上下界，且 `lb` / `ub` 均处于 `[-(2^30 - 1), 2^30 - 1]` 范围内。无界整数（`-Infinity` / `Infinity`）或 `Continuous` 连续变量会直接报错。
 - **整数线性算术**：约束系数、修正右端项（`rhs - lhs.constant`）以及缩放后变量边界必须为整数，且满足有符号 32 位安全范围（`|rhs| + sum_i max(|c_i * lb_i|, |c_i * ub_i|) <= 2^31 - 2`）；目标函数常数项允许小数。
-- **暂不支持的特性**：`QuadExpr` 二次表达式、热启动（`initialValue`）和 LP 松弛（`relax: true`）会明确抛出错误。全局 CP 约束（如 `distinct`、`noOverlap`）将在后续独立特性中提供。
+- **支持热启动提示（`initialValue`）**：支持在有界 `Integer` / `Binary` 变量上通过 `solve()` 和 `check()` 使用 `initialValue` 初始解提示（`supportsWarmStart: true`），底层通过 Pumpkin 的 `WarmStart` 分支策略作为非强制搜索提示应用（`Var.initialValue` 与求解后的 `Var.value` 保持独立）。
+- **暂不支持的特性**：`QuadExpr` 二次表达式和 LP 松弛（`relax: true`）会明确抛出错误。全局 CP 约束（如 `distinct`、`noOverlap`）将在后续独立特性中提供。
 
 ---
 

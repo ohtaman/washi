@@ -56,7 +56,7 @@ export class GLPKSolver implements Solver {
   ): Promise<SolverResult> {
     if (modelData.variables?.some((v) => v.initialValue !== undefined)) {
       throw new Error(
-        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS.`
+        `Solver "${this.name}" does not support primal initial values (initialValue). Please use a solver with warm-start support such as HiGHS or Pumpkin.`
       );
     }
     const hasExplicitLpResult = isLpExportResult(lpResultOrOptions);

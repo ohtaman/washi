@@ -425,6 +425,20 @@ try {
   assert.equal(pumpkinOptModel.objectiveValue, 24);
   assert.equal(px.value, 6);
 
+  const pumpkinWarmModel = new Model("PumpkinNodeWarm", { solver: "pumpkin" });
+  const pw4 = pumpkinWarmModel.binary("pw4", { initialValue: 1 });
+  const pw3 = pumpkinWarmModel.binary("pw3");
+  const pw2 = pumpkinWarmModel.binary("pw2");
+  const pw1 = pumpkinWarmModel.binary("pw1", { initialValue: 1 });
+  pumpkinWarmModel.constraint(pw1.add(pw2).add(pw3).add(pw4).le(2));
+  pumpkinWarmModel.constraint(pw1.add(pw2).ge(1));
+  pumpkinWarmModel.constraint(pw3.add(pw4).ge(1));
+  pumpkinWarmModel.objective(maximize(pw1.mul(10).add(pw2.mul(10)).add(pw3.mul(10)).add(pw4.mul(10))));
+  assert.equal(await pumpkinWarmModel.solve(), "Optimal");
+  assert.deepEqual([pw1.value, pw2.value, pw3.value, pw4.value], [1, 0, 0, 1]);
+  assert.equal((await pumpkinWarmModel.check()).status, "Sat");
+  assert.deepEqual([pw1.value, pw2.value, pw3.value, pw4.value], [1, 0, 0, 1]);
+
   const pumpkinCheckModel = new Model("PumpkinNodeCheck", { solver: "pumpkin" });
   const pa = pumpkinCheckModel.bool("pa");
   const pb = pumpkinCheckModel.integer("pb", { lb: 0, ub: 5 });
@@ -843,6 +857,17 @@ try {
           mRec.constraint(rb);
           const recRes = await mRec.check();
 
+          const mWarm = new Model({ solver: 'pumpkin' });
+          const pw4 = mWarm.binary('pw4', { initialValue: 1 });
+          const pw3 = mWarm.binary('pw3');
+          const pw2 = mWarm.binary('pw2');
+          const pw1 = mWarm.binary('pw1', { initialValue: 1 });
+          mWarm.constraint(pw1.add(pw2).add(pw3).add(pw4).le(2));
+          mWarm.constraint(pw1.add(pw2).ge(1));
+          mWarm.constraint(pw3.add(pw4).ge(1));
+          mWarm.objective(maximize(pw1.mul(10).add(pw2.mul(10)).add(pw3.mul(10)).add(pw4.mul(10))));
+          const warmStatus = await mWarm.solve();
+
           return {
             status,
             x: x.value,
@@ -852,6 +877,8 @@ try {
             htmlErr,
             recStatus: recRes.status,
             recVal: recRes.values.rb,
+            warmStatus,
+            warmVals: [pw1.value, pw2.value, pw3.value, pw4.value],
           };
         };
       </script></body></html>`;
@@ -876,8 +903,10 @@ try {
         assert(res.htmlErr && /html|wasm/i.test(res.htmlErr) && res.htmlErr.includes("no CDN fallback"), res.htmlErr);
         assert.equal(res.recStatus, "Sat");
         assert.equal(res.recVal, true);
+        assert.equal(res.warmStatus, "Optimal");
+        assert.deepEqual(res.warmVals, [1, 0, 0, 1]);
         await context.close();
-        console.log(`PASS Chromium: ${name} (zero COOP/COEP, Worker solve, unsatCore, HTML fallback rejection & recovery)`);
+        console.log(`PASS Chromium: ${name} (zero COOP/COEP, Worker solve, warm-start, unsatCore, HTML fallback rejection & recovery)`);
       }
 
       const z3Ctx1 = await browser.newContext();

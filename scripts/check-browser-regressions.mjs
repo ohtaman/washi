@@ -86,7 +86,7 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
           require(await m.solve({ solver: solverName }) === "Optimal" && m.objectiveValue === 26,
             "Could not solve again after cancellation");
 
-          if (solverName === "highs") {
+          if (solverName === "highs" || solverName === "pumpkin") {
             const warm = new Model("Browser warm start");
             // Create variables in reverse order of LP appearance so model.variables order !== LP column order
             const w4 = warm.binary("w4", { initialValue: 1 });
@@ -98,17 +98,28 @@ export async function checkBrowserRegressions({ browser, serve, fixture, browser
             warm.constraint(expr`${w1} + ${w2} >= 1`, "g1");
             warm.constraint(expr`${w3} + ${w4} >= 1`, "g2");
             require(
-              await warm.solve({ solver: "highs", useWorker: true, presolve: "off" }) === "Optimal",
+              await warm.solve({
+                solver: solverName,
+                useWorker: true,
+                ...(solverName === "highs" ? { presolve: "off" } : {}),
+              }) === "Optimal",
               "Expected Optimal for warm-started MIP"
             );
             require(
               w1.value === 1 && w2.value === 0 && w3.value === 0 && w4.value === 1,
-              "HiGHS Worker did not apply partial primal initial values with native column mapping"
+              `${solverName} Worker did not apply partial primal initial values`
             );
             require(
               w1.initialValue === 1 && w2.initialValue === undefined,
               "initialValue must remain distinct from solved Var.value"
             );
+            if (solverName === "pumpkin") {
+              const chk = await warm.check({ solver: "pumpkin", useWorker: true });
+              require(
+                chk.status === "Sat" && w1.value === 1 && w2.value === 0 && w3.value === 0 && w4.value === 1,
+                "Pumpkin Worker check() did not apply partial primal initial values"
+              );
+            }
           } else {
             const unsupported = new Model("Unsupported warm start");
             const ux = unsupported.integer("ux", { lb: 0, ub: 5, initialValue: 2 });

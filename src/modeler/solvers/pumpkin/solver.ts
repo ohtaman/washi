@@ -27,11 +27,13 @@ import {
  */
 const SAFE_I32_LIMIT = 1_073_741_823;
 const MAX_PROPAGATOR_MAGNITUDE = 2_147_483_646;
+const INITIAL_VALUE_TOLERANCE = 1e-6;
 
 interface SerializedVar {
   name: string;
   lb: number;
   ub: number;
+  initialValue?: number;
 }
 
 interface SerializedTerm {
@@ -117,6 +119,40 @@ function isQuadraticExpr(expr: unknown): expr is QuadExpr {
   return expr instanceof QuadExpr || (typeof expr === "object" && expr !== null && "quadTerms" in expr);
 }
 
+function normalizeInitialValueForDomain(
+  v: Var,
+  effectiveLb: number,
+  effectiveUb: number
+): number | undefined {
+  if (v.initialValue === undefined) {
+    return undefined;
+  }
+  if (typeof v.initialValue !== "number" || !Number.isFinite(v.initialValue)) {
+    throw new Error(
+      `Variable "${v.name}" has invalid initialValue: ${String(v.initialValue)} (initialValue must be a finite number).`
+    );
+  }
+  if (
+    v.initialValue < effectiveLb - INITIAL_VALUE_TOLERANCE ||
+    v.initialValue > effectiveUb + INITIAL_VALUE_TOLERANCE
+  ) {
+    throw new Error(
+      `Variable "${v.name}" has initialValue (${v.initialValue}) outside its bounds [${effectiveLb}, ${effectiveUb}] (tolerance ${INITIAL_VALUE_TOLERANCE}).`
+    );
+  }
+  const nearest = normalizeZero(Math.round(v.initialValue));
+  if (
+    Math.abs(v.initialValue - nearest) > INITIAL_VALUE_TOLERANCE ||
+    nearest < effectiveLb ||
+    nearest > effectiveUb
+  ) {
+    throw new Error(
+      `Variable "${v.name}" of type "${v.type}" has non-integral or out-of-domain initialValue: ${v.initialValue} (must be within ${INITIAL_VALUE_TOLERANCE} of an integer in [${effectiveLb}, ${effectiveUb}]).`
+    );
+  }
+  return validateSafeInt(nearest, `initialValue of variable "${v.name}"`);
+}
+
 function serializeVariables(variables: Var[]): {
   vars: SerializedVar[];
   varIndexMap: Map<Var, number>;
@@ -132,11 +168,6 @@ function serializeVariables(variables: Var[]): {
     if (normType === "continuous" || normType === "cont") {
       throw new Error(
         `PumpkinSolver does not support Continuous variable "${v.name}". Use an Integer or Binary variable, or select a MIP/SMT solver.`
-      );
-    }
-    if (v.initialValue !== undefined) {
-      throw new Error(
-        `Solver "pumpkin" does not support primal initial values (initialValue) on variable "${v.name}". Please use a solver with warm-start support such as HiGHS.`
       );
     }
 
@@ -168,11 +199,16 @@ function serializeVariables(variables: Var[]): {
       }
       const effLb = v.lb === -Infinity ? 0 : Math.max(0, normalizeZero(v.lb));
       const effUb = v.ub === Infinity ? 1 : Math.min(1, normalizeZero(v.ub));
+      const initialValue = normalizeInitialValueForDomain(v, effLb, effUb);
       if (effLb > effUb) {
         hasEmptyDomain = true;
         vars.push({ name: v.name, lb: 0, ub: 1 });
       } else {
-        vars.push({ name: v.name, lb: effLb, ub: effUb });
+        vars.push(
+          initialValue !== undefined
+            ? { name: v.name, lb: effLb, ub: effUb, initialValue }
+            : { name: v.name, lb: effLb, ub: effUb }
+        );
       }
       continue;
     }
@@ -184,7 +220,12 @@ function serializeVariables(variables: Var[]): {
         `Variable "${v.name}" has invalid bounds lb (${lb}) > ub (${ub}).`
       );
     }
-    vars.push({ name: v.name, lb, ub });
+    const initialValue = normalizeInitialValueForDomain(v, lb, ub);
+    vars.push(
+      initialValue !== undefined
+        ? { name: v.name, lb, ub, initialValue }
+        : { name: v.name, lb, ub }
+    );
   }
 
   return { vars, varIndexMap, hasEmptyDomain };
@@ -462,20 +503,23 @@ function resolveEffectiveWasmUrl(options: SolverOptions): string | null {
  *
  * Supports bounded integer and binary variables, integer linear constraints,
  * native propositional/logical constraints (`BoolVar`, `and`, `or`, `not`, `implies`, `xor`),
- * `Unsat` core conflict extraction in `check()`, incumbent progress streaming, and `AbortSignal`.
+ * `initialValue` warm-start branching hints, `Unsat` core conflict extraction in `check()`,
+ * incumbent progress streaming, and `AbortSignal`.
  */
 export class PumpkinSolver implements Solver {
-  readonly name = "pumpkin";
-  readonly options: SolverOptions;
-  readonly capabilities: SolverCapabilities = {
+  static readonly capabilities: SolverCapabilities = {
     supportsMIP: true,
     supportsQP: false,
     supportsQCQP: false,
     supportsSMT: false,
     supportsLogicalConstraints: true,
     supportsUnsatCore: true,
-    supportsWarmStart: false,
+    supportsWarmStart: true,
   };
+
+  readonly name = "pumpkin";
+  readonly options: SolverOptions;
+  readonly capabilities: SolverCapabilities = PumpkinSolver.capabilities;
 
   constructor(options: SolverOptions = {}) {
     this.options = options;
