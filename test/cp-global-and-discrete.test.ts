@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   Model,
+  Var,
+  BoolExpr,
   Constraint,
   expr,
   sum,
+  at,
   distinct,
   disjoint,
   cumulative,
@@ -15,6 +18,7 @@ import {
   xor,
   minimize,
   maximize,
+  linearizeModelForMip,
 } from "../src/index.js";
 import "../src/modeler/solvers/glpk.js";
 import "../src/modeler/solvers/pumpkin.js";
@@ -486,6 +490,76 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
       mBinMut.indicator(bb, expr`${xb} <= 5`, { name: "ind_bin_mut" });
       bb.type = "Continuous";
       expect(() => mBinMut.validateIntegrity()).toThrow(/Binary|Continuous|invalid type/i);
+    });
+  });
+
+  describe("Codex review regressions (#266)", () => {
+    it("rejects unsafe cumulative time bounds (1e20 and task end overflow near MAX_SAFE_INTEGER) without hanging", async () => {
+      const m = new Model("UnsafeCumulative1e20");
+      const s = m.integer("s", { lb: 1e20, ub: 1e20 });
+      m.constraint(cumulative([{ start: s, duration: 1, demand: 1 }], 1), "cum_huge");
+      await expect(m.solve({ solver: "highs" })).rejects.toThrow(/safe integer/i);
+      await expect(m.check({ solver: "highs" })).rejects.toThrow(/safe integer/i);
+      expect(() =>
+        linearizeModelForMip(m.variables, m.boolVars, m.constraints, m.logicalConstraints)
+      ).toThrow(/safe integer/i);
+
+      const mEnd = new Model("UnsafeCumulativeEnd");
+      const sEnd = mEnd.integer("sEnd", {
+        lb: Number.MAX_SAFE_INTEGER - 1,
+        ub: Number.MAX_SAFE_INTEGER - 1,
+      });
+      mEnd.constraint(cumulative([{ start: sEnd, duration: 5, demand: 1 }], 1), "cum_end_ovf");
+      expect(() =>
+        linearizeModelForMip(mEnd.variables, mEnd.boolVars, mEnd.constraints, mEnd.logicalConstraints)
+      ).toThrow(/safe integer/i);
+    });
+
+    it("rounds fractional Integer bounds cleanly in cumulative and detects empty integer intervals", async () => {
+      for (const sense of ["min", "max"] as const) {
+        const mFrac = new Model(`FracCum_${sense}`);
+        const x = mFrac.integer("x", { lb: 0.5, ub: 2.5 });
+        mFrac.constraint(cumulative([{ start: x, duration: 1, demand: 1 }], 1), "cum_frac");
+        mFrac.objective(sense === "min" ? minimize(x) : maximize(x));
+
+        for (const solver of ["highs", "z3"] as const) {
+          const status = await mFrac.solve({ solver });
+          expect(status, `sense=${sense}, solver=${solver}`).toBe("Optimal");
+          expect(x.value, `sense=${sense}, solver=${solver}`).toBe(sense === "min" ? 1 : 2);
+          expect(mFrac.validateSolution().valid).toBe(true);
+        }
+      }
+
+      // Empty integer interval [0.5, 0.8] -> Infeasible / Unsat
+      for (const negated of [false, true]) {
+        const mEmpty = new Model(`EmptyIntCum_${negated}`);
+        const y = mEmpty.integer("y", { lb: 0.5, ub: 0.8 });
+        const gc = cumulative([{ start: y, duration: 1, demand: 1 }], 1);
+        mEmpty.constraint(negated ? not(gc) : gc, "cum_empty");
+        expect(await mEmpty.solve({ solver: "highs" })).toBe("Infeasible");
+        expect((await mEmpty.check({ solver: "highs" })).status).toBe("Unsat");
+        expect((await mEmpty.check({ solver: "z3" })).status).toBe("Unsat");
+      }
+    });
+
+    it("enforces at() element domain guards even inside constant-simplifying globals", async () => {
+      const scenarios: Array<(i: Var) => BoolExpr> = [
+        (i) => distinct([at([10], i)]),
+        (i) => not(distinct([at([10], i)])),
+        (i) => not(allowed([at([10], i)], [])),
+        (i) => cumulative([{ start: at([10], i), duration: 0, demand: 1 }], 1),
+        (i) => not(cumulative([{ start: at([10], i), duration: 2, demand: 5 }], 1)),
+      ];
+
+      for (let idxCase = 0; idxCase < scenarios.length; idxCase++) {
+        const m = new Model(`GlobalAtGuard_${idxCase}`);
+        const i = m.integer("i", { lb: 1, ub: 1 });
+        m.constraint(scenarios[idxCase](i), `c_${idxCase}`);
+        for (const solver of ["highs", "pumpkin", "z3"] as const) {
+          const res = await m.check({ solver });
+          expect(res.status, `case=${idxCase}, solver=${solver}`).toBe("Unsat");
+        }
+      }
     });
   });
 });

@@ -156,8 +156,25 @@ export function linearizeModelForMip(
           `Cannot linearize non-convex piecewise expression in "${context}": variable "${v.name}" has unbounded or invalid domain [${v.lb}, ${v.ub}]. Finite bounds are required.`
         );
       }
-      const prodLb = coeff * v.lb;
-      const prodUb = coeff * v.ub;
+      let effLb = v.lb;
+      let effUb = v.ub;
+      if (v.type === "Binary") {
+        const rLb = Math.max(0, Math.ceil(v.lb));
+        const rUb = Math.min(1, Math.floor(v.ub));
+        if (rLb <= rUb) {
+          effLb = rLb;
+          effUb = rUb;
+        }
+      } else if (v.type === "Integer") {
+        const rLb = Math.ceil(v.lb);
+        const rUb = Math.floor(v.ub);
+        if (rLb <= rUb) {
+          effLb = rLb;
+          effUb = rUb;
+        }
+      }
+      const prodLb = coeff * effLb;
+      const prodUb = coeff * effUb;
       lb += Math.min(prodLb, prodUb);
       ub += Math.max(prodLb, prodUb);
       if (!Number.isFinite(lb) || !Number.isFinite(ub)) {
@@ -168,8 +185,8 @@ export function linearizeModelForMip(
       isDiscrete &&=
         (v.type === "Integer" || v.type === "Binary") &&
         Number.isSafeInteger(coeff) &&
-        Number.isSafeInteger(v.lb) &&
-        Number.isSafeInteger(v.ub);
+        Number.isSafeInteger(effLb) &&
+        Number.isSafeInteger(effUb);
     }
 
     return {
@@ -768,31 +785,94 @@ export function linearizeModelForMip(
     origName: string
   ):
     | { kind: "constant"; value: boolean }
+    | { kind: "empty_domain" }
     | {
         kind: "tasks";
         active: Array<{ start: LinExpr; duration: number; demand: number; est: number; lst: number }>;
       } {
-    const active = tasks
-      .filter((t) => t.duration > 0 && t.demand > 0)
-      .map((t) => ({
-        start: flattenLinExprExact(t.start, origName),
-        duration: t.duration,
-        demand: t.demand,
-      }));
+    // Flatten every task start first so embedded at() domain guards are never dropped by inactive-task pruning.
+    const flattened = tasks.map((t) => ({
+      start: flattenLinExprExact(t.start, origName),
+      duration: t.duration,
+      demand: t.demand,
+    }));
+    const active = flattened.filter((t) => t.duration > 0 && t.demand > 0);
     if (active.length === 0) {
       return { kind: "constant", value: true };
     }
-    if (active.some((t) => t.demand > capacity)) {
+
+    const bounded: Array<{ start: LinExpr; duration: number; demand: number; est: number; lst: number }> = [];
+    for (const t of active) {
+      const cnst = t.start.constant ?? 0;
+      if (!Number.isSafeInteger(cnst)) {
+        throw new Error(
+          `Cannot linearize cumulative() constraint "${origName}" for MIP solver: task start offset (${cnst}) must be a safe integer.`
+        );
+      }
+      let est = cnst;
+      let lst = cnst;
+      for (const [v, coeff] of t.start.terms.entries()) {
+        if (coeff === 0) continue;
+        if (
+          typeof v.lb !== "number" ||
+          typeof v.ub !== "number" ||
+          Number.isNaN(v.lb) ||
+          Number.isNaN(v.ub) ||
+          v.lb === -Infinity ||
+          v.ub === Infinity ||
+          v.lb > v.ub
+        ) {
+          throw new Error(
+            `Cannot linearize cumulative() constraint "${origName}" for MIP solver: variable "${v.name}" has unbounded or invalid domain [${v.lb}, ${v.ub}]. Finite bounds are required.`
+          );
+        }
+        if (!Number.isSafeInteger(coeff)) {
+          throw new Error(
+            `Cannot linearize cumulative() constraint "${origName}" for MIP solver: variable "${v.name}" coefficient (${coeff}) exceeds safe integer precision.`
+          );
+        }
+        const effLb = v.type === "Binary" ? Math.max(0, Math.ceil(v.lb)) : Math.ceil(v.lb);
+        const effUb = v.type === "Binary" ? Math.min(1, Math.floor(v.ub)) : Math.floor(v.ub);
+        if (effLb > effUb) {
+          return { kind: "empty_domain" };
+        }
+        if (!Number.isSafeInteger(effLb) || !Number.isSafeInteger(effUb)) {
+          throw new Error(
+            `Cannot linearize cumulative() constraint "${origName}" for MIP solver: variable "${v.name}" integer bounds [${effLb}, ${effUb}] exceed JavaScript safe integer precision.`
+          );
+        }
+        const prodA = coeff * effLb;
+        const prodB = coeff * effUb;
+        est += Math.min(prodA, prodB);
+        lst += Math.max(prodA, prodB);
+        if (
+          !Number.isSafeInteger(prodA) ||
+          !Number.isSafeInteger(prodB) ||
+          !Number.isSafeInteger(est) ||
+          !Number.isSafeInteger(lst)
+        ) {
+          throw new Error(
+            `Cannot linearize cumulative() constraint "${origName}" for MIP solver: task start time bounds exceed JavaScript safe integer precision.`
+          );
+        }
+      }
+      const endEst = est + t.duration;
+      const endLst = lst + t.duration;
+      if (!Number.isSafeInteger(endEst) || !Number.isSafeInteger(endLst)) {
+        throw new Error(
+          `Cannot linearize cumulative() constraint "${origName}" for MIP solver: task end time bounds [${est}, ${endLst}) exceed JavaScript safe integer precision.`
+        );
+      }
+      bounded.push({
+        ...t,
+        est: Object.is(est, -0) ? 0 : est,
+        lst: Object.is(lst, -0) ? 0 : lst,
+      });
+    }
+
+    if (bounded.some((t) => t.demand > capacity)) {
       return { kind: "constant", value: false };
     }
-    const bounded = active.map((t) => {
-      const b = computeLinExprBounds(t.start, origName);
-      return {
-        ...t,
-        est: b.lb,
-        lst: b.ub,
-      };
-    });
     return { kind: "tasks", active: bounded };
   }
 
@@ -867,6 +947,10 @@ export function linearizeModelForMip(
 
       case "cumulative": {
         const core = linearizeCumulativeCore(spec.tasks, spec.capacity, originalName);
+        if (core.kind === "empty_domain") {
+          emitUnsatConstraint(originalName);
+          return;
+        }
         if (core.kind === "constant") {
           if (core.value !== positive) emitUnsatConstraint(originalName);
           return;
@@ -882,7 +966,11 @@ export function linearizeModelForMip(
             totalPulseVars += Math.max(0, t.lst - t.est + 1);
           }
           const span = hMax - hMin;
-          if (span > MAX_MIP_CUMULATIVE_HORIZON || totalPulseVars > MAX_MIP_CUMULATIVE_PULSE_VARS) {
+          if (
+            !Number.isSafeInteger(span) ||
+            span > MAX_MIP_CUMULATIVE_HORIZON ||
+            totalPulseVars > MAX_MIP_CUMULATIVE_PULSE_VARS
+          ) {
             throw new Error(
               `Cannot linearize cumulative() constraint "${originalName}" for MIP solver: time horizon [${hMin}, ${hMax}) (span ${span}, ${totalPulseVars} time-indexed variables) exceeds MIP limit. Tighten start bounds or use { solver: "pumpkin" }.`
             );
@@ -927,7 +1015,7 @@ export function linearizeModelForMip(
             let maxPossible = 0;
             for (let i = 0; i < active.length; i++) {
               const t = active[i];
-              const tauLo = Math.max(t.est, time - t.duration + 1);
+              const tauLo = time <= t.est + t.duration - 1 ? t.est : time - t.duration + 1;
               const tauHi = Math.min(t.lst, time);
               if (tauLo <= tauHi) {
                 maxPossible += t.demand;
@@ -1032,9 +1120,9 @@ export function linearizeModelForMip(
           if (nonZero.length !== 1) return null;
           const [v, coeff] = nonZero[0];
           if (Math.abs(coeff) !== 1) return null;
-          if (!Number.isInteger(v.lb) || !Number.isInteger(v.ub) || v.ub - v.lb !== 1) return null;
+          if (!Number.isSafeInteger(v.lb) || !Number.isSafeInteger(v.ub) || v.ub - v.lb !== 1) return null;
           const cnst = vExpr.constant;
-          if (!Number.isInteger(cnst)) return null;
+          if (!Number.isSafeInteger(cnst)) return null;
           const v0 = coeff * v.lb + cnst;
           const v1 = coeff * v.ub + cnst;
           return { expr: vExpr, lo: Math.min(v0, v1), hi: Math.max(v0, v1) };
@@ -1130,6 +1218,10 @@ export function linearizeModelForMip(
 
       case "cumulative": {
         const core = linearizeCumulativeCore(spec.tasks, spec.capacity, originalName);
+        if (core.kind === "empty_domain") {
+          emitUnsatConstraint(originalName);
+          return;
+        }
         if (core.kind === "constant") {
           emitConstraint(
             new Constraint(linExpr([[binVar, 1]], 0), "==", core.value ? 1 : 0, `${originalName}_cum_triv`),

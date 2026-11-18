@@ -333,8 +333,8 @@ export class Z3Solver implements Solver {
         const spec = (be as GlobalConstraint).spec;
         switch (spec.kind) {
           case "distinct": {
-            if (spec.args.length <= 1) return ctx.Bool.val(true);
             const asts = spec.args.map((a) => translateLinExpr(a, domainGuards));
+            if (asts.length <= 1) return ctx.Bool.val(true);
             const hasReal = asts.some((a) => !isIntAst(a));
             const normalized = hasReal ? asts.map(ensureRealAst) : asts;
             return ctx.Distinct(...normalized);
@@ -360,10 +360,15 @@ export class Z3Solver implements Solver {
             return pairs.length === 0 ? ctx.Bool.val(true) : ctx.And(...pairs);
           }
           case "cumulative": {
-            const active = spec.tasks.filter((t) => t.duration > 0 && t.demand > 0);
+            const translatedTasks = spec.tasks.map((t) => ({
+              duration: t.duration,
+              demand: t.demand,
+              startAst: translateLinExpr(t.start, domainGuards),
+            }));
+            const active = translatedTasks.filter((t) => t.duration > 0 && t.demand > 0);
             if (active.length === 0) return ctx.Bool.val(true);
             if (active.some((t) => t.demand > spec.capacity)) return ctx.Bool.val(false);
-            const starts = active.map((t) => translateLinExpr(t.start, domainGuards));
+            const starts = active.map((t) => t.startAst);
             const perEvent: any[] = [];
             for (let k = 0; k < active.length; k++) {
               let load: any = makeConstAst(active[k].demand, true);
@@ -385,8 +390,8 @@ export class Z3Solver implements Solver {
             return ctx.And(...perEvent);
           }
           case "allowed": {
-            if (spec.tuples.length === 0) return ctx.Bool.val(false);
             const varAsts = spec.vars.map((v) => translateLinExpr(v, domainGuards));
+            if (spec.tuples.length === 0) return ctx.Bool.val(false);
             const disj = spec.tuples.map((row) =>
               ctx.And(...row.map((val, j) => compareAstWithNumber(varAsts[j], "==", val)))
             );
