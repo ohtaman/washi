@@ -10,7 +10,7 @@
   },
   "runtime": {
     "path": "src/modeler/solvers/pumpkin/runtime.js",
-    "sha256": "8ee9a950376d7f6e533eda5e2f324f1bed783da42ff3632b935efc68f0258a28",
+    "sha256": "ea94cc1b794de5502a10f5053521799ca856bfedb42754cdf9702edbcd4d2e6f",
     "downloadUrl": "https://github.com/ohtaman/washi/releases/download/pumpkin-v0.5.0/runtime.js"
   }
 }

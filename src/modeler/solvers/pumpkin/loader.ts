@@ -1,11 +1,5 @@
 import { getBundledPumpkinWasmUrl } from "./assets.js";
-import initPumpkin, {
-  check_json,
-  check_with_callback,
-  solve_json,
-  solve_with_callback,
-  __washiResetPumpkinRuntime,
-} from "./runtime.js";
+import { createPumpkinRuntime } from "./runtime.js";
 
 export interface PumpkinRuntime {
   check_with_callback: (request_json: string, should_abort?: (() => boolean) | null) => string;
@@ -18,9 +12,10 @@ export interface PumpkinRuntime {
   solve_json: (request_json: string) => string;
 }
 
+const MAX_CACHED_RUNTIMES = 4;
 let customWasmUrl: string | null = null;
-let loadedRuntimePromise: Promise<PumpkinRuntime> | null = null;
-let loadedRuntimeKey: string | null = null;
+const runtimeCache = new Map<string, Promise<PumpkinRuntime>>();
+let resetEpoch = 0;
 let workerResetHook: (() => void) | null = null;
 
 /** Registers an internal callback so updating `wasmUrl` resets any active/idle worker client. */
@@ -81,9 +76,8 @@ export function resolvePumpkinWasmUrl(): string {
  * Reset cached WASM runtime state so the next solve/check re-fetches and re-instantiates `pumpkin.wasm`.
  */
 export function resetPumpkinLoader(): void {
-  loadedRuntimePromise = null;
-  loadedRuntimeKey = null;
-  __washiResetPumpkinRuntime();
+  resetEpoch++;
+  runtimeCache.clear();
   workerResetHook?.();
 }
 
@@ -208,44 +202,47 @@ async function loadWasmBytes(targetCustomUrl: string | null): Promise<Uint8Array
 }
 
 /**
- * Loads and caches the instantiated Pumpkin WebAssembly runtime without any CDN fallback.
+ * Loads and caches an isolated Pumpkin WebAssembly runtime per target URL without any CDN fallback.
  */
 export async function loadPumpkinRuntime(overrideWasmUrl?: string | null): Promise<PumpkinRuntime> {
   const targetCustomUrl = normalizeCustomWasmUrl(overrideWasmUrl);
   const targetKey = targetCustomUrl ?? "__bundled__";
 
-  if (loadedRuntimePromise && loadedRuntimeKey === targetKey) {
-    return loadedRuntimePromise;
+  const cached = runtimeCache.get(targetKey);
+  if (cached) {
+    runtimeCache.delete(targetKey);
+    runtimeCache.set(targetKey, cached);
+    return cached;
   }
 
-  if (loadedRuntimeKey !== null && loadedRuntimeKey !== targetKey) {
-    loadedRuntimePromise = null;
-    loadedRuntimeKey = null;
-    __washiResetPumpkinRuntime();
-  }
-
-  loadedRuntimeKey = targetKey;
+  const capturedEpoch = resetEpoch;
   let pending: Promise<PumpkinRuntime> | null = null;
   pending = (async () => {
     try {
       const wasmBytes = await loadWasmBytes(targetCustomUrl);
-      await initPumpkin({ module_or_path: wasmBytes });
-      return {
-        check_with_callback,
-        solve_with_callback,
-        check_json,
-        solve_json,
-      };
+      return await createPumpkinRuntime(wasmBytes);
     } catch (err) {
-      if (loadedRuntimePromise === pending) {
-        loadedRuntimePromise = null;
-        loadedRuntimeKey = null;
-        __washiResetPumpkinRuntime();
+      if (resetEpoch === capturedEpoch && runtimeCache.get(targetKey) === pending) {
+        runtimeCache.delete(targetKey);
+      }
+      if (
+        targetCustomUrl !== null &&
+        err instanceof Error &&
+        err.message.includes("Invalid Pumpkin WebAssembly module")
+      ) {
+        throw new Error(
+          `[WaSHI] Invalid Pumpkin WebAssembly module loaded from "${targetCustomUrl}" (${err.message}); no CDN fallback is attempted.`
+        );
       }
       throw err;
     }
   })();
 
-  loadedRuntimePromise = pending;
+  while (runtimeCache.size >= MAX_CACHED_RUNTIMES) {
+    const oldestKey = runtimeCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    runtimeCache.delete(oldestKey);
+  }
+  runtimeCache.set(targetKey, pending);
   return pending;
 }

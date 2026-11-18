@@ -1,10 +1,11 @@
 /* @ts-self-types="./runtime.d.ts" */
 
+function __washiCreateRuntimeScope() {
 /**
  * @param {string} request_json
  * @returns {string}
  */
-export function check_json(request_json) {
+function check_json(request_json) {
     let deferred2_0;
     let deferred2_1;
     try {
@@ -24,7 +25,7 @@ export function check_json(request_json) {
  * @param {Function | null} [should_abort]
  * @returns {string}
  */
-export function check_with_callback(request_json, should_abort) {
+function check_with_callback(request_json, should_abort) {
     let deferred2_0;
     let deferred2_1;
     try {
@@ -43,7 +44,7 @@ export function check_with_callback(request_json, should_abort) {
  * @param {string} request_json
  * @returns {string}
  */
-export function solve_json(request_json) {
+function solve_json(request_json) {
     let deferred2_0;
     let deferred2_1;
     try {
@@ -64,7 +65,7 @@ export function solve_json(request_json) {
  * @param {Function | null} [should_abort]
  * @returns {string}
  */
-export function solve_with_callback(request_json, on_event, should_abort) {
+function solve_with_callback(request_json, on_event, should_abort) {
     let deferred2_0;
     let deferred2_1;
     try {
@@ -249,6 +250,19 @@ function __wbg_finalize_init(instance, module) {
     wasm = instance.exports;
     wasmModule = module;
     cachedUint8ArrayMemory0 = null;
+    if (
+      !wasm ||
+      !(wasm.memory instanceof WebAssembly.Memory) ||
+      typeof wasm.__wbindgen_start !== "function" ||
+      typeof wasm.__wbindgen_malloc !== "function" ||
+      typeof wasm.__wbindgen_free !== "function" ||
+      typeof wasm.check_json !== "function" ||
+      typeof wasm.check_with_callback !== "function" ||
+      typeof wasm.solve_json !== "function" ||
+      typeof wasm.solve_with_callback !== "function"
+    ) {
+      throw new Error("[WaSHI] Invalid Pumpkin WebAssembly module: missing expected solver exports.");
+    }
     wasm.__wbindgen_start();
     return wasm;
 }
@@ -344,12 +358,16 @@ async function __wbg_init_once(module_or_path) {
     return __wbg_finalize_init(instance, module);
 }
 
-export { initSync, __wbg_init as default };
+return { check_json, check_with_callback, solve_json, solve_with_callback, __wbg_init };
+}
 
-export function __washiResetPumpkinRuntime() {
-  wasm = undefined;
-  wasmModule = undefined;
-  wasmInstance = undefined;
-  __wbg_init_promise = undefined;
-  cachedUint8ArrayMemory0 = null;
+export async function createPumpkinRuntime(wasmBytes) {
+  const scope = __washiCreateRuntimeScope();
+  await scope.__wbg_init({ module_or_path: wasmBytes });
+  return {
+    check_json: scope.check_json,
+    check_with_callback: scope.check_with_callback,
+    solve_json: scope.solve_json,
+    solve_with_callback: scope.solve_with_callback,
+  };
 }

@@ -1,8 +1,4 @@
-import {
-  getPumpkinWasmUrl,
-  loadPumpkinRuntime,
-  setPumpkinWasmUrl,
-} from "./loader.js";
+import { loadPumpkinRuntime } from "./loader.js";
 
 export interface PumpkinWorkerRequest {
   id: number;
@@ -16,18 +12,11 @@ const workerScope = globalThis as unknown as {
   postMessage: (message: unknown) => void;
 };
 
-let lastConfiguredUrl: string | null = getPumpkinWasmUrl();
-
 workerScope.onmessage = async (event: MessageEvent<PumpkinWorkerRequest>) => {
   const { id, type, requestJson, wasmUrl } = event.data;
   try {
     const normalizedUrl = wasmUrl === undefined ? null : wasmUrl;
-    if (normalizedUrl !== lastConfiguredUrl) {
-      lastConfiguredUrl = normalizedUrl;
-      setPumpkinWasmUrl(normalizedUrl);
-    }
-
-    const runtime = await loadPumpkinRuntime();
+    const runtime = await loadPumpkinRuntime(normalizedUrl);
     const startMs = performance.now();
 
     if (type === "check") {

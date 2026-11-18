@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   Model,
@@ -720,5 +722,137 @@ describe("Pumpkin WASM LCG solver", () => {
 
     // Unsupported options on an empty-binary model must still be rejected upfront
     await expect(mEmpty.solve({ solver: "pumpkin", relax: true })).rejects.toThrow(/relax/i);
+  });
+
+  it("isolates concurrent non-worker WASM loads across distinct wasmUrls and mid-load reconfiguration", async () => {
+    await ensurePumpkinRegistered();
+    const {
+      getPumpkinWasmUrl,
+      loadPumpkinRuntime,
+      resetPumpkinLoader,
+      setPumpkinWasmUrl,
+    } = await import("../src/modeler/solvers/pumpkin/loader.js");
+
+    const realWasmBytes = new Uint8Array(
+      fs.readFileSync(path.resolve(process.cwd(), "public/pumpkin.wasm"))
+    );
+    const emptyWasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
+    const prevUrl = getPumpkinWasmUrl();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url === "https://delayed.test/empty.wasm") {
+          await new Promise((resolve) => setTimeout(resolve, 30));
+          return new Response(emptyWasm, {
+            status: 200,
+            headers: { "content-type": "application/wasm" },
+          });
+        }
+        if (url === "https://fast-a.test/pumpkin.wasm" || url === "https://fast-b.test/pumpkin.wasm") {
+          return new Response(realWasmBytes, {
+            status: 200,
+            headers: { "content-type": "application/wasm" },
+          });
+        }
+        return new Response("Not Found", { status: 404 });
+      })
+    );
+
+    try {
+      resetPumpkinLoader();
+
+      const buildCheckModel = () => {
+        const m = new Model("concurrent-check");
+        const x = m.integer("x", { lb: 0, ub: 5 });
+        m.constraint(x.ge(3), "lb3");
+        return m;
+      };
+
+      // Sub-case 1: Concurrent distinct URLs must never leak instantiated modules across callers
+      const [delayedRes, fastRes, bundledRes] = await Promise.allSettled([
+        buildCheckModel().check({
+          solver: "pumpkin",
+          useWorker: false,
+          wasmUrl: "https://delayed.test/empty.wasm",
+        }),
+        buildCheckModel().check({
+          solver: "pumpkin",
+          useWorker: false,
+          wasmUrl: "https://fast-a.test/pumpkin.wasm",
+        }),
+        buildCheckModel().check({
+          solver: "pumpkin",
+          useWorker: false,
+          wasmUrl: null,
+        }),
+      ]);
+
+      expect(delayedRes.status).toBe("rejected");
+      if (delayedRes.status === "rejected") {
+        expect(String(delayedRes.reason)).toMatch(
+          /Invalid Pumpkin WebAssembly module.*"https:\/\/delayed\.test\/empty\.wasm"/
+        );
+      }
+
+      expect(fastRes.status).toBe("fulfilled");
+      if (fastRes.status === "fulfilled") {
+        expect(fastRes.value.status).toBe("Sat");
+        expect(fastRes.value.values.x).toBeGreaterThanOrEqual(3);
+      }
+
+      expect(bundledRes.status).toBe("fulfilled");
+      if (bundledRes.status === "fulfilled") {
+        expect(bundledRes.value.status).toBe("Sat");
+        expect(bundledRes.value.values.x).toBeGreaterThanOrEqual(3);
+      }
+
+      // Sub-case 2: Reconfiguring global setPumpkinWasmUrl while an older load is in flight
+      setPumpkinWasmUrl("https://delayed.test/empty.wasm");
+      const pOld = buildCheckModel().check({ solver: "pumpkin", useWorker: false });
+
+      setPumpkinWasmUrl("https://fast-b.test/pumpkin.wasm");
+      const optModel = new Model("reconfigured-opt");
+      const ox = optModel.integer("ox", { lb: 2, ub: 7 });
+      optModel.objective(minimize(ox));
+      const pNew = optModel.solve({ solver: "pumpkin", useWorker: false });
+
+      const [oldSettled, newSettled] = await Promise.allSettled([pOld, pNew]);
+      expect(oldSettled.status).toBe("rejected");
+      if (oldSettled.status === "rejected") {
+        expect(String(oldSettled.reason)).toMatch(
+          /Invalid Pumpkin WebAssembly module.*"https:\/\/delayed\.test\/empty\.wasm"/
+        );
+      }
+      expect(newSettled.status).toBe("fulfilled");
+      if (newSettled.status === "fulfilled") {
+        expect(newSettled.value).toBe("Optimal");
+        expect(optModel.objectiveValue).toBe(2);
+      }
+
+      // Sub-case 3: Coexisting runtime instances loaded from distinct URLs stay independent
+      resetPumpkinLoader();
+      const rA = await loadPumpkinRuntime("https://fast-a.test/pumpkin.wasm");
+      const rB = await loadPumpkinRuntime("https://fast-b.test/pumpkin.wasm");
+      expect(rA).not.toBe(rB);
+
+      const sampleReq = JSON.stringify({
+        vars: [{ name: "v", lb: 4, ub: 4 }],
+        boolVars: [],
+        constraints: [],
+        logicalConstraints: [],
+        timeLimitMs: null,
+      });
+      const parsedA = JSON.parse(rA.check_json(sampleReq)) as {
+        status: string;
+        values: Array<[string, number]>;
+      };
+      expect(parsedA.status).toBe("Sat");
+      expect(parsedA.values).toEqual([["v", 4]]);
+    } finally {
+      setPumpkinWasmUrl(prevUrl);
+      resetPumpkinLoader();
+    }
   });
 });
