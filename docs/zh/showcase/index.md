@@ -25,13 +25,13 @@ aside: false
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">⚡</span>
-          <span class="washi-showcase-badge">HiGHS · Z3 · GLPK</span>
+          <span class="washi-showcase-badge">HiGHS · Pumpkin · Z3 · GLPK</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/demo/" target="_self" class="washi-showcase-title-link">WaSHI Playground</a>
         </div>
         <p class="washi-showcase-desc">
-          在浏览器中使用 TypeScript / JavaScript 构建 LP、MIP、凸 QP 与 SMT 模型，并通过 HiGHS、Z3 和 GLPK 即时求解。内置丰富预设案例、LP/SMT-LIB 导出检查、灵敏度分析与 Z3 <code>unsatCore</code> 冲突诊断。
+          在浏览器中使用 TypeScript / JavaScript 构建 LP、MIP、凸 QP、CP 与 SMT 模型，并通过 HiGHS、Pumpkin、Z3 和 GLPK 即时求解。内置丰富预设案例、LP 导出检查、灵敏度分析与 Pumpkin / Z3 <code>unsatCore</code> 冲突诊断。
         </p>
       </div>
       <div class="washi-showcase-actions">

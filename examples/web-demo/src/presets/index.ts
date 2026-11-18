@@ -3,7 +3,7 @@ export type PresetGroup = "fundamentals" | "practical" | "logic";
 export interface ExampleModel {
   id: string;
   title: string;
-  category: "LP" | "MIP" | "QP" | "SMT";
+  category: "LP" | "MIP" | "QP" | "CP" | "SMT";
   group: PresetGroup;
   description: string;
   apis: string[];
@@ -428,6 +428,67 @@ assets.forEach((name, i) => {
 `,
   },
   {
+    id: "project_scheduling",
+    title: "Project Scheduling (RCPSP — Pumpkin CP)",
+    category: "CP",
+    group: "practical",
+    description:
+      "Resource-Constrained Project Scheduling solved natively with Pumpkin CP/LCG: precedence links, unary rig (disjoint), 3-engineer crew limit (cumulative), and makespan minimization.",
+    apis: ['solver: "pumpkin"', "disjoint()", "cumulative()", "max()"],
+    visualizer: "summary",
+    code: `// --- Resource-Constrained Project Scheduling (Pumpkin CP / LCG) ---
+// Minimize project makespan subject to precedence, shared HIL rig, and 3-engineer capacity.
+const m = new Model("PrototypeRCPSP", { solver: "pumpkin" });
+
+const horizon = 24;
+const crewCapacity = 3;
+const tasks = [
+  { id: "chassis", duration: 4, crew: 2, usesRig: false },
+  { id: "board", duration: 3, crew: 2, usesRig: false },
+  { id: "firmware", duration: 4, crew: 1, usesRig: true },
+  { id: "assembly", duration: 3, crew: 2, usesRig: false },
+  { id: "calib", duration: 3, crew: 1, usesRig: true },
+  { id: "test", duration: 2, crew: 2, usesRig: true },
+];
+
+// One finite-domain integer start variable per task
+const start = m.integer(tasks.map(t => t.id), { lb: 0, ub: horizon, prefix: "start" });
+
+// 1. Precedence network
+m.constraint(expr\`\${start.chassis} + 4 <= \${start.assembly}\`, "assembly_after_chassis");
+m.constraint(expr\`\${start.board} + 3 <= \${start.assembly}\`, "assembly_after_board");
+m.constraint(expr\`\${start.board} + 3 <= \${start.calib}\`, "calib_after_board");
+m.constraint(expr\`\${start.assembly} + 3 <= \${start.test}\`, "test_after_assembly");
+m.constraint(expr\`\${start.firmware} + 4 <= \${start.test}\`, "test_after_firmware");
+m.constraint(expr\`\${start.calib} + 3 <= \${start.test}\`, "test_after_calib");
+
+// 2. Exclusive shared HIL rig (disjoint) and 3-engineer capacity (cumulative)
+m.constraint(
+  disjoint(tasks.filter(t => t.usesRig).map(t => ({ start: start[t.id], duration: t.duration }))),
+  "single_rig"
+);
+m.constraint(
+  cumulative(
+    tasks.map(t => ({ start: start[t.id], duration: t.duration, demand: t.crew })),
+    crewCapacity
+  ),
+  "crew_limit"
+);
+
+// 3. Minimize project makespan: max_t (start[t] + duration[t])
+const makespan = max(tasks.map(t => expr\`\${start[t.id]} + \${t.duration}\`));
+m.objective(minimize(makespan));
+
+const status = await m.solve();
+console.log("Status:", status);
+console.log("Minimum Makespan:", m.objectiveValue + "h");
+for (const t of tasks) {
+  const s = start[t.id].value ?? 0;
+  console.log(\`  \${t.id}: [\${s}h, \${s + t.duration}h) crew=\${t.crew}\${t.usesRig ? " [Rig]" : ""}\`);
+}
+`,
+  },
+  {
     id: "glpk_diet_problem",
     title: "Stigler Diet Problem (GLPK Plugin)",
     category: "LP",
@@ -465,8 +526,74 @@ console.log("Cheese packs:", cheese.value?.toFixed(2));
   },
 
   // ===========================================================================
-  // 3. SMT Logic & Conflict Diagnosis (Z3 Engine)
+  // 3. CP / SMT Logic & Conflict Diagnosis (Pumpkin / Z3)
   // ===========================================================================
+  {
+    id: "project_conflict_unsat",
+    title: "Project Deadline Conflict Diagnosis (Pumpkin Unsat Core)",
+    category: "CP",
+    group: "logic",
+    description:
+      "When a hardware rig maintenance window collides with a tight shipping deadline, Pumpkin isolates the conflicting constraints (unsatCore) client-side with zero COOP/COEP headers.",
+    apis: ['solver: "pumpkin"', "disjoint()", "cumulative()", "and()", "m.check()", "m.unsatCore"],
+    visualizer: "none",
+    code: `// --- Project Schedule Conflict Diagnosis (Pumpkin Unsat Core) ---
+// Isolates incompatible rules when HIL rig maintenance overlaps with a rush shipping deadline.
+const m = new Model("PrototypeDeadlineConflict", { solver: "pumpkin" });
+
+const horizon = 24;
+const crewCapacity = 3;
+const tasks = [
+  { id: "chassis", duration: 4, crew: 2, usesRig: false },
+  { id: "board", duration: 3, crew: 2, usesRig: false },
+  { id: "firmware", duration: 4, crew: 1, usesRig: true },
+  { id: "assembly", duration: 3, crew: 2, usesRig: false },
+  { id: "calib", duration: 3, crew: 1, usesRig: true },
+  { id: "test", duration: 2, crew: 2, usesRig: true },
+];
+
+const start = m.integer(tasks.map(t => t.id), { lb: 0, ub: horizon, prefix: "start" });
+
+// 1. Precedence network
+m.constraint(expr\`\${start.chassis} + 4 <= \${start.assembly}\`, "assembly_after_chassis");
+m.constraint(expr\`\${start.board} + 3 <= \${start.assembly}\`, "assembly_after_board");
+m.constraint(expr\`\${start.board} + 3 <= \${start.calib}\`, "calib_after_board");
+m.constraint(expr\`\${start.assembly} + 3 <= \${start.test}\`, "test_after_assembly");
+m.constraint(expr\`\${start.firmware} + 4 <= \${start.test}\`, "test_after_firmware");
+m.constraint(expr\`\${start.calib} + 3 <= \${start.test}\`, "test_after_calib");
+
+// 2. Shared rig & crew limits
+m.constraint(
+  disjoint(tasks.filter(t => t.usesRig).map(t => ({ start: start[t.id], duration: t.duration }))),
+  "single_rig"
+);
+m.constraint(
+  cumulative(
+    tasks.map(t => ({ start: start[t.id], duration: t.duration, demand: t.crew })),
+    crewCapacity
+  ),
+  "crew_limit"
+);
+
+const makespan = max(tasks.map(t => expr\`\${start[t.id]} + \${t.duration}\`));
+
+// 3. Rig maintenance window [0, 6) + tight 13h shipping deadline -> infeasible!
+m.constraint(
+  and(expr\`\${start.firmware} >= 6\`, expr\`\${start.calib} >= 6\`),
+  "rig_maintenance_window"
+);
+m.constraint(expr\`\${makespan} <= 13\`, "rush_ship_deadline");
+
+console.log("Checking schedule feasibility with Pumpkin CP...");
+const res = await m.check({ solver: "pumpkin" });
+console.log("Check Status:", res.status); // "Unsat"
+if (res.status === "Unsat") {
+  console.warn("⚠️ Conflicting Schedule Rules (Conflicts / Unsat Core):");
+  const conflicts = res.conflicts || m.conflicts || m.unsatCore || [];
+  conflicts.forEach((rule) => console.warn("  • " + rule));
+}
+`,
+  },
   {
     id: "shift_conflict_unsat",
     title: "Shift Vacation Conflict Diagnosis (Z3 Unsat Core)",

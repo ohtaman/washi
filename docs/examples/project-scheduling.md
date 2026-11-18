@@ -2,7 +2,7 @@
 
 | Problem Class | Solver | Key APIs | Links |
 | :--- | :--- | :--- | :--- |
-| CP / LCG (RCPSP & Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">Source Code</a></li><li><a href="/guide/constraint-programming">CP Modeling Guide</a></li></ul> |
+| CP / LCG (RCPSP & Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (Schedule)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (Conflict)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">Source Code</a></li><li><a href="/guide/constraint-programming">CP Modeling Guide</a></li></ul> |
 
 The **Resource-Constrained Project Scheduling Problem (RCPSP)** models project tasks governed simultaneously by **precedence dependencies**, **unary shared equipment** (disjunctive resource), and **limited renewable team headcount** (cumulative resource).
 
@@ -27,7 +27,7 @@ Notice that ignoring crew capacity gives a naive critical path of `9h` (`chassis
 
 ## Implementation in WaSHI
 
-<CodeRunner>
+<CodeRunner preset="project_scheduling">
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "@ohtaman/washi";

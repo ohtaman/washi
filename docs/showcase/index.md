@@ -25,13 +25,13 @@ Explore WaSHI's interactive WebAssembly playground, real-world decision-support 
       <div>
         <div class="washi-showcase-card-top">
           <span class="washi-showcase-icon">⚡</span>
-          <span class="washi-showcase-badge">HiGHS · Z3 · GLPK</span>
+          <span class="washi-showcase-badge">HiGHS · Pumpkin · Z3 · GLPK</span>
         </div>
         <div class="washi-showcase-title">
           <a href="/demo/" target="_self" class="washi-showcase-title-link">WaSHI Playground</a>
         </div>
         <p class="washi-showcase-desc">
-          Formulate LP, MIP, Convex QP, and SMT models in TypeScript/JavaScript and solve directly in your browser via WebAssembly. Includes runnable presets, LP/SMT-LIB export inspection, sensitivity analysis, and Z3 <code>unsatCore</code> conflict diagnosis.
+          Formulate LP, MIP, Convex QP, CP, and SMT models in TypeScript/JavaScript and solve directly in your browser via WebAssembly. Includes runnable presets, CPLEX LP export inspection, sensitivity analysis, and Pumpkin / Z3 <code>unsatCore</code> conflict diagnosis.
         </p>
       </div>
       <div class="washi-showcase-actions">

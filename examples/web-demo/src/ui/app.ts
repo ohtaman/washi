@@ -3,6 +3,7 @@ import { executeModelCode } from "./runner.js";
 import { DOCS_HTML, getDocsHtml } from "./docs.js";
 import type { Model } from "../../../../src/modeler/model.js";
 import { setDefaultSolver } from "../../../../src/modeler/solvers/registry.js";
+import { registerPumpkinSolver } from "../../../../src/modeler/solvers/pumpkin.js";
 import { registerZ3Solver } from "../../../../src/modeler/solvers/z3.js";
 import { registerGLPKSolver } from "../../../../src/modeler/solvers/glpk.js";
 import {
@@ -31,7 +32,11 @@ function stripComments(code: string): string {
     .replace(/\/\/[^\n]*/g, "");
 }
 
-export function replaceSolverInCode(code: string, solverName: "highs" | "glpk" | "z3"): string {
+export type PlaygroundSolver = "highs" | "pumpkin" | "glpk" | "z3";
+
+const SOLVER_NAME_PATTERN = "highs|pumpkin|glpk|z3";
+
+export function replaceSolverInCode(code: string, solverName: PlaygroundSolver): string {
   let hasReplaced = false;
 
   // 1. Replace inside Model constructor object literal: new Model({ ... solver: "..." }) or new Model("name", { ... solver: "..." })
@@ -70,26 +75,33 @@ export function replaceSolverInCode(code: string, solverName: "highs" | "glpk" |
   return code;
 }
 
-export function detectSolverInCode(code: string): ("highs" | "glpk" | "z3") | null {
+export function detectSolverInCode(code: string): PlaygroundSolver | null {
   // Strip comments first so comments mentioning solvers are not misdetected
   const stripped = stripComments(code);
 
-  const modelMatch = stripped.match(/new\s+Model\s*\([^{)]*\{[^}]*?solver\s*:\s*["'](highs|glpk|z3)["']/i);
+  const modelMatch = stripped.match(
+    new RegExp(`new\\s+Model\\s*\\([^{)]*\\{[^}]*?solver\\s*:\\s*["'](${SOLVER_NAME_PATTERN})["']`, "i")
+  );
   if (modelMatch) {
-    return modelMatch[1].toLowerCase() as "highs" | "glpk" | "z3";
+    return modelMatch[1].toLowerCase() as PlaygroundSolver;
   }
 
-  const callMatch = stripped.match(/\.(?:solve|check)\s*\([^{)]*\{[^}]*?solver\s*:\s*["'](highs|glpk|z3)["']/i);
+  const callMatch = stripped.match(
+    new RegExp(`\\.(?:solve|check)\\s*\\([^{)]*\\{[^}]*?solver\\s*:\\s*["'](${SOLVER_NAME_PATTERN})["']`, "i")
+  );
   if (callMatch) {
-    return callMatch[1].toLowerCase() as "highs" | "glpk" | "z3";
+    return callMatch[1].toLowerCase() as PlaygroundSolver;
   }
 
-  const generalMatch = stripped.match(/solver\s*:\s*["'](highs|glpk|z3)["']/i);
-  return generalMatch ? (generalMatch[1].toLowerCase() as "highs" | "glpk" | "z3") : null;
+  const generalMatch = stripped.match(
+    new RegExp(`solver\\s*:\\s*["'](${SOLVER_NAME_PATTERN})["']`, "i")
+  );
+  return generalMatch ? (generalMatch[1].toLowerCase() as PlaygroundSolver) : null;
 }
 
 export function initApp() {
   initTheme();
+  registerPumpkinSolver();
   registerZ3Solver();
   registerGLPKSolver();
 
@@ -208,22 +220,24 @@ export function initApp() {
     lineNumbers.textContent = Array.from({ length: lines }, (_, i) => i + 1).join("\n");
   }
 
+  function inferSolverForPreset(example: ExampleModel): PlaygroundSolver {
+    const detected = detectSolverInCode(example.code);
+    if (detected) return detected;
+    if (example.category === "CP") return "pumpkin";
+    if (example.category === "SMT") return "z3";
+    if (example.id.includes("glpk")) return "glpk";
+    return "highs";
+  }
+
   function loadPreset(id: string) {
     const example = EXAMPLES.find((ex) => ex.id === id) || EXAMPLES[0];
     codeTextarea.value = example.code;
     presetSelect.value = example.id;
     updateLineNumbers();
 
-    if (example.category === "SMT" || example.code.includes('solver: "z3"')) {
-      if (solverSelect) solverSelect.value = "z3";
-      updateSolver("z3");
-    } else if (example.id.includes("glpk") || example.code.includes('solver: "glpk"')) {
-      if (solverSelect) solverSelect.value = "glpk";
-      updateSolver("glpk");
-    } else {
-      if (solverSelect) solverSelect.value = "highs";
-      updateSolver("highs");
-    }
+    const targetSolver = inferSolverForPreset(example);
+    if (solverSelect) solverSelect.value = targetSolver;
+    updateSolver(targetSolver);
   }
 
   // Preset switch
@@ -234,9 +248,9 @@ export function initApp() {
   // Solver selector
   const solverSelect = document.getElementById("solver-select") as HTMLSelectElement | null;
   const solverBadgeText = document.getElementById("solver-badge-text") as HTMLSpanElement | null;
-  let currentSolver: "highs" | "glpk" | "z3" = "highs";
+  let currentSolver: PlaygroundSolver = "highs";
 
-  function updateCodeSolver(solverName: "highs" | "glpk" | "z3") {
+  function updateCodeSolver(solverName: PlaygroundSolver) {
     const updated = replaceSolverInCode(codeTextarea.value, solverName);
     if (updated !== codeTextarea.value) {
       codeTextarea.value = updated;
@@ -254,7 +268,7 @@ export function initApp() {
     }
   }
 
-  function updateSolver(solverName: "highs" | "glpk" | "z3") {
+  function updateSolver(solverName: PlaygroundSolver) {
     currentSolver = solverName;
     setDefaultSolver(solverName);
     if (solverBadgeText) {
@@ -263,6 +277,8 @@ export function initApp() {
         solverBadgeText.textContent = isIsolated
           ? "Z3 v5.2.0 (SMT/SAT/MIP)"
           : "Z3 v5.2.0 (COI Required)";
+      } else if (solverName === "pumpkin") {
+        solverBadgeText.textContent = "Pumpkin v0.5.0 (CP/LCG)";
       } else if (solverName === "glpk") {
         solverBadgeText.textContent = "GLPK v5.0.0 (WASM)";
       } else {
@@ -273,7 +289,7 @@ export function initApp() {
 
   if (solverSelect) {
     solverSelect.addEventListener("change", () => {
-      const selected = solverSelect.value as "highs" | "glpk" | "z3";
+      const selected = solverSelect.value as PlaygroundSolver;
       updateSolver(selected);
       updateCodeSolver(selected);
     });
@@ -354,7 +370,13 @@ export function initApp() {
 
     runBtn.disabled = true;
     const solverDisplayName =
-      currentSolver === "z3" ? "Z3" : currentSolver === "glpk" ? "GLPK" : "HiGHS";
+      currentSolver === "pumpkin"
+        ? "Pumpkin"
+        : currentSolver === "z3"
+          ? "Z3"
+          : currentSolver === "glpk"
+            ? "GLPK"
+            : "HiGHS";
     runBtn.textContent = `Solving with ${solverDisplayName}...`;
 
     if (unsatCoreBox) unsatCoreBox.style.display = "none";
@@ -425,7 +447,11 @@ export function initApp() {
 
       // Render LP String
       if (currentModel) {
-        lpOutput.textContent = currentModel.toLpString();
+        try {
+          lpOutput.textContent = currentModel.toLpString();
+        } catch (err) {
+          lpOutput.textContent = `// CPLEX LP export unavailable: ${err instanceof Error ? err.message : String(err)}`;
+        }
       }
 
       // Render variables table & visualizer
@@ -604,7 +630,11 @@ export function initApp() {
   genLpBtn.addEventListener("click", async () => {
     const result = await executeModelCode(codeTextarea.value);
     if (result.model) {
-      lpOutput.textContent = result.model.toLpString();
+      try {
+        lpOutput.textContent = result.model.toLpString();
+      } catch (err) {
+        lpOutput.textContent = `// CPLEX LP export unavailable: ${err instanceof Error ? err.message : String(err)}`;
+      }
       showTab("tab-lp");
     } else {
       alert("Please ensure the code creates a Model.");

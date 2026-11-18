@@ -2,7 +2,7 @@
 
 | 問題クラス | ソルバー | 主な API | リンク |
 | :--- | :--- | :--- | :--- |
-| CP / LCG (RCPSP・Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">ソースコード</a></li><li><a href="/ja/guide/constraint-programming">CP モデリングガイド</a></li></ul> |
+| CP / LCG (RCPSP・Unsat Core) | Pumpkin (`@ohtaman/washi/solvers/pumpkin`) | `m.integer()`, `disjoint()`, `cumulative()`, `max()`, `and()`, `m.check()` | <ul><li><a href="https://washi.ohtaman.dev/demo/?preset=project_scheduling">Playground (スケジュール)</a></li><li><a href="https://washi.ohtaman.dev/demo/?preset=project_conflict_unsat">Playground (競合診断)</a></li><li><a href="https://github.com/ohtaman/washi/blob/main/examples/node/15-project-scheduling-cp.ts">ソースコード</a></li><li><a href="/ja/guide/constraint-programming">CP モデリングガイド</a></li></ul> |
 
 **リソース制約付きプロジェクトスケジューリング問題 (RCPSP)** では、作業間の**先行順序関係**に加えて、**単一専用設備の排他占有（非重複制約）**と**共有人員の上限（累積資源制約）**を同時に満たす最短工期（メイクスパン最小化）を求めます。
 
@@ -27,7 +27,7 @@
 
 ## WaSHI による実装
 
-<CodeRunner>
+<CodeRunner preset="project_scheduling">
 
 ```typescript
 import { Model, expr, disjoint, cumulative, max, and, minimize } from "@ohtaman/washi";

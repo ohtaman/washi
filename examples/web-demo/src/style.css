@@ -394,6 +394,11 @@ body {
   border-color: var(--color-hi);
 }
 
+.custom-select:focus-visible {
+  outline: 2px solid var(--color-hi);
+  outline-offset: 2px;
+}
+
 .editor-actions {
   display: flex;
   align-items: center;
