@@ -561,5 +561,68 @@ describe("CP Global Constraints, Discrete !=/</>, & Native Indicator Lowering (I
         }
       }
     });
+
+    it("invalidates indicator metadata on in-place row.lhs edits (setTerm, terms Map, constant) and post-registration bound widening", async () => {
+      // 1. row.lhs.setTerm(x, 2)
+      const m1 = new Model("InPlaceSetTerm");
+      const b1 = m1.binary("b");
+      const x1 = m1.integer("x", { lb: 0, ub: 10 });
+      const [row1] = m1.indicator(b1, x1.le(5));
+      row1.lhs.setTerm(x1, 2);
+      m1.constraint(b1.eq(1));
+      m1.objective(maximize(x1));
+      for (const solver of ["highs", "glpk", "pumpkin", "z3"] as const) {
+        const status = await m1.solve({ solver });
+        expect(status, `setTerm solver=${solver}`).toBe("Optimal");
+        expect(x1.value, `setTerm solver=${solver}`).toBe(2);
+        expect(m1.validateSolution().valid, `setTerm solver=${solver}`).toBe(true);
+      }
+
+      // 2. row.lhs.terms.set(x, 3) direct Map mutation
+      const m2 = new Model("InPlaceTermsMapSet");
+      const b2 = m2.binary("b");
+      const x2 = m2.integer("x", { lb: 0, ub: 10 });
+      const [row2] = m2.indicator(b2, x2.le(5));
+      row2.lhs.terms.set(x2, 3);
+      m2.constraint(b2.eq(1));
+      m2.objective(maximize(x2));
+      for (const solver of ["highs", "pumpkin", "z3"] as const) {
+        const status = await m2.solve({ solver });
+        expect(status, `terms.set solver=${solver}`).toBe("Optimal");
+        expect(x2.value, `terms.set solver=${solver}`).toBe(1);
+        expect(m2.validateSolution().valid, `terms.set solver=${solver}`).toBe(true);
+      }
+
+      // 3. row.lhs.constant = 3 direct constant edit
+      const m3 = new Model("InPlaceConstantEdit");
+      const b3 = m3.binary("b");
+      const x3 = m3.integer("x", { lb: 0, ub: 10 });
+      const [row3] = m3.indicator(b3, x3.le(5));
+      row3.lhs.constant = 3;
+      expect(row3._indicatorMeta).toBeUndefined();
+      m3.constraint(b3.eq(1));
+      m3.objective(maximize(x3));
+      for (const solver of ["pumpkin", "z3"] as const) {
+        const status = await m3.solve({ solver });
+        expect(status, `constant solver=${solver}`).toBe("Optimal");
+        expect(x3.value, `constant solver=${solver}`).toBe(2);
+        expect(m3.validateSolution().valid, `constant solver=${solver}`).toBe(true);
+      }
+
+      // 4. Widening x.ub after m.indicator() invalidates stale derivedM metadata
+      const m4 = new Model("BoundWideningAfterIndicator");
+      const b4 = m4.binary("b");
+      const x4 = m4.integer("x", { lb: 0, ub: 10 });
+      m4.indicator(b4, x4.le(5));
+      x4.ub = 20;
+      m4.constraint(b4.eq(0));
+      m4.objective(maximize(x4));
+      for (const solver of ["highs", "pumpkin", "z3"] as const) {
+        const status = await m4.solve({ solver });
+        expect(status, `bound widening solver=${solver}`).toBe("Optimal");
+        expect(x4.value, `bound widening solver=${solver}`).toBe(10);
+        expect(m4.validateSolution().valid, `bound widening solver=${solver}`).toBe(true);
+      }
+    });
   });
 });

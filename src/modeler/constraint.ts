@@ -16,6 +16,15 @@ export interface IndicatorOrigin {
   readonly targetLhs: LinExpr;
   readonly targetSense: "<=" | ">=";
   readonly targetRhs: number;
+  readonly derivedM: number;
+}
+
+interface IndicatorRowSnapshot {
+  readonly lhsRef: LinExpr;
+  readonly terms: ReadonlyMap<Var, number>;
+  readonly constant: number;
+  readonly sense: ComparisonSense;
+  readonly rhs: number;
 }
 
 /**
@@ -31,6 +40,7 @@ export class Constraint {
   public hasExplicitName: boolean;
   public ownerModel: { notifyMutation?: () => void } | null = null;
   private _indicatorOrigin?: IndicatorOrigin;
+  private _indicatorSnapshot?: IndicatorRowSnapshot;
   private _discreteVars?: ReadonlySet<Var>;
   /** Slack value after solve */
   public slack: number | null = null;
@@ -45,6 +55,7 @@ export class Constraint {
   addTerm(v: Var, coeff: number): this {
     if (coeff === 0) return this;
     this._indicatorOrigin = undefined;
+    this._indicatorSnapshot = undefined;
     this._lhs.addTerm(v, coeff);
     this.ownerModel?.notifyMutation?.();
     return this;
@@ -56,6 +67,7 @@ export class Constraint {
    */
   setTerm(v: Var, coeff: number): this {
     this._indicatorOrigin = undefined;
+    this._indicatorSnapshot = undefined;
     this._lhs.setTerm(v, coeff);
     this.ownerModel?.notifyMutation?.();
     return this;
@@ -88,6 +100,7 @@ export class Constraint {
   set lhs(value: LinExpr) {
     if (this._lhs !== value) {
       this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
       this._lhs = value;
       this.ownerModel?.notifyMutation?.();
     }
@@ -105,6 +118,7 @@ export class Constraint {
     }
     if (this._sense !== value) {
       this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
       this._sense = value;
       this.ownerModel?.notifyMutation?.();
     }
@@ -122,6 +136,7 @@ export class Constraint {
     }
     if (!Object.is(this._rhs, value)) {
       this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
       this._rhs = value;
       this.ownerModel?.notifyMutation?.();
     }
@@ -141,12 +156,73 @@ export class Constraint {
 
   /** @internal */
   get _indicatorMeta(): IndicatorOrigin | undefined {
-    return this._indicatorOrigin;
+    const origin = this._indicatorOrigin;
+    const snap = this._indicatorSnapshot;
+    if (!origin || !snap) {
+      return undefined;
+    }
+    if (
+      this._lhs !== snap.lhsRef ||
+      this._sense !== snap.sense ||
+      !Object.is(this._rhs, snap.rhs) ||
+      !Object.is(this._lhs.constant, snap.constant) ||
+      this._lhs.nonlinearTerms.length > 0 ||
+      this._lhs.terms.size !== snap.terms.size
+    ) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
+      return undefined;
+    }
+    for (const [v, coeff] of snap.terms) {
+      if (!this._lhs.terms.has(v) || !Object.is(this._lhs.terms.get(v), coeff)) {
+        this._indicatorOrigin = undefined;
+        this._indicatorSnapshot = undefined;
+        return undefined;
+      }
+    }
+
+    // Verify variable bounds still fit within the derived Big-M used for row construction
+    const effectiveRhs = origin.targetRhs - (origin.targetLhs.constant ?? 0);
+    let extremeLhs = 0;
+    for (const [v, coeff] of origin.targetLhs.terms) {
+      if (coeff === 0) continue;
+      const boundVal =
+        origin.targetSense === "<="
+          ? coeff > 0
+            ? v.ub
+            : v.lb
+          : coeff > 0
+            ? v.lb
+            : v.ub;
+      if (!Number.isFinite(boundVal)) return undefined;
+      extremeLhs += coeff * boundVal;
+      if (!Number.isFinite(extremeLhs)) return undefined;
+    }
+    const neededM =
+      origin.targetSense === "<="
+        ? extremeLhs - effectiveRhs
+        : effectiveRhs - extremeLhs;
+    if (neededM > origin.derivedM + 1e-9) {
+      return undefined;
+    }
+    return origin;
   }
 
   /** @internal */
   _setIndicatorOrigin(origin: IndicatorOrigin | undefined): void {
+    if (!origin) {
+      this._indicatorOrigin = undefined;
+      this._indicatorSnapshot = undefined;
+      return;
+    }
     this._indicatorOrigin = origin;
+    this._indicatorSnapshot = {
+      lhsRef: this._lhs,
+      terms: new Map(this._lhs.terms),
+      constant: this._lhs.constant,
+      sense: this._sense,
+      rhs: this._rhs,
+    };
   }
 
   /** @internal */

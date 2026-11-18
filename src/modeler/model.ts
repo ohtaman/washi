@@ -1629,6 +1629,7 @@ export class Model {
             targetLhs: lhs.clone(),
             targetSense: "<=",
             targetRhs: rhs,
+            derivedM: mLe,
           });
         }
         pending.push([cLe, leName]);
@@ -1644,6 +1645,7 @@ export class Model {
             targetLhs: lhs.clone(),
             targetSense: ">=",
             targetRhs: rhs,
+            derivedM: mGe,
           });
         }
         pending.push([cGe, geName]);
