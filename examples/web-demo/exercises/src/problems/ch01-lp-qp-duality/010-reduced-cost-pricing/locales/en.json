@@ -24,6 +24,7 @@
     "m7": "Strong duality check failed on shadowPrices (b^T y = {p0} vs {p1}).",
     "m8": "candidateReducedCosts[{p0}] ({p1}) != candidateMargins[{p0}] - A^T y ({p2}). Check sign convention for maximization!",
     "m9": "minMarginIncreaseNeeded[{p0}] ({p1}) must equal max(0, -reducedCost) = {p2}.",
-    "m10": "Chapter 1 Boss cleared! Exact profit ({p0}), duals, and break-even reduced costs verified."
+    "m10": "Chapter 1 Boss cleared! Exact profit ({p0}), duals, and break-even reduced costs verified.",
+    "m11": "Dual feasibility failed for product {p0}: imputed resource value ({p1}) < margin ({p2})."
   }
 }

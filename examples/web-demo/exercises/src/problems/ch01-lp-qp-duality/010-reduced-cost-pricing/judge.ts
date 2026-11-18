@@ -136,6 +136,19 @@ export function judge(
     );
   }
 
+  // Verify LP dual feasibility A^T y >= c across all base + candidate products
+  for (let j = 0; j < N; j++) {
+    let dualCol = 0;
+    for (let k = 0; k < M; k++) {
+      dualCol += input.usages[k][j] * shadowPrices[k];
+    }
+    if (dualCol < allMargins[j] - 1e-3) {
+      return violation(
+        formatTemplate(JMSG[locale].m11, { p0: j, p1: roundNice(dualCol, 3), p2: allMargins[j] })
+      );
+    }
+  }
+
   for (let c = 0; c < C; c++) {
     let oppCost = 0;
     for (let k = 0; k < M; k++) {

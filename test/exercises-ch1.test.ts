@@ -149,6 +149,26 @@ describe("Exercises Phase 1 — Tutorial (T1-T2) & Chapter 1 (#001-#010)", () =>
       expect(badVerdict.ok, `${prob.meta.id} accepted empty output`).toBe(false);
       expect(badVerdict.status).toBe("VIOLATION");
 
+      // #010 must enforce dual feasibility A^T y >= c across all base + candidate columns
+      if (prob.meta.id === "010") {
+        const invalidDualOutput = {
+          baseQuantities: [40, 20],
+          candidateQuantities: [0, 0],
+          optimalProfit: 2800,
+          shadowPrices: [28, 0, 0],
+          candidateReducedCosts: [-36, -11],
+          minMarginIncreaseNeeded: [36, 11],
+        };
+        const dualVerdict = prob.judge(
+          prob.cases[0].input,
+          invalidDualOutput,
+          prob.cases[0].expectedOptimal,
+          "en"
+        );
+        expect(dualVerdict.ok).toBe(false);
+        expect(dualVerdict.status).toBe("VIOLATION");
+      }
+
       // Starter verification: T1 must intentionally return SUBOPTIMAL, T2 VIOLATION, main problems non-AC error
       const starterRun = await runWashiExerciseCode(prob.washiStarter, [structuredClone(prob.cases[0].input)]);
       if (prob.meta.id === "T1") {

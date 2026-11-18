@@ -102,7 +102,8 @@ class ExercisesApp {
   private progress: ProgressState;
   private problemId: string | null;
   private activeRuntime: RuntimeId = "washi";
-  private isRunning = false;
+  private viewGeneration = 0;
+  private runningGeneration: number | null = null;
   private armedSolutionRuntime: RuntimeId | null = null;
   private armedSolutionTimer: ReturnType<typeof setTimeout> | null = null;
   private armedResetAll = false;
@@ -140,6 +141,7 @@ class ExercisesApp {
 
   private attachGlobalEvents(): void {
     window.addEventListener("popstate", () => {
+      this.viewGeneration++;
       this.locale = detectInitialLocale();
       this.problemId = parseRouteProblemId();
       this.clearArmingState();
@@ -210,6 +212,7 @@ class ExercisesApp {
   }
 
   private navigateToProblem(id: string | null): void {
+    this.viewGeneration++;
     this.problemId = id && getProblemById(id) ? id : null;
     this.clearArmingState();
     this.lastReport = null;
@@ -546,25 +549,33 @@ class ExercisesApp {
   }
 
   private async runProblem(prob: ProblemDefinition, runtime: RuntimeId): Promise<void> {
-    if (this.isRunning) return;
-    this.isRunning = true;
+    const originGeneration = this.viewGeneration;
+    if (this.runningGeneration === originGeneration) return;
+    this.runningGeneration = originGeneration;
 
     const editor = this.root.querySelector<HTMLTextAreaElement>(`#editor-${runtime}`);
-    const runBtn = this.root.querySelector<HTMLButtonElement>(
+    const initialRunBtn = this.root.querySelector<HTMLButtonElement>(
       `button[data-action="run"][data-runtime="${runtime}"]`
     );
-    const resultsEl = this.root.querySelector<HTMLElement>("#judge-results");
     const code = editor ? editor.value : this.getDraftCode(prob, runtime);
 
-    if (runBtn) {
-      runBtn.disabled = true;
-      runBtn.textContent = this.strings.editor.runningBtn;
+    if (initialRunBtn) {
+      initialRunBtn.disabled = true;
+      initialRunBtn.textContent = this.strings.editor.runningBtn;
     }
 
+    const isCurrentWorkspace = () =>
+      this.viewGeneration === originGeneration && this.problemId === prob.meta.id;
+
     const setStatusLabel = (label: string) => {
-      if (runBtn) runBtn.textContent = label;
-      if (resultsEl) {
-        resultsEl.innerHTML = `<div class="results-head"><h2 class="results-title">${escapeHtml(
+      if (!isCurrentWorkspace()) return;
+      const liveBtn = this.root.querySelector<HTMLButtonElement>(
+        `button[data-action="run"][data-runtime="${runtime}"]`
+      );
+      if (liveBtn) liveBtn.textContent = label;
+      const liveResults = this.root.querySelector<HTMLElement>("#judge-results");
+      if (liveResults) {
+        liveResults.innerHTML = `<div class="results-head"><h2 class="results-title">${escapeHtml(
           this.strings.results.title
         )}</h2></div><p class="results-placeholder">${escapeHtml(label)}</p>`;
       }
@@ -575,11 +586,20 @@ class ExercisesApp {
 
       if (runtime === "washi") {
         const runRes = await runWashiExerciseCode(code, inputs);
-        this.applyRunResult(prob, runtime, runRes.ok, runRes.outputs, runRes.logs, runRes.runTimeMs, {
-          error: runRes.error,
-          lpPreview: runRes.lpPreview,
-          metrics: runRes.metrics,
-        });
+        this.applyRunResult(
+          prob,
+          runtime,
+          runRes.ok,
+          runRes.outputs,
+          runRes.logs,
+          runRes.runTimeMs,
+          originGeneration,
+          {
+            error: runRes.error,
+            lpPreview: runRes.lpPreview,
+            metrics: runRes.metrics,
+          }
+        );
       } else {
         const phaseToLabel = (phase: PyodideRunPhase): string => {
           if (phase === "loading-pyodide") return this.strings.editor.loadingPyodide;
@@ -590,18 +610,31 @@ class ExercisesApp {
         const runRes = await runHighspyExerciseCode(code, inputs, {
           onPhase: (phase) => setStatusLabel(phaseToLabel(phase)),
         });
-        this.applyRunResult(prob, runtime, runRes.ok, runRes.outputs, runRes.logs, runRes.runTimeMs, {
-          error: runRes.error,
-        });
+        this.applyRunResult(
+          prob,
+          runtime,
+          runRes.ok,
+          runRes.outputs,
+          runRes.logs,
+          runRes.runTimeMs,
+          originGeneration,
+          {
+            error: runRes.error,
+          }
+        );
       }
     } finally {
-      this.isRunning = false;
-      const freshBtn = this.root.querySelector<HTMLButtonElement>(
-        `button[data-action="run"][data-runtime="${runtime}"]`
-      );
-      if (freshBtn) {
-        freshBtn.disabled = false;
-        freshBtn.textContent = this.strings.editor.runBtn;
+      if (this.runningGeneration === originGeneration) {
+        this.runningGeneration = null;
+      }
+      if (isCurrentWorkspace()) {
+        const freshBtn = this.root.querySelector<HTMLButtonElement>(
+          `button[data-action="run"][data-runtime="${runtime}"]`
+        );
+        if (freshBtn) {
+          freshBtn.disabled = false;
+          freshBtn.textContent = this.strings.editor.runBtn;
+        }
       }
     }
   }
@@ -613,6 +646,7 @@ class ExercisesApp {
     outputs: unknown[],
     logs: string[],
     runTimeMs: number,
+    originGeneration: number,
     extra: {
       error?: string;
       lpPreview?: string | null;
@@ -621,6 +655,8 @@ class ExercisesApp {
   ): void {
     const idx = PROBLEMS.findIndex((p) => p.meta.id === prob.meta.id);
     const nextProb = idx >= 0 && idx + 1 < PROBLEMS.length ? PROBLEMS[idx + 1] : null;
+    const isStillCurrent =
+      this.viewGeneration === originGeneration && this.problemId === prob.meta.id;
 
     let report: RenderedRunReport;
 
@@ -679,7 +715,9 @@ class ExercisesApp {
       if (allAc) {
         this.progress = recordSolvedProblem(this.progress, prob.meta.id, runtime, runTimeMs);
         saveProgress(this.progress);
-        this.refreshWorkspaceStars(prob.meta.id);
+        if (isStillCurrent) {
+          this.refreshWorkspaceStars(prob.meta.id);
+        }
       }
 
       report = {
@@ -690,6 +728,10 @@ class ExercisesApp {
         runTimeMs,
         nextProblemId: nextProb?.meta.id ?? null,
       };
+    }
+
+    if (!isStillCurrent) {
+      return;
     }
 
     this.lastReport = report;

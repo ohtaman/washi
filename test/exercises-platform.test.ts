@@ -60,6 +60,32 @@ export async function solve(input: SampleInput): Promise<{ x: number; label: str
     const fn = new Function(js);
     expect(typeof fn).toBe("function");
   });
+
+  it("preserves comparisons with parentheses, operators after `as` assertions, and semicolon-free type aliases", () => {
+    const edgeTs = `
+type PointInput = { x: number; n: number }
+type UnionMode =
+  | "fast"
+  | "safe"
+export function solve(input: PointInput) {
+  const mode: UnionMode = "fast";
+  if (input.n < 2 || input.n > (10)) {
+    return -1;
+  }
+  const shifted = input.x as number + 1;
+  return shifted + (mode === "fast" ? 10 : 0);
+}
+`;
+    const js = transpileExerciseTsToJs(edgeTs);
+    expect(js).not.toMatch(/PointInput\s*=/);
+    expect(js).not.toMatch(/UnionMode\s*=/);
+    expect(js).toContain("input.n < 2 || input.n > (10)");
+    expect(js).toContain("input.x + 1");
+
+    const fn = new Function(`${js}; return solve;`)() as (inp: { x: number; n: number }) => number;
+    expect(fn({ x: 5, n: 4 })).toBe(16);
+    expect(fn({ x: 5, n: 1 })).toBe(-1);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {

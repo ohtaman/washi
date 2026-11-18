@@ -211,6 +211,117 @@ function readTypeExpressionEnd(s: string, start: number, terminators: string[]):
   return i;
 }
 
+function skipWsHorizontal(s: string, i: number): number {
+  while (i < s.length && (s[i] === " " || s[i] === "\t")) i++;
+  return i;
+}
+
+function readSingleTypeAtomEnd(s: string, start: number): number {
+  let i = skipWsHorizontal(s, start);
+  if (i >= s.length) return start;
+
+  for (const kw of ["readonly", "keyof", "typeof", "unique"]) {
+    if (s.startsWith(kw, i) && /\s/.test(s[i + kw.length] ?? "")) {
+      return readSingleTypeAtomEnd(s, i + kw.length + 1);
+    }
+  }
+
+  const ch = s[i];
+  if (ch === "{" || ch === "[" || ch === "(") {
+    const closeCh = ch === "{" ? "}" : ch === "[" ? "]" : ")";
+    i = skipBalanced(s, i, ch, closeCh);
+    if (ch === "(") {
+      const afterParen = skipWsHorizontal(s, i);
+      if (s.startsWith("=>", afterParen)) {
+        return readAsTypeEnd(s, afterParen + 2);
+      }
+    }
+  } else if (ch === "\uE000") {
+    const endTok = s.indexOf("\uE001", i);
+    i = endTok >= 0 ? endTok + 1 : i + 1;
+  } else if (isIdentStart(ch) || /[0-9]/.test(ch)) {
+    while (i < s.length && isIdentChar(s[i])) i++;
+    while (true) {
+      const after = skipWsHorizontal(s, i);
+      if (s[after] === "." && isIdentStart(s[after + 1] ?? "")) {
+        i = after + 1;
+        while (i < s.length && isIdentChar(s[i])) i++;
+        continue;
+      }
+      if (s[after] === "<") {
+        i = skipBalanced(s, after, "<", ">");
+        continue;
+      }
+      break;
+    }
+  } else {
+    return start;
+  }
+
+  while (true) {
+    const after = skipWsHorizontal(s, i);
+    if (s[after] === "[") {
+      i = skipBalanced(s, after, "[", "]");
+      continue;
+    }
+    break;
+  }
+
+  return i;
+}
+
+function readAsTypeEnd(s: string, start: number): number {
+  let i = readSingleTypeAtomEnd(s, start);
+  if (i === start) return start;
+  while (true) {
+    const after = skipWsHorizontal(s, i);
+    const comb = s[after];
+    if ((comb === "|" || comb === "&") && s[after + 1] !== comb) {
+      const nextAtom = readSingleTypeAtomEnd(s, after + 1);
+      if (nextAtom > after + 1) {
+        i = nextAtom;
+        continue;
+      }
+    }
+    break;
+  }
+  return i;
+}
+
+function looksLikeGenericTypeArgList(inner: string): boolean {
+  const trimmed = inner.trim();
+  if (!trimmed) return false;
+  if (/^[0-9]/.test(trimmed)) return false;
+
+  let paren = 0;
+  let brace = 0;
+  let bracket = 0;
+  let angle = 0;
+
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (ch === "(") paren++;
+    else if (ch === ")" && paren > 0) paren--;
+    else if (ch === "{") brace++;
+    else if (ch === "}" && brace > 0) brace--;
+    else if (ch === "[") bracket++;
+    else if (ch === "]" && bracket > 0) bracket--;
+    else if (ch === "<") angle++;
+    else if (ch === ">" && angle > 0) angle--;
+    else if (paren === 0 && brace === 0 && bracket === 0 && angle === 0) {
+      const two = trimmed.slice(i, i + 2);
+      if (two === "||" || two === "&&" || two === "==" || two === "!=") {
+        return false;
+      }
+      if (ch === ";" || ch === "+" || ch === "*" || ch === "/" || ch === "%") {
+        return false;
+      }
+    }
+  }
+
+  return paren === 0 && brace === 0 && bracket === 0 && angle === 0;
+}
+
 function stripTopLevelDeclarations(s: string): string {
   let out = "";
   let i = 0;
@@ -273,17 +384,47 @@ function stripTopLevelDeclarations(s: string): string {
         let b = 0;
         let p = 0;
         let sq = 0;
+        let a = 0;
+        let seenEq = false;
         while (j < s.length) {
           const c = s[j];
+          if (c === "=" && s[j + 1] === ">") {
+            j += 2;
+            continue;
+          }
+          if (c === "=" && b === 0 && p === 0 && sq === 0 && a === 0 && !seenEq) {
+            seenEq = true;
+            j++;
+            continue;
+          }
           if (c === "{") b++;
-          else if (c === "}") b--;
+          else if (c === "}" && b > 0) b--;
           else if (c === "(") p++;
-          else if (c === ")") p--;
+          else if (c === ")" && p > 0) p--;
           else if (c === "[") sq++;
-          else if (c === "]") sq--;
-          else if (c === ";" && b === 0 && p === 0 && sq === 0) {
+          else if (c === "]" && sq > 0) sq--;
+          else if (c === "<") a++;
+          else if (c === ">" && a > 0) a--;
+          else if (c === ";" && b === 0 && p === 0 && sq === 0 && a === 0) {
             j++;
             break;
+          } else if (c === "\n" && seenEq && b === 0 && p === 0 && sq === 0 && a === 0) {
+            let back = j - 1;
+            while (back >= declStart && (s[back] === " " || s[back] === "\t" || s[back] === "\r")) {
+              back--;
+            }
+            const prevCh = s[back] ?? "";
+            let fwd = j + 1;
+            while (fwd < s.length && (s[fwd] === " " || s[fwd] === "\t" || s[fwd] === "\r")) {
+              fwd++;
+            }
+            const nextCh = s[fwd] ?? "";
+            const continuesLine =
+              prevCh === "=" || prevCh === "|" || prevCh === "&" || nextCh === "|" || nextCh === "&";
+            if (!continuesLine) {
+              j++;
+              break;
+            }
           }
           j++;
         }
@@ -443,14 +584,13 @@ function stripVarAnnotationsAndGenerics(s: string): string {
     }
 
     // 2. Call-site / constructor generic type arguments: `new Map<K, V>(` or `fn<T>(`
-    if (s[i] === "<") {
-      const prev = out.trimEnd();
-      const last = prev[prev.length - 1] ?? "";
-      if (isIdentChar(last)) {
-        const endAngle = skipBalanced(s, i, "<", ">");
+    if (s[i] === "<" && isIdentChar(out[out.length - 1] ?? "")) {
+      const endAngle = skipBalanced(s, i, "<", ">");
+      if (s[endAngle - 1] === ">" && s[endAngle] !== "=") {
+        const inner = s.slice(i + 1, endAngle - 1);
         let after = endAngle;
         while (after < s.length && (s[after] === " " || s[after] === "\t")) after++;
-        if (s[after] === "(") {
+        if (s[after] === "(" && looksLikeGenericTypeArgList(inner)) {
           i = endAngle;
           continue;
         }
@@ -474,8 +614,14 @@ function stripVarAnnotationsAndGenerics(s: string): string {
       const prevTrim = out.trimEnd();
       const prevC = prevTrim[prevTrim.length - 1] ?? "";
       if (isIdentChar(prevC) || prevC === ")" || prevC === "]" || prevC === "\uE001") {
-        i = readTypeExpressionEnd(s, j, [",", ";", ")", "]", "}", ":"]);
-        continue;
+        const typeEnd = readAsTypeEnd(s, j);
+        if (typeEnd > j) {
+          if (out.endsWith(" ") && (s[typeEnd] === " " || s[typeEnd] === "\t")) {
+            out = out.slice(0, -1);
+          }
+          i = typeEnd;
+          continue;
+        }
       }
     }
 

@@ -273,6 +273,35 @@ async function run() {
       "Import JSON failed to restore 10 / 100"
     );
 
+    // 4b. Verify leaving a workspace while a Python run is in flight never leaks results/stars into another problem
+    {
+      const raceCtx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      const racePage = await raceCtx.newPage();
+      await racePage.goto(`${baseUrl}/exercises/?id=T1&lang=en`, { waitUntil: "networkidle" });
+      await racePage.click("#tab-highspy");
+      const solBtn = racePage.locator('button[data-action="solution"][data-runtime="highspy"]');
+      await solBtn.click();
+      await solBtn.click();
+      await racePage.click('button[data-action="run"][data-runtime="highspy"]');
+      await racePage.click("#back-to-map-btn");
+      await racePage.waitForSelector('a[data-nav-id="002"]');
+      await racePage.click('a[data-nav-id="002"]');
+      await racePage.waitForSelector("#ws-problem-title");
+      // Wait long enough for Pyodide T1 background run to settle in the same SPA session
+      await racePage.waitForTimeout(4500);
+      const p002Placeholder = await racePage.locator("#judge-results").innerText();
+      const p002Stars = await racePage.locator("#ws-star-summary").innerText();
+      assert(
+        !p002Placeholder.includes("2600") && !p002Placeholder.includes("AC —"),
+        `Stale T1 result leaked into #002 workspace: ${p002Placeholder}`
+      );
+      assert(
+        p002Stars.includes("highspy ☆"),
+        `Stale T1 star leaked into #002 workspace: ${p002Stars}`
+      );
+      await raceCtx.close();
+    }
+
     // 5. Mobile Audit (360x800 and 390x844) on Quest Map & Math-heavy Workspace
     for (const vp of [
       { width: 360, height: 800 },
