@@ -120,6 +120,51 @@ export function check(s: string): { matched: boolean } {
     expect(checkFn("a").matched).toBe(false);
     expect(checkFn("a!").matched).toBe(true);
   });
+
+  it("preserves ternaries and comparisons in default parameter expressions", () => {
+    const simple = transpileExerciseTsToJs(
+      "export function solve(input = true ? 1 : 2) { return input; }",
+    );
+    const simpleSolve = new Function(`${simple}; return solve;`)() as () => number;
+    expect(simpleSolve()).toBe(1);
+
+    const sample = `
+export function solve(
+  input: number = true ? 10 : 20,
+  untyped = false ? 1 : 2,
+  cmp = 1 < 2 ? 3 : 4,
+  m: Map<string, number> = new Map<string, number>(),
+  m2 = new Map<Array<number>, (x: number) => number>(),
+  { k = 1 < 2 }: { k?: boolean } = {},
+  tail: number = 5,
+): number {
+  return input + untyped + cmp + m.size + m2.size + (k ? 1 : 0) + tail;
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const solve = new Function(`${js}; return solve;`)() as () => number;
+    expect(solve()).toBe(10 + 2 + 3 + 0 + 0 + 1 + 5);
+  });
+
+  it("distinguishes parenthesized arrow return types from function types", async () => {
+    const sample = `
+const make = (): (() => number) => () => 1;
+const f = (x: number): (number) => x + 1;
+const u = (x: number): ((y: number) => number) | null =>
+  x > 0 ? (y: number): number => x + y : null;
+const arr = (x: number): (() => number)[] => [() => x];
+const prom = (x: number): Promise<() => number> => Promise.resolve(() => x + 4);
+export function makeAdder(x: number): (y: number) => Promise<number> {
+  return async (y: number): Promise<number> =>
+    x + y + make()() + f(0) + arr(2)[0]() + (u(1)?.(2) ?? 0) + (await prom(3))();
+}
+`;
+    const js = transpileExerciseTsToJs(sample);
+    const makeAdder = new Function(`${js}; return makeAdder;`)() as (
+      x: number,
+    ) => (y: number) => Promise<number>;
+    expect(await makeAdder(10)(5)).toBe(10 + 5 + 1 + 1 + 2 + 3 + 7);
+  });
 });
 
 describe("Exercises Platform — Progress Store (localStorage v1)", () => {

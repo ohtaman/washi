@@ -290,6 +290,10 @@ function skipBalanced(s: string, start: number, open: string, close: string): nu
   let depth = 0;
   let i = start;
   while (i < s.length) {
+    if (open === "<" && close === ">" && s[i] === "=" && s[i + 1] === ">") {
+      i += 2;
+      continue;
+    }
     if (s[i] === open) depth++;
     else if (s[i] === close) {
       depth--;
@@ -357,24 +361,104 @@ function skipWsHorizontal(s: string, i: number): number {
   return i;
 }
 
-function readSingleTypeAtomEnd(s: string, start: number): number {
+function splitTopLevelTypeItems(inner: string): string[] | null {
+  const parts: string[] = [];
+  let start = 0;
+  let paren = 0;
+  let brace = 0;
+  let bracket = 0;
+  let angle = 0;
+
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch === "(") paren++;
+    else if (ch === ")") {
+      if (paren === 0) return null;
+      paren--;
+    } else if (ch === "{") brace++;
+    else if (ch === "}") {
+      if (brace === 0) return null;
+      brace--;
+    } else if (ch === "[") bracket++;
+    else if (ch === "]") {
+      if (bracket === 0) return null;
+      bracket--;
+    } else if (ch === "<") angle++;
+    else if (ch === ">") {
+      // Preserve `=>` arrows inside nested parameter types
+      if (i > 0 && inner[i - 1] === "=") continue;
+      if (angle > 0) angle--;
+    } else if (ch === "," && paren === 0 && brace === 0 && bracket === 0 && angle === 0) {
+      parts.push(inner.slice(start, i));
+      start = i + 1;
+    }
+  }
+  if (paren !== 0 || brace !== 0 || bracket !== 0 || angle !== 0) return null;
+  parts.push(inner.slice(start));
+  return parts;
+}
+
+function isFunctionTypeParam(rawParam: string): boolean {
+  const trimmed = rawParam.trim();
+  if (!trimmed) return false;
+  const isRest = trimmed.startsWith("...");
+  const param = isRest ? trimmed.slice(3).trimStart() : trimmed;
+  if (!param) return false;
+
+  let i = 0;
+  const first = param[0];
+  if (first === "{" || first === "[") {
+    const close = first === "{" ? "}" : "]";
+    i = skipBalanced(param, 0, first, close);
+    if (param[i - 1] !== close) return false;
+  } else if (isIdentStart(first)) {
+    while (i < param.length && isIdentChar(param[i])) i++;
+  } else {
+    return false;
+  }
+
+  while (i < param.length && /\s/.test(param[i])) i++;
+  if (param[i] === "?") {
+    i++;
+    while (i < param.length && /\s/.test(param[i])) i++;
+    if (i === param.length) return true;
+  }
+  if (param[i] === ":") return true;
+  return isRest && i === param.length;
+}
+
+function looksLikeFunctionTypeParamList(inner: string): boolean {
+  const trimmed = inner.trim();
+  if (!trimmed) return true;
+  const parts = splitTopLevelTypeItems(trimmed);
+  if (!parts || parts.length === 0) return false;
+  const items = parts[parts.length - 1].trim() === "" ? parts.slice(0, -1) : parts;
+  if (items.length === 0) return false;
+  return items.every(isFunctionTypeParam);
+}
+
+function readSingleTypeAtomEnd(s: string, start: number, allowFunctionType = true): number {
   let i = skipWsHorizontal(s, start);
   if (i >= s.length) return start;
 
   for (const kw of ["readonly", "keyof", "typeof", "unique"]) {
     if (s.startsWith(kw, i) && /\s/.test(s[i + kw.length] ?? "")) {
-      return readSingleTypeAtomEnd(s, i + kw.length + 1);
+      return readSingleTypeAtomEnd(s, i + kw.length + 1, allowFunctionType);
     }
   }
 
   const ch = s[i];
   if (ch === "{" || ch === "[" || ch === "(") {
     const closeCh = ch === "{" ? "}" : ch === "[" ? "]" : ")";
+    const openIdx = i;
     i = skipBalanced(s, i, ch, closeCh);
-    if (ch === "(") {
-      const afterParen = skipWsHorizontal(s, i);
-      if (s.startsWith("=>", afterParen)) {
-        return readTypeEnd(s, afterParen + 2);
+    if (ch === "(" && allowFunctionType && s[i - 1] === ")") {
+      const inner = s.slice(openIdx + 1, i - 1);
+      if (looksLikeFunctionTypeParamList(inner)) {
+        const afterParen = skipWsHorizontal(s, i);
+        if (s.startsWith("=>", afterParen)) {
+          return readTypeEnd(s, afterParen + 2, true);
+        }
       }
     }
   } else if (ch === "\uE000") {
@@ -425,14 +509,14 @@ function readSingleTypeAtomEnd(s: string, start: number): number {
   return i;
 }
 
-function readTypeEnd(s: string, start: number): number {
-  let i = readSingleTypeAtomEnd(s, start);
+function readTypeEnd(s: string, start: number, allowFunctionType = true): number {
+  let i = readSingleTypeAtomEnd(s, start, allowFunctionType);
   if (i === start) return start;
   while (true) {
     const after = skipWsHorizontal(s, i);
     const comb = s[after];
     if ((comb === "|" || comb === "&") && s[after + 1] !== comb) {
-      const nextAtom = readSingleTypeAtomEnd(s, after + 1);
+      const nextAtom = readSingleTypeAtomEnd(s, after + 1, allowFunctionType);
       if (nextAtom > after + 1) {
         i = nextAtom;
         continue;
@@ -455,6 +539,10 @@ function looksLikeGenericTypeArgList(inner: string): boolean {
 
   for (let i = 0; i < trimmed.length; i++) {
     const ch = trimmed[i];
+    if (ch === "=" && trimmed[i + 1] === ">") {
+      i++;
+      continue;
+    }
     if (ch === "(") paren++;
     else if (ch === ")" && paren > 0) paren--;
     else if (ch === "{") brace++;
@@ -659,7 +747,8 @@ function stripParameterAndReturnTypes(s: string): string {
       if (s.slice(after, after + 2) === "=>") {
         isArrowWithTypes = true;
       } else if (s[after] === ":") {
-        const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1));
+        // Arrow function return types cannot be unparenthesized function types, so leave top-level `=>` to the arrow body
+        const afterColon = skipWsHorizontal(s, readTypeEnd(s, after + 1, false));
         if (s.slice(afterColon, afterColon + 2) === "=>") {
           isArrowWithTypes = true;
           bodyStart = afterColon;
@@ -686,7 +775,7 @@ function stripParamList(parenText: string): string {
   let p = 0;
   let b = 0;
   let sq = 0;
-  let a = 0;
+  let inDefault = false;
 
   while (i < inner.length) {
     const ch = inner[i];
@@ -696,15 +785,36 @@ function stripParamList(parenText: string): string {
     else if (ch === "}" && b > 0) b--;
     else if (ch === "[") sq++;
     else if (ch === "]" && sq > 0) sq--;
-    else if (ch === "<") a++;
-    else if (ch === ">" && a > 0) a--;
-    else if (p === 0 && b === 0 && sq === 0 && a === 0 && ch === "?" && /\s*[:,)=]/.test(inner.slice(i + 1))) {
-      i++;
-      continue;
-    } else if (p === 0 && b === 0 && sq === 0 && a === 0 && ch === ":") {
-      i++;
-      i = readTypeExpressionEnd(inner, i, [",", "="]);
-      continue;
+    else if (p === 0 && b === 0 && sq === 0) {
+      if (
+        inDefault &&
+        ch === "<" &&
+        isIdentChar(out[out.length - 1] ?? "") &&
+        inner[i + 1] !== "="
+      ) {
+        const endAng = skipBalanced(inner, i, "<", ">");
+        const angInner = inner.slice(i + 1, endAng - 1);
+        if (
+          inner[endAng - 1] === ">" &&
+          (!angInner.includes("?") || /\bextends\b/.test(angInner)) &&
+          looksLikeGenericTypeArgList(angInner)
+        ) {
+          out += inner.slice(i, endAng);
+          i = endAng;
+          continue;
+        }
+      } else if (ch === ",") {
+        inDefault = false;
+      } else if (!inDefault && ch === "=" && inner[i + 1] !== ">" && inner[i + 1] !== "=") {
+        inDefault = true;
+      } else if (!inDefault && ch === "?" && /\s*[:,)=]/.test(inner.slice(i + 1))) {
+        i++;
+        continue;
+      } else if (!inDefault && ch === ":") {
+        i++;
+        i = readTypeExpressionEnd(inner, i, [",", "="]);
+        continue;
+      }
     }
     out += ch;
     i++;
